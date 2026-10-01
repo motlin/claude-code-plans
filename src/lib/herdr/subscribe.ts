@@ -234,7 +234,10 @@ function createBridge(dependencies: BridgeDependencies): () => void {
 			reconnectDelayMs = INITIAL_RETRY_DELAY_MS;
 			nextSocket.write(subscriptionRequest(paneIds));
 		});
-		nextSocket.once("error", scheduleReconnect);
+		// Keep the error listener for the socket's whole life: herdr hanging up can surface as several errors
+		// (ECONNRESET, then EPIPE from a pending write), and an error with no listener crashes the process.
+		// Every socket error is an ordinary disconnect; scheduleReconnect ignores all but the first.
+		nextSocket.on("error", scheduleReconnect);
 		nextSocket.once("close", scheduleReconnect);
 
 		nextLineReader.on("line", (line) => {

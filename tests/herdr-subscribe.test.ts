@@ -310,6 +310,53 @@ describe("herdr event bridge", () => {
 		expect(sockets.length).toBe(9);
 	});
 
+	it("treats a second socket error such as a write EPIPE as the same quiet disconnect", async () => {
+		const sockets: FakeSocket[] = [];
+		const scheduledDelays: number[] = [];
+		const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+		const stop = __testing.createBridge({
+			probe: available,
+			connect: () => {
+				const socket = new FakeSocket();
+				sockets.push(socket);
+				return socket as unknown as Socket;
+			},
+			createLineReader: () => new FakeLineReader() as unknown as ReadlineInterface,
+			getPaneSnapshot: async () => [{paneId: "workspace-100:pane-100", revision: 0}],
+			getPanes: async () => [],
+			broadcast: () => {},
+			schedule: (callback, delayMs) => {
+				scheduledDelays.push(delayMs);
+				return setTimeout(callback, delayMs);
+			},
+			cancel: clearTimeout,
+			viewedStateTracker: viewedStateTracker(),
+		});
+		await flushPromises();
+		const socket = sockets[0]!;
+		socket.emit("connect");
+		await flushPromises();
+
+		const emitErrors = () => {
+			socket.emit("error", Object.assign(new Error("read ECONNRESET"), {code: "ECONNRESET"}));
+			socket.emit("error", Object.assign(new Error("write EPIPE"), {code: "EPIPE"}));
+			socket.emit("close");
+		};
+
+		expect(emitErrors).not.toThrow();
+		expect({
+			scheduledDelays,
+			destroyedByBridge: socket.destroyedByBridge,
+			consoleErrorCalls: consoleError.mock.calls,
+		}).toStrictEqual({
+			scheduledDelays: [250],
+			destroyedByBridge: true,
+			consoleErrorCalls: [],
+		});
+		consoleError.mockRestore();
+		stop();
+	});
+
 	it("destroys the active socket and cancels pending resync during teardown", async () => {
 		const sockets: FakeSocket[] = [];
 		const lineReaders: FakeLineReader[] = [];
