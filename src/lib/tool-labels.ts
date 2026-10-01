@@ -304,6 +304,118 @@ function mcpToolLabel(name: string): string {
 	return `${capitalizeFirst(serverName)}: ${tool}`;
 }
 
+/**
+ * The label an in-flight tool row shows before its result arrives, as upstream
+ * names it with the progressive verb ("Reading", "Running agent"). `label` is a
+ * whole phrase in place of verb + meta, like `ToolLabel.doneLabel`.
+ */
+export interface RunningToolLabel {
+	verb: string;
+	meta?: string;
+	metaIsCode?: true;
+	label?: string;
+}
+
+/** Progressive forms of past-tense verbs that don't end in -ed. */
+const IRREGULAR_PAST_PROGRESSIVE: Record<string, string> = {
+	built: "building",
+	cut: "cutting",
+	found: "finding",
+	got: "getting",
+	kept: "keeping",
+	left: "leaving",
+	made: "making",
+	put: "putting",
+	ran: "running",
+	read: "reading",
+	reran: "rerunning",
+	reset: "resetting",
+	saw: "seeing",
+	sent: "sending",
+	set: "setting",
+	split: "splitting",
+	took: "taking",
+	told: "telling",
+	wrote: "writing",
+};
+
+/** Base verbs whose progressive form doubles a final consonant the syllable rule misses. */
+const DOUBLED_PROGRESSIVE = new Set([
+	"admit",
+	"begin",
+	"commit",
+	"emit",
+	"forget",
+	"omit",
+	"permit",
+	"rerun",
+	"submit",
+]);
+
+/** Base verbs with a progressive form no suffix rule produces. */
+const IRREGULAR_BASE_PROGRESSIVE: Record<string, string> = {
+	be: "being",
+	see: "seeing",
+};
+
+function replaceLeadingWord(text: string, transform: (lower: string) => string | null): string {
+	const match = /^([A-Za-z]+)([\s\S]*)$/.exec(text);
+	if (!match) return text;
+	const replaced = transform(match[1]!.toLowerCase());
+	return replaced === null ? text : capitalizeFirst(replaced) + match[2]!;
+}
+
+/** "Ran agent" -> "Running agent", "Searched web" -> "Searching web". */
+function progressiveOfPast(verb: string): string {
+	return replaceLeadingWord(verb, (word) => {
+		const irregular = IRREGULAR_PAST_PROGRESSIVE[word];
+		if (irregular) return irregular;
+		if (word.endsWith("ied")) return `${word.slice(0, -3)}ying`;
+		if (word.endsWith("ed")) return `${word.slice(0, -2)}ing`;
+		return null;
+	});
+}
+
+/**
+ * Progressive form of a description's leading verb, the way upstream labels an
+ * in-flight Bash row: "Poll PR #1" -> "Polling PR #1", "Run tests" -> "Running
+ * tests", "Write config" -> "Writing config". A description already in -ing or
+ * past tense is left verbatim.
+ */
+function progressive(description: string): string {
+	return replaceLeadingWord(description, (word) => {
+		if (word.endsWith("ing") || (word.endsWith("ed") && !word.endsWith("eed"))) return null;
+		const irregular = IRREGULAR_BASE_PROGRESSIVE[word];
+		if (irregular) return irregular;
+		if (DOUBLED_PROGRESSIVE.has(word)) return `${word}${word.at(-1)}ing`;
+		if (word.endsWith("ie")) return `${word.slice(0, -2)}ying`;
+		if (/[^aeiouy]e$/.test(word)) return `${word.slice(0, -1)}ing`;
+		// A one-syllable consonant-vowel-consonant verb doubles its final consonant.
+		if (/^[^aeiou]*[aeiou][^aeiouwxy]$/.test(word)) return `${word}${word.at(-1)}ing`;
+		return `${word}ing`;
+	});
+}
+
+export function runningToolLabel(call: ToolLabelCall): RunningToolLabel {
+	const done = toolLabel({name: call.name, input: call.input});
+	const verb = call.name === "Write" ? "Writing" : progressiveOfPast(done.verb);
+	const running: RunningToolLabel = {verb};
+	if (done.doneLabel !== undefined) {
+		const description =
+			call.name === "Bash" || call.name === "PowerShell" ? stringInput(call.input, "description") : null;
+		running.label = description === null ? done.doneLabel : progressive(description);
+		return running;
+	}
+	if (done.meta !== undefined) running.meta = done.meta;
+	if (done.metaIsCode) running.metaIsCode = true;
+	return running;
+}
+
+/** A running label as one phrase, for rows that show only the in-flight call. */
+export function runningToolLabelText(label: RunningToolLabel): string {
+	return label.label ?? (label.meta === undefined ? label.verb : `${label.verb} ${label.meta}`);
+}
+
 export function toolLabel(call: ToolLabelCall): ToolLabel {
 	const {name, input} = call;
 	const fixed = FIXED_LABELS[name];

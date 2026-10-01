@@ -723,17 +723,30 @@ function summaryLabels(html: string): string[] {
 	);
 }
 
-/** One tool-only assistant record, with an optional source session id. */
-function toolCallRecord(call: {id: string; name: string; input: unknown}, sessionId?: string): unknown {
-	return {
-		type: "assistant",
-		uuid: `a-${call.id}`,
-		...(sessionId === undefined ? {} : {sessionId}),
-		message: {
-			role: "assistant",
-			content: [{type: "tool_use", ...call}],
+/** One tool-only assistant record and its result, with an optional source session id. */
+function answeredToolCall(call: {id: string; name: string; input: unknown}, sessionId?: string): unknown[] {
+	const session = sessionId === undefined ? {} : {sessionId};
+	return [
+		{
+			type: "assistant",
+			uuid: `a-${call.id}`,
+			...session,
+			message: {
+				role: "assistant",
+				content: [{type: "tool_use", ...call}],
+			},
 		},
-	};
+		{
+			type: "user",
+			uuid: `r-${call.id}`,
+			parentUuid: `a-${call.id}`,
+			...session,
+			message: {
+				role: "user",
+				content: [{type: "tool_result", tool_use_id: call.id, content: "ok", is_error: false}],
+			},
+		},
+	];
 }
 
 describe("SessionChat sequential tool batches", () => {
@@ -811,8 +824,8 @@ describe("SessionChat sequential tool batches", () => {
 
 	it("merges records with no message id, since grouping no longer depends on batch identity", () => {
 		const html = renderTranscript([
-			toolCallRecord({id: "t1", name: "Read", input: {file_path: "/a.ts"}}),
-			toolCallRecord({id: "t2", name: "Read", input: {file_path: "/b.ts"}}),
+			...answeredToolCall({id: "t1", name: "Read", input: {file_path: "/a.ts"}}),
+			...answeredToolCall({id: "t2", name: "Read", input: {file_path: "/b.ts"}}),
 		]);
 
 		expect({
@@ -826,10 +839,10 @@ describe("SessionChat sequential tool batches", () => {
 
 	it("splits the run where the source session changes, so a row's debug links stay in one session", () => {
 		const html = renderTranscript([
-			toolCallRecord({id: "t1", name: "Read", input: {file_path: "/a.ts"}}, "sess-parent"),
-			toolCallRecord({id: "t2", name: "Read", input: {file_path: "/b.ts"}}, "sess-parent"),
-			toolCallRecord({id: "t3", name: "Bash", input: {command: "git status"}}, "sess-child"),
-			toolCallRecord({id: "t4", name: "Bash", input: {command: "git log"}}, "sess-child"),
+			...answeredToolCall({id: "t1", name: "Read", input: {file_path: "/a.ts"}}, "sess-parent"),
+			...answeredToolCall({id: "t2", name: "Read", input: {file_path: "/b.ts"}}, "sess-parent"),
+			...answeredToolCall({id: "t3", name: "Bash", input: {command: "git status"}}, "sess-child"),
+			...answeredToolCall({id: "t4", name: "Bash", input: {command: "git log"}}, "sess-child"),
 		]);
 
 		expect(summaryLabels(html)).toStrictEqual(["Read 2 files", "Ran 2 commands"]);

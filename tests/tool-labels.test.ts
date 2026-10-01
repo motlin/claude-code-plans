@@ -1,4 +1,4 @@
-import {toolLabel, toolResultMetaFrom} from "../src/lib/tool-labels";
+import {runningToolLabel, toolLabel, toolResultMetaFrom} from "../src/lib/tool-labels";
 import type {ToolLabelCall} from "../src/lib/tool-labels";
 
 const call = (
@@ -258,6 +258,53 @@ describe("toolResultMetaFrom", () => {
 			plain: undefined,
 			text: undefined,
 			missing: undefined,
+		});
+	});
+});
+
+describe("runningToolLabel", () => {
+	it("gives an in-flight call the progressive form of its label", () => {
+		expect({
+			bashDescription: runningToolLabel(
+				call("Bash", {
+					command: "gh pr view 1954",
+					description: "Poll PR #1954 for new activity from Don or Moh",
+				}),
+			),
+			bashRun: runningToolLabel(call("Bash", {command: "make", description: "Run the build"})),
+			bashCommit: runningToolLabel(call("Bash", {command: "git commit", description: "Commit the fix"})),
+			bashWrite: runningToolLabel(call("Bash", {command: "cat > a", description: "Write the config"})),
+			bashAlready: runningToolLabel(call("Bash", {command: "x", description: "Polling the API"})),
+			bashCommand: runningToolLabel(call("Bash", {command: "ls -la"})),
+			bashBare: runningToolLabel(call("Bash")),
+			read: runningToolLabel(call("Read", {file_path: "/repo/src/cache.ts"})),
+			write: runningToolLabel(call("Write", {file_path: "/a/new.ts"})),
+			edit: runningToolLabel(call("Edit", {file_path: "/a/x.ts"})),
+			grep: runningToolLabel(call("Grep", {pattern: "TODO"})),
+			webSearch: runningToolLabel(call("WebSearch", {query: "zod"})),
+			agent: runningToolLabel(call("Agent", {description: "Explore the codebase", prompt: "p"})),
+			agentBare: runningToolLabel(call("Agent", {prompt: "p"})),
+			skill: runningToolLabel(call("Skill", {skill: "git:commit"})),
+			taskStop: runningToolLabel(call("TaskStop", {task_id: "b1"})),
+			mcp: runningToolLabel(call("mcp__github__get_me")),
+		}).toStrictEqual({
+			bashDescription: {verb: "Running", label: "Polling PR #1954 for new activity from Don or Moh"},
+			bashRun: {verb: "Running", label: "Running the build"},
+			bashCommit: {verb: "Running", label: "Committing the fix"},
+			bashWrite: {verb: "Running", label: "Writing the config"},
+			bashAlready: {verb: "Running", label: "Polling the API"},
+			bashCommand: {verb: "Running", label: "ls -la"},
+			bashBare: {verb: "Running", meta: "a command"},
+			read: {verb: "Reading"},
+			write: {verb: "Writing"},
+			edit: {verb: "Editing"},
+			grep: {verb: "Searching"},
+			webSearch: {verb: "Searching web"},
+			agent: {verb: "Running agent", label: "Explore the codebase"},
+			agentBare: {verb: "Running agent"},
+			skill: {verb: "Running skill", meta: "/git:commit", metaIsCode: true},
+			taskStop: {verb: "Stopping task"},
+			mcp: {verb: "Using Github: get me"},
 		});
 	});
 });

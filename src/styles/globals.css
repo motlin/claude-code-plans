@@ -652,6 +652,33 @@
 	.working-marker-shimmer {
 		animation: dot-blink 1.2s ease-in-out infinite;
 	}
+
+	/* Upstream's ShimmerText on an in-flight tool row: a lighter band sweeps across the
+	   label's ink through a background-clipped gradient. */
+	.tool-shimmer {
+		background-image: linear-gradient(
+			90deg,
+			currentColor 0%,
+			currentColor 40%,
+			color-mix(in srgb, currentColor 35%, transparent) 50%,
+			currentColor 60%,
+			currentColor 100%
+		);
+		background-size: 200% 100%;
+		-webkit-background-clip: text;
+		background-clip: text;
+		-webkit-text-fill-color: transparent;
+		animation: tool-shimmer 2s linear infinite;
+	}
+}
+
+@keyframes tool-shimmer {
+	from {
+		background-position: 100% 0;
+	}
+	to {
+		background-position: -100% 0;
+	}
 }
 
 @keyframes spark-turn {

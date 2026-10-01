@@ -54,7 +54,7 @@ import {
 	isRequestInterrupted,
 } from "../lib/session-utils";
 import type {SummarySegment} from "../lib/session-utils";
-import {failedDescriptionLabel, toolLabel} from "../lib/tool-labels";
+import {failedDescriptionLabel, runningToolLabel, runningToolLabelText, toolLabel} from "../lib/tool-labels";
 import {InlinePathImages, SESSION_IMAGE_CLASS_NAME} from "./inline-path-images";
 import {findScrollContainer} from "./transcript-history-loader";
 import {usePromptJump} from "../hooks/use-prompt-jump";
@@ -2248,6 +2248,14 @@ function useEditDiffStats(call: ClientToolCall): {added: number; removed: number
 	}, [call.name, call.input]);
 }
 
+/** A call whose tool_result has not arrived yet. */
+function isPendingToolCall(call: ClientToolCall): boolean {
+	return call.resultUuid === undefined && call.result === undefined && call.isError !== true;
+}
+
+/** Upstream draws an in-flight tool label in primary ink with a shimmer sweep. */
+const RUNNING_LABEL_CLASS = "text-primary tool-shimmer";
+
 function ToolCallRow({call, sessionId, nested = false}: {call: ClientToolCall; sessionId: string; nested?: boolean}) {
 	const [expanded, toggleExpanded] = useModeExpansion();
 	const bodyId = useId();
@@ -2262,7 +2270,9 @@ function ToolCallRow({call, sessionId, nested = false}: {call: ClientToolCall; s
 	// draws it under the "Published artifact" label.
 	const expandable = hasBody && !NON_EXPANDING_TOOLS.has(call.name) && !isArtifactCard(call);
 	const Renderer = getToolRenderer(call.name);
+	const pending = isPendingToolCall(call);
 	const toolRowLabel = toolLabel(call);
+	const running = pending ? runningToolLabel(call) : null;
 	const isFileParam = FILE_PARAM_TOOLS.has(call.name);
 	const diffStats = useEditDiffStats(call);
 	const isCardStyle = CARD_STYLE_TOOLS.has(call.name) && !nested;
@@ -2277,7 +2287,7 @@ function ToolCallRow({call, sessionId, nested = false}: {call: ClientToolCall; s
 	const ink = expanded ? "text-secondary" : "text-ink-muted group-hover/tool:text-secondary";
 	// Upstream recolors the whole label of a failed tool row, except a file path,
 	// which stays primary.
-	const labelClass = call.isError ? "text-extended-pink" : ink;
+	const labelClass = call.isError ? "text-extended-pink" : pending ? RUNNING_LABEL_CLASS : ink;
 	// A subagent row's chevron sits in the flat `t6` token upstream gives it,
 	// rather than the hover-reactive ink every other tool row uses.
 	const chevronClass = isAgent ? "shrink-0 self-center text-t6" : `shrink-0 ${ink}`;
@@ -2291,8 +2301,10 @@ function ToolCallRow({call, sessionId, nested = false}: {call: ClientToolCall; s
 			? failedDescriptionLabel(failedDescription)
 			: call.isError || (isAgent && nested)
 				? null
-				: (toolRowLabel.doneLabel ?? null);
-	const label = phrase ?? (call.isError ? toolRowLabel.failedVerb : toolRowLabel.verb);
+				: running !== null
+					? (running.label ?? null)
+					: (toolRowLabel.doneLabel ?? null);
+	const label = phrase ?? (call.isError ? toolRowLabel.failedVerb : (running?.verb ?? toolRowLabel.verb));
 	// A label that is a whole phrase owns the row and truncates; a bare verb
 	// keeps its width so the param beside it truncates instead.
 	const isPhraseLabel = phrase !== null;
@@ -2457,6 +2469,10 @@ function ToolCallSummary({calls, sessionId}: {calls: ClientToolCall[]; sessionId
 	const hasTasksView = taskCalls.length >= 3;
 	const displayCalls = hasTasksView ? calls.filter((c) => !TASK_TOOLS.has(c.name)) : calls;
 	const summary = useMemo(() => summarizeToolCallStats(displayCalls), [displayCalls]);
+	// While a call is in flight, upstream names the group by that call's
+	// progressive label instead of the tally.
+	const pendingCall = displayCalls.filter(isPendingToolCall).at(-1);
+	const runningText = pendingCall === undefined ? null : runningToolLabelText(runningToolLabel(pendingCall));
 	// Collapsed rows recede to muted ink and lift to secondary on hover; an open
 	// row stays secondary, as upstream does.
 	const ink = expanded ? "text-secondary" : "text-ink-muted group-hover/tool:text-secondary";
@@ -2478,9 +2494,15 @@ function ToolCallSummary({calls, sessionId}: {calls: ClientToolCall[]; sessionId
 						className="relative group/tool flex self-start max-w-full items-center py-0 gap-g1 text-left outline-none hide-focus-ring focus:ring-focus rounded-r3"
 					>
 						<span className={`inline-flex items-center gap-g3 min-w-0 ${ink}`}>
-							<span className="text-body truncate min-w-0">
-								<SummarySpans segments={summary.segments} />
-							</span>
+							{runningText === null ? (
+								<span className="text-body truncate min-w-0">
+									<SummarySpans segments={summary.segments} />
+								</span>
+							) : (
+								<span className={`text-body truncate min-w-0 ${RUNNING_LABEL_CLASS}`}>
+									{runningText}
+								</span>
+							)}
 						</span>
 						{hasDiffStats(summary) && (
 							<span className="flex gap-g1 tabular-nums shrink-0">

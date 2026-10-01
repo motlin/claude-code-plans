@@ -24,6 +24,7 @@ interface FakeCall {
 	name: string;
 	input: Record<string, unknown>;
 	isError?: boolean;
+	pending?: true;
 }
 
 /** One assistant record per call, each followed by its tool_result. */
@@ -37,22 +38,26 @@ function toolRunRecords(calls: FakeCall[]): unknown[] {
 				content: [{type: "tool_use", id: call.id, name: call.name, input: call.input}],
 			},
 		},
-		{
-			type: "user",
-			uuid: `r-${call.id}`,
-			parentUuid: `a-${call.id}`,
-			message: {
-				role: "user",
-				content: [
+		...(call.pending
+			? []
+			: [
 					{
-						type: "tool_result",
-						tool_use_id: call.id,
-						content: "ok",
-						is_error: call.isError ?? false,
+						type: "user",
+						uuid: `r-${call.id}`,
+						parentUuid: `a-${call.id}`,
+						message: {
+							role: "user",
+							content: [
+								{
+									type: "tool_result",
+									tool_use_id: call.id,
+									content: "ok",
+									is_error: call.isError ?? false,
+								},
+							],
+						},
 					},
-				],
-			},
-		},
+				]),
 	]);
 }
 
@@ -230,5 +235,42 @@ describe("ToolCallSummary stats and ink", () => {
 			expanded: "true",
 			ink: "inline-flex items-center gap-g3 min-w-0 text-secondary",
 		});
+	});
+});
+
+describe("in-flight tool rows", () => {
+	const poll = {
+		id: "p",
+		name: "Bash",
+		input: {command: "gh pr view 1954", description: "Poll PR #1954 for new activity from Don or Moh"},
+	};
+
+	it("shimmers a pending single row with its progressive label in primary ink", () => {
+		const html = renderRun([{...poll, pending: true}]);
+		expect(html).toContain(
+			'<span class="truncate min-w-0 text-body text-primary tool-shimmer">Polling PR #1954 for new activity from Don or Moh</span>',
+		);
+	});
+
+	it("switches a resolved row back to the muted done label", () => {
+		const html = renderRun([poll]);
+		expect({
+			shimmer: html.includes("tool-shimmer"),
+			done: html.includes(">Polled PR #1954 for new activity from Don or Moh<"),
+		}).toStrictEqual({
+			shimmer: false,
+			done: true,
+		});
+	});
+
+	it("labels a pending group row with the in-flight call's progressive label", () => {
+		const html = renderRun([
+			{id: "r", name: "Read", input: {file_path: "/a/x.ts"}},
+			{...poll, pending: true},
+		]);
+		const button = summaryButton(html);
+		expect(button).toContain(
+			'<span class="text-body truncate min-w-0 text-primary tool-shimmer">Polling PR #1954 for new activity from Don or Moh</span>',
+		);
 	});
 });
