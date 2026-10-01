@@ -5,6 +5,7 @@ import {basename, join} from "node:path";
 import type {AppDb} from "../../src/lib/db/connection";
 import type {PerfCounters} from "../../src/lib/perf/server-scope";
 import {generateTranscript, perfShapes, seedFixtureDb} from "./fixtures/generate-transcript";
+import {LIVE_APPEND_SIZES, type LiveAppendMetric, liveAppendPrefix, metricIds} from "./perf-ids";
 import {ratchet} from "./ratchet";
 
 /**
@@ -14,7 +15,6 @@ import {ratchet} from "./ratchet";
  */
 
 const PROJECT = "-repo";
-const APPEND_SIZES = [1, 20] as const;
 
 let root: string;
 let projectsDir: string;
@@ -115,15 +115,19 @@ describe("server lab: live append to one session", () => {
 			await fire(file);
 
 			const values: Record<string, number> = {};
-			for (const [batch, count] of APPEND_SIZES.entries()) {
+			for (const [batch, count] of LIVE_APPEND_SIZES.entries()) {
 				const text = appendedLines(sessionId, count, batch);
 				appendFileSync(file, text);
 				const {counters, payloadBytes} = await fire(file);
-				const prefix = `server.liveAppend.${shape.name}.${count}`;
-				values[`${prefix}.readAmplification`] = Math.round(counters.jsonl.bytesRead / Buffer.byteLength(text));
-				values[`${prefix}.jsonl.fullScans`] = counters.jsonl.fullScans;
-				values[`${prefix}.sql.count`] = counters.sql.count;
-				values[`${prefix}.sse.payloadBytes`] = payloadBytes;
+				Object.assign(
+					values,
+					metricIds<LiveAppendMetric>(liveAppendPrefix(shape.name, count), {
+						readAmplification: Math.round(counters.jsonl.bytesRead / Buffer.byteLength(text)),
+						"jsonl.fullScans": counters.jsonl.fullScans,
+						"sql.count": counters.sql.count,
+						"sse.payloadBytes": payloadBytes,
+					}),
+				);
 			}
 			ratchetAll(values);
 		});

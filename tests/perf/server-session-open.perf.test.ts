@@ -7,6 +7,7 @@ import {eq} from "drizzle-orm";
 import type {AppDb} from "../../src/lib/db/connection";
 import type {PerfCounters} from "../../src/lib/perf/server-scope";
 import {generateTranscript, perfShapes, seedFixtureDb} from "./fixtures/generate-transcript";
+import {metricIds, sessionOpenPrefix, type SessionOpenEndpoint, type SessionOpenMetric} from "./perf-ids";
 import {ratchet} from "./ratchet";
 
 /**
@@ -22,7 +23,7 @@ const ENDPOINTS = {
 	detail: {module: "../../src/routes/api/sessions.$id", path: ""},
 	transcript: {module: "../../src/routes/api/sessions.$id.transcript", path: "/transcript"},
 	subagents: {module: "../../src/routes/api/sessions.$id.subagents", path: "/subagents"},
-} as const;
+} as const satisfies Record<SessionOpenEndpoint, {module: string; path: string}>;
 
 type EndpointName = keyof typeof ENDPOINTS;
 
@@ -130,14 +131,15 @@ describe("server lab: opening a session", () => {
 			it(`${shape.name} ${endpoint}`, async () => {
 				const sessionId = basename(await generateTranscript(shape), ".jsonl");
 				const {counters, responseBytes} = await open(endpoint, sessionId);
-				const prefix = `server.sessionOpen.${shape.name}.${endpoint}`;
-				ratchetAll({
-					[`${prefix}.sql.count`]: counters.sql.count,
-					[`${prefix}.jsonl.bytesRead`]: counters.jsonl.bytesRead,
-					[`${prefix}.jsonl.fullScans`]: counters.jsonl.fullScans,
-					[`${prefix}.proc.spawned`]: counters.proc.spawned,
-					[`${prefix}.resp.bytes`]: responseBytes,
-				});
+				ratchetAll(
+					metricIds<SessionOpenMetric>(sessionOpenPrefix(shape.name, endpoint), {
+						"sql.count": counters.sql.count,
+						"jsonl.bytesRead": counters.jsonl.bytesRead,
+						"jsonl.fullScans": counters.jsonl.fullScans,
+						"proc.spawned": counters.proc.spawned,
+						"resp.bytes": responseBytes,
+					}),
+				);
 			});
 		}
 	}

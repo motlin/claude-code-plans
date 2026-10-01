@@ -98,7 +98,15 @@ jobs:
         with:
           path: ~/.local/share/pnpm/store
           key: pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+      - name: Read the perf fixture generator version
+        id: perf-generator
+        run: echo "version=$(sed -nE 's/^export const GENERATOR_VERSION = ([0-9]+);$/\1/p' tests/perf/fixtures/generate-transcript.ts)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: node_modules/.cache/ccb-perf/fixtures
+          key: ccb-perf-fixtures-v${{ steps.perf-generator.outputs.version }}
       - run: just test
+      - run: PERF_LARGE=1 just perf
 
   markdownlint:
     runs-on: ubuntu-latest
