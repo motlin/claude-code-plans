@@ -95,7 +95,7 @@ describe("Claude Code settings ▸ Code appearance", () => {
 			stored: localStorage.getItem("ccp-code-font"),
 		}).toStrictEqual({
 			placeholder: "e.g. JetBrains Mono",
-			custom: '"Fira Code", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, "Cascadia Code", monospace',
+			custom: '"Fira Code", "anthropic-mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace',
 			cleared: "",
 			stored: "",
 		});

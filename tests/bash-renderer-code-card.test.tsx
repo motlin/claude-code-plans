@@ -37,8 +37,14 @@ describe("BashRenderer code card", () => {
 	it("wraps the prompt and command in upstream's white 12/17 code card with the copy rail inside", () => {
 		const {container} = render(<BashRenderer toolCall={CALL} />);
 
-		expect({...layout(container), header: container.querySelector(".px-p6.py-p5")?.textContent}).toStrictEqual({
-			header: "Bash",
+		const header = container.firstElementChild;
+		expect({
+			...layout(container),
+			header: {className: header?.className, text: header?.textContent},
+			label: header?.firstElementChild?.className,
+		}).toStrictEqual({
+			header: {className: "flex items-center px-p6 py-p5", text: "Bash"},
+			label: "flex-1 text-body text-secondary",
 			body: "flex flex-col gap-g6 px-p6 pb-p8 font-mono",
 			card: "relative rounded-r6 bg-surface-1 py-p3 pl-p6 pr-[32px] text-[12px]/[17px]",
 			cardText: "$ git status",

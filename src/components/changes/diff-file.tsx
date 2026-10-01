@@ -21,6 +21,7 @@ registerCustomTheme("claude-light", () => Promise.resolve(claudeLight));
  */
 export const DIFFS_STYLE_OVERRIDES = {
 	"--diffs-font-family": "var(--font-mono)",
+	"--diffs-font-features": '"liga" 0, "calt" 0',
 	"--diffs-header-font-family": "var(--font-sans)",
 	"--diffs-font-size": "var(--upstream-text-code)",
 	"--diffs-line-height": "var(--upstream-leading-code)",

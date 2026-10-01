@@ -64,6 +64,36 @@ describe("code typography", () => {
 		});
 	});
 
+	it("uses upstream's ligature-free monospace stack for --font-mono", () => {
+		const styles = readFileSync("src/styles/globals.css", "utf8");
+
+		expect({
+			stack: customProperty(styles, "--font-mono"),
+			features: customProperty(styles, "--font-mono--font-feature-settings"),
+		}).toStrictEqual({
+			stack: '"anthropic-mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace',
+			features: '"liga" 0, "calt" 0',
+		});
+	});
+
+	it("turns ligatures off for every code, pre and font-mono element", () => {
+		const styles = readFileSync("src/styles/globals.css", "utf8");
+		const selector = "code,\n\tkbd,\n\tsamp,\n\tpre,\n\t.font-mono {";
+		const start = styles.indexOf(selector);
+		if (start === -1) throw new Error("missing ligature rule");
+		const rule = styles.slice(start + selector.length, styles.indexOf("}", start));
+
+		expect({
+			ligatures: customProperty(rule, "font-variant-ligatures"),
+			features: customProperty(rule, "font-feature-settings").replace(/\s+/g, " "),
+			diffs: (DIFFS_STYLE_OVERRIDES as Record<string, string>)["--diffs-font-features"],
+		}).toStrictEqual({
+			ligatures: "none",
+			features: '"liga" 0, "calt" 0',
+			diffs: '"liga" 0, "calt" 0',
+		});
+	});
+
 	it("renders write and edit diffs with the code type token", () => {
 		render(
 			<WriteRenderer

@@ -117,8 +117,8 @@ describe("code theme settings", () => {
 		]).toStrictEqual([
 			null,
 			null,
-			'"Fira Code", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, "Cascadia Code", monospace',
-			'"Berkeley Mono", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, "Cascadia Code", monospace',
+			'"Fira Code", "anthropic-mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace',
+			'"Berkeley Mono", "anthropic-mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace',
 		]);
 	});
 
