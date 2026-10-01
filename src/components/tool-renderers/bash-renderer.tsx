@@ -42,7 +42,7 @@ function CommandRow({children}: {children: ReactNode}) {
 	);
 }
 
-function HighlightedCommand({command}: {command: string}) {
+export function HighlightedCommand({command}: {command: string}) {
 	const tokens = useHighlightedLines(command, "shellscript");
 
 	if (!tokens) {
