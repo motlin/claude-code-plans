@@ -70,8 +70,9 @@ function turnHeadings(container: HTMLElement): (readonly [string, string] | null
 	});
 }
 
-const USER_HEADING = ["sr-only select-none", "User"] as const;
-const ASSISTANT_HEADING = ["sr-only select-none", "Claude"] as const;
+function heading(text: string): readonly [string, string] {
+	return ["sr-only select-none", text] as const;
+}
 
 const USER_TEXT = {
 	type: "user",
@@ -123,16 +124,24 @@ const COMPACT_SUMMARY = {
 describe("SessionChat turn headings", () => {
 	it("opens the user and assistant turns with upstream's screen-reader headings", () => {
 		expect(turnHeadings(renderRecords([USER_TEXT, ASSISTANT_TEXT]))).toStrictEqual([
-			USER_HEADING,
-			ASSISTANT_HEADING,
+			heading("You said: Fabricated user message"),
+			heading("Claude responded: Fabricated assistant response"),
 		]);
 	});
 
 	it("labels a tool-only assistant turn as Claude", () => {
-		expect(turnHeadings(renderRecords([TOOL_CALL]))).toStrictEqual([ASSISTANT_HEADING]);
+		expect(turnHeadings(renderRecords([TOOL_CALL]))).toStrictEqual([heading("Claude responded")]);
 	});
 
-	it("labels every user-side entry variant as User", () => {
+	it("quotes only the first 80 characters of the turn, whitespace collapsed", () => {
+		const long = `${"word ".repeat(10)}\n\n${"x".repeat(100)}`;
+		const record = {...USER_TEXT, message: {role: "user", content: long}};
+		expect(turnHeadings(renderRecords([record]))).toStrictEqual([
+			heading(`You said: ${"word ".repeat(10)}${"x".repeat(30)}`),
+		]);
+	});
+
+	it("labels every user-side entry variant as You said", () => {
 		const collapsedCompact = renderRecords([COMPACT_SUMMARY], false);
 		const expandedCompact = renderRecords([COMPACT_SUMMARY], false);
 		fireEvent.click(expandedCompact.querySelector("button")!);
@@ -143,10 +152,10 @@ describe("SessionChat turn headings", () => {
 			collapsedCompactSummary: turnHeadings(collapsedCompact),
 			expandedCompactSummary: turnHeadings(expandedCompact),
 		}).toStrictEqual({
-			stopHookFeedback: [USER_HEADING],
-			command: [USER_HEADING],
-			collapsedCompactSummary: [USER_HEADING],
-			expandedCompactSummary: [USER_HEADING],
+			stopHookFeedback: [heading("You said: Stop hook feedback: fabricated")],
+			command: [heading("You said: /fabricated --dry-run")],
+			collapsedCompactSummary: [heading("You said: Compacted conversation")],
+			expandedCompactSummary: [heading("You said: Compacted conversation")],
 		});
 	});
 });

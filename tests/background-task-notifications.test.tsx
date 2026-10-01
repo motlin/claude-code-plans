@@ -122,7 +122,9 @@ function summaryButton(container: HTMLElement, label: string): HTMLElement {
 }
 
 function userTurnCount(container: HTMLElement): number {
-	return [...container.querySelectorAll("h2")].filter((heading) => heading.textContent === "User").length;
+	return [...container.querySelectorAll("h2")].filter(
+		(heading) => heading.textContent?.startsWith("You said") === true,
+	).length;
 }
 
 describe("parseTaskNotification", () => {

@@ -333,24 +333,29 @@ interface LineRenderProps {
  */
 const TURN_GAP_CLASS = "pb-[var(--chat-turn-gap)] empty:pb-0";
 
+/** How many characters of a turn its screen-reader heading quotes, as upstream does. */
+const TURN_HEADING_PREVIEW_LENGTH = 80;
+
 /**
  * Upstream claude.ai/code opens every turn wrapper with a visually hidden
- * heading naming the speaker, giving screen readers a heading list to navigate
- * the transcript turn by turn. It is hidden from sight and from text selection,
- * so copying a turn never picks the speaker name up.
+ * heading quoting the turn ("You said: ..." / "Claude responded: ..."), giving
+ * screen readers a heading list to navigate the transcript turn by turn. It is
+ * hidden from sight and from text selection, so copying a turn never picks it up.
  */
-function TurnHeading({speaker}: {speaker: "User" | "Claude"}) {
-	return <h2 className="sr-only select-none">{speaker}</h2>;
+function TurnHeading({speaker, text}: {speaker: "user" | "assistant"; text: string}) {
+	const prefix = speaker === "user" ? "You said" : "Claude responded";
+	const preview = text.replace(/\s+/g, " ").trim().slice(0, TURN_HEADING_PREVIEW_LENGTH);
+	return <h2 className="sr-only select-none">{preview === "" ? prefix : `${prefix}: ${preview}`}</h2>;
 }
 
 /**
  * The row wrapper every user-side entry shares, heading included, so a new
  * entry variant cannot render a user turn without naming the speaker.
  */
-function UserTurn({children}: {children: React.ReactNode}) {
+function UserTurn({text, children}: {text: string; children: React.ReactNode}) {
 	return (
 		<div className="group/msg flex justify-end w-full">
-			<TurnHeading speaker="User" />
+			<TurnHeading speaker="user" text={text} />
 			{children}
 		</div>
 	);
@@ -389,7 +394,7 @@ function LineEntry({
 	);
 	const children = (
 		<>
-			{isAssistant && <TurnHeading speaker="Claude" />}
+			{line.type === "assistant" && <TurnHeading speaker="assistant" text={messageText(line)} />}
 			{content}
 			{turnChanges && <TurnChangesCard sessionId={renderProps.sessionId} changes={turnChanges} />}
 			{isAssistant && <AssistantTurnActions line={line} sessionId={renderProps.sessionId} />}
@@ -503,7 +508,7 @@ function GroupedToolCallEntry({
 
 	return (
 		<div className={`group/msg flex flex-col w-full gap-[var(--chat-item-gap)] ${TURN_GAP_CLASS}`}>
-			<TurnHeading speaker="Claude" />
+			<TurnHeading speaker="assistant" text="" />
 			{batches.map((batch, index) => (
 				<TranscriptMessageMenu
 					key={batch.head.lineIndex}
@@ -941,6 +946,7 @@ function VirtualizedSessionEntries({
 	const visibleAnchorIndexRef = useRef(0);
 	const pendingScrollAdjustmentRef = useRef(0);
 	const pendingJumpRef = useRef<number | null>(null);
+	const pendingFocusIndexRef = useRef<number | null>(null);
 	const [measuredHeights, setMeasuredHeights] = useState(measuredHeightsRef.current);
 	const [jumpVersion, setJumpVersion] = useState(0);
 	const [range, setRange] = useState<VirtualRange>(() => {
@@ -1090,21 +1096,52 @@ function VirtualizedSessionEntries({
 		},
 	});
 
+	useLayoutEffect(() => {
+		const index = pendingFocusIndexRef.current;
+		if (index === null || index < range.startIndex || index >= range.endIndex) return;
+		pendingFocusIndexRef.current = null;
+		listRef.current?.querySelector<HTMLElement>(`[data-transcript-entry-index="${index}"]`)?.focus();
+	}, [range.startIndex, range.endIndex]);
+
+	/** Upstream's arrow-key turn navigation: ArrowUp/ArrowDown on a focused article move to its neighbour. */
+	const focusNeighbour = (event: React.KeyboardEvent<HTMLDivElement>, index: number) => {
+		if (event.target !== event.currentTarget) return;
+		const step = event.key === "ArrowUp" ? -1 : event.key === "ArrowDown" ? 1 : 0;
+		const target = index + step;
+		if (step === 0 || target < 0 || target >= entries.length) return;
+		event.preventDefault();
+		const mounted = listRef.current?.querySelector<HTMLElement>(`[data-transcript-entry-index="${target}"]`);
+		if (mounted) {
+			mounted.focus();
+			return;
+		}
+		pendingFocusIndexRef.current = target;
+		setRange({startIndex: Math.max(0, target - 1), endIndex: Math.min(entries.length, target + 2)});
+	};
+
 	const startIndex = Math.min(range.startIndex, entries.length);
 	const endIndex = Math.max(startIndex, Math.min(range.endIndex, entries.length));
 	const totalHeight = prefixHeights.at(-1) ?? 0;
 
 	return (
 		<div ref={listRef} data-testid="virtualized-transcript">
+			<div className="sr-only">Use the up and down arrow keys to move between messages</div>
 			<div aria-hidden="true" data-transcript-spacer="before" style={{height: prefixHeights[startIndex]}} />
 			{entries.slice(startIndex, endIndex).map((entry, offset) => {
 				const index = startIndex + offset;
+				const isLast = index === entries.length - 1;
 				return (
 					<div
 						key={entry.key}
+						role="article"
+						aria-label={`Message ${index + 1}`}
+						aria-posinset={index + 1}
+						aria-setsize={entries.length}
+						tabIndex={isLast ? 0 : -1}
+						onKeyDown={(event) => focusNeighbour(event, index)}
 						data-transcript-entry-index={index}
 						data-perf-row="turn"
-						data-perf-last={index === entries.length - 1 ? "" : undefined}
+						data-perf-last={isLast ? "" : undefined}
 					>
 						{entry.element}
 					</div>
@@ -1517,7 +1554,7 @@ function UserEntry({
 	if (kind === "agent-message") {
 		const message = parseAgentMessage(getUserContentText(line));
 		return message === null ? null : (
-			<UserTurn>
+			<UserTurn text={message.body}>
 				<AgentMessageRow message={message} />
 			</UserTurn>
 		);
@@ -1542,7 +1579,7 @@ function UserEntry({
 	const {textNodes, mediaNodes} = renderUserContentBlocks(line, sessionId, allowedImageRoots);
 
 	return (
-		<UserTurn>
+		<UserTurn text={messageText(line)}>
 			<TranscriptMessageMenu
 				speaker="user"
 				sessionId={sessionId}
@@ -1587,7 +1624,7 @@ function CompactSummaryStub({
 	const bodyId = useId();
 
 	return (
-		<UserTurn>
+		<UserTurn text="Compacted conversation">
 			<div className="flex flex-col w-full min-w-0">
 				<MarkerDisclosureButton
 					label="Compacted conversation"
@@ -1652,7 +1689,7 @@ function LabeledAutomatedEntry({
 	if (textNodes.length === 0 && mediaNodes.length === 0) return null;
 
 	return (
-		<UserTurn>
+		<UserTurn text={messageText(line)}>
 			<div className="flex flex-col items-end gap-g6 max-w-[85%] min-w-0">
 				<div className="flex items-center gap-1.5 px-1">
 					<span className="text-[10px] font-medium text-t6 bg-surface-0 rounded-full px-2 py-0.5">
@@ -1852,7 +1889,7 @@ function CommandEntry({line, sessionId}: {line: MessageSessionLine; sessionId: s
 	const name = cmdName.replace(/^\//, "");
 
 	return (
-		<UserTurn>
+		<UserTurn text={cmdArgs ? `/${name} ${cmdArgs}` : `/${name}`}>
 			<div className="flex flex-col items-end gap-g6 max-w-[85%] min-w-0">
 				<div className="user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text">
 					<TruncatedContent>
