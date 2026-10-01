@@ -10,10 +10,10 @@ import {__testing as watcherTesting} from "../../src/lib/watcher";
 import {runGit} from "../git-fixture";
 
 // A git checkout or rebase rewrites hundreds of tracked files at once, and the watcher fires one change event per
-// file. No single synchronous stretch of indexing that burst may hold up requests and SSE streams for longer than this.
-// One file's FTS write cannot be split, and an FTS segment merge or WAL checkpoint inside it occasionally takes tens of
-// milliseconds, so the budget sits well under the server's 500 ms stall log threshold rather than at the slice length.
-const SLICE_BUDGET_MS = 250;
+// file. Indexing that burst must hand the event loop back to requests and SSE streams between files, so no loop turn
+// may run more than one file's FTS write. Wall-clock stall lengths swing with machine load, so they are only a loose
+// backstop here; the per-turn write count is the load-independent assertion.
+const STALL_BACKSTOP_MS = 1000;
 const FILE_COUNT = 400;
 const WORDS_PER_FILE = 4000;
 
@@ -57,6 +57,26 @@ describe("file content indexing and the event loop", () => {
 		await watcherTesting.handleFileChange(join(repositoryDirectory, ".git", "index"));
 
 		for (const [fileIndex, filePath] of filePaths.entries()) writeFileSync(filePath, fileText(fileIndex, 2));
+		let loopTurn = 0;
+		let turnOfLastWrite = -1;
+		let writesInTurn = 0;
+		let maxWritesPerLoopTurn = 0;
+		db.index.$client.function("note_file_content_write", () => {
+			writesInTurn = loopTurn === turnOfLastWrite ? writesInTurn + 1 : 1;
+			turnOfLastWrite = loopTurn;
+			maxWritesPerLoopTurn = Math.max(maxWritesPerLoopTurn, writesInTurn);
+			return null;
+		});
+		db.index.$client.exec(
+			"CREATE TEMP TRIGGER note_file_content_write AFTER INSERT ON file_content BEGIN SELECT note_file_content_write(); END",
+		);
+		let countingTurns = true;
+		const countTurn = (): void => {
+			loopTurn++;
+			if (countingTurns) setImmediate(countTurn);
+		};
+		setImmediate(countTurn);
+
 		let longestStallMs = 0;
 		const stopMonitor = startStallMonitor({
 			thresholdMs: 0,
@@ -69,6 +89,7 @@ describe("file content indexing and the event loop", () => {
 			await Promise.all(filePaths.map((filePath) => watcherTesting.handleFileChange(filePath)));
 			await new Promise((resolve) => setTimeout(resolve, 20));
 		} finally {
+			countingTurns = false;
 			stopMonitor();
 		}
 
@@ -77,11 +98,13 @@ describe("file content indexing and the event loop", () => {
 			sql`SELECT path FROM file_content_fts WHERE file_content_fts MATCH ${"generation2"} ORDER BY path`,
 		);
 		expect({
-			withinBudget: longestStallMs <= SLICE_BUDGET_MS || Math.round(longestStallMs),
+			maxWritesPerLoopTurn,
+			withinBackstop: longestStallMs <= STALL_BACKSTOP_MS || Math.round(longestStallMs),
 			rows,
 			matches,
 		}).toStrictEqual({
-			withinBudget: true,
+			maxWritesPerLoopTurn: 1,
+			withinBackstop: true,
 			rows: filePaths.map((path, fileIndex) => ({path, content: fileText(fileIndex, 2)})),
 			matches: filePaths.map((path) => ({path})),
 		});

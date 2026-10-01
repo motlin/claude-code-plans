@@ -7,9 +7,11 @@ import {homedir} from "node:os";
 import * as schema from "./schema";
 import {instrumentDatabase} from "../perf/server-scope";
 
+type SchemaDb = BetterSQLite3Database<typeof schema> & {$client: Database.Database};
+
 export interface AppDb {
-	index: BetterSQLite3Database<typeof schema>;
-	summaries: BetterSQLite3Database<typeof schema>;
+	index: SchemaDb;
+	summaries: SchemaDb;
 	close(): void;
 }
 
@@ -465,8 +467,6 @@ function initSummariesDb(sqlite: Database.Database): void {
  * retry longer waits asynchronously with retryWhileBusy.
  */
 const BUSY_TIMEOUT_MS = 250;
-
-type SchemaDb = BetterSQLite3Database<typeof schema>;
 
 /**
  * Wraps drizzle so every top-level transaction begins IMMEDIATE. A deferred
