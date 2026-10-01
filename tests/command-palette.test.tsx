@@ -183,7 +183,7 @@ describe("CommandPalette shell", () => {
 			close: "BUTTON",
 			modes: [
 				["Search", "true"],
-				["Compose⇥Tab", "false"],
+				["Compose", "false"],
 			],
 		});
 	});
@@ -787,6 +787,47 @@ describe("CommandPalette Artifacts and Scheduled tabs", () => {
 		);
 	}
 
+	it("names the Compose radio without a Tab keycap", async () => {
+		const dialog = await openPalette();
+
+		expect(within(dialog).getByRole("radio", {name: "Compose"}).textContent).toBe("Compose");
+	});
+
+	it("styles every type tab without a background pill, active in primary ink", async () => {
+		const dialog = await openPalette();
+
+		expect(
+			within(dialog)
+				.getAllByRole("tab")
+				.map((tab) => [
+					tab.textContent,
+					tab.className.split(/\s+/).some((name) => name.startsWith("bg-")),
+					tab.classList.contains("font-medium"),
+					tab.classList.contains(
+						tab.getAttribute("aria-selected") === "true" ? "text-primary" : "text-ink-muted",
+					),
+				]),
+		).toStrictEqual(
+			["All", "Artifacts", "Projects", "Sessions", "Scheduled", "Plans", "Memories", "Files"].map((label) => [
+				label,
+				false,
+				true,
+				true,
+			]),
+		);
+	});
+
+	it("rounds every option to upstream's 8px with rounded-r6", async () => {
+		const dialog = await openPalette();
+		await within(dialog).findByRole("option", {name: /Refactor auth module/});
+
+		const options = within(dialog).getAllByRole("option");
+		expect(
+			options.filter((option) => !option.classList.contains("rounded-r6")).map((o) => o.textContent),
+		).toStrictEqual([]);
+		expect(options.some((option) => option.classList.contains("rounded-lg"))).toBe(false);
+	});
+
 	it("renders the type tabs in upstream order with the local ones last", async () => {
 		const dialog = await openPalette();
 
@@ -1058,6 +1099,29 @@ describe("CommandPalette filter values", () => {
 			withoutToken: ["Refactor auth module"],
 			withToken: ["Refactor auth module", "Old archived refactor"],
 		});
+	});
+
+	it("marks archived search rows with the palette Archived badge and muted text", async () => {
+		const archivedSession = {...recentSession("sess-old", "Old archived refactor"), archived: true};
+		const dialog = await openPalette([recentSession("sess-1", "Refactor auth module")], "/", (queryClient) => {
+			queryClient.setQueryData(recentSessionsQueryOptions(PALETTE_RECENT_LIMIT, "all").queryKey, {
+				sessions: [recentSession("sess-1", "Refactor auth module"), archivedSession],
+				nextCursor: null,
+			});
+		});
+
+		typeQuery(dialog, "archived:true refactor");
+
+		expect(
+			[...dialog.querySelectorAll('[cmdk-item][data-item-type="session"]')].map((item) => ({
+				label: item.querySelector("[data-palette-label]")?.textContent ?? "",
+				badge: item.querySelector("[data-archived-badge]")?.textContent ?? null,
+				muted: item.hasAttribute("data-archived"),
+			})),
+		).toStrictEqual([
+			{label: "Refactor auth module", badge: null, muted: false},
+			{label: "Old archived refactor", badge: "Archived", muted: true},
+		]);
 	});
 
 	it("restricts the list to Actions with actions:", async () => {

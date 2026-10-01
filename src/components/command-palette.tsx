@@ -112,6 +112,7 @@ import {type PaletteCardSession, PaletteRowActionsButton, PaletteRowActionsCard}
 import {AttachedContextChips} from "./attached-context-chips";
 import {useToast} from "./toast";
 import {Shortcut} from "./ui/shortcut";
+import {ArchivedBadge} from "./archived-badge";
 import {Tooltip} from "./ui/tooltip";
 import {useOpenSettings} from "./settings/settings-dialog";
 import {setKeyboardShortcutsOpen} from "./keyboard-shortcuts-dialog";
@@ -167,6 +168,8 @@ interface SearchRow {
 	snippet: Snippet | undefined;
 	mtime: string;
 	awaiting: boolean;
+	/** Only recents know it; server hits leave it unset. */
+	archived?: boolean;
 	href: string | undefined;
 	/** Replaces the relative-time meta, e.g. a routine's next run. */
 	meta?: string;
@@ -181,6 +184,7 @@ function sessionRow(session: SessionListItem, matches: readonly TextMatch[]): Se
 		snippet: undefined,
 		mtime: session.mtime,
 		awaiting: session.bucket === "blocked",
+		archived: session.archived,
 		href: undefined,
 	};
 }
@@ -1165,8 +1169,8 @@ function PalettePopup({
 					className="flex flex-col"
 				>
 					<div
-						className={`relative flex items-center gap-2 pt-[1.1rem] pr-2.5 pl-6 ${
-							compose ? "flex-wrap pb-3" : "pb-[0.9rem]"
+						className={`relative flex items-center gap-2 pr-2.5 pl-6 ${
+							compose ? "flex-wrap pt-[1.1rem] pb-3" : "pt-[17px] pb-[9px]"
 						}`}
 					>
 						{compose && (
@@ -1200,7 +1204,7 @@ function PalettePopup({
 							<Tooltip content="Close" side="bottom" className="shrink-0">
 								<Dialog.Close
 									aria-label="Close"
-									className={`${ICON_BUTTON_CLASS} rounded-r6 text-primary hover:bg-fill-ghost-hover`}
+									className={`${ICON_BUTTON_BASE_CLASS} size-8 rounded-r6 text-primary hover:bg-fill-ghost-hover`}
 								>
 									<X aria-hidden="true" className="h-5 w-5" />
 								</Dialog.Close>
@@ -1268,7 +1272,7 @@ function PalettePopup({
 					{!compose && <TypeTabs value={tab} onChange={chooseTab} />}
 					<div className="h-[0.5px] w-full bg-border" />
 
-					<Command.List className="max-h-[440px] overflow-y-auto p-2.5">
+					<Command.List className="max-h-[428px] overflow-y-auto p-2.5">
 						{startStep === "launching" && (
 							<Command.Group heading="Quick actions" className={GROUP_CLASS}>
 								<CommandItem
@@ -1580,8 +1584,9 @@ function PalettePopup({
 	);
 }
 
-const ICON_BUTTON_CLASS =
-	"relative flex aspect-square h-7 w-7 shrink-0 items-center justify-center transition-colors focus-visible:shadow-[0_0_0_2px_var(--accent-100)] focus-visible:outline-none disabled:pointer-events-none disabled:opacity-40";
+const ICON_BUTTON_BASE_CLASS =
+	"relative flex aspect-square shrink-0 items-center justify-center transition-colors focus-visible:shadow-[0_0_0_2px_var(--accent-100)] focus-visible:outline-none disabled:pointer-events-none disabled:opacity-40";
+const ICON_BUTTON_CLASS = `${ICON_BUTTON_BASE_CLASS} h-7 w-7`;
 
 /** Upstream's keyboard-hint footer: "Close Esc · Change type ←→ · Filters / · Actions ⌥⏎", or "Send ⏎" in Compose. */
 function PaletteFooter({hints}: {hints: ReadonlyArray<readonly [label: string, keys: readonly string[]]>}) {
@@ -1609,7 +1614,7 @@ function PaletteFooter({hints}: {hints: ReadonlyArray<readonly [label: string, k
 /** Upstream's 28px type tablist under the input; cloud-only tabs are replaced by local types. */
 function TypeTabs({value, onChange}: {value: PaletteType; onChange: (type: PaletteType) => void}) {
 	return (
-		<div role="tablist" aria-label="Type" className="flex items-center gap-1 overflow-x-auto px-6 pb-[0.9rem]">
+		<div role="tablist" aria-label="Type" className="flex items-center overflow-x-auto px-6 pb-6">
 			{PaletteTypeSchema.options.map((type) => {
 				const selected = type === value;
 				return (
@@ -1621,8 +1626,8 @@ function TypeTabs({value, onChange}: {value: PaletteType; onChange: (type: Palet
 						tabIndex={-1}
 						onMouseDown={(event) => event.preventDefault()}
 						onClick={() => onChange(type)}
-						className={`h-7 shrink-0 rounded-r6 px-2 text-sm transition-colors hover:bg-fill-ghost-hover hover:text-primary ${
-							selected ? "bg-fill-ghost-hover font-medium text-primary" : "text-secondary"
+						className={`h-7 shrink-0 px-2.5 text-sm font-medium transition-colors hover:text-primary ${
+							selected ? "text-primary" : "text-ink-muted"
 						}`}
 					>
 						{paletteTypeLabels[type]}
@@ -1633,11 +1638,11 @@ function TypeTabs({value, onChange}: {value: PaletteType; onChange: (type: Palet
 	);
 }
 
-/** Upstream's floating [Search] [Compose Tab] segmented control, 12px above the card. */
+/** Upstream's floating [Search] [Compose] segmented control, 12px above the card; Tab still toggles. */
 function ModeSwitch({mode, onModeChange}: {mode: PaletteMode; onModeChange: (mode: PaletteMode) => void}) {
-	const options: Array<{value: PaletteMode; label: string; keys?: string}> = [
+	const options: Array<{value: PaletteMode; label: string}> = [
 		{value: "search", label: "Search"},
-		{value: "compose", label: "Compose", keys: "tab"},
+		{value: "compose", label: "Compose"},
 	];
 	return (
 		<div className="pointer-events-none absolute inset-x-0 bottom-full hidden justify-center pb-3 sm:flex">
@@ -1645,7 +1650,7 @@ function ModeSwitch({mode, onModeChange}: {mode: PaletteMode; onModeChange: (mod
 				<div
 					role="radiogroup"
 					aria-label="Search or compose"
-					className="relative inline-flex h-7 w-fit shrink-0 items-stretch rounded-r6 bg-[var(--settings-segmented-track)] p-px font-sans"
+					className="relative inline-flex h-8 w-fit shrink-0 items-stretch rounded-r6 bg-[var(--settings-segmented-track)] p-px font-sans"
 				>
 					{options.map((option) => {
 						const checked = option.value === mode;
@@ -1657,10 +1662,9 @@ function ModeSwitch({mode, onModeChange}: {mode: PaletteMode; onModeChange: (mod
 								tabIndex={-1}
 								data-checked={checked ? "" : undefined}
 								onClick={() => onModeChange(option.value)}
-								className="relative inline-flex h-full cursor-pointer items-center justify-center gap-1.5 rounded-r5 px-2.5 text-sm text-ink-muted select-none hover:text-primary data-[checked]:bg-[var(--settings-segmented-thumb)] data-[checked]:text-primary data-[checked]:shadow-[inset_0_0_0_1px_var(--color-border),0_1px_2px_0_rgb(0_0_0/0.05)]"
+								className="relative inline-flex h-full cursor-pointer items-center justify-center gap-1.5 rounded-r5 px-3 text-sm text-ink-muted select-none hover:text-primary data-[checked]:bg-[var(--settings-segmented-thumb)] data-[checked]:text-primary data-[checked]:shadow-[inset_0_0_0_1px_var(--color-border),0_1px_2px_0_rgb(0_0_0/0.05)]"
 							>
 								{option.label}
-								{option.keys !== undefined && <Shortcut keys={option.keys} />}
 							</span>
 						);
 					})}
@@ -1691,7 +1695,9 @@ function ShortcutCommandItem({id, ...props}: {id: ShortcutId} & Omit<Parameters<
 }
 
 const ROW_CLASS =
-	"peer group flex w-full cursor-pointer items-center justify-between gap-3 truncate rounded-lg px-3 py-2 text-sm leading-5 text-secondary select-none data-[selected=true]:bg-fill-ghost-hover data-[selected=true]:text-primary";
+	"peer group flex w-full cursor-pointer items-center justify-between gap-3 truncate rounded-r6 px-3 py-2 text-sm leading-5 text-secondary select-none data-[selected=true]:bg-fill-ghost-hover data-[selected=true]:text-primary";
+
+const ARCHIVED_ROW_CLASS = ROW_CLASS.replace("text-secondary", "text-ink-muted");
 
 function ReturnGlyph() {
 	return (
@@ -1726,13 +1732,15 @@ function SearchResultItem({
 	onRowActions: () => void;
 }) {
 	const session = row.kind === "session";
+	const archived = row.archived === true;
 	const item = (
 		<Command.Item
 			value={rowKey(row)}
 			onSelect={onSelect}
 			data-item-type={row.kind}
 			{...(session ? {"aria-keyshortcuts": "Alt+Enter"} : {})}
-			className={ROW_CLASS}
+			{...(archived ? {"data-archived": ""} : {})}
+			className={archived ? ARCHIVED_ROW_CLASS : ROW_CLASS}
 		>
 			<span className={`flex min-w-0 flex-1 items-center gap-2 ${session ? ROW_ACTIONS_LABEL_CLASS : ""}`}>
 				<span className="flex size-5 shrink-0 items-center justify-center [&_svg]:size-[18px]">
@@ -1753,6 +1761,7 @@ function SearchResultItem({
 				</span>
 				{row.awaiting && <span className="sr-only"> Awaiting input</span>}
 			</span>
+			{archived && <ArchivedBadge variant="palette" />}
 			<span
 				data-palette-meta=""
 				className="shrink-0 text-xs text-ink-muted group-data-[selected=true]:hidden pointer-coarse:!inline"

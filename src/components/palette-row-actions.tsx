@@ -261,7 +261,7 @@ export function PaletteRowActionsButton({onOpen}: {onOpen: () => void}) {
 					data-palette-row-actions-button=""
 					onMouseDown={(event) => event.preventDefault()}
 					onClick={onOpen}
-					className="flex size-6 items-center justify-center rounded-r6 text-ink-muted transition-colors hover:bg-fill-ghost-hover hover:text-primary"
+					className="flex size-6 items-center justify-center rounded-r5 text-primary transition-colors hover:bg-fill-ghost-hover"
 				>
 					<Ellipsis aria-hidden="true" className="size-4" />
 				</button>
