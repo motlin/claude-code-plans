@@ -1,6 +1,5 @@
 import {lstat, readdir, readFile, realpath, stat} from "node:fs/promises";
-import {createReadStream, realpathSync} from "node:fs";
-import {trackedCreateReadStream} from "../perf/tracked-fs";
+import {createReadStream, realpathSync, type Stats} from "node:fs";
 import {join, basename, extname, isAbsolute, relative, resolve, sep} from "node:path";
 import {createInterface} from "node:readline";
 import {eq, ne, notInArray, sql} from "drizzle-orm";
@@ -18,7 +17,8 @@ import {isCountableMessageRecord} from "../message-count";
 import {deriveProjectDisplayName, lastEncodedSegment} from "../project-display-name";
 import {normalizeGitBranch} from "../git-branch";
 import {SYNTHETIC_MODEL} from "../model-name";
-import {readFirstUserMessage, resolveFirstPrompt, resolveSessionTitle, TitleRecordCollector} from "../sessions";
+import {FirstUserMessageCollector, resolveFirstPrompt, resolveSessionTitle, TitleRecordCollector} from "../sessions";
+import {currentJsonlState, foldJsonl, IncrementalJsonlCache} from "../incremental-jsonl";
 import {extractTitleFromContent} from "../markdown-utils.server";
 import {listTrackedFiles} from "../git-tracked";
 import {trackActivity} from "../perf/event-loop-stalls";
@@ -490,8 +490,301 @@ export async function indexSessionsIndex(db: IndexDb, projectDir: string, projec
 		.run();
 }
 
-export async function indexJsonlFile(db: IndexDb, filePath: string, project: string): Promise<{linkedPlans: string[]}> {
-	let fileStat: Awaited<ReturnType<typeof stat>>;
+/** Agent → subagent links found in a transcript, applied to the subagents table by applySubagentLinks. */
+interface SubagentLink {
+	agentId: string;
+	description: string | null;
+}
+
+/** Pairs each Agent tool_use with the tool_result that names the subagent it started. */
+class SubagentLinkCollector {
+	private readonly toolCallDescriptions = new Map<string, string>();
+	readonly links: SubagentLink[] = [];
+
+	/** Throws on a record whose content blocks are malformed; callers skip the rest of that record. */
+	add(record: unknown): void {
+		const obj = record as {
+			type?: string;
+			message?: {
+				content?:
+					| string
+					| Array<{
+							type?: string;
+							tool_use_id?: string;
+							content?: string | Array<{type?: string; text?: string}>;
+							name?: string;
+							id?: string;
+							input?: {description?: string; prompt?: string};
+					  }>;
+			};
+		};
+
+		const content = obj.message?.content;
+		if (!Array.isArray(content)) return;
+
+		for (const block of content) {
+			// Track Agent tool_use calls by their id + description
+			if (block.type === "tool_use" && block.name === "Agent" && block.id) {
+				const desc = block.input?.description ?? "";
+				this.toolCallDescriptions.set(block.id, desc);
+			}
+
+			// Extract agentId from tool_result
+			if (block.type === "tool_result" && block.tool_use_id && this.toolCallDescriptions.has(block.tool_use_id)) {
+				let resultText = "";
+				if (typeof block.content === "string") {
+					resultText = block.content;
+				} else if (Array.isArray(block.content)) {
+					resultText = block.content
+						.filter(
+							(b): b is {type: string; text: string} => b.type === "text" && typeof b.text === "string",
+						)
+						.map((b) => b.text)
+						.join(" ");
+				}
+				const match = AGENT_ID_RE.exec(resultText);
+				if (match?.[1]) {
+					this.links.push({
+						agentId: `agent-${match[1]}`,
+						description: this.toolCallDescriptions.get(block.tool_use_id) || null,
+					});
+				}
+			}
+		}
+	}
+}
+
+function applySubagentLinks(db: IndexDb, links: readonly SubagentLink[], parentAgentId: string | null): void {
+	for (const {agentId, description} of links) {
+		// COALESCE keeps existing parentAgentId so the root-session
+		// pass doesn't overwrite nested parent links.
+		db.run(
+			sql`UPDATE subagents SET parent_agent_id = COALESCE(parent_agent_id, ${parentAgentId}), description = COALESCE(${description}, description) WHERE id = ${agentId}`,
+		);
+	}
+}
+
+interface IndexedMessage {
+	sessionId: string;
+	messageIndex: number;
+	role: "user" | "assistant";
+	text: string | null;
+}
+
+/** Everything indexJsonlFile derives from a session transcript, folded one line at a time. */
+class SessionIndexState {
+	readonly planFilenames = new Set<string>();
+	readonly titleRecords = new TitleRecordCollector();
+	latestPrLink: {prNumber: number; prUrl: string; prRepository: string} | null = null;
+	forkedFromSessionId: string | null = null;
+	lastSessionCwd: string | undefined;
+	anchoredSessionCwd: string | undefined;
+	sessionGitBranch: string | null = null;
+	readonly textChunks: string[] = [];
+	readonly mcpToolNames = new Set<string>();
+	readonly artifactEvents = new ArtifactEventCollector();
+	readonly routines = new RoutineCollector();
+	readonly usage = new UsageCollector();
+	readonly firstPrompt = new FirstUserMessageCollector();
+	readonly subagentLinks = new SubagentLinkCollector();
+	readonly indexedMessages: IndexedMessage[] = [];
+	messageCount = 0;
+	/** How many of `indexedMessages` the last persist left in session_messages. */
+	persistedMessages = 0;
+
+	constructor(
+		readonly sessionId: string,
+		readonly project: string,
+	) {}
+
+	add(line: string): void {
+		this.firstPrompt.add(line);
+
+		if (line.includes("file-history-snapshot")) {
+			try {
+				const parsed = JSON.parse(line);
+				const result = FileHistorySnapshotSchema.safeParse(parsed);
+				if (result.success) {
+					for (const key of Object.keys(result.data.snapshot.trackedFileBackups)) {
+						const match = PLAN_PATH_RE.exec(key);
+						if (match?.[1]) this.planFilenames.add(match[1]);
+					}
+				}
+			} catch {
+				// skip
+			}
+		}
+
+		// plan_mode attachments link a session to its plan file even before
+		// the plan is edited (file-history-snapshot only fires after edits).
+		if (line.includes('"plan_mode"')) {
+			try {
+				const parsed = JSON.parse(line);
+				const result = AttachmentRecordSchema.safeParse(parsed);
+				if (result.success && result.data.attachment.type === "plan_mode") {
+					const planPath = result.data.attachment.planFilePath;
+					if (planPath) {
+						const match = PLAN_PATH_RE.exec(planPath);
+						if (match?.[1]) this.planFilenames.add(match[1]);
+					}
+				}
+			} catch {
+				// skip
+			}
+		}
+
+		if (line.includes('"cwd"')) {
+			try {
+				const parsed = JSON.parse(line) as {cwd?: string};
+				if (typeof parsed.cwd === "string") {
+					this.lastSessionCwd = parsed.cwd;
+					if (encodeProjectPath(parsed.cwd) === this.project) {
+						this.anchoredSessionCwd = parsed.cwd;
+					}
+				}
+			} catch {
+				// skip
+			}
+		}
+
+		// Extract gitBranch from early lines. Detached-HEAD lines normalize to
+		// null, so keep scanning until a real branch name appears (if any).
+		if (!this.sessionGitBranch && line.includes('"gitBranch"')) {
+			try {
+				const parsed = JSON.parse(line) as {gitBranch?: string};
+				if (typeof parsed.gitBranch === "string") {
+					this.sessionGitBranch = normalizeGitBranch(parsed.gitBranch);
+				}
+			} catch {
+				// skip
+			}
+		}
+
+		// Latest wins: a session that opened a second PR links to the newer one.
+		if (line.includes('"pr-link"')) {
+			try {
+				const result = PrLinkRecordSchema.safeParse(JSON.parse(line));
+				if (result.success) this.latestPrLink = result.data;
+			} catch {
+				// skip
+			}
+		}
+
+		// First wins: every record of a branched session carries the same lineage.
+		if (this.forkedFromSessionId === null && line.includes('"forkedFrom"')) {
+			try {
+				const parsed = JSON.parse(line) as {forkedFrom?: unknown};
+				const result = ForkedFromSchema.safeParse(parsed.forkedFrom);
+				if (result.success) {
+					this.forkedFromSessionId = typeof result.data === "string" ? result.data : result.data.sessionId;
+				}
+			} catch {
+				// skip
+			}
+		}
+
+		if (line.includes('"custom-title"') || line.includes('"ai-title"')) {
+			try {
+				this.titleRecords.add(JSON.parse(line));
+			} catch {
+				// skip
+			}
+		}
+
+		let obj: {
+			type?: string;
+			message?: {
+				content?: string | Array<{type?: string; text?: string; name?: string}>;
+			};
+		};
+		try {
+			obj = JSON.parse(line);
+		} catch {
+			return; // skip malformed lines
+		}
+
+		try {
+			this.subagentLinks.add(obj);
+		} catch {
+			// malformed content blocks
+		}
+
+		// Extract text content for FTS indexing
+		try {
+			if (isCountableMessageRecord(obj)) this.messageCount++;
+			this.artifactEvents.add(obj);
+			this.routines.add(obj);
+			this.usage.add(obj);
+			if (obj.type === "user" || obj.type === "assistant") {
+				const content = obj.message?.content;
+				const messageText: string[] = [];
+				if (typeof content === "string") {
+					this.textChunks.push(content);
+					messageText.push(content);
+				} else if (Array.isArray(content)) {
+					for (const block of content) {
+						if (block.type === "text" && typeof block.text === "string") {
+							this.textChunks.push(block.text);
+							messageText.push(block.text);
+						} else if (
+							block.type === "tool_use" &&
+							typeof block.name === "string" &&
+							block.name.startsWith("mcp__")
+						) {
+							this.mcpToolNames.add(block.name);
+						}
+					}
+				}
+				const substantiveText = messageText.join("\n").trim();
+				this.indexedMessages.push({
+					sessionId: this.sessionId,
+					messageIndex: this.indexedMessages.length,
+					role: obj.type,
+					text: substantiveText === "" ? null : substantiveText,
+				});
+			}
+		} catch {
+			// skip malformed lines
+		}
+	}
+}
+
+/** Per-file parse state the watcher keeps for live transcripts, so an append re-reads only the new lines. */
+export type JsonlIndexCache = IncrementalJsonlCache<SessionIndexState>;
+
+/** Each entry holds a whole transcript's parse state; a handful covers the sessions being written right now. */
+const JSONL_INDEX_CACHE_ENTRIES = 8;
+
+export function createJsonlIndexCache(): JsonlIndexCache {
+	return new IncrementalJsonlCache(JSONL_INDEX_CACHE_ENTRIES);
+}
+
+/** The cache the watcher and the hook dispatcher share for the transcripts being written right now. */
+export const liveJsonlIndexCache = createJsonlIndexCache();
+
+export interface IndexJsonlOptions {
+	/** Resume from, and keep, the file's parse state here instead of reading the whole transcript. */
+	cache?: JsonlIndexCache;
+}
+
+export async function indexJsonlFile(
+	db: IndexDb,
+	filePath: string,
+	project: string,
+	options: IndexJsonlOptions = {},
+): Promise<{linkedPlans: string[]}> {
+	const {linkedPlans} = await indexJsonlFileWithLinks(db, filePath, project, options);
+	return {linkedPlans};
+}
+
+/** indexJsonlFile, plus the subagent links of the transcript when they are known without another read. */
+async function indexJsonlFileWithLinks(
+	db: IndexDb,
+	filePath: string,
+	project: string,
+	{cache}: IndexJsonlOptions,
+): Promise<{linkedPlans: string[]; subagentLinks?: readonly SubagentLink[]}> {
+	let fileStat: Stats;
 	try {
 		fileStat = await stat(filePath);
 	} catch {
@@ -509,184 +802,42 @@ export async function indexJsonlFile(db: IndexDb, filePath: string, project: str
 			.from(schema.sessions)
 			.where(eq(schema.sessions.id, sessionId))
 			.get();
-		if (sessionRow) return {linkedPlans: []};
-	}
-
-	const planFilenames = new Set<string>();
-	const titleRecords = new TitleRecordCollector();
-	let latestPrLink: {prNumber: number; prUrl: string; prRepository: string} | null = null;
-	let forkedFromSessionId: string | null = null;
-	let lastSessionCwd: string | undefined;
-	let anchoredSessionCwd: string | undefined;
-	let sessionGitBranch: string | null = null;
-	const textChunks: string[] = [];
-	const mcpToolNames = new Set<string>();
-	const artifactEvents = new ArtifactEventCollector();
-	const routines = new RoutineCollector();
-	const usage = new UsageCollector();
-	const indexedMessages: Array<{
-		sessionId: string;
-		messageIndex: number;
-		role: "user" | "assistant";
-		text: string | null;
-	}> = [];
-	let messageIndex = 0;
-	let messageCount = 0;
-
-	// Stream the file line-by-line to avoid loading entire JSONL into memory
-	const rl = createInterface({
-		input: trackedCreateReadStream(filePath, {encoding: "utf-8"}),
-		crlfDelay: Infinity,
-	});
-	try {
-		for await (const line of rl) {
-			if (!line.trim()) continue;
-
-			if (line.includes("file-history-snapshot")) {
-				try {
-					const parsed = JSON.parse(line);
-					const result = FileHistorySnapshotSchema.safeParse(parsed);
-					if (result.success) {
-						for (const key of Object.keys(result.data.snapshot.trackedFileBackups)) {
-							const match = PLAN_PATH_RE.exec(key);
-							if (match?.[1]) planFilenames.add(match[1]);
-						}
-					}
-				} catch {
-					// skip
-				}
-			}
-
-			// plan_mode attachments link a session to its plan file even before
-			// the plan is edited (file-history-snapshot only fires after edits).
-			if (line.includes('"plan_mode"')) {
-				try {
-					const parsed = JSON.parse(line);
-					const result = AttachmentRecordSchema.safeParse(parsed);
-					if (result.success && result.data.attachment.type === "plan_mode") {
-						const planPath = result.data.attachment.planFilePath;
-						if (planPath) {
-							const match = PLAN_PATH_RE.exec(planPath);
-							if (match?.[1]) planFilenames.add(match[1]);
-						}
-					}
-				} catch {
-					// skip
-				}
-			}
-
-			if (line.includes('"cwd"')) {
-				try {
-					const parsed = JSON.parse(line) as {cwd?: string};
-					if (typeof parsed.cwd === "string") {
-						lastSessionCwd = parsed.cwd;
-						if (encodeProjectPath(parsed.cwd) === project) {
-							anchoredSessionCwd = parsed.cwd;
-						}
-					}
-				} catch {
-					// skip
-				}
-			}
-
-			// Extract gitBranch from early lines. Detached-HEAD lines normalize to
-			// null, so keep scanning until a real branch name appears (if any).
-			if (!sessionGitBranch && line.includes('"gitBranch"')) {
-				try {
-					const parsed = JSON.parse(line) as {gitBranch?: string};
-					if (typeof parsed.gitBranch === "string") {
-						sessionGitBranch = normalizeGitBranch(parsed.gitBranch);
-					}
-				} catch {
-					// skip
-				}
-			}
-
-			// Latest wins: a session that opened a second PR links to the newer one.
-			if (line.includes('"pr-link"')) {
-				try {
-					const result = PrLinkRecordSchema.safeParse(JSON.parse(line));
-					if (result.success) latestPrLink = result.data;
-				} catch {
-					// skip
-				}
-			}
-
-			// First wins: every record of a branched session carries the same lineage.
-			if (forkedFromSessionId === null && line.includes('"forkedFrom"')) {
-				try {
-					const parsed = JSON.parse(line) as {forkedFrom?: unknown};
-					const result = ForkedFromSchema.safeParse(parsed.forkedFrom);
-					if (result.success) {
-						forkedFromSessionId = typeof result.data === "string" ? result.data : result.data.sessionId;
-					}
-				} catch {
-					// skip
-				}
-			}
-
-			if (line.includes('"custom-title"') || line.includes('"ai-title"')) {
-				try {
-					titleRecords.add(JSON.parse(line));
-				} catch {
-					// skip
-				}
-			}
-
-			// Extract text content for FTS indexing
-			try {
-				const obj = JSON.parse(line) as {
-					type?: string;
-					message?: {
-						content?: string | Array<{type?: string; text?: string; name?: string}>;
-					};
-				};
-				if (isCountableMessageRecord(obj)) messageCount++;
-				artifactEvents.add(obj);
-				routines.add(obj);
-				usage.add(obj);
-				if (obj.type === "user" || obj.type === "assistant") {
-					const content = obj.message?.content;
-					const messageText: string[] = [];
-					if (typeof content === "string") {
-						textChunks.push(content);
-						messageText.push(content);
-					} else if (Array.isArray(content)) {
-						for (const block of content) {
-							if (block.type === "text" && typeof block.text === "string") {
-								textChunks.push(block.text);
-								messageText.push(block.text);
-							} else if (
-								block.type === "tool_use" &&
-								typeof block.name === "string" &&
-								block.name.startsWith("mcp__")
-							) {
-								mcpToolNames.add(block.name);
-							}
-						}
-					}
-					const substantiveText = messageText.join("\n").trim();
-					indexedMessages.push({
-						sessionId,
-						messageIndex,
-						role: obj.type,
-						text: substantiveText === "" ? null : substantiveText,
-					});
-					messageIndex++;
-				}
-			} catch {
-				// skip malformed lines
-			}
+		if (sessionRow) {
+			const current =
+				cache === undefined ? undefined : await currentJsonlState(cache, filePath).catch(() => undefined);
+			return current?.project === project
+				? {linkedPlans: [], subagentLinks: current.subagentLinks.links}
+				: {linkedPlans: []};
 		}
-	} finally {
-		rl.close();
 	}
 
-	const {customTitle, aiTitle} = await titleRecords.finish(filePath);
-	const sessionCwd = anchoredSessionCwd ?? lastSessionCwd;
+	const parseAndPersist = async () => {
+		if (cache !== undefined && cache.get(filePath)?.state.project !== project) cache.delete(filePath);
+		const state = await foldJsonl(
+			filePath,
+			{create: () => new SessionIndexState(sessionId, project), add: (folded, line) => folded.add(line)},
+			cache,
+		);
+		await persistSessionIndexState(db, filePath, project, fileStat, state);
+		return {linkedPlans: Array.from(state.planFilenames), subagentLinks: state.subagentLinks.links};
+	};
+	return cache === undefined ? parseAndPersist() : cache.exclusive(filePath, parseAndPersist);
+}
+
+async function persistSessionIndexState(
+	db: IndexDb,
+	filePath: string,
+	project: string,
+	fileStat: Stats,
+	state: SessionIndexState,
+): Promise<void> {
+	const {sessionId} = state;
+	const {customTitle, aiTitle} = await state.titleRecords.finish(filePath);
+	const sessionCwd = state.anchoredSessionCwd ?? state.lastSessionCwd;
+	const {latestPrLink, forkedFromSessionId, sessionGitBranch, messageCount} = state;
 
 	// Upsert plan links
-	for (const planFilename of planFilenames) {
+	for (const planFilename of state.planFilenames) {
 		db.insert(schema.planSessions)
 			.values({planFilename, sessionId, projectId: project})
 			.onConflictDoNothing()
@@ -694,11 +845,10 @@ export async function indexJsonlFile(db: IndexDb, filePath: string, project: str
 	}
 
 	const existingSession = db.select().from(schema.sessions).where(eq(schema.sessions.id, sessionId)).get();
-	const firstPrompt = await readFirstUserMessage(filePath);
+	const firstPrompt = state.firstPrompt.result();
 	const projectPath = await resolveProjectPath(project);
 
 	persistProject(db, project, projectPath, fileStat.mtimeMs);
-
 	if (existingSession) {
 		const updates: Record<string, unknown> = {
 			mtimeMs: fileStat.mtimeMs,
@@ -762,34 +912,54 @@ export async function indexJsonlFile(db: IndexDb, filePath: string, project: str
 	// Replace structured message rows alongside the search-only flattened FTS
 	// blob. Role and order are retained here so consumers never need to tail
 	// the JSONL to recover the latest substantive assistant response.
+	// A resumed state appends the rows after the ones it already wrote, as long as nothing else replaced them.
+	const {indexedMessages, persistedMessages} = state;
 	db.transaction((transaction) => {
-		transaction.delete(schema.sessionMessages).where(eq(schema.sessionMessages.sessionId, sessionId)).run();
-		for (let offset = 0; offset < indexedMessages.length; offset += SESSION_MESSAGE_INSERT_BATCH_SIZE) {
+		const resumed =
+			persistedMessages > 0 &&
+			transaction
+				.select({count: sql<number>`count(*)`})
+				.from(schema.sessionMessages)
+				.where(eq(schema.sessionMessages.sessionId, sessionId))
+				.get()?.count === persistedMessages;
+		if (!resumed) {
+			transaction.delete(schema.sessionMessages).where(eq(schema.sessionMessages.sessionId, sessionId)).run();
+		}
+		for (
+			let offset = resumed ? persistedMessages : 0;
+			offset < indexedMessages.length;
+			offset += SESSION_MESSAGE_INSERT_BATCH_SIZE
+		) {
 			transaction
 				.insert(schema.sessionMessages)
 				.values(indexedMessages.slice(offset, offset + SESSION_MESSAGE_INSERT_BATCH_SIZE))
 				.run();
 		}
 	});
+	state.persistedMessages = indexedMessages.length;
 
 	db.transaction((transaction) => {
 		transaction.delete(schema.sessionMcpTools).where(eq(schema.sessionMcpTools.sessionId, sessionId)).run();
-		if (mcpToolNames.size > 0) {
+		if (state.mcpToolNames.size > 0) {
 			transaction
 				.insert(schema.sessionMcpTools)
-				.values(Array.from(mcpToolNames, (toolName) => ({sessionId, toolName})))
+				.values(Array.from(state.mcpToolNames, (toolName) => ({sessionId, toolName})))
 				.run();
 		}
 	});
 
-	replaceArtifactEvents(db, {filePath, sessionId, projectId: project, isSubagent: false}, artifactEvents.events());
-	replaceRoutines(db, {filePath, sessionId, projectId: project}, routines.routines());
-	replaceUsageDaily(db, {filePath, sessionId}, usage.rows());
+	replaceArtifactEvents(
+		db,
+		{filePath, sessionId, projectId: project, isSubagent: false},
+		state.artifactEvents.events(),
+	);
+	replaceRoutines(db, {filePath, sessionId, projectId: project}, state.routines.routines());
+	replaceUsageDaily(db, {filePath, sessionId}, state.usage.rows());
 
 	// Update message content FTS
 	db.run(sql`DELETE FROM message_content WHERE session_id = ${sessionId}`);
-	if (textChunks.length > 0) {
-		const content = textChunks.join("\n");
+	if (state.textChunks.length > 0) {
+		const content = state.textChunks.join("\n");
 		db.run(sql`INSERT INTO message_content(session_id, content) VALUES (${sessionId}, ${content})`);
 	}
 
@@ -810,8 +980,6 @@ export async function indexJsonlFile(db: IndexDb, filePath: string, project: str
 			},
 		})
 		.run();
-
-	return {linkedPlans: Array.from(planFilenames)};
 }
 
 export async function indexSubagentFile(
@@ -948,74 +1116,18 @@ export async function linkSubagentParents(db: IndexDb, jsonlPath: string, parent
 		input: createReadStream(jsonlPath, {encoding: "utf-8"}),
 		crlfDelay: Infinity,
 	});
-
-	// Map tool_use id → description from the Agent call
-	const toolCallDescriptions = new Map<string, string>();
-
+	const collector = new SubagentLinkCollector();
+	let applied = 0;
 	try {
 		for await (const line of rl) {
 			if (!line.trim()) continue;
 			try {
-				const obj = JSON.parse(line) as {
-					type?: string;
-					message?: {
-						content?:
-							| string
-							| Array<{
-									type?: string;
-									tool_use_id?: string;
-									content?: string | Array<{type?: string; text?: string}>;
-									name?: string;
-									id?: string;
-									input?: {description?: string; prompt?: string};
-							  }>;
-					};
-				};
-
-				const content = obj.message?.content;
-				if (!Array.isArray(content)) continue;
-
-				for (const block of content) {
-					// Track Agent tool_use calls by their id + description
-					if (block.type === "tool_use" && block.name === "Agent" && block.id) {
-						const desc = block.input?.description ?? "";
-						toolCallDescriptions.set(block.id, desc);
-					}
-
-					// Extract agentId from tool_result
-					if (
-						block.type === "tool_result" &&
-						block.tool_use_id &&
-						toolCallDescriptions.has(block.tool_use_id)
-					) {
-						let resultText = "";
-						if (typeof block.content === "string") {
-							resultText = block.content;
-						} else if (Array.isArray(block.content)) {
-							resultText = block.content
-								.filter(
-									(b): b is {type: string; text: string} =>
-										b.type === "text" && typeof b.text === "string",
-								)
-								.map((b) => b.text)
-								.join(" ");
-						}
-						const match = AGENT_ID_RE.exec(resultText);
-						if (match?.[1]) {
-							const agentId = `agent-${match[1]}`;
-							const description = toolCallDescriptions.get(block.tool_use_id) || null;
-
-							// COALESCE keeps existing parentAgentId so the root-session
-							// pass doesn't overwrite nested parent links.
-							db.run(
-								sql`UPDATE subagents SET parent_agent_id = COALESCE(parent_agent_id, ${parentAgentId}), description = COALESCE(${description}, description) WHERE id = ${agentId}`,
-							);
-						}
-					}
-				}
+				collector.add(JSON.parse(line));
 			} catch {
 				// skip malformed lines
 			}
+			applySubagentLinks(db, collector.links.slice(applied), parentAgentId);
+			applied = collector.links.length;
 		}
 	} finally {
 		rl.close();
@@ -1708,6 +1820,7 @@ export async function indexFile(
 	filePath: string,
 	projectsDir: string,
 	plansDir?: string,
+	options: {jsonlCache?: JsonlIndexCache} = {},
 ): Promise<{linkedPlans: string[]}> {
 	// Task file: ~/.claude/tasks/{projectDir}/{id}.json
 	if (filePath.includes("/tasks/") && filePath.endsWith(".json")) {
@@ -1760,10 +1873,16 @@ export async function indexFile(
 		}
 
 		// Regular session JSONL
-		const result = await indexJsonlFile(db, filePath, normalizedProjectFile.project);
+		const {linkedPlans, subagentLinks} = await indexJsonlFileWithLinks(
+			db,
+			filePath,
+			normalizedProjectFile.project,
+			options.jsonlCache === undefined ? {} : {cache: options.jsonlCache},
+		);
 		// Link parent-child relationships from root session JSONL
-		await linkSubagentParents(db, filePath, null);
-		return result;
+		if (subagentLinks === undefined) await linkSubagentParents(db, filePath, null);
+		else applySubagentLinks(db, subagentLinks, null);
+		return {linkedPlans};
 	}
 
 	return {linkedPlans: []};

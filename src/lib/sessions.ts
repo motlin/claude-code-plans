@@ -262,21 +262,43 @@ export async function readFirstUserMessage(filePath: string): Promise<FirstUserP
 		crlfDelay: Infinity,
 	});
 
-	let fallback: FirstUserPrompt | null = null;
-	let examined = 0;
+	const collector = new FirstUserMessageCollector();
 	try {
 		for await (const line of rl) {
 			if (!line.trim()) continue;
-			const prompt = extractFirstUserText(line);
-			if (prompt === null) continue;
-			if (isInformativePrompt(prompt.text, {isMeta: prompt.isMeta})) return prompt;
-			fallback ??= prompt;
-			if (++examined >= MAX_TITLE_CANDIDATES) break;
+			if (collector.add(line)) break;
 		}
 	} finally {
 		rl.close();
 	}
-	return fallback;
+	return collector.result();
+}
+
+/** readFirstUserMessage one line at a time, for callers that already stream the transcript. */
+export class FirstUserMessageCollector {
+	private found: FirstUserPrompt | null = null;
+	private fallback: FirstUserPrompt | null = null;
+	private examined = 0;
+	private settled = false;
+
+	/** Returns true once later lines can no longer change the result. */
+	add(line: string): boolean {
+		if (this.settled) return true;
+		const prompt = extractFirstUserText(line);
+		if (prompt === null) return false;
+		if (isInformativePrompt(prompt.text, {isMeta: prompt.isMeta})) {
+			this.found = prompt;
+			this.settled = true;
+		} else {
+			this.fallback ??= prompt;
+			if (++this.examined >= MAX_TITLE_CANDIDATES) this.settled = true;
+		}
+		return this.settled;
+	}
+
+	result(): FirstUserPrompt | null {
+		return this.found ?? this.fallback;
+	}
 }
 
 /** Every prompt the user typed into a session, oldest first; CLI-injected records are skipped. */

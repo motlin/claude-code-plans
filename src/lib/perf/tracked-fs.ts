@@ -5,7 +5,10 @@ import {currentPerfCounters} from "./server-scope";
  * `createReadStream` that reports into the active perf scope: every byte read from disk adds to
  * `jsonl.bytesRead`, and a stream that starts at offset 0 and reaches EOF counts one `jsonl.fullScans`.
  */
-export function trackedCreateReadStream(path: string, options: {encoding: BufferEncoding; start?: number}): ReadStream {
+export function trackedCreateReadStream(
+	path: string,
+	options: {encoding?: BufferEncoding; start?: number},
+): ReadStream {
 	const stream = createReadStream(path, options);
 	const counters = currentPerfCounters();
 	if (counters === undefined) return stream;

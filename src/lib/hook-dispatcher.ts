@@ -32,7 +32,7 @@ import {
 import {buildSessionSummaryPayloadFromDb, toActiveSessionPayload} from "./session-summary";
 import {addNotification, clearNotificationsForSession, clearPermissionPromptsForSession} from "./notifications-store";
 import {addLiveSubagent, endLiveSubagent, reconcileStoredLiveSubagents} from "./live-subagent-store";
-import {indexFile, indexJsonlFile} from "./db/indexer";
+import {indexFile, indexJsonlFile, liveJsonlIndexCache} from "./db/indexer";
 import {isSessionArchived, setSessionArchived} from "./db/queries";
 import {resolveProjectName} from "./memory";
 import {recentlyBroadcast} from "./update-dedupe";
@@ -343,7 +343,7 @@ async function appendTranscriptLines(
 	}
 
 	try {
-		await indexJsonlFile(db, transcriptPath, project);
+		await indexJsonlFile(db, transcriptPath, project, {cache: liveJsonlIndexCache});
 	} catch {
 		// transient index error — chokidar will retry
 	}

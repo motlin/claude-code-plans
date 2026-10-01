@@ -2,7 +2,12 @@ import {statSync} from "node:fs";
 import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
 import {eq} from "drizzle-orm";
 import * as schema from "./schema";
-import {scanAllPendingApprovals, scanPendingApproval, type PendingApproval} from "../pending-approvals";
+import {
+	createPendingApprovalScanCache,
+	scanAllPendingApprovals,
+	scanPendingApproval,
+	type PendingApproval,
+} from "../pending-approvals";
 import {getPlanFilenameForSession} from "./queries";
 import {DOMAIN_EVENTS} from "../hook-events";
 import {broadcastTyped} from "../sse-broadcast";
@@ -19,6 +24,8 @@ interface CacheEntry {
 const cache = new Map<string, CacheEntry>();
 const expiredThroughBySession = new Map<string, string>();
 let revalidation: Promise<void> | null = null;
+/** Live transcripts' scan state, so the rescan after each append reads only the appended lines. */
+let scanCache = createPendingApprovalScanCache();
 
 function approvalsEqual(a: PendingApproval, b: PendingApproval): boolean {
 	return (
@@ -65,6 +72,7 @@ function statMtimeMs(filePath: string): number | null {
 export async function initPendingApprovalsCache(db: IndexDb): Promise<void> {
 	cache.clear();
 	expiredThroughBySession.clear();
+	scanCache = createPendingApprovalScanCache();
 	const approvals = await scanAllPendingApprovals(db);
 	for (const approval of approvals) {
 		const filePath = lookupSessionFilePath(db, approval.sessionId);
@@ -97,7 +105,7 @@ export async function updatePendingApprovalForSession(
 	// Sample the mtime before reading: a write that races the scan leaves an mtime
 	// newer than the one recorded, so revalidation rescans instead of trusting it.
 	const mtimeMs = statMtimeMs(filePath) ?? 0;
-	const scanned = await scanPendingApproval(filePath);
+	const scanned = await scanPendingApproval(filePath, scanCache);
 	const prior = cache.get(sessionId);
 
 	if (!scanned) {

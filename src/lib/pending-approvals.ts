@@ -1,7 +1,6 @@
 import {statSync} from "node:fs";
-import {trackedCreateReadStream} from "./perf/tracked-fs";
+import {foldJsonl, IncrementalJsonlCache, type JsonlFold} from "./incremental-jsonl";
 import {basename} from "node:path";
-import {createInterface} from "node:readline";
 import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
 import * as schema from "./db/schema";
 import {getPlanFilenameForSession} from "./db/queries";
@@ -105,77 +104,94 @@ function extractQuestionOptions(input: Record<string, unknown> | undefined): str
 	return optionLabels((first as Record<string, unknown>)["options"]);
 }
 
-export async function scanPendingApproval(filePath: string): Promise<PendingApproval | null> {
-	const pending = new Map<string, PendingEntry>();
-	let sessionId = "";
+/** The tool calls still waiting on an answer, folded one transcript line at a time. */
+export interface PendingApprovalScanState {
+	pending: Map<string, PendingEntry>;
+	sessionId: string;
+}
 
-	const rl = createInterface({
-		input: trackedCreateReadStream(filePath, {encoding: "utf-8"}),
-		crlfDelay: Infinity,
-	});
+const pendingApprovalFold: JsonlFold<PendingApprovalScanState> = {
+	create: () => ({pending: new Map(), sessionId: ""}),
+	add(state, line) {
+		let obj: JsonlEntry;
+		try {
+			obj = JSON.parse(line) as JsonlEntry;
+		} catch {
+			return;
+		}
 
-	try {
-		for await (const line of rl) {
-			if (!line.trim()) continue;
-			let obj: JsonlEntry;
-			try {
-				obj = JSON.parse(line) as JsonlEntry;
-			} catch {
-				continue;
+		if (typeof obj.sessionId === "string" && obj.sessionId) {
+			state.sessionId = obj.sessionId;
+		}
+
+		const type = obj.type;
+		if (type !== "user" && type !== "assistant") return;
+
+		const message = obj.message;
+		if (!message) return;
+
+		const content = message.content;
+		if (!Array.isArray(content)) return;
+
+		const timestamp = typeof obj.timestamp === "string" ? obj.timestamp : "";
+
+		if (type === "assistant") {
+			for (const block of content as JsonlContentBlock[]) {
+				if (block.type !== "tool_use") continue;
+				const name = block.name;
+				// Claude exposes no permission-request hook, so plain tool permission
+				// prompts cannot be reconstructed here. Only transcript-visible
+				// ExitPlanMode and AskUserQuestion approvals are durable signals.
+				if (name !== "ExitPlanMode" && name !== "AskUserQuestion") continue;
+				const id = typeof block.id === "string" ? block.id : "";
+				if (!id) continue;
+				state.pending.set(id, {
+					sessionId: state.sessionId,
+					toolName: name,
+					toolUseId: id,
+					blockedSince: timestamp,
+					planFilename: name === "ExitPlanMode" ? extractPlanFilename(block.input) : null,
+					questionPreview: name === "AskUserQuestion" ? extractQuestionPreview(block.input) : null,
+					questionOptions: name === "AskUserQuestion" ? extractQuestionOptions(block.input) : [],
+				});
 			}
-
-			if (typeof obj.sessionId === "string" && obj.sessionId) {
-				sessionId = obj.sessionId;
-			}
-
-			const type = obj.type;
-			if (type !== "user" && type !== "assistant") continue;
-
-			const message = obj.message;
-			if (!message) continue;
-
-			const content = message.content;
-			if (!Array.isArray(content)) continue;
-
-			const timestamp = typeof obj.timestamp === "string" ? obj.timestamp : "";
-
-			if (type === "assistant") {
-				for (const block of content as JsonlContentBlock[]) {
-					if (block.type !== "tool_use") continue;
-					const name = block.name;
-					// Claude exposes no permission-request hook, so plain tool permission
-					// prompts cannot be reconstructed here. Only transcript-visible
-					// ExitPlanMode and AskUserQuestion approvals are durable signals.
-					if (name !== "ExitPlanMode" && name !== "AskUserQuestion") continue;
-					const id = typeof block.id === "string" ? block.id : "";
-					if (!id) continue;
-					pending.set(id, {
-						sessionId,
-						toolName: name,
-						toolUseId: id,
-						blockedSince: timestamp,
-						planFilename: name === "ExitPlanMode" ? extractPlanFilename(block.input) : null,
-						questionPreview: name === "AskUserQuestion" ? extractQuestionPreview(block.input) : null,
-						questionOptions: name === "AskUserQuestion" ? extractQuestionOptions(block.input) : [],
-					});
-				}
-			} else {
-				for (const block of content as JsonlContentBlock[]) {
-					if (block.type !== "tool_result") continue;
-					const id = typeof block.tool_use_id === "string" ? block.tool_use_id : "";
-					if (!id) continue;
-					pending.delete(id);
-				}
+		} else {
+			for (const block of content as JsonlContentBlock[]) {
+				if (block.type !== "tool_result") continue;
+				const id = typeof block.tool_use_id === "string" ? block.tool_use_id : "";
+				if (!id) continue;
+				state.pending.delete(id);
 			}
 		}
-	} finally {
-		rl.close();
-	}
+	},
+};
 
-	if (pending.size === 0) return null;
+/** Per-file scan state for live transcripts, so a rescan after an append reads only the new lines. */
+export type PendingApprovalScanCache = IncrementalJsonlCache<PendingApprovalScanState>;
+
+/** Each entry holds only the unanswered tool calls of one transcript, so many fit. */
+const PENDING_APPROVAL_SCAN_CACHE_ENTRIES = 64;
+
+export function createPendingApprovalScanCache(): PendingApprovalScanCache {
+	return new IncrementalJsonlCache(PENDING_APPROVAL_SCAN_CACHE_ENTRIES);
+}
+
+export async function scanPendingApproval(
+	filePath: string,
+	cache?: PendingApprovalScanCache,
+): Promise<PendingApproval | null> {
+	if (cache !== undefined) return cache.exclusive(filePath, () => scanPendingApprovalUnlocked(filePath, cache));
+	return scanPendingApprovalUnlocked(filePath);
+}
+
+async function scanPendingApprovalUnlocked(
+	filePath: string,
+	cache?: PendingApprovalScanCache,
+): Promise<PendingApproval | null> {
+	const state = await foldJsonl(filePath, pendingApprovalFold, cache);
 
 	let latest: PendingEntry | null = null;
-	for (const entry of pending.values()) {
+	for (const entry of state.pending.values()) {
 		if (!latest || entry.blockedSince > latest.blockedSince) {
 			latest = entry;
 		}

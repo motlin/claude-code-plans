@@ -110,12 +110,12 @@
 		"tolerance": 0
 	},
 	"server.liveAppend.large-long.1.jsonl.fullScans": {
-		"ceiling": 2,
+		"ceiling": 1,
 		"unit": "count",
 		"tolerance": 0
 	},
 	"server.liveAppend.large-long.1.readAmplification": {
-		"ceiling": 187796,
+		"ceiling": 93900,
 		"unit": "ratio",
 		"tolerance": 0
 	},
@@ -130,17 +130,17 @@
 		"tolerance": 0
 	},
 	"server.liveAppend.large-long.20.jsonl.fullScans": {
-		"ceiling": 2,
+		"ceiling": 0,
 		"unit": "count",
 		"tolerance": 0
 	},
 	"server.liveAppend.large-long.20.readAmplification": {
-		"ceiling": 9349,
+		"ceiling": 3,
 		"unit": "ratio",
 		"tolerance": 0
 	},
 	"server.liveAppend.large-long.20.sql.count": {
-		"ceiling": 54,
+		"ceiling": 26,
 		"unit": "count",
 		"tolerance": 0
 	},
@@ -150,12 +150,12 @@
 		"tolerance": 0
 	},
 	"server.liveAppend.large-wide.1.jsonl.fullScans": {
-		"ceiling": 2,
+		"ceiling": 1,
 		"unit": "count",
 		"tolerance": 0
 	},
 	"server.liveAppend.large-wide.1.readAmplification": {
-		"ceiling": 600942,
+		"ceiling": 300473,
 		"unit": "ratio",
 		"tolerance": 0
 	},
@@ -170,17 +170,17 @@
 		"tolerance": 0
 	},
 	"server.liveAppend.large-wide.20.jsonl.fullScans": {
-		"ceiling": 2,
+		"ceiling": 0,
 		"unit": "count",
 		"tolerance": 0
 	},
 	"server.liveAppend.large-wide.20.readAmplification": {
-		"ceiling": 29910,
+		"ceiling": 3,
 		"unit": "ratio",
 		"tolerance": 0
 	},
 	"server.liveAppend.large-wide.20.sql.count": {
-		"ceiling": 41,
+		"ceiling": 24,
 		"unit": "count",
 		"tolerance": 0
 	},
@@ -190,12 +190,12 @@
 		"tolerance": 0
 	},
 	"server.liveAppend.small.1.jsonl.fullScans": {
-		"ceiling": 2,
+		"ceiling": 1,
 		"unit": "count",
 		"tolerance": 0
 	},
 	"server.liveAppend.small.1.readAmplification": {
-		"ceiling": 4811,
+		"ceiling": 2407,
 		"unit": "ratio",
 		"tolerance": 0
 	},
@@ -210,17 +210,17 @@
 		"tolerance": 0
 	},
 	"server.liveAppend.small.20.jsonl.fullScans": {
-		"ceiling": 2,
+		"ceiling": 0,
 		"unit": "count",
 		"tolerance": 0
 	},
 	"server.liveAppend.small.20.readAmplification": {
-		"ceiling": 242,
+		"ceiling": 3,
 		"unit": "ratio",
 		"tolerance": 0
 	},
 	"server.liveAppend.small.20.sql.count": {
-		"ceiling": 25,
+		"ceiling": 24,
 		"unit": "count",
 		"tolerance": 0
 	},
@@ -230,12 +230,12 @@
 		"tolerance": 0
 	},
 	"server.liveAppend.typical.1.jsonl.fullScans": {
-		"ceiling": 2,
+		"ceiling": 1,
 		"unit": "count",
 		"tolerance": 0
 	},
 	"server.liveAppend.typical.1.readAmplification": {
-		"ceiling": 42860,
+		"ceiling": 21432,
 		"unit": "ratio",
 		"tolerance": 0
 	},
@@ -250,17 +250,17 @@
 		"tolerance": 0
 	},
 	"server.liveAppend.typical.20.jsonl.fullScans": {
-		"ceiling": 2,
+		"ceiling": 0,
 		"unit": "count",
 		"tolerance": 0
 	},
 	"server.liveAppend.typical.20.readAmplification": {
-		"ceiling": 2136,
+		"ceiling": 3,
 		"unit": "ratio",
 		"tolerance": 0
 	},
 	"server.liveAppend.typical.20.sql.count": {
-		"ceiling": 35,
+		"ceiling": 24,
 		"unit": "count",
 		"tolerance": 0
 	},
