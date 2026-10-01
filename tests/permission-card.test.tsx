@@ -199,7 +199,7 @@ describe("PermissionCard", () => {
 		expect({
 			label: card.getAttribute("aria-label"),
 			title: card.querySelector("[data-permission-title]")?.textContent,
-			command: card.querySelector("pre")?.textContent,
+			command: card.querySelector("[data-approval-value]")?.textContent,
 			denyKeys: [...deny.querySelectorAll("kbd")].map((kbd) => kbd.textContent),
 			allowKeys: [...allow.querySelectorAll("kbd")].map((kbd) => kbd.textContent),
 		}).toStrictEqual({
@@ -209,6 +209,45 @@ describe("PermissionCard", () => {
 			denyKeys: ["1", "Esc"],
 			allowKeys: ["2", "Ctrl", "⏎Enter"],
 		});
+	});
+
+	it("uses upstream's compact card, title, command block and button measurements", () => {
+		const {container} = renderCard();
+		const card = container.querySelector<HTMLElement>("[data-approval-card-root]")!;
+		const missing = (element: Element | null, expected: string[]) => {
+			const actual = new Set(element?.getAttribute("class")?.split(/\s+/));
+			return expected.filter((name) => !actual.has(name));
+		};
+		expect({
+			digits: card.dataset["approvalCardDigits"],
+			card: missing(card, ["rounded-r7", "gap-6", "shadow-[var(--approval-card-shadow)]"]),
+			title: missing(card.querySelector("[data-permission-title]"), ["text-[13px]/[19px]", "font-bold"]),
+			value: missing(card.querySelector("[data-approval-value]"), [
+				"font-mono",
+				"text-[12px]/[17px]",
+				"text-secondary",
+				"bg-alpha-1",
+				"rounded-r4",
+				"px-3",
+				"py-2",
+			]),
+			deny: missing(screen.getByRole("button", {name: /^Deny/}), [
+				"h-6",
+				"rounded-r5",
+				"px-2",
+				"text-[13px]/[19px]",
+				"border",
+				"border-strong",
+			]),
+			allow: missing(screen.getByRole("button", {name: /^Allow once/}), [
+				"h-6",
+				"rounded-r5",
+				"px-2",
+				"text-[13px]/[19px]",
+				"bg-primary",
+				"text-surface-1",
+			]),
+		}).toStrictEqual({digits: "2", card: [], title: [], value: [], deny: [], allow: []});
 	});
 
 	it("buttons send their decisions", () => {

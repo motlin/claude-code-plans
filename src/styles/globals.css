@@ -279,6 +279,8 @@
 
 	/* Upstream claude.ai/code — side pane surface (light: shadow-panel-sm) */
 	--pane-shadow: 0 0 0 1px rgb(11 11 11 / 0.06), 0 1px 3px rgba(0, 0, 0, 0.06);
+	/* Upstream claude.ai/code — approval card (.epitaxy-approval-card surface) */
+	--approval-card-shadow: 0 0 0 1px rgb(11 11 11 / 0.1), 0 1px 2px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.08);
 	--menu-danger-fill: #d03b3b;
 	--menu-on-danger: #fff;
 
@@ -396,6 +398,8 @@
 
 	/* Upstream claude.ai/code — side pane surface (dark: shadow-sm + outline-alpha-2) */
 	--pane-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 0 0 1px hsl(0 0% 100% / 0.08);
+	/* Upstream claude.ai/code — approval card (dark) */
+	--approval-card-shadow: 0 0 0 1px hsl(0 0% 100% / 0.1), 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 @layer utilities {

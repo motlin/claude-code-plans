@@ -6,7 +6,7 @@ import {permissionDecisionForKey, type PermissionDecision} from "../lib/permissi
 import {Shortcut} from "./ui/shortcut";
 
 const ACTION_BUTTON =
-	"inline-flex h-8 cursor-pointer items-center justify-center gap-2 rounded-r5 px-3 text-body disabled:cursor-not-allowed disabled:opacity-50 @max-[500px]/approval-dock:w-full";
+	"inline-flex h-6 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-r5 px-2 text-[13px]/[19px] whitespace-nowrap select-none disabled:cursor-not-allowed disabled:opacity-50 [&_kbd]:text-[11px] @max-[500px]/approval-dock:w-full";
 
 /**
  * The tool-permission card docked above the composer, copied from
@@ -62,29 +62,33 @@ export function PermissionCard({
 		<div className="@container/approval-dock [--approval-dock-floor:144px] @max-[500px]/approval-dock:[--approval-dock-floor:208px]">
 			<div
 				data-approval-card-root
+				data-approval-card-digits="2"
 				role="group"
 				aria-label="Permission request: run"
 				tabIndex={0}
-				className="relative isolate flex max-h-[60vh] flex-col gap-3 rounded-card bg-surface-popover p-3 shadow-panel-sm"
+				className="relative isolate flex max-h-[60vh] flex-col gap-6 rounded-r7 bg-surface-popover p-3 text-[13px]/[19px] text-primary shadow-[var(--approval-card-shadow)]"
 			>
-				<div className="flex min-h-0 flex-col gap-3 overflow-y-auto">
-					<span data-permission-title className="text-body font-semibold">
+				<div className="-mx-3 -mt-1 -mb-2 flex min-h-0 flex-col gap-2.5 overflow-y-auto px-3 pt-1 pb-2">
+					<span data-permission-title className="flex min-h-6 items-center text-[13px]/[19px] font-bold">
 						{title}
 					</span>
 					{command !== null && (
-						<pre className="overflow-x-auto rounded-r4 bg-alpha-1 px-3 py-2 font-mono text-footnote whitespace-pre-wrap text-primary">
+						<div
+							data-approval-value
+							className="rounded-r4 bg-alpha-1 px-3 py-2 font-mono text-[12px]/[17px] break-words whitespace-pre-wrap text-secondary select-text [unicode-bidi:plaintext]"
+						>
 							{command}
-						</pre>
+						</div>
 					)}
 					{!canAnswer && <p className="text-footnote text-secondary">Answer in the terminal</p>}
 					{error && <p className="text-footnote text-extended-pink">{error}</p>}
 				</div>
-				<div className="flex justify-between gap-2 @max-[500px]/approval-dock:flex-col">
+				<div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2 @max-[500px]/approval-dock:flex-col">
 					<button
 						type="button"
 						disabled={!enabled}
 						onClick={() => void decide("deny")}
-						className={`${ACTION_BUTTON} text-secondary hover:bg-alpha-2`}
+						className={`${ACTION_BUTTON} border border-strong text-primary hover:bg-alpha-2`}
 					>
 						Deny
 						<Shortcut keys="1" className="pointer-coarse:hidden" />
@@ -94,7 +98,7 @@ export function PermissionCard({
 						type="button"
 						disabled={!enabled}
 						onClick={() => void decide("allow")}
-						className={`${ACTION_BUTTON} bg-primary text-surface-1 hover:bg-primary/80`}
+						className={`${ACTION_BUTTON} bg-primary font-medium text-surface-1 [--shortcut-cap-ink:currentColor] hover:bg-primary/80`}
 					>
 						{submitting && <Loader2 aria-hidden="true" className="size-3 animate-spin" />}
 						Allow once
