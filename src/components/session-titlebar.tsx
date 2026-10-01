@@ -32,10 +32,10 @@ import {Tooltip} from "./ui/tooltip";
 const PILLS_COMPACT_BELOW_PX = 560;
 
 const TITLE_CLASS =
-	"h-[26px] min-w-0 cursor-text truncate rounded-r5 border-0 bg-transparent px-1.5 text-left text-[13px]/[19px] font-medium text-primary select-none hover:bg-fill-ghost-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100";
+	"h-6 min-w-0 cursor-text truncate rounded-r6 border-0 bg-transparent px-1 text-left text-[13px]/[19px] font-medium text-primary select-none hover:bg-fill-ghost-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100";
 
 const CHEVRON_CLASS =
-	"flex size-[26px] shrink-0 cursor-pointer items-center justify-center rounded-r5 text-secondary transition-colors hover:bg-fill-ghost-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100 data-[popup-open]:bg-fill-ghost-hover";
+	"flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-r6 text-secondary transition-colors hover:bg-fill-ghost-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100 data-[popup-open]:bg-fill-ghost-hover";
 
 const PILL_CLASS =
 	"inline-flex h-5 min-w-0 shrink-0 cursor-default items-center gap-[3px] rounded-r3 bg-alpha-2 px-[5px] text-caption text-secondary no-underline select-none transition-colors hover:bg-alpha-3 data-[popup-open]:bg-alpha-3";
@@ -364,7 +364,7 @@ export function SessionTitlebar({
 				<div className="flex min-w-[32px] items-center">
 					<SessionTitleButton rename={rename} className={TITLE_CLASS} summary={summary} />
 					<Menu onOpenChangeComplete={menuRename.onOpenChangeComplete}>
-						<Tooltip content="More options" side="bottom">
+						<Tooltip content={`More options for ${rename.title}`} side="bottom">
 							<MenuTrigger aria-label={`More options for ${rename.title}`} className={CHEVRON_CLASS}>
 								<ChevronDown aria-hidden className="size-4" />
 							</MenuTrigger>

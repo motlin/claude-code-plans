@@ -185,7 +185,7 @@ afterEach(() => {
 });
 
 describe("AI summary placement", () => {
-	it("renders the summary once, as the first transcript row and the title's tooltip", async () => {
+	it("renders the summary once, as the first transcript row and the title's description", async () => {
 		await renderSessionPage(detail, []);
 
 		const rows = screen.getAllByText(SUMMARY);
@@ -206,7 +206,7 @@ describe("AI summary placement", () => {
 			rowIsFirstInTranscript: true,
 			rowFollowedByMessages: true,
 			inHeader: false,
-			tooltip: `Rename\n\n${SUMMARY}`,
+			tooltip: null,
 			description: SUMMARY,
 		});
 	});
@@ -227,7 +227,7 @@ describe("AI summary placement", () => {
 			headerButton: null,
 			menuItem: "Generate AI summary",
 			summaryRow: null,
-			tooltip: "Rename",
+			tooltip: null,
 		});
 	});
 });

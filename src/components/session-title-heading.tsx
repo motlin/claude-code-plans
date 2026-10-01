@@ -8,6 +8,7 @@ import {toggleUnseen} from "../lib/unread-store";
 import {ArchivedBadge} from "./archived-badge";
 import {InlineRenameInput} from "./inline-rename-input";
 import {useToast} from "./toast";
+import {Tooltip} from "./ui/tooltip";
 
 export interface SessionTitleShortcutOptions {
 	sessionId: string;
@@ -57,7 +58,7 @@ export function useSessionTitleShortcuts({
 
 /**
  * claude.ai/code's rename button: clicking it swaps the title for an inline input.
- * A session summary rides along as the button's description and in its tooltip.
+ * Upstream's styled "Rename" tooltip sits below it; a session summary rides along as the button's description.
  */
 export function SessionTitleButton({
 	rename,
@@ -73,16 +74,17 @@ export function SessionTitleButton({
 		return <InlineRenameInput value={rename.title} onCommit={rename.commit} onCancel={rename.cancel} />;
 	}
 	return (
-		<button
-			type="button"
-			aria-label={`${rename.title}, rename session`}
-			title={hasSummary ? `Rename\n\n${summary}` : "Rename"}
-			{...(hasSummary ? {"aria-description": summary} : {})}
-			onClick={rename.startEditing}
-			className={className}
-		>
-			{rename.title}
-		</button>
+		<Tooltip content="Rename" side="bottom" className="min-w-0">
+			<button
+				type="button"
+				aria-label={`${rename.title}, rename session`}
+				{...(hasSummary ? {"aria-description": summary} : {})}
+				onClick={rename.startEditing}
+				className={className}
+			>
+				{rename.title}
+			</button>
+		</Tooltip>
 	);
 }
 

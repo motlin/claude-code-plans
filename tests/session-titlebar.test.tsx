@@ -299,6 +299,50 @@ describe("SessionTitlebar chrome", () => {
 	});
 });
 
+describe("SessionTitlebar title and chevron", () => {
+	async function hoverTooltip(target: Element): Promise<{text: string | null; describedBy: boolean}> {
+		fireEvent.pointerEnter(target);
+		await act(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 350));
+		});
+		const tooltip = screen.queryByRole("tooltip");
+		const result = {
+			text: tooltip?.textContent ?? null,
+			describedBy: tooltip !== null && target.getAttribute("aria-describedby") === tooltip.id,
+		};
+		fireEvent.pointerLeave(target);
+		return result;
+	}
+
+	it("sizes the title and chevron as upstream's flush 24px controls", async () => {
+		await renderTitlebar(baseDetail);
+		const title = screen.getByRole("button", {name: `${TITLE}, rename session`});
+		const chevron = screen.getByRole("button", {name: `More options for ${TITLE}`});
+
+		expect({
+			title: ["h-6", "px-1", "rounded-r6"].every((name) => title.classList.contains(name)),
+			chevron: ["size-6", "rounded-r6"].every((name) => chevron.classList.contains(name)),
+		}).toStrictEqual({title: true, chevron: true});
+	});
+
+	it("shows a styled Rename tooltip on the title instead of a native title attribute", async () => {
+		await renderTitlebar(baseDetail);
+		const title = screen.getByRole("button", {name: `${TITLE}, rename session`});
+
+		expect({nativeTitle: title.getAttribute("title"), tooltip: await hoverTooltip(title)}).toStrictEqual({
+			nativeTitle: null,
+			tooltip: {text: "Rename", describedBy: true},
+		});
+	});
+
+	it("names the session in the chevron's tooltip", async () => {
+		await renderTitlebar(baseDetail);
+		const chevron = screen.getByRole("button", {name: `More options for ${TITLE}`});
+
+		expect(await hoverTooltip(chevron)).toStrictEqual({text: `More options for ${TITLE}`, describedBy: true});
+	});
+});
+
 describe("SessionTitlebar pill collapse", () => {
 	function compactState(titlebar: HTMLElement) {
 		const lead = titlebar.querySelector("[data-titlebar-lead]");
