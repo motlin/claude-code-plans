@@ -320,17 +320,6 @@ function AppearanceSection() {
 				/>
 			</SettingsRow>
 			<SettingsRow
-				slug="transcript-width"
-				title="Transcript width"
-				description="Maximum width of the transcript and composer columns."
-			>
-				<SegmentedControl
-					value={settings.transcriptWidth}
-					options={TRANSCRIPT_WIDTH_OPTIONS}
-					onValueChange={(next) => setSetting("transcriptWidth", next)}
-				/>
-			</SettingsRow>
-			<SettingsRow
 				slug="default-transcript-view"
 				title="Default transcript view"
 				description="The view sessions open in. Picking a view from a session’s Transcript view menu changes only that session."
@@ -363,6 +352,24 @@ const MOTION_OPTIONS: Array<{value: Motion; label: string}> = [
 	{value: "system", label: "System"},
 	{value: "reduced", label: "Reduced"},
 ];
+
+function TranscriptWidthRow() {
+	const {settings, setSetting} = useSettings();
+
+	return (
+		<SettingsRow
+			slug="transcript-width"
+			title="Transcript width"
+			description="Maximum width of the transcript and composer columns."
+		>
+			<SegmentedControl
+				value={settings.transcriptWidth}
+				options={TRANSCRIPT_WIDTH_OPTIONS}
+				onValueChange={(next) => setSetting("transcriptWidth", next)}
+			/>
+		</SettingsRow>
+	);
+}
 
 function MotionRow() {
 	const {settings, setSetting} = useSettings();
@@ -691,6 +698,7 @@ export function GeneralSettings() {
 		<>
 			<SettingsSection title="Appearance">
 				<ThemeRow />
+				<TranscriptWidthRow />
 				<MotionRow />
 				<ToggleRow
 					label="Hide chrome"

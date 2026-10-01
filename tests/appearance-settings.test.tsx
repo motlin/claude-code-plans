@@ -10,7 +10,7 @@ import {
 	TranscriptTextSizeSchema,
 } from "../src/lib/appearance";
 import {DEFAULTS, SettingsProvider} from "../src/components/settings-provider";
-import {ClaudeCodeSettings, TranscriptSettings} from "../src/components/settings/settings-sections";
+import {ClaudeCodeSettings, GeneralSettings, TranscriptSettings} from "../src/components/settings/settings-sections";
 import {ThemeProvider} from "../src/components/theme-provider";
 import {installLocalStorage} from "./fake-storage";
 
@@ -91,7 +91,12 @@ describe("appearance setting schemas", () => {
 
 describe("Claude Code settings ▸ Appearance", () => {
 	it("applies interface font, transcript text size and width as CSS variables on <html>", async () => {
-		await renderTab(<ClaudeCodeSettings />);
+		await renderTab(
+			<>
+				<GeneralSettings />
+				<ClaudeCodeSettings />
+			</>,
+		);
 		const initial = htmlVars();
 
 		pick("Interface font", "System");
@@ -133,7 +138,12 @@ describe("Claude Code settings ▸ Appearance", () => {
 	it("reads stored appearance values and ignores unknown ones", async () => {
 		localStorage.setItem("ccp-interface-font", "system");
 		localStorage.setItem("ccp-transcript-text-size", "huge");
-		await renderTab(<ClaudeCodeSettings />);
+		await renderTab(
+			<>
+				<GeneralSettings />
+				<ClaudeCodeSettings />
+			</>,
+		);
 
 		expect({
 			font: checked("Interface font"),

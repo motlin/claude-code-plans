@@ -28,6 +28,7 @@ describe("searchSettings", () => {
 		// Case-insensitive, and title-only: section headings ("Code appearance") are not indexed.
 		["THEME", [{tab: "general", rows: [["theme", "Theme"]]}]],
 		["appearance", []],
+		["width", [{tab: "general", rows: [["transcript-width", "Transcript width"]]}]],
 		// Title prefix matches outrank word-start matches, which outrank mid-word matches,
 		// and groups follow their best-ranked row.
 		[

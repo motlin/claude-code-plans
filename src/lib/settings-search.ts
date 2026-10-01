@@ -13,6 +13,7 @@ export interface SettingsIndexEntry {
  */
 export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
 	{tab: "general", rowSlug: "theme", title: "Theme"},
+	{tab: "general", rowSlug: "transcript-width", title: "Transcript width"},
 	{tab: "general", rowSlug: "motion", title: "Motion"},
 	{tab: "general", rowSlug: "hide-chrome", title: "Hide chrome"},
 	{tab: "general", rowSlug: "recent-plans-and-memories", title: "Recent plans and memories"},
@@ -22,7 +23,6 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
 	{tab: "claude-code", rowSlug: "code-font", title: "Code font"},
 	{tab: "claude-code", rowSlug: "interface-font", title: "Interface font"},
 	{tab: "claude-code", rowSlug: "transcript-text-size", title: "Transcript text size"},
-	{tab: "claude-code", rowSlug: "transcript-width", title: "Transcript width"},
 	{tab: "claude-code", rowSlug: "default-transcript-view", title: "Default transcript view"},
 	{tab: "transcript", rowSlug: "thinking", title: "Thinking"},
 	{tab: "transcript", rowSlug: "tools", title: "Tools"},
