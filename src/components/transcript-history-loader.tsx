@@ -1,4 +1,5 @@
 import {useQueryClient} from "@tanstack/react-query";
+import {Loader2} from "lucide-react";
 import {useCallback, useEffect, useLayoutEffect, useRef, useState} from "react";
 import {fetchEarlierTranscript} from "../lib/api/sessions";
 import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
@@ -39,8 +40,9 @@ interface TranscriptHistoryLoaderProps {
 /**
  * Head of a windowed transcript. The endpoint serves the tail of a long
  * session's JSONL, so everything before `startIndex` is still on the server;
- * this pulls the previous page when the reader scrolls back to it, and offers a
- * button for anyone who would rather not scroll (or whose last attempt failed).
+ * this pulls the previous page when the reader scrolls back to it. Like
+ * claude.ai/code it loads silently, showing only a spinner while a page is in
+ * flight.
  */
 export function TranscriptHistoryLoader({sessionId, startIndex}: TranscriptHistoryLoaderProps) {
 	const queryClient = useQueryClient();
@@ -141,15 +143,28 @@ export function TranscriptHistoryLoader({sessionId, startIndex}: TranscriptHisto
 			data-testid="transcript-history-loader"
 			className={`${CHAT_COLUMN_CLASS} flex flex-col items-center gap-1 pt-4 text-xs text-t6`}
 		>
-			<button
-				type="button"
-				onClick={() => void loadEarlier()}
-				disabled={isLoading}
-				className="cursor-pointer rounded-md border border-border bg-surface-0 px-3 py-1.5 transition-colors hover:text-primary disabled:cursor-default disabled:opacity-60"
-			>
-				{isLoading ? "Loading earlier messages…" : `Load ${startIndex} earlier records`}
-			</button>
+			{isLoading && (
+				<div role="status" className="flex justify-center">
+					<Loader2 aria-hidden="true" className="size-4 animate-spin" />
+					<span className="sr-only">Loading...</span>
+				</div>
+			)}
 			{error && <span className="text-danger-000">{error}</span>}
 		</div>
+	);
+}
+
+/**
+ * Upstream's `scroll-fade-strip-top`: a sticky strip that fades the transcript
+ * out under the top of the scroller, mirroring the fade above the composer dock.
+ * The negative margin keeps it from pushing the first message down.
+ */
+export function TranscriptTopFade() {
+	return (
+		<div
+			aria-hidden="true"
+			data-testid="transcript-top-fade"
+			className="pointer-events-none sticky top-0 z-[1] -mb-6 h-6 bg-linear-to-b from-surface-2 to-transparent"
+		/>
 	);
 }

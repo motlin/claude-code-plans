@@ -33,7 +33,7 @@ import {TerminalPaneShortcut, useRegisterTerminalPane} from "./panes/terminal-pa
 import {ApprovalDock} from "./approval-dock";
 import {PermissionCard} from "./permission-card";
 import {BranchStrip} from "./branch-strip";
-import {TranscriptHistoryLoader, findScrollContainer} from "./transcript-history-loader";
+import {TranscriptHistoryLoader, TranscriptTopFade, findScrollContainer} from "./transcript-history-loader";
 import {Tooltip} from "./ui/tooltip";
 import {SessionPaneControls} from "./view-options-menu";
 import {SessionDock} from "./session-dock";
@@ -719,6 +719,7 @@ function SessionView({
 
 				{/* The transcript spans the page padding; the chat column's own gutters inset it, as on upstream */}
 				<div className={CHAT_COLUMN_BLEED_CLASS}>
+					<TranscriptTopFade />
 					{/* Chat messages */}
 					<AskUserQuestionProvider value={askUserQuestionCtx}>
 						<TranscriptHistoryLoader sessionId={sessionId} startIndex={transcript.startIndex} />

@@ -102,28 +102,47 @@ describe("SessionDock scroll-to-bottom pill", () => {
 });
 
 describe("SessionDock scroll-to-bottom pill style", () => {
-	it("draws a bordered white 24px circle with a shadow", () => {
+	it("draws upstream's white 20x24 pill with radius 6, an inset 10% ring plus a 5% drop shadow and a 12px chevron", () => {
 		render(<DockInScroller />);
 		const pill = screen.getByLabelText("Scroll to bottom", {selector: "button"});
 		const shape = [
+			"h-6",
+			"w-5",
+			"px-1",
+			"rounded-r5",
+			"bg-surface-3",
+			"shadow-[inset_0_0_0_1px_var(--color-border),0_1px_2px_rgb(0_0_0/0.05)]",
+			"text-secondary",
 			"size-6",
 			"rounded-full",
 			"border",
-			"border-border",
-			"bg-surface-0",
 			"shadow-panel-sm",
-			"rounded",
+			"hover:text-primary",
 		];
+		const icon = pill.querySelector("svg")!;
 
-		expect(shape.map((className) => [className, pill.classList.contains(className)])).toStrictEqual([
-			["size-6", true],
-			["rounded-full", true],
-			["border", true],
-			["border-border", true],
-			["bg-surface-0", true],
-			["shadow-panel-sm", true],
-			["rounded", false],
-		]);
+		expect({
+			shape: shape.map((className) => [className, pill.classList.contains(className)]),
+			iconClassName: icon.getAttribute("class"),
+			title: pill.getAttribute("title"),
+		}).toStrictEqual({
+			shape: [
+				["h-6", true],
+				["w-5", true],
+				["px-1", true],
+				["rounded-r5", true],
+				["bg-surface-3", true],
+				["shadow-[inset_0_0_0_1px_var(--color-border),0_1px_2px_rgb(0_0_0/0.05)]", true],
+				["text-secondary", true],
+				["size-6", false],
+				["rounded-full", false],
+				["border", false],
+				["shadow-panel-sm", false],
+				["hover:text-primary", false],
+			],
+			iconClassName: "lucide lucide-chevron-down size-3",
+			title: null,
+		});
 	});
 });
 

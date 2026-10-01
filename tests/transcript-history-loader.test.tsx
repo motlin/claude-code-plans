@@ -6,6 +6,7 @@ import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {
 	TranscriptHistoryLoader,
+	TranscriptTopFade,
 	findScrollContainer,
 	toObserverRoot,
 } from "../src/components/transcript-history-loader";
@@ -15,7 +16,7 @@ import {sessionQueryKeys, type TranscriptData} from "../src/lib/api/sessions";
  * Tests for the head of a windowed transcript. The endpoint serves the tail of
  * a long session, so this component is the only way back to the older records:
  * an IntersectionObserver pulls the previous page when the reader scrolls to
- * the top, and the button covers everyone else.
+ * the top, showing upstream's spinner while the page is in flight.
  */
 
 let intersect: (...states: boolean[]) => void = () => undefined;
@@ -125,19 +126,43 @@ describe("TranscriptHistoryLoader", () => {
 		);
 	});
 
-	it("loads the earlier page when the button is used instead of scrolling", async () => {
-		const fetchSpy = mockEarlierPage(EARLIER_PAGE);
-		const {queryClient} = renderLoader(TAIL);
+	it("offers no button, and shows upstream's Loading... spinner while the earlier page is in flight", async () => {
+		let resolveFetch: (response: Response) => void = () => undefined;
+		vi.spyOn(globalThis, "fetch").mockReturnValue(
+			new Promise<Response>((resolve) => {
+				resolveFetch = resolve;
+			}),
+		);
+		renderLoader(TAIL);
+		const idle = {
+			buttons: screen.queryAllByRole("button").length,
+			earlierRecordsText: screen.queryByText(/earlier records/) === null,
+			status: screen.queryByRole("status"),
+		};
 
-		screen.getByRole("button", {name: "Load 2 earlier records"}).click();
+		intersect(false);
+		intersect(true);
+		const status = await screen.findByRole("status");
+		const loading = {
+			buttons: screen.queryAllByRole("button").length,
+			text: status.textContent,
+			srOnly: status.querySelector(".sr-only")?.textContent,
+			spinner: status.querySelector("svg.animate-spin") !== null,
+		};
+		resolveFetch(
+			new Response(JSON.stringify(EARLIER_PAGE), {status: 200, headers: {"Content-Type": "application/json"}}),
+		);
+		await waitFor(() => expect(screen.queryByRole("status")).toBeNull());
 
-		await waitFor(() => expect(fetchSpy.mock.calls.length).toBe(1));
-		expect(queryClient.getQueryData<TranscriptData>(sessionQueryKeys.transcript("sess-1"))?.startIndex).toBe(0);
+		expect({idle, loading}).toStrictEqual({
+			idle: {buttons: 0, earlierRecordsText: true, status: null},
+			loading: {buttons: 0, text: "Loading...", srOnly: "Loading...", spinner: true},
+		});
 	});
 
 	it("keeps the reader in place when the prepended page grows the transcript", async () => {
 		mockEarlierPage(EARLIER_PAGE);
-		const {rerenderWithStartIndex} = renderLoader(TAIL);
+		const {queryClient, rerenderWithStartIndex} = renderLoader(TAIL);
 		const scroller = screen.getByTestId("transcript-history-loader").parentElement!;
 		scroller.style.overflowY = "auto";
 		let scrollHeight = 1_000;
@@ -146,7 +171,10 @@ describe("TranscriptHistoryLoader", () => {
 
 		intersect(false);
 		intersect(true);
-		await waitFor(() => expect(screen.getByRole("button").hasAttribute("disabled")).toBe(false));
+		await waitFor(() => {
+			expect(queryClient.getQueryData<TranscriptData>(sessionQueryKeys.transcript("sess-1"))?.startIndex).toBe(0);
+			expect(screen.queryByRole("status")).toBeNull();
+		});
 		// The page landing is what grows the transcript and moves `startIndex`.
 		scrollHeight = 1_600;
 		rerenderWithStartIndex(0);
@@ -160,8 +188,11 @@ describe("TranscriptHistoryLoader", () => {
 
 		intersect(true);
 
-		await waitFor(() => expect(screen.getByRole("button").textContent).toBe("Load 2 earlier records"));
-		expect(fetchSpy.mock.calls).toStrictEqual([]);
+		await Promise.resolve();
+		expect({fetches: fetchSpy.mock.calls, status: screen.queryByRole("status")}).toStrictEqual({
+			fetches: [],
+			status: null,
+		});
 	});
 
 	it("loads when one callback carries both the exit and the return", async () => {
@@ -202,8 +233,11 @@ describe("TranscriptHistoryLoader", () => {
 		rerenderWithStartIndex(4);
 		intersect(true);
 
-		await waitFor(() => expect(screen.getByRole("button").textContent).toBe("Load 4 earlier records"));
-		expect(fetchSpy.mock.calls).toStrictEqual([]);
+		await Promise.resolve();
+		expect({fetches: fetchSpy.mock.calls, status: screen.queryByRole("status")}).toStrictEqual({
+			fetches: [],
+			status: null,
+		});
 	});
 
 	it("surfaces a failure instead of silently leaving the history unreachable", async () => {
@@ -214,6 +248,18 @@ describe("TranscriptHistoryLoader", () => {
 		intersect(true);
 
 		await waitFor(() => expect(screen.getByText("fabricated network failure")).toBeDefined());
+	});
+});
+
+describe("TranscriptTopFade", () => {
+	it("pins a gradient from the page surface to transparent to the top of the scroller, mirroring the bottom fade", () => {
+		render(<TranscriptTopFade />);
+		const fade = screen.getByTestId("transcript-top-fade");
+
+		expect({ariaHidden: fade.getAttribute("aria-hidden"), className: fade.className}).toStrictEqual({
+			ariaHidden: "true",
+			className: "pointer-events-none sticky top-0 z-[1] -mb-6 h-6 bg-linear-to-b from-surface-2 to-transparent",
+		});
 	});
 });
 
