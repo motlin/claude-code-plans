@@ -23,7 +23,7 @@ export function SkillDetailHeader({detail}: {detail: SkillDetail}) {
 		<header className="flex flex-col gap-4">
 			<CustomizeLink
 				target={{kind: "list", section: "skills"}}
-				className="inline-flex w-fit items-center gap-1.5 rounded-r6 px-2 py-1 -ms-2 text-body text-secondary no-underline hover:bg-fill-ghost-hover hover:text-primary"
+				className="-ms-2 inline-flex h-6 w-fit items-center gap-1.5 rounded-r6 px-2 text-[13px]/[19px] text-secondary no-underline hover:bg-fill-ghost-hover hover:text-primary"
 			>
 				<ArrowLeft aria-hidden="true" className="size-4" />
 				Your skills

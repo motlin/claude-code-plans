@@ -11,6 +11,7 @@ import {
 } from "@tanstack/react-router";
 import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
+import {SkillDetailHeader} from "../src/components/customize/skill-detail";
 import {ToastProvider} from "../src/components/toast";
 import {
 	customizeDiscoverQueryOptions,
@@ -18,6 +19,7 @@ import {
 	customizeSkillsQueryOptions,
 	type DiscoverCatalog,
 	type McpServerSummary,
+	type SkillDetail,
 	type SkillSummary,
 } from "../src/lib/api/customize";
 import {pluginsQueryOptions} from "../src/lib/api/plugins";
@@ -382,6 +384,50 @@ describe("customize shell", () => {
 			stored: localStorage.getItem("ccb-customize-skills-sort"),
 			label: screen.getByRole("button", {name: "Sort by Name"}).getAttribute("aria-label"),
 		}).toStrictEqual({stored: "name", label: "Sort by Name"});
+	});
+});
+
+describe("customize header sizes", () => {
+	it("renders Yours | Discover with the shared 32px segmented control", async () => {
+		await renderCustomize("/customize/skills");
+		const group = screen.getByRole("radiogroup", {name: "Skills"});
+
+		expect({
+			group: group.className.split(" ").includes("h-8"),
+			radios: within(group)
+				.getAllByRole("radio")
+				.map((radio) => [radio.tagName, radio.className.split(" ").includes("rounded-r5")]),
+		}).toStrictEqual({
+			group: true,
+			radios: [
+				["SPAN", true],
+				["SPAN", true],
+			],
+		});
+	});
+
+	it("sizes the skill detail back link as an xs button", async () => {
+		const skill = SKILLS[0];
+		if (skill === undefined) throw new Error("Expected a skill fixture");
+		const detail: SkillDetail = {skill, userInvocable: true, modelInvocable: true, allowedTools: [], tree: []};
+		const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
+		const rootRoute = createRootRoute({
+			component: () => (
+				<QueryClientProvider client={queryClient}>
+					<ToastProvider>
+						<SkillDetailHeader detail={detail} />
+					</ToastProvider>
+				</QueryClientProvider>
+			),
+		});
+		const router = createRouter({routeTree: rootRoute, history: createMemoryHistory({initialEntries: ["/"]})});
+		await router.load();
+		render(<RouterProvider router={router} />);
+
+		const classes = (await screen.findByRole("link", {name: "Your skills"})).className.split(" ");
+		expect(["h-6", "text-[13px]/[19px]", "rounded-r6", "px-2"].filter((c) => !classes.includes(c))).toStrictEqual(
+			[],
+		);
 	});
 });
 

@@ -3,6 +3,7 @@ import {Link} from "@tanstack/react-router";
 import {ArrowDownUp, Search, SlidersHorizontal, X} from "lucide-react";
 import {type ReactNode, useEffect, useState} from "react";
 import {customizeDiscoverQueryOptions} from "../../lib/api/customize";
+import {SegmentedControl} from "../settings/segmented-control";
 import {Menu, MenuContent, MenuLabel, MenuRadioGroup, MenuRadioItem, MenuTrigger} from "../ui/menu";
 import {CustomizeAddMenu} from "./customize-add-menu";
 import {DISCOVER_SORT_OPTIONS, discoverCategoryOptions, discoverForSection} from "./discover-view";
@@ -21,8 +22,10 @@ const TAB_CLASS =
 const ICON_BUTTON_CLASS =
 	"inline-flex size-8 shrink-0 items-center justify-center rounded-r6 text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary aria-expanded:text-primary disabled:pointer-events-none disabled:opacity-50";
 
-const SEGMENT_CLASS =
-	"relative z-[1] inline-flex h-full items-center justify-center rounded-r4 px-3 text-body font-normal text-t6 outline-none hover:text-primary focus-visible:outline-2 focus-visible:outline-accent-100 aria-checked:bg-surface-0 aria-checked:text-primary aria-checked:shadow-[inset_0_0_0_1px_var(--color-border),0_1px_2px_0_rgb(0_0_0/0.05)]";
+const VIEW_OPTIONS = [
+	{value: "yours", label: "Yours"},
+	{value: "discover", label: "Discover"},
+] as const;
 
 interface CustomizeHeaderProps {
 	section: CustomizeSectionConfig;
@@ -83,30 +86,12 @@ export function CustomizeHeader({
 					<div
 						className={`flex shrink-0 items-center gap-3 ${embedded ? "" : "before:h-5 before:w-px before:shrink-0 before:bg-border"}`}
 					>
-						<div
-							role="radiogroup"
+						<SegmentedControl<"yours" | "discover">
 							aria-label={section.label}
-							className="inline-flex h-7 shrink-0 items-stretch rounded-r6 bg-fill-ghost-hover p-px"
-						>
-							<button
-								type="button"
-								role="radio"
-								aria-checked={search.view === undefined}
-								onClick={() => updateSearch({view: undefined})}
-								className={SEGMENT_CLASS}
-							>
-								Yours
-							</button>
-							<button
-								type="button"
-								role="radio"
-								aria-checked={search.view === "discover"}
-								onClick={() => updateSearch({view: "discover"})}
-								className={SEGMENT_CLASS}
-							>
-								Discover
-							</button>
-						</div>
+							value={search.view ?? "yours"}
+							onValueChange={(view) => updateSearch({view: view === "yours" ? undefined : view})}
+							options={VIEW_OPTIONS}
+						/>
 					</div>
 				)}
 			</div>
