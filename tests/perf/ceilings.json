@@ -1,4 +1,34 @@
 {
+	"client.coldHome.default.commitsToRows": {
+		"ceiling": 11,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.coldHome.default.fetches": {
+		"ceiling": 18,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.coldHome.default.responseBytes": {
+		"ceiling": 3536,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"client.coldHome.localSections.commitsToRows": {
+		"ceiling": 5,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.coldHome.localSections.fetches": {
+		"ceiling": 19,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.coldHome.localSections.responseBytes": {
+		"ceiling": 3717,
+		"unit": "bytes",
+		"tolerance": 0
+	},
 	"client.composer.home.slashMenu.claudeEventsConsumers": {
 		"ceiling": 1,
 		"unit": "count",
