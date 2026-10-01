@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {cleanup, fireEvent, render, screen} from "@testing-library/react";
+import {cleanup, fireEvent, render, waitFor} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat} from "../src/components/session-chat";
 import type {SlashCommand} from "../src/lib/slash-commands";
@@ -119,6 +119,19 @@ function chipSummary(container: HTMLElement): {tag: string; text: string; label:
 	}));
 }
 
+async function hoverChip(container: HTMLElement): Promise<HTMLElement> {
+	const chip = container.querySelector("[data-slash-command-chip]");
+	if (!(chip instanceof HTMLElement)) throw new Error("no chip");
+	fireEvent.pointerEnter(chip, {pointerType: "mouse"});
+	fireEvent.mouseEnter(chip);
+	fireEvent.mouseMove(chip);
+	return waitFor(() => {
+		const card = document.querySelector("[data-slash-command-card]");
+		if (!(card instanceof HTMLElement)) throw new Error("no card");
+		return card;
+	});
+}
+
 describe("SessionChat isMeta slash-command bodies", () => {
 	it.each(["normal", "thinking", "verbose"] as const)("hides skill bodies and meta notes in %s mode", (mode) => {
 		const container = renderRecords([LOOP_PROMPT, SKILL_BODY, WAKEUP_NOTE], {transcriptMode: mode});
@@ -151,7 +164,7 @@ describe("SessionChat slash-command chip", () => {
 					text: "/loop",
 					label: "loop",
 					className:
-						"inline-flex items-baseline rounded-md text-accent-000 hover:bg-accent-900 cursor-pointer align-baseline",
+						"group relative inline-flex items-baseline rounded-r5 text-upstream-accent cursor-pointer align-baseline",
 				},
 			],
 			bubbles: ["/loop Check PR 1954 for fabricated activity"],
@@ -178,30 +191,58 @@ describe("SessionChat slash-command chip", () => {
 		expect(chipSummary(container)).toStrictEqual([]);
 	});
 
-	it("opens a popover with /name and the known skill description on click", async () => {
+	it("opens the hover card with /name and the known skill description on hover, without a click", async () => {
 		const container = renderRecords([LOOP_PROMPT], {slashCommands: [LOOP_COMMAND]});
 
-		fireEvent.click(container.querySelector("[data-slash-command-chip]")!);
-
-		const popup = await screen.findByTestId("slash-command-popover");
+		const card = await hoverChip(container);
 		expect({
-			name: popup.querySelector("[data-slash-command-popover-name]")?.textContent ?? null,
-			description: popup.querySelector("[data-slash-command-popover-description]")?.textContent ?? null,
+			name: card.querySelector("[data-slash-command-card-name]")?.textContent ?? null,
+			description: card.querySelector("[data-slash-command-card-description]")?.textContent ?? null,
+			side: card.getAttribute("data-side"),
+			className: card.className,
 		}).toStrictEqual({
 			name: "/loop",
 			description: "Run a fabricated prompt on a recurring interval",
+			side: "top",
+			className:
+				"flex w-[280px] max-w-[calc(100vw-16px)] flex-col gap-1 rounded-r7 bg-[var(--menu-bg)] p-3 text-[13px]/[19px] text-primary shadow-[var(--menu-shadow)] outline-none",
 		});
 	});
 
-	it("opens a popover with only /name when the command is unknown", async () => {
+	it("opens the hover card with only /name when the command is unknown", async () => {
 		const container = renderRecords([LOOP_PROMPT]);
 
-		fireEvent.click(container.querySelector("[data-slash-command-chip]")!);
-
-		const popup = await screen.findByTestId("slash-command-popover");
+		const card = await hoverChip(container);
 		expect({
-			name: popup.querySelector("[data-slash-command-popover-name]")?.textContent ?? null,
-			description: popup.querySelector("[data-slash-command-popover-description]")?.textContent ?? null,
+			name: card.querySelector("[data-slash-command-card-name]")?.textContent ?? null,
+			description: card.querySelector("[data-slash-command-card-description]")?.textContent ?? null,
 		}).toStrictEqual({name: "/loop", description: null});
+	});
+
+	it("has no click-to-open trigger, so clicking the chip opens nothing", () => {
+		const container = renderRecords([LOOP_PROMPT], {slashCommands: [LOOP_COMMAND]});
+		const chip = container.querySelector("[data-slash-command-chip]")!;
+
+		fireEvent.click(chip);
+
+		expect({
+			hasPopup: chip.getAttribute("aria-haspopup"),
+			expanded: chip.getAttribute("aria-expanded"),
+			card: document.querySelector("[data-slash-command-card]"),
+		}).toStrictEqual({hasPopup: null, expanded: null, card: null});
+	});
+
+	it("draws the hover highlight as an absolute accent-muted span behind a 13px/500 half-opacity slash", () => {
+		const container = renderRecords([LOOP_PROMPT]);
+		const chip = container.querySelector("[data-slash-command-chip]")!;
+
+		expect({
+			highlight: chip.querySelector("[data-slash-command-highlight]")?.className ?? null,
+			slash: chip.querySelector("[data-slash-command-slash]")?.className ?? null,
+		}).toStrictEqual({
+			highlight:
+				"pointer-events-none absolute -inset-y-0.5 -left-0.5 -right-1 rounded-r5 bg-upstream-accent-muted opacity-0 group-hover:opacity-100",
+			slash: "relative inline-block w-2 text-[13px] font-medium opacity-50",
+		});
 	});
 });

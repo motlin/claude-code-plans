@@ -72,6 +72,7 @@
 	--color-accent-900: var(--accent-900);
 	--color-upstream-accent: var(--upstream-accent);
 	--color-upstream-accent-pressed: var(--upstream-accent-pressed);
+	--color-upstream-accent-muted: var(--upstream-accent-muted);
 
 	/* User message bubble */
 	--color-user-msg-bg: var(--user-msg-bg);
@@ -214,6 +215,8 @@
 	--upstream-accent: rgb(24 79 149);
 	/* Upstream pressed-toggle paint behind the accent ink (titlebar trail). */
 	--upstream-accent-pressed: rgb(205 226 251);
+	/* Upstream bg-accent-muted: the slash-command chip's hover highlight. */
+	--upstream-accent-muted: rgb(42 120 214 / 0.1);
 	--accent-100: hsl(210 70.9% 51.6%);
 	--accent-900: hsl(211 72% 90%);
 
@@ -359,6 +362,7 @@
 	--accent-000: hsl(210 65.5% 67.1%);
 	--upstream-accent: rgb(128 178 235);
 	--upstream-accent-pressed: hsl(210 55.9% 24.6%);
+	--upstream-accent-muted: rgb(42 120 214 / 0.2);
 	--accent-100: hsl(210 70.9% 51.6%);
 	--accent-900: hsl(210 55.9% 24.6%);
 

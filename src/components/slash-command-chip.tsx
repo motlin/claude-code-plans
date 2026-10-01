@@ -1,4 +1,4 @@
-import {Popover} from "@base-ui/react/popover";
+import {PreviewCard} from "@base-ui/react/preview-card";
 import {createContext, useContext} from "react";
 
 import type {SlashCommand} from "../lib/slash-commands";
@@ -10,41 +10,46 @@ const EMPTY_SLASH_COMMANDS: readonly SlashCommand[] = [];
 export const SlashCommandsContext = createContext<readonly SlashCommand[]>(EMPTY_SLASH_COMMANDS);
 
 const CHIP_CLASS =
-	"inline-flex items-baseline rounded-md text-accent-000 hover:bg-accent-900 cursor-pointer align-baseline";
+	"group relative inline-flex items-baseline rounded-r5 text-upstream-accent cursor-pointer align-baseline";
 
-const POPUP_CLASS =
-	"flex w-[300px] max-w-[calc(100vw-16px)] flex-col gap-1 rounded-card bg-[var(--menu-bg)] px-3 py-2 text-[13px]/[18px] text-primary shadow-[var(--menu-shadow)] outline-none";
+const HIGHLIGHT_CLASS =
+	"pointer-events-none absolute -inset-y-0.5 -left-0.5 -right-1 rounded-r5 bg-upstream-accent-muted opacity-0 group-hover:opacity-100";
 
-/** Upstream's accent `/name` button: a 50% "/" glyph in a fixed slot, then the name. */
+const CARD_CLASS =
+	"flex w-[280px] max-w-[calc(100vw-16px)] flex-col gap-1 rounded-r7 bg-[var(--menu-bg)] p-3 text-[13px]/[19px] text-primary shadow-[var(--menu-shadow)] outline-none";
+
+/**
+ * Upstream's accent `/name` button: a 50% "/" glyph in a fixed slot, then the name. Hovering or
+ * focusing it opens a hover card above; it has no click action.
+ */
 function SlashCommandChip({name}: {name: string}) {
 	const commands = useContext(SlashCommandsContext);
 	const description = commands.find((command) => command.name === name)?.description ?? "";
 
 	return (
-		<Popover.Root>
-			<Popover.Trigger data-slash-command-chip="" className={CHIP_CLASS}>
-				<span aria-hidden="true" className="inline-block w-2 opacity-50">
+		<PreviewCard.Root>
+			<PreviewCard.Trigger render={<button type="button" />} data-slash-command-chip="" className={CHIP_CLASS}>
+				<span aria-hidden="true" data-slash-command-highlight="" className={HIGHLIGHT_CLASS} />
+				<span
+					aria-hidden="true"
+					data-slash-command-slash=""
+					className="relative inline-block w-2 text-[13px] font-medium opacity-50"
+				>
 					/
 				</span>
-				<span data-slash-command-label="" className="pl-2 pr-0.5">
+				<span data-slash-command-label="" className="relative pl-2 pr-0.5">
 					{name}
 				</span>
-			</Popover.Trigger>
-			<Popover.Portal>
-				<Popover.Positioner side="top" align="start" sideOffset={6} className="z-[130]">
-					<Popover.Popup data-testid="slash-command-popover" className={POPUP_CLASS}>
-						<Popover.Title data-slash-command-popover-name="" className="text-secondary">
-							{`/${name}`}
-						</Popover.Title>
-						{description !== "" && (
-							<Popover.Description data-slash-command-popover-description="" className="text-primary">
-								{description}
-							</Popover.Description>
-						)}
-					</Popover.Popup>
-				</Popover.Positioner>
-			</Popover.Portal>
-		</Popover.Root>
+			</PreviewCard.Trigger>
+			<PreviewCard.Portal>
+				<PreviewCard.Positioner side="top" align="start" sideOffset={6} className="z-[130]">
+					<PreviewCard.Popup data-slash-command-card="" className={CARD_CLASS}>
+						<div data-slash-command-card-name="" className="text-secondary">{`/${name}`}</div>
+						{description !== "" && <div data-slash-command-card-description="">{description}</div>}
+					</PreviewCard.Popup>
+				</PreviewCard.Positioner>
+			</PreviewCard.Portal>
+		</PreviewCard.Root>
 	);
 }
 
