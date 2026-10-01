@@ -11,6 +11,7 @@ import {
 } from "@tanstack/react-router";
 import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
+import {Composer} from "../src/components/composer";
 import {HOME_RECENT_LIMIT, HomeComposer} from "../src/components/home/home-composer";
 import {NewSessionShortcut} from "../src/components/new-session-shortcut";
 import {ToastProvider} from "../src/components/toast";
@@ -197,6 +198,44 @@ describe("HomeComposer", () => {
 			effort: "Medium",
 			mode: "Plan",
 		});
+	});
+
+	it("peeks the Clawd mascot over the composer as an unfocusable decorative button that hops on click", async () => {
+		await renderApp();
+		await screen.findByRole("textbox", {name: "Prompt"});
+
+		const mascot = document.querySelector<HTMLButtonElement>("[data-clawd-mascot]");
+		if (mascot === null) throw new Error("Expected the Clawd mascot on the home composer");
+		const before = {
+			tag: mascot.tagName,
+			ariaHidden: mascot.getAttribute("aria-hidden"),
+			tabIndex: mascot.getAttribute("tabindex"),
+			hopping: mascot.hasAttribute("data-hopping"),
+			viewBox: mascot.querySelector("svg")?.getAttribute("viewBox"),
+		};
+		fireEvent.click(mascot);
+		const afterClick = mascot.hasAttribute("data-hopping");
+		// jsdom has no AnimationEvent, so React listens for the prefixed name instead of `animationend`.
+		fireEvent(mascot, new Event("webkitAnimationEnd", {bubbles: true}));
+
+		expect({...before, afterClick, afterEnd: mascot.hasAttribute("data-hopping")}).toStrictEqual({
+			tag: "BUTTON",
+			ariaHidden: "true",
+			tabIndex: "-1",
+			hopping: false,
+			viewBox: "0 0 2750 1850",
+			afterClick: true,
+			afterEnd: false,
+		});
+	});
+
+	it("leaves the Clawd mascot off the session composer", () => {
+		render(<Composer variant="session" draftKey="session-mascot" onSend={() => {}} />);
+
+		expect({
+			prompt: screen.getByRole("textbox", {name: "Prompt"}).tagName,
+			mascot: document.querySelector("[data-clawd-mascot]"),
+		}).toStrictEqual({prompt: "TEXTAREA", mascot: null});
 	});
 
 	it("disables Send until the prompt has text", async () => {

@@ -711,6 +711,27 @@
 	}
 }
 
+/* Clawd mascot on the home composer: a click plays a short hop. `translate` leaves the
+   mirroring `scale` alone. */
+@media (prefers-reduced-motion: no-preference) {
+	.clawd-mascot[data-hopping] {
+		animation: clawd-hop 0.45s ease-out;
+	}
+}
+
+@keyframes clawd-hop {
+	0%,
+	100% {
+		translate: 0 0;
+	}
+	40% {
+		translate: 0 -14px;
+	}
+	70% {
+		translate: 0 2px;
+	}
+}
+
 @keyframes spark-turn {
 	to {
 		rotate: 360deg;

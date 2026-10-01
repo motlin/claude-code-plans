@@ -17,6 +17,7 @@ import {onHomeComposerFocusRequest} from "../../lib/home-composer-focus";
 import {findLaunchedSession, startSessionProjects, type PendingLaunch} from "../../lib/palette-start-session";
 import {Composer} from "../composer";
 import {useToast} from "../toast";
+import {ClawdMascot} from "./clawd-mascot";
 import {ProjectPicker} from "./project-picker";
 
 /** Same recents page the ⌘K palette reads, so both share one cached query. */
@@ -124,6 +125,7 @@ export function HomeComposer() {
 			<div className="flex flex-wrap gap-1 pr-24 pb-1">
 				<ProjectPicker projects={startProjects} selected={project} onSelect={setChosenProjectId} />
 			</div>
+			<ClawdMascot />
 			<Composer
 				variant="home"
 				draftKey="home"
