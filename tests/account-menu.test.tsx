@@ -119,8 +119,20 @@ describe("account menu", () => {
 			entries: menuEntries(menu),
 		}).toStrictEqual({
 			header: "craig@example.com",
-			entries: ["Settings", "Usage", "---", "Claude Config", "Setup", "---", "Learn more"],
+			entries: ["Settings", "Usage", "Get help", "---", "Claude Config", "Setup", "---", "Learn more"],
 		});
+	});
+
+	it("opens Get help on support.claude.com in a new tab", async () => {
+		await renderAccountMenu();
+		const item = within(await openMenu()).getByRole("menuitem", {name: "Get help"});
+
+		expect({
+			tag: item.tagName,
+			href: item.getAttribute("href"),
+			target: item.getAttribute("target"),
+			rel: item.getAttribute("rel"),
+		}).toStrictEqual({tag: "A", href: "https://support.claude.com", target: "_blank", rel: "noreferrer"});
 	});
 
 	it("opens above the button", async () => {
@@ -141,6 +153,7 @@ describe("account menu", () => {
 		).toStrictEqual([
 			["user-menu-settings", "Shift+Meta+,"],
 			["user-menu-usage", null],
+			["user-menu-get-help", null],
 			["user-menu-claude-config", null],
 			["user-menu-setup", null],
 			["user-menu-learn-more", null],
@@ -189,15 +202,13 @@ describe("account menu", () => {
 		const names = [...menuEntries(menu), ...menuEntries(submenu)];
 
 		expect(
-			names.filter((name) =>
-				/log ?out|language|plans|apps|get help|privacy|terms|academy|platform|anthropic/i.test(name ?? ""),
-			),
+			names.filter((name) => /log ?out|language|view all plans|get apps|privacy choices/i.test(name ?? "")),
 		).toStrictEqual([]);
 	});
 });
 
 describe("Learn more submenu", () => {
-	it("lists the docs links, a separator, then Keyboard shortcuts", async () => {
+	it("lists upstream's links, then the Claude Code links, a separator and Keyboard shortcuts", async () => {
 		await renderAccountMenu();
 		const submenu = await openLearnMore(await openMenu());
 
@@ -211,8 +222,27 @@ describe("Learn more submenu", () => {
 				.getByRole("menuitem", {name: /Keyboard shortcuts/})
 				.getAttribute("aria-keyshortcuts"),
 		}).toStrictEqual({
-			entries: ["Claude Code docs", "Changelog", "Report an issue", "---", "Keyboard shortcuts"],
+			entries: [
+				"Claude Platform",
+				"About Anthropic",
+				"---",
+				"Claude Academy",
+				"Usage policy",
+				"Privacy policy",
+				"Terms of service",
+				"Claude Code docs",
+				"Changelog",
+				"Report an issue",
+				"---",
+				"Keyboard shortcuts",
+			],
 			links: [
+				["https://platform.claude.com", "_blank"],
+				["https://www.anthropic.com/", "_blank"],
+				["https://claude.ai/learning", "_blank"],
+				["https://www.anthropic.com/legal/aup", "_blank"],
+				["https://www.anthropic.com/legal/privacy", "_blank"],
+				["https://www.anthropic.com/legal/consumer-terms", "_blank"],
 				["https://code.claude.com/docs", "_blank"],
 				["https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md", "_blank"],
 				["https://github.com/anthropics/claude-code/issues", "_blank"],

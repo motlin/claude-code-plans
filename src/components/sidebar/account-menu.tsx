@@ -5,6 +5,7 @@ import {
 	BookOpen,
 	Bug,
 	ChevronsUpDown,
+	CircleHelp,
 	FileCog,
 	Gauge,
 	Info,
@@ -29,7 +30,20 @@ import {
 	MenuTrigger,
 } from "../ui/menu";
 
-const EXTERNAL_LINKS = [
+/** Upstream's Learn more links; a separator sits between these two groups. */
+const UPSTREAM_PRODUCT_LINKS = [
+	{label: "Claude Platform", href: "https://platform.claude.com"},
+	{label: "About Anthropic", href: "https://www.anthropic.com/"},
+] as const;
+
+const UPSTREAM_LEGAL_LINKS = [
+	{label: "Claude Academy", href: "https://claude.ai/learning"},
+	{label: "Usage policy", href: "https://www.anthropic.com/legal/aup"},
+	{label: "Privacy policy", href: "https://www.anthropic.com/legal/privacy"},
+	{label: "Terms of service", href: "https://www.anthropic.com/legal/consumer-terms"},
+] as const;
+
+const CLAUDE_CODE_LINKS = [
 	{label: "Claude Code docs", href: "https://code.claude.com/docs", icon: <BookOpen />},
 	{
 		label: "Changelog",
@@ -45,7 +59,8 @@ const EXTERNAL_LINKS = [
 
 /**
  * Upstream's footer user button (`[data-testid=user-menu-button]`) and the account menu it opens
- * above itself. Only local items remain: Settings, Usage, Claude Config, Setup and Learn more.
+ * above itself. Cloud-only items (Language, View all plans, Get apps, Log out, Your privacy choices) are
+ * omitted; Claude Config and Setup are local additions.
  */
 export function AccountMenu() {
 	const {data} = useQuery(localAccountQueryOptions);
@@ -100,6 +115,13 @@ export function AccountMenu() {
 				<MenuItem data-testid="user-menu-usage" icon={<Gauge />} onSelect={() => openSettings("usage")}>
 					Usage
 				</MenuItem>
+				<MenuItem
+					data-testid="user-menu-get-help"
+					icon={<CircleHelp />}
+					render={<a href="https://support.claude.com" target="_blank" rel="noreferrer" />}
+				>
+					<ExternalLabel>Get help</ExternalLabel>
+				</MenuItem>
 				<MenuSeparator />
 				<MenuItem
 					data-testid="user-menu-claude-config"
@@ -120,8 +142,19 @@ export function AccountMenu() {
 					<MenuSubTrigger data-testid="user-menu-learn-more" icon={<Info />}>
 						Learn more
 					</MenuSubTrigger>
-					<MenuSubContent className="w-52">
-						{EXTERNAL_LINKS.map((link) => (
+					<MenuSubContent className="w-[208px]">
+						{UPSTREAM_PRODUCT_LINKS.map((link) => (
+							<ExternalLinkItem key={link.href} href={link.href}>
+								{link.label}
+							</ExternalLinkItem>
+						))}
+						<MenuSeparator />
+						{UPSTREAM_LEGAL_LINKS.map((link) => (
+							<ExternalLinkItem key={link.href} href={link.href}>
+								{link.label}
+							</ExternalLinkItem>
+						))}
+						{CLAUDE_CODE_LINKS.map((link) => (
 							<MenuItem
 								key={link.href}
 								icon={link.icon}
@@ -142,6 +175,14 @@ export function AccountMenu() {
 				</MenuSub>
 			</MenuContent>
 		</Menu>
+	);
+}
+
+function ExternalLinkItem({href, children}: {href: string; children: ReactNode}) {
+	return (
+		<MenuItem render={<a href={href} target="_blank" rel="noreferrer" />}>
+			<ExternalLabel>{children}</ExternalLabel>
+		</MenuItem>
 	);
 }
 
