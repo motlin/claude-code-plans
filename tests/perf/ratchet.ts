@@ -1,6 +1,7 @@
-import {mkdirSync, readFileSync, writeFileSync} from "node:fs";
+import {mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync} from "node:fs";
 import {dirname, join} from "node:path";
 import {fileURLToPath} from "node:url";
+import {threadId} from "node:worker_threads";
 import {z} from "zod";
 
 /**
@@ -57,12 +58,59 @@ export function readResults(resultsPath: string): Results {
 	return ResultsSchema.parse(JSON.parse(json));
 }
 
+const LOCK_STALE_MS = 30_000;
+const LOCK_RETRY_MS = 5;
+const sleepCell = new Int32Array(new SharedArrayBuffer(4));
+
+function isErrorCode(error: unknown, code: string): boolean {
+	return error instanceof Error && "code" in error && error.code === code;
+}
+
+/**
+ * Parallel vitest workers all record into one results file, so the read-merge-write runs under a cross-process lock
+ * (an exclusive `mkdir`), and the write goes through a temp file and rename so no reader ever sees a partial file.
+ */
+function withResultsLock(resultsPath: string, action: () => void): void {
+	const lockPath = `${resultsPath}.lock`;
+	for (;;) {
+		try {
+			mkdirSync(lockPath);
+			break;
+		} catch (error) {
+			if (!isErrorCode(error, "EEXIST")) {
+				throw error;
+			}
+		}
+		try {
+			if (Date.now() - statSync(lockPath).mtimeMs > LOCK_STALE_MS) {
+				rmSync(lockPath, {recursive: true, force: true});
+				continue;
+			}
+		} catch (error) {
+			if (!isErrorCode(error, "ENOENT")) {
+				throw error;
+			}
+			continue;
+		}
+		Atomics.wait(sleepCell, 0, 0, LOCK_RETRY_MS);
+	}
+	try {
+		action();
+	} finally {
+		rmSync(lockPath, {recursive: true, force: true});
+	}
+}
+
 function recordResult(resultsPath: string, id: string, value: number, unit: string | undefined): void {
-	const results = readResults(resultsPath);
-	results[id] = unit === undefined ? {value} : {value, unit};
-	const sorted = Object.fromEntries(Object.entries(results).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
 	mkdirSync(dirname(resultsPath), {recursive: true});
-	writeFileSync(resultsPath, `${JSON.stringify(sorted, null, "\t")}\n`);
+	withResultsLock(resultsPath, () => {
+		const results = readResults(resultsPath);
+		results[id] = unit === undefined ? {value} : {value, unit};
+		const sorted = Object.fromEntries(Object.entries(results).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
+		const tempPath = `${resultsPath}.${process.pid}.${threadId}.tmp`;
+		writeFileSync(tempPath, `${JSON.stringify(sorted, null, "\t")}\n`);
+		renameSync(tempPath, resultsPath);
+	});
 }
 
 export function createRatchet(options: {ceilings: Ceilings; resultsPath: string}): (id: string, value: number) => void {

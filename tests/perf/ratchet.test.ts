@@ -1,6 +1,8 @@
-import {mkdtempSync, readFileSync, rmSync} from "node:fs";
+import {spawn} from "node:child_process";
+import {mkdtempSync, readFileSync, rmSync, writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
+import {pathToFileURL} from "node:url";
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
 import {createRatchet, loadCeilings, type Ceilings} from "./ratchet";
 
@@ -90,6 +92,59 @@ describe("ratchet", () => {
 			"lab.sessionSwitch.typical.inp": {value: 200, unit: "ms"},
 			"server.sessionOpen.large-wide.detail.jsonl.bytesRead": {value: 1200, unit: "bytes"},
 		});
+	});
+});
+
+function runRecorder(script: string, worker: number): Promise<void> {
+	return new Promise((resolve, reject) => {
+		const child = spawn(process.execPath, [script, resultsPath, String(worker)], {
+			stdio: ["ignore", "ignore", "pipe"],
+		});
+		let stderr = "";
+		child.stderr.on("data", (chunk: Buffer) => {
+			stderr += chunk.toString();
+		});
+		child.on("error", reject);
+		child.on("exit", (code) => {
+			if (code === 0) {
+				resolve();
+			} else {
+				reject(new Error(`recorder ${worker} exited with ${code}: ${stderr}`));
+			}
+		});
+	});
+}
+
+describe("concurrent recording", () => {
+	it("keeps results.json parseable and holds every id when several processes record at once", async () => {
+		const workers = 6;
+		const idsPerWorker = 40;
+		const script = join(dir, "recorder.mjs");
+		const ratchetUrl = pathToFileURL(join(import.meta.dirname, "ratchet.ts")).href;
+		writeFileSync(
+			script,
+			`import {createRatchet} from ${JSON.stringify(ratchetUrl)};
+const [resultsPath, worker] = process.argv.slice(2);
+const ratchet = createRatchet({ceilings: {}, resultsPath});
+for (let index = 0; index < ${idsPerWorker}; index++) {
+	try {
+		ratchet(\`w\${worker}.m\${String(index).padStart(2, "0")}\`, index);
+	} catch (error) {
+		if (!String(error).includes("has no ceiling")) throw error;
+	}
+}
+`,
+		);
+		await Promise.all(Array.from({length: workers}, (_, worker) => runRecorder(script, worker)));
+		const expected = Object.fromEntries(
+			Array.from({length: workers}, (_, worker) =>
+				Array.from({length: idsPerWorker}, (_, index) => [
+					`w${worker}.m${String(index).padStart(2, "0")}`,
+					{value: index},
+				]),
+			).flat(),
+		);
+		expect(readResults()).toStrictEqual(expected);
 	});
 });
 
