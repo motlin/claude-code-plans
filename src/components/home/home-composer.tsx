@@ -1,6 +1,5 @@
 import {useQuery} from "@tanstack/react-query";
 import {useNavigate} from "@tanstack/react-router";
-import {ChevronDown, Folder} from "lucide-react";
 import {useEffect, useMemo, useRef, useState} from "react";
 
 import {useActiveSessionsIfAvailable} from "../../hooks/use-claude-events";
@@ -18,13 +17,10 @@ import {onHomeComposerFocusRequest} from "../../lib/home-composer-focus";
 import {findLaunchedSession, startSessionProjects, type PendingLaunch} from "../../lib/palette-start-session";
 import {Composer} from "../composer";
 import {useToast} from "../toast";
-import {Menu, MenuContent, MenuRadioGroup, MenuRadioItem, MenuTrigger} from "../ui/menu";
+import {ProjectPicker} from "./project-picker";
 
 /** Same recents page the ⌘K palette reads, so both share one cached query. */
 export const HOME_RECENT_LIMIT = 25;
-
-const CHIP_CLASS =
-	"flex h-6 max-w-[240px] min-w-0 items-center gap-1 rounded-r6 bg-surface-3 px-1.5 text-[13px] text-secondary shadow-[inset_0_0_0_1px_var(--color-alpha-1),0_1px_2px_rgba(0,0,0,0.05)] transition-colors hover:text-primary focus-visible:shadow-[0_0_0_2px_var(--accent-100)] focus-visible:outline-none";
 
 /**
  * The docked claude.ai/code home composer: a project chip row above the prompt
@@ -126,25 +122,7 @@ export function HomeComposer() {
 	return (
 		<div ref={rootRef} data-home-composer className="pb-6">
 			<div className="flex flex-wrap gap-1 pr-24 pb-1">
-				<Menu>
-					<MenuTrigger aria-label="Select project" className={CHIP_CLASS}>
-						<Folder aria-hidden="true" className="size-3.5 shrink-0" />
-						<span className="truncate">{project?.name ?? "Select project…"}</span>
-						<ChevronDown aria-hidden="true" className="size-3 shrink-0" />
-					</MenuTrigger>
-					<MenuContent side="top">
-						<MenuRadioGroup
-							value={project?.id ?? ""}
-							onValueChange={(value: string) => setChosenProjectId(value)}
-						>
-							{startProjects.map((p) => (
-								<MenuRadioItem key={p.id} value={p.id} closeOnClick>
-									{p.name}
-								</MenuRadioItem>
-							))}
-						</MenuRadioGroup>
-					</MenuContent>
-				</Menu>
+				<ProjectPicker projects={startProjects} selected={project} onSelect={setChosenProjectId} />
 			</div>
 			<Composer
 				variant="home"

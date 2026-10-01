@@ -186,7 +186,7 @@ describe("HomeComposer", () => {
 		const textarea = await screen.findByRole("textbox", {name: "Prompt"});
 		expect({
 			placeholder: textarea.getAttribute("placeholder"),
-			picker: screen.getByRole("button", {name: "Select project"}).textContent,
+			picker: screen.getByRole("combobox", {name: "Select project"}).textContent,
 			model: screen.getByLabelText("Model: Opus 4.8").textContent,
 			effort: screen.getByLabelText("Effort: Medium").textContent,
 			mode: document.querySelector("[data-chin-mode]")?.textContent,
@@ -261,15 +261,48 @@ describe("HomeComposer", () => {
 
 	it("launches in the project chosen from the picker", async () => {
 		await renderApp();
-		fireEvent.click(screen.getByRole("button", {name: "Select project"}));
-		fireEvent.click(await screen.findByRole("menuitemradio", {name: "newest"}));
-		await waitFor(() => expect(screen.getByRole("button", {name: "Select project"}).textContent).toBe("newest"));
+		fireEvent.click(screen.getByRole("combobox", {name: "Select project"}));
+		fireEvent.click(await screen.findByRole("option", {name: "newest"}));
+		await waitFor(() => expect(screen.getByRole("combobox", {name: "Select project"}).textContent).toBe("newest"));
 		await typePrompt("hello");
 
 		fireEvent.click(screen.getByRole("button", {name: "Send"}));
 
 		await waitFor(() => expect(launchCalls.length).toBe(1));
 		expect(launchBody(launchCalls[0])).toStrictEqual({cwd: "/users/dev/newest", prompt: "hello"});
+	});
+
+	it("opens a searchable repository picker from the project chip", async () => {
+		await renderApp();
+		const chip = screen.getByRole("combobox", {name: "Select project"});
+		expect({
+			haspopup: chip.getAttribute("aria-haspopup"),
+			expanded: chip.getAttribute("aria-expanded"),
+		}).toStrictEqual({haspopup: "dialog", expanded: "false"});
+
+		fireEvent.click(chip);
+		const search = await screen.findByRole("textbox", {name: "Search projects"});
+		await waitFor(() => expect(document.activeElement).toBe(search));
+		expect(search.getAttribute("placeholder")).toBe("Search projects…");
+		expect(
+			screen.getAllByRole("option").map((option) => ({
+				name: option.textContent,
+				selected: option.getAttribute("aria-selected"),
+			})),
+		).toStrictEqual([
+			{name: "it's", selected: "true"},
+			{name: "newest", selected: "false"},
+		]);
+
+		fireEvent.change(search, {target: {value: "dev/new"}});
+		expect(screen.getAllByRole("option").map((option) => option.textContent)).toStrictEqual(["newest"]);
+
+		fireEvent.change(search, {target: {value: ""}});
+		fireEvent.keyDown(search, {key: "ArrowDown"});
+		fireEvent.keyDown(search, {key: "Enter"});
+
+		await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
+		expect(chip.textContent).toBe("newest");
 	});
 
 	it("navigates to the new session when its SessionStart arrives over SSE", async () => {
@@ -366,7 +399,7 @@ describe("HomeComposer", () => {
 	it("focuses the composer on ⇧⌘O while already home", async () => {
 		await renderApp();
 		const textarea = await screen.findByRole("textbox", {name: "Prompt"});
-		const picker = screen.getByRole("button", {name: "Select project"});
+		const picker = screen.getByRole("combobox", {name: "Select project"});
 		picker.focus();
 		expect(document.activeElement).toBe(picker);
 
