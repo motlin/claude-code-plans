@@ -1,4 +1,74 @@
 {
+	"hot.claudeEventsReducer.replay-200.calls": {
+		"ceiling": 300,
+		"unit": "calls",
+		"tolerance": 0
+	},
+	"hot.mergeTranscriptData.large-long.calls": {
+		"ceiling": 641,
+		"unit": "calls",
+		"tolerance": 0
+	},
+	"hot.mergeTranscriptData.large-wide.calls": {
+		"ceiling": 360,
+		"unit": "calls",
+		"tolerance": 0
+	},
+	"hot.mergeTranscriptData.small.calls": {
+		"ceiling": 959,
+		"unit": "calls",
+		"tolerance": 0
+	},
+	"hot.mergeTranscriptData.typical.calls": {
+		"ceiling": 635,
+		"unit": "calls",
+		"tolerance": 0
+	},
+	"hot.paletteRanking.500x5.calls": {
+		"ceiling": 10282,
+		"unit": "calls",
+		"tolerance": 0
+	},
+	"hot.processTranscript.large-long.calls": {
+		"ceiling": 2514,
+		"unit": "calls",
+		"tolerance": 0
+	},
+	"hot.processTranscript.large-wide.calls": {
+		"ceiling": 958,
+		"unit": "calls",
+		"tolerance": 0
+	},
+	"hot.processTranscript.small.calls": {
+		"ceiling": 3924,
+		"unit": "calls",
+		"tolerance": 0
+	},
+	"hot.processTranscript.typical.calls": {
+		"ceiling": 2743,
+		"unit": "calls",
+		"tolerance": 0
+	},
+	"hot.readStructuredTranscript.large-long.calls": {
+		"ceiling": 34407,
+		"unit": "calls",
+		"tolerance": 0
+	},
+	"hot.readStructuredTranscript.large-wide.calls": {
+		"ceiling": 20628,
+		"unit": "calls",
+		"tolerance": 0
+	},
+	"hot.readStructuredTranscript.small.calls": {
+		"ceiling": 809,
+		"unit": "calls",
+		"tolerance": 0
+	},
+	"hot.readStructuredTranscript.typical.calls": {
+		"ceiling": 12924,
+		"unit": "calls",
+		"tolerance": 0
+	},
 	"server.coldLoad.approvals.resp.bytes": {
 		"ceiling": 16,
 		"unit": "bytes",

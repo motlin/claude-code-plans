@@ -8,6 +8,7 @@
 		"scripts/field-presence.ts",
 		"scripts/perf-ceilings.ts",
 		"tests/fixtures/fake-server.mjs",
+		"tests/perf/run-hot-path.mjs",
 	],
 	"ignorePatterns": [".storybook/**", "src/routeTree.gen.ts"],
 	"ignoreDependencies": [

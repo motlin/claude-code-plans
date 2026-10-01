@@ -14,6 +14,23 @@ export const LIVE_APPEND_SIZES = [1, 20] as const;
 const LIVE_APPEND_METRICS = ["readAmplification", "jsonl.fullScans", "sql.count", "sse.payloadBytes"] as const;
 export type LiveAppendMetric = (typeof LIVE_APPEND_METRICS)[number];
 
+/** Pure hot paths measured per fixture shape by V8 call counts (plan §2.4 L5). */
+export const HOT_PATH_SHAPED_FNS = ["mergeTranscriptData", "processTranscript", "readStructuredTranscript"] as const;
+export type HotPathShapedFn = (typeof HOT_PATH_SHAPED_FNS)[number];
+
+/** Pure hot paths with one fixed synthetic input each, keyed by function to the shape name in their id. */
+export const HOT_PATH_FIXED_SHAPES = {
+	claudeEventsReducer: "replay-200",
+	paletteRanking: "500x5",
+} as const;
+export type HotPathFixedFn = keyof typeof HOT_PATH_FIXED_SHAPES;
+
+export type HotPathFn = HotPathShapedFn | HotPathFixedFn;
+
+export function hotPathId(fn: HotPathFn, shape: string): string {
+	return `hot.${fn}.${shape}.calls`;
+}
+
 export function sessionOpenPrefix(shape: string, endpoint: SessionOpenEndpoint): string {
 	return `server.sessionOpen.${shape}.${endpoint}`;
 }
@@ -38,5 +55,6 @@ export function shapeMetricIds(shape: string): string[] {
 		...LIVE_APPEND_SIZES.flatMap((count) =>
 			LIVE_APPEND_METRICS.map((metric) => `${liveAppendPrefix(shape, count)}.${metric}`),
 		),
+		...HOT_PATH_SHAPED_FNS.map((fn) => hotPathId(fn, shape)),
 	];
 }
