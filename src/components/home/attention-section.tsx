@@ -5,6 +5,7 @@ import type {HomeAttentionItem, HomeAttentionKind, HomeAttentionRow} from "../..
 import {formatNarrowRelativeTime} from "../../lib/relative-time";
 import {homeAttentionKindLabels} from "../../lib/schema-choices";
 import {SessionHoverCard} from "../session-hover-card";
+import {Tooltip} from "../ui/tooltip";
 
 /** Upstream caps the Sessions section at five rows even on the tallest viewports. */
 const MAX_SESSION_ROWS = 5;
@@ -195,16 +196,17 @@ function AttentionRow<Row extends HomeAttentionRow>({
 					</span>
 				</button>
 			</div>
-			<button
-				type="button"
-				data-row-dismiss
-				aria-label="Dismiss session"
-				title="Dismiss"
-				onClick={onDismiss}
-				className="flex size-6 shrink-0 items-center justify-center rounded-md text-ink-muted opacity-0 hover:bg-fill-ghost-hover hover:text-primary group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100"
-			>
-				<X aria-hidden="true" className="size-4" />
-			</button>
+			<Tooltip content="Dismiss" className="shrink-0">
+				<button
+					type="button"
+					data-row-dismiss
+					aria-label="Dismiss session"
+					onClick={onDismiss}
+					className="flex size-6 shrink-0 items-center justify-center rounded-md text-ink-muted opacity-0 hover:bg-fill-ghost-hover hover:text-primary group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100"
+				>
+					<X aria-hidden="true" className="size-4" />
+				</button>
+			</Tooltip>
 		</SessionHoverCard>
 	);
 }

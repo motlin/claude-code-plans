@@ -159,6 +159,29 @@ describe("AttentionSection", () => {
 		expect(onOpen.mock.calls).toStrictEqual([["s1"]]);
 	});
 
+	it("has no native row tooltips and shows the shared Dismiss tooltip on the dismiss button", async () => {
+		render(
+			<AttentionSection
+				items={items([row("s1")])}
+				rowLimit={5}
+				now={NOW}
+				onOpen={() => undefined}
+				onDismiss={() => undefined}
+			/>,
+		);
+
+		const dismiss = screen.getByRole("button", {name: "Dismiss session"});
+		fireEvent.pointerEnter(dismiss);
+		const tooltip = await screen.findByRole("tooltip");
+
+		expect({
+			rowTitle: screen.getByRole("listitem").getAttribute("title"),
+			dismissTitle: dismiss.getAttribute("title"),
+			tooltip: tooltip.textContent,
+			describedBy: dismiss.getAttribute("aria-describedby") === tooltip.id,
+		}).toStrictEqual({rowTitle: null, dismissTitle: null, tooltip: "Dismiss", describedBy: true});
+	});
+
 	it("renders nothing when no session needs attention", () => {
 		const {container} = render(
 			<AttentionSection items={[]} rowLimit={5} now={NOW} onOpen={() => undefined} onDismiss={() => undefined} />,
