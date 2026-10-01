@@ -11,6 +11,7 @@ import {
 } from "../lib/approval-dock";
 import type {QuestionLike} from "../lib/ask-user-question";
 import {dockKeyAllowed} from "../lib/dock-keys";
+import {APPROVAL_CARD_TITLE, ApprovalActionButton, ApprovalCardShell} from "./approval-card";
 import {Shortcut} from "./ui/shortcut";
 
 export interface ApprovalDockSubmission {
@@ -20,9 +21,6 @@ export interface ApprovalDockSubmission {
 
 const ICON_BUTTON =
 	"inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-r4 text-secondary hover:bg-fill-ghost-hover hover:text-primary";
-
-const ACTION_BUTTON =
-	"inline-flex h-8 cursor-pointer items-center justify-center gap-1 rounded-r5 px-3 text-body disabled:cursor-not-allowed disabled:opacity-50 @max-[500px]/approval-dock:w-full";
 
 /**
  * The needs-input card docked above the composer for a pending AskUserQuestion,
@@ -105,23 +103,23 @@ export function ApprovalDock({
 	const otherKey = String(question.options.length + 1);
 
 	return (
-		<div className="@container/approval-dock [--approval-dock-floor:144px] @max-[500px]/approval-dock:[--approval-dock-floor:208px]">
-			<div
-				data-approval-card-root
-				tabIndex={0}
-				className="relative isolate flex max-h-[60vh] flex-col gap-3 rounded-card bg-surface-popover p-3 shadow-panel-sm"
-			>
-				<div className="flex min-h-0 flex-col gap-3 overflow-y-auto">
+		<ApprovalCardShell
+			body={
+				<>
 					<div className="flex items-start gap-2">
-						<span
-							data-approval-pill
-							className="shrink-0 rounded-full bg-warning-100/10 px-1.5 text-caption leading-[inherit] text-warning-000"
-						>
-							{state.index + 1}/{questions.length}
+						<span className="flex h-6 shrink-0 items-center">
+							<span
+								data-approval-pill
+								className="rounded-full bg-warning-100/10 px-1.5 text-caption text-warning-000"
+							>
+								{state.index + 1}/{questions.length}
+							</span>
 						</span>
-						<span data-approval-question className="min-w-0 flex-1 text-body font-semibold">
-							{question.question}
-						</span>
+						<div className="min-w-0 flex-1">
+							<span data-approval-question data-approval-card-title className={APPROVAL_CARD_TITLE}>
+								{question.question}
+							</span>
+						</div>
 						<button
 							type="button"
 							aria-label="View question options"
@@ -202,27 +200,19 @@ export function ApprovalDock({
 						<p className="text-footnote text-secondary">Select one or more options.</p>
 					)}
 					{error && <p className="text-footnote text-extended-pink">{error}</p>}
-				</div>
-				<div className="flex justify-end gap-2 @max-[500px]/approval-dock:flex-col">
-					<button
-						type="button"
-						onClick={handleSkip}
-						disabled={submitting}
-						className={`${ACTION_BUTTON} text-secondary hover:bg-alpha-2`}
-					>
+				</>
+			}
+			actions={
+				<>
+					<ApprovalActionButton variant="secondary" onClick={handleSkip} disabled={submitting}>
 						Skip
-					</button>
-					<button
-						type="button"
-						onClick={handleNext}
-						disabled={!answered || submitting}
-						className={`${ACTION_BUTTON} bg-accent-100 text-white hover:bg-accent-100/80`}
-					>
+					</ApprovalActionButton>
+					<ApprovalActionButton variant="primary" onClick={handleNext} disabled={!answered || submitting}>
 						{submitting && <Loader2 aria-hidden="true" className="size-3 animate-spin" />}
 						{isLast ? "Submit" : "Next"}
-					</button>
-				</div>
-			</div>
-		</div>
+					</ApprovalActionButton>
+				</>
+			}
+		/>
 	);
 }
