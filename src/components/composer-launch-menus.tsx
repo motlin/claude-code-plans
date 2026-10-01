@@ -1,4 +1,6 @@
 import {Popover} from "@base-ui/react/popover";
+import {PreviewCard} from "@base-ui/react/preview-card";
+import {CircleQuestionMark} from "lucide-react";
 import {type KeyboardEvent, useState} from "react";
 
 import {useShortcutKeys} from "../hooks/use-shortcut";
@@ -15,7 +17,7 @@ import {
 	PRIMARY_MODELS,
 	primaryModelMenuValue,
 } from "../lib/launch-options";
-import {effortLevelLabels} from "../lib/schema-choices";
+import {effortLevelLabels, effortLevelShortLabels} from "../lib/schema-choices";
 import {ConfirmDialog} from "./confirm-dialog";
 import {
 	Menu,
@@ -45,7 +47,21 @@ const CHIN_TRIGGER_CLASS = `${CHIN_BUTTON_CLASS} truncate px-1.5`;
 const CHIN_PRIMARY_TRIGGER_CLASS = CHIN_TRIGGER_CLASS.replace("text-secondary", "text-primary");
 
 const EFFORT_POPUP_CLASS =
-	"flex w-[220px] max-w-[320px] flex-col gap-2 rounded-card bg-[var(--menu-bg)] p-3 text-[12px]/[16px] text-primary shadow-[var(--menu-shadow)] outline-none";
+	"flex w-[220px] max-w-[320px] flex-col gap-2 rounded-r7 bg-[var(--menu-bg)] p-3 text-[12px]/[16px] text-primary shadow-[var(--menu-shadow)] outline-none";
+
+/** claude.ai/code captions this stop "Recommended" and appends it to the slider's value text. */
+const RECOMMENDED_EFFORT: EffortLevel = "high";
+
+const EFFORT_HELP = "Higher effort means more thorough responses, but takes longer and uses your limits faster.";
+
+/** Thumb width; stops are inset by half of it so the thumb stays on the track at both ends. */
+const EFFORT_THUMB_PX = 16;
+
+/** The CSS `left` of stop `index` along the slider. */
+function effortStopLeft(index: number): string {
+	const fraction = index / (EFFORT_LEVELS.length - 1);
+	return `calc(${EFFORT_THUMB_PX / 2}px + (100% - ${EFFORT_THUMB_PX}px) * ${fraction})`;
+}
 
 export type ChinMenu = "mode" | "model" | "effort";
 
@@ -235,11 +251,12 @@ export function EffortSelector({
 						className={EFFORT_POPUP_CLASS}
 						onKeyDown={handleKeyDown}
 					>
-						<div className="flex items-baseline gap-1.5">
+						<div className="flex items-center gap-1.5">
 							<Popover.Title className="font-normal text-[var(--menu-muted)]">Effort</Popover.Title>
 							<span data-effort-current="" className="font-medium">
 								{label}
 							</span>
+							<EffortHelp />
 						</div>
 						<div
 							data-effort-captions=""
@@ -248,23 +265,120 @@ export function EffortSelector({
 							<span>Faster</span>
 							<span>Smarter</span>
 						</div>
-						<input
-							type="range"
-							aria-label="Effort"
-							min={0}
-							max={EFFORT_LEVELS.length - 1}
-							step={1}
-							value={index}
-							aria-valuetext={label}
-							onChange={(event) => {
-								const picked = EFFORT_LEVELS[Number(event.target.value)];
-								if (picked !== undefined) onSelect(picked);
-							}}
-							className="w-full accent-[var(--accent-100)]"
+						<EffortSlider
+							index={index}
+							valueText={
+								level.success && level.data === RECOMMENDED_EFFORT ? `${label} (Recommended)` : label
+							}
+							onSelect={onSelect}
 						/>
 					</Popover.Popup>
 				</Popover.Positioner>
 			</Popover.Portal>
 		</Popover.Root>
+	);
+}
+
+function EffortHelp() {
+	return (
+		<PreviewCard.Root>
+			<PreviewCard.Trigger
+				render={<button type="button" />}
+				aria-label="About effort"
+				className="ml-auto inline-flex size-4 shrink-0 items-center justify-center rounded-full text-[var(--menu-muted)] outline-none hover:text-primary focus-visible:shadow-[0_0_0_2px_var(--accent-100)] pointer-coarse:hidden"
+			>
+				<CircleQuestionMark aria-hidden="true" className="size-4" />
+			</PreviewCard.Trigger>
+			<PreviewCard.Portal>
+				<PreviewCard.Positioner side="top" sideOffset={6} className="z-[140]">
+					<PreviewCard.Popup
+						data-effort-help=""
+						className="flex w-[220px] flex-col gap-1 rounded-r7 bg-[var(--menu-bg)] p-3 text-[12px]/[15px] text-primary shadow-[var(--menu-shadow)] outline-none"
+					>
+						<p className="font-medium">Effort</p>
+						<p className="text-[var(--menu-muted)]">{EFFORT_HELP}</p>
+					</PreviewCard.Popup>
+				</PreviewCard.Positioner>
+			</PreviewCard.Portal>
+		</PreviewCard.Root>
+	);
+}
+
+/**
+ * Upstream's stepped slider: a native range input (arrow keys, dragging) stretched invisibly over a drawn track
+ * with a 3px dot per stop, each naming its level on hover and picking it on press, a 16px pill thumb, and a
+ * "Recommended" caption under High.
+ */
+function EffortSlider({
+	index,
+	valueText,
+	onSelect,
+}: {
+	index: number;
+	valueText: string;
+	onSelect: (effort: EffortLevel) => void;
+}) {
+	const thumbLeft = effortStopLeft(index);
+	return (
+		<div className="flex flex-col">
+			<div data-effort-slider="" className="relative h-6 w-full">
+				<div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-alpha-2" />
+				<div
+					className="absolute left-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-[var(--accent-100)]"
+					style={{width: thumbLeft}}
+				/>
+				<input
+					type="range"
+					aria-label="Effort"
+					min={0}
+					max={EFFORT_LEVELS.length - 1}
+					step={1}
+					value={index}
+					aria-valuetext={valueText}
+					onChange={(event) => {
+						const picked = EFFORT_LEVELS[Number(event.target.value)];
+						if (picked !== undefined) onSelect(picked);
+					}}
+					className="peer absolute inset-0 m-0 size-full cursor-pointer opacity-0"
+				/>
+				<span
+					aria-hidden="true"
+					className="pointer-events-none absolute top-1/2 h-5 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow-[0_0_0_0.5px_rgb(11_11_11/0.15),0_1px_3px_rgb(11_11_11/0.2)] peer-focus-visible:shadow-[0_0_0_2px_var(--accent-100)]"
+					style={{left: thumbLeft}}
+				/>
+				{EFFORT_LEVELS.map((stop, stopIndex) => (
+					<span
+						key={stop}
+						className={`absolute top-1/2 -translate-x-1/2 -translate-y-1/2 ${stopIndex === index ? "pointer-events-none" : ""}`}
+						style={{left: effortStopLeft(stopIndex)}}
+					>
+						<Tooltip content={effortLevelShortLabels[stop]}>
+							<span
+								data-effort-tick=""
+								aria-hidden="true"
+								onPointerDown={(event) => {
+									event.preventDefault();
+									onSelect(stop);
+								}}
+								className="flex size-3 cursor-pointer items-center justify-center"
+							>
+								<span
+									className={`size-[3px] rounded-full bg-current opacity-25 ${stopIndex === index ? "invisible" : ""}`}
+								/>
+							</span>
+						</Tooltip>
+					</span>
+				))}
+			</div>
+			<div className="relative h-[15px]">
+				<span
+					data-effort-recommended=""
+					className="absolute top-0 -translate-x-1/2 text-[12px]/[15px] whitespace-nowrap text-[var(--menu-muted)]"
+					style={{left: effortStopLeft(EFFORT_LEVELS.indexOf(RECOMMENDED_EFFORT))}}
+				>
+					Recommended
+				</span>
+			</div>
+		</div>
 	);
 }

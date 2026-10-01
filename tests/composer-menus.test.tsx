@@ -251,7 +251,7 @@ describe("Composer effort selector", () => {
 				min: "0",
 				max: "4",
 				value: "2",
-				valueText: "High",
+				valueText: "High (Recommended)",
 				captions: "FasterSmarter",
 			},
 			header: "Extra-high",
@@ -269,6 +269,78 @@ describe("Composer effort selector", () => {
 		sendPrompt("Continue Frank's test");
 
 		expect(onSend.mock.calls).toStrictEqual([["Continue Frank's test", {effort: "low"}]]);
+	});
+});
+
+describe("Composer effort slider affordances", () => {
+	beforeEach(() => {
+		vi.useFakeTimers();
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	async function openDialog() {
+		openEffort();
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(0);
+		});
+		const dialog = screen.getByRole("dialog");
+		return dialog;
+	}
+
+	function tooltipOf(anchor: Element): string | null {
+		fireEvent.pointerEnter(anchor);
+		act(() => vi.advanceTimersByTime(400));
+		const text = screen.queryByRole("tooltip")?.textContent ?? null;
+		fireEvent.pointerLeave(anchor);
+		return text;
+	}
+
+	it("draws five tick dots whose hover tooltips use upstream's short names", async () => {
+		renderComposer();
+		const dialog = await openDialog();
+		const ticks = [...dialog.querySelectorAll("[data-effort-tick]")];
+
+		expect(
+			ticks.map((tick) => {
+				const anchor = tick.parentElement;
+				if (anchor === null) throw new Error("tick has no anchor");
+				return tooltipOf(anchor);
+			}),
+		).toStrictEqual(["Low", "Medium", "High", "Extra", "Max"]);
+	});
+
+	it("captions High as Recommended and drops the suffix elsewhere in aria-valuetext", async () => {
+		renderComposer();
+		const dialog = await openDialog();
+		const slider = within(dialog).getByRole("slider", {name: "Effort"});
+		const atHigh = slider.getAttribute("aria-valuetext");
+		fireEvent.change(slider, {target: {value: "4"}});
+
+		expect({
+			caption: dialog.querySelector("[data-effort-recommended]")?.textContent,
+			atHigh,
+			atMax: slider.getAttribute("aria-valuetext"),
+			radius: dialog.className.includes("rounded-r7"),
+		}).toStrictEqual({caption: "Recommended", atHigh: "High (Recommended)", atMax: "Max", radius: true});
+	});
+
+	it("shows the About effort help card on hover", async () => {
+		renderComposer();
+		const dialog = await openDialog();
+		const help = within(dialog).getByRole("button", {name: "About effort"});
+		await act(async () => {
+			fireEvent.pointerEnter(help, {pointerType: "mouse"});
+			fireEvent.mouseEnter(help);
+			fireEvent.mouseMove(help);
+			await vi.advanceTimersByTimeAsync(1000);
+		});
+
+		expect(document.querySelector("[data-effort-help]")?.textContent).toBe(
+			"EffortHigher effort means more thorough responses, but takes longer and uses your limits faster.",
+		);
 	});
 });
 
