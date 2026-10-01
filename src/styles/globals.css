@@ -70,6 +70,7 @@
 	--color-accent-100: var(--accent-100);
 	--color-accent-900: var(--accent-900);
 	--color-upstream-accent: var(--upstream-accent);
+	--color-upstream-accent-pressed: var(--upstream-accent-pressed);
 
 	/* User message bubble */
 	--color-user-msg-bg: var(--user-msg-bg);
@@ -205,6 +206,8 @@
 	/* Upstream claude.ai/code accent ink: transcript links, file refs, PR chips,
 	   and pressed toggles. */
 	--upstream-accent: rgb(24 79 149);
+	/* Upstream pressed-toggle paint behind the accent ink (titlebar trail). */
+	--upstream-accent-pressed: rgb(205 226 251);
 	--accent-100: hsl(210 70.9% 51.6%);
 	--accent-900: hsl(211 72% 90%);
 
@@ -258,8 +261,8 @@
 	/* Upstream claude.ai/code — <Shortcut> keycaps and the always-dark <Tooltip> */
 	--shortcut-cap-ink: #6d6b67;
 	--shortcut-cap-line: color-mix(in srgb, currentColor 18%, transparent);
-	--tooltip-bg: #20201f;
-	--tooltip-fg: #f0efec;
+	--tooltip-bg: rgb(11 11 11);
+	--tooltip-fg: #fff;
 	--tooltip-shortcut-ink: #898781;
 	--tooltip-description-ink: rgb(195 194 183);
 
@@ -348,6 +351,7 @@
 	--warning-100: hsl(39 93.4% 35.9%);
 	--accent-000: hsl(210 65.5% 67.1%);
 	--upstream-accent: rgb(128 178 235);
+	--upstream-accent-pressed: hsl(210 55.9% 24.6%);
 	--accent-100: hsl(210 70.9% 51.6%);
 	--accent-900: hsl(210 55.9% 24.6%);
 

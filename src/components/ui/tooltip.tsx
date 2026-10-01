@@ -22,24 +22,19 @@ const SIDE_CLASS = {
 } as const;
 
 const TOOLTIP_CLASS =
-	"pointer-events-none absolute z-50 inline-flex min-h-6 max-w-[240px] items-center gap-2 whitespace-nowrap rounded-r5 bg-[var(--tooltip-bg)] px-2 py-[3px] text-[13px]/[18px] text-[var(--tooltip-fg)] shadow-sm";
+	"pointer-events-none absolute z-50 inline-flex min-h-6 w-max max-w-[240px] items-center gap-2 rounded-r5 bg-[var(--tooltip-bg)] px-2 py-[3px] text-[13px]/[18px] text-[var(--tooltip-fg)] shadow-[0_1px_2px_rgb(11_11_11/0.06)]";
 
 /** The wider, wrapping box that keeps the content's line breaks. */
-const MULTILINE_TOOLTIP_CLASS = TOOLTIP_CLASS.replace("max-w-[240px]", "w-max max-w-[320px]").replace(
-	"whitespace-nowrap",
-	"whitespace-pre-line",
-);
+const MULTILINE_TOOLTIP_CLASS = TOOLTIP_CLASS.replace("max-w-[240px]", "max-w-[320px] whitespace-pre-line");
 
 /**
  * Upstream's rich two-line tooltip (the sidebar resize edge, Rewind, Fork): the 13px/18px label row on top,
  * an 11px/14px muted description below, wrapping within 170px.
  */
 const STACKED_TOOLTIP_CLASS = TOOLTIP_CLASS.replace(
-	"inline-flex min-h-6 max-w-[240px] items-center gap-2",
-	"flex w-max max-w-[170px] flex-col items-start gap-0.5",
-)
-	.replace("whitespace-nowrap", "whitespace-normal")
-	.replace("py-[3px]", "py-1.5");
+	"inline-flex min-h-6 w-max max-w-[240px] items-center gap-2",
+	"flex w-max max-w-[170px] flex-col items-start gap-0.5 whitespace-normal",
+).replace("py-[3px]", "py-1.5");
 
 /**
  * Minimal claude.ai/code tooltip: always dark, side top (titlebar controls use
@@ -174,6 +169,10 @@ function shiftStyle(placement: TooltipPlacement | undefined): CSSProperties | un
 
 function TooltipShortcut({keys}: {keys: string}) {
 	return (
-		<Shortcut keys={keys} variant="text" className="text-[12px] [--shortcut-cap-ink:var(--tooltip-shortcut-ink)]" />
+		<Shortcut
+			keys={keys}
+			variant="text"
+			className="text-[12px] whitespace-nowrap [--shortcut-cap-ink:var(--tooltip-shortcut-ink)]"
+		/>
 	);
 }

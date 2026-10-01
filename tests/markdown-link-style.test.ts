@@ -27,6 +27,18 @@ describe("transcript link styles", () => {
 		});
 	});
 
+	it("defines upstream's pressed-toggle paint per theme", () => {
+		expect({
+			light: tokenIn(":root", "--upstream-accent-pressed"),
+			dark: tokenIn(".dark", "--upstream-accent-pressed"),
+			themeColor: tokenIn("@theme inline", "--color-upstream-accent-pressed"),
+		}).toStrictEqual({
+			light: "rgb(205 226 251)",
+			dark: "hsl(210 55.9% 24.6%)",
+			themeColor: "var(--upstream-accent-pressed)",
+		});
+	});
+
 	it("draws prose links in the accent, underlined 3px below, with no hover fade", () => {
 		expect(ruleDeclarations(markdownCss, ".markdown a")).toStrictEqual({
 			color: "var(--upstream-accent)",

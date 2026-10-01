@@ -255,6 +255,28 @@ describe("SessionPaneControls", () => {
 		]);
 	});
 
+	it("keeps the trail ink on hover and paints a pressed Changes toggle in upstream's deeper blue", async () => {
+		registerKinds("changes");
+		renderControls(1000);
+		const changes = screen.getByRole("button", {name: "Changes"});
+		fireEvent.click(changes);
+		await act(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 0));
+		});
+
+		const classes = changes.className.split(" ");
+
+		expect({
+			pressed: changes.getAttribute("aria-pressed"),
+			hoverInk: classes.filter((c) => c.startsWith("hover:text-")),
+			pressedPaint: classes.filter((c) => c.startsWith("aria-pressed:")),
+		}).toStrictEqual({
+			pressed: "true",
+			hoverInk: [],
+			pressedPaint: ["aria-pressed:bg-upstream-accent-pressed", "aria-pressed:text-upstream-accent"],
+		});
+	});
+
 	it("expands the chat from View options", async () => {
 		const onExpandChat = vi.fn<() => void>();
 		renderControls(1000, {}, onExpandChat);

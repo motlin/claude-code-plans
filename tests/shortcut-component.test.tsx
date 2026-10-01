@@ -121,7 +121,7 @@ describe("<Tooltip>", () => {
 		}).toStrictEqual({
 			beforeDelay: null,
 			className:
-				"pointer-events-none absolute z-50 inline-flex min-h-6 max-w-[240px] items-center gap-2 whitespace-nowrap rounded-r5 bg-[var(--tooltip-bg)] px-2 py-[3px] text-[13px]/[18px] text-[var(--tooltip-fg)] shadow-sm bottom-full left-1/2 mb-1 -translate-x-1/2",
+				"pointer-events-none absolute z-50 inline-flex min-h-6 w-max max-w-[240px] items-center gap-2 rounded-r5 bg-[var(--tooltip-bg)] px-2 py-[3px] text-[13px]/[18px] text-[var(--tooltip-fg)] shadow-[0_1px_2px_rgb(11_11_11/0.06)] bottom-full left-1/2 mb-1 -translate-x-1/2",
 			text: "Expand chat⇧Shift⌘Command\\",
 			shortcut: "text",
 			describedBy: true,
@@ -151,7 +151,7 @@ describe("<Tooltip>", () => {
 			lines: [...tooltip.children].map((line) => ({className: line.className, text: line.textContent})),
 		}).toStrictEqual({
 			className:
-				"pointer-events-none absolute z-50 flex w-max max-w-[170px] flex-col items-start gap-0.5 whitespace-normal rounded-r5 bg-[var(--tooltip-bg)] px-2 py-1.5 text-[13px]/[18px] text-[var(--tooltip-fg)] shadow-sm left-full top-1/2 ml-1 -translate-y-1/2",
+				"pointer-events-none absolute z-50 flex w-max max-w-[170px] flex-col items-start gap-0.5 whitespace-normal rounded-r5 bg-[var(--tooltip-bg)] px-2 py-1.5 text-[13px]/[18px] text-[var(--tooltip-fg)] shadow-[0_1px_2px_rgb(11_11_11/0.06)] left-full top-1/2 ml-1 -translate-y-1/2",
 			lines: [
 				{className: "inline-flex items-center gap-2", text: "Hide sidebar⌘CommandB"},
 				{className: "text-[11px]/[14px] text-[var(--tooltip-description-ink)]", text: "Drag to resize"},
