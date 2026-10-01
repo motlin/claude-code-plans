@@ -124,6 +124,17 @@ describe("SettingsDialog", () => {
 		).toStrictEqual(Array.from({length: 9}, () => "svg"));
 	});
 
+	it("renders no visible Settings caption above the tab list, naming the nav by aria-label", async () => {
+		await renderAt("/#settings/general");
+
+		await screen.findByRole("dialog", {name: "Settings"});
+		const nav = screen.getByRole("navigation", {name: "Settings"});
+		expect({
+			ariaLabel: nav.getAttribute("aria-label"),
+			captions: [...nav.querySelectorAll("*")].filter((element) => element.textContent === "Settings").length,
+		}).toStrictEqual({ariaLabel: "Settings", captions: 0});
+	});
+
 	it("lists the local settings tabs in order", async () => {
 		await renderAt("/#settings/general");
 

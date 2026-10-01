@@ -147,7 +147,6 @@ export function SettingsDialog() {
 						className="flex w-48 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-subtle bg-surface-1 p-2"
 					>
 						<SettingsSearch onSelect={selectTab} />
-						<div className="px-2.5 pt-2 pb-1 text-caption text-t6">Settings</div>
 						{SettingsTabSchema.options.map((navTab) => {
 							const selected = navTab === tab;
 							const Icon = SETTINGS_TAB_ICONS[navTab];
