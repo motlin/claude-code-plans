@@ -1165,6 +1165,7 @@ function VirtualizedSessionEntries({
 						data-transcript-entry-index={index}
 						data-testid="transcript-row"
 						data-perf-row={entry.kind}
+						data-perf-line={entry.startRecordIndex}
 						data-perf-last={isLast ? "" : undefined}
 					>
 						{entry.element}

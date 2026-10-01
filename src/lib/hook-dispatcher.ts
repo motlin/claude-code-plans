@@ -16,6 +16,7 @@ import {
 	type NotificationPayload,
 	type TaskSummaryPayload,
 	type SessionPromptSubmittedPayload,
+	type SessionLinesAppendedPayload,
 	type SessionHookContextPayload,
 	type SessionToolPendingPayload,
 	type SessionToolFailedPayload,
@@ -327,7 +328,7 @@ async function appendTranscriptLines(
 	const sessionId = sessionIdFromTranscriptPath(transcriptPath);
 	try {
 		const fromOffset = state?.jsonlOffsets.get(transcriptPath) ?? (await jsonlResumeOffset(db, transcriptPath));
-		const {readNewJsonlLines} = await import("./sessions");
+		const {jsonlWrittenAt, readNewJsonlLines} = await import("./sessions");
 		const {lines: newLines, nextByteOffset} = await readNewJsonlLines(transcriptPath, fromOffset);
 		state?.jsonlOffsets.set(transcriptPath, nextByteOffset);
 		if (newLines.length > 0) {
@@ -336,7 +337,8 @@ async function appendTranscriptLines(
 				broadcast(DOMAIN_EVENTS.SESSION_LINES_APPENDED, {
 					sessionId,
 					lines: newLines,
-				});
+					writtenAt: await jsonlWrittenAt(transcriptPath),
+				} satisfies SessionLinesAppendedPayload);
 			}
 		}
 	} catch {

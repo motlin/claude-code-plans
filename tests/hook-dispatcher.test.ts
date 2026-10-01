@@ -1,4 +1,4 @@
-import {appendFileSync, writeFileSync, mkdirSync, rmSync} from "node:fs";
+import {appendFileSync, writeFileSync, mkdirSync, rmSync, statSync} from "node:fs";
 import {join} from "node:path";
 import {tmpdir} from "node:os";
 import {vi} from "vite-plus/test";
@@ -1977,9 +1977,16 @@ describe("dispatchHookEvent", () => {
 			});
 
 			const linesAppended = broadcasts.filter((b) => b.type === DOMAIN_EVENTS.SESSION_LINES_APPENDED);
-			expect(linesAppended.length).toBe(1);
-			expect(linesAppended[0]!.data["sessionId"]).toBe(sessionId);
-			expect((linesAppended[0]!.data["lines"] as unknown[]).length).toBe(2);
+			expect(linesAppended).toStrictEqual([
+				{
+					type: DOMAIN_EVENTS.SESSION_LINES_APPENDED,
+					data: {
+						sessionId,
+						lines: [JSON.parse(line1), JSON.parse(line2)],
+						writtenAt: Math.trunc(statSync(transcriptPath).mtimeMs),
+					},
+				},
+			]);
 
 			// Second event with no new content -- no broadcast.
 			broadcasts.length = 0;
@@ -2038,7 +2045,10 @@ describe("dispatchHookEvent", () => {
 			});
 
 			expect(broadcasts.filter((b) => b.type === DOMAIN_EVENTS.SESSION_LINES_APPENDED)).toStrictEqual([
-				{type: DOMAIN_EVENTS.SESSION_LINES_APPENDED, data: {sessionId, lines: [appended]}},
+				{
+					type: DOMAIN_EVENTS.SESSION_LINES_APPENDED,
+					data: {sessionId, lines: [appended], writtenAt: Math.trunc(statSync(transcriptPath).mtimeMs)},
+				},
 			]);
 		});
 	});

@@ -1,5 +1,12 @@
 import {describe, expect, it} from "vite-plus/test";
-import {SSE_EVENTS, HERDR_EVENTS, DOMAIN_EVENTS, HookEventEnvelope, diffEntityMaps} from "../src/lib/hook-events";
+import {
+	SSE_EVENTS,
+	HERDR_EVENTS,
+	DOMAIN_EVENTS,
+	HookEventEnvelope,
+	SessionLinesAppendedPayloadSchema,
+	diffEntityMaps,
+} from "../src/lib/hook-events";
 
 describe("HERDR_EVENTS", () => {
 	it("defines the herdr bridge event namespace", () => {
@@ -13,6 +20,30 @@ describe("HERDR_EVENTS", () => {
 			PANE_AGENT_DETECTED: "herdr:pane-agent-detected",
 			PANE_AGENT_STATUS_CHANGED: "herdr:pane-agent-status-changed",
 		});
+	});
+});
+
+describe("SessionLinesAppendedPayloadSchema", () => {
+	const payload = {
+		sessionId: "abc123",
+		lines: [{type: "user", message: {content: "hi"}}],
+		writtenAt: 1_790_000_000_123,
+	};
+
+	it("carries the appended lines and the JSONL mtime they were written at, in integer epoch ms", () => {
+		expect(SessionLinesAppendedPayloadSchema.parse(payload)).toStrictEqual(payload);
+	});
+
+	it("rejects a payload without writtenAt, with a fractional or negative one, or with unknown keys", () => {
+		const {writtenAt: _writtenAt, ...withoutWrittenAt} = payload;
+		expect(
+			[
+				withoutWrittenAt,
+				{...payload, writtenAt: 1_790_000_000_123.5},
+				{...payload, writtenAt: -1},
+				{...payload, extra: true},
+			].map((candidate) => SessionLinesAppendedPayloadSchema.safeParse(candidate).success),
+		).toStrictEqual([false, false, false, false]);
 	});
 });
 

@@ -107,6 +107,7 @@ import {SHORTCUTS, type ShortcutId} from "../lib/shortcuts/registry";
 import {toggleSidebarCollapsed} from "../lib/sidebar-store";
 import {type ShortcutKeys, useShortcut, useShortcutKeys} from "../hooks/use-shortcut";
 import {clearAll} from "../lib/unread-store";
+import {startPaletteSearchJourney} from "../lib/perf/field-journeys";
 import {HighlightRuns} from "./highlight-runs";
 import {type PaletteCardSession, PaletteRowActionsButton, PaletteRowActionsCard} from "./palette-row-actions";
 import {AttachedContextChips} from "./attached-context-chips";
@@ -1037,6 +1038,7 @@ function PalettePopup({
 	}
 
 	function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+		if (!compose && event.target === inputRef.current) startPaletteSearchJourney(event.nativeEvent);
 		if (event.key === "Escape" && startStep === "picker") {
 			event.preventDefault();
 			event.stopPropagation();

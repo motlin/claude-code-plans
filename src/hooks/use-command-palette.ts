@@ -1,6 +1,7 @@
 import {useCallback, useEffect, useState} from "react";
 
 import {useShortcut} from "./use-shortcut";
+import {startPaletteOpenJourney} from "../lib/perf/field-journeys";
 
 export type PaletteMode = "search" | "compose";
 export type PaletteEntrypoint = "default" | "search";
@@ -49,8 +50,22 @@ export function useCommandPalette() {
 
 	const openSearch = useCallback(() => openPalette("search"), [openPalette]);
 
-	useShortcut("search_or_start", toggle, {allowInModal: true});
-	useShortcut("search", openSearch, {allowInModal: true});
+	useShortcut(
+		"search_or_start",
+		(event) => {
+			startPaletteOpenJourney(event);
+			toggle();
+		},
+		{allowInModal: true},
+	);
+	useShortcut(
+		"search",
+		(event) => {
+			startPaletteOpenJourney(event);
+			openSearch();
+		},
+		{allowInModal: true},
+	);
 
 	useEffect(() => {
 		activeOpener = openPalette;

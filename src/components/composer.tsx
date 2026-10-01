@@ -32,6 +32,7 @@ import {FileMentionMenu, fileMentionOptionId} from "./file-mention-menu";
 import {SlashCommandMenu, slashCommandOptionId} from "./slash-command-menu";
 import {Menu, MenuContent, MenuItem, MenuTrigger} from "./ui/menu";
 import {Tooltip} from "./ui/tooltip";
+import {startComposerKeystrokeJourney, startComposerSubmitJourneys} from "../lib/perf/field-journeys";
 
 type ComposerVariant = "session" | "home";
 
@@ -85,6 +86,7 @@ function QueuedPromptChips({
 						<li
 							key={item.id}
 							data-queued-text={item.text}
+							data-perf-pending-prompt=""
 							className="flex max-w-[85%] min-w-0 items-start gap-1 rounded-r7 bg-user-msg-bg py-1.5 ps-3 pe-1 text-body text-user-msg-text opacity-80"
 						>
 							<span className="line-clamp-2 min-w-0 break-words whitespace-pre-wrap">{item.text}</span>
@@ -167,7 +169,8 @@ const SendSlot = memo(function SendSlot({
 	isStreaming: boolean;
 	onStop: (() => void) | undefined;
 	onCancel: (() => void) | undefined;
-	onSubmit: () => void;
+	/** Receives the Send click, so the send journey is timed from it. */
+	onSubmit: (event: React.MouseEvent) => void;
 	canSend: boolean;
 	deliveryHint: string | undefined;
 	hintId: string;
@@ -380,8 +383,13 @@ export function Composer({
 		return true;
 	}
 
-	function handleSubmit(send: (prompt: string) => void = (text) => onSend(text, launchOptions)): void {
+	function handleSubmit(
+		send: (prompt: string) => void = (text) => onSend(text, launchOptions),
+		trigger?: Event,
+	): void {
 		if (!canSend) return;
+		// The session composer's draft is keyed by its session id.
+		if (trigger !== undefined && variant === "session") startComposerSubmitJourneys(trigger, draftKey);
 		const trimmed = prompt.trim();
 		// Slash commands run as typed; attached context and comments wait for the next real prompt.
 		const text = trimmed.startsWith("/")
@@ -393,7 +401,7 @@ export function Composer({
 	// The send slot and chin are memoized, so they read the latest render's handlers through refs.
 	const handleSubmitRef = useRef(handleSubmit);
 	handleSubmitRef.current = handleSubmit;
-	const submit = useCallback(() => handleSubmitRef.current(), []);
+	const submit = useCallback((event: React.MouseEvent) => handleSubmitRef.current(undefined, event.nativeEvent), []);
 
 	const [discardId, setDiscardId] = useState<string | null>(null);
 	const [historyWalk, setHistoryWalk] = useState<{
@@ -493,20 +501,22 @@ export function Composer({
 	);
 
 	function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+		startComposerKeystrokeJourney(e.nativeEvent);
 		if (e.nativeEvent.isComposing || handleSlashKey(e) || handleMentionKey(e) || handleHistoryKey(e)) {
 			return;
 		}
 		if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
 			e.preventDefault();
 			const commandChord = e.metaKey || e.ctrlKey;
+			const trigger = e.nativeEvent;
 			if (commandChord && e.altKey && onFork !== undefined) {
-				handleSubmit((text) => onFork(text, chinLaunchOptions));
+				handleSubmit((text) => onFork(text, chinLaunchOptions), trigger);
 			} else if (commandChord && !e.altKey && onSendNow !== undefined) {
-				handleSubmit(onSendNow);
+				handleSubmit(onSendNow, trigger);
 			} else if (commandChord && !e.altKey && onSendAndStay !== undefined) {
-				handleSubmit((text) => onSendAndStay(text, chinLaunchOptions));
+				handleSubmit((text) => onSendAndStay(text, chinLaunchOptions), trigger);
 			} else {
-				handleSubmit();
+				handleSubmit(undefined, trigger);
 			}
 		}
 	}

@@ -20,8 +20,17 @@ export const PERF_ANCHORS = {
 	sidebarRecentsRow: '[data-perf-region="sidebar_recents"] [data-row-main-button]',
 	homeSections: "[data-home-action-center][data-perf-ready]",
 	workingMarker: '[data-perf-row="marker"]:not([data-testid="transcript-row"])',
+	/** The optimistic bubble or queued chip a composer submit shows before its JSONL row lands. */
+	pendingPrompt: "[data-perf-pending-prompt]",
 	commandPalette: '[data-perf-overlay="command_palette"]',
+	commandPaletteRow: '[data-perf-overlay="command_palette"] [cmdk-item]',
+	commandPaletteResults: '[data-perf-overlay="command_palette"] [cmdk-list]',
 } as const;
+
+/** The transcript row whose first JSONL record is the one at index `line`. */
+export function transcriptRowAt(line: number): string {
+	return `${PERF_ANCHORS.transcriptRow}[data-perf-line="${line}"]`;
+}
 
 const PERF_BEACON_PATH = "/api/perf";
 
@@ -33,7 +42,7 @@ const PHONE_MAX_WIDTH = 768;
 export type Origin = "localhost" | "remote";
 export type FormFactor = "phone" | "desktop";
 export type SizeBucket = "S" | "M" | "L";
-export type EndSource = "element-timing" | "raf";
+export type EndSource = "element-timing" | "event-timing" | "raf";
 
 export interface ResourceSample {
 	name: string;
@@ -110,9 +119,14 @@ export interface JourneyEnvironment {
 	send: (batch: JourneySample[]) => void;
 }
 
+/**
+ * What a journey is timed from: the interaction that caused it (its `timeStamp`), a server-side moment in epoch ms
+ * (such as the JSONL write behind an SSE append), or "navigation" for navigation start.
+ */
+export type JourneyTrigger = Pick<Event, "type" | "timeStamp"> | {type: string; epochMs: number} | "navigation";
+
 export interface StartJourneyOptions {
-	/** The interaction that caused the journey, or "navigation" for journeys timed from navigation start. */
-	trigger: Event | "navigation";
+	trigger: JourneyTrigger;
 	/** Session JSONL bytes, bucketed into S (< 1 MB), M (1–10 MB) and L (> 10 MB). */
 	sizeBytes?: number;
 	/** Whether the hover prefetch had already warmed the cache the journey reads. */
@@ -126,6 +140,12 @@ export interface JourneyTracker {
 	startJourney(id: string, options: StartJourneyOptions): void;
 	/** Resolves with the queued sample, or null when the journey was hidden, unknown, superseded or timed out. */
 	endJourneyWhenRendered(id: string, anchorSelector: AnchorSelector): Promise<JourneySample | null>;
+	/**
+	 * Ends journey `id` at the next paint after its triggering interaction: the trigger's Event Timing entry
+	 * (startTime + duration, INP-style) when the browser reported one, else the rAF fallback. Interactions under the
+	 * 16 ms Event Timing threshold get no entry, so fast keystrokes end on the fallback.
+	 */
+	endJourneyAtNextPaint(id: string): Promise<JourneySample | null>;
 	flush(): void;
 	dispose(): void;
 }
@@ -282,6 +302,13 @@ export function createJourneyTracker(environment: JourneyEnvironment): JourneyTr
 		return buffers.get(type)!.filter((entry) => entry.startTime >= start && entry.startTime <= end) as T[];
 	}
 
+	function eventTimingEnd(journey: ActiveJourney): number | undefined {
+		const entry = (buffers.get("event") as PerformanceEventTiming[]).find(
+			(candidate) => candidate.name === journey.trigger && candidate.startTime === journey.start,
+		);
+		return entry === undefined ? undefined : entry.startTime + entry.duration;
+	}
+
 	function elementRenderTime(anchor: Element): number | undefined {
 		const entries = buffers.get("element") as unknown as ElementTimingEntry[];
 		return entries.find((entry) => entry.element === anchor && entry.renderTime > 0)?.renderTime;
@@ -368,9 +395,29 @@ export function createJourneyTracker(environment: JourneyEnvironment): JourneyTr
 		});
 	}
 
+	/** Claims journey `id` after a wait: false when another start superseded it or the tab was hidden meanwhile. */
+	function settle(id: string, journey: ActiveJourney): boolean {
+		if (active.get(id) !== journey) return false;
+		active.delete(id);
+		return !journey.hidden;
+	}
+
+	function complete(id: string, journey: ActiveJourney, end: number, endSource: EndSource): JourneySample {
+		performance.mark(`ccb:${id}:end`, {startTime: end});
+		performance.measure(`ccb:${id}`, {start: journey.start, end});
+		const sample = buildSample(id, journey, end, endSource);
+		enqueue(sample);
+		return sample;
+	}
+
+	function triggerStart(trigger: JourneyTrigger): number {
+		if (trigger === "navigation") return 0;
+		return "epochMs" in trigger ? trigger.epochMs - performance.timeOrigin : trigger.timeStamp;
+	}
+
 	return {
 		startJourney(id, {trigger, sizeBytes, prefetchHit}) {
-			const start = trigger === "navigation" ? 0 : trigger.timeStamp;
+			const start = triggerStart(trigger);
 			active.set(id, {
 				trigger: trigger === "navigation" ? "navigation" : trigger.type,
 				start,
@@ -390,20 +437,26 @@ export function createJourneyTracker(environment: JourneyEnvironment): JourneyTr
 			);
 			if (!anchors || active.get(id) !== journey) return null;
 			const paintedAt = await afterPaint();
-			if (active.get(id) !== journey) return null;
-			active.delete(id);
-			if (journey.hidden) return null;
+			if (!settle(id, journey)) return null;
 
 			const renderTimes = anchors.map(elementRenderTime);
 			const renderTime = renderTimes.every((time) => time !== undefined)
 				? Math.max(...(renderTimes as number[]))
 				: undefined;
-			const end = renderTime ?? paintedAt;
-			performance.mark(`ccb:${id}:end`, {startTime: end});
-			performance.measure(`ccb:${id}`, {start: journey.start, end});
-			const sample = buildSample(id, journey, end, renderTime === undefined ? "raf" : "element-timing");
-			enqueue(sample);
-			return sample;
+			return renderTime === undefined
+				? complete(id, journey, paintedAt, "raf")
+				: complete(id, journey, renderTime, "element-timing");
+		},
+
+		async endJourneyAtNextPaint(id) {
+			const journey = active.get(id);
+			if (!journey) return null;
+			const paintedAt = await afterPaint();
+			if (!settle(id, journey)) return null;
+			const eventEnd = eventTimingEnd(journey);
+			return eventEnd === undefined
+				? complete(id, journey, paintedAt, "raf")
+				: complete(id, journey, eventEnd, "event-timing");
 		},
 
 		flush,

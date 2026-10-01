@@ -195,7 +195,15 @@ export type JsonValue = string | number | boolean | null | JsonValue[] | {[key: 
 export interface SessionLinesAppendedPayload {
 	sessionId: string;
 	lines: Record<string, JsonValue>[];
+	/** The JSONL file's mtime after the read, in integer epoch ms: where field journey F6 starts. */
+	writtenAt: number;
 }
+
+export const SessionLinesAppendedPayloadSchema: z.ZodType<SessionLinesAppendedPayload> = z.strictObject({
+	sessionId: z.string(),
+	lines: z.array(z.record(z.string(), JsonValueSchema as z.ZodType<JsonValue>)),
+	writtenAt: z.int().nonnegative(),
+});
 
 /**
  * Payload broadcast when a `UserPromptSubmit` hook fires. Lets the session view

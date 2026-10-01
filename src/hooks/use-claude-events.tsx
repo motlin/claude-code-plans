@@ -57,6 +57,7 @@ import type {Statusline} from "../lib/api/statusline";
 import type {ComposerServerState} from "../lib/composer-state";
 import type {Notification, NotificationsData} from "../lib/api/notifications";
 import {openReconnectingEventSource} from "../lib/reconnecting-event-source";
+import {startLiveAppendJourneys} from "../lib/perf/field-journeys";
 
 // ---------------------------------------------------------------------------
 // State types
@@ -788,19 +789,21 @@ export function applyNotificationCleared(queryClient: QueryClient, payload: Noti
 /**
  * Apply SESSION_LINES_APPENDED: append raw JSONL records to the transcript
  * cache. The component's useMemo on processTranscript() recomputes
- * automatically when the cache updates.
+ * automatically when the cache updates. Returns the JSONL index of the first
+ * appended record, or null when no transcript is cached to append to.
  */
 export function applySessionLinesAppended(
 	queryClient: QueryClient,
 	sessionId: string,
-	payload: SessionLinesAppendedPayload,
-): void {
+	payload: Pick<SessionLinesAppendedPayload, "sessionId" | "lines">,
+): number | null {
 	const queryKey = sessionQueryKeys.transcript(sessionId);
 	const cached = queryClient.getQueryData<TranscriptData>(queryKey);
 
-	if (!cached) return;
+	if (!cached) return null;
 
-	if (payload.lines.length === 0) return;
+	if (payload.lines.length === 0) return null;
+	const firstLine = transcriptEndIndex(cached);
 
 	queryClient.setQueryData<TranscriptData>(queryKey, (old) => {
 		if (!old) return old;
@@ -819,6 +822,7 @@ export function applySessionLinesAppended(
 	// one only marks the query stale, so a live session costs nothing until
 	// somebody is actually looking at an inventory.
 	void queryClient.invalidateQueries({queryKey: sessionQueryKeys.resources(sessionId)});
+	return firstLine;
 }
 
 /**
@@ -1163,10 +1167,13 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 					const sessionId = data["sessionId"];
 					const lines = data["lines"];
 					if (typeof sessionId === "string" && Array.isArray(lines)) {
-						applySessionLinesAppended(queryClient, sessionId, {
+						const appended = {
 							sessionId,
 							lines: lines as Record<string, JsonValue>[],
-						});
+							...(typeof data["writtenAt"] === "number" ? {writtenAt: data["writtenAt"]} : {}),
+						};
+						const firstLine = applySessionLinesAppended(queryClient, sessionId, appended);
+						if (firstLine !== null) startLiveAppendJourneys(e, appended, firstLine);
 					}
 					// An already-running session emits this event as it works; the
 					// active-sessions query only refetches on lifecycle events, so

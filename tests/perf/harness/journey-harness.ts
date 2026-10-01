@@ -8,6 +8,8 @@ import {
 
 class FakePerformance {
 	clock = 0;
+	/** Epoch ms of navigation start, so epoch-stamped triggers land on the fake clock. */
+	timeOrigin = 1_000_000;
 	readonly marks: {name: string; startTime: number | undefined}[] = [];
 	readonly measures: {name: string; start: number; end: number}[] = [];
 
@@ -136,6 +138,12 @@ export function makeJourneyHarness(overrides: Partial<JourneyEnvironment> = {}):
 
 export function pointerDownAt(timeStamp: number, init: MouseEventInit = {}): Event {
 	const event = new MouseEvent("pointerdown", {button: 0, bubbles: true, ...init});
+	Object.defineProperty(event, "timeStamp", {value: timeStamp});
+	return event;
+}
+
+export function keyDownAt(timeStamp: number, init: KeyboardEventInit = {}): KeyboardEvent {
+	const event = new KeyboardEvent("keydown", {bubbles: true, cancelable: true, ...init});
 	Object.defineProperty(event, "timeStamp", {value: timeStamp});
 	return event;
 }

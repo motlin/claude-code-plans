@@ -678,9 +678,11 @@
 		"tolerance": 0
 	},
 	"server.liveAppend.large-long.1.sse.payloadBytes": {
-		"ceiling": 675,
+		"ceiling": 701,
 		"unit": "bytes",
-		"tolerance": 0
+		"tolerance": 0,
+		"reason": "session:lines-appended carries writtenAt (the JSONL mtime, integer epoch ms) for field journey F6: 26 bytes per lines-appended frame",
+		"raisedAt": "2026-10-01"
 	},
 	"server.liveAppend.large-long.20.jsonl.fullScans": {
 		"ceiling": 0,
@@ -698,9 +700,11 @@
 		"tolerance": 0
 	},
 	"server.liveAppend.large-long.20.sse.payloadBytes": {
-		"ceiling": 4742,
+		"ceiling": 4768,
 		"unit": "bytes",
-		"tolerance": 0
+		"tolerance": 0,
+		"reason": "session:lines-appended carries writtenAt (the JSONL mtime, integer epoch ms) for field journey F6: 26 bytes per lines-appended frame",
+		"raisedAt": "2026-10-01"
 	},
 	"server.liveAppend.large-wide.1.jsonl.fullScans": {
 		"ceiling": 1,
@@ -718,9 +722,11 @@
 		"tolerance": 0
 	},
 	"server.liveAppend.large-wide.1.sse.payloadBytes": {
-		"ceiling": 735,
+		"ceiling": 761,
 		"unit": "bytes",
-		"tolerance": 0
+		"tolerance": 0,
+		"reason": "session:lines-appended carries writtenAt (the JSONL mtime, integer epoch ms) for field journey F6: 26 bytes per lines-appended frame",
+		"raisedAt": "2026-10-01"
 	},
 	"server.liveAppend.large-wide.20.jsonl.fullScans": {
 		"ceiling": 0,
@@ -738,9 +744,11 @@
 		"tolerance": 0
 	},
 	"server.liveAppend.large-wide.20.sse.payloadBytes": {
-		"ceiling": 4802,
+		"ceiling": 4828,
 		"unit": "bytes",
-		"tolerance": 0
+		"tolerance": 0,
+		"reason": "session:lines-appended carries writtenAt (the JSONL mtime, integer epoch ms) for field journey F6: 26 bytes per lines-appended frame",
+		"raisedAt": "2026-10-01"
 	},
 	"server.liveAppend.small.1.jsonl.fullScans": {
 		"ceiling": 1,
@@ -758,9 +766,11 @@
 		"tolerance": 0
 	},
 	"server.liveAppend.small.1.sse.payloadBytes": {
-		"ceiling": 633,
+		"ceiling": 659,
 		"unit": "bytes",
-		"tolerance": 0
+		"tolerance": 0,
+		"reason": "session:lines-appended carries writtenAt (the JSONL mtime, integer epoch ms) for field journey F6: 26 bytes per lines-appended frame",
+		"raisedAt": "2026-10-01"
 	},
 	"server.liveAppend.small.20.jsonl.fullScans": {
 		"ceiling": 0,
@@ -778,9 +788,11 @@
 		"tolerance": 0
 	},
 	"server.liveAppend.small.20.sse.payloadBytes": {
-		"ceiling": 4605,
+		"ceiling": 4631,
 		"unit": "bytes",
-		"tolerance": 0
+		"tolerance": 0,
+		"reason": "session:lines-appended carries writtenAt (the JSONL mtime, integer epoch ms) for field journey F6: 26 bytes per lines-appended frame",
+		"raisedAt": "2026-10-01"
 	},
 	"server.liveAppend.typical.1.jsonl.fullScans": {
 		"ceiling": 1,
@@ -798,9 +810,11 @@
 		"tolerance": 0
 	},
 	"server.liveAppend.typical.1.sse.payloadBytes": {
-		"ceiling": 631,
+		"ceiling": 657,
 		"unit": "bytes",
-		"tolerance": 0
+		"tolerance": 0,
+		"reason": "session:lines-appended carries writtenAt (the JSONL mtime, integer epoch ms) for field journey F6: 26 bytes per lines-appended frame",
+		"raisedAt": "2026-10-01"
 	},
 	"server.liveAppend.typical.20.jsonl.fullScans": {
 		"ceiling": 0,
@@ -818,9 +832,11 @@
 		"tolerance": 0
 	},
 	"server.liveAppend.typical.20.sse.payloadBytes": {
-		"ceiling": 4641,
+		"ceiling": 4667,
 		"unit": "bytes",
-		"tolerance": 0
+		"tolerance": 0,
+		"reason": "session:lines-appended carries writtenAt (the JSONL mtime, integer epoch ms) for field journey F6: 26 bytes per lines-appended frame",
+		"raisedAt": "2026-10-01"
 	},
 	"server.liveAppendMulti.jsonl.bytesRead": {
 		"ceiling": 2512800,
@@ -833,9 +849,11 @@
 		"tolerance": 0
 	},
 	"server.liveAppendMulti.sse.deliveredBytes": {
-		"ceiling": 18882,
+		"ceiling": 19272,
 		"unit": "bytes",
-		"tolerance": 0
+		"tolerance": 0,
+		"reason": "session:lines-appended carries writtenAt (the JSONL mtime, integer epoch ms) for field journey F6: 26 bytes per lines-appended frame",
+		"raisedAt": "2026-10-01"
 	},
 	"server.search.miss.sql.count": {
 		"ceiling": 5,

@@ -33,6 +33,7 @@ import {
 	DOMAIN_EVENTS,
 	SSE_EVENTS,
 	diffEntityMaps,
+	type SessionLinesAppendedPayload,
 	type SessionSummaryPayload,
 	type TaskSummaryPayload,
 } from "./hook-events";
@@ -561,7 +562,7 @@ export async function processJsonlAppend(
 ): Promise<void> {
 	try {
 		const fromOffset = offsets.get(path) ?? (await jsonlResumeOffset(db, path));
-		const {readNewJsonlLines} = await import("./sessions");
+		const {jsonlWrittenAt, readNewJsonlLines} = await import("./sessions");
 		const {lines: newLines, nextByteOffset} = await readNewJsonlLines(path, fromOffset);
 		offsets.set(path, nextByteOffset);
 
@@ -572,7 +573,8 @@ export async function processJsonlAppend(
 				broadcast(DOMAIN_EVENTS.SESSION_LINES_APPENDED, {
 					sessionId,
 					lines: newLines,
-				});
+					writtenAt: await jsonlWrittenAt(path),
+				} satisfies SessionLinesAppendedPayload);
 			}
 		}
 	} catch {

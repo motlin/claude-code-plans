@@ -1,5 +1,5 @@
 import {afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
-import {appendFileSync, writeFileSync, mkdirSync, mkdtempSync, realpathSync, rmSync} from "node:fs";
+import {appendFileSync, writeFileSync, mkdirSync, mkdtempSync, realpathSync, rmSync, statSync} from "node:fs";
 import {createServer, type Server} from "node:net";
 import {dirname, join} from "node:path";
 import {tmpdir} from "node:os";
@@ -483,7 +483,11 @@ describe("processJsonlAppend", () => {
 			DOMAIN_EVENTS.SESSION_ADDED,
 			DOMAIN_EVENTS.PLAN_CHANGED,
 		]);
-		expect(broadcasts[0]!.data).toStrictEqual({sessionId: "sess-append", lines: [firstLine, planLine]});
+		expect(broadcasts[0]!.data).toStrictEqual({
+			sessionId: "sess-append",
+			lines: [firstLine, planLine],
+			writtenAt: Math.trunc(statSync(jsonlPath).mtimeMs),
+		});
 		expect(offsets).toStrictEqual(new Map([[jsonlPath, Buffer.byteLength(jsonl(firstLine, planLine))]]));
 
 		const secondLine = {
@@ -500,7 +504,11 @@ describe("processJsonlAppend", () => {
 			DOMAIN_EVENTS.SESSION_LINES_APPENDED,
 			DOMAIN_EVENTS.SESSION_UPDATED,
 		]);
-		expect(broadcasts[0]!.data).toStrictEqual({sessionId: "sess-append", lines: [secondLine]});
+		expect(broadcasts[0]!.data).toStrictEqual({
+			sessionId: "sess-append",
+			lines: [secondLine],
+			writtenAt: Math.trunc(statSync(jsonlPath).mtimeMs),
+		});
 	});
 
 	it("after a restart, broadcasts only the lines appended since the transcript was indexed", async () => {
@@ -533,7 +541,14 @@ describe("processJsonlAppend", () => {
 		});
 
 		expect(broadcasts.filter((b) => b.type === DOMAIN_EVENTS.SESSION_LINES_APPENDED)).toStrictEqual([
-			{type: DOMAIN_EVENTS.SESSION_LINES_APPENDED, data: {sessionId: "sess-restart", lines: [appended]}},
+			{
+				type: DOMAIN_EVENTS.SESSION_LINES_APPENDED,
+				data: {
+					sessionId: "sess-restart",
+					lines: [appended],
+					writtenAt: Math.trunc(statSync(jsonlPath).mtimeMs),
+				},
+			},
 		]);
 	});
 });

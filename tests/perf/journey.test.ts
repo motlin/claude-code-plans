@@ -10,6 +10,7 @@ import {
 } from "../../src/lib/perf/journey";
 import {
 	flushMicrotasks,
+	keyDownAt,
 	makeJourneyHarness as makeHarness,
 	pointerDownAt,
 	setDocumentVisibility,
@@ -380,5 +381,62 @@ describe("default browser tracker", () => {
 			mode: "dev",
 			beacons: [["/api/perf", 1]],
 		});
+	});
+});
+
+describe("journey triggers and next-paint ends", () => {
+	it("starts an epoch-stamped trigger on the navigation clock", async () => {
+		const harness = makeHarness();
+		document.body.append(Object.assign(document.createElement("main"), {textContent: "row"}));
+		harness.tracker.startJourney("F6", {trigger: {type: "jsonl-write", epochMs: 1_000_400}});
+		const done = harness.tracker.endJourneyWhenRendered("F6", "main");
+		await flushMicrotasks();
+		harness.performance.clock = 900;
+		harness.runFrame();
+
+		expect(await done).toMatchObject({journey: "F6", trigger: "jsonl-write", start: 400, end: 900, duration: 500});
+	});
+
+	it("ends at the Event Timing entry for the triggering keydown when the browser reported one", async () => {
+		const harness = makeHarness();
+		harness.tracker.startJourney("F8", {trigger: keyDownAt(300)});
+		const done = harness.tracker.endJourneyAtNextPaint("F8");
+		harness.observers.emit("event", [
+			{name: "keydown", startTime: 120, duration: 40, processingStart: 121, processingEnd: 125, interactionId: 1},
+			{name: "keydown", startTime: 300, duration: 48, processingStart: 302, processingEnd: 330, interactionId: 2},
+		]);
+		harness.performance.clock = 352;
+		harness.runFrame();
+
+		expect(await done).toMatchObject({
+			journey: "F8",
+			trigger: "keydown",
+			start: 300,
+			end: 348,
+			duration: 48,
+			endSource: "event-timing",
+		});
+	});
+
+	it("falls back to the rAF paint when the keydown was too fast for an Event Timing entry", async () => {
+		const harness = makeHarness();
+		harness.tracker.startJourney("F8", {trigger: keyDownAt(300)});
+		const done = harness.tracker.endJourneyAtNextPaint("F8");
+		harness.performance.clock = 309;
+		harness.runFrame();
+
+		expect(await done).toMatchObject({start: 300, end: 309, duration: 9, endSource: "raf"});
+	});
+
+	it("drops a next-paint journey superseded by the next keystroke", async () => {
+		const harness = makeHarness();
+		harness.tracker.startJourney("F8", {trigger: keyDownAt(300)});
+		const first = harness.tracker.endJourneyAtNextPaint("F8");
+		harness.tracker.startJourney("F8", {trigger: keyDownAt(305)});
+		const second = harness.tracker.endJourneyAtNextPaint("F8");
+		harness.performance.clock = 316;
+		harness.runFrame();
+
+		expect([await first, (await second)?.start]).toStrictEqual([null, 305]);
 	});
 });

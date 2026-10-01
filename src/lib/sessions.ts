@@ -1052,6 +1052,14 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 }
 
 /**
+ * The JSONL file's mtime in integer epoch ms, stamped on `session:lines-appended` as `writtenAt` so the client can time
+ * a live append from the write (field journey F6). Integer keeps the SSE frame size deterministic.
+ */
+export async function jsonlWrittenAt(filePath: string): Promise<number> {
+	return Math.trunc((await stat(filePath)).mtimeMs);
+}
+
+/**
  * Read new JSONL lines from a file starting at a byte offset.
  * Returns the parsed JSON objects and the next byte offset to resume from.
  * Tracks bytes per successfully-parsed line (not stat().size) to handle
