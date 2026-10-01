@@ -68,6 +68,7 @@ import {
 } from "../hooks/use-claude-events";
 import {
 	lastAssistantModelFromRecords,
+	lastAssistantUsageFromRecords,
 	lastPermissionModeFromRecords,
 	resolveComposerState,
 } from "../lib/composer-state";
@@ -439,6 +440,7 @@ function SessionView({
 				statuslineModel: composerServerState?.statusline?.model?.display_name ?? null,
 				statuslineModelId: composerServerState?.statusline?.model?.id ?? null,
 				lastAssistantModel: lastAssistantModelFromRecords(transcript.records),
+				lastAssistantUsage: lastAssistantUsageFromRecords(transcript.records),
 				settingsModel: composerServerState?.settingsModel ?? null,
 				settingsEffortLevel: composerServerState?.settingsEffortLevel ?? null,
 				statusline: composerServerState?.statusline ?? null,

@@ -6,6 +6,7 @@ import {
 	formatUsageAriaLabel,
 	getComposerState,
 	lastAssistantModelFromRecords,
+	lastAssistantUsageFromRecords,
 	lastPermissionModeFromRecords,
 	resolveComposerState,
 	USAGE_RING_CIRCUMFERENCE,
@@ -44,6 +45,7 @@ const EMPTY_SOURCES: ComposerStateSources = {
 	statuslineModel: null,
 	statuslineModelId: null,
 	lastAssistantModel: null,
+	lastAssistantUsage: null,
 	settingsModel: null,
 	settingsEffortLevel: null,
 	statusline: null,
@@ -162,8 +164,97 @@ describe("resolveComposerState precedence", () => {
 		});
 	});
 
-	it("usage is null without a statusline", () => {
+	it("usage is null without a statusline or transcript usage", () => {
 		expect(resolveComposerState(EMPTY_SOURCES).usage).toBeNull();
+	});
+
+	const assistantRecord = (model: string, timestamp: string, usage: Record<string, number>) => ({
+		type: "assistant",
+		timestamp,
+		message: {role: "assistant", model, usage},
+	});
+	const CACHED_USAGE = {
+		input_tokens: 4,
+		cache_creation_input_tokens: 2_996,
+		cache_read_input_tokens: 47_000,
+		output_tokens: 900,
+	};
+
+	it.each([
+		{
+			name: "no assistant record",
+			records: [{type: "user", message: {role: "user", content: "hi"}}],
+			expected: null,
+		},
+		{
+			name: "assistant with cache tokens on a 200k model",
+			records: [
+				assistantRecord("claude-haiku-4-5-20251001", "2026-09-29T08:00:00.000Z", {
+					input_tokens: 1,
+					output_tokens: 1,
+				}),
+				assistantRecord("claude-haiku-4-5-20251001", "2026-09-29T08:30:00.000Z", CACHED_USAGE),
+				{type: "assistant", timestamp: "2026-09-29T08:31:00.000Z", message: {model: "<synthetic>", usage: {}}},
+				{type: "user", timestamp: "2026-09-29T08:32:00.000Z", message: {role: "user", content: "next"}},
+			],
+			expected: {
+				contextTokens: 50_000,
+				contextWindowSize: 200_000,
+				contextPercent: 25,
+				fiveHour: null,
+				weekly: null,
+				updatedAt: "2026-09-29T08:30:00.000Z",
+			},
+		},
+		{
+			name: "1M model",
+			records: [assistantRecord("claude-opus-5-5", "2026-09-29T07:00:00.000Z", CACHED_USAGE)],
+			expected: {
+				contextTokens: 50_000,
+				contextWindowSize: 1_000_000,
+				contextPercent: 5,
+				fiveHour: null,
+				weekly: null,
+				updatedAt: "2026-09-29T07:00:00.000Z",
+			},
+		},
+		{
+			name: "[1m] suffix",
+			records: [assistantRecord("claude-sonnet-4-6[1m]", "2026-09-29T07:00:00.000Z", CACHED_USAGE)],
+			expected: {
+				contextTokens: 50_000,
+				contextWindowSize: 1_000_000,
+				contextPercent: 5,
+				fiveHour: null,
+				weekly: null,
+				updatedAt: "2026-09-29T07:00:00.000Z",
+			},
+		},
+	])("usage falls back to the transcript: $name", ({records, expected}) => {
+		const state = resolveComposerState({
+			...EMPTY_SOURCES,
+			lastAssistantModel: lastAssistantModelFromRecords(records),
+			lastAssistantUsage: lastAssistantUsageFromRecords(records),
+		});
+		expect(state.usage).toStrictEqual(expected);
+	});
+
+	it("the statusline wins over transcript usage", () => {
+		const state = resolveComposerState({
+			...EMPTY_SOURCES,
+			lastAssistantModel: "claude-haiku-4-5-20251001",
+			lastAssistantUsage: {contextTokens: 50_000, timestamp: "2026-09-29T08:30:00.000Z"},
+			statusline: ALICE_STATUSLINE,
+			statuslineUpdatedAt: "2026-09-29T09:00:00.000Z",
+		});
+		expect(state.usage).toStrictEqual({
+			contextTokens: 190_200,
+			contextWindowSize: 1_000_000,
+			contextPercent: 19,
+			fiveHour: {usedPercentage: 10, resetsAt: NOW_SEC + 4 * 3600 + 11 * 60},
+			weekly: {usedPercentage: 65, resetsAt: NOW_SEC + 14 * 3600 + 31 * 60},
+			updatedAt: "2026-09-29T09:00:00.000Z",
+		});
 	});
 });
 

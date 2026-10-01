@@ -43,11 +43,19 @@ export interface ComposerStateSources {
 	statuslineModelId: string | null;
 	/** Raw `message.model` of the newest assistant record. */
 	lastAssistantModel: string | null;
+	/** Context usage of the newest assistant record; the fallback when there is no statusline. */
+	lastAssistantUsage: TranscriptContextUsage | null;
 	/** settings.json `model`: what a session with no model yet launches with. */
 	settingsModel: string | null;
 	settingsEffortLevel: string | null;
 	statusline: Statusline | null;
 	statuslineUpdatedAt: string | null;
+}
+
+export interface TranscriptContextUsage {
+	contextTokens: number;
+	/** The assistant record's `timestamp`. */
+	timestamp: string | null;
 }
 
 export interface ComposerLabelled {
@@ -109,9 +117,39 @@ function resolveUsage(statusline: Statusline, updatedAt: string | null): Compose
 	};
 }
 
+const DEFAULT_CONTEXT_WINDOW = 200_000;
+
+/** Context window by model id, matching what Claude Code's statusline reports for each. */
+const CONTEXT_WINDOWS: ReadonlyArray<readonly [RegExp, number]> = [
+	[/\[1m\]$/i, 1_000_000],
+	[/^claude-(opus|sonnet|fable)-5(-|$)/, 1_000_000],
+];
+
+function contextWindowSizeForModel(modelId: string): number {
+	return CONTEXT_WINDOWS.find(([pattern]) => pattern.test(modelId))?.[1] ?? DEFAULT_CONTEXT_WINDOW;
+}
+
+function resolveTranscriptUsage(usage: TranscriptContextUsage, modelId: string): ComposerUsage {
+	const size = contextWindowSizeForModel(modelId);
+	return {
+		contextTokens: usage.contextTokens,
+		contextWindowSize: size,
+		contextPercent: (usage.contextTokens / size) * 100,
+		fiveHour: null,
+		weekly: null,
+		updatedAt: usage.timestamp,
+	};
+}
+
+function resolveComposerUsage(sources: ComposerStateSources, modelId: string): ComposerUsage | null {
+	if (sources.statusline) return resolveUsage(sources.statusline, sources.statuslineUpdatedAt);
+	if (sources.lastAssistantUsage) return resolveTranscriptUsage(sources.lastAssistantUsage, modelId);
+	return null;
+}
+
 /**
  * mode = hook ?? JSONL ?? settings; model = statusline ?? last assistant ?? settings ?? the CLI default;
- * effort = settings ?? "high".
+ * effort = settings ?? "high"; usage = statusline ?? the last assistant record's usage.
  */
 export function resolveComposerState(sources: ComposerStateSources): ComposerState {
 	const modeId =
@@ -128,7 +166,7 @@ export function resolveComposerState(sources: ComposerStateSources): ComposerSta
 		model: nonEmpty(sources.statuslineModel) ?? formatModelName(modelId) ?? modelId,
 		modelId,
 		effort: {id: effortId, label: EFFORT_LABELS[effortId] ?? effortId},
-		usage: sources.statusline ? resolveUsage(sources.statusline, sources.statuslineUpdatedAt) : null,
+		usage: resolveComposerUsage(sources, modelId),
 	};
 }
 
@@ -159,6 +197,36 @@ export function lastAssistantModelFromRecords(records: readonly unknown[]): stri
 		if (!isRecord(message)) continue;
 		const model = message["model"];
 		if (typeof model === "string" && model !== "" && model !== SYNTHETIC_MODEL) return model;
+	}
+	return null;
+}
+
+function tokenCount(usage: RecordLike, key: string): number {
+	const value = usage[key];
+	return typeof value === "number" ? value : 0;
+}
+
+/** The context an assistant turn consumed: `input_tokens + cache_read_input_tokens + cache_creation_input_tokens`. */
+function contextTokensFromUsage(usage: unknown): number | null {
+	if (!isRecord(usage)) return null;
+	return (
+		tokenCount(usage, "input_tokens") +
+		tokenCount(usage, "cache_read_input_tokens") +
+		tokenCount(usage, "cache_creation_input_tokens")
+	);
+}
+
+/** Context usage of the newest real assistant record that carries `message.usage`. */
+export function lastAssistantUsageFromRecords(records: readonly unknown[]): TranscriptContextUsage | null {
+	for (let i = records.length - 1; i >= 0; i--) {
+		const record = records[i];
+		if (!isRecord(record) || record["type"] !== "assistant") continue;
+		const message = record["message"];
+		if (!isRecord(message) || message["model"] === SYNTHETIC_MODEL) continue;
+		const contextTokens = contextTokensFromUsage(message["usage"]);
+		if (contextTokens === null) continue;
+		const timestamp = record["timestamp"];
+		return {contextTokens, timestamp: typeof timestamp === "string" ? timestamp : null};
 	}
 	return null;
 }
