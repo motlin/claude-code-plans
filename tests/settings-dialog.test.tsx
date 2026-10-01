@@ -107,10 +107,21 @@ describe("SettingsDialog", () => {
 		await renderAt("/#settings/sessions");
 
 		await screen.findByRole("dialog", {name: "Settings"});
+		// Upstream drops the per-tab h2: the content starts with the section headings.
 		expect({
 			current: currentTabs(),
-			heading: screen.getByRole("heading", {level: 2}).textContent,
-		}).toStrictEqual({current: ["Sessions"], heading: "Sessions"});
+			tabHeading: screen.queryByRole("heading", {level: 2, name: "Sessions"}),
+		}).toStrictEqual({current: ["Sessions"], tabHeading: null});
+	});
+
+	it("gives every nav item an icon before its label", async () => {
+		await renderAt("/#settings/general");
+
+		await screen.findByRole("dialog", {name: "Settings"});
+		const nav = screen.getByRole("navigation", {name: "Settings"});
+		expect(
+			[...nav.querySelectorAll("button")].map((button) => button.firstElementChild?.tagName.toLowerCase()),
+		).toStrictEqual(Array.from({length: 9}, () => "svg"));
 	});
 
 	it("lists the local settings tabs in order", async () => {
@@ -148,7 +159,7 @@ describe("SettingsDialog", () => {
 
 		await act(() => router.navigate({to: "/", hash: "settings/general"}));
 		await screen.findByRole("dialog", {name: "Settings"});
-		fireEvent.click(screen.getByRole("button", {name: "Close settings"}));
+		fireEvent.click(screen.getByRole("button", {name: "Close"}));
 
 		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
 		await waitFor(() => expect(document.activeElement).toBe(trigger));
@@ -277,7 +288,6 @@ describe("SettingsDialog local tabs", () => {
 		await screen.findByRole("dialog", {name: "Settings"});
 
 		expect(screen.getAllByRole("heading").map((heading) => heading.textContent)).toStrictEqual([
-			"Setup",
 			"Hook Configuration",
 		]);
 	});

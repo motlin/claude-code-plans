@@ -386,7 +386,7 @@ function ThemeRow() {
 	const {theme, setTheme} = useTheme();
 
 	return (
-		<SettingsRow slug="theme" title="Theme" description="Color scheme for the interface">
+		<SettingsRow slug="theme" title="Theme">
 			<SegmentedControl iconOnly value={theme} options={THEME_OPTIONS} onValueChange={setTheme} />
 		</SettingsRow>
 	);

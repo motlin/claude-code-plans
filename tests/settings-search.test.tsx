@@ -175,4 +175,22 @@ describe("settings search", () => {
 		expect(scrolled).toStrictEqual(["default-view"]);
 		expect(screen.queryByRole("dialog", {name: "Search results"})).toBeNull();
 	});
+
+	it("renders each result as an icon and a Tab / Row breadcrumb", async () => {
+		await renderAt("/#settings/general");
+		await screen.findByRole("dialog", {name: "Settings"});
+
+		fireEvent.change(screen.getByRole("combobox", {name: "Search settings"}), {
+			target: {value: "theme"},
+		});
+
+		const popover = await screen.findByRole("dialog", {name: "Search results"});
+		const first = within(popover).getAllByRole("button")[0];
+		expect({
+			icon: first?.firstElementChild?.tagName.toLowerCase(),
+			section: first?.querySelector("[data-settings-result-section]")?.textContent,
+			title: first?.querySelector("[data-settings-result-title]")?.textContent,
+			text: first?.textContent,
+		}).toStrictEqual({icon: "svg", section: "General", title: "Theme", text: "General / Theme"});
+	});
 });

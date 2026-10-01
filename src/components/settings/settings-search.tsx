@@ -1,38 +1,15 @@
 import {Popover} from "@base-ui/react/popover";
-import {
-	Code,
-	FileCog,
-	Gauge,
-	type LucideIcon,
-	MessagesSquare,
-	ScrollText,
-	Search,
-	Server,
-	Settings,
-	Sparkles,
-	Wrench,
-} from "lucide-react";
+import {Search} from "lucide-react";
 import {useId, useMemo, useRef, useState} from "react";
 import {settingsTabLabels} from "../../lib/schema-choices";
 import type {SettingsTab} from "../../lib/settings-hash";
 import {searchSettings, splitMatch, type SettingsSearchResult} from "../../lib/settings-search";
-
-const TAB_ICONS = {
-	general: Settings,
-	usage: Gauge,
-	"claude-code": Code,
-	transcript: ScrollText,
-	sessions: MessagesSquare,
-	application: Server,
-	"ai-features": Sparkles,
-	"claude-config": FileCog,
-	setup: Wrench,
-} satisfies Record<SettingsTab, LucideIcon>;
+import {SETTINGS_TAB_ICONS} from "./settings-tab-icons";
 
 /**
- * The Settings nav search field. Typing opens upstream's 280px results popover: one button per
- * matching row, showing the section icon and name over the row title (muted footnote) with the
- * match in the accent color. Choosing a result hands its tab and row to `onSelect`.
+ * The Settings nav search field. Typing opens upstream's 280px results popover (padding 4): one
+ * 14/20 r8 row per match, the tab icon then a "Tab / Row" breadcrumb with the match in the accent
+ * color. Choosing a result hands its tab and row to `onSelect`.
  */
 export function SettingsSearch({onSelect}: {onSelect: (tab: SettingsTab, row: string) => void}) {
 	const [query, setQuery] = useState("");
@@ -122,7 +99,7 @@ export function SettingsSearch({onSelect}: {onSelect: (tab: SettingsTab, row: st
 									</p>
 								) : (
 									groups.flatMap((group) => {
-										const Icon = TAB_ICONS[group.tab];
+										const Icon = SETTINGS_TAB_ICONS[group.tab];
 										return group.results.map((result) => {
 											const parts = splitMatch(result.title, result.start, needleLength);
 											return (
@@ -131,21 +108,19 @@ export function SettingsSearch({onSelect}: {onSelect: (tab: SettingsTab, row: st
 													type="button"
 													aria-label={`${settingsTabLabels[group.tab]} ${result.title}`}
 													onClick={() => choose(result)}
-													className="flex w-full flex-col gap-0.5 rounded-r6 px-2.5 py-1.5 text-left transition-colors hover:bg-fill-ghost-hover focus-visible:bg-fill-ghost-hover focus-visible:outline-none"
+													className="flex w-full items-center gap-2 rounded-r6 px-1 py-1.5 text-left text-body text-primary transition-colors hover:bg-fill-ghost-hover focus-visible:bg-fill-ghost-hover focus-visible:outline-none"
 												>
-													<span className="flex items-center gap-2 text-body text-primary">
-														<Icon aria-hidden="true" className="size-5 shrink-0 p-0.5" />
+													<Icon aria-hidden="true" className="size-5 shrink-0 p-0.5" />
+													<span className="min-w-0 truncate">
 														<span data-settings-result-section="">
 															{settingsTabLabels[group.tab]}
 														</span>
-													</span>
-													<span
-														data-settings-result-title=""
-														className="pl-[calc(20px+0.5rem)] text-footnote text-[var(--settings-muted)]"
-													>
-														{parts.before}
-														<span className="text-accent-100">{parts.match}</span>
-														{parts.after}
+														<span className="text-[var(--settings-muted)]"> / </span>
+														<span data-settings-result-title="">
+															{parts.before}
+															<span className="text-accent-100">{parts.match}</span>
+															{parts.after}
+														</span>
 													</span>
 												</button>
 											);

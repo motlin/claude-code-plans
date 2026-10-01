@@ -95,10 +95,12 @@ describe("SettingsSection and SettingsRow", () => {
 
 		expect({
 			heading: heading.textContent,
+			headingSize: heading.classList.contains("text-[15px]"),
 			row: group.getAttribute("data-settings-row"),
 			control: toggle.closest("[data-settings-control]") !== null,
 		}).toStrictEqual({
 			heading: "Notifications",
+			headingSize: true,
 			row: "response-completions",
 			control: true,
 		});

@@ -1,5 +1,6 @@
 import {type KeyboardEvent, type ReactNode, useCallback, useLayoutEffect, useRef, useState} from "react";
 
+import {Tooltip} from "../ui/tooltip";
 import {useSettingsRowIds} from "./settings-row";
 
 /*
@@ -7,7 +8,8 @@ import {useSettingsRowIds} from "./settings-row";
  * with 1px padding and radius 8, 30px radios at px 12 with radius 6, and a
  * sliding thumb (surface fill, inset border ring, 1px shadow) under the
  * checked radio. Arrow keys move both the checked radio and focus (roving
- * tabindex); Home/End jump to the ends.
+ * tabindex); Home/End jump to the ends. Icon-only radios are 30x30 and named
+ * by the shared Tooltip rather than a native title.
  */
 
 interface SegmentedOption<T extends string> {
@@ -40,6 +42,7 @@ export function SegmentedControl<T extends string>({
 	"aria-describedby": ariaDescribedBy,
 }: SegmentedControlProps<T>) {
 	const row = useSettingsRowIds();
+	const groupRef = useRef<HTMLDivElement>(null);
 	const radioRefs = useRef<Array<HTMLSpanElement | null>>([]);
 	const [thumb, setThumb] = useState<ThumbRect | null>(null);
 	const checkedIndex = options.findIndex((option) => option.value === value);
@@ -50,7 +53,10 @@ export function SegmentedControl<T extends string>({
 			setThumb(null);
 			return;
 		}
-		setThumb({left: radio.offsetLeft, width: radio.offsetWidth});
+		// Icon-only radios sit inside a positioned Tooltip wrapper, so offsetLeft would be relative to
+		// that wrapper rather than the group.
+		const groupLeft = groupRef.current?.getBoundingClientRect().left ?? 0;
+		setThumb({left: radio.getBoundingClientRect().left - groupLeft, width: radio.offsetWidth});
 	}, [checkedIndex]);
 
 	useLayoutEffect(() => {
@@ -101,6 +107,7 @@ export function SegmentedControl<T extends string>({
 
 	return (
 		<div
+			ref={groupRef}
 			role="radiogroup"
 			aria-label={ariaLabel}
 			aria-labelledby={ariaLabel === undefined ? row?.titleId : undefined}
@@ -120,7 +127,7 @@ export function SegmentedControl<T extends string>({
 			{options.map((option, index) => {
 				const checked = index === checkedIndex;
 				const focusable = checked || (checkedIndex === -1 && index === 0);
-				return (
+				const radio = (
 					<span
 						key={option.value}
 						ref={(element) => {
@@ -130,17 +137,23 @@ export function SegmentedControl<T extends string>({
 						tabIndex={focusable ? 0 : -1}
 						aria-checked={checked}
 						aria-label={iconOnly ? option.label : undefined}
-						title={iconOnly ? option.label : undefined}
 						data-checked={checked ? "" : undefined}
 						onClick={() => select(index)}
 						onKeyDown={(event) => handleKeyDown(event, index)}
 						className={`relative z-[1] inline-flex h-full cursor-pointer items-center justify-center gap-1.5 rounded-r5 text-body font-normal outline-none select-none transition-shadow hover:text-primary focus-visible:ring-2 focus-visible:ring-accent-100/40 data-[checked]:text-primary text-[var(--settings-muted)] ${
-							iconOnly ? "w-9 [&_svg]:size-4" : "px-3"
+							iconOnly ? "w-[30px] [&_svg]:size-4" : "px-3"
 						}`}
 					>
 						{option.icon === undefined ? null : option.icon}
 						{iconOnly ? null : option.label}
 					</span>
+				);
+				return iconOnly ? (
+					<Tooltip key={option.value} content={option.label} className="z-[1]">
+						{radio}
+					</Tooltip>
+				) : (
+					radio
 				);
 			})}
 		</div>

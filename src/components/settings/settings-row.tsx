@@ -2,7 +2,7 @@ import {createContext, type ReactNode, useContext, useEffect, useId, useRef} fro
 
 /*
  * Settings section and row anatomy copied from claude.ai/code: an h3 at
- * 22/28 weight 580 over `settings-group-dividers` rows. Each row is a
+ * 15/20 weight 580 over `settings-group-dividers` rows. Each row is a
  * role=group labelled by its title and described by its description, with the
  * control column (data-settings-control) on the right, gap-lg (24px) apart and
  * py-md (12px) with hairline dividers between rows.
@@ -30,7 +30,7 @@ export const SettingsFlashContext = createContext<SettingsFlash | null>(null);
 export function SettingsSection({title, children}: {title: string; children: ReactNode}) {
 	return (
 		<section className="mb-8 last:mb-0">
-			<h3 className="text-[22px] leading-[28px] font-[580] text-primary">{title}</h3>
+			<h3 className="text-[15px] leading-[20px] font-[580] text-primary">{title}</h3>
 			<div className="divide-y divide-subtle">{children}</div>
 		</section>
 	);

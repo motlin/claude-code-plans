@@ -17,6 +17,7 @@ import {
 } from "./settings-sections";
 import {SettingsFlashContext, type SettingsFlash} from "./settings-row";
 import {SettingsSearch} from "./settings-search";
+import {SETTINGS_TAB_ICONS} from "./settings-tab-icons";
 import {UsageSettings} from "./usage-settings";
 
 const TAB_PANELS = {
@@ -149,37 +150,38 @@ export function SettingsDialog() {
 						<div className="px-2.5 pt-2 pb-1 text-caption text-t6">Settings</div>
 						{SettingsTabSchema.options.map((navTab) => {
 							const selected = navTab === tab;
+							const Icon = SETTINGS_TAB_ICONS[navTab];
 							return (
 								<button
 									key={navTab}
 									type="button"
 									aria-current={selected ? "page" : undefined}
 									onClick={() => selectTab(navTab)}
-									className={`flex h-8 shrink-0 items-center rounded-r6 px-2.5 text-left text-sm transition-colors ${
+									className={`flex h-8 shrink-0 items-center gap-2 rounded-r6 px-2 text-left text-body font-normal transition-colors ${
 										selected
-											? "bg-fill-ghost-hover font-medium text-primary"
+											? "bg-fill-control text-primary"
 											: "text-secondary hover:bg-fill-ghost-hover"
 									}`}
 								>
+									<Icon aria-hidden="true" className="size-5 shrink-0" />
 									{settingsTabLabels[navTab]}
 								</button>
 							);
 						})}
 					</nav>
-					<div className="relative flex min-w-0 flex-1 flex-col">
-						<Dialog.Close
-							aria-label="Close settings"
-							className="absolute top-3 right-3 flex h-8 w-8 items-center justify-center rounded-r6 text-secondary transition-colors hover:bg-fill-ghost-hover"
-						>
-							<X className="h-4 w-4" />
-						</Dialog.Close>
-						<div className="flex-1 overflow-y-auto px-8 pt-6 pb-8">
-							<h2 className="pr-10 text-lg font-semibold">{settingsTabLabels[tab]}</h2>
-							<div className="mt-6 space-y-6">
-								<SettingsFlashContext.Provider value={flash}>
-									<Panel />
-								</SettingsFlashContext.Provider>
-							</div>
+					<div className="flex min-w-0 flex-1 flex-col">
+						<div className="flex shrink-0 justify-end p-3">
+							<Dialog.Close
+								aria-label="Close"
+								className="flex h-8 w-8 items-center justify-center rounded-r6 text-primary transition-colors hover:bg-fill-ghost-hover"
+							>
+								<X aria-hidden="true" className="size-5" />
+							</Dialog.Close>
+						</div>
+						<div className="flex-1 space-y-6 overflow-y-auto px-6 pt-2 pb-4">
+							<SettingsFlashContext.Provider value={flash}>
+								<Panel />
+							</SettingsFlashContext.Provider>
 						</div>
 					</div>
 				</Dialog.Popup>
