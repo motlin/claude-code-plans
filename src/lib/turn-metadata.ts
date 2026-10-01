@@ -71,8 +71,11 @@ function safeguardDetail(results: readonly SafeguardResult[] | undefined): strin
 	return `safeguard ${parts.join(" · ")} (${details.join("; ")})`;
 }
 
-/** An assistant turn's usage, truncation, effort, advisor, dropped thinking and safeguard flags. */
-export function assistantTurnDetails(line: MessageSessionLine): string[] {
+/**
+ * An assistant turn's usage, truncation, effort, advisor, dropped thinking and safeguard flags.
+ * The dropped-thinking count is a diagnostic upstream never shows, so only Verbose lists it.
+ */
+export function assistantTurnDetails(line: MessageSessionLine, {verbose}: {verbose: boolean}): string[] {
 	const advisor =
 		line.advisorModel !== undefined ? (formatModelName(line.advisorModel) ?? line.advisorModel) : undefined;
 	return [
@@ -80,7 +83,7 @@ export function assistantTurnDetails(line: MessageSessionLine): string[] {
 		line.stopReason === "max_tokens" ? "Truncated at max tokens" : undefined,
 		line.perTurnEffort !== undefined ? `${line.perTurnEffort} effort` : undefined,
 		advisor !== undefined ? `advisor ${advisor}` : undefined,
-		droppedThinkingDetail(line.message?.input_transformations),
+		verbose ? droppedThinkingDetail(line.message?.input_transformations) : undefined,
 		safeguardDetail(line.message?.safeguard_results),
 	].filter((detail) => detail !== undefined);
 }

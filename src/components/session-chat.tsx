@@ -158,12 +158,13 @@ function messageRef(line: MessageSessionLine, fallbackSessionId: string): Transc
 }
 
 function AssistantTurnActions({line, sessionId}: {line: MessageSessionLine; sessionId: string}) {
+	const verbose = useContext(TranscriptModeContext) === "verbose";
 	return (
 		<AssistantMessageActions
 			message={messageRef(line, sessionId)}
 			text={messageText(line)}
 			timestamp={line.timestamp}
-			details={assistantTurnDetails(line)}
+			details={assistantTurnDetails(line, {verbose})}
 		/>
 	);
 }
@@ -754,8 +755,9 @@ function scrollerViewport(scroller: Element): {top: number; height: number} {
 function buildSessionListEntries(
 	lines: SessionLine[],
 	renderProps: LineRenderProps,
-	foldNotifications: boolean,
+	verbose: boolean,
 ): SessionListEntry[] {
+	const foldNotifications = !verbose;
 	const noticeOf = (index: number): BackgroundNotice | null => {
 		if (!foldNotifications) return null;
 		const line = lines[index]!;
@@ -771,7 +773,7 @@ function buildSessionListEntries(
 	const initIndices: number[] = [];
 	while (i < lines.length) {
 		const line = lines[i]!;
-		if (skipSet.has(i) || !isLineVisible(line, renderProps)) {
+		if (skipSet.has(i) || !isLineVisible(line, renderProps, verbose)) {
 			i++;
 			continue;
 		}
@@ -803,7 +805,7 @@ function buildSessionListEntries(
 	while (i < lines.length) {
 		const line = lines[i]!;
 
-		if (skipSet.has(i) || !isLineVisible(line, renderProps)) {
+		if (skipSet.has(i) || !isLineVisible(line, renderProps, verbose)) {
 			i++;
 			continue;
 		}
@@ -813,7 +815,7 @@ function buildSessionListEntries(
 			const notices = [notice];
 			let j = i + 1;
 			while (j < lines.length) {
-				if (skipSet.has(j) || !isLineVisible(lines[j]!, renderProps)) {
+				if (skipSet.has(j) || !isLineVisible(lines[j]!, renderProps, verbose)) {
 					j++;
 					continue;
 				}
@@ -848,7 +850,7 @@ function buildSessionListEntries(
 			let j = i + 1;
 			while (j < lines.length) {
 				const nextLine = lines[j]!;
-				if (skipSet.has(j) || !isLineVisible(nextLine, renderProps)) {
+				if (skipSet.has(j) || !isLineVisible(nextLine, renderProps, verbose)) {
 					j++;
 					continue;
 				}
@@ -1139,8 +1141,8 @@ function SessionLineList({
 	lines: SessionLine[];
 	shouldScrollToEnd: boolean;
 }) {
-	const foldNotifications = useContext(TranscriptModeContext) !== "verbose";
-	const entries = buildSessionListEntries(lines, renderProps, foldNotifications);
+	const verbose = useContext(TranscriptModeContext) === "verbose";
+	const entries = buildSessionListEntries(lines, renderProps, verbose);
 	const [expansionStore] = useState(() => new Map<string, ExpansionToggle>());
 	return (
 		<ExpansionStoreContext.Provider value={expansionStore}>
@@ -1151,8 +1153,18 @@ function SessionLineList({
 
 const HOOK_WARNING_SUBTYPES = new Set(["hook_non_blocking_error", "hook_additional_context"]);
 const HOOK_ERROR_SUBTYPES = new Set(["hook_cancelled", "hook_blocking_error"]);
-const SYSTEM_BANNER_SUBTYPES = new Set([
+/**
+ * Diagnostic rows upstream claude.ai/code never draws in Normal: the agent and
+ * skill listings, batching reminders and queued commands. Verbose keeps them.
+ */
+const VERBOSE_ONLY_SUBTYPES = new Set([
+	"agent_listing_delta",
 	"skill_listing",
+	"batching_reminder_sent",
+	"queued_command",
+]);
+const STOP_HOOK_EVENTS = new Set(["Stop", "SubagentStop"]);
+const SYSTEM_BANNER_SUBTYPES = new Set([
 	"command_permissions",
 	"deferred_tools_delta",
 	"mcp_instructions_delta",
@@ -1168,7 +1180,6 @@ const SYSTEM_BANNER_SUBTYPES = new Set([
 	"selected_lines_in_ide",
 	"opened_file_in_ide",
 	"bash_output_audience_note",
-	"batching_reminder_sent",
 	"credential_org",
 	"date",
 	"deferred_tools_record",
@@ -1187,12 +1198,30 @@ const SYSTEM_BANNER_SUBTYPES = new Set([
 	"thinking_stripped",
 ]);
 
-function getAttachmentSubtype(json: string): string | null {
+interface AttachmentHead {
+	type: string | null;
+	hookEvent: string | null;
+	prompt: string | null;
+}
+
+function getAttachmentHead(json: string): AttachmentHead {
 	try {
-		return (JSON.parse(json) as {type?: string}).type ?? null;
+		const parsed = JSON.parse(json) as {type?: unknown; hookEvent?: unknown; prompt?: unknown};
+		return {
+			type: typeof parsed.type === "string" ? parsed.type : null,
+			hookEvent: typeof parsed.hookEvent === "string" ? parsed.hookEvent : null,
+			prompt: typeof parsed.prompt === "string" ? parsed.prompt : null,
+		};
 	} catch {
-		return null;
+		return {type: null, hookEvent: null, prompt: null};
 	}
+}
+
+/** Diagnostic attachments shown only in Verbose; subagent hand-backs stay as "Message from" rows. */
+function isVerboseOnlyAttachment({type, hookEvent, prompt}: AttachmentHead): boolean {
+	if (type === "queued_command") return prompt === null || parseAgentMessage(prompt) === null;
+	if (type === "hook_blocking_error") return hookEvent !== null && STOP_HOOK_EVENTS.has(hookEvent);
+	return type !== null && VERBOSE_ONLY_SUBTYPES.has(type);
 }
 
 /**
@@ -1235,19 +1264,19 @@ function isLineVisible(
 		| "showThinking"
 		| "showTools"
 	>,
+	verbose: boolean,
 ): boolean {
 	if (line.type === "agent-name" || line.type === "agent-color" || line.type === "permission-mode")
 		return showSystemBanners;
 	if (line.type === "worktree") return showSystemBanners;
 	if (line.type === "system") {
-		if (line.subtype === "stop_hook_summary") {
-			const failed = (line.hookErrors?.length ?? 0) > 0 || line.preventedContinuation === true;
-			return failed ? showHookErrors : showPassedHooks;
-		}
+		if (line.subtype === "stop_hook_summary") return verbose;
 		return showSystemBanners;
 	}
 	if (line.type === "attachment") {
-		const subtype = getAttachmentSubtype(line.attachmentJson);
+		const head = getAttachmentHead(line.attachmentJson);
+		if (isVerboseOnlyAttachment(head)) return verbose;
+		const subtype = head.type;
 		if (subtype === "hook_success") return showPassedHooks;
 		if (subtype && HOOK_WARNING_SUBTYPES.has(subtype)) return showHookWarnings;
 		if (subtype && HOOK_ERROR_SUBTYPES.has(subtype)) return showHookErrors;

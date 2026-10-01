@@ -14,7 +14,6 @@ import {
 	FolderOpen,
 	Hourglass,
 	Key,
-	MessageSquare,
 	Microscope,
 	OctagonX,
 	Paperclip,
@@ -336,17 +335,14 @@ function AttachmentContent({
 				</Banner>
 			);
 		}
+		// Upstream draws a hook's message as a plain prose line, "PreToolUse:Bash says: …".
 		case "hook_system_message":
 			return (
-				<Banner
-					icon={<MessageSquare className="h-3.5 w-3.5" />}
-					label={`Hook message: ${attachment.hookName}`}
-					{...shared}
-				>
-					{typeof attachment.content === "string" && attachment.content.length > 0 && (
-						<Pre>{attachment.content}</Pre>
-					)}
-				</Banner>
+				<p className="text-body text-primary whitespace-pre-wrap break-words">
+					{typeof attachment.content === "string" && attachment.content.length > 0
+						? `${attachment.hookName} says: ${attachment.content}`
+						: `${attachment.hookName} says`}
+				</p>
 			);
 		case "async_hook_response":
 			return (

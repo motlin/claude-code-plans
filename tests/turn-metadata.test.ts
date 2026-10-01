@@ -11,9 +11,11 @@ function assistantLine(extra: Partial<MessageSessionLine>, message: Record<strin
 	} as MessageSessionLine;
 }
 
+const VERBOSE = {verbose: true};
+
 describe("assistantTurnDetails", () => {
 	it("has nothing to say about a turn without usage, effort, advisor, transformations, or safeguards", () => {
-		expect(assistantTurnDetails(assistantLine({}))).toStrictEqual([]);
+		expect(assistantTurnDetails(assistantLine({}), VERBOSE)).toStrictEqual([]);
 	});
 
 	it("says nothing about evaluated safeguards that flagged nothing", () => {
@@ -32,7 +34,7 @@ describe("assistantTurnDetails", () => {
 				],
 			},
 		);
-		expect(assistantTurnDetails(line)).toStrictEqual([]);
+		expect(assistantTurnDetails(line, VERBOSE)).toStrictEqual([]);
 	});
 
 	it("lists token usage, truncation, per-turn effort and the advisor model", () => {
@@ -49,6 +51,7 @@ describe("assistantTurnDetails", () => {
 					perTurnEffort: "high",
 					advisorModel: "claude-opus-5-5",
 				}),
+				VERBOSE,
 			),
 		).toStrictEqual(["595.8k in / 595 out", "Truncated at max tokens", "high effort", "advisor Opus 5.5"]);
 	});
@@ -66,8 +69,17 @@ describe("assistantTurnDetails", () => {
 						],
 					},
 				),
+				VERBOSE,
 			),
 		).toStrictEqual(["3 thinking blocks dropped (model_binding_mismatch ×2, prefix_binding_mismatch ×1)"]);
+	});
+
+	it("leaves dropped thinking blocks out of Normal mode", () => {
+		const line = assistantLine(
+			{perTurnEffort: "high"},
+			{input_transformations: [{type: "thinking_dropped", path: "messages.2.content.0", reason: "x"}]},
+		);
+		expect(assistantTurnDetails(line, {verbose: false})).toStrictEqual(["high effort"]);
 	});
 
 	it("flags safeguard outcomes other than not_flagged and unavailable safeguards", () => {
@@ -91,6 +103,7 @@ describe("assistantTurnDetails", () => {
 						],
 					},
 				),
+				VERBOSE,
 			),
 		).toStrictEqual([
 			"safeguard flagged 1 tool call · 1 unavailable (dangerous_tool_use: toolu_1 flagged; prompt_injection: unavailable)",
