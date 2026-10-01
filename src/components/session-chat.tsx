@@ -96,15 +96,31 @@ export interface SessionChatProps {
 
 const TranscriptModeContext = createContext<TranscriptMode>("normal");
 
+interface ExpansionToggle {
+	mode: TranscriptMode;
+	expanded: boolean;
+}
+
+/**
+ * The session's disclosure toggles keyed by tool_use id, so a row the virtualizer unmounts
+ * comes back in the state the user left it.
+ */
+const ExpansionStoreContext = createContext<Map<string, ExpansionToggle> | null>(null);
+
 /**
  * A disclosure that starts expanded in Verbose and collapsed otherwise, like upstream. A user
  * toggle holds until the transcript mode changes, which resets it to the new mode's default.
  */
-function useModeExpansion(): [boolean, () => void] {
+function useModeExpansion(key: string): [boolean, () => void] {
 	const mode = useContext(TranscriptModeContext);
-	const [toggle, setToggle] = useState<{mode: TranscriptMode; expanded: boolean} | null>(null);
+	const store = useContext(ExpansionStoreContext);
+	const [toggle, setToggle] = useState<ExpansionToggle | null>(() => store?.get(key) ?? null);
 	const expanded = toggle !== null && toggle.mode === mode ? toggle.expanded : mode === "verbose";
-	const flip = useCallback(() => setToggle({mode, expanded: !expanded}), [mode, expanded]);
+	const flip = useCallback(() => {
+		const next = {mode, expanded: !expanded};
+		store?.set(key, next);
+		setToggle(next);
+	}, [mode, expanded, store, key]);
 	return [expanded, flip];
 }
 
@@ -1006,7 +1022,12 @@ function SessionLineList({
 	shouldScrollToEnd: boolean;
 }) {
 	const entries = buildSessionListEntries(lines, renderProps);
-	return <VirtualizedSessionEntries entries={entries} shouldScrollToEnd={shouldScrollToEnd} />;
+	const [expansionStore] = useState(() => new Map<string, ExpansionToggle>());
+	return (
+		<ExpansionStoreContext.Provider value={expansionStore}>
+			<VirtualizedSessionEntries entries={entries} shouldScrollToEnd={shouldScrollToEnd} />
+		</ExpansionStoreContext.Provider>
+	);
 }
 
 const HOOK_WARNING_SUBTYPES = new Set(["hook_non_blocking_error", "hook_additional_context"]);
@@ -2257,7 +2278,7 @@ function isPendingToolCall(call: ClientToolCall): boolean {
 const RUNNING_LABEL_CLASS = "text-primary tool-shimmer";
 
 function ToolCallRow({call, sessionId, nested = false}: {call: ClientToolCall; sessionId: string; nested?: boolean}) {
-	const [expanded, toggleExpanded] = useModeExpansion();
+	const [expanded, toggleExpanded] = useModeExpansion(`row:${call.id}`);
 	const bodyId = useId();
 	const verbose = useContext(TranscriptModeContext) === "verbose";
 	const openSubagent = useSubagentOpener();
@@ -2463,7 +2484,7 @@ function SummarySpans({segments}: {segments: SummarySegment[]}) {
 }
 
 function ToolCallSummary({calls, sessionId}: {calls: ClientToolCall[]; sessionId: string}) {
-	const [expanded, toggleExpanded] = useModeExpansion();
+	const [expanded, toggleExpanded] = useModeExpansion(`group:${calls[0]?.id ?? ""}`);
 	const bodyId = useId();
 	const taskCalls = calls.filter((c) => TASK_TOOLS.has(c.name));
 	const hasTasksView = taskCalls.length >= 3;
