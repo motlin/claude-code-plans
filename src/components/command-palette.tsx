@@ -89,6 +89,7 @@ import {HighlightRuns} from "./highlight-runs";
 import {type PaletteCardSession, PaletteRowActionsButton, PaletteRowActionsCard} from "./palette-row-actions";
 import {useToast} from "./toast";
 import {Shortcut} from "./ui/shortcut";
+import {Tooltip} from "./ui/tooltip";
 import {useOpenSettings} from "./settings/settings-dialog";
 import {setKeyboardShortcutsOpen} from "./keyboard-shortcuts-dialog";
 
@@ -953,12 +954,14 @@ function PalettePopup({
 								<LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
 							</span>
 						)}
-						<Dialog.Close
-							aria-label="Close"
-							className="relative flex aspect-square h-7 w-7 shrink-0 items-center justify-center rounded-r6 text-primary transition-colors hover:bg-fill-ghost-hover focus-visible:shadow-[0_0_0_2px_var(--accent-100)] focus-visible:outline-none"
-						>
-							<X aria-hidden="true" className="h-5 w-5" />
-						</Dialog.Close>
+						<Tooltip content="Close" side="bottom" className="shrink-0">
+							<Dialog.Close
+								aria-label="Close"
+								className="relative flex aspect-square h-7 w-7 shrink-0 items-center justify-center rounded-r6 text-primary transition-colors hover:bg-fill-ghost-hover focus-visible:shadow-[0_0_0_2px_var(--accent-100)] focus-visible:outline-none"
+							>
+								<X aria-hidden="true" className="h-5 w-5" />
+							</Dialog.Close>
+						</Tooltip>
 					</div>
 					{!compose && <TypeTabs value={tab} onChange={chooseTab} />}
 					<div className="h-[0.5px] w-full bg-border" />
@@ -1244,6 +1247,13 @@ function PalettePopup({
 					session={rowActions.session}
 					top={rowActions.top}
 					onOpen={(id) => select(() => openSession(id))}
+					onRename={(id) => {
+						restoreFocusRef.current = false;
+						select(() => {
+							openSession(id);
+							requestSessionRename(id);
+						});
+					}}
 					onClose={closeRowActions}
 				/>
 			)}

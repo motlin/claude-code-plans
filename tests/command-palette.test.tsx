@@ -134,6 +134,14 @@ describe("CommandPalette shell", () => {
 		vi.unstubAllGlobals();
 	});
 
+	it("shows the Close tooltip when hovering the Close button", async () => {
+		const dialog = await openPalette();
+
+		fireEvent.pointerEnter(within(dialog).getByRole("button", {name: "Close"}));
+
+		expect((await within(dialog).findByRole("tooltip")).textContent).toBe("Close");
+	});
+
 	it("opens on ⌘K with a focused Search combobox textarea", async () => {
 		const dialog = await openPalette();
 

@@ -17,6 +17,7 @@ import {markSeen, markUnseen} from "../lib/unread-store";
 import {useHasUnseenWork} from "./session-unread-control";
 import {useToast} from "./toast";
 import {Shortcut} from "./ui/shortcut";
+import {Tooltip} from "./ui/tooltip";
 
 /** A session row the ⌥⏎ card can act on; `archived`/`bucket` are unknown for server-only hits. */
 export interface PaletteCardSession {
@@ -43,11 +44,14 @@ export function PaletteRowActionsCard({
 	session,
 	top,
 	onOpen,
+	onRename,
 	onClose,
 }: {
 	session: PaletteCardSession;
 	top: number;
 	onOpen: (id: string) => void;
+	/** Closes the palette and starts the session's inline rename, as ⌥⌘R does. */
+	onRename: (id: string) => void;
 	onClose: (options: {refocus: boolean}) => void;
 }) {
 	const menuRef = useRef<HTMLDivElement>(null);
@@ -56,7 +60,7 @@ export function PaletteRowActionsCard({
 	const toast = useToast();
 	const setArchived = useSessionArchive(session.id);
 
-	const capabilities = new Set<SessionMenuCapability>(["pin", "readState", "ackAwaiting", "copyLink"]);
+	const capabilities = new Set<SessionMenuCapability>(["pin", "rename", "readState", "ackAwaiting", "copyLink"]);
 	if (session.archived !== undefined) capabilities.add("archive");
 	const sessionItems = getSessionMenuItems(
 		{
@@ -86,6 +90,10 @@ export function PaletteRowActionsCard({
 	const run = (id: CardItemId): void => {
 		if (id === "open") {
 			onOpen(session.id);
+			return;
+		}
+		if (id === "rename") {
+			onRename(session.id);
 			return;
 		}
 		onClose({refocus: true});
@@ -121,7 +129,6 @@ export function PaletteRowActionsCard({
 			case "open-pr":
 			case "move-up":
 			case "move-down":
-			case "rename":
 			case "fork":
 			case "move-to-group":
 			case "move-to-custom-group":
@@ -246,17 +253,19 @@ export function PaletteRowActionsButton({onOpen}: {onOpen: () => void}) {
 			aria-hidden="true"
 			className="pointer-events-none absolute inset-y-0 right-9 flex items-center opacity-0 group-hover/palette-row:opacity-100 peer-data-[selected=true]:opacity-100 pointer-coarse:hidden *:pointer-events-auto"
 		>
-			<button
-				type="button"
-				aria-label="Actions"
-				tabIndex={-1}
-				data-palette-row-actions-button=""
-				onMouseDown={(event) => event.preventDefault()}
-				onClick={onOpen}
-				className="flex size-6 items-center justify-center rounded-r6 text-ink-muted transition-colors hover:bg-fill-ghost-hover hover:text-primary"
-			>
-				<Ellipsis aria-hidden="true" className="size-4" />
-			</button>
+			<Tooltip content="Actions" side="left">
+				<button
+					type="button"
+					aria-label="Actions"
+					tabIndex={-1}
+					data-palette-row-actions-button=""
+					onMouseDown={(event) => event.preventDefault()}
+					onClick={onOpen}
+					className="flex size-6 items-center justify-center rounded-r6 text-ink-muted transition-colors hover:bg-fill-ghost-hover hover:text-primary"
+				>
+					<Ellipsis aria-hidden="true" className="size-4" />
+				</button>
+			</Tooltip>
 		</span>
 	);
 }

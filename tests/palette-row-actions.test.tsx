@@ -8,6 +8,7 @@ import {
 	createRouter,
 	Outlet,
 	RouterProvider,
+	useParams,
 	useRouterState,
 } from "@tanstack/react-router";
 import {cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
@@ -17,8 +18,17 @@ import {ToastProvider} from "../src/components/toast";
 import {useCommandPalette} from "../src/hooks/use-command-palette";
 import {recentSessionsQueryOptions} from "../src/lib/api/sessions";
 import {readPinState} from "../src/lib/pin-store";
+import {useSessionRenameRequest} from "../src/lib/session-rename-request";
 import {clearAll, hasUnseenWork} from "../src/lib/unread-store";
 import {installLocalStorage} from "./fake-storage";
+
+const renameRequests: string[] = [];
+
+function SessionPage() {
+	const {id = ""} = useParams({strict: false});
+	useSessionRenameRequest(id, () => renameRequests.push(id));
+	return null;
+}
 
 const MAC_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36";
 
@@ -77,7 +87,7 @@ async function openPalette() {
 	const sessionRoute = createRoute({
 		getParentRoute: () => rootRoute,
 		path: "session/$id",
-		component: () => null,
+		component: SessionPage,
 	});
 	const router = createRouter({
 		routeTree: rootRoute.addChildren([sessionRoute]),
@@ -125,6 +135,7 @@ describe("palette row actions card", () => {
 		Object.defineProperty(navigator, "clipboard", {value: {writeText}, configurable: true});
 		Element.prototype.scrollIntoView = () => {};
 		clearAll();
+		renameRequests.length = 0;
 	});
 
 	afterEach(() => {
@@ -152,8 +163,9 @@ describe("palette row actions card", () => {
 				["Open in new tab2", "2"],
 				["Copy link3", "3"],
 				["Pin4", "4"],
-				["Archive5", "5"],
-				["Mark as unread6", "6"],
+				["Rename5", "5"],
+				["Archive6", "6"],
+				["Mark as unread7", "7"],
 			],
 			inputFocused: false,
 		});
@@ -183,7 +195,7 @@ describe("palette row actions card", () => {
 	it("marks the session unread from the card", async () => {
 		const {card} = await openCard();
 
-		fireEvent.keyDown(card, {key: "6", code: "Digit6"});
+		fireEvent.keyDown(card, {key: "7", code: "Digit7"});
 
 		expect(hasUnseenWork("sess-1")).toBe(true);
 	});
@@ -191,7 +203,7 @@ describe("palette row actions card", () => {
 	it("archives the session from the card", async () => {
 		const {card} = await openCard();
 
-		fireEvent.keyDown(card, {key: "5", code: "Digit5"});
+		fireEvent.keyDown(card, {key: "6", code: "Digit6"});
 
 		await waitFor(() => expect(fetchMock).toHaveBeenCalled());
 		expect(fetchMock.mock.calls.at(-1)).toStrictEqual([
@@ -206,6 +218,25 @@ describe("palette row actions card", () => {
 		fireEvent.keyDown(card, {key: "4", code: "Digit4"});
 
 		await waitFor(() => expect(readPinState()).toStrictEqual({pinnedIds: ["sess-1"], pinnedOrder: []}));
+	});
+
+	it("Rename closes the palette and starts the session's inline rename", async () => {
+		const {card} = await openCard();
+
+		fireEvent.click(within(card).getByRole("menuitem", {name: /^Rename/}));
+
+		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		await waitFor(() => expect(renameRequests).toStrictEqual(["sess-1"]));
+		expect(screen.getByRole("status", {name: "Location"}).textContent).toBe("/session/sess-1");
+	});
+
+	it("shows the Actions tooltip on the row's hover … button", async () => {
+		const {dialog} = await openPalette();
+
+		const button = dialog.querySelector<HTMLElement>("[data-palette-row-actions-button]");
+		fireEvent.pointerEnter(button!);
+
+		expect((await screen.findByRole("tooltip", {hidden: true})).textContent).toBe("Actions");
 	});
 
 	it("opens in a new tab with 2", async () => {
