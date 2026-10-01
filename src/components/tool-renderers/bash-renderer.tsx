@@ -2,7 +2,7 @@ import type {ReactNode} from "react";
 import type {ThemedToken} from "@shikijs/core";
 import {useHighlightedLines} from "../../hooks/use-shiki";
 import type {ToolRendererProps} from "./types";
-import {AnsiText, CopyButton} from "./shared";
+import {AnsiText, CopyButton, TOOL_OUTPUT_REGION} from "./shared";
 import {getMcpRenderer} from "./mcp-registry";
 
 const MCP_CLI_RE = /^mcp-cli\s+call\s+(\S+)\s+(\S+)/;
@@ -92,7 +92,7 @@ export function BashRenderer({toolCall, nested = false}: ToolRendererProps) {
 					{!nested && (
 						<div className="pointer-events-none absolute inset-y-0 right-[3px]">
 							<div className="pointer-events-auto sticky top-0 pt-px">
-								<CopyButton text={copyText} />
+								<CopyButton text={copyText} size="xs" />
 							</div>
 						</div>
 					)}
@@ -101,6 +101,7 @@ export function BashRenderer({toolCall, nested = false}: ToolRendererProps) {
 			{resultContent && (
 				<div
 					data-bash-output=""
+					{...TOOL_OUTPUT_REGION}
 					className={`max-h-[400px] overflow-y-auto whitespace-pre-wrap break-all text-[12px]/[17px] ${isError ? "text-danger-ink" : "text-secondary"}`}
 				>
 					<AnsiText content={resultContent} />

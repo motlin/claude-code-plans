@@ -110,7 +110,7 @@ describe("thinking block", () => {
 
 		expect({
 			tagName: button.tagName,
-			revealClass: button.parentElement?.className.includes("opacity-0 group-hover/body:opacity-100"),
+			revealClass: button.closest("div")?.className.includes("opacity-0 group-hover/body:opacity-100"),
 			plainCopyButtons: rail?.querySelectorAll('button[aria-label="Copy"]').length,
 		}).toStrictEqual({tagName: "BUTTON", revealClass: true, plainCopyButtons: 0});
 	});

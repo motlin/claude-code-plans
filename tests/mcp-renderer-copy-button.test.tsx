@@ -83,7 +83,7 @@ describe("custom MCP renderers expose the shared copy button", () => {
 		it(`reveals the ${label} copy button on body hover only`, () => {
 			render(element);
 
-			expect(screen.getByLabelText("Copy").parentElement?.className).toBe(HOVER_REVEAL_CLASS);
+			expect(screen.getByLabelText("Copy").closest("div")?.className).toBe(HOVER_REVEAL_CLASS);
 		});
 	}
 

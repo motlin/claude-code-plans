@@ -3,7 +3,7 @@ import type {ThemedToken} from "@shikijs/core";
 import {extractLineNumbers, detectLanguage} from "../../lib/diff-utils";
 import {useHighlightedLines} from "../../hooks/use-shiki";
 import type {ToolRendererProps} from "./types";
-import {CopyButton, TruncatedFilePathHeader} from "./shared";
+import {CopyButton, TOOL_OUTPUT_REGION, TruncatedFilePathHeader} from "./shared";
 
 interface ParsedLine {
 	lineNum: string | null;
@@ -59,7 +59,10 @@ export function ReadRenderer({toolCall}: ToolRendererProps) {
 	if (isError) {
 		return (
 			<div className="px-p6 py-p5">
-				<pre className="max-h-[400px] overflow-y-auto text-code font-mono whitespace-pre-wrap break-all text-danger-ink">
+				<pre
+					{...TOOL_OUTPUT_REGION}
+					className="max-h-[400px] overflow-y-auto text-code font-mono whitespace-pre-wrap break-all text-danger-ink"
+				>
 					{result}
 				</pre>
 			</div>
@@ -76,7 +79,10 @@ export function ReadRenderer({toolCall}: ToolRendererProps) {
 
 			{/* Body: syntax-highlighted code on the card background, capped at 400px */}
 			{result && (
-				<pre className="m-0 max-h-[400px] overflow-y-auto font-mono text-code leading-code text-primary">
+				<pre
+					{...TOOL_OUTPUT_REGION}
+					className="m-0 max-h-[400px] overflow-y-auto font-mono text-code leading-code text-primary"
+				>
 					<code className="grid py-1" style={{gridTemplateColumns: "auto minmax(0, 1fr)"}}>
 						{parsedLines.map((line, index) => (
 							<Fragment key={index}>

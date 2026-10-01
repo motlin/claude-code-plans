@@ -46,14 +46,14 @@ describe("KeyValueCard params", () => {
 				{
 					className: "break-words",
 					spans: [
-						{className: "text-code font-mono opacity-70", text: "pattern: "},
+						{className: "text-[12px] font-mono opacity-70", text: "pattern: "},
 						{className: "text-code font-mono whitespace-pre-wrap break-all", text: "alice"},
 					],
 				},
 				{
 					className: "break-words",
 					spans: [
-						{className: "text-code font-mono opacity-70", text: "path: "},
+						{className: "text-[12px] font-mono opacity-70", text: "path: "},
 						{className: "text-code font-mono whitespace-pre-wrap break-all", text: "src"},
 					],
 				},

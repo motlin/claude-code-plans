@@ -6,6 +6,7 @@ import {handleCodeCopyClick} from "../../lib/code-copy";
 import {CHECK_ICON_PATH, COPY_ICON_PATH} from "../../lib/icon-paths";
 import {FileRefTarget} from "../file-refs";
 import markdownStyles from "../markdown-article.module.css";
+import {Tooltip} from "../ui/tooltip";
 
 // ANSI color code to CSS color mapping
 const BASIC_COLORS: Record<number, string> = {
@@ -360,7 +361,10 @@ export function TerminalOutput({content}: {content: string}) {
 	return (
 		<div className="text-code font-mono">
 			{exitCode !== null && <div className={inkClass}>Exit code {exitCode}</div>}
-			<pre className={`max-h-[400px] overflow-y-auto whitespace-pre-wrap break-all ${inkClass}`}>
+			<pre
+				{...TOOL_OUTPUT_REGION}
+				className={`max-h-[400px] overflow-y-auto whitespace-pre-wrap break-all ${inkClass}`}
+			>
 				<AnsiText content={contentWithoutExitCode} />
 			</pre>
 		</div>
@@ -424,17 +428,24 @@ export function ChevronIcon({expanded, size = 14}: {expanded: boolean; size?: nu
 	);
 }
 
-function CopyIcon() {
+/**
+ * Upstream's labelled tool-body scroll regions: a focusable named group so the
+ * capped body can be scrolled from the keyboard and announced by screen readers.
+ */
+export const TOOL_OUTPUT_REGION = {role: "group", "aria-label": "Tool output", tabIndex: 0} as const;
+const TOOL_CALL_DETAILS_REGION = {role: "group", "aria-label": "Tool call details", tabIndex: 0} as const;
+
+function CopyIcon({size}: {size: number}) {
 	return (
-		<svg width={12} height={12} viewBox="0 0 12 12" fill="none" className="shrink-0">
+		<svg width={size} height={size} viewBox="0 0 12 12" fill="none" className="shrink-0">
 			<path d={COPY_ICON_PATH} fill="currentColor" />
 		</svg>
 	);
 }
 
-function CheckIcon() {
+function CheckIcon({size}: {size: number}) {
 	return (
-		<svg width={12} height={12} viewBox="0 0 12 12" fill="none" className="shrink-0">
+		<svg width={size} height={size} viewBox="0 0 12 12" fill="none" className="shrink-0">
 			<path
 				d={CHECK_ICON_PATH}
 				stroke="currentColor"
@@ -447,12 +458,13 @@ function CheckIcon() {
 }
 
 /**
- * Hover-visible copy button matching upstream claude.ai/code.
+ * Hover-visible copy button matching upstream claude.ai/code: 24x24 with a
+ * 16px icon (20x20 with a 12px icon at `size="xs"`), under the dark "Copy" tooltip.
  *
  * Requires a `group/body` ancestor for the hover reveal.
  * Copies the provided `text` to the clipboard on click.
  */
-export function CopyButton({text, label = "Copy"}: {text: string; label?: string}) {
+export function CopyButton({text, label = "Copy", size}: {text: string; label?: string; size?: "xs"}) {
 	const [copied, setCopied] = useState(false);
 
 	const handleClick = useCallback(() => {
@@ -460,17 +472,20 @@ export function CopyButton({text, label = "Copy"}: {text: string; label?: string
 		setCopied(true);
 		setTimeout(() => setCopied(false), 1500);
 	}, [text]);
+	const iconSize = size === "xs" ? 12 : 16;
 
 	return (
 		<div className="opacity-0 group-hover/body:opacity-100 focus-within:opacity-100 [transition:opacity_150ms_cubic-bezier(0.215,0.61,0.355,1)] motion-reduce:transition-none">
-			<button
-				type="button"
-				aria-label={label}
-				onClick={handleClick}
-				className="inline-flex items-center justify-center aspect-square border-0 cursor-default select-none rounded-r4 px-p3 text-secondary hover:text-primary hover:bg-t2 transition-colors"
-			>
-				{copied ? <CheckIcon /> : <CopyIcon />}
-			</button>
+			<Tooltip content={label}>
+				<button
+					type="button"
+					aria-label={label}
+					onClick={handleClick}
+					className={`inline-flex ${size === "xs" ? "size-5" : "size-6"} items-center justify-center border-0 cursor-default select-none rounded-r4 text-secondary hover:text-primary hover:bg-t2 transition-colors`}
+				>
+					{copied ? <CheckIcon size={iconSize} /> : <CopyIcon size={iconSize} />}
+				</button>
+			</Tooltip>
 		</div>
 	);
 }
@@ -589,13 +604,13 @@ export function KeyValueCard({
 			<div
 				className={`flex-1 min-w-0 flex flex-col gap-g4 text-body${isError ? "" : " text-secondary"} whitespace-pre-wrap break-words`}
 			>
-				<div className="max-h-[400px] overflow-y-auto flex flex-col gap-g4">
+				<div {...TOOL_CALL_DETAILS_REGION} className="max-h-[400px] overflow-y-auto flex flex-col gap-g4">
 					{errorMessage && <div className="text-danger-ink">{errorMessage}</div>}
 					{params.length > 0 && (
 						<div className="text-secondary flex flex-col gap-g2">
 							{params.map((p) => (
 								<div key={p.key} className="break-words">
-									<span className="text-code font-mono opacity-70">{`${p.key}: `}</span>
+									<span className="text-[12px] font-mono opacity-70">{`${p.key}: `}</span>
 									{p.markdown ? (
 										<InlineMarkdown text={p.value} />
 									) : (

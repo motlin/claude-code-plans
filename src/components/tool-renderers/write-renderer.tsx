@@ -2,7 +2,7 @@ import {Link} from "@tanstack/react-router";
 import {FileText} from "lucide-react";
 import type {ToolRendererProps} from "./types";
 import {InlineDiff} from "./inline-diff";
-import {CopyButton, TruncatedFilePathHeader} from "./shared";
+import {CopyButton, TOOL_OUTPUT_REGION, TruncatedFilePathHeader} from "./shared";
 import {toMdSlug} from "../../lib/md-slug";
 
 const PLAN_RE = /\.claude\/plans\/([^/]+\.md)$/;
@@ -18,6 +18,7 @@ export function WriteRenderer({toolCall}: ToolRendererProps) {
 		return (
 			<div className="px-p6 py-p5">
 				<pre
+					{...TOOL_OUTPUT_REGION}
 					className={`max-h-[400px] overflow-y-auto text-code font-mono whitespace-pre-wrap break-all ${isError ? "text-danger-ink" : "text-secondary"}`}
 				>
 					{result}
@@ -45,14 +46,17 @@ export function WriteRenderer({toolCall}: ToolRendererProps) {
 			</div>
 
 			{/* Body: unified diff view (all additions) */}
-			<div className="max-h-[400px] overflow-y-auto text-code">
+			<div {...TOOL_OUTPUT_REGION} className="max-h-[400px] overflow-y-auto text-code">
 				<InlineDiff filePath={filePath} oldStr="" newStr={content} />
 			</div>
 
 			{/* Error result text (shown below diff when write failed) */}
 			{isError && result && (
 				<div className="px-p6 pb-p8">
-					<pre className="max-h-[400px] overflow-y-auto text-code font-mono whitespace-pre-wrap break-all text-danger-ink">
+					<pre
+						{...TOOL_OUTPUT_REGION}
+						className="max-h-[400px] overflow-y-auto text-code font-mono whitespace-pre-wrap break-all text-danger-ink"
+					>
 						{result}
 					</pre>
 				</div>
