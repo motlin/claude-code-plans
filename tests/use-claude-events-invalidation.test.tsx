@@ -261,3 +261,144 @@ describe("ClaudeEventsProvider SSE reconnect", () => {
 		]);
 	});
 });
+
+describe("ClaudeEventsProvider lines appended to a session", () => {
+	const NOW = Date.parse("2026-09-30T12:00:00.000Z");
+	const ACTIVE_KEY = sessionQueryKeys.active(300_000);
+
+	function activeSession(sessionId: string, lastModified: number) {
+		return {
+			sessionId,
+			projectDir: "-Users-test-project",
+			projectName: "/Users/test/project",
+			title: `Session ${sessionId}`,
+			createdAt: NOW - 3_600_000,
+			lastModified,
+			state: "idle" as const,
+			unseen: false,
+			blockedSince: null,
+		};
+	}
+
+	function listItem(id: string) {
+		return {
+			id,
+			title: `Session ${id}`,
+			mtime: "2026-09-29T12:00:00.000Z",
+			created: "2026-09-29T11:00:00.000Z",
+			project: "-Users-test-project",
+			projectName: "/Users/test/project",
+			messageCount: 4,
+			archived: false,
+			state: "ended" as const,
+			bucket: "done" as const,
+			liveAgentCount: 0,
+			unseen: true,
+			blockedSince: null,
+		};
+	}
+
+	beforeEach(() => {
+		TestEventSource.current = null;
+		vi.stubGlobal("EventSource", TestEventSource);
+		vi.spyOn(Date, "now").mockReturnValue(NOW);
+	});
+
+	afterEach(() => {
+		cleanup();
+		vi.restoreAllMocks();
+		vi.unstubAllGlobals();
+	});
+
+	it("moves an already active session to the top with a fresh activity time instead of refetching", () => {
+		const {client, eventSource} = renderProvider();
+		client.setQueryData(ACTIVE_KEY, [
+			activeSession("session-a", NOW - 1_000),
+			activeSession("session-b", NOW - 9_000),
+		]);
+
+		act(() => {
+			eventSource.emit(DOMAIN_EVENTS.SESSION_LINES_APPENDED, {
+				sessionId: "session-b",
+				lines: [{type: "assistant"}],
+			});
+		});
+
+		expect({
+			data: client.getQueryData(ACTIVE_KEY),
+			invalidated: client.getQueryState(ACTIVE_KEY)?.isInvalidated,
+		}).toStrictEqual({
+			data: [activeSession("session-b", NOW), activeSession("session-a", NOW - 1_000)],
+			invalidated: false,
+		});
+	});
+
+	it("adds a newly active session from its cached list row so the sidebar shows it without a refetch", () => {
+		const {client, eventSource} = renderProvider();
+		client.setQueryData(ACTIVE_KEY, [activeSession("session-a", NOW - 1_000)]);
+		client.setQueryData(sessionQueryKeys.recent(50), {sessions: [listItem("session-new")], nextCursor: null});
+
+		act(() => {
+			eventSource.emit(DOMAIN_EVENTS.SESSION_LINES_APPENDED, {sessionId: "session-new", lines: [{type: "user"}]});
+		});
+
+		expect({
+			data: client.getQueryData(ACTIVE_KEY),
+			invalidated: client.getQueryState(ACTIVE_KEY)?.isInvalidated,
+		}).toStrictEqual({
+			data: [
+				{
+					sessionId: "session-new",
+					projectDir: "-Users-test-project",
+					projectName: "/Users/test/project",
+					title: "Session session-new",
+					createdAt: Date.parse("2026-09-29T11:00:00.000Z"),
+					lastModified: NOW,
+					state: "unknown",
+					unseen: true,
+					blockedSince: null,
+				},
+				activeSession("session-a", NOW - 1_000),
+			],
+			invalidated: false,
+		});
+	});
+
+	it("finds a newly active session's row in the grouped and infinite recent lists too", () => {
+		const {client, eventSource} = renderProvider();
+		client.setQueryData(ACTIVE_KEY, []);
+		client.setQueryData(sessionQueryKeys.recentInfinite(), {
+			pages: [{sessions: [listItem("session-paged")], nextCursor: null}],
+			pageParams: [null],
+		});
+		client.setQueryData(sessionQueryKeys.grouped(5), [
+			{
+				project: "-Users-test-project",
+				projectName: "/Users/test/project",
+				sessionCount: 1,
+				sessions: [listItem("session-grouped")],
+			},
+		]);
+
+		act(() => {
+			eventSource.emit(DOMAIN_EVENTS.SESSION_LINES_APPENDED, {sessionId: "session-paged", lines: []});
+			eventSource.emit(DOMAIN_EVENTS.SESSION_LINES_APPENDED, {sessionId: "session-grouped", lines: []});
+		});
+
+		expect({
+			ids: client.getQueryData<Array<{sessionId: string}>>(ACTIVE_KEY)?.map((session) => session.sessionId),
+			invalidated: client.getQueryState(ACTIVE_KEY)?.isInvalidated,
+		}).toStrictEqual({ids: ["session-grouped", "session-paged"], invalidated: false});
+	});
+
+	it("refetches the active sessions when no cached list knows the newly active session", () => {
+		const {client, eventSource} = renderProvider();
+		client.setQueryData(ACTIVE_KEY, [activeSession("session-a", NOW - 1_000)]);
+
+		act(() => {
+			eventSource.emit(DOMAIN_EVENTS.SESSION_LINES_APPENDED, {sessionId: "session-unknown", lines: []});
+		});
+
+		expect(client.getQueryState(ACTIVE_KEY)?.isInvalidated).toBe(true);
+	});
+});

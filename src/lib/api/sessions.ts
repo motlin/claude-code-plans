@@ -72,6 +72,7 @@ const ActiveSessionSchema = z.object({
 	blockedSince: z.string().nullable(),
 });
 export const ActiveSessionListResponse = z.array(ActiveSessionSchema);
+export type ActiveSessionListItem = z.infer<typeof ActiveSessionSchema>;
 
 export const SessionDetailResponse = z
 	.object({

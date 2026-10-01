@@ -4,7 +4,6 @@ import {
 	useContext,
 	useEffect,
 	useMemo,
-	useReducer,
 	useRef,
 	useState,
 	useSyncExternalStore,
@@ -41,6 +40,9 @@ import {
 import {
 	groupedSessionsQueryOptions,
 	mergeTranscriptData,
+	type ActiveSessionListItem,
+	type ProjectSessionGroup,
+	type SessionListItem,
 	recentSessionsInfiniteQueryOptions,
 	sessionQueryKeys,
 	transcriptEndIndex,
@@ -841,6 +843,68 @@ function applyReconnected(queryClient: QueryClient): void {
 	void queryClient.invalidateQueries({queryKey: ["notifications"]});
 }
 
+/** The cached list row for a session from any recent, infinite recent or grouped session list. */
+function findCachedSessionListItem(queryClient: QueryClient, sessionId: string): SessionListItem | undefined {
+	type RecentListData = {sessions: SessionListItem[]} | {pages: Array<{sessions: SessionListItem[]}>};
+	for (const [, data] of queryClient.getQueriesData<RecentListData>({queryKey: sessionQueryKeys.recentLists()})) {
+		if (data === undefined) continue;
+		const pages = "pages" in data ? data.pages : [data];
+		for (const page of pages) {
+			const found = page.sessions.find((session) => session.id === sessionId);
+			if (found) return found;
+		}
+	}
+	for (const [, groups] of queryClient.getQueriesData<ProjectSessionGroup[]>({
+		queryKey: sessionQueryKeys.groupedLists(),
+	})) {
+		for (const group of groups ?? []) {
+			const found = group.sessions.find((session) => session.id === sessionId);
+			if (found) return found;
+		}
+	}
+	return undefined;
+}
+
+/**
+ * New transcript lines mean the session was just active. Patch each cached
+ * active-sessions list in place: bump a listed session's activity time, or add
+ * a newly active one built from its cached session-list row. Only a session no
+ * cached list knows forces that active list to refetch.
+ */
+function applySessionActivity(queryClient: QueryClient, sessionId: string): void {
+	const now = Date.now();
+	const listItem = findCachedSessionListItem(queryClient, sessionId);
+	for (const [queryKey, sessions] of queryClient.getQueriesData<ActiveSessionListItem[]>({
+		queryKey: sessionQueryKeys.activeLists(),
+	})) {
+		if (sessions === undefined) continue;
+		const existing = sessions.find((session) => session.sessionId === sessionId);
+		let updated: ActiveSessionListItem;
+		if (existing) {
+			updated = {...existing, lastModified: now};
+		} else if (listItem) {
+			updated = {
+				sessionId,
+				projectDir: listItem.project,
+				projectName: listItem.projectName,
+				title: listItem.title,
+				createdAt: Date.parse(listItem.created),
+				lastModified: now,
+				state: listItem.state === "ended" ? "unknown" : listItem.state,
+				unseen: listItem.unseen,
+				blockedSince: listItem.blockedSince,
+			};
+		} else {
+			void queryClient.invalidateQueries({queryKey, exact: true});
+			continue;
+		}
+		queryClient.setQueryData<ActiveSessionListItem[]>(queryKey, [
+			updated,
+			...sessions.filter((session) => session.sessionId !== sessionId),
+		]);
+	}
+}
+
 function invalidateActiveSessions(queryClient: QueryClient): void {
 	// The reducer owns activeSessions state; we only invalidate the query cache
 	// here so components using the active-sessions query pick up changes.
@@ -901,7 +965,10 @@ const DOMAIN_EVENT_TYPES = [
 // ---------------------------------------------------------------------------
 
 export function ClaudeEventsProvider({children}: {children: ReactNode}) {
-	const [state, dispatch] = useReducer(claudeEventsReducer, undefined, () => ({
+	// useState, not useReducer: React bails out of an update whose reducer returns
+	// the same state before rendering only for useState, so an event that changes
+	// nothing (lines appended to a session with no pending tool) costs no commit.
+	const [state, setState] = useState<ClaudeEventsState>(() => ({
 		activeSessions: new Map<string, ActiveSessionInfo>(),
 		hookContexts: new Map<string, SessionHookContextPayload>(),
 		hookSchemaDrifts: new Map<string, HookSchemaDriftPayload>(),
@@ -913,6 +980,9 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 		runningSubagents: new Map<string, SubagentStartedPayload>(),
 		liveSubagents: new Map<string, LiveSubagentNode>(),
 	}));
+	const dispatch = useCallback((action: ClaudeEventsAction) => {
+		setState((current) => claudeEventsReducer(current, action));
+	}, []);
 
 	const queryClient = useQueryClient();
 	const statuslineListenersRef = useRef(new Set<(sessionId: string) => void>());
@@ -1101,8 +1171,8 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 					}
 					// An already-running session emits this event as it works; the
 					// active-sessions query only refetches on lifecycle events, so
-					// invalidate here to keep the /active page and sidebar live.
-					invalidateActiveSessions(queryClient);
+					// patch it here to keep the /active page and sidebar live.
+					if (typeof sessionId === "string") applySessionActivity(queryClient, sessionId);
 					// Mirror into the reducer so the pending-tool / compacting
 					// indicators clear once new transcript lines actually land.
 					dispatch({
