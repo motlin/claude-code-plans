@@ -2,7 +2,7 @@ import {createReadStream} from "node:fs";
 import {trackedCreateReadStream} from "./perf/tracked-fs";
 import {readdir, readFile, stat} from "node:fs/promises";
 import {basename, dirname, join} from "node:path";
-import {createInterface} from "node:readline";
+import {createLineReader} from "./line-reader";
 import {decodeProjectDir, resolveProjectName} from "./memory";
 import type {JsonValue} from "./hook-events";
 import {normalizeGitBranch} from "./git-branch";
@@ -257,10 +257,7 @@ const MAX_TITLE_CANDIDATES = 20;
  * still beats titling the session with its id.
  */
 export async function readFirstUserMessage(filePath: string): Promise<FirstUserPrompt | null> {
-	const rl = createInterface({
-		input: createReadStream(filePath, {encoding: "utf-8"}),
-		crlfDelay: Infinity,
-	});
+	const rl = createLineReader(createReadStream(filePath, {encoding: "utf-8"}));
 
 	const collector = new FirstUserMessageCollector();
 	try {
@@ -303,10 +300,7 @@ export class FirstUserMessageCollector {
 
 /** Every prompt the user typed into a session, oldest first; CLI-injected records are skipped. */
 export async function readSessionPrompts(filePath: string): Promise<string[]> {
-	const rl = createInterface({
-		input: createReadStream(filePath, {encoding: "utf-8"}),
-		crlfDelay: Infinity,
-	});
+	const rl = createLineReader(createReadStream(filePath, {encoding: "utf-8"}));
 	const prompts: string[] = [];
 	try {
 		for await (const line of rl) {
@@ -321,10 +315,7 @@ export async function readSessionPrompts(filePath: string): Promise<string[]> {
 }
 
 async function readSessionMessageCount(filePath: string): Promise<number> {
-	const rl = createInterface({
-		input: createReadStream(filePath, {encoding: "utf-8"}),
-		crlfDelay: Infinity,
-	});
+	const rl = createLineReader(createReadStream(filePath, {encoding: "utf-8"}));
 	let messageCount = 0;
 
 	try {
@@ -450,10 +441,7 @@ async function readCustomTitleSidecar(transcriptPath: string): Promise<string | 
 
 export async function readSessionTitleSources(filePath: string): Promise<SessionTitleSources> {
 	const collector = new TitleRecordCollector();
-	const rl = createInterface({
-		input: createReadStream(filePath, {encoding: "utf-8"}),
-		crlfDelay: Infinity,
-	});
+	const rl = createLineReader(createReadStream(filePath, {encoding: "utf-8"}));
 	try {
 		for await (const line of rl) {
 			if (!line.includes('"custom-title"') && !line.includes('"ai-title"')) continue;
@@ -474,10 +462,7 @@ export async function readSessionTitleSources(filePath: string): Promise<Session
 /** The claude.ai/code session a transcript was bridged to (Remote Control), from its latest `bridge-session` record. */
 export async function readBridgeSessionId(filePath: string): Promise<string | null> {
 	let bridgeSessionId: string | null = null;
-	const rl = createInterface({
-		input: createReadStream(filePath, {encoding: "utf-8"}),
-		crlfDelay: Infinity,
-	});
+	const rl = createLineReader(createReadStream(filePath, {encoding: "utf-8"}));
 	try {
 		for await (const line of rl) {
 			if (!line.includes('"bridge-session"')) continue;
@@ -764,10 +749,7 @@ export async function readSessionRawWindow(
 	const resolved = await resolveSessionFilePath(projectsDir, sessionId);
 	if (!resolved) return null;
 
-	const rl = createInterface({
-		input: trackedCreateReadStream(resolved.filePath, {encoding: "utf-8"}),
-		crlfDelay: Infinity,
-	});
+	const rl = createLineReader(trackedCreateReadStream(resolved.filePath, {encoding: "utf-8"}));
 
 	const ringBuffer: RawJsonlLine[] = [];
 	let focal: RawJsonlLine | null = null;
@@ -821,10 +803,7 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 	const toolStartTimes = new Map<string, number>();
 	const uuidToLine = new Map<string, number>();
 
-	const rl = createInterface({
-		input: trackedCreateReadStream(filePath, {encoding: "utf-8"}),
-		crlfDelay: Infinity,
-	});
+	const rl = createLineReader(trackedCreateReadStream(filePath, {encoding: "utf-8"}));
 
 	let lineIndex = -1;
 	try {
@@ -1086,13 +1065,12 @@ export async function readNewJsonlLines(
 	const lines: Record<string, JsonValue>[] = [];
 	let bytesConsumed = 0;
 
-	const rl = createInterface({
-		input: trackedCreateReadStream(filePath, {
+	const rl = createLineReader(
+		trackedCreateReadStream(filePath, {
 			encoding: "utf-8",
 			start: fromByteOffset,
 		}),
-		crlfDelay: Infinity,
-	});
+	);
 
 	try {
 		for await (const line of rl) {

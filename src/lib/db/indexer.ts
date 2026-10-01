@@ -1,7 +1,7 @@
 import {lstat, readdir, readFile, realpath, stat} from "node:fs/promises";
 import {createReadStream, realpathSync, type Stats} from "node:fs";
 import {join, basename, extname, isAbsolute, relative, resolve, sep} from "node:path";
-import {createInterface} from "node:readline";
+import {createLineReader} from "../line-reader";
 import {eq, ne, notInArray, sql} from "drizzle-orm";
 import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
 import {
@@ -1022,10 +1022,7 @@ export async function indexSubagentFile(
 	let startedAt: string | null = null;
 	let finishedAt: string | null = null;
 	const artifactEvents = new ArtifactEventCollector();
-	const rl = createInterface({
-		input: createReadStream(filePath, {encoding: "utf-8"}),
-		crlfDelay: Infinity,
-	});
+	const rl = createLineReader(createReadStream(filePath, {encoding: "utf-8"}));
 	try {
 		for await (const line of rl) {
 			if (!line.trim()) continue;
@@ -1112,10 +1109,7 @@ export async function indexSubagentFile(
 const AGENT_ID_RE = /agentId:\s*(\S+)/;
 
 export async function linkSubagentParents(db: IndexDb, jsonlPath: string, parentAgentId: string | null): Promise<void> {
-	const rl = createInterface({
-		input: createReadStream(jsonlPath, {encoding: "utf-8"}),
-		crlfDelay: Infinity,
-	});
+	const rl = createLineReader(createReadStream(jsonlPath, {encoding: "utf-8"}));
 	const collector = new SubagentLinkCollector();
 	let applied = 0;
 	try {

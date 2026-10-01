@@ -1,6 +1,6 @@
 import {execFile} from "node:child_process";
 import {createReadStream} from "node:fs";
-import {createInterface} from "node:readline";
+import {createLineReader} from "./line-reader";
 import {join} from "node:path";
 import {readdir, stat} from "node:fs/promises";
 import {homedir} from "node:os";
@@ -68,10 +68,7 @@ async function readSessionMessages(sessionId: string): Promise<{
 	const messages: Array<{role: string; text: string}> = [];
 	let lastMessageId: string | null = null;
 
-	const rl = createInterface({
-		input: createReadStream(filePath, {encoding: "utf-8"}),
-		crlfDelay: Infinity,
-	});
+	const rl = createLineReader(createReadStream(filePath, {encoding: "utf-8"}));
 
 	try {
 		for await (const line of rl) {
