@@ -455,6 +455,53 @@ describe("processTranscript", () => {
 				},
 			]);
 		});
+
+		describe("paired by delivery id when the command uuid is absent", () => {
+			const {commandUuid: _removedCommandUuid, ...removeWithoutCommandUuid} = absorbedRemove;
+			const deliveredRemove = {...removeWithoutCommandUuid, deliveryId: "dlv-1"};
+			const deliveredAttachment = {
+				...queuedAttachment,
+				attachment: {type: "queued_command", prompt: "also check the tests", delivery_id: "dlv-1"},
+			};
+			const expectedDeliveredLine = (lineIndex: number) => ({
+				...expectedLine(lineIndex),
+				attachmentJson: JSON.stringify(deliveredAttachment.attachment),
+			});
+
+			it("marks the queued command an earlier absorbed removal delivered", () => {
+				expect(processTranscript([deliveredRemove, deliveredAttachment]).lines).toStrictEqual([
+					expectedDeliveredLine(1),
+				]);
+			});
+
+			it("marks the queued command when the absorbed removal is written after it", () => {
+				expect(processTranscript([deliveredAttachment, deliveredRemove]).lines).toStrictEqual([
+					expectedDeliveredLine(0),
+				]);
+			});
+
+			it("marks the queued command when only one side carries a command uuid", () => {
+				const remove = {...absorbedRemove, deliveryId: "dlv-1"};
+				expect(processTranscript([remove, deliveredAttachment]).lines).toStrictEqual([
+					expectedDeliveredLine(1),
+				]);
+			});
+
+			it("leaves the queued command unmarked for a different delivery", () => {
+				expect(
+					processTranscript([{...deliveredRemove, deliveryId: "dlv-other"}, deliveredAttachment]).lines,
+				).toStrictEqual([
+					{
+						type: "attachment",
+						attachmentJson: JSON.stringify(deliveredAttachment.attachment),
+						uuid: "att-q",
+						timestamp: "1999-12-31T00:00:02Z",
+						sessionId: "s-1",
+						lineIndex: 1,
+					},
+				]);
+			});
+		});
 	});
 
 	it("preserves parentUuid on message lines", () => {

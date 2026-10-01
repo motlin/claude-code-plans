@@ -156,7 +156,8 @@ const AttachmentLineSchema = z.object({
 	renderedInHumanTurn: z.array(z.string()).optional(),
 	renderedRole: RenderedRoleSchema.optional(),
 	// A queued_command whose prompt was absorbed into the running turn, linked by
-	// a `queue-operation` removal's commandUuid matching the attachment's source_uuid.
+	// a `queue-operation` removal's commandUuid matching the attachment's source_uuid,
+	// or its deliveryId matching the attachment's delivery_id.
 	absorbedMidTurn: z.literal(true).optional(),
 	uuid: z.string().optional(),
 	timestamp: z.string().optional(),
@@ -296,6 +297,14 @@ function buildUnparsedLine(
 	if (typeof raw["uuid"] === "string") line.uuid = raw["uuid"];
 	if (typeof raw["timestamp"] === "string") line.timestamp = raw["timestamp"];
 	return line;
+}
+
+/** Keys a queued command and its queue-operation share: the command uuid, the delivery id, or both. */
+function queuePairingKeys(commandUuid: string | undefined, deliveryId: string | undefined): string[] {
+	const keys: string[] = [];
+	if (commandUuid) keys.push(`command:${commandUuid}`);
+	if (deliveryId) keys.push(`delivery:${deliveryId}`);
+	return keys;
 }
 
 function getRecordSessionId(record: z.infer<typeof JsonlRecordSchema>): string | undefined {
@@ -510,8 +519,9 @@ function processRecordBatch(
 	let lastMonitor: Extract<z.infer<typeof JsonlRecordSchema>, {type: "artifact-comment-monitor"}> | undefined;
 	let lastLedger: Extract<z.infer<typeof JsonlRecordSchema>, {type: "artifact-autoreact-ledger"}> | undefined;
 	let lastArtifactWatchKey: string | undefined;
-	// Absorbed removals and queued_command attachments can land in either order.
-	const absorbedCommandUuids = new Set<string>();
+	// Absorbed removals and queued_command attachments can land in either order,
+	// and pair on either the command uuid or the delivery id.
+	const absorbedQueueKeys = new Set<string>();
 	const queuedCommandLines = new Map<string, z.infer<typeof AttachmentLineSchema>>();
 
 	for (let i = 0; i < records.length; i++) {
@@ -670,10 +680,12 @@ function processRecordBatch(
 		}
 
 		if (record.type === "queue-operation") {
-			if (record.reason === "absorbed_mid_turn" && record.commandUuid !== undefined) {
-				absorbedCommandUuids.add(record.commandUuid);
-				const queuedLine = queuedCommandLines.get(record.commandUuid);
-				if (queuedLine !== undefined) queuedLine.absorbedMidTurn = true;
+			if (record.reason === "absorbed_mid_turn") {
+				for (const key of queuePairingKeys(record.commandUuid, record.deliveryId)) {
+					absorbedQueueKeys.add(key);
+					const queuedLine = queuedCommandLines.get(key);
+					if (queuedLine !== undefined) queuedLine.absorbedMidTurn = true;
+				}
 			}
 			continue;
 		}
@@ -691,10 +703,10 @@ function processRecordBatch(
 				attachmentLine.renderedInHumanTurn = record.renderedInHumanTurn.map((r) => r.content);
 			}
 			if (record.renderedRole !== undefined) attachmentLine.renderedRole = record.renderedRole;
-			if (record.attachment.type === "queued_command" && record.attachment.source_uuid) {
-				const commandUuid = record.attachment.source_uuid;
-				if (absorbedCommandUuids.has(commandUuid)) attachmentLine.absorbedMidTurn = true;
-				else queuedCommandLines.set(commandUuid, attachmentLine);
+			if (record.attachment.type === "queued_command") {
+				const keys = queuePairingKeys(record.attachment.source_uuid, record.attachment.delivery_id);
+				if (keys.some((key) => absorbedQueueKeys.has(key))) attachmentLine.absorbedMidTurn = true;
+				else for (const key of keys) queuedCommandLines.set(key, attachmentLine);
 			}
 			if (uuid !== undefined) attachmentLine.uuid = uuid;
 			if (record.timestamp !== undefined) attachmentLine.timestamp = record.timestamp;
