@@ -1249,62 +1249,33 @@ function renderSessionMessage({
 	}
 }
 
-function TruncatedContent({
-	children,
-	fadeColor,
-	variant = "default",
-}: {
-	children: React.ReactNode;
-	fadeColor?: string;
-	variant?: "default" | "user";
-}) {
-	const contentRef = useRef<HTMLDivElement>(null);
+/** Upstream clamps long bubbles at 16rem and fades their last 3rem with a mask, not an overlay. */
+const TRUNCATED_CLAMP_CLASSES =
+	"max-h-[16rem] overflow-hidden [mask-image:linear-gradient(to_bottom,#000_calc(100%-3rem),transparent)]";
+const TRUNCATE_THRESHOLD_PX = 256;
+
+function TruncatedContent({children}: {children: React.ReactNode}) {
 	const [isTruncated, setIsTruncated] = useState(false);
-	const [showFull, setShowFull] = useState(false);
+	const [expanded, setExpanded] = useState(false);
 
 	const measureRef = useCallback((node: HTMLDivElement | null) => {
-		if (node) {
-			contentRef.current = node;
-			setIsTruncated(node.scrollHeight > 200);
-		}
+		if (node) setIsTruncated(node.scrollHeight > TRUNCATE_THRESHOLD_PX);
 	}, []);
 
-	if (showFull) {
-		return <div className="overflow-hidden">{children}</div>;
-	}
-
 	return (
-		<div>
-			<div className="relative">
-				<div ref={measureRef} className={isTruncated ? "max-h-[200px] overflow-hidden" : ""}>
-					{children}
-				</div>
-				{isTruncated && (
-					<button
-						type="button"
-						onClick={() => setShowFull(true)}
-						aria-label="Show more"
-						className="absolute inset-x-0 bottom-0 h-16 cursor-pointer"
-						style={{
-							background: `linear-gradient(to bottom, transparent, ${fadeColor ?? "var(--color-surface-1)"})`,
-						}}
-					/>
-				)}
+		<div className="flex flex-col items-start gap-1">
+			<div ref={measureRef} className={`w-full ${isTruncated && !expanded ? TRUNCATED_CLAMP_CLASSES : ""}`}>
+				{children}
 			</div>
 			{isTruncated && (
-				<div className="mt-1 flex">
-					<button
-						type="button"
-						onClick={() => setShowFull(true)}
-						className={
-							variant === "user"
-								? "text-xs font-medium cursor-pointer rounded-full px-2 py-0.5 bg-accent-100/15 text-user-msg-text"
-								: "text-xs font-medium text-accent-100 hover:text-accent-000 cursor-pointer rounded-full bg-surface-0 px-2 py-0.5"
-						}
-					>
-						Show more
-					</button>
-				</div>
+				<button
+					type="button"
+					aria-expanded={expanded}
+					onClick={() => setExpanded((value) => !value)}
+					className="h-5 cursor-pointer rounded-r4 px-1.5 text-caption font-normal text-primary transition-colors hover:bg-alpha-1"
+				>
+					{expanded ? "Show less" : "Show more"}
+				</button>
 			)}
 		</div>
 	);
@@ -1667,7 +1638,7 @@ function renderUserContentBlocks(
 		return {
 			textNodes: [
 				<React.Fragment key={0}>
-					<TruncatedContent fadeColor="var(--color-surface-1)" variant="user">
+					<TruncatedContent>
 						<UserPromptText text={cleaned} leading={true} />
 					</TruncatedContent>
 					<DebugLink sessionId={sessionId} uuid={line.uuid} className="absolute top-1 right-1" />
@@ -1689,7 +1660,7 @@ function renderUserContentBlocks(
 			inlineImageText.push(cleaned);
 			textNodes.push(
 				<React.Fragment key={`text-${i}`}>
-					<TruncatedContent fadeColor="var(--color-surface-1)" variant="user">
+					<TruncatedContent>
 						<UserPromptText text={cleaned} leading={textNodes.length === 0} />
 					</TruncatedContent>
 					<DebugLink sessionId={sessionId} uuid={line.uuid} className="absolute top-1 right-1" />
@@ -1769,7 +1740,7 @@ function CommandEntry({line, sessionId}: {line: MessageSessionLine; sessionId: s
 		<UserTurn>
 			<div className="flex flex-col items-end gap-g6 max-w-[85%] min-w-0">
 				<div className="user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text">
-					<TruncatedContent fadeColor="var(--color-surface-1)" variant="user">
+					<TruncatedContent>
 						<SlashCommandText name={name} rest={cmdArgs ?? ""} />
 					</TruncatedContent>
 					<DebugLink sessionId={sessionId} uuid={line.uuid} className="absolute top-1 right-1" />
