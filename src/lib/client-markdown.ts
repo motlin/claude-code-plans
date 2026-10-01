@@ -250,6 +250,43 @@ export function renderArtifactLinkCard(href: string, title: string): string {
 	return artifactLinkCardHtml(href, host, title, getPlainMarkdownIt().utils.escapeHtml);
 }
 
+const NUMERIC_CELL = /^[-+]?(?:\d{1,3}(?:,\d{3})+|\d+)?(?:\.\d+)?%?$/;
+
+function isNumericCell(text: string): boolean {
+	const trimmed = text.trim();
+	return /\d/.test(trimmed) && NUMERIC_CELL.test(trimmed);
+}
+
+/** Groups one table's cell-open tokens by column, with each body cell's text. */
+function tableColumns(tokens: Token[], start: number): {end: number; columns: {cells: Token[]; body: string[]}[]} {
+	const columns: {cells: Token[]; body: string[]}[] = [];
+	let column = 0;
+	let index = start + 1;
+	for (; index < tokens.length && tokens[index]!.type !== "table_close"; index++) {
+		const token = tokens[index]!;
+		if (token.type === "tr_open") column = 0;
+		if (token.type !== "th_open" && token.type !== "td_open") continue;
+		const entry = (columns[column] ??= {cells: [], body: []});
+		entry.cells.push(token);
+		if (token.type === "td_open") entry.body.push(tokens[index + 1]?.content ?? "");
+		column++;
+	}
+	return {end: index, columns};
+}
+
+/** Marks every cell of a column whose body cells all parse as numbers, so it can right-align like upstream's. */
+function numericTableColumns(state: StateCore): void {
+	for (let index = 0; index < state.tokens.length; index++) {
+		if (state.tokens[index]!.type !== "table_open") continue;
+		const {end, columns} = tableColumns(state.tokens, index);
+		for (const {cells, body} of columns) {
+			if (body.length === 0 || !body.every(isNumericCell)) continue;
+			for (const cell of cells) cell.attrSet("data-numeric", "");
+		}
+		index = end;
+	}
+}
+
 /** The plugins and renderer overrides every cached instance shares. */
 function applyPlugins(instance: MarkdownIt): void {
 	instance.use(taskLists);
@@ -259,6 +296,7 @@ function applyPlugins(instance: MarkdownIt): void {
 	instance.renderer.rules[ARTIFACT_LINK_TOKEN] = (tokens, idx, _options, env) =>
 		artifactLinkHtml(tokens[idx]!, (env ?? {}) as MarkdownEnv, instance.utils.escapeHtml);
 	instance.core.ruler.push(PR_CHIP_TOKEN, pullRequestChips);
+	instance.core.ruler.push("numeric_table_columns", numericTableColumns);
 	instance.renderer.rules[PR_CHIP_TOKEN] = (tokens, idx) =>
 		pullRequestChipHtml(tokens[idx]!, instance.utils.escapeHtml);
 

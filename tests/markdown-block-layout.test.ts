@@ -86,6 +86,8 @@ describe("markdown block layout", () => {
 	it("scrolls wide tables inside their wrapper", () => {
 		expect(ruleDeclarations(markdownCss, ".markdown :global(.markdown-table-wrapper)")).toStrictEqual({
 			"overflow-x": "auto",
+			border: "1px solid var(--color-border)",
+			"border-radius": "6px",
 		});
 	});
 

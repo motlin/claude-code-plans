@@ -2,17 +2,17 @@ import {describe, expect, it} from "vite-plus/test";
 import {markdownCss, ruleDeclarations} from "./markdown-css";
 
 describe("inline code chip", () => {
-	it("inks the chip red at 0.9em/600 on a 5% tint like the cds-era upstream prose chip", () => {
+	it("inks a leading-none 0.9em/400 chip red on a 5% tint like the upstream prose chip", () => {
 		expect(ruleDeclarations(markdownCss, ".markdown code")).toStrictEqual({
 			"font-family": "var(--font-mono)",
 			"font-size": "0.9em",
-			"font-weight": "600",
-			"line-height": "18.2px",
+			"font-weight": "400",
+			"line-height": "1",
 			background: "var(--color-alpha-1)",
 			border: "none",
 			color: "var(--color-code-ink)",
-			"border-radius": "var(--radius-r4)",
-			padding: "0.06em 0.25em",
+			"border-radius": "0.4em",
+			padding: "0.0625em 0.25em",
 		});
 	});
 

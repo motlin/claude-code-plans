@@ -211,18 +211,20 @@
 	transition-delay: 300ms;
 }
 
-/* Upstream's cds-era prose chip: red ink at 0.9em/600 on the 5% alpha wash.
-   Both tokens are themed, so dark mode needs no override here. */
+/* Upstream's prose chip: a leading-none 0.9em/400 mono run in red ink on the 5%
+   alpha wash. Radius and padding are in em, so the same rule lands on upstream's
+   12.6px prose chip (5.04px, 0.79px 3.15px) and its 12px user-bubble chip
+   (4.8px, 0.75px 3px). Both colors are themed, so dark mode needs no override. */
 .markdown code {
 	font-family: var(--font-mono);
 	font-size: 0.9em;
-	font-weight: 600;
-	line-height: 18.2px;
+	font-weight: 400;
+	line-height: 1;
 	background: var(--color-alpha-1);
 	border: none;
 	color: var(--color-code-ink);
-	border-radius: var(--radius-r4);
-	padding: 0.06em 0.25em;
+	border-radius: 0.4em;
+	padding: 0.0625em 0.25em;
 }
 
 /* Fences keep the 20px code line-height; only the inline chip is tightened. */
@@ -312,28 +314,49 @@
 	color: var(--color-t6);
 }
 
+/* Bold prose sits at upstream's 600, not the browser's 700. */
+.markdown strong {
+	font-weight: 600;
+}
+
 /* Upstream sits every table in an `overflow-x-auto` div so a wide table scrolls
-   on its own instead of stretching the transcript column. */
+   on its own instead of stretching the transcript column; the same div carries
+   the table's only frame, a 6px rounded 1px border the scroll clips to. */
 .markdown :global(.markdown-table-wrapper) {
 	overflow-x: auto;
+	border: 1px solid var(--color-border);
+	border-radius: 6px;
 }
 
 .markdown table {
 	border-collapse: collapse;
 	width: 100%;
-	font-size: 13px;
+	font-size: 14px;
+	line-height: 20px;
 }
 
-.markdown th,
-.markdown td {
-	border: 1px solid var(--color-border);
-	padding: 6px 12px;
+.markdown :is(th, td) {
+	padding: 6.125px 10.5px;
+	min-width: 6rem;
 	text-align: left;
 }
 
 .markdown th {
-	font-weight: 600;
-	background: var(--color-surface-0);
+	font-size: 14px;
+	line-height: 20px;
+	font-weight: 500;
+	background: var(--color-alpha-1);
+	border-bottom: 1px solid var(--color-border);
+}
+
+.markdown td {
+	font-size: 14px;
+	vertical-align: top;
+}
+
+/* client-markdown marks a column whose body cells are all numbers. */
+.markdown :is(th, td)[data-numeric] {
+	text-align: right;
 }
 
 .markdown hr {
