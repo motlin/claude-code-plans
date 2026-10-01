@@ -10,7 +10,7 @@ import {
 import type {ErrorComponentProps} from "@tanstack/react-router";
 import {QueryClientProvider, type QueryClient} from "@tanstack/react-query";
 import {ReactQueryDevtools} from "@tanstack/react-query-devtools";
-import {type ReactNode} from "react";
+import {useEffect, type ReactNode} from "react";
 import {Agentation} from "agentation";
 import {AGENTATION_ENDPOINT} from "../lib/agentation-endpoint";
 import {ThemeProvider} from "../components/theme-provider";
@@ -48,6 +48,7 @@ import {
 } from "../lib/api/sessions";
 import appCss from "../styles/globals.css?url";
 import {THEME_INIT_SCRIPT} from "../lib/theme-init";
+import {startLaunchJourneys} from "../lib/perf/field-journeys";
 
 export const Route = createRootRouteWithContext<{queryClient: QueryClient}>()({
 	ssr: false,
@@ -138,6 +139,10 @@ function RootLayout({children}: Readonly<{children: ReactNode}>) {
 	const fullBleed = useMatches({
 		select: (matches) => matches.some((match) => match.staticData.fullBleed === true),
 	});
+	// Field journeys J1/J2 (launch, deep link) run once, timed from navigation start on the route the tab opened.
+	useEffect(() => {
+		startLaunchJourneys(window.location.pathname);
+	}, []);
 
 	return (
 		<>

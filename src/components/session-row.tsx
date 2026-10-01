@@ -1,5 +1,7 @@
+import {useQueryClient} from "@tanstack/react-query";
 import {Link} from "@tanstack/react-router";
 import type {SessionListItem} from "../lib/api/sessions";
+import {startSessionSwitchJourney} from "../lib/perf/field-journeys";
 import {formatCount} from "../lib/pluralize";
 import {isLiveSessionState} from "../lib/session-state";
 import {SessionActionsMenu, SessionRowTitle} from "./session-actions-menu";
@@ -28,12 +30,14 @@ export function SessionRow({
 	isActive: boolean;
 	showProject?: boolean;
 }) {
+	const queryClient = useQueryClient();
 	return (
 		<li>
 			<SessionActionsMenu session={session}>
 				<Link
 					to="/session/$id"
 					params={{id: session.id}}
+					onPointerDown={(event) => startSessionSwitchJourney(event.nativeEvent, session.id, queryClient)}
 					className="block rounded-md p-2 pr-36 cursor-pointer transition-colors hover:bg-surface-0/50"
 				>
 					<div className="flex items-center gap-1.5 truncate" style={{fontSize: "14px", fontWeight: 430}}>

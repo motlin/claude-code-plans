@@ -394,10 +394,10 @@
 		"tolerance": 0
 	},
 	"client.sessionSwitch.small.mutations": {
-		"ceiling": 33,
+		"ceiling": 34,
 		"unit": "count",
 		"tolerance": 0,
-		"reason": "The sidebar roving tab stop follows the selected row, so opening a session moves tabindex 0 off one sidebar item and onto its row (2 attribute writes)",
+		"reason": "The sidebar roving tab stop follows the selected row, so opening a session moves tabindex 0 off one sidebar item and onto its row (2 attribute writes); the session view's data-perf-session anchor for field journey F5 is rewritten to the new id (1 attribute write)",
 		"raisedAt": "2026-10-01"
 	},
 	"client.sessionSwitch.typical.commits": {
@@ -431,10 +431,10 @@
 		"tolerance": 0
 	},
 	"client.sessionSwitch.typical.mutations": {
-		"ceiling": 33,
+		"ceiling": 34,
 		"unit": "count",
 		"tolerance": 0,
-		"reason": "The sidebar roving tab stop follows the selected row, so opening a session moves tabindex 0 off one sidebar item and onto its row (2 attribute writes)",
+		"reason": "The sidebar roving tab stop follows the selected row, so opening a session moves tabindex 0 off one sidebar item and onto its row (2 attribute writes); the session view's data-perf-session anchor for field journey F5 is rewritten to the new id (1 attribute write)",
 		"raisedAt": "2026-10-01"
 	},
 	"hot.claudeEventsReducer.replay-200.calls": {

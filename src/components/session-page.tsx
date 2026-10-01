@@ -652,7 +652,7 @@ function SessionView({
 	}
 
 	return (
-		<div ref={sessionViewRef} style={transcriptWidthStyle(settings.transcriptWidth)}>
+		<div ref={sessionViewRef} data-perf-session={sessionId} style={transcriptWidthStyle(settings.transcriptWidth)}>
 			<TileHost
 				sessionId={sessionId}
 				onExpandWithoutPane={toggleChromeHidden}

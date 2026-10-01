@@ -72,6 +72,7 @@ const JourneySampleSchema = z
 		endSource: z.enum(["element-timing", "raf"]),
 		route: z.string(),
 		sizeBucket: z.enum(["S", "M", "L"]).exactOptional(),
+		prefetchHit: z.boolean().exactOptional(),
 		buildSha: z.string(),
 		mode: z.enum(["dev", "prod"]),
 		origin: z.enum(["localhost", "remote"]),

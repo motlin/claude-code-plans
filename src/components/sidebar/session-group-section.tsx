@@ -1,9 +1,11 @@
 import {Link, useNavigate} from "@tanstack/react-router";
+import {useQueryClient} from "@tanstack/react-query";
 import {ChevronRight} from "lucide-react";
 import {Fragment, useEffect, useLayoutEffect, useRef, useState, type ReactNode} from "react";
 
 import type {SidebarDragRowProps} from "../../hooks/use-sidebar-drag";
 import type {SessionListItem} from "../../lib/api/sessions";
+import {startSessionSwitchJourney} from "../../lib/perf/field-journeys";
 import type {GroupAppearance} from "../../lib/group-appearance";
 import {useProjectAppearance} from "../../lib/project-appearance-store";
 import {useSessionGroups} from "../../lib/session-group-store";
@@ -400,6 +402,7 @@ function SessionRowLink({
 	lineage?: string;
 }) {
 	const navigate = useNavigate();
+	const queryClient = useQueryClient();
 	const selection = useSidebarSelection();
 	const multiSelected = selection?.selectedIds.includes(row.sessionId) === true;
 	return (
@@ -423,6 +426,7 @@ function SessionRowLink({
 					data-row-main-button
 					data-selected={selected ? "focused" : undefined}
 					data-multi-selected={multiSelected ? "" : undefined}
+					onPointerDown={(event) => startSessionSwitchJourney(event.nativeEvent, row.sessionId, queryClient)}
 					onClick={(event) => {
 						if (selection?.onRowClick(row.sessionId, event) === true) event.preventDefault();
 					}}

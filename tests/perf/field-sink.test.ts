@@ -98,7 +98,13 @@ async function describeResponse(response: Response): Promise<{status: number; bo
 describe("POST /api/perf field sink", () => {
 	it("appends each sample of a valid batch as one JSONL line in today's file", async () => {
 		const first = sample();
-		const second = sample({journey: "J1", origin: "localhost", formFactor: "desktop", endSource: "element-timing"});
+		const second = sample({
+			journey: "F5",
+			origin: "localhost",
+			formFactor: "desktop",
+			endSource: "element-timing",
+			prefetchHit: true,
+		});
 
 		const responses = [
 			await describeResponse(
@@ -136,6 +142,7 @@ describe("POST /api/perf field sink", () => {
 		{name: "an unknown origin bucket", body: {samples: [{...sample(), origin: "lan"}]}},
 		{name: "an unknown formFactor bucket", body: {samples: [{...sample(), formFactor: "tablet"}]}},
 		{name: "a missing formFactor", body: {samples: [{...sample(), formFactor: undefined}]}},
+		{name: "a non-boolean prefetchHit", body: {samples: [{...sample(), prefetchHit: "yes"}]}},
 		{name: "malformed JSON", body: "{not json"},
 	])("rejects $name with 400", async ({body}) => {
 		const response = await handlePerfBeacon(beaconRequest(body), {cacheDir, now: () => NOW});

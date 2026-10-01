@@ -17,7 +17,11 @@ export function HomeLanding({dock}: Readonly<{dock?: ReactNode}>) {
 
 	return (
 		<HomePage clear={clear} dock={dock}>
-			<div data-home-action-center className="flex flex-col gap-10 pt-6 pb-14">
+			<div
+				data-home-action-center
+				data-perf-ready={attention === undefined ? undefined : ""}
+				className="flex flex-col gap-10 pt-6 pb-14"
+			>
 				{attention === undefined ? null : clear ? (
 					<HomeStatsSection />
 				) : (

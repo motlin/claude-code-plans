@@ -1,147 +1,22 @@
 // @vitest-environment jsdom
 
-import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
+import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {
-	createJourneyTracker,
 	deriveFormFactor,
 	deriveOrigin,
 	endJourneyWhenRendered,
 	PERF_ANCHORS,
 	startJourney,
-	type JourneyEnvironment,
-	type JourneySample,
-	type JourneyTracker,
 } from "../../src/lib/perf/journey";
+import {
+	flushMicrotasks,
+	makeJourneyHarness as makeHarness,
+	pointerDownAt,
+	setDocumentVisibility,
+	useJourneyHarnessLifecycle,
+} from "./harness/journey-harness";
 
-class FakePerformance {
-	clock = 0;
-	readonly marks: {name: string; startTime: number | undefined}[] = [];
-	readonly measures: {name: string; start: number; end: number}[] = [];
-
-	now(): number {
-		return this.clock;
-	}
-
-	mark(name: string, options?: {startTime?: number}): void {
-		this.marks.push({name, startTime: options?.startTime});
-	}
-
-	measure(name: string, options: {start: number; end: number}): void {
-		this.measures.push({name, start: options.start, end: options.end});
-	}
-}
-
-class FakeObserverHub {
-	private readonly callbacks = new Map<string, ((entries: PerformanceEntry[]) => void)[]>();
-
-	readonly Observer = fakeObserverClass(this.callbacks);
-
-	emit(type: string, entries: object[]): void {
-		for (const callback of this.callbacks.get(type) ?? []) callback(entries as PerformanceEntry[]);
-	}
-}
-
-function fakeObserverClass(callbacks: Map<string, ((entries: PerformanceEntry[]) => void)[]>) {
-	return class {
-		constructor(private readonly callback: PerformanceObserverCallback) {}
-
-		observe(options: {type: string}): void {
-			const list = callbacks.get(options.type) ?? [];
-			list.push((entries) =>
-				this.callback({getEntries: () => entries} as PerformanceObserverEntryList, this as never),
-			);
-			callbacks.set(options.type, list);
-		}
-
-		disconnect(): void {}
-	};
-}
-
-interface Harness {
-	tracker: JourneyTracker;
-	performance: FakePerformance;
-	observers: FakeObserverHub;
-	sent: JourneySample[][];
-	frames: (() => void)[];
-	timers: (() => void)[];
-	runFrame(): void;
-	setVisibility(state: DocumentVisibilityState): void;
-}
-
-let visibility: DocumentVisibilityState = "visible";
-const trackers: JourneyTracker[] = [];
-
-beforeEach(() => {
-	visibility = "visible";
-	Object.defineProperty(document, "visibilityState", {configurable: true, get: () => visibility});
-	document.body.innerHTML = "";
-});
-
-afterEach(() => {
-	for (const tracker of trackers.splice(0)) tracker.dispose();
-});
-
-function makeHarness(overrides: Partial<JourneyEnvironment> = {}): Harness {
-	const performance = new FakePerformance();
-	const observers = new FakeObserverHub();
-	const sent: JourneySample[][] = [];
-	const frames: (() => void)[] = [];
-	const timers: (() => void)[] = [];
-	const environment: JourneyEnvironment = {
-		document,
-		performance: performance as unknown as Performance,
-		PerformanceObserver: observers.Observer as unknown as typeof PerformanceObserver,
-		hostname: "localhost",
-		pathname: "/session/abc",
-		matchesCoarsePointer: () => false,
-		viewportWidth: () => 1440,
-		hardwareConcurrency: 8,
-		buildSha: "abc1234",
-		mode: "dev",
-		requestAnimationFrame: (callback) => {
-			frames.push(() => callback(performance.clock));
-			return frames.length;
-		},
-		setTimeout: (callback) => {
-			timers.push(callback);
-			return timers.length;
-		},
-		setInterval: () => 0,
-		clearInterval: () => {},
-		send: (batch) => {
-			sent.push(batch);
-		},
-		...overrides,
-	};
-	const tracker = createJourneyTracker(environment);
-	trackers.push(tracker);
-	return {
-		tracker,
-		performance,
-		observers,
-		sent,
-		frames,
-		timers,
-		runFrame() {
-			for (const frame of frames.splice(0)) frame();
-			for (const timer of timers.splice(0)) timer();
-		},
-		setVisibility(state) {
-			visibility = state;
-			document.dispatchEvent(new Event("visibilitychange"));
-		},
-	};
-}
-
-function pointerDownAt(timeStamp: number): Event {
-	const event = new Event("pointerdown");
-	Object.defineProperty(event, "timeStamp", {value: timeStamp});
-	return event;
-}
-
-async function flushMicrotasks(): Promise<void> {
-	for (let i = 0; i < 5; i++) await Promise.resolve();
-}
+useJourneyHarnessLifecycle();
 
 describe("deriveOrigin", () => {
 	it("classifies loopback hostnames as localhost and everything else as remote", () => {
@@ -373,6 +248,56 @@ describe("journey tracker", () => {
 		]);
 	});
 
+	it("waits for every anchor of a multi-anchor journey before ending it", async () => {
+		const harness = makeHarness();
+		harness.tracker.startJourney("F1", {trigger: "navigation"});
+		const done = harness.tracker.endJourneyWhenRendered("F1", [
+			'[data-perf-region="sidebar_recents"]',
+			'[data-perf-region="main"]',
+		]);
+
+		const recents = document.createElement("div");
+		recents.setAttribute("data-perf-region", "sidebar_recents");
+		recents.textContent = "row";
+		document.body.append(recents);
+		await flushMicrotasks();
+		harness.runFrame();
+		expect(harness.frames).toHaveLength(0);
+
+		const main = document.createElement("div");
+		main.setAttribute("data-perf-region", "main");
+		main.textContent = "rows";
+		document.body.append(main);
+		await flushMicrotasks();
+		harness.performance.clock = 300;
+		harness.runFrame();
+
+		expect(await done).toMatchObject({journey: "F1", start: 0, end: 300, endSource: "raf"});
+	});
+
+	it("attaches prefetchHit to the sample only when the journey was started with it", async () => {
+		const harness = makeHarness();
+		const main = document.createElement("div");
+		main.setAttribute("data-perf-region", "main");
+		main.textContent = "ready";
+		document.body.append(main);
+
+		const results = [];
+		for (const prefetchHit of [true, false, undefined]) {
+			harness.tracker.startJourney("F5", {
+				trigger: pointerDownAt(5),
+				...(prefetchHit === undefined ? {} : {prefetchHit}),
+			});
+			const done = harness.tracker.endJourneyWhenRendered("F5", '[data-perf-region="main"]');
+			await flushMicrotasks();
+			harness.runFrame();
+			const sample = await done;
+			results.push(sample !== null && "prefetchHit" in sample ? sample.prefetchHit : "absent");
+		}
+
+		expect(results).toStrictEqual([true, false, "absent"]);
+	});
+
 	it("drops a sample whose tab was hidden at any point during the journey", async () => {
 		const harness = makeHarness();
 		harness.tracker.startJourney("J3", {trigger: pointerDownAt(100)});
@@ -432,8 +357,7 @@ describe("default browser tracker", () => {
 
 		startJourney("J2", {trigger: "navigation"});
 		const sample = await endJourneyWhenRendered("J2", PERF_ANCHORS.transcriptRow);
-		visibility = "hidden";
-		document.dispatchEvent(new Event("visibilitychange"));
+		setDocumentVisibility("hidden");
 
 		expect({
 			journey: sample?.journey,

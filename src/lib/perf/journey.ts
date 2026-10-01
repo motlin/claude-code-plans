@@ -12,6 +12,9 @@ export const PERF_ANCHORS = {
 	sidebarPinned: '[data-perf-region="sidebar_pinned"]',
 	sidePane: '[data-perf-region="side_pane"]',
 	transcriptRow: '[data-perf-row="turn"]',
+	lastTranscriptRow: '[data-perf-row="turn"][data-perf-last]',
+	sidebarRecentsRow: '[data-perf-region="sidebar_recents"] [data-row-main-button]',
+	homeSections: "[data-home-action-center][data-perf-ready]",
 	workingMarker: '[data-perf-row="marker"]',
 	commandPalette: '[data-perf-overlay="command_palette"]',
 } as const;
@@ -71,6 +74,8 @@ export interface JourneySample {
 	endSource: EndSource;
 	route: string;
 	sizeBucket?: SizeBucket;
+	/** Session switch only: whether the hover prefetch had already cached the session when the pointer went down. */
+	prefetchHit?: boolean;
 	buildSha: string;
 	mode: "dev" | "prod";
 	origin: Origin;
@@ -106,12 +111,17 @@ export interface StartJourneyOptions {
 	trigger: Event | "navigation";
 	/** Session JSONL bytes, bucketed into S (< 1 MB), M (1–10 MB) and L (> 10 MB). */
 	sizeBytes?: number;
+	/** Whether the hover prefetch had already warmed the cache the journey reads. */
+	prefetchHit?: boolean;
 }
+
+/** One anchor selector, or several that must all match an element with data before the journey ends. */
+export type AnchorSelector = string | readonly string[];
 
 export interface JourneyTracker {
 	startJourney(id: string, options: StartJourneyOptions): void;
 	/** Resolves with the queued sample, or null when the journey was hidden, unknown, superseded or timed out. */
-	endJourneyWhenRendered(id: string, anchorSelector: string): Promise<JourneySample | null>;
+	endJourneyWhenRendered(id: string, anchorSelector: AnchorSelector): Promise<JourneySample | null>;
 	flush(): void;
 	dispose(): void;
 }
@@ -121,6 +131,7 @@ interface ActiveJourney {
 	start: number;
 	route: string;
 	sizeBucket: SizeBucket | undefined;
+	prefetchHit: boolean | undefined;
 	hidden: boolean;
 }
 
@@ -287,6 +298,7 @@ export function createJourneyTracker(environment: JourneyEnvironment): JourneyTr
 			endSource,
 			route: journey.route,
 			...(journey.sizeBucket ? {sizeBucket: journey.sizeBucket} : {}),
+			...(journey.prefetchHit === undefined ? {} : {prefetchHit: journey.prefetchHit}),
 			buildSha: environment.buildSha,
 			mode: environment.mode,
 			origin: deriveOrigin(environment.hostname),
@@ -307,25 +319,40 @@ export function createJourneyTracker(environment: JourneyEnvironment): JourneyTr
 		};
 	}
 
-	function waitForAnchor(selector: string): Promise<Element | null> {
-		const existing = findAnchor(document, selector);
+	function findAnchors(selectors: readonly string[]): Element[] | null {
+		const anchors: Element[] = [];
+		for (const selector of selectors) {
+			const anchor = findAnchor(document, selector);
+			if (!anchor) return null;
+			anchors.push(anchor);
+		}
+		return anchors;
+	}
+
+	function waitForAnchors(selectors: readonly string[]): Promise<Element[] | null> {
+		const existing = findAnchors(selectors);
 		if (existing) return Promise.resolve(existing);
 		return new Promise((resolve) => {
 			const mutationObserver = new MutationObserver(() => {
-				const anchor = findAnchor(document, selector);
-				if (anchor) finish(anchor);
+				const anchors = findAnchors(selectors);
+				if (anchors) finish(anchors);
 			});
-			function finish(anchor: Element | null): void {
+			function finish(anchors: Element[] | null): void {
 				mutationObserver.disconnect();
 				cancelWaits.delete(cancel);
-				resolve(anchor);
+				resolve(anchors);
 			}
 			function cancel(): void {
 				finish(null);
 			}
 			cancelWaits.add(cancel);
 			environment.setTimeout(cancel, ANCHOR_TIMEOUT_MS);
-			mutationObserver.observe(document, {childList: true, subtree: true, characterData: true});
+			mutationObserver.observe(document, {
+				childList: true,
+				subtree: true,
+				characterData: true,
+				attributes: true,
+			});
 		});
 	}
 
@@ -338,13 +365,14 @@ export function createJourneyTracker(environment: JourneyEnvironment): JourneyTr
 	}
 
 	return {
-		startJourney(id, {trigger, sizeBytes}) {
+		startJourney(id, {trigger, sizeBytes, prefetchHit}) {
 			const start = trigger === "navigation" ? 0 : trigger.timeStamp;
 			active.set(id, {
 				trigger: trigger === "navigation" ? "navigation" : trigger.type,
 				start,
 				route: environment.pathname,
 				sizeBucket: sizeBytes === undefined ? undefined : sizeBucket(sizeBytes),
+				prefetchHit,
 				hidden: document.visibilityState === "hidden",
 			});
 			performance.mark(`ccb:${id}:start`, {startTime: start});
@@ -353,14 +381,19 @@ export function createJourneyTracker(environment: JourneyEnvironment): JourneyTr
 		async endJourneyWhenRendered(id, anchorSelector) {
 			const journey = active.get(id);
 			if (!journey) return null;
-			const anchor = await waitForAnchor(anchorSelector);
-			if (!anchor || active.get(id) !== journey) return null;
+			const anchors = await waitForAnchors(
+				typeof anchorSelector === "string" ? [anchorSelector] : anchorSelector,
+			);
+			if (!anchors || active.get(id) !== journey) return null;
 			const paintedAt = await afterPaint();
 			if (active.get(id) !== journey) return null;
 			active.delete(id);
 			if (journey.hidden) return null;
 
-			const renderTime = elementRenderTime(anchor);
+			const renderTimes = anchors.map(elementRenderTime);
+			const renderTime = renderTimes.every((time) => time !== undefined)
+				? Math.max(...(renderTimes as number[]))
+				: undefined;
 			const end = renderTime ?? paintedAt;
 			performance.mark(`ccb:${id}:end`, {startTime: end});
 			performance.measure(`ccb:${id}`, {start: journey.start, end});
@@ -410,7 +443,8 @@ function browserEnvironment(): JourneyEnvironment {
 
 let defaultTracker: JourneyTracker | undefined;
 
-function tracker(): JourneyTracker | undefined {
+/** The browser's shared tracker, created on first use; undefined during SSR. */
+export function defaultJourneyTracker(): JourneyTracker | undefined {
 	if (typeof window === "undefined") return undefined;
 	defaultTracker ??= createJourneyTracker(browserEnvironment());
 	return defaultTracker;
@@ -418,10 +452,10 @@ function tracker(): JourneyTracker | undefined {
 
 /** Starts timing journey `id` from `trigger`'s timeStamp (or navigation start). A no-op during SSR. */
 export function startJourney(id: string, options: StartJourneyOptions): void {
-	tracker()?.startJourney(id, options);
+	defaultJourneyTracker()?.startJourney(id, options);
 }
 
 /** Ends journey `id` at the paint after `anchorSelector` matches an element with data, and queues the sample. */
-export function endJourneyWhenRendered(id: string, anchorSelector: string): Promise<JourneySample | null> {
-	return tracker()?.endJourneyWhenRendered(id, anchorSelector) ?? Promise.resolve(null);
+export function endJourneyWhenRendered(id: string, anchorSelector: AnchorSelector): Promise<JourneySample | null> {
+	return defaultJourneyTracker()?.endJourneyWhenRendered(id, anchorSelector) ?? Promise.resolve(null);
 }

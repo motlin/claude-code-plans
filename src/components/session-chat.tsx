@@ -1112,7 +1112,12 @@ function VirtualizedSessionEntries({
 			{entries.slice(startIndex, endIndex).map((entry, offset) => {
 				const index = startIndex + offset;
 				return (
-					<div key={entry.key} data-transcript-entry-index={index} data-perf-row="turn">
+					<div
+						key={entry.key}
+						data-transcript-entry-index={index}
+						data-perf-row="turn"
+						data-perf-last={index === entries.length - 1 ? "" : undefined}
+					>
 						{entry.element}
 					</div>
 				);
