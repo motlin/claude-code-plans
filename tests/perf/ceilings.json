@@ -1,16 +1,16 @@
 {
 	"bundle.home.gzip": {
-		"ceiling": 391051,
+		"ceiling": 396145,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "⌘K Compose's paperclip and Send buttons with attachment chips (about 1.5 KB gzip), plus the usage-ring two-row tooltip and usage popover link that landed just before it",
+		"reason": "Settings editor a11y: accessible names on every /settings/edit control (label htmlFor/id, aria-labelledby on switches, aria-label on list rows), about 1.7 KB gzip / 5 KB raw from this change on top of earlier landings since the last raise; the settings_.edit route is in the home cold load, which a separate task will fix",
 		"raisedAt": "2026-10-01"
 	},
 	"bundle.home.raw": {
-		"ceiling": 1231623,
+		"ceiling": 1245077,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "⌘K Compose's paperclip and Send buttons with attachment chips (about 1.5 KB gzip), plus the usage-ring two-row tooltip and usage popover link that landed just before it",
+		"reason": "Settings editor a11y: accessible names on every /settings/edit control (label htmlFor/id, aria-labelledby on switches, aria-label on list rows), about 1.7 KB gzip / 5 KB raw from this change on top of earlier landings since the last raise; the settings_.edit route is in the home cold load, which a separate task will fix",
 		"raisedAt": "2026-10-01"
 	},
 	"bundle.session.gzip": {

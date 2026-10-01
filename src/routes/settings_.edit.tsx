@@ -14,7 +14,7 @@ import {
 	Trash2,
 	X,
 } from "lucide-react";
-import {useCallback, useEffect, useRef, useState} from "react";
+import {useCallback, useEffect, useId, useRef, useState} from "react";
 import {useHighlightedLines} from "../hooks/use-shiki";
 import {settingsQueryOptions, useSaveSettingsFile} from "../lib/api/settings";
 import {
@@ -190,6 +190,7 @@ function JsonEditor({filename, initialContent, path}: {filename: string; initial
 				)}
 				<textarea
 					ref={textareaRef}
+					aria-label={`${FILE_LABELS[filename] ?? filename} JSON`}
 					value={editorValue}
 					onChange={handleChange}
 					spellCheck={false}
@@ -278,11 +279,26 @@ function groupFieldsBySection(): Map<string, FieldDefinition[]> {
 	return groups;
 }
 
-function FormToggle({checked, onChange}: {checked: boolean; onChange: (value: boolean) => void}) {
+function FormToggle({
+	checked,
+	onChange,
+	id,
+	labelledBy,
+	label,
+}: {
+	checked: boolean;
+	onChange: (value: boolean) => void;
+	id?: string;
+	labelledBy?: string;
+	label?: string;
+}) {
 	return (
 		<button
 			type="button"
 			role="switch"
+			id={id}
+			aria-labelledby={labelledBy}
+			aria-label={label}
 			aria-checked={checked}
 			onClick={() => onChange(!checked)}
 			className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
@@ -307,26 +323,40 @@ function FormField({
 	value: unknown;
 	onChange: (key: string, value: unknown) => void;
 }) {
+	const controlId = useId();
+	const labelId = `${controlId}-label`;
+	const descriptionId = `${controlId}-description`;
+	const labelBlock = (
+		<div>
+			<label id={labelId} htmlFor={controlId} className="block text-sm font-medium text-primary">
+				{field.label}
+			</label>
+			<div id={descriptionId} className="text-xs text-t6">
+				{field.description}
+			</div>
+		</div>
+	);
 	switch (field.type) {
 		case "boolean": {
 			return (
 				<div className="flex items-center justify-between gap-4 py-2">
-					<div>
-						<div className="text-sm font-medium text-primary">{field.label}</div>
-						<div className="text-xs text-t6">{field.description}</div>
-					</div>
-					<FormToggle checked={value === true} onChange={(checked) => onChange(field.key, checked)} />
+					{labelBlock}
+					<FormToggle
+						id={controlId}
+						labelledBy={labelId}
+						checked={value === true}
+						onChange={(checked) => onChange(field.key, checked)}
+					/>
 				</div>
 			);
 		}
 		case "enum": {
 			return (
 				<div className="flex items-center justify-between gap-4 py-2">
-					<div>
-						<div className="text-sm font-medium text-primary">{field.label}</div>
-						<div className="text-xs text-t6">{field.description}</div>
-					</div>
+					{labelBlock}
 					<select
+						id={controlId}
+						aria-describedby={descriptionId}
 						value={typeof value === "string" ? value : ""}
 						onChange={(event) => onChange(field.key, event.target.value)}
 						className="rounded-md border border-border bg-surface-1 px-2 py-1 text-sm text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
@@ -348,12 +378,11 @@ function FormField({
 		case "number": {
 			return (
 				<div className="flex items-center justify-between gap-4 py-2">
-					<div>
-						<div className="text-sm font-medium text-primary">{field.label}</div>
-						<div className="text-xs text-t6">{field.description}</div>
-					</div>
+					{labelBlock}
 					<input
 						type="number"
+						id={controlId}
+						aria-describedby={descriptionId}
 						value={typeof value === "number" ? value : ""}
 						min={field.min}
 						max={field.max}
@@ -371,12 +400,11 @@ function FormField({
 		case "string": {
 			return (
 				<div className="flex items-center justify-between gap-4 py-2">
-					<div>
-						<div className="text-sm font-medium text-primary">{field.label}</div>
-						<div className="text-xs text-t6">{field.description}</div>
-					</div>
+					{labelBlock}
 					<input
 						type="text"
+						id={controlId}
+						aria-describedby={descriptionId}
 						value={typeof value === "string" ? value : ""}
 						onChange={(event) => onChange(field.key, event.target.value)}
 						className="w-48 rounded-md border border-border bg-surface-1 px-2 py-1 text-sm text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
@@ -449,6 +477,7 @@ function EnvEditor({
 					<div key={entryKey} className="flex items-center gap-2">
 						<input
 							type="text"
+							aria-label={`Name of environment variable ${entryKey}`}
 							value={entryKey}
 							onChange={(event) => handleEntryChange(entryKey, "key", event.target.value)}
 							className="w-48 rounded-md border border-border bg-surface-1 px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
@@ -457,6 +486,7 @@ function EnvEditor({
 						<span className="text-t6">=</span>
 						<input
 							type="text"
+							aria-label={`Value of environment variable ${entryKey}`}
 							value={entryValue}
 							onChange={(event) => handleEntryChange(entryKey, "value", event.target.value)}
 							className="flex-1 rounded-md border border-border bg-surface-1 px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
@@ -475,6 +505,7 @@ function EnvEditor({
 				<div className="flex items-center gap-2 pt-1">
 					<input
 						type="text"
+						aria-label="New environment variable name"
 						value={newKey}
 						onChange={(event) => setNewKey(event.target.value)}
 						onKeyDown={(event) => {
@@ -486,6 +517,7 @@ function EnvEditor({
 					<span className="text-t6">=</span>
 					<input
 						type="text"
+						aria-label="New environment variable value"
 						value={newValue}
 						onChange={(event) => setNewValue(event.target.value)}
 						onKeyDown={(event) => {
@@ -556,6 +588,7 @@ function PermissionListEditor({
 					<div key={index} className="flex items-center gap-2">
 						<input
 							type="text"
+							aria-label={`${label} entry ${index + 1}`}
 							value={entry}
 							onChange={(event) => handleChange(index, event.target.value)}
 							className="flex-1 rounded-md border border-border bg-surface-1 px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
@@ -573,6 +606,7 @@ function PermissionListEditor({
 				<div className="flex items-center gap-2 pt-1">
 					<input
 						type="text"
+						aria-label={`New ${label} entry`}
 						value={newEntry}
 						onChange={(event) => setNewEntry(event.target.value)}
 						onKeyDown={(event) => {
@@ -607,6 +641,7 @@ function PermissionsEditor({
 	const deny = Array.isArray(value["deny"]) ? (value["deny"] as string[]) : [];
 	const ask = Array.isArray(value["ask"]) ? (value["ask"] as string[]) : [];
 	const defaultMode = typeof value["defaultMode"] === "string" ? value["defaultMode"] : "";
+	const defaultModeId = useId();
 
 	const updateList = useCallback(
 		(listKey: string, updated: string[]) => {
@@ -637,10 +672,13 @@ function PermissionsEditor({
 			/>
 			<div className="flex items-center justify-between gap-4 py-2">
 				<div>
-					<div className="text-sm font-medium text-primary">Default mode</div>
+					<label htmlFor={defaultModeId} className="block text-sm font-medium text-primary">
+						Default mode
+					</label>
 					<div className="text-xs text-t6">Permission mode when not otherwise specified</div>
 				</div>
 				<select
+					id={defaultModeId}
 					value={defaultMode}
 					onChange={(event) =>
 						onChange("permissions", {
@@ -669,6 +707,7 @@ function StatusLineEditor({
 	const statusType = typeof value["type"] === "string" ? value["type"] : "";
 	const command = typeof value["command"] === "string" ? value["command"] : "";
 	const padding = typeof value["padding"] === "number" ? value["padding"] : 0;
+	const idPrefix = useId();
 
 	const update = useCallback(
 		(field: string, fieldValue: unknown) => {
@@ -685,8 +724,11 @@ function StatusLineEditor({
 			</div>
 			<div className="space-y-2">
 				<div className="flex items-center justify-between gap-4">
-					<label className="text-xs text-secondary">Type</label>
+					<label htmlFor={`${idPrefix}-type`} className="text-xs text-secondary">
+						Type
+					</label>
 					<select
+						id={`${idPrefix}-type`}
 						value={statusType}
 						onChange={(event) => update("type", event.target.value || undefined)}
 						className="rounded-md border border-border bg-surface-1 px-2 py-1 text-sm text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
@@ -696,9 +738,12 @@ function StatusLineEditor({
 					</select>
 				</div>
 				<div className="flex items-center justify-between gap-4">
-					<label className="text-xs text-secondary">Command</label>
+					<label htmlFor={`${idPrefix}-command`} className="text-xs text-secondary">
+						Command
+					</label>
 					<input
 						type="text"
+						id={`${idPrefix}-command`}
 						value={command}
 						onChange={(event) => update("command", event.target.value || undefined)}
 						className="flex-1 max-w-sm rounded-md border border-border bg-surface-1 px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
@@ -706,9 +751,12 @@ function StatusLineEditor({
 					/>
 				</div>
 				<div className="flex items-center justify-between gap-4">
-					<label className="text-xs text-secondary">Padding</label>
+					<label htmlFor={`${idPrefix}-padding`} className="text-xs text-secondary">
+						Padding
+					</label>
 					<input
 						type="number"
+						id={`${idPrefix}-padding`}
 						value={padding}
 						min={0}
 						onChange={(event) => {
@@ -902,6 +950,7 @@ function HooksEditor({
 													<span className="text-xs text-secondary shrink-0">Matcher:</span>
 													<input
 														type="text"
+														aria-label={`${eventName} rule ${matcherIndex + 1} matcher`}
 														value={matcher.matcher ?? ""}
 														onChange={(event) =>
 															handleMatcherFieldChange(
@@ -929,6 +978,7 @@ function HooksEditor({
 												{matcher.hooks.map((hook, hookIndex) => (
 													<div key={hookIndex} className="flex items-start gap-2">
 														<textarea
+															aria-label={`${eventName} rule ${matcherIndex + 1} command ${hookIndex + 1}`}
 															value={hook.command}
 															onChange={(event) =>
 																handleHookCommandChange(
@@ -988,6 +1038,7 @@ function HooksEditor({
 				{availableEvents.length > 0 && (
 					<div className="flex items-center gap-2 pt-1">
 						<select
+							aria-label="New hook event"
 							value={newEventName}
 							onChange={(event) => setNewEventName(event.target.value)}
 							className="rounded-md border border-border bg-surface-1 px-2 py-1 text-xs text-secondary focus:outline-none focus:ring-1 focus:ring-accent-100"
@@ -1058,7 +1109,11 @@ function PluginsEditor({
 					<div key={pluginName} className="flex items-center justify-between gap-2 py-1">
 						<span className="font-mono text-xs text-primary truncate">{pluginName}</span>
 						<div className="flex items-center gap-2 shrink-0">
-							<FormToggle checked={enabled} onChange={(checked) => handleToggle(pluginName, checked)} />
+							<FormToggle
+								label={pluginName}
+								checked={enabled}
+								onChange={(checked) => handleToggle(pluginName, checked)}
+							/>
 							<button
 								type="button"
 								onClick={() => handleRemove(pluginName)}
@@ -1073,6 +1128,7 @@ function PluginsEditor({
 				<div className="flex items-center gap-2 pt-1">
 					<input
 						type="text"
+						aria-label="New plugin"
 						value={newPlugin}
 						onChange={(event) => setNewPlugin(event.target.value)}
 						onKeyDown={(event) => {
@@ -1147,6 +1203,7 @@ export function StringListEditor({
 					<div key={index} className="flex items-center gap-2">
 						<input
 							type="text"
+							aria-label={`${label} entry ${index + 1}`}
 							value={entry}
 							onChange={(event) => handleChange(index, event.target.value)}
 							className="flex-1 rounded-md border border-border bg-surface-1 px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
@@ -1164,6 +1221,7 @@ export function StringListEditor({
 				<div className="flex items-center gap-2 pt-1">
 					<input
 						type="text"
+						aria-label={`New ${label} entry`}
 						value={newEntry}
 						onChange={(event) => setNewEntry(event.target.value)}
 						onKeyDown={(event) => {
@@ -1243,6 +1301,7 @@ export function ObjectFieldsEditor({
 		},
 		[def.key, value, onChange],
 	);
+	const idPrefix = useId();
 
 	return (
 		<div className="py-2">
@@ -1253,12 +1312,21 @@ export function ObjectFieldsEditor({
 			<div className="space-y-2">
 				{def.fields.map((subField) => {
 					const subValue = value[subField.key];
+					const controlId = `${idPrefix}-${subField.key}`;
 					switch (subField.type) {
 						case "boolean": {
 							return (
 								<div key={subField.key} className="flex items-center justify-between gap-4">
-									<label className="text-xs text-secondary">{subField.label}</label>
+									<label
+										id={`${controlId}-label`}
+										htmlFor={controlId}
+										className="text-xs text-secondary"
+									>
+										{subField.label}
+									</label>
 									<FormToggle
+										id={controlId}
+										labelledBy={`${controlId}-label`}
 										checked={subValue === true}
 										onChange={(checked) => update(subField.key, checked)}
 									/>
@@ -1268,9 +1336,16 @@ export function ObjectFieldsEditor({
 						case "number": {
 							return (
 								<div key={subField.key} className="flex items-center justify-between gap-4">
-									<label className="text-xs text-secondary">{subField.label}</label>
+									<label
+										id={`${controlId}-label`}
+										htmlFor={controlId}
+										className="text-xs text-secondary"
+									>
+										{subField.label}
+									</label>
 									<input
 										type="number"
+										id={controlId}
 										value={typeof subValue === "number" ? subValue : ""}
 										onChange={(event) => {
 											const raw = event.target.value;
@@ -1301,9 +1376,16 @@ export function ObjectFieldsEditor({
 						case "string": {
 							return (
 								<div key={subField.key} className="flex items-center justify-between gap-4">
-									<label className="text-xs text-secondary">{subField.label}</label>
+									<label
+										id={`${controlId}-label`}
+										htmlFor={controlId}
+										className="text-xs text-secondary"
+									>
+										{subField.label}
+									</label>
 									<input
 										type="text"
+										id={controlId}
 										value={typeof subValue === "string" ? subValue : ""}
 										onChange={(event) => {
 											const raw = event.target.value;
@@ -1350,6 +1432,7 @@ export function MarketplacesEditor({
 	const entries = Object.entries(value);
 	const [expanded, setExpanded] = useState<string | null>(null);
 	const [newName, setNewName] = useState("");
+	const idPrefix = useId();
 
 	const handleAdd = useCallback(() => {
 		const name = newName.trim();
@@ -1417,8 +1500,9 @@ export function MarketplacesEditor({
 				<div className="text-xs text-t6">Extra known plugin marketplaces</div>
 			</div>
 			<div className="space-y-2">
-				{entries.map(([name, entry]) => {
+				{entries.map(([name, entry], entryIndex) => {
 					const isExpanded = expanded === name;
+					const entryId = `${idPrefix}-${entryIndex}`;
 					return (
 						<div key={name} className="rounded-md border border-border">
 							<div className="flex items-center justify-between px-3 py-2">
@@ -1446,9 +1530,16 @@ export function MarketplacesEditor({
 							{isExpanded && (
 								<div className="border-t border-border px-3 py-2 space-y-2">
 									<div className="flex items-center justify-between gap-4">
-										<label className="text-xs text-secondary">Source type</label>
+										<label
+											id={`${entryId}-source-label`}
+											htmlFor={`${entryId}-source`}
+											className="text-xs text-secondary"
+										>
+											Source type
+										</label>
 										<input
 											type="text"
+											id={`${entryId}-source`}
 											value={entry.source.source}
 											onChange={(event) => updateSourceField(name, "source", event.target.value)}
 											className="w-48 rounded-md border border-border bg-surface-2 px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
@@ -1456,9 +1547,16 @@ export function MarketplacesEditor({
 										/>
 									</div>
 									<div className="flex items-center justify-between gap-4">
-										<label className="text-xs text-secondary">Repo</label>
+										<label
+											id={`${entryId}-repo-label`}
+											htmlFor={`${entryId}-repo`}
+											className="text-xs text-secondary"
+										>
+											Repo
+										</label>
 										<input
 											type="text"
+											id={`${entryId}-repo`}
 											value={entry.source.repo ?? ""}
 											onChange={(event) => updateSourceField(name, "repo", event.target.value)}
 											className="w-48 rounded-md border border-border bg-surface-2 px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
@@ -1466,9 +1564,16 @@ export function MarketplacesEditor({
 										/>
 									</div>
 									<div className="flex items-center justify-between gap-4">
-										<label className="text-xs text-secondary">Path</label>
+										<label
+											id={`${entryId}-path-label`}
+											htmlFor={`${entryId}-path`}
+											className="text-xs text-secondary"
+										>
+											Path
+										</label>
 										<input
 											type="text"
+											id={`${entryId}-path`}
 											value={entry.source.path ?? ""}
 											onChange={(event) => updateSourceField(name, "path", event.target.value)}
 											className="w-48 rounded-md border border-border bg-surface-2 px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
@@ -1476,9 +1581,16 @@ export function MarketplacesEditor({
 										/>
 									</div>
 									<div className="flex items-center justify-between gap-4">
-										<label className="text-xs text-secondary">Source URL</label>
+										<label
+											id={`${entryId}-source-url-label`}
+											htmlFor={`${entryId}-source-url`}
+											className="text-xs text-secondary"
+										>
+											Source URL
+										</label>
 										<input
 											type="text"
+											id={`${entryId}-source-url`}
 											value={entry.source.url ?? ""}
 											onChange={(event) => updateSourceField(name, "url", event.target.value)}
 											className="w-48 rounded-md border border-border bg-surface-2 px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
@@ -1486,16 +1598,31 @@ export function MarketplacesEditor({
 										/>
 									</div>
 									<div className="flex items-center justify-between gap-4">
-										<label className="text-xs text-secondary">Auto-update</label>
+										<label
+											id={`${entryId}-auto-update-label`}
+											htmlFor={`${entryId}-auto-update`}
+											className="text-xs text-secondary"
+										>
+											Auto-update
+										</label>
 										<FormToggle
+											id={`${entryId}-auto-update`}
+											labelledBy={`${entryId}-auto-update-label`}
 											checked={entry.autoUpdate === true}
 											onChange={(checked) => updateAutoUpdate(name, checked)}
 										/>
 									</div>
 									<div className="flex items-center justify-between gap-4">
-										<label className="text-xs text-secondary">URL</label>
+										<label
+											id={`${entryId}-url-label`}
+											htmlFor={`${entryId}-url`}
+											className="text-xs text-secondary"
+										>
+											URL
+										</label>
 										<input
 											type="text"
+											id={`${entryId}-url`}
 											value={entry.url ?? ""}
 											onChange={(event) => updateUrl(name, event.target.value)}
 											className="w-48 rounded-md border border-border bg-surface-2 px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
@@ -1510,6 +1637,7 @@ export function MarketplacesEditor({
 				<div className="flex items-center gap-2 pt-1">
 					<input
 						type="text"
+						aria-label="New marketplace name"
 						value={newName}
 						onChange={(event) => setNewName(event.target.value)}
 						onKeyDown={(event) => {
@@ -1533,7 +1661,7 @@ export function MarketplacesEditor({
 	);
 }
 
-function FormEditor({filename, initialContent, path}: {filename: string; initialContent: string; path: string}) {
+export function FormEditor({filename, initialContent, path}: {filename: string; initialContent: string; path: string}) {
 	const [data, setData] = useState<Record<string, unknown>>(() => {
 		try {
 			return JSON.parse(initialContent) as Record<string, unknown>;
