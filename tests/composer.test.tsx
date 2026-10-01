@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import {readFileSync} from "node:fs";
-import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {Composer} from "../src/components/composer";
 import type {ComposerState} from "../src/lib/composer-state";
@@ -260,6 +260,40 @@ describe("Composer", () => {
 				],
 				bars: ["19", "10", "65"],
 			});
+		});
+
+		it("previews context and the weekly limit in a two-row tooltip on the ring", () => {
+			vi.useFakeTimers({now: NOW_MS});
+			render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} chin={CHIN} />);
+			const anchor = screen.getByRole("button", {name: /^Usage:/}).parentElement;
+			if (anchor === null) throw new Error("ring has no tooltip anchor");
+
+			fireEvent.pointerEnter(anchor);
+			act(() => vi.advanceTimersByTime(400));
+
+			expect(screen.getByRole("tooltip").textContent?.split("\n")).toStrictEqual([
+				"Context 190.2k / 1M (19%)",
+				"Weekly · all models: 65% · Resets in 14 hr 31 min",
+			]);
+		});
+
+		it("links the usage popover's plan limits to Settings › Usage", async () => {
+			render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} chin={CHIN} />);
+
+			fireEvent.click(screen.getByRole("button", {name: /^Usage:/}));
+			const dialog = await screen.findByRole("dialog");
+			const link = within(dialog).getByRole("link", {name: "View usage in Settings"});
+
+			expect({
+				href: link.getAttribute("href"),
+				className: dialog.className.match(/rounded-\S+|max-h-\S+|overflow-\S+/g),
+			}).toStrictEqual({
+				href: "#settings/usage",
+				className: ["max-h-[640px]", "overflow-y-auto", "rounded-r7"],
+			});
+
+			fireEvent.click(link);
+			await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
 		});
 
 		it("inserts a slash from the Add menu", async () => {

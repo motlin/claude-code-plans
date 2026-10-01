@@ -4,6 +4,7 @@ import {
 	type ComposerStateSources,
 	formatResetLabel,
 	formatUsageAriaLabel,
+	formatUsageTooltipRows,
 	getComposerState,
 	lastAssistantModelFromRecords,
 	lastAssistantUsageFromRecords,
@@ -331,6 +332,34 @@ describe("usage ring", () => {
 			fiveHour: "Usage: Context 4k / 200k (2%), 5-hour limit: 7%, Resets in 30 min",
 			empty: "Usage: Context 0",
 			days: "Usage: Context 4k / 200k (2%), Weekly · all models: 11%, Resets Thu 3:00 PM",
+		});
+	});
+});
+
+describe("formatUsageTooltipRows", () => {
+	it("pairs the context summary with the weekly limit, else the five-hour limit, else context alone", () => {
+		const base = {contextTokens: 604_700, contextWindowSize: 1_000_000, contextPercent: 60, updatedAt: null};
+		expect({
+			weekly: formatUsageTooltipRows(
+				{
+					...base,
+					fiveHour: {usedPercentage: 10, resetsAt: NOW_SEC + 3600},
+					weekly: {usedPercentage: 38.2, resetsAt: NOW_SEC + 2 * 86_400 + 3 * 3600},
+				},
+				NOW_MS,
+				"UTC",
+			),
+			fiveHour: formatUsageTooltipRows(
+				{...base, fiveHour: {usedPercentage: 7.4, resetsAt: NOW_SEC + 30 * 60}, weekly: null},
+				NOW_MS,
+			),
+			contextOnly: formatUsageTooltipRows({...base, fiveHour: null, weekly: null}, NOW_MS),
+			empty: formatUsageTooltipRows(null, NOW_MS),
+		}).toStrictEqual({
+			weekly: ["Context 604.7k / 1M (60%)", "Weekly · all models: 38% · Resets Thu 3:00 PM"],
+			fiveHour: ["Context 604.7k / 1M (60%)", "5-hour limit: 7% · Resets in 30 min"],
+			contextOnly: ["Context 604.7k / 1M (60%)"],
+			empty: ["Context 0"],
 		});
 	});
 });

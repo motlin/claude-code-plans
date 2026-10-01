@@ -1,5 +1,5 @@
 import {Popover} from "@base-ui/react/popover";
-import {Plus} from "lucide-react";
+import {ArrowRight, Plus} from "lucide-react";
 import {memo, useState} from "react";
 
 import {
@@ -10,6 +10,7 @@ import {
 	formatResetLabel,
 	formatUpdatedAgo,
 	formatUsageAriaLabel,
+	formatUsageTooltipRows,
 	type RateLimitWindow,
 	USAGE_RING_CIRCUMFERENCE,
 	usageRingDashoffset,
@@ -26,12 +27,14 @@ import {
 import {useShortcutKeys} from "../hooks/use-shortcut";
 import {effortLevelLabels} from "../lib/schema-choices";
 import {CHIN_BUTTON_CLASS, type ChinMenu, EffortSelector, ModeMenu, ModelMenu} from "./composer-launch-menus";
+import {settingsHash} from "../lib/settings-hash";
 import {ConfirmDialog} from "./confirm-dialog";
 import {Menu, MenuContent, MenuItem, MenuTrigger} from "./ui/menu";
 import {Tooltip} from "./ui/tooltip";
 
+/** Upstream's usage popover: r10, and up to 640px tall before its own scroll. */
 const POPUP_CLASS =
-	"flex w-[360px] max-w-[calc(100vw-16px)] flex-col gap-3 rounded-card bg-[var(--menu-bg)] p-3 text-[12px]/[16px] text-primary shadow-[var(--menu-shadow)] outline-none";
+	"flex max-h-[640px] w-[360px] max-w-[calc(100vw-16px)] flex-col gap-3 overflow-y-auto rounded-r7 bg-[var(--menu-bg)] p-3 text-[12px]/[16px] text-primary shadow-[var(--menu-shadow)] outline-none";
 
 function Meter({percent, label}: {percent: number; label: string}) {
 	const clamped = Math.min(100, Math.max(0, percent));
@@ -63,7 +66,7 @@ function LimitRow({label, window}: {label: string; window: RateLimitWindow}) {
 	);
 }
 
-function UsagePopoverBody({usage}: {usage: ComposerUsage | null}) {
+function UsagePopoverBody({usage, onNavigate}: {usage: ComposerUsage | null; onNavigate: () => void}) {
 	const limits = [
 		usage?.fiveHour ? {label: FIVE_HOUR_LABEL, window: usage.fiveHour} : null,
 		usage?.weekly ? {label: WEEKLY_LABEL, window: usage.weekly} : null,
@@ -87,7 +90,17 @@ function UsagePopoverBody({usage}: {usage: ComposerUsage | null}) {
 				<>
 					<div className="h-px bg-alpha-2" />
 					<div className="flex flex-col gap-2">
-						<span className="font-medium">Plan usage limits</span>
+						<div className="flex items-center justify-between gap-2">
+							<span className="font-medium">Plan usage limits</span>
+							<a
+								href={`#${settingsHash("usage")}`}
+								aria-label="View usage in Settings"
+								onClick={onNavigate}
+								className="flex size-5 items-center justify-center rounded-r4 p-1 text-t6 outline-none hover:bg-alpha-1 hover:text-primary focus-visible:bg-alpha-1"
+							>
+								<ArrowRight aria-hidden="true" className="size-3" />
+							</a>
+						</div>
 						{limits.map((limit) => (
 							<LimitRow key={limit.label} label={limit.label} window={limit.window} />
 						))}
@@ -99,32 +112,36 @@ function UsagePopoverBody({usage}: {usage: ComposerUsage | null}) {
 }
 
 function UsageRing({usage}: {usage: ComposerUsage | null}) {
+	const [open, setOpen] = useState(false);
+	const now = Date.now();
 	return (
-		<Popover.Root>
-			<Popover.Trigger
-				aria-label={formatUsageAriaLabel(usage, Date.now())}
-				className={`${CHIN_BUTTON_CLASS} aspect-square`}
-			>
-				<svg width="12" height="12" viewBox="0 0 12 12" className="-rotate-90" aria-hidden="true">
-					<circle cx="6" cy="6" r="5" fill="none" strokeWidth="2" stroke="var(--color-alpha-2)" />
-					<circle
-						data-usage-ring-arc
-						cx="6"
-						cy="6"
-						r="5"
-						fill="none"
-						strokeWidth="2"
-						strokeLinecap="round"
-						stroke="var(--accent-100)"
-						strokeDasharray={USAGE_RING_CIRCUMFERENCE}
-						strokeDashoffset={usageRingDashoffset(usage?.contextPercent ?? null)}
-					/>
-				</svg>
-			</Popover.Trigger>
+		<Popover.Root open={open} onOpenChange={setOpen}>
+			<Tooltip content={formatUsageTooltipRows(usage, now).join("\n")} multiline>
+				<Popover.Trigger
+					aria-label={formatUsageAriaLabel(usage, now)}
+					className={`${CHIN_BUTTON_CLASS} aspect-square`}
+				>
+					<svg width="12" height="12" viewBox="0 0 12 12" className="-rotate-90" aria-hidden="true">
+						<circle cx="6" cy="6" r="5" fill="none" strokeWidth="2" stroke="var(--color-alpha-2)" />
+						<circle
+							data-usage-ring-arc
+							cx="6"
+							cy="6"
+							r="5"
+							fill="none"
+							strokeWidth="2"
+							strokeLinecap="round"
+							stroke="var(--accent-100)"
+							strokeDasharray={USAGE_RING_CIRCUMFERENCE}
+							strokeDashoffset={usageRingDashoffset(usage?.contextPercent ?? null)}
+						/>
+					</svg>
+				</Popover.Trigger>
+			</Tooltip>
 			<Popover.Portal>
 				<Popover.Positioner side="top" align="end" sideOffset={6} className="z-[130]">
 					<Popover.Popup className={POPUP_CLASS}>
-						<UsagePopoverBody usage={usage} />
+						<UsagePopoverBody usage={usage} onNavigate={() => setOpen(false)} />
 					</Popover.Popup>
 				</Popover.Positioner>
 			</Popover.Portal>

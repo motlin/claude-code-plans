@@ -270,16 +270,30 @@ export function formatContextSummary(usage: ComposerUsage | null): string {
 export const FIVE_HOUR_LABEL = "5-hour limit";
 export const WEEKLY_LABEL = "Weekly · all models";
 
+/** The one limit the ring summarises: weekly when present, else the five-hour window. */
+function primaryLimit(usage: ComposerUsage | null): {label: string; window: RateLimitWindow} | null {
+	if (usage?.weekly) return {label: WEEKLY_LABEL, window: usage.weekly};
+	if (usage?.fiveHour) return {label: FIVE_HOUR_LABEL, window: usage.fiveHour};
+	return null;
+}
+
 /** "Usage: Context 190.2k / 1M (19%), Weekly · all models: 65%, Resets in 14 hr 31 min". */
 export function formatUsageAriaLabel(usage: ComposerUsage | null, nowMs: number, timeZone?: string): string {
 	const context = `Usage: Context ${formatContextSummary(usage)}`;
-	const limit = usage?.weekly
-		? {label: WEEKLY_LABEL, window: usage.weekly}
-		: usage?.fiveHour
-			? {label: FIVE_HOUR_LABEL, window: usage.fiveHour}
-			: null;
+	const limit = primaryLimit(usage);
 	if (!limit) return context;
 	return `${context}, ${limit.label}: ${Math.round(limit.window.usedPercentage)}%, ${formatResetLabel(limit.window.resetsAt, nowMs, timeZone)}`;
+}
+
+/** The ring tooltip's rows: "Context 604.7k / 1M (60%)", then "Weekly · all models: 38% · Resets Tue 4:00 AM". */
+export function formatUsageTooltipRows(usage: ComposerUsage | null, nowMs: number, timeZone?: string): string[] {
+	const context = `Context ${formatContextSummary(usage)}`;
+	const limit = primaryLimit(usage);
+	if (!limit) return [context];
+	return [
+		context,
+		`${limit.label}: ${Math.round(limit.window.usedPercentage)}% · ${formatResetLabel(limit.window.resetsAt, nowMs, timeZone)}`,
+	];
 }
 
 const RELATIVE_UNITS: ReadonlyArray<[Intl.RelativeTimeFormatUnit, number]> = [
