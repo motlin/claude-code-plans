@@ -13,7 +13,7 @@ import {ToastProvider} from "../src/components/toast";
 import {herdrPanesQueryOptions} from "../src/lib/api/herdr";
 import type {SessionListItem} from "../src/lib/api/sessions";
 import type {SessionBucket} from "../src/lib/session-state";
-import {__unreadStoreTesting, hasUnseenWork, syncUnseenFromSummaries} from "../src/lib/unread-store";
+import {__unreadStoreTesting, hasUnseenWork, syncUnseenFromSummaries, toggleUnseen} from "../src/lib/unread-store";
 
 const SESSION_ID = "8f0c2c7e-1111-4222-8333-944445555666";
 
@@ -198,19 +198,20 @@ describe("read state in the row menu", () => {
 
 describe("status dot toggle", () => {
 	function dot(): {label: string | null; title: string | null; kind: string | null} {
-		const button = screen.getByRole("button", {name: /^Click to mark as/});
+		const button = screen.queryByRole("button");
+		const glyph = button ?? screen.getByRole("img");
 		return {
-			label: button.getAttribute("aria-label"),
-			title: button.getAttribute("title"),
-			kind: button.querySelector("[data-kind]")?.getAttribute("data-kind") ?? "idle",
+			label: button?.getAttribute("aria-label") ?? null,
+			title: glyph.getAttribute("title"),
+			kind: glyph.querySelector("[data-kind]")?.getAttribute("data-kind") ?? "idle",
 		};
 	}
 
-	it("toggles a finished row between read and unread", async () => {
+	it("is a plain icon on a read row and marks an unread row read", async () => {
 		render(<SessionRowStatusDot session={listItem("done")} />);
 		const before = dot();
 
-		fireEvent.click(screen.getByRole("button", {name: "Click to mark as unread"}));
+		act(() => toggleUnseen(SESSION_ID));
 		await flush();
 		const afterUnread = dot();
 
@@ -218,17 +219,9 @@ describe("status dot toggle", () => {
 		await flush();
 
 		expect({before, afterUnread, afterRead: dot(), calls: viewedCalls()}).toStrictEqual({
-			before: {label: "Click to mark as unread", title: "Click to mark as unread", kind: "idle"},
-			afterUnread: {
-				label: "Click to mark as read",
-				title: "Click to mark as read",
-				kind: "ready",
-			},
-			afterRead: {
-				label: "Click to mark as unread",
-				title: "Click to mark as unread",
-				kind: "idle",
-			},
+			before: {label: null, title: null, kind: "idle"},
+			afterUnread: {label: "Click to mark as read", title: null, kind: "ready"},
+			afterRead: {label: null, title: null, kind: "idle"},
 			calls: [
 				{
 					url: `/api/sessions/${SESSION_ID}/viewed`,

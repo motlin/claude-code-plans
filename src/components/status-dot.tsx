@@ -22,11 +22,15 @@ export function SessionStateIcon({
 	kind,
 	label,
 	pr,
+	"aria-describedby": describedBy,
 }: {
 	kind: SessionStateKind;
 	label?: string;
 	pr?: {number: number; state: GitPrState};
+	/** Set by a wrapping Tooltip so the glyph is described by its tooltip. */
+	"aria-describedby"?: string;
 }) {
+	const describedByProps = describedBy === undefined ? {} : {"aria-describedby": describedBy};
 	if (kind === "pr") {
 		const state = pr?.state ?? "opened";
 		const prLabel = pr ? `#${pr.number} · ${GIT_PR_STATE_LABELS[state]}` : undefined;
@@ -34,6 +38,7 @@ export function SessionStateIcon({
 			<span
 				role="img"
 				aria-label={label ?? prLabel ?? sessionStateKindLabels.pr}
+				{...describedByProps}
 				className="flex size-5 shrink-0 items-center justify-center"
 			>
 				<GitPullRequest
@@ -50,7 +55,7 @@ export function SessionStateIcon({
 	const ariaLabel = label ?? sessionStateKindLabels[kind];
 	if (kind === "idle") {
 		return (
-			<span role="img" aria-label={ariaLabel} className={DOT_WRAPPER}>
+			<span role="img" aria-label={ariaLabel} className={DOT_WRAPPER} {...describedByProps}>
 				<span
 					aria-hidden="true"
 					className="block size-[6px] rounded-full border border-current text-ink-muted opacity-50"
@@ -60,7 +65,7 @@ export function SessionStateIcon({
 	}
 
 	return (
-		<span role="status" aria-label={ariaLabel} className={DOT_WRAPPER}>
+		<span role="status" aria-label={ariaLabel} className={DOT_WRAPPER} {...describedByProps}>
 			<span className="status-dot" data-kind={kind} />
 		</span>
 	);

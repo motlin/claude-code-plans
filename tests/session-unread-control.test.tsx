@@ -6,7 +6,7 @@ import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
 import {SessionRowStatusDot} from "../src/components/session-unread-control";
 import type {SessionListItem} from "../src/lib/api/sessions";
 import type {SessionBucket} from "../src/lib/session-state";
-import {__unreadStoreTesting as __testing, syncUnseenFromSummaries} from "../src/lib/unread-store";
+import {__unreadStoreTesting as __testing, syncUnseenFromSummaries, toggleUnseen} from "../src/lib/unread-store";
 
 type PersistCall = {sessionId: string; action: "reviewed" | "unreviewed"};
 
@@ -51,11 +51,11 @@ describe("SessionRowStatusDot", () => {
 		cleanup();
 	});
 
-	it("toggles a finished row between the idle ring and the ready dot through the server flag", async () => {
+	it("shows the idle ring on a read row and marks an unread row read from its ready dot", async () => {
 		const {container} = render(<SessionRowStatusDot session={listItem("done")} />);
 		const before = shownDot(container);
 
-		fireEvent.click(screen.getByRole("button", {name: "Click to mark as unread"}));
+		act(() => toggleUnseen("session-test-100"));
 		const afterMarkUnread = shownDot(container);
 		fireEvent.click(screen.getByRole("button", {name: "Click to mark as read"}));
 		await act(async () => {
@@ -63,9 +63,9 @@ describe("SessionRowStatusDot", () => {
 		});
 
 		expect({before, afterMarkUnread, after: shownDot(container), calls}).toStrictEqual({
-			before: {toggle: "Click to mark as unread", kind: "idle"},
+			before: {toggle: null, kind: "idle"},
 			afterMarkUnread: {toggle: "Click to mark as read", kind: "ready"},
-			after: {toggle: "Click to mark as unread", kind: "idle"},
+			after: {toggle: null, kind: "idle"},
 			calls: [
 				{sessionId: "session-test-100", action: "unreviewed"},
 				{sessionId: "session-test-100", action: "reviewed"},
@@ -84,7 +84,7 @@ describe("SessionRowStatusDot", () => {
 	it("keeps a review row the server did not flag unseen (an open PR) on the ready dot", () => {
 		const {container} = render(<SessionRowStatusDot session={listItem("review")} />);
 
-		expect(shownDot(container)).toStrictEqual({toggle: "Click to mark as unread", kind: "ready"});
+		expect(shownDot(container)).toStrictEqual({toggle: null, kind: "ready"});
 	});
 
 	it.each([

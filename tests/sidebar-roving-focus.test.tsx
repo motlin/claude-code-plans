@@ -16,6 +16,7 @@ import {SessionGroups} from "../src/components/sidebar/session-groups";
 import {ToastProvider} from "../src/components/toast";
 import {RecentSessionsResponse, recentSessionsInfiniteQueryOptions} from "../src/lib/api/sessions";
 import {DEFAULT_SESSION_LIST_PREFS} from "../src/lib/session-groups";
+import {__unreadStoreTesting, syncUnseenFromSummaries} from "../src/lib/unread-store";
 import {installLocalStorage} from "./fake-storage";
 
 const MINUTE = 60 * 1000;
@@ -148,11 +149,13 @@ describe("sidebar session list roving focus", () => {
 		expect(tabStops()).toEqual([toggle]);
 	});
 
-	it("takes row kebabs and status glyphs out of the tab order but keeps them clickable", async () => {
+	it("takes row kebabs and unread status glyphs out of the tab order but keeps them clickable", async () => {
+		__unreadStoreTesting.reset();
+		syncUnseenFromSummaries(FIXTURE.map(({id}) => ({id, unseen: true})));
 		await renderGroups();
 
 		const kebabs = screen.getAllByRole("button", {name: /^More options for /});
-		const glyphs = screen.getAllByRole("button", {name: "Click to mark as unread"});
+		const glyphs = screen.getAllByRole("button", {name: "Click to mark as read"});
 		expect(kebabs.map((kebab) => kebab.getAttribute("tabindex"))).toEqual(["-1", "-1", "-1"]);
 		expect(glyphs.map((glyph) => glyph.getAttribute("tabindex"))).toEqual(["-1", "-1", "-1"]);
 

@@ -7,6 +7,7 @@ import {sessionRowIconKind} from "../lib/session-state";
 import {hasUnseenWork, subscribeUnseenWork, toggleUnseen} from "../lib/unread-store";
 import {useSettings} from "./settings-provider";
 import {SessionStateIcon} from "./status-dot";
+import {Tooltip} from "./ui/tooltip";
 
 export function useHasUnseenWork(sessionId: string): boolean {
 	const getSnapshot = useCallback(() => hasUnseenWork(sessionId), [sessionId]);
@@ -14,8 +15,9 @@ export function useHasUnseenWork(sessionId: string): boolean {
 }
 
 /**
- * Upstream session row status dot. On a finished row it is also the read/unread toggle
- * ("Click to mark as read" / "Click to mark as unread"); working and waiting rows show a plain icon.
+ * Upstream session row status dot. Awaiting and running glyphs carry a top tooltip, a read finished
+ * row's glyph is a plain icon, and only the unread dot is a button that marks the row read
+ * (the row menu's "Mark as unread" handles the other direction).
  */
 export function SessionRowStatusDot({session, tabIndex}: {session: SessionListItem; tabIndex?: number}) {
 	const unseen = useHasUnseenWork(session.id);
@@ -30,26 +32,33 @@ export function SessionRowStatusDot({session, tabIndex}: {session: SessionListIt
 		showPrStatus: settings.sessionListPrefs.showPrStatus,
 	});
 	const readState = sessionMenuReadState(session.bucket, unseen);
-	if (readState === "working" || readState === "awaiting") return <SessionStateIcon kind={kind} />;
+	const icon = (
+		<SessionStateIcon
+			kind={kind}
+			{...(kind === "pr" && session.prStatus !== undefined ? {pr: prGlyph(session.prStatus)} : {})}
+		/>
+	);
+	if (readState === "working" || readState === "awaiting") {
+		return <Tooltip content={readState === "awaiting" ? "Awaiting input" : "Running"}>{icon}</Tooltip>;
+	}
+	if (readState === "read") return icon;
 
-	const label = readState === "unread" ? "Click to mark as read" : "Click to mark as unread";
+	const label = "Click to mark as read";
 	return (
-		<button
-			type="button"
-			{...(tabIndex === undefined ? {} : {tabIndex})}
-			title={label}
-			aria-label={label}
-			className="flex cursor-pointer items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100"
-			onClick={(event) => {
-				event.preventDefault();
-				event.stopPropagation();
-				toggleUnseen(session.id);
-			}}
-		>
-			<SessionStateIcon
-				kind={kind}
-				{...(kind === "pr" && session.prStatus !== undefined ? {pr: prGlyph(session.prStatus)} : {})}
-			/>
-		</button>
+		<Tooltip content={label}>
+			<button
+				type="button"
+				{...(tabIndex === undefined ? {} : {tabIndex})}
+				aria-label={label}
+				className="flex cursor-pointer items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100"
+				onClick={(event) => {
+					event.preventDefault();
+					event.stopPropagation();
+					toggleUnseen(session.id);
+				}}
+			>
+				{icon}
+			</button>
+		</Tooltip>
 	);
 }
