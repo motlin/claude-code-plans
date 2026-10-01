@@ -36,7 +36,7 @@ function layout(children: LayoutNode[], focused: TileId, expanded: PaneKind | nu
 }
 
 function openAll(...kinds: PaneKind[]): PaneLayoutState {
-	return kinds.reduce(openPane, defaultPaneLayout());
+	return kinds.reduce((state, kind) => openPane(state, kind), defaultPaneLayout());
 }
 
 const ONE_PANE = layout([tile("chat", 2), tile("background-tasks", 1)], "background-tasks");
@@ -102,23 +102,73 @@ describe("defaultPaneLayout", () => {
 
 describe("openPane follows upstream placement", () => {
 	it.each([
-		["1st pane splits the row 2:1", ["background-tasks"], ONE_PANE],
-		["2nd pane stacks under the side column", ["background-tasks", "changes"], TWO_PANES],
-		["3rd pane opens a new column", ["background-tasks", "changes", "files"], THREE_PANES],
+		[
+			"1st pane splits the row chat 2 : pane 3",
+			["background-tasks"],
+			layout([tile("chat", 2), tile("background-tasks", 3)], "background-tasks"),
+		],
+		[
+			"2nd pane stacks under the side column",
+			["background-tasks", "plan"],
+			layout([tile("chat", 2), stack("column", 3, [tile("background-tasks", 1), tile("plan", 1)])], "plan"),
+		],
+		[
+			"3rd pane opens a new column",
+			["background-tasks", "plan", "files"],
+			layout(
+				[tile("chat", 2), stack("column", 3, [tile("background-tasks", 1), tile("plan", 1)]), tile("files", 1)],
+				"files",
+			),
+		],
 		[
 			"4th pane stacks under the newest column",
-			["background-tasks", "changes", "files", "plan"],
+			["background-tasks", "plan", "files", "links"],
 			layout(
 				[
 					tile("chat", 2),
-					stack("column", 1, [tile("background-tasks", 1), tile("changes", 1)]),
-					stack("column", 1, [tile("files", 1), tile("plan", 1)]),
+					stack("column", 3, [tile("background-tasks", 1), tile("plan", 1)]),
+					stack("column", 1, [tile("files", 1), tile("links", 1)]),
 				],
-				"plan",
+				"links",
 			),
+		],
+		[
+			"Changes without a measured row takes a fifth of it",
+			["changes"],
+			layout([tile("chat", 1), tile("changes", 0.25)], "changes"),
 		],
 	] satisfies Array<[string, PaneKind[], PaneLayoutState]>)("%s", (_name, kinds, expected) => {
 		expect(openAll(...kinds)).toEqual(expected);
+	});
+
+	it("opens Files alone at chat 2 : files 3", () => {
+		expect(openPane(defaultPaneLayout(), "files")).toEqual(layout([tile("chat", 2), tile("files", 3)], "files"));
+	});
+
+	it("opens Changes as its own far-right column at its 280px minimum", () => {
+		const state = openAll("files", "background-tasks");
+		expect(openPane(state, "changes", 1424)).toEqual(
+			layout(
+				[
+					tile("chat", 2),
+					stack("column", 3, [tile("files", 1), tile("background-tasks", 1)]),
+					tile("changes", 1.25),
+				],
+				"changes",
+			),
+		);
+	});
+
+	it("never stacks a later pane into the Changes column", () => {
+		const state = openPane(defaultPaneLayout(), "changes", 1412);
+		expect([state, openPane(state, "files"), openAll("changes", "plan", "files")]).toEqual([
+			layout([tile("chat", 1), tile("changes", 0.25)], "changes"),
+			layout([tile("chat", 2), tile("files", 3), tile("changes", 1.25)], "files"),
+			layout(
+				[tile("chat", 2), stack("column", 3, [tile("plan", 1), tile("files", 1)]), tile("changes", 1.25)],
+				"files",
+			),
+		]);
 	});
 
 	it("focuses an already-open pane without changing the tree", () => {
@@ -130,7 +180,9 @@ describe("openPane follows upstream placement", () => {
 
 	it("leaves expanded mode when another pane opens", () => {
 		const expanded = expandPane(ONE_PANE, "background-tasks");
-		expect(openPane(expanded, "changes")).toEqual(TWO_PANES);
+		expect(openPane(expanded, "plan")).toEqual(
+			layout([tile("chat", 2), stack("column", 1, [tile("background-tasks", 1), tile("plan", 1)])], "plan"),
+		);
 	});
 });
 
@@ -320,6 +372,12 @@ describe("resizeDivider", () => {
 				],
 				"files",
 			),
+		],
+		[
+			"keeps the far-right Changes column at or above 280px",
+			layout([tile("chat", 2), tile("files", 3), tile("changes", 2.25)], "files"),
+			{path: [], index: 1, deltaPx: 300, sizePx: 1474},
+			layout([tile("chat", 2), tile("files", 3.85), tile("changes", 1.4)], "files"),
 		],
 	] satisfies Array<
 		[string, PaneLayoutState, {path: number[]; index: number; deltaPx: number; sizePx: number}, PaneLayoutState]

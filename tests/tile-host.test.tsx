@@ -122,7 +122,7 @@ describe("TileHost", () => {
 			separator: {
 				label: "Resize Chat and Test pane",
 				orientation: "vertical",
-				now: "67",
+				now: "40",
 				min: "27",
 				max: "76",
 			},
@@ -142,7 +142,7 @@ describe("TileHost", () => {
 		const afterManyLeft = separatorState().now;
 
 		expect({afterOneLeft, afterManyRight, afterManyLeft}).toStrictEqual({
-			afterOneLeft: "65",
+			afterOneLeft: "39",
 			afterManyRight: "76",
 			afterManyLeft: "27",
 		});

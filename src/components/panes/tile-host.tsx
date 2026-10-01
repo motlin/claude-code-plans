@@ -79,6 +79,8 @@ interface InternalHost {
 	update: (fn: LayoutUpdate) => void;
 	expanded: PaneKind | null;
 	phone: boolean;
+	/** The root row, measured when a pane opens so Changes can be sized to its minimum. */
+	rootRef: RefObject<HTMLDivElement | null>;
 }
 
 function tileIdsOf(node: LayoutNode): TileId[] {
@@ -385,9 +387,10 @@ function StackView({
 	host: InternalHost;
 	chat: ReactNode;
 }) {
-	const ref = useRef<HTMLDivElement>(null);
-	const size = useElementSize(ref);
+	const localRef = useRef<HTMLDivElement>(null);
 	const isRoot = path.length === 0;
+	const ref = isRoot ? host.rootRef : localRef;
+	const size = useElementSize(ref);
 	const sizePx = stack.direction === "row" ? size.width : size.height;
 
 	const expandedDefinition = isRoot && host.expanded !== null ? host.definitions.get(host.expanded) : undefined;
@@ -567,16 +570,21 @@ export function TileHost({
 	const definitions = usePaneDefinitions();
 	const [layout, update, loaded] = usePersistedLayout(sessionId, definitions);
 	const phone = usePhoneSheet();
+	const rootRef = useRef<HTMLDivElement>(null);
+	const open = useCallback(
+		(state: PaneLayoutState, kind: PaneKind) => openPane(state, kind, sizeAlong(rootRef.current, "row")),
+		[],
+	);
 
 	useEffect(() => {
 		if (requestedPane === undefined || !loaded) return;
-		if (definitions.has(requestedPane)) update((state) => openPane(state, requestedPane));
+		if (definitions.has(requestedPane)) update((state) => open(state, requestedPane));
 		onRequestedPaneHandled?.();
-	}, [requestedPane, loaded, definitions, update, onRequestedPaneHandled]);
+	}, [requestedPane, loaded, definitions, update, open, onRequestedPaneHandled]);
 	const openKinds = useMemo(() => tileIdsOf(layout.root).filter(isPaneKind), [layout.root]);
 
 	const internal = useMemo<InternalHost>(
-		() => ({definitions, update, expanded: layout.expanded, phone}),
+		() => ({definitions, update, expanded: layout.expanded, phone, rootRef}),
 		[definitions, update, layout.expanded, phone],
 	);
 
@@ -584,14 +592,12 @@ export function TileHost({
 		() => ({
 			layout,
 			isOpen: (kind) => openKinds.includes(kind),
-			openPane: (kind) => update((state) => openPane(state, kind)),
+			openPane: (kind) => update((state) => open(state, kind)),
 			closePane: (kind) => update((state) => closePane(state, kind)),
 			togglePane: (kind) =>
-				update((state) =>
-					tileIdsOf(state.root).includes(kind) ? closePane(state, kind) : openPane(state, kind),
-				),
+				update((state) => (tileIdsOf(state.root).includes(kind) ? closePane(state, kind) : open(state, kind))),
 		}),
-		[layout, openKinds, update],
+		[layout, openKinds, update, open],
 	);
 
 	useShortcut("close_pane", () => {

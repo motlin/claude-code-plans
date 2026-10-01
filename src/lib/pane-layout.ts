@@ -7,7 +7,8 @@ import {EMPTY_FILE_TABS, type FileTabsState, FileTabsStateSchema} from "./file-t
  * Pure layout engine for the session tiling pane host, modelled on
  * claude.ai/code's tile tree. The root is always a row stack holding the chat
  * tile; side panes are placed the way upstream places them: the 1st splits the
- * row 2:1, the 2nd stacks under the side column, the 3rd opens a new column.
+ * row 2:3, the 2nd stacks under the side column, the 3rd opens a new column,
+ * and Changes always opens as its own narrow column at the far right.
  * Expand is an overlay mode that hides the chat tile without touching the tree.
  */
 
@@ -222,15 +223,48 @@ function pathTo(node: LayoutNode, tileId: TileId): number[] | undefined {
 	return undefined;
 }
 
-export function openPane(state: PaneLayoutState, kind: PaneKind): PaneLayoutState {
+/** Upstream's first split: chat 2 : pane 3, so a lone pane takes about 60% of the row. */
+const FIRST_SPLIT = {chat: 2, pane: 3} as const;
+/** Without a measured row, Changes takes this share of what is already open. */
+const CHANGES_FALLBACK_SHARE = 0.25;
+
+function containsTile(node: LayoutNode, tileId: TileId): boolean {
+	return tileIds(node).includes(tileId);
+}
+
+/** Flex that gives a new far-right Changes column its 280px minimum in a row of `rowSizePx`. */
+function changesFlex(root: StackNode, rowSizePx: number | undefined): number {
+	const total = sumFlex(root.children);
+	const rest = (rowSizePx ?? 0) - TILE_GAP_PX * root.children.length - MIN_TILE_SIZE_PX.pane;
+	if (rest < minTileSize(root, "row")) return round(total * CHANGES_FALLBACK_SHARE);
+	return round((total * MIN_TILE_SIZE_PX.pane) / rest);
+}
+
+/**
+ * Opens a pane the way upstream does. Changes always gets its own column at
+ * the far right, sized to its minimum against `rowSizePx` (the measured row
+ * width). Other panes split the row 2:3 when they are the first side pane,
+ * then stack under / add columns before the Changes column, never inside it.
+ */
+export function openPane(state: PaneLayoutState, kind: PaneKind, rowSizePx?: number): PaneLayoutState {
 	if (isOpen(state, kind)) return focusPane(state, kind);
-	const lastSide = state.root.children.reduce((last, child, index) => (isChat(child) ? last : index), -1);
-	const lastNode = state.root.children[lastSide];
-	if (lastNode === undefined) {
-		const children = [...state.root.children.map((child) => ({...child, flex: 2})), tile(kind, 1)];
+	const children = [...state.root.children];
+	if (kind === "changes") {
+		children.push(tile(kind, changesFlex(state.root, rowSizePx)));
 		return {root: {...state.root, children}, expanded: null, focused: kind};
 	}
-	const children = [...state.root.children];
+	const isSide = (child: LayoutNode): boolean => !isChat(child) && !containsTile(child, "changes");
+	const lastSide = children.reduce((last, child, index) => (isSide(child) ? index : last), -1);
+	const lastNode = children[lastSide];
+	if (lastNode === undefined) {
+		const chatIndex = children.findIndex(isChat);
+		const chat = children[chatIndex];
+		if (chat === undefined) return state;
+		const scale = (FIRST_SPLIT.chat + FIRST_SPLIT.pane) / chat.flex;
+		const scaled = children.map((child) => ({...child, flex: round(child.flex * scale)}));
+		scaled.splice(chatIndex, 1, {...chat, flex: FIRST_SPLIT.chat}, tile(kind, FIRST_SPLIT.pane));
+		return {root: {...state.root, children: scaled}, expanded: null, focused: kind};
+	}
 	if (lastNode.kind === "tile") {
 		children[lastSide] = {
 			kind: "stack",
