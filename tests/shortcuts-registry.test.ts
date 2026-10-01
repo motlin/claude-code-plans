@@ -10,8 +10,8 @@ function chord(binding: Binding): string {
 }
 
 describe("shortcut registry", () => {
-	it("lists all 36 upstream web entries", () => {
-		expect(SHORTCUT_IDS).toHaveLength(36);
+	it("lists the 36 upstream web entries plus the page-scoped ⌘F search", () => {
+		expect(SHORTCUT_IDS).toHaveLength(37);
 	});
 
 	it.each(SHORTCUT_IDS)("%s has mac and non-mac bindings", (id) => {
@@ -69,6 +69,7 @@ describe("shortcut registry", () => {
 			"jump_next_prompt",
 			"focus_next_region",
 			"focus_previous_region",
+			"page_search",
 			"stop_response",
 			"toggle_changes",
 			"toggle_changes_file_list",

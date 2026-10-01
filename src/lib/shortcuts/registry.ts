@@ -203,6 +203,14 @@ export const SHORTCUTS = {
 		enabled: true,
 		hiddenFromDialog: true,
 	},
+	page_search: {
+		description: "Search this page",
+		group: "general",
+		bindings: cmdOrCtrl("f"),
+		ownerSlug: "artifacts",
+		enabled: true,
+		hiddenFromDialog: true,
+	},
 	stop_response: {
 		description: "Stop Claude's response",
 		group: "general",

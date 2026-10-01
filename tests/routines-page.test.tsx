@@ -10,7 +10,7 @@ import {
 	RouterProvider,
 } from "@tanstack/react-router";
 import {cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
-import {afterEach, describe, expect, it} from "vite-plus/test";
+import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {routinesQueryOptions, type Routine} from "../src/lib/api/routines";
 import {Route as RoutinesRoute} from "../src/routes/routines";
@@ -86,7 +86,10 @@ const ROUTINES: Routine[] = [
 
 afterEach(() => {
 	cleanup();
+	vi.restoreAllMocks();
 });
+
+const MAC_USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36";
 
 async function renderRoutinesPage(routines: Routine[]) {
 	const queryClient = new QueryClient({
@@ -195,5 +198,43 @@ describe("routines route", () => {
 			list: screen.queryByRole("list", {name: "Routines"}),
 			hidden: screen.getByText("1 completed routine hidden").textContent,
 		}).toStrictEqual({list: null, hidden: "1 completed routine hidden"});
+	});
+
+	it("shows the toolbar tooltips with ⌘F on search", async () => {
+		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(MAC_USER_AGENT);
+		await renderRoutinesPage(ROUTINES);
+
+		async function tooltipFor(name: string) {
+			const button = screen.getByRole("button", {name});
+			fireEvent.pointerEnter(button);
+			const tooltip = await screen.findByRole("tooltip");
+			const summary = {
+				text: tooltip.firstChild?.textContent,
+				keys: tooltip.querySelector("[data-cds='Shortcut']")?.textContent ?? null,
+			};
+			fireEvent.pointerLeave(button);
+			return summary;
+		}
+
+		expect([
+			await tooltipFor("Search routines"),
+			await tooltipFor("Filter routines"),
+			await tooltipFor("Sort routines"),
+		]).toStrictEqual([
+			{text: "Search routines", keys: "⌘CommandF"},
+			{text: "Filter routines", keys: null},
+			{text: "Sort routines", keys: null},
+		]);
+	});
+
+	it("expands and focuses the search on ⌘F", async () => {
+		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(MAC_USER_AGENT);
+		await renderRoutinesPage(ROUTINES);
+
+		fireEvent.keyDown(document.body, {key: "f", code: "KeyF", metaKey: true});
+
+		await waitFor(() => {
+			expect(document.activeElement).toBe(screen.getByRole("searchbox", {name: "Search routines"}));
+		});
 	});
 });

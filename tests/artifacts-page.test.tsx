@@ -10,7 +10,7 @@ import {
 	RouterProvider,
 } from "@tanstack/react-router";
 import {cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
-import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
+import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {artifactsQueryOptions, ArtifactListResponse} from "../src/lib/api/artifacts";
 import {
@@ -206,7 +206,10 @@ beforeEach(() => {
 
 afterEach(() => {
 	cleanup();
+	vi.restoreAllMocks();
 });
+
+const MAC_USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36";
 
 async function renderArtifactsPage(initialEntry: string, seed: boolean) {
 	const db = openTestDb();
@@ -379,5 +382,55 @@ describe("artifacts route", () => {
 		await renderArtifactsPage("/artifacts", true);
 
 		expect(screen.getByRole("button", {name: "List view"}).tagName).toBe("BUTTON");
+	});
+
+	it("shows the toolbar tooltips with ⌘F on search and the Private lock", async () => {
+		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(MAC_USER_AGENT);
+		await renderArtifactsPage("/artifacts", true);
+
+		async function tooltipFor(element: HTMLElement) {
+			fireEvent.pointerEnter(element);
+			const tooltip = await screen.findByRole("tooltip");
+			const summary = {
+				text: tooltip.firstChild?.textContent,
+				keys: tooltip.querySelector("[data-cds='Shortcut']")?.textContent ?? null,
+			};
+			fireEvent.pointerLeave(element);
+			return summary;
+		}
+
+		expect([
+			await tooltipFor(screen.getByRole("button", {name: "Search your artifacts"})),
+			await tooltipFor(screen.getByRole("button", {name: "Grid view"})),
+			await tooltipFor(screen.getByRole("button", {name: "Filter by type: All types"})),
+			await tooltipFor(screen.getAllByRole("img", {name: "Private"})[0] as HTMLElement),
+		]).toStrictEqual([
+			{text: "Search your artifacts", keys: "⌘CommandF"},
+			{text: "Grid view", keys: null},
+			{text: "Filter by type: All types", keys: null},
+			{text: "Private", keys: null},
+		]);
+	});
+
+	it("expands and focuses the search on ⌘F", async () => {
+		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(MAC_USER_AGENT);
+		await renderArtifactsPage("/artifacts", true);
+
+		fireEvent.keyDown(document.body, {key: "f", code: "KeyF", metaKey: true});
+
+		await waitFor(() => {
+			expect(document.activeElement).toBe(screen.getByRole("searchbox", {name: "Search your artifacts"}));
+		});
+	});
+
+	it("expands the search on Ctrl+F off the Mac", async () => {
+		vi.spyOn(navigator, "userAgent", "get").mockReturnValue("Mozilla/5.0 (X11; Linux x86_64)");
+		await renderArtifactsPage("/artifacts", true);
+
+		fireEvent.keyDown(document.body, {key: "f", code: "KeyF", ctrlKey: true});
+
+		await waitFor(() => {
+			expect(document.activeElement).toBe(screen.getByRole("searchbox", {name: "Search your artifacts"}));
+		});
 	});
 });

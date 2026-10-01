@@ -1,7 +1,7 @@
 import {createFileRoute, Link, useNavigate} from "@tanstack/react-router";
 import {useSuspenseQuery} from "@tanstack/react-query";
-import {CodeXml, FileText, LayoutGrid, List, ListFilter, Lock, Search, X} from "lucide-react";
-import {useEffect, useId, useMemo, useRef, useState} from "react";
+import {CodeXml, FileText, LayoutGrid, List, ListFilter, Lock} from "lucide-react";
+import {useEffect, useId, useMemo, useState} from "react";
 import {artifactsQueryOptions, type ArtifactSummary} from "../lib/api/artifacts";
 import {
 	artifactTimestamp,
@@ -15,7 +15,9 @@ import {
 	type ArtifactTypeFilter,
 } from "../lib/artifact-gallery";
 import {formatCount} from "../lib/pluralize";
+import {TOOLBAR_ICON_BUTTON, ToolbarSearch} from "../components/toolbar-search";
 import {Menu, MenuContent, MenuRadioGroup, MenuRadioItem, MenuTrigger} from "../components/ui/menu";
+import {Tooltip} from "../components/ui/tooltip";
 
 export const Route = createFileRoute("/artifacts")({
 	component: ArtifactsPage,
@@ -26,9 +28,6 @@ export const Route = createFileRoute("/artifacts")({
 		meta: [{title: "Artifacts"}],
 	}),
 });
-
-const GHOST_ICON_BUTTON =
-	"flex size-8 shrink-0 items-center justify-center rounded-md text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-100 [&_svg]:size-4";
 
 const TYPE_FILTER_LABELS: Record<ArtifactTypeFilter, string> = {
 	all: "All types",
@@ -56,6 +55,7 @@ function ArtifactsPage() {
 
 	const visible = useMemo(() => filterArtifacts(artifacts, {search, type}), [artifacts, search, type]);
 	const searching = search.trim() !== "";
+	const layoutLabel = layout === "grid" ? "List view" : "Grid view";
 
 	function toggleLayout() {
 		const next: ArtifactsLayout = layout === "grid" ? "list" : "grid";
@@ -78,15 +78,22 @@ function ArtifactsPage() {
 					<h1 className="min-w-0 font-voice text-[28px]/[36px] font-medium text-primary">Artifacts</h1>
 				</div>
 				<div className="ms-auto flex max-w-full shrink-0 flex-wrap items-center justify-end gap-2">
-					<ArtifactSearch search={search} onSearch={setSearch} />
-					<button
-						type="button"
-						className={GHOST_ICON_BUTTON}
-						aria-label={layout === "grid" ? "List view" : "Grid view"}
-						onClick={toggleLayout}
-					>
-						{layout === "grid" ? <List aria-hidden="true" /> : <LayoutGrid aria-hidden="true" />}
-					</button>
+					<ToolbarSearch
+						label="Search your artifacts"
+						placeholder="Search artifacts..."
+						search={search}
+						onSearch={setSearch}
+					/>
+					<Tooltip content={layoutLabel}>
+						<button
+							type="button"
+							className={TOOLBAR_ICON_BUTTON}
+							aria-label={layoutLabel}
+							onClick={toggleLayout}
+						>
+							{layout === "grid" ? <List aria-hidden="true" /> : <LayoutGrid aria-hidden="true" />}
+						</button>
+					</Tooltip>
 					<TypeFilterMenu artifacts={artifacts} type={type} onChange={setType} />
 				</div>
 				<p role="status" className="sr-only">
@@ -116,67 +123,6 @@ function ArtifactsPage() {
 	);
 }
 
-function ArtifactSearch({search, onSearch}: {search: string; onSearch: (next: string) => void}) {
-	const [open, setOpen] = useState(search !== "");
-	const [draft, setDraft] = useState(search);
-	const inputRef = useRef<HTMLInputElement>(null);
-
-	useEffect(() => {
-		setDraft(search);
-		if (search !== "") setOpen(true);
-	}, [search]);
-
-	if (!open) {
-		return (
-			<button
-				type="button"
-				className={GHOST_ICON_BUTTON}
-				aria-label="Search your artifacts"
-				onClick={() => {
-					setOpen(true);
-					requestAnimationFrame(() => inputRef.current?.focus());
-				}}
-			>
-				<Search aria-hidden="true" />
-			</button>
-		);
-	}
-
-	return (
-		<div className="flex h-8 w-64 items-center gap-1 rounded-md border border-border bg-surface-1 px-2 text-body">
-			<Search aria-hidden="true" className="size-4 shrink-0 text-ink-muted" />
-			<input
-				ref={inputRef}
-				type="search"
-				autoFocus
-				aria-label="Search your artifacts"
-				placeholder="Search artifacts..."
-				value={draft}
-				onChange={(event) => {
-					setDraft(event.target.value);
-					onSearch(event.target.value);
-				}}
-				onKeyDown={(event) => {
-					if (event.key === "Escape" && draft === "") setOpen(false);
-				}}
-				className="min-w-0 flex-1 bg-transparent text-primary outline-none placeholder:text-ink-muted [&::-webkit-search-cancel-button]:hidden"
-			/>
-			<button
-				type="button"
-				aria-label="Clear search"
-				className="flex size-5 shrink-0 items-center justify-center rounded text-ink-muted hover:text-primary"
-				onClick={() => {
-					setDraft("");
-					onSearch("");
-					setOpen(false);
-				}}
-			>
-				<X aria-hidden="true" className="size-3.5" />
-			</button>
-		</div>
-	);
-}
-
 function TypeFilterMenu({
 	artifacts,
 	type,
@@ -191,15 +137,14 @@ function TypeFilterMenu({
 		html: artifacts.filter((artifact) => artifact.kind === "html").length,
 		docs: artifacts.filter((artifact) => artifact.kind === "docs").length,
 	};
+	const label = `Filter by type: ${TYPE_FILTER_LABELS[type]}`;
 	return (
 		<Menu>
-			<MenuTrigger
-				className={GHOST_ICON_BUTTON}
-				aria-label={`Filter by type: ${TYPE_FILTER_LABELS[type]}`}
-				aria-pressed={type !== "all"}
-			>
-				<ListFilter aria-hidden="true" />
-			</MenuTrigger>
+			<Tooltip content={label}>
+				<MenuTrigger className={TOOLBAR_ICON_BUTTON} aria-label={label} aria-pressed={type !== "all"}>
+					<ListFilter aria-hidden="true" />
+				</MenuTrigger>
+			</Tooltip>
 			<MenuContent align="end">
 				<MenuRadioGroup
 					value={type}
@@ -244,9 +189,11 @@ function PrivacyAndDate({artifact, now}: {artifact: ArtifactSummary; now: Date})
 		<>
 			{artifact.audience === "owner" && (
 				<>
-					<span role="img" aria-label="Private" className="flex shrink-0 items-center">
-						<Lock aria-hidden="true" className="size-3.5" />
-					</span>
+					<Tooltip content="Private" className="pointer-events-auto shrink-0">
+						<span role="img" aria-label="Private" className="flex shrink-0 items-center">
+							<Lock aria-hidden="true" className="size-3.5" />
+						</span>
+					</Tooltip>
 					<span aria-hidden="true" className="inline-block size-[3px] shrink-0 rounded-full bg-ink-muted" />
 				</>
 			)}

@@ -1,7 +1,7 @@
 import {createFileRoute, Link} from "@tanstack/react-router";
 import {useSuspenseQuery} from "@tanstack/react-query";
-import {ArrowUpDown, Search, SlidersHorizontal, X} from "lucide-react";
-import {useMemo, useRef, useState} from "react";
+import {ArrowUpDown, SlidersHorizontal} from "lucide-react";
+import {useMemo, useState} from "react";
 import {routinesQueryOptions, type Routine} from "../lib/api/routines";
 import {
 	DEFAULT_ROUTINE_VIEW,
@@ -21,6 +21,8 @@ import {
 	routineSortLabels,
 	routineStatusFilterLabels,
 } from "../lib/schema-choices";
+import {TOOLBAR_ICON_BUTTON, ToolbarSearch} from "../components/toolbar-search";
+import {Tooltip} from "../components/ui/tooltip";
 import {
 	Menu,
 	MenuCheckboxItem,
@@ -39,9 +41,6 @@ export const Route = createFileRoute("/routines")({
 		meta: [{title: "Routines"}],
 	}),
 });
-
-const GHOST_ICON_BUTTON =
-	"flex size-8 shrink-0 items-center justify-center rounded-md text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-100 aria-pressed:text-accent-100 [&_svg]:size-4";
 
 /**
  * Read-only local counterpart of claude.ai/code's Routines page: the scheduled
@@ -67,7 +66,9 @@ function RoutinesPage() {
 					<h1 className="min-w-0 font-voice text-[28px]/[36px] font-medium text-primary">Routines</h1>
 				</div>
 				<div className="ms-auto flex max-w-full shrink-0 flex-wrap items-center justify-end gap-2">
-					<RoutineSearch
+					<ToolbarSearch
+						label="Search routines"
+						placeholder="Search routines..."
 						search={view.search}
 						onSearch={(search) => setView((current) => ({...current, search}))}
 					/>
@@ -156,57 +157,6 @@ function RoutineRow({routine, now}: {routine: Routine; now: number}) {
 	);
 }
 
-function RoutineSearch({search, onSearch}: {search: string; onSearch: (next: string) => void}) {
-	const [open, setOpen] = useState(search !== "");
-	const inputRef = useRef<HTMLInputElement>(null);
-
-	if (!open) {
-		return (
-			<button
-				type="button"
-				className={GHOST_ICON_BUTTON}
-				aria-label="Search routines"
-				onClick={() => {
-					setOpen(true);
-					requestAnimationFrame(() => inputRef.current?.focus());
-				}}
-			>
-				<Search aria-hidden="true" />
-			</button>
-		);
-	}
-
-	return (
-		<div className="flex h-8 w-64 items-center gap-1 rounded-md border border-border bg-surface-1 px-2 text-body">
-			<Search aria-hidden="true" className="size-4 shrink-0 text-ink-muted" />
-			<input
-				ref={inputRef}
-				type="search"
-				autoFocus
-				aria-label="Search routines"
-				placeholder="Search routines..."
-				value={search}
-				onChange={(event) => onSearch(event.target.value)}
-				onKeyDown={(event) => {
-					if (event.key === "Escape" && search === "") setOpen(false);
-				}}
-				className="min-w-0 flex-1 bg-transparent text-primary outline-none placeholder:text-ink-muted [&::-webkit-search-cancel-button]:hidden"
-			/>
-			<button
-				type="button"
-				aria-label="Clear search"
-				className="flex size-5 shrink-0 items-center justify-center rounded text-ink-muted hover:text-primary"
-				onClick={() => {
-					onSearch("");
-					setOpen(false);
-				}}
-			>
-				<X aria-hidden="true" className="size-3.5" />
-			</button>
-		</div>
-	);
-}
-
 function FilterMenu({
 	view,
 	onChange,
@@ -216,13 +166,15 @@ function FilterMenu({
 }) {
 	return (
 		<Menu>
-			<MenuTrigger
-				className={GHOST_ICON_BUTTON}
-				aria-label="Filter routines"
-				aria-pressed={view.schedule !== "all" || view.status !== "all"}
-			>
-				<SlidersHorizontal aria-hidden="true" />
-			</MenuTrigger>
+			<Tooltip content="Filter routines">
+				<MenuTrigger
+					className={TOOLBAR_ICON_BUTTON}
+					aria-label="Filter routines"
+					aria-pressed={view.schedule !== "all" || view.status !== "all"}
+				>
+					<SlidersHorizontal aria-hidden="true" />
+				</MenuTrigger>
+			</Tooltip>
 			<MenuContent align="end">
 				<MenuLabel>Schedule</MenuLabel>
 				<MenuRadioGroup
@@ -269,9 +221,11 @@ function SortMenu({
 }) {
 	return (
 		<Menu>
-			<MenuTrigger className={GHOST_ICON_BUTTON} aria-label="Sort routines">
-				<ArrowUpDown aria-hidden="true" />
-			</MenuTrigger>
+			<Tooltip content="Sort routines">
+				<MenuTrigger className={TOOLBAR_ICON_BUTTON} aria-label="Sort routines">
+					<ArrowUpDown aria-hidden="true" />
+				</MenuTrigger>
+			</Tooltip>
 			<MenuContent align="end">
 				<MenuRadioGroup
 					value={view.sort}
