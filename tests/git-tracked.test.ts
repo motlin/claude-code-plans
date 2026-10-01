@@ -1,4 +1,3 @@
-import {execFileSync} from "node:child_process";
 import {mkdirSync, mkdtempSync, rmSync, writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
@@ -18,13 +17,14 @@ vi.mock("node:fs", async (importOriginal) => {
 });
 
 import {isGitRepository, listTrackedFiles, TrackedFileIndex} from "../src/lib/git-tracked";
+import {runGit} from "./git-fixture";
 
 describe("git-tracked", () => {
 	let fixtureDirectory: string;
 	let repositoryDirectory: string;
 
 	function git(...arguments_: string[]): void {
-		execFileSync("git", arguments_, {cwd: repositoryDirectory, stdio: "pipe"});
+		runGit(repositoryDirectory, arguments_);
 	}
 
 	beforeEach(() => {

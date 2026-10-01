@@ -1,4 +1,3 @@
-import {execFileSync} from "node:child_process";
 import {mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
@@ -8,6 +7,7 @@ import {openTestDb, type AppDb} from "../src/lib/db/connection";
 import * as schema from "../src/lib/db/schema";
 import {fuzzyFilePaths, gitCheckIgnored, listDir, walkWorkspace, WorkspacePathError} from "../src/lib/workspace-files";
 import {handleSessionFilesRequest, type SessionFilesHandlerDependencies} from "../src/lib/workspace-files-handler";
+import {runGit} from "./git-fixture";
 
 const SESSION_ID = "session-files-100";
 
@@ -294,8 +294,8 @@ describe("GET /api/sessions/$id/files", () => {
 	});
 
 	it("hides gitignored entries only when asked", async () => {
-		execFileSync("git", ["init", "--quiet"], {cwd: root});
-		execFileSync("git", ["config", "core.excludesFile", "/dev/null"], {cwd: root});
+		runGit(root, ["init", "--quiet"]);
+		runGit(root, ["config", "core.excludesFile", "/dev/null"]);
 		write(".gitignore", "docs/\nalpha.ts\n");
 		write("docs/guide.md");
 		insertSession(root);
@@ -339,8 +339,8 @@ describe("GET /api/sessions/$id/files", () => {
 	});
 
 	it("marks gitignored entries when asked", async () => {
-		execFileSync("git", ["init", "--quiet"], {cwd: root});
-		execFileSync("git", ["config", "core.excludesFile", "/dev/null"], {cwd: root});
+		runGit(root, ["init", "--quiet"]);
+		runGit(root, ["config", "core.excludesFile", "/dev/null"]);
 		write(".gitignore", "docs/\nalpha.ts\n");
 		write("docs/guide.md");
 		insertSession(root);

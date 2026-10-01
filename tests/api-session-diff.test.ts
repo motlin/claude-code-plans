@@ -1,4 +1,3 @@
-import {execFileSync} from "node:child_process";
 import {mkdtempSync, rmSync, writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
@@ -22,6 +21,7 @@ import {
 	handleSessionDiffScopesRequest,
 	type SessionDiffHandlerDependencies,
 } from "../src/lib/session-diff-handler";
+import {runGit} from "./git-fixture";
 
 const SESSION_ID = "session-diff-100";
 const LARGE_LINE_COUNT = 2100;
@@ -33,12 +33,7 @@ let commitCounter = 0;
 function git(...arguments_: string[]): string {
 	commitCounter += 1;
 	const date = `2026-01-01T00:00:${String(commitCounter % 60).padStart(2, "0")}Z`;
-	return execFileSync("git", arguments_, {
-		cwd: repository,
-		stdio: "pipe",
-		encoding: "utf8",
-		env: {...process.env, GIT_AUTHOR_DATE: date, GIT_COMMITTER_DATE: date},
-	}).trim();
+	return runGit(repository, arguments_, {env: {GIT_AUTHOR_DATE: date, GIT_COMMITTER_DATE: date}});
 }
 
 function write(path: string, content: string): void {

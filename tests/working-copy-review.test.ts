@@ -1,4 +1,3 @@
-import {execFileSync} from "node:child_process";
 import {mkdirSync, readFileSync, rmSync, writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
@@ -17,6 +16,7 @@ import {
 } from "../src/lib/reviews";
 import {buildWorkingCopyDiff} from "../src/lib/working-copy-diff";
 import {findingsForDiffLine, parseReviewDiff} from "../src/lib/review-diff";
+import {runGit} from "./git-fixture";
 
 const TEST_ROOT = join(tmpdir(), `working-copy-review-test-${process.pid}`);
 const SESSION_ID = "session-test-100";
@@ -294,15 +294,13 @@ describe("deterministic working-copy review forward test", () => {
 	it("pins a fake review finding to the deliberately buggy changed line", async () => {
 		const repository = join(TEST_ROOT, "repository");
 		mkdirSync(repository);
-		execFileSync("git", ["init", "--quiet", "--initial-branch=main"], {cwd: repository});
-		execFileSync("git", ["config", "user.email", "alice@example.com"], {cwd: repository});
-		execFileSync("git", ["config", "user.name", "Alice"], {cwd: repository});
+		runGit(repository, ["init", "--quiet", "--initial-branch=main"]);
+		runGit(repository, ["config", "user.email", "alice@example.com"]);
+		runGit(repository, ["config", "user.name", "Alice"]);
 		const sourcePath = join(repository, "average.ts");
 		writeFileSync(sourcePath, "export function average(total: number): number {\n  return total;\n}\n");
-		execFileSync("git", ["add", "average.ts"], {cwd: repository});
-		execFileSync("git", ["commit", "--quiet", "--message", "Add example average."], {
-			cwd: repository,
-		});
+		runGit(repository, ["add", "average.ts"]);
+		runGit(repository, ["commit", "--quiet", "--message", "Add example average."]);
 		writeFileSync(
 			sourcePath,
 			"export function average(total: number, items: number[]): number {\n  return total / items.length;\n}\n",

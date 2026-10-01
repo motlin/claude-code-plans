@@ -1,15 +1,15 @@
-import {execFileSync} from "node:child_process";
 import {mkdtempSync, rmSync, writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
 import {buildWorkingCopyDiff} from "../src/lib/working-copy-diff";
+import {runGit} from "./git-fixture";
 
 describe("buildWorkingCopyDiff", () => {
 	let repositoryDirectory: string;
 
 	function git(...arguments_: string[]): void {
-		execFileSync("git", arguments_, {cwd: repositoryDirectory, stdio: "pipe"});
+		runGit(repositoryDirectory, arguments_);
 	}
 
 	beforeEach(() => {

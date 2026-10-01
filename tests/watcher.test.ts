@@ -1,5 +1,4 @@
 import {afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
-import {execFileSync} from "node:child_process";
 import {appendFileSync, writeFileSync, mkdirSync, mkdtempSync, realpathSync, rmSync} from "node:fs";
 import {createServer, type Server} from "node:net";
 import {dirname, join} from "node:path";
@@ -22,6 +21,7 @@ import type {TaskRow} from "../src/lib/db/queries";
 import {markSessionActive, markSessionEnded, setSessionState} from "../src/lib/active-session-store";
 import * as recursiveWatch from "../src/lib/recursive-watch";
 import type {RecursiveWatcher} from "../src/lib/recursive-watch";
+import {runGit} from "./git-fixture";
 
 const {
 	toSessionSummaryPayload,
@@ -81,30 +81,25 @@ function createLinkedWorktree(
 	fixtureDirectory: string,
 ): {repositoryIndexPath: string; worktreeDirectory: string} {
 	writeFileSync(join(repositoryDirectory, "initial.txt"), "Initial tracked content.\n");
-	execFileSync("git", ["add", "initial.txt"], {cwd: repositoryDirectory, stdio: "pipe"});
-	execFileSync(
-		"git",
-		[
-			"-c",
-			"user.name=Alice",
-			"-c",
-			"user.email=alice@example.com",
-			"commit",
-			"--quiet",
-			"--message=Initial test commit",
-		],
-		{cwd: repositoryDirectory, stdio: "pipe"},
-	);
+	runGit(repositoryDirectory, ["add", "initial.txt"]);
+	runGit(repositoryDirectory, [
+		"-c",
+		"user.name=Alice",
+		"-c",
+		"user.email=alice@example.com",
+		"commit",
+		"--quiet",
+		"--message=Initial test commit",
+	]);
 
 	const worktreeDirectory = join(fixtureDirectory, "worktree");
-	execFileSync("git", ["worktree", "add", "--quiet", "--detach", worktreeDirectory], {
-		cwd: repositoryDirectory,
-		stdio: "pipe",
-	});
-	const repositoryIndexPath = execFileSync("git", ["rev-parse", "--path-format=absolute", "--git-path", "index"], {
-		cwd: worktreeDirectory,
-		encoding: "utf8",
-	}).trim();
+	runGit(repositoryDirectory, ["worktree", "add", "--quiet", "--detach", worktreeDirectory]);
+	const repositoryIndexPath = runGit(worktreeDirectory, [
+		"rev-parse",
+		"--path-format=absolute",
+		"--git-path",
+		"index",
+	]);
 	return {repositoryIndexPath, worktreeDirectory};
 }
 
@@ -114,17 +109,11 @@ function createLinkedWorktree(
 const sharedDb: AppDb = openTestDb();
 const dbHolder = hmrPersist<{db: AppDb | null}>("appDbHolder", () => ({db: null}));
 
-// A git hook or linked worktree exports GIT_DIR, GIT_INDEX_FILE and friends, which
-// would redirect the fixture repositories' git commands to the caller's repository.
-const inheritedGitEnvironment = Object.entries(process.env).filter(([name]) => name.startsWith("GIT_"));
-
 beforeAll(() => {
 	dbHolder.db = sharedDb;
-	for (const [name] of inheritedGitEnvironment) delete process.env[name];
 });
 
 afterAll(() => {
-	for (const [name, value] of inheritedGitEnvironment) process.env[name] = value;
 	dbHolder.db = null;
 	sharedDb.close();
 });
@@ -177,10 +166,7 @@ describe("handleFileChange file content", () => {
 		fixtureDirectory = realpathSync(mkdtempSync(join(tmpdir(), "watcher-file-content-test-")));
 		repositoryDirectory = join(fixtureDirectory, "repository");
 		mkdirSync(repositoryDirectory);
-		execFileSync("git", ["init", "--quiet", "--initial-branch=main"], {
-			cwd: repositoryDirectory,
-			stdio: "pipe",
-		});
+		runGit(repositoryDirectory, ["init", "--quiet", "--initial-branch=main"]);
 		__testing.setFileContentRoots([repositoryDirectory]);
 	});
 
@@ -198,14 +184,11 @@ describe("handleFileChange file content", () => {
 		await __testing.handleFileChange(filePath);
 		const rowsBeforeAdd = sharedDb.index.all(sql`SELECT path, content FROM file_content_fts ORDER BY path`);
 
-		execFileSync("git", ["add", "alice.txt"], {cwd: repositoryDirectory, stdio: "pipe"});
+		runGit(repositoryDirectory, ["add", "alice.txt"]);
 		await __testing.handleFileChange(gitIndexPath);
 		const rowsAfterAdd = sharedDb.index.all(sql`SELECT path, content FROM file_content_fts ORDER BY path`);
 
-		execFileSync("git", ["rm", "--cached", "alice.txt"], {
-			cwd: repositoryDirectory,
-			stdio: "pipe",
-		});
+		runGit(repositoryDirectory, ["rm", "--cached", "alice.txt"]);
 		await __testing.handleFileChange(gitIndexPath);
 		const rowsAfterRemoval = sharedDb.index.all(sql`SELECT path, content FROM file_content_fts ORDER BY path`);
 
@@ -222,7 +205,7 @@ describe("handleFileChange file content", () => {
 		const filePath = join(worktreeDirectory, "alice.txt");
 		writeFileSync(filePath, "Alice's linked worktree content.\n");
 
-		execFileSync("git", ["add", "alice.txt"], {cwd: worktreeDirectory, stdio: "pipe"});
+		runGit(worktreeDirectory, ["add", "alice.txt"]);
 		await __testing.handleFileChange(repositoryIndexPath);
 		const rows = sharedDb.index.all(sql`SELECT path, content FROM file_content_fts ORDER BY path`);
 
@@ -843,10 +826,7 @@ describe("createWatcher integration", () => {
 		const repositoryDirectory = join(fixtureDirectory, "repository");
 		const worktreeDirectory = join(fixtureDirectory, "worktree");
 		mkdirSync(repositoryDirectory);
-		execFileSync("git", ["init", "--quiet", "--initial-branch=main"], {
-			cwd: repositoryDirectory,
-			stdio: "pipe",
-		});
+		runGit(repositoryDirectory, ["init", "--quiet", "--initial-branch=main"]);
 		const {repositoryIndexPath} = createLinkedWorktree(repositoryDirectory, fixtureDirectory);
 		let recursiveWatcher: RecursiveWatcher;
 		const once = vi.fn((_event: "ready", _listener: () => void) => recursiveWatcher);

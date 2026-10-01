@@ -1,4 +1,3 @@
-import {execFileSync} from "node:child_process";
 import {mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, utimesSync, writeFileSync} from "node:fs";
 import {homedir, tmpdir} from "node:os";
 import {join, parse} from "node:path";
@@ -14,6 +13,7 @@ import {
 } from "../../src/lib/db/indexer";
 import * as schema from "../../src/lib/db/schema";
 import {__testing as watcherTesting} from "../../src/lib/watcher";
+import {runGit} from "../git-fixture";
 
 interface FileContentRow {
 	path: string;
@@ -46,7 +46,7 @@ describe("file content FTS", () => {
 	}
 
 	function git(...arguments_: string[]): void {
-		execFileSync("git", arguments_, {cwd: allowedRoot, stdio: "pipe"});
+		runGit(allowedRoot, arguments_);
 	}
 
 	beforeEach(() => {

@@ -1,7 +1,7 @@
 import {drizzle, type BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
 import Database from "better-sqlite3";
 import {mkdirSync} from "node:fs";
-import {join} from "node:path";
+import {join, resolve} from "node:path";
 import {homedir} from "node:os";
 import * as schema from "./schema";
 import {instrumentDatabase} from "../perf/server-scope";
@@ -478,13 +478,22 @@ export function getCacheDir(): string {
 	return join(base, "claude-code-plans");
 }
 
+function isUserCacheDir(cacheDir: string): boolean {
+	const candidate = resolve(cacheDir);
+	return candidate === resolve(getCacheDir()) || candidate === resolve(homedir(), ".cache", "claude-code-plans");
+}
+
 export function openAppDb(opts?: {cacheDir?: string | undefined}): AppDb {
 	// Under vitest, refuse to fall back to the production cache dir. Doing so
 	// opens the real index.db and contends for its write lock with a running
 	// dev/prod server — a failure that only surfaces when the app happens to
 	// be running. Force tests to be explicit (openTestDb or a temp dir).
-	if (process.env["VITEST"] && !opts?.cacheDir) {
+	const underVitest = Boolean(process.env["VITEST"]);
+	if (underVitest && !opts?.cacheDir) {
 		throw new Error("openAppDb: tests must pass an explicit cacheDir (use openTestDb or a temp dir)");
+	}
+	if (underVitest && opts?.cacheDir && isUserCacheDir(opts.cacheDir)) {
+		throw new Error(`openAppDb: tests must not open the user cache directory ${opts.cacheDir}`);
 	}
 	const cacheDir = opts?.cacheDir ?? getCacheDir();
 	mkdirSync(cacheDir, {recursive: true});

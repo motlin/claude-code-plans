@@ -1,5 +1,4 @@
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
-import {execFileSync} from "node:child_process";
 import {mkdirSync, mkdtempSync, rmSync, writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
@@ -7,6 +6,7 @@ import {openTestDb, type AppDb} from "../../src/lib/db/connection";
 import * as schema from "../../src/lib/db/schema";
 import {currentPerfCounters, withPerfScope} from "../../src/lib/perf/server-scope";
 import {trackedExecFile} from "../../src/lib/perf/tracked-process";
+import {runGit} from "../git-fixture";
 
 type ApiHandler = (context: {params: {id: string}; request: Request}) => Response | Promise<Response>;
 
@@ -23,7 +23,7 @@ beforeEach(() => {
 	repoDir = join(tempDir, "repo");
 	mkdirSync(repoDir);
 	const git = (...args: string[]): void => {
-		execFileSync("git", args, {cwd: repoDir, stdio: "pipe"});
+		runGit(repoDir, args);
 	};
 	git("init", "--quiet");
 	writeFileSync(join(repoDir, "README.md"), "hello\n");

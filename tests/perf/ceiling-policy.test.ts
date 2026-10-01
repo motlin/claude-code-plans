@@ -1,10 +1,10 @@
-import {execFileSync} from "node:child_process";
 import {readFileSync} from "node:fs";
 import {dirname, join} from "node:path";
 import {fileURLToPath} from "node:url";
 import {describe, expect, it} from "vite-plus/test";
 import {findUnjustifiedRaises} from "./ceiling-policy";
 import {loadCeilings, type Ceilings} from "./ratchet";
+import {runGit} from "../git-fixture";
 
 const previous: Ceilings = {
 	"a.bytes": {ceiling: 1000, unit: "bytes", tolerance: 0},
@@ -61,7 +61,7 @@ const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 function git(...args: string[]): string | undefined {
 	try {
-		return execFileSync("git", args, {cwd: REPO_ROOT, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"]});
+		return runGit(REPO_ROOT, args);
 	} catch {
 		return undefined;
 	}

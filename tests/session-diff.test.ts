@@ -1,4 +1,3 @@
-import {execFileSync} from "node:child_process";
 import {mkdtempSync, rmSync, writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
@@ -11,6 +10,7 @@ import {
 	resolveDiffBase,
 	type RunGit,
 } from "../src/lib/session-diff";
+import {runGit} from "./git-fixture";
 
 type FileSummary = Omit<DiffFile, "patch">;
 
@@ -25,12 +25,7 @@ describe("session diff service over a real repository", () => {
 	function git(...arguments_: string[]): string {
 		commitCounter += 1;
 		const date = `2026-01-01T00:00:${String(commitCounter % 60).padStart(2, "0")}Z`;
-		return execFileSync("git", arguments_, {
-			cwd: repositoryDirectory,
-			stdio: "pipe",
-			encoding: "utf8",
-			env: {...process.env, GIT_AUTHOR_DATE: date, GIT_COMMITTER_DATE: date},
-		}).trim();
+		return runGit(repositoryDirectory, arguments_, {env: {GIT_AUTHOR_DATE: date, GIT_COMMITTER_DATE: date}});
 	}
 
 	function write(path: string, content: string): void {
@@ -300,7 +295,7 @@ describe("session diff service over a real repository", () => {
 				"",
 			].join("\n");
 		}).join("");
-		execFileSync("git", ["fast-import", "--quiet"], {cwd: repositoryDirectory, input: stream});
+		runGit(repositoryDirectory, ["fast-import", "--quiet"], {input: stream});
 		git("switch", "many");
 
 		const scopes = await listScopes(repositoryDirectory);
