@@ -1,3 +1,4 @@
+import {Info, TriangleAlert} from "lucide-react";
 import {createContext, type ReactNode, useCallback, useContext, useEffect, useRef, useState} from "react";
 
 export type ToastKind = "success" | "error";
@@ -31,10 +32,10 @@ export function useToast(): (options: ToastOptions) => void {
 	return toast;
 }
 
-const REGION_CLASS = "flex w-full flex-col items-center gap-2";
+const REGION_CLASS = "flex w-full flex-col items-end gap-2";
 
 /**
- * Upstream-style toasts: stacked bottom-center, auto-dismissing (paused while
+ * Upstream-style toasts: compact cards stacked bottom-right, auto-dismissing (paused while
  * hovered or focused), with an optional action such as [Undo]. Success toasts
  * announce politely; errors announce assertively.
  */
@@ -55,7 +56,10 @@ export function ToastProvider({children}: Readonly<{children: ReactNode}>) {
 	return (
 		<ToastContext.Provider value={toast}>
 			{children}
-			<div className="pointer-events-none fixed inset-x-0 bottom-4 z-[100] flex flex-col items-center gap-2 px-4">
+			<div
+				data-position="bottom-right"
+				className="pointer-events-none fixed right-4 bottom-4 z-[100] flex w-[360px] max-w-[calc(100vw-2rem)] flex-col items-end gap-2"
+			>
 				<div role="status" aria-live="polite" className={REGION_CLASS}>
 					{toasts
 						.filter((t) => t.kind === "success")
@@ -96,16 +100,22 @@ function ToastItem({entry, onDismiss}: {entry: ToastEntry; onDismiss: (id: numbe
 		<div
 			data-toast
 			data-kind={kind}
-			className={`pointer-events-auto flex w-full max-w-[420px] items-start gap-3 rounded-lg border px-4 py-3 text-sm shadow-lg motion-safe:animate-[toast-in_150ms_ease-out] ${
-				kind === "error"
-					? "border-danger-200 bg-surface-0 text-primary"
-					: "border-border bg-surface-0 text-primary"
-			}`}
+			className="pointer-events-auto flex max-w-[360px] items-start gap-3 rounded-card bg-surface-popover px-4 py-3 text-sm text-primary shadow-panel-sm motion-safe:animate-[toast-in_150ms_ease-out]"
 			onMouseEnter={() => setHovered(true)}
 			onMouseLeave={() => setHovered(false)}
 			onFocus={() => setFocused(true)}
 			onBlur={() => setFocused(false)}
 		>
+			{kind === "error" ? (
+				<TriangleAlert
+					data-toast-icon="warning"
+					aria-hidden="true"
+					size={17}
+					className="mt-px shrink-0 text-danger-000"
+				/>
+			) : (
+				<Info data-toast-icon="info" aria-hidden="true" size={17} className="mt-px shrink-0 text-secondary" />
+			)}
 			<div className="min-w-0 flex-1">
 				<p data-toast-message className={kind === "error" ? "text-danger-000" : undefined}>
 					{message}
@@ -127,10 +137,10 @@ function ToastItem({entry, onDismiss}: {entry: ToastEntry; onDismiss: (id: numbe
 			<button
 				type="button"
 				aria-label="Dismiss"
-				className="shrink-0 rounded-md px-1 text-secondary hover:bg-fill-ghost-hover hover:text-primary"
+				className="flex size-5 shrink-0 items-center justify-center rounded-lg p-1 text-secondary hover:bg-fill-ghost-hover hover:text-primary"
 				onClick={() => onDismiss(id)}
 			>
-				<svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="none">
+				<svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16" fill="none">
 					<path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
 				</svg>
 			</button>

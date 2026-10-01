@@ -143,6 +143,39 @@ describe("ToastProvider", () => {
 		expect(toastTexts("status")).toEqual(["Link copied to clipboard.", "Link copied to clipboard."]);
 	});
 
+	it("anchors both live regions bottom-right", () => {
+		renderWithToast({message: "Link copied to clipboard.", kind: "success"});
+
+		expect(screen.getByRole("status").closest("[data-position]")?.getAttribute("data-position")).toBe(
+			"bottom-right",
+		);
+		expect(screen.getByRole("alert").closest("[data-position]")?.getAttribute("data-position")).toBe(
+			"bottom-right",
+		);
+	});
+
+	it("renders an info icon before the message on a borderless card", () => {
+		renderWithToast({message: "Link copied to clipboard.", kind: "success"});
+
+		const toastEl = screen.getByRole("status").querySelector("[data-toast]");
+		if (!toastEl) throw new Error("toast not rendered");
+		const icon = toastEl.querySelector("[data-toast-icon]");
+		const message = toastEl.querySelector("[data-toast-message]");
+		if (!icon || !message) throw new Error("toast icon or message missing");
+		expect({
+			icon: icon.getAttribute("data-toast-icon"),
+			iconBeforeMessage: Boolean(icon.compareDocumentPosition(message) & Node.DOCUMENT_POSITION_FOLLOWING),
+			borderClasses: toastEl.className.split(/\s+/).filter((c) => /^border(-|$)/.test(c)),
+		}).toEqual({icon: "info", iconBeforeMessage: true, borderClasses: []});
+	});
+
+	it("renders a warning icon for error toasts", () => {
+		renderWithToast({message: "Couldn’t save the new name. Try again.", kind: "error"});
+
+		const icon = screen.getByRole("alert").querySelector("[data-toast-icon]");
+		expect(icon?.getAttribute("data-toast-icon")).toBe("warning");
+	});
+
 	it("throws when useToast is called outside a provider", () => {
 		vi.spyOn(console, "error").mockImplementation(() => {});
 		expect(() => render(<Trigger options={{message: "x", kind: "success"}} />)).toThrow(
