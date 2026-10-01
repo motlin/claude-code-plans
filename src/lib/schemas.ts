@@ -811,6 +811,7 @@ const QueuedCommandAttachmentPayload = z
 		timestamp: z.string().optional(),
 		isMeta: z.boolean().optional(),
 		source_uuid: z.string().optional(),
+		delivery_id: z.string().optional(),
 		humanTurn: z.boolean().optional(),
 		usage: z
 			.object({
@@ -1363,6 +1364,7 @@ export const QueueOperationRecordSchema = z
 		content: z.string().optional(),
 		reason: z.string().optional(),
 		commandUuid: z.string().optional(),
+		deliveryId: z.string().optional(),
 	})
 	.strict();
 
