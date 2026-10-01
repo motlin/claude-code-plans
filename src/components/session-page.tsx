@@ -14,7 +14,6 @@ import {useTranscriptModeShortcut} from "../hooks/use-session-transcript-mode";
 import {sessionHasThinking} from "../lib/transcript-mode";
 import {SessionTitlebar} from "./session-titlebar";
 import {SESSION_STICKY_HEADER_CLASS} from "./titlebar-classes";
-import {useHasUnseenWork} from "./session-unread-control";
 import {syncUnseenFromSummaries} from "../lib/unread-store";
 import {AskUserQuestionProvider, type AskUserQuestionContextValue} from "./ask-user-question-context";
 import {SessionFileRefs} from "./file-refs";
@@ -330,8 +329,7 @@ function SessionView({
 	// Grows only when the session appends; paging backwards through history
 	// leaves it alone, so it stays a reliable "did new work land?" signal.
 	const endIndex = transcriptEndIndex(transcript);
-	const viewedState = useSessionViewedState(sessionId, currentMessageIndex);
-	const {visibilityRef} = viewedState;
+	const {visibilityRef} = useSessionViewedState(sessionId, currentMessageIndex);
 	const sessionViewRef = useCallback(
 		(element: HTMLDivElement | null) => {
 			scrollAnchorRef.current = element;
@@ -343,7 +341,6 @@ function SessionView({
 	useEffect(() => {
 		syncUnseenFromSummaries([{id: sessionId, unseen: detailUnseen}]);
 	}, [detailUnseen, sessionId]);
-	const unseen = useHasUnseenWork(sessionId);
 	const {settings, setSetting} = useSettings();
 	// Keyed off the window's startIndex so every line carries its session-absolute
 	// JSONL record index, which locates a row whose record was collapsed into a
@@ -675,8 +672,6 @@ function SessionView({
 							local={{
 								resumeCommand: sessionCommands.resume,
 								forkCommand: sessionCommands.fork,
-								reviewed: !unseen,
-								onToggleReviewed: unseen ? viewedState.markReviewed : viewedState.markUnreviewed,
 								onGenerateSummary:
 									aiSummary === null && settings.showSummaryButton
 										? () => void handleGenerateSummary()

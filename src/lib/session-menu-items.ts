@@ -301,8 +301,8 @@ export function getSessionMenuItems(
 	});
 
 	const openInTargets: Array<[SessionMenuItemId, boolean]> = [
-		["open-live-terminal", session.hasLivePane && has("openLiveTerminal")],
 		["open-terminal", session.cwd !== null && has("openTerminal")],
+		["open-live-terminal", session.hasLivePane && has("openLiveTerminal")],
 		["open-vscode", session.cwd !== null && has("openVsCode")],
 		["open-finder", session.cwd !== null && has("openFinder")],
 		["open-claude-ai", session.bridgeSessionId !== null && has("openClaudeAi")],

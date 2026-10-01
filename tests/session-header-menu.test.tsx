@@ -19,7 +19,6 @@ import {
 	transcriptQueryOptions,
 	type SessionDetailData,
 } from "../src/lib/api/sessions";
-import {readPinState} from "../src/lib/pin-store";
 import {getSessionMenuItems, type SessionMenuEntry} from "../src/lib/session-menu-items";
 import {__unreadStoreTesting} from "../src/lib/unread-store";
 import {installLocalStorage} from "./fake-storage";
@@ -87,7 +86,6 @@ function livePanes(): HerdrPaneIndexData {
 }
 
 const writeText = vi.fn<(text: string) => Promise<void>>();
-const onToggleReviewed = vi.fn<() => Promise<unknown>>();
 const onGenerateSummary = vi.fn<() => void>();
 
 type ResizeCallback = (entries: Array<{contentRect: {width: number}}>) => void;
@@ -109,8 +107,6 @@ function localActions(overrides: Partial<SessionHeaderLocalActions> = {}): Sessi
 	return {
 		resumeCommand: RESUME_COMMAND,
 		forkCommand: FORK_COMMAND,
-		reviewed: true,
-		onToggleReviewed,
 		onGenerateSummary,
 		generatingSummary: false,
 		...overrides,
@@ -187,8 +183,6 @@ beforeEach(() => {
 	);
 	writeText.mockReset();
 	writeText.mockResolvedValue(undefined);
-	onToggleReviewed.mockReset();
-	onToggleReviewed.mockResolvedValue(undefined);
 	onGenerateSummary.mockReset();
 	Object.defineProperty(navigator, "clipboard", {value: {writeText}, configurable: true});
 	__unreadStoreTesting.reset();
@@ -231,18 +225,12 @@ describe("session header menu", () => {
 			"Copy resume command",
 			"Copy fork command",
 			"Download raw JSONL",
-			"Pin",
-			"Mark unreviewed",
-			"Open live terminal",
 			"Generate AI summary",
 		]);
 	});
 
-	it("flips the toggles and drops items with nothing to act on", async () => {
-		await renderTitlebar(localActions({reviewed: false, onGenerateSummary: undefined}), {
-			live: false,
-		});
-		await select("Pin");
+	it("drops Generate AI summary when there is nothing to generate", async () => {
+		await renderTitlebar(localActions({onGenerateSummary: undefined}), {live: false});
 		const menu = await openHeaderMenu();
 		const shape = menuShape(menu);
 
@@ -252,8 +240,6 @@ describe("session header menu", () => {
 			"Copy resume command",
 			"Copy fork command",
 			"Download raw JSONL",
-			"Unpin",
-			"Mark reviewed",
 		]);
 	});
 
@@ -293,32 +279,22 @@ describe("session header menu", () => {
 		vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) {
 			clicks.push({href: this.getAttribute("href") ?? "", download: this.download});
 		});
-		const router = await renderTitlebar(localActions());
+		await renderTitlebar(localActions());
 
 		await select("Copy session ID");
 		await select("Copy resume command");
 		await select("Copy fork command");
 		await select("Download raw JSONL");
-		await select("Pin");
-		const pinState = readPinState();
-		await select("Mark unreviewed");
 		await select("Generate AI summary");
-		await select("Open live terminal");
 
 		expect({
 			clipboard: writeText.mock.calls,
 			downloads: clicks,
-			pinState,
-			reviewedToggles: onToggleReviewed.mock.calls.length,
 			summaryRequests: onGenerateSummary.mock.calls.length,
-			href: router.state.location.href,
 		}).toStrictEqual({
 			clipboard: [[SESSION_ID], [RESUME_COMMAND], [FORK_COMMAND]],
 			downloads: [{href: `/api/raw?sessionId=${SESSION_ID}`, download: ""}],
-			pinState: {pinnedIds: [SESSION_ID], pinnedOrder: []},
-			reviewedToggles: 1,
 			summaryRequests: 1,
-			href: `/session/${SESSION_ID}?pane=terminal`,
 		});
 	});
 
@@ -357,17 +333,6 @@ describe("session header menu", () => {
 			menus: screen.queryAllByRole("menu").length,
 			input: (screen.getByRole("textbox") as HTMLInputElement).value,
 		}).toStrictEqual({menus: 0, input: TITLE});
-	});
-
-	it("reports a failed review toggle in a toast", async () => {
-		onToggleReviewed.mockRejectedValueOnce(new Error("fabricated toggle failure"));
-		await renderTitlebar(localActions());
-
-		await select("Mark unreviewed");
-
-		expect(screen.getByText("Couldn’t mark the session unreviewed. Try again.").textContent).toBe(
-			"Couldn’t mark the session unreviewed. Try again.",
-		);
 	});
 });
 
@@ -460,9 +425,6 @@ describe("session page header", () => {
 				"Copy resume command",
 				"Copy fork command",
 				"Download raw JSONL",
-				"Pin",
-				"Mark unreviewed",
-				"Open live terminal",
 				"Generate AI summary",
 			],
 		});

@@ -1,5 +1,5 @@
 import {useQuery} from "@tanstack/react-query";
-import {Link, useNavigate} from "@tanstack/react-router";
+import {Link} from "@tanstack/react-router";
 import {AppWindow, ArrowLeft, Bot, ChevronDown, CircleDollarSign, Cpu, GitFork, Tag, Users} from "lucide-react";
 import {type ReactNode, useEffect, useRef, useState} from "react";
 
@@ -9,7 +9,7 @@ import {openSessionInFinder, sessionOpenInQueryOptions, type SessionDetailData} 
 import {writeClipboardText} from "../lib/clipboard";
 import {formatModelName} from "../lib/model-name";
 import {formatUsd} from "../lib/session-cost";
-import {pin, unpin, usePins} from "../lib/pin-store";
+import {usePins} from "../lib/pin-store";
 import {forkDisabledReason} from "../lib/session-fork";
 import {getSessionMenuItems, type SessionMenuSession} from "../lib/session-menu-items";
 import {ArchivedBadge} from "./archived-badge";
@@ -173,8 +173,6 @@ export function ProjectMenuItems({sessionId, session}: {sessionId: string; sessi
 export interface SessionHeaderLocalActions {
 	resumeCommand: string;
 	forkCommand: string;
-	reviewed: boolean;
-	onToggleReviewed: () => Promise<unknown>;
 	/** Absent when there is nothing to generate: a summary exists or the setting hides it. */
 	onGenerateSummary?: (() => void) | undefined;
 	generatingSummary?: boolean;
@@ -183,24 +181,13 @@ export interface SessionHeaderLocalActions {
 function HeaderLocalSection({
 	sessionId,
 	project,
-	pinned,
-	hasLivePane,
 	local,
 }: {
 	sessionId: string;
 	project: ProjectMenuSession;
-	pinned: boolean;
-	hasLivePane: boolean;
 	local: SessionHeaderLocalActions;
 }) {
 	const toast = useToast();
-	const navigate = useNavigate();
-	const reviewLabel = local.reviewed ? "unreviewed" : "reviewed";
-	const toggleReviewed = () => {
-		local.onToggleReviewed().catch(() => {
-			toast({kind: "error", message: `Couldn’t mark the session ${reviewLabel}. Try again.`});
-		});
-	};
 	return (
 		<>
 			<MenuSeparator />
@@ -218,23 +205,6 @@ function HeaderLocalSection({
 				Copy fork command
 			</MenuItem>
 			<MenuItem onSelect={() => downloadUrl(`/api/raw?sessionId=${sessionId}`)}>Download raw JSONL</MenuItem>
-			<MenuItem onSelect={() => (pinned ? unpin(sessionId) : pin(sessionId))}>
-				{pinned ? "Unpin" : "Pin"}
-			</MenuItem>
-			<MenuItem onSelect={toggleReviewed}>{`Mark ${reviewLabel}`}</MenuItem>
-			{hasLivePane && (
-				<MenuItem
-					onSelect={() =>
-						void navigate({
-							to: "/session/$id",
-							params: {id: sessionId},
-							search: {pane: "terminal"},
-						})
-					}
-				>
-					Open live terminal
-				</MenuItem>
-			)}
 			{local.onGenerateSummary !== undefined &&
 				(local.generatingSummary === true ? (
 					<MenuItem disabled>Generating summary…</MenuItem>
@@ -303,15 +273,7 @@ function HeaderMenuBody({
 				entries={getSessionMenuItems(menuSession, SESSION_MENU_CAPABILITIES, {surface: "header"})}
 				run={run}
 			/>
-			{local !== undefined && (
-				<HeaderLocalSection
-					sessionId={sessionId}
-					project={data}
-					pinned={pinned}
-					hasLivePane={hasLivePane}
-					local={local}
-				/>
-			)}
+			{local !== undefined && <HeaderLocalSection sessionId={sessionId} project={data} local={local} />}
 		</>
 	);
 }
