@@ -26,6 +26,8 @@ import {SessionTitleButton, useSessionTitleShortcuts} from "./session-title-head
 import {TitlebarWidthContext} from "./titlebar-width";
 import {useToast} from "./toast";
 import {
+	ContextMenu,
+	ContextMenuTrigger,
 	Menu,
 	MenuContent,
 	MenuItem,
@@ -243,7 +245,7 @@ function HeaderLocalSection({
 	);
 }
 
-/** Mounted only while the chevron menu is open, so a closed menu never queries. */
+/** Mounted only while the chevron or title context menu is open, so a closed menu never queries. */
 function HeaderMenuBody({
 	sessionId,
 	data,
@@ -337,7 +339,7 @@ export interface SessionTitlebarProps {
 
 /**
  * claude.ai/code's 32px session titlebar. Lead: the environment glyph, the parent-session back pill
- * (subagent transcripts only), the rename title button, the chevron header
+ * (subagent transcripts only), the rename title button (right-click opens the header menu at the pointer), the chevron header
  * menu and the origin pills (local badges), which collapse
  * to icons when narrow. Trail: the Changes toggle, then View options.
  */
@@ -361,6 +363,7 @@ export function SessionTitlebar({
 		startEditing: rename.startEditing,
 	});
 	const menuRename = useRenameAfterMenuClose(rename.startEditing);
+	const contextRename = useRenameAfterMenuClose(rename.startEditing);
 	const {ref, width, compact} = useTitlebarMeasure();
 	const modelLabel = formatModelName(data.model);
 
@@ -388,7 +391,22 @@ export function SessionTitlebar({
 					</Link>
 				)}
 				<div className="flex min-w-[32px] items-center">
-					<SessionTitleButton rename={rename} className={TITLE_CLASS} summary={summary} />
+					<ContextMenu onOpenChangeComplete={contextRename.onOpenChangeComplete} disabled={rename.editing}>
+						<ContextMenuTrigger className="flex min-w-0">
+							<SessionTitleButton rename={rename} className={TITLE_CLASS} summary={summary} />
+						</ContextMenuTrigger>
+						<MenuContent finalFocus={contextRename.finalFocus}>
+							<HeaderMenuBody
+								sessionId={sessionId}
+								data={data}
+								title={rename.title}
+								isActive={isActive}
+								requestRename={contextRename.requestRename}
+								local={local}
+								transcriptView={transcriptView}
+							/>
+						</MenuContent>
+					</ContextMenu>
 					<Menu onOpenChangeComplete={menuRename.onOpenChangeComplete}>
 						<Tooltip content={`More options for ${rename.title}`} side="bottom">
 							<MenuTrigger aria-label={`More options for ${rename.title}`} className={CHEVRON_CLASS}>

@@ -322,6 +322,43 @@ describe("session header menu", () => {
 		});
 	});
 
+	it("opens the same menu at the pointer when the title is right-clicked", async () => {
+		await renderTitlebar(localActions());
+		const chevronShape = menuShape(await openHeaderMenu());
+		fireEvent.keyDown(screen.getByRole("menu"), {key: "Escape"});
+		await flush();
+
+		fireEvent.contextMenu(screen.getByRole("button", {name: `${TITLE}, rename session`}), {
+			clientX: 232,
+			clientY: 27,
+		});
+		await flush();
+		const menu = screen.getByRole("menu");
+
+		expect({kind: menu.getAttribute("data-cds"), shape: menuShape(menu)}).toStrictEqual({
+			kind: "ContextMenu",
+			shape: chevronShape,
+		});
+	});
+
+	it("renames inline from the title's context menu", async () => {
+		await renderTitlebar(localActions());
+
+		fireEvent.contextMenu(screen.getByRole("button", {name: `${TITLE}, rename session`}), {
+			clientX: 232,
+			clientY: 27,
+		});
+		await flush();
+		fireEvent.click(screen.getByRole("menuitem", {name: /^Rename/}));
+		await flush();
+		await flush();
+
+		expect({
+			menus: screen.queryAllByRole("menu").length,
+			input: (screen.getByRole("textbox") as HTMLInputElement).value,
+		}).toStrictEqual({menus: 0, input: TITLE});
+	});
+
 	it("reports a failed review toggle in a toast", async () => {
 		onToggleReviewed.mockRejectedValueOnce(new Error("fabricated toggle failure"));
 		await renderTitlebar(localActions());
