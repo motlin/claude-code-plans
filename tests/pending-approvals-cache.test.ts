@@ -171,6 +171,49 @@ describe("pending-approvals-cache", () => {
 		expect(approvals[0]!.planFilename).toBe("alpha.md");
 	});
 
+	it("initPendingApprovalsCache bails out cleanly when shutdown closes the DB mid-init", async () => {
+		seedProject();
+		const sessionId = "sess-shutdown";
+		const filePath = writeJsonl(
+			`${sessionId}.jsonl`,
+			jsonl({
+				type: "assistant",
+				sessionId,
+				timestamp: "2026-05-14T12:00:00.000Z",
+				message: {
+					role: "assistant",
+					content: [
+						{type: "tool_use", id: "toolu_shutdown", name: "AskUserQuestion", input: {question: "Go?"}},
+					],
+				},
+			}),
+		);
+		seedSession(sessionId, filePath);
+
+		const {initPendingApprovalsCache, getPendingApprovals} = await import("../src/lib/db/pending-approvals-cache");
+		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		const unhandled = vi.fn();
+		process.on("unhandledRejection", unhandled);
+		try {
+			const controller = new AbortController();
+			const init = initPendingApprovalsCache(db.index, controller.signal);
+			// The init is now awaiting the transcript read; shutdown begins and closes the DB.
+			controller.abort();
+			db.close();
+
+			await expect(init).resolves.toBeUndefined();
+			await new Promise((resolve) => setImmediate(resolve));
+			expect({
+				approvals: getPendingApprovals(),
+				errors: errorSpy.mock.calls,
+				unhandled: unhandled.mock.calls,
+			}).toEqual({approvals: [], errors: [], unhandled: []});
+		} finally {
+			process.off("unhandledRejection", unhandled);
+			errorSpy.mockRestore();
+		}
+	});
+
 	it("updatePendingApprovalForSession broadcasts APPROVAL_CHANGED on add and APPROVAL_RESOLVED on resolution", async () => {
 		seedProject();
 

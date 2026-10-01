@@ -5,7 +5,7 @@ import {withHeadBodyCancel} from "./lib/head-request";
 import {withServerTiming} from "./lib/perf/server-timing";
 import {formatStall, startStallMonitor, withActivityTracking} from "./lib/perf/event-loop-stalls";
 import {closeWatcher, createWatcher, rebroadcastProjectSessions, resolveIgnoredDirNames} from "./lib/watcher";
-import {getDb, initDb, runInitialScan, shutdownDb} from "./lib/db";
+import {getDb, getShutdownSignal, initDb, runInitialScan, shutdownDb} from "./lib/db";
 import {startSweep, stopSweep} from "./lib/active-session-store";
 import {startNotificationsSweep, stopNotificationsSweep} from "./lib/notifications-store";
 import {startLiveSubagentSweep, stopLiveSubagentSweep} from "./lib/live-subagent-store";
@@ -59,7 +59,7 @@ void (async () => {
 	}
 
 	try {
-		await initPendingApprovalsCache(getDb().index);
+		await initPendingApprovalsCache(getDb().index, getShutdownSignal());
 	} catch (err) {
 		console.error("Failed to initialize pending approvals cache:", err);
 	}

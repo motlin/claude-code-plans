@@ -91,6 +91,11 @@ export function awaitInitialScan(): Promise<void> {
 	return getScanHolder().promise ?? Promise.resolve();
 }
 
+/** Aborts when shutdownDb() begins, so startup work can stop before the DB closes under it. */
+export function getShutdownSignal(): AbortSignal {
+	return getScanHolder().controller.signal;
+}
+
 /**
  * Stops the initial scan and closes the databases, so a restarted server's
  * scan never contends with this instance for the write lock.

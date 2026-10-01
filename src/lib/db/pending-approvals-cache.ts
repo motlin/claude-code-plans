@@ -69,11 +69,16 @@ function statMtimeMs(filePath: string): number | null {
 	}
 }
 
-export async function initPendingApprovalsCache(db: IndexDb): Promise<void> {
+/**
+ * Warms the cache from every recent transcript. Once `signal` aborts (server
+ * shutdown, which closes the DB) it stops before its next DB call and resolves.
+ */
+export async function initPendingApprovalsCache(db: IndexDb, signal?: AbortSignal): Promise<void> {
 	cache.clear();
 	expiredThroughBySession.clear();
 	scanCache = createPendingApprovalScanCache();
-	const approvals = await scanAllPendingApprovals(db);
+	const approvals = await scanAllPendingApprovals(db, signal);
+	if (signal?.aborted) return;
 	for (const approval of approvals) {
 		const filePath = lookupSessionFilePath(db, approval.sessionId);
 		cache.set(approval.sessionId, {

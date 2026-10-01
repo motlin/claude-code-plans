@@ -211,7 +211,8 @@ async function scanPendingApprovalUnlocked(
 	};
 }
 
-export async function scanAllPendingApprovals(db: IndexDb): Promise<PendingApproval[]> {
+/** Returns what it found so far once `signal` aborts, before touching the (possibly closed) DB again. */
+export async function scanAllPendingApprovals(db: IndexDb, signal?: AbortSignal): Promise<PendingApproval[]> {
 	const sessionRows = db
 		.select({
 			id: schema.sessions.id,
@@ -241,6 +242,7 @@ export async function scanAllPendingApprovals(db: IndexDb): Promise<PendingAppro
 		} catch {
 			continue; // session file deleted since indexing; initial scan will prune the row
 		}
+		if (signal?.aborted) break;
 		if (!approval) continue;
 		const planFilename = approval.planFilename ?? getPlanFilenameForSession(db, approval.sessionId || row.id);
 		results.push({
