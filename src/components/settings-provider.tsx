@@ -55,7 +55,6 @@ export interface Settings {
 	defaultSubagentView: SubagentView;
 
 	chromeHidden: boolean;
-	statusFooterVisible: boolean;
 	/** "reduced" sets `html[data-motion=reduced]`, which stops pulses and transitions. */
 	motion: Motion;
 	/** The transcript and composer column measure: 768, 960 or 1280px. */
@@ -139,7 +138,6 @@ export const DEFAULTS: Settings = {
 	defaultSubagentView: "tree",
 
 	chromeHidden: false,
-	statusFooterVisible: true,
 	motion: "system",
 	transcriptWidth: "narrow",
 	interfaceFont: "sans",
@@ -198,7 +196,6 @@ const STORAGE_KEYS: Record<keyof Settings, string> = {
 	showTranscriptOnly: "ccp-show-transcript-only",
 	defaultSubagentView: "ccp-subagent-view",
 	chromeHidden: "ccp-chrome-hidden",
-	statusFooterVisible: "ccp-status-footer",
 	motion: "ccp-motion",
 	transcriptWidth: "ccp-transcript-width",
 	interfaceFont: "ccp-interface-font",
@@ -252,6 +249,13 @@ export function migrateLegacyNotificationSetting(storage: Pick<Storage, "getItem
 		if (storage.getItem(STORAGE_KEYS[key]) === null) storage.setItem(STORAGE_KEYS[key], value);
 	}
 	storage.removeItem(LEGACY_DESKTOP_NOTIFICATIONS_KEY);
+}
+
+/** Keys of settings that no longer exist; loading drops them from storage. */
+const RETIRED_STORAGE_KEYS = ["ccp-status-footer"] as const;
+
+function dropRetiredSettings(storage: Pick<Storage, "removeItem">): void {
+	for (const key of RETIRED_STORAGE_KEYS) storage.removeItem(key);
 }
 
 const LINK_CATEGORY_RULES_SCHEMA = z.array(
@@ -416,6 +420,7 @@ export function SettingsProvider({children}: {children: React.ReactNode}) {
 
 	useEffect(() => {
 		migrateLegacyNotificationSetting(localStorage);
+		dropRetiredSettings(localStorage);
 		const loaded = {...DEFAULTS};
 		for (const key of Object.keys(DEFAULTS) as Array<keyof Settings>) {
 			const stored = readStoredValue(key);

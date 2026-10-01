@@ -697,11 +697,6 @@ export function GeneralSettings() {
 					description="Hide the sidebar and header for a focused view"
 					settingKey="chromeHidden"
 				/>
-				<ToggleRow
-					label="Status footer"
-					description="Show the status bar at the bottom of session views"
-					settingKey="statusFooterVisible"
-				/>
 			</SettingsSection>
 			<SettingsSection title="Home">
 				<ToggleRow

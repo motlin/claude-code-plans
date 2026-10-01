@@ -15,7 +15,6 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
 	{tab: "general", rowSlug: "theme", title: "Theme"},
 	{tab: "general", rowSlug: "motion", title: "Motion"},
 	{tab: "general", rowSlug: "hide-chrome", title: "Hide chrome"},
-	{tab: "general", rowSlug: "status-footer", title: "Status footer"},
 	{tab: "general", rowSlug: "recent-plans-and-memories", title: "Recent plans and memories"},
 	{tab: "general", rowSlug: "response-completions", title: "Response completions"},
 	{tab: "general", rowSlug: "code-permission-requests", title: "Code permission requests"},

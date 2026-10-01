@@ -115,6 +115,36 @@ describe("General settings ▸ Appearance", () => {
 		});
 	});
 
+	it("renders Appearance without a Status footer row", async () => {
+		stubNotification("granted");
+		await renderGeneral();
+
+		expect({
+			switch: screen.queryByRole("switch", {name: "Status footer"}),
+			title: screen.queryByText("Status footer"),
+			hideChrome: switchState("Hide chrome"),
+		}).toStrictEqual({
+			switch: null,
+			title: null,
+			hideChrome: {checked: "false", disabled: false},
+		});
+	});
+
+	it("loads a saved config that still holds the retired status footer key and drops that key", async () => {
+		stubNotification("granted");
+		localStorage.setItem("ccp-status-footer", "false");
+		localStorage.setItem("ccp-chrome-hidden", "true");
+		await renderGeneral();
+
+		expect({
+			hideChrome: switchState("Hide chrome"),
+			statusFooter: localStorage.getItem("ccp-status-footer"),
+		}).toStrictEqual({
+			hideChrome: {checked: "true", disabled: false},
+			statusFooter: null,
+		});
+	});
+
 	it("applies a stored reduced motion preference on load", async () => {
 		stubNotification("granted");
 		localStorage.setItem("ccp-motion", "reduced");
