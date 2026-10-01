@@ -17,7 +17,7 @@ export function useHasUnseenWork(sessionId: string): boolean {
  * Upstream session row status dot. On a finished row it is also the read/unread toggle
  * ("Click to mark as read" / "Click to mark as unread"); working and waiting rows show a plain icon.
  */
-export function SessionRowStatusDot({session}: {session: SessionListItem}) {
+export function SessionRowStatusDot({session, tabIndex}: {session: SessionListItem; tabIndex?: number}) {
 	const unseen = useHasUnseenWork(session.id);
 	const {settings} = useSettings();
 	// The server bucket lags a manual toggle until the next summary arrives, so a finished
@@ -36,6 +36,7 @@ export function SessionRowStatusDot({session}: {session: SessionListItem}) {
 	return (
 		<button
 			type="button"
+			{...(tabIndex === undefined ? {} : {tabIndex})}
 			title={label}
 			aria-label={label}
 			className="flex cursor-pointer items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100"

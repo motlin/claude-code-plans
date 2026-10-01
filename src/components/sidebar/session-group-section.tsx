@@ -24,6 +24,7 @@ import {CustomGroupHeader} from "./custom-group-header";
 import {GroupAppearanceMark} from "./group-appearance";
 import {ProjectGroupHeader} from "./project-group-header";
 import {useSidebarSelection} from "./selection-context";
+import {ROVING_ITEM_PROPS} from "./use-roving-focus";
 
 export interface SidebarSessionRow extends SessionGroupRow {
 	id: string;
@@ -98,6 +99,7 @@ export function GroupSection({
 	const toggle = (
 		<button
 			type="button"
+			{...ROVING_ITEM_PROPS}
 			data-group-toggle
 			aria-expanded={expanded}
 			onClick={() => toggleSidebarGroup(group.key)}
@@ -179,6 +181,7 @@ export function GroupSection({
 					{group.hiddenCount > 0 && (
 						<button
 							type="button"
+							{...ROVING_ITEM_PROPS}
 							data-row
 							aria-label={`Show ${group.hiddenCount} more in ${group.label}`}
 							onClick={onShowMore}
@@ -317,6 +320,7 @@ function FamilyStub({nested, onExpand}: {nested: readonly SidebarSessionRow[]; o
 	return (
 		<button
 			type="button"
+			{...ROVING_ITEM_PROPS}
 			data-row
 			aria-label={ariaLabel}
 			onClick={onExpand}
@@ -365,10 +369,15 @@ function SessionRowLink({
 			onOpen={(id) => void navigate({to: "/session/$id", params: {id}})}
 			render={<div />}
 		>
-			<SessionActionsMenu session={row.session} {...(pinnedIds === undefined ? {} : {pinnedIds})}>
+			<SessionActionsMenu
+				session={row.session}
+				kebabTabIndex={-1}
+				{...(pinnedIds === undefined ? {} : {pinnedIds})}
+			>
 				<Link
 					to="/session/$id"
 					params={{id: row.sessionId}}
+					{...ROVING_ITEM_PROPS}
 					data-row-main-button
 					data-selected={selected ? "focused" : undefined}
 					data-multi-selected={multiSelected ? "" : undefined}
@@ -378,7 +387,7 @@ function SessionRowLink({
 					className={`${ROW_CLASS} text-secondary hover:bg-[var(--sb-hover)] focus-visible:bg-[var(--sb-hover)] data-[selected=focused]:bg-[var(--sb-selected)] data-[selected=focused]:text-primary data-[multi-selected]:bg-[var(--sb-selected)] data-[multi-selected]:text-primary`}
 				>
 					<span className="df-leading-slot text-secondary">
-						<SessionRowStatusDot session={row.session} />
+						<SessionRowStatusDot session={row.session} tabIndex={-1} />
 					</span>
 					<span data-row-label className="min-w-0 flex-1">
 						<SessionRowTitle render={(title) => <FadeLabel text={title} />} />

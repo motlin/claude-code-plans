@@ -550,10 +550,13 @@ export function SessionActionsMenu({
 	pinnedIds,
 	children,
 	className,
+	kebabTabIndex,
 }: {
 	session: SessionListItem;
 	/** The sidebar Pinned section's display order, when this row is rendered inside it. */
 	pinnedIds?: readonly string[];
+	/** -1 inside a roving-focus list, whose Menu key and Shift+F10 open the kebab instead. */
+	kebabTabIndex?: number;
 	children: ReactNode;
 	className?: string;
 }) {
@@ -613,7 +616,7 @@ export function SessionActionsMenu({
 				},
 			}}
 		>
-			<div ref={rowRef} className={`group/session-row relative ${className ?? ""}`}>
+			<div ref={rowRef} data-session-actions="" className={`group/session-row relative ${className ?? ""}`}>
 				<ContextMenu onOpenChangeComplete={onOpenChangeComplete}>
 					<ContextMenuTrigger>{children}</ContextMenuTrigger>
 					<MenuContent finalFocus={finalFocus}>{menuBody}</MenuContent>
@@ -622,6 +625,7 @@ export function SessionActionsMenu({
 					<MenuTrigger
 						aria-label={`More options for ${rename.title}`}
 						data-row-action=""
+						{...(kebabTabIndex === undefined ? {} : {tabIndex: kebabTabIndex})}
 						className={KEBAB_CLASS}
 					>
 						<Ellipsis aria-hidden="true" className="size-4" />

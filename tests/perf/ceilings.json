@@ -125,9 +125,11 @@
 		"tolerance": 0
 	},
 	"client.sessionOpen.small.mutations": {
-		"ceiling": 29,
+		"ceiling": 31,
 		"unit": "count",
-		"tolerance": 0
+		"tolerance": 0,
+		"reason": "The sidebar roving tab stop follows the selected row, so opening a session moves tabindex 0 off one sidebar item and onto its row (2 attribute writes)",
+		"raisedAt": "2026-10-01"
 	},
 	"client.sessionOpen.typical.commits": {
 		"ceiling": 12,
@@ -155,9 +157,11 @@
 		"tolerance": 0
 	},
 	"client.sessionOpen.typical.mutations": {
-		"ceiling": 29,
+		"ceiling": 31,
 		"unit": "count",
-		"tolerance": 0
+		"tolerance": 0,
+		"reason": "The sidebar roving tab stop follows the selected row, so opening a session moves tabindex 0 off one sidebar item and onto its row (2 attribute writes)",
+		"raisedAt": "2026-10-01"
 	},
 	"client.sessionSwitch.small.commits": {
 		"ceiling": 10,
@@ -190,9 +194,11 @@
 		"tolerance": 0
 	},
 	"client.sessionSwitch.small.mutations": {
-		"ceiling": 31,
+		"ceiling": 33,
 		"unit": "count",
-		"tolerance": 0
+		"tolerance": 0,
+		"reason": "The sidebar roving tab stop follows the selected row, so opening a session moves tabindex 0 off one sidebar item and onto its row (2 attribute writes)",
+		"raisedAt": "2026-10-01"
 	},
 	"client.sessionSwitch.typical.commits": {
 		"ceiling": 10,
@@ -225,9 +231,11 @@
 		"tolerance": 0
 	},
 	"client.sessionSwitch.typical.mutations": {
-		"ceiling": 31,
+		"ceiling": 33,
 		"unit": "count",
-		"tolerance": 0
+		"tolerance": 0,
+		"reason": "The sidebar roving tab stop follows the selected row, so opening a session moves tabindex 0 off one sidebar item and onto its row (2 attribute writes)",
+		"raisedAt": "2026-10-01"
 	},
 	"hot.claudeEventsReducer.replay-200.calls": {
 		"ceiling": 300,

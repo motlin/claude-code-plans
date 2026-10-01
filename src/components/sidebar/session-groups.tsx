@@ -45,6 +45,7 @@ import {LoadingBars} from "./primitives/LoadingBars";
 import {GroupSection, ROW_CLASS, type SidebarSessionRow, toGroupRow} from "./session-group-section";
 import {SidebarSelectionContext, type SidebarSelectionApi} from "./selection-context";
 import {PinnedSubList} from "./sublists";
+import {ROVING_ITEM_PROPS, useRovingFocus} from "./use-roving-focus";
 
 /**
  * The sidebar session list, grouped like claude.ai/code's recents: Needs input,
@@ -106,6 +107,7 @@ export function SessionGroups({
 	const latestGroups = useRef<SessionGroup<SidebarSessionRow>[] | undefined>(undefined);
 	const custom = prefs.groupBy === "custom";
 	const recentsRef = useRef<HTMLDivElement>(null);
+	const roving = useRovingFocus();
 	const {drag, rowProps, listRef, zoneRef} = useSidebarDrag({
 		onDrop: (drop) => {
 			const sectionGroupId = sectionOfDragId(drop.srcId);
@@ -199,62 +201,65 @@ export function SessionGroups({
 
 	return (
 		<SidebarSelectionContext.Provider value={selectionApi}>
-			<PinnedSubList
-				rows={split.pinned}
-				expanded={!collapsed.has(PINNED_GROUP_KEY)}
-				activeItemId={activeItemId}
-				dragging={rowDrag && !multiDrag}
-				dropRowHot={drag?.target?.type === "zone" && drag.target.zoneId === PIN_DROP_ZONE}
-				// A multi-row drag cannot pin, so Pinned is no drop target while one is under way.
-				{...(multiDrag ? {} : {listRef: listRef(PINNED_LIST), dropRowRef: zoneRef(PIN_DROP_ZONE)})}
-				dragRowProps={rowProps}
-			/>
-			<div
-				ref={(element) => {
-					recentsRef.current = element;
-					zoneRef(UNPIN_ZONE)(element);
-				}}
-				data-testid="sidebar-recents"
-				className="flex min-h-[120px] shrink-0 grow flex-col"
-			>
-				{groups.map((group, index) => {
-					const groupId = custom ? customGroupIdOfKey(group.key) : null;
-					const ungroupedSection = custom && groupId === null;
-					const section = (
-						<GroupSection
-							key={group.key}
-							group={group}
-							expanded={!collapsed.has(group.key)}
-							activeItemId={activeItemId}
-							filterSlot={index === 0 ? filterSlot : undefined}
-							onShowMore={() => setUncapped((previous) => new Set(previous).add(group.key))}
-							dragRowProps={rowProps}
-							familyHeadIds={familyHeadIds}
-							{...(groupId === null
-								? {}
-								: {
-										headerDragProps: rowProps(sectionDragId(groupId)),
-										headerRef: zoneRef(groupHeaderZoneId(groupId)),
-										dropHot: hotGroupId === groupId,
-										...(sectionDrag ? {} : {rowsRef: listRef(groupListId(groupId))}),
-									})}
-							{...(ungroupedSection ? {sectionRef: zoneRef(UNGROUPED_SECTION_ZONE)} : {})}
-						/>
-					);
-					return index === firstUngroupedIndex && ungroupRow !== null ? [ungroupRow, section] : section;
-				})}
-				{firstUngroupedIndex === -1 && ungroupRow}
-				{hasNextPage && (
-					<button
-						type="button"
-						aria-label="Load more sessions"
-						aria-disabled={isFetchingNextPage || undefined}
-						onClick={() => void fetchNextPage()}
-						className={`${ROW_CLASS} df-label-inset mt-[var(--sb-group-pt)] text-ink-muted hover:bg-[var(--sb-hover)] hover:text-secondary aria-disabled:pointer-events-none aria-disabled:opacity-70`}
-					>
-						Load more sessions
-					</button>
-				)}
+			<div ref={roving.ref} onFocus={roving.onFocus} onKeyDown={roving.onKeyDown} className="contents">
+				<PinnedSubList
+					rows={split.pinned}
+					expanded={!collapsed.has(PINNED_GROUP_KEY)}
+					activeItemId={activeItemId}
+					dragging={rowDrag && !multiDrag}
+					dropRowHot={drag?.target?.type === "zone" && drag.target.zoneId === PIN_DROP_ZONE}
+					// A multi-row drag cannot pin, so Pinned is no drop target while one is under way.
+					{...(multiDrag ? {} : {listRef: listRef(PINNED_LIST), dropRowRef: zoneRef(PIN_DROP_ZONE)})}
+					dragRowProps={rowProps}
+				/>
+				<div
+					ref={(element) => {
+						recentsRef.current = element;
+						zoneRef(UNPIN_ZONE)(element);
+					}}
+					data-testid="sidebar-recents"
+					className="flex min-h-[120px] shrink-0 grow flex-col"
+				>
+					{groups.map((group, index) => {
+						const groupId = custom ? customGroupIdOfKey(group.key) : null;
+						const ungroupedSection = custom && groupId === null;
+						const section = (
+							<GroupSection
+								key={group.key}
+								group={group}
+								expanded={!collapsed.has(group.key)}
+								activeItemId={activeItemId}
+								filterSlot={index === 0 ? filterSlot : undefined}
+								onShowMore={() => setUncapped((previous) => new Set(previous).add(group.key))}
+								dragRowProps={rowProps}
+								familyHeadIds={familyHeadIds}
+								{...(groupId === null
+									? {}
+									: {
+											headerDragProps: rowProps(sectionDragId(groupId)),
+											headerRef: zoneRef(groupHeaderZoneId(groupId)),
+											dropHot: hotGroupId === groupId,
+											...(sectionDrag ? {} : {rowsRef: listRef(groupListId(groupId))}),
+										})}
+								{...(ungroupedSection ? {sectionRef: zoneRef(UNGROUPED_SECTION_ZONE)} : {})}
+							/>
+						);
+						return index === firstUngroupedIndex && ungroupRow !== null ? [ungroupRow, section] : section;
+					})}
+					{firstUngroupedIndex === -1 && ungroupRow}
+					{hasNextPage && (
+						<button
+							type="button"
+							{...ROVING_ITEM_PROPS}
+							aria-label="Load more sessions"
+							aria-disabled={isFetchingNextPage || undefined}
+							onClick={() => void fetchNextPage()}
+							className={`${ROW_CLASS} df-label-inset mt-[var(--sb-group-pt)] text-ink-muted hover:bg-[var(--sb-hover)] hover:text-secondary aria-disabled:pointer-events-none aria-disabled:opacity-70`}
+						>
+							Load more sessions
+						</button>
+					)}
+				</div>
 			</div>
 		</SidebarSelectionContext.Provider>
 	);
