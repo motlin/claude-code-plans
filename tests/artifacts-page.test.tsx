@@ -24,6 +24,8 @@ import {openTestDb, type AppDb} from "../src/lib/db/connection";
 import * as schema from "../src/lib/db/schema";
 import {Route as ArtifactsRoute} from "../src/routes/artifacts";
 import {artifactPreviewPath} from "../src/lib/artifact-source-paths";
+import {ToastProvider} from "../src/components/toast";
+import {ARTIFACT_PIN_STORAGE_KEY} from "../src/lib/artifact-pins";
 import {installLocalStorage} from "./fake-storage";
 
 const NOW = new Date(2026, 8, 29, 12, 0, 0);
@@ -254,7 +256,9 @@ async function renderArtifactsPage(initialEntry: string, seed: boolean | ((db: A
 	const rootRoute = createRootRoute({
 		component: () => (
 			<QueryClientProvider client={queryClient}>
-				<Outlet />
+				<ToastProvider>
+					<Outlet />
+				</ToastProvider>
 			</QueryClientProvider>
 		),
 	});
@@ -273,6 +277,14 @@ async function renderArtifactsPage(initialEntry: string, seed: boolean | ((db: A
 	render(<RouterProvider router={router} />);
 	await screen.findByRole("heading", {level: 1, name: "Artifacts"});
 	return router;
+}
+
+/** The page's own live statuses, without the toast region. */
+function pageStatuses() {
+	return screen
+		.getAllByRole("status")
+		.filter((status) => !status.hasAttribute("aria-live"))
+		.map((status) => status.textContent);
 }
 
 function rowSummary(row: HTMLElement) {
@@ -369,7 +381,7 @@ describe("artifacts route", () => {
 		expect({
 			input: (screen.getByRole("searchbox", {name: "Search your artifacts"}) as HTMLInputElement).value,
 			placeholder: screen.getByRole("searchbox").getAttribute("placeholder"),
-			status: screen.getByRole("status").textContent,
+			status: pageStatuses()[0],
 			rows: screen.getAllByRole("listitem").map((row) => rowSummary(row).title),
 		}).toStrictEqual({
 			input: "ladder",
@@ -390,10 +402,7 @@ describe("artifacts route", () => {
 		await waitFor(() => {
 			expect({...router.state.location.search}).toStrictEqual({search: "zzqx"});
 		});
-		expect(screen.getAllByRole("status").map((status) => status.textContent)).toStrictEqual([
-			"0 artifacts matching “zzqx”",
-			"No artifacts matching “zzqx”",
-		]);
+		expect(pageStatuses()).toStrictEqual(["0 artifacts matching “zzqx”", "No artifacts matching “zzqx”"]);
 	});
 
 	it("persists the grid/list toggle in localStorage", async () => {
@@ -532,5 +541,80 @@ describe("artifacts route", () => {
 		await waitFor(() => {
 			expect(screen.getByRole("button", {name: "Filter by type: Other"}).tagName).toBe("BUTTON");
 		});
+	});
+
+	function groupedTitles() {
+		return screen.getAllByRole("list").map((list) => ({
+			heading: document.getElementById(list.getAttribute("aria-labelledby") ?? "")?.textContent,
+			rows: within(list)
+				.getAllByRole("listitem")
+				.map((row) => rowSummary(row).title),
+		}));
+	}
+
+	it("offers Pin and Copy link from the row's More options menu and its context menu", async () => {
+		await renderArtifactsPage("/artifacts", true);
+
+		fireEvent.click(screen.getByRole("button", {name: "More options for Quarterly plan"}));
+		const menu = (await screen.findAllByRole("menuitem")).map((item) => item.textContent);
+		fireEvent.keyDown(screen.getByRole("menu"), {key: "Escape"});
+		await waitFor(() => {
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
+
+		fireEvent.contextMenu(screen.getByRole("link", {name: "Quarterly plan"}), {clientX: 40, clientY: 50});
+		const contextMenu = (await screen.findAllByRole("menuitem")).map((item) => item.textContent);
+
+		expect({menu, contextMenu}).toStrictEqual({menu: ["Pin", "Copy link"], contextMenu: ["Pin", "Copy link"]});
+	});
+
+	it("moves a pinned row under Pinned, stores it per browser and unpins from the hover button", async () => {
+		await renderArtifactsPage("/artifacts", true);
+
+		fireEvent.click(screen.getByRole("button", {name: "More options for Quarterly plan"}));
+		fireEvent.click(await screen.findByRole("menuitem", {name: "Pin"}));
+
+		await waitFor(() => {
+			expect(screen.getAllByRole("list")).toHaveLength(3);
+		});
+		const pinned = {
+			groups: groupedTitles(),
+			stored: JSON.parse(storage.getItem(ARTIFACT_PIN_STORAGE_KEY) ?? "null"),
+		};
+
+		fireEvent.click(screen.getByRole("button", {name: "Unpin Quarterly plan"}));
+
+		expect({pinned, unpinned: groupedTitles()}).toStrictEqual({
+			pinned: {
+				groups: [
+					{heading: "Pinned", rows: ["Quarterly plan"]},
+					{
+						heading: artifactDateGroupLabel(localMs(2026, 8, 26, 15), new Date()),
+						rows: ["Asap Ladder Queue"],
+					},
+					{heading: artifactDateGroupLabel(localMs(2026, 5, 10), new Date()), rows: ["household-cash.html"]},
+				],
+				stored: [DOCS_URL],
+			},
+			unpinned: [
+				{heading: artifactDateGroupLabel(localMs(2026, 8, 26, 15), new Date()), rows: ["Asap Ladder Queue"]},
+				{heading: artifactDateGroupLabel(localMs(2026, 5, 10), new Date()), rows: ["household-cash.html"]},
+				{heading: artifactDateGroupLabel(localMs(2025, 10, 3), new Date()), rows: ["Quarterly plan"]},
+			],
+		});
+	});
+
+	it("copies the claude.ai artifact URL and toasts", async () => {
+		const writeText = vi.fn(async (_text: string) => {});
+		Object.defineProperty(navigator, "clipboard", {configurable: true, value: {writeText}});
+		await renderArtifactsPage("/artifacts", true);
+
+		fireEvent.click(screen.getByRole("button", {name: "More options for Asap Ladder Queue"}));
+		fireEvent.click(await screen.findByRole("menuitem", {name: "Copy link"}));
+
+		expect({
+			toast: (await screen.findByText("Link copied to clipboard.")).textContent,
+			copied: writeText.mock.calls,
+		}).toStrictEqual({toast: "Link copied to clipboard.", copied: [[LADDER_URL]]});
 	});
 });

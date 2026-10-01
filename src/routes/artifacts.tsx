@@ -1,7 +1,19 @@
 import {createFileRoute, Link, useNavigate} from "@tanstack/react-router";
 import {useSuspenseQuery} from "@tanstack/react-query";
-import {CodeXml, FileText, LayoutGrid, List, ListFilter, Lock, Shapes} from "lucide-react";
-import {useEffect, useId, useMemo, useState} from "react";
+import {
+	CodeXml,
+	EllipsisVertical,
+	FileText,
+	LayoutGrid,
+	Link as LinkIcon,
+	List,
+	ListFilter,
+	Lock,
+	Pin,
+	PinOff,
+	Shapes,
+} from "lucide-react";
+import {type ReactNode, useEffect, useId, useMemo, useState} from "react";
 import {artifactsQueryOptions, type ArtifactSummary} from "../lib/api/artifacts";
 import {
 	artifactInView,
@@ -16,9 +28,21 @@ import {
 	type ArtifactTypeFilter,
 	type ArtifactView,
 } from "../lib/artifact-gallery";
+import {pinArtifact, unpinArtifact, useArtifactPins} from "../lib/artifact-pins";
+import {writeClipboardText} from "../lib/clipboard";
 import {formatCount} from "../lib/pluralize";
+import {useToast} from "../components/toast";
 import {TOOLBAR_ICON_BUTTON, ToolbarSearch} from "../components/toolbar-search";
-import {Menu, MenuContent, MenuRadioGroup, MenuRadioItem, MenuTrigger} from "../components/ui/menu";
+import {
+	ContextMenu,
+	ContextMenuTrigger,
+	Menu,
+	MenuContent,
+	MenuItem,
+	MenuRadioGroup,
+	MenuRadioItem,
+	MenuTrigger,
+} from "../components/ui/menu";
 import {Tooltip} from "../components/ui/tooltip";
 
 export const Route = createFileRoute("/artifacts")({
@@ -76,6 +100,9 @@ function ArtifactsPage() {
 		[artifacts, view],
 	);
 	const visible = useMemo(() => filterArtifacts(inView, {search, type}), [inView, search, type]);
+	const {isPinned} = useArtifactPins();
+	const pinned = visible.filter((artifact) => isPinned(artifact.url));
+	const unpinned = visible.filter((artifact) => !isPinned(artifact.url));
 	const searching = search.trim() !== "";
 	const layoutLabel = layout === "grid" ? "List view" : "Grid view";
 
@@ -160,9 +187,9 @@ function ArtifactsPage() {
 								: "No artifacts of this type"}
 					</div>
 				) : layout === "grid" ? (
-					<ArtifactGrid artifacts={visible} now={now} />
+					<ArtifactGrid artifacts={[...pinned, ...unpinned]} now={now} isPinned={isPinned} />
 				) : (
-					<ArtifactList artifacts={visible} now={now} />
+					<ArtifactList pinned={pinned} artifacts={unpinned} now={now} />
 				)}
 			</div>
 		</div>
@@ -294,9 +321,102 @@ function PrimaryLink({artifact, className}: {artifact: ArtifactSummary; classNam
 	);
 }
 
-function ArtifactList({artifacts, now}: {artifacts: ArtifactSummary[]; now: Date}) {
+const ROW_ACTION_CLASS =
+	"pointer-events-auto flex size-6 shrink-0 items-center justify-center rounded-r6 text-ink-muted opacity-0 transition-opacity hover:bg-fill-ghost-hover hover:text-primary focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100 group-hover/cdsrow:opacity-100 data-[popup-open]:opacity-100 data-[popup-open]:bg-fill-ghost-hover pointer-coarse:opacity-100";
+
+function useCopyArtifactLink() {
+	const toast = useToast();
+	return async (artifact: ArtifactSummary) => {
+		const copied = await writeClipboardText(artifact.url);
+		toast(
+			copied
+				? {kind: "success", message: "Link copied to clipboard."}
+				: {kind: "error", message: "Couldn’t copy the link. Try again."},
+		);
+	};
+}
+
+function togglePin(artifact: ArtifactSummary, pinned: boolean): void {
+	if (pinned) unpinArtifact(artifact.url);
+	else pinArtifact(artifact.url);
+}
+
+/** Upstream's row menu within local limits: Rename, Duplicate and Delete are cloud mutations. */
+function ArtifactMenuItems({artifact, pinned}: {artifact: ArtifactSummary; pinned: boolean}) {
+	const copyLink = useCopyArtifactLink();
+	return (
+		<>
+			<MenuItem
+				icon={pinned ? <PinOff aria-hidden="true" /> : <Pin aria-hidden="true" />}
+				onSelect={() => togglePin(artifact, pinned)}
+			>
+				{pinned ? "Unpin" : "Pin"}
+			</MenuItem>
+			<MenuItem icon={<LinkIcon aria-hidden="true" />} onSelect={() => void copyLink(artifact)}>
+				Copy link
+			</MenuItem>
+		</>
+	);
+}
+
+/** The hover Pin button and the "More options" ⋮ menu at the end of an artifact row or card. */
+function ArtifactRowActions({artifact, pinned}: {artifact: ArtifactSummary; pinned: boolean}) {
+	const pinLabel = pinned ? "Unpin" : "Pin";
+	return (
+		<span className="flex shrink-0 items-center gap-0.5">
+			<Tooltip content={pinLabel}>
+				<button
+					type="button"
+					aria-label={`${pinLabel} ${artifact.title}`}
+					aria-pressed={pinned}
+					className={ROW_ACTION_CLASS}
+					onClick={() => togglePin(artifact, pinned)}
+				>
+					{pinned ? (
+						<PinOff aria-hidden="true" className="size-4" />
+					) : (
+						<Pin aria-hidden="true" className="size-4" />
+					)}
+				</button>
+			</Tooltip>
+			<Menu>
+				<MenuTrigger aria-label={`More options for ${artifact.title}`} className={ROW_ACTION_CLASS}>
+					<EllipsisVertical aria-hidden="true" className="size-4" />
+				</MenuTrigger>
+				<MenuContent align="end">
+					<ArtifactMenuItems artifact={artifact} pinned={pinned} />
+				</MenuContent>
+			</Menu>
+		</span>
+	);
+}
+
+/** Right-click on a row or card opens the same items as its ⋮ menu. */
+function ArtifactContextMenu({
+	artifact,
+	pinned,
+	children,
+}: {
+	artifact: ArtifactSummary;
+	pinned: boolean;
+	children: ReactNode;
+}) {
+	return (
+		<ContextMenu>
+			<ContextMenuTrigger className="contents">{children}</ContextMenuTrigger>
+			<MenuContent>
+				<ArtifactMenuItems artifact={artifact} pinned={pinned} />
+			</MenuContent>
+		</ContextMenu>
+	);
+}
+
+function ArtifactList({pinned, artifacts, now}: {pinned: ArtifactSummary[]; artifacts: ArtifactSummary[]; now: Date}) {
 	const idPrefix = useId();
-	const groups = groupArtifactsByDate(artifacts, now);
+	const groups = [
+		...(pinned.length > 0 ? [{label: "Pinned", items: pinned, pinned: true}] : []),
+		...groupArtifactsByDate(artifacts, now).map((group) => ({...group, pinned: false})),
+	];
 	return (
 		<div className="-mx-3 flex flex-col gap-3">
 			{groups.map((group, index) => {
@@ -309,24 +429,27 @@ function ArtifactList({artifacts, now}: {artifacts: ArtifactSummary[]; now: Date
 						<ul role="list" aria-labelledby={headingId} className="flex flex-col">
 							{group.items.map((artifact) => (
 								<li key={artifact.url} data-gallery-card="" className="group/cdsrow relative">
-									<PrimaryLink artifact={artifact} className="rounded" />
-									<div className="pointer-events-none grid grid-cols-[2.25rem_minmax(0,1fr)_max-content] items-center gap-x-3 rounded px-3 py-1 group-hover/cdsrow:bg-fill-ghost-hover group-has-[:focus-visible]/cdsrow:bg-fill-ghost-hover">
-										<TypeTile kind={artifact.kind} />
-										<div className="flex min-h-10 min-w-0 flex-col justify-center gap-0.5 sm:pr-8">
-											<span
-												aria-hidden="true"
-												className="min-w-0 truncate text-body text-primary"
-											>
-												{artifact.title}
-											</span>
+									<ArtifactContextMenu artifact={artifact} pinned={group.pinned}>
+										<PrimaryLink artifact={artifact} className="rounded" />
+										<div className="pointer-events-none grid grid-cols-[2.25rem_minmax(0,1fr)_max-content] items-center gap-x-3 rounded px-3 py-1 group-hover/cdsrow:bg-fill-ghost-hover group-has-[:focus-visible]/cdsrow:bg-fill-ghost-hover">
+											<TypeTile kind={artifact.kind} />
+											<div className="flex min-h-10 min-w-0 flex-col justify-center gap-0.5 sm:pr-8">
+												<span
+													aria-hidden="true"
+													className="min-w-0 truncate text-body text-primary"
+												>
+													{artifact.title}
+												</span>
+											</div>
+											<div className="flex min-w-0 items-center justify-end gap-1.5 whitespace-nowrap text-footnote tabular-nums text-secondary">
+												<ArtifactChips artifact={artifact} />
+												<span className="hidden items-center gap-1 sm:flex">
+													<PrivacyAndDate artifact={artifact} now={now} />
+												</span>
+												<ArtifactRowActions artifact={artifact} pinned={group.pinned} />
+											</div>
 										</div>
-										<div className="flex min-w-0 items-center justify-end gap-1.5 whitespace-nowrap text-footnote tabular-nums text-secondary">
-											<ArtifactChips artifact={artifact} />
-											<span className="hidden items-center gap-1 sm:flex">
-												<PrivacyAndDate artifact={artifact} now={now} />
-											</span>
-										</div>
-									</div>
+									</ArtifactContextMenu>
 								</li>
 							))}
 						</ul>
@@ -337,32 +460,45 @@ function ArtifactList({artifacts, now}: {artifacts: ArtifactSummary[]; now: Date
 	);
 }
 
-function ArtifactGrid({artifacts, now}: {artifacts: ArtifactSummary[]; now: Date}) {
+function ArtifactGrid({
+	artifacts,
+	now,
+	isPinned,
+}: {
+	artifacts: ArtifactSummary[];
+	now: Date;
+	isPinned: (url: string) => boolean;
+}) {
 	return (
 		<ul role="list" className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3">
 			{artifacts.map((artifact) => (
-				<li key={artifact.url} data-gallery-card="" className="group relative h-full">
-					<PrimaryLink artifact={artifact} className="rounded-card" />
-					<div className="pointer-events-none relative flex h-full flex-col overflow-hidden rounded-card border border-border bg-surface-2 group-hover:bg-surface-1">
-						<div className="relative h-[160px] select-none overflow-hidden">
-							<TypeTile kind={artifact.kind} size="card" />
+				<li key={artifact.url} data-gallery-card="" className="group group/cdsrow relative h-full">
+					<ArtifactContextMenu artifact={artifact} pinned={isPinned(artifact.url)}>
+						<PrimaryLink artifact={artifact} className="rounded-card" />
+						<div className="pointer-events-none relative flex h-full flex-col overflow-hidden rounded-card border border-border bg-surface-2 group-hover:bg-surface-1">
+							<div className="relative h-[160px] select-none overflow-hidden">
+								<TypeTile kind={artifact.kind} size="card" />
+							</div>
+							<div className="mx-px border-t border-alpha-1" />
+							<div className="relative flex flex-1 flex-col gap-1.5 p-3">
+								<div
+									aria-hidden="true"
+									className="line-clamp-2 min-w-0 text-left text-body leading-5 font-medium text-primary"
+								>
+									{artifact.title}
+								</div>
+								<div className="mt-auto flex flex-wrap items-center gap-1 text-caption text-ink-muted">
+									<PrivacyAndDate artifact={artifact} now={now} />
+								</div>
+								<div className="flex items-center gap-1.5">
+									<ArtifactChips artifact={artifact} />
+									<span className="ms-auto">
+										<ArtifactRowActions artifact={artifact} pinned={isPinned(artifact.url)} />
+									</span>
+								</div>
+							</div>
 						</div>
-						<div className="mx-px border-t border-alpha-1" />
-						<div className="relative flex flex-1 flex-col gap-1.5 p-3">
-							<div
-								aria-hidden="true"
-								className="line-clamp-2 min-w-0 text-left text-body leading-5 font-medium text-primary"
-							>
-								{artifact.title}
-							</div>
-							<div className="mt-auto flex flex-wrap items-center gap-1 text-caption text-ink-muted">
-								<PrivacyAndDate artifact={artifact} now={now} />
-							</div>
-							<div className="flex items-center gap-1.5">
-								<ArtifactChips artifact={artifact} />
-							</div>
-						</div>
-					</div>
+					</ArtifactContextMenu>
 				</li>
 			))}
 		</ul>
