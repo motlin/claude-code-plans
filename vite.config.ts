@@ -1,3 +1,4 @@
+import {execFileSync} from "node:child_process";
 import {defineConfig} from "vite-plus";
 import {tanstackStart} from "@tanstack/react-start/plugin/vite";
 import {nitro} from "nitro/vite";
@@ -9,7 +10,19 @@ import {devWorkerProxy} from "./src/lib/dev-worker-proxy";
 // Names the dev process in ps; production uses SERVER_PROCESS_TITLE instead.
 process.title = "claude-code-browser";
 
+// Field perf samples (src/lib/perf/journey.ts) are grouped by the commit they were built from.
+function buildSha(): string {
+	try {
+		return execFileSync("git", ["rev-parse", "--short", "HEAD"], {encoding: "utf8"}).trim();
+	} catch {
+		return "unknown";
+	}
+}
+
 export default defineConfig({
+	define: {
+		__CCB_BUILD_SHA__: JSON.stringify(buildSha()),
+	},
 	fmt: {
 		semi: true,
 		singleQuote: false,
