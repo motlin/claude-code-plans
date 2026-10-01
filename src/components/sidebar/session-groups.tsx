@@ -24,6 +24,7 @@ import {
 	buildGroups,
 	customGroupIdOfKey,
 	DEFAULT_SESSION_LIST_PREFS,
+	EMPTY_LIST_GROUP_LABELS,
 	PINNED_GROUP_KEY,
 	type SessionGroup,
 	sessionRowComparator,
@@ -43,7 +44,7 @@ import {assertNever} from "../../lib/assert-never";
 import {useSettings} from "../settings-provider";
 import {useToast} from "../toast";
 import {LoadingBars} from "./primitives/LoadingBars";
-import {GroupSection, ROW_CLASS, type SidebarSessionRow, toGroupRow} from "./session-group-section";
+import {EmptyGroupSection, GroupSection, ROW_CLASS, type SidebarSessionRow, toGroupRow} from "./session-group-section";
 import {SidebarSelectionContext, type SidebarSelectionApi} from "./selection-context";
 import {PinnedSubList} from "./sublists";
 import {useRovingFocus} from "./use-roving-focus";
@@ -67,7 +68,7 @@ export function SessionGroups({
 	prefs = DEFAULT_SESSION_LIST_PREFS,
 }: {
 	activeItemId: string | null;
-	/** Rendered at the end of the first group header, wherever that group is. */
+	/** Rendered at the end of the first group header, or of the empty-list header when no group renders. */
 	filterSlot?: ReactNode;
 	prefs?: SessionListPrefs;
 }) {
@@ -280,6 +281,9 @@ export function SessionGroups({
 						);
 						return index === firstUngroupedIndex && ungroupRow !== null ? [ungroupRow, section] : section;
 					})}
+					{groups.length === 0 && (
+						<EmptyGroupSection label={EMPTY_LIST_GROUP_LABELS[prefs.groupBy]} filterSlot={filterSlot} />
+					)}
 					{firstUngroupedIndex === -1 && ungroupRow}
 					<div ref={listEndRef} aria-hidden="true" data-sidebar-list-end />
 				</div>

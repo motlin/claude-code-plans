@@ -367,6 +367,15 @@ export function buildGroups<Row extends SessionGroupRow>(
 	}
 }
 
+/** The header label the sidebar shows over an empty list, so its Filter control stays reachable. */
+export const EMPTY_LIST_GROUP_LABELS = {
+	state: sessionBucketLabels.done,
+	date: "Today",
+	project: "Other",
+	custom: "Ungrouped",
+	none: "Recents",
+} as const satisfies Record<SessionGroupBy, string>;
+
 const LEGACY_GROUPING = {
 	project: "project",
 	time: "date",

@@ -59,7 +59,10 @@ function storedPrefs(): unknown {
 	return raw === null ? null : JSON.parse(raw);
 }
 
-async function renderSidebarGroups(fixture: readonly object[] = FIXTURE) {
+async function renderSidebarGroups(
+	fixture: readonly object[] = FIXTURE,
+	fixtureByStatus: Partial<Record<SessionListPrefs["statusFilter"], readonly object[]>> = {},
+) {
 	const queryClient = new QueryClient({
 		defaultOptions: {
 			queries: {retry: false, staleTime: Infinity, gcTime: Infinity, refetchOnMount: false},
@@ -68,7 +71,7 @@ async function renderSidebarGroups(fixture: readonly object[] = FIXTURE) {
 	// Each Status value is its own server query (archived sessions are filtered server-side).
 	for (const status of ["active", "archived", "all"] as const) {
 		queryClient.setQueryData(recentSessionsInfiniteQueryOptions(undefined, status).queryKey, {
-			pages: [RecentSessionsResponse.parse({sessions: fixture, nextCursor: null})],
+			pages: [RecentSessionsResponse.parse({sessions: fixtureByStatus[status] ?? fixture, nextCursor: null})],
 			pageParams: [null],
 		});
 	}
@@ -100,7 +103,7 @@ async function renderSidebarGroups(fixture: readonly object[] = FIXTURE) {
 	});
 	await router.load();
 	const result = render(<RouterProvider router={router} />);
-	await waitFor(() => expect(result.container.querySelector("[data-group-toggle]")).toBeTruthy());
+	await waitFor(() => expect(result.container.querySelector("[data-sidebar-group-label]")).toBeTruthy());
 	await flush();
 	return result;
 }
@@ -349,5 +352,29 @@ describe("sidebar Filter & group menu", () => {
 
 		expect(filterButton().getAttribute("aria-label")).toBe("Filter");
 		expect(storedPrefs()).toEqual({...DEFAULT_SESSION_LIST_PREFS, sortBy: "name"});
+	});
+
+	it("keeps Filter on an empty-list header so Clear filters can bring the rows back", async () => {
+		storePrefs({statusFilter: "archived"});
+		const {container} = await renderSidebarGroups(FIXTURE, {archived: []});
+
+		const recents = container.querySelector<HTMLElement>('[data-testid="sidebar-recents"]');
+		expect({
+			labels: [...(recents?.querySelectorAll("[data-sidebar-group-label]") ?? [])].map((node) =>
+				node.textContent?.trim(),
+			),
+			empty: recents?.querySelector("[data-sidebar-empty]")?.textContent,
+			filter: filterButton().getAttribute("aria-label"),
+		}).toStrictEqual({labels: ["Completed"], empty: "No sessions", filter: "Filter (active)"});
+
+		await openFilterMenu();
+		fireEvent.click(screen.getByRole("menuitem", {name: "Clear filters"}));
+		await flush();
+
+		expect({
+			groups: groupNames(container),
+			empty: container.querySelector("[data-sidebar-empty]"),
+			stored: storedPrefs(),
+		}).toStrictEqual({groups: ["Working", "Completed"], empty: null, stored: DEFAULT_SESSION_LIST_PREFS});
 	});
 });

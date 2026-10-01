@@ -199,6 +199,29 @@ export function GroupSection({
 	);
 }
 
+/**
+ * Stands in for the group list when no group renders (say, Status Archived with nothing
+ * archived): a header row carrying the Filter slot over a muted "No sessions" row, so a
+ * filter can never hide its own control.
+ */
+export function EmptyGroupSection({label, filterSlot}: {label: string; filterSlot: ReactNode}) {
+	return (
+		<div data-group-key="empty" className="group/section relative isolate flex flex-col gap-px">
+			<div
+				data-sidebar-group-label
+				className="df-label-inset flex min-h-[calc(var(--sb-group-pt)+var(--sb-row-h)-4px)] w-full items-center gap-[var(--sb-row-gap)] pt-[var(--sb-group-pt)] pr-[calc((var(--sb-row-h)-24px)/2)] pb-1 text-[length:var(--sb-group-font)] leading-4 text-ink-muted"
+			>
+				<span className="min-w-0 flex-1 truncate">{label}</span>
+				{filterSlot}
+			</div>
+			<div data-sidebar-empty className={`${ROW_CLASS} text-ink-muted`}>
+				<span className="df-leading-slot" />
+				No sessions
+			</div>
+		</div>
+	);
+}
+
 /** A group's muted "Show N more" / "Show less" row. */
 function OverflowRow({ariaLabel, onClick, children}: {ariaLabel: string; onClick: () => void; children: ReactNode}) {
 	return (
