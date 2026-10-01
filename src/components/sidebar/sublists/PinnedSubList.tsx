@@ -67,6 +67,7 @@ export function PinnedSubList({
 			ref={sectionRef}
 			data-testid="sidebar-pinned"
 			data-pinned-list=""
+			data-perf-region="sidebar_pinned"
 			data-stub={stub ? "" : undefined}
 			inert={stub}
 			className={`group/section flex shrink-0 flex-col gap-px ${empty ? "df-pin-section-reveal" : ""}`}

@@ -35,6 +35,7 @@ export function AppFrame({
 			<main
 				data-scroll-restoration-id="main"
 				data-focus-region="main"
+				data-perf-region="main"
 				inert={mainInert}
 				style={topLeftClearanceStyle(
 					phoneSheet ? "phone" : collapsed || narrowViewport ? "collapsed" : "docked",

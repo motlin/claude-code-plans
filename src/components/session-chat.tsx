@@ -999,7 +999,7 @@ function VirtualizedSessionEntries({
 			{entries.slice(startIndex, endIndex).map((entry, offset) => {
 				const index = startIndex + offset;
 				return (
-					<div key={entry.key} data-transcript-entry-index={index}>
+					<div key={entry.key} data-transcript-entry-index={index} data-perf-row="turn">
 						{entry.element}
 					</div>
 				);

@@ -159,6 +159,12 @@ describe("CommandPalette shell", () => {
 		});
 	});
 
+	it("marks the open palette with the data-perf-overlay anchor", async () => {
+		const dialog = await openPalette();
+
+		expect(dialog.getAttribute("data-perf-overlay")).toBe("command_palette");
+	});
+
 	it("renders sentence-case group headings in upstream order", async () => {
 		const dialog = await openPalette();
 

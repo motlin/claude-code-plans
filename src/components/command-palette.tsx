@@ -888,6 +888,7 @@ function PalettePopup({
 		<Dialog.Popup
 			ref={popupRef}
 			data-command-palette=""
+			data-perf-overlay="command_palette"
 			initialFocus={inputRef}
 			finalFocus={() => restoreFocusRef.current}
 			className={`fixed left-1/2 z-50 w-[calc(100vw-2rem)] max-w-2xl -translate-x-1/2 outline-none md:w-[calc(100vw-5rem)] ${PALETTE_RADIUS}`}

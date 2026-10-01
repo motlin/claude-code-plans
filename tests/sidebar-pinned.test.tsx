@@ -129,6 +129,15 @@ beforeEach(() => {
 });
 
 describe("sidebar Pinned section", () => {
+	it("marks the Pinned and recents lists with the upstream data-perf-region anchors", async () => {
+		const {container} = await renderGroups(FIXTURE);
+
+		expect({
+			pinned: pinnedSection(container).getAttribute("data-perf-region"),
+			recents: container.querySelector('[data-testid="sidebar-recents"]')?.getAttribute("data-perf-region"),
+		}).toStrictEqual({pinned: "sidebar_pinned", recents: "sidebar_recents"});
+	});
+
 	it("is a hidden, inert stub above the groups when nothing is pinned", async () => {
 		const {container} = await renderGroups(FIXTURE);
 

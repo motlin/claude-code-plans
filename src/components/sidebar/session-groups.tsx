@@ -239,6 +239,7 @@ export function SessionGroups({
 						zoneRef(UNPIN_ZONE)(element);
 					}}
 					data-testid="sidebar-recents"
+					data-perf-region="sidebar_recents"
 					className="flex min-h-[120px] shrink-0 grow flex-col"
 				>
 					{groups.map((group, index) => {

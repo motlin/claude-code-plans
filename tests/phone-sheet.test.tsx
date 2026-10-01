@@ -328,4 +328,11 @@ describe("narrow viewport forced collapse", () => {
 			clearance: clearanceVars(container),
 		}).toStrictEqual({collapsed: null, hide: "BUTTON", clearance: {start: "", top: ""}});
 	});
+
+	it("marks the main column with the upstream data-perf-region anchor", async () => {
+		mockViewport(1024);
+		const {container} = await renderFrame();
+
+		expect(mainElement(container).getAttribute("data-perf-region")).toBe("main");
+	});
 });

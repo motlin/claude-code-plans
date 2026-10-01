@@ -97,6 +97,17 @@ afterEach(() => {
 });
 
 describe("TileHost", () => {
+	it("marks an opened pane with the upstream side_pane region and its kind as the screen", () => {
+		renderHost("session-a");
+		openTestPane();
+
+		const root = screen.getByText("Test pane body").closest("[data-pane-root]");
+		expect({
+			region: root?.getAttribute("data-perf-region"),
+			screen: root?.getAttribute("data-perf-screen"),
+		}).toStrictEqual({region: "side_pane", screen: "plan"});
+	});
+
 	it("renders an opened pane with its surface header", () => {
 		renderHost("session-a");
 		expect(screen.queryByText("Test pane body")).toBeNull();

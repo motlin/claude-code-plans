@@ -102,4 +102,13 @@ describe("SessionChat turn rows", () => {
 			copyMessageButtons: container.querySelectorAll("[data-message-actions] button[aria-label='Copy']").length,
 		}).toStrictEqual({messageAnchors: 0, copyLinkButtons: 0, copyMessageButtons: 4});
 	});
+
+	it("marks every mounted transcript row with the upstream data-perf-row anchor", () => {
+		const container = renderWindow(RECORDS, 0);
+
+		expect({
+			rows: container.querySelectorAll("[data-transcript-entry-index]").length,
+			anchoredRows: container.querySelectorAll('[data-transcript-entry-index][data-perf-row="turn"]').length,
+		}).toStrictEqual({rows: 4, anchoredRows: 4});
+	});
 });
