@@ -34,6 +34,7 @@ import {
 	MenuTrigger,
 } from "../ui/menu";
 import {Tooltip} from "../ui/tooltip";
+import {PANE_HEADER_ICON_BUTTON_CLASS} from "./pane-classes";
 import {type PaneChrome, registerPane} from "./pane-registry";
 import {
 	FILE_SOURCE_OPTIONS,
@@ -49,9 +50,6 @@ export {
 	FILE_SOURCE_SELECTION_STORAGE_KEY,
 	useExtractedSessionFiles,
 } from "./session-files-list";
-
-const GHOST_ICON_BUTTON =
-	"flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-r5 text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary aria-pressed:bg-fill-control aria-pressed:text-primary";
 
 export interface FilesEmptyState {
 	title: string;
@@ -97,7 +95,7 @@ function TreeToggle({shown, onToggle}: {shown: boolean; onToggle: () => void}) {
 				aria-label={label}
 				aria-keyshortcuts={keys.ariaKeyShortcuts}
 				onClick={onToggle}
-				className={GHOST_ICON_BUTTON}
+				className={PANE_HEADER_ICON_BUTTON_CLASS}
 			>
 				<PanelLeft aria-hidden="true" className="size-4" />
 			</button>
@@ -125,7 +123,7 @@ function FilesSettingsMenu({
 	const {settings, setSetting} = useSettings();
 	return (
 		<Menu>
-			<MenuTrigger aria-label="Files settings" className={GHOST_ICON_BUTTON}>
+			<MenuTrigger aria-label="Files settings" className={PANE_HEADER_ICON_BUTTON_CLASS}>
 				<EllipsisVertical aria-hidden="true" className="size-4" />
 			</MenuTrigger>
 			<MenuContent align="end">
@@ -550,7 +548,7 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 							type="button"
 							aria-label="Search files"
 							onClick={searchFiles}
-							className={GHOST_ICON_BUTTON}
+							className={PANE_HEADER_ICON_BUTTON_CLASS}
 						>
 							<Search aria-hidden="true" className="size-4" />
 						</button>

@@ -223,6 +223,21 @@ describe("Files pane header", () => {
 		});
 	});
 
+	it("paints the pressed tree toggle with accent ink on a transparent background", () => {
+		registerFilesPane();
+		renderSession();
+		press(CMD_SHIFT_F);
+
+		const classes = within(filesPane()).getByRole("button", {name: "Hide file tree"}).className.split(" ");
+		expect({
+			pressed: classes.filter((name) => name.startsWith("aria-pressed:")),
+			fillControl: classes.some((name) => name.includes("bg-fill-control")),
+		}).toStrictEqual({
+			pressed: ["aria-pressed:bg-transparent", "aria-pressed:text-upstream-accent"],
+			fillControl: false,
+		});
+	});
+
 	it("the tree toggle hides the tree and switches the empty state copy", () => {
 		registerFilesPane();
 		renderSession();

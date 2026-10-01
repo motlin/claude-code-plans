@@ -27,6 +27,7 @@ import {requestComposerInsert} from "../../lib/context-attach";
 import {loadChangesScope, saveChangesScope} from "../../lib/pane-layout";
 import type {ReviewFinding} from "../../lib/review-diff";
 import {CoachMark} from "../coach-mark";
+import {PANE_HEADER_ICON_BUTTON_CLASS} from "../panes/pane-classes";
 import {type PaneChrome, registerPane} from "../panes/pane-registry";
 import {type Settings, useSettings} from "../settings-provider";
 import {usePaneHost} from "../panes/tile-host";
@@ -68,9 +69,6 @@ const FILE_LIST_FIT_MIN_WIDTH = 320;
 export const DIFF_FILE_LIST_COACH_MARK_KEY = "ccb.coachmark.diffFileList";
 
 const TOO_LARGE_TO_EXPAND = "This diff is too large to expand at once. Select a file to expand it.";
-
-const GHOST_ICON_BUTTON =
-	"flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-r5 text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary aria-pressed:bg-fill-control aria-pressed:text-primary";
 
 export function isLargeDiff(files: readonly SessionDiffFile[]): boolean {
 	if (files.length > LARGE_DIFF_MAX_FILES) return true;
@@ -320,7 +318,7 @@ function SettingsMenu({
 	const showFilesKeys = useShortcutKeys("toggle_changes_file_list");
 	return (
 		<Menu>
-			<MenuTrigger aria-label="Changes settings" className={GHOST_ICON_BUTTON}>
+			<MenuTrigger aria-label="Changes settings" className={PANE_HEADER_ICON_BUTTON_CLASS}>
 				<EllipsisVertical aria-hidden="true" className="size-4" />
 			</MenuTrigger>
 			<MenuContent align="end">
@@ -435,7 +433,7 @@ function ShowFilesToggle({
 				aria-label={label}
 				aria-keyshortcuts={keys.ariaKeyShortcuts}
 				onClick={onToggle}
-				className={GHOST_ICON_BUTTON}
+				className={PANE_HEADER_ICON_BUTTON_CLASS}
 			>
 				<List aria-hidden="true" className="size-4" />
 			</button>

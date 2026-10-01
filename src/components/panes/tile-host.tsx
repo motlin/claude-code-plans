@@ -37,6 +37,7 @@ import {
 } from "../../lib/pane-layout";
 import {usePhoneSheet} from "../../lib/use-phone-sheet";
 import {Tooltip} from "../ui/tooltip";
+import {PANE_HEADER_ICON_BUTTON_CLASS} from "./pane-classes";
 import {type PaneDefinition, usePaneDefinitions} from "./pane-registry";
 
 /** Upstream `--tiles-gap`, mirrored by the reducer's gap maths. */
@@ -276,7 +277,7 @@ function Divider({
 		>
 			<span
 				aria-hidden
-				className={`rounded-full bg-fill-control opacity-0 transition-opacity duration-[120ms] group-hover/divider:opacity-100 group-focus-visible/divider:bg-accent-100 group-focus-visible/divider:opacity-100 group-active/divider:bg-fill-primary group-active/divider:opacity-100 ${
+				className={`rounded-full bg-fill-grip opacity-0 transition-opacity duration-[120ms] group-hover/divider:opacity-100 group-focus-visible/divider:bg-accent-100 group-focus-visible/divider:opacity-100 group-active/divider:bg-fill-primary group-active/divider:opacity-100 ${
 					isRow ? "h-14 w-[3px]" : "h-[3px] w-14"
 				}`}
 			/>
@@ -312,7 +313,7 @@ function PaneSurface({kind, definition, host}: {kind: PaneKind; definition: Pane
 			onKeyDown={onMoveKeyDown}
 			className="group/move absolute top-0 left-1/2 flex h-4 w-11 -translate-x-1/2 cursor-move items-center justify-center outline-none"
 		>
-			<span className="h-[3px] w-8 rounded-full bg-fill-control opacity-0 transition-opacity group-hover/move:opacity-100 group-focus-visible/move:bg-accent-100 group-focus-visible/move:opacity-100" />
+			<span className="h-[3px] w-8 rounded-full bg-fill-grip opacity-0 transition-opacity group-hover/move:opacity-100 group-focus-visible/move:bg-accent-100 group-focus-visible/move:opacity-100" />
 			<span id={moveHintId} className="sr-only">
 				Arrow keys move the tile.
 			</span>
@@ -327,7 +328,7 @@ function PaneSurface({kind, definition, host}: {kind: PaneKind; definition: Pane
 					aria-label={isExpanded ? "Collapse" : "Expand"}
 					aria-keyshortcuts={expandKeys.ariaKeyShortcuts}
 					onClick={() => host.update((state) => (isExpanded ? collapsePane(state) : expandPane(state, kind)))}
-					className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-r5 text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary"
+					className={PANE_HEADER_ICON_BUTTON_CLASS}
 				>
 					{isExpanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
 				</button>
@@ -338,7 +339,7 @@ function PaneSurface({kind, definition, host}: {kind: PaneKind; definition: Pane
 					aria-label="Close"
 					aria-keyshortcuts={closeKeys.ariaKeyShortcuts}
 					onClick={() => host.update((state) => closePane(state, kind))}
-					className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-r5 text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary"
+					className={PANE_HEADER_ICON_BUTTON_CLASS}
 				>
 					<X className="h-4 w-4" />
 				</button>
@@ -354,7 +355,7 @@ function PaneSurface({kind, definition, host}: {kind: PaneKind; definition: Pane
 			data-perf-screen={kind}
 			data-focus-region="pane"
 			aria-label={definition.title}
-			className="relative isolate flex h-full min-w-0 flex-col rounded-card bg-surface-2 shadow-panel-sm"
+			className="relative isolate flex h-full min-w-0 flex-col rounded-r7 bg-surface-2 shadow-panel-sm"
 		>
 			{definition.header === "custom" ? (
 				definition.render({moveHandle, controls})

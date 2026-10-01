@@ -192,6 +192,20 @@ describe("ChangesPaneView", () => {
 		expect(screen.getByRole("button", {name: "Hide files"}).getAttribute("aria-pressed")).toBe("true");
 	});
 
+	it("paints the pressed Hide files toggle with accent ink on a transparent background", () => {
+		renderPane([GREET_FILE]);
+
+		fireEvent.click(screen.getByRole("button", {name: "Show files"}));
+		const classes = screen.getByRole("button", {name: "Hide files"}).className.split(" ");
+		expect({
+			pressed: classes.filter((name) => name.startsWith("aria-pressed:")),
+			fillControl: classes.some((name) => name.includes("bg-fill-control")),
+		}).toStrictEqual({
+			pressed: ["aria-pressed:bg-transparent", "aria-pressed:text-upstream-accent"],
+			fillControl: false,
+		});
+	});
+
 	it("counts files whose diff content is unavailable", () => {
 		renderPane([GREET_FILE, LOGO_FILE]);
 

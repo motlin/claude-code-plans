@@ -108,6 +108,31 @@ describe("TileHost", () => {
 		}).toStrictEqual({region: "side_pane", screen: "plan"});
 	});
 
+	it("draws the pane surface with upstream's 10px radius and primary-ink header buttons", () => {
+		renderHost("session-a");
+		openTestPane();
+
+		const root = screen.getByText("Test pane body").closest("section[data-pane-root]");
+		const classesOf = (name: string) => screen.getByRole("button", {name}).className.split(" ");
+		expect({
+			radius: root?.classList.contains("rounded-r7"),
+			card: root?.classList.contains("rounded-card"),
+			expand: {
+				primary: classesOf("Expand").includes("text-primary"),
+				secondary: classesOf("Expand").includes("text-secondary"),
+			},
+			close: {
+				primary: classesOf("Close").includes("text-primary"),
+				secondary: classesOf("Close").includes("text-secondary"),
+			},
+		}).toStrictEqual({
+			radius: true,
+			card: false,
+			expand: {primary: true, secondary: false},
+			close: {primary: true, secondary: false},
+		});
+	});
+
 	it("renders an opened pane with its surface header", () => {
 		renderHost("session-a");
 		expect(screen.queryByText("Test pane body")).toBeNull();
