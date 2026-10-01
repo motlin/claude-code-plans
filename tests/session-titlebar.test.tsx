@@ -8,6 +8,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {SessionTitlebar} from "../src/components/session-titlebar";
 import {ToastProvider} from "../src/components/toast";
+import {SESSION_STICKY_HEADER_CLASS} from "../src/components/titlebar-classes";
 import {herdrPanesQueryOptions} from "../src/lib/api/herdr";
 import {sessionOpenInQueryOptions, type SessionDetailData} from "../src/lib/api/sessions";
 import {__unreadStoreTesting} from "../src/lib/unread-store";
@@ -146,12 +147,6 @@ function controlsIn(container: Element): string[] {
 	return [...container.querySelectorAll("button, a")].map(accessibleName);
 }
 
-async function openProjectMenu(): Promise<string[]> {
-	fireEvent.click(screen.getByRole("button", {name: "avalonlogs"}));
-	await flush();
-	return screen.getAllByRole("menuitem").map((item) => item.textContent ?? "");
-}
-
 beforeEach(() => {
 	resizeCallbacks.length = 0;
 	vi.stubGlobal("ResizeObserver", TestResizeObserver);
@@ -196,11 +191,9 @@ describe("SessionTitlebar layout", () => {
 				"Parent session",
 				`${TITLE}, rename session`,
 				`More options for ${TITLE}`,
-				"avalonlogs",
 				`Forked from ${FORKED_FROM_ID.slice(0, 8)}`,
 			],
 			pills: [
-				"project:avalonlogs",
 				"model:Haiku 4.5",
 				"entrypoint:sdk-ts",
 				"kind:background",
@@ -225,8 +218,8 @@ describe("SessionTitlebar layout", () => {
 			),
 			allSessions: screen.queryByText("All Sessions"),
 		}).toStrictEqual({
-			lead: [`${TITLE}, rename session`, `More options for ${TITLE}`, "avalonlogs"],
-			pills: ["project"],
+			lead: [`${TITLE}, rename session`, `More options for ${TITLE}`],
+			pills: [],
 			allSessions: null,
 		});
 	});
@@ -246,50 +239,26 @@ describe("SessionTitlebar layout", () => {
 	});
 });
 
-describe("SessionTitlebar project pill", () => {
-	it("offers Finder, path, branch and the GitHub repository when known", async () => {
-		await renderTitlebar(fullDetail);
-
-		expect(await openProjectMenu()).toStrictEqual([
-			"Open in Finder",
-			"Copy path",
-			"Copy branch name",
-			"Open repository on GitHub",
-		]);
-	});
-
-	it("drops branch and repository items when the session has neither", async () => {
-		await renderTitlebar({...baseDetail, gitBranch: null});
-
-		expect(await openProjectMenu()).toStrictEqual(["Open in Finder", "Copy path"]);
-	});
-
-	it("wires each item to its action", async () => {
-		await renderTitlebar(fullDetail);
-
-		await openProjectMenu();
-		fireEvent.click(screen.getByRole("menuitem", {name: "Copy path"}));
-		await flush();
-		await openProjectMenu();
-		fireEvent.click(screen.getByRole("menuitem", {name: "Copy branch name"}));
-		await flush();
-		await openProjectMenu();
-		fireEvent.click(screen.getByRole("menuitem", {name: "Open repository on GitHub"}));
-		await flush();
-		await openProjectMenu();
-		fireEvent.click(screen.getByRole("menuitem", {name: "Open in Finder"}));
-		await flush();
+describe("SessionTitlebar chrome", () => {
+	it("matches upstream's borderless 32px bar with a 13px/19px title and no project chip", async () => {
+		const titlebar = await renderTitlebar(baseDetail);
+		const title = screen.getByRole("button", {name: `${TITLE}, rename session`});
+		const headerClasses = SESSION_STICKY_HEADER_CLASS.split(" ");
 
 		expect({
-			clipboard: writeText.mock.calls,
-			opened: openMock.mock.calls,
-			posts: fetchMock.mock.calls
-				.filter(([, init]) => init?.method === "POST")
-				.map(([input, init]) => [typeof input === "string" ? input : "", init?.body]),
+			height: titlebar.classList.contains("h-8"),
+			titleType: ["text-[13px]/[19px]", "font-medium"].every((name) => title.classList.contains(name)),
+			projectChip: titlebar.querySelector("[data-origin-pill='project']"),
+			projectButton: screen.queryByRole("button", {name: "avalonlogs"}),
+			headerBorder: headerClasses.filter((name) => /^border(-|$)/.test(name)),
+			headerBottomPadding: headerClasses.filter((name) => /^(pb|py|p)-/.test(name)),
 		}).toStrictEqual({
-			clipboard: [[PROJECT_PATH], ["alice/sync-upstream"]],
-			opened: [["https://github.com/alice/avalonlogs", "_blank", "noopener,noreferrer"]],
-			posts: [["/api/open-in-finder", JSON.stringify({sessionId: SESSION_ID})]],
+			height: true,
+			titleType: true,
+			projectChip: null,
+			projectButton: null,
+			headerBorder: [],
+			headerBottomPadding: [],
 		});
 	});
 });
@@ -317,8 +286,8 @@ describe("SessionTitlebar pill collapse", () => {
 		const narrow = compactState(titlebar);
 
 		expect({wide, narrow}).toStrictEqual({
-			wide: {compact: false, srOnlyLabels: [false, false]},
-			narrow: {compact: true, srOnlyLabels: [true, true]},
+			wide: {compact: false, srOnlyLabels: [false]},
+			narrow: {compact: true, srOnlyLabels: [true]},
 		});
 	});
 
@@ -335,9 +304,9 @@ describe("SessionTitlebar pill collapse", () => {
 		const at559 = compactState(titlebar);
 
 		expect({at600, at560, at559}).toStrictEqual({
-			at600: {compact: false, srOnlyLabels: [false, false]},
-			at560: {compact: false, srOnlyLabels: [false, false]},
-			at559: {compact: true, srOnlyLabels: [true, true]},
+			at600: {compact: false, srOnlyLabels: [false]},
+			at560: {compact: false, srOnlyLabels: [false]},
+			at559: {compact: true, srOnlyLabels: [true]},
 		});
 	});
 });

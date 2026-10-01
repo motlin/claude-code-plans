@@ -1,17 +1,6 @@
 import {useQuery} from "@tanstack/react-query";
 import {Link, useNavigate} from "@tanstack/react-router";
-import {
-	AppWindow,
-	ArrowLeft,
-	Bot,
-	ChevronDown,
-	CircleDollarSign,
-	Cpu,
-	FolderGit2,
-	GitFork,
-	Tag,
-	Users,
-} from "lucide-react";
+import {AppWindow, ArrowLeft, Bot, ChevronDown, CircleDollarSign, Cpu, GitFork, Tag, Users} from "lucide-react";
 import {type ReactNode, useEffect, useRef, useState} from "react";
 
 import {useSessionRename} from "../hooks/use-session-rename";
@@ -42,7 +31,7 @@ import {Tooltip} from "./ui/tooltip";
 const PILLS_COMPACT_BELOW_PX = 560;
 
 const TITLE_CLASS =
-	"h-[26px] min-w-0 cursor-text truncate rounded-r5 border-0 bg-transparent px-1.5 text-left text-body font-medium text-primary select-none hover:bg-fill-ghost-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100";
+	"h-[26px] min-w-0 cursor-text truncate rounded-r5 border-0 bg-transparent px-1.5 text-left text-[13px]/[19px] font-medium text-primary select-none hover:bg-fill-ghost-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100";
 
 const CHEVRON_CLASS =
 	"flex size-[26px] shrink-0 cursor-pointer items-center justify-center rounded-r5 text-secondary transition-colors hover:bg-fill-ghost-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100 data-[popup-open]:bg-fill-ghost-hover";
@@ -132,7 +121,7 @@ function OriginPill({
 /** The session fields the project menu reads. */
 export type ProjectMenuSession = Pick<SessionDetailData, "projectPath" | "cwd" | "gitBranch" | "pr">;
 
-/** The project menu's items, shared by the titlebar pill and the composer branch strip. */
+/** The project menu's items, opened from the composer branch strip's project button. */
 export function ProjectMenuItems({sessionId, session}: {sessionId: string; session: ProjectMenuSession}) {
 	const toast = useToast();
 	const path = session.projectPath ?? session.cwd;
@@ -162,20 +151,6 @@ export function ProjectMenuItems({sessionId, session}: {sessionId: string; sessi
 				</MenuItem>
 			)}
 		</>
-	);
-}
-
-function ProjectPill({sessionId, data, compact}: {sessionId: string; data: SessionDetailData; compact: boolean}) {
-	const path = data.projectPath ?? data.cwd;
-	return (
-		<Menu>
-			<MenuTrigger data-origin-pill="project" title={path ?? data.projectName} className={PILL_CLASS}>
-				<PillContent icon={FolderGit2} label={data.projectName} compact={compact} />
-			</MenuTrigger>
-			<MenuContent>
-				<ProjectMenuItems sessionId={sessionId} session={data} />
-			</MenuContent>
-		</Menu>
 	);
 }
 
@@ -336,7 +311,7 @@ export interface SessionTitlebarProps {
 /**
  * claude.ai/code's 32px session titlebar. Lead: the parent-session back pill
  * (subagent transcripts only), the rename title button, the chevron header
- * menu and the origin pills (project menu plus local badges), which collapse
+ * menu and the origin pills (local badges), which collapse
  * to icons when narrow. Trail: pane toggles, then View options.
  */
 export function SessionTitlebar({
@@ -410,7 +385,6 @@ export function SessionTitlebar({
 					data-origin-pills=""
 					className={`flex items-center gap-[3px] ${compact ? "shrink-0" : "min-w-0"}`}
 				>
-					<ProjectPill sessionId={sessionId} data={data} compact={compact} />
 					{modelLabel !== null && <OriginPill kind="model" icon={Cpu} label={modelLabel} compact={compact} />}
 					{data.costState !== undefined && (
 						<SessionCostPill cost={data.costState} className={`${PILL_CLASS} cursor-pointer`}>

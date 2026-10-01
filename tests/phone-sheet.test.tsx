@@ -150,7 +150,17 @@ describe("phone sheet sidebar", () => {
 		expect({
 			expanded: trigger.getAttribute("aria-expanded"),
 			controls: trigger.getAttribute("aria-controls"),
-		}).toStrictEqual({expanded: "false", controls: "sidebar-sheet"});
+			geometry: {
+				left: trigger.style.left,
+				top: trigger.style.top,
+				width: trigger.style.width,
+				height: trigger.style.height,
+			},
+		}).toStrictEqual({
+			expanded: "false",
+			controls: "sidebar-sheet",
+			geometry: {left: "16px", top: "4px", width: "24px", height: "24px"},
+		});
 		expect({
 			role: sheet().getAttribute("role"),
 			modal: sheet().getAttribute("aria-modal"),
@@ -162,7 +172,7 @@ describe("phone sheet sidebar", () => {
 			clearance: clearanceVars(container),
 		}).toStrictEqual({
 			inert: false,
-			clearance: {start: "", top: ""},
+			clearance: {start: "44px", top: "0px"},
 		});
 	});
 

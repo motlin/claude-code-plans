@@ -1,12 +1,13 @@
 import {useRouter} from "@tanstack/react-router";
 import {useEffect, useRef, useState, type CSSProperties, type PointerEvent} from "react";
 import {shouldClose, swipeIntent} from "../../lib/sheet-swipe";
+import {PHONE_SIDEBAR_TOGGLE} from "../../lib/top-left-clearance";
 import {Sidebar} from "./Sidebar";
 import {SidebarToggleIcon} from "./primitives";
 
 const PHONE_SHEET_ID = "sidebar-sheet";
 
-/** claude.ai/code's 32x32 "Show sidebar" trigger floating at 8,8 on phones. */
+/** claude.ai/code's phone "Show sidebar" trigger: 24px, in the titlebar's lead slot (see `topLeftClearance`). */
 export function PhoneSheetTrigger({open, onOpen}: {open: boolean; onOpen: () => void}) {
 	return (
 		<button
@@ -15,7 +16,13 @@ export function PhoneSheetTrigger({open, onOpen}: {open: boolean; onOpen: () => 
 			aria-expanded={open}
 			aria-controls={PHONE_SHEET_ID}
 			onClick={onOpen}
-			className="fixed top-2 left-2 z-40 flex h-8 w-8 items-center justify-center rounded-r5 text-primary transition-colors hover:bg-fill-ghost-hover [&_svg]:h-4 [&_svg]:w-4"
+			style={{
+				left: `${PHONE_SIDEBAR_TOGGLE.left}px`,
+				top: `${PHONE_SIDEBAR_TOGGLE.top}px`,
+				width: `${PHONE_SIDEBAR_TOGGLE.size}px`,
+				height: `${PHONE_SIDEBAR_TOGGLE.size}px`,
+			}}
+			className="fixed z-40 flex items-center justify-center rounded-r5 text-primary transition-colors hover:bg-fill-ghost-hover [&_svg]:h-4 [&_svg]:w-4"
 		>
 			<SidebarToggleIcon />
 		</button>

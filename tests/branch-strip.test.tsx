@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
-import {cleanup, fireEvent, render, type RenderResult} from "@testing-library/react";
-import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
+import {act, cleanup, fireEvent, render, type RenderResult, screen} from "@testing-library/react";
+import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {BranchStrip, type BranchStripSession, middleTruncate} from "../src/components/branch-strip";
 import {ToastProvider} from "../src/components/toast";
@@ -137,5 +137,82 @@ describe("middleTruncate", () => {
 
 	it("keeps the start and end of long names", () => {
 		expect(middleTruncate("feature/abcdefghijklmnop-end", 12)).toBe("featur…p-end");
+	});
+});
+
+describe("BranchStrip project menu", () => {
+	const fetchMock = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>();
+	const writeText = vi.fn<(text: string) => Promise<void>>();
+	const openMock = vi.fn<typeof window.open>();
+	const withRepository: BranchStripSession = {
+		...SESSION,
+		pr: {number: 42, url: "https://github.com/o/r/pull/42", repository: "o/r"},
+	};
+
+	async function flush() {
+		await act(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 0));
+		});
+	}
+
+	async function openProjectMenu(): Promise<string[]> {
+		fireEvent.click(screen.getByRole("button", {name: "claude-code-plans"}));
+		await flush();
+		return screen.getAllByRole("menuitem").map((item) => item.textContent ?? "");
+	}
+
+	beforeEach(() => {
+		vi.stubGlobal("fetch", fetchMock);
+		vi.stubGlobal("open", openMock);
+		fetchMock.mockReset();
+		fetchMock.mockImplementation(async () => Response.json({ok: true}));
+		writeText.mockReset();
+		writeText.mockResolvedValue(undefined);
+		openMock.mockReset();
+		openMock.mockReturnValue(null);
+		Object.defineProperty(navigator, "clipboard", {value: {writeText}, configurable: true});
+	});
+
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	it("offers Finder, path, branch and the GitHub repository when known", async () => {
+		renderStrip(withRepository);
+
+		expect(await openProjectMenu()).toStrictEqual([
+			"Open in Finder",
+			"Copy path",
+			"Copy branch name",
+			"Open repository on GitHub",
+		]);
+	});
+
+	it("drops branch and repository items when the session has neither", async () => {
+		renderStrip({...SESSION, gitBranch: null});
+
+		expect(await openProjectMenu()).toStrictEqual(["Open in Finder", "Copy path"]);
+	});
+
+	it("wires each item to its action", async () => {
+		renderStrip(withRepository);
+
+		for (const item of ["Copy path", "Copy branch name", "Open repository on GitHub", "Open in Finder"]) {
+			await openProjectMenu();
+			fireEvent.click(screen.getByRole("menuitem", {name: item}));
+			await flush();
+		}
+
+		expect({
+			clipboard: writeText.mock.calls,
+			opened: openMock.mock.calls,
+			posts: fetchMock.mock.calls
+				.filter(([, init]) => init?.method === "POST")
+				.map(([input, init]) => [typeof input === "string" ? input : "", init?.body]),
+		}).toStrictEqual({
+			clipboard: [["/work/claude-code-plans"], ["feature/branch-strip"]],
+			opened: [["https://github.com/o/r", "_blank", "noopener,noreferrer"]],
+			posts: [["/api/open-in-finder", JSON.stringify({sessionId: "session-1"})]],
+		});
 	});
 });

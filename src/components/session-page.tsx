@@ -13,7 +13,7 @@ import {useSettings} from "./settings-provider";
 import {useTranscriptModeShortcut} from "../hooks/use-session-transcript-mode";
 import {sessionHasThinking} from "../lib/transcript-mode";
 import {SessionTitlebar} from "./session-titlebar";
-import {TITLEBAR_ICON_BUTTON_CLASS} from "./titlebar-classes";
+import {SESSION_STICKY_HEADER_CLASS, TITLEBAR_ICON_BUTTON_CLASS} from "./titlebar-classes";
 import {useHasUnseenWork} from "./session-unread-control";
 import {syncUnseenFromSummaries} from "../lib/unread-store";
 import {AskUserQuestionProvider, type AskUserQuestionContextValue} from "./ask-user-question-context";
@@ -667,10 +667,7 @@ function SessionView({
 				<ChangesPaneShortcut />
 				{/* Sticky header: titlebar + hook context */}
 				{!chromeHidden && (
-					<div
-						data-transcript-sticky-header
-						className="sticky top-0 z-10 bg-surface-2 pt-[var(--top-left-clearance-top,0px)] pb-1 -mx-4 pe-4 ps-[max(1rem,var(--top-left-clearance-start,0px))] sm:-mx-8 sm:pe-8 sm:ps-[max(2rem,var(--top-left-clearance-start,0px))] border-b border-border"
-					>
+					<div data-transcript-sticky-header className={SESSION_STICKY_HEADER_CLASS}>
 						<SessionTitlebar
 							sessionId={sessionId}
 							data={data}

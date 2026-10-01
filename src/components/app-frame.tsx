@@ -36,7 +36,9 @@ export function AppFrame({
 				data-scroll-restoration-id="main"
 				data-focus-region="main"
 				inert={mainInert}
-				style={topLeftClearanceStyle(!phoneSheet && (collapsed || narrowViewport))}
+				style={topLeftClearanceStyle(
+					phoneSheet ? "phone" : collapsed || narrowViewport ? "collapsed" : "docked",
+				)}
 				className={`flex-1 overflow-y-auto bg-surface-2 ${className ?? ""}`}
 			>
 				{children}
