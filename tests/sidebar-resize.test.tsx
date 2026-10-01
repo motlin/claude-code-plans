@@ -97,7 +97,7 @@ describe("sidebar resize handle", () => {
 		}).toStrictEqual({
 			lines: ["Hide sidebar⌘CommandB", "Drag to resize"],
 			side: true,
-			muted: "text-[var(--tooltip-description-ink)]",
+			muted: "text-[11px]/[14px] text-[var(--tooltip-description-ink)]",
 			describedBy: true,
 			tabIndex: 0,
 		});

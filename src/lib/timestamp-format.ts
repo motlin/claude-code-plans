@@ -1,13 +1,10 @@
-const TIME_FORMAT: Intl.DateTimeFormatOptions = {
-	hour: "numeric",
-	minute: "2-digit",
-	hour12: true,
-};
-
-const DATE_FORMAT: Intl.DateTimeFormatOptions = {
+const ABSOLUTE_FORMAT: Intl.DateTimeFormatOptions = {
 	month: "short",
 	day: "numeric",
 	year: "numeric",
+	hour: "numeric",
+	minute: "2-digit",
+	hour12: true,
 };
 
 function parseTimestamp(timestamp?: string): Date | null {
@@ -17,19 +14,14 @@ function parseTimestamp(timestamp?: string): Date | null {
 }
 
 /**
- * Formats an ISO timestamp as an absolute, human-readable time. Returns just the
- * time of day for timestamps that fall on the current day, otherwise prefixes the
- * date. Returns null for missing or unparseable input.
+ * Formats an ISO timestamp the way claude.ai/code's toolbar time tooltip does: "Sep 20, 2026, 1:26 PM",
+ * always with the date, in the viewer's time zone unless one is given. Returns null for missing or
+ * unparseable input.
  */
-export function formatTimestamp(timestamp?: string): string | null {
+export function formatTimestamp(timestamp?: string, timeZone?: string): string | null {
 	const date = parseTimestamp(timestamp);
 	if (!date) return null;
-
-	const time = date.toLocaleTimeString("en-US", TIME_FORMAT);
-	const isToday = date.toDateString() === new Date().toDateString();
-	if (isToday) return time;
-
-	return `${date.toLocaleDateString("en-US", DATE_FORMAT)} ${time}`;
+	return date.toLocaleString("en-US", timeZone === undefined ? ABSOLUTE_FORMAT : {...ABSOLUTE_FORMAT, timeZone});
 }
 
 const RELATIVE_UNITS: ReadonlyArray<[Intl.RelativeTimeFormatUnit, number]> = [

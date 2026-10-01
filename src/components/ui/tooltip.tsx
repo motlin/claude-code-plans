@@ -19,11 +19,16 @@ const MULTILINE_TOOLTIP_CLASS = TOOLTIP_CLASS.replace("max-w-[240px]", "w-max ma
 	"whitespace-pre-line",
 );
 
-/** Upstream's two-line tooltip (e.g. the sidebar resize edge): label row on top, muted description below. */
+/**
+ * Upstream's rich two-line tooltip (the sidebar resize edge, Rewind, Fork): the 13px/18px label row on top,
+ * an 11px/14px muted description below, wrapping within 170px.
+ */
 const STACKED_TOOLTIP_CLASS = TOOLTIP_CLASS.replace(
 	"inline-flex min-h-6 max-w-[240px] items-center gap-2",
-	"flex w-max max-w-[320px] flex-col items-start gap-0.5",
-).replace("py-[3px]", "py-1.5");
+	"flex w-max max-w-[170px] flex-col items-start gap-0.5",
+)
+	.replace("whitespace-nowrap", "whitespace-normal")
+	.replace("py-[3px]", "py-1.5");
 
 /**
  * Minimal claude.ai/code tooltip: always dark, side top (titlebar controls use
@@ -105,7 +110,9 @@ export function Tooltip({
 					{description !== undefined ? (
 						<>
 							<span className="inline-flex items-center gap-2">{label}</span>
-							<span className="text-[var(--tooltip-description-ink)]">{description}</span>
+							<span className="text-[11px]/[14px] text-[var(--tooltip-description-ink)]">
+								{description}
+							</span>
 						</>
 					) : (
 						label
