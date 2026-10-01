@@ -1,4 +1,4 @@
-import {useEffect, useId, useLayoutEffect, useRef, useState} from "react";
+import {memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState} from "react";
 import {
 	ClipboardPaste,
 	CornerDownLeft,
@@ -44,7 +44,7 @@ import type {SessionFilesEntry} from "../lib/api/session-files";
 import {fileMentionTrigger, insertFileMention} from "../lib/file-mentions";
 import type {LaunchOptions} from "../lib/launch-options";
 import {filterSlashCommands, type SlashCommand, slashArgumentHint, slashQuery} from "../lib/slash-commands";
-import {ComposerChin} from "./composer-chin";
+import {type ChinLaunchControls, ComposerChin} from "./composer-chin";
 import {ConfirmDialog} from "./confirm-dialog";
 import type {ChinMenu} from "./composer-launch-menus";
 import {FileMentionMenu, fileMentionOptionId} from "./file-mention-menu";
@@ -277,8 +277,74 @@ interface ComposerProps {
 	promptHistory?: readonly string[] | undefined;
 }
 
+/**
+ * The card's trailing Send / Stop button. Memoized on stable props, so a keystroke re-renders it only when
+ * `canSend` flips.
+ */
+const SendSlot = memo(function SendSlot({
+	isStreaming,
+	onStop,
+	onCancel,
+	onSubmit,
+	canSend,
+	deliveryHint,
+	hintId,
+	forkLabel,
+}: {
+	isStreaming: boolean;
+	onStop: (() => void) | undefined;
+	onCancel: (() => void) | undefined;
+	onSubmit: () => void;
+	canSend: boolean;
+	deliveryHint: string | undefined;
+	hintId: string;
+	/** The Send tooltip's fork row, when the composer can fork. */
+	forkLabel: string | undefined;
+}) {
+	const forkKeys = useShortcutKeys("fork_with_prompt").keys;
+	return (
+		<div className="absolute right-0 bottom-0 flex min-h-6 items-center pl-1.5">
+			{isStreaming || onStop !== undefined ? (
+				<Tooltip content="Stop response" {...(isStreaming ? {} : {shortcut: "escape"})}>
+					<button
+						type="button"
+						aria-label="Stop response"
+						onClick={isStreaming ? onCancel : onStop}
+						className={ICON_BUTTON_CLASS}
+					>
+						<Square className="size-3.5" fill="currentColor" aria-hidden="true" />
+					</button>
+				</Tooltip>
+			) : (
+				<Tooltip
+					content="Send"
+					shortcut="enter"
+					secondary={forkLabel === undefined ? undefined : {content: forkLabel, shortcut: forkKeys}}
+				>
+					<button
+						type="button"
+						aria-label="Send"
+						aria-describedby={deliveryHint ? hintId : undefined}
+						onClick={onSubmit}
+						disabled={!canSend}
+						className={ICON_BUTTON_CLASS}
+					>
+						<CornerDownLeft className="size-4" aria-hidden="true" />
+					</button>
+				</Tooltip>
+			)}
+			{deliveryHint && (
+				<span id={hintId} className="sr-only">
+					{deliveryHint}
+				</span>
+			)}
+		</div>
+	);
+});
+
 const NO_COMMANDS: readonly SlashCommand[] = [];
 const NO_HISTORY: readonly string[] = [];
+const NO_LAUNCH_OPTIONS: LaunchOptions = {};
 
 /**
  * The claude.ai/code ChatComposer card: an auto-growing prompt editor with a
@@ -319,17 +385,16 @@ export function Composer({
 		draftKey,
 		options: {},
 	});
-	const launchOptions = launch.draftKey === draftKey ? launch.options : {};
+	const launchOptions = launch.draftKey === draftKey ? launch.options : NO_LAUNCH_OPTIONS;
 	const [openMenu, setOpenMenu] = useState<ChinMenu | null>(null);
 	const menuShortcutOptions = {disabled: chin === undefined};
 	useShortcut("open_mode_menu", () => setOpenMenu("mode"), menuShortcutOptions);
 	useShortcut("open_model_menu", () => setOpenMenu("model"), menuShortcutOptions);
 	useShortcut("open_effort_selector", () => setOpenMenu("effort"), menuShortcutOptions);
-	const forkKeys = useShortcutKeys("fork_with_prompt").keys;
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const [attachError, setAttachError] = useState<string | null>(null);
 	const [dragging, setDragging] = useState(false);
-	const openFilePicker = () => fileInputRef.current?.click();
+	const openFilePicker = useCallback(() => fileInputRef.current?.click(), []);
 	useShortcut("add_files", openFilePicker, {disabled});
 	const chinLaunchOptions = live?.options ?? launchOptions;
 
@@ -445,6 +510,10 @@ export function Composer({
 		send(text);
 		clearDraft();
 	}
+	// The send slot and chin are memoized, so they read the latest render's handlers through refs.
+	const handleSubmitRef = useRef(handleSubmit);
+	handleSubmitRef.current = handleSubmit;
+	const submit = useCallback(() => handleSubmitRef.current(), []);
 
 	const [discardId, setDiscardId] = useState<string | null>(null);
 	const [historyWalk, setHistoryWalk] = useState<{
@@ -533,10 +602,33 @@ export function Composer({
 
 	const hasFiles = (e: React.DragEvent) => Array.from(e.dataTransfer.types).includes("Files");
 
-	function insertSlash() {
-		setPrompt(prompt.startsWith("/") ? prompt : `/${prompt}`);
+	const insertSlash = useCallback(() => {
+		const current = promptRef.current;
+		setPrompt(current.startsWith("/") ? current : `/${current}`);
 		textareaRef.current?.focus();
-	}
+	}, [setPrompt]);
+
+	const closeDiscard = useCallback((open: boolean) => {
+		if (!open) setDiscardId(null);
+	}, []);
+	const confirmDiscard = useCallback(() => {
+		if (discardId !== null) queue?.remove(discardId);
+	}, [discardId, queue]);
+
+	const launchControls = useMemo<ChinLaunchControls>(
+		() => ({
+			launchOptions: chinLaunchOptions,
+			onLaunchOptionsChange:
+				live === undefined
+					? (options) => setLaunch({draftKey, options})
+					: (options) => void live.apply(options),
+			confirmEffortChange: live !== undefined,
+			openMenu,
+			onOpenMenuChange: setOpenMenu,
+			bypassPermissionsAllowed,
+		}),
+		[chinLaunchOptions, live, draftKey, openMenu, bypassPermissionsAllowed],
+	);
 
 	function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
 		if (e.nativeEvent.isComposing || handleSlashKey(e) || handleMentionKey(e) || handleHistoryKey(e)) {
@@ -567,16 +659,12 @@ export function Composer({
 			)}
 			<ConfirmDialog
 				open={discardId !== null}
-				onOpenChange={(open) => {
-					if (!open) setDiscardId(null);
-				}}
+				onOpenChange={closeDiscard}
 				title="Discard queued message?"
 				body="This message will be removed from the queue and won’t be sent."
 				confirmLabel="Discard"
 				variant="danger"
-				onConfirm={() => {
-					if (discardId !== null) queue?.remove(discardId);
-				}}
+				onConfirm={confirmDiscard}
 			/>
 			{attachError !== null && (
 				<p role="alert" className="mb-1.5 ps-1 text-footnote text-danger-000">
@@ -682,42 +770,16 @@ export function Composer({
 						className={EDITOR_CLASS}
 						style={{minHeight: "24px", maxHeight: "min(24rem, 40svh)"}}
 					/>
-					<div className="absolute right-0 bottom-0 flex min-h-6 items-center pl-1.5">
-						{isStreaming || onStop !== undefined ? (
-							<Tooltip content="Stop response" {...(isStreaming ? {} : {shortcut: "escape"})}>
-								<button
-									type="button"
-									aria-label="Stop response"
-									onClick={isStreaming ? onCancel : onStop}
-									className={ICON_BUTTON_CLASS}
-								>
-									<Square className="size-3.5" fill="currentColor" aria-hidden="true" />
-								</button>
-							</Tooltip>
-						) : (
-							<Tooltip
-								content="Send"
-								shortcut="enter"
-								secondary={onFork === undefined ? undefined : {content: forkLabel, shortcut: forkKeys}}
-							>
-								<button
-									type="button"
-									aria-label="Send"
-									aria-describedby={deliveryHint ? hintId : undefined}
-									onClick={() => handleSubmit()}
-									disabled={!canSend}
-									className={ICON_BUTTON_CLASS}
-								>
-									<CornerDownLeft className="size-4" aria-hidden="true" />
-								</button>
-							</Tooltip>
-						)}
-						{deliveryHint && (
-							<span id={hintId} className="sr-only">
-								{deliveryHint}
-							</span>
-						)}
-					</div>
+					<SendSlot
+						isStreaming={isStreaming}
+						onStop={onStop}
+						onCancel={onCancel}
+						onSubmit={submit}
+						canSend={canSend}
+						deliveryHint={deliveryHint}
+						hintId={hintId}
+						forkLabel={onFork === undefined ? undefined : forkLabel}
+					/>
 				</div>
 			</div>
 			<div
@@ -729,17 +791,7 @@ export function Composer({
 						state={chin}
 						onInsertSlash={insertSlash}
 						onAddFiles={openFilePicker}
-						launch={{
-							launchOptions: chinLaunchOptions,
-							onLaunchOptionsChange:
-								live === undefined
-									? (options) => setLaunch({draftKey, options})
-									: (options) => void live.apply(options),
-							confirmEffortChange: live !== undefined,
-							openMenu,
-							onOpenMenuChange: setOpenMenu,
-							bypassPermissionsAllowed,
-						}}
+						launch={launchControls}
 					/>
 				)}
 			</div>

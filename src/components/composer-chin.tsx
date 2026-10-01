@@ -1,6 +1,6 @@
 import {Popover} from "@base-ui/react/popover";
 import {Plus} from "lucide-react";
-import {useState} from "react";
+import {memo, useState} from "react";
 
 import {
 	type ComposerState,
@@ -151,7 +151,7 @@ function effortText(effort: string): string {
  * model, effort and the 12px context-usage ring on the right. Mode, model and
  * effort open menus whose choices apply to the live pane or the next fork or launch.
  */
-export function ComposerChin({
+export const ComposerChin = memo(function ComposerChin({
 	state,
 	onInsertSlash,
 	onAddFiles,
@@ -230,4 +230,4 @@ export function ComposerChin({
 			/>
 		</>
 	);
-}
+});

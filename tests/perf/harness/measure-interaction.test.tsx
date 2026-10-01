@@ -47,6 +47,27 @@ function ThingName() {
 	return <p>{query.data?.name ?? "pending"}</p>;
 }
 
+/** Mounts its query's component two macrotask turns after the first render, the way the router renders a route. */
+function DeferredThingSize() {
+	const [mounted, setMounted] = useState(false);
+	useEffect(() => {
+		let timer = setTimeout(() => {
+			timer = setTimeout(() => setMounted(true), 0);
+		}, 0);
+		return () => clearTimeout(timer);
+	}, []);
+	return mounted ? <ThingSize /> : null;
+}
+
+function ThingSize() {
+	useRenderCount("ThingSize");
+	const query = useQuery({
+		queryKey: ["thing-size"],
+		queryFn: async () => (await (await fetch("/api/thing-size")).json()) as {size: number},
+	});
+	return <p>{query.data?.size ?? "pending"}</p>;
+}
+
 function FetchingBadge() {
 	const fetching = useIsFetching();
 	useEffect(() => {
@@ -176,6 +197,21 @@ describe("measureInteraction", () => {
 			renders: result.rendersByComponent,
 			value: (screen.getByRole("textbox") as HTMLInputElement).value,
 		}).toStrictEqual({commits: 3, renders: {Typed: 3}, value: "abc"});
+	});
+
+	it("settles a component that mounts late before measuring, so its fetch lands outside the interaction", async () => {
+		const result = await measureInteraction(
+			() => <DeferredThingSize />,
+			() => {},
+			{fixtures: {"/api/thing-size": {size: 3}}},
+		);
+
+		expect({
+			commits: result.commits,
+			fetches: result.fetches.count,
+			renders: result.rendersByComponent,
+			text: screen.getByText("3").textContent,
+		}).toStrictEqual({commits: 0, fetches: 0, renders: {}, text: "3"});
 	});
 
 	it("fails on a fetch with no fixture", async () => {

@@ -35,12 +35,12 @@
 		"tolerance": 0
 	},
 	"client.composer.home.slashMenu.commitsPerKeystroke": {
-		"ceiling": 2,
+		"ceiling": 1,
 		"unit": "count",
 		"tolerance": 0
 	},
 	"client.composer.home.slashMenu.componentsPerKeystroke": {
-		"ceiling": 31,
+		"ceiling": 7,
 		"unit": "count",
 		"tolerance": 0
 	},
@@ -60,12 +60,12 @@
 		"tolerance": 0
 	},
 	"client.composer.home.typing.commitsPerKeystroke": {
-		"ceiling": 1.1,
+		"ceiling": 1,
 		"unit": "count",
 		"tolerance": 0
 	},
 	"client.composer.home.typing.componentsPerKeystroke": {
-		"ceiling": 23.6,
+		"ceiling": 1.4,
 		"unit": "count",
 		"tolerance": 0
 	},
@@ -90,7 +90,7 @@
 		"tolerance": 0
 	},
 	"client.composer.session.mentionMenu.componentsPerKeystroke": {
-		"ceiling": 27,
+		"ceiling": 9,
 		"unit": "count",
 		"tolerance": 0
 	},
@@ -120,7 +120,7 @@
 		"tolerance": 0
 	},
 	"client.composer.session.slashMenu.componentsPerKeystroke": {
-		"ceiling": 25,
+		"ceiling": 7,
 		"unit": "count",
 		"tolerance": 0
 	},
@@ -150,7 +150,7 @@
 		"tolerance": 0
 	},
 	"client.composer.session.typing.componentsPerKeystroke": {
-		"ceiling": 23,
+		"ceiling": 1.4,
 		"unit": "count",
 		"tolerance": 0
 	},
@@ -270,7 +270,7 @@
 		"tolerance": 0
 	},
 	"client.palette.open.commits": {
-		"ceiling": 8,
+		"ceiling": 7,
 		"unit": "count",
 		"tolerance": 0
 	},
@@ -280,7 +280,7 @@
 		"tolerance": 0
 	},
 	"client.palette.open.mutations": {
-		"ceiling": 47,
+		"ceiling": 44,
 		"unit": "count",
 		"tolerance": 0
 	},

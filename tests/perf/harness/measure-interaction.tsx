@@ -162,18 +162,23 @@ export async function measureInteraction(
 		};
 	};
 
+	const idle = () => inFlight === 0 && queryClient.isFetching() === 0 && queryClient.isMutating() === 0;
+	let allCommits = 0;
+	// Settled means a whole round that stays idle and commits nothing: a component that mounts in that round (the
+	// router rendering a route, say) can start a fetch of its own, which must land before measuring starts.
 	const settle = async () => {
 		for (let round = 0; round < MAX_SETTLE_ROUNDS; round++) {
 			await flushRound();
-			if (inFlight === 0 && queryClient.isFetching() === 0 && queryClient.isMutating() === 0) {
-				await flushRound();
-				return;
-			}
+			if (!idle()) continue;
+			const commitsBefore = allCommits;
+			await flushRound();
+			if (idle() && allCommits === commitsBefore) return;
 		}
 		throw new Error("measureInteraction: the tree did not settle");
 	};
 
 	const onAppRender = () => {
+		allCommits++;
 		if (recorder.measuring) {
 			recorder.commits++;
 		}

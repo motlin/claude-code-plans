@@ -1,5 +1,5 @@
 import {AlertDialog} from "@base-ui/react/alert-dialog";
-import {type ReactNode, useRef} from "react";
+import {memo, type ReactNode, useRef} from "react";
 
 const BUTTON_BASE_CLASS =
 	"h-8 rounded-r6 px-3 text-body font-medium transition-colors focus-visible:shadow-[0_0_0_2px_var(--accent-100)] focus-visible:outline-none";
@@ -14,7 +14,7 @@ const CONFIRM_VARIANT_CLASS = {
  * [Cancel] (initial focus) beside the confirm button, which is red for
  * destructive actions.
  */
-export function ConfirmDialog({
+export const ConfirmDialog = memo(function ConfirmDialog({
 	open,
 	onOpenChange,
 	title,
@@ -81,4 +81,4 @@ export function ConfirmDialog({
 			</AlertDialog.Portal>
 		</AlertDialog.Root>
 	);
-}
+});
