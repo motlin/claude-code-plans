@@ -150,12 +150,12 @@ describe("Composer mode menu", () => {
 });
 
 describe("Composer model menu", () => {
-	it("opens on ⇧⌘I with the aliases, digits and a More models submenu", async () => {
+	it("opens on ⇧⌘I with versioned labels, the checked row's ✓ in place of its digit, and a More models submenu", async () => {
 		const onSend = renderComposer();
 
 		openModelMenu();
 		const menu = await screen.findByRole("menu");
-		const rows = radioRows(menu).map(({label, key}) => ({label, key}));
+		const rows = radioRows(menu).map(({label, key, checked}) => ({label, key, checked}));
 		const more = within(menu).getByRole("menuitem", {name: /More models/}).textContent;
 		fireEvent.keyDown(menu, {key: "2", code: "Digit2"});
 		await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
@@ -164,43 +164,61 @@ describe("Composer model menu", () => {
 
 		expect({rows, more, trigger, calls: onSend.mock.calls}).toStrictEqual({
 			rows: [
-				{label: "Opus", key: "1"},
-				{label: "Fable", key: "2"},
-				{label: "Sonnet", key: "3"},
-				{label: "Haiku", key: "4"},
+				{label: "Opus 5.5", key: null, checked: "true"},
+				{label: "Fable 5.1", key: "2", checked: "false"},
+				{label: "Sonnet 5.5", key: "3", checked: "false"},
+				{label: "Haiku 4.5", key: "4", checked: "false"},
 			],
 			more: "More models",
-			trigger: "Model: Fable",
+			trigger: "Model: Fable 5.1",
 			calls: [["Continue Carol's test", {model: "fable"}]],
 		});
 	});
 
-	it("lists the full model ids seen on disk under More models", async () => {
+	it("numbers the rows around a checked middle row and picks the row a digit names", async () => {
+		const onSend = renderComposer({chin: {...CHIN, model: "Fable 5.1", modelId: "claude-fable-5-1"}});
+
+		openModelMenu();
+		const menu = await screen.findByRole("menu");
+		const rows = radioRows(menu).map(({label, key}) => ({label, key}));
+		const text = within(menu)
+			.getAllByRole("menuitemradio")
+			.map((item) => item.textContent);
+		fireEvent.keyDown(menu, {key: "3", code: "Digit3"});
+		await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+		sendPrompt("Continue Erin's test");
+
+		expect({rows, text, calls: onSend.mock.calls}).toStrictEqual({
+			rows: [
+				{label: "Opus 5.5", key: "1"},
+				{label: "Fable 5.1", key: null},
+				{label: "Sonnet 5.5", key: "3"},
+				{label: "Haiku 4.5", key: "4"},
+			],
+			text: ["Opus 5.51", "Fable 5.1", "Sonnet 5.53", "Haiku 4.54"],
+			calls: [["Continue Erin's test", {model: "sonnet"}]],
+		});
+	});
+
+	it("opens More models on hover with only the models the primary rows lack, in upstream order", async () => {
 		const onSend = renderComposer();
 
 		openModelMenu();
-		fireEvent.click(await screen.findByRole("menuitem", {name: /More models/}));
+		const subTrigger = await screen.findByRole("menuitem", {name: /More models/});
+		fireEvent.pointerEnter(subTrigger, {pointerType: "mouse"});
+		fireEvent.mouseEnter(subTrigger);
+		fireEvent.pointerMove(subTrigger, {pointerType: "mouse"});
+		fireEvent.mouseMove(subTrigger);
 		await waitFor(() => expect(screen.getAllByRole("menu")).toHaveLength(2));
 		const submenu = screen.getAllByRole("menu")[1] as HTMLElement;
 		const labels = radioRows(submenu).map((row) => row.label);
-		fireEvent.click(within(submenu).getByRole("menuitemradio", {name: "Opus 4.8"}));
+		fireEvent.click(within(submenu).getByRole("menuitemradio", {name: "Opus 4.6"}));
 		await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
 		sendPrompt("Continue Dave's test");
 
 		expect({labels, calls: onSend.mock.calls}).toStrictEqual({
-			labels: [
-				"Opus 5.5",
-				"Fable 5.1",
-				"Sonnet 5.5",
-				"Opus 5",
-				"Sonnet 5",
-				"Fable 5",
-				"Opus 4.8",
-				"Opus 4.7",
-				"Sonnet 4.6",
-				"Haiku 4.5",
-			],
-			calls: [["Continue Dave's test", {model: "claude-opus-4-8"}]],
+			labels: ["Sonnet 5", "Opus 5", "Fable 5", "Opus 4.8", "Opus 4.7", "Opus 4.6", "Sonnet 4.6"],
+			calls: [["Continue Dave's test", {model: "claude-opus-4-6"}]],
 		});
 	});
 });
@@ -315,10 +333,10 @@ describe("Composer on a live pane", () => {
 		}).toStrictEqual({
 			trigger: "Model: Fable 5.1",
 			rows: [
-				{label: "Opus", checked: "false"},
-				{label: "Fable", checked: "true"},
-				{label: "Sonnet", checked: "false"},
-				{label: "Haiku", checked: "false"},
+				{label: "Opus 5.5", checked: "false"},
+				{label: "Fable 5.1", checked: "true"},
+				{label: "Sonnet 5.5", checked: "false"},
+				{label: "Haiku 4.5", checked: "false"},
 			],
 		});
 	});
@@ -331,7 +349,7 @@ describe("Composer on a live pane", () => {
 			mode: document.querySelector("[data-chin-mode]")?.textContent,
 			model: screen.getByRole("button", {name: /^Model:/}).getAttribute("aria-label"),
 			effort: screen.getByRole("button", {name: /^Effort:/}).getAttribute("aria-label"),
-		}).toStrictEqual({mode: "Plan", model: "Model: Fable", effort: "Effort: Max"});
+		}).toStrictEqual({mode: "Plan", model: "Model: Fable 5.1", effort: "Effort: Max"});
 	});
 
 	it("asks Change effort? before sending an effort change", async () => {

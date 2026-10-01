@@ -146,6 +146,8 @@ export function ModelMenu({
 	currentLabel: string;
 	onSelect: (model: string) => void;
 }) {
+	/** Upstream's checked row shows its ✓ in place of its digit; the others keep their position's digit. */
+	const primary = primaryModelMenuValue(current);
 	return (
 		<Menu open={open} onOpenChange={onOpenChange}>
 			<MenuTrigger
@@ -156,12 +158,14 @@ export function ModelMenu({
 				{currentLabel}
 			</MenuTrigger>
 			<MenuContent side="top" align="end">
-				<MenuRadioGroup
-					value={primaryModelMenuValue(current)}
-					onValueChange={(value: string) => onSelect(value)}
-				>
+				<MenuRadioGroup value={primary} onValueChange={(value: string) => onSelect(value)}>
 					{PRIMARY_MODELS.map((model, index) => (
-						<MenuRadioItem key={model.id} value={model.id} accelerator={String(index + 1)} closeOnClick>
+						<MenuRadioItem
+							key={model.id}
+							value={model.id}
+							{...(model.id === primary ? {} : {accelerator: String(index + 1)})}
+							closeOnClick
+						>
 							<span data-menu-item-label="">{model.label}</span>
 						</MenuRadioItem>
 					))}

@@ -85,28 +85,6 @@ export interface ModelChoice {
 	label: string;
 }
 
-/** The CLI's family aliases, in upstream's menu order. */
-export const PRIMARY_MODELS: readonly ModelChoice[] = [
-	{id: "opus", label: "Opus"},
-	{id: "fable", label: "Fable"},
-	{id: "sonnet", label: "Sonnet"},
-	{id: "haiku", label: "Haiku"},
-];
-
-/** Full model ids seen in local transcripts, newest first, for the "More models" submenu. */
-export const MORE_MODELS: readonly ModelChoice[] = [
-	"claude-opus-5-5",
-	"claude-fable-5-1",
-	"claude-sonnet-5-5",
-	"claude-opus-5",
-	"claude-sonnet-5",
-	"claude-fable-5",
-	"claude-opus-4-8",
-	"claude-opus-4-7",
-	"claude-sonnet-4-6",
-	"claude-haiku-4-5-20251001",
-].map((id) => ({id, label: formatModelName(id) ?? id}));
-
 /** The full id each family alias currently launches. */
 const ALIAS_LATEST: Readonly<Record<string, string>> = {
 	opus: "claude-opus-5-5",
@@ -114,6 +92,23 @@ const ALIAS_LATEST: Readonly<Record<string, string>> = {
 	sonnet: "claude-sonnet-5-5",
 	haiku: "claude-haiku-4-5-20251001",
 };
+
+/** The CLI's family aliases in upstream's menu order, labelled with the version each launches. */
+export const PRIMARY_MODELS: readonly ModelChoice[] = Object.entries(ALIAS_LATEST).map(([id, latest]) => ({
+	id,
+	label: formatModelName(latest) ?? id,
+}));
+
+/** Upstream's "More models" submenu: older full ids the primary aliases no longer launch, in its order. */
+export const MORE_MODELS: readonly ModelChoice[] = [
+	"claude-sonnet-5",
+	"claude-opus-5",
+	"claude-fable-5",
+	"claude-opus-4-8",
+	"claude-opus-4-7",
+	"claude-opus-4-6",
+	"claude-sonnet-4-6",
+].map((id) => ({id, label: formatModelName(id) ?? id}));
 
 /** What `claude` launches when settings name no model. */
 export const CLI_DEFAULT_MODEL = "claude-opus-5-5";

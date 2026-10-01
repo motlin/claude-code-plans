@@ -9,11 +9,11 @@ import {
 
 describe("modelMenuValue", () => {
 	it.each([
-		{id: "claude-fable-5-1", expected: "claude-fable-5-1"},
+		{id: "claude-fable-5-1", expected: "fable"},
 		{id: "claude-opus-4-8[1m]", expected: "claude-opus-4-8"},
-		{id: "claude-haiku-4-5-20251001", expected: "claude-haiku-4-5-20251001"},
+		{id: "claude-haiku-4-5-20251001", expected: "haiku"},
 		{id: "sonnet", expected: "sonnet"},
-		{id: "claude-opus-4-6", expected: "opus"},
+		{id: "claude-opus-4-6", expected: "claude-opus-4-6"},
 		{id: "claude-sonnet-3-7-20250219", expected: "sonnet"},
 		{id: "gpt-unknown", expected: null},
 		{id: null, expected: null},
