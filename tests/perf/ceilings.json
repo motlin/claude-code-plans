@@ -1,13 +1,17 @@
 {
 	"bundle.home.gzip": {
-		"ceiling": 386805,
+		"ceiling": 391051,
 		"unit": "bytes",
-		"tolerance": 0.01
+		"tolerance": 0.01,
+		"reason": "⌘K Compose's paperclip and Send buttons with attachment chips (about 1.5 KB gzip), plus the usage-ring two-row tooltip and usage popover link that landed just before it",
+		"raisedAt": "2026-10-01"
 	},
 	"bundle.home.raw": {
-		"ceiling": 1218645,
+		"ceiling": 1231623,
 		"unit": "bytes",
-		"tolerance": 0.01
+		"tolerance": 0.01,
+		"reason": "⌘K Compose's paperclip and Send buttons with attachment chips (about 1.5 KB gzip), plus the usage-ring two-row tooltip and usage popover link that landed just before it",
+		"raisedAt": "2026-10-01"
 	},
 	"bundle.session.gzip": {
 		"ceiling": 709866,

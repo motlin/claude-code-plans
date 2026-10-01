@@ -35,6 +35,8 @@ import {
 	SquareSlash,
 	Shapes,
 	Clock,
+	Paperclip,
+	ArrowUp,
 } from "lucide-react";
 import {useActiveSessionsIfAvailable} from "../hooks/use-claude-events";
 import type {PaletteMode} from "../hooks/use-command-palette";
@@ -57,6 +59,14 @@ import {
 	type SessionListItem,
 } from "../lib/api/sessions";
 import {buildClaudeCopyCommand} from "../lib/claude-launch-command";
+import {
+	appendAttachment,
+	attachUploadedFiles,
+	composePrompt,
+	registerComposer,
+	takeContextChips,
+	useContextChips,
+} from "../lib/context-attach";
 import {writeClipboardText} from "../lib/clipboard";
 import {
 	PALETTE_FILTER_TOKENS,
@@ -95,10 +105,11 @@ import {requestSessionRename} from "../lib/session-rename-request";
 import type {SessionBucket} from "../lib/session-state";
 import {SHORTCUTS, type ShortcutId} from "../lib/shortcuts/registry";
 import {toggleSidebarCollapsed} from "../lib/sidebar-store";
-import {type ShortcutKeys, useShortcutKeys} from "../hooks/use-shortcut";
+import {type ShortcutKeys, useShortcut, useShortcutKeys} from "../hooks/use-shortcut";
 import {clearAll} from "../lib/unread-store";
 import {HighlightRuns} from "./highlight-runs";
 import {type PaletteCardSession, PaletteRowActionsButton, PaletteRowActionsCard} from "./palette-row-actions";
+import {AttachedContextChips} from "./attached-context-chips";
 import {useToast} from "./toast";
 import {Shortcut} from "./ui/shortcut";
 import {Tooltip} from "./ui/tooltip";
@@ -116,6 +127,9 @@ const MODE_LABELS = {
 	search: "Search",
 	compose: "Write a message…",
 } as const satisfies Record<PaletteMode, string>;
+
+/** Draft key for Compose-mode attachment chips, which ride along with the launch prompt. */
+const COMPOSE_DRAFT_KEY = "command-palette-compose";
 
 const PALETTE_RADIUS = "rounded-[calc(var(--radius-composer)+0.375rem)]";
 
@@ -646,6 +660,21 @@ function PalettePopup({
 	const [selectedValue, setSelectedValue] = useState("");
 	// Rename hands focus to the page title, so closing must not pull it back to the old element.
 	const restoreFocusRef = useRef(true);
+	const fileInputRef = useRef<HTMLInputElement>(null);
+	const [attachError, setAttachError] = useState<string | null>(null);
+	const composeChips = useContextChips(COMPOSE_DRAFT_KEY);
+
+	// Compose attachments land as chips here (⌘U, the paperclip); they are dropped when the palette closes.
+	useEffect(() => {
+		const unregister = registerComposer(COMPOSE_DRAFT_KEY, {
+			insertText: (text) => setQuery((current) => appendAttachment(current, text)),
+			focus: () => inputRef.current?.focus(),
+		});
+		return () => {
+			unregister();
+			takeContextChips(COMPOSE_DRAFT_KEY);
+		};
+	}, []);
 
 	const pathname = useRouterState({select: (state) => state.location.pathname});
 	// Read once per open: the popup mounts only while the palette is open.
@@ -898,7 +927,10 @@ function PalettePopup({
 	}
 
 	async function launchSession(project: StartProject) {
-		const launch = {cwd: project.projectPath, prompt: trimmedQuery};
+		const launch = {
+			cwd: project.projectPath,
+			prompt: composePrompt(trimmedQuery, takeContextChips(COMPOSE_DRAFT_KEY), []),
+		};
 		const since = Date.now();
 		setStartStep("launching");
 		try {
@@ -1061,6 +1093,12 @@ function PalettePopup({
 
 	const compose = mode === "compose";
 	const now = Date.now();
+	const canSend = canStart && startStep === "idle";
+
+	function openFilePicker() {
+		fileInputRef.current?.click();
+	}
+	useShortcut("add_files", openFilePicker, {disabled: !compose || startStep !== "idle", allowInModal: true});
 	const matchesCommands = searchable && !filtered && tokens.text !== "";
 	const matchedSessionCommands =
 		matchesCommands && currentDetail !== null
@@ -1158,14 +1196,74 @@ function PalettePopup({
 								<LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
 							</span>
 						)}
-						<Tooltip content="Close" side="bottom" className="shrink-0">
-							<Dialog.Close
-								aria-label="Close"
-								className="relative flex aspect-square h-7 w-7 shrink-0 items-center justify-center rounded-r6 text-primary transition-colors hover:bg-fill-ghost-hover focus-visible:shadow-[0_0_0_2px_var(--accent-100)] focus-visible:outline-none"
-							>
-								<X aria-hidden="true" className="h-5 w-5" />
-							</Dialog.Close>
-						</Tooltip>
+						{!compose && (
+							<Tooltip content="Close" side="bottom" className="shrink-0">
+								<Dialog.Close
+									aria-label="Close"
+									className={`${ICON_BUTTON_CLASS} rounded-r6 text-primary hover:bg-fill-ghost-hover`}
+								>
+									<X aria-hidden="true" className="h-5 w-5" />
+								</Dialog.Close>
+							</Tooltip>
+						)}
+						{compose && (
+							<div className="relative flex w-full flex-col gap-1.5 pr-1.5">
+								{attachError !== null && (
+									<p role="alert" className="text-footnote text-danger-000">
+										{attachError}
+									</p>
+								)}
+								{composeChips.length > 0 && (
+									<AttachedContextChips
+										sessionId={COMPOSE_DRAFT_KEY}
+										context={composeChips}
+										comments={[]}
+									/>
+								)}
+								<input
+									ref={fileInputRef}
+									type="file"
+									multiple
+									accept="image/*,text/*"
+									aria-label="Add files or photos"
+									tabIndex={-1}
+									className="hidden"
+									onChange={(event) => {
+										setAttachError(null);
+										attachUploadedFiles(
+											COMPOSE_DRAFT_KEY,
+											Array.from(event.target.files ?? []),
+											setAttachError,
+										);
+										event.target.value = "";
+									}}
+								/>
+								<div className="flex items-center justify-between">
+									<Tooltip content="Add files or photos" side="bottom">
+										<button
+											type="button"
+											aria-label="Add files or photos"
+											disabled={startStep !== "idle"}
+											onClick={openFilePicker}
+											className={`${ICON_BUTTON_CLASS} rounded-r7 text-primary hover:bg-fill-ghost-hover`}
+										>
+											<Paperclip aria-hidden="true" className="size-4" />
+										</button>
+									</Tooltip>
+									<Tooltip content="Send" side="bottom">
+										<button
+											type="button"
+											aria-label="Send"
+											disabled={!canSend}
+											onClick={openStartPicker}
+											className={`${ICON_BUTTON_CLASS} rounded-r7 bg-accent-100 text-white hover:bg-accent-200`}
+										>
+											<ArrowUp aria-hidden="true" className="size-4" />
+										</button>
+									</Tooltip>
+								</div>
+							</div>
+						)}
 					</div>
 					{!compose && <TypeTabs value={tab} onChange={chooseTab} />}
 					<div className="h-[0.5px] w-full bg-border" />
@@ -1481,6 +1579,9 @@ function PalettePopup({
 		</Dialog.Popup>
 	);
 }
+
+const ICON_BUTTON_CLASS =
+	"relative flex aspect-square h-7 w-7 shrink-0 items-center justify-center transition-colors focus-visible:shadow-[0_0_0_2px_var(--accent-100)] focus-visible:outline-none disabled:pointer-events-none disabled:opacity-40";
 
 /** Upstream's keyboard-hint footer: "Close Esc · Change type ←→ · Filters / · Actions ⌥⏎", or "Send ⏎" in Compose. */
 function PaletteFooter({hints}: {hints: ReadonlyArray<readonly [label: string, keys: readonly string[]]>}) {

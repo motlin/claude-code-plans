@@ -1,6 +1,8 @@
 import {useSyncExternalStore} from "react";
 import {z} from "zod";
 
+import {uploadAttachment} from "./api/attachments";
+
 /**
  * "Attach as context" (⇧⌘L) as on claude.ai/code: a file, line range or
  * selection becomes an `@path` mention, `@path#L<a>-<b>` for lines, followed
@@ -240,4 +242,34 @@ export function registerComposer(sessionId: string, handle: ComposerHandle): () 
 		sessionComposers.delete(handle);
 		if (sessionComposers.size === 0) composers.delete(sessionId);
 	};
+}
+
+/**
+ * Uploads files (⌘U, drop, paste) and adds each as an image or file chip in
+ * the composer's strip; `onError` gets a message for each failed upload.
+ */
+export function attachUploadedFiles(
+	sessionId: string,
+	files: readonly File[],
+	onError: (message: string) => void,
+): void {
+	for (const file of files) {
+		uploadAttachment(file).then(
+			(saved) => {
+				const image = saved.mediaType.startsWith("image/");
+				const previewUrl =
+					image && typeof URL.createObjectURL === "function" ? URL.createObjectURL(file) : undefined;
+				attachContext(sessionId, {
+					kind: image ? "image" : "file",
+					path: saved.path,
+					name: saved.name,
+					...(previewUrl === undefined ? {} : {previewUrl}),
+				});
+			},
+			(error: unknown) => {
+				const reason = error instanceof Error ? error.message : String(error);
+				onError(`Couldn’t attach ${file.name}: ${reason}`);
+			},
+		);
+	}
 }

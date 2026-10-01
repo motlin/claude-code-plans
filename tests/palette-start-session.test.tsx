@@ -98,6 +98,11 @@ function fetchMock(url: string, init?: RequestInit): Promise<Response> {
 		launchCalls.push({url, init});
 		return launchResponse();
 	}
+	if (url === "/api/attachments") {
+		return Promise.resolve(
+			Response.json({path: "/cache/attachments/uuid.txt", name: "notes.txt", mediaType: "text/plain", size: 5}),
+		);
+	}
 	return new Promise<Response>(() => {});
 }
 
@@ -304,6 +309,31 @@ describe("⌘K palette: start a new session", () => {
 		});
 		expect(groupLabels(dialog, "Quick actions")).toStrictEqual(["Starting session…"]);
 		expect(within(dialog).getByRole("combobox")).toHaveProperty("disabled", true);
+	});
+
+	it("launches Compose attachments as chips ahead of the prompt", async () => {
+		const {dialog, input} = await openPalette();
+		fireEvent.keyDown(input, {key: "Tab", code: "Tab"});
+		const composer = await within(dialog).findByRole("combobox", {name: "Write a message…"});
+		const fileInput = dialog.querySelector<HTMLInputElement>('input[type="file"]');
+		if (fileInput === null) throw new Error("No file input");
+		fireEvent.change(fileInput, {target: {files: [new File(["hello"], "notes.txt", {type: "text/plain"})]}});
+		await within(dialog).findByRole("button", {name: "Remove notes.txt"});
+		fireEvent.change(composer, {target: {value: "summarize this"}});
+
+		fireEvent.click(within(dialog).getByRole("button", {name: "Send"}));
+		await waitFor(() => expect(headings(dialog)).toStrictEqual(["Choose a project"]));
+		const row = [...dialog.querySelectorAll<HTMLElement>("[cmdk-item]")].find(
+			(item) => item.querySelector("[data-palette-label]")?.textContent === "older",
+		);
+		if (row === undefined) throw new Error("No project row older");
+		fireEvent.click(row);
+
+		await waitFor(() => expect(launchCalls.length).toBe(1));
+		expect(launchBody(launchCalls[0])).toStrictEqual({
+			cwd: "/users/dev/older",
+			prompt: "@/cache/attachments/uuid.txt\n\nsummarize this",
+		});
 	});
 
 	it("navigates to the new session when SessionStart for that cwd arrives", async () => {

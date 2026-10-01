@@ -451,6 +451,48 @@ describe("CommandPalette shell", () => {
 		);
 	});
 
+	it("gives Compose a paperclip and Send button and no Close", async () => {
+		const dialog = await openPalette();
+		fireEvent.keyDown(within(dialog).getByRole("combobox"), {key: "Tab", code: "Tab"});
+		await within(dialog).findByRole("combobox", {name: "Write a message…"});
+
+		expect({
+			buttons: within(dialog)
+				.getAllByRole("button")
+				.map((button) => button.getAttribute("aria-label")),
+			fileInput: dialog.querySelector('input[type="file"]')?.getAttribute("aria-label"),
+			send: (within(dialog).getByRole("button", {name: "Send"}) as HTMLButtonElement).disabled,
+		}).toStrictEqual({
+			buttons: ["Add files or photos", "Send"],
+			fileInput: "Add files or photos",
+			send: true,
+		});
+	});
+
+	it("shows the Compose button tooltips", async () => {
+		const dialog = await openPalette();
+		fireEvent.keyDown(within(dialog).getByRole("combobox"), {key: "Tab", code: "Tab"});
+		await within(dialog).findByRole("combobox", {name: "Write a message…"});
+
+		fireEvent.pointerEnter(within(dialog).getByRole("button", {name: "Add files or photos"}));
+		expect((await within(dialog).findByRole("tooltip")).textContent).toBe("Add files or photos");
+	});
+
+	it("opens the start-session picker when Send is clicked with text", async () => {
+		const dialog = await openPalette();
+		fireEvent.keyDown(within(dialog).getByRole("combobox"), {key: "Tab", code: "Tab"});
+		const composer = await within(dialog).findByRole("combobox", {name: "Write a message…"});
+		fireEvent.change(composer, {target: {value: "fix the parser"}});
+		const send = within(dialog).getByRole("button", {name: "Send"}) as HTMLButtonElement;
+		expect(send.disabled).toBe(false);
+
+		fireEvent.click(send);
+
+		await waitFor(() =>
+			expect(groupLabels(dialog).map(([heading]) => heading)).toStrictEqual(["Choose a project"]),
+		);
+	});
+
 	it("shows Needs attention, Recents and Actions in the empty state", async () => {
 		const dialog = await openPalette(
 			[
