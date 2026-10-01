@@ -39,17 +39,20 @@ const COPIED_MS = 1500;
 
 function ActionButton({
 	label,
+	description,
 	onClick,
 	pressed,
 	children,
 }: {
 	label: string;
+	/** A muted second line under the label in the tooltip, as upstream's toolbar shows for Rewind and Fork. */
+	description?: string;
 	onClick: (() => void) | undefined;
 	pressed?: boolean;
 	children: ReactNode;
 }) {
 	return (
-		<Tooltip content={label}>
+		<Tooltip content={label} description={description}>
 			<button
 				type="button"
 				aria-label={label}
@@ -102,7 +105,11 @@ function bound(
 function ForkAction({message}: {message: TranscriptMessageRef | undefined}) {
 	const {forkFrom} = useContext(TranscriptActionsContext);
 	return (
-		<ActionButton label="Fork from here" onClick={bound(forkFrom, message)}>
+		<ActionButton
+			label="Fork from here"
+			description="Starts a new session, keeps this one"
+			onClick={bound(forkFrom, message)}
+		>
 			<GitFork aria-hidden="true" className={ICON_CLASS} />
 		</ActionButton>
 	);
@@ -122,7 +129,11 @@ function PinAction({message}: {message: TranscriptMessageRef | undefined}) {
 function RewindAction({message}: {message: TranscriptMessageRef | undefined}) {
 	const {rewindTo} = useContext(TranscriptActionsContext);
 	return (
-		<ActionButton label="Rewind to here" onClick={bound(rewindTo, message)}>
+		<ActionButton
+			label="Rewind to here"
+			description="Removes this message and what follows"
+			onClick={bound(rewindTo, message)}
+		>
 			<RotateCcw aria-hidden="true" className={ICON_CLASS} />
 		</ActionButton>
 	);

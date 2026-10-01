@@ -228,6 +228,31 @@ describe("UserMessageActions", () => {
 		}).toStrictEqual({visibleHasCaption: false, tooltipHasCaption: true});
 	});
 
+	it("gives Rewind and Fork a label plus a muted description line on hover", () => {
+		const {container} = render(
+			<UserMessageActions message={MESSAGE} text="Hi" timestamp={TIMESTAMP} details={[]} />,
+		);
+
+		function hoverTooltip(label: string): string[] {
+			fireEvent.pointerEnter(button(container, label).parentElement!);
+			act(() => {
+				vi.advanceTimersByTime(300);
+			});
+			const tooltip = container.querySelector('[role="tooltip"]')!;
+			const lines = Array.from(tooltip.children).map((line) => line.textContent ?? "");
+			fireEvent.pointerLeave(button(container, label).parentElement!);
+			return lines;
+		}
+
+		expect({
+			rewind: hoverTooltip("Rewind to here"),
+			fork: hoverTooltip("Fork from here"),
+		}).toStrictEqual({
+			rewind: ["Rewind to here", "Removes this message and what follows"],
+			fork: ["Fork from here", "Starts a new session, keeps this one"],
+		});
+	});
+
 	it("hands Rewind and Fork the message", () => {
 		const rewindTo = vi.fn();
 		const forkFrom = vi.fn();
