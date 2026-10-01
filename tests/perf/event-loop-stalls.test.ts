@@ -15,6 +15,19 @@ function blockFor(ms: number): void {
 	}
 }
 
+function threadCpuMs(): number {
+	const {user, system} = process.threadCpuUsage();
+	return (user + system) / 1000;
+}
+
+/** Spins until the thread has spent `ms` on the CPU, however long a busy machine takes to grant it. */
+function burnCpu(ms: number): void {
+	const until = threadCpuMs() + ms;
+	while (threadCpuMs() < until) {
+		// spin: CPU time, not wall time, so a descheduled thread still burns the full amount
+	}
+}
+
 /** Blocks the thread without using CPU, as a synchronous syscall, a lock wait or a descheduled thread does. */
 function waitOffCpu(ms: number): void {
 	Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
@@ -77,12 +90,20 @@ describe("startStallMonitor", () => {
 		const stalls = monitor(200);
 		await sleep(60);
 
-		blockFor(400);
+		trackActivitySync("on-cpu", () => burnCpu(400));
 		await sleep(120);
-		waitOffCpu(400);
+		trackActivitySync("off-cpu", () => waitOffCpu(400));
 		await sleep(120);
 
-		expect(stalls.map((stall) => stall.cpuMs > stall.durationMs / 4)).toStrictEqual([true, false]);
+		// Select by activity: a loaded machine can add stalls of its own, and it stretches wall
+		// time but never adds CPU time to a thread that is waiting.
+		const named = (activity: string) => stalls.find((stall) => stall.activities.includes(activity));
+		const onCpu = named("on-cpu");
+		const offCpu = named("off-cpu");
+		expect({
+			onCpu: onCpu !== undefined && onCpu.cpuMs >= 350,
+			offCpu: offCpu !== undefined && offCpu.cpuMs < offCpu.durationMs / 4,
+		}).toStrictEqual({onCpu: true, offCpu: true});
 	});
 
 	it("stops reporting once stopped", async () => {

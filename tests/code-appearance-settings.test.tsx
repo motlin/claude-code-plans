@@ -6,6 +6,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SettingsProvider} from "../src/components/settings-provider";
 import {ClaudeCodeSettings} from "../src/components/settings/settings-sections";
 import {ThemeProvider} from "../src/components/theme-provider";
+import {requestLanguage, requestTheme} from "../src/hooks/use-shiki";
 import {installLocalStorage} from "./fake-storage";
 
 async function renderClaudeCode() {
@@ -44,6 +45,14 @@ afterEach(() => {
 
 describe("Claude Code settings ▸ Code appearance", () => {
 	it("re-renders the dark preview with the chosen theme", async () => {
+		// Load the lazy preview chunk, the grammar and both themes up front, so the colours below
+		// depend on rendering alone and not on how fast a loaded machine finishes the async imports.
+		await Promise.all([
+			import("../src/components/settings/code-theme-preview"),
+			requestLanguage("typescript"),
+			requestTheme("github-dark"),
+			requestTheme("nord"),
+		]);
 		await renderClaudeCode();
 
 		await waitFor(() => {

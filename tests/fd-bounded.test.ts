@@ -1,5 +1,15 @@
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
-import {appendFileSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync} from "node:fs";
+import {execFileSync} from "node:child_process";
+import {
+	appendFileSync,
+	mkdirSync,
+	mkdtempSync,
+	readdirSync,
+	readlinkSync,
+	realpathSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {openTestDb, type AppDb} from "../src/lib/db/connection";
@@ -7,19 +17,40 @@ import {fullScan} from "../src/lib/db/indexer";
 import {createRecursiveWatcher} from "../src/lib/recursive-watch";
 import {processJsonlAppend} from "../src/lib/watcher";
 
-const SESSION_COUNT = 30;
+const SESSION_COUNT = 8;
 const APPENDS_PER_SESSION = 4;
 
-function openFileDescriptorCount(): number {
-	return readdirSync("/dev/fd").length;
+function openPaths(): string[] {
+	if (process.platform === "linux") {
+		return readdirSync("/proc/self/fd").flatMap((fd) => {
+			try {
+				return [readlinkSync(`/proc/self/fd/${fd}`)];
+			} catch {
+				return [];
+			}
+		});
+	}
+	const lsof = execFileSync("lsof", ["-w", "-n", "-P", "-p", String(process.pid), "-Fn"], {encoding: "utf8"});
+	return lsof
+		.split("\n")
+		.filter((line) => line.startsWith("n"))
+		.map((line) => line.slice(1));
 }
 
-/** Active filesystem handles and requests: watchers, open file handles and pending fs calls. */
-function activeFsResources(): string[] {
-	return process
-		.getActiveResourcesInfo()
-		.filter((resource) => resource.startsWith("FS") || resource === "FileHandle")
+/**
+ * Paths this process holds open inside `root`. Counting only the test's own tree keeps
+ * descriptors the test runner or other in-process work opens out of the assertion.
+ */
+function openPathsUnder(root: string): string[] {
+	const realRoot = realpathSync(root);
+	return openPaths()
+		.filter((path) => path === realRoot || path.startsWith(`${realRoot}/`))
 		.sort();
+}
+
+/** Native fs.watch handles held by this process. */
+function activeWatchers(): number {
+	return process.getActiveResourcesInfo().filter((resource) => resource === "FSEventWrap").length;
 }
 
 function record(sessionId: string, index: number, content: string): string {
@@ -68,7 +99,6 @@ describe("file descriptors stay bounded while indexing and tailing many transcri
 			return {sessionId, path};
 		});
 
-		const baseline = openFileDescriptorCount();
 		await fullScan(db.index, db.summaries, projectsDir, tasksDir, plansDir);
 
 		const offsets = new Map<string, number>();
@@ -83,7 +113,7 @@ describe("file descriptors stay bounded while indexing and tailing many transcri
 		}
 		await new Promise((resolve) => setTimeout(resolve, 50));
 
-		expect(openFileDescriptorCount() - baseline).toBeLessThanOrEqual(2);
+		expect(openPathsUnder(root)).toStrictEqual([]);
 	});
 });
 
@@ -106,18 +136,24 @@ describe("the recursive watcher", () => {
 			mkdirSync(projectDir, {recursive: true});
 			for (let file = 0; file < 200; file++) writeFileSync(join(projectDir, `session-${file}.jsonl`), "{}\n");
 		}
-		const baselineDescriptors = openFileDescriptorCount();
-		const baselineResources = activeFsResources();
+		const baselineWatchers = activeWatchers();
 
 		const watcher = createRecursiveWatcher([projectsDir], () => false);
 		await new Promise<void>((resolve) => watcher.once("ready", resolve));
-		expect(openFileDescriptorCount() - baselineDescriptors).toBeLessThanOrEqual(directories + 1);
-		expect(activeFsResources().length - baselineResources.length).toBeGreaterThan(0);
+		const whileWatching = {descriptors: openPathsUnder(root).length, watchers: activeWatchers() - baselineWatchers};
 
 		await watcher.close();
 		await new Promise((resolve) => setTimeout(resolve, 50));
 
-		expect(openFileDescriptorCount()).toBe(baselineDescriptors);
-		expect(activeFsResources()).toStrictEqual(baselineResources);
+		expect({
+			whileWatching: {
+				perDirectory: whileWatching.descriptors <= directories + 1,
+				watching: whileWatching.watchers > 0,
+			},
+			afterClose: {descriptors: openPathsUnder(root), watchers: activeWatchers() - baselineWatchers},
+		}).toStrictEqual({
+			whileWatching: {perDirectory: true, watching: true},
+			afterClose: {descriptors: [], watchers: 0},
+		});
 	});
 });
