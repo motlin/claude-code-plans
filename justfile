@@ -91,6 +91,11 @@ perf *args: install
 perf-bundle: install
     vp exec tsx scripts/perf-bundle.ts
 
+# Print n and p50/p75/p95 per field metric from the browser's journey samples, split into server/network/client time per build, origin and form factor
+[group('perf')]
+perf-report *args: install
+    vp exec tsx scripts/perf-report.ts {{ args }}
+
 # Rewrite tests/perf/ceilings.json to lowered and new measured counts. Manual only: never run from CI, a bot or a schedule
 [group('perf')]
 perf-ceilings: install

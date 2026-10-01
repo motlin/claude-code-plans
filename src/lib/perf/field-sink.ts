@@ -13,7 +13,7 @@ const FIELD_LOG_RETENTION_DAYS = 30;
 const MAX_BODY_BYTES = 1024 * 1024;
 const MAX_SAMPLES_PER_BATCH = 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
-const FIELD_LOG_PATTERN = /^field-(\d{4}-\d{2}-\d{2})\.jsonl$/;
+export const FIELD_LOG_PATTERN = /^field-(\d{4}-\d{2}-\d{2})\.jsonl$/;
 
 const ResourceSampleSchema = z
 	.object({
@@ -62,7 +62,7 @@ const EventTimingSampleSchema = z
 	})
 	.strict();
 
-const JourneySampleSchema = z
+export const JourneySampleSchema = z
 	.object({
 		journey: z.string(),
 		trigger: z.string(),
