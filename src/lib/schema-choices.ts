@@ -55,7 +55,7 @@ import type {
 	SessionStateKindSchema,
 } from "./session-state";
 import type {SessionMenuItemIdSchema} from "./session-menu-items";
-import type {SettingsTab} from "./settings-hash";
+import type {CustomizeDetailTab, CustomizeSection, CustomizeView, SettingsTab} from "./settings-hash";
 import type {MessageProcessedLine, ProcessedLine} from "./transcript";
 import type {RecentKind} from "./recents-history";
 import type {RoutineKind, RoutineScheduleFilter, RoutineSort, RoutineStatus, RoutineStatusFilter} from "./routines";
@@ -661,6 +661,27 @@ export const settingsTabLabels = {
 	setup: "Setup",
 } satisfies Record<SettingsTab, string>;
 
+/** Customize sections in the Settings dialog nav, after Claude Code, as on claude.ai/code. */
+export const customizeSectionLabels = {
+	skills: "Skills",
+	connectors: "Connectors",
+	plugins: "Plugins",
+} satisfies Record<CustomizeSection, string>;
+
+const customizeViewLabels = {
+	yours: "Yours",
+	discover: "Discover",
+} satisfies Record<CustomizeView, string>;
+
+const customizeDetailTabLabels = {
+	contents: "Contents",
+	skills: "Skills",
+	connectors: "Connectors",
+	agents: "Agents",
+	commands: "Commands",
+	hooks: "Hooks",
+} satisfies Record<CustomizeDetailTab, string>;
+
 /** Settings ▸ Code appearance light themes (src/lib/code-themes.ts), named as on claude.ai/code. */
 export const codeThemeLightLabels = {
 	"claude-light": "Claude Light",
@@ -1023,6 +1044,9 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
 	"PaneLayoutStateSchema.root.children[].<tile>.tileId": tileIdLabels,
 	"PaneLayoutStateSchema.root.direction": paneStackDirectionLabels,
 	SettingsTabSchema: settingsTabLabels,
+	CustomizeSectionSchema: customizeSectionLabels,
+	CustomizeViewSchema: customizeViewLabels,
+	CustomizeDetailTabSchema: customizeDetailTabLabels,
 	CodeThemeLightSchema: codeThemeLightLabels,
 	CodeThemeDarkSchema: codeThemeDarkLabels,
 	TerminalAppearanceSchema: terminalAppearanceLabels,

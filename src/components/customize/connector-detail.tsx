@@ -1,5 +1,4 @@
 import {useQuery, useQueryClient} from "@tanstack/react-query";
-import {Link} from "@tanstack/react-router";
 import {ArrowLeft, Ban, Check, ChevronDown, CircleCheck, Copy, Ellipsis, Hand, type LucideIcon} from "lucide-react";
 import {useState} from "react";
 import type {McpServerDetail, McpToolPermission} from "../../lib/api/customize";
@@ -17,6 +16,7 @@ import {useToast} from "../toast";
 import {Menu, MenuContent, MenuRadioGroup, MenuRadioItem, MenuTrigger} from "../ui/menu";
 import {ConnectorTile, connectorDomain} from "./connector-tile";
 import {SCOPE_LABEL, ScopeBadge, transportLabel} from "./connectors-table";
+import {CustomizeLink} from "./customize-nav";
 
 const CHOICES: readonly {value: ToolPermissionChoice; label: string; icon: LucideIcon}[] = [
 	{value: "allow", label: "Always allow", icon: CircleCheck},
@@ -64,13 +64,13 @@ export function ConnectorDetailHeader({detail}: {detail: McpServerDetail}) {
 	const secretKeys = [...server.envKeys, ...server.headerKeys];
 	return (
 		<header className="flex flex-col gap-3">
-			<Link
-				to="/customize/connectors"
+			<CustomizeLink
+				target={{kind: "list", section: "connectors"}}
 				className="-ms-2 inline-flex w-fit items-center gap-1.5 rounded-r6 px-2 py-1 text-body text-secondary no-underline hover:bg-fill-ghost-hover hover:text-primary"
 			>
 				<ArrowLeft aria-hidden="true" className="size-4" />
 				Your connectors
-			</Link>
+			</CustomizeLink>
 			<div className="flex min-h-14 items-center gap-3 py-1">
 				<ConnectorTile name={server.name} domain={connectorDomain(server.transport, server.urlOrCommand)} />
 				<h2 className="m-0 truncate text-[18px]/[24px] font-semibold text-primary">{server.name}</h2>

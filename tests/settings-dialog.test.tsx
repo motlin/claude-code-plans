@@ -9,11 +9,18 @@ import {
 	Outlet,
 	RouterProvider,
 } from "@tanstack/react-router";
-import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SettingsDialog} from "../src/components/settings/settings-dialog";
 import {SettingsProvider} from "../src/components/settings-provider";
 import {ThemeProvider} from "../src/components/theme-provider";
+import {ToastProvider} from "../src/components/toast";
+import {
+	customizeSkillDetailQueryOptions,
+	customizeSkillsQueryOptions,
+	type SkillDetail,
+	type SkillSummary,
+} from "../src/lib/api/customize";
 import {redirectToSettingsDialog} from "../src/routes/settings";
 import {installLocalStorage} from "./fake-storage";
 
@@ -35,15 +42,18 @@ function stubBrowser() {
 	);
 }
 
-function buildRouter(initialEntry: string) {
+function buildRouter(initialEntry: string, seed: (queryClient: QueryClient) => void = () => {}) {
 	const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
+	seed(queryClient);
 	const rootRoute = createRootRoute({
 		component: () => (
 			<QueryClientProvider client={queryClient}>
 				<ThemeProvider>
 					<SettingsProvider>
-						<Outlet />
-						<SettingsDialog />
+						<ToastProvider>
+							<Outlet />
+							<SettingsDialog />
+						</ToastProvider>
 					</SettingsProvider>
 				</ThemeProvider>
 			</QueryClientProvider>
@@ -70,8 +80,8 @@ function buildRouter(initialEntry: string) {
 	});
 }
 
-async function renderAt(initialEntry: string) {
-	const router = buildRouter(initialEntry);
+async function renderAt(initialEntry: string, seed?: (queryClient: QueryClient) => void) {
+	const router = buildRouter(initialEntry, seed);
 	await router.load();
 	render(<RouterProvider router={router} />);
 	return router;
@@ -121,7 +131,7 @@ describe("SettingsDialog", () => {
 		const nav = screen.getByRole("navigation", {name: "Settings"});
 		expect(
 			[...nav.querySelectorAll("button")].map((button) => button.firstElementChild?.tagName.toLowerCase()),
-		).toStrictEqual(Array.from({length: 9}, () => "svg"));
+		).toStrictEqual(Array.from({length: 12}, () => "svg"));
 	});
 
 	it("renders no visible Settings caption above the tab list, naming the nav by aria-label", async () => {
@@ -144,6 +154,9 @@ describe("SettingsDialog", () => {
 			"General",
 			"Usage",
 			"Claude Code",
+			"Skills",
+			"Connectors",
+			"Plugins",
 			"Transcript",
 			"Sessions",
 			"Application",
@@ -285,6 +298,105 @@ describe("SettingsDialog local tabs", () => {
 		const dialog = await screen.findByRole("dialog", {name: "Settings"});
 
 		expect(tabOutline(dialog)).toStrictEqual(outline);
+	});
+
+	it("opens Skills inside the dialog by hash with the Yours/Discover control", async () => {
+		const router = await renderAt("/#settings/general");
+		await screen.findByRole("dialog", {name: "Settings"});
+
+		fireEvent.click(screen.getByRole("button", {name: "Skills"}));
+
+		const views = await screen.findByRole("radiogroup", {name: "Skills"});
+		expect({
+			location: location(router),
+			current: currentTabs(),
+			views: [...views.querySelectorAll('[role="radio"]')].map((radio) => [
+				radio.textContent,
+				radio.getAttribute("aria-checked"),
+			]),
+		}).toStrictEqual({
+			location: {pathname: "/", hash: "customize/skills/yours"},
+			current: ["Skills"],
+			views: [
+				["Yours", "true"],
+				["Discover", "false"],
+			],
+		});
+	});
+
+	it("switches a customize section to Discover through the hash", async () => {
+		const router = await renderAt("/#customize/plugins/yours");
+		const views = await screen.findByRole("radiogroup", {name: "Plugins"});
+
+		fireEvent.click(within(views).getByRole("radio", {name: "Discover"}));
+
+		await waitFor(() =>
+			expect(location(router)).toStrictEqual({pathname: "/", hash: "customize/plugins/discover"}),
+		);
+		expect(currentTabs()).toStrictEqual(["Plugins"]);
+	});
+
+	it("opens Connectors without a Yours/Discover control", async () => {
+		await renderAt("/#customize/connectors/yours");
+		await screen.findByRole("searchbox", {name: "Search connectors"});
+
+		expect({current: currentTabs(), views: screen.queryByRole("radiogroup")}).toStrictEqual({
+			current: ["Connectors"],
+			views: null,
+		});
+	});
+
+	it("opens a skill's detail inside the dialog and links back by hash", async () => {
+		const skill: SkillSummary = {
+			id: "personal:foo",
+			name: "foo",
+			description: "Does foo",
+			source: "personal",
+			sourceLabel: "Personal",
+			dir: "/home/u/.claude/skills/foo",
+			mtime: 0,
+			enabled: true,
+		};
+		const detail: SkillDetail = {
+			skill,
+			userInvocable: true,
+			modelInvocable: true,
+			allowedTools: [],
+			tree: [],
+		};
+		const router = await renderAt("/#customize/skills/yours", (queryClient) => {
+			queryClient.setQueryData(customizeSkillsQueryOptions.queryKey, [skill]);
+			queryClient.setQueryData(customizeSkillDetailQueryOptions(skill.id).queryKey, detail);
+		});
+
+		fireEvent.click(await screen.findByRole("button", {name: "View foo"}));
+
+		const sections = await screen.findByRole("navigation", {name: "Skill sections"});
+		expect({
+			location: location(router),
+			current: currentTabs(),
+			back: screen.getByRole("link", {name: "Your skills"}).getAttribute("href"),
+			tabs: within(sections)
+				.getAllByRole("link")
+				.map((link) => [link.textContent, link.getAttribute("href"), link.getAttribute("aria-current")]),
+		}).toStrictEqual({
+			location: {pathname: "/", hash: "customize/skills/yours/id/personal%3Afoo"},
+			current: ["Skills"],
+			back: "#customize/skills/yours",
+			tabs: [
+				["Overview", "#customize/skills/yours/id/personal%3Afoo", "page"],
+				["Contents · 0", "#customize/skills/yours/id/personal%3Afoo/contents", null],
+			],
+		});
+
+		fireEvent.click(within(sections).getByRole("link", {name: "Contents · 0"}));
+
+		await waitFor(() =>
+			expect(location(router)).toStrictEqual({
+				pathname: "/",
+				hash: "customize/skills/yours/id/personal%3Afoo/contents",
+			}),
+		);
 	});
 
 	it("links the Claude Config tab to the settings editor", async () => {

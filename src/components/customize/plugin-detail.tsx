@@ -1,5 +1,4 @@
 import {useQuery} from "@tanstack/react-query";
-import {Link, useNavigate} from "@tanstack/react-router";
 import {ArrowLeft, Bot, Plug, Puzzle, Scroll, SquareSlash} from "lucide-react";
 import type {ReactNode} from "react";
 import {
@@ -12,23 +11,14 @@ import type {PluginInfoData} from "../../lib/api/plugins";
 import {toConnectorSlug} from "../../lib/customize/mcp-tool-permissions";
 import {PluginVersion} from "../plugin-version";
 import {ScopeBadge, transportLabel} from "./connectors-table";
+import {CustomizeLink, useCustomizeGo} from "./customize-nav";
 import {IconTile} from "./icon-tile";
 import {ListRow} from "./list-row";
 import {PluginRowActions} from "./plugin-row-actions";
-import {type PluginTabId, pluginDetailTabs, pluginNamespace} from "./plugin-view";
+import {pluginDetailTabs, pluginNamespace} from "./plugin-view";
 
 const TAB_CLASS =
 	"relative inline-flex h-10 items-center gap-1 border-b-2 border-transparent px-1 text-body font-medium text-t6 no-underline hover:text-secondary aria-[current=page]:border-primary aria-[current=page]:text-primary";
-
-const TAB_TO = {
-	overview: "/customize/plugins/id/$pluginId",
-	contents: "/customize/plugins/id/$pluginId/contents",
-	skills: "/customize/plugins/id/$pluginId/skills",
-	connectors: "/customize/plugins/id/$pluginId/connectors",
-	agents: "/customize/plugins/id/$pluginId/agents",
-	commands: "/customize/plugins/id/$pluginId/commands",
-	hooks: "/customize/plugins/id/$pluginId/hooks",
-} as const satisfies Record<PluginTabId, string>;
 
 function plural(count: number, noun: string): string {
 	return `${count} ${noun}${count === 1 ? "" : "s"}`;
@@ -45,13 +35,13 @@ export function PluginDetailHeader({detail}: {detail: PluginDetail}) {
 	const disabled = toggles !== undefined && !isPluginEnabled(toggles, plugin.id);
 	return (
 		<header className="flex flex-col gap-4">
-			<Link
-				to="/customize/plugins"
+			<CustomizeLink
+				target={{kind: "list", section: "plugins"}}
 				className="inline-flex w-fit items-center gap-1.5 rounded-r6 px-2 py-1 -ms-2 text-body text-secondary no-underline hover:bg-fill-ghost-hover hover:text-primary"
 			>
 				<ArrowLeft aria-hidden="true" className="size-4" />
 				Plugins
-			</Link>
+			</CustomizeLink>
 			<div className="flex items-center gap-3">
 				<IconTile icon={Puzzle} size="lg" />
 				<div className="flex min-w-0 flex-1 flex-col">
@@ -74,16 +64,14 @@ export function PluginDetailHeader({detail}: {detail: PluginDetail}) {
 			</div>
 			<nav aria-label="Plugin sections" className="flex flex-wrap gap-x-4 border-b border-border">
 				{pluginDetailTabs(detail).map((tab) => (
-					<Link
+					<CustomizeLink
 						key={tab.id}
-						to={TAB_TO[tab.id]}
-						params={{pluginId: plugin.id}}
-						activeOptions={{exact: true}}
+						target={{kind: "plugin", id: plugin.id, tab: tab.id}}
 						className={TAB_CLASS}
 					>
 						{tab.label}
 						{tab.count !== null && <span className="text-t6"> · {tab.count}</span>}
-					</Link>
+					</CustomizeLink>
 				))}
 			</nav>
 		</header>
@@ -187,7 +175,7 @@ function RowList({children}: {children: ReactNode}) {
 
 /** Skills tab: one "/plugin:skill" row per skill, opening the skill detail. */
 export function PluginSkills({plugin}: {plugin: PluginInfoData}) {
-	const navigate = useNavigate();
+	const go = useCustomizeGo();
 	const namespace = pluginNamespace(plugin.id);
 	return (
 		<div className="flex flex-col gap-3">
@@ -201,12 +189,7 @@ export function PluginSkills({plugin}: {plugin: PluginInfoData}) {
 						icon={Scroll}
 						title={`/${namespace}:${skill.name}`}
 						subtitle={skill.description}
-						onView={() =>
-							void navigate({
-								to: "/customize/skills/id/$skillId",
-								params: {skillId: `plugin:${plugin.id}:${skill.name}`},
-							})
-						}
+						onView={() => go({kind: "skill", id: `plugin:${plugin.id}:${skill.name}`, tab: "overview"})}
 					/>
 				))}
 			</RowList>
@@ -216,7 +199,7 @@ export function PluginSkills({plugin}: {plugin: PluginInfoData}) {
 
 /** Connectors tab: the servers the plugin's .mcp.json declares. */
 export function PluginConnectors({detail}: {detail: PluginDetail}) {
-	const navigate = useNavigate();
+	const go = useCustomizeGo();
 	return (
 		<div className="flex flex-col gap-3">
 			<TabIntro>Tools and data sources this plugin connects to.</TabIntro>
@@ -229,12 +212,7 @@ export function PluginConnectors({detail}: {detail: PluginDetail}) {
 						source={transportLabel(server.transport)}
 						subtitle={server.urlOrCommand}
 						meta={server.enabled ? "Enabled" : "Disabled"}
-						onView={() =>
-							void navigate({
-								to: "/customize/connectors/id/$serverId",
-								params: {serverId: toConnectorSlug(server.id)},
-							})
-						}
+						onView={() => go({kind: "connector", slug: toConnectorSlug(server.id)})}
 					/>
 				))}
 			</RowList>
@@ -244,7 +222,7 @@ export function PluginConnectors({detail}: {detail: PluginDetail}) {
 
 /** Agents or Commands tab: one row per markdown file, opening it in Contents. */
 export function PluginFiles({plugin, kind}: {plugin: PluginInfoData; kind: "agents" | "commands"}) {
-	const navigate = useNavigate();
+	const go = useCustomizeGo();
 	const namespace = pluginNamespace(plugin.id);
 	const files = kind === "agents" ? plugin.agents : plugin.commands;
 	return (
@@ -260,11 +238,7 @@ export function PluginFiles({plugin, kind}: {plugin: PluginInfoData; kind: "agen
 						title={kind === "agents" ? file.name : `/${namespace}:${file.filename.replace(/\.md$/, "")}`}
 						subtitle={file.description}
 						onView={() =>
-							void navigate({
-								to: "/customize/plugins/id/$pluginId/contents",
-								params: {pluginId: plugin.id},
-								search: {file: `${kind}/${file.filename}`},
-							})
+							go({kind: "plugin", id: plugin.id, tab: "contents", file: `${kind}/${file.filename}`})
 						}
 					/>
 				))}

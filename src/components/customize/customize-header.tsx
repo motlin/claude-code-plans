@@ -1,5 +1,5 @@
 import {useQuery} from "@tanstack/react-query";
-import {Link, useNavigate} from "@tanstack/react-router";
+import {Link} from "@tanstack/react-router";
 import {ArrowDownUp, Search, SlidersHorizontal, X} from "lucide-react";
 import {type ReactNode, useEffect, useState} from "react";
 import {customizeDiscoverQueryOptions} from "../../lib/api/customize";
@@ -27,14 +27,22 @@ const SEGMENT_CLASS =
 interface CustomizeHeaderProps {
 	section: CustomizeSectionConfig;
 	search: CustomizeSearch;
+	/** Applies a change to the search state; an `undefined` value clears that key. */
+	onSearchChange: (patch: Partial<CustomizeSearch>) => void;
+	/** Inside the Settings dialog the nav names the section, so the H1 and section tabs are dropped. */
+	embedded?: boolean;
 }
 
 /**
  * Upstream Customize `PageHeader`: serif H1, section tabs, the Yours | Discover
  * segmented control, and the right-hand search, Filter, Sort and Add controls.
  */
-export function CustomizeHeader({section, search}: CustomizeHeaderProps) {
-	const navigate = useNavigate();
+export function CustomizeHeader({
+	section,
+	search,
+	onSearchChange: updateSearch,
+	embedded = false,
+}: CustomizeHeaderProps) {
 	const searching = (search.q ?? "") !== "";
 	// Discover swaps the Yours Filter and Sort for category and catalog-order menus.
 	const discover = section.hasDiscover && search.view === "discover";
@@ -42,40 +50,39 @@ export function CustomizeHeader({section, search}: CustomizeHeaderProps) {
 	const sortOptions = section.sort;
 	const sort = useSectionSort(section.sortStorageKey, search.sort);
 
-	const updateSearch = (patch: Partial<CustomizeSearch>) =>
-		void navigate({
-			to: section.to,
-			search: (previous: CustomizeSearch) => dropEmpty({...previous, ...patch}),
-			replace: true,
-		});
-
 	return (
 		<header className="flex flex-wrap justify-between gap-x-3 gap-y-4">
-			<div className="flex min-h-12 basis-full items-center">
-				<h1 className="min-w-0 font-voice text-[24px]/[32px] font-medium text-primary">Customize</h1>
-			</div>
+			{!embedded && (
+				<div className="flex min-h-12 basis-full items-center">
+					<h1 className="min-w-0 font-voice text-[24px]/[32px] font-medium text-primary">Customize</h1>
+				</div>
+			)}
 			<div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
-				<nav aria-label="Customize" className="flex shrink-0 items-center">
-					<div role="tablist" aria-label="Customize sections" className="flex items-center">
-						{CUSTOMIZE_SECTIONS.map((tab) => (
-							<Link
-								key={tab.id}
-								to={tab.to}
-								search={tab.hasDiscover && search.view !== undefined ? {view: search.view} : {}}
-								id={`customize-tab-${tab.id}`}
-								role="tab"
-								aria-selected={tab.id === section.id}
-								aria-controls="customize-pane"
-								data-testid={`customize-${tab.id}-settings`}
-								className={TAB_CLASS}
-							>
-								{tab.label}
-							</Link>
-						))}
-					</div>
-				</nav>
+				{!embedded && (
+					<nav aria-label="Customize" className="flex shrink-0 items-center">
+						<div role="tablist" aria-label="Customize sections" className="flex items-center">
+							{CUSTOMIZE_SECTIONS.map((tab) => (
+								<Link
+									key={tab.id}
+									to={tab.to}
+									search={tab.hasDiscover && search.view !== undefined ? {view: search.view} : {}}
+									id={`customize-tab-${tab.id}`}
+									role="tab"
+									aria-selected={tab.id === section.id}
+									aria-controls="customize-pane"
+									data-testid={`customize-${tab.id}-settings`}
+									className={TAB_CLASS}
+								>
+									{tab.label}
+								</Link>
+							))}
+						</div>
+					</nav>
+				)}
 				{section.hasDiscover && (
-					<div className="flex shrink-0 items-center gap-3 before:h-5 before:w-px before:shrink-0 before:bg-border">
+					<div
+						className={`flex shrink-0 items-center gap-3 ${embedded ? "" : "before:h-5 before:w-px before:shrink-0 before:bg-border"}`}
+					>
 						<div
 							role="radiogroup"
 							aria-label={section.label}
@@ -170,7 +177,8 @@ export function CustomizeHeader({section, search}: CustomizeHeaderProps) {
 	);
 }
 
-function dropEmpty(search: CustomizeSearch): CustomizeSearch {
+/** The search with empty and unset keys removed, so URLs and state stay minimal. */
+export function dropEmpty(search: CustomizeSearch): CustomizeSearch {
 	const result: CustomizeSearch = {};
 	if (search.q !== undefined && search.q !== "") result.q = search.q;
 	if (search.view !== undefined) result.view = search.view;

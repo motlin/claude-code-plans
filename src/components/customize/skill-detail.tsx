@@ -1,8 +1,8 @@
-import {Link} from "@tanstack/react-router";
 import {ArrowLeft, Scroll} from "lucide-react";
 import type {ReactNode} from "react";
 import type {SkillDetail} from "../../lib/api/customize";
 import {countContentsFiles} from "./contents-order";
+import {CustomizeLink} from "./customize-nav";
 import {ShortDate} from "./customize-list";
 import {IconTile} from "./icon-tile";
 import {SkillEnableSwitch} from "./skill-enable-switch";
@@ -21,13 +21,13 @@ export function SkillDetailHeader({detail}: {detail: SkillDetail}) {
 	const {skill} = detail;
 	return (
 		<header className="flex flex-col gap-4">
-			<Link
-				to="/customize/skills"
+			<CustomizeLink
+				target={{kind: "list", section: "skills"}}
 				className="inline-flex w-fit items-center gap-1.5 rounded-r6 px-2 py-1 -ms-2 text-body text-secondary no-underline hover:bg-fill-ghost-hover hover:text-primary"
 			>
 				<ArrowLeft aria-hidden="true" className="size-4" />
 				Your skills
-			</Link>
+			</CustomizeLink>
 			<div className="flex items-center gap-3">
 				<IconTile icon={Scroll} size="lg" />
 				<div className="flex min-w-0 flex-1 flex-col">
@@ -42,17 +42,12 @@ export function SkillDetailHeader({detail}: {detail: SkillDetail}) {
 				</div>
 			</div>
 			<nav aria-label="Skill sections" className="flex gap-4 border-b border-border">
-				<Link
-					to="/customize/skills/id/$skillId"
-					params={{skillId: skill.id}}
-					activeOptions={{exact: true}}
-					className={TAB_CLASS}
-				>
+				<CustomizeLink target={{kind: "skill", id: skill.id, tab: "overview"}} className={TAB_CLASS}>
 					Overview
-				</Link>
-				<Link to="/customize/skills/id/$skillId/contents" params={{skillId: skill.id}} className={TAB_CLASS}>
+				</CustomizeLink>
+				<CustomizeLink target={{kind: "skill", id: skill.id, tab: "contents"}} className={TAB_CLASS}>
 					Contents <span className="text-t6">· {countContentsFiles(detail.tree)}</span>
-				</Link>
+				</CustomizeLink>
 			</nav>
 		</header>
 	);
@@ -92,13 +87,12 @@ export function SkillOverview({detail}: {detail: SkillDetail}) {
 				<AsideCard title="Source">
 					<p className="m-0 break-all font-mono text-caption text-secondary">{skill.dir}</p>
 					{detail.pluginId !== undefined && (
-						<Link
-							to="/customize/plugins"
-							search={{q: skill.sourceLabel}}
+						<CustomizeLink
+							target={{kind: "list", section: "plugins", search: {q: skill.sourceLabel}}}
 							className="w-fit text-body text-accent-100 hover:underline"
 						>
 							{skill.sourceLabel}
-						</Link>
+						</CustomizeLink>
 					)}
 				</AsideCard>
 				<AsideCard title="Invocation">

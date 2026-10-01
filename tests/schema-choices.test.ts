@@ -57,7 +57,12 @@ import {
 } from "../src/lib/session-state";
 import {SessionListPrefsSchema} from "../src/lib/session-groups";
 import {SessionMenuItemIdSchema} from "../src/lib/session-menu-items";
-import {SettingsTabSchema} from "../src/lib/settings-hash";
+import {
+	CustomizeDetailTabSchema,
+	CustomizeSectionSchema,
+	CustomizeViewSchema,
+	SettingsTabSchema,
+} from "../src/lib/settings-hash";
 import {
 	AttachmentPayloadSchema,
 	ClaudeSettingsSchema,
@@ -146,6 +151,9 @@ const ROOTS: ReadonlyArray<readonly [string, unknown]> = [
 	["McpServerDetailResponse", McpServerDetailResponse],
 	["PaneLayoutStateSchema", PaneLayoutStateSchema],
 	["SettingsTabSchema", SettingsTabSchema],
+	["CustomizeSectionSchema", CustomizeSectionSchema],
+	["CustomizeViewSchema", CustomizeViewSchema],
+	["CustomizeDetailTabSchema", CustomizeDetailTabSchema],
 	["CodeThemeLightSchema", CodeThemeLightSchema],
 	["CodeThemeDarkSchema", CodeThemeDarkSchema],
 	["TerminalAppearanceSchema", TerminalAppearanceSchema],

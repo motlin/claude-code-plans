@@ -21,9 +21,11 @@
 		"raisedAt": "2026-10-01"
 	},
 	"bundle.session.raw": {
-		"ceiling": 2280672,
+		"ceiling": 2303535,
 		"unit": "bytes",
-		"tolerance": 0.01
+		"tolerance": 0.01,
+		"reason": "Base 8e80cb21 already measured 2301923 (earlier landings since the last raise), plus about 1.6 KB in the client entry for the #customize hash parser and the Skills, Connectors and Plugins Settings nav items; the Customize panel itself is lazy-loaded",
+		"raisedAt": "2026-10-01"
 	},
 	"client.coldHome.default.commitsToRows": {
 		"ceiling": 11,

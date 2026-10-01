@@ -1,10 +1,19 @@
 import {Dialog} from "@base-ui/react/dialog";
 import {useLocation, useNavigate} from "@tanstack/react-router";
 import {X} from "lucide-react";
-import {useCallback, useEffect, useRef, useState, type ComponentType} from "react";
+import {lazy, Suspense, useCallback, useEffect, useRef, useState, type ComponentType} from "react";
 import {useShortcut} from "../../hooks/use-shortcut";
-import {settingsTabLabels} from "../../lib/schema-choices";
-import {parseSettingsHash, settingsHash, SettingsTabSchema, type SettingsTab} from "../../lib/settings-hash";
+import {customizeSectionLabels, settingsTabLabels} from "../../lib/schema-choices";
+import {
+	type CustomizeSection,
+	CustomizeSectionSchema,
+	customizeHash,
+	parseCustomizeHash,
+	parseSettingsHash,
+	settingsHash,
+	SettingsTabSchema,
+	type SettingsTab,
+} from "../../lib/settings-hash";
 import {
 	AiFeaturesSettings,
 	ApplicationConfigurationSection,
@@ -17,7 +26,7 @@ import {
 } from "./settings-sections";
 import {SettingsFlashContext, type SettingsFlash} from "./settings-row";
 import {SettingsSearch} from "./settings-search";
-import {SETTINGS_TAB_ICONS} from "./settings-tab-icons";
+import {CUSTOMIZE_SECTION_ICONS, SETTINGS_TAB_ICONS} from "./settings-tab-icons";
 import {UsageSettings} from "./usage-settings";
 
 const TAB_PANELS = {
@@ -31,6 +40,21 @@ const TAB_PANELS = {
 	"claude-config": ClaudeConfigSettings,
 	setup: SetupSettings,
 } satisfies Record<SettingsTab, ComponentType>;
+
+// Skills, Connectors and Plugins pull in the Customize lists and detail views, so they load on first open.
+const CustomizeDialogPanel = lazy(() => import("../customize/customize-dialog-panel"));
+
+type NavItem = {kind: "settings"; tab: SettingsTab} | {kind: "customize"; section: CustomizeSection};
+
+/** Upstream's nav order: the Customize sections follow Claude Code. */
+const NAV_ITEMS: readonly NavItem[] = SettingsTabSchema.options.flatMap((tab): NavItem[] =>
+	tab === "claude-code"
+		? [
+				{kind: "settings", tab},
+				...CustomizeSectionSchema.options.map((section): NavItem => ({kind: "customize", section})),
+			]
+		: [{kind: "settings", tab}],
+);
 
 /** Returns a function that opens Settings over the current page at `tab`. */
 export function useOpenSettings(): (tab: SettingsTab, row?: string) => void {
@@ -55,15 +79,16 @@ const FLASH_MS = 1500;
 
 /**
  * The upstream-shaped Settings modal. It is open exactly while the location hash
- * is `#settings/<tab>[/<row>]`; closing clears the hash and restores focus to
- * whatever was focused when it opened.
+ * is `#settings/<tab>[/<row>]` or `#customize/<section>/…`; closing clears the
+ * hash and restores focus to whatever was focused when it opened.
  */
 export function SettingsDialog() {
 	const hash = useLocation({select: (location) => location.hash});
 	const navigate = useNavigate();
 	const openSettings = useOpenSettings();
 	const current = parseSettingsHash(hash);
-	const open = current !== null;
+	const customize = current === null ? parseCustomizeHash(hash) : null;
+	const open = current !== null || customize !== null;
 	const returnFocusRef = useRef<HTMLElement | null>(null);
 
 	// The first render with a settings hash runs before Base UI moves focus into
@@ -93,6 +118,21 @@ export function SettingsDialog() {
 				params: true,
 				hash: settingsHash(tab, row),
 				replace: true,
+				resetScroll: false,
+				hashScrollIntoView: false,
+			});
+		},
+		[navigate],
+	);
+
+	const navigateHash = useCallback(
+		(nextHash: string, replace: boolean) => {
+			void navigate({
+				to: ".",
+				search: true,
+				params: true,
+				hash: nextHash,
+				replace,
 				resetScroll: false,
 				hashScrollIntoView: false,
 			});
@@ -139,7 +179,7 @@ export function SettingsDialog() {
 					aria-label="Settings"
 					finalFocus={finalFocus}
 					data-perf-overlay="settings_modal"
-					data-perf-screen={tab}
+					data-perf-screen={customize === null ? tab : `customize-${customize.section}`}
 					className="fixed inset-8 z-50 m-auto flex max-h-[50rem] max-w-[1024px] overflow-hidden rounded-card bg-[var(--menu-bg)] text-primary shadow-[var(--menu-shadow)] outline-none"
 				>
 					<nav
@@ -147,15 +187,25 @@ export function SettingsDialog() {
 						className="flex w-48 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-subtle bg-surface-1 p-2"
 					>
 						<SettingsSearch onSelect={selectTab} />
-						{SettingsTabSchema.options.map((navTab) => {
-							const selected = navTab === tab;
-							const Icon = SETTINGS_TAB_ICONS[navTab];
+						{NAV_ITEMS.map((item) => {
+							const selected =
+								item.kind === "settings"
+									? customize === null && item.tab === tab
+									: item.section === customize?.section;
+							const Icon =
+								item.kind === "settings"
+									? SETTINGS_TAB_ICONS[item.tab]
+									: CUSTOMIZE_SECTION_ICONS[item.section];
 							return (
 								<button
-									key={navTab}
+									key={item.kind === "settings" ? item.tab : `customize-${item.section}`}
 									type="button"
 									aria-current={selected ? "page" : undefined}
-									onClick={() => selectTab(navTab)}
+									onClick={() =>
+										item.kind === "settings"
+											? selectTab(item.tab)
+											: navigateHash(customizeHash({section: item.section}), true)
+									}
 									className={`flex h-8 shrink-0 items-center gap-2 rounded-r6 px-2 text-left text-body font-normal transition-colors ${
 										selected
 											? "bg-fill-control text-primary"
@@ -163,7 +213,9 @@ export function SettingsDialog() {
 									}`}
 								>
 									<Icon aria-hidden="true" className="size-5 shrink-0" />
-									{settingsTabLabels[navTab]}
+									{item.kind === "settings"
+										? settingsTabLabels[item.tab]
+										: customizeSectionLabels[item.section]}
 								</button>
 							);
 						})}
@@ -178,9 +230,15 @@ export function SettingsDialog() {
 							</Dialog.Close>
 						</div>
 						<div className="flex-1 space-y-6 overflow-y-auto px-6 pt-2 pb-4">
-							<SettingsFlashContext.Provider value={flash}>
-								<Panel />
-							</SettingsFlashContext.Provider>
+							{customize === null ? (
+								<SettingsFlashContext.Provider value={flash}>
+									<Panel />
+								</SettingsFlashContext.Provider>
+							) : (
+								<Suspense fallback={null}>
+									<CustomizeDialogPanel location={customize} onNavigate={navigateHash} />
+								</Suspense>
+							)}
 						</div>
 					</div>
 				</Dialog.Popup>
