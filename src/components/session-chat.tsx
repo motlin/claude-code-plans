@@ -18,6 +18,7 @@ import {MarkdownArticle} from "./markdown-article";
 import {TruncatedContent} from "./truncated-content";
 import {AgentMessageRow, AgentNameContext, type AgentNameResolver} from "./agent-message-row";
 import {parseAgentMessage} from "../lib/agent-message";
+import {parseTaskNotification, type TaskNotification} from "../lib/background-tasks";
 import {SlashCommandText, SlashCommandsContext} from "./slash-command-chip";
 import {UserPlainText} from "./user-plain-text";
 import {splitLeadingSlashCommand, type SlashCommand} from "../lib/slash-commands";
@@ -480,11 +481,14 @@ interface ToolCallBatch {
  */
 function GroupedToolCallEntry({
 	entries,
+	notices,
 	sessionId,
 	toolResultMap,
 	subagentLookup,
 }: {
 	entries: SessionLine[];
+	/** Background-task completions folded into the run, shown with its last batch. */
+	notices: readonly BackgroundNotice[];
 	sessionId: string;
 	toolResultMap: Map<string, ToolResultInfo>;
 	subagentLookup: SubagentLookup;
@@ -508,12 +512,12 @@ function GroupedToolCallEntry({
 		return result;
 	}, [entries, sessionId, toolResultMap, liveFailures, subagentLookup]);
 
-	if (batches.length === 0) return null;
+	if (batches.length === 0) return notices.length === 0 ? null : <BackgroundNoticeRows notices={notices} />;
 
 	return (
 		<div className={`group/msg flex flex-col w-full gap-[var(--chat-item-gap)] ${TURN_GAP_CLASS}`}>
 			<TurnHeading speaker="Claude" />
-			{batches.map((batch) => (
+			{batches.map((batch, index) => (
 				<TranscriptMessageMenu
 					key={batch.head.lineIndex}
 					speaker="assistant"
@@ -522,8 +526,47 @@ function GroupedToolCallEntry({
 					markdown=""
 					render={<div data-record-index={batch.head.lineIndex} className="flex flex-col w-full" />}
 				>
-					<ToolCallSection calls={batch.calls} sessionId={batch.sourceSessionId} />
+					<ToolCallSection
+						calls={batch.calls}
+						sessionId={batch.sourceSessionId}
+						notices={index === batches.length - 1 ? notices : NO_NOTICES}
+					/>
 				</TranscriptMessageMenu>
+			))}
+		</div>
+	);
+}
+
+/** A `<task-notification>` user turn folded into the tool group beside it. */
+interface BackgroundNotice {
+	lineIndex: number;
+	notification: TaskNotification;
+}
+
+const NO_NOTICES: readonly BackgroundNotice[] = [];
+
+/** The finished background task a user line announces, or null for any other line. */
+function taskNotificationOf(line: SessionLine): TaskNotification | null {
+	if (line.type !== "user") return null;
+	return parseTaskNotification(getUserContentText(line));
+}
+
+/** Upstream's static group sub-row: "Background task stopped · <description>". */
+function BackgroundNoticeRow({notice}: {notice: BackgroundNotice}) {
+	const {status, description} = notice.notification;
+	return (
+		<div data-record-index={notice.lineIndex} className="text-body text-secondary min-w-0 truncate">
+			{description === "" ? `Background task ${status}` : `Background task ${status} · ${description}`}
+		</div>
+	);
+}
+
+/** Notifications with no tool group to join, drawn as the same static rows. */
+function BackgroundNoticeRows({notices}: {notices: readonly BackgroundNotice[]}) {
+	return (
+		<div className={`flex flex-col w-full gap-[var(--chat-item-gap)] ${TURN_GAP_CLASS}`}>
+			{notices.map((notice) => (
+				<BackgroundNoticeRow key={notice.lineIndex} notice={notice} />
 			))}
 		</div>
 	);
@@ -703,7 +746,22 @@ function scrollerViewport(scroller: Element): {top: number; height: number} {
 	return {top: rect.top, height: scroller.clientHeight || rect.height || window.innerHeight};
 }
 
-function buildSessionListEntries(lines: SessionLine[], renderProps: LineRenderProps): SessionListEntry[] {
+/**
+ * Upstream Normal folds background-task completions into the tool group beside
+ * them ("Ran a command, finished a background command") rather than drawing a
+ * user turn per `<task-notification>`; Verbose keeps the raw notification turns.
+ */
+function buildSessionListEntries(
+	lines: SessionLine[],
+	renderProps: LineRenderProps,
+	foldNotifications: boolean,
+): SessionListEntry[] {
+	const noticeOf = (index: number): BackgroundNotice | null => {
+		if (!foldNotifications) return null;
+		const line = lines[index]!;
+		const notification = taskNotificationOf(line);
+		return notification === null ? null : {lineIndex: line.lineIndex, notification};
+	};
 	const skipSet = buildSkipSet(lines);
 	const turnChangesByLine = collectTurnChanges(lines, renderProps.toolResultMap);
 	const entries: Omit<SessionListEntry, "endRecordIndex">[] = [];
@@ -739,6 +797,9 @@ function buildSessionListEntries(lines: SessionLine[], renderProps: LineRenderPr
 		prevVisibleType = "session-init";
 	}
 
+	/** Notifications waiting for the tool group that follows them. */
+	let leadingNotices: BackgroundNotice[] = [];
+
 	while (i < lines.length) {
 		const line = lines[i]!;
 
@@ -747,10 +808,43 @@ function buildSessionListEntries(lines: SessionLine[], renderProps: LineRenderPr
 			continue;
 		}
 
+		const notice = noticeOf(i);
+		if (notice !== null) {
+			const notices = [notice];
+			let j = i + 1;
+			while (j < lines.length) {
+				if (skipSet.has(j) || !isLineVisible(lines[j]!, renderProps)) {
+					j++;
+					continue;
+				}
+				const next = noticeOf(j);
+				if (next === null) break;
+				notices.push(next);
+				j++;
+			}
+			const following = lines[j];
+			if (following !== undefined && isToolOnlyAssistantLine(following) && renderProps.showTools) {
+				leadingNotices = notices;
+			} else {
+				prevVisibleType = "assistant";
+				entries.push({
+					key: `notice-${line.lineIndex}`,
+					startRecordIndex: line.lineIndex,
+					isPrompt: false,
+					element: <BackgroundNoticeRows notices={notices} />,
+				});
+			}
+			i = j;
+			continue;
+		}
+
 		// Group consecutive tool-only assistant lines
 		if (isToolOnlyAssistantLine(line) && renderProps.showTools) {
 			const groupStart = i;
 			const groupIndices: number[] = [i];
+			const notices = leadingNotices;
+			leadingNotices = [];
+			const startRecordIndex = notices[0]?.lineIndex ?? line.lineIndex;
 			let j = i + 1;
 			while (j < lines.length) {
 				const nextLine = lines[j]!;
@@ -759,6 +853,12 @@ function buildSessionListEntries(lines: SessionLine[], renderProps: LineRenderPr
 					continue;
 				}
 				if (isToolResultOnlyUserLine(nextLine)) {
+					j++;
+					continue;
+				}
+				const next = noticeOf(j);
+				if (next !== null) {
+					notices.push(next);
 					j++;
 					continue;
 				}
@@ -772,7 +872,7 @@ function buildSessionListEntries(lines: SessionLine[], renderProps: LineRenderPr
 
 			prevVisibleType = "assistant";
 
-			if (groupIndices.length === 1) {
+			if (groupIndices.length === 1 && notices.length === 0) {
 				entries.push({
 					key: `line-${line.lineIndex}`,
 					startRecordIndex: line.lineIndex,
@@ -793,11 +893,11 @@ function buildSessionListEntries(lines: SessionLine[], renderProps: LineRenderPr
 					.find((changes) => changes !== undefined);
 				entries.push({
 					key: `group-${line.lineIndex}`,
-					startRecordIndex: line.lineIndex,
+					startRecordIndex,
 					isPrompt: false,
 					element: (
 						<>
-							<GroupedToolCallEntry entries={groupLines} {...renderProps} />
+							<GroupedToolCallEntry entries={groupLines} notices={notices} {...renderProps} />
 							{groupChanges && (
 								<div className={TURN_GAP_CLASS}>
 									<TurnChangesCard sessionId={renderProps.sessionId} changes={groupChanges} />
@@ -1034,7 +1134,8 @@ function SessionLineList({
 	lines: SessionLine[];
 	shouldScrollToEnd: boolean;
 }) {
-	const entries = buildSessionListEntries(lines, renderProps);
+	const foldNotifications = useContext(TranscriptModeContext) !== "verbose";
+	const entries = buildSessionListEntries(lines, renderProps, foldNotifications);
 	const [expansionStore] = useState(() => new Map<string, ExpansionToggle>());
 	return (
 		<ExpansionStoreContext.Provider value={expansionStore}>
@@ -2118,14 +2219,26 @@ function readRangeLabel(call: ClientToolCall): string | null {
 const PROMINENT_TOOLS = new Set(["AskUserQuestion"]);
 const TASK_TOOLS = new Set(["TaskCreate", "TaskUpdate", "TaskGet", "TaskList", "TaskStop"]);
 
-function ToolCallSection({calls, sessionId}: {calls: ClientToolCall[]; sessionId: string}) {
+function ToolCallSection({
+	calls,
+	sessionId,
+	notices = NO_NOTICES,
+}: {
+	calls: ClientToolCall[];
+	sessionId: string;
+	notices?: readonly BackgroundNotice[];
+}) {
 	const prominentCalls = calls.filter((c) => PROMINENT_TOOLS.has(c.name));
 	const backgroundCalls = calls.filter((c) => !PROMINENT_TOOLS.has(c.name));
 
 	return (
 		<>
-			{backgroundCalls.length === 1 && <ToolCallRow call={backgroundCalls[0]!} sessionId={sessionId} />}
-			{backgroundCalls.length > 1 && <ToolCallSummary calls={backgroundCalls} sessionId={sessionId} />}
+			{backgroundCalls.length === 1 && notices.length === 0 && (
+				<ToolCallRow call={backgroundCalls[0]!} sessionId={sessionId} />
+			)}
+			{(backgroundCalls.length > 1 || notices.length > 0) && (
+				<ToolCallSummary calls={backgroundCalls} sessionId={sessionId} notices={notices} />
+			)}
 			{prominentCalls.map((call, i) => {
 				const Renderer = getToolRenderer(call.name);
 				return (
@@ -2458,13 +2571,28 @@ function SummarySpans({segments}: {segments: SummarySegment[]}) {
 	);
 }
 
-function ToolCallSummary({calls, sessionId}: {calls: ClientToolCall[]; sessionId: string}) {
-	const [expanded, toggleExpanded] = useModeExpansion(`group:${calls[0]?.id ?? ""}`);
+function ToolCallSummary({
+	calls,
+	sessionId,
+	notices = NO_NOTICES,
+}: {
+	calls: ClientToolCall[];
+	sessionId: string;
+	notices?: readonly BackgroundNotice[];
+}) {
+	const [expanded, toggleExpanded] = useModeExpansion(`group:${calls[0]?.id ?? `notice-${notices[0]?.lineIndex}`}`);
 	const bodyId = useId();
 	const taskCalls = calls.filter((c) => TASK_TOOLS.has(c.name));
 	const hasTasksView = taskCalls.length >= 3;
 	const displayCalls = hasTasksView ? calls.filter((c) => !TASK_TOOLS.has(c.name)) : calls;
-	const summary = useMemo(() => summarizeToolCallStats(displayCalls), [displayCalls]);
+	const summary = useMemo(
+		() =>
+			summarizeToolCallStats(
+				displayCalls,
+				notices.map((notice) => notice.notification),
+			),
+		[displayCalls, notices],
+	);
 	// While a call is in flight, upstream names the group by that call's
 	// progressive label instead of the tally.
 	const pendingCall = displayCalls.filter(isPendingToolCall).at(-1);
@@ -2480,7 +2608,7 @@ function ToolCallSummary({calls, sessionId}: {calls: ClientToolCall[]; sessionId
 					<TasksView toolCalls={calls} />
 				</div>
 			)}
-			{displayCalls.length > 0 && (
+			{(displayCalls.length > 0 || notices.length > 0) && (
 				<>
 					<button
 						type="button"
@@ -2518,6 +2646,9 @@ function ToolCallSummary({calls, sessionId}: {calls: ClientToolCall[]; sessionId
 							<div className="flex flex-col card-outline rounded-r6 overflow-clip mt-p6 divide-y [&>*]:px-p7 [&>*]:py-p6">
 								{displayCalls.map((call, i) => (
 									<ToolCallRow key={i} call={call} sessionId={sessionId} nested />
+								))}
+								{notices.map((notice) => (
+									<BackgroundNoticeRow key={`notice-${notice.lineIndex}`} notice={notice} />
 								))}
 							</div>
 						</div>

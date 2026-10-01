@@ -432,6 +432,13 @@ export interface SummarySegment {
  * A summary row's label segments plus the totals upstream renders beside them:
  * the git-coloured `+added -removed` span and the " (N failed)" suffix.
  */
+/** A background task whose completion notification folded into a tool group. */
+export interface BackgroundCompletionLike {
+	/** A `run_in_background` Bash command rather than an agent or monitor. */
+	command: boolean;
+	status: "completed" | "failed" | "stopped";
+}
+
 export interface ToolCallSummaryStats {
 	segments: SummarySegment[];
 	added: number;
@@ -502,7 +509,10 @@ function coalescedReadMutation(
 	return null;
 }
 
-function buildSummarySegments(calls: ToolCallLike[]): ToolCallSummaryStats {
+function buildSummarySegments(
+	calls: ToolCallLike[],
+	completions: readonly BackgroundCompletionLike[] = [],
+): ToolCallSummaryStats {
 	// Insertion order carries the summary order: upstream Normal writes both
 	// "Updated todos, read 3 files" and "Read index.ts, updated todos", so
 	// segments follow the order each tool was first called.
@@ -668,6 +678,15 @@ function buildSummarySegments(calls: ToolCallLike[]): ToolCallSummaryStats {
 		target.rest = `${target.rest} (${failed} failed)`.trimStart();
 	}
 
+	// Upstream folds background completions in last: "Ran a command, finished
+	// a background command", "Used a tool, finished a background task (1 stopped)".
+	if (completions.length > 0) {
+		const noun = completions.every((completion) => completion.command) ? "command" : "task";
+		const stopped = completions.filter((completion) => completion.status === "stopped").length;
+		const rest = pluralize(completions.length, `a background ${noun}`, `{n} background ${noun}s`);
+		segments.push({verb: "Finished", rest: stopped > 0 ? `${rest} (${stopped} stopped)` : rest});
+	}
+
 	// Upstream capitalizes only the leading verb: "Ran 2 commands, read cache.ts".
 	return {
 		segments: segments.map((segment, i) =>
@@ -679,8 +698,11 @@ function buildSummarySegments(calls: ToolCallLike[]): ToolCallSummaryStats {
 	};
 }
 
-export function summarizeToolCallStats(calls: ToolCallLike[]): ToolCallSummaryStats {
-	return buildSummarySegments(calls);
+export function summarizeToolCallStats(
+	calls: ToolCallLike[],
+	completions: readonly BackgroundCompletionLike[] = [],
+): ToolCallSummaryStats {
+	return buildSummarySegments(calls, completions);
 }
 
 export function summarizeToolCallsStructured(calls: ToolCallLike[]): SummarySegment[] {

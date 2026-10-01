@@ -105,7 +105,7 @@ function allTags(text: string, name: string): string[] {
 	);
 }
 
-function notificationStatus(status: string | null): BackgroundTaskStatus | null {
+function notificationStatus(status: string | null): Exclude<BackgroundTaskStatus, "running"> | null {
 	switch (status) {
 		case "completed":
 			return "completed";
@@ -117,6 +117,34 @@ function notificationStatus(status: string | null): BackgroundTaskStatus | null 
 		default:
 			return null;
 	}
+}
+
+/** A finished background task, as its `<task-notification>` reports it. */
+export interface TaskNotification {
+	toolUseId: string | null;
+	status: Exclude<BackgroundTaskStatus, "running">;
+	/** A `run_in_background` Bash command rather than an agent or monitor. */
+	command: boolean;
+	description: string;
+}
+
+/**
+ * The finished task a user turn announces when it opens with a
+ * `<task-notification>` block, or null for any other text and for
+ * notifications that carry no terminal status (Monitor events).
+ */
+export function parseTaskNotification(text: string): TaskNotification | null {
+	const trimmed = text.trimStart();
+	if (!trimmed.startsWith("<task-notification>")) return null;
+	const status = notificationStatus(tag(trimmed, "status"));
+	if (status === null) return null;
+	const summary = tag(trimmed, "summary") ?? "";
+	return {
+		toolUseId: tag(trimmed, "tool-use-id"),
+		status,
+		command: summary.startsWith("Background command"),
+		description: /"([^"]*)"/.exec(summary)?.[1] ?? summary,
+	};
 }
 
 function hookKind(type: string): BackgroundTaskKind {
