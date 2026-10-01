@@ -2,6 +2,7 @@ import {createRouter} from "@tanstack/react-router";
 import {QueryClient} from "@tanstack/react-query";
 import {setupRouterSsrQueryIntegration} from "@tanstack/react-router-ssr-query";
 import {routeTree} from "./routeTree.gen";
+import {shouldRetryQuery} from "./lib/query-retry";
 import {DefaultErrorComponent} from "./routes/__root";
 
 export function getRouter() {
@@ -9,6 +10,7 @@ export function getRouter() {
 		defaultOptions: {
 			queries: {
 				refetchOnWindowFocus: false,
+				retry: shouldRetryQuery,
 			},
 		},
 	});

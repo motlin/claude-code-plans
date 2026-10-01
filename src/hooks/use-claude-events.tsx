@@ -56,6 +56,7 @@ import {isLiveSessionState, type ActivityState, type SessionSummaryState} from "
 import type {Statusline} from "../lib/api/statusline";
 import type {ComposerServerState} from "../lib/composer-state";
 import type {Notification, NotificationsData} from "../lib/api/notifications";
+import {openReconnectingEventSource} from "../lib/reconnecting-event-source";
 
 // ---------------------------------------------------------------------------
 // State types
@@ -1059,8 +1060,6 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 	}, []);
 
 	useEffect(() => {
-		const es = new EventSource("/api/events");
-
 		function publishSessionState(sessionId: string, state: ActivityState, summary?: SessionSummaryPayload): void {
 			const existing = sessionStateObservationsRef.current.get(sessionId);
 			const observation = summary
@@ -1435,33 +1434,24 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 			void queryClient.invalidateQueries({queryKey: sessionQueryKeys.all()});
 		}
 
-		for (const eventType of LIFECYCLE_EVENT_TYPES) {
-			es.addEventListener(eventType, handleLifecycleEvent);
-		}
-		for (const eventType of DOMAIN_EVENT_TYPES) {
-			es.addEventListener(eventType, handleDomainEvent);
-		}
-		for (const eventType of HERDR_EVENT_TYPES) {
-			es.addEventListener(eventType, handleHerdrEvent);
-		}
-		es.addEventListener(SSE_EVENTS.STATUSLINE_UPDATED, handleStatuslineEvent);
-
 		// SSE reconnection safety: with staleTime: Infinity, data is never
 		// "stale" so refetchOnReconnect won't refetch after a disconnect.
-		// Track errors and, on reconnect, catch up on the events missed
-		// during the gap.
-		let hadError = false;
-		es.onerror = () => {
-			hadError = true;
-		};
-		es.addEventListener("open", () => {
-			if (hadError) {
-				hadError = false;
-				applyReconnected(queryClient);
-			}
+		// On reconnect, catch up on the events missed during the gap.
+		return openReconnectingEventSource("/api/events", {
+			attach(es) {
+				for (const eventType of LIFECYCLE_EVENT_TYPES) {
+					es.addEventListener(eventType, handleLifecycleEvent);
+				}
+				for (const eventType of DOMAIN_EVENT_TYPES) {
+					es.addEventListener(eventType, handleDomainEvent);
+				}
+				for (const eventType of HERDR_EVENT_TYPES) {
+					es.addEventListener(eventType, handleHerdrEvent);
+				}
+				es.addEventListener(SSE_EVENTS.STATUSLINE_UPDATED, handleStatuslineEvent);
+			},
+			onReconnected: () => applyReconnected(queryClient),
 		});
-
-		return () => es.close();
 	}, [queryClient]);
 
 	const contextValue: ClaudeEventsContextValue = useMemo(

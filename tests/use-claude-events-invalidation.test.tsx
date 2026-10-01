@@ -11,12 +11,16 @@ import {DOMAIN_EVENTS, HERDR_EVENTS} from "../src/lib/hook-events";
 class TestEventSource extends EventTarget {
 	static current: TestEventSource | null = null;
 
+	static all: TestEventSource[] = [];
+
 	readonly close = vi.fn();
+	readyState = 0;
 	onerror: ((event: Event) => void) | null = null;
 
 	constructor(readonly url: string | URL) {
 		super();
 		TestEventSource.current = this;
+		TestEventSource.all.push(this);
 	}
 
 	emit(type: string, data: Record<string, unknown> = {}): void {
@@ -27,6 +31,12 @@ class TestEventSource extends EventTarget {
 	reconnect(): void {
 		this.onerror?.(new Event("error"));
 		this.dispatchEvent(new Event("open"));
+	}
+
+	/** A 503 while the dev server restarts: the browser closes the stream for good. */
+	fail(): void {
+		this.readyState = 2;
+		this.onerror?.(new Event("error"));
 	}
 }
 
@@ -400,5 +410,46 @@ describe("ClaudeEventsProvider lines appended to a session", () => {
 		});
 
 		expect(client.getQueryState(ACTIVE_KEY)?.isInvalidated).toBe(true);
+	});
+});
+
+describe("ClaudeEventsProvider SSE stream refused while the dev server restarts", () => {
+	beforeEach(() => {
+		TestEventSource.current = null;
+		TestEventSource.all = [];
+		vi.stubGlobal("EventSource", TestEventSource);
+		vi.useFakeTimers({toFake: ["setTimeout", "clearTimeout"]});
+	});
+
+	afterEach(() => {
+		cleanup();
+		vi.useRealTimers();
+		vi.restoreAllMocks();
+		vi.unstubAllGlobals();
+	});
+
+	it("opens a fresh stream after a 503 closes it, then catches up and handles its events", () => {
+		const {client, eventSource} = renderProvider();
+		client.setQueryData(["approvals"], {});
+
+		act(() => {
+			eventSource.fail();
+			vi.advanceTimersByTime(1000);
+		});
+		const reopened = TestEventSource.current!;
+		act(() => {
+			reopened.dispatchEvent(new Event("open"));
+		});
+		const caughtUp = client.getQueryState(["approvals"])?.isInvalidated;
+		act(() => {
+			reopened.emit(HERDR_EVENTS.PANE_CREATED);
+		});
+
+		expect({
+			streams: TestEventSource.all.length,
+			firstClosed: eventSource.close.mock.calls.length > 0,
+			caughtUp,
+			handledAfterReopen: invalidationState(client).herdrPanes,
+		}).toStrictEqual({streams: 2, firstClosed: true, caughtUp: true, handledAfterReopen: true});
 	});
 });

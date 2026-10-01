@@ -6,6 +6,7 @@ import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import {AGENTATION_ENDPOINT, AGENTATION_SERVER} from "./src/lib/agentation-endpoint";
 import {closeNitroRunnerOnServerClose} from "./src/lib/dev-env-runner-teardown";
+import {holdNitroRequestsUntilReady} from "./src/lib/dev-env-ready-gate";
 import {devWorkerProxy} from "./src/lib/dev-worker-proxy";
 import {lockfileToolchainGuard} from "./src/lib/lockfile-toolchain-guard";
 
@@ -193,6 +194,7 @@ export default defineConfig({
 		tanstackStart(),
 		viteReact(),
 		closeNitroRunnerOnServerClose(),
+		holdNitroRequestsUntilReady(),
 		// After nitro(): its error handler must follow nitro's catch-all dev middleware.
 		...devWorkerProxy(),
 	],

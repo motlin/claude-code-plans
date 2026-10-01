@@ -18,6 +18,7 @@ import {resolveFileSearchRoots} from "./lib/config";
 import type {RecursiveWatcher} from "./lib/recursive-watch";
 import {initPrStatusService} from "./lib/pr-status-service";
 import {takeOverServerShutdown} from "./lib/server-shutdown";
+import {announceThisDevEnvReady} from "./lib/dev-env-ready-gate";
 
 const PLANS_DIR = join(homedir(), ".claude", "plans");
 const PROJECTS_DIR = join(homedir(), ".claude", "projects");
@@ -106,3 +107,7 @@ void (async () => {
 export default createServerEntry({
 	fetch: withHeadBodyCancel(withServerTiming(withActivityTracking((request) => handler.fetch(request)))),
 });
+
+// Last statement of the SSR entry: tells the dev server's request gate (holdNitroRequestsUntilReady in
+// vite.config.ts) that this environment has loaded. A no-op in production.
+announceThisDevEnvReady();
