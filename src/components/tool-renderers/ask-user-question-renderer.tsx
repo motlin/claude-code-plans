@@ -34,29 +34,6 @@ function IndexBadge({children, focused}: {children: ReactNode; focused?: boolean
 	);
 }
 
-function ReadOnlyAnswer({
-	label,
-	description,
-	index,
-	notes,
-}: {
-	label: string;
-	description?: string | undefined;
-	index: number;
-	notes: string | null | undefined;
-}) {
-	return (
-		<div className="flex w-full items-center gap-g6 text-left bg-t2">
-			<IndexBadge focused>{index}</IndexBadge>
-			<div className="flex flex-col flex-1 min-w-0">
-				<span className="text-body text-primary truncate">{label}</span>
-				{description && <span className="text-footnote text-secondary truncate">{description}</span>}
-				{notes !== null && notes !== undefined && notes.trim() !== "" && <NotesLine notes={notes} />}
-			</div>
-		</div>
-	);
-}
-
 function ReadOnlyOption({label, description, index}: {label: string; description?: string | undefined; index: number}) {
 	return (
 		<div className="flex w-full items-center gap-g6 text-left opacity-50">
@@ -64,40 +41,6 @@ function ReadOnlyOption({label, description, index}: {label: string; description
 			<div className="flex flex-col flex-1 min-w-0">
 				<span className="text-body text-primary truncate">{label}</span>
 				{description && <span className="text-footnote text-secondary truncate">{description}</span>}
-			</div>
-		</div>
-	);
-}
-
-function NotesLine({notes}: {notes: string}) {
-	return (
-		<p className="text-footnote text-secondary italic whitespace-pre-wrap">
-			<span className="text-primary">Notes: </span>
-			{notes}
-		</p>
-	);
-}
-
-/**
- * True when the user's note adds information beyond the answer value itself.
- * When the user picks 'Other' and types a custom answer, Claude Code echoes
- * the same string in both fields; suppress that redundant duplicate.
- */
-function notesAddInformation(notes: string | null | undefined, answerValue: string): boolean {
-	if (notes === null || notes === undefined) return false;
-	const trimmed = notes.trim();
-	return trimmed !== "" && trimmed !== answerValue.trim();
-}
-
-function ReadOnlyOtherAnswer({value, notes}: {value: string; notes?: string | null}) {
-	return (
-		<div className="flex w-full items-center gap-g6 text-left bg-t2">
-			<IndexBadge focused>
-				<PencilIcon />
-			</IndexBadge>
-			<div className="flex flex-col flex-1 min-w-0">
-				<span className="text-body text-primary truncate">{value}</span>
-				{notesAddInformation(notes, value) && <NotesLine notes={notes!} />}
 			</div>
 		</div>
 	);
@@ -112,44 +55,58 @@ function PencilIcon() {
 }
 
 /**
- * Render a question after it has been answered (or when no submission UI is
- * active). Uses the parsed answer (when available) to figure out which option
- * was chosen and whether to surface supplementary user notes.
+ * True when the user's note adds information beyond the answer value itself.
+ * When the user picks 'Other' and types a custom answer, Claude Code echoes
+ * the same string in both fields; suppress that redundant duplicate.
+ */
+function notesAddInformation(notes: string | null, answerValue: string): notes is string {
+	if (notes === null) return false;
+	const trimmed = notes.trim();
+	return trimmed !== "" && trimmed !== answerValue.trim();
+}
+
+/**
+ * Upstream's static answered card: the question in secondary text over the
+ * chosen answer (or the Other text) in primary. Unchosen options are omitted.
+ */
+function AnsweredQuestion({question, parsed}: {question: string; parsed: ParsedAnswer}) {
+	const answer = parsed.answer.trim();
+	return (
+		<div className="card-outline rounded-r6 p-p7 w-fit min-w-[min(100%,318px)] flex flex-col gap-g2">
+			<p className="text-body text-secondary whitespace-pre-wrap">{question}</p>
+			{answer !== "" && <p className="text-body text-primary whitespace-pre-wrap">{answer}</p>}
+			{notesAddInformation(parsed.notes, answer) && (
+				<p className="text-footnote text-secondary italic whitespace-pre-wrap">
+					<span className="text-primary">Notes: </span>
+					{parsed.notes}
+				</p>
+			)}
+		</div>
+	);
+}
+
+/**
+ * Render a question that has no recorded answer (still pending in an inactive
+ * session, docked, or dismissed): the question followed by its options.
  *
  * Emits its blocks as siblings so the enclosing card divides and pads every row
  * itself, matching upstream's list-in-card idiom.
  */
-function AnsweredQuestion({question, header, options, parsed}: QuestionLike & {parsed?: ParsedAnswer | undefined}) {
-	const answerValue = parsed?.answer.trim() ?? "";
-	const matchesAny = options.some((opt) => opt.label === answerValue);
-	const isOther = answerValue.length > 0 && !matchesAny;
-	const notes = parsed?.notes;
-
+function UnansweredQuestion({question, header, options}: QuestionLike) {
 	return (
 		<>
 			<div>
 				{header && <p className="text-footnote text-secondary mb-g3">{header}</p>}
 				<MarkdownArticle markdown={question} />
 			</div>
-			{options.map((opt, optionIndex) =>
-				opt.label === answerValue ? (
-					<ReadOnlyAnswer
-						key={opt.label}
-						label={opt.label}
-						description={opt.description}
-						index={optionIndex + 1}
-						notes={notes}
-					/>
-				) : (
-					<ReadOnlyOption
-						key={opt.label}
-						label={opt.label}
-						description={opt.description}
-						index={optionIndex + 1}
-					/>
-				),
-			)}
-			{isOther && <ReadOnlyOtherAnswer value={answerValue} notes={notes ?? null} />}
+			{options.map((opt, optionIndex) => (
+				<ReadOnlyOption
+					key={opt.label}
+					label={opt.label}
+					description={opt.description}
+					index={optionIndex + 1}
+				/>
+			))}
 		</>
 	);
 }
@@ -393,7 +350,7 @@ function DockedSummary({questions}: {questions: QuestionLike[]}) {
 			{expanded && (
 				<div className={CARD_SHELL}>
 					{questions.map((q, i) => (
-						<AnsweredQuestion
+						<UnansweredQuestion
 							key={i}
 							question={q.question}
 							{...(q.header ? {header: q.header} : {})}
@@ -444,27 +401,29 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps) {
 	}
 
 	const parsed = result !== undefined ? parseAnswerResult(result, questions) : null;
-	const parsedByQuestion = new Map<string, ParsedAnswer>();
-	if (parsed) {
-		for (const entry of parsed) {
-			parsedByQuestion.set(entry.question, entry);
-		}
+	if (parsed !== null) {
+		return (
+			<div className="flex flex-col gap-g6">
+				{parsed.map((entry, i) => (
+					<AnsweredQuestion key={i} question={entry.question} parsed={entry} />
+				))}
+			</div>
+		);
 	}
 
 	// Parsing can fail when the result text predates the canonical envelope
 	// or has an unexpected shape. Fall back to displaying the raw text so we
 	// don't silently lose information.
-	const showRawFallback = result !== undefined && parsed === null && status === null;
+	const showRawFallback = result !== undefined && status === null;
 
 	return (
 		<div className={CARD_SHELL}>
 			{questions.map((q, i) => (
-				<AnsweredQuestion
+				<UnansweredQuestion
 					key={i}
 					question={q.question}
 					{...(q.header ? {header: q.header} : {})}
 					options={q.options}
-					parsed={parsedByQuestion.get(q.question)}
 				/>
 			))}
 			{status && <StatusLine status={status} />}

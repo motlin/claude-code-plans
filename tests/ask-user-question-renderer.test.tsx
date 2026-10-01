@@ -66,13 +66,72 @@ describe("AskUserQuestionRenderer", () => {
 		expect(container.querySelectorAll(".h-\\[3\\.5rem\\]").length).toStrictEqual(0);
 	});
 
-	it("renders the answered option list as direct children of the card", () => {
+	it("renders an answered question as upstream's compact question-and-answer card", () => {
 		const {container} = render(<AskUserQuestionRenderer toolCall={makeCall({result: ANSWERED_RESULT})} />);
 
-		const shell = container.firstElementChild!;
-		const labels = [...shell.children].map((child) => child.textContent?.trim());
+		const cards = [...container.querySelectorAll(".card-outline")];
+		const card = cards[0]!;
+		const paragraphs = [...card.querySelectorAll("p")].map((p) => ({
+			className: p.className,
+			text: p.textContent,
+		}));
 
-		expect(labels).toStrictEqual(["Which test runner?", "1VitestVite-native", "2JestWidely adopted"]);
+		expect({
+			cardCount: cards.length,
+			cardClassName: card.className,
+			paragraphs,
+			mentionsUnchosen: container.textContent?.includes("Jest"),
+			buttons: container.querySelectorAll("button").length,
+		}).toStrictEqual({
+			cardCount: 1,
+			cardClassName: "card-outline rounded-r6 p-p7 w-fit min-w-[min(100%,318px)] flex flex-col gap-g2",
+			paragraphs: [
+				{className: "text-body text-secondary whitespace-pre-wrap", text: "Which test runner?"},
+				{className: "text-body text-primary whitespace-pre-wrap", text: "Vitest"},
+			],
+			mentionsUnchosen: false,
+			buttons: 0,
+		});
+	});
+
+	it("draws one card per answered question, with the Other text and its notes", () => {
+		const result =
+			'User has answered your questions: "How should the JOL test treat LinkedHashMap?"="Exact, JDK-version-aware", "Which runner?"="Bun" user notes: Fastest locally. You can now continue with the user\'s answers in mind.';
+		const toolCall = makeCall({
+			input: {
+				questions: [
+					{
+						question: "How should the JOL test treat LinkedHashMap?",
+						header: "LinkedHashMap",
+						options: [
+							{label: "Exact, JDK-version-aware", description: "Pin per JDK"},
+							{label: "Loose bounds", description: "Tolerate drift"},
+						],
+						multiSelect: false,
+					},
+					{
+						question: "Which runner?",
+						header: "Runner",
+						options: [
+							{label: "Vitest", description: "Vite-native"},
+							{label: "Jest", description: "Widely adopted"},
+						],
+						multiSelect: false,
+					},
+				],
+			},
+			result,
+		});
+		const {container} = render(<AskUserQuestionRenderer toolCall={toolCall} />);
+
+		const cards = [...container.querySelectorAll(".card-outline")].map((card) =>
+			[...card.querySelectorAll("p")].map((p) => p.textContent),
+		);
+
+		expect(cards).toStrictEqual([
+			["How should the JOL test treat LinkedHashMap?", "Exact, JDK-version-aware"],
+			["Which runner?", "Bun", "Notes: Fastest locally"],
+		]);
 	});
 
 	it("shows a pink status line when the user dismissed the question", () => {
