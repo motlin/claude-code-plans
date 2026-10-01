@@ -92,6 +92,7 @@ export async function updatePendingApprovalForSession(
 	filePath: string,
 	projectId: string,
 	projectName?: string,
+	broadcast: (type: string, data: Record<string, unknown>) => void = broadcastTyped,
 ): Promise<void> {
 	// Sample the mtime before reading: a write that races the scan leaves an mtime
 	// newer than the one recorded, so revalidation rescans instead of trusting it.
@@ -102,7 +103,7 @@ export async function updatePendingApprovalForSession(
 	if (!scanned) {
 		if (prior) {
 			cache.delete(sessionId);
-			broadcastTyped(DOMAIN_EVENTS.APPROVAL_RESOLVED, {sessionId});
+			broadcast(DOMAIN_EVENTS.APPROVAL_RESOLVED, {sessionId});
 		}
 		return;
 	}
@@ -133,7 +134,7 @@ export async function updatePendingApprovalForSession(
 	}
 
 	cache.set(sessionId, {approval, filePath, mtimeMs});
-	broadcastTyped(DOMAIN_EVENTS.APPROVAL_CHANGED, {approval});
+	broadcast(DOMAIN_EVENTS.APPROVAL_CHANGED, {approval});
 }
 
 /**

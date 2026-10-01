@@ -1,4 +1,164 @@
 {
+	"server.liveAppend.large-long.1.jsonl.fullScans": {
+		"ceiling": 2,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.liveAppend.large-long.1.readAmplification": {
+		"ceiling": 187796,
+		"unit": "ratio",
+		"tolerance": 0
+	},
+	"server.liveAppend.large-long.1.sql.count": {
+		"ceiling": 54,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.liveAppend.large-long.1.sse.payloadBytes": {
+		"ceiling": 675,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"server.liveAppend.large-long.20.jsonl.fullScans": {
+		"ceiling": 2,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.liveAppend.large-long.20.readAmplification": {
+		"ceiling": 9349,
+		"unit": "ratio",
+		"tolerance": 0
+	},
+	"server.liveAppend.large-long.20.sql.count": {
+		"ceiling": 54,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.liveAppend.large-long.20.sse.payloadBytes": {
+		"ceiling": 4742,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"server.liveAppend.large-wide.1.jsonl.fullScans": {
+		"ceiling": 2,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.liveAppend.large-wide.1.readAmplification": {
+		"ceiling": 600942,
+		"unit": "ratio",
+		"tolerance": 0
+	},
+	"server.liveAppend.large-wide.1.sql.count": {
+		"ceiling": 40,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.liveAppend.large-wide.1.sse.payloadBytes": {
+		"ceiling": 735,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"server.liveAppend.large-wide.20.jsonl.fullScans": {
+		"ceiling": 2,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.liveAppend.large-wide.20.readAmplification": {
+		"ceiling": 29910,
+		"unit": "ratio",
+		"tolerance": 0
+	},
+	"server.liveAppend.large-wide.20.sql.count": {
+		"ceiling": 41,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.liveAppend.large-wide.20.sse.payloadBytes": {
+		"ceiling": 4802,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"server.liveAppend.small.1.jsonl.fullScans": {
+		"ceiling": 2,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.liveAppend.small.1.readAmplification": {
+		"ceiling": 4811,
+		"unit": "ratio",
+		"tolerance": 0
+	},
+	"server.liveAppend.small.1.sql.count": {
+		"ceiling": 25,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.liveAppend.small.1.sse.payloadBytes": {
+		"ceiling": 633,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"server.liveAppend.small.20.jsonl.fullScans": {
+		"ceiling": 2,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.liveAppend.small.20.readAmplification": {
+		"ceiling": 242,
+		"unit": "ratio",
+		"tolerance": 0
+	},
+	"server.liveAppend.small.20.sql.count": {
+		"ceiling": 25,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.liveAppend.small.20.sse.payloadBytes": {
+		"ceiling": 4605,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"server.liveAppend.typical.1.jsonl.fullScans": {
+		"ceiling": 2,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.liveAppend.typical.1.readAmplification": {
+		"ceiling": 42860,
+		"unit": "ratio",
+		"tolerance": 0
+	},
+	"server.liveAppend.typical.1.sql.count": {
+		"ceiling": 34,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.liveAppend.typical.1.sse.payloadBytes": {
+		"ceiling": 631,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"server.liveAppend.typical.20.jsonl.fullScans": {
+		"ceiling": 2,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.liveAppend.typical.20.readAmplification": {
+		"ceiling": 2136,
+		"unit": "ratio",
+		"tolerance": 0
+	},
+	"server.liveAppend.typical.20.sql.count": {
+		"ceiling": 35,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.liveAppend.typical.20.sse.payloadBytes": {
+		"ceiling": 4641,
+		"unit": "bytes",
+		"tolerance": 0
+	},
 	"server.sessionOpen.large-long.detail.jsonl.bytesRead": {
 		"ceiling": 20000000,
 		"unit": "bytes",

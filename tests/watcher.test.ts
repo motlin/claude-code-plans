@@ -9,6 +9,7 @@ import {
 	shouldIgnoreWatch,
 	resolveIgnoredDirNames,
 	buildIgnoredDirPattern,
+	processJsonlAppend,
 } from "../src/lib/watcher";
 import {openTestDb, type AppDb} from "../src/lib/db/connection";
 import * as schema from "../src/lib/db/schema";
@@ -432,6 +433,73 @@ describe("handleJsonlPlanLinks", () => {
 
 		expect(result.linkedPlans).toStrictEqual([]);
 		expect(broadcasts.filter((b) => b.type === DOMAIN_EVENTS.PLAN_CHANGED)).toStrictEqual([]);
+	});
+});
+
+describe("processJsonlAppend", () => {
+	const testDir = join(tmpdir(), "claude-watcher-append-test-" + process.pid);
+	let db: AppDb;
+
+	beforeEach(() => {
+		mkdirSync(testDir, {recursive: true});
+		db = openTestDb();
+	});
+
+	afterEach(() => {
+		db.close();
+		rmSync(testDir, {recursive: true, force: true});
+	});
+
+	it("broadcasts the appended lines, the session delta and newly linked plans for each append", async () => {
+		const projectsDir = testDir;
+		const plansDir = join(testDir, "plans");
+		const projectDir = join(projectsDir, "-Users-alice-projects-append");
+		mkdirSync(plansDir, {recursive: true});
+		mkdirSync(projectDir, {recursive: true});
+		writeFileSync(join(plansDir, "delta.md"), "# Delta");
+
+		const firstLine = {
+			type: "user",
+			sessionId: "sess-append",
+			timestamp: "2000-01-01T00:00:00.000Z",
+			message: {role: "user", content: "Draft the plan"},
+		};
+		const planLine = {
+			type: "attachment",
+			sessionId: "sess-append",
+			attachment: {type: "plan_mode", planFilePath: "/Users/alice/.claude/plans/delta.md"},
+		};
+		const jsonlPath = join(projectDir, "sess-append.jsonl");
+		writeFileSync(jsonlPath, jsonl(firstLine, planLine));
+
+		const offsets = new Map<string, number>();
+		const broadcasts: CapturedBroadcast[] = [];
+		const record = (type: string, data: Record<string, unknown>) => broadcasts.push({type, data});
+		await processJsonlAppend(db.index, jsonlPath, offsets, record, {projectsDir, plansDir});
+
+		expect(broadcasts.map((b) => b.type)).toStrictEqual([
+			DOMAIN_EVENTS.SESSION_LINES_APPENDED,
+			DOMAIN_EVENTS.SESSION_ADDED,
+			DOMAIN_EVENTS.PLAN_CHANGED,
+		]);
+		expect(broadcasts[0]!.data).toStrictEqual({sessionId: "sess-append", lines: [firstLine, planLine]});
+		expect(offsets).toStrictEqual(new Map([[jsonlPath, Buffer.byteLength(jsonl(firstLine, planLine))]]));
+
+		const secondLine = {
+			type: "user",
+			sessionId: "sess-append",
+			timestamp: "2000-01-01T00:01:00.000Z",
+			message: {role: "user", content: "Ship it"},
+		};
+		appendFileSync(jsonlPath, jsonl(secondLine));
+		broadcasts.length = 0;
+		await processJsonlAppend(db.index, jsonlPath, offsets, record, {projectsDir, plansDir});
+
+		expect(broadcasts.map((b) => b.type)).toStrictEqual([
+			DOMAIN_EVENTS.SESSION_LINES_APPENDED,
+			DOMAIN_EVENTS.SESSION_UPDATED,
+		]);
+		expect(broadcasts[0]!.data).toStrictEqual({sessionId: "sess-append", lines: [secondLine]});
 	});
 });
 

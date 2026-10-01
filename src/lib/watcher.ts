@@ -208,8 +208,7 @@ function tasksEqual(a: TaskSummaryPayload, b: TaskSummaryPayload): boolean {
  * and broadcast domain-level session:added / session:removed / session:updated
  * events for each delta.
  */
-function diffAndBroadcastSessions(projectId: string): void {
-	const {index} = getDb();
+function diffAndBroadcastSessions(index: IndexDb, projectId: string, broadcast: BroadcastFn): void {
 	// Archived sessions stay in the snapshot so archiving never reads as a removal.
 	const rows = listSessionsForProjectFromDb(index, projectId, {status: "all"});
 	const unseenIds = getUnseenSessionIds(index);
@@ -231,12 +230,12 @@ function diffAndBroadcastSessions(projectId: string): void {
 	for (const session of added) {
 		const key = `${DOMAIN_EVENTS.SESSION_ADDED}:${session.id}:${session.mtime}`;
 		if (recentlyBroadcast(key, DEDUPE_TTL_MS)) continue;
-		broadcastTyped(DOMAIN_EVENTS.SESSION_ADDED, {session});
+		broadcast(DOMAIN_EVENTS.SESSION_ADDED, {session});
 	}
 	for (const sessionId of removed) {
 		const key = `${DOMAIN_EVENTS.SESSION_REMOVED}:${sessionId}:${projectId}`;
 		if (recentlyBroadcast(key, DEDUPE_TTL_MS)) continue;
-		broadcastTyped(DOMAIN_EVENTS.SESSION_REMOVED, {
+		broadcast(DOMAIN_EVENTS.SESSION_REMOVED, {
 			sessionId,
 			projectDir: projectId,
 		});
@@ -244,7 +243,7 @@ function diffAndBroadcastSessions(projectId: string): void {
 	for (const session of updated) {
 		const key = `${DOMAIN_EVENTS.SESSION_UPDATED}:${session.id}:${session.mtime}:${session.unseen}`;
 		if (recentlyBroadcast(key, DEDUPE_TTL_MS)) continue;
-		broadcastTyped(DOMAIN_EVENTS.SESSION_UPDATED, {session});
+		broadcast(DOMAIN_EVENTS.SESSION_UPDATED, {session});
 	}
 
 	lastSessionsByProject.set(projectId, next);
@@ -434,10 +433,10 @@ function handleJobFileEvent(path: string, jobsRoot: string, broadcast: Broadcast
 }
 
 /** Safely diff and broadcast sessions for a project; swallow indexing races. */
-function safeDiffSessions(projectId: string): void {
+function safeDiffSessions(projectId: string, broadcast: BroadcastFn = broadcastTyped, db?: IndexDb): void {
 	if (!projectId) return;
 	try {
-		diffAndBroadcastSessions(projectId);
+		diffAndBroadcastSessions(db ?? getDb().index, projectId, broadcast);
 	} catch {
 		// transient DB error; next file event will retry
 	}
@@ -472,11 +471,16 @@ function sessionIdFromJsonlPath(path: string): string {
 	return basename(path, ".jsonl");
 }
 
-async function indexSilently(path: string, projectsDir: string): Promise<{linkedPlans: string[]}> {
+async function indexSilently(
+	path: string,
+	projectsDir: string,
+	db?: IndexDb,
+	plansDirectory: string = plansDir,
+): Promise<{linkedPlans: string[]}> {
 	try {
-		const {index} = getDb();
+		const index = db ?? getDb().index;
 		return await trackActivity(`index ${path}`, () =>
-			retryWhileBusy(() => indexFile(index, path, projectsDir, plansDir || undefined)),
+			retryWhileBusy(() => indexFile(index, path, projectsDir, plansDirectory || undefined)),
 		);
 	} catch {
 		// indexing error — deltas below still reflect prior DB state
@@ -512,6 +516,69 @@ async function refreshTrackedFileRoot(db: IndexDb, root: string): Promise<void> 
 	}
 	for (const path of previouslyTrackedPaths) {
 		if (!currentlyTrackedPaths.has(path)) handleFileContentUnlink(db, path);
+	}
+}
+
+/** Directories the JSONL append handler resolves projects and linked plans against. */
+export interface JsonlAppendDirs {
+	projectsDir: string;
+	plansDir: string;
+}
+
+/**
+ * One throttled JSONL fire: read the lines appended since `offsets`, broadcast them, re-index the file, rescan it for a
+ * pending approval, then broadcast the session delta and any linked plans. Pure over (db, path, offsets, broadcast)
+ * apart from the dedupe and session-snapshot caches; the watcher passes its own module state.
+ */
+export async function processJsonlAppend(
+	db: IndexDb,
+	path: string,
+	offsets: Map<string, number>,
+	broadcast: BroadcastFn,
+	dirs: JsonlAppendDirs = {projectsDir, plansDir},
+): Promise<void> {
+	const fromOffset = offsets.get(path) ?? 0;
+	try {
+		const {readNewJsonlLines} = await import("./sessions");
+		const {lines: newLines, nextByteOffset} = await readNewJsonlLines(path, fromOffset);
+		offsets.set(path, nextByteOffset);
+
+		if (newLines.length > 0) {
+			const sessionId = sessionIdFromJsonlPath(path);
+			const key = `${DOMAIN_EVENTS.SESSION_LINES_APPENDED}:${sessionId}:${nextByteOffset}`;
+			if (!recentlyBroadcast(key, DEDUPE_TTL_MS)) {
+				broadcast(DOMAIN_EVENTS.SESSION_LINES_APPENDED, {
+					sessionId,
+					lines: newLines,
+				});
+			}
+		}
+	} catch {
+		// File may have been deleted between the watcher event and this read.
+	}
+
+	const {linkedPlans} = await indexSilently(path, dirs.projectsDir, db, dirs.plansDir);
+	const projectId = projectIdFromPath(path, dirs.projectsDir);
+	if (projectId) {
+		try {
+			const projectName = await resolveProjectName(projectId);
+			await updatePendingApprovalForSession(
+				db,
+				sessionIdFromJsonlPath(path),
+				path,
+				projectId,
+				projectName,
+				broadcast,
+			);
+		} catch {
+			// transient error scanning JSONL; next change will retry
+		}
+	}
+	safeDiffSessions(projectId, broadcast, db);
+	if (dirs.plansDir) {
+		for (const planFilename of linkedPlans) {
+			await broadcastPlanChangedWith(join(dirs.plansDir, planFilename), broadcast);
+		}
 	}
 }
 
@@ -551,49 +618,7 @@ async function handleFileChange(path: string): Promise<void> {
 		const fire = async () => {
 			throttleState.lastFired = Date.now();
 			delete throttleState.timer;
-
-			const fromOffset = jsonlOffsets.get(path) ?? 0;
-			try {
-				const {readNewJsonlLines} = await import("./sessions");
-				const {lines: newLines, nextByteOffset} = await readNewJsonlLines(path, fromOffset);
-				jsonlOffsets.set(path, nextByteOffset);
-
-				if (newLines.length > 0) {
-					const sessionId = sessionIdFromJsonlPath(path);
-					const key = `${DOMAIN_EVENTS.SESSION_LINES_APPENDED}:${sessionId}:${nextByteOffset}`;
-					if (!recentlyBroadcast(key, DEDUPE_TTL_MS)) {
-						broadcastTyped(DOMAIN_EVENTS.SESSION_LINES_APPENDED, {
-							sessionId,
-							lines: newLines,
-						});
-					}
-				}
-			} catch {
-				// File may have been deleted between the watcher event and this read.
-			}
-
-			const {linkedPlans} = await indexSilently(path, projectsDir);
-			const projectId = projectIdFromPath(path, projectsDir);
-			if (projectId) {
-				try {
-					const projectName = await resolveProjectName(projectId);
-					await updatePendingApprovalForSession(
-						getDb().index,
-						sessionIdFromJsonlPath(path),
-						path,
-						projectId,
-						projectName,
-					);
-				} catch {
-					// transient error scanning JSONL; next change will retry
-				}
-			}
-			safeDiffSessions(projectId);
-			if (plansDir) {
-				for (const planFilename of linkedPlans) {
-					void broadcastPlanChanged(join(plansDir, planFilename));
-				}
-			}
+			await processJsonlAppend(getDb().index, path, jsonlOffsets, broadcastTyped);
 		};
 
 		if (throttleState.timer !== undefined) clearTimeout(throttleState.timer);
