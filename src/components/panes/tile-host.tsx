@@ -19,13 +19,16 @@ import {
 	closePane,
 	collapsePane,
 	defaultPaneLayout,
+	dropPreview,
 	expandPane,
 	focusPane,
 	loadPaneLayout,
 	minTileSize,
 	movePane,
+	movePaneTo,
 	movePreview,
 	openPane,
+	parseTileId,
 	resizeDivider,
 	savePaneLayout,
 	type Direction,
@@ -46,6 +49,8 @@ import {type PaneDefinition, usePaneDefinitions} from "./pane-registry";
 const TILE_GAP_PX = 12;
 const RESIZE_STEP_PX = 16;
 const RESIZE_STEP_LARGE_PX = 64;
+/** A Move grip press becomes a drag once the pointer travels this far. */
+const DRAG_THRESHOLD_PX = 4;
 /**
  * Side tiles stick to the top of the page scroller (the transcript scrolls
  * `<main>`, not the chat tile), so they are sized to the viewport.
@@ -82,6 +87,13 @@ interface PendingMove {
 	direction: MoveDirection;
 }
 
+/** Where a pointer drag on Move would drop `tileId`: the `side` half of `targetId`. */
+interface PointerDrop {
+	tileId: TileId;
+	targetId: TileId;
+	side: MoveDirection;
+}
+
 interface InternalHost {
 	definitions: ReadonlyMap<PaneKind, PaneDefinition>;
 	layout: PaneLayoutState;
@@ -90,6 +102,7 @@ interface InternalHost {
 	pendingMove: PendingMove | null;
 	preview: MovePreview | null;
 	setPendingMove: (move: PendingMove | null) => void;
+	setPointerDrop: (drop: PointerDrop | null) => void;
 	expanded: PaneKind | null;
 	phone: boolean;
 	/** The root row, measured when a pane opens so Changes can be sized to its minimum. */
@@ -199,6 +212,7 @@ function Divider({
 	sizePx,
 	stackRef,
 	isRoot,
+	corners,
 	host,
 }: {
 	stack: StackNode;
@@ -207,6 +221,8 @@ function Divider({
 	sizePx: number;
 	stackRef: RefObject<HTMLDivElement | null>;
 	isRoot: boolean;
+	/** Root dividers beside this column divider, keyed by the side they meet it on. */
+	corners: Partial<Record<"left" | "right", number>>;
 	host: InternalHost;
 }) {
 	const before = stack.children[index];
@@ -293,8 +309,108 @@ function Divider({
 					isRow ? "h-14 w-[3px]" : "h-[3px] w-14"
 				}`}
 			/>
+			{Object.entries(corners).map(([side, rootIndex]) => (
+				<TileCorner
+					key={side}
+					side={side === "left" ? "left" : "right"}
+					rootIndex={rootIndex}
+					columnPath={path}
+					columnIndex={index}
+					columnRef={stackRef}
+					host={host}
+				/>
+			))}
 		</div>
 	);
+}
+
+/**
+ * Upstream's `tiles-handle-corner`: a 12x12 all-scroll grip where a column's
+ * divider meets the root divider beside it, resizing both axes at once.
+ */
+function TileCorner({
+	side,
+	rootIndex,
+	columnPath,
+	columnIndex,
+	columnRef,
+	host,
+}: {
+	side: "left" | "right";
+	rootIndex: number;
+	columnPath: readonly number[];
+	columnIndex: number;
+	columnRef: RefObject<HTMLDivElement | null>;
+	host: InternalHost;
+}) {
+	const dragRef = useRef<{x: number; y: number} | null>(null);
+
+	function onPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+		event.preventDefault();
+		event.stopPropagation();
+		event.currentTarget.setPointerCapture(event.pointerId);
+		dragRef.current = {x: event.clientX, y: event.clientY};
+	}
+
+	function onPointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+		const drag = dragRef.current;
+		if (drag === null) return;
+		event.stopPropagation();
+		const deltaX = event.clientX - drag.x;
+		const deltaY = event.clientY - drag.y;
+		if (deltaX === 0 && deltaY === 0) return;
+		dragRef.current = {x: event.clientX, y: event.clientY};
+		const rowPx = sizeAlong(host.rootRef.current, "row");
+		const columnPx = sizeAlong(columnRef.current, "column");
+		if (rowPx <= 0 || columnPx <= 0) return;
+		host.update((state) =>
+			resizeDivider(resizeDivider(state, {path: [], index: rootIndex, deltaPx: deltaX, sizePx: rowPx}), {
+				path: columnPath,
+				index: columnIndex,
+				deltaPx: deltaY,
+				sizePx: columnPx,
+			}),
+		);
+	}
+
+	function onPointerUp(event: ReactPointerEvent<HTMLDivElement>) {
+		event.stopPropagation();
+		dragRef.current = null;
+		event.currentTarget.releasePointerCapture(event.pointerId);
+	}
+
+	return (
+		<div
+			aria-hidden
+			data-tile-corner={side}
+			onPointerDown={onPointerDown}
+			onPointerMove={onPointerMove}
+			onPointerUp={onPointerUp}
+			onPointerCancel={onPointerUp}
+			className={`absolute top-0 z-10 size-3 cursor-all-scroll touch-none ${side === "left" ? "-left-3" : "-right-3"}`}
+		/>
+	);
+}
+
+function dropSide(rect: DOMRect, clientX: number, clientY: number): MoveDirection {
+	const x = rect.width > 0 ? (clientX - rect.left) / rect.width : 0.5;
+	const y = rect.height > 0 ? (clientY - rect.top) / rect.height : 0.5;
+	const edges: Array<[MoveDirection, number]> = [
+		["left", x],
+		["right", 1 - x],
+		["top", y],
+		["bottom", 1 - y],
+	];
+	return edges.reduce((nearest, edge) => (edge[1] < nearest[1] ? edge : nearest))[0];
+}
+
+/** The tile under the pointer and the half nearest it, or null over the dragged tile or no tile. */
+function dropAt(tileId: TileId, clientX: number, clientY: number): PointerDrop | null {
+	const element = document.elementFromPoint(clientX, clientY)?.closest<HTMLElement>("[data-tile-host]");
+	if (element === null || element === undefined) return null;
+	const targetId = parseTileId(element.dataset["tileHost"]);
+	if (targetId === null || targetId === tileId) return null;
+	return {tileId, targetId, side: dropSide(element.getBoundingClientRect(), clientX, clientY)};
 }
 
 const MOVE_KEYS: Readonly<Record<string, MoveDirection>> = {
@@ -314,6 +430,37 @@ const MOVE_HINT =
 function MoveHandle({tileId, host}: {tileId: TileId; host: InternalHost}) {
 	const hintId = `pane-move-hint-${tileId}`;
 	const pending = host.pendingMove?.tileId === tileId ? host.pendingMove : null;
+	const dragRef = useRef<{x: number; y: number; dragging: boolean} | null>(null);
+
+	function onPointerDown(event: ReactPointerEvent<HTMLButtonElement>) {
+		if (event.button !== 0) return;
+		event.currentTarget.setPointerCapture(event.pointerId);
+		dragRef.current = {x: event.clientX, y: event.clientY, dragging: false};
+	}
+
+	function onPointerMove(event: ReactPointerEvent<HTMLButtonElement>) {
+		const drag = dragRef.current;
+		if (drag === null) return;
+		if (!drag.dragging && Math.hypot(event.clientX - drag.x, event.clientY - drag.y) < DRAG_THRESHOLD_PX) return;
+		drag.dragging = true;
+		host.setPendingMove(null);
+		host.setPointerDrop(dropAt(tileId, event.clientX, event.clientY));
+	}
+
+	function onPointerUp(event: ReactPointerEvent<HTMLButtonElement>) {
+		const drag = dragRef.current;
+		dragRef.current = null;
+		event.currentTarget.releasePointerCapture(event.pointerId);
+		host.setPointerDrop(null);
+		const drop = drag?.dragging === true ? dropAt(tileId, event.clientX, event.clientY) : null;
+		if (drop !== null) host.update((state) => movePaneTo(state, tileId, drop.targetId, drop.side));
+	}
+
+	function onPointerCancel(event: ReactPointerEvent<HTMLButtonElement>) {
+		dragRef.current = null;
+		event.currentTarget.releasePointerCapture(event.pointerId);
+		host.setPointerDrop(null);
+	}
 
 	function onKeyDown(event: ReactKeyboardEvent<HTMLButtonElement>) {
 		if (pending !== null && (event.key === "Enter" || event.key === "Escape")) {
@@ -342,10 +489,14 @@ function MoveHandle({tileId, host}: {tileId: TileId; host: InternalHost}) {
 					aria-label="Move"
 					aria-describedby={hintId}
 					onKeyDown={onKeyDown}
+					onPointerDown={onPointerDown}
+					onPointerMove={onPointerMove}
+					onPointerUp={onPointerUp}
+					onPointerCancel={onPointerCancel}
 					onBlur={() => {
 						if (pending !== null) host.setPendingMove(null);
 					}}
-					className="group/move flex h-4 w-11 cursor-move items-center justify-center outline-none"
+					className="group/move flex h-4 w-11 cursor-move touch-none items-center justify-center outline-none"
 				>
 					<span className="h-[3px] w-8 rounded-full bg-fill-grip opacity-0 transition-opacity group-hover/move:opacity-100 group-focus-visible/move:bg-accent-100 group-focus-visible/move:opacity-100" />
 					<span id={hintId} className="sr-only">
@@ -447,6 +598,19 @@ function PaneSurface({kind, definition, host}: {kind: PaneKind; definition: Pane
 	);
 }
 
+/**
+ * Root dividers that meet a column divider: a column that is a root child
+ * touches the divider before it (on its left) and after it (on its right).
+ */
+function cornersOf(path: readonly number[], host: InternalHost): Partial<Record<"left" | "right", number>> {
+	const [rootIndex, ...rest] = path;
+	if (rootIndex === undefined || rest.length > 0 || host.phone) return {};
+	const corners: Partial<Record<"left" | "right", number>> = {};
+	if (rootIndex > 0) corners.left = rootIndex - 1;
+	if (rootIndex < host.layout.root.children.length - 1) corners.right = rootIndex;
+	return corners;
+}
+
 function StackView({
 	stack,
 	path,
@@ -495,6 +659,7 @@ function StackView({
 						sizePx={sizePx}
 						stackRef={ref}
 						isRoot={isRoot}
+						corners={cornersOf(path, host)}
 						host={host}
 					/>,
 				);
@@ -668,10 +833,12 @@ export function TileHost({
 	const openKinds = useMemo(() => tileIdsOf(layout.root).filter(isPaneKind), [layout.root]);
 
 	const [pendingMove, setPendingMove] = useState<PendingMove | null>(null);
-	const preview = useMemo(
-		() => (pendingMove === null ? null : movePreview(layout, pendingMove.tileId, pendingMove.direction)),
-		[layout, pendingMove],
-	);
+	const [pointerDrop, setPointerDrop] = useState<PointerDrop | null>(null);
+	const preview = useMemo(() => {
+		if (pointerDrop !== null)
+			return dropPreview(layout, pointerDrop.tileId, pointerDrop.targetId, pointerDrop.side);
+		return pendingMove === null ? null : movePreview(layout, pendingMove.tileId, pendingMove.direction);
+	}, [layout, pendingMove, pointerDrop]);
 
 	const internal = useMemo<InternalHost>(
 		() => ({
@@ -681,6 +848,7 @@ export function TileHost({
 			pendingMove,
 			preview,
 			setPendingMove,
+			setPointerDrop,
 			expanded: layout.expanded,
 			phone,
 			rootRef,

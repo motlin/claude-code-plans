@@ -2,6 +2,7 @@ import {describe, expect, it} from "vite-plus/test";
 import {
 	PANE_LAYOUT_STORAGE_KEY,
 	type LayoutNode,
+	type MoveDirection,
 	type MovePreview,
 	type PaneKind,
 	type PaneLayoutState,
@@ -16,7 +17,9 @@ import {
 	loadPaneLayout,
 	loadSubagentPaneAgent,
 	minTileSize,
+	dropPreview,
 	movePane,
+	movePaneTo,
 	movePreview,
 	openPane,
 	resizeDivider,
@@ -355,6 +358,117 @@ describe("movePreview", () => {
 		"shows %s",
 		(_name, state, tileId, direction, expected) => {
 			expect(movePreview(state, tileId, direction)).toStrictEqual(expected);
+		},
+	);
+});
+
+describe("movePaneTo", () => {
+	it.each([
+		[
+			"docks to the left of the target in its row",
+			THREE_PANES,
+			"files",
+			"chat",
+			"left",
+			layout(
+				[
+					tile("files", 1),
+					tile("chat", 1),
+					stack("column", 1, [tile("background-tasks", 1), tile("changes", 1)]),
+				],
+				"files",
+			),
+		],
+		[
+			"docks to the right of the target in its row",
+			THREE_PANES,
+			"files",
+			"chat",
+			"right",
+			layout(
+				[
+					tile("chat", 1),
+					tile("files", 1),
+					stack("column", 1, [tile("background-tasks", 1), tile("changes", 1)]),
+				],
+				"files",
+			),
+		],
+		[
+			"splits the target with the tile on top",
+			THREE_PANES,
+			"files",
+			"chat",
+			"top",
+			layout(
+				[
+					stack("column", 2, [tile("files", 1), tile("chat", 1)]),
+					stack("column", 1, [tile("background-tasks", 1), tile("changes", 1)]),
+				],
+				"files",
+			),
+		],
+		[
+			"splits the target with the tile below",
+			THREE_PANES,
+			"files",
+			"chat",
+			"bottom",
+			layout(
+				[
+					stack("column", 2, [tile("chat", 1), tile("files", 1)]),
+					stack("column", 1, [tile("background-tasks", 1), tile("changes", 1)]),
+				],
+				"files",
+			),
+		],
+		[
+			"joins a column above the target",
+			THREE_PANES,
+			"files",
+			"background-tasks",
+			"top",
+			layout(
+				[
+					tile("chat", 2),
+					stack("column", 1, [tile("files", 0.5), tile("background-tasks", 0.5), tile("changes", 1)]),
+				],
+				"files",
+			),
+		],
+		[
+			"leaves a column, collapsing it",
+			TWO_PANES,
+			"changes",
+			"chat",
+			"right",
+			layout([tile("chat", 1), tile("changes", 1), tile("background-tasks", 1)], "changes"),
+		],
+	] satisfies Array<[string, PaneLayoutState, TileId, TileId, MoveDirection, PaneLayoutState]>)(
+		"%s",
+		(_name, state, tileId, target, side, expected) => {
+			expect(movePaneTo(state, tileId, target, side)).toStrictEqual(expected);
+		},
+	);
+
+	it.each([
+		["onto itself", THREE_PANES, "files", "files"],
+		["for a pane that is not open", ONE_PANE, "files", "chat"],
+		["onto a pane that is not open", ONE_PANE, "chat", "files"],
+	] satisfies Array<[string, PaneLayoutState, TileId, TileId]>)("is a no-op %s", (_name, state, tileId, target) => {
+		expect(movePaneTo(state, tileId, target, "left")).toBe(state);
+	});
+});
+
+describe("dropPreview", () => {
+	it.each([
+		["the target's half", THREE_PANES, "files", "background-tasks", "top", {path: [1, 0], side: "top"}],
+		["nothing over the dragged tile itself", THREE_PANES, "files", "files", "left", null],
+		["nothing over a closed tile", ONE_PANE, "chat", "files", "left", null],
+	] satisfies Array<[string, PaneLayoutState, TileId, TileId, MoveDirection, MovePreview | null]>)(
+		"shows %s",
+		(_name, state, tileId, target, side, expected) => {
+			expect(dropPreview(state, tileId, target, side)).toStrictEqual(expected);
 		},
 	);
 });

@@ -75,7 +75,17 @@ function separatorState() {
 
 let unregister: () => void = () => {};
 
+/** jsdom implements neither pointer capture nor, having no layout, `elementFromPoint`. */
+const UNIMPLEMENTED_POINTER_APIS = ["setPointerCapture", "releasePointerCapture"] as const;
+
+function stubElementFromPoint(element: Element | null) {
+	Object.defineProperty(document, "elementFromPoint", {configurable: true, value: () => element});
+}
+
 beforeEach(() => {
+	for (const name of UNIMPLEMENTED_POINTER_APIS) {
+		Object.defineProperty(Element.prototype, name, {configurable: true, value: () => {}});
+	}
 	vi.stubGlobal("localStorage", new FakeStorage());
 	vi.spyOn(navigator, "userAgent", "get").mockReturnValue(
 		"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
@@ -90,6 +100,8 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+	Reflect.deleteProperty(document, "elementFromPoint");
+	for (const name of UNIMPLEMENTED_POINTER_APIS) Reflect.deleteProperty(Element.prototype, name);
 	unregister();
 	cleanup();
 	vi.unstubAllGlobals();
@@ -324,6 +336,38 @@ describe("TileHost", () => {
 		expect(layoutShape()).toStrictEqual({columns: 0, tiles: ["chat", "plan"], preview: []});
 	});
 
+	it("drags the Move grip over another tile to preview and commit a split", () => {
+		renderHost("session-a");
+		openTestPane();
+		const chatTile = document.querySelector<HTMLElement>("[data-tile-host=chat]");
+		stubElementFromPoint(chatTile);
+		const grip = paneMoveButton();
+
+		fireEvent.pointerDown(grip, {pointerId: 1, clientX: 900, clientY: 10});
+		fireEvent.pointerMove(grip, {pointerId: 1, clientX: 600, clientY: 700});
+		const previewing = layoutShape();
+		fireEvent.pointerUp(grip, {pointerId: 1, clientX: 600, clientY: 700});
+
+		expect({previewing, committed: layoutShape()}).toStrictEqual({
+			previewing: {columns: 0, tiles: ["chat", "plan"], preview: [{tile: "chat", side: "bottom"}]},
+			committed: {columns: 1, tiles: ["chat", "plan"], preview: []},
+		});
+	});
+
+	it("ignores a Move grip press that does not leave the grip", () => {
+		renderHost("session-a");
+		openTestPane();
+		const chatTile = document.querySelector<HTMLElement>("[data-tile-host=chat]");
+		stubElementFromPoint(chatTile);
+		const grip = paneMoveButton();
+
+		fireEvent.pointerDown(grip, {pointerId: 1, clientX: 900, clientY: 10});
+		fireEvent.pointerMove(grip, {pointerId: 1, clientX: 901, clientY: 11});
+		fireEvent.pointerUp(grip, {pointerId: 1, clientX: 901, clientY: 11});
+
+		expect(layoutShape()).toStrictEqual({columns: 0, tiles: ["chat", "plan"], preview: []});
+	});
+
 	it("persists the layout per session id across remounts", () => {
 		const first = renderHost("session-a");
 		openTestPane();
@@ -394,6 +438,84 @@ describe("TileHost on a phone", () => {
 			fullWidth: false,
 			sticky: true,
 			separators: 1,
+		});
+	});
+});
+
+describe("TileHost corner handle", () => {
+	let unregisterStacked: Array<() => void> = [];
+
+	beforeEach(() => {
+		unregisterStacked = [
+			registerPane("files", {title: "Files", render: () => <p>Files body</p>}),
+			registerPane("background-tasks", {title: "Background tasks", render: () => <p>Tasks body</p>}),
+		];
+		localStorage.setItem(
+			"ccb.paneLayout.v1",
+			JSON.stringify({
+				"session-a": {
+					root: {
+						kind: "stack",
+						direction: "row",
+						flex: 1,
+						children: [
+							{kind: "tile", tileId: "chat", flex: 2},
+							{
+								kind: "stack",
+								direction: "column",
+								flex: 1,
+								children: [
+									{kind: "tile", tileId: "files", flex: 1},
+									{kind: "tile", tileId: "background-tasks", flex: 1},
+								],
+							},
+						],
+					},
+					expanded: null,
+					focused: "files",
+				},
+			}),
+		);
+	});
+
+	afterEach(() => {
+		for (const fn of unregisterStacked) fn();
+	});
+
+	function flexes() {
+		const flexOf = (selector: string) =>
+			document.querySelector<HTMLElement>(selector)?.closest<HTMLElement>("[style]")?.style.flex ?? null;
+		return {
+			chat: flexOf("[data-tile-host=chat]"),
+			column: document.querySelector<HTMLElement>("[data-tile-stack=column]")?.style.flex ?? null,
+			files: flexOf("[data-tile-host=files]"),
+			tasks: flexOf("[data-tile-host=background-tasks]"),
+		};
+	}
+
+	it("resizes the row and the column together from the corner", () => {
+		renderHost("session-a");
+		const corner = document.querySelector<HTMLElement>("[data-tile-corner]");
+		if (corner === null) throw new Error("corner missing");
+		const before = flexes();
+
+		fireEvent.pointerDown(corner, {pointerId: 1, clientX: 800, clientY: 400});
+		fireEvent.pointerMove(corner, {pointerId: 1, clientX: 700, clientY: 300});
+		fireEvent.pointerUp(corner, {pointerId: 1, clientX: 700, clientY: 300});
+
+		expect({
+			before,
+			after: flexes(),
+			cursor: corner.classList.contains("cursor-all-scroll"),
+		}).toStrictEqual({
+			before: {chat: "2 1 0px", column: "1 1 0px", files: "1 1 0px", tasks: "1 1 0px"},
+			after: {
+				chat: "1.747475 1 0px",
+				column: "1.252525 1 0px",
+				files: "0.746193 1 0px",
+				tasks: "1.253807 1 0px",
+			},
+			cursor: true,
 		});
 	});
 });

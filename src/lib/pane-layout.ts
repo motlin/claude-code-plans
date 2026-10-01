@@ -34,6 +34,12 @@ export type TileId = z.infer<typeof TileIdSchema>;
 export type Direction = z.infer<typeof DirectionSchema>;
 export type MoveDirection = "left" | "right" | "top" | "bottom";
 
+/** A `data-tile-host` value read back from the DOM, or null when it names no tile. */
+export function parseTileId(value: unknown): TileId | null {
+	const parsed = TileIdSchema.safeParse(value);
+	return parsed.success ? parsed.data : null;
+}
+
 export interface TileNode {
 	kind: "tile";
 	tileId: TileId;
@@ -450,6 +456,58 @@ export function movePane(state: PaneLayoutState, tileId: TileId, direction: Move
 	}
 	const root = normalizeRoot(replaceAt(state.root, plan.ancestorPath, {...plan.ancestor, children}));
 	return {...state, root, focused: tileId};
+}
+
+/** The half of `targetId` a pointer drag of `tileId` would take, or null when the drop does nothing. */
+export function dropPreview(
+	state: PaneLayoutState,
+	tileId: TileId,
+	targetId: TileId,
+	side: MoveDirection,
+): MovePreview | null {
+	if (tileId === targetId || !isOpen(state, tileId)) return null;
+	const path = pathTo(state.root, targetId);
+	return path === undefined ? null : {path, side};
+}
+
+/**
+ * Re-docks a tile against another one, as upstream's pointer drag on Move
+ * does. Along the target's stack the tile is inserted beside it, sharing the
+ * target's slot; across it the target's slot splits in half.
+ */
+export function movePaneTo(
+	state: PaneLayoutState,
+	tileId: TileId,
+	targetId: TileId,
+	side: MoveDirection,
+): PaneLayoutState {
+	if (dropPreview(state, tileId, targetId, side) === null) return state;
+	const root = normalizeRoot(withoutTile(state.root, tileId));
+	const path = pathTo(root, targetId);
+	const index = path?.at(-1);
+	if (path === undefined || index === undefined) return state;
+	const parentPath = path.slice(0, -1);
+	const parent = nodeAt(root, parentPath);
+	const target = parent?.kind === "stack" ? parent.children[index] : undefined;
+	if (parent?.kind !== "stack" || target === undefined) return state;
+
+	const axis = axisOf(side);
+	const before = stepOf(side) < 0;
+	const children = [...parent.children];
+	if (parent.direction === axis) {
+		const half = round(target.flex / 2);
+		const pair = [tile(tileId, half), {...target, flex: half}];
+		children.splice(index, 1, ...(before ? pair : pair.reverse()));
+	} else {
+		const pair = [tile(tileId, 1), {...target, flex: 1}];
+		children[index] = {
+			kind: "stack",
+			direction: axis,
+			flex: target.flex,
+			children: before ? pair : pair.reverse(),
+		};
+	}
+	return {...state, root: normalizeRoot(replaceAt(root, parentPath, {...parent, children})), focused: tileId};
 }
 
 function browserStorage(): Storage | null {
