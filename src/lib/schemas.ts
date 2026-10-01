@@ -1813,6 +1813,19 @@ export const McpConfigSchema = z
 	})
 	.strict();
 
+/**
+ * ~/.claude/mcp-needs-auth-cache.json: the CLI's record of MCP servers that
+ * last failed for want of (re)authentication, keyed by server name
+ * (`plugin:<plugin>:<server>` for plugin servers). `id` is set on claude.ai connectors.
+ */
+export const McpNeedsAuthCacheSchema = z.record(
+	z.string(),
+	z.strictObject({
+		timestamp: z.number(),
+		id: z.string().optional(),
+	}),
+);
+
 // ~/.claude.json holds hundreds of unrelated, churning keys. Callers pick the
 // MCP-related keys out first, then parse that projection strictly.
 export const ClaudeJsonMcpSchema = z

@@ -87,6 +87,7 @@ const MCP_SERVERS: McpServerSummary[] = [
 		enabled: true,
 		envKeys: [],
 		headerKeys: [],
+		needsAuth: false,
 	},
 ];
 

@@ -1,6 +1,6 @@
 import {Popover} from "@base-ui/react/popover";
-import {ArrowRight, Plus} from "lucide-react";
-import {memo, useState} from "react";
+import {ArrowRight, Paperclip, Plus, SquareSlash} from "lucide-react";
+import {lazy, memo, Suspense, useState} from "react";
 
 import {
 	type ComposerState,
@@ -31,6 +31,11 @@ import {settingsHash} from "../lib/settings-hash";
 import {ConfirmDialog} from "./confirm-dialog";
 import {Menu, MenuContent, MenuItem, MenuTrigger} from "./ui/menu";
 import {Tooltip} from "./ui/tooltip";
+
+// Keeps the Customize API schemas and router hooks out of the composer's cold load.
+const loadConnectorsMenu = () =>
+	import("./composer-connectors-menu").then((module) => ({default: module.ComposerConnectorsMenu}));
+const ComposerConnectorsMenu = lazy(loadConnectorsMenu);
 
 /** Upstream's usage popover: r10, and up to 640px tall before its own scroll. */
 const POPUP_CLASS =
@@ -216,10 +221,15 @@ export const ComposerChin = memo(function ComposerChin({
 						</MenuTrigger>
 					</Tooltip>
 					<MenuContent side="top">
-						<MenuItem onSelect={onAddFiles} shortcut={addFilesKeys}>
+						<MenuItem icon={<Paperclip />} onSelect={onAddFiles} shortcut={addFilesKeys}>
 							Add files or photos
 						</MenuItem>
-						<MenuItem onSelect={onInsertSlash}>Slash commands</MenuItem>
+						<MenuItem icon={<SquareSlash />} onSelect={onInsertSlash}>
+							Slash commands
+						</MenuItem>
+						<Suspense fallback={null}>
+							<ComposerConnectorsMenu />
+						</Suspense>
 					</MenuContent>
 				</Menu>
 				<ModeMenu

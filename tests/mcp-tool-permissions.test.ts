@@ -387,6 +387,7 @@ describe("readMcpServerDetail", () => {
 					enabled: true,
 					envKeys: [],
 					headerKeys: ["Authorization"],
+					needsAuth: false,
 				},
 				serverKey: "render",
 				tools: [

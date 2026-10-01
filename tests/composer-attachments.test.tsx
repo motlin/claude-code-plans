@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 
+import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {Composer} from "../src/components/composer";
+import {customizeMcpServersQueryOptions} from "../src/lib/api/customize";
 import type {ComposerState} from "../src/lib/composer-state";
 import type {LaunchOptions} from "../src/lib/launch-options";
 import {takeContextChips} from "../src/lib/context-attach";
@@ -43,7 +45,14 @@ function savedAs(path: string) {
 
 function renderComposer(chin?: ComposerState) {
 	const onSend = vi.fn<OnSend>();
-	render(<Composer variant="session" draftKey={SESSION} onSend={onSend} {...(chin === undefined ? {} : {chin})} />);
+	// The + menu's Connectors submenu reads the MCP server list.
+	const queryClient = new QueryClient();
+	queryClient.setQueryData(customizeMcpServersQueryOptions.queryKey, []);
+	render(
+		<QueryClientProvider client={queryClient}>
+			<Composer variant="session" draftKey={SESSION} onSend={onSend} {...(chin === undefined ? {} : {chin})} />
+		</QueryClientProvider>,
+	);
 	return onSend;
 }
 

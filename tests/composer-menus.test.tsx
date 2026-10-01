@@ -1,11 +1,20 @@
 // @vitest-environment jsdom
 
+import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {Composer} from "../src/components/composer";
+import {customizeMcpServersQueryOptions, type McpServerSummary} from "../src/lib/api/customize";
+import {toConnectorSlug} from "../src/lib/customize/mcp-tool-permissions";
 import type {ComposerState} from "../src/lib/composer-state";
 import type {LiveLaunchControls} from "../src/hooks/use-live-launch-options";
 import type {LaunchOptions} from "../src/lib/launch-options";
+
+const navigate = vi.hoisted(() => vi.fn());
+vi.mock("@tanstack/react-router", async (importOriginal) => ({
+	...(await importOriginal<typeof import("@tanstack/react-router")>()),
+	useNavigate: () => navigate,
+}));
 
 const MAC_UA =
 	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36";
@@ -524,5 +533,124 @@ describe("Composer chin tooltips and contrast", () => {
 		const label = within(menu).getByText("Mode");
 
 		expect(label.getAttribute("class")).toBe("px-2 py-1 text-[12px]/[15px] font-medium text-[var(--menu-muted)]");
+	});
+});
+
+describe("Composer + menu Connectors submenu", () => {
+	const server = (id: string, name: string, enabled: boolean, needsAuth: boolean): McpServerSummary => ({
+		id,
+		name,
+		scope: "user",
+		transport: "http",
+		urlOrCommand: `https://${name.toLowerCase()}.example.com/mcp`,
+		enabled,
+		envKeys: [],
+		headerKeys: [],
+		needsAuth,
+	});
+	const SERVERS = [
+		server("user:Gmail", "Gmail", true, false),
+		server("user:Calendar", "Calendar", true, false),
+		server("plugin:docs@market:Docs", "Docs", false, false),
+		server("user:Sentry", "Sentry", true, true),
+	];
+
+	function renderWithServers() {
+		const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
+		queryClient.setQueryData(customizeMcpServersQueryOptions.queryKey, SERVERS);
+		render(
+			<QueryClientProvider client={queryClient}>
+				<Composer variant="session" draftKey="session-alice" onSend={() => {}} chin={CHIN} />
+			</QueryClientProvider>,
+		);
+	}
+
+	async function openConnectors() {
+		fireEvent.click(screen.getByRole("button", {name: "Add"}));
+		const menu = await screen.findByRole("menu");
+		const trigger = await within(menu).findByRole("menuitem", {name: /^Connectors/});
+		act(() => trigger.focus());
+		fireEvent.keyDown(trigger, {key: "ArrowRight"});
+		await waitFor(() => expect(screen.getAllByRole("menu")).toHaveLength(2));
+		const submenu = screen.getAllByRole("menu").find((candidate) => candidate !== menu);
+		if (submenu === undefined) throw new Error("no Connectors submenu");
+		return {menu, trigger, submenu};
+	}
+
+	function entries(menu: HTMLElement) {
+		return Array.from(menu.querySelectorAll('[role="menuitem"], [role="separator"]')).map((element) =>
+			element.getAttribute("role") === "separator"
+				? "---"
+				: {
+						title: element.querySelector("[data-menu-item-title]")?.textContent,
+						description: element.querySelector("[data-menu-item-description]")?.textContent ?? null,
+						switch: element.querySelector('[role="switch"]')?.getAttribute("aria-checked") ?? null,
+					},
+		);
+	}
+
+	it("lists Browse, Manage and one row per server, with read-only switches and a Reconnect row", async () => {
+		renderWithServers();
+		const {menu, trigger, submenu} = await openConnectors();
+
+		expect({
+			addMenu: within(menu)
+				.getAllByRole("menuitem")
+				.map((item) => item.querySelector("[data-menu-item-title]")?.textContent ?? item.textContent),
+			note: trigger.querySelector("[data-menu-value]")?.textContent,
+			submenu: entries(submenu),
+			readOnly: Array.from(submenu.querySelectorAll('[role="switch"]')).map((element) =>
+				element.getAttribute("aria-readonly"),
+			),
+		}).toStrictEqual({
+			addMenu: ["Add files or photos", "Slash commands", "Connectors1 needs reconnection"],
+			note: "1 needs reconnection",
+			submenu: [
+				{title: "Browse connectors", description: null, switch: null},
+				{title: "Manage connectors", description: null, switch: null},
+				"---",
+				{title: "Gmail", description: null, switch: "true"},
+				{title: "Calendar", description: null, switch: "true"},
+				{title: "Docs", description: null, switch: "false"},
+				{title: "Sentry", description: "Reconnect", switch: null},
+			],
+			readOnly: ["true", "true", "true"],
+		});
+	});
+
+	it("navigates to Customize > Connectors and to each server's page", async () => {
+		renderWithServers();
+		const targets: unknown[] = [];
+		for (const name of ["Browse connectors", "Manage connectors", "Docs", /^Sentry/]) {
+			navigate.mockClear();
+			const {submenu} = await openConnectors();
+			fireEvent.click(within(submenu).getByRole("menuitem", {name}));
+			await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+			targets.push(...navigate.mock.calls.map(([options]) => options));
+		}
+
+		expect(targets).toStrictEqual([
+			{to: "/customize/connectors"},
+			{to: "/customize/connectors"},
+			{
+				to: "/customize/connectors/id/$serverId",
+				params: {serverId: toConnectorSlug("plugin:docs@market:Docs")},
+			},
+			{to: "/customize/connectors/id/$serverId", params: {serverId: toConnectorSlug("user:Sentry")}},
+		]);
+	});
+
+	it("shows no reconnection note while every server is healthy", async () => {
+		const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
+		queryClient.setQueryData(customizeMcpServersQueryOptions.queryKey, SERVERS.slice(0, 2));
+		render(
+			<QueryClientProvider client={queryClient}>
+				<Composer variant="session" draftKey="session-alice" onSend={() => {}} chin={CHIN} />
+			</QueryClientProvider>,
+		);
+		fireEvent.click(screen.getByRole("button", {name: "Add"}));
+		const trigger = await within(await screen.findByRole("menu")).findByRole("menuitem", {name: /^Connectors/});
+
+		expect(trigger.querySelector("[data-menu-value]")).toBeNull();
 	});
 });

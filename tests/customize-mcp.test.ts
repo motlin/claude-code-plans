@@ -141,6 +141,7 @@ describe("listMcpServers", () => {
 				enabled: true,
 				envKeys: ["MAIL_TOKEN"],
 				headerKeys: [],
+				needsAuth: false,
 			},
 			{
 				id: "user:sentry",
@@ -151,6 +152,7 @@ describe("listMcpServers", () => {
 				enabled: true,
 				envKeys: [],
 				headerKeys: [],
+				needsAuth: false,
 			},
 			{
 				id: `local:${projectPath}:render`,
@@ -162,6 +164,7 @@ describe("listMcpServers", () => {
 				projectPath,
 				envKeys: [],
 				headerKeys: ["Authorization"],
+				needsAuth: false,
 			},
 			{
 				id: `local:${projectPath}:scratch`,
@@ -173,6 +176,7 @@ describe("listMcpServers", () => {
 				projectPath,
 				envKeys: [],
 				headerKeys: [],
+				needsAuth: false,
 			},
 			{
 				id: `project:${projectPath}:approved`,
@@ -184,6 +188,7 @@ describe("listMcpServers", () => {
 				projectPath,
 				envKeys: [],
 				headerKeys: [],
+				needsAuth: false,
 			},
 			{
 				id: `project:${projectPath}:pending`,
@@ -195,6 +200,7 @@ describe("listMcpServers", () => {
 				projectPath,
 				envKeys: [],
 				headerKeys: [],
+				needsAuth: false,
 			},
 			{
 				id: `project:${projectPath}:rejected`,
@@ -206,6 +212,7 @@ describe("listMcpServers", () => {
 				projectPath,
 				envKeys: [],
 				headerKeys: [],
+				needsAuth: false,
 			},
 			{
 				id: "plugin:docs@market:docs",
@@ -216,6 +223,7 @@ describe("listMcpServers", () => {
 				enabled: true,
 				envKeys: [],
 				headerKeys: ["X-Api-Key"],
+				needsAuth: false,
 			},
 			{
 				id: "plugin:flat@market:browser",
@@ -226,6 +234,7 @@ describe("listMcpServers", () => {
 				enabled: false,
 				envKeys: [],
 				headerKeys: [],
+				needsAuth: false,
 			},
 		]);
 		expect(McpServerListResponse.parse(servers)).toStrictEqual(servers);
@@ -259,8 +268,41 @@ describe("listMcpServers", () => {
 				projectPath,
 				envKeys: [],
 				headerKeys: [],
+				needsAuth: false,
 			},
 		]);
+	});
+
+	it("flags the servers the CLI's mcp-needs-auth-cache.json names, keying plugin servers by plugin name", async () => {
+		writeFixtures();
+		writeJson(join(claudeDir, "mcp-needs-auth-cache.json"), {
+			sentry: {timestamp: 1_790_000_000_000},
+			"plugin:docs:docs": {timestamp: 1_790_000_000_000, id: "mcpsrv_alice"},
+			"claude.ai Zapier": {timestamp: 1_790_000_000_000},
+		});
+
+		const servers = await listMcpServers({claudeDir, claudeJsonPath});
+
+		expect(servers.map((server) => [server.id, server.needsAuth])).toStrictEqual([
+			["user:mail", false],
+			["user:sentry", true],
+			[`local:${projectPath}:render`, false],
+			[`local:${projectPath}:scratch`, false],
+			[`project:${projectPath}:approved`, false],
+			[`project:${projectPath}:pending`, false],
+			[`project:${projectPath}:rejected`, false],
+			["plugin:docs@market:docs", true],
+			["plugin:flat@market:browser", false],
+		]);
+	});
+
+	it("ignores a malformed needs-auth cache", async () => {
+		writeJson(claudeJsonPath, {mcpServers: {sentry: {type: "http", url: "https://mcp.sentry.dev/mcp"}}});
+		writeJson(join(claudeDir, "mcp-needs-auth-cache.json"), {sentry: true});
+
+		const servers = await listMcpServers({claudeDir, claudeJsonPath});
+
+		expect(servers.map((server) => [server.id, server.needsAuth])).toStrictEqual([["user:sentry", false]]);
 	});
 
 	it("returns an empty list when nothing is configured", async () => {

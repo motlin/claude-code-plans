@@ -7,6 +7,7 @@ import {
 	ClaudeJsonProjectMcpSchema,
 	ClaudeSettingsSchema,
 	McpConfigSchema,
+	McpNeedsAuthCacheSchema,
 	McpServersSchema,
 } from "../schemas";
 import {
@@ -78,6 +79,7 @@ function summarize(
 	scope: McpScope,
 	idPrefix: string,
 	enabled: boolean,
+	needsAuth: boolean,
 	projectPath?: string,
 ): McpServerSummary {
 	const command = [entry.command ?? "", ...(entry.args ?? [])].join(" ").trim();
@@ -90,6 +92,7 @@ function summarize(
 		enabled,
 		envKeys: Object.keys(entry.env ?? {}).sort(),
 		headerKeys: Object.keys(entry.headers ?? {}).sort(),
+		needsAuth,
 	};
 	if (projectPath !== undefined) summary.projectPath = projectPath;
 	return summary;
@@ -105,6 +108,17 @@ async function readPluginServers(installPath: string): Promise<McpServers> {
 }
 
 type ClaudeSettings = z.infer<typeof ClaudeSettingsSchema>;
+
+/** The server names the CLI last found needing authentication; empty when the cache is absent or malformed. */
+async function readNeedsAuth(claudeDir: string): Promise<ReadonlySet<string>> {
+	const parsed = McpNeedsAuthCacheSchema.safeParse(await readJson(join(claudeDir, "mcp-needs-auth-cache.json")));
+	return new Set(parsed.success ? Object.keys(parsed.data) : []);
+}
+
+/** The CLI names plugin servers `plugin:<plugin name>:<server>`, without the marketplace. */
+function pluginServerKey(pluginId: string, name: string): string {
+	return `plugin:${pluginId.split("@")[0] ?? pluginId}:${name}`;
+}
 
 async function readSettings(claudeDir: string): Promise<ClaudeSettings> {
 	const parsed = ClaudeSettingsSchema.safeParse(await readJson(join(claudeDir, "settings.json")));
@@ -135,17 +149,20 @@ export async function listMcpServers({
 }: ListMcpServersOptions = {}): Promise<McpServerSummary[]> {
 	const claudeJson = await readClaudeJson(claudeJsonPath);
 	const settings = await readSettings(claudeDir);
+	const needsAuth = await readNeedsAuth(claudeDir);
 
 	const result: McpServerSummary[] = [];
 
 	for (const [name, entry] of sortedEntries(claudeJson.mcpServers)) {
-		result.push(summarize(name, entry, "user", "user:", true));
+		result.push(summarize(name, entry, "user", "user:", true, needsAuth.has(name)));
 	}
 
 	for (const {path, mcp} of claudeJson.projects) {
 		const disabled = new Set(mcp.disabledMcpServers ?? []);
 		for (const [name, entry] of sortedEntries(mcp.mcpServers ?? {})) {
-			result.push(summarize(name, entry, "local", `local:${path}:`, !disabled.has(name), path));
+			result.push(
+				summarize(name, entry, "local", `local:${path}:`, !disabled.has(name), needsAuth.has(name), path),
+			);
 		}
 	}
 
@@ -156,12 +173,12 @@ export async function listMcpServers({
 		const approved = new Set([...(mcp.enabledMcpjsonServers ?? []), ...(settings.enabledMcpjsonServers ?? [])]);
 		for (const [name, entry] of sortedEntries(parsed.data.mcpServers)) {
 			const enabled = !disabled.has(name) && (settings.enableAllProjectMcpServers === true || approved.has(name));
-			result.push(summarize(name, entry, "project", `project:${path}:`, enabled, path));
+			result.push(summarize(name, entry, "project", `project:${path}:`, enabled, needsAuth.has(name), path));
 		}
 	}
 
 	for (const plugin of await readInstalledPlugins(claudeDir)) {
-		result.push(...(await pluginServers(plugin, settings)));
+		result.push(...(await pluginServers(plugin, settings, needsAuth)));
 	}
 
 	return result;
@@ -170,10 +187,18 @@ export async function listMcpServers({
 async function pluginServers(
 	plugin: {id: string; installPath: string},
 	settings: ClaudeSettings,
+	needsAuth: ReadonlySet<string>,
 ): Promise<McpServerSummary[]> {
 	const enabled = settings.enabledPlugins?.[plugin.id] === true;
 	return sortedEntries(await readPluginServers(plugin.installPath)).map(([name, entry]) =>
-		summarize(name, entry, "plugin", `plugin:${plugin.id}:`, enabled),
+		summarize(
+			name,
+			entry,
+			"plugin",
+			`plugin:${plugin.id}:`,
+			enabled,
+			needsAuth.has(pluginServerKey(plugin.id, name)),
+		),
 	);
 }
 
@@ -182,7 +207,7 @@ export async function listPluginMcpServers(
 	plugin: {id: string; installPath: string},
 	claudeDir: string = join(homedir(), ".claude"),
 ): Promise<McpServerSummary[]> {
-	return pluginServers(plugin, await readSettings(claudeDir));
+	return pluginServers(plugin, await readSettings(claudeDir), await readNeedsAuth(claudeDir));
 }
 
 export interface McpToolOptions extends ListMcpServersOptions {

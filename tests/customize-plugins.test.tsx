@@ -144,6 +144,7 @@ describe("readPluginDetail", () => {
 					enabled: true,
 					envKeys: [],
 					headerKeys: ["Authorization"],
+					needsAuth: false,
 				},
 			],
 			tree: [".claude-plugin", "agents", "commands", "hooks", "skills", ".mcp.json", "README.md"],

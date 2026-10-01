@@ -51,6 +51,8 @@ const McpServerSummarySchema = z.strictObject({
 	projectPath: z.string().optional(),
 	envKeys: z.array(z.string()),
 	headerKeys: z.array(z.string()),
+	/** Named in the CLI's mcp-needs-auth-cache.json: the server must be reconnected. */
+	needsAuth: z.boolean(),
 });
 export type McpServerSummary = z.infer<typeof McpServerSummarySchema>;
 
