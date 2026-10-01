@@ -130,6 +130,35 @@ function seedArtifacts(db: AppDb): void {
 		.run();
 }
 
+/** A gallery of 14 HTML pages and 2 Docs, alternating between yours and shared with you. */
+function seedMixedGallery(db: AppDb): void {
+	db.index
+		.insert(schema.artifacts)
+		.values(
+			Array.from({length: 16}, (_, index) => {
+				const docs = index >= 14;
+				const id = `mixed-${String(index).padStart(2, "0")}`;
+				return {
+					url: docs ? `https://claude.ai/artifact/${id}` : `https://claude.ai/code/artifact/${id}`,
+					id,
+					urlKind: docs ? ("slug" as const) : ("uuid" as const),
+					title: `${index % 2 === 0 ? "Mine" : "Shared"} ${id}`,
+					favicon: null,
+					description: null,
+					version: "1",
+					projectId: "-Users-alice-projects-ladder",
+					sourcePath: null,
+					audience: index % 2 === 0 ? "owner" : "org",
+					firstSeenAt: localMs(2026, 8, 1),
+					lastPublishedAt: localMs(2026, 8, 1) + index * 60_000,
+					publishCount: 1,
+					lastSessionId: `session-${id}`,
+				};
+			}),
+		)
+		.run();
+}
+
 describe("getArtifacts", () => {
 	it("lists artifacts newest first with a title fallback and whether the source still exists", () => {
 		const db = openTestDb();
@@ -211,9 +240,10 @@ afterEach(() => {
 
 const MAC_USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36";
 
-async function renderArtifactsPage(initialEntry: string, seed: boolean) {
+async function renderArtifactsPage(initialEntry: string, seed: boolean | ((db: AppDb) => void)) {
 	const db = openTestDb();
-	if (seed) seedArtifacts(db);
+	if (seed === true) seedArtifacts(db);
+	else if (typeof seed === "function") seed(db);
 	const data = ArtifactListResponse.parse(JSON.parse(JSON.stringify(getArtifacts(db.index, {}, ladderMtime))));
 
 	const queryClient = new QueryClient({
@@ -431,6 +461,76 @@ describe("artifacts route", () => {
 
 		await waitFor(() => {
 			expect(document.activeElement).toBe(screen.getByRole("searchbox", {name: "Search your artifacts"}));
+		});
+	});
+
+	it("shows upstream's All / Yours / Shared with you tabs and keeps the choice in ?view=", async () => {
+		const router = await renderArtifactsPage("/artifacts", seedMixedGallery);
+
+		function titles() {
+			return screen
+				.getAllByRole("listitem")
+				.map((row) => rowSummary(row).title ?? "")
+				.sort();
+		}
+		const tabs = within(screen.getByRole("tablist", {name: "Artifacts"})).getAllByRole("tab");
+		const initial = {
+			tabs: tabs.map((tab) => [tab.textContent, tab.getAttribute("aria-selected")]),
+			rows: titles().length,
+		};
+
+		fireEvent.click(screen.getByRole("tab", {name: "Shared with you"}));
+		await waitFor(() => {
+			expect({...router.state.location.search}).toStrictEqual({view: "shared"});
+		});
+		const shared = titles();
+
+		fireEvent.click(screen.getByRole("tab", {name: "Yours"}));
+		await waitFor(() => {
+			expect({...router.state.location.search}).toStrictEqual({view: "yours"});
+		});
+
+		expect({initial, shared, yours: titles()}).toStrictEqual({
+			initial: {
+				tabs: [
+					["All", "true"],
+					["Yours", "false"],
+					["Shared with you", "false"],
+				],
+				rows: 16,
+			},
+			shared: [1, 3, 5, 7, 9, 11, 13, 15].map((n) => `Shared mixed-${String(n).padStart(2, "0")}`),
+			yours: [0, 2, 4, 6, 8, 10, 12, 14].map((n) => `Mine mixed-${String(n).padStart(2, "0")}`),
+		});
+	});
+
+	it("opens on the tab named by ?view=", async () => {
+		await renderArtifactsPage("/artifacts?view=shared", seedMixedGallery);
+
+		expect({
+			selected: screen.getByRole("tab", {selected: true}).textContent,
+			rows: screen.getAllByRole("listitem").length,
+		}).toStrictEqual({selected: "Shared with you", rows: 8});
+	});
+
+	it("names the type filter options with upstream's vocabulary, icons and counts", async () => {
+		await renderArtifactsPage("/artifacts", seedMixedGallery);
+
+		fireEvent.click(screen.getByRole("button", {name: "Filter by type: All types"}));
+		const items = await screen.findAllByRole("menuitemradio");
+
+		expect({
+			names: items.map((item) => item.textContent),
+			icons: items.map((item) => item.querySelector("[data-type-tile]")?.getAttribute("data-type-tile") ?? null),
+		}).toStrictEqual({
+			names: ["All types", "Docs 2", "Other 14"],
+			icons: ["all", "docs", "html"],
+		});
+
+		fireEvent.click(screen.getByRole("menuitemradio", {name: "Other 14"}));
+
+		await waitFor(() => {
+			expect(screen.getByRole("button", {name: "Filter by type: Other"}).tagName).toBe("BUTTON");
 		});
 	});
 });

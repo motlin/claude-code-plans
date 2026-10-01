@@ -4,6 +4,8 @@ export const ARTIFACTS_LAYOUT_STORAGE_KEY = "artifacts-gallery-layout";
 export type ArtifactsLayout = "list" | "grid";
 export type ArtifactKind = "html" | "docs";
 export type ArtifactTypeFilter = "all" | ArtifactKind;
+/** Upstream's ownership tabs: All, Yours (you own it), Shared with you (any other audience). */
+export type ArtifactView = "all" | "yours" | "shared";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const RECENT_DAYS = 7;
@@ -87,6 +89,11 @@ export function formatArtifactDate(ms: number, now: Date): string {
 export function artifactMatchesSearch(title: string, search: string): boolean {
 	const needle = search.trim().toLowerCase();
 	return needle === "" || title.toLowerCase().includes(needle);
+}
+
+export function artifactInView(audience: string | null, view: ArtifactView): boolean {
+	if (view === "all") return true;
+	return (audience === "owner") === (view === "yours");
 }
 
 export function filterArtifacts<T extends FilterableArtifact>(

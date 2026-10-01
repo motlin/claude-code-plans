@@ -1,9 +1,10 @@
 import {createFileRoute, Link, useNavigate} from "@tanstack/react-router";
 import {useSuspenseQuery} from "@tanstack/react-query";
-import {CodeXml, FileText, LayoutGrid, List, ListFilter, Lock} from "lucide-react";
+import {CodeXml, FileText, LayoutGrid, List, ListFilter, Lock, Shapes} from "lucide-react";
 import {useEffect, useId, useMemo, useState} from "react";
 import {artifactsQueryOptions, type ArtifactSummary} from "../lib/api/artifacts";
 import {
+	artifactInView,
 	artifactTimestamp,
 	filterArtifacts,
 	formatArtifactDate,
@@ -13,6 +14,7 @@ import {
 	type ArtifactKind,
 	type ArtifactsLayout,
 	type ArtifactTypeFilter,
+	type ArtifactView,
 } from "../lib/artifact-gallery";
 import {formatCount} from "../lib/pluralize";
 import {TOOLBAR_ICON_BUTTON, ToolbarSearch} from "../components/toolbar-search";
@@ -21,21 +23,37 @@ import {Tooltip} from "../components/ui/tooltip";
 
 export const Route = createFileRoute("/artifacts")({
 	component: ArtifactsPage,
-	validateSearch: (search: Record<string, unknown>): {search?: string} =>
-		typeof search["search"] === "string" && search["search"] !== "" ? {search: search["search"]} : {},
+	validateSearch: (search: Record<string, unknown>): {search?: string; view?: Exclude<ArtifactView, "all">} => {
+		const query = search["search"];
+		const view = search["view"];
+		return {
+			...(typeof query === "string" && query !== "" ? {search: query} : {}),
+			...(view === "yours" || view === "shared" ? {view} : {}),
+		};
+	},
 	loader: ({context: {queryClient}}) => queryClient.ensureQueryData(artifactsQueryOptions),
 	head: () => ({
 		meta: [{title: "Artifacts"}],
 	}),
 });
 
+/** Upstream's type vocabulary: anything that is not a Doc (or a Slides/Design type we never see) is "Other". */
 const TYPE_FILTER_LABELS: Record<ArtifactTypeFilter, string> = {
 	all: "All types",
-	html: "HTML",
 	docs: "Docs",
+	html: "Other",
 };
 
-const TYPE_FILTERS: readonly ArtifactTypeFilter[] = ["all", "html", "docs"];
+const TYPE_FILTERS: readonly ArtifactTypeFilter[] = ["all", "docs", "html"];
+
+const VIEW_TABS: ReadonlyArray<{view: ArtifactView; label: string}> = [
+	{view: "all", label: "All"},
+	{view: "yours", label: "Yours"},
+	{view: "shared", label: "Shared with you"},
+];
+
+const VIEW_TAB_CLASS =
+	"inline-flex h-6 shrink-0 items-center rounded-md px-2 text-[13px] font-medium whitespace-nowrap text-ink-muted transition-colors hover:text-primary aria-selected:bg-fill-ghost-hover aria-selected:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-100";
 
 function isTypeFilter(value: unknown): value is ArtifactTypeFilter {
 	return TYPE_FILTERS.includes(value as ArtifactTypeFilter);
@@ -43,7 +61,7 @@ function isTypeFilter(value: unknown): value is ArtifactTypeFilter {
 
 function ArtifactsPage() {
 	const {data: artifacts} = useSuspenseQuery(artifactsQueryOptions);
-	const {search = ""} = Route.useSearch();
+	const {search = "", view = "all"} = Route.useSearch();
 	const navigate = useNavigate();
 	const [layout, setLayout] = useState<ArtifactsLayout>("list");
 	const [type, setType] = useState<ArtifactTypeFilter>("all");
@@ -53,7 +71,11 @@ function ArtifactsPage() {
 		setLayout(readArtifactsLayout());
 	}, []);
 
-	const visible = useMemo(() => filterArtifacts(artifacts, {search, type}), [artifacts, search, type]);
+	const inView = useMemo(
+		() => artifacts.filter((artifact) => artifactInView(artifact.audience, view)),
+		[artifacts, view],
+	);
+	const visible = useMemo(() => filterArtifacts(inView, {search, type}), [inView, search, type]);
 	const searching = search.trim() !== "";
 	const layoutLabel = layout === "grid" ? "List view" : "Grid view";
 
@@ -63,10 +85,13 @@ function ArtifactsPage() {
 		writeArtifactsLayout(next);
 	}
 
-	function setSearch(next: string) {
+	function updateSearch(next: {search: string; view: ArtifactView}) {
 		void navigate({
 			to: "/artifacts",
-			search: next === "" ? {} : {search: next},
+			search: {
+				...(next.search === "" ? {} : {search: next.search}),
+				...(next.view === "all" ? {} : {view: next.view}),
+			},
 			replace: true,
 		});
 	}
@@ -82,7 +107,7 @@ function ArtifactsPage() {
 						label="Search your artifacts"
 						placeholder="Search artifacts..."
 						search={search}
-						onSearch={setSearch}
+						onSearch={(next) => updateSearch({search: next, view})}
 					/>
 					<Tooltip content={layoutLabel}>
 						<button
@@ -94,12 +119,27 @@ function ArtifactsPage() {
 							{layout === "grid" ? <List aria-hidden="true" /> : <LayoutGrid aria-hidden="true" />}
 						</button>
 					</Tooltip>
-					<TypeFilterMenu artifacts={artifacts} type={type} onChange={setType} />
+					<TypeFilterMenu artifacts={inView} type={type} onChange={setType} />
 				</div>
 				<p role="status" className="sr-only">
 					{searching ? `${formatCount(visible.length, "artifact")} matching “${search}”` : ""}
 				</p>
 			</header>
+
+			<div role="tablist" aria-label="Artifacts" className="flex items-center gap-1 pb-3">
+				{VIEW_TABS.map((tab) => (
+					<button
+						key={tab.view}
+						type="button"
+						role="tab"
+						aria-selected={tab.view === view}
+						className={VIEW_TAB_CLASS}
+						onClick={() => updateSearch({search, view: tab.view})}
+					>
+						{tab.label}
+					</button>
+				))}
+			</div>
 
 			<div className="flex flex-col pb-12 pt-1">
 				{artifacts.length === 0 ? (
@@ -111,7 +151,13 @@ function ArtifactsPage() {
 					</div>
 				) : visible.length === 0 ? (
 					<div role="status" className="mt-10 text-center text-body text-ink-muted">
-						{searching ? `No artifacts matching “${search}”` : "No artifacts of this type"}
+						{searching
+							? `No artifacts matching “${search}”`
+							: inView.length === 0
+								? view === "yours"
+									? "No artifacts of yours"
+									: "No artifacts shared with you"
+								: "No artifacts of this type"}
 					</div>
 				) : layout === "grid" ? (
 					<ArtifactGrid artifacts={visible} now={now} />
@@ -154,10 +200,16 @@ function TypeFilterMenu({
 				>
 					{TYPE_FILTERS.map((option) => (
 						<MenuRadioItem key={option} value={option}>
-							<span className="flex w-full items-center justify-between gap-4">
+							<span className="flex w-full items-center gap-2">
+								<TypeTile kind={option} size="menu" />
 								<span>{TYPE_FILTER_LABELS[option]}</span>
 								{option !== "all" && (
-									<span className="text-footnote tabular-nums text-ink-muted">{counts[option]}</span>
+									<>
+										{" "}
+										<span className="ms-auto ps-4 text-footnote tabular-nums text-ink-muted">
+											{counts[option]}
+										</span>
+									</>
 								)}
 							</span>
 						</MenuRadioItem>
@@ -168,17 +220,24 @@ function TypeFilterMenu({
 	);
 }
 
-/** Upstream's 36px type tile: a neutral `</>` tile for HTML pages, a blue document tile for Docs. */
-function TypeTile({kind, size = "row"}: {kind: ArtifactKind; size?: "row" | "card"}) {
-	const Icon = kind === "docs" ? FileText : CodeXml;
+const TILE_BOX = {menu: "size-5 rounded", row: "size-9 rounded-lg", card: "h-full w-full"} as const;
+const TILE_ICON = {menu: "size-3.5", row: "size-5", card: "size-10"} as const;
+
+/**
+ * Upstream's type tile: a neutral `</>` tile for HTML pages ("Other"), a blue document tile for Docs, and
+ * a shapes tile for the "All types" filter option. 36px in list rows, 20px in the filter menu.
+ */
+function TypeTile({kind, size = "row"}: {kind: ArtifactKind | "all"; size?: keyof typeof TILE_BOX}) {
+	const Icon = kind === "docs" ? FileText : kind === "all" ? Shapes : CodeXml;
 	const tone = kind === "docs" ? "bg-blue-500/10 text-blue-600 dark:text-blue-300" : "bg-alpha-1 text-secondary";
-	const box = size === "card" ? "h-full w-full" : "size-9 rounded-lg";
+	const labelled = kind === "docs" && size !== "menu";
 	return (
 		<div
-			{...(kind === "docs" ? {role: "img", "aria-label": "Docs"} : {"aria-hidden": true})}
-			className={`flex shrink-0 items-center justify-center overflow-hidden ${box} ${tone}`}
+			{...(labelled ? {role: "img", "aria-label": "Docs"} : {"aria-hidden": true})}
+			data-type-tile={kind}
+			className={`flex shrink-0 items-center justify-center overflow-hidden ${TILE_BOX[size]} ${tone}`}
 		>
-			<Icon aria-hidden="true" className={size === "card" ? "size-10" : "size-5"} />
+			<Icon aria-hidden="true" className={TILE_ICON[size]} />
 		</div>
 	);
 }

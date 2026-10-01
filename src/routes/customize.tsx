@@ -20,6 +20,7 @@ function CustomizeLayout() {
 	const navigate = useNavigate();
 	const updateSearch = (patch: Partial<CustomizeSearch>) =>
 		void navigate({
+			from: Route.fullPath,
 			to: section.to,
 			search: (previous: CustomizeSearch) => dropEmpty({...previous, ...patch}),
 			replace: true,
