@@ -21,6 +21,7 @@ import {
 	type LaunchOptions,
 	modeTriggerLabel,
 	modelLabel,
+	modelMenuValue,
 } from "../lib/launch-options";
 import {useShortcutKeys} from "../hooks/use-shortcut";
 import {effortLevelLabels} from "../lib/schema-choices";
@@ -186,8 +187,7 @@ export function ComposerChin({
 		launchOptions.permissionMode === undefined
 			? (state.mode?.label ?? "Manual")
 			: modeTriggerLabel(launchOptions.permissionMode);
-	const modelText =
-		launchOptions.model === undefined ? (state.model ?? "Default model") : modelLabel(launchOptions.model);
+	const modelText = launchOptions.model === undefined ? state.model : modelLabel(launchOptions.model);
 	return (
 		<>
 			<div className="flex min-w-0 items-center self-start">
@@ -213,7 +213,7 @@ export function ComposerChin({
 			<div className="ms-auto flex min-w-0 items-center gap-1 ps-2">
 				<ModelMenu
 					{...menuProps("model")}
-					current={launchOptions.model}
+					current={launchOptions.model ?? modelMenuValue(state.modelId) ?? undefined}
 					currentLabel={modelText}
 					onSelect={(model) => onLaunchOptionsChange({...launchOptions, model})}
 				/>

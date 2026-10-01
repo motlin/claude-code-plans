@@ -98,7 +98,7 @@ function fetchMock(url: string, init?: RequestInit): Promise<Response> {
 	return new Promise<Response>(() => {});
 }
 
-async function renderApp(initialPath = "/") {
+async function renderApp(initialPath = "/", settingsModel: string | null = "claude-opus-4-8[1m]") {
 	const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
 	queryClient.setQueryData(recentSessionsQueryOptions(HOME_RECENT_LIMIT).queryKey, {
 		sessions: RECENTS,
@@ -106,7 +106,7 @@ async function renderApp(initialPath = "/") {
 	});
 	queryClient.setQueryData(projectsQueryOptions().queryKey, PROJECTS);
 	queryClient.setQueryData(composerDefaultsQueryOptions.queryKey, {
-		model: "claude-opus-4-8[1m]",
+		model: settingsModel,
 		effortLevel: "medium",
 		defaultMode: "plan",
 		bypassPermissionsAllowed: false,
@@ -226,6 +226,16 @@ describe("HomeComposer", () => {
 			url: "/api/herdr/launch",
 			method: "POST",
 			body: {cwd: "/users/dev/it's", prompt: "fix the flaky test"},
+		});
+	});
+
+	it("names the CLI's default model when settings.json sets none", async () => {
+		await renderApp("/", null);
+
+		const trigger = await screen.findByRole("button", {name: /^Model:/});
+		expect({label: trigger.getAttribute("aria-label"), text: trigger.textContent}).toStrictEqual({
+			label: "Model: Opus 5.5",
+			text: "Opus 5.5",
 		});
 	});
 

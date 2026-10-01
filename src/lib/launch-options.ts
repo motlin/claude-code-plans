@@ -107,6 +107,48 @@ export const MORE_MODELS: readonly ModelChoice[] = [
 	"claude-haiku-4-5-20251001",
 ].map((id) => ({id, label: formatModelName(id) ?? id}));
 
+/** The full id each family alias currently launches. */
+const ALIAS_LATEST: Readonly<Record<string, string>> = {
+	opus: "claude-opus-5-5",
+	fable: "claude-fable-5-1",
+	sonnet: "claude-sonnet-5-5",
+	haiku: "claude-haiku-4-5-20251001",
+};
+
+/** What `claude` launches when settings name no model. */
+export const CLI_DEFAULT_MODEL = "claude-opus-5-5";
+
+/** The model `claude` would launch with for a settings.json `model` value, as a full id. */
+export function resolveLaunchModel(settingsModel: string | null): string {
+	if (!settingsModel || settingsModel === "default") return CLI_DEFAULT_MODEL;
+	return (Object.hasOwn(ALIAS_LATEST, settingsModel) ? ALIAS_LATEST[settingsModel] : undefined) ?? settingsModel;
+}
+
+/**
+ * The Model menu value a session's model id selects: the full id when "More
+ * models" lists it, else its family alias, else null.
+ */
+export function modelMenuValue(id: string | null): string | null {
+	if (id === null) return null;
+	const bare = id.replace(/\[[^\]]*\]$/, "");
+	if (MORE_MODELS.some((model) => model.id === bare)) return bare;
+	const family = bare.replace(/^claude-/, "").split("-")[0];
+	return PRIMARY_MODELS.find((model) => model.id === family)?.id ?? null;
+}
+
+/** The primary row a menu value checks: an alias, or the full id an alias launches. */
+export function primaryModelMenuValue(current: string | undefined): string {
+	if (current === undefined) return "";
+	if (Object.hasOwn(ALIAS_LATEST, current)) return current;
+	return Object.entries(ALIAS_LATEST).find(([, latest]) => latest === current)?.[0] ?? "";
+}
+
+/** The "More models" row a menu value checks: an alias checks the full id it launches. */
+export function moreModelsMenuValue(current: string | undefined): string {
+	if (current === undefined) return "";
+	return (Object.hasOwn(ALIAS_LATEST, current) ? ALIAS_LATEST[current] : undefined) ?? current;
+}
+
 export function modelLabel(id: string): string {
 	return [...PRIMARY_MODELS, ...MORE_MODELS].find((model) => model.id === id)?.label ?? formatModelName(id) ?? id;
 }

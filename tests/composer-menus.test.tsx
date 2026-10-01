@@ -13,13 +13,16 @@ const MAC_UA =
 const CHIN: ComposerState = {
 	mode: {id: "default", label: "Manual"},
 	model: "Opus 5.5",
+	modelId: "claude-opus-5-5",
 	effort: {id: "high", label: "High"},
 	usage: null,
 };
 
 type OnSend = (prompt: string, launchOptions: LaunchOptions) => void;
 
-function renderComposer(extra: {bypassPermissionsAllowed?: boolean; live?: LiveLaunchControls} = {}) {
+function renderComposer(
+	extra: {bypassPermissionsAllowed?: boolean; live?: LiveLaunchControls; chin?: ComposerState} = {},
+) {
 	const onSend = vi.fn<OnSend>();
 	render(<Composer variant="session" draftKey="session-alice" onSend={onSend} chin={CHIN} {...extra} />);
 	return onSend;
@@ -296,6 +299,27 @@ describe("Composer on a live pane", () => {
 		expect({applied: apply.mock.calls, sends: onSend.mock.calls}).toStrictEqual({
 			applied: [[{permissionMode: "plan"}]],
 			sends: [["Continue Heidi's test", {}]],
+		});
+	});
+
+	it("checks the session's current model in the Model menu", async () => {
+		const {live} = liveControls();
+		renderComposer({live, chin: {...CHIN, model: "Fable 5.1", modelId: "claude-fable-5-1"}});
+
+		openModelMenu();
+		const menu = await screen.findByRole("menu");
+
+		expect({
+			trigger: screen.getByRole("button", {name: /^Model:/}).getAttribute("aria-label"),
+			rows: radioRows(menu).map(({label, checked}) => ({label, checked})),
+		}).toStrictEqual({
+			trigger: "Model: Fable 5.1",
+			rows: [
+				{label: "Opus", checked: "false"},
+				{label: "Fable", checked: "true"},
+				{label: "Sonnet", checked: "false"},
+				{label: "Haiku", checked: "false"},
+			],
 		});
 	});
 

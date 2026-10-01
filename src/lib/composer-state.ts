@@ -1,6 +1,6 @@
 import {z} from "zod";
 import {type Statusline, SESSION_ID_PATTERN, StatuslineSchema} from "./api/statusline";
-import {isBypassPermissionsAllowed} from "./launch-options";
+import {isBypassPermissionsAllowed, resolveLaunchModel} from "./launch-options";
 import {formatModelName, SYNTHETIC_MODEL} from "./model-name";
 import {ClaudeSettingsSchema} from "./schemas";
 import {formatWeeklyReset} from "./usage";
@@ -37,9 +37,14 @@ export interface ComposerStateSources {
 	hookPermissionMode: string | null | undefined;
 	jsonlPermissionMode: string | null;
 	settingsDefaultMode: string | null;
+	/** The statusline's `model.display_name`. */
 	statuslineModel: string | null;
+	/** The statusline's `model.id`. */
+	statuslineModelId: string | null;
 	/** Raw `message.model` of the newest assistant record. */
 	lastAssistantModel: string | null;
+	/** settings.json `model`: what a session with no model yet launches with. */
+	settingsModel: string | null;
 	settingsEffortLevel: string | null;
 	statusline: Statusline | null;
 	statuslineUpdatedAt: string | null;
@@ -67,7 +72,10 @@ export interface ComposerUsage {
 
 export interface ComposerState {
 	mode: ComposerLabelled | null;
-	model: string | null;
+	/** Trigger text, e.g. "Opus 5.5". */
+	model: string;
+	/** The id behind `model`; the Model menu checks its row. */
+	modelId: string;
 	effort: ComposerLabelled;
 	usage: ComposerUsage | null;
 }
@@ -101,16 +109,24 @@ function resolveUsage(statusline: Statusline, updatedAt: string | null): Compose
 	};
 }
 
-/** mode = hook ?? JSONL ?? settings; model = statusline ?? last assistant; effort = settings ?? "high". */
+/**
+ * mode = hook ?? JSONL ?? settings; model = statusline ?? last assistant ?? settings ?? the CLI default;
+ * effort = settings ?? "high".
+ */
 export function resolveComposerState(sources: ComposerStateSources): ComposerState {
 	const modeId =
 		nonEmpty(sources.hookPermissionMode) ??
 		nonEmpty(sources.jsonlPermissionMode) ??
 		nonEmpty(sources.settingsDefaultMode);
 	const effortId = nonEmpty(sources.settingsEffortLevel) ?? DEFAULT_EFFORT;
+	const modelId =
+		nonEmpty(sources.statuslineModelId) ??
+		nonEmpty(sources.lastAssistantModel) ??
+		resolveLaunchModel(sources.settingsModel);
 	return {
 		mode: modeId === null ? null : {id: modeId, label: MODE_LABELS[modeId] ?? modeId},
-		model: nonEmpty(sources.statuslineModel) ?? formatModelName(sources.lastAssistantModel),
+		model: nonEmpty(sources.statuslineModel) ?? formatModelName(modelId) ?? modelId,
+		modelId,
 		effort: {id: effortId, label: EFFORT_LABELS[effortId] ?? effortId},
 		usage: sources.statusline ? resolveUsage(sources.statusline, sources.statuslineUpdatedAt) : null,
 	};
@@ -217,6 +233,7 @@ export function formatUpdatedAgo(iso: string, nowMs: number): string {
 /** The server-side half of the chin: settings defaults plus the statusline snapshot. */
 export interface ComposerServerState {
 	settingsDefaultMode: string | null;
+	settingsModel: string | null;
 	settingsEffortLevel: string | null;
 	/** Settings let a launch use Bypass permissions (see `isBypassPermissionsAllowed`). */
 	settingsBypassPermissionsAllowed: boolean;
@@ -226,6 +243,7 @@ export interface ComposerServerState {
 
 export const ComposerServerStateResponse: z.ZodType<ComposerServerState> = z.strictObject({
 	settingsDefaultMode: z.string().nullable(),
+	settingsModel: z.string().nullable(),
 	settingsEffortLevel: z.string().nullable(),
 	settingsBypassPermissionsAllowed: z.boolean(),
 	statusline: StatuslineSchema.nullable(),
@@ -240,13 +258,17 @@ export interface ComposerStateDependencies {
 async function readSettingsDefaults(
 	dependencies: ComposerStateDependencies,
 ): Promise<
-	Pick<ComposerServerState, "settingsDefaultMode" | "settingsEffortLevel" | "settingsBypassPermissionsAllowed">
+	Pick<
+		ComposerServerState,
+		"settingsDefaultMode" | "settingsModel" | "settingsEffortLevel" | "settingsBypassPermissionsAllowed"
+	>
 > {
 	try {
 		const parsed = ClaudeSettingsSchema.safeParse(await dependencies.readSettings());
 		if (parsed.success) {
 			return {
 				settingsDefaultMode: parsed.data.permissions?.defaultMode ?? null,
+				settingsModel: parsed.data.model ?? null,
 				settingsEffortLevel: parsed.data.effortLevel ?? null,
 				settingsBypassPermissionsAllowed: isBypassPermissionsAllowed({
 					defaultMode: parsed.data.permissions?.defaultMode,
@@ -259,6 +281,7 @@ async function readSettingsDefaults(
 	}
 	return {
 		settingsDefaultMode: null,
+		settingsModel: null,
 		settingsEffortLevel: null,
 		settingsBypassPermissionsAllowed: false,
 	};

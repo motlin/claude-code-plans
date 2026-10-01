@@ -9,7 +9,9 @@ import {
 	LaunchPermissionModeSchema,
 	MORE_MODELS,
 	modeMenuItems,
+	moreModelsMenuValue,
 	PRIMARY_MODELS,
+	primaryModelMenuValue,
 } from "../lib/launch-options";
 import {effortLevelLabels} from "../lib/schema-choices";
 import {ConfirmDialog} from "./confirm-dialog";
@@ -139,7 +141,10 @@ export function ModelMenu({
 				{currentLabel}
 			</MenuTrigger>
 			<MenuContent side="top" align="end">
-				<MenuRadioGroup value={current ?? ""} onValueChange={(value: string) => onSelect(value)}>
+				<MenuRadioGroup
+					value={primaryModelMenuValue(current)}
+					onValueChange={(value: string) => onSelect(value)}
+				>
 					{PRIMARY_MODELS.map((model, index) => (
 						<MenuRadioItem key={model.id} value={model.id} accelerator={String(index + 1)} closeOnClick>
 							<span data-menu-item-label="">{model.label}</span>
@@ -151,7 +156,7 @@ export function ModelMenu({
 					<MenuSubTrigger>More models</MenuSubTrigger>
 					<MenuSubContent>
 						<MenuRadioGroup
-							value={current ?? ""}
+							value={moreModelsMenuValue(current)}
 							onValueChange={(value: string) => {
 								onSelect(value);
 								onOpenChange(false);

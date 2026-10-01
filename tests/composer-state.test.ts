@@ -42,7 +42,9 @@ const EMPTY_SOURCES: ComposerStateSources = {
 	jsonlPermissionMode: null,
 	settingsDefaultMode: null,
 	statuslineModel: null,
+	statuslineModelId: null,
 	lastAssistantModel: null,
+	settingsModel: null,
 	settingsEffortLevel: null,
 	statusline: null,
 	statuslineUpdatedAt: null,
@@ -88,18 +90,50 @@ describe("resolveComposerState precedence", () => {
 	});
 
 	it.each([
-		{statusline: "Opus 5.5", assistant: "claude-sonnet-4-6", expected: "Opus 5.5"},
-		{statusline: null, assistant: "claude-sonnet-4-6", expected: "Sonnet 4.6"},
-		{statusline: null, assistant: "claude-haiku-4-5-20251001", expected: "Haiku 4.5"},
-		{statusline: null, assistant: null, expected: null},
-	])("model: statusline=$statusline assistant=$assistant", ({statusline, assistant, expected}) => {
-		const state = resolveComposerState({
-			...EMPTY_SOURCES,
-			statuslineModel: statusline,
-			lastAssistantModel: assistant,
-		});
-		expect(state.model).toStrictEqual(expected);
-	});
+		{
+			statusline: {id: "claude-opus-5-5", name: "Opus 5.5"},
+			assistant: "claude-sonnet-4-6",
+			settings: "haiku",
+			expected: {model: "Opus 5.5", modelId: "claude-opus-5-5"},
+		},
+		{
+			statusline: null,
+			assistant: "claude-sonnet-4-6",
+			settings: "haiku",
+			expected: {model: "Sonnet 4.6", modelId: "claude-sonnet-4-6"},
+		},
+		{
+			statusline: null,
+			assistant: "claude-haiku-4-5-20251001",
+			settings: null,
+			expected: {model: "Haiku 4.5", modelId: "claude-haiku-4-5-20251001"},
+		},
+		{
+			statusline: null,
+			assistant: null,
+			settings: "fable",
+			expected: {model: "Fable 5.1", modelId: "claude-fable-5-1"},
+		},
+		{
+			statusline: null,
+			assistant: null,
+			settings: "claude-opus-4-8[1m]",
+			expected: {model: "Opus 4.8", modelId: "claude-opus-4-8[1m]"},
+		},
+		{statusline: null, assistant: null, settings: null, expected: {model: "Opus 5.5", modelId: "claude-opus-5-5"}},
+	])(
+		"model: statusline=$statusline.id assistant=$assistant settings=$settings",
+		({statusline, assistant, settings, expected}) => {
+			const state = resolveComposerState({
+				...EMPTY_SOURCES,
+				statuslineModel: statusline?.name ?? null,
+				statuslineModelId: statusline?.id ?? null,
+				lastAssistantModel: assistant,
+				settingsModel: settings,
+			});
+			expect({model: state.model, modelId: state.modelId}).toStrictEqual(expected);
+		},
+	);
 
 	it.each([
 		{settings: "low", expected: {id: "low", label: "Low"}},
@@ -248,12 +282,14 @@ describe("getComposerState", () => {
 			mtimeMs: Date.parse("2026-09-29T09:00:00.000Z"),
 		}));
 		const readSettings = vi.fn(async () => ({
+			model: "fable",
 			effortLevel: "xhigh",
 			permissions: {defaultMode: "auto"},
 		}));
 
 		expect(await getComposerState("alice-session", {readStatusline, readSettings})).toStrictEqual({
 			settingsDefaultMode: "auto",
+			settingsModel: "fable",
 			settingsEffortLevel: "xhigh",
 			settingsBypassPermissionsAllowed: false,
 			statusline: ALICE_STATUSLINE,
@@ -271,6 +307,7 @@ describe("getComposerState", () => {
 		});
 		expect(result).toStrictEqual({
 			settingsDefaultMode: null,
+			settingsModel: null,
 			settingsEffortLevel: null,
 			settingsBypassPermissionsAllowed: false,
 			statusline: null,
@@ -309,6 +346,7 @@ describe("getComposerState", () => {
 		}).toStrictEqual({
 			body: {
 				settingsDefaultMode: null,
+				settingsModel: null,
 				settingsEffortLevel: null,
 				settingsBypassPermissionsAllowed: false,
 				statusline: null,
