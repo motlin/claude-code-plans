@@ -4,6 +4,7 @@ import {HERDR_EVENTS} from "../hook-events";
 import {hmrDispose, hmrPersist} from "../hmr-persist";
 import {broadcastTyped} from "../sse-broadcast";
 import {getDb} from "../db";
+import {retryWhileBusy} from "../db/busy";
 import {
 	getCurrentSessionMessageIndex,
 	linkHerdrTerminalToSession,
@@ -67,28 +68,36 @@ interface BridgeDependencies {
 	broadcast: (type: string, data: Record<string, unknown>) => void;
 	schedule: (callback: () => void, delayMs: number) => Timer;
 	cancel: (timer: Timer) => void;
-	viewedStateTracker: ReturnType<typeof createHerdrViewedStateTracker>;
+	viewedStateTracker: Pick<ReturnType<typeof createHerdrViewedStateTracker>, "syncPanes" | "handleStatusEvent">;
 }
 
-const defaultViewedStateDependencies: HerdrViewedStateTrackerDependencies = {
-	isSessionVisible,
-	linkTerminal: (terminalId, sessionId) => {
-		linkHerdrTerminalToSession(getDb().index, terminalId, sessionId);
-	},
-	pruneTerminalLinks: (sessionId, activeTerminalIds) => {
-		pruneHerdrTerminalLinks(getDb().index, sessionId, activeTerminalIds);
-	},
-	markSessionCompletionUnreviewed: (sessionId) => {
-		const {index} = getDb();
-		markSessionCompletionUnreviewed(index, sessionId, getCurrentSessionMessageIndex(index, sessionId));
-	},
-	markTerminalUnviewed: (terminalId, sessionId) => {
-		setHerdrTerminalViewed(getDb().index, terminalId, sessionId, false);
-	},
-	markTerminalViewed: (terminalId, sessionId) => {
-		setHerdrTerminalViewed(getDb().index, terminalId, sessionId, true);
-	},
-};
+type IndexDb = ReturnType<typeof getDb>["index"];
+
+/**
+ * Viewed-state writes for the herdr tracker. They run in the background while the indexer may hold the write lock,
+ * so each waits out SQLITE_BUSY asynchronously instead of failing after the connection's short busy timeout.
+ */
+export function createHerdrViewedStateDbDependencies(
+	getIndex: () => IndexDb,
+	isVisible: (sessionId: string) => boolean,
+): HerdrViewedStateTrackerDependencies {
+	return {
+		isSessionVisible: isVisible,
+		linkTerminal: (terminalId, sessionId) =>
+			retryWhileBusy(() => linkHerdrTerminalToSession(getIndex(), terminalId, sessionId)),
+		pruneTerminalLinks: (sessionId, activeTerminalIds) =>
+			retryWhileBusy(() => pruneHerdrTerminalLinks(getIndex(), sessionId, activeTerminalIds)),
+		markSessionCompletionUnreviewed: (sessionId) =>
+			retryWhileBusy(() => {
+				const index = getIndex();
+				markSessionCompletionUnreviewed(index, sessionId, getCurrentSessionMessageIndex(index, sessionId));
+			}),
+		markTerminalUnviewed: (terminalId, sessionId) =>
+			retryWhileBusy(() => setHerdrTerminalViewed(getIndex(), terminalId, sessionId, false)),
+		markTerminalViewed: (terminalId, sessionId) =>
+			retryWhileBusy(() => setHerdrTerminalViewed(getIndex(), terminalId, sessionId, true)),
+	};
+}
 
 const defaultDependencies: BridgeDependencies = {
 	probe: probeHerdr,
@@ -112,7 +121,9 @@ const defaultDependencies: BridgeDependencies = {
 	broadcast: broadcastTyped,
 	schedule: setTimeout,
 	cancel: clearTimeout,
-	viewedStateTracker: createHerdrViewedStateTracker(defaultViewedStateDependencies),
+	viewedStateTracker: createHerdrViewedStateTracker(
+		createHerdrViewedStateDbDependencies(() => getDb().index, isSessionVisible),
+	),
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -158,14 +169,23 @@ function createBridge(dependencies: BridgeDependencies): () => void {
 		}
 
 		resyncRunning = true;
-		const panes = await dependencies.getPanes();
-		if (!stopped) {
-			dependencies.viewedStateTracker.syncPanes(panes);
-			if (paneDiffer.shouldBroadcastSnapshot(panes)) {
-				dependencies.broadcast(HERDR_EVENTS.PANES_SNAPSHOT, {panes});
+		try {
+			const panes = await dependencies.getPanes();
+			if (!stopped) {
+				try {
+					await dependencies.viewedStateTracker.syncPanes(panes);
+				} catch (error) {
+					console.error(`herdr resync failed to sync viewed state for ${panes.length} panes`, error);
+				}
+				if (!stopped && paneDiffer.shouldBroadcastSnapshot(panes)) {
+					dependencies.broadcast(HERDR_EVENTS.PANES_SNAPSHOT, {panes});
+				}
 			}
+		} catch (error) {
+			console.error("herdr resync failed to list panes", error);
+		} finally {
+			resyncRunning = false;
 		}
-		resyncRunning = false;
 
 		if (resyncAgain && !stopped) {
 			resyncAgain = false;
@@ -229,7 +249,12 @@ function createBridge(dependencies: BridgeDependencies): () => void {
 			const sseEvent = PUSH_EVENT_TO_SSE_EVENT[pushedEvent];
 			if (!sseEvent) return;
 			if (pushedEvent === "pane_agent_status_changed") {
-				dependencies.viewedStateTracker.handleStatusEvent(data);
+				dependencies.viewedStateTracker.handleStatusEvent(data).catch((error: unknown) => {
+					console.error(
+						`herdr status event failed to update viewed state for pane ${String(data["pane_id"])}`,
+						error,
+					);
+				});
 			}
 
 			if (pushedEvent === "pane_created" || pushedEvent === "pane_closed") {

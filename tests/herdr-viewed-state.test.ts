@@ -50,42 +50,44 @@ describe("herdr viewed-state transitions", () => {
 		).toStrictEqual(cases.map((entry) => entry[4]));
 	});
 
-	it("latches done-to-idle by terminal id across a pane move and skips ccp clearing in view", () => {
+	it("latches done-to-idle by terminal id across a pane move and skips ccp clearing in view", async () => {
 		const calls: Array<{type: string; terminalId?: string; sessionId: string}> = [];
+		const record = (call: {type: string; terminalId?: string; sessionId: string}): void => {
+			calls.push(call);
+		};
 		let visible = false;
 		const tracker = createHerdrViewedStateTracker({
 			isSessionVisible: () => visible,
-			linkTerminal: (terminalId, sessionId) => calls.push({type: "link", terminalId, sessionId}),
-			pruneTerminalLinks: (sessionId) => calls.push({type: "prune", sessionId}),
-			markSessionCompletionUnreviewed: (sessionId) => calls.push({type: "completion", sessionId}),
-			markTerminalUnviewed: (terminalId, sessionId) =>
-				calls.push({type: "terminal-unviewed", terminalId, sessionId}),
-			markTerminalViewed: (terminalId, sessionId) => calls.push({type: "terminal-viewed", terminalId, sessionId}),
+			linkTerminal: (terminalId, sessionId) => record({type: "link", terminalId, sessionId}),
+			pruneTerminalLinks: (sessionId) => record({type: "prune", sessionId}),
+			markSessionCompletionUnreviewed: (sessionId) => record({type: "completion", sessionId}),
+			markTerminalUnviewed: (terminalId, sessionId) => record({type: "terminal-unviewed", terminalId, sessionId}),
+			markTerminalViewed: (terminalId, sessionId) => record({type: "terminal-viewed", terminalId, sessionId}),
 		});
 
-		tracker.syncPanes([pane({agentStatus: "working"})]);
-		tracker.handleStatusEvent({
+		await tracker.syncPanes([pane({agentStatus: "working"})]);
+		await tracker.handleStatusEvent({
 			pane_id: "workspace-100:pane-100",
 			agent_status: "done",
 			agent: "claude",
 		});
-		tracker.syncPanes([
+		await tracker.syncPanes([
 			pane({paneId: "workspace-200:pane-200", workspaceId: "workspace-200", agentStatus: "done"}),
 		]);
-		tracker.handleStatusEvent({
+		await tracker.handleStatusEvent({
 			pane_id: "workspace-200:pane-200",
 			agent_status: "idle",
 			agent: "claude",
 		});
 		visible = true;
-		tracker.syncPanes([
+		await tracker.syncPanes([
 			pane({
 				paneId: "workspace-200:pane-200",
 				workspaceId: "workspace-200",
 				agentStatus: "working",
 			}),
 		]);
-		tracker.handleStatusEvent({
+		await tracker.handleStatusEvent({
 			pane_id: "workspace-200:pane-200",
 			agent_status: "idle",
 			agent: "claude",
@@ -115,6 +117,45 @@ describe("herdr viewed-state transitions", () => {
 				sessionId: "session-test-100",
 			},
 		]);
+	});
+
+	it("applies writes in call order even when an earlier write waits, and keeps going after a failure", async () => {
+		const calls: string[] = [];
+		let releaseLink: () => void = () => {};
+		const tracker = createHerdrViewedStateTracker({
+			isSessionVisible: () => true,
+			linkTerminal: (terminalId) =>
+				new Promise<void>((resolve) => {
+					releaseLink = () => {
+						calls.push(`link ${terminalId}`);
+						resolve();
+					};
+				}),
+			pruneTerminalLinks: () => {
+				throw new Error("prune failed");
+			},
+			markSessionCompletionUnreviewed: () => {},
+			markTerminalUnviewed: (terminalId) => {
+				calls.push(`unviewed ${terminalId}`);
+			},
+			markTerminalViewed: () => {},
+		});
+
+		const synced = tracker.syncPanes([pane({agentStatus: "working"})]).catch((error: unknown) => error);
+		const statusHandled = tracker.handleStatusEvent({
+			pane_id: "workspace-100:pane-100",
+			agent_status: "idle",
+			agent: "claude",
+		});
+		await Promise.resolve();
+		calls.push("released");
+		releaseLink();
+
+		expect({syncError: ((await synced) as Error).message, status: await statusHandled, calls}).toStrictEqual({
+			syncError: "prune failed",
+			status: undefined,
+			calls: ["released", "link terminal-test-100", "unviewed terminal-test-100"],
+		});
 	});
 
 	it("uses blocked, done, working, idle, unknown workspace attention ordering", () => {

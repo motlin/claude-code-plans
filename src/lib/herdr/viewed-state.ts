@@ -12,13 +12,15 @@ interface TrackedPane {
 	terminalId: string;
 }
 
+type Write = void | Promise<void>;
+
 export interface HerdrViewedStateTrackerDependencies {
 	isSessionVisible: (sessionId: string) => boolean;
-	linkTerminal: (terminalId: string, sessionId: string) => void;
-	pruneTerminalLinks: (sessionId: string, activeTerminalIds: string[]) => void;
-	markSessionCompletionUnreviewed: (sessionId: string) => void;
-	markTerminalUnviewed: (terminalId: string, sessionId: string) => void;
-	markTerminalViewed: (terminalId: string, sessionId: string) => void;
+	linkTerminal: (terminalId: string, sessionId: string) => Write;
+	pruneTerminalLinks: (sessionId: string, activeTerminalIds: string[]) => Write;
+	markSessionCompletionUnreviewed: (sessionId: string) => Write;
+	markTerminalUnviewed: (terminalId: string, sessionId: string) => Write;
+	markTerminalViewed: (terminalId: string, sessionId: string) => Write;
 }
 
 function completionStatus(status: string): string {
@@ -58,15 +60,31 @@ export function compareHerdrAttention(
 	);
 }
 
+/**
+ * In-memory transition state updates synchronously; the DB writes each call implies run in call order on a serial
+ * queue, so a write that waits out a busy lock can never land after a later write. Each returned promise settles when
+ * that call's writes finish and rejects with the first failure; the queue moves on regardless.
+ */
 export function createHerdrViewedStateTracker(dependencies: HerdrViewedStateTrackerDependencies): {
-	syncPanes: (panes: HerdrPaneLink[]) => void;
-	handleStatusEvent: (data: Record<string, unknown>) => void;
+	syncPanes: (panes: HerdrPaneLink[]) => Promise<void>;
+	handleStatusEvent: (data: Record<string, unknown>) => Promise<void>;
 } {
 	const panesByPaneId = new Map<string, TrackedPane>();
 	const statusByTerminalId = new Map<string, AgentStatusPart>();
+	let writeQueue: Promise<void> = Promise.resolve();
 
-	const syncPanes = (panes: HerdrPaneLink[]): void => {
+	const enqueueWrites = (writes: Array<() => Write>): Promise<void> => {
+		if (writes.length === 0) return Promise.resolve();
+		const run = writeQueue.then(async () => {
+			for (const write of writes) await write();
+		});
+		writeQueue = run.catch(() => {});
+		return run;
+	};
+
+	const syncPanes = (panes: HerdrPaneLink[]): Promise<void> => {
 		panesByPaneId.clear();
+		const writes: Array<() => Write> = [];
 		const terminalIdsBySessionId = new Map<string, string[]>();
 		for (const pane of panes) {
 			panesByPaneId.set(pane.paneId, {
@@ -79,17 +97,18 @@ export function createHerdrViewedStateTracker(dependencies: HerdrViewedStateTrac
 			});
 			// A snapshot can follow a herdr restart, which resets its server-side
 			// `seen` bit. Seed transition state, but never manufacture a viewed edge.
-			dependencies.linkTerminal(pane.terminalId, pane.sessionId);
+			writes.push(() => dependencies.linkTerminal(pane.terminalId, pane.sessionId));
 			const terminalIds = terminalIdsBySessionId.get(pane.sessionId);
 			if (terminalIds) terminalIds.push(pane.terminalId);
 			else terminalIdsBySessionId.set(pane.sessionId, [pane.terminalId]);
 		}
 		for (const [sessionId, terminalIds] of terminalIdsBySessionId) {
-			dependencies.pruneTerminalLinks(sessionId, terminalIds);
+			writes.push(() => dependencies.pruneTerminalLinks(sessionId, terminalIds));
 		}
+		return enqueueWrites(writes);
 	};
 
-	const handleStatusEvent = (data: Record<string, unknown>): void => {
+	const handleStatusEvent = (data: Record<string, unknown>): Promise<void> => {
 		const paneId = data["pane_id"];
 		const agentStatus = data["agent_status"];
 		const agent = data["agent"];
@@ -98,11 +117,11 @@ export function createHerdrViewedStateTracker(dependencies: HerdrViewedStateTrac
 			typeof agentStatus !== "string" ||
 			(agent !== undefined && agent !== null && typeof agent !== "string")
 		) {
-			return;
+			return Promise.resolve();
 		}
 
 		const pane = panesByPaneId.get(paneId);
-		if (!pane) return;
+		if (!pane) return Promise.resolve();
 
 		const next: AgentStatusPart = {
 			status: agentStatus,
@@ -110,18 +129,21 @@ export function createHerdrViewedStateTracker(dependencies: HerdrViewedStateTrac
 		};
 		const previous = statusByTerminalId.get(pane.terminalId);
 		statusByTerminalId.set(pane.terminalId, next);
-		if (!previous) return;
+		if (!previous) return Promise.resolve();
 
+		const {terminalId, sessionId} = pane;
+		const writes: Array<() => Write> = [];
 		if (previous.status === "done" && next.status === "idle") {
-			dependencies.markTerminalViewed(pane.terminalId, pane.sessionId);
+			writes.push(() => dependencies.markTerminalViewed(terminalId, sessionId));
 		}
 
 		if (isCompletionTransitionParts(previous, next)) {
-			dependencies.markTerminalUnviewed(pane.terminalId, pane.sessionId);
-			if (!dependencies.isSessionVisible(pane.sessionId)) {
-				dependencies.markSessionCompletionUnreviewed(pane.sessionId);
+			writes.push(() => dependencies.markTerminalUnviewed(terminalId, sessionId));
+			if (!dependencies.isSessionVisible(sessionId)) {
+				writes.push(() => dependencies.markSessionCompletionUnreviewed(sessionId));
 			}
 		}
+		return enqueueWrites(writes);
 	};
 
 	return {syncPanes, handleStatusEvent};

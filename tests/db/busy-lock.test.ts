@@ -8,6 +8,8 @@ import {afterEach, describe, expect, it} from "vite-plus/test";
 import {replaceArtifactEvents} from "../../src/lib/db/artifact-index";
 import {openAppDb, type AppDb} from "../../src/lib/db/connection";
 import {scanFileContentRoots} from "../../src/lib/db/indexer";
+import {createHerdrViewedStateDbDependencies} from "../../src/lib/herdr/subscribe";
+import {createHerdrViewedStateTracker} from "../../src/lib/herdr/viewed-state";
 
 const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
 
@@ -92,5 +94,46 @@ describe("index DB writes while another connection holds the write lock", () => 
 
 		await exited(child);
 		expect(db.index.all(sql`SELECT path FROM file_content`)).toStrictEqual([]);
+	});
+
+	it("herdr pane sync retries its viewed-state writes past the busy timeout instead of throwing SQLITE_BUSY", async () => {
+		const {db, dbPath} = openTempDb();
+		db.index.run(
+			sql`INSERT INTO herdr_terminal_view_states(terminal_id, session_id, viewed, updated_at) VALUES ('terminal-closed', 'session-a', 0, 1)`,
+		);
+		const tracker = createHerdrViewedStateTracker(
+			createHerdrViewedStateDbDependencies(
+				() => db.index,
+				() => false,
+			),
+		);
+		// Longer than the 250 ms busy timeout, so a single attempt fails.
+		const child = await holdWriteLock(dbPath, 600);
+
+		await tracker.syncPanes([
+			{
+				paneId: "workspace-1:pane-1",
+				terminalId: "terminal-open",
+				workspaceId: "workspace-1",
+				tabId: "workspace-1:tab-1",
+				focused: false,
+				cwd: "/test/project",
+				foregroundCwd: "/test/project",
+				agentStatus: "working",
+				agent: "claude",
+				terminalTitle: "test terminal",
+				agentSessionId: "session-a",
+				revision: 1,
+				sessionId: "session-a",
+				via: "both",
+			},
+		]);
+
+		await exited(child);
+		expect(
+			db.index.all(
+				sql`SELECT terminal_id, session_id, viewed FROM herdr_terminal_view_states ORDER BY terminal_id`,
+			),
+		).toStrictEqual([{terminal_id: "terminal-open", session_id: "session-a", viewed: 0}]);
 	});
 });

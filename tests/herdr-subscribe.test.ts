@@ -60,8 +60,8 @@ async function flushPromises(): Promise<void> {
 
 function viewedStateTracker() {
 	return {
-		syncPanes: vi.fn(),
-		handleStatusEvent: vi.fn(),
+		syncPanes: vi.fn(async () => {}),
+		handleStatusEvent: vi.fn(async () => {}),
 	};
 }
 
@@ -459,6 +459,61 @@ describe("herdr event bridge", () => {
 				data: {pane: {pane_id: "w19:p9", revision: 229}},
 			},
 		]);
+		stop();
+	});
+
+	it("logs a failed viewed-state write with context and keeps resyncing and handling status events", async () => {
+		const sockets: FakeSocket[] = [];
+		const lineReaders: FakeLineReader[] = [];
+		const busy = Object.assign(new Error("database is locked"), {code: "SQLITE_BUSY"});
+		const tracker = {
+			syncPanes: vi.fn<() => Promise<void>>().mockRejectedValueOnce(busy).mockResolvedValue(undefined),
+			handleStatusEvent: vi.fn<() => Promise<void>>().mockRejectedValueOnce(busy),
+		};
+		const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+		const getPanes = vi.fn(async () => []);
+		const stop = __testing.createBridge({
+			probe: available,
+			connect: () => {
+				const socket = new FakeSocket();
+				sockets.push(socket);
+				return socket as unknown as Socket;
+			},
+			createLineReader: () => {
+				const lineReader = new FakeLineReader();
+				lineReaders.push(lineReader);
+				return lineReader as unknown as ReadlineInterface;
+			},
+			getPaneSnapshot: async () => [{paneId: "w1:p1", revision: 1}],
+			getPanes,
+			broadcast: () => {},
+			schedule: setTimeout,
+			cancel: clearTimeout,
+			viewedStateTracker: tracker,
+		});
+		await flushPromises();
+		sockets[0]!.emit("connect");
+		await flushPromises();
+
+		const statusData = {pane_id: "w1:p1", agent_status: "idle", agent: "claude"};
+		lineReaders[0]!.send({event: "pane_agent_status_changed", data: statusData});
+		await vi.advanceTimersByTimeAsync(250);
+
+		expect({
+			socketCount: sockets.length,
+			getPanesCalls: getPanes.mock.calls.length,
+			syncPanesCalls: tracker.syncPanes.mock.calls.length,
+			errors: consoleError.mock.calls,
+		}).toStrictEqual({
+			socketCount: 1,
+			getPanesCalls: 2,
+			syncPanesCalls: 2,
+			errors: [
+				["herdr resync failed to sync viewed state for 0 panes", busy],
+				["herdr status event failed to update viewed state for pane w1:p1", busy],
+			],
+		});
+		consoleError.mockRestore();
 		stop();
 	});
 });
