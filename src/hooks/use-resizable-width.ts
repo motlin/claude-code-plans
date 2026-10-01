@@ -16,17 +16,23 @@ interface UseResizableWidthOptions {
 	edge: ResizeEdge;
 	value: number;
 	onChange: (width: number) => void;
+	/** A press that never moves past {@link CLICK_THRESHOLD_PX}, e.g. upstream's click-to-hide sidebar edge. */
+	onClick?: () => void;
 }
+
+/** Pointer travel (px) below which a press on the handle is a click rather than a drag. */
+const CLICK_THRESHOLD_PX = 3;
 
 interface ActiveResize {
 	pointerId: number;
 	handle: HTMLElement;
 	startingClientX: number;
 	startingWidth: number;
+	dragging: boolean;
 }
 
 /** Props for a `role=separator` resize handle: ARIA values, pointer drag, and Arrow/Home/End keys. */
-export function useResizableWidth({label, min, max, step, edge, value, onChange}: UseResizableWidthOptions) {
+export function useResizableWidth({label, min, max, step, edge, value, onChange, onClick}: UseResizableWidthOptions) {
 	const activeResizeReference = useRef<ActiveResize>(null);
 	const clamp = (width: number) => Math.min(max, Math.max(min, width));
 	const direction = edge === "end" ? 1 : -1;
@@ -41,13 +47,15 @@ export function useResizableWidth({label, min, max, step, edge, value, onChange}
 		};
 	}, []);
 
-	function finishResize(event: ReactPointerEvent<HTMLElement>): void {
-		if (activeResizeReference.current?.pointerId !== event.pointerId) return;
+	function finishResize(event: ReactPointerEvent<HTMLElement>): boolean {
+		const activeResize = activeResizeReference.current;
+		if (activeResize?.pointerId !== event.pointerId) return false;
 
 		activeResizeReference.current = null;
 		if (event.currentTarget.hasPointerCapture(event.pointerId)) {
 			event.currentTarget.releasePointerCapture(event.pointerId);
 		}
+		return !activeResize.dragging;
 	}
 
 	return {
@@ -79,17 +87,26 @@ export function useResizableWidth({label, min, max, step, edge, value, onChange}
 				handle: event.currentTarget,
 				startingClientX: event.clientX,
 				startingWidth: value,
+				dragging: false,
 			};
 		},
 		onPointerMove(event: ReactPointerEvent<HTMLElement>): void {
 			const activeResize = activeResizeReference.current;
 			if (activeResize?.pointerId !== event.pointerId) return;
 
-			const distance = (event.clientX - activeResize.startingClientX) * direction;
+			const delta = event.clientX - activeResize.startingClientX;
+			if (!activeResize.dragging && Math.abs(delta) < CLICK_THRESHOLD_PX) return;
+
+			activeResize.dragging = true;
+			const distance = delta * direction;
 			onChange(clamp(activeResize.startingWidth + distance));
 		},
-		onPointerUp: finishResize,
-		onPointerCancel: finishResize,
+		onPointerUp(event: ReactPointerEvent<HTMLElement>): void {
+			if (finishResize(event)) onClick?.();
+		},
+		onPointerCancel(event: ReactPointerEvent<HTMLElement>): void {
+			finishResize(event);
+		},
 		onLostPointerCapture(event: ReactPointerEvent<HTMLElement>): void {
 			if (activeResizeReference.current?.pointerId === event.pointerId) {
 				activeResizeReference.current = null;

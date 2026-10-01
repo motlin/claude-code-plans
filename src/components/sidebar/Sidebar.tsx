@@ -19,9 +19,12 @@ import {
 	SIDEBAR_MAX_WIDTH,
 	SIDEBAR_MIN_WIDTH,
 	SIDEBAR_RESIZE_STEP,
+	toggleSidebarCollapsed,
 	useSidebarState,
 } from "../../lib/sidebar-store";
 import {useResizableWidth} from "../../hooks/use-resizable-width";
+import {useShortcutKeys} from "../../hooks/use-shortcut";
+import {Tooltip} from "../ui/tooltip";
 import {useSettings} from "../settings-provider";
 
 export function Sidebar({
@@ -161,7 +164,7 @@ export function Sidebar({
 			</div>
 
 			{body}
-			<SidebarResizeHandle width={width} />
+			<SidebarResizeHandle width={width} onHide={onToggle ?? toggleSidebarCollapsed} />
 		</nav>
 	);
 }
@@ -179,9 +182,11 @@ function SidebarWordmark({className}: {className?: string}) {
 
 /**
  * Upstream's 12px `dframe-resize-handle` straddling the sidebar's right edge: its inner half is
- * clipped away unless focus-visible, and hovering reveals a 3x48 grip pill.
+ * clipped away unless focus-visible, and hovering reveals a 3x48 grip pill. A press that never
+ * moves past the drag threshold hides the sidebar like ⌘B, which the right-side tooltip explains.
  */
-function SidebarResizeHandle({width}: {width: number}) {
+function SidebarResizeHandle({width, onHide}: {width: number; onHide: () => void}) {
+	const {keys} = useShortcutKeys("toggle_sidebar");
 	const handleProps = useResizableWidth({
 		label: "Resize sidebar",
 		min: SIDEBAR_MIN_WIDTH,
@@ -190,18 +195,27 @@ function SidebarResizeHandle({width}: {width: number}) {
 		edge: "end",
 		value: width,
 		onChange: setSidebarWidth,
+		onClick: onHide,
 	});
 
 	return (
-		<div
-			{...handleProps}
-			className="group/resize absolute inset-y-0 end-[-6px] z-10 flex w-3 cursor-col-resize touch-none items-center justify-center [clip-path:inset(0_0_0_37.5%)] focus-visible:outline-none focus-visible:[clip-path:none]"
+		<Tooltip
+			content="Hide sidebar"
+			shortcut={keys}
+			description="Drag to resize"
+			side="right"
+			className="absolute! inset-y-0 end-[-6px] z-10 w-3"
 		>
-			<span
-				aria-hidden="true"
-				className="h-12 w-[3px] rounded-full bg-border opacity-0 transition-opacity duration-[120ms] group-hover/resize:opacity-100 group-focus-visible/resize:bg-accent-100 group-focus-visible/resize:opacity-100"
-			/>
-		</div>
+			<div
+				{...handleProps}
+				className="group/resize flex size-full cursor-col-resize touch-none items-center justify-center [clip-path:inset(0_0_0_37.5%)] focus-visible:outline-none focus-visible:[clip-path:none]"
+			>
+				<span
+					aria-hidden="true"
+					className="h-12 w-[3px] rounded-full bg-border opacity-0 transition-opacity duration-[120ms] group-hover/resize:opacity-100 group-focus-visible/resize:bg-accent-100 group-focus-visible/resize:opacity-100"
+				/>
+			</div>
+		</Tooltip>
 	);
 }
 

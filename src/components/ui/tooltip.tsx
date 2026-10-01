@@ -19,6 +19,12 @@ const MULTILINE_TOOLTIP_CLASS = TOOLTIP_CLASS.replace("max-w-[240px]", "w-max ma
 	"whitespace-pre-line",
 );
 
+/** Upstream's two-line tooltip (e.g. the sidebar resize edge): label row on top, muted description below. */
+const STACKED_TOOLTIP_CLASS = TOOLTIP_CLASS.replace(
+	"inline-flex min-h-6 max-w-[240px] items-center gap-2",
+	"flex w-max max-w-[320px] flex-col items-start gap-0.5",
+).replace("py-[3px]", "py-1.5");
+
 /**
  * Minimal claude.ai/code tooltip: always dark, side top (titlebar controls use
  * bottom, sidebar family handles right), offset 4, 300ms open delay, with an optional text-variant shortcut
@@ -28,6 +34,7 @@ export function Tooltip({
 	content,
 	shortcut,
 	secondary,
+	description,
 	side = "top",
 	multiline = false,
 	className,
@@ -37,6 +44,8 @@ export function Tooltip({
 	shortcut?: string;
 	/** A second action on the same control, shown after a "·", e.g. Send ⏎ · Fork with this prompt ⌥⌘⏎. */
 	secondary?: {content: string; shortcut: string} | undefined;
+	/** A muted second line under the label row, e.g. Hide sidebar ⌘B / Drag to resize. */
+	description?: string | undefined;
 	side?: keyof typeof SIDE_CLASS;
 	/** Wrap long content and break it at its newlines, e.g. a timestamp followed by per-turn details. */
 	multiline?: boolean;
@@ -59,6 +68,20 @@ export function Tooltip({
 		setOpen(false);
 	}
 
+	const label = (
+		<>
+			{content}
+			{shortcut !== undefined && <TooltipShortcut keys={shortcut} />}
+			{secondary !== undefined && (
+				<>
+					<span aria-hidden="true">·</span>
+					{secondary.content}
+					<TooltipShortcut keys={secondary.shortcut} />
+				</>
+			)}
+		</>
+	);
+
 	return (
 		<span
 			className={className ? `relative inline-flex ${className}` : "relative inline-flex"}
@@ -77,16 +100,15 @@ export function Tooltip({
 				<span
 					role="tooltip"
 					id={id}
-					className={`${multiline ? MULTILINE_TOOLTIP_CLASS : TOOLTIP_CLASS} ${SIDE_CLASS[side]}`}
+					className={`${description !== undefined ? STACKED_TOOLTIP_CLASS : multiline ? MULTILINE_TOOLTIP_CLASS : TOOLTIP_CLASS} ${SIDE_CLASS[side]}`}
 				>
-					{content}
-					{shortcut !== undefined && <TooltipShortcut keys={shortcut} />}
-					{secondary !== undefined && (
+					{description !== undefined ? (
 						<>
-							<span aria-hidden="true">·</span>
-							{secondary.content}
-							<TooltipShortcut keys={secondary.shortcut} />
+							<span className="inline-flex items-center gap-2">{label}</span>
+							<span className="text-[var(--tooltip-description-ink)]">{description}</span>
 						</>
+					) : (
+						label
 					)}
 				</span>
 			)}

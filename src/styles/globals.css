@@ -259,6 +259,7 @@
 	--tooltip-bg: #20201f;
 	--tooltip-fg: #f0efec;
 	--tooltip-shortcut-ink: #898781;
+	--tooltip-description-ink: #898781;
 
 	/* Upstream claude.ai/code — Menu / ContextMenu popups (bg-surface-3, shadow-panel) */
 	--menu-bg: #fff;
