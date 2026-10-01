@@ -31,6 +31,8 @@ export interface InteractionContext {
 	queryClient: QueryClient;
 }
 
+export type Interaction = (context: InteractionContext) => void | Promise<void>;
+
 interface Recorder {
 	measuring: boolean;
 	commits: number;
@@ -109,7 +111,7 @@ async function flushRound(): Promise<void> {
 
 export async function measureInteraction(
 	renderTree: () => ReactNode,
-	interact: (context: InteractionContext) => void | Promise<void>,
+	interact: Interaction | ReadonlyArray<Interaction>,
 	options: MeasureOptions,
 ): Promise<InteractionMeasurement> {
 	const queryClient = options.queryClient ?? new QueryClient({defaultOptions: {queries: {retry: false}}});
@@ -194,10 +196,13 @@ export async function measureInteraction(
 
 		observer.observe(document.body, {subtree: true, childList: true, attributes: true, characterData: true});
 		recorder.measuring = true;
-		await act(async () => {
-			await interact({queryClient});
-		});
-		await settle();
+		// Updates inside one act are batched into one commit, so each step (one keystroke, say) gets its own act.
+		for (const step of typeof interact === "function" ? [interact] : interact) {
+			await act(async () => {
+				await step({queryClient});
+			});
+			await settle();
+		}
 		mutations += observer.takeRecords().length;
 		recorder.measuring = false;
 

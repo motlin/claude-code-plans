@@ -1,4 +1,144 @@
 {
+	"client.composer.home.slashMenu.claudeEventsConsumers": {
+		"ceiling": 1,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.composer.home.slashMenu.commitsPerKeystroke": {
+		"ceiling": 2,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.composer.home.slashMenu.componentsPerKeystroke": {
+		"ceiling": 31,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.composer.home.slashMenu.localStorageWrites": {
+		"ceiling": 1,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.composer.home.slashMenu.queryCacheListeners": {
+		"ceiling": 1,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.composer.home.typing.claudeEventsConsumers": {
+		"ceiling": 1,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.composer.home.typing.commitsPerKeystroke": {
+		"ceiling": 1.1,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.composer.home.typing.componentsPerKeystroke": {
+		"ceiling": 23.6,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.composer.home.typing.localStorageWrites": {
+		"ceiling": 1,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.composer.home.typing.queryCacheListeners": {
+		"ceiling": 1,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.composer.session.mentionMenu.claudeEventsConsumers": {
+		"ceiling": 4,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.composer.session.mentionMenu.commitsPerKeystroke": {
+		"ceiling": 2,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.composer.session.mentionMenu.componentsPerKeystroke": {
+		"ceiling": 27,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.composer.session.mentionMenu.localStorageWrites": {
+		"ceiling": 1,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.composer.session.mentionMenu.queryCacheListeners": {
+		"ceiling": 2,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.composer.session.mentionMenu.sessionChatRendersPerKeystroke": {
+		"ceiling": 0,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.composer.session.slashMenu.claudeEventsConsumers": {
+		"ceiling": 4,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.composer.session.slashMenu.commitsPerKeystroke": {
+		"ceiling": 1,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.composer.session.slashMenu.componentsPerKeystroke": {
+		"ceiling": 25,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.composer.session.slashMenu.localStorageWrites": {
+		"ceiling": 1,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.composer.session.slashMenu.queryCacheListeners": {
+		"ceiling": 2,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.composer.session.slashMenu.sessionChatRendersPerKeystroke": {
+		"ceiling": 0,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.composer.session.typing.claudeEventsConsumers": {
+		"ceiling": 4,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.composer.session.typing.commitsPerKeystroke": {
+		"ceiling": 1,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.composer.session.typing.componentsPerKeystroke": {
+		"ceiling": 23,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.composer.session.typing.localStorageWrites": {
+		"ceiling": 1,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.composer.session.typing.queryCacheListeners": {
+		"ceiling": 2,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"client.composer.session.typing.sessionChatRendersPerKeystroke": {
+		"ceiling": 0,
+		"unit": "count",
+		"tolerance": 0
+	},
 	"client.liveEvent.appendOpen.commits": {
 		"ceiling": 3,
 		"unit": "count",

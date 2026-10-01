@@ -57,6 +57,12 @@ function FetchingBadge() {
 	return <span>{fetching}</span>;
 }
 
+function Typed() {
+	useRenderCount("Typed");
+	const [text, setText] = useState("");
+	return <input aria-label="typed" value={text} onChange={(event) => setText(event.target.value)} />;
+}
+
 function Invalidator() {
 	const queryClient = useQueryClient();
 	return (
@@ -155,6 +161,21 @@ describe("measureInteraction", () => {
 			queryObservers: 0,
 			eventSourceListeners: 1,
 		});
+	});
+
+	it("runs each step of a multi-step interaction in its own act, so every keystroke commits", async () => {
+		const typeInto = (value: string) => () => {
+			fireEvent.change(screen.getByRole("textbox"), {target: {value}});
+		};
+		const result = await measureInteraction(() => <Typed />, [typeInto("a"), typeInto("ab"), typeInto("abc")], {
+			fixtures: {},
+		});
+
+		expect({
+			commits: result.commits,
+			renders: result.rendersByComponent,
+			value: (screen.getByRole("textbox") as HTMLInputElement).value,
+		}).toStrictEqual({commits: 3, renders: {Typed: 3}, value: "abc"});
 	});
 
 	it("fails on a fetch with no fixture", async () => {
