@@ -2,8 +2,10 @@ import {sqliteTable, text, integer, index, primaryKey} from "drizzle-orm/sqlite-
 import type {ReviewBundle} from "../api/reviews";
 import type {RoutineKind} from "../routines";
 
-// Bump for any DDL or indexed-data change. A database at any other version is
-// wiped (user-state tables included) and rebuilt; there are no migrations.
+// Bump for an indexed-data change that leaves the DDL alone; DDL edits change
+// INDEX_SCHEMA_FINGERPRINT in connection.ts and rebuild by themselves. A database
+// at any other version or fingerprint is wiped (user-state tables included) and
+// rebuilt; there are no migrations.
 export const SCHEMA_VERSION = "1";
 
 export const metadata = sqliteTable("metadata", {

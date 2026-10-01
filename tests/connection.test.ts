@@ -5,7 +5,7 @@ import {fileURLToPath} from "node:url";
 import Database from "better-sqlite3";
 import {eq, sql} from "drizzle-orm";
 import {afterEach, describe, expect, it} from "vite-plus/test";
-import {openAppDb} from "../src/lib/db/connection";
+import {INDEX_SCHEMA_FINGERPRINT, openAppDb} from "../src/lib/db/connection";
 import * as schema from "../src/lib/db/schema";
 
 describe("openAppDb", () => {
@@ -147,6 +147,78 @@ describe("openAppDb", () => {
 			});
 		},
 	);
+
+	function oldShapeIndexDb(fingerprint: string | null): string {
+		const cacheDir = mkdtempSync(join(tmpdir(), "open-app-db-test-"));
+		tempDirs.push(cacheDir);
+		const sqlite = new Database(join(cacheDir, "index.db"));
+		sqlite.exec(`CREATE TABLE metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+			CREATE TABLE message_content (id INTEGER PRIMARY KEY, session_id TEXT NOT NULL, content TEXT NOT NULL);
+			CREATE INDEX message_content_session_idx ON message_content(session_id);
+			INSERT INTO message_content(session_id, content) VALUES ('session-test-100', 'Alice old blob');`);
+		sqlite.prepare("INSERT INTO metadata (key, value) VALUES ('schema_version', ?)").run(schema.SCHEMA_VERSION);
+		if (fingerprint !== null) {
+			sqlite.prepare("INSERT INTO metadata (key, value) VALUES ('schema_fingerprint', ?)").run(fingerprint);
+		}
+		sqlite.close();
+		return cacheDir;
+	}
+
+	it.each([null, "stale-fingerprint"])(
+		"rebuilds a database at the current version whose schema fingerprint is %s",
+		(fingerprint) => {
+			const cacheDir = oldShapeIndexDb(fingerprint);
+
+			const reopened = openAppDb({cacheDir});
+			const state = {
+				uniqueIndex: reopened.index.all(
+					sql`SELECT name FROM pragma_index_list('message_content') WHERE "unique" = 1 AND name = 'message_content_session_idx'`,
+				),
+				columns: reopened.index.all(sql`SELECT name FROM pragma_table_info('message_content') ORDER BY cid`),
+				rows: reopened.index.all(sql`SELECT * FROM message_content`),
+				fingerprint: reopened.index
+					.select({value: schema.metadata.value})
+					.from(schema.metadata)
+					.where(eq(schema.metadata.key, "schema_fingerprint"))
+					.get(),
+			};
+			reopened.close();
+
+			expect(state).toStrictEqual({
+				uniqueIndex: [{name: "message_content_session_idx"}],
+				columns: [{name: "id"}, {name: "session_id"}, {name: "message_index"}, {name: "content"}],
+				rows: [],
+				fingerprint: {value: INDEX_SCHEMA_FINGERPRINT},
+			});
+		},
+	);
+
+	it("does not rebuild a database whose schema fingerprint matches", () => {
+		const cacheDir = mkdtempSync(join(tmpdir(), "open-app-db-test-"));
+		tempDirs.push(cacheDir);
+		const original = openAppDb({cacheDir});
+		original.index
+			.insert(schema.projects)
+			.values({id: "project-test-100", name: "Alice fixture project", updatedAt: 1_000})
+			.run();
+		original.close();
+
+		const reopened = openAppDb({cacheDir});
+		const state = {
+			projects: reopened.index.select({id: schema.projects.id}).from(schema.projects).all(),
+			fingerprint: reopened.index
+				.select({value: schema.metadata.value})
+				.from(schema.metadata)
+				.where(eq(schema.metadata.key, "schema_fingerprint"))
+				.get(),
+		};
+		reopened.close();
+
+		expect(state).toStrictEqual({
+			projects: [{id: "project-test-100"}],
+			fingerprint: {value: INDEX_SCHEMA_FINGERPRINT},
+		});
+	});
 
 	it("never creates starred_sessions in a fresh database", () => {
 		const cacheDir = mkdtempSync(join(tmpdir(), "open-app-db-test-"));

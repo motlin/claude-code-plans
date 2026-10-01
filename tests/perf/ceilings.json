@@ -754,7 +754,7 @@
 		"tolerance": 0
 	},
 	"server.liveAppend.small.20.sql.count": {
-		"ceiling": 24,
+		"ceiling": 23,
 		"unit": "count",
 		"tolerance": 0
 	},
@@ -794,7 +794,7 @@
 		"tolerance": 0
 	},
 	"server.liveAppend.typical.20.sql.count": {
-		"ceiling": 24,
+		"ceiling": 23,
 		"unit": "count",
 		"tolerance": 0
 	},

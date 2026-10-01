@@ -580,7 +580,6 @@ class SessionIndexState {
 	lastSessionCwd: string | undefined;
 	anchoredSessionCwd: string | undefined;
 	sessionGitBranch: string | null = null;
-	readonly textChunks: string[] = [];
 	readonly mcpToolNames = new Set<string>();
 	readonly artifactEvents = new ArtifactEventCollector();
 	readonly routines = new RoutineCollector();
@@ -591,6 +590,8 @@ class SessionIndexState {
 	messageCount = 0;
 	/** How many of `indexedMessages` the last persist left in session_messages. */
 	persistedMessages = 0;
+	/** How many message_content rows the last persist left for this session. */
+	persistedContentRows = 0;
 
 	constructor(
 		readonly sessionId: string,
@@ -719,12 +720,10 @@ class SessionIndexState {
 				const content = obj.message?.content;
 				const messageText: string[] = [];
 				if (typeof content === "string") {
-					this.textChunks.push(content);
 					messageText.push(content);
 				} else if (Array.isArray(content)) {
 					for (const block of content) {
 						if (block.type === "text" && typeof block.text === "string") {
-							this.textChunks.push(block.text);
 							messageText.push(block.text);
 						} else if (
 							block.type === "tool_use" &&
@@ -909,34 +908,46 @@ async function persistSessionIndexState(
 			.run();
 	}
 
-	// Replace structured message rows alongside the search-only flattened FTS
-	// blob. Role and order are retained here so consumers never need to tail
-	// the JSONL to recover the latest substantive assistant response.
-	// A resumed state appends the rows after the ones it already wrote, as long as nothing else replaced them.
+	// Replace structured message rows and their per-message search rows. Role and order are retained here so
+	// consumers never need to tail the JSONL to recover the latest substantive assistant response.
+	// A resumed state appends the rows after the ones it already wrote, as long as nothing else replaced them, so a
+	// live append tokenizes only the new messages.
 	const {indexedMessages, persistedMessages} = state;
+	let contentRows = 0;
 	db.transaction((transaction) => {
-		const resumed =
-			persistedMessages > 0 &&
-			transaction
-				.select({count: sql<number>`count(*)`})
-				.from(schema.sessionMessages)
-				.where(eq(schema.sessionMessages.sessionId, sessionId))
-				.get()?.count === persistedMessages;
+		const persisted =
+			persistedMessages > 0
+				? (transaction.get(
+						sql`SELECT
+							(SELECT count(*) FROM session_messages WHERE session_id = ${sessionId}) AS messages,
+							(SELECT count(*) FROM message_content WHERE session_id = ${sessionId}) AS content`,
+					) as {messages: number; content: number})
+				: undefined;
+		const resumed = persisted?.messages === persistedMessages && persisted.content === state.persistedContentRows;
 		if (!resumed) {
 			transaction.delete(schema.sessionMessages).where(eq(schema.sessionMessages.sessionId, sessionId)).run();
+			transaction.run(sql`DELETE FROM message_content WHERE session_id = ${sessionId}`);
 		}
-		for (
-			let offset = resumed ? persistedMessages : 0;
-			offset < indexedMessages.length;
-			offset += SESSION_MESSAGE_INSERT_BATCH_SIZE
-		) {
+		const firstNew = resumed ? persistedMessages : 0;
+		for (let offset = firstNew; offset < indexedMessages.length; offset += SESSION_MESSAGE_INSERT_BATCH_SIZE) {
 			transaction
 				.insert(schema.sessionMessages)
 				.values(indexedMessages.slice(offset, offset + SESSION_MESSAGE_INSERT_BATCH_SIZE))
 				.run();
 		}
+		const inserted =
+			firstNew < indexedMessages.length
+				? transaction.run(
+						sql`INSERT INTO message_content(session_id, message_index, content)
+							SELECT session_id, message_index, text FROM session_messages
+							WHERE session_id = ${sessionId} AND message_index >= ${firstNew} AND text IS NOT NULL
+							ORDER BY message_index`,
+					).changes
+				: 0;
+		contentRows = (resumed ? state.persistedContentRows : 0) + inserted;
 	});
 	state.persistedMessages = indexedMessages.length;
+	state.persistedContentRows = contentRows;
 
 	db.transaction((transaction) => {
 		transaction.delete(schema.sessionMcpTools).where(eq(schema.sessionMcpTools.sessionId, sessionId)).run();
@@ -955,13 +966,6 @@ async function persistSessionIndexState(
 	);
 	replaceRoutines(db, {filePath, sessionId, projectId: project}, state.routines.routines());
 	replaceUsageDaily(db, {filePath, sessionId}, state.usage.rows());
-
-	// Update message content FTS
-	db.run(sql`DELETE FROM message_content WHERE session_id = ${sessionId}`);
-	if (state.textChunks.length > 0) {
-		const content = state.textChunks.join("\n");
-		db.run(sql`INSERT INTO message_content(session_id, content) VALUES (${sessionId}, ${content})`);
-	}
 
 	// Update indexed_files
 	db.insert(schema.indexedFiles)

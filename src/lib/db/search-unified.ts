@@ -5,7 +5,7 @@ import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
 import type {UnifiedSearchDate, UnifiedSearchItem, UnifiedSearchParams} from "../api/search";
 import {toMdSlug} from "../md-slug";
 import type {Snippet, TextMatch} from "../search-text";
-import {toFtsQuery, tokenizeFileSearchQuery} from "./queries";
+import {searchMessageContentSessions, toFtsQuery, tokenizeFileSearchQuery} from "./queries";
 import type * as schema from "./schema";
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
@@ -118,6 +118,7 @@ function usableSnippet(highlighted: string, title: string, sentinels: Sentinels)
 function searchSessions(
 	db: IndexDb,
 	ftsQuery: string,
+	terms: readonly string[],
 	params: UnifiedSearchParams,
 	cutoff: number | null,
 	projectNames: Map<string, string>,
@@ -138,15 +139,18 @@ function searchSessions(
 			LIMIT ${params.limit}`,
 	) as TitleHitRow[];
 
-	const messageRows = db.all(
-		sql`SELECT s.id AS session_id, s.project_id, s.mtime_ms, s.title,
-				snippet(message_content_fts, 1, ${open}, ${close}, '...', ${SNIPPET_TOKENS}) AS message_snippet
-			FROM message_content_fts
-			JOIN sessions s ON s.id = message_content_fts.session_id
-			WHERE message_content_fts MATCH ${ftsQuery}${filters}
-			ORDER BY bm25(message_content_fts), s.mtime_ms DESC
-			LIMIT ${params.limit + titleRows.length}`,
-	) as MessageHitRow[];
+	const messageHits = searchMessageContentSessions(db, terms, {
+		sessionFilters: sql` AND s.id IS NOT NULL${filters}`,
+		limit: params.limit + titleRows.length,
+		snippet: {open, close, tokens: SNIPPET_TOKENS},
+	});
+	const messageRows: MessageHitRow[] = messageHits.map((hit) => ({
+		session_id: hit.session_id,
+		project_id: hit.project_id ?? "",
+		mtime_ms: hit.mtime_ms ?? 0,
+		title: hit.title ?? hit.session_id,
+		message_snippet: hit.snippet,
+	}));
 
 	const messageSnippets = new Map<string, Snippet>();
 	for (const row of messageRows) {
@@ -332,7 +336,7 @@ export function searchUnifiedDb(db: IndexDb, params: UnifiedSearchParams, now: n
 
 	const items: UnifiedSearchItem[] = [];
 	if (params.type === "all" || params.type === "sessions") {
-		items.push(...searchSessions(db, ftsQuery, params, cutoff, projectNames, sentinels));
+		items.push(...searchSessions(db, ftsQuery, terms, params, cutoff, projectNames, sentinels));
 	}
 	const docKinds: Array<DocHitRow["kind"]> = [];
 	if (params.type === "all" || params.type === "plans") docKinds.push("plan");

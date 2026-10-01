@@ -45,7 +45,9 @@ describe("unified search API", () => {
 			})
 			.run();
 		if (options.content !== undefined) {
-			db.index.run(sql`INSERT INTO message_content(session_id, content) VALUES (${id}, ${options.content})`);
+			db.index.run(
+				sql`INSERT INTO message_content(session_id, message_index, content) VALUES (${id}, 0, ${options.content})`,
+			);
 		}
 	}
 

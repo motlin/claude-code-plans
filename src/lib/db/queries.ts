@@ -630,25 +630,81 @@ export interface DbMessageSearchResult {
 	rank: number;
 }
 
+export interface MessageContentSessionHit {
+	session_id: string;
+	rank: number;
+	snippet: string;
+	/** The session row's columns, null when the session is not indexed. */
+	project_id: string | null;
+	mtime_ms: number | null;
+	title: string | null;
+}
+
+export interface MessageContentSearchOptions {
+	/** Extra `AND ...` conditions on the session row, aliased `s` (null when the session is not indexed). */
+	sessionFilters?: SQL;
+	limit: number;
+	snippet: {open: string; close: string; tokens: number};
+}
+
+/**
+ * Sessions whose transcript contains every term, best first. message_content holds one row per message so appends
+ * stay cheap; this regroups the rows into one document per session: a session matches when each term appears in
+ * some message, ranks by the summed bm25 of its matching messages, and takes its snippet from the best of them.
+ */
+export function searchMessageContentSessions(
+	db: IndexDb,
+	terms: readonly string[],
+	{sessionFilters = sql``, limit, snippet}: MessageContentSearchOptions,
+): MessageContentSessionHit[] {
+	if (terms.length === 0) return [];
+	const anyTerm = terms.map((term) => toFtsQuery([term])).join(" OR ");
+	const everyTerm =
+		terms.length === 1
+			? sql``
+			: sql.join(
+					terms.map(
+						(term) =>
+							sql` AND h.session_id IN (SELECT session_id FROM message_content_fts WHERE message_content_fts MATCH ${toFtsQuery([term])})`,
+					),
+					sql``,
+				);
+	// MATERIALIZED keeps bm25() inside its FTS query. With MIN() as the only min/max aggregate, SQLite takes the bare
+	// best_row from the best-scoring message, and the outer query reads that message's snippet by rowid.
+	return db.all(
+		sql`WITH h AS MATERIALIZED (
+				SELECT session_id, rowid AS row_id, bm25(message_content_fts) AS score
+				FROM message_content_fts
+				WHERE message_content_fts MATCH ${anyTerm}
+			),
+			best AS MATERIALIZED (
+				SELECT h.session_id, SUM(h.score) AS rank, h.row_id AS best_row, MIN(h.score) AS best_score,
+					s.project_id, s.mtime_ms, s.title
+				FROM h
+				LEFT JOIN sessions s ON s.id = h.session_id
+				WHERE 1${everyTerm}${sessionFilters}
+				GROUP BY h.session_id
+				ORDER BY rank, s.mtime_ms DESC, h.session_id
+				LIMIT ${limit}
+			)
+			SELECT best.session_id, best.rank, best.project_id, best.mtime_ms, best.title,
+				snippet(message_content_fts, 1, ${snippet.open}, ${snippet.close}, '...', ${snippet.tokens}) AS snippet
+			FROM best
+			JOIN message_content_fts ON message_content_fts.rowid = best.best_row
+			WHERE message_content_fts MATCH ${anyTerm}
+			ORDER BY best.rank, best.mtime_ms DESC, best.session_id`,
+	) as MessageContentSessionHit[];
+}
+
 export function searchMessageContentDb(db: IndexDb, query: string, limit = 50): DbMessageSearchResult[] {
 	const terms = tokenizeFileSearchQuery(query);
 	if (terms.length === 0) return [];
 
-	const ftsQuery = toFtsQuery(terms);
 	const projectNames = getProjectNameMap(db);
-
-	const rows = db.all(
-		sql`SELECT session_id, rank,
-				snippet(message_content_fts, 1, '<mark>', '</mark>', '...', 48) AS snippet
-			FROM message_content_fts
-			WHERE message_content_fts MATCH ${ftsQuery}
-			ORDER BY rank
-			LIMIT ${limit}`,
-	) as Array<{
-		session_id: string;
-		rank: number;
-		snippet: string;
-	}>;
+	const rows = searchMessageContentSessions(db, terms, {
+		limit,
+		snippet: {open: "<mark>", close: "</mark>", tokens: 48},
+	});
 
 	const sessionMap = batchFetchSessions(
 		db,

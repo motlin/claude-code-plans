@@ -1,5 +1,6 @@
 import {drizzle, type BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
 import Database from "better-sqlite3";
+import {createHash} from "node:crypto";
 import {mkdirSync} from "node:fs";
 import {join, resolve} from "node:path";
 import {homedir} from "node:os";
@@ -300,12 +301,14 @@ CREATE TRIGGER IF NOT EXISTS sessions_fts_delete AFTER DELETE ON sessions BEGIN
   DELETE FROM sessions_search WHERE session_id = OLD.id;
 END;
 
+-- One row per transcript message with text, so a live append only tokenizes the new messages.
 CREATE TABLE IF NOT EXISTS message_content (
   id INTEGER PRIMARY KEY,
   session_id TEXT NOT NULL,
+  message_index INTEGER NOT NULL,
   content TEXT NOT NULL
 );
-CREATE INDEX IF NOT EXISTS message_content_session_idx ON message_content(session_id);
+CREATE UNIQUE INDEX IF NOT EXISTS message_content_session_idx ON message_content(session_id, message_index);
 
 CREATE VIRTUAL TABLE IF NOT EXISTS message_content_fts USING fts5(
   session_id UNINDEXED,
@@ -389,9 +392,10 @@ CREATE TABLE IF NOT EXISTS summaries (
 );
 `;
 
-// A schema version mismatch wipes the whole index database, user-state tables
-// included, and recreates it from CREATE_TABLES_SQL + CREATE_FTS_SQL. There is
-// no migration chain: bump SCHEMA_VERSION for any DDL or indexed-data change.
+// A schema version or DDL fingerprint mismatch wipes the whole index database,
+// user-state tables included, and recreates it from CREATE_TABLES_SQL +
+// CREATE_FTS_SQL. There is no migration chain: DDL edits rebuild by themselves;
+// bump SCHEMA_VERSION for an indexed-data change that leaves the DDL alone.
 function dropAllObjects(sqlite: Database.Database): void {
 	const objects = sqlite
 		.prepare(
@@ -412,15 +416,22 @@ function dropAllObjects(sqlite: Database.Database): void {
 	}
 }
 
-function readSchemaVersion(sqlite: Database.Database): string | null {
+/**
+ * A hash of the exact DDL initIndexDb runs. Editing the schema in place at the same SCHEMA_VERSION changes it, and a
+ * database stamped with any other fingerprint is wiped and rebuilt like a version mismatch.
+ */
+export const INDEX_SCHEMA_FINGERPRINT = createHash("sha256")
+	.update(CREATE_TABLES_SQL)
+	.update(CREATE_FTS_SQL)
+	.digest("hex");
+
+function readMetadata(sqlite: Database.Database, key: string): string | null {
 	const metadataExists = sqlite
 		.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='metadata'")
 		.get() as {name: string} | undefined;
 	if (!metadataExists) return null;
 
-	const row = sqlite.prepare("SELECT value FROM metadata WHERE key = 'schema_version'").get() as
-		| {value: string}
-		| undefined;
+	const row = sqlite.prepare("SELECT value FROM metadata WHERE key = ?").get(key) as {value: string} | undefined;
 	return row?.value ?? null;
 }
 
@@ -428,15 +439,18 @@ function initIndexDb(sqlite: Database.Database): void {
 	sqlite.pragma("journal_mode = WAL");
 	sqlite.pragma("foreign_keys = ON");
 
-	if (readSchemaVersion(sqlite) !== schema.SCHEMA_VERSION) {
+	if (
+		readMetadata(sqlite, "schema_version") !== schema.SCHEMA_VERSION ||
+		readMetadata(sqlite, "schema_fingerprint") !== INDEX_SCHEMA_FINGERPRINT
+	) {
 		sqlite.transaction(() => dropAllObjects(sqlite))();
 	}
 
 	sqlite.exec(CREATE_TABLES_SQL);
 	sqlite.exec(CREATE_FTS_SQL);
-	sqlite
-		.prepare("INSERT OR REPLACE INTO metadata (key, value) VALUES ('schema_version', ?)")
-		.run(schema.SCHEMA_VERSION);
+	const stamp = sqlite.prepare("INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)");
+	stamp.run("schema_version", schema.SCHEMA_VERSION);
+	stamp.run("schema_fingerprint", INDEX_SCHEMA_FINGERPRINT);
 }
 function initSummariesDb(sqlite: Database.Database): void {
 	sqlite.pragma("journal_mode = WAL");

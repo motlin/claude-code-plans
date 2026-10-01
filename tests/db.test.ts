@@ -2600,6 +2600,22 @@ describe("message content FTS", () => {
 		expect(results.map((r) => r.sessionId)).toStrictEqual(["fts-sess-1"]);
 	});
 
+	it("matches a session whose terms appear in different messages", () => {
+		const results = searchMessageContentDb(db.index, "authentication middleware");
+		expect(results.map((r) => r.sessionId)).toStrictEqual(["fts-sess-1"]);
+	});
+
+	it("keeps one row per message with text", () => {
+		expect(
+			db.index.all(
+				sql`SELECT message_index, content FROM message_content WHERE session_id = 'fts-sess-1' ORDER BY message_index`,
+			),
+		).toStrictEqual([
+			{message_index: 0, content: "Fix the authentication bug in the login form"},
+			{message_index: 1, content: "I found the issue in the session middleware"},
+		]);
+	});
+
 	it("returns snippet with highlight marks", () => {
 		const results = searchMessageContentDb(db.index, "login");
 		expect(results.map((r) => r.sessionId)).toStrictEqual(["fts-sess-1"]);
@@ -2608,8 +2624,8 @@ describe("message content FTS", () => {
 
 	it("escapes HTML in message search snippets while preserving highlights", () => {
 		db.index.run(
-			sql`INSERT INTO message_content(session_id, content)
-          VALUES (${"fts-xss"}, ${"login <script>alert(1)</script>"})`,
+			sql`INSERT INTO message_content(session_id, message_index, content)
+          VALUES (${"fts-xss"}, 0, ${"login <script>alert(1)</script>"})`,
 		);
 
 		const result = searchMessageContentDb(db.index, "login").find(

@@ -5,6 +5,7 @@ import {sql} from "drizzle-orm";
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
 import {openTestDb, type AppDb} from "../../src/lib/db/connection";
 import {createJsonlIndexCache, indexFile, indexJsonlFile} from "../../src/lib/db/indexer";
+import {searchMessageContentDb} from "../../src/lib/db/queries";
 import {startStallMonitor, type EventLoopStall} from "../../src/lib/perf/event-loop-stalls";
 import {currentPerfCounters, withPerfScope} from "../../src/lib/perf/server-scope";
 import {createPendingApprovalScanCache, scanPendingApproval} from "../../src/lib/pending-approvals";
@@ -111,7 +112,9 @@ function indexSnapshot(db: AppDb): Record<string, unknown> {
 	return {
 		sessions: rows(sql`SELECT * FROM sessions ORDER BY id`),
 		messages: rows(sql`SELECT * FROM session_messages ORDER BY session_id, message_index`),
-		content: rows(sql`SELECT session_id, content FROM message_content ORDER BY session_id`),
+		content: rows(
+			sql`SELECT session_id, message_index, content FROM message_content ORDER BY session_id, message_index`,
+		),
 		mcpTools: rows(sql`SELECT * FROM session_mcp_tools ORDER BY session_id, tool_name`),
 		usage: rows(sql`SELECT * FROM usage_daily ORDER BY day, model`),
 		ftsHits: rows(sql`SELECT session_id FROM message_content_fts WHERE message_content_fts MATCH 'Live'`),
@@ -141,6 +144,36 @@ describe(`live append to a ${SHAPE.name} transcript`, () => {
 		}).toStrictEqual({
 			counters: counters.map(({expected}) => expected),
 			snapshot: indexSnapshot(fresh),
+		});
+	}, 600_000);
+
+	it("writes only the appended messages to the transcript search index", async () => {
+		const live = openDb();
+		const cache = createJsonlIndexCache();
+		await indexJsonlFile(live.index, file, PROJECT, {cache});
+		live.index.run(sql`CREATE TEMP TABLE message_content_writes(op TEXT NOT NULL, content TEXT NOT NULL)`);
+		live.index.run(sql`CREATE TEMP TRIGGER record_message_content_insert AFTER INSERT ON main.message_content BEGIN
+			INSERT INTO message_content_writes(op, content) VALUES ('insert', NEW.content);
+		END`);
+		live.index.run(sql`CREATE TEMP TRIGGER record_message_content_delete AFTER DELETE ON main.message_content BEGIN
+			INSERT INTO message_content_writes(op, content) VALUES ('delete', OLD.content);
+		END`);
+
+		append(1);
+		await indexJsonlFile(live.index, file, PROJECT, {cache});
+
+		const fresh = openDb();
+		await indexJsonlFile(fresh.index, file, PROJECT);
+		const queries = ["Live append keep going", "step", "the"];
+		expect({
+			writes: live.index.all(sql`SELECT op, content FROM message_content_writes ORDER BY rowid`),
+			results: queries.map((query) => searchMessageContentDb(live.index, query)),
+		}).toStrictEqual({
+			writes: [
+				{op: "insert", content: "Live append 1: keep going."},
+				{op: "insert", content: "Working on step 1."},
+			],
+			results: queries.map((query) => searchMessageContentDb(fresh.index, query)),
 		});
 	}, 600_000);
 

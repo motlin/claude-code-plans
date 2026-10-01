@@ -190,7 +190,7 @@ describe("FTS delete query plans", () => {
 
 		expect({beforeDelete, afterDelete}).toStrictEqual({
 			beforeDelete: {
-				messageRows: [{session_id: sessionId}],
+				messageRows: [{session_id: sessionId}, {session_id: sessionId}],
 				sessionRows: [{session_id: sessionId}],
 				messageHits: [sessionId],
 			},
