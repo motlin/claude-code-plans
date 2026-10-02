@@ -20,7 +20,7 @@ import {MemoryListResponse, projectMemoriesQueryOptions} from "../src/lib/api/me
 import {plansQueryOptions} from "../src/lib/api/plans";
 import {projectsQueryOptions} from "../src/lib/api/projects";
 import {routinesQueryOptions, type Routine} from "../src/lib/api/routines";
-import {recentSessionsQueryOptions} from "../src/lib/api/sessions";
+import {recentSessionsQueryOptions, sessionQueryKeys} from "../src/lib/api/sessions";
 import {saveRecents, type RecentEntry} from "../src/lib/recents-history";
 
 const MAC_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36";
@@ -614,6 +614,65 @@ describe("CommandPalette Recents from the per-tab visit MRU", () => {
 			label: item.querySelector("[data-palette-label]")?.textContent ?? "",
 		}));
 	}
+
+	it("resolves delayed historical aliases without rereading the opening's visit order", async () => {
+		let resolveIdentity!: (response: Response) => void;
+		const pending = new Promise<Response>((resolve) => {
+			resolveIdentity = resolve;
+		});
+		const fetch = vi.fn((_url: string) => pending);
+		vi.stubGlobal("fetch", fetch);
+		saveRecents([
+			entry("session", "session_alice_100", "/session/session_alice_100", "Recent Alice"),
+			entry("plan", "alice-plan", "/plan/alice-plan", "Alice plan"),
+			entry("session", "local-alice", "/session/local-alice", "Earlier Alice"),
+		]);
+		const dialog = await openPalette([]);
+		expect(recentsGroup(dialog)).toStrictEqual([
+			{value: "recent:plan:alice-plan", label: "Alice plan"},
+			{value: "session:local-alice", label: "Earlier Alice"},
+		]);
+		saveRecents([entry("plan", "new-plan", "/plan/new-plan", "New visit while open")]);
+		await act(async () => resolveIdentity(Response.json({sessionId: "local-alice"})));
+		await waitFor(() =>
+			expect(recentsGroup(dialog)).toStrictEqual([
+				{value: "session:local-alice", label: "Recent Alice"},
+				{value: "recent:plan:alice-plan", label: "Alice plan"},
+			]),
+		);
+		expect(fetch.mock.calls.map((call) => call[0])).toStrictEqual(["/api/sessions/session_alice_100/identity"]);
+		fireEvent.click(within(dialog).getByRole("option", {name: "Recent Alice"}));
+		await waitFor(() => expect(currentRouter?.state.location.pathname).toBe("/session/local-alice"));
+	});
+
+	it.each([404, 409])("omits historical aliases from actionable session rows after %s", async (status) => {
+		const fetch = vi.fn().mockResolvedValue(Response.json({error: "Fabricated alias failure"}, {status}));
+		vi.stubGlobal("fetch", fetch);
+		saveRecents([
+			entry("session", "session_alice_100", "/session/session_alice_100", "Unresolved Alice"),
+			entry("plan", "alice-plan", "/plan/alice-plan", "Alice plan"),
+		]);
+		let client!: QueryClient;
+		const dialog = await openPalette([], "/", (queryClient) => {
+			client = queryClient;
+		});
+		await waitFor(() =>
+			expect(client.getQueryState(sessionQueryKeys.identity("session_alice_100"))?.status).toBe("error"),
+		);
+		expect(recentsGroup(dialog)).toStrictEqual([{value: "recent:plan:alice-plan", label: "Alice plan"}]);
+		expect(fetch.mock.calls.map(([url]) => url)).toStrictEqual(["/api/sessions/session_alice_100/identity"]);
+	});
+
+	it("excludes the current resolved session even when history used its UUID", async () => {
+		saveRecents([
+			entry("session", "local-alice", "/session/local-alice", "Current Alice"),
+			entry("plan", "alice-plan", "/plan/alice-plan", "Alice plan"),
+		]);
+		const dialog = await openPalette([], "/session/session_alice_100", (client) => {
+			client.setQueryData(sessionQueryKeys.identity("session_alice_100"), {sessionId: "local-alice"});
+		});
+		expect(recentsGroup(dialog)).toStrictEqual([{value: "recent:plan:alice-plan", label: "Alice plan"}]);
+	});
 
 	it("lists visited pages of every kind in MRU order, skipping the current page and subagents", async () => {
 		saveRecents([

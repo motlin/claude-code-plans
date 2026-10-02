@@ -6,6 +6,7 @@ import {
 	loadRecents,
 	push,
 	remove,
+	resolveRecentSessions,
 	retitle,
 	routeToRecent,
 	saveRecents,
@@ -210,5 +211,48 @@ describe("storage", () => {
 		expect(() => saveRecents([session("a")], new ThrowingStorage())).not.toThrow();
 		expect(loadRecents(null)).toEqual([]);
 		expect(() => saveRecents([session("a")], null)).not.toThrow();
+	});
+});
+
+describe("resolved recent session identities", () => {
+	const alias: RecentEntry = {
+		key: "session:session_alice_100",
+		kind: "session",
+		href: "/session/session_alice_100",
+		title: "Alice visit",
+	};
+	const local: RecentEntry = {
+		key: "session:local-alice",
+		kind: "session",
+		href: "/session/local-alice",
+		title: "Earlier visit",
+	};
+
+	it("resolves and deduplicates aliases in visit order while retaining unresolved navigation entries", () => {
+		const pending: RecentEntry = {
+			...alias,
+			key: "session:session_bob_100",
+			href: "/session/session_bob_100",
+			title: "Bob visit",
+		};
+		expect(
+			resolveRecentSessions([alias, pending, local], (id) => (id === "session_alice_100" ? "local-alice" : null)),
+		).toStrictEqual([{...alias, key: "session:local-alice"}, pending]);
+	});
+
+	it("keeps an older UUID title when the newest alias visit has no title", () => {
+		const {title: _title, ...untitledAlias} = alias;
+		expect(resolveRecentSessions([untitledAlias, local], () => "local-alice")).toStrictEqual([
+			{...untitledAlias, key: "session:local-alice", title: "Earlier visit"},
+		]);
+	});
+
+	it.each([null, "local-bob"])("keeps a known UUID owner when its saved alias resolves to %s", (owner) => {
+		expect(resolveRecentSessions([{...local, href: alias.href}], () => owner)).toStrictEqual([local]);
+	});
+
+	it("keeps a verified alias href for its known UUID owner", () => {
+		const verified = {...local, href: alias.href};
+		expect(resolveRecentSessions([verified], () => "local-alice")).toStrictEqual([verified]);
 	});
 });

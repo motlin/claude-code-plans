@@ -60,6 +60,44 @@ export function routeToRecent(pathname: string): RecentTarget | null {
 	}
 }
 
+/** Resolve session identities without changing the captured visit order or rebinding a known local owner. */
+export function resolveRecentSessions(
+	entries: readonly RecentEntry[],
+	resolveAlias: (alias: string) => string | null,
+): RecentEntry[] {
+	const positions = new Map<string, number>();
+	const result: RecentEntry[] = [];
+	for (const entry of entries) {
+		let resolved = entry;
+		if (entry.kind === "session" || entry.kind === "subagents") {
+			const id = entry.key.slice(entry.kind.length + 1);
+			const sessionId = id.startsWith("session_") ? resolveAlias(id) : id;
+			if (sessionId !== null) {
+				const key = `${entry.kind}:${sessionId}`;
+				const hrefTarget = routeToRecent(entry.href);
+				const hrefId = hrefTarget?.key.slice(hrefTarget.kind.length + 1);
+				const hrefOwner = hrefId?.startsWith("session_") ? resolveAlias(hrefId) : hrefId;
+				const href =
+					hrefTarget?.kind === entry.kind && hrefOwner === sessionId
+						? entry.href
+						: `/session/${sessionId}${entry.kind === "subagents" ? "/subagents" : ""}`;
+				resolved = {...entry, key, href};
+			}
+		}
+		const previousIndex = positions.get(resolved.key);
+		if (previousIndex !== undefined) {
+			const previous = result[previousIndex]!;
+			if (previous.title === undefined && resolved.title !== undefined) {
+				result[previousIndex] = {...previous, title: resolved.title};
+			}
+			continue;
+		}
+		positions.set(resolved.key, result.length);
+		result.push(resolved);
+	}
+	return result;
+}
+
 /** Moves `entry` to the front, dropping any older entry with its key and capping at 30. */
 export function push(entries: readonly RecentEntry[], entry: RecentEntry): RecentEntry[] {
 	const existing = entries.find((candidate) => candidate.key === entry.key);

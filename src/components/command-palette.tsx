@@ -41,6 +41,7 @@ import {
 import {useActiveSessionsIfAvailable} from "../hooks/use-claude-events";
 import type {PaletteMode} from "../hooks/use-command-palette";
 import {useDebouncedValue} from "../hooks/use-debounced-value";
+import {sessionIdentityQueryOptions} from "../lib/api/session-identity";
 import {useSessionIdentity} from "../hooks/use-session-identity";
 import {useSessionArchive} from "../hooks/use-session-archive";
 import {artifactsQueryOptions, type ArtifactSummary} from "../lib/api/artifacts";
@@ -94,7 +95,7 @@ import {
 } from "../lib/palette-start-session";
 import {pin, unpin, usePins} from "../lib/pin-store";
 import {toMdSlug} from "../lib/md-slug";
-import {loadRecents, routeToRecent, type RecentEntry} from "../lib/recents-history";
+import {loadRecents, resolveRecentSessions, routeToRecent, type RecentEntry} from "../lib/recents-history";
 import {filterRoutines, formatNextRun, routineTitle, sortRoutines} from "../lib/routines";
 import {paletteFilterLabels, paletteTypeLabels} from "../lib/schema-choices";
 import {relativeBucket, titleMatches, type Snippet, type TextMatch} from "../lib/search-text";
@@ -440,7 +441,7 @@ function mruRecents(
 		if (entry.key === currentKey) continue;
 		if (entry.kind === "session") {
 			const id = entry.key.slice("session:".length);
-			if (attentionIds.has(id)) continue;
+			if (id.startsWith("session_") || attentionIds.has(id)) continue;
 			recents.push({
 				kind: "session",
 				id,
@@ -609,6 +610,30 @@ function useCurrentSessionId(): string | undefined {
 	return useSessionIdentity(routeId) ?? undefined;
 }
 
+/** Keep this opening's MRU fixed while its legacy alias identities finish loading. */
+function usePaletteHistory(): RecentEntry[] {
+	const [snapshot] = useState(loadRecents);
+	const aliases = useMemo(
+		() => [
+			...new Set(
+				snapshot
+					.filter((entry) => entry.kind === "session")
+					.map((entry) => entry.key.slice("session:".length))
+					.filter((id) => id.startsWith("session_")),
+			),
+		],
+		[snapshot],
+	);
+	const identities = useQueries({queries: aliases.map(sessionIdentityQueryOptions)});
+	const owners = new Map(
+		aliases.map((alias, index) => {
+			const identity = identities[index];
+			return [alias, identity?.isSuccess ? identity.data.sessionId : null] as const;
+		}),
+	);
+	return resolveRecentSessions(snapshot, (alias) => owners.get(alias) ?? null);
+}
+
 interface CommandPaletteProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
@@ -684,10 +709,15 @@ function PalettePopup({
 	}, []);
 
 	const pathname = useRouterState({select: (state) => state.location.pathname});
-	// Read once per open: the popup mounts only while the palette is open.
-	const [history] = useState(loadRecents);
+	const history = usePaletteHistory();
 	const {attention, recents} = useMemo(
-		() => paletteGroups(data?.sessions ?? [], history, routeToRecent(pathname)?.key, currentSessionId),
+		() =>
+			paletteGroups(
+				data?.sessions ?? [],
+				history,
+				currentSessionId === undefined ? routeToRecent(pathname)?.key : `session:${currentSessionId}`,
+				currentSessionId,
+			),
 		[data, history, pathname, currentSessionId],
 	);
 
