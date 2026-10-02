@@ -203,7 +203,7 @@ export function SettingsDialog() {
 					finalFocus={finalFocus}
 					data-perf-overlay="settings_modal"
 					data-perf-screen={customize === null ? tab : `customize-${customize.section}`}
-					className="fixed inset-8 z-50 m-auto flex max-h-[50rem] max-w-[1024px] overflow-hidden rounded-card bg-[var(--menu-bg)] text-primary shadow-[var(--menu-shadow)] outline-none"
+					className="fixed inset-4 z-50 m-auto flex max-h-[50rem] max-w-[1024px] overflow-hidden rounded-card bg-[var(--menu-bg)] text-primary shadow-[var(--menu-shadow)] outline-none"
 				>
 					<nav
 						aria-label="Settings"
