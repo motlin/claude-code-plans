@@ -25,7 +25,6 @@ export function NewSessionRow() {
 
 	return (
 		<div className="flex items-center">
-			<span className="w-6 shrink-0" />
 			<Link to="/" onClick={onClick} aria-keyshortcuts={shortcut.ariaKeyShortcuts} className={ROW_CLASS}>
 				<span className="df-leading-slot">
 					<Plus aria-hidden="true" />
