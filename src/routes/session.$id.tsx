@@ -1,3 +1,6 @@
+import {SessionRouteIdentity} from "../components/session-route-identity";
+import {sessionIdentityFailure, sessionIdentityQueryOptions} from "../lib/api/session-identity";
+import {sessionScrollKey} from "../lib/session-route-location";
 import {createFileRoute, useRouter} from "@tanstack/react-router";
 import type {ErrorComponentProps} from "@tanstack/react-router";
 import {useQuery} from "@tanstack/react-query";
@@ -16,11 +19,27 @@ export const Route = createFileRoute("/session/$id")({
 	// component renders the shell plus a skeleton instead. Reading the detail
 	// cache is synchronous, so a warm visit still titles the tab immediately.
 	loader: ({context: {queryClient}, params}) => {
-		void queryClient.prefetchQuery(sessionDetailQueryOptions(params.id));
-		void queryClient.prefetchQuery(transcriptQueryOptions(params.id));
-		void queryClient.prefetchQuery(sessionSubagentsQueryOptions(params.id));
+		let sessionId = params.id;
+		if (sessionId.startsWith("session_")) {
+			const options = sessionIdentityQueryOptions(sessionId);
+			const identity = queryClient.getQueryState(options.queryKey);
+			// A title refresh must not restart a terminal failure's automatic retries.
+			if (identity?.status === "error") return {title: sessionIdentityFailure(identity.error).title};
+			void queryClient.prefetchQuery(options);
+			if (
+				identity?.status !== "success" ||
+				!identity.data ||
+				identity.isInvalidated ||
+				identity.fetchStatus !== "idle"
+			)
+				return undefined;
+			sessionId = identity.data.sessionId;
+		}
+		void queryClient.prefetchQuery(sessionDetailQueryOptions(sessionId));
+		void queryClient.prefetchQuery(transcriptQueryOptions(sessionId));
+		void queryClient.prefetchQuery(sessionSubagentsQueryOptions(sessionId));
 		void queryClient.prefetchQuery(herdrPanesQueryOptions);
-		return queryClient.getQueryData(sessionDetailQueryOptions(params.id).queryKey);
+		return queryClient.getQueryData(sessionDetailQueryOptions(sessionId).queryKey);
 	},
 	errorComponent: SessionErrorComponent,
 	head: ({loaderData}) => ({
@@ -88,19 +107,38 @@ function useSessionHeadTitle(sessionId: string): void {
 
 function SessionRouteComponent() {
 	const params = Route.useParams();
+	return (
+		<SessionRouteIdentity routeId={params.id}>
+			{(sessionId, routeId) => <ResolvedSessionRoute sessionId={sessionId} routeId={routeId} />}
+		</SessionRouteIdentity>
+	);
+}
+
+function ResolvedSessionRoute({sessionId, routeId}: {sessionId: string; routeId: string}) {
+	const router = useRouter();
 	const {pane} = Route.useSearch();
 	const navigate = Route.useNavigate();
-	useSessionHeadTitle(params.id);
+	useSessionHeadTitle(sessionId);
 	// The deep link is a one-shot request: drop it once the pane opened so a
 	// reload or Back does not reopen a pane the user has since closed.
 	const clearRequestedPane = useCallback(() => {
-		void navigate({search: {}, replace: true});
-	}, [navigate]);
+		void navigate({
+			search: {},
+			state: (state) => ({
+				...state,
+				sessionIdentity: {sessionId, routeId, scrollKey: sessionScrollKey(router.state.location, sessionId)},
+			}),
+			hash: true,
+			replace: true,
+			resetScroll: false,
+			hashScrollIntoView: false,
+		});
+	}, [navigate, router, sessionId, routeId]);
 
 	return (
 		<SessionPage
-			sessionId={params.id}
-			routeId={params.id}
+			sessionId={sessionId}
+			routeId={routeId}
 			requestedPane={pane}
 			onRequestedPaneHandled={clearRequestedPane}
 		/>
