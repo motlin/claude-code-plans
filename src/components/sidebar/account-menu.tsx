@@ -89,10 +89,12 @@ export function AccountMenu() {
 					<span className="max-w-full shrink-0 truncate whitespace-nowrap text-secondary">{name}</span>
 					{data?.planLabel !== undefined && (
 						<>
-							<span aria-hidden="true" className="text-muted">
+							<span aria-hidden="true" className="text-[12px]/[18px] text-muted">
 								·
 							</span>
-							<span className="min-w-0 whitespace-nowrap text-muted">{data.planLabel}</span>
+							<span className="min-w-0 whitespace-nowrap text-[12px]/[18px] text-muted">
+								{data.planLabel}
+							</span>
 						</>
 					)}
 				</span>
