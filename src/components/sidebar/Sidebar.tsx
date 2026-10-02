@@ -163,6 +163,7 @@ export function Sidebar({
 				</div>
 			</div>
 
+			<div aria-hidden="true" className="h-2 shrink-0" />
 			{body}
 			<SidebarResizeHandle width={width} onHide={onToggle ?? toggleSidebarCollapsed} />
 		</nav>
