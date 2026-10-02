@@ -28,6 +28,7 @@ const DENSITY_CLASSES = {
 		singleLine: "h-6 items-center",
 		twoLine: "min-h-[41px] items-start",
 		separator: "mx-2",
+		shortcut: "",
 	},
 	comfortable: {
 		popup: "rounded-card",
@@ -36,6 +37,7 @@ const DENSITY_CLASSES = {
 		singleLine: "h-8 items-center",
 		twoLine: "min-h-8 items-start",
 		separator: "mx-2.5",
+		shortcut: "[&>kbd]:text-[13px]",
 	},
 } as const;
 
@@ -206,11 +208,12 @@ export function MenuContent({
 }
 
 function ItemTrailing({accelerator, shortcut}: {accelerator?: string; shortcut?: string}) {
+	const sizing = DENSITY_CLASSES[useContext(MenuDensityContext)];
 	const keys = shortcut ?? accelerator;
 	if (keys === undefined) return null;
 	return (
 		<span aria-hidden="true" className={`${TRAILING_CLASS} pointer-coarse:hidden`}>
-			<Shortcut keys={keys} variant="text" />
+			<Shortcut keys={keys} variant="text" className={sizing.shortcut} />
 		</span>
 	);
 }
