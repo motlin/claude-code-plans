@@ -30,7 +30,7 @@ export const SettingsFlashContext = createContext<SettingsFlash | null>(null);
 export function SettingsSection({title, children}: {title: string; children: ReactNode}) {
 	return (
 		<section className="mb-8 last:mb-0">
-			<h3 className="text-[15px] leading-[20px] font-[580] text-primary">{title}</h3>
+			<h3 className="mb-4 text-[15px] leading-[20px] font-[580] text-primary">{title}</h3>
 			<div className="divide-y divide-subtle">{children}</div>
 		</section>
 	);
