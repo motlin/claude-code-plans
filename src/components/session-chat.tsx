@@ -2218,7 +2218,7 @@ function ContentBlock({
 	if (block.type === "text" && typeof block.text === "string") {
 		if (!block.text.trim()) return null;
 		return (
-			<div className="relative min-w-0 text-body text-primary">
+			<div className="relative min-w-0 text-body text-primary" data-transcript-prose>
 				<ProseMarkdown markdown={block.text} />
 				<DebugLink sessionId={sessionId} uuid={line.uuid} className="absolute top-0 right-0" />
 			</div>
