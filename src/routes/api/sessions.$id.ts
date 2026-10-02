@@ -16,9 +16,11 @@ export const Route = createFileRoute("/api/sessions/$id")({
 					getSubagentById,
 					isSessionArchived,
 				} = await import("../../lib/db/queries");
-				const {sessions} = await import("../../lib/db/schema");
-				const {canonicalSessionRouteId} = await import("../../lib/db/bridge-session-index");
-				const {eq} = await import("drizzle-orm");
+				const {sessions, metadata} = await import("../../lib/db/schema");
+				const {canonicalSessionRouteId, sessionBridgeMetadataKey} =
+					await import("../../lib/db/bridge-session-index");
+				const {isCurrentlyIndexing} = await import("../../lib/db/indexer");
+				const {eq, sql} = await import("drizzle-orm");
 				const {getSummary} = await import("../../lib/summaries");
 				const {getCurrentSessionMessageIndex, getSessionViewedState} =
 					await import("../../lib/db/viewed-state");
@@ -34,6 +36,8 @@ export const Route = createFileRoute("/api/sessions/$id")({
 				const {id} = params;
 				const {index, summaries} = getDb();
 
+				// Capture the indexing state with the DB snapshot, before Git/provenance awaits.
+				const indexing = isCurrentlyIndexing();
 				const sessionRow = index
 					.select({
 						title: sessions.title,
@@ -41,6 +45,9 @@ export const Route = createFileRoute("/api/sessions/$id")({
 						projectId: sessions.projectId,
 						mtimeMs: sessions.mtimeMs,
 						canonicalRouteId: canonicalSessionRouteId,
+						canonicalRoutePending: sql<number>`CASE WHEN ${indexing ? 1 : 0} THEN NOT EXISTS (
+							SELECT 1 FROM ${metadata} WHERE ${metadata.key} = ${sessionBridgeMetadataKey(id)}
+						) ELSE 0 END`,
 					})
 					.from(sessions)
 					.where(eq(sessions.id, id))
@@ -129,6 +136,7 @@ export const Route = createFileRoute("/api/sessions/$id")({
 				};
 
 				if (sessionRow.canonicalRouteId !== null) detail.canonicalRouteId = sessionRow.canonicalRouteId;
+				if (sessionRow.canonicalRoutePending === 1) detail.canonicalRoutePending = true;
 				const pr = getSessionPrLink(index, id);
 				if (pr !== null) detail.pr = pr;
 

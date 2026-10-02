@@ -82,6 +82,8 @@ export const SessionDetailResponse = z
 		homeRoot: z.string(),
 		/** Unique Remote Control alias suitable for this local session's URL. */
 		canonicalRouteId: z.string().optional(),
+		/** This response predates completion of its Remote Control alias backfill. */
+		canonicalRoutePending: z.literal(true).optional(),
 		imageRoots: z.array(z.string()),
 		archived: z.boolean(),
 		summary: z.string().nullable(),

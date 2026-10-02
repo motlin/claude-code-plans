@@ -7,6 +7,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {openTestDb, type AppDb} from "../src/lib/db/connection";
 import {fullScan, indexJsonlFile} from "../src/lib/db/indexer";
 import * as schema from "../src/lib/db/schema";
+import * as sessionFiles from "../src/lib/sessions";
 import {currentPerfCounters, withPerfScope} from "../src/lib/perf/server-scope";
 import {Route as IdentityRoute} from "../src/routes/api/sessions.$id.identity";
 import {Route as DetailRoute} from "../src/routes/api/sessions.$id";
@@ -247,7 +248,69 @@ describe("indexed session identity API", () => {
 				"SEARCH remote_bridge USING INDEX sqlite_autoindex_metadata_1 (key=?)",
 				"SCAN bridge_owner VIRTUAL TABLE INDEX 1:",
 				"SEARCH live_owner USING COVERING INDEX sqlite_autoindex_sessions_1 (id=?)",
+				"SCALAR SUBQUERY 3",
+				"SEARCH metadata USING COVERING INDEX sqlite_autoindex_metadata_1 (key=?)",
 			],
 		]);
+	});
+});
+
+describe("detail alias backfill snapshot", () => {
+	it("marks only absent forward metadata while indexing, including completed negative records", async () => {
+		await indexSession(ALICE, []);
+		indexing = true;
+		const completedNegative = await (await get(DetailRoute, ALICE)).json();
+		db.index
+			.delete(schema.metadata)
+			.where(eq(schema.metadata.key, `bridge:v1:local:${ALICE}`))
+			.run();
+		const pending = await (await get(DetailRoute, ALICE)).json();
+		indexing = false;
+		const ready = await (await get(DetailRoute, ALICE)).json();
+		expect({completedNegative, pending, ready}).toStrictEqual({
+			completedNegative: expectedDetail(),
+			pending: {...expectedDetail(), canonicalRoutePending: true},
+			ready: expectedDetail(),
+		});
+	});
+
+	it("retains the pending snapshot when indexing finishes before a delayed detail response", async () => {
+		await indexSession(ALICE, []);
+		db.index
+			.delete(schema.metadata)
+			.where(eq(schema.metadata.key, `bridge:v1:local:${ALICE}`))
+			.run();
+		let entered!: () => void;
+		const started = new Promise<void>((resolve) => {
+			entered = resolve;
+		});
+		let finish!: () => void;
+		const pending = new Promise<null>((resolve) => {
+			finish = () => resolve(null);
+		});
+		vi.spyOn(sessionFiles, "readSession").mockImplementationOnce(() => {
+			entered();
+			return pending;
+		});
+		indexing = true;
+		const response = get(DetailRoute, ALICE);
+		await started;
+		indexing = false;
+		finish();
+		expect(await (await response).json()).toStrictEqual({...expectedDetail(), canonicalRoutePending: true});
+	});
+
+	it("keeps the pending marker in the existing detail SQL statement", async () => {
+		await indexSession(ALICE, []);
+		db.index
+			.delete(schema.metadata)
+			.where(eq(schema.metadata.key, `bridge:v1:local:${ALICE}`))
+			.run();
+		indexing = true;
+		const result = await withPerfScope("pending-detail", async () => ({
+			body: await (await get(DetailRoute, ALICE)).json(),
+			sql: currentPerfCounters()!.sql.count,
+		}));
+		expect(result).toStrictEqual({body: {...expectedDetail(), canonicalRoutePending: true}, sql: 12});
 	});
 });

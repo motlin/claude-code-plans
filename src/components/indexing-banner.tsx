@@ -31,14 +31,41 @@ export function IndexingBanner() {
 		let cancelled = false;
 		let previous: boolean | undefined;
 		const retried = new Set<string>();
+		const reconciledDetails = new Set<string>();
 
 		async function poll() {
 			try {
 				const result = await apiFetch("/api/indexing-status", IndexingStatusResponse);
 				if (cancelled) return;
 				setIsIndexing(result.isIndexing);
-				if (result.isIndexing) retried.clear();
-				else {
+				if (result.isIndexing) {
+					retried.clear();
+					reconciledDetails.clear();
+				} else {
+					// Repeat this check on existing ready polls to catch a late pre-index response.
+					const details = queryClient.getQueryCache().findAll({
+						queryKey: sessionQueryKeys.all(),
+						type: "active",
+						predicate: (query) => {
+							const data = query.state.data;
+							return (
+								query.queryKey.length === 2 &&
+								!reconciledDetails.has(query.queryHash) &&
+								typeof data === "object" &&
+								data !== null &&
+								"canonicalRoutePending" in data &&
+								data.canonicalRoutePending === true
+							);
+						},
+					});
+					for (const query of details) {
+						reconciledDetails.add(query.queryHash);
+						const filters = {queryKey: query.queryKey, exact: true};
+						// Cancel the old retryer first so a late response cannot replace fresh detail.
+						void queryClient.cancelQueries(filters).then(async () => {
+							if (!cancelled) await queryClient.invalidateQueries(filters);
+						});
+					}
 					const completed = previous === true;
 					const pending = queryClient
 						.getQueryCache()

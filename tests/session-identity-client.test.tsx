@@ -1,13 +1,13 @@
 // @vitest-environment jsdom
 
-import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
+import {QueryClient, QueryClientProvider, useQuery} from "@tanstack/react-query";
 import {act, cleanup, render, renderHook, screen, waitFor} from "@testing-library/react";
 import type {ReactNode} from "react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {IndexingBanner} from "../src/components/indexing-banner";
 import {useSessionIdentity} from "../src/hooks/use-session-identity";
 import {invalidateSessionIdentities} from "../src/lib/api/session-identity";
-import {sessionQueryKeys} from "../src/lib/api/sessions";
+import {sessionDetailQueryOptions, sessionQueryKeys} from "../src/lib/api/sessions";
 
 const ALIAS = "session_alice_100";
 const ALICE = "session-alice";
@@ -171,6 +171,147 @@ describe("indexing completion catch-up", () => {
 			afterCatchUp: 6,
 			afterWaiting: 6,
 			identity: "Unresolved",
+		});
+	});
+});
+
+const DETAIL = {
+	title: "Alice session",
+	projectName: "Example",
+	projectId: "example",
+	homeRoot: "/tmp/example",
+	imageRoots: [],
+	archived: false,
+	summary: null,
+	projectPath: null,
+	gitBranch: null,
+	cwd: null,
+	gitSha: null,
+	gitClean: null,
+	messageCount: 0,
+	pendingTaskCount: 0,
+	viewedState: {
+		currentMessageIndex: -1,
+		lastViewedMessageIndex: -1,
+		newMessageCount: 0,
+		reviewTargetMessageIndex: -1,
+		viewedAnywhere: true,
+		viewedInCcp: true,
+		viewedInHerdr: false,
+	},
+};
+function DetailProbe({id}: {id: string}) {
+	const result = useQuery(sessionDetailQueryOptions(id));
+	return <output data-testid={id}>{result.data?.canonicalRouteId ?? result.data?.title ?? "Loading"}</output>;
+}
+
+describe("active detail alias backfill catch-up", () => {
+	it("refreshes only active marked detail once on ready and preserves unmarked/inactive caches", async () => {
+		vi.useFakeTimers();
+		let indexing = true;
+		client.setQueryData(sessionQueryKeys.detail(ALICE), {...DETAIL, canonicalRoutePending: true});
+		client.setQueryData(sessionQueryKeys.detail(BOB), DETAIL);
+		client.setQueryData(sessionQueryKeys.detail("session-charlie"), {...DETAIL, canonicalRoutePending: true});
+		const fetcher = vi.fn((url: string) =>
+			Promise.resolve(
+				Response.json(
+					url === "/api/indexing-status" ? {isIndexing: indexing} : {...DETAIL, canonicalRouteId: ALIAS},
+				),
+			),
+		);
+		vi.stubGlobal("fetch", fetcher);
+		render(
+			<Wrapper>
+				<IndexingBanner />
+				<DetailProbe id={ALICE} />
+				<DetailProbe id={BOB} />
+			</Wrapper>,
+		);
+		await act(() => vi.advanceTimersByTimeAsync(1));
+		indexing = false;
+		await act(() => vi.advanceTimersByTimeAsync(30_001));
+		expect({
+			requests: fetcher.mock.calls.filter(([url]) => url !== "/api/indexing-status"),
+			alice: client.getQueryData(sessionQueryKeys.detail(ALICE)),
+			bob: client.getQueryData(sessionQueryKeys.detail(BOB)),
+			charlie: client.getQueryData(sessionQueryKeys.detail("session-charlie")),
+		}).toStrictEqual({
+			requests: [[`/api/sessions/${ALICE}`, {credentials: "same-origin"}]],
+			alice: {...DETAIL, canonicalRouteId: ALIAS},
+			bob: DETAIL,
+			charlie: {...DETAIL, canonicalRoutePending: true},
+		});
+	});
+
+	it("catches a marked result arriving after the first ready sample and cannot loop on a still-marked refresh", async () => {
+		let indexing = false;
+		vi.useFakeTimers();
+		const old = deferredResponse();
+		let detailRequests = 0;
+		const fetcher = vi.fn((url: string) => {
+			if (url === "/api/indexing-status") return Promise.resolve(Response.json({isIndexing: indexing}));
+			detailRequests++;
+			return detailRequests === 1
+				? old.promise
+				: Promise.resolve(Response.json({...DETAIL, canonicalRoutePending: true}));
+		});
+		vi.stubGlobal("fetch", fetcher);
+		render(
+			<Wrapper>
+				<IndexingBanner />
+				<DetailProbe id={ALICE} />
+			</Wrapper>,
+		);
+		await act(() => vi.advanceTimersByTimeAsync(1));
+		await act(async () => old.resolve(Response.json({...DETAIL, canonicalRoutePending: true})));
+		await act(() => vi.advanceTimersByTimeAsync(30_001));
+		const afterCatchUp = detailRequests;
+		await act(() => vi.advanceTimersByTimeAsync(30_000));
+		expect({
+			afterCatchUp,
+			afterWaiting: detailRequests,
+			cached: client.getQueryData(sessionQueryKeys.detail(ALICE)),
+		}).toStrictEqual({afterCatchUp: 2, afterWaiting: 2, cached: {...DETAIL, canonicalRoutePending: true}});
+		indexing = true;
+		await act(() => vi.advanceTimersByTimeAsync(3001));
+		indexing = false;
+		await act(() => vi.advanceTimersByTimeAsync(30_001));
+		expect({
+			afterSecondEpisode: detailRequests,
+			cached: client.getQueryData(sessionQueryKeys.detail(ALICE)),
+		}).toStrictEqual({afterSecondEpisode: 3, cached: {...DETAIL, canonicalRoutePending: true}});
+	});
+
+	it("cancels an old marked detail refresh before replacing it with ready metadata", async () => {
+		vi.useFakeTimers();
+		const old = deferredResponse();
+		let detailRequests = 0;
+		client.setQueryData(sessionQueryKeys.detail(ALICE), {...DETAIL, canonicalRoutePending: true});
+		const fetcher = vi.fn((url: string) => {
+			if (url === "/api/indexing-status") return Promise.resolve(Response.json({isIndexing: false}));
+			detailRequests++;
+			return detailRequests === 1
+				? old.promise
+				: Promise.resolve(Response.json({...DETAIL, canonicalRouteId: ALIAS}));
+		});
+		vi.stubGlobal("fetch", fetcher);
+		// Begin an explicit refresh of cached pending data before mounting the ready poll.
+		const refreshing = client
+			.fetchQuery({...sessionDetailQueryOptions(ALICE), staleTime: 0})
+			.catch(() => undefined);
+		render(
+			<Wrapper>
+				<IndexingBanner />
+				<DetailProbe id={ALICE} />
+			</Wrapper>,
+		);
+		await act(() => vi.advanceTimersByTimeAsync(1));
+		await act(async () => old.resolve(Response.json({...DETAIL, canonicalRoutePending: true})));
+		await refreshing;
+		await act(() => vi.advanceTimersByTimeAsync(30_001));
+		expect({detailRequests, cached: client.getQueryData(sessionQueryKeys.detail(ALICE))}).toStrictEqual({
+			detailRequests: 2,
+			cached: {...DETAIL, canonicalRouteId: ALIAS},
 		});
 	});
 });
