@@ -1157,7 +1157,12 @@ function VirtualizedSessionEntries({
 		const adjustment = pendingScrollAdjustmentRef.current;
 		pendingScrollAdjustmentRef.current = 0;
 		if (scroller && adjustment !== 0) {
-			scroller.scrollTop += adjustment;
+			const {scrollHeight, scrollTop, clientHeight} = scrollMetrics(scroller);
+			// Shrinking content may already clamp the browser to its new bottom.
+			// Subtracting the same height again moves the reader away from the end.
+			if (adjustment > 0 || scrollTop < Math.max(0, scrollHeight - clientHeight)) {
+				scroller.scrollTop += adjustment;
+			}
 		}
 		updateVisibleRange();
 	}, [measuredHeights, updateVisibleRange]);

@@ -11,7 +11,8 @@ import {
 import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, expect, it, vi} from "vite-plus/test";
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
-import {StrictMode} from "react";
+import {StrictMode, useRef} from "react";
+import {SessionDock} from "../src/components/session-dock";
 import {SessionRouteIdentity} from "../src/components/session-route-identity";
 import {sessionIdentityQueryOptions} from "../src/lib/api/session-identity";
 import {SessionChat} from "../src/components/session-chat";
@@ -38,7 +39,16 @@ const lines: SessionLine[] = Array.from({length: 80}, (_, index) => ({
 }));
 
 // Simulate browser geometry, not the virtualizer's estimated height calculations.
-const rowHeight = (index: number) => [200, 500, 150, 400][index % 4]!;
+const rowAdjustments = new Map<number, number>();
+let footerExtent = 0;
+let tailGeometry = false;
+let smoothTarget: number | undefined;
+const frames = new Map<number, FrameRequestCallback>();
+let nextFrame = 0;
+const nativeScrollTo = Object.getOwnPropertyDescriptor(Element.prototype, "scrollTo");
+const nativeScrollIntoView = Object.getOwnPropertyDescriptor(Element.prototype, "scrollIntoView");
+const rowHeight = (index: number) =>
+	(tailGeometry && index === 39 ? 800 : [200, 500, 150, 400][index % 4]!) + (rowAdjustments.get(index) ?? 0);
 const viewportHeight = 600;
 let listWidth = 800;
 let phase = "initial";
@@ -60,7 +70,8 @@ function contentHeight(): number {
 	return (
 		spacerHeight("before") +
 		mountedRows().reduce((sum, row) => sum + rowHeight(Number(row.dataset["transcriptEntryIndex"])), 0) +
-		spacerHeight("after")
+		spacerHeight("after") +
+		footerExtent
 	);
 }
 function clampedPosition(): number {
@@ -100,6 +111,12 @@ class ControlledResizeObserver {
 }
 
 function installGeometry() {
+	rowAdjustments.clear();
+	tailGeometry = false;
+	footerExtent = 0;
+	smoothTarget = undefined;
+	frames.clear();
+	nextFrame = 0;
 	listWidth = 800;
 	restorationWindows.length = 0;
 	phase = "initial";
@@ -197,6 +214,11 @@ afterEach(() => {
 	vi.restoreAllMocks();
 	vi.unstubAllGlobals();
 	ControlledResizeObserver.active.clear();
+	if (nativeScrollTo) Object.defineProperty(Element.prototype, "scrollTo", nativeScrollTo);
+	else Reflect.deleteProperty(Element.prototype, "scrollTo");
+	if (nativeScrollIntoView) Object.defineProperty(Element.prototype, "scrollIntoView", nativeScrollIntoView);
+	else Reflect.deleteProperty(Element.prototype, "scrollIntoView");
+	frames.clear();
 });
 
 it.each([
@@ -317,6 +339,7 @@ function guardChat(source: object, layout = "example-layout", transcriptLines = 
 
 async function learnGuardMeasurements() {
 	const main = screen.getByTestId("main");
+	Object.defineProperty(main, "scrollHeight", {configurable: true, get: contentHeight});
 	Object.defineProperty(main, "clientHeight", {configurable: true, value: viewportHeight});
 	await settleMeasurements(main);
 	await act(async () => {
@@ -456,3 +479,226 @@ it("rejects geometry after an independent compact-summary disclosure changes", a
 	view.unmount();
 	expect({expanded, saves: remember.mock.calls}).toStrictEqual({expanded: "true", saves: []});
 });
+
+// T24 regression drafts: no execution yet. Geometry uses actual mounted rows plus an explicit footer extent.
+// Smooth animation interruption is modeled here; confirm its ordering in the independent browser control.
+function TailFixture({fresh, visit}: {fresh: boolean; visit: string}) {
+	const anchor = useRef<HTMLDivElement>(null);
+	return (
+		<main style={{overflowY: "auto"}} data-testid="main">
+			<div ref={anchor}>
+				<SessionChat
+					sessionId={LOCAL_ID}
+					initialScrollKey={visit}
+					lines={lines}
+					toolResultMap={new Map()}
+					shouldScrollToEnd={fresh}
+				/>
+				<div data-testid="test-footer">
+					<SessionDock anchorRef={anchor}>
+						<p>Fabricated composer footer</p>
+					</SessionDock>
+				</div>
+			</div>
+		</main>
+	);
+}
+function installTailGeometry(footer: number) {
+	installGeometry();
+	tailGeometry = true;
+	footerExtent = footer;
+	vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+		const id = ++nextFrame;
+		frames.set(id, callback);
+		return id;
+	});
+	vi.stubGlobal("cancelAnimationFrame", (id: number) => frames.delete(id));
+	Object.defineProperty(Element.prototype, "scrollIntoView", {
+		configurable: true,
+		value: function (this: Element) {
+			const main = document.querySelector("main")!;
+			// SessionChat's sentinel is before footer content. This is intentionally not total scrollHeight.
+			main.scrollTop = contentHeight() - footerExtent - viewportHeight;
+		},
+	});
+	Object.defineProperty(Element.prototype, "scrollTo", {
+		configurable: true,
+		value: function (this: Element, options: ScrollToOptions) {
+			if (options.behavior === "smooth") smoothTarget = options.top ?? this.scrollTop;
+			else this.scrollTop = options.top ?? this.scrollTop;
+		},
+	});
+}
+async function flushTailFrame(main: HTMLElement) {
+	await act(async () => {
+		const pending = [...frames.values()];
+		frames.clear();
+		for (const callback of pending) callback(performance.now());
+	});
+	await act(async () => fireEvent.scroll(main));
+}
+async function deliverTailMeasurements(main: HTMLElement) {
+	await act(async () => {
+		for (const observer of [...ControlledResizeObserver.active]) {
+			const observations = [...observer.elements]
+				.filter((element) => element.isConnected)
+				.map((target) => ({
+					target,
+					contentRect: target.getBoundingClientRect(),
+					borderBoxSize: [{blockSize: target.getBoundingClientRect().height, inlineSize: listWidth}],
+					contentBoxSize: [],
+					devicePixelContentBoxSize: [],
+				}));
+			observer.callback(observations, observer as unknown as ResizeObserver);
+		}
+	});
+	// Native scrolling from clamping/measurement commits is observed before the queued follow frame.
+	await act(async () => fireEvent.scroll(main));
+}
+async function settleTail(main: HTMLElement) {
+	for (let batch = 0; batch < 20; batch++) {
+		const before = JSON.stringify({
+			height: contentHeight(),
+			top: main.scrollTop,
+			rows: mountedRows().map((row) => row.dataset["perfLine"]),
+		});
+		await deliverTailMeasurements(main);
+		await flushTailFrame(main);
+		const after = JSON.stringify({
+			height: contentHeight(),
+			top: main.scrollTop,
+			rows: mountedRows().map((row) => row.dataset["perfLine"]),
+		});
+		if (before === after && frames.size === 0) return;
+	}
+	throw new Error("Tail geometry did not settle in twenty deterministic batches.");
+}
+function tailDistance(main: HTMLElement) {
+	return contentHeight() - main.clientHeight - main.scrollTop;
+}
+function shrinkAboveAnchor(pixels: number) {
+	const row = mountedRows().find(
+		(candidate) => rowTop(candidate) + rowHeight(Number(candidate.dataset["transcriptEntryIndex"])) <= 0,
+	);
+	if (!row) throw new Error("Expected a mounted row entirely above the visible anchor.");
+	const index = Number(row.dataset["transcriptEntryIndex"]);
+	rowAdjustments.set(index, (rowAdjustments.get(index) ?? 0) - pixels);
+	return index;
+}
+async function mountTail(fresh: boolean, visit: string) {
+	render(<TailFixture fresh={fresh} visit={visit} />);
+	const main = screen.getByTestId("main");
+	Object.defineProperty(main, "clientHeight", {configurable: true, value: viewportHeight});
+	Object.defineProperty(main, "scrollHeight", {configurable: true, get: contentHeight});
+	await flushTailFrame(main);
+	await flushTailFrame(main);
+	await settleTail(main);
+	return main;
+}
+
+it("keeps a fresh end-follow visit at the true end after a row above the anchor shrinks by 64px", async () => {
+	installTailGeometry(0);
+	const main = await mountTail(true, "example-fresh-tail-100");
+	// Establish a fully measured end before the isolated late resize.
+	await act(async () => {
+		main.scrollTop = contentHeight();
+		fireEvent.scroll(main);
+	});
+	await settleTail(main);
+	const before = tailDistance(main);
+	phase = "tail-shrink";
+	const changedRow = shrinkAboveAnchor(64);
+	await deliverTailMeasurements(main);
+	await flushTailFrame(main);
+	await settleTail(main);
+	expect({
+		before,
+		after: tailDistance(main),
+		changedRow,
+		writes: writes.filter((write) => write.phase === "tail-shrink"),
+	}).toStrictEqual({
+		before: 0,
+		after: 0,
+		changedRow: 38,
+		writes: [
+			{phase: "tail-shrink", requested: 13106, applied: 12506},
+			{phase: "tail-shrink", requested: 13106, applied: 12506},
+		],
+	});
+});
+
+it("the actual bottom button targets the full static extent including content after the chat sentinel", async () => {
+	installTailGeometry(120);
+	const main = await mountTail(false, "example-static-button-100");
+	await act(async () => {
+		main.scrollTop = contentHeight() - viewportHeight - 600;
+		fireEvent.scroll(main);
+	});
+	await settleTail(main);
+	const extent = contentHeight();
+	fireEvent.click(screen.getByRole("button", {name: "Scroll to bottom"}));
+	const target = smoothTarget;
+	if (target === undefined) throw new Error("Expected actual SessionDock smooth target.");
+	scrollPosition = Math.min(target, contentHeight() - viewportHeight);
+	smoothTarget = undefined;
+	await act(async () => fireEvent.scroll(main));
+	expect({target, extent, distance: tailDistance(main)}).toStrictEqual({
+		target: 13340,
+		extent: 13340,
+		distance: 0,
+	});
+});
+
+it.each([false, true])(
+	"preserves the reader's record after shrinking above an away-from-bottom visit (fresh=%s)",
+	async (fresh) => {
+		installTailGeometry(0);
+		const main = await mountTail(fresh, `example-away-tail-${fresh}`);
+		await act(async () => {
+			main.scrollTop = contentHeight() - viewportHeight - 1000;
+			fireEvent.wheel(main, {deltaY: -1000});
+			fireEvent.scroll(main);
+		});
+		await settleTail(main);
+		const anchor = mountedRows().find(
+			(row) => rowTop(row) <= 0 && rowTop(row) + rowHeight(Number(row.dataset["transcriptEntryIndex"])) > 0,
+		)!;
+		const before = {
+			index: Number(anchor.dataset["transcriptEntryIndex"]),
+			top: rowTop(anchor),
+			distance: tailDistance(main),
+		};
+		phase = "away-shrink";
+		const changedRow = shrinkAboveAnchor(64);
+		await deliverTailMeasurements(main);
+		await flushTailFrame(main);
+		await settleTail(main);
+		const currentAnchor = mountedRows().find(
+			(row) => Number(row.dataset["transcriptEntryIndex"]) === before.index,
+		)!;
+		expect({
+			before,
+			after: {
+				index: Number(currentAnchor.dataset["transcriptEntryIndex"]),
+				top: rowTop(currentAnchor),
+				distance: tailDistance(main),
+			},
+			changedRow,
+			writes: writes.filter((write) => write.phase === "away-shrink"),
+		}).toStrictEqual(
+			fresh
+				? {
+						before: {index: 36, top: -50, distance: 1000},
+						after: {index: 36, top: -50, distance: 1000},
+						changedRow: 35,
+						writes: [{phase: "away-shrink", requested: 11586, applied: 11586}],
+					}
+				: {
+						before: {index: 35, top: 0, distance: 1140},
+						after: {index: 35, top: 0, distance: 1140},
+						changedRow: 33,
+						writes: [{phase: "away-shrink", requested: 11116, applied: 11116}],
+					},
+		);
+	},
+);
