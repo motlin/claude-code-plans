@@ -2,6 +2,13 @@ import {queryOptions, type Query, type QueryClient} from "@tanstack/react-query"
 import {apiFetch, ApiResponseError} from "./client";
 import {SessionIdentityResponse, sessionQueryKeys} from "./sessions";
 
+/** Event callbacks share resolved identities without starting a request or accepting stale failed data. */
+export function getCachedSessionIdentity(queryClient: QueryClient, routeId: string | null): string | null {
+	if (routeId === null || !routeId.startsWith("session_")) return routeId;
+	const identity = queryClient.getQueryState<{sessionId: string}>(sessionQueryKeys.identity(routeId));
+	return identity?.status === "success" ? (identity.data?.sessionId ?? null) : null;
+}
+
 export const sessionIdentityQueryOptions = (routeId: string) =>
 	queryOptions({
 		queryKey: sessionQueryKeys.identity(routeId),

@@ -1,5 +1,6 @@
 import {useEffect} from "react";
 import {useRouter} from "@tanstack/react-router";
+import {useQueryClient} from "@tanstack/react-query";
 
 import {useSubscribeSessionStates} from "../hooks/use-claude-events";
 import {countSessionsNeedingAttention, stripAttentionCount} from "../lib/attention";
@@ -7,8 +8,10 @@ import {resolvedRouteTitle} from "../lib/route-title";
 import {displayState, type ActivityState} from "../lib/session-state";
 import {hasUnseenWork, subscribeUnseenWork} from "../lib/unread-store";
 import {useSettings} from "./settings-provider";
+import {getCachedSessionIdentity} from "../lib/api/session-identity";
+import {sessionQueryKeys} from "../lib/api/sessions";
 
-function viewedSessionId(router: ReturnType<typeof useRouter>): string | null {
+function viewedRouteId(router: ReturnType<typeof useRouter>): string | null {
 	const sessionMatch = router.state.matches.find((match) => match.routeId.startsWith("/session/$id"));
 	if (!sessionMatch || !("id" in sessionMatch.params)) return null;
 	const id = sessionMatch.params.id;
@@ -36,6 +39,7 @@ export function AttentionBadgeBridge(): null {
 	const {settings} = useSettings();
 	const subscribeSessionStates = useSubscribeSessionStates();
 	const router = useRouter();
+	const queryClient = useQueryClient();
 
 	useEffect(() => {
 		if (typeof document === "undefined" || typeof navigator === "undefined") return;
@@ -48,7 +52,8 @@ export function AttentionBadgeBridge(): null {
 				displayState: displayState(state, hasUnseenWork(sessionId)),
 				archived,
 			}));
-			const count = countSessionsNeedingAttention(sessions, settings, document.hidden, viewedSessionId(router));
+			const viewedSessionId = getCachedSessionIdentity(queryClient, viewedRouteId(router));
+			const count = countSessionsNeedingAttention(sessions, settings, document.hidden, viewedSessionId);
 			const title = routeTitle(router);
 			document.title = count > 0 ? `(${count}) ${title}` : title;
 			setAppBadge(count);
@@ -63,6 +68,12 @@ export function AttentionBadgeBridge(): null {
 			updateBadge();
 		});
 		const unsubscribeRouter = router.subscribe("onResolved", updateBadge);
+		const [sessionRoot, identityRoot] = sessionQueryKeys.identities();
+		const unsubscribeIdentity = queryClient.getQueryCache().subscribe((event) => {
+			if (event.type !== "added" && event.type !== "updated" && event.type !== "removed") return;
+			const key = event.query.queryKey;
+			if (key[0] === sessionRoot && key[1] === identityRoot && key[2] === viewedRouteId(router)) updateBadge();
+		});
 		document.addEventListener("visibilitychange", updateBadge);
 		updateBadge();
 
@@ -70,13 +81,14 @@ export function AttentionBadgeBridge(): null {
 			unsubscribeSessionStates();
 			unsubscribeUnseenWork();
 			unsubscribeRouter();
+			unsubscribeIdentity();
 			document.removeEventListener("visibilitychange", updateBadge);
 			document.title = routeTitle(router);
 			if (typeof navigator.clearAppBadge === "function") {
 				navigator.clearAppBadge().catch(() => {});
 			}
 		};
-	}, [router, settings, subscribeSessionStates]);
+	}, [router, settings, subscribeSessionStates, queryClient]);
 
 	return null;
 }

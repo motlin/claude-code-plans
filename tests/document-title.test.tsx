@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {
 	createMemoryHistory,
 	createRootRoute,
@@ -47,14 +48,15 @@ vi.mock("../src/components/settings-provider", async (importOriginal) => ({
 const {AttentionBadgeBridge} = await import("../src/components/attention-badge-bridge");
 
 function renderRoutedApp(initialPath: string) {
+	const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
 	const rootRoute = createRootRoute({
 		head: () => ({meta: [{charSet: "utf-8"}]}),
 		component: () => (
-			<>
+			<QueryClientProvider client={queryClient}>
 				<HeadContent />
 				<AttentionBadgeBridge />
 				<Outlet />
-			</>
+			</QueryClientProvider>
 		),
 	});
 	const routes = [
