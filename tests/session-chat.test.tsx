@@ -1321,15 +1321,30 @@ describe("SessionChat Agent row opening the Subagent pane", () => {
 			ariaExpanded: null,
 			spans: [
 				["shrink-0 text-body text-ink-muted group-hover/tool:text-secondary", "Ran agent"],
-				[
-					"truncate min-w-0 text-body text-ink-muted group-hover/tool:text-secondary",
-					"Commit lazy allocation fixup",
-				],
+				["truncate min-w-0 text-body text-primary", "Commit lazy allocation fixup"],
 				["shrink-0 text-t6", ""],
 			],
 			glyph: "lucide lucide-panel-right size-4",
 			body: false,
 		});
+	});
+
+	it.each([
+		{
+			state: "pending",
+			records: toolCallRecords([AGENT_CALL]).slice(0, 1),
+			expectedClass: "truncate min-w-0 text-body text-primary tool-shimmer",
+		},
+		{
+			state: "failed",
+			records: toolResultRecords(AGENT_CALL, "Fabricated failure", true),
+			expectedClass: "truncate min-w-0 text-body text-danger-ink",
+		},
+	])("preserves the $state resolved agent label treatment", ({records, expectedClass}) => {
+		const container = renderWithOpener(records, () => {});
+		expect([...agentRow(container).querySelectorAll("span.text-body")].map((span) => span.className)).toStrictEqual(
+			[expectedClass],
+		);
 	});
 
 	it('reads "Ran agent" followed by the description inside a group', () => {

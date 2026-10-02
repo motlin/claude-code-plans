@@ -2501,7 +2501,8 @@ function ToolCallRow({call, sessionId, nested = false}: {call: ClientToolCall; s
 			: isSkill
 				? "text-secondary"
 				: ink;
-	const paramClass = isSkill ? "text-primary" : labelClass;
+	const isCompletedPaneAgent = paneAgentId !== undefined && !call.isError && !pending;
+	const paramClass = isSkill || isCompletedPaneAgent ? "text-primary" : labelClass;
 	// A subagent row's chevron sits in the flat `t6` token upstream gives it,
 	// rather than the hover-reactive ink every other tool row uses.
 	const chevronClass = isAgent ? "shrink-0 self-center text-t6" : `shrink-0 ${ink}`;
