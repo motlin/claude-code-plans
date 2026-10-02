@@ -13,15 +13,16 @@ import {
 	type HistoryState,
 } from "@tanstack/react-router";
 import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
-import {useEffect} from "react";
+import {StrictMode, useEffect} from "react";
 import {afterEach, expect, it, vi} from "vite-plus/test";
-import {useMainScrollRestoration} from "../src/hooks/use-main-scroll-restoration";
+import {useMainScrollRestoration, type MainScrollRestorationSnapshot} from "../src/hooks/use-main-scroll-restoration";
 import {invalidateSessionIdentities, sessionIdentityQueryOptions} from "../src/lib/api/session-identity";
 import {sessionScrollKey} from "../src/lib/session-route-location";
 import {AttentionBadgeBridge} from "../src/components/attention-badge-bridge";
 import {sessionDetailQueryOptions, type SessionDetailData} from "../src/lib/api/sessions";
 import {Route as SessionRoute} from "../src/routes/session.$id";
 import {SessionChat} from "../src/components/session-chat";
+import {SessionRouteIdentity} from "../src/components/session-route-identity";
 
 const ALIAS = "session_alice_100";
 const ALICE = "local-alice-100";
@@ -41,16 +42,19 @@ vi.mock("../src/components/session-page", () => ({
 		sessionId,
 		routeId,
 		scrollKey,
+		scrollRestoration,
 		onRequestedPaneHandled,
 	}: {
 		sessionId: string;
 		routeId: string;
 		scrollKey?: string;
+		scrollRestoration?: MainScrollRestorationSnapshot;
 		onRequestedPaneHandled: () => void;
 	}) {
 		const locationKey = useLocation({select: (location) => sessionScrollKey(location, sessionId)});
 		const key = scrollKey ?? locationKey;
-		const restored = useMainScrollRestoration(key);
+		const lateRestored = useMainScrollRestoration(key);
+		const restored = scrollRestoration === undefined ? lateRestored : scrollRestoration.entry;
 		observed.owners.push(sessionId);
 		observed.pairs.push(`${sessionId}:${routeId}`);
 		useEffect(() => {
@@ -65,6 +69,8 @@ vi.mock("../src/components/session-page", () => ({
 				data-session={sessionId}
 				data-route={routeId}
 				data-restored={restored?.scrollY ?? "none"}
+				data-late-restored={lateRestored?.scrollY ?? "none"}
+				data-captured={scrollRestoration !== undefined}
 			>
 				{observed.renderChat && (
 					<SessionChat
@@ -155,6 +161,7 @@ async function setup({
 	configure,
 	initialState,
 	homeLoader,
+	strict = false,
 }: {
 	initial?: string;
 	cachedOwner?: string;
@@ -162,11 +169,13 @@ async function setup({
 	configure?: (client: QueryClient) => void;
 	initialState?: HistoryState;
 	homeLoader?: () => Promise<void>;
+	strict?: boolean;
 } = {}) {
 	vi.spyOn(window, "scrollTo").mockImplementation(() => {});
 	const response = deferredResponse();
 	const detailResponse = deferredResponse();
-	let lookup = () => response.promise;
+	// StrictMode may cancel and restart a lookup; each fetch owns a distinct response body.
+	let lookup = () => response.promise.then((result) => result.clone());
 	const fetcher = vi.fn((url: string, _init?: RequestInit) =>
 		url.endsWith("/identity")
 			? lookup()
@@ -212,7 +221,13 @@ async function setup({
 	await act(async () => {
 		render(
 			<QueryClientProvider client={client}>
-				<RouterProvider router={router} />
+				{strict ? (
+					<StrictMode>
+						<RouterProvider router={router} />
+					</StrictMode>
+				) : (
+					<RouterProvider router={router} />
+				)}
 			</QueryClientProvider>,
 		);
 	});
@@ -835,4 +850,74 @@ it.each([ALICE, ALIAS])("keeps the outgoing %s chat at its reading position whil
 		if (originalScrollIntoView) Object.defineProperty(Element.prototype, "scrollIntoView", originalScrollIntoView);
 		else Reflect.deleteProperty(Element.prototype, "scrollIntoView");
 	}
+});
+
+it.each([false, true])(
+	"captures fresh alias absence before delayed identity resolves (StrictMode=%s)",
+	async (strict) => {
+		const {router, finish} = await setup({initial: "/", strict});
+		const main = screen.getByTestId("main");
+		main.scrollTop = 1430;
+		fireEvent.scroll(main);
+		await act(() => router.navigate({to: "/session/$id", params: {id: ALIAS}}));
+		await screen.findByTestId("session-skeleton");
+		await act(async () => {});
+		await act(async () => finish(Response.json({sessionId: ALICE})));
+		const page = await screen.findByTestId("session");
+		expect({
+			captured: page.dataset["captured"],
+			restored: page.dataset["restored"],
+			late: page.dataset["lateRestored"],
+			owner: page.dataset["session"],
+		}).toStrictEqual({captured: "true", restored: "none", late: "1430", owner: ALICE});
+	},
+);
+
+it("captures the alias visit's own saved position before Back resolves its identity", async () => {
+	const {router, client, setLookup} = await setup({cachedOwner: ALICE});
+	const main = screen.getByTestId("main");
+	main.scrollTop = 640;
+	fireEvent.scroll(main);
+	await act(() => router.navigate({to: "/"}));
+	await screen.findByText("New session");
+	const response = deferredResponse();
+	setLookup(() => response.promise);
+	client.removeQueries({queryKey: sessionIdentityQueryOptions(ALIAS).queryKey, exact: true});
+	await act(async () => router.history.back());
+	await screen.findByTestId("session-skeleton");
+	await act(async () => response.finish(Response.json({sessionId: ALICE})));
+	const page = await screen.findByTestId("session");
+	expect({
+		captured: page.dataset["captured"],
+		restored: page.dataset["restored"],
+		owner: page.dataset["session"],
+		top: main.scrollTop,
+	}).toStrictEqual({captured: "true", restored: "640", owner: ALICE, top: 640});
+});
+
+it("keeps the default identity callback at three arguments for sibling routes", async () => {
+	const client = new QueryClient();
+	clients.push(client);
+	const child = vi.fn((...args: [string, string, string, MainScrollRestorationSnapshot?]) => (
+		<output>{args[0]}</output>
+	));
+	const root = createRootRouteWithContext<{queryClient: QueryClient}>()({component: Outlet});
+	const sibling = createRoute({
+		getParentRoute: () => root,
+		path: "/session/$id/subagents",
+		component: () => <SessionRouteIdentity routeId={ALICE}>{child}</SessionRouteIdentity>,
+	});
+	const router = createRouter({
+		routeTree: root.addChildren([sibling]),
+		context: {queryClient: client},
+		history: createMemoryHistory({initialEntries: [`/session/${ALICE}/subagents`]}),
+	});
+	await router.load();
+	render(
+		<QueryClientProvider client={client}>
+			<RouterProvider router={router} />
+		</QueryClientProvider>,
+	);
+	await screen.findByText(ALICE);
+	expect(new Set(child.mock.calls.map((args) => args.length))).toStrictEqual(new Set([3]));
 });

@@ -18,8 +18,13 @@ import {ToastProvider} from "../src/components/toast";
 
 // session-chat pulls in HMR-persisted module state that jsdom cannot evaluate.
 vi.mock("../src/components/session-chat", () => ({
-	SessionChat: () => null,
+	SessionChat: ({shouldScrollToEnd}: {shouldScrollToEnd: boolean}) => (
+		<output data-testid="follow-end">{String(shouldScrollToEnd)}</output>
+	),
 }));
+
+const lateSnapshot = vi.hoisted(() => ({entry: undefined as {scrollX: number; scrollY: number} | undefined}));
+vi.mock("../src/hooks/use-main-scroll-restoration", () => ({useMainScrollRestoration: () => lateSnapshot.entry}));
 
 class TestEventSource extends EventTarget {
 	readonly close = vi.fn();
@@ -127,7 +132,7 @@ function seededQueryClient() {
 	return queryClient;
 }
 
-async function renderSessionInScroller() {
+async function renderSessionInScroller(props: Partial<Parameters<typeof SessionPage>[0]> = {}) {
 	const queryClient = seededQueryClient();
 	const rootRoute = createRootRoute({
 		component: () => (
@@ -135,7 +140,7 @@ async function renderSessionInScroller() {
 				<ClaudeEventsProvider>
 					<ToastProvider>
 						<main data-testid="app-scroller" style={{overflowY: "auto"}}>
-							<SessionPage sessionId={SESSION_ID} />
+							<SessionPage sessionId={SESSION_ID} {...props} />
 						</main>
 					</ToastProvider>
 				</ClaudeEventsProvider>
@@ -154,6 +159,7 @@ async function renderSessionInScroller() {
 }
 
 afterEach(() => {
+	lateSnapshot.entry = undefined;
 	cleanup();
 	vi.unstubAllGlobals();
 });
@@ -314,4 +320,21 @@ describe("fixed-position session UI and the contained transcript scroller", () =
 			"before:to-surface-2",
 		]);
 	});
+});
+
+it.each([
+	{name: "omitted", props: {}, expected: "false"},
+	{name: "captured fresh visit", props: {scrollRestoration: {entry: undefined}}, expected: "true"},
+	{name: "captured saved visit", props: {scrollRestoration: {entry: {scrollX: 0, scrollY: 200}}}, expected: "false"},
+])("distinguishes $name from a later copied fallback entry", async ({props, expected}) => {
+	lateSnapshot.entry = {scrollX: 0, scrollY: 900};
+	vi.stubGlobal("EventSource", TestEventSource);
+	vi.stubGlobal("localStorage", new FakeStorage());
+	vi.stubGlobal("IntersectionObserver", TestIntersectionObserver);
+	vi.stubGlobal(
+		"fetch",
+		vi.fn(() => new Promise<Response>(() => {})),
+	);
+	await renderSessionInScroller(props);
+	expect(screen.getByTestId("follow-end").textContent).toStrictEqual(expected);
 });

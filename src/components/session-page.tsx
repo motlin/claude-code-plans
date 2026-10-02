@@ -75,7 +75,7 @@ import {
 } from "../lib/composer-state";
 import {useSessionViewedState} from "../hooks/use-session-viewed-state";
 import {usePendingMessageJump} from "../hooks/use-pending-message-jump";
-import {useMainScrollRestoration} from "../hooks/use-main-scroll-restoration";
+import {useMainScrollRestoration, type MainScrollRestorationSnapshot} from "../hooks/use-main-scroll-restoration";
 import {postAnswerQuestion} from "../lib/api/answer-question";
 import {findPendingAskUserQuestion} from "../lib/approval-dock";
 import {applicationSettingsQueryOptions} from "../lib/api/application-settings";
@@ -248,9 +248,15 @@ export function SessionPage({
 	sessionId,
 	routeId = sessionId,
 	scrollKey,
+	scrollRestoration,
 	requestedPane,
 	onRequestedPaneHandled,
-}: {sessionId: string; routeId?: string; scrollKey?: string} & RequestedPaneProps) {
+}: {
+	sessionId: string;
+	routeId?: string;
+	scrollKey?: string;
+	scrollRestoration?: MainScrollRestorationSnapshot | undefined;
+} & RequestedPaneProps) {
 	// Plain `useQuery` (not suspense) so the app shell stays painted and this
 	// page can show its own skeleton while the transcript payload loads.
 	const detailQuery = useQuery(sessionDetailQueryOptions(sessionId));
@@ -262,8 +268,11 @@ export function SessionPage({
 	});
 	// The route boundary keeps the departing visit stable while the next location is still loading.
 	const initialScrollKey = scrollKey ?? locationScrollKey;
-	// Read here, not in SessionView: the view mounts only once the data loads, after the router's post-render pass.
-	const restoredScrollPosition = useMainScrollRestoration(initialScrollKey);
+	// Standalone callers capture before detail loads; routed pages supply the earlier pre-alias snapshot.
+	const standaloneRestoredPosition = useMainScrollRestoration(initialScrollKey);
+	// An explicitly captured undefined entry is authoritative: it is a fresh visit.
+	const restoredScrollPosition =
+		scrollRestoration === undefined ? standaloneRestoredPosition : scrollRestoration.entry;
 
 	if (detailQuery.isError) throw detailQuery.error;
 	if (transcriptQuery.isError) throw transcriptQuery.error;

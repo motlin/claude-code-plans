@@ -1,3 +1,4 @@
+import type {MainScrollRestorationSnapshot} from "../hooks/use-main-scroll-restoration";
 import {SessionRouteIdentity} from "../components/session-route-identity";
 import {
 	getCachedCanonicalSessionRouteId,
@@ -114,9 +115,14 @@ function useSessionHeadTitle(sessionId: string) {
 function SessionRouteComponent() {
 	const params = Route.useParams();
 	return (
-		<SessionRouteIdentity routeId={params.id}>
-			{(sessionId, routeId, scrollKey) => (
-				<ResolvedSessionRoute sessionId={sessionId} routeId={routeId} scrollKey={scrollKey} />
+		<SessionRouteIdentity routeId={params.id} captureScrollRestoration>
+			{(sessionId, routeId, scrollKey, scrollRestoration) => (
+				<ResolvedSessionRoute
+					sessionId={sessionId}
+					routeId={routeId}
+					scrollKey={scrollKey}
+					scrollRestoration={scrollRestoration}
+				/>
 			)}
 		</SessionRouteIdentity>
 	);
@@ -126,10 +132,12 @@ function ResolvedSessionRoute({
 	sessionId,
 	routeId,
 	scrollKey,
+	scrollRestoration,
 }: {
 	sessionId: string;
 	routeId: string;
 	scrollKey: string;
+	scrollRestoration?: MainScrollRestorationSnapshot | undefined;
 }) {
 	const router = useRouter();
 	const {pane} = Route.useSearch();
@@ -164,6 +172,7 @@ function ResolvedSessionRoute({
 			sessionId={sessionId}
 			routeId={routeId}
 			scrollKey={scrollKey}
+			scrollRestoration={scrollRestoration}
 			requestedPane={pane}
 			onRequestedPaneHandled={clearRequestedPane}
 		/>

@@ -4,15 +4,23 @@ import {useEffect, useState, type ReactNode} from "react";
 import {sessionIdentityFailure, sessionIdentityQueryOptions} from "../lib/api/session-identity";
 import {sessionScrollKey} from "../lib/session-route-location";
 import {resolvedRouteTitle} from "../lib/route-title";
+import {useMainScrollRestoration, type MainScrollRestorationSnapshot} from "../hooks/use-main-scroll-restoration";
 import {SessionSkeleton} from "./session-skeleton";
 
 /** Resolve a route alias before any UUID query, and retain its first verified owner for this visit. */
 export function SessionRouteIdentity({
 	routeId,
+	captureScrollRestoration = false,
 	children,
 }: {
 	routeId: string;
-	children: (sessionId: string, initialRouteId: string, scrollKey: string) => ReactNode;
+	captureScrollRestoration?: boolean;
+	children: (
+		sessionId: string,
+		initialRouteId: string,
+		scrollKey: string,
+		scrollRestoration?: MainScrollRestorationSnapshot,
+	) => ReactNode;
 }) {
 	const router = useRouter();
 	const location = useLocation();
@@ -79,19 +87,43 @@ export function SessionRouteIdentity({
 		entryKey,
 	]);
 
-	if (!alias) return children(routeId, initialRouteId, entryKey);
-	if (owner !== null) return children(owner, initialRouteId, entryKey);
-	if (!identity?.isError) return <SessionSkeleton />;
-	return (
-		<div className="p-8">
-			<p role="alert">{failure.message}</p>
-			<button
-				type="button"
-				className="mt-4 rounded-md border border-border px-3 py-1.5"
-				onClick={() => void identity.refetch()}
-			>
-				Retry
-			</button>
-		</div>
+	const renderVisit = (scrollRestoration?: MainScrollRestorationSnapshot) => {
+		const renderResolved = (sessionId: string) =>
+			scrollRestoration === undefined
+				? children(sessionId, initialRouteId, entryKey)
+				: children(sessionId, initialRouteId, entryKey, scrollRestoration);
+		if (!alias) return renderResolved(routeId);
+		if (owner !== null) return renderResolved(owner);
+		if (!identity?.isError) return <SessionSkeleton />;
+		return (
+			<div className="p-8">
+				<p role="alert">{failure.message}</p>
+				<button
+					type="button"
+					className="mt-4 rounded-md border border-border px-3 py-1.5"
+					onClick={() => void identity.refetch()}
+				>
+					Retry
+				</button>
+			</div>
+		);
+	};
+
+	return captureScrollRestoration ? (
+		<SessionVisitScrollSnapshot entryKey={entryKey}>{renderVisit}</SessionVisitScrollSnapshot>
+	) : (
+		renderVisit()
 	);
+}
+
+/** Mounted for the visit even while alias identity is unresolved. */
+function SessionVisitScrollSnapshot({
+	entryKey,
+	children,
+}: {
+	entryKey: string;
+	children: (snapshot: MainScrollRestorationSnapshot) => ReactNode;
+}) {
+	const entry = useMainScrollRestoration(entryKey);
+	return children({entry});
 }

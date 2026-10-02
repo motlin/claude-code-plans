@@ -3,6 +3,11 @@ import {useState} from "react";
 
 type ScrollRestorationEntry = ReturnType<typeof useElementScrollRestoration>;
 
+/** Presence means captured; an undefined entry means this visit has no saved offset. */
+export interface MainScrollRestorationSnapshot {
+	entry: ScrollRestorationEntry;
+}
+
 /**
  * The `<main>` scroll position the router restores for the current location, as it stood on the location's first
  * render. That is the location's own entry: one saved when it was left (Back/Forward) or persisted across a reload.
