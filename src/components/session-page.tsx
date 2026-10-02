@@ -1,4 +1,4 @@
-import {useElementScrollRestoration, useLocation} from "@tanstack/react-router";
+import {useLocation} from "@tanstack/react-router";
 import {useQuery} from "@tanstack/react-query";
 import {lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {Minimize2} from "lucide-react";
@@ -73,6 +73,7 @@ import {
 } from "../lib/composer-state";
 import {useSessionViewedState} from "../hooks/use-session-viewed-state";
 import {usePendingMessageJump} from "../hooks/use-pending-message-jump";
+import {useMainScrollRestoration} from "../hooks/use-main-scroll-restoration";
 import {postAnswerQuestion} from "../lib/api/answer-question";
 import {findPendingAskUserQuestion} from "../lib/approval-dock";
 import {applicationSettingsQueryOptions} from "../lib/api/application-settings";
@@ -271,6 +272,11 @@ export function SessionPage({
 	const transcriptQuery = useQuery(transcriptQueryOptions(sessionId));
 	const subagentsQuery = useQuery(sessionSubagentsQueryOptions(sessionId));
 	const herdrQuery = useQuery(herdrPanesQueryOptions);
+	const initialScrollKey = useLocation({
+		select: (location) => location.state.__TSR_key ?? location.href,
+	});
+	// Read here, not in SessionView: the view mounts only once the data loads, after the router's post-render pass.
+	const restoredScrollPosition = useMainScrollRestoration(initialScrollKey);
 
 	if (detailQuery.isError) throw detailQuery.error;
 	if (transcriptQuery.isError) throw transcriptQuery.error;
@@ -293,6 +299,8 @@ export function SessionPage({
 			transcript={transcript}
 			subagents={subagents}
 			herdr={herdr}
+			initialScrollKey={initialScrollKey}
+			restoredScrollPosition={restoredScrollPosition}
 			requestedPane={requestedPane}
 			onRequestedPaneHandled={onRequestedPaneHandled}
 		/>
@@ -301,6 +309,10 @@ export function SessionPage({
 
 interface SessionViewProps extends RequestedPaneProps {
 	sessionId: string;
+	/** The location's history key: the transcript scrolls to its end once per key. */
+	initialScrollKey: string;
+	/** The `<main>` position the router restores for this location, if it has one of its own. */
+	restoredScrollPosition: ReturnType<typeof useMainScrollRestoration>;
 	data: SessionDetailData;
 	transcript: TranscriptData;
 	subagents: SessionSubagentsData;
@@ -313,16 +325,14 @@ function SessionView({
 	transcript,
 	subagents,
 	herdr,
+	initialScrollKey,
+	restoredScrollPosition,
 	requestedPane,
 	onRequestedPaneHandled,
 }: SessionViewProps) {
 	const scrollAnchorRef = useRef<HTMLDivElement>(null);
 	useTranscriptScrollContainment(scrollAnchorRef);
-	const initialScrollKey = useLocation({
-		select: (location) => location.state.__TSR_key ?? location.href,
-	});
 	const locationHash = useLocation({select: (location) => location.hash});
-	const restoredScrollPosition = useElementScrollRestoration({id: "main"});
 	// Viewed positions are stored in message units (see message-count.ts) so
 	// they line up with messageCount and newMessageCount on every surface. The
 	// transcript is only a window over the JSONL, so the messages the server

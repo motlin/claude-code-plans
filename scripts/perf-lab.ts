@@ -558,9 +558,7 @@ async function runJourneys(
 		await switchRow.waitFor();
 		samples.J3 = await measure(probe, async () => {
 			await switchRow.click();
-			// Not LAST_ROW like F5: after a sidebar switch the scroller stops a few rows short of the end, so the last
-			// row never mounts. The switched-to session's rows plus the settle below are the deterministic end.
-			await page.locator(`${switchView} ${ANY_ROW}`).first().waitFor({state: "attached", timeout: 30_000});
+			await page.locator(`${switchView} ${LAST_ROW}`).first().waitFor({state: "attached", timeout: 30_000});
 		});
 	} else {
 		await page.goto(`${baseUrl}/session/${fixture.switchSessionId}`);
