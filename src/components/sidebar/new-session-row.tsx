@@ -43,7 +43,7 @@ export function NewSessionRow() {
 					<Shortcut
 						keys={shortcut.keys}
 						variant="text"
-						className="[&>kbd]:inline-flex [&>kbd]:gap-[0.3em] [&>kbd]:leading-none"
+						className="[--shortcut-cap-ink:var(--color-ink-muted)] [&>kbd]:inline-flex [&>kbd]:gap-[0.3em] [&>kbd]:leading-none"
 					/>
 				</span>
 			</Link>
