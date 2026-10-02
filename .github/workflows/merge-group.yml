@@ -109,6 +109,36 @@ jobs:
       - run: just test
       - run: PERF_LARGE=1 just perf
 
+  # Trial of the browser-lab ratchet on Linux runners, whose system fonts differ from the macOS Chromium the ceilings
+  # were measured on. Not required: it stays out of all-checks' needs and continue-on-error keeps it green.
+  perf-lab:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+        with:
+          cache: true
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.local/share/pnpm/store
+          key: pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+      - run: just install
+      - run: vp exec playwright install --with-deps chromium
+      - run: just perf-lab-ratchet
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: ${{ !cancelled() }}
+        with:
+          name: perf-lab
+          path: .llm/perf/lab-browser-*
+          include-hidden-files: true
+          if-no-files-found: warn
+
   markdownlint:
     runs-on: ubuntu-latest
     steps:
