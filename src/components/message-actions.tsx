@@ -12,6 +12,7 @@ import {
 
 import {useChapters} from "../lib/chapter-store";
 import {writeClipboardText} from "../lib/clipboard";
+import {messageHeading} from "../lib/transcript-action-targets";
 import {markdownToPlainText} from "../lib/markdown-plain-text";
 import {formatRelativeTimestamp, formatTimestamp} from "../lib/timestamp-format";
 import {type TranscriptMessageRef, TranscriptActionsContext} from "./transcript-context-menu";
@@ -35,6 +36,8 @@ export interface MessageActionsProps {
 	message: TranscriptMessageRef | undefined;
 	/** The message's text as written, which Copy copies. */
 	text: string;
+	/** Context shown by the turn heading when it differs from the authored copy text. */
+	contextText?: string;
 	timestamp?: string | undefined;
 	/** Extra tooltip lines after the absolute time: token usage, effort, origin and the like. */
 	details: readonly string[];
@@ -247,7 +250,7 @@ function MessageTime({
 }
 
 /** The sr-only reveal button and the bar it reveals. */
-function ActionBar({className, children}: {className: string; children: ReactNode}) {
+function ActionBar({className, children, label}: {className: string; children: ReactNode; label: string}) {
 	const [revealed, setRevealed] = useState(false);
 	const barRef = useRef<HTMLDivElement>(null);
 	const focusPending = useRef(false);
@@ -269,6 +272,7 @@ function ActionBar({className, children}: {className: string; children: ReactNod
 			<button
 				type="button"
 				className="sr-only"
+				aria-label={label}
 				onClick={() => {
 					focusPending.current = true;
 					setRevealed(true);
@@ -291,7 +295,7 @@ function ActionBar({className, children}: {className: string; children: ReactNod
 
 export function AssistantMessageActions({message, text, timestamp, details}: MessageActionsProps) {
 	return (
-		<ActionBar className={BAR_CLASS}>
+		<ActionBar className={BAR_CLASS} label={`Show message actions for ${messageHeading("assistant", text)}`}>
 			<CopyAction text={text} />
 			<ForkAction message={message} />
 			<PinAction message={message} />
@@ -301,9 +305,12 @@ export function AssistantMessageActions({message, text, timestamp, details}: Mes
 	);
 }
 
-export function UserMessageActions({message, text, timestamp, details}: MessageActionsProps) {
+export function UserMessageActions({message, text, contextText = text, timestamp, details}: MessageActionsProps) {
 	return (
-		<ActionBar className={`${BAR_CLASS} justify-end self-end`}>
+		<ActionBar
+			className={`${BAR_CLASS} justify-end self-end`}
+			label={`Show message actions for ${messageHeading("user", contextText)}`}
+		>
 			<MessageTime timestamp={timestamp} details={details} inner="right" />
 			<CopyAction text={text} />
 			<RewindAction message={message} />

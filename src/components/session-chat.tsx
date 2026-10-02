@@ -36,7 +36,7 @@ import {TasksView} from "./tasks-view";
 import {DebugLink} from "./debug-link";
 import {type TranscriptMessageRef, TranscriptMessageMenu} from "./transcript-context-menu";
 import {AssistantMessageActions, UserMessageActions} from "./message-actions";
-import {messageText} from "../lib/transcript-action-targets";
+import {messageHeading, messageText} from "../lib/transcript-action-targets";
 import {assistantTurnDetails, userTurnDetails} from "../lib/turn-metadata";
 import {TurnChangesCard} from "./turn-changes-card";
 import {collectTurnChanges, type TurnChanges} from "../lib/turn-changes";
@@ -172,9 +172,18 @@ function AssistantTurnActions({line, sessionId}: {line: MessageSessionLine; sess
 	);
 }
 
-function UserTurnActions({line, sessionId}: {line: MessageSessionLine; sessionId: string}) {
+function UserTurnActions({
+	line,
+	sessionId,
+	contextText,
+}: {
+	line: MessageSessionLine;
+	sessionId: string;
+	contextText?: string;
+}) {
 	return (
 		<UserMessageActions
+			{...(contextText === undefined ? {} : {contextText})}
 			message={messageRef(line, sessionId)}
 			text={messageText(line)}
 			timestamp={line.timestamp}
@@ -360,9 +369,6 @@ interface LineRenderProps {
  */
 const TURN_GAP_CLASS = "pb-[var(--chat-turn-gap)] empty:pb-0";
 
-/** How many characters of a turn its screen-reader heading quotes, as upstream does. */
-const TURN_HEADING_PREVIEW_LENGTH = 80;
-
 /**
  * Upstream claude.ai/code opens every turn wrapper with a visually hidden
  * heading quoting the turn ("You said: ..." / "Claude responded: ..."), giving
@@ -370,9 +376,7 @@ const TURN_HEADING_PREVIEW_LENGTH = 80;
  * hidden from sight and from text selection, so copying a turn never picks it up.
  */
 function TurnHeading({speaker, text}: {speaker: "user" | "assistant"; text: string}) {
-	const prefix = speaker === "user" ? "You said" : "Claude responded";
-	const preview = text.replace(/\s+/g, " ").trim().slice(0, TURN_HEADING_PREVIEW_LENGTH);
-	return <h2 className="sr-only select-none">{preview === "" ? prefix : `${prefix}: ${preview}`}</h2>;
+	return <h2 className="sr-only select-none">{messageHeading(speaker, text)}</h2>;
 }
 
 /**
@@ -1809,7 +1813,7 @@ function CompactSummaryBody({
 					</div>
 				)}
 				{mediaNodes}
-				<UserTurnActions line={line} sessionId={sessionId} />
+				<UserTurnActions line={line} sessionId={sessionId} contextText="Compacted conversation" />
 			</div>
 		</div>
 	);
@@ -2039,7 +2043,11 @@ function CommandEntry({line, sessionId}: {line: MessageSessionLine; sessionId: s
 					</TruncatedContent>
 					<DebugLink sessionId={sessionId} uuid={line.uuid} className="absolute top-1 right-1" />
 				</div>
-				<UserTurnActions line={line} sessionId={sessionId} />
+				<UserTurnActions
+					line={line}
+					sessionId={sessionId}
+					contextText={cmdArgs ? `/${name} ${cmdArgs}` : `/${name}`}
+				/>
 			</div>
 		</UserTurn>
 	);

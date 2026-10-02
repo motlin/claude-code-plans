@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {cleanup, fireEvent, render} from "@testing-library/react";
+import {cleanup, fireEvent, render, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat} from "../src/components/session-chat";
 import {processTranscript} from "../src/lib/transcript";
@@ -122,6 +122,34 @@ const COMPACT_SUMMARY = {
 };
 
 describe("SessionChat turn headings", () => {
+	it.each([
+		{record: USER_TEXT, expectedHeading: "You said: Fabricated user message"},
+		{record: ASSISTANT_TEXT, expectedHeading: "Claude responded: Fabricated assistant response"},
+		{record: TOOL_CALL, expectedHeading: "Claude responded"},
+		{record: STOP_HOOK_FEEDBACK, expectedHeading: "You said: Stop hook feedback: fabricated"},
+		{record: COMMAND_INVOCATION, expectedHeading: "You said: /fabricated --dry-run"},
+		{record: COMPACT_SUMMARY, expectedHeading: "You said: Compacted conversation"},
+		{
+			record: {...USER_TEXT, message: {role: "user", content: `${"word ".repeat(10)}\n\n${"x".repeat(100)}`}},
+			expectedHeading: `You said: ${"word ".repeat(10)}${"x".repeat(30)}`,
+		},
+	])("names the action reveal for its heading and focuses Copy: $expectedHeading", ({record, expectedHeading}) => {
+		const container = renderRecords([record], false);
+		if (record === COMPACT_SUMMARY)
+			fireEvent.click(within(container).getByRole("button", {name: "Compacted conversation"}));
+		const reveal = within(container).getByRole("button", {name: `Show message actions for ${expectedHeading}`});
+		fireEvent.click(reveal);
+		expect({
+			heading: within(container).getByRole("heading", {level: 2}).textContent,
+			name: reveal.getAttribute("aria-label"),
+			focused: document.activeElement?.getAttribute("aria-label"),
+		}).toStrictEqual({
+			heading: expectedHeading,
+			name: `Show message actions for ${expectedHeading}`,
+			focused: "Copy",
+		});
+	});
+
 	it("opens the user and assistant turns with upstream's screen-reader headings", () => {
 		expect(turnHeadings(renderRecords([USER_TEXT, ASSISTANT_TEXT]))).toStrictEqual([
 			heading("You said: Fabricated user message"),

@@ -6,6 +6,13 @@ import type {MessageSessionLine, SessionLine} from "./transcript";
 /** Upstream-length chapter chip labels; longer first lines are clipped with an ellipsis. */
 const CHAPTER_LABEL_LIMIT = 60;
 
+/** The existing transcript heading excerpt, shared with its action trigger. */
+export function messageHeading(speaker: "user" | "assistant", text: string): string {
+	const prefix = speaker === "user" ? "You said" : "Claude responded";
+	const preview = text.replace(/\s+/g, " ").trim().slice(0, 80);
+	return preview === "" ? prefix : `${prefix}: ${preview}`;
+}
+
 /** A message's text blocks as written, joined by blank lines; empty for tool-only turns. */
 export function messageText(line: MessageSessionLine): string {
 	const content = line.message?.content;
