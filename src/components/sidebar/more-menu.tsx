@@ -41,7 +41,7 @@ export function MoreNavMenu({
 						<span className="df-leading-slot">
 							<ChevronDown aria-hidden="true" />
 						</span>
-						<span className="min-w-0 flex-1 truncate">More</span>
+						<span className="min-w-0 flex-1 truncate text-ink-muted">More</span>
 					</MenuTrigger>
 					<MenuContent side="right" align="start">
 						{overflow.map((item) => {
