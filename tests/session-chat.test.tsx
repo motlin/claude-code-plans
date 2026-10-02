@@ -1105,6 +1105,7 @@ describe("SessionChat file-param tool row argument", () => {
 });
 
 describe("SessionChat Agent row label", () => {
+	const VERB = "shrink-0 text-body text-ink-muted group-hover/tool:text-secondary";
 	const DESCRIPTION = "truncate min-w-0 text-body text-ink-muted group-hover/tool:text-secondary";
 
 	const agentRecords = toolCallRecords([
@@ -1152,14 +1153,16 @@ describe("SessionChat Agent row label", () => {
 		);
 	}
 
-	it("labels an agent row with its description alone, with no leading verb span", () => {
+	it("labels a completed agent row with its verb followed by its description", () => {
 		expect(toolRowLabelSpans(renderTranscript(agentRecords))).toStrictEqual([
+			[VERB, "Ran agent"],
 			[DESCRIPTION, "Implement pending approvals fix"],
 		]);
 	});
 
 	it("draws the agent row chevron in the flat t6 token upstream uses", () => {
 		expect(rowHeaderSpanClasses(renderTranscript(agentRecords))).toStrictEqual([
+			VERB,
 			DESCRIPTION,
 			"shrink-0 self-center text-t6",
 		]);
@@ -1167,6 +1170,7 @@ describe("SessionChat Agent row label", () => {
 
 	it("trails no model label, which upstream shows in the Subagent pane footnote instead", () => {
 		expect(rowHeaderSpanClasses(renderWithSubagents(spawnedAgent("claude-haiku-4-5-20251001")))).toStrictEqual([
+			VERB,
 			DESCRIPTION,
 			"shrink-0 self-center text-t6",
 		]);
@@ -1252,6 +1256,7 @@ describe("SessionChat Agent row opening the Subagent pane", () => {
 			tabIndex: "0",
 			ariaExpanded: null,
 			spans: [
+				["shrink-0 text-body text-ink-muted group-hover/tool:text-secondary", "Ran agent"],
 				[
 					"truncate min-w-0 text-body text-ink-muted group-hover/tool:text-secondary",
 					"Commit lazy allocation fixup",

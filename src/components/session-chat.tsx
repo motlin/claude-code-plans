@@ -2509,7 +2509,7 @@ function ToolCallRow({call, sessionId, nested = false}: {call: ClientToolCall; s
 	const phrase =
 		failedDescription !== null
 			? failedDescriptionLabel(failedDescription)
-			: call.isError || (isAgent && nested)
+			: call.isError || (isAgent && (nested || !pending))
 				? null
 				: running !== null
 					? (running.label ?? null)
