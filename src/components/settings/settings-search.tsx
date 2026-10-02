@@ -30,9 +30,9 @@ export function SettingsSearch({onSelect}: {onSelect: (tab: SettingsTab, row: st
 		<>
 			<div
 				ref={anchorRef}
-				className="flex h-8 shrink-0 items-center gap-2 rounded-r6 border border-border bg-[var(--settings-field-bg)] px-2.5 text-secondary focus-within:ring-2 focus-within:ring-accent-100/40"
+				className="flex h-8 shrink-0 items-center gap-3 rounded-r6 bg-[var(--settings-field-bg)] px-2 text-secondary shadow-[inset_0_0_0_1px_var(--color-border)] not-dark:shadow-[inset_0_0_0_1px_rgb(11_11_11/0.1)] not-dark:has-[:focus-visible]:shadow-[inset_0_0_0_1px_#fcfcfb,0_0_0_1px_#2a78d6,0_0_6px_1px_#cde2fb] dark:focus-within:ring-2 dark:focus-within:ring-accent-100/40"
 			>
-				<Search aria-hidden="true" className="size-4 shrink-0" />
+				<Search aria-hidden="true" className="size-5 shrink-0" />
 				<input
 					type="text"
 					role="combobox"
