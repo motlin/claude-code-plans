@@ -178,7 +178,7 @@ describe("Open in ▸ in the row menu", () => {
 		await flush();
 
 		expect(openMock.mock.calls).toEqual([
-			["https://claude.ai/code/cse_alice_100", "_blank", "noopener,noreferrer"],
+			["https://claude.ai/code/session_alice_100", "_blank", "noopener,noreferrer"],
 		]);
 	});
 });

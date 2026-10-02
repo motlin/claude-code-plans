@@ -14,7 +14,8 @@ export function vscodeFolderUrl(cwd: string): string {
 }
 
 export function claudeAiSessionUrl(bridgeSessionId: string): string {
-	return `https://claude.ai/code/${encodeURIComponent(bridgeSessionId)}`;
+	const sessionId = bridgeSessionId.replace(/^cse_/, "session_");
+	return `https://claude.ai/code/${encodeURIComponent(sessionId)}`;
 }
 
 /** Open PR (menu `g`, ⌥⌘G): the `pr-link` URL in a new tab. */

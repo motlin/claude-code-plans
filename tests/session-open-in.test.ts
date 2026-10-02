@@ -90,10 +90,13 @@ describe("Open in targets", () => {
 		expect(vscodeFolderUrl("/Users/alice/my project/#1?")).toBe("vscode://file/Users/alice/my%20project/%231%3F");
 	});
 
-	it("links the claude.ai bridge session", () => {
-		expect(claudeAiSessionUrl("cse_01UPvLZzECFKuEdEdCRQEhg9")).toBe(
-			"https://claude.ai/code/cse_01UPvLZzECFKuEdEdCRQEhg9",
-		);
+	it.each([
+		["cse_alice_100", "https://claude.ai/code/session_alice_100"],
+		["session_alice_100", "https://claude.ai/code/session_alice_100"],
+		["alice_cse_100", "https://claude.ai/code/alice_cse_100"],
+		["cse_alice/100?", "https://claude.ai/code/session_alice%2F100%3F"],
+	])("links bridge session %s using its canonical claude.ai URL", (bridgeSessionId, expectedUrl) => {
+		expect(claudeAiSessionUrl(bridgeSessionId)).toBe(expectedUrl);
 	});
 });
 

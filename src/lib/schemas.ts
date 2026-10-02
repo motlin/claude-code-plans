@@ -813,6 +813,7 @@ const QueuedCommandAttachmentPayload = z
 		isMeta: z.boolean().optional(),
 		source_uuid: z.string().optional(),
 		delivery_id: z.string().optional(),
+		reminderId: z.string().optional(),
 		humanTurn: z.boolean().optional(),
 		usage: z
 			.object({
@@ -1253,6 +1254,7 @@ export const AttachmentRecordSchema = z
 		renderedInHumanTurn: z.array(RenderedAttachmentContentSchema).optional(),
 		// Which turn role the rendered text was injected as.
 		renderedRole: RenderedRoleSchema.optional(),
+		renderedBesideToolResult: z.boolean().optional(),
 	})
 	.strict();
 
@@ -1273,6 +1275,7 @@ export const CompactMetadataSchema = z
 		postTokens: z.number().optional(),
 		durationMs: z.number().optional(),
 		preCompactDiscoveredTools: z.array(z.string()).optional(),
+		preCompactArtifactReadVersions: z.array(z.object({slug: z.string(), ver: z.string()}).strict()).optional(),
 		cumulativeDroppedTokens: z.number().optional(),
 		preservedSegment: z
 			.object({
