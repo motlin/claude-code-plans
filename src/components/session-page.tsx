@@ -105,7 +105,7 @@ import {backgroundTasksFacts, extractBackgroundTasks} from "../lib/background-ta
 import {createSessionCommands} from "../lib/session-commands";
 
 const TRANSCRIPT_SCROLL_CONTAINER_CLASSES =
-	"h-full overflow-y-auto overflow-x-hidden [contain:strict] [overflow-anchor:none] [scrollbar-gutter:stable_both_edges]";
+	"h-full overflow-y-auto overflow-x-hidden [contain:strict] [overflow-anchor:none] [scrollbar-gutter:stable_both-edges]";
 
 /** Marks the element that scrolls the transcript as the contained, virtualized scroller. */
 function useTranscriptScrollContainment(anchorRef: React.RefObject<HTMLElement | null>) {
