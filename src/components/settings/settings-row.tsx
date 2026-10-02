@@ -31,7 +31,9 @@ export function SettingsSection({title, children}: {title: string; children: Rea
 	return (
 		<section className="mb-8 last:mb-0">
 			<h3 className="mb-4 text-[15px] leading-[20px] font-[580] text-primary">{title}</h3>
-			<div className="divide-y divide-subtle">{children}</div>
+			<div className="[&>:not([hidden])~:not([hidden])]:border-t [&>:not([hidden])~:not([hidden])]:border-subtle">
+				{children}
+			</div>
 		</section>
 	);
 }
