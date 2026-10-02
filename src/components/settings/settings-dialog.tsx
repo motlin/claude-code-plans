@@ -237,7 +237,7 @@ export function SettingsDialog() {
 											: "font-normal text-secondary hover:bg-fill-ghost-hover"
 									}`}
 								>
-									<Icon aria-hidden="true" className="size-5 shrink-0" />
+									<Icon aria-hidden="true" className="size-5 shrink-0 text-secondary" />
 									{item.kind === "settings"
 										? settingsTabLabels[item.tab]
 										: customizeSectionLabels[item.section]}
