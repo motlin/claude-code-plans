@@ -39,7 +39,7 @@ export function NewSessionRow() {
 					</span>
 				</span>
 				<span className="min-w-0 flex-1 truncate">New</span>
-				<span className="df-tail-mark opacity-0 transition-opacity duration-[120ms] group-hover:opacity-100 group-focus-visible:opacity-100 pointer-coarse:hidden">
+				<span className="ml-1 mr-2 flex shrink-0 items-center opacity-0 transition-opacity duration-[120ms] group-hover:opacity-100 group-focus-visible:opacity-100 pointer-coarse:hidden">
 					<Shortcut
 						keys={shortcut.keys}
 						variant="text"
