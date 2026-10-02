@@ -1322,9 +1322,8 @@ describe("SessionChat Agent row opening the Subagent pane", () => {
 			spans: [
 				["shrink-0 text-body text-ink-muted group-hover/tool:text-secondary", "Ran agent"],
 				["truncate min-w-0 text-body text-primary", "Commit lazy allocation fixup"],
-				["shrink-0 text-t6", ""],
 			],
-			glyph: "lucide lucide-panel-right size-4",
+			glyph: undefined,
 			body: false,
 		});
 	});

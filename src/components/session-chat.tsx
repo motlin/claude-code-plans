@@ -10,7 +10,7 @@ import React, {
 	useRef,
 	useState,
 } from "react";
-import {AlertTriangle, Bot, FileWarning, GitBranch, Lock, Palette, PanelRight, Plug, Zap} from "lucide-react";
+import {AlertTriangle, Bot, FileWarning, GitBranch, Lock, Palette, Plug, Zap} from "lucide-react";
 import {assertNever} from "../lib/assert-never";
 import {ProseMarkdown} from "./file-refs";
 import {MarkdownArticle} from "./markdown-article";
@@ -2608,9 +2608,6 @@ function ToolCallRow({call, sessionId, nested = false}: {call: ClientToolCall; s
 					className="relative group/tool flex self-start max-w-full items-center py-0 gap-g2 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3"
 				>
 					{rowLabel}
-					<span className="shrink-0 text-t6">
-						<PanelRight aria-hidden="true" className="size-4" />
-					</span>
 				</div>
 			</div>
 		);
