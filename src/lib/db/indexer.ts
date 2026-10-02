@@ -29,6 +29,7 @@ import {deleteRoutinesForSessions, replaceRoutines} from "./routine-index";
 import {RoutineCollector} from "../routines";
 import {UsageCollector} from "../home-stats";
 import {deleteUsageDailyForSessions, replaceUsageDaily} from "./usage-index";
+import {BridgeSessionCollector, deleteSessionBridgeAliases, replaceSessionBridgeAliases} from "./bridge-session-index";
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
 
@@ -573,6 +574,7 @@ interface IndexedMessage {
 
 /** Everything indexJsonlFile derives from a session transcript, folded one line at a time. */
 class SessionIndexState {
+	readonly bridgeSessions = new BridgeSessionCollector();
 	readonly planFilenames = new Set<string>();
 	readonly titleRecords = new TitleRecordCollector();
 	latestPrLink: {prNumber: number; prUrl: string; prRepository: string} | null = null;
@@ -703,6 +705,7 @@ class SessionIndexState {
 		} catch {
 			return; // skip malformed lines
 		}
+		if (obj.type === "bridge-session") this.bridgeSessions.add(obj, this.sessionId);
 
 		try {
 			this.subagentLinks.add(obj);
@@ -966,6 +969,7 @@ async function persistSessionIndexState(
 	);
 	replaceRoutines(db, {filePath, sessionId, projectId: project}, state.routines.routines());
 	replaceUsageDaily(db, {filePath, sessionId}, state.usage.rows());
+	replaceSessionBridgeAliases(db, sessionId, state.bridgeSessions);
 
 	// Update indexed_files
 	db.insert(schema.indexedFiles)
@@ -1629,6 +1633,7 @@ function pruneDeletedSessions(
 		deleteArtifactEventsForSessions(indexDb, [session.id]);
 		deleteRoutinesForSessions(indexDb, [session.id]);
 		deleteUsageDailyForSessions(indexDb, [session.id]);
+		deleteSessionBridgeAliases(indexDb, session.id);
 	}
 
 	// Re-indexing a moved session updates sessions.filePath before pruning runs,
