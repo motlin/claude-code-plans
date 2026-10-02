@@ -73,24 +73,25 @@ describe("SessionDock scroll-to-bottom pill", () => {
 		});
 	});
 
-	it("positions the pill centered 32px above the dock, not fixed to the viewport", () => {
+	it("positions the pill with a 20px gap above the dock, centered within its column", () => {
 		render(<DockInScroller />);
 		const pill = screen.getByLabelText("Scroll to bottom", {selector: "button"});
 		const column = pill.parentElement!;
 
 		expect({
 			columnClassName: column.className,
-			pillPositioning: ["absolute", "-top-8", "left-1/2", "-translate-x-1/2", "fixed"].map((className) => [
-				className,
-				pill.classList.contains(className),
-			]),
+			pillPositioning: ["absolute", "bottom-full", "mb-5", "-top-8", "left-1/2", "-translate-x-1/2", "fixed"].map(
+				(className) => [className, pill.classList.contains(className)],
+			),
 			fades: pill.classList.contains("duration-150"),
 			composerInColumn: column.contains(screen.getByLabelText("Fabricated composer")),
 		}).toStrictEqual({
 			columnClassName: `${CHAT_COLUMN_CLASS} relative flex flex-col gap-1.5`,
 			pillPositioning: [
 				["absolute", true],
-				["-top-8", true],
+				["bottom-full", true],
+				["mb-5", true],
+				["-top-8", false],
 				["left-1/2", true],
 				["-translate-x-1/2", true],
 				["fixed", false],
