@@ -98,7 +98,7 @@ export function AccountMenu() {
 				</span>
 				<ChevronsUpDown aria-hidden="true" className="size-3 shrink-0 text-muted" />
 			</MenuTrigger>
-			<MenuContent side="top" align="start" className="w-[17rem]">
+			<MenuContent density="comfortable" side="top" align="start" className="w-[17rem]">
 				{data?.email !== undefined && (
 					<div role="presentation" className="truncate px-2.5 py-1 text-[12px]/[16px] font-medium text-muted">
 						<span data-testid="user-menu-header">{data.email}</span>
