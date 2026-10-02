@@ -30,7 +30,7 @@ export function SettingsSearch({onSelect}: {onSelect: (tab: SettingsTab, row: st
 		<>
 			<div
 				ref={anchorRef}
-				className="mb-1 flex h-8 shrink-0 items-center gap-2 rounded-r6 border border-border bg-[var(--settings-field-bg)] px-2.5 text-secondary focus-within:ring-2 focus-within:ring-accent-100/40"
+				className="flex h-8 shrink-0 items-center gap-2 rounded-r6 border border-border bg-[var(--settings-field-bg)] px-2.5 text-secondary focus-within:ring-2 focus-within:ring-accent-100/40"
 			>
 				<Search aria-hidden="true" className="size-4 shrink-0" />
 				<input
