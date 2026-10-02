@@ -102,7 +102,7 @@ describe("SessionDock scroll-to-bottom pill", () => {
 });
 
 describe("SessionDock scroll-to-bottom pill style", () => {
-	it("draws a 36px circular pill while retaining its surface and chevron", () => {
+	it("draws a 36px circular pill with a 20px downward arrow", () => {
 		render(<DockInScroller />);
 		const pill = screen.getByLabelText("Scroll to bottom", {selector: "button"});
 		const shape = [
@@ -144,7 +144,7 @@ describe("SessionDock scroll-to-bottom pill style", () => {
 				["shadow-panel-sm", false],
 				["hover:text-primary", false],
 			],
-			iconClassName: "lucide lucide-chevron-down size-3",
+			iconClassName: "lucide lucide-arrow-down size-5",
 			title: null,
 		});
 	});

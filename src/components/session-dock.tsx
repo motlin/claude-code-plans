@@ -1,4 +1,4 @@
-import {ChevronDown} from "lucide-react";
+import {ArrowDown} from "lucide-react";
 import {useCallback, useEffect, useRef, useState, type ReactNode, type RefObject} from "react";
 import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
 import {findScrollContainer} from "./transcript-history-loader";
@@ -59,7 +59,7 @@ export function SessionDock({anchorRef, children}: {anchorRef: RefObject<HTMLEle
 					awayFromBottom ? "opacity-100" : "opacity-0 pointer-events-none"
 				}`}
 			>
-				<ChevronDown className="size-3" aria-hidden="true" />
+				<ArrowDown className="size-5" aria-hidden="true" />
 			</button>
 			{children}
 		</div>
