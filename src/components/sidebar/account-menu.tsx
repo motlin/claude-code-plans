@@ -101,7 +101,7 @@ export function AccountMenu() {
 			</MenuTrigger>
 			<MenuContent density="comfortable" side="top" align="start" className="w-[17rem]">
 				{data?.email !== undefined && (
-					<div role="presentation" className="truncate px-2.5 py-1 text-[12px]/[16px] font-medium text-muted">
+					<div role="presentation" className="truncate px-2.5 py-1 text-[13px]/[17px] font-medium text-muted">
 						<span data-testid="user-menu-header">{data.email}</span>
 					</div>
 				)}
