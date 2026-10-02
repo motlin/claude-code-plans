@@ -29,6 +29,7 @@ const DENSITY_CLASSES = {
 		twoLine: "min-h-[41px] items-start",
 		separator: "mx-2",
 		shortcut: "",
+		shortcutPadding: "pl-3",
 	},
 	comfortable: {
 		popup: "rounded-card",
@@ -38,6 +39,7 @@ const DENSITY_CLASSES = {
 		twoLine: "min-h-8 items-start",
 		separator: "mx-2.5",
 		shortcut: "[&>kbd]:text-[13px]",
+		shortcutPadding: "pl-5",
 	},
 } as const;
 
@@ -71,7 +73,7 @@ const ITEM_VARIANT_CLASS = {
 
 const LABEL_CLASS = "min-w-0 flex-1 truncate";
 const DESCRIPTION_CLASS = "truncate pt-[2px] text-[12px]/[15px] text-[var(--menu-muted)]";
-const TRAILING_CLASS = "ml-auto flex shrink-0 items-center gap-1 pl-3";
+const TRAILING_CLASS = "ml-auto flex shrink-0 items-center gap-1";
 const CHECK_SLOT_CLASS = "-mr-1 flex size-5 shrink-0 items-center justify-center";
 /** Upstream's checked tick: 16px, bold, in accent ink. */
 const CHECK_ICON_CLASS = "size-4 text-accent-100";
@@ -212,7 +214,7 @@ function ItemTrailing({accelerator, shortcut}: {accelerator?: string; shortcut?:
 	const keys = shortcut ?? accelerator;
 	if (keys === undefined) return null;
 	return (
-		<span aria-hidden="true" className={`${TRAILING_CLASS} pointer-coarse:hidden`}>
+		<span aria-hidden="true" className={`${TRAILING_CLASS} ${sizing.shortcutPadding} pointer-coarse:hidden`}>
 			<Shortcut keys={keys} variant="text" className={sizing.shortcut} />
 		</span>
 	);
@@ -391,7 +393,7 @@ export function MenuSubTrigger({children, icon, value, valueAccent, ...props}: M
 		>
 			<ItemIcon icon={icon} />
 			<span className={LABEL_CLASS}>{children}</span>
-			<span className={TRAILING_CLASS}>
+			<span className={`${TRAILING_CLASS} pl-3`}>
 				{value !== undefined && (
 					<span
 						data-menu-value=""
