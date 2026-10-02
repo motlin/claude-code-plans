@@ -1,7 +1,7 @@
 import {Checkbox} from "@base-ui/react/checkbox";
 import {Dialog} from "@base-ui/react/dialog";
 import {useNavigate} from "@tanstack/react-router";
-import {Check, Ellipsis, X} from "lucide-react";
+import {Check, ChevronDown, X} from "lucide-react";
 import {useState} from "react";
 import {useSetNavSectionPinned} from "../../lib/api/application-settings";
 import type {NavSection} from "../../lib/nav-sections";
@@ -40,7 +40,7 @@ export function MoreNavMenu({
 				<Menu>
 					<MenuTrigger aria-label="More navigation items" className={NAV_ROW_CLASS}>
 						<span className="df-leading-slot">
-							<Ellipsis aria-hidden="true" />
+							<ChevronDown aria-hidden="true" />
 						</span>
 						<span className="min-w-0 flex-1 truncate">More</span>
 					</MenuTrigger>
