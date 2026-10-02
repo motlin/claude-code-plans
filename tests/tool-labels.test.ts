@@ -8,6 +8,23 @@ const call = (
 ): ToolLabelCall => (resultMeta === undefined ? {name, input} : {name, input, resultMeta});
 
 describe("toolLabel", () => {
+	it.each([
+		{description: "Map PR numbers to branches", doneLabel: "Map PR numbers to branches"},
+		{description: "map example paths", doneLabel: "map example paths"},
+		{description: "MAP example paths", doneLabel: "MAP example paths"},
+		{description: "Mapped example paths", doneLabel: "Mapped example paths"},
+		{description: "Check example status", doneLabel: "Checked example status"},
+		{description: "Run example tests", doneLabel: "Ran example tests"},
+		{description: "Write example config", doneLabel: "Wrote example config"},
+	])("keeps authored Map labels without changing established verbs: $description", ({description, doneLabel}) => {
+		expect(toolLabel(call("Bash", {command: "echo example", description}))).toStrictEqual({
+			verb: "Ran",
+			meta: description,
+			doneLabel,
+			failedVerb: "Failed to run",
+		});
+	});
+
 	it("labels each tool with the upstream verb, meta, and failed form", () => {
 		expect({
 			read: toolLabel(call("Read", {file_path: "/repo/src/cache.ts"})),

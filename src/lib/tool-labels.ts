@@ -84,6 +84,8 @@ function lowercaseFirst(text: string): string {
 	return text.charAt(0).toLowerCase() + text.slice(1);
 }
 
+const PRESERVED_DESCRIPTION_VERBS = new Set(["map"]);
+
 /**
  * Past-tense a description's leading verb, the way upstream labels a Bash row:
  * "Check git status" -> "Checked git status", "See what's new" -> "Saw what's
@@ -96,6 +98,7 @@ function pastTense(description: string): string {
 	const word = match[1]!;
 	const rest = match[2]!;
 	const lower = word.toLowerCase();
+	if (PRESERVED_DESCRIPTION_VERBS.has(lower)) return description;
 	const irregular = IRREGULAR_PAST_TENSE[lower];
 	if (irregular) return capitalizeFirst(irregular) + rest;
 	if (lower.endsWith("ed")) return capitalizeFirst(lower) + rest;
