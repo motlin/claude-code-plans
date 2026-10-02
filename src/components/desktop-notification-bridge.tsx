@@ -1,13 +1,15 @@
 import {useEffect, useRef} from "react";
+import {useQueryClient} from "@tanstack/react-query";
 import {useRouter} from "@tanstack/react-router";
 
 import {useSubscribeSessionStates} from "../hooks/use-claude-events";
+import {getCachedSessionIdentity} from "../lib/api/session-identity";
 import {notificationCopy, shouldNotify} from "../lib/attention";
 import {displayState, type DisplayState} from "../lib/session-state";
 import {hasUnseenWork, subscribeUnseenWork} from "../lib/unread-store";
 import {useSettings} from "./settings-provider";
 
-function viewedSessionId(router: ReturnType<typeof useRouter>): string | null {
+function viewedRouteId(router: ReturnType<typeof useRouter>): string | null {
 	const sessionMatch = router.state.matches.find((match) => match.routeId.startsWith("/session/$id"));
 	if (!sessionMatch || !("id" in sessionMatch.params)) return null;
 	const id = sessionMatch.params.id;
@@ -23,6 +25,7 @@ export function DesktopNotificationBridge(): null {
 	const {settings} = useSettings();
 	const subscribeSessionStates = useSubscribeSessionStates();
 	const router = useRouter();
+	const queryClient = useQueryClient();
 	const previousStates = useRef(new Map<string, DisplayState>());
 	const activityStates = useRef(new Map<string, Parameters<typeof displayState>[0]>());
 
@@ -52,7 +55,7 @@ export function DesktopNotificationBridge(): null {
 					document.hidden,
 					Notification.permission,
 					session.sessionId,
-					viewedSessionId(router),
+					getCachedSessionIdentity(queryClient, viewedRouteId(router)),
 					session.archived,
 				)
 			) {
@@ -77,7 +80,7 @@ export function DesktopNotificationBridge(): null {
 			unsubscribeSessionStates();
 			unsubscribeUnseenWork();
 		};
-	}, [subscribeSessionStates, settings, router]);
+	}, [subscribeSessionStates, settings, router, queryClient]);
 
 	return null;
 }
