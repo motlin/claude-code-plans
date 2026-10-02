@@ -460,6 +460,7 @@ export const AssistantRecordSchema = z
 		apiBlockIndex: z.number().optional(),
 		perTurnEffort: z.union([z.string(), z.null()]).optional(),
 		serverClassifierRequest: z.string().optional(),
+		thinkingDurationMs: z.number().optional(),
 		truncatedAfterOutput: z.boolean().optional(),
 		// Keyed by tool_use id: the working directory each tool call ran in.
 		wireIngestContext: z.record(z.string(), z.object({cwd: z.string().optional()}).strict()).optional(),
