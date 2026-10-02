@@ -207,7 +207,7 @@ export function SettingsDialog() {
 				>
 					<nav
 						aria-label="Settings"
-						className="flex w-48 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-subtle bg-surface-1 p-2"
+						className="flex w-48 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-subtle bg-surface-1 px-3 py-2"
 					>
 						<SettingsSearch onSelect={selectTab} />
 						{NAV_ITEMS.map((item) => {
