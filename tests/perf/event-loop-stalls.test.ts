@@ -1,4 +1,4 @@
-import {afterEach, describe, expect, it} from "vite-plus/test";
+import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {
 	formatStall,
 	startStallMonitor,
@@ -152,23 +152,31 @@ describe("trackActivitySync", () => {
 
 describe("withActivityTracking", () => {
 	it("names a request stall by method and path", async () => {
+		vi.useFakeTimers({toFake: ["setInterval", "clearInterval"]});
+		const now = vi.spyOn(performance, "now").mockReturnValue(0);
+		const cpu = vi.spyOn(process, "threadCpuUsage").mockReturnValue({user: 0, system: 0});
 		const stalls: EventLoopStall[] = [];
 		const stop = startStallMonitor({thresholdMs: 200, intervalMs: 50, onStall: (stall) => stalls.push(stall)});
-		await sleep(60);
+		try {
+			const handler = withActivityTracking(async () => {
+				await Promise.resolve();
+				// One blocked interval, independent of how often the OS deschedules this test.
+				now.mockReturnValue(400);
+				cpu.mockReturnValue({user: 400_000, system: 0});
+				return new Response("ok");
+			});
+			const response = await handler(new Request("https://example.com/api/sessions/abc?tail=1"));
+			vi.advanceTimersByTime(50);
 
-		const handler = withActivityTracking(async () => {
-			await sleep(10);
-			blockFor(400);
-			return new Response("ok");
-		});
-		const response = await handler(new Request("http://localhost/api/sessions/abc?tail=1"));
-		await sleep(120);
-		stop();
-
-		expect({body: await response.text(), activities: stalls.map((stall) => stall.activities)}).toStrictEqual({
-			body: "ok",
-			activities: [["GET /api/sessions/abc"]],
-		});
+			expect({body: await response.text(), stalls}).toStrictEqual({
+				body: "ok",
+				stalls: [{durationMs: 350, cpuMs: 400, activities: ["GET /api/sessions/abc"]}],
+			});
+		} finally {
+			stop();
+			vi.restoreAllMocks();
+			vi.useRealTimers();
+		}
 	});
 });
 

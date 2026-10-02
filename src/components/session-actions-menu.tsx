@@ -619,7 +619,9 @@ export function SessionActionsMenu({
 			<div ref={rowRef} data-session-actions="" className={`group/session-row relative ${className ?? ""}`}>
 				<ContextMenu onOpenChangeComplete={onOpenChangeComplete}>
 					<ContextMenuTrigger>{children}</ContextMenuTrigger>
-					<MenuContent finalFocus={finalFocus}>{menuBody}</MenuContent>
+					<MenuContent density="comfortable" finalFocus={finalFocus}>
+						{menuBody}
+					</MenuContent>
 				</ContextMenu>
 				<Menu onOpenChangeComplete={onOpenChangeComplete}>
 					<MenuTrigger
@@ -630,7 +632,7 @@ export function SessionActionsMenu({
 					>
 						<EllipsisVertical aria-hidden="true" className="size-4" />
 					</MenuTrigger>
-					<MenuContent align="end" finalFocus={finalFocus}>
+					<MenuContent density="comfortable" align="end" finalFocus={finalFocus}>
 						{menuBody}
 					</MenuContent>
 				</Menu>

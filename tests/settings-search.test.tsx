@@ -9,7 +9,7 @@ import {
 	Outlet,
 	RouterProvider,
 } from "@tanstack/react-router";
-import {cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SettingsDialog} from "../src/components/settings/settings-dialog";
 import {SettingsProvider} from "../src/components/settings-provider";
@@ -111,6 +111,7 @@ describe("settings search", () => {
 
 	afterEach(() => {
 		cleanup();
+		vi.useRealTimers();
 		vi.unstubAllGlobals();
 		Reflect.deleteProperty(Element.prototype, "scrollIntoView");
 	});
@@ -127,14 +128,27 @@ describe("settings search", () => {
 	});
 
 	it("deep links scroll to and flash the row for 1.5s, then collapse the hash", async () => {
-		const router = await renderAt("/#settings/claude-code/code-font");
-		await screen.findByRole("dialog", {name: "Settings"});
+		const router = buildRouter("/#settings/claude-code/code-font");
+		await router.load();
+		vi.useFakeTimers({toFake: ["setTimeout", "clearTimeout"]});
+		await act(async () => {
+			render(<RouterProvider router={router} />);
+		});
 
-		await waitFor(() => expect(router.state.location.hash).toBe("settings/claude-code"));
+		expect({hash: router.state.location.hash, flashing: flashingRows(), scrolled}).toStrictEqual({
+			hash: "settings/claude-code",
+			flashing: ["code-font"],
+			scrolled: ["code-font"],
+		});
+
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(1499);
+		});
 		expect(flashingRows()).toStrictEqual(["code-font"]);
-		expect(scrolled).toStrictEqual(["code-font"]);
-
-		await waitFor(() => expect(flashingRows()).toStrictEqual([]), {timeout: 2500});
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(1);
+		});
+		expect(flashingRows()).toStrictEqual([]);
 	});
 
 	it("shows grouped results and deep links to the selected row", async () => {
