@@ -45,11 +45,11 @@
 		"tolerance": 0
 	},
 	"bundle.home.gzip": {
-		"ceiling": 394847,
+		"ceiling": 399136,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Settings editor a11y: accessible names on every /settings/edit control (label htmlFor/id, aria-labelledby on switches, aria-label on list rows), about 1.7 KB gzip / 5 KB raw from this change on top of earlier landings since the last raise; lowered after moving the settings editors out of the settings_.edit route file, whose exports TanStack kept in the client entry",
-		"raisedAt": "2026-10-01"
+		"reason": "Account for cumulative Remote Control alias support and measured sidebar presentation changes, including scoped menu shortcut density. The source-route/sidebar batch adds 578 gzip bytes over passing 035395eb (398558 to 399136); shared identity/helper chunks also change compression boundaries. Source/session identity renderers remain outside the home cold graph. CSS is excluded from this JS measurement; other ceilings and the 1% tolerance are unchanged.",
+		"raisedAt": "2026-10-02"
 	},
 	"bundle.home.raw": {
 		"ceiling": 1240047,
