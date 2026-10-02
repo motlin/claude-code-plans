@@ -1,3 +1,4 @@
+import {useQueryClient} from "@tanstack/react-query";
 import {useSessionArchive} from "../hooks/use-session-archive";
 import {useSessionFork} from "../hooks/use-session-fork";
 import {useShortcut} from "../hooks/use-shortcut";
@@ -32,13 +33,14 @@ export function useSessionTitleShortcuts({
 	cwd = null,
 	startEditing,
 }: SessionTitleShortcutOptions): void {
+	const queryClient = useQueryClient();
 	const setArchived = useSessionArchive(sessionId);
 	const toast = useToast();
 	const fork = useSessionFork();
 	useShortcut("rename_session", () => startEditing());
 	useShortcut("archive_session", () => setArchived(!archived));
 	useShortcut("toggle_read_session", () => toggleUnseen(sessionId));
-	useShortcut("copy_session_link", () => void copySessionLink(sessionId, toast));
+	useShortcut("copy_session_link", () => void copySessionLink(sessionId, toast, queryClient));
 	useShortcut(
 		"open_session_pr",
 		() => {

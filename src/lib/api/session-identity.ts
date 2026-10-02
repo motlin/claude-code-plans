@@ -1,6 +1,6 @@
 import {queryOptions, type Query, type QueryClient} from "@tanstack/react-query";
 import {apiFetch, ApiResponseError} from "./client";
-import {SessionIdentityResponse, sessionQueryKeys} from "./sessions";
+import {SessionIdentityResponse, sessionQueryKeys, type SessionDetailData} from "./sessions";
 
 /** Shared page and tab wording for a terminal alias lookup failure. */
 export function sessionIdentityFailure(error: Error | null | undefined) {
@@ -18,6 +18,30 @@ export function getCachedSessionIdentity(queryClient: QueryClient, routeId: stri
 	if (routeId === null || !routeId.startsWith("session_")) return routeId;
 	const identity = queryClient.getQueryState<{sessionId: string}>(sessionQueryKeys.identity(routeId));
 	return identity?.status === "success" ? (identity.data?.sessionId ?? null) : null;
+}
+
+/** Read a fresh unique alias proof without starting a request or changing either cache. */
+export function getCachedCanonicalSessionRouteId(queryClient: QueryClient, sessionId: string): string {
+	const detail = queryClient.getQueryState<SessionDetailData | null>(sessionQueryKeys.detail(sessionId));
+	if (
+		detail?.status !== "success" ||
+		detail.isInvalidated ||
+		detail.fetchStatus !== "idle" ||
+		detail.data?.canonicalRoutePending ||
+		detail.data?.canonicalRouteId === undefined
+	)
+		return sessionId;
+	const canonical = detail.data.canonicalRouteId;
+	const identity = queryClient.getQueryState<{sessionId: string}>(sessionQueryKeys.identity(canonical));
+	if (
+		identity !== undefined &&
+		(identity.status !== "success" ||
+			identity.isInvalidated ||
+			identity.fetchStatus !== "idle" ||
+			identity.data?.sessionId !== sessionId)
+	)
+		return sessionId;
+	return canonical;
 }
 
 export const sessionIdentityQueryOptions = (routeId: string) =>

@@ -342,6 +342,28 @@ describe("palette contextual session commands", () => {
 		);
 	});
 
+	it.each([
+		{query: "link", label: `Copy link to ${QUOTED}`, copied: "http://localhost:3000/session/session_alice_100"},
+		{query: "resume", label: "Copy resume command", copied: "cd '/users/dev/project-a' && claude -r sess-1"},
+		{
+			query: "fork",
+			label: "Copy fork command",
+			copied: "cd '/users/dev/project-a' && claude -r sess-1 --fork-session",
+		},
+	])(
+		"uses canonical proof only for the copied URL, preserving the $query command",
+		async ({query, label, copied}) => {
+			const {dialog, input} = await openPalette(
+				"/session/sess-1",
+				detail({canonicalRouteId: "session_alice_100"}),
+			);
+			fireEvent.change(input, {target: {value: query}});
+			fireEvent.click(await within(dialog).findByRole("option", {name: label}));
+			await waitFor(() => expect(writeText.mock.calls).toStrictEqual([[copied]]));
+			expect(fetchMock.mock.calls.filter(([url]) => url.endsWith("/identity"))).toStrictEqual([]);
+		},
+	);
+
 	it("copies the session link", async () => {
 		const {dialog, input} = await openPalette("/session/sess-1");
 

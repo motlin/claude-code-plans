@@ -10,7 +10,7 @@ import {SessionActionsMenu} from "../src/components/session-actions-menu";
 import {SessionTitleHeading} from "../src/components/session-title-heading";
 import {ToastProvider} from "../src/components/toast";
 import {herdrPanesQueryOptions} from "../src/lib/api/herdr";
-import type {SessionListItem} from "../src/lib/api/sessions";
+import {sessionQueryKeys, type SessionListItem} from "../src/lib/api/sessions";
 import {__unreadStoreTesting} from "../src/lib/unread-store";
 
 const SESSION_ID = "8f0c2c7e-1111-4222-8333-944445555666";
@@ -50,7 +50,7 @@ async function flush() {
 	});
 }
 
-async function renderWithProviders(content: ReactNode) {
+async function renderWithProviders(content: ReactNode, configure?: (client: QueryClient) => void) {
 	const queryClient = new QueryClient({
 		defaultOptions: {
 			queries: {retry: false, staleTime: Infinity, gcTime: Infinity, refetchOnMount: false},
@@ -58,6 +58,7 @@ async function renderWithProviders(content: ReactNode) {
 		},
 	});
 	queryClient.setQueryData(herdrPanesQueryOptions.queryKey, {panes: [], writesEnabled: false});
+	configure?.(queryClient);
 	const rootRoute = createRootRoute({
 		component: () => (
 			<QueryClientProvider client={queryClient}>
@@ -184,6 +185,20 @@ describe("Open in ▸ in the row menu", () => {
 });
 
 describe("⌥⌘L on the session page", () => {
+	it("copies a freshly proven canonical alias without an identity request", async () => {
+		vi.spyOn(navigator, "userAgent", "get").mockReturnValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)");
+		await renderWithProviders(
+			<SessionTitleHeading sessionId={SESSION_ID} title="Fix the flaky test" archived={false} />,
+			(client) =>
+				client.setQueryData(sessionQueryKeys.detail(SESSION_ID), {canonicalRouteId: "session_alice_100"}),
+		);
+		fireEvent.keyDown(document.body, {key: "¬", code: "KeyL", metaKey: true, altKey: true});
+		await waitFor(() =>
+			expect(writeText.mock.calls).toStrictEqual([[`${window.location.origin}/session/session_alice_100`]]),
+		);
+		expect(calls().filter(({url}) => url.endsWith("/identity"))).toStrictEqual([]);
+	});
+
 	it("copies the session link and toasts", async () => {
 		vi.spyOn(navigator, "userAgent", "get").mockReturnValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)");
 		await renderWithProviders(

@@ -15,7 +15,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionActionsMenu} from "../src/components/session-actions-menu";
 import {ToastProvider} from "../src/components/toast";
 import {herdrPanesQueryOptions, type HerdrPaneIndexData} from "../src/lib/api/herdr";
-import {sessionOpenInQueryOptions, type SessionListItem} from "../src/lib/api/sessions";
+import {sessionOpenInQueryOptions, sessionQueryKeys, type SessionListItem} from "../src/lib/api/sessions";
 import {getPendingFork, setPendingFork} from "../src/lib/session-fork";
 import type {SessionBucket} from "../src/lib/session-state";
 import {__unreadStoreTesting, hasUnseenWork, syncUnseenFromSummaries} from "../src/lib/unread-store";
@@ -53,6 +53,7 @@ async function renderRow(
 	session: SessionListItem,
 	livePaneSessionIds: string[] = [],
 	{cwd, writesEnabled = false}: {cwd?: string; writesEnabled?: boolean} = {},
+	configure?: (client: QueryClient) => void,
 ) {
 	const queryClient = new QueryClient({
 		defaultOptions: {
@@ -94,6 +95,7 @@ async function renderRow(
 			bridgeSessionId: null,
 		});
 	}
+	configure?.(queryClient);
 	const rootRoute = createRootRoute({
 		component: () => (
 			<QueryClientProvider client={queryClient}>
@@ -159,6 +161,20 @@ afterEach(() => {
 });
 
 describe("SessionActionsMenu", () => {
+	it("copies the fresh canonical URL from the row menu without looking up an identity", async () => {
+		const fetch = vi.fn<(input: RequestInfo | URL) => Promise<Response>>(() => new Promise<Response>(() => {}));
+		vi.stubGlobal("fetch", fetch);
+		await renderRow(listItem("done"), [], {}, (client) => {
+			client.setQueryData(sessionQueryKeys.detail(SESSION_ID), {canonicalRouteId: "session_alice_100"});
+		});
+		await rightClickRow();
+		fireEvent.click(screen.getByRole("menuitem", {name: /^Copy link/}));
+		await waitFor(() =>
+			expect(writeText.mock.calls).toStrictEqual([[`${window.location.origin}/session/session_alice_100`]]),
+		);
+		expect(fetch.mock.calls.filter(([url]) => String(url).endsWith("/identity"))).toStrictEqual([]);
+	});
+
 	it("labels the hover kebab with the session title", async () => {
 		await renderRow(listItem("done"));
 

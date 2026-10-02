@@ -1,4 +1,4 @@
-import {useQuery} from "@tanstack/react-query";
+import {useQuery, useQueryClient} from "@tanstack/react-query";
 import {useNavigate} from "@tanstack/react-router";
 import {EllipsisVertical} from "lucide-react";
 import {createContext, type ReactNode, useCallback, useContext, useRef, useState, useSyncExternalStore} from "react";
@@ -180,6 +180,7 @@ export function useSessionMenuRunner({
 	requestNewGroup,
 	transcriptView,
 }: SessionMenuRunnerOptions): SessionMenuRun {
+	const queryClient = useQueryClient();
 	const toast = useToast();
 	const transcriptViewRunner = useTranscriptViewRunner(sessionId, transcriptView);
 	const setArchived = useSessionArchive(sessionId);
@@ -234,7 +235,7 @@ export function useSessionMenuRunner({
 				markUnseen(sessionId);
 				return;
 			case "copy-link":
-				void copySessionLink(sessionId, toast);
+				void copySessionLink(sessionId, toast, queryClient);
 				return;
 			case "rename":
 				requestRename();

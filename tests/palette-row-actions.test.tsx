@@ -16,7 +16,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {CommandPalette, PALETTE_RECENT_LIMIT} from "../src/components/command-palette";
 import {ToastProvider} from "../src/components/toast";
 import {useCommandPalette} from "../src/hooks/use-command-palette";
-import {recentSessionsQueryOptions} from "../src/lib/api/sessions";
+import {recentSessionsQueryOptions, sessionQueryKeys} from "../src/lib/api/sessions";
 import {readPinState} from "../src/lib/pin-store";
 import {useSessionRenameRequest} from "../src/lib/session-rename-request";
 import {clearAll, hasUnseenWork} from "../src/lib/unread-store";
@@ -100,7 +100,7 @@ async function openPalette() {
 	fireEvent.keyDown(composer, {key: "k", code: "KeyK", metaKey: true});
 	const dialog = await screen.findByRole("dialog", {name: "Search"});
 	await within(dialog).findByRole("option", {name: /Refactor auth module/});
-	return {dialog, input: within(dialog).getByRole("combobox", {name: "Search"})};
+	return {dialog, input: within(dialog).getByRole("combobox", {name: "Search"}), queryClient};
 }
 
 async function openCard() {
@@ -180,6 +180,23 @@ describe("palette row actions card", () => {
 
 		const card = await within(dialog).findByRole("menu", {name: "Actions"});
 		expect(card.querySelector("[data-palette-card-title]")?.textContent).toBe("Write release notes");
+	});
+
+	it("copies the current fresh canonical proof from the selected row card", async () => {
+		const {card, queryClient} = await openCard();
+		queryClient.setQueryData(sessionQueryKeys.detail("sess-1"), {canonicalRouteId: "session_alice_100"});
+		fireEvent.keyDown(card, {key: "3", code: "Digit3"});
+		await waitFor(() =>
+			expect(writeText.mock.calls).toStrictEqual([["http://localhost:3000/session/session_alice_100"]]),
+		);
+	});
+
+	it("ignores stale or conflicting canonical ownership when copying from a row card", async () => {
+		const {card, queryClient} = await openCard();
+		queryClient.setQueryData(sessionQueryKeys.detail("sess-1"), {canonicalRouteId: "session_alice_100"});
+		queryClient.setQueryData(sessionQueryKeys.identity("session_alice_100"), {sessionId: "sess-2"});
+		fireEvent.keyDown(card, {key: "3", code: "Digit3"});
+		await waitFor(() => expect(writeText.mock.calls).toStrictEqual([["http://localhost:3000/session/sess-1"]]));
 	});
 
 	it("number keys activate items", async () => {

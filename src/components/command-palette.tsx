@@ -2,7 +2,7 @@ import {Dialog} from "@base-ui/react/dialog";
 import {Command, defaultFilter} from "cmdk";
 import {useNavigate, useRouterState} from "@tanstack/react-router";
 import {type KeyboardEvent, type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState} from "react";
-import {useQueries, useQuery} from "@tanstack/react-query";
+import {useQueries, useQuery, useQueryClient} from "@tanstack/react-query";
 import {
 	FileText,
 	Brain,
@@ -676,6 +676,7 @@ function PalettePopup({
 	const [tab, setTab] = useState<PaletteType>("all");
 	const [settledHeight, setSettledHeight] = useState<number | null>(null);
 	const {data} = useQuery(recentSessionsQueryOptions(PALETTE_RECENT_LIMIT));
+	const queryClient = useQueryClient();
 	const currentSessionId = useCurrentSessionId();
 	const detailQuery = useQuery({
 		...sessionDetailQueryOptions(currentSessionId ?? ""),
@@ -929,7 +930,7 @@ function PalettePopup({
 				requestSessionRename(currentSessionId);
 				return;
 			case "copy-link":
-				void copySessionLink(currentSessionId, toast);
+				void copySessionLink(currentSessionId, toast, queryClient);
 				return;
 			case "archive":
 			case "unarchive":

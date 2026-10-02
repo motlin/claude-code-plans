@@ -1,5 +1,9 @@
 import {SessionRouteIdentity} from "../components/session-route-identity";
-import {sessionIdentityFailure, sessionIdentityQueryOptions} from "../lib/api/session-identity";
+import {
+	getCachedCanonicalSessionRouteId,
+	sessionIdentityFailure,
+	sessionIdentityQueryOptions,
+} from "../lib/api/session-identity";
 import {sessionScrollKey} from "../lib/session-route-location";
 import {createFileRoute, useLocation, useRouter} from "@tanstack/react-router";
 import type {ErrorComponentProps} from "@tanstack/react-router";
@@ -222,15 +226,7 @@ function useCanonicalSessionRoute(
 		if (!identity?.isSuccess || identity.isStale || identity.isFetching || identity.data.sessionId !== sessionId)
 			return;
 		if (router.latestLocation.state.__TSR_key !== location.state.__TSR_key) return;
-		const proof = queryClient.getQueryState(sessionDetailQueryOptions(sessionId).queryKey);
-		if (
-			proof?.status !== "success" ||
-			proof.isInvalidated ||
-			proof.fetchStatus !== "idle" ||
-			proof.data?.canonicalRoutePending ||
-			proof.data?.canonicalRouteId !== canonical
-		)
-			return;
+		if (getCachedCanonicalSessionRouteId(queryClient, sessionId) !== canonical) return;
 		const nativeKey = location.state.__TSR_key ?? location.href;
 		if (replacing.current === nativeKey) return;
 		replacing.current = nativeKey;

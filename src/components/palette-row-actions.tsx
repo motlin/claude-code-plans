@@ -1,3 +1,4 @@
+import {useQueryClient} from "@tanstack/react-query";
 import {Ellipsis} from "lucide-react";
 import {type KeyboardEvent, useEffect, useRef} from "react";
 
@@ -54,6 +55,7 @@ export function PaletteRowActionsCard({
 	onRename: (id: string) => void;
 	onClose: (options: {refocus: boolean}) => void;
 }) {
+	const queryClient = useQueryClient();
 	const menuRef = useRef<HTMLDivElement>(null);
 	const unseen = useHasUnseenWork(session.id);
 	const pins = usePins();
@@ -102,7 +104,7 @@ export function PaletteRowActionsCard({
 				window.open(sessionUrl(session.id), "_blank", "noopener,noreferrer");
 				return;
 			case "copy-link":
-				void copySessionLink(session.id, toast);
+				void copySessionLink(session.id, toast, queryClient);
 				return;
 			case "pin":
 			case "unpin":

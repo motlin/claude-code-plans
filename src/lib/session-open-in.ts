@@ -1,4 +1,6 @@
+import type {QueryClient} from "@tanstack/react-query";
 import type {ToastOptions} from "../components/toast";
+import {getCachedCanonicalSessionRouteId} from "./api/session-identity";
 import {buildClaudeCopyCommand} from "./claude-launch-command";
 import {writeClipboardText} from "./clipboard";
 
@@ -27,8 +29,9 @@ export function sessionUrl(sessionId: string): string {
 	return `${window.location.origin}/session/${encodeURIComponent(sessionId)}`;
 }
 
-export async function copySessionLink(sessionId: string, toast: Toast): Promise<void> {
-	const copied = await writeClipboardText(sessionUrl(sessionId));
+export async function copySessionLink(sessionId: string, toast: Toast, queryClient: QueryClient): Promise<void> {
+	const routeId = getCachedCanonicalSessionRouteId(queryClient, sessionId);
+	const copied = await writeClipboardText(sessionUrl(routeId));
 	toast(
 		copied
 			? {kind: "success", message: "Link copied to clipboard."}
