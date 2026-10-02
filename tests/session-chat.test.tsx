@@ -750,6 +750,20 @@ function answeredToolCall(call: {id: string; name: string; input: unknown}, sess
 }
 
 describe("SessionChat sequential tool batches", () => {
+	it("groups commands across a hidden token budget reminder", () => {
+		const html = renderTranscript([
+			...answeredToolCall({id: "first-command", name: "Bash", input: {command: "echo first"}}),
+			{
+				type: "attachment",
+				uuid: "token-reminder",
+				attachment: {type: "total_tokens_reminder", text: "<total_tokens>1000 tokens left</total_tokens>"},
+			},
+			...answeredToolCall({id: "second-command", name: "Bash", input: {command: "echo second"}}),
+		]);
+
+		expect(summaryLabels(html)).toStrictEqual(["Ran 2 commands"]);
+	});
+
 	// Upstream claude.ai/code Normal folds a whole run of tool calls into one
 	// cross-tool summary row -- "Ran 2 commands, read cache.ts", "Updated todos,
 	// read 3 files" (.llm/ui-sync/upstream/code-rich-normal.tree.json, class 41).

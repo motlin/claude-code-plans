@@ -1209,6 +1209,7 @@ const VERBOSE_ONLY_SUBTYPES = new Set([
 	"agent_listing_delta",
 	"skill_listing",
 	"batching_reminder_sent",
+	"total_tokens_reminder",
 	"queued_command",
 ]);
 const STOP_HOOK_EVENTS = new Set(["Stop", "SubagentStop"]);

@@ -60,6 +60,7 @@ const RECORDS: unknown[] = [
 	attachment("att-agents", {type: "agent_listing_delta", addedTypes: ["a", "b"], isInitial: true}),
 	attachment("att-skills", {type: "skill_listing", skillCount: 4, isInitial: true}),
 	attachment("att-batching", {type: "batching_reminder_sent", text: "batch your calls"}),
+	attachment("att-tokens", {type: "total_tokens_reminder", text: "<total_tokens>1000 tokens left</total_tokens>"}),
 	attachment("att-queued", {type: "queued_command", prompt: "do the thing", commandMode: "prompt"}),
 	attachment("att-hook-message", {
 		type: "hook_system_message",
@@ -100,6 +101,7 @@ const DIAGNOSTIC_TEXT = [
 	"Agents — initial",
 	"Skills (4)",
 	"Batching reminder",
+	"Token budget reminder",
 	"Queued command",
 	"stop hooks ran",
 	"Hook blocked: Stop",
@@ -144,6 +146,10 @@ function observe(mode: TranscriptMode) {
 describe("Verbose-only diagnostic rows", () => {
 	it("hides system banners, stop-hook summaries and dropped-thinking counts in Normal mode", () => {
 		expect(observe("normal")).toStrictEqual({diagnostics: [], hookMessage: true, thinkingDropped: false});
+	});
+
+	it("hides diagnostic reminders in Thinking mode", () => {
+		expect(observe("thinking")).toStrictEqual({diagnostics: [], hookMessage: true, thinkingDropped: false});
 	});
 
 	it("shows them all in Verbose mode", () => {
