@@ -33,7 +33,7 @@ export function NewSessionRow() {
 				aria-keyshortcuts={shortcut.ariaKeyShortcuts}
 				className={ROW_CLASS}
 			>
-				<span className="df-leading-slot">
+				<span className="df-leading-slot [--sb-icon:16px]">
 					<span className="df-new-icon-circle">
 						<Plus aria-hidden="true" />
 					</span>
