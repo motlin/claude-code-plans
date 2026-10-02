@@ -1,6 +1,17 @@
 import {useQuery} from "@tanstack/react-query";
 import {Link} from "@tanstack/react-router";
-import {AppWindow, ArrowLeft, Bot, ChevronDown, CircleDollarSign, Cpu, GitFork, Tag, Users} from "lucide-react";
+import {
+	AppWindow,
+	ArrowLeft,
+	Bot,
+	ChevronDown,
+	CircleDollarSign,
+	Cpu,
+	FolderGit2,
+	GitFork,
+	Tag,
+	Users,
+} from "lucide-react";
 import {type ReactNode, useEffect, useRef, useState} from "react";
 
 import {useSessionRename} from "../hooks/use-session-rename";
@@ -328,6 +339,7 @@ export function SessionTitlebar({
 	const contextRename = useRenameAfterMenuClose(rename.startEditing);
 	const {ref, width, compact} = useTitlebarMeasure();
 	const modelLabel = formatModelName(data.model);
+	const repositoryName = data.pr?.repository.slice(data.pr.repository.lastIndexOf("/") + 1).trim();
 
 	return (
 		<div
@@ -393,6 +405,21 @@ export function SessionTitlebar({
 					data-origin-pills=""
 					className={`flex items-center gap-[3px] ${compact ? "shrink-0" : "min-w-0"}`}
 				>
+					{data.pr !== undefined && repositoryName && repositoryUrl(data.pr) !== null && (
+						<Menu>
+							<MenuTrigger
+								data-origin-pill="repository"
+								aria-label={`Repository ${data.pr.repository}`}
+								title={data.pr.repository}
+								className={`${PILL_CLASS} cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100`}
+							>
+								<PillContent icon={FolderGit2} label={repositoryName} compact={compact} />
+							</MenuTrigger>
+							<MenuContent>
+								<ProjectMenuItems sessionId={sessionId} session={data} />
+							</MenuContent>
+						</Menu>
+					)}
 					{modelLabel !== null && <OriginPill kind="model" icon={Cpu} label={modelLabel} compact={compact} />}
 					{data.costState !== undefined && (
 						<SessionCostPill cost={data.costState} className={`${PILL_CLASS} cursor-pointer`}>

@@ -192,9 +192,11 @@ describe("SessionTitlebar layout", () => {
 				"Parent session",
 				`${TITLE}, rename session`,
 				`More options for ${TITLE}`,
+				"Repository alice/avalonlogs",
 				`Forked from ${FORKED_FROM_ID.slice(0, 8)}`,
 			],
 			pills: [
+				"repository:avalonlogs",
 				"model:Haiku 4.5",
 				"entrypoint:sdk-ts",
 				"kind:background",
@@ -276,7 +278,7 @@ describe("SessionTitlebar environment glyph", () => {
 });
 
 describe("SessionTitlebar chrome", () => {
-	it("matches upstream's borderless 32px bar with a 13px/19px title and no project chip", async () => {
+	it("keeps the borderless bar and omits a repository pill without known PR metadata", async () => {
 		const titlebar = await renderTitlebar(baseDetail);
 		const title = screen.getByRole("button", {name: `${TITLE}, rename session`});
 		const headerClasses = SESSION_STICKY_HEADER_CLASS.split(" ");
@@ -284,15 +286,13 @@ describe("SessionTitlebar chrome", () => {
 		expect({
 			height: titlebar.classList.contains("h-8"),
 			titleType: ["text-[13px]/[19px]", "font-medium"].every((name) => title.classList.contains(name)),
-			projectChip: titlebar.querySelector("[data-origin-pill='project']"),
-			projectButton: screen.queryByRole("button", {name: "avalonlogs"}),
+			repositoryPill: titlebar.querySelector("[data-origin-pill='repository']"),
 			headerBorder: headerClasses.filter((name) => /^border(-|$)/.test(name)),
 			headerBottomPadding: headerClasses.filter((name) => /^(pb|py|p)-/.test(name)),
 		}).toStrictEqual({
 			height: true,
 			titleType: true,
-			projectChip: null,
-			projectButton: null,
+			repositoryPill: null,
 			headerBorder: [],
 			headerBottomPadding: [],
 		});
@@ -388,6 +388,112 @@ describe("SessionTitlebar pill collapse", () => {
 			at560: {compact: false, srOnlyLabels: [false]},
 			at559: {compact: true, srOnlyLabels: [true]},
 		});
+	});
+});
+
+describe("SessionTitlebar repository pill", () => {
+	const pr = {
+		number: 100,
+		url: "https://example.com/alice/example-repository/pull/100",
+		repository: "alice/example-repository",
+	};
+
+	it.each(["example-repository", "example-repository-with-a-long-name-that-stays-accessible"])(
+		"keeps the full repository identity accessible at normal and compact widths: %s",
+		async (basename) => {
+			const repository = `alice/${basename}`;
+			await renderTitlebar({...baseDetail, pr: {...pr, repository}});
+			const trigger = screen.getByRole("button", {name: `Repository ${repository}`});
+			resizeTitlebar(1200);
+			const wide = {
+				label: trigger.textContent,
+				title: trigger.title,
+				icons: trigger.querySelectorAll("svg").length,
+			};
+			resizeTitlebar(420);
+			expect({
+				wide,
+				compact: {
+					label: trigger.textContent,
+					title: trigger.title,
+					name: accessibleName(trigger),
+					iconHidden: trigger.querySelector("svg")?.getAttribute("aria-hidden"),
+				},
+			}).toStrictEqual({
+				wide: {label: basename, title: repository, icons: 0},
+				compact: {label: basename, title: repository, name: `Repository ${repository}`, iconHidden: "true"},
+			});
+		},
+	);
+
+	it.each(["", "   ", "alice/", "alice/   "])("omits an empty repository basename: %j", async (repository) => {
+		const titlebar = await renderTitlebar({...baseDetail, pr: {...pr, repository}});
+		expect(titlebar.querySelector("[data-origin-pill='repository']")).toBe(null);
+	});
+
+	it("omits a malformed PR URL instead of inferring a repository from cwd", async () => {
+		const titlebar = await renderTitlebar({...baseDetail, pr: {...pr, url: "not-a-url"}});
+		expect(titlebar.querySelector("[data-origin-pill='repository']")).toBe(null);
+	});
+
+	it("opens by keyboard without a request and restores focus on Escape", async () => {
+		await renderTitlebar({...baseDetail, pr});
+		const trigger = screen.getByRole("button", {name: "Repository alice/example-repository"});
+		act(() => trigger.focus());
+		fireEvent.keyDown(trigger, {key: "ArrowDown"});
+		await flush();
+		const items = screen.getAllByRole("menuitem").map((item) => item.textContent);
+		fireEvent.keyDown(screen.getByRole("menu"), {key: "Escape"});
+		await flush();
+		expect({
+			items,
+			requests: fetchMock.mock.calls,
+			menu: screen.queryByRole("menu"),
+			focused: document.activeElement === trigger,
+		}).toStrictEqual({
+			items: ["Open in Finder", "Copy path", "Copy branch name", "Open repository on GitHub"],
+			requests: [],
+			menu: null,
+			focused: true,
+		});
+	});
+
+	it("preserves repository, branch, path and Finder actions from the existing project menu", async () => {
+		await renderTitlebar({...baseDetail, pr});
+		for (const name of ["Open repository on GitHub", "Copy branch name", "Copy path", "Open in Finder"]) {
+			fireEvent.click(screen.getByRole("button", {name: "Repository alice/example-repository"}));
+			await flush();
+			fireEvent.click(screen.getByRole("menuitem", {name}));
+			await flush();
+		}
+		expect({
+			opened: openMock.mock.calls,
+			clipboard: writeText.mock.calls,
+			requests: fetchMock.mock.calls,
+		}).toStrictEqual({
+			opened: [["https://example.com/alice/example-repository", "_blank", "noopener,noreferrer"]],
+			clipboard: [["alice/sync-upstream"], [PROJECT_PATH]],
+			requests: [
+				[
+					"/api/open-in-finder",
+					{
+						body: JSON.stringify({sessionId: SESSION_ID}),
+						credentials: "same-origin",
+						headers: {"Content-Type": "application/json"},
+						method: "POST",
+					},
+				],
+			],
+		});
+	});
+
+	it("omits local actions when only the remote repository is known", async () => {
+		await renderTitlebar({...baseDetail, projectPath: null, cwd: null, gitBranch: null, pr});
+		fireEvent.click(screen.getByRole("button", {name: "Repository alice/example-repository"}));
+		await flush();
+		expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toStrictEqual([
+			"Open repository on GitHub",
+		]);
 	});
 });
 
