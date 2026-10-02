@@ -1,11 +1,11 @@
 import {useQuery} from "@tanstack/react-query";
 import {useNavigate} from "@tanstack/react-router";
 import {
-	ArrowUpRight,
 	BookOpen,
 	Bug,
 	ChevronDown,
 	CircleHelp,
+	ExternalLink,
 	FileCog,
 	Gauge,
 	Info,
@@ -164,7 +164,7 @@ export function AccountMenu() {
 								icon={link.icon}
 								render={<a href={link.href} target="_blank" rel="noreferrer" />}
 							>
-								<ExternalLabel>{link.label}</ExternalLabel>
+								<ExternalLabel compactGap>{link.label}</ExternalLabel>
 							</MenuItem>
 						))}
 						<MenuSeparator />
@@ -186,11 +186,11 @@ function ExternalLinkItem({href, children}: {href: string; children: ReactNode})
 	);
 }
 
-function ExternalLabel({children}: {children: ReactNode}) {
+function ExternalLabel({children, compactGap = false}: {children: ReactNode; compactGap?: boolean}) {
 	return (
-		<span className="inline-flex items-center gap-1">
-			{children}
-			<ArrowUpRight aria-hidden="true" className="size-3.5 text-muted" />
+		<span className={`flex w-full min-w-0 items-center ${compactGap ? "gap-3" : "gap-6"}`}>
+			<span className="min-w-0 flex-1 truncate">{children}</span>
+			<ExternalLink aria-hidden="true" className="size-4 shrink-0 text-primary" />
 		</span>
 	);
 }
