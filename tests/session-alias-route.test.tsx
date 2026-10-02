@@ -799,10 +799,8 @@ it.each([ALICE, ALIAS])("keeps the outgoing %s chat at its reading position whil
 			disconnect() {}
 		},
 	);
-	const scrollIntoView = vi.fn();
-	vi.stubGlobal("scrollIntoView", scrollIntoView);
-	const originalScrollIntoView = Object.getOwnPropertyDescriptor(Element.prototype, "scrollIntoView");
-	Object.defineProperty(Element.prototype, "scrollIntoView", {configurable: true, value: scrollIntoView});
+	const originalScrollHeight = Object.getOwnPropertyDescriptor(document.documentElement, "scrollHeight");
+	Object.defineProperty(document.documentElement, "scrollHeight", {configurable: true, value: 2000});
 	const flushFrames = () => {
 		for (let turn = 0; frames.size > 0 && turn < 10; turn++) {
 			const callbacks = [...frames.values()];
@@ -817,9 +815,11 @@ it.each([ALICE, ALIAS])("keeps the outgoing %s chat at its reading position whil
 	try {
 		const {router} = await setup({initial: `/session/${routeId}`, cachedOwner: ALICE, homeLoader: () => home});
 		const originalKey = router.state.location.state.__TSR_key;
+		const scrollTo = vi.mocked(window.scrollTo);
+		scrollTo.mockClear();
 		act(flushFrames);
-		const initialScrolls = [...scrollIntoView.mock.calls];
-		scrollIntoView.mockClear();
+		const initialScrolls = [...scrollTo.mock.calls];
+		scrollTo.mockClear();
 		const main = screen.getByTestId("main");
 		act(() => {
 			main.scrollTop = 300;
@@ -835,20 +835,20 @@ it.each([ALICE, ALIAS])("keeps the outgoing %s chat at its reading position whil
 			owner: screen.getByTestId("session").dataset["session"],
 			scrollKeys: observed.scrollKeys.map((key) => key === originalKey),
 			scrollTop: main.scrollTop,
-			endScrolls: [...scrollIntoView.mock.calls],
+			endScrolls: [...scrollTo.mock.calls],
 		};
 		await act(async () => {
 			finishHome();
 			await navigation;
 		});
 		expect({initialScrolls, duringNavigation, home: screen.getByText("New session").textContent}).toStrictEqual({
-			initialScrolls: [[{block: "end"}]],
+			initialScrolls: [[{top: 2000}]],
 			duringNavigation: {owner: ALICE, scrollKeys: [true], scrollTop: 300, endScrolls: []},
 			home: "New session",
 		});
 	} finally {
-		if (originalScrollIntoView) Object.defineProperty(Element.prototype, "scrollIntoView", originalScrollIntoView);
-		else Reflect.deleteProperty(Element.prototype, "scrollIntoView");
+		if (originalScrollHeight) Object.defineProperty(document.documentElement, "scrollHeight", originalScrollHeight);
+		else Reflect.deleteProperty(document.documentElement, "scrollHeight");
 	}
 });
 

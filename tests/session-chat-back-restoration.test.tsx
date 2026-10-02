@@ -480,9 +480,16 @@ it("rejects geometry after an independent compact-summary disclosure changes", a
 	expect({expanded, saves: remember.mock.calls}).toStrictEqual({expanded: "true", saves: []});
 });
 
-// T24 regression drafts: no execution yet. Geometry uses actual mounted rows plus an explicit footer extent.
-// Smooth animation interruption is modeled here; confirm its ordering in the independent browser control.
-function TailFixture({fresh, visit}: {fresh: boolean; visit: string}) {
+// Model actual mounted rows plus footer content that extends beyond the transcript itself.
+function TailFixture({
+	fresh,
+	visit,
+	transcriptLines = lines,
+}: {
+	fresh: boolean;
+	visit: string;
+	transcriptLines?: SessionLine[];
+}) {
 	const anchor = useRef<HTMLDivElement>(null);
 	return (
 		<main style={{overflowY: "auto"}} data-testid="main">
@@ -490,13 +497,14 @@ function TailFixture({fresh, visit}: {fresh: boolean; visit: string}) {
 				<SessionChat
 					sessionId={LOCAL_ID}
 					initialScrollKey={visit}
-					lines={lines}
+					scrollContentRef={anchor}
+					lines={transcriptLines}
 					toolResultMap={new Map()}
 					shouldScrollToEnd={fresh}
 				/>
 				<div data-testid="test-footer">
 					<SessionDock anchorRef={anchor}>
-						<p>Fabricated composer footer</p>
+						<textarea aria-label="Fabricated tail composer" />
 					</SessionDock>
 				</div>
 			</div>
@@ -585,8 +593,8 @@ function shrinkAboveAnchor(pixels: number) {
 	rowAdjustments.set(index, (rowAdjustments.get(index) ?? 0) - pixels);
 	return index;
 }
-async function mountTail(fresh: boolean, visit: string) {
-	render(<TailFixture fresh={fresh} visit={visit} />);
+async function mountTail(fresh: boolean, visit: string, transcriptLines = lines) {
+	render(<TailFixture fresh={fresh} visit={visit} transcriptLines={transcriptLines} />);
 	const main = screen.getByTestId("main");
 	Object.defineProperty(main, "clientHeight", {configurable: true, value: viewportHeight});
 	Object.defineProperty(main, "scrollHeight", {configurable: true, get: contentHeight});
@@ -700,5 +708,179 @@ it.each([false, true])(
 						writes: [{phase: "away-shrink", requested: 11116, applied: 11116}],
 					},
 		);
+	},
+);
+
+it.each([false, true])(
+	"initially reaches the full scroll extent beyond the transcript and retains it through late measurements (StrictMode=%s)",
+	async (strict) => {
+		installTailGeometry(120);
+		const chat = <TailFixture fresh visit={`example-footer-fresh-${strict}`} transcriptLines={lines.slice(0, 8)} />;
+		render(strict ? <StrictMode>{chat}</StrictMode> : chat);
+		const main = screen.getByTestId("main");
+		Object.defineProperty(main, "clientHeight", {configurable: true, value: viewportHeight});
+		Object.defineProperty(main, "scrollHeight", {configurable: true, get: contentHeight});
+		await flushTailFrame(main);
+		await flushTailFrame(main);
+		await settleTail(main);
+		const measuredDistance = tailDistance(main);
+		shrinkAboveAnchor(64);
+		await deliverTailMeasurements(main);
+		await flushTailFrame(main);
+		await settleTail(main);
+		expect({footerExtent, measuredDistance, resizedDistance: tailDistance(main)}).toStrictEqual({
+			footerExtent: 120,
+			measuredDistance: 0,
+			resizedDistance: 0,
+		});
+	},
+);
+
+it.each([false, true])(
+	"handles simultaneous row shrink and footer growth without overriding a reader who scrolls away (interrupted=%s)",
+	async (interrupted) => {
+		installTailGeometry(120);
+		rowAdjustments.set(39, -120);
+		const main = await mountTail(true, `example-combined-layout-${interrupted}`);
+		await act(async () => {
+			main.scrollTop = contentHeight();
+			fireEvent.scroll(main);
+		});
+		await settleTail(main);
+		if (interrupted) {
+			await act(async () => {
+				fireEvent.wheel(main, {deltaY: -300});
+				main.scrollTop -= 300;
+				fireEvent.scroll(main);
+			});
+			await settleTail(main);
+		}
+		const before = visibleAnchor();
+		shrinkAboveAnchor(71.5);
+		// Native clamping happens as the row shrinks, before the independently rendered footer grows.
+		scrollPosition = main.scrollTop;
+		footerExtent += 45.5;
+		await deliverTailMeasurements(main);
+		// A second measurement-compensation event has unchanged extent; it must not discard pending end-follow.
+		await act(async () => fireEvent.scroll(main));
+		await flushTailFrame(main);
+		await settleTail(main);
+		expect({
+			distance: tailDistance(main),
+			anchor: visibleAnchor(),
+		}).toStrictEqual({
+			distance: interrupted ? 345.5 : 0,
+			anchor: interrupted ? before : {record: "78", top: -245.5},
+		});
+	},
+);
+
+async function resizeTailContent() {
+	const content = screen.getByTestId("test-footer").parentElement!;
+	const observer = [...ControlledResizeObserver.active].find((candidate) => candidate.elements.has(content));
+	if (!observer) throw new Error("Expected the complete content wrapper to be observed.");
+	await act(async () =>
+		observer.callback(
+			[
+				{
+					target: content,
+					contentRect: content.getBoundingClientRect(),
+					borderBoxSize: [],
+					contentBoxSize: [],
+					devicePixelContentBoxSize: [],
+				},
+			],
+			observer as unknown as ResizeObserver,
+		),
+	);
+}
+
+it.each(["none", "typing", "caret", "downward-wheel", "touch-start"])(
+	"follows footer-only growth while preserving ordinary bottom activity (%s)",
+	async (activity) => {
+		installTailGeometry(120);
+		const main = await mountTail(true, `example-footer-only-${activity}`, lines.slice(0, 8));
+		footerExtent += 64;
+		await resizeTailContent();
+		await act(async () => {
+			if (activity === "typing") fireEvent.keyDown(screen.getByLabelText("Fabricated tail composer"), {key: " "});
+			if (activity === "caret")
+				fireEvent.keyDown(screen.getByLabelText("Fabricated tail composer"), {key: "ArrowUp"});
+			if (activity === "downward-wheel") fireEvent.wheel(main, {deltaY: 100});
+			if (activity === "touch-start") fireEvent.touchStart(main, {touches: [{clientY: 100}]});
+		});
+		await flushTailFrame(main);
+		expect({distance: tailDistance(main), pendingFrames: frames.size}).toStrictEqual({
+			distance: 0,
+			pendingFrames: 0,
+		});
+	},
+);
+
+it.each(["wheel", "key", "touch"])("cancels a queued layout follow when the reader moves away by %s", async (input) => {
+	installTailGeometry(120);
+	const main = await mountTail(true, `example-footer-cancel-${input}`, lines.slice(0, 8));
+	footerExtent += 64;
+	await resizeTailContent();
+	await act(async () => {
+		if (input === "wheel") fireEvent.wheel(main, {deltaY: -300});
+		if (input === "key") fireEvent.keyDown(main, {key: "PageUp"});
+		if (input === "touch") {
+			fireEvent.touchStart(main, {touches: [{clientY: 100}]});
+			fireEvent.touchMove(main, {touches: [{clientY: 140}]});
+		}
+		main.scrollTop -= 300;
+		fireEvent.scroll(main);
+	});
+	const before = visibleAnchor();
+	await flushTailFrame(main);
+	expect({distance: tailDistance(main), anchor: visibleAnchor(), pendingFrames: frames.size}).toStrictEqual({
+		distance: 244,
+		anchor: before,
+		pendingFrames: 0,
+	});
+});
+
+it.each([
+	{input: "wheel", scrollTop: 120, overscroll: "auto", ownerMoves: false},
+	{input: "touch", scrollTop: 120, overscroll: "auto", ownerMoves: false},
+	{input: "key", scrollTop: 120, overscroll: "auto", ownerMoves: false},
+	{input: "wheel", scrollTop: 0, overscroll: "contain", ownerMoves: false},
+	{input: "wheel", scrollTop: 0, overscroll: "auto", ownerMoves: true},
+])(
+	"handles upward input through a nested scroll area: $input (top=$scrollTop, overscroll=$overscroll)",
+	async ({input, scrollTop, overscroll, ownerMoves}) => {
+		installTailGeometry(120);
+		const main = await mountTail(true, `example-nested-${input}-${scrollTop}-${overscroll}`, lines.slice(0, 8));
+		const nested = document.createElement("pre");
+		nested.textContent = "Fabricated scrollable tool output";
+		nested.style.overflowY = "auto";
+		nested.style.overscrollBehaviorY = overscroll;
+		Object.defineProperties(nested, {
+			scrollTop: {configurable: true, value: scrollTop, writable: true},
+			clientHeight: {configurable: true, value: 100},
+			scrollHeight: {configurable: true, value: 500},
+		});
+		screen.getByTestId("test-footer").append(nested);
+		footerExtent += 64;
+		await resizeTailContent();
+		await act(async () => {
+			if (input === "wheel") fireEvent.wheel(nested, {deltaY: -100});
+			if (input === "key") fireEvent.keyDown(nested, {key: "PageUp"});
+			if (input === "touch") {
+				fireEvent.touchStart(nested, {touches: [{clientY: 100}]});
+				fireEvent.touchMove(nested, {touches: [{clientY: 140}]});
+			}
+		});
+		if (ownerMoves)
+			await act(async () => {
+				main.scrollTop -= 300;
+				fireEvent.scroll(main);
+			});
+		await flushTailFrame(main);
+		expect({distance: tailDistance(main), pendingFrames: frames.size}).toStrictEqual({
+			distance: ownerMoves ? 244 : 0,
+			pendingFrames: 0,
+		});
 	},
 );

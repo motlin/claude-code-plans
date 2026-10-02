@@ -780,6 +780,7 @@ function SessionView({
 										showTranscriptOnly={transcriptFlags.showTranscriptOnly}
 										transcriptMode={transcriptMode}
 										initialScrollKey={initialScrollKey}
+										scrollContentRef={scrollAnchorRef}
 										shouldScrollToEnd={restoredScrollPosition === undefined && locationHash === ""}
 										summary={aiSummary}
 										{...(slashCommands === undefined ? {} : {slashCommands})}

@@ -209,8 +209,8 @@ describe("SessionChat initial scrolling", () => {
 			scrollIntoViewCalls: scrollIntoView.mock.calls,
 			scrollToCalls: scrollTo.mock.calls,
 		}).toStrictEqual({
-			scrollIntoViewCalls: [[{block: "end"}]],
-			scrollToCalls: [[{top: 10_000}]],
+			scrollIntoViewCalls: [],
+			scrollToCalls: [[{top: 10_000}], [{top: 10_000}]],
 		});
 	});
 
@@ -274,9 +274,11 @@ describe("SessionChat initial scrolling", () => {
 		expect({
 			followObservers: followObserverCount(),
 			scrollIntoViewCalls: scrollIntoView.mock.calls,
+			scrollToCalls: scrollTo.mock.calls,
 		}).toStrictEqual({
 			followObservers: 2,
-			scrollIntoViewCalls: [[{block: "end"}], [{block: "end"}]],
+			scrollIntoViewCalls: [],
+			scrollToCalls: [[{top: 10_000}], [{top: 10_000}]],
 		});
 	});
 });

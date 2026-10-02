@@ -59,6 +59,7 @@ import {
 import type {SummarySegment} from "../lib/session-utils";
 import {failedDescriptionLabel, runningToolLabel, runningToolLabelText, toolLabel} from "../lib/tool-labels";
 import {InlinePathImages, SESSION_IMAGE_CLASS_NAME} from "./inline-path-images";
+import {isEditableTarget} from "../lib/shortcuts/match";
 import {findScrollContainer} from "./transcript-history-loader";
 import {usePromptJump} from "../hooks/use-prompt-jump";
 import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
@@ -95,6 +96,8 @@ export interface SessionChatProps {
 	/** Selected font and layout settings from the main session view. */
 	measurementLayout?: string;
 	shouldScrollToEnd?: boolean;
+	/** The full scroll content, including asynchronously sized composer/footer siblings. */
+	scrollContentRef?: React.RefObject<HTMLElement | null>;
 	/** The AI summary, shown once as a muted subtitle before the first message. */
 	summary?: string | null;
 	/** Commands known for this project, so a slash-command chip can show its description. */
@@ -211,6 +214,7 @@ export const SessionChat = React.memo(function SessionChat({
 	measurementSource,
 	measurementLayout = "",
 	shouldScrollToEnd = true,
+	scrollContentRef,
 	summary = null,
 	slashCommands = EMPTY_SLASH_COMMANDS,
 }: SessionChatProps) {
@@ -229,7 +233,6 @@ export const SessionChat = React.memo(function SessionChat({
 		measurementLayout,
 	]);
 	const containerRef = useRef<HTMLDivElement>(null);
-	const endRef = useRef<HTMLDivElement>(null);
 	const isSubagentSession = sessionId.startsWith("agent-");
 	const subagentLookup = useMemo(() => buildSubagentLookup(subagents), [subagents]);
 	const resolveAgentName = useCallback<AgentNameResolver>(
@@ -239,55 +242,126 @@ export const SessionChat = React.memo(function SessionChat({
 
 	useEffect(() => {
 		if (!shouldScrollToEnd || autoScrolledLocations.has(initialScrollKey)) return;
-
-		let followsEnd = false;
-		let initialFrame: number | undefined;
-		let paintedFrame: number | undefined;
-		let resizeFrame: number | undefined;
-
-		const updateFollowsEnd = () => {
-			const scroller = findScrollContainer(containerRef.current);
-			const {scrollHeight, scrollTop, clientHeight} = scrollMetrics(scroller);
-			const distanceFromEnd = scrollHeight - scrollTop - clientHeight;
-			followsEnd = distanceFromEnd <= END_FOLLOW_THRESHOLD_PIXELS;
-		};
-
-		const resizeObserver = new ResizeObserver(() => {
-			if (!followsEnd || resizeFrame !== undefined) return;
-			resizeFrame = requestAnimationFrame(() => {
-				resizeFrame = undefined;
-				if (!followsEnd) return;
-				const scroller = findScrollContainer(containerRef.current);
-				const {scrollHeight} = scrollMetrics(scroller);
-				if (isDocumentScrollContainer(scroller)) window.scrollTo({top: scrollHeight});
-				else scroller.scrollTo({top: scrollHeight});
-			});
-		});
 		const container = containerRef.current;
 		if (!container) throw new Error("Expected the session chat container to be mounted.");
 		const scroller = findScrollContainer(container);
 		const scrollEventTarget = isDocumentScrollContainer(scroller) ? window : scroller;
+		let followsEnd = false;
+		let pendingLayoutFollow = false;
+		const previousMetrics = scrollMetrics(scroller);
+		// Element metrics are live getters; retain values, not the element itself.
+		let previousHeight = previousMetrics.scrollHeight;
+		let previousClientHeight = previousMetrics.clientHeight;
+		let initialFrame: number | undefined;
+		let paintedFrame: number | undefined;
+		let resizeFrame: number | undefined;
+		let touchY: number | undefined;
+
+		const scrollToEnd = () => {
+			const {scrollHeight, clientHeight} = scrollMetrics(scroller);
+			previousHeight = scrollHeight;
+			previousClientHeight = clientHeight;
+			if (isDocumentScrollContainer(scroller)) window.scrollTo({top: scrollHeight});
+			else scroller.scrollTo({top: scrollHeight});
+		};
+		const queueLayoutFollow = () => {
+			if (!followsEnd || resizeFrame !== undefined) return;
+			pendingLayoutFollow = true;
+			resizeFrame = requestAnimationFrame(() => {
+				resizeFrame = undefined;
+				if (followsEnd) scrollToEnd();
+				pendingLayoutFollow = false;
+			});
+		};
+		const updateFollowsEnd = () => {
+			const {scrollHeight, scrollTop, clientHeight} = scrollMetrics(scroller);
+			const extentChanged = scrollHeight !== previousHeight || clientHeight !== previousClientHeight;
+			// A row shrink and footer growth can move the browser away from the new end
+			// without reader input. Retain follow through its subsequent measurement scrolls.
+			followsEnd =
+				scrollHeight - scrollTop - clientHeight <= END_FOLLOW_THRESHOLD_PIXELS ||
+				(followsEnd && (extentChanged || pendingLayoutFollow));
+			previousHeight = scrollHeight;
+			previousClientHeight = clientHeight;
+			if (followsEnd && extentChanged) queueLayoutFollow();
+		};
+		const cancelLayoutFollow = () => {
+			followsEnd = false;
+			pendingLayoutFollow = false;
+			if (resizeFrame !== undefined) cancelAnimationFrame(resizeFrame);
+			resizeFrame = undefined;
+		};
+		const scrollReachesOwner = (target: EventTarget | null) => {
+			// Nested tool output and composer fields consume upward input before it reaches the transcript.
+			for (
+				let element = target instanceof Element ? target : null;
+				element && element !== scroller;
+				element = element.parentElement
+			) {
+				const style = getComputedStyle(element);
+				if (
+					(style.overflowY === "auto" || style.overflowY === "scroll") &&
+					(element.scrollTop > 0 ||
+						style.overscrollBehaviorY === "contain" ||
+						style.overscrollBehaviorY === "none")
+				)
+					return false;
+			}
+			return true;
+		};
+		const onWheel = (event: Event) => {
+			if ((event as WheelEvent).deltaY < 0 && scrollReachesOwner(event.target)) cancelLayoutFollow();
+		};
+		const onKeyDown = (event: Event) => {
+			const key = event as KeyboardEvent;
+			if (isEditableTarget(key.target) || !scrollReachesOwner(key.target)) return;
+			if (
+				key.key === "ArrowUp" ||
+				key.key === "PageUp" ||
+				key.key === "Home" ||
+				(key.key === " " && key.shiftKey)
+			)
+				cancelLayoutFollow();
+		};
+		const onTouchStart = (event: Event) => {
+			touchY = (event as TouchEvent).touches[0]?.clientY;
+		};
+		const onTouchMove = (event: Event) => {
+			const nextY = (event as TouchEvent).touches[0]?.clientY;
+			if (touchY !== undefined && nextY !== undefined && nextY > touchY && scrollReachesOwner(event.target))
+				cancelLayoutFollow();
+			touchY = nextY;
+		};
+		const resizeObserver = new ResizeObserver(queueLayoutFollow);
 		resizeObserver.observe(container);
+		if (scrollContentRef?.current && scrollContentRef.current !== container)
+			resizeObserver.observe(scrollContentRef.current);
 		scrollEventTarget.addEventListener("scroll", updateFollowsEnd, {passive: true});
+		const inputs = [
+			["wheel", onWheel],
+			["keydown", onKeyDown],
+			["touchstart", onTouchStart],
+			["touchmove", onTouchMove],
+		] as const;
+		for (const [type, handler] of inputs)
+			scrollEventTarget.addEventListener(type, handler, {passive: true, capture: true});
 
 		initialFrame = requestAnimationFrame(() => {
 			paintedFrame = requestAnimationFrame(() => {
-				const end = endRef.current;
-				if (!end) return;
 				autoScrolledLocations.add(initialScrollKey);
-				end.scrollIntoView({block: "end"});
+				scrollToEnd();
 				followsEnd = true;
 			});
 		});
-
 		return () => {
 			resizeObserver.disconnect();
 			scrollEventTarget.removeEventListener("scroll", updateFollowsEnd);
+			for (const [type, handler] of inputs) scrollEventTarget.removeEventListener(type, handler, true);
 			if (initialFrame !== undefined) cancelAnimationFrame(initialFrame);
 			if (paintedFrame !== undefined) cancelAnimationFrame(paintedFrame);
 			if (resizeFrame !== undefined) cancelAnimationFrame(resizeFrame);
 		};
-	}, [initialScrollKey, shouldScrollToEnd]);
+	}, [initialScrollKey, shouldScrollToEnd, scrollContentRef]);
 
 	return (
 		<TranscriptModeContext.Provider value={transcriptMode}>
@@ -323,7 +397,6 @@ export const SessionChat = React.memo(function SessionChat({
 							measurementKey={measurementKey}
 							measurementSource={measurementSource}
 						/>
-						<div ref={endRef} />
 					</div>
 				</AgentNameContext.Provider>
 			</SlashCommandsContext.Provider>
