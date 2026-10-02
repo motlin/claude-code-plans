@@ -96,6 +96,11 @@ perf-bundle: install
 perf-report *args: install
     vp exec tsx scripts/perf-report.ts {{ args }}
 
+# Count style recalcs, layouts, requests and layout shift for J1–J6 in headless Chromium on a fixture server (:7538). Diagnostic only, never ratcheted
+[group('perf')]
+perf-lab *args: install
+    vp exec tsx scripts/perf-lab.ts {{ args }}
+
 # Rewrite tests/perf/ceilings.json to lowered and new measured counts. Manual only: never run from CI, a bot or a schedule
 [group('perf')]
 perf-ceilings: install

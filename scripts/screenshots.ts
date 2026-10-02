@@ -21,7 +21,7 @@ const MANIFEST_PATH = join(SCREENSHOTS_DIRECTORY, "renderer-manifest.json");
 const FIXTURE_PARENT = join(REPOSITORY_ROOT, ".llm");
 const PORT = 7537;
 const BASE_URL = `http://127.0.0.1:${PORT}`;
-const FIXED_TIME = Date.parse("2000-01-02T12:00:00.000Z");
+export const FIXED_TIME = Date.parse("2000-01-02T12:00:00.000Z");
 const VIEWPORT = {width: 1280, height: 718} as const;
 const DEVICE_SCALE_FACTOR = 2;
 const COLOR_SCHEME = "dark" as const;
@@ -151,7 +151,7 @@ function messageRecord(
 	};
 }
 
-function seedFixtureHome(fixtureRoot: string): string {
+export function seedFixtureHome(fixtureRoot: string): string {
 	const fixtureHome = join(fixtureRoot, "home");
 	const claudeHome = join(fixtureHome, ".claude");
 	const projectsDirectory = join(claudeHome, "projects");
@@ -481,7 +481,7 @@ async function waitForServer(server: ChildProcess, output: string[]): Promise<vo
 	throw new Error(`Fixture dev server was not ready after 30 seconds:\n${output.join("")}`);
 }
 
-async function stopDevServer(server: ChildProcess): Promise<void> {
+export async function stopDevServer(server: ChildProcess): Promise<void> {
 	const signal = (name: NodeJS.Signals): void => {
 		if (process.platform !== "win32" && server.pid !== undefined) {
 			try {
