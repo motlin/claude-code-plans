@@ -94,9 +94,14 @@ export function SessionRouteIdentity({
 				: children(sessionId, initialRouteId, entryKey, scrollRestoration);
 		if (!alias) return renderResolved(routeId);
 		if (owner !== null) return renderResolved(owner);
-		if (!identity?.isError) return <SessionSkeleton />;
+		if (!identity?.isError)
+			return (
+				<div className="h-full overflow-auto">
+					<SessionSkeleton />
+				</div>
+			);
 		return (
-			<div className="p-8">
+			<div className="h-full overflow-auto p-8">
 				<p role="alert">{failure.message}</p>
 				<button
 					type="button"

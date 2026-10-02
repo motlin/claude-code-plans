@@ -51,11 +51,6 @@ const RESIZE_STEP_PX = 16;
 const RESIZE_STEP_LARGE_PX = 64;
 /** A Move grip press becomes a drag once the pointer travels this far. */
 const DRAG_THRESHOLD_PX = 4;
-/**
- * Side tiles stick to the top of the page scroller (the transcript scrolls
- * `<main>`, not the chat tile), so they are sized to the viewport.
- */
-const SIDE_SLOT_CLASSES = "sticky top-2 self-start h-[var(--tile-host-height,calc(100dvh-16px))]";
 /** Below 640px a side pane covers the viewport instead of squeezing beside the chat. */
 const PHONE_SLOT_CLASSES = "fixed inset-0 z-40 w-full h-dvh";
 /** Upstream's expanded pane: maximised over the sidebar and titlebar, 9px in from the window edge. */
@@ -216,7 +211,6 @@ function Divider({
 	index,
 	sizePx,
 	stackRef,
-	isRoot,
 	corners,
 	host,
 }: {
@@ -225,7 +219,6 @@ function Divider({
 	index: number;
 	sizePx: number;
 	stackRef: RefObject<HTMLDivElement | null>;
-	isRoot: boolean;
 	/** Root dividers beside this column divider, keyed by the side they meet it on. */
 	corners: Partial<Record<"left" | "right", number>>;
 	host: InternalHost;
@@ -306,7 +299,7 @@ function Divider({
 			onPointerCancel={onPointerUp}
 			className={`group/divider relative flex shrink-0 touch-none items-center justify-center outline-none ${
 				isRow ? "w-3 cursor-col-resize" : "h-3 cursor-row-resize"
-			} ${isRoot ? SIDE_SLOT_CLASSES : ""}`}
+			}`}
 		>
 			<span
 				aria-hidden
@@ -672,7 +665,6 @@ function StackView({
 						index={index - 1}
 						sizePx={sizePx}
 						stackRef={ref}
-						isRoot={isRoot}
 						corners={cornersOf(path, host)}
 						host={host}
 					/>,
@@ -701,9 +693,7 @@ function StackView({
 		<div
 			ref={ref}
 			data-tile-stack={stack.direction}
-			className={`flex min-h-0 min-w-0 ${stack.direction === "row" ? "flex-row" : "h-full flex-col"} ${
-				isRoot ? "items-start" : ""
-			}`}
+			className={`flex h-full min-h-0 min-w-0 items-stretch ${stack.direction === "row" ? "flex-row" : "flex-col"}`}
 			style={isRoot ? undefined : {flex: `${stack.flex} 1 0`}}
 		>
 			{items}
@@ -726,7 +716,7 @@ function NodeView({
 }) {
 	const style = {flex: `${node.flex} 1 0`};
 	const phone = isRootChild && host.phone;
-	const slotClass = `min-h-0 min-w-0 ${phone ? PHONE_SLOT_CLASSES : isRootChild ? SIDE_SLOT_CLASSES : "relative"}`;
+	const slotClass = `min-h-0 min-w-0 ${phone ? PHONE_SLOT_CLASSES : "relative"}`;
 	if (node.kind === "stack") {
 		return (
 			<div className={`flex ${slotClass}`} style={style} {...(phone ? {"data-pane-phone": ""} : {})}>
@@ -797,7 +787,7 @@ function ChatTile({
 }) {
 	const movable = !hidden && tileIdsOf(host.layout.root).length > 1;
 	return (
-		<TileSlot tileId="chat" host={host} className="relative min-w-0" style={style} hidden={hidden}>
+		<TileSlot tileId="chat" host={host} className="relative min-h-0 min-w-0" style={style} hidden={hidden}>
 			{movable && (
 				// Pinned above the sticky titlebar (z-10) so the grip stays reachable while the transcript scrolls.
 				<div className="sticky top-0 z-20 h-0">

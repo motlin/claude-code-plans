@@ -139,6 +139,10 @@ function RootLayout({children}: Readonly<{children: ReactNode}>) {
 	const fullBleed = useMatches({
 		select: (matches) => matches.some((match) => match.staticData.fullBleed === true),
 	});
+	const tileShell = useMatches({
+		select: (matches) =>
+			[...matches].reverse().find((match) => match.staticData.tileShell !== undefined)?.staticData.tileShell,
+	});
 	// Field journeys J1/J2 (launch, deep link) run once, timed from navigation start on the route the tab opened.
 	useEffect(() => {
 		startLaunchJourneys(window.location.pathname);
@@ -146,19 +150,34 @@ function RootLayout({children}: Readonly<{children: ReactNode}>) {
 
 	return (
 		<>
-			<AppFrame collapsed={sidebarCollapsed} className={fullBleed ? "flex flex-col" : ""}>
-				<IndexingBanner />
-				<HookSchemaDriftBanner />
-				{capabilities.showWorkingCopyReview && (
-					<WorkingCopyReviewBanner capability={capabilities.states.workingCopyReview} />
-				)}
+			<AppFrame
+				collapsed={sidebarCollapsed}
+				tileShell={tileShell !== undefined}
+				className={fullBleed ? "flex flex-col" : ""}
+			>
+				<div className={tileShell === undefined ? undefined : "shrink-0"}>
+					<IndexingBanner />
+					<HookSchemaDriftBanner />
+					{capabilities.showWorkingCopyReview && (
+						<WorkingCopyReviewBanner capability={capabilities.states.workingCopyReview} />
+					)}
+				</div>
 				<DesktopNotificationBridge />
 				<AttentionBadgeBridge />
-				<div className="min-h-9 px-4 pt-3 sm:px-8" />
-				{fullBleed ? (
-					<div className="min-h-0 flex-1">{children}</div>
+				{tileShell === undefined ? (
+					<>
+						<div className="min-h-9 px-4 pt-3 sm:px-8" />
+						{fullBleed ? (
+							<div className="min-h-0 flex-1">{children}</div>
+						) : (
+							<div className="px-4 pb-24 sm:px-8 sm:pb-8">{children}</div>
+						)}
+					</>
 				) : (
-					<div className="px-4 pb-24 sm:px-8 sm:pb-8">{children}</div>
+					<div data-route-tile-shell={tileShell}>
+						{tileShell === "home" && <div aria-hidden className="h-9 shrink-0 sm:h-8" />}
+						<div className="min-h-0 flex-1">{children}</div>
+					</div>
 				)}
 			</AppFrame>
 			<CommandPalette {...commandPalette} />

@@ -121,7 +121,7 @@ export function HomeComposer() {
 	}
 
 	return (
-		<div ref={rootRef} data-home-composer className="pb-6">
+		<div ref={rootRef} data-home-composer className="pb-[var(--home-dock-bottom,24px)]">
 			<div className="flex flex-wrap gap-1 pr-24 pb-1">
 				<ProjectPicker projects={startProjects} selected={project} onSelect={setChosenProjectId} />
 			</div>

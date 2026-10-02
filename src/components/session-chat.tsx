@@ -1,3 +1,4 @@
+import {SessionTileGeometryReadyContext} from "./session-tile-frame";
 import React, {
 	Suspense,
 	createContext,
@@ -1074,6 +1075,10 @@ function VirtualizedSessionEntries({
 	measurementKey: string;
 	measurementSource: object | undefined;
 }) {
+	const geometryReady = useContext(SessionTileGeometryReadyContext);
+	const managesTileGeometry = geometryReady !== undefined;
+	const handoffAttempted = useRef(false);
+	const pendingHandoff = useRef<Map<string, number> | null>(null);
 	const listRef = useRef<HTMLDivElement>(null);
 	const scrollerRef = useRef<Element | null>(null);
 	const expansionStore = useContext(ExpansionStoreContext)!;
@@ -1094,40 +1099,6 @@ function VirtualizedSessionEntries({
 	const pendingJumpRef = useRef<number | null>(null);
 	const pendingFocusIndexRef = useRef<number | null>(null);
 	const [measuredHeights, setMeasuredHeights] = useState(measuredHeightsRef.current);
-	useLayoutEffect(() => {
-		if (measurementSource !== restoration.source) {
-			reusableRef.current = false;
-		}
-	}, [measurementSource, restoration.source]);
-	useLayoutEffect(() => {
-		const list = listRef.current;
-		const source = restoration.source;
-		if (!list || source === undefined) return;
-		// Rendering only reads/clones. A committed mount owns the retained generation.
-		discardTranscriptMeasurements(measurementKey);
-		const width = list.getBoundingClientRect().width;
-		measurementWidthRef.current = width;
-		if (restoration.saved && restoration.saved.width !== width) {
-			restoringRangeRef.current = false;
-			measuredHeightsRef.current = new Map();
-			setMeasuredHeights(measuredHeightsRef.current);
-		}
-		return () => {
-			if (!reusableRef.current || expansionStore.size !== 0 || list.getBoundingClientRect().width !== width) {
-				discardTranscriptMeasurements(measurementKey);
-				return;
-			}
-			rememberTranscriptMeasurements(
-				measurementKey,
-				{
-					width,
-					heights: measuredHeightsRef.current,
-					range: savedRangeRef.current!,
-				},
-				source,
-			);
-		};
-	}, [measurementKey, restoration, expansionStore]);
 	const [jumpVersion, setJumpVersion] = useState(0);
 	const [range, setRange] = useState<VirtualRange>(() => {
 		if (restoration.saved) return restoration.saved.range;
@@ -1142,8 +1113,66 @@ function VirtualizedSessionEntries({
 			: {startIndex: 0, endIndex: INITIAL_MOUNTED_TURN_COUNT};
 	});
 	useLayoutEffect(() => {
-		savedRangeRef.current = range;
-	}, [range]);
+		if (measurementSource !== restoration.source) {
+			reusableRef.current = false;
+		}
+	}, [measurementSource, restoration.source]);
+	useLayoutEffect(() => {
+		const list = listRef.current;
+		const source = restoration.source;
+		if (!list || source === undefined) return;
+		const width = list.getBoundingClientRect().width;
+		// A nested pane move renders this instance before the old instance's
+		// cleanup retains its geometry. Claim that one same-commit handoff here.
+		if (managesTileGeometry && !handoffAttempted.current && !restoration.saved && expansionStore.size === 0) {
+			handoffAttempted.current = true;
+			const saved = readTranscriptMeasurements(measurementKey, source);
+			if (saved && saved.width === width) {
+				const heights = new Map(saved.heights);
+				pendingHandoff.current = heights;
+				measuredHeightsRef.current = heights;
+				savedRangeRef.current = saved.range;
+				restoringRangeRef.current = saved.range.startIndex > 0;
+				setMeasuredHeights(heights);
+				setRange(saved.range);
+			}
+		}
+		// Rendering only reads/clones. A committed mount owns the retained generation.
+		discardTranscriptMeasurements(measurementKey);
+		measurementWidthRef.current = width;
+		if (restoration.saved && restoration.saved.width !== width) {
+			restoringRangeRef.current = false;
+			measuredHeightsRef.current = new Map();
+			if (managesTileGeometry) pendingHandoff.current = measuredHeightsRef.current;
+			setMeasuredHeights(measuredHeightsRef.current);
+		}
+		return () => {
+			if (pendingHandoff.current) return;
+			if (!reusableRef.current || expansionStore.size !== 0 || list.getBoundingClientRect().width !== width) {
+				discardTranscriptMeasurements(measurementKey);
+				return;
+			}
+			rememberTranscriptMeasurements(
+				measurementKey,
+				{
+					width,
+					heights: measuredHeightsRef.current,
+					range: savedRangeRef.current!,
+				},
+				source,
+			);
+		};
+	}, [measurementKey, restoration, expansionStore, managesTileGeometry]);
+
+	useLayoutEffect(() => {
+		if (!pendingHandoff.current || pendingHandoff.current === measuredHeights) savedRangeRef.current = range;
+	}, [range, measuredHeights]);
+	useLayoutEffect(() => {
+		if (pendingHandoff.current && pendingHandoff.current !== measuredHeights) return;
+		pendingHandoff.current = null;
+		geometryReady?.();
+	}, [geometryReady, measuredHeights, range]);
+
 	const prefixHeights = useMemo(() => {
 		const result = [0];
 		for (const entry of entries) {
@@ -1156,7 +1185,7 @@ function VirtualizedSessionEntries({
 	const updateVisibleRange = useCallback(() => {
 		const list = listRef.current;
 		const scroller = scrollerRef.current;
-		if (!list || !scroller || entries.length === 0) return;
+		if (!list || !scroller || entries.length === 0 || pendingHandoff.current) return;
 		// The persistent main element is still at the departed page's zero offset
 		// until router restoration runs. Keep the saved window through that interval.
 		if (restoringRangeRef.current && scroller.scrollTop === 0) return;

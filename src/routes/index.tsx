@@ -4,7 +4,7 @@ import {HomeLanding} from "../components/home/home-landing";
 
 export const Route = createFileRoute("/")({
 	component: Home,
-	staticData: {fullBleed: true},
+	staticData: {fullBleed: true, tileShell: "home"},
 	head: () => ({
 		meta: [{title: "Claude Code Browser"}],
 	}),

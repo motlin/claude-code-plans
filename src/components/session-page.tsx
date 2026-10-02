@@ -4,6 +4,7 @@ import {useLocation} from "@tanstack/react-router";
 import {useQuery} from "@tanstack/react-query";
 import {lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {Minimize2} from "lucide-react";
+import {SessionTileFrame, type SessionTileScrollPosition} from "./session-tile-frame";
 import {SessionChat} from "./session-chat";
 import {ChapterChips} from "./chapter-chips";
 import {TranscriptActionsProvider} from "./transcript-actions-provider";
@@ -35,7 +36,7 @@ import {TerminalPaneShortcut, useRegisterTerminalPane} from "./panes/terminal-pa
 import {ApprovalDock} from "./approval-dock";
 import {PermissionCard} from "./permission-card";
 import {BranchStrip} from "./branch-strip";
-import {TranscriptHistoryLoader, TranscriptTopFade, findScrollContainer} from "./transcript-history-loader";
+import {TranscriptHistoryLoader, TranscriptTopFade} from "./transcript-history-loader";
 import {Tooltip} from "./ui/tooltip";
 import {SessionPaneControls} from "./view-options-menu";
 import {SessionDock} from "./session-dock";
@@ -43,7 +44,7 @@ import {UsagePaceBanner} from "./usage-pace-banner";
 import {useWorkingMarkerState, WorkingMarker} from "./working-marker";
 import {handleBtwPrompt, SideChat, useSideChatShortcut} from "./side-chat";
 import {useToast} from "./toast";
-import {CHAT_COLUMN_BLEED_CLASS, transcriptWidthStyle} from "../lib/transcript-width";
+import {transcriptWidthStyle} from "../lib/transcript-width";
 import {useChatStream} from "../hooks/use-chat-stream";
 import {slashCommandsQueryOptions} from "../lib/api/commands";
 import {promptHistoryQueryOptions} from "../lib/api/prompt-history";
@@ -105,23 +106,6 @@ import {getSubagentLifecycleKey, extractPendingSubagents, type ActiveSubagent} f
 import {processTranscript} from "../lib/transcript";
 import {backgroundTasksFacts, extractBackgroundTasks} from "../lib/background-tasks";
 import {createSessionCommands} from "../lib/session-commands";
-
-const TRANSCRIPT_SCROLL_CONTAINER_CLASSES =
-	"h-full overflow-y-auto overflow-x-hidden [contain:strict] [overflow-anchor:none] [scrollbar-gutter:stable_both-edges]";
-
-/** Marks the element that scrolls the transcript as the contained, virtualized scroller. */
-function useTranscriptScrollContainment(anchorRef: React.RefObject<HTMLElement | null>) {
-	useEffect(() => {
-		const scroller = findScrollContainer(anchorRef.current);
-		const addedClasses = TRANSCRIPT_SCROLL_CONTAINER_CLASSES.split(" ").filter(
-			(className) => !scroller.classList.contains(className),
-		);
-		scroller.classList.add(...addedClasses);
-		return () => {
-			scroller.classList.remove(...addedClasses);
-		};
-	}, [anchorRef]);
-}
 
 interface SessionPromptBehavior {
 	disabled: boolean;
@@ -221,7 +205,7 @@ export function useLiveHerdrPrompt(
 }
 
 function SessionChrome({children}: {children: React.ReactNode}) {
-	return <div>{children}</div>;
+	return <div className="h-full overflow-auto">{children}</div>;
 }
 
 function SessionNotFound() {
@@ -286,7 +270,12 @@ export function SessionPage({
 	const transcript = transcriptQuery.data;
 	const subagents = subagentsQuery.data;
 	const herdr = herdrQuery.data;
-	if (!data || !transcript || !subagents || !herdr) return <SessionSkeleton />;
+	if (!data || !transcript || !subagents || !herdr)
+		return (
+			<SessionChrome>
+				<SessionSkeleton />
+			</SessionChrome>
+		);
 
 	return (
 		<SessionView
@@ -330,7 +319,7 @@ function SessionView({
 	onRequestedPaneHandled,
 }: SessionViewProps) {
 	const scrollAnchorRef = useRef<HTMLDivElement>(null);
-	useTranscriptScrollContainment(scrollAnchorRef);
+	const tileScrollPosition = useRef<SessionTileScrollPosition | null>(null);
 	const locationHash = useLocation({select: (location) => location.hash});
 	// Viewed positions are stored in message units (see message-count.ts) so
 	// they line up with messageCount and newMessageCount on every surface. The
@@ -670,7 +659,7 @@ function SessionView({
 
 	return (
 		<div
-			ref={sessionViewRef}
+			className="h-full min-h-0"
 			data-perf-session={sessionId}
 			data-perf-session-route={routeId === sessionId ? undefined : routeId}
 			style={transcriptWidthStyle(settings.transcriptWidth)}
@@ -684,225 +673,260 @@ function SessionView({
 				<TerminalPaneShortcut available={promptBehavior.hasLivePane || shellsEnabled} />
 				<FilesPaneShortcut />
 				<ChangesPaneShortcut />
-				{/* Sticky header: titlebar + hook context */}
-				{!chromeHidden && (
-					<div data-transcript-sticky-header className={SESSION_STICKY_HEADER_CLASS}>
-						<SessionTitlebar
-							sessionId={sessionId}
-							data={data}
-							isActive={isActive}
-							local={{
-								resumeCommand: sessionCommands.resume,
-								forkCommand: sessionCommands.fork,
-								onGenerateSummary:
-									aiSummary === null && settings.showSummaryButton
-										? () => void handleGenerateSummary()
-										: undefined,
-								generatingSummary: generating,
-							}}
-							summary={aiSummary}
-							transcriptView={transcriptView}
-							paneToggles={
-								<SessionPaneControls
-									facts={{
-										artifactCount: sessionArtifacts.length,
-										hasPlan: data.planFilename !== undefined,
-										backgroundTasks: backgroundTasksFacts(backgroundTasks, subagents.length),
-										subagentCount: subagents.length,
-									}}
-									onExpandChat={() => setChromeHidden(true)}
-								/>
-							}
-						/>
+				<SessionTileFrame
+					sessionId={sessionId}
+					anchorRef={sessionViewRef}
+					visitKey={initialScrollKey}
+					positionRef={tileScrollPosition}
+					restoredScrollY={restoredScrollPosition?.scrollY}
+					header={
+						<>
+							{/* Sticky header: titlebar + hook context */}
+							{!chromeHidden && (
+								<div data-transcript-sticky-header className={SESSION_STICKY_HEADER_CLASS}>
+									<SessionTitlebar
+										sessionId={sessionId}
+										data={data}
+										isActive={isActive}
+										local={{
+											resumeCommand: sessionCommands.resume,
+											forkCommand: sessionCommands.fork,
+											onGenerateSummary:
+												aiSummary === null && settings.showSummaryButton
+													? () => void handleGenerateSummary()
+													: undefined,
+											generatingSummary: generating,
+										}}
+										summary={aiSummary}
+										transcriptView={transcriptView}
+										paneToggles={
+											<SessionPaneControls
+												facts={{
+													artifactCount: sessionArtifacts.length,
+													hasPlan: data.planFilename !== undefined,
+													backgroundTasks: backgroundTasksFacts(
+														backgroundTasks,
+														subagents.length,
+													),
+													subagentCount: subagents.length,
+												}}
+												onExpandChat={() => setChromeHidden(true)}
+											/>
+										}
+									/>
 
-						{hookContext && <SessionHookContext context={hookContext} />}
-						<ChapterChips sessionId={sessionId} onJump={requestMessageJump} />
-					</div>
-				)}
+									{hookContext && <SessionHookContext context={hookContext} />}
+									<ChapterChips sessionId={sessionId} onJump={requestMessageJump} />
+								</div>
+							)}
 
-				{/* Floating restore button when chrome is hidden */}
-				{chromeHidden && (
-					<div className="sticky top-0 z-10 flex justify-end py-1">
-						<Tooltip content="Show header and footer" shortcut={chromeShortcut.keys} side="bottom">
-							<button
-								type="button"
-								onClick={() => setChromeHidden(false)}
-								className="rounded-md bg-surface-0 border border-border px-2 py-1 text-xs text-t6 hover:text-primary hover:bg-fill-control transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm"
-								aria-keyshortcuts={chromeShortcut.ariaKeyShortcuts}
+							{/* Floating restore button when chrome is hidden */}
+							{chromeHidden && (
+								<div className="sticky top-0 z-10 flex justify-end py-1">
+									<Tooltip
+										content="Show header and footer"
+										shortcut={chromeShortcut.keys}
+										side="bottom"
+									>
+										<button
+											type="button"
+											onClick={() => setChromeHidden(false)}
+											className="rounded-md bg-surface-0 border border-border px-2 py-1 text-xs text-t6 hover:text-primary hover:bg-fill-control transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm"
+											aria-keyshortcuts={chromeShortcut.ariaKeyShortcuts}
+										>
+											<Minimize2 className="h-3 w-3" />
+											Show chrome
+										</button>
+									</Tooltip>
+								</div>
+							)}
+						</>
+					}
+					footer={
+						<>
+							{/* Sticky footer: the composer dock, opaque to the viewport bottom with a fade over the transcript */}
+							<div
+								data-session-footer
+								className="sticky bottom-0 z-10 shrink-0 pb-[var(--session-dock-bottom,max(env(safe-area-inset-bottom),9px))] bg-page dark:bg-surface-2 before:pointer-events-none before:absolute before:inset-x-0 before:bottom-full before:h-8 before:bg-linear-to-b before:from-transparent before:to-page dark:before:to-surface-2"
 							>
-								<Minimize2 className="h-3 w-3" />
-								Show chrome
-							</button>
-						</Tooltip>
-					</div>
-				)}
+								<div className={!chromeHidden && data.projectPath ? "pt-2" : ""}>
+									<SessionDock anchorRef={scrollAnchorRef}>
+										{dockedQuestion && (
+											<ApprovalDock
+												key={dockedQuestion.toolUseId}
+												toolUseId={dockedQuestion.toolUseId}
+												questions={dockedQuestion.questions}
+												onSubmit={submitAnswer}
+												onDismiss={() => setDismissedToolUseId(dockedQuestion.toolUseId)}
+											/>
+										)}
+										{pendingPermission && (
+											<PermissionCard
+												key={pendingPermission.notificationId}
+												title={pendingPermission.title}
+												command={pendingPermission.command}
+												canAnswer={promptBehavior.hasLivePane && herdr.writesEnabled}
+												onDecision={answerPermission}
+											/>
+										)}
+										{!chromeHidden &&
+											data.projectPath &&
+											(data.pr !== undefined || data.prStatus !== undefined) && (
+												<BranchStrip
+													sessionId={sessionId}
+													session={data}
+													statusline={statusline}
+												/>
+											)}
+										{!chromeHidden && data.projectPath && <UsagePaceBanner />}
+										{!chromeHidden &&
+											data.projectPath &&
+											data.pr === undefined &&
+											data.prStatus === undefined && (
+												<BranchStrip
+													sessionId={sessionId}
+													session={data}
+													statusline={statusline}
+												/>
+											)}
+										{!chromeHidden && data.projectPath && (
+											<Composer
+												variant="session"
+												draftKey={sessionId}
+												onSend={(prompt, launchOptions) => {
+													if (
+														handleBtwPrompt(prompt, {
+															sessionId,
+															messageCount: data.messageCount,
+															toast,
+														})
+													) {
+														return;
+													}
+													submitComposer("send", prompt, launchOptions);
+												}}
+												onFork={(prompt, launchOptions) =>
+													submitComposer("fork", prompt, launchOptions)
+												}
+												forkLabel={forkSubmitLabel({
+													pane: paneState,
+													writesEnabled: herdr.writesEnabled,
+												})}
+												onCancel={chatStream.cancel}
+												isStreaming={!promptBehavior.usesHerdr && chatStream.state.isStreaming}
+												onStop={stopAvailable ? stopResponse : undefined}
+												disabled={
+													promptBehavior.disabled ||
+													(!promptBehavior.usesHerdr && liveHerdrPrompt.state.isPending)
+												}
+												queue={promptBehavior.usesHerdr ? composerQueue : undefined}
+												onSendNow={
+													promptBehavior.usesHerdr ? composerQueue.sendNowText : undefined
+												}
+												deliveryHint={promptBehavior.deliveryHint}
+												chin={composerChin}
+												onShowUsageBreakdown={showUsageBreakdown}
+												slashCommands={slashCommands}
+												bypassPermissionsAllowed={bypassPermissionsAllowed}
+												live={liveLaunchAvailable ? liveLaunch : undefined}
+												mentionSessionId={sessionId}
+												promptHistory={promptHistory}
+											/>
+										)}
+									</SessionDock>
+								</div>
+							</div>
+						</>
+					}
+				>
+					<LegacyMessageLinkNotice hash={locationHash} />
 
-				<LegacyMessageLinkNotice hash={locationHash} />
-
-				{/* The transcript spans the page padding; the chat column's own gutters inset it, as on upstream */}
-				<div className={CHAT_COLUMN_BLEED_CLASS}>
-					<TranscriptTopFade />
-					{/* Chat messages */}
-					<AskUserQuestionProvider value={askUserQuestionCtx}>
-						<TranscriptHistoryLoader sessionId={sessionId} startIndex={transcript.startIndex} />
-						<SessionFileRefs
-							sessionId={sessionId}
-							cwd={data.projectPath ?? undefined}
-							sessionFiles={resources?.files ?? windowFiles}
-						>
-							<SessionSubagentOpener sessionId={sessionId}>
-								<TranscriptActionsProvider
-									sessionId={sessionId}
-									lines={processed.lines}
-									fork={forkFromMessage}
-								>
-									<SessionChat
+					{/* The transcript spans the page padding; the chat column's own gutters inset it, as on upstream */}
+					<div className="flex-1">
+						<TranscriptTopFade />
+						{/* Chat messages */}
+						<AskUserQuestionProvider value={askUserQuestionCtx}>
+							<TranscriptHistoryLoader sessionId={sessionId} startIndex={transcript.startIndex} />
+							<SessionFileRefs
+								sessionId={sessionId}
+								cwd={data.projectPath ?? undefined}
+								sessionFiles={resources?.files ?? windowFiles}
+							>
+								<SessionSubagentOpener sessionId={sessionId}>
+									<TranscriptActionsProvider
 										sessionId={sessionId}
 										lines={processed.lines}
-										measurementSource={transcript.records}
-										measurementLayout={JSON.stringify([
-											settings.showDebug,
-											settings.interfaceFont,
-											settings.transcriptTextSize,
-											settings.codeFont,
-											settings.transcriptWidth,
-										])}
-										toolResultMap={processed.toolResultMap}
-										allowedImageRoots={data.imageRoots}
-										subagents={subagents}
-										showThinking={transcriptFlags.showThinking}
-										showTools={transcriptFlags.showTools}
-										showPassedHooks={transcriptFlags.showPassedHooks}
-										showHookWarnings={transcriptFlags.showHookWarnings}
-										showHookErrors={transcriptFlags.showHookErrors}
-										showSystemBanners={transcriptFlags.showSystemBanners}
-										showCompactSummaries={transcriptFlags.showCompactSummaries}
-										showTranscriptOnly={transcriptFlags.showTranscriptOnly}
-										transcriptMode={transcriptMode}
-										initialScrollKey={initialScrollKey}
-										scrollContentRef={scrollAnchorRef}
-										shouldScrollToEnd={restoredScrollPosition === undefined && locationHash === ""}
-										summary={aiSummary}
-										{...(slashCommands === undefined ? {} : {slashCommands})}
-									/>
-								</TranscriptActionsProvider>
-							</SessionSubagentOpener>
-						</SessionFileRefs>
-					</AskUserQuestionProvider>
+										fork={forkFromMessage}
+									>
+										<SessionChat
+											sessionId={sessionId}
+											lines={processed.lines}
+											measurementSource={transcript.records}
+											measurementLayout={JSON.stringify([
+												settings.showDebug,
+												settings.interfaceFont,
+												settings.transcriptTextSize,
+												settings.codeFont,
+												settings.transcriptWidth,
+											])}
+											toolResultMap={processed.toolResultMap}
+											allowedImageRoots={data.imageRoots}
+											subagents={subagents}
+											showThinking={transcriptFlags.showThinking}
+											showTools={transcriptFlags.showTools}
+											showPassedHooks={transcriptFlags.showPassedHooks}
+											showHookWarnings={transcriptFlags.showHookWarnings}
+											showHookErrors={transcriptFlags.showHookErrors}
+											showSystemBanners={transcriptFlags.showSystemBanners}
+											showCompactSummaries={transcriptFlags.showCompactSummaries}
+											showTranscriptOnly={transcriptFlags.showTranscriptOnly}
+											transcriptMode={transcriptMode}
+											initialScrollKey={initialScrollKey}
+											scrollContentRef={scrollAnchorRef}
+											shouldScrollToEnd={
+												restoredScrollPosition === undefined && locationHash === ""
+											}
+											summary={aiSummary}
+											{...(slashCommands === undefined ? {} : {slashCommands})}
+										/>
+									</TranscriptActionsProvider>
+								</SessionSubagentOpener>
+							</SessionFileRefs>
+						</AskUserQuestionProvider>
 
-					{(chatStream.state.isStreaming || chatStream.state.isComplete) && (
-						<StreamingMessage
-							text={chatStream.state.text}
-							isComplete={chatStream.state.isComplete}
-							error={chatStream.state.error}
-							forkedSessionId={chatStream.state.forkedSessionId}
-							sentPrompt={chatStream.state.sentPrompt}
-						/>
-					)}
+						{(chatStream.state.isStreaming || chatStream.state.isComplete) && (
+							<StreamingMessage
+								text={chatStream.state.text}
+								isComplete={chatStream.state.isComplete}
+								error={chatStream.state.error}
+								forkedSessionId={chatStream.state.forkedSessionId}
+								sentPrompt={chatStream.state.sentPrompt}
+							/>
+						)}
 
-					{liveHerdrPrompt.state.prompt !== "" && (
-						<StreamingMessage
-							text=""
-							isComplete={!liveHerdrPrompt.state.isPending}
-							error={liveHerdrPrompt.state.error || undefined}
-							sentPrompt={liveHerdrPrompt.state.prompt}
-							pendingLabel="Sent to live session — waiting for transcript..."
-						/>
-					)}
+						{liveHerdrPrompt.state.prompt !== "" && (
+							<StreamingMessage
+								text=""
+								isComplete={!liveHerdrPrompt.state.isPending}
+								error={liveHerdrPrompt.state.error || undefined}
+								sentPrompt={liveHerdrPrompt.state.prompt}
+								pendingLabel="Sent to live session — waiting for transcript..."
+							/>
+						)}
 
-					{usageCardSessionId === sessionId && (
-						<Suspense fallback={null}>
-							<div ref={(node) => node?.scrollIntoView?.({block: "nearest"})}>
-								<SessionUsageCard records={transcript.records} limits={composerChin.usage} />
-							</div>
-						</Suspense>
-					)}
+						{usageCardSessionId === sessionId && (
+							<Suspense fallback={null}>
+								<div ref={(node) => node?.scrollIntoView?.({block: "nearest"})}>
+									<SessionUsageCard records={transcript.records} limits={composerChin.usage} />
+								</div>
+							</Suspense>
+						)}
 
-					<WorkingMarker state={workingMarkerState} />
+						<WorkingMarker state={workingMarkerState} />
 
-					<SideChat sessionId={sessionId} messageCount={data.messageCount} />
-				</div>
-
-				{/* Sticky footer: the composer dock, opaque to the viewport bottom with a fade over the transcript */}
-				<div
-					data-session-footer
-					className="sticky bottom-0 z-10 -mx-4 -mb-8 pb-[max(env(safe-area-inset-bottom),9px)] sm:-mx-8 bg-page dark:bg-surface-2 before:pointer-events-none before:absolute before:inset-x-0 before:bottom-full before:h-8 before:bg-linear-to-b before:from-transparent before:to-page dark:before:to-surface-2"
-				>
-					<div className={!chromeHidden && data.projectPath ? "pt-2" : ""}>
-						<SessionDock anchorRef={scrollAnchorRef}>
-							{dockedQuestion && (
-								<ApprovalDock
-									key={dockedQuestion.toolUseId}
-									toolUseId={dockedQuestion.toolUseId}
-									questions={dockedQuestion.questions}
-									onSubmit={submitAnswer}
-									onDismiss={() => setDismissedToolUseId(dockedQuestion.toolUseId)}
-								/>
-							)}
-							{pendingPermission && (
-								<PermissionCard
-									key={pendingPermission.notificationId}
-									title={pendingPermission.title}
-									command={pendingPermission.command}
-									canAnswer={promptBehavior.hasLivePane && herdr.writesEnabled}
-									onDecision={answerPermission}
-								/>
-							)}
-							{!chromeHidden &&
-								data.projectPath &&
-								(data.pr !== undefined || data.prStatus !== undefined) && (
-									<BranchStrip sessionId={sessionId} session={data} statusline={statusline} />
-								)}
-							{!chromeHidden && data.projectPath && <UsagePaceBanner />}
-							{!chromeHidden &&
-								data.projectPath &&
-								data.pr === undefined &&
-								data.prStatus === undefined && (
-									<BranchStrip sessionId={sessionId} session={data} statusline={statusline} />
-								)}
-							{!chromeHidden && data.projectPath && (
-								<Composer
-									variant="session"
-									draftKey={sessionId}
-									onSend={(prompt, launchOptions) => {
-										if (
-											handleBtwPrompt(prompt, {
-												sessionId,
-												messageCount: data.messageCount,
-												toast,
-											})
-										) {
-											return;
-										}
-										submitComposer("send", prompt, launchOptions);
-									}}
-									onFork={(prompt, launchOptions) => submitComposer("fork", prompt, launchOptions)}
-									forkLabel={forkSubmitLabel({
-										pane: paneState,
-										writesEnabled: herdr.writesEnabled,
-									})}
-									onCancel={chatStream.cancel}
-									isStreaming={!promptBehavior.usesHerdr && chatStream.state.isStreaming}
-									onStop={stopAvailable ? stopResponse : undefined}
-									disabled={
-										promptBehavior.disabled ||
-										(!promptBehavior.usesHerdr && liveHerdrPrompt.state.isPending)
-									}
-									queue={promptBehavior.usesHerdr ? composerQueue : undefined}
-									onSendNow={promptBehavior.usesHerdr ? composerQueue.sendNowText : undefined}
-									deliveryHint={promptBehavior.deliveryHint}
-									chin={composerChin}
-									onShowUsageBreakdown={showUsageBreakdown}
-									slashCommands={slashCommands}
-									bypassPermissionsAllowed={bypassPermissionsAllowed}
-									live={liveLaunchAvailable ? liveLaunch : undefined}
-									mentionSessionId={sessionId}
-									promptHistory={promptHistory}
-								/>
-							)}
-						</SessionDock>
+						<SideChat sessionId={sessionId} messageCount={data.messageCount} />
 					</div>
-				</div>
+				</SessionTileFrame>
 			</TileHost>
 		</div>
 	);

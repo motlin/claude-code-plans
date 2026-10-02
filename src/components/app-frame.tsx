@@ -13,14 +13,16 @@ import {PhoneSheet, PhoneSheetTrigger} from "./sidebar/phone-sheet";
 export function AppFrame({
 	collapsed,
 	className,
+	tileShell = false,
 	children,
-}: Readonly<{collapsed: boolean; className?: string; children: ReactNode}>) {
+}: Readonly<{collapsed: boolean; className?: string; tileShell?: boolean; children: ReactNode}>) {
 	const phoneSheet = usePhoneSheet();
 	const narrowViewport = useNarrowViewport();
 	const [sheetOpen, setSheetOpen] = useState(false);
 	const openSheet = useCallback(() => setSheetOpen(true), []);
 	const closeSheet = useCallback(() => setSheetOpen(false), []);
 	const mainInert = phoneSheet && sheetOpen;
+	const sidebarLayout = phoneSheet ? "phone" : collapsed || narrowViewport ? "collapsed" : "docked";
 
 	return (
 		<div data-testid="app-frame" data-phone-sheet={phoneSheet ? "left" : undefined} className="flex h-screen">
@@ -33,14 +35,12 @@ export function AppFrame({
 				<Sidebar collapsed={collapsed || narrowViewport} narrowViewport={narrowViewport} />
 			)}
 			<main
-				data-scroll-restoration-id="main"
+				data-scroll-restoration-id={tileShell ? undefined : "main"}
 				data-focus-region="main"
 				data-perf-region="main"
 				inert={mainInert}
-				style={topLeftClearanceStyle(
-					phoneSheet ? "phone" : collapsed || narrowViewport ? "collapsed" : "docked",
-				)}
-				className={`flex-1 overflow-y-auto bg-page dark:bg-surface-2 ${className ?? ""}`}
+				style={topLeftClearanceStyle(sidebarLayout)}
+				className={`flex-1 bg-page dark:bg-surface-2 ${tileShell ? "flex min-h-0 min-w-0 flex-col overflow-hidden" : "overflow-y-auto"} ${className ?? ""}`}
 			>
 				{children}
 			</main>

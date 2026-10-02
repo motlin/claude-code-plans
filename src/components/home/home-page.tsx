@@ -21,8 +21,14 @@ export function HomePage({
 			<header className="mx-auto flex w-full max-w-[840px] items-center gap-1.5 pt-3 pr-10 pb-6 pl-8">
 				<HomeGreeting name={account?.firstName} clear={clear} />
 			</header>
-			<div data-home-body className={`min-h-0 flex-1 overflow-y-auto ${COLUMN}`}>
-				{children}
+			<div className={`flex min-h-0 flex-1 flex-col ${COLUMN}`}>
+				<div
+					data-home-body
+					data-scroll-restoration-id="main"
+					className="min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable_both-edges]"
+				>
+					{children}
+				</div>
 			</div>
 			{dock === undefined ? null : <div className={`shrink-0 ${COLUMN}`}>{dock}</div>}
 		</div>

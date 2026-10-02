@@ -785,6 +785,49 @@ html[data-motion="reduced"] .terminal-caret {
 	animation: none !important;
 }
 
+/* Bounded home/chat tiles and the message/dock column share responsive gutters. */
+@layer components {
+	[data-route-tile-shell] {
+		display: flex;
+		min-height: 0;
+		flex: 1;
+		flex-direction: column;
+		border-width: 0;
+		padding: 0;
+		--tile-title-start: var(--top-left-clearance-start, 0px);
+		--chat-column-extra: 32px;
+		--chat-column-start: 16px;
+		--chat-column-end: 16px;
+	}
+
+	.chat-column {
+		margin-inline: auto;
+		width: 100%;
+		max-width: calc(var(--max-content-width, 768px) + var(--chat-column-extra, 64px));
+		padding-inline-start: var(--chat-column-start, 16px);
+		padding-inline-end: var(--chat-column-end, 16px);
+	}
+
+	@media (width >= 40rem) {
+		[data-route-tile-shell] {
+			border: 1px solid transparent;
+			padding-block: calc(var(--spacing) * 2);
+			padding-left: calc(var(--spacing) * 2);
+			--tile-title-start: max(0px, calc(var(--top-left-clearance-start, 0px) - 9px));
+			--chat-column-extra: 72px;
+			--chat-column-start: 32px;
+			--chat-column-end: 40px;
+			--session-dock-bottom: max(0px, calc(env(safe-area-inset-bottom) - 9px));
+			--home-dock-bottom: max(0px, calc(env(safe-area-inset-bottom) - 9px));
+		}
+
+		.chat-column {
+			padding-inline-start: var(--chat-column-start, 32px);
+			padding-inline-end: var(--chat-column-end, 32px);
+		}
+	}
+}
+
 /* Shared geometry and states for the sidebar's New, navigation, and More rows. */
 @layer components {
 	.df-nav-row {

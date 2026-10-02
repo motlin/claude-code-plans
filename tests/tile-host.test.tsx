@@ -467,7 +467,7 @@ describe("TileHost on a phone", () => {
 		expect(paneSlotState()).toStrictEqual({
 			phone: false,
 			fullWidth: false,
-			sticky: true,
+			sticky: false,
 			separators: 1,
 		});
 	});

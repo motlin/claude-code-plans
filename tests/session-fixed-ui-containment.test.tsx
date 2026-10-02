@@ -174,7 +174,8 @@ describe("fixed-position session UI and the contained transcript scroller", () =
 			vi.fn(() => new Promise<Response>(() => {})),
 		);
 
-		const scroller = await renderSessionInScroller();
+		await renderSessionInScroller();
+		const scroller = document.querySelector<HTMLElement>("[data-session-scrollport]")!;
 		fireEvent.click(await screen.findByRole("button", {name: "View options"}));
 		await act(async () => {
 			fireEvent.click(await screen.findByRole("menuitemcheckbox", {name: /^Links/}));
@@ -225,10 +226,10 @@ describe("fixed-position session UI and the contained transcript scroller", () =
 			footers.map((footer) =>
 				[...footer.classList].filter((token) => token.startsWith("sticky") || token.startsWith("pb-")),
 			),
-		).toStrictEqual([["sticky", "pb-[max(env(safe-area-inset-bottom),9px)]"]]);
+		).toStrictEqual([["sticky", "pb-[var(--session-dock-bottom,max(env(safe-area-inset-bottom),9px))]"]]);
 	});
 
-	it("lets the transcript and dock columns span the page padding so only upstream's column gutters inset them", async () => {
+	it("keeps transcript and dock gutters inside the tile without root padding compensation", async () => {
 		vi.stubGlobal("EventSource", TestEventSource);
 		vi.stubGlobal("localStorage", new FakeStorage());
 		vi.stubGlobal("IntersectionObserver", TestIntersectionObserver);
@@ -248,9 +249,9 @@ describe("fixed-position session UI and the contained transcript scroller", () =
 				/^(sm:)?-mx-/.test(token),
 			),
 		}).toStrictEqual({
-			transcriptBleed: "-mx-4 sm:-mx-8",
+			transcriptBleed: "flex-1",
 			dockWrapper: "",
-			footerBleed: ["-mx-4", "sm:-mx-8"],
+			footerBleed: [],
 		});
 	});
 

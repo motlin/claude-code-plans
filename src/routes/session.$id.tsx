@@ -17,6 +17,7 @@ import {sessionDetailQueryOptions, sessionSubagentsQueryOptions, transcriptQuery
 
 export const Route = createFileRoute("/session/$id")({
 	component: SessionRouteComponent,
+	staticData: {tileShell: "session"},
 	validateSearch: validateSessionSearch,
 	// Warm the caches without awaiting them. With `ssr: false` nothing paints
 	// until every matched loader resolves, and a long session's transcript runs
@@ -68,7 +69,7 @@ function SessionErrorComponent({error, reset}: ErrorComponentProps) {
 	const message = error instanceof Error ? error.message : "Failed to load session";
 
 	return (
-		<div className="p-8">
+		<div className="h-full overflow-auto p-8">
 			<h1 className="text-lg font-semibold text-red-600 dark:text-red-400">Failed to load session</h1>
 			<pre className="mt-3 max-w-2xl overflow-auto rounded-md border border-border bg-surface-0 p-3 font-mono text-sm text-t6">
 				{message}

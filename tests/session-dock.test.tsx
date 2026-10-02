@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import {readFileSync} from "node:fs";
 import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {useRef} from "react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
@@ -166,8 +167,27 @@ describe("transcript width setting", () => {
 		});
 	});
 
-	it("builds the shared chat column measure from the CSS variable plus upstream's 32px gutters (16px on phones)", () => {
-		expect(CHAT_COLUMN_CLASS).toBe("mx-auto w-full max-w-[calc(var(--max-content-width,768px)+64px)] px-4 sm:px-8");
+	it("shares the configured measure and responsive gutter variables between transcript and dock", () => {
+		const styles = readFileSync("src/styles/globals.css", "utf8");
+		const rules = [...styles.matchAll(/\.chat-column \{([^}]+)\}/g)].map(([, declarations]) =>
+			declarations!.trim().split(/;\s*/).filter(Boolean),
+		);
+		expect({className: CHAT_COLUMN_CLASS, rules}).toStrictEqual({
+			className: "chat-column",
+			rules: [
+				[
+					"margin-inline: auto",
+					"width: 100%",
+					"max-width: calc(var(--max-content-width, 768px) + var(--chat-column-extra, 64px))",
+					"padding-inline-start: var(--chat-column-start, 16px)",
+					"padding-inline-end: var(--chat-column-end, 16px)",
+				],
+				[
+					"padding-inline-start: var(--chat-column-start, 32px)",
+					"padding-inline-end: var(--chat-column-end, 32px)",
+				],
+			],
+		});
 	});
 
 	it("defaults to narrow, reads a stored width, and ignores an unknown stored value", () => {
