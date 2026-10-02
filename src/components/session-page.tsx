@@ -263,9 +263,10 @@ const SessionUsageCard = lazy(() =>
 
 export function SessionPage({
 	sessionId,
+	routeId = sessionId,
 	requestedPane,
 	onRequestedPaneHandled,
-}: {sessionId: string} & RequestedPaneProps) {
+}: {sessionId: string; routeId?: string} & RequestedPaneProps) {
 	// Plain `useQuery` (not suspense) so the app shell stays painted and this
 	// page can show its own skeleton while the transcript payload loads.
 	const detailQuery = useQuery(sessionDetailQueryOptions(sessionId));
@@ -295,6 +296,7 @@ export function SessionPage({
 	return (
 		<SessionView
 			sessionId={sessionId}
+			routeId={routeId}
 			data={data}
 			transcript={transcript}
 			subagents={subagents}
@@ -309,6 +311,7 @@ export function SessionPage({
 
 interface SessionViewProps extends RequestedPaneProps {
 	sessionId: string;
+	routeId: string;
 	/** The location's history key: the transcript scrolls to its end once per key. */
 	initialScrollKey: string;
 	/** The `<main>` position the router restores for this location, if it has one of its own. */
@@ -321,6 +324,7 @@ interface SessionViewProps extends RequestedPaneProps {
 
 function SessionView({
 	sessionId,
+	routeId,
 	data,
 	transcript,
 	subagents,
@@ -670,7 +674,12 @@ function SessionView({
 	}
 
 	return (
-		<div ref={sessionViewRef} data-perf-session={sessionId} style={transcriptWidthStyle(settings.transcriptWidth)}>
+		<div
+			ref={sessionViewRef}
+			data-perf-session={sessionId}
+			data-perf-session-route={routeId === sessionId ? undefined : routeId}
+			style={transcriptWidthStyle(settings.transcriptWidth)}
+		>
 			<TileHost
 				sessionId={sessionId}
 				onExpandWithoutPane={toggleChromeHidden}

@@ -103,6 +103,34 @@ describe("J1 launch journeys", () => {
 });
 
 describe("J2 deep-link session open", () => {
+	it.each([
+		{launchId: "session_alice_100", label: "an alias resolves to a local UUID"},
+		{launchId: "session-alice", label: "a UUID URL becomes its canonical alias"},
+	])("retains navigation timing when $label", async ({launchId}) => {
+		const pathname = `/session/${launchId}`;
+		const harness = makeJourneyHarness({pathname});
+		harness.performance.clock = 50;
+		startLaunchJourneys(pathname, harness.tracker);
+
+		const other = sessionView("session-bob", 2);
+		other.setAttribute("data-perf-session-route", "session_bob_200");
+		document.body.append(other);
+		await paintAt(harness, 70);
+		const beforeResolution = queued(harness);
+
+		const view = sessionView("session-alice", 3);
+		view.setAttribute("data-perf-session-route", "session_alice_100");
+		document.body.append(view);
+		await paintAt(harness, 180);
+		expect({beforeResolution, rendered: queued(harness)}).toStrictEqual({
+			beforeResolution: [],
+			rendered: [
+				{journey: "F3", trigger: "navigation", start: 0, end: 180},
+				{journey: "F4", trigger: "navigation", start: 0, end: 180},
+			],
+		});
+	});
+
 	it("ends F4 when the session's header renders and F3 when its last transcript row is painted", async () => {
 		const harness = makeJourneyHarness({pathname: "/session/abc-123"});
 		startLaunchJourneys("/session/abc-123", harness.tracker);

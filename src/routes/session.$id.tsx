@@ -97,5 +97,12 @@ function SessionRouteComponent() {
 		void navigate({search: {}, replace: true});
 	}, [navigate]);
 
-	return <SessionPage sessionId={params.id} requestedPane={pane} onRequestedPaneHandled={clearRequestedPane} />;
+	return (
+		<SessionPage
+			sessionId={params.id}
+			routeId={params.id}
+			requestedPane={pane}
+			onRequestedPaneHandled={clearRequestedPane}
+		/>
+	);
 }

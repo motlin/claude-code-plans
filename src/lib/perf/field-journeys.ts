@@ -5,7 +5,14 @@
 import type {QueryClient} from "@tanstack/react-query";
 import {sessionQueryKeys} from "../api/sessions";
 import type {JsonValue} from "../hook-events";
-import {defaultJourneyTracker, PERF_ANCHORS, transcriptRowAt, type JourneyTracker} from "./journey";
+import {
+	defaultJourneyTracker,
+	PERF_ANCHORS,
+	transcriptRowAt,
+	type AnchorSelector,
+	type JourneyTracker,
+	type JourneyTrigger,
+} from "./journey";
 
 const SESSION_PATH = /^\/session\/([^/]+)\/?$/;
 
@@ -21,6 +28,16 @@ function sessionView(sessionId: string): string {
 /** The session whose composer submit is waiting for its prompt's JSONL row (F10), per tracker. */
 const awaitingPromptRow = new WeakMap<JourneyTracker, string>();
 
+function startRenderedJourney(
+	tracker: JourneyTracker,
+	id: string,
+	trigger: JourneyTrigger,
+	anchor: AnchorSelector,
+): void {
+	tracker.startJourney(id, {trigger});
+	void tracker.endJourneyWhenRendered(id, anchor);
+}
+
 /**
  * Starts the journeys timed from navigation start for the route the app launched on: F1 (sidebar recents and the
  * home sections have rows) and F2 (the app frame replaced the shell) on home, F3 (the last transcript row) and F4
@@ -32,19 +49,16 @@ export function startLaunchJourneys(
 ): void {
 	if (!tracker) return;
 	if (pathname === "/") {
-		tracker.startJourney("F1", {trigger: "navigation"});
-		tracker.startJourney("F2", {trigger: "navigation"});
-		void tracker.endJourneyWhenRendered("F1", [PERF_ANCHORS.sidebarRecentsRow, PERF_ANCHORS.homeSections]);
-		void tracker.endJourneyWhenRendered("F2", PERF_ANCHORS.main);
+		startRenderedJourney(tracker, "F1", "navigation", [PERF_ANCHORS.sidebarRecentsRow, PERF_ANCHORS.homeSections]);
+		startRenderedJourney(tracker, "F2", "navigation", PERF_ANCHORS.main);
 		return;
 	}
 	const encodedId = SESSION_PATH.exec(pathname)?.[1];
 	if (encodedId === undefined) return;
 	const sessionId = decodeURIComponent(encodedId);
-	tracker.startJourney("F3", {trigger: "navigation"});
-	tracker.startJourney("F4", {trigger: "navigation"});
-	void tracker.endJourneyWhenRendered("F3", sessionAnchor(sessionId, PERF_ANCHORS.lastTranscriptRow));
-	void tracker.endJourneyWhenRendered("F4", sessionAnchor(sessionId, PERF_ANCHORS.header));
+	const view = `:is([data-perf-session-route=${JSON.stringify(sessionId)}], ${sessionView(sessionId)})`;
+	startRenderedJourney(tracker, "F3", "navigation", `${view} ${PERF_ANCHORS.lastTranscriptRow}`);
+	startRenderedJourney(tracker, "F4", "navigation", `${view} ${PERF_ANCHORS.header}`);
 }
 
 /**
@@ -107,11 +121,9 @@ export function startLiveAppendJourneys(
 
 	const rows = lines.map((_, offset) => sessionAnchor(sessionId, transcriptRowAt(firstLine + offset))).join(", ");
 	if (writtenAt !== undefined) {
-		tracker.startJourney("F6", {trigger: {type: "jsonl-write", epochMs: writtenAt}});
-		void tracker.endJourneyWhenRendered("F6", rows);
+		startRenderedJourney(tracker, "F6", {type: "jsonl-write", epochMs: writtenAt}, rows);
 	}
-	tracker.startJourney("F7", {trigger: event});
-	void tracker.endJourneyWhenRendered("F7", rows);
+	startRenderedJourney(tracker, "F7", event, rows);
 
 	if (awaitingPromptRow.get(tracker) !== sessionId) return;
 	const promptOffset = lines.findIndex(isTypedPrompt);
@@ -144,8 +156,7 @@ export function startComposerSubmitJourneys(
 	if (!tracker) return;
 	const pending = sessionAnchor(sessionId, PERF_ANCHORS.pendingPrompt);
 	if (!document.querySelector(pending)) {
-		tracker.startJourney("F9", {trigger: event});
-		void tracker.endJourneyWhenRendered("F9", pending);
+		startRenderedJourney(tracker, "F9", event, pending);
 	}
 	tracker.startJourney("F10", {trigger: event});
 	awaitingPromptRow.set(tracker, sessionId);
@@ -157,8 +168,7 @@ export function startPaletteOpenJourney(
 	tracker: JourneyTracker | undefined = defaultJourneyTracker(),
 ): void {
 	if (!tracker || document.querySelector(PERF_ANCHORS.commandPalette)) return;
-	tracker.startJourney("F11", {trigger: event});
-	void tracker.endJourneyWhenRendered("F11", PERF_ANCHORS.commandPaletteRow);
+	startRenderedJourney(tracker, "F11", event, PERF_ANCHORS.commandPaletteRow);
 }
 
 /**
@@ -171,6 +181,5 @@ export function startPaletteSearchJourney(
 ): void {
 	if (!tracker || event.isComposing || event.metaKey || event.ctrlKey || event.altKey) return;
 	if (event.key.length !== 1 && event.key !== "Backspace" && event.key !== "Delete") return;
-	tracker.startJourney("F12", {trigger: event});
-	void tracker.endJourneyWhenRendered("F12", PERF_ANCHORS.commandPaletteResults);
+	startRenderedJourney(tracker, "F12", event, PERF_ANCHORS.commandPaletteResults);
 }
