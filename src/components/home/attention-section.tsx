@@ -148,7 +148,7 @@ function AttentionRow<Row extends HomeAttentionRow>({
 					data-row-main-button
 					aria-label={`Open session ${title}`}
 					onClick={() => onOpen(session.sessionId)}
-					className="flex min-w-0 flex-1 items-center justify-between gap-2 rounded-sm text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100"
+					className="flex min-w-0 flex-1 items-center justify-between gap-2 rounded-r3 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100"
 				>
 					<span className="flex min-w-0 flex-1 items-center gap-2">
 						<span className="flex shrink-0 items-center">
