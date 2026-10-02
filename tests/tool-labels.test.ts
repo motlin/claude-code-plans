@@ -9,6 +9,20 @@ const call = (
 
 describe("toolLabel", () => {
 	it.each([
+		"Gate HEAD with the new test and archive the task list",
+		"Gate the example branch",
+		"gate example checks",
+		"Map PR numbers to branches",
+	])("keeps the entire unsupported leading description unchanged: %s", (description) => {
+		expect(toolLabel(call("Bash", {command: "echo example", description}))).toStrictEqual({
+			verb: "Ran",
+			meta: description,
+			doneLabel: description,
+			failedVerb: "Failed to run",
+		});
+	});
+
+	it.each([
 		{description: "Map PR numbers to branches", doneLabel: "Map PR numbers to branches"},
 		{description: "map example paths", doneLabel: "map example paths"},
 		{description: "MAP example paths", doneLabel: "MAP example paths"},

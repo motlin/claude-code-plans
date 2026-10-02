@@ -84,7 +84,7 @@ function lowercaseFirst(text: string): string {
 	return text.charAt(0).toLowerCase() + text.slice(1);
 }
 
-const PRESERVED_DESCRIPTION_VERBS = new Set(["map"]);
+const PRESERVED_DESCRIPTION_VERBS = new Set(["map", "gate"]);
 
 /**
  * Past-tense a description's leading verb, the way upstream labels a Bash row:
