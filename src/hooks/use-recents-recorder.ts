@@ -10,6 +10,7 @@ import {
 	remove,
 	retitle,
 	routeToRecent,
+	resolveRecentSession,
 	resolveRecentSessions,
 	saveRecents,
 	type RecentEntry,
@@ -29,9 +30,7 @@ function update(queryClient: QueryClient, change: (entries: RecentEntry[]) => Re
 }
 
 function resolvedTarget(queryClient: QueryClient, pathname: string): RecentTarget | null {
-	const target = routeToRecent(pathname);
-	if (!target) return null;
-	const [resolved] = resolveRecentSessions([target], (alias) => getCachedSessionIdentity(queryClient, alias));
+	const resolved = routeToRecent(pathname, (alias) => getCachedSessionIdentity(queryClient, alias));
 	if (!resolved) return null;
 	if (
 		(resolved.kind === "session" || resolved.kind === "subagents") &&
@@ -84,9 +83,7 @@ export function useRecentsRecorder(): void {
 			// Pin a visit's first local owner even if its alias later becomes ambiguous or changes owner.
 			visit.target ??= resolvedTarget(queryClient, location.pathname);
 			if (!visit.target) return;
-			const target = resolveRecentSessions([visit.target], (alias) =>
-				getCachedSessionIdentity(queryClient, alias),
-			)[0]!;
+			const target = resolveRecentSession(visit.target, (alias) => getCachedSessionIdentity(queryClient, alias));
 			const title = resolvedRouteTitle(router.state.matches);
 			if (resolvedToNotFound(router, title)) {
 				update(queryClient, (entries) => remove(entries, target.key));

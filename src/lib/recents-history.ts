@@ -30,8 +30,13 @@ function target(kind: RecentKind, id: string, href: string): RecentTarget {
 	return {key: `${kind}:${id}`, kind, href};
 }
 
-/** Maps a pathname to the recent-able page it shows, or null for pages that are not recorded. */
-export function routeToRecent(pathname: string): RecentTarget | null {
+/** Maps a pathname to its recent page, optionally resolving a cached session identity. */
+export function routeToRecent(pathname: string, resolveAlias?: (alias: string) => string | null): RecentTarget | null {
+	const entry = parseRecentRoute(pathname);
+	return entry === null || resolveAlias === undefined ? entry : resolveRecentSession(entry, resolveAlias);
+}
+
+function parseRecentRoute(pathname: string): RecentTarget | null {
 	const segments = pathname.split("/").filter((segment) => segment !== "");
 	const [section, first, second, third] = segments;
 	if (first === undefined) return null;
@@ -60,6 +65,23 @@ export function routeToRecent(pathname: string): RecentTarget | null {
 	}
 }
 
+/** Resolve one session without rebinding a known local owner to a saved alias's new owner. */
+export function resolveRecentSession(entry: RecentEntry, resolveAlias: (alias: string) => string | null): RecentEntry {
+	if (entry.kind !== "session" && entry.kind !== "subagents") return entry;
+	const id = entry.key.slice(entry.kind.length + 1);
+	const sessionId = id.startsWith("session_") ? resolveAlias(id) : id;
+	if (sessionId === null) return entry;
+	const key = `${entry.kind}:${sessionId}`;
+	const hrefTarget = routeToRecent(entry.href);
+	const hrefId = hrefTarget?.key.slice(hrefTarget.kind.length + 1);
+	const hrefOwner = hrefId?.startsWith("session_") ? resolveAlias(hrefId) : hrefId;
+	const href =
+		hrefTarget?.kind === entry.kind && hrefOwner === sessionId
+			? entry.href
+			: `/session/${sessionId}${entry.kind === "subagents" ? "/subagents" : ""}`;
+	return {...entry, key, href};
+}
+
 /** Resolve session identities without changing the captured visit order or rebinding a known local owner. */
 export function resolveRecentSessions(
 	entries: readonly RecentEntry[],
@@ -68,22 +90,7 @@ export function resolveRecentSessions(
 	const positions = new Map<string, number>();
 	const result: RecentEntry[] = [];
 	for (const entry of entries) {
-		let resolved = entry;
-		if (entry.kind === "session" || entry.kind === "subagents") {
-			const id = entry.key.slice(entry.kind.length + 1);
-			const sessionId = id.startsWith("session_") ? resolveAlias(id) : id;
-			if (sessionId !== null) {
-				const key = `${entry.kind}:${sessionId}`;
-				const hrefTarget = routeToRecent(entry.href);
-				const hrefId = hrefTarget?.key.slice(hrefTarget.kind.length + 1);
-				const hrefOwner = hrefId?.startsWith("session_") ? resolveAlias(hrefId) : hrefId;
-				const href =
-					hrefTarget?.kind === entry.kind && hrefOwner === sessionId
-						? entry.href
-						: `/session/${sessionId}${entry.kind === "subagents" ? "/subagents" : ""}`;
-				resolved = {...entry, key, href};
-			}
-		}
+		const resolved = resolveRecentSession(entry, resolveAlias);
 		const previousIndex = positions.get(resolved.key);
 		if (previousIndex !== undefined) {
 			const previous = result[previousIndex]!;

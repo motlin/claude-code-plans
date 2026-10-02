@@ -7,6 +7,7 @@ import {type ReactNode, useEffect, useRef, useState} from "react";
 import {getCachedSessionIdentity} from "../lib/api/session-identity";
 import {
 	loadRecents,
+	resolveRecentSession,
 	resolveRecentSessions,
 	routeToRecent,
 	type RecentEntry,
@@ -57,8 +58,7 @@ export function RecentsSwitcher() {
 	const pathname = useRouterState({select: (state) => state.location.pathname});
 	const contextRef = useRef({queryClient, navigate, pathname});
 	contextRef.current = {queryClient, navigate, pathname};
-	const resolveEntries = (entries: readonly RecentEntry[]) =>
-		resolveRecentSessions(entries, (alias) => getCachedSessionIdentity(contextRef.current.queryClient, alias));
+	const resolveAlias = (alias: string) => getCachedSessionIdentity(contextRef.current.queryClient, alias);
 	const [state, setState] = useState<SwitcherState | null>(null);
 	const stateRef = useRef<SwitcherState | null>(null);
 	const listboxRef = useRef<HTMLDivElement>(null);
@@ -72,9 +72,8 @@ export function RecentsSwitcher() {
 		update(null);
 		if (selected === undefined) return;
 		// Keep the gesture's known local owner even if its saved alias changes before release.
-		const entry = resolveEntries([selected])[0]!;
-		const current = routeToRecent(contextRef.current.pathname);
-		const currentKey = current === null ? null : resolveEntries([current])[0]!.key;
+		const entry = resolveRecentSession(selected, resolveAlias);
+		const currentKey = routeToRecent(contextRef.current.pathname, resolveAlias)?.key;
 		if (entry.key === currentKey) return;
 		void contextRef.current.navigate({to: entry.href});
 	});
@@ -96,10 +95,9 @@ export function RecentsSwitcher() {
 				const direction: SwitchDirection = event.shiftKey ? -1 : 1;
 				if (current === null) {
 					if (inTerminal(event.target)) return;
-					const entries = resolveEntries(loadRecents());
+					const entries = resolveRecentSessions(loadRecents(), resolveAlias);
 					if (entries.length === 0) return;
-					const currentEntry = routeToRecent(contextRef.current.pathname);
-					const currentKey = currentEntry === null ? null : resolveEntries([currentEntry])[0]!.key;
+					const currentKey = routeToRecent(contextRef.current.pathname, resolveAlias)?.key ?? null;
 					update({entries, index: initialIndex(entries, currentKey, direction)});
 				} else {
 					move(direction);

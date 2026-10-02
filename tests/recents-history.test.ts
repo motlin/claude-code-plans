@@ -63,6 +63,25 @@ const session = (id: string, title?: string): RecentEntry => ({
 });
 
 describe("routeToRecent", () => {
+	it("optionally resolves session owners while retaining unknown aliases as navigation targets", () => {
+		const resolveAlias = (alias: string) => (alias === "session_example" ? "alice" : null);
+		expect([
+			routeToRecent("/session/session_example", resolveAlias),
+			routeToRecent("/session/session_example/subagents", resolveAlias),
+			routeToRecent("/session/session_unknown", resolveAlias),
+			routeToRecent("/session/alice", resolveAlias),
+			routeToRecent("/plan/example", resolveAlias),
+			routeToRecent("/settings", resolveAlias),
+		]).toStrictEqual([
+			{key: "session:alice", kind: "session", href: "/session/session_example"},
+			{key: "subagents:alice", kind: "subagents", href: "/session/session_example/subagents"},
+			{key: "session:session_unknown", kind: "session", href: "/session/session_unknown"},
+			{key: "session:alice", kind: "session", href: "/session/alice"},
+			{key: "plan:example", kind: "plan", href: "/plan/example"},
+			null,
+		]);
+	});
+
 	it.each([
 		["/session/abc", {key: "session:abc", kind: "session", href: "/session/abc"}],
 		["/session/abc/", {key: "session:abc", kind: "session", href: "/session/abc"}],
