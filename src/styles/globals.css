@@ -170,9 +170,9 @@
 	--radius: 0.625rem;
 
 	/* Upstream semantic palette */
-	--upstream-page: hsl(60 14% 99%);
+	--upstream-page: #fcfcfb;
 	--upstream-surface-0: hsl(60 14% 97%);
-	--upstream-surface-1: hsl(60 14% 99%);
+	--upstream-surface-1: #fcfcfb;
 	--upstream-surface-2: hsl(0 0% 100%);
 	--upstream-surface-3: #fff;
 	--upstream-surface-popover: #fff;
