@@ -231,7 +231,7 @@ export function SettingsDialog() {
 											? selectTab(item.tab)
 											: navigateHash(customizeHash({section: item.section}), true)
 									}
-									className={`flex h-8 shrink-0 items-center gap-2 rounded-r6 px-2 text-left text-body font-normal transition-colors ${
+									className={`flex h-8 shrink-0 items-center gap-3 rounded-r6 px-2 text-left text-body font-normal transition-colors ${
 										selected
 											? "bg-fill-control text-primary"
 											: "text-secondary hover:bg-fill-ghost-hover"
