@@ -12,7 +12,7 @@ export function SessionRouteIdentity({
 	children,
 }: {
 	routeId: string;
-	children: (sessionId: string, initialRouteId: string) => ReactNode;
+	children: (sessionId: string, initialRouteId: string, scrollKey: string) => ReactNode;
 }) {
 	const router = useRouter();
 	const location = useLocation();
@@ -79,8 +79,8 @@ export function SessionRouteIdentity({
 		entryKey,
 	]);
 
-	if (!alias) return children(routeId, initialRouteId);
-	if (owner !== null) return children(owner, initialRouteId);
+	if (!alias) return children(routeId, initialRouteId, entryKey);
+	if (owner !== null) return children(owner, initialRouteId, entryKey);
 	if (!identity?.isError) return <SessionSkeleton />;
 	return (
 		<div className="p-8">

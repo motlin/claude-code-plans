@@ -9,9 +9,9 @@ import {
 	RouterProvider,
 	useLocation,
 } from "@tanstack/react-router";
-import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
 import {useReducer} from "react";
-import {afterAll, afterEach, beforeAll, expect, it, vi} from "vite-plus/test";
+import {afterAll, afterEach, beforeAll, expect, it} from "vite-plus/test";
 
 import {useMainScrollRestoration} from "../src/hooks/use-main-scroll-restoration";
 
@@ -88,23 +88,35 @@ function restoredOnRerender(): string | null {
 // One router per file: the router keeps its scroll-restoration cache and listeners at module level.
 it("reports no restored <main> position for a fresh navigation, and the page's own position on Back", async () => {
 	const router = makeRouter();
-	await router.load();
-	render(<RouterProvider router={router} />);
-	const main = await screen.findByTestId("main");
-	scrollMain(main, 13_939);
-
-	// The router copies the left page's <main> entry into the new location's after it renders.
-	await act(() => router.navigate({to: "/session/$id", params: {id: "second"}}));
-	const afterSwitch = restoredOnRerender();
-	scrollMain(main, 200);
-
-	act(() => router.history.back());
-	await vi.waitFor(() => expect(router.state.resolvedLocation?.pathname).toBe("/session/first"));
-	await act(async () => {});
-
-	expect({afterSwitch, afterBack: restoredOnRerender(), scrollTopAfterBack: main.scrollTop}).toStrictEqual({
-		afterSwitch: "none",
-		afterBack: "13939",
-		scrollTopAfterBack: 13_939,
+	const renderedLocations: string[] = [];
+	const unsubscribe = router.subscribe("onRendered", ({toLocation}) => {
+		renderedLocations.push(toLocation.pathname);
 	});
+	try {
+		await router.load();
+		render(<RouterProvider router={router} />);
+		const main = await screen.findByTestId("main");
+		// onRendered clears tracked scroll events. Scroll only after the route's restoration pass.
+		await waitFor(() => expect(renderedLocations).toStrictEqual(["/session/first"]));
+		scrollMain(main, 13_939);
+
+		// The router copies the left page's <main> entry into the new location's after it renders.
+		await act(() => router.navigate({to: "/session/$id", params: {id: "second"}}));
+		await waitFor(() => expect(renderedLocations).toStrictEqual(["/session/first", "/session/second"]));
+		const afterSwitch = restoredOnRerender();
+		scrollMain(main, 200);
+
+		act(() => router.history.back());
+		await waitFor(() =>
+			expect(renderedLocations).toStrictEqual(["/session/first", "/session/second", "/session/first"]),
+		);
+
+		expect({afterSwitch, afterBack: restoredOnRerender(), scrollTopAfterBack: main.scrollTop}).toStrictEqual({
+			afterSwitch: "none",
+			afterBack: "13939",
+			scrollTopAfterBack: 13_939,
+		});
+	} finally {
+		unsubscribe();
+	}
 });

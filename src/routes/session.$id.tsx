@@ -111,12 +111,22 @@ function SessionRouteComponent() {
 	const params = Route.useParams();
 	return (
 		<SessionRouteIdentity routeId={params.id}>
-			{(sessionId, routeId) => <ResolvedSessionRoute sessionId={sessionId} routeId={routeId} />}
+			{(sessionId, routeId, scrollKey) => (
+				<ResolvedSessionRoute sessionId={sessionId} routeId={routeId} scrollKey={scrollKey} />
+			)}
 		</SessionRouteIdentity>
 	);
 }
 
-function ResolvedSessionRoute({sessionId, routeId}: {sessionId: string; routeId: string}) {
+function ResolvedSessionRoute({
+	sessionId,
+	routeId,
+	scrollKey,
+}: {
+	sessionId: string;
+	routeId: string;
+	scrollKey: string;
+}) {
 	const router = useRouter();
 	const {pane} = Route.useSearch();
 	const navigate = Route.useNavigate();
@@ -149,6 +159,7 @@ function ResolvedSessionRoute({sessionId, routeId}: {sessionId: string; routeId:
 		<SessionPage
 			sessionId={sessionId}
 			routeId={routeId}
+			scrollKey={scrollKey}
 			requestedPane={pane}
 			onRequestedPaneHandled={clearRequestedPane}
 		/>

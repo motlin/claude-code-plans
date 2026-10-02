@@ -4,6 +4,7 @@ import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {
 	createMemoryHistory,
 	createRootRouteWithContext,
+	createRoute,
 	createRouter,
 	HeadContent,
 	Outlet,
@@ -20,6 +21,7 @@ import {sessionScrollKey} from "../src/lib/session-route-location";
 import {AttentionBadgeBridge} from "../src/components/attention-badge-bridge";
 import {sessionDetailQueryOptions, type SessionDetailData} from "../src/lib/api/sessions";
 import {Route as SessionRoute} from "../src/routes/session.$id";
+import {SessionChat} from "../src/components/session-chat";
 
 const ALIAS = "session_alice_100";
 const ALICE = "local-alice-100";
@@ -29,6 +31,7 @@ const observed = vi.hoisted(() => ({
 	mounts: 0,
 	scrollKeys: [] as string[],
 	pairs: [] as string[],
+	renderChat: false,
 }));
 
 // The real route, query cache and history run here. Only the expensive transcript leaf is a probe;
@@ -37,13 +40,16 @@ vi.mock("../src/components/session-page", () => ({
 	SessionPage: function SessionProbe({
 		sessionId,
 		routeId,
+		scrollKey,
 		onRequestedPaneHandled,
 	}: {
 		sessionId: string;
 		routeId: string;
+		scrollKey?: string;
 		onRequestedPaneHandled: () => void;
 	}) {
-		const key = useLocation({select: (location) => sessionScrollKey(location, sessionId)});
+		const locationKey = useLocation({select: (location) => sessionScrollKey(location, sessionId)});
+		const key = scrollKey ?? locationKey;
 		const restored = useMainScrollRestoration(key);
 		observed.owners.push(sessionId);
 		observed.pairs.push(`${sessionId}:${routeId}`);
@@ -60,6 +66,22 @@ vi.mock("../src/components/session-page", () => ({
 				data-route={routeId}
 				data-restored={restored?.scrollY ?? "none"}
 			>
+				{observed.renderChat && (
+					<SessionChat
+						sessionId={sessionId}
+						initialScrollKey={key}
+						shouldScrollToEnd={restored === undefined}
+						lines={[
+							{
+								type: "user",
+								uuid: "example-alice-prompt",
+								lineIndex: 0,
+								message: {role: "user", content: "Example Alice prompt"},
+							},
+						]}
+						toolResultMap={new Map()}
+					/>
+				)}
 				<input aria-label="Draft" defaultValue="" />
 				<button type="button" onClick={onRequestedPaneHandled}>
 					Pane opened
@@ -69,7 +91,11 @@ vi.mock("../src/components/session-page", () => ({
 	},
 }));
 
-vi.mock("../src/hooks/use-claude-events", () => ({useSubscribeSessionStates: () => () => () => {}}));
+vi.mock("../src/hooks/use-claude-events", () => ({
+	useSubscribeSessionStates: () => () => () => {},
+	useClaudeEvents: () => ({failedTools: new Map()}),
+}));
+vi.mock("../src/lib/hmr-persist", () => ({hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize()}));
 vi.mock("../src/components/settings-provider", async (importOriginal) => {
 	const actual = await importOriginal<typeof import("../src/components/settings-provider")>();
 	return {...actual, useSettings: () => ({settings: actual.DEFAULTS})};
@@ -109,6 +135,7 @@ afterEach(() => {
 	observed.mounts = 0;
 	observed.scrollKeys = [];
 	observed.pairs = [];
+	observed.renderChat = false;
 	vi.restoreAllMocks();
 	vi.unstubAllGlobals();
 });
@@ -127,12 +154,14 @@ async function setup({
 	invalidated = false,
 	configure,
 	initialState,
+	homeLoader,
 }: {
 	initial?: string;
 	cachedOwner?: string;
 	invalidated?: boolean;
 	configure?: (client: QueryClient) => void;
 	initialState?: HistoryState;
+	homeLoader?: () => Promise<void>;
 } = {}) {
 	vi.spyOn(window, "scrollTo").mockImplementation(() => {});
 	const response = deferredResponse();
@@ -166,7 +195,15 @@ async function setup({
 	const history = createMemoryHistory({initialEntries: ["/session/local-charlie-300", initial], initialIndex: 1});
 	if (initialState) history.replace(initial, initialState);
 	const router = createRouter({
-		routeTree: root.addChildren([SessionRoute]),
+		routeTree: root.addChildren([
+			SessionRoute,
+			createRoute({
+				getParentRoute: () => root,
+				path: "/",
+				...(homeLoader ? {loader: homeLoader} : {}),
+				component: () => <p>New session</p>,
+			}),
+		]),
 		context: {queryClient: client},
 		history,
 		scrollRestoration: true,
@@ -729,4 +766,73 @@ it("never stamps the destination launch marker onto the previous alias owner's p
 		pairs: new Set([`${ALICE}:${ALIAS}`, `${BOB}:${BOB}`]),
 		pathname: `/session/${BOB}`,
 	});
+});
+
+it.each([ALICE, ALIAS])("keeps the outgoing %s chat at its reading position while New is loading", async (routeId) => {
+	observed.renderChat = true;
+	const frames = new Map<number, FrameRequestCallback>();
+	let frameId = 0;
+	vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+		frames.set(++frameId, callback);
+		return frameId;
+	});
+	vi.stubGlobal("cancelAnimationFrame", (id: number) => frames.delete(id));
+	vi.stubGlobal(
+		"ResizeObserver",
+		class {
+			observe() {}
+			disconnect() {}
+		},
+	);
+	const scrollIntoView = vi.fn();
+	vi.stubGlobal("scrollIntoView", scrollIntoView);
+	const originalScrollIntoView = Object.getOwnPropertyDescriptor(Element.prototype, "scrollIntoView");
+	Object.defineProperty(Element.prototype, "scrollIntoView", {configurable: true, value: scrollIntoView});
+	const flushFrames = () => {
+		for (let turn = 0; frames.size > 0 && turn < 10; turn++) {
+			const callbacks = [...frames.values()];
+			frames.clear();
+			for (const callback of callbacks) callback(0);
+		}
+	};
+	let finishHome!: () => void;
+	const home = new Promise<void>((resolve) => {
+		finishHome = resolve;
+	});
+	try {
+		const {router} = await setup({initial: `/session/${routeId}`, cachedOwner: ALICE, homeLoader: () => home});
+		const originalKey = router.state.location.state.__TSR_key;
+		act(flushFrames);
+		const initialScrolls = [...scrollIntoView.mock.calls];
+		scrollIntoView.mockClear();
+		const main = screen.getByTestId("main");
+		act(() => {
+			main.scrollTop = 300;
+			fireEvent.scroll(main);
+		});
+		let navigation!: Promise<void>;
+		await act(async () => {
+			navigation = router.navigate({to: "/"});
+		});
+		await waitFor(() => expect(router.state.location.pathname).toBe("/"));
+		act(flushFrames);
+		const duringNavigation = {
+			owner: screen.getByTestId("session").dataset["session"],
+			scrollKeys: observed.scrollKeys.map((key) => key === originalKey),
+			scrollTop: main.scrollTop,
+			endScrolls: [...scrollIntoView.mock.calls],
+		};
+		await act(async () => {
+			finishHome();
+			await navigation;
+		});
+		expect({initialScrolls, duringNavigation, home: screen.getByText("New session").textContent}).toStrictEqual({
+			initialScrolls: [[{block: "end"}]],
+			duringNavigation: {owner: ALICE, scrollKeys: [true], scrollTop: 300, endScrolls: []},
+			home: "New session",
+		});
+	} finally {
+		if (originalScrollIntoView) Object.defineProperty(Element.prototype, "scrollIntoView", originalScrollIntoView);
+		else Reflect.deleteProperty(Element.prototype, "scrollIntoView");
+	}
 });

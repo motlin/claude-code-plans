@@ -457,7 +457,7 @@
 		"tolerance": 0
 	},
 	"client.sessionSwitch.small.commits.SessionChat": {
-		"ceiling": 5,
+		"ceiling": 4,
 		"unit": "count",
 		"tolerance": 0
 	},
@@ -494,7 +494,7 @@
 		"tolerance": 0
 	},
 	"client.sessionSwitch.typical.commits.SessionChat": {
-		"ceiling": 5,
+		"ceiling": 4,
 		"unit": "count",
 		"tolerance": 0
 	},
