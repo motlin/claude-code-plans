@@ -9,8 +9,23 @@
 		"unit": "requests",
 		"tolerance": 0.02
 	},
+	"browser.J2.layoutShift": {
+		"ceiling": 0.021,
+		"unit": "cls",
+		"tolerance": 0
+	},
+	"browser.J2.requests": {
+		"ceiling": 645,
+		"unit": "requests",
+		"tolerance": 0
+	},
 	"browser.J3.layoutShift": {
 		"ceiling": 0,
+		"unit": "cls",
+		"tolerance": 0
+	},
+	"browser.J4.layoutShift": {
+		"ceiling": 0.0001,
 		"unit": "cls",
 		"tolerance": 0
 	},

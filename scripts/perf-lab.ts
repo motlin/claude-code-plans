@@ -200,6 +200,9 @@ export function parseLabArgs(argv: readonly string[]): LabArgs {
 // Fixture HOME and server
 // ---------------------------------------------------------------------------------------------------------------
 
+/** The J2/J4 session's mtime, newest in the sidebar ahead of the screenshot fixtures. */
+const OPEN_SESSION_MTIME_MS = FIXED_TIME - 60_000;
+
 interface LabFixture {
 	root: string;
 	home: string;
@@ -207,6 +210,8 @@ interface LabFixture {
 	openSessionId: string;
 	openSessionPath: string;
 	openSessionBytes: number;
+	/** The open session's seeded transcript, restored before each run so every run opens the same transcript. */
+	openSessionSeed: Buffer;
 	/** Session switched to from the sidebar (J3) and typed into (J5), the small shape. */
 	switchSessionId: string;
 	switchSessionBytes: number;
@@ -251,7 +256,7 @@ async function seedLabFixture(): Promise<LabFixture> {
 		return {sessionId, path};
 	};
 	// Newest first in the sidebar, ahead of the screenshot fixtures (which top out at FIXED_TIME - 1h).
-	const open = await place(PERF_SHAPES.typical, 1, FIXED_TIME - 60_000);
+	const open = await place(PERF_SHAPES.typical, 1, OPEN_SESSION_MTIME_MS);
 	const switched = await place(PERF_SHAPES.small, 2, FIXED_TIME - 120_000);
 	return {
 		root,
@@ -259,19 +264,40 @@ async function seedLabFixture(): Promise<LabFixture> {
 		openSessionId: open.sessionId,
 		openSessionPath: open.path,
 		openSessionBytes: statSync(open.path).size,
+		openSessionSeed: readFileSync(open.path),
 		switchSessionId: switched.sessionId,
 		switchSessionBytes: statSync(switched.path).size,
 	};
 }
 
+/** The open session as the server's index sees it: what the sidebar and session list are rendered from. */
+async function indexedOpenSession(
+	baseUrl: string,
+	fixture: LabFixture,
+): Promise<{messageCount: number; mtime: string} | undefined> {
+	const rows = JSON.parse(await httpGet(`${baseUrl}/api/sessions/lookup?ids=${fixture.openSessionId}`)) as Array<{
+		messageCount: number;
+		mtime: string;
+	}>;
+	return rows[0];
+}
+
 /**
- * Before each run, put the J4 session's mtime back so it no longer counts as active. Its appended lines stay: a
- * truncation would leave the watcher's read offset past the end and hide the next append, and real transcripts only
- * grow. Each run therefore opens a session two lines longer than the run before.
+ * Before each run, restore the J4 session to its seeded transcript and mtime, so every run opens the same transcript
+ * (J2) and the session no longer counts as active. The server's watcher sees the file shrink below its read offset and
+ * moves the offset back to the new end, so the run's append (J4) is still read. Waits until the index holds the
+ * seeded transcript again, so the run does not race the watcher's re-index.
  */
-function deactivateOpenSession(fixture: LabFixture): void {
-	const mtime = (FIXED_TIME - 60_000) / 1000;
-	utimesSync(fixture.openSessionPath, mtime, mtime);
+async function resetOpenSession(baseUrl: string, fixture: LabFixture, seededMessageCount: number): Promise<void> {
+	writeFileSync(fixture.openSessionPath, fixture.openSessionSeed);
+	utimesSync(fixture.openSessionPath, OPEN_SESSION_MTIME_MS / 1000, OPEN_SESSION_MTIME_MS / 1000);
+	const mtime = new Date(OPEN_SESSION_MTIME_MS).toISOString();
+	for (let attempt = 0; attempt < 240; attempt += 1) {
+		const indexed = await indexedOpenSession(baseUrl, fixture).catch(() => undefined);
+		if (indexed?.messageCount === seededMessageCount && indexed.mtime === mtime) return;
+		await new Promise((resolvePromise) => setTimeout(resolvePromise, 250));
+	}
+	throw new Error(`The lab server did not re-index the reset session ${fixture.openSessionId} within 60 seconds`);
 }
 
 function startServer(fixture: LabFixture, port: number): {process: ChildProcess; output: string[]} {
@@ -635,13 +661,15 @@ export type StableLabMetrics = Partial<Record<JourneyId, Partial<Record<MetricKe
 /**
  * The metrics stable in both 10-run batches of `just perf-lab-stability` (.llm/perf/browser-lab-stability.md), each with
  * the ceiling tolerance it needs. Only these are ratcheted; style-recalc counts, durations and the other journeys'
- * layout and request counts moved between runs and stay diagnostic. J2 requests (644 in both batches) is left out: after
- * the sidebar-switch scroller fix it read 645, 645, 646, 647 and 1290 across five runs, growing with the J4 session the
- * lab appends to each run, plus one run that loaded the page twice.
+ * layout and request counts moved between runs and stay diagnostic. J2 requests and layout shift drifted while each run
+ * appended to the session J2 opens and J4 appends to; since the lab resets that session before each run, J2 read 645
+ * requests and 0.021 CLS and J4 read 0.0001 CLS in every run of two batches.
  */
 export const RATCHETED_LAB_METRICS: StableLabMetrics = {
 	J1: {requests: 0.02, layoutShift: 0},
+	J2: {requests: 0, layoutShift: 0},
 	J3: {layoutShift: 0},
+	J4: {layoutShift: 0},
 	J5: {layoutCount: 0, layoutShift: 0},
 	J6: {layoutCount: 0},
 };
@@ -725,11 +753,13 @@ export async function runLab(
 	const blocked: string[] = [];
 	try {
 		await waitForIdleIndex(baseUrl, server.process, server.output);
+		const seededMessageCount = (await indexedOpenSession(baseUrl, fixture))?.messageCount;
+		if (seededMessageCount === undefined) throw new Error(`The lab server did not index ${fixture.openSessionId}`);
 		const browser = await chromium.launch({headless: true});
 		const runs: LabRun[] = [];
 		try {
 			for (let run = 1; run <= args.runs; run += 1) {
-				deactivateOpenSession(fixture);
+				await resetOpenSession(baseUrl, fixture, seededMessageCount);
 				await waitForIdleIndex(baseUrl, server.process, server.output);
 				const context = await browser.newContext({viewport: VIEWPORT, colorScheme: "dark", locale: "en-US"});
 				try {

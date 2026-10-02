@@ -174,10 +174,12 @@ describe("ratchet mode", () => {
 		});
 	});
 
-	it("lists the metrics stable in both batches of .llm/perf/browser-lab-stability.md, less J2 requests", () => {
+	it("lists the metrics stable in both batches of .llm/perf/browser-lab-stability.md, plus J2 and J4 CLS once their session is reset", () => {
 		expect(RATCHETED_LAB_METRICS).toStrictEqual({
 			J1: {requests: 0.02, layoutShift: 0},
+			J2: {requests: 0, layoutShift: 0},
 			J3: {layoutShift: 0},
+			J4: {layoutShift: 0},
 			J5: {layoutCount: 0, layoutShift: 0},
 			J6: {layoutCount: 0},
 		});

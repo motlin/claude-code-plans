@@ -5,7 +5,7 @@ import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
 import {awaitInitialScan, getDb} from "./db";
 import {retryWhileBusy} from "./db/busy";
 import {trackActivity, trackActivitySync} from "./perf/event-loop-stalls";
-import {jsonlResumeOffset} from "./jsonl-resume-offset";
+import {jsonlReadOffset} from "./jsonl-resume-offset";
 import {
 	deleteFileContent,
 	deleteMemoryFile,
@@ -561,7 +561,7 @@ export async function processJsonlAppend(
 	dirs: JsonlAppendDirs = {projectsDir, plansDir},
 ): Promise<void> {
 	try {
-		const fromOffset = offsets.get(path) ?? (await jsonlResumeOffset(db, path));
+		const fromOffset = await jsonlReadOffset(db, path, offsets.get(path));
 		const {jsonlWrittenAt, readNewJsonlLines} = await import("./sessions");
 		const {lines: newLines, nextByteOffset} = await readNewJsonlLines(path, fromOffset);
 		offsets.set(path, nextByteOffset);

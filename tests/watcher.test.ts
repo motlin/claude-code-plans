@@ -551,6 +551,45 @@ describe("processJsonlAppend", () => {
 			},
 		]);
 	});
+
+	it("after the transcript is rewritten shorter, broadcasts the lines appended to the rewrite", async () => {
+		const projectsDir = testDir;
+		const projectDir = join(projectsDir, "-Users-alice-projects-rewrite");
+		mkdirSync(projectDir, {recursive: true});
+		const line = (uuid: string, content: string) => ({
+			type: "user",
+			sessionId: "sess-rewrite",
+			uuid,
+			timestamp: "2000-01-01T00:00:00.000Z",
+			message: {role: "user", content},
+		});
+		const seeded = line("seeded", "Seeded turn");
+		const jsonlPath = join(projectDir, "sess-rewrite.jsonl");
+		writeFileSync(jsonlPath, jsonl(seeded, line("dropped", "A long turn the rewrite drops from the transcript")));
+		const offsets = new Map<string, number>();
+		const broadcasts: CapturedBroadcast[] = [];
+		const record = (type: string, data: Record<string, unknown>) => broadcasts.push({type, data});
+		const dirs = {projectsDir, plansDir: ""};
+		await processJsonlAppend(db.index, jsonlPath, offsets, record, dirs);
+
+		writeFileSync(jsonlPath, jsonl(seeded));
+		await processJsonlAppend(db.index, jsonlPath, offsets, record, dirs);
+		const appended = line("appended", "Short");
+		appendFileSync(jsonlPath, jsonl(appended));
+		broadcasts.length = 0;
+		await processJsonlAppend(db.index, jsonlPath, offsets, record, dirs);
+
+		expect(broadcasts.filter((b) => b.type === DOMAIN_EVENTS.SESSION_LINES_APPENDED)).toStrictEqual([
+			{
+				type: DOMAIN_EVENTS.SESSION_LINES_APPENDED,
+				data: {
+					sessionId: "sess-rewrite",
+					lines: [appended],
+					writtenAt: Math.trunc(statSync(jsonlPath).mtimeMs),
+				},
+			},
+		]);
+	});
 });
 
 describe("handlePlanMdChange", () => {

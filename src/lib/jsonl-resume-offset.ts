@@ -35,6 +35,27 @@ export async function jsonlResumeOffset(db: IndexDb, filePath: string): Promise<
 	}
 }
 
+/**
+ * Where to read a transcript's appended lines from: this process's cached `offset`, or the resume offset when it has
+ * none. A transcript rewritten shorter than the cached offset would otherwise hide every later append until the file
+ * grew past it, so the read then restarts at the start of the rewrite's last partial line, or at its end.
+ */
+export async function jsonlReadOffset(db: IndexDb, filePath: string, offset: number | undefined): Promise<number> {
+	if (offset === undefined) return jsonlResumeOffset(db, filePath);
+	let handle;
+	try {
+		handle = await open(filePath, "r");
+	} catch {
+		return offset;
+	}
+	try {
+		const {size} = await handle.stat();
+		return offset > size ? await lineStartAtOrBefore(handle, size) : offset;
+	} finally {
+		await handle.close();
+	}
+}
+
 function indexedSizeBytes(db: IndexDb, path: string): number | undefined {
 	if (path === "") return undefined;
 	return db

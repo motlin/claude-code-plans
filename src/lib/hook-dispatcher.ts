@@ -37,7 +37,7 @@ import {indexFile, indexJsonlFile, liveJsonlIndexCache} from "./db/indexer";
 import {isSessionArchived, setSessionArchived} from "./db/queries";
 import {resolveProjectName} from "./memory";
 import {recentlyBroadcast} from "./update-dedupe";
-import {jsonlResumeOffset} from "./jsonl-resume-offset";
+import {jsonlReadOffset} from "./jsonl-resume-offset";
 import {toSubagentSessionId} from "./subagents";
 import {stateForEvent, type ActivityState} from "./session-state";
 import {isSessionVisible as isSessionVisibleInBrowser} from "./session-visibility";
@@ -327,7 +327,7 @@ async function appendTranscriptLines(
 
 	const sessionId = sessionIdFromTranscriptPath(transcriptPath);
 	try {
-		const fromOffset = state?.jsonlOffsets.get(transcriptPath) ?? (await jsonlResumeOffset(db, transcriptPath));
+		const fromOffset = await jsonlReadOffset(db, transcriptPath, state?.jsonlOffsets.get(transcriptPath));
 		const {jsonlWrittenAt, readNewJsonlLines} = await import("./sessions");
 		const {lines: newLines, nextByteOffset} = await readNewJsonlLines(transcriptPath, fromOffset);
 		state?.jsonlOffsets.set(transcriptPath, nextByteOffset);
