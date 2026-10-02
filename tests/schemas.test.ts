@@ -441,6 +441,38 @@ describe("ProgressRecordSchema", () => {
 });
 
 describe("SystemRecordSchema", () => {
+	it.each([
+		{},
+		{preCompactArtifactReadVersions: []},
+		{preCompactArtifactReadVersions: [{slug: "example-artifact", ver: "example-version"}]},
+	])("parses compacted artifact read versions: %j", (artifactVersions) => {
+		const record = {
+			type: "system",
+			subtype: "compact_boundary",
+			compactMetadata: {trigger: "auto", preTokens: 100, ...artifactVersions},
+		};
+
+		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
+	});
+
+	it.each([
+		{preCompactArtifactReadVersions: {}},
+		{preCompactArtifactReadVersions: ["example-artifact"]},
+		{preCompactArtifactReadVersions: [{slug: "example-artifact", ver: 100}]},
+		{preCompactArtifactReadVersions: [{slug: 100, ver: "example-version"}]},
+		{preCompactArtifactReadVersions: [{slug: "example-artifact"}]},
+		{preCompactArtifactReadVersions: [{slug: "example-artifact", ver: "example-version", extra: true}]},
+		{preCompactArtifactReadVersions: [], extra: true},
+	])("rejects malformed or unknown compacted artifact metadata: %j", (artifactVersions) => {
+		expect(
+			SystemRecordSchema.safeParse({
+				type: "system",
+				subtype: "compact_boundary",
+				compactMetadata: {trigger: "auto", preTokens: 100, ...artifactVersions},
+			}).success,
+		).toBe(false);
+	});
+
 	it("parses a system record with subtype", () => {
 		const record = {
 			type: "system",
