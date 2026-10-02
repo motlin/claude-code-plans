@@ -1,6 +1,6 @@
 import {createFileRoute} from "@tanstack/react-router";
 import {withMethodNotAllowed} from "../../lib/api/method-not-allowed";
-import {SessionSourceResponse} from "../../lib/api/sessions";
+import {SessionSourceResponse} from "../../lib/api/session-source";
 
 const UUID_RE = /^[a-f0-9-]{36}$/i;
 const SESSION_ID_RE = /^[a-z0-9-]+$/;

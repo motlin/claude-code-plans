@@ -1,7 +1,10 @@
-import {createFileRoute, Link} from "@tanstack/react-router";
+import {createFileRoute, Link, useRouter} from "@tanstack/react-router";
 import {useSuspenseQuery} from "@tanstack/react-query";
-import {useMemo, useState} from "react";
-import {sessionSourceQueryOptions} from "../lib/api/sessions";
+import {Suspense, useEffect, useMemo, useState} from "react";
+import {SessionRouteIdentity} from "../components/session-route-identity";
+import {sessionIdentityFailure} from "../lib/api/session-identity";
+import {sessionQueryKeys} from "../lib/api/sessions";
+import {sessionSourceQueryOptions} from "../lib/api/session-source";
 import {LinkedJson, type LinkedJsonContext} from "../components/linked-json";
 import {Bot, MessageSquare, Cpu, FileText, AlertTriangle} from "lucide-react";
 
@@ -13,10 +16,20 @@ export interface PairedResult {
 
 export const Route = createFileRoute("/session/$id_/source/$uuid")({
 	component: SourceViewPage,
-	loader: ({context: {queryClient}, params}) =>
-		queryClient.ensureQueryData(sessionSourceQueryOptions(params.id, params.uuid, 5)),
-	head: ({params}) => ({
-		meta: [{title: `Source: ${params.uuid.slice(0, 8)}`}],
+	// Identity and source data load inside their boundaries, so navigation can paint the app shell first.
+	loader: ({context: {queryClient}, params}) => {
+		const identity = params.id.startsWith("session_")
+			? queryClient.getQueryState(sessionQueryKeys.identity(params.id))
+			: undefined;
+		return {
+			title:
+				identity?.status === "error"
+					? sessionIdentityFailure(identity.error).title
+					: `Source: ${params.uuid.slice(0, 8)}`,
+		};
+	},
+	head: ({params, loaderData}) => ({
+		meta: [{title: loaderData?.title ?? `Source: ${params.uuid.slice(0, 8)}`}],
 	}),
 });
 
@@ -215,45 +228,69 @@ function CopyButton({text}: {text: string}) {
 
 function SourceViewPage() {
 	const params = Route.useParams();
-	const {data} = useSuspenseQuery(sessionSourceQueryOptions(params.id, params.uuid, 5));
+	return (
+		<SessionRouteIdentity routeId={params.id}>
+			{(sessionId) => (
+				<Suspense
+					fallback={
+						<p role="status" className="p-6">
+							Loading source…
+						</p>
+					}
+				>
+					<ResolvedSourceView sessionId={sessionId} recordUuid={params.uuid} />
+				</Suspense>
+			)}
+		</SessionRouteIdentity>
+	);
+}
+
+function ResolvedSourceView({sessionId, recordUuid}: {sessionId: string; recordUuid: string}) {
+	const {data} = useSuspenseQuery(sessionSourceQueryOptions(sessionId, recordUuid, 5));
+	const router = useRouter();
+	const loaderData = Route.useLoaderData();
+	const title = `Source: ${recordUuid.slice(0, 8)}`;
+	useEffect(() => {
+		if (loaderData.title !== title) void router.invalidate({filter: (match) => match.routeId === Route.id});
+	}, [loaderData.title, title, router]);
+
+	const jsonCtx: LinkedJsonContext = useMemo(
+		() => ({
+			sessionId,
+			...(data?.projectId !== undefined ? {projectId: data.projectId} : {}),
+			knownUuids: new Set(data?.knownUuids ?? []),
+		}),
+		[sessionId, data?.projectId, data?.knownUuids],
+	);
 
 	if (!data) {
 		return (
 			<div className="mx-auto max-w-3xl p-6">
 				<h1 className="text-lg font-medium text-primary mb-2">Source not found</h1>
 				<p className="text-sm text-t6">
-					No JSONL entry with uuid {params.uuid} in session {params.id}.
+					No JSONL entry with uuid {recordUuid} in session {sessionId}.
 				</p>
-				<Link to="/session/$id" params={{id: params.id}} className="text-accent-100 text-sm hover:underline">
+				<Link to="/session/$id" params={{id: sessionId}} className="text-accent-100 text-sm hover:underline">
 					Back to session
 				</Link>
 			</div>
 		);
 	}
 
-	const {window: rawWindow, parsedBlocksJson, parsedBlocksCount, paired, sessionTitle, knownUuids, projectId} = data;
+	const {window: rawWindow, parsedBlocksJson, parsedBlocksCount, paired, sessionTitle} = data;
 	const focalRaw = prettyJsonl(rawWindow.focal.raw);
 	const focalParsed = safeParse(rawWindow.focal.raw);
 	const pairedParsed = paired ? safeParse(paired.resultEntry.raw) : undefined;
 	const parsedBlocksParsed = safeParse(parsedBlocksJson);
 
-	const jsonCtx: LinkedJsonContext = useMemo(
-		() => ({
-			sessionId: params.id,
-			...(projectId !== undefined ? {projectId} : {}),
-			knownUuids: new Set(knownUuids ?? []),
-		}),
-		[params.id, projectId, knownUuids],
-	);
-
 	return (
 		<div className="mx-auto max-w-4xl p-6 space-y-6">
 			<div>
-				<Link to="/session/$id" params={{id: params.id}} className="text-accent-100 text-sm hover:underline">
+				<Link to="/session/$id" params={{id: sessionId}} className="text-accent-100 text-sm hover:underline">
 					← {sessionTitle}
 				</Link>
 				<h1 className="text-lg font-medium text-primary mt-1">
-					JSONL source · line {rawWindow.focal.lineIndex} · {params.uuid}
+					JSONL source · line {rawWindow.focal.lineIndex} · {recordUuid}
 				</h1>
 			</div>
 
@@ -277,7 +314,7 @@ function SourceViewPage() {
 						</h2>
 						{paired.resultEntry.uuid && (
 							<a
-								href={`/session/${params.id}/source/${paired.resultEntry.uuid}`}
+								href={`/session/${sessionId}/source/${paired.resultEntry.uuid}`}
 								target="_blank"
 								rel="noopener noreferrer"
 								className="text-xs text-accent-100 hover:underline"
@@ -318,7 +355,7 @@ function SourceViewPage() {
 					<p className="text-xs text-t6 italic">No preceding lines.</p>
 				) : (
 					rawWindow.before.map((entry) => (
-						<NeighborLink key={entry.lineIndex} entry={entry} sessionId={params.id} />
+						<NeighborLink key={entry.lineIndex} entry={entry} sessionId={sessionId} />
 					))
 				)}
 			</section>
@@ -332,7 +369,7 @@ function SourceViewPage() {
 					<p className="text-xs text-t6 italic">No following lines.</p>
 				) : (
 					rawWindow.after.map((entry) => (
-						<NeighborLink key={entry.lineIndex} entry={entry} sessionId={params.id} />
+						<NeighborLink key={entry.lineIndex} entry={entry} sessionId={sessionId} />
 					))
 				)}
 			</section>

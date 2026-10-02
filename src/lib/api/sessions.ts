@@ -245,37 +245,6 @@ export const SessionDevServersResponse = z
 	})
 	.strict();
 
-const RawJsonlLineSchema = z.object({
-	raw: z.string(),
-	uuid: z.string().optional(),
-	lineIndex: z.number(),
-	parseError: z.boolean().optional(),
-});
-
-const RawWindowSchema = z.object({
-	before: z.array(RawJsonlLineSchema),
-	focal: RawJsonlLineSchema,
-	after: z.array(RawJsonlLineSchema),
-});
-
-const PairedResultSchema = z.object({
-	resultEntry: RawJsonlLineSchema,
-	resultLineIndex: z.number(),
-	toolUseId: z.string(),
-});
-
-export const SessionSourceResponse = z
-	.object({
-		window: RawWindowSchema,
-		parsedBlocksJson: z.string(),
-		parsedBlocksCount: z.number(),
-		paired: PairedResultSchema.nullable(),
-		sessionTitle: z.string(),
-		knownUuids: z.array(z.string()),
-		projectId: z.string().optional(),
-	})
-	.nullable();
-
 const DEFAULT_RECENT_PAGE_SIZE = 50;
 /**
  * Sessions kept per project group. Deep enough to show what a project was
@@ -313,8 +282,6 @@ export const sessionQueryKeys = {
 	resources: (id: string) => [...SESSION_QUERY_ROOT, id, "resources"] as const,
 	devServers: (id: string) => [...SESSION_QUERY_ROOT, id, "dev-servers"] as const,
 	artifacts: (id: string) => [...SESSION_QUERY_ROOT, id, "artifacts"] as const,
-	source: (sessionId: string, uuid: string, contextN: number) =>
-		[...SESSION_QUERY_ROOT, sessionId, "source", uuid, contextN] as const,
 	subagents: (id: string) => [...SESSION_QUERY_ROOT, id, "subagents"] as const,
 	openIn: (id: string) => [...SESSION_QUERY_ROOT, id, "open-in"] as const,
 };
@@ -509,18 +476,6 @@ export function fetchEarlierTranscript(queryClient: QueryClient, sessionId: stri
 	inFlight.set(key, request);
 	return request;
 }
-
-export const sessionSourceQueryOptions = (sessionId: string, uuid: string, contextN = 5) =>
-	queryOptions({
-		queryKey: sessionQueryKeys.source(sessionId, uuid, contextN),
-		queryFn: () =>
-			apiFetch(
-				`/api/sessions/${encodeURIComponent(sessionId)}/source/${encodeURIComponent(uuid)}?context=${contextN}`,
-				SessionSourceResponse,
-			),
-		staleTime: Infinity,
-		gcTime: Infinity,
-	});
 
 const SessionSubagentSchema = z.object({
 	id: z.string(),
