@@ -10,7 +10,7 @@ const ROW_CLASS =
 
 /**
  * Upstream's sticky "New" row: goes home and focuses the composer, exactly like ⇧⌘O, and reveals
- * the ⇧⌘O keycaps at its trailing edge on hover.
+ * the ⇧⌘O shortcut text at its trailing edge on hover.
  */
 export function NewSessionRow() {
 	const navigate = useNavigate();
@@ -40,7 +40,11 @@ export function NewSessionRow() {
 				</span>
 				<span className="min-w-0 flex-1 truncate">New</span>
 				<span className="df-tail-mark opacity-0 transition-opacity duration-[120ms] group-hover:opacity-100 group-focus-visible:opacity-100 pointer-coarse:hidden">
-					<Shortcut keys={shortcut.keys} />
+					<Shortcut
+						keys={shortcut.keys}
+						variant="text"
+						className="[&>kbd]:inline-flex [&>kbd]:gap-[0.3em] [&>kbd]:leading-none"
+					/>
 				</span>
 			</Link>
 		</div>
