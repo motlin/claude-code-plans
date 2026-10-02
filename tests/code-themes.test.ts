@@ -117,8 +117,8 @@ describe("code theme settings", () => {
 		]).toStrictEqual([
 			null,
 			null,
-			'"Fira Code", "anthropic-mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace',
-			'"Berkeley Mono", "anthropic-mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace',
+			'"Fira Code", "SF Mono", ui-monospace, Menlo, Consolas, monospace',
+			'"Berkeley Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace',
 		]);
 	});
 

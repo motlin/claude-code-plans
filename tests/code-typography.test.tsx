@@ -64,14 +64,14 @@ describe("code typography", () => {
 		});
 	});
 
-	it("uses upstream's ligature-free monospace stack for --font-mono", () => {
+	it("uses system monospace fallbacks with ligatures disabled for --font-mono", () => {
 		const styles = readFileSync("src/styles/globals.css", "utf8");
 
 		expect({
 			stack: customProperty(styles, "--font-mono"),
 			features: customProperty(styles, "--font-mono--font-feature-settings"),
 		}).toStrictEqual({
-			stack: '"anthropic-mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace',
+			stack: '"SF Mono", ui-monospace, Menlo, Consolas, monospace',
 			features: '"liga" 0, "calt" 0',
 		});
 	});

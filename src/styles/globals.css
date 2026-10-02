@@ -22,9 +22,9 @@
 /* Not inline, so `font-mono` and `font-sans` read their variables and Settings ▸
    Code font / Interface font can override them on <html>. */
 @theme {
-	/* Upstream's code stack; none of these fonts draw ligatures, and the features
-	   below keep a custom Settings ▸ Code font from merging "==" or "->" either. */
-	--font-mono: "anthropic-mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+	/* System monospace fallback stack. The features below keep a custom
+	   Settings ▸ Code font from merging "==" or "->" into ligatures. */
+	--font-mono: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
 	--font-mono--font-feature-settings: "liga" 0, "calt" 0;
 	--font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }

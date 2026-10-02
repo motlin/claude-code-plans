@@ -101,7 +101,7 @@ export function loadedThemeOr<T extends CodeThemeId>(
 }
 
 /** Mirrors `--font-mono` in globals.css, the fallback behind a custom code font. */
-const MONO_FONT_STACK = '"anthropic-mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace';
+const MONO_FONT_STACK = '"SF Mono", ui-monospace, Menlo, Consolas, monospace';
 
 /**
  * The `--font-mono` value for Settings ▸ Code font, or null for the built-in
