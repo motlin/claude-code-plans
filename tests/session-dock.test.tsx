@@ -206,3 +206,59 @@ describe("transcript width setting", () => {
 		});
 	});
 });
+
+it.each([undefined, -1, 0])(
+	"hands focused pill activation to the stable scroll host before it becomes inert (tabindex=%s)",
+	(tabIndex) => {
+		render(<DockInScroller />);
+		const scroller = screen.getByTestId("scroller");
+		if (tabIndex !== undefined) scroller.tabIndex = tabIndex;
+		const focus = vi.spyOn(scroller, "focus");
+		const scrollTo = vi.fn(() => document.activeElement === scroller);
+		Object.defineProperty(scroller, "scrollTo", {configurable: true, value: scrollTo});
+		setScrollMetrics(scroller, {scrollTop: 1000, scrollHeight: 5000, clientHeight: 1000});
+		fireEvent.scroll(scroller);
+		const pill = screen.getByRole("button", {name: "Scroll to bottom"});
+		pill.focus();
+		fireEvent.click(pill);
+		// The real browser crosses this threshold while its smooth animation is still running.
+		setScrollMetrics(scroller, {scrollTop: 3933, scrollHeight: 5000, clientHeight: 1000});
+		fireEvent.scroll(scroller);
+		expect({
+			focusCalls: focus.mock.calls,
+			scrollCalls: scrollTo.mock.calls,
+			focusedBeforeScroll: scrollTo.mock.results.map((result) => result.value),
+			retainedHostFocus: document.activeElement === scroller,
+			tabIndex: scroller.getAttribute("tabindex"),
+			pill: pillState(pill),
+		}).toStrictEqual({
+			focusCalls: [[{preventScroll: true}]],
+			scrollCalls: [[{top: 5000, behavior: "smooth"}]],
+			focusedBeforeScroll: [true],
+			retainedHostFocus: true,
+			tabIndex: String(tabIndex ?? -1),
+			pill: {ariaHidden: "true", inert: true, tabIndex: -1, visible: false},
+		});
+	},
+);
+
+it("preserves another focused control when the pill is activated without taking focus", () => {
+	render(<DockInScroller />);
+	const scroller = screen.getByTestId("scroller");
+	const scrollTo = vi.fn();
+	Object.defineProperty(scroller, "scrollTo", {configurable: true, value: scrollTo});
+	setScrollMetrics(scroller, {scrollTop: 1000, scrollHeight: 5000, clientHeight: 1000});
+	fireEvent.scroll(scroller);
+	const composer = screen.getByLabelText("Fabricated composer");
+	composer.focus();
+	fireEvent.click(screen.getByRole("button", {name: "Scroll to bottom"}));
+	expect({
+		composerFocused: document.activeElement === composer,
+		tabIndex: scroller.getAttribute("tabindex"),
+		calls: scrollTo.mock.calls,
+	}).toStrictEqual({
+		composerFocused: true,
+		tabIndex: null,
+		calls: [[{top: 5000, behavior: "smooth"}]],
+	});
+});

@@ -1,5 +1,5 @@
 import {ArrowDown} from "lucide-react";
-import {useCallback, useEffect, useRef, useState, type ReactNode, type RefObject} from "react";
+import {useCallback, useEffect, useRef, useState, type MouseEvent, type ReactNode, type RefObject} from "react";
 import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
 import {findScrollContainer} from "./transcript-history-loader";
 
@@ -27,9 +27,15 @@ function useScrollToBottom(anchorRef: RefObject<HTMLElement | null>) {
 		};
 	}, [anchorRef]);
 
-	const scrollToBottom = useCallback(() => {
+	const scrollToBottom = useCallback((event: MouseEvent<HTMLButtonElement>) => {
 		const scroller = scrollerRef.current;
 		if (!scroller) return;
+		// The pill becomes inert near the end. Move its focus first so that change
+		// does not interrupt the browser's smooth scroll or drop keyboard context.
+		if (scroller instanceof HTMLElement && document.activeElement === event.currentTarget) {
+			if (!scroller.hasAttribute("tabindex")) scroller.tabIndex = -1;
+			scroller.focus({preventScroll: true});
+		}
 		scroller.scrollTo({top: scroller.scrollHeight, behavior: "smooth"});
 	}, []);
 
