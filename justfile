@@ -101,6 +101,11 @@ perf-report *args: install
 perf-lab *args: install
     vp exec tsx scripts/perf-lab.ts {{ args }}
 
+# Run the browser lab 10 times on a fresh fixture server and write per-metric stability to .llm/perf/browser-lab-stability.md
+[group('perf')]
+perf-lab-stability *args: install
+    vp exec tsx scripts/perf-lab-stability.ts {{ args }}
+
 # Time the server lab journeys across the fixture sizes and write Spearman ρ of each lab count against wall time to .llm/perf/correlation.md
 [group('perf')]
 perf-correlate *args: install

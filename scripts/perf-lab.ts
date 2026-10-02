@@ -20,6 +20,7 @@ import {
 	utimesSync,
 	writeFileSync,
 } from "node:fs";
+import {get} from "node:http";
 import {tmpdir} from "node:os";
 import {dirname, join, resolve} from "node:path";
 import {fileURLToPath} from "node:url";
@@ -36,10 +37,10 @@ const MIN_RAF_HZ = 50;
 const PREFLIGHT_FRAMES = 30;
 const VIEWPORT = {width: 1280, height: 800} as const;
 
-const JOURNEYS = ["J1", "J2", "J3", "J4", "J5", "J6"] as const;
+export const JOURNEYS = ["J1", "J2", "J3", "J4", "J5", "J6"] as const;
 export type JourneyId = (typeof JOURNEYS)[number];
 
-const JOURNEY_TITLES: Record<JourneyId, string> = {
+export const JOURNEY_TITLES: Record<JourneyId, string> = {
 	J1: "Cold launch to Home",
 	J2: "Open a session by URL (typical)",
 	J3: "Switch sessions from the sidebar",
@@ -69,7 +70,7 @@ export interface LayoutShiftEntry {
 	hadRecentInput: boolean;
 }
 
-interface JourneySample extends MetricsDelta {
+export interface JourneySample extends MetricsDelta {
 	requests: number;
 	layoutShift: number;
 }
@@ -278,13 +279,32 @@ function startServer(fixture: LabFixture, port: number): {process: ChildProcess;
 	return {process: server, output};
 }
 
+/**
+ * Plain `node:http` rather than `fetch`: under heavy load Node's undici can throw `setTypeOfService EINVAL` from a
+ * socket callback while the server is still starting, which no try/catch around `fetch` can intercept.
+ */
+function httpGet(url: string): Promise<string> {
+	return new Promise((resolvePromise, reject) => {
+		const request = get(url, {agent: false}, (response) => {
+			const chunks: Buffer[] = [];
+			response.on("data", (chunk: Buffer) => chunks.push(chunk));
+			response.on("error", reject);
+			response.on("end", () => {
+				if (response.statusCode === 200) resolvePromise(Buffer.concat(chunks).toString("utf8"));
+				else reject(new Error(`GET ${url} returned ${response.statusCode}`));
+			});
+		});
+		request.on("error", reject);
+	});
+}
+
 async function waitForIdleIndex(baseUrl: string, server: ChildProcess, output: string[]): Promise<void> {
 	for (let attempt = 0; attempt < 240; attempt += 1) {
 		if (server.exitCode !== null)
 			throw new Error(`Lab dev server exited with ${server.exitCode}:\n${output.join("")}`);
 		try {
-			const response = await fetch(`${baseUrl}/api/indexing-status`);
-			if (response.ok && !((await response.json()) as {isIndexing: boolean}).isIndexing) return;
+			if (!(JSON.parse(await httpGet(`${baseUrl}/api/indexing-status`)) as {isIndexing: boolean}).isIndexing)
+				return;
 		} catch {
 			// Still starting.
 		}
@@ -579,7 +599,7 @@ async function runJourneys(
 	return samples;
 }
 
-function gitSha(): string {
+export function gitSha(): string {
 	try {
 		return execFileSync("git", ["rev-parse", "--short", "HEAD"], {cwd: REPOSITORY_ROOT, encoding: "utf8"}).trim();
 	} catch {
@@ -587,7 +607,7 @@ function gitSha(): string {
 	}
 }
 
-const METRIC_KEYS = [
+export const METRIC_KEYS = [
 	"recalcStyleCount",
 	"layoutCount",
 	"requests",
@@ -598,9 +618,7 @@ const METRIC_KEYS = [
 
 type JourneyReport = Record<(typeof METRIC_KEYS)[number], Summary> & {title: string};
 
-function buildReport(
-	runs: Array<Partial<Record<JourneyId, JourneySample>>>,
-): Partial<Record<JourneyId, JourneyReport>> {
+function buildReport(runs: LabRun[]): Partial<Record<JourneyId, JourneyReport>> {
 	const report: Partial<Record<JourneyId, JourneyReport>> = {};
 	for (const id of JOURNEYS) {
 		const samples = runs.flatMap((run) => (run[id] === undefined ? [] : [run[id]]));
@@ -629,8 +647,20 @@ function formatTable(report: Partial<Record<JourneyId, JourneyReport>>): string 
 	return rows.map((row) => row.map((value, column) => value.padEnd(widths[column]!)).join("  ")).join("\n");
 }
 
-async function main(): Promise<void> {
-	const args = parseLabArgs(process.argv.slice(2));
+export type LabRun = Partial<Record<JourneyId, JourneySample>>;
+
+export interface LabSession {
+	chromium: string;
+	fixture: {openSession: {shape: "typical"; bytes: number}; switchSession: {shape: "small"; bytes: number}};
+	blockedHosts: string[];
+	runs: LabRun[];
+}
+
+/**
+ * Seeds a fresh fixture HOME, starts one fixture server and runs every requested journey `args.runs` times in a new
+ * browser context each. `onRun` sees each finished run (1-based) before the next starts.
+ */
+export async function runLab(args: LabArgs, onRun?: (run: number, sample: LabRun) => void): Promise<LabSession> {
 	const baseUrl = `http://127.0.0.1:${args.port}`;
 	const fixture = await seedLabFixture();
 	const server = startServer(fixture, args.port);
@@ -638,7 +668,7 @@ async function main(): Promise<void> {
 	try {
 		await waitForIdleIndex(baseUrl, server.process, server.output);
 		const browser = await chromium.launch({headless: true});
-		const runs: Array<Partial<Record<JourneyId, JourneySample>>> = [];
+		const runs: LabRun[] = [];
 		try {
 			for (let run = 1; run <= args.runs; run += 1) {
 				deactivateOpenSession(fixture);
@@ -646,45 +676,35 @@ async function main(): Promise<void> {
 				const context = await browser.newContext({viewport: VIEWPORT, colorScheme: "dark", locale: "en-US"});
 				try {
 					await prepareContext(context, blocked);
-					runs.push(
-						await runJourneys(context, baseUrl, fixture, args.journeys, run).catch(
-							async (error: unknown) => {
-								const page = context.pages()[0];
-								if (page) {
-									const failurePath = join(OUTPUT_DIRECTORY, "lab-browser-failure");
-									await page.screenshot({path: `${failurePath}.png`}).catch(() => undefined);
-									writeFileSync(`${failurePath}.html`, await page.content().catch(() => ""));
-									writeFileSync(`${failurePath}.log`, server.output.join(""));
-									console.error(`Saved ${failurePath}.{png,html,log} from ${page.url()}`);
-								}
-								throw error;
-							},
-						),
+					const sample = await runJourneys(context, baseUrl, fixture, args.journeys, run).catch(
+						async (error: unknown) => {
+							const page = context.pages()[0];
+							if (page) {
+								const failurePath = join(OUTPUT_DIRECTORY, "lab-browser-failure");
+								mkdirSync(OUTPUT_DIRECTORY, {recursive: true});
+								await page.screenshot({path: `${failurePath}.png`}).catch(() => undefined);
+								writeFileSync(`${failurePath}.html`, await page.content().catch(() => ""));
+								writeFileSync(`${failurePath}.log`, server.output.join(""));
+								console.error(`Saved ${failurePath}.{png,html,log} from ${page.url()}`);
+							}
+							throw error;
+						},
 					);
-					console.log(`run ${run}/${args.runs} done`);
+					runs.push(sample);
+					onRun?.(run, sample);
 				} finally {
 					await context.close();
 				}
 			}
-			const sha = gitSha();
-			const result = {
-				sha,
-				createdAt: new Date().toISOString(),
+			return {
 				chromium: browser.version(),
-				viewport: VIEWPORT,
-				runs: args.runs,
 				fixture: {
 					openSession: {shape: "typical", bytes: fixture.openSessionBytes},
 					switchSession: {shape: "small", bytes: fixture.switchSessionBytes},
 				},
 				blockedHosts: [...new Set(blocked)].sort(),
-				journeys: buildReport(runs),
+				runs,
 			};
-			const outputPath = join(OUTPUT_DIRECTORY, `lab-browser-${sha}.json`);
-			writeFileSync(outputPath, `${JSON.stringify(result, null, "\t")}\n`);
-			console.log(`\nmin/median/max over ${args.runs} runs (diagnostic only, not ratcheted)\n`);
-			console.log(formatTable(result.journeys));
-			console.log(`\nWrote ${outputPath}`);
 		} finally {
 			await browser.close();
 		}
@@ -692,6 +712,28 @@ async function main(): Promise<void> {
 		await stopDevServer(server.process);
 		rmSync(fixture.root, {recursive: true, force: true});
 	}
+}
+
+async function main(): Promise<void> {
+	const args = parseLabArgs(process.argv.slice(2));
+	const session = await runLab(args, (run) => console.log(`run ${run}/${args.runs} done`));
+	const sha = gitSha();
+	const result = {
+		sha,
+		createdAt: new Date().toISOString(),
+		chromium: session.chromium,
+		viewport: VIEWPORT,
+		runs: args.runs,
+		fixture: session.fixture,
+		blockedHosts: session.blockedHosts,
+		journeys: buildReport(session.runs),
+	};
+	mkdirSync(OUTPUT_DIRECTORY, {recursive: true});
+	const outputPath = join(OUTPUT_DIRECTORY, `lab-browser-${sha}.json`);
+	writeFileSync(outputPath, `${JSON.stringify(result, null, "\t")}\n`);
+	console.log(`\nmin/median/max over ${args.runs} runs (diagnostic only, not ratcheted)\n`);
+	console.log(formatTable(result.journeys));
+	console.log(`\nWrote ${outputPath}`);
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
