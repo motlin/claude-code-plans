@@ -1,7 +1,10 @@
 import {Loader2, X} from "lucide-react";
 import {useEffect, useState} from "react";
-import {apiFetch} from "../lib/api/client";
+import {useQueryClient} from "@tanstack/react-query";
+import {apiFetch, ApiResponseError} from "../lib/api/client";
 import {IndexingStatusResponse} from "../lib/api/indexing";
+import {invalidateSessionIdentities} from "../lib/api/session-identity";
+import {sessionQueryKeys} from "../lib/api/sessions";
 
 export function IndexingBannerView({onDismiss}: {onDismiss: () => void}) {
 	return (
@@ -20,16 +23,40 @@ export function IndexingBannerView({onDismiss}: {onDismiss: () => void}) {
 }
 
 export function IndexingBanner() {
+	const queryClient = useQueryClient();
 	const [isIndexing, setIsIndexing] = useState(false);
 	const [dismissed, setDismissed] = useState(false);
 
 	useEffect(() => {
 		let cancelled = false;
+		let previous: boolean | undefined;
+		const retried = new Set<string>();
 
 		async function poll() {
 			try {
 				const result = await apiFetch("/api/indexing-status", IndexingStatusResponse);
-				if (!cancelled) setIsIndexing(result.isIndexing);
+				if (cancelled) return;
+				setIsIndexing(result.isIndexing);
+				if (result.isIndexing) retried.clear();
+				else {
+					const completed = previous === true;
+					const pending = queryClient
+						.getQueryCache()
+						.findAll({queryKey: sessionQueryKeys.identities()})
+						.filter(
+							(query) =>
+								completed ||
+								(!retried.has(query.queryHash) &&
+									query.state.error instanceof ApiResponseError &&
+									query.state.error.status === 503),
+						);
+					for (const query of pending) retried.add(query.queryHash);
+					// A 503 can precede the first poll: retry once even if no true sample was observed.
+					if (pending.length > 0) {
+						void invalidateSessionIdentities(queryClient, (query) => pending.includes(query));
+					}
+				}
+				previous = result.isIndexing;
 			} catch {
 				// Server function unavailable during HMR
 			}
@@ -41,7 +68,7 @@ export function IndexingBanner() {
 			cancelled = true;
 			clearInterval(interval);
 		};
-	}, []);
+	}, [queryClient]);
 
 	if (!isIndexing || dismissed) return null;
 

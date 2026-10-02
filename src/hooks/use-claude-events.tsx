@@ -58,6 +58,7 @@ import type {ComposerServerState} from "../lib/composer-state";
 import type {Notification, NotificationsData} from "../lib/api/notifications";
 import {openReconnectingEventSource} from "../lib/reconnecting-event-source";
 import {startLiveAppendJourneys} from "../lib/perf/field-journeys";
+import {invalidateSessionIdentities} from "../lib/api/session-identity";
 
 // ---------------------------------------------------------------------------
 // State types
@@ -619,6 +620,7 @@ function invalidateSessionLists(queryClient: QueryClient): void {
 }
 
 export function applySessionAdded(queryClient: QueryClient, session: SessionSummaryPayload): void {
+	void invalidateSessionIdentities(queryClient);
 	invalidateSessionLists(queryClient);
 	// Project session counts changed.
 	void queryClient.invalidateQueries({queryKey: ["projects"]});
@@ -633,6 +635,7 @@ export function applySessionAdded(queryClient: QueryClient, session: SessionSumm
 }
 
 export function applySessionRemoved(queryClient: QueryClient, sessionId: string, projectDir: string): void {
+	void invalidateSessionIdentities(queryClient);
 	invalidateSessionLists(queryClient);
 	// Invalidate (don't remove) the session sub-caches so that any mounted
 	// useSuspenseQuery keeps showing cached data while refetching in the
@@ -645,6 +648,7 @@ export function applySessionRemoved(queryClient: QueryClient, sessionId: string,
 }
 
 export function applySessionUpdated(queryClient: QueryClient, session: SessionSummaryPayload): void {
+	void invalidateSessionIdentities(queryClient);
 	invalidateSessionLists(queryClient);
 	// Invalidate session detail metadata like messageCount, gitBranch, and summary.
 	// The transcript is NOT invalidated here because SESSION_LINES_APPENDED handles
@@ -835,6 +839,7 @@ export function applySessionLinesAppended(
  * during the gap land without discarding pages already scrolled back through.
  */
 function applyReconnected(queryClient: QueryClient): void {
+	void invalidateSessionIdentities(queryClient);
 	invalidateSessionLists(queryClient);
 	invalidateActiveSessions(queryClient);
 	const [sessionRoot] = sessionQueryKeys.all();

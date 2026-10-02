@@ -289,9 +289,12 @@ const SESSION_QUERY_ROOT = ["sessions"] as const;
 const RECENT_SESSIONS_QUERY_ROOT = [...SESSION_QUERY_ROOT, "recent"] as const;
 const GROUPED_SESSIONS_QUERY_ROOT = [...SESSION_QUERY_ROOT, "grouped"] as const;
 const ACTIVE_SESSIONS_QUERY_ROOT = [...SESSION_QUERY_ROOT, "active"] as const;
+const SESSION_IDENTITIES_QUERY_ROOT = [...SESSION_QUERY_ROOT, "identity"] as const;
 
 export const sessionQueryKeys = {
 	all: () => SESSION_QUERY_ROOT,
+	identities: () => SESSION_IDENTITIES_QUERY_ROOT,
+	identity: (routeId: string) => [...SESSION_IDENTITIES_QUERY_ROOT, routeId] as const,
 	recentLists: () => RECENT_SESSIONS_QUERY_ROOT,
 	recent: (limit: number, status: SessionStatusFilter = "active") =>
 		status === "active"

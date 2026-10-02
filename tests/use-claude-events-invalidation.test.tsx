@@ -166,13 +166,14 @@ describe("ClaudeEventsProvider SSE reconnect", () => {
 		vi.unstubAllGlobals();
 	});
 
-	it("invalidates only the queries an event could have changed while disconnected", () => {
+	it("invalidates only the queries an event could have changed while disconnected", async () => {
 		const {client, eventSource} = renderProvider();
 		const keys = {
 			groupedSessions: sessionQueryKeys.grouped(5),
 			recentSessions: sessionQueryKeys.recent(50),
 			activeSessions: sessionQueryKeys.active(300_000),
 			sessionDetail: sessionQueryKeys.detail(SESSION_ID),
+			sessionIdentity: sessionQueryKeys.identity("session_alice_100"),
 			transcript: sessionQueryKeys.transcript(SESSION_ID),
 			approvals: ["approvals"],
 			notifications: ["notifications"],
@@ -189,25 +190,88 @@ describe("ClaudeEventsProvider SSE reconnect", () => {
 			eventSource.reconnect();
 		});
 
-		expect(
-			Object.fromEntries(
-				Object.entries(keys).map(([name, key]) => [name, client.getQueryState(key)?.isInvalidated]),
-			),
-		).toStrictEqual({
-			groupedSessions: true,
-			recentSessions: true,
-			activeSessions: true,
-			sessionDetail: true,
-			transcript: true,
-			approvals: true,
-			notifications: true,
-			subagents: false,
-			artifacts: false,
-			plans: false,
-			localAccount: false,
-			applicationSettings: false,
-			herdrPanes: false,
-		});
+		await waitFor(() =>
+			expect(
+				Object.fromEntries(
+					Object.entries(keys).map(([name, key]) => [name, client.getQueryState(key)?.isInvalidated]),
+				),
+			).toStrictEqual({
+				groupedSessions: true,
+				recentSessions: true,
+				activeSessions: true,
+				sessionDetail: true,
+				sessionIdentity: true,
+				transcript: true,
+				approvals: true,
+				notifications: true,
+				subagents: false,
+				artifacts: false,
+				plans: false,
+				localAccount: false,
+				applicationSettings: false,
+				herdrPanes: false,
+			}),
+		);
+	});
+
+	it.each([DOMAIN_EVENTS.SESSION_ADDED, DOMAIN_EVENTS.SESSION_UPDATED, DOMAIN_EVENTS.SESSION_REMOVED])(
+		"invalidates all cached aliases after %s, including another session's potential collision",
+		async (event) => {
+			const {client, eventSource} = renderProvider();
+			const aliases = [
+				sessionQueryKeys.identity("session_alice_100"),
+				sessionQueryKeys.identity("session_charlie_100"),
+			];
+			for (const key of aliases) client.setQueryData(key, {sessionId: "session-alice"});
+			client.setQueryData(sessionQueryKeys.transcript("session-alice"), {records: [], byteOffset: 0});
+			act(() => {
+				eventSource.emit(
+					event,
+					event === DOMAIN_EVENTS.SESSION_REMOVED
+						? {sessionId: "session-bob", projectDir: "example-project"}
+						: {
+								session: {
+									id: "session-bob",
+									title: "Example Bob session",
+									project: "example-project",
+									projectName: "Example project",
+									state: "idle",
+									archived: false,
+									unseen: false,
+								},
+							},
+				);
+			});
+			await waitFor(() =>
+				expect({
+					aliases: aliases.map((key) => client.getQueryState(key)?.isInvalidated),
+					transcript: client.getQueryState(sessionQueryKeys.transcript("session-alice"))?.isInvalidated,
+				}).toStrictEqual({aliases: [true, true], transcript: false}),
+			);
+		},
+	);
+
+	it("does not resolve identity from transcript lines emitted before indexing commits", () => {
+		const {client, eventSource} = renderProvider();
+		const key = sessionQueryKeys.identity("session_alice_100");
+		client.setQueryData(key, {sessionId: "session-alice"});
+		act(() =>
+			eventSource.emit(DOMAIN_EVENTS.SESSION_LINES_APPENDED, {
+				sessionId: "session-bob",
+				lines: [
+					{
+						type: "bridge-session",
+						sessionId: "session-bob",
+						bridgeSessionId: "cse_alice_100",
+						lastSequenceNum: 0,
+					},
+				],
+			}),
+		);
+		expect({
+			identity: client.getQueryData(key),
+			invalidated: client.getQueryState(key)?.isInvalidated,
+		}).toStrictEqual({identity: {sessionId: "session-alice"}, invalidated: false});
 	});
 
 	it("does not invalidate anything on the first open", () => {

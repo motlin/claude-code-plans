@@ -24,6 +24,7 @@ import {
 } from "../../lib/sidebar-store";
 import {useResizableWidth} from "../../hooks/use-resizable-width";
 import {useShortcutKeys} from "../../hooks/use-shortcut";
+import {useSessionIdentity} from "../../hooks/use-session-identity";
 import {Tooltip} from "../ui/tooltip";
 import {useSettings} from "../settings-provider";
 
@@ -45,6 +46,7 @@ export function Sidebar({
 	const matches = useMatches();
 	const currentPath = matches[matches.length - 1]?.fullPath ?? "/";
 	const {section: activeSection, activeItemId} = useActiveSection(matches);
+	const activeSessionId = useSessionIdentity(activeSection === "sessions" ? activeItemId : null);
 	const {pinned: navigationItems, overflow: overflowItems, visibleNavSections} = useVisibleNavItems();
 	const {data: approvalsData} = useQuery(approvalsQueryOptions());
 	const approvalsCount = approvalsData?.approvals.length ?? 0;
@@ -105,7 +107,9 @@ export function Sidebar({
 					<div className="h-1 shrink-0" />
 				</div>
 				<NavScroll>
-					<SidebarSessionGroups activeItemId={activeItemId} />
+					<SidebarSessionGroups
+						activeItemId={activeSection === "sessions" ? activeSessionId : activeItemId}
+					/>
 				</NavScroll>
 			</div>
 			{/* Upstream's peek footer has no Search icon. */}

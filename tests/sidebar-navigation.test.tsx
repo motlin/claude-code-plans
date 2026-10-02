@@ -9,7 +9,7 @@ import {
 	Outlet,
 	RouterProvider,
 } from "@tanstack/react-router";
-import {cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {DEFAULTS, SettingsProvider} from "../src/components/settings-provider";
 import {useActiveSection} from "../src/components/sidebar/hooks";
@@ -18,7 +18,13 @@ import {Sidebar} from "../src/components/sidebar/Sidebar";
 import {applicationSettingsQueryOptions} from "../src/lib/api/application-settings";
 import {approvalsQueryOptions} from "../src/lib/api/approvals";
 import {notificationsQueryOptions} from "../src/lib/api/notifications";
-import {activeSessionsQueryOptions} from "../src/lib/api/sessions";
+import {
+	activeSessionsQueryOptions,
+	recentSessionsInfiniteQueryOptions,
+	RecentSessionsResponse,
+} from "../src/lib/api/sessions";
+import {invalidateSessionIdentities} from "../src/lib/api/session-identity";
+import {localAccountQueryOptions} from "../src/lib/api/local-account";
 import {installLocalStorage} from "./fake-storage";
 import {NAV_SECTIONS} from "../src/lib/nav-sections";
 import {redirectLegacyPlugins} from "../src/routes/plugins";
@@ -72,8 +78,7 @@ function seedQueryClient(): QueryClient {
 	return queryClient;
 }
 
-async function renderSidebarAt(path: string) {
-	const queryClient = seedQueryClient();
+async function renderSidebarAt(path: string, queryClient = seedQueryClient()) {
 	const rootRoute = createRootRoute({
 		component: () => (
 			<QueryClientProvider client={queryClient}>
@@ -87,7 +92,15 @@ async function renderSidebarAt(path: string) {
 		),
 	});
 	const pathname = path.split(/[?#]/)[0]!;
-	const pageRoutes = pathname === "/" ? [] : [createRoute({getParentRoute: () => rootRoute, path: pathname})];
+	const pageRoutes =
+		pathname === "/"
+			? []
+			: [
+					createRoute({
+						getParentRoute: () => rootRoute,
+						path: pathname.startsWith("/session/") ? "/session/$id" : pathname,
+					}),
+				];
 	const homeRoute = createRoute({getParentRoute: () => rootRoute, path: "/"});
 	const router = createRouter({
 		routeTree: rootRoute.addChildren([...pageRoutes, homeRoute]),
@@ -101,6 +114,7 @@ async function renderSidebarAt(path: string) {
 afterEach(() => {
 	cleanup();
 	vi.restoreAllMocks();
+	vi.unstubAllGlobals();
 });
 
 const MAC_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36";
@@ -110,6 +124,52 @@ beforeEach(() => {
 });
 
 describe("sidebar navigation", () => {
+	it("selects the local session for an alias and clears selection when that alias becomes ambiguous", async () => {
+		vi.spyOn(Date, "now").mockReturnValue(Date.UTC(2000, 0, 1));
+		const queryClient = seedQueryClient();
+		queryClient.setQueryData(localAccountQueryOptions.queryKey, {name: "Alice", firstName: "Alice", initial: "A"});
+		queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
+			pages: [
+				RecentSessionsResponse.parse({
+					sessions: [
+						{
+							id: "session-alice",
+							title: "Example Alice session",
+							mtime: "2000-01-01T00:00:00.000Z",
+							created: "2000-01-01T00:00:00.000Z",
+							project: "example-project",
+							projectName: "Example project",
+							messageCount: 1,
+							archived: false,
+							state: "idle",
+							bucket: "done",
+							liveAgentCount: 0,
+							unseen: false,
+							blockedSince: null,
+						},
+					],
+					nextCursor: null,
+				}),
+			],
+			pageParams: [null],
+		});
+		const fetch = vi
+			.fn()
+			.mockResolvedValueOnce(Response.json({sessionId: "session-alice"}))
+			.mockResolvedValue(Response.json({}, {status: 409}));
+		vi.stubGlobal("fetch", fetch);
+		await renderSidebarAt("/session/session_alice_100", queryClient);
+		const title = await screen.findByText("Example Alice session");
+		const row = title.closest("a[data-row-main-button]");
+		if (row === null) throw new Error("Example session row is missing");
+		await waitFor(() => expect(row.getAttribute("data-selected")).toBe("focused"));
+		await act(() => invalidateSessionIdentities(queryClient));
+		await waitFor(() => expect(row.getAttribute("data-selected")).toBe(null));
+		expect(fetch.mock.calls.map(([url]) => url)).toStrictEqual([
+			"/api/sessions/session_alice_100/identity",
+			"/api/sessions/session_alice_100/identity",
+		]);
+	});
 	it("links to each top-level section", () => {
 		expect(navItems.map(({label, to}) => ({label, to}))).toStrictEqual([
 			{label: "Artifacts", to: "/artifacts"},
