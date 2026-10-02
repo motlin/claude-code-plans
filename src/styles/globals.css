@@ -781,6 +781,63 @@ html[data-motion="reduced"] .terminal-caret {
 	animation: none !important;
 }
 
+/* Shared geometry and states for the sidebar's New, navigation, and More rows. */
+@layer components {
+	.df-nav-row {
+		margin-bottom: 0.5px;
+		display: flex;
+		min-width: 0;
+		align-items: center;
+		gap: var(--sb-row-gap);
+		padding-inline: var(--sb-row-px);
+		text-align: left;
+		font-size: var(--sb-row-font);
+		line-height: 1.5;
+		color: var(--upstream-text-secondary);
+		text-decoration-line: none;
+	}
+
+	@media (hover: hover) {
+		.df-nav-row:hover {
+			background-color: var(--sb-hover);
+		}
+	}
+
+	.df-nav-row:focus-visible {
+		background-color: var(--sb-hover);
+	}
+
+	.df-nav-row[data-selected="focused"] {
+		background-color: var(--sb-selected);
+		color: var(--upstream-text-primary);
+	}
+
+	.df-nav-row .df-leading-slot {
+		color: var(--upstream-text-secondary);
+	}
+
+	.df-new-icon-circle {
+		display: flex;
+		width: 22px;
+		height: 22px;
+		align-items: center;
+		justify-content: center;
+		border-radius: calc(infinity * 1px);
+		background-color: #eae9e4;
+	}
+
+	@media (hover: hover) {
+		.df-nav-row:hover .df-new-icon-circle {
+			background-color: color-mix(in oklab, var(--upstream-text-muted) 25%, transparent);
+		}
+	}
+
+	.df-nav-row[data-selected="focused"] .df-new-icon-circle,
+	.dark .df-nav-row .df-new-icon-circle {
+		background-color: transparent;
+	}
+}
+
 /* Upstream .df-leading-slot: a fixed box that centers the row's icon. */
 .df-leading-slot {
 	display: flex;
