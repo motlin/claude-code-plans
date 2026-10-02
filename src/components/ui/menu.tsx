@@ -29,7 +29,7 @@ const DENSITY_CLASSES = {
 		twoLine: "min-h-[41px] items-start",
 		separator: "mx-2",
 		shortcut: "[&>kbd]:leading-[15px]",
-		shortcutPadding: "pl-3",
+		shortcutPadding: "pl-[14px]",
 	},
 	comfortable: {
 		popup: "rounded-card",
