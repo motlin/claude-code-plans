@@ -3,6 +3,7 @@ import {resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {
 	CEILINGS_PATH,
+	currentTree,
 	DEFAULT_RESULTS_PATH,
 	loadCeilings,
 	readResults,
@@ -99,7 +100,7 @@ function formatChange({id, kind, from, to}: CeilingChange): string {
 
 function main(): void {
 	const ceilings = loadCeilings();
-	const results = readResults(DEFAULT_RESULTS_PATH);
+	const results = readResults(DEFAULT_RESULTS_PATH, currentTree());
 	if (process.argv.includes("--table")) {
 		console.log(formatResultsTable(ceilings, results));
 		return;

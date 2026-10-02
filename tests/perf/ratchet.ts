@@ -1,3 +1,4 @@
+import {execFileSync} from "node:child_process";
 import {mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync} from "node:fs";
 import {dirname, join} from "node:path";
 import {fileURLToPath} from "node:url";
@@ -8,6 +9,10 @@ import {z} from "zod";
  * Perf ratchet (measurement plan §4.4). Every measured count must equal its checked-in ceiling within the entry's
  * tolerance: a rise is a regression, and a drop must be locked in by lowering the ceiling in the same commit. There is
  * no automatic write mode; `results.json` only records what was measured.
+ *
+ * results.json and diagnostics.json live in node_modules/.cache, which every commit git-test checks out shares. Each
+ * file is stamped with the git tree it was measured on, and a file from another tree, or from before the stamp, is read
+ * as empty and overwritten rather than parsed with this tree's strict schema.
  */
 
 const CeilingEntrySchema = z
@@ -35,6 +40,13 @@ const ResultsSchema = z.record(z.string().min(1), ResultEntrySchema);
 
 export type Results = z.infer<typeof ResultsSchema>;
 
+const ResultsFileSchema = z
+	.object({
+		tree: z.string().min(1),
+		results: ResultsSchema,
+	})
+	.strict();
+
 const HERE = dirname(fileURLToPath(import.meta.url));
 export const CEILINGS_PATH = join(HERE, "ceilings.json");
 export const DEFAULT_RESULTS_PATH = join(HERE, "..", "..", "node_modules", ".cache", "ccb-perf", "results.json");
@@ -48,14 +60,38 @@ export function loadCeilings(json: string = readFileSync(CEILINGS_PATH, "utf8"))
 	return ceilings;
 }
 
-export function readResults(resultsPath: string): Results {
+/** The git tree of HEAD, which stamps the results files; "unknown" outside a git checkout. */
+export function currentTree(): string {
+	try {
+		return execFileSync("git", ["rev-parse", "HEAD^{tree}"], {
+			cwd: HERE,
+			encoding: "utf8",
+			stdio: ["ignore", "pipe", "ignore"],
+		}).trim();
+	} catch {
+		return "unknown";
+	}
+}
+
+function isStampedWith(file: unknown, tree: string): boolean {
+	return typeof file === "object" && file !== null && !Array.isArray(file) && "tree" in file && file.tree === tree;
+}
+
+/** The results recorded on `tree`; a missing file, or one written on another tree or in an older format, reads as empty. */
+export function readResults(resultsPath: string, tree: string): Results {
 	let json: string;
 	try {
 		json = readFileSync(resultsPath, "utf8");
 	} catch {
 		return {};
 	}
-	return ResultsSchema.parse(JSON.parse(json));
+	let file: unknown;
+	try {
+		file = JSON.parse(json);
+	} catch {
+		return {};
+	}
+	return isStampedWith(file, tree) ? ResultsFileSchema.parse(file).results : {};
 }
 
 const LOCK_STALE_MS = 30_000;
@@ -101,14 +137,14 @@ function withResultsLock(resultsPath: string, action: () => void): void {
 	}
 }
 
-function recordResult(resultsPath: string, id: string, value: number, unit: string | undefined): void {
+function recordResult(resultsPath: string, tree: string, id: string, value: number, unit: string | undefined): void {
 	mkdirSync(dirname(resultsPath), {recursive: true});
 	withResultsLock(resultsPath, () => {
-		const results = readResults(resultsPath);
+		const results = readResults(resultsPath, tree);
 		results[id] = unit === undefined ? {value} : {value, unit};
 		const sorted = Object.fromEntries(Object.entries(results).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
 		const tempPath = `${resultsPath}.${process.pid}.${threadId}.tmp`;
-		writeFileSync(tempPath, `${JSON.stringify(sorted, null, "\t")}\n`);
+		writeFileSync(tempPath, `${JSON.stringify({tree, results: sorted}, null, "\t")}\n`);
 		renameSync(tempPath, resultsPath);
 	});
 }
@@ -164,22 +200,24 @@ export function diagnosticFamily(id: string, families: Record<string, Diagnostic
 export function createRatchet(options: {
 	ceilings: Ceilings;
 	resultsPath: string;
+	/** The git tree being measured; results files stamped with any other tree are discarded. */
+	tree: string;
 	diagnostics?: Record<string, DiagnosticFamily>;
 }): (id: string, value: number) => void {
-	const {ceilings, resultsPath, diagnostics = {}} = options;
+	const {ceilings, resultsPath, tree, diagnostics = {}} = options;
 	const diagnosticsPath = join(dirname(resultsPath), "diagnostics.json");
 	return (id, value) => {
 		const entry = ceilings[id];
 		const family = diagnosticFamily(id, diagnostics);
 		if (family !== undefined) {
 			const {unit, reason} = diagnostics[family]!;
-			recordResult(diagnosticsPath, id, value, unit);
+			recordResult(diagnosticsPath, tree, id, value, unit);
 			if (entry !== undefined) {
 				throw new Error(`${id} is a diagnostic (${reason}); remove its ceiling from tests/perf/ceilings.json`);
 			}
 			return;
 		}
-		recordResult(resultsPath, id, value, entry?.unit);
+		recordResult(resultsPath, tree, id, value, entry?.unit);
 		if (entry === undefined) {
 			throw new Error(`${id} has no ceiling; add it to tests/perf/ceilings.json`);
 		}
@@ -203,6 +241,7 @@ export function ratchet(id: string, value: number): void {
 	defaultRatchet ??= createRatchet({
 		ceilings: loadCeilings(),
 		resultsPath: DEFAULT_RESULTS_PATH,
+		tree: currentTree(),
 		diagnostics: DIAGNOSTIC_FAMILIES,
 	});
 	defaultRatchet(id, value);
