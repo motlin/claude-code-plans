@@ -224,7 +224,7 @@ it.each(["ambiguous", "reassigned"])(
 			sameHeading: true,
 			search: {context: 5},
 			hash: "focal",
-			identity: {sessionId: ALICE, scrollKey: originalKey, routeId: ALIAS},
+			identity: {sessionId: ALICE, scrollKey: originalKey, routeId: ALIAS, aliasRouteId: ALIAS},
 			historyLength: 2,
 			scroll: 300,
 			urls: [`/api/sessions/${ALICE}/source/${RECORD}?context=5`, `/api/sessions/${ALIAS}/identity`],

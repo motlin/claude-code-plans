@@ -270,7 +270,7 @@ it.each(["ambiguous", "reassigned"])(
 			title: "Subagents - local-al",
 			search: {example: 1},
 			hash: "tree",
-			carried: {sessionId: ALICE, scrollKey: originalKey, routeId: ALIAS},
+			carried: {sessionId: ALICE, scrollKey: originalKey, routeId: ALIAS, aliasRouteId: ALIAS},
 			originalKey,
 			scroll: 300,
 			historyLength: 2,

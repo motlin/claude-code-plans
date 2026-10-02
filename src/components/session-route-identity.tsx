@@ -21,39 +21,63 @@ export function SessionRouteIdentity({
 		? [sessionIdentityQueryOptions(routeId)]
 		: [];
 	const [identity] = useQueries({queries});
-	const entryKey = sessionScrollKey(location, routeId);
-	const carried = location.state.sessionIdentity;
-	const [visit, setVisit] = useState({entryKey, sessionId: null as string | null});
+	const locationEntryKey = sessionScrollKey(location, routeId);
+	const [visit, setVisit] = useState({entryKey: locationEntryKey, sessionId: null as string | null, routeId});
+	const paramsMatchLocation = decodeURIComponent(location.pathname.split("/")[2] ?? "") === routeId;
+	// Location advances before params during navigation; keep the old page tied to its old visit until they agree.
+	const entryKey = paramsMatchLocation ? locationEntryKey : visit.entryKey;
 	const freshOwner =
 		identity?.isSuccess && !identity.isStale && !identity.isFetching ? identity.data.sessionId : null;
 	let owner = visit.entryKey === entryKey ? visit.sessionId : null;
+	if (!alias && paramsMatchLocation) owner = routeId;
 	if (owner === null && freshOwner !== null) owner = freshOwner;
-	if (visit.entryKey !== entryKey || visit.sessionId !== owner) setVisit({entryKey, sessionId: owner});
-	const initialRouteId = carried?.sessionId === routeId ? carried.routeId : routeId;
+	// A fresh mount measures its actual URL; cosmetic replacements keep this mounted visit's launch ID.
+	const initialRouteId = visit.entryKey === entryKey ? visit.routeId : routeId;
+	if (visit.entryKey !== entryKey || visit.sessionId !== owner)
+		setVisit({entryKey, sessionId: owner, routeId: initialRouteId});
 	const lostOwner = alias && owner !== null && (identity?.isError || (freshOwner !== null && freshOwner !== owner));
 	const failure = sessionIdentityFailure(identity?.error);
 	const unresolvedError = identity?.isError && owner === null;
 
 	useEffect(() => {
-		if (!unresolvedError || resolvedRouteTitle(router.state.matches) === failure.title) return;
+		if (!paramsMatchLocation || !unresolvedError || resolvedRouteTitle(router.state.matches) === failure.title)
+			return;
 		if (router.latestLocation.state.__TSR_key !== location.state.__TSR_key) return;
 		// The loader reads cached errors without retrying; this only updates its title snapshot.
 		void router.invalidate({filter: (match) => "id" in match.params && match.params.id === routeId});
-	}, [unresolvedError, failure.title, router, routeId, location.state.__TSR_key]);
+	}, [paramsMatchLocation, unresolvedError, failure.title, router, routeId, location.state.__TSR_key]);
 
 	useEffect(() => {
-		if (!lostOwner || owner === null) return;
+		if (!paramsMatchLocation || !lostOwner || owner === null) return;
 		if (router.latestLocation.state.__TSR_key !== location.state.__TSR_key) return;
 		void router.navigate({
 			to: location.pathname.replace(`/session/${routeId}`, `/session/${owner}`),
 			search: true,
 			hash: true,
-			state: {...location.state, sessionIdentity: {sessionId: owner, scrollKey: entryKey, routeId}},
+			state: {
+				...location.state,
+				sessionIdentity: {
+					sessionId: owner,
+					scrollKey: entryKey,
+					routeId: initialRouteId,
+					aliasRouteId: routeId,
+				},
+			},
 			replace: true,
 			resetScroll: false,
 			hashScrollIntoView: false,
 		});
-	}, [lostOwner, owner, router, location.pathname, location.state, routeId, entryKey]);
+	}, [
+		paramsMatchLocation,
+		lostOwner,
+		owner,
+		router,
+		location.pathname,
+		location.state,
+		routeId,
+		initialRouteId,
+		entryKey,
+	]);
 
 	if (!alias) return children(routeId, initialRouteId);
 	if (owner !== null) return children(owner, initialRouteId);

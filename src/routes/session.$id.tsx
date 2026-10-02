@@ -1,10 +1,10 @@
 import {SessionRouteIdentity} from "../components/session-route-identity";
 import {sessionIdentityFailure, sessionIdentityQueryOptions} from "../lib/api/session-identity";
 import {sessionScrollKey} from "../lib/session-route-location";
-import {createFileRoute, useRouter} from "@tanstack/react-router";
+import {createFileRoute, useLocation, useRouter} from "@tanstack/react-router";
 import type {ErrorComponentProps} from "@tanstack/react-router";
-import {useQuery} from "@tanstack/react-query";
-import {useCallback, useEffect} from "react";
+import {useQueries, useQuery, useQueryClient} from "@tanstack/react-query";
+import {useCallback, useEffect, useRef} from "react";
 import {SessionPage} from "../components/session-page";
 import {herdrPanesQueryOptions} from "../lib/api/herdr";
 import {validateSessionSearch} from "../lib/session-search";
@@ -93,16 +93,18 @@ function SessionErrorComponent({error, reset}: ErrorComponentProps) {
  * cold visit titles the tab "Loading session…". Re-run this route's loader once
  * the query lands so the tab picks up the real title.
  */
-function useSessionHeadTitle(sessionId: string): void {
+function useSessionHeadTitle(sessionId: string) {
 	const router = useRouter();
 	const loaderData = Route.useLoaderData();
-	const {data: detail} = useQuery(sessionDetailQueryOptions(sessionId));
+	const query = useQuery(sessionDetailQueryOptions(sessionId));
+	const detail = query.data;
 
 	useEffect(() => {
 		if (detail === undefined) return;
 		if (sessionHeadTitle(loaderData) === sessionHeadTitle(detail)) return;
 		void router.invalidate({filter: (match) => match.routeId === Route.id});
 	}, [detail, loaderData, router]);
+	return query;
 }
 
 function SessionRouteComponent() {
@@ -118,7 +120,9 @@ function ResolvedSessionRoute({sessionId, routeId}: {sessionId: string; routeId:
 	const router = useRouter();
 	const {pane} = Route.useSearch();
 	const navigate = Route.useNavigate();
-	useSessionHeadTitle(sessionId);
+	const detail = useSessionHeadTitle(sessionId);
+	useCanonicalSessionRoute(sessionId, routeId, detail);
+	const params = Route.useParams();
 	// The deep link is a one-shot request: drop it once the pane opened so a
 	// reload or Back does not reopen a pane the user has since closed.
 	const clearRequestedPane = useCallback(() => {
@@ -126,14 +130,20 @@ function ResolvedSessionRoute({sessionId, routeId}: {sessionId: string; routeId:
 			search: {},
 			state: (state) => ({
 				...state,
-				sessionIdentity: {sessionId, routeId, scrollKey: sessionScrollKey(router.state.location, sessionId)},
+				sessionIdentity: {
+					sessionId,
+					routeId,
+					...(state.sessionIdentity?.aliasRouteId ? {aliasRouteId: state.sessionIdentity.aliasRouteId} : {}),
+					...(params.id.startsWith("session_") ? {aliasRouteId: params.id} : {}),
+					scrollKey: sessionScrollKey(router.state.location, sessionId),
+				},
 			}),
 			hash: true,
 			replace: true,
 			resetScroll: false,
 			hashScrollIntoView: false,
 		});
-	}, [navigate, router, sessionId, routeId]);
+	}, [navigate, router, sessionId, routeId, params.id]);
 
 	return (
 		<SessionPage
@@ -143,4 +153,101 @@ function ResolvedSessionRoute({sessionId, routeId}: {sessionId: string; routeId:
 			onRequestedPaneHandled={clearRequestedPane}
 		/>
 	);
+}
+
+/** Keep the local UUID data identity while exposing its verified Remote Control URL. */
+function useCanonicalSessionRoute(
+	sessionId: string,
+	initialRouteId: string,
+	detail: ReturnType<typeof useSessionHeadTitle>,
+) {
+	const router = useRouter();
+	const queryClient = useQueryClient();
+	const location = useLocation();
+	const params = Route.useParams();
+	const entryKey = sessionScrollKey(location, sessionId);
+	const visit = useRef({entryKey, seeded: new Set<string>()});
+	const replacing = useRef<string | undefined>(undefined);
+	if (visit.current.entryKey !== entryKey) visit.current = {entryKey, seeded: new Set<string>()};
+	// An explicitly opened historical alias is already the user's chosen URL.
+	const canonical = initialRouteId.startsWith("session_") ? undefined : detail.data?.canonicalRouteId;
+	const freshDetail =
+		canonical !== undefined &&
+		detail.isSuccess &&
+		!detail.isStale &&
+		!detail.isFetching &&
+		!detail.data?.canonicalRoutePending;
+	const canSeed =
+		freshDetail &&
+		canonical !== undefined &&
+		!visit.current.seeded.has(canonical) &&
+		queryClient.getQueryState(sessionIdentityQueryOptions(canonical).queryKey) === undefined;
+	const queries: ReturnType<typeof sessionIdentityQueryOptions>[] =
+		canonical === undefined || (!freshDetail && !visit.current.seeded.has(canonical))
+			? []
+			: [
+					{
+						...sessionIdentityQueryOptions(canonical),
+						enabled: freshDetail,
+						initialData: () => {
+							if (!canSeed) return undefined;
+							return {sessionId};
+						},
+						initialDataUpdatedAt: detail.dataUpdatedAt,
+					},
+				];
+	const [identity] = useQueries({queries});
+
+	if (canonical !== undefined && freshDetail) visit.current.seeded.add(canonical);
+
+	useEffect(() => {
+		if (
+			!freshDetail ||
+			canonical === undefined ||
+			params.id !== sessionId ||
+			location.pathname !== `/session/${sessionId}`
+		)
+			return;
+		if (!identity?.isSuccess || identity.isStale || identity.isFetching || identity.data.sessionId !== sessionId)
+			return;
+		if (router.latestLocation.state.__TSR_key !== location.state.__TSR_key) return;
+		const proof = queryClient.getQueryState(sessionDetailQueryOptions(sessionId).queryKey);
+		if (
+			proof?.status !== "success" ||
+			proof.isInvalidated ||
+			proof.fetchStatus !== "idle" ||
+			proof.data?.canonicalRoutePending ||
+			proof.data?.canonicalRouteId !== canonical
+		)
+			return;
+		const nativeKey = location.state.__TSR_key ?? location.href;
+		if (replacing.current === nativeKey) return;
+		replacing.current = nativeKey;
+		void router.navigate({
+			to: "/session/$id",
+			params: {id: canonical},
+			search: true,
+			hash: true,
+			state: {
+				...location.state,
+				sessionIdentity: {sessionId, scrollKey: entryKey, routeId: initialRouteId, aliasRouteId: canonical},
+			},
+			replace: true,
+			resetScroll: false,
+			hashScrollIntoView: false,
+		});
+	}, [
+		freshDetail,
+		canonical,
+		params.id,
+		sessionId,
+		identity,
+		router,
+		queryClient,
+		location.state,
+		location.href,
+		location.pathname,
+		entryKey,
+		initialRouteId,
+	]);
 }
