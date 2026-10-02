@@ -96,10 +96,15 @@ perf-bundle: install
 perf-report *args: install
     vp exec tsx scripts/perf-report.ts {{ args }}
 
-# Count style recalcs, layouts, requests and layout shift for J1–J6 in headless Chromium on a fixture server (:7538). Diagnostic only, never ratcheted
+# Count style recalcs, layouts, requests and layout shift for J1–J6 in headless Chromium on a fixture server (:7538). Diagnostic only; `--ratchet` gates the stable ones
 [group('perf')]
 perf-lab *args: install
     vp exec tsx scripts/perf-lab.ts {{ args }}
+
+# Ratchet the browser-lab metrics proven stable against tests/perf/ceilings.json. Local only: too slow and load-sensitive for `just verify`
+[group('perf')]
+perf-lab-ratchet *args: install
+    vp exec tsx scripts/perf-lab.ts --ratchet {{ args }}
 
 # Run the browser lab 10 times on a fresh fixture server and write per-metric stability to .llm/perf/browser-lab-stability.md
 [group('perf')]

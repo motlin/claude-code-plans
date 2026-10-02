@@ -4,8 +4,9 @@
  * journeys J1–J6. Per journey it records CDP `Performance.getMetrics` deltas (style recalcs and layouts), the request
  * count and the layout-shift sum, repeats the whole set and writes min/median/max to `.llm/perf/lab-browser-<sha>.json`.
  *
- * Diagnostic only: counts depend on frame boundaries, so nothing here feeds tests/perf/ceilings.json until a
- * repeated-run stability task proves which metrics are stable (plan §7 decision 4).
+ * Counts depend on frame boundaries, so most stay diagnostic (plan §7 decision 4). `--ratchet` checks the median of only
+ * the metrics `just perf-lab-stability` proved stable (RATCHETED_LAB_METRICS) against tests/perf/ceilings.json as
+ * `browser.<journey>.<metric>`.
  */
 
 import {execFileSync, spawn, type ChildProcess} from "node:child_process";
@@ -26,6 +27,7 @@ import {dirname, join, resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {chromium, type BrowserContext, type CDPSession, type Page} from "playwright";
 import {generateTranscript, PERF_SHAPES} from "../tests/perf/fixtures/generate-transcript";
+import {ratchet} from "../tests/perf/ratchet";
 import {FIXED_TIME, fixtureServerEnv, seedFixtureHome, stopDevServer} from "./screenshots";
 
 const REPOSITORY_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -86,6 +88,8 @@ export interface LabArgs {
 	port: number;
 	runs: number;
 	journeys: JourneyId[];
+	/** Check the stable metrics against tests/perf/ceilings.json and exit non-zero on any failure. */
+	ratchet: boolean;
 }
 
 function metricValue(payload: CdpMetricsPayload, name: string): number {
@@ -163,6 +167,7 @@ function positiveInteger(flag: string, raw: string | undefined): number {
 export function parseLabArgs(argv: readonly string[]): LabArgs {
 	let port = DEFAULT_PORT;
 	let runs = DEFAULT_RUNS;
+	let ratchetMode = false;
 	const journeys = new Set<JourneyId>();
 	for (let index = 0; index < argv.length; index += 1) {
 		const argument = argv[index];
@@ -174,6 +179,8 @@ export function parseLabArgs(argv: readonly string[]): LabArgs {
 			const journey = argv[++index] ?? "";
 			if (!isJourney(journey)) throw new Error(`Unknown journey: ${journey}`);
 			journeys.add(journey);
+		} else if (argument === "--ratchet") {
+			ratchetMode = true;
 		} else {
 			throw new Error(`Unknown argument: ${argument}`);
 		}
@@ -181,7 +188,12 @@ export function parseLabArgs(argv: readonly string[]): LabArgs {
 	if (port === REAL_APP_PORT) {
 		throw new Error(`Refusing port ${REAL_APP_PORT}: it is the user's real Claude Code Browser server`);
 	}
-	return {port, runs, journeys: journeys.size === 0 ? [...JOURNEYS] : JOURNEYS.filter((id) => journeys.has(id))};
+	return {
+		port,
+		runs,
+		journeys: journeys.size === 0 ? [...JOURNEYS] : JOURNEYS.filter((id) => journeys.has(id)),
+		ratchet: ratchetMode,
+	};
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -614,7 +626,52 @@ export const METRIC_KEYS = [
 	"layoutDurationMs",
 ] as const satisfies ReadonlyArray<keyof JourneySample>;
 
-type JourneyReport = Record<(typeof METRIC_KEYS)[number], Summary> & {title: string};
+type MetricKey = (typeof METRIC_KEYS)[number];
+
+type JourneyReport = Record<MetricKey, Summary> & {title: string};
+
+export type StableLabMetrics = Partial<Record<JourneyId, Partial<Record<MetricKey, number>>>>;
+
+/**
+ * The metrics stable in both 10-run batches of `just perf-lab-stability` (.llm/perf/browser-lab-stability.md), each with
+ * the ceiling tolerance it needs. Only these are ratcheted; style-recalc counts, durations and the other journeys'
+ * layout and request counts moved between runs and stay diagnostic. J2 requests (644 in both batches) is left out: after
+ * the sidebar-switch scroller fix it read 645, 645, 646, 647 and 1290 across five runs, growing with the J4 session the
+ * lab appends to each run, plus one run that loaded the page twice.
+ */
+export const RATCHETED_LAB_METRICS: StableLabMetrics = {
+	J1: {requests: 0.02, layoutShift: 0},
+	J3: {layoutShift: 0},
+	J5: {layoutCount: 0, layoutShift: 0},
+	J6: {layoutCount: 0},
+};
+
+/** The median over `runs` of each stable metric, keyed `browser.<journey>.<metric>`, for the journeys that ran. */
+export function labRatchetValues(runs: readonly LabRun[], stable: StableLabMetrics): Record<string, number> {
+	const values: Record<string, number> = {};
+	for (const id of JOURNEYS) {
+		const samples = runs.flatMap((run) => (run[id] === undefined ? [] : [run[id]]));
+		if (samples.length === 0) continue;
+		for (const key of METRIC_KEYS) {
+			if (stable[id]?.[key] === undefined) continue;
+			values[`browser.${id}.${key}`] = summarize(samples.map((sample) => sample[key])).median;
+		}
+	}
+	return values;
+}
+
+/** Runs `check` on every value and returns the failure messages, so one regression does not hide the rest. */
+export function ratchetLab(values: Record<string, number>, check: (id: string, value: number) => void): string[] {
+	const failures: string[] = [];
+	for (const [id, value] of Object.entries(values)) {
+		try {
+			check(id, value);
+		} catch (error) {
+			failures.push(error instanceof Error ? error.message : String(error));
+		}
+	}
+	return failures;
+}
 
 function buildReport(runs: LabRun[]): Partial<Record<JourneyId, JourneyReport>> {
 	const report: Partial<Record<JourneyId, JourneyReport>> = {};
@@ -658,7 +715,10 @@ export interface LabSession {
  * Seeds a fresh fixture HOME, starts one fixture server and runs every requested journey `args.runs` times in a new
  * browser context each. `onRun` sees each finished run (1-based) before the next starts.
  */
-export async function runLab(args: LabArgs, onRun?: (run: number, sample: LabRun) => void): Promise<LabSession> {
+export async function runLab(
+	args: Omit<LabArgs, "ratchet">,
+	onRun?: (run: number, sample: LabRun) => void,
+): Promise<LabSession> {
 	const baseUrl = `http://127.0.0.1:${args.port}`;
 	const fixture = await seedLabFixture();
 	const server = startServer(fixture, args.port);
@@ -729,9 +789,18 @@ async function main(): Promise<void> {
 	mkdirSync(OUTPUT_DIRECTORY, {recursive: true});
 	const outputPath = join(OUTPUT_DIRECTORY, `lab-browser-${sha}.json`);
 	writeFileSync(outputPath, `${JSON.stringify(result, null, "\t")}\n`);
-	console.log(`\nmin/median/max over ${args.runs} runs (diagnostic only, not ratcheted)\n`);
+	console.log(`\nmin/median/max over ${args.runs} runs\n`);
 	console.log(formatTable(result.journeys));
 	console.log(`\nWrote ${outputPath}`);
+	if (!args.ratchet) return;
+	const values = labRatchetValues(session.runs, RATCHETED_LAB_METRICS);
+	console.log(`\nRatcheting the medians of the stable metrics:`);
+	for (const [id, value] of Object.entries(values)) console.log(`${id}: ${value}`);
+	const failures = ratchetLab(values, ratchet);
+	if (failures.length > 0) {
+		console.error(failures.join("\n"));
+		process.exitCode = 1;
+	}
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

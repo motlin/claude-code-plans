@@ -1,4 +1,34 @@
 {
+	"browser.J1.layoutShift": {
+		"ceiling": 0,
+		"unit": "cls",
+		"tolerance": 0
+	},
+	"browser.J1.requests": {
+		"ceiling": 472,
+		"unit": "requests",
+		"tolerance": 0.02
+	},
+	"browser.J3.layoutShift": {
+		"ceiling": 0,
+		"unit": "cls",
+		"tolerance": 0
+	},
+	"browser.J5.layoutCount": {
+		"ceiling": 33,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"browser.J5.layoutShift": {
+		"ceiling": 0,
+		"unit": "cls",
+		"tolerance": 0
+	},
+	"browser.J6.layoutCount": {
+		"ceiling": 21,
+		"unit": "count",
+		"tolerance": 0
+	},
 	"bundle.home.gzip": {
 		"ceiling": 394847,
 		"unit": "bytes",
