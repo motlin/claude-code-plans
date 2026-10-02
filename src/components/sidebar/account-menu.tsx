@@ -4,7 +4,7 @@ import {
 	ArrowUpRight,
 	BookOpen,
 	Bug,
-	ChevronsUpDown,
+	ChevronDown,
 	CircleHelp,
 	FileCog,
 	Gauge,
@@ -98,7 +98,7 @@ export function AccountMenu() {
 						</>
 					)}
 				</span>
-				<ChevronsUpDown aria-hidden="true" className="size-3 shrink-0 text-muted" />
+				<ChevronDown aria-hidden="true" className="size-3 shrink-0 text-muted" />
 			</MenuTrigger>
 			<MenuContent density="comfortable" side="top" align="start" className="w-[17rem]">
 				{data?.email !== undefined && (
