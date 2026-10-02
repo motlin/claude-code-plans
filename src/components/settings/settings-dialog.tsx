@@ -69,7 +69,7 @@ function CustomizeDialogPanel(props: CustomizeDialogPanelProps) {
 
 type NavItem = {kind: "settings"; tab: SettingsTab} | {kind: "customize"; section: CustomizeSection};
 
-/** Upstream's nav order: the Customize sections follow Claude Code. */
+/** All local nav items; grouped below by kind while preserving each kind's relative order. */
 const NAV_ITEMS: readonly NavItem[] = SettingsTabSchema.options.flatMap((tab): NavItem[] =>
 	tab === "claude-code"
 		? [
@@ -78,6 +78,11 @@ const NAV_ITEMS: readonly NavItem[] = SettingsTabSchema.options.flatMap((tab): N
 			]
 		: [{kind: "settings", tab}],
 );
+
+const NAV_GROUPS = [
+	{label: "Settings", items: NAV_ITEMS.filter((item) => item.kind === "settings")},
+	{label: "Customize", items: NAV_ITEMS.filter((item) => item.kind === "customize")},
+];
 
 /** Returns a function that opens Settings over the current page at `tab`. */
 export function useOpenSettings(): (tab: SettingsTab, row?: string) => void {
@@ -212,43 +217,68 @@ export function SettingsDialog() {
 						<div className="shrink-0 px-3 pt-3">
 							<SettingsSearch onSelect={selectTab} />
 						</div>
-						<div className="flex min-h-0 flex-1 flex-col gap-px overflow-y-auto px-3 pb-3">
-							{NAV_ITEMS.map((item) => {
-								const selected =
-									item.kind === "settings"
-										? customize === null && item.tab === tab
-										: item.section === customize?.section;
-								const Icon =
-									item.kind === "settings"
-										? SETTINGS_TAB_ICONS[item.tab]
-										: CUSTOMIZE_SECTION_ICONS[item.section];
-								return (
-									<button
-										key={item.kind === "settings" ? item.tab : `customize-${item.section}`}
-										type="button"
-										aria-current={selected ? "page" : undefined}
-										onPointerEnter={
-											item.kind === "customize" ? preloadCustomizeDialogPanel : undefined
-										}
-										onFocus={item.kind === "customize" ? preloadCustomizeDialogPanel : undefined}
-										onClick={() =>
-											item.kind === "settings"
-												? selectTab(item.tab)
-												: navigateHash(customizeHash({section: item.section}), true)
-										}
-										className={`flex h-8 shrink-0 items-center gap-3 rounded-r6 px-2 text-left text-body transition-colors ${
-											selected
-												? "bg-fill-control font-medium text-primary"
-												: "font-normal text-secondary hover:bg-fill-ghost-hover"
-										}`}
-									>
-										<Icon aria-hidden="true" className="size-5 shrink-0 text-secondary" />
-										{item.kind === "settings"
-											? settingsTabLabels[item.tab]
-											: customizeSectionLabels[item.section]}
-									</button>
-								);
-							})}
+						<div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-3 pb-3">
+							{NAV_GROUPS.map((group) => (
+								<div
+									key={group.label}
+									role="group"
+									aria-label={group.label}
+									className="flex shrink-0 flex-col gap-3"
+								>
+									<div className="px-2 pt-3 text-[12px]/[17px] text-ink-muted">{group.label}</div>
+									<div className="flex flex-col gap-px">
+										{group.items.map((item) => {
+											const selected =
+												item.kind === "settings"
+													? customize === null && item.tab === tab
+													: item.section === customize?.section;
+											const Icon =
+												item.kind === "settings"
+													? SETTINGS_TAB_ICONS[item.tab]
+													: CUSTOMIZE_SECTION_ICONS[item.section];
+											return (
+												<button
+													key={
+														item.kind === "settings"
+															? item.tab
+															: `customize-${item.section}`
+													}
+													type="button"
+													aria-current={selected ? "page" : undefined}
+													onPointerEnter={
+														item.kind === "customize"
+															? preloadCustomizeDialogPanel
+															: undefined
+													}
+													onFocus={
+														item.kind === "customize"
+															? preloadCustomizeDialogPanel
+															: undefined
+													}
+													onClick={() =>
+														item.kind === "settings"
+															? selectTab(item.tab)
+															: navigateHash(customizeHash({section: item.section}), true)
+													}
+													className={`flex h-8 shrink-0 items-center gap-3 rounded-r6 px-2 text-left text-body transition-colors ${
+														selected
+															? "bg-fill-control font-medium text-primary"
+															: "font-normal text-secondary hover:bg-fill-ghost-hover"
+													}`}
+												>
+													<Icon
+														aria-hidden="true"
+														className="size-5 shrink-0 text-secondary"
+													/>
+													{item.kind === "settings"
+														? settingsTabLabels[item.tab]
+														: customizeSectionLabels[item.section]}
+												</button>
+											);
+										})}
+									</div>
+								</div>
+							))}
 						</div>
 					</nav>
 					<div className="flex min-w-0 flex-1 flex-col">

@@ -134,35 +134,48 @@ describe("SettingsDialog", () => {
 		).toStrictEqual(Array.from({length: 12}, () => "svg"));
 	});
 
-	it("renders no visible Settings caption above the tab list, naming the nav by aria-label", async () => {
+	it("groups every navigation item once under its named Settings or Customize section", async () => {
 		await renderAt("/#settings/general");
-
 		await screen.findByRole("dialog", {name: "Settings"});
 		const nav = screen.getByRole("navigation", {name: "Settings"});
-		expect({
-			ariaLabel: nav.getAttribute("aria-label"),
-			captions: [...nav.querySelectorAll("*")].filter((element) => element.textContent === "Settings").length,
-		}).toStrictEqual({ariaLabel: "Settings", captions: 0});
-	});
-
-	it("lists the local settings tabs in order", async () => {
-		await renderAt("/#settings/general");
-
-		await screen.findByRole("dialog", {name: "Settings"});
-		const nav = screen.getByRole("navigation", {name: "Settings"});
-		expect([...nav.querySelectorAll("button")].map((button) => button.textContent ?? "")).toStrictEqual([
-			"General",
-			"Usage",
-			"Claude Code",
-			"Skills",
-			"Connectors",
-			"Plugins",
-			"Transcript",
-			"Sessions",
-			"Application",
-			"AI features",
-			"Claude Config",
-			"Setup",
+		expect(
+			within(nav)
+				.getAllByRole("group")
+				.map((group) => ({
+					name: group.getAttribute("aria-label"),
+					caption: group.firstElementChild?.textContent,
+					items: within(group)
+						.getAllByRole("button")
+						.map((button) => ({
+							label: button.textContent,
+							selected: button.getAttribute("aria-current"),
+						})),
+				})),
+		).toStrictEqual([
+			{
+				name: "Settings",
+				caption: "Settings",
+				items: [
+					{label: "General", selected: "page"},
+					{label: "Usage", selected: null},
+					{label: "Claude Code", selected: null},
+					{label: "Transcript", selected: null},
+					{label: "Sessions", selected: null},
+					{label: "Application", selected: null},
+					{label: "AI features", selected: null},
+					{label: "Claude Config", selected: null},
+					{label: "Setup", selected: null},
+				],
+			},
+			{
+				name: "Customize",
+				caption: "Customize",
+				items: [
+					{label: "Skills", selected: null},
+					{label: "Connectors", selected: null},
+					{label: "Plugins", selected: null},
+				],
+			},
 		]);
 	});
 
