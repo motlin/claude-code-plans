@@ -290,7 +290,7 @@ export function SettingsDialog() {
 								<X aria-hidden="true" className="size-5" />
 							</Dialog.Close>
 						</div>
-						<div className="flex-1 space-y-6 overflow-y-auto px-6 pt-2 pb-4">
+						<div className="flex-1 space-y-6 overflow-y-auto px-6 pt-2 pb-4 [scrollbar-gutter:stable]">
 							{customize === null ? (
 								<SettingsFlashContext.Provider value={flash}>
 									<Panel />
