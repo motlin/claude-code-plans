@@ -28,9 +28,8 @@ import {loadChangesScope, saveChangesScope} from "../../lib/pane-layout";
 import type {ReviewFinding} from "../../lib/review-diff";
 import {CoachMark} from "../coach-mark";
 import {PANE_HEADER_ICON_BUTTON_CLASS} from "../panes/pane-classes";
-import {type PaneChrome, registerPane} from "../panes/pane-registry";
+import type {PaneChrome} from "../panes/pane-registry";
 import {type Settings, useSettings} from "../settings-provider";
-import {usePaneHost} from "../panes/tile-host";
 import {
 	Menu,
 	MenuCheckboxItem,
@@ -949,24 +948,4 @@ export function ChangesPane({sessionId, chrome}: {sessionId: string; chrome: Pan
 			sessionId={sessionId}
 		/>
 	);
-}
-
-/** Registers the `changes` pane kind for this session while mounted. */
-export function useRegisterChangesPane(sessionId: string): void {
-	useEffect(
-		() =>
-			registerPane("changes", {
-				title: "Changes",
-				header: "custom",
-				render: (chrome) => <ChangesPane sessionId={sessionId} chrome={chrome} />,
-			}),
-		[sessionId],
-	);
-}
-
-/** Binds ⌃⇧D: toggle the Changes pane, whether its titlebar toggle is shown or folded. */
-export function ChangesPaneShortcut() {
-	const host = usePaneHost();
-	useShortcut("toggle_changes", () => host.togglePane("changes"));
-	return null;
 }

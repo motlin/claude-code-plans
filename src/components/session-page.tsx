@@ -27,7 +27,7 @@ import {useRegisterSessionDetailsPane} from "./panes/session-details-pane";
 import {useRegisterSubagentPane} from "./panes/subagent-pane";
 import {SessionSubagentOpener} from "./subagent-opener";
 import {useRegisterPlanPane} from "./panes/plan-pane";
-import {ChangesPaneShortcut, useRegisterChangesPane} from "./changes/changes-pane";
+import {ChangesPaneShortcut, useRegisterChangesPane} from "./changes/changes-pane-entry";
 import {FilesPaneShortcut, useExtractedSessionFiles, useRegisterFilesPane} from "./panes/files-pane";
 import {TerminalPaneShortcut, useRegisterTerminalPane} from "./panes/terminal-pane";
 import {ApprovalDock} from "./approval-dock";
