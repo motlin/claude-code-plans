@@ -393,7 +393,7 @@ function ThemeRow() {
 	const {theme, setTheme} = useTheme();
 
 	return (
-		<SettingsRow slug="theme" title="Theme">
+		<SettingsRow slug="theme" title="Theme" className="[&_[role=radio]_svg]:size-5">
 			<SegmentedControl iconOnly value={theme} options={THEME_OPTIONS} onValueChange={setTheme} />
 		</SettingsRow>
 	);
