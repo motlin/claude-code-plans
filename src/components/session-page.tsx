@@ -750,6 +750,14 @@ function SessionView({
 									<SessionChat
 										sessionId={sessionId}
 										lines={processed.lines}
+										measurementSource={transcript.records}
+										measurementLayout={JSON.stringify([
+											settings.showDebug,
+											settings.interfaceFont,
+											settings.transcriptTextSize,
+											settings.codeFont,
+											settings.transcriptWidth,
+										])}
 										toolResultMap={processed.toolResultMap}
 										allowedImageRoots={data.imageRoots}
 										subagents={subagents}

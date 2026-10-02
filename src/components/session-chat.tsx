@@ -62,6 +62,11 @@ import {InlinePathImages, SESSION_IMAGE_CLASS_NAME} from "./inline-path-images";
 import {findScrollContainer} from "./transcript-history-loader";
 import {usePromptJump} from "../hooks/use-prompt-jump";
 import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
+import {
+	readTranscriptMeasurements,
+	discardTranscriptMeasurements,
+	rememberTranscriptMeasurements,
+} from "../lib/transcript-measurements";
 import {jumpToMessage, TRANSCRIPT_JUMP_REQUEST_EVENT, type TranscriptJumpRequestEvent} from "../lib/jump-to-message";
 
 function getSourceSessionId(line: SessionLine, fallbackSessionId: string): string {
@@ -85,6 +90,10 @@ export interface SessionChatProps {
 	/** This session's transcript view; Verbose pre-expands every tool group and row. */
 	transcriptMode?: TranscriptMode;
 	initialScrollKey?: string;
+	/** Stable raw transcript payload identity; changed content makes retained geometry unsafe. */
+	measurementSource?: object;
+	/** Selected font and layout settings from the main session view. */
+	measurementLayout?: string;
 	shouldScrollToEnd?: boolean;
 	/** The AI summary, shown once as a muted subtitle before the first message. */
 	summary?: string | null;
@@ -190,10 +199,26 @@ export const SessionChat = React.memo(function SessionChat({
 	showTranscriptOnly = false,
 	transcriptMode = "normal",
 	initialScrollKey = sessionId,
+	measurementSource,
+	measurementLayout = "",
 	shouldScrollToEnd = true,
 	summary = null,
 	slashCommands = EMPTY_SLASH_COMMANDS,
 }: SessionChatProps) {
+	const measurementKey = JSON.stringify([
+		sessionId,
+		initialScrollKey,
+		transcriptMode,
+		showThinking,
+		showTools,
+		showPassedHooks,
+		showHookWarnings,
+		showHookErrors,
+		showSystemBanners,
+		showCompactSummaries,
+		showTranscriptOnly,
+		measurementLayout,
+	]);
 	const containerRef = useRef<HTMLDivElement>(null);
 	const endRef = useRef<HTMLDivElement>(null);
 	const isSubagentSession = sessionId.startsWith("agent-");
@@ -286,6 +311,8 @@ export const SessionChat = React.memo(function SessionChat({
 							showCompactSummaries={showCompactSummaries}
 							showTranscriptOnly={showTranscriptOnly}
 							shouldScrollToEnd={shouldScrollToEnd}
+							measurementKey={measurementKey}
+							measurementSource={measurementSource}
 						/>
 						<div ref={endRef} />
 					</div>
@@ -962,20 +989,71 @@ function buildSessionListEntries(
 function VirtualizedSessionEntries({
 	entries,
 	shouldScrollToEnd,
+	measurementKey,
+	measurementSource,
 }: {
 	entries: SessionListEntry[];
 	shouldScrollToEnd: boolean;
+	measurementKey: string;
+	measurementSource: object | undefined;
 }) {
 	const listRef = useRef<HTMLDivElement>(null);
 	const scrollerRef = useRef<Element | null>(null);
-	const measuredHeightsRef = useRef(new Map<string, number>());
+	const expansionStore = useContext(ExpansionStoreContext)!;
+	const [restoration] = useState(() => {
+		const saved =
+			measurementSource !== undefined && expansionStore.size === 0
+				? readTranscriptMeasurements(measurementKey, measurementSource)
+				: undefined;
+		return {source: measurementSource, saved, heights: new Map<string, number>(saved?.heights)};
+	});
+	const measuredHeightsRef = useRef(restoration.heights);
+	const reusableRef = useRef(true);
+	const restoringRangeRef = useRef((restoration.saved?.range.startIndex ?? 0) > 0);
+	const savedRangeRef = useRef(restoration.saved?.range);
+	const measurementWidthRef = useRef(0);
 	const visibleAnchorIndexRef = useRef(0);
 	const pendingScrollAdjustmentRef = useRef(0);
 	const pendingJumpRef = useRef<number | null>(null);
 	const pendingFocusIndexRef = useRef<number | null>(null);
 	const [measuredHeights, setMeasuredHeights] = useState(measuredHeightsRef.current);
+	useLayoutEffect(() => {
+		if (measurementSource !== restoration.source) {
+			reusableRef.current = false;
+		}
+	}, [measurementSource, restoration.source]);
+	useLayoutEffect(() => {
+		const list = listRef.current;
+		const source = restoration.source;
+		if (!list || source === undefined) return;
+		// Rendering only reads/clones. A committed mount owns the retained generation.
+		discardTranscriptMeasurements(measurementKey);
+		const width = list.getBoundingClientRect().width;
+		measurementWidthRef.current = width;
+		if (restoration.saved && restoration.saved.width !== width) {
+			restoringRangeRef.current = false;
+			measuredHeightsRef.current = new Map();
+			setMeasuredHeights(measuredHeightsRef.current);
+		}
+		return () => {
+			if (!reusableRef.current || expansionStore.size !== 0 || list.getBoundingClientRect().width !== width) {
+				discardTranscriptMeasurements(measurementKey);
+				return;
+			}
+			rememberTranscriptMeasurements(
+				measurementKey,
+				{
+					width,
+					heights: measuredHeightsRef.current,
+					range: savedRangeRef.current!,
+				},
+				source,
+			);
+		};
+	}, [measurementKey, restoration, expansionStore]);
 	const [jumpVersion, setJumpVersion] = useState(0);
 	const [range, setRange] = useState<VirtualRange>(() => {
+		if (restoration.saved) return restoration.saved.range;
 		if (typeof window === "undefined" || entries.length <= INITIAL_MOUNTED_TURN_COUNT) {
 			return {startIndex: 0, endIndex: entries.length};
 		}
@@ -986,6 +1064,9 @@ function VirtualizedSessionEntries({
 				}
 			: {startIndex: 0, endIndex: INITIAL_MOUNTED_TURN_COUNT};
 	});
+	useLayoutEffect(() => {
+		savedRangeRef.current = range;
+	}, [range]);
 	const prefixHeights = useMemo(() => {
 		const result = [0];
 		for (const entry of entries) {
@@ -999,6 +1080,10 @@ function VirtualizedSessionEntries({
 		const list = listRef.current;
 		const scroller = scrollerRef.current;
 		if (!list || !scroller || entries.length === 0) return;
+		// The persistent main element is still at the departed page's zero offset
+		// until router restoration runs. Keep the saved window through that interval.
+		if (restoringRangeRef.current && scroller.scrollTop === 0) return;
+		restoringRangeRef.current = false;
 		const viewport = scrollerViewport(scroller);
 		const listTop = list.getBoundingClientRect().top;
 		const viewportStart = Math.max(0, viewport.top - listTop);
@@ -1018,9 +1103,11 @@ function VirtualizedSessionEntries({
 		const scroller = findScrollContainer(list);
 		scrollerRef.current = scroller;
 		updateVisibleRange();
+		const frame = restoringRangeRef.current ? requestAnimationFrame(updateVisibleRange) : undefined;
 		scroller.addEventListener("scroll", updateVisibleRange, {passive: true});
 		window.addEventListener("resize", updateVisibleRange, {passive: true});
 		return () => {
+			if (frame !== undefined) cancelAnimationFrame(frame);
 			scroller.removeEventListener("scroll", updateVisibleRange);
 			window.removeEventListener("resize", updateVisibleRange);
 			scrollerRef.current = null;
@@ -1033,6 +1120,12 @@ function VirtualizedSessionEntries({
 		const observer = new ResizeObserver((observations) => {
 			let changed = false;
 			for (const observation of observations) {
+				if (observation.target === list) {
+					if (list.getBoundingClientRect().width !== measurementWidthRef.current) {
+						reusableRef.current = false;
+					}
+					continue;
+				}
 				const element = observation.target as HTMLElement;
 				const index = Number(element.dataset["transcriptEntryIndex"]);
 				const entry = entries[index];
@@ -1048,6 +1141,7 @@ function VirtualizedSessionEntries({
 			}
 			if (changed) setMeasuredHeights(new Map(measuredHeightsRef.current));
 		});
+		if (restoration.source !== undefined) observer.observe(list);
 		for (const element of list.querySelectorAll<HTMLElement>("[data-transcript-entry-index]")) {
 			observer.observe(element);
 		}
@@ -1058,7 +1152,9 @@ function VirtualizedSessionEntries({
 		const scroller = scrollerRef.current;
 		const adjustment = pendingScrollAdjustmentRef.current;
 		pendingScrollAdjustmentRef.current = 0;
-		if (scroller && adjustment !== 0) scroller.scrollTop += adjustment;
+		if (scroller && adjustment !== 0) {
+			scroller.scrollTop += adjustment;
+		}
 		updateVisibleRange();
 	}, [measuredHeights, updateVisibleRange]);
 
@@ -1150,7 +1246,14 @@ function VirtualizedSessionEntries({
 	const totalHeight = prefixHeights.at(-1) ?? 0;
 
 	return (
-		<div ref={listRef} data-testid="virtualized-transcript">
+		<div
+			ref={listRef}
+			data-testid="virtualized-transcript"
+			onClickCapture={(event) => {
+				if (event.target instanceof Element && event.target.closest("[aria-expanded],summary"))
+					reusableRef.current = false;
+			}}
+		>
 			<div className="sr-only">Use the up and down arrow keys to move between messages</div>
 			<div aria-hidden="true" data-transcript-spacer="before" style={{height: prefixHeights[startIndex]}} />
 			{entries.slice(startIndex, endIndex).map((entry, offset) => {
@@ -1187,17 +1290,27 @@ function VirtualizedSessionEntries({
 function SessionLineList({
 	lines,
 	shouldScrollToEnd,
+	measurementKey,
+	measurementSource,
 	...renderProps
 }: LineRenderProps & {
 	lines: SessionLine[];
 	shouldScrollToEnd: boolean;
+	measurementKey: string;
+	measurementSource: object | undefined;
 }) {
 	const verbose = useContext(TranscriptModeContext) === "verbose";
 	const entries = buildSessionListEntries(lines, renderProps, verbose);
 	const [expansionStore] = useState(() => new Map<string, ExpansionToggle>());
 	return (
 		<ExpansionStoreContext.Provider value={expansionStore}>
-			<VirtualizedSessionEntries entries={entries} shouldScrollToEnd={shouldScrollToEnd} />
+			<VirtualizedSessionEntries
+				key={measurementSource === undefined ? undefined : measurementKey}
+				entries={entries}
+				shouldScrollToEnd={shouldScrollToEnd}
+				measurementKey={measurementKey}
+				measurementSource={measurementSource}
+			/>
 		</ExpansionStoreContext.Provider>
 	);
 }
