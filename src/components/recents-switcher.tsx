@@ -1,9 +1,17 @@
 import {Dialog} from "@base-ui/react/dialog";
+import {useQueryClient} from "@tanstack/react-query";
 import {useNavigate, useRouterState} from "@tanstack/react-router";
 import {Bot, Brain, CornerDownLeft, FileText, FolderOpen, MessageSquare, SquareSlash} from "lucide-react";
 import {type ReactNode, useEffect, useRef, useState} from "react";
 
-import {loadRecents, routeToRecent, type RecentEntry, type RecentKind} from "../lib/recents-history";
+import {getCachedSessionIdentity} from "../lib/api/session-identity";
+import {
+	loadRecents,
+	resolveRecentSessions,
+	routeToRecent,
+	type RecentEntry,
+	type RecentKind,
+} from "../lib/recents-history";
 import {
 	currentSwitcherPlatform,
 	initialIndex,
@@ -44,35 +52,38 @@ function inTerminal(target: EventTarget | null): boolean {
  * or Enter commits, Esc or window blur cancels. Windows uses Alt+Q.
  */
 export function RecentsSwitcher() {
+	const queryClient = useQueryClient();
 	const navigate = useNavigate();
 	const pathname = useRouterState({select: (state) => state.location.pathname});
+	const contextRef = useRef({queryClient, navigate, pathname});
+	contextRef.current = {queryClient, navigate, pathname};
+	const resolveEntries = (entries: readonly RecentEntry[]) =>
+		resolveRecentSessions(entries, (alias) => getCachedSessionIdentity(contextRef.current.queryClient, alias));
 	const [state, setState] = useState<SwitcherState | null>(null);
 	const stateRef = useRef<SwitcherState | null>(null);
-	const pathnameRef = useRef(pathname);
-	pathnameRef.current = pathname;
-	const navigateRef = useRef(navigate);
-	navigateRef.current = navigate;
 	const listboxRef = useRef<HTMLDivElement>(null);
 
 	const update = (next: SwitcherState | null) => {
 		stateRef.current = next;
 		setState(next);
 	};
-	const updateRef = useRef(update);
-	updateRef.current = update;
-
 	const commitRef = useRef((index: number) => {
-		const entry = stateRef.current?.entries[index];
-		updateRef.current(null);
-		if (entry === undefined || entry.key === routeToRecent(pathnameRef.current)?.key) return;
-		void navigateRef.current({to: entry.href});
+		const selected = stateRef.current?.entries[index];
+		update(null);
+		if (selected === undefined) return;
+		// Keep the gesture's known local owner even if its saved alias changes before release.
+		const entry = resolveEntries([selected])[0]!;
+		const current = routeToRecent(contextRef.current.pathname);
+		const currentKey = current === null ? null : resolveEntries([current])[0]!.key;
+		if (entry.key === currentKey) return;
+		void contextRef.current.navigate({to: entry.href});
 	});
 
 	useEffect(() => {
 		const move = (direction: SwitchDirection) => {
 			const current = stateRef.current;
 			if (current === null) return;
-			updateRef.current({
+			update({
 				...current,
 				index: step(current.index, direction, current.entries.length),
 			});
@@ -85,10 +96,11 @@ export function RecentsSwitcher() {
 				const direction: SwitchDirection = event.shiftKey ? -1 : 1;
 				if (current === null) {
 					if (inTerminal(event.target)) return;
-					const entries = loadRecents();
+					const entries = resolveEntries(loadRecents());
 					if (entries.length === 0) return;
-					const currentKey = routeToRecent(pathnameRef.current)?.key ?? null;
-					updateRef.current({entries, index: initialIndex(entries, currentKey, direction)});
+					const currentEntry = routeToRecent(contextRef.current.pathname);
+					const currentKey = currentEntry === null ? null : resolveEntries([currentEntry])[0]!.key;
+					update({entries, index: initialIndex(entries, currentKey, direction)});
 				} else {
 					move(direction);
 				}
@@ -108,7 +120,7 @@ export function RecentsSwitcher() {
 					commitRef.current(current.index);
 					break;
 				case "Escape":
-					updateRef.current(null);
+					update(null);
 					break;
 				default:
 					return;
@@ -125,7 +137,7 @@ export function RecentsSwitcher() {
 			if (event.key === modifier || !held) commitRef.current(current.index);
 		};
 
-		const onBlur = () => updateRef.current(null);
+		const onBlur = () => update(null);
 
 		document.addEventListener("keydown", onKeyDown, true);
 		window.addEventListener("keyup", onKeyUp);
@@ -138,7 +150,7 @@ export function RecentsSwitcher() {
 	}, []);
 
 	useEffect(() => {
-		if (stateRef.current !== null) updateRef.current(null);
+		if (stateRef.current !== null) update(null);
 	}, [pathname]);
 
 	const index = state?.index;

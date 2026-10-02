@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {
 	createMemoryHistory,
 	createRootRoute,
@@ -13,6 +14,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {KeyboardShortcutsDialog, setKeyboardShortcutsOpen} from "../src/components/keyboard-shortcuts-dialog";
 import {RecentsSwitcher} from "../src/components/recents-switcher";
+import {sessionQueryKeys} from "../src/lib/api/sessions";
 import {saveRecents, type RecentEntry} from "../src/lib/recents-history";
 import {initialIndex, isSwitchTrigger, platformFromUserAgent, step} from "../src/lib/recents-switcher-keys";
 
@@ -105,14 +107,14 @@ describe("initialIndex and step", () => {
 	});
 });
 
-function renderApp(initialPath = "/session/alpha") {
+function renderApp(initialPath = "/session/alpha", queryClient = new QueryClient()) {
 	const rootRoute = createRootRoute({
 		component: () => (
-			<>
+			<QueryClientProvider client={queryClient}>
 				<RecentsSwitcher />
 				<KeyboardShortcutsDialog />
 				<Outlet />
-			</>
+			</QueryClientProvider>
 		),
 	});
 	const pageRoute = createRoute({
@@ -159,6 +161,109 @@ describe("RecentsSwitcher", () => {
 		act(() => setKeyboardShortcutsOpen(false));
 		cleanup();
 		vi.restoreAllMocks();
+	});
+
+	it("deduplicates cached aliases and skips the current session's resolved identity", async () => {
+		const queryClient = new QueryClient();
+		queryClient.setQueryData(sessionQueryKeys.identity("session_example"), {sessionId: "alpha"});
+		saveRecents([
+			{key: "session:session_example", kind: "session", href: "/session/session_example", title: "Alias session"},
+			...ENTRIES,
+		]);
+		const router = renderApp("/session/session_example", queryClient);
+		await screen.findByText("page");
+		pressQ();
+		const dialog = await screen.findByRole("dialog", {name: "Recents"});
+		expect({
+			rows: within(dialog)
+				.getAllByRole("option")
+				.map((option) => option.textContent),
+			selected: selectedRow(),
+		}).toStrictEqual({
+			rows: ["Alias session", "Big plan", "Untitled"],
+			selected: {active: "recents-switcher-row-1", title: "Big plan"},
+		});
+		releaseControl();
+		await waitFor(() => expect(router.state.location.pathname).toBe("/plan/big-plan"));
+	});
+
+	it.each(["reassigned", "removed", "failed"])(
+		"keeps the selected local owner and gesture order when its alias is %s",
+		async (change) => {
+			const queryClient = new QueryClient();
+			const queryKey = sessionQueryKeys.identity("session_example");
+			queryClient.setQueryData(queryKey, {sessionId: "alpha"});
+			saveRecents([
+				{
+					key: "session:session_example",
+					kind: "session",
+					href: "/session/session_example",
+					title: "Alpha alias",
+				},
+				...ENTRIES.slice(1),
+			]);
+			const router = renderApp("/project/example", queryClient);
+			await screen.findByText("page");
+			const fetch = vi.spyOn(globalThis, "fetch");
+			pressQ();
+			const dialog = await screen.findByRole("dialog", {name: "Recents"});
+			act(() => {
+				if (change === "reassigned") queryClient.setQueryData(queryKey, {sessionId: "beta"});
+				else if (change === "removed") queryClient.removeQueries({queryKey});
+				else
+					queryClient
+						.getQueryCache()
+						.find({queryKey})!
+						.setState({status: "error", error: new Error("Ambiguous alias")});
+				saveRecents([...ENTRIES].reverse());
+			});
+			expect({
+				rows: within(dialog)
+					.getAllByRole("option")
+					.map((option) => option.textContent),
+				selected: selectedRow(),
+			}).toStrictEqual({
+				rows: ["Alpha alias", "Big plan", "Untitled"],
+				selected: {active: "recents-switcher-row-0", title: "Alpha alias"},
+			});
+			releaseControl();
+			await waitFor(() => expect(router.state.location.pathname).toBe("/session/alpha"));
+			expect(fetch.mock.calls).toStrictEqual([]);
+		},
+	);
+
+	it("keeps an unresolved historical alias navigable without making identity requests", async () => {
+		saveRecents([
+			{
+				key: "session:session_example",
+				kind: "session",
+				href: "/session/session_example",
+				title: "Unknown session",
+			},
+		]);
+		const router = renderApp("/project/example");
+		await screen.findByText("page");
+		const fetch = vi.spyOn(globalThis, "fetch");
+		pressQ();
+		await screen.findByRole("dialog", {name: "Recents"});
+		expect(selectedRow()).toStrictEqual({active: "recents-switcher-row-0", title: "Unknown session"});
+		releaseControl();
+		await waitFor(() => expect(router.state.location.pathname).toBe("/session/session_example"));
+		expect(fetch.mock.calls).toStrictEqual([]);
+	});
+
+	it("skips navigation when the current alias resolves to the selected session during the gesture", async () => {
+		const queryClient = new QueryClient();
+		const router = renderApp("/session/session_example", queryClient);
+		await screen.findByText("page");
+		const navigate = vi.spyOn(router, "navigate");
+		pressQ();
+		await screen.findByRole("dialog", {name: "Recents"});
+		act(() => queryClient.setQueryData(sessionQueryKeys.identity("session_example"), {sessionId: "alpha"}));
+		expect(selectedRow()).toStrictEqual({active: "recents-switcher-row-0", title: "Alpha session"});
+		releaseControl();
+		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		expect(navigate.mock.calls).toStrictEqual([]);
 	});
 
 	it("selects exactly the previous entry on ⌃Q", async () => {
