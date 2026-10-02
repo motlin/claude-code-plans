@@ -1,9 +1,18 @@
-import {FolderGit2, GitBranch, X} from "lucide-react";
+import {
+	FolderGit2,
+	GitBranch,
+	GitMerge,
+	GitPullRequest,
+	GitPullRequestClosed,
+	GitPullRequestDraft,
+	X,
+} from "lucide-react";
 import {useCallback, useEffect, useRef, useState} from "react";
 
 import type {SessionDetailData} from "../lib/api/sessions";
 import {requestChangesScope} from "../lib/changes-scope-request";
 import {pluralize} from "../lib/pluralize";
+import {prGlyph} from "../lib/pr-status";
 import {useOptionalPaneHost} from "./panes/tile-host";
 import {ProjectMenuItems} from "./session-titlebar";
 import {Menu, MenuContent, MenuTrigger} from "./ui/menu";
@@ -120,21 +129,105 @@ function DiffStatButton({sessionId, additions, deletions}: {sessionId: string; a
 	);
 }
 
-/**
- * Upstream shows the strip only on the way to a PR: a session with a repo branch or line counts
- * and no PR yet gets the strip (with Create PR there). Once the session has a PR, upstream's dock
- * is the composer alone (session 7e8c9305: open PR #1954, committed changes, no strip). The line
- * counts stay reachable through the Changes pane and the PR through the header menu.
- */
+/** Show known PR metadata, or the existing session branch and line-count strip before a PR. */
 export function branchStripVisible(session: BranchStripSession, counts: LineCounts | null): boolean {
-	if (session.pr !== undefined || session.prStatus !== undefined) return false;
+	if (session.pr !== undefined || session.prStatus !== undefined) return true;
 	return session.gitBranch !== null || counts !== null;
 }
 
+/** A linked PR owns its identity; only status with the same number and URL may decorate it. */
+function pullRequestSummary(session: BranchStripSession) {
+	if (session.pr !== undefined) {
+		const status = session.prStatus;
+		return {
+			number: session.pr.number,
+			url: session.pr.url,
+			repository: session.pr.repository,
+			status: status?.number === session.pr.number && status.url === session.pr.url ? status : undefined,
+		};
+	}
+	if (session.prStatus === undefined) return null;
+	return {
+		number: session.prStatus.number,
+		url: session.prStatus.url,
+		repository: undefined,
+		status: session.prStatus,
+	};
+}
+
+const PR_REPOSITORY_BUTTON =
+	"inline-flex h-6 min-w-0 max-w-[160px] shrink cursor-pointer items-center rounded-r5 px-[5px] text-[13px] leading-[19px] opacity-60 transition-colors hover:bg-fill-ghost-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100 data-[popup-open]:bg-fill-ghost-hover";
+
+const PR_STATE_ICONS = {
+	open: GitPullRequest,
+	draft: GitPullRequestDraft,
+	merged: GitMerge,
+	closed: GitPullRequestClosed,
+};
+
+const PR_STATE_LABELS = {open: "Open", draft: "Draft", merged: "Merged", closed: "Closed"} as const;
+
+function PullRequestStripContent({
+	sessionId,
+	session,
+	pr,
+}: {
+	sessionId: string;
+	session: BranchStripSession;
+	pr: NonNullable<ReturnType<typeof pullRequestSummary>>;
+}) {
+	const color = pr.status === undefined ? undefined : `var(--color-git-${prGlyph(pr.status).state})`;
+	const Icon = pr.status === undefined ? GitPullRequest : PR_STATE_ICONS[pr.status.state];
+	const label = `#${pr.number}`;
+	const repositoryName = pr.repository?.slice(pr.repository.lastIndexOf("/") + 1).trim();
+	return (
+		<>
+			<div className="flex min-w-0 flex-1 items-center gap-0">
+				<Icon aria-hidden className="size-4 shrink-0" style={{color}} />
+				{pr.url === undefined ? (
+					<span className="shrink-0 px-[5px] tabular-nums" style={{color}}>
+						{label}
+					</span>
+				) : (
+					<a
+						href={pr.url}
+						target="_blank"
+						rel="noopener noreferrer"
+						className="shrink-0 rounded-r5 px-[5px] tabular-nums hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100"
+						style={{color}}
+					>
+						{label}
+					</a>
+				)}
+				{pr.repository !== undefined && repositoryName && (
+					<>
+						<span aria-hidden className="w-3 min-w-0 shrink" />
+						<Menu>
+							<MenuTrigger
+								aria-label={`Repository ${pr.repository}`}
+								title={pr.repository}
+								className={PR_REPOSITORY_BUTTON}
+								style={{color}}
+							>
+								<span className="truncate">{repositoryName}</span>
+							</MenuTrigger>
+							<MenuContent>
+								<ProjectMenuItems sessionId={sessionId} session={session} />
+							</MenuContent>
+						</Menu>
+					</>
+				)}
+			</div>
+			<span className="shrink-0 whitespace-nowrap" style={{color}}>
+				{pr.status === undefined ? "Status unknown" : PR_STATE_LABELS[pr.status.state]}
+			</span>
+		</>
+	);
+}
+
 /**
- * Upstream's composer branch strip: project menu · branch · `+N −M` (opens Changes) · Dismiss.
- * Built from the indexed branch and the statusline's line counts; shown per `branchStripVisible`.
- * Create PR is cloud-only and has no local counterpart.
+ * Known PR metadata, or the session branch and cumulative edit counts before a PR.
+ * PR head branches and PR diff counts remain absent until the data contract provides them.
  */
 export function BranchStrip({
 	sessionId,
@@ -149,6 +242,8 @@ export function BranchStrip({
 	const {ref, width} = useContainerWidth();
 	const counts = lineCounts(statusline);
 	const branch = session.gitBranch;
+	const pr = pullRequestSummary(session);
+	const prColor = pr?.status === undefined ? undefined : `var(--color-git-${prGlyph(pr.status).state})`;
 
 	if (dismissed || !branchStripVisible(session, counts)) return null;
 	const narrow = width !== null && width <= HIDDEN_AT_OR_BELOW_PX;
@@ -159,33 +254,49 @@ export function BranchStrip({
 			{!narrow && (
 				<div
 					data-branch-strip=""
-					className="mb-2 flex min-h-10 min-w-0 items-center gap-1 rounded-r7 bg-alpha-1 p-2 text-[13px]"
+					data-pull-request-strip={pr === null ? undefined : ""}
+					className={
+						pr === null
+							? "mb-2 flex min-h-10 min-w-0 items-center gap-1 rounded-r7 bg-alpha-1 p-2 text-[13px]"
+							: "flex min-h-10 min-w-0 items-center gap-[5px] rounded-r7 bg-alpha-1 p-2 text-[13px] leading-[19px] text-secondary"
+					}
+					style={
+						prColor === undefined
+							? undefined
+							: {backgroundColor: `color-mix(in srgb, ${prColor} 20%, transparent)`}
+					}
 				>
-					<Menu>
-						<MenuTrigger title={path ?? session.projectName} className={GHOST_BUTTON}>
-							<FolderGit2 aria-hidden className="size-3.5 shrink-0" />
-							<span className="truncate">{session.projectName}</span>
-						</MenuTrigger>
-						<MenuContent>
-							<ProjectMenuItems sessionId={sessionId} session={session} />
-						</MenuContent>
-					</Menu>
-					{branch !== null && (
-						<span
-							data-branch-name=""
-							title={branch}
-							className="inline-flex min-w-0 items-center gap-1 px-1.5 font-mono text-secondary"
-						>
-							<GitBranch aria-hidden className="size-3.5 shrink-0" />
-							<span className="truncate">{middleTruncate(branch, BRANCH_MAX_CHARS)}</span>
-						</span>
+					{pr === null ? (
+						<>
+							<Menu>
+								<MenuTrigger title={path ?? session.projectName} className={GHOST_BUTTON}>
+									<FolderGit2 aria-hidden className="size-3.5 shrink-0" />
+									<span className="truncate">{session.projectName}</span>
+								</MenuTrigger>
+								<MenuContent>
+									<ProjectMenuItems sessionId={sessionId} session={session} />
+								</MenuContent>
+							</Menu>
+							{branch !== null && (
+								<span
+									data-branch-name=""
+									title={branch}
+									className="inline-flex min-w-0 items-center gap-1 px-1.5 font-mono text-secondary"
+								>
+									<GitBranch aria-hidden className="size-3.5 shrink-0" />
+									<span className="truncate">{middleTruncate(branch, BRANCH_MAX_CHARS)}</span>
+								</span>
+							)}
+							{counts !== null && <DiffStatButton sessionId={sessionId} {...counts} />}
+						</>
+					) : (
+						<PullRequestStripContent sessionId={sessionId} session={session} pr={pr} />
 					)}
-					{counts !== null && <DiffStatButton sessionId={sessionId} {...counts} />}
 					<button
 						type="button"
 						aria-label="Dismiss"
 						title="Dismiss"
-						className={`${GHOST_BUTTON} ml-auto`}
+						className={`${GHOST_BUTTON} ${pr === null ? "ml-auto" : ""}`}
 						onClick={dismiss}
 					>
 						<X aria-hidden className="size-3.5" />

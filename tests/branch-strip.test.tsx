@@ -31,6 +31,12 @@ const SESSION: BranchStripSession = {
 	gitBranch: "feature/branch-strip",
 };
 
+const EXAMPLE_PR = {
+	number: 100,
+	url: "https://github.com/alice/example-repo/pull/100",
+	repository: "alice/example-repo",
+};
+
 const STATUSLINE = {cost: {total_lines_added: 3093, total_lines_removed: 1}};
 
 function renderStrip(
@@ -103,54 +109,78 @@ describe("BranchStrip", () => {
 		expect(strip(view)).toBeNull();
 	});
 
-	it("renders nothing once the session has an open PR, as upstream's dock does for session 7e8c9305", () => {
+	it.each([
+		{state: "open" as const, label: "Open"},
+		{state: "draft" as const, label: "Draft"},
+		{state: "merged" as const, label: "Merged"},
+		{state: "closed" as const, label: "Closed"},
+	])("shows the known $state PR without misrepresenting session branch or edit totals", ({state, label}) => {
 		const view = renderStrip(
 			{
-				projectName: "eclipse-collections",
-				projectPath: "/work/eclipse-collections",
-				cwd: "/work/eclipse-collections",
-				gitBranch: "OrderedHashMap",
-				pr: {
-					number: 1954,
-					url: "https://github.com/eclipse-collections/eclipse-collections/pull/1954",
-					repository: "eclipse-collections/eclipse-collections",
-				},
-				prStatus: {
-					number: 1954,
-					state: "open",
-					url: "https://github.com/eclipse-collections/eclipse-collections/pull/1954",
-				},
+				...SESSION,
+				gitBranch: "main",
+				pr: EXAMPLE_PR,
+				prStatus: {number: EXAMPLE_PR.number, url: EXAMPLE_PR.url, state},
 			},
-			"7e8c9305-b260-43d0-b551-61e69ac86890",
-			{cost: {total_lines_added: 178, total_lines_removed: 34}},
+			"session-alice",
+			STATUSLINE,
 		);
-		expect({strip: strip(view), dismiss: view.queryByRole("button", {name: "Dismiss"})}).toStrictEqual({
-			strip: null,
-			dismiss: null,
+		const link = view.getByRole("link", {name: "#100"});
+		expect({
+			href: link.getAttribute("href"),
+			repo: view.getByRole("button", {name: "Repository alice/example-repo"}).getAttribute("title"),
+			state: view.getByText(label).textContent,
+			branch: view.container.querySelector("[data-branch-name]"),
+			changes: view.queryByRole("button", {name: "3,093 additions, 1 deletion"}),
+		}).toStrictEqual({
+			href: EXAMPLE_PR.url,
+			repo: EXAMPLE_PR.repository,
+			state: label,
+			branch: null,
+			changes: null,
 		});
+	});
+
+	it.each([
+		undefined,
+		{number: 200, state: "merged" as const, url: EXAMPLE_PR.url},
+		{number: 100, state: "merged" as const, url: "https://github.com/bob/other-repo/pull/100"},
+		{number: 100, state: "merged" as const},
+	])("does not apply unproven status to the linked PR: %j", (prStatus) => {
+		const view = renderStrip({...SESSION, pr: EXAMPLE_PR, ...(prStatus === undefined ? {} : {prStatus})});
+		expect({
+			href: view.getByRole("link", {name: "#100"}).getAttribute("href"),
+			state: view.getByText("Status unknown").textContent,
+		}).toStrictEqual({href: EXAMPLE_PR.url, state: "Status unknown"});
+	});
+
+	it("shows a status-only PR without fabricating a link or repository", () => {
+		const view = renderStrip({...SESSION, prStatus: {number: 100, state: "merged"}}, "session-alice", STATUSLINE);
+		expect({
+			number: view.getByText("#100").textContent,
+			state: view.getByText("Merged").textContent,
+			links: view.queryAllByRole("link"),
+			project: view.queryByRole("button", {name: SESSION.projectName}),
+			branch: view.container.querySelector("[data-branch-name]"),
+		}).toStrictEqual({number: "#100", state: "Merged", links: [], project: null, branch: null});
 	});
 });
 
 describe("branchStripVisible", () => {
-	const PR = {number: 1954, url: "https://github.com/o/r/pull/1954", repository: "o/r"};
+	const PR = EXAMPLE_PR;
 	const COMMITTED = {additions: 178, deletions: 34};
-	const status = (state: "open" | "draft" | "merged" | "closed") => ({number: 1954, state, url: PR.url});
+	const status = (state: "open" | "draft" | "merged" | "closed") => ({number: 100, state, url: PR.url});
 
 	it.each([
 		["no PR, uncommitted changes (upstream: strip with Create PR)", {gitBranch: "b"}, COMMITTED, true],
 		["no PR, branch only", {gitBranch: "b"}, null, true],
 		["no PR, line counts without a branch", {gitBranch: null}, COMMITTED, true],
 		["no PR, no branch, no line counts", {gitBranch: null}, null, false],
-		[
-			"open PR, committed changes (session 7e8c9305)",
-			{gitBranch: "b", pr: PR, prStatus: status("open")},
-			COMMITTED,
-			false,
-		],
-		["pr-link without a known state", {gitBranch: "b", pr: PR}, COMMITTED, false],
-		["draft PR", {gitBranch: "b", pr: PR, prStatus: status("draft")}, COMMITTED, false],
-		["merged PR", {gitBranch: "b", pr: PR, prStatus: status("merged")}, null, false],
-		["PR status from gh without a pr-link", {gitBranch: "b", prStatus: status("open")}, COMMITTED, false],
+		["open PR, committed changes", {gitBranch: "b", pr: PR, prStatus: status("open")}, COMMITTED, true],
+		["pr-link without a known state", {gitBranch: "b", pr: PR}, COMMITTED, true],
+		["draft PR", {gitBranch: "b", pr: PR, prStatus: status("draft")}, COMMITTED, true],
+		["merged PR", {gitBranch: "b", pr: PR, prStatus: status("merged")}, null, true],
+		["PR status from gh without a pr-link", {gitBranch: "b", prStatus: status("open")}, COMMITTED, true],
 	] as const)("%s", (_state, fields, counts, expected) => {
 		expect(branchStripVisible({...SESSION, ...fields}, counts)).toBe(expected);
 	});
@@ -231,4 +261,56 @@ describe("BranchStrip project menu", () => {
 			posts: [["/api/open-in-finder", JSON.stringify({sessionId: "session-1"})]],
 		});
 	});
+});
+it.each(["", "   ", "alice/", "alice/   "])("omits an empty remote repository caption: %j", (repository) => {
+	const view = renderStrip({...SESSION, pr: {...EXAMPLE_PR, repository}});
+	expect({
+		number: view.getByRole("link", {name: "#100"}).getAttribute("href"),
+		repositoryButtons: view
+			.queryAllByRole("button")
+			.filter((button) => button.getAttribute("title") === repository),
+	}).toStrictEqual({number: EXAMPLE_PR.url, repositoryButtons: []});
+});
+
+it.each([undefined, EXAMPLE_PR.url])("shows status-only identity with its optional URL: %s", (url) => {
+	const view = renderStrip({
+		...SESSION,
+		prStatus: {number: 100, state: "closed", ...(url === undefined ? {} : {url})},
+	});
+	expect({
+		label: view.getByText("#100").textContent,
+		href: view.queryByRole("link", {name: "#100"})?.getAttribute("href"),
+		state: view.getByText("Closed").textContent,
+		repository: view.queryByRole("button", {name: SESSION.projectName}),
+	}).toStrictEqual({label: "#100", href: url, state: "Closed", repository: null});
+});
+
+it("retains the full long repository title", () => {
+	const repository = "alice/example-repository-with-a-deliberately-long-fabricated-name";
+	const view = renderStrip({...SESSION, pr: {...EXAMPLE_PR, repository}});
+	expect(view.getByRole("button", {name: `Repository ${repository}`}).getAttribute("title")).toBe(repository);
+});
+
+it("dismisses a PR only for its session UUID", () => {
+	const session = {...SESSION, pr: EXAMPLE_PR};
+	const view = renderStrip(session, "session-alice");
+	fireEvent.click(view.getByRole("button", {name: "Dismiss"}));
+	expect({strip: strip(view), saved: sessionStorage.getItem("branch-strip-dismissed:session-alice")}).toStrictEqual({
+		strip: null,
+		saved: "1",
+	});
+	cleanup();
+	expect(strip(renderStrip(session, "session-alice"))).toBeNull();
+	cleanup();
+	expect(renderStrip(session, "session-bob").getByRole("link", {name: "#100"}).getAttribute("href")).toBe(
+		EXAMPLE_PR.url,
+	);
+});
+
+it.each([300, 320, 321])("keeps the PR width threshold at %spx", (width) => {
+	stripWidth = width;
+	const view = renderStrip({...SESSION, gitBranch: null, pr: EXAMPLE_PR}, "session-alice", null);
+	expect(view.queryByRole("link", {name: "#100"})?.getAttribute("href")).toBe(
+		width <= 320 ? undefined : EXAMPLE_PR.url,
+	);
 });

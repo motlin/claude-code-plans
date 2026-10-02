@@ -848,10 +848,18 @@ function SessionView({
 									onDecision={answerPermission}
 								/>
 							)}
+							{!chromeHidden &&
+								data.projectPath &&
+								(data.pr !== undefined || data.prStatus !== undefined) && (
+									<BranchStrip sessionId={sessionId} session={data} statusline={statusline} />
+								)}
 							{!chromeHidden && data.projectPath && <UsagePaceBanner />}
-							{!chromeHidden && data.projectPath && (
-								<BranchStrip sessionId={sessionId} session={data} statusline={statusline} />
-							)}
+							{!chromeHidden &&
+								data.projectPath &&
+								data.pr === undefined &&
+								data.prStatus === undefined && (
+									<BranchStrip sessionId={sessionId} session={data} statusline={statusline} />
+								)}
 							{!chromeHidden && data.projectPath && (
 								<Composer
 									variant="session"

@@ -19,6 +19,7 @@ import {
 	transcriptQueryOptions,
 	type SessionDetailData,
 } from "../src/lib/api/sessions";
+import {usageQueryOptions} from "../src/lib/api/usage";
 import type {Subagent} from "../src/lib/subagents";
 import {__unreadStoreTesting} from "../src/lib/unread-store";
 import {installLocalStorage} from "./fake-storage";
@@ -165,6 +166,7 @@ async function renderSessionPage(
 
 beforeEach(() => {
 	installLocalStorage();
+	sessionStorage.clear();
 	Element.prototype.scrollIntoView = vi.fn<Element["scrollIntoView"]>();
 	vi.stubGlobal("ResizeObserver", TestResizeObserver);
 	vi.stubGlobal("EventSource", TestEventSource);
@@ -293,5 +295,63 @@ describe("plan pane", () => {
 			body: "P",
 			link: "/plan/fabricated-sync-plan",
 		});
+	});
+});
+
+describe("SessionPage dock composition", () => {
+	const pr = {number: 100, url: "https://github.com/alice/example-repo/pull/100", repository: "alice/example-repo"};
+	function seedUsage(queryClient: QueryClient) {
+		const now = Date.UTC(2000, 0, 1);
+		queryClient.setQueryData(
+			usageQueryOptions.queryKey,
+			{
+				fiveHour: null,
+				sevenDay: {usedPct: 50, resetsAt: now / 1000 + 6 * 24 * 3600},
+				updatedAt: new Date(now).toISOString(),
+			},
+			{updatedAt: now},
+		);
+	}
+	function dockContents() {
+		return [
+			...document.querySelectorAll(
+				"[data-session-footer] [data-branch-strip], [data-session-footer] [role=status], [data-session-footer] [data-composer-card]",
+			),
+		].map((element) =>
+			element.hasAttribute("data-pull-request-strip")
+				? "pr"
+				: element.hasAttribute("data-branch-strip")
+					? "branch"
+					: element.hasAttribute("data-composer-card")
+						? "composer"
+						: "usage",
+		);
+	}
+	it.each([
+		{name: "linked PR", fields: {pr}, order: ["pr", "usage", "composer"]},
+		{
+			name: "status-only PR",
+			fields: {prStatus: {number: 100, state: "open" as const}},
+			order: ["pr", "usage", "composer"],
+		},
+		{name: "no PR", fields: {}, order: ["usage", "branch", "composer"]},
+	])("renders $name dock parts exactly once in their actual production order", async ({fields, order}) => {
+		await renderSessionPage({...detail, ...fields}, [], seedUsage);
+		expect(dockContents()).toStrictEqual(order);
+	});
+	it("suppresses PR, usage, and composer when the session has no project path", async () => {
+		await renderSessionPage({...detail, pr, projectPath: null}, [], seedUsage);
+		expect(dockContents()).toStrictEqual([]);
+	});
+	it("hides and restores the PR dock with session chrome", async () => {
+		await renderSessionPage({...detail, pr}, [], seedUsage);
+		fireEvent.click(screen.getByRole("button", {name: "View options"}));
+		await flush();
+		fireEvent.click(screen.getByRole("menuitem", {name: "Expand chat"}));
+		await flush();
+		expect(dockContents()).toStrictEqual([]);
+		fireEvent.click(screen.getByRole("button", {name: "Show chrome"}));
+		await flush();
+		expect(dockContents()).toStrictEqual(["pr", "usage", "composer"]);
 	});
 });
