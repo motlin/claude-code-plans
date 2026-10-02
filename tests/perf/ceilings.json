@@ -487,26 +487,6 @@
 		"unit": "calls",
 		"tolerance": 0
 	},
-	"hot.mergeTranscriptData.large-long.calls": {
-		"ceiling": 641,
-		"unit": "calls",
-		"tolerance": 0
-	},
-	"hot.mergeTranscriptData.large-wide.calls": {
-		"ceiling": 360,
-		"unit": "calls",
-		"tolerance": 0
-	},
-	"hot.mergeTranscriptData.small.calls": {
-		"ceiling": 959,
-		"unit": "calls",
-		"tolerance": 0
-	},
-	"hot.mergeTranscriptData.typical.calls": {
-		"ceiling": 635,
-		"unit": "calls",
-		"tolerance": 0
-	},
 	"hot.paletteRanking.500x5.calls": {
 		"ceiling": 10282,
 		"unit": "calls",
@@ -529,26 +509,6 @@
 	},
 	"hot.processTranscript.typical.calls": {
 		"ceiling": 2743,
-		"unit": "calls",
-		"tolerance": 0
-	},
-	"hot.readStructuredTranscript.large-long.calls": {
-		"ceiling": 34407,
-		"unit": "calls",
-		"tolerance": 0
-	},
-	"hot.readStructuredTranscript.large-wide.calls": {
-		"ceiling": 20628,
-		"unit": "calls",
-		"tolerance": 0
-	},
-	"hot.readStructuredTranscript.small.calls": {
-		"ceiling": 809,
-		"unit": "calls",
-		"tolerance": 0
-	},
-	"hot.readStructuredTranscript.typical.calls": {
-		"ceiling": 12924,
 		"unit": "calls",
 		"tolerance": 0
 	},
@@ -672,18 +632,6 @@
 		"unit": "ratio",
 		"tolerance": 0
 	},
-	"server.liveAppend.large-long.1.sql.count": {
-		"ceiling": 54,
-		"unit": "count",
-		"tolerance": 0
-	},
-	"server.liveAppend.large-long.1.sse.payloadBytes": {
-		"ceiling": 701,
-		"unit": "bytes",
-		"tolerance": 0,
-		"reason": "session:lines-appended carries writtenAt (the JSONL mtime, integer epoch ms) for field journey F6: 26 bytes per lines-appended frame",
-		"raisedAt": "2026-10-01"
-	},
 	"server.liveAppend.large-long.20.jsonl.fullScans": {
 		"ceiling": 0,
 		"unit": "count",
@@ -715,18 +663,6 @@
 		"ceiling": 300473,
 		"unit": "ratio",
 		"tolerance": 0
-	},
-	"server.liveAppend.large-wide.1.sql.count": {
-		"ceiling": 40,
-		"unit": "count",
-		"tolerance": 0
-	},
-	"server.liveAppend.large-wide.1.sse.payloadBytes": {
-		"ceiling": 761,
-		"unit": "bytes",
-		"tolerance": 0,
-		"reason": "session:lines-appended carries writtenAt (the JSONL mtime, integer epoch ms) for field journey F6: 26 bytes per lines-appended frame",
-		"raisedAt": "2026-10-01"
 	},
 	"server.liveAppend.large-wide.20.jsonl.fullScans": {
 		"ceiling": 0,
@@ -760,18 +696,6 @@
 		"unit": "ratio",
 		"tolerance": 0
 	},
-	"server.liveAppend.small.1.sql.count": {
-		"ceiling": 25,
-		"unit": "count",
-		"tolerance": 0
-	},
-	"server.liveAppend.small.1.sse.payloadBytes": {
-		"ceiling": 659,
-		"unit": "bytes",
-		"tolerance": 0,
-		"reason": "session:lines-appended carries writtenAt (the JSONL mtime, integer epoch ms) for field journey F6: 26 bytes per lines-appended frame",
-		"raisedAt": "2026-10-01"
-	},
 	"server.liveAppend.small.20.jsonl.fullScans": {
 		"ceiling": 0,
 		"unit": "count",
@@ -803,18 +727,6 @@
 		"ceiling": 21432,
 		"unit": "ratio",
 		"tolerance": 0
-	},
-	"server.liveAppend.typical.1.sql.count": {
-		"ceiling": 34,
-		"unit": "count",
-		"tolerance": 0
-	},
-	"server.liveAppend.typical.1.sse.payloadBytes": {
-		"ceiling": 657,
-		"unit": "bytes",
-		"tolerance": 0,
-		"reason": "session:lines-appended carries writtenAt (the JSONL mtime, integer epoch ms) for field journey F6: 26 bytes per lines-appended frame",
-		"raisedAt": "2026-10-01"
 	},
 	"server.liveAppend.typical.20.jsonl.fullScans": {
 		"ceiling": 0,
@@ -883,11 +795,6 @@
 	"server.sessionOpen.large-long.detail.proc.spawned": {
 		"ceiling": 2,
 		"unit": "count",
-		"tolerance": 0
-	},
-	"server.sessionOpen.large-long.detail.resp.bytes": {
-		"ceiling": 492,
-		"unit": "bytes",
 		"tolerance": 0
 	},
 	"server.sessionOpen.large-long.detail.sql.count": {
@@ -960,11 +867,6 @@
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.sessionOpen.large-wide.detail.resp.bytes": {
-		"ceiling": 552,
-		"unit": "bytes",
-		"tolerance": 0
-	},
 	"server.sessionOpen.large-wide.detail.sql.count": {
 		"ceiling": 12,
 		"unit": "count",
@@ -1035,11 +937,6 @@
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.sessionOpen.small.detail.resp.bytes": {
-		"ceiling": 463,
-		"unit": "bytes",
-		"tolerance": 0
-	},
 	"server.sessionOpen.small.detail.sql.count": {
 		"ceiling": 12,
 		"unit": "count",
@@ -1108,11 +1005,6 @@
 	"server.sessionOpen.typical.detail.proc.spawned": {
 		"ceiling": 2,
 		"unit": "count",
-		"tolerance": 0
-	},
-	"server.sessionOpen.typical.detail.resp.bytes": {
-		"ceiling": 457,
-		"unit": "bytes",
 		"tolerance": 0
 	},
 	"server.sessionOpen.typical.detail.sql.count": {

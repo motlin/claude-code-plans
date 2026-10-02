@@ -3,7 +3,14 @@ import {execFile} from "node:child_process";
 import {join} from "node:path";
 import {promisify} from "node:util";
 import {perfShapes} from "./fixtures/generate-transcript";
-import {HOT_PATH_FIXED_SHAPES, HOT_PATH_SHAPED_FNS, hotPathId, type HotPathFixedFn, type HotPathFn} from "./perf-ids";
+import {
+	HOT_PATH_FIXED_SHAPES,
+	HOT_PATH_NODE_FLAGS,
+	HOT_PATH_SHAPED_FNS,
+	hotPathId,
+	type HotPathFixedFn,
+	type HotPathFn,
+} from "./perf-ids";
 import {ratchet} from "./ratchet";
 
 /**
@@ -14,22 +21,10 @@ import {ratchet} from "./ratchet";
 
 const HARNESS = join(__dirname, "run-hot-path.mjs");
 
-/**
- * V8 flags that make the counts exact and repeatable. Optimized code skips the invocation counter for inlined calls, and
- * when it kicks in depends on timing; a closure without a feedback vector yet, or whose bytecode was flushed, can lose
- * its count. Without these, the same input drifts by a call or two between runs.
- */
-const NODE_FLAGS = [
-	"--predictable",
-	"--expose-gc",
-	"--max-opt=0",
-	"--no-lazy-feedback-allocation",
-	"--no-flush-bytecode",
-];
 const TIMEOUT = 600_000;
 
 async function measureCalls(fn: HotPathFn, shape: string): Promise<number> {
-	const {stdout} = await promisify(execFile)(process.execPath, [...NODE_FLAGS, HARNESS, fn, shape], {
+	const {stdout} = await promisify(execFile)(process.execPath, [...HOT_PATH_NODE_FLAGS, HARNESS, fn, shape], {
 		maxBuffer: 16 * 1024 * 1024,
 	});
 	const lines = stdout.trim().split("\n");

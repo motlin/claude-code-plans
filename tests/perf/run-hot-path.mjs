@@ -5,8 +5,8 @@
 //
 // Loads the scenario through tsx, warms the function up once, then counts every call into src/** during one more run
 // with V8 precise coverage and prints {fn, shape, calls} as the last line of stdout. It runs as its own process so the
-// test runner's instrumentation is not counted. tests/perf/hot-paths.perf.test.ts explains the V8 flags; without them
-// the counts are neither exact nor repeatable.
+// test runner's instrumentation is not counted. HOT_PATH_NODE_FLAGS in tests/perf/perf-ids.ts explains the V8 flags;
+// without them the counts are neither exact nor repeatable.
 import {Session} from "node:inspector";
 import {join} from "node:path";
 import {fileURLToPath, pathToFileURL} from "node:url";

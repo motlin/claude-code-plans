@@ -24,6 +24,19 @@ export const LIVE_APPEND_MULTI_PREFIX = "server.liveAppendMulti";
 export const HOT_PATH_SHAPED_FNS = ["mergeTranscriptData", "processTranscript", "readStructuredTranscript"] as const;
 export type HotPathShapedFn = (typeof HOT_PATH_SHAPED_FNS)[number];
 
+/**
+ * V8 flags that make the counts exact and repeatable. Optimized code skips the invocation counter for inlined calls, and
+ * when it kicks in depends on timing; a closure without a feedback vector yet, or whose bytecode was flushed, can lose
+ * its count. Without these, the same input drifts by a call or two between runs.
+ */
+export const HOT_PATH_NODE_FLAGS = [
+	"--predictable",
+	"--expose-gc",
+	"--max-opt=0",
+	"--no-lazy-feedback-allocation",
+	"--no-flush-bytecode",
+];
+
 /** Pure hot paths with one fixed synthetic input each, keyed by function to the shape name in their id. */
 export const HOT_PATH_FIXED_SHAPES = {
 	claudeEventsReducer: "replay-200",

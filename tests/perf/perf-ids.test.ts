@@ -3,7 +3,7 @@ import {readFileSync} from "node:fs";
 import {join} from "node:path";
 import {GENERATOR_VERSION, perfShapes} from "./fixtures/generate-transcript";
 import {shapeMetricIds} from "./perf-ids";
-import {loadCeilings} from "./ratchet";
+import {DIAGNOSTIC_FAMILIES, diagnosticFamily, loadCeilings} from "./ratchet";
 
 const LARGE_SHAPES = ["large-long", "large-wide"] as const;
 
@@ -23,7 +23,13 @@ describe("large perf tier", () => {
 
 	it.each(LARGE_SHAPES)("has a ceiling for exactly the ids the perf tests ratchet for %s", (shape) => {
 		const ceilingIds = Object.keys(loadCeilings()).filter((id) => id.includes(`.${shape}.`));
-		expect(ceilingIds).toStrictEqual(shapeMetricIds(shape).sort());
+		const ratcheted = shapeMetricIds(shape).filter((id) => diagnosticFamily(id, DIAGNOSTIC_FAMILIES) === undefined);
+		expect(ceilingIds).toStrictEqual(ratcheted.sort());
+	});
+
+	it("has a measured id behind every diagnostic family", () => {
+		const measured = new Set(shapeMetricIds("typical").map((id) => diagnosticFamily(id, DIAGNOSTIC_FAMILIES)));
+		expect(Object.keys(DIAGNOSTIC_FAMILIES).filter((family) => !measured.has(family))).toStrictEqual([]);
 	});
 });
 

@@ -37,15 +37,12 @@ const LARGE_SHAPE_NAMES: readonly LargeShapeName[] = ["large-long", "large-wide"
  */
 export const LARGE_TIER_OFFSETS: Record<string, Record<LargeShapeName, number>> = {
 	"server.liveAppend.typical.1.jsonl.fullScans": {"large-long": 0, "large-wide": 0},
-	"server.liveAppend.typical.1.sql.count": {"large-long": 20, "large-wide": 6},
-	"server.liveAppend.typical.1.sse.payloadBytes": {"large-long": 44, "large-wide": 104},
 	"server.liveAppend.typical.20.jsonl.fullScans": {"large-long": 0, "large-wide": 0},
 	"server.liveAppend.typical.20.readAmplification": {"large-long": 0, "large-wide": 0},
 	"server.liveAppend.typical.20.sql.count": {"large-long": 2, "large-wide": 0},
 	"server.liveAppend.typical.20.sse.payloadBytes": {"large-long": 101, "large-wide": 161},
 	"server.sessionOpen.typical.detail.jsonl.fullScans": {"large-long": 0, "large-wide": 0},
 	"server.sessionOpen.typical.detail.proc.spawned": {"large-long": 0, "large-wide": 0},
-	"server.sessionOpen.typical.detail.resp.bytes": {"large-long": 35, "large-wide": 95},
 	"server.sessionOpen.typical.detail.sql.count": {"large-long": 0, "large-wide": 0},
 	"server.sessionOpen.typical.subagents.jsonl.bytesRead": {"large-long": 0, "large-wide": 0},
 	"server.sessionOpen.typical.subagents.jsonl.fullScans": {"large-long": 0, "large-wide": 0},

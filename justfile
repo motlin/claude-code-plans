@@ -101,6 +101,11 @@ perf-report *args: install
 perf-lab *args: install
     vp exec tsx scripts/perf-lab.ts {{ args }}
 
+# Time the server lab journeys across the fixture sizes and write Spearman ρ of each lab count against wall time to .llm/perf/correlation.md
+[group('perf')]
+perf-correlate *args: install
+    vp exec tsx scripts/perf-correlate.ts {{ args }}
+
 # Rewrite tests/perf/ceilings.json to lowered and new measured counts. Manual only: never run from CI, a bot or a schedule
 [group('perf')]
 perf-ceilings: install

@@ -4,7 +4,7 @@ import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {pathToFileURL} from "node:url";
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
-import {createRatchet, loadCeilings, type Ceilings} from "./ratchet";
+import {createRatchet, DIAGNOSTIC_FAMILIES, diagnosticFamily, loadCeilings, type Ceilings} from "./ratchet";
 
 const ceilings: Ceilings = {
 	"server.sessionOpen.large-wide.detail.jsonl.bytesRead": {ceiling: 1000, unit: "bytes", tolerance: 0},
@@ -92,6 +92,54 @@ describe("ratchet", () => {
 			"lab.sessionSwitch.typical.inp": {value: 200, unit: "ms"},
 			"server.sessionOpen.large-wide.detail.jsonl.bytesRead": {value: 1200, unit: "bytes"},
 		});
+	});
+});
+
+describe("diagnostics", () => {
+	const diagnostics = {
+		"hot.slowPath.<shape>.calls": {unit: "calls", reason: "ρ 0.4 against wall time"},
+	};
+
+	function readDiagnostics(): unknown {
+		return JSON.parse(readFileSync(join(dir, "nested", "diagnostics.json"), "utf8"));
+	}
+
+	it("records a diagnostic id to diagnostics.json without a ceiling and leaves results.json alone", () => {
+		const ratchet = createRatchet({ceilings, resultsPath, diagnostics});
+		ratchet("hot.slowPath.typical.calls", 640);
+		ratchet("hot.slowPath.large-wide.calls", 360);
+		ratchet("server.sessionOpen.large-wide.detail.jsonl.bytesRead", 1000);
+		expect({diagnostics: readDiagnostics(), results: readResults()}).toStrictEqual({
+			diagnostics: {
+				"hot.slowPath.large-wide.calls": {value: 360, unit: "calls"},
+				"hot.slowPath.typical.calls": {value: 640, unit: "calls"},
+			},
+			results: {"server.sessionOpen.large-wide.detail.jsonl.bytesRead": {value: 1000, unit: "bytes"}},
+		});
+	});
+
+	it("fails for a diagnostic id that still has a ceiling", () => {
+		const ratchet = createRatchet({
+			ceilings: {"hot.slowPath.typical.calls": {ceiling: 640, unit: "calls", tolerance: 0}},
+			resultsPath,
+			diagnostics,
+		});
+		expect(() => ratchet("hot.slowPath.typical.calls", 640)).toThrow(
+			"hot.slowPath.typical.calls is a diagnostic (ρ 0.4 against wall time); remove its ceiling from tests/perf/ceilings.json",
+		);
+	});
+
+	it("matches the shape placeholder against exactly one id segment", () => {
+		expect([
+			diagnosticFamily("hot.slowPath.large-long.calls", diagnostics),
+			diagnosticFamily("hot.slowPath.calls", diagnostics),
+			diagnosticFamily("hot.slowPath.a.b.calls", diagnostics),
+			diagnosticFamily("hot.fastPath.typical.calls", diagnostics),
+		]).toStrictEqual(["hot.slowPath.<shape>.calls", undefined, undefined, undefined]);
+	});
+
+	it("has no ceilings for the checked-in diagnostic families", () => {
+		expect(Object.keys(loadCeilings()).filter((id) => diagnosticFamily(id, DIAGNOSTIC_FAMILIES))).toStrictEqual([]);
 	});
 });
 

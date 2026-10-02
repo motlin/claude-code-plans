@@ -113,10 +113,72 @@ function recordResult(resultsPath: string, id: string, value: number, unit: stri
 	});
 }
 
-export function createRatchet(options: {ceilings: Ceilings; resultsPath: string}): (id: string, value: number) => void {
-	const {ceilings, resultsPath} = options;
+export interface DiagnosticFamily {
+	unit: string;
+	/** Why the count lost its ceiling: its Spearman ρ against wall time in the §5 size sweep. */
+	reason: string;
+}
+
+/**
+ * Counts demoted by the correlation check (measurement plan §5.5, `just perf-correlate`, report in
+ * .llm/perf/correlation.md). Each keeps being measured but has no ceiling: its Spearman ρ against the journey's wall
+ * time across the small → large-wide sweep stayed below 0.9, so lowering it would not make anything faster. `<shape>`
+ * stands for one fixture shape. They are recorded to diagnostics.json next to results.json, never into results.json, so
+ * `just perf-ceilings` and older strict readers of results.json never see them.
+ */
+export const DIAGNOSTIC_FAMILIES: Record<string, DiagnosticFamily> = {
+	"hot.mergeTranscriptData.<shape>.calls": {
+		unit: "calls",
+		reason: "ρ 1.0/1.0/0.8 at load 4, 0.4–0.8 under load: 15–50 µs per run, typical and large-long tie on calls",
+	},
+	"hot.readStructuredTranscript.<shape>.calls": {
+		unit: "calls",
+		reason: "ρ 0.8 in every sweep: calls follow lines, wall time follows bytes (large-wide: fewer calls, most time)",
+	},
+	"server.liveAppend.<shape>.1.sql.count": {
+		unit: "count",
+		reason: "ρ 0.8: the one-line append's time is the transcript re-parse, not its 25–54 queries",
+	},
+	"server.liveAppend.<shape>.1.sse.payloadBytes": {
+		unit: "bytes",
+		reason: "ρ 0.8: about 700 bytes of SSE payload, flat while wall time grows 36x",
+	},
+	"server.sessionOpen.<shape>.detail.resp.bytes": {
+		unit: "bytes",
+		reason: "ρ 0.8 (0.6–1.0 under load): about 500 bytes of JSON, flat while wall time follows the transcript read",
+	},
+};
+
+/** The DIAGNOSTIC_FAMILIES key that matches `id`, where `<shape>` matches exactly one dotted segment. */
+export function diagnosticFamily(id: string, families: Record<string, DiagnosticFamily>): string | undefined {
+	const segments = id.split(".");
+	return Object.keys(families).find((family) => {
+		const pattern = family.split(".");
+		return (
+			pattern.length === segments.length &&
+			pattern.every((part, index) => part === "<shape>" || part === segments[index])
+		);
+	});
+}
+
+export function createRatchet(options: {
+	ceilings: Ceilings;
+	resultsPath: string;
+	diagnostics?: Record<string, DiagnosticFamily>;
+}): (id: string, value: number) => void {
+	const {ceilings, resultsPath, diagnostics = {}} = options;
+	const diagnosticsPath = join(dirname(resultsPath), "diagnostics.json");
 	return (id, value) => {
 		const entry = ceilings[id];
+		const family = diagnosticFamily(id, diagnostics);
+		if (family !== undefined) {
+			const {unit, reason} = diagnostics[family]!;
+			recordResult(diagnosticsPath, id, value, unit);
+			if (entry !== undefined) {
+				throw new Error(`${id} is a diagnostic (${reason}); remove its ceiling from tests/perf/ceilings.json`);
+			}
+			return;
+		}
 		recordResult(resultsPath, id, value, entry?.unit);
 		if (entry === undefined) {
 			throw new Error(`${id} has no ceiling; add it to tests/perf/ceilings.json`);
@@ -138,6 +200,10 @@ export function createRatchet(options: {ceilings: Ceilings; resultsPath: string}
 let defaultRatchet: ((id: string, value: number) => void) | undefined;
 
 export function ratchet(id: string, value: number): void {
-	defaultRatchet ??= createRatchet({ceilings: loadCeilings(), resultsPath: DEFAULT_RESULTS_PATH});
+	defaultRatchet ??= createRatchet({
+		ceilings: loadCeilings(),
+		resultsPath: DEFAULT_RESULTS_PATH,
+		diagnostics: DIAGNOSTIC_FAMILIES,
+	});
 	defaultRatchet(id, value);
 }
