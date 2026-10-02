@@ -39,7 +39,7 @@ export function MoreNavMenu({
 				<Menu>
 					<MenuTrigger aria-label="More navigation items" className={NAV_ROW_CLASS}>
 						<span className="df-leading-slot">
-							<ChevronDown aria-hidden="true" />
+							<ChevronDown aria-hidden="true" className="opacity-50" />
 						</span>
 						<span className="min-w-0 flex-1 truncate text-ink-muted">More</span>
 					</MenuTrigger>
