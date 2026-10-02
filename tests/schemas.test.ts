@@ -733,20 +733,36 @@ describe("JsonlRecordSchema", () => {
 		expect(result.success).toBe(true);
 	});
 
-	it("parses queued command attachments with meta markers", () => {
-		const result = JsonlRecordSchema.safeParse({
-			type: "attachment",
-			...baseFields,
-			attachment: {
-				type: "queued_command",
-				prompt: "Run the queued test command",
-				commandMode: "prompt",
-				timestamp: "1999-12-31T00:00:00.000Z",
-				isMeta: true,
-			},
-		});
-		expect(result.success).toBe(true);
-	});
+	it.each([{}, {reminderId: "example-reminder"}])(
+		"parses queued command meta markers with optional reminder identity %j",
+		(reminder) => {
+			const record = {
+				type: "attachment",
+				...baseFields,
+				attachment: {
+					type: "queued_command",
+					prompt: "Run the queued test command",
+					commandMode: "prompt",
+					timestamp: "1999-12-31T00:00:00.000Z",
+					isMeta: true,
+					...reminder,
+				},
+			};
+			expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
+		},
+	);
+
+	it.each([{reminderId: 100}, {unexpectedField: "example-value"}])(
+		"rejects invalid queued command metadata %j",
+		(metadata) => {
+			const result = JsonlRecordSchema.safeParse({
+				type: "attachment",
+				...baseFields,
+				attachment: {type: "queued_command", prompt: "Run the example command", ...metadata},
+			});
+			expect(result.success).toBe(false);
+		},
+	);
 
 	it("parses dynamic skill attachments", () => {
 		const result = JsonlRecordSchema.safeParse({
