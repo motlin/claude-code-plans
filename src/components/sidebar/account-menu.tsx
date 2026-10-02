@@ -9,7 +9,6 @@ import {
 	FileCog,
 	Gauge,
 	Info,
-	Keyboard,
 	ScrollText,
 	Settings,
 	Wrench,
@@ -166,11 +165,7 @@ export function AccountMenu() {
 							</MenuItem>
 						))}
 						<MenuSeparator />
-						<MenuItem
-							icon={<Keyboard />}
-							shortcut={shortcutsKeys}
-							onSelect={() => setKeyboardShortcutsOpen(true)}
-						>
+						<MenuItem shortcut={shortcutsKeys} onSelect={() => setKeyboardShortcutsOpen(true)}>
 							Keyboard shortcuts
 						</MenuItem>
 					</MenuSubContent>
