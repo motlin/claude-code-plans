@@ -418,3 +418,7 @@
 :global([data-transcript-prose]) .markdown > p + ul:not(:global(.contains-task-list)) {
 	margin-top: 3.5px;
 }
+
+:global([data-transcript-prose]) .markdown > ul:not(:global(.contains-task-list)) + p {
+	margin-top: 14px;
+}
