@@ -138,7 +138,7 @@ function AttentionRow<Row extends HomeAttentionRow>({
 				<li
 					data-session-id={session.sessionId}
 					data-kind={kind}
-					className="group flex h-10 items-center gap-2 rounded-lg bg-alpha-1 px-[5px] py-2 hover:bg-alpha-2 focus-within:bg-alpha-2"
+					className="group flex h-10 items-center gap-2 rounded-r6 bg-alpha-1 px-[5px] py-2 hover:bg-alpha-2 focus-within:bg-alpha-2"
 				/>
 			}
 		>
