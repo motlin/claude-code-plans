@@ -43,7 +43,7 @@ export function MoreNavMenu({
 						</span>
 						<span className="min-w-0 flex-1 truncate text-ink-muted">More</span>
 					</MenuTrigger>
-					<MenuContent side="right" align="start">
+					<MenuContent density="comfortable" side="right" align="start">
 						{overflow.map((item) => {
 							const Icon = item.icon;
 							const badge = badgeFor(item.section);

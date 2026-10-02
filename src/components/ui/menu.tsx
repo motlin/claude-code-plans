@@ -9,8 +9,8 @@ import {Shortcut} from "./shortcut";
 
 /*
  * One menu primitive copied from claude.ai/code (Base UI Menu / ContextMenu):
- * radius 10 surface with shadow-panel and 4px padding, 24px items at 13px/19px
- * with padding 2.5px 8px and radius 6, a right-aligned muted shortcut hint,
+ * compact header rows and comfortable navigation rows, with 4px popup padding,
+ * a right-aligned muted shortcut hint,
  * submenus that open on hover, click or ArrowRight, trailing accent checks for
  * radio/checkbox items, and single-key accelerators that fire while open.
  */
@@ -18,6 +18,26 @@ import {Shortcut} from "./shortcut";
 type MenuKind = "Menu" | "ContextMenu";
 
 const MenuKindContext = createContext<MenuKind>("Menu");
+type MenuDensity = "compact" | "comfortable";
+const MenuDensityContext = createContext<MenuDensity>("compact");
+const DENSITY_CLASSES = {
+	compact: {
+		popup: "rounded-r7",
+		text: "text-[13px]/[19px]",
+		item: "rounded-r5 px-2 py-[2.5px]",
+		singleLine: "h-6 items-center",
+		twoLine: "min-h-[41px] items-start",
+		separator: "mx-2",
+	},
+	comfortable: {
+		popup: "rounded-card",
+		text: "text-[14px]/[20px]",
+		item: "rounded-r6 px-2.5 py-1.5",
+		singleLine: "h-8 items-center",
+		twoLine: "min-h-8 items-start",
+		separator: "mx-2.5",
+	},
+} as const;
 
 type MenuActionsRef = NonNullable<ComponentProps<typeof BaseMenu.Root>["actionsRef"]>;
 
@@ -33,23 +53,21 @@ function useMenuActions(actionsRef: MenuActionsRef | undefined) {
 const POSITIONER_CLASS = "z-[130] outline-none";
 
 const POPUP_CLASS =
-	"relative flex max-h-[var(--available-height)] min-w-[128px] max-w-[320px] flex-col rounded-r7 bg-[var(--menu-bg)] p-1 text-[13px]/[19px] font-normal text-primary shadow-[var(--menu-shadow)] outline-none select-none";
+	"relative flex max-h-[var(--available-height)] min-w-[128px] max-w-[320px] flex-col bg-[var(--menu-bg)] font-normal text-primary shadow-[var(--menu-shadow)] outline-none select-none";
 
 const SCROLLER_CLASS = "min-h-0 overflow-y-auto";
 
-const ITEM_BASE_CLASS =
-	"flex w-full cursor-default h-6 items-center gap-1 rounded-r5 px-2 py-[2.5px] text-[13px]/[19px] font-normal outline-none select-none [--shortcut-cap-ink:var(--menu-muted)] data-[disabled]:pointer-events-none data-[disabled]:opacity-50";
+function useItemClass(twoLine = false): string {
+	const sizing = DENSITY_CLASSES[useContext(MenuDensityContext)];
+	return `flex w-full cursor-default ${twoLine ? sizing.twoLine : sizing.singleLine} gap-1 ${sizing.item} ${sizing.text} font-normal outline-none select-none [--shortcut-cap-ink:var(--menu-muted)] data-[disabled]:pointer-events-none data-[disabled]:opacity-50`;
+}
 
 const ITEM_VARIANT_CLASS = {
 	default: "text-primary data-[highlighted]:bg-fill-ghost-hover",
 	danger: "text-danger-100 data-[highlighted]:bg-[var(--menu-danger-fill)] data-[highlighted]:text-[var(--menu-on-danger)] data-[highlighted]:[--shortcut-cap-ink:currentColor]",
 } as const;
 
-const SUB_TRIGGER_CLASS = `${ITEM_BASE_CLASS} ${ITEM_VARIANT_CLASS.default} justify-between data-[popup-open]:bg-fill-ghost-hover`;
-
 const LABEL_CLASS = "min-w-0 flex-1 truncate";
-/** Upstream's two-line rows: 19px title plus a 2px gap and a 15px muted description, 41px in all. */
-const TWO_LINE_ITEM_CLASS = ITEM_BASE_CLASS.replace("h-6 items-center", "min-h-[41px] items-start");
 const DESCRIPTION_CLASS = "truncate pt-[2px] text-[12px]/[15px] text-[var(--menu-muted)]";
 const TRAILING_CLASS = "ml-auto flex shrink-0 items-center gap-1 pl-3";
 const CHECK_SLOT_CLASS = "-mr-1 flex size-5 shrink-0 items-center justify-center";
@@ -133,6 +151,8 @@ export function ContextMenu({actionsRef, ...props}: ComponentProps<typeof BaseCo
 export const ContextMenuTrigger = BaseContextMenu.Trigger;
 
 export interface MenuContentProps {
+	/** Navigation menus use larger rows; nested popups inherit their parent density. */
+	density?: MenuDensity;
 	children: ReactNode;
 	side?: ComponentProps<typeof BaseMenu.Positioner>["side"];
 	align?: ComponentProps<typeof BaseMenu.Positioner>["align"];
@@ -146,6 +166,7 @@ export interface MenuContentProps {
 /** The popup surface. Inside a ContextMenu it opens at the pointer. */
 export function MenuContent({
 	children,
+	density,
 	side = "bottom",
 	align = "start",
 	sideOffset = 4,
@@ -154,27 +175,33 @@ export function MenuContent({
 	finalFocus,
 }: MenuContentProps) {
 	const kind = useContext(MenuKindContext);
+	const inheritedDensity = useContext(MenuDensityContext);
+	const resolvedDensity = density ?? inheritedDensity;
+	const sizing = DENSITY_CLASSES[resolvedDensity];
+	const popupClass = `${POPUP_CLASS} ${sizing.popup} p-1 ${sizing.text}`;
 	return (
-		<BaseMenu.Portal>
-			<BaseMenu.Positioner
-				className={POSITIONER_CLASS}
-				side={side}
-				align={align}
-				sideOffset={sideOffset}
-				alignOffset={alignOffset}
-				data-side-offset={sideOffset}
-				data-align-offset={alignOffset}
-			>
-				<BaseMenu.Popup
-					data-cds={kind}
-					className={className ? `${POPUP_CLASS} ${className}` : POPUP_CLASS}
-					onKeyDown={handleAcceleratorKey}
-					{...(finalFocus === undefined ? {} : {finalFocus})}
+		<MenuDensityContext.Provider value={resolvedDensity}>
+			<BaseMenu.Portal>
+				<BaseMenu.Positioner
+					className={POSITIONER_CLASS}
+					side={side}
+					align={align}
+					sideOffset={sideOffset}
+					alignOffset={alignOffset}
+					data-side-offset={sideOffset}
+					data-align-offset={alignOffset}
 				>
-					<div className={SCROLLER_CLASS}>{children}</div>
-				</BaseMenu.Popup>
-			</BaseMenu.Positioner>
-		</BaseMenu.Portal>
+					<BaseMenu.Popup
+						data-cds={kind}
+						className={className ? `${popupClass} ${className}` : popupClass}
+						onKeyDown={handleAcceleratorKey}
+						{...(finalFocus === undefined ? {} : {finalFocus})}
+					>
+						<div className={SCROLLER_CLASS}>{children}</div>
+					</BaseMenu.Popup>
+				</BaseMenu.Positioner>
+			</BaseMenu.Portal>
+		</MenuDensityContext.Provider>
 	);
 }
 
@@ -225,6 +252,7 @@ export function MenuItem({
 	onSelect,
 	...props
 }: MenuItemProps) {
+	const itemClass = useItemClass(description !== undefined);
 	const ariaKeyShortcuts = useAriaKeyShortcuts(accelerator, shortcut);
 	return (
 		<BaseMenu.Item
@@ -233,7 +261,7 @@ export function MenuItem({
 			{...(ariaKeyShortcuts ? {"aria-keyshortcuts": ariaKeyShortcuts} : {})}
 			{...(accelerator ? {"data-accelerator": accelerator.toLowerCase()} : {})}
 			data-variant={variant}
-			className={`${description === undefined ? ITEM_BASE_CLASS : TWO_LINE_ITEM_CLASS} ${ITEM_VARIANT_CLASS[variant]}`}
+			className={`${itemClass} ${ITEM_VARIANT_CLASS[variant]}`}
 		>
 			<ItemIcon icon={icon} />
 			{description === undefined ? (
@@ -287,6 +315,7 @@ export interface MenuCheckboxItemProps extends Omit<
 }
 
 export function MenuCheckboxItem({children, accelerator, shortcut, ...props}: MenuCheckboxItemProps) {
+	const itemClass = useItemClass();
 	const ariaKeyShortcuts = useAriaKeyShortcuts(accelerator, shortcut);
 	return (
 		<BaseMenu.CheckboxItem
@@ -294,7 +323,7 @@ export function MenuCheckboxItem({children, accelerator, shortcut, ...props}: Me
 			{...props}
 			{...acceleratorProps(accelerator)}
 			{...(ariaKeyShortcuts ? {"aria-keyshortcuts": ariaKeyShortcuts} : {})}
-			className={`${ITEM_BASE_CLASS} ${ITEM_VARIANT_CLASS.default}`}
+			className={`${itemClass} ${ITEM_VARIANT_CLASS.default}`}
 		>
 			<span className={LABEL_CLASS}>{children}</span>
 			{shortcut !== undefined && <ItemTrailing shortcut={shortcut} />}
@@ -313,12 +342,13 @@ export interface MenuRadioItemProps extends Omit<ComponentProps<typeof BaseMenu.
 }
 
 export function MenuRadioItem({children, accelerator, ...props}: MenuRadioItemProps) {
+	const itemClass = useItemClass();
 	return (
 		<BaseMenu.RadioItem
 			closeOnClick={false}
 			{...props}
 			{...acceleratorProps(accelerator)}
-			className={`${ITEM_BASE_CLASS} ${ITEM_VARIANT_CLASS.default}`}
+			className={`${itemClass} ${ITEM_VARIANT_CLASS.default}`}
 		>
 			<span className={LABEL_CLASS}>{children}</span>
 			{accelerator !== undefined && <ItemTrailing accelerator={accelerator} />}
@@ -348,8 +378,14 @@ export interface MenuSubTriggerProps extends Omit<
 
 /** Submenu trigger: opens on hover, click, Enter or ArrowRight. */
 export function MenuSubTrigger({children, icon, value, valueAccent, ...props}: MenuSubTriggerProps) {
+	const itemClass = useItemClass();
 	return (
-		<BaseMenu.SubmenuTrigger openOnHover delay={SUBMENU_HOVER_DELAY_MS} {...props} className={SUB_TRIGGER_CLASS}>
+		<BaseMenu.SubmenuTrigger
+			openOnHover
+			delay={SUBMENU_HOVER_DELAY_MS}
+			{...props}
+			className={`${itemClass} ${ITEM_VARIANT_CLASS.default} justify-between data-[popup-open]:bg-fill-ghost-hover`}
+		>
 			<ItemIcon icon={icon} />
 			<span className={LABEL_CLASS}>{children}</span>
 			<span className={TRAILING_CLASS}>
@@ -386,7 +422,8 @@ export function MenuSubContent({children, className}: {children: ReactNode; clas
 }
 
 export function MenuSeparator() {
-	return <BaseMenu.Separator className="mx-2 my-1 h-px bg-border" />;
+	const sizing = DENSITY_CLASSES[useContext(MenuDensityContext)];
+	return <BaseMenu.Separator className={`${sizing.separator} my-1 h-px bg-border`} />;
 }
 
 export function MenuLabel({

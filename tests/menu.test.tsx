@@ -130,6 +130,47 @@ describe("Menu", () => {
 		});
 	});
 
+	it("inherits comfortable density through a portaled submenu while preserving keyboard navigation", async () => {
+		render(
+			<Menu>
+				<MenuTrigger aria-label="More options">...</MenuTrigger>
+				<MenuContent density="comfortable">
+					<RowMenuBody onCopy={vi.fn()} onDelete={vi.fn()} />
+				</MenuContent>
+			</Menu>,
+		);
+		await openDropdown();
+		const trigger = screen.getByRole("menuitem", {name: /Status/});
+		act(() => trigger.focus());
+		fireEvent.keyDown(trigger, {key: "ArrowRight"});
+		await flush();
+
+		const densityClasses = ["h-8", "rounded-r6", "px-2.5", "py-1.5", "text-[14px]/[20px]"];
+		const items = [
+			trigger,
+			screen.getByRole("menuitem", {name: /Copy link/}),
+			screen.getByRole("menuitemcheckbox", {name: "Show PR status"}),
+			screen.getByRole("menuitemradio", {name: "Active"}),
+		];
+		expect({
+			popups: screen
+				.getAllByRole("menu")
+				.map((menu) =>
+					menu.className
+						.split(" ")
+						.filter((value) => ["rounded-card", "p-1", "text-[14px]/[20px]"].includes(value)),
+				),
+			items: items.map((item) => item.className.split(" ").filter((value) => densityClasses.includes(value))),
+			separator: screen.getByRole("separator").className,
+			expanded: trigger.getAttribute("aria-expanded"),
+		}).toStrictEqual({
+			popups: Array.from({length: 2}, () => ["rounded-card", "p-1", "text-[14px]/[20px]"]),
+			items: Array.from({length: 4}, () => densityClasses),
+			separator: "mx-2.5 my-1 h-px bg-border",
+			expanded: "true",
+		});
+	});
+
 	it("sets aria-keyshortcuts from the accelerator letter", async () => {
 		renderDropdown();
 		await openDropdown();
