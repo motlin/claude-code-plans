@@ -41,6 +41,7 @@ import {
 import {useActiveSessionsIfAvailable} from "../hooks/use-claude-events";
 import type {PaletteMode} from "../hooks/use-command-palette";
 import {useDebouncedValue} from "../hooks/use-debounced-value";
+import {useSessionIdentity} from "../hooks/use-session-identity";
 import {useSessionArchive} from "../hooks/use-session-archive";
 import {artifactsQueryOptions, type ArtifactSummary} from "../lib/api/artifacts";
 import {encodeFilePath} from "../lib/api/file";
@@ -597,14 +598,15 @@ interface PaletteAction {
 }
 
 function useCurrentSessionId(): string | undefined {
-	return useRouterState({
+	const routeId = useRouterState({
 		select: (state) => {
 			for (const match of state.matches) {
 				if (match.routeId === "/session/$id") return match.params.id;
 			}
-			return undefined;
+			return null;
 		},
 	});
+	return useSessionIdentity(routeId) ?? undefined;
 }
 
 interface CommandPaletteProps {

@@ -17,6 +17,7 @@ import {SessionTitleHeading} from "../src/components/session-title-heading";
 import {ToastProvider} from "../src/components/toast";
 import {useCommandPalette} from "../src/hooks/use-command-palette";
 import {recentSessionsQueryOptions, sessionDetailQueryOptions, type SessionDetailData} from "../src/lib/api/sessions";
+import {sessionQueryKeys} from "../src/lib/api/sessions";
 import {pin, readPinState} from "../src/lib/pin-store";
 import {getSideChat, resetSideChatStore} from "../src/lib/side-chat-store";
 import {installLocalStorage} from "./fake-storage";
@@ -99,7 +100,7 @@ async function openPalette(initialPath: string, sessionDetail: SessionDetailData
 	composer.focus();
 	fireEvent.keyDown(composer, {key: "k", code: "KeyK", metaKey: true});
 	const dialog = await screen.findByRole("dialog", {name: "Search"});
-	return {dialog, input: within(dialog).getByRole("combobox", {name: "Search"})};
+	return {dialog, input: within(dialog).getByRole("combobox", {name: "Search"}), queryClient};
 }
 
 function optionLabels(dialog: HTMLElement): string[] {
@@ -113,6 +114,7 @@ describe("palette contextual session commands", () => {
 	const fetchMock = vi.fn((_url: string, _init?: RequestInit) => new Promise<Response>(() => {}));
 
 	beforeEach(() => {
+		fetchMock.mockImplementation(() => new Promise<Response>(() => {}));
 		installLocalStorage();
 		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(MAC_UA);
 		vi.stubGlobal("fetch", fetchMock);
@@ -148,6 +150,85 @@ describe("palette contextual session commands", () => {
 			"Copy resume command",
 			"Copy fork command",
 		]);
+		expect(fetchMock.mock.calls.filter(([url]) => url.endsWith("/identity"))).toStrictEqual([]);
+	});
+
+	it.each([
+		{query: "resume", label: "Copy resume command", copied: "cd '/users/dev/project-a' && claude -r sess-1"},
+		{
+			query: "fork",
+			label: "Copy fork command",
+			copied: "cd '/users/dev/project-a' && claude -r sess-1 --fork-session",
+		},
+		{query: "link", label: `Copy link to ${QUOTED}`, copied: "http://localhost:3000/session/sess-1"},
+	])("uses the resolved local ID for the alias route's $query command", async ({query, label, copied}) => {
+		fetchMock.mockImplementation((url) =>
+			url.endsWith("/identity")
+				? Promise.resolve(Response.json({sessionId: "sess-1"}))
+				: new Promise<Response>(() => {}),
+		);
+		const {dialog, input} = await openPalette("/session/session_alice_100");
+		fireEvent.change(input, {target: {value: query}});
+		fireEvent.click(await within(dialog).findByRole("option", {name: label}));
+		await waitFor(() => expect(writeText.mock.calls).toStrictEqual([[copied]]));
+		expect(
+			fetchMock.mock.calls.filter(([url]) => url.includes("session_alice_100")).map(([url]) => url),
+		).toStrictEqual(["/api/sessions/session_alice_100/identity"]);
+	});
+
+	it("pins the local UUID after resolving an alias", async () => {
+		fetchMock.mockImplementation((url) =>
+			url.endsWith("/identity")
+				? Promise.resolve(Response.json({sessionId: "sess-1"}))
+				: new Promise<Response>(() => {}),
+		);
+		const {dialog, input} = await openPalette("/session/session_alice_100");
+		fireEvent.change(input, {target: {value: "pin"}});
+		fireEvent.click(await within(dialog).findByRole("option", {name: `Pin ${QUOTED}`}));
+		await waitFor(() => expect(readPinState()).toStrictEqual({pinnedIds: ["sess-1"], pinnedOrder: []}));
+	});
+
+	it("archives the local UUID after resolving an alias", async () => {
+		fetchMock.mockImplementation((url) =>
+			url.endsWith("/identity")
+				? Promise.resolve(Response.json({sessionId: "sess-1"}))
+				: new Promise<Response>(() => {}),
+		);
+		const {dialog, input} = await openPalette("/session/session_alice_100");
+		fireEvent.change(input, {target: {value: "archive"}});
+		fireEvent.click(await within(dialog).findByRole("option", {name: `Archive ${QUOTED}`}));
+		await waitFor(() =>
+			expect(
+				fetchMock.mock.calls
+					.filter(([, init]) => init?.method === "PUT")
+					.map(([url, init]) => ({url, method: init?.method})),
+			).toStrictEqual([{url: "/api/sessions/sess-1/archived", method: "PUT"}]),
+		);
+	});
+
+	it.each([null, 404, 409])("does not offer local session actions for an unresolved alias (%s)", async (status) => {
+		if (status !== null)
+			fetchMock.mockImplementation((url) =>
+				url.endsWith("/identity")
+					? Promise.resolve(Response.json({error: "Fabricated identity failure"}, {status}))
+					: new Promise<Response>(() => {}),
+			);
+		const {dialog, input, queryClient} = await openPalette("/session/session_alice_100");
+		if (status !== null)
+			await waitFor(() =>
+				expect(queryClient.getQueryState(sessionQueryKeys.identity("session_alice_100"))?.status).toBe("error"),
+			);
+		fireEvent.change(input, {target: {value: "session"}});
+		await within(dialog).findByRole("option", {name: /See all results/});
+		expect({
+			actions: optionLabels(dialog).filter((label) =>
+				/^(Pin |Rename |Archive |Copy |Show side chat)/.test(label),
+			),
+			aliasRequests: fetchMock.mock.calls
+				.filter(([url]) => url.includes("session_alice_100"))
+				.map(([url]) => url),
+			writes: fetchMock.mock.calls.filter(([, init]) => init?.method === "PUT" || init?.method === "POST"),
+		}).toStrictEqual({actions: [], aliasRequests: ["/api/sessions/session_alice_100/identity"], writes: []});
 	});
 
 	it("offers Pin, Rename and the session commands for 'session'", async () => {
