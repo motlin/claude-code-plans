@@ -413,3 +413,8 @@
 :global([data-transcript-prose]) .markdown > ul:not(:global(.contains-task-list)) {
 	padding-right: 56px;
 }
+
+:global([data-transcript-prose]) .markdown > p + p,
+:global([data-transcript-prose]) .markdown > p + ul:not(:global(.contains-task-list)) {
+	margin-top: 3.5px;
+}
