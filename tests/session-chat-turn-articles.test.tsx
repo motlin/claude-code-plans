@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {cleanup, fireEvent, render} from "@testing-library/react";
+import {cleanup, fireEvent, render, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat} from "../src/components/session-chat";
 import {processTranscript} from "../src/lib/transcript";
@@ -83,9 +83,10 @@ function articleAttributes(container: HTMLElement) {
 }
 
 describe("SessionChat turn articles", () => {
-	it("wraps every turn in a numbered article, with only the last one in the Tab order", () => {
+	it("names the transcript feed and wraps its turns in numbered articles with only the last in the Tab order", () => {
 		const container = renderRecords([userRecord(1), assistantRecord(1), userRecord(2)]);
-		expect(articleAttributes(container)).toStrictEqual([
+		const feed = within(container).getByRole("feed", {name: "Chat messages"});
+		expect(articleAttributes(feed)).toStrictEqual([
 			{label: "Message 1", posinset: "1", setsize: "3", tabIndex: -1},
 			{label: "Message 2", posinset: "2", setsize: "3", tabIndex: -1},
 			{label: "Message 3", posinset: "3", setsize: "3", tabIndex: 0},

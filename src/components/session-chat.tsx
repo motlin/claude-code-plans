@@ -1252,6 +1252,8 @@ function VirtualizedSessionEntries({
 	return (
 		<div
 			ref={listRef}
+			role="feed"
+			aria-label="Chat messages"
 			data-testid="virtualized-transcript"
 			onClickCapture={(event) => {
 				if (event.target instanceof Element && event.target.closest("[aria-expanded],summary"))
