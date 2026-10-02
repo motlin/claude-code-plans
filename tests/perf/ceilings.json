@@ -59,10 +59,11 @@
 		"raisedAt": "2026-10-02"
 	},
 	"bundle.session.gzip": {
-		"ceiling": 568085,
+		"ceiling": 573858,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Defer the optional Changes pane renderer and its diff engine until the pane opens; keep registration, shortcuts and loading controls available immediately."
+		"reason": "Account for accumulated session scroll, accessibility, and PR presentation code. The repository header pill, truthful PR strip, state icons, and dock ordering batch adds 959 gzip bytes and 3920 raw bytes over passing eb118c65 (572899 to 573858 gzip). The output audit found no new eager dependencies: existing PR status and GitPullRequest chunks are unchanged, the three state icons occur once in the session route, and Changes pane, usage card, and tool renderer lazy boundaries remain intact. Build SHA and chunk hash normalization, static-import traversal, other ceilings, and the 1% tolerance are unchanged.",
+		"raisedAt": "2026-10-02"
 	},
 	"bundle.session.raw": {
 		"ceiling": 1758376,
