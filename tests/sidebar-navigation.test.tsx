@@ -86,10 +86,11 @@ async function renderSidebarAt(path: string) {
 			</QueryClientProvider>
 		),
 	});
-	const pageRoute = createRoute({getParentRoute: () => rootRoute, path});
+	const pathname = path.split(/[?#]/)[0]!;
+	const pageRoutes = pathname === "/" ? [] : [createRoute({getParentRoute: () => rootRoute, path: pathname})];
 	const homeRoute = createRoute({getParentRoute: () => rootRoute, path: "/"});
 	const router = createRouter({
-		routeTree: rootRoute.addChildren([pageRoute, homeRoute]),
+		routeTree: rootRoute.addChildren([...pageRoutes, homeRoute]),
 		history: createMemoryHistory({initialEntries: [path]}),
 	});
 	await router.load();
@@ -339,6 +340,22 @@ describe("sidebar New row", () => {
 		const footer = screen.getByTestId("sidebar-footer");
 		return screen.getAllByRole("link").filter((link) => !titlebar.contains(link) && !footer.contains(link));
 	}
+
+	it.each([
+		{path: "/", selected: "focused", current: "page"},
+		{path: "/?filter=alice#settings/general", selected: "focused", current: "page"},
+		{path: "/tasks", selected: null, current: null},
+		{path: "/session/session-alice-100", selected: null, current: null},
+	])("selects New only on the home pathname at $path", async ({path, selected, current}) => {
+		await renderSidebarAt(path);
+		const newRow = navLinks()[0];
+
+		expect({
+			href: newRow?.getAttribute("href"),
+			selected: newRow?.getAttribute("data-selected"),
+			current: newRow?.getAttribute("aria-current"),
+		}).toStrictEqual({href: "/", selected, current});
+	});
 
 	it("is the first nav link, points home and reveals ⇧⌘O on hover", async () => {
 		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(MAC_UA);
