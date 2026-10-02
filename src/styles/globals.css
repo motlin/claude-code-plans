@@ -488,6 +488,7 @@
 @layer base {
 	* {
 		@apply border-border;
+		scrollbar-width: thin;
 	}
 	body {
 		@apply bg-page text-primary font-sans;
