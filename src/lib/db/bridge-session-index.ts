@@ -1,4 +1,4 @@
-import {eq} from "drizzle-orm";
+import {eq, sql} from "drizzle-orm";
 import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
 import {z} from "zod";
 import {BridgeSessionRecordSchema} from "../schemas";
@@ -16,6 +16,33 @@ const ALIAS_PREFIX = "bridge:v1:alias:";
 export function sessionBridgeMetadataKey(sessionId: string): string {
 	return `${LOCAL_PREFIX}${sessionId}`;
 }
+
+/** Two surviving owners suffice to distinguish missing, unique and ambiguous indexed aliases. */
+export function getSessionBridgeOwners(db: IndexDb, routeId: string): string[] {
+	return db
+		.all<{sessionId: string}>(sql`
+			SELECT DISTINCT ${schema.sessions.id} AS sessionId
+			FROM ${schema.metadata}, json_each(${schema.metadata.value}) AS bridge_owner
+			JOIN ${schema.sessions} ON ${schema.sessions.id} = bridge_owner.value
+			WHERE ${schema.metadata.key} = ${`${ALIAS_PREFIX}${routeId}`}
+			LIMIT 2
+		`)
+		.map(({sessionId}) => sessionId);
+}
+
+/** Correlate with the detail query's session row without adding another SQL statement. */
+export const canonicalSessionRouteId = sql<string | null>`(
+	SELECT json_extract(local_bridge.value, '$.canonical')
+	FROM ${schema.metadata} AS local_bridge
+	WHERE local_bridge.key = ${LOCAL_PREFIX} || ${schema.sessions.id}
+	AND ${schema.sessions.id} = (
+		SELECT min(live_owner.id)
+		FROM ${schema.metadata} AS remote_bridge, json_each(remote_bridge.value) AS bridge_owner
+		JOIN ${schema.sessions} AS live_owner ON live_owner.id = bridge_owner.value
+		WHERE remote_bridge.key = ${ALIAS_PREFIX} || json_extract(local_bridge.value, '$.canonical')
+		HAVING count(DISTINCT live_owner.id) = 1
+	)
+)`;
 
 /** Bridge records travel with copied transcripts; only claim records belonging to this local session. */
 export class BridgeSessionCollector {

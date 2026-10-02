@@ -17,6 +17,7 @@ export const Route = createFileRoute("/api/sessions/$id")({
 					isSessionArchived,
 				} = await import("../../lib/db/queries");
 				const {sessions} = await import("../../lib/db/schema");
+				const {canonicalSessionRouteId} = await import("../../lib/db/bridge-session-index");
 				const {eq} = await import("drizzle-orm");
 				const {getSummary} = await import("../../lib/summaries");
 				const {getCurrentSessionMessageIndex, getSessionViewedState} =
@@ -39,6 +40,7 @@ export const Route = createFileRoute("/api/sessions/$id")({
 						customTitle: sessions.customTitle,
 						projectId: sessions.projectId,
 						mtimeMs: sessions.mtimeMs,
+						canonicalRouteId: canonicalSessionRouteId,
 					})
 					.from(sessions)
 					.where(eq(sessions.id, id))
@@ -126,6 +128,7 @@ export const Route = createFileRoute("/api/sessions/$id")({
 					viewedState: getSessionViewedState(index, id, getCurrentSessionMessageIndex(index, id)),
 				};
 
+				if (sessionRow.canonicalRouteId !== null) detail.canonicalRouteId = sessionRow.canonicalRouteId;
 				const pr = getSessionPrLink(index, id);
 				if (pr !== null) detail.pr = pr;
 

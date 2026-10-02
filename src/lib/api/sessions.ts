@@ -80,6 +80,8 @@ export const SessionDetailResponse = z
 		projectName: z.string(),
 		projectId: z.string(),
 		homeRoot: z.string(),
+		/** Unique Remote Control alias suitable for this local session's URL. */
+		canonicalRouteId: z.string().optional(),
 		imageRoots: z.array(z.string()),
 		archived: z.boolean(),
 		summary: z.string().nullable(),
@@ -111,6 +113,8 @@ export const SessionDetailResponse = z
 export const SessionOpenInResponse = z
 	.object({cwd: z.string().nullable(), bridgeSessionId: z.string().nullable()})
 	.strict();
+
+export const SessionIdentityResponse = z.object({sessionId: z.string()}).strict();
 
 export type SessionDetailData = NonNullable<z.infer<typeof SessionDetailResponse>>;
 
