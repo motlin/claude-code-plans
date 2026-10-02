@@ -1,6 +1,6 @@
 import {useQuery} from "@tanstack/react-query";
 import {useNavigate} from "@tanstack/react-router";
-import {Ellipsis} from "lucide-react";
+import {EllipsisVertical} from "lucide-react";
 import {createContext, type ReactNode, useCallback, useContext, useRef, useState, useSyncExternalStore} from "react";
 
 import {herdrPanesQueryOptions} from "../lib/api/herdr";
@@ -628,7 +628,7 @@ export function SessionActionsMenu({
 						{...(kebabTabIndex === undefined ? {} : {tabIndex: kebabTabIndex})}
 						className={KEBAB_CLASS}
 					>
-						<Ellipsis aria-hidden="true" className="size-4" />
+						<EllipsisVertical aria-hidden="true" className="size-4" />
 					</MenuTrigger>
 					<MenuContent align="end" finalFocus={finalFocus}>
 						{menuBody}
