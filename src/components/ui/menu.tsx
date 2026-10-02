@@ -412,12 +412,20 @@ export function MenuSubTrigger({children, icon, value, valueAccent, ...props}: M
 	);
 }
 
-export function MenuSubContent({children, className}: {children: ReactNode; className?: string}) {
+export function MenuSubContent({
+	children,
+	className,
+	sideOffset = 2,
+}: {
+	children: ReactNode;
+	className?: string;
+	sideOffset?: number;
+}) {
 	return (
 		<MenuContent
 			side="right"
 			align="start"
-			sideOffset={2}
+			sideOffset={sideOffset}
 			alignOffset={0}
 			{...(className === undefined ? {} : {className})}
 		>

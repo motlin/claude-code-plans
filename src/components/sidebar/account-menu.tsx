@@ -144,7 +144,7 @@ export function AccountMenu() {
 					<MenuSubTrigger data-testid="user-menu-learn-more" icon={<Info />}>
 						Learn more
 					</MenuSubTrigger>
-					<MenuSubContent className="w-[208px]">
+					<MenuSubContent className="w-[208px]" sideOffset={6}>
 						{UPSTREAM_PRODUCT_LINKS.map((link) => (
 							<ExternalLinkItem key={link.href} href={link.href}>
 								{link.label}
