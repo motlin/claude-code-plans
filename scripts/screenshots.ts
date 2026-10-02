@@ -421,6 +421,30 @@ export function seedFixtureHome(fixtureRoot: string): string {
 	return fixtureHome;
 }
 
+/**
+ * The environment for a dev server running on fixture data. Every inherited HERDR_* variable is dropped and
+ * HERDR_SOCKET_PATH points at a socket that never exists inside the fixture, so the server cannot reach the user's
+ * real herdr.
+ */
+export function fixtureServerEnv(
+	inheritedEnv: NodeJS.ProcessEnv,
+	{fixtureRoot, fixtureHome, port}: {fixtureRoot: string; fixtureHome: string; port: number},
+): NodeJS.ProcessEnv {
+	const env: NodeJS.ProcessEnv = {};
+	for (const [key, value] of Object.entries(inheritedEnv)) {
+		if (!key.startsWith("HERDR_")) env[key] = value;
+	}
+	return {
+		...env,
+		HOME: fixtureHome,
+		XDG_CACHE_HOME: join(fixtureRoot, "cache"),
+		XDG_CONFIG_HOME: join(fixtureRoot, "config"),
+		HERDR_SOCKET_PATH: join(fixtureRoot, "no-herdr.sock"),
+		PORT: String(port),
+		NO_PROXY: "127.0.0.1,localhost",
+	};
+}
+
 function startDevServer(
 	fixtureRoot: string,
 	fixtureHome: string,
@@ -432,14 +456,7 @@ function startDevServer(
 	const server = spawn("pnpm", ["exec", "vp", "dev", "--host", "127.0.0.1", "--strictPort"], {
 		cwd: REPOSITORY_ROOT,
 		detached: process.platform !== "win32",
-		env: {
-			...process.env,
-			HOME: fixtureHome,
-			XDG_CACHE_HOME: join(fixtureRoot, "cache"),
-			XDG_CONFIG_HOME: join(fixtureRoot, "config"),
-			PORT: String(PORT),
-			NO_PROXY: "127.0.0.1,localhost",
-		},
+		env: fixtureServerEnv(process.env, {fixtureRoot, fixtureHome, port: PORT}),
 		stdio: ["ignore", "pipe", "pipe"],
 	});
 	const rememberOutput = (chunk: Buffer) => {

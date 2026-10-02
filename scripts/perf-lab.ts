@@ -25,7 +25,7 @@ import {dirname, join, resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {chromium, type BrowserContext, type CDPSession, type Page} from "playwright";
 import {generateTranscript, PERF_SHAPES} from "../tests/perf/fixtures/generate-transcript";
-import {FIXED_TIME, seedFixtureHome, stopDevServer} from "./screenshots";
+import {FIXED_TIME, fixtureServerEnv, seedFixtureHome, stopDevServer} from "./screenshots";
 
 const REPOSITORY_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const OUTPUT_DIRECTORY = join(REPOSITORY_ROOT, ".llm", "perf");
@@ -262,24 +262,11 @@ function deactivateOpenSession(fixture: LabFixture): void {
 }
 
 function startServer(fixture: LabFixture, port: number): {process: ChildProcess; output: string[]} {
-	const env: NodeJS.ProcessEnv = {};
-	for (const [key, value] of Object.entries(process.env)) {
-		// Never let the fixture server reach the user's real herdr.
-		if (!key.startsWith("HERDR_")) env[key] = value;
-	}
 	const output: string[] = [];
 	const server = spawn("pnpm", ["exec", "vp", "dev", "--host", "127.0.0.1", "--strictPort"], {
 		cwd: REPOSITORY_ROOT,
 		detached: process.platform !== "win32",
-		env: {
-			...env,
-			HOME: fixture.home,
-			XDG_CACHE_HOME: join(fixture.root, "cache"),
-			XDG_CONFIG_HOME: join(fixture.root, "config"),
-			HERDR_SOCKET_PATH: join(fixture.root, "no-herdr.sock"),
-			PORT: String(port),
-			NO_PROXY: "127.0.0.1,localhost",
-		},
+		env: fixtureServerEnv(process.env, {fixtureRoot: fixture.root, fixtureHome: fixture.home, port}),
 		stdio: ["ignore", "pipe", "pipe"],
 	});
 	const remember = (chunk: Buffer) => {
