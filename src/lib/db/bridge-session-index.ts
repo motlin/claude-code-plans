@@ -2,6 +2,7 @@ import {eq} from "drizzle-orm";
 import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
 import {z} from "zod";
 import {BridgeSessionRecordSchema} from "../schemas";
+import {foldJsonl} from "../incremental-jsonl";
 import * as schema from "./schema";
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
@@ -11,6 +12,10 @@ type BridgeAliases = z.infer<typeof BridgeAliasesSchema>;
 const OwnersSchema = z.array(z.string());
 const LOCAL_PREFIX = "bridge:v1:local:";
 const ALIAS_PREFIX = "bridge:v1:alias:";
+
+export function sessionBridgeMetadataKey(sessionId: string): string {
+	return `${LOCAL_PREFIX}${sessionId}`;
+}
 
 /** Bridge records travel with copied transcripts; only claim records belonging to this local session. */
 export class BridgeSessionCollector {
@@ -55,7 +60,7 @@ function writeMetadata(db: IndexDb, key: string, value: string): void {
 /** Keep every owner so an ambiguous remote alias can never silently select a different local transcript. */
 function updateAliases(db: IndexDb, sessionId: string, next: BridgeAliases | null): void {
 	db.transaction(() => {
-		const key = `${LOCAL_PREFIX}${sessionId}`;
+		const key = sessionBridgeMetadataKey(sessionId);
 		const previousValue = readMetadata(db, key);
 		const nextValue = next === null ? undefined : JSON.stringify(next);
 		if (previousValue === nextValue) return;
@@ -81,4 +86,27 @@ export function replaceSessionBridgeAliases(db: IndexDb, sessionId: string, coll
 
 export function deleteSessionBridgeAliases(db: IndexDb, sessionId: string): void {
 	updateAliases(db, sessionId, null);
+}
+
+/** Fill the missing marker for an unchanged transcript without rebuilding its messages or search rows. */
+export async function backfillSessionBridgeAliases(db: IndexDb, filePath: string, sessionId: string): Promise<void> {
+	const collector = await foldJsonl(filePath, {
+		create: () => new BridgeSessionCollector(),
+		add: (state, line) => {
+			if (!line.includes('"bridge-session"')) return;
+			try {
+				state.add(JSON.parse(line), sessionId);
+			} catch {
+				// Ignore malformed records, as the regular transcript fold does.
+			}
+		},
+	});
+	// A watcher may have indexed this session, or moved it, while the stream yielded.
+	const session = db
+		.select({filePath: schema.sessions.filePath, bridgeMetadataKey: schema.metadata.key})
+		.from(schema.sessions)
+		.leftJoin(schema.metadata, eq(schema.metadata.key, sessionBridgeMetadataKey(sessionId)))
+		.where(eq(schema.sessions.id, sessionId))
+		.get();
+	if (session?.filePath === filePath && session.bridgeMetadataKey === null) collector.persist(db, sessionId);
 }

@@ -29,7 +29,13 @@ import {deleteRoutinesForSessions, replaceRoutines} from "./routine-index";
 import {RoutineCollector} from "../routines";
 import {UsageCollector} from "../home-stats";
 import {deleteUsageDailyForSessions, replaceUsageDaily} from "./usage-index";
-import {BridgeSessionCollector, deleteSessionBridgeAliases, replaceSessionBridgeAliases} from "./bridge-session-index";
+import {
+	BridgeSessionCollector,
+	backfillSessionBridgeAliases,
+	deleteSessionBridgeAliases,
+	replaceSessionBridgeAliases,
+	sessionBridgeMetadataKey,
+} from "./bridge-session-index";
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
 
@@ -800,11 +806,19 @@ async function indexJsonlFileWithLinks(
 		// stale indexed_files row must not leave a re-inserted session at
 		// messageCount 0 forever.
 		const sessionRow = db
-			.select({id: schema.sessions.id})
+			.select({
+				id: schema.sessions.id,
+				filePath: schema.sessions.filePath,
+				bridgeMetadataKey: schema.metadata.key,
+			})
 			.from(schema.sessions)
+			.leftJoin(schema.metadata, eq(schema.metadata.key, sessionBridgeMetadataKey(sessionId)))
 			.where(eq(schema.sessions.id, sessionId))
 			.get();
 		if (sessionRow) {
+			if (sessionRow.filePath === filePath && sessionRow.bridgeMetadataKey === null) {
+				await backfillSessionBridgeAliases(db, filePath, sessionId);
+			}
 			const current =
 				cache === undefined ? undefined : await currentJsonlState(cache, filePath).catch(() => undefined);
 			return current?.project === project

@@ -3,11 +3,12 @@ import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {like, sql} from "drizzle-orm";
 import Database from "better-sqlite3";
-import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
+import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {openTestDb, type AppDb} from "../../src/lib/db/connection";
 import {createJsonlIndexCache, fullScan, indexJsonlFile} from "../../src/lib/db/indexer";
 import * as schema from "../../src/lib/db/schema";
 import {currentPerfCounters, withPerfScope} from "../../src/lib/perf/server-scope";
+import * as trackedFilesystem from "../../src/lib/perf/tracked-fs";
 
 const PROJECT = "-tmp-alice-project";
 const ALICE = "session-alice";
@@ -24,6 +25,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+	vi.restoreAllMocks();
 	db.close();
 	rmSync(directory, {recursive: true, force: true});
 });
@@ -56,6 +58,88 @@ function aliases(database = db.index) {
 }
 
 describe("indexed Remote Control aliases", () => {
+	it.each([true, false])("backfills an unchanged transcript once, with bridge records: %s", async (withBridge) => {
+		const records = [
+			{type: "user", message: {content: "Example searchable prompt"}},
+			...(withBridge ? [bridge(ALICE, "cse_alice_100")] : []),
+		];
+		write(ALICE, records);
+		await fullScan(db.index, db.summaries, directory);
+		const expectedAliases = aliases();
+		db.index.delete(schema.metadata).where(like(schema.metadata.key, "bridge:v1:%")).run();
+		db.index.insert(schema.archivedSessions).values({sessionId: ALICE, archivedAt: 946_684_800_000}).run();
+		db.index.insert(schema.sessionViewStates).values({sessionId: ALICE, updatedAt: 946_684_800_000}).run();
+		db.index.insert(schema.metadata).values({key: "example:setting", value: "alice"}).run();
+		const preservedRows = () => ({
+			messages: db.index.select().from(schema.sessionMessages).all(),
+			search: db.index.all(sql`SELECT * FROM message_content ORDER BY id`),
+			archived: db.index.select().from(schema.archivedSessions).all(),
+			viewed: db.index.select().from(schema.sessionViewStates).all(),
+			metadata: db.index
+				.select()
+				.from(schema.metadata)
+				.all()
+				.filter(({key}) => !key.startsWith("bridge:v1:")),
+		});
+		const before = preservedRows();
+		const scanCounters = () =>
+			withPerfScope("bridge-backfill", async () => {
+				await fullScan(db.index, db.summaries, directory);
+				return {...currentPerfCounters()!.jsonl};
+			});
+		expect({
+			first: await scanCounters(),
+			second: await scanCounters(),
+			aliases: aliases(),
+			rows: preservedRows(),
+		}).toStrictEqual({
+			first: {bytesRead: Buffer.byteLength(jsonl(records)), fullScans: 1},
+			second: {bytesRead: 0, fullScans: 0},
+			aliases: expectedAliases,
+			rows: before,
+		});
+	});
+
+	it("backfills only the indexed session path when another project contains the same local UUID", async () => {
+		const path = write(ALICE, [bridge(ALICE, "cse_alice_100")]);
+		await indexJsonlFile(db.index, path, PROJECT);
+		const otherProject = "-tmp-bob-project";
+		mkdirSync(join(directory, otherProject));
+		const otherPath = join(directory, otherProject, `${ALICE}.jsonl`);
+		writeFileSync(otherPath, jsonl([bridge(ALICE, "cse_alice_200")]));
+		await indexJsonlFile(db.index, otherPath, otherProject);
+		db.index.delete(schema.metadata).where(like(schema.metadata.key, "bridge:v1:%")).run();
+
+		const counters = await withPerfScope("bridge-stale-copy", async () => {
+			await indexJsonlFile(db.index, path, PROJECT);
+			return {...currentPerfCounters()!.jsonl};
+		});
+		expect({counters, aliases: aliases()}).toStrictEqual({
+			counters: {bytesRead: 0, fullScans: 0},
+			aliases: {},
+		});
+		await indexJsonlFile(db.index, otherPath, otherProject);
+		expect(aliases()).toStrictEqual({
+			"bridge:v1:local:session-alice": {aliases: ["session_alice_200"], canonical: "session_alice_200"},
+			"bridge:v1:alias:session_alice_200": [ALICE],
+		});
+	});
+
+	it("leaves failed backfills unmarked so the next scan retries", async () => {
+		const path = write(ALICE, [bridge(ALICE, "cse_alice_100")]);
+		await indexJsonlFile(db.index, path, PROJECT);
+		const expectedAliases = aliases();
+		db.index.delete(schema.metadata).where(like(schema.metadata.key, "bridge:v1:%")).run();
+		const error = new Error("Example transcript read failure");
+		vi.spyOn(trackedFilesystem, "trackedCreateReadStream").mockImplementationOnce(() => {
+			throw error;
+		});
+		await expect(indexJsonlFile(db.index, path, PROJECT)).rejects.toThrow(error);
+		expect(aliases()).toStrictEqual({});
+		await indexJsonlFile(db.index, path, PROJECT);
+		expect(aliases()).toStrictEqual(expectedAliases);
+	});
+
 	it("keeps validated historical aliases and the latest canonical ID for their local owner", async () => {
 		const path = write(ALICE, [
 			bridge(ALICE, "cse_alice_100"),
