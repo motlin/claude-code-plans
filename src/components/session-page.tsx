@@ -826,7 +826,7 @@ function SessionView({
 				{/* Sticky footer: the composer dock, opaque to the viewport bottom with a fade over the transcript */}
 				<div
 					data-session-footer
-					className="sticky bottom-0 z-10 -mx-4 -mb-8 pb-[max(env(safe-area-inset-bottom),9px)] sm:-mx-8 bg-surface-2 before:pointer-events-none before:absolute before:inset-x-0 before:bottom-full before:h-8 before:bg-linear-to-b before:from-transparent before:to-surface-2"
+					className="sticky bottom-0 z-10 -mx-4 -mb-8 pb-[max(env(safe-area-inset-bottom),9px)] sm:-mx-8 bg-page dark:bg-surface-2 before:pointer-events-none before:absolute before:inset-x-0 before:bottom-full before:h-8 before:bg-linear-to-b before:from-transparent before:to-page dark:before:to-surface-2"
 				>
 					<div className={!chromeHidden && data.projectPath ? "pt-2" : ""}>
 						<SessionDock anchorRef={scrollAnchorRef}>

@@ -309,7 +309,7 @@ describe("fixed-position session UI and the contained transcript scroller", () =
 		expect(
 			[...(footer?.classList ?? [])].filter((token) => token.startsWith("bg-") || token.startsWith("before:")),
 		).toStrictEqual([
-			"bg-surface-2",
+			"bg-page",
 			"before:pointer-events-none",
 			"before:absolute",
 			"before:inset-x-0",
@@ -317,7 +317,7 @@ describe("fixed-position session UI and the contained transcript scroller", () =
 			"before:h-8",
 			"before:bg-linear-to-b",
 			"before:from-transparent",
-			"before:to-surface-2",
+			"before:to-page",
 		]);
 	});
 });

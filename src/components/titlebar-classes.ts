@@ -7,4 +7,4 @@ export const TITLEBAR_ICON_BUTTON_CLASS =
  * is exactly upstream's 32px. The clearance vars keep it clear of the sidebar toggle.
  */
 export const SESSION_STICKY_HEADER_CLASS =
-	"sticky top-0 z-10 bg-surface-2 pt-[var(--top-left-clearance-top,0px)] -mx-4 pe-4 ps-[max(1rem,var(--top-left-clearance-start,0px))] sm:-mx-8 sm:pe-8 sm:ps-[max(2rem,var(--top-left-clearance-start,0px))]";
+	"sticky top-0 z-10 bg-page dark:bg-surface-2 pt-[var(--top-left-clearance-top,0px)] -mx-4 pe-4 ps-[max(1rem,var(--top-left-clearance-start,0px))] sm:-mx-8 sm:pe-8 sm:ps-[max(2rem,var(--top-left-clearance-start,0px))]";

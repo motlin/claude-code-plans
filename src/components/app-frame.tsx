@@ -40,7 +40,7 @@ export function AppFrame({
 				style={topLeftClearanceStyle(
 					phoneSheet ? "phone" : collapsed || narrowViewport ? "collapsed" : "docked",
 				)}
-				className={`flex-1 overflow-y-auto bg-surface-2 ${className ?? ""}`}
+				className={`flex-1 overflow-y-auto bg-page dark:bg-surface-2 ${className ?? ""}`}
 			>
 				{children}
 			</main>
