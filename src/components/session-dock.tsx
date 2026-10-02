@@ -39,7 +39,7 @@ function useScrollToBottom(anchorRef: RefObject<HTMLElement | null>) {
 /**
  * The bottom of the chat tile, modelled on claude.ai/code's composer dock: one
  * column on the transcript's measure holding the scroll-to-bottom pill and the
- * composer. The pill (upstream's white 20x24, radius-6 chip with no tooltip)
+ * composer. The circular 36px pill has no tooltip and
  * sits 32px above the dock, centered, and fades in once the reader is away from
  * the end of the transcript.
  */
@@ -55,7 +55,7 @@ export function SessionDock({anchorRef, children}: {anchorRef: RefObject<HTMLEle
 				inert={!awayFromBottom}
 				tabIndex={awayFromBottom ? 0 : -1}
 				onClick={scrollToBottom}
-				className={`absolute -top-8 left-1/2 -translate-x-1/2 z-[1] inline-flex h-6 w-5 items-center justify-center rounded-r5 bg-surface-3 px-1 text-secondary shadow-[inset_0_0_0_1px_var(--color-border),0_1px_2px_rgb(0_0_0/0.05)] cursor-pointer transition-opacity duration-150 ${
+				className={`absolute -top-8 left-1/2 -translate-x-1/2 z-[1] inline-flex size-9 items-center justify-center rounded-full bg-surface-3 p-1 text-secondary shadow-[inset_0_0_0_1px_var(--color-border),0_1px_2px_rgb(0_0_0/0.05)] cursor-pointer transition-opacity duration-150 ${
 					awayFromBottom ? "opacity-100" : "opacity-0 pointer-events-none"
 				}`}
 			>

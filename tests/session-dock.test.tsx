@@ -102,10 +102,12 @@ describe("SessionDock scroll-to-bottom pill", () => {
 });
 
 describe("SessionDock scroll-to-bottom pill style", () => {
-	it("draws upstream's white 20x24 pill with radius 6, an inset 10% ring plus a 5% drop shadow and a 12px chevron", () => {
+	it("draws a 36px circular pill while retaining its surface and chevron", () => {
 		render(<DockInScroller />);
 		const pill = screen.getByLabelText("Scroll to bottom", {selector: "button"});
 		const shape = [
+			"size-9",
+			"p-1",
 			"h-6",
 			"w-5",
 			"px-1",
@@ -127,15 +129,17 @@ describe("SessionDock scroll-to-bottom pill style", () => {
 			title: pill.getAttribute("title"),
 		}).toStrictEqual({
 			shape: [
-				["h-6", true],
-				["w-5", true],
-				["px-1", true],
-				["rounded-r5", true],
+				["size-9", true],
+				["p-1", true],
+				["h-6", false],
+				["w-5", false],
+				["px-1", false],
+				["rounded-r5", false],
 				["bg-surface-3", true],
 				["shadow-[inset_0_0_0_1px_var(--color-border),0_1px_2px_rgb(0_0_0/0.05)]", true],
 				["text-secondary", true],
 				["size-6", false],
-				["rounded-full", false],
+				["rounded-full", true],
 				["border", false],
 				["shadow-panel-sm", false],
 				["hover:text-primary", false],
