@@ -663,12 +663,15 @@ const BANNER_LINE_TYPES = new Set([
 	"worktree",
 ]);
 
-function isToolOnlyAssistantLine(line: SessionLine): boolean {
+/** Prominent question cards split tool runs so summaries cannot reorder their answers. */
+function isGroupableToolOnlyAssistantLine(line: SessionLine): boolean {
 	if (line.type !== "assistant") return false;
 	const content = line.message?.content;
 	if (!Array.isArray(content) || content.length === 0) return false;
 	return content.every(
-		(b) => b.type === "tool_use" || (b.type === "text" && (typeof b.text !== "string" || b.text.trim() === "")),
+		(b) =>
+			(b.type === "tool_use" && !PROMINENT_TOOLS.has(b.name)) ||
+			(b.type === "text" && (typeof b.text !== "string" || b.text.trim() === "")),
 	);
 }
 
@@ -835,7 +838,7 @@ function buildSessionListEntries(
 				j++;
 			}
 			const following = lines[j];
-			if (following !== undefined && isToolOnlyAssistantLine(following) && renderProps.showTools) {
+			if (following !== undefined && isGroupableToolOnlyAssistantLine(following) && renderProps.showTools) {
 				leadingNotices = notices;
 			} else {
 				prevVisibleType = "assistant";
@@ -852,7 +855,7 @@ function buildSessionListEntries(
 		}
 
 		// Group consecutive tool-only assistant lines
-		if (isToolOnlyAssistantLine(line) && renderProps.showTools) {
+		if (isGroupableToolOnlyAssistantLine(line) && renderProps.showTools) {
 			const groupStart = i;
 			const groupIndices: number[] = [i];
 			const notices = leadingNotices;
@@ -875,7 +878,7 @@ function buildSessionListEntries(
 					j++;
 					continue;
 				}
-				if (isToolOnlyAssistantLine(nextLine)) {
+				if (isGroupableToolOnlyAssistantLine(nextLine)) {
 					groupIndices.push(j);
 					j++;
 				} else {

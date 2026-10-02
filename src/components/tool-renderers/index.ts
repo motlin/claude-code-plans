@@ -1,6 +1,8 @@
 import {lazy, type ComponentType} from "react";
 import type {ToolRendererProps} from "./types";
 import {getMcpRenderer} from "./mcp-registry";
+// Question cards are always visible, so they must not wait behind a blank lazy-loading fallback.
+import {AskUserQuestionRenderer} from "./ask-user-question-renderer";
 
 const EditRenderer = lazy(() => import("./edit-renderer").then((m) => ({default: m.EditRenderer})));
 const BashRenderer = lazy(() => import("./bash-renderer").then((m) => ({default: m.BashRenderer})));
@@ -8,11 +10,6 @@ const ReadRenderer = lazy(() => import("./read-renderer").then((m) => ({default:
 const WriteRenderer = lazy(() => import("./write-renderer").then((m) => ({default: m.WriteRenderer})));
 const GlobRenderer = lazy(() => import("./glob-renderer").then((m) => ({default: m.GlobRenderer})));
 const GrepRenderer = lazy(() => import("./grep-renderer").then((m) => ({default: m.GrepRenderer})));
-const AskUserQuestionRenderer = lazy(() =>
-	import("./ask-user-question-renderer").then((m) => ({
-		default: m.AskUserQuestionRenderer,
-	})),
-);
 const AgentRenderer = lazy(() => import("./agent-renderer").then((m) => ({default: m.AgentRenderer})));
 const TaskCreateRenderer = lazy(() =>
 	import("./task-create-renderer").then((m) => ({

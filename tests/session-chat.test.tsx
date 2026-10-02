@@ -724,7 +724,11 @@ function summaryLabels(html: string): string[] {
 }
 
 /** One tool-only assistant record and its result, with an optional source session id. */
-function answeredToolCall(call: {id: string; name: string; input: unknown}, sessionId?: string): unknown[] {
+function answeredToolCall(
+	call: {id: string; name: string; input: unknown},
+	sessionId?: string,
+	result = "ok",
+): unknown[] {
 	const session = sessionId === undefined ? {} : {sessionId};
 	return [
 		{
@@ -743,13 +747,59 @@ function answeredToolCall(call: {id: string; name: string; input: unknown}, sess
 			...session,
 			message: {
 				role: "user",
-				content: [{type: "tool_result", tool_use_id: call.id, content: "ok", is_error: false}],
+				content: [{type: "tool_result", tool_use_id: call.id, content: result, is_error: false}],
 			},
 		},
 	];
 }
 
 describe("SessionChat sequential tool batches", () => {
+	it("immediately renders answered questions between their surrounding command groups", () => {
+		const reminder = {
+			type: "attachment",
+			attachment: {type: "total_tokens_reminder", text: "<total_tokens>1000 tokens left</total_tokens>"},
+		};
+		const container = renderTranscriptElement([
+			...answeredToolCall({
+				id: "before-question",
+				name: "Bash",
+				input: {command: "echo prepared", description: "Prepare example files"},
+			}),
+			{...reminder, uuid: "reminder-before-question"},
+			...answeredToolCall(
+				{
+					id: "question",
+					name: "AskUserQuestion",
+					input: {
+						questions: [
+							{
+								question: "Continue with the example?",
+								header: "Example",
+								multiSelect: false,
+								options: [
+									{label: "Continue", description: "Run both example commands"},
+									{label: "Stop", description: "Leave the example unchanged"},
+								],
+							},
+						],
+					},
+				},
+				undefined,
+				'Your questions have been answered: "Continue with the example?"="Continue". You can now continue with these answers in mind.',
+			),
+			{...reminder, uuid: "reminder-after-question"},
+			...answeredToolCall({id: "after-first", name: "Bash", input: {command: "echo first"}}),
+			{...reminder, uuid: "reminder-between-commands"},
+			...answeredToolCall({id: "after-second", name: "Bash", input: {command: "echo second"}}),
+		]);
+
+		expect(
+			[...container.querySelectorAll('[data-tool-row] > [role="button"], [data-tool-row] > button, p')].map(
+				(element) => element.textContent,
+			),
+		).toStrictEqual(["Prepared example files", "Continue with the example?", "Continue", "Ran 2 commands"]);
+	});
+
 	it("groups commands across a hidden token budget reminder", () => {
 		const html = renderTranscript([
 			...answeredToolCall({id: "first-command", name: "Bash", input: {command: "echo first"}}),
