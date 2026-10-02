@@ -149,7 +149,11 @@ function linkText(tokens: readonly Token[]): string {
  * linkified, into one `type` token carrying the match as `meta`, the href, and
  * the link's plain text as `content`, so a renderer rule can draw it whole.
  */
-function collapseLinks<Meta>(state: StateCore, type: string, match: (href: string) => Meta | undefined): void {
+function collapseLinks<Meta>(
+	state: StateCore,
+	type: string,
+	match: (href: string, token: Token) => Meta | undefined,
+): void {
 	for (const block of state.tokens) {
 		const children = block.children;
 		if (block.type !== "inline" || children === null) continue;
@@ -157,7 +161,7 @@ function collapseLinks<Meta>(state: StateCore, type: string, match: (href: strin
 		for (let index = 0; index < children.length; index++) {
 			const token = children[index]!;
 			const href = token.type === "link_open" ? token.attrGet("href") : null;
-			const meta = href === null ? undefined : match(href);
+			const meta = href === null ? undefined : match(href, token);
 			const close =
 				meta === undefined ? -1 : children.findIndex((child, at) => at > index && child.type === "link_close");
 			if (href === null || meta === undefined || close === -1) {
@@ -202,9 +206,11 @@ function parsePullRequestUrl(href: string): PullRequestRef | undefined {
 	return {owner: match[1]!, repo: match[2]!, number: match[3]!};
 }
 
-/** Upstream renders a GitHub pull request link as a compact `owner/repo#n` chip. */
+/** Raw PR URLs become chips; authored Markdown links keep their label tokens. */
 function pullRequestChips(state: StateCore): void {
-	collapseLinks(state, PR_CHIP_TOKEN, parsePullRequestUrl);
+	collapseLinks(state, PR_CHIP_TOKEN, (href, token) =>
+		token.markup === "linkify" || token.markup === "autolink" ? parsePullRequestUrl(href) : undefined,
+	);
 }
 
 function pullRequestChipHtml(token: Token, escape: (value: string) => string): string {

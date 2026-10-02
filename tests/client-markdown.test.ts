@@ -461,11 +461,47 @@ describe("GitHub PR chips", () => {
 		]);
 	});
 
-	it("replace a written PR link's text with the chip label", () => {
+	it("preserve a written PR link's text", () => {
+		const url = "https://github.com/example-owner/example-repo/pull/123";
+		expect(renderMarkdownToHtml(`[PR #123: Example sync](${url})`)).toBe(
+			`<p><a href="${url}" target="_blank" rel="noreferrer">PR #123: Example sync</a></p>\n`,
+		);
+	});
+
+	it("preserve an explicitly authored URL label", () => {
+		const url = "https://github.com/example-owner/example-repo/pull/123";
+		expect(renderMarkdownToHtml(`[${url}](${url})`)).toBe(
+			`<p><a href="${url}" target="_blank" rel="noreferrer">${url}</a></p>\n`,
+		);
+	});
+
+	it("preserve formatting inside an authored PR label", () => {
+		const url = "https://github.com/example-owner/example-repo/pull/123";
+		expect(renderMarkdownToHtml(`[**PR #123**: \`sync\`](${url})`)).toBe(
+			`<p><a href="${url}" target="_blank" rel="noreferrer"><strong>PR #123</strong>: <code>sync</code></a></p>\n`,
+		);
+	});
+
+	it("keep angle-bracket PR URLs as automatic chips", () => {
+		const url = "https://github.com/example-owner/example-repo/pull/123";
 		const container = document.createElement("div");
-		container.innerHTML = renderMarkdownToHtml(`[PR #1954: OrderedHashMap](${href})`);
-		expect([...container.querySelectorAll("a")].map((a) => [a.className, a.textContent])).toStrictEqual([
-			["pr-chip", "motlin/claude-code-plans#1954"],
+		container.innerHTML = renderMarkdownToHtml(`<${url}>`);
+		expect(
+			[...container.querySelectorAll("a")].map((a) => ({
+				href: a.getAttribute("href"),
+				target: a.getAttribute("target"),
+				rel: a.getAttribute("rel"),
+				className: a.className,
+				text: a.textContent,
+			})),
+		).toStrictEqual([
+			{
+				href: url,
+				target: "_blank",
+				rel: "noreferrer",
+				className: "pr-chip",
+				text: "example-owner/example-repo#123",
+			},
 		]);
 	});
 
