@@ -32,12 +32,13 @@ afterEach(cleanup);
 
 const THINKING = "Fabricated reasoning about the next step\nSecond line of reasoning";
 
-function renderThinking(options: {showDebug?: boolean} = {}): HTMLElement {
+function renderThinking(options: {showDebug?: boolean; thinkingDurationMs?: number} = {}): HTMLElement {
 	showDebug = options.showDebug ?? false;
 	const {lines, toolResultMap} = processTranscript([
 		{
 			type: "assistant",
 			uuid: "a1",
+			...(options.thinkingDurationMs === undefined ? {} : {thinkingDurationMs: options.thinkingDurationMs}),
 			message: {
 				role: "assistant",
 				content: [{type: "thinking", thinking: THINKING}],
@@ -125,5 +126,34 @@ describe("thinking block", () => {
 		expect(writeText.mock.calls).toStrictEqual([
 			["> Fabricated reasoning about the next step\n> Second line of reasoning"],
 		]);
+	});
+
+	it("labels how long the model thought above the thinking text", () => {
+		renderThinking({thinkingDurationMs: 2600});
+
+		const label = screen.getByText("Thought for 2.6s");
+		const rail = screen.getByText(THINKING, {collapseWhitespace: false}).parentElement?.parentElement;
+
+		expect({
+			className: label.className,
+			inRail: label.parentElement === rail,
+			first: rail?.firstElementChild === label,
+		}).toStrictEqual({className: "text-xs text-t6 mb-1", inRail: true, first: true});
+	});
+
+	it.each([
+		[400, "Thought for 0.4s"],
+		[59_940, "Thought for 59.9s"],
+		[65_000, "Thought for 1m 5s"],
+	])("formats a %i ms thinking duration as %s", (thinkingDurationMs, expected) => {
+		renderThinking({thinkingDurationMs});
+
+		expect(screen.getByText(expected).textContent).toBe(expected);
+	});
+
+	it("omits the duration label when the turn has no thinking duration", () => {
+		renderThinking();
+
+		expect(screen.queryAllByText(/^Thought for/).length).toBe(0);
 	});
 });

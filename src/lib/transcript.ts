@@ -92,6 +92,8 @@ const MessageLineSchema = z.object({
 	attributionMcpTool: z.string().optional(),
 	perTurnEffort: z.string().optional(),
 	advisorModel: z.string().optional(),
+	/** Whole milliseconds the model spent thinking on this assistant turn. */
+	thinkingDurationMs: z.number().optional(),
 	/** What the server-side permission classifier saw for this user turn. */
 	classifierContext: z
 		.object({
@@ -839,6 +841,7 @@ function processRecordBatch(
 				processedLine.perTurnEffort = record.perTurnEffort;
 			}
 			if (record.advisorModel !== undefined) processedLine.advisorModel = record.advisorModel;
+			if (record.thinkingDurationMs !== undefined) processedLine.thinkingDurationMs = record.thinkingDurationMs;
 			// Attribution repeats on every turn of a skill/MCP block; only carry it
 			// onto the first line of each run so the UI shows one pill per block.
 			const attributionKey = JSON.stringify([

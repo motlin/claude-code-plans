@@ -2020,10 +2020,12 @@ function ThinkingBlock({
 	thinking,
 	sessionId,
 	sourceUuid,
+	durationMs,
 }: {
 	thinking: string;
 	sessionId: string;
 	sourceUuid: string | undefined;
+	durationMs: number | undefined;
 }) {
 	const {settings} = useSettings();
 	// Upstream's pr-6 fits the copy button alone. When DebugLink renders it
@@ -2031,6 +2033,9 @@ function ThinkingBlock({
 	const gutterClass = settings.showDebug && sourceUuid ? "pr-10" : "pr-6";
 	return (
 		<div className="border-l-2 border-t2 pl-3">
+			{durationMs !== undefined && (
+				<div className="text-xs text-t6 mb-1">Thought for {formatThinkingDuration(durationMs)}</div>
+			)}
 			<div className="group/body relative">
 				<div className={`text-body text-t6 italic whitespace-pre-wrap break-words ${gutterClass}`}>
 					{thinking}
@@ -2042,6 +2047,13 @@ function ThinkingBlock({
 			</div>
 		</div>
 	);
+}
+
+function formatThinkingDuration(ms: number): string {
+	if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`;
+	const mins = Math.floor(ms / 60_000);
+	const secs = Math.round((ms % 60_000) / 1000);
+	return `${mins}m ${secs}s`;
 }
 
 function toMarkdownQuote(text: string): string {
@@ -2211,7 +2223,14 @@ function ContentBlock({
 
 	if (block.type === "thinking" && typeof block.thinking === "string") {
 		if (!showThinking || !block.thinking.trim()) return null;
-		return <ThinkingBlock thinking={block.thinking} sessionId={sessionId} sourceUuid={line.uuid} />;
+		return (
+			<ThinkingBlock
+				thinking={block.thinking}
+				sessionId={sessionId}
+				sourceUuid={line.uuid}
+				durationMs={line.thinkingDurationMs}
+			/>
+		);
 	}
 
 	if (block.type === "tool_use") {

@@ -1161,6 +1161,26 @@ describe("message metadata fields", () => {
 		]);
 	});
 
+	it("carries the thinking duration on assistant lines", () => {
+		const records = [
+			assistantRecord([{type: "thinking", thinking: "hmm", signature: "sig"}], {thinkingDurationMs: 2600}),
+			assistantRecord([{type: "text", text: "plain"}]),
+		];
+		expect(processTranscript(records).lines).toStrictEqual([
+			{
+				type: "assistant",
+				lineIndex: 0,
+				thinkingDurationMs: 2600,
+				message: {role: "assistant", content: [{type: "thinking", thinking: "hmm", signature: "sig"}]},
+			},
+			{
+				type: "assistant",
+				lineIndex: 1,
+				message: {role: "assistant", content: [{type: "text", text: "plain"}]},
+			},
+		]);
+	});
+
 	it("carries the classifier's live cwd, git branch, and platform on user lines", () => {
 		const records = [
 			userRecord("hello", {
