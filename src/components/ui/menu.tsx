@@ -38,7 +38,7 @@ const DENSITY_CLASSES = {
 		singleLine: "h-8 items-center",
 		twoLine: "min-h-8 items-start",
 		separator: "mx-2.5",
-		shortcut: "[&>kbd]:text-[13px]",
+		shortcut: "[&>kbd]:text-[13px] [&>kbd]:inline-flex [&>kbd]:items-baseline [&>kbd]:gap-[0.3em]",
 		shortcutPadding: "pl-5",
 	},
 } as const;
