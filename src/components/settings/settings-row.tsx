@@ -4,7 +4,7 @@ import {createContext, type ReactNode, useContext, useEffect, useId, useRef} fro
  * Settings section and row anatomy copied from claude.ai/code: an h3 at
  * 15/20 weight 580 over `settings-group-dividers` rows. Each row is a
  * role=group labelled by its title and described by its description, with the
- * control column (data-settings-control) on the right, gap-lg (24px) apart and
+ * control column (data-settings-control) on the right, gap-lg (28px) apart and
  * py-md (12px) with hairline dividers between rows.
  */
 
@@ -67,7 +67,7 @@ export function SettingsRow({slug, title, description, children, footnote, class
 				ref={rowRef}
 				data-settings-row={slug}
 				data-settings-flash={flashing ? "" : undefined}
-				className={`flex items-center justify-between gap-6 py-3 ${className ?? ""}`}
+				className={`flex items-center justify-between gap-7 py-3 ${className ?? ""}`}
 			>
 				<div className="flex min-w-0 flex-1 flex-col justify-center gap-1">
 					<div id={titleId} className="text-body text-primary">
