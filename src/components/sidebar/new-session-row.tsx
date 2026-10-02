@@ -6,7 +6,7 @@ import {requestHomeComposerFocus} from "../../lib/home-composer-focus";
 import {Shortcut} from "../ui/shortcut";
 
 const ROW_CLASS =
-	"group df-nav-row h-[var(--sb-row-h)] rounded-[var(--sb-radius)] flex-1 data-[selected=focused]:[&_.df-leading-slot]:text-primary";
+	"group df-nav-row h-[var(--sb-row-h)] rounded-[var(--sb-radius)] flex-1 hover:[&_.df-leading-slot]:text-primary data-[selected=focused]:[&_.df-leading-slot]:text-primary";
 
 /**
  * Upstream's sticky "New" row: goes home and focuses the composer, exactly like ⇧⌘O, and reveals
