@@ -282,7 +282,7 @@ export function SettingsDialog() {
 						</div>
 					</nav>
 					<div className="flex min-w-0 flex-1 flex-col">
-						<div className="flex shrink-0 justify-end p-3">
+						<div className="flex shrink-0 justify-end px-3 pt-3 pb-2">
 							<Dialog.Close
 								aria-label="Close"
 								className="flex h-8 w-8 items-center justify-center rounded-r6 text-primary transition-colors hover:bg-fill-ghost-hover"
