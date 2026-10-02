@@ -36,7 +36,6 @@ export function MoreNavMenu({
 	return (
 		<>
 			<div className="flex items-center">
-				<span className="w-6 shrink-0" />
 				<Menu>
 					<MenuTrigger aria-label="More navigation items" className={NAV_ROW_CLASS}>
 						<span className="df-leading-slot">
