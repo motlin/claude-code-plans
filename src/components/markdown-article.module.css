@@ -430,3 +430,8 @@
 :global([data-transcript-prose]) .markdown > ul:not(:global(.contains-task-list)) > li + li {
 	margin-top: 0.25em;
 }
+
+:global([data-transcript-prose]) .markdown table {
+	border-collapse: separate;
+	border-spacing: 0;
+}
