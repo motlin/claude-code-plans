@@ -428,6 +428,48 @@ describe("AssistantRecordSchema", () => {
 	});
 });
 
+describe("AttachmentRecordSchema", () => {
+	it.each([{}, {renderedBesideToolResult: true}, {renderedBesideToolResult: false}])(
+		"preserves optional tool-result placement metadata: %j",
+		(placement) => {
+			const record = {
+				type: "attachment",
+				attachment: {type: "remote_session_change", url: null},
+				rendered: [{content: "Example remote session reminder"}],
+				renderedRole: "user",
+				...placement,
+			};
+
+			expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
+		},
+	);
+
+	it.each([null, "true", 1, {}, []])("rejects non-boolean tool-result placement metadata: %j", (placement) => {
+		expect(
+			JsonlRecordSchema.safeParse({
+				type: "attachment",
+				attachment: {type: "remote_session_change", url: null},
+				renderedBesideToolResult: placement,
+			}).success,
+		).toBe(false);
+	});
+
+	it.each([
+		{extra: true},
+		{attachment: {type: "remote_session_change", renderedBesideToolResult: true}},
+		{rendered: [{content: "Example remote session reminder", extra: true}]},
+	])("keeps attachment envelopes and rendered content strict: %j", (extraFields) => {
+		expect(
+			JsonlRecordSchema.safeParse({
+				type: "attachment",
+				attachment: {type: "remote_session_change", url: null},
+				renderedBesideToolResult: true,
+				...extraFields,
+			}).success,
+		).toBe(false);
+	});
+});
+
 describe("ProgressRecordSchema", () => {
 	it("parses a progress record", () => {
 		const record = {
