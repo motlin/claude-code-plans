@@ -167,7 +167,7 @@ describe("transcript width setting", () => {
 		});
 	});
 
-	it("shares the configured measure and responsive gutter variables between transcript and dock", () => {
+	it("allows shell gutter overrides while defaulting to 32px desktop and 16px phone gutters", () => {
 		const styles = readFileSync("src/styles/globals.css", "utf8");
 		const rules = [...styles.matchAll(/\.chat-column \{([^}]+)\}/g)].map(([, declarations]) =>
 			declarations!.trim().split(/;\s*/).filter(Boolean),
