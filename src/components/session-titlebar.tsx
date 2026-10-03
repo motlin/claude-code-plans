@@ -60,7 +60,7 @@ const CHEVRON_CLASS =
 	"flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-r6 text-secondary transition-colors hover:bg-fill-ghost-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100 data-[popup-open]:bg-fill-ghost-hover";
 
 const PILL_CLASS =
-	"inline-flex h-5 min-w-0 shrink-0 cursor-default items-center gap-[3px] rounded-r5 bg-alpha-2 px-[5px] text-caption text-secondary no-underline select-none transition-colors hover:bg-alpha-3 data-[popup-open]:bg-alpha-3";
+	"inline-flex h-5 min-w-0 shrink-0 cursor-default items-center gap-[3px] rounded-r5 bg-alpha-2 px-[5px] text-caption leading-[15px] text-secondary no-underline select-none transition-colors hover:bg-alpha-3 data-[popup-open]:bg-alpha-3";
 
 /** `https://github.com/owner/repo` from the session's `pr-link`, the one remote URL the index knows. */
 function repositoryUrl(pr: SessionDetailData["pr"]): string | null {
