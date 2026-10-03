@@ -303,7 +303,7 @@ export function BranchStrip({
 						}
 						onClick={dismiss}
 					>
-						<X aria-hidden className="size-3.5" />
+						<X aria-hidden className={pr === null ? "size-3.5" : "size-4"} />
 					</button>
 				</div>
 			)}
