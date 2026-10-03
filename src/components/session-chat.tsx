@@ -1121,13 +1121,17 @@ function VirtualizedSessionEntries({
 		const list = listRef.current;
 		const source = restoration.source;
 		if (!list || source === undefined) return;
-		const width = list.getBoundingClientRect().width;
+		const hidden = list.closest("[hidden]") !== null;
+		let width = hidden
+			? (restoration.saved?.width ?? measurementWidthRef.current)
+			: list.getBoundingClientRect().width;
 		// A nested pane move renders this instance before the old instance's
 		// cleanup retains its geometry. Claim that one same-commit handoff here.
 		if (managesTileGeometry && !handoffAttempted.current && !restoration.saved && expansionStore.size === 0) {
 			handoffAttempted.current = true;
 			const saved = readTranscriptMeasurements(measurementKey, source);
-			if (saved && saved.width === width) {
+			if (saved && (hidden || saved.width === width)) {
+				if (hidden) width = saved.width;
 				const heights = new Map(saved.heights);
 				pendingHandoff.current = heights;
 				measuredHeightsRef.current = heights;
@@ -1140,7 +1144,7 @@ function VirtualizedSessionEntries({
 		// Rendering only reads/clones. A committed mount owns the retained generation.
 		discardTranscriptMeasurements(measurementKey);
 		measurementWidthRef.current = width;
-		if (restoration.saved && restoration.saved.width !== width) {
+		if (!hidden && restoration.saved && restoration.saved.width !== width) {
 			restoringRangeRef.current = false;
 			measuredHeightsRef.current = new Map();
 			if (managesTileGeometry) pendingHandoff.current = measuredHeightsRef.current;
@@ -1148,7 +1152,11 @@ function VirtualizedSessionEntries({
 		}
 		return () => {
 			if (pendingHandoff.current) return;
-			if (!reusableRef.current || expansionStore.size !== 0 || list.getBoundingClientRect().width !== width) {
+			if (
+				!reusableRef.current ||
+				expansionStore.size !== 0 ||
+				(!list.closest("[hidden]") && list.getBoundingClientRect().width !== width)
+			) {
 				discardTranscriptMeasurements(measurementKey);
 				return;
 			}
@@ -1170,6 +1178,7 @@ function VirtualizedSessionEntries({
 	useLayoutEffect(() => {
 		if (pendingHandoff.current && pendingHandoff.current !== measuredHeights) return;
 		pendingHandoff.current = null;
+		if (listRef.current?.closest("[hidden]")) return;
 		geometryReady?.();
 	}, [geometryReady, measuredHeights, range]);
 
@@ -1185,7 +1194,7 @@ function VirtualizedSessionEntries({
 	const updateVisibleRange = useCallback(() => {
 		const list = listRef.current;
 		const scroller = scrollerRef.current;
-		if (!list || !scroller || entries.length === 0 || pendingHandoff.current) return;
+		if (!list || !scroller || entries.length === 0 || pendingHandoff.current || list.closest("[hidden]")) return;
 		// The persistent main element is still at the departed page's zero offset
 		// until router restoration runs. Keep the saved window through that interval.
 		if (restoringRangeRef.current && scroller.scrollTop === 0) return;
@@ -1224,6 +1233,8 @@ function VirtualizedSessionEntries({
 		const list = listRef.current;
 		if (!list || typeof ResizeObserver === "undefined") return;
 		const observer = new ResizeObserver((observations) => {
+			// Expanded panes hide chat with display:none; zero rectangles are not new row measurements.
+			if (list.closest("[hidden]")) return;
 			let changed = false;
 			for (const observation of observations) {
 				if (observation.target === list) {

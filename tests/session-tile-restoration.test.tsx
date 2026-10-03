@@ -74,6 +74,7 @@ function spacerHeight(host: Element, position: "before" | "after"): number {
 	);
 }
 function contentHeight(host: Element): number {
+	if (host.closest("[hidden]")) return 0;
 	return (
 		spacerHeight(host, "before") +
 		mountedRows(host).reduce((sum, row) => sum + rowHeight(Number(row.dataset["transcriptEntryIndex"])), 0) +
@@ -139,7 +140,7 @@ function installGeometry() {
 	Object.defineProperty(Element.prototype, "scrollTop", {
 		configurable: true,
 		get() {
-			return clampedPosition(this);
+			return this.closest("[hidden]") ? 0 : clampedPosition(this);
 		},
 		set(value: number) {
 			const applied = Math.min(Math.max(0, value), Math.max(0, contentHeight(this) - viewportHeight));
@@ -156,6 +157,7 @@ function installGeometry() {
 		},
 	});
 	vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
+		if (this.closest("[hidden]")) return new DOMRect();
 		const host = this.closest("[data-session-scrollport]") ?? this;
 		if (!hostWidths.has(host)) hostWidths.set(host, listWidth);
 		if (this.matches("main,[data-session-scrollport]")) return new DOMRect(0, 0, 800, viewportHeight);
@@ -311,7 +313,7 @@ async function renderShell(strict: boolean, routeId = LOCAL_ID, fresh = false) {
 		return result;
 	});
 	vi.spyOn(Element.prototype, "clientHeight", "get").mockImplementation(function (this: Element) {
-		return this.matches("[data-session-scrollport]") ? viewportHeight : 0;
+		return this.matches("[data-session-scrollport]") && !this.closest("[hidden]") ? viewportHeight : 0;
 	});
 	vi.spyOn(Element.prototype, "scrollHeight", "get").mockImplementation(function (this: Element) {
 		return contentHeight(this);
@@ -439,47 +441,76 @@ it.each([LOCAL_ID, ALIAS])("restores chat on Back after an ordinary route owns m
 	await settleMeasurements(returned);
 	expect(state(returned)).toStrictEqual(before);
 });
-it("binds the dock to the moved host and preserves reading position through Expand/Collapse", async () => {
-	await renderShell(false);
-	const initial = actualScrollport();
-	fireEvent.click(screen.getByRole("button", {name: "Open fabricated pane"}));
-	await settleMeasurements(initial);
-	await act(async () => {
-		initial.scrollTop = 8000;
-		fireEvent.scroll(initial);
-	});
-	await settleMeasurements(initial);
-	fireEvent.keyDown(paneMove(), {key: "ArrowDown"});
-	fireEvent.keyDown(paneMove(), {key: "Enter"});
-	const moved = actualScrollport();
-	await settleMeasurements(moved);
-	const before = state(moved);
-	fireEvent.click(screen.getByRole("button", {name: "Expand"}));
-	fireEvent.click(screen.getByRole("button", {name: "Collapse"}));
-	const collapsed = actualScrollport();
-	await settleMeasurements(collapsed);
-	expect(state(collapsed)).toStrictEqual(before);
-	const targetHeight = collapsed.scrollHeight;
-	phase = "dock";
-	fireEvent.click(screen.getByRole("button", {name: "Scroll to bottom"}));
-	expect(
-		writes
-			.filter((w) => w.phase === "dock")
-			.map((w) => ({
-				newHost: w.host === collapsed,
-				oldHost: w.host === initial,
-				requested: w.requested,
-				applied: w.applied,
-			})),
-	).toStrictEqual([
-		{
-			newHost: true,
-			oldHost: false,
-			requested: targetHeight,
-			applied: targetHeight - collapsed.clientHeight,
-		},
-	]);
-});
+it.each([false, true])(
+	"binds the moved dock and preserves reading position through hidden Expand/Collapse, strict=%s",
+	async (strict) => {
+		await renderShell(strict);
+		const initial = actualScrollport();
+		fireEvent.click(screen.getByRole("button", {name: "Open fabricated pane"}));
+		await settleMeasurements(initial);
+		await act(async () => {
+			initial.scrollTop = 8000;
+			fireEvent.scroll(initial);
+		});
+		await settleMeasurements(initial);
+		fireEvent.keyDown(paneMove(), {key: "ArrowDown"});
+		fireEvent.keyDown(paneMove(), {key: "Enter"});
+		const moved = actualScrollport();
+		await settleMeasurements(moved);
+		const before = state(moved);
+		const draft = screen.getByRole("textbox", {name: "Fabricated draft"});
+		fireEvent.change(draft, {target: {value: "Alice's unsent revised draft"}});
+		const beforeRows = mountedRows(moved);
+		phase = "hidden-nested";
+		fireEvent.click(screen.getByRole("button", {name: "Expand"}));
+		const hiddenHost = actualScrollport();
+		expect(hiddenHost).toBe(moved);
+		expect({
+			hidden: hiddenHost.closest("[hidden]") !== null,
+			height: hiddenHost.clientHeight,
+			width: hiddenHost.getBoundingClientRect().width,
+			scrollHeight: hiddenHost.scrollHeight,
+		}).toStrictEqual({hidden: true, height: 0, width: 0, scrollHeight: 0});
+		await settleFresh(hiddenHost);
+		expect(mountedRows(hiddenHost)).toStrictEqual(beforeRows);
+		expect({
+			paneCount: screen.getAllByText("Alice pane").length,
+			overlayCount: document.querySelectorAll("[data-pane-overlay]").length,
+		}).toStrictEqual({paneCount: 1, overlayCount: 1});
+		fireEvent.click(screen.getByRole("button", {name: "Collapse"}));
+		const collapsed = actualScrollport();
+		expect(collapsed).toBe(moved);
+		await settleMeasurements(collapsed);
+		expect(state(collapsed)).toStrictEqual(before);
+		expect(screen.getByRole("textbox", {name: "Fabricated draft"})).toBe(draft);
+		expect((draft as HTMLTextAreaElement).value).toBe("Alice's unsent revised draft");
+		expect(
+			writes
+				.filter((write) => write.phase === "hidden-nested")
+				.map(({requested, applied}) => ({requested, applied})),
+		).toStrictEqual([]);
+		const targetHeight = collapsed.scrollHeight;
+		phase = "dock";
+		fireEvent.click(screen.getByRole("button", {name: "Scroll to bottom"}));
+		expect(
+			writes
+				.filter((w) => w.phase === "dock")
+				.map((w) => ({
+					newHost: w.host === collapsed,
+					oldHost: w.host === initial,
+					requested: w.requested,
+					applied: w.applied,
+				})),
+		).toStrictEqual([
+			{
+				newHost: true,
+				oldHost: false,
+				requested: targetHeight,
+				applied: targetHeight - collapsed.clientHeight,
+			},
+		]);
+	},
+);
 
 it.each(["source", "layout", "width"] as const)("rejects incompatible same-commit %s measurements", async (change) => {
 	const router = await renderShell(false);
@@ -681,3 +712,58 @@ it("cancels a delayed-host restore when the reader scrolls before its fallback f
 			.map(({requested, applied}) => ({requested, applied})),
 	}).toStrictEqual({position: before, writes: []});
 });
+
+it.each([false, true])("ignores hidden observations without reparenting the root chat, strict=%s", async (strict) => {
+	await renderShell(strict);
+	const initial = actualScrollport();
+	fireEvent.click(screen.getByRole("button", {name: "Open fabricated pane"}));
+	await settleMeasurements(initial);
+	await act(async () => {
+		initial.scrollTop = 8000;
+		fireEvent.scroll(initial);
+	});
+	await settleMeasurements(initial);
+	const before = state(initial);
+	phase = "hidden-root";
+	fireEvent.click(screen.getByRole("button", {name: "Expand"}));
+	expect(actualScrollport()).toBe(initial);
+	await settleFresh(initial);
+	expect(
+		writes.filter((write) => write.phase === "hidden-root").map(({requested, applied}) => ({requested, applied})),
+	).toStrictEqual([]);
+	fireEvent.click(screen.getByRole("button", {name: "Collapse"}));
+	await settleMeasurements(initial);
+	expect({sameHost: actualScrollport() === initial, position: state(initial)}).toStrictEqual({
+		sameHost: true,
+		position: before,
+	});
+});
+it.each(["source", "layout", "width"] as const)(
+	"rejects changed %s when a hidden nested chat becomes visible",
+	async (change) => {
+		const router = await renderShell(false);
+		const initial = actualScrollport();
+		fireEvent.click(screen.getByRole("button", {name: "Open fabricated pane"}));
+		await settleMeasurements(initial);
+		await act(async () => {
+			initial.scrollTop = 8000;
+			fireEvent.scroll(initial);
+		});
+		await settleMeasurements(initial);
+		fireEvent.keyDown(paneMove(), {key: "ArrowDown"});
+		fireEvent.keyDown(paneMove(), {key: "Enter"});
+		await settleMeasurements(actualScrollport());
+		fireEvent.click(screen.getByRole("button", {name: "Expand"}));
+		await settleFresh(actualScrollport());
+		if (change === "source") chatSource = {};
+		if (change === "layout") chatLayout = "example-larger-font";
+		if (change === "width") {
+			listWidth = 640;
+			hostWidths.set(actualScrollport(), listWidth);
+		}
+		const remember = vi.spyOn(measurements, "rememberTranscriptMeasurements");
+		fireEvent.click(screen.getByRole("button", {name: "Collapse"}));
+		await act(() => router.navigate({to: "/plans"}));
+		expect(remember.mock.calls.at(-1)?.[1].heights ?? new Map()).toStrictEqual(new Map());
+	},
+);

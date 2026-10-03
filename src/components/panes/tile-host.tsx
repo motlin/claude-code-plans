@@ -637,12 +637,35 @@ function StackView({
 
 	const expandedDefinition = isRoot && host.expanded !== null ? host.definitions.get(host.expanded) : undefined;
 	const items: ReactNode[] = [];
-	if (expandedDefinition !== undefined && host.expanded !== null) {
-		// Keep the chat tile mounted at the same key so the transcript survives expand/collapse.
+	// Preserve the keyed chat path while expanded, including chat inside nested stacks.
+	stack.children.forEach((child, index) => {
+		if (host.expanded === null && index > 0 && !(isRoot && host.phone)) {
+			items.push(
+				<Divider
+					key={`divider:${nodeKey(stack.children[index - 1] ?? child)}|${nodeKey(child)}`}
+					stack={stack}
+					path={path}
+					index={index - 1}
+					sizePx={sizePx}
+					stackRef={ref}
+					corners={cornersOf(path, host)}
+					host={host}
+				/>,
+			);
+		}
 		items.push(
-			<ChatTile key="chat" hidden host={host}>
-				{chat}
-			</ChatTile>,
+			<NodeView
+				key={nodeKey(child)}
+				node={child}
+				path={[...path, index]}
+				host={host}
+				chat={chat}
+				isRootChild={isRoot}
+			/>,
+		);
+	});
+	if (expandedDefinition !== undefined && host.expanded !== null) {
+		items.push(
 			<TileSlot
 				key="overlay"
 				tileId={host.expanded}
@@ -654,39 +677,6 @@ function StackView({
 				<PaneSurface kind={host.expanded} definition={expandedDefinition} host={host} />
 			</TileSlot>,
 		);
-	} else {
-		stack.children.forEach((child, index) => {
-			if (index > 0 && !(isRoot && host.phone)) {
-				items.push(
-					<Divider
-						key={`divider:${nodeKey(stack.children[index - 1] ?? child)}|${nodeKey(child)}`}
-						stack={stack}
-						path={path}
-						index={index - 1}
-						sizePx={sizePx}
-						stackRef={ref}
-						corners={cornersOf(path, host)}
-						host={host}
-					/>,
-				);
-			}
-			items.push(
-				child.kind === "tile" && child.tileId === "chat" ? (
-					<ChatTile key="chat" style={{flex: `${child.flex} 1 0`}} path={[...path, index]} host={host}>
-						{chat}
-					</ChatTile>
-				) : (
-					<NodeView
-						key={nodeKey(child)}
-						node={child}
-						path={[...path, index]}
-						host={host}
-						chat={chat}
-						isRootChild={isRoot}
-					/>
-				),
-			);
-		});
 	}
 
 	return (
@@ -725,8 +715,24 @@ function NodeView({
 			</div>
 		);
 	}
-	const definition = isPaneKind(node.tileId) ? host.definitions.get(node.tileId) : undefined;
-	if (definition === undefined || !isPaneKind(node.tileId)) return null;
+	if (node.tileId === "chat") {
+		const hidden = host.expanded !== null;
+		return (
+			<TileSlot tileId="chat" host={host} className="relative min-h-0 min-w-0" style={style} hidden={hidden}>
+				{!hidden && tileIdsOf(host.layout.root).length > 1 && (
+					// Keep the chat's Move grip above its titlebar while the transcript scrolls.
+					<div className="sticky top-0 z-20 h-0">
+						<MoveHandle tileId="chat" host={host} />
+					</div>
+				)}
+				{chat}
+				<MovePreviewOutline path={path} host={host} />
+			</TileSlot>
+		);
+	}
+	if (host.expanded !== null) return null;
+	const definition = host.definitions.get(node.tileId);
+	if (definition === undefined) return null;
 	return (
 		<TileSlot tileId={node.tileId} host={host} className={slotClass} style={style} phone={phone}>
 			<PaneSurface kind={node.tileId} definition={definition} host={host} />
@@ -768,35 +774,6 @@ function TileSlot({
 		>
 			{children}
 		</div>
-	);
-}
-
-/** The chat tile; it gets a Move grip once a side tile shares the layout. */
-function ChatTile({
-	style,
-	hidden = false,
-	path,
-	host,
-	children,
-}: {
-	style?: CSSProperties;
-	hidden?: boolean;
-	path?: readonly number[];
-	host: InternalHost;
-	children: ReactNode;
-}) {
-	const movable = !hidden && tileIdsOf(host.layout.root).length > 1;
-	return (
-		<TileSlot tileId="chat" host={host} className="relative min-h-0 min-w-0" style={style} hidden={hidden}>
-			{movable && (
-				// Pinned above the sticky titlebar (z-10) so the grip stays reachable while the transcript scrolls.
-				<div className="sticky top-0 z-20 h-0">
-					<MoveHandle tileId="chat" host={host} />
-				</div>
-			)}
-			{children}
-			{path !== undefined && <MovePreviewOutline path={path} host={host} />}
-		</TileSlot>
 	);
 }
 
