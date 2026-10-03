@@ -30,6 +30,7 @@ export function NewSessionRow() {
 				activeOptions={{exact: true, includeSearch: false}}
 				activeProps={{"data-selected": "focused"}}
 				onClick={onClick}
+				aria-label="New"
 				aria-keyshortcuts={shortcut.ariaKeyShortcuts}
 				className={ROW_CLASS}
 			>

@@ -422,9 +422,10 @@ describe("sidebar New row", () => {
 		await renderSidebarAt("/tasks");
 		await waitFor(() => screen.getByRole("link", {name: "Tasks"}));
 
-		const first = navLinks()[0];
+		const first = screen.getByRole("link", {name: "New"});
 		const shortcut = first?.querySelector('[data-cds="Shortcut"]');
 		expect({
+			firstNavLink: first === navLinks()[0],
 			name: first?.textContent,
 			href: first?.getAttribute("href"),
 			ariaKeyShortcuts: first?.getAttribute("aria-keyshortcuts"),
@@ -435,6 +436,7 @@ describe("sidebar New row", () => {
 				shortcut?.parentElement?.classList.contains(name),
 			),
 		}).toStrictEqual({
+			firstNavLink: true,
 			name: "New⇧Shift⌘CommandO",
 			href: "/",
 			ariaKeyShortcuts: "Shift+Meta+o",
