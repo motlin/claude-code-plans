@@ -435,3 +435,11 @@
 	border-collapse: separate;
 	border-spacing: 0;
 }
+
+:global([data-transcript-prose]) .markdown table > tbody > tr + tr > td {
+	border-top: 1px solid var(--color-border);
+}
+
+:global(:root:not(.dark)) :global([data-transcript-prose]) .markdown table > tbody > tr + tr > td {
+	border-top-color: rgb(11 11 11 / 0.1);
+}
