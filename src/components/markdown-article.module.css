@@ -447,3 +447,7 @@
 :global(:root:not(.dark)) :global([data-transcript-prose]) .markdown th {
 	border-bottom-color: rgb(11 11 11 / 0.1);
 }
+
+:global(:root:not(.dark)) :global([data-transcript-prose]) .markdown code:not(pre code) {
+	border: 1px solid rgb(11 11 11 / 0.1);
+}
