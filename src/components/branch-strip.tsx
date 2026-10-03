@@ -303,6 +303,7 @@ export function BranchStrip({
 								? `${GHOST_BUTTON} ml-auto`
 								: "inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-r5 p-0 text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100"
 						}
+						style={{color: prColor}}
 						onClick={dismiss}
 					>
 						<X aria-hidden className={pr === null ? "size-3.5" : "size-4"} />
