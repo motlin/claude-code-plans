@@ -66,6 +66,27 @@ afterEach(() => {
 });
 
 describe("BranchStrip", () => {
+	it.each([
+		{...SESSION, pr: EXAMPLE_PR},
+		{...SESSION, prStatus: {number: 100, state: "open" as const}},
+	])("exposes PR controls as a named native navigation landmark: %j", (session) => {
+		const view = renderStrip(session);
+		const landmark = view.getByRole("navigation", {name: "Repository and pull request controls"});
+		expect({
+			tag: landmark.tagName,
+			label: landmark.getAttribute("aria-label"),
+		}).toStrictEqual({tag: "NAV", label: "Repository and pull request controls"});
+	});
+
+	it("keeps ordinary branch controls in an unlabeled div without a navigation landmark", () => {
+		const view = renderStrip();
+		expect({
+			navigation: view.queryAllByRole("navigation"),
+			tag: strip(view)?.tagName,
+			label: strip(view)?.getAttribute("aria-label"),
+		}).toStrictEqual({navigation: [], tag: "DIV", label: null});
+	});
+
 	it("shows the statusline line counts with an sr-only description", () => {
 		const view = renderStrip();
 		const button = view.getByRole("button", {name: "3,093 additions, 1 deletion"});

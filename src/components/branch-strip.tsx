@@ -248,11 +248,13 @@ export function BranchStrip({
 	if (dismissed || !branchStripVisible(session, counts)) return null;
 	const narrow = width !== null && width <= HIDDEN_AT_OR_BELOW_PX;
 	const path = session.projectPath ?? session.cwd;
+	const StripContainer = pr === null ? "div" : "nav";
 
 	return (
 		<div ref={ref}>
 			{!narrow && (
-				<div
+				<StripContainer
+					aria-label={pr === null ? undefined : "Repository and pull request controls"}
 					data-branch-strip=""
 					data-pull-request-strip={pr === null ? undefined : ""}
 					className={
@@ -305,7 +307,7 @@ export function BranchStrip({
 					>
 						<X aria-hidden className={pr === null ? "size-3.5" : "size-4"} />
 					</button>
-				</div>
+				</StripContainer>
 			)}
 		</div>
 	);
