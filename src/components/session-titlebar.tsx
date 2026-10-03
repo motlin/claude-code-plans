@@ -54,7 +54,7 @@ import {Tooltip} from "./ui/tooltip";
 const PILLS_COMPACT_BELOW_PX = 560;
 
 const TITLE_CLASS =
-	"h-6 min-w-0 cursor-text truncate rounded-r6 border-0 bg-transparent px-1 text-left text-[13px]/[19px] font-medium text-primary select-none hover:bg-fill-ghost-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100";
+	"h-6 min-w-0 cursor-text truncate rounded-r5 border-0 bg-transparent px-1 text-left text-[13px]/[19px] font-medium text-primary select-none hover:bg-fill-ghost-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100";
 
 const CHEVRON_CLASS =
 	"flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-r6 text-secondary transition-colors hover:bg-fill-ghost-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100 data-[popup-open]:bg-fill-ghost-hover";

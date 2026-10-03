@@ -320,7 +320,7 @@ describe("SessionTitlebar title and chevron", () => {
 		const chevron = screen.getByRole("button", {name: `More options for ${TITLE}`});
 
 		expect({
-			title: ["h-6", "px-1", "rounded-r6"].every((name) => title.classList.contains(name)),
+			title: ["h-6", "px-1", "rounded-r5"].every((name) => title.classList.contains(name)),
 			chevron: ["size-6", "rounded-r6"].every((name) => chevron.classList.contains(name)),
 		}).toStrictEqual({title: true, chevron: true});
 	});
