@@ -1,19 +1,10 @@
 import {Check, Copy, GitFork, Pin, RotateCcw, Volume2} from "lucide-react";
-import {
-	createContext,
-	type FocusEvent,
-	type ReactNode,
-	useContext,
-	useEffect,
-	useRef,
-	useState,
-	useSyncExternalStore,
-} from "react";
+import {createContext, type FocusEvent, type ReactNode, useContext, useEffect, useRef, useState} from "react";
 
 import {useChapters} from "../lib/chapter-store";
 import {writeClipboardText} from "../lib/clipboard";
 import {messageHeading} from "../lib/transcript-action-targets";
-import {markdownToPlainText} from "../lib/markdown-plain-text";
+import {useReadAloud} from "../hooks/use-read-aloud";
 import {formatRelativeTimestamp, formatTimestamp} from "../lib/timestamp-format";
 import {type TranscriptMessageRef, TranscriptActionsContext} from "./transcript-context-menu";
 import {Tooltip} from "./ui/tooltip";
@@ -41,6 +32,8 @@ export interface MessageActionsProps {
 	timestamp?: string | undefined;
 	/** Extra tooltip lines after the absolute time: token usage, effort, origin and the like. */
 	details: readonly string[];
+	/** Another mounted contribution in this assistant display span owns pointer/focus. */
+	hovered?: boolean | undefined;
 }
 
 const BAR_CLASS = [
@@ -49,6 +42,7 @@ const BAR_CLASS = [
 	"group-hover/msg:opacity-100 group-hover/msg:scale-100 group-hover/msg:pointer-events-auto",
 	"focus-within:opacity-100 focus-within:scale-100 focus-within:pointer-events-auto",
 	"data-revealed:opacity-100 data-revealed:scale-100 data-revealed:pointer-events-auto",
+	"data-hovered:opacity-100 data-hovered:scale-100 data-hovered:pointer-events-auto",
 	"motion-safe:transition-[opacity,scale] motion-safe:duration-[120ms] motion-safe:delay-100 motion-safe:ease-[cubic-bezier(.32,.72,0,1)]",
 ].join(" ");
 
@@ -174,47 +168,11 @@ function RewindAction({message}: {message: TranscriptMessageRef | undefined}) {
 	);
 }
 
-function subscribeNever(): () => void {
-	return () => {};
-}
-
-function hasSpeechSynthesis(): boolean {
-	return typeof speechSynthesis !== "undefined" && typeof SpeechSynthesisUtterance !== "undefined";
-}
-
-/** Read aloud with the browser's `speechSynthesis`; pressing again stops. */
+/** Read aloud with the browser's speech service; pressing again stops. */
 function ReadAloudAction({text}: {text: string}) {
-	const supported = useSyncExternalStore(subscribeNever, hasSpeechSynthesis, () => false);
-	const [speaking, setSpeaking] = useState(false);
-	const speakingRef = useRef(false);
-
-	useEffect(
-		() => () => {
-			if (speakingRef.current) speechSynthesis.cancel();
-		},
-		[],
-	);
-
-	const settle = (value: boolean) => {
-		speakingRef.current = value;
-		setSpeaking(value);
-	};
-
-	const toggle = () => {
-		speechSynthesis.cancel();
-		if (speaking) {
-			settle(false);
-			return;
-		}
-		const utterance = new SpeechSynthesisUtterance(markdownToPlainText(text));
-		utterance.onend = () => settle(false);
-		utterance.onerror = () => settle(false);
-		speechSynthesis.speak(utterance);
-		settle(true);
-	};
-
+	const {speaking, toggle} = useReadAloud(text);
 	return (
-		<ActionButton label="Read aloud" pressed={speaking} onClick={supported && text !== "" ? toggle : undefined}>
+		<ActionButton label="Read aloud" pressed={speaking} onClick={toggle}>
 			<Volume2 aria-hidden="true" className={ICON_CLASS} />
 		</ActionButton>
 	);
@@ -250,7 +208,17 @@ function MessageTime({
 }
 
 /** The sr-only reveal button and the bar it reveals. */
-function ActionBar({className, children, label}: {className: string; children: ReactNode; label: string}) {
+function ActionBar({
+	className,
+	children,
+	label,
+	hovered,
+}: {
+	className: string;
+	children: ReactNode;
+	label: string;
+	hovered?: boolean | undefined;
+}) {
 	const [revealed, setRevealed] = useState(false);
 	const barRef = useRef<HTMLDivElement>(null);
 	const focusPending = useRef(false);
@@ -283,6 +251,7 @@ function ActionBar({className, children, label}: {className: string; children: R
 			<div
 				ref={barRef}
 				data-message-actions
+				data-hovered={hovered ? "" : undefined}
 				{...(revealed ? {"data-revealed": ""} : {})}
 				className={className}
 				onBlur={hideWhenFocusLeaves}
@@ -293,9 +262,13 @@ function ActionBar({className, children, label}: {className: string; children: R
 	);
 }
 
-export function AssistantMessageActions({message, text, timestamp, details}: MessageActionsProps) {
+export function AssistantMessageActions({message, text, timestamp, details, hovered}: MessageActionsProps) {
 	return (
-		<ActionBar className={BAR_CLASS} label={`Show message actions for ${messageHeading("assistant", text)}`}>
+		<ActionBar
+			className={BAR_CLASS}
+			label={`Show message actions for ${messageHeading("assistant", text)}`}
+			hovered={hovered}
+		>
 			<CopyAction text={text} />
 			<ForkAction message={message} />
 			<PinAction message={message} />

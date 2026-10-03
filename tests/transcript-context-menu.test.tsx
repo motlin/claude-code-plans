@@ -128,6 +128,7 @@ function find(container: HTMLElement, selector: string, text?: string): Element 
 const ASSISTANT_ROWS = [
 	"Copy message",
 	"Copy message as Markdown",
+	"Read aloud",
 	"---",
 	"Attach message as context",
 	"Pin as chapter",

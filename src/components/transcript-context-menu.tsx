@@ -1,5 +1,6 @@
 import {type ComponentProps, createContext, type ReactNode, useContext, useState} from "react";
 
+import {useReadAloud} from "../hooks/use-read-aloud";
 import {writeClipboardText} from "../lib/clipboard";
 import {attachContext} from "../lib/context-attach";
 import {markdownToPlainText} from "../lib/markdown-plain-text";
@@ -68,11 +69,13 @@ export function TranscriptMessageMenu({
 	render,
 	children,
 }: TranscriptMessageMenuProps) {
+	const readAloud = useReadAloud(markdown);
 	const [target, setTarget] = useState<TranscriptMenuTarget>({kind: "prose"});
 	const fallback = markdown === "" ? "tool" : "prose";
 	return (
 		<ContextMenu>
 			<ContextMenuTrigger
+				data-transcript-message-menu
 				render={render}
 				onContextMenu={(event) =>
 					setTarget(resolveMenuTarget(event.target instanceof Element ? event.target : null, fallback))
@@ -87,6 +90,7 @@ export function TranscriptMessageMenu({
 					markdown={markdown}
 					message={uuid === undefined ? undefined : {sessionId, uuid}}
 					sessionId={sessionId}
+					readAloud={readAloud}
 				/>
 			</MenuContent>
 		</ContextMenu>
@@ -111,12 +115,14 @@ function TranscriptMenuItems({
 	markdown,
 	message,
 	sessionId,
+	readAloud,
 }: {
 	speaker: Speaker;
 	target: TranscriptMenuTarget;
 	markdown: string;
 	message: TranscriptMessageRef | undefined;
 	sessionId: string;
+	readAloud: ReturnType<typeof useReadAloud>;
 }) {
 	const actions = useContext(TranscriptActionsContext);
 	const pin = (
@@ -161,6 +167,11 @@ function TranscriptMenuItems({
 				Copy message
 			</MenuItem>
 			<MenuItem onSelect={() => copy(markdown)}>Copy message as Markdown</MenuItem>
+			{speaker === "assistant" && (
+				<MenuItem {...(readAloud.toggle === undefined ? {disabled: true} : {onSelect: readAloud.toggle})}>
+					{readAloud.speaking ? "Stop reading aloud" : "Read aloud"}
+				</MenuItem>
+			)}
 			<MenuSeparator />
 			<MenuItem onSelect={() => attachContext(sessionId, {kind: "message", text: markdown})}>
 				Attach message as context

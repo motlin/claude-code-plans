@@ -2,6 +2,7 @@ import {SessionTileGeometryReadyContext} from "./session-tile-frame";
 import React, {
 	Suspense,
 	createContext,
+	lazy,
 	useCallback,
 	useContext,
 	useEffect,
@@ -33,7 +34,6 @@ import {ChevronIcon, CollapsibleSection, CopyButton, DiffStats, TerminalOutput} 
 import {SystemBanner} from "./system-banner";
 import {ArtifactLinkBanner, ArtifactWatchBanner} from "./artifact-banner";
 import {computeDiffData} from "../lib/diff-utils";
-import {TasksView} from "./tasks-view";
 import {DebugLink} from "./debug-link";
 import {type TranscriptMessageRef, TranscriptMessageMenu} from "./transcript-context-menu";
 import {AssistantMessageActions, UserMessageActions} from "./message-actions";
@@ -107,6 +107,8 @@ export interface SessionChatProps {
 
 const TranscriptModeContext = createContext<TranscriptMode>("normal");
 
+const TasksView = lazy(() => import("./tasks-view").then((module) => ({default: module.TasksView})));
+
 interface ExpansionToggle {
 	mode: TranscriptMode;
 	expanded: boolean;
@@ -173,6 +175,149 @@ function AssistantTurnActions({line, sessionId}: {line: MessageSessionLine; sess
 			timestamp={line.timestamp}
 			details={assistantTurnDetails(line, {verbose})}
 		/>
+	);
+}
+
+interface AssistantDisplaySpan {
+	key: string;
+	sourceSessionId: string;
+	endpoint: MessageSessionLine;
+	anchorLineIndex: number;
+	text: string;
+}
+
+/** Rendered assistant contributions, not API request/usage boundaries. */
+function collectAssistantDisplaySpans(
+	lines: readonly SessionLine[],
+	renderProps: LineRenderProps,
+	skipSet: ReadonlySet<number>,
+): Map<number, AssistantDisplaySpan> {
+	const byLine = new Map<number, AssistantDisplaySpan>();
+	let current: AssistantDisplaySpan | undefined;
+	for (const [index, line] of lines.entries()) {
+		const sourceSessionId = getSourceSessionId(line, renderProps.sessionId);
+		if (current !== undefined && sourceSessionId !== current.sourceSessionId) current = undefined;
+		if (skipSet.has(index) || !isLineVisible(line, renderProps, false)) continue;
+		// Injected notifications may look like plain user prompts, but do not start a new span.
+		if (taskNotificationOf(line) !== null) {
+			if (current !== undefined) {
+				current.anchorLineIndex = line.lineIndex;
+				byLine.set(line.lineIndex, current);
+			}
+			continue;
+		}
+		if (isPromptLine(line)) {
+			current = undefined;
+			continue;
+		}
+		if (line.type !== "assistant") continue;
+		const text = messageText(line);
+		if (current === undefined) {
+			current = {
+				key: `assistant-span-${line.lineIndex}`,
+				sourceSessionId,
+				endpoint: line,
+				anchorLineIndex: line.lineIndex,
+				text,
+			};
+		} else {
+			current.endpoint = line;
+			current.anchorLineIndex = line.lineIndex;
+			if (text !== "") current.text = current.text === "" ? text : `${current.text}\n\n${text}`;
+		}
+		byLine.set(line.lineIndex, current);
+	}
+	return byLine;
+}
+
+interface HeldAssistantFooter {
+	entryKey: string;
+	startRecordIndex: number;
+	endRecordIndex: number;
+	span: AssistantDisplaySpan;
+}
+
+interface AssistantFooterFocus {
+	held: HeldAssistantFooter | null;
+	setHeld: React.Dispatch<React.SetStateAction<HeldAssistantFooter | null>>;
+}
+
+interface AssistantSpanInteraction extends AssistantFooterFocus {
+	hoveredKey: string | null;
+	focusedKey: string | null;
+}
+
+const AssistantSpanInteractionContext = createContext<AssistantSpanInteraction | null>(null);
+const AssistantSpanEntryContext = createContext<SessionListEntry | null>(null);
+
+function assistantSpanAt(target: EventTarget | null): string | null {
+	return target instanceof Element
+		? (target.closest<HTMLElement>("[data-assistant-span]")?.dataset["assistantSpan"] ?? null)
+		: null;
+}
+
+/** Pointer/focus highlighting stays below the linear transcript-entry builder. */
+function AssistantSpanInteractions({children, held, setHeld}: AssistantFooterFocus & {children: React.ReactNode}) {
+	const [hoveredKey, setHoveredKey] = useState<string | null>(null);
+	const [focusedKey, setFocusedKey] = useState<string | null>(null);
+	const value = useMemo(() => ({hoveredKey, focusedKey, held, setHeld}), [hoveredKey, focusedKey, held, setHeld]);
+	return (
+		<AssistantSpanInteractionContext.Provider value={value}>
+			<div
+				className="contents"
+				onPointerOver={(event) => setHoveredKey(assistantSpanAt(event.target))}
+				onPointerOut={(event) => setHoveredKey(assistantSpanAt(event.relatedTarget))}
+				onFocusCapture={(event) => setFocusedKey(assistantSpanAt(event.target))}
+				onBlurCapture={(event) => setFocusedKey(assistantSpanAt(event.relatedTarget))}
+			>
+				{children}
+			</div>
+		</AssistantSpanInteractionContext.Provider>
+	);
+}
+
+/** Every member has a slot, so a focused footer can remain at its former endpoint. */
+function AssistantDisplaySpanFooter({span}: {span: AssistantDisplaySpan}) {
+	const interaction = useContext(AssistantSpanInteractionContext)!;
+	const entry = useContext(AssistantSpanEntryContext)!;
+	const {setHeld} = interaction;
+	useEffect(
+		() => () => {
+			setHeld((held) => (held?.entryKey === entry.key && held.span.key === span.key ? null : held));
+		},
+		[setHeld, entry.key, span.key],
+	);
+	const held = interaction.held?.span.key === span.key ? interaction.held : null;
+	const isEndpoint = span.anchorLineIndex >= entry.startRecordIndex && span.anchorLineIndex <= entry.endRecordIndex;
+	if (held !== null ? held.entryKey !== entry.key : !isEndpoint) return null;
+	const displayed = held?.span ?? span;
+	return (
+		<div
+			data-assistant-span-footer={span.key}
+			onFocusCapture={() => {
+				if (interaction.held?.entryKey === entry.key && interaction.held.span.key === span.key) return;
+				setHeld({
+					entryKey: entry.key,
+					startRecordIndex: entry.startRecordIndex,
+					endRecordIndex: entry.endRecordIndex,
+					span: {...displayed},
+				});
+			}}
+			onBlurCapture={(event) => {
+				if (event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget)) return;
+				setHeld((current) =>
+					current?.entryKey === entry.key && current.span.key === span.key ? null : current,
+				);
+			}}
+		>
+			<AssistantMessageActions
+				message={messageRef(displayed.endpoint, displayed.sourceSessionId)}
+				text={displayed.text}
+				timestamp={displayed.endpoint.timestamp}
+				details={assistantTurnDetails(displayed.endpoint, {verbose: false})}
+				hovered={interaction.hoveredKey === span.key || interaction.focusedKey === span.key}
+			/>
+		</div>
 	);
 }
 
@@ -471,6 +616,7 @@ function LineEntry({
 	nextLine,
 	className,
 	turnChanges,
+	footer,
 	...renderProps
 }: LineRenderProps & {
 	line: SessionLine;
@@ -478,6 +624,8 @@ function LineEntry({
 	className?: string;
 	/** The end-of-turn changes card this line closes, shown after its content. */
 	turnChanges?: TurnChanges | undefined;
+	/** Undefined preserves Verbose record actions; null suppresses a non-endpoint footer. */
+	footer?: React.ReactNode;
 }) {
 	const content = renderSessionMessage({
 		line,
@@ -502,7 +650,12 @@ function LineEntry({
 			{line.type === "assistant" && <TurnHeading speaker="assistant" text={messageText(line)} />}
 			{content}
 			{turnChanges && <TurnChangesCard sessionId={renderProps.sessionId} changes={turnChanges} />}
-			{isAssistant && <AssistantTurnActions line={line} sessionId={renderProps.sessionId} />}
+			{isAssistant &&
+				(footer === undefined ? (
+					<AssistantTurnActions line={line} sessionId={renderProps.sessionId} />
+				) : (
+					footer
+				))}
 		</>
 	);
 	if (line.type !== "assistant") return React.cloneElement(wrapper, undefined, children);
@@ -579,6 +732,8 @@ interface ToolCallBatch {
 function GroupedToolCallEntry({
 	entries,
 	notices,
+	footer,
+	turnChanges,
 	sessionId,
 	toolResultMap,
 	subagentLookup,
@@ -586,6 +741,8 @@ function GroupedToolCallEntry({
 	entries: SessionLine[];
 	/** Background-task completions folded into the run, shown with its last batch. */
 	notices: readonly BackgroundNotice[];
+	footer?: React.ReactNode;
+	turnChanges?: TurnChanges | undefined;
 	sessionId: string;
 	toolResultMap: Map<string, ToolResultInfo>;
 	subagentLookup: SubagentLookup;
@@ -609,27 +766,32 @@ function GroupedToolCallEntry({
 		return result;
 	}, [entries, sessionId, toolResultMap, liveFailures, subagentLookup]);
 
-	if (batches.length === 0) return notices.length === 0 ? null : <BackgroundNoticeRows notices={notices} />;
+	if (batches.length === 0)
+		return notices.length === 0 ? null : <BackgroundNoticeRows notices={notices} footer={footer} />;
 
 	return (
-		<div className={`group/msg flex flex-col w-full gap-[var(--chat-item-gap)] ${TURN_GAP_CLASS}`}>
-			<TurnHeading speaker="assistant" text="" />
-			{batches.map((batch, index) => (
-				<TranscriptMessageMenu
-					key={batch.head.lineIndex}
-					speaker="assistant"
-					sessionId={batch.sourceSessionId}
-					uuid={batch.head.uuid}
-					markdown=""
-					render={<div data-record-index={batch.head.lineIndex} className="flex flex-col w-full" />}
-				>
-					<ToolCallSection
-						calls={batch.calls}
+		<div className={`group/msg flex flex-col w-full ${TURN_GAP_CLASS}`}>
+			<div className={`flex flex-col gap-[var(--chat-item-gap)] ${turnChanges ? TURN_GAP_CLASS : ""}`}>
+				<TurnHeading speaker="assistant" text="" />
+				{batches.map((batch, index) => (
+					<TranscriptMessageMenu
+						key={batch.head.lineIndex}
+						speaker="assistant"
 						sessionId={batch.sourceSessionId}
-						notices={index === batches.length - 1 ? notices : NO_NOTICES}
-					/>
-				</TranscriptMessageMenu>
-			))}
+						uuid={batch.head.uuid}
+						markdown=""
+						render={<div data-record-index={batch.head.lineIndex} className="flex flex-col w-full" />}
+					>
+						<ToolCallSection
+							calls={batch.calls}
+							sessionId={batch.sourceSessionId}
+							notices={index === batches.length - 1 ? notices : NO_NOTICES}
+						/>
+					</TranscriptMessageMenu>
+				))}
+			</div>
+			{turnChanges && <TurnChangesCard sessionId={sessionId} changes={turnChanges} />}
+			<div>{footer}</div>
 		</div>
 	);
 }
@@ -659,12 +821,13 @@ function BackgroundNoticeRow({notice}: {notice: BackgroundNotice}) {
 }
 
 /** Notifications with no tool group to join, drawn as the same static rows. */
-function BackgroundNoticeRows({notices}: {notices: readonly BackgroundNotice[]}) {
+function BackgroundNoticeRows({notices, footer}: {notices: readonly BackgroundNotice[]; footer?: React.ReactNode}) {
 	return (
 		<div className={`flex flex-col w-full gap-[var(--chat-item-gap)] ${TURN_GAP_CLASS}`}>
 			{notices.map((notice) => (
 				<BackgroundNoticeRow key={notice.lineIndex} notice={notice} />
 			))}
+			{footer}
 		</div>
 	);
 }
@@ -811,6 +974,7 @@ interface SessionListEntry {
 	/** A user prompt, a stop for ⌥⌘↑ / ⌥⌘↓. */
 	isPrompt: boolean;
 	kind: TranscriptRowKind;
+	assistantSpan?: AssistantDisplaySpan | undefined;
 	element: React.ReactNode;
 }
 
@@ -873,6 +1037,7 @@ function buildSessionListEntries(
 	lines: SessionLine[],
 	renderProps: LineRenderProps,
 	verbose: boolean,
+	held: HeldAssistantFooter | null,
 ): SessionListEntry[] {
 	const foldNotifications = !verbose;
 	const noticeOf = (index: number): BackgroundNotice | null => {
@@ -882,6 +1047,21 @@ function buildSessionListEntries(
 		return notification === null ? null : {lineIndex: line.lineIndex, notification};
 	};
 	const skipSet = buildSkipSet(lines);
+	const displaySpans = verbose ? undefined : collectAssistantDisplaySpans(lines, renderProps, skipSet);
+	const sameSpan = (first: SessionLine, next: SessionLine) =>
+		verbose ||
+		(getSourceSessionId(first, renderProps.sessionId) === getSourceSessionId(next, renderProps.sessionId) &&
+			displaySpans?.get(first.lineIndex) === displaySpans?.get(next.lineIndex));
+	// Focus temporarily pins the existing row boundary. Hover never enters this builder.
+	const crossesHeldEntry = (start: number, next: number) =>
+		held !== null &&
+		((start < held.startRecordIndex && next >= held.startRecordIndex) ||
+			(start <= held.endRecordIndex && next > held.endRecordIndex));
+	const footerFor = (line: SessionLine) => {
+		if (verbose) return undefined;
+		const span = displaySpans?.get(line.lineIndex);
+		return span === undefined ? null : <AssistantDisplaySpanFooter span={span} />;
+	};
 	const turnChangesByLine = collectTurnChanges(lines, renderProps.toolResultMap);
 	const entries: Omit<SessionListEntry, "endRecordIndex">[] = [];
 	let prevVisibleType: string | null = null;
@@ -933,17 +1113,24 @@ function buildSessionListEntries(
 			const notices = [notice];
 			let j = i + 1;
 			while (j < lines.length) {
+				if (crossesHeldEntry(line.lineIndex, lines[j]!.lineIndex)) break;
 				if (skipSet.has(j) || !isLineVisible(lines[j]!, renderProps, verbose)) {
 					j++;
 					continue;
 				}
 				const next = noticeOf(j);
-				if (next === null) break;
+				if (next === null || !sameSpan(line, lines[j]!)) break;
 				notices.push(next);
 				j++;
 			}
 			const following = lines[j];
-			if (following !== undefined && isGroupableToolOnlyAssistantLine(following) && renderProps.showTools) {
+			if (
+				following !== undefined &&
+				isGroupableToolOnlyAssistantLine(following) &&
+				renderProps.showTools &&
+				sameSpan(line, following) &&
+				!crossesHeldEntry(line.lineIndex, following.lineIndex)
+			) {
 				leadingNotices = notices;
 			} else {
 				prevVisibleType = "assistant";
@@ -952,7 +1139,8 @@ function buildSessionListEntries(
 					startRecordIndex: line.lineIndex,
 					isPrompt: false,
 					kind: "assistant_tool",
-					element: <BackgroundNoticeRows notices={notices} />,
+					assistantSpan: displaySpans?.get(line.lineIndex),
+					element: <BackgroundNoticeRows notices={notices} footer={footerFor(line)} />,
 				});
 			}
 			i = j;
@@ -977,13 +1165,15 @@ function buildSessionListEntries(
 					j++;
 					continue;
 				}
+				if (crossesHeldEntry(startRecordIndex, nextLine.lineIndex)) break;
 				const next = noticeOf(j);
 				if (next !== null) {
+					if (!sameSpan(line, nextLine)) break;
 					notices.push(next);
 					j++;
 					continue;
 				}
-				if (isGroupableToolOnlyAssistantLine(nextLine)) {
+				if (isGroupableToolOnlyAssistantLine(nextLine) && sameSpan(line, nextLine)) {
 					groupIndices.push(j);
 					j++;
 				} else {
@@ -999,11 +1189,13 @@ function buildSessionListEntries(
 					startRecordIndex: line.lineIndex,
 					isPrompt: false,
 					kind: "assistant_tool",
+					assistantSpan: displaySpans?.get(line.lineIndex),
 					element: (
 						<LineEntry
 							line={line}
 							nextLine={lines[groupStart + 1]}
 							turnChanges={turnChangesByLine.get(line.lineIndex)}
+							footer={footerFor(line)}
 							{...renderProps}
 						/>
 					),
@@ -1018,15 +1210,15 @@ function buildSessionListEntries(
 					startRecordIndex,
 					isPrompt: false,
 					kind: "assistant_tool",
+					assistantSpan: displaySpans?.get(line.lineIndex),
 					element: (
-						<>
-							<GroupedToolCallEntry entries={groupLines} notices={notices} {...renderProps} />
-							{groupChanges && (
-								<div className={TURN_GAP_CLASS}>
-									<TurnChangesCard sessionId={renderProps.sessionId} changes={groupChanges} />
-								</div>
-							)}
-						</>
+						<GroupedToolCallEntry
+							entries={groupLines}
+							notices={notices}
+							turnChanges={groupChanges}
+							footer={footerFor(line)}
+							{...renderProps}
+						/>
 					),
 				});
 			}
@@ -1044,11 +1236,13 @@ function buildSessionListEntries(
 			startRecordIndex: line.lineIndex,
 			isPrompt: isPromptLine(line),
 			kind: transcriptRowKind(line),
+			assistantSpan: displaySpans?.get(line.lineIndex),
 			element: (
 				<LineEntry
 					line={line}
 					nextLine={lines[i + 1]}
 					turnChanges={turnChangesByLine.get(line.lineIndex)}
+					footer={footerFor(line)}
 					{...(isBannerAfterBanner ? {className: "mt-1"} : {})}
 					{...renderProps}
 				/>
@@ -1350,6 +1544,22 @@ function VirtualizedSessionEntries({
 	/** Upstream's arrow-key turn navigation: ArrowUp/ArrowDown on a focused article move to its neighbour. */
 	const focusNeighbour = (event: React.KeyboardEvent<HTMLDivElement>, index: number) => {
 		if (event.target !== event.currentTarget) return;
+		if (event.key === "ContextMenu" || (event.key === "F10" && event.shiftKey)) {
+			const trigger = event.currentTarget.querySelector<HTMLElement>("[data-transcript-message-menu]");
+			if (trigger) {
+				event.preventDefault();
+				const rect = trigger.getBoundingClientRect();
+				trigger.dispatchEvent(
+					new MouseEvent("contextmenu", {
+						bubbles: true,
+						cancelable: true,
+						clientX: rect.left,
+						clientY: rect.top,
+					}),
+				);
+			}
+			return;
+		}
 		const step = event.key === "ArrowUp" ? -1 : event.key === "ArrowDown" ? 1 : 0;
 		const target = index + step;
 		if (step === 0 || target < 0 || target >= entries.length) return;
@@ -1392,13 +1602,16 @@ function VirtualizedSessionEntries({
 						aria-setsize={entries.length}
 						tabIndex={isLast ? 0 : -1}
 						onKeyDown={(event) => focusNeighbour(event, index)}
+						data-assistant-span={entry.assistantSpan?.key}
 						data-transcript-entry-index={index}
 						data-testid="transcript-row"
 						data-perf-row={entry.kind}
 						data-perf-line={entry.startRecordIndex}
 						data-perf-last={isLast ? "" : undefined}
 					>
-						{entry.element}
+						<AssistantSpanEntryContext.Provider value={entry}>
+							{entry.element}
+						</AssistantSpanEntryContext.Provider>
 					</div>
 				);
 			})}
@@ -1424,17 +1637,20 @@ function SessionLineList({
 	measurementSource: object | undefined;
 }) {
 	const verbose = useContext(TranscriptModeContext) === "verbose";
-	const entries = buildSessionListEntries(lines, renderProps, verbose);
+	const [held, setHeld] = useState<HeldAssistantFooter | null>(null);
+	const entries = buildSessionListEntries(lines, renderProps, verbose, verbose ? null : held);
 	const [expansionStore] = useState(() => new Map<string, ExpansionToggle>());
 	return (
 		<ExpansionStoreContext.Provider value={expansionStore}>
-			<VirtualizedSessionEntries
-				key={measurementSource === undefined ? undefined : measurementKey}
-				entries={entries}
-				shouldScrollToEnd={shouldScrollToEnd}
-				measurementKey={measurementKey}
-				measurementSource={measurementSource}
-			/>
+			<AssistantSpanInteractions held={held} setHeld={setHeld}>
+				<VirtualizedSessionEntries
+					key={measurementSource === undefined ? undefined : measurementKey}
+					entries={entries}
+					shouldScrollToEnd={shouldScrollToEnd}
+					measurementKey={measurementKey}
+					measurementSource={measurementSource}
+				/>
+			</AssistantSpanInteractions>
 		</ExpansionStoreContext.Provider>
 	);
 }
@@ -2949,7 +3165,9 @@ function ToolCallSummary({
 		<div data-tool-row="" className="flex flex-col w-full">
 			{hasTasksView && (
 				<div className="mb-2">
-					<TasksView toolCalls={calls} />
+					<Suspense fallback={<p role="status">Loading tasks…</p>}>
+						<TasksView toolCalls={calls} />
+					</Suspense>
 				</div>
 			)}
 			{(displayCalls.length > 0 || notices.length > 0) && (
