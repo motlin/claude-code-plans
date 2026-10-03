@@ -66,10 +66,11 @@
 		"raisedAt": "2026-10-02"
 	},
 	"bundle.session.raw": {
-		"ceiling": 1758376,
+		"ceiling": 1783276,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Defer the optional Changes pane renderer and its diff engine until the pane opens; keep registration, shortcuts and loading controls available immediately."
+		"reason": "Record cumulative session presentation, bounded tile-shell restoration, and source-owned assistant display actions. Relative to audited e4e3fd8d, hidden-pane restoration, display-span actions and final presentation changes add 4454 raw bytes and 1308 gzip bytes; the preceding shell added 3764 raw bytes over passing 60b9ac7a. The output retains 103 session cold chunks and the same 585 emitted chunk families; all 32 optional Changes, usage and tool renderer entries remain outside the cold graph. Build-SHA/chunk-hash normalization, static-import traversal, gzip and home ceilings, and the 1% tolerance are unchanged.",
+		"raisedAt": "2026-10-02"
 	},
 	"client.coldHome.default.commitsToRows": {
 		"ceiling": 11,
