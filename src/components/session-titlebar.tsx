@@ -387,7 +387,7 @@ export function SessionTitlebar({
 								<ChevronDown aria-hidden className="size-4" />
 							</MenuTrigger>
 						</Tooltip>
-						<MenuContent finalFocus={menuRename.finalFocus}>
+						<MenuContent finalFocus={menuRename.finalFocus} sideOffset={6}>
 							<HeaderMenuBody
 								sessionId={sessionId}
 								data={data}
