@@ -22,6 +22,12 @@ const MAC_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.
 /** Unmeasured transcript entries are estimated at 320px each. */
 const ESTIMATED_ENTRY_HEIGHT = 320;
 
+class FakeResizeObserver {
+	observe() {}
+	unobserve() {}
+	disconnect() {}
+}
+
 function user(lineIndex: number, content: string, extra: Partial<SessionLine> = {}): SessionLine {
 	return {
 		type: "user",
@@ -96,11 +102,13 @@ function pressNextPrompt() {
 
 describe("SessionChat prompt jump", () => {
 	beforeEach(() => {
+		vi.stubGlobal("ResizeObserver", FakeResizeObserver);
 		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(MAC_UA);
 	});
 
 	afterEach(() => {
 		cleanup();
+		vi.unstubAllGlobals();
 		vi.restoreAllMocks();
 	});
 

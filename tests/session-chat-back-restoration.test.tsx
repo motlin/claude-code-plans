@@ -125,6 +125,12 @@ function installGeometry() {
 	restored.length = 0;
 	vi.stubGlobal("ResizeObserver", ControlledResizeObserver);
 	vi.stubGlobal("scrollTo", vi.fn());
+	Object.defineProperty(Element.prototype, "scrollTo", {
+		configurable: true,
+		value: function (this: Element, options: ScrollToOptions) {
+			this.scrollTop = options.top ?? this.scrollTop;
+		},
+	});
 	Object.defineProperty(Element.prototype, "scrollTop", {
 		configurable: true,
 		get() {

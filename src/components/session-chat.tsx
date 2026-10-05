@@ -390,14 +390,18 @@ export const SessionChat = React.memo(function SessionChat({
 	);
 
 	useEffect(() => {
-		if (!shouldScrollToEnd || autoScrolledLocations.has(initialScrollKey)) return;
 		const container = containerRef.current;
 		if (!container) throw new Error("Expected the session chat container to be mounted.");
 		const scroller = findScrollContainer(container);
 		const scrollEventTarget = isDocumentScrollContainer(scroller) ? window : scroller;
-		let followsEnd = false;
 		let pendingLayoutFollow = false;
 		const previousMetrics = scrollMetrics(scroller);
+		// Pane moves remount this effect after restoring the scrollport. Reattach
+		// follow at that restored position without repeating the fresh-visit jump.
+		let followsEnd =
+			previousMetrics.clientHeight > 0 &&
+			previousMetrics.scrollHeight - previousMetrics.scrollTop - previousMetrics.clientHeight <=
+				END_FOLLOW_THRESHOLD_PIXELS;
 		// Element metrics are live getters; retain values, not the element itself.
 		let previousHeight = previousMetrics.scrollHeight;
 		let previousClientHeight = previousMetrics.clientHeight;
@@ -408,6 +412,7 @@ export const SessionChat = React.memo(function SessionChat({
 
 		const scrollToEnd = () => {
 			const {scrollHeight, clientHeight} = scrollMetrics(scroller);
+			if (clientHeight === 0) return;
 			previousHeight = scrollHeight;
 			previousClientHeight = clientHeight;
 			if (isDocumentScrollContainer(scroller)) window.scrollTo({top: scrollHeight});
@@ -424,6 +429,7 @@ export const SessionChat = React.memo(function SessionChat({
 		};
 		const updateFollowsEnd = () => {
 			const {scrollHeight, scrollTop, clientHeight} = scrollMetrics(scroller);
+			if (clientHeight === 0) return;
 			const extentChanged = scrollHeight !== previousHeight || clientHeight !== previousClientHeight;
 			// A row shrink and footer growth can move the browser away from the new end
 			// without reader input. Retain follow through its subsequent measurement scrolls.
@@ -495,13 +501,15 @@ export const SessionChat = React.memo(function SessionChat({
 		for (const [type, handler] of inputs)
 			scrollEventTarget.addEventListener(type, handler, {passive: true, capture: true});
 
-		initialFrame = requestAnimationFrame(() => {
-			paintedFrame = requestAnimationFrame(() => {
-				autoScrolledLocations.add(initialScrollKey);
-				scrollToEnd();
-				followsEnd = true;
+		if (shouldScrollToEnd && !autoScrolledLocations.has(initialScrollKey)) {
+			initialFrame = requestAnimationFrame(() => {
+				paintedFrame = requestAnimationFrame(() => {
+					autoScrolledLocations.add(initialScrollKey);
+					scrollToEnd();
+					followsEnd = true;
+				});
 			});
-		});
+		}
 		return () => {
 			resizeObserver.disconnect();
 			scrollEventTarget.removeEventListener("scroll", updateFollowsEnd);

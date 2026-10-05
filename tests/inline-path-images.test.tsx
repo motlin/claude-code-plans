@@ -25,7 +25,14 @@ vi.mock("../src/hooks/use-claude-events", () => ({
 
 const ALLOWED_ROOT = "/tmp/test/images";
 
+class FakeResizeObserver {
+	observe() {}
+	unobserve() {}
+	disconnect() {}
+}
+
 beforeEach(() => {
+	vi.stubGlobal("ResizeObserver", FakeResizeObserver);
 	vi.stubGlobal(
 		"requestAnimationFrame",
 		vi.fn(() => 1),

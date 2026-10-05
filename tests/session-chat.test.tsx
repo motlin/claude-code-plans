@@ -3,7 +3,7 @@
 import {readFileSync} from "node:fs";
 import {join} from "node:path";
 import {cleanup, fireEvent, render, waitFor} from "@testing-library/react";
-import {afterEach, describe, it, expect, vi} from "vite-plus/test";
+import {afterEach, beforeEach, describe, it, expect, vi} from "vite-plus/test";
 import {renderToStaticMarkup} from "react-dom/server";
 import {SessionChat} from "../src/components/session-chat";
 import {StreamingMessage} from "../src/components/streaming-message";
@@ -23,7 +23,20 @@ vi.mock("../src/hooks/use-claude-events", () => ({
 	useClaudeEvents: () => ({failedTools: new Map()}),
 }));
 
-afterEach(cleanup);
+class FakeResizeObserver {
+	observe() {}
+	unobserve() {}
+	disconnect() {}
+}
+
+beforeEach(() => {
+	vi.stubGlobal("ResizeObserver", FakeResizeObserver);
+});
+
+afterEach(() => {
+	cleanup();
+	vi.unstubAllGlobals();
+});
 
 // ---------------------------------------------------------------------------
 // Fixtures: real JSONL records captured from ~/.claude/projects (see

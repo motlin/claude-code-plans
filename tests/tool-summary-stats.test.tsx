@@ -2,7 +2,7 @@
 
 import {cleanup, fireEvent, render} from "@testing-library/react";
 import {renderToStaticMarkup} from "react-dom/server";
-import {afterEach, describe, expect, it, vi} from "vite-plus/test";
+import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat} from "../src/components/session-chat";
 import {summarizeToolCalls, summarizeToolCallStats} from "../src/lib/session-utils";
 import {processTranscript} from "../src/lib/transcript";
@@ -17,7 +17,20 @@ vi.mock("../src/hooks/use-claude-events", () => ({
 	useClaudeEvents: () => ({failedTools: new Map()}),
 }));
 
-afterEach(cleanup);
+class FakeResizeObserver {
+	observe() {}
+	unobserve() {}
+	disconnect() {}
+}
+
+beforeEach(() => {
+	vi.stubGlobal("ResizeObserver", FakeResizeObserver);
+});
+
+afterEach(() => {
+	cleanup();
+	vi.unstubAllGlobals();
+});
 
 interface FakeCall {
 	id: string;

@@ -651,28 +651,58 @@ it("does not restart fresh tail scrolling when a reader moves the tile after scr
 	fireEvent.keyDown(paneMove(), {key: "Enter"});
 	const moved = actualScrollport();
 	await settleFresh(moved);
+	footerExtent = 200;
+	await settleFresh(moved);
 	expect(state(moved)).toStrictEqual(before);
 });
-it("retains the end through width-changing moves", async () => {
-	await renderShell(false, LOCAL_ID, true);
-	widthDependentRows = true;
-	const initial = actualScrollport();
-	await settleFresh(initial);
-	fireEvent.click(screen.getByRole("button", {name: "Open fabricated pane"}));
-	const distances = [];
-	for (const [width, direction] of [
-		[640, "ArrowDown"],
-		[800, "ArrowRight"],
-	] as const) {
-		listWidth = width;
-		fireEvent.keyDown(paneMove(), {key: direction});
-		fireEvent.keyDown(paneMove(), {key: "Enter"});
+it.each([
+	{strict: false, fresh: true},
+	{strict: true, fresh: true},
+	{strict: false, fresh: false},
+	{strict: true, fresh: false},
+])(
+	"retains end-follow through width-changing moves and later footer growth, strict=$strict, fresh=$fresh",
+	async ({strict, fresh}) => {
+		await renderShell(strict, LOCAL_ID, fresh);
+		widthDependentRows = true;
+		const initial = actualScrollport();
+		await settleFresh(initial);
+		if (!fresh) {
+			await act(async () => {
+				initial.scrollTo({top: initial.scrollHeight});
+			});
+			await settleFresh(initial);
+		}
+		fireEvent.click(screen.getByRole("button", {name: "Open fabricated pane"}));
+		const distances = [];
+		for (const [width, direction] of [
+			[640, "ArrowDown"],
+			[800, "ArrowRight"],
+		] as const) {
+			listWidth = width;
+			fireEvent.keyDown(paneMove(), {key: direction});
+			fireEvent.keyDown(paneMove(), {key: "Enter"});
+			const moved = actualScrollport();
+			await settleFresh(moved);
+			distances.push(moved.scrollHeight - moved.clientHeight - moved.scrollTop);
+			footerExtent += 200;
+			await settleFresh(moved);
+			distances.push(moved.scrollHeight - moved.clientHeight - moved.scrollTop);
+		}
+		expect(distances).toStrictEqual([0, 0, 0, 0]);
 		const moved = actualScrollport();
+		await act(async () => {
+			fireEvent.wheel(moved, {deltaY: -600});
+			moved.scrollTop -= 600;
+			fireEvent.scroll(moved);
+		});
+		await settleMeasurements(moved);
+		const before = state(moved);
+		footerExtent += 200;
 		await settleFresh(moved);
-		distances.push(moved.scrollHeight - moved.clientHeight - moved.scrollTop);
-	}
-	expect(distances).toStrictEqual([0, 0]);
-});
+		expect(state(moved)).toStrictEqual(before);
+	},
+);
 
 it("follows footer growth through the actual shell content ref until upward input", async () => {
 	await renderShell(false, LOCAL_ID, true);
