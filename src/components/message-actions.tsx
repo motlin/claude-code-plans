@@ -37,7 +37,7 @@ export interface MessageActionsProps {
 }
 
 const BAR_CLASS = [
-	"flex items-center gap-g1 pt-[4px] select-none",
+	"flex items-center gap-g1 select-none",
 	"opacity-0 scale-[.98] pointer-events-none",
 	"group-hover/msg:opacity-100 group-hover/msg:scale-100 group-hover/msg:pointer-events-auto",
 	"focus-within:opacity-100 focus-within:scale-100 focus-within:pointer-events-auto",
@@ -265,7 +265,7 @@ function ActionBar({
 export function AssistantMessageActions({message, text, timestamp, details, hovered}: MessageActionsProps) {
 	return (
 		<ActionBar
-			className={BAR_CLASS}
+			className={`${BAR_CLASS} pt-[4px]`}
 			label={`Show message actions for ${messageHeading("assistant", text)}`}
 			hovered={hovered}
 		>
