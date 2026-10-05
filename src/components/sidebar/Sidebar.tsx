@@ -76,37 +76,43 @@ export function Sidebar({
 			<div className="flex min-h-0 flex-1 flex-col px-2">
 				<div className="shrink-0">
 					<NewSessionRow />
-					{navigationItems.map((item) => {
-						const Icon = item.icon;
-						const badge = badgeFor(item.section);
-						return (
-							<Link
-								key={item.to}
-								to={item.to}
-								data-selected={item.section === activeSection ? "focused" : undefined}
-								className="group df-nav-row h-[var(--sb-row-h)] rounded-[var(--sb-radius)]"
-							>
-								<span className="df-leading-slot">
-									<Icon aria-hidden="true" />
-								</span>
-								<span className="min-w-0 flex-1 truncate">{item.label}</span>
-								{badge && badge.count > 0 && (
-									<span className="df-tail-mark">
-										<span
-											className="inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] leading-none font-semibold text-white"
-											title={badge.title}
-										>
-											{badge.count}
-										</span>
-									</span>
-								)}
-							</Link>
-						);
-					})}
-					<MoreNavMenu overflow={overflowItems} visibleNavSections={visibleNavSections} badgeFor={badgeFor} />
-					<div className="h-1 shrink-0" />
 				</div>
 				<NavScroll>
+					<div className="shrink-0">
+						{navigationItems.map((item) => {
+							const Icon = item.icon;
+							const badge = badgeFor(item.section);
+							return (
+								<Link
+									key={item.to}
+									to={item.to}
+									data-selected={item.section === activeSection ? "focused" : undefined}
+									className="group df-nav-row h-[var(--sb-row-h)] rounded-[var(--sb-radius)]"
+								>
+									<span className="df-leading-slot">
+										<Icon aria-hidden="true" />
+									</span>
+									<span className="min-w-0 flex-1 truncate">{item.label}</span>
+									{badge && badge.count > 0 && (
+										<span className="df-tail-mark">
+											<span
+												className="inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] leading-none font-semibold text-white"
+												title={badge.title}
+											>
+												{badge.count}
+											</span>
+										</span>
+									)}
+								</Link>
+							);
+						})}
+						<MoreNavMenu
+							overflow={overflowItems}
+							visibleNavSections={visibleNavSections}
+							badgeFor={badgeFor}
+						/>
+						<div className="h-1 shrink-0" />
+					</div>
 					<SidebarSessionGroups
 						activeItemId={activeSection === "sessions" ? activeSessionId : activeItemId}
 					/>

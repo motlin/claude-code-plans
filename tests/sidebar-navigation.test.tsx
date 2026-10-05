@@ -445,15 +445,25 @@ describe("sidebar New row", () => {
 		});
 	});
 
-	it("stays outside the scrolling list", async () => {
+	it("keeps only New fixed while the other navigation rows and More scroll", async () => {
 		await renderSidebarAt("/tasks");
 		await waitFor(() => screen.getByRole("link", {name: "Tasks"}));
 
-		const newRow = navLinks()[0];
+		const scroller = screen.getByTestId("nav-scroll");
+		const newRow = screen.getByRole("link", {name: "New"});
 		expect({
-			text: newRow?.textContent?.startsWith("New"),
-			inScroll: screen.getByTestId("nav-scroll").contains(newRow ?? null),
-		}).toStrictEqual({text: true, inScroll: false});
+			fixedLinks: navLinks()
+				.filter((link) => !scroller.contains(link))
+				.map((link) => link.getAttribute("href")),
+			localExtrasScroll: ["Plans", "Memories"].map((name) => scroller.contains(screen.getByRole("link", {name}))),
+			moreScrolls: scroller.contains(screen.getByRole("button", {name: "More navigation items"})),
+			newBeforeScroller: Boolean(newRow.compareDocumentPosition(scroller) & Node.DOCUMENT_POSITION_FOLLOWING),
+		}).toStrictEqual({
+			fixedLinks: ["/"],
+			localExtrasScroll: [true, true],
+			moreScrolls: true,
+			newBeforeScroller: true,
+		});
 	});
 
 	it("navigates home and focuses the home composer, like ⇧⌘O", async () => {
