@@ -1343,7 +1343,6 @@ function VirtualizedSessionEntries({
 			if (saved && (handoff || hidden || saved.width === width)) {
 				if (handoff && !hidden && saved.width !== width) {
 					handoffAnchorRef.current = handoff.anchor;
-					reusableRef.current = false;
 				}
 				if (hidden) width = saved.width;
 				const heights = new Map(saved.heights);
@@ -1383,7 +1382,7 @@ function VirtualizedSessionEntries({
 			if (
 				!reusableRef.current ||
 				expansionStore.size !== 0 ||
-				(!list.closest("[hidden]") && list.getBoundingClientRect().width !== width)
+				(!list.closest("[hidden]") && list.getBoundingClientRect().width !== measurementWidthRef.current)
 			) {
 				discardTranscriptMeasurements(measurementKey);
 				return;
@@ -1391,7 +1390,7 @@ function VirtualizedSessionEntries({
 			rememberTranscriptMeasurements(
 				measurementKey,
 				{
-					width,
+					width: measurementWidthRef.current,
 					heights: measuredHeightsRef.current,
 					range: savedRangeRef.current!,
 				},
@@ -1506,8 +1505,11 @@ function VirtualizedSessionEntries({
 			let changed = false;
 			for (const observation of observations) {
 				if (observation.target === list) {
-					if (list.getBoundingClientRect().width !== measurementWidthRef.current) {
-						reusableRef.current = false;
+					const width = list.getBoundingClientRect().width;
+					if (width !== measurementWidthRef.current) {
+						// Preserve the settled tile's rendered prefix, including offscreen estimates.
+						if (managesTileGeometry) measurementWidthRef.current = width;
+						else reusableRef.current = false;
 					}
 					continue;
 				}
@@ -1531,7 +1533,7 @@ function VirtualizedSessionEntries({
 			observer.observe(element);
 		}
 		return () => observer.disconnect();
-	}, [entries, range.startIndex, range.endIndex]);
+	}, [entries, range.startIndex, range.endIndex, managesTileGeometry]);
 
 	useLayoutEffect(() => {
 		const scroller = scrollerRef.current;

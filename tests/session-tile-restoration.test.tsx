@@ -443,6 +443,79 @@ it.each([
 	},
 );
 
+it.each([false, true])(
+	"restores the settled reading anchor on Back after a pane width cycle, strict=%s",
+	async (strict) => {
+		const router = await renderShell(strict, ALIAS);
+		widthDependentRows = true;
+		const initial = actualScrollport();
+		fireEvent.click(screen.getByRole("button", {name: "Open fabricated pane"}));
+		await settleMeasurements(initial);
+		await act(async () => {
+			initial.scrollTop = 8050;
+			fireEvent.scroll(initial);
+		});
+		await settleMeasurements(initial);
+		for (const [width, direction] of [
+			[640, "ArrowDown"],
+			[800, "ArrowRight"],
+			[640, "ArrowDown"],
+			[800, "ArrowRight"],
+		] as const) {
+			listWidth = width;
+			fireEvent.keyDown(paneMove(), {key: direction});
+			fireEvent.keyDown(paneMove(), {key: "Enter"});
+			await settleMeasurements(actualScrollport());
+		}
+		fireEvent.click(screen.getByRole("button", {name: "Close"}));
+		await settleMeasurements(actualScrollport());
+		const before = state(actualScrollport());
+		await act(() => router.navigate({to: "/plans"}));
+		await act(async () => router.history.back());
+		await screen.findByRole("button", {name: "Open fabricated pane"});
+		await settleMeasurements(actualScrollport());
+		expect(state(actualScrollport())).toStrictEqual(before);
+	},
+);
+
+it("restores the settled reading anchor after a live width round trip without remounting", async () => {
+	const router = await renderShell(false, ALIAS);
+	widthDependentRows = true;
+	const initial = actualScrollport();
+	await settleMeasurements(initial);
+	await act(async () => {
+		initial.scrollTop = 8050;
+		fireEvent.scroll(initial);
+	});
+	await settleMeasurements(initial);
+	for (const width of [640, 800]) {
+		hostWidths.set(initial, width);
+		await settleMeasurements(initial);
+	}
+	const before = state(initial);
+	await act(() => router.navigate({to: "/plans"}));
+	await act(async () => router.history.back());
+	await screen.findByRole("button", {name: "Open fabricated pane"});
+	await settleMeasurements(actualScrollport());
+	expect(state(actualScrollport())).toStrictEqual(before);
+});
+
+it("rejects a tile width change that has not delivered observations before departure", async () => {
+	const router = await renderShell(false);
+	widthDependentRows = true;
+	const initial = actualScrollport();
+	await settleMeasurements(initial);
+	await act(async () => {
+		initial.scrollTop = 8050;
+		fireEvent.scroll(initial);
+	});
+	await settleMeasurements(initial);
+	const remember = vi.spyOn(measurements, "rememberTranscriptMeasurements");
+	hostWidths.set(initial, 640);
+	await act(() => router.navigate({to: "/plans"}));
+	expect(remember.mock.calls).toStrictEqual([]);
+});
+
 it("preserves saved zero through a nested move", async () => {
 	await renderShell(false);
 	const initial = actualScrollport();
