@@ -3266,6 +3266,13 @@ function ToolCallSummary({
 	// progressive label instead of the tally.
 	const pendingCall = displayCalls.filter(isPendingToolCall).at(-1);
 	const runningText = pendingCall === undefined ? null : runningToolLabelText(runningToolLabel(pendingCall));
+	const completedSummaryInset =
+		!hasTasksView &&
+		pendingCall === undefined &&
+		displayCalls.every((call) => !call.isError) &&
+		notices.every((notice) => notice.notification.status === "completed")
+			? " px-1"
+			: "";
 	// Collapsed rows recede to muted ink and lift to secondary on hover; an open
 	// row stays secondary, as upstream does.
 	const ink = expanded ? "text-secondary" : "text-ink-muted group-hover/tool:text-secondary";
@@ -3286,7 +3293,7 @@ function ToolCallSummary({
 						aria-expanded={expanded}
 						aria-controls={bodyId}
 						onClick={toggleExpanded}
-						className="relative group/tool flex self-start max-w-full items-center py-0 gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3"
+						className={`relative group/tool flex self-start max-w-full items-center py-0 gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3${completedSummaryInset}`}
 					>
 						<span className={`inline-flex items-center gap-g3 min-w-0 ${ink}`}>
 							{runningText === null ? (
