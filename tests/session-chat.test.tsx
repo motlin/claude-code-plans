@@ -1793,7 +1793,7 @@ describe("SessionChat disclosure focus treatment", () => {
 		}).toStrictEqual({
 			row: "relative group/tool flex max-w-full items-center min-w-0 self-stretch me-[52px] px-1 py-0.5 gap-g2 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3",
 			summary:
-				"relative group/tool flex self-start max-w-full items-center px-1 py-0.5 gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3",
+				"relative group/tool flex max-w-full items-center min-w-0 self-stretch me-[52px] px-1 py-0.5 gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3",
 		});
 	});
 
