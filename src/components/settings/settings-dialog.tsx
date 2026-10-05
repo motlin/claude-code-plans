@@ -202,7 +202,7 @@ export function SettingsDialog() {
 			}}
 		>
 			<Dialog.Portal>
-				<Dialog.Backdrop className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px]" />
+				<Dialog.Backdrop className="fixed inset-0 z-50 bg-black/40" />
 				<Dialog.Popup
 					aria-label="Settings"
 					finalFocus={finalFocus}
