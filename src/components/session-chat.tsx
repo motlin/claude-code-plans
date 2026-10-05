@@ -3060,7 +3060,7 @@ function ToolCallRow({call, sessionId, nested = false}: {call: ClientToolCall; s
 				? "text-secondary"
 				: ink;
 	const isCompletedPaneAgent = paneAgentId !== undefined && !call.isError && !pending;
-	const standaloneInset = !isAgent && !nested && !call.isError && !pending ? " px-1" : "";
+	const disclosurePadding = !isAgent && !nested && !call.isError && !pending ? "px-1 py-0.5" : "py-0";
 	const paramClass = isSkill || isCompletedPaneAgent ? "text-primary" : labelClass;
 	// A subagent row's chevron sits in the flat `t6` token upstream gives it,
 	// rather than the hover-reactive ink every other tool row uses.
@@ -3201,7 +3201,7 @@ function ToolCallRow({call, sessionId, nested = false}: {call: ClientToolCall; s
 						toggleExpanded();
 					}
 				}}
-				className={`relative group/tool flex self-start max-w-full items-center py-0 gap-g2 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3${standaloneInset}`}
+				className={`relative group/tool flex self-start max-w-full items-center ${disclosurePadding} gap-g2 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3`}
 			>
 				{rowLabel}
 				<span className={chevronClass}>

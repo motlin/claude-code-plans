@@ -1791,7 +1791,7 @@ describe("SessionChat disclosure focus treatment", () => {
 			row: disclosureClassName(singleBash),
 			summary: disclosureClassName(groupedBash),
 		}).toStrictEqual({
-			row: "relative group/tool flex self-start max-w-full items-center py-0 gap-g2 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3 px-1",
+			row: "relative group/tool flex self-start max-w-full items-center px-1 py-0.5 gap-g2 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3",
 			summary:
 				"relative group/tool flex self-start max-w-full items-center py-0 gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3",
 		});
