@@ -265,6 +265,82 @@ describe("TileHost", () => {
 		}).toStrictEqual({haspopup: "dialog", fixed: true, inset: true});
 	});
 
+	it.each([false, true])("preserves the pane reader and local state through expansion (nested: %s)", (nested) => {
+		unregister();
+		unregister = registerPane("plan", {
+			title: "Test pane",
+			render: () => (
+				<div data-testid="pane-reader" style={{overflow: "auto", height: 100}}>
+					<input aria-label="Draft comment" defaultValue="" />
+					<details>
+						<summary>Example file</summary>
+						<div style={{height: 1000}}>Example lines</div>
+					</details>
+				</div>
+			),
+		});
+		localStorage.setItem(
+			"ccb.paneLayout.v1",
+			JSON.stringify({
+				"session-a": {
+					root: {
+						kind: "stack",
+						direction: "row",
+						flex: 1,
+						children: nested
+							? [
+									{
+										kind: "stack",
+										direction: "column",
+										flex: 1,
+										children: [
+											{kind: "tile", tileId: "chat", flex: 1},
+											{kind: "tile", tileId: "plan", flex: 1},
+										],
+									},
+								]
+							: [
+									{kind: "tile", tileId: "chat", flex: 1},
+									{kind: "tile", tileId: "plan", flex: 1},
+								],
+					},
+					expanded: null,
+					focused: "plan",
+				},
+			}),
+		);
+		renderHost("session-a");
+		const reader = screen.getByTestId("pane-reader");
+		const draft = screen.getByRole<HTMLInputElement>("textbox", {name: "Draft comment"});
+		const disclosure = reader.querySelector("details")!;
+		const chat = document.querySelector<HTMLElement>("[data-tile-host=chat]")!;
+		disclosure.open = true;
+		fireEvent.change(draft, {target: {value: "Alice's draft"}});
+		reader.scrollTop = 300;
+		reader.scrollLeft = 100;
+
+		for (const toggle of ["Expand", "Collapse", "Expand", "Collapse"]) {
+			fireEvent.click(screen.getByRole("button", {name: toggle}));
+			expect(screen.getByTestId("pane-reader")).toBe(reader);
+			expect(document.querySelector("[data-tile-host=chat]")).toBe(chat);
+			expect({
+				top: reader.scrollTop,
+				left: reader.scrollLeft,
+				draft: draft.value,
+				open: disclosure.open,
+				chatHidden: chat.hidden,
+				readers: screen.getAllByTestId("pane-reader").length,
+			}).toStrictEqual({
+				top: 300,
+				left: 100,
+				draft: "Alice's draft",
+				open: true,
+				chatHidden: toggle === "Expand",
+				readers: 1,
+			});
+		}
+	});
+
 	it("returns focus to Expand after collapsing", () => {
 		renderHost("session-a");
 		openTestPane();
@@ -459,6 +535,64 @@ describe("TileHost on a phone", () => {
 		});
 	});
 
+	it("hides non-owning fixed stack wrappers while a nested phone pane is expanded", () => {
+		mockViewport(390);
+		const unregisterFiles = registerPane("files", {title: "Files", render: () => <p>Files body</p>});
+		const unregisterTasks = registerPane("background-tasks", {title: "Tasks", render: () => <p>Tasks body</p>});
+		localStorage.setItem(
+			"ccb.paneLayout.v1",
+			JSON.stringify({
+				"session-phone": {
+					root: {
+						kind: "stack",
+						direction: "row",
+						flex: 1,
+						children: [
+							{
+								kind: "stack",
+								direction: "column",
+								flex: 1,
+								children: [
+									{kind: "tile", tileId: "chat", flex: 1},
+									{kind: "tile", tileId: "plan", flex: 1},
+								],
+							},
+							{
+								kind: "stack",
+								direction: "column",
+								flex: 1,
+								children: [
+									{kind: "tile", tileId: "files", flex: 1},
+									{kind: "tile", tileId: "background-tasks", flex: 1},
+								],
+							},
+						],
+					},
+					expanded: null,
+					focused: "plan",
+				},
+			}),
+		);
+		renderHost("session-phone");
+		const pane = screen.getByRole("region", {name: "Test pane"});
+		const wrappers = Array.from(document.querySelectorAll<HTMLElement>("[data-tile-stack=column]")).map(
+			(stack) => stack.parentElement!,
+		);
+		fireEvent.click(within(pane).getByRole("button", {name: "Expand"}));
+		expect(
+			wrappers.map((wrapper) => ({fixed: wrapper.classList.contains("fixed"), hidden: wrapper.hidden})),
+		).toStrictEqual([
+			{fixed: true, hidden: false},
+			{fixed: true, hidden: true},
+		]);
+		expect(screen.getByRole("region", {name: "Test pane"})).toBe(pane);
+		expect(paneSlotState()).toStrictEqual({phone: true, fullWidth: true, sticky: false, separators: 0});
+		fireEvent.click(within(pane).getByRole("button", {name: "Collapse"}));
+		expect(wrappers.map((wrapper) => wrapper.hidden)).toStrictEqual([false, false]);
+		unregisterFiles();
+		unregisterTasks();
+	});
+
 	it("keeps the side-by-side tile with its resize handle at 640px and up", () => {
 		mockViewport(640);
 		renderHost("session-wide");
@@ -523,6 +657,22 @@ describe("TileHost corner handle", () => {
 			tasks: flexOf("[data-tile-host=background-tasks]"),
 		};
 	}
+
+	it("unmounts inactive pane contents while retaining the expanded sibling", () => {
+		renderHost("session-a");
+		const files = screen.getByRole("region", {name: "Files"});
+		const tasks = screen.getByRole("region", {name: "Background tasks"});
+		fireEvent.click(within(files).getByRole("button", {name: "Expand"}));
+		expect(screen.getByRole("region", {name: "Files"})).toBe(files);
+		expect(screen.queryByRole("region", {name: "Background tasks"})).toBe(null);
+		expect({
+			connected: tasks.isConnected,
+			overlays: document.querySelectorAll("[data-pane-overlay]").length,
+		}).toStrictEqual({connected: false, overlays: 1});
+		fireEvent.click(within(files).getByRole("button", {name: "Collapse"}));
+		expect(screen.getByRole("region", {name: "Background tasks"})).not.toBe(tasks);
+		expect(screen.getByRole("region", {name: "Files"})).toBe(files);
+	});
 
 	it("resizes the row and the column together from the corner", () => {
 		renderHost("session-a");

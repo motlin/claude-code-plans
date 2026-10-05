@@ -104,7 +104,7 @@ interface InternalHost {
 	phone: boolean;
 	/** The root row, measured when a pane opens so Changes can be sized to its minimum. */
 	rootRef: RefObject<HTMLDivElement | null>;
-	/** The pane just collapsed, whose remounted Expand button takes focus back. */
+	/** The pane just collapsed, whose Expand button takes focus back. */
 	collapsedRef: RefObject<PaneKind | null>;
 	collapse: () => void;
 }
@@ -635,9 +635,8 @@ function StackView({
 	const size = useElementSize(ref);
 	const sizePx = stack.direction === "row" ? size.width : size.height;
 
-	const expandedDefinition = isRoot && host.expanded !== null ? host.definitions.get(host.expanded) : undefined;
 	const items: ReactNode[] = [];
-	// Preserve the keyed chat path while expanded, including chat inside nested stacks.
+	// Keep the expanded pane and chat on their keyed paths so their reader state survives.
 	stack.children.forEach((child, index) => {
 		if (host.expanded === null && index > 0 && !(isRoot && host.phone)) {
 			items.push(
@@ -664,20 +663,6 @@ function StackView({
 			/>,
 		);
 	});
-	if (expandedDefinition !== undefined && host.expanded !== null) {
-		items.push(
-			<TileSlot
-				key="overlay"
-				tileId={host.expanded}
-				host={host}
-				className={`min-w-0 ${host.phone ? PHONE_SLOT_CLASSES : EXPANDED_SLOT_CLASSES}`}
-				data-pane-overlay
-				phone={host.phone}
-			>
-				<PaneSurface kind={host.expanded} definition={expandedDefinition} host={host} />
-			</TileSlot>,
-		);
-	}
 
 	return (
 		<div
@@ -709,7 +694,12 @@ function NodeView({
 	const slotClass = `min-h-0 min-w-0 ${phone ? PHONE_SLOT_CLASSES : "relative"}`;
 	if (node.kind === "stack") {
 		return (
-			<div className={`flex ${slotClass}`} style={style} {...(phone ? {"data-pane-phone": ""} : {})}>
+			<div
+				className={`flex ${slotClass}`}
+				style={style}
+				hidden={host.expanded !== null && !tileIdsOf(node).includes(host.expanded)}
+				{...(phone ? {"data-pane-phone": ""} : {})}
+			>
 				<StackView stack={node} path={path} host={host} chat={chat} />
 				<MovePreviewOutline path={path} host={host} />
 			</div>
@@ -730,11 +720,21 @@ function NodeView({
 			</TileSlot>
 		);
 	}
-	if (host.expanded !== null) return null;
+	if (host.expanded !== null && host.expanded !== node.tileId) return null;
 	const definition = host.definitions.get(node.tileId);
 	if (definition === undefined) return null;
+	const expanded = host.expanded === node.tileId;
 	return (
-		<TileSlot tileId={node.tileId} host={host} className={slotClass} style={style} phone={phone}>
+		<TileSlot
+			tileId={node.tileId}
+			host={host}
+			className={
+				expanded ? `min-h-0 min-w-0 ${host.phone ? PHONE_SLOT_CLASSES : EXPANDED_SLOT_CLASSES}` : slotClass
+			}
+			style={expanded ? undefined : style}
+			phone={expanded ? host.phone : phone}
+			{...(expanded ? {"data-pane-overlay": true} : {})}
+		>
 			<PaneSurface kind={node.tileId} definition={definition} host={host} />
 			<MovePreviewOutline path={path} host={host} />
 		</TileSlot>
