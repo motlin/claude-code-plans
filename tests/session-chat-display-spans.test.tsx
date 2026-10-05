@@ -479,6 +479,13 @@ describe("assistant display-span actions", () => {
 
 	it("releases an unmounted held entry without hiding a newly focused span and keeps virtual rows bounded", () => {
 		vi.stubGlobal("innerHeight", 1000);
+		const frames = new Map<number, FrameRequestCallback>();
+		let frameId = 0;
+		vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+			frames.set(++frameId, callback);
+			return frameId;
+		});
+		vi.stubGlobal("cancelAnimationFrame", (id: number) => frames.delete(id));
 		vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
 			return new DOMRect(
 				0,
@@ -501,6 +508,16 @@ describe("assistant display-span actions", () => {
 		act(() => {
 			window.dispatchEvent(new CustomEvent("transcript-jump-request", {detail: 98}));
 		});
+		const target = view.container.querySelector<HTMLElement>('[data-record-index="98"]')!;
+		const scrollIntoView = vi.fn();
+		target.scrollIntoView = scrollIntoView;
+		act(() => {
+			for (const id of [...frames.keys()]) {
+				const callback = frames.get(id);
+				frames.delete(id);
+				callback?.(0);
+			}
+		});
 		const latest = footers(view.container).at(-1)!;
 		const fork = button(latest, "Fork from here");
 		focus(fork);
@@ -508,6 +525,7 @@ describe("assistant display-span actions", () => {
 		fireEvent.click(fork);
 		expect({
 			originalConnected: original.isConnected,
+			completedJump: scrollIntoView.mock.calls,
 			focused: document.activeElement === fork,
 			rows: Array.from(
 				view.container.querySelectorAll<HTMLElement>('[role="article"]'),
@@ -517,6 +535,7 @@ describe("assistant display-span actions", () => {
 			fork: forkFrom.mock.calls,
 		}).toStrictEqual({
 			originalConnected: false,
+			completedJump: [[{block: "center", behavior: "smooth"}]],
 			focused: true,
 			rows: ["95", "96", "97", "98", "99", "100"],
 			footers: ["95", "97", "99"],

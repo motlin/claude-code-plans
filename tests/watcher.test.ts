@@ -154,9 +154,12 @@ describe("handleFileChange", () => {
 		await __testing.handleFileChange(alicePath);
 		await vi.advanceTimersByTimeAsync(1_800);
 
-		expect(new Set(readNewJsonlLines.mock.calls.map(([path]) => path))).toStrictEqual(
-			new Set([alicePath, bobPath]),
-		);
+		// Timer delivery starts the append pipeline; its filesystem reads still finish asynchronously.
+		await vi.waitFor(() => {
+			expect(new Set(readNewJsonlLines.mock.calls.map(([path]) => path))).toStrictEqual(
+				new Set([alicePath, bobPath]),
+			);
+		});
 	});
 });
 

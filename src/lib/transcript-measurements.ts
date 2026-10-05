@@ -4,6 +4,33 @@ interface TranscriptMeasurements {
 	range: {startIndex: number; endIndex: number};
 }
 
+export interface TranscriptReadingAnchor {
+	entryKey: string;
+	offset: number;
+	atEnd: boolean;
+}
+
+interface TranscriptHandoff extends TranscriptMeasurements {
+	source: object;
+	anchor: TranscriptReadingAnchor;
+}
+
+const handoffs = new Map<string, TranscriptHandoff>();
+
+/** A pane reparent can consume estimates only in the departing instance's commit. */
+export function rememberTranscriptHandoff(key: string, snapshot: TranscriptHandoff): void {
+	handoffs.set(key, snapshot);
+	queueMicrotask(() => {
+		if (handoffs.get(key) === snapshot) handoffs.delete(key);
+	});
+}
+
+export function takeTranscriptHandoff(key: string, source: object): TranscriptHandoff | undefined {
+	const snapshot = handoffs.get(key);
+	handoffs.delete(key);
+	return snapshot?.source === source ? snapshot : undefined;
+}
+
 interface RetainedMeasurements extends TranscriptMeasurements {
 	source: WeakRef<object>;
 }

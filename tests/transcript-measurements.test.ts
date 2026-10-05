@@ -3,11 +3,38 @@ import {
 	readTranscriptMeasurements,
 	discardTranscriptMeasurements,
 	rememberTranscriptMeasurements,
+	rememberTranscriptHandoff,
+	takeTranscriptHandoff,
 } from "../src/lib/transcript-measurements";
 
 const range = {startIndex: 0, endIndex: 4};
 
 afterEach(() => vi.restoreAllMocks());
+
+it("consumes a pane handoff only within its commit and for its original source", async () => {
+	const source = {};
+	const snapshot = {
+		source,
+		width: 800,
+		range,
+		heights: new Map([["example-row-100", 200]]),
+		anchor: {entryKey: "example-row-100", offset: -50, atEnd: false},
+	};
+	rememberTranscriptHandoff("example-handoff", snapshot);
+	const sameCommit = takeTranscriptHandoff("example-handoff", source);
+	const consumed = takeTranscriptHandoff("example-handoff", source);
+	rememberTranscriptHandoff("example-handoff", snapshot);
+	const foreignSource = takeTranscriptHandoff("example-handoff", {});
+	rememberTranscriptHandoff("example-handoff", snapshot);
+	await Promise.resolve();
+	const laterCommit = takeTranscriptHandoff("example-handoff", source);
+	expect({sameCommit, consumed, foreignSource, laterCommit}).toStrictEqual({
+		sameCommit: snapshot,
+		consumed: undefined,
+		foreignSource: undefined,
+		laterCommit: undefined,
+	});
+});
 
 it("peeks without consuming a generation and snapshots without sharing its mutable height map", () => {
 	const source = {};

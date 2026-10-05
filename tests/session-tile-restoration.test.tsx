@@ -45,11 +45,14 @@ const lines: SessionLine[] = Array.from({length: 80}, (_, index) => ({
 let footerExtent = 0;
 const nativeScrollTo = Object.getOwnPropertyDescriptor(Element.prototype, "scrollTo");
 const nativeScrollIntoView = Object.getOwnPropertyDescriptor(Element.prototype, "scrollIntoView");
-const rowHeight = (index: number) => [200, 500, 150, 400][index % 4]!;
+let widthDependentRows = false;
+const rowHeight = (index: number, host: Element) =>
+	[200, 500, 150, 400][index % 4]! + (widthDependentRows && hostWidths.get(host) === 640 ? 100 : 0);
 const viewportHeight = 600;
 let listWidth = 800;
 let hostWidths = new WeakMap<Element, number>();
 let chatSource: object = lines;
+let chatLines = lines;
 let chatLayout = "example-layout";
 let freshVisit = false;
 let phase = "initial";
@@ -77,7 +80,7 @@ function contentHeight(host: Element): number {
 	if (host.closest("[hidden]")) return 0;
 	return (
 		spacerHeight(host, "before") +
-		mountedRows(host).reduce((sum, row) => sum + rowHeight(Number(row.dataset["transcriptEntryIndex"])), 0) +
+		mountedRows(host).reduce((sum, row) => sum + rowHeight(Number(row.dataset["transcriptEntryIndex"]), host), 0) +
 		spacerHeight(host, "after") +
 		footerExtent
 	);
@@ -90,13 +93,13 @@ function rowTop(row: HTMLElement): number {
 	let top = spacerHeight(host, "before");
 	for (const current of mountedRows(host)) {
 		if (current === row) return top - clampedPosition(host);
-		top += rowHeight(Number(current.dataset["transcriptEntryIndex"]));
+		top += rowHeight(Number(current.dataset["transcriptEntryIndex"]), host);
 	}
 	throw new Error("Expected a mounted transcript row.");
 }
 function visibleAnchor(host: Element) {
 	const row = mountedRows(host).find(
-		(candidate) => rowTop(candidate) + rowHeight(Number(candidate.dataset["transcriptEntryIndex"])) > 0,
+		(candidate) => rowTop(candidate) + rowHeight(Number(candidate.dataset["transcriptEntryIndex"]), host) > 0,
 	);
 	if (!row) throw new Error("Expected a visible transcript row.");
 	return {record: row.dataset["perfLine"], top: rowTop(row)};
@@ -121,6 +124,7 @@ class ControlledResizeObserver {
 
 function installGeometry() {
 	footerExtent = 0;
+	widthDependentRows = false;
 	listWidth = 800;
 	hostWidths = new WeakMap();
 	chatSource = lines;
@@ -164,7 +168,12 @@ function installGeometry() {
 		if (this.matches("[data-testid=virtualized-transcript]"))
 			return new DOMRect(0, -clampedPosition(host), hostWidths.get(host), contentHeight(host));
 		if (this instanceof HTMLElement && this.dataset["transcriptEntryIndex"] !== undefined) {
-			return new DOMRect(0, rowTop(this), 800, rowHeight(Number(this.dataset["transcriptEntryIndex"])));
+			return new DOMRect(
+				0,
+				rowTop(this),
+				hostWidths.get(host),
+				rowHeight(Number(this.dataset["transcriptEntryIndex"]), host),
+			);
 		}
 		return new DOMRect();
 	});
@@ -271,7 +280,7 @@ function ShellChat({
 			initialScrollKey={scrollKey}
 			shouldScrollToEnd={freshVisit}
 			scrollContentRef={anchorRef}
-			lines={lines}
+			lines={chatLines}
 			measurementSource={chatSource}
 			measurementLayout={chatLayout}
 			toolResultMap={EMPTY_RESULTS}
@@ -302,8 +311,10 @@ function paneMove() {
 function state(host: HTMLElement) {
 	return {top: host.scrollTop, anchor: visibleAnchor(host)};
 }
-async function renderShell(strict: boolean, routeId = LOCAL_ID, fresh = false) {
+async function renderShell(strict: boolean, routeId = LOCAL_ID, fresh = false, records = lines) {
 	installGeometry();
+	chatLines = records;
+	chatSource = records;
 	freshVisit = fresh;
 	vi.stubGlobal("localStorage", {getItem: () => null, setItem: () => {}, removeItem: () => {}});
 	const computed = window.getComputedStyle.bind(window);
@@ -389,6 +400,46 @@ it.each([false, true])(
 		const user = state(moved);
 		await settleMeasurements(moved);
 		expect(state(moved)).toStrictEqual(user);
+	},
+);
+
+it.each([
+	{strict: false, initialWidth: 800},
+	{strict: true, initialWidth: 800},
+	{strict: false, initialWidth: 640},
+])(
+	"retains a clipped record through successive width-changing moves, strict=$strict, initialWidth=$initialWidth",
+	async ({strict, initialWidth}) => {
+		await renderShell(strict);
+		widthDependentRows = true;
+		const routerHost = actualScrollport();
+		fireEvent.click(screen.getByRole("button", {name: "Open fabricated pane"}));
+		hostWidths.set(routerHost, initialWidth);
+		await settleMeasurements(routerHost);
+		await act(async () => {
+			routerHost.scrollTop = 8050;
+			fireEvent.scroll(routerHost);
+		});
+		await settleMeasurements(routerHost);
+		const before = visibleAnchor(routerHost);
+		const snapshots = [];
+		for (const [width, direction] of [
+			[initialWidth === 800 ? 640 : 800, "ArrowDown"],
+			[initialWidth, "ArrowRight"],
+			[initialWidth === 800 ? 640 : 800, "ArrowDown"],
+		] as const) {
+			listWidth = width;
+			fireEvent.keyDown(paneMove(), {key: direction});
+			fireEvent.keyDown(paneMove(), {key: "Enter"});
+			const moved = actualScrollport();
+			const immediate = visibleAnchor(moved);
+			await settleMeasurements(moved);
+			snapshots.push({immediate, settled: visibleAnchor(moved)});
+		}
+		expect({before, snapshots}).toStrictEqual({
+			before,
+			snapshots: Array.from({length: 3}, () => ({immediate: before, settled: before})),
+		});
 	},
 );
 
@@ -512,7 +563,7 @@ it.each([false, true])(
 	},
 );
 
-it.each(["source", "layout", "width"] as const)("rejects incompatible same-commit %s measurements", async (change) => {
+it.each(["source", "layout"] as const)("rejects incompatible same-commit %s measurements", async (change) => {
 	const router = await renderShell(false);
 	const initial = actualScrollport();
 	fireEvent.click(screen.getByRole("button", {name: "Open fabricated pane"}));
@@ -525,7 +576,6 @@ it.each(["source", "layout", "width"] as const)("rejects incompatible same-commi
 	const remember = vi.spyOn(measurements, "rememberTranscriptMeasurements");
 	if (change === "source") chatSource = {};
 	if (change === "layout") chatLayout = "example-larger-font";
-	if (change === "width") listWidth = 640;
 	fireEvent.keyDown(paneMove(), {key: "ArrowDown"});
 	fireEvent.keyDown(paneMove(), {key: "Enter"});
 	expect(actualScrollport() === initial).toBe(false);
@@ -533,6 +583,20 @@ it.each(["source", "layout", "width"] as const)("rejects incompatible same-commi
 	// here would save its nonempty height map from the new incompatible instance.
 	await act(() => router.navigate({to: "/plans"}));
 	expect(remember.mock.calls.at(-1)?.[1].heights).toStrictEqual(new Map());
+});
+
+it("does not hand off geometry after a compact-summary disclosure", async () => {
+	const records = lines.map((line, index) => (index === 0 ? {...line, isCompactSummary: true} : line));
+	await renderShell(false, LOCAL_ID, false, records);
+	fireEvent.click(screen.getByRole("button", {name: "Open fabricated pane"}));
+	await settleMeasurements(actualScrollport());
+	fireEvent.click(screen.getByRole("button", {name: "Compacted conversation"}));
+	await settleMeasurements(actualScrollport());
+	const remember = vi.spyOn(measurements, "rememberTranscriptHandoff");
+	listWidth = 640;
+	fireEvent.keyDown(paneMove(), {key: "ArrowDown"});
+	fireEvent.keyDown(paneMove(), {key: "Enter"});
+	expect(remember.mock.calls).toStrictEqual([]);
 });
 
 it("waits for invalid-width geometry to commit before restoring Back", async () => {
@@ -589,6 +653,27 @@ it("does not restart fresh tail scrolling when a reader moves the tile after scr
 	await settleFresh(moved);
 	expect(state(moved)).toStrictEqual(before);
 });
+it("retains the end through width-changing moves", async () => {
+	await renderShell(false, LOCAL_ID, true);
+	widthDependentRows = true;
+	const initial = actualScrollport();
+	await settleFresh(initial);
+	fireEvent.click(screen.getByRole("button", {name: "Open fabricated pane"}));
+	const distances = [];
+	for (const [width, direction] of [
+		[640, "ArrowDown"],
+		[800, "ArrowRight"],
+	] as const) {
+		listWidth = width;
+		fireEvent.keyDown(paneMove(), {key: direction});
+		fireEvent.keyDown(paneMove(), {key: "Enter"});
+		const moved = actualScrollport();
+		await settleFresh(moved);
+		distances.push(moved.scrollHeight - moved.clientHeight - moved.scrollTop);
+	}
+	expect(distances).toStrictEqual([0, 0]);
+});
+
 it("follows footer growth through the actual shell content ref until upward input", async () => {
 	await renderShell(false, LOCAL_ID, true);
 	const host = actualScrollport();

@@ -68,6 +68,9 @@ import {
 	readTranscriptMeasurements,
 	discardTranscriptMeasurements,
 	rememberTranscriptMeasurements,
+	rememberTranscriptHandoff,
+	takeTranscriptHandoff,
+	type TranscriptReadingAnchor,
 } from "../lib/transcript-measurements";
 import {jumpToMessage, TRANSCRIPT_JUMP_REQUEST_EVENT, type TranscriptJumpRequestEvent} from "../lib/jump-to-message";
 
@@ -1285,10 +1288,13 @@ function VirtualizedSessionEntries({
 	});
 	const measuredHeightsRef = useRef(restoration.heights);
 	const reusableRef = useRef(true);
+	const handoffCompatibleRef = useRef(true);
 	const restoringRangeRef = useRef((restoration.saved?.range.startIndex ?? 0) > 0);
 	const savedRangeRef = useRef(restoration.saved?.range);
 	const measurementWidthRef = useRef(0);
 	const visibleAnchorIndexRef = useRef(0);
+	const readingAnchorRef = useRef<TranscriptReadingAnchor | undefined>(undefined);
+	const handoffAnchorRef = useRef<TranscriptReadingAnchor | undefined>(undefined);
 	const pendingScrollAdjustmentRef = useRef(0);
 	const pendingJumpRef = useRef<number | null>(null);
 	const pendingFocusIndexRef = useRef<number | null>(null);
@@ -1309,6 +1315,7 @@ function VirtualizedSessionEntries({
 	useLayoutEffect(() => {
 		if (measurementSource !== restoration.source) {
 			reusableRef.current = false;
+			handoffCompatibleRef.current = false;
 		}
 	}, [measurementSource, restoration.source]);
 	useLayoutEffect(() => {
@@ -1323,8 +1330,13 @@ function VirtualizedSessionEntries({
 		// cleanup retains its geometry. Claim that one same-commit handoff here.
 		if (managesTileGeometry && !handoffAttempted.current && !restoration.saved && expansionStore.size === 0) {
 			handoffAttempted.current = true;
-			const saved = readTranscriptMeasurements(measurementKey, source);
-			if (saved && (hidden || saved.width === width)) {
+			const handoff = takeTranscriptHandoff(measurementKey, source);
+			const saved = handoff ?? readTranscriptMeasurements(measurementKey, source);
+			if (saved && (handoff || hidden || saved.width === width)) {
+				if (handoff && !hidden && saved.width !== width) {
+					handoffAnchorRef.current = handoff.anchor;
+					reusableRef.current = false;
+				}
 				if (hidden) width = saved.width;
 				const heights = new Map(saved.heights);
 				pendingHandoff.current = heights;
@@ -1346,6 +1358,20 @@ function VirtualizedSessionEntries({
 		}
 		return () => {
 			if (pendingHandoff.current) return;
+			if (
+				managesTileGeometry &&
+				handoffCompatibleRef.current &&
+				expansionStore.size === 0 &&
+				readingAnchorRef.current
+			) {
+				rememberTranscriptHandoff(measurementKey, {
+					width: list.closest("[hidden]") ? measurementWidthRef.current : list.getBoundingClientRect().width,
+					heights: new Map(measuredHeightsRef.current),
+					range: savedRangeRef.current!,
+					source,
+					anchor: readingAnchorRef.current,
+				});
+			}
 			if (
 				!reusableRef.current ||
 				expansionStore.size !== 0 ||
@@ -1371,10 +1397,30 @@ function VirtualizedSessionEntries({
 	}, [range, measuredHeights]);
 	useLayoutEffect(() => {
 		if (pendingHandoff.current && pendingHandoff.current !== measuredHeights) return;
+		const list = listRef.current;
+		if (handoffAnchorRef.current && pendingHandoff.current && list) {
+			// Measure the bounded carried window at its new width before restoring its
+			// record anchor. Later observer delivery must not compensate these rows twice.
+			const heights = new Map(measuredHeightsRef.current);
+			let changed = false;
+			for (const row of list.querySelectorAll<HTMLElement>("[data-transcript-entry-index]")) {
+				const entry = entries[Number(row.dataset["transcriptEntryIndex"])];
+				if (!entry) continue;
+				const height = row.getBoundingClientRect().height;
+				if (heights.get(entry.key) !== height) changed = true;
+				heights.set(entry.key, height);
+			}
+			if (changed) {
+				measuredHeightsRef.current = heights;
+				pendingHandoff.current = heights;
+				setMeasuredHeights(heights);
+				return;
+			}
+		}
 		pendingHandoff.current = null;
 		if (listRef.current?.closest("[hidden]")) return;
 		geometryReady?.();
-	}, [geometryReady, measuredHeights, range]);
+	}, [geometryReady, measuredHeights, range, entries]);
 
 	const prefixHeights = useMemo(() => {
 		const result = [0];
@@ -1388,7 +1434,17 @@ function VirtualizedSessionEntries({
 	const updateVisibleRange = useCallback(() => {
 		const list = listRef.current;
 		const scroller = scrollerRef.current;
-		if (!list || !scroller || entries.length === 0 || pendingHandoff.current || list.closest("[hidden]")) return;
+		if (
+			!list ||
+			!scroller ||
+			entries.length === 0 ||
+			pendingJumpRef.current !== null ||
+			pendingFocusIndexRef.current !== null ||
+			pendingHandoff.current ||
+			handoffAnchorRef.current ||
+			list.closest("[hidden]")
+		)
+			return;
 		// The persistent main element is still at the departed page's zero offset
 		// until router restoration runs. Keep the saved window through that interval.
 		if (restoringRangeRef.current && scroller.scrollTop === 0) return;
@@ -1398,13 +1454,23 @@ function VirtualizedSessionEntries({
 		const viewportStart = Math.max(0, viewport.top - listTop);
 		const viewportEnd = Math.max(viewportStart, viewport.top + viewport.height - listTop);
 		visibleAnchorIndexRef.current = entryIndexAtOffset(prefixHeights, viewportStart);
+		const anchorIndex = visibleAnchorIndexRef.current;
+		const row = list.querySelector<HTMLElement>(`[data-transcript-entry-index="${anchorIndex}"]`);
+		if (row) {
+			const {scrollTop, scrollHeight, clientHeight} = scrollMetrics(scroller);
+			readingAnchorRef.current = {
+				entryKey: entries[anchorIndex]!.key,
+				offset: row.getBoundingClientRect().top - viewport.top,
+				atEnd: scrollHeight - scrollTop - clientHeight <= END_FOLLOW_THRESHOLD_PIXELS,
+			};
+		}
 		const nextRange = rangeForViewport(prefixHeights, viewportStart, viewportEnd);
 		setRange((current) =>
 			current.startIndex === nextRange.startIndex && current.endIndex === nextRange.endIndex
 				? current
 				: nextRange,
 		);
-	}, [entries.length, prefixHeights]);
+	}, [entries, prefixHeights]);
 
 	useLayoutEffect(() => {
 		const list = listRef.current;
@@ -1461,6 +1527,28 @@ function VirtualizedSessionEntries({
 
 	useLayoutEffect(() => {
 		const scroller = scrollerRef.current;
+		const anchor = handoffAnchorRef.current;
+		if (anchor && !pendingHandoff.current && scroller) {
+			const index = entries.findIndex((entry) => entry.key === anchor.entryKey);
+			const row = listRef.current?.querySelector<HTMLElement>(`[data-transcript-entry-index="${index}"]`);
+			if (row) {
+				scroller.scrollTop = anchor.atEnd
+					? scroller.scrollHeight
+					: scroller.scrollTop +
+						row.getBoundingClientRect().top -
+						scrollerViewport(scroller).top -
+						anchor.offset;
+				const viewport = scrollerViewport(scroller);
+				const start = Math.max(0, viewport.top - listRef.current!.getBoundingClientRect().top);
+				const nextRange = rangeForViewport(prefixHeights, start, start + viewport.height);
+				if (nextRange.startIndex !== range.startIndex || nextRange.endIndex !== range.endIndex) {
+					pendingHandoff.current = measuredHeights;
+					setRange(nextRange);
+					return;
+				}
+			}
+			handoffAnchorRef.current = undefined;
+		}
 		const adjustment = pendingScrollAdjustmentRef.current;
 		pendingScrollAdjustmentRef.current = 0;
 		if (scroller && adjustment !== 0) {
@@ -1472,7 +1560,7 @@ function VirtualizedSessionEntries({
 			}
 		}
 		updateVisibleRange();
-	}, [measuredHeights, updateVisibleRange]);
+	}, [measuredHeights, updateVisibleRange, entries, prefixHeights, range]);
 
 	useEffect(() => {
 		function requestJump(event: Event) {
@@ -1584,8 +1672,10 @@ function VirtualizedSessionEntries({
 			aria-label="Chat messages"
 			data-testid="virtualized-transcript"
 			onClickCapture={(event) => {
-				if (event.target instanceof Element && event.target.closest("[aria-expanded],summary"))
+				if (event.target instanceof Element && event.target.closest("[aria-expanded],summary")) {
 					reusableRef.current = false;
+					handoffCompatibleRef.current = false;
+				}
 			}}
 		>
 			<div className="sr-only">Use the up and down arrow keys to move between messages</div>
