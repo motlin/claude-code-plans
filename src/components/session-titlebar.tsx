@@ -54,7 +54,7 @@ import {Tooltip} from "./ui/tooltip";
 const PILLS_COMPACT_BELOW_PX = 560;
 
 const TITLE_CLASS =
-	"h-6 min-w-0 cursor-text truncate rounded-r5 border-0 bg-transparent px-1 text-left text-[13px]/[19px] font-medium text-primary select-none hover:bg-fill-ghost-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100";
+	"-mx-1 h-6 min-w-0 cursor-text truncate rounded-r5 border-0 bg-transparent px-1 text-left text-[13px]/[19px] font-medium text-primary select-none hover:bg-fill-ghost-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100";
 
 const CHEVRON_CLASS =
 	"flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-r6 text-secondary transition-colors hover:bg-fill-ghost-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100 data-[popup-open]:bg-fill-ghost-hover";
@@ -351,131 +351,140 @@ export function SessionTitlebar({
 			<div
 				data-titlebar-lead=""
 				{...(compact ? {"data-pills-compact": ""} : {})}
-				className="flex min-w-0 items-center gap-1"
+				className="flex min-w-0 items-center"
 			>
-				<SessionEnvironmentGlyph sessionId={sessionId} />
-				{data.parentSessionId !== undefined && (
-					<Link
-						to="/session/$id"
-						params={{id: data.parentSessionId}}
-						className={`${PILL_CLASS} cursor-pointer`}
-					>
-						<ArrowLeft aria-hidden className="size-3 shrink-0" />
-						Parent session
-					</Link>
-				)}
-				<div className="flex min-w-[32px] items-center">
-					<ContextMenu onOpenChangeComplete={contextRename.onOpenChangeComplete} disabled={rename.editing}>
-						<ContextMenuTrigger className="flex min-w-0">
-							<SessionTitleButton rename={rename} className={TITLE_CLASS} summary={summary} />
-						</ContextMenuTrigger>
-						<MenuContent finalFocus={contextRename.finalFocus}>
-							<HeaderMenuBody
-								sessionId={sessionId}
-								data={data}
-								title={rename.title}
-								isActive={isActive}
-								requestRename={contextRename.requestRename}
-								local={local}
-								transcriptView={transcriptView}
-							/>
-						</MenuContent>
-					</ContextMenu>
-					<Menu onOpenChangeComplete={menuRename.onOpenChangeComplete}>
-						<Tooltip content={`More options for ${rename.title}`} side="bottom">
-							<MenuTrigger aria-label={`More options for ${rename.title}`} className={CHEVRON_CLASS}>
-								<ChevronDown aria-hidden className="size-4" />
-							</MenuTrigger>
-						</Tooltip>
-						<MenuContent finalFocus={menuRename.finalFocus} sideOffset={6}>
-							<HeaderMenuBody
-								sessionId={sessionId}
-								data={data}
-								title={rename.title}
-								isActive={isActive}
-								requestRename={menuRename.requestRename}
-								local={local}
-								transcriptView={transcriptView}
-							/>
-						</MenuContent>
-					</Menu>
-				</div>
-				{data.archived && <ArchivedBadge />}
-				<span
-					data-origin-pills=""
-					className={`flex items-center gap-[3px] ${compact ? "shrink-0" : "min-w-0"}`}
-				>
-					{data.pr !== undefined && repositoryName && repositoryUrl(data.pr) !== null && (
-						<Menu>
-							<MenuTrigger
-								data-origin-pill="repository"
-								aria-label={`Repository ${data.pr.repository}`}
-								title={data.pr.repository}
-								className={`${PILL_CLASS} cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100`}
-							>
-								<PillContent icon={FolderGit2} label={repositoryName} compact={compact} />
-							</MenuTrigger>
-							<MenuContent>
-								<ProjectMenuItems sessionId={sessionId} session={data} />
-							</MenuContent>
-						</Menu>
-					)}
-					{modelLabel !== null && <OriginPill kind="model" icon={Cpu} label={modelLabel} compact={compact} />}
-					{data.costState !== undefined && (
-						<SessionCostPill cost={data.costState} className={`${PILL_CLASS} cursor-pointer`}>
-							<PillContent
-								icon={CircleDollarSign}
-								label={formatUsd(data.costState.totalCostUSD)}
-								compact={compact}
-							/>
-						</SessionCostPill>
-					)}
-					{data.entrypoint !== undefined && data.entrypoint !== "cli" && (
-						<OriginPill kind="entrypoint" icon={AppWindow} label={data.entrypoint} compact={compact} />
-					)}
-					{data.sessionKind !== undefined && (
-						<OriginPill kind="kind" icon={Tag} label={data.sessionKind} compact={compact} />
-					)}
-					{data.attributionAgent !== undefined && (
-						<OriginPill
-							kind="agent"
-							icon={Bot}
-							label={data.attributionAgent}
-							title="Transcript attribution agent"
-							compact={compact}
-						/>
-					)}
-					{data.teamNames?.map((team) => (
-						<OriginPill key={team} kind="team" icon={Users} label={team} compact={compact} />
-					))}
-					{data.forkedFromSessionId !== undefined && (
+				<span className="flex h-6 w-8 shrink-0 items-center justify-center">
+					<SessionEnvironmentGlyph sessionId={sessionId} />
+				</span>
+				<div className="flex min-w-0 items-center gap-1.5">
+					{data.parentSessionId !== undefined && (
 						<Link
 							to="/session/$id"
-							params={{id: data.forkedFromSessionId}}
-							data-origin-pill="forked-from"
-							title={`Forked from ${data.forkedFromSessionId}`}
+							params={{id: data.parentSessionId}}
 							className={`${PILL_CLASS} cursor-pointer`}
 						>
-							<PillContent
-								icon={GitFork}
-								label={`Forked from ${data.forkedFromSessionId.slice(0, 8)}`}
-								compact={compact}
-							/>
+							<ArrowLeft aria-hidden className="size-3 shrink-0" />
+							Parent session
 						</Link>
 					)}
-					{isActive && (
-						<span
-							data-origin-pill="active"
-							title="Active"
-							className="inline-flex h-5 shrink-0 items-center gap-1 rounded-r3 bg-success-900 px-[5px] text-caption text-success-000"
+					<div className="flex min-w-[32px] items-center">
+						<ContextMenu
+							onOpenChangeComplete={contextRename.onOpenChangeComplete}
+							disabled={rename.editing}
 						>
-							<span aria-hidden className="size-1.5 animate-pulse rounded-full bg-success-000" />
-							<span data-origin-label="" className={compact ? "sr-only" : undefined}>
-								Active
+							<ContextMenuTrigger className="flex min-w-0">
+								<SessionTitleButton rename={rename} className={TITLE_CLASS} summary={summary} />
+							</ContextMenuTrigger>
+							<MenuContent finalFocus={contextRename.finalFocus}>
+								<HeaderMenuBody
+									sessionId={sessionId}
+									data={data}
+									title={rename.title}
+									isActive={isActive}
+									requestRename={contextRename.requestRename}
+									local={local}
+									transcriptView={transcriptView}
+								/>
+							</MenuContent>
+						</ContextMenu>
+						<Menu onOpenChangeComplete={menuRename.onOpenChangeComplete}>
+							<Tooltip content={`More options for ${rename.title}`} side="bottom">
+								<MenuTrigger aria-label={`More options for ${rename.title}`} className={CHEVRON_CLASS}>
+									<ChevronDown aria-hidden className="size-4" />
+								</MenuTrigger>
+							</Tooltip>
+							<MenuContent finalFocus={menuRename.finalFocus} sideOffset={6}>
+								<HeaderMenuBody
+									sessionId={sessionId}
+									data={data}
+									title={rename.title}
+									isActive={isActive}
+									requestRename={menuRename.requestRename}
+									local={local}
+									transcriptView={transcriptView}
+								/>
+							</MenuContent>
+						</Menu>
+					</div>
+					{data.archived && <ArchivedBadge />}
+					<span
+						data-origin-pills=""
+						className={`flex items-center gap-[3px] ${compact ? "shrink-0" : "min-w-0"}`}
+					>
+						{data.pr !== undefined && repositoryName && repositoryUrl(data.pr) !== null && (
+							<Menu>
+								<MenuTrigger
+									data-origin-pill="repository"
+									aria-label={`Repository ${data.pr.repository}`}
+									title={data.pr.repository}
+									className={`${PILL_CLASS} cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100`}
+								>
+									<PillContent icon={FolderGit2} label={repositoryName} compact={compact} />
+								</MenuTrigger>
+								<MenuContent>
+									<ProjectMenuItems sessionId={sessionId} session={data} />
+								</MenuContent>
+							</Menu>
+						)}
+						{modelLabel !== null && (
+							<OriginPill kind="model" icon={Cpu} label={modelLabel} compact={compact} />
+						)}
+						{data.costState !== undefined && (
+							<SessionCostPill cost={data.costState} className={`${PILL_CLASS} cursor-pointer`}>
+								<PillContent
+									icon={CircleDollarSign}
+									label={formatUsd(data.costState.totalCostUSD)}
+									compact={compact}
+								/>
+							</SessionCostPill>
+						)}
+						{data.entrypoint !== undefined && data.entrypoint !== "cli" && (
+							<OriginPill kind="entrypoint" icon={AppWindow} label={data.entrypoint} compact={compact} />
+						)}
+						{data.sessionKind !== undefined && (
+							<OriginPill kind="kind" icon={Tag} label={data.sessionKind} compact={compact} />
+						)}
+						{data.attributionAgent !== undefined && (
+							<OriginPill
+								kind="agent"
+								icon={Bot}
+								label={data.attributionAgent}
+								title="Transcript attribution agent"
+								compact={compact}
+							/>
+						)}
+						{data.teamNames?.map((team) => (
+							<OriginPill key={team} kind="team" icon={Users} label={team} compact={compact} />
+						))}
+						{data.forkedFromSessionId !== undefined && (
+							<Link
+								to="/session/$id"
+								params={{id: data.forkedFromSessionId}}
+								data-origin-pill="forked-from"
+								title={`Forked from ${data.forkedFromSessionId}`}
+								className={`${PILL_CLASS} cursor-pointer`}
+							>
+								<PillContent
+									icon={GitFork}
+									label={`Forked from ${data.forkedFromSessionId.slice(0, 8)}`}
+									compact={compact}
+								/>
+							</Link>
+						)}
+						{isActive && (
+							<span
+								data-origin-pill="active"
+								title="Active"
+								className="inline-flex h-5 shrink-0 items-center gap-1 rounded-r3 bg-success-900 px-[5px] text-caption text-success-000"
+							>
+								<span aria-hidden className="size-1.5 animate-pulse rounded-full bg-success-000" />
+								<span data-origin-label="" className={compact ? "sr-only" : undefined}>
+									Active
+								</span>
 							</span>
-						</span>
-					)}
-				</span>
+						)}
+					</span>
+				</div>
 			</div>
 			<div
 				data-titlebar-trail=""
