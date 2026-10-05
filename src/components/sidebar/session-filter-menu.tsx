@@ -1,5 +1,5 @@
 import {useInfiniteQuery} from "@tanstack/react-query";
-import {SlidersHorizontal} from "lucide-react";
+import {SlidersVertical} from "lucide-react";
 import type {z} from "zod";
 
 import {recentSessionsInfiniteQueryOptions} from "../../lib/api/sessions";
@@ -99,7 +99,7 @@ function SessionFilterMenu({
 					data-row-action=""
 					className="relative flex size-6 shrink-0 items-center justify-center rounded-r5 text-secondary hover:bg-[var(--sb-hover)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100 data-[popup-open]:bg-[var(--sb-hover)]"
 				>
-					<SlidersHorizontal aria-hidden="true" className="size-4" />
+					<SlidersVertical aria-hidden="true" className="size-4" />
 				</MenuTrigger>
 			</Tooltip>
 			<MenuContent align="end" className="!min-w-[200px]">
