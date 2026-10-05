@@ -3167,7 +3167,7 @@ function ToolCallRow({call, sessionId, nested = false}: {call: ClientToolCall; s
 							open();
 						}
 					}}
-					className={`relative group/tool flex self-start max-w-full items-center ${isCompletedPaneAgent && !nested ? "px-1 py-0.5" : "py-0"} ${isCompletedPaneAgent && !nested ? "gap-1.5" : "gap-g2"} text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3`}
+					className={`relative group/tool flex max-w-full items-center ${isCompletedPaneAgent && !nested ? "min-w-0 self-stretch me-[52px] px-1 py-0.5 gap-1.5" : "self-start py-0 gap-g2"} text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3`}
 				>
 					{rowLabel}
 				</div>
