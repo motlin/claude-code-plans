@@ -1,6 +1,6 @@
 import type {ReactNode} from "react";
 
-const PARAGRAPH_CLASS = "text-body leading-[1.2857] whitespace-pre-wrap [overflow-wrap:anywhere]";
+const PARAGRAPH_CLASS = "text-body whitespace-pre-wrap [overflow-wrap:anywhere]";
 
 const CODE_CLASS =
 	"font-mono text-[12px]/[12px] text-code-ink bg-alpha-1 border-[0.5px] border-border rounded-[4.8px] px-[3px] py-[0.75px]";

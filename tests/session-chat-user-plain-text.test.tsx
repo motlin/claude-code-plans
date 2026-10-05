@@ -90,7 +90,7 @@ describe("SessionChat user bubbles as plain text", () => {
 						"font-mono text-[12px]/[12px] text-code-ink bg-alpha-1 border-[0.5px] border-border rounded-[4.8px] px-[3px] py-[0.75px]",
 				},
 			],
-			paragraphClass: "text-body leading-[1.2857] whitespace-pre-wrap [overflow-wrap:anywhere]",
+			paragraphClass: "text-body whitespace-pre-wrap [overflow-wrap:anywhere]",
 		});
 	});
 
