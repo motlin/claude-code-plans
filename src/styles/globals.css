@@ -749,6 +749,16 @@
 	--upstream-leading-body: var(--transcript-leading, 20px);
 }
 
+/* A completed standalone Agent followed by prose shares the assistant span:
+   upstream leaves 12px here. End-of-span actions and changes keep their turn gap. */
+.transcript-text
+	[data-perf-row="assistant_tool"][data-assistant-span]:has(+ [data-perf-row="assistant_text"])
+	> [data-record-index]:has(> [data-completed-agent-row]):not(
+		:has([data-assistant-span-footer], [data-turn-changes-card])
+	) {
+	padding-bottom: 12px;
+}
+
 /* Settings search deep link (#settings/<tab>/<row>): upstream flashes the row with a warm tint
    and underlines its title for 1.5s. */
 [data-settings-flash] {

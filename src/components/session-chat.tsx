@@ -3151,7 +3151,11 @@ function ToolCallRow({call, sessionId, nested = false}: {call: ClientToolCall; s
 	if (paneAgentId !== undefined && openSubagent !== null) {
 		const open = () => openSubagent(paneAgentId);
 		return (
-			<div data-tool-row="" className="flex flex-col w-full">
+			<div
+				data-tool-row=""
+				data-completed-agent-row={isCompletedPaneAgent && !nested ? "" : undefined}
+				className="flex flex-col w-full"
+			>
 				<div
 					role="button"
 					tabIndex={0}
