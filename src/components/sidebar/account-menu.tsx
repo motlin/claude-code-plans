@@ -1,5 +1,5 @@
 import {useQuery} from "@tanstack/react-query";
-import {useNavigate} from "@tanstack/react-router";
+import {useLocation, useNavigate} from "@tanstack/react-router";
 import {
 	BookOpen,
 	Bug,
@@ -65,6 +65,8 @@ export function AccountMenu() {
 	const {data} = useQuery(localAccountQueryOptions);
 	const navigate = useNavigate();
 	const openSettings = useOpenSettings();
+	const pathname = useLocation({select: (location) => location.pathname});
+	const settingsTab = pathname === "/" || pathname.startsWith("/session/") ? "claude-code" : "general";
 	const settingsKeys = useShortcutKeys("settings").keys;
 	const shortcutsKeys = useShortcutKeys("shortcuts_modal").keys;
 	const name = data?.name || "Local";
@@ -112,7 +114,7 @@ export function AccountMenu() {
 					data-testid="user-menu-settings"
 					icon={<Settings />}
 					shortcut={settingsKeys}
-					onSelect={() => openSettings("general")}
+					onSelect={() => openSettings(settingsTab)}
 				>
 					Settings
 				</MenuItem>

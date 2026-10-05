@@ -26,7 +26,7 @@ const ACCOUNT: LocalAccount = {
 	planDetail: "Max (20x)",
 };
 
-async function renderAccountMenu(account: LocalAccount = ACCOUNT) {
+async function renderAccountMenu(account: LocalAccount = ACCOUNT, path = "/plans") {
 	const queryClient = new QueryClient({
 		defaultOptions: {
 			queries: {retry: false, staleTime: Infinity, gcTime: Infinity, refetchOnMount: false},
@@ -48,7 +48,7 @@ async function renderAccountMenu(account: LocalAccount = ACCOUNT) {
 	});
 	const router = createRouter({
 		routeTree: rootRoute.addChildren([pageRoute]),
-		history: createMemoryHistory({initialEntries: ["/plans"]}),
+		history: createMemoryHistory({initialEntries: [path]}),
 	});
 	await router.load();
 	render(<RouterProvider router={router} />);
@@ -160,16 +160,23 @@ describe("account menu", () => {
 		]);
 	});
 
-	it("opens Settings at General over the current page", async () => {
-		const router = await renderAccountMenu();
+	it.each([
+		{path: "/", tab: "claude-code"},
+		{path: "/session/00000000-0000-4000-8000-000000000001", tab: "claude-code"},
+		{path: "/session/session_example_100", tab: "claude-code"},
+		{path: "/plans", tab: "general"},
+		{path: "/sessions", tab: "general"},
+	])("opens Settings at $tab over $path without losing the page search", async ({path, tab}) => {
+		const router = await renderAccountMenu(ACCOUNT, `${path}?filter=example`);
 		const menu = await openMenu();
 		fireEvent.click(within(menu).getByRole("menuitem", {name: /Settings/}));
 
 		await waitFor(() =>
 			expect({
 				pathname: router.state.location.pathname,
+				search: router.state.location.searchStr,
 				hash: router.state.location.hash,
-			}).toStrictEqual({pathname: "/plans", hash: "settings/general"}),
+			}).toStrictEqual({pathname: path, search: "?filter=example", hash: `settings/${tab}`}),
 		);
 	});
 
