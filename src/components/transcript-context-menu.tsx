@@ -1,4 +1,4 @@
-import {type ComponentProps, createContext, type ReactNode, useContext, useState} from "react";
+import {type ComponentProps, createContext, type ReactNode, useContext, useRef, useState} from "react";
 
 import {useReadAloud} from "../hooks/use-read-aloud";
 import {writeClipboardText} from "../lib/clipboard";
@@ -71,19 +71,57 @@ export function TranscriptMessageMenu({
 }: TranscriptMessageMenuProps) {
 	const readAloud = useReadAloud(markdown);
 	const [target, setTarget] = useState<TranscriptMenuTarget>({kind: "prose"});
+	const [keyboardArticle, setKeyboardArticle] = useState<HTMLElement | null>(null);
+	const closingMenu = useRef<Element | null>(null);
 	const fallback = markdown === "" ? "tool" : "prose";
 	return (
-		<ContextMenu>
+		<ContextMenu
+			onOpenChange={(open, details) => {
+				closingMenu.current =
+					!open &&
+					(details.reason === "escape-key" || details.reason === "item-press") &&
+					details.event.target instanceof Element
+						? details.event.target.closest('[role="menu"]')
+						: null;
+			}}
+		>
 			<ContextMenuTrigger
 				data-transcript-message-menu
 				render={render}
-				onContextMenu={(event) =>
-					setTarget(resolveMenuTarget(event.target instanceof Element ? event.target : null, fallback))
-				}
+				onContextMenu={(event) => {
+					setTarget(resolveMenuTarget(event.target instanceof Element ? event.target : null, fallback));
+					const article = event.currentTarget.closest<HTMLElement>("[data-transcript-entry-index]");
+					setKeyboardArticle(
+						event.button === 0 &&
+							event.target === event.currentTarget &&
+							article === event.currentTarget.ownerDocument.activeElement
+							? article
+							: null,
+					);
+				}}
 			>
 				{children}
 			</ContextMenuTrigger>
-			<MenuContent className={MENU_WIDTH[speaker]}>
+			<MenuContent
+				className={MENU_WIDTH[speaker]}
+				finalFocus={
+					keyboardArticle === null
+						? undefined
+						: () => {
+								const document = keyboardArticle.ownerDocument;
+								const active = document.activeElement;
+								if (
+									closingMenu.current !== null &&
+									keyboardArticle.isConnected &&
+									(active === document.body || closingMenu.current.contains(active))
+								) {
+									// Base UI otherwise descends from this tabIndex=-1 article to its first link.
+									keyboardArticle.focus({preventScroll: true});
+								}
+								return false;
+							}
+				}
+			>
 				<TranscriptMenuItems
 					speaker={speaker}
 					target={target}

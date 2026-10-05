@@ -740,8 +740,17 @@ describe("assistant display-span actions", () => {
 	it("focuses a keyboard-opened record menu and returns to its article on Escape", async () => {
 		vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => setTimeout(() => callback(0), 0));
 		vi.stubGlobal("cancelAnimationFrame", clearTimeout);
-		const view = render(chat([text("example-first", "Example first."), text("example-last", "Example last.")]));
+		const view = render(
+			chat([
+				text("example-first", "Example [first](https://example.com/first)."),
+				text("example-last", "Example last."),
+			]),
+		);
 		const article = view.container.querySelector<HTMLElement>('[role="article"]')!;
+		const link = screen.getByRole("link", {name: "first"});
+		// Give this real descendant link a visible box so Base UI's tabbable lookup runs as in a browser.
+		const rect = new DOMRect(0, 0, 100, 20);
+		vi.spyOn(link, "getClientRects").mockReturnValue(Object.assign([rect], {item: () => rect}));
 		focus(article);
 		fireEvent.keyDown(article, {key: "F10", shiftKey: true});
 		await act(async () => {
@@ -788,4 +797,62 @@ describe("assistant display-span actions", () => {
 			restoredArticle: true,
 		});
 	});
+	it.each(["pointer origin", "outside pointer", "deferred action focus", "another menu focus"])(
+		"preserves %s when closing a linked record menu",
+		async (scenario) => {
+			vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => setTimeout(callback, 0));
+			vi.stubGlobal("cancelAnimationFrame", clearTimeout);
+			const view = render(
+				<>
+					<button>Example outside</button>
+					{chat([
+						text("example-first", "Example [first](https://example.com/first)."),
+						text("example-last", "Example last."),
+					])}
+				</>,
+			);
+			const article = view.container.querySelector<HTMLElement>('[role="article"]')!;
+			const link = screen.getByRole("link", {name: "first"});
+			const rect = new DOMRect(0, 0, 100, 20);
+			vi.spyOn(link, "getClientRects").mockReturnValue(Object.assign([rect], {item: () => rect}));
+			const outside = screen.getByRole("button", {name: "Example outside"});
+			focus(article);
+			if (scenario === "pointer origin") {
+				fireEvent.contextMenu(article.querySelector("[data-transcript-message-menu]")!, {button: 2});
+			} else {
+				fireEvent.keyDown(article, {key: "F10", shiftKey: true});
+			}
+			await act(async () => {
+				await new Promise((resolve) => setTimeout(resolve, 0));
+			});
+			const menu = screen.getByRole("menu");
+			const openedWithMenuFocus = menu.contains(document.activeElement);
+			if (scenario === "pointer origin") {
+				fireEvent.keyDown(menu, {key: "Escape"});
+			} else if (scenario === "outside pointer") {
+				fireEvent.pointerDown(outside, {button: 0, pointerType: "mouse"});
+				focus(outside);
+			} else {
+				pinChapter.mockImplementationOnce(() => {
+					if (scenario === "another menu focus") outside.setAttribute("role", "menu");
+					queueMicrotask(() => outside.focus());
+				});
+				fireEvent.click(screen.getByRole("menuitem", {name: "Pin as chapter"}));
+			}
+			await act(async () => {
+				await new Promise((resolve) => setTimeout(resolve, 0));
+			});
+			expect({
+				openedWithMenuFocus,
+				closedMenus: screen.queryAllByRole("menu").length,
+				focused: document.activeElement,
+				articleTabIndex: article.tabIndex,
+			}).toStrictEqual({
+				openedWithMenuFocus: true,
+				closedMenus: scenario === "another menu focus" ? 1 : 0,
+				focused: scenario === "pointer origin" ? link : outside,
+				articleTabIndex: -1,
+			});
+		},
+	);
 });
