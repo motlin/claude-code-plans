@@ -749,11 +749,11 @@
 	--upstream-leading-body: var(--transcript-leading, 20px);
 }
 
-/* A completed standalone Agent followed by prose shares the assistant span:
+/* A completed standalone tool followed by prose shares the assistant span:
    upstream leaves 12px here. End-of-span actions and changes keep their turn gap. */
 .transcript-text
 	[data-perf-row="assistant_tool"][data-assistant-span]:has(+ [data-perf-row="assistant_text"])
-	> [data-record-index]:has(> [data-completed-agent-row]):not(
+	> [data-record-index]:has(> :is([data-completed-agent-row], [data-completed-tool-row])):not(
 		:has([data-assistant-span-footer], [data-turn-changes-card])
 	) {
 	padding-bottom: 12px;

@@ -185,6 +185,51 @@ describe("assistant display-span actions", () => {
 		});
 	});
 
+	it("limits compact continuation spacing to collapsed successful tool disclosures", () => {
+		const records = command("example-command");
+		const conclusion = text("example-conclusion", "Example conclusion.");
+		const view = render(chat([records[0], conclusion]));
+		const spacingState = () => ({
+			completedRows: view.container.querySelectorAll("[data-completed-tool-row]").length,
+			footers: footers(view.container).length,
+		});
+		const pending = spacingState();
+		view.rerender(chat([...records, conclusion]));
+		const completed = spacingState();
+		const disclosure = view.container.querySelector<HTMLElement>("[aria-expanded]")!;
+		fireEvent.click(disclosure);
+		const expanded = spacingState();
+		fireEvent.click(disclosure);
+		const collapsed = spacingState();
+		view.rerender(
+			chat([
+				records[0],
+				{
+					...records[1],
+					message: {
+						role: "user",
+						content: [
+							{
+								type: "tool_result",
+								tool_use_id: "example-tool-example-command",
+								content: "Example failure",
+								is_error: true,
+							},
+						],
+					},
+				},
+				conclusion,
+			]),
+		);
+		expect({pending, completed, expanded, collapsed, failed: spacingState()}).toStrictEqual({
+			pending: {completedRows: 0, footers: 1},
+			completed: {completedRows: 1, footers: 1},
+			expanded: {completedRows: 0, footers: 1},
+			collapsed: {completedRows: 1, footers: 1},
+			failed: {completedRows: 0, footers: 1},
+		});
+	});
+
 	it("copies authored text in order and targets the final assistant after tools and folded notifications", async () => {
 		const view = render(
 			chat([

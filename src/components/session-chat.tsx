@@ -3060,10 +3060,10 @@ function ToolCallRow({call, sessionId, nested = false}: {call: ClientToolCall; s
 				? "text-secondary"
 				: ink;
 	const isCompletedPaneAgent = paneAgentId !== undefined && !call.isError && !pending;
-	const disclosureLayout =
-		!isAgent && !nested && !call.isError && !pending
-			? "min-w-0 self-stretch me-[52px] px-1 py-0.5"
-			: "self-start py-0";
+	const isCompletedStandaloneDisclosure = !isAgent && !nested && !call.isError && !pending;
+	const disclosureLayout = isCompletedStandaloneDisclosure
+		? "min-w-0 self-stretch me-[52px] px-1 py-0.5"
+		: "self-start py-0";
 	const paramClass = isSkill || isCompletedPaneAgent ? "text-primary" : labelClass;
 	// A subagent row's chevron sits in the flat `t6` token upstream gives it,
 	// rather than the hover-reactive ink every other tool row uses.
@@ -3191,7 +3191,11 @@ function ToolCallRow({call, sessionId, nested = false}: {call: ClientToolCall; s
 	}
 
 	return (
-		<div data-tool-row="" className="flex flex-col w-full">
+		<div
+			data-tool-row=""
+			data-completed-tool-row={isCompletedStandaloneDisclosure && !expanded ? "" : undefined}
+			className="flex flex-col w-full"
+		>
 			<div
 				role="button"
 				tabIndex={0}
