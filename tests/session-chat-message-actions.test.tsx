@@ -183,7 +183,7 @@ describe("SessionChat turn metadata", () => {
 describe("SessionChat user action row", () => {
 	it("keeps the user bubble column end-aligned", () => {
 		expect(userColumnClassName(renderRecords([USER_TEXT], true))).toBe(
-			"flex flex-col items-end gap-g6 max-w-[85%] min-w-0",
+			"flex flex-col items-end gap-g5 max-w-[85%] min-w-0",
 		);
 	});
 

@@ -2168,7 +2168,7 @@ function UserEntry({
 				sessionId={sessionId}
 				uuid={line.uuid}
 				markdown={messageText(line)}
-				render={<div className="flex flex-col items-end gap-g6 max-w-[85%] min-w-0" />}
+				render={<div className="flex flex-col items-end gap-g5 max-w-[85%] min-w-0" />}
 			>
 				{textNodes.length > 0 && (
 					<div className="user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text">
