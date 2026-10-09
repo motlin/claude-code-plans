@@ -164,4 +164,132 @@ describe("SessionChat turn rows", () => {
 			{testId: "transcript-row", perfRow: "assistant_text"},
 		]);
 	});
+
+	describe("ordinary prompt reply boundary", () => {
+		const BOUNDARY_RECORDS = [
+			{type: "user", uuid: "u-prose", message: {role: "user", content: "Fabricated prose question"}},
+			{
+				type: "assistant",
+				uuid: "a-prose",
+				message: {role: "assistant", content: [{type: "text", text: "Fabricated prose answer"}]},
+			},
+			{type: "user", uuid: "u-tool", message: {role: "user", content: "Fabricated tool question"}},
+			{
+				type: "assistant",
+				uuid: "a-tool",
+				message: {
+					role: "assistant",
+					content: [{type: "tool_use", id: "toolu_boundary", name: "Bash", input: {command: "ls"}}],
+				},
+			},
+			{
+				type: "user",
+				uuid: "u-result",
+				message: {
+					role: "user",
+					content: [{type: "tool_result", tool_use_id: "toolu_boundary", content: "fabricated.txt"}],
+				},
+			},
+			{
+				type: "user",
+				uuid: "u-command",
+				message: {role: "user", content: "<command-name>/fabricated</command-name>"},
+			},
+			{
+				type: "assistant",
+				uuid: "a-command",
+				message: {role: "assistant", content: [{type: "text", text: "Fabricated command answer"}]},
+			},
+			{
+				type: "user",
+				uuid: "u-other-source",
+				sessionId: "test-session",
+				message: {role: "user", content: "Fabricated delegated question"},
+			},
+			{
+				type: "assistant",
+				uuid: "a-other-source",
+				sessionId: "other-session",
+				message: {role: "assistant", content: [{type: "text", text: "Fabricated delegated answer"}]},
+			},
+			{type: "user", uuid: "u-last", message: {role: "user", content: "Fabricated unanswered question"}},
+		];
+
+		function boundaryRows(transcriptMode: "normal" | "thinking" | "verbose") {
+			vi.stubGlobal("innerHeight", 4000);
+			const {lines, toolResultMap} = processTranscript(BOUNDARY_RECORDS, 0);
+			const {container} = render(
+				<SessionChat
+					sessionId="test-session"
+					lines={lines}
+					toolResultMap={toolResultMap}
+					showThinking={transcriptMode !== "normal"}
+					showTools
+					transcriptMode={transcriptMode}
+					shouldScrollToEnd={false}
+				/>,
+			);
+			const rows = Array.from(container.querySelectorAll<HTMLElement>("[data-transcript-entry-index]")).map(
+				(row) => ({
+					line: row.dataset["perfLine"],
+					perfRow: row.dataset["perfRow"],
+					replyBoundary: row.dataset["replyBoundary"],
+					className: row.getAttribute("class"),
+					turnGap: row
+						.querySelector(":scope > [data-record-index]")
+						?.classList.contains("pb-[var(--chat-turn-gap)]"),
+				}),
+			);
+			cleanup();
+			return rows;
+		}
+
+		it("closes an ordinary prompt onto its same-source first reply with upstream's six-pixel boundary in Normal and Thinking, leaving Verbose on the turn gap", () => {
+			const unchanged = (line: string, perfRow: string, turnGap: boolean | undefined) => ({
+				line,
+				perfRow,
+				replyBoundary: undefined,
+				className: null,
+				turnGap,
+			});
+			const boundary = (line: string, perfRow: string, turnGap: boolean | undefined) => ({
+				line,
+				perfRow,
+				replyBoundary: "",
+				className: "pt-p5",
+				turnGap,
+			});
+			const collapsed = [
+				unchanged("0", "human", false),
+				boundary("1", "assistant_text", true),
+				unchanged("2", "human", false),
+				boundary("3", "assistant_tool", true),
+				unchanged("5", "human", true),
+				unchanged("6", "assistant_text", true),
+				unchanged("7", "human", true),
+				unchanged("8", "assistant_text", true),
+				unchanged("9", "human", true),
+			];
+
+			expect({
+				normal: boundaryRows("normal"),
+				thinking: boundaryRows("thinking"),
+				verbose: boundaryRows("verbose"),
+			}).toStrictEqual({
+				normal: collapsed,
+				thinking: collapsed,
+				verbose: [
+					unchanged("0", "human", true),
+					unchanged("1", "assistant_text", true),
+					unchanged("2", "human", true),
+					unchanged("3", "assistant_tool", true),
+					unchanged("5", "human", true),
+					unchanged("6", "assistant_text", true),
+					unchanged("7", "human", true),
+					unchanged("8", "assistant_text", true),
+					unchanged("9", "human", true),
+				],
+			});
+		});
+	});
 });

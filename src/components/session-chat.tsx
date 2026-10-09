@@ -628,11 +628,14 @@ function LineEntry({
 	className,
 	turnChanges,
 	footer,
+	precedesReply = false,
 	...renderProps
 }: LineRenderProps & {
 	line: SessionLine;
 	nextLine: SessionLine | undefined;
 	className?: string;
+	/** An ordinary prompt whose reply row carries the boundary, so this row adds no turn gap. */
+	precedesReply?: boolean;
 	/** The end-of-turn changes card this line closes, shown after its content. */
 	turnChanges?: TurnChanges | undefined;
 	/** Undefined preserves Verbose record actions; null suppresses a non-endpoint footer. */
@@ -648,7 +651,7 @@ function LineEntry({
 	const isAssistant = line.type === "assistant";
 	const wrapperClassName = [
 		isAssistant ? "group/msg flex flex-col w-full" : "group relative",
-		TURN_GAP_CLASS,
+		precedesReply ? undefined : TURN_GAP_CLASS,
 		className,
 	]
 		.filter(Boolean)
@@ -986,13 +989,37 @@ interface SessionListEntry {
 	isPrompt: boolean;
 	kind: TranscriptRowKind;
 	assistantSpan?: AssistantDisplaySpan | undefined;
+	/**
+	 * The first rendered row of the reply to an ordinary prompt. Upstream opens
+	 * that reply 6px below the prompt's action row with a margin inside the
+	 * reply's own transcript row, in place of the prompt's turn gap.
+	 */
+	opensReply: boolean;
 	element: React.ReactNode;
+}
+
+/** A row under construction, before its rendered neighbours are known. */
+interface PendingSessionListEntry extends Omit<SessionListEntry, "endRecordIndex" | "opensReply"> {
+	/** The assistant line a reply row starts with. */
+	replyHead?: SessionLine;
+	/** An ordinary prompt row, rendered once it is known whether its reply follows it. */
+	prompt?: {line: SessionLine; render: (precedesReply: boolean) => React.ReactNode};
 }
 
 const PROMPT_KINDS: ReadonlySet<UserContentKind> = new Set(["text", "command", "bash"]);
 
 function isPromptLine(line: SessionLine): boolean {
 	return line.type === "user" && PROMPT_KINDS.has(classifyUserContent(line));
+}
+
+/** A typed prompt drawn as the user's own bubble, not a command, bash, label or subagent row. */
+function isOrdinaryPromptLine(line: SessionLine, renderProps: LineRenderProps): boolean {
+	return (
+		line.type === "user" &&
+		!renderProps.isSubagentSession &&
+		line.isCompactSummary !== true &&
+		classifyUserContent(line) === "text"
+	);
 }
 
 /** Height of the sticky session header that covers the top of the scroller. */
@@ -1074,7 +1101,7 @@ function buildSessionListEntries(
 		return span === undefined ? null : <AssistantDisplaySpanFooter span={span} />;
 	};
 	const turnChangesByLine = collectTurnChanges(lines, renderProps.toolResultMap);
-	const entries: Omit<SessionListEntry, "endRecordIndex">[] = [];
+	const entries: PendingSessionListEntry[] = [];
 	let prevVisibleType: string | null = null;
 	let i = 0;
 
@@ -1201,6 +1228,7 @@ function buildSessionListEntries(
 					isPrompt: false,
 					kind: "assistant_tool",
 					assistantSpan: displaySpans?.get(line.lineIndex),
+					replyHead: line,
 					element: (
 						<LineEntry
 							line={line}
@@ -1222,6 +1250,7 @@ function buildSessionListEntries(
 					isPrompt: false,
 					kind: "assistant_tool",
 					assistantSpan: displaySpans?.get(line.lineIndex),
+					replyHead: line,
 					element: (
 						<GroupedToolCallEntry
 							entries={groupLines}
@@ -1242,29 +1271,47 @@ function buildSessionListEntries(
 
 		prevVisibleType = line.type;
 
+		const nextLine = lines[i + 1];
+		const renderLine = (precedesReply: boolean) => (
+			<LineEntry
+				line={line}
+				nextLine={nextLine}
+				turnChanges={turnChangesByLine.get(line.lineIndex)}
+				footer={footerFor(line)}
+				precedesReply={precedesReply}
+				{...(isBannerAfterBanner ? {className: "mt-1"} : {})}
+				{...renderProps}
+			/>
+		);
 		entries.push({
 			key: `line-${line.lineIndex}`,
 			startRecordIndex: line.lineIndex,
 			isPrompt: isPromptLine(line),
 			kind: transcriptRowKind(line),
 			assistantSpan: displaySpans?.get(line.lineIndex),
-			element: (
-				<LineEntry
-					line={line}
-					nextLine={lines[i + 1]}
-					turnChanges={turnChangesByLine.get(line.lineIndex)}
-					footer={footerFor(line)}
-					{...(isBannerAfterBanner ? {className: "mt-1"} : {})}
-					{...renderProps}
-				/>
-			),
+			...(line.type === "assistant" ? {replyHead: line} : {}),
+			...(!verbose && isOrdinaryPromptLine(line, renderProps) ? {prompt: {line, render: renderLine}} : {}),
+			element: renderLine(false),
 		});
 		i++;
 	}
 
+	// Decided on the final rendered sequence, so the boundary never depends on which rows are mounted.
+	const opensReply = (index: number): boolean => {
+		const prompt = entries[index - 1]?.prompt;
+		const replyHead = entries[index]?.replyHead;
+		return (
+			prompt !== undefined &&
+			replyHead !== undefined &&
+			getSourceSessionId(prompt.line, renderProps.sessionId) ===
+				getSourceSessionId(replyHead, renderProps.sessionId)
+		);
+	};
 	const finalRecordIndex = lines.at(-1)?.lineIndex ?? 0;
-	return entries.map((entry, index) => ({
+	return entries.map(({replyHead: _replyHead, prompt, ...entry}, index) => ({
 		...entry,
+		...(prompt !== undefined && opensReply(index + 1) ? {element: prompt.render(true)} : {}),
+		opensReply: opensReply(index),
 		endRecordIndex: (entries[index + 1]?.startRecordIndex ?? finalRecordIndex + 1) - 1,
 	}));
 }
@@ -1703,6 +1750,8 @@ function VirtualizedSessionEntries({
 						tabIndex={isLast ? 0 : -1}
 						onKeyDown={(event) => focusNeighbour(event, index)}
 						data-assistant-span={entry.assistantSpan?.key}
+						data-reply-boundary={entry.opensReply ? "" : undefined}
+						className={entry.opensReply ? "pt-p5" : undefined}
 						data-transcript-entry-index={index}
 						data-testid="transcript-row"
 						data-perf-row={entry.kind}

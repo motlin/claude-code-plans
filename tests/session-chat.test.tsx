@@ -426,7 +426,7 @@ function turnWrapperClassNames(html: string): string[] {
 }
 
 describe("SessionChat turn spacing", () => {
-	it("pads every turn wrapper with --chat-turn-gap and spaces intra-turn blocks with --chat-item-gap", () => {
+	it("pads every assistant turn wrapper with --chat-turn-gap, leaves the prompt's gap to its reply boundary, and spaces intra-turn blocks with --chat-item-gap", () => {
 		const styles = readFileSync(GLOBAL_STYLES_PATH, "utf8");
 		const html = renderTranscript([
 			{
@@ -457,15 +457,15 @@ describe("SessionChat turn spacing", () => {
 		expect({
 			turnGap: styles.match(/--chat-turn-gap:\s*([^;]+);/)?.[1] ?? null,
 			itemGap: styles.match(/--chat-item-gap:\s*([^;]+);/)?.[1] ?? null,
-			// Every turn is padded, including the second assistant turn that follows
-			// another assistant turn -- the old code only padded turn boundaries.
+			// Every assistant turn is padded, including the second one that follows
+			// another assistant turn; the prompt's reply row carries its boundary.
 			turnWrappers: turnWrapperClassNames(html),
 			itemGapColumns: (html.match(/gap-\[var\(--chat-item-gap\)\]/g) ?? []).length,
 		}).toStrictEqual({
 			turnGap: "15px",
 			itemGap: "10px",
 			turnWrappers: [
-				"group relative pb-[var(--chat-turn-gap)] empty:pb-0",
+				"group relative",
 				"group/msg flex flex-col w-full pb-[var(--chat-turn-gap)] empty:pb-0",
 				"group/msg flex flex-col w-full pb-[var(--chat-turn-gap)] empty:pb-0",
 			],
