@@ -762,6 +762,7 @@ function GroupedToolCallEntry({
 	subagentLookup: SubagentLookup;
 }) {
 	const liveFailures = useLiveToolFailures(sessionId);
+	const opensReply = useContext(AssistantSpanEntryContext)?.opensReply === true;
 	const batches = useMemo(() => {
 		const result: ToolCallBatch[] = [];
 		let openBatch: ToolCallBatch | undefined;
@@ -800,6 +801,7 @@ function GroupedToolCallEntry({
 							calls={batch.calls}
 							sessionId={batch.sourceSessionId}
 							notices={index === batches.length - 1 ? notices : NO_NOTICES}
+							leading={opensReply && index === 0}
 						/>
 					</TranscriptMessageMenu>
 				))}
@@ -2693,6 +2695,7 @@ function AssistantEntry({
 	showTools: boolean;
 }) {
 	const liveFailures = useLiveToolFailures(sessionId);
+	const opensReply = useContext(AssistantSpanEntryContext)?.opensReply === true;
 	const toolCalls = useMemo(
 		() => buildLineToolCalls(line, toolResultMap, liveFailures, subagentLookup),
 		[line, toolResultMap, liveFailures, subagentLookup],
@@ -2725,7 +2728,11 @@ function AssistantEntry({
 		return (
 			<>
 				{attributionRow}
-				<ToolCallSection calls={toolCalls} sessionId={sessionId} />
+				<ToolCallSection
+					calls={toolCalls}
+					sessionId={sessionId}
+					leading={opensReply && !hasAttribution(line)}
+				/>
 			</>
 		);
 	}
@@ -2751,17 +2758,21 @@ function AssistantEntry({
 	);
 }
 
+function hasAttribution(line: MessageSessionLine): boolean {
+	return (line.attributionSkill ?? line.attributionPlugin ?? line.attributionMcpServer) !== undefined;
+}
+
 /**
  * Pills attributing an assistant turn to the skill or MCP server that drove
  * it. The transcript layer dedupes consecutive identical attribution, so this
  * renders once per skill/MCP block.
  */
 function AttributionRow({line}: {line: MessageSessionLine}) {
+	if (!hasAttribution(line)) return null;
 	const skillLabel = line.attributionSkill ?? line.attributionPlugin;
 	const mcpLabel = line.attributionMcpServer
 		? `${line.attributionMcpServer}${line.attributionMcpTool ? ` · ${line.attributionMcpTool}` : ""}`
 		: undefined;
-	if (!skillLabel && !mcpLabel) return null;
 	return (
 		<div className="flex flex-wrap gap-1.5">
 			{skillLabel && (
@@ -2935,10 +2946,13 @@ function ToolCallSection({
 	calls,
 	sessionId,
 	notices = NO_NOTICES,
+	leading = false,
 }: {
 	calls: ClientToolCall[];
 	sessionId: string;
 	notices?: readonly BackgroundNotice[];
+	/** The section is the first thing drawn in the row that opens a reply. */
+	leading?: boolean;
 }) {
 	const prominentCalls = calls.filter((c) => PROMINENT_TOOLS.has(c.name));
 	const backgroundCalls = calls.filter((c) => !PROMINENT_TOOLS.has(c.name));
@@ -2946,10 +2960,10 @@ function ToolCallSection({
 	return (
 		<>
 			{backgroundCalls.length === 1 && notices.length === 0 && (
-				<ToolCallRow call={backgroundCalls[0]!} sessionId={sessionId} />
+				<ToolCallRow call={backgroundCalls[0]!} sessionId={sessionId} leading={leading} />
 			)}
 			{(backgroundCalls.length > 1 || notices.length > 0) && (
-				<ToolCallSummary calls={backgroundCalls} sessionId={sessionId} notices={notices} />
+				<ToolCallSummary calls={backgroundCalls} sessionId={sessionId} notices={notices} leading={leading} />
 			)}
 			{prominentCalls.map((call, i) => {
 				const Renderer = getToolRenderer(call.name);
@@ -3067,7 +3081,36 @@ function isPendingToolCall(call: ClientToolCall): boolean {
 /** Upstream draws an in-flight tool label in primary ink with a shimmer sweep. */
 const RUNNING_LABEL_CLASS = "text-primary tool-shimmer";
 
-function ToolCallRow({call, sessionId, nested = false}: {call: ClientToolCall; sessionId: string; nested?: boolean}) {
+/**
+ * Upstream wraps each status disclosure in a TurnStatus with a static -4px
+ * vertical outset (-my-pad-xs) in every state. The frame pads that outset back
+ * so it stays inside the transcript row's measured box. A status that opens a
+ * reply keeps its top outset, rising into the reply boundary to sit 2px under
+ * the prompt as upstream's does.
+ */
+function TurnStatusFrame({leading, children}: {leading: boolean; children: React.ReactNode}) {
+	return (
+		<div data-turn-status-frame="" className={`flex flex-col w-full ${leading ? "pb-p3" : "py-p3"}`}>
+			{children}
+		</div>
+	);
+}
+
+/** Class of the status wrapper a TurnStatusFrame pads back. */
+const TURN_STATUS_CLASS = "flex flex-col w-full -my-p3";
+
+function ToolCallRow({
+	call,
+	sessionId,
+	nested = false,
+	leading = false,
+}: {
+	call: ClientToolCall;
+	sessionId: string;
+	nested?: boolean;
+	/** The row is the first thing drawn in the transcript row that opens a reply. */
+	leading?: boolean;
+}) {
 	const [expanded, toggleExpanded] = useModeExpansion(`row:${call.id}`);
 	const bodyId = useId();
 	const verbose = useContext(TranscriptModeContext) === "verbose";
@@ -3110,6 +3153,8 @@ function ToolCallRow({call, sessionId, nested = false}: {call: ClientToolCall; s
 				: ink;
 	const isCompletedPaneAgent = paneAgentId !== undefined && !call.isError && !pending;
 	const isCompletedStandaloneDisclosure = !isAgent && !nested && !call.isError && !pending;
+	// Expandable rows reach the disclosure below; Agent navigation and nested rows are not statuses.
+	const isTurnStatus = !isAgent && !nested;
 	const disclosureLayout = isCompletedStandaloneDisclosure
 		? "min-w-0 self-stretch me-[52px] px-1 py-0.5"
 		: "self-start py-0";
@@ -3239,11 +3284,12 @@ function ToolCallRow({call, sessionId, nested = false}: {call: ClientToolCall; s
 		);
 	}
 
-	return (
+	const disclosure = (
 		<div
 			data-tool-row=""
+			data-turn-status={isTurnStatus ? "" : undefined}
 			data-completed-tool-row={isCompletedStandaloneDisclosure && !expanded ? "" : undefined}
-			className="flex flex-col w-full"
+			className={isTurnStatus ? TURN_STATUS_CLASS : "flex flex-col w-full"}
 		>
 			<div
 				role="button"
@@ -3271,6 +3317,7 @@ function ToolCallRow({call, sessionId, nested = false}: {call: ClientToolCall; s
 			)}
 		</div>
 	);
+	return isTurnStatus ? <TurnStatusFrame leading={leading}>{disclosure}</TurnStatusFrame> : disclosure;
 }
 
 /**
@@ -3297,10 +3344,12 @@ function ToolCallSummary({
 	calls,
 	sessionId,
 	notices = NO_NOTICES,
+	leading,
 }: {
 	calls: ClientToolCall[];
 	sessionId: string;
 	notices?: readonly BackgroundNotice[];
+	leading: boolean;
 }) {
 	const [expanded, toggleExpanded] = useModeExpansion(`group:${calls[0]?.id ?? `notice-${notices[0]?.lineIndex}`}`);
 	const bodyId = useId();
@@ -3330,8 +3379,13 @@ function ToolCallSummary({
 	// row stays secondary, as upstream does.
 	const ink = expanded ? "text-secondary" : "text-ink-muted group-hover/tool:text-secondary";
 
-	return (
-		<div data-tool-row="" className="flex flex-col w-full">
+	// The tasks view shares the wrapper upstream's TurnStatus does not have, so it keeps no outset.
+	const status = (
+		<div
+			data-tool-row=""
+			data-turn-status={hasTasksView ? undefined : ""}
+			className={hasTasksView ? "flex flex-col w-full" : TURN_STATUS_CLASS}
+		>
 			{hasTasksView && (
 				<div className="mb-2">
 					<Suspense fallback={<p role="status">Loading tasks…</p>}>
@@ -3388,4 +3442,5 @@ function ToolCallSummary({
 			)}
 		</div>
 	);
+	return hasTasksView ? status : <TurnStatusFrame leading={leading}>{status}</TurnStatusFrame>;
 }

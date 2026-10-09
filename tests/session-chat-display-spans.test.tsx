@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 
+import {readFileSync} from "node:fs";
+import {join} from "node:path";
 import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat, type SessionChatProps} from "../src/components/session-chat";
@@ -228,6 +230,26 @@ describe("assistant display-span actions", () => {
 			collapsed: {completedRows: 1, footers: 1},
 			failed: {completedRows: 0, footers: 1},
 		});
+	});
+
+	it("matches the 12px completed-tool continuation rule in globals.css against a rendered completed tool row", () => {
+		const styles = readFileSync(join(process.cwd(), "src", "styles", "globals.css"), "utf8");
+		const selector =
+			/\/\* A completed standalone tool followed by prose[^*]*\*\/\s*([^{]+)\{\s*padding-bottom: 12px;/
+				.exec(styles)?.[1]
+				?.trim();
+		const view = render(
+			<div className="transcript-text">
+				{chat([...command("example-command"), text("example-conclusion", "Example conclusion.")])}
+			</div>,
+		);
+		const padded = () =>
+			Array.from(view.container.querySelectorAll<HTMLElement>(selector!)).map(
+				(element) => element.closest<HTMLElement>("[data-perf-line]")?.dataset["perfLine"],
+			);
+		const completed = padded();
+		fireEvent.click(view.container.querySelector<HTMLElement>("[aria-expanded]")!);
+		expect({completed, expanded: padded()}).toStrictEqual({completed: ["0"], expanded: []});
 	});
 
 	it("copies authored text in order and targets the final assistant after tools and folded notifications", async () => {

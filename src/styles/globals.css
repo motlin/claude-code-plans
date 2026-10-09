@@ -753,7 +753,7 @@
    upstream leaves 12px here. End-of-span actions and changes keep their turn gap. */
 .transcript-text
 	[data-perf-row="assistant_tool"][data-assistant-span]:has(+ [data-perf-row="assistant_text"])
-	> [data-record-index]:has(> :is([data-completed-agent-row], [data-completed-tool-row])):not(
+	> [data-record-index]:has(> [data-completed-agent-row], > [data-turn-status-frame] > [data-completed-tool-row]):not(
 		:has([data-assistant-span-footer], [data-turn-changes-card])
 	) {
 	padding-bottom: 12px;

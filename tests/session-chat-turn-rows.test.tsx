@@ -292,4 +292,81 @@ describe("SessionChat turn rows", () => {
 			});
 		});
 	});
+
+	describe("tool status outset", () => {
+		const toolUse = (uuid: string, id: string, name: string, input: Record<string, unknown>) => ({
+			type: "assistant",
+			uuid,
+			message: {role: "assistant", content: [{type: "tool_use", id, name, input}]},
+		});
+		const toolResult = (uuid: string, id: string, isError = false) => ({
+			type: "user",
+			uuid,
+			message: {
+				role: "user",
+				content: [{type: "tool_result", tool_use_id: id, content: "fabricated output", is_error: isError}],
+			},
+		});
+		const prompt = (uuid: string, content: string) => ({type: "user", uuid, message: {role: "user", content}});
+		const STATUS_RECORDS = [
+			prompt("u-single", "Fabricated single tool question"),
+			toolUse("a-single", "toolu_single", "Bash", {command: "ls", description: "List fabricated files"}),
+			toolResult("r-single", "toolu_single"),
+			{
+				type: "assistant",
+				uuid: "a-interlude",
+				message: {role: "assistant", content: [{type: "text", text: "Fabricated interlude"}]},
+			},
+			toolUse("a-failed", "toolu_failed", "Bash", {command: "false", description: "Fail fabricated check"}),
+			toolResult("r-failed", "toolu_failed", true),
+			prompt("u-group", "Fabricated grouped question"),
+			toolUse("a-group-1", "toolu_group_1", "Bash", {command: "pwd", description: "Print fabricated directory"}),
+			toolResult("r-group-1", "toolu_group_1"),
+			toolUse("a-group-2", "toolu_group_2", "Read", {file_path: "/fabricated/notes.txt"}),
+			toolResult("r-group-2", "toolu_group_2"),
+			prompt("u-todo", "Fabricated todo question"),
+			toolUse("a-todo", "toolu_todo", "TodoWrite", {
+				todos: [{content: "Fabricated todo", status: "pending", activeForm: "Doing fabricated todo"}],
+			}),
+			toolResult("r-todo", "toolu_todo"),
+			prompt("u-pending", "Fabricated pending question"),
+			toolUse("a-pending", "toolu_pending", "Bash", {command: "sleep 1", description: "Wait for fabricated job"}),
+		];
+
+		it("gives every standalone status disclosure and group summary upstream's -4px outset, padded back inside its row except where it rises into a reply boundary", () => {
+			vi.stubGlobal("innerHeight", 4000);
+			const {lines, toolResultMap} = processTranscript(STATUS_RECORDS, 0);
+			const {container} = render(
+				<SessionChat
+					sessionId="test-session"
+					lines={lines}
+					toolResultMap={toolResultMap}
+					showTools
+					shouldScrollToEnd={false}
+				/>,
+			);
+
+			expect(
+				Array.from(container.querySelectorAll<HTMLElement>("[data-tool-row]")).map((row) => ({
+					line: row.closest<HTMLElement>("[data-transcript-entry-index]")?.dataset["perfLine"],
+					replyBoundary: row.closest<HTMLElement>("[data-transcript-entry-index]")?.dataset["replyBoundary"],
+					turnStatus: row.dataset["turnStatus"],
+					outset: row.classList.contains("-my-p3"),
+					frame: row.parentElement?.closest<HTMLElement>("[data-turn-status-frame]")?.className,
+				})),
+			).toStrictEqual([
+				{line: "1", replyBoundary: "", turnStatus: "", outset: true, frame: "flex flex-col w-full pb-p3"},
+				{
+					line: "4",
+					replyBoundary: undefined,
+					turnStatus: "",
+					outset: true,
+					frame: "flex flex-col w-full py-p3",
+				},
+				{line: "7", replyBoundary: "", turnStatus: "", outset: true, frame: "flex flex-col w-full pb-p3"},
+				{line: "12", replyBoundary: "", turnStatus: undefined, outset: false, frame: undefined},
+				{line: "15", replyBoundary: "", turnStatus: "", outset: true, frame: "flex flex-col w-full pb-p3"},
+			]);
+		});
+	});
 });
