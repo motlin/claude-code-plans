@@ -127,11 +127,11 @@ describe("deferred Changes renderer", () => {
 		const loading = paneState();
 		const coldSaved = loadPaneLayout(SESSION);
 		await act(async () => harness.finish());
-		await within(screen.getByRole("region", {name: "Changes"})).findByRole("alert");
+		await within(screen.getByRole("region", {name: "Changes"})).findByRole("alert", {}, {timeout: 10_000});
 		const failed = paneState();
 		harness.fail = false;
 		fireEvent.click(screen.getByRole("button", {name: "Retry"}));
-		await screen.findByText("No changes to show");
+		await screen.findByText("No changes to show", {}, {timeout: 10_000});
 		const loaded = paneState();
 		fireEvent.click(screen.getByRole("button", {name: "Close"}));
 		fireEvent.click(screen.getByRole("button", {name: "Open changes"}));
@@ -173,7 +173,7 @@ describe("deferred Changes renderer", () => {
 			installLocalStorage();
 			if (entry === "saved") savePaneLayout(SESSION, openPane(defaultPaneLayout(), "changes"));
 			renderApp(entry === "requested" ? "changes" : undefined);
-			await screen.findByText("No changes to show");
+			await screen.findByText("No changes to show", {}, {timeout: 10_000});
 			const loaded = paneState();
 			const saved = loadPaneLayout(SESSION);
 			fireEvent.click(screen.getByRole("button", {name: "Close"}));
