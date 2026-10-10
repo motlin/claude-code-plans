@@ -2284,6 +2284,8 @@ function UserEntry({
 		return <SubagentPromptEntry line={line} sessionId={sessionId} />;
 	}
 
+	if (kind === "stop-hook") return <StopHookMarker line={line} />;
+
 	if (kind in LABEL_BY_KIND) {
 		const label = LABEL_BY_KIND[kind as LabeledKind];
 		return (
@@ -2319,13 +2321,52 @@ function UserEntry({
 	);
 }
 
-type LabeledKind = "request-interrupted" | "compact-summary" | "stop-hook";
+type LabeledKind = "request-interrupted" | "compact-summary";
 
 const LABEL_BY_KIND: Record<LabeledKind, string> = {
 	"request-interrupted": "Request interrupted",
 	"compact-summary": "Compact summary",
-	"stop-hook": "Stop hook feedback",
 };
+
+const STOP_HOOK_PREFIX_RE = /^Stop hook feedback:\s*/;
+
+/**
+ * Upstream's "Hook re-prompted Claude" marker: a muted 24px disclosure in the
+ * assistant column whose body is the hook's feedback without its prefix.
+ */
+function StopHookMarker({line}: {line: MessageSessionLine}) {
+	const [expanded, setExpanded] = useState(false);
+	const bodyId = useId();
+	const feedback = getUserContentText(line).replace(STOP_HOOK_PREFIX_RE, "");
+
+	return (
+		<div data-stop-hook-marker="" className="flex flex-col w-full min-w-0 py-px">
+			<button
+				type="button"
+				aria-expanded={expanded}
+				aria-controls={bodyId}
+				onClick={() => setExpanded(!expanded)}
+				className="group/step flex self-stretch min-w-0 me-[52px] items-center gap-g2 px-1 py-0.5 text-left outline-none hide-focus-ring focus:ring-focus rounded-r3"
+			>
+				<span className="text-body min-w-0 truncate text-ink-muted group-hover/step:text-secondary">
+					Hook re-prompted Claude
+				</span>
+				<span className="shrink-0 text-secondary">
+					<ChevronIcon expanded={expanded} size={12} />
+				</span>
+			</button>
+			{expanded && (
+				<div id={bodyId} className="break-words ps-1">
+					<div className="pt-1">
+						<div className="font-mono text-caption text-secondary whitespace-pre-wrap break-all select-text">
+							{feedback}
+						</div>
+					</div>
+				</div>
+			)}
+		</div>
+	);
+}
 
 /**
  * Upstream's "Compacted conversation" marker row, keeping the local

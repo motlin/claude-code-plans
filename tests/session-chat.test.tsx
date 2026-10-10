@@ -241,11 +241,14 @@ describe("SessionChat user-message shapes", () => {
 		expect(html).toContain(">Compact summary<");
 	});
 
-	it('Shape D — Stop hook feedback renders gray bubble with the "Stop hook feedback" label', () => {
+	it('Shape D — Stop hook feedback collapses into the "Hook re-prompted Claude" marker', () => {
 		const html = renderShape("D");
 
-		expect(html).toContain("bg-auto-msg-bg");
-		expect(html).toContain(">Stop hook feedback<");
+		expect({
+			hasAutomatedBubble: html.includes("bg-auto-msg-bg"),
+			hasLabel: html.includes(">Stop hook feedback<"),
+			hasMarker: html.includes(">Hook re-prompted Claude<"),
+		}).toStrictEqual({hasAutomatedBubble: false, hasLabel: false, hasMarker: true});
 	});
 
 	it("Shape E — slash command body renders nothing, like upstream", () => {

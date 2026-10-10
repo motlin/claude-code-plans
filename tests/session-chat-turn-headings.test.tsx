@@ -126,7 +126,6 @@ describe("SessionChat turn headings", () => {
 		{record: USER_TEXT, expectedHeading: "You said: Fabricated user message"},
 		{record: ASSISTANT_TEXT, expectedHeading: "Claude responded: Fabricated assistant response"},
 		{record: TOOL_CALL, expectedHeading: "Claude responded"},
-		{record: STOP_HOOK_FEEDBACK, expectedHeading: "You said: Stop hook feedback: fabricated"},
 		{record: COMMAND_INVOCATION, expectedHeading: "You said: /fabricated --dry-run"},
 		{record: COMPACT_SUMMARY, expectedHeading: "You said: Compacted conversation"},
 		{
@@ -169,7 +168,7 @@ describe("SessionChat turn headings", () => {
 		]);
 	});
 
-	it("labels every user-side entry variant as You said", () => {
+	it("labels every user-side entry variant as You said, leaving the assistant-column stop-hook marker unheaded", () => {
 		const collapsedCompact = renderRecords([COMPACT_SUMMARY], false);
 		const expandedCompact = renderRecords([COMPACT_SUMMARY], false);
 		fireEvent.click(expandedCompact.querySelector("button")!);
@@ -180,7 +179,7 @@ describe("SessionChat turn headings", () => {
 			collapsedCompactSummary: turnHeadings(collapsedCompact),
 			expandedCompactSummary: turnHeadings(expandedCompact),
 		}).toStrictEqual({
-			stopHookFeedback: [heading("You said: Stop hook feedback: fabricated")],
+			stopHookFeedback: [],
 			command: [heading("You said: /fabricated --dry-run")],
 			collapsedCompactSummary: [heading("You said: Compacted conversation")],
 			expandedCompactSummary: [heading("You said: Compacted conversation")],

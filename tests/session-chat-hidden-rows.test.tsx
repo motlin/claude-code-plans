@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {cleanup, render} from "@testing-library/react";
+import {cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat} from "../src/components/session-chat";
 import {processTranscript} from "../src/lib/transcript";
@@ -163,4 +163,80 @@ describe("Meta user records between a prompt and its reply", () => {
 			],
 		});
 	});
+});
+
+const STOP_HOOK_SESSION: unknown[] = [
+	{type: "user", uuid: "u-1", message: {role: "user", content: "Fabricated question"}},
+	{
+		type: "assistant",
+		uuid: "a-1",
+		message: {role: "assistant", content: [{type: "text", text: "Fabricated answer"}]},
+	},
+	{
+		type: "user",
+		uuid: "u-stop-hook",
+		isMeta: true,
+		message: {role: "user", content: "Stop hook feedback:\nFabricated first line\nFabricated second line"},
+	},
+	{
+		type: "assistant",
+		uuid: "a-2",
+		message: {role: "assistant", content: [{type: "text", text: "Fabricated follow-up"}]},
+	},
+];
+
+describe("Stop hook feedback", () => {
+	it.each<TranscriptMode>(["normal", "verbose"])(
+		"collapses into a left-aligned 'Hook re-prompted Claude' disclosure in %s mode",
+		(mode) => {
+			const container = renderRecords(STOP_HOOK_SESSION, mode);
+			const button = screen.getByRole("button", {name: "Hook re-prompted Claude"});
+			const collapsed = {
+				ariaExpanded: button.getAttribute("aria-expanded"),
+				buttonClassName: button.className,
+				labelClassName: button.querySelector("span")?.className,
+				markerClassName: button.parentElement?.className,
+				rightAligned: button.closest(".justify-end") !== null,
+				promptBubbleOnly: container.querySelectorAll(".user-message-bubble").length === 1,
+				stopHookText: (container.textContent ?? "").includes("Stop hook feedback"),
+				feedbackText: (container.textContent ?? "").includes("Fabricated first line"),
+			};
+			fireEvent.click(button);
+			const body = document.getElementById(button.getAttribute("aria-controls")!);
+			const feedback = body?.querySelector(".font-mono");
+
+			expect({
+				collapsed,
+				expanded: {
+					ariaExpanded: button.getAttribute("aria-expanded"),
+					bodyClassName: body?.className,
+					innerClassName: feedback?.parentElement?.className,
+					feedbackClassName: feedback?.className,
+					feedbackText: feedback?.textContent,
+					stopHookText: (container.textContent ?? "").includes("Stop hook feedback"),
+				},
+			}).toStrictEqual({
+				collapsed: {
+					ariaExpanded: "false",
+					buttonClassName:
+						"group/step flex self-stretch min-w-0 me-[52px] items-center gap-g2 px-1 py-0.5 text-left outline-none hide-focus-ring focus:ring-focus rounded-r3",
+					labelClassName: "text-body min-w-0 truncate text-ink-muted group-hover/step:text-secondary",
+					markerClassName: "flex flex-col w-full min-w-0 py-px",
+					rightAligned: false,
+					promptBubbleOnly: true,
+					stopHookText: false,
+					feedbackText: false,
+				},
+				expanded: {
+					ariaExpanded: "true",
+					bodyClassName: "break-words ps-1",
+					innerClassName: "pt-1",
+					feedbackClassName:
+						"font-mono text-caption text-secondary whitespace-pre-wrap break-all select-text",
+					feedbackText: "Fabricated first line\nFabricated second line",
+					stopHookText: false,
+				},
+			});
+		},
+	);
 });

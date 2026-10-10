@@ -99,13 +99,6 @@ const ASSISTANT_TEXT = {
 	},
 };
 
-const STOP_HOOK_FEEDBACK = {
-	type: "user",
-	uuid: "user-meta-1",
-	isMeta: true,
-	message: {role: "user", content: "Stop hook feedback: fabricated"},
-};
-
 const COMMAND_INVOCATION = {
 	type: "user",
 	uuid: "user-command-1",
@@ -192,11 +185,9 @@ describe("SessionChat user action row", () => {
 		fireEvent.click(compactContainer.querySelector("button")!);
 
 		expect({
-			stopHookFeedback: userColumnClassName(renderRecords([STOP_HOOK_FEEDBACK], true)),
 			command: userColumnClassName(renderRecords([COMMAND_INVOCATION], true)),
 			compactSummary: userColumnClassName(compactContainer),
 		}).toStrictEqual({
-			stopHookFeedback: "flex flex-col items-end gap-g6 max-w-[85%] min-w-0",
 			command: "flex flex-col items-end gap-g6 max-w-[85%] min-w-0",
 			compactSummary: "flex flex-col items-end gap-g6 max-w-[85%] min-w-0",
 		});
@@ -219,12 +210,10 @@ describe("SessionChat user turn alignment", () => {
 
 		expect({
 			user: userRowLayout(renderRecords([USER_TEXT], true)),
-			stopHookFeedback: userRowLayout(renderRecords([STOP_HOOK_FEEDBACK], true)),
 			command: userRowLayout(renderRecords([COMMAND_INVOCATION], true)),
 			compactSummary: userRowLayout(compactContainer),
 		}).toStrictEqual({
 			user: {rowClassName: "group/msg flex justify-end w-full", columnIsRightMost: true},
-			stopHookFeedback: {rowClassName: "group/msg flex justify-end w-full", columnIsRightMost: true},
 			command: {rowClassName: "group/msg flex justify-end w-full", columnIsRightMost: true},
 			compactSummary: {rowClassName: "flex justify-end pt-p6", columnIsRightMost: true},
 		});
