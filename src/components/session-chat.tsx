@@ -629,6 +629,7 @@ function LineEntry({
 	turnChanges,
 	footer,
 	precedesReply = false,
+	precedesStatus = false,
 	...renderProps
 }: LineRenderProps & {
 	line: SessionLine;
@@ -636,6 +637,8 @@ function LineEntry({
 	className?: string;
 	/** An ordinary prompt whose reply row carries the boundary, so this row adds no turn gap. */
 	precedesReply?: boolean;
+	/** Prose whose own span continues into a row that opens with a status. */
+	precedesStatus?: boolean;
 	/** The end-of-turn changes card this line closes, shown after its content. */
 	turnChanges?: TurnChanges | undefined;
 	/** Undefined preserves Verbose record actions; null suppresses a non-endpoint footer. */
@@ -657,7 +660,12 @@ function LineEntry({
 		.filter(Boolean)
 		.join(" ");
 	const wrapper = (
-		<div key={`line-${line.lineIndex}`} data-record-index={line.lineIndex} className={wrapperClassName} />
+		<div
+			key={`line-${line.lineIndex}`}
+			data-record-index={line.lineIndex}
+			data-precedes-turn-status={precedesStatus ? "" : undefined}
+			className={wrapperClassName}
+		/>
 	);
 	const children = (
 		<>
@@ -970,6 +978,30 @@ function isGroupableToolOnlyAssistantLine(line: SessionLine): boolean {
 	);
 }
 
+/** An assistant line drawn as prose alone: visible text and no tool calls. */
+function isProseOnlyAssistantLine(line: SessionLine): boolean {
+	if (line.type !== "assistant" || transcriptRowKind(line) !== "assistant_text") return false;
+	const content = line.message?.content;
+	return !Array.isArray(content) || content.every((b) => b.type !== "tool_use");
+}
+
+function toolUseNames(lines: readonly SessionLine[]): string[] {
+	return lines.flatMap((line) => {
+		const content = line.type === "assistant" ? line.message?.content : undefined;
+		return Array.isArray(content) ? content.flatMap((b) => (b.type === "tool_use" ? [b.name] : [])) : [];
+	});
+}
+
+/** Whether ToolCallSection, given these calls and notices, draws a TurnStatus first. */
+function toolSectionOpensWithStatus(toolNames: readonly string[], noticeCount: number): boolean {
+	const background = toolNames.filter((name) => !PROMINENT_TOOLS.has(name));
+	if (background.length === 0 && noticeCount === 0) return false;
+	// A lone Agent row navigates rather than disclosing a status.
+	if (background.length === 1 && noticeCount === 0) return background[0] !== "Agent";
+	// Three task calls turn the summary into the tasks view, which has no status.
+	return background.filter((name) => TASK_TOOLS.has(name)).length < 3;
+}
+
 function isToolResultOnlyUserLine(line: SessionLine): boolean {
 	if (line.type !== "user") return false;
 	const content = line.message?.content;
@@ -1017,6 +1049,10 @@ interface PendingSessionListEntry extends Omit<SessionListEntry, "endRecordIndex
 	replyHead?: SessionLine;
 	/** An ordinary prompt row, rendered once it is known whether its reply follows it. */
 	prompt?: {line: SessionLine; render: (precedesReply: boolean) => React.ReactNode};
+	/** A prose row, rendered once it is known whether a status in its span follows it. */
+	prose?: {render: (precedesStatus: boolean) => React.ReactNode};
+	/** A tool row whose first drawn block is a TurnStatus. */
+	opensWithStatus?: boolean;
 }
 
 const PROMPT_KINDS: ReadonlySet<UserContentKind> = new Set(["text", "command", "bash"]);
@@ -1242,6 +1278,10 @@ function buildSessionListEntries(
 					kind: "assistant_tool",
 					assistantSpan: displaySpans?.get(line.lineIndex),
 					replyHead: line,
+					opensWithStatus:
+						line.type === "assistant" &&
+						!hasAttribution(line) &&
+						toolSectionOpensWithStatus(toolUseNames([line]), 0),
 					element: (
 						<LineEntry
 							line={line}
@@ -1257,6 +1297,13 @@ function buildSessionListEntries(
 				const groupChanges = groupLines
 					.map((groupLine) => turnChangesByLine.get(groupLine.lineIndex))
 					.find((changes) => changes !== undefined);
+				// GroupedToolCallEntry draws the lines sharing the first one's source session as its first batch.
+				const firstBatchEnd = groupLines.findIndex(
+					(groupLine) =>
+						getSourceSessionId(groupLine, renderProps.sessionId) !==
+						getSourceSessionId(line, renderProps.sessionId),
+				);
+				const firstBatch = firstBatchEnd === -1 ? groupLines : groupLines.slice(0, firstBatchEnd);
 				entries.push({
 					key: `group-${line.lineIndex}`,
 					startRecordIndex,
@@ -1264,6 +1311,10 @@ function buildSessionListEntries(
 					kind: "assistant_tool",
 					assistantSpan: displaySpans?.get(line.lineIndex),
 					replyHead: line,
+					opensWithStatus: toolSectionOpensWithStatus(
+						toolUseNames(firstBatch),
+						firstBatchEnd === -1 ? notices.length : 0,
+					),
 					element: (
 						<GroupedToolCallEntry
 							entries={groupLines}
@@ -1285,13 +1336,14 @@ function buildSessionListEntries(
 		prevVisibleType = line.type;
 
 		const nextLine = lines[i + 1];
-		const renderLine = (precedesReply: boolean) => (
+		const renderLine = (precedesReply: boolean, precedesStatus = false) => (
 			<LineEntry
 				line={line}
 				nextLine={nextLine}
 				turnChanges={turnChangesByLine.get(line.lineIndex)}
 				footer={footerFor(line)}
 				precedesReply={precedesReply}
+				precedesStatus={precedesStatus}
 				{...(isBannerAfterBanner ? {className: "mt-1"} : {})}
 				{...renderProps}
 			/>
@@ -1304,6 +1356,9 @@ function buildSessionListEntries(
 			assistantSpan: displaySpans?.get(line.lineIndex),
 			...(line.type === "assistant" ? {replyHead: line} : {}),
 			...(!verbose && isOrdinaryPromptLine(line, renderProps) ? {prompt: {line, render: renderLine}} : {}),
+			...(!verbose && isProseOnlyAssistantLine(line)
+				? {prose: {render: (precedesStatus: boolean) => renderLine(false, precedesStatus)}}
+				: {}),
 			element: renderLine(false),
 		});
 		i++;
@@ -1320,13 +1375,23 @@ function buildSessionListEntries(
 				getSourceSessionId(replyHead, renderProps.sessionId)
 		);
 	};
+	// Upstream leaves 12px between prose and a status in the same assistant span, never across a span,
+	// a question card, a tasks view or a marker.
+	const precedesStatus = (index: number): boolean => {
+		const span = entries[index]?.assistantSpan;
+		const next = entries[index + 1];
+		return span !== undefined && next?.opensWithStatus === true && next.assistantSpan?.key === span.key;
+	};
 	const finalRecordIndex = lines.at(-1)?.lineIndex ?? 0;
-	return entries.map(({replyHead: _replyHead, prompt, ...entry}, index) => ({
-		...entry,
-		...(prompt !== undefined && opensReply(index + 1) ? {element: prompt.render(true)} : {}),
-		opensReply: opensReply(index),
-		endRecordIndex: (entries[index + 1]?.startRecordIndex ?? finalRecordIndex + 1) - 1,
-	}));
+	return entries.map(
+		({replyHead: _replyHead, prompt, prose, opensWithStatus: _opensWithStatus, ...entry}, index) => ({
+			...entry,
+			...(prompt !== undefined && opensReply(index + 1) ? {element: prompt.render(true)} : {}),
+			...(prose !== undefined && precedesStatus(index) ? {element: prose.render(true)} : {}),
+			opensReply: opensReply(index),
+			endRecordIndex: (entries[index + 1]?.startRecordIndex ?? finalRecordIndex + 1) - 1,
+		}),
+	);
 }
 
 function VirtualizedSessionEntries({

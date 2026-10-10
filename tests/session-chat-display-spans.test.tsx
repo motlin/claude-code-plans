@@ -303,6 +303,65 @@ describe("assistant display-span actions", () => {
 		});
 	});
 
+	it("matches the 12px prose-to-status rule in globals.css only against prose continuing into a status in its own span", () => {
+		const styles = readFileSync(join(process.cwd(), "src", "styles", "globals.css"), "utf8");
+		const selector = /\/\* Assistant prose followed by a status[^*]*\*\/\s*([^{]+)\{\s*padding-bottom: 12px;/
+			.exec(styles)?.[1]
+			?.trim();
+		const toolUse = (uuid: string, name: string, input: object, sessionId = "example-main") => ({
+			type: "assistant",
+			uuid,
+			sessionId,
+			message: {role: "assistant", content: [{type: "tool_use", id: `example-tool-${uuid}`, name, input}]},
+		});
+		const question = toolUse("example-question", "AskUserQuestion", {
+			questions: [
+				{
+					question: "Continue the example?",
+					header: "Example",
+					multiSelect: false,
+					options: [
+						{label: "Continue", description: "Run the example"},
+						{label: "Stop", description: "Stop the example"},
+					],
+				},
+			],
+		});
+		const view = render(
+			<div className="transcript-text">
+				{chat([
+					text("example-before-group", "Example before group."),
+					...command("example-first"),
+					...command("example-second"),
+					text("example-before-single", "Example before single."),
+					...command("example-third"),
+					text("example-before-other", "Example before other source."),
+					...command("example-other-source", "example-other"),
+					text("example-before-tasks", "Example before tasks."),
+					...["Alice", "Bob", "Charlie"].map((name) =>
+						toolUse(`example-${name}`, "TaskCreate", {subject: `Example ${name} task`}),
+					),
+					text("example-before-agent", "Example before agent."),
+					toolUse("example-agent", "Agent", {description: "Example agent", prompt: "Example prompt"}),
+					text("example-before-question", "Example before question."),
+					question,
+					text("example-before-prompt", "Example before prompt."),
+					{
+						type: "user",
+						uuid: "example-prompt",
+						sessionId: "example-main",
+						message: {role: "user", content: "Example prompt."},
+					},
+				])}
+			</div>,
+		);
+		const rowOf = (element: Element) => element.closest<HTMLElement>("[data-perf-line]")?.dataset["perfLine"];
+		expect({
+			marked: Array.from(view.container.querySelectorAll("[data-precedes-turn-status]"), rowOf),
+			padded: Array.from(view.container.querySelectorAll(selector ?? "[data-missing-rule]"), rowOf),
+		}).toStrictEqual({marked: ["0", "5"], padded: ["0", "5"]});
+	});
+
 	it("copies authored text in order and targets the final assistant after tools and folded notifications", async () => {
 		const view = render(
 			chat([

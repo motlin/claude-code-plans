@@ -767,6 +767,14 @@
 	padding-bottom: 12px;
 }
 
+/* Assistant prose followed by a status in its own span (React sets the marker only then):
+   upstream leaves 12px above the status. A held span footer keeps its turn gap. */
+.transcript-text
+	[data-perf-row="assistant_text"][data-assistant-span]
+	> [data-record-index][data-precedes-turn-status]:not(:has([data-assistant-span-footer], [data-turn-changes-card])) {
+	padding-bottom: 12px;
+}
+
 /* Settings search deep link (#settings/<tab>/<row>): upstream flashes the row with a warm tint
    and underlines its title for 1.5s. */
 [data-settings-flash] {
