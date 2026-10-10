@@ -1206,7 +1206,7 @@ describe("SessionChat failed tool row label text", () => {
 		});
 	});
 
-	it('keeps "Used {Server: tool name}" on a failed tool with no verb of its own', () => {
+	it('keeps "Used {server: tool name}" on a failed tool with no verb of its own', () => {
 		const html = renderTranscript(
 			failedToolCallRecords(true, {
 				name: "mcp__sentry__search_issues",
@@ -1215,7 +1215,7 @@ describe("SessionChat failed tool row label text", () => {
 		);
 
 		expect(toolRowLabelSpans(html)).toStrictEqual([
-			["shrink-0 text-body text-ink-muted group-hover/tool:text-secondary", "Used Sentry: search issues"],
+			["shrink-0 text-body text-ink-muted group-hover/tool:text-secondary", "Used sentry: search issues"],
 			["truncate min-w-0 text-body text-ink-muted group-hover/tool:text-secondary", "unhandled"],
 			["shrink-0 text-body text-danger-ink", "Failed"],
 		]);

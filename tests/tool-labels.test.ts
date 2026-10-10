@@ -224,17 +224,21 @@ describe("toolLabel", () => {
 		});
 	});
 
-	it('uses "Server: tool name" for MCP tools and "Used {name}" for anything unknown', () => {
+	it('uses "server: tool name" for MCP tools, the server lowercase as upstream keeps it, and "Used {name}" for anything unknown', () => {
 		expect({
 			mcp: toolLabel(call("mcp__sentry__search_issues", {query: "x"})),
+			hyphenatedMcp: toolLabel(call("mcp__claude-in-chrome__javascript_tool")),
 			pluginMcp: toolLabel(call("mcp__plugin_github_github__list_issues")),
 			unknown: toolLabel(call("Frobnicate")),
 		}).toStrictEqual({
 			mcp: {
-				verb: "Used Sentry: search issues",
+				verb: "Used sentry: search issues",
+			},
+			hyphenatedMcp: {
+				verb: "Used claude-in-chrome: javascript tool",
 			},
 			pluginMcp: {
-				verb: "Used Github: list issues",
+				verb: "Used github: list issues",
 			},
 			unknown: {verb: "Used Frobnicate"},
 		});
@@ -356,7 +360,7 @@ describe("runningToolLabel", () => {
 			agentBare: {verb: "Running agent"},
 			skill: {verb: "Running skill", meta: "/git:commit", metaIsCode: true},
 			taskStop: {verb: "Stopping task"},
-			mcp: {verb: "Using Github: get me"},
+			mcp: {verb: "Using github: get me"},
 		});
 	});
 });

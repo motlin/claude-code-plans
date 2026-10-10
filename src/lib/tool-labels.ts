@@ -312,14 +312,15 @@ function artifactLabel(input: Record<string, unknown>): ToolLabel {
 }
 
 /**
- * "Server: tool name" for `mcp__server__tool`, dropping a `plugin_<pkg>_`
- * prefix from the server and spacing the tool's underscores.
+ * "server: tool name" for `mcp__server__tool`, the server kept as named (upstream
+ * reads "Used claude-in-chrome: computer"), dropping a `plugin_<pkg>_` prefix
+ * from it and spacing the tool's underscores.
  */
 function mcpToolLabel(name: string): string {
 	const [server = "", ...toolParts] = name.slice("mcp__".length).split("__");
 	const serverName = server.startsWith("plugin_") ? server.split("_").pop()! : server;
 	const tool = toolParts.join("__").replaceAll("_", " ");
-	return `${capitalizeFirst(serverName)}: ${tool}`;
+	return `${serverName}: ${tool}`;
 }
 
 /**
