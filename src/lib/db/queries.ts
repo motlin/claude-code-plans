@@ -615,6 +615,8 @@ export interface DbSubagent {
 	model: string | null;
 	startedAt: string | null;
 	finishedAt: string | null;
+	/** JSON array of the timestamps at which the agent's slow foreground commands finished. */
+	slowCommandEndsJson?: string;
 	filePath: string;
 	mtimeMs: number;
 }

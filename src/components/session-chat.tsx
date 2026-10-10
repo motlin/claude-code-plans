@@ -202,7 +202,10 @@ function collectAssistantDisplaySpans(
 		if (current !== undefined && sourceSessionId !== current.sourceSessionId) current = undefined;
 		if (skipSet.has(index) || !isLineVisible(line, renderProps, false)) continue;
 		// Injected notifications may look like plain user prompts, but do not start a new span.
-		if (taskNotificationOf(line) !== null || foldablePeerMessage(lines, index) !== null) {
+		if (
+			taskNotificationOf(line) !== null ||
+			foldablePeerMessage(lines, index, renderProps.subagentLookup) !== null
+		) {
 			if (current !== undefined) {
 				current.anchorLineIndex = line.lineIndex;
 				byLine.set(line.lineIndex, current);
@@ -893,14 +896,48 @@ function agentMessageOf(line: SessionLine): AgentMessage | null {
 	return parseAgentMessage(getUserContentText(line));
 }
 
+function lineTimestamp(line: SessionLine): string | undefined {
+	return "timestamp" in line ? line.timestamp : undefined;
+}
+
+/**
+ * Whether the sender finished a slow foreground command after the parent's
+ * last assistant record and before its message arrived. Upstream tracks such a
+ * command as a task, and its events keep the hand-back out of the next tool run.
+ */
+function heldBySlowCommand(
+	lines: readonly SessionLine[],
+	index: number,
+	sender: string,
+	subagentLookup: SubagentLookup,
+): boolean {
+	const ends = subagentLookup.byBareId.get(sender)?.slowCommandEnds;
+	const arrived = lineTimestamp(lines[index]!);
+	if (ends === undefined || arrived === undefined) return false;
+	let previous = index - 1;
+	while (previous >= 0 && lines[previous]!.type !== "assistant") previous--;
+	const parentSpoke = previous >= 0 ? lineTimestamp(lines[previous]!) : undefined;
+	const after = parentSpoke === undefined ? -Infinity : Date.parse(parentSpoke);
+	const until = Date.parse(arrived);
+	return ends.some((end) => {
+		const at = Date.parse(end);
+		return at > after && at <= until;
+	});
+}
+
 /**
  * The agent message at `index` when upstream folds it into the tool run it
  * reaches: only when the next assistant record opens with a tool call. One
- * that opens with thinking, even empty, keeps the message as its own row.
+ * that opens with thinking, even empty, keeps the message as its own row, as
+ * does one whose sender's slow command finished since the parent last spoke.
  */
-function foldablePeerMessage(lines: readonly SessionLine[], index: number): AgentMessage | null {
+function foldablePeerMessage(
+	lines: readonly SessionLine[],
+	index: number,
+	subagentLookup: SubagentLookup,
+): AgentMessage | null {
 	const message = agentMessageOf(lines[index]!);
-	if (message === null) return null;
+	if (message === null || heldBySlowCommand(lines, index, message.from, subagentLookup)) return null;
 	for (let next = index + 1; next < lines.length; next++) {
 		const line = lines[next]!;
 		if (line.type !== "assistant") continue;
@@ -1384,7 +1421,7 @@ function buildSessionListEntries(
 		const line = lines[index]!;
 		const notification = taskNotificationOf(line);
 		if (notification !== null) return {kind: "task", lineIndex: line.lineIndex, notification};
-		const message = foldablePeerMessage(lines, index);
+		const message = foldablePeerMessage(lines, index, renderProps.subagentLookup);
 		return message === null ? null : {kind: "peer", lineIndex: line.lineIndex, message, leads: true};
 	};
 	const skipSet = buildSkipSet(lines);

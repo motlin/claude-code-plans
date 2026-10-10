@@ -235,6 +235,8 @@ export const subagents = sqliteTable(
 		model: text("model"),
 		startedAt: text("started_at"),
 		finishedAt: text("finished_at"),
+		/** JSON array of the timestamps at which the agent's slow foreground commands finished. */
+		slowCommandEndsJson: text("slow_command_ends").notNull().default("[]"),
 		filePath: text("file_path").notNull(),
 		mtimeMs: integer("mtime_ms").notNull(),
 	},

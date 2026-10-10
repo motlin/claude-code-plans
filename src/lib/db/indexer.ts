@@ -25,6 +25,7 @@ import {trackActivity} from "../perf/event-loop-stalls";
 import {retryWhileBusy} from "./busy";
 import * as schema from "./schema";
 import {ArtifactEventCollector, deleteArtifactEventsForSessions, replaceArtifactEvents} from "./artifact-index";
+import {SlowCommandCollector} from "../slow-commands";
 import {deleteRoutinesForSessions, replaceRoutines} from "./routine-index";
 import {RoutineCollector} from "../routines";
 import {UsageCollector} from "../home-stats";
@@ -1044,6 +1045,7 @@ export async function indexSubagentFile(
 	let startedAt: string | null = null;
 	let finishedAt: string | null = null;
 	const artifactEvents = new ArtifactEventCollector();
+	const slowCommands = new SlowCommandCollector();
 	const rl = createLineReader(createReadStream(filePath, {encoding: "utf-8"}));
 	try {
 		for await (const line of rl) {
@@ -1068,6 +1070,7 @@ export async function indexSubagentFile(
 					finishedAt = obj.timestamp;
 				}
 				artifactEvents.add(obj);
+				slowCommands.add(obj);
 			} catch {
 				// skip
 			}
@@ -1075,6 +1078,7 @@ export async function indexSubagentFile(
 	} finally {
 		await rl.close();
 	}
+	const slowCommandEndsJson = JSON.stringify(slowCommands.ends());
 
 	db.insert(schema.subagents)
 		.values({
@@ -1088,6 +1092,7 @@ export async function indexSubagentFile(
 			model: resolvedModel ?? requestedModel,
 			startedAt,
 			finishedAt,
+			slowCommandEndsJson,
 			filePath,
 			mtimeMs: fileStat.mtimeMs,
 		})
@@ -1102,6 +1107,7 @@ export async function indexSubagentFile(
 				model: resolvedModel ?? requestedModel,
 				startedAt,
 				finishedAt,
+				slowCommandEndsJson,
 				filePath,
 				mtimeMs: fileStat.mtimeMs,
 			},

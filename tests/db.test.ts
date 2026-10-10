@@ -2075,6 +2075,41 @@ describe("subagents", () => {
 		expect(agent.finishedAt).toBe("1999-12-31T00:29:12.217Z");
 	});
 
+	it("indexSubagentFile records when each slow foreground command finished, as upstream tracks it as a task", async () => {
+		const projectDir = join(testDir, "-Users-craig-projects-app");
+		const sessionDir = join(projectDir, "sess-1", "subagents");
+		mkdirSync(sessionDir, {recursive: true});
+		const bash = (id: string, at: string, input: Record<string, unknown>) => ({
+			type: "assistant",
+			timestamp: at,
+			message: {role: "assistant", content: [{type: "tool_use", id, name: "Bash", input}]},
+		});
+		const result = (id: string, at: string) => ({
+			type: "user",
+			timestamp: at,
+			message: {role: "user", content: [{type: "tool_result", tool_use_id: id, content: "ok"}]},
+		});
+
+		const agentPath = join(sessionDir, "agent-slow1.jsonl");
+		writeFileSync(
+			agentPath,
+			jsonl(
+				bash("toolu_quick", "1999-12-31T00:00:00.000Z", {command: "git status"}),
+				result("toolu_quick", "1999-12-31T00:00:03.492Z"),
+				bash("toolu_gate", "1999-12-31T00:00:10.000Z", {command: "j tb"}),
+				result("toolu_gate", "1999-12-31T00:00:13.979Z"),
+				bash("toolu_bg", "1999-12-31T00:00:20.000Z", {command: "just dev", run_in_background: true}),
+				result("toolu_bg", "1999-12-31T00:00:30.000Z"),
+			),
+		);
+
+		db.index.insert(schema.projects).values({id: "proj-app", name: "App", updatedAt: 1000}).run();
+		await indexSubagentFile(db.index, agentPath, "sess-1", "proj-app");
+
+		const agent = db.index.select().from(schema.subagents).where(eq(schema.subagents.id, "agent-slow1")).get();
+		expect(agent?.slowCommandEndsJson).toBe('["1999-12-31T00:00:13.979Z"]');
+	});
+
 	it("indexSubagentFile preserves transcript attribution beside sibling metadata", async () => {
 		const projectDir = join(testDir, "-Users-craig-projects-app");
 		const sessionDir = join(projectDir, "sess-1", "subagents");

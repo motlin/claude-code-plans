@@ -3,6 +3,7 @@
 import {cleanup, fireEvent, render} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat} from "../src/components/session-chat";
+import type {Subagent} from "../src/lib/subagents";
 import {processTranscript} from "../src/lib/transcript";
 import specimens from "./fixtures/group-label-specimens.json";
 import rowSpecimens from "./fixtures/transcript-row-specimens.json";
@@ -69,13 +70,14 @@ function recordedSessionId(records: unknown[]): string {
 	return withId?.sessionId ?? "test-session";
 }
 
-function renderRecords(records: unknown[]): HTMLElement {
+function renderRecords(records: unknown[], subagents: Subagent[] = []): HTMLElement {
 	const {lines, toolResultMap} = processTranscript(records);
 	return render(
 		<SessionChat
 			sessionId={recordedSessionId(records)}
 			lines={lines}
 			toolResultMap={toolResultMap}
+			subagents={subagents}
 			shouldScrollToEnd={false}
 			transcriptMode="normal"
 		/>,
@@ -118,6 +120,8 @@ interface RowSpecimen {
 	records: unknown[];
 	/** The records run to the turn's real end, so its changes card sits where upstream draws it. */
 	turnEnd?: true;
+	/** The session's subagents, as the live page loads them beside the transcript. */
+	subagents?: Subagent[];
 }
 
 /** A row label part's text, with a diff stat's counts spaced as they read: "+59 -0". */
@@ -154,8 +158,8 @@ function rowTexts(row: Element, withCards: boolean): string[] {
 	return [...rowContentTexts(row), ...cards];
 }
 
-function transcriptRows({records, turnEnd}: RowSpecimen): string[] {
-	const container = renderRecords(records);
+function transcriptRows({records, turnEnd, subagents}: RowSpecimen): string[] {
+	const container = renderRecords(records, subagents);
 	return Array.from(container.querySelectorAll("[data-testid=transcript-row]")).flatMap((row) =>
 		rowTexts(row, turnEnd === true),
 	);

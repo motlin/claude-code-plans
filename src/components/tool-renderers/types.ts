@@ -27,6 +27,8 @@ export interface SubagentInlineInfo {
 	status: "running" | "done" | "error";
 	parallelGroupKey?: string | undefined;
 	parallelGroupSize?: number | undefined;
+	/** When each slow foreground command the agent ran finished; see `SLOW_COMMAND_MS`. */
+	slowCommandEnds?: readonly string[] | undefined;
 }
 
 /**
@@ -126,6 +128,7 @@ export function buildSubagentLookup(agents: Subagent[]): SubagentLookup {
 			finishedAt: node.agent.finishedAt,
 			status: statusForAgent(node.agent),
 		};
+		if (node.agent.slowCommandEnds !== undefined) entry.slowCommandEnds = node.agent.slowCommandEnds;
 		if (parallelKey !== undefined) entry.parallelGroupKey = parallelKey;
 		if (parallelSize !== undefined) entry.parallelGroupSize = parallelSize;
 		byBareId.set(bareId, entry);

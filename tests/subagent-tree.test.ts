@@ -341,6 +341,34 @@ describe("DB-backed subagents", () => {
 			},
 		]);
 	});
+
+	it("carries the slow command finish times only when the agent ran one", () => {
+		const row = {
+			sessionId: "session-test",
+			projectId: "project-test",
+			startedAt: "1999-12-31T00:00:05.000Z",
+			mtimeMs: 1_000,
+		};
+		db.index
+			.insert(schema.subagents)
+			.values([
+				{
+					...row,
+					id: "agent-slow",
+					filePath: "/tmp/a.jsonl",
+					slowCommandEndsJson: '["1999-12-31T00:00:09.000Z"]',
+				},
+				{...row, id: "agent-quick", filePath: "/tmp/b.jsonl"},
+			])
+			.run();
+
+		const agents = getSubagentsForSession(db.index, "session-test").map(toClientSubagent);
+		expect(agents.map(({id, slowCommandEnds}) => ({id, slowCommandEnds}))).toStrictEqual([
+			{id: "agent-slow", slowCommandEnds: ["1999-12-31T00:00:09.000Z"]},
+			{id: "agent-quick", slowCommandEnds: undefined},
+		]);
+		expect(Object.hasOwn(agents[1]!, "slowCommandEnds")).toBe(false);
+	});
 });
 
 describe("extractPendingSubagents", () => {

@@ -171,6 +171,7 @@ CREATE TABLE IF NOT EXISTS subagents (
   model TEXT,
   started_at TEXT,
   finished_at TEXT,
+  slow_command_ends TEXT NOT NULL DEFAULT '[]',
   file_path TEXT NOT NULL,
   mtime_ms INTEGER NOT NULL
 );
