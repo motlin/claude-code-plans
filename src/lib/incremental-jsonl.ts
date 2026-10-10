@@ -1,4 +1,5 @@
 import {stat} from "node:fs/promises";
+import {destroyStream} from "./line-reader";
 import {trackedCreateReadStream} from "./perf/tracked-fs";
 
 /** Bytes re-read before a cached offset to confirm the file still holds what was parsed, not a rewrite. */
@@ -160,7 +161,7 @@ async function readLines(
 			await new Promise<void>((resolveYield) => setImmediate(resolveYield));
 		}
 	} finally {
-		stream.destroy();
+		await destroyStream(stream);
 	}
 	if (unverified > 0) return null;
 	const unterminatedTail = carry.toString("utf-8").trim() !== "";

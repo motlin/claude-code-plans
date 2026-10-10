@@ -271,7 +271,7 @@ export async function readFirstUserMessage(filePath: string): Promise<FirstUserP
 			if (collector.add(line)) break;
 		}
 	} finally {
-		rl.close();
+		await rl.close();
 	}
 	return collector.result();
 }
@@ -314,7 +314,7 @@ export async function readSessionPrompts(filePath: string): Promise<string[]> {
 			if (prompt !== null && !prompt.isMeta) prompts.push(prompt.text);
 		}
 	} finally {
-		rl.close();
+		await rl.close();
 	}
 	return prompts;
 }
@@ -334,7 +334,7 @@ async function readSessionMessageCount(filePath: string): Promise<number> {
 			}
 		}
 	} finally {
-		rl.close();
+		await rl.close();
 	}
 
 	return messageCount;
@@ -459,7 +459,7 @@ export async function readSessionTitleSources(filePath: string): Promise<Session
 	} catch {
 		// unreadable transcript: fall through to the sidecar
 	} finally {
-		rl.close();
+		await rl.close();
 	}
 	return collector.finish(filePath);
 }
@@ -483,7 +483,7 @@ export async function readBridgeSessionId(filePath: string): Promise<string | nu
 	} catch {
 		return null;
 	} finally {
-		rl.close();
+		await rl.close();
 	}
 	return bridgeSessionId;
 }
@@ -780,7 +780,7 @@ export async function readSessionRawWindow(
 			}
 		}
 	} finally {
-		rl.close();
+		await rl.close();
 	}
 
 	if (!focal) return null;
@@ -1037,7 +1037,7 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 			}
 		}
 	} finally {
-		rl.close();
+		await rl.close();
 	}
 
 	const {customTitle, aiTitle} = await titleRecords.finish(filePath);
@@ -1109,7 +1109,7 @@ export async function readNewJsonlLines(
 			}
 		}
 	} finally {
-		rl.close();
+		await rl.close();
 	}
 
 	return {lines, nextByteOffset: fromByteOffset + bytesConsumed};

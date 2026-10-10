@@ -85,7 +85,7 @@ async function readSessionMessages(sessionId: string): Promise<{
 			}
 		}
 	} finally {
-		rl.close();
+		await rl.close();
 	}
 
 	return {messages, lastMessageId};

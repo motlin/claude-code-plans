@@ -1,6 +1,6 @@
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
 import {execFileSync} from "node:child_process";
-import {
+import fs, {
 	appendFileSync,
 	mkdirSync,
 	mkdtempSync,
@@ -15,6 +15,7 @@ import {join} from "node:path";
 import {openTestDb, type AppDb} from "../src/lib/db/connection";
 import {fullScan} from "../src/lib/db/indexer";
 import {createRecursiveWatcher} from "../src/lib/recursive-watch";
+import {readFirstUserMessage, readNewJsonlLines} from "../src/lib/sessions";
 import {processJsonlAppend} from "../src/lib/watcher";
 
 const SESSION_COUNT = 8;
@@ -46,6 +47,30 @@ function openPathsUnder(root: string): string[] {
 	return openPaths()
 		.filter((path) => path === realRoot || path.startsWith(`${realRoot}/`))
 		.sort();
+}
+
+/**
+ * Holds every `fs.close` back by `delayMs`, as a libuv threadpool busy with other work does, and counts the closes
+ * still in flight. File streams close their descriptor through the `fs` module object.
+ */
+function delayDescriptorCloses(delayMs: number): {inFlight: () => number; restore: () => void} {
+	const close = fs.close;
+	let inFlight = 0;
+	fs.close = ((fd: number, callback?: (error: NodeJS.ErrnoException | null) => void) => {
+		inFlight++;
+		setTimeout(() => {
+			close(fd, (error) => {
+				inFlight--;
+				callback?.(error);
+			});
+		}, delayMs);
+	}) as typeof fs.close;
+	return {
+		inFlight: () => inFlight,
+		restore: () => {
+			fs.close = close;
+		},
+	};
 }
 
 /** Native fs.watch handles held by this process. */
@@ -111,9 +136,25 @@ describe("file descriptors stay bounded while indexing and tailing many transcri
 				await processJsonlAppend(db.index, path, offsets, ignoreBroadcast, {projectsDir, plansDir});
 			}
 		}
-		await new Promise((resolve) => setTimeout(resolve, 50));
 
 		expect(openPathsUnder(root)).toStrictEqual([]);
+	});
+
+	it("resolves a transcript read only once its descriptor has closed, however long the close takes", async () => {
+		const sessionId = "00000000-0000-4000-8000-000000000000";
+		const path = join(root, `${sessionId}.jsonl`);
+		writeFileSync(path, `${largeTranscript(sessionId)}{"type":"user","partial`);
+		const closes = delayDescriptorCloses(100);
+		try {
+			const inFlightAfterTail = await readNewJsonlLines(path, 0).then(() => closes.inFlight());
+			const inFlightAfterEarlyExit = await readFirstUserMessage(path).then(() => closes.inFlight());
+			expect({inFlightAfterTail, inFlightAfterEarlyExit}).toStrictEqual({
+				inFlightAfterTail: 0,
+				inFlightAfterEarlyExit: 0,
+			});
+		} finally {
+			closes.restore();
+		}
 	});
 });
 

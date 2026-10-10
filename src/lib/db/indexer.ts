@@ -1073,7 +1073,7 @@ export async function indexSubagentFile(
 			}
 		}
 	} finally {
-		rl.close();
+		await rl.close();
 	}
 
 	db.insert(schema.subagents)
@@ -1146,7 +1146,7 @@ export async function linkSubagentParents(db: IndexDb, jsonlPath: string, parent
 			applied = collector.links.length;
 		}
 	} finally {
-		rl.close();
+		await rl.close();
 	}
 }
 
