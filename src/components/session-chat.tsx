@@ -32,7 +32,7 @@ import type {Subagent} from "../lib/subagents";
 import {useSubagentOpener} from "./subagent-opener";
 import {useClaudeEvents} from "../hooks/use-claude-events";
 import {ChevronIcon, CollapsibleSection, CopyButton, DiffStats, TerminalOutput} from "./tool-renderers/shared";
-import {SystemBanner} from "./system-banner";
+import {compactBoundaryLabel, SystemBanner, type CompactMetadata} from "./system-banner";
 import {ArtifactLinkBanner, ArtifactWatchBanner} from "./artifact-banner";
 import {DebugLink} from "./debug-link";
 import {type TranscriptMessageRef, TranscriptMessageMenu} from "./transcript-context-menu";
@@ -402,6 +402,7 @@ export const SessionChat = React.memo(function SessionChat({
 		[launchedAgents, subagentLookup],
 	);
 	const backgroundOutcomes = useMemo(() => backgroundLaunchOutcomes(lines, toolResultMap), [lines, toolResultMap]);
+	const compactBoundaries = useMemo(() => compactBoundariesBySummary(lines), [lines]);
 
 	useEffect(() => {
 		const container = containerRef.current;
@@ -539,37 +540,42 @@ export const SessionChat = React.memo(function SessionChat({
 			<SlashCommandsContext.Provider value={slashCommands}>
 				<AgentNameContext.Provider value={resolveAgentName}>
 					<BackgroundOutcomeContext.Provider value={backgroundOutcomes}>
-						<div ref={containerRef} className={`${CHAT_COLUMN_CLASS} pt-4 pb-4 text-body transcript-text`}>
-							{summary !== null && summary !== "" && (
-								<p
-									data-testid="session-summary-row"
-									title={summary}
-									className="mb-4 truncate text-sm text-t6"
-								>
-									{summary}
-								</p>
-							)}
-							<SessionLineList
-								key={sessionId}
-								lines={lines}
-								sessionId={sessionId}
-								toolResultMap={toolResultMap}
-								allowedImageRoots={allowedImageRoots}
-								subagentLookup={subagentLookup}
-								isSubagentSession={isSubagentSession}
-								showThinking={showThinking}
-								showTools={showTools}
-								showPassedHooks={showPassedHooks}
-								showHookWarnings={showHookWarnings}
-								showHookErrors={showHookErrors}
-								showSystemBanners={showSystemBanners}
-								showCompactSummaries={showCompactSummaries}
-								showTranscriptOnly={showTranscriptOnly}
-								shouldScrollToEnd={shouldScrollToEnd}
-								measurementKey={measurementKey}
-								measurementSource={measurementSource}
-							/>
-						</div>
+						<CompactBoundaryContext.Provider value={compactBoundaries}>
+							<div
+								ref={containerRef}
+								className={`${CHAT_COLUMN_CLASS} pt-4 pb-4 text-body transcript-text`}
+							>
+								{summary !== null && summary !== "" && (
+									<p
+										data-testid="session-summary-row"
+										title={summary}
+										className="mb-4 truncate text-sm text-t6"
+									>
+										{summary}
+									</p>
+								)}
+								<SessionLineList
+									key={sessionId}
+									lines={lines}
+									sessionId={sessionId}
+									toolResultMap={toolResultMap}
+									allowedImageRoots={allowedImageRoots}
+									subagentLookup={subagentLookup}
+									isSubagentSession={isSubagentSession}
+									showThinking={showThinking}
+									showTools={showTools}
+									showPassedHooks={showPassedHooks}
+									showHookWarnings={showHookWarnings}
+									showHookErrors={showHookErrors}
+									showSystemBanners={showSystemBanners}
+									showCompactSummaries={showCompactSummaries}
+									showTranscriptOnly={showTranscriptOnly}
+									shouldScrollToEnd={shouldScrollToEnd}
+									measurementKey={measurementKey}
+									measurementSource={measurementSource}
+								/>
+							</div>
+						</CompactBoundaryContext.Provider>
 					</BackgroundOutcomeContext.Provider>
 				</AgentNameContext.Provider>
 			</SlashCommandsContext.Provider>
@@ -2778,9 +2784,80 @@ function StopHookMarker({line}: {line: MessageSessionLine}) {
 	);
 }
 
+/** The compaction a compact summary continues from: its boundary's metadata, keyed by the summary's line. */
+const CompactBoundaryContext = createContext<ReadonlyMap<number, {meta: CompactMetadata}>>(new Map());
+
+/**
+ * Pair each compact summary with the `compact_boundary` record written just
+ * before it, looking back past other system and attachment records.
+ */
+function compactBoundariesBySummary(lines: readonly SessionLine[]): ReadonlyMap<number, {meta: CompactMetadata}> {
+	const bySummary = new Map<number, {meta: CompactMetadata}>();
+	let boundary: {meta: CompactMetadata} | null = null;
+	for (const line of lines) {
+		if (line.type === "system" && line.subtype === "compact_boundary") {
+			boundary = {meta: line.compactMetadata};
+		} else if (line.type === "user" && line.isCompactSummary === true) {
+			if (boundary !== null) bySummary.set(line.lineIndex, boundary);
+			boundary = null;
+		} else if (line.type === "user" || line.type === "assistant") {
+			boundary = null;
+		}
+	}
+	return bySummary;
+}
+
+/**
+ * Upstream's compaction status row, "Compacted session · saved 260.8k tokens",
+ * keeping the compact-summary text behind it as the expandable body.
+ */
+function CompactedSessionStatus({
+	label,
+	line,
+	sessionId,
+	allowedImageRoots,
+}: {
+	label: string;
+	line: MessageSessionLine;
+	sessionId: string;
+	allowedImageRoots: readonly string[];
+}) {
+	const [expanded, setExpanded] = useState(false);
+	const bodyId = useId();
+	return (
+		<TurnStatusFrame leading={false}>
+			<div data-turn-status="" className={TURN_STATUS_CLASS}>
+				<button
+					type="button"
+					aria-expanded={expanded}
+					aria-controls={bodyId}
+					onClick={() => setExpanded(!expanded)}
+					className="group/tool flex self-stretch min-w-0 me-[52px] items-center gap-g1 px-1 py-0.5 text-left outline-none hide-focus-ring focus:ring-focus rounded-r3"
+				>
+					<span className="text-body min-w-0 truncate text-ink-muted group-hover/tool:text-secondary">
+						{label}
+					</span>
+					<span className="shrink-0 text-ink-muted group-hover/tool:text-secondary">
+						<ChevronIcon expanded={expanded} size={14} />
+					</span>
+				</button>
+				{expanded && (
+					<CompactSummaryBody
+						id={bodyId}
+						line={line}
+						sessionId={sessionId}
+						allowedImageRoots={allowedImageRoots}
+					/>
+				)}
+			</div>
+		</TurnStatusFrame>
+	);
+}
+
 /**
  * Upstream's "Compacted conversation" marker row, keeping the local
- * compact-summary text behind it as the expandable body.
+ * compact-summary text behind it as the expandable body. A summary that follows
+ * a compaction boundary reads as upstream's compaction status row instead.
  */
 function CompactSummaryStub({
 	line,
@@ -2793,6 +2870,18 @@ function CompactSummaryStub({
 }) {
 	const [expanded, setExpanded] = useState(false);
 	const bodyId = useId();
+	const boundary = useContext(CompactBoundaryContext).get(line.lineIndex);
+
+	if (boundary !== undefined) {
+		return (
+			<CompactedSessionStatus
+				label={compactBoundaryLabel(boundary.meta)}
+				line={line}
+				sessionId={sessionId}
+				allowedImageRoots={allowedImageRoots}
+			/>
+		);
+	}
 
 	return (
 		<UserTurn text="Compacted conversation">

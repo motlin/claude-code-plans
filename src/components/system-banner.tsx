@@ -6,6 +6,8 @@ import {CollapsibleSection} from "./tool-renderers/shared";
 
 type SystemLine = Extract<ProcessedLine, {type: "system"}>;
 
+export type CompactMetadata = SystemLine["compactMetadata"];
+
 export function formatTokens(n: number): string {
 	return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
 }
@@ -32,7 +34,7 @@ function errorHeadline(error: SystemLine["error"]): string | undefined {
  * Upstream claude.ai/code's compaction marker copy: the tokens saved when both
  * counts are known, the starting size when only that is, else the bare verb.
  */
-function compactBoundaryLabel(meta: SystemLine["compactMetadata"]): string {
+export function compactBoundaryLabel(meta: SystemLine["compactMetadata"]): string {
 	if (meta === undefined) return "Compacted session";
 	if (meta.postTokens !== undefined) {
 		return `Compacted session · saved ${formatTokens(meta.preTokens - meta.postTokens)} tokens`;
