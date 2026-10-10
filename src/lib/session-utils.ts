@@ -1,5 +1,3 @@
-import {toolLabel} from "./tool-labels";
-
 /**
  * Minimal shape needed by summarizeToolCalls, categorize, and diffStatsForCall.
  * Satisfied by raw content blocks, readSession tool call objects, and test data alike.
@@ -205,23 +203,57 @@ export function extractSessionTitle(text: string, fallback?: string, options?: {
 	return truncated + "...";
 }
 
-type ToolCategory =
-	| "edit"
-	| "write"
-	| "grep"
-	| "read"
-	| "glob"
-	| "webfetch"
-	| "websearch"
-	| "agent"
-	| "bash"
-	| "toolsearch"
-	| "skill"
-	| "task"
-	| "todo"
-	| "planenter"
-	| "planexit"
-	| "cron";
+/**
+ * The tools upstream gives their own group-header segment. Every other tool --
+ * Skill, ToolSearch, MCP tools, the Task* family, SendMessage, Artifact -- folds
+ * into one trailing "used N tools" segment.
+ */
+const CATEGORY_BY_TOOL = {
+	Read: "read",
+	Write: "write",
+	Edit: "edit",
+	MultiEdit: "edit",
+	NotebookEdit: "notebook",
+	Bash: "bash",
+	PowerShell: "bash",
+	Grep: "grep",
+	Glob: "glob",
+	WebSearch: "websearch",
+	WebFetch: "webfetch",
+	Agent: "agent",
+	Task: "agent",
+	TodoWrite: "todo",
+	ExitPlanMode: "planexit",
+} as const;
+
+type ToolCategory = (typeof CATEGORY_BY_TOOL)[keyof typeof CATEGORY_BY_TOOL];
+
+interface SegmentLabel {
+	verb: string;
+	/** The rest for a single call or file. */
+	one: string;
+	/** The rest for several, with `{n}` standing for the count. */
+	many: string;
+}
+
+const FILE_NOUNS = {one: "a file", many: "{n} files"};
+
+const CATEGORY_LABELS: Record<ToolCategory, SegmentLabel> = {
+	read: {verb: "Read", ...FILE_NOUNS},
+	write: {verb: "Created", ...FILE_NOUNS},
+	edit: {verb: "Edited", ...FILE_NOUNS},
+	notebook: {verb: "Edited", one: "a notebook", many: "{n} notebooks"},
+	bash: {verb: "Ran", one: "a command", many: "{n} commands"},
+	grep: {verb: "Searched", one: "code", many: "code"},
+	glob: {verb: "Found", one: "files", many: "files"},
+	websearch: {verb: "Browsed", one: "the web", many: "the web"},
+	webfetch: {verb: "Fetched", one: "a page", many: "{n} pages"},
+	agent: {verb: "Ran", one: "an agent", many: "{n} agents"},
+	todo: {verb: "Updated", one: "todos", many: "todos"},
+	planexit: {verb: "Proposed", one: "a plan", many: "a plan"},
+};
+
+const OTHER_TOOLS_LABEL: SegmentLabel = {verb: "Used", one: "a tool", many: "{n} tools"};
 
 /**
  * Categories whose calls change a file, each with the verb upstream Normal uses
@@ -312,30 +344,9 @@ export function diffStatsForCall(call: ToolCallLike): {
 }
 
 function categorize(call: ToolCallLike): ToolCategory | null {
-	if (call.name === "Read") return "read";
-	if (call.name === "Write") return "write";
-	if (call.name === "Edit" || call.name === "MultiEdit") return "edit";
-	if (call.name === "Bash") return "bash";
-	if (call.name === "Grep") return "grep";
-	if (call.name === "Glob") return "glob";
-	if (call.name === "Agent") return "agent";
-	if (call.name === "WebFetch") return "webfetch";
-	if (call.name === "WebSearch") return "websearch";
-	if (call.name === "ToolSearch") return "toolsearch";
-	if (call.name === "Skill") return "skill";
-	if (
-		call.name === "TaskCreate" ||
-		call.name === "TaskUpdate" ||
-		call.name === "TaskGet" ||
-		call.name === "TaskList" ||
-		call.name === "TaskStop"
-	)
-		return "task";
-	if (call.name === "TodoWrite") return "todo";
-	if (call.name === "EnterPlanMode") return "planenter";
-	if (call.name === "ExitPlanMode") return "planexit";
-	if (call.name === "CronCreate") return "cron";
-	return null;
+	return Object.hasOwn(CATEGORY_BY_TOOL, call.name)
+		? CATEGORY_BY_TOOL[call.name as keyof typeof CATEGORY_BY_TOOL]
+		: null;
 }
 
 export function formatToolName(toolName: string): string {
@@ -496,6 +507,10 @@ function coalescedReadMutation(
 	return null;
 }
 
+function labelledSegment(label: SegmentLabel, count: number, name: string | null = null): SummarySegment {
+	return {verb: label.verb, rest: name ?? pluralize(count, label.one, label.many)};
+}
+
 function buildSummarySegments(
 	calls: ToolCallLike[],
 	completions: readonly BackgroundCompletionLike[] = [],
@@ -505,7 +520,7 @@ function buildSummarySegments(
 	// segments follow the order each tool was first called.
 	const counts = new Map<ToolCategory, number>();
 	const firstCall = new Map<ToolCategory, ToolCallLike>();
-	const unknownTools = new Map<string, number>();
+	let otherTools = 0;
 	let added = 0;
 	let removed = 0;
 	let failed = 0;
@@ -514,8 +529,7 @@ function buildSummarySegments(
 		if (call.isError === true) failed++;
 		const cat = categorize(call);
 		if (cat === null) {
-			const phrase = toolLabel(call).verb;
-			unknownTools.set(phrase, (unknownTools.get(phrase) ?? 0) + 1);
+			otherTools++;
 		} else {
 			const prev = counts.get(cat) ?? 0;
 			counts.set(cat, prev + 1);
@@ -544,106 +558,14 @@ function buildSummarySegments(
 			}
 			continue;
 		}
-		switch (cat) {
-			case "edit":
-			case "write": {
-				const singleFilename = count === 1 ? singleFileBasename(firstCall.get(cat)) : null;
-				segments.push({
-					verb: MUTATION_VERBS[cat],
-					rest: singleFilename ?? pluralize(count, "a file", "{n} files"),
-				});
-				break;
-			}
-			case "grep":
-				segments.push({
-					verb: "Searched",
-					rest: pluralize(count, "for a pattern", "for {n} patterns"),
-				});
-				break;
-			case "read": {
-				const singleFilename = count === 1 ? singleFileBasename(firstCall.get(cat)) : null;
-				segments.push({
-					verb: "Read",
-					rest: singleFilename ?? pluralize(count, "a file", "{n} files"),
-				});
-				break;
-			}
-			case "glob":
-				segments.push({
-					verb: "Found",
-					rest: pluralize(count, "files", "files ({n} searches)"),
-				});
-				break;
-			case "webfetch":
-				segments.push({
-					verb: "Fetched",
-					rest: pluralize(count, "a page", "{n} pages"),
-				});
-				break;
-			case "websearch":
-				segments.push({
-					verb: "Searched",
-					rest: pluralize(count, "the web", "the web ({n} searches)"),
-				});
-				break;
-			case "agent":
-				segments.push({
-					verb: "Ran",
-					rest: pluralize(count, "an agent", "{n} agents"),
-				});
-				break;
-			case "bash":
-				bashSegment = {verb: "Ran", rest: pluralize(count, "a command", "{n} commands")};
-				segments.push(bashSegment);
-				break;
-			case "toolsearch":
-				segments.push({
-					verb: "Loaded",
-					rest: pluralize(count, "a tool schema", "{n} tool schemas"),
-				});
-				break;
-			case "skill":
-				segments.push({
-					verb: "Used",
-					rest: pluralize(count, "a skill", "{n} skills"),
-				});
-				break;
-			case "task":
-				segments.push({
-					verb: "Managed",
-					rest: pluralize(count, "a task", "{n} tasks"),
-				});
-				break;
-			case "todo":
-				segments.push({
-					verb: "Updated",
-					rest: pluralize(count, "todos", "todos ({n} times)"),
-				});
-				break;
-			case "planenter":
-				segments.push({
-					verb: "Started",
-					rest: pluralize(count, "planning", "planning ({n} times)"),
-				});
-				break;
-			case "planexit":
-				segments.push({
-					verb: "Proposed",
-					rest: pluralize(count, "a plan", "{n} plans"),
-				});
-				break;
-			case "cron":
-				segments.push({
-					verb: "Scheduled",
-					rest: pluralize(count, "a job", "{n} jobs"),
-				});
-				break;
-		}
+		const singleFilename =
+			count === 1 && (cat === "read" || isMutation(cat)) ? singleFileBasename(firstCall.get(cat)) : null;
+		const segment = labelledSegment(CATEGORY_LABELS[cat], count, singleFilename);
+		if (cat === "bash") bashSegment = segment;
+		segments.push(segment);
 	}
 
-	for (const [phrase, count] of unknownTools) {
-		segments.push({verb: phrase, rest: count === 1 ? "" : `(${count} times)`});
-	}
+	if (otherTools > 0) segments.push(labelledSegment(OTHER_TOOLS_LABEL, otherTools));
 
 	// Upstream reports failures on the command segment -- "Ran 3 commands (1
 	// failed)" -- falling back to the leading segment when no command ran.

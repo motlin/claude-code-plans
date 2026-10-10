@@ -26,3 +26,37 @@ describe("group label: memory files", () => {
 		});
 	});
 });
+
+describe("group label: tool categories", () => {
+	const tool = (name: string, input: Record<string, unknown> = {}): ToolCallLike => ({name, input});
+
+	it.each([
+		{calls: [tool("Skill"), bash(), bash(), bash()], expected: "Ran 3 commands, used a tool"},
+		{calls: [tool("Skill"), tool("ToolSearch")], expected: "Used 2 tools"},
+		{calls: [tool("mcp__a__x"), tool("mcp__a__x"), tool("mcp__plugin_b_b__y")], expected: "Used 3 tools"},
+		{
+			calls: [
+				tool("TaskCreate"),
+				tool("EnterPlanMode"),
+				tool("SendMessage"),
+				tool("Artifact"),
+				tool("CronCreate"),
+			],
+			expected: "Used 5 tools",
+		},
+		{calls: [tool("WebSearch"), tool("WebSearch"), tool("WebFetch")], expected: "Browsed the web, fetched a page"},
+		{calls: [tool("TodoWrite"), tool("TodoWrite"), bash()], expected: "Updated todos, ran a command"},
+		{calls: [tool("Grep"), tool("Grep"), tool("Glob")], expected: "Searched code, found files"},
+		{calls: [tool("ExitPlanMode"), tool("Agent"), tool("Task")], expected: "Proposed a plan, ran 2 agents"},
+		{calls: [tool("PowerShell"), bash()], expected: "Ran 2 commands"},
+		{
+			calls: [
+				tool("NotebookEdit", {notebook_path: "/a.ipynb"}),
+				tool("NotebookEdit", {notebook_path: "/b.ipynb"}),
+			],
+			expected: "Edited 2 notebooks",
+		},
+	])("labels $expected, with every uncategorized tool in one trailing segment", ({calls, expected}) => {
+		expect(label(calls)).toBe(expected);
+	});
+});

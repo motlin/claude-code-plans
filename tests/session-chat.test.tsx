@@ -868,7 +868,7 @@ describe("SessionChat sequential tool batches", () => {
 			// Nested rows are not mounted until the summary is expanded.
 			rowArguments: allToolRowLabelSpans(html).filter(([className]) => className === ARGUMENT),
 		}).toStrictEqual({
-			labels: ["Read a.ts, edited b.ts, searched for a pattern"],
+			labels: ["Read a.ts, edited b.ts, searched code"],
 			rowArguments: [],
 		});
 	});

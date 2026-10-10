@@ -145,7 +145,7 @@ describe("summarizeToolCallStats", () => {
 		).toStrictEqual({
 			segments: [
 				{verb: "Read", rest: "a.ts (1 failed)"},
-				{verb: "searched", rest: "for a pattern"},
+				{verb: "searched", rest: "code"},
 			],
 			added: 0,
 			removed: 0,

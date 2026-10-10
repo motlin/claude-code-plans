@@ -185,7 +185,7 @@ describe("summarizeToolCallStats with background completions", () => {
 		expect(
 			summarizeToolCallStats([{name: "Mystery", input: {}}], [{command: false, status: "stopped"}]).segments,
 		).toStrictEqual([
-			{verb: "Used Mystery", rest: ""},
+			{verb: "Used", rest: "a tool"},
 			{verb: "finished", rest: "a background task (1 stopped)"},
 		]);
 	});
@@ -205,12 +205,12 @@ describe("summarizeToolCallStats with background completions", () => {
 		});
 	});
 
-	it('leads with a failed task completion: "Finished a background task (1 failed), used Mystery"', () => {
+	it('leads with a failed task completion: "Finished a background task (1 failed), used a tool"', () => {
 		expect(
 			summarizeToolCallStats([{name: "Mystery", input: {}}], [{command: false, status: "failed"}]).segments,
 		).toStrictEqual([
 			{verb: "Finished", rest: "a background task (1 failed)"},
-			{verb: "used Mystery", rest: ""},
+			{verb: "used", rest: "a tool"},
 		]);
 	});
 
