@@ -252,3 +252,65 @@ describe("Non-blocking hook errors", () => {
 		expect(text.includes("PostToolUse:Bash")).toBe(showHookWarnings);
 	});
 });
+
+function queuedPrompt(uuid: string, prompt: string, origin: Record<string, unknown> = {kind: "human"}) {
+	return attachment(uuid, {type: "queued_command", prompt, commandMode: "prompt", origin, humanTurn: true});
+}
+
+function userPrompt(uuid: string, text: string) {
+	return {
+		type: "user",
+		uuid,
+		timestamp: "2026-09-30T08:03:00.000Z",
+		message: {role: "user", content: text},
+	};
+}
+
+function observeQueued(records: unknown[], mode: TranscriptMode) {
+	const container = renderRecords(records, mode);
+	return {
+		bubbles: Array.from(container.querySelectorAll(".user-message-bubble"), (bubble) => bubble.textContent),
+		statuses: Array.from(
+			container.querySelectorAll("[data-turn-status] > button > span:first-child"),
+			(label) => label.textContent,
+		),
+		banner: (container.textContent ?? "").includes("Queued command"),
+	};
+}
+
+describe("Queued human prompts", () => {
+	const records = [...bashCall("first"), queuedPrompt("att-q", "stop and fix the tests"), ...bashCall("second")];
+
+	it("draws a queued human prompt as a user bubble that ends the tool run in Normal mode", () => {
+		expect(observeQueued(records, "normal")).toStrictEqual({
+			bubbles: ["stop and fix the tests"],
+			statuses: [],
+			banner: false,
+		});
+	});
+
+	it("keeps the queued command banner in Verbose mode", () => {
+		expect(observeQueued(records, "verbose")).toStrictEqual({bubbles: [], statuses: [], banner: true});
+	});
+
+	it("draws the prompt once when the CLI also wrote it as a user record", () => {
+		const delivered = [
+			queuedPrompt("att-q", "stop and fix the tests"),
+			userPrompt("u-1", "stop and fix the tests"),
+		];
+		expect(observeQueued(delivered, "normal")).toStrictEqual({
+			bubbles: ["stop and fix the tests"],
+			statuses: [],
+			banner: false,
+		});
+	});
+
+	it("keeps a queued prompt from another origin hidden in Normal mode", () => {
+		const peer = [
+			...bashCall("first"),
+			queuedPrompt("att-q", "do the thing", {kind: "peer"}),
+			...bashCall("second"),
+		];
+		expect(observeQueued(peer, "normal")).toStrictEqual({bubbles: [], statuses: ["Ran 2 commands"], banner: false});
+	});
+});

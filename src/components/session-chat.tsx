@@ -1194,17 +1194,69 @@ function scrollerViewport(scroller: Element): {top: number; height: number} {
 	return {top: rect.top, height: scroller.clientHeight || rect.height || window.innerHeight};
 }
 
+/** The prompt of a queued_command the user typed while a turn ran, or null for any other line. */
+function queuedHumanPromptOf(line: SessionLine): string | null {
+	if (line.type !== "attachment") return null;
+	try {
+		const parsed = JSON.parse(line.attachmentJson) as {
+			type?: unknown;
+			prompt?: unknown;
+			commandMode?: unknown;
+			origin?: {kind?: unknown};
+		};
+		return parsed.type === "queued_command" &&
+			parsed.commandMode === "prompt" &&
+			parsed.origin?.kind === "human" &&
+			typeof parsed.prompt === "string"
+			? parsed.prompt
+			: null;
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * Upstream draws a prompt the user queued mid-turn exactly like a typed one, at
+ * the point the turn took it in, so it ends the assistant turn there. A prompt
+ * the CLI later also wrote as a user record keeps only that record.
+ */
+function withQueuedPrompts(lines: SessionLine[]): SessionLine[] {
+	let result: SessionLine[] | null = null;
+	let laterPrompts: Map<string, number> | null = null;
+	lines.forEach((line, index) => {
+		const prompt = queuedHumanPromptOf(line);
+		if (prompt === null || line.type !== "attachment") return;
+		laterPrompts ??= new Map(
+			lines.flatMap((other, otherIndex) =>
+				other.type === "user" ? [[getUserContentText(other), otherIndex] as const] : [],
+			),
+		);
+		if ((laterPrompts.get(prompt) ?? -1) > index) return;
+		result ??= [...lines];
+		result[index] = {
+			type: "user",
+			message: {role: "user", content: prompt},
+			lineIndex: line.lineIndex,
+			...(line.uuid === undefined ? {} : {uuid: line.uuid}),
+			...(line.timestamp === undefined ? {} : {timestamp: line.timestamp}),
+			...(line.sessionId === undefined ? {} : {sessionId: line.sessionId}),
+		};
+	});
+	return result ?? lines;
+}
+
 /**
  * Upstream Normal folds background-task completions into the tool group beside
  * them ("Ran a command, finished a background command") rather than drawing a
  * user turn per `<task-notification>`; Verbose keeps the raw notification turns.
  */
 function buildSessionListEntries(
-	lines: SessionLine[],
+	recordLines: SessionLine[],
 	renderProps: LineRenderProps,
 	verbose: boolean,
 	held: HeldAssistantFooter | null,
 ): SessionListEntry[] {
+	const lines = verbose ? recordLines : withQueuedPrompts(recordLines);
 	const foldNotifications = !verbose;
 	const noticeOf = (index: number): BackgroundNotice | null => {
 		if (!foldNotifications) return null;

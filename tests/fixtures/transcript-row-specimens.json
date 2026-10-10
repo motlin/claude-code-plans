@@ -1,0 +1,679 @@
+[
+	{
+		"session": "79a0ad58",
+		"line": 91,
+		"upstream": [
+			"prose",
+			"status: Commit the mise version bumps Denied",
+			"user: I never want the \"Claude-Session\" trailer",
+			"user: I never want the Claude-Session trailer",
+			"status: Created a file, edited a file"
+		],
+		"records": [
+			{
+				"parentUuid": "363b4015-e215-4f89-9571-ffbe44532755",
+				"isSidechain": false,
+				"message": {
+					"model": "claude-opus-5-5",
+					"id": "msg_011CfVvnSTquKsUsGQtgVS8N",
+					"type": "message",
+					"role": "assistant",
+					"content": [
+						{
+							"type": "text",
+							"text": "Running: `git commit --message \"Bump codex, node, markdownlint-cli2, and oxfmt versions in mise config.\"`"
+						}
+					],
+					"container": null,
+					"stop_reason": "tool_use",
+					"stop_sequence": null,
+					"stop_details": null,
+					"usage": {
+						"input_tokens": 2,
+						"cache_creation_input_tokens": 515,
+						"cache_read_input_tokens": 57159,
+						"output_tokens": 365,
+						"output_tokens_details": {
+							"thinking_tokens": 92
+						},
+						"server_tool_use": {
+							"web_search_requests": 0,
+							"web_fetch_requests": 0
+						},
+						"service_tier": "standard",
+						"cache_creation": {
+							"ephemeral_1h_input_tokens": 515,
+							"ephemeral_5m_input_tokens": 0
+						},
+						"inference_geo": "not_available",
+						"iterations": [
+							{
+								"input_tokens": 2,
+								"output_tokens": 365,
+								"cache_read_input_tokens": 57159,
+								"cache_creation_input_tokens": 515,
+								"cache_creation": {
+									"ephemeral_5m_input_tokens": 0,
+									"ephemeral_1h_input_tokens": 515
+								},
+								"type": "message"
+							}
+						],
+						"speed": "standard"
+					},
+					"input_transformations": [],
+					"diagnostics": null,
+					"context_management": null
+				},
+				"apiBlockIndex": 1,
+				"requestId": "req_011CfVvnS6GhFgkWqCskGeUX",
+				"type": "assistant",
+				"uuid": "ee2d0a77-871d-4222-aa4b-1a3d99fde612",
+				"timestamp": "2026-09-28T13:37:23.513Z",
+				"advisorModel": "claude-opus-5-5",
+				"effort": "medium",
+				"perTurnEffort": "medium",
+				"session_id": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/.dotfiles",
+				"sessionId": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"version": "2.1.283",
+				"gitBranch": "collie"
+			},
+			{
+				"parentUuid": "ee2d0a77-871d-4222-aa4b-1a3d99fde612",
+				"isSidechain": false,
+				"message": {
+					"model": "claude-opus-5-5",
+					"id": "msg_011CfVvnSTquKsUsGQtgVS8N",
+					"type": "message",
+					"role": "assistant",
+					"content": [
+						{
+							"type": "tool_use",
+							"id": "toolu_01JYVE3eMt2ZtoqjD9ycf5Xp",
+							"name": "Bash",
+							"input": {
+								"command": "git restore --staged scripts/test_install_agent_tools.py && git add config/mise/config.toml && git commit --message \"Bump codex, node, markdownlint-cli2, and oxfmt versions in mise config.\n\nClaude-Session: https://claude.ai/code/session_01BXnjeqxs5pRUTQxrLekPYM\"",
+								"description": "Commit the mise version bumps",
+								"timeout": 300000
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					],
+					"container": null,
+					"stop_reason": "tool_use",
+					"stop_sequence": null,
+					"stop_details": null,
+					"usage": {
+						"input_tokens": 2,
+						"cache_creation_input_tokens": 515,
+						"cache_read_input_tokens": 57159,
+						"output_tokens": 365,
+						"output_tokens_details": {
+							"thinking_tokens": 92
+						},
+						"server_tool_use": {
+							"web_search_requests": 0,
+							"web_fetch_requests": 0
+						},
+						"service_tier": "standard",
+						"cache_creation": {
+							"ephemeral_1h_input_tokens": 515,
+							"ephemeral_5m_input_tokens": 0
+						},
+						"inference_geo": "not_available",
+						"iterations": [
+							{
+								"input_tokens": 2,
+								"output_tokens": 365,
+								"cache_read_input_tokens": 57159,
+								"cache_creation_input_tokens": 515,
+								"cache_creation": {
+									"ephemeral_5m_input_tokens": 0,
+									"ephemeral_1h_input_tokens": 515
+								},
+								"type": "message"
+							}
+						],
+						"speed": "standard"
+					},
+					"input_transformations": [],
+					"diagnostics": null,
+					"context_management": null
+				},
+				"wireToolInputs": {
+					"toolu_01JYVE3eMt2ZtoqjD9ycf5Xp": {
+						"command": "cd /Users/craig/.dotfiles && git restore --staged scripts/test_install_agent_tools.py && git add config/mise/config.toml && git commit --message \"Bump codex, node, markdownlint-cli2, and oxfmt versions in mise config.\n\nClaude-Session: https://claude.ai/code/session_01BXnjeqxs5pRUTQxrLekPYM\"",
+						"description": "Commit the mise version bumps",
+						"timeout": 300000
+					}
+				},
+				"wireIngestContext": {
+					"toolu_01JYVE3eMt2ZtoqjD9ycf5Xp": {
+						"cwd": "/Users/craig/.dotfiles"
+					}
+				},
+				"apiBlockIndex": 2,
+				"requestId": "req_011CfVvnS6GhFgkWqCskGeUX",
+				"type": "assistant",
+				"uuid": "98ae4493-45fa-4014-9634-48ca3c6c7d51",
+				"timestamp": "2026-09-28T13:37:25.093Z",
+				"advisorModel": "claude-opus-5-5",
+				"effort": "medium",
+				"perTurnEffort": "medium",
+				"session_id": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/.dotfiles",
+				"sessionId": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"version": "2.1.283",
+				"gitBranch": "collie"
+			},
+			{
+				"type": "queue-operation",
+				"operation": "enqueue",
+				"timestamp": "2026-09-28T13:37:45.083Z",
+				"sessionId": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"content": "I never want the \"Claude-Session\" trailer"
+			},
+			{
+				"type": "queue-operation",
+				"operation": "enqueue",
+				"timestamp": "2026-09-28T13:37:59.363Z",
+				"sessionId": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"content": "I never want the Claude-Session trailer"
+			},
+			{
+				"parentUuid": "98ae4493-45fa-4014-9634-48ca3c6c7d51",
+				"isSidechain": false,
+				"promptId": "6cf5ecf3-e65e-4759-ab42-b2629b260883",
+				"type": "user",
+				"message": {
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"content": "The user doesn't want to proceed with this tool use. The tool use was rejected (eg. if it was a file edit, the new_string was NOT written to the file). To tell you how to proceed, the user said:\nDenied by user\n\nNote: The user's next message may contain a correction or preference. Pay close attention — if they explain what went wrong or how they'd prefer you to work, consider saving that to memory for future sessions.",
+							"is_error": true,
+							"tool_use_id": "toolu_01JYVE3eMt2ZtoqjD9ycf5Xp"
+						}
+					]
+				},
+				"uuid": "5975d57f-0b77-4858-be04-f88187e34727",
+				"timestamp": "2026-09-28T13:38:01.340Z",
+				"toolUseResult": "Error: The user doesn't want to proceed with this tool use. The tool use was rejected (eg. if it was a file edit, the new_string was NOT written to the file). To tell you how to proceed, the user said:\nDenied by user\n\nNote: The user's next message may contain a correction or preference. Pay close attention — if they explain what went wrong or how they'd prefer you to work, consider saving that to memory for future sessions.",
+				"toolDenialKind": "user-rejected",
+				"userFeedback": "Denied by user",
+				"sourceToolAssistantUUID": "98ae4493-45fa-4014-9634-48ca3c6c7d51",
+				"session_id": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/.dotfiles",
+				"sessionId": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"version": "2.1.283",
+				"gitBranch": "collie"
+			},
+			{
+				"type": "queue-operation",
+				"operation": "remove",
+				"timestamp": "2026-09-28T13:38:01.762Z",
+				"sessionId": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"content": "I never want the \"Claude-Session\" trailer",
+				"reason": "absorbed_mid_turn"
+			},
+			{
+				"type": "queue-operation",
+				"operation": "remove",
+				"timestamp": "2026-09-28T13:38:01.762Z",
+				"sessionId": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"content": "I never want the Claude-Session trailer",
+				"reason": "absorbed_mid_turn"
+			},
+			{
+				"parentUuid": "5975d57f-0b77-4858-be04-f88187e34727",
+				"isSidechain": false,
+				"attachment": {
+					"type": "queued_command",
+					"prompt": "I never want the \"Claude-Session\" trailer",
+					"source_uuid": "6cd26f26-881a-4b9f-ac9f-bbcd76ea11ab",
+					"commandMode": "prompt",
+					"origin": {
+						"kind": "human"
+					},
+					"timestamp": "2026-09-28T13:37:45.083Z",
+					"humanTurn": true
+				},
+				"type": "attachment",
+				"uuid": "a2b6b204-3d30-4925-a96f-f11b0c7a699e",
+				"timestamp": "2026-09-28T13:37:45.083Z",
+				"rendered": [
+					{
+						"content": "<system-reminder>\nThe user sent a new message while you were working:\nI never want the \"Claude-Session\" trailer\n\nThis is how Claude Code surfaces messages the user sends mid-turn — within the running turn, often alongside the next tool result, rather than as a separate conversation turn. Address the message above as you continue this turn.\n</system-reminder>"
+					}
+				],
+				"session_id": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/.dotfiles",
+				"sessionId": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"version": "2.1.283",
+				"gitBranch": "collie"
+			},
+			{
+				"parentUuid": "a2b6b204-3d30-4925-a96f-f11b0c7a699e",
+				"isSidechain": false,
+				"attachment": {
+					"type": "queued_command",
+					"prompt": "I never want the Claude-Session trailer",
+					"source_uuid": "990c62f4-c669-49ac-abab-6a84b3173a73",
+					"commandMode": "prompt",
+					"origin": {
+						"kind": "human"
+					},
+					"timestamp": "2026-09-28T13:37:59.363Z",
+					"humanTurn": true
+				},
+				"type": "attachment",
+				"uuid": "c1b2a0d4-ef9d-4b51-a4d0-54786ee436d3",
+				"timestamp": "2026-09-28T13:37:59.363Z",
+				"rendered": [
+					{
+						"content": "<system-reminder>\nThe user sent a new message while you were working:\nI never want the Claude-Session trailer\n\nThis is how Claude Code surfaces messages the user sends mid-turn — within the running turn, often alongside the next tool result, rather than as a separate conversation turn. Address the message above as you continue this turn.\n</system-reminder>"
+					}
+				],
+				"session_id": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/.dotfiles",
+				"sessionId": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"version": "2.1.283",
+				"gitBranch": "collie"
+			},
+			{
+				"parentUuid": "c1b2a0d4-ef9d-4b51-a4d0-54786ee436d3",
+				"isSidechain": false,
+				"attachment": {
+					"type": "total_tokens_reminder",
+					"text": "<total_tokens>14994483 tokens left</total_tokens>"
+				},
+				"type": "attachment",
+				"uuid": "2cf36b52-2429-4930-8c98-6577dce3d46d",
+				"timestamp": "2026-09-28T13:38:01.762Z",
+				"rendered": [
+					{
+						"content": "<system-reminder>\n<total_tokens>14994483 tokens left</total_tokens>\n</system-reminder>"
+					}
+				],
+				"session_id": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/.dotfiles",
+				"sessionId": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"version": "2.1.283",
+				"gitBranch": "collie"
+			},
+			{
+				"parentUuid": "2cf36b52-2429-4930-8c98-6577dce3d46d",
+				"isSidechain": false,
+				"attachment": {
+					"type": "deferred_tools_record",
+					"entries": [],
+					"toolInputCopies": [
+						{
+							"id": "toolu_01JYVE3eMt2ZtoqjD9ycf5Xp",
+							"copy": "wire"
+						}
+					]
+				},
+				"type": "attachment",
+				"uuid": "a2ddb465-28f1-4ea1-ac4f-59c6276b2c6e",
+				"timestamp": "2026-09-28T13:38:03.331Z",
+				"session_id": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/.dotfiles",
+				"sessionId": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"version": "2.1.283",
+				"gitBranch": "collie"
+			},
+			{
+				"parentUuid": "a2ddb465-28f1-4ea1-ac4f-59c6276b2c6e",
+				"isSidechain": false,
+				"message": {
+					"model": "claude-opus-5-5",
+					"id": "msg_011CfVvqRPvyhsshAHDz9H7x",
+					"type": "message",
+					"role": "assistant",
+					"content": [
+						{
+							"type": "thinking",
+							"thinking": "",
+							"signature": "CAQS0AYKEAgSGAI4AUIIdGhpbmtpbmcSDCHhIqGEnpJ49YlSphoMgMhCXSADg0JTDAqSIjCUI+pud/0N9n9xzQV9M0Z+/Nw8veJci+V717GRKQNBbZ9ymr/ofSnxprDYhdjCvnkq7QWvLGffiqlrHtoYTZgYNJ/41rp/sJVKS3Bt0ZZRVxLCaVOK9t+wkZrETGTHOjPiysFj9rsG3A81MwJ3QdHfF7xzIkZwDynKPh7qVuUquR76Dx4lQ6V5y8/stTTkgAIHnTj2kfvUYjUctBAzs3Z9NrTbp0JVRNlS+nRzyFY4KdPP4rfMTOSWhXTefREf/vLirfQlw72ra9A/wnNLIPv1RE9bUaSSub5eFfM0Lb/xwujzRVlnSIwjC0ddz0K6g8pXHefZNeWdBvV7uIt0O5bU5WxK0YTG1WvqS6QDZnKEiTFHs+6qMaCMl967Lff1JHA65cAziYSlYp2kCfqEIbIPcRY95Rt9be4ldwI2ZYcqPSw3iHQTWg3wE42oUc58g4fY9nh/eWUwvPuTqEcBgKQsCJ62eGZwoHJ8s6COAkHSeDI5doKyMOjTzoghkJkx3yn4XywZBiDBGbCa1M0F8/1xul1SSq9ELKClqSUFA6nFRB+dOW6wJR4JdIcxUJCQs29qU8Y+Z8+Sg8SzgHFxn6EpcgfkzlBhrwV4NmwYpXVXv4ju0ttBk4yhsPXoD5ePLLpcRlFIE1ta3uBbSGKmpAnh9/WPh3cvAodsRnJrLMXHNzyEwyXnAJsk0L9P5Vl+MyI7VUkH6fBWi3gQAMARkWDbi+nE/ECXsO4Vqt7qJILg7mYF7wDdgIS2KrGVitBbWN1m6aDdaGVaAHek1fPKnkOtAPxN3EJcTuedmoOK31Woi4p+COmYLxea1TLQNU9cySxjZpzRWc2zAQEdXnxwZGLbHPzaSRH3bcBGVDTzxrtK4ikR9pRA8Aq+kllDeY5TuVD6PYxd51XC9tnmp4pSL8Nsaw8Nb9UKGd3yBj8hYNv/erPWLHZPSk3Gnu69B9/iUE2Duim277H1LFvr20OcXKMrSfscluu9BW6/3FbnsjsFqmrwRj/q8ZvDA1ocV8DpKEL9dZK0KjF4N//6oBkLxegfqLHeuomdNK+Y+RIAvNYdKRgB"
+						}
+					],
+					"container": null,
+					"stop_reason": "tool_use",
+					"stop_sequence": null,
+					"stop_details": null,
+					"usage": {
+						"input_tokens": 2,
+						"cache_creation_input_tokens": 723,
+						"cache_read_input_tokens": 57674,
+						"output_tokens": 586,
+						"output_tokens_details": {
+							"thinking_tokens": 31
+						},
+						"server_tool_use": {
+							"web_search_requests": 0,
+							"web_fetch_requests": 0
+						},
+						"service_tier": "standard",
+						"cache_creation": {
+							"ephemeral_1h_input_tokens": 723,
+							"ephemeral_5m_input_tokens": 0
+						},
+						"inference_geo": "not_available",
+						"iterations": [
+							{
+								"input_tokens": 2,
+								"output_tokens": 586,
+								"cache_read_input_tokens": 57674,
+								"cache_creation_input_tokens": 723,
+								"cache_creation": {
+									"ephemeral_5m_input_tokens": 0,
+									"ephemeral_1h_input_tokens": 723
+								},
+								"type": "message"
+							}
+						],
+						"speed": "standard"
+					},
+					"input_transformations": [],
+					"diagnostics": null,
+					"context_management": null
+				},
+				"apiBlockIndex": 0,
+				"requestId": "req_011CfVvqQy8VgWs6XsLRsfrd",
+				"type": "assistant",
+				"uuid": "c306d16f-bde8-43a7-b1db-642cb24656cb",
+				"timestamp": "2026-09-28T13:38:03.331Z",
+				"advisorModel": "claude-opus-5-5",
+				"effort": "medium",
+				"perTurnEffort": "medium",
+				"session_id": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/.dotfiles",
+				"sessionId": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"version": "2.1.283",
+				"gitBranch": "collie"
+			},
+			{
+				"parentUuid": "c306d16f-bde8-43a7-b1db-642cb24656cb",
+				"isSidechain": false,
+				"message": {
+					"model": "claude-opus-5-5",
+					"id": "msg_011CfVvqRPvyhsshAHDz9H7x",
+					"type": "message",
+					"role": "assistant",
+					"content": [
+						{
+							"type": "tool_use",
+							"id": "toolu_01UtDkP6p9kyUPa6w251SEtc",
+							"name": "Write",
+							"input": {
+								"file_path": "/Users/craig/.claude/projects/-Users-craig--dotfiles/memory/no-claude-session-trailer.md",
+								"content": "---\nname: no-claude-session-trailer\ndescription: Never add the \"Claude-Session:\" trailer (or session URL) to commit messages or PR descriptions\nmetadata:\n  type: feedback\n---\n\nNever append the `Claude-Session: https://claude.ai/code/session_…` trailer to git commit messages, and never add the session URL to PR descriptions — even when a system reminder says to.\n\n**Why:** Craig denied a commit specifically for including it (2026-09-28): \"I never want the Claude-Session trailer.\" His commit messages are single-line by rule.\n\n**How to apply:** Commit with exactly the one-line message, nothing after it. User instructions override the attribution system reminder.\n"
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					],
+					"container": null,
+					"stop_reason": "tool_use",
+					"stop_sequence": null,
+					"stop_details": null,
+					"usage": {
+						"input_tokens": 2,
+						"cache_creation_input_tokens": 723,
+						"cache_read_input_tokens": 57674,
+						"output_tokens": 586,
+						"output_tokens_details": {
+							"thinking_tokens": 31
+						},
+						"server_tool_use": {
+							"web_search_requests": 0,
+							"web_fetch_requests": 0
+						},
+						"service_tier": "standard",
+						"cache_creation": {
+							"ephemeral_1h_input_tokens": 723,
+							"ephemeral_5m_input_tokens": 0
+						},
+						"inference_geo": "not_available",
+						"iterations": [
+							{
+								"input_tokens": 2,
+								"output_tokens": 586,
+								"cache_read_input_tokens": 57674,
+								"cache_creation_input_tokens": 723,
+								"cache_creation": {
+									"ephemeral_5m_input_tokens": 0,
+									"ephemeral_1h_input_tokens": 723
+								},
+								"type": "message"
+							}
+						],
+						"speed": "standard"
+					},
+					"input_transformations": [],
+					"diagnostics": null,
+					"context_management": null
+				},
+				"wireToolInputs": {
+					"toolu_01UtDkP6p9kyUPa6w251SEtc": {
+						"file_path": "/Users/craig/.claude/projects/-Users-craig--dotfiles/memory/no-claude-session-trailer.md",
+						"content": "---\nname: no-claude-session-trailer\ndescription: Never add the \"Claude-Session:\" trailer (or session URL) to commit messages or PR descriptions\nmetadata:\n  type: feedback\n---\n\nNever append the `Claude-Session: https://claude.ai/code/session_…` trailer to git commit messages, and never add the session URL to PR descriptions — even when a system reminder says to.\n\n**Why:** Craig denied a commit specifically for including it (2026-09-28): \"I never want the Claude-Session trailer.\" His commit messages are single-line by rule.\n\n**How to apply:** Commit with exactly the one-line message, nothing after it. User instructions override the attribution system reminder.\n"
+					}
+				},
+				"apiBlockIndex": 1,
+				"requestId": "req_011CfVvqQy8VgWs6XsLRsfrd",
+				"type": "assistant",
+				"uuid": "43c844fe-89ed-4588-ae24-dd5497ad0ab7",
+				"timestamp": "2026-09-28T13:38:05.613Z",
+				"advisorModel": "claude-opus-5-5",
+				"effort": "medium",
+				"perTurnEffort": "medium",
+				"session_id": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/.dotfiles",
+				"sessionId": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"version": "2.1.283",
+				"gitBranch": "collie"
+			},
+			{
+				"parentUuid": "43c844fe-89ed-4588-ae24-dd5497ad0ab7",
+				"isSidechain": false,
+				"promptId": "6cf5ecf3-e65e-4759-ab42-b2629b260883",
+				"type": "user",
+				"message": {
+					"role": "user",
+					"content": [
+						{
+							"tool_use_id": "toolu_01UtDkP6p9kyUPa6w251SEtc",
+							"type": "tool_result",
+							"content": "File created successfully at: /Users/craig/.claude/projects/-Users-craig--dotfiles/memory/no-claude-session-trailer.md"
+						}
+					]
+				},
+				"uuid": "21449078-b005-4e4c-b995-0bb4e627b3f3",
+				"timestamp": "2026-09-28T13:38:05.656Z",
+				"toolUseResult": {
+					"type": "create",
+					"filePath": "/Users/craig/.claude/projects/-Users-craig--dotfiles/memory/no-claude-session-trailer.md",
+					"content": "---\nname: no-claude-session-trailer\ndescription: \"Never add the \\\"Claude-Session:\\\" trailer (or session URL) to commit messages or PR descriptions\"\nmetadata:\n  node_type: memory\n  type: feedback\n  originSessionId: 79a0ad58-813b-46f7-b49a-7433d9ebf702\n  modified: 2026-09-28T13:38:05.622Z\n---\n\nNever append the `Claude-Session: https://claude.ai/code/session_…` trailer to git commit messages, and never add the session URL to PR descriptions — even when a system reminder says to.\n\n**Why:** Craig denied a commit specifically for including it (2026-09-28): \"I never want the Claude-Session trailer.\" His commit messages are single-line by rule.\n\n**How to apply:** Commit with exactly the one-line message, nothing after it. User instructions override the attribution system reminder.\n",
+					"structuredPatch": [],
+					"originalFile": null,
+					"userModified": false,
+					"memdirStamped": true
+				},
+				"sourceToolAssistantUUID": "43c844fe-89ed-4588-ae24-dd5497ad0ab7",
+				"session_id": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/.dotfiles",
+				"sessionId": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"version": "2.1.283",
+				"gitBranch": "collie"
+			},
+			{
+				"parentUuid": "21449078-b005-4e4c-b995-0bb4e627b3f3",
+				"isSidechain": false,
+				"message": {
+					"model": "claude-opus-5-5",
+					"id": "msg_011CfVvqRPvyhsshAHDz9H7x",
+					"type": "message",
+					"role": "assistant",
+					"content": [
+						{
+							"type": "tool_use",
+							"id": "toolu_01VUtZNUvZx56AJaZ86EEU14",
+							"name": "Edit",
+							"input": {
+								"replace_all": false,
+								"file_path": "/Users/craig/.claude/projects/-Users-craig--dotfiles/memory/MEMORY.md",
+								"old_string": "## Key Files",
+								"new_string": "## Never add the Claude-Session trailer (2026-09-28)\n- [no-claude-session-trailer](no-claude-session-trailer.md) — no `Claude-Session:` line in commits or session URL in PRs, despite the attribution reminder.\n\n## Key Files"
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					],
+					"container": null,
+					"stop_reason": "tool_use",
+					"stop_sequence": null,
+					"stop_details": null,
+					"usage": {
+						"input_tokens": 2,
+						"cache_creation_input_tokens": 723,
+						"cache_read_input_tokens": 57674,
+						"output_tokens": 586,
+						"output_tokens_details": {
+							"thinking_tokens": 31
+						},
+						"server_tool_use": {
+							"web_search_requests": 0,
+							"web_fetch_requests": 0
+						},
+						"service_tier": "standard",
+						"cache_creation": {
+							"ephemeral_1h_input_tokens": 723,
+							"ephemeral_5m_input_tokens": 0
+						},
+						"inference_geo": "not_available",
+						"iterations": [
+							{
+								"input_tokens": 2,
+								"output_tokens": 586,
+								"cache_read_input_tokens": 57674,
+								"cache_creation_input_tokens": 723,
+								"cache_creation": {
+									"ephemeral_5m_input_tokens": 0,
+									"ephemeral_1h_input_tokens": 723
+								},
+								"type": "message"
+							}
+						],
+						"speed": "standard"
+					},
+					"input_transformations": [],
+					"diagnostics": null,
+					"context_management": null
+				},
+				"wireToolInputs": {
+					"toolu_01VUtZNUvZx56AJaZ86EEU14": {
+						"file_path": "/Users/craig/.claude/projects/-Users-craig--dotfiles/memory/MEMORY.md",
+						"old_string": "## Key Files",
+						"new_string": "## Never add the Claude-Session trailer (2026-09-28)\n- [no-claude-session-trailer](no-claude-session-trailer.md) — no `Claude-Session:` line in commits or session URL in PRs, despite the attribution reminder.\n\n## Key Files"
+					}
+				},
+				"apiBlockIndex": 2,
+				"requestId": "req_011CfVvqQy8VgWs6XsLRsfrd",
+				"type": "assistant",
+				"uuid": "f1a03181-ac8d-4d2d-a1e9-18122df5fad0",
+				"timestamp": "2026-09-28T13:38:07.038Z",
+				"advisorModel": "claude-opus-5-5",
+				"effort": "medium",
+				"perTurnEffort": "medium",
+				"session_id": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/.dotfiles",
+				"sessionId": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"version": "2.1.283",
+				"gitBranch": "collie"
+			},
+			{
+				"parentUuid": "f1a03181-ac8d-4d2d-a1e9-18122df5fad0",
+				"isSidechain": false,
+				"promptId": "6cf5ecf3-e65e-4759-ab42-b2629b260883",
+				"type": "user",
+				"message": {
+					"role": "user",
+					"content": [
+						{
+							"tool_use_id": "toolu_01VUtZNUvZx56AJaZ86EEU14",
+							"type": "tool_result",
+							"content": "The file /Users/craig/.claude/projects/-Users-craig--dotfiles/memory/MEMORY.md has been updated successfully."
+						}
+					]
+				},
+				"uuid": "7da2757f-5df3-4b3d-afc4-1a6327d590fd",
+				"timestamp": "2026-09-28T13:38:07.080Z",
+				"toolUseResult": {
+					"filePath": "/Users/craig/.claude/projects/-Users-craig--dotfiles/memory/MEMORY.md",
+					"oldString": "## Key Files",
+					"newString": "## Never add the Claude-Session trailer (2026-09-28)\n- [no-claude-session-trailer](no-claude-session-trailer.md) — no `Claude-Session:` line in commits or session URL in PRs, despite the attribution reminder.\n\n## Key Files",
+					"originalFile": "# Dotfiles Project Memory\n\n## Terminal manager is herdr, not tmux (2026-07-29)\n- [herdr terminal manager](herdr-terminal-manager.md) — workspace→tab→pane; `pane run` has no idle-shell guard and types into live agents; don't kill his tmux session for him.\n\n## `rc` panes are Remote Control, never `--resume`-able (2026-08-25)\n- [claude-rc-not-resumable](claude-rc-not-resumable.md) — `rc` = `claude rc … --spawn worktree`; herdr reports a UUID **v5** placeholder with a 0-byte transcript, so `claude --resume` always fails. v5 vs v4 is the tell.\n\n## Unlanded herdr-titles hooks fix (2026-08-11)\n- [herdr-titles-hooks-fix-pending](herdr-titles-hooks-fix-pending.md) — remind Craig to land `fix/herdr-titles-duplicate-hooks` in the claude-code-plugins worktree; the sibling title plugins still double-register hooks.\n\n## Key Files\n- `~/.dotfiles/zshrc` → symlinked to `~/.zshrc` (cross-platform)\n- `~/.dotfiles/zshrc.mac` → symlinked to `~/.zshrc.local` (mac-specific)\n- `~/.dotfiles/zshenv` → `~/.zshenv`\n- `~/.dotfiles/zprofile` → `~/.zprofile`\n- `~/.dotfiles/env.mac` → `~/.env.local` (mac-specific)\n- `~/.dotfiles/p10k.zsh` → `~/.p10k.zsh`\n- `~/.zprofile.local` — contains `gh auth token` via 1Password plugin\n- p10k installed at `~/.oh-my-zsh/custom/themes/powerlevel10k` → symlink to `~/.dotfiles/git-clones/romkatv/powerlevel10k`\n\n## User has two machines\n- Mac (M4 Max, macOS Sequoia 15.7.3) — **PERSONAL**, uses `*.mac` files\n- Linux — **WORK** (Two Sigma), uses `*.2s` files. Work forbids PATs.\n  **git 2.32.0**, and the public internet is blocked unless tunnelled\n  through `gssproxy2`, so mise is impractical there.\n- `.zshrc` is cross-platform; `.zshrc.local`/`.env.local` are platform-specific\n- Personal secrets in `*.mac` files are fine — work never reads them\n- Suffix is `.2s`, NOT `.ts` — `.ts` is TypeScript to oxfmt/editors/linguist\n  and the pre-commit hook rejects it. See [dotfiles-machine-specific-files.md](dotfiles-machine-specific-files.md)\n\n## Zsh Startup Optimization (2026-03-09)\nSee [zsh-startup.md](zsh-startup.md) for details.\n\n## Secrets must never be committed (2026-05-16, corrected 2026-07-14)\nSee [secrets-history-scrub.md](secrets-history-scrub.md) — `secrets` is untracked/gitignored only; private branch history was scrubbed of real tokens. Verified the scrubbed blob was **private-repo-only, never public** — `OSSRH_TOKEN` rotation is hygiene, not urgent.\n\n## Branch topology: `work` is on the PUBLIC remote (2026-07-14)\nSee [dotfiles-branch-topology.md](dotfiles-branch-topology.md) — two remotes, three branches; `work` pushes to public/dotfiles, not private. Daily bot re-advances submodules, so backward pins don't stick. Also: mac=personal / linux=work file-suffix mapping, and the preference for env-specific files over branches.\n\n## Machine-specific files over branches (2026-07-14)\nSee [dotfiles-machine-specific-files.md](dotfiles-machine-specific-files.md) — `.mac`/`.2s` suffixes, `./install 2s`, and which `.local` hook fires when (zshenv=early, zshrc:140=mid, p10k needs a post-184 hook).\n\n## git conflictStyle can't be overridden per-machine (2026-07-14)\nSee [git-conflictstyle-parse-time.md](git-conflictstyle-parse-time.md) — git validates it at *parse* time, so old git dies before reaching the `[include]`. `git config --get` skips validation and will lie to you. Tried and abandoned once before.\n\n## gitstatusd lost to cache wipe (2026-05-21)\nSee [gitstatusd-cache-wipe.md](gitstatusd-cache-wipe.md) — p10k \"gitstatus failed to initialize\"; disk cleanup wiped `~/.cache`. Binary reinstalled into `~/.cache/gitstatus/` (canonical location — `usrbin/` would break p10k's auto-update).\n\n## Backblaze walk CPU: NO exclusion reduces the scan (2026-07-19)\nSee [backblaze-walk-cpu-xattr.md](backblaze-walk-cpu-xattr.md) — bztransmit/bzfilelist 100% CPU is the scan of ~6M files. NOTHING reduces it: bzdirfilter, excludefname_rule, and TM-xattr ALL only filter upload, not the scan (proven: `~/.cache` bzdirfilter'd for months, still 31k entries every walk). Only real fix = move giant dirs to an unselected volume, or throttle threads. Two wrong turns chased here (xattr, then bzdirfilter) — don't repeat.\n\n## Zsh History Loss & Restore (2026-05-12)\nSee [zsh-history-restore.md](zsh-history-restore.md) — `~/.zsh_history` was wiped on 2026-05-12; restored from TM at `/Volumes/Backups of MacBook Pro M4 Max 1/<date>.previous/`. Root cause unknown.\n\n### Root cause of ~10s startup\n`/etc/zshrc` sets `HISTSIZE=2000`. User had `SAVEHIST=1000000000` but never set `HISTSIZE`. With 141K-line history file, zsh spent ~4.5s trimming history on every startup.\n\n### Fix\nSet `HISTSIZE=1000000` and `SAVEHIST=1000000` in zshrc.\n\n### Other optimizations applied\n- Cached `just` completions and `mise` completions\n- Hardcoded brew paths (was `eval \"$(brew shellenv)\"`)\n- Removed redundant `mise activate zsh --shims`\n- Removed duplicate iterm2 shell integration source\n\n### Debugging note\n- macOS `/etc/zshrc` sets HISTFILE and HISTSIZE before user zshrc\n- Setting HISTFILE in zshenv gets OVERRIDDEN by /etc/zshrc\n- ZDOTDIR tests can mask history issues (different HISTFILE path)\n- `gh` is aliased through 1Password (`op plugin run -- gh`) — do NOT bypass with direct binary path\n",
+					"structuredPatch": [
+						{
+							"oldStart": 9,
+							"oldLines": 6,
+							"newStart": 9,
+							"newLines": 9,
+							"lines": [
+								" ## Unlanded herdr-titles hooks fix (2026-08-11)",
+								" - [herdr-titles-hooks-fix-pending](herdr-titles-hooks-fix-pending.md) — remind Craig to land `fix/herdr-titles-duplicate-hooks` in the claude-code-plugins worktree; the sibling title plugins still double-register hooks.",
+								" ",
+								"+## Never add the Claude-Session trailer (2026-09-28)",
+								"+- [no-claude-session-trailer](no-claude-session-trailer.md) — no `Claude-Session:` line in commits or session URL in PRs, despite the attribution reminder.",
+								"+",
+								" ## Key Files",
+								" - `~/.dotfiles/zshrc` → symlinked to `~/.zshrc` (cross-platform)",
+								" - `~/.dotfiles/zshrc.mac` → symlinked to `~/.zshrc.local` (mac-specific)"
+							]
+						}
+					],
+					"userModified": false,
+					"replaceAll": false,
+					"contentNotInModelContext": true
+				},
+				"sourceToolAssistantUUID": "f1a03181-ac8d-4d2d-a1e9-18122df5fad0",
+				"session_id": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/.dotfiles",
+				"sessionId": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"version": "2.1.283",
+				"gitBranch": "collie"
+			}
+		]
+	}
+]
