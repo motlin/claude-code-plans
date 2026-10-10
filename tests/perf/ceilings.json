@@ -10,14 +10,16 @@
 		"tolerance": 0.02
 	},
 	"browser.J2.layoutShift": {
-		"ceiling": 0.021,
+		"ceiling": 0,
 		"unit": "cls",
 		"tolerance": 0
 	},
 	"browser.J2.requests": {
-		"ceiling": 645,
+		"ceiling": 653,
 		"unit": "requests",
-		"tolerance": 0
+		"tolerance": 0,
+		"reason": "Deferring the ⌘K palette, Settings modal, Files and Links panes behind lazy chunks (6b495789, f8bad4b9, d240f450, 7114321d) cut J2 from 643 to 613 requests and session cold JS by ~49KB gzip; ff22caa1 then warms those chunks on idle inside J2's window, and the dev server serves them as separate modules, adding 40 (613 to 653). The extra requests are idle prefetches of code that otherwise loads on first open, not cold-path work. 08d952c0 and 48c0c628 added 2 earlier (641 to 643).",
+		"raisedAt": "2026-10-10"
 	},
 	"browser.J3.layoutShift": {
 		"ceiling": 0,
