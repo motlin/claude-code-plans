@@ -497,6 +497,32 @@ describe("SystemRecordSchema", () => {
 		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
 	});
 
+	it("parses the precomputed compaction flag", () => {
+		const record = {
+			type: "system",
+			subtype: "compact_boundary",
+			compactMetadata: {
+				trigger: "auto",
+				preTokens: 968214,
+				postTokens: 35371,
+				durationMs: 270,
+				precomputed: true,
+			},
+		};
+
+		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
+	});
+
+	it("rejects a non-boolean precomputed compaction flag", () => {
+		expect(
+			SystemRecordSchema.safeParse({
+				type: "system",
+				subtype: "compact_boundary",
+				compactMetadata: {trigger: "auto", preTokens: 100, precomputed: "yes"},
+			}).success,
+		).toBe(false);
+	});
+
 	it.each([
 		{preCompactArtifactReadVersions: {}},
 		{preCompactArtifactReadVersions: ["example-artifact"]},
@@ -899,6 +925,35 @@ describe("JsonlRecordSchema", () => {
 			},
 		});
 		expect(result.success).toBe(true);
+	});
+
+	it("parses task status attachments that can continue their agent", () => {
+		const record = {
+			type: "attachment",
+			...baseFields,
+			attachment: {
+				type: "task_status",
+				taskId: "task-100",
+				taskType: "local_agent",
+				description: "Example task",
+				status: "running",
+				deltaSummary: null,
+				outputFilePath: "/tmp/test/task-100.output",
+				canContinueAgent: true,
+			},
+		};
+
+		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
+	});
+
+	it("rejects a non-boolean canContinueAgent on task status attachments", () => {
+		expect(
+			JsonlRecordSchema.safeParse({
+				type: "attachment",
+				...baseFields,
+				attachment: {type: "task_status", taskId: "task-100", status: "running", canContinueAgent: "yes"},
+			}).success,
+		).toBe(false);
 	});
 
 	it("parses total token reminder attachments", () => {

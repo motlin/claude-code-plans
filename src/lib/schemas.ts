@@ -747,6 +747,7 @@ const TaskStatusAttachmentPayload = z
 		status: z.string(),
 		deltaSummary: z.union([z.string(), z.null()]).optional(),
 		outputFilePath: z.string().optional(),
+		canContinueAgent: z.boolean().optional(),
 		shell: z
 			.object({
 				command: z.string().optional(),
@@ -1314,6 +1315,7 @@ export const CompactMetadataSchema = z
 		preTokens: z.number(),
 		postTokens: z.number().optional(),
 		durationMs: z.number().optional(),
+		precomputed: z.boolean().optional(),
 		preCompactDiscoveredTools: z.array(z.string()).optional(),
 		preCompactArtifactReadVersions: z.array(z.object({slug: z.string(), ver: z.string()}).strict()).optional(),
 		cumulativeDroppedTokens: z.number().optional(),
