@@ -3,6 +3,7 @@
  * answering a pending prompt in an active session.
  */
 
+import type {ToolResultMeta} from "./tool-labels";
 import {parseToolRejection} from "./tool-rejection";
 
 export interface QuestionLike {
@@ -33,7 +34,13 @@ const LEGACY_ENVELOPE: Envelope = {
 	suffix: ". You can now continue with the user's answers in mind.",
 };
 
-const ENVELOPES: readonly Envelope[] = [CURRENT_ENVELOPE, LEGACY_ENVELOPE];
+/** Wording written by newer Claude Code versions, which tell the model to heed what the user actually said. */
+const READ_CAREFULLY_ENVELOPE: Envelope = {
+	prefix: "The user answered: ",
+	suffix: ". Read the answers carefully — they may request clarification, changes, or that you not proceed — and follow what they actually say.",
+};
+
+const ENVELOPES: readonly Envelope[] = [CURRENT_ENVELOPE, READ_CAREFULLY_ENVELOPE, LEGACY_ENVELOPE];
 
 /**
  * Format an AskUserQuestion answer set into the user-prompt text that the
@@ -146,6 +153,26 @@ export function describeAskUserQuestionResult(result: string | undefined): AskUs
 	}
 
 	return null;
+}
+
+/**
+ * The answers recorded in the call's structured `toolUseResult`, in question
+ * order. Newer results write question and answer text unescaped, so this is
+ * the reliable source whenever every question has a recorded answer.
+ */
+export function answersFromResultMeta(
+	meta: ToolResultMeta | undefined,
+	questions: QuestionLike[],
+): ParsedAnswer[] | null {
+	const answers = meta?.answers;
+	if (answers === undefined || questions.length === 0) return null;
+	const result: ParsedAnswer[] = [];
+	for (const {question} of questions) {
+		const entry = answers[question];
+		if (entry === undefined) return null;
+		result.push({question, answer: entry.answer, notes: entry.notes});
+	}
+	return result;
 }
 
 const NOTES_MARKER = " user notes: ";

@@ -313,3 +313,31 @@ describe("parseAnswerResult with the current answer envelope", () => {
 		expect(parseAnswerResult(text, [q("Q1")])).toBe(null);
 	});
 });
+
+describe("parseAnswerResult with the read-carefully answer envelope", () => {
+	const SUFFIX =
+		". Read the answers carefully — they may request clarification, changes, or that you not proceed — and follow what they actually say.";
+	const q = (question: string): QuestionLike => ({question, options: []});
+
+	it("parses the 45b93197:179 single answer", () => {
+		const question = "How do you want to get in without risking a lockout?";
+		const text = `The user answered: "${question}"="I think the passkey is NOT getting used, how can I change that"${SUFFIX}`;
+		expect(parseAnswerResult(text, [q(question)])).toStrictEqual([
+			{question, answer: "I think the passkey is NOT getting used, how can I change that", notes: null},
+		]);
+	});
+
+	it("parses the 42d634a9 three-question answer set", () => {
+		const questions = [
+			"What should the new site be built with? You said you'll add content later, so how you'll add it matters.",
+			"Where will the new site be hosted? The domain is on Cloudflare now.",
+			"What look should the redesign have?",
+		];
+		const text = `The user answered: "${questions[0]}"="#1, and I want to be able to add guitar tab", "${questions[1]}"="Cloudflare Pages (Recommended)", "${questions[2]}"="all three and let us pick"${SUFFIX}`;
+		expect(parseAnswerResult(text, questions.map(q))).toStrictEqual([
+			{question: questions[0], answer: "#1, and I want to be able to add guitar tab", notes: null},
+			{question: questions[1], answer: "Cloudflare Pages (Recommended)", notes: null},
+			{question: questions[2], answer: "all three and let us pick", notes: null},
+		]);
+	});
+});

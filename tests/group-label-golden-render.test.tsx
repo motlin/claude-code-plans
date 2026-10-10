@@ -109,7 +109,7 @@ describe("group label golden specimens rendered from JSONL", () => {
 /**
  * Specimens whose whole row sequence was read from the upstream DOM: each
  * transcript row as "prose", "user: <bubble>", "message from <sender>" or
- * "status: <label>" per status it draws, after any background notice drawn outside a group,
+ * "status: <label>" per status it draws, "answered: <question> / <answer>" per answered question card, after any background notice drawn outside a group,
  * and "changes" after the row that draws the turn's changes card when the
  * records reach the turn's real end (`turnEnd`), as a cut-off turn draws its card early.
  */
@@ -145,6 +145,11 @@ function rowContentTexts(row: Element): string[] {
 	if (sender !== null) return [`message from ${sender.textContent}`];
 	const bubble = row.querySelector(".user-message-bubble");
 	if (bubble !== null) return [`user: ${bubble.textContent}`];
+	const answered = Array.from(
+		row.querySelectorAll("[data-answered-question]"),
+		(card) => `answered: ${Array.from(card.children, (line) => line.textContent).join(" / ")}`,
+	);
+	if (answered.length > 0) return answered;
 	const notices = Array.from(
 		row.querySelectorAll(":not([data-turn-status]) > [data-background-notice]"),
 		(notice) => `notice: ${notice.textContent}`,

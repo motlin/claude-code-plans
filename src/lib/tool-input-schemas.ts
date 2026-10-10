@@ -245,6 +245,15 @@ const AskUserQuestionInputSchema = z
 	})
 	.strict();
 
+/** An answered AskUserQuestion call's `toolUseResult`: the questions asked and the user's answer to each. */
+export const AskUserQuestionResultSchema = z
+	.object({
+		questions: AskUserQuestionInputSchema.shape.questions,
+		answers: z.record(z.string(), z.string()),
+		annotations: z.record(z.string(), AskUserQuestionAnnotationSchema).optional(),
+	})
+	.strict();
+
 /**
  * One pre-approved follow-up action attached to a plan: the tool the model may
  * call after approval, and a description of what it will do with it.

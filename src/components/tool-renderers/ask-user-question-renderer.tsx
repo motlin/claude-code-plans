@@ -5,6 +5,7 @@ import {useAskUserQuestionContext} from "../ask-user-question-context";
 import {MarkdownArticle} from "../markdown-article";
 import {
 	answerForQuestion,
+	answersFromResultMeta,
 	describeAskUserQuestionResult,
 	makeInitialDraft,
 	normalizeQuestions,
@@ -72,7 +73,10 @@ function notesAddInformation(notes: string | null, answerValue: string): notes i
 function AnsweredQuestion({question, parsed}: {question: string; parsed: ParsedAnswer}) {
 	const answer = parsed.answer.trim();
 	return (
-		<div className="card-outline rounded-r6 p-p7 w-fit min-w-[min(100%,318px)] flex flex-col gap-g2">
+		<div
+			data-answered-question
+			className="card-outline rounded-r6 p-p7 w-fit min-w-[min(100%,318px)] flex flex-col gap-g2"
+		>
 			<p className="text-body text-secondary whitespace-pre-wrap">{question}</p>
 			{answer !== "" && <p className="text-body text-primary whitespace-pre-wrap">{answer}</p>}
 			{notesAddInformation(parsed.notes, answer) && (
@@ -400,7 +404,10 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps) {
 		);
 	}
 
-	const parsed = result !== undefined ? parseAnswerResult(result, questions) : null;
+	const parsed =
+		result === undefined
+			? null
+			: (answersFromResultMeta(toolCall.resultMeta, questions) ?? parseAnswerResult(result, questions));
 	if (parsed !== null) {
 		return (
 			<div className="flex flex-col gap-g6">

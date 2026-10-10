@@ -7,7 +7,7 @@ import {
 	remoteTriggerActionLabels,
 } from "./schema-choices";
 import {pastTense} from "./past-tense";
-import {ExitWorktreeActionSchema, RemoteTriggerActionSchema} from "./tool-input-schemas";
+import {AskUserQuestionResultSchema, ExitWorktreeActionSchema, RemoteTriggerActionSchema} from "./tool-input-schemas";
 
 /**
  * What a tool row needs from the call's `toolUseResult`, pulled out through
@@ -19,6 +19,8 @@ export interface ToolResultMeta {
 	gitOperation?: GitOperation;
 	/** The subagent an Agent call launched, which a later SendMessage can address. */
 	agentId?: string;
+	/** An AskUserQuestion call's answers keyed by question text, with any notes the user typed. */
+	answers?: Readonly<Record<string, {answer: string; notes: string | null}>>;
 }
 
 export interface ToolLabelCall {
@@ -57,6 +59,15 @@ export function toolResultMetaFrom(toolUseResult: unknown): ToolResultMeta | und
 	}
 	if ("agentId" in toolUseResult && typeof toolUseResult.agentId === "string" && toolUseResult.agentId !== "") {
 		return {agentId: toolUseResult.agentId};
+	}
+	if ("answers" in toolUseResult) {
+		const asked = AskUserQuestionResultSchema.safeParse(toolUseResult);
+		if (!asked.success) return undefined;
+		const answers: Record<string, {answer: string; notes: string | null}> = {};
+		for (const [question, answer] of Object.entries(asked.data.answers)) {
+			answers[question] = {answer, notes: asked.data.annotations?.[question]?.notes ?? null};
+		}
+		return {answers};
 	}
 	return undefined;
 }
