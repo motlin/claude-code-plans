@@ -15,9 +15,9 @@ import {
 	useExtractedSessionLinks,
 	useGroupedSessionLinks,
 	useIncludeToolsAndThinking,
-	useRegisterLinksPane,
 	useSessionLinkDisplay,
 } from "../src/components/panes/links-pane";
+import {useRegisterLinksPane} from "../src/components/panes/links-pane-entry";
 import {usePaneDefinitions} from "../src/components/panes/pane-registry";
 import type {JumpTargetWindow} from "../src/components/jump-target-context";
 import {sessionQueryKeys} from "../src/lib/api/sessions";
@@ -427,7 +427,7 @@ describe("links pane registration", () => {
 		vi.unstubAllGlobals();
 	});
 
-	it("registers a Links pane that lists dev servers even when the session has no links", () => {
+	it("registers a Links pane that lists dev servers even when the session has no links", async () => {
 		const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
 		queryClient.setQueryData(sessionQueryKeys.resources("session-test-100"), {
 			files: {entries: [], totalCount: 0},
@@ -439,11 +439,10 @@ describe("links pane registration", () => {
 
 		render(withQueryClient(queryClient, <RegisterLinksPane lines={[]} />));
 
+		const devServerLinks = await screen.findAllByRole("link", {name: /^Open dev server/});
 		expect({
 			title: screen.getByRole("heading", {level: 1}).textContent,
-			devServers: screen
-				.getAllByRole("link", {name: /^Open dev server/})
-				.map((link) => link.getAttribute("href")),
+			devServers: devServerLinks.map((link) => link.getAttribute("href")),
 			empty: screen.getByText(/^No links/).textContent,
 		}).toStrictEqual({
 			title: "Links",
@@ -452,7 +451,7 @@ describe("links pane registration", () => {
 		});
 	});
 
-	it("falls back to the loaded window's links, as a floor, until the session scan lands", () => {
+	it("falls back to the loaded window's links, as a floor, until the session scan lands", async () => {
 		const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
 		const lines = [
 			{
@@ -464,7 +463,7 @@ describe("links pane registration", () => {
 
 		render(withQueryClient(queryClient, <RegisterLinksPane lines={lines} />));
 
-		expect(screen.getAllByTitle(/^https:/).map((element) => element.textContent)).toStrictEqual([
+		expect((await screen.findAllByTitle(/^https:/)).map((element) => element.textContent)).toStrictEqual([
 			"example.com/guide",
 		]);
 	});

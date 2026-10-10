@@ -25,7 +25,7 @@ import {LegacyMessageLinkNotice} from "./legacy-message-link-notice";
 import {TileHost} from "./panes/tile-host";
 import {useRegisterArtifactsPane, useSessionArtifacts} from "./panes/artifacts-pane";
 import {useRegisterBackgroundTasksPane} from "./panes/background-tasks-pane";
-import {useRegisterLinksPane} from "./panes/links-pane";
+import {useRegisterLinksPane} from "./panes/links-pane-entry";
 import {useRegisterSessionDetailsPane} from "./panes/session-details-pane";
 import {useRegisterSubagentPane} from "./panes/subagent-pane";
 import {SessionSubagentOpener} from "./subagent-opener";

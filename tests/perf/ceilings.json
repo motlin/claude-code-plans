@@ -57,16 +57,16 @@
 		"reason": "Defer the Settings modal body (src/components/settings/settings-dialog.tsx with its tab sections, search and usage panels) behind src/components/settings/settings-dialog-entry.tsx until a #settings or #customize hash first opens it; the entry keeps the ⇧⌘, binding and useOpenSettings moves to open-settings.ts. Together with the deferred ⌘K palette, cold JS moves from 400471/1253321 (home) and 584921/1800169 (session) gzip/raw to the measured values; shared helpers now ship as small shared chunks, so the cold file count rises from 83 to 95 (home) and 102 to 119 (session). Other ceilings and the 1% tolerance are unchanged."
 	},
 	"bundle.session.gzip": {
-		"ceiling": 532812,
+		"ceiling": 530440,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Defer the Files pane renderer (src/components/panes/files-pane.tsx with its tree, file viewer, tabs and search results) behind src/components/panes/files-pane-entry.tsx until the pane shows, through the deferredPane helper the Changes pane now shares; registration, the ⇧⌘F binding and the header controls stay immediate. Session cold JS drops 17930 gzip / 53736 raw bytes from 550742/1670500 and the cold file count from 119 to 117; home is unchanged within the band. Other ceilings and the 1% tolerance are unchanged."
+		"reason": "Defer the Links pane renderer (src/components/panes/links-pane.tsx with its link grouping and dev server list) behind src/components/panes/links-pane-entry.tsx until the pane shows, as the Files and Changes panes do; registration stays immediate and the host keeps drawing its header. Session cold JS drops 2372 gzip / 10090 raw bytes from 532812/1616764, with 118 cold files; home is unchanged within the band. Other ceilings and the 1% tolerance are unchanged."
 	},
 	"bundle.session.raw": {
-		"ceiling": 1616764,
+		"ceiling": 1606674,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Defer the Files pane renderer (src/components/panes/files-pane.tsx with its tree, file viewer, tabs and search results) behind src/components/panes/files-pane-entry.tsx until the pane shows, through the deferredPane helper the Changes pane now shares; registration, the ⇧⌘F binding and the header controls stay immediate. Session cold JS drops 17930 gzip / 53736 raw bytes from 550742/1670500 and the cold file count from 119 to 117; home is unchanged within the band. Other ceilings and the 1% tolerance are unchanged."
+		"reason": "Defer the Links pane renderer (src/components/panes/links-pane.tsx with its link grouping and dev server list) behind src/components/panes/links-pane-entry.tsx until the pane shows, as the Files and Changes panes do; registration stays immediate and the host keeps drawing its header. Session cold JS drops 2372 gzip / 10090 raw bytes from 532812/1616764, with 118 cold files; home is unchanged within the band. Other ceilings and the 1% tolerance are unchanged."
 	},
 	"client.coldHome.default.commitsToRows": {
 		"ceiling": 11,

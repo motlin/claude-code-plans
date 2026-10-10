@@ -26,7 +26,6 @@ import type {SessionLine} from "../../lib/transcript";
 import {JumpChips} from "../jump-chips";
 import {JumpTargetProvider, type JumpTargetWindow} from "../jump-target-context";
 import {useSettings} from "../settings-provider";
-import {registerPane} from "./pane-registry";
 
 export interface LinkEnricher {
 	extractId(url: string): string | null;
@@ -385,7 +384,7 @@ export function LinksPaneView({
 	);
 }
 
-interface LinksPaneProps {
+export interface LinksPaneProps {
 	sessionId: string;
 	/** The loaded transcript window, whose links stand in until the full-session scan lands. */
 	lines: SessionLine[];
@@ -394,7 +393,7 @@ interface LinksPaneProps {
 	jumpTargetWindow: JumpTargetWindow;
 }
 
-function LinksPane({sessionId, lines, windowStartIndex, jumpTargetWindow}: LinksPaneProps) {
+export function LinksPane({sessionId, lines, windowStartIndex, jumpTargetWindow}: LinksPaneProps) {
 	const {settings} = useSettings();
 	const [currentHost, setCurrentHost] = useState<string | undefined>(undefined);
 	useEffect(() => setCurrentHost(window.location.hostname), []);
@@ -417,24 +416,5 @@ function LinksPane({sessionId, lines, windowStartIndex, jumpTargetWindow}: Links
 				onIncludeToolsAndThinkingChange={setIncludeToolsAndThinking}
 			/>
 		</JumpTargetProvider>
-	);
-}
-
-/** Registers the local-only `links` pane kind (View options ▸ Links) while mounted. */
-export function useRegisterLinksPane({sessionId, lines, windowStartIndex, jumpTargetWindow}: LinksPaneProps): void {
-	useEffect(
-		() =>
-			registerPane("links", {
-				title: "Links",
-				render: () => (
-					<LinksPane
-						sessionId={sessionId}
-						lines={lines}
-						windowStartIndex={windowStartIndex}
-						jumpTargetWindow={jumpTargetWindow}
-					/>
-				),
-			}),
-		[sessionId, lines, windowStartIndex, jumpTargetWindow],
 	);
 }

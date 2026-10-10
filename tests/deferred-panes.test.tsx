@@ -4,9 +4,11 @@ import {act, cleanup, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import type {JumpTargetWindow} from "../src/components/jump-target-context";
 import {useRegisterFilesPane} from "../src/components/panes/files-pane-entry";
+import {useRegisterLinksPane} from "../src/components/panes/links-pane-entry";
 import {usePaneDefinitions} from "../src/components/panes/pane-registry";
 import type {PaneKind} from "../src/lib/pane-layout";
 import type {SessionFiles} from "../src/lib/session-files";
+import type {SessionLine} from "../src/lib/transcript";
 
 const harness = vi.hoisted(() => {
 	let finish!: () => void;
@@ -22,8 +24,15 @@ vi.mock("../src/components/panes/files-pane", async () => {
 	return {FilesPane: ({sessionId}: {sessionId: string}) => <p>Files of {sessionId}</p>};
 });
 
+vi.mock("../src/components/panes/links-pane", async () => {
+	harness.imports.push("links");
+	await harness.ready;
+	return {LinksPane: ({sessionId}: {sessionId: string}) => <p>Links of {sessionId}</p>};
+});
+
 const JUMP_TARGET_WINDOW: JumpTargetWindow = {windowStartIndex: 0, requestMessageJump: () => {}};
 const SESSION = "session-alice";
+const NO_LINES: SessionLine[] = [];
 const EMPTY_FILES: SessionFiles = {
 	files: [],
 	totalCount: 0,
@@ -35,6 +44,12 @@ function Panes({shown}: {shown: PaneKind[]}) {
 		sessionId: SESSION,
 		cwd: undefined,
 		windowFiles: EMPTY_FILES,
+		windowStartIndex: 0,
+		jumpTargetWindow: JUMP_TARGET_WINDOW,
+	});
+	useRegisterLinksPane({
+		sessionId: SESSION,
+		lines: NO_LINES,
 		windowStartIndex: 0,
 		jumpTargetWindow: JUMP_TARGET_WINDOW,
 	});
@@ -58,24 +73,25 @@ afterEach(() => {
 	cleanup();
 });
 
-describe("deferred Files pane", () => {
-	it("registers immediately, loads its renderer only when shown, and keeps its header while loading", async () => {
+describe("deferred Files and Links panes", () => {
+	it("register immediately, load their renderers only when shown, and keep the Files header while loading", async () => {
 		const view = render(<Panes shown={[]} />);
 		const registered = {imports: [...harness.imports]};
-		view.rerender(<Panes shown={["files"]} />);
-		const loading = {files: paneText("Files")};
+		view.rerender(<Panes shown={["files", "links"]} />);
+		const loading = {files: paneText("Files"), links: paneText("Links")};
 		await act(async () => harness.finish());
 		await screen.findByText("Files of session-alice");
+		await screen.findByText("Links of session-alice");
 		expect({
 			registered,
 			loading,
-			loaded: {files: paneText("Files")},
-			imports: harness.imports,
+			loaded: {files: paneText("Files"), links: paneText("Links")},
+			imports: [...harness.imports].sort((left, right) => left.localeCompare(right)),
 		}).toStrictEqual({
 			registered: {imports: []},
-			loading: {files: "FilesMoveLoading files…"},
-			loaded: {files: "Files of session-alice"},
-			imports: ["files"],
+			loading: {files: "FilesMoveLoading files…", links: "Loading links…"},
+			loaded: {files: "Files of session-alice", links: "Links of session-alice"},
+			imports: ["files", "links"],
 		});
 	});
 });
