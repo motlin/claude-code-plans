@@ -10,6 +10,7 @@ import {StreamingMessage} from "../src/components/streaming-message";
 import {SubagentOpenerProvider} from "../src/components/subagent-opener";
 import {processTranscript} from "../src/lib/transcript";
 import type {Subagent} from "../src/lib/subagents";
+import type {TranscriptMode} from "../src/lib/transcript-mode";
 
 vi.mock("../src/components/settings-provider", () => ({
 	useSettings: () => ({
@@ -54,9 +55,14 @@ const GLOBAL_STYLES_PATH = join(process.cwd(), "src", "styles", "globals.css");
 interface RenderOverrides {
 	showCompactSummaries?: boolean;
 	showTranscriptOnly?: boolean;
+	transcriptMode?: TranscriptMode;
 }
 
-function renderRecord(record: unknown, overrides: RenderOverrides, defaults: Required<RenderOverrides>): string {
+function renderRecord(
+	record: unknown,
+	overrides: RenderOverrides,
+	defaults: Required<Omit<RenderOverrides, "transcriptMode">>,
+): string {
 	const {lines, toolResultMap} = processTranscript([record]);
 	return renderToStaticMarkup(
 		<SessionChat
@@ -65,6 +71,7 @@ function renderRecord(record: unknown, overrides: RenderOverrides, defaults: Req
 			toolResultMap={toolResultMap}
 			showCompactSummaries={overrides.showCompactSummaries ?? defaults.showCompactSummaries}
 			showTranscriptOnly={overrides.showTranscriptOnly ?? defaults.showTranscriptOnly}
+			transcriptMode={overrides.transcriptMode ?? "normal"}
 		/>,
 	);
 }
@@ -189,7 +196,7 @@ describe("SessionChat user bubble chrome", () => {
 			darkBg: readToken(extractBlock(styles, ".dark"), "--user-msg-bg"),
 			darkText: readToken(extractBlock(styles, ".dark"), "--user-msg-text"),
 			userCorners: cornerClasses(findClassName(renderShape("A"), "user-message-bubble")),
-			automatedCorners: cornerClasses(findClassName(renderShape("B"), "user-message-bubble")),
+			automatedCorners: cornerClasses(findClassName(renderShape("C"), "user-message-bubble")),
 			streamingCorners: cornerClasses(findClassName(streamingHtml, "user-message-bubble")),
 		}).toStrictEqual({
 			lightBg: "var(--upstream-alpha-1)",
@@ -220,8 +227,8 @@ describe("SessionChat user-message shapes", () => {
 		}
 	});
 
-	it('Shape B — Request interrupted renders gray bubble with the "Request interrupted" label', () => {
-		const html = renderShape("B");
+	it('Shape B — Request interrupted renders gray bubble with the "Request interrupted" label in Verbose', () => {
+		const html = renderShape("B", {transcriptMode: "verbose"});
 
 		expect(html).toContain("bg-auto-msg-bg");
 		expect(html).toContain(">Request interrupted<");

@@ -2026,6 +2026,8 @@ function isLineVisible(
 	) {
 		return false;
 	}
+	// Upstream draws nothing for an interruption, so outside Verbose it must not break a reply boundary either.
+	if (line.type === "user" && classifyUserContent(line) === "request-interrupted") return verbose;
 	if (!hasAssistantVisibleContent(line, showThinking, showTools)) return false;
 	return true;
 }
