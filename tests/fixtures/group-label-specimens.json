@@ -95,10 +95,10 @@
 		"completions": [
 			{
 				"command": true,
-				"status": "completed"
+				"status": "failed",
+				"toolUseId": "toolu_01YCBNYCNFF6YHp2wy3BBZK1"
 			}
-		],
-		"skip": "A background Bash whose task later failed counts as failed upstream; not modelled locally."
+		]
 	},
 	{
 		"session": "2a680df8",

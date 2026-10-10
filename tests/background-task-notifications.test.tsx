@@ -102,6 +102,62 @@ function records(notificationText: string): unknown[] {
 	];
 }
 
+/**
+ * The launch settles in its own turn and the notification opens a later one,
+ * where the assistant runs another command before replying.
+ */
+function laterRecords(notificationText: string, launchTurnTail: unknown[] = []): unknown[] {
+	const [prompt, launch, launchResult] = records(notificationText) as [unknown, unknown, unknown];
+	return [
+		prompt,
+		launch,
+		launchResult,
+		...launchTurnTail,
+		{
+			type: "assistant",
+			uuid: "a-1b",
+			parentUuid: "r-1",
+			message: {role: "assistant", content: [{type: "text", text: "Running in the background."}]},
+		},
+		{
+			type: "user",
+			uuid: "n-1",
+			parentUuid: "a-1b",
+			promptSource: "system",
+			turnOrigin: "task_notification",
+			message: {role: "user", content: notificationText},
+		},
+		{
+			type: "assistant",
+			uuid: "a-2",
+			parentUuid: "n-1",
+			message: {
+				role: "assistant",
+				content: [
+					{
+						type: "tool_use",
+						id: "toolu_check",
+						name: "Bash",
+						input: {command: "curl localhost", description: "Check the server"},
+					},
+				],
+			},
+		},
+		{
+			type: "user",
+			uuid: "r-2",
+			parentUuid: "a-2",
+			message: {role: "user", content: [{type: "tool_result", tool_use_id: "toolu_check", content: "000"}]},
+		},
+		{
+			type: "assistant",
+			uuid: "a-3",
+			parentUuid: "r-2",
+			message: {role: "assistant", content: [{type: "text", text: "The server is down."}]},
+		},
+	];
+}
+
 function renderLines(input: unknown[], transcriptMode: TranscriptMode = "normal"): HTMLElement {
 	const {lines, toolResultMap} = processTranscript(input);
 	return render(
@@ -214,6 +270,37 @@ describe("summarizeToolCallStats with background completions", () => {
 		]);
 	});
 
+	it('fails the launch in its own group instead: "Ran 2 commands (1 failed), finished a background command"', () => {
+		const stats = summarizeToolCallStats(
+			[
+				{id: "toolu_launch", name: "Bash", input: {command: "just dev", run_in_background: true}},
+				{id: "toolu_probe", name: "Bash", input: {command: "curl localhost"}},
+			],
+			[{command: true, status: "failed", toolUseId: "toolu_launch"}],
+		);
+
+		expect({segments: stats.segments, failed: stats.failed}).toStrictEqual({
+			segments: [
+				{verb: "Ran", rest: "2 commands (1 failed)"},
+				{verb: "finished", rest: "a background command"},
+			],
+			failed: 1,
+		});
+	});
+
+	it("fails a launch whose notification arrives in a later group", () => {
+		expect(
+			summarizeToolCallStats(
+				[
+					{id: "toolu_launch", name: "Bash", input: {command: "just dev", run_in_background: true}},
+					{id: "toolu_probe", name: "Bash", input: {command: "curl localhost"}},
+				],
+				[],
+				new Set(["toolu_launch"]),
+			).segments,
+		).toStrictEqual([{verb: "Ran", rest: "2 commands (1 failed)"}]);
+	});
+
 	it("counts several stopped commands", () => {
 		expect(
 			summarizeToolCallStats(
@@ -269,7 +356,7 @@ describe("task notifications in the transcript", () => {
 
 	it('leads the group label and the expanded rows with a failed background command and its danger "Failed"', () => {
 		const container = renderLines(
-			records(notification("failed", 'Background command "Run the test suite" failed with exit code 7')),
+			laterRecords(notification("failed", 'Background command "Run the test suite" failed with exit code 7')),
 		);
 		fireEvent.click(summaryButton(container, "Finished a background command (1 failed), ran a command"));
 		expect({
@@ -277,7 +364,7 @@ describe("task notifications in the transcript", () => {
 			notice: noticeChildren(container),
 			oldLabel: container.textContent?.includes("Background task failed") ?? false,
 		}).toStrictEqual({
-			groupRows: ["Background commandRun the test suiteFailed", "Run the test suiteFailed"],
+			groupRows: ["Background commandRun the test suiteFailed", "Checked the server"],
 			notice: [
 				{text: "Background command", className: NOTICE_KIND},
 				{text: "Run the test suite", className: NOTICE_DESCRIPTION},
@@ -285,6 +372,40 @@ describe("task notifications in the transcript", () => {
 			],
 			oldLabel: false,
 		});
+	});
+
+	it("lists a failed notice after its own launch, as the launch takes the failure", () => {
+		const container = renderLines(
+			records(notification("failed", 'Background command "Run the test suite" failed with exit code 7')),
+		);
+		fireEvent.click(summaryButton(container, "Ran a command (1 failed), finished a background command"));
+		expect(groupRowTexts(container)).toStrictEqual([
+			"Run the test suiteFailed",
+			"Background commandRun the test suiteFailed",
+		]);
+	});
+
+	it("fails a launch in an earlier group once its later notification reports failure", () => {
+		const container = renderLines(
+			laterRecords(notification("failed", 'Background command "Run the test suite" failed with exit code 7'), [
+				{
+					type: "assistant",
+					uuid: "a-1a",
+					parentUuid: "r-1",
+					message: {
+						role: "assistant",
+						content: [{type: "tool_use", id: "toolu_tail", name: "Bash", input: {command: "sleep 1"}}],
+					},
+				},
+				{
+					type: "user",
+					uuid: "r-1a",
+					parentUuid: "a-1a",
+					message: {role: "user", content: [{type: "tool_result", tool_use_id: "toolu_tail", content: ""}]},
+				},
+			]),
+		);
+		expect(summaryButton(container, "Ran 2 commands (1 failed)").textContent).toBe("Ran 2 commands (1 failed)");
 	});
 
 	it("keeps the raw notification as its own turn in Verbose", () => {
@@ -309,12 +430,12 @@ describe("background launch row status", () => {
 		return launchRowChildren(container);
 	};
 
-	it('marks a launch whose notification failed "Failed" on its raw description, without a command failure in the group label', () => {
+	it('marks a launch whose notification failed "Failed", failing the command rather than the completion in the group label', () => {
 		expect(
 			expandedLaunchRow(
 				"failed",
 				'Background command "Run the test suite" failed with exit code 7',
-				"Finished a background command (1 failed), ran a command",
+				"Ran a command (1 failed), finished a background command",
 			),
 		).toStrictEqual([
 			{text: "Run the test suite", className: MUTED_PHRASE},

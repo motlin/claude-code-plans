@@ -867,6 +867,12 @@ function backgroundLaunchOutcomes(lines: readonly SessionLine[]): ReadonlyMap<st
 	return outcomes;
 }
 
+function failedLaunchIds(outcomes: ReadonlyMap<string, BackgroundOutcome>): ReadonlySet<string> {
+	const ids = new Set<string>();
+	for (const [id, outcome] of outcomes) if (outcome === "failed") ids.add(id);
+	return ids;
+}
+
 /**
  * Upstream's static group sub-row: a muted "Background command" (or "task"), the
  * description in primary ink, and a danger "Failed" or secondary "Stopped" when
@@ -3531,20 +3537,27 @@ function ToolCallSummary({
 	const taskCalls = calls.filter((c) => TASK_TOOLS.has(c.name));
 	const hasTasksView = taskCalls.length >= 3;
 	const displayCalls = hasTasksView ? calls.filter((c) => !TASK_TOOLS.has(c.name)) : calls;
+	const backgroundOutcomes = useContext(BackgroundOutcomeContext);
 	const summary = useMemo(
 		() =>
 			summarizeToolCallStats(
 				displayCalls,
 				notices.map((notice) => notice.notification),
+				failedLaunchIds(backgroundOutcomes),
 			),
-		[displayCalls, notices],
+		[displayCalls, notices, backgroundOutcomes],
 	);
 	// While a call is in flight, upstream names the group by that call's
 	// progressive label instead of the tally.
 	const pendingCall = displayCalls.filter(isPendingToolCall).at(-1);
 	const runningText = pendingCall === undefined ? null : runningToolLabelText(runningToolLabel(pendingCall));
-	const failedNotices = notices.filter((notice) => notice.notification.status === "failed");
-	const settledNotices = notices.filter((notice) => notice.notification.status !== "failed");
+	// A failed completion leads only when its launch is outside the group; a
+	// launch inside it takes the failure, so its notice trails like any other.
+	const leadsLabel = (notice: BackgroundNotice) =>
+		notice.notification.status === "failed" &&
+		!displayCalls.some((call) => call.id === notice.notification.toolUseId);
+	const failedNotices = notices.filter(leadsLabel);
+	const settledNotices = notices.filter((notice) => !leadsLabel(notice));
 	// Upstream draws the grouped header in one 24px padded row whether it completed, failed, or is still running.
 	const summaryLayout = hasTasksView ? "self-start py-0" : "min-w-0 self-stretch me-[52px] px-1 py-0.5";
 	// Collapsed rows recede to muted ink and lift to secondary on hover; an open

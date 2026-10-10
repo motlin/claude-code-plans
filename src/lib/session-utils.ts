@@ -438,6 +438,8 @@ export interface BackgroundCompletionLike {
 	/** A `run_in_background` Bash command rather than an agent or monitor. */
 	command: boolean;
 	status: "completed" | "failed" | "stopped";
+	/** The tool_use id of the call that launched the task. */
+	toolUseId?: string | null | undefined;
 }
 
 export interface ToolCallSummaryStats {
@@ -516,9 +518,10 @@ function callKey(call: ToolCallLike, index: number): string {
  * A call the user rejected or interrupted has no outcome: upstream counts it in
  * its segment but adds no "(N failed)" for it.
  */
-function callOutcome(call: ToolCallLike): CallOutcome | undefined {
+function callOutcome(call: ToolCallLike, failedLaunches: ReadonlySet<string>): CallOutcome | undefined {
 	if (call.stopped === true || call.denied === true) return undefined;
-	return call.isError === true ? "failed" : "succeeded";
+	const failedLaunch = call.id !== undefined && failedLaunches.has(call.id);
+	return call.isError === true || failedLaunch ? "failed" : "succeeded";
 }
 
 function countFailed(byKey: Map<string, CallOutcome | undefined>): number {
@@ -590,10 +593,35 @@ function capSegments(segments: CountedSegment[]): CountedSegment[] {
 	return [...segments.slice(0, SHOWN_SEGMENTS), more];
 }
 
+/**
+ * Splits off the failed completions whose launch is in this group: upstream
+ * fails that command instead, "Ran 2 commands (1 failed), finished a background
+ * command", so the completion settles quietly rather than leading the label.
+ */
+function attributeLaunchFailures(
+	calls: ToolCallLike[],
+	completions: readonly BackgroundCompletionLike[],
+	failedLaunches: ReadonlySet<string>,
+): {completions: BackgroundCompletionLike[]; failedLaunches: ReadonlySet<string>} {
+	const callIds = new Set(calls.flatMap((call) => (call.id === undefined ? [] : [call.id])));
+	const launches = new Set(failedLaunches);
+	const settled = completions.map((completion) => {
+		const launch = completion.toolUseId;
+		if (completion.status !== "failed" || launch === undefined || launch === null || !callIds.has(launch)) {
+			return completion;
+		}
+		launches.add(launch);
+		return {...completion, status: "completed" as const};
+	});
+	return {completions: settled, failedLaunches: launches};
+}
+
 function buildSummarySegments(
 	calls: ToolCallLike[],
-	completions: readonly BackgroundCompletionLike[] = [],
+	groupCompletions: readonly BackgroundCompletionLike[] = [],
+	knownFailedLaunches: ReadonlySet<string> = new Set(),
 ): ToolCallSummaryStats {
+	const {completions, failedLaunches} = attributeLaunchFailures(calls, groupCompletions, knownFailedLaunches);
 	// Insertion order carries the summary order: upstream Normal writes both
 	// "Updated todos, read 3 files" and "Read index.ts, updated todos", so
 	// segments follow the order each tool was first called.
@@ -606,7 +634,7 @@ function buildSummarySegments(
 	const categories = categorizeWithWrites(calls);
 	calls.forEach((call, index) => {
 		const cat = categories[index]!;
-		const outcome = callOutcome(call);
+		const outcome = callOutcome(call, failedLaunches);
 		if (cat === null) {
 			otherTools++;
 			if (outcome === "failed") otherFailed++;
@@ -677,11 +705,17 @@ function buildSummarySegments(
 	};
 }
 
+/**
+ * `failedLaunches` holds the tool_use ids of background launches whose task
+ * later failed, wherever its notification landed; upstream counts each as a
+ * failed call.
+ */
 export function summarizeToolCallStats(
 	calls: ToolCallLike[],
 	completions: readonly BackgroundCompletionLike[] = [],
+	failedLaunches: ReadonlySet<string> = new Set(),
 ): ToolCallSummaryStats {
-	return buildSummarySegments(calls, completions);
+	return buildSummarySegments(calls, completions, failedLaunches);
 }
 
 export function summarizeToolCallsStructured(calls: ToolCallLike[]): SummarySegment[] {
