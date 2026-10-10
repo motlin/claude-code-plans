@@ -130,6 +130,17 @@ export interface TaskNotification {
 	description: string;
 }
 
+const STOPPED_AGENT = /^Background agent "(.+)" was stopped by the user\.$/;
+
+/**
+ * The description of the background agent a plain-text task notification
+ * reports the user stopped ('Background agent "..." was stopped by the user.'),
+ * or null for any other text.
+ */
+export function stoppedAgentDescription(text: string): string | null {
+	return STOPPED_AGENT.exec(text.trim())?.[1] ?? null;
+}
+
 /**
  * The finished task a user turn announces when it opens with a
  * `<task-notification>` block, or null for any other text and for

@@ -354,3 +354,38 @@ describe("user bubble markdown", () => {
 		]);
 	});
 });
+
+describe("background task stopped row", () => {
+	const specimen = () =>
+		(rowSpecimens as RowSpecimen[]).find(
+			(candidate) => candidate.session === "5f402159" && candidate.line === 2267,
+		)!;
+
+	it("draws 5f402159:2267 at the end of the prose's span as upstream: a plain secondary row with no disclosure, the span's actions after it, then the bubble", () => {
+		const rows = Array.from(renderRecords(specimen().records).querySelectorAll("[data-testid=transcript-row]"));
+		expect(
+			rows.map((row) => ({
+				status: row.querySelector("[data-turn-status]")?.textContent ?? null,
+				secondary: Array.from(
+					row.querySelectorAll("[data-turn-status-marker] > span"),
+					(span) => span.classList.contains("text-secondary") && span.classList.contains("text-body"),
+				),
+				precedesStatus: row.querySelector(":scope > [data-precedes-turn-status]") !== null,
+				footer: row.querySelector("[data-assistant-span-footer]") !== null,
+				disclosures: row.querySelectorAll("[data-turn-status] [aria-expanded], [data-turn-status] svg").length,
+				bubble: row.querySelector(".user-message-bubble") !== null,
+			})),
+		).toStrictEqual([
+			{status: null, secondary: [], precedesStatus: true, footer: false, disclosures: 0, bubble: false},
+			{
+				status: "Background task stopped · You are doing a behaviour-preserving refactor of a...",
+				secondary: [true, true],
+				precedesStatus: false,
+				footer: true,
+				disclosures: 0,
+				bubble: false,
+			},
+			{status: null, secondary: [], precedesStatus: false, footer: false, disclosures: 0, bubble: true},
+		]);
+	});
+});

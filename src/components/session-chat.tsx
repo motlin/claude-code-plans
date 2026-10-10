@@ -20,7 +20,7 @@ import {MarkdownArticle} from "./markdown-article";
 import {TruncatedContent} from "./truncated-content";
 import {AgentMessageRow, AgentNameContext, type AgentNameResolver} from "./agent-message-row";
 import {parseAgentMessage, type AgentMessage} from "../lib/agent-message";
-import {parseTaskNotification, type TaskNotification} from "../lib/background-tasks";
+import {parseTaskNotification, stoppedAgentDescription, type TaskNotification} from "../lib/background-tasks";
 import {SlashCommandText, SlashCommandsContext} from "./slash-command-chip";
 import {UserPlainText} from "./user-plain-text";
 import {splitLeadingSlashCommand, type SlashCommand} from "../lib/slash-commands";
@@ -215,6 +215,11 @@ function collectAssistantDisplaySpans(
 			continue;
 		}
 		if (isPromptLine(line)) {
+			// Upstream ends the span a stopped background agent's notice follows with its status row.
+			if (current !== undefined && stoppedAgentNoticeOf(line) !== null) {
+				current.anchorLineIndex = stoppedStatusIndex(line);
+				byLine.set(current.anchorLineIndex, current);
+			}
 			current = undefined;
 			continue;
 		}
@@ -1029,6 +1034,19 @@ function settledCompletionIndices(lines: readonly SessionLine[]): number[] {
 	});
 }
 
+/** The description a user line's plain-text "Background agent ... was stopped" notice names. */
+function stoppedAgentNoticeOf(line: SessionLine): string | null {
+	return line.type === "user" ? stoppedAgentDescription(getUserContentText(line)) : null;
+}
+
+/**
+ * The record index of the status row a stopped-agent notice draws just before
+ * its own bubble, between the two so each keeps its own transcript row.
+ */
+function stoppedStatusIndex(line: SessionLine): number {
+	return line.lineIndex - 0.5;
+}
+
 /**
  * The finished background task a line announces, or null for any other line.
  * A notification queued while the turn ran arrives as a queued_command
@@ -1184,6 +1202,26 @@ function FoldedNoticeRow({notice}: {notice: FoldedNotice}) {
 		default:
 			return assertNever(notice);
 	}
+}
+
+/**
+ * Upstream's task-event row: a plain 20px status line in secondary ink with
+ * no disclosure, "Background task stopped · <description>".
+ */
+function TaskEventStatusRow({label, detail, footer}: {label: string; detail: string; footer: React.ReactNode}) {
+	return (
+		<div className={`group/msg flex flex-col w-full ${TURN_GAP_CLASS}`}>
+			<TurnStatusFrame leading={false}>
+				<div data-turn-status="" className={TURN_STATUS_CLASS}>
+					<div data-turn-status-marker="" className="flex min-w-0 gap-1 me-[52px] px-1 py-0.5">
+						<span className="text-body shrink-0 text-secondary">{label}</span>{" "}
+						<span className="text-body min-w-0 truncate text-secondary">· {detail}</span>
+					</div>
+				</div>
+			</TurnStatusFrame>
+			{footer}
+		</div>
+	);
 }
 
 /** Notifications with no tool group to join, drawn as the same static rows. */
@@ -1761,6 +1799,27 @@ function buildSessionListEntries(
 			continue;
 		}
 
+		const stoppedAgent = verbose ? null : stoppedAgentNoticeOf(line);
+		if (stoppedAgent !== null) {
+			const statusIndex = stoppedStatusIndex(line);
+			const span = displaySpans?.get(statusIndex);
+			entries.push({
+				key: `stopped-${line.lineIndex}`,
+				startRecordIndex: statusIndex,
+				isPrompt: false,
+				kind: "assistant_tool",
+				assistantSpan: span,
+				opensWithStatus: true,
+				element: (
+					<TaskEventStatusRow
+						label="Background task stopped"
+						detail={stoppedAgent}
+						footer={span === undefined ? null : <AssistantDisplaySpanFooter span={span} />}
+					/>
+				),
+			});
+		}
+
 		const isBannerAfterBanner =
 			BANNER_LINE_TYPES.has(line.type) && prevVisibleType !== null && BANNER_LINE_TYPES.has(prevVisibleType);
 
@@ -1825,7 +1884,11 @@ function buildSessionListEntries(
 				: {}),
 			...(prose !== undefined && precedesStatus(index) ? {element: prose.render(true)} : {}),
 			opensReply: opensReply(index),
-			endRecordIndex: (entries[index + 1]?.startRecordIndex ?? finalRecordIndex + 1) - 1,
+			// A status row drawn between two records starts at a half index; it still spans itself.
+			endRecordIndex: Math.max(
+				entry.startRecordIndex,
+				Math.ceil(entries[index + 1]?.startRecordIndex ?? finalRecordIndex + 1) - 1,
+			),
 		}),
 	);
 }
