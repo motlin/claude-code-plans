@@ -1436,6 +1436,12 @@ describe("JsonlRecordSchema observed 2026-09 transcript fields", () => {
 				message: {role: "user", content: [{type: "tool_result", tool_use_id: "toolu_2", content: "no"}]},
 				permissionDecision: {decision: "reject", source: "user_temporary"},
 			},
+			{
+				type: "user",
+				...baseFields,
+				message: {role: "user", content: [{type: "tool_result", tool_use_id: "toolu_3", content: "blocked"}]},
+				permissionDecision: {decision: "reject", source: "config", reasonType: "safetyCheck"},
+			},
 			attachmentRecord({
 				type: "deferred_tools_delta",
 				surfacedNames: ["mcp__docs__guide"],

@@ -127,6 +127,7 @@ const permissionDecisionReasonTypeLabels = {
 	mode: "Permission mode",
 	other: "Other",
 	rule: "Permission rule",
+	safetyCheck: "Safety check",
 	subcommandResults: "Subcommand results",
 } satisfies Record<z.infer<typeof PermissionDecisionReasonTypeSchema>, string>;
 

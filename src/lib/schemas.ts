@@ -288,6 +288,7 @@ export const PermissionDecisionReasonTypeSchema = z.enum([
 	"mode",
 	"other",
 	"rule",
+	"safetyCheck",
 	"subcommandResults",
 ]);
 
