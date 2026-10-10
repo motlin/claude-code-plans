@@ -164,6 +164,19 @@ describe("summarizeToolCallStats", () => {
 	});
 });
 
+describe("created file diff stats", () => {
+	it("counts a created file's lines without a phantom line after its final newline", () => {
+		const added = (content: string) =>
+			summarizeToolCallStats([{name: "Write", input: {file_path: "/repo/a.md", content}}]).added;
+		expect({
+			trailingNewline: added("one\ntwo\nthree\n"),
+			noTrailingNewline: added("one\ntwo\nthree"),
+			blankLastLine: added("one\ntwo\n\n"),
+			empty: added(""),
+		}).toStrictEqual({trailingNewline: 3, noTrailingNewline: 3, blankLastLine: 3, empty: 0});
+	});
+});
+
 describe("failed edits in diff stats", () => {
 	const sixLines = Array.from({length: 6}, (_, i) => `added ${i}`).join("\n");
 	const lines = (count: number) => Array.from({length: count}, (_, i) => `line ${i}`).join("\n");

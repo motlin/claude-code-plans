@@ -331,7 +331,8 @@ export function diffStatsForCall(call: ToolCallLike): {
 	const input = call.input;
 	if (call.name === "Write") {
 		const content = asString(input["content"]);
-		const added = content === "" ? 0 : content.split("\n").length;
+		// A final newline ends the last line rather than starting another, as upstream counts it.
+		const added = content === "" ? 0 : content.split("\n").length - (content.endsWith("\n") ? 1 : 0);
 		return {added, removed: 0};
 	}
 	if (call.name === "Edit" || call.name === "MultiEdit") {
