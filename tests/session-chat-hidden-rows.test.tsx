@@ -100,3 +100,67 @@ describe("Request interrupted records", () => {
 		},
 	);
 });
+
+function boundaryRows(records: unknown[], mode: TranscriptMode) {
+	const container = renderRecords(records, mode);
+	const rows = Array.from(container.querySelectorAll<HTMLElement>("[data-transcript-entry-index]")).map((row) => ({
+		line: row.dataset["perfLine"],
+		replyBoundary: row.dataset["replyBoundary"],
+		turnGap: row.querySelector(":scope > [data-record-index]")?.classList.contains("pb-[var(--chat-turn-gap)]"),
+	}));
+	cleanup();
+	return rows;
+}
+
+function promptThenMetaThenReply(meta: unknown): unknown[] {
+	return [
+		{type: "user", uuid: "u-1", message: {role: "user", content: "Fabricated question"}},
+		meta,
+		{
+			type: "assistant",
+			uuid: "a-1",
+			message: {role: "assistant", content: [{type: "text", text: "Fabricated answer"}]},
+		},
+	];
+}
+
+const IMAGE_SOURCE_META = {
+	type: "user",
+	uuid: "u-meta-image",
+	isMeta: true,
+	message: {role: "user", content: [{type: "text", text: "[Image: source: /fabricated/screenshot.png]"}]},
+};
+
+const SKILL_BODY_META = {
+	type: "user",
+	uuid: "u-meta-skill",
+	isMeta: true,
+	message: {role: "user", content: [{type: "text", text: "Base directory for this skill: /fabricated/skill"}]},
+};
+
+const ORPHAN_TOOL_RESULT = {
+	type: "user",
+	uuid: "u-orphan-result",
+	message: {role: "user", content: [{type: "tool_result", tool_use_id: "toolu_missing", content: "fabricated"}]},
+};
+
+describe("Meta user records between a prompt and its reply", () => {
+	it.each([
+		["an image-source note", IMAGE_SOURCE_META],
+		["a skill body", SKILL_BODY_META],
+		["an orphan tool result", ORPHAN_TOOL_RESULT],
+	])("leave no empty entry, so %s keeps the reply boundary", (_name, meta) => {
+		const records = promptThenMetaThenReply(meta);
+
+		expect({normal: boundaryRows(records, "normal"), verbose: boundaryRows(records, "verbose")}).toStrictEqual({
+			normal: [
+				{line: "0", replyBoundary: undefined, turnGap: false},
+				{line: "2", replyBoundary: "", turnGap: true},
+			],
+			verbose: [
+				{line: "0", replyBoundary: undefined, turnGap: true},
+				{line: "2", replyBoundary: undefined, turnGap: true},
+			],
+		});
+	});
+});

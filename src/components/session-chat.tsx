@@ -2026,8 +2026,13 @@ function isLineVisible(
 	) {
 		return false;
 	}
-	// Upstream draws nothing for an interruption, so outside Verbose it must not break a reply boundary either.
-	if (line.type === "user" && classifyUserContent(line) === "request-interrupted") return verbose;
+	if (line.type === "user") {
+		const kind = classifyUserContent(line);
+		// Upstream draws nothing for an interruption, so outside Verbose it must not break a reply boundary either.
+		if (kind === "request-interrupted") return verbose;
+		// UserEntry draws nothing for these in any mode, so an entry would only defeat the reply boundary.
+		if (kind === "tool-result-only" || kind === "slash-command-body") return false;
+	}
 	if (!hasAssistantVisibleContent(line, showThinking, showTools)) return false;
 	return true;
 }
