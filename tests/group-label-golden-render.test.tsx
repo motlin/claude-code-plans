@@ -231,6 +231,41 @@ describe("user bubble line box", () => {
 });
 
 describe("user bubble markdown", () => {
+	it("spaces the 75f9847c:129 ordered list as upstream: 5px below the paragraph, items 6px apart, text 20px in with no item padding", () => {
+		const specimen = (rowSpecimens as RowSpecimen[]).find(
+			(candidate) => candidate.session === "75f9847c" && candidate.line === 129,
+		)!;
+		const bubble = renderRecords(specimen.records).querySelector(".user-message-bubble")!;
+		const list = bubble.querySelector("ol")!;
+		const classes = (element: Element, names: string[]) =>
+			Object.fromEntries(names.map((name) => [name, element.classList.contains(name)]));
+		expect({
+			list: classes(list, [
+				"mt-[5px]",
+				"flex",
+				"flex-col",
+				"gap-[6px]",
+				"ps-5",
+				"list-decimal",
+				"ps-7",
+				"mt-[7px]",
+			]),
+			itemPadding: list.className.includes("[&>li]:ps-"),
+		}).toStrictEqual({
+			list: {
+				"mt-[5px]": true,
+				flex: true,
+				"flex-col": true,
+				"gap-[6px]": true,
+				"ps-5": true,
+				"list-decimal": true,
+				"ps-7": false,
+				"mt-[7px]": false,
+			},
+			itemPadding: false,
+		});
+	});
+
 	it("draws the 75f9847c:129 numbered prompt as upstream's paragraph and ordered list", () => {
 		const specimen = (rowSpecimens as RowSpecimen[]).find(
 			(candidate) => candidate.session === "75f9847c" && candidate.line === 129,

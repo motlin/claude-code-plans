@@ -60,10 +60,11 @@ function renderInline(text: string): ReactNode[] {
 	return nodes;
 }
 
-const LIST_CLASS = "text-body ps-7 [&>li]:ps-[7px] [&>li]:whitespace-pre-wrap [&>li]:[overflow-wrap:anywhere]";
+/** Upstream's list: a 6px-gap column of items whose text starts 20px in, the marker hanging in that padding. */
+const LIST_CLASS = "text-body flex flex-col gap-[6px] ps-5 [&>li]:whitespace-pre-wrap [&>li]:[overflow-wrap:anywhere]";
 
-/** Spacing between a bubble's blocks, as upstream's markdown root spaces them. */
-const BLOCK_GAP_CLASS = "mt-[7px]";
+/** Spacing between a bubble's blocks, as upstream's 5px-gap markdown root spaces them. */
+const BLOCK_GAP_CLASS = "mt-[5px]";
 
 const ORDERED_ITEM = /^ {0,3}(\d{1,9})[.)][ \t]+(.*)$/;
 const BULLET_ITEM = /^ {0,3}([-*+])[ \t]+(.*)$/;
