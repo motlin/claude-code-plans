@@ -128,6 +128,8 @@ export interface TaskNotification {
 	/** A background Agent, whose completion upstream settles on its own "Ran agent" row. */
 	agent: boolean;
 	description: string;
+	/** How long the task ran, from the notification's `<usage><duration_ms>`. */
+	durationMs: number | null;
 }
 
 const STOPPED_AGENT = /^Background agent "(.+)" was stopped by the user\.$/;
@@ -139,6 +141,11 @@ const STOPPED_AGENT = /^Background agent "(.+)" was stopped by the user\.$/;
  */
 export function stoppedAgentDescription(text: string): string | null {
 	return STOPPED_AGENT.exec(text.trim())?.[1] ?? null;
+}
+
+function durationOf(text: string | null): number | null {
+	if (text === null || !/^\d+$/.test(text)) return null;
+	return Number(text);
 }
 
 /**
@@ -158,6 +165,7 @@ export function parseTaskNotification(text: string): TaskNotification | null {
 		command: summary.startsWith("Background command"),
 		agent: summary.startsWith("Agent "),
 		description: /"([^"]*)"/.exec(summary)?.[1] ?? summary,
+		durationMs: durationOf(tag(trimmed, "duration_ms")),
 	};
 }
 

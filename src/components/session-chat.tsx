@@ -59,7 +59,9 @@ import {
 	isRequestInterrupted,
 } from "../lib/session-utils";
 import type {BackgroundCompletionLike, SummarySegment} from "../lib/session-utils";
+import {pastTense} from "../lib/past-tense";
 import {runningToolLabel, runningToolLabelText, toolLabel} from "../lib/tool-labels";
+import {formatElapsed} from "../lib/working-marker";
 import {InlinePathImages, SESSION_IMAGE_CLASS_NAME} from "./inline-path-images";
 import {isEditableTarget} from "../lib/shortcuts/match";
 import {findScrollContainer} from "./transcript-history-loader";
@@ -1017,21 +1019,32 @@ function transcriptToolUseIds(lines: readonly SessionLine[]): Set<string> {
 }
 
 /**
- * Completed notifications upstream never draws. A background Agent settles on
- * its own "Ran agent" row. A task launched in this transcript was already
- * dropped when it started beside its own launch, so its completion arriving
- * mid-turn draws nothing; one that opens a turn as a user record still does.
+ * Completed notifications upstream never draws, all queued mid-turn: a
+ * background Agent settles on its own "Ran agent" row, and a task launched in
+ * this transcript was already dropped when it started beside its own launch.
+ * One that opens a turn as a user record still draws (an agent's as its
+ * completion row).
  */
 function settledCompletionIndices(lines: readonly SessionLine[]): number[] {
 	let launches: Set<string> | null = null;
 	return lines.flatMap((line, index) => {
 		const notification = taskNotificationOf(line);
-		if (notification?.status !== "completed") return [];
+		if (notification?.status !== "completed" || line.type !== "attachment") return [];
 		if (notification.agent) return [index];
-		if (line.type !== "attachment" || notification.toolUseId === null) return [];
+		if (notification.toolUseId === null) return [];
 		launches ??= transcriptToolUseIds(lines);
 		return launches.has(notification.toolUseId) ? [index] : [];
 	});
+}
+
+/**
+ * The completed background Agent a user record's notification reports, which
+ * upstream draws as "<done description> · took Ns" with no bubble.
+ */
+function agentCompletionOf(line: SessionLine): TaskNotification | null {
+	if (line.type !== "user") return null;
+	const notification = taskNotificationOf(line);
+	return notification?.status === "completed" && notification.agent ? notification : null;
 }
 
 /** The description a user line's plain-text "Background agent ... was stopped" notice names. */
@@ -1206,16 +1219,22 @@ function FoldedNoticeRow({notice}: {notice: FoldedNotice}) {
 
 /**
  * Upstream's task-event row: a plain 20px status line in secondary ink with
- * no disclosure, "Background task stopped · <description>".
+ * no disclosure, "Background task stopped · <description>" or an agent's
+ * "<done description> · took 27s".
  */
-function TaskEventStatusRow({label, detail, footer}: {label: string; detail: string; footer: React.ReactNode}) {
+function TaskEventStatusRow({label, detail, footer}: {label: string; detail: string | null; footer: React.ReactNode}) {
 	return (
 		<div className={`group/msg flex flex-col w-full ${TURN_GAP_CLASS}`}>
 			<TurnStatusFrame leading={false}>
 				<div data-turn-status="" className={TURN_STATUS_CLASS}>
 					<div data-turn-status-marker="" className="flex min-w-0 gap-1 me-[52px] px-1 py-0.5">
-						<span className="text-body shrink-0 text-secondary">{label}</span>{" "}
-						<span className="text-body min-w-0 truncate text-secondary">· {detail}</span>
+						<span className="text-body shrink-0 text-secondary">{label}</span>
+						{detail !== null && (
+							<>
+								{" "}
+								<span className="text-body min-w-0 truncate text-secondary">· {detail}</span>
+							</>
+						)}
 					</div>
 				</div>
 			</TurnStatusFrame>
@@ -1575,7 +1594,9 @@ function buildSessionListEntries(
 		if (!foldNotifications) return null;
 		const line = lines[index]!;
 		const notification = taskNotificationOf(line);
-		if (notification !== null) return {kind: "task", lineIndex: line.lineIndex, notification};
+		if (notification !== null && agentCompletionOf(line) === null) {
+			return {kind: "task", lineIndex: line.lineIndex, notification};
+		}
 		const message = foldablePeerMessage(lines, index, renderProps.subagentLookup);
 		if (message !== null) return {kind: "peer", lineIndex: line.lineIndex, message, leads: true};
 		return repromptsIntoTools(index) && line.type === "user"
@@ -1796,6 +1817,32 @@ function buildSessionListEntries(
 				});
 			}
 			i = j;
+			continue;
+		}
+
+		const agentCompletion = verbose ? null : agentCompletionOf(line);
+		if (agentCompletion !== null) {
+			prevVisibleType = "assistant";
+			entries.push({
+				key: `line-${line.lineIndex}`,
+				startRecordIndex: line.lineIndex,
+				isPrompt: false,
+				kind: "assistant_tool",
+				assistantSpan: displaySpans?.get(line.lineIndex),
+				opensWithStatus: true,
+				element: (
+					<TaskEventStatusRow
+						label={pastTense(agentCompletion.description)}
+						detail={
+							agentCompletion.durationMs === null
+								? null
+								: `took ${formatElapsed(Math.round(agentCompletion.durationMs / 1000))}`
+						}
+						footer={footerFor(line)}
+					/>
+				),
+			});
+			i++;
 			continue;
 		}
 

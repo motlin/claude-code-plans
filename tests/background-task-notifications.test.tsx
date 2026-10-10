@@ -208,6 +208,7 @@ describe("parseTaskNotification", () => {
 			command: true,
 			agent: false,
 			description: "Run the test suite",
+			durationMs: null,
 		});
 	});
 
@@ -218,6 +219,22 @@ describe("parseTaskNotification", () => {
 			command: false,
 			agent: true,
 			description: "Fetch reminders",
+			durationMs: null,
+		});
+	});
+
+	it("reads the run time from the usage block", () => {
+		expect(
+			parseTaskNotification(
+				'<task-notification>\n<tool-use-id>toolu_agent</tool-use-id>\n<status>completed</status>\n<summary>Agent "Commit crank sensitivity change" finished</summary>\n<usage><subagent_tokens>65394</subagent_tokens><tool_uses>4</tool_uses><duration_ms>26738</duration_ms></usage>\n</task-notification>',
+			),
+		).toStrictEqual({
+			toolUseId: "toolu_agent",
+			status: "completed",
+			command: false,
+			agent: true,
+			description: "Commit crank sensitivity change",
+			durationMs: 26738,
 		});
 	});
 

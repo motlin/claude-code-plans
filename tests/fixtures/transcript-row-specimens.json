@@ -18790,5 +18790,3247 @@
 				"slug": "purring-watching-hollerith"
 			}
 		]
+	},
+	{
+		"session": "5f402159",
+		"line": 1911,
+		"upstream": ["prose", "status: Committed input-debug tooling · took 23s", "prose"],
+		"records": [
+			{
+				"parentUuid": "5fc0c999-93d7-4f84-947d-b3793ef65b0e",
+				"isSidechain": false,
+				"message": {
+					"model": "claude-fable-5-1",
+					"id": "msg_011CfDnnZRZKwNPyYfw3s7zZ",
+					"type": "message",
+					"role": "assistant",
+					"content": [
+						{
+							"type": "text",
+							"text": "The input-debug tooling is committed as `97e74c2`, and the working tree is clean. Nothing has been pushed.\n\nThe Up problem isn't fixed yet. I'm waiting on the `U`, `moves` and `c` readings from the INPUT DEBUG build on your Playdate, as described in my last message. That build is still loaded in the Simulator.\n\nSeparately, the device still has the build without the Simon sounds. Once you're done with the debug test, run `just run` first so the Simulator holds the real game, then use Device → Upload Game to Device to send it.\n\n📌 You asked: on the main menu, Down always moves but Up only sometimes does — is Up simulating the crank and only going a partial angle?\n🔗 [Playdate Simulator manual](https://help.play.date/manual/simulator/)"
+						}
+					],
+					"container": null,
+					"stop_reason": "end_turn",
+					"stop_sequence": null,
+					"stop_details": null,
+					"usage": {
+						"input_tokens": 4,
+						"cache_creation_input_tokens": 1624,
+						"cache_read_input_tokens": 537160,
+						"output_tokens": 264,
+						"output_tokens_details": {
+							"thinking_tokens": 0
+						},
+						"server_tool_use": {
+							"web_search_requests": 0,
+							"web_fetch_requests": 0
+						},
+						"service_tier": "standard",
+						"cache_creation": {
+							"ephemeral_1h_input_tokens": 1624,
+							"ephemeral_5m_input_tokens": 0
+						},
+						"inference_geo": "not_available",
+						"iterations": [
+							{
+								"input_tokens": 4,
+								"output_tokens": 264,
+								"cache_read_input_tokens": 537160,
+								"cache_creation_input_tokens": 1624,
+								"cache_creation": {
+									"ephemeral_5m_input_tokens": 0,
+									"ephemeral_1h_input_tokens": 1624
+								},
+								"type": "message"
+							}
+						],
+						"speed": "standard"
+					},
+					"input_transformations": [],
+					"diagnostics": null,
+					"context_management": null
+				},
+				"apiBlockIndex": 0,
+				"requestId": "req_011CfDnnXhNUAF36mjULb3X8",
+				"type": "assistant",
+				"uuid": "defbe2f5-2cae-44f0-a2fb-8466cece121b",
+				"timestamp": "2026-09-20T01:03:02.356Z",
+				"advisorModel": "claude-fable-5-1",
+				"effort": "high",
+				"perTurnEffort": "high",
+				"session_id": "5f402159-8a8e-4739-a223-a78c5ab99098",
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/projects/mnemonica-playdate",
+				"sessionId": "5f402159-8a8e-4739-a223-a78c5ab99098",
+				"version": "2.1.276",
+				"gitBranch": "main",
+				"slug": "purring-watching-hollerith"
+			},
+			{
+				"type": "queue-operation",
+				"operation": "dequeue",
+				"timestamp": "2026-09-20T01:03:02.631Z",
+				"sessionId": "5f402159-8a8e-4739-a223-a78c5ab99098"
+			},
+			{
+				"parentUuid": "defbe2f5-2cae-44f0-a2fb-8466cece121b",
+				"isSidechain": false,
+				"attachment": {
+					"type": "hook_success",
+					"hookName": "Stop",
+					"toolUseID": "63f1a344-5493-4e2f-976d-7daac30c5c52",
+					"hookEvent": "Stop",
+					"content": "",
+					"stdout": "",
+					"stderr": " No git test results found for HEAD.\n",
+					"exitCode": 0,
+					"command": "if [ -n \"${CLAUDE_PLUGIN_ROOT:-}\" ]; then \"${CLAUDE_PLUGIN_ROOT}/scripts/check-test-results.sh\"; fi",
+					"durationMs": 200
+				},
+				"type": "attachment",
+				"uuid": "808788ea-cbe2-46fd-893e-6d162e28c798",
+				"timestamp": "2026-09-20T01:03:02.624Z",
+				"session_id": "5f402159-8a8e-4739-a223-a78c5ab99098",
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/projects/mnemonica-playdate",
+				"sessionId": "5f402159-8a8e-4739-a223-a78c5ab99098",
+				"version": "2.1.276",
+				"gitBranch": "main",
+				"slug": "purring-watching-hollerith"
+			},
+			{
+				"parentUuid": "808788ea-cbe2-46fd-893e-6d162e28c798",
+				"isSidechain": false,
+				"type": "system",
+				"subtype": "stop_hook_summary",
+				"hookCount": 6,
+				"hookInfos": [
+					{
+						"command": "if [ -n \"${CLAUDE_PLUGIN_ROOT:-}\" ]; then \"${CLAUDE_PLUGIN_ROOT}/scripts/check-test-results.sh\"; fi",
+						"durationMs": 200
+					},
+					{
+						"command": "${CLAUDE_PLUGIN_ROOT}/scripts/post-hook.sh Stop",
+						"durationMs": 31
+					},
+					{
+						"command": "if [ -n \"${CLAUDE_PLUGIN_ROOT:-}\" ]; then \"${CLAUDE_PLUGIN_ROOT}/scripts/check-dirty-tree.sh\"; fi",
+						"durationMs": 75
+					},
+					{
+						"command": "${CLAUDE_PLUGIN_ROOT}/scripts/rename-herdr-tab.sh",
+						"durationMs": 64
+					},
+					{
+						"command": "${CLAUDE_PLUGIN_ROOT}/scripts/recap-guard.sh",
+						"durationMs": 35
+					},
+					{
+						"command": "${CLAUDE_PLUGIN_ROOT}/scripts/stop-phrase-guard.sh",
+						"durationMs": 103
+					}
+				],
+				"hookErrors": [],
+				"hookAdditionalContext": [],
+				"preventedContinuation": false,
+				"stopReason": "",
+				"hasOutput": true,
+				"level": "suggestion",
+				"timestamp": "2026-09-20T01:03:02.625Z",
+				"uuid": "c02c4039-35f0-4743-a33e-adfd7838e484",
+				"toolUseID": "63f1a344-5493-4e2f-976d-7daac30c5c52",
+				"session_id": "5f402159-8a8e-4739-a223-a78c5ab99098",
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/projects/mnemonica-playdate",
+				"sessionId": "5f402159-8a8e-4739-a223-a78c5ab99098",
+				"version": "2.1.276",
+				"gitBranch": "main",
+				"slug": "purring-watching-hollerith"
+			},
+			{
+				"parentUuid": "c02c4039-35f0-4743-a33e-adfd7838e484",
+				"isSidechain": false,
+				"promptId": "9e86cb41-487c-477b-99b6-da43aa2c21b8",
+				"type": "user",
+				"message": {
+					"role": "user",
+					"content": "<task-notification>\n<task-id>acb7fb98c54ca31ea</task-id>\n<tool-use-id>toolu_01AxT12XqenPouFLNFp5WgQq</tool-use-id>\n<output-file>/private/tmp/claude-501/-Users-craig-projects-mnemonica-playdate/5f402159-8a8e-4739-a223-a78c5ab99098/tasks/acb7fb98c54ca31ea.output</output-file>\n<status>completed</status>\n<summary>Agent \"Commit input-debug tooling\" finished</summary>\n<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>\n<result>This agent's report was delivered to you as a message from \"acb7fb98c54ca31ea\" (its SubagentHandback call). Read it there; it is not repeated here.\n</result>\n<usage><subagent_tokens>65131</subagent_tokens><tool_uses>4</tool_uses><duration_ms>23436</duration_ms></usage>\n</task-notification>"
+				},
+				"uuid": "4c427afa-8c78-49cf-ae7f-e12f0a8206cc",
+				"timestamp": "2026-09-20T01:03:02.635Z",
+				"permissionMode": "auto",
+				"origin": {
+					"kind": "task-notification"
+				},
+				"promptSource": "system",
+				"queueSkipAttachments": true,
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/projects/mnemonica-playdate",
+				"sessionId": "5f402159-8a8e-4739-a223-a78c5ab99098",
+				"version": "2.1.276",
+				"gitBranch": "main",
+				"slug": "purring-watching-hollerith"
+			},
+			{
+				"parentUuid": "4c427afa-8c78-49cf-ae7f-e12f0a8206cc",
+				"isSidechain": false,
+				"message": {
+					"model": "claude-fable-5-1",
+					"id": "msg_011CfDnnvwrkoej7LaW24hTP",
+					"type": "message",
+					"role": "assistant",
+					"content": [
+						{
+							"type": "thinking",
+							"thinking": "",
+							"signature": "CAQSswcKEAgSGAI4AUIIdGhpbmtpbmcSDPgBuG26y+HYf+OZjxoMow65CxO077zTtC+WIjAXYggwNfKJZBUO+AdmnN4wsJEU9X6qEBfgnlcrOqCGMe/JErdAdxaknYLPBubRv+Eq0Aamm23Hvn1jpzR9BY69knDW9j392kG+sSp1SOPLxaRVRUeVZwaMe7LvLseS4V5Jl65YH3VuPdredvC7wWuX4GPO2vWKTDiHDFvdWGzM8MHuD6xnh2O0YPMJ4IrgIa1A4kqoU2viAe0JBdLaCPqU20oERZM3qUtTfnr74ewbn8kz2GhRPJDOgAPGxI6TYMx0s/QenJZqqq/zecGaKUu1DGEklwdN57k6Sc22lnC25S9afE9X3msJTQmlSw/n0fHVZLkeDdzB6pNB0tKteVOjUDKyaL2zfoToYKToQCBOu3SmdWmkO8BnMx8se2t9OXvalokSr6NLbWuCcVH815fpZntmsxu4IweYsPgxud6+va/QeyvrzeHZ6BEdZv8o3MXJIkARrZW/f2QxquJoMYY+hHFU1ysIHGlPvKLZ1xDpmo7mYYfrKY1PgePSu8du7s1opaAMa9kmzlD6g8eOqQ7qOWUCVGYLVuxoiLaUItXtbvAfnqOR+Jd6PVuMirGmRGyyAHtX9dmbl4aXzkOgKl5wq7yD9lMtd1RIpVqfjadOIDCT7LXjH4/r4HwLJe/QyYslGYxC7H8b1vC/te/6JHxJxwSjaz//miA6NXmSGMosPj1FWAZXLlitCD/XpRAvDhciEyPCeeBdhYbewDepopGUVw+vTMQNrnFX2dE5HpDOmXSt0xSfR82Wp5dlKx73RVMn+8e29qu7BW96dADb/O8MVlv4/RqA4WRVpkER6Nn22HmUfURyi46Ww7Ty/Sog/ca/aw81f2+E+xaCXcUYrytAzMncorI34IuhlgCVunwVFlBYZDB+1I8C3b9IOIjNq0fxSvdG72I392jucrEiXkbf3oMYw1MenFa/XY50+PjcpIxDjZRfZVh18hOYobKa9pLA/fnMLwM7Ce2b5S89+DPgs/vr62xafE37w5GUtwuZssDtN0izSgTifAdmH5DMygkCFEVNUP5bON+zdu4XPB5ONrvQ6Ly0WlnqnBRDdICda3UJhc7DbevvLfHwZGtqH6Gj2E/MtzJZGpKYNKZaPXMqLK+KB1XCRpWYjBmuae47Npc7OInq0CoVomz5k3+dUVV89Jjend5f2YuKjKfnroQzofmj7MdBdtVJagIrPFZHE/9g+RgB"
+						}
+					],
+					"container": null,
+					"stop_reason": "end_turn",
+					"stop_sequence": null,
+					"stop_details": null,
+					"usage": {
+						"input_tokens": 4,
+						"cache_creation_input_tokens": 810,
+						"cache_read_input_tokens": 538784,
+						"output_tokens": 250,
+						"output_tokens_details": {
+							"thinking_tokens": 51
+						},
+						"server_tool_use": {
+							"web_search_requests": 0,
+							"web_fetch_requests": 0
+						},
+						"service_tier": "standard",
+						"cache_creation": {
+							"ephemeral_1h_input_tokens": 810,
+							"ephemeral_5m_input_tokens": 0
+						},
+						"inference_geo": "not_available",
+						"iterations": [
+							{
+								"input_tokens": 4,
+								"output_tokens": 250,
+								"cache_read_input_tokens": 538784,
+								"cache_creation_input_tokens": 810,
+								"cache_creation": {
+									"ephemeral_5m_input_tokens": 0,
+									"ephemeral_1h_input_tokens": 810
+								},
+								"type": "message"
+							}
+						],
+						"speed": "standard"
+					},
+					"input_transformations": [],
+					"diagnostics": null,
+					"context_management": null
+				},
+				"apiBlockIndex": 0,
+				"requestId": "req_011CfDnnubVg3LWJ9ByK1zmj",
+				"type": "assistant",
+				"uuid": "058b7a57-482e-48a7-a29d-93de8cbe869d",
+				"timestamp": "2026-09-20T01:03:05.424Z",
+				"advisorModel": "claude-fable-5-1",
+				"effort": "high",
+				"perTurnEffort": "high",
+				"session_id": "5f402159-8a8e-4739-a223-a78c5ab99098",
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/projects/mnemonica-playdate",
+				"sessionId": "5f402159-8a8e-4739-a223-a78c5ab99098",
+				"version": "2.1.276",
+				"gitBranch": "main",
+				"slug": "purring-watching-hollerith"
+			},
+			{
+				"parentUuid": "058b7a57-482e-48a7-a29d-93de8cbe869d",
+				"isSidechain": false,
+				"message": {
+					"model": "claude-fable-5-1",
+					"id": "msg_011CfDnnvwrkoej7LaW24hTP",
+					"type": "message",
+					"role": "assistant",
+					"content": [
+						{
+							"type": "text",
+							"text": "That notification only confirms that the commit agent has finished. I already gave you its report, and nothing else is running.\n\nNothing has changed since my last message. The input-debug tooling is in `97e74c2`, and the Up problem is not fixed. I'm waiting on the `U`, `moves` and `c` readings from the INPUT DEBUG build on your Playdate.\n\n📌 You asked: on the main menu, Down always moves but Up only sometimes does — is Up simulating the crank and only going a partial angle?\n🔗 [Playdate Simulator manual](https://help.play.date/manual/simulator/)"
+						}
+					],
+					"container": null,
+					"stop_reason": "end_turn",
+					"stop_sequence": null,
+					"stop_details": null,
+					"usage": {
+						"input_tokens": 4,
+						"cache_creation_input_tokens": 810,
+						"cache_read_input_tokens": 538784,
+						"output_tokens": 250,
+						"output_tokens_details": {
+							"thinking_tokens": 51
+						},
+						"server_tool_use": {
+							"web_search_requests": 0,
+							"web_fetch_requests": 0
+						},
+						"service_tier": "standard",
+						"cache_creation": {
+							"ephemeral_1h_input_tokens": 810,
+							"ephemeral_5m_input_tokens": 0
+						},
+						"inference_geo": "not_available",
+						"iterations": [
+							{
+								"input_tokens": 4,
+								"output_tokens": 250,
+								"cache_read_input_tokens": 538784,
+								"cache_creation_input_tokens": 810,
+								"cache_creation": {
+									"ephemeral_5m_input_tokens": 0,
+									"ephemeral_1h_input_tokens": 810
+								},
+								"type": "message"
+							}
+						],
+						"speed": "standard"
+					},
+					"input_transformations": [],
+					"diagnostics": null,
+					"context_management": null
+				},
+				"apiBlockIndex": 1,
+				"requestId": "req_011CfDnnubVg3LWJ9ByK1zmj",
+				"type": "assistant",
+				"uuid": "cdad6f2e-7947-4b3c-ba28-fe344c7cd1e4",
+				"timestamp": "2026-09-20T01:03:07.239Z",
+				"advisorModel": "claude-fable-5-1",
+				"effort": "high",
+				"perTurnEffort": "high",
+				"session_id": "5f402159-8a8e-4739-a223-a78c5ab99098",
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/projects/mnemonica-playdate",
+				"sessionId": "5f402159-8a8e-4739-a223-a78c5ab99098",
+				"version": "2.1.276",
+				"gitBranch": "main",
+				"slug": "purring-watching-hollerith"
+			}
+		]
+	},
+	{
+		"session": "5f402159",
+		"line": 2172,
+		"upstream": ["prose", "status: Committed crank sensitivity change · took 27s", "prose"],
+		"records": [
+			{
+				"parentUuid": "f8cdd569-9af4-4a8b-921f-6622a28bc06c",
+				"isSidechain": false,
+				"message": {
+					"model": "claude-fable-5-1",
+					"id": "msg_011CfKb4XFekYGT1RDKBAwYa",
+					"type": "message",
+					"role": "assistant",
+					"content": [
+						{
+							"type": "text",
+							"text": "The crank change is committed as `43f7ab2`. The working tree is clean, `main` is 23 commits ahead of `origin/main`, and nothing has been pushed.\n\nTo get it onto the Playdate: `just run`, then Device → Upload Game to Device in the Simulator.\n\nStill open from earlier:\n- The Up-button test on the device. Say go when the Mnemonica menu is on the Playdate and it's plugged in, and I'll record while you press Up five times.\n- Whether Simon's input screen should stop revealing half of each fact.\n\n📌 You asked: the crank is too sensitive in the modes that scroll through all the cards.\n🔗 [Playdate Simulator manual](https://help.play.date/manual/simulator/)"
+						}
+					],
+					"container": null,
+					"stop_reason": "end_turn",
+					"stop_sequence": null,
+					"stop_details": null,
+					"usage": {
+						"input_tokens": 4,
+						"cache_creation_input_tokens": 1190,
+						"cache_read_input_tokens": 497976,
+						"output_tokens": 243,
+						"output_tokens_details": {
+							"thinking_tokens": 0
+						},
+						"server_tool_use": {
+							"web_search_requests": 0,
+							"web_fetch_requests": 0
+						},
+						"service_tier": "standard",
+						"cache_creation": {
+							"ephemeral_1h_input_tokens": 1190,
+							"ephemeral_5m_input_tokens": 0
+						},
+						"inference_geo": "not_available",
+						"iterations": [
+							{
+								"input_tokens": 4,
+								"output_tokens": 243,
+								"cache_read_input_tokens": 497976,
+								"cache_creation_input_tokens": 1190,
+								"cache_creation": {
+									"ephemeral_5m_input_tokens": 0,
+									"ephemeral_1h_input_tokens": 1190
+								},
+								"type": "message"
+							}
+						],
+						"speed": "standard"
+					},
+					"input_transformations": [
+						{
+							"type": "thinking_dropped",
+							"path": "messages.2.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.7.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.12.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.14.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.19.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.21.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.24.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.26.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.29.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.32.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.35.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.39.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.42.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.44.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.50.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.50.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.58.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.62.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.64.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.66.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.68.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.71.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.76.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.81.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.83.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.90.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.92.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.94.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.104.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.108.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.111.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.111.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.116.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.119.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.124.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.126.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.129.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.132.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.138.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.141.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.144.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.147.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.150.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.155.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.158.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.161.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.164.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.169.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.171.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.177.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.180.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.182.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.188.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.191.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.194.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.197.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.200.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.203.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.208.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.215.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.215.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.218.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.220.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.223.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.225.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.228.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.231.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.233.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.236.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.238.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.241.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.243.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.246.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.249.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.252.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.258.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.261.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.264.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.266.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.270.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.273.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.276.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.278.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.281.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.281.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.284.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.288.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.293.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.295.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.298.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.300.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.304.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.313.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.315.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.320.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.323.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.330.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.330.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.333.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.333.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.335.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.340.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.343.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.352.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.355.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.358.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.360.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.362.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.365.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.368.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.377.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.380.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.380.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.382.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.382.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.388.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.388.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.391.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.393.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.396.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.400.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.402.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.409.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.409.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.413.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.416.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.419.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.422.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.425.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.429.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.429.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.437.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.440.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.445.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.448.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.450.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.460.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.465.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.467.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.469.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.474.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.477.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.479.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.487.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.490.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.495.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.498.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.498.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.501.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.503.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.510.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.512.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.515.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.518.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.524.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.524.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.527.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.527.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.530.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.533.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.535.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.539.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.542.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.545.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.545.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.559.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.561.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.565.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.568.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.568.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.570.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.572.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.575.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.579.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.581.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.584.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.587.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.589.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.589.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.592.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.594.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.594.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.596.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.596.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.599.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.606.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.608.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.611.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.611.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.613.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.616.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.619.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.622.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.625.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.625.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.630.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.630.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.633.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.636.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.636.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.641.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.641.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.646.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.649.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.652.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.652.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.655.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.658.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.658.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.660.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.662.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.665.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.668.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.668.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.670.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.677.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.682.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.685.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.685.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.687.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.687.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.690.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.690.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.694.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.697.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.700.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.700.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.703.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.703.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.707.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.707.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.709.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.711.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.713.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.713.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.715.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.715.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.724.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.726.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.729.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.729.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.732.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.734.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.734.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.737.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.737.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.740.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.740.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.743.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.743.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.745.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.745.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.751.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.756.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.759.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.765.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.768.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.768.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.770.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.772.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.778.content.0",
+							"reason": "model_binding_mismatch"
+						}
+					],
+					"diagnostics": null,
+					"context_management": null
+				},
+				"apiBlockIndex": 0,
+				"requestId": "req_011CfKb4W6Cj6GyVJgoHosqJ",
+				"type": "assistant",
+				"uuid": "1c236189-845c-4b04-9ca1-49dbdec02634",
+				"timestamp": "2026-09-23T02:32:50.493Z",
+				"advisorModel": "claude-fable-5-1",
+				"effort": "high",
+				"perTurnEffort": "high",
+				"session_id": "5f402159-8a8e-4739-a223-a78c5ab99098",
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/projects/mnemonica-playdate",
+				"sessionId": "5f402159-8a8e-4739-a223-a78c5ab99098",
+				"version": "2.1.276",
+				"gitBranch": "main",
+				"slug": "purring-watching-hollerith"
+			},
+			{
+				"type": "last-prompt",
+				"lastPrompt": "the crank is a little too sensitive in the modes where it scrolls through all the cards",
+				"leafUuid": "1c236189-845c-4b04-9ca1-49dbdec02634",
+				"sessionId": "5f402159-8a8e-4739-a223-a78c5ab99098"
+			},
+			{
+				"type": "ai-title",
+				"aiTitle": "mnemonica-playdate-revival",
+				"sessionId": "5f402159-8a8e-4739-a223-a78c5ab99098"
+			},
+			{
+				"type": "agent-name",
+				"agentName": "mnemonica-playdate-revival",
+				"sessionId": "5f402159-8a8e-4739-a223-a78c5ab99098"
+			},
+			{
+				"type": "mode",
+				"mode": "normal",
+				"sessionId": "5f402159-8a8e-4739-a223-a78c5ab99098"
+			},
+			{
+				"type": "permission-mode",
+				"permissionMode": "auto",
+				"sessionId": "5f402159-8a8e-4739-a223-a78c5ab99098"
+			},
+			{
+				"type": "atis-latch",
+				"atis": "v1.f775a7368a120dff.6ZDn12f9JCA9-YO4.8e9298b0.g-stI7Y75VhfuJ6noxUFOKQxy44YLtkqm0gh4A5l-oEdD-c1Yca3MO0B8b7jdNVr_MEeljs18Qj2-t6kBO4T8K-uhEjzrBJwNUeGm1UH-mf-IVcbSC1HpBe8HDkepWdG69yCDAl5Dh6eaREfNzjn0CTARU2D1o_Tmp6K",
+				"sessionId": "5f402159-8a8e-4739-a223-a78c5ab99098"
+			},
+			{
+				"type": "bridge-session",
+				"sessionId": "5f402159-8a8e-4739-a223-a78c5ab99098",
+				"bridgeSessionId": "cse_01G4WKaZdGYxubx6zRPSXyC2",
+				"lastSequenceNum": 0,
+				"ownerAccountUuid": "c670e62b-9156-4d44-a650-7515b852d017",
+				"ownerOrganizationUuid": "4159b3e8-fd8c-46b6-a721-a1bac29b4e06"
+			},
+			{
+				"type": "queue-operation",
+				"operation": "dequeue",
+				"timestamp": "2026-09-23T02:32:50.719Z",
+				"sessionId": "5f402159-8a8e-4739-a223-a78c5ab99098"
+			},
+			{
+				"parentUuid": "1c236189-845c-4b04-9ca1-49dbdec02634",
+				"isSidechain": false,
+				"attachment": {
+					"type": "hook_success",
+					"hookName": "Stop",
+					"toolUseID": "df0f2235-0210-4073-99d5-9da5fbed0729",
+					"hookEvent": "Stop",
+					"content": "",
+					"stdout": "",
+					"stderr": " No git test results found for HEAD.\n",
+					"exitCode": 0,
+					"command": "if [ -n \"${CLAUDE_PLUGIN_ROOT:-}\" ]; then \"${CLAUDE_PLUGIN_ROOT}/scripts/check-test-results.sh\"; fi",
+					"durationMs": 198
+				},
+				"type": "attachment",
+				"uuid": "ec3069ec-1e28-48ff-95fd-7dfe86fad0da",
+				"timestamp": "2026-09-23T02:32:50.712Z",
+				"session_id": "5f402159-8a8e-4739-a223-a78c5ab99098",
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/projects/mnemonica-playdate",
+				"sessionId": "5f402159-8a8e-4739-a223-a78c5ab99098",
+				"version": "2.1.276",
+				"gitBranch": "main",
+				"slug": "purring-watching-hollerith"
+			},
+			{
+				"parentUuid": "ec3069ec-1e28-48ff-95fd-7dfe86fad0da",
+				"isSidechain": false,
+				"type": "system",
+				"subtype": "stop_hook_summary",
+				"hookCount": 6,
+				"hookInfos": [
+					{
+						"command": "if [ -n \"${CLAUDE_PLUGIN_ROOT:-}\" ]; then \"${CLAUDE_PLUGIN_ROOT}/scripts/check-test-results.sh\"; fi",
+						"durationMs": 198
+					},
+					{
+						"command": "${CLAUDE_PLUGIN_ROOT}/scripts/post-hook.sh Stop",
+						"durationMs": 29
+					},
+					{
+						"command": "if [ -n \"${CLAUDE_PLUGIN_ROOT:-}\" ]; then \"${CLAUDE_PLUGIN_ROOT}/scripts/check-dirty-tree.sh\"; fi",
+						"durationMs": 75
+					},
+					{
+						"command": "${CLAUDE_PLUGIN_ROOT}/scripts/rename-herdr-tab.sh",
+						"durationMs": 66
+					},
+					{
+						"command": "${CLAUDE_PLUGIN_ROOT}/scripts/recap-guard.sh",
+						"durationMs": 33
+					},
+					{
+						"command": "${CLAUDE_PLUGIN_ROOT}/scripts/stop-phrase-guard.sh",
+						"durationMs": 105
+					}
+				],
+				"hookErrors": [],
+				"hookAdditionalContext": [],
+				"preventedContinuation": false,
+				"stopReason": "",
+				"hasOutput": true,
+				"level": "suggestion",
+				"timestamp": "2026-09-23T02:32:50.713Z",
+				"uuid": "2d9bd027-9dd3-47df-a8ad-38c57266c2c5",
+				"toolUseID": "df0f2235-0210-4073-99d5-9da5fbed0729",
+				"session_id": "5f402159-8a8e-4739-a223-a78c5ab99098",
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/projects/mnemonica-playdate",
+				"sessionId": "5f402159-8a8e-4739-a223-a78c5ab99098",
+				"version": "2.1.276",
+				"gitBranch": "main",
+				"slug": "purring-watching-hollerith"
+			},
+			{
+				"parentUuid": "2d9bd027-9dd3-47df-a8ad-38c57266c2c5",
+				"isSidechain": false,
+				"promptId": "6d8157fe-54b1-453c-a73e-12d6b4c97ddc",
+				"type": "user",
+				"message": {
+					"role": "user",
+					"content": "<task-notification>\n<task-id>a3a90bfc1e5efa4fd</task-id>\n<tool-use-id>toolu_01LFK4v35rerAvkAcjJTyib9</tool-use-id>\n<output-file>/private/tmp/claude-501/-Users-craig-projects-mnemonica-playdate/5f402159-8a8e-4739-a223-a78c5ab99098/tasks/a3a90bfc1e5efa4fd.output</output-file>\n<status>completed</status>\n<summary>Agent \"Commit crank sensitivity change\" finished</summary>\n<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>\n<result>This agent's report was delivered to you as a message from \"a3a90bfc1e5efa4fd\" (its SubagentHandback call). Read it there; it is not repeated here.\n</result>\n<usage><subagent_tokens>65394</subagent_tokens><tool_uses>4</tool_uses><duration_ms>26738</duration_ms></usage>\n</task-notification>"
+				},
+				"uuid": "ed038b74-5d48-4f67-a8e3-877d462aaf00",
+				"timestamp": "2026-09-23T02:32:50.722Z",
+				"permissionMode": "auto",
+				"origin": {
+					"kind": "task-notification"
+				},
+				"promptSource": "system",
+				"queueSkipAttachments": true,
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/projects/mnemonica-playdate",
+				"sessionId": "5f402159-8a8e-4739-a223-a78c5ab99098",
+				"version": "2.1.276",
+				"gitBranch": "main",
+				"slug": "purring-watching-hollerith"
+			},
+			{
+				"parentUuid": "ed038b74-5d48-4f67-a8e3-877d462aaf00",
+				"isSidechain": false,
+				"message": {
+					"model": "claude-fable-5-1",
+					"id": "msg_011CfKb4rrsoBDKsgJZ5XFiY",
+					"type": "message",
+					"role": "assistant",
+					"content": [
+						{
+							"type": "text",
+							"text": "That notification only confirms the commit agent finished; I already reported its result. Nothing has changed: the crank change is in `43f7ab2`, the tree is clean, nothing is pushed.\n\n📌 You asked: the crank is too sensitive in the modes that scroll through all the cards.\n🔗 [Playdate Simulator manual](https://help.play.date/manual/simulator/)"
+						}
+					],
+					"container": null,
+					"stop_reason": "end_turn",
+					"stop_sequence": null,
+					"stop_details": null,
+					"usage": {
+						"input_tokens": 4,
+						"cache_creation_input_tokens": 794,
+						"cache_read_input_tokens": 499166,
+						"output_tokens": 126,
+						"output_tokens_details": {
+							"thinking_tokens": 0
+						},
+						"server_tool_use": {
+							"web_search_requests": 0,
+							"web_fetch_requests": 0
+						},
+						"service_tier": "standard",
+						"cache_creation": {
+							"ephemeral_1h_input_tokens": 794,
+							"ephemeral_5m_input_tokens": 0
+						},
+						"inference_geo": "not_available",
+						"iterations": [
+							{
+								"input_tokens": 4,
+								"output_tokens": 126,
+								"cache_read_input_tokens": 499166,
+								"cache_creation_input_tokens": 794,
+								"cache_creation": {
+									"ephemeral_5m_input_tokens": 0,
+									"ephemeral_1h_input_tokens": 794
+								},
+								"type": "message"
+							}
+						],
+						"speed": "standard"
+					},
+					"input_transformations": [
+						{
+							"type": "thinking_dropped",
+							"path": "messages.2.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.7.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.12.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.14.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.19.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.21.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.24.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.26.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.29.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.32.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.35.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.39.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.42.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.44.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.50.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.50.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.58.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.62.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.64.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.66.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.68.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.71.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.76.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.81.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.83.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.90.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.92.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.94.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.104.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.108.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.111.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.111.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.116.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.119.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.124.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.126.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.129.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.132.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.138.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.141.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.144.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.147.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.150.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.155.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.158.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.161.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.164.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.169.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.171.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.177.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.180.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.182.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.188.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.191.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.194.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.197.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.200.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.203.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.208.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.215.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.215.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.218.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.220.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.223.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.225.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.228.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.231.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.233.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.236.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.238.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.241.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.243.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.246.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.249.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.252.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.258.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.261.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.264.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.266.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.270.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.273.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.276.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.278.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.281.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.281.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.284.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.288.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.293.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.295.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.298.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.300.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.304.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.313.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.315.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.320.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.323.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.330.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.330.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.333.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.333.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.335.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.340.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.343.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.352.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.355.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.358.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.360.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.362.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.365.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.368.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.377.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.380.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.380.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.382.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.382.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.388.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.388.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.391.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.393.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.396.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.400.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.402.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.409.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.409.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.413.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.416.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.419.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.422.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.425.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.429.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.429.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.437.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.440.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.445.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.448.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.450.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.460.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.465.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.467.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.469.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.474.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.477.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.479.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.487.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.490.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.495.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.498.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.498.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.501.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.503.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.510.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.512.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.515.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.518.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.524.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.524.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.527.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.527.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.530.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.533.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.535.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.539.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.542.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.545.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.545.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.559.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.561.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.565.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.568.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.568.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.570.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.572.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.575.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.579.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.581.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.584.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.587.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.589.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.589.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.592.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.594.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.594.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.596.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.596.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.599.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.606.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.608.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.611.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.611.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.613.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.616.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.619.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.622.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.625.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.625.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.630.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.630.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.633.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.636.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.636.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.641.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.641.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.646.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.649.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.652.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.652.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.655.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.658.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.658.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.660.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.662.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.665.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.668.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.668.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.670.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.677.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.682.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.685.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.685.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.687.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.687.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.690.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.690.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.694.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.697.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.700.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.700.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.703.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.703.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.707.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.707.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.709.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.711.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.713.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.713.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.715.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.715.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.724.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.726.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.729.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.729.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.732.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.734.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.734.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.737.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.737.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.740.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.740.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.743.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.743.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.745.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.745.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.751.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.756.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.759.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.765.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.768.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.768.content.1",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.770.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.772.content.0",
+							"reason": "model_binding_mismatch"
+						},
+						{
+							"type": "thinking_dropped",
+							"path": "messages.778.content.0",
+							"reason": "model_binding_mismatch"
+						}
+					],
+					"diagnostics": null,
+					"context_management": null
+				},
+				"apiBlockIndex": 0,
+				"requestId": "req_011CfKb4q8w2X3hZQ3BfXJBA",
+				"type": "assistant",
+				"uuid": "1f1e4151-40bc-4d70-a43c-aa3b4807980e",
+				"timestamp": "2026-09-23T02:32:53.888Z",
+				"advisorModel": "claude-fable-5-1",
+				"effort": "high",
+				"perTurnEffort": "high",
+				"session_id": "5f402159-8a8e-4739-a223-a78c5ab99098",
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/projects/mnemonica-playdate",
+				"sessionId": "5f402159-8a8e-4739-a223-a78c5ab99098",
+				"version": "2.1.276",
+				"gitBranch": "main",
+				"slug": "purring-watching-hollerith"
+			}
+		]
 	}
 ]

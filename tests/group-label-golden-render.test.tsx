@@ -389,3 +389,35 @@ describe("background task stopped row", () => {
 		]);
 	});
 });
+
+describe("agent completion row", () => {
+	it("draws 5f402159:2172 inside the reply's span as upstream: a plain secondary row with no bubble or disclosure, 16px under the prose, the span's actions after the next prose", () => {
+		const specimen = (rowSpecimens as RowSpecimen[]).find(
+			(candidate) => candidate.session === "5f402159" && candidate.line === 2172,
+		)!;
+		const rows = Array.from(renderRecords(specimen.records).querySelectorAll("[data-testid=transcript-row]"));
+		expect(
+			rows.map((row) => ({
+				status: row.querySelector("[data-turn-status]")?.textContent ?? null,
+				secondary: Array.from(row.querySelectorAll("[data-turn-status-marker] > span"), (span) =>
+					span.classList.contains("text-secondary"),
+				),
+				precedesStatus: row.querySelector(":scope > [data-precedes-turn-status]") !== null,
+				footer: row.querySelector("[data-assistant-span-footer]") !== null,
+				disclosures: row.querySelectorAll("[data-turn-status] [aria-expanded], [data-turn-status] svg").length,
+				bubble: row.querySelector(".user-message-bubble") !== null,
+			})),
+		).toStrictEqual([
+			{status: null, secondary: [], precedesStatus: true, footer: false, disclosures: 0, bubble: false},
+			{
+				status: "Committed crank sensitivity change · took 27s",
+				secondary: [true, true],
+				precedesStatus: false,
+				footer: false,
+				disclosures: 0,
+				bubble: false,
+			},
+			{status: null, secondary: [], precedesStatus: false, footer: true, disclosures: 0, bubble: false},
+		]);
+	});
+});
