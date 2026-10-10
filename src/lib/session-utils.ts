@@ -679,12 +679,19 @@ function buildSummarySegments(
 	}
 
 	// Upstream folds background completions in last: "Ran a command, finished
-	// a background command", "Used a tool, finished a background task (1 stopped)".
+	// a background command", "Used a tool, finished a background task (1 stopped)",
+	// but leads with them when one failed: "Finished a background command (1 failed),
+	// ran a command". A group mixing failed and stopped completions is unobserved.
 	if (completions.length > 0) {
 		const noun = completions.every((completion) => completion.command) ? "command" : "task";
 		const stopped = completions.filter((completion) => completion.status === "stopped").length;
+		const failedCompletions = completions.filter((completion) => completion.status === "failed").length;
 		const rest = pluralize(completions.length, `a background ${noun}`, `{n} background ${noun}s`);
-		segments.push({verb: "Finished", rest: stopped > 0 ? `${rest} (${stopped} stopped)` : rest});
+		if (failedCompletions > 0) {
+			segments.unshift({verb: "Finished", rest: `${rest} (${failedCompletions} failed)`});
+		} else {
+			segments.push({verb: "Finished", rest: stopped > 0 ? `${rest} (${stopped} stopped)` : rest});
+		}
 	}
 
 	// Upstream capitalizes only the leading verb: "Ran 2 commands, read cache.ts".

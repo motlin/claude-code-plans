@@ -173,6 +173,30 @@ describe("summarizeToolCallStats with background completions", () => {
 		]);
 	});
 
+	it('leads with a failed completion: "Finished a background command (1 failed), ran a command"', () => {
+		const stats = summarizeToolCallStats(
+			[{name: "Bash", input: {command: "dig neighbors.motlin.com"}}],
+			[{command: true, status: "failed"}],
+		);
+
+		expect({segments: stats.segments, failed: stats.failed}).toStrictEqual({
+			segments: [
+				{verb: "Finished", rest: "a background command (1 failed)"},
+				{verb: "ran", rest: "a command"},
+			],
+			failed: 0,
+		});
+	});
+
+	it('leads with a failed task completion: "Finished a background task (1 failed), used Mystery"', () => {
+		expect(
+			summarizeToolCallStats([{name: "Mystery", input: {}}], [{command: false, status: "failed"}]).segments,
+		).toStrictEqual([
+			{verb: "Finished", rest: "a background task (1 failed)"},
+			{verb: "used Mystery", rest: ""},
+		]);
+	});
+
 	it("counts several stopped commands", () => {
 		expect(
 			summarizeToolCallStats(
@@ -218,6 +242,13 @@ describe("task notifications in the transcript", () => {
 		const toggle = summaryButton(container, "Ran a command, finished a background command (1 stopped)");
 		fireEvent.click(toggle);
 		expect(within(container).queryByText("Background task stopped · Run the test suite")).not.toBeNull();
+	});
+
+	it("leads the group label with a failed background command", () => {
+		const container = renderLines(
+			records(notification("failed", 'Background command "Run the test suite" failed with exit code 7')),
+		);
+		expect(summaryButton(container, "Finished a background command (1 failed), ran a command")).not.toBeNull();
 	});
 
 	it("keeps the raw notification as its own turn in Verbose", () => {
