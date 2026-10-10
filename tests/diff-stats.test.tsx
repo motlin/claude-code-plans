@@ -61,10 +61,13 @@ describe("DiffStats", () => {
 		});
 	});
 
-	it("omits the removed count when nothing was removed", () => {
+	it('keeps a zero removed count, as upstream reads a created file "+42 -0"', () => {
 		const {container} = render(<DiffStats added={42} removed={0} />);
 
-		expect(statsMarkup(container).parts).toStrictEqual([{className: "text-extended-green", text: "+42"}]);
+		expect(statsMarkup(container).parts).toStrictEqual([
+			{className: "text-extended-green", text: "+42"},
+			{className: "text-extended-pink", text: "-0"},
+		]);
 	});
 
 	it("renders nothing when there is no change", () => {

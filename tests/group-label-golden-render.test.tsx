@@ -116,11 +116,17 @@ interface RowSpecimen {
 	records: unknown[];
 }
 
+/** A row label part's text, with a diff stat's counts spaced as they read: "+59 -0". */
+function spanText(span: Element): string {
+	const counts = Array.from(span.querySelectorAll("[class*='text-extended-']"), (count) => count.textContent);
+	return counts.length > 0 ? counts.join(" ") : (span.textContent ?? "");
+}
+
 function statusText(status: Element): string {
 	const groupLabel = status.querySelector(":scope > button > span:first-child");
 	if (groupLabel !== null) return `status: ${groupLabel.textContent}`;
 	const rowLabel = status.querySelector(":scope > [role=button]");
-	const parts = Array.from(rowLabel?.children ?? [], (span) => span.textContent).filter((text) => text !== "");
+	const parts = Array.from(rowLabel?.children ?? [], spanText).filter((text) => text !== "");
 	return `status: ${parts.join(" ")}`;
 }
 

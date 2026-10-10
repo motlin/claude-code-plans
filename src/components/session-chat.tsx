@@ -33,7 +33,6 @@ import {useClaudeEvents} from "../hooks/use-claude-events";
 import {ChevronIcon, CollapsibleSection, CopyButton, DiffStats, TerminalOutput} from "./tool-renderers/shared";
 import {SystemBanner} from "./system-banner";
 import {ArtifactLinkBanner, ArtifactWatchBanner} from "./artifact-banner";
-import {computeDiffData} from "../lib/diff-utils";
 import {DebugLink} from "./debug-link";
 import {type TranscriptMessageRef, TranscriptMessageMenu} from "./transcript-context-menu";
 import {AssistantMessageActions, UserMessageActions} from "./message-actions";
@@ -55,7 +54,7 @@ import {
 	parseBashOutput,
 	hasDiffStats,
 	summarizeToolCallStats,
-	editDiffEntries,
+	diffStatsForCall,
 	isRequestInterrupted,
 } from "../lib/session-utils";
 import type {SummarySegment} from "../lib/session-utils";
@@ -3415,29 +3414,19 @@ function rendersEmptyBody(call: ClientToolCall): boolean {
 	return !inputKeys.some((key) => call.input[key] !== undefined);
 }
 
-/**
- * Tools that show inline diff stats (+N -M) in the clickable row.
- */
-const EDIT_TOOLS = new Set(["Edit", "MultiEdit"]);
+/** Tools that show inline diff stats (+N -M) in the clickable row. */
+const DIFF_STAT_TOOLS = new Set(["Edit", "MultiEdit", "Write"]);
 
 /**
- * Compute diff stats from an Edit tool call's old_string / new_string input.
+ * A row's diff stat, counted as the group header counts it. Upstream draws none
+ * on a call that failed, since it changed nothing, nor on one that changed no lines.
  */
-/** Upstream draws no diff stat on an edit that failed, since it changed nothing. */
 function useEditDiffStats(call: ClientToolCall): {added: number; removed: number} | null {
 	return useMemo(() => {
-		if (!EDIT_TOOLS.has(call.name) || call.isError === true) return null;
-		const entries = editDiffEntries(call.input);
-		if (entries.length === 0) return null;
-		let added = 0;
-		let removed = 0;
-		for (const entry of entries) {
-			const data = computeDiffData(entry.oldStr, entry.newStr);
-			added += data.added;
-			removed += data.removed;
-		}
-		return {added, removed};
-	}, [call.name, call.input, call.isError]);
+		if (!DIFF_STAT_TOOLS.has(call.name) || call.isError === true) return null;
+		const stats = diffStatsForCall(call);
+		return stats.added === 0 && stats.removed === 0 ? null : stats;
+	}, [call]);
 }
 
 /** A call whose tool_result has not arrived yet. */

@@ -328,8 +328,8 @@ export function DiffStats({added, removed}: {added: number; removed: number}) {
 	return (
 		<span className="inline-flex">
 			<span className="flex gap-g1 items-center text-body tabular-nums shrink-0">
-				{added > 0 && <span className="text-extended-green">+{added}</span>}
-				{removed > 0 && <span className="text-extended-pink">-{removed}</span>}
+				<span className="text-extended-green">+{added}</span>
+				<span className="text-extended-pink">-{removed}</span>
 			</span>
 		</span>
 	);

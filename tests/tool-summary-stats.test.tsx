@@ -219,6 +219,41 @@ describe("failed edits in diff stats", () => {
 			stats: Array.from(row.querySelectorAll("[class*='text-diff-']"), (span) => span.textContent),
 		}).toStrictEqual({text: "Editeda.tsxFailed", stats: []});
 	});
+
+	function lonePathRow(call: FakeCall): {text: string | null; stats: (string | null)[]} {
+		const {lines: transcript, toolResultMap} = processTranscript(toolRunRecords([call]));
+		const {container} = render(
+			<SessionChat
+				sessionId="test-session"
+				lines={transcript}
+				toolResultMap={toolResultMap}
+				showTools
+				shouldScrollToEnd={false}
+			/>,
+		);
+		const row = container.querySelector<HTMLElement>("[data-tool-row]")!;
+		return {
+			text: row.textContent,
+			stats: Array.from(row.querySelectorAll("[class*='text-extended-']"), (span) => span.textContent),
+		};
+	}
+
+	it("counts a lone Write row's created lines as a group does", () => {
+		expect(
+			lonePathRow({id: "t-write", name: "Write", input: {file_path: "/repo/x.mjs", content: "a\nb\n"}}),
+		).toStrictEqual({text: "Createdx.mjs+2-0", stats: ["+2", "-0"]});
+	});
+
+	it("draws a failed Write row with no diff stat", () => {
+		expect(
+			lonePathRow({
+				id: "t-write",
+				name: "Write",
+				input: {file_path: "/repo/x.mjs", content: "a\nb\n"},
+				isError: true,
+			}),
+		).toStrictEqual({text: "Createdx.mjsFailed", stats: []});
+	});
 });
 
 describe("ToolCallSummary stats and ink", () => {
