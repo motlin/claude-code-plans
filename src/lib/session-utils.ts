@@ -215,8 +215,6 @@ type ToolCategory =
 	| "websearch"
 	| "agent"
 	| "bash"
-	| "recall"
-	| "memwrite"
 	| "toolsearch"
 	| "skill"
 	| "task"
@@ -236,12 +234,6 @@ type MutationCategory = keyof typeof MUTATION_VERBS;
 
 function isMutation(cat: ToolCategory): cat is MutationCategory {
 	return cat === "edit" || cat === "write";
-}
-
-function isMemoryPath(filePath: string): boolean {
-	if (!filePath.endsWith(".md")) return false;
-	if (!filePath.includes("/.claude/")) return false;
-	return /\/\.claude\/(?:memory\/|projects\/[^/]+\/memory\/)/.test(filePath);
 }
 
 function countDiffLines(oldStr: string, newStr: string): {added: number; removed: number} {
@@ -320,13 +312,8 @@ export function diffStatsForCall(call: ToolCallLike): {
 }
 
 function categorize(call: ToolCallLike): ToolCategory | null {
-	const filePath = typeof call.input["file_path"] === "string" ? (call.input["file_path"] as string) : "";
-	if (call.name === "Read") {
-		return isMemoryPath(filePath) ? "recall" : "read";
-	}
-	if (call.name === "Write") {
-		return isMemoryPath(filePath) ? "memwrite" : "write";
-	}
+	if (call.name === "Read") return "read";
+	if (call.name === "Write") return "write";
 	if (call.name === "Edit" || call.name === "MultiEdit") return "edit";
 	if (call.name === "Bash") return "bash";
 	if (call.name === "Grep") return "grep";
@@ -608,18 +595,6 @@ function buildSummarySegments(
 			case "bash":
 				bashSegment = {verb: "Ran", rest: pluralize(count, "a command", "{n} commands")};
 				segments.push(bashSegment);
-				break;
-			case "recall":
-				segments.push({
-					verb: "Recalled",
-					rest: pluralize(count, "a memory", "{n} memories"),
-				});
-				break;
-			case "memwrite":
-				segments.push({
-					verb: "Wrote",
-					rest: pluralize(count, "a memory", "{n} memories"),
-				});
 				break;
 			case "toolsearch":
 				segments.push({

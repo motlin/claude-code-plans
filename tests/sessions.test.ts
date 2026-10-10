@@ -377,29 +377,6 @@ describe("summarizeToolCalls", () => {
 		expect(summarizeToolCalls(calls)).toBe("edited 2 files +5 -3");
 	});
 
-	it("Write of a memory file is reported as wrote a memory", () => {
-		const calls = [
-			{
-				name: "Write",
-				input: {
-					file_path: "/Users/craig/.claude/projects/-Users-craig-projects-foo/memory/MEMORY.md",
-					content: "hello\n",
-				},
-			},
-		];
-		expect(summarizeToolCalls(calls)).toBe("wrote a memory");
-	});
-
-	it("Read of a memory file is reported as recalled a memory", () => {
-		const calls = [
-			{
-				name: "Read",
-				input: {file_path: "/Users/craig/.claude/memory/MEMORY.md"},
-			},
-		];
-		expect(summarizeToolCalls(calls)).toBe("recalled a memory");
-	});
-
 	it("single ToolSearch", () => {
 		expect(summarizeToolCalls([{name: "ToolSearch", input: {query: "select:Read"}}])).toBe("loaded a tool schema");
 	});
@@ -426,7 +403,7 @@ describe("summarizeToolCalls", () => {
 			})),
 			// 6 grep
 			...Array.from({length: 6}, () => ({name: "Grep", input: {}})),
-			// 8 reads (non-memory)
+			// 8 reads
 			...Array.from({length: 8}, (_, i) => ({
 				name: "Read",
 				input: {file_path: `/some/file${i}.ts`},
@@ -451,7 +428,7 @@ describe("summarizeToolCalls", () => {
 		];
 		// Edits: 9 files; per edit removed 3 added 5 -> totals +45 -27.
 		expect(summarizeToolCalls(calls)).toBe(
-			"edited 9 files, searched for 6 patterns, read 8 files, ran 4 commands, recalled a memory, wrote 4 memories, used CustomTool +45 -27",
+			"edited 9 files, searched for 6 patterns, read 9 files, ran 4 commands, created 4 files, used CustomTool +53 -27",
 		);
 	});
 });
