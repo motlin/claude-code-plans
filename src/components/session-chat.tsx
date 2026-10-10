@@ -867,12 +867,23 @@ function backgroundLaunchOutcomes(lines: readonly SessionLine[]): ReadonlyMap<st
 	return outcomes;
 }
 
-/** Upstream's static group sub-row: "Background task stopped · <description>". */
+/**
+ * Upstream's static group sub-row: a muted "Background command" (or "task"), the
+ * description in primary ink, and a danger "Failed" or secondary "Stopped" when
+ * the task did not complete.
+ */
 function BackgroundNoticeRow({notice}: {notice: BackgroundNotice}) {
-	const {status, description} = notice.notification;
+	const {status, description, command} = notice.notification;
 	return (
-		<div data-record-index={notice.lineIndex} className="text-body text-secondary min-w-0 truncate">
-			{description === "" ? `Background task ${status}` : `Background task ${status} · ${description}`}
+		<div
+			data-record-index={notice.lineIndex}
+			data-background-notice=""
+			className="flex min-w-0 items-center gap-1.5 text-body"
+		>
+			<span className="shrink-0 text-ink-muted">{command ? "Background command" : "Background task"}</span>
+			{description !== "" && <span className="truncate min-w-0 text-primary">{description}</span>}
+			{status === "failed" && <span className="shrink-0 text-danger-ink">Failed</span>}
+			{status === "stopped" && <span className="shrink-0 text-secondary">Stopped</span>}
 		</div>
 	);
 }
@@ -3527,6 +3538,8 @@ function ToolCallSummary({
 	// progressive label instead of the tally.
 	const pendingCall = displayCalls.filter(isPendingToolCall).at(-1);
 	const runningText = pendingCall === undefined ? null : runningToolLabelText(runningToolLabel(pendingCall));
+	const failedNotices = notices.filter((notice) => notice.notification.status === "failed");
+	const settledNotices = notices.filter((notice) => notice.notification.status !== "failed");
 	// Upstream draws the grouped header in one 24px padded row whether it completed, failed, or is still running.
 	const summaryLayout = hasTasksView ? "self-start py-0" : "min-w-0 self-stretch me-[52px] px-1 py-0.5";
 	// Collapsed rows recede to muted ink and lift to secondary on hover; an open
@@ -3583,10 +3596,14 @@ function ToolCallSummary({
                   per-child padding inside one outlined card, not with gaps
                   between rows floating on a tinted panel. */}
 							<div className="flex flex-col card-outline rounded-r6 overflow-clip mt-p6 divide-y [&>*]:px-p7 [&>*]:py-p6">
+								{/* Upstream lists failed completions first, as the group label leads with them. */}
+								{failedNotices.map((notice) => (
+									<BackgroundNoticeRow key={`notice-${notice.lineIndex}`} notice={notice} />
+								))}
 								{displayCalls.map((call, i) => (
 									<ToolCallRow key={i} call={call} sessionId={sessionId} nested />
 								))}
-								{notices.map((notice) => (
+								{settledNotices.map((notice) => (
 									<BackgroundNoticeRow key={`notice-${notice.lineIndex}`} notice={notice} />
 								))}
 							</div>

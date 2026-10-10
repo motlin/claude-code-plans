@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {cleanup, fireEvent, render, within} from "@testing-library/react";
+import {cleanup, fireEvent, render} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat} from "../src/components/session-chat";
 import {parseTaskNotification} from "../src/lib/background-tasks";
@@ -121,6 +121,23 @@ function summaryButton(container: HTMLElement, label: string): HTMLElement {
 	return button;
 }
 
+const NOTICE_KIND = "shrink-0 text-ink-muted";
+const NOTICE_DESCRIPTION = "truncate min-w-0 text-primary";
+
+/** The text of each row in the expanded group card, in order. */
+function groupRowTexts(container: HTMLElement): (string | null)[] {
+	const card = container.querySelector(".card-outline");
+	if (card === null) throw new Error("No expanded group card");
+	return Array.from(card.children, (row) => row.textContent);
+}
+
+/** Text and class of each span in the one background notice sub-row. */
+function noticeChildren(container: HTMLElement): {text: string | null; className: string}[] {
+	const notice = container.querySelector("[data-background-notice]");
+	if (notice === null) throw new Error("No background notice row");
+	return Array.from(notice.children, (child) => ({text: child.textContent, className: child.className}));
+}
+
 function userTurnCount(container: HTMLElement): number {
 	return [...container.querySelectorAll("h2")].filter(
 		(heading) => heading.textContent?.startsWith("You said") === true,
@@ -219,36 +236,55 @@ describe("task notifications in the transcript", () => {
 		const container = renderLines(records(COMPLETED));
 		const toggle = summaryButton(container, "Ran a command, finished a background command");
 		fireEvent.click(toggle);
-		const subRow = within(container).getByText("Background task completed · Run the test suite");
 		expect({
 			userTurns: userTurnCount(container),
 			rawTag: container.textContent?.includes("<task-notification>") ?? false,
 			expanded: toggle.getAttribute("aria-expanded"),
-			subRowRole: subRow.getAttribute("role"),
-			subRowClass: subRow.className.includes("text-secondary"),
+			groupRows: groupRowTexts(container),
+			notice: noticeChildren(container),
 		}).toStrictEqual({
 			userTurns: 1,
 			rawTag: false,
 			expanded: "true",
-			subRowRole: null,
-			subRowClass: true,
+			groupRows: ["Ran the test suite", "Background commandRun the test suite"],
+			notice: [
+				{text: "Background command", className: NOTICE_KIND},
+				{text: "Run the test suite", className: NOTICE_DESCRIPTION},
+			],
 		});
 	});
 
-	it("names a stopped task in the sub-row", () => {
+	it('appends a secondary "Stopped" to a stopped task\'s sub-row', () => {
 		const container = renderLines(
 			records(notification("stopped", 'Background command "Run the test suite" was stopped')),
 		);
 		const toggle = summaryButton(container, "Ran a command, finished a background command (1 stopped)");
 		fireEvent.click(toggle);
-		expect(within(container).queryByText("Background task stopped · Run the test suite")).not.toBeNull();
+		expect(noticeChildren(container)).toStrictEqual([
+			{text: "Background command", className: NOTICE_KIND},
+			{text: "Run the test suite", className: NOTICE_DESCRIPTION},
+			{text: "Stopped", className: "shrink-0 text-secondary"},
+		]);
 	});
 
-	it("leads the group label with a failed background command", () => {
+	it('leads the group label and the expanded rows with a failed background command and its danger "Failed"', () => {
 		const container = renderLines(
 			records(notification("failed", 'Background command "Run the test suite" failed with exit code 7')),
 		);
-		expect(summaryButton(container, "Finished a background command (1 failed), ran a command")).not.toBeNull();
+		fireEvent.click(summaryButton(container, "Finished a background command (1 failed), ran a command"));
+		expect({
+			groupRows: groupRowTexts(container),
+			notice: noticeChildren(container),
+			oldLabel: container.textContent?.includes("Background task failed") ?? false,
+		}).toStrictEqual({
+			groupRows: ["Background commandRun the test suiteFailed", "Run the test suiteFailed"],
+			notice: [
+				{text: "Background command", className: NOTICE_KIND},
+				{text: "Run the test suite", className: NOTICE_DESCRIPTION},
+				{text: "Failed", className: "shrink-0 text-danger-ink"},
+			],
+			oldLabel: false,
+		});
 	});
 
 	it("keeps the raw notification as its own turn in Verbose", () => {
