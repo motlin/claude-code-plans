@@ -3253,9 +3253,10 @@ const EDIT_TOOLS = new Set(["Edit", "MultiEdit"]);
 /**
  * Compute diff stats from an Edit tool call's old_string / new_string input.
  */
+/** Upstream draws no diff stat on an edit that failed, since it changed nothing. */
 function useEditDiffStats(call: ClientToolCall): {added: number; removed: number} | null {
 	return useMemo(() => {
-		if (!EDIT_TOOLS.has(call.name)) return null;
+		if (!EDIT_TOOLS.has(call.name) || call.isError === true) return null;
 		const entries = editDiffEntries(call.input);
 		if (entries.length === 0) return null;
 		let added = 0;
@@ -3266,7 +3267,7 @@ function useEditDiffStats(call: ClientToolCall): {added: number; removed: number
 			removed += data.removed;
 		}
 		return {added, removed};
-	}, [call.name, call.input]);
+	}, [call.name, call.input, call.isError]);
 }
 
 /** A call whose tool_result has not arrived yet. */

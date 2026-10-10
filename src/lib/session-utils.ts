@@ -647,7 +647,8 @@ function buildSummarySegments(
 		}
 		const key = callKey(call, index);
 		byKey.set(key, outcome ?? byKey.get(key));
-		if (isMutation(cat)) {
+		// A failed edit changed nothing, so upstream leaves it out of the totals.
+		if (isMutation(cat) && call.isError !== true) {
 			const s = diffStatsForCall(call);
 			added += s.added;
 			removed += s.removed;

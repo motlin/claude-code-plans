@@ -164,6 +164,50 @@ describe("summarizeToolCallStats", () => {
 	});
 });
 
+describe("failed edits in diff stats", () => {
+	const sixLines = Array.from({length: 6}, (_, i) => `added ${i}`).join("\n");
+	const lines = (count: number) => Array.from({length: count}, (_, i) => `line ${i}`).join("\n");
+
+	it("leaves a failed edit out of the group header's totals", () => {
+		const {added, removed} = summarizeToolCallStats([
+			{name: "Edit", input: {file_path: "/repo/a.tsx", old_string: "", new_string: sixLines}, isError: true},
+			{name: "Read", input: {file_path: "/repo/a.tsx"}},
+			{name: "Read", input: {file_path: "/repo/b.json"}},
+			{name: "Bash", input: {command: "ls"}},
+			{name: "Edit", input: {file_path: "/repo/a.tsx", old_string: "", new_string: sixLines}},
+			{name: "Edit", input: {file_path: "/repo/b.json", old_string: "", new_string: lines(25)}},
+		]);
+		expect({added, removed}).toStrictEqual({added: 31, removed: 0});
+	});
+
+	it("draws a failed edit row with its Failed status and no diff stat", () => {
+		const {lines: transcript, toolResultMap} = processTranscript(
+			toolRunRecords([
+				{
+					id: "t-failed",
+					name: "Edit",
+					input: {file_path: "/repo/a.tsx", old_string: "", new_string: sixLines},
+					isError: true,
+				},
+			]),
+		);
+		const {container} = render(
+			<SessionChat
+				sessionId="test-session"
+				lines={transcript}
+				toolResultMap={toolResultMap}
+				showTools
+				shouldScrollToEnd={false}
+			/>,
+		);
+		const row = container.querySelector<HTMLElement>("[data-tool-row]")!;
+		expect({
+			text: row.textContent,
+			stats: Array.from(row.querySelectorAll("[class*='text-diff-']"), (span) => span.textContent),
+		}).toStrictEqual({text: "Editeda.tsxFailed", stats: []});
+	});
+});
+
 describe("ToolCallSummary stats and ink", () => {
 	it('shows "Ran 3 commands (1 failed)" in the collapsed summary label', () => {
 		const html = renderRun([
