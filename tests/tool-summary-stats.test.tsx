@@ -127,8 +127,8 @@ describe("summarizeToolCallStats", () => {
 			]),
 		).toStrictEqual({
 			segments: [
-				{verb: "Read", rest: "a.ts"},
-				{verb: "edited", rest: "b.ts"},
+				{verb: "Read", rest: "a file"},
+				{verb: "edited", rest: "a file"},
 			],
 			added: 1,
 			removed: 2,
@@ -191,7 +191,7 @@ describe("ToolCallSummary stats and ink", () => {
 			stats: statSpans(html),
 			hasStatsWrapper: summaryButton(html).includes('<span class="flex gap-g1 tabular-nums shrink-0">'),
 		}).toStrictEqual({
-			label: "Read a.ts, edited b.ts",
+			label: "Read a file, edited a file",
 			stats: ["text-diff-added:+1", "text-diff-removed:-3"],
 			hasStatsWrapper: true,
 		});

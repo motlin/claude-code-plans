@@ -12,6 +12,8 @@ export interface ToolCallLike {
 	stopped?: boolean | undefined;
 	/** The user rejected the call with a typed reply, so it settled without failing. */
 	denied?: boolean | undefined;
+	/** Whether a Write created its file or updated one that existed. */
+	resultMeta?: {writeType?: "create" | "update"} | undefined;
 }
 
 const COMMAND_MESSAGE_RE = /<command-message[^>]*>([\s\S]*?)<\/command-message>/;
@@ -261,18 +263,13 @@ const CATEGORY_LABELS: Record<ToolCategory, SegmentLabel> = {
 
 const OTHER_TOOLS_LABEL: SegmentLabel = {verb: "Used", one: "a tool", many: "{n} tools"};
 
-/**
- * Categories whose calls change a file, each with the verb upstream Normal uses
- * for it: a `Write` creates a file ("Created cache.ts") while `Edit` and
- * `MultiEdit` change one that exists ("Edited cache.ts").
- */
-const MUTATION_VERBS = {edit: "Edited", write: "Created"} as const;
-
-type MutationCategory = keyof typeof MUTATION_VERBS;
-
-function isMutation(cat: ToolCategory): cat is MutationCategory {
+/** Categories whose calls change a file, so their diff stats sum into the header. */
+function isMutation(cat: ToolCategory): boolean {
 	return cat === "edit" || cat === "write";
 }
+
+/** Categories that name a file, which collapse into one segment when the group touches only one file. */
+const FILE_CATEGORIES: ReadonlySet<ToolCategory> = new Set(["read", "write", "edit", "notebook"]);
 
 function countDiffLines(oldStr: string, newStr: string): {added: number; removed: number} {
 	if (oldStr === newStr) return {added: 0, removed: 0};
@@ -456,62 +453,49 @@ function basenameFromPath(path: string): string {
 	return path.slice(lastSlash + 1);
 }
 
-function filePathOf(call: ToolCallLike | undefined): string | null {
-	if (!call) return null;
-	const filePath = call.input["file_path"];
-	if (typeof filePath !== "string" || filePath === "") return null;
-	return filePath;
-}
-
-function singleFileBasename(call: ToolCallLike | undefined): string | null {
-	const filePath = filePathOf(call);
-	return filePath === null ? null : basenameFromPath(filePath);
+function filePathOf(call: ToolCallLike): string | null {
+	const path = call.input["file_path"] ?? call.input["notebook_path"];
+	return typeof path === "string" ? path : null;
 }
 
 /**
- * The one file-changing category eligible for coalescing: exactly one call, and
- * the other mutation category absent, so the compound verb names it without
- * dropping a segment.
+ * The tool's category, except that a Write upstream reports as updating an
+ * existing file counts as an edit. The first Write of a path decides for all
+ * of them, so a file the group created stays created.
  */
-function soleMutationCategory(counts: Map<ToolCategory, number>): MutationCategory | null {
-	const present = (Object.keys(MUTATION_VERBS) as MutationCategory[]).filter((cat) => counts.has(cat));
-	const only = present[0];
-	if (present.length !== 1 || counts.get(only!) !== 1) return null;
-	return only!;
-}
-
-/**
- * Upstream Normal collapses a read and a change of the SAME file into a single
- * segment whose verb names both actions in the order they happened -- "Read and
- * edited cache.ts", "Read and created index.ts", "Edited and read cache.ts" --
- * rather than two segments.
- */
-function coalescedReadMutation(
-	counts: Map<ToolCategory, number>,
-	firstCall: Map<ToolCategory, ToolCallLike>,
-): {verb: string; emitter: ToolCategory; basename: string; mutation: MutationCategory} | null {
-	if (counts.get("read") !== 1) return null;
-	const mutation = soleMutationCategory(counts);
-	if (mutation === null) return null;
-	const readPath = filePathOf(firstCall.get("read"));
-	if (readPath === null || readPath !== filePathOf(firstCall.get(mutation))) return null;
-	const basename = basenameFromPath(readPath);
-	const mutationVerb = MUTATION_VERBS[mutation];
-	for (const cat of counts.keys()) {
-		if (cat === "read") {
-			return {
-				verb: `Read and ${mutationVerb.toLowerCase()}`,
-				emitter: "read",
-				basename,
-				mutation,
-			};
-		}
-		if (cat === mutation) {
-			return {verb: `${mutationVerb} and read`, emitter: mutation, basename, mutation};
+function categorizeWithWrites(calls: ToolCallLike[]): (ToolCategory | null)[] {
+	const firstWriteType = new Map<string, "create" | "update" | undefined>();
+	for (const call of calls) {
+		const path = filePathOf(call);
+		if (call.name === "Write" && path !== null && !firstWriteType.has(path)) {
+			firstWriteType.set(path, call.resultMeta?.writeType);
 		}
 	}
-	return null;
+	return calls.map((call) => {
+		const cat = categorize(call);
+		const path = filePathOf(call);
+		return cat === "write" && path !== null && firstWriteType.get(path) === "update" ? "edit" : cat;
+	});
 }
+
+/**
+ * The one file every file call in the group touched, or null when some call
+ * named none or they touched several. Upstream then names the file instead of
+ * counting: "Read and edited cache.ts", never "Read a.ts, edited b.ts".
+ */
+function soleFilePath(calls: ToolCallLike[], categories: (ToolCategory | null)[]): string | null {
+	const paths = new Set<string>();
+	for (const [index, call] of calls.entries()) {
+		const cat = categories[index];
+		if (cat === null || cat === undefined || !FILE_CATEGORIES.has(cat)) continue;
+		const path = filePathOf(call);
+		if (path === null) return null;
+		paths.add(path);
+	}
+	return paths.size === 1 ? [...paths][0]! : null;
+}
+
+const VERB_LIST = new Intl.ListFormat("en", {type: "conjunction"});
 
 type CallOutcome = "succeeded" | "failed";
 
@@ -522,8 +506,8 @@ type CallOutcome = "succeeded" | "failed";
  * failure.
  */
 function callKey(call: ToolCallLike, index: number): string {
-	const path = call.input["file_path"] ?? call.input["notebook_path"];
-	if (typeof path === "string") return `path:${path}`;
+	const path = filePathOf(call);
+	if (path !== null) return `path:${path}`;
 	return call.id === undefined ? `index:${index}` : `id:${call.id}`;
 }
 
@@ -546,8 +530,31 @@ function withFailures(segment: SummarySegment, failed: number): SummarySegment {
 	return failed === 0 ? segment : {verb: segment.verb, rest: `${segment.rest} (${failed} failed)`};
 }
 
-function labelledSegment(label: SegmentLabel, count: number, name: string | null = null): SummarySegment {
-	return {verb: label.verb, rest: name ?? pluralize(count, label.one, label.many)};
+/**
+ * One segment for every file call when they all touched one file: the verbs in
+ * the order first used, then its name -- "Read, edited, and created x.ts" --
+ * with one failure per verb that failed.
+ */
+function soleFileSegment(
+	path: string,
+	outcomes: Map<ToolCategory, Map<string, CallOutcome | undefined>>,
+): SummarySegment {
+	const failedByVerb = new Map<string, boolean>();
+	for (const [cat, byKey] of outcomes) {
+		if (!FILE_CATEGORIES.has(cat)) continue;
+		const verb = CATEGORY_LABELS[cat].verb.toLowerCase();
+		failedByVerb.set(verb, failedByVerb.get(verb) === true || countFailed(byKey) > 0);
+	}
+	const verbs = VERB_LIST.format(failedByVerb.keys());
+	const failedVerbs = [...failedByVerb.values()].filter(Boolean).length;
+	return withFailures(
+		{verb: verbs.charAt(0).toUpperCase() + verbs.slice(1), rest: basenameFromPath(path)},
+		failedVerbs,
+	);
+}
+
+function labelledSegment(label: SegmentLabel, count: number): SummarySegment {
+	return {verb: label.verb, rest: pluralize(count, label.one, label.many)};
 }
 
 function buildSummarySegments(
@@ -558,14 +565,14 @@ function buildSummarySegments(
 	// "Updated todos, read 3 files" and "Read index.ts, updated todos", so
 	// segments follow the order each tool was first called.
 	const outcomes = new Map<ToolCategory, Map<string, CallOutcome | undefined>>();
-	const firstCall = new Map<ToolCategory, ToolCallLike>();
 	let otherTools = 0;
 	let otherFailed = 0;
 	let added = 0;
 	let removed = 0;
 
+	const categories = categorizeWithWrites(calls);
 	calls.forEach((call, index) => {
-		const cat = categorize(call);
+		const cat = categories[index]!;
 		const outcome = callOutcome(call);
 		if (cat === null) {
 			otherTools++;
@@ -576,7 +583,6 @@ function buildSummarySegments(
 		if (byKey === undefined) {
 			byKey = new Map();
 			outcomes.set(cat, byKey);
-			firstCall.set(cat, call);
 		}
 		const key = callKey(call, index);
 		byKey.set(key, outcome ?? byKey.get(key));
@@ -587,30 +593,20 @@ function buildSummarySegments(
 		}
 	});
 
-	const counts = new Map([...outcomes].map(([cat, byKey]) => [cat, byKey.size]));
 	let failed = otherFailed;
 	for (const byKey of outcomes.values()) failed += countFailed(byKey);
 
-	// A read and a change of the same file collapse into one compound segment,
-	// emitted in place of whichever of the two categories came first.
-	const compound = coalescedReadMutation(counts, firstCall);
-
 	// Each segment reports its own failures: "Edited k.ts (1 failed), ran a command".
 	const segments: SummarySegment[] = [];
-	for (const [cat, count] of counts) {
-		if (compound !== null && (cat === "read" || cat === compound.mutation)) {
-			if (cat === compound.emitter) {
-				const failedVerbs = [outcomes.get("read")!, outcomes.get(compound.mutation)!].filter(
-					(byKey) => countFailed(byKey) > 0,
-				).length;
-				segments.push(withFailures({verb: compound.verb, rest: compound.basename}, failedVerbs));
-			}
+	const solePath = soleFilePath(calls, categories);
+	let soleFileNamed = false;
+	for (const [cat, byKey] of outcomes) {
+		if (solePath !== null && FILE_CATEGORIES.has(cat)) {
+			if (!soleFileNamed) segments.push(soleFileSegment(solePath, outcomes));
+			soleFileNamed = true;
 			continue;
 		}
-		const singleFilename =
-			count === 1 && (cat === "read" || isMutation(cat)) ? singleFileBasename(firstCall.get(cat)) : null;
-		const segment = labelledSegment(CATEGORY_LABELS[cat], count, singleFilename);
-		segments.push(withFailures(segment, countFailed(outcomes.get(cat)!)));
+		segments.push(withFailures(labelledSegment(CATEGORY_LABELS[cat], byKey.size), countFailed(byKey)));
 	}
 
 	if (otherTools > 0) segments.push(withFailures(labelledSegment(OTHER_TOOLS_LABEL, otherTools), otherFailed));

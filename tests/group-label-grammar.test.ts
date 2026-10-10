@@ -133,3 +133,40 @@ describe("group label: rejected and interrupted calls", () => {
 		expect(label(calls)).toBe(expected);
 	});
 });
+
+describe("group label: one file", () => {
+	const write = (filePath: string, writeType?: "create" | "update"): ToolCallLike =>
+		writeType === undefined
+			? {name: "Write", input: {file_path: filePath, content: "x"}}
+			: {name: "Write", input: {file_path: filePath, content: "x"}, resultMeta: {writeType}};
+	const notebook = (path: string): ToolCallLike => ({name: "NotebookEdit", input: {notebook_path: path}});
+
+	it.each([
+		{calls: [read("/r/x.ts"), edit("/r/y.ts")], expected: "Read a file, edited a file"},
+		{calls: [read("/r/x.ts"), edit("/r/x.ts")], expected: "Read and edited x.ts"},
+		{calls: [edit("/r/x.ts"), read("/r/x.ts")], expected: "Edited and read x.ts"},
+		{calls: [write("/r/x.ts", "create"), edit("/r/x.ts")], expected: "Created and edited x.ts"},
+		{calls: [write("/r/x.ts", "update"), bash()], expected: "Edited x.ts, ran a command"},
+		{
+			calls: [read("/r/x.ts"), edit("/r/x.ts"), write("/r/x.ts", "create")],
+			expected: "Read, edited, and created x.ts",
+		},
+		{
+			calls: [bash(), write("/r/a.md", "create"), edit("/r/b.md")],
+			expected: "Ran a command, created a file, edited a file",
+		},
+		{calls: [read("/r/x.ts"), read("/r/x.ts")], expected: "Read x.ts"},
+		{calls: [read("/r/x.ts"), {name: "Read", input: {}}], expected: "Read 2 files"},
+		{calls: [notebook("/r/n.ipynb"), read("/r/n.ipynb")], expected: "Edited and read n.ipynb"},
+		{
+			calls: [edit("/r/A.java", {isError: true}), bash(), read("/r/A.java"), edit("/r/A.java"), bash()],
+			expected: "Edited and read A.java, ran 2 commands",
+		},
+		{
+			calls: [read("/r/x.ts", {isError: true}), edit("/r/x.ts", {isError: true})],
+			expected: "Read and edited x.ts (2 failed)",
+		},
+	])("names the file only when the whole group touches just it: $expected", ({calls, expected}) => {
+		expect(label(calls)).toBe(expected);
+	});
+});
