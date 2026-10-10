@@ -187,7 +187,7 @@ describe("assistant display-span actions", () => {
 		});
 	});
 
-	it("limits compact continuation spacing to collapsed successful tool disclosures", () => {
+	it("limits compact continuation spacing to successful tool disclosures, collapsed or expanded", () => {
 		const records = command("example-command");
 		const conclusion = text("example-conclusion", "Example conclusion.");
 		const view = render(chat([records[0], conclusion]));
@@ -226,13 +226,13 @@ describe("assistant display-span actions", () => {
 		expect({pending, completed, expanded, collapsed, failed: spacingState()}).toStrictEqual({
 			pending: {completedRows: 0, footers: 1},
 			completed: {completedRows: 1, footers: 1},
-			expanded: {completedRows: 0, footers: 1},
+			expanded: {completedRows: 1, footers: 1},
 			collapsed: {completedRows: 1, footers: 1},
 			failed: {completedRows: 0, footers: 1},
 		});
 	});
 
-	it("matches the 12px completed-tool continuation rule in globals.css against a rendered completed tool row", () => {
+	it("matches the 12px completed-tool continuation rule in globals.css against a rendered completed tool row, collapsed or expanded", () => {
 		const styles = readFileSync(join(process.cwd(), "src", "styles", "globals.css"), "utf8");
 		const selector =
 			/\/\* A completed standalone tool followed by prose[^*]*\*\/\s*([^{]+)\{\s*padding-bottom: 12px;/
@@ -249,7 +249,7 @@ describe("assistant display-span actions", () => {
 			);
 		const completed = padded();
 		fireEvent.click(view.container.querySelector<HTMLElement>("[aria-expanded]")!);
-		expect({completed, expanded: padded()}).toStrictEqual({completed: ["0"], expanded: []});
+		expect({completed, expanded: padded()}).toStrictEqual({completed: ["0"], expanded: ["0"]});
 	});
 
 	it("matches the 12px grouped-tool continuation rule in globals.css against status-led grouped rows that continue into prose, collapsed or expanded", () => {

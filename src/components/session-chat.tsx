@@ -3364,7 +3364,7 @@ function ToolCallRow({
 		<div
 			data-tool-row=""
 			data-turn-status={isTurnStatus ? "" : undefined}
-			data-completed-tool-row={isCompletedStandaloneDisclosure && !expanded ? "" : undefined}
+			data-completed-tool-row={isCompletedStandaloneDisclosure ? "" : undefined}
 			className={isTurnStatus ? TURN_STATUS_CLASS : "flex flex-col w-full"}
 		>
 			<div

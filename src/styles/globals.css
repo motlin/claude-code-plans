@@ -750,7 +750,7 @@
 }
 
 /* A completed standalone tool followed by prose shares the assistant span:
-   upstream leaves 12px here. End-of-span actions and changes keep their turn gap. */
+   upstream leaves 12px here, collapsed or expanded. End-of-span actions and changes keep their turn gap. */
 .transcript-text
 	[data-perf-row="assistant_tool"][data-assistant-span]:has(+ [data-perf-row="assistant_text"])
 	> [data-record-index]:has(> [data-completed-agent-row], > [data-turn-status-frame] > [data-completed-tool-row]):not(
