@@ -1975,6 +1975,7 @@ const VERBOSE_ONLY_SUBTYPES = new Set([
 	"total_tokens_reminder",
 	"queued_command",
 	"auto_mode",
+	"auto_mode_exit",
 	"hook_additional_context",
 ]);
 const STOP_HOOK_EVENTS = new Set(["Stop", "SubagentStop"]);

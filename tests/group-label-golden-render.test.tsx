@@ -56,7 +56,7 @@ const recorded = (specimens as {records?: unknown[]}[]).filter(
 	(specimen): specimen is RecordedSpecimen => specimen.records !== undefined,
 );
 
-/** The text of every grouped status header in the rendered transcript. */
+/** The label of every grouped status header in the rendered transcript, without its diff stats. */
 function groupLabels(records: unknown[]): (string | null)[] {
 	const {lines, toolResultMap} = processTranscript(records);
 	const {container} = render(
@@ -68,7 +68,10 @@ function groupLabels(records: unknown[]): (string | null)[] {
 			transcriptMode="normal"
 		/>,
 	);
-	return Array.from(container.querySelectorAll("[data-turn-status] > button"), (button) => button.textContent);
+	return Array.from(
+		container.querySelectorAll("[data-turn-status] > button > span:first-child"),
+		(label) => label.textContent,
+	);
 }
 
 describe("group label golden specimens rendered from JSONL", () => {
