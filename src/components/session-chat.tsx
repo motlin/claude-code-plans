@@ -1395,7 +1395,7 @@ function buildSessionListEntries(
 		const span = displaySpans?.get(line.lineIndex);
 		return span === undefined ? null : <AssistantDisplaySpanFooter span={span} />;
 	};
-	const turnChangesByLine = collectTurnChanges(lines, renderProps.toolResultMap);
+	const turnChangesByLine = collectTurnChanges(lines, renderProps.toolResultMap, renderProps.showTools);
 	const entries: PendingSessionListEntry[] = [];
 	let prevVisibleType: string | null = null;
 	let i = 0;

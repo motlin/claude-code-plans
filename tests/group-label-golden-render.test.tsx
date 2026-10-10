@@ -107,13 +107,17 @@ describe("group label golden specimens rendered from JSONL", () => {
 /**
  * Specimens whose whole row sequence was read from the upstream DOM: each
  * transcript row as "prose", "user: <bubble>", "message from <sender>" or
- * "status: <label>" per status it draws, after any background notice drawn outside a group.
+ * "status: <label>" per status it draws, after any background notice drawn outside a group,
+ * and "changes" after the row that draws the turn's changes card when the
+ * records reach the turn's real end (`turnEnd`), as a cut-off turn draws its card early.
  */
 interface RowSpecimen {
 	session: string;
 	line: number;
 	upstream: string[];
 	records: unknown[];
+	/** The records run to the turn's real end, so its changes card sits where upstream draws it. */
+	turnEnd?: true;
 }
 
 /** A row label part's text, with a diff stat's counts spaced as they read: "+59 -0". */
@@ -130,7 +134,7 @@ function statusText(status: Element): string {
 	return `status: ${parts.join(" ")}`;
 }
 
-function rowTexts(row: Element): string[] {
+function rowContentTexts(row: Element): string[] {
 	const kind = row.getAttribute("data-perf-row");
 	if (kind === "assistant_text") return ["prose"];
 	const sender = row.querySelector("[data-agent-message-from] bdi");
@@ -144,14 +148,22 @@ function rowTexts(row: Element): string[] {
 	return [...notices, ...Array.from(row.querySelectorAll("[data-turn-status]"), statusText)];
 }
 
-function transcriptRows(records: unknown[]): string[] {
+/** A row's texts, then "changes" where it ends its turn with the end-of-turn changes card. */
+function rowTexts(row: Element, withCards: boolean): string[] {
+	const cards = withCards ? Array.from(row.querySelectorAll("[data-turn-changes-card]"), () => "changes") : [];
+	return [...rowContentTexts(row), ...cards];
+}
+
+function transcriptRows({records, turnEnd}: RowSpecimen): string[] {
 	const container = renderRecords(records);
-	return Array.from(container.querySelectorAll("[data-testid=transcript-row]")).flatMap(rowTexts);
+	return Array.from(container.querySelectorAll("[data-testid=transcript-row]")).flatMap((row) =>
+		rowTexts(row, turnEnd === true),
+	);
 }
 
 describe("transcript row golden specimens rendered from JSONL", () => {
 	it.each(rowSpecimens as RowSpecimen[])("$session:$line", (specimen) => {
-		expect(transcriptRows(specimen.records)).toStrictEqual(specimen.upstream);
+		expect(transcriptRows(specimen)).toStrictEqual(specimen.upstream);
 	});
 });
 

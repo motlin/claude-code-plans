@@ -20,7 +20,7 @@ export interface TurnChangesSummary {
 export interface TurnChanges extends TurnChangesSummary {
 	/** A uuid inside the turn, for the Changes pane's `turn:<uuid>` scope. */
 	turnUuid: string;
-	/** The line the card follows: the turn's last assistant text, else its last assistant line. */
+	/** The line the card follows: the turn's last visible assistant row, else its last assistant line. */
 	anchorLineIndex: number;
 }
 
@@ -79,39 +79,44 @@ function isTurnStartLine(line: SessionLine): boolean {
 	return !content.some((block) => block.type === "tool_result");
 }
 
-function hasText(line: SessionLine): boolean {
+/** An assistant line that draws a row: prose, or a tool call when tools are shown. */
+function drawsRow(line: SessionLine, showTools: boolean): boolean {
 	if (line.type !== "assistant") return false;
 	const content = line.message?.content;
 	if (typeof content === "string") return content.trim() !== "";
-	return (content ?? []).some((block) => block.type === "text" && block.text.trim() !== "");
+	return (content ?? []).some(
+		(block) => (block.type === "text" && block.text.trim() !== "") || (showTools && block.type === "tool_use"),
+	);
 }
 
 interface TurnAccumulator {
 	uuid: string | undefined;
 	calls: ToolCallLike[];
 	lastAssistant: number | undefined;
-	lastText: number | undefined;
+	lastRow: number | undefined;
 }
 
 /**
  * Split the transcript into prompt-to-prompt turns and summarize each turn's
- * file edits, keyed by the line index its card follows. Turns that edited
- * nothing are left out.
+ * file edits, keyed by the line index its card follows: the turn's last row,
+ * as upstream draws the card after a turn's final tool row as readily as after
+ * its prose. Turns that edited nothing are left out.
  */
 export function collectTurnChanges(
 	lines: readonly SessionLine[],
 	toolResultMap: ReadonlyMap<string, ToolResultInfo>,
+	showTools = true,
 ): Map<number, TurnChanges> {
 	const result = new Map<number, TurnChanges>();
 	let turn: TurnAccumulator = {
 		uuid: undefined,
 		calls: [],
 		lastAssistant: undefined,
-		lastText: undefined,
+		lastRow: undefined,
 	};
 
 	const finish = () => {
-		const anchor = turn.lastText ?? turn.lastAssistant;
+		const anchor = turn.lastRow ?? turn.lastAssistant;
 		if (anchor === undefined || turn.uuid === undefined) return;
 		const summary = aggregateTurnEdits(turn.calls);
 		if (summary.files.length === 0) return;
@@ -121,13 +126,13 @@ export function collectTurnChanges(
 	for (const line of lines) {
 		if (isTurnStartLine(line)) {
 			finish();
-			turn = {uuid: undefined, calls: [], lastAssistant: undefined, lastText: undefined};
+			turn = {uuid: undefined, calls: [], lastAssistant: undefined, lastRow: undefined};
 		}
 		if (line.type !== "user" && line.type !== "assistant") continue;
 		turn.uuid ??= line.uuid;
 		if (line.type !== "assistant") continue;
 		turn.lastAssistant = line.lineIndex;
-		if (hasText(line)) turn.lastText = line.lineIndex;
+		if (drawsRow(line, showTools)) turn.lastRow = line.lineIndex;
 		const content = line.message?.content;
 		if (!Array.isArray(content)) continue;
 		for (const block of content) {
