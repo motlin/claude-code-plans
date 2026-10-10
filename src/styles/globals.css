@@ -774,8 +774,20 @@
    upstream leaves 12px above the status. A held span footer keeps its turn gap. */
 .transcript-text
 	[data-perf-row="assistant_text"][data-assistant-span]
-	> [data-record-index][data-precedes-turn-status]:not(:has([data-assistant-span-footer], [data-turn-changes-card])) {
+	> [data-record-index][data-precedes-turn-status=""]:not(
+		:has([data-assistant-span-footer], [data-turn-changes-card])
+	) {
 	padding-bottom: 12px;
+}
+
+/* Assistant prose followed by a plain status marker in its own span (a compaction, a stopped or finished
+   background agent): upstream leaves 16px, as the marker has no 4px outset. A held span footer keeps its turn gap. */
+.transcript-text
+	[data-perf-row="assistant_text"][data-assistant-span]
+	> [data-record-index][data-precedes-turn-status="marker"]:not(
+		:has([data-assistant-span-footer], [data-turn-changes-card])
+	) {
+	padding-bottom: 16px;
 }
 
 /* Settings search deep link (#settings/<tab>/<row>): upstream flashes the row with a warm tint

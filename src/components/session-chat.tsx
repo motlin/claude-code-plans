@@ -682,7 +682,7 @@ function LineEntry({
 	turnChanges,
 	footer,
 	precedesReply = false,
-	precedesStatus = false,
+	precedesStatus = null,
 	precedesPrompt = false,
 	...renderProps
 }: LineRenderProps & {
@@ -691,8 +691,8 @@ function LineEntry({
 	className?: string;
 	/** An ordinary prompt whose reply row carries the boundary, so this row adds no turn gap. */
 	precedesReply?: boolean;
-	/** Prose whose own span continues into a row that opens with a status. */
-	precedesStatus?: boolean;
+	/** Prose whose own span continues into a row that opens with a status or a plain marker. */
+	precedesStatus?: OpeningStatus | null;
 	/** A prompt followed by another prompt row, which upstream spaces by its user row gap. */
 	precedesPrompt?: boolean;
 	/** The end-of-turn changes card this line closes, shown after its content. */
@@ -719,7 +719,9 @@ function LineEntry({
 		<div
 			key={`line-${line.lineIndex}`}
 			data-record-index={line.lineIndex}
-			data-precedes-turn-status={precedesStatus ? "" : undefined}
+			data-precedes-turn-status={
+				precedesStatus === null ? undefined : precedesStatus === "marker" ? "marker" : ""
+			}
 			className={wrapperClassName}
 		/>
 	);
@@ -1224,10 +1226,13 @@ function FoldedNoticeRow({notice}: {notice: FoldedNotice}) {
  */
 function TaskEventStatusRow({label, detail, footer}: {label: string; detail: string | null; footer: React.ReactNode}) {
 	return (
-		<div className={`group/msg flex flex-col w-full ${TURN_GAP_CLASS}`}>
+		<div
+			data-task-event-row=""
+			className="group/msg flex flex-col w-full pb-4 has-[>[data-assistant-span-footer]]:pb-[var(--chat-turn-gap)] [&>[data-assistant-span-footer]]:mt-[5px]"
+		>
 			<TurnStatusFrame leading={false}>
 				<div data-turn-status="" className={TURN_STATUS_CLASS}>
-					<div data-turn-status-marker="" className="flex min-w-0 gap-1 me-[52px] px-1 py-0.5">
+					<div data-turn-status-marker="" className="flex min-w-0 gap-1 me-[52px] px-1">
 						<span className="text-body shrink-0 text-secondary">{label}</span>
 						{detail !== null && (
 							<>
@@ -1456,13 +1461,24 @@ interface PendingSessionListEntry extends Omit<SessionListEntry, "endRecordIndex
 	/** An ordinary prompt row, rendered once it is known whether its reply follows it. */
 	prompt?: {
 		line: SessionLine;
-		render: (precedesReply: boolean, precedesStatus?: boolean, precedesPrompt?: boolean) => React.ReactNode;
+		render: (
+			precedesReply: boolean,
+			precedesStatus?: OpeningStatus | null,
+			precedesPrompt?: boolean,
+		) => React.ReactNode;
 	};
 	/** A prose row, rendered once it is known whether a status in its span follows it. */
-	prose?: {render: (precedesStatus: boolean) => React.ReactNode};
-	/** A tool row whose first drawn block is a TurnStatus. */
-	opensWithStatus?: boolean;
+	prose?: {render: (precedesStatus: OpeningStatus) => React.ReactNode};
+	/** A row whose first drawn block is a TurnStatus disclosure, or a plain status marker. */
+	opensWithStatus?: OpeningStatus;
 }
+
+/**
+ * What a row opens with: a tool status, which upstream outsets 4px into the
+ * prose gap above it, or a plain marker (a compaction, a task event), which it
+ * does not.
+ */
+type OpeningStatus = "status" | "marker";
 
 const PROMPT_KINDS: ReadonlySet<UserContentKind> = new Set(["text", "command", "bash"]);
 
@@ -1793,10 +1809,11 @@ function buildSessionListEntries(
 					kind: "assistant_tool",
 					assistantSpan: displaySpans?.get(line.lineIndex),
 					replyHead: line,
-					opensWithStatus:
-						line.type === "assistant" &&
-						!hasAttribution(line, verbose) &&
-						toolSectionOpensWithStatus(backgroundToolNames([line], renderProps.toolResultMap), 0),
+					...(line.type === "assistant" &&
+					!hasAttribution(line, verbose) &&
+					toolSectionOpensWithStatus(backgroundToolNames([line], renderProps.toolResultMap), 0)
+						? {opensWithStatus: "status"}
+						: {}),
 					element: (
 						<LineEntry
 							line={line}
@@ -1826,10 +1843,12 @@ function buildSessionListEntries(
 					kind: "assistant_tool",
 					assistantSpan: displaySpans?.get(line.lineIndex),
 					replyHead: line,
-					opensWithStatus: toolSectionOpensWithStatus(
+					...(toolSectionOpensWithStatus(
 						backgroundToolNames(firstBatch, renderProps.toolResultMap),
 						firstBatchEnd === -1 ? notices.length : 0,
-					),
+					)
+						? {opensWithStatus: "status"}
+						: {}),
 					element: (
 						<GroupedToolCallEntry
 							entries={groupLines}
@@ -1854,7 +1873,7 @@ function buildSessionListEntries(
 				isPrompt: false,
 				kind: "assistant_tool",
 				assistantSpan: displaySpans?.get(line.lineIndex),
-				opensWithStatus: true,
+				opensWithStatus: "marker",
 				element: (
 					<TaskEventStatusRow
 						label={pastTense(agentCompletion.description)}
@@ -1881,7 +1900,7 @@ function buildSessionListEntries(
 				isPrompt: false,
 				kind: "assistant_tool",
 				assistantSpan: span,
-				opensWithStatus: true,
+				opensWithStatus: "marker",
 				element: (
 					<TaskEventStatusRow
 						label="Background task stopped"
@@ -1898,7 +1917,11 @@ function buildSessionListEntries(
 		prevVisibleType = line.type;
 
 		const nextLine = lines[i + 1];
-		const renderLine = (precedesReply: boolean, precedesStatus = false, precedesPrompt = false) => (
+		const renderLine = (
+			precedesReply: boolean,
+			precedesStatus: OpeningStatus | null = null,
+			precedesPrompt = false,
+		) => (
 			<LineEntry
 				line={line}
 				nextLine={nextLine}
@@ -1918,10 +1941,10 @@ function buildSessionListEntries(
 			kind: transcriptRowKind(line),
 			assistantSpan: displaySpans?.get(line.lineIndex),
 			...(line.type === "assistant" ? {replyHead: line} : {}),
-			...(compactionStatuses.has(line.lineIndex) ? {opensWithStatus: true} : {}),
+			...(compactionStatuses.has(line.lineIndex) ? {opensWithStatus: "marker"} : {}),
 			...(!verbose && isOrdinaryPromptLine(line, renderProps) ? {prompt: {line, render: renderLine}} : {}),
 			...(!verbose && (isProseOnlyAssistantLine(line) || isHookSystemMessageLine(line))
-				? {prose: {render: (precedesStatus: boolean) => renderLine(false, precedesStatus)}}
+				? {prose: {render: (precedesStatus: OpeningStatus) => renderLine(false, precedesStatus)}}
 				: {}),
 			element: renderLine(false),
 		});
@@ -1939,30 +1962,31 @@ function buildSessionListEntries(
 				getSourceSessionId(replyHead, renderProps.sessionId)
 		);
 	};
-	// Upstream leaves 12px between prose and a status in the same assistant span, never across a span,
-	// a question card, a tasks view or a marker.
-	const precedesStatus = (index: number): boolean => {
+	// Upstream leaves 12px between prose and a status in the same assistant span (16px above a plain
+	// marker), never across a span, a question card or a tasks view.
+	const precedesStatus = (index: number): OpeningStatus | null => {
 		const span = entries[index]?.assistantSpan;
 		const next = entries[index + 1];
-		return span !== undefined && next?.opensWithStatus === true && next.assistantSpan?.key === span.key;
+		return span !== undefined && next?.assistantSpan?.key === span.key ? (next.opensWithStatus ?? null) : null;
 	};
 	const finalRecordIndex = lines.at(-1)?.lineIndex ?? 0;
-	return entries.map(
-		({replyHead: _replyHead, prompt, prose, opensWithStatus: _opensWithStatus, ...entry}, index) => ({
+	return entries.map(({replyHead: _replyHead, prompt, prose, opensWithStatus: _opensWithStatus, ...entry}, index) => {
+		const followingStatus = prose === undefined ? null : precedesStatus(index);
+		return {
 			...entry,
 			...(prompt !== undefined && opensReply(index + 1) ? {element: prompt.render(true)} : {}),
 			...(prompt !== undefined && entries[index + 1]?.prompt !== undefined
-				? {element: prompt.render(false, false, true)}
+				? {element: prompt.render(false, null, true)}
 				: {}),
-			...(prose !== undefined && precedesStatus(index) ? {element: prose.render(true)} : {}),
+			...(prose !== undefined && followingStatus !== null ? {element: prose.render(followingStatus)} : {}),
 			opensReply: opensReply(index),
 			// A status row drawn between two records starts at a half index; it still spans itself.
 			endRecordIndex: Math.max(
 				entry.startRecordIndex,
 				Math.ceil(entries[index + 1]?.startRecordIndex ?? finalRecordIndex + 1) - 1,
 			),
-		}),
-	);
+		};
+	});
 }
 
 function VirtualizedSessionEntries({

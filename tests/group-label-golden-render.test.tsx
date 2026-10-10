@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 
+import {readFileSync} from "node:fs";
+import {join} from "node:path";
 import {cleanup, fireEvent, render} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat} from "../src/components/session-chat";
@@ -298,6 +300,67 @@ describe("local command output", () => {
 		);
 		expect(prose.slice(-texts.length)).toStrictEqual(texts);
 	});
+});
+
+describe("plain status marker gaps", () => {
+	const styles = () => readFileSync(join(process.cwd(), "src", "styles", "globals.css"), "utf8");
+	const rule = (comment: string, padding: number) =>
+		new RegExp(`/\\* ${comment}[^*]*\\*/\\s*([^{]+)\\{\\s*padding-bottom: ${padding}px;`)
+			.exec(styles())?.[1]
+			?.trim() ?? "[data-missing-rule]";
+	const rowIndex = (container: HTMLElement, element: Element) =>
+		Array.from(container.querySelectorAll("[data-testid=transcript-row]")).indexOf(
+			element.closest("[data-testid=transcript-row]")!,
+		);
+
+	it.each([
+		["01d132c8", 1249, 0],
+		["5f402159", 2267, 1],
+		["5f402159", 2172, 0],
+	])(
+		"leaves upstream's 16px between %s:%i's prose and its plain marker, not a tool status's 12px",
+		(session, line, prose) => {
+			const specimen = (rowSpecimens as RowSpecimen[]).find(
+				(candidate) => candidate.session === session && candidate.line === line,
+			)!;
+			const container = renderRecords(specimen.records);
+			container.classList.add("transcript-text");
+			const matched = (selector: string) =>
+				Array.from(container.querySelectorAll(selector), (element) => rowIndex(container, element));
+			expect({
+				marker: matched(rule("Assistant prose followed by a plain status marker", 16)),
+				status: matched(rule("Assistant prose followed by a status", 12)),
+			}).toStrictEqual({marker: [prose], status: []});
+		},
+	);
+
+	it.each([
+		["5f402159", 2267, true],
+		["5f402159", 2172, false],
+	])(
+		"draws %s:%i's task-event row 20px tall, 16px above the next prose or 5px above the span's actions",
+		(session, line, footer) => {
+			const specimen = (rowSpecimens as RowSpecimen[]).find(
+				(candidate) => candidate.session === session && candidate.line === line,
+			)!;
+			const row = renderRecords(specimen.records).querySelector("[data-task-event-row]")!;
+			expect({
+				markerPadding: row.querySelector("[data-turn-status-marker]")?.classList.contains("py-0.5"),
+				classes: row.className
+					.split(" ")
+					.filter((name) => name.startsWith("pb-") || name.includes(":pb-") || name.includes(":mt-")),
+				footer: row.querySelector(":scope > [data-assistant-span-footer]") !== null,
+			}).toStrictEqual({
+				markerPadding: false,
+				classes: [
+					"pb-4",
+					"has-[>[data-assistant-span-footer]]:pb-[var(--chat-turn-gap)]",
+					"[&>[data-assistant-span-footer]]:mt-[5px]",
+				],
+				footer,
+			});
+		},
+	);
 });
 
 describe("user bubble line box", () => {
