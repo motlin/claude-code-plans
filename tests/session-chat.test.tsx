@@ -1830,19 +1830,57 @@ function groupedBashRecords(second: "ok" | "error" | "pending"): unknown[] {
 	];
 }
 
+const STATUS_ROW_LAYOUT = "min-w-0 self-stretch me-[52px] px-1 py-0.5";
+
 describe("SessionChat grouped header height", () => {
-	it("gives failed and running grouped headers the completed header's py-0.5", () => {
+	it("gives failed and running grouped headers the completed header's 24px padded row, as upstream does", () => {
 		expect({
 			completed: disclosureClassName(renderTranscriptElement(groupedBashRecords("ok"))),
 			failed: disclosureClassName(renderTranscriptElement(groupedBashRecords("error"))),
 			running: disclosureClassName(renderTranscriptElement(groupedBashRecords("pending"))),
 		}).toStrictEqual({
-			completed:
-				"relative group/tool flex max-w-full items-center min-w-0 self-stretch me-[52px] px-1 py-0.5 gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3",
-			failed: "relative group/tool flex max-w-full items-center self-start py-0.5 gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3",
-			running:
-				"relative group/tool flex max-w-full items-center self-start py-0.5 gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3",
+			completed: `relative group/tool flex max-w-full items-center ${STATUS_ROW_LAYOUT} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3`,
+			failed: `relative group/tool flex max-w-full items-center ${STATUS_ROW_LAYOUT} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3`,
+			running: `relative group/tool flex max-w-full items-center ${STATUS_ROW_LAYOUT} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3`,
 		});
+	});
+});
+
+describe("SessionChat standalone status row layout", () => {
+	const bash = {name: "Bash", input: {command: "git push", description: "Push the branch"}};
+	const standaloneRow = (container: HTMLElement) => {
+		const frame = container.querySelector("[data-turn-status-frame] > [data-tool-row]")!;
+		return {
+			marker: frame.hasAttribute("data-standalone-tool-row"),
+			className: frame.querySelector(".group\\/tool")!.className,
+		};
+	};
+	const rowClass = `relative group/tool flex max-w-full items-center ${STATUS_ROW_LAYOUT} gap-g2 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3`;
+
+	it("draws failed and running standalone rows in the completed row's 24px padded layout, as upstream does", () => {
+		const pending = toolResultRecords(bash, "").slice(0, 1);
+
+		expect({
+			completed: standaloneRow(renderTranscriptElement(toolResultRecords(bash, "ok"))),
+			failed: standaloneRow(renderTranscriptElement(toolResultRecords(bash, "Exit code 1", true))),
+			running: standaloneRow(renderTranscriptElement(pending)),
+		}).toStrictEqual({
+			completed: {marker: true, className: rowClass},
+			failed: {marker: true, className: rowClass},
+			running: {marker: true, className: rowClass},
+		});
+	});
+
+	it("keeps a failed row nested in an expanded group on the bare self-start row", () => {
+		const container = renderTranscriptElement(groupedBashRecords("error"));
+		expandGroupSummary(container);
+
+		expect(
+			[...container.querySelectorAll<HTMLElement>('[role="button"][aria-expanded]')].map((row) => row.className),
+		).toStrictEqual([
+			"relative group/tool flex max-w-full items-center self-start py-0 gap-g2 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3",
+			"relative group/tool flex max-w-full items-center self-start py-0 gap-g2 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3",
+		]);
 	});
 });
 

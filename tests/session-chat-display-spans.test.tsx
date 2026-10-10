@@ -187,12 +187,12 @@ describe("assistant display-span actions", () => {
 		});
 	});
 
-	it("limits compact continuation spacing to successful tool disclosures, collapsed or expanded", () => {
+	it("gives every standalone tool disclosure the compact continuation marker, in any status, as upstream does", () => {
 		const records = command("example-command");
 		const conclusion = text("example-conclusion", "Example conclusion.");
 		const view = render(chat([records[0], conclusion]));
 		const spacingState = () => ({
-			completedRows: view.container.querySelectorAll("[data-completed-tool-row]").length,
+			completedRows: view.container.querySelectorAll("[data-standalone-tool-row]").length,
 			footers: footers(view.container).length,
 		});
 		const pending = spacingState();
@@ -224,20 +224,19 @@ describe("assistant display-span actions", () => {
 			]),
 		);
 		expect({pending, completed, expanded, collapsed, failed: spacingState()}).toStrictEqual({
-			pending: {completedRows: 0, footers: 1},
+			pending: {completedRows: 1, footers: 1},
 			completed: {completedRows: 1, footers: 1},
 			expanded: {completedRows: 1, footers: 1},
 			collapsed: {completedRows: 1, footers: 1},
-			failed: {completedRows: 0, footers: 1},
+			failed: {completedRows: 1, footers: 1},
 		});
 	});
 
-	it("matches the 12px completed-tool continuation rule in globals.css against a rendered completed tool row, collapsed or expanded", () => {
+	it("matches the 12px standalone-tool continuation rule in globals.css against a rendered completed tool row, collapsed or expanded", () => {
 		const styles = readFileSync(join(process.cwd(), "src", "styles", "globals.css"), "utf8");
-		const selector =
-			/\/\* A completed standalone tool followed by prose[^*]*\*\/\s*([^{]+)\{\s*padding-bottom: 12px;/
-				.exec(styles)?.[1]
-				?.trim();
+		const selector = /\/\* A standalone tool row followed by prose[^*]*\*\/\s*([^{]+)\{\s*padding-bottom: 12px;/
+			.exec(styles)?.[1]
+			?.trim();
 		const view = render(
 			<div className="transcript-text">
 				{chat([...command("example-command"), text("example-conclusion", "Example conclusion.")])}

@@ -3283,12 +3283,11 @@ function ToolCallRow({
 					? "text-secondary"
 					: ink;
 	const isCompletedPaneAgent = paneAgentId !== undefined && !call.isError && !pending;
-	const isCompletedStandaloneDisclosure = !isAgent && !nested && !call.isError && !pending;
 	// Expandable rows reach the disclosure below; Agent navigation and nested rows are not statuses.
+	// Upstream draws every standalone status row in one 24px padded layout, whether it
+	// completed, failed, or is still running.
 	const isTurnStatus = !isAgent && !nested;
-	const disclosureLayout = isCompletedStandaloneDisclosure
-		? "min-w-0 self-stretch me-[52px] px-1 py-0.5"
-		: "self-start py-0";
+	const disclosureLayout = isTurnStatus ? "min-w-0 self-stretch me-[52px] px-1 py-0.5" : "self-start py-0";
 	const paramClass = isSkill || isCompletedPaneAgent ? "text-primary" : isFailedSkill ? "text-secondary" : labelClass;
 	// A subagent row's chevron sits in the flat `t6` token upstream gives it,
 	// rather than the hover-reactive ink every other tool row uses.
@@ -3421,7 +3420,7 @@ function ToolCallRow({
 		<div
 			data-tool-row=""
 			data-turn-status={isTurnStatus ? "" : undefined}
-			data-completed-tool-row={isCompletedStandaloneDisclosure ? "" : undefined}
+			data-standalone-tool-row={isTurnStatus ? "" : undefined}
 			className={isTurnStatus ? TURN_STATUS_CLASS : "flex flex-col w-full"}
 		>
 			<div
@@ -3501,14 +3500,8 @@ function ToolCallSummary({
 	// progressive label instead of the tally.
 	const pendingCall = displayCalls.filter(isPendingToolCall).at(-1);
 	const runningText = pendingCall === undefined ? null : runningToolLabelText(runningToolLabel(pendingCall));
-	// Upstream's grouped header is 24px tall whether it completed, failed, or is still running.
-	const summaryLayout = hasTasksView
-		? "self-start py-0"
-		: pendingCall === undefined &&
-			  displayCalls.every((call) => !call.isError) &&
-			  notices.every((notice) => notice.notification.status === "completed")
-			? "min-w-0 self-stretch me-[52px] px-1 py-0.5"
-			: "self-start py-0.5";
+	// Upstream draws the grouped header in one 24px padded row whether it completed, failed, or is still running.
+	const summaryLayout = hasTasksView ? "self-start py-0" : "min-w-0 self-stretch me-[52px] px-1 py-0.5";
 	// Collapsed rows recede to muted ink and lift to secondary on hover; an open
 	// row stays secondary, as upstream does.
 	const ink = expanded ? "text-secondary" : "text-ink-muted group-hover/tool:text-secondary";
