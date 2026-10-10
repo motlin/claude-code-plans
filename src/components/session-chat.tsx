@@ -32,7 +32,7 @@ import type {Subagent} from "../lib/subagents";
 import {useSubagentOpener} from "./subagent-opener";
 import {useClaudeEvents} from "../hooks/use-claude-events";
 import {ChevronIcon, CollapsibleSection, CopyButton, DiffStats, TerminalOutput} from "./tool-renderers/shared";
-import {compactBoundaryLabel, SystemBanner, type CompactMetadata} from "./system-banner";
+import {compactBoundaryLabel, localCommandOutput, SystemBanner, type CompactMetadata} from "./system-banner";
 import {ArtifactLinkBanner, ArtifactWatchBanner} from "./artifact-banner";
 import {DebugLink} from "./debug-link";
 import {type TranscriptMessageRef, TranscriptMessageMenu} from "./transcript-context-menu";
@@ -1578,6 +1578,31 @@ function withQueuedPrompts(lines: SessionLine[]): SessionLine[] {
 }
 
 /**
+ * Upstream draws a local command's output that the CLI logged as a system
+ * record ("Kept model as `Fable 5.1`", "Diff panel shown") as assistant prose
+ * in the reply it follows, so outside Verbose each non-empty one reads as an
+ * assistant text line; the user-record stdout stays hidden.
+ */
+function withLocalCommandProse(lines: SessionLine[]): SessionLine[] {
+	let result: SessionLine[] | null = null;
+	lines.forEach((line, index) => {
+		if (line.type !== "system" || line.subtype !== "local_command") return;
+		const output = localCommandOutput(line.content);
+		if (output === "") return;
+		result ??= [...lines];
+		result[index] = {
+			type: "assistant",
+			message: {role: "assistant", content: [{type: "text", text: output}]},
+			lineIndex: line.lineIndex,
+			...(line.uuid === undefined ? {} : {uuid: line.uuid}),
+			...(line.timestamp === undefined ? {} : {timestamp: line.timestamp}),
+			...(line.sessionId === undefined ? {} : {sessionId: line.sessionId}),
+		};
+	});
+	return result ?? lines;
+}
+
+/**
  * Upstream Normal folds background-task completions into the tool group beside
  * them ("Ran a command, finished a background command") rather than drawing a
  * user turn per `<task-notification>`; Verbose keeps the raw notification turns.
@@ -1588,7 +1613,7 @@ function buildSessionListEntries(
 	verbose: boolean,
 	held: HeldAssistantFooter | null,
 ): SessionListEntry[] {
-	const lines = verbose ? recordLines : withQueuedPrompts(recordLines);
+	const lines = verbose ? recordLines : withLocalCommandProse(withQueuedPrompts(recordLines));
 	const foldNotifications = !verbose;
 	const noticeOf = (index: number): FoldedNotice | null => {
 		if (!foldNotifications) return null;

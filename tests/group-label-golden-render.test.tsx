@@ -282,6 +282,24 @@ describe("local command", () => {
 	});
 });
 
+describe("local command output", () => {
+	it.each([
+		["5f402159", 2267, ["Kept model as Fable 5.1"]],
+		["f83bfc85", 2931, ["Session renamed to: daily"]],
+		["543f9fb3", 243, ["Diff panel shown", "Diff panel hidden"]],
+	])("draws %s:%i's system-record stdout as upstream's prose, without its tags", (session, line, texts) => {
+		const specimen = (rowSpecimens as RowSpecimen[]).find(
+			(candidate) => candidate.session === session && candidate.line === line,
+		)!;
+		const container = renderRecords(specimen.records);
+		const prose = Array.from(
+			container.querySelectorAll("[data-testid=transcript-row][data-perf-row=assistant_text] p"),
+			(paragraph) => paragraph.textContent,
+		);
+		expect(prose.slice(-texts.length)).toStrictEqual(texts);
+	});
+});
+
 describe("user bubble line box", () => {
 	it("sets the bubble on upstream's 14px/18px heading leading, as the streaming bubble does, leaving the prompt paragraph on its 20px body leading", () => {
 		const specimen = (rowSpecimens as RowSpecimen[]).find(
@@ -361,7 +379,7 @@ describe("background task stopped row", () => {
 			(candidate) => candidate.session === "5f402159" && candidate.line === 2267,
 		)!;
 
-	it("draws 5f402159:2267 at the end of the prose's span as upstream: a plain secondary row with no disclosure, the span's actions after it, then the bubble", () => {
+	it('draws 5f402159:2267 at the end of the span as upstream, under the "Kept model" prose: a plain secondary row with no disclosure, the span\'s actions after it, then the bubble', () => {
 		const rows = Array.from(renderRecords(specimen().records).querySelectorAll("[data-testid=transcript-row]"));
 		expect(
 			rows.map((row) => ({
@@ -376,6 +394,7 @@ describe("background task stopped row", () => {
 				bubble: row.querySelector(".user-message-bubble") !== null,
 			})),
 		).toStrictEqual([
+			{status: null, secondary: [], precedesStatus: false, footer: false, disclosures: 0, bubble: false},
 			{status: null, secondary: [], precedesStatus: true, footer: false, disclosures: 0, bubble: false},
 			{
 				status: "Background task stopped · You are doing a behaviour-preserving refactor of a...",
