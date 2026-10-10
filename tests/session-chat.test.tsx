@@ -1998,3 +1998,57 @@ describe("SessionChat disclosure focus treatment", () => {
 		});
 	});
 });
+
+describe("SessionChat skill attribution", () => {
+	const records = [
+		{type: "user", uuid: "u1", message: {role: "user", content: "Do all the tasks"}},
+		{
+			type: "assistant",
+			uuid: "a1",
+			parentUuid: "u1",
+			attributionSkill: "markdown-tasks:do-all-tasks",
+			attributionPlugin: "markdown-tasks",
+			message: {
+				role: "assistant",
+				content: [
+					{
+						type: "tool_use",
+						id: "t1",
+						name: "Bash",
+						input: {command: "just next-task", description: "Get first incomplete task"},
+					},
+				],
+			},
+		},
+		{
+			type: "user",
+			uuid: "r-t1",
+			parentUuid: "a1",
+			message: {role: "user", content: [{type: "tool_result", tool_use_id: "t1", content: "ok"}]},
+		},
+	];
+	const renderMode = (transcriptMode: TranscriptMode) => {
+		const {lines, toolResultMap} = processTranscript(records);
+		const {container} = render(
+			<SessionChat
+				sessionId="test-session"
+				lines={lines}
+				toolResultMap={toolResultMap}
+				transcriptMode={transcriptMode}
+				shouldScrollToEnd={false}
+			/>,
+		);
+		return {
+			pill: container.textContent?.includes("markdown-tasks") ?? false,
+			frame: container.querySelector("[data-turn-status-frame]")?.className,
+		};
+	};
+
+	it("draws no attribution pill in Normal, so the tool row opens the reply as upstream does", () => {
+		expect(renderMode("normal")).toStrictEqual({pill: false, frame: "flex flex-col w-full pb-p3"});
+	});
+
+	it("keeps the attribution pill in Verbose", () => {
+		expect(renderMode("verbose").pill).toBe(true);
+	});
+});

@@ -1313,7 +1313,7 @@ function buildSessionListEntries(
 					replyHead: line,
 					opensWithStatus:
 						line.type === "assistant" &&
-						!hasAttribution(line) &&
+						!hasAttribution(line, verbose) &&
 						toolSectionOpensWithStatus(toolUseNames([line]), 0),
 					element: (
 						<LineEntry
@@ -2855,6 +2855,7 @@ function AssistantEntry({
 	showTools: boolean;
 }) {
 	const liveFailures = useLiveToolFailures(sessionId);
+	const verbose = useContext(TranscriptModeContext) === "verbose";
 	const opensReply = useContext(AssistantSpanEntryContext)?.opensReply === true;
 	const toolCalls = useMemo(
 		() => buildLineToolCalls(line, toolResultMap, liveFailures, subagentLookup),
@@ -2880,7 +2881,7 @@ function AssistantEntry({
 		return null;
 	}
 
-	const attributionRow = <AttributionRow line={line} />;
+	const attributionRow = <AttributionRow line={line} verbose={verbose} />;
 
 	// Only tool_use blocks -- render as a tool call section
 	if (!hasVisibleNonToolContent && hasToolUse) {
@@ -2891,7 +2892,7 @@ function AssistantEntry({
 				<ToolCallSection
 					calls={toolCalls}
 					sessionId={sessionId}
-					leading={opensReply && !hasAttribution(line)}
+					leading={opensReply && !hasAttribution(line, verbose)}
 				/>
 			</>
 		);
@@ -2918,8 +2919,9 @@ function AssistantEntry({
 	);
 }
 
-function hasAttribution(line: MessageSessionLine): boolean {
-	return (line.attributionSkill ?? line.attributionPlugin ?? line.attributionMcpServer) !== undefined;
+/** Upstream draws no skill or MCP attribution, so only Verbose shows it. */
+function hasAttribution(line: MessageSessionLine, verbose: boolean): boolean {
+	return verbose && (line.attributionSkill ?? line.attributionPlugin ?? line.attributionMcpServer) !== undefined;
 }
 
 /**
@@ -2927,8 +2929,8 @@ function hasAttribution(line: MessageSessionLine): boolean {
  * it. The transcript layer dedupes consecutive identical attribution, so this
  * renders once per skill/MCP block.
  */
-function AttributionRow({line}: {line: MessageSessionLine}) {
-	if (!hasAttribution(line)) return null;
+function AttributionRow({line, verbose}: {line: MessageSessionLine; verbose: boolean}) {
+	if (!hasAttribution(line, verbose)) return null;
 	const skillLabel = line.attributionSkill ?? line.attributionPlugin;
 	const mcpLabel = line.attributionMcpServer
 		? `${line.attributionMcpServer}${line.attributionMcpTool ? ` · ${line.attributionMcpTool}` : ""}`
