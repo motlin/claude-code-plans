@@ -12,3 +12,14 @@ export function FallbackRenderer({toolCall}: ToolRendererProps) {
 
 	return <KeyValueCard isError={isError} params={params} result={result ?? undefined} />;
 }
+
+/** A call whose input failed its tool's schema: the input exactly as written, then the result. */
+export function InvalidInputRenderer({toolCall}: ToolRendererProps) {
+	const {input, result, isError} = toolCall;
+	const json = JSON.stringify(input, null, 2);
+	return (
+		<KeyValueCard isError={isError} params={[]} result={result ?? undefined} copyText={json}>
+			<pre className="text-code font-mono whitespace-pre-wrap break-all">{json}</pre>
+		</KeyValueCard>
+	);
+}

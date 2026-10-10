@@ -23,7 +23,7 @@ import {parseTaskNotification, type TaskNotification} from "../lib/background-ta
 import {SlashCommandText, SlashCommandsContext} from "./slash-command-chip";
 import {UserPlainText} from "./user-plain-text";
 import {splitLeadingSlashCommand, type SlashCommand} from "../lib/slash-commands";
-import {getToolRenderer} from "./tool-renderers";
+import {getCallRenderer} from "./tool-renderers";
 import {buildClientToolCall, buildSubagentLookup, getToolDescription, isArtifactCard} from "./tool-renderers/types";
 import type {ClientToolCall} from "./tool-renderers";
 import type {LiveToolFailure, SubagentLookup} from "./tool-renderers/types";
@@ -737,9 +737,19 @@ function buildLineToolCalls(
 ): ClientToolCall[] {
 	const content = line.message?.content;
 	if (!Array.isArray(content)) return [];
+	const invalid = new Set(line.invalidToolInputIds);
 	return content
 		.filter((b): b is ToolUseBlock => b.type === "tool_use")
-		.map((block) => buildClientToolCall(block, line.uuid ?? "", toolResultMap, liveFailures, subagentLookup));
+		.map((block) =>
+			buildClientToolCall(
+				block,
+				line.uuid ?? "",
+				toolResultMap,
+				liveFailures,
+				subagentLookup,
+				invalid.has(block.id),
+			),
+		);
 }
 
 /** A run of tool calls sharing one source session, ready to summarize. */
@@ -3174,7 +3184,7 @@ function ToolCallSection({
 				<ToolCallSummary calls={backgroundCalls} sessionId={sessionId} notices={notices} leading={leading} />
 			)}
 			{prominentCalls.map((call, i) => {
-				const Renderer = getToolRenderer(call.name);
+				const Renderer = getCallRenderer(call);
 				return (
 					<div key={`prominent-${i}`} className="relative">
 						<Suspense fallback={null}>
@@ -3332,7 +3342,7 @@ function ToolCallRow({
 	// An artifact card is the row's whole body and stays visible, as upstream
 	// draws it under the "Published artifact" label.
 	const expandable = hasBody && !NON_EXPANDING_TOOLS.has(call.name) && !isArtifactCard(call);
-	const Renderer = getToolRenderer(call.name);
+	const Renderer = getCallRenderer(call);
 	const pending = isPendingToolCall(call);
 	const toolRowLabel = toolLabel(call);
 	const running = pending ? runningToolLabel(call) : null;

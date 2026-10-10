@@ -1,5 +1,5 @@
 import {lazy, type ComponentType} from "react";
-import type {ToolRendererProps} from "./types";
+import type {ClientToolCall, ToolRendererProps} from "./types";
 import {getMcpRenderer} from "./mcp-registry";
 // Question cards are always visible, so they must not wait behind a blank lazy-loading fallback.
 import {AskUserQuestionRenderer} from "./ask-user-question-renderer";
@@ -68,6 +68,7 @@ const ReportFindingsRenderer = lazy(() =>
 	})),
 );
 const FallbackRenderer = lazy(() => import("./fallback-renderer").then((m) => ({default: m.FallbackRenderer})));
+const InvalidInputRenderer = lazy(() => import("./fallback-renderer").then((m) => ({default: m.InvalidInputRenderer})));
 
 const registry: Record<string, ComponentType<ToolRendererProps>> = {
 	Edit: EditRenderer,
@@ -105,6 +106,11 @@ export function getToolRenderer(name: string): ComponentType<ToolRendererProps> 
 		return registry["__fallback__"]!;
 	}
 	return registry[name] ?? registry["__fallback__"]!;
+}
+
+/** The renderer for one call: its tool's own, or the raw input when the input failed the tool's schema. */
+export function getCallRenderer(call: Pick<ClientToolCall, "name" | "invalidInput">): ComponentType<ToolRendererProps> {
+	return call.invalidInput === true ? InvalidInputRenderer : getToolRenderer(call.name);
 }
 
 export type {ClientToolCall} from "./types";

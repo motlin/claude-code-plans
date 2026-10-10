@@ -18,6 +18,7 @@ import {
 	ContentBlockSchema,
 	JsonValueSchema,
 	JsonlRecordSchema,
+	type JsonlRecord,
 	PromptSourceSchema,
 	RenderedRoleSchema,
 	TurnOriginSchema,
@@ -77,6 +78,8 @@ const MessageLineSchema = z.object({
 	customTitle: z.string().optional(),
 	sessionId: z.string().optional(),
 	lineIndex: z.number(),
+	/** tool_use ids whose input failed its tool's schema; those calls render raw. */
+	invalidToolInputIds: z.array(z.string()).optional(),
 	promptSource: PromptSourceSchema.optional(),
 	turnOrigin: TurnOriginSchema.optional(),
 	scheduledTaskId: z.string().optional(),
@@ -299,6 +302,53 @@ function buildUnparsedLine(
 	if (typeof raw["uuid"] === "string") line.uuid = raw["uuid"];
 	if (typeof raw["timestamp"] === "string") line.timestamp = raw["timestamp"];
 	return line;
+}
+
+/** Stands in for a tool name while re-parsing, so no tool input schema applies. */
+const INVALID_INPUT_TOOL_NAME = "__invalid_tool_input__";
+
+/**
+ * Re-parse an assistant record whose only failures are tool inputs that miss
+ * their tool's schema. claude.ai/code shows such calls anyway, so the record
+ * keeps its text and other calls, and the failed calls come back flagged for a
+ * raw rendering. Any other failure, or an input that is not even an object,
+ * leaves the record rejected.
+ */
+function parseWithInvalidToolInputs(
+	obj: unknown,
+	error: z.ZodError,
+): {record: JsonlRecord; invalidToolInputIds: string[]} | undefined {
+	if (typeof obj !== "object" || obj === null) return undefined;
+	const raw = obj as Record<string, unknown>;
+	const message = raw["message"];
+	if (raw["type"] !== "assistant" || typeof message !== "object" || message === null) return undefined;
+	const content = (message as Record<string, unknown>)["content"];
+	if (!Array.isArray(content)) return undefined;
+
+	const invalid = new Map<number, {id: string; name: string}>();
+	for (const issue of error.issues) {
+		const [messageKey, contentKey, index, inputKey] = issue.path;
+		if (messageKey !== "message" || contentKey !== "content" || inputKey !== "input") return undefined;
+		if (typeof index !== "number") return undefined;
+		const block: unknown = content[index];
+		if (typeof block !== "object" || block === null) return undefined;
+		const {type, id, name, input} = block as Record<string, unknown>;
+		if (type !== "tool_use" || typeof id !== "string" || typeof name !== "string") return undefined;
+		if (typeof input !== "object" || input === null || Array.isArray(input)) return undefined;
+		invalid.set(index, {id, name});
+	}
+
+	const renamed = content.map((block: unknown, index) =>
+		invalid.has(index) ? {...(block as object), name: INVALID_INPUT_TOOL_NAME} : block,
+	);
+	const reparsed = JsonlRecordSchema.safeParse({...raw, message: {...message, content: renamed}});
+	if (!reparsed.success || reparsed.data.type !== "assistant") return undefined;
+	const parsedContent = reparsed.data.message.content;
+	for (const [index, {name}] of invalid) {
+		const block = Array.isArray(parsedContent) ? parsedContent[index] : undefined;
+		if (block?.type === "tool_use") block.name = name;
+	}
+	return {record: reparsed.data, invalidToolInputIds: [...invalid.values()].map(({id}) => id)};
 }
 
 /** Keys a queued command and its queue-operation share: the command uuid, the delivery id, or both. */
@@ -549,11 +599,19 @@ function processRecordBatch(
 		const lineIndex = startLineIndex + i;
 
 		const parsed = JsonlRecordSchema.safeParse(obj);
-		if (!parsed.success) {
-			sessionLines.push(buildUnparsedLine(obj, lineIndex, parsed.error));
-			continue;
+		let invalidToolInputIds: string[] | undefined;
+		let record: JsonlRecord;
+		if (parsed.success) {
+			record = parsed.data;
+		} else {
+			const salvaged = parseWithInvalidToolInputs(obj, parsed.error);
+			if (salvaged === undefined) {
+				sessionLines.push(buildUnparsedLine(obj, lineIndex, parsed.error));
+				continue;
+			}
+			record = salvaged.record;
+			invalidToolInputIds = salvaged.invalidToolInputIds;
 		}
-		const record = parsed.data;
 
 		const uuid = "uuid" in record && typeof record.uuid === "string" ? record.uuid : undefined;
 		const sessionId = getRecordSessionId(record);
@@ -900,6 +958,7 @@ function processRecordBatch(
 		// The Zod-parsed message uses the ContentBlock type directly --
 		// no intermediate serialization type needed.
 		processedLine.message = record.message as MessageProcessedLine["message"];
+		if (invalidToolInputIds !== undefined) processedLine.invalidToolInputIds = invalidToolInputIds;
 
 		sessionLines.push(processedLine);
 	}

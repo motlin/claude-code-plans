@@ -23,6 +23,8 @@ export interface ToolLabelCall {
 	name: string;
 	input: Record<string, unknown>;
 	resultMeta?: ToolResultMeta | undefined;
+	/** The input failed the tool's schema: label from the name alone. */
+	invalidInput?: true | undefined;
 }
 
 /**
@@ -327,7 +329,7 @@ function progressive(description: string): string {
 }
 
 export function runningToolLabel(call: ToolLabelCall): RunningToolLabel {
-	const done = toolLabel({name: call.name, input: call.input});
+	const done = toolLabel({name: call.name, input: call.input, invalidInput: call.invalidInput});
 	const verb = call.name === "Write" ? "Writing" : progressiveOfPast(done.verb);
 	const running: RunningToolLabel = {verb};
 	if (done.doneLabel !== undefined) {
@@ -349,6 +351,7 @@ export function runningToolLabelText(label: RunningToolLabel): string {
 
 export function toolLabel(call: ToolLabelCall): ToolLabel {
 	const {name, input} = call;
+	if (call.invalidInput === true) return genericToolLabel(name);
 	const fixed = FIXED_LABELS[name];
 	if (fixed) return {...fixed};
 
@@ -394,6 +397,11 @@ export function toolLabel(call: ToolLabelCall): ToolLabel {
 		}
 	}
 
+	return genericToolLabel(name);
+}
+
+/** "Used Read", for a tool with no label of its own or a call it cannot read. */
+function genericToolLabel(name: string): ToolLabel {
 	const label = name.startsWith("mcp__") ? mcpToolLabel(name) : name;
 	return {verb: `Used ${label}`};
 }

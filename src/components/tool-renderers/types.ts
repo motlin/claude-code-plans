@@ -51,6 +51,8 @@ export interface ClientToolCall {
 	resultMeta?: ToolResultMeta | undefined;
 	artifact?: ParsedArtifact | undefined;
 	artifactList?: ArtifactListEntry[] | undefined;
+	/** The input failed the tool's schema, so the call renders raw under a generic label. */
+	invalidInput?: true | undefined;
 }
 
 /**
@@ -201,6 +203,8 @@ export interface LiveToolFailure {
  * received over SSE from `PostToolUseFailure` hooks. If the JSONL hasn't
  * caught up yet, the live failure flips `isError` and supplies `result` so
  * the renderer can show the error message immediately.
+ *
+ * `invalidInput` marks a call whose input failed its tool's schema.
  */
 export function buildClientToolCall(
 	block: ToolUseBlock,
@@ -208,6 +212,7 @@ export function buildClientToolCall(
 	toolResultMap: Map<string, ToolResultInfo>,
 	liveFailures?: Map<string, LiveToolFailure>,
 	subagentLookup?: SubagentLookup,
+	invalidInput = false,
 ): ClientToolCall {
 	const id = block.id;
 	const name = block.name;
@@ -217,9 +222,10 @@ export function buildClientToolCall(
 		id,
 		name,
 		input,
-		param: getToolParam(name, block.input),
+		param: invalidInput ? "" : getToolParam(name, block.input),
 		sourceUuid,
 	};
+	if (invalidInput) call.invalidInput = true;
 
 	// Attach tool result info from pairing map
 	const resultInfo = toolResultMap.get(id);
