@@ -214,6 +214,14 @@ function collectAssistantDisplaySpans(
 			current = undefined;
 			continue;
 		}
+		// Upstream sends a hook's message as a synthetic assistant text between a call and its result.
+		if (isHookSystemMessageLine(line)) {
+			if (current !== undefined) {
+				current.anchorLineIndex = line.lineIndex;
+				byLine.set(line.lineIndex, current);
+			}
+			continue;
+		}
 		if (line.type !== "assistant") continue;
 		const text = messageText(line);
 		if (current === undefined) {
@@ -682,6 +690,7 @@ function LineEntry({
 				) : (
 					footer
 				))}
+			{isHookSystemMessageLine(line) && footer}
 		</>
 	);
 	if (line.type !== "assistant") return React.cloneElement(wrapper, undefined, children);
@@ -1065,6 +1074,7 @@ type TranscriptRowKind = "human" | "assistant_text" | "assistant_tool" | "assist
 /** The upstream row type for a single line drawn as its own transcript row. */
 function transcriptRowKind(line: SessionLine): TranscriptRowKind {
 	if (line.type === "user") return "human";
+	if (isHookSystemMessageLine(line)) return "assistant_text";
 	if (line.type !== "assistant") return "marker";
 	const content = line.message?.content;
 	if (!Array.isArray(content))
@@ -1407,7 +1417,7 @@ function buildSessionListEntries(
 			assistantSpan: displaySpans?.get(line.lineIndex),
 			...(line.type === "assistant" ? {replyHead: line} : {}),
 			...(!verbose && isOrdinaryPromptLine(line, renderProps) ? {prompt: {line, render: renderLine}} : {}),
-			...(!verbose && isProseOnlyAssistantLine(line)
+			...(!verbose && (isProseOnlyAssistantLine(line) || isHookSystemMessageLine(line))
 				? {prose: {render: (precedesStatus: boolean) => renderLine(false, precedesStatus)}}
 				: {}),
 			element: renderLine(false),
@@ -2002,6 +2012,11 @@ function getAttachmentHead(json: string): AttachmentHead {
 	} catch {
 		return {type: null, hookEvent: null, prompt: null};
 	}
+}
+
+/** A hook's message to the user, which upstream draws as assistant prose ("PreToolUse:Bash says: …"). */
+function isHookSystemMessageLine(line: SessionLine): boolean {
+	return line.type === "attachment" && getAttachmentHead(line.attachmentJson).type === "hook_system_message";
 }
 
 /** Diagnostic attachments shown only in Verbose; subagent hand-backs stay as "Message from" rows. */

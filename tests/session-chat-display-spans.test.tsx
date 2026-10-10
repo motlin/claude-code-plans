@@ -361,6 +361,103 @@ describe("assistant display-span actions", () => {
 		}).toStrictEqual({marked: ["0", "5"], padded: ["0", "5"]});
 	});
 
+	it("draws a PreToolUse hook's message as prose inside the assistant span, 12px from the failed call above and the call below, keeping the turn gap before a prompt", () => {
+		const styles = readFileSync(join(process.cwd(), "src", "styles", "globals.css"), "utf8");
+		const rule = (comment: string) =>
+			new RegExp(`/\\* ${comment}[^*]*\\*/\\s*([^{]+)\\{\\s*padding-bottom: 12px;`).exec(styles)?.[1]?.trim() ??
+			"[data-missing-rule]";
+		const hookMessage = (uuid: string) => ({
+			type: "attachment",
+			uuid,
+			sessionId: "example-main",
+			attachment: {
+				type: "hook_system_message",
+				hookName: "PreToolUse:Bash",
+				hookEvent: "PreToolUse",
+				toolUseID: "example-tool-example-failed",
+				content: "Example hook advice.",
+			},
+		});
+		const [failedUse] = command("example-failed");
+		const failedResult = {
+			type: "user",
+			uuid: "example-failed-result",
+			sessionId: "example-main",
+			message: {
+				role: "user",
+				content: [
+					{
+						type: "tool_result",
+						tool_use_id: "example-tool-example-failed",
+						content: "PreToolUse:Bash hook error: example",
+						is_error: true,
+					},
+				],
+			},
+		};
+		const view = render(
+			<div className="transcript-text">
+				{chat([
+					text("example-intro", "Example introduction."),
+					failedUse,
+					hookMessage("example-hook"),
+					failedResult,
+					...command("example-retry"),
+					hookMessage("example-last-hook"),
+					{
+						type: "user",
+						uuid: "example-prompt",
+						sessionId: "example-main",
+						message: {role: "user", content: "Example prompt."},
+					},
+				])}
+			</div>,
+		);
+		const rowOf = (element: Element) => element.closest<HTMLElement>("[data-perf-line]")?.dataset["perfLine"];
+		const rows = Array.from(view.container.querySelectorAll<HTMLElement>("[data-transcript-entry-index]"));
+		expect({
+			rows: rows.map((row) => ({
+				line: row.dataset["perfLine"],
+				perfRow: row.dataset["perfRow"],
+				span: row.dataset["assistantSpan"],
+				hook: row.querySelector("p")?.textContent ?? undefined,
+			})),
+			precedesStatus: Array.from(view.container.querySelectorAll("[data-precedes-turn-status]"), rowOf),
+			proseToStatus: Array.from(
+				view.container.querySelectorAll(rule("Assistant prose followed by a status")),
+				rowOf,
+			),
+			toolToProse: Array.from(
+				view.container.querySelectorAll(rule("A standalone tool row followed by prose")),
+				rowOf,
+			),
+			footers: footers(view.container).map(anchor),
+		}).toStrictEqual({
+			rows: [
+				{line: "0", perfRow: "assistant_text", span: "assistant-span-0", hook: "Example introduction."},
+				{line: "1", perfRow: "assistant_tool", span: "assistant-span-0", hook: undefined},
+				{
+					line: "2",
+					perfRow: "assistant_text",
+					span: "assistant-span-0",
+					hook: "PreToolUse:Bash says: Example hook advice.",
+				},
+				{line: "4", perfRow: "assistant_tool", span: "assistant-span-0", hook: undefined},
+				{
+					line: "6",
+					perfRow: "assistant_text",
+					span: "assistant-span-0",
+					hook: "PreToolUse:Bash says: Example hook advice.",
+				},
+				{line: "7", perfRow: "human", span: undefined, hook: "Example prompt."},
+			],
+			precedesStatus: ["0", "2"],
+			proseToStatus: ["0", "2"],
+			toolToProse: ["1", "4"],
+			footers: ["6"],
+		});
+	});
+
 	it("copies authored text in order and targets the final assistant after tools and folded notifications", async () => {
 		const view = render(
 			chat([
