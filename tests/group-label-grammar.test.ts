@@ -170,3 +170,61 @@ describe("group label: one file", () => {
 		expect(label(calls)).toBe(expected);
 	});
 });
+
+describe("group label: cap", () => {
+	const tool = (name: string, extra: Partial<ToolCallLike> = {}): ToolCallLike => ({name, input: {}, ...extra});
+
+	it.each([
+		{
+			calls: [
+				tool("ToolSearch"),
+				bash(),
+				tool("WebSearch"),
+				tool("WebSearch"),
+				tool("WebSearch"),
+				tool("WebFetch"),
+				tool("WebFetch"),
+				tool("WebFetch"),
+				tool("WebSearch"),
+				tool("WebFetch"),
+				edit("/r/w.md"),
+			],
+			expected: "Ran a command, browsed the web, fetched 4 pages, and 2 more actions",
+		},
+		{
+			calls: [
+				bash(),
+				bash(),
+				bash(),
+				bash(),
+				{...tool("Write"), input: {file_path: "/r/a"}},
+				read("/r/b"),
+				edit("/r/c"),
+			],
+			expected: "Ran 4 commands, created a file, read a file, edited a file",
+		},
+		{
+			calls: [bash(), tool("Grep"), tool("Glob"), tool("WebSearch"), tool("mcp__x__y", {isError: true})],
+			expected: "Ran a command, searched code, found files, and 2 more actions (1 failed)",
+		},
+	])("keeps the first three of five or more segments: $expected", ({calls, expected}) => {
+		expect(label(calls)).toBe(expected);
+	});
+
+	it("counts background completions among the dropped actions", () => {
+		const segments = summarizeToolCallStats(
+			[bash(), tool("Grep"), tool("Glob"), tool("WebSearch")],
+			[
+				{command: true, status: "completed"},
+				{command: true, status: "completed"},
+			],
+		).segments;
+
+		expect(segments).toStrictEqual([
+			{verb: "Ran", rest: "a command"},
+			{verb: "searched", rest: "code"},
+			{verb: "found", rest: "files"},
+			{verb: "and", rest: "3 more actions"},
+		]);
+	});
+});

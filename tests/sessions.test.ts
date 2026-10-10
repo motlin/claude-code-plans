@@ -428,7 +428,7 @@ describe("summarizeToolCalls", () => {
 		];
 		// Edits: 9 files; per edit removed 3 added 5 -> totals +45 -27.
 		expect(summarizeToolCalls(calls)).toBe(
-			"edited 9 files, searched code, read 9 files, ran 4 commands, created 4 files, used a tool +53 -27",
+			"edited 9 files, searched code, read 9 files, and 9 more actions +53 -27",
 		);
 	});
 });

@@ -526,8 +526,17 @@ function countFailed(byKey: Map<string, CallOutcome | undefined>): number {
 	return failed;
 }
 
-function withFailures(segment: SummarySegment, failed: number): SummarySegment {
-	return failed === 0 ? segment : {verb: segment.verb, rest: `${segment.rest} (${failed} failed)`};
+/**
+ * A segment before its failure suffix, with the actions it stands for -- files,
+ * calls, or verbs -- so a capped header can total the ones it drops.
+ */
+interface CountedSegment extends SummarySegment {
+	count: number;
+	failed: number;
+}
+
+function withFailures({verb, rest, failed}: CountedSegment): SummarySegment {
+	return failed === 0 ? {verb, rest} : {verb, rest: `${rest} (${failed} failed)`};
 }
 
 /**
@@ -538,7 +547,7 @@ function withFailures(segment: SummarySegment, failed: number): SummarySegment {
 function soleFileSegment(
 	path: string,
 	outcomes: Map<ToolCategory, Map<string, CallOutcome | undefined>>,
-): SummarySegment {
+): CountedSegment {
 	const failedByVerb = new Map<string, boolean>();
 	for (const [cat, byKey] of outcomes) {
 		if (!FILE_CATEGORIES.has(cat)) continue;
@@ -546,15 +555,38 @@ function soleFileSegment(
 		failedByVerb.set(verb, failedByVerb.get(verb) === true || countFailed(byKey) > 0);
 	}
 	const verbs = VERB_LIST.format(failedByVerb.keys());
-	const failedVerbs = [...failedByVerb.values()].filter(Boolean).length;
-	return withFailures(
-		{verb: verbs.charAt(0).toUpperCase() + verbs.slice(1), rest: basenameFromPath(path)},
-		failedVerbs,
-	);
+	return {
+		verb: verbs.charAt(0).toUpperCase() + verbs.slice(1),
+		rest: basenameFromPath(path),
+		count: failedByVerb.size,
+		failed: [...failedByVerb.values()].filter(Boolean).length,
+	};
 }
 
-function labelledSegment(label: SegmentLabel, count: number): SummarySegment {
-	return {verb: label.verb, rest: pluralize(count, label.one, label.many)};
+function labelledSegment(label: SegmentLabel, count: number, failed: number): CountedSegment {
+	return {verb: label.verb, rest: pluralize(count, label.one, label.many), count, failed};
+}
+
+/** Segments upstream shows before folding the rest into "and N more actions". */
+const SHOWN_SEGMENTS = 3;
+
+/**
+ * Five or more segments keep the first three and total the rest: "Ran a
+ * command, browsed the web, fetched 4 pages, and 2 more actions". Four still
+ * show in full, as folding one would save nothing.
+ */
+function capSegments(segments: CountedSegment[]): CountedSegment[] {
+	if (segments.length < SHOWN_SEGMENTS + 2) return segments;
+	const dropped = segments.slice(SHOWN_SEGMENTS);
+	const count = dropped.reduce((sum, segment) => sum + segment.count, 0);
+	const failed = dropped.reduce((sum, segment) => sum + segment.failed, 0);
+	const more: CountedSegment = {
+		verb: "and",
+		rest: pluralize(count, "1 more action", "{n} more actions"),
+		count,
+		failed,
+	};
+	return [...segments.slice(0, SHOWN_SEGMENTS), more];
 }
 
 function buildSummarySegments(
@@ -597,7 +629,7 @@ function buildSummarySegments(
 	for (const byKey of outcomes.values()) failed += countFailed(byKey);
 
 	// Each segment reports its own failures: "Edited k.ts (1 failed), ran a command".
-	const segments: SummarySegment[] = [];
+	const segments: CountedSegment[] = [];
 	const solePath = soleFilePath(calls, categories);
 	let soleFileNamed = false;
 	for (const [cat, byKey] of outcomes) {
@@ -606,10 +638,10 @@ function buildSummarySegments(
 			soleFileNamed = true;
 			continue;
 		}
-		segments.push(withFailures(labelledSegment(CATEGORY_LABELS[cat], byKey.size), countFailed(byKey)));
+		segments.push(labelledSegment(CATEGORY_LABELS[cat], byKey.size, countFailed(byKey)));
 	}
 
-	if (otherTools > 0) segments.push(withFailures(labelledSegment(OTHER_TOOLS_LABEL, otherTools), otherFailed));
+	if (otherTools > 0) segments.push(labelledSegment(OTHER_TOOLS_LABEL, otherTools, otherFailed));
 
 	// Upstream folds background completions in last: "Ran a command, finished
 	// a background command", "Used a tool, finished a background task (1 stopped)",
@@ -620,18 +652,24 @@ function buildSummarySegments(
 		const stopped = completions.filter((completion) => completion.status === "stopped").length;
 		const failedCompletions = completions.filter((completion) => completion.status === "failed").length;
 		const rest = pluralize(completions.length, `a background ${noun}`, `{n} background ${noun}s`);
+		const count = completions.length;
 		if (failedCompletions > 0) {
-			segments.unshift({verb: "Finished", rest: `${rest} (${failedCompletions} failed)`});
+			segments.unshift({verb: "Finished", rest, count, failed: failedCompletions});
 		} else {
-			segments.push({verb: "Finished", rest: stopped > 0 ? `${rest} (${stopped} stopped)` : rest});
+			segments.push({
+				verb: "Finished",
+				rest: stopped > 0 ? `${rest} (${stopped} stopped)` : rest,
+				count,
+				failed: 0,
+			});
 		}
 	}
 
 	// Upstream capitalizes only the leading verb: "Ran 2 commands, read cache.ts".
 	return {
-		segments: segments.map((segment, i) =>
-			i === 0 ? segment : {verb: lowercaseFirst(segment.verb), rest: segment.rest},
-		),
+		segments: capSegments(segments)
+			.map(withFailures)
+			.map((segment, i) => (i === 0 ? segment : {verb: lowercaseFirst(segment.verb), rest: segment.rest})),
 		added,
 		removed,
 		failed,
