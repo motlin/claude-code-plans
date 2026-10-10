@@ -302,12 +302,22 @@ function buildUnparsedLine(
 }
 
 /** Keys a queued command and its queue-operation share: the command uuid, the delivery id, or both. */
+const USER_REJECTED_TOOL_USE = "User rejected tool use";
+const REJECTION_WITH_FEEDBACK_PREFIX = "The user doesn't want to proceed with this tool use. The tool use was rejected";
+
 /**
- * Denials upstream labels "Stopped": the user rejected the call or interrupted it.
- * Rule, auto-mode, and plain tool errors read "Failed".
+ * How upstream labels a call the user turned down: "Stopped" when they rejected
+ * or interrupted it outright, "Denied" when they rejected it with a typed reply.
+ * Rule, auto-mode, and plain tool errors are neither; they read "Failed".
  */
-function isStoppedDenial(kind: string | undefined): boolean {
-	return kind === "user-rejected" || kind === "interrupted";
+function userDenial(kind: string | undefined, toolUseResult: unknown, resultText: string): "stopped" | "denied" | null {
+	if (kind !== "user-rejected" && kind !== "interrupted") return null;
+	const interrupted =
+		toolUseResult === USER_REJECTED_TOOL_USE ||
+		resultText === "Tool execution was interrupted." ||
+		resultText.startsWith("[Request interrupted by user");
+	if (!interrupted && resultText.startsWith(REJECTION_WITH_FEEDBACK_PREFIX)) return "denied";
+	return "stopped";
 }
 
 function queuePairingKeys(commandUuid: string | undefined, deliveryId: string | undefined): string[] {
@@ -606,7 +616,11 @@ function processRecordBatch(
 								isError: block.is_error === true,
 								resultUuid: uuid ?? "",
 							};
-							if (info.isError && isStoppedDenial(record.toolDenialKind)) info.stopped = true;
+							const denial = info.isError
+								? userDenial(record.toolDenialKind, record.toolUseResult, resultText)
+								: null;
+							if (denial === "stopped") info.stopped = true;
+							if (denial === "denied") info.denied = true;
 							const resultMeta = toolResultMetaFrom(record.toolUseResult);
 							if (resultMeta !== undefined) info.resultMeta = resultMeta;
 							if (!info.isError) {

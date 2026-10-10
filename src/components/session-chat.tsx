@@ -3306,15 +3306,18 @@ function ToolCallRow({
 	const isSkill = call.name === "Skill" && !call.isError && !pending;
 	const isFailedSkill = call.name === "Skill" && call.isError === true;
 	// Upstream keeps a failed or stopped row's success-shaped label in muted ink and
-	// appends a status: a danger "Failed", or a secondary "Stopped" when the user
-	// rejected or interrupted the call.
+	// appends a status: a danger "Failed", a secondary "Stopped" when the user
+	// rejected or interrupted the call, or a secondary "Denied" when they rejected
+	// it with a reply.
 	// A background launch takes the status its later notification reports.
 	const backgroundOutcome = useContext(BackgroundOutcomeContext).get(call.id);
 	const status =
 		call.isError === true
 			? call.stopped === true
 				? "Stopped"
-				: "Failed"
+				: call.denied === true
+					? "Denied"
+					: "Failed"
 			: backgroundOutcome === "stopped"
 				? "Stopped"
 				: backgroundOutcome === "failed"
@@ -3392,7 +3395,7 @@ function ToolCallRow({
 			{rangeLabel && <span className={`text-body ${labelClass} truncate min-w-0`}>{rangeLabel}</span>}
 			{diffStats && <DiffStats added={diffStats.added} removed={diffStats.removed} />}
 			{status !== null && (
-				<span className={`shrink-0 text-body ${status === "Stopped" ? "text-secondary" : "text-danger-ink"}`}>
+				<span className={`shrink-0 text-body ${status === "Failed" ? "text-danger-ink" : "text-secondary"}`}>
 					{status}
 				</span>
 			)}

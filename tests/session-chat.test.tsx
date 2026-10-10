@@ -1013,6 +1013,31 @@ describe("SessionChat failed tool row label", () => {
 		});
 	});
 
+	it('labels a rejection the user explained "Denied" and a bare rejection "Stopped", both in secondary ink', () => {
+		const rejection =
+			"The user doesn't want to proceed with this tool use. The tool use was rejected (eg. if it was a file edit, the new_string was NOT written to the file). To tell you how to proceed, the user said:\nNot now";
+		const description = "Commit the mise version bumps";
+		const label = {text: description, className: `truncate min-w-0 ${MUTED_LABEL}`};
+
+		expect({
+			denied: rowHeaderChildren(
+				toolResultRecords(bash(description), rejection, true, {
+					toolDenialKind: "user-rejected",
+					toolUseResult: `Error: ${rejection}`,
+				}),
+			),
+			stopped: rowHeaderChildren(
+				toolResultRecords(bash(description), rejection, true, {
+					toolDenialKind: "user-rejected",
+					toolUseResult: "User rejected tool use",
+				}),
+			),
+		}).toStrictEqual({
+			denied: [label, {text: "Denied", className: "shrink-0 text-body text-secondary"}, ROW_CHEVRON],
+			stopped: [label, STOPPED_SUFFIX, ROW_CHEVRON],
+		});
+	});
+
 	it('marks permission-rule and automode-blocked denials "Failed", not "Stopped"', () => {
 		const failed = [
 			{text: "Rebase and push X", className: `truncate min-w-0 ${MUTED_LABEL}`},
