@@ -460,15 +460,16 @@ function filePathOf(call: ToolCallLike): string | null {
 
 /**
  * The tool's category, except that a Write upstream reports as updating an
- * existing file counts as an edit. The first Write of a path decides for all
- * of them, so a file the group created stays created.
+ * existing file counts as an edit. The first Write of a path to report either
+ * decides for all of them, so a file the group created stays created.
  */
 function categorizeWithWrites(calls: ToolCallLike[]): (ToolCategory | null)[] {
-	const firstWriteType = new Map<string, "create" | "update" | undefined>();
+	const firstWriteType = new Map<string, "create" | "update">();
 	for (const call of calls) {
 		const path = filePathOf(call);
-		if (call.name === "Write" && path !== null && !firstWriteType.has(path)) {
-			firstWriteType.set(path, call.resultMeta?.writeType);
+		const writeType = call.resultMeta?.writeType;
+		if (call.name === "Write" && path !== null && writeType !== undefined && !firstWriteType.has(path)) {
+			firstWriteType.set(path, writeType);
 		}
 	}
 	return calls.map((call) => {

@@ -148,6 +148,10 @@ describe("group label: one file", () => {
 		{calls: [write("/r/x.ts", "create"), edit("/r/x.ts")], expected: "Created and edited x.ts"},
 		{calls: [write("/r/x.ts", "update"), bash()], expected: "Edited x.ts, ran a command"},
 		{
+			calls: [{...write("/r/x.ts"), isError: true}, bash(), read("/r/x.ts"), write("/r/x.ts", "update")],
+			expected: "Edited and read x.ts, ran a command",
+		},
+		{
 			calls: [read("/r/x.ts"), edit("/r/x.ts"), write("/r/x.ts", "create")],
 			expected: "Read, edited, and created x.ts",
 		},
