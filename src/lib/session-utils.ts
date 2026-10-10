@@ -529,6 +529,10 @@ function countFailed(byKey: Map<string, CallOutcome>): number {
 	return failed;
 }
 
+function withFailures(segment: SummarySegment, failed: number): SummarySegment {
+	return failed === 0 ? segment : {verb: segment.verb, rest: `${segment.rest} (${failed} failed)`};
+}
+
 function labelledSegment(label: SegmentLabel, count: number, name: string | null = null): SummarySegment {
 	return {verb: label.verb, rest: name ?? pluralize(count, label.one, label.many)};
 }
@@ -577,34 +581,25 @@ function buildSummarySegments(
 	// emitted in place of whichever of the two categories came first.
 	const compound = coalescedReadMutation(counts, firstCall);
 
+	// Each segment reports its own failures: "Edited k.ts (1 failed), ran a command".
 	const segments: SummarySegment[] = [];
-	let bashSegment: SummarySegment | null = null;
 	for (const [cat, count] of counts) {
 		if (compound !== null && (cat === "read" || cat === compound.mutation)) {
 			if (cat === compound.emitter) {
-				segments.push({
-					verb: compound.verb,
-					rest: compound.basename,
-				});
+				const failedVerbs = [outcomes.get("read")!, outcomes.get(compound.mutation)!].filter(
+					(byKey) => countFailed(byKey) > 0,
+				).length;
+				segments.push(withFailures({verb: compound.verb, rest: compound.basename}, failedVerbs));
 			}
 			continue;
 		}
 		const singleFilename =
 			count === 1 && (cat === "read" || isMutation(cat)) ? singleFileBasename(firstCall.get(cat)) : null;
 		const segment = labelledSegment(CATEGORY_LABELS[cat], count, singleFilename);
-		if (cat === "bash") bashSegment = segment;
-		segments.push(segment);
+		segments.push(withFailures(segment, countFailed(outcomes.get(cat)!)));
 	}
 
-	if (otherTools > 0) segments.push(labelledSegment(OTHER_TOOLS_LABEL, otherTools));
-
-	// Upstream reports failures on the command segment -- "Ran 3 commands (1
-	// failed)" -- falling back to the leading segment when no command ran.
-	if (failed > 0 && segments.length > 0) {
-		const bashIndex = segments.findIndex((segment) => segment === bashSegment);
-		const target = segments[bashIndex === -1 ? 0 : bashIndex]!;
-		target.rest = `${target.rest} (${failed} failed)`.trimStart();
-	}
+	if (otherTools > 0) segments.push(withFailures(labelledSegment(OTHER_TOOLS_LABEL, otherTools), otherFailed));
 
 	// Upstream folds background completions in last: "Ran a command, finished
 	// a background command", "Used a tool, finished a background task (1 stopped)",

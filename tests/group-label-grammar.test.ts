@@ -94,3 +94,27 @@ describe("group label: distinct files", () => {
 		expect(label(calls)).toBe(expected);
 	});
 });
+
+describe("group label: failure suffix", () => {
+	const mcp = (extra: Partial<ToolCallLike> = {}): ToolCallLike => ({name: "mcp__x__y", input: {}, ...extra});
+
+	it.each([
+		{calls: [edit("/r/k.ts", {isError: true}), bash()], expected: "Edited k.ts (1 failed), ran a command"},
+		{
+			calls: [read("/r/a", {isError: true}), bash(), read("/r/b"), read("/r/c"), read("/r/d"), bash()],
+			expected: "Read 4 files (1 failed), ran 2 commands",
+		},
+		{
+			calls: [
+				bash({isError: true}),
+				read("/r/a", {isError: true}),
+				read("/r/b", {isError: true}),
+				read("/r/c", {isError: true}),
+			],
+			expected: "Ran a command (1 failed), read 3 files (3 failed)",
+		},
+		{calls: [mcp({isError: true}), bash(), mcp()], expected: "Ran a command, used 2 tools (1 failed)"},
+	])("attaches each failure to its own segment: $expected", ({calls, expected}) => {
+		expect(label(calls)).toBe(expected);
+	});
+});

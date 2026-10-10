@@ -136,7 +136,7 @@ describe("summarizeToolCallStats", () => {
 		});
 	});
 
-	it("puts the failure count on the first segment when no bash call ran", () => {
+	it("puts the failure count on the segment that failed", () => {
 		expect(
 			summarizeToolCallStats([
 				{name: "Read", input: {file_path: "/repo/a.ts"}, isError: true},
