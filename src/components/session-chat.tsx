@@ -1975,6 +1975,7 @@ function VirtualizedSessionEntries({
 	const readingAnchorRef = useRef<TranscriptReadingAnchor | undefined>(undefined);
 	const handoffAnchorRef = useRef<TranscriptReadingAnchor | undefined>(undefined);
 	const pendingScrollAdjustmentRef = useRef(0);
+	const rangeSyncInputsRef = useRef<{heights?: Map<string, number>; update?: () => void}>({});
 	const pendingJumpRef = useRef<number | null>(null);
 	const pendingFocusIndexRef = useRef<number | null>(null);
 	const [measuredHeights, setMeasuredHeights] = useState(measuredHeightsRef.current);
@@ -2229,7 +2230,16 @@ function VirtualizedSessionEntries({
 				}
 			}
 			handoffAnchorRef.current = undefined;
+		} else if (
+			rangeSyncInputsRef.current.heights === measuredHeights &&
+			rangeSyncInputsRef.current.update === updateVisibleRange
+		) {
+			// A plain range commit must not re-derive the range in the same frame: on a cold
+			// deep link each mounted tail row clamps the scroller, cascading window swaps
+			// before paint that register as layout shift. Scroll events and measurements drive it.
+			return;
 		}
+		rangeSyncInputsRef.current = {heights: measuredHeights, update: updateVisibleRange};
 		const adjustment = pendingScrollAdjustmentRef.current;
 		pendingScrollAdjustmentRef.current = 0;
 		if (scroller && adjustment !== 0) {

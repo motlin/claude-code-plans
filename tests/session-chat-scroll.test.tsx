@@ -177,6 +177,33 @@ describe("SessionChat initial scrolling", () => {
 		expect(scrollIntoView.mock.calls).toStrictEqual([[{block: "center", behavior: "smooth"}]]);
 	});
 
+	it("derives the mounted window from the scroll event, not again from a range commit's clamped offset", () => {
+		const view = render(
+			<SessionChat
+				sessionId="session-400"
+				shouldScrollToEnd={false}
+				lines={messages(100)}
+				toolResultMap={new Map()}
+			/>,
+		);
+		const feed = view.container.querySelector<HTMLElement>("[data-testid='virtualized-transcript']")!;
+		// The first read is the offset the scroll event reports. Every later read is the offset
+		// after the newly mounted rows clamp the scroller, which only a later scroll event may follow.
+		let reads = 0;
+		feed.getBoundingClientRect = () => {
+			reads += 1;
+			return DOMRect.fromRect({x: 0, y: reads === 1 ? -9_000 : -6_000, width: 768, height: 16_000});
+		};
+
+		fireEvent.scroll(document.scrollingElement ?? document.documentElement);
+
+		expect(
+			[...view.container.querySelectorAll<HTMLElement>("[data-transcript-entry-index]")].map(
+				(row) => row.dataset["transcriptEntryIndex"],
+			),
+		).toStrictEqual(["27", "28", "29", "30", "31", "32"]);
+	});
+
 	it("scrolls a long session to its end once and does not follow an append after the user scrolls up", () => {
 		const initialLines = messages(100);
 		const view = render(
