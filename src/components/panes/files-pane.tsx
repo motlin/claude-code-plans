@@ -35,7 +35,9 @@ import {
 } from "../ui/menu";
 import {Tooltip} from "../ui/tooltip";
 import {PANE_HEADER_ICON_BUTTON_CLASS} from "./pane-classes";
-import {type PaneChrome, registerPane} from "./pane-registry";
+import {consumePendingFilterFocus} from "./files-filter-focus";
+import {usePaneHost} from "./tile-host";
+import type {PaneChrome} from "./pane-registry";
 import {
 	FILE_SOURCE_OPTIONS,
 	type FileSourceSelection,
@@ -43,13 +45,8 @@ import {
 	SessionFilesList,
 	useFileSourceSelection,
 } from "./session-files-list";
-import {usePaneHost} from "./tile-host";
 
-export {
-	DEFAULT_FILE_SOURCE_SELECTION,
-	FILE_SOURCE_SELECTION_STORAGE_KEY,
-	useExtractedSessionFiles,
-} from "./session-files-list";
+export {DEFAULT_FILE_SOURCE_SELECTION, FILE_SOURCE_SELECTION_STORAGE_KEY} from "./session-files-list";
 
 export interface FilesEmptyState {
 	title: string;
@@ -70,18 +67,6 @@ export function filesEmptyState(hasTree: boolean, tabCount: number): FilesEmptyS
 			? "Pick a file in the tree, or click a file path in the conversation."
 			: "Click a file path in the conversation to open it.",
 	};
-}
-
-/**
- * Set by ⇧⌘F when it opens the pane, consumed by the pane's filter input on
- * mount: upstream focuses the filter only when the shortcut opened the pane.
- */
-let pendingFilterFocus = false;
-
-function consumePendingFilterFocus(): boolean {
-	const pending = pendingFilterFocus;
-	pendingFilterFocus = false;
-	return pending;
 }
 
 function TreeToggle({shown, onToggle}: {shown: boolean; onToggle: () => void}) {
@@ -638,7 +623,7 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 	);
 }
 
-interface FilesPaneProps {
+export interface FilesPaneProps {
 	sessionId: string;
 	/** The session's working directory, when known. */
 	cwd: string | undefined;
@@ -650,7 +635,7 @@ interface FilesPaneProps {
 	jumpTargetWindow: JumpTargetWindow;
 }
 
-function FilesPane({sessionId, cwd, chrome, windowFiles, windowStartIndex, jumpTargetWindow}: FilesPaneProps) {
+export function FilesPane({sessionId, cwd, chrome, windowFiles, windowStartIndex, jumpTargetWindow}: FilesPaneProps) {
 	// A whole-session inventory costs a full pass over the JSONL, so only an
 	// open Files pane asks for it.
 	const resources = useQuery(sessionResourcesQueryOptions(sessionId, true)).data;
@@ -665,42 +650,4 @@ function FilesPane({sessionId, cwd, chrome, windowFiles, windowStartIndex, jumpT
 			/>
 		</JumpTargetProvider>
 	);
-}
-
-/** Registers the `files` pane kind for this session while mounted. */
-export function useRegisterFilesPane({
-	sessionId,
-	cwd,
-	windowFiles,
-	windowStartIndex,
-	jumpTargetWindow,
-}: Omit<FilesPaneProps, "chrome">): void {
-	useEffect(
-		() =>
-			registerPane("files", {
-				title: "Files",
-				header: "custom",
-				render: (chrome) => (
-					<FilesPane
-						sessionId={sessionId}
-						cwd={cwd}
-						chrome={chrome}
-						windowFiles={windowFiles}
-						windowStartIndex={windowStartIndex}
-						jumpTargetWindow={jumpTargetWindow}
-					/>
-				),
-			}),
-		[sessionId, cwd, windowFiles, windowStartIndex, jumpTargetWindow],
-	);
-}
-
-/** Binds ⇧⌘F: toggle the Files pane, focusing its filter when it opens. */
-export function FilesPaneShortcut() {
-	const host = usePaneHost();
-	useShortcut("toggle_files", () => {
-		pendingFilterFocus = !host.isOpen("files");
-		host.togglePane("files");
-	});
-	return null;
 }

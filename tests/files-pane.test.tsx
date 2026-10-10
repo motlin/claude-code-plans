@@ -4,7 +4,8 @@ import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {FileTabsStrip} from "../src/components/files/file-tabs-strip";
-import {FilesPaneShortcut, FilesPaneView, filesEmptyState} from "../src/components/panes/files-pane";
+import {FilesPaneView, filesEmptyState} from "../src/components/panes/files-pane";
+import {FilesPaneShortcut} from "../src/components/panes/files-pane-entry";
 import {registerPane} from "../src/components/panes/pane-registry";
 import {TileHost} from "../src/components/panes/tile-host";
 import {SettingsProvider} from "../src/components/settings-provider";

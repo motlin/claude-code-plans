@@ -9,7 +9,8 @@ import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {FileView} from "../src/components/files/file-view";
-import {FilesPaneShortcut, FilesPaneView} from "../src/components/panes/files-pane";
+import {FilesPaneView} from "../src/components/panes/files-pane";
+import {FilesPaneShortcut} from "../src/components/panes/files-pane-entry";
 import {registerPane} from "../src/components/panes/pane-registry";
 import {TileHost} from "../src/components/panes/tile-host";
 import {SettingsProvider} from "../src/components/settings-provider";

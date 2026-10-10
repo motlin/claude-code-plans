@@ -7,9 +7,9 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {
 	DEFAULT_FILE_SOURCE_SELECTION,
 	FILE_SOURCE_SELECTION_STORAGE_KEY,
-	FilesPaneShortcut,
 	FilesPaneView,
 } from "../src/components/panes/files-pane";
+import {FilesPaneShortcut} from "../src/components/panes/files-pane-entry";
 import {sessionFileLabel} from "../src/components/panes/session-files-list";
 import {registerPane} from "../src/components/panes/pane-registry";
 import {TileHost} from "../src/components/panes/tile-host";
