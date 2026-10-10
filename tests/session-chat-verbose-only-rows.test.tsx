@@ -314,3 +314,62 @@ describe("Queued human prompts", () => {
 		expect(observeQueued(peer, "normal")).toStrictEqual({bubbles: [], statuses: ["Ran 2 commands"], banner: false});
 	});
 });
+
+function agentMessageText(from: string): string {
+	return `Another Claude session sent a message:\n<agent-message from="${from}">\nDone with ${from}.\n</agent-message>`;
+}
+
+function peerMessage(uuid: string, from: string) {
+	return {
+		type: "user",
+		uuid,
+		isMeta: true,
+		timestamp: "2026-09-30T08:00:30.000Z",
+		message: {role: "user", content: agentMessageText(from)},
+	};
+}
+
+const PROSE = {
+	type: "assistant",
+	uuid: "a-prose",
+	timestamp: "2026-09-30T08:00:10.000Z",
+	message: {role: "assistant", content: [{type: "text", text: "Two workers are running."}]},
+};
+
+function observePeers(records: unknown[], mode: TranscriptMode) {
+	const container = renderRecords(records, mode);
+	return {
+		statuses: Array.from(
+			container.querySelectorAll("[data-turn-status] > button > span:first-child"),
+			(label) => label.textContent,
+		),
+		messageRows: container.querySelectorAll("[data-agent-message-from]").length,
+	};
+}
+
+describe("Agent messages folded into tool groups", () => {
+	it("counts the messages that lead a tool run in its label", () => {
+		const records = [PROSE, peerMessage("p-1", "a1"), peerMessage("p-2", "a2"), ...bashCall("first")];
+		expect(observePeers(records, "normal")).toStrictEqual({
+			statuses: ["Received 2 messages, ran a command"],
+			messageRows: 0,
+		});
+	});
+
+	it("trails a message queued between the tools of one run", () => {
+		const records = [
+			...bashCall("first"),
+			attachment("att-peer", {type: "queued_command", prompt: agentMessageText("a1"), commandMode: "prompt"}),
+			...bashCall("second"),
+		];
+		expect(observePeers(records, "normal")).toStrictEqual({
+			statuses: ["Ran 2 commands, received a message"],
+			messageRows: 0,
+		});
+	});
+
+	it("keeps the message as its own row in Verbose mode", () => {
+		const records = [PROSE, peerMessage("p-1", "a1"), ...bashCall("first")];
+		expect(observePeers(records, "verbose")).toStrictEqual({statuses: [], messageRows: 1});
+	});
+});

@@ -262,6 +262,7 @@ const CATEGORY_LABELS: Record<ToolCategory, SegmentLabel> = {
 };
 
 const OTHER_TOOLS_LABEL: SegmentLabel = {verb: "Used", one: "a tool", many: "{n} tools"};
+const RECEIVED_LABEL: SegmentLabel = {verb: "Received", one: "a message", many: "{n} messages"};
 
 /** Categories whose calls change a file, so their diff stats sum into the header. */
 function isMutation(cat: ToolCategory): boolean {
@@ -442,6 +443,14 @@ export interface BackgroundCompletionLike {
 	toolUseId?: string | null | undefined;
 }
 
+/** Agent messages folded into a tool group: those before its first tool, and those after it. */
+export interface ReceivedMessages {
+	leading: number;
+	trailing: number;
+}
+
+const NO_RECEIVED: ReceivedMessages = {leading: 0, trailing: 0};
+
 export interface ToolCallSummaryStats {
 	segments: SummarySegment[];
 	added: number;
@@ -620,6 +629,7 @@ function buildSummarySegments(
 	calls: ToolCallLike[],
 	groupCompletions: readonly BackgroundCompletionLike[] = [],
 	knownFailedLaunches: ReadonlySet<string> = new Set(),
+	received: ReceivedMessages = NO_RECEIVED,
 ): ToolCallSummaryStats {
 	const {completions, failedLaunches} = attributeLaunchFailures(calls, groupCompletions, knownFailedLaunches);
 	// Insertion order carries the summary order: upstream Normal writes both
@@ -673,6 +683,11 @@ function buildSummarySegments(
 
 	if (otherTools > 0) segments.push(labelledSegment(OTHER_TOOLS_LABEL, otherTools, otherFailed));
 
+	// Upstream names agent messages where they arrived: "Received a message, ran
+	// a command" when they led the run, "Ran 2 commands, received a message" after.
+	if (received.leading > 0) segments.unshift(labelledSegment(RECEIVED_LABEL, received.leading, 0));
+	if (received.trailing > 0) segments.push(labelledSegment(RECEIVED_LABEL, received.trailing, 0));
+
 	// Upstream folds background completions in last: "Ran a command, finished
 	// a background command", "Used a tool, finished a background task (1 stopped)",
 	// but leads with them when one failed: "Finished a background command (1 failed),
@@ -715,8 +730,9 @@ export function summarizeToolCallStats(
 	calls: ToolCallLike[],
 	completions: readonly BackgroundCompletionLike[] = [],
 	failedLaunches: ReadonlySet<string> = new Set(),
+	received: ReceivedMessages = NO_RECEIVED,
 ): ToolCallSummaryStats {
-	return buildSummarySegments(calls, completions, failedLaunches);
+	return buildSummarySegments(calls, completions, failedLaunches, received);
 }
 
 export function summarizeToolCallsStructured(calls: ToolCallLike[]): SummarySegment[] {

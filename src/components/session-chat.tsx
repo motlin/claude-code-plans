@@ -18,7 +18,7 @@ import {ProseMarkdown} from "./file-refs";
 import {MarkdownArticle} from "./markdown-article";
 import {TruncatedContent} from "./truncated-content";
 import {AgentMessageRow, AgentNameContext, type AgentNameResolver} from "./agent-message-row";
-import {parseAgentMessage} from "../lib/agent-message";
+import {parseAgentMessage, type AgentMessage} from "../lib/agent-message";
 import {parseTaskNotification, type TaskNotification} from "../lib/background-tasks";
 import {SlashCommandText, SlashCommandsContext} from "./slash-command-chip";
 import {UserPlainText} from "./user-plain-text";
@@ -203,7 +203,7 @@ function collectAssistantDisplaySpans(
 		if (current !== undefined && sourceSessionId !== current.sourceSessionId) current = undefined;
 		if (skipSet.has(index) || !isLineVisible(line, renderProps, false)) continue;
 		// Injected notifications may look like plain user prompts, but do not start a new span.
-		if (taskNotificationOf(line) !== null) {
+		if (taskNotificationOf(line) !== null || foldablePeerMessage(lines, index) !== null) {
 			if (current !== undefined) {
 				current.anchorLineIndex = line.lineIndex;
 				byLine.set(line.lineIndex, current);
@@ -784,8 +784,8 @@ function GroupedToolCallEntry({
 	subagentLookup,
 }: {
 	entries: SessionLine[];
-	/** Background-task completions folded into the run, shown with its last batch. */
-	notices: readonly BackgroundNotice[];
+	/** Background-task completions and agent messages folded into the run, shown with its last batch. */
+	notices: readonly FoldedNotice[];
 	footer?: React.ReactNode;
 	turnChanges?: TurnChanges | undefined;
 	sessionId: string;
@@ -856,11 +856,69 @@ function GroupedToolCallEntry({
 
 /** A `<task-notification>` user turn folded into the tool group beside it. */
 interface BackgroundNotice {
+	kind: "task";
 	lineIndex: number;
 	notification: TaskNotification;
 }
 
-const NO_NOTICES: readonly BackgroundNotice[] = [];
+/** An agent message folded into the tool group it arrived before or among. */
+interface PeerNotice {
+	kind: "peer";
+	lineIndex: number;
+	message: AgentMessage;
+	/** It arrived before the group's first tool call. */
+	leads: boolean;
+}
+
+type FoldedNotice = BackgroundNotice | PeerNotice;
+
+const NO_NOTICES: readonly FoldedNotice[] = [];
+
+/**
+ * The agent message a line delivers: a meta user line, or a queued_command
+ * attachment when it arrived while the turn ran.
+ */
+function agentMessageOf(line: SessionLine): AgentMessage | null {
+	if (line.type === "attachment") {
+		const {type, prompt} = getAttachmentHead(line.attachmentJson);
+		return type === "queued_command" && prompt !== null ? parseAgentMessage(prompt) : null;
+	}
+	if (line.type !== "user" || classifyUserContent(line) !== "agent-message") return null;
+	return parseAgentMessage(getUserContentText(line));
+}
+
+/**
+ * The agent message at `index` when upstream folds it into the tool run it
+ * reaches: only when the next assistant record opens with a tool call. One
+ * that opens with thinking, even empty, keeps the message as its own row.
+ */
+function foldablePeerMessage(lines: readonly SessionLine[], index: number): AgentMessage | null {
+	const message = agentMessageOf(lines[index]!);
+	if (message === null) return null;
+	for (let next = index + 1; next < lines.length; next++) {
+		const line = lines[next]!;
+		if (line.type !== "assistant") continue;
+		const content = line.message?.content;
+		return Array.isArray(content) && content[0]?.type === "tool_use" ? message : null;
+	}
+	return null;
+}
+
+/**
+ * Completed task notifications for agents whose hand-back already arrived as
+ * an agent message, which says the report "is not repeated here". Upstream
+ * draws only the message.
+ */
+function handbackNotificationIndices(lines: readonly SessionLine[]): number[] {
+	const senders = new Set(lines.flatMap((line) => agentMessageOf(line)?.from ?? []));
+	if (senders.size === 0) return [];
+	return lines.flatMap((line, index) => {
+		const notification = taskNotificationOf(line);
+		return notification?.status === "completed" && notification.taskId !== null && senders.has(notification.taskId)
+			? [index]
+			: [];
+	});
+}
 
 /**
  * The finished background task a line announces, or null for any other line.
@@ -922,12 +980,35 @@ function BackgroundNoticeRow({notice}: {notice: BackgroundNotice}) {
 	);
 }
 
+function splitNotices(notices: readonly FoldedNotice[]): {
+	taskNotices: BackgroundNotice[];
+	leadingPeers: PeerNotice[];
+	trailingPeers: PeerNotice[];
+} {
+	const taskNotices: BackgroundNotice[] = [];
+	const leadingPeers: PeerNotice[] = [];
+	const trailingPeers: PeerNotice[] = [];
+	for (const notice of notices) {
+		if (notice.kind === "task") taskNotices.push(notice);
+		else (notice.leads ? leadingPeers : trailingPeers).push(notice);
+	}
+	return {taskNotices, leadingPeers, trailingPeers};
+}
+
+function FoldedNoticeRow({notice}: {notice: FoldedNotice}) {
+	return notice.kind === "task" ? (
+		<BackgroundNoticeRow notice={notice} />
+	) : (
+		<AgentMessageRow message={notice.message} />
+	);
+}
+
 /** Notifications with no tool group to join, drawn as the same static rows. */
-function BackgroundNoticeRows({notices, footer}: {notices: readonly BackgroundNotice[]; footer?: React.ReactNode}) {
+function BackgroundNoticeRows({notices, footer}: {notices: readonly FoldedNotice[]; footer?: React.ReactNode}) {
 	return (
 		<div className={`flex flex-col w-full gap-[var(--chat-item-gap)] ${TURN_GAP_CLASS}`}>
 			{notices.map((notice) => (
-				<BackgroundNoticeRow key={notice.lineIndex} notice={notice} />
+				<FoldedNoticeRow key={notice.lineIndex} notice={notice} />
 			))}
 			{footer}
 		</div>
@@ -1258,13 +1339,16 @@ function buildSessionListEntries(
 ): SessionListEntry[] {
 	const lines = verbose ? recordLines : withQueuedPrompts(recordLines);
 	const foldNotifications = !verbose;
-	const noticeOf = (index: number): BackgroundNotice | null => {
+	const noticeOf = (index: number): FoldedNotice | null => {
 		if (!foldNotifications) return null;
 		const line = lines[index]!;
 		const notification = taskNotificationOf(line);
-		return notification === null ? null : {lineIndex: line.lineIndex, notification};
+		if (notification !== null) return {kind: "task", lineIndex: line.lineIndex, notification};
+		const message = foldablePeerMessage(lines, index);
+		return message === null ? null : {kind: "peer", lineIndex: line.lineIndex, message, leads: true};
 	};
 	const skipSet = buildSkipSet(lines);
+	if (!verbose) for (const index of handbackNotificationIndices(lines)) skipSet.add(index);
 	const displaySpans = verbose ? undefined : collectAssistantDisplaySpans(lines, renderProps, skipSet);
 	const sameSpan = (first: SessionLine, next: SessionLine) =>
 		verbose ||
@@ -1316,7 +1400,7 @@ function buildSessionListEntries(
 	}
 
 	/** Notifications waiting for the tool group that follows them. */
-	let leadingNotices: BackgroundNotice[] = [];
+	let leadingNotices: FoldedNotice[] = [];
 
 	while (i < lines.length) {
 		const line = lines[i]!;
@@ -1387,7 +1471,7 @@ function buildSessionListEntries(
 				const next = noticeOf(j);
 				if (next !== null) {
 					if (!sameSpan(line, nextLine)) break;
-					notices.push(next);
+					notices.push(next.kind === "peer" ? {...next, leads: false} : next);
 					j++;
 					continue;
 				}
@@ -3221,7 +3305,7 @@ function ToolCallSection({
 }: {
 	calls: ClientToolCall[];
 	sessionId: string;
-	notices?: readonly BackgroundNotice[];
+	notices?: readonly FoldedNotice[];
 	/** The section is the first thing drawn in the row that opens a reply. */
 	leading?: boolean;
 }) {
@@ -3634,7 +3718,7 @@ function ToolCallSummary({
 }: {
 	calls: ClientToolCall[];
 	sessionId: string;
-	notices?: readonly BackgroundNotice[];
+	notices?: readonly FoldedNotice[];
 	leading: boolean;
 }) {
 	const [expanded, toggleExpanded] = useModeExpansion(`group:${calls[0]?.id ?? `notice-${notices[0]?.lineIndex}`}`);
@@ -3643,14 +3727,16 @@ function ToolCallSummary({
 	const hasTasksView = taskCalls.length >= 3;
 	const displayCalls = hasTasksView ? calls.filter((c) => !TASK_TOOLS.has(c.name)) : calls;
 	const backgroundOutcomes = useContext(BackgroundOutcomeContext);
+	const {taskNotices, leadingPeers, trailingPeers} = useMemo(() => splitNotices(notices), [notices]);
 	const summary = useMemo(
 		() =>
 			summarizeToolCallStats(
 				displayCalls,
-				notices.map((notice) => notice.notification),
+				taskNotices.map((notice) => notice.notification),
 				failedLaunchIds(backgroundOutcomes),
+				{leading: leadingPeers.length, trailing: trailingPeers.length},
 			),
-		[displayCalls, notices, backgroundOutcomes],
+		[displayCalls, taskNotices, leadingPeers, trailingPeers, backgroundOutcomes],
 	);
 	// While a call is in flight, upstream names the group by that call's
 	// progressive label instead of the tally.
@@ -3661,8 +3747,8 @@ function ToolCallSummary({
 	const leadsLabel = (notice: BackgroundNotice) =>
 		notice.notification.status === "failed" &&
 		!displayCalls.some((call) => call.id === notice.notification.toolUseId);
-	const failedNotices = notices.filter(leadsLabel);
-	const settledNotices = notices.filter((notice) => !leadsLabel(notice));
+	const failedNotices = taskNotices.filter(leadsLabel);
+	const settledNotices = taskNotices.filter((notice) => !leadsLabel(notice));
 	// Upstream draws the grouped header in one 24px padded row whether it completed, failed, or is still running.
 	const summaryLayout = hasTasksView ? "self-start py-0" : "min-w-0 self-stretch me-[52px] px-1 py-0.5";
 	// Collapsed rows recede to muted ink and lift to secondary on hover; an open
@@ -3723,8 +3809,14 @@ function ToolCallSummary({
 								{failedNotices.map((notice) => (
 									<BackgroundNoticeRow key={`notice-${notice.lineIndex}`} notice={notice} />
 								))}
+								{leadingPeers.map((notice) => (
+									<AgentMessageRow key={`notice-${notice.lineIndex}`} message={notice.message} />
+								))}
 								{displayCalls.map((call, i) => (
 									<ToolCallRow key={i} call={call} sessionId={sessionId} nested />
+								))}
+								{trailingPeers.map((notice) => (
+									<AgentMessageRow key={`notice-${notice.lineIndex}`} message={notice.message} />
 								))}
 								{settledNotices.map((notice) => (
 									<BackgroundNoticeRow key={`notice-${notice.lineIndex}`} notice={notice} />

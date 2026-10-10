@@ -1,4 +1,4 @@
-import {summarizeToolCallStats, type ToolCallLike} from "../src/lib/session-utils";
+import {summarizeToolCallStats, type BackgroundCompletionLike, type ToolCallLike} from "../src/lib/session-utils";
 
 /** The group header text, joined the way upstream draws it: "Ran 2 commands, edited a.ts". */
 function label(calls: ToolCallLike[]): string {
@@ -230,5 +230,41 @@ describe("group label: cap", () => {
 			{verb: "found", rest: "files"},
 			{verb: "and", rest: "3 more actions"},
 		]);
+	});
+});
+
+describe("group label: received messages", () => {
+	const received = (
+		calls: ToolCallLike[],
+		messages: {leading: number; trailing: number},
+		completions: BackgroundCompletionLike[] = [],
+	): string =>
+		summarizeToolCallStats(calls, completions, new Set(), messages)
+			.segments.map((segment) => (segment.rest ? `${segment.verb} ${segment.rest}` : segment.verb))
+			.join(", ");
+	const failedTask: BackgroundCompletionLike = {status: "failed", command: false, toolUseId: null};
+	const finishedCommand: BackgroundCompletionLike = {status: "completed", command: true, toolUseId: null};
+
+	it.each([
+		{calls: [bash()], messages: {leading: 1, trailing: 0}, expected: "Received a message, ran a command"},
+		{calls: [bash()], messages: {leading: 2, trailing: 0}, expected: "Received 2 messages, ran a command"},
+		{calls: [bash(), bash()], messages: {leading: 0, trailing: 1}, expected: "Ran 2 commands, received a message"},
+		{
+			calls: [bash()],
+			messages: {leading: 1, trailing: 3},
+			expected: "Received a message, ran a command, received 3 messages",
+		},
+	])("labels $expected", ({calls, messages, expected}) => {
+		expect(received(calls, messages)).toBe(expected);
+	});
+
+	it("leads with a failed completion and trails messages before settled completions", () => {
+		expect({
+			failed: received([bash()], {leading: 1, trailing: 0}, [failedTask]),
+			settled: received([bash()], {leading: 0, trailing: 1}, [finishedCommand]),
+		}).toStrictEqual({
+			failed: "Finished a background task (1 failed), received a message, ran a command",
+			settled: "Ran a command, received a message, finished a background command",
+		});
 	});
 });

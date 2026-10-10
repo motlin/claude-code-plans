@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {cleanup, render} from "@testing-library/react";
+import {cleanup, fireEvent, render} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat} from "../src/components/session-chat";
 import {processTranscript} from "../src/lib/transcript";
@@ -59,11 +59,19 @@ const recorded = (specimens as {records?: unknown[]}[]).filter(
 	(specimen): specimen is RecordedSpecimen => specimen.records !== undefined,
 );
 
+/** The session the records came from, as the live UI renders them under it. */
+function recordedSessionId(records: unknown[]): string {
+	const withId = records.find(
+		(record): record is {sessionId: string} => typeof (record as {sessionId?: unknown}).sessionId === "string",
+	);
+	return withId?.sessionId ?? "test-session";
+}
+
 function renderRecords(records: unknown[]): HTMLElement {
 	const {lines, toolResultMap} = processTranscript(records);
 	return render(
 		<SessionChat
-			sessionId="test-session"
+			sessionId={recordedSessionId(records)}
 			lines={lines}
 			toolResultMap={toolResultMap}
 			shouldScrollToEnd={false}
@@ -125,5 +133,21 @@ function transcriptRows(records: unknown[]): string[] {
 describe("transcript row golden specimens rendered from JSONL", () => {
 	it.each(rowSpecimens as RowSpecimen[])("$session:$line", (specimen) => {
 		expect(transcriptRows(specimen.records)).toStrictEqual(specimen.upstream);
+	});
+});
+
+describe("an agent message folded into a tool group", () => {
+	it("lists the message as the first step of the expanded group, before the tool it led", () => {
+		const specimen = recorded.find((candidate) => candidate.session === "54e53f89" && candidate.line === 1079)!;
+		const container = renderRecords(specimen.records);
+		fireEvent.click(container.querySelector("[data-turn-status] > button")!);
+		const steps = container.querySelectorAll("[data-turn-status] .card-outline > *");
+		expect(
+			Array.from(steps, (step) =>
+				step.matches("[data-agent-message-from]")
+					? `message from ${step.querySelector("bdi")?.textContent}`
+					: `tool: ${step.querySelector("[role=button]")?.firstElementChild?.textContent}`,
+			),
+		).toStrictEqual(["message from subagent", "tool: Verified task commit, gate HEAD, get next task"]);
 	});
 });

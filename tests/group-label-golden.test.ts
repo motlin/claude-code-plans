@@ -11,12 +11,14 @@ interface Specimen {
 	upstream: string;
 	calls: ToolCallLike[];
 	completions?: BackgroundCompletionLike[];
+	/** Agent messages folded into the group, before and after its tools. */
+	received?: {leading: number; trailing: number};
 	/** Why the local label cannot match yet. */
 	skip?: string;
 }
 
 function label(specimen: Specimen): string {
-	return summarizeToolCallStats(specimen.calls, specimen.completions)
+	return summarizeToolCallStats(specimen.calls, specimen.completions, new Set(), specimen.received)
 		.segments.map((segment) => (segment.rest ? `${segment.verb} ${segment.rest}` : segment.verb))
 		.join(", ");
 }
