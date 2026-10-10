@@ -905,18 +905,13 @@ function foldablePeerMessage(lines: readonly SessionLine[], index: number): Agen
 }
 
 /**
- * Completed task notifications for agents whose hand-back already arrived as
- * an agent message, which says the report "is not repeated here". Upstream
- * draws only the message.
+ * Completed background Agent notifications. Upstream settles them on the
+ * agent's own "Ran agent" row and never counts them in a later tool group.
  */
-function handbackNotificationIndices(lines: readonly SessionLine[]): number[] {
-	const senders = new Set(lines.flatMap((line) => agentMessageOf(line)?.from ?? []));
-	if (senders.size === 0) return [];
+function agentCompletionIndices(lines: readonly SessionLine[]): number[] {
 	return lines.flatMap((line, index) => {
 		const notification = taskNotificationOf(line);
-		return notification?.status === "completed" && notification.taskId !== null && senders.has(notification.taskId)
-			? [index]
-			: [];
+		return notification?.status === "completed" && notification.agent ? [index] : [];
 	});
 }
 
@@ -1348,7 +1343,7 @@ function buildSessionListEntries(
 		return message === null ? null : {kind: "peer", lineIndex: line.lineIndex, message, leads: true};
 	};
 	const skipSet = buildSkipSet(lines);
-	if (!verbose) for (const index of handbackNotificationIndices(lines)) skipSet.add(index);
+	if (!verbose) for (const index of agentCompletionIndices(lines)) skipSet.add(index);
 	const displaySpans = verbose ? undefined : collectAssistantDisplaySpans(lines, renderProps, skipSet);
 	const sameSpan = (first: SessionLine, next: SessionLine) =>
 		verbose ||

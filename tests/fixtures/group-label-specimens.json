@@ -1065,28 +1065,6 @@
 	},
 	{
 		"session": "54e53f89",
-		"line": 904,
-		"upstream": "Ran 2 commands, used a tool",
-		"calls": [
-			{
-				"id": "toolu_01Xu6Q8UL7av2JbnYiEfWFVg",
-				"name": "Bash",
-				"input": {}
-			},
-			{
-				"id": "toolu_015VCDTWkvF1sAvk2oThNDKd",
-				"name": "Skill",
-				"input": {}
-			},
-			{
-				"id": "toolu_01MhbLdXijB1JtqaZaXB69Cn",
-				"name": "Bash",
-				"input": {}
-			}
-		]
-	},
-	{
-		"session": "54e53f89",
 		"line": 808,
 		"upstream": "Ran 2 commands (1 failed), used 2 tools",
 		"calls": [

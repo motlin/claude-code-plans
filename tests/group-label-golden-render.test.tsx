@@ -107,7 +107,7 @@ describe("group label golden specimens rendered from JSONL", () => {
 /**
  * Specimens whose whole row sequence was read from the upstream DOM: each
  * transcript row as "prose", "user: <bubble>", "message from <sender>" or
- * "status: <label>" per status it draws.
+ * "status: <label>" per status it draws, after any background notice drawn outside a group.
  */
 interface RowSpecimen {
 	session: string;
@@ -131,7 +131,11 @@ function rowTexts(row: Element): string[] {
 	if (sender !== null) return [`message from ${sender.textContent}`];
 	const bubble = row.querySelector(".user-message-bubble");
 	if (bubble !== null) return [`user: ${bubble.textContent}`];
-	return Array.from(row.querySelectorAll("[data-turn-status]"), statusText);
+	const notices = Array.from(
+		row.querySelectorAll(":not([data-turn-status]) > [data-background-notice]"),
+		(notice) => `notice: ${notice.textContent}`,
+	);
+	return [...notices, ...Array.from(row.querySelectorAll("[data-turn-status]"), statusText)];
 }
 
 function transcriptRows(records: unknown[]): string[] {

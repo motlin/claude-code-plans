@@ -121,11 +121,12 @@ function notificationStatus(status: string | null): Exclude<BackgroundTaskStatus
 
 /** A finished background task, as its `<task-notification>` reports it. */
 export interface TaskNotification {
-	taskId: string | null;
 	toolUseId: string | null;
 	status: Exclude<BackgroundTaskStatus, "running">;
 	/** A `run_in_background` Bash command rather than an agent or monitor. */
 	command: boolean;
+	/** A background Agent, whose completion upstream settles on its own "Ran agent" row. */
+	agent: boolean;
 	description: string;
 }
 
@@ -141,10 +142,10 @@ export function parseTaskNotification(text: string): TaskNotification | null {
 	if (status === null) return null;
 	const summary = tag(trimmed, "summary") ?? "";
 	return {
-		taskId: tag(trimmed, "task-id"),
 		toolUseId: tag(trimmed, "tool-use-id"),
 		status,
 		command: summary.startsWith("Background command"),
+		agent: summary.startsWith("Agent "),
 		description: /"([^"]*)"/.exec(summary)?.[1] ?? summary,
 	};
 }

@@ -201,22 +201,22 @@ function userTurnCount(container: HTMLElement): number {
 }
 
 describe("parseTaskNotification", () => {
-	it("reads the task, status, tool use, and the quoted description from the summary", () => {
+	it("reads the status, tool use, and the quoted description from the summary", () => {
 		expect(parseTaskNotification(COMPLETED)).toStrictEqual({
-			taskId: "b1x2y3",
 			toolUseId: "toolu_bash",
 			status: "completed",
 			command: true,
+			agent: false,
 			description: "Run the test suite",
 		});
 	});
 
 	it("treats a killed agent as stopped and as a task, not a command", () => {
 		expect(parseTaskNotification(notification("killed", 'Agent "Fetch reminders" was stopped'))).toStrictEqual({
-			taskId: "b1x2y3",
 			toolUseId: "toolu_bash",
 			status: "stopped",
 			command: false,
+			agent: true,
 			description: "Fetch reminders",
 		});
 	});
