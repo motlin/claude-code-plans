@@ -655,6 +655,12 @@ const ToolDefinitionSchema = z
 	})
 	.strict();
 
+/** A surfaced tool either carries its full definition or, via `sameAs`, points at the uuid of the earlier record that did. */
+const SurfacedToolDefinitionSchema = z.union([
+	z.object({name: z.string(), listing: z.string(), definition: ToolDefinitionSchema}).strict(),
+	z.object({name: z.string(), listing: z.string(), sameAs: z.string()}).strict(),
+]);
+
 const DeferredToolsDeltaAttachmentPayload = z
 	.object({
 		type: z.literal("deferred_tools_delta"),
@@ -666,9 +672,8 @@ const DeferredToolsDeltaAttachmentPayload = z
 		needsAuthMcpServers: z.array(z.string()).optional(),
 		wireHiddenNames: z.array(z.string()).optional(),
 		surfacedNames: z.array(z.string()).optional(),
-		surfacedDefinitions: z
-			.array(z.object({name: z.string(), listing: z.string(), definition: ToolDefinitionSchema}).strict())
-			.optional(),
+		removedByBlock: z.array(z.string()).optional(),
+		surfacedDefinitions: z.array(SurfacedToolDefinitionSchema).optional(),
 		restoredNames: z.array(z.string()).optional(),
 		retractedTools: z.array(z.object({name: z.string(), cause: z.string().optional()}).strict()).optional(),
 		failedMcpServers: z

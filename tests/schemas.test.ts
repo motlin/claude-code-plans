@@ -1468,6 +1468,22 @@ describe("JsonlRecordSchema observed 2026-09 transcript fields", () => {
 				failedMcpServers: [{name: "imcp", errorCode: "CONNECT_TIMEOUT", error: "timed out"}],
 			}),
 			attachmentRecord({
+				type: "deferred_tools_delta",
+				removedNames: ["mcp__docs__guide"],
+				removedByBlock: ["mcp__docs__guide"],
+			}),
+			attachmentRecord({
+				type: "deferred_tools_delta",
+				surfacedNames: ["mcp__docs__guide"],
+				surfacedDefinitions: [
+					{
+						name: "mcp__docs__guide",
+						listing: "1f2c30a590811b06",
+						sameAs: "398d17b2-379f-4a8c-9d42-6180faf07536",
+					},
+				],
+			}),
+			attachmentRecord({
 				type: "file",
 				filename: "/Users/test/.claude/memory/note.md",
 				readNotes: {memoryNote: "This memory is 7 days old."},
