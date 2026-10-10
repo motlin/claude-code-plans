@@ -140,6 +140,22 @@ describe("toolLabel", () => {
 		});
 	});
 
+	it("past-tenses a subagent description by the Bash rule, keeping one that opens with an unknown verb", () => {
+		expect({
+			known: toolLabel(call("Agent", {description: "Commit lazy allocation fixup"})),
+			compound: toolLabel(call("Task", {description: "Test the fix and push"})),
+			unknown: toolLabel(call("Agent", {description: "Open the PR form"})),
+		}).toStrictEqual({
+			known: {
+				verb: "Ran agent",
+				meta: "Commit lazy allocation fixup",
+				doneLabel: "Committed lazy allocation fixup",
+			},
+			compound: {verb: "Ran agent", meta: "Test the fix and push", doneLabel: "Tested the fix and pushed"},
+			unknown: {verb: "Ran agent", meta: "Open the PR form", doneLabel: "Open the PR form"},
+		});
+	});
+
 	it("names the subagent row by its description", () => {
 		expect(toolLabel(call("Agent", {description: "Explore Drizzle setup"}))).toStrictEqual({
 			verb: "Ran agent",
@@ -303,6 +319,7 @@ describe("runningToolLabel", () => {
 			grep: runningToolLabel(call("Grep", {pattern: "TODO"})),
 			webSearch: runningToolLabel(call("WebSearch", {query: "zod"})),
 			agent: runningToolLabel(call("Agent", {description: "Explore the codebase", prompt: "p"})),
+			agentKnownVerb: runningToolLabel(call("Agent", {description: "Commit the fixup", prompt: "p"})),
 			agentBare: runningToolLabel(call("Agent", {prompt: "p"})),
 			skill: runningToolLabel(call("Skill", {skill: "git:commit"})),
 			taskStop: runningToolLabel(call("TaskStop", {task_id: "b1"})),
@@ -321,6 +338,7 @@ describe("runningToolLabel", () => {
 			grep: {verb: "Searching"},
 			webSearch: {verb: "Searching web"},
 			agent: {verb: "Running agent", label: "Explore the codebase"},
+			agentKnownVerb: {verb: "Running agent", label: "Commit the fixup"},
 			agentBare: {verb: "Running agent"},
 			skill: {verb: "Running skill", meta: "/git:commit", metaIsCode: true},
 			taskStop: {verb: "Stopping task"},

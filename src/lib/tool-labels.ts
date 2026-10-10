@@ -331,9 +331,10 @@ export function runningToolLabel(call: ToolLabelCall): RunningToolLabel {
 	const verb = call.name === "Write" ? "Writing" : progressiveOfPast(done.verb);
 	const running: RunningToolLabel = {verb};
 	if (done.doneLabel !== undefined) {
-		const description =
-			call.name === "Bash" || call.name === "PowerShell" ? stringInput(call.input, "description") : null;
-		running.label = description === null ? done.doneLabel : progressive(description);
+		const description = stringInput(call.input, "description");
+		// A running subagent shows its description as written.
+		const isAgent = call.name === "Agent" || call.name === "Task";
+		running.label = description === null ? done.doneLabel : isAgent ? description : progressive(description);
 		return running;
 	}
 	if (done.meta !== undefined) running.meta = done.meta;
@@ -361,7 +362,7 @@ export function toolLabel(call: ToolLabelCall): ToolLabel {
 		case "Task": {
 			const description = stringInput(input, "description");
 			if (description === null) return {verb: "Ran agent"};
-			return {verb: "Ran agent", meta: description, doneLabel: description};
+			return {verb: "Ran agent", meta: description, doneLabel: pastTense(description)};
 		}
 		case "Skill": {
 			const skill = stringInput(input, "skill");
