@@ -13,12 +13,14 @@ import {SessionSummaryStateSchema} from "../src/lib/api/sessions";
 import {SourceFileResponse} from "../src/lib/api/source";
 import {
 	ArtifactActionSchema,
+	ArtifactAccessLevelSchema,
 	ArtifactAutoOpenSchema,
 	ArtifactDbOpSchema,
 	ArtifactIntentSchema,
 	ArtifactListScopeSchema,
 	ArtifactLiveSubscriptionSchema,
 	ArtifactToolResultSchema,
+	ArtifactUserScopeSchema,
 } from "../src/lib/artifact-schemas";
 import {ChangedFileKindSchema} from "../src/lib/changed-file-kind";
 import {CodeThemeDarkSchema, CodeThemeLightSchema} from "../src/lib/code-themes";
@@ -84,6 +86,7 @@ import {
 	ReportFindingsVerdictSchema,
 	SendMessageRecipientKindSchema,
 	StringifiedBooleanSchema,
+	WebSearchModeSchema,
 } from "../src/lib/tool-input-schemas";
 import {RenderedLineSchema} from "../src/lib/transcript";
 import {TerminalAppearanceSchema} from "../src/lib/terminal-theme";
@@ -139,12 +142,15 @@ const ROOTS: ReadonlyArray<readonly [string, unknown]> = [
 	["ArtifactAutoOpenSchema", ArtifactAutoOpenSchema],
 	["ArtifactDbOpSchema", ArtifactDbOpSchema],
 	["ArtifactLiveSubscriptionSchema", ArtifactLiveSubscriptionSchema],
+	["ArtifactAccessLevelSchema", ArtifactAccessLevelSchema],
+	["ArtifactUserScopeSchema", ArtifactUserScopeSchema],
 	["ArtifactToolResultSchema", ArtifactToolResultSchema],
 	["ReportFindingsVerdictSchema", ReportFindingsVerdictSchema],
 	["RemoteTriggerActionSchema", RemoteTriggerActionSchema],
 	["ExitWorktreeActionSchema", ExitWorktreeActionSchema],
 	["StringifiedBooleanSchema", StringifiedBooleanSchema],
 	["SendMessageRecipientKindSchema", SendMessageRecipientKindSchema],
+	["WebSearchModeSchema", WebSearchModeSchema],
 	["ToolUseUnion", ToolUseUnion],
 	["HookEventEnvelope", HookEventEnvelope],
 	["SourceFileResponse", SourceFileResponse],

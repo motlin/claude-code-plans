@@ -279,9 +279,13 @@ const TodoWriteInputSchema = z
 	})
 	.strict();
 
+/** WebSearch `mode`: the default search or the longer extended one. */
+export const WebSearchModeSchema = z.enum(["standard", "extended"]);
+
 const WebSearchInputSchema = z
 	.object({
 		query: z.string(),
+		mode: WebSearchModeSchema.optional(),
 		allowed_domains: z.array(z.string()).optional(),
 		blocked_domains: z.array(z.string()).optional(),
 	})

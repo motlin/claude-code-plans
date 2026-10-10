@@ -29,6 +29,7 @@ import {
 	GlobInputSchema,
 	GrepInputSchema,
 	AgentInputSchema,
+	ArtifactInputSchema,
 	toolInputSchemas,
 } from "../src/lib/tool-input-schemas";
 import {baseFields} from "./fixtures/base-fields";
@@ -1961,6 +1962,52 @@ describe("Per-tool input schemas", () => {
 
 		it("accepts notify_when_idle", () => {
 			expect(schema.safeParse({to: "other-session", notify_when_idle: true}).success).toBe(true);
+		});
+	});
+
+	describe("WebSearchInputSchema", () => {
+		const schema = toolInputSchemas["WebSearch"];
+		if (!schema) throw new Error("Missing WebSearch input schema");
+
+		it("accepts mode standard and extended", () => {
+			expect(schema.safeParse({query: "factorio fuel_category", mode: "standard"}).success).toBe(true);
+			expect(schema.safeParse({query: "factorio fuel_category", mode: "extended"}).success).toBe(true);
+		});
+
+		it("rejects an unknown mode", () => {
+			expect(schema.safeParse({query: "factorio fuel_category", mode: "deep"}).success).toBe(false);
+		});
+	});
+
+	describe("ArtifactInputSchema capabilities", () => {
+		it("accepts db access rules and the user capability as published on disk", () => {
+			const input = {
+				file_path: "/tmp/tagger.html",
+				capabilities: {db: {rules: [{path: "", read: "view", write: "owner"}]}, user: {}},
+				description: "Pick tags to apply or remove.",
+			};
+			expect(ArtifactInputSchema.safeParse(input).success).toBe(true);
+		});
+
+		it("accepts a write-only rule and user profile scopes", () => {
+			const input = {
+				file_path: "/tmp/votes.html",
+				capabilities: {
+					db: {rules: [{path: "votes/{self}", write: "interact"}]},
+					user: {scopes: ["profile", "email"]},
+				},
+			};
+			expect(ArtifactInputSchema.safeParse(input).success).toBe(true);
+		});
+
+		it("rejects an unknown access level", () => {
+			const input = {file_path: "/tmp/x.html", capabilities: {db: {rules: [{path: "", read: "everyone"}]}}};
+			expect(ArtifactInputSchema.safeParse(input).success).toBe(false);
+		});
+
+		it("rejects an unknown user scope", () => {
+			const input = {file_path: "/tmp/x.html", capabilities: {user: {scopes: ["phone"]}}};
+			expect(ArtifactInputSchema.safeParse(input).success).toBe(false);
 		});
 	});
 

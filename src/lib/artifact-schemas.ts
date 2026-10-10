@@ -40,8 +40,21 @@ export const ArtifactDbOpSchema = z.enum(["get", "list"]);
 
 export const ArtifactLiveSubscriptionSchema = z.enum(["arming", "connected", "publish_context", "flag_off"]);
 
+/** `db` rule minimum access level, lowest to highest. */
+export const ArtifactAccessLevelSchema = z.enum(["view", "interact", "admin", "owner"]);
+
+/** Extra viewer details a page's `user` capability may resolve. */
+export const ArtifactUserScopeSchema = z.enum(["profile", "email"]);
+
+const ArtifactDbRuleSchema = z.strictObject({
+	path: z.string(),
+	read: ArtifactAccessLevelSchema.optional(),
+	write: ArtifactAccessLevelSchema.optional(),
+});
+
 export const ArtifactCapabilitiesSchema = z.strictObject({
-	db: z.strictObject({}).optional(),
+	db: z.strictObject({rules: z.array(ArtifactDbRuleSchema).optional()}).optional(),
+	user: z.strictObject({scopes: z.array(ArtifactUserScopeSchema).optional()}).optional(),
 });
 
 const ArtifactPublishResultSchema = z.strictObject({

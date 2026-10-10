@@ -1,11 +1,13 @@
 import type {z} from "zod";
 import type {
+	ArtifactAccessLevelSchema,
 	ArtifactActionSchema,
 	ArtifactAutoOpenSchema,
 	ArtifactDbOpSchema,
 	ArtifactIntentSchema,
 	ArtifactListScopeSchema,
 	ArtifactLiveSubscriptionSchema,
+	ArtifactUserScopeSchema,
 } from "./artifact-schemas";
 import type {ChangedFileKindSchema} from "./changed-file-kind";
 import type {CodeThemeDark, CodeThemeLight} from "./code-themes";
@@ -69,6 +71,7 @@ import type {
 	ReportFindingsVerdictSchema,
 	SendMessageRecipientKindSchema,
 	StringifiedBooleanSchema,
+	WebSearchModeSchema,
 } from "./tool-input-schemas";
 
 /**
@@ -974,6 +977,26 @@ const artifactLiveSubscriptionLabels = {
 	flag_off: "Flag off",
 } satisfies Record<z.infer<typeof ArtifactLiveSubscriptionSchema>, string>;
 
+/** `Artifact` `capabilities.db.rules[]` read/write minimum (src/lib/artifact-schemas.ts). */
+const artifactAccessLevelLabels = {
+	view: "View",
+	interact: "Interact",
+	admin: "Admin",
+	owner: "Owner",
+} satisfies Record<z.infer<typeof ArtifactAccessLevelSchema>, string>;
+
+/** `Artifact` `capabilities.user.scopes[]` (src/lib/artifact-schemas.ts). */
+const artifactUserScopeLabels = {
+	profile: "Profile",
+	email: "Email",
+} satisfies Record<z.infer<typeof ArtifactUserScopeSchema>, string>;
+
+/** WebSearch `mode` (src/lib/tool-input-schemas.ts). */
+const webSearchModeLabels = {
+	standard: "Standard",
+	extended: "Extended",
+} satisfies Record<z.infer<typeof WebSearchModeSchema>, string>;
+
 /** `ReportFindings` finding `verdict` (src/lib/tool-input-schemas.ts); labels match upstream. */
 export const reportFindingsVerdictLabels = {
 	CONFIRMED: "Confirmed",
@@ -1112,10 +1135,13 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
 	ArtifactAutoOpenSchema: artifactAutoOpenLabels,
 	ArtifactDbOpSchema: artifactDbOpLabels,
 	ArtifactLiveSubscriptionSchema: artifactLiveSubscriptionLabels,
+	ArtifactAccessLevelSchema: artifactAccessLevelLabels,
+	ArtifactUserScopeSchema: artifactUserScopeLabels,
 	ReportFindingsVerdictSchema: reportFindingsVerdictLabels,
 	RemoteTriggerActionSchema: remoteTriggerActionLabels,
 	ExitWorktreeActionSchema: exitWorktreeActionLabels,
 	StringifiedBooleanSchema: stringifiedBooleanLabels,
 	SendMessageRecipientKindSchema: sendMessageRecipientKindLabels,
+	WebSearchModeSchema: webSearchModeLabels,
 	PluginCatalogSourceKindSchema: pluginCatalogSourceKindLabels,
 };
