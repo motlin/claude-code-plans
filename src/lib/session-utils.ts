@@ -3,6 +3,8 @@
  * Satisfied by raw content blocks, readSession tool call objects, and test data alike.
  */
 export interface ToolCallLike {
+	/** The tool_use id, which keys a call that names no file. */
+	id?: string | undefined;
 	name: string;
 	input: Record<string, unknown>;
 	isError?: boolean | undefined;
@@ -507,6 +509,26 @@ function coalescedReadMutation(
 	return null;
 }
 
+type CallOutcome = "succeeded" | "failed";
+
+/**
+ * What upstream counts once in a segment: the file a call touches, so three
+ * edits of one file are "Edited a.ts", or else the call itself. Each key keeps
+ * the outcome of its last call, so a failed edit retried successfully is no
+ * failure.
+ */
+function callKey(call: ToolCallLike, index: number): string {
+	const path = call.input["file_path"] ?? call.input["notebook_path"];
+	if (typeof path === "string") return `path:${path}`;
+	return call.id === undefined ? `index:${index}` : `id:${call.id}`;
+}
+
+function countFailed(byKey: Map<string, CallOutcome>): number {
+	let failed = 0;
+	for (const outcome of byKey.values()) if (outcome === "failed") failed++;
+	return failed;
+}
+
 function labelledSegment(label: SegmentLabel, count: number, name: string | null = null): SummarySegment {
 	return {verb: label.verb, rest: name ?? pluralize(count, label.one, label.many)};
 }
@@ -518,29 +540,38 @@ function buildSummarySegments(
 	// Insertion order carries the summary order: upstream Normal writes both
 	// "Updated todos, read 3 files" and "Read index.ts, updated todos", so
 	// segments follow the order each tool was first called.
-	const counts = new Map<ToolCategory, number>();
+	const outcomes = new Map<ToolCategory, Map<string, CallOutcome>>();
 	const firstCall = new Map<ToolCategory, ToolCallLike>();
 	let otherTools = 0;
+	let otherFailed = 0;
 	let added = 0;
 	let removed = 0;
-	let failed = 0;
 
-	for (const call of calls) {
-		if (call.isError === true) failed++;
+	calls.forEach((call, index) => {
 		const cat = categorize(call);
+		const outcome: CallOutcome = call.isError === true ? "failed" : "succeeded";
 		if (cat === null) {
 			otherTools++;
-		} else {
-			const prev = counts.get(cat) ?? 0;
-			counts.set(cat, prev + 1);
-			if (prev === 0) firstCall.set(cat, call);
-			if (isMutation(cat)) {
-				const s = diffStatsForCall(call);
-				added += s.added;
-				removed += s.removed;
-			}
+			if (outcome === "failed") otherFailed++;
+			return;
 		}
-	}
+		let byKey = outcomes.get(cat);
+		if (byKey === undefined) {
+			byKey = new Map();
+			outcomes.set(cat, byKey);
+			firstCall.set(cat, call);
+		}
+		byKey.set(callKey(call, index), outcome);
+		if (isMutation(cat)) {
+			const s = diffStatsForCall(call);
+			added += s.added;
+			removed += s.removed;
+		}
+	});
+
+	const counts = new Map([...outcomes].map(([cat, byKey]) => [cat, byKey.size]));
+	let failed = otherFailed;
+	for (const byKey of outcomes.values()) failed += countFailed(byKey);
 
 	// A read and a change of the same file collapse into one compound segment,
 	// emitted in place of whichever of the two categories came first.

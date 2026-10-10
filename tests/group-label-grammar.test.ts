@@ -60,3 +60,37 @@ describe("group label: tool categories", () => {
 		expect(label(calls)).toBe(expected);
 	});
 });
+
+const edit = (filePath: string, extra: Partial<ToolCallLike> = {}): ToolCallLike => ({
+	name: "Edit",
+	input: {file_path: filePath, old_string: "a", new_string: "b"},
+	...extra,
+});
+const read = (filePath: string, extra: Partial<ToolCallLike> = {}): ToolCallLike => ({
+	name: "Read",
+	input: {file_path: filePath},
+	...extra,
+});
+
+describe("group label: distinct files", () => {
+	it.each([
+		{calls: [edit("/r/a.ts", {isError: true}), edit("/r/a.ts")], expected: "Edited a.ts"},
+		{calls: [edit("/r/a.ts"), edit("/r/a.ts", {isError: true})], expected: "Edited a.ts (1 failed)"},
+		{calls: [edit("/r/a.ts"), edit("/r/b.ts"), edit("/r/a.ts")], expected: "Edited 2 files"},
+		{calls: [bash(), edit("/r/x"), edit("/r/x"), bash()], expected: "Ran 2 commands, edited x"},
+		{calls: [bash({id: "b1", isError: true}), bash({id: "b2"})], expected: "Ran 2 commands (1 failed)"},
+		{
+			calls: [
+				edit("/r/a.ts", {isError: true}),
+				read("/r/b.ts"),
+				read("/r/c.ts"),
+				bash(),
+				edit("/r/a.ts"),
+				edit("/r/d.ts"),
+			],
+			expected: "Edited 2 files, read 2 files, ran a command",
+		},
+	])("counts each file once, at its last call's status: $expected", ({calls, expected}) => {
+		expect(label(calls)).toBe(expected);
+	});
+});
