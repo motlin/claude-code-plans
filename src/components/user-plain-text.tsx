@@ -60,17 +60,135 @@ function renderInline(text: string): ReactNode[] {
 	return nodes;
 }
 
+const LIST_CLASS = "text-body ps-7 [&>li]:ps-[7px] [&>li]:whitespace-pre-wrap [&>li]:[overflow-wrap:anywhere]";
+
+/** Spacing between a bubble's blocks, as upstream's markdown root spaces them. */
+const BLOCK_GAP_CLASS = "mt-[7px]";
+
+const ORDERED_ITEM = /^ {0,3}(\d{1,9})[.)][ \t]+(.*)$/;
+const BULLET_ITEM = /^ {0,3}([-*+])[ \t]+(.*)$/;
+
+interface ListItemStart {
+	ordered: boolean;
+	/** The ordered list's number, or the bullet character. */
+	marker: string;
+	text: string;
+}
+
+function listItemStart(line: string): ListItemStart | null {
+	const ordered = ORDERED_ITEM.exec(line);
+	if (ordered !== null) return {ordered: true, marker: ordered[1]!, text: ordered[2]!};
+	const bullet = BULLET_ITEM.exec(line);
+	if (bullet !== null) return {ordered: false, marker: bullet[1]!, text: bullet[2]!};
+	return null;
+}
+
+function sameList(a: ListItemStart, b: ListItemStart): boolean {
+	return a.ordered === b.ordered && (a.ordered || a.marker === b.marker);
+}
+
+type Block = {kind: "text"; text: string} | {kind: "list"; ordered: boolean; start: number; items: string[]};
+
 /**
- * A user prompt exactly as typed, as upstream shows it: markdown syntax stays literal and only
- * backtick code spans (plus an optional leading slash-command chip) are styled and bare http(s)
- * URLs outside code spans become accent links.
+ * Split a prompt into runs of literal text and the lists upstream lifts out of
+ * it. A list starts at a line opening with "1." or "-" (a paragraph line may
+ * only be interrupted by an ordered list that starts at 1, as in CommonMark)
+ * and runs while its lines are items of the same list or their continuations.
+ */
+function splitBlocks(text: string): Block[] {
+	const lines = text.split("\n");
+	const blocks: Block[] = [];
+	let textLines: string[] = [];
+	const flushText = () => {
+		while (textLines.length > 0 && textLines.at(-1)!.trim() === "") textLines.pop();
+		if (textLines.length > 0) blocks.push({kind: "text", text: textLines.join("\n")});
+		textLines = [];
+	};
+	let i = 0;
+	while (i < lines.length) {
+		const first = listItemStart(lines[i]!);
+		const afterText = textLines.length > 0 && textLines.at(-1)!.trim() !== "";
+		if (first === null || (afterText && first.ordered && first.marker !== "1")) {
+			textLines.push(lines[i]!);
+			i++;
+			continue;
+		}
+		flushText();
+		const items = [first.text];
+		i++;
+		while (i < lines.length) {
+			const line = lines[i]!;
+			const item = listItemStart(line);
+			if (item !== null) {
+				if (!sameList(first, item)) break;
+				items.push(item.text);
+				i++;
+				continue;
+			}
+			if (line.trim() === "") {
+				const next = lines.slice(i).find((candidate) => candidate.trim() !== "");
+				const nextItem = next === undefined ? null : listItemStart(next);
+				if (nextItem === null || !sameList(first, nextItem)) break;
+				i++;
+				continue;
+			}
+			items[items.length - 1] += `\n${line.trim()}`;
+			i++;
+		}
+		while (i < lines.length && lines[i]!.trim() === "") i++;
+		blocks.push({kind: "list", ordered: first.ordered, start: first.ordered ? Number(first.marker) : 1, items});
+	}
+	flushText();
+	return blocks;
+}
+
+/**
+ * A user prompt as upstream shows it: its lists drawn as lists, the rest kept as
+ * typed. Other markdown syntax stays literal; only backtick code spans (plus an
+ * optional leading slash-command chip) are styled and bare http(s) URLs outside
+ * code spans become accent links.
  */
 export function UserPlainText({text, prefix}: {text: string; prefix?: ReactNode}) {
+	const blocks = splitBlocks(text);
+	if (!blocks.some((block) => block.kind === "list")) {
+		return (
+			<p className={PARAGRAPH_CLASS}>
+				{prefix}
+				{prefix !== undefined && text !== "" && " "}
+				{renderInline(text)}
+			</p>
+		);
+	}
+	const leadingPrefix = prefix !== undefined && blocks[0]!.kind === "list";
 	return (
-		<p className={PARAGRAPH_CLASS}>
-			{prefix}
-			{prefix !== undefined && text !== "" && " "}
-			{renderInline(text)}
-		</p>
+		<>
+			{leadingPrefix && <p className={PARAGRAPH_CLASS}>{prefix}</p>}
+			{blocks.map((block, index) => {
+				const gap = index > 0 || leadingPrefix ? BLOCK_GAP_CLASS : "";
+				if (block.kind === "text") {
+					return (
+						<p key={index} className={`${PARAGRAPH_CLASS} ${gap}`}>
+							{index === 0 && prefix}
+							{index === 0 && prefix !== undefined && " "}
+							{renderInline(block.text)}
+						</p>
+					);
+				}
+				const items = block.items.map((item, itemIndex) => <li key={itemIndex}>{renderInline(item)}</li>);
+				return block.ordered ? (
+					<ol
+						key={index}
+						start={block.start === 1 ? undefined : block.start}
+						className={`list-decimal ${LIST_CLASS} ${gap}`}
+					>
+						{items}
+					</ol>
+				) : (
+					<ul key={index} className={`list-disc ${LIST_CLASS} ${gap}`}>
+						{items}
+					</ul>
+				);
+			})}
+		</>
 	);
 }

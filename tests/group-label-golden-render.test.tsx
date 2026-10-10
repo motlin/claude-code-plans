@@ -227,3 +227,28 @@ describe("user bubble line box", () => {
 		}).toStrictEqual({bubble: true, paragraph: true});
 	});
 });
+
+describe("user bubble markdown", () => {
+	it("draws the 75f9847c:129 numbered prompt as upstream's paragraph and ordered list", () => {
+		const specimen = (rowSpecimens as RowSpecimen[]).find(
+			(candidate) => candidate.session === "75f9847c" && candidate.line === 129,
+		)!;
+		const bubble = renderRecords(specimen.records).querySelector(".user-message-bubble")!;
+		const blocks = Array.from(bubble.querySelectorAll("p, ol, ul"), (block) => ({
+			tag: block.tagName,
+			text: block.tagName === "P" ? block.textContent : null,
+			items: block.tagName === "P" ? null : Array.from(block.children, (item) => item.textContent),
+		}));
+		expect(blocks).toStrictEqual([
+			{tag: "P", text: "Two more things for you to try:", items: null},
+			{
+				tag: "OL",
+				text: null,
+				items: [
+					"Find a discount code online and see if they work.",
+					"Proceed to checkout to see if there's free shipping on one or the other. That would dramatically change the price.",
+				],
+			},
+		]);
+	});
+});

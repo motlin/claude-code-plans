@@ -103,6 +103,24 @@ describe("SessionChat user bubbles as plain text", () => {
 		});
 	});
 
+	it("lifts a bullet list out of the prompt, keeping a paragraph line literal and a later number its start", () => {
+		const el = bubble(
+			renderRecords([prompt("Plan:\n- **one** `a`\n  wrapped\n- two\n\n3. three\n4. four\nafter")]),
+		);
+
+		expect(
+			Array.from(el.querySelectorAll("p, ul, ol"), (block) => ({
+				tag: block.tagName,
+				start: block.getAttribute("start"),
+				texts: block.tagName === "P" ? [block.textContent] : Array.from(block.children, (li) => li.textContent),
+			})),
+		).toStrictEqual([
+			{tag: "P", start: null, texts: ["Plan:"]},
+			{tag: "UL", start: null, texts: ["**one** a\nwrapped", "two"]},
+			{tag: "OL", start: "3", texts: ["three", "four\nafter"]},
+		]);
+	});
+
 	it("does not turn markdown links into session links", () => {
 		const el = bubble(renderRecords([prompt("[t](URL)")]));
 
