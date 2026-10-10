@@ -1775,6 +1775,56 @@ function disclosureClassName(container: HTMLElement): string | null {
 	return controls[0]!.className;
 }
 
+// ---------------------------------------------------------------------------
+// Grouped header height: upstream draws a grouped tool summary 24px tall in
+// every state. A completed header already carries py-0.5; a failed or running
+// one must too, or it collapses to 20px (wave 56 measurement).
+// ---------------------------------------------------------------------------
+
+/** Two Bash calls; the second one settles per `second` ("ok", "error", or "pending"). */
+function groupedBashRecords(second: "ok" | "error" | "pending"): unknown[] {
+	const resultFor = (id: string, isError: boolean) => ({
+		type: "user",
+		uuid: `r-${id}`,
+		parentUuid: "a1",
+		message: {
+			role: "user",
+			content: [{type: "tool_result", tool_use_id: id, content: "Fabricated tool result", is_error: isError}],
+		},
+	});
+	return [
+		{
+			type: "assistant",
+			uuid: "a1",
+			message: {
+				role: "assistant",
+				content: [
+					{type: "tool_use", id: "t1", name: "Bash", input: {command: "git status"}},
+					{type: "tool_use", id: "t2", name: "Bash", input: {command: "git log --oneline"}},
+				],
+			},
+		},
+		resultFor("t1", false),
+		...(second === "pending" ? [] : [resultFor("t2", second === "error")]),
+	];
+}
+
+describe("SessionChat grouped header height", () => {
+	it("gives failed and running grouped headers the completed header's py-0.5", () => {
+		expect({
+			completed: disclosureClassName(renderTranscriptElement(groupedBashRecords("ok"))),
+			failed: disclosureClassName(renderTranscriptElement(groupedBashRecords("error"))),
+			running: disclosureClassName(renderTranscriptElement(groupedBashRecords("pending"))),
+		}).toStrictEqual({
+			completed:
+				"relative group/tool flex max-w-full items-center min-w-0 self-stretch me-[52px] px-1 py-0.5 gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3",
+			failed: "relative group/tool flex max-w-full items-center self-start py-0.5 gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3",
+			running:
+				"relative group/tool flex max-w-full items-center self-start py-0.5 gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3",
+		});
+	});
+});
+
 describe("SessionChat disclosure focus treatment", () => {
 	it("gives the single tool row and the group summary upstream's focus-ring classes", () => {
 		const singleBash = renderTranscriptElement(

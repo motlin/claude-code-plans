@@ -3444,13 +3444,14 @@ function ToolCallSummary({
 	// progressive label instead of the tally.
 	const pendingCall = displayCalls.filter(isPendingToolCall).at(-1);
 	const runningText = pendingCall === undefined ? null : runningToolLabelText(runningToolLabel(pendingCall));
-	const summaryLayout =
-		!hasTasksView &&
-		pendingCall === undefined &&
-		displayCalls.every((call) => !call.isError) &&
-		notices.every((notice) => notice.notification.status === "completed")
+	// Upstream's grouped header is 24px tall whether it completed, failed, or is still running.
+	const summaryLayout = hasTasksView
+		? "self-start py-0"
+		: pendingCall === undefined &&
+			  displayCalls.every((call) => !call.isError) &&
+			  notices.every((notice) => notice.notification.status === "completed")
 			? "min-w-0 self-stretch me-[52px] px-1 py-0.5"
-			: "self-start py-0";
+			: "self-start py-0.5";
 	// Collapsed rows recede to muted ink and lift to secondary on hover; an open
 	// row stays secondary, as upstream does.
 	const ink = expanded ? "text-secondary" : "text-ink-muted group-hover/tool:text-secondary";
