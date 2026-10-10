@@ -22516,5 +22516,801 @@
 				"gitBranch": "main"
 			}
 		]
+	},
+	{
+		"session": "79a0ad58",
+		"line": 153,
+		"upstream": ["user: /git:commit", "status: Committed local changes · took 20s", "prose", "prose"],
+		"records": [
+			{
+				"parentUuid": "42ad7201-ba5f-47e8-b056-10125794ece6",
+				"isSidechain": false,
+				"promptId": "2b71a349-268e-4aac-977d-5b1bd90d3b05",
+				"type": "user",
+				"message": {
+					"role": "user",
+					"content": "<command-message>git:commit</command-message>\n<command-name>/git:commit</command-name>"
+				},
+				"uuid": "a347bd73-7a1b-43b1-b259-bf575eee1a31",
+				"timestamp": "2026-09-28T17:59:12.109Z",
+				"origin": {
+					"kind": "human"
+				},
+				"turnOrigin": "human",
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/.dotfiles",
+				"sessionId": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"version": "2.1.283",
+				"gitBranch": "collie"
+			},
+			{
+				"parentUuid": "a347bd73-7a1b-43b1-b259-bf575eee1a31",
+				"isSidechain": false,
+				"promptId": "2b71a349-268e-4aac-977d-5b1bd90d3b05",
+				"type": "user",
+				"message": {
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Base directory for this skill: /Users/craig/.claude/plugins/cache/motlin-claude-code-plugins/git/1.35.2/skills/commit\n\n# Commit\n\nUse the `code:cli` and `git:git-workflow` skills.\n\nWhen the user invokes this skill directly (`/git:commit`), delegate to the `git:commit-handler` agent to commit the local changes. When this skill is loaded as guidance for a commit you are already making, or no subagent is available (for example in Codex), follow the procedure below inline.\n\n## Inspect Context\n\nRun:\n\n```bash\ngit status\ngit diff --cached\ngit diff\ngit branch --show-current\ngit log --oneline -10\n```\n\n## Stage Files\n\nStage files individually:\n\n```bash\ngit add <file1> <file2>\n```\n\nNever use `git add .`, `git add -A`, `git commit -am`, or other commands that stage unrelated changes. Only stage files that were explicitly modified for the current task.\n\n## Commit Message\n\nIf the user pasted a compiler or linter error, or the task is explicitly a fixup for a known commit, use:\n\n```bash\ngit commit --fixup <sha>\n```\n\nOtherwise write one single-line message that follows `git:git-workflow`:\n\n- Present-tense verb first.\n- 60-120 characters.\n- Ends with a period.\n- No body.\n- Borrow language from the prompt, but avoid praise adjectives.\n\nThe prompt is the intent, not the message text. Distill a long or multi-line prompt to one line rather than copying it.\n\nEcho exactly:\n\n```text\nRunning: `git commit --message \"<message>\"`\n```\n\nThen run `git commit` without confirming again with the user:\n\n```bash\ngit commit --message \"<message>\"\n```\n\nIf pre-commit hooks modify files, stage those files individually and retry. Never use `git commit --no-verify`.\n"
+						}
+					]
+				},
+				"isMeta": true,
+				"turnCompanion": true,
+				"uuid": "e1b72cda-5d7d-4889-a7b7-4eb4946489c3",
+				"timestamp": "2026-09-28T17:59:12.109Z",
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/.dotfiles",
+				"sessionId": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"version": "2.1.283",
+				"gitBranch": "collie"
+			},
+			{
+				"parentUuid": "e1b72cda-5d7d-4889-a7b7-4eb4946489c3",
+				"isSidechain": false,
+				"attachment": {
+					"type": "command_permissions",
+					"allowedTools": []
+				},
+				"type": "attachment",
+				"uuid": "abb06d9f-1845-490c-aff7-d64ee4329239",
+				"timestamp": "2026-09-28T17:59:12.109Z",
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/.dotfiles",
+				"sessionId": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"version": "2.1.283",
+				"gitBranch": "collie"
+			},
+			{
+				"type": "last-prompt",
+				"lastPrompt": "is it because of this warning we get on startup? Permission ask rule (../.claude/settings.json): Bash(git * pushf:*) mixes * with the trailing :* prefix syntax, so it is matched as a literal prefix (t…",
+				"leafUuid": "abb06d9f-1845-490c-aff7-d64ee4329239",
+				"sessionId": "79a0ad58-813b-46f7-b49a-7433d9ebf702"
+			},
+			{
+				"type": "mode",
+				"mode": "normal",
+				"sessionId": "79a0ad58-813b-46f7-b49a-7433d9ebf702"
+			},
+			{
+				"type": "permission-mode",
+				"permissionMode": "acceptEdits",
+				"sessionId": "79a0ad58-813b-46f7-b49a-7433d9ebf702"
+			},
+			{
+				"type": "atis-latch",
+				"atis": "",
+				"sessionId": "79a0ad58-813b-46f7-b49a-7433d9ebf702"
+			},
+			{
+				"type": "bridge-session",
+				"sessionId": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"bridgeSessionId": "cse_01BXnjeqxs5pRUTQxrLekPYM",
+				"lastSequenceNum": 0,
+				"ownerAccountUuid": "c670e62b-9156-4d44-a650-7515b852d017",
+				"ownerOrganizationUuid": "4159b3e8-fd8c-46b6-a721-a1bac29b4e06"
+			},
+			{
+				"parentUuid": "abb06d9f-1845-490c-aff7-d64ee4329239",
+				"isSidechain": false,
+				"message": {
+					"model": "claude-opus-5-5",
+					"id": "msg_011CfWGkZfDUxn8Mzj3a2ubS",
+					"type": "message",
+					"role": "assistant",
+					"content": [
+						{
+							"type": "tool_use",
+							"id": "toolu_015MifT6XSYkJeGq399qyt3h",
+							"name": "Agent",
+							"input": {
+								"description": "Commit local changes",
+								"subagent_type": "git:commit-handler",
+								"prompt": "Commit the local changes in /Users/craig/.dotfiles (branch collie). Inspect with git status / git diff --cached / git diff. Stage files individually (never git add . / -A / commit -am). Write a single-line message: present-tense verb first, 60-120 chars, ends with a period, no body. Do NOT add any trailer or attribution lines (no Claude-Session, no Co-Authored-By). If pre-commit hooks modify files, stage them individually and retry; never --no-verify. Note: ~/.claude/settings.json is outside this repo, ignore it. If there is nothing to commit, say so. Report the commit SHA and message."
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					],
+					"container": null,
+					"stop_reason": "tool_use",
+					"stop_sequence": null,
+					"stop_details": null,
+					"usage": {
+						"input_tokens": 4,
+						"cache_creation_input_tokens": 38327,
+						"cache_read_input_tokens": 23407,
+						"output_tokens": 318,
+						"output_tokens_details": {
+							"thinking_tokens": 0
+						},
+						"server_tool_use": {
+							"web_search_requests": 0,
+							"web_fetch_requests": 0
+						},
+						"service_tier": "standard",
+						"cache_creation": {
+							"ephemeral_1h_input_tokens": 38327,
+							"ephemeral_5m_input_tokens": 0
+						},
+						"inference_geo": "not_available",
+						"iterations": [
+							{
+								"input_tokens": 4,
+								"output_tokens": 318,
+								"cache_read_input_tokens": 23407,
+								"cache_creation_input_tokens": 38327,
+								"cache_creation": {
+									"ephemeral_5m_input_tokens": 0,
+									"ephemeral_1h_input_tokens": 38327
+								},
+								"type": "message"
+							}
+						],
+						"speed": "standard"
+					},
+					"input_transformations": [],
+					"diagnostics": {
+						"cache_miss_reason": {
+							"type": "previous_message_not_found"
+						}
+					},
+					"context_management": null
+				},
+				"wireToolInputs": {
+					"toolu_015MifT6XSYkJeGq399qyt3h": {
+						"description": "Commit local changes",
+						"subagent_type": "git:commit-handler",
+						"prompt": "Commit the local changes in /Users/craig/.dotfiles (branch collie). Inspect with git status / git diff --cached / git diff. Stage files individually (never git add . / -A / commit -am). Write a single-line message: present-tense verb first, 60-120 chars, ends with a period, no body. Do NOT add any trailer or attribution lines (no Claude-Session, no Co-Authored-By). If pre-commit hooks modify files, stage them individually and retry; never --no-verify. Note: ~/.claude/settings.json is outside this repo, ignore it. If there is nothing to commit, say so. Report the commit SHA and message."
+					}
+				},
+				"apiBlockIndex": 0,
+				"requestId": "req_011CfWGkZ9Tevt9JJgWVCRJX",
+				"attributionSkill": "git:commit",
+				"attributionPlugin": "git",
+				"type": "assistant",
+				"uuid": "a2aa520b-1b1e-41ae-9f4d-60be7bbc9e61",
+				"timestamp": "2026-09-28T17:59:15.930Z",
+				"advisorModel": "claude-opus-5-5",
+				"effort": "medium",
+				"perTurnEffort": "medium",
+				"session_id": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/.dotfiles",
+				"sessionId": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"version": "2.1.283",
+				"gitBranch": "collie"
+			},
+			{
+				"parentUuid": "a2aa520b-1b1e-41ae-9f4d-60be7bbc9e61",
+				"isSidechain": false,
+				"promptId": "2b71a349-268e-4aac-977d-5b1bd90d3b05",
+				"type": "user",
+				"message": {
+					"role": "user",
+					"content": [
+						{
+							"tool_use_id": "toolu_015MifT6XSYkJeGq399qyt3h",
+							"type": "tool_result",
+							"content": [
+								{
+									"type": "text",
+									"text": "Async agent launched successfully. (This tool result is internal metadata — never quote or paste any part of it, including the agentId below, into a user-facing reply.)\nagentId: aba7816c726a66127 (internal ID - do not mention to user. Use SendMessage with to: 'aba7816c726a66127', summary: '<5-10 word recap>' to continue this agent.)\nThe agent is working in the background. You will be notified automatically when it completes. You know nothing about its results until that notification arrives — do not report, assume, or predict them; continue other work or respond to the user in the meantime.\nDo not duplicate this agent's work — avoid working with the same files or topics it is using.\noutput_file: /private/tmp/claude-501/-Users-craig--dotfiles/79a0ad58-813b-46f7-b49a-7433d9ebf702/tasks/aba7816c726a66127.output\nDo NOT Read or tail this file via the shell tool — it is the full subagent JSONL transcript and reading it will overflow your context. If the user asks for progress, say the agent is still running; you'll get a completion notification."
+								}
+							]
+						}
+					]
+				},
+				"uuid": "768156ba-cedb-4467-b880-e0d6b90db16b",
+				"timestamp": "2026-09-28T17:59:15.990Z",
+				"toolUseResult": {
+					"isAsync": true,
+					"status": "async_launched",
+					"agentId": "aba7816c726a66127",
+					"description": "Commit local changes",
+					"resolvedModel": "claude-opus-5-5",
+					"prompt": "Commit the local changes in /Users/craig/.dotfiles (branch collie). Inspect with git status / git diff --cached / git diff. Stage files individually (never git add . / -A / commit -am). Write a single-line message: present-tense verb first, 60-120 chars, ends with a period, no body. Do NOT add any trailer or attribution lines (no Claude-Session, no Co-Authored-By). If pre-commit hooks modify files, stage them individually and retry; never --no-verify. Note: ~/.claude/settings.json is outside this repo, ignore it. If there is nothing to commit, say so. Report the commit SHA and message.",
+					"outputFile": "/private/tmp/claude-501/-Users-craig--dotfiles/79a0ad58-813b-46f7-b49a-7433d9ebf702/tasks/aba7816c726a66127.output",
+					"canReadOutputFile": true
+				},
+				"sourceToolAssistantUUID": "a2aa520b-1b1e-41ae-9f4d-60be7bbc9e61",
+				"session_id": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/.dotfiles",
+				"sessionId": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"version": "2.1.283",
+				"gitBranch": "collie"
+			},
+			{
+				"parentUuid": "768156ba-cedb-4467-b880-e0d6b90db16b",
+				"isSidechain": false,
+				"attachment": {
+					"type": "total_tokens_reminder",
+					"text": "<total_tokens>14990468 tokens left</total_tokens>"
+				},
+				"type": "attachment",
+				"uuid": "32b48332-0f2d-42ce-959f-902b709683d9",
+				"timestamp": "2026-09-28T17:59:16.002Z",
+				"rendered": [
+					{
+						"content": "<system-reminder>\n<total_tokens>14990468 tokens left</total_tokens>\n</system-reminder>"
+					}
+				],
+				"session_id": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/.dotfiles",
+				"sessionId": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"version": "2.1.283",
+				"gitBranch": "collie"
+			},
+			{
+				"parentUuid": "32b48332-0f2d-42ce-959f-902b709683d9",
+				"isSidechain": false,
+				"message": {
+					"model": "claude-opus-5-5",
+					"id": "msg_011CfWGkqXwnEHV4qRWCXAns",
+					"type": "message",
+					"role": "assistant",
+					"content": [
+						{
+							"type": "thinking",
+							"thinking": "",
+							"signature": "CAQSugYKEAgSGAI4AUIIdGhpbmtpbmcSDNDX4VmNMGqT/2khzRoMDxnyUSxNlwoNdz/ZIjBo4P+L4fvhskRiyyWYBvkur67vZc1vuo16mbUYcjSHqCrE+re17EKAL1PntmS6N2Yq1wUgH5JyMFS4Ij9vx1b0RKQSnqAFSqp1A4fsa/bbbyZs2Normr5YZ0/vfh9/qNcSWjkHkOM9TJvbkabRsg9Fr/VVRx1V+xM3lltaWNbhrl0MG/qNDYTILo8CXJs3cAwU/J0TX/f/2tHuHSiOJmIQ9z1nT/iGlNN92hylsRjoI8cf9fRNt2KpsoFxulHih2sWW54gzh3FcVX7BcsFNN2JtCcL0HcZecMHrBNP2ZongqVhjCuu8Sf0LCSPxJdYAqdU2F0Tn6aIYqNC2SaNjhhWk3aTJtwHR/q5om/nAxKs9hz4WMgL64SHxdGpM5k/Zb3bHxNNU8Xj6t62y7Yxw3tahSKPesxekVXXnFq4Tn/FJ6XT2bzkbwD1fdHC3pUrakR2wabSpqveAAx/hPQtKbFMvamT2uki3m6Rre85t1zh7vqJel9AcREMLWqgZ8r6ocTCV6K15LmOQ7/mqnh6rxPmz3M4apXp0Cg9tWbriZHELfTfGF+jF1BFSVeZ/fYRmX16ruEj9JlOxFDr3jgLnNL6Sjn3ug4pl8TQIMylAT9RVLTsILKr/UICBxMz1JNRbtAS42uEaotptqNHk2x24BEHXhjq7a9TZnlR6t3q/W/zDUrdElYJkQKYBZScN2vbcW4g72PXgQGKcD48fmiGEuxWUqThZ8WWah3b5I6IKR+Dx1Jxo/47RRWLElu3cXDjyFgGkBvmVhe+s3Y2NSOw1OwVAd+Pn9wIsAYLj3KdjNfkw6q6TC1pQeqqDDOe+tDpFXk7VSOvCG/7Cp5/w7JC3D3tks/MESbDoB/RSkt7ucjC+kq/yXBmZvoolRL/F09G1EO0AXFGiZYPirMjfwjzXwBDw78xOd9lLLIAZ6+Wd9uV1vAQHag+iCYpiHskd0B9Y94CucyD1qq7yQUXH/EaMDL6auv8xB6W4HpTyAu22b9v5e1oG206SOoXGt3cUH8Ed9fTcTuXaFxJ9RxNGAE="
+						}
+					],
+					"container": null,
+					"stop_reason": "end_turn",
+					"stop_sequence": null,
+					"stop_details": null,
+					"usage": {
+						"input_tokens": 2,
+						"cache_creation_input_tokens": 711,
+						"cache_read_input_tokens": 61734,
+						"output_tokens": 94,
+						"output_tokens_details": {
+							"thinking_tokens": 24
+						},
+						"server_tool_use": {
+							"web_search_requests": 0,
+							"web_fetch_requests": 0
+						},
+						"service_tier": "standard",
+						"cache_creation": {
+							"ephemeral_1h_input_tokens": 711,
+							"ephemeral_5m_input_tokens": 0
+						},
+						"inference_geo": "not_available",
+						"iterations": [
+							{
+								"input_tokens": 2,
+								"output_tokens": 94,
+								"cache_read_input_tokens": 61734,
+								"cache_creation_input_tokens": 711,
+								"cache_creation": {
+									"ephemeral_5m_input_tokens": 0,
+									"ephemeral_1h_input_tokens": 711
+								},
+								"type": "message"
+							}
+						],
+						"speed": "standard"
+					},
+					"input_transformations": [],
+					"diagnostics": null,
+					"context_management": null
+				},
+				"apiBlockIndex": 0,
+				"requestId": "req_011CfWGkqActHfg1bPZieyCC",
+				"attributionSkill": "git:commit",
+				"attributionPlugin": "git",
+				"type": "assistant",
+				"uuid": "b86e8851-07a2-4bd7-acb2-3b4ab8d4156e",
+				"timestamp": "2026-09-28T17:59:17.638Z",
+				"advisorModel": "claude-opus-5-5",
+				"effort": "medium",
+				"perTurnEffort": "medium",
+				"session_id": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/.dotfiles",
+				"sessionId": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"version": "2.1.283",
+				"gitBranch": "collie"
+			},
+			{
+				"parentUuid": "b86e8851-07a2-4bd7-acb2-3b4ab8d4156e",
+				"isSidechain": false,
+				"message": {
+					"model": "claude-opus-5-5",
+					"id": "msg_011CfWGkqXwnEHV4qRWCXAns",
+					"type": "message",
+					"role": "assistant",
+					"content": [
+						{
+							"type": "text",
+							"text": "The commit is running in the background, and I'll report the SHA and message when it finishes. I told it to leave off the `Claude-Session` trailer.\n\n📌 You asked: Commit the local changes.\n🔗 None"
+						}
+					],
+					"container": null,
+					"stop_reason": "end_turn",
+					"stop_sequence": null,
+					"stop_details": null,
+					"usage": {
+						"input_tokens": 2,
+						"cache_creation_input_tokens": 711,
+						"cache_read_input_tokens": 61734,
+						"output_tokens": 94,
+						"output_tokens_details": {
+							"thinking_tokens": 24
+						},
+						"server_tool_use": {
+							"web_search_requests": 0,
+							"web_fetch_requests": 0
+						},
+						"service_tier": "standard",
+						"cache_creation": {
+							"ephemeral_1h_input_tokens": 711,
+							"ephemeral_5m_input_tokens": 0
+						},
+						"inference_geo": "not_available",
+						"iterations": [
+							{
+								"input_tokens": 2,
+								"output_tokens": 94,
+								"cache_read_input_tokens": 61734,
+								"cache_creation_input_tokens": 711,
+								"cache_creation": {
+									"ephemeral_5m_input_tokens": 0,
+									"ephemeral_1h_input_tokens": 711
+								},
+								"type": "message"
+							}
+						],
+						"speed": "standard"
+					},
+					"input_transformations": [],
+					"diagnostics": null,
+					"context_management": null
+				},
+				"apiBlockIndex": 1,
+				"requestId": "req_011CfWGkqActHfg1bPZieyCC",
+				"attributionSkill": "git:commit",
+				"attributionPlugin": "git",
+				"type": "assistant",
+				"uuid": "87a5c363-1f1c-4753-977a-a8d245e04ef2",
+				"timestamp": "2026-09-28T17:59:17.645Z",
+				"advisorModel": "claude-opus-5-5",
+				"effort": "medium",
+				"perTurnEffort": "medium",
+				"session_id": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/.dotfiles",
+				"sessionId": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"version": "2.1.283",
+				"gitBranch": "collie"
+			},
+			{
+				"parentUuid": "87a5c363-1f1c-4753-977a-a8d245e04ef2",
+				"isSidechain": false,
+				"attachment": {
+					"type": "hook_success",
+					"hookName": "Stop",
+					"toolUseID": "342fd617-5d20-4471-9051-687bd625be7a",
+					"hookEvent": "Stop",
+					"content": "",
+					"stdout": "",
+					"stderr": " Working tree has unstaged changes.\n",
+					"exitCode": 0,
+					"command": "if [ -n \"${CLAUDE_PLUGIN_ROOT:-}\" ]; then \"${CLAUDE_PLUGIN_ROOT}/scripts/check-dirty-tree.sh\"; fi",
+					"durationMs": 74
+				},
+				"type": "attachment",
+				"uuid": "1306b82e-3a2f-4681-b807-595b2ad87cbc",
+				"timestamp": "2026-09-28T17:59:17.729Z",
+				"session_id": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/.dotfiles",
+				"sessionId": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"version": "2.1.283",
+				"gitBranch": "collie"
+			},
+			{
+				"parentUuid": "1306b82e-3a2f-4681-b807-595b2ad87cbc",
+				"isSidechain": false,
+				"attachment": {
+					"type": "hook_success",
+					"hookName": "Stop",
+					"toolUseID": "342fd617-5d20-4471-9051-687bd625be7a",
+					"hookEvent": "Stop",
+					"content": "",
+					"stdout": "",
+					"stderr": " No git test results found for HEAD.\n",
+					"exitCode": 0,
+					"command": "if [ -n \"${CLAUDE_PLUGIN_ROOT:-}\" ]; then \"${CLAUDE_PLUGIN_ROOT}/scripts/check-test-results.sh\"; fi",
+					"durationMs": 218
+				},
+				"type": "attachment",
+				"uuid": "468bf132-b44b-4564-843d-d6ab5ee61fd8",
+				"timestamp": "2026-09-28T17:59:17.873Z",
+				"session_id": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/.dotfiles",
+				"sessionId": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"version": "2.1.283",
+				"gitBranch": "collie"
+			},
+			{
+				"parentUuid": "468bf132-b44b-4564-843d-d6ab5ee61fd8",
+				"isSidechain": false,
+				"type": "system",
+				"subtype": "stop_hook_summary",
+				"hookCount": 6,
+				"hookInfos": [
+					{
+						"command": "if [ -n \"${CLAUDE_PLUGIN_ROOT:-}\" ]; then \"${CLAUDE_PLUGIN_ROOT}/scripts/check-test-results.sh\"; fi",
+						"durationMs": 218
+					},
+					{
+						"command": "${CLAUDE_PLUGIN_ROOT}/scripts/post-hook.sh Stop",
+						"durationMs": 33
+					},
+					{
+						"command": "if [ -n \"${CLAUDE_PLUGIN_ROOT:-}\" ]; then \"${CLAUDE_PLUGIN_ROOT}/scripts/check-dirty-tree.sh\"; fi",
+						"durationMs": 74
+					},
+					{
+						"command": "${CLAUDE_PLUGIN_ROOT}/scripts/rename-herdr-tab.sh",
+						"durationMs": 21
+					},
+					{
+						"command": "${CLAUDE_PLUGIN_ROOT}/scripts/recap-guard.sh",
+						"durationMs": 33
+					},
+					{
+						"command": "${CLAUDE_PLUGIN_ROOT}/scripts/stop-phrase-guard.sh",
+						"durationMs": 113
+					}
+				],
+				"hookErrors": [],
+				"hookAdditionalContext": [],
+				"preventedContinuation": false,
+				"stopReason": "",
+				"hasOutput": true,
+				"level": "suggestion",
+				"timestamp": "2026-09-28T17:59:17.874Z",
+				"uuid": "fe1e51a3-b119-4a49-81b8-458e6d83f946",
+				"toolUseID": "342fd617-5d20-4471-9051-687bd625be7a",
+				"session_id": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/.dotfiles",
+				"sessionId": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"version": "2.1.283",
+				"gitBranch": "collie"
+			},
+			{
+				"parentUuid": "fe1e51a3-b119-4a49-81b8-458e6d83f946",
+				"isSidechain": false,
+				"type": "system",
+				"subtype": "turn_duration",
+				"durationMs": 5778,
+				"messageCount": 111,
+				"pendingBackgroundAgentCount": 1,
+				"timestamp": "2026-09-28T17:59:17.878Z",
+				"uuid": "f598d5e2-3952-4fab-98e2-b0e8f0744083",
+				"isMeta": false,
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/.dotfiles",
+				"sessionId": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"version": "2.1.283",
+				"gitBranch": "collie"
+			},
+			{
+				"type": "queue-operation",
+				"operation": "enqueue",
+				"timestamp": "2026-09-28T17:59:35.438Z",
+				"sessionId": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"content": "<task-notification>\n<task-id>aba7816c726a66127</task-id>\n<tool-use-id>toolu_015MifT6XSYkJeGq399qyt3h</tool-use-id>\n<output-file>/private/tmp/claude-501/-Users-craig--dotfiles/79a0ad58-813b-46f7-b49a-7433d9ebf702/tasks/aba7816c726a66127.output</output-file>\n<status>completed</status>\n<summary>Agent \"Commit local changes\" finished</summary>\n<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>\n<result>I committed both changed files on `collie` as `abb742f`, and the working tree is now clean.\n\nMessage: `Add a --worktree flag to test-branch that runs git-test in a sibling worktree, and rename the log alias to tslog.`\n\n- `/Users/craig/.dotfiles/config/just/.just/git-test.just`: `test-branch` gets a new `--worktree` flag. With it, `git-test` runs in a separate checkout called `&lt;repo&gt;-test-worktree`, which is created if it doesn't exist. Extra `git-test` options now go after `--`, and `test-all` passes them that way. The recipe also stops on the first error now (`set -euo pipefail`).\n- `/Users/craig/.dotfiles/alias`: the `log` alias is renamed to `tslog`.\n\nThe pre-commit hooks passed without changing any files, and I added no trailer or attribution lines. The two changes aren't related, so if you'd rather keep them as separate commits, it's easy to split this one.</result>\n<usage><subagent_tokens>45752</subagent_tokens><tool_uses>2</tool_uses><duration_ms>19504</duration_ms></usage>\n</task-notification>"
+			},
+			{
+				"type": "queue-operation",
+				"operation": "dequeue",
+				"timestamp": "2026-09-28T17:59:35.442Z",
+				"sessionId": "79a0ad58-813b-46f7-b49a-7433d9ebf702"
+			},
+			{
+				"parentUuid": "f598d5e2-3952-4fab-98e2-b0e8f0744083",
+				"isSidechain": false,
+				"promptId": "f8620b24-6861-4cd6-ac52-4b6b1914ddc9",
+				"type": "user",
+				"message": {
+					"role": "user",
+					"content": "<task-notification>\n<task-id>aba7816c726a66127</task-id>\n<tool-use-id>toolu_015MifT6XSYkJeGq399qyt3h</tool-use-id>\n<output-file>/private/tmp/claude-501/-Users-craig--dotfiles/79a0ad58-813b-46f7-b49a-7433d9ebf702/tasks/aba7816c726a66127.output</output-file>\n<status>completed</status>\n<summary>Agent \"Commit local changes\" finished</summary>\n<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>\n<result>I committed both changed files on `collie` as `abb742f`, and the working tree is now clean.\n\nMessage: `Add a --worktree flag to test-branch that runs git-test in a sibling worktree, and rename the log alias to tslog.`\n\n- `/Users/craig/.dotfiles/config/just/.just/git-test.just`: `test-branch` gets a new `--worktree` flag. With it, `git-test` runs in a separate checkout called `&lt;repo&gt;-test-worktree`, which is created if it doesn't exist. Extra `git-test` options now go after `--`, and `test-all` passes them that way. The recipe also stops on the first error now (`set -euo pipefail`).\n- `/Users/craig/.dotfiles/alias`: the `log` alias is renamed to `tslog`.\n\nThe pre-commit hooks passed without changing any files, and I added no trailer or attribution lines. The two changes aren't related, so if you'd rather keep them as separate commits, it's easy to split this one.</result>\n<usage><subagent_tokens>45752</subagent_tokens><tool_uses>2</tool_uses><duration_ms>19504</duration_ms></usage>\n</task-notification>"
+				},
+				"uuid": "71157575-91e8-44fd-85e0-fb43d0636be5",
+				"timestamp": "2026-09-28T17:59:35.447Z",
+				"permissionMode": "acceptEdits",
+				"origin": {
+					"kind": "task-notification"
+				},
+				"promptSource": "system",
+				"turnOrigin": "task_notification",
+				"queueSkipAttachments": true,
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/.dotfiles",
+				"sessionId": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"version": "2.1.283",
+				"gitBranch": "collie"
+			},
+			{
+				"parentUuid": "71157575-91e8-44fd-85e0-fb43d0636be5",
+				"isSidechain": false,
+				"message": {
+					"model": "claude-opus-5-5",
+					"id": "msg_011CfWGnJZuzmmTHPz38GYtu",
+					"type": "message",
+					"role": "assistant",
+					"content": [
+						{
+							"type": "thinking",
+							"thinking": "",
+							"signature": "CAQS0wgKEAgSGAI4AUIIdGhpbmtpbmcSDMtx/1pA1Cnqnc9ahRoMsqghcSDS1DFWc9/HIjCKQxB45jxdwiPriCo1CQhGHbNthSiLKxue4XDc1+i4ShOEftyU8z2GxFf7ZDJd9c4q8Afbs5ld5iNq4d/kPFvcuh+71O65nAeOMshfOvrODfywDcg1Eo9IYK733GUSkdIS5fR1o0iAeFHnw1go5RiBIMrPuCyYj9uOMkiqFGvbWBdwV1USMMF9AW33EigeU9oKbocPDZy5zJJzbbES1MSR4VQW7vM+SBxLBhee1k0G0kMOJrp/KgvSyHaipgAeDeFRHKNrSnsOwtF9+jovfOEYDnplqisaazm3dScfXlKfjiSj3GSTnjhXmC7FFDMm7lUS2aMCSrDP0Ju6UzA2JJ4kW07z/uVWFP4/MNVHkQuHfgvwQBS5l8zlTuPE047gPc0fTG8LhyWeX8fiGRJNiwYdYaVGuXhtiSqQHLx4g5XOZqXoJdmawdEnIWiuw5fbTR4Dcn0sXavYjCUyXABkV2Dlu9B58kgQOMH89c3xNXdaK254KM8T8YUn/b76E53qvYknRv/0oxpGjZipn781DEICrUvjq2KMzOyYoA+bT45hSiGo5IvN5eamDtvo8fs9oMGPtK6H1PML0v/tJJrWQxnAWR+5VKGiX7FMoARlyf8zqqks2jxZcFLDFk/7WPn30OcZExkEa25VT3qqZ5F6mI1oa8wUX8qJogweAH/Lm0cn9Tj9ab11dcuhX695om5nuSk9FSggRuWd6vrxDs7MVK8oPyh5FenRHiiZ0klc8X4JqQKwtnpeDycp6PNJuXwWAqnesP/4H3NZHDBmEcMuR8Y4v3necaQ9NdqRHsrtkRh9oa1EkoXPBWvHEBaXrSjHz/M7uiqEKuBxv11XDHzFOPCAALn6Yx8GTvTpdMdTcB++E3+P9/srUCNFfgiJJFZZepPgkz1IopjMpUx+iCOEIxaTBVJFXJcTAq5wVQzwbtuoR1Kcq9KTmFYqGMtW50IJG6jNusFt4TqPCewCT+LnBQVqP3JEgZrMCJulDIGACQYgPJ8S5S+Z30Dgm21sdQgcg64/GD19e5XGwIvIgGiHslhA1Qbnx1z3z5Nhhx2E9LXTK2Opy0lQhK2d2VcyxnxY3o52DvRrovYjHKjU46QDF2mjLDCYQo9uykWi0G+3OytwhZqXgTHsnZX774oWyBV0zCY+hjWzmSV64TumZ/JgG279JXlXYsMReQReRnXVLX0Q36+6LHz6+YL5ZsuKdmXaZD+jrdaRxbdMhQwQUaxaLx/OF4imdX5dYkUo/66eeKogLiRc+ZOcmDKoY0jajXBoJY1gv6/NMaqQaPh3oSdCqYk4kADlMfB3gWPB4u7Uk+USI1XlyI8Em/p4hA0bQBVqa62EoSBs0J9xoIAyNKbS5VYCBFKiBhQGwklkivwsYbXAvDxOw3FuNmESl8WxusOmH+ivykUYAQ=="
+						}
+					],
+					"container": null,
+					"stop_reason": "end_turn",
+					"stop_sequence": null,
+					"stop_details": null,
+					"usage": {
+						"input_tokens": 4,
+						"cache_creation_input_tokens": 897,
+						"cache_read_input_tokens": 62445,
+						"output_tokens": 394,
+						"output_tokens_details": {
+							"thinking_tokens": 135
+						},
+						"server_tool_use": {
+							"web_search_requests": 0,
+							"web_fetch_requests": 0
+						},
+						"service_tier": "standard",
+						"cache_creation": {
+							"ephemeral_1h_input_tokens": 897,
+							"ephemeral_5m_input_tokens": 0
+						},
+						"inference_geo": "not_available",
+						"iterations": [
+							{
+								"input_tokens": 4,
+								"output_tokens": 394,
+								"cache_read_input_tokens": 62445,
+								"cache_creation_input_tokens": 897,
+								"cache_creation": {
+									"ephemeral_5m_input_tokens": 0,
+									"ephemeral_1h_input_tokens": 897
+								},
+								"type": "message"
+							}
+						],
+						"speed": "standard"
+					},
+					"input_transformations": [],
+					"diagnostics": null,
+					"context_management": null
+				},
+				"apiBlockIndex": 0,
+				"requestId": "req_011CfWGnGepqkLdcGELEdr4u",
+				"type": "assistant",
+				"uuid": "30d9e35c-bff6-4884-90c0-5c736bb94060",
+				"timestamp": "2026-09-28T17:59:38.196Z",
+				"advisorModel": "claude-opus-5-5",
+				"effort": "medium",
+				"perTurnEffort": "medium",
+				"session_id": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/.dotfiles",
+				"sessionId": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"version": "2.1.283",
+				"gitBranch": "collie"
+			},
+			{
+				"parentUuid": "30d9e35c-bff6-4884-90c0-5c736bb94060",
+				"isSidechain": false,
+				"message": {
+					"model": "claude-opus-5-5",
+					"id": "msg_011CfWGnJZuzmmTHPz38GYtu",
+					"type": "message",
+					"role": "assistant",
+					"content": [
+						{
+							"type": "text",
+							"text": "I committed the changes on `collie` as `abb742f`, and the working tree is clean. The pre-commit hooks passed and there's no trailer.\n\nMessage: `Add a --worktree flag to test-branch that runs git-test in a sibling worktree, and rename the log alias to tslog.`\n\n- **`config/just/.just/git-test.just`:** `test-branch` has a new `--worktree` flag that runs `git-test` in a separate `<repo>-test-worktree` checkout. Extra `git-test` options now go after `--`, and the recipe stops on the first error.\n- **`alias`:** `log` is renamed to `tslog`.\n\nThose two changes aren't related, so I can split them into two commits if you'd like.\n\n📌 You asked: Commit the local changes.\n🔗 None"
+						}
+					],
+					"container": null,
+					"stop_reason": "end_turn",
+					"stop_sequence": null,
+					"stop_details": null,
+					"usage": {
+						"input_tokens": 4,
+						"cache_creation_input_tokens": 897,
+						"cache_read_input_tokens": 62445,
+						"output_tokens": 394,
+						"output_tokens_details": {
+							"thinking_tokens": 135
+						},
+						"server_tool_use": {
+							"web_search_requests": 0,
+							"web_fetch_requests": 0
+						},
+						"service_tier": "standard",
+						"cache_creation": {
+							"ephemeral_1h_input_tokens": 897,
+							"ephemeral_5m_input_tokens": 0
+						},
+						"inference_geo": "not_available",
+						"iterations": [
+							{
+								"input_tokens": 4,
+								"output_tokens": 394,
+								"cache_read_input_tokens": 62445,
+								"cache_creation_input_tokens": 897,
+								"cache_creation": {
+									"ephemeral_5m_input_tokens": 0,
+									"ephemeral_1h_input_tokens": 897
+								},
+								"type": "message"
+							}
+						],
+						"speed": "standard"
+					},
+					"input_transformations": [],
+					"diagnostics": null,
+					"context_management": null
+				},
+				"apiBlockIndex": 1,
+				"requestId": "req_011CfWGnGepqkLdcGELEdr4u",
+				"type": "assistant",
+				"uuid": "6d21bcf9-3328-49a5-a182-9edb36ceaf75",
+				"timestamp": "2026-09-28T17:59:40.322Z",
+				"advisorModel": "claude-opus-5-5",
+				"effort": "medium",
+				"perTurnEffort": "medium",
+				"session_id": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/.dotfiles",
+				"sessionId": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"version": "2.1.283",
+				"gitBranch": "collie"
+			},
+			{
+				"parentUuid": "6d21bcf9-3328-49a5-a182-9edb36ceaf75",
+				"isSidechain": false,
+				"attachment": {
+					"type": "hook_success",
+					"hookName": "Stop",
+					"toolUseID": "b72f0159-ce3b-4023-b106-b2fde453fc2a",
+					"hookEvent": "Stop",
+					"content": "",
+					"stdout": "",
+					"stderr": " No git test results found for HEAD.\n",
+					"exitCode": 0,
+					"command": "if [ -n \"${CLAUDE_PLUGIN_ROOT:-}\" ]; then \"${CLAUDE_PLUGIN_ROOT}/scripts/check-test-results.sh\"; fi",
+					"durationMs": 203
+				},
+				"type": "attachment",
+				"uuid": "461c3006-0702-4756-928e-530af3cdfe25",
+				"timestamp": "2026-09-28T17:59:40.536Z",
+				"session_id": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/.dotfiles",
+				"sessionId": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"version": "2.1.283",
+				"gitBranch": "collie"
+			},
+			{
+				"parentUuid": "461c3006-0702-4756-928e-530af3cdfe25",
+				"isSidechain": false,
+				"type": "system",
+				"subtype": "stop_hook_summary",
+				"hookCount": 6,
+				"hookInfos": [
+					{
+						"command": "if [ -n \"${CLAUDE_PLUGIN_ROOT:-}\" ]; then \"${CLAUDE_PLUGIN_ROOT}/scripts/check-test-results.sh\"; fi",
+						"durationMs": 203
+					},
+					{
+						"command": "${CLAUDE_PLUGIN_ROOT}/scripts/post-hook.sh Stop",
+						"durationMs": 28
+					},
+					{
+						"command": "if [ -n \"${CLAUDE_PLUGIN_ROOT:-}\" ]; then \"${CLAUDE_PLUGIN_ROOT}/scripts/check-dirty-tree.sh\"; fi",
+						"durationMs": 73
+					},
+					{
+						"command": "${CLAUDE_PLUGIN_ROOT}/scripts/rename-herdr-tab.sh",
+						"durationMs": 22
+					},
+					{
+						"command": "${CLAUDE_PLUGIN_ROOT}/scripts/recap-guard.sh",
+						"durationMs": 31
+					},
+					{
+						"command": "${CLAUDE_PLUGIN_ROOT}/scripts/stop-phrase-guard.sh",
+						"durationMs": 107
+					}
+				],
+				"hookErrors": [],
+				"hookAdditionalContext": [],
+				"preventedContinuation": false,
+				"stopReason": "",
+				"hasOutput": true,
+				"level": "suggestion",
+				"timestamp": "2026-09-28T17:59:40.536Z",
+				"uuid": "a139f686-28aa-4f11-9d85-c3d97c8cf99c",
+				"toolUseID": "b72f0159-ce3b-4023-b106-b2fde453fc2a",
+				"session_id": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/.dotfiles",
+				"sessionId": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"version": "2.1.283",
+				"gitBranch": "collie"
+			},
+			{
+				"parentUuid": "a139f686-28aa-4f11-9d85-c3d97c8cf99c",
+				"isSidechain": false,
+				"type": "system",
+				"subtype": "turn_duration",
+				"durationMs": 28439,
+				"messageCount": 117,
+				"timestamp": "2026-09-28T17:59:40.538Z",
+				"uuid": "8e7a66dd-bffa-4625-8b82-44cb7a0c8aa4",
+				"isMeta": false,
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/.dotfiles",
+				"sessionId": "79a0ad58-813b-46f7-b49a-7433d9ebf702",
+				"version": "2.1.283",
+				"gitBranch": "collie"
+			}
+		]
 	}
 ]

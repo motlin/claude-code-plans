@@ -203,6 +203,7 @@ function userTurnCount(container: HTMLElement): number {
 describe("parseTaskNotification", () => {
 	it("reads the status, tool use, and the quoted description from the summary", () => {
 		expect(parseTaskNotification(COMPLETED)).toStrictEqual({
+			taskId: "b1x2y3",
 			toolUseId: "toolu_bash",
 			status: "completed",
 			command: true,
@@ -214,6 +215,7 @@ describe("parseTaskNotification", () => {
 
 	it("treats a killed agent as stopped and as a task, not a command", () => {
 		expect(parseTaskNotification(notification("killed", 'Agent "Fetch reminders" was stopped'))).toStrictEqual({
+			taskId: "b1x2y3",
 			toolUseId: "toolu_bash",
 			status: "stopped",
 			command: false,
@@ -229,6 +231,7 @@ describe("parseTaskNotification", () => {
 				'<task-notification>\n<tool-use-id>toolu_agent</tool-use-id>\n<status>completed</status>\n<summary>Agent "Commit crank sensitivity change" finished</summary>\n<usage><subagent_tokens>65394</subagent_tokens><tool_uses>4</tool_uses><duration_ms>26738</duration_ms></usage>\n</task-notification>',
 			),
 		).toStrictEqual({
+			taskId: null,
 			toolUseId: "toolu_agent",
 			status: "completed",
 			command: false,

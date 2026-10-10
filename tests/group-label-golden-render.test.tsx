@@ -302,6 +302,40 @@ describe("local command output", () => {
 	});
 });
 
+describe("agent completion row placement", () => {
+	const rows = (session: string, line: number) => {
+		const specimen = (rowSpecimens as RowSpecimen[]).find(
+			(candidate) => candidate.session === session && candidate.line === line,
+		)!;
+		return Array.from(
+			renderRecords(specimen.records).querySelectorAll("[data-testid=transcript-row]"),
+			(row) =>
+				row.querySelector("[data-task-event-row]")?.textContent ??
+				(row.querySelector(".user-message-bubble") === null
+					? (row.querySelector("h2")?.textContent?.slice(0, 40) ?? "")
+					: "user"),
+		);
+	};
+
+	it("draws 79a0ad58:153's completion above its launch, as upstream does when no hand-back from the agent came first", () => {
+		expect(rows("79a0ad58", 153)).toStrictEqual([
+			"user",
+			"Committed local changes · took 20s",
+			"Claude responded",
+			"Claude responded: The commit is running ",
+			"Claude responded: I committed the change",
+		]);
+	});
+
+	it("keeps 5f402159:2172's completion where its notification arrived, after the agent's hand-back", () => {
+		expect(rows("5f402159", 2172)).toStrictEqual([
+			"Claude responded: The crank change is co",
+			"Committed crank sensitivity change · took 27s",
+			"Claude responded: That notification only",
+		]);
+	});
+});
+
 describe("plain status marker gaps", () => {
 	const styles = () => readFileSync(join(process.cwd(), "src", "styles", "globals.css"), "utf8");
 	const rule = (comment: string, padding: number) =>

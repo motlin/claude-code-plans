@@ -1049,6 +1049,41 @@ function agentCompletionOf(line: SessionLine): TaskNotification | null {
 	return notification?.status === "completed" && notification.agent ? notification : null;
 }
 
+/**
+ * Completed background Agents upstream draws above their own launch, keyed by
+ * the launching line's index: a user-record completion whose agent sent no
+ * hand-back between its launch and the notification (79a0ad58:153). Upstream
+ * shows the task as started there and completes that row in place; after a
+ * hand-back (5f402159:2172) it drops the started row and draws the completion
+ * where the notification arrived.
+ */
+function hoistedAgentCompletions(
+	lines: readonly SessionLine[],
+): Map<number, {index: number; completion: TaskNotification}> {
+	const hoisted = new Map<number, {index: number; completion: TaskNotification}>();
+	let launches: Map<string, number> | null = null;
+	for (const [index, line] of lines.entries()) {
+		const completion = agentCompletionOf(line);
+		if (completion === null || completion.toolUseId === null) continue;
+		launches ??= new Map(
+			lines.flatMap((candidate, candidateIndex) =>
+				candidate.type === "assistant" && Array.isArray(candidate.message?.content)
+					? candidate.message.content.flatMap((block) =>
+							block.type === "tool_use" ? [[block.id, candidateIndex] as const] : [],
+						)
+					: [],
+			),
+		);
+		const launch = launches.get(completion.toolUseId);
+		if (launch === undefined || launch > index) continue;
+		const handedBack = lines
+			.slice(launch + 1, index)
+			.some((between) => agentMessageOf(between)?.from === completion.taskId);
+		if (!handedBack) hoisted.set(launch, {index, completion});
+	}
+	return hoisted;
+}
+
 /** The description a user line's plain-text "Background agent ... was stopped" notice names. */
 function stoppedAgentNoticeOf(line: SessionLine): string | null {
 	return line.type === "user" ? stoppedAgentDescription(getUserContentText(line)) : null;
@@ -1245,6 +1280,21 @@ function TaskEventStatusRow({label, detail, footer}: {label: string; detail: str
 			</TurnStatusFrame>
 			{footer}
 		</div>
+	);
+}
+
+/** A completed background Agent's "<done description> · took Ns" task-event row. */
+function AgentCompletionRow({completion, footer}: {completion: TaskNotification; footer: React.ReactNode}) {
+	return (
+		<TaskEventStatusRow
+			label={pastTense(completion.description)}
+			detail={
+				completion.durationMs === null
+					? null
+					: `took ${formatElapsed(Math.round(completion.durationMs / 1000))}`
+			}
+			footer={footer}
+		/>
 	);
 }
 
@@ -1655,9 +1705,11 @@ function buildSessionListEntries(
 		return false;
 	};
 	const skipSet = buildSkipSet(lines);
+	const hoistedCompletions = verbose ? new Map<number, never>() : hoistedAgentCompletions(lines);
 	if (!verbose) {
 		for (const index of settledCompletionIndices(lines)) skipSet.add(index);
 		for (const index of localCommandIndices(lines)) skipSet.add(index);
+		for (const {index} of hoistedCompletions.values()) skipSet.add(index);
 	}
 	const compactionStatuses: ReadonlySet<number> = renderProps.showCompactSummaries
 		? new Set()
@@ -1723,6 +1775,21 @@ function buildSessionListEntries(
 		if (skipSet.has(i) || !isLineVisible(line, renderProps, verbose)) {
 			i++;
 			continue;
+		}
+
+		const hoisted = hoistedCompletions.get(i);
+		if (hoisted !== undefined) {
+			const statusIndex = line.lineIndex - 0.5;
+			entries.push({
+				key: `started-${line.lineIndex}`,
+				startRecordIndex: statusIndex,
+				isPrompt: false,
+				kind: "assistant_tool",
+				assistantSpan: displaySpans?.get(line.lineIndex),
+				replyHead: line,
+				opensWithStatus: "marker",
+				element: <AgentCompletionRow completion={hoisted.completion} footer={null} />,
+			});
 		}
 
 		const notice = noticeOf(i);
@@ -1791,7 +1858,11 @@ function buildSessionListEntries(
 					j++;
 					continue;
 				}
-				if (isGroupableToolOnlyAssistantLine(nextLine) && sameSpan(line, nextLine)) {
+				if (
+					isGroupableToolOnlyAssistantLine(nextLine) &&
+					sameSpan(line, nextLine) &&
+					!hoistedCompletions.has(j)
+				) {
 					groupIndices.push(j);
 					j++;
 				} else {
@@ -1874,17 +1945,7 @@ function buildSessionListEntries(
 				kind: "assistant_tool",
 				assistantSpan: displaySpans?.get(line.lineIndex),
 				opensWithStatus: "marker",
-				element: (
-					<TaskEventStatusRow
-						label={pastTense(agentCompletion.description)}
-						detail={
-							agentCompletion.durationMs === null
-								? null
-								: `took ${formatElapsed(Math.round(agentCompletion.durationMs / 1000))}`
-						}
-						footer={footerFor(line)}
-					/>
-				),
+				element: <AgentCompletionRow completion={agentCompletion} footer={footerFor(line)} />,
 			});
 			i++;
 			continue;
