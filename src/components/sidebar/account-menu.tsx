@@ -17,7 +17,7 @@ import type {ReactNode} from "react";
 import {useShortcutKeys} from "../../hooks/use-shortcut";
 import {localAccountQueryOptions} from "../../lib/api/local-account";
 import {setKeyboardShortcutsOpen} from "../keyboard-shortcuts-dialog";
-import {useOpenSettings} from "../settings/settings-dialog";
+import {useOpenSettings} from "../settings/open-settings";
 import {
 	Menu,
 	MenuContent,

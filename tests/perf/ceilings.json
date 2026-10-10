@@ -45,28 +45,28 @@
 		"tolerance": 0
 	},
 	"bundle.home.gzip": {
-		"ceiling": 374642,
+		"ceiling": 365118,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Defer the ⌘K command palette (src/components/command-palette.tsx with cmdk, its search, row-action and start-session views) behind src/components/command-palette-entry.tsx until its first open; closed, it rendered nothing. Cold JS moves from 400471/1253321 (home) and 584921/1800169 (session) gzip/raw to the measured values; helpers the palette shares with route chunks now ship as small shared chunks, so the cold file count rises from 83 to 88 (home) and 102 to 110 (session). Other ceilings and the 1% tolerance are unchanged."
+		"reason": "Defer the Settings modal body (src/components/settings/settings-dialog.tsx with its tab sections, search and usage panels) behind src/components/settings/settings-dialog-entry.tsx until a #settings or #customize hash first opens it; the entry keeps the ⇧⌘, binding and useOpenSettings moves to open-settings.ts. Together with the deferred ⌘K palette, cold JS moves from 400471/1253321 (home) and 584921/1800169 (session) gzip/raw to the measured values; shared helpers now ship as small shared chunks, so the cold file count rises from 83 to 95 (home) and 102 to 119 (session). Other ceilings and the 1% tolerance are unchanged."
 	},
 	"bundle.home.raw": {
-		"ceiling": 1164081,
+		"ceiling": 1121384,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Defer the ⌘K command palette (src/components/command-palette.tsx with cmdk, its search, row-action and start-session views) behind src/components/command-palette-entry.tsx until its first open; closed, it rendered nothing. Cold JS moves from 400471/1253321 (home) and 584921/1800169 (session) gzip/raw to the measured values; helpers the palette shares with route chunks now ship as small shared chunks, so the cold file count rises from 83 to 88 (home) and 102 to 110 (session). Other ceilings and the 1% tolerance are unchanged."
+		"reason": "Defer the Settings modal body (src/components/settings/settings-dialog.tsx with its tab sections, search and usage panels) behind src/components/settings/settings-dialog-entry.tsx until a #settings or #customize hash first opens it; the entry keeps the ⇧⌘, binding and useOpenSettings moves to open-settings.ts. Together with the deferred ⌘K palette, cold JS moves from 400471/1253321 (home) and 584921/1800169 (session) gzip/raw to the measured values; shared helpers now ship as small shared chunks, so the cold file count rises from 83 to 95 (home) and 102 to 119 (session). Other ceilings and the 1% tolerance are unchanged."
 	},
 	"bundle.session.gzip": {
-		"ceiling": 561413,
+		"ceiling": 550742,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Defer the ⌘K command palette (src/components/command-palette.tsx with cmdk, its search, row-action and start-session views) behind src/components/command-palette-entry.tsx until its first open; closed, it rendered nothing. Cold JS moves from 400471/1253321 (home) and 584921/1800169 (session) gzip/raw to the measured values; helpers the palette shares with route chunks now ship as small shared chunks, so the cold file count rises from 83 to 88 (home) and 102 to 110 (session). Other ceilings and the 1% tolerance are unchanged."
+		"reason": "Defer the Settings modal body (src/components/settings/settings-dialog.tsx with its tab sections, search and usage panels) behind src/components/settings/settings-dialog-entry.tsx until a #settings or #customize hash first opens it; the entry keeps the ⇧⌘, binding and useOpenSettings moves to open-settings.ts. Together with the deferred ⌘K palette, cold JS moves from 400471/1253321 (home) and 584921/1800169 (session) gzip/raw to the measured values; shared helpers now ship as small shared chunks, so the cold file count rises from 83 to 95 (home) and 102 to 119 (session). Other ceilings and the 1% tolerance are unchanged."
 	},
 	"bundle.session.raw": {
-		"ceiling": 1715764,
+		"ceiling": 1670500,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Defer the ⌘K command palette (src/components/command-palette.tsx with cmdk, its search, row-action and start-session views) behind src/components/command-palette-entry.tsx until its first open; closed, it rendered nothing. Cold JS moves from 400471/1253321 (home) and 584921/1800169 (session) gzip/raw to the measured values; helpers the palette shares with route chunks now ship as small shared chunks, so the cold file count rises from 83 to 88 (home) and 102 to 110 (session). Other ceilings and the 1% tolerance are unchanged."
+		"reason": "Defer the Settings modal body (src/components/settings/settings-dialog.tsx with its tab sections, search and usage panels) behind src/components/settings/settings-dialog-entry.tsx until a #settings or #customize hash first opens it; the entry keeps the ⇧⌘, binding and useOpenSettings moves to open-settings.ts. Together with the deferred ⌘K palette, cold JS moves from 400471/1253321 (home) and 584921/1800169 (session) gzip/raw to the measured values; shared helpers now ship as small shared chunks, so the cold file count rises from 83 to 95 (home) and 102 to 119 (session). Other ceilings and the 1% tolerance are unchanged."
 	},
 	"client.coldHome.default.commitsToRows": {
 		"ceiling": 11,

@@ -117,7 +117,7 @@ import {useToast} from "./toast";
 import {Shortcut} from "./ui/shortcut";
 import {ArchivedBadge} from "./archived-badge";
 import {Tooltip} from "./ui/tooltip";
-import {useOpenSettings} from "./settings/settings-dialog";
+import {useOpenSettings} from "./settings/open-settings";
 import {setKeyboardShortcutsOpen} from "./keyboard-shortcuts-dialog";
 
 /*

@@ -2,7 +2,6 @@ import {Dialog} from "@base-ui/react/dialog";
 import {useLocation, useNavigate} from "@tanstack/react-router";
 import {X} from "lucide-react";
 import {type ComponentProps, Suspense, use, useCallback, useEffect, useRef, useState, type ComponentType} from "react";
-import {useShortcut} from "../../hooks/use-shortcut";
 import {customizeSectionLabels, settingsTabLabels} from "../../lib/schema-choices";
 import {
 	type CustomizeSection,
@@ -84,24 +83,6 @@ const NAV_GROUPS = [
 	{label: "Customize", items: NAV_ITEMS.filter((item) => item.kind === "customize")},
 ];
 
-/** Returns a function that opens Settings over the current page at `tab`. */
-export function useOpenSettings(): (tab: SettingsTab, row?: string) => void {
-	const navigate = useNavigate();
-	return useCallback(
-		(tab, row) => {
-			void navigate({
-				to: ".",
-				search: true,
-				params: true,
-				hash: settingsHash(tab, row),
-				resetScroll: false,
-				hashScrollIntoView: false,
-			});
-		},
-		[navigate],
-	);
-}
-
 /** How long a deep-linked row stays flashed, as on claude.ai/code. */
 const FLASH_MS = 1500;
 
@@ -113,7 +94,6 @@ const FLASH_MS = 1500;
 export function SettingsDialog() {
 	const hash = useLocation({select: (location) => location.hash});
 	const navigate = useNavigate();
-	const openSettings = useOpenSettings();
 	const current = parseSettingsHash(hash);
 	const customize = current === null ? parseCustomizeHash(hash) : null;
 	const open = current !== null || customize !== null;
@@ -125,8 +105,6 @@ export function SettingsDialog() {
 		const active = document.activeElement;
 		if (active instanceof HTMLElement && active !== document.body) returnFocusRef.current = active;
 	}
-
-	useShortcut("settings", () => openSettings("general"));
 
 	const close = useCallback(() => {
 		void navigate({

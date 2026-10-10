@@ -19,7 +19,7 @@ import {ToastProvider} from "../components/toast";
 import {AppFrame} from "../components/app-frame";
 import {AppShellFallback} from "../components/app-shell-fallback";
 import {DeferredCommandPalette} from "../components/command-palette-entry";
-import {SettingsDialog} from "../components/settings/settings-dialog";
+import {DeferredSettingsDialog} from "../components/settings/settings-dialog-entry";
 import {KeyboardShortcutsDialog} from "../components/keyboard-shortcuts-dialog";
 import {RecentsSwitcher} from "../components/recents-switcher";
 import {NewSessionShortcut} from "../components/new-session-shortcut";
@@ -185,7 +185,7 @@ function RootLayout({children}: Readonly<{children: ReactNode}>) {
 			<RecentsSwitcher />
 			<NewSessionShortcut />
 			<ForkNavigator />
-			<SettingsDialog />
+			<DeferredSettingsDialog />
 		</>
 	);
 }
