@@ -58,7 +58,7 @@ import {
 	diffStatsForCall,
 	isRequestInterrupted,
 } from "../lib/session-utils";
-import type {SummarySegment} from "../lib/session-utils";
+import type {BackgroundCompletionLike, SummarySegment} from "../lib/session-utils";
 import {runningToolLabel, runningToolLabelText, toolLabel} from "../lib/tool-labels";
 import {InlinePathImages, SESSION_IMAGE_CLASS_NAME} from "./inline-path-images";
 import {isEditableTarget} from "../lib/shortcuts/match";
@@ -401,7 +401,7 @@ export const SessionChat = React.memo(function SessionChat({
 		(agentId) => launchedAgents.get(agentId) ?? subagentLookup.byBareId.get(agentId)?.description ?? null,
 		[launchedAgents, subagentLookup],
 	);
-	const backgroundOutcomes = useMemo(() => backgroundLaunchOutcomes(lines), [lines]);
+	const backgroundOutcomes = useMemo(() => backgroundLaunchOutcomes(lines, toolResultMap), [lines, toolResultMap]);
 
 	useEffect(() => {
 		const container = containerRef.current;
@@ -1012,26 +1012,92 @@ function taskNotificationOf(line: SessionLine): TaskNotification | null {
 /** How a background launch ended when it did not complete, keyed by the launching tool_use id. */
 type BackgroundOutcome = "failed" | "stopped";
 
-const BackgroundOutcomeContext = createContext<ReadonlyMap<string, BackgroundOutcome>>(new Map());
+interface BackgroundOutcomes {
+	byLaunch: ReadonlyMap<string, BackgroundOutcome>;
+	/** The launch each successful TaskStop ended, keyed by the TaskStop's tool_use id. */
+	stoppedBy: ReadonlyMap<string, string>;
+}
+
+const BackgroundOutcomeContext = createContext<BackgroundOutcomes>({byLaunch: new Map(), stoppedBy: new Map()});
+
+const BACKGROUND_LAUNCH_ID = /running in background with ID: (\S+?)\.?(?:\s|$)/;
+const TASK_STOPPERS = new Set(["TaskStop", "KillShell"]);
+
+/** The background task id a `run_in_background` Bash call's result reports. */
+function backgroundLaunchTaskId(
+	block: ToolUseBlock,
+	toolResultMap: ReadonlyMap<string, ToolResultInfo>,
+): string | null {
+	if (block.name !== "Bash" || block.input["run_in_background"] !== true) return null;
+	const info = toolResultMap.get(block.id);
+	if (info === undefined || info.isError) return null;
+	return BACKGROUND_LAUNCH_ID.exec(info.result)?.[1] ?? null;
+}
+
+/** The task id a successful TaskStop (or older KillShell) call stopped. */
+function stoppedTaskId(block: ToolUseBlock, toolResultMap: ReadonlyMap<string, ToolResultInfo>): string | null {
+	if (!TASK_STOPPERS.has(block.name)) return null;
+	const info = toolResultMap.get(block.id);
+	if (info === undefined || info.isError) return null;
+	const taskId = block.input["task_id"] ?? block.input["shell_id"];
+	return typeof taskId === "string" ? taskId : null;
+}
 
 /**
  * The failed or stopped outcome each `<task-notification>` reports for the call
- * that launched it, so upstream's launch row can carry the status.
+ * that launched it, so upstream's launch row can carry the status. A launch no
+ * notification settles is stopped by the TaskStop that ended it, which upstream
+ * also folds into that TaskStop's group as a stopped background task.
  */
-function backgroundLaunchOutcomes(lines: readonly SessionLine[]): ReadonlyMap<string, BackgroundOutcome> {
-	const outcomes = new Map<string, BackgroundOutcome>();
+function backgroundLaunchOutcomes(
+	lines: readonly SessionLine[],
+	toolResultMap: ReadonlyMap<string, ToolResultInfo>,
+): BackgroundOutcomes {
+	const byLaunch = new Map<string, BackgroundOutcome>();
+	const notified = new Set<string>();
+	const launchByTaskId = new Map<string, string>();
+	const stops: {stopId: string; taskId: string}[] = [];
 	for (const line of lines) {
 		const notification = taskNotificationOf(line);
-		if (notification === null || notification.toolUseId === null || notification.status === "completed") continue;
-		outcomes.set(notification.toolUseId, notification.status);
+		if (notification !== null && notification.toolUseId !== null) {
+			notified.add(notification.toolUseId);
+			if (notification.status !== "completed") byLaunch.set(notification.toolUseId, notification.status);
+		}
+		const content = line.type === "assistant" ? line.message?.content : undefined;
+		if (!Array.isArray(content)) continue;
+		for (const block of content) {
+			if (block.type !== "tool_use") continue;
+			const launched = backgroundLaunchTaskId(block, toolResultMap);
+			if (launched !== null) launchByTaskId.set(launched, block.id);
+			const stopped = stoppedTaskId(block, toolResultMap);
+			if (stopped !== null) stops.push({stopId: block.id, taskId: stopped});
+		}
 	}
-	return outcomes;
+	const stoppedBy = new Map<string, string>();
+	for (const {stopId, taskId} of stops) {
+		const launch = launchByTaskId.get(taskId);
+		if (launch === undefined || notified.has(launch)) continue;
+		byLaunch.set(launch, "stopped");
+		stoppedBy.set(stopId, launch);
+	}
+	return {byLaunch, stoppedBy};
 }
 
-function failedLaunchIds(outcomes: ReadonlyMap<string, BackgroundOutcome>): ReadonlySet<string> {
+function failedLaunchIds({byLaunch}: BackgroundOutcomes): ReadonlySet<string> {
 	const ids = new Set<string>();
-	for (const [id, outcome] of outcomes) if (outcome === "failed") ids.add(id);
+	for (const [id, outcome] of byLaunch) if (outcome === "failed") ids.add(id);
 	return ids;
+}
+
+/** The stopped background tasks the group's TaskStop calls ended, as upstream folds them in. */
+function stopCompletions(
+	calls: readonly ClientToolCall[],
+	{stoppedBy}: BackgroundOutcomes,
+): BackgroundCompletionLike[] {
+	return calls.flatMap((call) => {
+		const launch = stoppedBy.get(call.id);
+		return launch === undefined ? [] : [{command: false, status: "stopped", toolUseId: launch}];
+	});
 }
 
 /**
@@ -3595,7 +3661,7 @@ function ToolCallRow({
 	// rejected or interrupted the call, or a secondary "Denied" when they rejected
 	// it with a reply.
 	// A background launch takes the status its later notification reports.
-	const backgroundOutcome = useContext(BackgroundOutcomeContext).get(call.id);
+	const backgroundOutcome = useContext(BackgroundOutcomeContext).byLaunch.get(call.id);
 	const status =
 		call.isError === true
 			? call.stopped === true
@@ -3823,11 +3889,11 @@ function ToolCallSummary({
 		() =>
 			summarizeToolCallStats(
 				displayCalls,
-				taskNotices.map((notice) => notice.notification),
+				[...taskNotices.map((notice) => notice.notification), ...stopCompletions(calls, backgroundOutcomes)],
 				failedLaunchIds(backgroundOutcomes),
 				{leading: leadingPeers.length, trailing: trailingPeers.length},
 			),
-		[displayCalls, taskNotices, leadingPeers, trailingPeers, backgroundOutcomes],
+		[calls, displayCalls, taskNotices, leadingPeers, trailingPeers, backgroundOutcomes],
 	);
 	// While a call is in flight, upstream names the group by that call's
 	// progressive label instead of the tally.
