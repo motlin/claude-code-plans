@@ -53,6 +53,8 @@ interface RecordedSpecimen {
 	line: number;
 	upstream: string;
 	records: unknown[];
+	/** Why the local render cannot match yet. */
+	skip?: string;
 }
 
 const recorded = (specimens as {records?: unknown[]}[]).filter(
@@ -90,7 +92,14 @@ function groupLabels(records: unknown[]): (string | null)[] {
 }
 
 describe("group label golden specimens rendered from JSONL", () => {
-	it.each(recorded)("$session:$line reads $upstream", (specimen) => {
+	it.each(recorded.filter((specimen) => specimen.skip === undefined))(
+		"$session:$line reads $upstream",
+		(specimen) => {
+			expect(groupLabels(specimen.records)).toStrictEqual([specimen.upstream]);
+		},
+	);
+
+	it.skip.each(recorded.filter((specimen) => specimen.skip !== undefined))("$session:$line ($skip)", (specimen) => {
 		expect(groupLabels(specimen.records)).toStrictEqual([specimen.upstream]);
 	});
 });

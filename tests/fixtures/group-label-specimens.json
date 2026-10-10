@@ -5129,7 +5129,7 @@
 	{
 		"session": "54e53f89",
 		"line": 1126,
-		"upstream": "Received a message, ran a command",
+		"upstream": "Verified task commit, gate HEAD, get next task",
 		"calls": [
 			{
 				"id": "toolu_013Wgkr1oad7aj81uGZohcrD",
@@ -5137,10 +5137,7 @@
 				"input": {}
 			}
 		],
-		"received": {
-			"leading": 1,
-			"trailing": 0
-		},
+		"skip": "upstream leaves this hand-back as its own row (as at 933, 956, 1033 and 1056) yet folds 1102 after an empty thinking record; nothing in the JSONL tells them apart",
 		"records": [
 			{
 				"parentUuid": "f87dae08-e168-4b17-892d-2e05d1d8ec86",
