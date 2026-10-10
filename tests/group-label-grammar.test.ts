@@ -118,3 +118,18 @@ describe("group label: failure suffix", () => {
 		expect(label(calls)).toBe(expected);
 	});
 });
+
+describe("group label: rejected and interrupted calls", () => {
+	it.each([
+		{calls: [bash(), bash(), bash({isError: true, stopped: true})], expected: "Ran 3 commands"},
+		{calls: [bash({isError: true, denied: true}), bash()], expected: "Ran 2 commands"},
+		{calls: [{name: "mcp__x__y", input: {}, isError: true, stopped: true}], expected: "Used a tool"},
+		{calls: [edit("/r/a.ts"), edit("/r/a.ts", {isError: true, stopped: true})], expected: "Edited a.ts"},
+		{
+			calls: [edit("/r/a.ts", {isError: true}), edit("/r/a.ts", {isError: true, denied: true})],
+			expected: "Edited a.ts (1 failed)",
+		},
+	])("counts the call with no failure, keeping its file's earlier status: $expected", ({calls, expected}) => {
+		expect(label(calls)).toBe(expected);
+	});
+});

@@ -8,6 +8,10 @@ export interface ToolCallLike {
 	name: string;
 	input: Record<string, unknown>;
 	isError?: boolean | undefined;
+	/** The user rejected or interrupted the call, so it settled without failing. */
+	stopped?: boolean | undefined;
+	/** The user rejected the call with a typed reply, so it settled without failing. */
+	denied?: boolean | undefined;
 }
 
 const COMMAND_MESSAGE_RE = /<command-message[^>]*>([\s\S]*?)<\/command-message>/;
@@ -523,7 +527,16 @@ function callKey(call: ToolCallLike, index: number): string {
 	return call.id === undefined ? `index:${index}` : `id:${call.id}`;
 }
 
-function countFailed(byKey: Map<string, CallOutcome>): number {
+/**
+ * A call the user rejected or interrupted has no outcome: upstream counts it in
+ * its segment but adds no "(N failed)" for it.
+ */
+function callOutcome(call: ToolCallLike): CallOutcome | undefined {
+	if (call.stopped === true || call.denied === true) return undefined;
+	return call.isError === true ? "failed" : "succeeded";
+}
+
+function countFailed(byKey: Map<string, CallOutcome | undefined>): number {
 	let failed = 0;
 	for (const outcome of byKey.values()) if (outcome === "failed") failed++;
 	return failed;
@@ -544,7 +557,7 @@ function buildSummarySegments(
 	// Insertion order carries the summary order: upstream Normal writes both
 	// "Updated todos, read 3 files" and "Read index.ts, updated todos", so
 	// segments follow the order each tool was first called.
-	const outcomes = new Map<ToolCategory, Map<string, CallOutcome>>();
+	const outcomes = new Map<ToolCategory, Map<string, CallOutcome | undefined>>();
 	const firstCall = new Map<ToolCategory, ToolCallLike>();
 	let otherTools = 0;
 	let otherFailed = 0;
@@ -553,7 +566,7 @@ function buildSummarySegments(
 
 	calls.forEach((call, index) => {
 		const cat = categorize(call);
-		const outcome: CallOutcome = call.isError === true ? "failed" : "succeeded";
+		const outcome = callOutcome(call);
 		if (cat === null) {
 			otherTools++;
 			if (outcome === "failed") otherFailed++;
@@ -565,7 +578,8 @@ function buildSummarySegments(
 			outcomes.set(cat, byKey);
 			firstCall.set(cat, call);
 		}
-		byKey.set(callKey(call, index), outcome);
+		const key = callKey(call, index);
+		byKey.set(key, outcome ?? byKey.get(key));
 		if (isMutation(cat)) {
 			const s = diffStatsForCall(call);
 			added += s.added;
