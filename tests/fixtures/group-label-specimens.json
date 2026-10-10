@@ -1489,20 +1489,21 @@
 			{
 				"id": "toolu_014LBEZ2PtHFboaQTYBqC8SB",
 				"name": "SendMessage",
-				"input": {}
+				"input": {},
+				"isError": true
 			},
 			{
 				"id": "toolu_0175Wx5gnaWNtFidDYtjYj9N",
 				"name": "SendMessage",
-				"input": {}
+				"input": {},
+				"isError": true
 			},
 			{
 				"id": "toolu_01286jeWTCPxo1nTKqhEvnfj",
 				"name": "Bash",
 				"input": {}
 			}
-		],
-		"skip": "Upstream marks a toolUseResult {success:false} SendMessage failed without is_error; not modelled locally."
+		]
 	},
 	{
 		"session": "c9788eac",

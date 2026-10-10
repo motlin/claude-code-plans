@@ -611,9 +611,17 @@ function processRecordBatch(
 						const rawResult = extractToolResultContent(block.content);
 						if (rawResult !== undefined) {
 							const resultText = stripResultTags(rawResult);
+							// A result reporting `success: false`, as SendMessage does when no agent
+							// is reachable, fails the call upstream though is_error is unset.
+							const reported = record.toolUseResult;
+							const reportsFailure =
+								typeof reported === "object" &&
+								reported !== null &&
+								"success" in reported &&
+								reported.success === false;
 							const info: ToolResultInfo = {
 								result: truncateResult(resultText, 150),
-								isError: block.is_error === true,
+								isError: block.is_error === true || reportsFailure,
 								resultUuid: uuid ?? "",
 							};
 							const denial = info.isError

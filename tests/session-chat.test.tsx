@@ -1038,6 +1038,19 @@ describe("SessionChat failed tool row label", () => {
 		});
 	});
 
+	it('marks a call whose result reports {success: false} "Failed" without is_error, as upstream does', () => {
+		const sendMessage = {name: "SendMessage", input: {to: "slotter", message: "hi"}};
+		const unreachable = "No agent named 'slotter' is reachable.";
+
+		expect(
+			rowHeaderChildren(
+				toolResultRecords(sendMessage, JSON.stringify({success: false, message: unreachable}), false, {
+					toolUseResult: {success: false, message: unreachable, display: "Not sent"},
+				}),
+			),
+		).toStrictEqual([{text: "Used SendMessage", className: `shrink-0 ${MUTED_LABEL}`}, FAILED_SUFFIX, ROW_CHEVRON]);
+	});
+
 	it('marks permission-rule and automode-blocked denials "Failed", not "Stopped"', () => {
 		const failed = [
 			{text: "Rebase and push X", className: `truncate min-w-0 ${MUTED_LABEL}`},
