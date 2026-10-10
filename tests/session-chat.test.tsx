@@ -936,7 +936,12 @@ describe("SessionChat sequential tool batches", () => {
 });
 
 /** One tool call plus its result, so the row renders with a known isError flag. */
-function toolResultRecords(call: {name: string; input: unknown}, content: string, isError = false): unknown[] {
+function toolResultRecords(
+	call: {name: string; input: unknown},
+	content: string,
+	isError = false,
+	resultFields: Record<string, unknown> = {},
+): unknown[] {
 	return [
 		{
 			type: "assistant",
@@ -954,6 +959,7 @@ function toolResultRecords(call: {name: string; input: unknown}, content: string
 				role: "user",
 				content: [{type: "tool_result", tool_use_id: "t1", content, is_error: isError}],
 			},
+			...resultFields,
 		},
 	];
 }
@@ -965,26 +971,82 @@ function failedToolCallRecords(
 	return toolResultRecords(call, "rg exited with code 2", isError);
 }
 
+/** Text and class of every direct child of the one tool row header. */
+function rowHeaderChildren(records: unknown[]): {text: string | null; className: string}[] {
+	const header = renderTranscriptElement(records).querySelector(".group\\/tool")!;
+	return Array.from(header.children, (child) => ({text: child.textContent, className: child.className}));
+}
+
+const MUTED_LABEL = "text-body text-ink-muted group-hover/tool:text-secondary";
+const FAILED_SUFFIX = {text: "Failed", className: "shrink-0 text-body text-danger-ink"};
+const STOPPED_SUFFIX = {text: "Stopped", className: "shrink-0 text-body text-secondary"};
+const ROW_CHEVRON = {text: "", className: "shrink-0 text-ink-muted group-hover/tool:text-secondary"};
+
 describe("SessionChat failed tool row label", () => {
-	it("recolors a failed tool row label danger red and leaves a successful one muted", () => {
-		const failedHtml = renderTranscript(failedToolCallRecords(true));
-		const okHtml = renderTranscript(failedToolCallRecords(false));
+	const bash = (description: string) => ({name: "Bash", input: {command: "git push", description}});
+	const denied = (kind: string) =>
+		rowHeaderChildren(toolResultRecords(bash("Rebase and push X"), "Denied", true, {toolDenialKind: kind}));
+
+	it('keeps a failed Bash row on its raw description in muted ink and appends a danger "Failed", as upstream does', () => {
+		expect(rowHeaderChildren(toolResultRecords(bash("Rebase and push X"), "Exit code 1", true))).toStrictEqual([
+			{text: "Rebase and push X", className: `truncate min-w-0 ${MUTED_LABEL}`},
+			FAILED_SUFFIX,
+			ROW_CHEVRON,
+		]);
+	});
+
+	it('appends a secondary "Stopped" to a row the user rejected, with no danger ink', () => {
+		const records = toolResultRecords(bash("Get first incomplete task"), "Rejected", true, {
+			toolDenialKind: "user-rejected",
+		});
 
 		expect({
-			failedVerb: failedHtml.includes('<span class="shrink-0 text-body text-danger-ink">'),
-			failedParam: failedHtml.includes('<span class="truncate min-w-0 text-body text-danger-ink">'),
-			failedKeepsMutedLabel: failedHtml.includes(
-				'<span class="shrink-0 text-body text-ink-muted group-hover/tool:text-secondary">',
-			),
-			okVerb: okHtml.includes('<span class="shrink-0 text-body text-ink-muted group-hover/tool:text-secondary">'),
-			okDanger: okHtml.includes("text-danger-ink"),
+			children: rowHeaderChildren(records),
+			danger: renderTranscript(records).includes("text-danger"),
 		}).toStrictEqual({
-			failedVerb: true,
-			failedParam: true,
-			failedKeepsMutedLabel: false,
-			okVerb: true,
-			okDanger: false,
+			children: [
+				{text: "Get first incomplete task", className: `truncate min-w-0 ${MUTED_LABEL}`},
+				STOPPED_SUFFIX,
+				ROW_CHEVRON,
+			],
+			danger: false,
 		});
+	});
+
+	it('marks permission-rule and automode-blocked denials "Failed", not "Stopped"', () => {
+		const failed = [
+			{text: "Rebase and push X", className: `truncate min-w-0 ${MUTED_LABEL}`},
+			FAILED_SUFFIX,
+			ROW_CHEVRON,
+		];
+
+		expect({
+			permissionRule: denied("permission-rule"),
+			automodeBlocked: denied("automode-blocked"),
+		}).toStrictEqual({permissionRule: failed, automodeBlocked: failed});
+	});
+
+	it('keeps the success verb on a failed Edit, with the file name in primary ink, and appends "Failed"', () => {
+		const children = rowHeaderChildren(
+			toolResultRecords(
+				{name: "Edit", input: {file_path: "/repo/src/pages.tsx", old_string: "a", new_string: "b"}},
+				"File has not been read yet",
+				true,
+			),
+		);
+
+		expect(children.filter((child) => child.text !== "" && !/^[+-]\d/.test(child.text ?? ""))).toStrictEqual([
+			{text: "Edited", className: `shrink-0 ${MUTED_LABEL}`},
+			{text: "pages.tsx", className: "text-body text-primary truncate min-w-0"},
+			FAILED_SUFFIX,
+		]);
+	});
+
+	it("leaves a successful row without a status suffix", () => {
+		expect(rowHeaderChildren(toolResultRecords(bash("Push the branch"), "ok"))).toStrictEqual([
+			{text: "Pushed the branch", className: `truncate min-w-0 ${MUTED_LABEL}`},
+			ROW_CHEVRON,
+		]);
 	});
 });
 
@@ -1039,7 +1101,7 @@ describe("SessionChat Skill row label", () => {
 });
 
 describe("SessionChat failed tool row label text", () => {
-	it('rewrites a failed row to "Failed to <verb>", keeping the file path primary', () => {
+	it('keeps a failed row on its success verb and appends "Failed", keeping the file path primary', () => {
 		const editInput = {
 			file_path: "/repo/src/cache.ts",
 			old_string: "a",
@@ -1055,16 +1117,18 @@ describe("SessionChat failed tool row label text", () => {
 			okGrep: toolRowLabelSpans(renderTranscript(failedToolCallRecords(false))),
 		}).toStrictEqual({
 			failedEdit: [
-				["shrink-0 text-body text-danger-ink", "Failed to edit"],
+				["shrink-0 text-body text-ink-muted group-hover/tool:text-secondary", "Edited"],
 				["text-body text-primary truncate min-w-0", "cache.ts"],
+				["shrink-0 text-body text-danger-ink", "Failed"],
 			],
 			okEdit: [
 				["shrink-0 text-body text-ink-muted group-hover/tool:text-secondary", "Edited"],
 				["text-body text-primary truncate min-w-0", "cache.ts"],
 			],
 			failedGrep: [
-				["shrink-0 text-body text-danger-ink", "Failed to search"],
-				["truncate min-w-0 text-body text-danger-ink", "alice"],
+				["shrink-0 text-body text-ink-muted group-hover/tool:text-secondary", "Searched"],
+				["truncate min-w-0 text-body text-ink-muted group-hover/tool:text-secondary", "alice"],
+				["shrink-0 text-body text-danger-ink", "Failed"],
 			],
 			okGrep: [
 				["shrink-0 text-body text-ink-muted group-hover/tool:text-secondary", "Searched"],
@@ -1073,7 +1137,7 @@ describe("SessionChat failed tool row label text", () => {
 		});
 	});
 
-	it("folds the verb into the description on a failed call that carries one", () => {
+	it("keeps a failed call's own description unchanged, as upstream past-tenses it only on success", () => {
 		const bashInput = {
 			command: "pnpm install && pnpm build",
 			description: "Install dependencies and build",
@@ -1083,7 +1147,13 @@ describe("SessionChat failed tool row label text", () => {
 			failed: toolRowLabelSpans(renderTranscript(failedToolCallRecords(true, {name: "Bash", input: bashInput}))),
 			ok: toolRowLabelSpans(renderTranscript(failedToolCallRecords(false, {name: "Bash", input: bashInput}))),
 		}).toStrictEqual({
-			failed: [["truncate min-w-0 text-body text-danger-ink", "Failed to install dependencies and build"]],
+			failed: [
+				[
+					"truncate min-w-0 text-body text-ink-muted group-hover/tool:text-secondary",
+					"Install dependencies and build",
+				],
+				["shrink-0 text-body text-danger-ink", "Failed"],
+			],
 			ok: [
 				[
 					"truncate min-w-0 text-body text-ink-muted group-hover/tool:text-secondary",
@@ -1093,7 +1163,7 @@ describe("SessionChat failed tool row label text", () => {
 		});
 	});
 
-	it('falls back to "Failed to use {Server: tool name}" for tools with no verb of their own', () => {
+	it('keeps "Used {Server: tool name}" on a failed tool with no verb of its own', () => {
 		const html = renderTranscript(
 			failedToolCallRecords(true, {
 				name: "mcp__sentry__search_issues",
@@ -1102,8 +1172,9 @@ describe("SessionChat failed tool row label text", () => {
 		);
 
 		expect(toolRowLabelSpans(html)).toStrictEqual([
-			["shrink-0 text-body text-danger-ink", "Failed to use Sentry: search issues"],
-			["truncate min-w-0 text-body text-danger-ink", "unhandled"],
+			["shrink-0 text-body text-ink-muted group-hover/tool:text-secondary", "Used Sentry: search issues"],
+			["truncate min-w-0 text-body text-ink-muted group-hover/tool:text-secondary", "unhandled"],
+			["shrink-0 text-body text-danger-ink", "Failed"],
 		]);
 	});
 });
@@ -1273,7 +1344,7 @@ describe("SessionChat Agent row label", () => {
 		]);
 	});
 
-	it("still labels a failed agent row with the failure phrase", () => {
+	it('keeps a failed agent row on its success label and appends "Failed"', () => {
 		expect(
 			toolRowLabelSpans(
 				renderTranscript(
@@ -1283,7 +1354,10 @@ describe("SessionChat Agent row label", () => {
 					}),
 				),
 			),
-		).toStrictEqual([["truncate min-w-0 text-body text-danger-ink", "Failed to implement pending approvals fix"]]);
+		).toStrictEqual([
+			[DESCRIPTION, "Implement pending approvals fix"],
+			["shrink-0 text-body text-danger-ink", "Failed"],
+		]);
 	});
 });
 
@@ -1365,17 +1439,20 @@ describe("SessionChat Agent row opening the Subagent pane", () => {
 		{
 			state: "pending",
 			records: toolCallRecords([AGENT_CALL]).slice(0, 1),
-			expectedClass: "truncate min-w-0 text-body text-primary tool-shimmer",
+			expectedClasses: ["truncate min-w-0 text-body text-primary tool-shimmer"],
 		},
 		{
 			state: "failed",
 			records: toolResultRecords(AGENT_CALL, "Fabricated failure", true),
-			expectedClass: "truncate min-w-0 text-body text-danger-ink",
+			expectedClasses: [
+				"truncate min-w-0 text-body text-ink-muted group-hover/tool:text-secondary",
+				"shrink-0 text-body text-danger-ink",
+			],
 		},
-	])("preserves the $state resolved agent label treatment", ({records, expectedClass}) => {
+	])("preserves the $state resolved agent label treatment", ({records, expectedClasses}) => {
 		const container = renderWithOpener(records, () => {});
 		expect([...agentRow(container).querySelectorAll("span.text-body")].map((span) => span.className)).toStrictEqual(
-			[expectedClass],
+			expectedClasses,
 		);
 	});
 
@@ -1460,14 +1537,14 @@ describe("SessionChat Bash row label", () => {
 		expect(bashLabel({command: "pnpm run build"})).toStrictEqual([[PHRASE, "pnpm run build"]]);
 	});
 
-	it('still reads "Failed to run" when an undescribed call errors', () => {
+	it('keeps the raw command and appends "Failed" when an undescribed call errors', () => {
 		expect(
 			toolRowLabelSpans(
 				renderTranscript(failedToolCallRecords(true, {name: "Bash", input: {command: "pnpm run build"}})),
 			),
 		).toStrictEqual([
-			["shrink-0 text-body text-danger-ink", "Failed to run"],
-			["truncate min-w-0 text-body text-danger-ink", "pnpm run build"],
+			[PHRASE, "pnpm run build"],
+			["shrink-0 text-body text-danger-ink", "Failed"],
 		]);
 	});
 });
@@ -1512,7 +1589,7 @@ describe("SessionChat tool row verbs", () => {
 		});
 	});
 
-	it('rewrites those rows to "Failed to ..." when the call errored', () => {
+	it('keeps those rows on their success labels and appends "Failed" when the call errored', () => {
 		const label = (call: {name: string; input: unknown}) =>
 			toolRowLabelSpans(renderTranscript(failedToolCallRecords(true, call))).map(([, text]) => text);
 
@@ -1524,12 +1601,12 @@ describe("SessionChat tool row verbs", () => {
 			cronCreate: label({name: "CronCreate", input: {cron: "0 9 * * 1", prompt: "p"}}),
 			toolSearch: label({name: "ToolSearch", input: {query: "select:Read"}}),
 		}).toStrictEqual({
-			glob: ["Failed to search", "*.yml"],
-			todoWrite: ["Failed to update todos"],
-			enterPlanMode: ["Failed to start planning"],
-			exitPlanMode: ["Failed to propose plan"],
-			cronCreate: ["Failed to start loop", "p"],
-			toolSearch: ["Failed to search tools", "select:Read"],
+			glob: ["Searched", "*.yml", "Failed"],
+			todoWrite: ["Cleared todos", "Failed"],
+			enterPlanMode: ["Started planning", "Failed"],
+			exitPlanMode: ["Proposed plan", "Failed"],
+			cronCreate: ["Started loop", "p", "Failed"],
+			toolSearch: ["Searched tools", "select:Read", "Failed"],
 		});
 	});
 });
@@ -1656,10 +1733,11 @@ describe("SessionChat tool row hover treatment", () => {
 		]);
 	});
 
-	it("keeps a failed row's label danger red on hover while its chevron still brightens", () => {
+	it('lifts a failed row\'s label on hover like any row while its "Failed" stays danger red', () => {
 		expect(rowHeaderSpanClasses(renderTranscript(failedToolCallRecords(true)))).toStrictEqual([
+			"shrink-0 text-body text-ink-muted group-hover/tool:text-secondary",
+			"truncate min-w-0 text-body text-ink-muted group-hover/tool:text-secondary",
 			"shrink-0 text-body text-danger-ink",
-			"truncate min-w-0 text-body text-danger-ink",
 			"shrink-0 text-ink-muted group-hover/tool:text-secondary",
 		]);
 	});

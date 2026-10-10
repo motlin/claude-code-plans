@@ -58,7 +58,7 @@ import {
 	isRequestInterrupted,
 } from "../lib/session-utils";
 import type {SummarySegment} from "../lib/session-utils";
-import {failedDescriptionLabel, runningToolLabel, runningToolLabelText, toolLabel} from "../lib/tool-labels";
+import {runningToolLabel, runningToolLabelText, toolLabel} from "../lib/tool-labels";
 import {InlinePathImages, SESSION_IMAGE_CLASS_NAME} from "./inline-path-images";
 import {isEditableTarget} from "../lib/shortcuts/match";
 import {findScrollContainer} from "./transcript-history-loader";
@@ -3266,22 +3266,15 @@ function ToolCallRow({
 	// Collapsed rows recede to muted ink and lift to secondary on hover; an open
 	// row stays secondary, as upstream does.
 	const ink = expanded ? "text-secondary" : "text-ink-muted group-hover/tool:text-secondary";
-	// Upstream recolors the whole label of a failed tool row, except a file path,
-	// which stays primary.
 	// A settled Skill row reads "Ran skill" in secondary ink beside a primary
 	// skill name, as upstream draws it.
 	const isSkill = call.name === "Skill" && !call.isError && !pending;
-	// A failed Skill keeps its success label and appends a danger "Failed", as upstream does.
 	const isFailedSkill = call.name === "Skill" && call.isError === true;
-	const labelClass = isFailedSkill
-		? ink
-		: call.isError
-			? "text-danger-ink"
-			: pending
-				? RUNNING_LABEL_CLASS
-				: isSkill
-					? "text-secondary"
-					: ink;
+	// Upstream keeps a failed or stopped row's success-shaped label in muted ink and
+	// appends a status: a danger "Failed", or a secondary "Stopped" when the user
+	// rejected or interrupted the call.
+	const status = call.isError === true ? (call.stopped === true ? "Stopped" : "Failed") : null;
+	const labelClass = call.isError ? ink : pending ? RUNNING_LABEL_CLASS : isSkill ? "text-secondary" : ink;
 	const isCompletedPaneAgent = paneAgentId !== undefined && !call.isError && !pending;
 	// Expandable rows reach the disclosure below; Agent navigation and nested rows are not statuses.
 	// Upstream draws every standalone status row in one 24px padded layout, whether it
@@ -3292,21 +3285,18 @@ function ToolCallRow({
 	// A subagent row's chevron sits in the flat `t6` token upstream gives it,
 	// rather than the hover-reactive ink every other tool row uses.
 	const chevronClass = isAgent ? "shrink-0 self-center text-t6" : `shrink-0 ${ink}`;
-	// A failed call whose param is its own description reads as one phrase
-	// ("Failed to install dependencies and build"), so upstream drops the verb
-	// and the separate param span; every other failed row keeps both
-	// ("Failed to edit" + "cache.ts").
+	// A failed call whose param is its own description keeps that description as
+	// written ("Rebase and push X"); upstream past-tenses it only on success.
 	const failedDescription = call.isError ? getToolDescription(call.name, call.input) : null;
 	const phrase =
 		failedDescription !== null
-			? failedDescriptionLabel(failedDescription)
-			: call.isError || (isAgent && (nested || !pending))
+			? failedDescription
+			: isAgent && (nested || !pending)
 				? null
 				: running !== null
 					? (running.label ?? null)
 					: (toolRowLabel.doneLabel ?? null);
-	const label =
-		phrase ?? (call.isError && !isFailedSkill ? toolRowLabel.failedVerb : (running?.verb ?? toolRowLabel.verb));
+	const label = phrase ?? running?.verb ?? toolRowLabel.verb;
 	// A label that is a whole phrase owns the row and truncates; a bare verb
 	// keeps its width so the param beside it truncates instead.
 	const isPhraseLabel = phrase !== null;
@@ -3355,7 +3345,11 @@ function ToolCallRow({
 			)}
 			{rangeLabel && <span className={`text-body ${labelClass} truncate min-w-0`}>{rangeLabel}</span>}
 			{diffStats && <DiffStats added={diffStats.added} removed={diffStats.removed} />}
-			{isFailedSkill && <span className="shrink-0 text-body text-danger-ink">Failed</span>}
+			{status !== null && (
+				<span className={`shrink-0 text-body ${status === "Stopped" ? "text-secondary" : "text-danger-ink"}`}>
+					{status}
+				</span>
+			)}
 		</>
 	);
 

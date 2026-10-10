@@ -80,10 +80,6 @@ function capitalizeFirst(text: string): string {
 	return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
-function lowercaseFirst(text: string): string {
-	return text.charAt(0).toLowerCase() + text.slice(1);
-}
-
 const PRESERVED_DESCRIPTION_VERBS = new Set(["map", "gate"]);
 
 /**
@@ -477,12 +473,4 @@ export function toolLabel(call: ToolLabelCall): ToolLabel {
 
 	const label = name.startsWith("mcp__") ? mcpToolLabel(name) : name;
 	return {verb: `Used ${label}`, failedVerb: `Failed to use ${label}`};
-}
-
-/**
- * A failed row whose param is its own description reads as one phrase
- * ("Failed to install dependencies"), as upstream's `jo()` failed label does.
- */
-export function failedDescriptionLabel(description: string): string {
-	return `Failed to ${lowercaseFirst(description)}`;
 }

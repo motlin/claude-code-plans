@@ -40,6 +40,8 @@ export interface ClientToolCall {
 	param: string;
 	result?: string | undefined;
 	isError?: boolean | undefined;
+	/** The failure was the user rejecting or interrupting the call; see `ToolResultInfo.stopped`. */
+	stopped?: boolean | undefined;
 	duration?: number | undefined;
 	sourceUuid: string;
 	resultUuid?: string | undefined;
@@ -222,6 +224,7 @@ export function buildClientToolCall(
 	if (resultInfo) {
 		call.result = resultInfo.result;
 		if (resultInfo.isError) call.isError = true;
+		if (resultInfo.stopped === true) call.stopped = true;
 		call.resultUuid = resultInfo.resultUuid;
 		if (resultInfo.duration !== undefined) call.duration = resultInfo.duration;
 		if (resultInfo.resultMeta !== undefined) call.resultMeta = resultInfo.resultMeta;

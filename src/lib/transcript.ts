@@ -302,6 +302,14 @@ function buildUnparsedLine(
 }
 
 /** Keys a queued command and its queue-operation share: the command uuid, the delivery id, or both. */
+/**
+ * Denials upstream labels "Stopped": the user rejected the call or interrupted it.
+ * Rule, auto-mode, and plain tool errors read "Failed".
+ */
+function isStoppedDenial(kind: string | undefined): boolean {
+	return kind === "user-rejected" || kind === "interrupted";
+}
+
 function queuePairingKeys(commandUuid: string | undefined, deliveryId: string | undefined): string[] {
 	const keys: string[] = [];
 	if (commandUuid) keys.push(`command:${commandUuid}`);
@@ -598,6 +606,7 @@ function processRecordBatch(
 								isError: block.is_error === true,
 								resultUuid: uuid ?? "",
 							};
+							if (info.isError && isStoppedDenial(record.toolDenialKind)) info.stopped = true;
 							const resultMeta = toolResultMetaFrom(record.toolUseResult);
 							if (resultMeta !== undefined) info.resultMeta = resultMeta;
 							if (!info.isError) {

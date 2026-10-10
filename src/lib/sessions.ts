@@ -124,6 +124,8 @@ export type {SessionLine, MessageSessionLine, SessionContentBlock} from "./trans
 export interface ToolResultInfo {
 	result: string;
 	isError: boolean;
+	/** The user rejected or interrupted the call, so upstream labels it "Stopped" rather than "Failed". */
+	stopped?: boolean | undefined;
 	resultUuid: string;
 	duration?: number | undefined;
 	/** Label-relevant bits of the record's `toolUseResult`; see `toolResultMetaFrom`. */
