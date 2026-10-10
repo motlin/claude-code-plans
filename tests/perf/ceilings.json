@@ -45,32 +45,28 @@
 		"tolerance": 0
 	},
 	"bundle.home.gzip": {
-		"ceiling": 399136,
+		"ceiling": 374642,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Account for cumulative Remote Control alias support and measured sidebar presentation changes, including scoped menu shortcut density. The source-route/sidebar batch adds 578 gzip bytes over passing 035395eb (398558 to 399136); shared identity/helper chunks also change compression boundaries. Source/session identity renderers remain outside the home cold graph. CSS is excluded from this JS measurement; other ceilings and the 1% tolerance are unchanged.",
-		"raisedAt": "2026-10-02"
+		"reason": "Defer the ⌘K command palette (src/components/command-palette.tsx with cmdk, its search, row-action and start-session views) behind src/components/command-palette-entry.tsx until its first open; closed, it rendered nothing. Cold JS moves from 400471/1253321 (home) and 584921/1800169 (session) gzip/raw to the measured values; helpers the palette shares with route chunks now ship as small shared chunks, so the cold file count rises from 83 to 88 (home) and 102 to 110 (session). Other ceilings and the 1% tolerance are unchanged."
 	},
 	"bundle.home.raw": {
-		"ceiling": 1252637,
+		"ceiling": 1164081,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Record the measured home static JS closure after cumulative Remote Control identity and Settings presentation work. The outgoing-visit scroll identity and Settings spacing/search class strings add 277 raw bytes over passing 4deed9d0 (1252360 to 1252637), with 120 gzip bytes added. The closure audit found no new dependencies or heavy renderer imports; CSS is excluded. Other ceilings and the 1% tolerance are unchanged.",
-		"raisedAt": "2026-10-02"
+		"reason": "Defer the ⌘K command palette (src/components/command-palette.tsx with cmdk, its search, row-action and start-session views) behind src/components/command-palette-entry.tsx until its first open; closed, it rendered nothing. Cold JS moves from 400471/1253321 (home) and 584921/1800169 (session) gzip/raw to the measured values; helpers the palette shares with route chunks now ship as small shared chunks, so the cold file count rises from 83 to 88 (home) and 102 to 110 (session). Other ceilings and the 1% tolerance are unchanged."
 	},
 	"bundle.session.gzip": {
-		"ceiling": 579810,
+		"ceiling": 561413,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Record the session parity waves 57-60. Status-row layout and Failed/Stopped/Denied wording, background launch outcomes, the stop-hook disclosure, Verbose-only marker rows, and upstream's ~200-verb past-tense table (src/lib/past-tense.ts, ~3.5 KB gzip) add 5952 gzip bytes over 573858. The past-tense table runs on every grouped tool row in the session view, so it stays in the cold graph. No new dependencies; lazy Changes, usage and tool renderer boundaries are unchanged; other ceilings and the 1% tolerance are unchanged.",
-		"raisedAt": "2026-10-10"
+		"reason": "Defer the ⌘K command palette (src/components/command-palette.tsx with cmdk, its search, row-action and start-session views) behind src/components/command-palette-entry.tsx until its first open; closed, it rendered nothing. Cold JS moves from 400471/1253321 (home) and 584921/1800169 (session) gzip/raw to the measured values; helpers the palette shares with route chunks now ship as small shared chunks, so the cold file count rises from 83 to 88 (home) and 102 to 110 (session). Other ceilings and the 1% tolerance are unchanged."
 	},
 	"bundle.session.raw": {
-		"ceiling": 1783276,
+		"ceiling": 1715764,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Record cumulative session presentation, bounded tile-shell restoration, and source-owned assistant display actions. Relative to audited e4e3fd8d, hidden-pane restoration, display-span actions and final presentation changes add 4454 raw bytes and 1308 gzip bytes; the preceding shell added 3764 raw bytes over passing 60b9ac7a. The output retains 103 session cold chunks and the same 585 emitted chunk families; all 32 optional Changes, usage and tool renderer entries remain outside the cold graph. Build-SHA/chunk-hash normalization, static-import traversal, gzip and home ceilings, and the 1% tolerance are unchanged.",
-		"raisedAt": "2026-10-02"
+		"reason": "Defer the ⌘K command palette (src/components/command-palette.tsx with cmdk, its search, row-action and start-session views) behind src/components/command-palette-entry.tsx until its first open; closed, it rendered nothing. Cold JS moves from 400471/1253321 (home) and 584921/1800169 (session) gzip/raw to the measured values; helpers the palette shares with route chunks now ship as small shared chunks, so the cold file count rises from 83 to 88 (home) and 102 to 110 (session). Other ceilings and the 1% tolerance are unchanged."
 	},
 	"client.coldHome.default.commitsToRows": {
 		"ceiling": 11,

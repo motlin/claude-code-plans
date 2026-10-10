@@ -634,7 +634,7 @@ function usePaletteHistory(): RecentEntry[] {
 	return resolveRecentSessions(snapshot, (alias) => owners.get(alias) ?? null);
 }
 
-interface CommandPaletteProps {
+export interface CommandPaletteProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	mode?: PaletteMode;

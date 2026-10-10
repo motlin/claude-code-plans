@@ -18,7 +18,7 @@ import {SettingsProvider} from "../components/settings-provider";
 import {ToastProvider} from "../components/toast";
 import {AppFrame} from "../components/app-frame";
 import {AppShellFallback} from "../components/app-shell-fallback";
-import {CommandPalette} from "../components/command-palette";
+import {DeferredCommandPalette} from "../components/command-palette-entry";
 import {SettingsDialog} from "../components/settings/settings-dialog";
 import {KeyboardShortcutsDialog} from "../components/keyboard-shortcuts-dialog";
 import {RecentsSwitcher} from "../components/recents-switcher";
@@ -180,7 +180,7 @@ function RootLayout({children}: Readonly<{children: ReactNode}>) {
 					</div>
 				)}
 			</AppFrame>
-			<CommandPalette {...commandPalette} />
+			<DeferredCommandPalette {...commandPalette} />
 			<KeyboardShortcutsDialog />
 			<RecentsSwitcher />
 			<NewSessionShortcut />
