@@ -200,7 +200,7 @@ describe("SessionChat end-of-turn card", () => {
 			entry: card.closest("[data-record-index]")?.getAttribute("data-record-index"),
 			text: card.textContent,
 		}));
-		expect(cards).toStrictEqual([{entry: "5", text: "Edited 2 files+3-1Undocache.ts+2-1index.ts+1-0"}]);
+		expect(cards).toStrictEqual([{entry: "5", text: "Edited 2 files+3−1Undocache.ts+2−1index.ts+1−0"}]);
 	});
 });
 
@@ -237,26 +237,59 @@ describe("TurnChangesCard", () => {
 			after: fileRowNames(),
 			moreAfter: screen.queryByRole("button", {name: /Show \d+ more/}),
 		}).toStrictEqual({
-			before: ["file-1.ts+1-1", "file-2.ts+2-1", "file-3.ts+3-1", "file-4.ts+4-1"],
+			before: ["file-1.ts+1−1", "file-2.ts+2−1", "file-3.ts+3−1", "file-4.ts+4−1"],
 			expandedBefore: "false",
 			after: [
-				"file-1.ts+1-1",
-				"file-2.ts+2-1",
-				"file-3.ts+3-1",
-				"file-4.ts+4-1",
-				"file-5.ts+5-1",
-				"file-6.ts+6-1",
+				"file-1.ts+1−1",
+				"file-2.ts+2−1",
+				"file-3.ts+3−1",
+				"file-4.ts+4−1",
+				"file-5.ts+5−1",
+				"file-6.ts+6−1",
 			],
 			moreAfter: null,
 		});
 	});
 
-	it("names a single file in the singular and shows no Show more", () => {
-		render(<TurnChangesCard sessionId="test-session" changes={changesWith(1)} />);
+	it("draws a single file as one row with no header, 48px below the previous row as upstream", () => {
+		const {container} = render(<TurnChangesCard sessionId="test-session" changes={changesWith(1)} />);
+		const card = container.querySelector<HTMLElement>("[data-turn-changes-card]")!;
+		const undo = within(card).getByRole("button", {name: "Undo"});
 		expect({
-			header: screen.getByText("Edited 1 file").textContent,
+			header: screen.queryByText(/^Edited/),
+			list: screen.getByRole("list").getAttribute("aria-label"),
+			rows: screen.getAllByRole("listitem").map((item) => item.textContent),
+			links: fileRowNames(),
 			more: screen.queryByRole("button", {name: /Show \d+ more/}),
-		}).toStrictEqual({header: "Edited 1 file", more: null});
+			spacing: ["mt-2", "mt-5", "mb-[11px]"].filter((name) => card.classList.contains(name)),
+			undoRevealedOnHover: ["opacity-0", "group-hover/card:opacity-100", "focus-visible:opacity-100"].every(
+				(name) => undo.classList.contains(name),
+			),
+		}).toStrictEqual({
+			header: null,
+			list: "Edited 1 file",
+			rows: ["file-1.ts+1\u22121Undo"],
+			links: ["file-1.ts+1\u22121"],
+			more: null,
+			spacing: ["mt-5", "mb-[11px]"],
+			undoRevealedOnHover: true,
+		});
+	});
+
+	it("keeps the multi-file header and its 8px top margin", () => {
+		const {container} = render(<TurnChangesCard sessionId="test-session" changes={changesWith(2)} />);
+		const card = container.querySelector<HTMLElement>("[data-turn-changes-card]")!;
+		expect({
+			header: screen.getByText("Edited 2 files").textContent,
+			spacing: ["mt-2", "mt-5", "mb-[11px]"].filter((name) => card.classList.contains(name)),
+		}).toStrictEqual({header: "Edited 2 files", spacing: ["mt-2"]});
+	});
+
+	it("uses upstream's U+2212 minus in the header and row stats", () => {
+		const {container} = render(<TurnChangesCard sessionId="test-session" changes={changesWith(2)} />);
+		expect(container.querySelector("[data-turn-changes-card]")?.textContent).toBe(
+			"Edited 2 files+3\u22122Undofile-1.ts+1\u22121file-2.ts+2\u22121",
+		);
 	});
 
 	it("links each file row to the file viewer", () => {
@@ -310,6 +343,34 @@ describe("TurnChangesCard", () => {
 			});
 		} finally {
 			window.removeEventListener(CHANGES_SCOPE_REQUEST_EVENT, listener);
+			unregister();
+		}
+	});
+
+	it("opens the Changes pane scoped to the turn from a single-file row", () => {
+		vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue(
+			DOMRect.fromRect({x: 0, y: 0, width: 1200, height: 800}),
+		);
+		const unregister = registerPane("changes", {
+			title: "Changes",
+			render: () => <div data-testid="changes-pane">Changes pane</div>,
+		});
+		try {
+			render(
+				<SettingsProvider>
+					<TileHost sessionId="turn-card-single" onExpandWithoutPane={() => {}}>
+						<TurnChangesCard sessionId="turn-card-single" changes={changesWith(1)} />
+					</TileHost>
+				</SettingsProvider>,
+			);
+			act(() => {
+				fireEvent.click(screen.getByRole("button", {name: /^file-1\.ts/}));
+			});
+			expect({
+				opened: screen.queryByTestId("changes-pane")?.textContent,
+				scope: loadChangesScope("turn-card-single"),
+			}).toStrictEqual({opened: "Changes pane", scope: "turn:u-1"});
+		} finally {
 			unregister();
 		}
 	});

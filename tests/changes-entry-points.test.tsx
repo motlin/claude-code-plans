@@ -142,7 +142,7 @@ describe("Changes entry points", () => {
 		});
 	});
 
-	it("opens Changes on the turn scope from the turn card header", () => {
+	it("opens Changes on the turn scope from a single-file turn card row", () => {
 		inHost(
 			"turn-session",
 			<TurnChangesCard
@@ -157,7 +157,7 @@ describe("Changes entry points", () => {
 			/>,
 		);
 		act(() => {
-			fireEvent.click(screen.getByRole("button", {name: /^Edited 1 file/}));
+			fireEvent.click(screen.getByRole("button", {name: /^a\.ts/}));
 		});
 
 		expect({
