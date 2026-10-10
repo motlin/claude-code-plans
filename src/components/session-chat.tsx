@@ -611,6 +611,9 @@ interface LineRenderProps {
  */
 const TURN_GAP_CLASS = "pb-[var(--chat-turn-gap)] empty:pb-0";
 
+/** Upstream's 20px row margin between consecutive user rows, such as prompts queued mid-turn. */
+const USER_ROW_GAP_CLASS = "pb-[var(--chat-user-row-gap)] empty:pb-0";
+
 /**
  * Upstream claude.ai/code opens every turn wrapper with a visually hidden
  * heading quoting the turn ("You said: ..." / "Claude responded: ..."), giving
@@ -642,6 +645,7 @@ function LineEntry({
 	footer,
 	precedesReply = false,
 	precedesStatus = false,
+	precedesPrompt = false,
 	...renderProps
 }: LineRenderProps & {
 	line: SessionLine;
@@ -651,6 +655,8 @@ function LineEntry({
 	precedesReply?: boolean;
 	/** Prose whose own span continues into a row that opens with a status. */
 	precedesStatus?: boolean;
+	/** A prompt followed by another prompt row, which upstream spaces by its user row gap. */
+	precedesPrompt?: boolean;
 	/** The end-of-turn changes card this line closes, shown after its content. */
 	turnChanges?: TurnChanges | undefined;
 	/** Undefined preserves Verbose record actions; null suppresses a non-endpoint footer. */
@@ -666,7 +672,7 @@ function LineEntry({
 	const isAssistant = line.type === "assistant";
 	const wrapperClassName = [
 		isAssistant ? "group/msg flex flex-col w-full" : "group relative",
-		precedesReply ? undefined : TURN_GAP_CLASS,
+		precedesReply ? undefined : precedesPrompt ? USER_ROW_GAP_CLASS : TURN_GAP_CLASS,
 		className,
 	]
 		.filter(Boolean)
@@ -1237,7 +1243,10 @@ interface PendingSessionListEntry extends Omit<SessionListEntry, "endRecordIndex
 	/** The assistant line a reply row starts with. */
 	replyHead?: SessionLine;
 	/** An ordinary prompt row, rendered once it is known whether its reply follows it. */
-	prompt?: {line: SessionLine; render: (precedesReply: boolean) => React.ReactNode};
+	prompt?: {
+		line: SessionLine;
+		render: (precedesReply: boolean, precedesStatus?: boolean, precedesPrompt?: boolean) => React.ReactNode;
+	};
 	/** A prose row, rendered once it is known whether a status in its span follows it. */
 	prose?: {render: (precedesStatus: boolean) => React.ReactNode};
 	/** A tool row whose first drawn block is a TurnStatus. */
@@ -1582,7 +1591,7 @@ function buildSessionListEntries(
 		prevVisibleType = line.type;
 
 		const nextLine = lines[i + 1];
-		const renderLine = (precedesReply: boolean, precedesStatus = false) => (
+		const renderLine = (precedesReply: boolean, precedesStatus = false, precedesPrompt = false) => (
 			<LineEntry
 				line={line}
 				nextLine={nextLine}
@@ -1590,6 +1599,7 @@ function buildSessionListEntries(
 				footer={footerFor(line)}
 				precedesReply={precedesReply}
 				precedesStatus={precedesStatus}
+				precedesPrompt={precedesPrompt}
 				{...(isBannerAfterBanner ? {className: "mt-1"} : {})}
 				{...renderProps}
 			/>
@@ -1633,6 +1643,9 @@ function buildSessionListEntries(
 		({replyHead: _replyHead, prompt, prose, opensWithStatus: _opensWithStatus, ...entry}, index) => ({
 			...entry,
 			...(prompt !== undefined && opensReply(index + 1) ? {element: prompt.render(true)} : {}),
+			...(prompt !== undefined && entries[index + 1]?.prompt !== undefined
+				? {element: prompt.render(false, false, true)}
+				: {}),
 			...(prose !== undefined && precedesStatus(index) ? {element: prose.render(true)} : {}),
 			opensReply: opensReply(index),
 			endRecordIndex: (entries[index + 1]?.startRecordIndex ?? finalRecordIndex + 1) - 1,
@@ -2566,7 +2579,7 @@ function UserEntry({
 				render={<div className="flex flex-col items-end gap-g5 max-w-[85%] min-w-0" />}
 			>
 				{textNodes.length > 0 && (
-					<div className="user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text">
+					<div className="user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body leading-[1.2857] select-text">
 						{textNodes}
 					</div>
 				)}
@@ -2908,7 +2921,7 @@ function CommandEntry({line, sessionId}: {line: MessageSessionLine; sessionId: s
 	return (
 		<UserTurn text={cmdArgs ? `/${name} ${cmdArgs}` : `/${name}`}>
 			<div className="flex flex-col items-end gap-g5 max-w-[85%] min-w-0">
-				<div className="user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text">
+				<div className="user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body leading-[1.2857] select-text">
 					<TruncatedContent>
 						<SlashCommandText name={name} rest={cmdArgs ?? ""} />
 					</TruncatedContent>

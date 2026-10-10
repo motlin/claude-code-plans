@@ -182,3 +182,39 @@ describe("an agent message folded into a tool group", () => {
 		).toStrictEqual(["message from subagent", "tool: Verified task commit, gate HEAD, get next task"]);
 	});
 });
+
+describe("consecutive user rows", () => {
+	it("leaves upstream's 20px row gap between the 79a0ad58:91 queued bubbles, keeping the last one's reply boundary", () => {
+		const specimen = (rowSpecimens as RowSpecimen[]).find(
+			(candidate) => candidate.session === "79a0ad58" && candidate.line === 91,
+		)!;
+		const container = renderRecords(specimen.records);
+		const bubbleRows = Array.from(container.querySelectorAll("[data-testid=transcript-row]"))
+			.filter((row) => row.querySelector(".user-message-bubble") !== null)
+			.map((row) => ({
+				userRowGap: row
+					.querySelector(":scope > [data-record-index]")
+					?.classList.contains("pb-[var(--chat-user-row-gap)]"),
+				turnGap: row
+					.querySelector(":scope > [data-record-index]")
+					?.classList.contains("pb-[var(--chat-turn-gap)]"),
+			}));
+		expect(bubbleRows).toStrictEqual([
+			{userRowGap: true, turnGap: false},
+			{userRowGap: false, turnGap: false},
+		]);
+	});
+});
+
+describe("user bubble line box", () => {
+	it("sets the bubble on upstream's 14px/18px heading leading, as the streaming bubble does, leaving the prompt paragraph on its 20px body leading", () => {
+		const specimen = (rowSpecimens as RowSpecimen[]).find(
+			(candidate) => candidate.session === "79a0ad58" && candidate.line === 91,
+		)!;
+		const bubble = renderRecords(specimen.records).querySelector(".user-message-bubble")!;
+		expect({
+			bubble: bubble.classList.contains("leading-[1.2857]"),
+			paragraph: bubble.querySelector("p")?.classList.contains("text-body"),
+		}).toStrictEqual({bubble: true, paragraph: true});
+	});
+});

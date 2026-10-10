@@ -260,6 +260,8 @@
      between the content blocks inside one turn (half the body line box). */
 	--chat-turn-gap: 15px;
 	--chat-item-gap: 10px;
+	/* Upstream's row margin between consecutive user rows (queued prompts). */
+	--chat-user-row-gap: 20px;
 
 	/* Upstream claude.ai/code — card surfaces. Tool cards are drawn as a
      hairline outline over the page rather than a filled wash; the code cards
