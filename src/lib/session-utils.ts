@@ -604,9 +604,10 @@ function capSegments(segments: CountedSegment[]): CountedSegment[] {
 }
 
 /**
- * Splits off the failed completions whose launch is in this group: upstream
- * fails that command instead, "Ran 2 commands (1 failed), finished a background
- * command", so the completion settles quietly rather than leading the label.
+ * Upstream fails a launch in this group whose background task failed, "Ran 2
+ * commands (1 failed), finished a background command", and settles as many
+ * failed completions in the group, whichever launch each one reports, so they
+ * stop leading the label.
  */
 function attributeLaunchFailures(
 	calls: ToolCallLike[],
@@ -615,12 +616,15 @@ function attributeLaunchFailures(
 ): {completions: BackgroundCompletionLike[]; failedLaunches: ReadonlySet<string>} {
 	const callIds = new Set(calls.flatMap((call) => (call.id === undefined ? [] : [call.id])));
 	const launches = new Set(failedLaunches);
+	for (const {status, toolUseId} of completions) {
+		if (status === "failed" && toolUseId != null && callIds.has(toolUseId)) launches.add(toolUseId);
+	}
+	let toSettle = calls.filter(
+		(call) => call.isError !== true && call.id !== undefined && launches.has(call.id),
+	).length;
 	const settled = completions.map((completion) => {
-		const launch = completion.toolUseId;
-		if (completion.status !== "failed" || launch === undefined || launch === null || !callIds.has(launch)) {
-			return completion;
-		}
-		launches.add(launch);
+		if (completion.status !== "failed" || toSettle === 0) return completion;
+		toSettle--;
 		return {...completion, status: "completed" as const};
 	});
 	return {completions: settled, failedLaunches: launches};

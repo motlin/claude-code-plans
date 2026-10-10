@@ -303,6 +303,25 @@ describe("summarizeToolCallStats with background completions", () => {
 		).toStrictEqual([{verb: "Ran", rest: "2 commands (1 failed)"}]);
 	});
 
+	it("settles one failed completion per failed launch in the group, whichever launch the completion reports", () => {
+		expect(
+			summarizeToolCallStats(
+				[
+					{id: "toolu_scan", name: "Bash", input: {command: "scan shards"}},
+					{id: "toolu_count", name: "Bash", input: {command: "wc -l shards.tsv"}},
+				],
+				[
+					{command: true, status: "failed", toolUseId: "toolu_elsewhere"},
+					{command: true, status: "failed", toolUseId: "toolu_other"},
+				],
+				new Set(["toolu_scan", "toolu_elsewhere", "toolu_other"]),
+			).segments,
+		).toStrictEqual([
+			{verb: "Finished", rest: "2 background commands (1 failed)"},
+			{verb: "ran", rest: "2 commands (1 failed)"},
+		]);
+	});
+
 	it("counts several stopped commands", () => {
 		expect(
 			summarizeToolCallStats(

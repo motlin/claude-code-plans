@@ -904,14 +904,30 @@ function foldablePeerMessage(lines: readonly SessionLine[], index: number): Agen
 	return null;
 }
 
+function transcriptToolUseIds(lines: readonly SessionLine[]): Set<string> {
+	const ids = new Set<string>();
+	for (const line of lines) {
+		if (line.type !== "assistant" || !Array.isArray(line.message?.content)) continue;
+		for (const block of line.message.content) if (block.type === "tool_use") ids.add(block.id);
+	}
+	return ids;
+}
+
 /**
- * Completed background Agent notifications. Upstream settles them on the
- * agent's own "Ran agent" row and never counts them in a later tool group.
+ * Completed notifications upstream never draws. A background Agent settles on
+ * its own "Ran agent" row. A task launched in this transcript was already
+ * dropped when it started beside its own launch, so its completion arriving
+ * mid-turn draws nothing; one that opens a turn as a user record still does.
  */
-function agentCompletionIndices(lines: readonly SessionLine[]): number[] {
+function settledCompletionIndices(lines: readonly SessionLine[]): number[] {
+	let launches: Set<string> | null = null;
 	return lines.flatMap((line, index) => {
 		const notification = taskNotificationOf(line);
-		return notification?.status === "completed" && notification.agent ? [index] : [];
+		if (notification?.status !== "completed") return [];
+		if (notification.agent) return [index];
+		if (line.type !== "attachment" || notification.toolUseId === null) return [];
+		launches ??= transcriptToolUseIds(lines);
+		return launches.has(notification.toolUseId) ? [index] : [];
 	});
 }
 
@@ -1343,7 +1359,7 @@ function buildSessionListEntries(
 		return message === null ? null : {kind: "peer", lineIndex: line.lineIndex, message, leads: true};
 	};
 	const skipSet = buildSkipSet(lines);
-	if (!verbose) for (const index of agentCompletionIndices(lines)) skipSet.add(index);
+	if (!verbose) for (const index of settledCompletionIndices(lines)) skipSet.add(index);
 	const displaySpans = verbose ? undefined : collectAssistantDisplaySpans(lines, renderProps, skipSet);
 	const sameSpan = (first: SessionLine, next: SessionLine) =>
 		verbose ||
