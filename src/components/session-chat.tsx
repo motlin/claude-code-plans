@@ -1110,13 +1110,15 @@ function isPromptLine(line: SessionLine): boolean {
 	return line.type === "user" && PROMPT_KINDS.has(classifyUserContent(line));
 }
 
-/** A typed prompt drawn as the user's own bubble, not a command, bash, label or subagent row. */
+const ORDINARY_PROMPT_KINDS: ReadonlySet<UserContentKind> = new Set(["text", "command"]);
+
+/** A typed prompt or slash command drawn as the user's own bubble, not a bash, label or subagent row. */
 function isOrdinaryPromptLine(line: SessionLine, renderProps: LineRenderProps): boolean {
 	return (
 		line.type === "user" &&
 		!renderProps.isSubagentSession &&
 		line.isCompactSummary !== true &&
-		classifyUserContent(line) === "text"
+		ORDINARY_PROMPT_KINDS.has(classifyUserContent(line))
 	);
 }
 
@@ -2700,7 +2702,7 @@ function CommandEntry({line, sessionId}: {line: MessageSessionLine; sessionId: s
 
 	return (
 		<UserTurn text={cmdArgs ? `/${name} ${cmdArgs}` : `/${name}`}>
-			<div className="flex flex-col items-end gap-g6 max-w-[85%] min-w-0">
+			<div className="flex flex-col items-end gap-g5 max-w-[85%] min-w-0">
 				<div className="user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text">
 					<TruncatedContent>
 						<SlashCommandText name={name} rest={cmdArgs ?? ""} />

@@ -244,7 +244,7 @@ describe("SessionChat turn rows", () => {
 			return rows;
 		}
 
-		it("closes an ordinary prompt onto its same-source first reply with upstream's six-pixel boundary in Normal and Thinking, leaving Verbose on the turn gap", () => {
+		it("closes an ordinary or slash-command prompt onto its same-source first reply with upstream's six-pixel boundary in Normal and Thinking, leaving Verbose on the turn gap", () => {
 			const unchanged = (line: string, perfRow: string, turnGap: boolean | undefined) => ({
 				line,
 				perfRow,
@@ -264,8 +264,8 @@ describe("SessionChat turn rows", () => {
 				boundary("1", "assistant_text", true),
 				unchanged("2", "human", false),
 				boundary("3", "assistant_tool", true),
-				unchanged("5", "human", true),
-				unchanged("6", "assistant_text", true),
+				unchanged("5", "human", false),
+				boundary("6", "assistant_text", true),
 				unchanged("7", "human", true),
 				unchanged("8", "assistant_text", true),
 				unchanged("9", "human", true),

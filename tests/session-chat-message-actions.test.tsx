@@ -180,7 +180,7 @@ describe("SessionChat user action row", () => {
 		);
 	});
 
-	it("uses the same end-aligned column for every user-side entry variant", () => {
+	it("uses the same end-aligned column for every user-side entry variant, a slash command keeping the prompt's 6px action gap", () => {
 		const compactContainer = renderRecords([COMPACT_SUMMARY], false);
 		fireEvent.click(compactContainer.querySelector("button")!);
 
@@ -188,7 +188,7 @@ describe("SessionChat user action row", () => {
 			command: userColumnClassName(renderRecords([COMMAND_INVOCATION], true)),
 			compactSummary: userColumnClassName(compactContainer),
 		}).toStrictEqual({
-			command: "flex flex-col items-end gap-g6 max-w-[85%] min-w-0",
+			command: "flex flex-col items-end gap-g5 max-w-[85%] min-w-0",
 			compactSummary: "flex flex-col items-end gap-g6 max-w-[85%] min-w-0",
 		});
 	});
