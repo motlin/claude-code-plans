@@ -759,6 +759,14 @@
 	padding-bottom: 12px;
 }
 
+/* A grouped tool summary followed by prose shares the assistant span: upstream leaves
+   12px there too, collapsed or expanded. The span's footer keeps its turn gap. */
+.transcript-text
+	[data-perf-row="assistant_tool"][data-assistant-span]:has(+ [data-perf-row="assistant_text"])
+	> [data-grouped-tool-row]:not(:has([data-assistant-span-footer], [data-turn-changes-card])) {
+	padding-bottom: 12px;
+}
+
 /* Settings search deep link (#settings/<tab>/<row>): upstream flashes the row with a warm tint
    and underlines its title for 1.5s. */
 [data-settings-flash] {

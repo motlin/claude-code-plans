@@ -784,8 +784,19 @@ function GroupedToolCallEntry({
 	if (batches.length === 0)
 		return notices.length === 0 ? null : <BackgroundNoticeRows notices={notices} footer={footer} />;
 
+	// Upstream's 12px below a group is 16px less its TurnStatus outset. The tasks view and a lone
+	// Agent row have no outset, so a group ending with either keeps its turn gap.
+	const lastCalls = batches.at(-1)!.calls;
+	const endsWithStatus =
+		lastCalls.length === 1 && notices.length === 0
+			? lastCalls[0]!.name !== "Agent"
+			: lastCalls.filter((call) => TASK_TOOLS.has(call.name)).length < 3;
+
 	return (
-		<div className={`group/msg flex flex-col w-full ${TURN_GAP_CLASS}`}>
+		<div
+			data-grouped-tool-row={turnChanges === undefined && endsWithStatus ? "" : undefined}
+			className={`group/msg flex flex-col w-full ${TURN_GAP_CLASS}`}
+		>
 			<div className={`flex flex-col gap-[var(--chat-item-gap)] ${turnChanges ? TURN_GAP_CLASS : ""}`}>
 				<TurnHeading speaker="assistant" text="" />
 				{batches.map((batch, index) => (

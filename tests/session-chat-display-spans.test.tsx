@@ -252,6 +252,57 @@ describe("assistant display-span actions", () => {
 		expect({completed, expanded: padded()}).toStrictEqual({completed: ["0"], expanded: []});
 	});
 
+	it("matches the 12px grouped-tool continuation rule in globals.css against status-led grouped rows that continue into prose, collapsed or expanded", () => {
+		const styles = readFileSync(join(process.cwd(), "src", "styles", "globals.css"), "utf8");
+		const selector = /\/\* A grouped tool summary followed by prose[^*]*\*\/\s*([^{]+)\{\s*padding-bottom: 12px;/
+			.exec(styles)?.[1]
+			?.trim();
+		const view = render(
+			<div className="transcript-text">
+				{chat([
+					...["Alice", "Bob", "Charlie"].map((name) => ({
+						type: "assistant",
+						uuid: `example-${name}`,
+						sessionId: "example-main",
+						message: {
+							role: "assistant",
+							content: [
+								{
+									type: "tool_use",
+									id: `example-task-${name}`,
+									name: "TaskCreate",
+									input: {subject: `Example ${name} task`},
+								},
+							],
+						},
+					})),
+					text("example-after-tasks", "Example after tasks."),
+					...command("example-first"),
+					...command("example-second"),
+					text("example-middle", "Example middle."),
+					...command("example-third"),
+					...command("example-fourth"),
+					text("example-other", "Example other source.", "example-other"),
+					...command("example-fifth"),
+					...command("example-sixth"),
+				])}
+			</div>,
+		);
+		const rowOf = (element: Element) => element.closest<HTMLElement>("[data-perf-line]")?.dataset["perfLine"];
+		const padded = () => Array.from(view.container.querySelectorAll(selector ?? "[data-missing-rule]"), rowOf);
+		const collapsed = padded();
+		fireEvent.click(view.container.querySelector<HTMLElement>("button[aria-expanded]")!);
+		expect({
+			marked: Array.from(view.container.querySelectorAll("[data-grouped-tool-row]"), rowOf),
+			collapsed,
+			expanded: padded(),
+		}).toStrictEqual({
+			marked: ["4", "9", "14"],
+			collapsed: ["4"],
+			expanded: ["4"],
+		});
+	});
+
 	it("copies authored text in order and targets the final assistant after tools and folded notifications", async () => {
 		const view = render(
 			chat([
