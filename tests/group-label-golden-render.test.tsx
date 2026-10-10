@@ -133,6 +133,8 @@ function spanText(span: Element): string {
 function statusText(status: Element): string {
 	const groupLabel = status.querySelector(":scope > button > span:first-child");
 	if (groupLabel !== null) return `status: ${groupLabel.textContent}`;
+	const marker = status.querySelector(":scope > [data-turn-status-marker]");
+	if (marker !== null) return `status: ${marker.textContent}`;
 	const rowLabel = status.querySelector(":scope > [role=button]");
 	const parts = Array.from(rowLabel?.children ?? [], spanText).filter((text) => text !== "");
 	return `status: ${parts.join(" ")}`;
@@ -214,6 +216,48 @@ describe("consecutive user rows", () => {
 			{userRowGap: true, turnGap: false},
 			{userRowGap: false, turnGap: false},
 		]);
+	});
+});
+
+describe("compaction marker", () => {
+	const specimen = () =>
+		(rowSpecimens as RowSpecimen[]).find(
+			(candidate) => candidate.session === "01d132c8" && candidate.line === 1249,
+		)!;
+
+	it("draws 01d132c8:1261 inside the prose's span as upstream: a plain marker 12px under the prose, the span's actions after it", () => {
+		const rows = Array.from(renderRecords(specimen().records).querySelectorAll("[data-testid=transcript-row]"));
+		expect(
+			rows.map((row) => ({
+				status: row.querySelector("[data-turn-status]")?.textContent ?? null,
+				precedesStatus: row.querySelector(":scope > [data-precedes-turn-status]") !== null,
+				footer: row.querySelector("[data-assistant-span-footer]") !== null,
+				disclosures: row.querySelectorAll("[data-turn-status] [aria-expanded]").length,
+			})),
+		).toStrictEqual([
+			{status: null, precedesStatus: true, footer: false, disclosures: 0},
+			{status: "Compacted session · saved 260.8k tokens", precedesStatus: false, footer: true, disclosures: 0},
+			{status: null, precedesStatus: false, footer: false, disclosures: 0},
+		]);
+	});
+
+	it("keeps the summary behind a disclosure in Verbose", () => {
+		const {lines, toolResultMap} = processTranscript(specimen().records);
+		const container = render(
+			<SessionChat
+				sessionId="01d132c8-3b39-4d0e-9e77-afe9bea66080"
+				lines={lines}
+				toolResultMap={toolResultMap}
+				shouldScrollToEnd={false}
+				transcriptMode="verbose"
+			/>,
+		).container;
+		expect(
+			Array.from(
+				container.querySelectorAll("[data-turn-status] [aria-expanded]"),
+				(button) => button.textContent,
+			),
+		).toStrictEqual(["Compacted session · saved 260.8k tokens"]);
 	});
 });
 

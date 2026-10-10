@@ -195,6 +195,7 @@ function collectAssistantDisplaySpans(
 	lines: readonly SessionLine[],
 	renderProps: LineRenderProps,
 	skipSet: ReadonlySet<number>,
+	compactionStatuses: ReadonlySet<number>,
 ): Map<number, AssistantDisplaySpan> {
 	const byLine = new Map<number, AssistantDisplaySpan>();
 	let current: AssistantDisplaySpan | undefined;
@@ -217,8 +218,9 @@ function collectAssistantDisplaySpans(
 			current = undefined;
 			continue;
 		}
-		// Upstream sends a hook's message as a synthetic assistant text between a call and its result.
-		if (isHookSystemMessageLine(line)) {
+		// Upstream sends a hook's message as a synthetic assistant text between a call and its result,
+		// and draws a compaction's status row inside the span it follows, the span's actions after it.
+		if (isHookSystemMessageLine(line) || compactionStatuses.has(line.lineIndex)) {
 			if (current !== undefined) {
 				current.anchorLineIndex = line.lineIndex;
 				byLine.set(line.lineIndex, current);
@@ -706,7 +708,7 @@ function LineEntry({
 				) : (
 					footer
 				))}
-			{isHookSystemMessageLine(line) && footer}
+			{(isHookSystemMessageLine(line) || (line.type === "user" && line.isCompactSummary === true)) && footer}
 		</>
 	);
 	if (line.type !== "assistant") return React.cloneElement(wrapper, undefined, children);
@@ -1535,7 +1537,12 @@ function buildSessionListEntries(
 	};
 	const skipSet = buildSkipSet(lines);
 	if (!verbose) for (const index of settledCompletionIndices(lines)) skipSet.add(index);
-	const displaySpans = verbose ? undefined : collectAssistantDisplaySpans(lines, renderProps, skipSet);
+	const compactionStatuses: ReadonlySet<number> = renderProps.showCompactSummaries
+		? new Set()
+		: new Set(compactBoundariesBySummary(lines).keys());
+	const displaySpans = verbose
+		? undefined
+		: collectAssistantDisplaySpans(lines, renderProps, skipSet, compactionStatuses);
 	const sameSpan = (first: SessionLine, next: SessionLine) =>
 		verbose ||
 		(getSourceSessionId(first, renderProps.sessionId) === getSourceSessionId(next, renderProps.sessionId) &&
@@ -1758,6 +1765,7 @@ function buildSessionListEntries(
 			kind: transcriptRowKind(line),
 			assistantSpan: displaySpans?.get(line.lineIndex),
 			...(line.type === "assistant" ? {replyHead: line} : {}),
+			...(compactionStatuses.has(line.lineIndex) ? {opensWithStatus: true} : {}),
 			...(!verbose && isOrdinaryPromptLine(line, renderProps) ? {prompt: {line, render: renderLine}} : {}),
 			...(!verbose && (isProseOnlyAssistantLine(line) || isHookSystemMessageLine(line))
 				? {prose: {render: (precedesStatus: boolean) => renderLine(false, precedesStatus)}}
@@ -2809,7 +2817,8 @@ function compactBoundariesBySummary(lines: readonly SessionLine[]): ReadonlyMap<
 
 /**
  * Upstream's compaction status row, "Compacted session · saved 260.8k tokens",
- * keeping the compact-summary text behind it as the expandable body.
+ * a plain marker as upstream draws it; Verbose keeps the compact-summary text
+ * behind it as the expandable body.
  */
 function CompactedSessionStatus({
 	label,
@@ -2824,6 +2833,18 @@ function CompactedSessionStatus({
 }) {
 	const [expanded, setExpanded] = useState(false);
 	const bodyId = useId();
+	const verbose = useContext(TranscriptModeContext) === "verbose";
+	if (!verbose) {
+		return (
+			<TurnStatusFrame leading={false}>
+				<div data-turn-status="" className={TURN_STATUS_CLASS}>
+					<div data-turn-status-marker="" className="flex min-w-0 me-[52px] px-1 py-0.5">
+						<span className="text-body min-w-0 truncate text-ink-muted">{label}</span>
+					</div>
+				</div>
+			</TurnStatusFrame>
+		);
+	}
 	return (
 		<TurnStatusFrame leading={false}>
 			<div data-turn-status="" className={TURN_STATUS_CLASS}>
