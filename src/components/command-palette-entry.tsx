@@ -8,7 +8,8 @@ type CommandPaletteModule = typeof import("./command-palette");
 let paletteModule: Promise<CommandPaletteModule> | undefined;
 let LoadedPalette: CommandPaletteModule["CommandPalette"] | undefined;
 
-function loadCommandPalette(): Promise<CommandPaletteModule> {
+/** The palette's one module download, shared by its lazy boundary and the idle and intent warm-ups. */
+export function loadCommandPalette(): Promise<CommandPaletteModule> {
 	paletteModule ??= import("./command-palette")
 		.then((module) => {
 			LoadedPalette = module.CommandPalette;

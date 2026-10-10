@@ -5,6 +5,9 @@ import {registerPane} from "./pane-registry";
 
 const DeferredLinksPane = deferredPane("Links", () => import("./links-pane").then((module) => module.LinksPane));
 
+/** Downloads the Links pane renderer ahead of its first show. */
+export const preloadLinksPane = DeferredLinksPane.preload;
+
 /** Registers the local-only `links` pane kind (View options ▸ Links) while mounted; its list loads when it shows. */
 export function useRegisterLinksPane({sessionId, lines, windowStartIndex, jumpTargetWindow}: LinksPaneProps): void {
 	useEffect(

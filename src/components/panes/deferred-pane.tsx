@@ -40,18 +40,38 @@ interface DeferredPaneProps<P> {
 	props: P;
 }
 
+/** A deferred pane, plus the module download it shares with idle and intent warm-ups. */
+export type DeferredPaneComponent<P> = ComponentType<DeferredPaneProps<P>> & {preload: () => Promise<ComponentType<P>>};
+
 /**
  * A pane renderer kept off the cold load until the pane first shows. Its fallback and its Retry keep the header
- * controls in place, and reopening a loaded pane reuses the fulfilled lazy component without flashing the fallback.
+ * controls in place, and a pane whose module already settled, from an earlier show or a `preload`, renders in the
+ * first pass without flashing the fallback.
  */
 export function deferredPane<P extends object>(
 	title: string,
 	load: () => Promise<ComponentType<P>>,
-): ComponentType<DeferredPaneProps<P>> {
-	const loadDefault = () => load().then((component) => ({default: component}));
+): DeferredPaneComponent<P> {
+	let pending: Promise<ComponentType<P>> | undefined;
+	let Loaded: ComponentType<P> | undefined;
+	const preload = () => {
+		pending ??= load().then(
+			(component) => {
+				Loaded = component;
+				return component;
+			},
+			(error: unknown) => {
+				// A failed download is retried on the next show or Retry.
+				pending = undefined;
+				throw error;
+			},
+		);
+		return pending;
+	};
+	const loadDefault = () => preload().then((component) => ({default: component}));
 	let Renderer = lazy(loadDefault);
-	return function DeferredPane({resetKey, chrome, props}: DeferredPaneProps<P>) {
-		const [Pane, setPane] = useState(() => Renderer);
+	function DeferredPane({resetKey, chrome, props}: DeferredPaneProps<P>) {
+		const [Pane, setPane] = useState(() => Loaded ?? Renderer);
 		return (
 			<CatchBoundary
 				getResetKey={() => resetKey}
@@ -83,5 +103,6 @@ export function deferredPane<P extends object>(
 				</Suspense>
 			</CatchBoundary>
 		);
-	};
+	}
+	return Object.assign(DeferredPane, {preload});
 }

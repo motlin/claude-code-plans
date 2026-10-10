@@ -8,6 +8,9 @@ import {usePaneHost} from "./tile-host";
 
 const DeferredFilesPane = deferredPane("Files", () => import("./files-pane").then((module) => module.FilesPane));
 
+/** Downloads the Files pane renderer ahead of its first show. */
+export const preloadFilesPane = DeferredFilesPane.preload;
+
 /** Registers the `files` pane kind for this session while mounted; its tree and viewer load when the pane shows. */
 export function useRegisterFilesPane({
 	sessionId,

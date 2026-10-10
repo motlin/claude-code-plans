@@ -33,6 +33,7 @@ function SearchButton() {
 			<button
 				type="button"
 				aria-label="Search"
+				data-prefetch="palette"
 				aria-keyshortcuts={ariaKeyShortcuts}
 				onClick={() => openCommandPalette("search")}
 				className="flex h-8 w-8 items-center justify-center rounded-r6 text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary"

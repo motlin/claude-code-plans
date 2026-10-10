@@ -25,13 +25,13 @@ import {LegacyMessageLinkNotice} from "./legacy-message-link-notice";
 import {TileHost} from "./panes/tile-host";
 import {useRegisterArtifactsPane, useSessionArtifacts} from "./panes/artifacts-pane";
 import {useRegisterBackgroundTasksPane} from "./panes/background-tasks-pane";
-import {useRegisterLinksPane} from "./panes/links-pane-entry";
+import {preloadLinksPane, useRegisterLinksPane} from "./panes/links-pane-entry";
 import {useRegisterSessionDetailsPane} from "./panes/session-details-pane";
 import {useRegisterSubagentPane} from "./panes/subagent-pane";
 import {SessionSubagentOpener} from "./subagent-opener";
 import {useRegisterPlanPane} from "./panes/plan-pane";
 import {ChangesPaneShortcut, useRegisterChangesPane} from "./changes/changes-pane-entry";
-import {FilesPaneShortcut, useRegisterFilesPane} from "./panes/files-pane-entry";
+import {FilesPaneShortcut, preloadFilesPane, useRegisterFilesPane} from "./panes/files-pane-entry";
 import {useExtractedSessionFiles} from "./panes/session-files-list";
 import {TerminalPaneShortcut, useRegisterTerminalPane} from "./panes/terminal-pane";
 import {ApprovalDock} from "./approval-dock";
@@ -107,6 +107,10 @@ import {getSubagentLifecycleKey, extractPendingSubagents, type ActiveSubagent} f
 import {processTranscript} from "../lib/transcript";
 import {backgroundTasksFacts, extractBackgroundTasks} from "../lib/background-tasks";
 import {createSessionCommands} from "../lib/session-commands";
+import {useIdlePrefetch} from "../hooks/use-idle-prefetch";
+
+/** The Files and Links renderers, warmed once the session page goes idle so their first show skips the loading row. */
+const SESSION_PANE_CHUNKS = [preloadFilesPane, preloadLinksPane];
 
 interface SessionPromptBehavior {
 	disabled: boolean;
@@ -388,6 +392,7 @@ function SessionView({
 		windowStartIndex: transcript.startIndex,
 		jumpTargetWindow,
 	});
+	useIdlePrefetch(SESSION_PANE_CHUNKS);
 	const {hookContexts, runningSubagents, pendingTools} = useClaudeEvents();
 	const hookContext = hookContexts.get(sessionId);
 	const transcriptActiveSubagents = useMemo(() => extractPendingSubagents(transcript.records), [transcript.records]);

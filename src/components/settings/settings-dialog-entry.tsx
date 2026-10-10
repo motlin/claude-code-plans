@@ -10,7 +10,8 @@ type SettingsDialogModule = typeof import("./settings-dialog");
 let dialogModule: Promise<SettingsDialogModule> | undefined;
 let LoadedDialog: SettingsDialogModule["SettingsDialog"] | undefined;
 
-function loadSettingsDialog(): Promise<SettingsDialogModule> {
+/** The Settings modal's one module download, shared by its lazy boundary and the idle and intent warm-ups. */
+export function loadSettingsDialog(): Promise<SettingsDialogModule> {
 	dialogModule ??= import("./settings-dialog")
 		.then((module) => {
 			LoadedDialog = module.SettingsDialog;

@@ -18,6 +18,7 @@ import {SettingsProvider} from "../components/settings-provider";
 import {ToastProvider} from "../components/toast";
 import {AppFrame} from "../components/app-frame";
 import {AppShellFallback} from "../components/app-shell-fallback";
+import {ChunkPrefetch} from "../components/chunk-prefetch";
 import {DeferredCommandPalette} from "../components/command-palette-entry";
 import {DeferredSettingsDialog} from "../components/settings/settings-dialog-entry";
 import {KeyboardShortcutsDialog} from "../components/keyboard-shortcuts-dialog";
@@ -186,6 +187,7 @@ function RootLayout({children}: Readonly<{children: ReactNode}>) {
 			<NewSessionShortcut />
 			<ForkNavigator />
 			<DeferredSettingsDialog />
+			<ChunkPrefetch />
 		</>
 	);
 }
