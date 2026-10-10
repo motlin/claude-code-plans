@@ -305,18 +305,18 @@ function AttachmentContent({
 					{...shared}
 				/>
 			);
-		case "hook_additional_context":
+		case "hook_additional_context": {
+			const content = hookContextText(attachment.content);
 			return (
 				<Banner
 					icon={<Paperclip className="h-3.5 w-3.5" />}
 					label={`Hook context: ${attachment.hookName}`}
 					{...shared}
 				>
-					{typeof attachment.content === "string" && attachment.content.length > 0 && (
-						<Pre>{attachment.content}</Pre>
-					)}
+					{content.length > 0 && <Pre>{content}</Pre>}
 				</Banner>
 			);
+		}
 		case "hook_blocking_error": {
 			const be = attachment.blockingError;
 			const blockingMessage =
@@ -851,6 +851,12 @@ export function Banner({
 			{sessionId && <DebugLink sessionId={sessionId} uuid={uuid} className="ml-auto" />}
 		</div>
 	);
+}
+
+function hookContextText(content: string | readonly unknown[] | undefined): string {
+	if (content === undefined) return "";
+	if (typeof content === "string") return content;
+	return content.map((part) => (typeof part === "string" ? part : JSON.stringify(part))).join("\n");
 }
 
 export function Pre({children}: {children: React.ReactNode}) {

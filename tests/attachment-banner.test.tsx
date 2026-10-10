@@ -170,6 +170,30 @@ describe("AttachmentBanner", () => {
 		});
 	});
 
+	describe("hook_additional_context", () => {
+		it("joins array content into the banner text", () => {
+			const container = document.createElement("div");
+			container.innerHTML = renderBanner({
+				type: "hook_additional_context",
+				hookName: "PostToolUse:Bash",
+				hookEvent: "PostToolUse",
+				content: ["Git commit detected!", "Run /reflect."],
+			});
+			expect(container.querySelector("pre")?.textContent).toBe("Git commit detected!\nRun /reflect.");
+		});
+
+		it("keeps string content as is", () => {
+			const container = document.createElement("div");
+			container.innerHTML = renderBanner({
+				type: "hook_additional_context",
+				hookName: "UserPromptSubmit",
+				hookEvent: "UserPromptSubmit",
+				content: "Caveman mode",
+			});
+			expect(container.querySelector("pre")?.textContent).toBe("Caveman mode");
+		});
+	});
+
 	it("renders read truncation notices", () => {
 		const html = renderBanner({
 			type: "read_truncation_notice",
