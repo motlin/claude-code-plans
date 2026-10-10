@@ -251,29 +251,76 @@ describe("TurnChangesCard", () => {
 		});
 	});
 
-	it("draws a single file as one row with no header, 48px below the previous row as upstream", () => {
+	it("draws a single file as upstream's outlined card with no header, its row 44px below the previous row", () => {
 		const {container} = render(<TurnChangesCard sessionId="test-session" changes={changesWith(1)} />);
 		const card = container.querySelector<HTMLElement>("[data-turn-changes-card]")!;
+		const item = screen.getByRole("listitem");
 		const undo = within(card).getByRole("button", {name: "Undo"});
+		const classes = (element: Element, names: string[]) => names.filter((name) => element.classList.contains(name));
 		expect({
 			header: screen.queryByText(/^Edited/),
 			list: screen.getByRole("list").getAttribute("aria-label"),
-			rows: screen.getAllByRole("listitem").map((item) => item.textContent),
+			rows: [item.textContent],
 			links: fileRowNames(),
 			more: screen.queryByRole("button", {name: /Show \d+ more/}),
-			spacing: ["mt-2", "mt-5", "mb-[11px]"].filter((name) => card.classList.contains(name)),
-			undoRevealedOnHover: ["opacity-0", "group-hover/card:opacity-100", "focus-visible:opacity-100"].every(
+			card: classes(card, [
+				"mt-2",
+				"mt-5",
+				"mt-4",
+				"mb-[11px]",
+				"mb-[7px]",
+				"px-2",
+				"py-1",
+				"rounded-r6",
+				"shadow-[inset_0_0_0_1px_var(--color-border)]",
+			]),
+			item: classes(item, ["-mx-1", "px-1", "gap-1"]),
+			icon: Array.from(item.querySelectorAll("svg.lucide"), (icon) => classes(icon, ["lucide-code", "size-4"])),
+			trailing: Array.from(item.children, (child) => child.tagName === "SPAN" && child.textContent),
+			chevron: item.querySelector(":scope > span > span.text-secondary > svg") !== null,
+			undoRevealedOnHover: ["sr-only", "group-hover/card:not-sr-only", "focus-visible:not-sr-only"].every(
 				(name) => undo.classList.contains(name),
 			),
 		}).toStrictEqual({
 			header: null,
 			list: "Edited 1 file",
 			rows: ["file-1.ts+1\u22121Undo"],
-			links: ["file-1.ts+1\u22121"],
+			links: ["file-1.ts"],
 			more: null,
-			spacing: ["mt-5", "mb-[11px]"],
+			card: ["mt-4", "mb-[7px]", "px-2", "py-1", "rounded-r6", "shadow-[inset_0_0_0_1px_var(--color-border)]"],
+			item: ["-mx-1", "px-1", "gap-1"],
+			icon: [["lucide-code", "size-4"]],
+			trailing: [false, "+1\u22121", false],
+			chevron: true,
 			undoRevealedOnHover: true,
 		});
+	});
+
+	it('tooltips the single-file row "View this turn\'s changes" inside a pane host, as upstream', () => {
+		vi.useFakeTimers();
+		try {
+			render(
+				<SettingsProvider>
+					<TileHost sessionId="turn-card-tooltip" onExpandWithoutPane={() => {}}>
+						<TurnChangesCard sessionId="turn-card-tooltip" changes={changesWith(1)} />
+					</TileHost>
+				</SettingsProvider>,
+			);
+			const row = screen.getByRole("button", {name: /^file-1\.ts/});
+			fireEvent.pointerEnter(row.parentElement!);
+			act(() => {
+				vi.advanceTimersByTime(400);
+			});
+			expect({
+				tooltip: screen.queryByRole("tooltip")?.textContent,
+				title: row.getAttribute("title"),
+			}).toStrictEqual({
+				tooltip: "View this turn's changes",
+				title: null,
+			});
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it("keeps the multi-file header and its 8px top margin", () => {

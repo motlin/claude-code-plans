@@ -1,11 +1,13 @@
-import {ChevronRight, FileText} from "lucide-react";
+import {ChevronRight, Code, FileText} from "lucide-react";
 import {useState} from "react";
 
 import {fileViewerPath} from "../lib/api/file";
 import {requestChangesScope} from "../lib/changes-scope-request";
 import type {TurnChanges} from "../lib/turn-changes";
 import {useOptionalPaneHost} from "./panes/tile-host";
+import {ChevronIcon} from "./tool-renderers/shared";
 import {TurnUndoConfirm, useTurnUndo} from "./turn-undo";
+import {Tooltip} from "./ui/tooltip";
 
 /** Upstream shows four file rows before "Show N more". */
 const VISIBLE_FILE_LIMIT = 4;
@@ -28,6 +30,10 @@ const ROW_CLASS =
 
 const UNDO_CLASS =
 	"h-7 shrink-0 cursor-pointer rounded-r5 px-2 text-body text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary disabled:cursor-default disabled:opacity-50";
+
+/** Upstream's lone changes row: a 16px code glyph and the name, its stats and chevron outside the button. */
+const LONE_ROW_CLASS =
+	"flex min-h-7 min-w-0 grow items-center gap-1.5 rounded-r4 py-0.5 text-left transition-colors hover:bg-fill-ghost-hover";
 
 function FileRowContent({path, added, removed}: {path: string; added: number; removed: number}) {
 	return (
@@ -65,9 +71,11 @@ function UndoFeedback({undo}: {undo: ReturnType<typeof useTurnUndo>}) {
  * Upstream's end-of-turn changes card: "Edited N files +A −R", up to four
  * file rows (icon, name, stats, chevron) and "Show N more". The header opens
  * the Changes pane scoped to this turn; a file row opens the file viewer.
- * A one-file turn is a lone file row with no header (79a0ad58 "settings.json
- * +1 −1", 48px below the Denied row), so that row opens the Changes pane and
- * Undo shows on hover or focus.
+ * A one-file turn is a lone row in an outlined card with no header (79a0ad58
+ * "settings.json +1 −1", its row 44px below the Denied row): a code glyph and
+ * the name open the Changes pane ("View this turn's changes"), the stats and a
+ * chevron sit right-aligned, and Undo, which upstream does not draw on an
+ * archived session, stays hidden until hover or focus.
  */
 export function TurnChangesCard({sessionId, changes}: {sessionId: string; changes: TurnChanges}) {
 	const host = useOptionalPaneHost();
@@ -87,29 +95,45 @@ export function TurnChangesCard({sessionId, changes}: {sessionId: string; change
 
 	if (count === 1) {
 		const file = changes.files[0]!;
+		const name = (
+			<>
+				<Code aria-hidden="true" className="size-4 shrink-0 text-ink-muted" />
+				<span className="min-w-0 truncate text-body text-primary">{basename(file.path)}</span>
+			</>
+		);
 		return (
-			<div data-turn-changes-card className="group/card mt-5 mb-[11px] flex w-full flex-col">
+			<div
+				data-turn-changes-card
+				className="group/card mt-4 mb-[7px] flex w-full select-text flex-col gap-1 rounded-r6 px-2 py-1 shadow-[inset_0_0_0_1px_var(--color-border)]"
+			>
 				<ul aria-label={title} className="flex flex-col">
-					<li className="flex min-w-0 items-center gap-1">
+					<li className="relative -mx-1 flex min-w-0 items-center gap-1 px-1">
 						{openChanges === undefined ? (
-							<a href={fileViewerPath(file.path)} title={file.path} className={`${ROW_CLASS} flex-1`}>
-								<FileRowContent {...file} />
+							<a href={fileViewerPath(file.path)} title={file.path} className={LONE_ROW_CLASS}>
+								{name}
 							</a>
 						) : (
-							<button
-								type="button"
-								title={file.path}
-								onClick={openChanges}
-								className={`${ROW_CLASS} flex-1 cursor-pointer`}
-							>
-								<FileRowContent {...file} />
-							</button>
+							<Tooltip content="View this turn's changes" className="min-w-0 grow">
+								<button
+									type="button"
+									onClick={openChanges}
+									className={`${LONE_ROW_CLASS} cursor-pointer`}
+								>
+									{name}
+								</button>
+							</Tooltip>
 						)}
+						<span className="pointer-events-none flex shrink-0 items-center gap-1">
+							<Stats added={file.added} removed={file.removed} />
+							<span className="text-secondary">
+								<ChevronIcon expanded={false} />
+							</span>
+						</span>
 						<button
 							type="button"
 							disabled={undo.state.kind === "busy"}
 							onClick={() => void undo.start(sessionId, changes.turnUuid)}
-							className={`${UNDO_CLASS} opacity-0 group-hover/card:opacity-100 focus-visible:opacity-100`}
+							className={`${UNDO_CLASS} sr-only group-hover/card:not-sr-only focus-visible:not-sr-only`}
 						>
 							Undo
 						</button>
