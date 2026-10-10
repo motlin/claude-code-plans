@@ -16219,5 +16219,599 @@
 				"gitBranch": "main"
 			}
 		]
+	},
+	{
+		"session": "f20bec67",
+		"line": 477,
+		"upstream": ["status: Hook re-prompted Claude, ran a command (1 failed)"],
+		"records": [
+			{
+				"parentUuid": "24d32ca8-ae7e-475c-bfe7-e6c5afa2808f",
+				"isSidechain": false,
+				"promptId": "39594ff8-6821-4884-bf14-016b46ac2d9c",
+				"type": "user",
+				"message": {
+					"role": "user",
+					"content": "Stop hook feedback:\nSTOP HOOK VIOLATION: Do not ask. Continue."
+				},
+				"isMeta": true,
+				"uuid": "714984aa-c6ca-41df-a851-989db1486405",
+				"timestamp": "2026-09-28T13:04:25.228Z",
+				"session_id": "f20bec67-7890-457b-8620-fc20ee22fbf2",
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/.dotfiles/git-clones/motlin/claude-code-prompts",
+				"sessionId": "f20bec67-7890-457b-8620-fc20ee22fbf2",
+				"version": "2.1.283",
+				"gitBranch": "main"
+			},
+			{
+				"parentUuid": "714984aa-c6ca-41df-a851-989db1486405",
+				"isSidechain": false,
+				"attachment": {
+					"type": "hook_blocking_error",
+					"hookName": "Stop",
+					"toolUseID": "1e802c98-d4cb-4a85-a2c8-6dd2b18fef91",
+					"hookEvent": "Stop",
+					"blockingError": {
+						"blockingError": "STOP HOOK VIOLATION: Do not ask. Continue.",
+						"command": "${CLAUDE_PLUGIN_ROOT}/scripts/stop-phrase-guard.sh"
+					}
+				},
+				"type": "attachment",
+				"uuid": "6d3d6d0d-b504-4ea7-b9e2-fd93c752c630",
+				"timestamp": "2026-09-28T13:04:25.227Z",
+				"rendered": [
+					{
+						"content": "<system-reminder>\nStop hook blocking error from command: \"${CLAUDE_PLUGIN_ROOT}/scripts/stop-phrase-guard.sh\": STOP HOOK VIOLATION: Do not ask. Continue.\n</system-reminder>"
+					}
+				],
+				"session_id": "f20bec67-7890-457b-8620-fc20ee22fbf2",
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/.dotfiles/git-clones/motlin/claude-code-prompts",
+				"sessionId": "f20bec67-7890-457b-8620-fc20ee22fbf2",
+				"version": "2.1.283",
+				"gitBranch": "main"
+			},
+			{
+				"parentUuid": "6d3d6d0d-b504-4ea7-b9e2-fd93c752c630",
+				"isSidechain": false,
+				"attachment": {
+					"type": "hook_success",
+					"hookName": "Stop",
+					"toolUseID": "1e802c98-d4cb-4a85-a2c8-6dd2b18fef91",
+					"hookEvent": "Stop",
+					"content": "",
+					"stdout": "",
+					"stderr": " No git test results found for HEAD.\n",
+					"exitCode": 0,
+					"command": "if [ -n \"${CLAUDE_PLUGIN_ROOT:-}\" ]; then \"${CLAUDE_PLUGIN_ROOT}/scripts/check-test-results.sh\"; fi",
+					"durationMs": 241
+				},
+				"type": "attachment",
+				"uuid": "d3021269-b3aa-419f-977f-394fe90b506c",
+				"timestamp": "2026-09-28T13:04:25.360Z",
+				"session_id": "f20bec67-7890-457b-8620-fc20ee22fbf2",
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/.dotfiles/git-clones/motlin/claude-code-prompts",
+				"sessionId": "f20bec67-7890-457b-8620-fc20ee22fbf2",
+				"version": "2.1.283",
+				"gitBranch": "main"
+			},
+			{
+				"parentUuid": "d3021269-b3aa-419f-977f-394fe90b506c",
+				"isSidechain": false,
+				"type": "system",
+				"subtype": "stop_hook_summary",
+				"hookCount": 6,
+				"hookInfos": [
+					{
+						"command": "if [ -n \"${CLAUDE_PLUGIN_ROOT:-}\" ]; then \"${CLAUDE_PLUGIN_ROOT}/scripts/check-test-results.sh\"; fi",
+						"durationMs": 241
+					},
+					{
+						"command": "${CLAUDE_PLUGIN_ROOT}/scripts/post-hook.sh Stop",
+						"durationMs": 44
+					},
+					{
+						"command": "if [ -n \"${CLAUDE_PLUGIN_ROOT:-}\" ]; then \"${CLAUDE_PLUGIN_ROOT}/scripts/check-dirty-tree.sh\"; fi",
+						"durationMs": 79
+					},
+					{
+						"command": "${CLAUDE_PLUGIN_ROOT}/scripts/rename-herdr-tab.sh",
+						"durationMs": 31
+					},
+					{
+						"command": "${CLAUDE_PLUGIN_ROOT}/scripts/recap-guard.sh",
+						"durationMs": 48
+					},
+					{
+						"command": "${CLAUDE_PLUGIN_ROOT}/scripts/stop-phrase-guard.sh"
+					}
+				],
+				"hookErrors": ["STOP HOOK VIOLATION: Do not ask. Continue."],
+				"hookAdditionalContext": [],
+				"preventedContinuation": false,
+				"stopReason": "",
+				"hasOutput": true,
+				"level": "suggestion",
+				"timestamp": "2026-09-28T13:04:25.361Z",
+				"uuid": "449e4e95-aedc-48ad-ab15-62434bddf864",
+				"toolUseID": "1e802c98-d4cb-4a85-a2c8-6dd2b18fef91",
+				"session_id": "f20bec67-7890-457b-8620-fc20ee22fbf2",
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/.dotfiles/git-clones/motlin/claude-code-prompts",
+				"sessionId": "f20bec67-7890-457b-8620-fc20ee22fbf2",
+				"version": "2.1.283",
+				"gitBranch": "main"
+			},
+			{
+				"parentUuid": "449e4e95-aedc-48ad-ab15-62434bddf864",
+				"isSidechain": false,
+				"message": {
+					"model": "claude-opus-5-5",
+					"id": "msg_011CfVtGnmucfTFLcGnHXZC9",
+					"type": "message",
+					"role": "assistant",
+					"content": [
+						{
+							"type": "thinking",
+							"thinking": "",
+							"signature": "CAQSogYKEAgSGAI4AUIIdGhpbmtpbmcSDNg7EpS5uZ8VcRkPDBoMHZdHepSGwfFdwyxkIjCSMnOYICZCLp6pBI4AwLdNjRKmPLNBPIU5O5gh7+3OOtHOJUnCdCY6/jM8jfrxeg8qvwWL1bIN1XrNt9+j/SNzrE6FGsQhnRZ+IautgXLumZvRjaDbXUeu0IBDo1gwc0fTbjgJTsxDDezX33Oph30h5sAvTQ5cIxFn/JWtxksKod2+ZRYY5qtCuK05No4qXG+0SOQYxENmvENc7irR9t/ZRUEzqHShllQSoh3Ziyj/dRs5nhzl8uSeEJJnmFmocrDXbo6YEEI+cpdeW5AjwLNkFRNQ4lMYCPTtHyII4iNLRnGT5V4Z3Gwfxg5JCQdlVtF5d/rA4agLrEGY97Cpa0Ahga559jsooQvkmacpRETeho8tfahHh1eYTjqZhH2w0WH/dl5BnlVYRuefpLrnEjai49kW533S4of/Gsq/S9Hr0iuNy5suPGhRc66kSPE897Zt7GzSmC3zUwNakGHrZUZcSkKlwpmXwxw+Av1xC2uHYfNy8n2eTHijM0pXldxSC3pqodS51P+MubLd67K33l0HTnPWlTElGNq81cAJcBQPnbqlhOgI7PYgU/KcHuucZyBZ6VxDEmlTKEYdPwd2nSJBkFAdtREL9s46nETKYz72AkA6TnZbmINkAFE5q4kFDescNRDJk6nXTNU3XA9MoCmwvJQNyWNqhnwm5Nf+xV6VoShWVzl0RKqJxHodh0k13cb8T7wU07zyrQvJIJVXVEffOvRQBKGXQZrUvYCgYD4GUFqizAs+RbCG7yaUWhMhVIC1zksKJMAS8fOypFB+lCCFl5yyxQSVn7/ZpNYpxrH3acSRa5eKfQilRFRKGrjAVk7ZNJoNoouDiYdN6mWsRTOQEXkcYdFukX8lqSFXp2bFXbp9tX6rT5mxCSXHQ1fZqdtbgbDD91MjmqJTsgkD78zpVBkTLvuPZkccX7/ooJoOgNtn5mjVnrMtP01fEvKTcw8OTdgsgCPUplt9hDPFxKRoJQ9FBG9Dj7r3DzTxFBjGJqqnGAE="
+						}
+					],
+					"container": null,
+					"stop_reason": "tool_use",
+					"stop_sequence": null,
+					"stop_details": null,
+					"usage": {
+						"input_tokens": 2,
+						"cache_creation_input_tokens": 824,
+						"cache_read_input_tokens": 139536,
+						"output_tokens": 135,
+						"output_tokens_details": {
+							"thinking_tokens": 18
+						},
+						"server_tool_use": {
+							"web_search_requests": 0,
+							"web_fetch_requests": 0
+						},
+						"service_tier": "standard",
+						"cache_creation": {
+							"ephemeral_1h_input_tokens": 824,
+							"ephemeral_5m_input_tokens": 0
+						},
+						"inference_geo": "not_available",
+						"iterations": [
+							{
+								"input_tokens": 2,
+								"output_tokens": 135,
+								"cache_read_input_tokens": 139536,
+								"cache_creation_input_tokens": 824,
+								"cache_creation": {
+									"ephemeral_5m_input_tokens": 0,
+									"ephemeral_1h_input_tokens": 824
+								},
+								"type": "message"
+							}
+						],
+						"speed": "standard"
+					},
+					"input_transformations": [],
+					"diagnostics": null,
+					"context_management": null
+				},
+				"serverClassifierRequest": "6159c939-4b1d-433e-97ef-10ba581c183e",
+				"apiBlockIndex": 0,
+				"requestId": "req_011CfVtGnK8Brm3VExPXD3GZ",
+				"type": "assistant",
+				"uuid": "2be9645b-d0ee-4797-b3e3-70212b78c3af",
+				"timestamp": "2026-09-28T13:04:26.688Z",
+				"advisorModel": "claude-opus-5-5",
+				"effort": "medium",
+				"perTurnEffort": "medium",
+				"session_id": "f20bec67-7890-457b-8620-fc20ee22fbf2",
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/.dotfiles/git-clones/motlin/claude-code-prompts",
+				"sessionId": "f20bec67-7890-457b-8620-fc20ee22fbf2",
+				"version": "2.1.283",
+				"gitBranch": "main"
+			},
+			{
+				"parentUuid": "2be9645b-d0ee-4797-b3e3-70212b78c3af",
+				"isSidechain": false,
+				"message": {
+					"model": "claude-opus-5-5",
+					"id": "msg_011CfVtGnmucfTFLcGnHXZC9",
+					"type": "message",
+					"role": "assistant",
+					"content": [
+						{
+							"type": "tool_use",
+							"id": "toolu_01RM3sy6NLKr4yv5xZ2nopjz",
+							"name": "Bash",
+							"input": {
+								"command": "git -C /Users/craig/.dotfiles/git-clones/motlin/claude-code-prompts status --short --untracked-files=all",
+								"description": "List untracked files"
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					],
+					"container": null,
+					"stop_reason": "tool_use",
+					"stop_sequence": null,
+					"stop_details": null,
+					"usage": {
+						"input_tokens": 2,
+						"cache_creation_input_tokens": 824,
+						"cache_read_input_tokens": 139536,
+						"output_tokens": 135,
+						"output_tokens_details": {
+							"thinking_tokens": 18
+						},
+						"server_tool_use": {
+							"web_search_requests": 0,
+							"web_fetch_requests": 0
+						},
+						"service_tier": "standard",
+						"cache_creation": {
+							"ephemeral_1h_input_tokens": 824,
+							"ephemeral_5m_input_tokens": 0
+						},
+						"inference_geo": "not_available",
+						"iterations": [
+							{
+								"input_tokens": 2,
+								"output_tokens": 135,
+								"cache_read_input_tokens": 139536,
+								"cache_creation_input_tokens": 824,
+								"cache_creation": {
+									"ephemeral_5m_input_tokens": 0,
+									"ephemeral_1h_input_tokens": 824
+								},
+								"type": "message"
+							}
+						],
+						"speed": "standard"
+					},
+					"input_transformations": [],
+					"diagnostics": null,
+					"context_management": null
+				},
+				"wireToolInputs": {
+					"toolu_01RM3sy6NLKr4yv5xZ2nopjz": {
+						"command": "git -C /Users/craig/.dotfiles/git-clones/motlin/claude-code-prompts status --short --untracked-files=all",
+						"description": "List untracked files"
+					}
+				},
+				"serverClassifierRequest": "6159c939-4b1d-433e-97ef-10ba581c183e",
+				"apiBlockIndex": 1,
+				"requestId": "req_011CfVtGnK8Brm3VExPXD3GZ",
+				"type": "assistant",
+				"uuid": "a40915c1-f6e7-42d6-8aeb-76267612124a",
+				"timestamp": "2026-09-28T13:04:27.406Z",
+				"advisorModel": "claude-opus-5-5",
+				"effort": "medium",
+				"perTurnEffort": "medium",
+				"session_id": "f20bec67-7890-457b-8620-fc20ee22fbf2",
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/.dotfiles/git-clones/motlin/claude-code-prompts",
+				"sessionId": "f20bec67-7890-457b-8620-fc20ee22fbf2",
+				"version": "2.1.283",
+				"gitBranch": "main"
+			},
+			{
+				"parentUuid": "a40915c1-f6e7-42d6-8aeb-76267612124a",
+				"isSidechain": false,
+				"promptId": "39594ff8-6821-4884-bf14-016b46ac2d9c",
+				"type": "user",
+				"message": {
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"content": "The server-side auto mode classifier gave no verdict (error), so auto mode cannot determine the safety of Bash. This is a transient failure of the check, not a judgment about the action: a later response may get a verdict. You may try the action again once, as-is. Repeated attempts are slowed by a growing delay, and after 10 responses in a row without a verdict the turn stops. If it keeps failing, continue with other tasks that don't require this action and come back to it later. Note: reading files, searching code, and other read-only operations do not require the classifier and can still be used.",
+							"is_error": true,
+							"tool_use_id": "toolu_01RM3sy6NLKr4yv5xZ2nopjz"
+						}
+					]
+				},
+				"uuid": "e43683c8-9f24-4c40-b365-02909a4009ea",
+				"timestamp": "2026-09-28T13:04:30.354Z",
+				"toolUseResult": "Error: The server-side auto mode classifier gave no verdict (error), so auto mode cannot determine the safety of Bash. This is a transient failure of the check, not a judgment about the action: a later response may get a verdict. You may try the action again once, as-is. Repeated attempts are slowed by a growing delay, and after 10 responses in a row without a verdict the turn stops. If it keeps failing, continue with other tasks that don't require this action and come back to it later. Note: reading files, searching code, and other read-only operations do not require the classifier and can still be used.",
+				"toolDenialKind": "automode-unavailable",
+				"sourceToolAssistantUUID": "a40915c1-f6e7-42d6-8aeb-76267612124a",
+				"session_id": "f20bec67-7890-457b-8620-fc20ee22fbf2",
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/.dotfiles/git-clones/motlin/claude-code-prompts",
+				"sessionId": "f20bec67-7890-457b-8620-fc20ee22fbf2",
+				"version": "2.1.283",
+				"gitBranch": "main"
+			}
+		]
+	},
+	{
+		"session": "45b93197",
+		"line": 132,
+		"upstream": ["prose", "step: Hook re-prompted Claude", "prose"],
+		"records": [
+			{
+				"parentUuid": "a4d4df28-3da7-4497-b7a9-cf5fef82bbfb",
+				"isSidechain": false,
+				"message": {
+					"model": "claude-opus-5",
+					"id": "msg_011CetY6rh4HsFSRagEH42jr",
+					"type": "message",
+					"role": "assistant",
+					"content": [
+						{
+							"type": "text",
+							"text": "HealthEquity login page is up in a new Chrome tab. Username + MFA are yours — I can't enter credentials. The field has the 1Password autofill icon, though your CLI couldn't reach the desktop app a minute ago, so you may need to restart 1Password if autofill doesn't offer the entry.\n\nTell me when you're in and I'll check both claims: the $3,656 braces claim (`cCsUXHt9nUgPDntZEjczB`) and the EyeBuyDirect $36.92 card receipt.\n\nWorth setting expectations: you submitted late Monday night and today is Tuesday, so this is barely one business day in. HealthEquity quotes 2–3 business days to adjudicate a Pay Me Back claim, which is why yesterday's follow-up task is dated Sep 15. Most likely both still read \"To Be Processed\" — but a status of *pended* or a documentation request would show up now, and that's worth catching early."
+						}
+					],
+					"container": null,
+					"stop_reason": "end_turn",
+					"stop_sequence": null,
+					"stop_details": null,
+					"usage": {
+						"input_tokens": 2,
+						"cache_creation_input_tokens": 1860,
+						"cache_read_input_tokens": 88313,
+						"output_tokens": 465,
+						"output_tokens_details": {
+							"thinking_tokens": 154
+						},
+						"server_tool_use": {
+							"web_search_requests": 0,
+							"web_fetch_requests": 0
+						},
+						"service_tier": "standard",
+						"cache_creation": {
+							"ephemeral_1h_input_tokens": 1860,
+							"ephemeral_5m_input_tokens": 0
+						},
+						"inference_geo": "not_available",
+						"iterations": [
+							{
+								"input_tokens": 2,
+								"output_tokens": 465,
+								"cache_read_input_tokens": 88313,
+								"cache_creation_input_tokens": 1860,
+								"cache_creation": {
+									"ephemeral_5m_input_tokens": 0,
+									"ephemeral_1h_input_tokens": 1860
+								},
+								"type": "message"
+							}
+						],
+						"speed": "standard"
+					},
+					"diagnostics": null,
+					"context_management": null
+				},
+				"apiBlockIndex": 1,
+				"requestId": "req_011CetY6r1dST1eJ3mEAzR6Y",
+				"attributionSkill": "orchestration:orchestration",
+				"attributionPlugin": "orchestration",
+				"attributionMcpServer": "claude-in-chrome",
+				"attributionMcpTool": "computer",
+				"type": "assistant",
+				"uuid": "95698c6e-8255-4885-b2d9-7444149abdad",
+				"timestamp": "2026-09-09T20:59:15.336Z",
+				"effort": "high",
+				"perTurnEffort": null,
+				"session_id": "45b93197-0969-441e-b937-64578a3286e7",
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/projects/workflowy",
+				"sessionId": "45b93197-0969-441e-b937-64578a3286e7",
+				"version": "2.1.267",
+				"gitBranch": "main"
+			},
+			{
+				"parentUuid": "95698c6e-8255-4885-b2d9-7444149abdad",
+				"isSidechain": false,
+				"promptId": "df788fb6-2467-4bb9-8312-5f9a83a5c200",
+				"type": "user",
+				"message": {
+					"role": "user",
+					"content": "Stop hook feedback:\nRECAP FOOTER MISSING. Do not redo the work and do not summarize what you did. Send only the two footer lines:\n\n📌 You asked: <one sentence restating the user's original request, in their framing>\n🔗 [short label](URL)\n\nThe 🔗 line carries the URL the user is most likely to want next (pull request, issue, CI run, deployed site, dev server, doc). Always Markdown link syntax, never a bare URL — a bare URL can render as text the user cannot click. It may come from far earlier in the conversation — the user has not scrolled up. Try hard to find one; write \"🔗 None\" only when nothing applies."
+				},
+				"isMeta": true,
+				"uuid": "ebe39580-3190-4285-8831-b6b7e6b9a59c",
+				"timestamp": "2026-09-09T20:59:15.411Z",
+				"session_id": "45b93197-0969-441e-b937-64578a3286e7",
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/projects/workflowy",
+				"sessionId": "45b93197-0969-441e-b937-64578a3286e7",
+				"version": "2.1.267",
+				"gitBranch": "main"
+			},
+			{
+				"parentUuid": "ebe39580-3190-4285-8831-b6b7e6b9a59c",
+				"isSidechain": false,
+				"attachment": {
+					"type": "hook_blocking_error",
+					"hookName": "Stop",
+					"toolUseID": "c4734e07-1866-4ada-95c1-2e52da199e8f",
+					"hookEvent": "Stop",
+					"blockingError": {
+						"blockingError": "RECAP FOOTER MISSING. Do not redo the work and do not summarize what you did. Send only the two footer lines:\n\n📌 You asked: <one sentence restating the user's original request, in their framing>\n🔗 [short label](URL)\n\nThe 🔗 line carries the URL the user is most likely to want next (pull request, issue, CI run, deployed site, dev server, doc). Always Markdown link syntax, never a bare URL — a bare URL can render as text the user cannot click. It may come from far earlier in the conversation — the user has not scrolled up. Try hard to find one; write \"🔗 None\" only when nothing applies.",
+						"command": "${CLAUDE_PLUGIN_ROOT}/scripts/recap-guard.sh"
+					}
+				},
+				"type": "attachment",
+				"uuid": "b36c4074-4cf5-4735-8907-3acabb1ac94a",
+				"timestamp": "2026-09-09T20:59:15.411Z",
+				"rendered": [
+					{
+						"content": "<system-reminder>\nStop hook blocking error from command: \"${CLAUDE_PLUGIN_ROOT}/scripts/recap-guard.sh\": RECAP FOOTER MISSING. Do not redo the work and do not summarize what you did. Send only the two footer lines:\n\n📌 You asked: <one sentence restating the user's original request, in their framing>\n🔗 [short label](URL)\n\nThe 🔗 line carries the URL the user is most likely to want next (pull request, issue, CI run, deployed site, dev server, doc). Always Markdown link syntax, never a bare URL — a bare URL can render as text the user cannot click. It may come from far earlier in the conversation — the user has not scrolled up. Try hard to find one; write \"🔗 None\" only when nothing applies.\n</system-reminder>"
+					}
+				],
+				"session_id": "45b93197-0969-441e-b937-64578a3286e7",
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/projects/workflowy",
+				"sessionId": "45b93197-0969-441e-b937-64578a3286e7",
+				"version": "2.1.267",
+				"gitBranch": "main"
+			},
+			{
+				"parentUuid": "b36c4074-4cf5-4735-8907-3acabb1ac94a",
+				"isSidechain": false,
+				"attachment": {
+					"type": "hook_success",
+					"hookName": "Stop",
+					"toolUseID": "c4734e07-1866-4ada-95c1-2e52da199e8f",
+					"hookEvent": "Stop",
+					"content": "",
+					"stdout": "",
+					"stderr": " No git test results found for HEAD.\n",
+					"exitCode": 0,
+					"command": "if [ -n \"${CLAUDE_PLUGIN_ROOT:-}\" ]; then \"${CLAUDE_PLUGIN_ROOT}/scripts/check-test-results.sh\"; fi",
+					"durationMs": 254
+				},
+				"type": "attachment",
+				"uuid": "8b01c11a-a671-44ab-997d-b3d4e7360852",
+				"timestamp": "2026-09-09T20:59:15.628Z",
+				"session_id": "45b93197-0969-441e-b937-64578a3286e7",
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/projects/workflowy",
+				"sessionId": "45b93197-0969-441e-b937-64578a3286e7",
+				"version": "2.1.267",
+				"gitBranch": "main"
+			},
+			{
+				"parentUuid": "8b01c11a-a671-44ab-997d-b3d4e7360852",
+				"isSidechain": false,
+				"type": "system",
+				"subtype": "stop_hook_summary",
+				"hookCount": 6,
+				"hookInfos": [
+					{
+						"command": "if [ -n \"${CLAUDE_PLUGIN_ROOT:-}\" ]; then \"${CLAUDE_PLUGIN_ROOT}/scripts/check-test-results.sh\"; fi",
+						"durationMs": 254
+					},
+					{
+						"command": "${CLAUDE_PLUGIN_ROOT}/scripts/post-hook.sh Stop",
+						"durationMs": 32
+					},
+					{
+						"command": "if [ -n \"${CLAUDE_PLUGIN_ROOT:-}\" ]; then \"${CLAUDE_PLUGIN_ROOT}/scripts/check-dirty-tree.sh\"; fi",
+						"durationMs": 78
+					},
+					{
+						"command": "${CLAUDE_PLUGIN_ROOT}/scripts/rename-herdr-tab.sh",
+						"durationMs": 27
+					},
+					{
+						"command": "${CLAUDE_PLUGIN_ROOT}/scripts/recap-guard.sh"
+					},
+					{
+						"command": "${CLAUDE_PLUGIN_ROOT}/scripts/stop-phrase-guard.sh",
+						"durationMs": 105
+					}
+				],
+				"hookErrors": [
+					"RECAP FOOTER MISSING. Do not redo the work and do not summarize what you did. Send only the two footer lines:\n\n📌 You asked: <one sentence restating the user's original request, in their framing>\n🔗 [short label](URL)\n\nThe 🔗 line carries the URL the user is most likely to want next (pull request, issue, CI run, deployed site, dev server, doc). Always Markdown link syntax, never a bare URL — a bare URL can render as text the user cannot click. It may come from far earlier in the conversation — the user has not scrolled up. Try hard to find one; write \"🔗 None\" only when nothing applies."
+				],
+				"hookAdditionalContext": [],
+				"preventedContinuation": false,
+				"stopReason": "",
+				"hasOutput": true,
+				"level": "suggestion",
+				"timestamp": "2026-09-09T20:59:15.629Z",
+				"uuid": "ed54efb1-d923-4092-938b-57621a783518",
+				"toolUseID": "c4734e07-1866-4ada-95c1-2e52da199e8f",
+				"session_id": "45b93197-0969-441e-b937-64578a3286e7",
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/projects/workflowy",
+				"sessionId": "45b93197-0969-441e-b937-64578a3286e7",
+				"version": "2.1.267",
+				"gitBranch": "main"
+			},
+			{
+				"parentUuid": "ed54efb1-d923-4092-938b-57621a783518",
+				"isSidechain": false,
+				"message": {
+					"model": "claude-opus-5",
+					"id": "msg_011CetY7XbPde112rjdR6mJN",
+					"type": "message",
+					"role": "assistant",
+					"content": [
+						{
+							"type": "text",
+							"text": "📌 You asked: find yesterday's WageWorks/HealthEquity transcript, figure out how to log into WageWorks, and check whether the claims were updated.\n🔗 [HealthEquity Login](https://my.healthequity.com/ClientLogin.aspx)"
+						}
+					],
+					"container": null,
+					"stop_reason": "end_turn",
+					"stop_sequence": null,
+					"stop_details": null,
+					"usage": {
+						"input_tokens": 2,
+						"cache_creation_input_tokens": 940,
+						"cache_read_input_tokens": 90173,
+						"output_tokens": 92,
+						"output_tokens_details": {
+							"thinking_tokens": 0
+						},
+						"server_tool_use": {
+							"web_search_requests": 0,
+							"web_fetch_requests": 0
+						},
+						"service_tier": "standard",
+						"cache_creation": {
+							"ephemeral_1h_input_tokens": 940,
+							"ephemeral_5m_input_tokens": 0
+						},
+						"inference_geo": "not_available",
+						"iterations": [
+							{
+								"input_tokens": 2,
+								"output_tokens": 92,
+								"cache_read_input_tokens": 90173,
+								"cache_creation_input_tokens": 940,
+								"cache_creation": {
+									"ephemeral_5m_input_tokens": 0,
+									"ephemeral_1h_input_tokens": 940
+								},
+								"type": "message"
+							}
+						],
+						"speed": "standard"
+					},
+					"diagnostics": null,
+					"context_management": null
+				},
+				"apiBlockIndex": 0,
+				"requestId": "req_011CetY7WvhHcdd5EUx3XgyZ",
+				"attributionSkill": "orchestration:orchestration",
+				"attributionPlugin": "orchestration",
+				"type": "assistant",
+				"uuid": "f22fed3e-8364-4df4-b557-505393ad386d",
+				"timestamp": "2026-09-09T20:59:17.673Z",
+				"effort": "high",
+				"perTurnEffort": null,
+				"session_id": "45b93197-0969-441e-b937-64578a3286e7",
+				"userType": "external",
+				"entrypoint": "cli",
+				"cwd": "/Users/craig/projects/workflowy",
+				"sessionId": "45b93197-0969-441e-b937-64578a3286e7",
+				"version": "2.1.267",
+				"gitBranch": "main"
+			}
+		]
 	}
 ]

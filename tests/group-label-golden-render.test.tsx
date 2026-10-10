@@ -109,7 +109,7 @@ describe("group label golden specimens rendered from JSONL", () => {
 /**
  * Specimens whose whole row sequence was read from the upstream DOM: each
  * transcript row as "prose", "user: <bubble>", "message from <sender>" or
- * "status: <label>" per status it draws, "answered: <question> / <answer>" per answered question card, after any background notice drawn outside a group,
+ * "status: <label>" per status it draws, "answered: <question> / <answer>" per answered question card, "step: Hook re-prompted Claude" for a standalone hook marker, after any background notice drawn outside a group,
  * and "changes" after the row that draws the turn's changes card when the
  * records reach the turn's real end (`turnEnd`), as a cut-off turn draws its card early.
  */
@@ -150,6 +150,8 @@ function rowContentTexts(row: Element): string[] {
 		(card) => `answered: ${Array.from(card.children, (line) => line.textContent).join(" / ")}`,
 	);
 	if (answered.length > 0) return answered;
+	if (row.querySelector(":scope [data-stop-hook-marker]:not([data-turn-status] *)") !== null)
+		return ["step: Hook re-prompted Claude"];
 	const notices = Array.from(
 		row.querySelectorAll(":not([data-turn-status]) > [data-background-notice]"),
 		(notice) => `notice: ${notice.textContent}`,

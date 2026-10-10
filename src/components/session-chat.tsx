@@ -880,7 +880,14 @@ interface PeerNotice {
 	leads: boolean;
 }
 
-type FoldedNotice = BackgroundNotice | PeerNotice;
+/** Stop-hook feedback that re-prompted Claude straight into the tool group after it. */
+interface HookNotice {
+	kind: "hook";
+	lineIndex: number;
+	line: MessageSessionLine;
+}
+
+type FoldedNotice = BackgroundNotice | PeerNotice | HookNotice;
 
 const NO_NOTICES: readonly FoldedNotice[] = [];
 
@@ -1125,23 +1132,31 @@ function splitNotices(notices: readonly FoldedNotice[]): {
 	taskNotices: BackgroundNotice[];
 	leadingPeers: PeerNotice[];
 	trailingPeers: PeerNotice[];
+	hooks: HookNotice[];
 } {
 	const taskNotices: BackgroundNotice[] = [];
 	const leadingPeers: PeerNotice[] = [];
 	const trailingPeers: PeerNotice[] = [];
+	const hooks: HookNotice[] = [];
 	for (const notice of notices) {
 		if (notice.kind === "task") taskNotices.push(notice);
+		else if (notice.kind === "hook") hooks.push(notice);
 		else (notice.leads ? leadingPeers : trailingPeers).push(notice);
 	}
-	return {taskNotices, leadingPeers, trailingPeers};
+	return {taskNotices, leadingPeers, trailingPeers, hooks};
 }
 
 function FoldedNoticeRow({notice}: {notice: FoldedNotice}) {
-	return notice.kind === "task" ? (
-		<BackgroundNoticeRow notice={notice} />
-	) : (
-		<AgentMessageRow message={notice.message} />
-	);
+	switch (notice.kind) {
+		case "task":
+			return <BackgroundNoticeRow notice={notice} />;
+		case "peer":
+			return <AgentMessageRow message={notice.message} />;
+		case "hook":
+			return <StopHookMarker line={notice.line} />;
+		default:
+			return assertNever(notice);
+	}
 }
 
 /** Notifications with no tool group to join, drawn as the same static rows. */
@@ -1497,7 +1512,20 @@ function buildSessionListEntries(
 		const notification = taskNotificationOf(line);
 		if (notification !== null) return {kind: "task", lineIndex: line.lineIndex, notification};
 		const message = foldablePeerMessage(lines, index, renderProps.subagentLookup);
-		return message === null ? null : {kind: "peer", lineIndex: line.lineIndex, message, leads: true};
+		if (message !== null) return {kind: "peer", lineIndex: line.lineIndex, message, leads: true};
+		return repromptsIntoTools(index) && line.type === "user"
+			? {kind: "hook", lineIndex: line.lineIndex, line}
+			: null;
+	};
+	/** Stop-hook feedback whose next shown line is a tool-only line, which upstream folds it into. */
+	const repromptsIntoTools = (index: number): boolean => {
+		const line = lines[index]!;
+		if (line.type !== "user" || classifyUserContent(line) !== "stop-hook" || !renderProps.showTools) return false;
+		for (let next = index + 1; next < lines.length; next++) {
+			if (skipSet.has(next) || !isLineVisible(lines[next]!, renderProps, verbose)) continue;
+			return isGroupableToolOnlyAssistantLine(lines[next]!);
+		}
+		return false;
 	};
 	const skipSet = buildSkipSet(lines);
 	if (!verbose) for (const index of settledCompletionIndices(lines)) skipSet.add(index);
@@ -1582,7 +1610,8 @@ function buildSessionListEntries(
 				following !== undefined &&
 				isGroupableToolOnlyAssistantLine(following) &&
 				renderProps.showTools &&
-				sameSpan(line, following) &&
+				// Stop-hook feedback belongs to no assistant span; it leads whichever run it re-prompted.
+				(notice.kind === "hook" || sameSpan(line, following)) &&
 				!crossesHeldEntry(line.lineIndex, following.lineIndex)
 			) {
 				leadingNotices = notices;
@@ -1622,7 +1651,7 @@ function buildSessionListEntries(
 				if (crossesHeldEntry(startRecordIndex, nextLine.lineIndex)) break;
 				const next = noticeOf(j);
 				if (next !== null) {
-					if (!sameSpan(line, nextLine)) break;
+					if (next.kind === "hook" || !sameSpan(line, nextLine)) break;
 					notices.push(next.kind === "peer" ? {...next, leads: false} : next);
 					j++;
 					continue;
@@ -3884,16 +3913,16 @@ function ToolCallSummary({
 	const hasTasksView = taskCalls.length >= 3;
 	const displayCalls = hasTasksView ? calls.filter((c) => !TASK_TOOLS.has(c.name)) : calls;
 	const backgroundOutcomes = useContext(BackgroundOutcomeContext);
-	const {taskNotices, leadingPeers, trailingPeers} = useMemo(() => splitNotices(notices), [notices]);
+	const {taskNotices, leadingPeers, trailingPeers, hooks} = useMemo(() => splitNotices(notices), [notices]);
 	const summary = useMemo(
 		() =>
 			summarizeToolCallStats(
 				displayCalls,
 				[...taskNotices.map((notice) => notice.notification), ...stopCompletions(calls, backgroundOutcomes)],
 				failedLaunchIds(backgroundOutcomes),
-				{leading: leadingPeers.length, trailing: trailingPeers.length},
+				{leading: leadingPeers.length, trailing: trailingPeers.length, reprompted: hooks.length > 0},
 			),
-		[calls, displayCalls, taskNotices, leadingPeers, trailingPeers, backgroundOutcomes],
+		[calls, displayCalls, taskNotices, leadingPeers, trailingPeers, hooks, backgroundOutcomes],
 	);
 	// While a call is in flight, upstream names the group by that call's
 	// progressive label instead of the tally.
@@ -3965,6 +3994,9 @@ function ToolCallSummary({
 								{/* Upstream lists failed completions first, as the group label leads with them. */}
 								{failedNotices.map((notice) => (
 									<BackgroundNoticeRow key={`notice-${notice.lineIndex}`} notice={notice} />
+								))}
+								{hooks.map((notice) => (
+									<StopHookMarker key={`notice-${notice.lineIndex}`} line={notice.line} />
 								))}
 								{leadingPeers.map((notice) => (
 									<AgentMessageRow key={`notice-${notice.lineIndex}`} message={notice.message} />

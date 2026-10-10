@@ -448,6 +448,8 @@ export interface BackgroundCompletionLike {
 export interface ReceivedMessages {
 	leading: number;
 	trailing: number;
+	/** A Stop hook's feedback re-prompted Claude straight into the group's first tool. */
+	reprompted?: boolean;
 }
 
 const NO_RECEIVED: ReceivedMessages = {leading: 0, trailing: 0};
@@ -692,6 +694,8 @@ function buildSummarySegments(
 	// a command" when they led the run, "Ran 2 commands, received a message" after.
 	if (received.leading > 0) segments.unshift(labelledSegment(RECEIVED_LABEL, received.leading, 0));
 	if (received.trailing > 0) segments.push(labelledSegment(RECEIVED_LABEL, received.trailing, 0));
+	// Upstream leads with the re-prompt that started the run: "Hook re-prompted Claude, ran a command".
+	if (received.reprompted === true) segments.unshift({verb: "Hook", rest: "re-prompted Claude", count: 1, failed: 0});
 
 	// Upstream folds background completions in last: "Ran a command, finished
 	// a background command", "Used a tool, finished a background task (1 stopped)",
