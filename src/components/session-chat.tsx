@@ -37,6 +37,7 @@ import {computeDiffData} from "../lib/diff-utils";
 import {DebugLink} from "./debug-link";
 import {type TranscriptMessageRef, TranscriptMessageMenu} from "./transcript-context-menu";
 import {AssistantMessageActions, UserMessageActions} from "./message-actions";
+import {narrationProse} from "../lib/thinking-narration";
 import {messageHeading, messageText} from "../lib/transcript-action-targets";
 import {assistantTurnDetails, userTurnDetails} from "../lib/turn-metadata";
 import {TurnChangesCard} from "./turn-changes-card";
@@ -1005,6 +1006,15 @@ const BANNER_LINE_TYPES = new Set([
 	"worktree",
 ]);
 
+/**
+ * Text, or narration (Claude Code's user-facing prose in a thinking block), that
+ * draws as assistant prose. Upstream closes a tool run at either.
+ */
+function isAssistantProseBlock(block: SessionContentBlock): boolean {
+	if (block.type === "text") return typeof block.text === "string" && block.text.trim() !== "";
+	return narrationProse(block) !== null;
+}
+
 /** Prominent question cards split tool runs so summaries cannot reorder their answers. */
 function isGroupableToolOnlyAssistantLine(line: SessionLine): boolean {
 	if (line.type !== "assistant") return false;
@@ -1013,7 +1023,8 @@ function isGroupableToolOnlyAssistantLine(line: SessionLine): boolean {
 	return content.every(
 		(b) =>
 			(b.type === "tool_use" && !PROMINENT_TOOLS.has(b.name)) ||
-			(b.type === "text" && (typeof b.text !== "string" || b.text.trim() === "")),
+			(b.type === "text" && !isAssistantProseBlock(b)) ||
+			(b.type === "thinking" && b.thinking.trim() === ""),
 	);
 }
 
@@ -1058,8 +1069,7 @@ function transcriptRowKind(line: SessionLine): TranscriptRowKind {
 	const content = line.message?.content;
 	if (!Array.isArray(content))
 		return typeof content === "string" && content.trim() !== "" ? "assistant_text" : "assistant";
-	if (content.some((b) => b.type === "text" && typeof b.text === "string" && b.text.trim() !== ""))
-		return "assistant_text";
+	if (content.some(isAssistantProseBlock)) return "assistant_text";
 	if (content.some((b) => b.type === "tool_use")) return "assistant_tool";
 	if (content.some((b) => b.type === "thinking")) return "assistant_thinking";
 	return "assistant";
@@ -2009,7 +2019,7 @@ function hasAssistantVisibleContent(line: SessionLine, showThinking: boolean, sh
 	const content = line.message?.content;
 	if (!Array.isArray(content) || content.length === 0) return false;
 
-	const hasText = content.some((b) => b.type === "text" && typeof b.text === "string" && b.text.trim() !== "");
+	const hasText = content.some(isAssistantProseBlock);
 	const hasThinking =
 		showThinking &&
 		content.some((b) => b.type === "thinking" && typeof b.thinking === "string" && b.thinking.trim() !== "");
@@ -2875,7 +2885,7 @@ function AssistantEntry({
 
 	const hasVisibleNonToolContent = content.some(
 		(b) =>
-			(b.type === "text" && typeof b.text === "string" && b.text.trim() !== "") ||
+			isAssistantProseBlock(b) ||
 			(b.type === "thinking" && showThinking && typeof b.thinking === "string" && b.thinking.trim() !== "") ||
 			b.type === "image" ||
 			b.type === "document",
@@ -3001,11 +3011,12 @@ function ContentBlock({
 	showTools: boolean;
 	toolCalls: ClientToolCall[];
 }) {
-	if (block.type === "text" && typeof block.text === "string") {
-		if (!block.text.trim()) return null;
+	const prose = block.type === "text" ? block.text : narrationProse(block);
+	if (typeof prose === "string") {
+		if (!prose.trim()) return null;
 		return (
 			<div className="relative min-w-0 text-body text-primary" data-transcript-prose>
-				<ProseMarkdown markdown={block.text} />
+				<ProseMarkdown markdown={prose} />
 				<DebugLink sessionId={sessionId} uuid={line.uuid} className="absolute top-0 right-0" />
 			</div>
 		);

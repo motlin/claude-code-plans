@@ -1,6 +1,7 @@
 import type {Chapter} from "./chapter-store";
 import {markdownToPlainText} from "./markdown-plain-text";
 import {stripCommandTags} from "./session-utils";
+import {narrationProse} from "./thinking-narration";
 import type {MessageSessionLine, SessionLine} from "./transcript";
 
 /** Upstream-length chapter chip labels; longer first lines are clipped with an ellipsis. */
@@ -13,13 +14,17 @@ export function messageHeading(speaker: "user" | "assistant", text: string): str
 	return preview === "" ? prefix : `${prefix}: ${preview}`;
 }
 
-/** A message's text blocks as written, joined by blank lines; empty for tool-only turns. */
+/** A message's text and narration blocks as written, joined by blank lines; empty for tool-only turns. */
 export function messageText(line: MessageSessionLine): string {
 	const content = line.message?.content;
 	if (!content) return "";
 	if (typeof content === "string") return stripCommandTags(content);
 	return content
-		.flatMap((block) => (block.type === "text" && typeof block.text === "string" ? [block.text] : []))
+		.flatMap((block) => {
+			if (block.type === "text" && typeof block.text === "string") return [block.text];
+			const narration = narrationProse(block);
+			return narration === null ? [] : [narration];
+		})
 		.join("\n\n");
 }
 

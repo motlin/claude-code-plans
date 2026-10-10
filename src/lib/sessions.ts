@@ -15,6 +15,7 @@ import {
 } from "./schemas";
 import {isCountableMessageRecord} from "./message-count";
 import {costStateFromRecord, type SessionCostState} from "./session-cost";
+import {narrationProse} from "./thinking-narration";
 import {isCaveatLine, isCommandLine, isStdoutLine} from "./transcript";
 
 /** The session's pull request, from its latest `pr-link` transcript record. */
@@ -956,6 +957,7 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 			} else {
 				if (Array.isArray(content)) {
 					for (const block of content) {
+						const narration = narrationProse(block);
 						if (block.type === "text" && typeof block.text === "string") {
 							textBlocks.push(block.text);
 							contentBlocks.push({
@@ -963,6 +965,9 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 								text: block.text,
 								sourceUuid,
 							});
+						} else if (narration !== null) {
+							textBlocks.push(narration);
+							contentBlocks.push({type: "text", text: narration, sourceUuid});
 						} else if (block.type === "thinking" && typeof block.thinking === "string") {
 							contentBlocks.push({
 								type: "thinking",
