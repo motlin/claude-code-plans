@@ -3271,13 +3271,17 @@ function ToolCallRow({
 	// A settled Skill row reads "Ran skill" in secondary ink beside a primary
 	// skill name, as upstream draws it.
 	const isSkill = call.name === "Skill" && !call.isError && !pending;
-	const labelClass = call.isError
-		? "text-danger-ink"
-		: pending
-			? RUNNING_LABEL_CLASS
-			: isSkill
-				? "text-secondary"
-				: ink;
+	// A failed Skill keeps its success label and appends a danger "Failed", as upstream does.
+	const isFailedSkill = call.name === "Skill" && call.isError === true;
+	const labelClass = isFailedSkill
+		? ink
+		: call.isError
+			? "text-danger-ink"
+			: pending
+				? RUNNING_LABEL_CLASS
+				: isSkill
+					? "text-secondary"
+					: ink;
 	const isCompletedPaneAgent = paneAgentId !== undefined && !call.isError && !pending;
 	const isCompletedStandaloneDisclosure = !isAgent && !nested && !call.isError && !pending;
 	// Expandable rows reach the disclosure below; Agent navigation and nested rows are not statuses.
@@ -3285,7 +3289,7 @@ function ToolCallRow({
 	const disclosureLayout = isCompletedStandaloneDisclosure
 		? "min-w-0 self-stretch me-[52px] px-1 py-0.5"
 		: "self-start py-0";
-	const paramClass = isSkill || isCompletedPaneAgent ? "text-primary" : labelClass;
+	const paramClass = isSkill || isCompletedPaneAgent ? "text-primary" : isFailedSkill ? "text-secondary" : labelClass;
 	// A subagent row's chevron sits in the flat `t6` token upstream gives it,
 	// rather than the hover-reactive ink every other tool row uses.
 	const chevronClass = isAgent ? "shrink-0 self-center text-t6" : `shrink-0 ${ink}`;
@@ -3302,7 +3306,8 @@ function ToolCallRow({
 				: running !== null
 					? (running.label ?? null)
 					: (toolRowLabel.doneLabel ?? null);
-	const label = phrase ?? (call.isError ? toolRowLabel.failedVerb : (running?.verb ?? toolRowLabel.verb));
+	const label =
+		phrase ?? (call.isError && !isFailedSkill ? toolRowLabel.failedVerb : (running?.verb ?? toolRowLabel.verb));
 	// A label that is a whole phrase owns the row and truncates; a bare verb
 	// keeps its width so the param beside it truncates instead.
 	const isPhraseLabel = phrase !== null;
@@ -3314,7 +3319,7 @@ function ToolCallRow({
 				? (call.param.split("/").pop() ?? call.param)
 				: (toolRowLabel.meta ?? call.param);
 	const paramHref = displayParam === toolRowLabel.meta ? toolRowLabel.metaHref : undefined;
-	const paramIsCode = displayParam === toolRowLabel.meta && toolRowLabel.metaIsCode === true;
+	const paramIsCode = displayParam === toolRowLabel.meta && toolRowLabel.metaIsCode === true && !isFailedSkill;
 	const rangeLabel = displayParam ? readRangeLabel(call) : null;
 
 	const rowLabel = (
@@ -3351,6 +3356,7 @@ function ToolCallRow({
 			)}
 			{rangeLabel && <span className={`text-body ${labelClass} truncate min-w-0`}>{rangeLabel}</span>}
 			{diffStats && <DiffStats added={diffStats.added} removed={diffStats.removed} />}
+			{isFailedSkill && <span className="shrink-0 text-body text-danger-ink">Failed</span>}
 		</>
 	);
 

@@ -1005,16 +1005,27 @@ describe("SessionChat Skill row label", () => {
 		});
 	});
 
-	it("keeps a failed Skill row in danger red", () => {
-		const html = renderTranscript(
-			toolResultRecords({name: "Skill", input: {skill: "loop"}}, "Unknown skill", true),
-		);
+	it('keeps a failed Skill row on "Ran skill /name" and appends a danger "Failed", as upstream does', () => {
+		const records = toolResultRecords({name: "Skill", input: {skill: "nextdns:report"}}, "Unknown skill", true);
+		const html = renderTranscript(records);
+		const header = renderTranscriptElement(records).querySelector(".group\\/tool")!;
 
-		expect(rowHeaderSpanClasses(html)).toStrictEqual([
-			"shrink-0 text-body text-danger-ink",
-			"truncate min-w-0 text-body text-danger-ink",
-			"shrink-0 text-ink-muted group-hover/tool:text-secondary",
-		]);
+		expect({
+			text: Array.from(header.children, (child) => child.textContent),
+			spans: rowHeaderSpanClasses(html),
+			code: html.includes("<code"),
+			oldLabel: html.includes("Failed to run skill"),
+		}).toStrictEqual({
+			text: ["Ran skill", "/nextdns:report", "Failed", ""],
+			spans: [
+				"shrink-0 text-body text-ink-muted group-hover/tool:text-secondary",
+				"truncate min-w-0 text-body text-secondary",
+				"shrink-0 text-body text-danger-ink",
+				"shrink-0 text-ink-muted group-hover/tool:text-secondary",
+			],
+			code: false,
+			oldLabel: false,
+		});
 	});
 
 	it("defines the danger ink token from upstream's rgb(142, 38, 38)", () => {
