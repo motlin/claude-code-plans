@@ -608,46 +608,46 @@ function processRecordBatch(
 			if (Array.isArray(content)) {
 				for (const block of content) {
 					if (block.type === "tool_result") {
-						const rawResult = extractToolResultContent(block.content);
-						if (rawResult !== undefined) {
-							const resultText = stripResultTags(rawResult);
-							// A result reporting `success: false`, as SendMessage does when no agent
-							// is reachable, fails the call upstream though is_error is unset.
-							const reported = record.toolUseResult;
-							const reportsFailure =
-								typeof reported === "object" &&
-								reported !== null &&
-								"success" in reported &&
-								reported.success === false;
-							const info: ToolResultInfo = {
-								result: truncateResult(resultText, 150),
-								isError: block.is_error === true || reportsFailure,
-								resultUuid: uuid ?? "",
-							};
-							const denial = info.isError
-								? userDenial(record.toolDenialKind, record.toolUseResult, resultText)
-								: null;
-							if (denial === "stopped") info.stopped = true;
-							if (denial === "denied") info.denied = true;
-							const resultMeta = toolResultMetaFrom(record.toolUseResult);
-							if (resultMeta !== undefined) info.resultMeta = resultMeta;
-							if (!info.isError) {
-								addArtifactDecoration(
-									info,
-									resultText,
-									record.toolUseResult,
-									toolNames.get(block.tool_use_id),
-								);
-							}
-							const startTime = toolStartTimes.get(block.tool_use_id);
-							if (startTime && timestamp) {
-								const resultTime = new Date(timestamp).getTime();
-								if (!isNaN(resultTime) && resultTime > startTime) {
-									info.duration = resultTime - startTime;
-								}
-							}
-							toolResults.set(block.tool_use_id, info);
+						// A result with no text, like ToolSearch's tool_reference blocks or a
+						// Read of an image, still settles its call.
+						const rawResult = extractToolResultContent(block.content) ?? "";
+						const resultText = stripResultTags(rawResult);
+						// A result reporting `success: false`, as SendMessage does when no agent
+						// is reachable, fails the call upstream though is_error is unset.
+						const reported = record.toolUseResult;
+						const reportsFailure =
+							typeof reported === "object" &&
+							reported !== null &&
+							"success" in reported &&
+							reported.success === false;
+						const info: ToolResultInfo = {
+							result: truncateResult(resultText, 150),
+							isError: block.is_error === true || reportsFailure,
+							resultUuid: uuid ?? "",
+						};
+						const denial = info.isError
+							? userDenial(record.toolDenialKind, record.toolUseResult, resultText)
+							: null;
+						if (denial === "stopped") info.stopped = true;
+						if (denial === "denied") info.denied = true;
+						const resultMeta = toolResultMetaFrom(record.toolUseResult);
+						if (resultMeta !== undefined) info.resultMeta = resultMeta;
+						if (!info.isError) {
+							addArtifactDecoration(
+								info,
+								resultText,
+								record.toolUseResult,
+								toolNames.get(block.tool_use_id),
+							);
 						}
+						const startTime = toolStartTimes.get(block.tool_use_id);
+						if (startTime && timestamp) {
+							const resultTime = new Date(timestamp).getTime();
+							if (!isNaN(resultTime) && resultTime > startTime) {
+								info.duration = resultTime - startTime;
+							}
+						}
+						toolResults.set(block.tool_use_id, info);
 					}
 				}
 			}
