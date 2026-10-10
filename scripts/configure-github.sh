@@ -158,9 +158,14 @@ echo ""
 check_security_setting() {
     local endpoint="$1"
     local description="$2"
+    local jq_filter="${3:-}"
 
+    if [[ -n "$jq_filter" ]]; then
+        if [[ "$(gh api "repos/${REPO}/$endpoint" --jq "$jq_filter" 2>/dev/null)" == "true" ]]; then
+            return
+        fi
     # A 404 means the setting is disabled; its error output is expected, not a failure.
-    if gh api "repos/${REPO}/$endpoint" --silent 2>/dev/null; then
+    elif gh api "repos/${REPO}/$endpoint" --silent 2>/dev/null; then
         return
     fi
 
@@ -170,8 +175,10 @@ check_security_setting() {
     fi
 }
 
+# vulnerability-alerts returns 204 when enabled and 404 when disabled;
+# automated-security-fixes always returns 200 with an "enabled" field.
 check_security_setting "vulnerability-alerts"      "vulnerability alerts"
-check_security_setting "automated-security-fixes"  "automated security fixes (Dependabot)"
+check_security_setting "automated-security-fixes"  "automated security fixes (Dependabot)" ".enabled"
 
 echo ""
 
