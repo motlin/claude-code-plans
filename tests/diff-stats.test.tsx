@@ -56,17 +56,17 @@ describe("DiffStats", () => {
 			clusterClass: CLUSTER_CLASS,
 			parts: [
 				{className: "text-extended-green", text: "+15"},
-				{className: "text-extended-pink", text: "-3"},
+				{className: "text-extended-pink", text: "−3"},
 			],
 		});
 	});
 
-	it('keeps a zero removed count, as upstream reads a created file "+42 -0"', () => {
+	it('keeps a zero removed count, as upstream reads a created file "+42 −0"', () => {
 		const {container} = render(<DiffStats added={42} removed={0} />);
 
 		expect(statsMarkup(container).parts).toStrictEqual([
 			{className: "text-extended-green", text: "+42"},
-			{className: "text-extended-pink", text: "-0"},
+			{className: "text-extended-pink", text: "−0"},
 		]);
 	});
 
@@ -113,6 +113,6 @@ describe("Edit tool row stats", () => {
 
 		expect(html).toContain(`class="${CLUSTER_CLASS}"`);
 		expect(html).toContain(">+2</span>");
-		expect(html).toContain(">-1</span>");
+		expect(html).toContain(">−1</span>");
 	});
 });

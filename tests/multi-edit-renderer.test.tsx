@@ -159,7 +159,7 @@ describe("MultiEdit diff stats", () => {
 		const added = container.querySelector(".text-extended-green");
 		const removed = container.querySelector(".text-extended-pink");
 		expect(added?.textContent).toBe("+4");
-		expect(removed?.textContent).toBe("-3");
+		expect(removed?.textContent).toBe("−3");
 	});
 
 	it("aggregates MultiEdit stats into the collapsed turn summary", () => {

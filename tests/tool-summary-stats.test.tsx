@@ -241,7 +241,7 @@ describe("failed edits in diff stats", () => {
 	it("counts a lone Write row's created lines as a group does", () => {
 		expect(
 			lonePathRow({id: "t-write", name: "Write", input: {file_path: "/repo/x.mjs", content: "a\nb\n"}}),
-		).toStrictEqual({text: "Createdx.mjs+2-0", stats: ["+2", "-0"]});
+		).toStrictEqual({text: "Createdx.mjs+2−0", stats: ["+2", "−0"]});
 	});
 
 	it("draws a failed Write row with no diff stat", () => {
@@ -284,12 +284,12 @@ describe("ToolCallSummary stats and ink", () => {
 			hasStatsWrapper: summaryButton(html).includes('<span class="flex gap-g1 tabular-nums shrink-0">'),
 		}).toStrictEqual({
 			label: "Read a file, edited a file",
-			stats: ["text-diff-added:+1", "text-diff-removed:-3"],
+			stats: ["text-diff-added:+1", "text-diff-removed:−3"],
 			hasStatsWrapper: true,
 		});
 	});
 
-	it('shows "+0 -28" when only lines were removed', () => {
+	it('shows "+0 −28" when only lines were removed', () => {
 		const removed = Array.from({length: 28}, (_, i) => `line${i}`).join("\n");
 		const html = renderRun([
 			{id: "t1", name: "Read", input: {file_path: "/repo/a.ts"}},
@@ -299,7 +299,7 @@ describe("ToolCallSummary stats and ink", () => {
 				input: {file_path: "/repo/b.ts", old_string: removed, new_string: ""},
 			},
 		]);
-		expect(statSpans(html)).toStrictEqual(["text-diff-added:+0", "text-diff-removed:-28"]);
+		expect(statSpans(html)).toStrictEqual(["text-diff-added:+0", "text-diff-removed:−28"]);
 	});
 
 	it("uses muted ink with a secondary hover on the collapsed label", () => {

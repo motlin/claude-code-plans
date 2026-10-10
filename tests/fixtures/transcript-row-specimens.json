@@ -10008,7 +10008,7 @@
 	{
 		"session": "1eb4c73e",
 		"line": 730,
-		"upstream": ["prose", "status: Created sell-positions.mjs +59 -0"],
+		"upstream": ["prose", "status: Created sell-positions.mjs +59 −0"],
 		"records": [
 			{
 				"parentUuid": "1e4eae3d-13b6-4b57-bb1e-f5e979f5c7a0",

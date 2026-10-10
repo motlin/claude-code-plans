@@ -4110,7 +4110,7 @@ function ToolCallSummary({
 						{hasDiffStats(summary) && (
 							<span className="flex gap-g1 tabular-nums shrink-0">
 								<span className="text-diff-added">+{summary.added}</span>
-								<span className="text-diff-removed">-{summary.removed}</span>
+								<span className="text-diff-removed">−{summary.removed}</span>
 							</span>
 						)}
 						<span className={`shrink-0 ${ink}`}>

@@ -320,7 +320,7 @@ export function TruncatedFilePathHeader({filePath}: {filePath: string}) {
 /**
  * Inline diff stats matching upstream claude.ai/code:
  *   span.inline-flex > span.flex.gap-g1 > span.text-extended-green "+N"
- *                                       > span.text-extended-pink  "-M"
+ *                                       > span.text-extended-pink  "−M" (U+2212)
  * `tabular-nums` keeps the digits aligned when Edit rows stack.
  */
 export function DiffStats({added, removed}: {added: number; removed: number}) {
@@ -329,7 +329,7 @@ export function DiffStats({added, removed}: {added: number; removed: number}) {
 		<span className="inline-flex">
 			<span className="flex gap-g1 items-center text-body tabular-nums shrink-0">
 				<span className="text-extended-green">+{added}</span>
-				<span className="text-extended-pink">-{removed}</span>
+				<span className="text-extended-pink">−{removed}</span>
 			</span>
 		</span>
 	);
