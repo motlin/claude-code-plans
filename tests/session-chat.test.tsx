@@ -980,7 +980,7 @@ function rowHeaderChildren(records: unknown[]): {text: string | null; className:
 const MUTED_LABEL = "text-body text-ink-muted group-hover/tool:text-secondary";
 const FAILED_SUFFIX = {text: "Failed", className: "shrink-0 text-body text-danger-ink"};
 const STOPPED_SUFFIX = {text: "Stopped", className: "shrink-0 text-body text-secondary"};
-const ROW_CHEVRON = {text: "", className: "shrink-0 text-ink-muted group-hover/tool:text-secondary"};
+const ROW_CHEVRON = {text: "", className: "shrink-0 -ms-1 text-ink-muted group-hover/tool:text-secondary"};
 
 describe("SessionChat failed tool row label", () => {
 	const bash = (description: string) => ({name: "Bash", input: {command: "git push", description}});
@@ -1099,7 +1099,7 @@ describe("SessionChat Skill row label", () => {
 			spans: [
 				"shrink-0 text-body text-secondary",
 				"truncate min-w-0 text-body text-primary",
-				"shrink-0 text-ink-muted group-hover/tool:text-secondary",
+				"shrink-0 -ms-1 text-ink-muted group-hover/tool:text-secondary",
 			],
 			name: true,
 		});
@@ -1121,7 +1121,7 @@ describe("SessionChat Skill row label", () => {
 				"shrink-0 text-body text-ink-muted group-hover/tool:text-secondary",
 				"truncate min-w-0 text-body text-secondary",
 				"shrink-0 text-body text-danger-ink",
-				"shrink-0 text-ink-muted group-hover/tool:text-secondary",
+				"shrink-0 -ms-1 text-ink-muted group-hover/tool:text-secondary",
 			],
 			code: false,
 			oldLabel: false,
@@ -1370,7 +1370,7 @@ describe("SessionChat Agent row label", () => {
 		expect(rowHeaderSpanClasses(renderTranscript(agentRecords))).toStrictEqual([
 			VERB,
 			DESCRIPTION,
-			"shrink-0 self-center text-t6",
+			"shrink-0 -ms-1 self-center text-t6",
 		]);
 	});
 
@@ -1378,7 +1378,7 @@ describe("SessionChat Agent row label", () => {
 		expect(rowHeaderSpanClasses(renderWithSubagents(spawnedAgent("claude-haiku-4-5-20251001")))).toStrictEqual([
 			VERB,
 			DESCRIPTION,
-			"shrink-0 self-center text-t6",
+			"shrink-0 -ms-1 self-center text-t6",
 		]);
 	});
 
@@ -1767,7 +1767,7 @@ describe("SessionChat tool row hover treatment", () => {
 		expect(rowHeaderSpanClasses(renderTranscript(failedToolCallRecords(false)))).toStrictEqual([
 			"shrink-0 text-body text-ink-muted group-hover/tool:text-secondary",
 			"truncate min-w-0 text-body text-ink-muted group-hover/tool:text-secondary",
-			"shrink-0 text-ink-muted group-hover/tool:text-secondary",
+			"shrink-0 -ms-1 text-ink-muted group-hover/tool:text-secondary",
 		]);
 	});
 
@@ -1776,7 +1776,7 @@ describe("SessionChat tool row hover treatment", () => {
 			"shrink-0 text-body text-ink-muted group-hover/tool:text-secondary",
 			"truncate min-w-0 text-body text-ink-muted group-hover/tool:text-secondary",
 			"shrink-0 text-body text-danger-ink",
-			"shrink-0 text-ink-muted group-hover/tool:text-secondary",
+			"shrink-0 -ms-1 text-ink-muted group-hover/tool:text-secondary",
 		]);
 	});
 
@@ -1818,7 +1818,7 @@ describe("SessionChat non-expanding tool rows", () => {
 		);
 
 		expect({...toolRowChrome(html), label: html.includes(">Updated todos<")}).toStrictEqual({
-			bareHeaderClass: "relative group/tool flex self-start max-w-full items-center py-0 gap-g2 text-left",
+			bareHeaderClass: "relative group/tool flex self-start max-w-full items-center py-0 gap-g5 text-left",
 			roleButton: false,
 			ariaExpanded: false,
 			bodyMounted: false,
@@ -1840,7 +1840,7 @@ describe("SessionChat non-expanding tool rows", () => {
 			label: html.includes(">Started planning<"),
 			instructions: html.includes("DO NOT write or edit any files yet"),
 		}).toStrictEqual({
-			bareHeaderClass: "relative group/tool flex self-start max-w-full items-center py-0 gap-g2 text-left",
+			bareHeaderClass: "relative group/tool flex self-start max-w-full items-center py-0 gap-g5 text-left",
 			roleButton: false,
 			ariaExpanded: false,
 			bodyMounted: false,
@@ -1854,7 +1854,7 @@ describe("SessionChat non-expanding tool rows", () => {
 		const html = renderTranscript(toolResultRecords({name: "TaskList", input: {}}, ""));
 
 		expect({...toolRowChrome(html), label: html.includes(">Listed tasks<")}).toStrictEqual({
-			bareHeaderClass: "relative group/tool flex self-start max-w-full items-center py-0 gap-g2 text-left",
+			bareHeaderClass: "relative group/tool flex self-start max-w-full items-center py-0 gap-g5 text-left",
 			roleButton: false,
 			ariaExpanded: false,
 			bodyMounted: false,
@@ -1971,7 +1971,7 @@ describe("SessionChat standalone status row layout", () => {
 			className: frame.querySelector(".group\\/tool")!.className,
 		};
 	};
-	const rowClass = `relative group/tool flex max-w-full items-center ${STATUS_ROW_LAYOUT} gap-g2 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3`;
+	const rowClass = `relative group/tool flex max-w-full items-center ${STATUS_ROW_LAYOUT} gap-g5 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3`;
 
 	it("draws failed and running standalone rows in the completed row's 24px padded layout, as upstream does", () => {
 		const pending = toolResultRecords(bash, "").slice(0, 1);
@@ -1994,8 +1994,8 @@ describe("SessionChat standalone status row layout", () => {
 		expect(
 			[...container.querySelectorAll<HTMLElement>('[role="button"][aria-expanded]')].map((row) => row.className),
 		).toStrictEqual([
-			"relative group/tool flex max-w-full items-center self-start py-0 gap-g2 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3",
-			"relative group/tool flex max-w-full items-center self-start py-0 gap-g2 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3",
+			"relative group/tool flex max-w-full items-center self-start py-0 gap-g5 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3",
+			"relative group/tool flex max-w-full items-center self-start py-0 gap-g5 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3",
 		]);
 	});
 });
@@ -2016,7 +2016,7 @@ describe("SessionChat disclosure focus treatment", () => {
 			row: disclosureClassName(singleBash),
 			summary: disclosureClassName(groupedBash),
 		}).toStrictEqual({
-			row: "relative group/tool flex max-w-full items-center min-w-0 self-stretch me-[52px] px-1 py-0.5 gap-g2 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3",
+			row: "relative group/tool flex max-w-full items-center min-w-0 self-stretch me-[52px] px-1 py-0.5 gap-g5 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3",
 			summary:
 				"relative group/tool flex max-w-full items-center min-w-0 self-stretch me-[52px] px-1 py-0.5 gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3",
 		});

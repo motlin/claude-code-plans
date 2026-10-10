@@ -3368,7 +3368,8 @@ function ToolCallRow({
 	const paramClass = isSkill || isCompletedPaneAgent ? "text-primary" : isFailedSkill ? "text-secondary" : labelClass;
 	// A subagent row's chevron sits in the flat `t6` token upstream gives it,
 	// rather than the hover-reactive ink every other tool row uses.
-	const chevronClass = isAgent ? "shrink-0 self-center text-t6" : `shrink-0 ${ink}`;
+	// Upstream's 6px row gap less the chevron's -4px start margin leaves it 2px from the status.
+	const chevronClass = isAgent ? "shrink-0 -ms-1 self-center text-t6" : `shrink-0 -ms-1 ${ink}`;
 	// A failed call whose param is its own description keeps that description as
 	// written ("Rebase and push X"); upstream past-tenses it only on success.
 	const failedDescription = status !== null ? getToolDescription(call.name, call.input) : null;
@@ -3475,7 +3476,7 @@ function ToolCallRow({
 							open();
 						}
 					}}
-					className={`relative group/tool flex max-w-full items-center ${isCompletedPaneAgent && !nested ? "min-w-0 self-stretch me-[52px] px-1 py-0.5 gap-1.5" : "self-start py-0 gap-g2"} text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3`}
+					className={`relative group/tool flex max-w-full items-center ${isCompletedPaneAgent && !nested ? "min-w-0 self-stretch me-[52px] px-1 py-0.5 gap-1.5" : "self-start py-0 gap-g5"} text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3`}
 				>
 					{rowLabel}
 				</div>
@@ -3486,7 +3487,7 @@ function ToolCallRow({
 	if (!expandable) {
 		return (
 			<div data-tool-row="" className="flex flex-col w-full">
-				<div className="relative group/tool flex self-start max-w-full items-center py-0 gap-g2 text-left">
+				<div className="relative group/tool flex self-start max-w-full items-center py-0 gap-g5 text-left">
 					{rowLabel}
 				</div>
 				{body}
@@ -3513,7 +3514,7 @@ function ToolCallRow({
 						toggleExpanded();
 					}
 				}}
-				className={`relative group/tool flex max-w-full items-center ${disclosureLayout} gap-g2 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3`}
+				className={`relative group/tool flex max-w-full items-center ${disclosureLayout} gap-g5 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3`}
 			>
 				{rowLabel}
 				<span className={chevronClass}>
