@@ -33,6 +33,9 @@ import type {
 	GitCommitKindSchema,
 	GitPrActionSchema,
 	JsonlRecordSchema,
+	PermissionDecisionDecisionSchema,
+	PermissionDecisionReasonTypeSchema,
+	PermissionDecisionSourceSchema,
 	PluginCatalogSourceKindSchema,
 	RenderedRoleSchema,
 	SkillOverrideValueSchema,
@@ -100,6 +103,27 @@ export const turnOriginLabels = {
 	task_notification: "Task notification",
 	scheduled: "Scheduled task",
 } satisfies Record<z.infer<typeof TurnOriginSchema>, string>;
+
+const permissionDecisionDecisionLabels = {
+	accept: "Accepted",
+	reject: "Rejected",
+} satisfies Record<z.infer<typeof PermissionDecisionDecisionSchema>, string>;
+
+const permissionDecisionSourceLabels = {
+	config: "Configuration",
+	hook: "Hook",
+	user_permanent: "User (always)",
+	user_temporary: "User (once)",
+} satisfies Record<z.infer<typeof PermissionDecisionSourceSchema>, string>;
+
+const permissionDecisionReasonTypeLabels = {
+	classifier: "Classifier",
+	hook: "Hook",
+	mode: "Permission mode",
+	other: "Other",
+	rule: "Permission rule",
+	subcommandResults: "Subcommand results",
+} satisfies Record<z.infer<typeof PermissionDecisionReasonTypeSchema>, string>;
 
 const taskStatusLabels = {
 	pending: "Pending",
@@ -484,6 +508,7 @@ const attachmentVariants = {
 	silent_turn_reminder: true,
 	thinking_drop: true,
 	thinking_stripped: true,
+	skill_mention: true,
 } satisfies Record<z.infer<typeof AttachmentPayloadSchema>["type"], true>;
 
 /** Consumed selectively (text extraction etc.) — no single exhaustive handler. */
@@ -523,6 +548,7 @@ const jsonlRecordVariants = {
 	"frame-link": true,
 	"artifact-comment-monitor": true,
 	"artifact-autoreact-ledger": true,
+	"dev-mods": true,
 } satisfies Record<z.infer<typeof JsonlRecordSchema>["type"], true>;
 
 /** Exhaustive handler: renderSessionMessage switch in src/components/session-chat.tsx. */
@@ -1009,6 +1035,9 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
 	AttachmentPayloadSchema: attachmentVariants,
 	"UserRecordSchema.promptSource": promptSourceLabels,
 	"UserRecordSchema.turnOrigin": turnOriginLabels,
+	"UserRecordSchema.permissionDecision.decision": permissionDecisionDecisionLabels,
+	"UserRecordSchema.permissionDecision.source": permissionDecisionSourceLabels,
+	"UserRecordSchema.permissionDecision.reasonType": permissionDecisionReasonTypeLabels,
 	JsonlRecordSchema: jsonlRecordVariants,
 	"FileEditToolUseResultSchema|0.type": writeToolUseResultTypeLabels,
 	"GitOperationSchema.commit.kind": gitCommitKindLabels,

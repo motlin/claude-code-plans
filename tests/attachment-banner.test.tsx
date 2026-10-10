@@ -122,6 +122,7 @@ const MINIMAL_BY_TYPE: Record<string, AttachmentPayload> = {
 	silent_turn_reminder: {type: "silent_turn_reminder"},
 	thinking_drop: {type: "thinking_drop"},
 	thinking_stripped: {type: "thinking_stripped"},
+	skill_mention: {type: "skill_mention"},
 };
 
 describe("AttachmentBanner", () => {

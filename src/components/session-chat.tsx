@@ -1701,6 +1701,7 @@ const SYSTEM_BANNER_SUBTYPES = new Set([
 	"silent_turn_reminder",
 	"thinking_drop",
 	"thinking_stripped",
+	"skill_mention",
 ]);
 
 interface AttachmentHead {

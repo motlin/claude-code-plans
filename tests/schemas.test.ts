@@ -1360,6 +1360,54 @@ describe("JsonlRecordSchema observed 2026-09 transcript fields", () => {
 		expect(records.map((record) => JsonlRecordSchema.parse(record))).toStrictEqual(records);
 	});
 
+	it("parses requested models, permission decisions, surfaced tool definitions, run ids, git status, skill mentions, and dev-mods records", () => {
+		const records = [
+			{
+				type: "assistant",
+				...baseFields,
+				requestedModel: "claude-opus-5-5",
+				message: {role: "assistant", model: "claude-opus-5-5", content: [{type: "text", text: "Done."}]},
+			},
+			{
+				type: "user",
+				...baseFields,
+				message: {role: "user", content: [{type: "tool_result", tool_use_id: "toolu_1", content: "ok"}]},
+				permissionDecision: {decision: "accept", source: "config", reasonType: "rule"},
+			},
+			{
+				type: "user",
+				...baseFields,
+				message: {role: "user", content: [{type: "tool_result", tool_use_id: "toolu_2", content: "no"}]},
+				permissionDecision: {decision: "reject", source: "user_temporary"},
+			},
+			attachmentRecord({
+				type: "deferred_tools_delta",
+				surfacedNames: ["mcp__docs__guide"],
+				surfacedDefinitions: [
+					{
+						name: "mcp__docs__guide",
+						listing: "1f2c30a590811b06",
+						definition: {
+							name: "mcp__docs__guide",
+							description: "Docs guides",
+							input_schema: {type: "object", properties: {}},
+							eager_input_streaming: true,
+						},
+					},
+				],
+			}),
+			attachmentRecord({type: "queued_command", prompt: "next", runId: "0mv136l2s-e0862bf6"}),
+			attachmentRecord({
+				type: "session_context",
+				context: {userEmail: "test@example.com", gitStatus: "Current branch: main\n\nStatus:\n(clean)"},
+			}),
+			attachmentRecord({type: "skill_mention", skillName: "build:test-branch"}),
+			{type: "dev-mods", folder: "/tmp/dev-mods/sess-123", sessionId: "sess-123"},
+		];
+
+		expect(records.map((record) => JsonlRecordSchema.parse(record))).toStrictEqual(records);
+	});
+
 	it("parses turn-level reminder and thinking attachments", () => {
 		const records = [
 			attachmentRecord({type: "bash_output_audience_note", toolUseID: "toolu_1"}),

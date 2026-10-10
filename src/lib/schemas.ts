@@ -280,6 +280,26 @@ export const PromptSourceSchema = z.enum(["typed", "system", "sdk", "queued", "s
 /** Who started a user turn; `human` is the ordinary typed-at-the-keyboard case. */
 export const TurnOriginSchema = z.enum(["human", "peer", "task_notification", "scheduled"]);
 
+export const PermissionDecisionDecisionSchema = z.enum(["accept", "reject"]);
+export const PermissionDecisionSourceSchema = z.enum(["config", "hook", "user_permanent", "user_temporary"]);
+export const PermissionDecisionReasonTypeSchema = z.enum([
+	"classifier",
+	"hook",
+	"mode",
+	"other",
+	"rule",
+	"subcommandResults",
+]);
+
+// How the tool call answered by this tool_result was permitted or denied.
+const PermissionDecisionSchema = z
+	.object({
+		decision: PermissionDecisionDecisionSchema,
+		source: PermissionDecisionSourceSchema,
+		reasonType: PermissionDecisionReasonTypeSchema.optional(),
+	})
+	.strict();
+
 const GitRemoteVisibilitySchema = z
 	.object({
 		name: z.string().optional(),
@@ -387,6 +407,7 @@ export const UserRecordSchema = z
 		scheduledFireId: z.string().optional(),
 		classifierMetaLines: z.string().optional(),
 		serverClassifierContext: ServerClassifierContextSchema.optional(),
+		permissionDecision: PermissionDecisionSchema.optional(),
 	})
 	.strict();
 
@@ -395,6 +416,7 @@ export const AssistantRecordSchema = z
 		type: z.literal("assistant"),
 		...BaseRecordFields,
 		requestId: z.string().optional(),
+		requestedModel: z.string().optional(),
 		effort: z.string().optional(),
 		message: z
 			.object({
@@ -460,6 +482,7 @@ export const AssistantRecordSchema = z
 		apiBlockIndex: z.number().optional(),
 		perTurnEffort: z.union([z.string(), z.null()]).optional(),
 		serverClassifierRequest: z.string().optional(),
+		thinkingDisplay: z.literal("updates").optional(),
 		thinkingDurationMs: z.number().optional(),
 		truncatedAfterOutput: z.boolean().optional(),
 		// Keyed by tool_use id: the working directory each tool call ran in.
@@ -622,6 +645,16 @@ const AsyncHookResponseAttachmentPayload = z
 	})
 	.strict();
 
+const ToolDefinitionSchema = z
+	.object({
+		name: z.string(),
+		description: z.string().optional(),
+		input_schema: z.record(z.string(), JsonValueSchema).optional(),
+		eager_input_streaming: z.boolean().optional(),
+		defer_loading: z.boolean().optional(),
+	})
+	.strict();
+
 const DeferredToolsDeltaAttachmentPayload = z
 	.object({
 		type: z.literal("deferred_tools_delta"),
@@ -633,6 +666,9 @@ const DeferredToolsDeltaAttachmentPayload = z
 		needsAuthMcpServers: z.array(z.string()).optional(),
 		wireHiddenNames: z.array(z.string()).optional(),
 		surfacedNames: z.array(z.string()).optional(),
+		surfacedDefinitions: z
+			.array(z.object({name: z.string(), listing: z.string(), definition: ToolDefinitionSchema}).strict())
+			.optional(),
 		restoredNames: z.array(z.string()).optional(),
 		retractedTools: z.array(z.object({name: z.string(), cause: z.string().optional()}).strict()).optional(),
 		failedMcpServers: z
@@ -815,6 +851,7 @@ const QueuedCommandAttachmentPayload = z
 		delivery_id: z.string().optional(),
 		reminderId: z.string().optional(),
 		humanTurn: z.boolean().optional(),
+		runId: z.string().optional(),
 		usage: z
 			.object({
 				totalTokens: z.number().optional(),
@@ -927,16 +964,6 @@ const TeamContextAttachmentPayload = z
 		teamConfigPath: z.string().optional(),
 		taskListPath: z.string().optional(),
 		hasTaskListTools: z.boolean().optional(),
-	})
-	.strict();
-
-const ToolDefinitionSchema = z
-	.object({
-		name: z.string(),
-		description: z.string().optional(),
-		input_schema: z.record(z.string(), JsonValueSchema).optional(),
-		eager_input_streaming: z.boolean().optional(),
-		defer_loading: z.boolean().optional(),
 	})
 	.strict();
 
@@ -1119,7 +1146,14 @@ const RemoteSessionChangeAttachmentPayload = z
 const SessionContextAttachmentPayload = z
 	.object({
 		type: z.literal("session_context"),
-		context: z.object({userEmail: z.string().optional()}).strict().optional(),
+		context: z.object({userEmail: z.string().optional(), gitStatus: z.string().optional()}).strict().optional(),
+	})
+	.strict();
+
+const SkillMentionAttachmentPayload = z
+	.object({
+		type: z.literal("skill_mention"),
+		skillName: z.string().optional(),
 	})
 	.strict();
 
@@ -1232,6 +1266,7 @@ export const AttachmentPayloadSchema = z.discriminatedUnion("type", [
 	RemoteSessionChangeAttachmentPayload,
 	SessionContextAttachmentPayload,
 	SilentTurnReminderAttachmentPayload,
+	SkillMentionAttachmentPayload,
 	ThinkingDropAttachmentPayload,
 	ThinkingStrippedAttachmentPayload,
 ]);
@@ -1524,6 +1559,15 @@ const FrameLinkRecordSchema = z
 	})
 	.strict();
 
+// Points at the per-session folder holding the session's development mods.
+const DevModsRecordSchema = z
+	.object({
+		type: z.literal("dev-mods"),
+		folder: z.string(),
+		sessionId: z.string(),
+	})
+	.strict();
+
 // `artifacts` is keyed by artifact URL.
 const ArtifactCommentMonitorRecordSchema = z
 	.object({
@@ -1600,6 +1644,7 @@ export const JsonlRecordSchema = z.discriminatedUnion("type", [
 	FrameLinkRecordSchema,
 	ArtifactCommentMonitorRecordSchema,
 	ArtifactAutoreactLedgerRecordSchema,
+	DevModsRecordSchema,
 ]);
 
 // ---------------------------------------------------------------------------

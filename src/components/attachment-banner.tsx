@@ -759,6 +759,14 @@ function AttachmentContent({
 					{...shared}
 				/>
 			);
+		case "skill_mention":
+			return (
+				<Banner
+					icon={<Wrench className="h-3.5 w-3.5" />}
+					label={`Skill mentioned${attachment.skillName ? `: ${attachment.skillName}` : ""}`}
+					{...shared}
+				/>
+			);
 		case "thinking_drop":
 		case "thinking_stripped":
 			return (

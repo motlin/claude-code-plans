@@ -178,4 +178,9 @@ export const jsonlRecordFixtures = {
 		sessionId: "session-alice-100",
 		artifacts: {"https://example.com/artifact/alice-100": {savedAt: 1, stampHighWater: null}},
 	},
+	"dev-mods": {
+		type: "dev-mods",
+		folder: "/tmp/test/dev-mods/session-alice-100",
+		sessionId: "session-alice-100",
+	},
 } satisfies JsonlRecordFixtures;
