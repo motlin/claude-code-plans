@@ -388,6 +388,7 @@ export const SessionChat = React.memo(function SessionChat({
 		(agentId) => subagentLookup.byBareId.get(agentId)?.description ?? null,
 		[subagentLookup],
 	);
+	const backgroundOutcomes = useMemo(() => backgroundLaunchOutcomes(lines), [lines]);
 
 	useEffect(() => {
 		const container = containerRef.current;
@@ -524,37 +525,39 @@ export const SessionChat = React.memo(function SessionChat({
 		<TranscriptModeContext.Provider value={transcriptMode}>
 			<SlashCommandsContext.Provider value={slashCommands}>
 				<AgentNameContext.Provider value={resolveAgentName}>
-					<div ref={containerRef} className={`${CHAT_COLUMN_CLASS} pt-4 pb-4 text-body transcript-text`}>
-						{summary !== null && summary !== "" && (
-							<p
-								data-testid="session-summary-row"
-								title={summary}
-								className="mb-4 truncate text-sm text-t6"
-							>
-								{summary}
-							</p>
-						)}
-						<SessionLineList
-							key={sessionId}
-							lines={lines}
-							sessionId={sessionId}
-							toolResultMap={toolResultMap}
-							allowedImageRoots={allowedImageRoots}
-							subagentLookup={subagentLookup}
-							isSubagentSession={isSubagentSession}
-							showThinking={showThinking}
-							showTools={showTools}
-							showPassedHooks={showPassedHooks}
-							showHookWarnings={showHookWarnings}
-							showHookErrors={showHookErrors}
-							showSystemBanners={showSystemBanners}
-							showCompactSummaries={showCompactSummaries}
-							showTranscriptOnly={showTranscriptOnly}
-							shouldScrollToEnd={shouldScrollToEnd}
-							measurementKey={measurementKey}
-							measurementSource={measurementSource}
-						/>
-					</div>
+					<BackgroundOutcomeContext.Provider value={backgroundOutcomes}>
+						<div ref={containerRef} className={`${CHAT_COLUMN_CLASS} pt-4 pb-4 text-body transcript-text`}>
+							{summary !== null && summary !== "" && (
+								<p
+									data-testid="session-summary-row"
+									title={summary}
+									className="mb-4 truncate text-sm text-t6"
+								>
+									{summary}
+								</p>
+							)}
+							<SessionLineList
+								key={sessionId}
+								lines={lines}
+								sessionId={sessionId}
+								toolResultMap={toolResultMap}
+								allowedImageRoots={allowedImageRoots}
+								subagentLookup={subagentLookup}
+								isSubagentSession={isSubagentSession}
+								showThinking={showThinking}
+								showTools={showTools}
+								showPassedHooks={showPassedHooks}
+								showHookWarnings={showHookWarnings}
+								showHookErrors={showHookErrors}
+								showSystemBanners={showSystemBanners}
+								showCompactSummaries={showCompactSummaries}
+								showTranscriptOnly={showTranscriptOnly}
+								shouldScrollToEnd={shouldScrollToEnd}
+								measurementKey={measurementKey}
+								measurementSource={measurementSource}
+							/>
+						</div>
+					</BackgroundOutcomeContext.Provider>
 				</AgentNameContext.Provider>
 			</SlashCommandsContext.Provider>
 		</TranscriptModeContext.Provider>
@@ -843,6 +846,25 @@ const NO_NOTICES: readonly BackgroundNotice[] = [];
 function taskNotificationOf(line: SessionLine): TaskNotification | null {
 	if (line.type !== "user") return null;
 	return parseTaskNotification(getUserContentText(line));
+}
+
+/** How a background launch ended when it did not complete, keyed by the launching tool_use id. */
+type BackgroundOutcome = "failed" | "stopped";
+
+const BackgroundOutcomeContext = createContext<ReadonlyMap<string, BackgroundOutcome>>(new Map());
+
+/**
+ * The failed or stopped outcome each `<task-notification>` reports for the call
+ * that launched it, so upstream's launch row can carry the status.
+ */
+function backgroundLaunchOutcomes(lines: readonly SessionLine[]): ReadonlyMap<string, BackgroundOutcome> {
+	const outcomes = new Map<string, BackgroundOutcome>();
+	for (const line of lines) {
+		const notification = taskNotificationOf(line);
+		if (notification === null || notification.toolUseId === null || notification.status === "completed") continue;
+		outcomes.set(notification.toolUseId, notification.status);
+	}
+	return outcomes;
 }
 
 /** Upstream's static group sub-row: "Background task stopped · <description>". */
@@ -3273,7 +3295,18 @@ function ToolCallRow({
 	// Upstream keeps a failed or stopped row's success-shaped label in muted ink and
 	// appends a status: a danger "Failed", or a secondary "Stopped" when the user
 	// rejected or interrupted the call.
-	const status = call.isError === true ? (call.stopped === true ? "Stopped" : "Failed") : null;
+	// A background launch takes the status its later notification reports.
+	const backgroundOutcome = useContext(BackgroundOutcomeContext).get(call.id);
+	const status =
+		call.isError === true
+			? call.stopped === true
+				? "Stopped"
+				: "Failed"
+			: backgroundOutcome === "stopped"
+				? "Stopped"
+				: backgroundOutcome === "failed"
+					? "Failed"
+					: null;
 	const labelClass = call.isError ? ink : pending ? RUNNING_LABEL_CLASS : isSkill ? "text-secondary" : ink;
 	const isCompletedPaneAgent = paneAgentId !== undefined && !call.isError && !pending;
 	// Expandable rows reach the disclosure below; Agent navigation and nested rows are not statuses.
@@ -3287,7 +3320,7 @@ function ToolCallRow({
 	const chevronClass = isAgent ? "shrink-0 self-center text-t6" : `shrink-0 ${ink}`;
 	// A failed call whose param is its own description keeps that description as
 	// written ("Rebase and push X"); upstream past-tenses it only on success.
-	const failedDescription = call.isError ? getToolDescription(call.name, call.input) : null;
+	const failedDescription = status !== null ? getToolDescription(call.name, call.input) : null;
 	const phrase =
 		failedDescription !== null
 			? failedDescription

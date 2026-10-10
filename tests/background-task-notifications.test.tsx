@@ -256,3 +256,58 @@ describe("task notifications in the transcript", () => {
 		expect(userTurnCount(container)).toBe(2);
 	});
 });
+
+/** Text and class of each direct child of the launch row header inside the expanded group. */
+function launchRowChildren(container: HTMLElement): {text: string | null; className: string}[] {
+	const header = container.querySelector(".card-outline [data-tool-row] .group\\/tool");
+	if (header === null) throw new Error("No launch row in the expanded group");
+	return Array.from(header.children, (child) => ({text: child.textContent, className: child.className}));
+}
+
+describe("background launch row status", () => {
+	const MUTED_PHRASE = "truncate min-w-0 text-body text-ink-muted group-hover/tool:text-secondary";
+	const CHEVRON = {text: "", className: "shrink-0 text-ink-muted group-hover/tool:text-secondary"};
+	const expandedLaunchRow = (status: string, summary: string, label: string) => {
+		const container = renderLines(records(notification(status, summary)));
+		fireEvent.click(summaryButton(container, label));
+		return launchRowChildren(container);
+	};
+
+	it('marks a launch whose notification failed "Failed" on its raw description, without a command failure in the group label', () => {
+		expect(
+			expandedLaunchRow(
+				"failed",
+				'Background command "Run the test suite" failed with exit code 7',
+				"Finished a background command (1 failed), ran a command",
+			),
+		).toStrictEqual([
+			{text: "Run the test suite", className: MUTED_PHRASE},
+			{text: "Failed", className: "shrink-0 text-body text-danger-ink"},
+			CHEVRON,
+		]);
+	});
+
+	it('marks a killed launch "Stopped" in secondary ink', () => {
+		expect(
+			expandedLaunchRow(
+				"killed",
+				'Background command "Run the test suite" was stopped',
+				"Ran a command, finished a background command (1 stopped)",
+			),
+		).toStrictEqual([
+			{text: "Run the test suite", className: MUTED_PHRASE},
+			{text: "Stopped", className: "shrink-0 text-body text-secondary"},
+			CHEVRON,
+		]);
+	});
+
+	it("leaves a completed launch on its past-tense label with no status", () => {
+		expect(
+			expandedLaunchRow(
+				"completed",
+				'Background command "Run the test suite" completed (exit code 0)',
+				"Ran a command, finished a background command",
+			),
+		).toStrictEqual([{text: "Ran the test suite", className: MUTED_PHRASE}, CHEVRON]);
+	});
+});
