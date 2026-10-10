@@ -67,6 +67,8 @@ import type {
 	ExitWorktreeActionSchema,
 	RemoteTriggerActionSchema,
 	ReportFindingsVerdictSchema,
+	SendMessageRecipientKindSchema,
+	StringifiedBooleanSchema,
 } from "./tool-input-schemas";
 
 /**
@@ -993,6 +995,18 @@ export const exitWorktreeActionLabels = {
 	remove: "Left the worktree",
 } satisfies Record<z.infer<typeof ExitWorktreeActionSchema>, string>;
 
+/** Agent `run_in_background` / Monitor `persistent` sent as strings (src/lib/tool-input-schemas.ts). */
+const stringifiedBooleanLabels = {
+	true: "Yes",
+	false: "No",
+} satisfies Record<z.infer<typeof StringifiedBooleanSchema>, string>;
+
+/** SendMessage `recipient_kind` (src/lib/tool-input-schemas.ts). */
+const sendMessageRecipientKindLabels = {
+	name: "Name",
+	agent: "Agent",
+} satisfies Record<z.infer<typeof SendMessageRecipientKindSchema>, string>;
+
 /** `marketplace_entry.source.source` in plugin-catalog-cache.json (src/lib/customize/discover.ts). */
 const pluginCatalogSourceKindLabels = {
 	url: "Git repository",
@@ -1101,5 +1115,7 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
 	ReportFindingsVerdictSchema: reportFindingsVerdictLabels,
 	RemoteTriggerActionSchema: remoteTriggerActionLabels,
 	ExitWorktreeActionSchema: exitWorktreeActionLabels,
+	StringifiedBooleanSchema: stringifiedBooleanLabels,
+	SendMessageRecipientKindSchema: sendMessageRecipientKindLabels,
 	PluginCatalogSourceKindSchema: pluginCatalogSourceKindLabels,
 };

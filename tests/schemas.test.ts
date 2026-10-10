@@ -1919,6 +1919,49 @@ describe("Per-tool input schemas", () => {
 			};
 			expect(AgentInputSchema.safeParse(input).success).toBe(true);
 		});
+
+		it("accepts run_in_background as the stringified booleans the model sometimes sends", () => {
+			expect(AgentInputSchema.safeParse({prompt: "Do something", run_in_background: "true"}).success).toBe(true);
+			expect(AgentInputSchema.safeParse({prompt: "Do something", run_in_background: "false"}).success).toBe(true);
+		});
+
+		it("rejects run_in_background strings other than true or false", () => {
+			expect(AgentInputSchema.safeParse({prompt: "Do something", run_in_background: "yes"}).success).toBe(false);
+		});
+	});
+
+	describe("MonitorInputSchema", () => {
+		const schema = toolInputSchemas["Monitor"];
+		if (!schema) throw new Error("Missing Monitor input schema");
+
+		it("accepts persistent as a stringified boolean", () => {
+			expect(schema.safeParse({command: "tail -f log", persistent: "false"}).success).toBe(true);
+			expect(schema.safeParse({command: "tail -f log", persistent: "true"}).success).toBe(true);
+		});
+
+		it("rejects persistent strings other than true or false", () => {
+			expect(schema.safeParse({command: "tail -f log", persistent: "no"}).success).toBe(false);
+		});
+	});
+
+	describe("SendMessageInputSchema", () => {
+		const schema = toolInputSchemas["SendMessage"];
+		if (!schema) throw new Error("Missing SendMessage input schema");
+
+		it("accepts recipient_kind name and agent", () => {
+			expect(schema.safeParse({to: "slotter", recipient_kind: "name", summary: "s", message: "m"}).success).toBe(
+				true,
+			);
+			expect(schema.safeParse({to: "a1b2c3", recipient_kind: "agent", message: "m"}).success).toBe(true);
+		});
+
+		it("rejects an unknown recipient_kind", () => {
+			expect(schema.safeParse({to: "x", recipient_kind: "team", message: "m"}).success).toBe(false);
+		});
+
+		it("accepts notify_when_idle", () => {
+			expect(schema.safeParse({to: "other-session", notify_when_idle: true}).success).toBe(true);
+		});
 	});
 
 	describe("task tool schemas", () => {

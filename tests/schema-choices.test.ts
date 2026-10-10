@@ -82,6 +82,8 @@ import {
 	ExitWorktreeActionSchema,
 	RemoteTriggerActionSchema,
 	ReportFindingsVerdictSchema,
+	SendMessageRecipientKindSchema,
+	StringifiedBooleanSchema,
 } from "../src/lib/tool-input-schemas";
 import {RenderedLineSchema} from "../src/lib/transcript";
 import {TerminalAppearanceSchema} from "../src/lib/terminal-theme";
@@ -141,6 +143,8 @@ const ROOTS: ReadonlyArray<readonly [string, unknown]> = [
 	["ReportFindingsVerdictSchema", ReportFindingsVerdictSchema],
 	["RemoteTriggerActionSchema", RemoteTriggerActionSchema],
 	["ExitWorktreeActionSchema", ExitWorktreeActionSchema],
+	["StringifiedBooleanSchema", StringifiedBooleanSchema],
+	["SendMessageRecipientKindSchema", SendMessageRecipientKindSchema],
 	["ToolUseUnion", ToolUseUnion],
 	["HookEventEnvelope", HookEventEnvelope],
 	["SourceFileResponse", SourceFileResponse],

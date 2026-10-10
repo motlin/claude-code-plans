@@ -19,6 +19,15 @@ const JsonInputValueSchema: z.ZodType<unknown> = z.lazy(() =>
 	]),
 );
 
+/**
+ * A boolean flag the model sometimes sends as the string "true" or "false";
+ * Claude Code coerces it and records the raw string.
+ */
+export const StringifiedBooleanSchema = z.enum(["true", "false"]);
+
+/** How a SendMessage `to` is resolved: a teammate or session name, or an agent id. */
+export const SendMessageRecipientKindSchema = z.enum(["name", "agent"]);
+
 export const BashInputSchema = z
 	.object({
 		command: z.string(),
@@ -125,7 +134,7 @@ export const AgentInputSchema = z
 		model: z.string().optional(),
 		effort: z.string().optional(),
 		name: z.string().optional(),
-		run_in_background: z.boolean().optional(),
+		run_in_background: z.union([z.boolean(), StringifiedBooleanSchema]).optional(),
 		team_name: z.string().optional(),
 		parameter: z.string().optional(),
 	})
@@ -282,6 +291,8 @@ const SendMessageInputSchema = z
 	.object({
 		to: z.string().optional(),
 		recipient: z.string().optional(),
+		recipient_kind: SendMessageRecipientKindSchema.optional(),
+		notify_when_idle: z.boolean().optional(),
 		message: z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
 		content: z.string().optional(),
 		type: z.string().optional(),
@@ -427,7 +438,7 @@ const MonitorInputSchema = z
 		description: z.string().optional(),
 		timeout_ms: z.number().optional(),
 		timeout: z.string().optional(),
-		persistent: z.boolean().optional(),
+		persistent: z.union([z.boolean(), StringifiedBooleanSchema]).optional(),
 	})
 	.strict();
 
