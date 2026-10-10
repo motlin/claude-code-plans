@@ -18,7 +18,6 @@ describe("toolLabel", () => {
 			verb: "Ran",
 			meta: description,
 			doneLabel: description,
-			failedVerb: "Failed to run",
 		});
 	});
 
@@ -35,11 +34,10 @@ describe("toolLabel", () => {
 			verb: "Ran",
 			meta: description,
 			doneLabel,
-			failedVerb: "Failed to run",
 		});
 	});
 
-	it("labels each tool with the upstream verb, meta, and failed form", () => {
+	it("labels each tool with the upstream verb and meta", () => {
 		expect({
 			read: toolLabel(call("Read", {file_path: "/repo/src/cache.ts"})),
 			writeCreate: toolLabel(call("Write", {file_path: "/a/new.ts"}, {writeType: "create"})),
@@ -62,31 +60,30 @@ describe("toolLabel", () => {
 			exitPlanMode: toolLabel(call("ExitPlanMode", {plan: "## Plan"})),
 			toolSearch: toolLabel(call("ToolSearch", {query: "select:Read"})),
 		}).toStrictEqual({
-			read: {verb: "Read", failedVerb: "Failed to read"},
-			writeCreate: {verb: "Created", failedVerb: "Failed to write"},
-			writeUpdate: {verb: "Updated", failedVerb: "Failed to write"},
-			writeUnknown: {verb: "Created", failedVerb: "Failed to write"},
-			edit: {verb: "Edited", failedVerb: "Failed to edit"},
-			multiEdit: {verb: "Edited", failedVerb: "Failed to edit"},
-			notebookEdit: {verb: "Edited", failedVerb: "Failed to edit"},
-			grep: {verb: "Searched", failedVerb: "Failed to search"},
-			glob: {verb: "Searched", failedVerb: "Failed to search"},
-			ls: {verb: "Listed", failedVerb: "Failed to list"},
-			webFetch: {verb: "Fetched", failedVerb: "Failed to fetch"},
-			webSearch: {verb: "Searched web", failedVerb: "Failed to search web"},
+			read: {verb: "Read"},
+			writeCreate: {verb: "Created"},
+			writeUpdate: {verb: "Updated"},
+			writeUnknown: {verb: "Created"},
+			edit: {verb: "Edited"},
+			multiEdit: {verb: "Edited"},
+			notebookEdit: {verb: "Edited"},
+			grep: {verb: "Searched"},
+			glob: {verb: "Searched"},
+			ls: {verb: "Listed"},
+			webFetch: {verb: "Fetched"},
+			webSearch: {verb: "Searched web"},
 			skill: {
 				verb: "Ran skill",
 				meta: "/git:commit",
 				metaIsCode: true,
-				failedVerb: "Failed to run skill",
 			},
-			taskGet: {verb: "Read task", failedVerb: "Failed to read task"},
-			taskList: {verb: "Listed tasks", failedVerb: "Failed to list tasks"},
-			taskCreate: {verb: "Added task", failedVerb: "Failed to add task"},
-			taskStop: {verb: "Stopped task", failedVerb: "Failed to stop task"},
-			enterPlanMode: {verb: "Started planning", failedVerb: "Failed to start planning"},
-			exitPlanMode: {verb: "Proposed plan", failedVerb: "Failed to propose plan"},
-			toolSearch: {verb: "Searched tools", failedVerb: "Failed to search tools"},
+			taskGet: {verb: "Read task"},
+			taskList: {verb: "Listed tasks"},
+			taskCreate: {verb: "Added task"},
+			taskStop: {verb: "Stopped task"},
+			enterPlanMode: {verb: "Started planning"},
+			exitPlanMode: {verb: "Proposed plan"},
+			toolSearch: {verb: "Searched tools"},
 		});
 	});
 
@@ -101,7 +98,6 @@ describe("toolLabel", () => {
 			otherStatus: update({status: "blocked"}),
 			renamed: update({subject: "New name"}),
 			updated: update({description: "More detail"}),
-			failed: toolLabel(call("TaskUpdate", {taskId: "1", status: "completed"})).failedVerb,
 		}).toStrictEqual({
 			completed: "Completed task",
 			inProgress: "Started task",
@@ -110,7 +106,6 @@ describe("toolLabel", () => {
 			otherStatus: "Updated task status",
 			renamed: "Renamed task",
 			updated: "Updated task",
-			failed: "Failed to update task",
 		});
 	});
 
@@ -119,8 +114,8 @@ describe("toolLabel", () => {
 			updated: toolLabel(call("TodoWrite", {todos: [{content: "a", status: "pending"}]})),
 			cleared: toolLabel(call("TodoWrite", {todos: []})),
 		}).toStrictEqual({
-			updated: {verb: "Updated todos", failedVerb: "Failed to update todos"},
-			cleared: {verb: "Cleared todos", failedVerb: "Failed to update todos"},
+			updated: {verb: "Updated todos"},
+			cleared: {verb: "Cleared todos"},
 		});
 	});
 
@@ -140,8 +135,8 @@ describe("toolLabel", () => {
 				}),
 			),
 		}).toStrictEqual({
-			one: {verb: "Asked", meta: "Auth method", failedVerb: "Failed to ask"},
-			many: {verb: "Asked", meta: "2 questions", failedVerb: "Failed to ask"},
+			one: {verb: "Asked", meta: "Auth method"},
+			many: {verb: "Asked", meta: "2 questions"},
 		});
 	});
 
@@ -150,7 +145,6 @@ describe("toolLabel", () => {
 			verb: "Ran agent",
 			meta: "Explore Drizzle setup",
 			doneLabel: "Explore Drizzle setup",
-			failedVerb: "Failed to run agent",
 		});
 	});
 
@@ -163,13 +157,11 @@ describe("toolLabel", () => {
 				verb: "Ran",
 				meta: "Check status",
 				doneLabel: "Checked status",
-				failedVerb: "Failed to run",
 			},
 			bare: {
 				verb: "Ran",
 				meta: "pnpm run build",
 				doneLabel: "pnpm run build",
-				failedVerb: "Failed to run",
 			},
 		});
 	});
@@ -200,20 +192,19 @@ describe("toolLabel", () => {
 			}),
 			prMerged: git({pr: {number: 7, action: "merged"}}),
 		}).toStrictEqual({
-			committed: {verb: "Committed", meta: "abc1234", failedVerb: "Failed to run"},
-			amended: {verb: "Amended commit", meta: "abc1234", failedVerb: "Failed to run"},
-			cherryPicked: {verb: "Cherry-picked", meta: "abc1234", failedVerb: "Failed to run"},
-			pushed: {verb: "Pushed", meta: "feature/x", failedVerb: "Failed to run"},
-			commitAndPush: {verb: "Committed", meta: "abc1234", failedVerb: "Failed to run"},
-			rebased: {verb: "Rebased onto", meta: "origin/main", failedVerb: "Failed to run"},
-			merged: {verb: "Merged", meta: "origin/main", failedVerb: "Failed to run"},
+			committed: {verb: "Committed", meta: "abc1234"},
+			amended: {verb: "Amended commit", meta: "abc1234"},
+			cherryPicked: {verb: "Cherry-picked", meta: "abc1234"},
+			pushed: {verb: "Pushed", meta: "feature/x"},
+			commitAndPush: {verb: "Committed", meta: "abc1234"},
+			rebased: {verb: "Rebased onto", meta: "origin/main"},
+			merged: {verb: "Merged", meta: "origin/main"},
 			prCreated: {
 				verb: "Created PR",
 				meta: "#42",
 				metaHref: "https://github.com/o/r/pull/42",
-				failedVerb: "Failed to run",
 			},
-			prMerged: {verb: "Merged PR", meta: "#7", failedVerb: "Failed to run"},
+			prMerged: {verb: "Merged PR", meta: "#7"},
 		});
 	});
 
@@ -225,20 +216,18 @@ describe("toolLabel", () => {
 		}).toStrictEqual({
 			mcp: {
 				verb: "Used Sentry: search issues",
-				failedVerb: "Failed to use Sentry: search issues",
 			},
 			pluginMcp: {
 				verb: "Used Github: list issues",
-				failedVerb: "Failed to use Github: list issues",
 			},
-			unknown: {verb: "Used Frobnicate", failedVerb: "Failed to use Frobnicate"},
+			unknown: {verb: "Used Frobnicate"},
 		});
 	});
 
 	it("uses the generic upstream phrase table", () => {
 		const verbs = (name: string) => {
-			const {verb, failedVerb} = toolLabel(call(name));
-			return [verb, failedVerb];
+			const {verb} = toolLabel(call(name));
+			return verb;
 		};
 
 		expect({
@@ -250,13 +239,13 @@ describe("toolLabel", () => {
 			ReadMcpResourceTool: verbs("ReadMcpResourceTool"),
 			Workflow: verbs("Workflow"),
 		}).toStrictEqual({
-			ReportFindings: ["Reported review findings", "Failed to report review findings"],
-			TaskOutput: ["Read task output", "Failed to read task output"],
-			Monitor: ["Started watching background command", "Failed to start watching background command"],
-			LSP: ["Inspected code", "Failed to inspect code"],
-			ListMcpResourcesTool: ["Listed resources", "Failed to list resources"],
-			ReadMcpResourceTool: ["Read resource", "Failed to read resource"],
-			Workflow: ["Ran workflow", "Failed to run workflow"],
+			ReportFindings: "Reported review findings",
+			TaskOutput: "Read task output",
+			Monitor: "Started watching background command",
+			LSP: "Inspected code",
+			ListMcpResourcesTool: "Listed resources",
+			ReadMcpResourceTool: "Read resource",
+			Workflow: "Ran workflow",
 		});
 	});
 });

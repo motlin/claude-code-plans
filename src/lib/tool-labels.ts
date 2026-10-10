@@ -1,10 +1,9 @@
 import {FileEditToolUseResultSchema, GitOperationSchema, type GitOperation} from "./schemas";
 import {
-	exitWorktreeActionFailedLabels,
+	exitWorktreeActionLabels,
 	gitBranchActionLabels,
 	gitCommitKindLabels,
 	gitPrActionLabels,
-	remoteTriggerActionFailedLabels,
 	remoteTriggerActionLabels,
 } from "./schema-choices";
 import {ExitWorktreeActionSchema, RemoteTriggerActionSchema} from "./tool-input-schemas";
@@ -27,7 +26,7 @@ export interface ToolLabelCall {
 
 /**
  * Upstream claude.ai/code's label for a tool row: the verb, an optional meta
- * beside it, and the verb a failed call swaps in. `doneLabel` is a whole
+ * beside it. `doneLabel` is a whole
  * phrase that names a successful row on its own (a Bash call's past-tensed
  * description, a subagent's description) in place of verb + meta.
  */
@@ -37,7 +36,6 @@ export interface ToolLabel {
 	metaIsCode?: true;
 	metaHref?: string;
 	doneLabel?: string;
-	failedVerb: string;
 }
 
 export function toolResultMetaFrom(toolUseResult: unknown): ToolResultMeta | undefined {
@@ -105,51 +103,48 @@ function pastTense(description: string): string {
 
 /**
  * Tools whose label is a fixed phrase: upstream's per-tool table plus its
- * generic map. The failed form is "Failed to <verb in present tense>".
+ * generic map.
  */
-const FIXED_LABELS: Record<string, {verb: string; failedVerb: string}> = {
-	Read: {verb: "Read", failedVerb: "Failed to read"},
-	Edit: {verb: "Edited", failedVerb: "Failed to edit"},
-	MultiEdit: {verb: "Edited", failedVerb: "Failed to edit"},
-	NotebookEdit: {verb: "Edited", failedVerb: "Failed to edit"},
-	Grep: {verb: "Searched", failedVerb: "Failed to search"},
-	Glob: {verb: "Searched", failedVerb: "Failed to search"},
-	LS: {verb: "Listed", failedVerb: "Failed to list"},
-	WebFetch: {verb: "Fetched", failedVerb: "Failed to fetch"},
-	WebSearch: {verb: "Searched web", failedVerb: "Failed to search web"},
-	TaskGet: {verb: "Read task", failedVerb: "Failed to read task"},
-	TaskList: {verb: "Listed tasks", failedVerb: "Failed to list tasks"},
-	TaskCreate: {verb: "Added task", failedVerb: "Failed to add task"},
-	TaskStop: {verb: "Stopped task", failedVerb: "Failed to stop task"},
-	EnterPlanMode: {verb: "Started planning", failedVerb: "Failed to start planning"},
-	ExitPlanMode: {verb: "Proposed plan", failedVerb: "Failed to propose plan"},
+const FIXED_LABELS: Record<string, {verb: string}> = {
+	Read: {verb: "Read"},
+	Edit: {verb: "Edited"},
+	MultiEdit: {verb: "Edited"},
+	NotebookEdit: {verb: "Edited"},
+	Grep: {verb: "Searched"},
+	Glob: {verb: "Searched"},
+	LS: {verb: "Listed"},
+	WebFetch: {verb: "Fetched"},
+	WebSearch: {verb: "Searched web"},
+	TaskGet: {verb: "Read task"},
+	TaskList: {verb: "Listed tasks"},
+	TaskCreate: {verb: "Added task"},
+	TaskStop: {verb: "Stopped task"},
+	EnterPlanMode: {verb: "Started planning"},
+	ExitPlanMode: {verb: "Proposed plan"},
 	// Not in upstream's table (claude.ai/code has no deferred tools); kept local.
-	ToolSearch: {verb: "Searched tools", failedVerb: "Failed to search tools"},
+	ToolSearch: {verb: "Searched tools"},
 	ReportFindings: {
 		verb: "Reported review findings",
-		failedVerb: "Failed to report review findings",
 	},
-	TaskOutput: {verb: "Read task output", failedVerb: "Failed to read task output"},
+	TaskOutput: {verb: "Read task output"},
 	Monitor: {
 		verb: "Started watching background command",
-		failedVerb: "Failed to start watching background command",
 	},
-	CronList: {verb: "Listed scheduled prompts", failedVerb: "Failed to list scheduled prompts"},
-	CronDelete: {verb: "Stopped scheduled prompt", failedVerb: "Failed to stop scheduled prompt"},
-	LSP: {verb: "Inspected code", failedVerb: "Failed to inspect code"},
-	ListMcpResourcesTool: {verb: "Listed resources", failedVerb: "Failed to list resources"},
-	ReadMcpResourceTool: {verb: "Read resource", failedVerb: "Failed to read resource"},
+	CronList: {verb: "Listed scheduled prompts"},
+	CronDelete: {verb: "Stopped scheduled prompt"},
+	LSP: {verb: "Inspected code"},
+	ListMcpResourcesTool: {verb: "Listed resources"},
+	ReadMcpResourceTool: {verb: "Read resource"},
 	ReadMcpResourceDirTool: {
 		verb: "Listed resource folder",
-		failedVerb: "Failed to list resource folder",
 	},
-	WaitForMcpServers: {verb: "Loaded connectors", failedVerb: "Failed to load connectors"},
-	RefreshMcpTools: {verb: "Refreshed tools", failedVerb: "Failed to refresh tools"},
-	Workflow: {verb: "Ran workflow", failedVerb: "Failed to run workflow"},
-	SendFeedback: {verb: "Sent feedback", failedVerb: "Failed to send feedback"},
-	SendUserMessage: {verb: "Sent", failedVerb: "Failed to send"},
-	SendUserFile: {verb: "Sent", failedVerb: "Failed to send"},
-	PushNotification: {verb: "Sent notification", failedVerb: "Failed to send notification"},
+	WaitForMcpServers: {verb: "Loaded connectors"},
+	RefreshMcpTools: {verb: "Refreshed tools"},
+	Workflow: {verb: "Ran workflow"},
+	SendFeedback: {verb: "Sent feedback"},
+	SendUserMessage: {verb: "Sent"},
+	SendUserFile: {verb: "Sent"},
+	PushNotification: {verb: "Sent notification"},
 };
 
 const TASK_STATUS_VERBS: Record<string, string> = {
@@ -192,53 +187,36 @@ function basename(path: string): string {
 function enterWorktreeLabel(input: Record<string, unknown>): ToolLabel {
 	const path = stringInput(input, "path");
 	if (path !== null) {
-		return {
-			verb: "Entered a worktree",
-			meta: basename(path),
-			failedVerb: "Failed to enter a worktree",
-		};
+		return {verb: "Entered a worktree", meta: basename(path)};
 	}
-	return withMeta(
-		{verb: "Created a worktree", failedVerb: "Failed to create a worktree"},
-		stringInput(input, "name"),
-	);
+	return withMeta({verb: "Created a worktree"}, stringInput(input, "name"));
 }
 
 function exitWorktreeLabel(input: Record<string, unknown>): ToolLabel {
 	const action = ExitWorktreeActionSchema.safeParse(input["action"]);
-	const failedVerb = exitWorktreeActionFailedLabels[action.success ? action.data : "keep"];
-	return {verb: "Left the worktree", failedVerb};
+	return {verb: exitWorktreeActionLabels[action.success ? action.data : "keep"]};
 }
 
 function scheduleWakeupLabel(input: Record<string, unknown>): ToolLabel {
-	if (input["stop"] === true) return {verb: "Stopped loop", failedVerb: "Failed to stop loop"};
-	return withMeta(
-		{verb: "Scheduled check-in", failedVerb: "Failed to schedule check-in"},
-		stringInput(input, "reason"),
-	);
+	if (input["stop"] === true) return {verb: "Stopped loop"};
+	return withMeta({verb: "Scheduled check-in"}, stringInput(input, "reason"));
 }
 
 /** A `<<...>>` prompt is a loop sentinel, not text worth showing as meta. */
 function cronCreateLabel(input: Record<string, unknown>): ToolLabel {
 	const prompt = stringInput(input, "prompt");
 	const meta = prompt !== null && /^<<[\s\S]*>>$/.test(prompt) ? null : prompt;
-	const label =
-		input["recurring"] === false
-			? {verb: "Scheduled prompt", failedVerb: "Failed to schedule prompt"}
-			: {verb: "Started loop", failedVerb: "Failed to start loop"};
+	const label = {verb: input["recurring"] === false ? "Scheduled prompt" : "Started loop"};
 	return withMeta(label, meta);
 }
 
 function remoteTriggerLabel(input: Record<string, unknown>): ToolLabel {
 	const action = RemoteTriggerActionSchema.safeParse(input["action"]);
-	if (!action.success) return {verb: "Used routines", failedVerb: "Failed to use routines"};
-	return {
-		verb: remoteTriggerActionLabels[action.data],
-		failedVerb: remoteTriggerActionFailedLabels[action.data],
-	};
+	if (!action.success) return {verb: "Used routines"};
+	return {verb: remoteTriggerActionLabels[action.data]};
 }
 
-function gitLabel(git: GitOperation): Omit<ToolLabel, "failedVerb"> | null {
+function gitLabel(git: GitOperation): ToolLabel | null {
 	if (git.pr) {
 		const label = {verb: gitPrActionLabels[git.pr.action], meta: `#${git.pr.number}`};
 		return git.pr.url === undefined ? label : {...label, metaHref: git.pr.url};
@@ -250,17 +228,16 @@ function gitLabel(git: GitOperation): Omit<ToolLabel, "failedVerb"> | null {
 }
 
 function bashLabel(call: ToolLabelCall): ToolLabel {
-	const failedVerb = "Failed to run";
 	const git = call.resultMeta?.gitOperation;
 	const gitVerb = git === undefined ? null : gitLabel(git);
-	if (gitVerb !== null) return {...gitVerb, failedVerb};
+	if (gitVerb !== null) return gitVerb;
 	const description = stringInput(call.input, "description");
 	const command = stringInput(call.input, "command");
 	if (description !== null) {
-		return {verb: "Ran", meta: description, doneLabel: pastTense(description), failedVerb};
+		return {verb: "Ran", meta: description, doneLabel: pastTense(description)};
 	}
-	if (command !== null) return {verb: "Ran", meta: command, doneLabel: command, failedVerb};
-	return {verb: "Ran", meta: "a command", failedVerb};
+	if (command !== null) return {verb: "Ran", meta: command, doneLabel: command};
+	return {verb: "Ran", meta: "a command"};
 }
 
 /**
@@ -274,20 +251,19 @@ function artifactLabel(input: Record<string, unknown>): ToolLabel {
 		case null:
 		case "publish": {
 			const filePath = stringInput(input, "file_path");
-			const label = {verb: "Published artifact", failedVerb: "Failed to publish artifact"};
+			const label = {verb: "Published artifact"};
 			return filePath === null ? label : {...label, meta: filePath.split("/").pop()!};
 		}
 		case "pin":
-			return {verb: "Pinned artifact", failedVerb: "Failed to pin artifact"};
+			return {verb: "Pinned artifact"};
 		case "unpin":
-			return {verb: "Unpinned artifact", failedVerb: "Failed to unpin artifact"};
+			return {verb: "Unpinned artifact"};
 		case "list":
-			return {verb: "Listed artifacts", failedVerb: "Failed to list artifacts"};
+			return {verb: "Listed artifacts"};
 		default:
 			return {
 				verb: "Used artifact tool",
 				meta: action,
-				failedVerb: "Failed to use artifact tool",
 			};
 	}
 }
@@ -425,22 +401,17 @@ export function toolLabel(call: ToolLabelCall): ToolLabel {
 		case "PowerShell":
 			return bashLabel(call);
 		case "Write":
-			return {
-				verb: call.resultMeta?.writeType === "update" ? "Updated" : "Created",
-				failedVerb: "Failed to write",
-			};
+			return {verb: call.resultMeta?.writeType === "update" ? "Updated" : "Created"};
 		case "Agent":
 		case "Task": {
 			const description = stringInput(input, "description");
-			const failedVerb = "Failed to run agent";
-			if (description === null) return {verb: "Ran agent", failedVerb};
-			return {verb: "Ran agent", meta: description, doneLabel: description, failedVerb};
+			if (description === null) return {verb: "Ran agent"};
+			return {verb: "Ran agent", meta: description, doneLabel: description};
 		}
 		case "Skill": {
 			const skill = stringInput(input, "skill");
-			const failedVerb = "Failed to run skill";
-			if (skill === null) return {verb: "Ran skill", failedVerb};
-			return {verb: "Ran skill", meta: `/${skill}`, metaIsCode: true, failedVerb};
+			if (skill === null) return {verb: "Ran skill"};
+			return {verb: "Ran skill", meta: `/${skill}`, metaIsCode: true};
 		}
 		case "EnterWorktree":
 			return enterWorktreeLabel(input);
@@ -453,24 +424,20 @@ export function toolLabel(call: ToolLabelCall): ToolLabel {
 		case "RemoteTrigger":
 			return remoteTriggerLabel(input);
 		case "TaskUpdate":
-			return {verb: taskUpdateVerb(input), failedVerb: "Failed to update task"};
+			return {verb: taskUpdateVerb(input)};
 		case "TodoWrite": {
 			const todos = input["todos"];
 			const cleared = Array.isArray(todos) && todos.length === 0;
-			return {
-				verb: cleared ? "Cleared todos" : "Updated todos",
-				failedVerb: "Failed to update todos",
-			};
+			return {verb: cleared ? "Cleared todos" : "Updated todos"};
 		}
 		case "Artifact":
 			return artifactLabel(input);
 		case "AskUserQuestion": {
 			const meta = askedMeta(input);
-			const failedVerb = "Failed to ask";
-			return meta === null ? {verb: "Asked", failedVerb} : {verb: "Asked", meta, failedVerb};
+			return meta === null ? {verb: "Asked"} : {verb: "Asked", meta};
 		}
 	}
 
 	const label = name.startsWith("mcp__") ? mcpToolLabel(name) : name;
-	return {verb: `Used ${label}`, failedVerb: `Failed to use ${label}`};
+	return {verb: `Used ${label}`};
 }

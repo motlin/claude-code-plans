@@ -41,16 +41,14 @@ describe("worktree, scheduling, notification and workflow labels", () => {
 			create: {
 				verb: "Created a worktree",
 				meta: "blog-draft",
-				failedVerb: "Failed to create a worktree",
 			},
-			createUnnamed: {verb: "Created a worktree", failedVerb: "Failed to create a worktree"},
+			createUnnamed: {verb: "Created a worktree"},
 			enter: {
 				verb: "Entered a worktree",
 				meta: "app-feature",
-				failedVerb: "Failed to enter a worktree",
 			},
-			exitKeep: {verb: "Left the worktree", failedVerb: "Failed to leave the worktree"},
-			exitRemove: {verb: "Left the worktree", failedVerb: "Failed to remove the worktree"},
+			exitKeep: {verb: "Left the worktree"},
+			exitRemove: {verb: "Left the worktree"},
 		});
 	});
 
@@ -69,29 +67,24 @@ describe("worktree, scheduling, notification and workflow labels", () => {
 			wakeup: {
 				verb: "Scheduled check-in",
 				meta: "Check the PR again",
-				failedVerb: "Failed to schedule check-in",
 			},
-			wakeupNoReason: {verb: "Scheduled check-in", failedVerb: "Failed to schedule check-in"},
-			stopLoop: {verb: "Stopped loop", failedVerb: "Failed to stop loop"},
+			wakeupNoReason: {verb: "Scheduled check-in"},
+			stopLoop: {verb: "Stopped loop"},
 			oneShot: {
 				verb: "Scheduled prompt",
 				meta: "Check CI",
-				failedVerb: "Failed to schedule prompt",
 			},
-			loop: {verb: "Started loop", meta: "Poll the PR", failedVerb: "Failed to start loop"},
+			loop: {verb: "Started loop", meta: "Poll the PR"},
 			loopDefault: {
 				verb: "Started loop",
 				meta: "Poll the PR",
-				failedVerb: "Failed to start loop",
 			},
-			loopSentinel: {verb: "Started loop", failedVerb: "Failed to start loop"},
+			loopSentinel: {verb: "Started loop"},
 			cronList: {
 				verb: "Listed scheduled prompts",
-				failedVerb: "Failed to list scheduled prompts",
 			},
 			cronDelete: {
 				verb: "Stopped scheduled prompt",
-				failedVerb: "Failed to stop scheduled prompt",
 			},
 		});
 	});
@@ -104,11 +97,11 @@ describe("worktree, scheduling, notification and workflow labels", () => {
 			update: label("RemoteTrigger", {action: "update", trigger_id: "t1", body: {}}),
 			run: label("RemoteTrigger", {action: "run", trigger_id: "t1"}),
 		}).toStrictEqual({
-			list: {verb: "Listed routines", failedVerb: "Failed to list routines"},
-			get: {verb: "Read routine", failedVerb: "Failed to read routine"},
-			create: {verb: "Created routine", failedVerb: "Failed to create routine"},
-			update: {verb: "Updated routine", failedVerb: "Failed to update routine"},
-			run: {verb: "Ran routine", failedVerb: "Failed to run routine"},
+			list: {verb: "Listed routines"},
+			get: {verb: "Read routine"},
+			create: {verb: "Created routine"},
+			update: {verb: "Updated routine"},
+			run: {verb: "Ran routine"},
 		});
 	});
 
@@ -123,16 +116,15 @@ describe("worktree, scheduling, notification and workflow labels", () => {
 			readResource: label("ReadMcpResourceTool", {server: "s", uri: "u"}),
 			readResourceDir: label("ReadMcpResourceDirTool", {}),
 		}).toStrictEqual({
-			sendUserMessage: {verb: "Sent", failedVerb: "Failed to send"},
-			sendUserFile: {verb: "Sent", failedVerb: "Failed to send"},
-			push: {verb: "Sent notification", failedVerb: "Failed to send notification"},
-			workflow: {verb: "Ran workflow", failedVerb: "Failed to run workflow"},
-			lsp: {verb: "Inspected code", failedVerb: "Failed to inspect code"},
-			listResources: {verb: "Listed resources", failedVerb: "Failed to list resources"},
-			readResource: {verb: "Read resource", failedVerb: "Failed to read resource"},
+			sendUserMessage: {verb: "Sent"},
+			sendUserFile: {verb: "Sent"},
+			push: {verb: "Sent notification"},
+			workflow: {verb: "Ran workflow"},
+			lsp: {verb: "Inspected code"},
+			listResources: {verb: "Listed resources"},
+			readResource: {verb: "Read resource"},
 			readResourceDir: {
 				verb: "Listed resource folder",
-				failedVerb: "Failed to list resource folder",
 			},
 		});
 	});

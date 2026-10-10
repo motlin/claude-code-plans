@@ -145,27 +145,23 @@ describe("Artifact tool labels", () => {
 			publish: {
 				verb: "Published artifact",
 				meta: "quarto.html",
-				failedVerb: "Failed to publish artifact",
 			},
 			explicitPublish: {
 				verb: "Published artifact",
 				meta: "report.html",
-				failedVerb: "Failed to publish artifact",
 			},
-			typeCreate: {verb: "Published artifact", failedVerb: "Failed to publish artifact"},
-			pin: {verb: "Pinned artifact", failedVerb: "Failed to pin artifact"},
-			unpin: {verb: "Unpinned artifact", failedVerb: "Failed to unpin artifact"},
-			list: {verb: "Listed artifacts", failedVerb: "Failed to list artifacts"},
-			read: {verb: "Used artifact tool", meta: "read", failedVerb: "Failed to use artifact tool"},
+			typeCreate: {verb: "Published artifact"},
+			pin: {verb: "Pinned artifact"},
+			unpin: {verb: "Unpinned artifact"},
+			list: {verb: "Listed artifacts"},
+			read: {verb: "Used artifact tool", meta: "read"},
 			readDb: {
 				verb: "Used artifact tool",
 				meta: "read_db",
-				failedVerb: "Failed to use artifact tool",
 			},
 			quickstart: {
 				verb: "Used artifact tool",
 				meta: "quickstart",
-				failedVerb: "Failed to use artifact tool",
 			},
 		});
 	});

@@ -41,10 +41,10 @@ const MONITOR_INPUT = {
 };
 
 describe("ReportFindings, Monitor and TaskOutput labels", () => {
-	it("labels each row with the upstream verb and failed form", () => {
+	it("labels each row with the upstream verb", () => {
 		const labels = (name: string, input: Record<string, unknown>) => {
-			const {verb, failedVerb} = toolLabel({name, input});
-			return {verb, failedVerb};
+			const {verb} = toolLabel({name, input});
+			return {verb};
 		};
 
 		expect({
@@ -54,13 +54,11 @@ describe("ReportFindings, Monitor and TaskOutput labels", () => {
 		}).toStrictEqual({
 			reportFindings: {
 				verb: "Reported review findings",
-				failedVerb: "Failed to report review findings",
 			},
 			monitor: {
 				verb: "Started watching background command",
-				failedVerb: "Failed to start watching background command",
 			},
-			taskOutput: {verb: "Read task output", failedVerb: "Failed to read task output"},
+			taskOutput: {verb: "Read task output"},
 		});
 	});
 });

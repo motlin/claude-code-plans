@@ -987,19 +987,10 @@ export const remoteTriggerActionLabels = {
 	run: "Ran routine",
 } satisfies Record<z.infer<typeof RemoteTriggerActionSchema>, string>;
 
-/** Failed-row verbs for each `RemoteTrigger` `action`. */
-export const remoteTriggerActionFailedLabels = {
-	list: "Failed to list routines",
-	get: "Failed to read routine",
-	create: "Failed to create routine",
-	update: "Failed to update routine",
-	run: "Failed to run routine",
-} satisfies Record<z.infer<typeof RemoteTriggerActionSchema>, string>;
-
-/** `ExitWorktree` `action` (src/lib/tool-input-schemas.ts); the failed-row verb per action. */
-export const exitWorktreeActionFailedLabels = {
-	keep: "Failed to leave the worktree",
-	remove: "Failed to remove the worktree",
+/** `ExitWorktree` `action` (src/lib/tool-input-schemas.ts); upstream reads "Left the worktree" for both. */
+export const exitWorktreeActionLabels = {
+	keep: "Left the worktree",
+	remove: "Left the worktree",
 } satisfies Record<z.infer<typeof ExitWorktreeActionSchema>, string>;
 
 /** `marketplace_entry.source.source` in plugin-catalog-cache.json (src/lib/customize/discover.ts). */
@@ -1109,6 +1100,6 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
 	ArtifactLiveSubscriptionSchema: artifactLiveSubscriptionLabels,
 	ReportFindingsVerdictSchema: reportFindingsVerdictLabels,
 	RemoteTriggerActionSchema: remoteTriggerActionLabels,
-	ExitWorktreeActionSchema: exitWorktreeActionFailedLabels,
+	ExitWorktreeActionSchema: exitWorktreeActionLabels,
 	PluginCatalogSourceKindSchema: pluginCatalogSourceKindLabels,
 };
