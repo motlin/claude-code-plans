@@ -1157,7 +1157,7 @@ describe("SessionChat failed tool row label text", () => {
 			ok: [
 				[
 					"truncate min-w-0 text-body text-ink-muted group-hover/tool:text-secondary",
-					"Installed dependencies and build",
+					"Installed dependencies and built",
 				],
 			],
 		});

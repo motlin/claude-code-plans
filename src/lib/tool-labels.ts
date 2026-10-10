@@ -6,6 +6,7 @@ import {
 	gitPrActionLabels,
 	remoteTriggerActionLabels,
 } from "./schema-choices";
+import {pastTense} from "./past-tense";
 import {ExitWorktreeActionSchema, RemoteTriggerActionSchema} from "./tool-input-schemas";
 
 /**
@@ -51,54 +52,8 @@ export function toolResultMetaFrom(toolUseResult: unknown): ToolResultMeta | und
 	return undefined;
 }
 
-/** Past-tense forms for verbs that don't take an -ed/-d suffix. */
-const IRREGULAR_PAST_TENSE: Record<string, string> = {
-	build: "built",
-	cut: "cut",
-	find: "found",
-	get: "got",
-	keep: "kept",
-	leave: "left",
-	make: "made",
-	put: "put",
-	read: "read",
-	rerun: "reran",
-	run: "ran",
-	see: "saw",
-	send: "sent",
-	set: "set",
-	show: "showed",
-	split: "split",
-	take: "took",
-	tell: "told",
-	write: "wrote",
-};
-
 function capitalizeFirst(text: string): string {
 	return text.charAt(0).toUpperCase() + text.slice(1);
-}
-
-const PRESERVED_DESCRIPTION_VERBS = new Set(["map", "gate"]);
-
-/**
- * Past-tense a description's leading verb, the way upstream labels a Bash row:
- * "Check git status" -> "Checked git status", "See what's new" -> "Saw what's
- * new". Text that doesn't start with a word, or that is already past tense, is
- * left verbatim.
- */
-function pastTense(description: string): string {
-	const match = /^([A-Za-z]+)([\s\S]*)$/.exec(description);
-	if (!match) return description;
-	const word = match[1]!;
-	const rest = match[2]!;
-	const lower = word.toLowerCase();
-	if (PRESERVED_DESCRIPTION_VERBS.has(lower)) return description;
-	const irregular = IRREGULAR_PAST_TENSE[lower];
-	if (irregular) return capitalizeFirst(irregular) + rest;
-	if (lower.endsWith("ed")) return capitalizeFirst(lower) + rest;
-	if (lower.endsWith("e")) return capitalizeFirst(`${lower}d`) + rest;
-	if (/[^aeiou]y$/.test(lower)) return capitalizeFirst(`${lower.slice(0, -1)}ied`) + rest;
-	return capitalizeFirst(`${lower}ed`) + rest;
 }
 
 /**

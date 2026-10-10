@@ -59,11 +59,11 @@
 		"raisedAt": "2026-10-02"
 	},
 	"bundle.session.gzip": {
-		"ceiling": 573858,
+		"ceiling": 579810,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Account for accumulated session scroll, accessibility, and PR presentation code. The repository header pill, truthful PR strip, state icons, and dock ordering batch adds 959 gzip bytes and 3920 raw bytes over passing eb118c65 (572899 to 573858 gzip). The output audit found no new eager dependencies: existing PR status and GitPullRequest chunks are unchanged, the three state icons occur once in the session route, and Changes pane, usage card, and tool renderer lazy boundaries remain intact. Build SHA and chunk hash normalization, static-import traversal, other ceilings, and the 1% tolerance are unchanged.",
-		"raisedAt": "2026-10-02"
+		"reason": "Record the session parity waves 57-60. Status-row layout and Failed/Stopped/Denied wording, background launch outcomes, the stop-hook disclosure, Verbose-only marker rows, and upstream's ~200-verb past-tense table (src/lib/past-tense.ts, ~3.5 KB gzip) add 5952 gzip bytes over 573858. The past-tense table runs on every grouped tool row in the session view, so it stays in the cold graph. No new dependencies; lazy Changes, usage and tool renderer boundaries are unchanged; other ceilings and the 1% tolerance are unchanged.",
+		"raisedAt": "2026-10-10"
 	},
 	"bundle.session.raw": {
 		"ceiling": 1783276,

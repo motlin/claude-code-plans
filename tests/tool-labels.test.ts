@@ -328,3 +328,47 @@ describe("runningToolLabel", () => {
 		});
 	});
 });
+
+describe("toolLabel Bash past tense", () => {
+	const done = (description: string) => toolLabel(call("Bash", {command: "x", description})).doneLabel;
+
+	it.each([
+		["Recheck DNS", "Rechecked DNS"],
+		["Wait and recheck DNS", "Waited and rechecked DNS"],
+		["Commit and move root", "Committed and moved root"],
+		["Grep logs", "Grepped logs"],
+		["Scan repo", "Scanned repo"],
+		["Trim x", "Trimmed x"],
+		["Create and run script", "Created and ran script"],
+		["Test both reordered commits and get next task", "Tested both reordered commits and got next task"],
+		[
+			"Set repo homepage and delete stale preview environments",
+			"Set repo homepage and deleted stale preview environments",
+		],
+		[
+			"Replay the removal onto the updated branch and push",
+			"Replayed the removal onto the updated branch and pushed",
+		],
+		["Verify task commit, gate HEAD, get next task", "Verified task commit, gate HEAD, get next task"],
+		["Read config and keep going", "Read config and keep going"],
+		["Check that the build and run is green", "Checked that the build and run is green"],
+		["Fix the bug then verify", "Fixed the bug then verified"],
+		["Sync the mirror", "Synced the mirror"],
+		["Copy files", "Copied files"],
+		["Re-run the suite", "Re-ran the suite"],
+	])("past-tenses %j as %j", (description, expected) => {
+		expect(done(description)).toBe(expected);
+	});
+
+	it.each([
+		"Open the page",
+		"Reorder so the Markdown reformat precedes the config change",
+		"Open Chase cash back page",
+		"Cherry-pick fold commit",
+		"Sum results",
+		"Look at the logs",
+		"Mark the task done",
+	])("keeps a description whose first word is not a known verb verbatim: %j", (description) => {
+		expect(done(description)).toBe(description);
+	});
+});
