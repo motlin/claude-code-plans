@@ -601,6 +601,25 @@ function buildSkipSet(lines: SessionLine[]): Set<number> {
 	return skip;
 }
 
+/**
+ * A local command the CLI ran itself ("/model", "/mcp") and its output: the
+ * command line a local-command caveat opens, and every local-command stdout.
+ * Upstream draws none of these, so only Verbose keeps them.
+ */
+function localCommandIndices(lines: readonly SessionLine[]): number[] {
+	const stringContent = (line: SessionLine | undefined): string | null =>
+		line?.type === "user" && typeof line.message?.content === "string" ? line.message.content : null;
+	return lines.flatMap((line, index) => {
+		const content = stringContent(line);
+		if (content === null) return [];
+		if (content.startsWith("<local-command-stdout>")) return [index];
+		const local =
+			content.includes("<command-name>") &&
+			stringContent(lines[index - 1])?.startsWith("<local-command-caveat>") === true;
+		return local ? [index] : [];
+	});
+}
+
 interface LineRenderProps {
 	sessionId: string;
 	toolResultMap: Map<string, ToolResultInfo>;
@@ -1536,7 +1555,10 @@ function buildSessionListEntries(
 		return false;
 	};
 	const skipSet = buildSkipSet(lines);
-	if (!verbose) for (const index of settledCompletionIndices(lines)) skipSet.add(index);
+	if (!verbose) {
+		for (const index of settledCompletionIndices(lines)) skipSet.add(index);
+		for (const index of localCommandIndices(lines)) skipSet.add(index);
+	}
 	const compactionStatuses: ReadonlySet<number> = renderProps.showCompactSummaries
 		? new Set()
 		: new Set(compactBoundariesBySummary(lines).keys());

@@ -261,6 +261,27 @@ describe("compaction marker", () => {
 	});
 });
 
+describe("local command", () => {
+	it("keeps the 5f402159:2276 /model command and its output as Verbose rows", () => {
+		const specimen = (rowSpecimens as RowSpecimen[]).find(
+			(candidate) => candidate.session === "5f402159" && candidate.line === 2276,
+		)!;
+		const {lines, toolResultMap} = processTranscript(specimen.records);
+		const container = render(
+			<SessionChat
+				sessionId="5f402159-8a8e-4739-a223-a78c5ab99098"
+				lines={lines}
+				toolResultMap={toolResultMap}
+				shouldScrollToEnd={false}
+				transcriptMode="verbose"
+			/>,
+		).container;
+		expect(
+			Array.from(container.querySelectorAll("[data-testid=transcript-row] h2"), (heading) => heading.textContent),
+		).toStrictEqual(["You said: /model", "You said"]);
+	});
+});
+
 describe("user bubble line box", () => {
 	it("sets the bubble on upstream's 14px/18px heading leading, as the streaming bubble does, leaving the prompt paragraph on its 20px body leading", () => {
 		const specimen = (rowSpecimens as RowSpecimen[]).find(
