@@ -852,8 +852,16 @@ interface BackgroundNotice {
 
 const NO_NOTICES: readonly BackgroundNotice[] = [];
 
-/** The finished background task a user line announces, or null for any other line. */
+/**
+ * The finished background task a line announces, or null for any other line.
+ * A notification queued while the turn ran arrives as a queued_command
+ * attachment instead of a user line.
+ */
 function taskNotificationOf(line: SessionLine): TaskNotification | null {
+	if (line.type === "attachment") {
+		const {type, prompt} = getAttachmentHead(line.attachmentJson);
+		return type === "queued_command" && prompt !== null ? parseTaskNotification(prompt) : null;
+	}
 	if (line.type !== "user") return null;
 	return parseTaskNotification(getUserContentText(line));
 }
@@ -2019,9 +2027,13 @@ function isHookSystemMessageLine(line: SessionLine): boolean {
 	return line.type === "attachment" && getAttachmentHead(line.attachmentJson).type === "hook_system_message";
 }
 
-/** Diagnostic attachments shown only in Verbose; subagent hand-backs stay as "Message from" rows. */
+/**
+ * Diagnostic attachments shown only in Verbose; subagent hand-backs stay as
+ * "Message from" rows and queued task notifications fold into the tool group.
+ */
 function isVerboseOnlyAttachment({type, hookEvent, prompt}: AttachmentHead): boolean {
-	if (type === "queued_command") return prompt === null || parseAgentMessage(prompt) === null;
+	if (type === "queued_command")
+		return prompt === null || (parseAgentMessage(prompt) === null && parseTaskNotification(prompt) === null);
 	if (type === "hook_blocking_error") return hookEvent !== null && STOP_HOOK_EVENTS.has(hookEvent);
 	return type !== null && VERBOSE_ONLY_SUBTYPES.has(type);
 }
