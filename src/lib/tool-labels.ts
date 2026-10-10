@@ -17,6 +17,8 @@ import {ExitWorktreeActionSchema, RemoteTriggerActionSchema} from "./tool-input-
 export interface ToolResultMeta {
 	writeType?: "create" | "update";
 	gitOperation?: GitOperation;
+	/** The subagent an Agent call launched, which a later SendMessage can address. */
+	agentId?: string;
 }
 
 export interface ToolLabelCall {
@@ -25,6 +27,8 @@ export interface ToolLabelCall {
 	resultMeta?: ToolResultMeta | undefined;
 	/** The input failed the tool's schema: label from the name alone. */
 	invalidInput?: true | undefined;
+	/** A SendMessage recipient's subagent description, when this session launched it. */
+	recipientDescription?: string | null | undefined;
 }
 
 /**
@@ -50,6 +54,9 @@ export function toolResultMetaFrom(toolUseResult: unknown): ToolResultMeta | und
 	if ("type" in toolUseResult) {
 		const file = FileEditToolUseResultSchema.safeParse(toolUseResult);
 		if (file.success && "type" in file.data) return {writeType: file.data.type};
+	}
+	if ("agentId" in toolUseResult && typeof toolUseResult.agentId === "string" && toolUseResult.agentId !== "") {
+		return {agentId: toolUseResult.agentId};
 	}
 	return undefined;
 }
@@ -135,6 +142,74 @@ function askedMeta(input: Record<string, unknown>): string | null {
 
 function withMeta(label: ToolLabel, meta: string | null): ToolLabel {
 	return meta === null ? label : {...label, meta};
+}
+
+/** Upstream's one-line meta: whitespace collapsed, at most 80 characters with an ellipsis. */
+function oneLineMeta(text: unknown): string | null {
+	if (typeof text !== "string") return null;
+	const line = text.replaceAll(/\s+/g, " ").trim();
+	if (line === "") return null;
+	if (line.length <= 80) return line;
+	// Never split a surrogate pair.
+	const end = (line.charCodeAt(78) & 0xfc00) === 0xd800 ? 78 : 79;
+	return `${line.slice(0, end).trimEnd()}\u2026`;
+}
+
+/** A session address rather than an agent or teammate name. */
+const SESSION_ADDRESS = /^(?:did:|uds:|bridge:|\/|local_[0-9a-f-]{8,}$)/;
+
+/** A bare agent id: a short teammate id or `a<16 hex>`, optionally with a name in between. */
+const AGENT_ID = /^(?:[a-z0-9]{9}|a(?:[\w-]{1,63}-)?[0-9a-f]{16})$/;
+
+function messageText(message: unknown): string | null {
+	if (typeof message === "string") return message.trim() === "" ? null : message;
+	if (typeof message !== "object" || message === null) return null;
+	for (const key of ["feedback", "reason"]) {
+		const value: unknown = (message as Record<string, unknown>)[key];
+		if (typeof value === "string" && value.trim() !== "") return value;
+	}
+	return null;
+}
+
+function approval(value: unknown): boolean | undefined {
+	if (value === true || value === "true") return true;
+	if (value === false || value === "false") return false;
+	return undefined;
+}
+
+/** The verb a structured plan or shutdown message reads as, or null for a plain message. */
+function handshakeVerb(message: Record<string, unknown>, to: string): string | null {
+	const approve = approval(message["approve"]);
+	switch (message["type"]) {
+		case "plan_approval_response":
+			return approve === undefined ? null : `${approve ? "Approved" : "Rejected"} plan from @${to}`;
+		case "shutdown_request":
+			return `Asked @${to} to shut down`;
+		case "shutdown_response":
+			return approve === undefined ? null : `${approve ? "Approved" : "Declined"} shutdown request from @${to}`;
+		default:
+			return null;
+	}
+}
+
+function sendMessageLabel(call: ToolLabelCall): ToolLabel {
+	const {input} = call;
+	const to = stringInput(input, "to");
+	if (to === null || SESSION_ADDRESS.test(to)) return {verb: "Messaged another session"};
+	const message = input["message"];
+	const meta = oneLineMeta(messageText(message));
+	if (typeof message === "object" && message !== null) {
+		const verb = handshakeVerb(message as Record<string, unknown>, to);
+		if (verb !== null) return withMeta({verb}, meta);
+	}
+	const summaryMeta = oneLineMeta(input["summary"]) ?? meta;
+	const kind = input["recipient_kind"];
+	const description = call.recipientDescription ?? null;
+	if (description !== null || AGENT_ID.test(to) || kind === "agent") {
+		return withMeta({verb: "Messaged agent"}, oneLineMeta(description) ?? summaryMeta);
+	}
+	if (kind === "session") return {verb: "Messaged another session"};
+	return withMeta({verb: `Messaged @${to}`}, summaryMeta);
 }
 
 function basename(path: string): string {
@@ -329,7 +404,12 @@ function progressive(description: string): string {
 }
 
 export function runningToolLabel(call: ToolLabelCall): RunningToolLabel {
-	const done = toolLabel({name: call.name, input: call.input, invalidInput: call.invalidInput});
+	const done = toolLabel({
+		name: call.name,
+		input: call.input,
+		invalidInput: call.invalidInput,
+		recipientDescription: call.recipientDescription,
+	});
 	const verb = call.name === "Write" ? "Writing" : progressiveOfPast(done.verb);
 	const running: RunningToolLabel = {verb};
 	if (done.doneLabel !== undefined) {
@@ -391,6 +471,8 @@ export function toolLabel(call: ToolLabelCall): ToolLabel {
 		}
 		case "Artifact":
 			return artifactLabel(input);
+		case "SendMessage":
+			return sendMessageLabel(call);
 		case "AskUserQuestion": {
 			const meta = askedMeta(input);
 			return meta === null ? {verb: "Asked"} : {verb: "Asked", meta};

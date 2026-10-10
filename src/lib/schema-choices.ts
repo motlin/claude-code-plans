@@ -1029,6 +1029,7 @@ const stringifiedBooleanLabels = {
 const sendMessageRecipientKindLabels = {
 	name: "Name",
 	agent: "Agent",
+	session: "Session",
 } satisfies Record<z.infer<typeof SendMessageRecipientKindSchema>, string>;
 
 /** `marketplace_entry.source.source` in plugin-catalog-cache.json (src/lib/customize/discover.ts). */

@@ -161,7 +161,7 @@ describe("Message from subagent rows", () => {
 		});
 	});
 
-	it("names the sender with the subagent description, falling back to subagent", () => {
+	it("names a hand-back's sender subagent, as upstream does, even when the session knows its description", () => {
 		const named = renderLines([queuedCommandRecord(AGENT_MESSAGE)], [SUBAGENT]);
 		const namedSender = named.querySelector("bdi")?.textContent;
 		cleanup();
@@ -169,7 +169,7 @@ describe("Message from subagent rows", () => {
 		const unnamedSender = unnamed.querySelector("bdi")?.textContent;
 
 		expect({namedSender, unnamedSender}).toStrictEqual({
-			namedSender: "Commit the test harness",
+			namedSender: "subagent",
 			unnamedSender: "subagent",
 		});
 	});
@@ -205,7 +205,7 @@ describe("Message from subagent rows", () => {
 			...rowState(container),
 			trailer: container.textContent?.includes("other Claude session") ?? false,
 		}).toStrictEqual({
-			sender: "Commit the test harness",
+			sender: "subagent",
 			text: true,
 			label: "Hide message from subagent",
 			expanded: "true",

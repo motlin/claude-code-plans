@@ -25,8 +25,8 @@ const JsonInputValueSchema: z.ZodType<unknown> = z.lazy(() =>
  */
 export const StringifiedBooleanSchema = z.enum(["true", "false"]);
 
-/** How a SendMessage `to` is resolved: a teammate or session name, or an agent id. */
-export const SendMessageRecipientKindSchema = z.enum(["name", "agent"]);
+/** How a SendMessage `to` is resolved: a teammate or session name, an agent id, or another session. */
+export const SendMessageRecipientKindSchema = z.enum(["name", "agent", "session"]);
 
 export const BashInputSchema = z
 	.object({

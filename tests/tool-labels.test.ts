@@ -298,6 +298,20 @@ describe("toolResultMetaFrom", () => {
 	});
 });
 
+describe("toolResultMetaFrom agent results", () => {
+	it("reads the launched agent's id, so a later SendMessage can name its description", () => {
+		expect({
+			async: toolResultMetaFrom({
+				isAsync: true,
+				status: "async_launched",
+				agentId: "ae82c2d367f9dc313",
+				description: "Do next todo task",
+			}),
+			badId: toolResultMetaFrom({status: "completed", agentId: 7}),
+		}).toStrictEqual({async: {agentId: "ae82c2d367f9dc313"}, badId: undefined});
+	});
+});
+
 describe("runningToolLabel", () => {
 	it("gives an in-flight call the progressive form of its label", () => {
 		expect({
@@ -388,5 +402,89 @@ describe("toolLabel Bash past tense", () => {
 		"Mark the task done",
 	])("keeps a description whose first word is not a known verb verbatim: %j", (description) => {
 		expect(done(description)).toBe(description);
+	});
+});
+
+describe("SendMessage labels", () => {
+	const send = (input: Record<string, unknown>, recipientDescription?: string): ToolLabelCall =>
+		recipientDescription === undefined
+			? {name: "SendMessage", input}
+			: {name: "SendMessage", input, recipientDescription};
+	const longMessage = `${"word ".repeat(20)}\n\n  and   more`;
+
+	it("names the recipient as upstream does", () => {
+		expect({
+			knownAgent: toolLabel(send({to: "ae82c2d367f9dc313", message: "Finish the task"}, "Do next todo task")),
+			agentSummary: toolLabel(send({to: "ae82c2d367f9dc313", summary: "ping", message: "Finish it"})),
+			agentMessage: toolLabel(send({to: "a1b2c3d4e", message: longMessage})),
+			agentKind: toolLabel(send({to: "worker", recipient_kind: "agent", message: "hi"})),
+			teammate: toolLabel(send({to: "researcher", summary: "status?", message: "How is it going?"})),
+			teammateMessage: toolLabel(send({to: "researcher", message: "How is it going?"})),
+			session: toolLabel(send({to: "researcher", recipient_kind: "session", message: "hi"})),
+			missing: toolLabel(send({message: "hi"})),
+			did: toolLabel(send({to: "did:plc:abc", message: "hi"})),
+			uds: toolLabel(send({to: "uds:/tmp/peer.sock", message: "hi"})),
+			local: toolLabel(send({to: "local_0123abcd-ef", message: "hi"})),
+		}).toStrictEqual({
+			knownAgent: {verb: "Messaged agent", meta: "Do next todo task"},
+			agentSummary: {verb: "Messaged agent", meta: "ping"},
+			agentMessage: {verb: "Messaged agent", meta: `${"word ".repeat(15).trim()} word…`},
+			agentKind: {verb: "Messaged agent", meta: "hi"},
+			teammate: {verb: "Messaged @researcher", meta: "status?"},
+			teammateMessage: {verb: "Messaged @researcher", meta: "How is it going?"},
+			session: {verb: "Messaged another session"},
+			missing: {verb: "Messaged another session"},
+			did: {verb: "Messaged another session"},
+			uds: {verb: "Messaged another session"},
+			local: {verb: "Messaged another session"},
+		});
+	});
+
+	it("names plan approvals and shutdown handshakes", () => {
+		expect({
+			approved: toolLabel(
+				send({to: "planner", message: {type: "plan_approval_response", request_id: "r1", approve: true}}),
+			),
+			rejected: toolLabel(
+				send({
+					to: "planner",
+					message: {
+						type: "plan_approval_response",
+						request_id: "r1",
+						approve: false,
+						feedback: "Split it up",
+					},
+				}),
+			),
+			shutdown: toolLabel(send({to: "worker", message: {type: "shutdown_request", reason: "Done for today"}})),
+			shutdownApproved: toolLabel(
+				send({to: "lead", message: {type: "shutdown_response", request_id: "r2", approve: true}}),
+			),
+			shutdownDeclined: toolLabel(
+				send({to: "lead", message: {type: "shutdown_response", request_id: "r2", approve: "false"}}),
+			),
+		}).toStrictEqual({
+			approved: {verb: "Approved plan from @planner"},
+			rejected: {verb: "Rejected plan from @planner", meta: "Split it up"},
+			shutdown: {verb: "Asked @worker to shut down", meta: "Done for today"},
+			shutdownApproved: {verb: "Approved shutdown request from @lead"},
+			shutdownDeclined: {verb: "Declined shutdown request from @lead"},
+		});
+	});
+
+	it("gives an in-flight message the progressive verb", () => {
+		expect({
+			agent: runningToolLabel(send({to: "ae82c2d367f9dc313", message: "go"}, "Do next todo task")),
+			teammate: runningToolLabel(send({to: "researcher", message: "hi"})),
+			session: runningToolLabel(send({message: "hi"})),
+			plan: runningToolLabel(
+				send({to: "planner", message: {type: "plan_approval_response", request_id: "r1", approve: true}}),
+			),
+		}).toStrictEqual({
+			agent: {verb: "Messaging agent", meta: "Do next todo task"},
+			teammate: {verb: "Messaging @researcher", meta: "hi"},
+			session: {verb: "Messaging another session"},
+			plan: {verb: "Approving plan from @planner"},
+		});
 	});
 });

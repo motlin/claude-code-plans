@@ -392,9 +392,10 @@ export const SessionChat = React.memo(function SessionChat({
 	const containerRef = useRef<HTMLDivElement>(null);
 	const isSubagentSession = sessionId.startsWith("agent-");
 	const subagentLookup = useMemo(() => buildSubagentLookup(subagents), [subagents]);
+	const launchedAgents = useMemo(() => launchedAgentDescriptions(lines, toolResultMap), [lines, toolResultMap]);
 	const resolveAgentName = useCallback<AgentNameResolver>(
-		(agentId) => subagentLookup.byBareId.get(agentId)?.description ?? null,
-		[subagentLookup],
+		(agentId) => launchedAgents.get(agentId) ?? subagentLookup.byBareId.get(agentId)?.description ?? null,
+		[launchedAgents, subagentLookup],
 	);
 	const backgroundOutcomes = useMemo(() => backgroundLaunchOutcomes(lines), [lines]);
 
@@ -901,6 +902,26 @@ function foldablePeerMessage(lines: readonly SessionLine[], index: number): Agen
 		return Array.isArray(content) && content[0]?.type === "tool_use" ? message : null;
 	}
 	return null;
+}
+
+/** Each subagent an Agent call in this transcript launched, by agent id, to its description. */
+function launchedAgentDescriptions(
+	lines: readonly SessionLine[],
+	toolResultMap: ReadonlyMap<string, ToolResultInfo>,
+): ReadonlyMap<string, string> {
+	const descriptions = new Map<string, string>();
+	for (const line of lines) {
+		if (line.type !== "assistant" || !Array.isArray(line.message?.content)) continue;
+		for (const block of line.message.content) {
+			if (block.type !== "tool_use" || (block.name !== "Agent" && block.name !== "Task")) continue;
+			const description: unknown = block.input["description"];
+			const agentId = toolResultMap.get(block.id)?.resultMeta?.agentId;
+			if (typeof description === "string" && description !== "" && agentId !== undefined) {
+				descriptions.set(agentId, description);
+			}
+		}
+	}
+	return descriptions;
 }
 
 function transcriptToolUseIds(lines: readonly SessionLine[]): Set<string> {
@@ -3481,8 +3502,13 @@ function ToolCallRow({
 	const expandable = hasBody && !NON_EXPANDING_TOOLS.has(call.name) && !isArtifactCard(call);
 	const Renderer = getCallRenderer(call);
 	const pending = isPendingToolCall(call);
-	const toolRowLabel = toolLabel(call);
-	const running = pending ? runningToolLabel(call) : null;
+	const resolveAgentName = useContext(AgentNameContext);
+	const labelCall =
+		call.name === "SendMessage" && typeof call.input["to"] === "string"
+			? {...call, recipientDescription: resolveAgentName(call.input["to"])}
+			: call;
+	const toolRowLabel = toolLabel(labelCall);
+	const running = pending ? runningToolLabel(labelCall) : null;
 	const isFileParam = FILE_PARAM_TOOLS.has(call.name);
 	const diffStats = useEditDiffStats(call);
 	const isCardStyle = CARD_STYLE_TOOLS.has(call.name) && !nested;

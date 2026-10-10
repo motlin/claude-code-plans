@@ -1048,7 +1048,12 @@ describe("SessionChat failed tool row label", () => {
 					toolUseResult: {success: false, message: unreachable, display: "Not sent"},
 				}),
 			),
-		).toStrictEqual([{text: "Used SendMessage", className: `shrink-0 ${MUTED_LABEL}`}, FAILED_SUFFIX, ROW_CHEVRON]);
+		).toStrictEqual([
+			{text: "Messaged @slotter", className: `shrink-0 ${MUTED_LABEL}`},
+			{text: "hi", className: `truncate min-w-0 ${MUTED_LABEL}`},
+			FAILED_SUFFIX,
+			ROW_CHEVRON,
+		]);
 	});
 
 	it('marks permission-rule and automode-blocked denials "Failed", not "Stopped"', () => {

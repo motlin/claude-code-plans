@@ -1,4 +1,4 @@
-import {createContext, useContext, useId, useState} from "react";
+import {createContext, useId, useState} from "react";
 import type {AgentMessage} from "../lib/agent-message";
 import {ProseMarkdown} from "./file-refs";
 import {ChevronIcon} from "./tool-renderers/shared";
@@ -10,11 +10,11 @@ export type AgentNameResolver = (agentId: string) => string | null;
 export const AgentNameContext = createContext<AgentNameResolver>(() => null);
 
 /**
- * Upstream's "Message from <sender>" human row for a subagent hand-back: no
+ * Upstream's "Message from subagent" human row for a subagent hand-back: no
  * bubble, a ghost chevron that reveals the report as clamped markdown prose.
+ * Upstream names a hand-back's sender "subagent", never its description.
  */
 export function AgentMessageRow({message}: {message: AgentMessage}) {
-	const sender = useContext(AgentNameContext)(message.from) ?? "subagent";
 	const [expanded, setExpanded] = useState(false);
 	const bodyId = useId();
 
@@ -22,7 +22,7 @@ export function AgentMessageRow({message}: {message: AgentMessage}) {
 		<div className="group/tool flex w-full min-w-0 flex-col" data-agent-message-from={message.from}>
 			<div className="flex min-w-0 items-center gap-1 text-body text-secondary">
 				<span className="shrink-0">Message from</span>
-				<bdi className="min-w-0 truncate text-primary">{sender}</bdi>
+				<bdi className="min-w-0 truncate text-primary">subagent</bdi>
 				<button
 					type="button"
 					aria-expanded={expanded}
