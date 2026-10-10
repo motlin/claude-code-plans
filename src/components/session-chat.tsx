@@ -14,6 +14,7 @@ import React, {
 } from "react";
 import {AlertTriangle, Bot, FileWarning, GitBranch, Lock, Palette, Plug, Zap} from "lucide-react";
 import {assertNever} from "../lib/assert-never";
+import {isWithdrawnQuestion, type AskedCall} from "../lib/ask-user-question";
 import {ProseMarkdown} from "./file-refs";
 import {MarkdownArticle} from "./markdown-article";
 import {TruncatedContent} from "./truncated-content";
@@ -1217,16 +1218,24 @@ function isProseOnlyAssistantLine(line: SessionLine): boolean {
 	return !Array.isArray(content) || content.every((b) => b.type !== "tool_use");
 }
 
-function toolUseNames(lines: readonly SessionLine[]): string[] {
+/** The names of the calls ToolCallSection draws as rows rather than prominent cards. */
+function backgroundToolNames(
+	lines: readonly SessionLine[],
+	toolResultMap: ReadonlyMap<string, ToolResultInfo>,
+): string[] {
 	return lines.flatMap((line) => {
 		const content = line.type === "assistant" ? line.message?.content : undefined;
-		return Array.isArray(content) ? content.flatMap((b) => (b.type === "tool_use" ? [b.name] : [])) : [];
+		if (!Array.isArray(content)) return [];
+		return content.flatMap((b) =>
+			b.type === "tool_use" && !isProminentCall({...toolResultMap.get(b.id), name: b.name, input: b.input})
+				? [b.name]
+				: [],
+		);
 	});
 }
 
-/** Whether ToolCallSection, given these calls and notices, draws a TurnStatus first. */
-function toolSectionOpensWithStatus(toolNames: readonly string[], noticeCount: number): boolean {
-	const background = toolNames.filter((name) => !PROMINENT_TOOLS.has(name));
+/** Whether ToolCallSection, given its row calls and notices, draws a TurnStatus first. */
+function toolSectionOpensWithStatus(background: readonly string[], noticeCount: number): boolean {
 	if (background.length === 0 && noticeCount === 0) return false;
 	// A lone Agent row navigates rather than disclosing a status.
 	if (background.length === 1 && noticeCount === 0) return background[0] !== "Agent";
@@ -1573,7 +1582,7 @@ function buildSessionListEntries(
 					opensWithStatus:
 						line.type === "assistant" &&
 						!hasAttribution(line, verbose) &&
-						toolSectionOpensWithStatus(toolUseNames([line]), 0),
+						toolSectionOpensWithStatus(backgroundToolNames([line], renderProps.toolResultMap), 0),
 					element: (
 						<LineEntry
 							line={line}
@@ -1604,7 +1613,7 @@ function buildSessionListEntries(
 					assistantSpan: displaySpans?.get(line.lineIndex),
 					replyHead: line,
 					opensWithStatus: toolSectionOpensWithStatus(
-						toolUseNames(firstBatch),
+						backgroundToolNames(firstBatch, renderProps.toolResultMap),
 						firstBatchEnd === -1 ? notices.length : 0,
 					),
 					element: (
@@ -3376,6 +3385,12 @@ function readRangeLabel(call: ClientToolCall): string | null {
  * here stays a bare positioning context for the DebugLink.
  */
 const PROMINENT_TOOLS = new Set(["AskUserQuestion"]);
+
+/** A prominent tool's call, unless the user withdrew the question, which upstream draws as a row. */
+function isProminentCall(call: AskedCall & {name: string}): boolean {
+	return PROMINENT_TOOLS.has(call.name) && !isWithdrawnQuestion(call);
+}
+
 const TASK_TOOLS = new Set(["TaskCreate", "TaskUpdate", "TaskGet", "TaskList", "TaskStop"]);
 
 function ToolCallSection({
@@ -3390,8 +3405,8 @@ function ToolCallSection({
 	/** The section is the first thing drawn in the row that opens a reply. */
 	leading?: boolean;
 }) {
-	const prominentCalls = calls.filter((c) => PROMINENT_TOOLS.has(c.name));
-	const backgroundCalls = calls.filter((c) => !PROMINENT_TOOLS.has(c.name));
+	const prominentCalls = calls.filter(isProminentCall);
+	const backgroundCalls = calls.filter((c) => !isProminentCall(c));
 
 	return (
 		<>

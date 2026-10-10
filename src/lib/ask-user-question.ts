@@ -175,6 +175,34 @@ export function answersFromResultMeta(
 	return result;
 }
 
+const DISMISSED_ANSWER_PREFIX = "[User dismissed";
+
+/** What a question needs from its call and result to tell whether the user withdrew it. */
+export interface AskedCall {
+	input: Record<string, unknown>;
+	result?: string | undefined;
+	stopped?: boolean | undefined;
+	denied?: boolean | undefined;
+	resultMeta?: ToolResultMeta | undefined;
+}
+
+/**
+ * Whether the user turned the question away rather than answering it: they
+ * rejected or interrupted the call, or dismissed the prompt, which newer
+ * Claude Code records as a "[User dismissed — ...]" answer to every question.
+ * Upstream draws such a question as a compact "Asked <header>" step, not a card.
+ */
+export function isWithdrawnQuestion(call: AskedCall): boolean {
+	if (call.stopped === true || call.denied === true) return true;
+	const {result} = call;
+	if (result === undefined) return false;
+	if (parseToolRejection(result.trim()) !== null) return true;
+	const questions = normalizeQuestions(call.input);
+	if (questions === null) return false;
+	const answers = answersFromResultMeta(call.resultMeta, questions) ?? parseAnswerResult(result, questions);
+	return answers !== null && answers.every((entry) => entry.answer.startsWith(DISMISSED_ANSWER_PREFIX));
+}
+
 const NOTES_MARKER = " user notes: ";
 const PREVIEW_MARKER = " selected preview:";
 const PAIR_SEPARATOR = ", ";
