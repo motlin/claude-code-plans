@@ -89,6 +89,20 @@ const RECORDS: unknown[] = [
 		hookErrors: ["boom"],
 		preventedContinuation: false,
 	},
+	attachment("att-auto-mode", {type: "auto_mode", bashFirst: true, steerOnly: true, bypass: false}),
+	attachment("att-hook-context-bash", {
+		type: "hook_additional_context",
+		hookName: "PostToolUse:Bash",
+		hookEvent: "PostToolUse",
+		toolUseID: "toolu_x",
+		content: ["Git commit detected!"],
+	}),
+	attachment("att-hook-context-prompt", {
+		type: "hook_additional_context",
+		hookName: "UserPromptSubmit",
+		hookEvent: "UserPromptSubmit",
+		content: ["CAVEMAN MODE ACTIVE"],
+	}),
 	attachment("att-hook-blocked", {
 		type: "hook_blocking_error",
 		hookName: "Stop",
@@ -105,10 +119,13 @@ const DIAGNOSTIC_TEXT = [
 	"Queued command",
 	"stop hooks ran",
 	"Hook blocked: Stop",
+	"Auto mode",
+	"Hook context: PostToolUse:Bash",
+	"Hook context: UserPromptSubmit",
 ];
 
-function renderMode(mode: TranscriptMode): HTMLElement {
-	const {lines, toolResultMap} = processTranscript(RECORDS);
+function renderRecords(records: unknown[], mode: TranscriptMode, showHookWarnings = true): HTMLElement {
+	const {lines, toolResultMap} = processTranscript(records);
 	return render(
 		<SessionChat
 			sessionId="test-session"
@@ -116,8 +133,13 @@ function renderMode(mode: TranscriptMode): HTMLElement {
 			toolResultMap={toolResultMap}
 			shouldScrollToEnd={false}
 			transcriptMode={mode}
+			showHookWarnings={showHookWarnings}
 		/>,
 	).container;
+}
+
+function renderMode(mode: TranscriptMode): HTMLElement {
+	return renderRecords(RECORDS, mode);
 }
 
 /** Focus the assistant bar's time and return the tooltip it opens. */
@@ -158,5 +180,75 @@ describe("Verbose-only diagnostic rows", () => {
 			hookMessage: true,
 			thinkingDropped: true,
 		});
+	});
+});
+
+function bashCall(id: string): unknown[] {
+	return [
+		{
+			type: "assistant",
+			uuid: `a-${id}`,
+			timestamp: "2026-09-30T08:01:00.000Z",
+			message: {
+				role: "assistant",
+				content: [{type: "tool_use", id, name: "Bash", input: {command: `echo ${id}`}}],
+			},
+		},
+		{
+			type: "user",
+			uuid: `r-${id}`,
+			parentUuid: `a-${id}`,
+			timestamp: "2026-09-30T08:01:01.000Z",
+			message: {role: "user", content: [{type: "tool_result", tool_use_id: id, content: "ok", is_error: false}]},
+		},
+	];
+}
+
+const HOOK_CONTEXT_BETWEEN_COMMANDS: unknown[] = [
+	...bashCall("first"),
+	attachment("att-hook-context", {
+		type: "hook_additional_context",
+		hookName: "PostToolUse:Bash",
+		hookEvent: "PostToolUse",
+		toolUseID: "first",
+		content: ["Git commit detected!"],
+	}),
+	...bashCall("second"),
+];
+
+function observeGrouping(mode: TranscriptMode) {
+	const text = renderRecords(HOOK_CONTEXT_BETWEEN_COMMANDS, mode).textContent ?? "";
+	return {
+		merged: text.includes("Ran 2 commands"),
+		hookContext: text.includes("Hook context: PostToolUse:Bash"),
+	};
+}
+
+describe("Hook context between commands", () => {
+	it("merges the surrounding commands into one group in Normal mode", () => {
+		expect(observeGrouping("normal")).toStrictEqual({merged: true, hookContext: false});
+	});
+
+	it("keeps the hook context row splitting the commands in Verbose mode", () => {
+		expect(observeGrouping("verbose")).toStrictEqual({merged: false, hookContext: true});
+	});
+});
+
+const HOOK_WARNING: unknown[] = [
+	attachment("att-hook-warning", {
+		type: "hook_non_blocking_error",
+		hookName: "PostToolUse:Bash",
+		hookEvent: "PostToolUse",
+		toolUseID: "toolu_x",
+		stderr: "lint failed",
+		stdout: "",
+		exitCode: 1,
+	}),
+];
+
+describe("Non-blocking hook errors", () => {
+	it.each([true, false])("follow showHookWarnings=%s in Normal mode", (showHookWarnings) => {
+		const text = renderRecords(HOOK_WARNING, "normal", showHookWarnings).textContent ?? "";
+		expect(text.includes("PostToolUse:Bash")).toBe(showHookWarnings);
 	});
 });

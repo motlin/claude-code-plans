@@ -1882,11 +1882,12 @@ function SessionLineList({
 	);
 }
 
-const HOOK_WARNING_SUBTYPES = new Set(["hook_non_blocking_error", "hook_additional_context"]);
+const HOOK_WARNING_SUBTYPES = new Set(["hook_non_blocking_error"]);
 const HOOK_ERROR_SUBTYPES = new Set(["hook_cancelled", "hook_blocking_error"]);
 /**
  * Diagnostic rows upstream claude.ai/code never draws in Normal: the agent and
- * skill listings, batching reminders and queued commands. Verbose keeps them.
+ * skill listings, batching reminders, queued commands, auto-mode markers and
+ * hook-injected context. Verbose keeps them.
  */
 const VERBOSE_ONLY_SUBTYPES = new Set([
 	"agent_listing_delta",
@@ -1894,6 +1895,8 @@ const VERBOSE_ONLY_SUBTYPES = new Set([
 	"batching_reminder_sent",
 	"total_tokens_reminder",
 	"queued_command",
+	"auto_mode",
+	"hook_additional_context",
 ]);
 const STOP_HOOK_EVENTS = new Set(["Stop", "SubagentStop"]);
 const SYSTEM_BANNER_SUBTYPES = new Set([
