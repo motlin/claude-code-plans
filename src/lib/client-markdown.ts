@@ -9,7 +9,7 @@ import {requestLanguage, themeOrRequest} from "../hooks/use-shiki";
 import {type CodeThemePair, DEFAULT_CODE_THEMES} from "./code-themes";
 import type {FileRef} from "./file-refs";
 import {normalizeArtifactUrl} from "./artifact-output";
-import {COPY_ICON_SVG, PR_ICON_SVG} from "./icon-paths";
+import {ARTIFACT_ICON_SVG, COPY_ICON_SVG, PR_ICON_SVG} from "./icon-paths";
 import {mdFileHref, resolveRelativeMdHref} from "./md-links";
 import {SHIKI_TOKENIZE_OPTIONS} from "./shiki-tokenize-options";
 
@@ -179,14 +179,11 @@ function collapseLinks<Meta>(
 	}
 }
 
-/**
- * Upstream renders a markdown link to a claude.ai artifact as a link card
- * rather than inline text.
- */
+/** Upstream renders a markdown link to a claude.ai artifact as an inline chip rather than plain link text. */
 function artifactLinks(state: StateCore): void {
 	collapseLinks(state, ARTIFACT_LINK_TOKEN, (href) => {
 		const artifact = normalizeArtifactUrl(href);
-		return artifact === undefined ? undefined : {id: artifact.id, host: new URL(href).host};
+		return artifact === undefined ? undefined : {id: artifact.id};
 	});
 }
 
@@ -224,11 +221,12 @@ function isExternalHref(href: string): boolean {
 	return /^https?:\/\//i.test(href);
 }
 
+/** Upstream's inline artifact chip: the artifact glyph and title on an accent-muted fill, in the line of prose. */
 function artifactLinkHtml(token: Token, env: MarkdownEnv, escape: (value: string) => string) {
-	const {id, host} = token.meta as {id: string; host: string};
+	const {id} = token.meta as {id: string};
 	const href = token.attrGet("href") ?? "";
 	const title = env.artifactTitles?.get(id) ?? token.content;
-	return artifactLinkCardHtml(href, host, title, escape);
+	return `<a href="${escape(href)}" target="_blank" rel="noreferrer" class="artifact-link-chip" ${ARTIFACT_LINK_ATTR}="">${ARTIFACT_ICON_SVG}<span class="artifact-link-chip-title">${escape(title)}</span></a>`;
 }
 
 function artifactLinkCardHtml(href: string, host: string, title: string, escape: (value: string) => string): string {
@@ -245,7 +243,7 @@ function artifactLinkCardHtml(href: string, host: string, title: string, escape:
 	return `<a ${attrs.join(" ")}><span class="artifact-link-card-title">${escape(title)}</span><span class="artifact-link-card-meta">Artifact · ${escape(host)}</span></a>`;
 }
 
-/** Upstream's artifact link card for `href`, as markdown links to artifacts render. */
+/** Upstream's artifact link card for `href`, as an Artifact tool result renders. */
 export function renderArtifactLinkCard(href: string, title: string): string {
 	let host = "";
 	try {

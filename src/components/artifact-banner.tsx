@@ -7,7 +7,7 @@ import {MarkdownArticle} from "./markdown-article";
 type ArtifactLinkLine = Extract<ProcessedLine, {type: "artifact-link"}>;
 type ArtifactWatchLine = Extract<ProcessedLine, {type: "artifact-watch"}>;
 
-/** The link card a markdown link to the artifact renders as. */
+/** The artifact link card these banners draw; prose links render as inline chips instead. */
 function ArtifactCard({url, title}: {url: string; title: string | undefined}) {
 	return <MarkdownArticle html={renderArtifactLinkCard(url, title ?? url)} />;
 }

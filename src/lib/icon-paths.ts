@@ -18,3 +18,6 @@ export const CHECK_ICON_SVG = `<svg width="12" height="12" viewBox="0 0 12 12" f
 
 /** A pull-request glyph (two branch nodes joined by a merge arrow) for GitHub PR chips. */
 export const PR_ICON_SVG = `<svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="4" cy="3.5" r="1.75" stroke="currentColor" stroke-width="1.5"/><circle cx="4" cy="12.5" r="1.75" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12.5" r="1.75" stroke="currentColor" stroke-width="1.5"/><path d="M4 5.25v5.5M12 10.75V6.5a2 2 0 0 0-2-2H7.5M9 3 7.5 4.5 9 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+/** Upstream's artifact glyph (Anthropicons U+E017): a half disc over a circle beside a rounded box. */
+export const ARTIFACT_ICON_SVG = `<svg class="artifact-link-chip-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M8.75 11.75A5.48 5.48 0 0 1 18.5 6.75Z"/><circle cx="6.75" cy="16" r="3.6"/><rect x="13.75" y="10.25" width="7.25" height="9.5" rx="1"/></svg>`;

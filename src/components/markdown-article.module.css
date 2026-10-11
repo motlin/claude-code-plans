@@ -275,8 +275,47 @@
 	margin-right: 4px;
 }
 
-/* A claude.ai artifact link reads as a compact card, like upstream's link card:
-   the artifact's title over an "Artifact · host" caption. */
+/* A claude.ai artifact link in prose is upstream's inline chip: the artifact
+   glyph 3px before the title on the PR chip's accent-muted fill, 17.5px tall so
+   it never grows the line box. */
+.markdown a:global(.artifact-link-chip) {
+	display: inline-flex;
+	max-width: 100%;
+	align-items: center;
+	gap: 3px;
+	padding: 0 6px 0 4px;
+	border-radius: 4px;
+	background-color: rgb(42 120 214 / 0.1);
+	line-height: 1.25;
+	vertical-align: baseline;
+	text-decoration-line: none;
+}
+
+.markdown a:global(.artifact-link-chip):hover {
+	background-color: rgb(205 226 251);
+}
+
+:global(.dark) .markdown a:global(.artifact-link-chip) {
+	background-color: rgb(42 120 214 / 0.2);
+}
+
+:global(.dark) .markdown a:global(.artifact-link-chip):hover {
+	background-color: rgb(42 120 214 / 0.32);
+}
+
+.markdown :global(.artifact-link-chip-icon) {
+	flex-shrink: 0;
+}
+
+.markdown :global(.artifact-link-chip-title) {
+	align-self: baseline;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* An Artifact tool result's link reads as a compact card: the artifact's title
+   over an "Artifact · host" caption. */
 .markdown a:global(.artifact-link-card) {
 	display: inline-flex;
 	flex-direction: column;

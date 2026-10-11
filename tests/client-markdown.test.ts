@@ -9,6 +9,7 @@ import {
 	looksLikeMarkdown,
 	renderArtifactLinkCard,
 } from "../src/lib/client-markdown";
+import {ARTIFACT_ICON_SVG} from "../src/lib/icon-paths";
 
 const {requestLanguageMock, requestThemeMock} = vi.hoisted(() => ({
 	requestLanguageMock: vi.fn(() => Promise.resolve()),
@@ -374,34 +375,39 @@ describe("renderMarkdownWithHighlighting", () => {
 	});
 });
 
-describe("artifact link cards", () => {
+describe("artifact link chips", () => {
 	const knownId = "0f8fad5b-d9cb-469f-a165-70867728950e";
 	const titles = new Map([[knownId, "Release Dashboard"]]);
+	const chip = (href: string, title: string) =>
+		`<a href="${href}" target="_blank" rel="noreferrer" class="artifact-link-chip" data-artifact-link="">${ARTIFACT_ICON_SVG}<span class="artifact-link-chip-title">${title}</span></a>`;
 
-	it("renders a known artifact link as a card titled from the artifacts index", () => {
+	it("renders a known artifact link as an inline chip titled from the artifacts index", () => {
 		expect(
 			renderMarkdownToHtml(`See [the dashboard](https://claude.ai/code/artifact/${knownId}).`, {
 				artifactTitles: titles,
 			}),
-		).toBe(
-			`<p>See <a href="https://claude.ai/code/artifact/${knownId}" target="_blank" rel="noopener noreferrer" class="artifact-link-card" data-artifact-link="" aria-label="Artifact: Release Dashboard" title="Artifact: Release Dashboard"><span class="artifact-link-card-title">Release Dashboard</span><span class="artifact-link-card-meta">Artifact · claude.ai</span></a>.</p>\n`,
-		);
+		).toBe(`<p>See ${chip(`https://claude.ai/code/artifact/${knownId}`, "Release Dashboard")}.</p>\n`);
 	});
 
-	it("renders an unknown artifact link as a card titled with its link text", () => {
+	it("renders an unknown artifact link as a chip titled with its link text", () => {
 		expect(
 			renderMarkdownToHtml("[My **page**](https://claude.ai/artifact/some-slug)", {
 				artifactTitles: titles,
 			}),
-		).toBe(
-			`<p><a href="https://claude.ai/artifact/some-slug" target="_blank" rel="noopener noreferrer" class="artifact-link-card" data-artifact-link="" aria-label="Artifact: My page" title="Artifact: My page"><span class="artifact-link-card-title">My page</span><span class="artifact-link-card-meta">Artifact · claude.ai</span></a></p>\n`,
-		);
+		).toBe(`<p>${chip("https://claude.ai/artifact/some-slug", "My page")}</p>\n`);
 	});
 
 	it("labels a bare linkified artifact URL with the URL when there is no index", () => {
-		expect(renderMarkdownToHtml(`https://claude.ai/code/artifact/${knownId}`)).toBe(
-			`<p><a href="https://claude.ai/code/artifact/${knownId}" target="_blank" rel="noopener noreferrer" class="artifact-link-card" data-artifact-link="" aria-label="Artifact: https://claude.ai/code/artifact/${knownId}" title="Artifact: https://claude.ai/code/artifact/${knownId}"><span class="artifact-link-card-title">https://claude.ai/code/artifact/${knownId}</span><span class="artifact-link-card-meta">Artifact · claude.ai</span></a></p>\n`,
-		);
+		const href = `https://claude.ai/code/artifact/${knownId}`;
+		expect(renderMarkdownToHtml(href)).toBe(`<p>${chip(href, href)}</p>\n`);
+	});
+
+	it("escapes the chip title", () => {
+		expect(
+			renderMarkdownToHtml(`[x](https://claude.ai/code/artifact/${knownId})`, {
+				artifactTitles: new Map([[knownId, "A <b> page"]]),
+			}),
+		).toBe(`<p>${chip(`https://claude.ai/code/artifact/${knownId}`, "A &lt;b&gt; page")}</p>\n`);
 	});
 
 	it("leaves other claude.ai links as plain links", () => {
