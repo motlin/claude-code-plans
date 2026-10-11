@@ -31,7 +31,9 @@ function openPaths(): string[] {
 			}
 		});
 	}
-	const lsof = execFileSync("lsof", ["-w", "-n", "-P", "-p", String(process.pid), "-Fn"], {encoding: "utf8"});
+	// -b skips lsof's stat of every mount point, which blocks for its 15s kernel-call timeout whenever a network
+	// mount (an SMB or Time Machine share) is slow to answer. Descriptor paths still come from the kernel.
+	const lsof = execFileSync("lsof", ["-b", "-w", "-n", "-P", "-p", String(process.pid), "-Fn"], {encoding: "utf8"});
 	return lsof
 		.split("\n")
 		.filter((line) => line.startsWith("n"))
@@ -184,7 +186,8 @@ describe("the recursive watcher", () => {
 		const whileWatching = {descriptors: openPathsUnder(root).length, watchers: activeWatchers() - baselineWatchers};
 
 		await watcher.close();
-		await new Promise((resolve) => setTimeout(resolve, 50));
+		// Native watch handles finish closing on a later tick, so wait for them rather than for a fixed time.
+		await expect.poll(() => activeWatchers() - baselineWatchers, {timeout: 10_000}).toBe(0);
 
 		expect({
 			whileWatching: {
