@@ -44,6 +44,9 @@ export function getCachedCanonicalSessionRouteId(queryClient: QueryClient, sessi
 	return canonical;
 }
 
+/** How long a 503 identity lookup (the index still building) waits before each of its two retries. */
+export const SESSION_IDENTITY_RETRY_DELAY_MS = 3000;
+
 export const sessionIdentityQueryOptions = (routeId: string) =>
 	queryOptions({
 		queryKey: sessionQueryKeys.identity(routeId),
@@ -52,7 +55,7 @@ export const sessionIdentityQueryOptions = (routeId: string) =>
 		staleTime: Infinity,
 		gcTime: Infinity,
 		retry: (failureCount, error) => error instanceof ApiResponseError && error.status === 503 && failureCount < 2,
-		retryDelay: 3000,
+		retryDelay: SESSION_IDENTITY_RETRY_DELAY_MS,
 	});
 
 /** A new owner can make any cached alias ambiguous, including one belonging to another session. */

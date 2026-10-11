@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
+import {QueryClient, QueryClientProvider, timeoutManager} from "@tanstack/react-query";
 import {
 	createMemoryHistory,
 	createRootRouteWithContext,
@@ -16,13 +16,26 @@ import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library
 import {StrictMode, useEffect} from "react";
 import {afterEach, expect, it, vi} from "vite-plus/test";
 import {useMainScrollRestoration, type MainScrollRestorationSnapshot} from "../src/hooks/use-main-scroll-restoration";
-import {invalidateSessionIdentities, sessionIdentityQueryOptions} from "../src/lib/api/session-identity";
+import {
+	invalidateSessionIdentities,
+	SESSION_IDENTITY_RETRY_DELAY_MS,
+	sessionIdentityQueryOptions,
+} from "../src/lib/api/session-identity";
 import {sessionScrollKey} from "../src/lib/session-route-location";
 import {AttentionBadgeBridge} from "../src/components/attention-badge-bridge";
 import {sessionDetailQueryOptions, type SessionDetailData} from "../src/lib/api/sessions";
 import {Route as SessionRoute} from "../src/routes/session.$id";
 import {SessionChat} from "../src/components/session-chat";
 import {SessionRouteIdentity} from "../src/components/session-route-identity";
+
+// The 503 case still makes all three lookups, without sleeping through the real retry delay between them.
+timeoutManager.setTimeoutProvider({
+	setTimeout: (callback, delay) =>
+		globalThis.setTimeout(callback, delay === SESSION_IDENTITY_RETRY_DELAY_MS ? 0 : delay),
+	clearTimeout: (id) => globalThis.clearTimeout(id),
+	setInterval: (callback, delay) => globalThis.setInterval(callback, delay),
+	clearInterval: (id) => globalThis.clearInterval(id),
+});
 
 const ALIAS = "session_alice_100";
 const ALICE = "local-alice-100";
@@ -292,49 +305,44 @@ it("waits for a fresh lookup rather than pinning invalidated success from a prev
 	});
 });
 
-it.each([404, 409, 503])(
-	"shows an honest %s lookup error and supports manual retry",
-	async (status) => {
-		const {finish, setLookup, fetcher, client} = await setup();
-		setLookup(async () => new Response(null, {status}));
-		await act(async () => finish(new Response(null, {status})));
-		const message = (await screen.findByRole("alert", {}, {timeout: 8000})).textContent;
-		const failedRequests = fetcher.mock.calls.length;
-		const title = document.title;
-		act(() => document.dispatchEvent(new Event("visibilitychange")));
-		const attentionTitle = document.title;
-		client.setQueryData<SessionDetailData | null>(sessionDetailQueryOptions(ALICE).queryKey, ALICE_DETAIL);
-		setLookup(async () => Response.json({sessionId: ALICE}));
-		fireEvent.click(screen.getByRole("button", {name: "Retry"}));
-		const page = await screen.findByTestId("session");
-		await waitFor(() => expect(document.title).toBe("Alice session"));
-		expect({
-			status,
-			message,
-			title,
-			attentionTitle,
-			failedRequests,
-			owner: page.dataset["session"],
-			owners: new Set(observed.owners),
-		}).toStrictEqual({
-			status,
-			attentionTitle:
-				status === 404 ? "Session Not Found" : status === 409 ? "Ambiguous session link" : "Indexing sessions…",
-			title:
-				status === 404 ? "Session Not Found" : status === 409 ? "Ambiguous session link" : "Indexing sessions…",
-			message:
-				status === 404
-					? "Session Not Found"
-					: status === 409
-						? "This session link has more than one local session."
-						: "Sessions are still being indexed. Try again shortly.",
-			failedRequests: status === 503 ? 3 : 1,
-			owner: ALICE,
-			owners: new Set([ALICE]),
-		});
-	},
-	10_000,
-);
+it.each([404, 409, 503])("shows an honest %s lookup error and supports manual retry", async (status) => {
+	const {finish, setLookup, fetcher, client} = await setup();
+	setLookup(async () => new Response(null, {status}));
+	await act(async () => finish(new Response(null, {status})));
+	const message = (await screen.findByRole("alert")).textContent;
+	const failedRequests = fetcher.mock.calls.length;
+	const title = document.title;
+	act(() => document.dispatchEvent(new Event("visibilitychange")));
+	const attentionTitle = document.title;
+	client.setQueryData<SessionDetailData | null>(sessionDetailQueryOptions(ALICE).queryKey, ALICE_DETAIL);
+	setLookup(async () => Response.json({sessionId: ALICE}));
+	fireEvent.click(screen.getByRole("button", {name: "Retry"}));
+	const page = await screen.findByTestId("session");
+	await waitFor(() => expect(document.title).toBe("Alice session"));
+	expect({
+		status,
+		message,
+		title,
+		attentionTitle,
+		failedRequests,
+		owner: page.dataset["session"],
+		owners: new Set(observed.owners),
+	}).toStrictEqual({
+		status,
+		attentionTitle:
+			status === 404 ? "Session Not Found" : status === 409 ? "Ambiguous session link" : "Indexing sessions…",
+		title: status === 404 ? "Session Not Found" : status === 409 ? "Ambiguous session link" : "Indexing sessions…",
+		message:
+			status === 404
+				? "Session Not Found"
+				: status === 409
+					? "This session link has more than one local session."
+					: "Sessions are still being indexed. Try again shortly.",
+		failedRequests: status === 503 ? 3 : 1,
+		owner: ALICE,
+		owners: new Set([ALICE]),
+	});
+});
 
 it.each(["ambiguous", "new-owner"])(
 	"keeps the same mounted owner and scroll identity when a live alias becomes %s",
