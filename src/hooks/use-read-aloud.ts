@@ -1,5 +1,5 @@
 import {useEffect, useRef, useState, useSyncExternalStore} from "react";
-import {markdownToPlainText} from "../lib/markdown-plain-text";
+import {speechText} from "../lib/speech-text";
 import {chooseVoice} from "../lib/speech-voice";
 
 /** How long to wait for an engine that has not listed its voices yet before speaking with its default. */
@@ -84,7 +84,7 @@ export function useReadAloud(text: string) {
 			settle("idle");
 			return;
 		}
-		const spoken = markdownToPlainText(text);
+		const spoken = speechText(text);
 		if (spoken === "") return;
 		settle("loading");
 		const settleCurrent = (value: ReadAloudStatus) => {

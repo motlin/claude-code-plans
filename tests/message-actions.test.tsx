@@ -242,7 +242,7 @@ describe("AssistantMessageActions", () => {
 
 		fireEvent.click(bar(container).querySelector<HTMLButtonElement>("[data-read-aloud]")!);
 
-		expect(speech.spoken).toStrictEqual(["Hello there. See src/a.ts:\n\nconst a = 1;"]);
+		expect(speech.spoken).toStrictEqual(["Hello there. See src/a.ts:\n\n (code block)"]);
 	});
 
 	it("stops when pressed again before speech starts", () => {
