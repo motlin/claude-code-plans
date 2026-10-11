@@ -22,10 +22,8 @@ install:
 ensure-sqlite-native:
     #!/usr/bin/env bash
     set -euo pipefail
-    if [ ! -d node_modules/.pnpm ]; then
-        exit 0
-    fi
-    find node_modules/.pnpm -path "*/node_modules/better-sqlite3/package.json" -print | sort | while IFS= read -r package_json; do
+    shopt -s nullglob
+    for package_json in node_modules/.pnpm/better-sqlite3@*/node_modules/better-sqlite3/package.json; do
         package_dir="$PWD/$(dirname "$package_json")"
         if node -e 'const Database = require(process.argv[1]); new Database(":memory:").close();' "$package_dir" >/dev/null 2>&1; then
             continue
