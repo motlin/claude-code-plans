@@ -1,10 +1,20 @@
 import {afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
-import {appendFileSync, writeFileSync, mkdirSync, mkdtempSync, realpathSync, rmSync, statSync} from "node:fs";
+import {
+	appendFileSync,
+	writeFileSync,
+	mkdirSync,
+	mkdtempSync,
+	realpathSync,
+	rmSync,
+	statSync,
+	symlinkSync,
+} from "node:fs";
 import {createServer, type Server} from "node:net";
 import {dirname, join} from "node:path";
 import {tmpdir} from "node:os";
 import {
 	__testing,
+	closeWatcher,
 	createWatcher,
 	shouldIgnoreWatch,
 	resolveIgnoredDirNames,
@@ -12,7 +22,12 @@ import {
 	processJsonlAppend,
 	rebroadcastSessionsById,
 } from "../src/lib/watcher";
-import {clearSessionRegistry, refreshSessionRegistry} from "../src/lib/session-registry-store";
+import {
+	clearSessionRegistry,
+	refreshSessionRegistry,
+	startSessionRegistryMonitor,
+	stopSessionRegistryMonitor,
+} from "../src/lib/session-registry-store";
 import {openTestDb, type AppDb} from "../src/lib/db/connection";
 import {indexFile} from "../src/lib/db/indexer";
 import * as schema from "../src/lib/db/schema";
@@ -1006,6 +1021,64 @@ describe("createWatcher resilience", () => {
 		await expect(ready).resolves.toBeUndefined();
 		await new Promise((r) => setTimeout(r, 100));
 		await watcher.close();
+	});
+});
+
+describe("session registry events", () => {
+	afterEach(() => {
+		stopSessionRegistryMonitor();
+		clearSessionRegistry();
+		vi.restoreAllMocks();
+	});
+
+	it("refreshes the registry for a <pid>.json event reported under the real path of a symlinked ~/.claude", async () => {
+		const fixture = realpathSync(mkdtempSync(join(tmpdir(), "watcher-registry-symlink-test-")));
+		const realSessions = join(fixture, "real", "sessions");
+		mkdirSync(realSessions, {recursive: true});
+		symlinkSync(join(fixture, "real"), join(fixture, "link"));
+		const linkedSessions = join(fixture, "link", "sessions");
+		const recursiveWatcher = {
+			once: vi.fn(() => recursiveWatcher),
+			on: vi.fn(() => recursiveWatcher),
+			close: vi.fn(async () => undefined),
+		} as unknown as RecursiveWatcher;
+		vi.spyOn(recursiveWatch, "createRecursiveWatcher").mockReturnValue(recursiveWatcher);
+		const changes: string[][] = [];
+		startSessionRegistryMonitor({
+			dir: linkedSessions,
+			pollMs: 60_000,
+			probe: {isAlive: () => true, readStartTimes: async () => null},
+			onChange: (sessionIds) => changes.push([...sessionIds]),
+		});
+
+		try {
+			await createWatcher([], undefined, undefined, undefined, [], undefined, linkedSessions);
+			const realFile = join(realSessions, "4242.json");
+			writeFileSync(
+				realFile,
+				JSON.stringify({
+					pid: 4242,
+					sessionId: "sess-symlinked",
+					cwd: "/Users/alice/projects/registry",
+					startedAt: 946_598_400_000,
+					procStart: "Fri Dec 31 00:00:00 1999",
+					version: "2.0.0",
+					kind: "interactive",
+					entrypoint: "cli",
+					pidDomain: "darwin",
+					status: "waiting",
+					waitingFor: "input needed",
+					updatedAt: 946_598_402_000,
+					statusUpdatedAt: 946_598_402_000,
+				}),
+			);
+			// The recursive watcher reports paths under the root's real path.
+			await __testing.handleFileChange(realFile);
+			await vi.waitFor(() => expect(changes).toStrictEqual([["sess-symlinked"]]), {timeout: 2000});
+		} finally {
+			await closeWatcher();
+			rmSync(fixture, {recursive: true, force: true});
+		}
 	});
 });
 

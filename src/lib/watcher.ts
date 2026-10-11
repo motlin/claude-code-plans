@@ -1,4 +1,4 @@
-import type {Stats} from "node:fs";
+import {realpathSync, type Stats} from "node:fs";
 import {stat} from "node:fs/promises";
 import {basename, dirname, join, resolve} from "node:path";
 import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
@@ -77,7 +77,8 @@ let projectsDir = "";
 let plansDir = "";
 let statuslineDir = "";
 let jobsDir = "";
-let sessionRegistryDir = "";
+/** The registry directory as given and as its real path: the recursive watcher reports real paths. */
+let sessionRegistryDirs = new Set<string>();
 let fileContentRoots: string[] = [];
 let fileContentRootByGitIndexPath = new Map<string, string>();
 const trackedFileIndex = new TrackedFileIndex();
@@ -632,6 +633,14 @@ export async function processJsonlAppend(
 	}
 }
 
+function realpathOrSelf(path: string): string {
+	try {
+		return realpathSync(path);
+	} catch {
+		return resolve(path);
+	}
+}
+
 /**
  * Route an event inside the CLI session registry: a `<pid>.json` write or
  * removal schedules a registry refresh, and everything else there (notably the
@@ -639,7 +648,7 @@ export async function processJsonlAppend(
  * the registry directory.
  */
 function handleSessionRegistryEvent(path: string): boolean {
-	if (!sessionRegistryDir || dirname(path) !== sessionRegistryDir) return false;
+	if (!sessionRegistryDirs.has(dirname(path))) return false;
 	if (isRegistryFileName(basename(path))) scheduleSessionRegistryRefresh();
 	return true;
 }
@@ -797,7 +806,7 @@ export async function createWatcher(
 	if (plDir) plansDir = plDir;
 	if (slDir) statuslineDir = slDir;
 	if (jbDir) jobsDir = resolve(jbDir);
-	if (registryDir) sessionRegistryDir = resolve(registryDir);
+	if (registryDir) sessionRegistryDirs = new Set([resolve(registryDir), realpathOrSelf(registryDir)]);
 	setFileContentRoots(configuredFileContentRoots);
 
 	await Promise.all(

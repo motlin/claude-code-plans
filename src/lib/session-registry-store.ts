@@ -107,6 +107,7 @@ export async function pollSessionRegistryLiveness(
 interface Monitor {
 	onChange: (sessionIds: Set<string>) => void;
 	dir: string;
+	probe: LivenessProbe | undefined;
 	timer: ReturnType<typeof setInterval>;
 	debounce: ReturnType<typeof setTimeout> | null;
 	queue: Promise<void>;
@@ -138,23 +139,26 @@ export function startSessionRegistryMonitor({
 	onChange,
 	dir = SESSION_REGISTRY_DIR,
 	pollMs = LIVENESS_POLL_MS,
+	probe,
 }: {
 	onChange: (sessionIds: Set<string>) => void;
 	dir?: string;
 	pollMs?: number;
+	probe?: LivenessProbe;
 }): void {
 	stopSessionRegistryMonitor();
 	monitor = {
 		onChange,
 		dir,
 		timer: setInterval(() => {
-			if (live.size > 0) enqueue(() => pollSessionRegistryLiveness(dir));
+			if (live.size > 0) enqueue(() => pollSessionRegistryLiveness(dir, probe));
 		}, pollMs),
+		probe,
 		debounce: null,
 		queue: Promise.resolve(),
 	};
 	monitor.timer.unref?.();
-	enqueue(() => refreshSessionRegistry(dir));
+	enqueue(() => refreshSessionRegistry(dir, probe));
 }
 
 export function scheduleSessionRegistryRefresh(): void {
@@ -163,7 +167,7 @@ export function scheduleSessionRegistryRefresh(): void {
 	if (current.debounce !== null) clearTimeout(current.debounce);
 	current.debounce = setTimeout(() => {
 		current.debounce = null;
-		enqueue(() => refreshSessionRegistry(current.dir));
+		enqueue(() => refreshSessionRegistry(current.dir, current.probe));
 	}, REFRESH_DEBOUNCE_MS);
 }
 
