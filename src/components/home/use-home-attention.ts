@@ -18,6 +18,7 @@ function toAttentionRow(session: SessionListItem, approvalTools: ReadonlyMap<str
 		summary: session.summary ?? null,
 		statusDetail: null,
 		lastAssistantText: null,
+		repository: session.pr?.repository ?? null,
 	};
 }
 

@@ -24,6 +24,7 @@ function row(sessionId: string, overrides: Partial<HomeAttentionRow> = {}): Home
 		summary: null,
 		statusDetail: null,
 		lastAssistantText: null,
+		repository: null,
 		...overrides,
 	};
 }

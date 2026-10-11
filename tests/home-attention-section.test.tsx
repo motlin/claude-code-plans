@@ -40,6 +40,7 @@ function row(sessionId: string, overrides: Partial<HomeAttentionRow> = {}): Home
 		summary: null,
 		statusDetail: null,
 		lastAssistantText: null,
+		repository: null,
 		...overrides,
 	};
 }
@@ -60,7 +61,7 @@ afterEach(() => {
 });
 
 describe("AttentionSection", () => {
-	it("renders the upstream Sessions markup with pills, status line, project, time and dismiss", () => {
+	it("renders the upstream Sessions markup with pills, status line, repo (never the project), time and dismiss", () => {
 		render(
 			<AttentionSection
 				items={items([
@@ -72,7 +73,7 @@ describe("AttentionSection", () => {
 					row("review", {
 						bucket: "review",
 						title: "Refactor parser",
-						project: null,
+						repository: "alice/example-repo",
 						lastActivityAt: NOW - 20 * 1000,
 					}),
 				])}
@@ -97,7 +98,8 @@ describe("AttentionSection", () => {
 					pillClass: li.querySelector("[data-pill-label]")?.className,
 					title: li.querySelector("[data-row-title]")?.textContent,
 					status: li.querySelector("[data-row-status]")?.textContent ?? null,
-					project: li.querySelector("[data-row-project]")?.textContent ?? null,
+					repo: li.querySelector("[data-row-repo]")?.textContent ?? null,
+					trailingIcons: [...li.querySelectorAll("svg")].map((icon) => icon.getAttribute("class")),
 					time: li.querySelector("time")?.textContent,
 					datetime: li.querySelector("time")?.getAttribute("datetime"),
 					dismiss: within(li).getByRole("button", {name: "Dismiss session"}).hasAttribute("data-row-dismiss"),
@@ -106,10 +108,15 @@ describe("AttentionSection", () => {
 
 		expect({
 			heading: within(section).getByRole("heading", {level: 2}).textContent,
+			headingRadius: within(section)
+				.getByRole("heading", {level: 2})
+				.className.split(" ")
+				.filter((name) => name.startsWith("rounded")),
 			showMore: within(section).queryByRole("button", {name: /Show/}),
 			rows,
 		}).toStrictEqual({
 			heading: "Sessions",
+			headingRadius: ["rounded-r3"],
 			showMore: null,
 			rows: [
 				{
@@ -120,7 +127,11 @@ describe("AttentionSection", () => {
 					pillClass: "whitespace-nowrap text-[12px] leading-[15px] text-warning-000",
 					title: "Termius SSH login",
 					status: "Waiting on permission: AskUserQuestion",
-					project: "alpha",
+					repo: null,
+					trailingIcons: [
+						"lucide lucide-chevron-right size-5 text-ink-muted group-hover:text-secondary",
+						"lucide lucide-x size-4",
+					],
 					time: "47m ago",
 					datetime: new Date(NOW - 47 * MINUTE).toISOString(),
 					dismiss: true,
@@ -133,7 +144,11 @@ describe("AttentionSection", () => {
 					pillClass: "whitespace-nowrap text-[12px] leading-[15px] text-accent-100",
 					title: "Refactor parser",
 					status: null,
-					project: null,
+					repo: "alice/example-repo",
+					trailingIcons: [
+						"lucide lucide-chevron-right size-5 text-ink-muted group-hover:text-secondary",
+						"lucide lucide-x size-4",
+					],
 					time: "now",
 					datetime: new Date(NOW - 20 * 1000).toISOString(),
 					dismiss: true,

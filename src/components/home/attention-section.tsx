@@ -79,7 +79,7 @@ export function AttentionSection<Row extends HomeAttentionRow>({
 					id={headingId}
 					ref={headingRef}
 					tabIndex={-1}
-					className="rounded-sm text-[13px] leading-[19px] font-normal text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100"
+					className="rounded-r3 text-[13px] leading-[19px] font-normal text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100"
 				>
 					Sessions
 				</h2>
@@ -179,12 +179,12 @@ function AttentionRow<Row extends HomeAttentionRow>({
 						</span>
 					</span>
 					<span className="flex shrink-0 items-center gap-1">
-						{session.project !== null && (
+						{session.repository !== null && (
 							<span
-								data-row-project
+								data-row-repo
 								className="max-w-[180px] truncate text-[12px] leading-[15px] text-ink-muted"
 							>
-								{session.project}
+								{session.repository}
 							</span>
 						)}
 						<span className="-mr-1 min-w-5 text-center text-[12px] leading-[15px] text-ink-muted tabular-nums">
