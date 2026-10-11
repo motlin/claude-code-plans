@@ -8,6 +8,7 @@ import {ContextMenu, ContextMenuTrigger, MenuContent, MenuItem, MenuSeparator} f
 
 const READ_ALOUD_MENU_LABELS: Record<ReadAloudStatus, string> = {
 	idle: "Read aloud",
+	loading: "Stop reading aloud",
 	playing: "Pause reading aloud",
 	paused: "Resume reading aloud",
 };

@@ -1,4 +1,4 @@
-import {Check, Copy, GitFork, Pause, Pin, RotateCcw, Volume2} from "lucide-react";
+import {Check, Copy, GitFork, Loader2, Pause, Pin, RotateCcw, Volume2} from "lucide-react";
 import {createContext, type FocusEvent, type ReactNode, useContext, useEffect, useRef, useState} from "react";
 
 import {useChapters} from "../lib/chapter-store";
@@ -172,7 +172,12 @@ function RewindAction({message}: {message: TranscriptMessageRef | undefined}) {
 	);
 }
 
-const READ_ALOUD_LABELS: Record<ReadAloudStatus, string> = {idle: "Read aloud", playing: "Pause", paused: "Resume"};
+const READ_ALOUD_LABELS: Record<ReadAloudStatus, string> = {
+	idle: "Read aloud",
+	loading: "Loading\u2026",
+	playing: "Pause",
+	paused: "Resume",
+};
 
 /**
  * Read aloud with the browser's speech service. Like upstream, a press starts,
@@ -182,7 +187,9 @@ function ReadAloudAction({text}: {text: string}) {
 	const {status, toggle} = useReadAloud(text);
 	return (
 		<ActionButton label={READ_ALOUD_LABELS[status]} onClick={toggle} readAloud>
-			{status === "playing" ? (
+			{status === "loading" ? (
+				<Loader2 aria-hidden="true" data-icon="spinner" className={`${ICON_CLASS} animate-spin`} />
+			) : status === "playing" ? (
 				<Pause aria-hidden="true" data-icon="pause" className={ICON_CLASS} />
 			) : (
 				<Volume2 aria-hidden="true" data-icon="speaker" className={ICON_CLASS} />

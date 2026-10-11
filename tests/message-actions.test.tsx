@@ -154,7 +154,7 @@ describe("AssistantMessageActions", () => {
 		expect(vi.mocked(writeClipboardText).mock.calls).toStrictEqual([["Hello **world**"]]);
 	});
 
-	it("reads the message aloud as plain text, pausing and resuming on later presses, with no aria-pressed", () => {
+	it("reads the message aloud as plain text, loading until speech starts, then pausing and resuming on later presses", () => {
 		const speech = stubSpeech();
 		const {container} = render(
 			<AssistantMessageActions message={MESSAGE} text="Hello **world**" timestamp={TIMESTAMP} details={[]} />,
@@ -166,6 +166,8 @@ describe("AssistantMessageActions", () => {
 		};
 
 		press();
+		act(() => speech.start());
+		states.push(readAloudState(container));
 		press();
 		press();
 		act(() => speech.finish());
@@ -176,11 +178,27 @@ describe("AssistantMessageActions", () => {
 			calls: ["cancel", "speak", "pause", "resume"],
 			states: [
 				{label: "Read aloud", icon: "speaker", pressed: null},
+				{label: "Loading\u2026", icon: "spinner", pressed: null},
 				{label: "Pause", icon: "pause", pressed: null},
 				{label: "Resume", icon: "speaker", pressed: null},
 				{label: "Pause", icon: "pause", pressed: null},
 				{label: "Read aloud", icon: "speaker", pressed: null},
 			],
+		});
+	});
+	it("stops when pressed again before speech starts", () => {
+		const speech = stubSpeech();
+		const {container} = render(
+			<AssistantMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} />,
+		);
+		const control = () => bar(container).querySelector<HTMLButtonElement>("[data-read-aloud]")!;
+
+		fireEvent.click(control());
+		fireEvent.click(control());
+
+		expect({calls: speech.calls, state: readAloudState(container)}).toStrictEqual({
+			calls: ["cancel", "speak", "cancel"],
+			state: {label: "Read aloud", icon: "speaker", pressed: null},
 		});
 	});
 });

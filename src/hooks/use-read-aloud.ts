@@ -1,8 +1,11 @@
 import {useEffect, useRef, useState, useSyncExternalStore} from "react";
 import {markdownToPlainText} from "../lib/markdown-plain-text";
 
-/** Upstream's read-aloud states: a press starts, pauses or resumes. */
-export type ReadAloudStatus = "idle" | "playing" | "paused";
+/**
+ * Upstream's read-aloud states: a press starts, pauses or resumes. Speech is
+ * loading from the press until the engine reports it started.
+ */
+export type ReadAloudStatus = "idle" | "loading" | "playing" | "paused";
 
 function subscribeNever(): () => void {
 	return () => {};
@@ -39,11 +42,18 @@ export function useReadAloud(text: string) {
 			return;
 		}
 		speechSynthesis.cancel();
+		if (status === "loading") {
+			settle("idle");
+			return;
+		}
 		const utterance = new SpeechSynthesisUtterance(markdownToPlainText(text));
+		utterance.onstart = () => {
+			if (statusRef.current === "loading") settle("playing");
+		};
 		utterance.onend = () => settle("idle");
 		utterance.onerror = () => settle("idle");
+		settle("loading");
 		speechSynthesis.speak(utterance);
-		settle("playing");
 	};
 	return {status, toggle: supported && text !== "" ? toggle : undefined};
 }
