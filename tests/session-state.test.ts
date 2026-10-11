@@ -7,6 +7,7 @@ import {
 	compareByStableCreation,
 	compareByUrgency,
 	displayState,
+	resolveMainState,
 	resolveSessionBucket,
 	stateForEvent,
 	waitHeat,
@@ -359,5 +360,46 @@ describe("resolveSessionBucket for a session blocked on a permission prompt", ()
 
 	it("is completed once a tool_result follows", () => {
 		expect(bucketFor([PENDING_BASH, BASH_RESULT])).toStrictEqual({bucket: "done", reason: "ended"});
+	});
+});
+
+describe("resolveMainState", () => {
+	const registry = (status: "idle" | "busy" | "waiting", statusUpdatedAt: number) => ({status, statusUpdatedAt});
+	const hook = (state: ActivityState, lastActivity: number) => ({state, lastActivity});
+
+	it("maps registry statuses to activity states when no hook entry exists", () => {
+		expect(
+			(["idle", "busy", "waiting"] as const).map((status) =>
+				resolveMainState({hook: null, registry: registry(status, 1_000)}),
+			),
+		).toStrictEqual([
+			{state: "idle", source: "registry"},
+			{state: "working", source: "registry"},
+			{state: "waiting", source: "registry"},
+		]);
+	});
+
+	it("reads ended without either source and the hook state without a registry entry", () => {
+		expect([
+			resolveMainState({hook: null, registry: null}),
+			resolveMainState({hook: hook("working", 1_000), registry: null}),
+		]).toStrictEqual([
+			{state: "ended", source: null},
+			{state: "working", source: "hook"},
+		]);
+	});
+
+	it("lets the fresher source win, the registry on a tie, and the registry over an unknown hook state", () => {
+		expect([
+			resolveMainState({hook: hook("working", 2_000), registry: registry("waiting", 1_000)}),
+			resolveMainState({hook: hook("working", 1_000), registry: registry("waiting", 2_000)}),
+			resolveMainState({hook: hook("working", 1_000), registry: registry("idle", 1_000)}),
+			resolveMainState({hook: hook("unknown", 5_000), registry: registry("busy", 1_000)}),
+		]).toStrictEqual([
+			{state: "working", source: "hook"},
+			{state: "waiting", source: "registry"},
+			{state: "idle", source: "registry"},
+			{state: "working", source: "registry"},
+		]);
 	});
 });

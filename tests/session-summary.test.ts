@@ -14,6 +14,7 @@ import {buildSessionSummaryPayloadFromDb, toActiveSessionPayload} from "../src/l
 import {initPendingApprovalsCache} from "../src/lib/db/pending-approvals-cache";
 import {addLiveSubagent, clearLiveSubagents} from "../src/lib/live-subagent-store";
 import {addNotification, clearAllNotifications} from "../src/lib/notifications-store";
+import {clearSessionRegistry, refreshSessionRegistry} from "../src/lib/session-registry-store";
 
 const testDir = join(tmpdir(), "claude-session-summary-test-" + process.pid);
 const PROJECT_ID = "-tmp-test-alice-project";
@@ -249,5 +250,93 @@ describe("buildSessionSummaryPayloadFromDb", () => {
 		const payload = buildSessionSummaryPayloadFromDb(db.index, "does-not-exist");
 
 		expect(payload).toBe(null);
+	});
+});
+
+describe("buildSessionSummaryPayloadFromDb with the CLI session registry", () => {
+	const askUserQuestionTranscript =
+		JSON.stringify({
+			type: "assistant",
+			sessionId: "session-test-100",
+			timestamp: "2000-01-01T00:00:00.000Z",
+			message: {
+				role: "assistant",
+				content: [{type: "tool_use", id: "tool-test-100", name: "AskUserQuestion", input: {question: "Go?"}}],
+			},
+		}) + "\n";
+
+	async function registerProcess(status: "idle" | "busy" | "waiting", statusUpdatedAt: number): Promise<void> {
+		const dir = join(testDir, "sessions");
+		mkdirSync(dir, {recursive: true});
+		writeFileSync(
+			join(dir, "4242.json"),
+			JSON.stringify({
+				pid: 4242,
+				sessionId: "session-test-100",
+				cwd: PROJECT_PATH,
+				startedAt: 946_598_400_000,
+				procStart: "Fri Dec 31 00:00:00 1999",
+				version: "2.0.0",
+				kind: "interactive",
+				entrypoint: "cli",
+				pidDomain: "darwin",
+				status,
+				...(status === "waiting" ? {waitingFor: "input needed"} : {}),
+				updatedAt: statusUpdatedAt,
+				statusUpdatedAt,
+			}),
+		);
+		await refreshSessionRegistry(dir, {isAlive: () => true, readStartTimes: async () => null});
+	}
+
+	function stateOf(): {
+		state: string | undefined;
+		bucket: string | undefined;
+		blockedSince: string | null | undefined;
+	} {
+		const payload = buildSessionSummaryPayloadFromDb(db.index, "session-test-100");
+		return {state: payload?.state, bucket: payload?.bucket, blockedSince: payload?.blockedSince};
+	}
+
+	afterEach(() => clearSessionRegistry());
+
+	it("needs input while the registry says waiting, blocked since the status write", async () => {
+		await indexSession();
+		await registerProcess("waiting", 946_598_402_000);
+
+		expect(stateOf()).toStrictEqual({
+			state: "waiting",
+			bucket: "blocked",
+			blockedSince: "1999-12-31T00:00:02.000Z",
+		});
+	});
+
+	it("is working while the registry says busy, and idle (not ended) when idle", async () => {
+		await indexSession();
+		await registerProcess("busy", 946_598_402_000);
+		const busy = stateOf();
+		await registerProcess("idle", 946_598_403_000);
+
+		expect([busy, stateOf()]).toStrictEqual([
+			{state: "working", bucket: "working", blockedSince: null},
+			{state: "idle", bucket: "done", blockedSince: null},
+		]);
+	});
+
+	it("ignores an orphaned transcript question while the registry says the process is idle", async () => {
+		await indexSession(askUserQuestionTranscript);
+		await initPendingApprovalsCache(db.index);
+		await registerProcess("idle", 946_598_402_000);
+
+		expect(stateOf()).toStrictEqual({state: "idle", bucket: "done", blockedSince: null});
+	});
+
+	it("lets a hook state written after the registry status win", async () => {
+		await indexSession();
+		await registerProcess("waiting", 946_598_402_000);
+		markSessionActive("session-test-100", {cwd: PROJECT_PATH, model: "claude-test-model"});
+		setSessionState("session-test-100", "working");
+
+		expect(stateOf()).toStrictEqual({state: "working", bucket: "working", blockedSince: null});
 	});
 });

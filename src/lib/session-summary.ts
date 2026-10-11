@@ -10,7 +10,8 @@ import {getLiveSubagentNodes} from "./live-subagent-store";
 import {hasPermissionPromptForSession} from "./notifications-store";
 import type {PrStatus} from "./pr-status";
 import {lookupSessionPrStatus} from "./pr-status-service";
-import {resolveSessionBucket} from "./session-state";
+import {getRegistrySessionState, type RegistrySessionState} from "./session-registry-store";
+import {resolveMainState, resolveSessionBucket} from "./session-state";
 import type {SessionEntry} from "./sessions";
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
@@ -36,6 +37,8 @@ interface SessionSummaryOptions {
 	/** The app-side archive flag (see `getArchivedSessionIds`). */
 	archived?: boolean;
 	activeSession?: ActiveSessionEntry | null;
+	/** The live `~/.claude/sessions/<pid>.json` entry for the session, if its process runs. */
+	registrySession?: RegistrySessionState | null;
 	/** PR state for the row; defaults to the in-memory PR status service. */
 	prStatus?: PrStatus | null;
 	now?: number;
@@ -51,6 +54,7 @@ export function toSessionSummaryPayload(
 		unseen = false,
 		archived = false,
 		activeSession = getActiveSessionEntry(entry.id),
+		registrySession = getRegistrySessionState(entry.id),
 		prStatus = lookupSessionPrStatus(entry),
 		now = Date.now(),
 	}: SessionSummaryOptions = {},
@@ -61,14 +65,18 @@ export function toSessionSummaryPayload(
 	const liveAgentCount = getLiveSubagentNodes().filter(
 		(node) => node.sessionId === entry.id && node.endedAt === null,
 	).length;
-	// Only active-store entries are live. A missing entry is an ended session,
-	// even if a transcript-derived approval has survived a server restart.
-	const pendingInput = activeSession !== null && pendingApproval !== undefined;
+	const main = resolveMainState({hook: activeSession, registry: registrySession});
+	// Only live sessions can wait on a transcript-derived approval; a missing
+	// entry is an ended session, even if the approval survived a server restart.
+	// The registry knows the live status outright, and the CLI only flushes a
+	// question to the transcript once answered, so an unanswered one there is an
+	// orphan.
+	const pendingInput = activeSession !== null && registrySession === null && pendingApproval !== undefined;
 	// A standing permission prompt outlives the active-session sweep: the CLI
 	// writes nothing while it waits, so the session goes quiet but is not done.
 	const awaitingPermission = hasPermissionPromptForSession(entry.id);
 	const {bucket} = resolveSessionBucket({
-		mainState: activeSession?.state ?? "ended",
+		mainState: main.state,
 		pendingInput,
 		awaitingPermission,
 		unseenError: false,
@@ -95,12 +103,24 @@ export function toSessionSummaryPayload(
 		...(prStatus === null ? {} : {prStatus}),
 		...(entry.forkedFromSessionId === undefined ? {} : {forkedFromSessionId: entry.forkedFromSessionId}),
 		archived,
-		state: pendingInput || awaitingPermission ? "waiting" : (activeSession?.state ?? "ended"),
+		state: pendingInput || awaitingPermission ? "waiting" : main.state,
 		bucket,
 		liveAgentCount,
 		unseen,
-		blockedSince: activeSession === null ? null : (pendingApproval?.blockedSince ?? null),
+		blockedSince: blockedSince(main, registrySession, pendingInput ? pendingApproval : undefined),
 	};
+}
+
+function blockedSince(
+	main: ReturnType<typeof resolveMainState>,
+	registrySession: RegistrySessionState | null,
+	pendingApproval: {blockedSince: string} | undefined,
+): string | null {
+	if (pendingApproval !== undefined) return pendingApproval.blockedSince;
+	if (main.source === "registry" && main.state === "waiting" && registrySession !== null) {
+		return new Date(registrySession.statusUpdatedAt).toISOString();
+	}
+	return null;
 }
 
 /**

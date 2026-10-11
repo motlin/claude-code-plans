@@ -1,5 +1,6 @@
 import {z} from "zod";
 import type {HookEvent} from "./hook-events";
+import type {SessionRegistryStatusSchema} from "./schemas";
 
 export type ActivityState = "idle" | "working" | "waiting" | "unknown";
 
@@ -76,6 +77,43 @@ export function stateForEvent(event: HookEvent): ActivityState | null {
 		default:
 			return null;
 	}
+}
+
+type SessionRegistryStatus = z.infer<typeof SessionRegistryStatusSchema>;
+
+/** The CLI registry's `status` as an activity state; upstream reads busy as running. */
+const REGISTRY_ACTIVITY_STATES = {
+	idle: "idle",
+	busy: "working",
+	waiting: "waiting",
+} as const satisfies Record<SessionRegistryStatus, ActivityState>;
+
+export interface MainStateSources {
+	/** The hook-driven active-session entry, or null when no hook has registered the session. */
+	hook: {state: ActivityState; lastActivity: number} | null;
+	/** The live `~/.claude/sessions/<pid>.json` entry, or null when no live process runs the session. */
+	registry: {status: SessionRegistryStatus; statusUpdatedAt: number} | null;
+}
+
+export interface MainStateResolution {
+	state: SessionSummaryState;
+	source: "hook" | "registry" | null;
+}
+
+/**
+ * The main thread's state from the hook store and the CLI's session registry.
+ * Whichever was written last wins (the registry on a tie, and over a hook entry
+ * that never learned a state); neither means the session has ended.
+ */
+export function resolveMainState({hook, registry}: MainStateSources): MainStateResolution {
+	if (
+		registry !== null &&
+		(hook === null || hook.state === "unknown" || registry.statusUpdatedAt >= hook.lastActivity)
+	) {
+		return {state: REGISTRY_ACTIVITY_STATES[registry.status], source: "registry"};
+	}
+	if (hook !== null) return {state: hook.state, source: "hook"};
+	return {state: "ended", source: null};
 }
 
 export const SessionBucketSchema = z.enum(["blocked", "review", "working", "done"]);

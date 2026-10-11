@@ -2,13 +2,14 @@ import {readdirSync, statSync} from "node:fs";
 import {join} from "node:path";
 import {homedir} from "node:os";
 import {resolveProjectName} from "./memory";
-import {getActiveSessionEntries} from "./active-session-store";
+import {getActiveSessionEntries, getActiveSessionEntry} from "./active-session-store";
+import {getRegistrySessionStates} from "./session-registry-store";
 import {ACTIVE_SESSION_WINDOW_MS} from "./active-session-window";
 import {getPendingApprovals, revalidatePendingApprovals} from "./db/pending-approvals-cache";
 import {getDb} from "./db";
 import {getSessionTitlesByIds} from "./db/queries";
 import {getUnseenSessionIds} from "./db/viewed-state";
-import type {ActivityState} from "./session-state";
+import {isLiveSessionState, resolveMainState, type ActivityState} from "./session-state";
 
 export interface ActiveSession {
 	sessionId: string;
@@ -57,12 +58,43 @@ export async function scanActiveSessions(activeTimeoutMs = ACTIVE_SESSION_WINDOW
 		});
 	}
 
+	// The CLI's live registry knows each running session's status outright,
+	// including a quiet one waiting on input whose transcript left the window.
+	const registryIds = new Set<string>();
+	const nameCache = new Map<string, string>();
+	for (const live of getRegistrySessionStates()) {
+		const main = resolveMainState({hook: getActiveSessionEntry(live.sessionId), registry: live});
+		if (!isLiveSessionState(main.state)) continue;
+		registryIds.add(live.sessionId);
+		const blockedSince =
+			main.source === "registry" && main.state === "waiting"
+				? new Date(live.statusUpdatedAt).toISOString()
+				: null;
+		const existing = bySessionId.get(live.sessionId);
+		if (existing) {
+			bySessionId.set(live.sessionId, {...existing, state: main.state, blockedSince});
+			continue;
+		}
+		const projectDir = await findProjectDirForCwd(live.cwd);
+		if (!projectDir) continue;
+		bySessionId.set(live.sessionId, {
+			sessionId: live.sessionId,
+			projectDir,
+			projectName: await resolveProjectNameCached(nameCache, projectDir),
+			createdAt: live.startedAt,
+			lastModified: live.statusUpdatedAt,
+			state: main.state,
+			blockedSince,
+		});
+	}
+
 	// Heal entries the watcher never got an event for before reading them.
 	await revalidatePendingApprovals(getDb().index);
 	const approvals = new Map(getPendingApprovals().map((approval) => [approval.sessionId, approval] as const));
 	for (const [sessionId, session] of bySessionId) {
 		const approval = approvals.get(sessionId);
-		if (!approval) continue;
+		// The CLI flushes a question only once answered, so a registry-tracked session's open one is an orphan.
+		if (!approval || registryIds.has(sessionId)) continue;
 		bySessionId.set(sessionId, {
 			...session,
 			state: "waiting",

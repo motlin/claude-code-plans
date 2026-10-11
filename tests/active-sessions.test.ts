@@ -190,6 +190,64 @@ describe("scanActiveSessions", () => {
 		});
 	});
 
+	it("reads live registry status: a quiet session waiting on input, and busy over an orphaned approval", async () => {
+		mkdirSync(join(projectsDir(), encode("/Users/test/beta")), {recursive: true});
+		const file = writeSessionFile("/Users/test/alpha", "busy-session", new Date(Date.now() - 30_000));
+		pendingApprovals = [{sessionId: "busy-session", blockedSince: "2000-01-01T00:00:00.000Z"}];
+		const registryDir = join(tempHome, ".claude", "sessions");
+		mkdirSync(registryDir, {recursive: true});
+		const registryFile = (pid: number, sessionId: string, cwd: string, status: string, statusUpdatedAt: number) =>
+			writeFileSync(
+				join(registryDir, `${pid}.json`),
+				JSON.stringify({
+					pid,
+					sessionId,
+					cwd,
+					startedAt: 946_598_400_000,
+					procStart: "Fri Dec 31 00:00:00 1999",
+					version: "2.0.0",
+					kind: "interactive",
+					entrypoint: "cli",
+					pidDomain: "darwin",
+					status,
+					updatedAt: statusUpdatedAt,
+					statusUpdatedAt,
+				}),
+			);
+		registryFile(4242, "waiting-session", "/Users/test/beta", "waiting", 946_598_402_000);
+		registryFile(4343, "busy-session", "/Users/test/alpha", "busy", 946_598_403_000);
+		const {scanMod} = await loadModules();
+		const registryMod = await import("../src/lib/session-registry-store");
+		await registryMod.refreshSessionRegistry(registryDir, {isAlive: () => true, readStartTimes: async () => null});
+
+		const result = await scanMod.scanActiveSessions();
+
+		expect(result).toStrictEqual([
+			{
+				sessionId: "busy-session",
+				projectDir: encode("/Users/test/alpha"),
+				projectName: "alpha",
+				title: "busy-session",
+				createdAt: statSync(file).birthtimeMs,
+				lastModified: statSync(file).mtimeMs,
+				state: "working",
+				unseen: false,
+				blockedSince: null,
+			},
+			{
+				sessionId: "waiting-session",
+				projectDir: encode("/Users/test/beta"),
+				projectName: "beta",
+				title: "waiting-session",
+				createdAt: 946_598_400_000,
+				lastModified: 946_598_402_000,
+				state: "waiting",
+				unseen: false,
+				blockedSince: "1999-12-31T00:00:02.000Z",
+			},
+		]);
+	});
+
 	it("reports the durable unseen flag for each active session", async () => {
 		writeSessionFile("/Users/test/alpha", "unseen", new Date(Date.now() - 10_000));
 		writeSessionFile("/Users/test/alpha", "seen", new Date(Date.now() - 20_000));

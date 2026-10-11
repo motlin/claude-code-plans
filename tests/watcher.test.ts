@@ -10,7 +10,9 @@ import {
 	resolveIgnoredDirNames,
 	buildIgnoredDirPattern,
 	processJsonlAppend,
+	rebroadcastSessionsById,
 } from "../src/lib/watcher";
+import {clearSessionRegistry, refreshSessionRegistry} from "../src/lib/session-registry-store";
 import {openTestDb, type AppDb} from "../src/lib/db/connection";
 import {indexFile} from "../src/lib/db/indexer";
 import * as schema from "../src/lib/db/schema";
@@ -591,6 +593,78 @@ describe("processJsonlAppend", () => {
 					writtenAt: Math.trunc(statSync(jsonlPath).mtimeMs),
 				},
 			},
+		]);
+	});
+});
+
+describe("rebroadcastSessionsById", () => {
+	const testDir = join(tmpdir(), "claude-watcher-registry-test-" + process.pid);
+	const registryDir = join(testDir, "sessions");
+	let db: AppDb;
+
+	async function setRegistryStatus(status: "idle" | "busy" | "waiting", statusUpdatedAt: number): Promise<void> {
+		writeFileSync(
+			join(registryDir, "4242.json"),
+			JSON.stringify({
+				pid: 4242,
+				sessionId: "sess-registry",
+				cwd: "/Users/alice/projects/registry",
+				startedAt: 946_598_400_000,
+				procStart: "Fri Dec 31 00:00:00 1999",
+				version: "2.0.0",
+				kind: "interactive",
+				entrypoint: "cli",
+				pidDomain: "darwin",
+				status,
+				updatedAt: statusUpdatedAt,
+				statusUpdatedAt,
+			}),
+		);
+		await refreshSessionRegistry(registryDir, {isAlive: () => true, readStartTimes: async () => null});
+	}
+
+	beforeEach(() => {
+		mkdirSync(registryDir, {recursive: true});
+		db = openTestDb();
+		clearSessionRegistry();
+	});
+
+	afterEach(() => {
+		clearSessionRegistry();
+		db.close();
+		rmSync(testDir, {recursive: true, force: true});
+	});
+
+	it("broadcasts each registry status change for a known session, even within the dedupe window", async () => {
+		const projectDir = join(testDir, "-Users-alice-projects-registry");
+		mkdirSync(projectDir, {recursive: true});
+		const jsonlPath = join(projectDir, "sess-registry.jsonl");
+		writeFileSync(
+			jsonlPath,
+			jsonl({
+				type: "user",
+				sessionId: "sess-registry",
+				timestamp: "2000-01-01T00:00:00.000Z",
+				message: {role: "user", content: "Ask me something"},
+			}),
+		);
+		await processJsonlAppend(db.index, jsonlPath, new Map(), () => {}, {projectsDir: testDir, plansDir: ""});
+
+		const broadcasts: CapturedBroadcast[] = [];
+		const record = (type: string, data: Record<string, unknown>) => broadcasts.push({type, data});
+		await setRegistryStatus("waiting", 946_598_402_000);
+		rebroadcastSessionsById(new Set(["sess-registry", "sess-unknown"]), record, db.index);
+		await setRegistryStatus("busy", 946_598_403_000);
+		rebroadcastSessionsById(new Set(["sess-registry"]), record, db.index);
+
+		expect(
+			broadcasts.map(({type, data}) => {
+				const session = data["session"] as {id: string; state: string; bucket: string};
+				return {type, id: session.id, state: session.state, bucket: session.bucket};
+			}),
+		).toStrictEqual([
+			{type: DOMAIN_EVENTS.SESSION_UPDATED, id: "sess-registry", state: "waiting", bucket: "blocked"},
+			{type: DOMAIN_EVENTS.SESSION_UPDATED, id: "sess-registry", state: "working", bucket: "working"},
 		]);
 	});
 });

@@ -4,9 +4,17 @@ import {join} from "node:path";
 import {withHeadBodyCancel} from "./lib/head-request";
 import {withServerTiming} from "./lib/perf/server-timing";
 import {formatStall, startStallMonitor, trackActivity, withActivityTracking} from "./lib/perf/event-loop-stalls";
-import {closeWatcher, createWatcher, rebroadcastProjectSessions, resolveIgnoredDirNames} from "./lib/watcher";
+import {
+	closeWatcher,
+	createWatcher,
+	rebroadcastProjectSessions,
+	rebroadcastSessionsById,
+	resolveIgnoredDirNames,
+} from "./lib/watcher";
 import {getDb, getShutdownSignal, initDb, runInitialScan, shutdownDb} from "./lib/db";
 import {startSweep, stopSweep} from "./lib/active-session-store";
+import {SESSION_REGISTRY_DIR} from "./lib/session-registry";
+import {startSessionRegistryMonitor, stopSessionRegistryMonitor} from "./lib/session-registry-store";
 import {startNotificationsSweep, stopNotificationsSweep} from "./lib/notifications-store";
 import {startLiveSubagentSweep, stopLiveSubagentSweep} from "./lib/live-subagent-store";
 import {DOMAIN_EVENTS, type SubagentStoppedPayload} from "./lib/hook-events";
@@ -42,6 +50,7 @@ void (async () => {
 	// so a restarted dev server's scan never races this instance's.
 	await takeOverServerShutdown(async () => {
 		stopSweep();
+		stopSessionRegistryMonitor();
 		stopNotificationsSweep();
 		stopLiveSubagentSweep();
 		stopHerdrEventBridge?.();
@@ -75,12 +84,22 @@ void (async () => {
 	try {
 		watcher = await trackActivity("startup watcher", () =>
 			createWatcher(
-				[PLANS_DIR, PROJECTS_DIR, COMMANDS_DIR, PLUGINS_DIR, TASKS_DIR, STATUSLINE_DIR, JOBS_DIR],
+				[
+					PLANS_DIR,
+					PROJECTS_DIR,
+					COMMANDS_DIR,
+					PLUGINS_DIR,
+					TASKS_DIR,
+					STATUSLINE_DIR,
+					JOBS_DIR,
+					SESSION_REGISTRY_DIR,
+				],
 				PROJECTS_DIR,
 				PLANS_DIR,
 				STATUSLINE_DIR,
 				fileContentRoots,
 				JOBS_DIR,
+				SESSION_REGISTRY_DIR,
 			),
 		);
 	} catch (err) {
@@ -100,6 +119,8 @@ void (async () => {
 	}
 
 	startSweep();
+	// Live status from the CLI's ~/.claude/sessions registry, re-broadcast as session:updated rows.
+	startSessionRegistryMonitor({onChange: (sessionIds) => rebroadcastSessionsById(sessionIds)});
 	startNotificationsSweep();
 	startLiveSubagentSweep((node) => {
 		broadcastTyped(DOMAIN_EVENTS.SUBAGENT_STOPPED, {

@@ -36,7 +36,7 @@ import {addLiveSubagent, endLiveSubagent, reconcileStoredLiveSubagents} from "./
 import {indexFile, indexJsonlFile, liveJsonlIndexCache} from "./db/indexer";
 import {isSessionArchived, setSessionArchived} from "./db/queries";
 import {resolveProjectName} from "./memory";
-import {recentlyBroadcast} from "./update-dedupe";
+import {recentlyBroadcast, sessionUpdatedDedupeKey} from "./update-dedupe";
 import {jsonlReadOffset} from "./jsonl-resume-offset";
 import {toSubagentSessionId} from "./subagents";
 import {stateForEvent, type ActivityState} from "./session-state";
@@ -498,7 +498,7 @@ export async function dispatchHookEvent({
 				store.getActiveSessionEntry(sessionId),
 			);
 			if (summary) {
-				const key = `${DOMAIN_EVENTS.SESSION_UPDATED}:${summary.id}:${summary.mtime}:${summary.unseen}`;
+				const key = sessionUpdatedDedupeKey(summary);
 				if (!recentlyBroadcast(key, DEDUPE_TTL_MS)) {
 					broadcast(DOMAIN_EVENTS.SESSION_UPDATED, {session: summary});
 				}
@@ -571,7 +571,7 @@ export async function dispatchHookEvent({
 				store.getActiveSessionEntry(sessionId),
 			);
 			if (summary) {
-				const key = `${DOMAIN_EVENTS.SESSION_UPDATED}:${summary.id}:${summary.mtime}:${summary.unseen}`;
+				const key = sessionUpdatedDedupeKey(summary);
 				if (!recentlyBroadcast(key, DEDUPE_TTL_MS)) {
 					broadcast(DOMAIN_EVENTS.SESSION_UPDATED, {session: summary});
 				}
@@ -606,7 +606,7 @@ export async function dispatchHookEvent({
 				store.getActiveSessionEntry(sessionId),
 			);
 			if (summary) {
-				const key = `${DOMAIN_EVENTS.SESSION_UPDATED}:${summary.id}:${summary.mtime}:${summary.unseen}`;
+				const key = sessionUpdatedDedupeKey(summary);
 				if (!recentlyBroadcast(key, DEDUPE_TTL_MS)) {
 					broadcast(DOMAIN_EVENTS.SESSION_UPDATED, {session: summary});
 				}

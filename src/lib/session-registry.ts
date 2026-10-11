@@ -15,7 +15,7 @@ import {SessionRegistryFileSchema} from "./schemas";
 
 export type SessionRegistryEntry = z.infer<typeof SessionRegistryFileSchema>;
 
-const SESSION_REGISTRY_DIR = join(homedir(), ".claude", "sessions");
+export const SESSION_REGISTRY_DIR = join(homedir(), ".claude", "sessions");
 
 const REGISTRY_FILE_NAME = /^\d+\.json$/;
 

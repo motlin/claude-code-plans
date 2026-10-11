@@ -58,3 +58,12 @@ export const __testing = {
 		lastSeen.clear();
 	},
 };
+
+/**
+ * The dedupe key for a `session:updated` broadcast. The live state is part of
+ * it: a registry status change keeps the transcript mtime, so without it a
+ * Needs input → Working flip inside the TTL would be swallowed.
+ */
+export function sessionUpdatedDedupeKey(summary: {id: string; mtime: string; unseen: boolean; state: string}): string {
+	return `session:updated:${summary.id}:${summary.mtime}:${summary.unseen}:${summary.state}`;
+}

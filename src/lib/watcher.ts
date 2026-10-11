@@ -46,7 +46,9 @@ import {toSessionSummaryPayload} from "./session-summary";
 import {hmrPersist, hmrDispose} from "./hmr-persist";
 import {DEFAULT_IGNORED_DIR_NAMES, getConfigPath, readConfig} from "./config";
 import {broadcastTyped, broadcast, addClient, removeClient} from "./sse-broadcast";
-import {recentlyBroadcast} from "./update-dedupe";
+import {recentlyBroadcast, sessionUpdatedDedupeKey} from "./update-dedupe";
+import {isRegistryFileName} from "./session-registry";
+import {scheduleSessionRegistryRefresh} from "./session-registry-store";
 import {createRecursiveWatcher, type RecursiveWatcher} from "./recursive-watch";
 import {gitIndexPath, TrackedFileIndex} from "./git-tracked";
 import {CooperativeQueue} from "./cooperative-queue";
@@ -75,6 +77,7 @@ let projectsDir = "";
 let plansDir = "";
 let statuslineDir = "";
 let jobsDir = "";
+let sessionRegistryDir = "";
 let fileContentRoots: string[] = [];
 let fileContentRootByGitIndexPath = new Map<string, string>();
 const trackedFileIndex = new TrackedFileIndex();
@@ -247,7 +250,7 @@ function diffAndBroadcastSessions(index: IndexDb, projectId: string, broadcast: 
 		});
 	}
 	for (const session of updated) {
-		const key = `${DOMAIN_EVENTS.SESSION_UPDATED}:${session.id}:${session.mtime}:${session.unseen}`;
+		const key = sessionUpdatedDedupeKey(session);
 		if (recentlyBroadcast(key, DEDUPE_TTL_MS)) continue;
 		broadcast(DOMAIN_EVENTS.SESSION_UPDATED, {session});
 	}
@@ -455,6 +458,29 @@ export function rebroadcastProjectSessions(projectId: string): void {
 	safeDiffSessions(projectId);
 }
 
+/**
+ * Re-broadcast the rows of every project holding one of `sessionIds`, e.g.
+ * after their live registry status changed. Sessions not yet indexed are skipped.
+ */
+export function rebroadcastSessionsById(
+	sessionIds: ReadonlySet<string>,
+	broadcast: BroadcastFn = broadcastTyped,
+	db?: IndexDb,
+): void {
+	const projectIds = new Set<string>();
+	try {
+		const index = db ?? getDb().index;
+		for (const sessionId of sessionIds) {
+			const projectId = getSessionProjectId(index, sessionId);
+			if (projectId) projectIds.add(projectId);
+		}
+	} catch {
+		// transient DB error; the next registry change or poll retries
+		return;
+	}
+	for (const projectId of projectIds) safeDiffSessions(projectId, broadcast, db);
+}
+
 /** Safely diff and broadcast tasks for a session's project; swallow indexing races. */
 function safeDiffTasks(sessionId: string): void {
 	if (!sessionId) return;
@@ -606,7 +632,20 @@ export async function processJsonlAppend(
 	}
 }
 
+/**
+ * Route an event inside the CLI session registry: a `<pid>.json` write or
+ * removal schedules a registry refresh, and everything else there (notably the
+ * `<pid>.<hash>.key` secrets) is left untouched. True when `path` is inside
+ * the registry directory.
+ */
+function handleSessionRegistryEvent(path: string): boolean {
+	if (!sessionRegistryDir || dirname(path) !== sessionRegistryDir) return false;
+	if (isRegistryFileName(basename(path))) scheduleSessionRegistryRefresh();
+	return true;
+}
+
 async function handleFileChange(path: string): Promise<void> {
+	if (handleSessionRegistryEvent(path)) return;
 	if (handleJobFileEvent(path, jobsDir, broadcastTyped)) return;
 	await awaitInitialScan();
 	const normalizedPath = resolve(path);
@@ -693,6 +732,7 @@ async function handleFileChange(path: string): Promise<void> {
 }
 
 async function handleFileUnlink(path: string): Promise<void> {
+	if (handleSessionRegistryEvent(path)) return;
 	if (handleJobFileEvent(path, jobsDir, broadcastTyped)) return;
 	await awaitInitialScan();
 	if (isPathInsideFileContentRoots(path, fileContentRoots)) {
@@ -748,6 +788,7 @@ export async function createWatcher(
 	slDir?: string,
 	configuredFileContentRoots: string[] = [],
 	jbDir?: string,
+	registryDir?: string,
 ): Promise<RecursiveWatcher> {
 	if (projDir) {
 		resolveProjectsDirectory(projDir);
@@ -756,6 +797,7 @@ export async function createWatcher(
 	if (plDir) plansDir = plDir;
 	if (slDir) statuslineDir = slDir;
 	if (jbDir) jobsDir = resolve(jbDir);
+	if (registryDir) sessionRegistryDir = resolve(registryDir);
 	setFileContentRoots(configuredFileContentRoots);
 
 	await Promise.all(
