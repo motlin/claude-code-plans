@@ -849,9 +849,10 @@ html[data-motion="reduced"] .terminal-caret {
 		border-width: 0;
 		padding: 0;
 		--tile-title-start: var(--top-left-clearance-start, 0px);
-		--chat-column-extra: 32px;
-		--chat-column-start: 16px;
-		--chat-column-end: 16px;
+		/* Phone: upstream's prose sits 36px in at 390px wide. */
+		--chat-column-extra: 50px;
+		--chat-column-start: 25px;
+		--chat-column-end: 25px;
 	}
 
 	.chat-column {

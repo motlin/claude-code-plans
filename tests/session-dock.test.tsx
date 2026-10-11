@@ -190,6 +190,19 @@ describe("transcript width setting", () => {
 		});
 	});
 
+	it("insets the phone tile's chat column 25px a side so prose starts 36px in at 390px, as upstream does", () => {
+		const styles = readFileSync("src/styles/globals.css", "utf8");
+		const shell = styles.match(/\[data-route-tile-shell\] \{([^}]+)\}/)?.[1] ?? "";
+		const gutters = Object.fromEntries(
+			[...shell.matchAll(/(--chat-column-[a-z]+):\s*([^;]+);/g)].map(([, name, value]) => [name, value]),
+		);
+		expect(gutters).toStrictEqual({
+			"--chat-column-extra": "50px",
+			"--chat-column-start": "25px",
+			"--chat-column-end": "25px",
+		});
+	});
+
 	it("defaults to narrow, reads a stored width, and ignores an unknown stored value", () => {
 		function Readout() {
 			const {settings, loaded} = useSettings();
