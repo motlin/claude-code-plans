@@ -2137,6 +2137,7 @@ function VirtualizedSessionEntries({
 	const handoffAnchorRef = useRef<TranscriptReadingAnchor | undefined>(undefined);
 	const scrollAnchorRef = useRef<ScrollAnchor | null>(null);
 	const prependAnchorRef = useRef<ScrollAnchor | null>(null);
+	const discardedGeometryRef = useRef<Map<string, number> | null>(null);
 	const rangeSyncInputsRef = useRef<{heights?: Map<string, number>; update?: () => void}>({});
 	const pendingJumpRef = useRef<number | null>(null);
 	const pendingFocusIndexRef = useRef<number | null>(null);
@@ -2195,6 +2196,7 @@ function VirtualizedSessionEntries({
 			restoringRangeRef.current = false;
 			measuredHeightsRef.current = new Map();
 			if (managesTileGeometry) pendingHandoff.current = measuredHeightsRef.current;
+			discardedGeometryRef.current = measuredHeightsRef.current;
 			setMeasuredHeights(measuredHeightsRef.current);
 		}
 		return () => {
@@ -2290,6 +2292,12 @@ function VirtualizedSessionEntries({
 	useLayoutEffect(() => {
 		committedEntriesRef.current = entries;
 	}, [entries]);
+	// A row placed by discarded geometry is no reader's place; the estimated window starts afresh.
+	useLayoutEffect(() => {
+		if (measuredHeights !== discardedGeometryRef.current) return;
+		discardedGeometryRef.current = null;
+		scrollAnchorRef.current = null;
+	}, [measuredHeights]);
 
 	const prefixHeights = useMemo(() => {
 		const result = [0];
@@ -2319,20 +2327,32 @@ function VirtualizedSessionEntries({
 			handoffAnchorRef.current ||
 			list.closest("[hidden]")
 		) {
-			scrollAnchorRef.current = null;
-			// The scroll subscription re-attaches the scroller later in the same commit; a landed page waits for it.
-			if (list && scroller) prependAnchorRef.current = null;
+			// The scroll subscription re-attaches the scroller later in the same commit (whenever the
+			// measured heights change), and the reader's row waits for it like a landed page does.
+			if (list && scroller) {
+				scrollAnchorRef.current = null;
+				prependAnchorRef.current = null;
+			}
 			return false;
 		}
 		const viewport = scrollerViewport(scroller);
 		const anchor = prependAnchorRef.current ?? scrollAnchorRef.current;
 		prependAnchorRef.current = null;
-		if (anchor) {
-			const row = mountedRowFor(list, entries, anchor.entryKey);
-			if (row) {
-				const {scrollTop} = scrollMetrics(scroller);
-				const shift = row.getBoundingClientRect().top - viewport.top + scrollTop - anchor.contentTop;
-				if (Math.abs(shift) >= 0.5) scroller.scrollTop = scrollTop + shift;
+		const row = anchor ? mountedRowFor(list, entries, anchor.entryKey) : undefined;
+		if (anchor && row) {
+			const {scrollTop} = scrollMetrics(scroller);
+			const shift = row.getBoundingClientRect().top - viewport.top + scrollTop - anchor.contentTop;
+			if (Math.abs(shift) >= 0.5) scroller.scrollTop = scrollTop + shift;
+			// Stay on the held row while it is painted. Re-anchoring onto a row that just mounted
+			// above it would ride along when that row settles its own height (a prompt's clamp
+			// lands a render after it mounts), throwing the reader back down the transcript.
+			const rect = row.getBoundingClientRect();
+			if (rect.bottom > viewport.top && rect.top < viewport.top + viewport.height) {
+				scrollAnchorRef.current = {
+					entryKey: anchor.entryKey,
+					contentTop: rect.top - viewport.top + scrollMetrics(scroller).scrollTop,
+				};
+				return true;
 			}
 		}
 		scrollAnchorRef.current = firstPaintedRow(list, scroller, viewport, entries);

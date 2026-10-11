@@ -31,25 +31,38 @@ function spacerHeight(position: "before" | "after"): number {
 		document.querySelector<HTMLElement>(`[data-transcript-spacer="${position}"]`)?.style.height ?? "0",
 	);
 }
+/** A long prompt paints at its full height until TruncatedContent's clamp lands in a follow-up render. */
+const LONG_PROMPT = "Fabricated long prompt";
+const LONG_PROMPT_FULL_HEIGHT = 1266;
+const LONG_PROMPT_CLAMPED_HEIGHT = 326;
+function rowHeight(row: HTMLElement): number {
+	if (!row.textContent?.includes(LONG_PROMPT)) return ROW_HEIGHT;
+	return row.querySelector(".max-h-\\[16rem\\]") ? LONG_PROMPT_CLAMPED_HEIGHT : LONG_PROMPT_FULL_HEIGHT;
+}
 function contentHeight(): number {
-	return spacerHeight("before") + mountedRows().length * ROW_HEIGHT + spacerHeight("after");
+	return spacerHeight("before") + mountedRows().reduce((sum, row) => sum + rowHeight(row), 0) + spacerHeight("after");
 }
 function clampedPosition(): number {
 	return Math.min(scrollPosition, Math.max(0, contentHeight() - VIEWPORT_HEIGHT));
 }
 function rowTop(row: HTMLElement): number {
-	return spacerHeight("before") + mountedRows().indexOf(row) * ROW_HEIGHT - clampedPosition();
+	const rows = mountedRows();
+	const above = rows.slice(0, rows.indexOf(row)).reduce((sum, candidate) => sum + rowHeight(candidate), 0);
+	return spacerHeight("before") + above - clampedPosition();
+}
+function isPainted(row: HTMLElement): boolean {
+	return rowTop(row) + rowHeight(row) > 0 && rowTop(row) < VIEWPORT_HEIGHT;
 }
 /** Rows the browser would paint inside the viewport, with their viewport tops. */
 function paintedRows(): Array<{entry: string; top: number}> {
 	return mountedRows()
-		.filter((row) => rowTop(row) + ROW_HEIGHT > 0 && rowTop(row) < VIEWPORT_HEIGHT)
+		.filter(isPainted)
 		.map((row) => ({entry: row.dataset["transcriptEntryIndex"]!, top: rowTop(row)}));
 }
 /** Viewport pixels showing a spacer rather than a row. */
 function blankPixels(): number {
 	const painted = mountedRows()
-		.map((row) => Math.min(VIEWPORT_HEIGHT, rowTop(row) + ROW_HEIGHT) - Math.max(0, rowTop(row)))
+		.map((row) => Math.min(VIEWPORT_HEIGHT, rowTop(row) + rowHeight(row)) - Math.max(0, rowTop(row)))
 		.filter((height) => height > 0);
 	return VIEWPORT_HEIGHT - painted.reduce((sum, height) => sum + height, 0);
 }
@@ -121,8 +134,11 @@ function chat(windowLines: SessionLine[]) {
 /** The painted rows, named by the message each draws rather than by its shifting window index. */
 function paintedMessages(): Array<{message: string; top: number}> {
 	return mountedRows()
-		.filter((row) => rowTop(row) + ROW_HEIGHT > 0 && rowTop(row) < VIEWPORT_HEIGHT)
-		.map((row) => ({message: /Fabricated message \d+/.exec(row.textContent ?? "")![0], top: rowTop(row)}));
+		.filter(isPainted)
+		.map((row) => ({
+			message: /Fabricated (?:long prompt|message \d+)/.exec(row.textContent ?? "")![0],
+			top: rowTop(row),
+		}));
 }
 
 async function mountChat(windowLines = lines): Promise<HTMLElement> {
@@ -148,12 +164,19 @@ beforeEach(() => {
 			scrollPosition = Math.min(Math.max(0, value), Math.max(0, contentHeight() - VIEWPORT_HEIGHT));
 		},
 	});
+	// TruncatedContent clamps a bubble whose content overflows its threshold.
+	Object.defineProperty(HTMLElement.prototype, "scrollHeight", {
+		configurable: true,
+		get(this: HTMLElement) {
+			return this.textContent?.includes(LONG_PROMPT) ? LONG_PROMPT_FULL_HEIGHT : 0;
+		},
+	});
 	vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
 		if (this.matches("main")) return new DOMRect(0, 0, 800, VIEWPORT_HEIGHT);
 		if (this.matches("[data-testid=virtualized-transcript]"))
 			return new DOMRect(0, -clampedPosition(), 800, contentHeight());
 		if (this instanceof HTMLElement && this.dataset["transcriptEntryIndex"] !== undefined)
-			return new DOMRect(0, rowTop(this), 800, ROW_HEIGHT);
+			return new DOMRect(0, rowTop(this), 800, rowHeight(this));
 		return new DOMRect();
 	});
 });
@@ -161,6 +184,7 @@ beforeEach(() => {
 afterEach(() => {
 	cleanup();
 	Object.defineProperty(Element.prototype, "scrollTop", nativeScrollTop);
+	delete (HTMLElement.prototype as {scrollHeight?: number}).scrollHeight;
 	vi.restoreAllMocks();
 	vi.unstubAllGlobals();
 	ControlledResizeObserver.active.clear();
@@ -234,4 +258,28 @@ it("keeps the reader's rows in place across repeated earlier pages while scrolli
 	}
 
 	expect(moves.map(({moved}) => moved)).toStrictEqual([100, 100, 100, 100]);
+});
+
+it("lets the reader scroll up past a long prompt whose clamp lands after it mounts", async () => {
+	const withLongPrompt = lines.map((line, index) =>
+		index === 0 ? {...line, message: {role: "user", content: `${LONG_PROMPT}\n${"plan step\n".repeat(80)}`}} : line,
+	);
+	const main = await mountChat(withLongPrompt);
+	await scrollTo(main, 1500);
+	await settle(main);
+
+	// Wheel up 400px at a time, one frame each, as the reader would.
+	const pushedBack: Array<{asked: number; landed: number}> = [];
+	for (let wheel = 0; wheel < 12 && main.scrollTop > 0 && pushedBack.length === 0; wheel++) {
+		const asked = Math.max(0, main.scrollTop - 400);
+		await scrollTo(main, asked);
+		await settle(main);
+		if (main.scrollTop > asked + 400) pushedBack.push({asked, landed: main.scrollTop});
+	}
+
+	expect({pushedBack, top: main.scrollTop, first: paintedMessages()[0]?.message}).toStrictEqual({
+		pushedBack: [],
+		top: 0,
+		first: LONG_PROMPT,
+	});
 });
