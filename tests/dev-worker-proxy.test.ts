@@ -4,7 +4,7 @@ import type {AddressInfo} from "node:net";
 import {createRequire} from "node:module";
 import {pathToFileURL} from "node:url";
 import {Worker} from "node:worker_threads";
-import {afterEach, describe, expect, it} from "vite-plus/test";
+import {describe, expect, it, type TestContext} from "vite-plus/test";
 import {closeWorkerConnection, devRequestErrorHandler, devWorkerProxy} from "../src/lib/dev-worker-proxy";
 
 // Stands in for the env-runner worker that serves the nitro app in dev: an HTTP server on an ephemeral loopback
@@ -38,21 +38,24 @@ const {NodeRequest, sendNodeResponse} = (await import(pathToFileURL(nitroRequire
 
 type Middleware = (req: IncomingMessage, res: ServerResponse, next: () => void) => void;
 
-const cleanups: Array<() => Promise<unknown>> = [];
+// The stalled-worker tests run concurrently, so each registers its own teardown on its own test.
+type OnTestFinished = TestContext["onTestFinished"];
 
-afterEach(async () => {
-	await Promise.all(cleanups.splice(0).map((cleanup) => cleanup()));
-});
-
-async function startWorker(): Promise<{worker: Worker; port: number}> {
+async function startWorker(onTestFinished: OnTestFinished): Promise<{worker: Worker; port: number}> {
 	const worker = new Worker(WORKER_SOURCE, {eval: true});
-	cleanups.push(() => worker.terminate());
+	onTestFinished(async () => {
+		await worker.terminate();
+	});
 	const [message] = (await once(worker, "message")) as [{port: number}];
 	return {worker, port: message.port};
 }
 
 // Mirrors nitro's dev middleware: wrap the node request and proxy it to the worker with httpxy.
-async function startFront(workerPort: number, middlewares: Middleware[]): Promise<{url: string; errors: unknown[]}> {
+async function startFront(
+	workerPort: number,
+	middlewares: Middleware[],
+	onTestFinished: OnTestFinished,
+): Promise<{url: string; errors: unknown[]}> {
 	const errors: unknown[] = [];
 	const server: Server = createServer((req, res) => {
 		const forward = async () => {
@@ -77,13 +80,16 @@ async function startFront(workerPort: number, middlewares: Middleware[]): Promis
 	});
 	server.listen(0, "127.0.0.1");
 	await once(server, "listening");
-	cleanups.push(() => new Promise((resolve) => server.close(resolve)));
+	onTestFinished(() => new Promise<void>((resolve) => server.close(() => resolve())));
 	return {url: `http://127.0.0.1:${(server.address() as AddressInfo).port}/`, errors};
 }
 
-async function requestWhileWorkerStalls(middlewares: Middleware[]): Promise<{statuses: number[]; errors: string[]}> {
-	const {worker, port} = await startWorker();
-	const front = await startFront(port, middlewares);
+async function requestWhileWorkerStalls(
+	middlewares: Middleware[],
+	onTestFinished: OnTestFinished,
+): Promise<{statuses: number[]; errors: string[]}> {
+	const {worker, port} = await startWorker(onTestFinished);
+	const front = await startFront(port, middlewares, onTestFinished);
 	const first = await fetch(front.url);
 	await first.text();
 	const unblocked = once(worker, "message");
@@ -99,12 +105,25 @@ async function requestWhileWorkerStalls(middlewares: Middleware[]): Promise<{sta
 }
 
 describe("dev worker proxy", () => {
-	it("reproduces the stale keep-alive reset when the worker's event loop stalls", async () => {
-		expect(await requestWhileWorkerStalls([])).toEqual({statuses: [200, 500], errors: ["ECONNRESET"]});
+	// Each waits out the worker's real 2s keep-alive timeout, so they wait side by side.
+	it.concurrent("reproduces the stale keep-alive reset when the worker's event loop stalls", async ({
+		expect,
+		onTestFinished,
+	}) => {
+		expect(await requestWhileWorkerStalls([], onTestFinished)).toStrictEqual({
+			statuses: [200, 500],
+			errors: ["ECONNRESET"],
+		});
 	});
 
-	it("does not reuse worker connections, so a stalled worker delays requests instead of resetting them", async () => {
-		expect(await requestWhileWorkerStalls([closeWorkerConnection])).toEqual({statuses: [200, 200], errors: []});
+	it.concurrent("does not reuse worker connections, so a stalled worker delays requests instead of resetting them", async ({
+		expect,
+		onTestFinished,
+	}) => {
+		expect(await requestWhileWorkerStalls([closeWorkerConnection], onTestFinished)).toStrictEqual({
+			statuses: [200, 200],
+			errors: [],
+		});
 	});
 
 	it("marks the forwarded request close whether or not the browser sent a Connection header", () => {
