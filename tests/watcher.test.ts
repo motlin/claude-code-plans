@@ -195,6 +195,8 @@ describe("handleFileChange file content", () => {
 	afterEach(() => {
 		__testing.setFileContentRoots([]);
 		rmSync(fixtureDirectory, {recursive: true, force: true});
+		// The file's db outlives each test, so drop what this one indexed before the next one reads the table.
+		sharedDb.index.run(sql`DELETE FROM file_content`);
 	});
 
 	it("indexes an untracked file only after git add changes the repository index", async () => {

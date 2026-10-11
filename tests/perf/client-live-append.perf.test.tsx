@@ -201,6 +201,8 @@ beforeAll(async () => {
 	}
 	offScreenSessionIds = [otherSessionId, ...(await seedFixtureDb(db, multiFiles))];
 	multiFixtures = await serveFixtures();
+	// One unmeasured mount loads the lazy chunks, so every case counts the same warm app whichever runs first.
+	await measureEvent(() => {});
 }, 600_000);
 
 /** What the frame and the open session fetch, as the real GET handlers answer it from the current DB. */

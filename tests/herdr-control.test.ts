@@ -1,12 +1,13 @@
 import {EventEmitter} from "node:events";
 import {PassThrough} from "node:stream";
-import {describe, expect, it, vi} from "vite-plus/test";
+import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {
 	authorizeTerminalControl,
 	controlHerdrSession,
 	startTerminalController,
 	type TerminalControllerDependencies,
 } from "../src/lib/herdr/terminal-controller";
+import {__testing} from "../src/lib/herdr/terminal-observer";
 import type {HerdrTerminalRecord} from "../src/lib/herdr/terminal-protocol";
 
 function frame(sequence: number, full: boolean): HerdrTerminalRecord {
@@ -57,6 +58,11 @@ function upgradeRequest(headers: Record<string, string>): Request {
 }
 
 describe("herdr terminal control stream", () => {
+	// terminal-observer tracks every live stream in a module-level set that other files in the worker see.
+	afterEach(() => {
+		expect(__testing.activeObserverCount()).toBe(0);
+	});
+
 	it("spawns control without takeover and writes data and resize frames to stdin", async () => {
 		const child = createFakeChild();
 		const spawnController = vi.fn(() => child);
@@ -91,6 +97,7 @@ describe("herdr terminal control stream", () => {
 			sent: [[JSON.stringify(frame(100, true))]],
 			closed: [],
 		});
+		controller.stop();
 	});
 
 	it("rejects a malformed client frame and stops the child", async () => {
@@ -124,7 +131,7 @@ describe("herdr terminal control stream", () => {
 		const spawnController = vi.fn(() => child);
 		const resolveTarget = vi.fn(() => Promise.resolve("terminal-test-200"));
 
-		await controlHerdrSession("session-test-100", 90, 30, createSocket(), {
+		const controller = await controlHerdrSession("session-test-100", 90, 30, createSocket(), {
 			resolveTarget,
 			spawnController: spawnController as unknown as SpawnController,
 		});
@@ -136,6 +143,7 @@ describe("herdr terminal control stream", () => {
 			resolved: [["session-test-100"]],
 			spawnArguments: [["terminal", "session", "control", "terminal-test-200", "--cols", "90", "--rows", "30"]],
 		});
+		controller.stop();
 	});
 });
 

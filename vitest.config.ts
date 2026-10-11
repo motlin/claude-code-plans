@@ -1,4 +1,7 @@
 import {defineConfig} from "vite-plus";
+import {partitionTestFiles} from "./scripts/vitest-isolation";
+
+const testFiles = partitionTestFiles(import.meta.dirname, "tests");
 
 export default defineConfig({
 	resolve: {
@@ -10,5 +13,10 @@ export default defineConfig({
 		setupFiles: ["tests/setup.ts"],
 		// Day and hour bucketing follows the local zone, so pin it to keep counts and bytes equal on every machine.
 		env: {TZ: "UTC"},
+		projects: [
+			// Plain node tests share each worker's module graph, so common modules load once per worker instead of once per file.
+			{extends: true, test: {name: "shared", include: testFiles.shared, isolate: false}},
+			{extends: true, test: {name: "isolated", include: testFiles.isolated}},
+		],
 	},
 });

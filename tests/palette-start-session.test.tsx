@@ -227,6 +227,8 @@ describe("⌘K palette: start a new session", () => {
 		vi.restoreAllMocks();
 		vi.unstubAllGlobals();
 		writeText.mockClear();
+		// The palette remembers its last mode in localStorage, which jsdom keeps for the whole file.
+		localStorage.clear();
 	});
 
 	it("hides Quick actions while the query is empty", async () => {

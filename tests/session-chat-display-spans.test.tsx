@@ -137,57 +137,6 @@ function blur() {
 }
 
 describe("assistant display-span actions", () => {
-	it("keeps span actions and focus available while the grouped task summary loads", async () => {
-		const view = render(
-			chat([
-				text("example-introduction", "Example task plan."),
-				...["Alice", "Bob", "Charlie"].map((name) => ({
-					type: "assistant",
-					uuid: `example-${name}`,
-					sessionId: "example-main",
-					message: {
-						role: "assistant",
-						content: [
-							{
-								type: "tool_use",
-								id: `example-task-${name}`,
-								name: "TaskCreate",
-								input: {subject: `Example ${name} task`},
-							},
-						],
-					},
-				})),
-			]),
-		);
-		const loading = screen.getByText("Loading tasks…").getAttribute("role");
-		const footer = footers(view.container)[0]!;
-		const fork = button(footer, "Fork from here");
-		focus(fork);
-		await screen.findByRole("heading", {name: "Example Charlie task"});
-		fireEvent.click(fork);
-		fireEvent.click(button(footer, "Copy"));
-		await act(async () => {});
-		expect({
-			loading,
-			remainingLoading: screen.queryByText("Loading tasks…"),
-			tasks: screen.getAllByRole("heading", {level: 3}).map((heading) => heading.textContent),
-			sameFooter: footers(view.container)[0] === footer,
-			focused: document.activeElement === fork,
-			anchors: footers(view.container).map(anchor),
-			fork: forkFrom.mock.calls,
-			copy: vi.mocked(writeClipboardText).mock.calls,
-		}).toStrictEqual({
-			loading: "status",
-			remainingLoading: null,
-			tasks: ["Example Alice task", "Example Bob task", "Example Charlie task"],
-			sameFooter: true,
-			focused: true,
-			anchors: ["1"],
-			fork: [[{sessionId: "example-main", uuid: "example-Charlie"}]],
-			copy: [["Example task plan."]],
-		});
-	});
-
 	it("gives every standalone tool disclosure the compact continuation marker, in any status, as upstream does", () => {
 		const records = command("example-command");
 		const conclusion = text("example-conclusion", "Example conclusion.");

@@ -509,7 +509,14 @@ describe("Opening a session file", () => {
 		await switchMode(pane, "Session");
 
 		fireEvent.click(within(pane).getByRole("button", {name: "agent.ts"}));
-		await waitFor(() => expect(within(pane).getByText("export const agent = 1;")).toBeDefined());
+		// Read whole lines: once an earlier test has loaded Shiki, each line arrives split into token spans.
+		await waitFor(() =>
+			expect(
+				within(pane)
+					.queryAllByRole("cell")
+					.map((line) => line.textContent),
+			).toContain("export const agent = 1;"),
+		);
 
 		expect({
 			requests: fileRequests,
