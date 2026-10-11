@@ -11,7 +11,7 @@ import {Tooltip} from "../ui/tooltip";
 const MAX_SESSION_ROWS = 5;
 
 const PILL_CLASSES = {
-	blocked: {dot: "bg-[var(--status-dot-awaiting)]", label: "text-warning-000"},
+	blocked: {dot: "bg-[var(--status-dot-awaiting)]", label: "text-upstream-warning"},
 	review: {dot: "bg-accent-100", label: "text-accent-100"},
 } as const satisfies Record<HomeAttentionKind, {dot: string; label: string}>;
 

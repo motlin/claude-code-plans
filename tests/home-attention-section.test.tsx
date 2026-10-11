@@ -124,7 +124,7 @@ describe("AttentionSection", () => {
 					label: "Open session Termius SSH login",
 					dotClass: "size-[5px] rounded-full bg-[var(--status-dot-awaiting)]",
 					pill: "Needs input",
-					pillClass: "whitespace-nowrap text-[12px] leading-[15px] text-warning-000",
+					pillClass: "whitespace-nowrap text-[12px] leading-[15px] text-upstream-warning",
 					title: "Termius SSH login",
 					status: "Waiting on permission: AskUserQuestion",
 					repo: null,

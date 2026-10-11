@@ -35,4 +35,22 @@ describe("app chrome design tokens", () => {
 			darkAlpha: "rgb(255 255 255 / 0.05)",
 		});
 	});
+
+	it("inks the home Needs input pill in upstream's text-warning", () => {
+		const styles = readFileSync("src/styles/globals.css", "utf8");
+		const light = styles.slice(styles.indexOf(":root {"), styles.indexOf(".dark {"));
+		const dark = styles.slice(styles.indexOf(".dark {"));
+		const token = (block: string, name: string) => block.match(new RegExp(`${name}:\\s*([^;]+);`))?.[1] ?? null;
+
+		expect({
+			utility: token(styles, "--color-upstream-warning"),
+			light: token(light, "--upstream-warning"),
+			// No upstream dark sample yet, so dark keeps the warning ink it already had.
+			dark: token(dark, "--upstream-warning"),
+		}).toStrictEqual({
+			utility: "var(--upstream-warning)",
+			light: "rgb(115 69 0)",
+			dark: "var(--warning-000)",
+		});
+	});
 });

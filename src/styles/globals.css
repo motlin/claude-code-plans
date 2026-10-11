@@ -71,6 +71,7 @@
 	--color-accent-100: var(--accent-100);
 	--color-accent-900: var(--accent-900);
 	--color-upstream-accent: var(--upstream-accent);
+	--color-upstream-warning: var(--upstream-warning);
 	--color-upstream-accent-pressed: var(--upstream-accent-pressed);
 	--color-upstream-accent-muted: var(--upstream-accent-muted);
 
@@ -213,6 +214,8 @@
 	/* Upstream claude.ai/code accent ink: transcript links, file refs, PR chips,
 	   and pressed toggles. */
 	--upstream-accent: rgb(24 79 149);
+	/* Upstream claude.ai/code text-warning: the Needs input pill label. */
+	--upstream-warning: rgb(115 69 0);
 	/* Upstream pressed-toggle paint behind the accent ink (titlebar trail). */
 	--upstream-accent-pressed: rgb(205 226 251);
 	/* Upstream bg-accent-muted: the slash-command chip's hover highlight. */
@@ -372,6 +375,7 @@
 	--warning-100: hsl(39 93.4% 35.9%);
 	--accent-000: hsl(210 65.5% 67.1%);
 	--upstream-accent: #6da7ec;
+	--upstream-warning: var(--warning-000);
 	--upstream-accent-pressed: hsl(210 55.9% 24.6%);
 	--upstream-accent-muted: rgb(42 120 214 / 0.2);
 	--accent-100: hsl(210 70.9% 51.6%);
