@@ -68,7 +68,7 @@ export default defineConfig({
 			"test:run": {
 				command: "node node_modules/vitest/dist/cli.js run",
 				cache: {
-					input: [{auto: true}, "!node_modules/.experimental-vitest-cache/**"],
+					input: [{auto: true}, "!node_modules/.vitest-cache/**"],
 					output: [],
 				},
 			},

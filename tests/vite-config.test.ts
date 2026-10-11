@@ -11,6 +11,7 @@ const REPO_ROOT = join(import.meta.dirname, "..");
 const originalTitle = process.title;
 process.title = "node";
 const {default: viteConfig} = await import("../vite.config");
+const {default: vitestConfig} = await import("../vitest.config");
 const loadedTitle = process.title;
 
 afterAll(() => {
@@ -89,5 +90,22 @@ describe("typecheck task cache", () => {
 			build: scripts["build"],
 			scriptsCallingTsc: Object.keys(scripts).filter((name) => /\btsc\b/.test(scripts[name] ?? "")),
 		}).toStrictEqual({typeCheckedByVpCheck: true, build: "vp build", scriptsCallingTsc: []});
+	});
+});
+
+describe("test task cache", () => {
+	it("persists vitest's transforms across runs and keeps that cache out of the test:run task's inputs", () => {
+		expect({
+			fsModuleCache: vitestConfig.test?.fsModuleCache,
+			fsModuleCachePath: vitestConfig.test?.fsModuleCachePath,
+			testRun: viteConfig.run?.tasks?.["test:run"],
+		}).toStrictEqual({
+			fsModuleCache: true,
+			fsModuleCachePath: undefined,
+			testRun: {
+				command: "node node_modules/vitest/dist/cli.js run",
+				cache: {input: [{auto: true}, "!node_modules/.vitest-cache/**"], output: []},
+			},
+		});
 	});
 });
