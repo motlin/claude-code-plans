@@ -1,5 +1,5 @@
 import {execFileSync} from "node:child_process";
-import {existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync} from "node:fs";
+import {existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync} from "node:fs";
 import {get, type ClientRequest} from "node:http";
 import {createServer} from "node:net";
 import {tmpdir} from "node:os";
@@ -83,6 +83,14 @@ function openEventStream(): Promise<ClientRequest> {
 	});
 }
 
+/** srvx's graceful-shutdown outcome lines from the server log, without their terminal escapes. */
+function shutdownLogLines(): string[] {
+	return readFileSync(join(runDir, "server.log"), "utf8")
+		.split(/[\r\n]/)
+		.map((line) => line.replaceAll(/\u001B\[[0-9;]*[A-Za-z]/g, "").trim())
+		.filter((line) => /^(Server closed successfully|Graceful shutdown timed out|Forcibly closing)/.test(line));
+}
+
 beforeAll(async () => {
 	PORT = await freePort();
 	// The server must behave as in production: vitest's VITEST/TEST/NODE_ENV
@@ -122,13 +130,15 @@ describe.skipIf(!existsSync(builtServer))("scripts/server.sh with the built serv
 		await new Promise((resolveDelay) => setTimeout(resolveDelay, 1500));
 
 		try {
-			const startedAt = Date.now();
 			const stopped = run("stop");
-			const elapsed = Date.now() - startedAt;
 
-			expect(stopped).toBe(`Stopping server pid(s): ${pid}\n`);
-			expect(isAlive(pid)).toBe(false);
-			expect(elapsed).toBeLessThan(5000);
+			// server.sh prints "Force killing" when the process outlives SIGTERM, and srvx logs whether it closed
+			// the HTTP server cleanly or gave up waiting on open connections (the SSE stream) and forced them shut.
+			expect({stopped, alive: isAlive(pid), shutdownLog: shutdownLogLines()}).toStrictEqual({
+				stopped: `Stopping server pid(s): ${pid}\n`,
+				alive: false,
+				shutdownLog: ["Server closed successfully."],
+			});
 		} finally {
 			stream.destroy();
 		}

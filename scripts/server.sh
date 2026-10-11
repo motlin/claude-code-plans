@@ -42,7 +42,9 @@ port_pids() {
 server_pids() {
     local pid cwd
     for pid in $(pgrep -f "$SERVER_MATCH" || true); do
-        cwd=$(lsof -a -p "$pid" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p' | head -n 1 || true)
+        # -b skips lsof's stat of every mount point, which blocks for up to 15s
+        # whenever a network mount (an SMB or Time Machine share) is slow.
+        cwd=$(lsof -b -w -a -p "$pid" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p' | head -n 1 || true)
         if [ "$cwd" = "$PROJECT_DIR" ]; then
             echo "$pid"
         fi
