@@ -12,8 +12,11 @@ export interface ToolCallLike {
 	stopped?: boolean | undefined;
 	/** The user rejected the call with a typed reply, so it settled without failing. */
 	denied?: boolean | undefined;
-	/** Whether a Write created its file or updated one that existed. */
-	resultMeta?: {writeType?: "create" | "update"} | undefined;
+	/**
+	 * Whether a Write created its file or updated one that existed, and the
+	 * lines the result's patch says a file edit added and removed.
+	 */
+	resultMeta?: {writeType?: "create" | "update"; patchStats?: {added: number; removed: number}} | undefined;
 }
 
 const COMMAND_MESSAGE_RE = /<command-message[^>]*>([\s\S]*?)<\/command-message>/;
@@ -345,6 +348,11 @@ export function diffStatsForCall(call: ToolCallLike): {
 	removed: number;
 } {
 	const input = call.input;
+	// Upstream trusts the result's patch over counting the call's own input.
+	const patchStats = call.resultMeta?.patchStats;
+	if (patchStats !== undefined && (call.name === "Write" || call.name === "Edit" || call.name === "MultiEdit")) {
+		return patchStats;
+	}
 	if (call.name === "Write") {
 		const content = asString(input["content"]);
 		// A final newline ends the last line rather than starting another, as upstream counts it.

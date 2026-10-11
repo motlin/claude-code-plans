@@ -1,3 +1,4 @@
+import type {z} from "zod";
 import {FileEditToolUseResultSchema, GitOperationSchema, type GitOperation} from "./schemas";
 import {
 	exitWorktreeActionLabels,
@@ -16,6 +17,11 @@ import {AskUserQuestionResultSchema, ExitWorktreeActionSchema, RemoteTriggerActi
  */
 export interface ToolResultMeta {
 	writeType?: "create" | "update";
+	/**
+	 * The lines a file edit added and removed, counted from the result's
+	 * `structuredPatch` when the result reports the call's own change.
+	 */
+	patchStats?: {added: number; removed: number};
 	gitOperation?: GitOperation;
 	/** The subagent an Agent call launched, which a later SendMessage can address. */
 	agentId?: string;
@@ -47,15 +53,88 @@ export interface ToolLabel {
 	doneLabel?: string;
 }
 
-export function toolResultMetaFrom(toolUseResult: unknown): ToolResultMeta | undefined {
+type FileEditToolUseResult = z.infer<typeof FileEditToolUseResultSchema>;
+
+/** The tool_use a result answers, for checking the result reports that call's change. */
+export interface ToolResultCall {
+	name: string;
+	input: Record<string, unknown>;
+}
+
+function sameEdits(reported: readonly {old_string: string; new_string: string}[], requested: unknown): boolean {
+	if (!Array.isArray(requested) || reported.length === 0 || reported.length !== requested.length) return false;
+	return reported.every((edit, index) => {
+		const asked: unknown = requested[index];
+		return (
+			typeof asked === "object" &&
+			asked !== null &&
+			"old_string" in asked &&
+			"new_string" in asked &&
+			edit.old_string === asked.old_string &&
+			edit.new_string === asked.new_string
+		);
+	});
+}
+
+/**
+ * Whether a file edit's result describes the very change its call asked for, as
+ * upstream checks before trusting the result's patch: the same file and, for a
+ * Write, the same content (or an update the CLI recorded with empty content).
+ */
+function reportsCallChange(result: FileEditToolUseResult, call: ToolResultCall): boolean {
+	if (result.filePath !== call.input["file_path"]) return false;
+	switch (call.name) {
+		case "Write":
+			return (
+				"content" in result &&
+				(result.content === call.input["content"] || (result.content === "" && result.type === "update"))
+			);
+		case "Edit":
+			return (
+				"oldString" in result &&
+				result.oldString === call.input["old_string"] &&
+				result.newString === call.input["new_string"]
+			);
+		case "MultiEdit":
+			return "edits" in result && sameEdits(result.edits, call.input["edits"]);
+		default:
+			return false;
+	}
+}
+
+/** The patch's added and removed line counts, or null for an empty or marker-only patch. */
+function patchLineStats(hunks: FileEditToolUseResult["structuredPatch"]): {added: number; removed: number} | null {
+	if (hunks === undefined || hunks.length === 0) return null;
+	let added = 0;
+	let removed = 0;
+	for (const {lines} of hunks) {
+		if (lines.every((line) => line.startsWith("\\"))) return null;
+		for (const line of lines) {
+			if (line.startsWith("+")) added++;
+			else if (line.startsWith("-")) removed++;
+		}
+	}
+	return {added, removed};
+}
+
+function fileEditMeta(result: FileEditToolUseResult, call: ToolResultCall | undefined): ToolResultMeta | undefined {
+	const meta: ToolResultMeta = {};
+	if ("type" in result) meta.writeType = result.type;
+	const patchStats =
+		call !== undefined && reportsCallChange(result, call) ? patchLineStats(result.structuredPatch) : null;
+	if (patchStats !== null) meta.patchStats = patchStats;
+	return Object.keys(meta).length > 0 ? meta : undefined;
+}
+
+export function toolResultMetaFrom(toolUseResult: unknown, call?: ToolResultCall): ToolResultMeta | undefined {
 	if (typeof toolUseResult !== "object" || toolUseResult === null) return undefined;
 	if ("gitOperation" in toolUseResult) {
 		const git = GitOperationSchema.safeParse(toolUseResult.gitOperation);
 		return git.success ? {gitOperation: git.data} : undefined;
 	}
-	if ("type" in toolUseResult) {
+	if ("filePath" in toolUseResult) {
 		const file = FileEditToolUseResultSchema.safeParse(toolUseResult);
-		if (file.success && "type" in file.data) return {writeType: file.data.type};
+		if (file.success) return fileEditMeta(file.data, call);
 	}
 	if ("agentId" in toolUseResult && typeof toolUseResult.agentId === "string" && toolUseResult.agentId !== "") {
 		return {agentId: toolUseResult.agentId};

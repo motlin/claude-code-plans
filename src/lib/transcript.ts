@@ -581,6 +581,7 @@ function processRecordBatch(
 	const toolResults = new Map<string, ToolResultInfo>();
 	const toolStartTimes = new Map<string, number>();
 	const toolNames = new Map<string, string>();
+	const toolInputs = new Map<string, Record<string, unknown>>();
 	let title = "";
 	let lastWorktreeKey: string | undefined;
 	let lastAttributionKey: string | undefined;
@@ -650,6 +651,7 @@ function processRecordBatch(
 				for (const block of content) {
 					if (block.type === "tool_use") {
 						toolNames.set(block.id, block.name);
+						toolInputs.set(block.id, block.input);
 						if (timestamp) {
 							const t = new Date(timestamp).getTime();
 							if (!isNaN(t)) toolStartTimes.set(block.id, t);
@@ -688,7 +690,12 @@ function processRecordBatch(
 							: null;
 						if (denial === "stopped") info.stopped = true;
 						if (denial === "denied") info.denied = true;
-						const resultMeta = toolResultMetaFrom(record.toolUseResult);
+						const name = toolNames.get(block.tool_use_id);
+						const input = toolInputs.get(block.tool_use_id);
+						const resultMeta = toolResultMetaFrom(
+							record.toolUseResult,
+							name === undefined || input === undefined ? undefined : {name, input},
+						);
 						if (resultMeta !== undefined) info.resultMeta = resultMeta;
 						if (!info.isError) {
 							addArtifactDecoration(
