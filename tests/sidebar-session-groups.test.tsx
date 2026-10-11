@@ -118,7 +118,7 @@ describe("sidebar SessionGroups", () => {
 	it("renders the state groups in upstream order with their rows", async () => {
 		const {container} = await renderGroups(FIXTURE);
 
-		expect(groupNames(container)).toEqual(["Needs input", "Ready for review", "Working", "Completed"]);
+		expect(groupNames(container)).toEqual(["Needs input", "Working", "Ready for review", "Completed"]);
 		expect({
 			blocked: rowTitlesIn(container, "state-blocked"),
 			review: rowTitlesIn(container, "state-review"),

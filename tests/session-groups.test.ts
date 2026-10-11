@@ -58,7 +58,23 @@ describe("DEFAULT_SESSION_LIST_PREFS", () => {
 });
 
 describe("buildGroups state mode", () => {
-	it("orders Needs input, Ready for review, Working, Completed and omits empty groups", () => {
+	it("orders Needs input, Working, Ready for review, Completed, as upstream does", () => {
+		const rows = [
+			row("done-1", {bucket: "done", lastActivityAt: NOW - 3 * HOUR}),
+			row("review-1", {bucket: "review"}),
+			row("working-1", {bucket: "working"}),
+			row("blocked-1", {bucket: "blocked", lastActivityAt: NOW - 2 * HOUR}),
+		];
+
+		expect(summarize(buildGroups(rows, prefs(), NOW)).map((group) => group.label)).toStrictEqual([
+			"Needs input",
+			"Working",
+			"Ready for review",
+			"Completed",
+		]);
+	});
+
+	it("omits empty state groups", () => {
 		const rows = [
 			row("done-1", {bucket: "done", lastActivityAt: NOW - 3 * HOUR}),
 			row("working-1", {bucket: "working"}),
