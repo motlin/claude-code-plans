@@ -70,11 +70,11 @@ format: install
 
 # Run checks (format + lint + typecheck)
 check *args: install
-    vp run --cache check {{ if ci != "" { "" } else { "--fix" } }} {{ args }}
+    scripts/clean-env.sh vp run --cache check {{ if ci != "" { "" } else { "--fix" } }} {{ args }}
 
 [private]
 _test *args:
-    vp run --cache test:run {{ args }}
+    scripts/clean-env.sh vp run --cache test:run {{ args }}
 
 # Run tests
 test *args: install
@@ -127,7 +127,7 @@ typecheck: install
 
 # Build the project
 build: install
-    vp run --cache build
+    scripts/clean-env.sh vp run --cache build
 
 # Run Storybook dev server
 storybook *args: install
