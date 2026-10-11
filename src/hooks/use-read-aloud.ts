@@ -1,5 +1,9 @@
 import {useEffect, useRef, useState, useSyncExternalStore} from "react";
 import {markdownToPlainText} from "../lib/markdown-plain-text";
+import {chooseVoice} from "../lib/speech-voice";
+
+/** How long to wait for an engine that has not listed its voices yet before speaking with its default. */
+const VOICE_LIST_WAIT_MS = 1000;
 
 /**
  * Upstream's read-aloud states: a press starts, pauses or resumes. Speech is
@@ -15,13 +19,43 @@ function hasSpeechSynthesis(): boolean {
 	return typeof speechSynthesis !== "undefined" && typeof SpeechSynthesisUtterance !== "undefined";
 }
 
+function documentLang(): string {
+	return document.documentElement.lang || navigator.language || "en";
+}
+
+/**
+ * Hand `speak` the engine's voices: at once when it has listed them, otherwise
+ * once its `voiceschanged` event fires (Chrome loads the list lazily) or the
+ * wait runs out. The returned function abandons a pending wait.
+ */
+function withVoices(speak: (voices: readonly SpeechSynthesisVoice[]) => void): () => void {
+	const voices = speechSynthesis.getVoices();
+	if (voices.length > 0) {
+		speak(voices);
+		return () => {};
+	}
+	const done = () => {
+		cleanup();
+		speak(speechSynthesis.getVoices());
+	};
+	const timer = setTimeout(done, VOICE_LIST_WAIT_MS);
+	const cleanup = () => {
+		clearTimeout(timer);
+		speechSynthesis.removeEventListener("voiceschanged", done);
+	};
+	speechSynthesis.addEventListener("voiceschanged", done);
+	return cleanup;
+}
+
 /** The mounted record or footer owns speech, not its temporary menu portal. */
 export function useReadAloud(text: string) {
 	const supported = useSyncExternalStore(subscribeNever, hasSpeechSynthesis, () => false);
 	const [status, setStatus] = useState<ReadAloudStatus>("idle");
 	const statusRef = useRef<ReadAloudStatus>("idle");
+	const abandonVoiceWait = useRef<() => void>(() => {});
 	useEffect(
 		() => () => {
+			abandonVoiceWait.current();
 			if (statusRef.current !== "idle") speechSynthesis.cancel();
 		},
 		[],
@@ -41,19 +75,26 @@ export function useReadAloud(text: string) {
 			settle("playing");
 			return;
 		}
+		abandonVoiceWait.current();
 		speechSynthesis.cancel();
 		if (status === "loading") {
 			settle("idle");
 			return;
 		}
-		const utterance = new SpeechSynthesisUtterance(markdownToPlainText(text));
-		utterance.onstart = () => {
-			if (statusRef.current === "loading") settle("playing");
-		};
-		utterance.onend = () => settle("idle");
-		utterance.onerror = () => settle("idle");
 		settle("loading");
-		speechSynthesis.speak(utterance);
+		abandonVoiceWait.current = withVoices((voices) => {
+			const lang = documentLang();
+			const voice = chooseVoice(voices, lang);
+			const utterance = new SpeechSynthesisUtterance(markdownToPlainText(text));
+			utterance.lang = voice?.lang ?? lang;
+			if (voice !== null) utterance.voice = voice;
+			utterance.onstart = () => {
+				if (statusRef.current === "loading") settle("playing");
+			};
+			utterance.onend = () => settle("idle");
+			utterance.onerror = () => settle("idle");
+			speechSynthesis.speak(utterance);
+		});
 	};
 	return {status, toggle: supported && text !== "" ? toggle : undefined};
 }

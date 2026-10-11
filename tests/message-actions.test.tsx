@@ -186,6 +186,49 @@ describe("AssistantMessageActions", () => {
 			],
 		});
 	});
+	it("speaks with the best installed voice for the document language", () => {
+		document.documentElement.lang = "en-US";
+		const speech = stubSpeech([SAMANTHA, ZOE_PREMIUM]);
+		const {container} = render(
+			<AssistantMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} />,
+		);
+
+		fireEvent.click(bar(container).querySelector<HTMLButtonElement>("[data-read-aloud]")!);
+
+		expect(speech.voices).toStrictEqual(["Zoe (Premium) en-US"]);
+	});
+
+	it("waits for the voice list when the engine has not loaded it yet", () => {
+		document.documentElement.lang = "en-US";
+		const speech = stubSpeech([]);
+		const {container} = render(
+			<AssistantMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} />,
+		);
+
+		fireEvent.click(bar(container).querySelector<HTMLButtonElement>("[data-read-aloud]")!);
+		const whileWaiting = {voices: [...speech.voices], state: readAloudState(container)};
+		act(() => speech.loadVoices([SAMANTHA, ZOE_PREMIUM]));
+
+		expect({whileWaiting, voices: speech.voices}).toStrictEqual({
+			whileWaiting: {voices: [], state: {label: "Loading\u2026", icon: "spinner", pressed: null}},
+			voices: ["Zoe (Premium) en-US"],
+		});
+	});
+
+	it("speaks with the engine default after a short wait when no voice list ever arrives", () => {
+		const speech = stubSpeech([]);
+		const {container} = render(
+			<AssistantMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} />,
+		);
+
+		fireEvent.click(bar(container).querySelector<HTMLButtonElement>("[data-read-aloud]")!);
+		act(() => {
+			vi.advanceTimersByTime(1000);
+		});
+
+		expect(speech.voices).toStrictEqual([null]);
+	});
+
 	it("stops when pressed again before speech starts", () => {
 		const speech = stubSpeech();
 		const {container} = render(
@@ -203,21 +246,52 @@ describe("AssistantMessageActions", () => {
 	});
 });
 
+interface StubVoice {
+	name: string;
+	lang: string;
+	voiceURI: string;
+	localService: boolean;
+	default: boolean;
+}
+
 interface StubUtterance {
 	text: string;
+	voice: StubVoice | null;
+	lang: string;
 	onstart: (() => void) | null;
 	onend: (() => void) | null;
 	onerror: (() => void) | null;
 }
 
-/** A fake speech service recording what it was asked to do; `finish` ends every queued utterance in order. */
-function stubSpeech() {
+const SAMANTHA: StubVoice = {
+	name: "Samantha",
+	lang: "en-US",
+	voiceURI: "com.apple.voice.compact.en-US.Samantha",
+	localService: true,
+	default: true,
+};
+const ZOE_PREMIUM: StubVoice = {
+	name: "Zoe (Premium)",
+	lang: "en-US",
+	voiceURI: "com.apple.voice.premium.en-US.Zoe",
+	localService: true,
+	default: false,
+};
+
+/**
+ * A fake speech service recording what it was asked to do; `finish` ends every queued utterance in order, and
+ * `loadVoices` installs voices and fires `voiceschanged`, as Chrome does once its list arrives.
+ */
+function stubSpeech(initialVoices: StubVoice[] = [SAMANTHA]) {
 	const queue: StubUtterance[] = [];
-	const record = {spoken: [] as string[], calls: [] as string[]};
+	const record = {spoken: [] as string[], calls: [] as string[], voices: [] as (string | null)[]};
+	let voices = initialVoices;
+	const listeners = new Set<() => void>();
 	vi.stubGlobal("speechSynthesis", {
 		speak: (utterance: StubUtterance) => {
 			record.calls.push("speak");
 			record.spoken.push(utterance.text);
+			record.voices.push(utterance.voice === null ? null : `${utterance.voice.name} ${utterance.lang}`);
 			queue.push(utterance);
 		},
 		pause: () => record.calls.push("pause"),
@@ -226,14 +300,16 @@ function stubSpeech() {
 			record.calls.push("cancel");
 			queue.splice(0).forEach((utterance) => utterance.onerror?.());
 		},
-		getVoices: () => [],
-		addEventListener: () => {},
-		removeEventListener: () => {},
+		getVoices: () => voices,
+		addEventListener: (_type: string, listener: () => void) => listeners.add(listener),
+		removeEventListener: (_type: string, listener: () => void) => listeners.delete(listener),
 	});
 	vi.stubGlobal(
 		"SpeechSynthesisUtterance",
 		class implements StubUtterance {
 			text: string;
+			voice: StubVoice | null = null;
+			lang = "";
 			onstart: (() => void) | null = null;
 			onend: (() => void) | null = null;
 			onerror: (() => void) | null = null;
@@ -244,6 +320,10 @@ function stubSpeech() {
 	);
 	return {
 		...record,
+		loadVoices: (next: StubVoice[]) => {
+			voices = next;
+			listeners.forEach((listener) => listener());
+		},
 		start: () => queue[0]?.onstart?.(),
 		finish: () => {
 			while (queue.length > 0) {

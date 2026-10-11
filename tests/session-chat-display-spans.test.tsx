@@ -31,6 +31,7 @@ class FakeUtterance {
 	onerror: (() => void) | null = null;
 	constructor(readonly text: string) {}
 }
+const VOICE = {name: "Samantha", lang: "en-US", voiceURI: "Samantha", localService: true, default: true};
 const forkFrom = vi.fn();
 const pinChapter = vi.fn();
 const speak = vi.fn();
@@ -41,7 +42,7 @@ beforeEach(() => {
 	vi.stubGlobal("innerHeight", 4000);
 	vi.stubGlobal("requestAnimationFrame", () => 0);
 	vi.stubGlobal("cancelAnimationFrame", vi.fn());
-	vi.stubGlobal("speechSynthesis", {speak, cancel});
+	vi.stubGlobal("speechSynthesis", {speak, cancel, getVoices: () => [VOICE]});
 	vi.stubGlobal("SpeechSynthesisUtterance", FakeUtterance);
 });
 afterEach(() => {
