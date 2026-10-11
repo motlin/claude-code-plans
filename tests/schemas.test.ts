@@ -20,6 +20,7 @@ import {
 	JsonlRecordSchema,
 	parseJsonlRecord,
 	TaskFileSchema,
+	SessionRegistryFileSchema,
 } from "../src/lib/schemas";
 import {
 	BashInputSchema,
@@ -1776,6 +1777,39 @@ describe("TaskFileSchema against disk", () => {
 		}
 
 		expect(validated).toBeGreaterThan(0);
+	});
+});
+
+describe("SessionRegistryFileSchema against disk", () => {
+	const sessionsDir = join(homedir(), ".claude", "sessions");
+
+	it("validates every <pid>.json registry file on disk", () => {
+		let names: string[];
+		try {
+			names = readdirSync(sessionsDir);
+		} catch {
+			return;
+		}
+
+		const failures: string[] = [];
+		// Only <pid>.json: the directory also holds <pid>.<hash>.key secrets that must never be read.
+		for (const name of names.filter((file) => /^\d+\.json$/.test(file))) {
+			let parsed: unknown;
+			try {
+				parsed = JSON.parse(readFileSync(join(sessionsDir, name), "utf-8"));
+			} catch {
+				// The CLI rewrites these files in place; a torn read is not drift.
+				continue;
+			}
+			const result = SessionRegistryFileSchema.safeParse(parsed);
+			if (!result.success) {
+				failures.push(
+					`${name}: ${result.error.issues.map((issue) => `${issue.path.join(".")} ${issue.message}`).join(", ")}`,
+				);
+			}
+		}
+
+		expect(failures).toStrictEqual([]);
 	});
 });
 

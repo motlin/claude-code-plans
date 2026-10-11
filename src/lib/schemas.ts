@@ -1684,7 +1684,8 @@ export const TaskFileSchema = z
 // descriptive fields stay plain strings because no code switches on them.
 // ---------------------------------------------------------------------------
 
-export const SessionRegistryStatusSchema = z.enum(["idle", "busy", "waiting"]);
+/** `shell`: the user is running a `!` shell command in the session. */
+export const SessionRegistryStatusSchema = z.enum(["idle", "busy", "waiting", "shell"]);
 
 export const SessionRegistryFileSchema = z
 	.object({

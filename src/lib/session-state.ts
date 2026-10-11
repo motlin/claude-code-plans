@@ -86,6 +86,8 @@ const REGISTRY_ACTIVITY_STATES = {
 	idle: "idle",
 	busy: "working",
 	waiting: "waiting",
+	// A user `!` command runs in the session; nothing upstream-specific is known, so it reads as running.
+	shell: "working",
 } as const satisfies Record<SessionRegistryStatus, ActivityState>;
 
 export interface MainStateSources {

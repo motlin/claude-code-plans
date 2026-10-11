@@ -143,6 +143,7 @@ const sessionRegistryStatusLabels = {
 	idle: "Idle",
 	busy: "Working",
 	waiting: "Needs input",
+	shell: "Running a shell command",
 } satisfies Record<z.infer<typeof SessionRegistryStatusSchema>, string>;
 
 const writeToolUseResultTypeLabels = {

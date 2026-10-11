@@ -45,6 +45,13 @@ describe("SessionRegistryFileSchema", () => {
 		expect(SessionRegistryFileSchema.parse(waiting)).toStrictEqual(waiting);
 	});
 
+	it("accepts the shell status a session reports while the user runs a ! command", () => {
+		// Real shape (2026-10-11), sanitized: a shell session drops waitingFor.
+		const shell = registryFixture({status: "shell"});
+
+		expect(SessionRegistryFileSchema.parse(shell)).toStrictEqual(shell);
+	});
+
 	it("rejects unknown keys and unknown statuses", () => {
 		expect(SessionRegistryFileSchema.safeParse({...registryFixture(), surprise: true}).success).toBe(false);
 		expect(SessionRegistryFileSchema.safeParse({...registryFixture(), status: "sleeping"}).success).toBe(false);
@@ -81,6 +88,21 @@ describe("readSessionRegistry", () => {
 		chmodSync(keyPath, 0o000);
 
 		expect(await readSessionRegistry(dir)).toStrictEqual([registryFixture()]);
+	});
+
+	it("reports schema drift, such as a status this schema does not know, instead of dropping it silently", async () => {
+		writeFileSync(
+			join(dir, "4545.json"),
+			JSON.stringify(registryFixture({pid: 4545, status: "sleeping" as "idle"})),
+		);
+		const drift: string[] = [];
+
+		const entries = await readSessionRegistry(dir, (name, message) => drift.push(`${name}: ${message}`));
+
+		expect({entries, drift}).toStrictEqual({
+			entries: [],
+			drift: ['4545.json: status Invalid option: expected one of "idle"|"busy"|"waiting"|"shell"'],
+		});
 	});
 
 	it("returns nothing for a missing directory", async () => {

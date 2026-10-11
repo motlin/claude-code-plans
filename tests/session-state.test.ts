@@ -364,18 +364,22 @@ describe("resolveSessionBucket for a session blocked on a permission prompt", ()
 });
 
 describe("resolveMainState", () => {
-	const registry = (status: "idle" | "busy" | "waiting", statusUpdatedAt: number) => ({status, statusUpdatedAt});
+	const registry = (status: "idle" | "busy" | "waiting" | "shell", statusUpdatedAt: number) => ({
+		status,
+		statusUpdatedAt,
+	});
 	const hook = (state: ActivityState, lastActivity: number) => ({state, lastActivity});
 
 	it("maps registry statuses to activity states when no hook entry exists", () => {
 		expect(
-			(["idle", "busy", "waiting"] as const).map((status) =>
+			(["idle", "busy", "waiting", "shell"] as const).map((status) =>
 				resolveMainState({hook: null, registry: registry(status, 1_000)}),
 			),
 		).toStrictEqual([
 			{state: "idle", source: "registry"},
 			{state: "working", source: "registry"},
 			{state: "waiting", source: "registry"},
+			{state: "working", source: "registry"},
 		]);
 	});
 

@@ -23,8 +23,24 @@ export function isRegistryFileName(name: string): boolean {
 	return REGISTRY_FILE_NAME.test(name);
 }
 
-/** Every valid registry file in `dir`; unreadable, malformed or drifted files are skipped. */
-export async function readSessionRegistry(dir: string = SESSION_REGISTRY_DIR): Promise<SessionRegistryEntry[]> {
+const reportedDrift = new Set<string>();
+
+/** Warn once per file and drift, so a new CLI field or status is visible while its session reads ended. */
+function warnDriftOnce(name: string, message: string): void {
+	const key = `${name}\0${message}`;
+	if (reportedDrift.has(key)) return;
+	reportedDrift.add(key);
+	console.warn(`Session registry ${name} failed strict validation (schema drift): ${message}`);
+}
+
+/**
+ * Every valid registry file in `dir`. Unreadable or torn files are skipped
+ * quietly; one that parses but fails the strict schema is reported as drift.
+ */
+export async function readSessionRegistry(
+	dir: string = SESSION_REGISTRY_DIR,
+	reportDrift: (name: string, message: string) => void = warnDriftOnce,
+): Promise<SessionRegistryEntry[]> {
 	let names: string[];
 	try {
 		names = await readdir(dir);
@@ -33,12 +49,19 @@ export async function readSessionRegistry(dir: string = SESSION_REGISTRY_DIR): P
 	}
 	const entries = await Promise.all(
 		names.filter(isRegistryFileName).map(async (name) => {
+			let raw: unknown;
 			try {
-				const result = SessionRegistryFileSchema.safeParse(JSON.parse(await readFile(join(dir, name), "utf8")));
-				return result.success ? result.data : null;
+				raw = JSON.parse(await readFile(join(dir, name), "utf8"));
 			} catch {
 				return null;
 			}
+			const result = SessionRegistryFileSchema.safeParse(raw);
+			if (result.success) return result.data;
+			reportDrift(
+				name,
+				result.error.issues.map((issue) => `${issue.path.join(".")} ${issue.message}`).join("; "),
+			);
+			return null;
 		}),
 	);
 	return entries.filter((entry) => entry !== null);
