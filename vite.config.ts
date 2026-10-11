@@ -14,8 +14,11 @@ import {lockfileToolchainGuard} from "./src/lib/lockfile-toolchain-guard";
 // Names the dev process in ps; production uses SERVER_PROCESS_TITLE instead.
 process.title = "claude-code-browser";
 
-// Field perf samples (src/lib/perf/journey.ts) are grouped by the commit they were built from.
+// Field perf samples (src/lib/perf/journey.ts) are grouped by the commit they were built from. `just build` passes
+// it in as CCB_BUILD_SHA, the cached build:app task's env key, so a new commit rebuilds even when no source changed.
 function buildSha(): string {
+	const fromEnvironment = process.env["CCB_BUILD_SHA"];
+	if (fromEnvironment) return fromEnvironment;
 	try {
 		return execFileSync("git", ["rev-parse", "--short", "HEAD"], {encoding: "utf8"}).trim();
 	} catch {
@@ -64,6 +67,10 @@ export default defineConfig({
 			typecheck: {
 				command: "tsc --noEmit",
 				cache: false,
+			},
+			"build:app": {
+				command: "vp build",
+				cache: {env: ["CCB_BUILD_SHA"], output: [".output/**", "src/routeTree.gen.ts"]},
 			},
 			"test:run": {
 				command: "node node_modules/vitest/dist/cli.js run",

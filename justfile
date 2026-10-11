@@ -134,7 +134,7 @@ typecheck: install
 
 # Build the project
 build: install
-    scripts/clean-env.sh vp run --cache build
+    CCB_BUILD_SHA="$(git rev-parse --short HEAD)" scripts/clean-env.sh vp run --cache build:app
 
 # Run Storybook dev server
 storybook *args: install

@@ -9,13 +9,17 @@ import {AGENTATION_ENDPOINT, AGENTATION_SERVER} from "../src/lib/agentation-endp
 
 const REPO_ROOT = join(import.meta.dirname, "..");
 const originalTitle = process.title;
+const originalBuildSha = process.env["CCB_BUILD_SHA"];
 process.title = "node";
+process.env["CCB_BUILD_SHA"] = "abc1234";
 const {default: viteConfig} = await import("../vite.config");
 const {default: vitestConfig} = await import("../vitest.config");
 const loadedTitle = process.title;
 
 afterAll(() => {
 	process.title = originalTitle;
+	if (originalBuildSha === undefined) delete process.env["CCB_BUILD_SHA"];
+	else process.env["CCB_BUILD_SHA"] = originalBuildSha;
 });
 
 function pluginNames(option: unknown): string[] {
@@ -105,6 +109,21 @@ describe("test task cache", () => {
 			testRun: {
 				command: "node node_modules/vitest/dist/cli.js run",
 				cache: {input: [{auto: true}, "!node_modules/.vitest-cache/**"], output: []},
+			},
+		});
+	});
+});
+
+describe("build task cache", () => {
+	it("caches the app build with its outputs, keyed on the commit SHA the build stamps in", () => {
+		expect({
+			define: viteConfig.define,
+			buildApp: viteConfig.run?.tasks?.["build:app"],
+		}).toStrictEqual({
+			define: {__CCB_BUILD_SHA__: JSON.stringify("abc1234")},
+			buildApp: {
+				command: "vp build",
+				cache: {env: ["CCB_BUILD_SHA"], output: [".output/**", "src/routeTree.gen.ts"]},
 			},
 		});
 	});

@@ -43,14 +43,18 @@ describe("vp task cache environment", () => {
 				HERDR_PANE_ID: "pane",
 				SHLVL: "3",
 				GIT_DIR: "/somewhere/.git",
+				CCB_BUILD_SHA: "abc1234",
 			}),
-		).toStrictEqual({HOME: "/home/test", PATH: path, PERF_LARGE: "1"});
+		).toStrictEqual({HOME: "/home/test", PATH: path, PERF_LARGE: "1", CCB_BUILD_SHA: "abc1234"});
 	});
 
-	it.each(["check", "_test", "build"])(
-		"runs the cached vp task in `just %s` through the clean environment",
-		(recipe) => {
-			expect(justRecipeBody(recipe)).toMatch(/^\s+scripts\/clean-env\.sh vp run --cache /m);
-		},
-	);
+	it("builds through the cached build:app task with the commit SHA in its environment", () => {
+		expect(justRecipeBody("build")).toMatch(
+			/^\s+CCB_BUILD_SHA="\$\(git rev-parse --short HEAD\)" scripts\/clean-env\.sh vp run --cache build:app$/m,
+		);
+	});
+
+	it.each(["check", "_test"])("runs the cached vp task in `just %s` through the clean environment", (recipe) => {
+		expect(justRecipeBody(recipe)).toMatch(/^\s+scripts\/clean-env\.sh vp run --cache /m);
+	});
 });
