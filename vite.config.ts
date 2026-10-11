@@ -26,6 +26,10 @@ function buildSha(): string {
 	}
 }
 
+// Files the build or test run reads that another step rewrites on every verify: Fallow's caches and the perf results
+// the test run merges into. Tracking them would make every verify rerun miss.
+const UNTRACKED_TASK_INPUTS = ["!.fallow/**", "!node_modules/.cache/ccb-perf/**"];
+
 export default defineConfig({
 	define: {
 		__CCB_BUILD_SHA__: JSON.stringify(buildSha()),
@@ -70,12 +74,16 @@ export default defineConfig({
 			},
 			"build:app": {
 				command: "vp build",
-				cache: {env: ["CCB_BUILD_SHA"], output: [".output/**", "src/routeTree.gen.ts"]},
+				cache: {
+					env: ["CCB_BUILD_SHA"],
+					input: [{auto: true}, ...UNTRACKED_TASK_INPUTS],
+					output: [".output/**", "src/routeTree.gen.ts"],
+				},
 			},
 			"test:run": {
 				command: "node node_modules/vitest/dist/cli.js run",
 				cache: {
-					input: [{auto: true}, "!node_modules/.vitest-cache/**"],
+					input: [{auto: true}, "!node_modules/.vitest-cache/**", ...UNTRACKED_TASK_INPUTS],
 					output: [],
 				},
 			},

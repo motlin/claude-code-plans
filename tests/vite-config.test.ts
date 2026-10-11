@@ -108,7 +108,15 @@ describe("test task cache", () => {
 			fsModuleCachePath: undefined,
 			testRun: {
 				command: "node node_modules/vitest/dist/cli.js run",
-				cache: {input: [{auto: true}, "!node_modules/.vitest-cache/**"], output: []},
+				cache: {
+					input: [
+						{auto: true},
+						"!node_modules/.vitest-cache/**",
+						"!.fallow/**",
+						"!node_modules/.cache/ccb-perf/**",
+					],
+					output: [],
+				},
 			},
 		});
 	});
@@ -123,7 +131,11 @@ describe("build task cache", () => {
 			define: {__CCB_BUILD_SHA__: JSON.stringify("abc1234")},
 			buildApp: {
 				command: "vp build",
-				cache: {env: ["CCB_BUILD_SHA"], output: [".output/**", "src/routeTree.gen.ts"]},
+				cache: {
+					env: ["CCB_BUILD_SHA"],
+					input: [{auto: true}, "!.fallow/**", "!node_modules/.cache/ccb-perf/**"],
+					output: [".output/**", "src/routeTree.gen.ts"],
+				},
 			},
 		});
 	});
