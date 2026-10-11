@@ -66,6 +66,7 @@ jobs:
           key: pnpm-${{ hashFiles('pnpm-lock.yaml') }}
       - run: just build
       - run: just perf-bundle
+      - run: just client-boundaries
 
   build-storybook:
     runs-on: ubuntu-latest

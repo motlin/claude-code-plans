@@ -47,7 +47,7 @@ describe("bundle byte gate", () => {
 			fixes: ["check", "_fallow-fix"],
 			gates: ["_build-bundle", "fallow-check", "_pre-commit-gates"],
 			gatesRunInParallel: true,
-			buildThenBundle: ["build", "perf-bundle"],
+			buildThenBundle: ["build", "perf-bundle", "client-boundaries"],
 		});
 	});
 

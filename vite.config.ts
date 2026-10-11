@@ -5,6 +5,7 @@ import {nitro} from "nitro/vite";
 import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import {AGENTATION_ENDPOINT, AGENTATION_SERVER} from "./src/lib/agentation-endpoint";
+import {clientChunkGraph} from "./src/lib/client-chunk-graph";
 import {closeNitroRunnerOnServerClose} from "./src/lib/dev-env-runner-teardown";
 import {holdNitroRequestsUntilReady} from "./src/lib/dev-env-ready-gate";
 import {devWorkerProxy} from "./src/lib/dev-worker-proxy";
@@ -195,6 +196,7 @@ export default defineConfig({
 		tailwindcss(),
 		tanstackStart(),
 		viteReact(),
+		clientChunkGraph(import.meta.dirname),
 		closeNitroRunnerOnServerClose(),
 		holdNitroRequestsUntilReady(),
 		// After nitro(): its error handler must follow nitro's catch-all dev middleware.

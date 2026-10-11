@@ -91,6 +91,10 @@ perf *args: install
 perf-bundle: install
     vp exec tsx scripts/perf-bundle.ts
 
+# Check the client build keeps Node built-ins out of every chunk and Shiki grammars and markdown-it out of the entry's static graph. Run after `just build`; `just verify` runs it
+client-boundaries: install
+    vp exec tsx scripts/client-boundaries.ts
+
 # Print n and p50/p75/p95 per field metric from the browser's journey samples, split into server/network/client time per build, origin and form factor
 [group('perf')]
 perf-report *args: install
@@ -183,7 +187,7 @@ _pre-commit-gates: install
     SKIP=oxfmt,fallow pre-commit run --all-files
 
 [private]
-_build-bundle: build perf-bundle
+_build-bundle: build perf-bundle client-boundaries
 
 # Deprecated alias for `verify`
 [arg("quick", long, value="true", help="Skip tests")]
