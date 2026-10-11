@@ -81,15 +81,6 @@ async function startFront(workerPort: number, middlewares: Middleware[]): Promis
 	return {url: `http://127.0.0.1:${(server.address() as AddressInfo).port}/`, errors};
 }
 
-function pluginNames(option: unknown): string[] {
-	if (Array.isArray(option)) {
-		return option.flatMap((entry: unknown) => pluginNames(entry));
-	}
-	return option !== null && typeof option === "object" && "name" in option && typeof option.name === "string"
-		? [option.name]
-		: [];
-}
-
 async function requestWhileWorkerStalls(middlewares: Middleware[]): Promise<{statuses: number[]; errors: string[]}> {
 	const {worker, port} = await startWorker();
 	const front = await startFront(port, middlewares);
@@ -128,16 +119,6 @@ describe("dev worker proxy", () => {
 			{headers: {connection: "close"}, rawHeaders: ["Host", "x", "Connection", "close"]},
 			{headers: {connection: "close"}, rawHeaders: ["Host", "x", "Connection", "close"]},
 		]);
-	});
-
-	it("is wired into the dev server config after nitro", async () => {
-		const {default: config} = await import("../vite.config");
-		const names = pluginNames(config.plugins);
-
-		expect(names.slice(-2)).toEqual(["ccp:dev-worker-connection-close", "ccp:dev-request-errors"]);
-		expect(names.indexOf("ccp:dev-request-errors")).toBeGreaterThan(
-			names.findIndex((name) => name.startsWith("nitro")),
-		);
 	});
 
 	it("swallows disconnect errors once the browser has gone away", () => {

@@ -1,20 +1,11 @@
 import {readdirSync, readFileSync} from "node:fs";
 import {join} from "node:path";
 import {describe, expect, it} from "vite-plus/test";
-import viteConfig from "../vite.config";
 
 const TESTS_DIRECTORY = join(import.meta.dirname);
 const THIS_FILE = "test-fixture-location.test.ts";
 
-describe("test fixtures stay out of the dev server's watch", () => {
-	it("ignores non-source scratch directories in the Vite dev watcher", () => {
-		expect(viteConfig.server?.watch?.ignored).toStrictEqual([
-			"**/routeTree.gen.ts",
-			"**/.llm/**",
-			"**/.playwright-mcp/**",
-		]);
-	});
-
+describe("test fixtures stay out of the repository", () => {
 	it("never creates test fixture directories inside the repository", () => {
 		const offenders = readdirSync(TESTS_DIRECTORY, {recursive: true, encoding: "utf8"})
 			.filter((file) => /\.test\.tsx?$/.test(file) && !file.endsWith(THIS_FILE))

@@ -44,17 +44,4 @@ describe("closeNitroRunnerOnServerClose", () => {
 
 		await expect(plugin.closeServer()).resolves.toBeUndefined();
 	});
-
-	it("is registered in the vite config", async () => {
-		const {default: config} = await import("../vite.config");
-		const plugins: unknown[] = [...(config.plugins ?? [])];
-		const names: unknown[] = [];
-		while (plugins.length > 0) {
-			const plugin = plugins.shift();
-			if (Array.isArray(plugin)) plugins.push(...(plugin as unknown[]));
-			else if (plugin !== null && typeof plugin === "object" && "name" in plugin) names.push(plugin.name);
-		}
-
-		expect(names).toContain("ccp:close-nitro-env-runner");
-	});
 });

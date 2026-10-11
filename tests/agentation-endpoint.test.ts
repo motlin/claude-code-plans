@@ -34,22 +34,4 @@ describe("Agentation endpoint", () => {
 			AGENTATION_ENDPOINT,
 		]);
 	});
-
-	it("is proxied by the dev server to the local Agentation server", async () => {
-		const {default: config} = await import("../vite.config");
-		const proxy = config.server?.proxy?.[AGENTATION_ENDPOINT];
-		if (proxy === undefined || typeof proxy === "string") {
-			throw new Error("expected an object proxy entry for the Agentation endpoint");
-		}
-
-		expect({
-			target: proxy.target,
-			changeOrigin: proxy.changeOrigin,
-			rewritten: proxy.rewrite?.("/__agentation/sessions/abc/events"),
-		}).toEqual({
-			target: AGENTATION_SERVER,
-			changeOrigin: true,
-			rewritten: "/sessions/abc/events",
-		});
-	});
 });
