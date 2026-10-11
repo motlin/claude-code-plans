@@ -466,6 +466,14 @@ describe("sidebar New row", () => {
 		});
 	});
 
+	it("spaces the first session-group header 29px below More, as upstream does", async () => {
+		await renderSidebarAt("/tasks");
+		await waitFor(() => screen.getByRole("link", {name: "Tasks"}));
+
+		const spacer = screen.getByTestId("nav-scroll").querySelector("[data-nav-groups-gap]");
+		expect(spacer?.className).toBe("h-[13px] shrink-0");
+	});
+
 	it("navigates home and focuses the home composer, like ⇧⌘O", async () => {
 		const focusRequests: string[] = [];
 		const unsubscribe = onHomeComposerFocusRequest(() => focusRequests.push("focus"));

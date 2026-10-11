@@ -111,7 +111,7 @@ export function Sidebar({
 							visibleNavSections={visibleNavSections}
 							badgeFor={badgeFor}
 						/>
-						<div className="h-1 shrink-0" />
+						<div data-nav-groups-gap="" className="h-[13px] shrink-0" />
 					</div>
 					<SidebarSessionGroups
 						activeItemId={activeSection === "sessions" ? activeSessionId : activeItemId}
