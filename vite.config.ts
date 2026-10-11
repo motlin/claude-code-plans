@@ -5,6 +5,7 @@ import {nitro} from "nitro/vite";
 import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import {AGENTATION_ENDPOINT, AGENTATION_SERVER} from "./src/lib/agentation-endpoint";
+import {quietDependencyDirectives} from "./src/lib/build-log-filter";
 import {clientChunkGraph} from "./src/lib/client-chunk-graph";
 import {closeNitroRunnerOnServerClose} from "./src/lib/dev-env-runner-teardown";
 import {holdNitroRequestsUntilReady} from "./src/lib/dev-env-ready-gate";
@@ -73,7 +74,7 @@ export default defineConfig({
 				cache: false,
 			},
 			"build:app": {
-				command: "vp build",
+				command: "vp build --logLevel warn",
 				cache: {
 					env: ["CCB_BUILD_SHA"],
 					input: [{auto: true}, ...UNTRACKED_TASK_INPUTS],
@@ -192,6 +193,11 @@ export default defineConfig({
 	},
 	resolve: {
 		tsconfigPaths: true,
+	},
+	build: {
+		// The per-file gzip table is hundreds of lines on every build; just perf-bundle ratchets the sizes that matter.
+		reportCompressedSize: false,
+		rolldownOptions: {onLog: quietDependencyDirectives},
 	},
 	environments: {
 		client: {

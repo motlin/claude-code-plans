@@ -98,7 +98,8 @@ describe("JsonlRecordSchema against disk", () => {
 			`and ${toolInputMismatches} malformed tool inputs`,
 			`mode=${fullScan ? "full" : "recent"}`,
 		].join("; ");
-		process.stderr.write(`${summary}\n`);
+		// The counts only matter when a full scan was asked for or something failed; a passing verify stays quiet.
+		if (fullScan || failures.length > 0) process.stderr.write(`${summary}\n`);
 
 		if (failures.length > 0) {
 			const uniquePatterns = new Map<string, string>();

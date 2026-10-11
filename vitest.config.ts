@@ -15,10 +15,13 @@ export default defineConfig({
 		env: {TZ: "UTC"},
 		// Persist transforms in node_modules/.vitest-cache so a rerun skips them; vite.config.ts keeps it out of test:run's inputs.
 		fsModuleCache: true,
+		// A passing run prints its summary and nothing else; failures still print in full.
+		reporters: process.env["GITHUB_ACTIONS"] === "true" ? ["minimal", "github-actions"] : ["minimal"],
+		silent: "passed-only",
 		projects: [
 			// Plain node tests share each worker's module graph, so common modules load once per worker instead of once per file.
 			{extends: true, test: {name: "shared", include: testFiles.shared, isolate: false}},
-			{extends: true, test: {name: "isolated", include: testFiles.isolated}},
+			{extends: true, test: {name: "isolated", include: testFiles.isolated, isolate: true}},
 		],
 	},
 });

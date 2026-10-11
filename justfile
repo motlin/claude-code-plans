@@ -177,7 +177,7 @@ verify quick="": _verify-fixes _verify-gates
 
 # Fixers that rewrite files and still exit 0, so they finish before any gate reads the tree
 [private]
-_verify-fixes: check _fallow-fix
+_verify-fixes: (check "--quiet") _fallow-fix
 
 # Read-only gates. Pre-commit's own fixers can run here too: they fail the run whenever they rewrite a file
 [parallel]

@@ -130,13 +130,38 @@ describe("build task cache", () => {
 		}).toStrictEqual({
 			define: {__CCB_BUILD_SHA__: JSON.stringify("abc1234")},
 			buildApp: {
-				command: "vp build",
+				command: "vp build --logLevel warn",
 				cache: {
 					env: ["CCB_BUILD_SHA"],
 					input: [{auto: true}, "!.fallow/**", "!node_modules/.cache/ccb-perf/**"],
 					output: [".output/**", "src/routeTree.gen.ts"],
 				},
 			},
+		});
+	});
+});
+
+describe("quiet output", () => {
+	it("reports only failures from vitest and keeps the build's size table and dependency warnings out of verify", () => {
+		expect({
+			reporters: vitestConfig.test?.reporters,
+			silent: vitestConfig.test?.silent,
+			projects: vitestConfig.test?.projects?.map((project) =>
+				typeof project === "object" && "test" in project
+					? [project.test?.name, project.test?.isolate]
+					: project,
+			),
+			reportCompressedSize: viteConfig.build?.reportCompressedSize,
+			filtersBundlerLogs: typeof viteConfig.build?.rolldownOptions?.onLog,
+		}).toStrictEqual({
+			reporters: process.env["GITHUB_ACTIONS"] === "true" ? ["minimal", "github-actions"] : ["minimal"],
+			silent: "passed-only",
+			projects: [
+				["shared", false],
+				["isolated", true],
+			],
+			reportCompressedSize: false,
+			filtersBundlerLogs: "function",
 		});
 	});
 });

@@ -23,7 +23,13 @@ const JustDumpSchema = z.object({
 			attributes: z.array(
 				z.union([z.string(), z.object({arg: z.object({name: z.string()})}), z.object({group: z.string()})]),
 			),
-			dependencies: z.array(z.object({recipe: z.string()})),
+			dependencies: z.array(
+				z.object({
+					recipe: z.string(),
+					// A string literal argument dumps as the string, a variable as ["variable", name].
+					arguments: z.array(z.union([z.string(), z.tuple([z.literal("variable"), z.string()])])),
+				}),
+			),
 		}),
 	),
 });
@@ -35,7 +41,10 @@ describe("bundle byte gate", () => {
 
 	it("ratchets the bundle bytes in `just verify` right after the build, reusing its output, beside the other read-only gates", () => {
 		const {recipes} = JustDumpSchema.parse(JSON.parse(just("--dump", "--dump-format", "json")));
-		const dependenciesOf = (name: string) => recipes[name]?.dependencies.map((dependency) => dependency.recipe);
+		const dependenciesOf = (name: string) =>
+			recipes[name]?.dependencies.map(({recipe, arguments: args}) =>
+				[recipe, ...args.map((arg) => (typeof arg === "string" ? arg : arg[1]))].join(" "),
+			);
 		expect({
 			verify: dependenciesOf("verify"),
 			fixes: dependenciesOf("_verify-fixes"),
@@ -44,7 +53,7 @@ describe("bundle byte gate", () => {
 			buildThenBundle: dependenciesOf("_build-bundle"),
 		}).toStrictEqual({
 			verify: ["_verify-fixes", "_verify-gates"],
-			fixes: ["check", "_fallow-fix"],
+			fixes: ["check --quiet", "_fallow-fix"],
 			gates: ["_build-bundle", "fallow-check", "_pre-commit-gates"],
 			gatesRunInParallel: true,
 			buildThenBundle: ["build", "perf-bundle", "client-boundaries"],

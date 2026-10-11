@@ -4,3 +4,6 @@ import {isolateGitEnvironment} from "./git-fixture";
 // that points git at the developer's repository, and no git it spawns starts an
 // fsmonitor daemon that outlives the test.
 isolateGitEnvironment();
+
+// jsdom logs "Not implemented: window.scrollTo" on every call; layout-free tests have nothing to scroll.
+if (typeof window !== "undefined") window.scrollTo = () => {};
