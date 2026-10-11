@@ -137,10 +137,12 @@ export function collectTurnChanges(
 		if (!Array.isArray(content)) continue;
 		for (const block of content) {
 			if (block.type !== "tool_use") continue;
+			const result = toolResultMap.get(block.id);
 			turn.calls.push({
 				name: block.name,
 				input: block.input,
-				isError: toolResultMap.get(block.id)?.isError,
+				isError: result?.isError,
+				resultMeta: result?.resultMeta,
 			});
 		}
 	}

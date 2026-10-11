@@ -5,7 +5,9 @@ import specimens from "./fixtures/write-update-diff-specimens.json";
 import {diffStatsForCall, summarizeToolCallStats, type ToolCallLike} from "../src/lib/session-utils";
 import {toolResultMetaFrom} from "../src/lib/tool-labels";
 import {processTranscript} from "../src/lib/transcript";
-import {aggregateTurnEdits} from "../src/lib/turn-changes";
+import {parseJsonlRecord} from "../src/lib/schemas";
+import {aggregateSessionEdits} from "../src/lib/session-edits-diff";
+import {aggregateTurnEdits, collectTurnChanges} from "../src/lib/turn-changes";
 
 const hunk = (lines: string[]) => ({oldStart: 1, oldLines: 2, newStart: 1, newLines: 3, lines});
 
@@ -149,6 +151,45 @@ describe("01d132c8:835-841 Write that updated justfile", () => {
 			header: {added: 46, removed: 3},
 			card: {added: 46, removed: 3},
 		});
+	});
+});
+
+function fixtureLines(name: string): string[] {
+	return readFileSync(join(import.meta.dirname, "fixtures", name), "utf8")
+		.trim()
+		.split("\n");
+}
+
+/** The turn's two Writes: justfile updated (01d132c8:835-841), then sync-template.md created (966-968). */
+describe("01d132c8's turn that updated justfile and created sync-template.md", () => {
+	const lines = [...fixtureLines("01d132c8-write-update.jsonl"), ...fixtureLines("01d132c8-write-create.jsonl")];
+	const justfile = "/Users/craig/projects/playdate-template-sync-project-template/justfile";
+	const syncTemplate =
+		"/Users/craig/projects/playdate-template-sync-project-template/.claude/commands/sync-template.md";
+
+	it("totals the changes card +193 −3 with justfile +46 −3, as upstream does", () => {
+		const transcript = processTranscript(lines.map((line) => JSON.parse(line) as unknown));
+		const cards = [...collectTurnChanges(transcript.lines, transcript.toolResultMap).values()];
+		expect(cards.map(({files, added, removed}) => ({files, added, removed}))).toStrictEqual([
+			{
+				files: [
+					{path: justfile, added: 46, removed: 3},
+					{path: syncTemplate, added: 147, removed: 0},
+				],
+				added: 193,
+				removed: 3,
+			},
+		]);
+	});
+
+	it("counts the same stats in the Changes pane's session-edits diff", () => {
+		const records = lines.flatMap((line) => parseJsonlRecord(line) ?? []);
+		expect(
+			aggregateSessionEdits(records).map(({path, additions, deletions}) => ({path, additions, deletions})),
+		).toStrictEqual([
+			{path: syncTemplate, additions: 147, deletions: 0},
+			{path: justfile, additions: 46, deletions: 3},
+		]);
 	});
 });
 
