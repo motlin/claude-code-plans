@@ -1,6 +1,5 @@
 import {useEffect, useRef, useState, useSyncExternalStore} from "react";
-import {markdownToSpeechText} from "../lib/markdown-plain-text";
-import {speechChunks} from "../lib/speech-chunks";
+import {markdownToPlainText} from "../lib/markdown-plain-text";
 import {chooseVoice} from "../lib/speech-voice";
 
 /** How long to wait for an engine that has not listed its voices yet before speaking with its default. */
@@ -85,8 +84,8 @@ export function useReadAloud(text: string) {
 			settle("idle");
 			return;
 		}
-		const chunks = speechChunks(markdownToSpeechText(text));
-		if (chunks.length === 0) return;
+		const spoken = markdownToPlainText(text);
+		if (spoken === "") return;
 		settle("loading");
 		const settleCurrent = (value: ReadAloudStatus) => {
 			if (reading.current === current) settle(value);
@@ -94,19 +93,13 @@ export function useReadAloud(text: string) {
 		abandonVoiceWait.current = withVoices((voices) => {
 			const lang = documentLang();
 			const voice = chooseVoice(voices, lang);
-			// One utterance per sentence: Chrome's network voices stop partway through a long one,
-			// and the engine's own queue keeps pause and resume working across them.
-			chunks.forEach((chunk, index) => {
-				const utterance = new SpeechSynthesisUtterance(chunk);
-				utterance.lang = voice?.lang ?? lang;
-				if (voice !== null) utterance.voice = voice;
-				utterance.onstart = () => {
-					if (statusRef.current === "loading") settleCurrent("playing");
-				};
-				if (index === chunks.length - 1) utterance.onend = () => settleCurrent("idle");
-				utterance.onerror = () => settleCurrent("idle");
-				speechSynthesis.speak(utterance);
-			});
+			const utterance = new SpeechSynthesisUtterance(spoken);
+			utterance.lang = voice?.lang ?? lang;
+			if (voice !== null) utterance.voice = voice;
+			utterance.onstart = () => settleCurrent("playing");
+			utterance.onend = () => settleCurrent("idle");
+			utterance.onerror = () => settleCurrent("idle");
+			speechSynthesis.speak(utterance);
 		});
 	};
 	return {status, toggle: supported && text !== "" ? toggle : undefined};

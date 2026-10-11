@@ -677,7 +677,7 @@ describe("assistant display-span actions", () => {
 		expect({
 			footers: footers(view.container).map(anchor),
 			speech: speak.mock.calls.map(([utterance]) => utterance.text),
-		}).toStrictEqual({footers: ["5"], speech: ["Example repeated.", "Example repeated."]});
+		}).toStrictEqual({footers: ["5"], speech: ["Example repeated.\n\nExample repeated."]});
 	});
 
 	it("renders no footer-only rows for hidden assistant content", () => {
