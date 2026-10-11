@@ -1,5 +1,8 @@
+import {accessSync, constants, mkdtempSync, readFileSync, rmSync} from "node:fs";
+import {tmpdir} from "node:os";
+import {join} from "node:path";
 import {describe, expect, it} from "vite-plus/test";
-import {diffRendererManifests, fixtureServerEnv} from "../scripts/screenshots";
+import {diffRendererManifests, fixtureServerEnv, seedFixtureHome} from "../scripts/screenshots";
 
 describe("diffRendererManifests", () => {
 	it("returns exact nested field paths for renderer drift", () => {
@@ -39,7 +42,7 @@ describe("diffRendererManifests", () => {
 });
 
 describe("fixtureServerEnv", () => {
-	it("drops every inherited HERDR_* variable and points the herdr socket into the fixture", () => {
+	it("drops every inherited HERDR_* variable, points the herdr socket into the fixture and puts the fixture's bin first on PATH", () => {
 		const env = fixtureServerEnv(
 			{
 				PATH: "/usr/bin",
@@ -53,7 +56,7 @@ describe("fixtureServerEnv", () => {
 		);
 
 		expect(env).toStrictEqual({
-			PATH: "/usr/bin",
+			PATH: "/fixture/bin:/usr/bin",
 			HOME: "/fixture/home",
 			XDG_CACHE_HOME: "/fixture/cache",
 			XDG_CONFIG_HOME: "/fixture/config",
@@ -61,5 +64,22 @@ describe("fixtureServerEnv", () => {
 			PORT: "7538",
 			NO_PROXY: "127.0.0.1,localhost",
 		});
+	});
+});
+
+describe("seedFixtureHome", () => {
+	it("installs an executable claude stub in the fixture's bin, so the server never depends on the machine's claude", () => {
+		const root = mkdtempSync(join(tmpdir(), "screenshots-script-"));
+		try {
+			seedFixtureHome(root);
+			const stub = join(root, "bin", "claude");
+
+			expect(() => accessSync(stub, constants.X_OK)).not.toThrow();
+			expect(readFileSync(stub, "utf-8")).toBe(
+				'#!/bin/sh\necho "claude is stubbed out on fixture servers" >&2\nexit 1\n',
+			);
+		} finally {
+			rmSync(root, {recursive: true, force: true});
+		}
 	});
 });
