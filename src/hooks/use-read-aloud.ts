@@ -1,5 +1,5 @@
 import {useEffect, useRef, useState, useSyncExternalStore} from "react";
-import {markdownToPlainText} from "../lib/markdown-plain-text";
+import {markdownToSpeechText} from "../lib/markdown-plain-text";
 import {speechChunks} from "../lib/speech-chunks";
 import {chooseVoice} from "../lib/speech-voice";
 
@@ -85,7 +85,7 @@ export function useReadAloud(text: string) {
 			settle("idle");
 			return;
 		}
-		const chunks = speechChunks(markdownToPlainText(text));
+		const chunks = speechChunks(markdownToSpeechText(text));
 		if (chunks.length === 0) return;
 		settle("loading");
 		const settleCurrent = (value: ReadAloudStatus) => {

@@ -260,6 +260,22 @@ describe("AssistantMessageActions", () => {
 		});
 	});
 
+	it("says code blocks, paths and URLs briefly instead of reading them out", () => {
+		const speech = stubSpeech();
+		const {container} = render(
+			<AssistantMessageActions
+				message={MESSAGE}
+				text={"Edited `src/lib/speech.ts`:\n\n```ts\nconst a = 1;\n```\n\nSee https://example.com/a."}
+				timestamp={TIMESTAMP}
+				details={[]}
+			/>,
+		);
+
+		fireEvent.click(bar(container).querySelector<HTMLButtonElement>("[data-read-aloud]")!);
+
+		expect(speech.spoken).toStrictEqual(["Edited speech.ts:", "code block", "See link."]);
+	});
+
 	it("stops when pressed again before speech starts", () => {
 		const speech = stubSpeech();
 		const {container} = render(
