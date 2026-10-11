@@ -281,7 +281,13 @@ export const PromptSourceSchema = z.enum(["typed", "system", "sdk", "queued", "s
 export const TurnOriginSchema = z.enum(["human", "peer", "task_notification", "scheduled"]);
 
 export const PermissionDecisionDecisionSchema = z.enum(["accept", "reject"]);
-export const PermissionDecisionSourceSchema = z.enum(["config", "hook", "user_permanent", "user_temporary"]);
+export const PermissionDecisionSourceSchema = z.enum([
+	"config",
+	"hook",
+	"user_permanent",
+	"user_reject",
+	"user_temporary",
+]);
 export const PermissionDecisionReasonTypeSchema = z.enum([
 	"classifier",
 	"hook",
@@ -395,6 +401,7 @@ export const UserRecordSchema = z
 		origin: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
 		interruptedMessageId: z.string().optional(),
 		interruptedByShutdown: z.boolean().optional(),
+		interruptedBySendNow: z.boolean().optional(),
 		userFeedback: z.string().optional(),
 		turnOrigin: TurnOriginSchema.optional(),
 		turnPosition: z

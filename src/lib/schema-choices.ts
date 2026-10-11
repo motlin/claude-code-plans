@@ -119,6 +119,7 @@ const permissionDecisionSourceLabels = {
 	config: "Configuration",
 	hook: "Hook",
 	user_permanent: "User (always)",
+	user_reject: "User (rejected)",
 	user_temporary: "User (once)",
 } satisfies Record<z.infer<typeof PermissionDecisionSourceSchema>, string>;
 

@@ -702,6 +702,17 @@ describe("JsonlRecordSchema", () => {
 		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
 	});
 
+	it("parses user records interrupted by send-now", () => {
+		const record = {
+			type: "user",
+			...baseFields,
+			message: {role: "user", content: [{type: "text", text: "[Request interrupted by user]"}]},
+			interruptedBySendNow: true,
+		};
+
+		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
+	});
+
 	it("parses assistant records", () => {
 		const record = {
 			type: "assistant",
@@ -1442,6 +1453,12 @@ describe("JsonlRecordSchema observed 2026-09 transcript fields", () => {
 				...baseFields,
 				message: {role: "user", content: [{type: "tool_result", tool_use_id: "toolu_3", content: "blocked"}]},
 				permissionDecision: {decision: "reject", source: "config", reasonType: "safetyCheck"},
+			},
+			{
+				type: "user",
+				...baseFields,
+				message: {role: "user", content: [{type: "tool_result", tool_use_id: "toolu_4", content: "rejected"}]},
+				permissionDecision: {decision: "reject", source: "user_reject"},
 			},
 			attachmentRecord({
 				type: "deferred_tools_delta",
