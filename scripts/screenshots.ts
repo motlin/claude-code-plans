@@ -8,10 +8,10 @@
  */
 
 import {spawn, type ChildProcess} from "node:child_process";
-import {mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync} from "node:fs";
+import {chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync} from "node:fs";
 import {arch, platform} from "node:os";
 import {createServer} from "node:net";
-import {dirname, join, resolve} from "node:path";
+import {delimiter, dirname, join, resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {chromium, type BrowserContext, type Page} from "playwright";
 
@@ -418,13 +418,22 @@ export function seedFixtureHome(fixtureRoot: string): string {
 		writeFixtureFile(join(tasksDirectory, PROJECT_ID, `${task.id}.json`), JSON.stringify(task), firstMtime);
 	}
 
+	// The capabilities check looks for claude on PATH, and a machine without it renders a degraded-review banner.
+	const claudeStub = join(fixtureRoot, "bin", "claude");
+	writeFixtureFile(
+		claudeStub,
+		'#!/bin/sh\necho "claude is stubbed out on fixture servers" >&2\nexit 1\n',
+		firstMtime,
+	);
+	chmodSync(claudeStub, 0o755);
+
 	return fixtureHome;
 }
 
 /**
  * The environment for a dev server running on fixture data. Every inherited HERDR_* variable is dropped and
  * HERDR_SOCKET_PATH points at a socket that never exists inside the fixture, so the server cannot reach the user's
- * real herdr.
+ * real herdr. The fixture's bin leads PATH, so its claude stub shadows the machine's claude.
  */
 export function fixtureServerEnv(
 	inheritedEnv: NodeJS.ProcessEnv,
@@ -436,6 +445,7 @@ export function fixtureServerEnv(
 	}
 	return {
 		...env,
+		PATH: [join(fixtureRoot, "bin"), env["PATH"]].filter(Boolean).join(delimiter),
 		HOME: fixtureHome,
 		XDG_CACHE_HOME: join(fixtureRoot, "cache"),
 		XDG_CONFIG_HOME: join(fixtureRoot, "config"),
