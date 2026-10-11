@@ -171,26 +171,26 @@ audit-just-options:
 
 # Run all pre-commit checks
 [arg("quick", long, value="true", help="Skip tests")]
-verify quick="": _verify-fixes _verify-gates
-    {{ if quick != "true" { "just _test" } else { "true" } }}
+verify quick="": (check "--quiet") _fallow-fix _verify-read-only (_verify-test quick)
     @echo "All pre-commit checks passed!"
 
-# Fixers that rewrite files and still exit 0, so they finish before any gate reads the tree
-[private]
-_verify-fixes: (check "--quiet") _fallow-fix
-
-# Read-only gates. Pre-commit's own fixers can run here too: they fail the run whenever they rewrite a file
+# Read-only gates, once the fixers have rewritten the tree. Pre-commit's own fixers can run here too: they fail the run whenever they rewrite a file
 [parallel]
 [private]
-_verify-gates: _build-bundle fallow-check _pre-commit-gates
+_verify-read-only: _build-bundle fallow-check _verify-pre-commit
 
 # `check --fix` already formatted and `_fallow-fix` already applied Fallow's fixes
 [private]
-_pre-commit-gates: install
+_verify-pre-commit: install
     SKIP=oxfmt,fallow pre-commit run --all-files
 
 [private]
 _build-bundle: build perf-bundle client-boundaries
+
+# Last, because the tests read the build's .output
+[private]
+_verify-test quick:
+    {{ if quick != "true" { "just _test" } else { "true" } }}
 
 # Deprecated alias for `verify`
 [arg("quick", long, value="true", help="Skip tests")]

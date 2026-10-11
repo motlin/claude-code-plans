@@ -39,7 +39,7 @@ describe("bundle byte gate", () => {
 		expect(just("--evaluate", "PATH").split(":")[0]).toBe(join(REPO_ROOT, "node_modules", ".bin"));
 	});
 
-	it("ratchets the bundle bytes in `just verify` right after the build, reusing its output, beside the other read-only gates", () => {
+	it("ratchets the bundle bytes in `just verify` right after the build, beside the other read-only gates, before the tests read .output", () => {
 		const {recipes} = JustDumpSchema.parse(JSON.parse(just("--dump", "--dump-format", "json")));
 		const dependenciesOf = (name: string) =>
 			recipes[name]?.dependencies.map(({recipe, arguments: args}) =>
@@ -47,21 +47,19 @@ describe("bundle byte gate", () => {
 			);
 		expect({
 			verify: dependenciesOf("verify"),
-			fixes: dependenciesOf("_verify-fixes"),
-			gates: dependenciesOf("_verify-gates"),
-			gatesRunInParallel: recipes["_verify-gates"]?.attributes.includes("parallel"),
+			readOnly: dependenciesOf("_verify-read-only"),
+			readOnlyRunsInParallel: recipes["_verify-read-only"]?.attributes.includes("parallel"),
 			buildThenBundle: dependenciesOf("_build-bundle"),
 		}).toStrictEqual({
-			verify: ["_verify-fixes", "_verify-gates"],
-			fixes: ["check --quiet", "_fallow-fix"],
-			gates: ["_build-bundle", "fallow-check", "_pre-commit-gates"],
-			gatesRunInParallel: true,
+			verify: ["check --quiet", "_fallow-fix", "_verify-read-only", "_verify-test quick"],
+			readOnly: ["_build-bundle", "fallow-check", "_verify-pre-commit"],
+			readOnlyRunsInParallel: true,
 			buildThenBundle: ["build", "perf-bundle", "client-boundaries"],
 		});
 	});
 
 	it("skips the pre-commit hooks that repeat `check --fix` and `fallow` inside `just verify`", () => {
-		expect(just("--show", "_pre-commit-gates").trim().split("\n").at(-1)?.trim()).toBe(
+		expect(just("--show", "_verify-pre-commit").trim().split("\n").at(-1)?.trim()).toBe(
 			"SKIP=oxfmt,fallow pre-commit run --all-files",
 		);
 	});
