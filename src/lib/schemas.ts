@@ -1676,6 +1676,44 @@ export const TaskFileSchema = z
 	.strict();
 
 // ---------------------------------------------------------------------------
+// Live session registry (~/.claude/sessions/<pid>.json)
+//
+// The CLI keeps one file per running process and rewrites it on every status
+// change. The directory also holds `<pid>.<hash>.key` secrets, which nothing
+// here may read. `status` is the field we branch on, so it is an enum; the
+// descriptive fields stay plain strings because no code switches on them.
+// ---------------------------------------------------------------------------
+
+export const SessionRegistryStatusSchema = z.enum(["idle", "busy", "waiting"]);
+
+export const SessionRegistryFileSchema = z
+	.object({
+		pid: z.number().int().positive(),
+		sessionId: z.string(),
+		cwd: z.string(),
+		startedAt: z.number(),
+		/** The process start time as `ps -o lstart` prints it in UTC. */
+		procStart: z.string(),
+		version: z.string(),
+		peerProtocol: z.number().optional(),
+		peerFeatures: z.array(z.string()).optional(),
+		kind: z.string(),
+		entrypoint: z.string(),
+		pidDomain: z.string(),
+		messagingSocketPath: z.string().optional(),
+		name: z.string().optional(),
+		nameSource: z.string().optional(),
+		nameSince: z.number().optional(),
+		status: SessionRegistryStatusSchema,
+		/** Why a `waiting` session waits, e.g. "input needed". */
+		waitingFor: z.string().optional(),
+		updatedAt: z.number(),
+		statusUpdatedAt: z.number(),
+		bridgeSessionId: z.string().optional(),
+	})
+	.strict();
+
+// ---------------------------------------------------------------------------
 // Claude Code Settings (~/.claude/settings.json, settings.local.json)
 // ---------------------------------------------------------------------------
 

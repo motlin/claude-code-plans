@@ -40,6 +40,7 @@ import type {
 	PermissionDecisionSourceSchema,
 	PluginCatalogSourceKindSchema,
 	RenderedRoleSchema,
+	SessionRegistryStatusSchema,
 	SkillOverrideValueSchema,
 	TaskStatusSchema,
 	TurnOriginSchema,
@@ -136,6 +137,13 @@ const taskStatusLabels = {
 	in_progress: "In progress",
 	completed: "Completed",
 } satisfies Record<z.infer<typeof TaskStatusSchema>, string>;
+
+/** `status` in the CLI's live session registry, `~/.claude/sessions/<pid>.json`. */
+const sessionRegistryStatusLabels = {
+	idle: "Idle",
+	busy: "Working",
+	waiting: "Needs input",
+} satisfies Record<z.infer<typeof SessionRegistryStatusSchema>, string>;
 
 const writeToolUseResultTypeLabels = {
 	create: "Created",
@@ -1043,6 +1051,7 @@ const toolNamesWithMcp = {...toolNames, "mcp__*": true} as const;
 /** Maps walker path keys (see tests/schema-choices.test.ts) to choice maps. */
 export const schemaChoiceRegistry: Record<string, Record<string, string | true>> = {
 	TaskStatusSchema: taskStatusLabels,
+	"SessionRegistryFileSchema.status": sessionRegistryStatusLabels,
 	UnifiedSearchTypeSchema: unifiedSearchTypeLabels,
 	UnifiedSearchDateSchema: unifiedSearchDateLabels,
 	UnifiedSearchKindSchema: unifiedSearchKindLabels,
