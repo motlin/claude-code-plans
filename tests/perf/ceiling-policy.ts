@@ -39,7 +39,7 @@ export const LARGE_TIER_OFFSETS: Record<string, Record<LargeShapeName, number>> 
 	"server.liveAppend.typical.1.jsonl.fullScans": {"large-long": 0, "large-wide": 0},
 	"server.liveAppend.typical.20.jsonl.fullScans": {"large-long": 0, "large-wide": 0},
 	"server.liveAppend.typical.20.readAmplification": {"large-long": 0, "large-wide": 0},
-	"server.liveAppend.typical.20.sql.count": {"large-long": 2, "large-wide": 0},
+	"server.liveAppend.typical.20.sql.count": {"large-long": 0, "large-wide": 0},
 	"server.liveAppend.typical.20.sse.payloadBytes": {"large-long": 101, "large-wide": 161},
 	"server.sessionOpen.typical.detail.jsonl.fullScans": {"large-long": 0, "large-wide": 0},
 	"server.sessionOpen.typical.detail.proc.spawned": {"large-long": 0, "large-wide": 0},
