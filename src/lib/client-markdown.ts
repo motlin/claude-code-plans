@@ -11,6 +11,7 @@ import type {FileRef} from "./file-refs";
 import {normalizeArtifactUrl} from "./artifact-output";
 import {ARTIFACT_ICON_SVG, COPY_ICON_SVG, PR_ICON_SVG} from "./icon-paths";
 import {mdFileHref, resolveRelativeMdHref} from "./md-links";
+import {afterBreak, afterOpaque, newQuoteState, smartenQuotes} from "./smart-quotes";
 import {SHIKI_TOKENIZE_OPTIONS} from "./shiki-tokenize-options";
 
 interface MarkdownRenderOptions {
@@ -33,6 +34,8 @@ interface MarkdownRenderOptions {
 	artifactTitles?: ReadonlyMap<string, string>;
 	/** Settings ▸ Code appearance themes for fenced code; defaults when omitted. */
 	codeThemes?: CodeThemePair;
+	/** Curl prose quotes as upstream does for assistant text, leaving code and URLs straight. */
+	smartQuotes?: boolean;
 }
 
 /** Per-render state; the MarkdownIt instances themselves are cached and shared. */
@@ -40,6 +43,7 @@ interface MarkdownEnv {
 	mdLinkBase?: string;
 	fileRefs?: ReadonlyMap<string, FileRef>;
 	artifactTitles?: ReadonlyMap<string, string>;
+	smartQuotes?: boolean;
 }
 
 function toEnv(options?: MarkdownRenderOptions): MarkdownEnv {
@@ -47,6 +51,7 @@ function toEnv(options?: MarkdownRenderOptions): MarkdownEnv {
 	if (options?.mdLinkBase !== undefined) env.mdLinkBase = options.mdLinkBase;
 	if (options?.fileRefs !== undefined) env.fileRefs = options.fileRefs;
 	if (options?.artifactTitles !== undefined) env.artifactTitles = options.artifactTitles;
+	if (options?.smartQuotes === true) env.smartQuotes = true;
 	return env;
 }
 
@@ -291,6 +296,56 @@ function numericTableColumns(state: StateCore): void {
 	}
 }
 
+/** Whether a link shows its own URL, which upstream leaves as written. */
+function isBareUrlLink(children: readonly Token[], open: number): boolean {
+	const text = children[open + 1];
+	if (text?.type !== "text" || children[open + 2]?.type !== "link_close") return false;
+	const href = children[open]!.attrGet("href");
+	return href === text.content || href === `http://${text.content}` || href === `mailto:${text.content}`;
+}
+
+/**
+ * Curl the quotes of each paragraph, heading and table cell when the render
+ * asks for it, carrying context across its text runs. Code, bare URLs and other
+ * opaque inline content stay straight and read as a word to what follows.
+ */
+function smartQuotes(state: StateCore): void {
+	if ((state.env as MarkdownEnv | undefined)?.smartQuotes !== true) return;
+	for (const block of state.tokens) {
+		const children = block.type === "inline" ? block.children : null;
+		if (children === null) continue;
+		const quotes = newQuoteState();
+		for (let i = 0; i < children.length; i++) {
+			const token = children[i]!;
+			switch (token.type) {
+				case "text":
+					token.content = smartenQuotes(token.content, quotes);
+					break;
+				case "softbreak":
+				case "hardbreak":
+					afterBreak(quotes);
+					break;
+				case "link_open":
+					if (isBareUrlLink(children, i)) {
+						afterOpaque(quotes);
+						i += 2;
+					}
+					break;
+				case "link_close":
+				case "strong_open":
+				case "strong_close":
+				case "em_open":
+				case "em_close":
+				case "s_open":
+				case "s_close":
+					break;
+				default:
+					afterOpaque(quotes);
+			}
+		}
+	}
+}
+
 /** The plugins and renderer overrides every cached instance shares. */
 function applyPlugins(instance: MarkdownIt): void {
 	instance.use(taskLists);
@@ -301,6 +356,7 @@ function applyPlugins(instance: MarkdownIt): void {
 		artifactLinkHtml(tokens[idx]!, (env ?? {}) as MarkdownEnv, instance.utils.escapeHtml);
 	instance.core.ruler.push(PR_CHIP_TOKEN, pullRequestChips);
 	instance.core.ruler.push("numeric_table_columns", numericTableColumns);
+	instance.core.ruler.push("smart_quotes", smartQuotes);
 	instance.renderer.rules[PR_CHIP_TOKEN] = (tokens, idx) =>
 		pullRequestChipHtml(tokens[idx]!, instance.utils.escapeHtml);
 

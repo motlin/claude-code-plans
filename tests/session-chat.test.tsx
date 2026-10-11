@@ -2127,3 +2127,28 @@ describe("SessionChat skill attribution", () => {
 		expect(renderMode("verbose").pill).toBe(true);
 	});
 });
+
+describe("SessionChat smart quotes", () => {
+	it("curls quotes in assistant prose but leaves the user's own words and inline code as typed", () => {
+		const element = renderTranscriptElement([
+			{type: "user", uuid: "u1", message: {role: "user", content: `I couldn't open "the doc"`}},
+			{
+				type: "assistant",
+				uuid: "a1",
+				parentUuid: "u1",
+				message: {
+					role: "assistant",
+					content: [{type: "text", text: `I couldn't find "kinds of upgrades" in \`it's\`.`}],
+				},
+			},
+		]);
+
+		expect({
+			user: element.querySelector(".user-message-bubble")?.textContent,
+			prose: element.querySelector("[data-transcript-prose] article")?.textContent?.trim(),
+		}).toStrictEqual({
+			user: `I couldn't open "the doc"`,
+			prose: "I couldn’t find “kinds of upgrades” in it's.",
+		});
+	});
+});

@@ -10,8 +10,10 @@ interface FileRefProps {
 	/** Inline code rendered as clickable file refs, keyed by the code's text. */
 	fileRefs?: ReadonlyMap<string, FileRef> | undefined;
 	onFileRef?: ((ref: FileRef) => void) | undefined;
-	/** Artifacts-index titles keyed by artifact id, for claude.ai artifact link cards. */
+	/** Artifacts-index titles keyed by artifact id, for claude.ai artifact link chips. */
 	artifactTitles?: ReadonlyMap<string, string> | undefined;
+	/** Curl prose quotes, as upstream does for assistant text. */
+	smartQuotes?: boolean | undefined;
 }
 
 type MarkdownArticleProps = FileRefProps &
@@ -35,6 +37,7 @@ export function MarkdownArticle(props: MarkdownArticleProps) {
 		if (props.html !== undefined) return props.html;
 		return renderMarkdownWithHighlighting(props.markdown!, getHighlighterSync(), {
 			typographer: props.typographer ?? false,
+			smartQuotes: props.smartQuotes ?? false,
 			codeThemes,
 			...(props.mdLinkBase === undefined ? {} : {mdLinkBase: props.mdLinkBase}),
 			...(props.fileRefs === undefined ? {} : {fileRefs: props.fileRefs}),
@@ -47,6 +50,7 @@ export function MarkdownArticle(props: MarkdownArticleProps) {
 		props.mdLinkBase,
 		props.fileRefs,
 		props.artifactTitles,
+		props.smartQuotes,
 		codeThemes,
 		highlighterVersion,
 	]);

@@ -3875,7 +3875,7 @@ function ContentBlock({
 		if (!prose.trim()) return null;
 		return (
 			<div className="relative min-w-0 text-body text-primary" data-transcript-prose>
-				<ProseMarkdown markdown={prose} />
+				<ProseMarkdown markdown={prose} smartQuotes />
 				<DebugLink sessionId={sessionId} uuid={line.uuid} className="absolute top-0 right-0" />
 			</div>
 		);

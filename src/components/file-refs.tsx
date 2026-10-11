@@ -178,7 +178,15 @@ function useArtifactTitles(markdown: string): ReadonlyMap<string, string> | unde
 	return data;
 }
 
-function LinkedProseMarkdown({markdown, open}: {markdown: string; open: (ref: FileRef) => void}) {
+function LinkedProseMarkdown({
+	markdown,
+	open,
+	smartQuotes,
+}: {
+	markdown: string;
+	open: (ref: FileRef) => void;
+	smartQuotes: boolean;
+}) {
 	const texts = useMemo(() => inlineCodeTexts(markdown), [markdown]);
 	const refs = useFileRefs(texts);
 	const artifactTitles = useArtifactTitles(markdown);
@@ -188,16 +196,20 @@ function LinkedProseMarkdown({markdown, open}: {markdown: string; open: (ref: Fi
 			fileRefs={refs.size === 0 ? undefined : refs}
 			onFileRef={open}
 			artifactTitles={artifactTitles}
+			smartQuotes={smartQuotes}
 		/>
 	);
 }
 
-/** Assistant prose whose inline-code paths become clickable file refs. */
-export function ProseMarkdown({markdown}: {markdown: string}) {
+/**
+ * Assistant prose whose inline-code paths become clickable file refs; with
+ * `smartQuotes`, its quotes curl as upstream's assistant text does.
+ */
+export function ProseMarkdown({markdown, smartQuotes = false}: {markdown: string; smartQuotes?: boolean}) {
 	const open = useOpenFileRef();
 	return open === null ? (
-		<MarkdownArticle markdown={markdown} />
+		<MarkdownArticle markdown={markdown} smartQuotes={smartQuotes} />
 	) : (
-		<LinkedProseMarkdown markdown={markdown} open={open} />
+		<LinkedProseMarkdown markdown={markdown} open={open} smartQuotes={smartQuotes} />
 	);
 }
