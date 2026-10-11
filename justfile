@@ -84,6 +84,11 @@ test *args: install
 [group('perf')]
 perf *args: install
     PERF_LARGE=1 vp exec vitest run tests/perf {{ args }}
+    just perf-table
+
+# Print a table of the perf counts the last test run measured against their ceilings
+[group('perf')]
+perf-table: install
     vp exec tsx scripts/perf-ceilings.ts --table
 
 # Ratchet the cold-load JS bytes of `/` and `/session/$id` from the client build manifest. Run after `just build`; `just verify` runs it

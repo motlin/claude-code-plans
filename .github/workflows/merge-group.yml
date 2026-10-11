@@ -107,8 +107,8 @@ jobs:
         with:
           path: node_modules/.cache/ccb-perf/fixtures
           key: ccb-perf-fixtures-v${{ steps.perf-generator.outputs.version }}
-      - run: just test
-      - run: PERF_LARGE=1 just perf
+      - run: PERF_LARGE=1 just test
+      - run: just perf-table
 
   # Trial of the browser-lab ratchet on Linux runners, whose system fonts differ from the macOS Chromium the ceilings
   # were measured on. Not required: it stays out of all-checks' needs and continue-on-error keeps it green.

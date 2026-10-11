@@ -30,7 +30,7 @@ const LARGE_SHAPE_NAMES: readonly LargeShapeName[] = ["large-long", "large-wide"
 
 /**
  * Shape-coupled ceilings: per-append and per-request counts whose large-tier ceilings sit a fixed offset from the
- * typical one, keyed by the typical id. The large tier only runs in merge-group CI (`PERF_LARGE=1 just perf`), so a
+ * typical one, keyed by the typical id. The large tier only runs in merge-group CI (`PERF_LARGE=1 just test`), so a
  * change that moves these counts moves typical locally and large in CI by the same amount; pinning the offsets makes
  * the plain test run fail when only typical moved. Size-scaled ids (bytesRead, transcript bytes, one-line read
  * amplification, hot-path call counts) are left out.
