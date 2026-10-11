@@ -4,11 +4,20 @@ import {addClient, removeClient} from "../../lib/watcher";
 import {DOMAIN_EVENTS} from "../../lib/hook-events";
 import {getLiveSubagentNodes} from "../../lib/live-subagent-store";
 import {onServerShutdown} from "../../lib/server-shutdown";
+import type {SnapshotEvent} from "../../lib/shared-event-source";
+
+/** The events a stream sends as soon as it connects, which a tab following another tab's stream fetches instead. */
+function connectEvents(): SnapshotEvent[] {
+	return [{type: DOMAIN_EVENTS.SUBAGENTS_SNAPSHOT, data: JSON.stringify({subagents: getLiveSubagentNodes()})}];
+}
 
 export const Route = createFileRoute("/api/events")({
 	server: {
 		handlers: withMethodNotAllowed({
-			GET: async () => {
+			GET: async ({request}: {request: Request}) => {
+				if (new URL(request.url).searchParams.has("snapshot")) {
+					return Response.json(connectEvents(), {headers: {"Cache-Control": "no-cache"}});
+				}
 				const encoder = new TextEncoder();
 				let keepalive: ReturnType<typeof setInterval> | null = null;
 				let ctrl: ReadableStreamDefaultController | null = null;
@@ -31,11 +40,9 @@ export const Route = createFileRoute("/api/events")({
 					start(controller) {
 						ctrl = controller;
 						controller.enqueue(encoder.encode(":\n\n"));
-						controller.enqueue(
-							encoder.encode(
-								`event: ${DOMAIN_EVENTS.SUBAGENTS_SNAPSHOT}\ndata: ${JSON.stringify({subagents: getLiveSubagentNodes()})}\n\n`,
-							),
-						);
+						for (const event of connectEvents()) {
+							controller.enqueue(encoder.encode(`event: ${event.type}\ndata: ${event.data}\n\n`));
+						}
 						addClient(controller);
 
 						keepalive = setInterval(() => {

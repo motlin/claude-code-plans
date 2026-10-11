@@ -113,6 +113,19 @@ describe("openReconnectingEventSource", () => {
 		expect(TestEventSource.instances.length).toBe(4);
 	});
 
+	it("catches up on the first open when told the stream starts after a gap, as a tab taking over the shared stream is", () => {
+		let reconnects = 0;
+		openReconnectingEventSource("/api/events", {
+			attach: () => {},
+			onReconnected: () => reconnects++,
+			resumeAfterGap: true,
+		});
+		const before = reconnects;
+		TestEventSource.instances[0]!.open();
+
+		expect({before, after: reconnects}).toStrictEqual({before: 0, after: 1});
+	});
+
 	it("stops reconnecting once closed", () => {
 		const close = openReconnectingEventSource("/api/events", {attach: () => {}, onReconnected: () => {}});
 		TestEventSource.instances[0]!.fail();

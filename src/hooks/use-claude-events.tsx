@@ -56,7 +56,7 @@ import {isLiveSessionState, type ActivityState, type SessionSummaryState} from "
 import type {Statusline} from "../lib/api/statusline";
 import type {ComposerServerState} from "../lib/composer-state";
 import type {Notification, NotificationsData} from "../lib/api/notifications";
-import {openReconnectingEventSource} from "../lib/reconnecting-event-source";
+import {openSharedEventSource} from "../lib/shared-event-source";
 import {startLiveAppendJourneys} from "../lib/perf/field-journeys";
 import {invalidateSessionIdentities} from "../lib/api/session-identity";
 
@@ -1448,8 +1448,9 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 
 		// SSE reconnection safety: with staleTime: Infinity, data is never
 		// "stale" so refetchOnReconnect won't refetch after a disconnect.
-		// On reconnect, catch up on the events missed during the gap.
-		return openReconnectingEventSource("/api/events", {
+		// On reconnect, catch up on the events missed during the gap. Every tab of the
+		// origin shares one stream, which leaves the others of Chrome's six connections free.
+		return openSharedEventSource("/api/events", {
 			attach(es) {
 				for (const eventType of LIFECYCLE_EVENT_TYPES) {
 					es.addEventListener(eventType, handleLifecycleEvent);

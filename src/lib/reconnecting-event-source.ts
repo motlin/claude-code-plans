@@ -10,18 +10,20 @@ export function sseReconnectDelay(attempt: number): number {
 	return Math.min(BASE_DELAY_MS * 2 ** attempt, MAX_DELAY_MS);
 }
 
-interface ReconnectingEventSourceOptions {
+export interface ReconnectingEventSourceOptions {
 	/** Adds the event listeners to each stream, including every reopened one. */
 	attach(es: EventSource): void;
 	/** Runs when a stream opens after any error, so the caller can catch up on events missed during the gap. */
 	onReconnected(): void;
+	/** The stream starts after a gap (a tab taking over the shared stream), so its first open catches up too. */
+	resumeAfterGap?: boolean;
 }
 
 /** Opens an EventSource that reopens itself with backoff whenever the server refuses it. Returns a close function. */
 export function openReconnectingEventSource(url: string, options: ReconnectingEventSourceOptions): () => void {
 	let es: EventSource;
 	let attempt = 0;
-	let hadError = false;
+	let hadError = options.resumeAfterGap === true;
 	let timer: ReturnType<typeof setTimeout> | undefined;
 
 	const connect = (): void => {
