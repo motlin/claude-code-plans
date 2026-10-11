@@ -652,10 +652,21 @@ it.each(["source", "layout"] as const)("rejects incompatible same-commit %s meas
 	fireEvent.keyDown(paneMove(), {key: "ArrowDown"});
 	fireEvent.keyDown(paneMove(), {key: "Enter"});
 	expect(actualScrollport() === initial).toBe(false);
-	// No observer measurements occur before departure. Reusing the old snapshot
-	// here would save its nonempty height map from the new incompatible instance.
+	// No observer measurements occur before departure, so the new instance saves only the
+	// rows it measured as it committed, never the old snapshot's height map.
 	await act(() => router.navigate({to: "/plans"}));
-	expect(remember.mock.calls.at(-1)?.[1].heights).toStrictEqual(new Map());
+	expect(remember.mock.calls.at(-1)?.[1].heights).toStrictEqual(
+		new Map([
+			["line-0", 200],
+			["line-2", 500],
+			["line-4", 150],
+			["line-48", 200],
+			["line-50", 500],
+			["line-52", 150],
+			["line-54", 400],
+			["line-56", 200],
+		]),
+	);
 });
 
 it("does not hand off geometry after a compact-summary disclosure", async () => {
@@ -697,7 +708,7 @@ it("waits for invalid-width geometry to commit before restoring Back", async () 
 				requested: w.requested,
 				applied: w.applied,
 			})),
-	).toStrictEqual([{expected: 0, actual: 0, requested: 7960, applied: 7960}]);
+	).toStrictEqual([{expected: 0, actual: 0, requested: 8000, applied: 8000}]);
 });
 async function settleFresh(host: HTMLElement) {
 	for (let turn = 0; turn < 3; turn++) {
@@ -952,6 +963,16 @@ it.each(["source", "layout", "width"] as const)(
 		const remember = vi.spyOn(measurements, "rememberTranscriptMeasurements");
 		fireEvent.click(screen.getByRole("button", {name: "Collapse"}));
 		await act(() => router.navigate({to: "/plans"}));
-		expect(remember.mock.calls.at(-1)?.[1].heights ?? new Map()).toStrictEqual(new Map());
+		// A layout change remounts the chat, which saves only the rows it measured as it committed.
+		expect(remember.mock.calls.at(-1)?.[1].heights ?? new Map()).toStrictEqual(
+			change === "layout"
+				? new Map([
+						["line-48", 200],
+						["line-50", 500],
+						["line-52", 150],
+						["line-54", 400],
+					])
+				: new Map(),
+		);
 	},
 );

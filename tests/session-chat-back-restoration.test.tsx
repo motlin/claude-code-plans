@@ -317,11 +317,11 @@ it.each([
 						after: {scrollTop: 11770, anchor: {record: "72", top: -170}},
 					}
 				: {
-						restoredOffset: 7490,
-						routerWrites: [{phase: "back-router", requested: 7490, applied: 7490}],
+						restoredOffset: 7430,
+						routerWrites: [{phase: "back-router", requested: 7430, applied: 7430}],
 						measurementWrites: [],
-						before: {scrollTop: 7490, anchor: {record: "46", top: -150}},
-						after: {scrollTop: 7490, anchor: {record: "46", top: -150}},
+						before: {scrollTop: 7430, anchor: {record: "46", top: -270}},
+						after: {scrollTop: 7430, anchor: {record: "46", top: -270}},
 					},
 		);
 	},
@@ -389,7 +389,7 @@ it.each(["width-return", "source-return", "source-away", "layout-away", "width-a
 		const recovered = read.mock.results.map((result) =>
 			result.value === undefined ? undefined : {width: result.value.width, rows: result.value.heights.size},
 		);
-		// Before ResizeObserver runs, an incompatible visit uses the same estimated geometry as a fresh visit.
+		// Before ResizeObserver runs, an incompatible visit uses the same estimated spacers as a fresh visit.
 		const geometry = {
 			before: spacerHeight("before"),
 			after: spacerHeight("after"),
@@ -398,7 +398,7 @@ it.each(["width-return", "source-return", "source-away", "layout-away", "width-a
 		expect({saved, recovered, geometry}).toStrictEqual({
 			saved: change === "width-return" || change === "source-return" ? [] : [{width: 800, rows: 9}],
 			recovered: [change === "width-away" ? {width: 800, rows: 9} : undefined],
-			geometry: {before: 7360, after: 3840, rows: ["46", "48", "50", "52", "54"]},
+			geometry: {before: 7680, after: 3840, rows: ["48", "50", "52", "54"]},
 		});
 	},
 );
@@ -412,8 +412,8 @@ it("resets virtual measurements when the active layout changes", async () => {
 	view.rerender(guardChat(source, "example-larger-font"));
 	const reset = {before: spacerHeight("before"), after: spacerHeight("after")};
 	expect({measured, reset}).toStrictEqual({
-		measured: {before: 7330, after: 3840},
-		reset: {before: 7360, after: 3840},
+		measured: {before: 7650, after: 3520},
+		reset: {before: 7680, after: 3840},
 	});
 });
 
@@ -635,8 +635,9 @@ it("keeps a fresh end-follow visit at the true end after a row above the anchor 
 		after: 0,
 		changedRow: 38,
 		writes: [
-			{phase: "tail-shrink", requested: 13106, applied: 12506},
-			{phase: "tail-shrink", requested: 13106, applied: 12506},
+			{phase: "tail-shrink", requested: 12532, applied: 12532},
+			{phase: "tail-shrink", requested: 13196, applied: 12596},
+			{phase: "tail-shrink", requested: 13196, applied: 12596},
 		],
 	});
 });
@@ -702,16 +703,19 @@ it.each([false, true])(
 		}).toStrictEqual(
 			fresh
 				? {
-						before: {index: 36, top: -50, distance: 1000},
-						after: {index: 36, top: -50, distance: 1000},
+						before: {index: 36, top: -90, distance: 960},
+						after: {index: 36, top: -90, distance: 960},
 						changedRow: 35,
-						writes: [{phase: "away-shrink", requested: 11586, applied: 11586}],
+						writes: [{phase: "away-shrink", requested: 11596, applied: 11596}],
 					}
 				: {
-						before: {index: 35, top: 0, distance: 1140},
-						after: {index: 35, top: 0, distance: 1140},
-						changedRow: 33,
-						writes: [{phase: "away-shrink", requested: 11116, applied: 11116}],
+						before: {index: 35, top: -170, distance: 970},
+						after: {index: 35, top: -170, distance: 970},
+						changedRow: 34,
+						writes: [
+							{phase: "away-shrink", requested: 11106, applied: 11106},
+							{phase: "away-shrink", requested: 11286, applied: 11286},
+						],
 					},
 		);
 	},
@@ -841,7 +845,7 @@ it.each(["wheel", "key", "touch"])("cancels a queued layout follow when the read
 	const before = visibleAnchor();
 	await flushTailFrame(main);
 	expect({distance: tailDistance(main), anchor: visibleAnchor(), pendingFrames: frames.size}).toStrictEqual({
-		distance: 244,
+		distance: 364,
 		anchor: before,
 		pendingFrames: 0,
 	});
@@ -885,7 +889,7 @@ it.each([
 			});
 		await flushTailFrame(main);
 		expect({distance: tailDistance(main), pendingFrames: frames.size}).toStrictEqual({
-			distance: ownerMoves ? 244 : 0,
+			distance: ownerMoves ? 364 : 0,
 			pendingFrames: 0,
 		});
 	},

@@ -12,6 +12,7 @@ import React, {
 	useRef,
 	useState,
 } from "react";
+import {flushSync} from "react-dom";
 import {AlertTriangle, Bot, FileWarning, GitBranch, Lock, Palette, Plug, Zap} from "lucide-react";
 import {assertNever} from "../lib/assert-never";
 import {isWithdrawnQuestion, type AskedCall} from "../lib/ask-user-question";
@@ -1584,6 +1585,38 @@ function rangeForViewport(prefixHeights: readonly number[], viewportStart: numbe
 	};
 }
 
+/** The reader's place: a painted row and its offset within the scroller's content. */
+interface ScrollAnchor {
+	entryKey: string;
+	contentTop: number;
+	firstEntryKey: string | undefined;
+}
+
+function mountedRowFor(list: Element, entries: readonly SessionListEntry[], key: string): HTMLElement | undefined {
+	for (const row of list.querySelectorAll<HTMLElement>("[data-transcript-entry-index]")) {
+		if (entries[Number(row.dataset["transcriptEntryIndex"])]?.key === key) return row;
+	}
+	return undefined;
+}
+
+function firstPaintedRow(
+	list: Element,
+	scroller: Element,
+	viewport: {top: number; height: number},
+	entries: readonly SessionListEntry[],
+): ScrollAnchor | null {
+	const {scrollTop} = scrollMetrics(scroller);
+	for (const row of list.querySelectorAll<HTMLElement>("[data-transcript-entry-index]")) {
+		const rect = row.getBoundingClientRect();
+		if (rect.bottom <= viewport.top) continue;
+		if (rect.top >= viewport.top + viewport.height) return null;
+		const entry = entries[Number(row.dataset["transcriptEntryIndex"])];
+		if (!entry) return null;
+		return {entryKey: entry.key, contentTop: rect.top - viewport.top + scrollTop, firstEntryKey: entries[0]?.key};
+	}
+	return null;
+}
+
 function scrollerViewport(scroller: Element): {top: number; height: number} {
 	if (scroller === document.documentElement || scroller === document.scrollingElement) {
 		return {top: 0, height: window.innerHeight};
@@ -2081,10 +2114,9 @@ function VirtualizedSessionEntries({
 	const restoringRangeRef = useRef((restoration.saved?.range.startIndex ?? 0) > 0);
 	const savedRangeRef = useRef(restoration.saved?.range);
 	const measurementWidthRef = useRef(0);
-	const visibleAnchorIndexRef = useRef(0);
 	const readingAnchorRef = useRef<TranscriptReadingAnchor | undefined>(undefined);
 	const handoffAnchorRef = useRef<TranscriptReadingAnchor | undefined>(undefined);
-	const pendingScrollAdjustmentRef = useRef(0);
+	const scrollAnchorRef = useRef<ScrollAnchor | null>(null);
 	const rangeSyncInputsRef = useRef<{heights?: Map<string, number>; update?: () => void}>({});
 	const pendingJumpRef = useRef<number | null>(null);
 	const pendingFocusIndexRef = useRef<number | null>(null);
@@ -2220,20 +2252,47 @@ function VirtualizedSessionEntries({
 		return result;
 	}, [entries, measuredHeights]);
 
-	const updateVisibleRange = useCallback(() => {
+	/**
+	 * Keep the first painted row where the reader saw it. Mounting a row whose real
+	 * height differs from its estimate, or a mounted row resizing, moves everything
+	 * after it; the transcript scroller opts out of native scroll anchoring, so put
+	 * that row back before the browser paints the move. Returns false while a jump,
+	 * focus move or geometry handoff owns the scroll position.
+	 */
+	const holdScrollAnchor = useCallback((): boolean => {
 		const list = listRef.current;
 		const scroller = scrollerRef.current;
 		if (
 			!list ||
 			!scroller ||
-			entries.length === 0 ||
 			pendingJumpRef.current !== null ||
 			pendingFocusIndexRef.current !== null ||
 			pendingHandoff.current ||
 			handoffAnchorRef.current ||
 			list.closest("[hidden]")
-		)
-			return;
+		) {
+			scrollAnchorRef.current = null;
+			return false;
+		}
+		const viewport = scrollerViewport(scroller);
+		const anchor = scrollAnchorRef.current;
+		// Earlier history landing above is put back by the history loader's own anchor.
+		if (anchor && anchor.firstEntryKey === entries[0]?.key) {
+			const row = mountedRowFor(list, entries, anchor.entryKey);
+			if (row) {
+				const {scrollTop} = scrollMetrics(scroller);
+				const shift = row.getBoundingClientRect().top - viewport.top + scrollTop - anchor.contentTop;
+				if (Math.abs(shift) >= 0.5) scroller.scrollTop = scrollTop + shift;
+			}
+		}
+		scrollAnchorRef.current = firstPaintedRow(list, scroller, viewport, entries);
+		return true;
+	}, [entries]);
+
+	const updateVisibleRange = useCallback(() => {
+		const list = listRef.current;
+		const scroller = scrollerRef.current;
+		if (!list || !scroller || entries.length === 0 || !holdScrollAnchor()) return;
 		// The persistent main element is still at the departed page's zero offset
 		// until router restoration runs. Keep the saved window through that interval.
 		if (restoringRangeRef.current && scroller.scrollTop === 0) return;
@@ -2242,8 +2301,7 @@ function VirtualizedSessionEntries({
 		const listTop = list.getBoundingClientRect().top;
 		const viewportStart = Math.max(0, viewport.top - listTop);
 		const viewportEnd = Math.max(viewportStart, viewport.top + viewport.height - listTop);
-		visibleAnchorIndexRef.current = entryIndexAtOffset(prefixHeights, viewportStart);
-		const anchorIndex = visibleAnchorIndexRef.current;
+		const anchorIndex = entryIndexAtOffset(prefixHeights, viewportStart);
 		const row = list.querySelector<HTMLElement>(`[data-transcript-entry-index="${anchorIndex}"]`);
 		if (row) {
 			const {scrollTop, scrollHeight, clientHeight} = scrollMetrics(scroller);
@@ -2259,7 +2317,27 @@ function VirtualizedSessionEntries({
 				? current
 				: nextRange,
 		);
-	}, [entries, prefixHeights]);
+	}, [entries, prefixHeights, holdScrollAnchor]);
+
+	useLayoutEffect(() => {
+		// A committed window can mount rows whose estimates were wrong. Hold the reader's
+		// row, then measure those rows now so the window grows to cover the viewport
+		// before paint rather than a frame later through the resize observer.
+		const list = listRef.current;
+		if (!list || !holdScrollAnchor()) return;
+		let changed = false;
+		for (const row of list.querySelectorAll<HTMLElement>("[data-transcript-entry-index]")) {
+			const entry = entries[Number(row.dataset["transcriptEntryIndex"])];
+			if (!entry) continue;
+			const height = row.getBoundingClientRect().height;
+			if (height === 0) continue;
+			const previousHeight = measuredHeightsRef.current.get(entry.key) ?? ESTIMATED_TURN_HEIGHT_PIXELS;
+			if (Math.abs(previousHeight - height) < 0.5) continue;
+			measuredHeightsRef.current.set(entry.key, height);
+			changed = true;
+		}
+		if (changed) setMeasuredHeights(new Map(measuredHeightsRef.current));
+	}, [entries, range.startIndex, range.endIndex, measuredHeights, holdScrollAnchor]);
 
 	useLayoutEffect(() => {
 		const list = listRef.current;
@@ -2268,11 +2346,14 @@ function VirtualizedSessionEntries({
 		scrollerRef.current = scroller;
 		updateVisibleRange();
 		const frame = restoringRangeRef.current ? requestAnimationFrame(updateVisibleRange) : undefined;
-		scroller.addEventListener("scroll", updateVisibleRange, {passive: true});
+		// Commit the window inside the scroll event, ahead of this frame's paint. A
+		// scheduled render lands a frame later, after the scrolled-to spacer paints blank.
+		const onScroll = () => flushSync(updateVisibleRange);
+		scroller.addEventListener("scroll", onScroll, {passive: true});
 		window.addEventListener("resize", updateVisibleRange, {passive: true});
 		return () => {
 			if (frame !== undefined) cancelAnimationFrame(frame);
-			scroller.removeEventListener("scroll", updateVisibleRange);
+			scroller.removeEventListener("scroll", onScroll);
 			window.removeEventListener("resize", updateVisibleRange);
 			scrollerRef.current = null;
 		};
@@ -2303,19 +2384,18 @@ function VirtualizedSessionEntries({
 				const previousHeight = measuredHeightsRef.current.get(entry.key) ?? ESTIMATED_TURN_HEIGHT_PIXELS;
 				if (Math.abs(previousHeight - height) < 0.5) continue;
 				measuredHeightsRef.current.set(entry.key, height);
-				if (index < visibleAnchorIndexRef.current) {
-					pendingScrollAdjustmentRef.current += height - previousHeight;
-				}
 				changed = true;
 			}
-			if (changed) setMeasuredHeights(new Map(measuredHeightsRef.current));
+			if (!changed) return;
+			holdScrollAnchor();
+			setMeasuredHeights(new Map(measuredHeightsRef.current));
 		});
 		if (restoration.source !== undefined) observer.observe(list);
 		for (const element of list.querySelectorAll<HTMLElement>("[data-transcript-entry-index]")) {
 			observer.observe(element);
 		}
 		return () => observer.disconnect();
-	}, [entries, range.startIndex, range.endIndex, managesTileGeometry]);
+	}, [entries, range.startIndex, range.endIndex, managesTileGeometry, holdScrollAnchor]);
 
 	useLayoutEffect(() => {
 		const scroller = scrollerRef.current;
@@ -2350,16 +2430,6 @@ function VirtualizedSessionEntries({
 			return;
 		}
 		rangeSyncInputsRef.current = {heights: measuredHeights, update: updateVisibleRange};
-		const adjustment = pendingScrollAdjustmentRef.current;
-		pendingScrollAdjustmentRef.current = 0;
-		if (scroller && adjustment !== 0) {
-			const {scrollHeight, scrollTop, clientHeight} = scrollMetrics(scroller);
-			// Shrinking content may already clamp the browser to its new bottom.
-			// Subtracting the same height again moves the reader away from the end.
-			if (adjustment > 0 || scrollTop < Math.max(0, scrollHeight - clientHeight)) {
-				scroller.scrollTop += adjustment;
-			}
-		}
 		updateVisibleRange();
 	}, [measuredHeights, updateVisibleRange, entries, prefixHeights, range]);
 
