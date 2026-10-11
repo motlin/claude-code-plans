@@ -72,7 +72,7 @@ check *args: install
 
 [private]
 _test *args:
-    scripts/clean-env.sh vp run --cache test:run {{ args }}
+    vp run --cache test:run {{ args }}
 
 # Run tests
 test *args: install

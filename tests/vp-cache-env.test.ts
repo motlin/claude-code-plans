@@ -37,15 +37,24 @@ describe("vp task cache environment", () => {
 			survivorsOf({
 				HOME: "/home/test",
 				PATH: path,
-				PERF_LARGE: "1",
+				XDG_CACHE_HOME: "/home/test/.cache",
+				XDG_DATA_HOME: "/home/test/.local/share",
+				CCB_BUILD_SHA: "abc1234",
 				TRACEPARENT: "00-abc-def-01",
 				CLAUDE_CODE_SESSION_ID: "session",
 				HERDR_PANE_ID: "pane",
+				CLAUDECODE: "1",
+				COLORTERM: "truecolor",
 				SHLVL: "3",
 				GIT_DIR: "/somewhere/.git",
-				CCB_BUILD_SHA: "abc1234",
 			}),
-		).toStrictEqual({HOME: "/home/test", PATH: path, PERF_LARGE: "1", CCB_BUILD_SHA: "abc1234"});
+		).toStrictEqual({
+			HOME: "/home/test",
+			PATH: path,
+			XDG_CACHE_HOME: "/home/test/.cache",
+			XDG_DATA_HOME: "/home/test/.local/share",
+			CCB_BUILD_SHA: "abc1234",
+		});
 	});
 
 	it("builds through the cached build:app task with the commit SHA in its environment", () => {
@@ -54,7 +63,11 @@ describe("vp task cache environment", () => {
 		);
 	});
 
-	it.each(["check", "_test"])("runs the cached vp task in `just %s` through the clean environment", (recipe) => {
-		expect(justRecipeBody(recipe)).toMatch(/^\s+scripts\/clean-env\.sh vp run --cache /m);
+	it("runs the cached check task through the clean environment", () => {
+		expect(justRecipeBody("check")).toMatch(/^\s+scripts\/clean-env\.sh vp run --cache check /m);
+	});
+
+	it("runs the test task directly, since test:run declares the environment it reads", () => {
+		expect(justRecipeBody("_test")).toMatch(/^\s+vp run --cache test:run /m);
 	});
 });

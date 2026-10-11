@@ -107,8 +107,10 @@ describe("test task cache", () => {
 			fsModuleCache: true,
 			fsModuleCachePath: undefined,
 			testRun: {
-				command: "node node_modules/vitest/dist/cli.js run",
+				command: "vp test run",
 				cache: {
+					env: ["PERF_LARGE", "FULL_JSONL_SCAN", "XDG_CACHE_HOME", "XDG_CONFIG_HOME"],
+					untrackedEnv: ["TMPDIR", "CCB_PERF_LOG"],
 					input: [
 						{auto: true},
 						"!node_modules/.vitest-cache/**",
