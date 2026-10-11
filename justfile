@@ -175,7 +175,12 @@ _verify-fixes: check _fallow-fix
 # Read-only gates. Pre-commit's own fixers can run here too: they fail the run whenever they rewrite a file
 [parallel]
 [private]
-_verify-gates: _build-bundle fallow-check pre-commit
+_verify-gates: _build-bundle fallow-check _pre-commit-gates
+
+# `check --fix` already formatted and `_fallow-fix` already applied Fallow's fixes
+[private]
+_pre-commit-gates: install
+    SKIP=oxfmt,fallow pre-commit run --all-files
 
 [private]
 _build-bundle: build perf-bundle

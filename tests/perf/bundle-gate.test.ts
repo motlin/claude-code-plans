@@ -45,10 +45,16 @@ describe("bundle byte gate", () => {
 		}).toStrictEqual({
 			verify: ["_verify-fixes", "_verify-gates"],
 			fixes: ["check", "_fallow-fix"],
-			gates: ["_build-bundle", "fallow-check", "pre-commit"],
+			gates: ["_build-bundle", "fallow-check", "_pre-commit-gates"],
 			gatesRunInParallel: true,
 			buildThenBundle: ["build", "perf-bundle"],
 		});
+	});
+
+	it("skips the pre-commit hooks that repeat `check --fix` and `fallow` inside `just verify`", () => {
+		expect(just("--show", "_pre-commit-gates").trim().split("\n").at(-1)?.trim()).toBe(
+			"SKIP=oxfmt,fallow pre-commit run --all-files",
+		);
 	});
 
 	it("gives every bundle byte ceiling the ±1% band", () => {
