@@ -54,6 +54,10 @@ function sectionRows(name: string) {
 		.getAllByRole("listitem")
 		.map((li) => ({
 			className: li.className,
+			buttonRadius: li
+				.querySelector("button")
+				?.className.split(" ")
+				.filter((c) => c.startsWith("rounded")),
 			pill: li.querySelector("[data-pill-label]")?.textContent,
 			title: li.querySelector("[data-row-title]")?.textContent,
 			project: li.querySelector("[data-row-project]")?.textContent ?? null,
@@ -62,7 +66,7 @@ function sectionRows(name: string) {
 }
 
 const ROW_CLASS =
-	"group flex h-10 items-center gap-2 rounded-lg bg-alpha-1 px-[5px] py-2 hover:bg-alpha-2 focus-within:bg-alpha-2";
+	"group flex h-10 items-center gap-2 rounded-r6 bg-alpha-1 px-[5px] py-2 hover:bg-alpha-2 focus-within:bg-alpha-2";
 
 beforeEach(() => {
 	installLocalStorage();
@@ -97,6 +101,7 @@ describe("RecentPlansSection", () => {
 			rows: [
 				{
 					className: ROW_CLASS,
+					buttonRadius: ["rounded-r3"],
 					pill: "Plan",
 					title: "Plan newest.md",
 					project: "alpha",
@@ -104,6 +109,7 @@ describe("RecentPlansSection", () => {
 				},
 				{
 					className: ROW_CLASS,
+					buttonRadius: ["rounded-r3"],
 					pill: "Plan",
 					title: "Plan second.md",
 					project: "beta",
@@ -111,6 +117,7 @@ describe("RecentPlansSection", () => {
 				},
 				{
 					className: ROW_CLASS,
+					buttonRadius: ["rounded-r3"],
 					pill: "Plan",
 					title: "Plan middle.md",
 					project: null,
@@ -153,6 +160,7 @@ describe("MemoriesUpdatedSection", () => {
 			rows: [
 				{
 					className: ROW_CLASS,
+					buttonRadius: ["rounded-r3"],
 					pill: "Memory",
 					title: "Memory b.md",
 					project: "beta",
@@ -160,6 +168,7 @@ describe("MemoriesUpdatedSection", () => {
 				},
 				{
 					className: ROW_CLASS,
+					buttonRadius: ["rounded-r3"],
 					pill: "Memory",
 					title: "Memory d.md",
 					project: "gamma",
@@ -167,6 +176,7 @@ describe("MemoriesUpdatedSection", () => {
 				},
 				{
 					className: ROW_CLASS,
+					buttonRadius: ["rounded-r3"],
 					pill: "Memory",
 					title: "Memory c.md",
 					project: "alpha",

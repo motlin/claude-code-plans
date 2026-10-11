@@ -85,6 +85,19 @@ describe("PullRequestsSection", () => {
 		});
 	});
 
+	it("rounds the row card 8px and its main button 4px like upstream", () => {
+		render(
+			<PullRequestsSection rows={selectHomePrs([source(1)])} rowLimit={3} now={NOW} onOpen={() => undefined} />,
+		);
+
+		const radii = (element: Element | null) => element?.className.split(" ").filter((c) => c.startsWith("rounded"));
+		const row = screen.getByRole("listitem");
+		expect({row: radii(row), button: radii(row.querySelector("[data-row-main-button]"))}).toStrictEqual({
+			row: ["rounded-r6"],
+			button: ["rounded-r3"],
+		});
+	});
+
 	it("opens the session on click and the PR in a new tab on ⌘/Ctrl-click", () => {
 		const onOpen = vi.fn<(sessionId: string) => void>();
 		const open = vi.fn();

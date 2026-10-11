@@ -53,13 +53,13 @@ function LocalSection({
 				{rows.map((row) => (
 					<li
 						key={row.key}
-						className="group flex h-10 items-center gap-2 rounded-lg bg-alpha-1 px-[5px] py-2 hover:bg-alpha-2 focus-within:bg-alpha-2"
+						className="group flex h-10 items-center gap-2 rounded-r6 bg-alpha-1 px-[5px] py-2 hover:bg-alpha-2 focus-within:bg-alpha-2"
 					>
 						<button
 							type="button"
 							aria-label={`Open ${pill.toLowerCase()} ${row.title}`}
 							onClick={() => onOpen(row.key)}
-							className="flex min-w-0 flex-1 items-center justify-between gap-2 rounded-sm text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100"
+							className="flex min-w-0 flex-1 items-center justify-between gap-2 rounded-r3 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100"
 						>
 							<span className="flex min-w-0 flex-1 items-center gap-2">
 								<span className="flex shrink-0 items-center">
