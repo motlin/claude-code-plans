@@ -789,6 +789,36 @@ describe("indexer", () => {
 		expect(after.mtimeMs).toBeGreaterThan(oldMtime);
 	});
 
+	it("dates session activity by the last record, not a later touch of the file", async () => {
+		const project = "-Users-alice-projects-example";
+		const projectDir = join(testDir, project);
+		const transcriptPath = join(projectDir, "session-test-101.jsonl");
+		mkdirSync(projectDir, {recursive: true});
+		writeFileSync(
+			transcriptPath,
+			jsonl(
+				{type: "user", timestamp: "2026-10-11T15:00:00.000Z", message: {role: "user", content: "Sweep it"}},
+				{
+					type: "assistant",
+					timestamp: "2026-10-11T15:01:25.000Z",
+					message: {role: "assistant", content: [{type: "text", text: "Which volume?"}]},
+				},
+			),
+		);
+		// The CLI touches a waiting session's transcript about hourly without appending.
+		const touchedAt = new Date("2026-10-11T17:05:43.000Z");
+		utimesSync(transcriptPath, touchedAt, touchedAt);
+
+		await indexJsonlFile(db.index, transcriptPath, project);
+
+		const row = db.index
+			.select({mtimeMs: schema.sessions.mtimeMs})
+			.from(schema.sessions)
+			.where(eq(schema.sessions.id, "session-test-101"))
+			.get();
+		expect(row).toStrictEqual({mtimeMs: Date.parse("2026-10-11T15:01:25.000Z")});
+	});
+
 	it("persists transcript message counts when the sessions index omits them", async () => {
 		const project = "-Users-alice-projects-example";
 		const projectDir = join(testDir, project);

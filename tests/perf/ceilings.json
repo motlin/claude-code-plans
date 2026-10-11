@@ -83,7 +83,7 @@
 		"raisedAt": "2026-10-11"
 	},
 	"client.coldHome.default.responseBytes": {
-		"ceiling": 4932,
+		"ceiling": 4800,
 		"unit": "bytes",
 		"tolerance": 0,
 		"reason": "The perf fixtures' cwd /repo encodes to their project id, so indexing now resolves the project path from the session's recorded cwd and the session composer mounts as it does on every real session: its slash-command, prompt-history and usage fetches, its chin and its re-renders on live events now count, and the home composer fetches slash commands for the latest project.",
@@ -102,7 +102,7 @@
 		"raisedAt": "2026-10-11"
 	},
 	"client.coldHome.localSections.responseBytes": {
-		"ceiling": 5116,
+		"ceiling": 4984,
 		"unit": "bytes",
 		"tolerance": 0,
 		"reason": "The perf fixtures' cwd /repo encodes to their project id, so indexing now resolves the project path from the session's recorded cwd and the session composer mounts as it does on every real session: its slash-command, prompt-history and usage fetches, its chin and its re-renders on live events now count, and the home composer fetches slash commands for the latest project.",

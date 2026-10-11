@@ -12,7 +12,7 @@ import {indexJsonlFile} from "../../../src/lib/db/indexer";
  *
  * Bump GENERATOR_VERSION whenever the output for a given (shape, seed) changes, so cached files are regenerated.
  */
-export const GENERATOR_VERSION = 1;
+export const GENERATOR_VERSION = 2;
 
 export interface PerfShape {
 	name: string;
@@ -127,7 +127,11 @@ class Rng {
 
 const PAD = "@@PAD@@";
 const CWD = "/repo";
-const START_MS = Date.UTC(2026, 0, 1);
+/**
+ * Sessions are dated by their last record, so transcripts start the day before the labs' fixed now (2026-09-30T12:00Z)
+ * and even the 9,000-line large shape ends hours before it, inside every activity window.
+ */
+const START_MS = Date.UTC(2026, 8, 29);
 
 type LineKind =
 	| "prompt"

@@ -79,7 +79,8 @@ function appendedLines(sessionId: string, count: number, batch: number): string 
 			sessionId,
 			uuid: `live-append-${turn}`,
 			parentUuid: null,
-			timestamp: "2000-01-01T00:00:00.000Z",
+			// A live append is happening now, and sessions are dated by their last record.
+			timestamp: new Date().toISOString(),
 			message: {role: "user", content: `Live append ${turn}: keep going with the next step.`},
 		})}\n`;
 	}

@@ -474,7 +474,7 @@ export async function indexSessionsIndex(db: IndexDb, projectDir: string, projec
 					gitBranch: branch,
 					cwd: entryProjectPath ?? null,
 					isSidechain: sidechain ? 1 : 0,
-					mtimeMs: entry.fileMtime,
+					// indexJsonlFile owns mtime_ms once the row exists, dating it by the transcript's last record.
 				},
 			})
 			.run();
@@ -590,6 +590,8 @@ class SessionIndexState {
 	lastSessionCwd: string | undefined;
 	anchoredSessionCwd: string | undefined;
 	sessionGitBranch: string | null = null;
+	/** The newest record `timestamp`: the CLI touches a waiting session's file without appending, so mtime overstates activity. */
+	lastRecordAt: number | null = null;
 	readonly mcpToolNames = new Set<string>();
 	readonly artifactEvents = new ArtifactEventCollector();
 	readonly routines = new RoutineCollector();
@@ -704,6 +706,7 @@ class SessionIndexState {
 
 		let obj: {
 			type?: string;
+			timestamp?: unknown;
 			message?: {
 				content?: string | Array<{type?: string; text?: string; name?: string}>;
 			};
@@ -714,6 +717,10 @@ class SessionIndexState {
 			return; // skip malformed lines
 		}
 		if (obj.type === "bridge-session") this.bridgeSessions.add(obj, this.sessionId);
+		if (typeof obj.timestamp === "string") {
+			const recordAt = Date.parse(obj.timestamp);
+			if (recordAt > (this.lastRecordAt ?? -Infinity)) this.lastRecordAt = recordAt;
+		}
 
 		try {
 			this.subagentLinks.add(obj);
@@ -854,6 +861,8 @@ async function persistSessionIndexState(
 	const {customTitle, aiTitle} = await state.titleRecords.finish(filePath);
 	const sessionCwd = state.anchoredSessionCwd ?? state.lastSessionCwd;
 	const {latestPrLink, forkedFromSessionId, sessionGitBranch, messageCount} = state;
+	// sessions.mtime_ms is the activity time every list sorts and stamps by.
+	const activityAt = state.lastRecordAt ?? fileStat.mtimeMs;
 
 	// Upsert plan links
 	for (const planFilename of state.planFilenames) {
@@ -872,7 +881,7 @@ async function persistSessionIndexState(
 	persistProject(db, project, projectPath, fileStat.mtimeMs);
 	if (existingSession) {
 		const updates: Record<string, unknown> = {
-			mtimeMs: fileStat.mtimeMs,
+			mtimeMs: activityAt,
 			messageCount,
 		};
 		updates["filePath"] = filePath;
@@ -924,7 +933,7 @@ async function persistSessionIndexState(
 				cwd: sessionCwd ?? null,
 				isSidechain: 0,
 				createdAt: fileStat.birthtimeMs,
-				mtimeMs: fileStat.mtimeMs,
+				mtimeMs: activityAt,
 				filePath,
 			})
 			.run();
