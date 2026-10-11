@@ -331,6 +331,45 @@ describe("buildSessionSummaryPayloadFromDb with the CLI session registry", () =>
 		expect(stateOf()).toStrictEqual({state: "idle", bucket: "done", blockedSince: null});
 	});
 
+	it("blocks on a real-shaped registry file waiting on a permission prompt", async () => {
+		await indexSession();
+		const dir = join(testDir, "sessions");
+		mkdirSync(dir, {recursive: true});
+		// Key order and fields as the CLI writes them (2026-10), values sanitized.
+		writeFileSync(
+			join(dir, "29232.json"),
+			JSON.stringify({
+				pid: 29232,
+				sessionId: "session-test-100",
+				cwd: PROJECT_PATH,
+				startedAt: 946_598_400_000,
+				procStart: "Fri Dec 31 00:00:00 1999",
+				version: "2.0.0",
+				peerProtocol: 1,
+				peerFeatures: ["notify_idle", "reply_across_default_dirs", "artifact_yield"],
+				kind: "interactive",
+				entrypoint: "cli",
+				pidDomain: "darwin",
+				messagingSocketPath: "/tmp/test/alice.sock",
+				name: "test-session",
+				nameSource: "auto",
+				nameSince: 946_598_400_000,
+				updatedAt: 946_598_402_000,
+				status: "waiting",
+				statusUpdatedAt: 946_598_402_000,
+				bridgeSessionId: "session_test0001",
+				waitingFor: "permission prompt",
+			}),
+		);
+		await refreshSessionRegistry(dir, {isAlive: () => true, readStartTimes: async () => null});
+
+		expect(stateOf()).toStrictEqual({
+			state: "waiting",
+			bucket: "blocked",
+			blockedSince: "1999-12-31T00:00:02.000Z",
+		});
+	});
+
 	it("lets a hook state written after the registry status win", async () => {
 		await indexSession();
 		await registerProcess("waiting", 946_598_402_000);

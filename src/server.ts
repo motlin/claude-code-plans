@@ -68,6 +68,10 @@ void (async () => {
 		return;
 	}
 
+	// Live status from the CLI's ~/.claude/sessions registry, re-broadcast as session:updated rows.
+	// Started before the slow scans: summaries read it directly, so rows show live state at once.
+	startSessionRegistryMonitor({onChange: (sessionIds) => rebroadcastSessionsById(sessionIds)});
+
 	try {
 		await trackActivity("startup pending-approvals scan", () =>
 			initPendingApprovalsCache(getDb().index, getShutdownSignal()),
@@ -119,8 +123,6 @@ void (async () => {
 	}
 
 	startSweep();
-	// Live status from the CLI's ~/.claude/sessions registry, re-broadcast as session:updated rows.
-	startSessionRegistryMonitor({onChange: (sessionIds) => rebroadcastSessionsById(sessionIds)});
 	startNotificationsSweep();
 	startLiveSubagentSweep((node) => {
 		broadcastTyped(DOMAIN_EVENTS.SUBAGENT_STOPPED, {
