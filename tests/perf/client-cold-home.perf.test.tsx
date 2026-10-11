@@ -119,8 +119,6 @@ beforeAll(async () => {
 	mkdirSync(memoryDir, {recursive: true});
 	mkdirSync(plansDir, {recursive: true});
 	vi.stubEnv("HOME", home);
-	// /api/home-stats buckets activity by local day and hour.
-	vi.stubEnv("TZ", "UTC");
 	vi.stubEnv("XDG_CONFIG_HOME", join(root, "config"));
 	vi.stubEnv("XDG_CACHE_HOME", join(root, "cache"));
 

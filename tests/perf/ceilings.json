@@ -686,7 +686,7 @@
 		"tolerance": 0
 	},
 	"server.liveAppend.large-long.20.sql.count": {
-		"ceiling": 25,
+		"ceiling": 23,
 		"unit": "count",
 		"tolerance": 0
 	},

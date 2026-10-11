@@ -61,8 +61,6 @@ beforeAll(async () => {
 	for (const project of PROJECTS) mkdirSync(join(projectsDir, project), {recursive: true});
 	vi.stubEnv("HOME", home);
 	vi.stubEnv("XDG_CONFIG_HOME", join(root, "config"));
-	// Home stats bucket by local day and hour, so pin the zone to keep response bytes equal on every machine.
-	vi.stubEnv("TZ", "UTC");
 
 	// Load the routes and the scope as one module graph, so the handlers report into the scope this test opens.
 	vi.resetModules();
