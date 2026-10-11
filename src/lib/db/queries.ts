@@ -170,12 +170,20 @@ export interface RecentSessionsPage {
 /**
  * Most-recently-modified sessions across all projects (sidechains excluded),
  * page by page. Pass the previous page's `nextCursor` as `before` to continue.
+ * The first page also carries every `liveSessionIds` session it did not reach,
+ * so a running but long-idle session shows without paging (later pages repeat
+ * it; the client dedupes by id).
  */
 export function listRecentSessionsFromDb(
 	db: IndexDb,
-	opts: {limit: number; before?: SessionCursor; status?: SessionStatusFilter},
+	opts: {
+		limit: number;
+		before?: SessionCursor;
+		status?: SessionStatusFilter;
+		liveSessionIds?: readonly string[];
+	},
 ): RecentSessionsPage {
-	const {limit, before, status} = opts;
+	const {limit, before, status, liveSessionIds = []} = opts;
 	const condition = and(
 		eq(schema.sessions.isSidechain, 0),
 		archiveCondition(status),
@@ -195,7 +203,24 @@ export function listRecentSessionsFromDb(
 	const hasMore = rows.length > limit;
 	const page = hasMore ? rows.slice(0, limit) : rows;
 	const projectNames = getProjectNameMap(db);
-	const sessions = page.map((row) => rowToSessionEntry(row, projectNames));
+	const pageIds = new Set(page.map((row) => row.id));
+	const unreachedLiveIds = before ? [] : liveSessionIds.filter((id) => !pageIds.has(id));
+	const liveRows =
+		unreachedLiveIds.length === 0
+			? []
+			: db
+					.select()
+					.from(schema.sessions)
+					.where(
+						and(
+							eq(schema.sessions.isSidechain, 0),
+							archiveCondition(status),
+							inArray(schema.sessions.id, unreachedLiveIds),
+						),
+					)
+					.orderBy(desc(schema.sessions.mtimeMs), desc(schema.sessions.id))
+					.all();
+	const sessions = [...page, ...liveRows].map((row) => rowToSessionEntry(row, projectNames));
 	const last = page[page.length - 1];
 	const nextCursor = hasMore && last ? {mtimeMs: last.mtimeMs, id: last.id} : null;
 	return {sessions, nextCursor};

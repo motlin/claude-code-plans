@@ -1646,6 +1646,21 @@ describe("queries", () => {
 		expect(second.nextCursor).toBe(null);
 	});
 
+	it("listRecentSessionsFromDb appends live sessions older than the first page so they reach the sidebar", () => {
+		const first = listRecentSessionsFromDb(db.index, {limit: 1, liveSessionIds: ["sess-3", "sess-1", "missing"]});
+		expect({ids: first.sessions.map((s) => s.id), nextCursor: first.nextCursor}).toStrictEqual({
+			ids: ["sess-1", "sess-3"],
+			nextCursor: {mtimeMs: 3000, id: "sess-1"},
+		});
+
+		const second = listRecentSessionsFromDb(db.index, {
+			limit: 1,
+			before: first.nextCursor!,
+			liveSessionIds: ["sess-3"],
+		});
+		expect(second.sessions.map((s) => s.id)).toStrictEqual(["sess-2"]);
+	});
+
 	it("getSessionTitlesByIds returns a map of id to title for known sessions", () => {
 		expect(getSessionTitlesByIds(db.index, ["sess-1", "sess-3", "missing"])).toStrictEqual({
 			"sess-1": "Fix login",

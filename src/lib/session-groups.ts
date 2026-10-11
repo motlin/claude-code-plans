@@ -49,6 +49,8 @@ export interface SessionGroupRow {
 	lastActivityAt: number;
 	/** The session this one was forked from; forks nest under their family head. */
 	forkedFromSessionId?: string | undefined;
+	/** Its CLI process still runs, so it skips the Last activity window and leads its state group. */
+	live?: boolean | undefined;
 }
 
 export interface SessionGroup<Row extends SessionGroupRow> {
@@ -152,7 +154,7 @@ function isVisible(row: SessionGroupRow, prefs: SessionListPrefs, now: number): 
 	if (prefs.statusFilter === "active" && row.archived) return false;
 	if (prefs.statusFilter === "archived" && !row.archived) return false;
 	const windowDays = ACTIVITY_WINDOW_DAYS[prefs.activityDays];
-	if (windowDays === null || row.bucket === "working") return true;
+	if (windowDays === null || row.bucket === "working" || row.live === true) return true;
 	return now - row.lastActivityAt <= windowDays * DAY_MS;
 }
 
@@ -172,6 +174,11 @@ export function shouldLoadNextPage(
 	if (windowDays === null || loadedRows.length === 0) return true;
 	const oldest = loadedRows.reduce((min, row) => Math.min(min, row.lastActivityAt), Infinity);
 	return now - oldest <= windowDays * DAY_MS;
+}
+
+/** Stable: running sessions lead their state group, each half keeping the Sort by order. */
+function liveFirst<Row extends SessionGroupRow>(rows: Row[]): Row[] {
+	return [...rows.filter((row) => row.live === true), ...rows.filter((row) => row.live !== true)];
 }
 
 const NO_NESTED: ReadonlyMap<string, never[]> = new Map();
@@ -350,7 +357,7 @@ export function buildGroups<Row extends SessionGroupRow>(
 				group(
 					`state-${bucket}`,
 					sessionBucketLabels[bucket],
-					visible.filter((row) => familyBucket.get(row.sessionId) === bucket),
+					liveFirst(visible.filter((row) => familyBucket.get(row.sessionId) === bucket)),
 					groupCap(bucket === "done", `state-${bucket}`, uncapped),
 					nested,
 				),

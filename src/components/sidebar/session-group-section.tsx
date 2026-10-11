@@ -46,6 +46,7 @@ export function toGroupRow(session: SessionListItem): SidebarSessionRow {
 		createdAt: Date.parse(session.created),
 		lastActivityAt: Date.parse(session.mtime),
 		forkedFromSessionId: session.forkedFromSessionId,
+		live: session.state !== "ended",
 	};
 }
 

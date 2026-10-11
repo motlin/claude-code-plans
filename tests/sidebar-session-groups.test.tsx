@@ -276,7 +276,7 @@ describe("sidebar SessionGroups", () => {
 				"Completed next page",
 			]),
 		);
-		expect(requests).toStrictEqual(["/api/sessions/recent?limit=50&cursor=cursor-2"]);
+		expect(requests).toStrictEqual(["/api/sessions/recent?limit=50&cursor=cursor-2&live=1"]);
 	});
 
 	it("fetches the next page when Show N more expands the last capped group", async () => {
@@ -296,7 +296,7 @@ describe("sidebar SessionGroups", () => {
 
 		await waitFor(() => expect(rowTitlesIn(container, "state-done")).toHaveLength(24));
 		expect(rowTitlesIn(container, "state-done").at(-1)).toBe("Done older page");
-		expect(requests).toStrictEqual(["/api/sessions/recent?limit=50&cursor=cursor-2"]);
+		expect(requests).toStrictEqual(["/api/sessions/recent?limit=50&cursor=cursor-2&live=1"]);
 		expect(screen.getByRole("button", {name: "Show less in Completed"})).toBeTruthy();
 	});
 });

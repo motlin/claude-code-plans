@@ -181,6 +181,25 @@ describe("buildGroups state mode", () => {
 		]);
 	});
 
+	it("keeps rows whose process still runs past the Last activity window and ahead of ended rows in their group", () => {
+		const rows = [
+			...Array.from({length: 21}, (_, index) =>
+				row(`ended-${index}`, {bucket: "done", lastActivityAt: NOW - (index + 1) * 60_000}),
+			),
+			row("live-day-old", {bucket: "done", live: true, lastActivityAt: NOW - DAY}),
+			row("live-stale", {bucket: "done", live: true, lastActivityAt: NOW - 30 * DAY}),
+		];
+
+		expect(summarize(buildGroups(rows, prefs(), NOW))).toStrictEqual([
+			{
+				key: "state-done",
+				label: "Completed",
+				rows: ["live-day-old", "live-stale", ...Array.from({length: 18}, (_, index) => `ended-${index}`)],
+				hiddenCount: 3,
+			},
+		]);
+	});
+
 	it("applies the Last activity window in every grouping mode", () => {
 		const rows = [
 			row("old-working", {bucket: "working", lastActivityAt: NOW - 10 * DAY}),

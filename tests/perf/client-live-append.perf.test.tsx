@@ -110,7 +110,7 @@ function sessionEndpoints(id: string): Array<{path: string; module: string; para
 const FRAME_ENDPOINTS: Array<{path: string; module: string}> = [
 	{path: "/api/projects", module: "../../src/routes/api/projects"},
 	{path: "/api/plans", module: "../../src/routes/api/plans"},
-	{path: "/api/sessions/recent?limit=50", module: "../../src/routes/api/sessions.recent"},
+	{path: "/api/sessions/recent?limit=50&live=1", module: "../../src/routes/api/sessions.recent"},
 	{path: "/api/sessions/grouped?perProject=5", module: "../../src/routes/api/sessions.grouped"},
 	{path: "/api/plugins", module: "../../src/routes/api/plugins"},
 	{path: "/api/plugins/user-commands", module: "../../src/routes/api/plugins.user-commands"},
@@ -322,7 +322,7 @@ function appendedLine(sessionId: string): Record<string, unknown> {
 
 /** The open session's summary as the recent list serves it, which is what the server broadcasts on an update. */
 function openSessionSummary(): unknown {
-	const recent = fixtures["/api/sessions/recent?limit=50"] as {sessions: Array<{id: string}>};
+	const recent = fixtures["/api/sessions/recent?limit=50&live=1"] as {sessions: Array<{id: string}>};
 	const summary = recent.sessions.find((session) => session.id === openSessionId);
 	if (summary === undefined) throw new Error(`no recent-list summary for ${openSessionId}`);
 	return summary;

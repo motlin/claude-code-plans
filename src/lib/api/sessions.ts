@@ -301,6 +301,28 @@ export const recentSessionsQueryOptions = (limit: number, status: SessionStatusF
 		gcTime: Infinity,
 	});
 
+/**
+ * The feed's first page also carries running sessions older than it, which a later
+ * page reaches again by mtime; keep each session's first appearance only.
+ */
+export function dedupeRecentPages<Data extends {pages: readonly {sessions: readonly {id: string}[]}[]}>(
+	data: Data,
+): Data {
+	const seen = new Set<string>();
+	let repeated = false;
+	const pages = data.pages.map((page) => {
+		const sessions = page.sessions.filter((session) => {
+			if (seen.has(session.id)) return false;
+			seen.add(session.id);
+			return true;
+		});
+		if (sessions.length === page.sessions.length) return page;
+		repeated = true;
+		return {...page, sessions};
+	});
+	return repeated ? {...data, pages} : data;
+}
+
 /** Infinite, cursor-paginated recent sessions — for the main sessions list. */
 export const recentSessionsInfiniteQueryOptions = (
 	limit: number = DEFAULT_RECENT_PAGE_SIZE,
@@ -311,10 +333,14 @@ export const recentSessionsInfiniteQueryOptions = (
 		queryFn: ({pageParam}) => {
 			const cursor = pageParam ? `&cursor=${encodeURIComponent(pageParam)}` : "";
 			const statusParam = status === "active" ? "" : `&status=${status}`;
-			return apiFetch(`/api/sessions/recent?limit=${limit}${cursor}${statusParam}`, RecentSessionsResponse);
+			return apiFetch(
+				`/api/sessions/recent?limit=${limit}${cursor}${statusParam}&live=1`,
+				RecentSessionsResponse,
+			);
 		},
 		initialPageParam: null as string | null,
 		getNextPageParam: (lastPage) => lastPage.nextCursor,
+		select: dedupeRecentPages,
 		staleTime: Infinity,
 		gcTime: Infinity,
 	});

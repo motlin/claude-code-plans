@@ -27,6 +27,7 @@ export const Route = createFileRoute("/api/sessions/recent")({
 				const {listRecentSessionsFromDb, getArchivedSessionIds} = await import("../../lib/db/queries");
 				const {toSessionSummaryPayload} = await import("../../lib/session-summary");
 				const {getUnseenSessionIds} = await import("../../lib/db/viewed-state");
+				const {getRegistrySessionStates} = await import("../../lib/session-registry-store");
 
 				const url = new URL(request.url);
 				const limit = clampLimit(url.searchParams.get("limit"));
@@ -35,7 +36,15 @@ export const Route = createFileRoute("/api/sessions/recent")({
 				if (status === null) return invalidSessionStatusResponse();
 
 				const {index} = getDb();
-				const page = listRecentSessionsFromDb(index, before ? {limit, before, status} : {limit, status});
+				// Running sessions ride along on the first page only when the caller dedupes later pages.
+				const liveSessionIds =
+					url.searchParams.get("live") === "1"
+						? getRegistrySessionStates().map((state) => state.sessionId)
+						: [];
+				const page = listRecentSessionsFromDb(
+					index,
+					before ? {limit, before, status, liveSessionIds} : {limit, status, liveSessionIds},
+				);
 				const unseenIds = getUnseenSessionIds(index);
 				const archivedIds = getArchivedSessionIds(index);
 				const sessions = page.sessions.map((s) =>
