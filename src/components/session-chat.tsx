@@ -4211,7 +4211,8 @@ function ToolCallRow({
 	const paramClass = isSkill || isCompletedPaneAgent ? "text-primary" : isFailedSkill ? "text-secondary" : labelClass;
 	// A subagent row's chevron sits in the flat `t6` token upstream gives it,
 	// rather than the hover-reactive ink every other tool row uses.
-	// Upstream's 6px row gap less the chevron's -4px start margin leaves it 2px from the status.
+	// Upstream's 6px row gap less the chevron's -4px start margin leaves its 12px
+	// svg 2px from the status.
 	const chevronClass = isAgent ? "shrink-0 -ms-1 self-center text-t6" : `shrink-0 -ms-1 ${ink}`;
 	// A failed call whose param is its own description keeps that description as
 	// written ("Rebase and push X"); upstream past-tenses it only on success.
@@ -4361,7 +4362,7 @@ function ToolCallRow({
 			>
 				{rowLabel}
 				<span className={chevronClass}>
-					<ChevronIcon expanded={expanded} size={14} />
+					<ChevronIcon expanded={expanded} size={12} />
 				</span>
 			</div>
 			{expanded && (
@@ -4480,7 +4481,7 @@ function ToolCallSummary({
 							</span>
 						)}
 						<span className={`shrink-0 ${ink}`}>
-							<ChevronIcon expanded={expanded} size={14} />
+							<ChevronIcon expanded={expanded} size={12} />
 						</span>
 					</button>
 					{expanded && (

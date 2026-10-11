@@ -224,7 +224,7 @@ function taskUpdateVerb(input: Record<string, unknown>): string {
 function askedMeta(input: Record<string, unknown>): string | null {
 	const questions = input["questions"];
 	if (!Array.isArray(questions) || questions.length === 0) return null;
-	if (questions.length > 1) return `${questions.length} questions`;
+	// Upstream names the row by its first question's header, however many it asks.
 	const first: unknown = questions[0];
 	if (typeof first !== "object" || first === null || !("header" in first)) return null;
 	return typeof first.header === "string" && first.header !== "" ? first.header : null;

@@ -1013,6 +1013,38 @@ describe("SessionChat failed tool row label", () => {
 		});
 	});
 
+	it("names a stopped multi-question AskUserQuestion row by its first header, with a 12px chevron 2px after the status", () => {
+		const records = toolResultRecords(
+			{
+				name: "AskUserQuestion",
+				input: {
+					questions: [
+						{header: "Change", question: "Which change?", options: [{label: "A"}, {label: "B"}]},
+						{header: "Scope", question: "How wide?", options: [{label: "C"}, {label: "D"}]},
+					],
+				},
+			},
+			"Rejected",
+			true,
+			{toolDenialKind: "user-rejected"},
+		);
+		const header = renderTranscriptElement(records).querySelector(".group\\/tool")!;
+		const chevron = header.lastElementChild?.querySelector("svg");
+
+		expect({
+			children: Array.from(header.children, (child) => ({text: child.textContent, className: child.className})),
+			chevron: [chevron?.getAttribute("width"), chevron?.getAttribute("height")],
+		}).toStrictEqual({
+			children: [
+				{text: "Asked", className: `shrink-0 ${MUTED_LABEL}`},
+				{text: "Change", className: `truncate min-w-0 ${MUTED_LABEL}`},
+				STOPPED_SUFFIX,
+				ROW_CHEVRON,
+			],
+			chevron: ["12", "12"],
+		});
+	});
+
 	it('labels a rejection the user explained "Denied" and a bare rejection "Stopped", both in secondary ink', () => {
 		const rejection =
 			"The user doesn't want to proceed with this tool use. The tool use was rejected (eg. if it was a file edit, the new_string was NOT written to the file). To tell you how to proceed, the user said:\nNot now";

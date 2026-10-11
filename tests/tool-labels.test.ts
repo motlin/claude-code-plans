@@ -119,7 +119,7 @@ describe("toolLabel", () => {
 		});
 	});
 
-	it('labels AskUserQuestion "Asked" with the first header or a question count', () => {
+	it('labels AskUserQuestion "Asked" with the first header, however many questions it asks', () => {
 		expect({
 			one: toolLabel(
 				call("AskUserQuestion", {
@@ -136,7 +136,7 @@ describe("toolLabel", () => {
 			),
 		}).toStrictEqual({
 			one: {verb: "Asked", meta: "Auth method"},
-			many: {verb: "Asked", meta: "2 questions"},
+			many: {verb: "Asked", meta: "A"},
 		});
 	});
 
