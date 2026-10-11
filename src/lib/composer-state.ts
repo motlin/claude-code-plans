@@ -45,6 +45,8 @@ export interface ComposerStateSources {
 	lastAssistantModel: string | null;
 	/** Context usage of the newest assistant record; the fallback when there is no statusline. */
 	lastAssistantUsage: TranscriptContextUsage | null;
+	/** The effort the newest assistant turn ran at; claude.ai/code shows it for a session. */
+	lastAssistantEffort: string | null;
 	/** settings.json `model`: what a session with no model yet launches with. */
 	settingsModel: string | null;
 	settingsEffortLevel: string | null;
@@ -149,14 +151,14 @@ function resolveComposerUsage(sources: ComposerStateSources, modelId: string): C
 
 /**
  * mode = hook ?? JSONL ?? settings; model = statusline ?? last assistant ?? settings ?? the CLI default;
- * effort = settings ?? "high"; usage = statusline ?? the last assistant record's usage.
+ * effort = last assistant ?? settings ?? "high"; usage = statusline ?? the last assistant record's usage.
  */
 export function resolveComposerState(sources: ComposerStateSources): ComposerState {
 	const modeId =
 		nonEmpty(sources.hookPermissionMode) ??
 		nonEmpty(sources.jsonlPermissionMode) ??
 		nonEmpty(sources.settingsDefaultMode);
-	const effortId = nonEmpty(sources.settingsEffortLevel) ?? DEFAULT_EFFORT;
+	const effortId = nonEmpty(sources.lastAssistantEffort) ?? nonEmpty(sources.settingsEffortLevel) ?? DEFAULT_EFFORT;
 	const modelId =
 		nonEmpty(sources.statuslineModelId) ??
 		nonEmpty(sources.lastAssistantModel) ??
@@ -197,6 +199,19 @@ export function lastAssistantModelFromRecords(records: readonly unknown[]): stri
 		if (!isRecord(message)) continue;
 		const model = message["model"];
 		if (typeof model === "string" && model !== "" && model !== SYNTHETIC_MODEL) return model;
+	}
+	return null;
+}
+
+/** Newest real assistant record's `perTurnEffort`, else the session `effort` it ran under. */
+export function lastAssistantEffortFromRecords(records: readonly unknown[]): string | null {
+	for (let i = records.length - 1; i >= 0; i--) {
+		const record = records[i];
+		if (!isRecord(record) || record["type"] !== "assistant") continue;
+		const message = record["message"];
+		if (!isRecord(message) || message["model"] === SYNTHETIC_MODEL) continue;
+		const effort = record["perTurnEffort"] ?? record["effort"];
+		if (typeof effort === "string" && effort !== "") return effort;
 	}
 	return null;
 }

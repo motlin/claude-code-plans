@@ -6,6 +6,7 @@ import {
 	formatUsageAriaLabel,
 	formatUsageTooltipRows,
 	getComposerState,
+	lastAssistantEffortFromRecords,
 	lastAssistantModelFromRecords,
 	lastAssistantUsageFromRecords,
 	lastPermissionModeFromRecords,
@@ -47,6 +48,7 @@ const EMPTY_SOURCES: ComposerStateSources = {
 	statuslineModelId: null,
 	lastAssistantModel: null,
 	lastAssistantUsage: null,
+	lastAssistantEffort: null,
 	settingsModel: null,
 	settingsEffortLevel: null,
 	statusline: null,
@@ -147,6 +149,15 @@ describe("resolveComposerState precedence", () => {
 	])("effort: settings=$settings", ({settings, expected}) => {
 		const state = resolveComposerState({...EMPTY_SOURCES, settingsEffortLevel: settings});
 		expect(state.effort).toStrictEqual(expected);
+	});
+
+	it("effort: the session's newest turn wins over settings", () => {
+		const state = resolveComposerState({
+			...EMPTY_SOURCES,
+			lastAssistantEffort: "medium",
+			settingsEffortLevel: "xhigh",
+		});
+		expect(state.effort).toStrictEqual({id: "medium", label: "Medium"});
 	});
 
 	it("usage comes from the statusline context window and rate limits", () => {
@@ -274,6 +285,36 @@ describe("transcript record extraction", () => {
 			modeRecordOnly: lastPermissionModeFromRecords(records.slice(0, 1)),
 			none: lastPermissionModeFromRecords(records.slice(2)),
 		}).toStrictEqual({all: "acceptEdits", modeRecordOnly: "plan", none: null});
+	});
+
+	it("finds the newest assistant effort, preferring the turn's own over the session's", () => {
+		const turns = [
+			{
+				type: "assistant",
+				effort: "high",
+				perTurnEffort: "high",
+				message: {role: "assistant", model: "claude-opus-5-5"},
+			},
+			{
+				type: "assistant",
+				effort: "medium",
+				perTurnEffort: "max",
+				message: {role: "assistant", model: "claude-opus-5-5"},
+			},
+			{
+				type: "assistant",
+				effort: "medium",
+				perTurnEffort: null,
+				message: {role: "assistant", model: "claude-opus-5-5"},
+			},
+			{type: "assistant", message: {role: "assistant", model: "<synthetic>"}},
+			{type: "user", message: {role: "user", content: "next"}},
+		];
+		expect({
+			nullTurn: lastAssistantEffortFromRecords(turns),
+			turnOverride: lastAssistantEffortFromRecords(turns.slice(0, 2)),
+			none: lastAssistantEffortFromRecords(records),
+		}).toStrictEqual({nullTurn: "medium", turnOverride: "max", none: null});
 	});
 
 	it("finds the newest real assistant model, skipping synthetic records", () => {

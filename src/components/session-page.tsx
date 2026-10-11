@@ -71,6 +71,7 @@ import {
 	useStatusline,
 } from "../hooks/use-claude-events";
 import {
+	lastAssistantEffortFromRecords,
 	lastAssistantModelFromRecords,
 	lastAssistantUsageFromRecords,
 	lastPermissionModeFromRecords,
@@ -453,6 +454,7 @@ function SessionView({
 				statuslineModelId: composerServerState?.statusline?.model?.id ?? null,
 				lastAssistantModel: lastAssistantModelFromRecords(transcript.records),
 				lastAssistantUsage: lastAssistantUsageFromRecords(transcript.records),
+				lastAssistantEffort: lastAssistantEffortFromRecords(transcript.records),
 				settingsModel: composerServerState?.settingsModel ?? null,
 				settingsEffortLevel: composerServerState?.settingsEffortLevel ?? null,
 				statusline: composerServerState?.statusline ?? null,

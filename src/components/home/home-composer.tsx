@@ -66,6 +66,7 @@ export function HomeComposer() {
 						statuslineModelId: null,
 						lastAssistantModel: null,
 						lastAssistantUsage: null,
+						lastAssistantEffort: null,
 						settingsModel: defaults.model,
 						settingsEffortLevel: defaults.effortLevel,
 						statusline: null,
