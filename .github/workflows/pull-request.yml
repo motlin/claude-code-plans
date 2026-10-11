@@ -65,9 +65,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
         run: |
-          vp install
+          pnpm install
           CHECK_STATUS=0
-          vp run check --fix || CHECK_STATUS=$?
+          pnpm exec vp run check --fix || CHECK_STATUS=$?
 
           if [[ -n $(git status --porcelain) ]]; then
             FIX_BRANCH="fix-${{ github.event.pull_request.number }}-check"

@@ -14,7 +14,7 @@ preview_port := "7527"
 # Install dependencies
 [group('setup')]
 install:
-    vp install
+    pnpm install
     just ensure-sqlite-native
 
 # Verify better-sqlite3 native modules match the active Node runtime

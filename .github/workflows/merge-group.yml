@@ -129,7 +129,7 @@ jobs:
           path: ~/.local/share/pnpm/store
           key: pnpm-${{ hashFiles('pnpm-lock.yaml') }}
       - run: just install
-      - run: vp exec playwright install --with-deps chromium
+      - run: pnpm exec playwright install --with-deps chromium
       - run: just perf-lab-ratchet
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: ${{ !cancelled() }}
@@ -155,7 +155,7 @@ jobs:
           path: ~/.local/share/pnpm/store
           key: pnpm-${{ hashFiles('pnpm-lock.yaml') }}
       - run: just install
-      - run: vp exec markdownlint-cli2
+      - run: pnpm exec markdownlint-cli2
 
   yamllint:
     runs-on: ubuntu-latest
