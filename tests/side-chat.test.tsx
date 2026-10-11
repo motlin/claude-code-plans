@@ -114,6 +114,26 @@ describe("sideChatBranchTitle", () => {
 });
 
 describe("SideChat", () => {
+	it("hides the closed card from layout hit-testing so it never sits over the phone composer", () => {
+		renderSideChat();
+		const hiding = (classes: string) =>
+			classes
+				.split(" ")
+				.filter((c) => /^(data-\[open\]:)?(invisible|visible|pointer-events-\w+)$|visibility/.test(c));
+		const closed = hiding(aside().className);
+		act(() => openSideChat(SESSION_ID));
+		expect({closed, open: aside().hasAttribute("data-open")}).toStrictEqual({
+			closed: [
+				"invisible",
+				"pointer-events-none",
+				"transition-[opacity,transform,visibility]",
+				"data-[open]:visible",
+				"data-[open]:pointer-events-auto",
+			],
+			open: true,
+		});
+	});
+
 	it("opens, closes with the X button, and closes on Escape", () => {
 		renderSideChat();
 		expect(aside().hasAttribute("data-open")).toBe(false);
