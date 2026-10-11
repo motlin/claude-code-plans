@@ -229,6 +229,37 @@ describe("AssistantMessageActions", () => {
 		expect(speech.voices).toStrictEqual([null]);
 	});
 
+	it("queues one utterance per sentence and stays playing, pausable and resumable, until the last one ends", () => {
+		const speech = stubSpeech();
+		const {container} = render(
+			<AssistantMessageActions
+				message={MESSAGE}
+				text="Hello there. How are you?"
+				timestamp={TIMESTAMP}
+				details={[]}
+			/>,
+		);
+		const control = () => bar(container).querySelector<HTMLButtonElement>("[data-read-aloud]")!;
+		const states: string[] = [];
+		const note = () => states.push(readAloudState(container).label ?? "");
+
+		fireEvent.click(control());
+		act(() => speech.start());
+		act(() => speech.advance());
+		note();
+		fireEvent.click(control());
+		note();
+		fireEvent.click(control());
+		act(() => speech.advance());
+		note();
+
+		expect({spoken: speech.spoken, calls: speech.calls, states}).toStrictEqual({
+			spoken: ["Hello there.", "How are you?"],
+			calls: ["cancel", "speak", "speak", "pause", "resume"],
+			states: ["Pause", "Resume", "Read aloud"],
+		});
+	});
+
 	it("stops when pressed again before speech starts", () => {
 		const speech = stubSpeech();
 		const {container} = render(
@@ -325,6 +356,11 @@ function stubSpeech(initialVoices: StubVoice[] = [SAMANTHA]) {
 			listeners.forEach((listener) => listener());
 		},
 		start: () => queue[0]?.onstart?.(),
+		/** Ends the speaking utterance and starts the next one, as the engine's queue does. */
+		advance: () => {
+			queue.shift()?.onend?.();
+			queue[0]?.onstart?.();
+		},
 		finish: () => {
 			while (queue.length > 0) {
 				const utterance = queue.shift()!;

@@ -1,5 +1,6 @@
 import {useEffect, useRef, useState, useSyncExternalStore} from "react";
 import {markdownToPlainText} from "../lib/markdown-plain-text";
+import {speechChunks} from "../lib/speech-chunks";
 import {chooseVoice} from "../lib/speech-voice";
 
 /** How long to wait for an engine that has not listed its voices yet before speaking with its default. */
@@ -53,6 +54,8 @@ export function useReadAloud(text: string) {
 	const [status, setStatus] = useState<ReadAloudStatus>("idle");
 	const statusRef = useRef<ReadAloudStatus>("idle");
 	const abandonVoiceWait = useRef<() => void>(() => {});
+	/** Counts readings, so a cancelled reading's late events cannot settle the next one. */
+	const reading = useRef(0);
 	useEffect(
 		() => () => {
 			abandonVoiceWait.current();
@@ -76,24 +79,34 @@ export function useReadAloud(text: string) {
 			return;
 		}
 		abandonVoiceWait.current();
+		const current = ++reading.current;
 		speechSynthesis.cancel();
 		if (status === "loading") {
 			settle("idle");
 			return;
 		}
+		const chunks = speechChunks(markdownToPlainText(text));
+		if (chunks.length === 0) return;
 		settle("loading");
+		const settleCurrent = (value: ReadAloudStatus) => {
+			if (reading.current === current) settle(value);
+		};
 		abandonVoiceWait.current = withVoices((voices) => {
 			const lang = documentLang();
 			const voice = chooseVoice(voices, lang);
-			const utterance = new SpeechSynthesisUtterance(markdownToPlainText(text));
-			utterance.lang = voice?.lang ?? lang;
-			if (voice !== null) utterance.voice = voice;
-			utterance.onstart = () => {
-				if (statusRef.current === "loading") settle("playing");
-			};
-			utterance.onend = () => settle("idle");
-			utterance.onerror = () => settle("idle");
-			speechSynthesis.speak(utterance);
+			// One utterance per sentence: Chrome's network voices stop partway through a long one,
+			// and the engine's own queue keeps pause and resume working across them.
+			chunks.forEach((chunk, index) => {
+				const utterance = new SpeechSynthesisUtterance(chunk);
+				utterance.lang = voice?.lang ?? lang;
+				if (voice !== null) utterance.voice = voice;
+				utterance.onstart = () => {
+					if (statusRef.current === "loading") settleCurrent("playing");
+				};
+				if (index === chunks.length - 1) utterance.onend = () => settleCurrent("idle");
+				utterance.onerror = () => settleCurrent("idle");
+				speechSynthesis.speak(utterance);
+			});
 		});
 	};
 	return {status, toggle: supported && text !== "" ? toggle : undefined};
