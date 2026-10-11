@@ -8,7 +8,7 @@
 		"dev": "vp dev",
 		"preview": "vp preview",
 		"start": "node .output/server/index.mjs",
-		"build": "vp build && vp run typecheck",
+		"build": "vp build",
 		"oxlint": "vp lint . --fix",
 		"oxlint:ci": "vp lint . --format github",
 		"fmt": "vp fmt",
