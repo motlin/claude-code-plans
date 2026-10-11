@@ -87,7 +87,7 @@ export function showsWaitingForInputNotice({
 }
 
 /**
- * Stands where upstream docks the pending question card, above the composer:
+ * Stands where upstream docks the pending question card, directly above the composer:
  * the awaiting dot and a plain line, with no options to pick, since the
  * question itself is not on disk yet.
  */
@@ -103,7 +103,7 @@ export function WaitingForInputNotice() {
 				<span className="status-dot" data-kind="awaiting" />
 			</span>
 			<span className="flex min-w-0 flex-col">
-				<span className="font-bold">Waiting for your input</span>
+				<span className="font-[580]">Waiting for your input</span>
 				<span className="text-footnote text-secondary">Answer in the terminal running this session.</span>
 			</span>
 		</div>

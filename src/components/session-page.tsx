@@ -768,10 +768,6 @@ function SessionView({
 												onDismiss={() => setDismissedToolUseId(dockedQuestion.toolUseId)}
 											/>
 										)}
-										{showsWaitingForInputNotice({
-											state: sessionSummaryState,
-											hasDockedCard: dockedQuestion !== null || pendingPermission !== null,
-										}) && <WaitingForInputNotice />}
 										{pendingPermission && (
 											<PermissionCard
 												key={pendingPermission.notificationId}
@@ -801,6 +797,11 @@ function SessionView({
 													statusline={statusline}
 												/>
 											)}
+										{/* Upstream docks its pending question card directly above the composer, below the chips */}
+										{showsWaitingForInputNotice({
+											state: sessionSummaryState,
+											hasDockedCard: dockedQuestion !== null || pendingPermission !== null,
+										}) && <WaitingForInputNotice />}
 										{!chromeHidden && data.projectPath && (
 											<Composer
 												variant="session"

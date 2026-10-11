@@ -20,6 +20,17 @@ describe("showsWaitingForInputNotice", () => {
 });
 
 describe("WaitingForInputNotice", () => {
+	it("sets its title in upstream's question-header weight, 580", () => {
+		render(<WaitingForInputNotice />);
+
+		expect(
+			screen
+				.getByText("Waiting for your input")
+				.className.split(" ")
+				.filter((name) => name.startsWith("font-")),
+		).toStrictEqual(["font-[580]"]);
+	});
+
 	it("announces the wait with the awaiting dot and no controls", () => {
 		const {container} = render(<WaitingForInputNotice />);
 

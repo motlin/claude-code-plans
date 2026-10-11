@@ -13,6 +13,7 @@ import {ClaudeEventsProvider} from "../src/hooks/use-claude-events";
 import {herdrPanesQueryOptions} from "../src/lib/api/herdr";
 import {type PlanDetail, planQueryOptions} from "../src/lib/api/plans";
 import {
+	recentSessionsInfiniteQueryOptions,
 	sessionDetailQueryOptions,
 	sessionOpenInQueryOptions,
 	sessionSubagentsQueryOptions,
@@ -318,13 +319,15 @@ describe("SessionPage dock composition", () => {
 				"[data-session-footer] [data-branch-strip], [data-session-footer] [role=status], [data-session-footer] [data-composer-card]",
 			),
 		].map((element) =>
-			element.hasAttribute("data-pull-request-strip")
-				? "pr"
-				: element.hasAttribute("data-branch-strip")
-					? "branch"
-					: element.hasAttribute("data-composer-card")
-						? "composer"
-						: "usage",
+			element.hasAttribute("data-waiting-input-notice")
+				? "waiting"
+				: element.hasAttribute("data-pull-request-strip")
+					? "pr"
+					: element.hasAttribute("data-branch-strip")
+						? "branch"
+						: element.hasAttribute("data-composer-card")
+							? "composer"
+							: "usage",
 		);
 	}
 	it.each([
@@ -337,6 +340,19 @@ describe("SessionPage dock composition", () => {
 		{name: "no PR", fields: {}, order: ["usage", "branch", "composer"]},
 	])("renders $name dock parts exactly once in their actual production order", async ({fields, order}) => {
 		await renderSessionPage({...detail, ...fields}, [], seedUsage);
+		expect(dockContents()).toStrictEqual(order);
+	});
+	it.each([
+		{name: "linked PR", fields: {pr}, order: ["pr", "usage", "waiting", "composer"]},
+		{name: "no PR", fields: {}, order: ["usage", "branch", "waiting", "composer"]},
+	])("docks the waiting notice directly above the composer, below the $name chips", async ({fields, order}) => {
+		await renderSessionPage({...detail, ...fields}, [], (queryClient) => {
+			seedUsage(queryClient);
+			queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
+				pages: [{sessions: [{id: SESSION_ID, state: "waiting"}], nextCursor: null}],
+				pageParams: [null],
+			} as never);
+		});
 		expect(dockContents()).toStrictEqual(order);
 	});
 	it("suppresses PR, usage, and composer when the session has no project path", async () => {
