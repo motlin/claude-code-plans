@@ -105,17 +105,28 @@ async function settle(main: HTMLElement) {
 	throw new Error("Transcript geometry did not settle within 30 batches.");
 }
 
-async function mountChat(): Promise<HTMLElement> {
-	render(
+function chat(windowLines: SessionLine[]) {
+	return (
 		<main style={{overflowY: "auto"}} data-testid="main">
 			<SessionChat
 				sessionId="example-virtual-anchoring"
 				shouldScrollToEnd={false}
-				lines={lines}
+				lines={windowLines}
 				toolResultMap={new Map()}
 			/>
-		</main>,
+		</main>
 	);
+}
+
+/** The painted rows, named by the message each draws rather than by its shifting window index. */
+function paintedMessages(): Array<{message: string; top: number}> {
+	return mountedRows()
+		.filter((row) => rowTop(row) + ROW_HEIGHT > 0 && rowTop(row) < VIEWPORT_HEIGHT)
+		.map((row) => ({message: /Fabricated message \d+/.exec(row.textContent ?? "")![0], top: rowTop(row)}));
+}
+
+async function mountChat(windowLines = lines): Promise<HTMLElement> {
+	render(chat(windowLines));
 	const main = screen.getByTestId("main");
 	Object.defineProperty(main, "clientHeight", {configurable: true, value: VIEWPORT_HEIGHT});
 	Object.defineProperty(main, "scrollHeight", {configurable: true, get: contentHeight});
@@ -185,4 +196,42 @@ it("commits the scrolled-to window inside the scroll event, before the browser p
 
 	expect({blank: blankPixels(), rows: paintedRows().length}).toStrictEqual({blank: 0, rows: 11});
 	await act(async () => {});
+});
+
+it("keeps the reader's rows in place when an earlier page of records lands above them", async () => {
+	const {rerender} = render(chat(lines.slice(60)));
+	const main = screen.getByTestId("main");
+	Object.defineProperty(main, "clientHeight", {configurable: true, value: VIEWPORT_HEIGHT});
+	Object.defineProperty(main, "scrollHeight", {configurable: true, get: contentHeight});
+	await settle(main);
+	await scrollTo(main, 900);
+	await settle(main);
+	const before = paintedMessages();
+
+	await act(async () => rerender(chat(lines)));
+	const landed = paintedMessages();
+	await settle(main);
+
+	expect({landed, measured: paintedMessages()}).toStrictEqual({landed: before, measured: before});
+});
+
+it("keeps the reader's rows in place across repeated earlier pages while scrolling up", async () => {
+	const {rerender} = render(chat(lines.slice(80)));
+	const main = screen.getByTestId("main");
+	Object.defineProperty(main, "clientHeight", {configurable: true, value: VIEWPORT_HEIGHT});
+	Object.defineProperty(main, "scrollHeight", {configurable: true, get: contentHeight});
+	await settle(main);
+	await scrollTo(main, 400);
+	await settle(main);
+	const moves: Array<{message: string; moved: number}> = [];
+	for (const start of [60, 40, 20, 0]) {
+		const [anchor] = paintedMessages();
+		await scrollTo(main, main.scrollTop - 100);
+		await act(async () => rerender(chat(lines.slice(start))));
+		await settle(main);
+		const now = paintedMessages().find((row) => row.message === anchor!.message);
+		moves.push({message: anchor!.message, moved: now!.top - anchor!.top});
+	}
+
+	expect(moves.map(({moved}) => moved)).toStrictEqual([100, 100, 100, 100]);
 });

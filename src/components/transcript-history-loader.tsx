@@ -1,6 +1,6 @@
 import {useQueryClient} from "@tanstack/react-query";
 import {Loader2} from "lucide-react";
-import {useCallback, useEffect, useLayoutEffect, useRef, useState} from "react";
+import {useCallback, useEffect, useRef, useState} from "react";
 import {fetchEarlierTranscript} from "../lib/api/sessions";
 import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
 
@@ -59,45 +59,21 @@ export function TranscriptHistoryLoader({sessionId, startIndex}: TranscriptHisto
 	 * outlives the observer below, which is rebuilt around every landed page.
 	 */
 	const armedRef = useRef(false);
-	const anchorRef = useRef<{scroller: Element; scrollHeight: number; scrollTop: number} | null>(null);
 
 	const loadEarlier = useCallback(async () => {
 		if (inFlightRef.current) return;
 		inFlightRef.current = true;
 		setIsLoading(true);
-		const scroller = findScrollContainer(sentinelRef.current);
-		anchorRef.current = {
-			scroller,
-			scrollHeight: scroller.scrollHeight,
-			scrollTop: scroller.scrollTop,
-		};
 		try {
 			await fetchEarlierTranscript(queryClient, sessionId);
 			setError("");
 		} catch (cause) {
-			// A stale anchor would yank a later append's scroll position, so drop it.
-			anchorRef.current = null;
 			setError(cause instanceof Error ? cause.message : "Failed to load earlier messages");
 		} finally {
 			inFlightRef.current = false;
 			setIsLoading(false);
 		}
 	}, [queryClient, sessionId]);
-
-	/**
-	 * Prepending records grows the transcript upwards, which would throw the
-	 * reader backwards by the height of the page they just asked for. `startIndex`
-	 * moves exactly when that page lands, and a layout effect runs after React
-	 * commits it but before the browser paints, so putting the scroll position
-	 * back here is invisible -- and it leaves the sentinel above the viewport,
-	 * which is what lets the next scroll up ask for the next page.
-	 */
-	useLayoutEffect(() => {
-		const anchor = anchorRef.current;
-		if (!anchor) return;
-		anchorRef.current = null;
-		anchor.scroller.scrollTop = anchor.scrollTop + (anchor.scroller.scrollHeight - anchor.scrollHeight);
-	}, [startIndex]);
 
 	/**
 	 * Watch the top of the transcript. Re-running on every landed page is what
@@ -143,12 +119,15 @@ export function TranscriptHistoryLoader({sessionId, startIndex}: TranscriptHisto
 			data-testid="transcript-history-loader"
 			className={`${CHAT_COLUMN_CLASS} flex flex-col items-center gap-1 pt-4 text-xs text-t6`}
 		>
-			{isLoading && (
-				<div role="status" className="flex justify-center">
-					<Loader2 aria-hidden="true" className="size-4 animate-spin" />
-					<span className="sr-only">Loading...</span>
-				</div>
-			)}
+			{/* The spinner's row stays reserved while idle: nothing anchors the transcript against it appearing or going. */}
+			<div data-testid="transcript-history-spinner-slot" className="flex h-4 justify-center">
+				{isLoading && (
+					<div role="status" className="flex justify-center">
+						<Loader2 aria-hidden="true" className="size-4 animate-spin" />
+						<span className="sr-only">Loading...</span>
+					</div>
+				)}
+			</div>
 			{error && <span className="text-danger-000">{error}</span>}
 		</div>
 	);

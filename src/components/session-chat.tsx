@@ -1585,11 +1585,27 @@ function rangeForViewport(prefixHeights: readonly number[], viewportStart: numbe
 	};
 }
 
+/**
+ * How many rows an earlier page put ahead of the window starting at `startIndex`: the
+ * first committed row from there that survives into `next` gives the offset.
+ */
+function prependedRowCount(
+	committed: readonly SessionListEntry[],
+	next: readonly SessionListEntry[],
+	startIndex: number,
+): number {
+	const nextIndex = new Map(next.map((entry, index) => [entry.key, index]));
+	for (let index = startIndex; index < committed.length; index++) {
+		const moved = nextIndex.get(committed[index]!.key);
+		if (moved !== undefined) return moved - index;
+	}
+	return 0;
+}
+
 /** The reader's place: a painted row and its offset within the scroller's content. */
 interface ScrollAnchor {
 	entryKey: string;
 	contentTop: number;
-	firstEntryKey: string | undefined;
 }
 
 function mountedRowFor(list: Element, entries: readonly SessionListEntry[], key: string): HTMLElement | undefined {
@@ -1604,6 +1620,7 @@ function firstPaintedRow(
 	scroller: Element,
 	viewport: {top: number; height: number},
 	entries: readonly SessionListEntry[],
+	survives: (key: string) => boolean = () => true,
 ): ScrollAnchor | null {
 	const {scrollTop} = scrollMetrics(scroller);
 	for (const row of list.querySelectorAll<HTMLElement>("[data-transcript-entry-index]")) {
@@ -1612,7 +1629,9 @@ function firstPaintedRow(
 		if (rect.top >= viewport.top + viewport.height) return null;
 		const entry = entries[Number(row.dataset["transcriptEntryIndex"])];
 		if (!entry) return null;
-		return {entryKey: entry.key, contentTop: rect.top - viewport.top + scrollTop, firstEntryKey: entries[0]?.key};
+		// A page landing above can regroup the record at its seam under a new key.
+		if (!survives(entry.key)) continue;
+		return {entryKey: entry.key, contentTop: rect.top - viewport.top + scrollTop};
 	}
 	return null;
 }
@@ -2117,6 +2136,7 @@ function VirtualizedSessionEntries({
 	const readingAnchorRef = useRef<TranscriptReadingAnchor | undefined>(undefined);
 	const handoffAnchorRef = useRef<TranscriptReadingAnchor | undefined>(undefined);
 	const scrollAnchorRef = useRef<ScrollAnchor | null>(null);
+	const prependAnchorRef = useRef<ScrollAnchor | null>(null);
 	const rangeSyncInputsRef = useRef<{heights?: Map<string, number>; update?: () => void}>({});
 	const pendingJumpRef = useRef<number | null>(null);
 	const pendingFocusIndexRef = useRef<number | null>(null);
@@ -2243,6 +2263,34 @@ function VirtualizedSessionEntries({
 		geometryReady?.();
 	}, [geometryReady, measuredHeights, range, entries]);
 
+	// An earlier page landing prepends rows, which moves every window index. Translate the window
+	// to the same records in this render and re-read the reader's row from the painted DOM, so the
+	// prepend commit mounts the rows the reader sees and holdScrollAnchor puts them back before paint.
+	const committedEntriesRef = useRef(entries);
+	const [rangeFirstKey, setRangeFirstKey] = useState(entries[0]?.key);
+	if (rangeFirstKey !== entries[0]?.key) {
+		setRangeFirstKey(entries[0]?.key);
+		const committed = committedEntriesRef.current;
+		const shift = prependedRowCount(committed, entries, range.startIndex);
+		if (shift > 0) {
+			setRange({
+				startIndex: Math.min(entries.length, range.startIndex + shift),
+				endIndex: Math.min(entries.length, range.endIndex + shift),
+			});
+		}
+		const list = listRef.current;
+		const scroller = scrollerRef.current;
+		if (list && scroller) {
+			const nextKeys = new Set(entries.map((entry) => entry.key));
+			prependAnchorRef.current = firstPaintedRow(list, scroller, scrollerViewport(scroller), committed, (key) =>
+				nextKeys.has(key),
+			);
+		}
+	}
+	useLayoutEffect(() => {
+		committedEntriesRef.current = entries;
+	}, [entries]);
+
 	const prefixHeights = useMemo(() => {
 		const result = [0];
 		for (const entry of entries) {
@@ -2272,12 +2320,14 @@ function VirtualizedSessionEntries({
 			list.closest("[hidden]")
 		) {
 			scrollAnchorRef.current = null;
+			// The scroll subscription re-attaches the scroller later in the same commit; a landed page waits for it.
+			if (list && scroller) prependAnchorRef.current = null;
 			return false;
 		}
 		const viewport = scrollerViewport(scroller);
-		const anchor = scrollAnchorRef.current;
-		// Earlier history landing above is put back by the history loader's own anchor.
-		if (anchor && anchor.firstEntryKey === entries[0]?.key) {
+		const anchor = prependAnchorRef.current ?? scrollAnchorRef.current;
+		prependAnchorRef.current = null;
+		if (anchor) {
 			const row = mountedRowFor(list, entries, anchor.entryKey);
 			if (row) {
 				const {scrollTop} = scrollMetrics(scroller);

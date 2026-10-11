@@ -138,6 +138,7 @@ describe("TranscriptHistoryLoader", () => {
 			buttons: screen.queryAllByRole("button").length,
 			earlierRecordsText: screen.queryByText(/earlier records/) === null,
 			status: screen.queryByRole("status"),
+			slot: screen.getByTestId("transcript-history-spinner-slot").className,
 		};
 
 		intersect(false);
@@ -148,6 +149,7 @@ describe("TranscriptHistoryLoader", () => {
 			text: status.textContent,
 			srOnly: status.querySelector(".sr-only")?.textContent,
 			spinner: status.querySelector("svg.animate-spin") !== null,
+			slot: screen.getByTestId("transcript-history-spinner-slot").className,
 		};
 		resolveFetch(
 			new Response(JSON.stringify(EARLIER_PAGE), {status: 200, headers: {"Content-Type": "application/json"}}),
@@ -155,31 +157,16 @@ describe("TranscriptHistoryLoader", () => {
 		await waitFor(() => expect(screen.queryByRole("status")).toBeNull());
 
 		expect({idle, loading}).toStrictEqual({
-			idle: {buttons: 0, earlierRecordsText: true, status: null},
-			loading: {buttons: 0, text: "Loading...", srOnly: "Loading...", spinner: true},
+			// The spinner's row is reserved either way, so its coming and going never moves the transcript.
+			idle: {buttons: 0, earlierRecordsText: true, status: null, slot: "flex h-4 justify-center"},
+			loading: {
+				buttons: 0,
+				text: "Loading...",
+				srOnly: "Loading...",
+				spinner: true,
+				slot: "flex h-4 justify-center",
+			},
 		});
-	});
-
-	it("keeps the reader in place when the prepended page grows the transcript", async () => {
-		mockEarlierPage(EARLIER_PAGE);
-		const {queryClient, rerenderWithStartIndex} = renderLoader(TAIL);
-		const scroller = screen.getByTestId("transcript-history-loader").parentElement!;
-		scroller.style.overflowY = "auto";
-		let scrollHeight = 1_000;
-		Object.defineProperty(scroller, "scrollHeight", {get: () => scrollHeight});
-		scroller.scrollTop = 40;
-
-		intersect(false);
-		intersect(true);
-		await waitFor(() => {
-			expect(queryClient.getQueryData<TranscriptData>(sessionQueryKeys.transcript("sess-1"))?.startIndex).toBe(0);
-			expect(screen.queryByRole("status")).toBeNull();
-		});
-		// The page landing is what grows the transcript and moves `startIndex`.
-		scrollHeight = 1_600;
-		rerenderWithStartIndex(0);
-
-		expect(scroller.scrollTop).toBe(640);
 	});
 
 	it("ignores the opening frame, where the view has not yet scrolled to the newest message", async () => {
