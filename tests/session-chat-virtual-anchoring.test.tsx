@@ -23,14 +23,6 @@ const VIEWPORT_HEIGHT = 600;
 let scrollPosition = 0;
 const nativeScrollTop = Object.getOwnPropertyDescriptor(Element.prototype, "scrollTop")!;
 
-function mountedRows(): HTMLElement[] {
-	return [...document.querySelectorAll<HTMLElement>("[data-transcript-entry-index]")];
-}
-function spacerHeight(position: "before" | "after"): number {
-	return Number.parseFloat(
-		document.querySelector<HTMLElement>(`[data-transcript-spacer="${position}"]`)?.style.height ?? "0",
-	);
-}
 /** A long prompt paints at its full height until TruncatedContent's clamp lands in a follow-up render. */
 const LONG_PROMPT = "Fabricated long prompt";
 const LONG_PROMPT_FULL_HEIGHT = 1266;
@@ -39,31 +31,66 @@ function rowHeight(row: HTMLElement): number {
 	if (!row.textContent?.includes(LONG_PROMPT)) return ROW_HEIGHT;
 	return row.querySelector(".max-h-\\[16rem\\]") ? LONG_PROMPT_CLAMPED_HEIGHT : LONG_PROMPT_FULL_HEIGHT;
 }
+
+interface Layout {
+	rows: HTMLElement[];
+	/** Each mounted row's height and top within the transcript's content. */
+	boxes: Map<HTMLElement, {top: number; height: number}>;
+	height: number;
+}
+let transcript: HTMLElement | null = null;
+/**
+ * Lay the transcript out in one walk over its children. The mocked geometry runs for every
+ * getBoundingClientRect, so a document-wide selector per call made the file slow enough
+ * to hit the test timeout when the full suite loads the machine.
+ */
+function layout(): Layout {
+	if (!transcript?.isConnected) {
+		transcript = document.querySelector<HTMLElement>("[data-testid=virtualized-transcript]");
+	}
+	const rows: HTMLElement[] = [];
+	const boxes = new Map<HTMLElement, {top: number; height: number}>();
+	let height = 0;
+	for (const child of transcript?.children ?? []) {
+		if (!(child instanceof HTMLElement)) continue;
+		if (child.dataset["transcriptSpacer"] !== undefined) {
+			height += Number.parseFloat(child.style.height || "0");
+		} else if (child.dataset["transcriptEntryIndex"] !== undefined) {
+			const box = {top: height, height: rowHeight(child)};
+			rows.push(child);
+			boxes.set(child, box);
+			height += box.height;
+		}
+	}
+	return {rows, boxes, height};
+}
+function mountedRows(): HTMLElement[] {
+	return layout().rows;
+}
 function contentHeight(): number {
-	return spacerHeight("before") + mountedRows().reduce((sum, row) => sum + rowHeight(row), 0) + spacerHeight("after");
+	return layout().height;
 }
-function clampedPosition(): number {
-	return Math.min(scrollPosition, Math.max(0, contentHeight() - VIEWPORT_HEIGHT));
+function clampedPosition(height = contentHeight()): number {
+	return Math.min(scrollPosition, Math.max(0, height - VIEWPORT_HEIGHT));
 }
-function rowTop(row: HTMLElement): number {
-	const rows = mountedRows();
-	const above = rows.slice(0, rows.indexOf(row)).reduce((sum, candidate) => sum + rowHeight(candidate), 0);
-	return spacerHeight("before") + above - clampedPosition();
+/** A mounted row's viewport top and height. */
+function rowBox(row: HTMLElement, current = layout()): {top: number; height: number} {
+	const box = current.boxes.get(row) ?? {top: 0, height: rowHeight(row)};
+	return {top: box.top - clampedPosition(current.height), height: box.height};
 }
-function isPainted(row: HTMLElement): boolean {
-	return rowTop(row) + rowHeight(row) > 0 && rowTop(row) < VIEWPORT_HEIGHT;
+/** Rows the browser would paint inside the viewport, with their viewport boxes. */
+function paintedBoxes(): Array<{row: HTMLElement; top: number; height: number}> {
+	const current = layout();
+	return current.rows
+		.map((row) => ({row, ...rowBox(row, current)}))
+		.filter(({top, height}) => top + height > 0 && top < VIEWPORT_HEIGHT);
 }
-/** Rows the browser would paint inside the viewport, with their viewport tops. */
 function paintedRows(): Array<{entry: string; top: number}> {
-	return mountedRows()
-		.filter(isPainted)
-		.map((row) => ({entry: row.dataset["transcriptEntryIndex"]!, top: rowTop(row)}));
+	return paintedBoxes().map(({row, top}) => ({entry: row.dataset["transcriptEntryIndex"]!, top}));
 }
 /** Viewport pixels showing a spacer rather than a row. */
 function blankPixels(): number {
-	const painted = mountedRows()
-		.map((row) => Math.min(VIEWPORT_HEIGHT, rowTop(row) + rowHeight(row)) - Math.max(0, rowTop(row)))
-		.filter((height) => height > 0);
+	const painted = paintedBoxes().map(({top, height}) => Math.min(VIEWPORT_HEIGHT, top + height) - Math.max(0, top));
 	return VIEWPORT_HEIGHT - painted.reduce((sum, height) => sum + height, 0);
 }
 
@@ -133,12 +160,10 @@ function chat(windowLines: SessionLine[]) {
 
 /** The painted rows, named by the message each draws rather than by its shifting window index. */
 function paintedMessages(): Array<{message: string; top: number}> {
-	return mountedRows()
-		.filter(isPainted)
-		.map((row) => ({
-			message: /Fabricated (?:long prompt|message \d+)/.exec(row.textContent ?? "")![0],
-			top: rowTop(row),
-		}));
+	return paintedBoxes().map(({row, top}) => ({
+		message: /Fabricated (?:long prompt|message \d+)/.exec(row.textContent ?? "")![0],
+		top,
+	}));
 }
 
 async function mountChat(windowLines = lines): Promise<HTMLElement> {
@@ -173,10 +198,14 @@ beforeEach(() => {
 	});
 	vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
 		if (this.matches("main")) return new DOMRect(0, 0, 800, VIEWPORT_HEIGHT);
-		if (this.matches("[data-testid=virtualized-transcript]"))
-			return new DOMRect(0, -clampedPosition(), 800, contentHeight());
-		if (this instanceof HTMLElement && this.dataset["transcriptEntryIndex"] !== undefined)
-			return new DOMRect(0, rowTop(this), 800, rowHeight(this));
+		if (this.matches("[data-testid=virtualized-transcript]")) {
+			const {height} = layout();
+			return new DOMRect(0, -clampedPosition(height), 800, height);
+		}
+		if (this instanceof HTMLElement && this.dataset["transcriptEntryIndex"] !== undefined) {
+			const {top, height} = rowBox(this);
+			return new DOMRect(0, top, 800, height);
+		}
 		return new DOMRect();
 	});
 });
@@ -200,7 +229,7 @@ it("keeps the painted rows in place when scrolling up mounts a row shorter than 
 	await scrollTo(main, main.scrollTop - 400);
 
 	const row = mountedRows().find((candidate) => candidate.dataset["transcriptEntryIndex"] === anchor!.entry)!;
-	expect({entry: anchor!.entry, top: rowTop(row)}).toStrictEqual({entry: anchor!.entry, top: anchor!.top + 400});
+	expect({entry: anchor!.entry, top: rowBox(row).top}).toStrictEqual({entry: anchor!.entry, top: anchor!.top + 400});
 });
 
 it("covers the viewport in the scroll's own commit when the mounted rows are shorter than their estimates", async () => {
