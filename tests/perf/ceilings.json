@@ -76,14 +76,18 @@
 		"tolerance": 0
 	},
 	"client.coldHome.default.fetches": {
-		"ceiling": 18,
+		"ceiling": 19,
 		"unit": "count",
-		"tolerance": 0
+		"tolerance": 0,
+		"reason": "The perf fixtures' cwd /repo encodes to their project id, so indexing now resolves the project path from the session's recorded cwd and the session composer mounts as it does on every real session: its slash-command, prompt-history and usage fetches, its chin and its re-renders on live events now count, and the home composer fetches slash commands for the latest project.",
+		"raisedAt": "2026-10-11"
 	},
 	"client.coldHome.default.responseBytes": {
-		"ceiling": 3536,
+		"ceiling": 4932,
 		"unit": "bytes",
-		"tolerance": 0
+		"tolerance": 0,
+		"reason": "The perf fixtures' cwd /repo encodes to their project id, so indexing now resolves the project path from the session's recorded cwd and the session composer mounts as it does on every real session: its slash-command, prompt-history and usage fetches, its chin and its re-renders on live events now count, and the home composer fetches slash commands for the latest project.",
+		"raisedAt": "2026-10-11"
 	},
 	"client.coldHome.localSections.commitsToRows": {
 		"ceiling": 5,
@@ -91,14 +95,18 @@
 		"tolerance": 0
 	},
 	"client.coldHome.localSections.fetches": {
-		"ceiling": 19,
+		"ceiling": 20,
 		"unit": "count",
-		"tolerance": 0
+		"tolerance": 0,
+		"reason": "The perf fixtures' cwd /repo encodes to their project id, so indexing now resolves the project path from the session's recorded cwd and the session composer mounts as it does on every real session: its slash-command, prompt-history and usage fetches, its chin and its re-renders on live events now count, and the home composer fetches slash commands for the latest project.",
+		"raisedAt": "2026-10-11"
 	},
 	"client.coldHome.localSections.responseBytes": {
-		"ceiling": 3717,
+		"ceiling": 5116,
 		"unit": "bytes",
-		"tolerance": 0
+		"tolerance": 0,
+		"reason": "The perf fixtures' cwd /repo encodes to their project id, so indexing now resolves the project path from the session's recorded cwd and the session composer mounts as it does on every real session: its slash-command, prompt-history and usage fetches, its chin and its re-renders on live events now count, and the home composer fetches slash commands for the latest project.",
+		"raisedAt": "2026-10-11"
 	},
 	"client.composer.home.slashMenu.claudeEventsConsumers": {
 		"ceiling": 1,
@@ -271,11 +279,11 @@
 		"tolerance": 0
 	},
 	"client.liveEvent.appendOpen.mutations": {
-		"ceiling": 5,
+		"ceiling": 12,
 		"unit": "count",
 		"tolerance": 0,
-		"reason": "Upstream's turn articles: an appended turn grows aria-setsize on every mounted article and moves the roving tabindex 0 from the previous last article to the new one",
-		"raisedAt": "2026-10-01"
+		"reason": "The perf fixtures' cwd /repo encodes to their project id, so indexing now resolves the project path from the session's recorded cwd and the session composer mounts as it does on every real session: its slash-command, prompt-history and usage fetches, its chin and its re-renders on live events now count, and the home composer fetches slash commands for the latest project.",
+		"raisedAt": "2026-10-11"
 	},
 	"client.liveEvent.appendOther.commits": {
 		"ceiling": 1,
@@ -313,9 +321,11 @@
 		"tolerance": 0
 	},
 	"client.liveEvent.reconnect.mutations": {
-		"ceiling": 0,
+		"ceiling": 3,
 		"unit": "count",
-		"tolerance": 0
+		"tolerance": 0,
+		"reason": "The perf fixtures' cwd /repo encodes to their project id, so indexing now resolves the project path from the session's recorded cwd and the session composer mounts as it does on every real session: its slash-command, prompt-history and usage fetches, its chin and its re-renders on live events now count, and the home composer fetches slash commands for the latest project.",
+		"raisedAt": "2026-10-11"
 	},
 	"client.liveEvent.sessionUpdated.commits": {
 		"ceiling": 0,
@@ -338,9 +348,11 @@
 		"tolerance": 0
 	},
 	"client.liveEvent.toolPending.commits": {
-		"ceiling": 1,
+		"ceiling": 2,
 		"unit": "count",
-		"tolerance": 0
+		"tolerance": 0,
+		"reason": "The perf fixtures' cwd /repo encodes to their project id, so indexing now resolves the project path from the session's recorded cwd and the session composer mounts as it does on every real session: its slash-command, prompt-history and usage fetches, its chin and its re-renders on live events now count, and the home composer fetches slash commands for the latest project.",
+		"raisedAt": "2026-10-11"
 	},
 	"client.liveEvent.toolPending.fetches": {
 		"ceiling": 0,
@@ -353,9 +365,11 @@
 		"tolerance": 0
 	},
 	"client.liveEvent.toolPending.mutations": {
-		"ceiling": 0,
+		"ceiling": 3,
 		"unit": "count",
-		"tolerance": 0
+		"tolerance": 0,
+		"reason": "The perf fixtures' cwd /repo encodes to their project id, so indexing now resolves the project path from the session's recorded cwd and the session composer mounts as it does on every real session: its slash-command, prompt-history and usage fetches, its chin and its re-renders on live events now count, and the home composer fetches slash commands for the latest project.",
+		"raisedAt": "2026-10-11"
 	},
 	"client.palette.open.commits": {
 		"ceiling": 7,
@@ -393,9 +407,11 @@
 		"tolerance": 0
 	},
 	"client.sessionOpen.small.commits.SessionChat": {
-		"ceiling": 5,
+		"ceiling": 6,
 		"unit": "count",
-		"tolerance": 0
+		"tolerance": 0,
+		"reason": "The perf fixtures' cwd /repo encodes to their project id, so indexing now resolves the project path from the session's recorded cwd and the session composer mounts as it does on every real session: its slash-command, prompt-history and usage fetches, its chin and its re-renders on live events now count, and the home composer fetches slash commands for the latest project.",
+		"raisedAt": "2026-10-11"
 	},
 	"client.sessionOpen.small.commits.SessionPage": {
 		"ceiling": 7,
@@ -403,9 +419,11 @@
 		"tolerance": 0
 	},
 	"client.sessionOpen.small.fetches": {
-		"ceiling": 9,
+		"ceiling": 12,
 		"unit": "count",
-		"tolerance": 0
+		"tolerance": 0,
+		"reason": "The perf fixtures' cwd /repo encodes to their project id, so indexing now resolves the project path from the session's recorded cwd and the session composer mounts as it does on every real session: its slash-command, prompt-history and usage fetches, its chin and its re-renders on live events now count, and the home composer fetches slash commands for the latest project.",
+		"raisedAt": "2026-10-11"
 	},
 	"client.sessionOpen.small.mountedRows": {
 		"ceiling": 4,
@@ -413,11 +431,11 @@
 		"tolerance": 0
 	},
 	"client.sessionOpen.small.mutations": {
-		"ceiling": 31,
+		"ceiling": 40,
 		"unit": "count",
 		"tolerance": 0,
-		"reason": "The sidebar roving tab stop follows the selected row, so opening a session moves tabindex 0 off one sidebar item and onto its row (2 attribute writes)",
-		"raisedAt": "2026-10-01"
+		"reason": "The perf fixtures' cwd /repo encodes to their project id, so indexing now resolves the project path from the session's recorded cwd and the session composer mounts as it does on every real session: its slash-command, prompt-history and usage fetches, its chin and its re-renders on live events now count, and the home composer fetches slash commands for the latest project.",
+		"raisedAt": "2026-10-11"
 	},
 	"client.sessionOpen.typical.commits": {
 		"ceiling": 12,
@@ -425,9 +443,11 @@
 		"tolerance": 0
 	},
 	"client.sessionOpen.typical.commits.SessionChat": {
-		"ceiling": 5,
+		"ceiling": 6,
 		"unit": "count",
-		"tolerance": 0
+		"tolerance": 0,
+		"reason": "The perf fixtures' cwd /repo encodes to their project id, so indexing now resolves the project path from the session's recorded cwd and the session composer mounts as it does on every real session: its slash-command, prompt-history and usage fetches, its chin and its re-renders on live events now count, and the home composer fetches slash commands for the latest project.",
+		"raisedAt": "2026-10-11"
 	},
 	"client.sessionOpen.typical.commits.SessionPage": {
 		"ceiling": 7,
@@ -435,9 +455,11 @@
 		"tolerance": 0
 	},
 	"client.sessionOpen.typical.fetches": {
-		"ceiling": 9,
+		"ceiling": 12,
 		"unit": "count",
-		"tolerance": 0
+		"tolerance": 0,
+		"reason": "The perf fixtures' cwd /repo encodes to their project id, so indexing now resolves the project path from the session's recorded cwd and the session composer mounts as it does on every real session: its slash-command, prompt-history and usage fetches, its chin and its re-renders on live events now count, and the home composer fetches slash commands for the latest project.",
+		"raisedAt": "2026-10-11"
 	},
 	"client.sessionOpen.typical.mountedRows": {
 		"ceiling": 4,
@@ -445,11 +467,11 @@
 		"tolerance": 0
 	},
 	"client.sessionOpen.typical.mutations": {
-		"ceiling": 31,
+		"ceiling": 40,
 		"unit": "count",
 		"tolerance": 0,
-		"reason": "The sidebar roving tab stop follows the selected row, so opening a session moves tabindex 0 off one sidebar item and onto its row (2 attribute writes)",
-		"raisedAt": "2026-10-01"
+		"reason": "The perf fixtures' cwd /repo encodes to their project id, so indexing now resolves the project path from the session's recorded cwd and the session composer mounts as it does on every real session: its slash-command, prompt-history and usage fetches, its chin and its re-renders on live events now count, and the home composer fetches slash commands for the latest project.",
+		"raisedAt": "2026-10-11"
 	},
 	"client.sessionSwitch.small.commits": {
 		"ceiling": 10,
@@ -467,9 +489,11 @@
 		"tolerance": 0
 	},
 	"client.sessionSwitch.small.fetches": {
-		"ceiling": 8,
+		"ceiling": 9,
 		"unit": "count",
-		"tolerance": 0
+		"tolerance": 0,
+		"reason": "The perf fixtures' cwd /repo encodes to their project id, so indexing now resolves the project path from the session's recorded cwd and the session composer mounts as it does on every real session: its slash-command, prompt-history and usage fetches, its chin and its re-renders on live events now count, and the home composer fetches slash commands for the latest project.",
+		"raisedAt": "2026-10-11"
 	},
 	"client.sessionSwitch.small.hoverPrefetch.fetches": {
 		"ceiling": 4,
@@ -482,11 +506,11 @@
 		"tolerance": 0
 	},
 	"client.sessionSwitch.small.mutations": {
-		"ceiling": 34,
+		"ceiling": 48,
 		"unit": "count",
 		"tolerance": 0,
-		"reason": "The sidebar roving tab stop follows the selected row, so opening a session moves tabindex 0 off one sidebar item and onto its row (2 attribute writes); the session view's data-perf-session anchor for field journey F5 is rewritten to the new id (1 attribute write)",
-		"raisedAt": "2026-10-01"
+		"reason": "The perf fixtures' cwd /repo encodes to their project id, so indexing now resolves the project path from the session's recorded cwd and the session composer mounts as it does on every real session: its slash-command, prompt-history and usage fetches, its chin and its re-renders on live events now count, and the home composer fetches slash commands for the latest project.",
+		"raisedAt": "2026-10-11"
 	},
 	"client.sessionSwitch.typical.commits": {
 		"ceiling": 10,
@@ -504,9 +528,11 @@
 		"tolerance": 0
 	},
 	"client.sessionSwitch.typical.fetches": {
-		"ceiling": 8,
+		"ceiling": 9,
 		"unit": "count",
-		"tolerance": 0
+		"tolerance": 0,
+		"reason": "The perf fixtures' cwd /repo encodes to their project id, so indexing now resolves the project path from the session's recorded cwd and the session composer mounts as it does on every real session: its slash-command, prompt-history and usage fetches, its chin and its re-renders on live events now count, and the home composer fetches slash commands for the latest project.",
+		"raisedAt": "2026-10-11"
 	},
 	"client.sessionSwitch.typical.hoverPrefetch.fetches": {
 		"ceiling": 4,
@@ -519,11 +545,11 @@
 		"tolerance": 0
 	},
 	"client.sessionSwitch.typical.mutations": {
-		"ceiling": 34,
+		"ceiling": 48,
 		"unit": "count",
 		"tolerance": 0,
-		"reason": "The sidebar roving tab stop follows the selected row, so opening a session moves tabindex 0 off one sidebar item and onto its row (2 attribute writes); the session view's data-perf-session anchor for field journey F5 is rewritten to the new id (1 attribute write)",
-		"raisedAt": "2026-10-01"
+		"reason": "The perf fixtures' cwd /repo encodes to their project id, so indexing now resolves the project path from the session's recorded cwd and the session composer mounts as it does on every real session: its slash-command, prompt-history and usage fetches, its chin and its re-renders on live events now count, and the home composer fetches slash commands for the latest project.",
+		"raisedAt": "2026-10-11"
 	},
 	"hot.claudeEventsReducer.replay-200.calls": {
 		"ceiling": 300,

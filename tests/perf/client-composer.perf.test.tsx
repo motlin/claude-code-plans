@@ -20,7 +20,6 @@ import {SettingsProvider} from "../../src/components/settings-provider";
 import {ThemeProvider} from "../../src/components/theme-provider";
 import {ToastProvider} from "../../src/components/toast";
 import type {AppDb} from "../../src/lib/db/connection";
-import {projects} from "../../src/lib/db/schema";
 import {FILE_MENTION_DEBOUNCE_MS} from "../../src/lib/file-mentions";
 import {ClaudeEventsProvider} from "../../src/hooks/use-claude-events";
 import {COMPOSER_DRAFT_DEBOUNCE_MS} from "../../src/hooks/use-composer-draft";
@@ -165,9 +164,6 @@ beforeAll(async () => {
 	copyFileSync(cached, file);
 	utimesSync(file, FIXTURE_MTIME, FIXTURE_MTIME);
 	[sessionId] = (await seedFixtureDb(db, [file])) as [string];
-	// The composer renders only for a session with a project directory, which indexing resolves from disk; pin it to
-	// the transcript's cwd instead of creating that directory.
-	db.index.update(projects).set({projectPath: FIXTURE_CWD}).run();
 
 	fixtures = {
 		...STATIC_FIXTURES,

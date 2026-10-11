@@ -324,6 +324,9 @@ function SessionView({
 	requestedPane,
 	onRequestedPaneHandled,
 }: SessionViewProps) {
+	// The project path can fail to resolve from its lossy directory name (e.g. a
+	// dotted folder), so the session's recorded cwd stands in for it.
+	const sessionDirectory = data.projectPath ?? data.cwd;
 	const scrollAnchorRef = useRef<HTMLDivElement>(null);
 	const tileScrollPosition = useRef<SessionTileScrollPosition | null>(null);
 	const locationHash = useLocation({select: (location) => location.hash});
@@ -379,7 +382,7 @@ function SessionView({
 	);
 	useRegisterFilesPane({
 		sessionId,
-		cwd: data.projectPath ?? undefined,
+		cwd: sessionDirectory ?? undefined,
 		windowFiles,
 		windowStartIndex: transcript.startIndex,
 		jumpTargetWindow,
@@ -458,12 +461,12 @@ function SessionView({
 		[hookContext?.permissionMode, transcript.records, composerServerState],
 	);
 	const {data: slashCommands} = useQuery({
-		...slashCommandsQueryOptions(data?.projectPath ?? undefined),
-		enabled: Boolean(data?.projectPath),
+		...slashCommandsQueryOptions(sessionDirectory ?? undefined),
+		enabled: Boolean(sessionDirectory),
 	});
 	const {data: promptHistory} = useQuery({
 		...promptHistoryQueryOptions(sessionId),
-		enabled: Boolean(data?.projectPath),
+		enabled: Boolean(sessionDirectory),
 	});
 	const [generating, setGenerating] = useState(false);
 	const summaryMutation = useRequestSummary(sessionId);
@@ -651,7 +654,7 @@ function SessionView({
 		setAiSummary(data.summary ?? null);
 	}, [sessionId, data.summary]);
 
-	const sessionCommands = createSessionCommands(sessionId, data.projectPath);
+	const sessionCommands = createSessionCommands(sessionId, sessionDirectory);
 
 	async function handleGenerateSummary() {
 		setGenerating(true);
@@ -757,7 +760,7 @@ function SessionView({
 								data-session-footer
 								className="sticky bottom-0 z-10 shrink-0 pb-[var(--session-dock-bottom,max(env(safe-area-inset-bottom),9px))] bg-page dark:bg-surface-2 before:pointer-events-none before:absolute before:inset-x-0 before:bottom-full before:h-8 before:bg-linear-to-b before:from-transparent before:to-page dark:before:to-surface-2"
 							>
-								<div className={!chromeHidden && data.projectPath ? "pt-2" : ""}>
+								<div className={!chromeHidden && sessionDirectory ? "pt-2" : ""}>
 									<SessionDock anchorRef={scrollAnchorRef}>
 										{dockedQuestion && (
 											<ApprovalDock
@@ -778,7 +781,7 @@ function SessionView({
 											/>
 										)}
 										{!chromeHidden &&
-											data.projectPath &&
+											sessionDirectory &&
 											(data.pr !== undefined || data.prStatus !== undefined) && (
 												<BranchStrip
 													sessionId={sessionId}
@@ -786,9 +789,9 @@ function SessionView({
 													statusline={statusline}
 												/>
 											)}
-										{!chromeHidden && data.projectPath && <UsagePaceBanner />}
+										{!chromeHidden && sessionDirectory && <UsagePaceBanner />}
 										{!chromeHidden &&
-											data.projectPath &&
+											sessionDirectory &&
 											data.pr === undefined &&
 											data.prStatus === undefined && (
 												<BranchStrip
@@ -802,7 +805,7 @@ function SessionView({
 											state: sessionSummaryState,
 											hasDockedCard: dockedQuestion !== null || pendingPermission !== null,
 										}) && <WaitingForInputNotice />}
-										{!chromeHidden && data.projectPath && (
+										{!chromeHidden && sessionDirectory && (
 											<Composer
 												variant="session"
 												draftKey={sessionId}
@@ -862,7 +865,7 @@ function SessionView({
 							<TranscriptHistoryLoader sessionId={sessionId} startIndex={transcript.startIndex} />
 							<SessionFileRefs
 								sessionId={sessionId}
-								cwd={data.projectPath ?? undefined}
+								cwd={sessionDirectory ?? undefined}
 								sessionFiles={resources?.files ?? windowFiles}
 							>
 								<SessionSubagentOpener sessionId={sessionId}>

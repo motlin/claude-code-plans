@@ -25,7 +25,7 @@ import {ToastProvider} from "../../src/components/toast";
 import {ClaudeEventsProvider} from "../../src/hooks/use-claude-events";
 import {useCommandPalette} from "../../src/hooks/use-command-palette";
 import type {AppDb} from "../../src/lib/db/connection";
-import {projects, sessions} from "../../src/lib/db/schema";
+import {sessions} from "../../src/lib/db/schema";
 import {Route as RootRoute} from "../../src/routes/__root";
 import {Route as HomeRoute} from "../../src/routes/index";
 import {generateTranscript, PERF_SHAPES, seedFixtureDb} from "./fixtures/generate-transcript";
@@ -127,7 +127,6 @@ beforeAll(async () => {
 	copyFileSync(cached, file);
 	utimesSync(file, FIXTURE_MTIME, FIXTURE_MTIME);
 	const [sessionId] = (await seedFixtureDb(db, [file])) as [string];
-	db.index.update(projects).set({projectPath: FIXTURE_CWD}).run();
 	db.index.update(sessions).set({summary: MATCHING_SUMMARY}).where(eq(sessions.id, sessionId)).run();
 
 	fixtures = {...STATIC_FIXTURES};

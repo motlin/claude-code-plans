@@ -60,6 +60,8 @@ vi.mock(import("node:os"), async (importOriginal) => {
 const CASES = ["default", "localSections"] as const;
 
 const PROJECT = "-repo";
+/** The cwd every generated transcript record carries. */
+const FIXTURE_CWD = "/repo";
 const FIXED_NOW = Date.parse("2026-09-30T12:00:00.000Z");
 const FIXTURE_MTIME = new Date(FIXED_NOW - 24 * 60 * 60 * 1000);
 const PLAN_FILENAME = "speed-up-the-index-rebuild.md";
@@ -84,6 +86,7 @@ const ENDPOINTS: Array<{path: string; module: string; params?: Record<string, st
 	{path: "/api/application-settings", module: "../../src/routes/api/application-settings"},
 	{path: "/api/prompt-history", module: "../../src/routes/api/prompt-history"},
 	{path: "/api/commands", module: "../../src/routes/api/commands"},
+	{path: `/api/commands?cwd=${encodeURIComponent(FIXTURE_CWD)}`, module: "../../src/routes/api/commands"},
 	{path: "/api/composer-defaults", module: "../../src/routes/api/composer-defaults"},
 	{path: "/api/home/dismissals", module: "../../src/routes/api/home.dismissals"},
 	{path: "/api/home-stats", module: "../../src/routes/api/home-stats"},

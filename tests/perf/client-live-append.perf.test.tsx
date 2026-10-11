@@ -85,6 +85,8 @@ const OTHER_SHAPE = "small";
 const MULTI_SEEDS = [2, 3, 4] as const;
 
 const PROJECT = "-repo";
+/** The cwd every generated transcript record carries. */
+const FIXTURE_CWD = "/repo";
 const FIXED_NOW = Date.parse("2026-09-30T12:00:00.000Z");
 const FIXTURE_MTIME = new Date(FIXED_NOW - 24 * 60 * 60 * 1000);
 const ROW_HEIGHT = ESTIMATED_TURN_HEIGHT_PIXELS;
@@ -104,6 +106,14 @@ function sessionEndpoints(id: string): Array<{path: string; module: string; para
 			module: "../../src/routes/api/sessions.$id.composer-state",
 			params: {id},
 		},
+		// The session composer: slash commands for the transcript's cwd, this session's prompt history, and usage.
+		{
+			path: `/api/commands?cwd=${encodeURIComponent(FIXTURE_CWD)}`,
+			module: "../../src/routes/api/commands",
+			params: {},
+		},
+		{path: `/api/prompt-history?sessionId=${id}`, module: "../../src/routes/api/prompt-history", params: {}},
+		{path: "/api/usage", module: "../../src/routes/api/usage", params: {}},
 	];
 }
 

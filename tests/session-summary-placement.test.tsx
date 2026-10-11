@@ -355,8 +355,8 @@ describe("SessionPage dock composition", () => {
 		});
 		expect(dockContents()).toStrictEqual(order);
 	});
-	it("suppresses PR, usage, and composer when the session has no project path", async () => {
-		await renderSessionPage({...detail, pr, projectPath: null}, [], seedUsage);
+	it("suppresses PR, usage, and composer when the session has neither a project path nor a cwd", async () => {
+		await renderSessionPage({...detail, pr, projectPath: null, cwd: null}, [], seedUsage);
 		expect(dockContents()).toStrictEqual([]);
 	});
 	it("hides and restores the PR dock with session chrome", async () => {

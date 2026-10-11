@@ -994,6 +994,23 @@ describe("indexer", () => {
 		expect(sessions.length).toBe(2);
 	});
 
+	it("resolves a dotted project directory from the session's anchored cwd", async () => {
+		const sourceProjectPath = join(testDir, "source", "factorio.school");
+		const project = encodeProjectPath(sourceProjectPath);
+		const projectDir = join(testDir, project);
+		const sessionPath = join(projectDir, "session-dotted.jsonl");
+		mkdirSync(sourceProjectPath, {recursive: true});
+		mkdirSync(projectDir, {recursive: true});
+		writeFileSync(
+			sessionPath,
+			jsonl({type: "user", cwd: sourceProjectPath, message: {content: "Fix the search breakage"}}),
+		);
+
+		await indexJsonlFile(db.index, sessionPath, project);
+
+		expect(getSessionProjectPath(db.index, "session-dotted")).toBe(sourceProjectPath);
+	});
+
 	it("preserves a resolved project name after its directory is deleted", async () => {
 		const sourceProjectPath = join(testDir, "source", "my-project");
 		const project = encodeProjectPath(sourceProjectPath);

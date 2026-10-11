@@ -865,7 +865,9 @@ async function persistSessionIndexState(
 
 	const existingSession = db.select().from(schema.sessions).where(eq(schema.sessions.id, sessionId)).get();
 	const firstPrompt = state.firstPrompt.result();
-	const projectPath = await resolveProjectPath(project);
+	// The directory encoding is lossy (dots become dashes), so a recorded cwd that
+	// encodes to this project is the exact path; probing the filesystem is a fallback.
+	const projectPath = state.anchoredSessionCwd ?? (await resolveProjectPath(project));
 
 	persistProject(db, project, projectPath, fileStat.mtimeMs);
 	if (existingSession) {
