@@ -1,9 +1,15 @@
-import {Search} from "lucide-react";
-import {useEffect, useState} from "react";
+import {ChevronDown, Plus, Search} from "lucide-react";
+import {useEffect, useState, type CSSProperties} from "react";
 import {DEFAULT_VISIBLE_NAV_SECTIONS} from "../lib/nav-sections";
+import {DEFAULT_SIDEBAR_STATE} from "../lib/sidebar-store";
 import {getVisibleNavItems, navItems} from "./sidebar/navigation";
+import {SidebarToggleIcon} from "./sidebar/primitives";
+import {ROW_CLASS as SESSION_ROW_CLASS} from "./sidebar/session-group-section";
 
-const CONTENT_PLACEHOLDER_WIDTHS = ["w-1/3", "w-full", "w-5/6", "w-2/3", "w-3/4", "w-1/2"];
+const NAV_ROW_CLASS = "df-nav-row h-[var(--sb-row-h)] rounded-[var(--sb-radius)] flex-1";
+const BAR_CLASS = "animate-pulse rounded bg-fill-ghost-hover";
+const SESSION_ROW_WIDTHS = ["w-3/4", "w-2/3", "w-5/6", "w-1/2", "w-3/5", "w-4/5", "w-2/3", "w-1/2"];
+const TRANSCRIPT_BAR_WIDTHS = ["w-1/3", "w-full", "w-5/6", "w-2/3", "w-3/4", "w-1/2"];
 
 /**
  * Static app frame painted from the server response.
@@ -11,9 +17,11 @@ const CONTENT_PLACEHOLDER_WIDTHS = ["w-1/3", "w-full", "w-5/6", "w-2/3", "w-3/4"
  * The root route sets `ssr: false`, so no route renders any HTML on the server
  * and the client cannot paint until the bundle downloads, parses and hydrates.
  * This component lives in `shellComponent`, which does render on the server, so
- * a hard load shows the sidebar, header and a content skeleton immediately
- * instead of a blank white frame. It removes itself on hydration, at which
- * point the real `RootLayout` is already mounted underneath it.
+ * a hard load paints the current shell's layout immediately instead of a blank
+ * white frame: the sidebar's titlebar, New row, nav and session list, and the
+ * chat column with its composer, with skeleton bars where data will go. It
+ * removes itself on hydration, at which point the real `RootLayout` is already
+ * mounted underneath it.
  */
 export function AppShellFallback() {
 	const [hydrated, setHydrated] = useState(false);
@@ -28,58 +36,93 @@ export function AppShellFallback() {
 		<div id="app-shell-fallback" data-testid="app-shell-fallback" aria-hidden="true" className="flex h-screen">
 			<div
 				aria-label="Sidebar"
-				className="relative hidden h-full w-[288px] shrink-0 flex-col border-r-[0.5px] border-border bg-surface-0 md:flex"
+				style={{"--sidebar-width": `${DEFAULT_SIDEBAR_STATE.width}px`} as CSSProperties}
+				className="relative hidden h-full w-[var(--sidebar-width)] shrink-0 flex-col border-r-[0.5px] border-border bg-[var(--sb-bg)] md:flex"
 			>
-				<div className="flex items-center justify-between px-4 pt-3 pb-3">
-					<span className="flex items-center gap-2.5 text-base font-bold text-primary">
-						<span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[#C87B3A]">
-							<svg viewBox="0 0 32 32" className="h-4 w-4">
-								<path
-									d="M16 5L17.5 13.5L26 16L17.5 18.5L16 27L14.5 18.5L6 16L14.5 13.5Z"
-									fill="white"
-									opacity="0.95"
-								/>
-							</svg>
+				<div className="flex h-11 shrink-0 items-center px-2">
+					<div className="flex w-8 shrink-0 justify-center self-start pt-3">
+						<span className="flex size-6 items-center justify-center text-secondary opacity-70 [&_svg]:size-4">
+							<SidebarToggleIcon />
 						</span>
+					</div>
+					<span className="ml-1.5 font-voice text-[20px] leading-none font-medium whitespace-nowrap text-primary">
 						Claude Code Browser
 					</span>
 				</div>
+				<div className="h-2 shrink-0" />
 
-				<div className="px-4 pb-2">
-					<div className="relative">
-						<Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-t6" />
-						<div className="w-full rounded-md border border-subtle bg-surface-2/50 py-1.5 pl-7 pr-2 text-xs text-t6">
-							Search...
+				<div className="flex min-h-0 flex-1 flex-col overflow-hidden px-2">
+					<div className="shrink-0">
+						<div className="flex items-center">
+							<span className={NAV_ROW_CLASS}>
+								<span className="df-leading-slot [--sb-icon:16px]">
+									<span className="df-new-icon-circle">
+										<Plus aria-hidden="true" />
+									</span>
+								</span>
+								<span className="min-w-0 flex-1 truncate">New</span>
+							</span>
 						</div>
+						{getVisibleNavItems(navItems, DEFAULT_VISIBLE_NAV_SECTIONS).pinned.map((item) => {
+							const Icon = item.icon;
+							return (
+								<span key={item.to} className={NAV_ROW_CLASS}>
+									<span className="df-leading-slot">
+										<Icon aria-hidden="true" />
+									</span>
+									<span className="min-w-0 flex-1 truncate">{item.label}</span>
+								</span>
+							);
+						})}
+						<div className="flex items-center">
+							<span className={NAV_ROW_CLASS}>
+								<span className="df-leading-slot">
+									<ChevronDown aria-hidden="true" className="opacity-50" />
+								</span>
+								<span className="min-w-0 flex-1 truncate text-ink-muted">More</span>
+							</span>
+						</div>
+						<div className="h-[13px] shrink-0" />
 					</div>
+
+					<div className={SESSION_ROW_CLASS}>
+						<span className={`h-3 w-16 ${BAR_CLASS}`} />
+					</div>
+					{SESSION_ROW_WIDTHS.map((width, index) => (
+						<div key={index} data-fallback-session-row="" className={SESSION_ROW_CLASS}>
+							<span className={`h-3.5 ${width} ${BAR_CLASS}`} />
+						</div>
+					))}
 				</div>
 
-				<div className="flex-1 px-2">
-					{getVisibleNavItems(navItems, DEFAULT_VISIBLE_NAV_SECTIONS).pinned.map((item) => {
-						const Icon = item.icon;
-						return (
-							<div key={item.to} className="flex items-center">
-								<span className="h-8 w-6 shrink-0" />
-								<span
-									className="mb-0.5 flex h-8 flex-1 items-center gap-2 rounded-r5 px-2 py-1.5 text-xs text-secondary"
-									style={{fontWeight: 430, lineHeight: "16px"}}
-								>
-									<Icon className="h-4 w-4 shrink-0" />
-									<span className="flex-1 truncate">{item.label}</span>
-								</span>
-							</div>
-						);
-					})}
+				<div
+					data-testid="sidebar-footer"
+					className="flex h-12 shrink-0 items-center justify-between gap-2 border-t-[0.5px] border-border p-2"
+				>
+					<span className="flex h-8 min-w-0 items-center gap-2 px-1">
+						<span className={`size-6 rounded-full ${BAR_CLASS}`} />
+						<span className={`h-3 w-24 ${BAR_CLASS}`} />
+					</span>
+					<span className="flex h-8 w-8 items-center justify-center text-secondary">
+						<Search className="h-4 w-4" aria-hidden="true" />
+					</span>
 				</div>
 			</div>
 
-			<div className="flex-1 bg-surface-2">
-				<div className="min-h-9 px-4 pt-3 sm:px-8" />
-				<div className="px-4 pb-24 sm:px-8 sm:pb-8">
-					<div className="animate-pulse space-y-4 pt-4">
-						{CONTENT_PLACEHOLDER_WIDTHS.map((width) => (
-							<div key={width} className={`h-5 rounded bg-fill-ghost-hover ${width}`} />
+			<div className="flex min-w-0 flex-1 flex-col bg-surface-2">
+				<div className="flex h-11 shrink-0 items-center px-4">
+					<span className={`h-4 w-48 ${BAR_CLASS}`} />
+				</div>
+				<div className="min-h-0 flex-1 overflow-hidden">
+					<div className="chat-column space-y-4 pt-6">
+						{TRANSCRIPT_BAR_WIDTHS.map((width) => (
+							<div key={width} className={`h-5 ${width} ${BAR_CLASS}`} />
 						))}
+					</div>
+				</div>
+				<div className="chat-column shrink-0 pb-4">
+					<div data-cds="ChatComposer" className="flex w-full min-w-0 flex-col font-sans">
+						<div className="min-h-[88px] rounded-card bg-surface-3 p-2 shadow-[var(--composer-shadow-idle)]" />
 					</div>
 				</div>
 			</div>

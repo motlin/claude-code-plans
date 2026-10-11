@@ -5,6 +5,8 @@ import {renderToStaticMarkup} from "react-dom/server";
 import {render} from "@testing-library/react";
 import {describe, expect, it, vi} from "vite-plus/test";
 import {AppShellFallback} from "../src/components/app-shell-fallback";
+import {getVisibleNavItems, navItems} from "../src/components/sidebar/navigation";
+import {DEFAULT_VISIBLE_NAV_SECTIONS} from "../src/lib/nav-sections";
 import {Route} from "../src/routes/__root";
 
 vi.mock("@tanstack/react-router", async (importOriginal) => {
@@ -88,5 +90,33 @@ describe("AppShellFallback", () => {
 		const {container} = render(<AppShellFallback />);
 
 		expect(container.innerHTML).toStrictEqual("");
+	});
+
+	it("paints the current shell's layout: serif wordmark, New row, nav and More, a session list, footer and composer", () => {
+		const host = document.createElement("div");
+		host.innerHTML = renderToStaticMarkup(<AppShellFallback />);
+		const sidebar = host.querySelector('[aria-label="Sidebar"]')!;
+		const rows = Array.from(sidebar.querySelectorAll(".df-nav-row"), (row) => row.textContent);
+		const pinned = getVisibleNavItems(navItems, DEFAULT_VISIBLE_NAV_SECTIONS).pinned.map((item) => item.label);
+
+		expect({
+			wordmark: sidebar.querySelector(".font-voice")?.textContent,
+			oldLogo: host.innerHTML.includes("#C87B3A"),
+			oldSearchBox: host.textContent?.includes("Search...") ?? false,
+			rows,
+			sessionRows: sidebar.querySelectorAll("[data-fallback-session-row]").length,
+			footer: sidebar.querySelector('[data-testid="sidebar-footer"]') !== null,
+			composer: host.querySelector('[data-cds="ChatComposer"]') !== null,
+			column: host.querySelector(".chat-column") !== null,
+		}).toStrictEqual({
+			wordmark: "Claude Code Browser",
+			oldLogo: false,
+			oldSearchBox: false,
+			rows: ["New", ...pinned, "More"],
+			sessionRows: 8,
+			footer: true,
+			composer: true,
+			column: true,
+		});
 	});
 });
