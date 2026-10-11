@@ -41,6 +41,7 @@ import {TranscriptHistoryLoader, TranscriptTopFade} from "./transcript-history-l
 import {Tooltip} from "./ui/tooltip";
 import {SessionPaneControls} from "./view-options-menu";
 import {SessionDock} from "./session-dock";
+import {WaitingForInputNotice, showsWaitingForInputNotice} from "./approval-card";
 import {UsagePaceBanner} from "./usage-pace-banner";
 import {useWorkingMarkerState, WorkingMarker} from "./working-marker";
 import {handleBtwPrompt, SideChat, useSideChatShortcut} from "./side-chat";
@@ -416,9 +417,10 @@ function SessionView({
 		() => isAwaitingPermission({sessionId, notifications: notifications ?? [], records: transcript.records}),
 		[sessionId, notifications, transcript.records],
 	);
+	const sessionSummaryState = useSessionSummaryState(sessionId);
 	const workingMarkerState = useWorkingMarkerState({
 		records: transcript.records,
-		sessionState: useSessionSummaryState(sessionId),
+		sessionState: sessionSummaryState,
 		isActive,
 		pendingToolName: pendingTools.get(sessionId)?.toolName,
 		interruptedAt: lastInterrupt?.sessionId === sessionId ? lastInterrupt.at : null,
@@ -766,6 +768,10 @@ function SessionView({
 												onDismiss={() => setDismissedToolUseId(dockedQuestion.toolUseId)}
 											/>
 										)}
+										{showsWaitingForInputNotice({
+											state: sessionSummaryState,
+											hasDockedCard: dockedQuestion !== null || pendingPermission !== null,
+										}) && <WaitingForInputNotice />}
 										{pendingPermission && (
 											<PermissionCard
 												key={pendingPermission.notificationId}

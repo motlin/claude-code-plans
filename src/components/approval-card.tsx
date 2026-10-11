@@ -1,4 +1,5 @@
 import type {ButtonHTMLAttributes, ReactNode} from "react";
+import type {SessionSummaryState} from "../lib/session-state";
 
 const ACTION_BUTTON =
 	"inline-flex h-6 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-r5 px-2 text-[13px]/[19px] whitespace-nowrap select-none disabled:cursor-not-allowed disabled:opacity-50 [&_kbd]:text-[11px] @max-[500px]/approval-dock:w-full";
@@ -65,6 +66,46 @@ export function ApprovalCardShell({
 					{actions}
 				</div>
 			</div>
+		</div>
+	);
+}
+
+/**
+ * Whether the dock shows the waiting notice: the session waits on input (from
+ * the CLI registry or hooks) but no question or permission card can dock. The
+ * CLI writes a pending AskUserQuestion to the transcript only once answered, so
+ * upstream's docked question card has nothing local to render from.
+ */
+export function showsWaitingForInputNotice({
+	state,
+	hasDockedCard,
+}: {
+	state: SessionSummaryState | null;
+	hasDockedCard: boolean;
+}): boolean {
+	return state === "waiting" && !hasDockedCard;
+}
+
+/**
+ * Stands where upstream docks the pending question card, above the composer:
+ * the awaiting dot and a plain line, with no options to pick, since the
+ * question itself is not on disk yet.
+ */
+export function WaitingForInputNotice() {
+	return (
+		<div
+			role="status"
+			aria-label="Waiting for your input"
+			data-waiting-input-notice
+			className="flex items-start gap-2 rounded-r7 bg-surface-popover p-3 text-[13px]/[19px] text-primary shadow-[var(--approval-card-shadow)]"
+		>
+			<span aria-hidden="true" className="flex h-[19px] shrink-0 items-center">
+				<span className="status-dot" data-kind="awaiting" />
+			</span>
+			<span className="flex min-w-0 flex-col">
+				<span className="font-bold">Waiting for your input</span>
+				<span className="text-footnote text-secondary">Answer in the terminal running this session.</span>
+			</span>
 		</div>
 	);
 }
