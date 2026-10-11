@@ -1,10 +1,10 @@
-import {Check, Copy, GitFork, Pin, RotateCcw, Volume2} from "lucide-react";
+import {Check, Copy, GitFork, Pause, Pin, RotateCcw, Volume2} from "lucide-react";
 import {createContext, type FocusEvent, type ReactNode, useContext, useEffect, useRef, useState} from "react";
 
 import {useChapters} from "../lib/chapter-store";
 import {writeClipboardText} from "../lib/clipboard";
 import {messageHeading} from "../lib/transcript-action-targets";
-import {useReadAloud} from "../hooks/use-read-aloud";
+import {type ReadAloudStatus, useReadAloud} from "../hooks/use-read-aloud";
 import {formatRelativeTimestamp, formatTimestamp} from "../lib/timestamp-format";
 import {type TranscriptMessageRef, TranscriptActionsContext} from "./transcript-context-menu";
 import {Tooltip} from "./ui/tooltip";
@@ -65,6 +65,7 @@ function ActionButton({
 	description,
 	onClick,
 	pressed,
+	readAloud,
 	children,
 }: {
 	label: string;
@@ -72,6 +73,8 @@ function ActionButton({
 	description?: string;
 	onClick: (() => void) | undefined;
 	pressed?: boolean;
+	/** Marks the Read aloud control, whose label changes with its state. */
+	readAloud?: boolean;
 	children: ReactNode;
 }) {
 	return (
@@ -80,6 +83,7 @@ function ActionButton({
 				type="button"
 				aria-label={label}
 				{...(pressed === undefined ? {} : {"aria-pressed": pressed})}
+				{...(readAloud ? {"data-read-aloud": ""} : {})}
 				tabIndex={useTabIndex()}
 				disabled={onClick === undefined}
 				onClick={onClick}
@@ -168,12 +172,21 @@ function RewindAction({message}: {message: TranscriptMessageRef | undefined}) {
 	);
 }
 
-/** Read aloud with the browser's speech service; pressing again stops. */
+const READ_ALOUD_LABELS: Record<ReadAloudStatus, string> = {idle: "Read aloud", playing: "Pause", paused: "Resume"};
+
+/**
+ * Read aloud with the browser's speech service. Like upstream, a press starts,
+ * pauses or resumes, and the label and icon say what the next press does.
+ */
 function ReadAloudAction({text}: {text: string}) {
-	const {speaking, toggle} = useReadAloud(text);
+	const {status, toggle} = useReadAloud(text);
 	return (
-		<ActionButton label="Read aloud" pressed={speaking} onClick={toggle}>
-			<Volume2 aria-hidden="true" className={ICON_CLASS} />
+		<ActionButton label={READ_ALOUD_LABELS[status]} onClick={toggle} readAloud>
+			{status === "playing" ? (
+				<Pause aria-hidden="true" data-icon="pause" className={ICON_CLASS} />
+			) : (
+				<Volume2 aria-hidden="true" data-icon="speaker" className={ICON_CLASS} />
+			)}
 		</ActionButton>
 	);
 }

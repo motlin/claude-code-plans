@@ -154,51 +154,97 @@ describe("AssistantMessageActions", () => {
 		expect(vi.mocked(writeClipboardText).mock.calls).toStrictEqual([["Hello **world**"]]);
 	});
 
-	it("reads the message aloud as plain text, and stops when pressed again", () => {
-		const speak = vi.fn();
-		const cancel = vi.fn();
-		const speechState = {speaking: false};
-		vi.stubGlobal("speechSynthesis", {
-			speak: (utterance: {text: string}) => {
-				speechState.speaking = true;
-				speak(utterance.text);
-			},
-			cancel,
-			get speaking() {
-				return speechState.speaking;
-			},
-		});
-		vi.stubGlobal(
-			"SpeechSynthesisUtterance",
-			class {
-				text: string;
-				onend: (() => void) | null = null;
-				constructor(text: string) {
-					this.text = text;
-				}
-			},
-		);
+	it("reads the message aloud as plain text, pausing and resuming on later presses, with no aria-pressed", () => {
+		const speech = stubSpeech();
 		const {container} = render(
 			<AssistantMessageActions message={MESSAGE} text="Hello **world**" timestamp={TIMESTAMP} details={[]} />,
 		);
+		const states = [readAloudState(container)];
+		const press = () => {
+			fireEvent.click(bar(container).querySelector<HTMLButtonElement>("[data-read-aloud]")!);
+			states.push(readAloudState(container));
+		};
 
-		fireEvent.click(button(container, "Read aloud"));
-		const pressedWhileSpeaking = button(container, "Read aloud").getAttribute("aria-pressed");
-		fireEvent.click(button(container, "Read aloud"));
+		press();
+		press();
+		press();
+		act(() => speech.finish());
+		states.push(readAloudState(container));
 
-		expect({
-			spoken: speak.mock.calls,
-			pressedWhileSpeaking,
-			cancelled: cancel.mock.calls.length > 0,
-			pressedAfter: button(container, "Read aloud").getAttribute("aria-pressed"),
-		}).toStrictEqual({
-			spoken: [["Hello world"]],
-			pressedWhileSpeaking: "true",
-			cancelled: true,
-			pressedAfter: "false",
+		expect({spoken: speech.spoken, calls: speech.calls, states}).toStrictEqual({
+			spoken: ["Hello world"],
+			calls: ["cancel", "speak", "pause", "resume"],
+			states: [
+				{label: "Read aloud", icon: "speaker", pressed: null},
+				{label: "Pause", icon: "pause", pressed: null},
+				{label: "Resume", icon: "speaker", pressed: null},
+				{label: "Pause", icon: "pause", pressed: null},
+				{label: "Read aloud", icon: "speaker", pressed: null},
+			],
 		});
 	});
 });
+
+interface StubUtterance {
+	text: string;
+	onstart: (() => void) | null;
+	onend: (() => void) | null;
+	onerror: (() => void) | null;
+}
+
+/** A fake speech service recording what it was asked to do; `finish` ends every queued utterance in order. */
+function stubSpeech() {
+	const queue: StubUtterance[] = [];
+	const record = {spoken: [] as string[], calls: [] as string[]};
+	vi.stubGlobal("speechSynthesis", {
+		speak: (utterance: StubUtterance) => {
+			record.calls.push("speak");
+			record.spoken.push(utterance.text);
+			queue.push(utterance);
+		},
+		pause: () => record.calls.push("pause"),
+		resume: () => record.calls.push("resume"),
+		cancel: () => {
+			record.calls.push("cancel");
+			queue.splice(0).forEach((utterance) => utterance.onerror?.());
+		},
+		getVoices: () => [],
+		addEventListener: () => {},
+		removeEventListener: () => {},
+	});
+	vi.stubGlobal(
+		"SpeechSynthesisUtterance",
+		class implements StubUtterance {
+			text: string;
+			onstart: (() => void) | null = null;
+			onend: (() => void) | null = null;
+			onerror: (() => void) | null = null;
+			constructor(text: string) {
+				this.text = text;
+			}
+		},
+	);
+	return {
+		...record,
+		start: () => queue[0]?.onstart?.(),
+		finish: () => {
+			while (queue.length > 0) {
+				const utterance = queue.shift()!;
+				utterance.onstart?.();
+				utterance.onend?.();
+			}
+		},
+	};
+}
+
+function readAloudState(container: HTMLElement) {
+	const control = bar(container).querySelector<HTMLButtonElement>("[data-read-aloud]")!;
+	return {
+		label: control.getAttribute("aria-label"),
+		icon: control.querySelector("[data-icon]")?.getAttribute("data-icon") ?? null,
+		pressed: control.getAttribute("aria-pressed"),
+	};
+}
 
 describe("UserMessageActions", () => {
 	it("puts the time first, then Copy, Rewind to here and Fork from here, right-aligned", () => {

@@ -1,6 +1,9 @@
 import {useEffect, useRef, useState, useSyncExternalStore} from "react";
 import {markdownToPlainText} from "../lib/markdown-plain-text";
 
+/** Upstream's read-aloud states: a press starts, pauses or resumes. */
+export type ReadAloudStatus = "idle" | "playing" | "paused";
+
 function subscribeNever(): () => void {
 	return () => {};
 }
@@ -12,29 +15,35 @@ function hasSpeechSynthesis(): boolean {
 /** The mounted record or footer owns speech, not its temporary menu portal. */
 export function useReadAloud(text: string) {
 	const supported = useSyncExternalStore(subscribeNever, hasSpeechSynthesis, () => false);
-	const [speaking, setSpeaking] = useState(false);
-	const speakingRef = useRef(false);
+	const [status, setStatus] = useState<ReadAloudStatus>("idle");
+	const statusRef = useRef<ReadAloudStatus>("idle");
 	useEffect(
 		() => () => {
-			if (speakingRef.current) speechSynthesis.cancel();
+			if (statusRef.current !== "idle") speechSynthesis.cancel();
 		},
 		[],
 	);
-	const settle = (value: boolean) => {
-		speakingRef.current = value;
-		setSpeaking(value);
+	const settle = (value: ReadAloudStatus) => {
+		statusRef.current = value;
+		setStatus(value);
 	};
 	const toggle = () => {
-		speechSynthesis.cancel();
-		if (speaking) {
-			settle(false);
+		if (status === "playing") {
+			speechSynthesis.pause();
+			settle("paused");
 			return;
 		}
+		if (status === "paused") {
+			speechSynthesis.resume();
+			settle("playing");
+			return;
+		}
+		speechSynthesis.cancel();
 		const utterance = new SpeechSynthesisUtterance(markdownToPlainText(text));
-		utterance.onend = () => settle(false);
-		utterance.onerror = () => settle(false);
+		utterance.onend = () => settle("idle");
+		utterance.onerror = () => settle("idle");
 		speechSynthesis.speak(utterance);
-		settle(true);
+		settle("playing");
 	};
-	return {speaking, toggle: supported && text !== "" ? toggle : undefined};
+	return {status, toggle: supported && text !== "" ? toggle : undefined};
 }

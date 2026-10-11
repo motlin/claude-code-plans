@@ -1,10 +1,16 @@
 import {type ComponentProps, createContext, type ReactNode, useContext, useRef, useState} from "react";
 
-import {useReadAloud} from "../hooks/use-read-aloud";
+import {type ReadAloudStatus, useReadAloud} from "../hooks/use-read-aloud";
 import {writeClipboardText} from "../lib/clipboard";
 import {attachContext} from "../lib/context-attach";
 import {markdownToPlainText} from "../lib/markdown-plain-text";
 import {ContextMenu, ContextMenuTrigger, MenuContent, MenuItem, MenuSeparator} from "./ui/menu";
+
+const READ_ALOUD_MENU_LABELS: Record<ReadAloudStatus, string> = {
+	idle: "Read aloud",
+	playing: "Pause reading aloud",
+	paused: "Resume reading aloud",
+};
 
 /*
  * claude.ai/code's right-click menus on transcript turns: assistant prose,
@@ -207,7 +213,7 @@ function TranscriptMenuItems({
 			<MenuItem onSelect={() => copy(markdown)}>Copy message as Markdown</MenuItem>
 			{speaker === "assistant" && (
 				<MenuItem {...(readAloud.toggle === undefined ? {disabled: true} : {onSelect: readAloud.toggle})}>
-					{readAloud.speaking ? "Stop reading aloud" : "Read aloud"}
+					{READ_ALOUD_MENU_LABELS[readAloud.status]}
 				</MenuItem>
 			)}
 			<MenuSeparator />
