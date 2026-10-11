@@ -50,6 +50,13 @@ vi.mock(import("../../src/lib/hmr-persist"), async (importOriginal) => {
 	};
 });
 
+// /api/local-account falls back to the OS username, which differs per machine and moves the response bytes.
+vi.mock(import("node:os"), async (importOriginal) => {
+	const os = await importOriginal();
+	const userInfo = (() => ({...os.userInfo(), username: "alice"})) as typeof os.userInfo;
+	return {...os, userInfo, default: {...os.default, userInfo}};
+});
+
 const CASES = ["default", "localSections"] as const;
 
 const PROJECT = "-repo";
@@ -112,6 +119,8 @@ beforeAll(async () => {
 	mkdirSync(memoryDir, {recursive: true});
 	mkdirSync(plansDir, {recursive: true});
 	vi.stubEnv("HOME", home);
+	// /api/home-stats buckets activity by local day and hour.
+	vi.stubEnv("TZ", "UTC");
 	vi.stubEnv("XDG_CONFIG_HOME", join(root, "config"));
 	vi.stubEnv("XDG_CACHE_HOME", join(root, "cache"));
 
