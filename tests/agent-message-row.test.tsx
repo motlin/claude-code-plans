@@ -6,6 +6,7 @@ import {SessionChat} from "../src/components/session-chat";
 import {parseAgentMessage} from "../src/lib/agent-message";
 import {processTranscript} from "../src/lib/transcript";
 import type {Subagent} from "../src/lib/subagents";
+import type {TranscriptMode} from "../src/lib/transcript-mode";
 
 vi.mock("../src/components/settings-provider", () => ({
 	useSettings: () => ({
@@ -75,7 +76,7 @@ const SUBAGENT: Subagent = {
 	finishedAt: "2026-09-18T16:43:00.000Z",
 };
 
-function renderLines(records: unknown[], subagents: Subagent[] = []): HTMLElement {
+function renderLines(records: unknown[], subagents: Subagent[] = [], mode: TranscriptMode = "normal"): HTMLElement {
 	const {lines, toolResultMap} = processTranscript(records);
 	return render(
 		<SessionChat
@@ -84,7 +85,7 @@ function renderLines(records: unknown[], subagents: Subagent[] = []): HTMLElemen
 			toolResultMap={toolResultMap}
 			subagents={subagents}
 			shouldScrollToEnd={false}
-			transcriptMode="normal"
+			transcriptMode={mode}
 		/>,
 	).container;
 }
@@ -134,8 +135,17 @@ describe("parseAgentMessage", () => {
 });
 
 describe("Message from subagent rows", () => {
-	it("renders a queued_command hand-back as a collapsible Message from row", () => {
+	it("draws nothing for a hand-back absorbed mid-turn as a queued_command in Normal mode, as upstream", () => {
 		const container = renderLines([queuedCommandRecord(AGENT_MESSAGE)]);
+
+		expect({
+			rows: container.querySelectorAll("[data-agent-message-from]").length,
+			mentioned: container.textContent?.includes("Message from") ?? false,
+		}).toStrictEqual({rows: 0, mentioned: false});
+	});
+
+	it("renders a queued_command hand-back as a collapsible Message from row in Verbose mode", () => {
+		const container = renderLines([queuedCommandRecord(AGENT_MESSAGE)], [], "verbose");
 
 		const collapsed = rowState(container);
 		fireEvent.click(within(container).getByRole("button", {name: "Show message from subagent"}));
@@ -162,15 +172,46 @@ describe("Message from subagent rows", () => {
 	});
 
 	it("names a hand-back's sender subagent, as upstream does, even when the session knows its description", () => {
-		const named = renderLines([queuedCommandRecord(AGENT_MESSAGE)], [SUBAGENT]);
+		const named = renderLines([queuedCommandRecord(AGENT_MESSAGE)], [SUBAGENT], "verbose");
 		const namedSender = named.querySelector("bdi")?.textContent;
 		cleanup();
-		const unnamed = renderLines([queuedCommandRecord(AGENT_MESSAGE)]);
+		const unnamed = renderLines([queuedCommandRecord(AGENT_MESSAGE)], [], "verbose");
 		const unnamedSender = unnamed.querySelector("bdi")?.textContent;
 
 		expect({namedSender, unnamedSender}).toStrictEqual({
 			namedSender: "subagent",
 			unnamedSender: "subagent",
+		});
+	});
+
+	it("draws the row like its sibling status rows: inset, muted label, 12px chevron", () => {
+		const container = renderLines(
+			[
+				{
+					type: "user",
+					uuid: "user-1",
+					isMeta: true,
+					timestamp: "2026-09-18T16:47:16.203Z",
+					message: {role: "user", content: PEER_PROMPT},
+				},
+			],
+			[SUBAGENT],
+		);
+		const button = within(container).getByRole("button", {name: "Show message from subagent"});
+		const svg = button.querySelector("svg");
+
+		expect({
+			button: button.className,
+			parts: [...button.children].map((child) => ({tag: child.tagName, className: child.className})),
+			chevron: [svg?.getAttribute("width"), svg?.getAttribute("height")],
+		}).toStrictEqual({
+			button: "group/step flex self-stretch min-w-0 me-[52px] items-center gap-g5 px-1 py-0.5 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3",
+			parts: [
+				{tag: "SPAN", className: "shrink-0 text-body text-ink-muted group-hover/step:text-secondary"},
+				{tag: "BDI", className: "min-w-0 truncate text-body text-primary"},
+				{tag: "SPAN", className: "shrink-0 -ms-1 text-ink-muted group-hover/step:text-secondary"},
+			],
+			chevron: ["12", "12"],
 		});
 	});
 

@@ -929,14 +929,10 @@ type FoldedNotice = BackgroundNotice | PeerNotice | HookNotice;
 const NO_NOTICES: readonly FoldedNotice[] = [];
 
 /**
- * The agent message a line delivers: a meta user line, or a queued_command
- * attachment when it arrived while the turn ran.
+ * The agent message a meta user line delivers. One the turn absorbed as a
+ * queued_command attachment never reaches upstream, so it is Verbose-only.
  */
 function agentMessageOf(line: SessionLine): AgentMessage | null {
-	if (line.type === "attachment") {
-		const {type, prompt} = getAttachmentHead(line.attachmentJson);
-		return type === "queued_command" && prompt !== null ? parseAgentMessage(prompt) : null;
-	}
 	if (line.type !== "user" || classifyUserContent(line) !== "agent-message") return null;
 	return parseAgentMessage(getUserContentText(line));
 }
@@ -2766,12 +2762,12 @@ function isHookSystemMessageLine(line: SessionLine): boolean {
 }
 
 /**
- * Diagnostic attachments shown only in Verbose; subagent hand-backs stay as
- * "Message from" rows and queued task notifications fold into the tool group.
+ * Diagnostic attachments shown only in Verbose, as are subagent hand-backs the
+ * turn absorbed, which upstream never receives; queued task notifications fold
+ * into the tool group.
  */
 function isVerboseOnlyAttachment({type, hookEvent, prompt}: AttachmentHead): boolean {
-	if (type === "queued_command")
-		return prompt === null || (parseAgentMessage(prompt) === null && parseTaskNotification(prompt) === null);
+	if (type === "queued_command") return prompt === null || parseTaskNotification(prompt) === null;
 	if (type === "hook_blocking_error") return hookEvent !== null && STOP_HOOK_EVENTS.has(hookEvent);
 	return type !== null && VERBOSE_ONLY_SUBTYPES.has(type);
 }

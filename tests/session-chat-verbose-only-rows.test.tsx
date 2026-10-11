@@ -356,15 +356,18 @@ describe("Agent messages folded into tool groups", () => {
 		});
 	});
 
-	it("trails a message queued between the tools of one run", () => {
+	it("drops a message absorbed mid-turn as a queued_command, which upstream never receives", () => {
 		const records = [
 			...bashCall("first"),
 			attachment("att-peer", {type: "queued_command", prompt: agentMessageText("a1"), commandMode: "prompt"}),
 			...bashCall("second"),
 		];
-		expect(observePeers(records, "normal")).toStrictEqual({
-			statuses: ["Ran 2 commands, received a message"],
-			messageRows: 0,
+		expect({
+			normal: observePeers(records, "normal"),
+			verbose: observePeers(records, "verbose"),
+		}).toStrictEqual({
+			normal: {statuses: ["Ran 2 commands"], messageRows: 0},
+			verbose: {statuses: [], messageRows: 1},
 		});
 	});
 
