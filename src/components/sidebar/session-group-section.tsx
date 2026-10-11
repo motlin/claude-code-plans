@@ -130,7 +130,7 @@ export function GroupSection({
 		<div
 			ref={sectionRef}
 			data-group-key={group.key}
-			className="group/section relative isolate flex flex-col gap-px"
+			className="group/section relative isolate flex flex-col gap-px pb-[var(--sb-group-pb)]"
 		>
 			<div
 				{...headerDragProps}
@@ -210,7 +210,10 @@ export function GroupSection({
  */
 export function EmptyGroupSection({label, filterSlot}: {label: string; filterSlot: ReactNode}) {
 	return (
-		<div data-group-key="empty" className="group/section relative isolate flex flex-col gap-px">
+		<div
+			data-group-key="empty"
+			className="group/section relative isolate flex flex-col gap-px pb-[var(--sb-group-pb)]"
+		>
 			<div
 				data-sidebar-group-label
 				className="df-label-inset flex min-h-[calc(var(--sb-group-pt)+var(--sb-row-h)-4px)] w-full items-center gap-[var(--sb-row-gap)] pt-[var(--sb-group-pt)] pr-[calc((var(--sb-row-h)-24px)/2)] pb-1 text-[length:var(--sb-group-font)] leading-4 text-ink-muted"

@@ -318,6 +318,8 @@
 	--sb-row-font: 14px;
 	--sb-group-font: 13px;
 	--sb-group-pt: 16px;
+	/* Upstream's group wrapper (padding 16px 4px 4px 6px) leaves ~30px from a group's last row to the next label */
+	--sb-group-pb: 10px;
 	--sb-icon: 20px;
 	--sb-leading-slot: 28px;
 	--sb-row-ctl: 24px;

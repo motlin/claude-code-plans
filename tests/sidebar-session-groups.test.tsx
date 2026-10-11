@@ -18,6 +18,7 @@ import {RecentSessionsResponse, recentSessionsInfiniteQueryOptions} from "../src
 import type {SessionBucket} from "../src/lib/session-state";
 import {readSidebarState} from "../src/lib/sidebar-store";
 import {installLocalStorage} from "./fake-storage";
+import {readFileSync} from "node:fs";
 
 const MINUTE = 60 * 1000;
 
@@ -130,6 +131,18 @@ describe("sidebar SessionGroups", () => {
 			working: ["Working one"],
 			done: ["Completed newest", "Completed older"],
 		});
+	});
+
+	it("ends each group with the upstream 10px gap before the next header (wrapper pb 4px plus label centering)", async () => {
+		const {container} = await renderGroups(FIXTURE);
+		const css = readFileSync("src/styles/globals.css", "utf8");
+
+		expect({
+			token: /--sb-group-pb: (\d+px);/.exec(css)?.[1],
+			sections: [...container.querySelectorAll("[data-group-key^=state-]")].map((section) =>
+				section.classList.contains("pb-[var(--sb-group-pb)]"),
+			),
+		}).toStrictEqual({token: "10px", sections: [true, true, true, true]});
 	});
 
 	it("omits empty groups", async () => {
