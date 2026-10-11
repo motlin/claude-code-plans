@@ -29,6 +29,7 @@ import {SlowCommandCollector} from "../slow-commands";
 import {deleteRoutinesForSessions, replaceRoutines} from "./routine-index";
 import {RoutineCollector} from "../routines";
 import {UsageCollector} from "../home-stats";
+import {unwrapPastedContent} from "../session-utils";
 import {deleteUsageDailyForSessions, replaceUsageDaily} from "./usage-index";
 import {
 	BridgeSessionCollector,
@@ -729,12 +730,13 @@ class SessionIndexState {
 			if (obj.type === "user" || obj.type === "assistant") {
 				const content = obj.message?.content;
 				const messageText: string[] = [];
+				const userText = (text: string) => (obj.type === "user" ? unwrapPastedContent(text) : text);
 				if (typeof content === "string") {
-					messageText.push(content);
+					messageText.push(userText(content));
 				} else if (Array.isArray(content)) {
 					for (const block of content) {
 						if (block.type === "text" && typeof block.text === "string") {
-							messageText.push(block.text);
+							messageText.push(userText(block.text));
 						} else if (
 							block.type === "tool_use" &&
 							typeof block.name === "string" &&

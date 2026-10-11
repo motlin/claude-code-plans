@@ -959,6 +959,21 @@ describe("stripCommandTags", () => {
 	it("returns plain text unchanged", () => {
 		expect(stripCommandTags("plain text")).toBe("plain text");
 	});
+
+	it("unwraps every pasted_content block to its text, as upstream shows a paste", () => {
+		expect(
+			stripCommandTags(
+				'in .pre-commit-config.yaml, there\'s \n\n<pasted_content id="5216">\n  7┊      - id: check-json\n</pasted_content id="5216">\n\n, aren\'t jsonc files excluded? Also\n\n<pasted_content id="df57">\nsecond paste\n</pasted_content id="df57">\n',
+			),
+		).toBe(
+			"in .pre-commit-config.yaml, there's \n\n  7┊      - id: check-json\n\n, aren't jsonc files excluded? Also\n\nsecond paste",
+		);
+	});
+
+	it("keeps a pasted_content tag that is quoted mid-line rather than wrapping a paste", () => {
+		const text = 'bubbles show literal `<pasted_content id="5216">` … `</pasted_content id="5216">` tag lines';
+		expect(stripCommandTags(text)).toBe(text);
+	});
 });
 
 describe("extractSessionTitle", () => {

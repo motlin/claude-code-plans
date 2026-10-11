@@ -22,7 +22,23 @@ const STRIP_BLOCK_RE =
 const STRIP_TAG_RE =
 	/<\/?(?:command-message|command-name|command-args|command|local-command-caveat|local-command-stdout)[^>]*>/g;
 
-function cleanCommandText(text: string): string {
+/**
+ * A paste the CLI wraps on lines of its own -- `<pasted_content id="5216">`, the
+ * pasted text, then `</pasted_content id="5216">` -- which upstream shows as the
+ * bare text. A tag quoted mid-line is something the user typed and stays.
+ */
+const PASTED_CONTENT_RE = /(^|\n)<pasted_content id="([^"\n]*)">\n(?:([\s\S]*?)\n)?<\/pasted_content id="\2">(?=\n|$)/g;
+
+/** Keep the paste's text, and the line break before its opening tag, in place of the wrapper. */
+const PASTED_CONTENT_TEXT = "$1$3";
+
+/** The prompt with each pasted_content wrapper replaced by the text it wraps. */
+export function unwrapPastedContent(text: string): string {
+	return text.replace(PASTED_CONTENT_RE, PASTED_CONTENT_TEXT);
+}
+
+function cleanCommandText(rawText: string): string {
+	const text = rawText.replace(PASTED_CONTENT_RE, PASTED_CONTENT_TEXT);
 	const msgMatch = text.match(COMMAND_MESSAGE_RE);
 	if (msgMatch) {
 		return msgMatch[1]!.replace(STRIP_TAG_RE, "").trim();

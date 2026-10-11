@@ -188,4 +188,24 @@ describe("SessionChat user bubbles as plain text", () => {
 			code: Array.from(el.querySelectorAll("code")).map((code) => code.textContent),
 		}).toStrictEqual({links: 0, code: ["curl https://x.y/z"]});
 	});
+
+	it("shows a pasted block's text inline in the bubble, without the pasted_content tag lines", () => {
+		const el = bubble(
+			renderRecords([
+				prompt(
+					'\n\n<pasted_content id="5216">\nYes go ahead and commit the .gitignore change.\n\n1. rebase\n2. fix the maze\n</pasted_content id="5216">\n',
+				),
+			]),
+		);
+
+		expect(
+			Array.from(el.querySelectorAll("p, ul, ol"), (block) => ({
+				tag: block.tagName,
+				texts: block.tagName === "P" ? [block.textContent] : Array.from(block.children, (li) => li.textContent),
+			})),
+		).toStrictEqual([
+			{tag: "P", texts: ["Yes go ahead and commit the .gitignore change."]},
+			{tag: "OL", texts: ["rebase", "fix the maze"]},
+		]);
+	});
 });

@@ -2651,6 +2651,26 @@ describe("message content FTS", () => {
 		]);
 	});
 
+	it("indexes a pasted prompt's text without its pasted_content wrapper", async () => {
+		const projectDir = join(testDir, "-Users-craig-projects-app");
+		writeFileSync(
+			join(projectDir, "fts-paste.jsonl"),
+			jsonl({
+				type: "user",
+				message: {
+					role: "user",
+					content:
+						'\n\n<pasted_content id="5216">\nYes go ahead and commit the .gitignore change.\n</pasted_content id="5216">\n',
+				},
+			}),
+		);
+		await indexJsonlFile(db.index, join(projectDir, "fts-paste.jsonl"), "-Users-craig-projects-app");
+
+		expect(db.index.all(sql`SELECT content FROM message_content WHERE session_id = 'fts-paste'`)).toStrictEqual([
+			{content: "Yes go ahead and commit the .gitignore change."},
+		]);
+	});
+
 	it("returns snippet with highlight marks", () => {
 		const results = searchMessageContentDb(db.index, "login");
 		expect(results.map((r) => r.sessionId)).toStrictEqual(["fts-sess-1"]);

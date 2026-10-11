@@ -54,6 +54,14 @@ describe("extractSessionTitle", () => {
 		expect(extractSessionTitle("Fix the bug")).toBe("Fix the bug");
 	});
 
+	it("titles a pasted prompt by its text, without the pasted_content wrapper", () => {
+		expect(
+			extractSessionTitle(
+				'\n\n<pasted_content id="5216">\nYes go ahead and commit the .gitignore change. Yes go ahead and rebase.\n</pasted_content id="5216">\n',
+			),
+		).toBe("Yes go ahead and commit the .gitignore change. Yes go ahead and rebase.");
+	});
+
 	it("strips XML command tags", () => {
 		expect(extractSessionTitle("<command-message><command-name>/commit</command-name></command-message>")).toBe(
 			"/commit",
