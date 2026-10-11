@@ -144,9 +144,11 @@ build-storybook: install
     vp run build-storybook
 
 # Apply safe Fallow fixes locally, then reject remaining dead code
-fallow: install
+fallow: _fallow-fix fallow-check
+
+[private]
+_fallow-fix: install
     {{ if ci == "" { "vp run fallow" } else { "true" } }}
-    vp run fallow:ci
 
 # vp run fallow:ci
 fallow-check: install
@@ -162,9 +164,21 @@ audit-just-options:
 
 # Run all pre-commit checks
 [arg("quick", long, value="true", help="Skip tests")]
-verify quick="": check build perf-bundle fallow pre-commit
+verify quick="": _verify-fixes _verify-gates
     {{ if quick != "true" { "just _test" } else { "true" } }}
     @echo "All pre-commit checks passed!"
+
+# Fixers that rewrite files and still exit 0, so they finish before any gate reads the tree
+[private]
+_verify-fixes: check _fallow-fix
+
+# Read-only gates. Pre-commit's own fixers can run here too: they fail the run whenever they rewrite a file
+[parallel]
+[private]
+_verify-gates: _build-bundle fallow-check pre-commit
+
+[private]
+_build-bundle: build perf-bundle
 
 # Deprecated alias for `verify`
 [arg("quick", long, value="true", help="Skip tests")]
