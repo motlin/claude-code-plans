@@ -20,6 +20,22 @@ describe("inline code chip", () => {
 		expect(markdownCss.includes(":global(.dark) .markdown code")).toBe(false);
 	});
 
+	it("hairlines the transcript prose chip in both themes, 0.5px white/10% in dark like upstream", () => {
+		expect({
+			light: ruleDeclarations(
+				markdownCss,
+				":global(:root:not(.dark)) :global([data-transcript-prose]) .markdown code:not(pre code)",
+			),
+			dark: ruleDeclarations(
+				markdownCss,
+				":global(.dark) :global([data-transcript-prose]) .markdown code:not(pre code)",
+			),
+		}).toStrictEqual({
+			light: {border: "1px solid rgb(11 11 11 / 0.1)"},
+			dark: {border: "0.5px solid rgb(255 255 255 / 0.1)"},
+		});
+	});
+
 	it("keeps fenced code at the 20px code line-height the tightened chip would otherwise steal", () => {
 		expect(ruleDeclarations(markdownCss, ".markdown pre code")).toStrictEqual({
 			background: "none",

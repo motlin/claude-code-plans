@@ -95,12 +95,12 @@
 	/* Upstream --cds-text-git-added / --cds-text-git-removed: summary row stats. */
 	--color-diff-added: var(--upstream-extended-green);
 	--color-diff-removed: var(--upstream-extended-pink);
-	--color-git-opened: #1e9e3c;
-	--color-git-draft: #737373;
-	--color-git-merged: #8e6bd9;
-	--color-git-closed: #ff3a30;
-	--color-git-conflicting: #c5621b;
-	--color-git-queued: #98801f;
+	--color-git-opened: var(--git-opened);
+	--color-git-draft: var(--git-draft);
+	--color-git-merged: var(--git-merged);
+	--color-git-closed: var(--git-closed);
+	--color-git-conflicting: var(--git-conflicting);
+	--color-git-queued: var(--git-queued);
 
 	/* Upstream claude.ai/code — transparency layers (bg-t1, bg-t2, etc.) */
 	--color-t0: var(--upstream-t0);
@@ -285,6 +285,13 @@
 	/* Upstream claude.ai/code — row status dots (--cds-text-muted / fill-warning|accent|danger) */
 	--upstream-text-muted: #898781;
 	--upstream-code-ink: rgb(142 38 38);
+	/* Upstream --cds-text-git-*: PR and branch state ink. */
+	--git-opened: #1e9e3c;
+	--git-draft: #737373;
+	--git-merged: #8e6bd9;
+	--git-closed: #ff3a30;
+	--git-conflicting: #c5621b;
+	--git-queued: #98801f;
 	--status-dot-awaiting: #fab219;
 	--status-dot-ready: #2a78d6;
 	--status-dot-error: #d03b3b;
@@ -322,17 +329,17 @@
 
 .dark {
 	/* Sidebar rows: upstream [data-mode="dark"] .dframe-sidebar overrides */
-	--sb-hover: hsl(0 0% 100% / 0.08);
-	--sb-selected: hsl(0 0% 100% / 0.12);
-	--sb-bg: color-mix(in srgb, var(--upstream-page) 80%, black);
+	--sb-hover: hsl(0 0% 100% / 0.075);
+	--sb-selected: hsl(0 0% 100% / 0.15);
+	--sb-bg: #111;
 
 	/* Upstream semantic palette */
-	--upstream-page: hsl(60 3% 15%);
-	--upstream-surface-0: hsl(30 3% 12%);
-	--upstream-surface-1: hsl(60 3% 15%);
-	--upstream-surface-2: hsl(60 2% 18%);
+	--upstream-page: #151515;
+	--upstream-surface-0: #0b0b0b;
+	--upstream-surface-1: #151515;
+	--upstream-surface-2: #1a1a19;
 	--upstream-surface-3: #20201f;
-	--upstream-surface-popover: hsl(60 2% 18%);
+	--upstream-surface-popover: #20201f;
 	--pop-shadow: 0 0 0 0.5px hsl(0 0% 100% / 0.12), 0 4px 12px rgb(0 0 0 / 0.3), 0 16px 40px rgb(0 0 0 / 0.4);
 	--composer-shadow-idle: 0 4px 20px rgb(0 0 0 / 0.15), 0 0 0 1px rgb(255 255 255 / 0.1);
 	--composer-shadow-focus: 0 4px 20px rgb(0 0 0 / 0.3), 0 0 0 1px rgb(255 255 255 / 0.2);
@@ -341,15 +348,15 @@
 	--upstream-alpha-3: rgb(255 255 255 / 0.12);
 	--upstream-backdrop: rgb(0 0 0 / 0.5);
 	--upstream-fill-control: hsl(0 0% 100% / 0.1);
-	--upstream-fill-ghost-hover: hsl(0 0% 100% / 0.08);
+	--upstream-fill-ghost-hover: hsl(0 0% 100% / 0.075);
 	--upstream-fill-grip: hsl(0 0% 100% / 0.2);
-	--upstream-fill-primary: hsl(53 12% 87%);
-	--upstream-fill-primary-hover: hsl(50 9% 74%);
-	--upstream-text-primary: hsl(53 12% 87%);
+	--upstream-fill-primary: #fff;
+	--upstream-fill-primary-hover: #e1e0d9;
+	--upstream-text-primary: #f0efec;
 	--upstream-text-secondary: hsl(50 9% 74%);
-	--upstream-on-primary: hsl(60 3% 15%);
+	--upstream-on-primary: #151515;
 	--upstream-border-subtle: hsl(0 0% 100% / 0.08);
-	--upstream-border: hsl(0 0% 100% / 0.12);
+	--upstream-border: hsl(0 0% 100% / 0.1);
 	--upstream-border-strong: hsl(0 0% 100% / 0.2);
 
 	/* Semantic colors */
@@ -362,7 +369,7 @@
 	--warning-000: hsl(40 71% 50%);
 	--warning-100: hsl(39 93.4% 35.9%);
 	--accent-000: hsl(210 65.5% 67.1%);
-	--upstream-accent: rgb(128 178 235);
+	--upstream-accent: #6da7ec;
 	--upstream-accent-pressed: hsl(210 55.9% 24.6%);
 	--upstream-accent-muted: rgb(42 120 214 / 0.2);
 	--accent-100: hsl(210 70.9% 51.6%);
@@ -397,22 +404,28 @@
 
 	/* Upstream claude.ai/code — card surfaces (light-alpha ring, page color) */
 	--card-outline: hsl(0 0% 100% / 0.12);
-	--code-card-bg: hsl(60 2.7% 14.5%);
+	--code-card-bg: #151515;
 
 	/* Upstream claude.ai/code — <Shortcut> keycaps */
 	--shortcut-cap-ink: #a5a49a;
 	--shortcut-cap-line: color-mix(in srgb, currentColor 22%, transparent);
 
 	/* Upstream claude.ai/code — Menu / ContextMenu popups */
-	--menu-bg: hsl(60 2% 18%);
+	--menu-bg: #20201f;
 	--menu-shadow: 0 0 0 1px hsl(0 0% 100% / 0.12), 0 8px 24px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(0, 0, 0, 0.3);
-	--menu-muted: #a5a49a;
+	--menu-muted: #898781;
 
-	--upstream-text-muted: #a5a49a;
-	--upstream-code-ink: var(--danger-000);
+	--upstream-text-muted: #898781;
+	--upstream-code-ink: #ec7e7e;
+	--git-opened: #32d74b;
+	--git-draft: #a6a6a6;
+	--git-merged: #b796ff;
+	--git-closed: #ff6159;
+	--git-conflicting: #fa832e;
+	--git-queued: #ffd014;
 
 	/* Upstream claude.ai/code — Settings controls */
-	--settings-muted: #a5a49a;
+	--settings-muted: #898781;
 	--settings-switch-track: hsl(0 0% 100% / 0.18);
 	--settings-switch-track-hover: hsl(0 0% 100% / 0.24);
 	--settings-segmented-track: hsl(0 0% 100% / 0.06);

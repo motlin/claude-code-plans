@@ -22,7 +22,7 @@ describe("transcript link styles", () => {
 			themeColor: tokenIn("@theme inline", "--color-upstream-accent"),
 		}).toStrictEqual({
 			light: "rgb(24 79 149)",
-			dark: "rgb(128 178 235)",
+			dark: "#6da7ec",
 			themeColor: "var(--upstream-accent)",
 		});
 	});

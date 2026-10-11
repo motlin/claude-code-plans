@@ -577,7 +577,7 @@ describe("SessionChat tool card chrome", () => {
 			lightOutline: "hsl(0 0% 4% / 0.1)",
 			darkOutline: "hsl(0 0% 100% / 0.12)",
 			lightCodeCardBg: "hsl(60 14% 99%)",
-			darkCodeCardBg: "hsl(60 2.7% 14.5%)",
+			darkCodeCardBg: "#151515",
 			outlineRing: true,
 			codeCardFill: true,
 			collapsedCards: {bash: [], edit: [], read: []},

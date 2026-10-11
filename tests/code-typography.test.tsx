@@ -60,7 +60,7 @@ describe("code typography", () => {
 		}).toStrictEqual({
 			theme: "var(--upstream-code-ink)",
 			light: "rgb(142 38 38)",
-			dark: "var(--danger-000)",
+			dark: "#ec7e7e",
 		});
 	});
 
