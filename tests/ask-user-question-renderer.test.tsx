@@ -84,7 +84,7 @@ describe("AskUserQuestionRenderer", () => {
 			buttons: container.querySelectorAll("button").length,
 		}).toStrictEqual({
 			cardCount: 1,
-			cardClassName: "card-outline rounded-r6 p-p7 w-fit min-w-[min(100%,318px)] flex flex-col gap-g2",
+			cardClassName: "card-outline rounded-r6 p-p7 w-fit min-w-[min(100%,318px)] flex flex-col gap-g7",
 			paragraphs: [
 				{className: "text-body text-secondary whitespace-pre-wrap", text: "Which test runner?"},
 				{className: "text-body text-primary whitespace-pre-wrap", text: "Vitest"},
@@ -94,7 +94,7 @@ describe("AskUserQuestionRenderer", () => {
 		});
 	});
 
-	it("draws one card per answered question, with the Other text and its notes", () => {
+	it("stacks every answered question in one card, with the Other text and its notes", () => {
 		const result =
 			'User has answered your questions: "How should the JOL test treat LinkedHashMap?"="Exact, JDK-version-aware", "Which runner?"="Bun" user notes: Fastest locally. You can now continue with the user\'s answers in mind.';
 		const toolCall = makeCall({
@@ -124,13 +124,25 @@ describe("AskUserQuestionRenderer", () => {
 		});
 		const {container} = render(<AskUserQuestionRenderer toolCall={toolCall} />);
 
-		const cards = [...container.querySelectorAll(".card-outline")].map((card) =>
-			[...card.querySelectorAll("p")].map((p) => p.textContent),
-		);
+		const cards = [...container.querySelectorAll(".card-outline")].map((card) => ({
+			className: card.className,
+			pairs: [...card.children].map((pair) => ({
+				className: pair.className,
+				lines: [...pair.querySelectorAll("p")].map((p) => p.textContent),
+			})),
+		}));
 
 		expect(cards).toStrictEqual([
-			["How should the JOL test treat LinkedHashMap?", "Exact, JDK-version-aware"],
-			["Which runner?", "Bun", "Notes: Fastest locally"],
+			{
+				className: "card-outline rounded-r6 p-p7 w-fit min-w-[min(100%,318px)] flex flex-col gap-g7",
+				pairs: [
+					{
+						className: "flex flex-col gap-g2",
+						lines: ["How should the JOL test treat LinkedHashMap?", "Exact, JDK-version-aware"],
+					},
+					{className: "flex flex-col gap-g2", lines: ["Which runner?", "Bun", "Notes: Fastest locally"]},
+				],
+			},
 		]);
 	});
 

@@ -67,16 +67,13 @@ function notesAddInformation(notes: string | null, answerValue: string): notes i
 }
 
 /**
- * Upstream's static answered card: the question in secondary text over the
- * chosen answer (or the Other text) in primary. Unchosen options are omitted.
+ * One answered pair: the question in secondary text over the chosen answer (or
+ * the Other text) in primary. Unchosen options are omitted.
  */
 function AnsweredQuestion({question, parsed}: {question: string; parsed: ParsedAnswer}) {
 	const answer = parsed.answer.trim();
 	return (
-		<div
-			data-answered-question
-			className="card-outline rounded-r6 p-p7 w-fit min-w-[min(100%,318px)] flex flex-col gap-g2"
-		>
+		<div data-answered-question className="flex flex-col gap-g2">
 			<p className="text-body text-secondary whitespace-pre-wrap">{question}</p>
 			{answer !== "" && <p className="text-body text-primary whitespace-pre-wrap">{answer}</p>}
 			{notesAddInformation(parsed.notes, answer) && (
@@ -409,8 +406,9 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps) {
 			? null
 			: (answersFromResultMeta(toolCall.resultMeta, questions) ?? parseAnswerResult(result, questions));
 	if (parsed !== null) {
+		// Upstream stacks every answered pair of one call in a single static card.
 		return (
-			<div className="flex flex-col gap-g6">
+			<div className="card-outline rounded-r6 p-p7 w-fit min-w-[min(100%,318px)] flex flex-col gap-g7">
 				{parsed.map((entry, i) => (
 					<AnsweredQuestion key={i} question={entry.question} parsed={entry} />
 				))}
