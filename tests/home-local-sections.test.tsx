@@ -121,7 +121,7 @@ describe("RecentPlansSection", () => {
 					pill: "Plan",
 					title: "Plan middle.md",
 					project: null,
-					time: "1h ago",
+					time: "2h ago",
 				},
 			],
 		});
