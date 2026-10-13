@@ -6,6 +6,7 @@ import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/
 import type {ReactNode} from "react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
+import {pendingQuestionQueryOptions} from "../src/lib/api/pending-question";
 import {SessionPage} from "../src/components/session-page";
 import {SettingsProvider} from "../src/components/settings-provider";
 import {ToastProvider} from "../src/components/toast";
@@ -395,6 +396,48 @@ describe("SessionPage dock composition", () => {
 			],
 		);
 		expect(dockContents()).toStrictEqual(["pr", "usage", "permission", "composer"]);
+	});
+	it("docks the stored question, not a permission card, when the registry's permission wait is really a question", async () => {
+		await renderSessionPage(
+			{...detail, pr},
+			[],
+			(queryClient) => {
+				seedUsage(queryClient);
+				queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
+					pages: [
+						{sessions: [{id: SESSION_ID, state: "waiting", awaitingPermission: true}], nextCursor: null},
+					],
+					pageParams: [null],
+				} as never);
+				queryClient.setQueryData(pendingQuestionQueryOptions(SESSION_ID).queryKey, {
+					pendingQuestion: {
+						toolUseId: "toolu_question",
+						questions: [{question: "Ship it?", options: [{label: "Yes"}, {label: "No"}]}],
+					},
+				});
+			},
+			[
+				{
+					type: "assistant",
+					uuid: "a1",
+					sessionId: SESSION_ID,
+					timestamp: "2026-09-28T10:00:01.000Z",
+					message: {
+						role: "assistant",
+						content: [
+							{
+								type: "tool_use",
+								id: "toolu_question",
+								name: "AskUserQuestion",
+								input: {questions: [{question: "Ship it?", options: [{label: "Yes"}, {label: "No"}]}]},
+							},
+						],
+					},
+				},
+			],
+		);
+		const card = document.querySelector("[data-session-footer] [data-approval-card-root]");
+		expect(card?.getAttribute("aria-label")).toBe("Waiting for your input");
 	});
 	it("suppresses PR, usage, and composer when the session has neither a project path nor a cwd", async () => {
 		await renderSessionPage({...detail, pr, projectPath: null, cwd: null}, [], seedUsage);
