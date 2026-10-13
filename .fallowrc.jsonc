@@ -18,6 +18,8 @@
 		"@storybook/addon-a11y",
 		"@storybook/addon-docs",
 		"agentation",
+		// Loaded by name from the vite.config.ts lint jsPlugins, which fallow does not trace.
+		"eslint-plugin-storybook",
 	],
 	"ignoreExports": [
 		{
