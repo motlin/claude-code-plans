@@ -122,6 +122,21 @@ export function resolveMainState({hook, registry, turnEndedAt = null}: MainState
 	return {state: "ended", source: null};
 }
 
+/**
+ * Whether the session's process still runs: hooks saw it start, or the session
+ * list gives it any state but ended (the CLI registry reports live processes
+ * even when no hooks are installed).
+ */
+export function sessionProcessLive({
+	hookActive,
+	summaryState,
+}: {
+	hookActive: boolean;
+	summaryState: SessionSummaryState | null;
+}): boolean {
+	return hookActive || (summaryState !== null && isLiveSessionState(summaryState));
+}
+
 export const SessionBucketSchema = z.enum(["blocked", "review", "working", "done"]);
 export type SessionBucket = z.infer<typeof SessionBucketSchema>;
 

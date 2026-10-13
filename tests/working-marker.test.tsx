@@ -422,7 +422,7 @@ describe("useWorkingMarkerState", () => {
 		]).toStrictEqual(["Working… · 3s", "Running command · 3s", "", "", "", "Working… · 3s", ""]);
 	});
 
-	it("shows a still spark for a session waiting on a permission prompt, however long it has been inactive", () => {
+	it("shows no spark for a session waiting on a permission prompt, as upstream does", () => {
 		stubReducedMotion(false);
 		const {container, getByRole} = render(
 			<Harness
@@ -435,7 +435,7 @@ describe("useWorkingMarkerState", () => {
 		);
 		expect({
 			text: getByRole("status").textContent,
-			animated: container.querySelector('[data-cds="Spark"]')?.getAttribute("data-animated"),
-		}).toStrictEqual({text: "", animated: "false"});
+			spark: container.querySelector('[data-cds="Spark"]'),
+		}).toStrictEqual({text: "", spark: null});
 	});
 });

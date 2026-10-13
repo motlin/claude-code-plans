@@ -45,6 +45,7 @@ import {Tooltip} from "./ui/tooltip";
 import {SessionPaneControls} from "./view-options-menu";
 import {SessionDock} from "./session-dock";
 import {RunningTasksControl} from "./running-tasks-control";
+import {sessionProcessLive} from "../lib/session-state";
 import {PendingQuestionCard, WaitingForInputNotice} from "./approval-card";
 import {showsWaitingForInputNotice} from "./waiting-for-input-notice";
 import {UsagePaceBanner} from "./usage-pace-banner";
@@ -360,11 +361,11 @@ function SessionView({
 	const backgroundTasks = useMemo(
 		() =>
 			extractBackgroundTasks(transcript.records, {
-				sessionActive: isActive,
+				sessionActive: sessionProcessLive({hookActive: isActive, summaryState: sessionSummaryState}),
 				runningSubagents: activeSubagents,
 				...(hookContext?.backgroundTasks === undefined ? {} : {hookTasks: hookContext.backgroundTasks}),
 			}),
-		[transcript.records, isActive, activeSubagents, hookContext?.backgroundTasks],
+		[transcript.records, isActive, sessionSummaryState, activeSubagents, hookContext?.backgroundTasks],
 	);
 	useRegisterBackgroundTasksPane(sessionId, backgroundTasks, subagents.length);
 	useRegisterSubagentPane({sessionId, subagents, records: transcript.records});

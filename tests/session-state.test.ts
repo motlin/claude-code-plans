@@ -8,6 +8,7 @@ import {
 	compareByUrgency,
 	displayState,
 	resolveMainState,
+	sessionProcessLive,
 	resolveSessionBucket,
 	stateForEvent,
 	waitHeat,
@@ -419,5 +420,17 @@ describe("resolveMainState", () => {
 			{state: "idle", source: "registry"},
 			{state: "working", source: "registry"},
 		]);
+	});
+});
+
+describe("sessionProcessLive", () => {
+	it("counts a session live from its hooks or from any non-ended state its registry gives it", () => {
+		expect([
+			sessionProcessLive({hookActive: true, summaryState: null}),
+			sessionProcessLive({hookActive: false, summaryState: "waiting"}),
+			sessionProcessLive({hookActive: false, summaryState: "idle"}),
+			sessionProcessLive({hookActive: false, summaryState: "ended"}),
+			sessionProcessLive({hookActive: false, summaryState: null}),
+		]).toStrictEqual([true, true, true, false, false]);
 	});
 });

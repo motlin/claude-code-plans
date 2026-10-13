@@ -30,7 +30,8 @@ function usePrefersReducedMotion(): boolean {
 export function WorkingMarker({state}: Readonly<{state: WorkingMarkerState}>) {
 	const reduceMotion = usePrefersReducedMotion();
 	const text = workingMarkerText(state);
-	const visible = state.status !== "idle";
+	// Upstream draws no spark while the turn waits on the user.
+	const visible = state.status !== "idle" && state.status !== "waiting";
 	return (
 		<div data-perf-row="marker" className={CHAT_COLUMN_CLASS}>
 			<div
@@ -40,10 +41,7 @@ export function WorkingMarker({state}: Readonly<{state: WorkingMarkerState}>) {
 			>
 				{visible && (
 					<>
-						<Spark
-							size={16}
-							animated={state.status !== "stopping" && state.status !== "waiting" && !reduceMotion}
-						/>
+						<Spark size={16} animated={state.status !== "stopping" && !reduceMotion} />
 						<span
 							title={text}
 							className={`min-w-0 truncate whitespace-nowrap text-footnote text-secondary tabular-nums${
