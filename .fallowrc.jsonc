@@ -9,6 +9,7 @@
 		"scripts/perf-ceilings.ts",
 		"tests/fixtures/fake-server.mjs",
 		"tests/perf/run-hot-path.mjs",
+		"scripts/**/*.mjs",
 	],
 	"ignorePatterns": [".storybook/**", "src/routeTree.gen.ts"],
 	"ignoreDependencies": [
