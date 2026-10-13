@@ -44,6 +44,7 @@ import {TranscriptHistoryLoader, TranscriptTopFade} from "./transcript-history-l
 import {Tooltip} from "./ui/tooltip";
 import {SessionPaneControls} from "./view-options-menu";
 import {SessionDock} from "./session-dock";
+import {RunningTasksControl} from "./running-tasks-control";
 import {PendingQuestionCard, WaitingForInputNotice} from "./approval-card";
 import {showsWaitingForInputNotice} from "./waiting-for-input-notice";
 import {UsagePaceBanner} from "./usage-pace-banner";
@@ -899,6 +900,8 @@ function SessionView({
 						)}
 
 						<WorkingMarker state={workingMarkerState} />
+
+						<RunningTasksControl count={backgroundTasks.running.length} />
 
 						<SideChat sessionId={sessionId} messageCount={data.messageCount} />
 					</div>
