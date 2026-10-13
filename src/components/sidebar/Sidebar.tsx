@@ -77,7 +77,7 @@ export function Sidebar({
 				<div className="shrink-0">
 					<NewSessionRow />
 				</div>
-				<NavScroll>
+				<NavScroll activeKey={activeSection === "sessions" ? activeSessionId : null}>
 					<div className="shrink-0">
 						{navigationItems.map((item) => {
 							const Icon = item.icon;
