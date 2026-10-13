@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 
-import {cleanup, render} from "@testing-library/react";
+import {cleanup, fireEvent, render} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat} from "../src/components/session-chat";
+import {BackgroundTasksOpenerProvider} from "../src/components/background-tasks-opener-context";
 import {processTranscript} from "../src/lib/transcript";
 
 vi.mock("../src/components/settings-context", () => ({
@@ -96,6 +97,68 @@ describe("an in-flight call's row", () => {
 			spinner: "running-spinner me-1.5 inline-flex size-5 shrink-0",
 			elapsed: true,
 			chevron: true,
+		});
+	});
+
+	it("offers 'View live output' on a background command whose task still runs, opening the Background tasks pane", () => {
+		const opened = vi.fn<() => void>();
+		const {lines, toolResultMap} = processTranscript([
+			{type: "user", uuid: "user-1", message: {role: "user", content: "Benchmark it"}},
+			{
+				type: "assistant",
+				uuid: "assistant-1",
+				timestamp: new Date(Date.now() - 5_000).toISOString(),
+				message: {
+					role: "assistant",
+					content: [
+						{
+							type: "tool_use",
+							id: "toolu_background",
+							name: "Bash",
+							input: {
+								command: "./gradlew jmh",
+								description: "After JMH finishes, git test the three new candidates",
+								run_in_background: true,
+							},
+						},
+					],
+				},
+			},
+			{
+				type: "user",
+				uuid: "user-2",
+				message: {
+					role: "user",
+					content: [
+						{
+							type: "tool_result",
+							tool_use_id: "toolu_background",
+							content: "Command running in background with ID: bjmh100",
+						},
+					],
+				},
+			},
+		]);
+		const {getByRole} = render(
+			<BackgroundTasksOpenerProvider value={{open: opened, running: new Set(["toolu_background"])}}>
+				<SessionChat
+					sessionId="test-session"
+					lines={lines}
+					toolResultMap={toolResultMap}
+					showCompactSummaries={true}
+					showTranscriptOnly={true}
+					shouldScrollToEnd={false}
+					transcriptMode="normal"
+				/>
+			</BackgroundTasksOpenerProvider>,
+		);
+		const button = getByRole("button", {name: "View live output"});
+		fireEvent.click(button);
+
+		expect({className: button.className, opened: opened.mock.calls.length}).toStrictEqual({
+			className:
+				"shrink-0 cursor-pointer rounded-r3 text-[13px]/[19px] text-primary underline-offset-[3px] hover:underline",
+			opened: 1,
 		});
 	});
 });

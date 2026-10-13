@@ -29,7 +29,7 @@ import {useRegisterBackgroundTasksPane} from "./panes/background-tasks-pane-entr
 import {preloadLinksPane, useRegisterLinksPane} from "./panes/links-pane-entry";
 import {useRegisterSessionDetailsPane} from "./panes/session-details-pane-entry";
 import {useRegisterSubagentPane} from "./panes/subagent-pane-entry";
-import {SessionSubagentOpener} from "./subagent-opener";
+import {SessionBackgroundTasksOpener, SessionSubagentOpener} from "./subagent-opener";
 import {useRegisterPlanPane} from "./panes/plan-pane-entry";
 import {useRegisterChangesPane} from "./changes/changes-pane-entry";
 import {ChangesPaneShortcut} from "./changes/changes-pane-shortcut";
@@ -380,6 +380,10 @@ function SessionView({
 		[transcript.records, isActive, sessionSummaryState, activeSubagents, hookContext?.backgroundTasks],
 	);
 	useRegisterBackgroundTasksPane(sessionId, backgroundTasks, subagents.length);
+	const runningBackgroundLaunches = useMemo(
+		() => new Set(backgroundTasks.running.flatMap((task) => (task.toolUseId === null ? [] : [task.toolUseId]))),
+		[backgroundTasks],
+	);
 	useRegisterSubagentPane({sessionId, subagents, records: transcript.records});
 	const statusline = useStatusline(sessionId);
 	useRegisterSessionDetailsPane(statusline, data.messageCount);
@@ -849,44 +853,46 @@ function SessionView({
 								sessionFiles={resources?.files ?? windowFiles}
 							>
 								<SessionSubagentOpener sessionId={sessionId}>
-									<TranscriptActionsProvider
-										sessionId={sessionId}
-										lines={processed.lines}
-										fork={forkFromMessage}
-									>
-										<SessionChat
+									<SessionBackgroundTasksOpener running={runningBackgroundLaunches}>
+										<TranscriptActionsProvider
 											sessionId={sessionId}
 											lines={processed.lines}
-											measurementSource={transcript.records}
-											measurementLayout={JSON.stringify([
-												settings.showDebug,
-												settings.interfaceFont,
-												settings.transcriptTextSize,
-												settings.codeFont,
-												settings.transcriptWidth,
-											])}
-											toolResultMap={processed.toolResultMap}
-											allowedImageRoots={data.imageRoots}
-											subagents={subagents}
-											showThinking={transcriptFlags.showThinking}
-											showTools={transcriptFlags.showTools}
-											showPassedHooks={transcriptFlags.showPassedHooks}
-											showHookWarnings={transcriptFlags.showHookWarnings}
-											showHookErrors={transcriptFlags.showHookErrors}
-											showSystemBanners={transcriptFlags.showSystemBanners}
-											showCompactSummaries={transcriptFlags.showCompactSummaries}
-											showTranscriptOnly={transcriptFlags.showTranscriptOnly}
-											transcriptMode={transcriptMode}
-											permissionWaitToolUseId={permissionWaitId}
-											initialScrollKey={initialScrollKey}
-											scrollContentRef={scrollAnchorRef}
-											shouldScrollToEnd={
-												restoredScrollPosition === undefined && locationHash === ""
-											}
-											summary={aiSummary}
-											{...(slashCommands === undefined ? {} : {slashCommands})}
-										/>
-									</TranscriptActionsProvider>
+											fork={forkFromMessage}
+										>
+											<SessionChat
+												sessionId={sessionId}
+												lines={processed.lines}
+												measurementSource={transcript.records}
+												measurementLayout={JSON.stringify([
+													settings.showDebug,
+													settings.interfaceFont,
+													settings.transcriptTextSize,
+													settings.codeFont,
+													settings.transcriptWidth,
+												])}
+												toolResultMap={processed.toolResultMap}
+												allowedImageRoots={data.imageRoots}
+												subagents={subagents}
+												showThinking={transcriptFlags.showThinking}
+												showTools={transcriptFlags.showTools}
+												showPassedHooks={transcriptFlags.showPassedHooks}
+												showHookWarnings={transcriptFlags.showHookWarnings}
+												showHookErrors={transcriptFlags.showHookErrors}
+												showSystemBanners={transcriptFlags.showSystemBanners}
+												showCompactSummaries={transcriptFlags.showCompactSummaries}
+												showTranscriptOnly={transcriptFlags.showTranscriptOnly}
+												transcriptMode={transcriptMode}
+												permissionWaitToolUseId={permissionWaitId}
+												initialScrollKey={initialScrollKey}
+												scrollContentRef={scrollAnchorRef}
+												shouldScrollToEnd={
+													restoredScrollPosition === undefined && locationHash === ""
+												}
+												summary={aiSummary}
+												{...(slashCommands === undefined ? {} : {slashCommands})}
+											/>
+										</TranscriptActionsProvider>
+									</SessionBackgroundTasksOpener>
 								</SessionSubagentOpener>
 							</SessionFileRefs>
 						</AskUserQuestionProvider>

@@ -34,6 +34,7 @@ import type {ClientToolCall} from "./tool-renderers";
 import type {LiveToolFailure, SubagentLookup} from "./tool-renderers/types";
 import type {Subagent} from "../lib/subagents";
 import {useSubagentOpener} from "./subagent-opener-context";
+import {useBackgroundTasksOpener} from "./background-tasks-opener-context";
 import {useClaudeEvents} from "../hooks/use-claude-events";
 import {
 	ChevronIcon,
@@ -4401,6 +4402,12 @@ function ToolCallRow({
 
 	// Upstream leads a standalone in-flight row with its running spinner and follows the label with the elapsed time.
 	const runningRow = pending && isTurnStatus;
+	// Upstream offers a running background command's live output; locally that is the Background tasks pane.
+	const backgroundTasks = useBackgroundTasksOpener();
+	const liveOutput =
+		backgroundTasks !== null && call.name === "Bash" && backgroundTasks.running.has(call.id)
+			? backgroundTasks.open
+			: null;
 	const rowLabel = (
 		<>
 			{runningRow && (
@@ -4445,6 +4452,18 @@ function ToolCallRow({
 			)}
 			{rangeLabel && <span className={`text-body ${labelClass} truncate min-w-0`}>{rangeLabel}</span>}
 			{runningRow && <RunningElapsed startedAt={call.startedAt} />}
+			{liveOutput !== null && (
+				<button
+					type="button"
+					onClick={(event) => {
+						event.stopPropagation();
+						liveOutput();
+					}}
+					className="shrink-0 cursor-pointer rounded-r3 text-[13px]/[19px] text-primary underline-offset-[3px] hover:underline"
+				>
+					View live output
+				</button>
+			)}
 			{diffStats && <DiffStats added={diffStats.added} removed={diffStats.removed} />}
 			{status !== null && (
 				<span className={`shrink-0 text-body ${status === "Failed" ? "text-danger-ink" : "text-secondary"}`}>
