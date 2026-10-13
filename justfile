@@ -6,7 +6,7 @@ default:
 ci := env("CI", "")
 
 # Every recipe runs the lockfile's vite-plus, not whichever global `vp` the caller's PATH has: a stale global CLI chunks the client build differently and moves the bundle byte ceilings
-export PATH := justfile_directory() / "node_modules" / ".bin" + ":" + env("PATH")
+export PATH := justfile_directory() / "node_modules/.bin" + ":" + env("PATH")
 
 port := "7526"
 preview_port := "7527"
@@ -130,7 +130,7 @@ perf-ceilings: install
 
 # Type-check the project
 typecheck: install
-    vp run --cache typecheck
+    vp run typecheck
 
 # Build the project
 build: install
@@ -164,10 +164,6 @@ fallow-check: install
 # Run pre-commit hooks on all files (same as CI's pre-commit job)
 pre-commit: install
     pre-commit run --all-files
-
-# Audit public singular recipe parameters for documented options
-audit-just-options:
-    python3 scripts/audit-just-options.py
 
 # Run all pre-commit checks
 [arg("quick", long, value="true", help="Skip tests")]
