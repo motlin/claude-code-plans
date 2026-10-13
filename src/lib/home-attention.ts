@@ -43,9 +43,12 @@ function firstNonBlankLine(text: string | null): string | null {
 	return null;
 }
 
-/** Pending approval, else hook/herdr status detail, else the last assistant message's first line. */
+/**
+ * Hook/herdr status detail, else the last assistant message's first line. A row
+ * waiting on an approval shows none, as upstream's Needs input rows show only the title.
+ */
 export function attentionStatusLine(row: HomeAttentionRow): string | null {
-	if (row.pendingApproval) return `Waiting on permission: ${row.pendingApproval.toolName}`;
+	if (row.pendingApproval) return null;
 	return firstNonBlankLine(row.statusDetail) ?? firstNonBlankLine(row.lastAssistantText);
 }
 

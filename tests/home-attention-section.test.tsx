@@ -124,7 +124,7 @@ describe("AttentionSection", () => {
 					pill: "Needs input",
 					pillClass: "whitespace-nowrap text-[12px] leading-[15px] text-upstream-warning",
 					title: "Termius SSH login",
-					status: "Waiting on permission: AskUserQuestion",
+					status: null,
 					repo: null,
 					trailingIcons: [
 						"lucide lucide-chevron-right size-5 text-ink-muted group-hover:text-secondary",
@@ -452,7 +452,7 @@ describe("HomeLanding sessions", () => {
 		await screen.findByRole("region", {name: "Sessions"});
 		const before = {
 			rows: rowTitles(),
-			status: screen.getAllByRole("listitem")[0]?.querySelector("[data-row-status]")?.textContent,
+			status: screen.getAllByRole("listitem")[0]?.querySelector("[data-row-status]")?.textContent ?? null,
 		};
 		const [firstDismiss] = screen.getAllByRole("button", {name: "Dismiss session"});
 		if (!firstDismiss) throw new Error("expected a dismiss button");
@@ -472,7 +472,7 @@ describe("HomeLanding sessions", () => {
 		}).toStrictEqual({
 			before: {
 				rows: ["Open session Title waiting", "Open session Title finished"],
-				status: "Waiting on permission: ExitPlanMode",
+				status: null,
 			},
 			after: ["Open session Title finished"],
 			request: [

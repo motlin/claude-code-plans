@@ -105,18 +105,18 @@ describe("selectHomeAttention", () => {
 describe("attentionStatusLine", () => {
 	it.each([
 		{
-			name: "pending approval wins over everything",
+			name: "a pending approval leaves the row bare, as upstream's Needs input rows show only the title",
 			overrides: {
 				pendingApproval: {toolName: "ExitPlanMode"},
 				statusDetail: "Running tests",
 				lastAssistantText: "Done.",
 			},
-			expected: "Waiting on permission: ExitPlanMode",
+			expected: null,
 		},
 		{
-			name: "AskUserQuestion uses the upstream permission copy",
+			name: "a pending AskUserQuestion gives no 'Waiting on permission' line",
 			overrides: {pendingApproval: {toolName: "AskUserQuestion"}},
-			expected: "Waiting on permission: AskUserQuestion",
+			expected: null,
 		},
 		{
 			name: "status detail when no approval is pending",
@@ -144,7 +144,7 @@ describe("attentionStatusLine", () => {
 
 	it("flows into selectHomeAttention rows", () => {
 		expect(select([row("s", {pendingApproval: {toolName: "AskUserQuestion"}})])).toEqual([
-			{sessionId: "s", kind: "blocked", statusLine: "Waiting on permission: AskUserQuestion"},
+			{sessionId: "s", kind: "blocked", statusLine: null},
 		]);
 	});
 });
