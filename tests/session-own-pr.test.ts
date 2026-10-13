@@ -3,6 +3,7 @@ import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {describe, expect, it} from "vite-plus/test";
 import {gitRemoteRepoName, ownRepositoryPr, readOriginRepoName} from "../src/lib/session-own-pr";
+import {toSessionSummaryPayload} from "../src/lib/session-summary";
 
 const FOREIGN = {
 	number: 5,
@@ -35,7 +36,7 @@ describe("ownRepositoryPr", () => {
 });
 
 describe("readOriginRepoName", () => {
-	it("reads origin's repo name from the checkout's git config, following a worktree's gitdir file, without spawning git", async () => {
+	it("reads origin's repo name from the checkout's git config, from any directory inside it and through a worktree's gitdir file, without spawning git", () => {
 		const root = mkdtempSync(join(tmpdir(), "own-pr-"));
 		try {
 			const main = join(root, "klass");
@@ -50,11 +51,45 @@ describe("readOriginRepoName", () => {
 			const plain = join(root, "plain");
 			mkdirSync(plain);
 
+			mkdirSync(join(main, "src", "deep"), {recursive: true});
+
 			expect([
-				await readOriginRepoName(main),
-				await readOriginRepoName(worktree),
-				await readOriginRepoName(plain),
-			]).toStrictEqual(["klass", "klass", null]);
+				readOriginRepoName(main),
+				readOriginRepoName(worktree),
+				readOriginRepoName(join(main, "src", "deep")),
+				readOriginRepoName(plain),
+			]).toStrictEqual(["klass", "klass", "klass", null]);
+		} finally {
+			rmSync(root, {recursive: true, force: true});
+		}
+	});
+});
+
+describe("session list PR fields", () => {
+	it("drop a PR the session only touched in another repository, so home and the sidebar agree with session detail", () => {
+		const root = mkdtempSync(join(tmpdir(), "own-pr-summary-"));
+		try {
+			const checkout = join(root, "klass");
+			mkdirSync(join(checkout, ".git"), {recursive: true});
+			writeFileSync(
+				join(checkout, ".git", "config"),
+				'[remote "origin"]\n\turl = MotlinGitHub:liftwizard/klass.git\n',
+			);
+			const entry = {
+				id: "session-own-pr",
+				title: "Klass #838 sync java-template",
+				mtime: new Date("2026-10-13T22:44:00.000Z"),
+				created: new Date("2026-10-13T20:00:00.000Z"),
+				project: "-tmp-klass",
+				projectName: "klass",
+				messageCount: 3,
+				cwd: checkout,
+				isSidechain: false,
+			};
+			const summary = (pr: typeof FOREIGN) =>
+				toSessionSummaryPayload({...entry, pr}, {activeSession: null, registrySession: null});
+
+			expect({foreign: summary(FOREIGN).pr, own: summary(OWN).pr}).toStrictEqual({foreign: undefined, own: OWN});
 		} finally {
 			rmSync(root, {recursive: true, force: true});
 		}

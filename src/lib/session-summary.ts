@@ -13,6 +13,7 @@ import type {PrStatus} from "./pr-status";
 import {lookupSessionPrStatus} from "./pr-status-service";
 import {getRegistrySessionState, type RegistrySessionState} from "./session-registry-store";
 import {resolveMainState, resolveSessionBucket} from "./session-state";
+import {ownRepositoryPr, readOriginRepoName} from "./session-own-pr";
 import type {SessionEntry} from "./sessions";
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
@@ -53,16 +54,18 @@ interface SessionSummaryOptions {
  * shape used by `/api/sessions` and the session:added/updated/removed events.
  */
 export function toSessionSummaryPayload(
-	entry: SessionEntry,
-	{
+	indexedEntry: SessionEntry,
+	options: SessionSummaryOptions = {},
+): SessionSummaryPayload {
+	const entry = withOwnRepositoryPr(indexedEntry);
+	const {
 		unseen = false,
 		archived = false,
 		activeSession = getActiveSessionEntry(entry.id),
 		registrySession = getRegistrySessionState(entry.id),
 		prStatus = lookupSessionPrStatus(entry),
 		now = Date.now(),
-	}: SessionSummaryOptions = {},
-): SessionSummaryPayload {
+	} = options;
 	const pendingApproval = getPendingApprovalsForProject(entry.project).find(
 		(approval) => approval.sessionId === entry.id,
 	);
@@ -121,6 +124,15 @@ export function toSessionSummaryPayload(
 		unseen,
 		blockedSince: blockedSince(main, registrySession, pendingInput ? pendingApproval : undefined),
 	};
+}
+
+/** The entry without a PR it only touched in another repository, as session detail shows it. */
+function withOwnRepositoryPr(entry: SessionEntry): SessionEntry {
+	if (entry.pr === undefined || entry.cwd === undefined) return entry;
+	const pr = ownRepositoryPr(entry.pr, readOriginRepoName(entry.cwd));
+	if (pr !== null) return entry;
+	const {pr: _foreign, ...rest} = entry;
+	return rest;
 }
 
 function blockedSince(

@@ -147,7 +147,7 @@ export const Route = createFileRoute("/api/sessions/$id")({
 				const pr =
 					linkedPr === null
 						? null
-						: ownRepositoryPr(linkedPr, projectPath ? await readOriginRepoName(projectPath) : null);
+						: ownRepositoryPr(linkedPr, projectPath ? readOriginRepoName(projectPath) : null);
 				if (pr !== null) detail.pr = pr;
 
 				const {lookupPrStatus} = await import("../../lib/pr-status-service");
