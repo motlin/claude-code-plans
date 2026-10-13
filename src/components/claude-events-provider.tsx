@@ -9,6 +9,7 @@ import {
 	SessionSummaryPayloadSchema,
 } from "../lib/domain-event-payload-schemas";
 import {asRecord} from "../lib/narrow";
+import {PendingQuestionResponse, applyPendingQuestionChanged} from "../lib/api/pending-question";
 import {groupedSessionsQueryOptions, recentSessionsInfiniteQueryOptions, sessionQueryKeys} from "../lib/api/sessions";
 import {syncUnseenFromSummaries} from "../lib/unread-store";
 import {syncUnseenFromQueryCache} from "../lib/unseen-query-sync";
@@ -60,6 +61,7 @@ const DOMAIN_EVENT_TYPES = [
 	DOMAIN_EVENTS.SESSION_HOOK_CONTEXT_CHANGED,
 	DOMAIN_EVENTS.SESSION_TOOL_PENDING,
 	DOMAIN_EVENTS.SESSION_TOOL_FAILED,
+	DOMAIN_EVENTS.SESSION_PENDING_QUESTION_CHANGED,
 	DOMAIN_EVENTS.SESSION_COMPACTING,
 	DOMAIN_EVENTS.SESSION_COMPACTED,
 	DOMAIN_EVENTS.SUBAGENT_STARTED,
@@ -488,6 +490,14 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 				case DOMAIN_EVENTS.TASK_CREATED:
 				case DOMAIN_EVENTS.TASK_COMPLETED: {
 					void queryClient.invalidateQueries({queryKey: ["tasks"]});
+					break;
+				}
+				case DOMAIN_EVENTS.SESSION_PENDING_QUESTION_CHANGED: {
+					const sessionId = data["sessionId"];
+					const parsed = PendingQuestionResponse.safeParse({pendingQuestion: data["pendingQuestion"]});
+					if (typeof sessionId === "string" && parsed.success) {
+						applyPendingQuestionChanged(queryClient, {sessionId, ...parsed.data});
+					}
 					break;
 				}
 				case DOMAIN_EVENTS.APPROVAL_CHANGED: {

@@ -273,21 +273,23 @@ export interface SessionToolPendingPayload {
 }
 
 /** One question of a pending AskUserQuestion call, trimmed to what the docked card shows. */
-export interface PendingQuestionItem {
-	question: string;
-	header?: string;
-	options: Array<{label: string; description?: string}>;
-	multiSelect?: boolean;
-}
+const PendingQuestionItemSchema = z.strictObject({
+	question: z.string(),
+	header: z.string().optional(),
+	options: z.array(z.strictObject({label: z.string(), description: z.string().optional()})),
+	multiSelect: z.boolean().optional(),
+});
+export type PendingQuestionItem = z.infer<typeof PendingQuestionItemSchema>;
 
 /**
  * The AskUserQuestion call a session waits on, taken from its `PreToolUse`
  * hook: the CLI writes the call to the JSONL only once it is answered.
  */
-export interface PendingQuestion {
-	toolUseId: string;
-	questions: PendingQuestionItem[];
-}
+export const PendingQuestionSchema = z.strictObject({
+	toolUseId: z.string(),
+	questions: z.array(PendingQuestionItemSchema),
+});
+export type PendingQuestion = z.infer<typeof PendingQuestionSchema>;
 
 /** Payload broadcast when a session's pending AskUserQuestion appears or resolves. */
 export interface SessionPendingQuestionChangedPayload {

@@ -825,8 +825,8 @@ export function applySessionLinesAppended(
 /**
  * Catch up after the SSE stream reconnects. Only the read models that the
  * missed live events would have refreshed are invalidated: session lists,
- * active sessions, session metadata and transcripts, approvals and
- * notifications. Everything else stays cached rather than refetching on
+ * active sessions, session metadata and transcripts, approvals,
+ * notifications and pending questions. Everything else stays cached rather than refetching on
  * every dropped connection. A transcript refetch serves the tail, which
  * `transcriptQueryOptions` merges onto the cached window, so lines appended
  * during the gap land without discarding pages already scrolled back through.
@@ -844,6 +844,7 @@ export function applyReconnected(queryClient: QueryClient): void {
 	});
 	void queryClient.invalidateQueries({queryKey: ["approvals"]});
 	void queryClient.invalidateQueries({queryKey: ["notifications"]});
+	void queryClient.invalidateQueries({queryKey: ["pending-question"]});
 }
 
 /** The cached list row for a session from any recent, infinite recent or grouped session list. */
