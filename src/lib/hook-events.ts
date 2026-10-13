@@ -114,6 +114,8 @@ export interface SessionSummaryPayload {
 	id: string;
 	title: string;
 	summary: string | undefined;
+	/** The CLI's latest ai-title; absent when the session has none or it is the title. */
+	aiTitle?: string;
 	mtime: string;
 	created: string;
 	project: string;

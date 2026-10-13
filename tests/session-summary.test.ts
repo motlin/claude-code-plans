@@ -124,6 +124,25 @@ describe("buildSessionSummaryPayloadFromDb", () => {
 		});
 	});
 
+	it("carries the CLI's AI title alongside a /rename title", async () => {
+		await indexSession(
+			[
+				{type: "custom-title", customTitle: "claude.ai", sessionId: "session-test-100"},
+				{type: "ai-title", aiTitle: "Parallel do-task workstreams", sessionId: "session-test-100"},
+			]
+				.map((record) => JSON.stringify(record))
+				.join("\n") + "\n",
+		);
+		await indexJsonlFile(db.index, join(testDir, PROJECT_ID, "session-test-100.jsonl"), PROJECT_ID);
+
+		const payload = buildSessionSummaryPayloadFromDb(db.index, "session-test-100");
+
+		expect({title: payload?.title, aiTitle: payload?.aiTitle}).toStrictEqual({
+			title: "claude.ai",
+			aiTitle: "Parallel do-task workstreams",
+		});
+	});
+
 	it("uses the active-session state when no durable approval exists", async () => {
 		await indexSession();
 		markSessionActive("session-test-100", {cwd: PROJECT_PATH, model: "claude-test-model"});

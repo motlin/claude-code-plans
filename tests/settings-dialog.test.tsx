@@ -295,6 +295,7 @@ describe("SettingsDialog local tabs", () => {
 			"sessions",
 			[
 				["Active sessions", ["Active session order", "Sessions page grouping", "Active timeout (seconds)"]],
+				["Titles", ["Show AI titles"]],
 				["Sub-agents", ["Default view"]],
 			],
 		],

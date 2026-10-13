@@ -20,6 +20,8 @@ interface SessionHoverCardProps {
 	sessionId: string;
 	title: string;
 	summary: string | null;
+	/** The CLI's AI title, shown under a renamed title; null hides the line. */
+	aiTitle?: string | null;
 	/** Needs input: the card offers quick reply and approval controls. */
 	blocked: boolean;
 	onOpen: (sessionId: string) => void;
@@ -39,6 +41,7 @@ export function SessionHoverCard({
 	sessionId,
 	title,
 	summary,
+	aiTitle = null,
 	blocked,
 	onOpen,
 	render,
@@ -62,10 +65,16 @@ export function SessionHoverCard({
 						className="flex max-w-[calc(100vw-32px)] flex-col gap-2 rounded-card bg-[var(--menu-bg)] p-3 text-[13px] leading-[19px] text-primary shadow-[var(--menu-shadow)] outline-none"
 					>
 						{blocked ? (
-							<BlockedCardBody sessionId={sessionId} title={title} summary={summary} onOpen={onOpen} />
+							<BlockedCardBody
+								sessionId={sessionId}
+								title={title}
+								aiTitle={aiTitle}
+								summary={summary}
+								onOpen={onOpen}
+							/>
 						) : (
 							<>
-								<CardTitle title={title} />
+								<CardTitle title={title} aiTitle={aiTitle} />
 								<p data-card-summary className="line-clamp-6 text-ink-muted">
 									{summary ?? "No summary yet."}
 								</p>
@@ -78,22 +87,31 @@ export function SessionHoverCard({
 	);
 }
 
-function CardTitle({title}: {title: string}) {
+function CardTitle({title, aiTitle}: {title: string; aiTitle: string | null}) {
 	return (
-		<p data-card-title className="line-clamp-2 font-medium">
-			{title}
-		</p>
+		<>
+			<p data-card-title className="line-clamp-2 font-medium">
+				{title}
+			</p>
+			{aiTitle !== null && (
+				<p data-card-ai-title className="-mt-1.5 line-clamp-2 text-ink-muted">
+					{aiTitle}
+				</p>
+			)}
+		</>
 	);
 }
 
 function BlockedCardBody({
 	sessionId,
 	title,
+	aiTitle,
 	summary,
 	onOpen,
 }: {
 	sessionId: string;
 	title: string;
+	aiTitle: string | null;
 	summary: string | null;
 	onOpen: (sessionId: string) => void;
 }) {
@@ -112,7 +130,7 @@ function BlockedCardBody({
 					<span className="text-[12px] leading-[15px] text-warning-000">Needs input</span>
 				</span>
 			</div>
-			<CardTitle title={title} />
+			<CardTitle title={title} aiTitle={aiTitle} />
 			{answerable === undefined ? (
 				<>
 					<p data-card-summary className="line-clamp-4 text-ink-muted">

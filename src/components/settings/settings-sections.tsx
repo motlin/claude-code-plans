@@ -934,6 +934,14 @@ export function SessionsSettings() {
 				/>
 			</SettingsSection>
 
+			<SettingsSection title="Titles">
+				<ToggleRow
+					label="Show AI titles"
+					description="Show the CLI's AI-generated title under a renamed session's title"
+					settingKey="showAiTitles"
+				/>
+			</SettingsSection>
+
 			<SettingsSection title="Sub-agents">
 				<SelectRow
 					label="Default view"

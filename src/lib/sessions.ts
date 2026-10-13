@@ -33,6 +33,8 @@ export interface SessionEntry {
 	firstPrompt?: string | undefined;
 	summary?: string | undefined;
 	customTitle?: string | undefined;
+	/** The CLI's latest generated ai-title, which a custom title outranks. */
+	aiTitle?: string | undefined;
 	mtime: Date;
 	created: Date;
 	project: string;

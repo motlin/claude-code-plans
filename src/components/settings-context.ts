@@ -69,6 +69,8 @@ export interface Settings {
 	transcriptTextSize: TranscriptTextSize;
 	/** Local-only "Recent plans" and "Memories updated" home sections; off matches claude.ai/code. */
 	homeShowLocalSections: boolean;
+	/** Show the CLI's ai-title under a differing /rename title in the header and sidebar hover card. */
+	showAiTitles: boolean;
 	/** Shiki theme for code in light mode. */
 	codeThemeLight: CodeThemeLight;
 	/** Shiki theme for code in dark mode. */
@@ -147,6 +149,7 @@ export const DEFAULTS: Settings = {
 	interfaceFont: "sans",
 	transcriptTextSize: "md",
 	homeShowLocalSections: false,
+	showAiTitles: true,
 	codeThemeLight: DEFAULT_CODE_THEMES.light,
 	codeThemeDark: DEFAULT_CODE_THEMES.dark,
 	codeFont: "",
@@ -205,6 +208,7 @@ export const STORAGE_KEYS: Record<keyof Settings, string> = {
 	interfaceFont: "ccp-interface-font",
 	transcriptTextSize: "ccp-transcript-text-size",
 	homeShowLocalSections: "ccp-home-show-local-sections",
+	showAiTitles: "ccp-show-ai-titles",
 	codeThemeLight: "ccp-code-theme-light",
 	codeThemeDark: "ccp-code-theme-dark",
 	codeFont: "ccp-code-font",
@@ -374,6 +378,7 @@ const STORED_VALUE_READERS: {[K in keyof Settings]: StoredValueReader<Settings[K
 	interfaceFont: readSchema(InterfaceFontSchema),
 	transcriptTextSize: readSchema(TranscriptTextSizeSchema),
 	homeShowLocalSections: readBoolean,
+	showAiTitles: readBoolean,
 	codeThemeLight: readSchema(CodeThemeLightSchema),
 	codeThemeDark: readSchema(CodeThemeDarkSchema),
 	codeFont: readString,

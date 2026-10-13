@@ -108,6 +108,28 @@ async function indexSession(sessionId: string, bridgeIds: string[]): Promise<str
 	return path;
 }
 
+describe("session detail API titles", () => {
+	it("returns the CLI's AI title beside a /rename title", async () => {
+		const path = join(projectsDirectory, PROJECT, `${ALICE}.jsonl`);
+		const records = [
+			{type: "user", sessionId: ALICE, message: {role: "user", content: "Example prompt"}},
+			{type: "custom-title", customTitle: "claude.ai", sessionId: ALICE},
+			{type: "ai-title", aiTitle: "Parallel do-task workstreams", sessionId: ALICE},
+		];
+		writeFileSync(path, records.map((record) => JSON.stringify(record)).join("\n") + "\n");
+		await indexJsonlFile(db.index, path, PROJECT);
+		db.index.update(schema.projects).set({projectPath: null}).where(eq(schema.projects.id, PROJECT)).run();
+
+		const detail = await (await get(DetailRoute, ALICE)).json();
+
+		expect(detail).toStrictEqual({
+			...expectedDetail(),
+			title: "claude.ai",
+			aiTitle: "Parallel do-task workstreams",
+		});
+	});
+});
+
 describe("indexed session identity API", () => {
 	it("resolves historical aliases without reading transcript files and returns the latest canonical detail ID", async () => {
 		await indexSession(ALICE, ["cse_alice_100", "session_alice_200"]);

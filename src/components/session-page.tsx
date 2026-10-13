@@ -16,6 +16,7 @@ import {useSettings} from "./settings-context";
 import {useTranscriptModeShortcut} from "../hooks/use-session-transcript-mode";
 import {sessionHasThinking} from "../lib/transcript-mode";
 import {SessionTitlebar} from "./session-titlebar";
+import {SessionAiTitleLine} from "./session-ai-title-line";
 import {SESSION_STICKY_HEADER_CLASS} from "./titlebar-classes";
 import {syncUnseenFromSummaries} from "../lib/unread-store";
 import {AskUserQuestionProvider, type AskUserQuestionContextValue} from "./ask-user-question-context";
@@ -686,6 +687,7 @@ function SessionView({
 											/>
 										}
 									/>
+									<SessionAiTitleLine title={data.title} aiTitle={data.aiTitle} />
 
 									{hookContext && <SessionHookContext context={hookContext} />}
 									<ChapterChips sessionId={sessionId} onJump={requestMessageJump} />

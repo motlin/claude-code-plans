@@ -19,6 +19,8 @@ const SessionPrLinkSchema = z.object({
 const SessionListItemSchema = z.object({
 	id: z.string(),
 	title: z.string(),
+	/** The CLI's latest ai-title, shown beside a differing /rename title. */
+	aiTitle: z.string().optional(),
 	summary: z.string().optional(),
 	mtime: z.string(),
 	created: z.string(),
@@ -79,6 +81,8 @@ export type ActiveSessionListItem = z.infer<typeof ActiveSessionSchema>;
 export const SessionDetailResponse = z
 	.object({
 		title: z.string(),
+		/** The CLI's latest ai-title, shown beside a differing /rename title. */
+		aiTitle: z.string().optional(),
 		projectName: z.string(),
 		projectId: z.string(),
 		homeRoot: z.string(),

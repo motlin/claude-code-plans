@@ -1,6 +1,7 @@
 import {createFileRoute} from "@tanstack/react-router";
 import {withMethodNotAllowed} from "../../lib/api/method-not-allowed";
 import {SessionDetailResponse} from "../../lib/api/sessions";
+import {secondaryAiTitle} from "../../lib/ai-title";
 
 export const Route = createFileRoute("/api/sessions/$id")({
 	server: {
@@ -42,6 +43,7 @@ export const Route = createFileRoute("/api/sessions/$id")({
 					.select({
 						title: sessions.title,
 						customTitle: sessions.customTitle,
+						aiTitle: sessions.aiTitle,
 						projectId: sessions.projectId,
 						mtimeMs: sessions.mtimeMs,
 						canonicalRouteId: canonicalSessionRouteId,
@@ -135,6 +137,8 @@ export const Route = createFileRoute("/api/sessions/$id")({
 					viewedState: getSessionViewedState(index, id, getCurrentSessionMessageIndex(index, id)),
 				};
 
+				const aiTitle = secondaryAiTitle(detail.title, sessionRow.aiTitle);
+				if (aiTitle !== null) detail.aiTitle = aiTitle;
 				if (sessionRow.canonicalRouteId !== null) detail.canonicalRouteId = sessionRow.canonicalRouteId;
 				if (sessionRow.canonicalRoutePending === 1) detail.canonicalRoutePending = true;
 				const pr = getSessionPrLink(index, id);

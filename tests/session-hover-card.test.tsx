@@ -20,7 +20,7 @@ const QUESTION_APPROVAL = {
 };
 
 function renderCard(
-	props: {sessionId: string; title: string; summary: string | null; blocked: boolean},
+	props: {sessionId: string; title: string; summary: string | null; blocked: boolean; aiTitle?: string | null},
 	approvals: (typeof QUESTION_APPROVAL)[] = [],
 ) {
 	const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
@@ -98,6 +98,29 @@ describe("SessionHoverCard", () => {
 			title: "Refactor parser",
 			summary: "Split the tokenizer out of the parser.",
 		});
+	});
+
+	it("shows the AI title as a muted line under a renamed title", async () => {
+		renderCard({
+			sessionId: "done-1",
+			title: "claude.ai",
+			aiTitle: "Parallel do-task workstreams",
+			summary: null,
+			blocked: false,
+		});
+		hover();
+		await advance(500);
+		expect({
+			title: card()?.querySelector("[data-card-title]")?.textContent,
+			aiTitle: card()?.querySelector("[data-card-ai-title]")?.textContent,
+		}).toStrictEqual({title: "claude.ai", aiTitle: "Parallel do-task workstreams"});
+	});
+
+	it("omits the AI title line without an AI title", async () => {
+		renderCard({sessionId: "done-1", title: "Refactor parser", summary: null, blocked: false});
+		hover();
+		await advance(500);
+		expect(card()?.querySelector("[data-card-ai-title]")).toBeNull();
 	});
 
 	it("shows the pending question with its options and a quick reply box", async () => {

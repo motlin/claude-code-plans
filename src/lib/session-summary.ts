@@ -1,4 +1,5 @@
 import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
+import {secondaryAiTitle} from "./ai-title";
 import {eq} from "drizzle-orm";
 import * as schema from "./db/schema";
 import {getActiveSessionEntry, type ActiveSessionEntry} from "./active-session-store";
@@ -97,10 +98,12 @@ export function toSessionSummaryPayload(
 		fileMtime: entry.mtime.getTime(),
 		now,
 	});
+	const aiTitle = secondaryAiTitle(entry.title, entry.aiTitle);
 	return {
 		id: entry.id,
 		title: entry.title,
 		summary: entry.summary,
+		...(aiTitle === null ? {} : {aiTitle}),
 		mtime: entry.mtime.toISOString(),
 		created: entry.created.toISOString(),
 		project: entry.project,
@@ -156,6 +159,7 @@ export function buildSessionSummaryPayloadFromDb(
 			firstPrompt: row.firstPrompt ?? undefined,
 			summary: row.summary ?? undefined,
 			customTitle: row.customTitle ?? undefined,
+			aiTitle: row.aiTitle ?? undefined,
 			mtime: new Date(row.mtimeMs),
 			created: new Date(row.createdAt),
 			project: row.projectId,

@@ -18,6 +18,7 @@ import {
 } from "../../lib/sidebar-store";
 import {ArchivedBadge} from "../archived-badge";
 import {SessionActionsMenu, SessionRowTitle} from "../session-actions-menu";
+import {useSecondaryAiTitle} from "../session-ai-title-line";
 import {SessionHoverCard} from "../session-hover-card";
 import {SessionRowStatusDot} from "../session-unread-control";
 import {Tooltip} from "../ui/tooltip";
@@ -395,10 +396,13 @@ function SessionRowLink({
 	const queryClient = useQueryClient();
 	const selection = useSidebarSelection();
 	const multiSelected = selection?.selectedIds.includes(row.sessionId) === true;
+	const title = row.title.trim() || "Untitled session";
+	const aiTitle = useSecondaryAiTitle(title, row.session.aiTitle);
 	return (
 		<SessionHoverCard
 			sessionId={row.sessionId}
-			title={row.title.trim() || "Untitled session"}
+			title={title}
+			aiTitle={aiTitle}
 			summary={row.session.summary ?? null}
 			blocked={row.bucket === "blocked"}
 			onOpen={(id) => void navigate({to: "/session/$id", params: {id}})}
