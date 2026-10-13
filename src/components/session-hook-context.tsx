@@ -11,7 +11,13 @@ function ContextPill({label, value}: {label: string; value: string}) {
 	);
 }
 
-export function SessionHookContext({context}: {context: SessionHookContextPayload}) {
+/**
+ * The live hook context under the session title: turn settings, paused
+ * background work and scheduled wakeups. Upstream's header shows only the
+ * title, so this is a Verbose-only diagnostic.
+ */
+export function SessionHookContext({context, verbose}: {context: SessionHookContextPayload; verbose: boolean}) {
+	if (!verbose) return null;
 	const backgroundTasks = context.backgroundTasks ?? [];
 	const sessionCrons = context.sessionCrons ?? [];
 	const hasTurnContext = Boolean(context.promptId) || Boolean(context.permissionMode) || Boolean(context.effortLevel);

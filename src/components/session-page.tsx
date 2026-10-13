@@ -689,7 +689,12 @@ function SessionView({
 									/>
 									<SessionAiTitleLine title={data.title} aiTitle={data.aiTitle} />
 
-									{hookContext && <SessionHookContext context={hookContext} />}
+									{hookContext && (
+										<SessionHookContext
+											context={hookContext}
+											verbose={transcriptMode === "verbose"}
+										/>
+									)}
 									<ChapterChips sessionId={sessionId} onJump={requestMessageJump} />
 								</div>
 							)}
