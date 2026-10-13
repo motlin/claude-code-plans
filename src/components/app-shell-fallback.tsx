@@ -6,6 +6,7 @@ import {getVisibleNavItems, navItems} from "./sidebar/navigation";
 import {SidebarToggleIcon} from "./sidebar/primitives";
 import {ROW_CLASS as SESSION_ROW_CLASS} from "./sidebar/session-group-section";
 import {SessionSkeleton} from "./session-skeleton";
+import {HomeGreeting} from "./home/greeting";
 
 const NAV_ROW_CLASS = "df-nav-row h-[var(--sb-row-h)] rounded-[var(--sb-radius)] flex-1";
 const BAR_CLASS = "animate-pulse rounded bg-fill-ghost-hover";
@@ -23,7 +24,64 @@ const SESSION_ROW_WIDTHS = ["w-3/4", "w-2/3", "w-5/6", "w-1/2", "w-3/5", "w-4/5"
  * removes itself on hydration, at which point the real `RootLayout` is already
  * mounted underneath it.
  */
-export function AppShellFallback() {
+/** The 840px column upstream's home page lays its greeting, body and dock in. */
+const HOME_COLUMN = "mx-auto w-full max-w-[840px] pr-10 pl-8";
+
+/** Upstream draws its composer while loading: the 40px box with the placeholder, over the chin. */
+function FallbackComposer({placeholder}: {placeholder: string}) {
+	return (
+		<div data-cds="ChatComposer" className="flex w-full min-w-0 flex-col font-sans">
+			<div
+				data-fallback-composer=""
+				className="relative flex flex-col rounded-card bg-surface-3 p-2 shadow-[var(--composer-shadow-idle)]"
+			>
+				<span className="block py-0.5 pl-1 text-[14px]/[20px] text-[rgb(137,135,129)]">{placeholder}</span>
+			</div>
+			<div
+				data-cds="ChatComposerChin"
+				className="mt-1.5 flex min-h-5 items-center ps-[7px] pe-2.5 text-[12px]/[15px] text-secondary"
+			>
+				<Plus aria-hidden="true" className="size-4" />
+			</div>
+		</div>
+	);
+}
+
+/** The home page while it loads, in its own layout: greeting, Sessions rows and the home composer. */
+function HomeSkeleton() {
+	return (
+		<div data-testid="home-skeleton" className="flex h-full min-h-0 flex-col">
+			<header className="mx-auto flex w-full max-w-[840px] items-center gap-1.5 pt-3 pr-10 pb-6 pl-8">
+				<HomeGreeting name={undefined} clear={false} />
+			</header>
+			<div className={`min-h-0 flex-1 overflow-hidden ${HOME_COLUMN}`}>
+				<section className="flex flex-col gap-2 pt-6">
+					<header className="flex items-center gap-1">
+						<h2 className="text-[13px] leading-[19px] font-normal text-primary">Sessions</h2>
+					</header>
+					<ul className="flex flex-col gap-1">
+						{HOME_ROW_WIDTHS.map((width) => (
+							<li
+								key={width}
+								data-home-skeleton-row=""
+								className="flex h-10 items-center rounded-r6 bg-alpha-1 px-[5px]"
+							>
+								<span className={`ms-6 h-3.5 ${width} ${BAR_CLASS}`} />
+							</li>
+						))}
+					</ul>
+				</section>
+			</div>
+			<div className={`shrink-0 pb-4 ${HOME_COLUMN}`}>
+				<FallbackComposer placeholder="Describe a task or ask a question" />
+			</div>
+		</div>
+	);
+}
+
+const HOME_ROW_WIDTHS = ["w-1/2", "w-2/5", "w-3/5", "w-1/3", "w-5/12"];
+
+export function AppShellFallback({pathname = ""}: {pathname?: string}) {
 	const [hydrated, setHydrated] = useState(false);
 
 	useEffect(() => {
@@ -110,29 +168,19 @@ export function AppShellFallback() {
 			</div>
 
 			<div className="flex min-w-0 flex-1 flex-col bg-surface-2">
-				{/* The in-app session skeleton, in the tile shell it paints in, so both loads look alike. */}
-				<div data-route-tile-shell="" className="overflow-hidden">
-					<SessionSkeleton />
-				</div>
-				<div className="chat-column shrink-0 pb-4">
-					{/* Upstream draws its composer while loading: the 40px box with the placeholder, over the chin. */}
-					<div data-cds="ChatComposer" className="flex w-full min-w-0 flex-col font-sans">
-						<div
-							data-fallback-composer=""
-							className="relative flex flex-col rounded-card bg-surface-3 p-2 shadow-[var(--composer-shadow-idle)]"
-						>
-							<span className="block py-0.5 pl-1 text-[14px]/[20px] text-[rgb(137,135,129)]">
-								Type / for commands
-							</span>
+				{pathname === "/" ? (
+					<HomeSkeleton />
+				) : (
+					<>
+						{/* The in-app session skeleton, in the tile shell it paints in, so both loads look alike. */}
+						<div data-route-tile-shell="" className="overflow-hidden">
+							<SessionSkeleton />
 						</div>
-						<div
-							data-cds="ChatComposerChin"
-							className="mt-1.5 flex min-h-5 items-center ps-[7px] pe-2.5 text-[12px]/[15px] text-secondary"
-						>
-							<Plus aria-hidden="true" className="size-4" />
+						<div className="chat-column shrink-0 pb-4">
+							<FallbackComposer placeholder="Type / for commands" />
 						</div>
-					</div>
-				</div>
+					</>
+				)}
 			</div>
 		</div>
 	);

@@ -6,6 +6,7 @@ import {
 	Scripts,
 	useMatches,
 	useRouter,
+	useRouterState,
 } from "@tanstack/react-router";
 import type {ErrorComponentProps} from "@tanstack/react-router";
 import {noop, QueryClientProvider, type QueryClient} from "@tanstack/react-query";
@@ -254,6 +255,8 @@ export function DefaultErrorComponent({error}: ErrorComponentProps) {
 }
 
 function RootDocument({children}: Readonly<{children: ReactNode}>) {
+	// The fallback paints the requested route's own loading layout.
+	const pathname = useRouterState({select: (state) => state.location.pathname});
 	return (
 		// THEME_INIT_SCRIPT adds the resolved theme class and color-scheme to <html>
 		// before React loads, which is by definition an attribute the server markup
@@ -267,7 +270,7 @@ function RootDocument({children}: Readonly<{children: ReactNode}>) {
 				<script dangerouslySetInnerHTML={{__html: THEME_INIT_SCRIPT}} />
 			</head>
 			<body>
-				<AppShellFallback />
+				<AppShellFallback pathname={pathname} />
 				{children}
 				<Scripts />
 			</body>

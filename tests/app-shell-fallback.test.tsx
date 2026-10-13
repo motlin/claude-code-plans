@@ -15,6 +15,9 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
 		...actual,
 		HeadContent: () => null,
 		Scripts: () => null,
+		// The shell picks the fallback layout from the requested path.
+		useRouterState: ({select}: {select: (state: {location: {pathname: string}}) => unknown}) =>
+			select({location: {pathname: "/session/example-alice"}}),
 	};
 });
 
@@ -150,6 +153,28 @@ describe("AppShellFallback", () => {
 			box: "relative flex flex-col rounded-card bg-surface-3 p-2 shadow-[var(--composer-shadow-idle)]",
 			oldEmptyBox: null,
 			chin: true,
+		});
+	});
+
+	it("paints the home layout on the home route: greeting, Sessions rows and the home composer, with no session skeleton", () => {
+		const host = document.createElement("div");
+		host.innerHTML = renderToStaticMarkup(<AppShellFallback pathname="/" />);
+		const home = host.querySelector('[data-testid="home-skeleton"]');
+
+		expect({
+			home: home !== null,
+			greeting: home?.querySelector("h1")?.textContent,
+			sessions: home?.querySelector("h2")?.textContent,
+			rows: home?.querySelectorAll("[data-home-skeleton-row]").length,
+			composer: host.querySelector("[data-fallback-composer]")?.textContent,
+			sessionSkeleton: host.querySelector('[data-testid="session-skeleton"]'),
+		}).toStrictEqual({
+			home: true,
+			greeting: "Welcome back",
+			sessions: "Sessions",
+			rows: 5,
+			composer: "Describe a task or ask a question",
+			sessionSkeleton: null,
 		});
 	});
 });
