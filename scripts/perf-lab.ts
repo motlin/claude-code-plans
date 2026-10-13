@@ -314,8 +314,8 @@ function startServer(fixture: LabFixture, port: number): {process: ChildProcess;
 		output.push(chunk.toString());
 		if (output.length > 100) output.shift();
 	};
-	server.stdout?.on("data", remember);
-	server.stderr?.on("data", remember);
+	server.stdout.on("data", remember);
+	server.stderr.on("data", remember);
 	return {process: server, output};
 }
 

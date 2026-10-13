@@ -5,7 +5,7 @@ import {isArtifactCardCall, type ParsedArtifact} from "../../lib/artifact-output
 import type {ArtifactListEntry} from "../../lib/artifact-schemas";
 import type {PermissionDecision} from "../../lib/permission-decision";
 import type {Subagent} from "../../lib/subagents";
-import {getAgentTypeOrNull, getTaskCreateDisplaySubject} from "../../lib/tool-utils";
+import {getAgentTypeOrNull, getTaskCreateDisplaySubject, inputString} from "../../lib/tool-utils";
 import {buildSubagentTree} from "../../lib/subagent-tree";
 import type {ParallelSubagentGroup, SubagentTreeEntry, SubagentTreeNode} from "../../lib/subagent-tree";
 import {nonEmpty} from "../../lib/non-empty";
@@ -91,7 +91,7 @@ export interface ToolRendererProps {
 const AGENT_ID_RE = /agentId:\s*(\S+)/;
 
 function isParallelGroup(entry: SubagentTreeEntry): entry is ParallelSubagentGroup {
-	return (entry as ParallelSubagentGroup).type === "parallel";
+	return "type" in entry;
 }
 
 function statusForAgent(agent: {finishedAt: string | null}): "running" | "done" | "error" {
@@ -178,7 +178,7 @@ function resolveSubagentInfo(
 	}
 	if (!info) {
 		const inputAgentType = getAgentTypeOrNull(input);
-		const inputDescription = (input["description"] as string) ?? null;
+		const inputDescription = inputString(input, "description") ?? null;
 		if (inputDescription) {
 			info = subagentLookup.byTypeAndDescription.get(lookupKey(inputAgentType, inputDescription));
 		}

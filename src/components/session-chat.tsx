@@ -728,7 +728,6 @@ function LineEntry({
 		...renderProps,
 		nextLine,
 	});
-	if (!content) return null;
 
 	const isAssistant = line.type === "assistant";
 	const wrapperClassName = [
@@ -1700,15 +1699,15 @@ function queuedHumanPromptOf(line: SessionLine): string | null {
 function withQueuedPrompts(lines: SessionLine[]): SessionLine[] {
 	let result: SessionLine[] | null = null;
 	let laterPrompts: Map<string, number> | null = null;
-	lines.forEach((line, index) => {
+	for (const [index, line] of lines.entries()) {
 		const prompt = queuedHumanPromptOf(line);
-		if (prompt === null || line.type !== "attachment") return;
+		if (prompt === null || line.type !== "attachment") continue;
 		laterPrompts ??= new Map(
 			lines.flatMap((other, otherIndex) =>
 				other.type === "user" ? [[getUserContentText(other), otherIndex] as const] : [],
 			),
 		);
-		if ((laterPrompts.get(prompt) ?? -1) > index) return;
+		if ((laterPrompts.get(prompt) ?? -1) > index) continue;
 		result ??= [...lines];
 		result[index] = {
 			type: "user",
@@ -1718,7 +1717,7 @@ function withQueuedPrompts(lines: SessionLine[]): SessionLine[] {
 			...(line.timestamp === undefined ? {} : {timestamp: line.timestamp}),
 			...(line.sessionId === undefined ? {} : {sessionId: line.sessionId}),
 		};
-	});
+	}
 	return result ?? lines;
 }
 
@@ -1730,10 +1729,10 @@ function withQueuedPrompts(lines: SessionLine[]): SessionLine[] {
  */
 function withLocalCommandProse(lines: SessionLine[]): SessionLine[] {
 	let result: SessionLine[] | null = null;
-	lines.forEach((line, index) => {
-		if (line.type !== "system" || line.subtype !== "local_command") return;
+	for (const [index, line] of lines.entries()) {
+		if (line.type !== "system" || line.subtype !== "local_command") continue;
 		const output = localCommandOutput(line.content);
-		if (output === "") return;
+		if (output === "") continue;
 		result ??= [...lines];
 		result[index] = {
 			type: "assistant",
@@ -1743,7 +1742,7 @@ function withLocalCommandProse(lines: SessionLine[]): SessionLine[] {
 			...(line.timestamp === undefined ? {} : {timestamp: line.timestamp}),
 			...(line.sessionId === undefined ? {} : {sessionId: line.sessionId}),
 		};
-	});
+	}
 	return result ?? lines;
 }
 
@@ -3545,7 +3544,7 @@ function renderUserContentBlocks(
 					<DebugLink sessionId={sessionId} uuid={line.uuid} className="absolute top-1 right-1" />
 				</React.Fragment>,
 			);
-		} else if (block.type === "image" && block.source) {
+		} else if (block.type === "image") {
 			mediaNodes.push(
 				<div key={`img-${i}`} className="relative inline-block">
 					<img
@@ -3556,7 +3555,7 @@ function renderUserContentBlocks(
 					<DebugLink sessionId={sessionId} uuid={line.uuid} className="absolute top-1 right-1" />
 				</div>,
 			);
-		} else if (block.type === "document" && block.source) {
+		} else if (block.type === "document") {
 			mediaNodes.push(
 				<div
 					key={`doc-${i}`}
@@ -3962,7 +3961,7 @@ function ContentBlock({
 		return <ToolCallSection calls={toolCalls} sessionId={sessionId} />;
 	}
 
-	if (block.type === "image" && block.source) {
+	if (block.type === "image") {
 		return (
 			<div className="relative inline-block">
 				<img
@@ -3975,7 +3974,7 @@ function ContentBlock({
 		);
 	}
 
-	if (block.type === "document" && block.source) {
+	if (block.type === "document") {
 		return (
 			<div className="relative rounded-lg px-3 py-2 bg-surface-1 text-primary flex items-center gap-1.5">
 				<svg

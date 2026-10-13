@@ -156,7 +156,7 @@ describe("SessionChat turn metadata", () => {
 			],
 			true,
 		);
-		const visible = container.textContent ?? "";
+		const visible = container.textContent;
 		const userTooltip = timeTooltip(container, 0) ?? "";
 		const assistantTooltip = timeTooltip(container, 1) ?? "";
 		vi.useRealTimers();

@@ -267,7 +267,7 @@ export function extractLineNumbers(text: string): {
 } {
 	const lines = text.split("\n");
 	let startLine = 1;
-	let hasLineNumbers = false;
+	let hasLineNumbers = false as boolean;
 
 	const processedLines = lines.map((line, index) => {
 		// Match line number prefix patterns: "  1→" or "1→" or "1\t"

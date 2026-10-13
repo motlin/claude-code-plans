@@ -213,8 +213,8 @@ export async function branchSideChatEntry(sessionId: string, entryId: number): P
 			body: JSON.stringify({sessionId, prompt}),
 		});
 		if (!response.ok) throw new Error(await readResponseError(response));
-		let forkedId: string | null = null;
-		let error: string | null = null;
+		let forkedId = null as string | null;
+		let error = null as string | null;
 		await readStreamEvents(response, (event) => {
 			if (typeof event.session_id === "string" && event.session_id !== "") {
 				forkedId = event.session_id;

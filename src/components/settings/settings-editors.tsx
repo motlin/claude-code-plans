@@ -1283,7 +1283,7 @@ function ObjectSummary({label, value}: {label: string; value: unknown}) {
 	if (value === undefined || value === null) return null;
 
 	const summary =
-		typeof value === "object" && value !== null
+		typeof value === "object"
 			? Array.isArray(value)
 				? `${value.length} items`
 				: `${Object.keys(value).length} keys`

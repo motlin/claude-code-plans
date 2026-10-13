@@ -33,7 +33,7 @@ function resolveMenuTarget(element: Element | null, fallback: "prose" | "tool"):
 	const link = element.closest<HTMLAnchorElement>("a[href]");
 	if (link !== null) return {kind: "link", href: link.href};
 	const code = element.closest("code:not(pre code)");
-	if (code !== null) return {kind: "code", text: code.textContent ?? ""};
+	if (code !== null) return {kind: "code", text: code.textContent};
 	return {kind: fallback};
 }
 

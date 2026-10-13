@@ -22,7 +22,7 @@ function makeItem(overrides: Partial<UnifiedSearchItem> = {}): UnifiedSearchItem
 }
 
 function runs(element: Element): string[] {
-	return [...element.querySelectorAll(".font-semibold.text-primary")].map((run) => run.textContent ?? "");
+	return [...element.querySelectorAll(".font-semibold.text-primary")].map((run) => run.textContent);
 }
 
 function part(element: Element, name: string): string | null {

@@ -1,5 +1,5 @@
 import type {ClientToolCall} from "./tool-renderers/types";
-import {getTaskCreateDisplaySubject} from "../lib/tool-utils";
+import {getTaskCreateDisplaySubject, inputString} from "../lib/tool-utils";
 
 export function extractTasks(toolCalls: ClientToolCall[]): TaskItem[] {
 	const tasks = new Map<string, TaskItem>();
@@ -9,7 +9,7 @@ export function extractTasks(toolCalls: ClientToolCall[]): TaskItem[] {
 		if (call.name === "TaskCreate") {
 			autoId++;
 			const id = String(autoId);
-			const description = (call.input["description"] as string) ?? "";
+			const description = inputString(call.input, "description") ?? "";
 			tasks.set(id, {
 				id,
 				subject: getTaskCreateDisplaySubject(call.input) || `Task ${id}`,

@@ -1,3 +1,4 @@
+import {inputString} from "../../lib/tool-utils";
 import {
 	CheckCircle,
 	Globe,
@@ -140,7 +141,7 @@ function PageList({pages}: {pages: PageInfo[]}) {
 // ---------------------------------------------------------------------------
 
 function NavigatePageRenderer({input, resultText}: {input: Record<string, unknown>; resultText: string}) {
-	const url = (input["url"] as string) ?? "";
+	const url = inputString(input, "url") ?? "";
 	const pages = parsePageList(resultText);
 
 	return (

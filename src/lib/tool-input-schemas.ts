@@ -598,6 +598,11 @@ export const toolInputSchemas = {
 	Workflow: WorkflowInputSchema,
 } satisfies Record<string, z.ZodType>;
 
+type ToolInputSchema = (typeof toolInputSchemas)[keyof typeof toolInputSchemas];
+
+/** Input schemas keyed by a tool name read from a transcript, which may name a tool this registry lacks. */
+export const toolInputSchemaByName: ReadonlyMap<string, ToolInputSchema> = new Map(Object.entries(toolInputSchemas));
+
 // MCP tool inputs vary by server — skip strict validation for them.
 export function isMcpTool(name: string): boolean {
 	return name.startsWith("mcp__");

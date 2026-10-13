@@ -154,6 +154,8 @@ function isSubscriptionStarted(message: Record<string, unknown>): boolean {
 
 function createBridge(dependencies: BridgeDependencies): () => void {
 	let stopped = false;
+	// stop() can run while an await is pending; reading through a call keeps flow narrowing from pinning the flag.
+	const isStopped = (): boolean => stopped;
 	let socket: Socket | null = null;
 	let lineReader: ReadlineInterface | null = null;
 	let probeRetryTimer: Timer | null = null;
@@ -179,13 +181,13 @@ function createBridge(dependencies: BridgeDependencies): () => void {
 		resyncRunning = true;
 		try {
 			const panes = await dependencies.getPanes();
-			if (!stopped) {
+			if (!isStopped()) {
 				try {
 					await dependencies.viewedStateTracker.syncPanes(panes);
 				} catch (error) {
 					console.error(`herdr resync failed to sync viewed state for ${panes.length} panes`, error);
 				}
-				if (!stopped && paneDiffer.shouldBroadcastSnapshot(panes)) {
+				if (!isStopped() && paneDiffer.shouldBroadcastSnapshot(panes)) {
 					dependencies.broadcast(HERDR_EVENTS.PANES_SNAPSHOT, {panes});
 				}
 			}
@@ -195,7 +197,7 @@ function createBridge(dependencies: BridgeDependencies): () => void {
 			resyncRunning = false;
 		}
 
-		if (resyncAgain && !stopped) {
+		if (resyncAgain && !isStopped()) {
 			resyncAgain = false;
 			scheduleHintResync();
 		}
@@ -303,9 +305,9 @@ function createBridge(dependencies: BridgeDependencies): () => void {
 		// Seed terminalId-keyed transition state before subscribing. Otherwise a
 		// fast done→idle push could arrive before its paneId→terminalId mapping.
 		await runResync();
-		if (stopped) return;
+		if (isStopped()) return;
 		const panes = await dependencies.getPaneSnapshot();
-		if (stopped) return;
+		if (isStopped()) return;
 		paneDiffer.seedKnownPanes(panes);
 		connect(panes.map((pane) => pane.paneId));
 	};

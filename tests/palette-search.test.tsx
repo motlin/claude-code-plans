@@ -149,7 +149,7 @@ function option(dialog: HTMLElement, label: string): HTMLElement {
 }
 
 function boldRuns(element: Element): string[] {
-	return [...element.querySelectorAll(".font-semibold.text-primary")].map((run) => run.textContent ?? "");
+	return [...element.querySelectorAll(".font-semibold.text-primary")].map((run) => run.textContent);
 }
 
 async function awaitRequest(): Promise<PendingSearch> {
@@ -251,7 +251,7 @@ describe("⌘K palette live search", () => {
 		expect({
 			text: snippet?.textContent,
 			className: snippet?.className,
-			bold: snippet === null || snippet === undefined ? [] : boldRuns(snippet),
+			bold: snippet === null ? [] : boldRuns(snippet),
 		}).toStrictEqual({
 			text: "“the HashingStrategy exists”",
 			className: "text-xs text-ink-muted max-w-[60%] shrink-0 overflow-hidden whitespace-nowrap",
@@ -430,7 +430,7 @@ describe("⌘K palette filters", () => {
 
 		type(dialog, "/re");
 		const repo = [...within(dialog).getByRole("group", {name: "Filters"}).querySelectorAll("[cmdk-item]")].find(
-			(item) => item.textContent?.includes("Repo"),
+			(item) => item.textContent.includes("Repo"),
 		);
 		if (repo === undefined) throw new Error("no Repo hint");
 		fireEvent.click(repo);

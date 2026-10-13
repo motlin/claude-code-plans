@@ -100,7 +100,7 @@ function sidebarNavLabels(): string[] {
 	return within(sidebar)
 		.getAllByRole("link", {hidden: true})
 		.filter((link) => !footer.contains(link) && link.getAttribute("href") !== "/")
-		.map((link) => link.textContent ?? "");
+		.map((link) => link.textContent);
 }
 
 async function openMoreMenu(): Promise<HTMLElement> {

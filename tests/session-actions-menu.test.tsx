@@ -142,7 +142,7 @@ function outline(menu: HTMLElement): string[] {
 	return [...menu.querySelectorAll('[role="menuitem"], [role="separator"]')].map((node) =>
 		node.getAttribute("role") === "separator"
 			? "---"
-			: `${node.textContent ?? ""} [${node.getAttribute("aria-keyshortcuts") ?? ""}]`,
+			: `${node.textContent} [${node.getAttribute("aria-keyshortcuts") ?? ""}]`,
 	);
 }
 

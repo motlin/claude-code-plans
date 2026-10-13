@@ -163,16 +163,15 @@ describe("a schema-invalid tool input in the transcript", () => {
 
 	it("renders the text and both calls instead of an unreadable record", () => {
 		const {lines, toolResultMap} = processTranscript([assistantWithMalformedRead(), toolResults()]);
-		const text =
-			render(
-				<SessionChat
-					sessionId="test-session"
-					lines={lines}
-					toolResultMap={toolResultMap}
-					shouldScrollToEnd={false}
-					transcriptMode="verbose"
-				/>,
-			).container.textContent ?? "";
+		const text = render(
+			<SessionChat
+				sessionId="test-session"
+				lines={lines}
+				toolResultMap={toolResultMap}
+				shouldScrollToEnd={false}
+				transcriptMode="verbose"
+			/>,
+		).container.textContent;
 		expect({
 			unreadable: text.includes("Unreadable"),
 			prose: text.includes("Checking the shared exports before the build."),

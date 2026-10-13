@@ -115,7 +115,7 @@ function menuRows(): Array<[string | null, string, string | null]> {
 	const menu = screen.getByRole("menu");
 	return [...menu.querySelectorAll<HTMLElement>("[role^=menuitem]")].map((item) => [
 		item.getAttribute("role"),
-		item.textContent ?? "",
+		item.textContent,
 		item.getAttribute("aria-checked"),
 	]);
 }

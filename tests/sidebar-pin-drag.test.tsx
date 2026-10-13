@@ -177,9 +177,7 @@ function pinnedSection(container: HTMLElement): HTMLElement {
 }
 
 function pinnedTitles(container: HTMLElement): string[] {
-	return [...pinnedSection(container).querySelectorAll("a[data-row-main-button]")].map(
-		(link) => link.textContent ?? "",
-	);
+	return [...pinnedSection(container).querySelectorAll("a[data-row-main-button]")].map((link) => link.textContent);
 }
 
 function dropRow(container: HTMLElement) {

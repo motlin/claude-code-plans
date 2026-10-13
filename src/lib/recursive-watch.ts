@@ -97,6 +97,7 @@ class RecursiveWatcherImpl extends EventEmitter implements RecursiveWatcher {
 		}
 
 		await Promise.all(attachedRoots.map(async (root) => this.waitUntilArmed(root)));
+		// oxlint-disable-next-line typescript/no-unnecessary-condition -- close() can run while the roots arm
 		if (!this.closed) this.emit("ready");
 	}
 

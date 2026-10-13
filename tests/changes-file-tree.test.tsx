@@ -194,7 +194,7 @@ describe("ChangedFilesSidebar", () => {
 		renderSidebar({selectedCommitSha: COMMITS[0]?.sha ?? null});
 		const pressed = within(screen.getByRole("toolbar", {name: "Commits"}))
 			.getAllByRole("button", {pressed: true})
-			.map((button) => button.textContent?.slice(0, 10));
+			.map((button) => button.textContent.slice(0, 10));
 		cleanup();
 
 		renderSidebar({commits: []});

@@ -53,7 +53,7 @@ describe("ExitPlanModeRenderer", () => {
 			heading: view.container.querySelector("h1")?.textContent,
 			subheading: view.container.querySelector("h2")?.textContent,
 			body: view.container.querySelector("p")?.textContent,
-			showsBoilerplate: view.container.textContent?.includes("You can now start coding") ?? false,
+			showsBoilerplate: view.container.textContent.includes("You can now start coding"),
 		}).toStrictEqual({
 			heading: "Switch git pager",
 			subheading: "Context",
@@ -93,7 +93,7 @@ describe("ExitPlanModeRenderer", () => {
 		expect({
 			status: screen.getByText("Plan rejected").textContent,
 			detail: screen.getByText("also plan on working in a new worktree").textContent,
-			showsBoilerplate: view.container.textContent?.includes("STOP what you are doing") ?? false,
+			showsBoilerplate: view.container.textContent.includes("STOP what you are doing"),
 		}).toStrictEqual({
 			status: "Plan rejected",
 			detail: "also plan on working in a new worktree",

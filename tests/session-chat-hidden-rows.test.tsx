@@ -82,7 +82,7 @@ describe("Request interrupted records", () => {
 				const container = renderRecords(interruptedSession(text), mode);
 				const result = {
 					entries: entryLines(container),
-					interrupted: (container.textContent ?? "").includes("Request interrupted"),
+					interrupted: container.textContent.includes("Request interrupted"),
 				};
 				cleanup();
 				return result;
@@ -198,8 +198,8 @@ describe("Stop hook feedback", () => {
 				markerClassName: button.parentElement?.className,
 				rightAligned: button.closest(".justify-end") !== null,
 				promptBubbleOnly: container.querySelectorAll(".user-message-bubble").length === 1,
-				stopHookText: (container.textContent ?? "").includes("Stop hook feedback"),
-				feedbackText: (container.textContent ?? "").includes("Fabricated first line"),
+				stopHookText: container.textContent.includes("Stop hook feedback"),
+				feedbackText: container.textContent.includes("Fabricated first line"),
 			};
 			fireEvent.click(button);
 			const body = document.getElementById(button.getAttribute("aria-controls")!);
@@ -213,7 +213,7 @@ describe("Stop hook feedback", () => {
 					innerClassName: feedback?.parentElement?.className,
 					feedbackClassName: feedback?.className,
 					feedbackText: feedback?.textContent,
-					stopHookText: (container.textContent ?? "").includes("Stop hook feedback"),
+					stopHookText: container.textContent.includes("Stop hook feedback"),
 				},
 			}).toStrictEqual({
 				collapsed: {

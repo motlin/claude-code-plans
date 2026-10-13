@@ -103,7 +103,7 @@ async function openHeaderMenu(name: string): Promise<HTMLElement> {
 
 function menuOutline(menu: HTMLElement): string[] {
 	return [...menu.querySelectorAll('[role="menuitem"], [role="separator"]')].map((node) =>
-		node.getAttribute("role") === "separator" ? "---" : (node.textContent ?? ""),
+		node.getAttribute("role") === "separator" ? "---" : node.textContent,
 	);
 }
 
@@ -361,7 +361,7 @@ describe("Delete group", () => {
 		return {
 			title: dialog.querySelector("h2")?.textContent ?? "",
 			body: dialog.querySelector("p")?.textContent ?? "",
-			buttons: [...dialog.querySelectorAll("button")].map((button) => button.textContent ?? ""),
+			buttons: [...dialog.querySelectorAll("button")].map((button) => button.textContent),
 		};
 	}
 

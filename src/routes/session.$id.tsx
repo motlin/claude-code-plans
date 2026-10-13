@@ -208,7 +208,6 @@ function useCanonicalSessionRoute(
 		!detail.data?.canonicalRoutePending;
 	const canSeed =
 		freshDetail &&
-		canonical !== undefined &&
 		!visit.current.seeded.has(canonical) &&
 		queryClient.getQueryState(sessionIdentityQueryOptions(canonical).queryKey) === undefined;
 	const queries: ReturnType<typeof sessionIdentityQueryOptions>[] =
@@ -230,13 +229,7 @@ function useCanonicalSessionRoute(
 	if (canonical !== undefined && freshDetail) visit.current.seeded.add(canonical);
 
 	useEffect(() => {
-		if (
-			!freshDetail ||
-			canonical === undefined ||
-			params.id !== sessionId ||
-			location.pathname !== `/session/${sessionId}`
-		)
-			return;
+		if (!freshDetail || params.id !== sessionId || location.pathname !== `/session/${sessionId}`) return;
 		if (!identity?.isSuccess || identity.isStale || identity.isFetching || identity.data.sessionId !== sessionId)
 			return;
 		if (router.latestLocation.state.__TSR_key !== location.state.__TSR_key) return;

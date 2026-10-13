@@ -1,3 +1,4 @@
+import {inputString} from "../../lib/tool-utils";
 import {Fragment} from "react";
 import type {ThemedToken} from "@shikijs/core";
 import {extractLineNumbers, detectLanguage} from "../../lib/diff-utils";
@@ -45,7 +46,7 @@ function PlainLine({content}: {content: string}) {
 }
 
 export function ReadRenderer({toolCall}: ToolRendererProps) {
-	const filePath = (toolCall.input["file_path"] as string) ?? "";
+	const filePath = inputString(toolCall.input, "file_path") ?? "";
 	const {result, isError} = toolCall;
 
 	const code = result && !isError ? result : "";

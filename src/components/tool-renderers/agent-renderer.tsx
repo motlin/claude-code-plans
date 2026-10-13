@@ -1,16 +1,16 @@
 import type {ToolRendererProps} from "./types";
 import type {KeyValueParam} from "./shared";
 import {KeyValueCard} from "./shared";
-import {getAgentTypeFromInput} from "../../lib/tool-utils";
+import {getAgentTypeFromInput, inputString} from "../../lib/tool-utils";
 
 const AGENT_ID_RE = /agentId:\s*(\S+)/;
 
 export function AgentRenderer({toolCall}: ToolRendererProps) {
-	const prompt = (toolCall.input["prompt"] as string) ?? "";
+	const prompt = inputString(toolCall.input, "prompt") ?? "";
 	const agentType = getAgentTypeFromInput(toolCall.input);
-	const description = (toolCall.input["description"] as string) ?? "";
-	const effort = (toolCall.input["effort"] as string) ?? "";
-	const parameter = (toolCall.input["parameter"] as string) ?? "";
+	const description = inputString(toolCall.input, "description") ?? "";
+	const effort = inputString(toolCall.input, "effort") ?? "";
+	const parameter = inputString(toolCall.input, "parameter") ?? "";
 	const {result, isError, subagentInfo} = toolCall;
 
 	const agentIdMatch = result?.match(AGENT_ID_RE);

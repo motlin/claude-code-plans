@@ -548,7 +548,7 @@ describe("Files pane editing", () => {
 		return within(pane)
 			.queryAllByRole("tab")
 			.map((tab) => ({
-				name: tab.textContent ?? "",
+				name: tab.textContent,
 				italic: tab.className.split(/\s+/).includes("italic"),
 				selected: tab.getAttribute("aria-selected") === "true",
 			}));

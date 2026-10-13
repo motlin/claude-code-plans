@@ -84,8 +84,8 @@ describe("TodoWriteRenderer", () => {
 		);
 
 		expect({
-			failed: failed.container.textContent?.includes("Error: Failed to write todos"),
-			succeeded: succeeded.container.textContent?.includes("Todos have been modified successfully"),
+			failed: failed.container.textContent.includes("Error: Failed to write todos"),
+			succeeded: succeeded.container.textContent.includes("Todos have been modified successfully"),
 		}).toStrictEqual({
 			failed: true,
 			succeeded: false,

@@ -40,7 +40,7 @@ export function FileMentionMenu({
 	const listRef = useRef<HTMLDivElement>(null);
 
 	useLayoutEffect(() => {
-		listRef.current?.querySelector<HTMLElement>("[data-highlighted]")?.scrollIntoView?.({block: "nearest"});
+		listRef.current?.querySelector<HTMLElement>("[data-highlighted]")?.scrollIntoView({block: "nearest"});
 	}, [highlighted, entries]);
 
 	return (

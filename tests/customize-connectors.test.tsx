@@ -251,7 +251,7 @@ describe("connector detail", () => {
 			copy: screen.getByRole("button", {name: "Copy server URL"}).textContent,
 			groups: screen.getAllByRole("button", {expanded: true}).map((button) => button.textContent),
 			tools: toolStates(),
-			leaksHeaderValue: document.body.textContent?.includes("Bearer") ?? false,
+			leaksHeaderValue: document.body.textContent.includes("Bearer"),
 		}).toStrictEqual({
 			copy: "https://mcp.render.com/mcp",
 			groups: ["Read-only tools1", "Write/delete tools2"],

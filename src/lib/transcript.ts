@@ -438,7 +438,7 @@ export function isStdoutLine(line: ProcessedLine): boolean {
 function isBlankAssistantLine(line: ProcessedLine): boolean {
 	if (line.type !== "assistant") return false;
 	const content = line.message?.content;
-	if (content === undefined || content === null) return true;
+	if (content === undefined) return true;
 	if (typeof content === "string") return content.trim() === "";
 	if (Array.isArray(content)) {
 		if (content.length === 0) return true;

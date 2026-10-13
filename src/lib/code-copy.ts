@@ -21,7 +21,7 @@ export function handleCodeCopyClick(event: MouseEvent<HTMLElement>): void {
 	const pre = button.closest(`.${CODEBLOCK_CLASS}`)?.querySelector("pre");
 	if (!pre) return;
 
-	void writeClipboardText(pre.textContent ?? "").then((copied) => {
+	void writeClipboardText(pre.textContent).then((copied) => {
 		if (!copied) return;
 		button.innerHTML = CHECK_ICON_SVG;
 		setTimeout(() => {

@@ -1,8 +1,9 @@
+import {inputString} from "../../lib/tool-utils";
 import type {ToolRendererProps} from "./types";
 import {KeyValueCard} from "./shared";
 
 export function WebSearchRenderer({toolCall}: ToolRendererProps) {
-	const query = (toolCall.input["query"] as string) ?? "";
+	const query = inputString(toolCall.input, "query") ?? "";
 	const allowedDomains = toolCall.input["allowed_domains"] as string[] | undefined;
 	const blockedDomains = toolCall.input["blocked_domains"] as string[] | undefined;
 	const {result, isError} = toolCall;

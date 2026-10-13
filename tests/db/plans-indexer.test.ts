@@ -27,7 +27,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-	if (db) db.close();
+	db.close();
 	rmSync(testDir, {recursive: true, force: true});
 });
 

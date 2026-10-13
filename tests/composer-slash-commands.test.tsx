@@ -29,7 +29,7 @@ function setup(onSend = vi.fn<(prompt: string) => void>()) {
 
 function rows(): {name: string; highlighted: boolean}[] {
 	return screen.getAllByRole("menuitem").map((row) => ({
-		name: row.textContent ?? "",
+		name: row.textContent,
 		highlighted: row.hasAttribute("data-highlighted"),
 	}));
 }

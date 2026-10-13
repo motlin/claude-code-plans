@@ -873,7 +873,7 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 			const contentBlocks: MessageContent[] = [];
 			const toolCalls: ToolCallInfo[] = [];
 			const content = message.content;
-			let isCommand = false;
+			let isCommand = false as boolean;
 
 			if (type === "user") {
 				const processUserText = (text: string) => {

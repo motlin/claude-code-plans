@@ -142,7 +142,7 @@ async function renderTitlebar(data: SessionDetailData, slots: {withSlots?: boole
 }
 
 function accessibleName(element: Element): string {
-	return element.getAttribute("aria-label") ?? element.textContent ?? "";
+	return element.getAttribute("aria-label") ?? element.textContent;
 }
 
 function controlsIn(container: Element): string[] {

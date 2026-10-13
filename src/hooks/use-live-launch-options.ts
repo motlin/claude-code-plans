@@ -56,7 +56,7 @@ function reportedMode(pending: PendingMode, context: LiveHookContext | undefined
 	const mode = context?.permissionMode;
 	if (mode === undefined || mode === "") return null;
 	const baseline = pending.baseline;
-	const changed = mode !== baseline?.permissionMode || context?.promptId !== baseline?.promptId;
+	const changed = mode !== baseline?.permissionMode || context?.promptId !== baseline.promptId;
 	return changed ? mode : null;
 }
 

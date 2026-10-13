@@ -205,7 +205,7 @@ describe("Changes scope menu", () => {
 		fireEvent.change(search, {target: {value: FIX_COMMIT.shortSha}});
 		const bySha = commitRows();
 		fireEvent.change(search, {target: {value: "nothing like this"}});
-		const none = {rows: commitRows(), empty: screen.getByText("No commits match") !== null};
+		const none = {rows: commitRows(), empty: screen.queryByText("No commits match") !== null};
 
 		expect({all, filtered, bySha, none}).toEqual({
 			all: {

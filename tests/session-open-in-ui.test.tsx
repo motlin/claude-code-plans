@@ -104,7 +104,7 @@ async function openSubmenu(bridgeSessionId: string | null): Promise<string[]> {
 	const submenu = screen.getAllByRole("menu")[1];
 	if (submenu === undefined) throw new Error("Open in submenu did not open");
 	return [...submenu.querySelectorAll('[role="menuitem"]')].map(
-		(node) => `${node.textContent ?? ""} [${node.getAttribute("aria-keyshortcuts") ?? ""}]`,
+		(node) => `${node.textContent} [${node.getAttribute("aria-keyshortcuts") ?? ""}]`,
 	);
 }
 

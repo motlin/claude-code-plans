@@ -85,7 +85,7 @@ describe("LinkCategoryRulesSection", () => {
 		expect({
 			rules: ruleValues(),
 			controls: screen.getAllByRole("button").map((button) => ({
-				name: button.getAttribute("aria-label") ?? button.textContent?.trim(),
+				name: button.getAttribute("aria-label") ?? button.textContent.trim(),
 				disabled: (button as HTMLButtonElement).disabled,
 			})),
 		}).toStrictEqual({

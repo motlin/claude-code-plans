@@ -1,14 +1,11 @@
+import {inputString} from "../../lib/tool-utils";
 import type {ToolRendererProps} from "./types";
 import {KeyValueCard} from "./shared";
 
 export function SendMessageRenderer({toolCall}: ToolRendererProps) {
-	const recipient = (toolCall.input["to"] as string) ?? (toolCall.input["recipient"] as string) ?? "";
-	const message =
-		(toolCall.input["message"] as string) ??
-		(toolCall.input["content"] as string) ??
-		(toolCall.input["prompt"] as string) ??
-		"";
-	const summary = (toolCall.input["summary"] as string) ?? "";
+	const recipient = inputString(toolCall.input, "to", "recipient") ?? "";
+	const message = inputString(toolCall.input, "message", "content", "prompt") ?? "";
+	const summary = inputString(toolCall.input, "summary") ?? "";
 
 	const params: Array<{key: string; value: string}> = [];
 	if (recipient) params.push({key: "to", value: recipient});

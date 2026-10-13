@@ -263,7 +263,7 @@ async function setup({
 it("keeps a cold alias pending without sending it to UUID APIs, then opens its resolved owner", async () => {
 	const {fetcher, finish} = await setup();
 	const pending = {
-		skeleton: screen.getByTestId("session-skeleton") !== null,
+		skeleton: screen.queryByTestId("session-skeleton") !== null,
 		calls: fetcher.mock.calls.map(([url]) => url),
 	};
 	await act(async () => {
@@ -301,7 +301,7 @@ it("leaves UUID navigation immediate with exactly four synchronous prefetches an
 
 it("waits for a fresh lookup rather than pinning invalidated success from a previous visit", async () => {
 	const {finish} = await setup({cachedOwner: ALICE, invalidated: true});
-	const pending = {owners: [...observed.owners], skeleton: screen.getByTestId("session-skeleton") !== null};
+	const pending = {owners: [...observed.owners], skeleton: screen.queryByTestId("session-skeleton") !== null};
 	await act(async () => {
 		finish(Response.json({sessionId: BOB}));
 	});

@@ -275,7 +275,7 @@ describe("Composer", () => {
 				vi.advanceTimersByTime(400);
 			});
 
-			expect(screen.getByRole("tooltip").textContent?.split("\n")).toStrictEqual([
+			expect(screen.getByRole("tooltip").textContent.split("\n")).toStrictEqual([
 				"Context 190.2k / 1M (19%)",
 				"Weekly · all models: 65% · Resets in 14 hr 31 min",
 			]);

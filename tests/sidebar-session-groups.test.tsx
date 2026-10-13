@@ -98,14 +98,14 @@ async function renderGroups(sessions: unknown[], options: {nextCursor?: string |
 
 function groupNames(container: HTMLElement): string[] {
 	return [...container.querySelectorAll('[data-testid="sidebar-recents"] [data-group-name]')].map(
-		(node) => node.textContent ?? "",
+		(node) => node.textContent,
 	);
 }
 
 function rowTitlesIn(container: HTMLElement, groupKey: string): string[] {
 	const section = container.querySelector(`[data-group-key="${groupKey}"]`);
 	if (!(section instanceof HTMLElement)) return [];
-	return [...section.querySelectorAll("a[data-row-main-button]")].map((link) => link.textContent ?? "");
+	return [...section.querySelectorAll("a[data-row-main-button]")].map((link) => link.textContent);
 }
 
 afterEach(() => {

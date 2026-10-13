@@ -264,7 +264,7 @@ function submenuOutline(menu: HTMLElement): string[] {
 		if (node.getAttribute("role") === "separator") return "---";
 		const checked = node.getAttribute("aria-checked");
 		const state = checked === null ? "" : ` (${checked})`;
-		return `${node.textContent ?? ""} [${node.getAttribute("aria-keyshortcuts") ?? ""}]${state}`;
+		return `${node.textContent} [${node.getAttribute("aria-keyshortcuts") ?? ""}]${state}`;
 	});
 }
 

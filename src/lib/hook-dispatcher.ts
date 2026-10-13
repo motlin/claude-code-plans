@@ -401,7 +401,7 @@ export async function dispatchHookEvent({
 				model?: string;
 				claudeEnv?: Record<string, string>;
 			} = {
-				cwd: event.cwd ?? "",
+				cwd: event.cwd,
 			};
 			if (event.model !== undefined) {
 				meta.model = event.model;
@@ -419,7 +419,7 @@ export async function dispatchHookEvent({
 			// Lifecycle signal for the active-session indicator.
 			broadcast(SSE_EVENTS.SESSION_START, {
 				sessionId: event.session_id,
-				cwd: event.cwd ?? "",
+				cwd: event.cwd,
 				model: event.model ?? "",
 			});
 

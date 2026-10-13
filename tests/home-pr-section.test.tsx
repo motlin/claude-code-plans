@@ -48,7 +48,7 @@ function rowTexts(): string[][] {
 		.getAllByRole("listitem")
 		.map((item) =>
 			[...item.querySelectorAll("[data-pill-label], [data-row-title], [data-row-number], [data-row-repo]")].map(
-				(node) => node.textContent ?? "",
+				(node) => node.textContent,
 			),
 		);
 }

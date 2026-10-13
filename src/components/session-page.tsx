@@ -869,7 +869,7 @@ function SessionView({
 
 						{usageCardSessionId === sessionId && (
 							<Suspense fallback={null}>
-								<div ref={(node) => node?.scrollIntoView?.({block: "nearest"})}>
+								<div ref={(node) => node?.scrollIntoView({block: "nearest"})}>
 									<SessionUsageCard records={transcript.records} limits={composerChin.usage} />
 								</div>
 							</Suspense>

@@ -1,3 +1,4 @@
+import {inputString} from "../../lib/tool-utils";
 import type {ReactNode} from "react";
 import type {ThemedToken} from "@shikijs/core";
 import {useHighlightedLines} from "../../hooks/use-shiki";
@@ -67,7 +68,7 @@ export function HighlightedCommand({command}: {command: string}) {
 }
 
 export function BashRenderer({toolCall, nested = false}: ToolRendererProps) {
-	const command = (toolCall.input["command"] as string) ?? "";
+	const command = inputString(toolCall.input, "command") ?? "";
 	const {result, isError} = toolCall;
 	const resultContent = result ? stripCommandPrefix(result, command) : null;
 

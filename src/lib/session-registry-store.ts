@@ -157,7 +157,7 @@ export function startSessionRegistryMonitor({
 		debounce: null,
 		queue: Promise.resolve(),
 	};
-	monitor.timer.unref?.();
+	monitor.timer.unref();
 	enqueue(async () => refreshSessionRegistry(dir, probe));
 }
 

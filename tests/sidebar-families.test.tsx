@@ -110,9 +110,7 @@ function family(container: HTMLElement, headId: string): HTMLElement {
 }
 
 function rowTitles(element: Element): string[] {
-	return [...element.querySelectorAll("a[data-row-main-button] [data-row-label]")].map(
-		(label) => label.textContent ?? "",
-	);
+	return [...element.querySelectorAll("a[data-row-main-button] [data-row-label]")].map((label) => label.textContent);
 }
 
 function handle(container: HTMLElement, headId: string): HTMLElement {

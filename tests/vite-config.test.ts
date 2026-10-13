@@ -149,9 +149,7 @@ describe("quiet output", () => {
 			reporters: vitestConfig.test?.reporters,
 			silent: vitestConfig.test?.silent,
 			projects: vitestConfig.test?.projects?.map((project): unknown =>
-				typeof project === "object" && "test" in project
-					? [project.test?.name, project.test?.isolate]
-					: project,
+				typeof project === "object" && "test" in project ? [project.test.name, project.test.isolate] : project,
 			),
 			reportCompressedSize: viteConfig.build?.reportCompressedSize,
 			filtersBundlerLogs: typeof viteConfig.build?.rolldownOptions?.onLog,

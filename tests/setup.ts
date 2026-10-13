@@ -7,3 +7,6 @@ isolateGitEnvironment();
 
 // jsdom logs "Not implemented: window.scrollTo" on every call; layout-free tests have nothing to scroll.
 if (typeof window !== "undefined") window.scrollTo = () => {};
+
+// jsdom does not implement Element.scrollIntoView, which every supported browser has.
+if (typeof window !== "undefined") Element.prototype.scrollIntoView = () => {};

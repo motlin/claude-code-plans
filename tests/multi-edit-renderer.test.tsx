@@ -64,7 +64,7 @@ function multiEditCall(overrides: Partial<ClientToolCall> = {}): ClientToolCall 
 }
 
 function diffTexts(container: HTMLElement): string[] {
-	return [...container.querySelectorAll('[data-testid="diff-view"]')].map((node) => node.textContent ?? "");
+	return [...container.querySelectorAll('[data-testid="diff-view"]')].map((node) => node.textContent);
 }
 
 describe("MultiEdit rendering", () => {

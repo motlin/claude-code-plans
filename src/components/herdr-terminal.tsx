@@ -51,7 +51,7 @@ export function HerdrTerminal({
 		const element = container.current;
 		if (!element || !themeReady) return undefined;
 
-		let disposed = false;
+		let disposed = false as boolean;
 		let teardown: (() => void) | null = null;
 
 		/**

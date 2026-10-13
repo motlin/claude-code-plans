@@ -99,7 +99,7 @@ function menuRows(): string[] {
 	const menu = menus.at(-1);
 	if (menu === undefined) throw new Error("no menu open");
 	return [...menu.querySelectorAll('[role="menuitem"], [role="separator"]')].map((row) =>
-		row.getAttribute("role") === "separator" ? "─" : (row.firstElementChild?.textContent ?? row.textContent ?? ""),
+		row.getAttribute("role") === "separator" ? "─" : (row.firstElementChild?.textContent ?? row.textContent),
 	);
 }
 

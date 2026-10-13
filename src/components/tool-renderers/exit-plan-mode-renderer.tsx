@@ -1,3 +1,4 @@
+import {inputString} from "../../lib/tool-utils";
 import {Link} from "@tanstack/react-router";
 import {FileText} from "lucide-react";
 import type {ToolRendererProps} from "./types";
@@ -18,7 +19,7 @@ const TONE_CLASS: Record<ExitPlanModeStatusTone, string> = {
 
 export function ExitPlanModeRenderer({toolCall}: ToolRendererProps) {
 	const {result} = toolCall;
-	const planFilePath = (toolCall.input["planFilePath"] as string) ?? "";
+	const planFilePath = inputString(toolCall.input, "planFilePath") ?? "";
 	const planFile = (planFilePath.match(PLAN_FILE_RE) ?? result?.match(PLAN_FILE_RE))?.[1];
 	const plan = typeof toolCall.input["plan"] === "string" ? toolCall.input["plan"] : "";
 	const allowedPrompts = parseAllowedPrompts(toolCall.input["allowedPrompts"]);

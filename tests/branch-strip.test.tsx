@@ -230,7 +230,7 @@ describe("BranchStrip project menu", () => {
 	async function openProjectMenu(): Promise<string[]> {
 		fireEvent.click(screen.getByRole("button", {name: "claude-code-plans"}));
 		await flush();
-		return screen.getAllByRole("menuitem").map((item) => item.textContent ?? "");
+		return screen.getAllByRole("menuitem").map((item) => item.textContent);
 	}
 
 	beforeEach(() => {

@@ -1,7 +1,7 @@
 import {useState} from "react";
 import {CheckCircle, Circle, ChevronDown, ChevronRight} from "lucide-react";
 import type {ClientToolCall} from "./tool-renderers/types";
-import {getAgentTypeWithDefault} from "../lib/tool-utils";
+import {getAgentTypeWithDefault, inputString} from "../lib/tool-utils";
 import {extractTasks} from "./extract-tasks";
 import type {TaskItem} from "./extract-tasks";
 
@@ -34,8 +34,8 @@ function extractAgents(toolCalls: ClientToolCall[]): AgentItem[] {
 	for (const call of toolCalls) {
 		if (call.name === "Agent") {
 			autoId++;
-			const prompt = (call.input["prompt"] as string) ?? "";
-			const desc = (call.input["description"] as string) ?? prompt.slice(0, 80);
+			const prompt = inputString(call.input, "prompt") ?? "";
+			const desc = inputString(call.input, "description") ?? prompt.slice(0, 80);
 			const agentType = getAgentTypeWithDefault(call.input);
 			const effort = call.input["effort"] as string | undefined;
 			const hasResult = call.result !== undefined;

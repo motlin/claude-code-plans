@@ -123,11 +123,11 @@ async function openRowMenu(session: SessionListItem): Promise<HTMLElement> {
 function lifecycleItems(menu: HTMLElement): string[] {
 	return [...menu.querySelectorAll('[role="menuitem"]')]
 		.filter((node) => node.getAttribute("aria-keyshortcuts") === "a")
-		.map((node) => node.textContent ?? "");
+		.map((node) => node.textContent);
 }
 
 function toastTexts(): string[] {
-	return [...document.querySelectorAll("[data-toast]")].map((toast) => toast.textContent ?? "");
+	return [...document.querySelectorAll("[data-toast]")].map((toast) => toast.textContent);
 }
 
 beforeEach(() => {
@@ -253,7 +253,7 @@ describe("Status ▸ Archived in the sidebar", () => {
 	}
 
 	function rows(container: HTMLElement): string[] {
-		return [...container.querySelectorAll("a[data-row-main-button]")].map((row) => row.textContent ?? "");
+		return [...container.querySelectorAll("a[data-row-main-button]")].map((row) => row.textContent);
 	}
 
 	it("shows archived rows with an Archived badge", async () => {

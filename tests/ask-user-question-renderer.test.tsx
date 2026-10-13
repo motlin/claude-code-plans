@@ -80,7 +80,7 @@ describe("AskUserQuestionRenderer", () => {
 			cardCount: cards.length,
 			cardClassName: card.className,
 			paragraphs,
-			mentionsUnchosen: container.textContent?.includes("Jest"),
+			mentionsUnchosen: container.textContent.includes("Jest"),
 			buttons: container.querySelectorAll("button").length,
 		}).toStrictEqual({
 			cardCount: 1,
@@ -153,7 +153,7 @@ describe("AskUserQuestionRenderer", () => {
 
 		expect({
 			status: container.querySelector(".text-extended-pink")?.textContent,
-			rawBoilerplate: container.textContent?.includes("STOP what you are doing"),
+			rawBoilerplate: container.textContent.includes("STOP what you are doing"),
 		}).toStrictEqual({status: "Question dismissed", rawBoilerplate: false});
 	});
 
@@ -172,7 +172,7 @@ describe("AskUserQuestionRenderer", () => {
 
 		expect({
 			status: container.querySelector(".text-extended-pink")?.textContent,
-			rawBoilerplate: container.textContent?.includes("best judgment"),
+			rawBoilerplate: container.textContent.includes("best judgment"),
 		}).toStrictEqual({status: "No response after 60s", rawBoilerplate: false});
 	});
 
@@ -183,7 +183,7 @@ describe("AskUserQuestionRenderer", () => {
 
 		expect({
 			pink: container.querySelector(".text-extended-pink"),
-			text: container.textContent?.includes("Something else entirely."),
+			text: container.textContent.includes("Something else entirely."),
 		}).toStrictEqual({pink: null, text: true});
 	});
 });

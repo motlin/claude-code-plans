@@ -121,7 +121,7 @@ function rowLink(title: string): HTMLElement {
 /** Titles of the rows marked multi-selected, in display order. */
 function selectedTitles(container: HTMLElement): string[] {
 	return [...container.querySelectorAll("a[data-row-main-button][data-multi-selected]")].map(
-		(link) => link.textContent ?? "",
+		(link) => link.textContent,
 	);
 }
 
@@ -141,7 +141,7 @@ async function openRowMenu(title: string): Promise<HTMLElement> {
 
 function menuOutline(menu: HTMLElement): string[] {
 	return [...menu.querySelectorAll('[role="menuitem"], [role="menuitemradio"], [role="separator"]')].map((node) =>
-		node.getAttribute("role") === "separator" ? "---" : (node.textContent ?? ""),
+		node.getAttribute("role") === "separator" ? "---" : node.textContent,
 	);
 }
 

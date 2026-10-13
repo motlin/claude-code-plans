@@ -30,12 +30,12 @@ function pressShortcutsKey(target: Element, init: KeyboardEventInit = {metaKey: 
 }
 
 function sectionHeadings(region: HTMLElement): string[] {
-	return [...region.querySelectorAll(":scope > div > div:first-child")].map((heading) => heading.textContent ?? "");
+	return [...region.querySelectorAll(":scope > div > div:first-child")].map((heading) => heading.textContent);
 }
 
 function rowLabels(region: HTMLElement): string[] {
 	return [...region.querySelectorAll(":scope > div > div + div > span:first-child")].map(
-		(label) => label.textContent ?? "",
+		(label) => label.textContent,
 	);
 }
 
@@ -44,7 +44,7 @@ function sectionRowLabels(region: HTMLElement, heading: string): string[] {
 		(candidate) => candidate.querySelector(":scope > div:first-child")?.textContent === heading,
 	);
 	return [...(section?.querySelectorAll(":scope > div + div > span:first-child") ?? [])].map(
-		(label) => label.textContent ?? "",
+		(label) => label.textContent,
 	);
 }
 
@@ -175,7 +175,7 @@ describe("KeyboardShortcutsDialog", () => {
 
 		const dialog = await screen.findByRole("dialog", {name: "Keyboard shortcuts"});
 		const row = within(dialog).getByText("Settings").parentElement;
-		expect([...(row?.querySelectorAll("kbd") ?? [])].map((kbd) => kbd.textContent ?? "")).toStrictEqual([
+		expect([...(row?.querySelectorAll("kbd") ?? [])].map((kbd) => kbd.textContent)).toStrictEqual([
 			"⇧Shift",
 			"⌘Command",
 			",",
@@ -188,7 +188,7 @@ describe("KeyboardShortcutsDialog", () => {
 
 		const dialog = await screen.findByRole("dialog", {name: "Keyboard shortcuts"});
 		const row = within(dialog).getByText("Search").parentElement;
-		expect([...(row?.querySelectorAll("kbd") ?? [])].map((kbd) => kbd.textContent ?? "")).toStrictEqual([
+		expect([...(row?.querySelectorAll("kbd") ?? [])].map((kbd) => kbd.textContent)).toStrictEqual([
 			"⇧Shift",
 			"⌘Command",
 			"K",

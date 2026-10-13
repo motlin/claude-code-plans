@@ -217,7 +217,7 @@ describe("account menu", () => {
 		const names = [...menuEntries(menu), ...menuEntries(submenu)];
 
 		expect(
-			names.filter((name) => /log ?out|language|view all plans|get apps|privacy choices/i.test(name ?? "")),
+			names.filter((name) => /log ?out|language|view all plans|get apps|privacy choices/i.test(name)),
 		).toStrictEqual([]);
 	});
 });

@@ -347,7 +347,7 @@ describe("sidebar nav rows", () => {
 		expect(
 			screen
 				.queryAllByRole("button")
-				.map((button) => button.getAttribute("title") ?? button.textContent ?? "")
+				.map((button) => button.getAttribute("title") ?? button.textContent)
 				.filter((name) => /^(Expand|Collapse) /.test(name)),
 		).toStrictEqual([]);
 	});
@@ -426,12 +426,12 @@ describe("sidebar New row", () => {
 		await waitFor(() => screen.getByRole("link", {name: "Tasks"}));
 
 		const first = screen.getByRole("link", {name: "New"});
-		const shortcut = first?.querySelector('[data-cds="Shortcut"]');
+		const shortcut = first.querySelector('[data-cds="Shortcut"]');
 		expect({
 			firstNavLink: first === navLinks()[0],
-			name: first?.textContent,
-			href: first?.getAttribute("href"),
-			ariaKeyShortcuts: first?.getAttribute("aria-keyshortcuts"),
+			name: first.textContent,
+			href: first.getAttribute("href"),
+			ariaKeyShortcuts: first.getAttribute("aria-keyshortcuts"),
 			keycaps: [...(shortcut?.querySelectorAll('kbd > [aria-hidden="true"]') ?? [])].map(
 				(cap) => cap.textContent,
 			),

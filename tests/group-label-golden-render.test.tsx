@@ -130,7 +130,7 @@ interface RowSpecimen {
 /** A row label part's text, with a diff stat's counts spaced as they read: "+59 −0". */
 function spanText(span: Element): string {
 	const counts = Array.from(span.querySelectorAll("[class*='text-extended-']"), (count) => count.textContent);
-	return counts.length > 0 ? counts.join(" ") : (span.textContent ?? "");
+	return counts.length > 0 ? counts.join(" ") : span.textContent;
 }
 
 function statusText(status: Element): string {
@@ -313,7 +313,7 @@ describe("agent completion row placement", () => {
 			(row) =>
 				row.querySelector("[data-task-event-row]")?.textContent ??
 				(row.querySelector(".user-message-bubble") === null
-					? (row.querySelector("h2")?.textContent?.slice(0, 40) ?? "")
+					? (row.querySelector("h2")?.textContent.slice(0, 40) ?? "")
 					: "user"),
 		);
 	};

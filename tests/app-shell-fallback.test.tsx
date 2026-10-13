@@ -102,7 +102,7 @@ describe("AppShellFallback", () => {
 		expect({
 			wordmark: sidebar.querySelector(".font-voice")?.textContent,
 			oldLogo: host.innerHTML.includes("#C87B3A"),
-			oldSearchBox: host.textContent?.includes("Search...") ?? false,
+			oldSearchBox: host.textContent.includes("Search..."),
 			rows,
 			sessionRows: sidebar.querySelectorAll("[data-fallback-session-row]").length,
 			footer: sidebar.querySelector('[data-testid="sidebar-footer"]') !== null,

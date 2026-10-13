@@ -1,3 +1,4 @@
+import {inputString} from "../../lib/tool-utils";
 import {
 	CheckCircle,
 	Globe,
@@ -33,15 +34,15 @@ function truncateUrl(url: string, max: number): string {
 }
 
 function extractUrl(input: Record<string, unknown>): string {
-	return (input["url"] as string) ?? "";
+	return inputString(input, "url") ?? "";
 }
 
 function extractRef(input: Record<string, unknown>): string {
-	return (input["ref"] as string) ?? (input["element"] as string) ?? "";
+	return inputString(input, "ref", "element") ?? "";
 }
 
 function extractValue(input: Record<string, unknown>): string {
-	return (input["value"] as string) ?? (input["text"] as string) ?? "";
+	return inputString(input, "value", "text") ?? "";
 }
 
 function ResultSummary({resultText}: {resultText: string}) {
@@ -237,7 +238,7 @@ function TypeRenderer({input, resultText}: {input: Record<string, unknown>; resu
 }
 
 function PressKeyRenderer({input, resultText}: {input: Record<string, unknown>; resultText: string}) {
-	const key = (input["key"] as string) ?? "";
+	const key = inputString(input, "key") ?? "";
 	return (
 		<ActionResult
 			icon={<Keyboard className="h-4 w-4 text-amber-500" />}
@@ -262,7 +263,8 @@ function HoverRenderer({input, resultText}: {input: Record<string, unknown>; res
 
 function SelectOptionRenderer({input, resultText}: {input: Record<string, unknown>; resultText: string}) {
 	const ref = extractRef(input);
-	const values = (input["values"] as string[]) ?? [];
+	const rawValues = input["values"];
+	const values = Array.isArray(rawValues) ? rawValues.filter((value) => typeof value === "string") : [];
 	const detail = [ref ? `ref=${ref}` : "", values.length > 0 ? values.join(", ") : ""].filter(Boolean).join(" ");
 	return (
 		<ActionResult
@@ -432,7 +434,7 @@ function NetworkRequestsRenderer({resultText}: {resultText: string}) {
 }
 
 function EvaluateRenderer({input, resultText}: {input: Record<string, unknown>; resultText: string}) {
-	const expression = (input["expression"] as string) ?? (input["code"] as string) ?? "";
+	const expression = inputString(input, "expression", "code") ?? "";
 	return (
 		<div className="px-2 py-2 space-y-2">
 			<div className="flex items-center gap-2">
@@ -551,7 +553,7 @@ function PlaywrightContent({
 				<ActionResult
 					icon={<MessageSquare className="h-4 w-4 text-amber-500" />}
 					label="Handled dialog"
-					detail={(input["action"] as string) ?? undefined}
+					detail={inputString(input, "action")}
 					resultText={resultText}
 				/>
 			);

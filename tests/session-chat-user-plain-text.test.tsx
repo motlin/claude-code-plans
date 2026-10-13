@@ -137,7 +137,7 @@ describe("SessionChat user bubbles as plain text", () => {
 			chips: el.querySelectorAll("[data-slash-command-chip]").length,
 			strong: el.querySelectorAll("strong").length,
 			code: Array.from(el.querySelectorAll("code")).map((code) => code.textContent),
-			text: (el.textContent ?? "").replace(/\s+/g, " ").trim(),
+			text: el.textContent.replace(/\s+/g, " ").trim(),
 		}).toStrictEqual({chips: 1, strong: 0, code: ["5m"], text: "/loop **every** 5m"});
 	});
 

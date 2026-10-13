@@ -500,7 +500,7 @@ describe("HerdrPage", () => {
 			routeMeta: [{title: "Herdr"}],
 			terminalRouteMeta: [{title: "Live Herdr terminal"}],
 		});
-		expect(document.body.textContent?.includes("Terminal Fleet")).toBe(false);
+		expect(document.body.textContent.includes("Terminal Fleet")).toBe(false);
 	});
 
 	it("makes transcript and live terminal navigation distinct without visible technical metadata", async () => {
@@ -544,10 +544,10 @@ describe("HerdrPage", () => {
 			},
 			displayName: Array.from(terminalLink.children).map((cell) => cell.textContent),
 			visibleTechnicalMetadata: {
-				provider: row?.textContent?.includes("herdr"),
-				workspaceId: row?.textContent?.includes("workspace-test-100"),
-				paneId: row?.textContent?.includes("pane-test-100"),
-				terminalId: row?.textContent?.includes("terminal-test-100"),
+				provider: row?.textContent.includes("herdr"),
+				workspaceId: row?.textContent.includes("workspace-test-100"),
+				paneId: row?.textContent.includes("pane-test-100"),
+				terminalId: row?.textContent.includes("terminal-test-100"),
 				capabilityBadges: ["write", "events", "observe"].filter((label) =>
 					Array.from(row?.querySelectorAll("span") ?? []).some((element) => element.textContent === label),
 				),
@@ -591,7 +591,7 @@ describe("HerdrPage", () => {
 			routeMeta: [{title: "Live Herdr terminal"}],
 			terminal: "session-test-100",
 		});
-		expect(document.body.textContent?.includes("Terminal Fleet")).toBe(false);
+		expect(document.body.textContent.includes("Terminal Fleet")).toBe(false);
 	});
 });
 

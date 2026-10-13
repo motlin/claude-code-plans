@@ -31,6 +31,7 @@ import {
 	GrepInputSchema,
 	AgentInputSchema,
 	ArtifactInputSchema,
+	toolInputSchemaByName,
 	toolInputSchemas,
 } from "../src/lib/tool-input-schemas";
 import {baseFields} from "./fixtures/base-fields";
@@ -1990,7 +1991,6 @@ describe("Per-tool input schemas", () => {
 
 	describe("MonitorInputSchema", () => {
 		const schema = toolInputSchemas.Monitor;
-		if (!schema) throw new Error("Missing Monitor input schema");
 
 		it("accepts persistent as a stringified boolean", () => {
 			expect(schema.safeParse({command: "tail -f log", persistent: "false"}).success).toBe(true);
@@ -2004,7 +2004,6 @@ describe("Per-tool input schemas", () => {
 
 	describe("SendMessageInputSchema", () => {
 		const schema = toolInputSchemas.SendMessage;
-		if (!schema) throw new Error("Missing SendMessage input schema");
 
 		it("accepts recipient_kind name and agent", () => {
 			expect(schema.safeParse({to: "slotter", recipient_kind: "name", summary: "s", message: "m"}).success).toBe(
@@ -2024,7 +2023,6 @@ describe("Per-tool input schemas", () => {
 
 	describe("WebSearchInputSchema", () => {
 		const schema = toolInputSchemas.WebSearch;
-		if (!schema) throw new Error("Missing WebSearch input schema");
 
 		it("accepts mode standard and extended", () => {
 			expect(schema.safeParse({query: "factorio fuel_category", mode: "standard"}).success).toBe(true);
@@ -2071,7 +2069,6 @@ describe("Per-tool input schemas", () => {
 	describe("task tool schemas", () => {
 		it("accepts TaskCreate input without a subject", () => {
 			const schema = toolInputSchemas.TaskCreate;
-			if (!schema) throw new Error("Missing TaskCreate input schema");
 			const result = schema.safeParse({
 				description: "Create an example task",
 				activeForm: "Creating an example task",
@@ -2081,7 +2078,6 @@ describe("Per-tool input schemas", () => {
 
 		it("accepts TaskGet input with id", () => {
 			const schema = toolInputSchemas.TaskGet;
-			if (!schema) throw new Error("Missing TaskGet input schema");
 			const result = schema.safeParse({id: "task-100"});
 			expect(result.success).toBe(true);
 		});
@@ -2107,11 +2103,15 @@ describe("Per-tool input schemas", () => {
 			"ExitPlanMode",
 			"ToolSearch",
 		];
-		for (const tool of expectedTools) {
-			if (!toolInputSchemas[tool as keyof typeof toolInputSchemas]) {
-				throw new Error(`Missing schema for tool: ${tool}`);
-			}
-		}
+		expect(expectedTools.filter((tool) => toolInputSchemaByName.get(tool) === undefined)).toStrictEqual([]);
+	});
+
+	it("looks up a schema by an unvalidated tool name", () => {
+		expect({
+			known: toolInputSchemaByName.get("Bash"),
+			unknown: toolInputSchemaByName.get("NoSuchTool"),
+			inherited: toolInputSchemaByName.get("constructor"),
+		}).toStrictEqual({known: toolInputSchemas.Bash, unknown: undefined, inherited: undefined});
 	});
 });
 

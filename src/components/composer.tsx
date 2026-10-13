@@ -403,7 +403,7 @@ export function Composer({
 	}
 
 	function handleSlashKey(e: React.KeyboardEvent): boolean {
-		if (!slashOpen || query === null) return false;
+		if (!slashOpen) return false;
 		const move = e.key === "ArrowDown" ? 1 : e.key === "ArrowUp" ? -1 : 0;
 		if (move !== 0) {
 			setHighlight({query, index: (highlighted + move + matches.length) % matches.length});
@@ -548,7 +548,7 @@ export function Composer({
 		if (e.nativeEvent.isComposing || handleSlashKey(e) || handleMentionKey(e) || handleHistoryKey(e)) {
 			return;
 		}
-		if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+		if (e.key === "Enter" && !e.shiftKey) {
 			e.preventDefault();
 			const commandChord = e.metaKey || e.ctrlKey;
 			const trigger = e.nativeEvent;
@@ -633,7 +633,7 @@ export function Composer({
 					</div>
 				)}
 				<div className="relative pr-[30px]">
-					{slashOpen && query !== null && (
+					{slashOpen && (
 						<SlashCommandMenu
 							id={slashMenuId}
 							commands={matches}

@@ -56,6 +56,7 @@ async function runScanWithRetry(label: string, signal: AbortSignal, scan: () => 
 			await scan();
 			return;
 		} catch (err) {
+			// oxlint-disable-next-line typescript/no-unnecessary-condition -- the signal can abort while scan() is awaited
 			if (signal.aborted) return;
 			const delayMs = BUSY_RETRY_DELAYS_MS[attempt];
 			if (delayMs === undefined || !isBusyError(err)) {

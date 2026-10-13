@@ -308,7 +308,7 @@ function useFindInFile({
 		const apply = () => {
 			const blocks = collectFindBlocks(root, query);
 			const ranges: Range[] = [];
-			let activeRange: Range | null = null;
+			let activeRange = null as Range | null;
 			for (const {block, ranges: blockRanges} of blocks) {
 				const lineNumber = sourceMatches === null ? null : Number(block.id.slice(1));
 				const base = lineNumber === null ? ranges.length : (sourceMatches?.offsets[lineNumber - 1] ?? -1);
@@ -321,7 +321,7 @@ function useFindInFile({
 			paintFindHighlights(ranges, activeRange);
 			if (scrolledRef.current !== scrollRequest && activeRange !== null) {
 				scrolledRef.current = scrollRequest;
-				(activeRange as Range).startContainer.parentElement?.scrollIntoView({
+				activeRange.startContainer.parentElement?.scrollIntoView({
 					block: "center",
 					inline: "nearest",
 				});

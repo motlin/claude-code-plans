@@ -83,7 +83,7 @@ describe("SessionProjectGroups", () => {
 	it("renders project headings in the order the server returned them", async () => {
 		await renderGroups();
 
-		const headings = screen.getAllByRole("heading").map((heading) => heading.textContent ?? "");
+		const headings = screen.getAllByRole("heading").map((heading) => heading.textContent);
 		expect(headings.map((text) => text.replace(/\d+.*$/, "").trim())).toEqual(["Gamma", "Alpha"]);
 	});
 

@@ -316,18 +316,15 @@ export function dedupeRecentPages<Data extends {pages: readonly {sessions: reado
 	data: Data,
 ): Data {
 	const seen = new Set<string>();
-	let repeated = false;
 	const pages = data.pages.map((page) => {
 		const sessions = page.sessions.filter((session) => {
 			if (seen.has(session.id)) return false;
 			seen.add(session.id);
 			return true;
 		});
-		if (sessions.length === page.sessions.length) return page;
-		repeated = true;
-		return {...page, sessions};
+		return sessions.length === page.sessions.length ? page : {...page, sessions};
 	});
-	return repeated ? {...data, pages} : data;
+	return pages.every((page, index) => page === data.pages[index]) ? data : {...data, pages};
 }
 
 /** Infinite, cursor-paginated recent sessions — for the main sessions list. */

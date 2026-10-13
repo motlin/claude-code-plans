@@ -197,7 +197,7 @@ function persistDrift(
 		})
 		.returning({count: hookSchemaDrift.count})
 		.get();
-	return result?.count ?? 1;
+	return result.count;
 }
 
 export const Route = createFileRoute("/api/hook")({

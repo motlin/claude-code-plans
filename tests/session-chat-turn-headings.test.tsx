@@ -66,7 +66,7 @@ function turnHeadings(container: HTMLElement): (readonly [string, string] | null
 	return Array.from(container.querySelectorAll("[class*='group/msg']")).map((wrapper) => {
 		const first = wrapper.firstElementChild;
 		if (!(first instanceof HTMLHeadingElement)) return null;
-		return [first.className, first.textContent ?? ""] as const;
+		return [first.className, first.textContent] as const;
 	});
 }
 

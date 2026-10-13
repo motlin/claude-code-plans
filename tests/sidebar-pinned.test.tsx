@@ -103,12 +103,12 @@ function pinnedSection(container: HTMLElement): HTMLElement {
 
 function rowTitles(element: Element | null): string[] {
 	if (element === null) return [];
-	return [...element.querySelectorAll("a[data-row-main-button]")].map((link) => link.textContent ?? "");
+	return [...element.querySelectorAll("a[data-row-main-button]")].map((link) => link.textContent);
 }
 
 function visibleGroupNames(container: HTMLElement): string[] {
 	return [...container.querySelectorAll('[data-testid="sidebar-recents"] [data-group-name]')].map(
-		(node) => node.textContent ?? "",
+		(node) => node.textContent,
 	);
 }
 

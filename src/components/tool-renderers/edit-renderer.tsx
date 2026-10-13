@@ -1,3 +1,4 @@
+import {inputString} from "../../lib/tool-utils";
 import {useMemo} from "react";
 import type {ToolRendererProps} from "./types";
 import {InlineDiff} from "./inline-diff";
@@ -38,7 +39,7 @@ function EditDiffCard({
 
 export function EditRenderer({toolCall}: ToolRendererProps) {
 	const {input, result, isError} = toolCall;
-	const filePath = (input["file_path"] as string) ?? "";
+	const filePath = inputString(input, "file_path") ?? "";
 	const entries = useMemo(() => editDiffEntries(input), [input]);
 
 	if (entries.length === 0) {

@@ -104,7 +104,7 @@ async function openRowMenu(session: SessionListItem, cwd: string | null = null):
 
 function menuItems(menu: HTMLElement): string[] {
 	return [...menu.querySelectorAll('[role="menuitem"]')].map(
-		(node) => `${node.textContent ?? ""} [${node.getAttribute("aria-keyshortcuts") ?? ""}]`,
+		(node) => `${node.textContent} [${node.getAttribute("aria-keyshortcuts") ?? ""}]`,
 	);
 }
 

@@ -201,7 +201,7 @@ function FilePane<TKey extends QueryKey>({path, fileQuery}: {path: string; fileQ
 			<div className="min-h-0 flex-1 overflow-auto p-4">
 				{isPending ? (
 					<p className="text-body text-t6">Loading file…</p>
-				) : isError || data === undefined ? (
+				) : isError ? (
 					<p className="text-body text-t6">This file could not be read.</p>
 				) : markdown && mode === "preview" ? (
 					<MarkdownView markdown={stripFrontmatter(data.content)} />

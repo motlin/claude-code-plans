@@ -1,8 +1,9 @@
+import {inputString} from "../../lib/tool-utils";
 import type {ToolRendererProps} from "./types";
 import {KeyValueCard} from "./shared";
 
 export function GlobRenderer({toolCall}: ToolRendererProps) {
-	const pattern = (toolCall.input["pattern"] as string) ?? "";
+	const pattern = inputString(toolCall.input, "pattern") ?? "";
 	const path = toolCall.input["path"] as string | undefined;
 	const {result, isError} = toolCall;
 

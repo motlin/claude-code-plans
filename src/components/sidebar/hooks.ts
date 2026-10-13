@@ -58,7 +58,7 @@ export function activeSectionFor(matches: readonly ActiveMatch[]): {
 		return {
 			section: "memories",
 			activeItemId:
-				params?.["project"] && params?.["filename"]
+				params?.["project"] && params["filename"]
 					? `${params["project"]}/${fromMdSlug(params["filename"])}`
 					: null,
 		};

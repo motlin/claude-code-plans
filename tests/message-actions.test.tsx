@@ -106,7 +106,7 @@ describe("AssistantMessageActions", () => {
 		const tooltip = tooltipText(container);
 
 		expect({
-			visibleHasStats: /595|effort|advisor/.test(visible ?? ""),
+			visibleHasStats: /595|effort|advisor/.test(visible),
 			tooltipHasStats: ["595.8k in / 595 out", "high effort", "advisor Fable 5.1"].every((part) =>
 				(tooltip ?? "").includes(part),
 			),
@@ -395,7 +395,7 @@ describe("UserMessageActions", () => {
 		const tooltip = tooltipText(container);
 
 		expect({
-			visibleHasCaption: (visible ?? "").includes("Scheduled task"),
+			visibleHasCaption: visible.includes("Scheduled task"),
 			tooltipHasCaption: (tooltip ?? "").includes("Scheduled task ecc5631f · queued for later"),
 		}).toStrictEqual({visibleHasCaption: false, tooltipHasCaption: true});
 	});
@@ -411,7 +411,7 @@ describe("UserMessageActions", () => {
 				vi.advanceTimersByTime(300);
 			});
 			const tooltip = container.querySelector('[role="tooltip"]')!;
-			const lines = Array.from(tooltip.children).map((line) => line.textContent ?? "");
+			const lines = Array.from(tooltip.children).map((line) => line.textContent);
 			fireEvent.pointerLeave(button(container, label).parentElement!);
 			return lines;
 		}

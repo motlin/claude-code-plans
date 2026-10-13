@@ -202,7 +202,7 @@ describe("AI summary placement", () => {
 		expect({
 			count: rows.length,
 			rowIsFirstInTranscript: transcript?.firstElementChild === row,
-			rowFollowedByMessages: row?.nextElementSibling?.textContent?.includes("sync the fork"),
+			rowFollowedByMessages: row?.nextElementSibling?.textContent.includes("sync the fork"),
 			inHeader: header?.contains(row ?? null),
 			tooltip: titleButton.getAttribute("title"),
 			description: titleButton.getAttribute("aria-description"),

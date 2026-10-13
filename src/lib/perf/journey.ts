@@ -182,7 +182,7 @@ function sizeBucket(bytes: number): SizeBucket {
 }
 
 function hasData(element: Element): boolean {
-	return element.childElementCount > 0 || (element.textContent ?? "").trim() !== "";
+	return element.childElementCount > 0 || element.textContent.trim() !== "";
 }
 
 function findAnchor(document: Document, selector: string): Element | null {
@@ -202,7 +202,7 @@ function toResource(entry: PerformanceResourceTiming): ResourceSample {
 		responseStart: entry.responseStart,
 		responseEnd: entry.responseEnd,
 		transferSize: entry.transferSize,
-		serverTiming: (entry.serverTiming ?? []).map(({name, duration, description}) => ({
+		serverTiming: entry.serverTiming.map(({name, duration, description}) => ({
 			name,
 			duration,
 			description,
@@ -489,9 +489,10 @@ function browserEnvironment(): JourneyEnvironment {
 		get pathname() {
 			return location.pathname;
 		},
-		matchesCoarsePointer: () => window.matchMedia?.("(pointer: coarse)").matches ?? false,
+		matchesCoarsePointer: () =>
+			typeof window.matchMedia === "function" && window.matchMedia("(pointer: coarse)").matches,
 		viewportWidth: () => window.innerWidth,
-		hardwareConcurrency: navigator.hardwareConcurrency ?? 0,
+		hardwareConcurrency: navigator.hardwareConcurrency,
 		buildSha: typeof __CCB_BUILD_SHA__ === "string" ? __CCB_BUILD_SHA__ : "unknown",
 		mode: import.meta.env.DEV ? "dev" : "prod",
 		requestAnimationFrame: (callback) => window.requestAnimationFrame(callback),
@@ -501,7 +502,7 @@ function browserEnvironment(): JourneyEnvironment {
 			window.clearInterval(handle as number);
 		},
 		send: (batch) => {
-			navigator.sendBeacon?.(PERF_BEACON_PATH, JSON.stringify({samples: batch}));
+			navigator.sendBeacon(PERF_BEACON_PATH, JSON.stringify({samples: batch}));
 		},
 	};
 }

@@ -218,7 +218,7 @@ describe("Changes pane right-click menu", () => {
 
 		expect(
 			items.map((item) => [
-				item.textContent?.replace(/(⌘C|Ctrl\+C)$/, ""),
+				item.textContent.replace(/(⌘C|Ctrl\+C)$/, ""),
 				item.getAttribute("aria-keyshortcuts"),
 			]),
 		).toStrictEqual([

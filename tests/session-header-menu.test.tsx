@@ -153,7 +153,7 @@ async function openHeaderMenu(): Promise<HTMLElement> {
 
 function menuShape(menu: HTMLElement): string[] {
 	return [...menu.querySelectorAll('[role="menuitem"], [role="separator"]')].map((element) =>
-		element.getAttribute("role") === "separator" ? "---" : (element.textContent ?? ""),
+		element.getAttribute("role") === "separator" ? "---" : element.textContent,
 	);
 }
 

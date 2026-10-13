@@ -1,3 +1,4 @@
+import {inputString} from "../../lib/tool-utils";
 import {
 	Globe,
 	CheckCircle,
@@ -177,7 +178,7 @@ function stripNavigateUrlFromResult(resultText: string, url: string): string {
 }
 
 function NavigateRenderer({input, resultText}: {input: Record<string, unknown>; resultText: string}) {
-	const url = (input["url"] as string) ?? "";
+	const url = inputString(input, "url") ?? "";
 	const isSuccess = resultText.toLowerCase().includes("navigated to");
 	const cleanedResult = stripNavigateUrlFromResult(resultText, url);
 
@@ -222,9 +223,9 @@ function ReadPageRenderer({resultText}: {resultText: string}) {
 }
 
 function ComputerRenderer({input, resultText}: {input: Record<string, unknown>; resultText: string}) {
-	const action = (input["action"] as string) ?? "";
+	const action = inputString(input, "action") ?? "";
 	const coordinate = input["coordinate"] as number[] | undefined;
-	const text = (input["text"] as string) ?? "";
+	const text = inputString(input, "text") ?? "";
 	const isError = resultText.toLowerCase().includes("no element found") || resultText.toLowerCase().includes("error");
 
 	const detail = [action, coordinate ? `(${coordinate.join(", ")})` : "", text ? `"${text}"` : ""]
@@ -246,7 +247,7 @@ function ComputerRenderer({input, resultText}: {input: Record<string, unknown>; 
 }
 
 function FindRenderer({input, resultText}: {input: Record<string, unknown>; resultText: string}) {
-	const description = (input["description"] as string) ?? (input["query"] as string) ?? "";
+	const description = inputString(input, "description", "query") ?? "";
 
 	return (
 		<div className="px-2 py-2 space-y-2">
@@ -280,7 +281,7 @@ function TabsContextRenderer({resultText}: {resultText: string}) {
 }
 
 function JavaScriptToolRenderer({input, resultText}: {input: Record<string, unknown>; resultText: string}) {
-	const code = (input["code"] as string) ?? (input["expression"] as string) ?? (input["javascript"] as string) ?? "";
+	const code = inputString(input, "code", "expression", "javascript") ?? "";
 
 	return (
 		<div className="px-2 py-2 space-y-2">

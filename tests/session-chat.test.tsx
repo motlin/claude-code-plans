@@ -1532,7 +1532,7 @@ describe("SessionChat Agent row opening the Subagent pane", () => {
 			ariaExpanded: row.getAttribute("aria-expanded"),
 			spans: [...row.children].map((child) => [child.getAttribute("class"), child.textContent]),
 			glyph: row.querySelector("svg")?.getAttribute("class"),
-			body: container.textContent?.includes("Commit the fixup"),
+			body: container.textContent.includes("Commit the fixup"),
 		}).toStrictEqual({
 			opened: ["agent-abc123", "agent-abc123", "agent-abc123"],
 			role: "button",
@@ -2151,7 +2151,7 @@ describe("SessionChat skill attribution", () => {
 			/>,
 		);
 		return {
-			pill: container.textContent?.includes("markdown-tasks") ?? false,
+			pill: container.textContent.includes("markdown-tasks"),
 			frame: container.querySelector("[data-turn-status-frame]")?.className,
 		};
 	};
@@ -2182,7 +2182,7 @@ describe("SessionChat smart quotes", () => {
 
 		expect({
 			user: element.querySelector(".user-message-bubble")?.textContent,
-			prose: element.querySelector("[data-transcript-prose] article")?.textContent?.trim(),
+			prose: element.querySelector("[data-transcript-prose] article")?.textContent.trim(),
 		}).toStrictEqual({
 			user: `I couldn't open "the doc"`,
 			prose: "I couldn’t find “kinds of upgrades” in it's.",

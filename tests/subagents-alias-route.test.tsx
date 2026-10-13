@@ -148,7 +148,7 @@ it("resolves aliases before fetching UUID subagents and filters/deduplicates rea
 	harness.liveSubagents.set("agent-bob-100", live("agent-bob-100", BOB, "Bob unrelated live"));
 	const {fetcher, finish, client, parentLoader} = await setup();
 	const pending = {
-		skeleton: screen.getByTestId("session-skeleton") !== null,
+		skeleton: screen.queryByTestId("session-skeleton") !== null,
 		urls: fetcher.mock.calls.map(([url]) => url),
 	};
 	await act(async () => {
@@ -226,7 +226,7 @@ it("waits for fresh B when a new entry has invalidated cached owner A", async ()
 	const {finish, fetcher} = await setup({cachedOwner: ALICE, invalidated: true});
 	const pending = {
 		alice: screen.queryByText("Alice parent"),
-		skeleton: screen.getByTestId("session-skeleton") !== null,
+		skeleton: screen.queryByTestId("session-skeleton") !== null,
 	};
 	await act(async () => {
 		finish(Response.json({sessionId: BOB}));

@@ -1,3 +1,4 @@
+import {inputString} from "../../lib/tool-utils";
 import {Fragment, useState, type ReactNode} from "react";
 import {ChevronDown, Loader2} from "lucide-react";
 import type {ToolRendererProps} from "./types";
@@ -404,7 +405,7 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps) {
 	const status = describeAskUserQuestionResult(result);
 
 	if (!questions) {
-		const singleQuestion = (toolCall.input["question"] as string) ?? "";
+		const singleQuestion = inputString(toolCall.input, "question") ?? "";
 		return (
 			<div className={CARD_SHELL}>
 				<div>

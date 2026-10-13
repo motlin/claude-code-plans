@@ -1,8 +1,9 @@
+import {inputString} from "../../lib/tool-utils";
 import type {ToolRendererProps} from "./types";
 import {KeyValueCard} from "./shared";
 
 export function SkillRenderer({toolCall}: ToolRendererProps) {
-	const skill = (toolCall.input["skill"] as string) ?? "";
+	const skill = inputString(toolCall.input, "skill") ?? "";
 	const args = toolCall.input["args"] as string | undefined;
 	const {result, isError} = toolCall;
 

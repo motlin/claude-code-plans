@@ -71,12 +71,12 @@ describe("useComposerDraft", () => {
 		});
 
 		expect({
-			debounceMs: COMPOSER_DRAFT_DEBOUNCE_MS <= 150,
+			debounceMs: COMPOSER_DRAFT_DEBOUNCE_MS,
 			beforeDebounce,
 			afterDebounce,
 			afterEmpty: storedDrafts(),
 		}).toStrictEqual({
-			debounceMs: true,
+			debounceMs: 150,
 			beforeDebounce: {},
 			afterDebounce: {
 				"ccp-composer-draft:session-bob": JSON.stringify({text: "Continue Bob's test"}),

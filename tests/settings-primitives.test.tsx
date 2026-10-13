@@ -74,7 +74,7 @@ function radioStates(): Array<{
 	tabIndex: number;
 }> {
 	return screen.getAllByRole("radio").map((radio) => ({
-		name: radio.textContent ?? radio.getAttribute("aria-label") ?? "",
+		name: radio.textContent,
 		checked: radio.getAttribute("aria-checked"),
 		tabIndex: radio.tabIndex,
 	}));
@@ -145,7 +145,7 @@ describe("SegmentedControl", () => {
 		render(<ControlledSegmented />);
 
 		expect({
-			group: screen.getByRole("radiogroup", {name: "Default transcript view"}) !== null,
+			group: screen.queryByRole("radiogroup", {name: "Default transcript view"}) !== null,
 			radios: radioStates(),
 		}).toStrictEqual({
 			group: true,

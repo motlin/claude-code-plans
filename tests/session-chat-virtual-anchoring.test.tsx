@@ -28,7 +28,7 @@ const LONG_PROMPT = "Fabricated long prompt";
 const LONG_PROMPT_FULL_HEIGHT = 1266;
 const LONG_PROMPT_CLAMPED_HEIGHT = 326;
 function rowHeight(row: HTMLElement): number {
-	if (!row.textContent?.includes(LONG_PROMPT)) return ROW_HEIGHT;
+	if (!row.textContent.includes(LONG_PROMPT)) return ROW_HEIGHT;
 	return row.querySelector(".max-h-\\[16rem\\]") ? LONG_PROMPT_CLAMPED_HEIGHT : LONG_PROMPT_FULL_HEIGHT;
 }
 
@@ -161,7 +161,7 @@ function chat(windowLines: SessionLine[]) {
 /** The painted rows, named by the message each draws rather than by its shifting window index. */
 function paintedMessages(): Array<{message: string; top: number}> {
 	return paintedBoxes().map(({row, top}) => ({
-		message: /Fabricated (?:long prompt|message \d+)/.exec(row.textContent ?? "")![0],
+		message: /Fabricated (?:long prompt|message \d+)/.exec(row.textContent)![0],
 		top,
 	}));
 }
@@ -193,7 +193,7 @@ beforeEach(() => {
 	Object.defineProperty(HTMLElement.prototype, "scrollHeight", {
 		configurable: true,
 		get(this: HTMLElement) {
-			return this.textContent?.includes(LONG_PROMPT) ? LONG_PROMPT_FULL_HEIGHT : 0;
+			return this.textContent.includes(LONG_PROMPT) ? LONG_PROMPT_FULL_HEIGHT : 0;
 		},
 	});
 	vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {

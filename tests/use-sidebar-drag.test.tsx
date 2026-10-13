@@ -92,7 +92,7 @@ function snapshot() {
 	return {
 		dragging: document.documentElement.hasAttribute("data-session-dragging"),
 		ghosts: document.querySelectorAll("[data-drag-ghost]").length,
-		state: JSON.parse(screen.getByTestId("state").textContent ?? "null") as unknown,
+		state: JSON.parse(screen.getByTestId("state").textContent) as unknown,
 	};
 }
 

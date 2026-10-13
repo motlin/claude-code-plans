@@ -185,7 +185,7 @@ function sessionRows(pane: HTMLElement): Array<string | null> {
 function modeState(pane: HTMLElement): Array<[string, string | null]> {
 	return within(pane)
 		.getAllByRole("radio")
-		.map((radio) => [radio.textContent ?? "", radio.getAttribute("aria-checked")]);
+		.map((radio) => [radio.textContent, radio.getAttribute("aria-checked")]);
 }
 
 async function switchMode(pane: HTMLElement, mode: "Workspace" | "Session"): Promise<void> {
@@ -207,8 +207,8 @@ async function openSourcesSubmenu(pane: HTMLElement): Promise<void> {
 function sourceItems(): Array<[string, string | null]> {
 	return screen
 		.getAllByRole("menuitemcheckbox")
-		.filter((item) => /\(\d+\)$/.test(item.textContent ?? ""))
-		.map((item) => [item.textContent ?? "", item.getAttribute("aria-checked")]);
+		.filter((item) => /\(\d+\)$/.test(item.textContent))
+		.map((item) => [item.textContent, item.getAttribute("aria-checked")]);
 }
 
 beforeEach(() => {
@@ -556,7 +556,7 @@ function tabStrip(pane: HTMLElement): Array<{name: string; selected: string | nu
 	return within(list)
 		.getAllByRole("tab")
 		.map((tab) => ({
-			name: tab.textContent ?? "",
+			name: tab.textContent,
 			selected: tab.getAttribute("aria-selected"),
 			italic: tab.className.split(/\s+/).includes("italic"),
 		}));

@@ -444,7 +444,7 @@ describe("customize discover", () => {
 		expect({
 			headings: screen.getAllByRole("heading", {level: 3}).map((h) => h.textContent),
 			cards: cardTexts(),
-			stale: screen.getByTestId("customize-discover-stale").textContent?.includes("Aug 31, 2026"),
+			stale: screen.getByTestId("customize-discover-stale").textContent.includes("Aug 31, 2026"),
 			filter: screen.getByRole("button", {name: "Filter"}).tagName,
 			sort: screen.getByRole("button", {name: "Sort"}).tagName,
 		}).toStrictEqual({

@@ -106,14 +106,14 @@ const LOOP_COMMAND: SlashCommand = {
 
 function userBubbleTexts(container: HTMLElement): string[] {
 	return Array.from(container.querySelectorAll(".user-message-bubble")).map((bubble) =>
-		(bubble.textContent ?? "").replace(/\s+/g, " ").trim(),
+		bubble.textContent.replace(/\s+/g, " ").trim(),
 	);
 }
 
 function chipSummary(container: HTMLElement): {tag: string; text: string; label: string; className: string}[] {
 	return Array.from(container.querySelectorAll("[data-slash-command-chip]")).map((chip) => ({
 		tag: chip.tagName,
-		text: chip.textContent ?? "",
+		text: chip.textContent,
 		label: chip.querySelector("[data-slash-command-label]")?.textContent ?? "",
 		className: chip.className,
 	}));
@@ -138,9 +138,9 @@ describe("SessionChat isMeta slash-command bodies", () => {
 
 		expect({
 			bubbles: userBubbleTexts(container),
-			hasLabel: container.textContent?.includes("Slash command body") ?? false,
-			hasSkillBody: container.textContent?.includes("Fabricated skill body") ?? false,
-			hasWakeupNote: container.textContent?.includes("prior /loop wakeups") ?? false,
+			hasLabel: container.textContent.includes("Slash command body"),
+			hasSkillBody: container.textContent.includes("Fabricated skill body"),
+			hasWakeupNote: container.textContent.includes("prior /loop wakeups"),
 		}).toStrictEqual({
 			bubbles: ["/loop Check PR 1954 for fabricated activity"],
 			hasLabel: false,

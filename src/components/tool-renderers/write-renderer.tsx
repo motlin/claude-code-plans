@@ -1,3 +1,4 @@
+import {inputString} from "../../lib/tool-utils";
 import {Link} from "@tanstack/react-router";
 import {FileText} from "lucide-react";
 import type {ToolRendererProps} from "./types";
@@ -9,7 +10,7 @@ import {toMdSlug} from "../../lib/md-slug";
 const PLAN_RE = /\.claude\/plans\/([^/]+\.md)$/;
 
 export function WriteRenderer({toolCall}: ToolRendererProps) {
-	const filePath = (toolCall.input["file_path"] as string) ?? "";
+	const filePath = inputString(toolCall.input, "file_path") ?? "";
 	const content = toolCall.input["content"] as string | undefined;
 	const {result, isError} = toolCall;
 	const planFile = filePath.match(PLAN_RE)?.[1];

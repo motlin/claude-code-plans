@@ -68,6 +68,7 @@ export function createTerminalRecordParser(
 			}
 
 			let newlineIndex = buffer.indexOf("\n");
+			// oxlint-disable-next-line typescript/no-unnecessary-condition -- fail() stops the observer mid-loop
 			while (newlineIndex !== -1 && !stopped) {
 				const line = buffer.slice(0, newlineIndex);
 				buffer = buffer.slice(newlineIndex + 1);

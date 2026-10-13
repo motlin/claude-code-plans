@@ -104,8 +104,10 @@ const store = hmrPersist("activeSessionStore", () => new Map<string, ActiveSessi
 
 function normalizeEntryState(entry: ActiveSessionEntry): ActiveSessionEntry {
 	// HMR may retain entries created before these fields existed.
+	// oxlint-disable-next-line typescript/no-unnecessary-condition -- older entries lack the field despite the type
 	entry.state ??= "unknown";
 	entry.lastSubagentActivityAt ??= null;
+	// oxlint-disable-next-line typescript/no-unnecessary-condition -- older entries lack the field despite the type
 	entry.backgroundTasks ??= [];
 	return entry;
 }

@@ -222,7 +222,7 @@ describe("transcript width setting", () => {
 					<Readout />
 				</SettingsProvider>,
 			);
-			const value = screen.getByLabelText("width").textContent ?? "";
+			const value = screen.getByLabelText("width").textContent;
 			view.unmount();
 			return value;
 		};

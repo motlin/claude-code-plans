@@ -473,7 +473,7 @@ describe("RecentsSwitcher", () => {
 
 		const dialog = await screen.findByRole("dialog", {name: "Keyboard shortcuts"});
 		const row = within(dialog).getByText("Switch between recents").parentElement;
-		expect([...(row?.querySelectorAll("kbd") ?? [])].map((kbd) => kbd.textContent ?? "")).toStrictEqual([
+		expect([...(row?.querySelectorAll("kbd") ?? [])].map((kbd) => kbd.textContent)).toStrictEqual([
 			"⌃Control",
 			"Q",
 		]);
@@ -490,9 +490,6 @@ describe("RecentsSwitcher", () => {
 
 		const dialog = await screen.findByRole("dialog", {name: "Keyboard shortcuts"});
 		const row = within(dialog).getByText("Switch between recents").parentElement;
-		expect([...(row?.querySelectorAll("kbd") ?? [])].map((kbd) => kbd.textContent ?? "")).toStrictEqual([
-			"Alt",
-			"Q",
-		]);
+		expect([...(row?.querySelectorAll("kbd") ?? [])].map((kbd) => kbd.textContent)).toStrictEqual(["Alt", "Q"]);
 	});
 });

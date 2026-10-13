@@ -9,14 +9,13 @@
  * Returns true if the copy succeeded, false otherwise.
  */
 export async function writeClipboardText(text: string): Promise<boolean> {
-	// Try the modern Clipboard API first
-	if (navigator.clipboard?.writeText) {
-		try {
-			await navigator.clipboard.writeText(text);
-			return true;
-		} catch {
-			// Fall through to legacy approach
-		}
+	// Try the modern Clipboard API first; outside a secure context navigator.clipboard is
+	// undefined despite its type, and the TypeError lands in the same fallback.
+	try {
+		await navigator.clipboard.writeText(text);
+		return true;
+	} catch {
+		// Fall through to legacy approach
 	}
 
 	// Legacy fallback using execCommand

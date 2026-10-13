@@ -220,7 +220,7 @@ function changesWith(fileCount: number): TurnChanges {
 }
 
 function fileRowNames(): string[] {
-	return screen.getAllByRole("link").map((link) => link.textContent ?? "");
+	return screen.getAllByRole("link").map((link) => link.textContent);
 }
 
 describe("TurnChangesCard", () => {

@@ -167,7 +167,7 @@ async function openPalette() {
 }
 
 function headings(dialog: HTMLElement): string[] {
-	return [...dialog.querySelectorAll("[cmdk-group-heading]")].map((h) => h.textContent ?? "");
+	return [...dialog.querySelectorAll("[cmdk-group-heading]")].map((h) => h.textContent);
 }
 
 function groupLabels(dialog: HTMLElement, heading: string): string[] {

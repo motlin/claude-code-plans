@@ -1,5 +1,5 @@
 import {z} from "zod";
-import {isMcpTool, toolInputSchemas} from "./tool-input-schemas";
+import {isMcpTool, toolInputSchemaByName} from "./tool-input-schemas";
 
 // ---------------------------------------------------------------------------
 // JSON value
@@ -130,7 +130,7 @@ export const ContentBlockSchema = z
 
 		if (isMcpTool(name)) return;
 
-		const schema = toolInputSchemas[name as keyof typeof toolInputSchemas];
+		const schema = toolInputSchemaByName.get(name);
 		if (!schema) return;
 
 		const result = schema.safeParse(input);

@@ -88,7 +88,7 @@ function location(router: ReturnType<typeof buildRouter>) {
 
 function currentTabs(): string[] {
 	const nav = screen.getByRole("navigation", {name: "Settings"});
-	return [...nav.querySelectorAll('[aria-current="page"]')].map((tab) => tab.textContent ?? "");
+	return [...nav.querySelectorAll('[aria-current="page"]')].map((tab) => tab.textContent);
 }
 
 describe("SettingsDialog", () => {

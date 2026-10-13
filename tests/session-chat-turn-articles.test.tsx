@@ -97,7 +97,7 @@ describe("SessionChat turn articles", () => {
 		const container = renderRecords([userRecord(1), assistantRecord(1)]);
 		const hints = Array.from(container.querySelectorAll(".sr-only"))
 			.map((element) => element.textContent)
-			.filter((text) => text?.includes("arrow keys"));
+			.filter((text) => text.includes("arrow keys"));
 		expect(hints).toStrictEqual(["Use the up and down arrow keys to move between messages"]);
 	});
 

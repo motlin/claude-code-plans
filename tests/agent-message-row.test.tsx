@@ -105,12 +105,12 @@ function queuedCommandRecord(prompt: string) {
 function rowState(container: HTMLElement) {
 	const button = within(container).getByRole("button", {name: /message from subagent$/});
 	return {
-		text: container.textContent?.includes("Message from") ?? false,
+		text: container.textContent.includes("Message from"),
 		label: button.getAttribute("aria-label"),
 		expanded: button.getAttribute("aria-expanded"),
 		strong: container.querySelector("strong")?.textContent ?? null,
-		rawTag: container.textContent?.includes("<agent-message") ?? false,
-		frame: container.textContent?.includes("[Subagent hand-back]") ?? false,
+		rawTag: container.textContent.includes("<agent-message"),
+		frame: container.textContent.includes("[Subagent hand-back]"),
 	};
 }
 
@@ -140,7 +140,7 @@ describe("Message from subagent rows", () => {
 
 		expect({
 			rows: container.querySelectorAll("[data-agent-message-from]").length,
-			mentioned: container.textContent?.includes("Message from") ?? false,
+			mentioned: container.textContent.includes("Message from"),
 		}).toStrictEqual({rows: 0, mentioned: false});
 	});
 
@@ -222,7 +222,7 @@ describe("Message from subagent rows", () => {
 
 		expect({
 			toggles: within(container).queryAllByRole("button", {name: /message from subagent$/}).length,
-			quoted: container.textContent?.includes('<agent-message from="a2f0d355334c32c1e">') ?? false,
+			quoted: container.textContent.includes('<agent-message from="a2f0d355334c32c1e">'),
 		}).toStrictEqual({toggles: 0, quoted: true});
 	});
 
@@ -244,7 +244,7 @@ describe("Message from subagent rows", () => {
 		expect({
 			sender: container.querySelector("bdi")?.textContent,
 			...rowState(container),
-			trailer: container.textContent?.includes("other Claude session") ?? false,
+			trailer: container.textContent.includes("other Claude session"),
 		}).toStrictEqual({
 			sender: "subagent",
 			text: true,

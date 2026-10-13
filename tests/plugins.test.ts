@@ -182,7 +182,7 @@ describe("scanPluginTree", () => {
 		const agentsNode = tree!.children!.find((c) => c.path === "agents");
 		if (!agentsNode?.children) throw new Error("Expected agentsNode to have children");
 		expect(agentsNode.children.map((c) => c.path)).toStrictEqual(["agents/bot.md"]);
-		expect(agentsNode?.children?.[0]?.children).toBeUndefined();
+		expect(agentsNode.children[0]?.children).toBeUndefined();
 	});
 
 	it("returns null for non-existent directory", async () => {

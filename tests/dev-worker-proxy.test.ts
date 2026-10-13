@@ -195,12 +195,12 @@ describe("dev worker proxy", () => {
 		const server = {middlewares: {use: (fn: {name: string}) => registered.push(fn.name)}};
 		const [pre, post] = devWorkerProxy();
 
-		const preResult = pre?.configureServer?.(server);
-		const postHook = post?.configureServer?.(server);
+		const preResult = pre.configureServer(server);
+		const postHook = post.configureServer(server);
 		postHook?.();
 
 		expect({
-			enforce: [pre?.enforce, post?.enforce],
+			enforce: [pre.enforce, post.enforce],
 			preResult,
 			registered,
 		}).toEqual({

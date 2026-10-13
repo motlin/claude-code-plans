@@ -49,7 +49,7 @@ function logSseStatsWindow(): void {
 function ensureStatsLog(): void {
 	if (statsLogTimer || process.env["CCB_PERF_LOG"] !== "1") return;
 	statsLogTimer = setInterval(logSseStatsWindow, SSE_STATS_LOG_INTERVAL_MS);
-	statsLogTimer.unref?.();
+	statsLogTimer.unref();
 }
 
 export function stopSseStatsLog(): void {

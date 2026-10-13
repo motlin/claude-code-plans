@@ -114,7 +114,7 @@ async function renderSidebarGroups(
 
 function groupNames(container: HTMLElement): string[] {
 	return [...container.querySelectorAll('[data-testid="sidebar-recents"] [data-group-name]')].map(
-		(node) => node.textContent ?? "",
+		(node) => node.textContent,
 	);
 }
 
@@ -130,7 +130,7 @@ async function openFilterMenu(): Promise<HTMLElement> {
 
 function menuOutline(menu: HTMLElement): string[] {
 	return [...menu.querySelectorAll('[role="menuitem"], [role="menuitemcheckbox"], [role="separator"]')].map((node) =>
-		node.getAttribute("role") === "separator" ? "---" : (node.textContent ?? "").trim(),
+		node.getAttribute("role") === "separator" ? "---" : node.textContent.trim(),
 	);
 }
 
@@ -377,7 +377,7 @@ describe("sidebar Filter & group menu", () => {
 		const recents = container.querySelector<HTMLElement>('[data-testid="sidebar-recents"]');
 		expect({
 			labels: [...(recents?.querySelectorAll("[data-sidebar-group-label]") ?? [])].map((node) =>
-				node.textContent?.trim(),
+				node.textContent.trim(),
 			),
 			empty: recents?.querySelector("[data-sidebar-empty]")?.textContent,
 			filter: filterButton().getAttribute("aria-label"),

@@ -199,10 +199,10 @@ describe("settings search", () => {
 		const popover = await screen.findByRole("dialog", {name: "Search results"});
 		const first = within(popover).getAllByRole("button")[0];
 		expect({
-			icon: first?.firstElementChild?.tagName.toLowerCase(),
-			section: first?.querySelector("[data-settings-result-section]")?.textContent,
-			title: first?.querySelector("[data-settings-result-title]")?.textContent,
-			text: first?.textContent,
+			icon: first.firstElementChild?.tagName.toLowerCase(),
+			section: first.querySelector("[data-settings-result-section]")?.textContent,
+			title: first.querySelector("[data-settings-result-title]")?.textContent,
+			text: first.textContent,
 		}).toStrictEqual({icon: "svg", section: "General", title: "Theme", text: "General / Theme"});
 	});
 });

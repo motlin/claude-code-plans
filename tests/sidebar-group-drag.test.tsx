@@ -186,7 +186,7 @@ function drag(element: HTMLElement, fromY: number, toY: number): void {
 function sections(container: HTMLElement): [string, string[]][] {
 	return [...container.querySelectorAll('[data-testid="sidebar-recents"] [data-group-key]')].map((section) => [
 		section.querySelector("[data-group-name]")?.textContent ?? "",
-		[...section.querySelectorAll("a[data-row-main-button]")].map((link) => link.textContent ?? ""),
+		[...section.querySelectorAll("a[data-row-main-button]")].map((link) => link.textContent),
 	]);
 }
 

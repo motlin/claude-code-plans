@@ -47,7 +47,7 @@ describe("blank-screen prevention on /session/$id", () => {
 		await renderWithRouter(<SessionPage sessionId="session-test-100" />);
 
 		expect({
-			skeleton: screen.getByTestId("session-skeleton") !== null,
+			skeleton: screen.queryByTestId("session-skeleton") !== null,
 			notFound: screen.queryByText("Session Not Found"),
 		}).toStrictEqual({skeleton: true, notFound: null});
 	});

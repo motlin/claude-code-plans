@@ -42,7 +42,7 @@ function statsMarkup(container: HTMLElement): StatsMarkup {
 		clusterClass: cluster.className,
 		parts: [...cluster.children].map((child) => ({
 			className: (child as HTMLElement).className,
-			text: child.textContent ?? "",
+			text: child.textContent,
 		})),
 	};
 }

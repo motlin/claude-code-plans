@@ -52,9 +52,7 @@ async function renderEmptyNotifications(missingEvents: string[]) {
 
 function emptyStateSentences(): string[] {
 	const region = screen.getByRole("region", {name: "Why there are no notifications"});
-	return [...region.querySelectorAll("p")].map((paragraph) =>
-		(paragraph.textContent ?? "").replace(/\s+/g, " ").trim(),
-	);
+	return [...region.querySelectorAll("p")].map((paragraph) => paragraph.textContent.replace(/\s+/g, " ").trim());
 }
 
 describe("notifications route empty state", () => {

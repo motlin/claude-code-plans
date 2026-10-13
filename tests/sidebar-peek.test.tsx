@@ -233,7 +233,7 @@ describe("collapsed sidebar peek", () => {
 
 		const tooltip = await screen.findByRole("tooltip");
 		expect({
-			text: tooltip.textContent?.startsWith("Show sidebar"),
+			text: tooltip.textContent.startsWith("Show sidebar"),
 			describedBy: trigger.getAttribute("aria-describedby"),
 		}).toEqual({text: true, describedBy: tooltip.id});
 	});

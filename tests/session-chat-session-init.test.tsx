@@ -72,7 +72,7 @@ function renderRecords(records: unknown[]): HTMLElement {
 /** The single "Initialized session" disclosure control, or null when absent. */
 function initButton(container: HTMLElement): HTMLButtonElement | null {
 	const buttons = Array.from(container.querySelectorAll("button")).filter((button) =>
-		button.textContent?.includes("Initialized session"),
+		button.textContent.includes("Initialized session"),
 	);
 	if (buttons.length > 1) throw new Error(`Expected one init row, found ${buttons.length}`);
 	return buttons[0] ?? null;
@@ -139,7 +139,7 @@ describe("session init disclosure", () => {
 
 		expect({
 			initRow: initButton(container),
-			showsWorktree: container.textContent?.includes("Worktree: alice-worktree"),
+			showsWorktree: container.textContent.includes("Worktree: alice-worktree"),
 		}).toStrictEqual({initRow: null, showsWorktree: true});
 	});
 
@@ -228,13 +228,13 @@ const COMPACT_SUMMARY = {
 
 /** Buttons whose text includes the given marker label. */
 function markerButtons(container: HTMLElement, label: string): HTMLButtonElement[] {
-	return Array.from(container.querySelectorAll("button")).filter((button) => button.textContent?.includes(label));
+	return Array.from(container.querySelectorAll("button")).filter((button) => button.textContent.includes(label));
 }
 
 /** Text of every element that carries a compaction marker label. */
 function compactionLabels(container: HTMLElement): string[] {
 	return Array.from(container.querySelectorAll("span"))
-		.map((span) => span.textContent ?? "")
+		.map((span) => span.textContent)
 		.filter((text) => text.startsWith("Compacted"));
 }
 
@@ -276,7 +276,7 @@ describe("compaction markers", () => {
 			className: button.className,
 			ariaExpanded: button.getAttribute("aria-expanded"),
 			hasChevron: button.querySelector("svg") !== null,
-			showsSummary: container.textContent?.includes("Fabricated compact summary"),
+			showsSummary: container.textContent.includes("Fabricated compact summary"),
 		};
 		fireEvent.click(button);
 		const expandedButton = markerButtons(container, "Compacted conversation")[0];
@@ -285,7 +285,7 @@ describe("compaction markers", () => {
 			collapsed,
 			expanded: {
 				ariaExpanded: expandedButton?.getAttribute("aria-expanded"),
-				showsSummary: container.textContent?.includes("Fabricated compact summary"),
+				showsSummary: container.textContent.includes("Fabricated compact summary"),
 			},
 		}).toStrictEqual({
 			collapsed: {

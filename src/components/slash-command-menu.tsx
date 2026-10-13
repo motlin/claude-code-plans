@@ -52,7 +52,7 @@ export function SlashCommandMenu({
 		const scroller = scrollerRef.current;
 		const row = scroller?.querySelector<HTMLElement>("[data-highlighted]");
 		if (!scroller || !row) return;
-		row.scrollIntoView?.({block: "nearest"});
+		row.scrollIntoView({block: "nearest"});
 		setTooltipTop(row.offsetTop - scroller.scrollTop);
 	}, [highlighted, commands]);
 

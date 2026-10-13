@@ -1,8 +1,9 @@
+import {inputString} from "../../lib/tool-utils";
 import type {ToolRendererProps} from "./types";
 import {KeyValueCard} from "./shared";
 
 export function WebFetchRenderer({toolCall}: ToolRendererProps) {
-	const url = (toolCall.input["url"] as string) ?? "";
+	const url = inputString(toolCall.input, "url") ?? "";
 	const prompt = toolCall.input["prompt"] as string | undefined;
 	const offset = toolCall.input["offset"] as number | undefined;
 	const {result, isError} = toolCall;

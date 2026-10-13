@@ -474,8 +474,8 @@ function startDevServer(
 		output.push(chunk.toString());
 		if (output.length > 100) output.shift();
 	};
-	server.stdout?.on("data", rememberOutput);
-	server.stderr?.on("data", rememberOutput);
+	server.stdout.on("data", rememberOutput);
+	server.stderr.on("data", rememberOutput);
 	return {process: server, output};
 }
 

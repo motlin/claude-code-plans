@@ -27,7 +27,7 @@ function rowSide(row: Element): DiffSide {
 }
 
 function rowText(row: Element): string {
-	return (row.textContent ?? "").replace(/\n$/, "");
+	return row.textContent.replace(/\n$/, "");
 }
 
 /** The code row for a node inside the diff: a `[data-line]` row, or the row a line number labels. */

@@ -305,7 +305,7 @@ describe("Files pane header", () => {
 			});
 		});
 		const before = [...screen.getByRole("menu").querySelectorAll<HTMLElement>("[role^=menuitem]")].map((item) => [
-			item.textContent ?? "",
+			item.textContent,
 			item.getAttribute("aria-checked"),
 		]);
 		fireEvent.click(screen.getByRole("menuitemcheckbox", {name: "Hide ignored files"}));

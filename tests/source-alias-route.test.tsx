@@ -117,7 +117,7 @@ async function setup({
 it("resolves a delayed alias before fetching source and keeps record IDs in every source link", async () => {
 	const {fetcher, finish, router} = await setup();
 	const pending = {
-		skeleton: screen.getByTestId("session-skeleton") !== null,
+		skeleton: screen.queryByTestId("session-skeleton") !== null,
 		urls: fetcher.mock.calls.map(([url]) => url),
 	};
 	await act(async () => {

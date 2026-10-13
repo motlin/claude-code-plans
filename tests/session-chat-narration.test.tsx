@@ -92,7 +92,7 @@ function rows(records: unknown[], showThinking = false) {
 			row.querySelectorAll('[data-tool-row] > [role="button"], [data-tool-row] > button'),
 			(element) => element.textContent,
 		),
-		prose: Array.from(row.querySelectorAll("[data-transcript-prose]"), (element) => element.textContent?.trim()),
+		prose: Array.from(row.querySelectorAll("[data-transcript-prose]"), (element) => element.textContent.trim()),
 		thinkingBlocks: row.querySelectorAll('button[aria-label="Copy as quote"]').length,
 	}));
 }

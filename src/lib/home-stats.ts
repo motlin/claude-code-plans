@@ -278,7 +278,7 @@ export class UsageCollector {
 			cacheCreationTokens: 0,
 		};
 		if (countable) row.messages++;
-		if (freshUsage && usage !== undefined) {
+		if (freshUsage) {
 			row.inputTokens += tokenCount(usage, "input_tokens");
 			row.outputTokens += tokenCount(usage, "output_tokens");
 			row.cacheReadTokens += tokenCount(usage, "cache_read_input_tokens");

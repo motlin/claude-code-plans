@@ -34,9 +34,9 @@ function headerMarkup(container: HTMLElement): HeaderMarkup {
 	return {
 		wrapperClass: wrapper.className,
 		prefixClass: prefix.className,
-		prefixText: prefix.textContent ?? "",
+		prefixText: prefix.textContent,
 		suffixClass: suffix.className,
-		suffixText: suffix.textContent ?? "",
+		suffixText: suffix.textContent,
 	};
 }
 

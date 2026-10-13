@@ -195,8 +195,7 @@ function noticeChildren(container: HTMLElement): {text: string | null; className
 }
 
 function userTurnCount(container: HTMLElement): number {
-	return [...container.querySelectorAll("h2")].filter((heading) => heading.textContent?.startsWith("You said"))
-		.length;
+	return [...container.querySelectorAll("h2")].filter((heading) => heading.textContent.startsWith("You said")).length;
 }
 
 describe("parseTaskNotification", () => {
@@ -365,7 +364,7 @@ describe("task notifications in the transcript", () => {
 		fireEvent.click(toggle);
 		expect({
 			userTurns: userTurnCount(container),
-			rawTag: container.textContent?.includes("<task-notification>") ?? false,
+			rawTag: container.textContent.includes("<task-notification>"),
 			expanded: toggle.getAttribute("aria-expanded"),
 			groupRows: groupRowTexts(container),
 			notice: noticeChildren(container),
@@ -402,7 +401,7 @@ describe("task notifications in the transcript", () => {
 		expect({
 			groupRows: groupRowTexts(container),
 			notice: noticeChildren(container),
-			oldLabel: container.textContent?.includes("Background task failed") ?? false,
+			oldLabel: container.textContent.includes("Background task failed"),
 		}).toStrictEqual({
 			groupRows: ["Background commandRun the test suiteFailed", "Checked the server"],
 			notice: [

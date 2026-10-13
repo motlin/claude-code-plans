@@ -1,8 +1,9 @@
+import {inputString} from "../../lib/tool-utils";
 import type {ToolRendererProps} from "./types";
 import {KeyValueCard} from "./shared";
 
 export function TaskStopRenderer({toolCall}: ToolRendererProps) {
-	const taskId = (toolCall.input["task_id"] as string) ?? "";
+	const taskId = inputString(toolCall.input, "task_id") ?? "";
 
 	const params: Array<{key: string; value: string}> = [];
 	if (taskId) params.push({key: "task_id", value: `#${taskId}`});

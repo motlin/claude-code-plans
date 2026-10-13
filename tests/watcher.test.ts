@@ -384,7 +384,7 @@ describe("handleJsonlPlanLinks", () => {
 	});
 
 	afterEach(() => {
-		if (db) db.close();
+		db.close();
 		rmSync(testDir, {recursive: true, force: true});
 	});
 
@@ -696,7 +696,7 @@ describe("handlePlanMdChange", () => {
 	});
 
 	afterEach(() => {
-		if (db) db.close();
+		db.close();
 		rmSync(testDir, {recursive: true, force: true});
 	});
 
@@ -743,7 +743,7 @@ describe("handlePlanMdUnlink", () => {
 	});
 
 	afterEach(() => {
-		if (db) db.close();
+		db.close();
 		rmSync(testDir, {recursive: true, force: true});
 	});
 

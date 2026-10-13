@@ -90,7 +90,7 @@ function submenuOutline(menu: HTMLElement): string[] {
 	return [...menu.querySelectorAll('[role="menuitemradio"], [role="separator"]')].map((node) =>
 		node.getAttribute("role") === "separator"
 			? "---"
-			: `${node.textContent ?? ""} (${node.getAttribute("aria-checked") ?? ""})`,
+			: `${node.textContent} (${node.getAttribute("aria-checked") ?? ""})`,
 	);
 }
 

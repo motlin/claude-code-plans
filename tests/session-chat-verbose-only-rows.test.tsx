@@ -156,7 +156,7 @@ function assistantTimeTooltip(container: HTMLElement): string {
 function observe(mode: TranscriptMode) {
 	vi.useFakeTimers({toFake: ["setTimeout", "clearTimeout"]});
 	const container = renderMode(mode);
-	const text = container.textContent ?? "";
+	const text = container.textContent;
 	const tooltip = assistantTimeTooltip(container);
 	return {
 		diagnostics: DIAGNOSTIC_TEXT.filter((label) => text.includes(label)),
@@ -217,7 +217,7 @@ const HOOK_CONTEXT_BETWEEN_COMMANDS: unknown[] = [
 ];
 
 function observeGrouping(mode: TranscriptMode) {
-	const text = renderRecords(HOOK_CONTEXT_BETWEEN_COMMANDS, mode).textContent ?? "";
+	const text = renderRecords(HOOK_CONTEXT_BETWEEN_COMMANDS, mode).textContent;
 	return {
 		merged: text.includes("Ran 2 commands"),
 		hookContext: text.includes("Hook context: PostToolUse:Bash"),
@@ -248,7 +248,7 @@ const HOOK_WARNING: unknown[] = [
 
 describe("Non-blocking hook errors", () => {
 	it.each([true, false])("follow showHookWarnings=%s in Normal mode", (showHookWarnings) => {
-		const text = renderRecords(HOOK_WARNING, "normal", showHookWarnings).textContent ?? "";
+		const text = renderRecords(HOOK_WARNING, "normal", showHookWarnings).textContent;
 		expect(text.includes("PostToolUse:Bash")).toBe(showHookWarnings);
 	});
 });
@@ -274,7 +274,7 @@ function observeQueued(records: unknown[], mode: TranscriptMode) {
 			container.querySelectorAll("[data-turn-status] > button > span:first-child"),
 			(label) => label.textContent,
 		),
-		banner: (container.textContent ?? "").includes("Queued command"),
+		banner: container.textContent.includes("Queued command"),
 	};
 }
 

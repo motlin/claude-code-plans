@@ -103,7 +103,7 @@ async function readStateItems(): Promise<string[]> {
 	await flush();
 	const menu = screen.getByRole("menu");
 	return [...menu.querySelectorAll('[role="menuitem"]')]
-		.map((node) => `${node.textContent ?? ""} [${node.getAttribute("aria-keyshortcuts") ?? ""}]`)
+		.map((node) => `${node.textContent} [${node.getAttribute("aria-keyshortcuts") ?? ""}]`)
 		.filter((label) => label.startsWith("Mark as"));
 }
 
