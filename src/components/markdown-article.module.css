@@ -491,12 +491,16 @@
 	font-weight: inherit;
 }
 
-:global([data-transcript-prose]) .markdown > p {
-	padding-inline: 4px 56px;
+/* Upstream's text stop: prose ends 17.5% of the column's width past 384px short
+   of its edge, at most 56px, so a narrow column (sidebar open, phone) loses less. */
+:global([data-transcript-prose])
+	.markdown
+	> :is(p, h1, h2, h3, h4, h5, h6, ul:not(:global(.contains-task-list)), ol, dl) {
+	padding-inline-end: clamp(0px, (100% - 384px) * 0.175, 56px);
 }
 
-:global([data-transcript-prose]) .markdown > ul:not(:global(.contains-task-list)) {
-	padding-right: 56px;
+:global([data-transcript-prose]) .markdown > :is(p, h1, h2, h3, h4, h5, h6) {
+	padding-inline-start: 4px;
 }
 
 /* Upstream's prose flow on top of the 7px gap: 10.5px above each flow block,
