@@ -31,6 +31,8 @@ const SessionListItemSchema = z.object({
 	forkedFromSessionId: z.string().optional(),
 	archived: z.boolean(),
 	state: SessionSummaryStateSchema,
+	/** Blocked on a tool permission prompt; the session page docks the permission card from it. */
+	awaitingPermission: z.literal(true).optional(),
 	bucket: SessionBucketSchema,
 	liveAgentCount: z.number(),
 	unseen: z.boolean(),
