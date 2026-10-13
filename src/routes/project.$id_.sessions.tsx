@@ -17,8 +17,8 @@ export const Route = createFileRoute("/project/$id_/sessions")({
 	validateSearch: sessionsSearchSchema,
 	loader: async ({context: {queryClient}, params}) => {
 		const [detail] = await Promise.all([
-			queryClient.ensureQueryData(projectDetailQueryOptions(params.id)),
-			queryClient.ensureQueryData(projectSessionsQueryOptions(params.id)),
+			queryClient.query({...projectDetailQueryOptions(params.id), staleTime: "static"}),
+			queryClient.query({...projectSessionsQueryOptions(params.id), staleTime: "static"}),
 		]);
 		return detail;
 	},

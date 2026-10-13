@@ -1,3 +1,4 @@
+import {noop} from "@tanstack/react-query";
 import {createFileRoute} from "@tanstack/react-router";
 import {ConnectorDetailFrame} from "../components/customize/detail-frames";
 import {customizeMcpServerDetailQueryOptions} from "../lib/api/customize";
@@ -5,7 +6,7 @@ import {customizeMcpServerDetailQueryOptions} from "../lib/api/customize";
 export const Route = createFileRoute("/customize_/connectors/id/$serverId")({
 	component: ConnectorDetailPage,
 	loader: ({context: {queryClient}, params}) => {
-		void queryClient.prefetchQuery(customizeMcpServerDetailQueryOptions(params.serverId));
+		void queryClient.query(customizeMcpServerDetailQueryOptions(params.serverId)).catch(noop);
 	},
 	head: () => ({meta: [{title: "Connector · Customize"}]}),
 });

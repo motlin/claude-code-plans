@@ -5,15 +5,14 @@ describe("blank-screen prevention on /customize/plugins", () => {
 	it("the loader warms caches without awaiting them", () => {
 		const never = new Promise<never>(() => {});
 		const queryClient = {
-			prefetchQuery: vi.fn(async () => never),
-			ensureQueryData: vi.fn(async () => never),
+			query: vi.fn(async (_options: {staleTime?: unknown}) => never),
 		};
 		const loader = CustomizePluginsRoute.options.loader as (args: {context: unknown}) => unknown;
 
 		expect({
 			result: loader({context: {queryClient}}),
-			prefetched: queryClient.prefetchQuery.mock.calls.length,
-			awaited: queryClient.ensureQueryData.mock.calls.length,
-		}).toStrictEqual({result: undefined, prefetched: 2, awaited: 0});
+			queried: queryClient.query.mock.calls.length,
+			ensured: queryClient.query.mock.calls.filter(([options]) => options.staleTime === "static").length,
+		}).toStrictEqual({result: undefined, queried: 2, ensured: 0});
 	});
 });

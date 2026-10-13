@@ -66,7 +66,7 @@ const TILE_GAP_PX = 12;
 /** Minimum tile sizes along either axis. */
 const MIN_TILE_SIZE_PX = {chat: 320, pane: 280} as const;
 
-const FlexSchema = z.number().positive().finite();
+const FlexSchema = z.number().positive();
 
 const TileNodeSchema = z.strictObject({
 	kind: z.literal("tile"),

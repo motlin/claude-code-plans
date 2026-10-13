@@ -292,7 +292,7 @@ describe("recorder session identities", () => {
 		const error = new ApiResponseError(`/api/sessions/${ALIAS}/identity`, Response.json({}, {status: 409}));
 		await act(async () => {
 			await expect(
-				queryClient.fetchQuery({
+				queryClient.query({
 					queryKey: sessionQueryKeys.identity(ALIAS),
 					queryFn: async () => Promise.reject(error),
 				}),

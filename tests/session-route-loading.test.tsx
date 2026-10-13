@@ -57,10 +57,8 @@ describe("blank-screen prevention on /session/$id", () => {
 		// this loader must never await the (multi-megabyte) transcript payload.
 		const never = new Promise<never>(() => {});
 		const queryClient = {
-			prefetchQuery: vi.fn(async () => never),
-			prefetchInfiniteQuery: vi.fn(async () => never),
-			ensureQueryData: vi.fn(async () => never),
-			ensureInfiniteQueryData: vi.fn(async () => never),
+			query: vi.fn(async (_options: {staleTime?: unknown}) => never),
+			infiniteQuery: vi.fn(async (_options: {staleTime?: unknown}) => never),
 			getQueryData: vi.fn(() => undefined),
 		};
 
@@ -68,10 +66,11 @@ describe("blank-screen prevention on /session/$id", () => {
 
 		expect({
 			loaderData: loader({context: {queryClient}, params: {id: "session-test-100"}}),
-			prefetched: queryClient.prefetchQuery.mock.calls.length,
-			awaitedQueries:
-				queryClient.ensureQueryData.mock.calls.length + queryClient.ensureInfiniteQueryData.mock.calls.length,
-		}).toStrictEqual({loaderData: undefined, prefetched: 4, awaitedQueries: 0});
+			queried: queryClient.query.mock.calls.length + queryClient.infiniteQuery.mock.calls.length,
+			ensured: [...queryClient.query.mock.calls, ...queryClient.infiniteQuery.mock.calls].filter(
+				([options]) => options.staleTime === "static",
+			).length,
+		}).toStrictEqual({loaderData: undefined, queried: 4, ensured: 0});
 	});
 
 	it("titles a pending session honestly and keeps not-found for a real 404", () => {

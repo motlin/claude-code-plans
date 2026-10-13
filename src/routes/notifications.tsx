@@ -15,7 +15,8 @@ import {ListPageHeader} from "../components/list-page-header";
 
 export const Route = createFileRoute("/notifications")({
 	component: NotificationsPage,
-	loader: async ({context: {queryClient}}) => queryClient.ensureQueryData(notificationsQueryOptions()),
+	loader: async ({context: {queryClient}}) =>
+		queryClient.query({...notificationsQueryOptions(), staleTime: "static"}),
 	head: () => ({
 		meta: [{title: "Notifications"}],
 	}),

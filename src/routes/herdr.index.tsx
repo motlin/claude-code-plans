@@ -11,7 +11,8 @@ import {splitTerminalTitleGlyph} from "../lib/herdr/terminal-title";
 
 export const Route = createFileRoute("/herdr/")({
 	component: HerdrPage,
-	loader: async ({context: {queryClient}}) => queryClient.ensureQueryData(terminalPlacementsQueryOptions),
+	loader: async ({context: {queryClient}}) =>
+		queryClient.query({...terminalPlacementsQueryOptions, staleTime: "static"}),
 	head: () => ({
 		meta: [{title: "Herdr"}],
 	}),

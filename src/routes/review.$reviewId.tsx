@@ -11,7 +11,7 @@ import {openReviewInChanges} from "../lib/changes-review";
 export const Route = createFileRoute("/review/$reviewId")({
 	component: ReviewDeepLink,
 	loader: async ({context: {queryClient}, params}) =>
-		queryClient.ensureQueryData(reviewQueryOptions(params.reviewId)),
+		queryClient.query({...reviewQueryOptions(params.reviewId), staleTime: "static"}),
 	head: () => ({meta: [{title: "Working-copy review"}]}),
 });
 

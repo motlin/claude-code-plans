@@ -4,7 +4,8 @@ import {herdrWorkspacesQueryOptions} from "../lib/api/herdr-workspaces";
 
 export const Route = createFileRoute("/herdr")({
 	component: HerdrLayout,
-	loader: async ({context: {queryClient}}) => queryClient.ensureQueryData(herdrWorkspacesQueryOptions),
+	loader: async ({context: {queryClient}}) =>
+		queryClient.query({...herdrWorkspacesQueryOptions, staleTime: "static"}),
 });
 
 /**

@@ -283,7 +283,7 @@ export function useSettingsToggle() {
 	return useMutation({
 		mutationFn: async (toggle: SettingsToggle) => {
 			const current = queryClient.getQueryData(settingsTogglesQueryKey);
-			const state = current ?? (await queryClient.fetchQuery(customizeSettingsTogglesQueryOptions));
+			const state = current ?? (await queryClient.query(customizeSettingsTogglesQueryOptions));
 			return apiFetch(SETTINGS_TOGGLES_URL, SettingsToggleStateSchema, {
 				method: "POST",
 				headers: {"Content-Type": "application/json"},

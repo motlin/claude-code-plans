@@ -16,7 +16,7 @@ type ActiveSession = z.infer<typeof ActiveSessionListResponse>[number];
 export const Route = createFileRoute("/active")({
 	component: ActivePage,
 	loader: async ({context: {queryClient}}) =>
-		queryClient.ensureQueryData(activeSessionsQueryOptions(DEFAULTS.activeTimeoutSec * 1000)),
+		queryClient.query({...activeSessionsQueryOptions(DEFAULTS.activeTimeoutSec * 1000), staleTime: "static"}),
 	head: () => ({
 		meta: [{title: "Active Sessions"}],
 	}),

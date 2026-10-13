@@ -6,7 +6,7 @@ import {sourceFileQueryOptions} from "../lib/api/source";
 export const Route = createFileRoute("/source/$kind/$")({
 	component: GenericSourcePage,
 	loader: async ({context: {queryClient}, params}) =>
-		queryClient.ensureQueryData(sourceFileQueryOptions(params.kind, params._splat ?? "")),
+		queryClient.query({...sourceFileQueryOptions(params.kind, params._splat ?? ""), staleTime: "static"}),
 	head: ({params}) => {
 		const tail = (params._splat ?? "").split("/").pop() ?? params.kind;
 		return {meta: [{title: `Source: ${tail}`}]};

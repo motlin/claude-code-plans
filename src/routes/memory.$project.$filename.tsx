@@ -11,7 +11,7 @@ import {useCallback, useState} from "react";
 export const Route = createFileRoute("/memory/$project/$filename")({
 	component: MemoryPage,
 	loader: async ({context: {queryClient}, params}) =>
-		queryClient.ensureQueryData(memoryDetailQueryOptions(params.project, params.filename)),
+		queryClient.query({...memoryDetailQueryOptions(params.project, params.filename), staleTime: "static"}),
 	head: ({params}) => ({
 		meta: [{title: fromMdSlug(params.filename)}],
 	}),

@@ -1,3 +1,4 @@
+import {noop} from "@tanstack/react-query";
 import {createFileRoute, Outlet} from "@tanstack/react-router";
 import {SkillDetailFrame} from "../components/customize/detail-frames";
 import {customizeSkillDetailQueryOptions} from "../lib/api/customize";
@@ -5,7 +6,7 @@ import {customizeSkillDetailQueryOptions} from "../lib/api/customize";
 export const Route = createFileRoute("/customize_/skills/id/$skillId")({
 	component: SkillDetailLayout,
 	loader: ({context: {queryClient}, params}) => {
-		void queryClient.prefetchQuery(customizeSkillDetailQueryOptions(params.skillId));
+		void queryClient.query(customizeSkillDetailQueryOptions(params.skillId)).catch(noop);
 	},
 	head: () => ({meta: [{title: "Skill · Customize"}]}),
 });

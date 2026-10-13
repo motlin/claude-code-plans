@@ -20,7 +20,7 @@ export function getRouter() {
 		scrollRestoration: true,
 		defaultPreload: "intent",
 		defaultErrorComponent: DefaultErrorComponent,
-		// Query manages data freshness; always run loaders so ensureQueryData can serve from cache.
+		// Query manages data freshness; always run loaders so their static-staleTime query() calls can serve from cache.
 		defaultPreloadStaleTime: 0,
 		context: {queryClient},
 	});

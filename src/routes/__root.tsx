@@ -8,7 +8,7 @@ import {
 	useRouter,
 } from "@tanstack/react-router";
 import type {ErrorComponentProps} from "@tanstack/react-router";
-import {QueryClientProvider, type QueryClient} from "@tanstack/react-query";
+import {noop, QueryClientProvider, type QueryClient} from "@tanstack/react-query";
 import {ReactQueryDevtools} from "@tanstack/react-query-devtools";
 import {useEffect, type ReactNode} from "react";
 import {Agentation} from "agentation";
@@ -59,15 +59,15 @@ export const Route = createRootRouteWithContext<{queryClient: QueryClient}>()({
 	// all nine payloads arrive. Every route's own loader ensures the data it
 	// actually renders; the sidebar session groups use non-suspending `useQuery`.
 	loader: ({context: {queryClient}}) => {
-		void queryClient.prefetchQuery(projectsQueryOptions());
-		void queryClient.prefetchQuery(plansQueryOptions());
-		void queryClient.prefetchInfiniteQuery(recentSessionsInfiniteQueryOptions());
-		void queryClient.prefetchQuery(groupedSessionsQueryOptions());
-		void queryClient.prefetchQuery(pluginsQueryOptions);
-		void queryClient.prefetchQuery(userCommandsQueryOptions);
-		void queryClient.prefetchQuery(activeSessionsQueryOptions(60_000));
-		void queryClient.prefetchQuery(approvalsQueryOptions());
-		void queryClient.prefetchQuery(notificationsQueryOptions());
+		void queryClient.query(projectsQueryOptions()).catch(noop);
+		void queryClient.query(plansQueryOptions()).catch(noop);
+		void queryClient.infiniteQuery(recentSessionsInfiniteQueryOptions()).catch(noop);
+		void queryClient.query(groupedSessionsQueryOptions()).catch(noop);
+		void queryClient.query(pluginsQueryOptions).catch(noop);
+		void queryClient.query(userCommandsQueryOptions).catch(noop);
+		void queryClient.query(activeSessionsQueryOptions(60_000)).catch(noop);
+		void queryClient.query(approvalsQueryOptions()).catch(noop);
+		void queryClient.query(notificationsQueryOptions()).catch(noop);
 	},
 	head: () => ({
 		meta: [

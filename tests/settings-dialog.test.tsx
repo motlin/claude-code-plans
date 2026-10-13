@@ -27,20 +27,14 @@ import {installLocalStorage} from "./fake-storage";
 
 function stubBrowser() {
 	installLocalStorage();
-	vi.stubGlobal(
-		"matchMedia",
-		(query: string): MediaQueryList =>
-			({
-				matches: false,
-				media: query,
-				onchange: null,
-				addEventListener: () => {},
-				removeEventListener: () => {},
-				addListener: () => {},
-				removeListener: () => {},
-				dispatchEvent: () => false,
-			}) satisfies MediaQueryList,
-	);
+	vi.stubGlobal("matchMedia", (query: string) => ({
+		matches: false,
+		media: query,
+		onchange: null,
+		addEventListener: () => {},
+		removeEventListener: () => {},
+		dispatchEvent: () => false,
+	}));
 }
 
 function buildRouter(initialEntry: string, seed: (queryClient: QueryClient) => void = () => {}) {

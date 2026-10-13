@@ -435,8 +435,7 @@ describe("Shell tabs", () => {
 		expect({
 			tabs: tabs(),
 			stored: z
-				.object({tabs: z.array(z.object({title: z.string()}).passthrough())})
-				.passthrough()
+				.looseObject({tabs: z.array(z.looseObject({title: z.string()}))})
 				.parse(JSON.parse(storage.getItem(terminalTabsStorageKey(SESSION_ID)) ?? "null"))
 				.tabs.map((tab) => tab.title),
 		}).toStrictEqual({

@@ -24,8 +24,8 @@ export const Route = createFileRoute("/plan/$filename")({
 	component: PlanPage,
 	loader: async ({context: {queryClient}, params}) =>
 		Promise.all([
-			queryClient.ensureQueryData(planQueryOptions(params.filename)),
-			queryClient.ensureQueryData(planLinksQueryOptions(params.filename)),
+			queryClient.query({...planQueryOptions(params.filename), staleTime: "static"}),
+			queryClient.query({...planLinksQueryOptions(params.filename), staleTime: "static"}),
 		]),
 	head: ({params}) => ({
 		meta: [{title: fromMdSlug(params.filename)}],

@@ -945,7 +945,7 @@ describe("applySessionLinesAppended", () => {
 		const responseReady = new Promise<void>((resolve) => {
 			resolveRefetch = resolve;
 		});
-		const refetch = queryClient.fetchQuery({
+		const refetch = queryClient.query({
 			...transcriptQueryOptions("session-test-100"),
 			staleTime: 0,
 			queryFn: async () => {
@@ -984,7 +984,7 @@ describe("applySessionLinesAppended", () => {
 		};
 		queryClient.setQueryData(queryKey, makeTranscriptCache({records: [existingRecord], byteOffset: 100}));
 
-		await queryClient.fetchQuery({
+		await queryClient.query({
 			...transcriptQueryOptions("session-test-100"),
 			staleTime: 0,
 			queryFn: async () => makeTranscriptCache({records: [existingRecord, appendedRecord], byteOffset: 200}),

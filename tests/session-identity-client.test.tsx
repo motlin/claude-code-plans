@@ -311,9 +311,7 @@ describe("active detail alias backfill catch-up", () => {
 		});
 		vi.stubGlobal("fetch", fetcher);
 		// Begin an explicit refresh of cached pending data before mounting the ready poll.
-		const refreshing = client
-			.fetchQuery({...sessionDetailQueryOptions(ALICE), staleTime: 0})
-			.catch(() => undefined);
+		const refreshing = client.query({...sessionDetailQueryOptions(ALICE), staleTime: 0}).catch(() => undefined);
 		render(
 			<Wrapper>
 				<IndexingBanner />

@@ -36,7 +36,7 @@ import {
 
 export const Route = createFileRoute("/routines")({
 	component: RoutinesPage,
-	loader: async ({context: {queryClient}}) => queryClient.ensureQueryData(routinesQueryOptions),
+	loader: async ({context: {queryClient}}) => queryClient.query({...routinesQueryOptions, staleTime: "static"}),
 	head: () => ({
 		meta: [{title: "Routines"}],
 	}),

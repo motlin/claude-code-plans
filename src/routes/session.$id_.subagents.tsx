@@ -2,7 +2,7 @@ import {createFileRoute, Link, useRouter} from "@tanstack/react-router";
 import {Suspense, useEffect} from "react";
 import {SessionRouteIdentity} from "../components/session-route-identity";
 import {sessionIdentityFailure, sessionIdentityQueryOptions} from "../lib/api/session-identity";
-import {useSuspenseQuery} from "@tanstack/react-query";
+import {noop, useSuspenseQuery} from "@tanstack/react-query";
 import {ArrowLeft, GitFork} from "lucide-react";
 import {sessionSubagentsQueryOptions} from "../lib/api/sessions";
 import {SubagentGantt} from "../components/subagent-gantt";
@@ -20,7 +20,7 @@ export const Route = createFileRoute("/session/$id_/subagents")({
 			const options = sessionIdentityQueryOptions(params.id);
 			const identity = queryClient.getQueryState(options.queryKey);
 			if (identity?.status === "error") return {title: sessionIdentityFailure(identity.error).title};
-			void queryClient.prefetchQuery(options);
+			void queryClient.query(options).catch(noop);
 			const owner =
 				identity?.status === "success" && !identity.isInvalidated && identity.fetchStatus === "idle"
 					? identity.data?.sessionId
@@ -28,7 +28,7 @@ export const Route = createFileRoute("/session/$id_/subagents")({
 			return {title: owner === undefined ? "Subagents" : subagentsTitle(owner)};
 		}
 		return queryClient
-			.ensureQueryData(sessionSubagentsQueryOptions(params.id))
+			.query({...sessionSubagentsQueryOptions(params.id), staleTime: "static"})
 			.then(() => ({title: subagentsTitle(params.id)}));
 	},
 	head: ({loaderData}) => ({meta: [{title: loaderData?.title ?? "Subagents"}]}),

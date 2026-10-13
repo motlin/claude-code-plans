@@ -8,7 +8,7 @@ import {
 import {sessionScrollKey} from "../lib/session-route-location";
 import {createFileRoute, useLocation, useRouter} from "@tanstack/react-router";
 import type {ErrorComponentProps} from "@tanstack/react-router";
-import {useQueries, useQuery, useQueryClient} from "@tanstack/react-query";
+import {noop, useQueries, useQuery, useQueryClient} from "@tanstack/react-query";
 import {useCallback, useEffect, useRef} from "react";
 import {SessionPage} from "../components/session-page";
 import {herdrPanesQueryOptions} from "../lib/api/herdr";
@@ -31,7 +31,7 @@ export const Route = createFileRoute("/session/$id")({
 			const identity = queryClient.getQueryState(options.queryKey);
 			// A title refresh must not restart a terminal failure's automatic retries.
 			if (identity?.status === "error") return {title: sessionIdentityFailure(identity.error).title};
-			void queryClient.prefetchQuery(options);
+			void queryClient.query(options).catch(noop);
 			if (
 				identity?.status !== "success" ||
 				!identity.data ||
@@ -41,10 +41,10 @@ export const Route = createFileRoute("/session/$id")({
 				return undefined;
 			sessionId = identity.data.sessionId;
 		}
-		void queryClient.prefetchQuery(sessionDetailQueryOptions(sessionId));
-		void queryClient.prefetchQuery(transcriptQueryOptions(sessionId));
-		void queryClient.prefetchQuery(sessionSubagentsQueryOptions(sessionId));
-		void queryClient.prefetchQuery(herdrPanesQueryOptions);
+		void queryClient.query(sessionDetailQueryOptions(sessionId)).catch(noop);
+		void queryClient.query(transcriptQueryOptions(sessionId)).catch(noop);
+		void queryClient.query(sessionSubagentsQueryOptions(sessionId)).catch(noop);
+		void queryClient.query(herdrPanesQueryOptions).catch(noop);
 		// Bound before returning: as a return expression, getQueryData infers its data type from the loader (any).
 		const detail = queryClient.getQueryData(sessionDetailQueryOptions(sessionId).queryKey);
 		return detail;

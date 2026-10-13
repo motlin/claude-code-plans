@@ -23,7 +23,7 @@ export function resolveUrl(url: string): string {
 	return `http://127.0.0.1:${port}${url}`;
 }
 
-async function parseOk<S extends z.ZodTypeAny>(url: string, schema: S, res: Response): Promise<z.infer<S>> {
+async function parseOk<S extends z.ZodType>(url: string, schema: S, res: Response): Promise<z.infer<S>> {
 	if (!res.ok) {
 		throw new ApiResponseError(url, res);
 	}
@@ -39,11 +39,7 @@ async function parseOk<S extends z.ZodTypeAny>(url: string, schema: S, res: Resp
  * Throws on non-2xx HTTP responses or schema validation failures so
  * react-query treats them as query errors.
  */
-export async function apiFetch<S extends z.ZodTypeAny>(
-	url: string,
-	schema: S,
-	init?: RequestInit,
-): Promise<z.infer<S>> {
+export async function apiFetch<S extends z.ZodType>(url: string, schema: S, init?: RequestInit): Promise<z.infer<S>> {
 	const res = await fetch(resolveUrl(url), {credentials: "same-origin", ...init});
 	return parseOk(url, schema, res);
 }
@@ -55,7 +51,7 @@ export async function apiFetch<S extends z.ZodTypeAny>(
  * otherwise crash the route's suspense boundary. All other non-2xx statuses
  * and schema-validation failures still throw.
  */
-export async function apiFetchOptional<S extends z.ZodTypeAny>(
+export async function apiFetchOptional<S extends z.ZodType>(
 	url: string,
 	schema: S,
 	init?: RequestInit,

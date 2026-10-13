@@ -1,3 +1,4 @@
+import {noop} from "@tanstack/react-query";
 import {createFileRoute, useNavigate} from "@tanstack/react-router";
 import {FileView} from "../components/files/file-view";
 import {decodeFilePath, encodeFilePath, fileViewQueryOptions} from "../lib/api/file";
@@ -8,7 +9,7 @@ export const Route = createFileRoute("/file/$")({
 	loader: async ({context: {queryClient}, params}) => {
 		const path = decodeFilePath(params._splat ?? "");
 		if (path !== null && imageContentType(path) === null) {
-			await queryClient.prefetchQuery(fileViewQueryOptions(path));
+			await queryClient.query(fileViewQueryOptions(path)).catch(noop);
 		}
 	},
 	head: ({params}) => {

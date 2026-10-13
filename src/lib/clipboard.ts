@@ -30,6 +30,7 @@ export async function writeClipboardText(text: string): Promise<boolean> {
 		textarea.style.opacity = "0";
 		document.body.appendChild(textarea);
 		textarea.select();
+		// oxlint-disable-next-line typescript/no-deprecated -- no replacement: the Clipboard API is unavailable outside secure contexts, which this fallback exists for
 		const success = document.execCommand("copy");
 		document.body.removeChild(textarea);
 		return success;

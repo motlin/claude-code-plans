@@ -1,5 +1,5 @@
 import {Dialog} from "@base-ui/react/dialog";
-import {type FormEvent, useRef, useState} from "react";
+import {type SubmitEvent, useRef, useState} from "react";
 
 const BUTTON_BASE_CLASS =
 	"h-8 rounded-r6 px-3 text-body font-medium transition-colors focus-visible:shadow-[0_0_0_2px_var(--accent-100)] focus-visible:outline-none";
@@ -27,7 +27,7 @@ export function NewGroupDialog({
 	const inputRef = useRef<HTMLInputElement>(null);
 	const trimmed = name.trim();
 
-	const submit = (event: FormEvent) => {
+	const submit = (event: SubmitEvent<HTMLFormElement>) => {
 		event.preventDefault();
 		if (trimmed === "") return;
 		onCreate(trimmed);

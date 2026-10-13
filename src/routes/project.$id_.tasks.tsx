@@ -14,8 +14,8 @@ export const Route = createFileRoute("/project/$id_/tasks")({
 	component: ProjectTasksPage,
 	loader: async ({context: {queryClient}, params}) => {
 		const [detail] = await Promise.all([
-			queryClient.ensureQueryData(projectDetailQueryOptions(params.id)),
-			queryClient.ensureQueryData(projectTasksQueryOptions(params.id)),
+			queryClient.query({...projectDetailQueryOptions(params.id), staleTime: "static"}),
+			queryClient.query({...projectTasksQueryOptions(params.id), staleTime: "static"}),
 		]);
 		return detail;
 	},

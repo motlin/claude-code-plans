@@ -1,4 +1,4 @@
-import type {QueryClient} from "@tanstack/react-query";
+import {noop, type QueryClient} from "@tanstack/react-query";
 import {
 	customizeClaudeAiConnectorsQueryOptions,
 	customizeDiscoverQueryOptions,
@@ -13,17 +13,17 @@ import type {CustomizeSectionId} from "./sections";
 export function prefetchCustomizeSection(queryClient: QueryClient, section: CustomizeSectionId): void {
 	switch (section) {
 		case "skills":
-			void queryClient.prefetchQuery(customizeSkillsQueryOptions);
-			void queryClient.prefetchQuery(userCommandsQueryOptions);
-			void queryClient.prefetchQuery(customizeDiscoverQueryOptions);
+			void queryClient.query(customizeSkillsQueryOptions).catch(noop);
+			void queryClient.query(userCommandsQueryOptions).catch(noop);
+			void queryClient.query(customizeDiscoverQueryOptions).catch(noop);
 			return;
 		case "connectors":
-			void queryClient.prefetchQuery(customizeMcpServersQueryOptions);
-			void queryClient.prefetchQuery(customizeClaudeAiConnectorsQueryOptions);
+			void queryClient.query(customizeMcpServersQueryOptions).catch(noop);
+			void queryClient.query(customizeClaudeAiConnectorsQueryOptions).catch(noop);
 			return;
 		case "plugins":
-			void queryClient.prefetchQuery(pluginsQueryOptions);
-			void queryClient.prefetchQuery(customizeDiscoverQueryOptions);
+			void queryClient.query(pluginsQueryOptions).catch(noop);
+			void queryClient.query(customizeDiscoverQueryOptions).catch(noop);
 			return;
 	}
 }

@@ -27,20 +27,14 @@ const APPLICATION_SETTINGS = {
 
 function stubBrowser() {
 	installLocalStorage();
-	vi.stubGlobal(
-		"matchMedia",
-		(query: string): MediaQueryList =>
-			({
-				matches: false,
-				media: query,
-				onchange: null,
-				addEventListener: () => {},
-				removeEventListener: () => {},
-				addListener: () => {},
-				removeListener: () => {},
-				dispatchEvent: () => false,
-			}) satisfies MediaQueryList,
-	);
+	vi.stubGlobal("matchMedia", (query: string) => ({
+		matches: false,
+		media: query,
+		onchange: null,
+		addEventListener: () => {},
+		removeEventListener: () => {},
+		dispatchEvent: () => false,
+	}));
 	vi.stubGlobal("fetch", async (input: string) =>
 		input.endsWith("/api/application-settings")
 			? Promise.resolve(

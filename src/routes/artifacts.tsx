@@ -55,7 +55,7 @@ export const Route = createFileRoute("/artifacts")({
 			...(view === "yours" || view === "shared" ? {view} : {}),
 		};
 	},
-	loader: async ({context: {queryClient}}) => queryClient.ensureQueryData(artifactsQueryOptions),
+	loader: async ({context: {queryClient}}) => queryClient.query({...artifactsQueryOptions, staleTime: "static"}),
 	head: () => ({
 		meta: [{title: "Artifacts"}],
 	}),

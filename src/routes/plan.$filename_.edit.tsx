@@ -17,7 +17,8 @@ const PlanSaveResponse = z.object({
 
 export const Route = createFileRoute("/plan/$filename_/edit")({
 	component: PlanEditPage,
-	loader: async ({context: {queryClient}, params}) => queryClient.ensureQueryData(planQueryOptions(params.filename)),
+	loader: async ({context: {queryClient}, params}) =>
+		queryClient.query({...planQueryOptions(params.filename), staleTime: "static"}),
 	head: ({loaderData}) => ({
 		meta: [{title: loaderData ? `Edit: ${loaderData.title}` : "Plan Not Found"}],
 	}),

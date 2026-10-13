@@ -163,7 +163,7 @@ describe("desktop notifications for session aliases", () => {
 		);
 		await act(async () => {
 			await expect(
-				client.fetchQuery({
+				client.query({
 					queryKey: sessionQueryKeys.identity(ALIAS),
 					queryFn: async () => Promise.reject(error),
 				}),

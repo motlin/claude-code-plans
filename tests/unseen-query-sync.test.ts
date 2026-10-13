@@ -50,7 +50,7 @@ describe("syncUnseenFromQueryCache", () => {
 		const seeded = hasUnseenWork("session-test-100");
 		client.setQueryData(sessionQueryKeys.byIds(["session-test-100"]), [{id: "session-test-100", unseen: false}]);
 		const afterManualPatch = hasUnseenWork("session-test-100");
-		await client.fetchQuery({
+		await client.query({
 			queryKey: sessionQueryKeys.active(),
 			queryFn: async () => [{sessionId: "session-test-200", unseen: true}],
 		});

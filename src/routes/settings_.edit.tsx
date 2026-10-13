@@ -7,7 +7,7 @@ import {settingsQueryOptions} from "../lib/api/settings";
 
 export const Route = createFileRoute("/settings_/edit")({
 	component: SettingsEditPage,
-	loader: async ({context: {queryClient}}) => queryClient.ensureQueryData(settingsQueryOptions),
+	loader: async ({context: {queryClient}}) => queryClient.query({...settingsQueryOptions, staleTime: "static"}),
 	head: () => ({
 		meta: [{title: "Edit Settings"}],
 	}),

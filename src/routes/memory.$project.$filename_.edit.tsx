@@ -13,7 +13,7 @@ const MarkdownEditor = lazy(async () =>
 export const Route = createFileRoute("/memory/$project/$filename_/edit")({
 	component: MemoryEditPage,
 	loader: async ({context: {queryClient}, params}) =>
-		queryClient.ensureQueryData(memoryDetailQueryOptions(params.project, params.filename)),
+		queryClient.query({...memoryDetailQueryOptions(params.project, params.filename), staleTime: "static"}),
 	head: ({params}) => ({
 		meta: [{title: `Edit: ${fromMdSlug(params.filename)}`}],
 	}),

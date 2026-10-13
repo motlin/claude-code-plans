@@ -6,7 +6,7 @@ import {formatCount} from "../lib/pluralize";
 
 export const Route = createFileRoute("/projects")({
 	component: ProjectsPage,
-	loader: async ({context: {queryClient}}) => queryClient.ensureQueryData(projectsQueryOptions()),
+	loader: async ({context: {queryClient}}) => queryClient.query({...projectsQueryOptions(), staleTime: "static"}),
 	head: () => ({
 		meta: [{title: "Projects"}],
 	}),

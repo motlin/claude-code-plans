@@ -17,7 +17,7 @@ const HerdrTerminalFrameSchema = z
 	})
 	.strict();
 
-const HerdrTerminalClosedSchema = z.object({type: z.literal("terminal.closed")}).passthrough();
+const HerdrTerminalClosedSchema = z.looseObject({type: z.literal("terminal.closed")});
 
 export const HerdrTerminalRecordSchema = z.union([HerdrTerminalFrameSchema, HerdrTerminalClosedSchema]);
 

@@ -267,7 +267,7 @@ export function ToolPermissions({
 	const change = async (tools: readonly string[], choice: ToolPermissionChoice) => {
 		try {
 			// Re-read settings.json so a write never clobbers edits made elsewhere.
-			const files = await queryClient.fetchQuery({...settingsQueryOptions, staleTime: 0});
+			const files = await queryClient.query({...settingsQueryOptions, staleTime: 0});
 			const file = files.find((candidate) => candidate.filename === "settings.json");
 			const parsed: unknown = JSON.parse(file?.content ?? "{}");
 			if (!isRecord(parsed)) throw new Error("settings.json is not a JSON object");

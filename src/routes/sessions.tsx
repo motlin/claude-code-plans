@@ -14,8 +14,8 @@ export const Route = createFileRoute("/sessions")({
 	component: SessionsPage,
 	loader: async ({context: {queryClient}}) =>
 		Promise.all([
-			queryClient.ensureInfiniteQueryData(recentSessionsInfiniteQueryOptions()),
-			queryClient.ensureQueryData(groupedSessionsQueryOptions()),
+			queryClient.infiniteQuery({...recentSessionsInfiniteQueryOptions(), staleTime: "static"}),
+			queryClient.query({...groupedSessionsQueryOptions(), staleTime: "static"}),
 		]),
 	head: () => ({
 		meta: [{title: "Claude Sessions"}],

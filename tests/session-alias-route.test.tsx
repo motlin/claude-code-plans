@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {QueryClient, QueryClientProvider, timeoutManager} from "@tanstack/react-query";
+import {noop, QueryClient, QueryClientProvider, timeoutManager} from "@tanstack/react-query";
 import {
 	createMemoryHistory,
 	createRootRouteWithContext,
@@ -731,7 +731,7 @@ it.each(["matching", "different", "invalidated", "error", "fetching"])(
 						.getQueryCache()
 						.build(client, {queryKey: options.queryKey})
 						.setState({status: "error", error: new Error("Example identity lookup failed")});
-				} else void client.prefetchQuery(options);
+				} else void client.query(options).catch(noop);
 			},
 		});
 		await act(async () => {

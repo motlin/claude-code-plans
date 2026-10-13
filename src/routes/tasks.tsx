@@ -14,7 +14,7 @@ import {ORPHANED_TASKS_DESCRIPTION, ORPHANED_TASKS_PROJECT_ID} from "../lib/task
 
 export const Route = createFileRoute("/tasks")({
 	component: TasksPage,
-	loader: async ({context: {queryClient}}) => queryClient.ensureQueryData(tasksQueryOptions),
+	loader: async ({context: {queryClient}}) => queryClient.query({...tasksQueryOptions, staleTime: "static"}),
 	head: () => ({
 		meta: [{title: "Tasks"}],
 	}),

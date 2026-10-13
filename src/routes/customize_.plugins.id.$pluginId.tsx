@@ -1,3 +1,4 @@
+import {noop} from "@tanstack/react-query";
 import {createFileRoute, Outlet} from "@tanstack/react-router";
 import {PluginDetailFrame} from "../components/customize/detail-frames";
 import {customizePluginDetailQueryOptions} from "../lib/api/customize";
@@ -5,7 +6,7 @@ import {customizePluginDetailQueryOptions} from "../lib/api/customize";
 export const Route = createFileRoute("/customize_/plugins/id/$pluginId")({
 	component: PluginDetailLayout,
 	loader: ({context: {queryClient}, params}) => {
-		void queryClient.prefetchQuery(customizePluginDetailQueryOptions(params.pluginId));
+		void queryClient.query(customizePluginDetailQueryOptions(params.pluginId)).catch(noop);
 	},
 	head: () => ({meta: [{title: "Plugin · Customize"}]}),
 });

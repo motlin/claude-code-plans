@@ -6,7 +6,7 @@ import {artifactsQueryOptions} from "../lib/api/artifacts";
 
 export const Route = createFileRoute("/artifact/$id")({
 	component: ArtifactPreviewPage,
-	loader: async ({context: {queryClient}}) => queryClient.ensureQueryData(artifactsQueryOptions),
+	loader: async ({context: {queryClient}}) => queryClient.query({...artifactsQueryOptions, staleTime: "static"}),
 	head: () => ({
 		meta: [{title: "Artifact"}],
 	}),

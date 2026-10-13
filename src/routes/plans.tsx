@@ -7,7 +7,7 @@ import {ListPageHeader} from "../components/list-page-header";
 
 export const Route = createFileRoute("/plans")({
 	component: PlansPage,
-	loader: async ({context: {queryClient}}) => queryClient.ensureQueryData(plansQueryOptions()),
+	loader: async ({context: {queryClient}}) => queryClient.query({...plansQueryOptions(), staleTime: "static"}),
 	head: () => ({
 		meta: [{title: "Claude Plans"}],
 	}),
