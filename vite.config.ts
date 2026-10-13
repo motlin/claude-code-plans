@@ -9,6 +9,7 @@ import {quietDependencyDirectives} from "./src/lib/build-log-filter";
 import {clientChunkGraph} from "./src/lib/client-chunk-graph";
 import {closeNitroRunnerOnServerClose} from "./src/lib/dev-env-runner-teardown";
 import {holdNitroRequestsUntilReady} from "./src/lib/dev-env-ready-gate";
+import {serializeDevServerRestarts} from "./src/lib/dev-restart-serializer";
 import {devWorkerProxy} from "./src/lib/dev-worker-proxy";
 import {lockfileToolchainGuard} from "./src/lib/lockfile-toolchain-guard";
 
@@ -478,6 +479,7 @@ export default defineConfig({
 		clientChunkGraph(import.meta.dirname),
 		closeNitroRunnerOnServerClose(),
 		holdNitroRequestsUntilReady(),
+		serializeDevServerRestarts(),
 		// After nitro(): its error handler must follow nitro's catch-all dev middleware.
 		...devWorkerProxy(),
 	],

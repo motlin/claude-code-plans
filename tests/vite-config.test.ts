@@ -67,12 +67,14 @@ describe("vite config", () => {
 		expect({
 			closesRunner: names.includes("ccp:close-nitro-env-runner"),
 			holdsRequests: names.includes("ccp:hold-nitro-requests-until-ready"),
+			serializesRestarts: names.includes("ccp:serialize-dev-server-restarts"),
 			last: names.slice(-2),
 			errorsAfterNitro:
 				names.indexOf("ccp:dev-request-errors") > names.findIndex((name) => name.startsWith("nitro")),
 		}).toStrictEqual({
 			closesRunner: true,
 			holdsRequests: true,
+			serializesRestarts: true,
 			last: ["ccp:dev-worker-connection-close", "ccp:dev-request-errors"],
 			errorsAfterNitro: true,
 		});
