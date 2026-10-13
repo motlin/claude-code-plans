@@ -56,6 +56,7 @@ export const DOMAIN_EVENTS = {
 	SESSION_HOOK_CONTEXT_CHANGED: "session:hook-context-changed",
 	SESSION_TOOL_PENDING: "session:tool-pending",
 	SESSION_TOOL_FAILED: "session:tool-failed",
+	SESSION_PENDING_QUESTION_CHANGED: "session:pending-question-changed",
 	SESSION_COMPACTING: "session:compacting",
 	SESSION_COMPACTED: "session:compacted",
 	SUBAGENT_STARTED: "subagent:started",
@@ -269,6 +270,29 @@ export interface SessionToolPendingPayload {
 	sessionId: string;
 	toolName: string;
 	toolUseId: string;
+}
+
+/** One question of a pending AskUserQuestion call, trimmed to what the docked card shows. */
+export interface PendingQuestionItem {
+	question: string;
+	header?: string;
+	options: Array<{label: string; description?: string}>;
+	multiSelect?: boolean;
+}
+
+/**
+ * The AskUserQuestion call a session waits on, taken from its `PreToolUse`
+ * hook: the CLI writes the call to the JSONL only once it is answered.
+ */
+export interface PendingQuestion {
+	toolUseId: string;
+	questions: PendingQuestionItem[];
+}
+
+/** Payload broadcast when a session's pending AskUserQuestion appears or resolves. */
+export interface SessionPendingQuestionChangedPayload {
+	sessionId: string;
+	pendingQuestion: PendingQuestion | null;
 }
 
 /**

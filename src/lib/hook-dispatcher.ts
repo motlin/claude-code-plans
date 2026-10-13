@@ -18,6 +18,8 @@ import {
 	type SessionPromptSubmittedPayload,
 	type SessionLinesAppendedPayload,
 	type SessionHookContextPayload,
+	type PendingQuestion,
+	type SessionPendingQuestionChangedPayload,
 	type SessionToolPendingPayload,
 	type SessionToolFailedPayload,
 	type SessionCompactingPayload,
@@ -46,6 +48,7 @@ import {expirePendingApprovalForSession, resumePendingApprovalsForSession} from 
 import {nonEmpty} from "./non-empty";
 import {defined} from "./defined";
 import {asRecord} from "./narrow";
+import {clearPendingQuestion, pendingQuestionFromToolInput, setPendingQuestion} from "./pending-question-store";
 import {z} from "zod";
 
 const StringArraySchema = z.array(z.string());
@@ -139,6 +142,44 @@ function broadcastHookContext(
 	}
 	if (Object.keys(payload).length === 1) return;
 	broadcast(DOMAIN_EVENTS.SESSION_HOOK_CONTEXT_CHANGED, {...payload});
+}
+
+/** Hooks after which the session no longer waits on its AskUserQuestion. */
+function resolvesPendingQuestion(event: HookEvent): boolean {
+	switch (event.hook_event_name) {
+		case "PostToolUse":
+		case "PostToolUseFailure":
+			return event.tool_name === "AskUserQuestion";
+		case "Stop":
+		case "SessionEnd":
+		case "SessionStart":
+		case "UserPromptSubmit":
+			return true;
+		default:
+			return false;
+	}
+}
+
+/**
+ * Keep the main thread's pending AskUserQuestion from its `PreToolUse` hook
+ * until the call resolves, so the dock can show the question the JSONL lacks.
+ */
+function trackPendingQuestion(
+	event: HookEvent,
+	broadcast: (type: string, data: Record<string, unknown>) => void,
+): void {
+	let pendingQuestion: PendingQuestion | null = null;
+	if (event.hook_event_name === "PreToolUse" && event.tool_name === "AskUserQuestion") {
+		pendingQuestion = pendingQuestionFromToolInput(event.tool_use_id ?? "", event.tool_input);
+		if (pendingQuestion === null) return;
+		setPendingQuestion(event.session_id, pendingQuestion);
+	} else if (!resolvesPendingQuestion(event) || !clearPendingQuestion(event.session_id)) {
+		return;
+	}
+	broadcast(DOMAIN_EVENTS.SESSION_PENDING_QUESTION_CHANGED, {
+		sessionId: event.session_id,
+		pendingQuestion,
+	} satisfies SessionPendingQuestionChangedPayload);
 }
 
 /** True when `candidate` is the same as `dir` or a descendant. */
@@ -395,6 +436,7 @@ export async function dispatchHookEvent({
 		if (event.hook_event_name === "Stop" || event.hook_event_name === "SessionEnd") {
 			clearPermissionPromptsForSession(event.session_id);
 		}
+		trackPendingQuestion(event, broadcast);
 	}
 
 	switch (event.hook_event_name) {
