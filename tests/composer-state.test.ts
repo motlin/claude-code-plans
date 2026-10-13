@@ -1,6 +1,7 @@
 import {describe, expect, it, vi} from "vite-plus/test";
 import {StatuslineSchema, type Statusline} from "../src/lib/api/statusline";
 import {
+	type ComposerStateDependencies,
 	type ComposerStateSources,
 	formatResetLabel,
 	formatUsageAriaLabel,
@@ -438,11 +439,11 @@ describe("StatuslineSchema rate_limits", () => {
 
 describe("getComposerState", () => {
 	it("reads settings and the statusline with its mtime", async () => {
-		const readStatusline = vi.fn(async () => ({
-			json: ALICE_STATUSLINE as unknown,
+		const readStatusline = vi.fn<ComposerStateDependencies["readStatusline"]>(async () => ({
+			json: ALICE_STATUSLINE,
 			mtimeMs: Date.parse("2026-09-29T09:00:00.000Z"),
 		}));
-		const readSettings = vi.fn(async () => ({
+		const readSettings = vi.fn<ComposerStateDependencies["readSettings"]>(async () => ({
 			model: "fable",
 			effortLevel: "xhigh",
 			permissions: {defaultMode: "auto"},
@@ -495,7 +496,7 @@ describe("getComposerState", () => {
 	});
 
 	it("never reads a statusline for a traversal session id", async () => {
-		const readStatusline = vi.fn(async () => ({json: {} as unknown, mtimeMs: 0}));
+		const readStatusline = vi.fn<ComposerStateDependencies["readStatusline"]>(async () => ({json: {}, mtimeMs: 0}));
 		const response = await handleComposerStateRequest("../../etc/passwd", {
 			readStatusline,
 			readSettings: async () => ({}),

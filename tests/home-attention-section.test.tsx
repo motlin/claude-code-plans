@@ -158,7 +158,7 @@ describe("AttentionSection", () => {
 	});
 
 	it("falls back to Untitled session and opens the session from the main button", () => {
-		const onOpen = vi.fn();
+		const onOpen = vi.fn<(sessionId: string) => void>();
 		render(
 			<AttentionSection
 				items={items([row("s1", {title: ""})])}
@@ -250,7 +250,7 @@ describe("AttentionSection", () => {
 	});
 
 	it("dismiss removes the row and moves focus to the next row's dismiss, else the heading", () => {
-		const onDismiss = vi.fn();
+		const onDismiss = vi.fn<(sessionId: string, kind: HomeAttentionItem<HomeAttentionRow>["kind"]) => void>();
 		function Harness() {
 			const [dismissed, setDismissed] = useState<Record<string, number>>({});
 			const rows = [row("a"), row("b", {lastActivityAt: NOW - 2 * MINUTE})];
@@ -389,8 +389,9 @@ describe("HomeLanding sessions", () => {
 
 	it("shows blocked and review sessions, skips dismissed ones, and persists a dismissal", async () => {
 		const dismissedAt = {hidden: Date.now() - 10 * MINUTE};
-		const fetchMock = vi.fn(async (_input: string, _init?: RequestInit) =>
-			Promise.resolve(Response.json({dismissals: {...dismissedAt, waiting: Date.now()}})),
+		const fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(
+			async (_input: string, _init?: RequestInit) =>
+				Promise.resolve(Response.json({dismissals: {...dismissedAt, waiting: Date.now()}})),
 		);
 		vi.stubGlobal("fetch", fetchMock);
 		const queryClient = new QueryClient({

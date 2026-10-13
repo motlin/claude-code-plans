@@ -102,7 +102,7 @@ describe("KeyboardShortcutsDialog", () => {
 
 	it("stops other listeners from seeing the ⌘/ event", async () => {
 		const composer = renderWithComposer();
-		const later = vi.fn();
+		const later = vi.fn<(event: KeyboardEvent) => void>();
 		document.addEventListener("keydown", later);
 
 		pressShortcutsKey(composer);

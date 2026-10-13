@@ -34,12 +34,14 @@ vi.mock("../src/hooks/use-claude-events", () => ({
 }));
 vi.mock("../src/lib/api/reviews", async (importOriginal) => ({
 	...(await importOriginal<typeof import("../src/lib/api/reviews")>()),
-	createWorkingCopyReview: vi.fn(async () => "review-1"),
-	runWorkingCopyReview: vi.fn(async () => ({
+	createWorkingCopyReview: vi.fn<typeof import("../src/lib/api/reviews").createWorkingCopyReview>(
+		async () => "review-1",
+	),
+	runWorkingCopyReview: vi.fn<typeof import("../src/lib/api/reviews").runWorkingCopyReview>(async () => ({
 		processId: "process-1",
 		completion: Promise.resolve(""),
 	})),
-	cancelWorkingCopyReview: vi.fn(async () => true),
+	cancelWorkingCopyReview: vi.fn<typeof import("../src/lib/api/reviews").cancelWorkingCopyReview>(async () => true),
 }));
 
 class FakeObserver {
@@ -267,8 +269,8 @@ const FINDING: ReviewFinding = {
 describe("Changes pane review findings", () => {
 	it("renders unresolved findings inline on their diff line with Fix this one and Dismiss finding", () => {
 		vi.stubGlobal("ResizeObserver", SilentObserver);
-		const onFix = vi.fn();
-		const onDismiss = vi.fn();
+		const onFix = vi.fn<(finding: ReviewFinding) => void>();
+		const onDismiss = vi.fn<(finding: ReviewFinding) => void>();
 		const {container} = render(
 			<SettingsProvider>
 				<ToastProvider>

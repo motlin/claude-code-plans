@@ -1,5 +1,9 @@
-import {describe, expect, it, vi, beforeEach} from "vite-plus/test";
-import {openTestDb, type AppDb} from "../src/lib/db/connection";
+import {describe, expect, it, vi, beforeEach, type Mock} from "vite-plus/test";
+import {openTestDb, type AppDb, type openAppDb as realOpenAppDb} from "../src/lib/db/connection";
+import type {fullScan, scanFileContentRoots} from "../src/lib/db/indexer";
+
+type FullScan = typeof fullScan;
+type ScanFileContentRoots = typeof scanFileContentRoots;
 
 /**
  * Tests for the post-watcher-ready boot ordering implemented in
@@ -31,12 +35,9 @@ describe("db boot ordering", () => {
 		testDb = openTestDb();
 	});
 
-	function mockDbModule(opts: {
-		fullScan?: ReturnType<typeof vi.fn>;
-		scanFileContentRoots?: ReturnType<typeof vi.fn>;
-	}): void {
-		const fullScan = opts.fullScan ?? vi.fn(async () => {});
-		const scanFileContentRoots = opts.scanFileContentRoots ?? vi.fn(async () => {});
+	function mockDbModule(opts: {fullScan?: Mock<FullScan>; scanFileContentRoots?: Mock<ScanFileContentRoots>}): void {
+		const fullScan = opts.fullScan ?? vi.fn<FullScan>(async () => {});
+		const scanFileContentRoots = opts.scanFileContentRoots ?? vi.fn<ScanFileContentRoots>(async () => {});
 
 		vi.doMock("../src/lib/db/connection", async () => {
 			const actual = await vi.importActual<typeof import("../src/lib/db/connection")>("../src/lib/db/connection");
@@ -57,7 +58,7 @@ describe("db boot ordering", () => {
 	}
 
 	it("initDb() returns without running fullScan and leaves awaitInitialScan() a no-op", async () => {
-		const fullScan = vi.fn(async () => {});
+		const fullScan = vi.fn<FullScan>(async () => {});
 		mockDbModule({fullScan});
 
 		const {initDb, awaitInitialScan} = await import("../src/lib/db");
@@ -85,7 +86,7 @@ describe("db boot ordering", () => {
 	});
 
 	it("runInitialScan() is idempotent — concurrent calls share one promise and run fullScan once", async () => {
-		const fullScan = vi.fn(async () => {
+		const fullScan = vi.fn<FullScan>(async () => {
 			await new Promise((resolve) => {
 				setTimeout(resolve, 5);
 			});
@@ -114,7 +115,7 @@ describe("db boot ordering", () => {
 	it("handler awaiting awaitInitialScan() before runInitialScan() resolves runs exactly once, after the scan", async () => {
 		const order: string[] = [];
 		let scanResolve: () => void = () => {};
-		const fullScan = vi.fn(async () => {
+		const fullScan = vi.fn<FullScan>(async () => {
 			order.push("scan:start");
 			await new Promise<void>((resolve) => {
 				scanResolve = resolve;
@@ -156,7 +157,7 @@ describe("db boot ordering", () => {
 	});
 
 	it("handler awaiting awaitInitialScan() after the scan resolves runs immediately", async () => {
-		const fullScan = vi.fn(async () => {});
+		const fullScan = vi.fn<FullScan>(async () => {});
 		mockDbModule({fullScan});
 
 		const {runInitialScan, awaitInitialScan} = await import("../src/lib/db");
@@ -182,10 +183,10 @@ describe("db boot ordering", () => {
 	}
 
 	it("retries both initial scans when another connection holds the write lock", async () => {
-		const fullScan = vi.fn().mockRejectedValueOnce(busyError()).mockResolvedValue(undefined);
+		const fullScan = vi.fn<FullScan>().mockRejectedValueOnce(busyError()).mockResolvedValue(undefined);
 		// Drizzle wraps the SqliteError, so the busy code sits on the cause.
 		const scanFileContentRoots = vi
-			.fn()
+			.fn<ScanFileContentRoots>()
 			.mockRejectedValueOnce(new Error("Failed to run the query", {cause: busyError()}))
 			.mockResolvedValue(undefined);
 		mockDbModule({fullScan, scanFileContentRoots});
@@ -204,7 +205,7 @@ describe("db boot ordering", () => {
 
 	it("does not retry a scan that failed for a reason other than a busy lock", async () => {
 		const failure = new Error("disk I/O error");
-		const fullScan = vi.fn().mockRejectedValue(failure);
+		const fullScan = vi.fn<FullScan>().mockRejectedValue(failure);
 		mockDbModule({fullScan});
 		const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
 
@@ -220,8 +221,9 @@ describe("db boot ordering", () => {
 
 	it("shutdownDb() aborts the in-flight scan, waits for it, then closes the database", async () => {
 		const order: string[] = [];
-		const fullScan = vi.fn(async (...args: unknown[]) => {
-			const signal = args[6] as AbortSignal;
+		const fullScan = vi.fn<FullScan>(async (...args) => {
+			const signal = args[6];
+			if (signal === undefined) throw new Error("fullScan needs an abort signal");
 			await new Promise<void>((resolve) => {
 				signal.addEventListener("abort", () => {
 					resolve();
@@ -230,7 +232,7 @@ describe("db boot ordering", () => {
 			order.push("scan:aborted");
 			signal.throwIfAborted();
 		});
-		const scanFileContentRoots = vi.fn(async () => {});
+		const scanFileContentRoots = vi.fn<ScanFileContentRoots>(async () => {});
 		mockDbModule({fullScan, scanFileContentRoots});
 		const close = vi.spyOn(testDb, "close").mockImplementation(() => {
 			order.push("db:closed");
@@ -257,7 +259,7 @@ describe("db boot ordering", () => {
 	});
 
 	it("shutdownDb() before any DB or scan exists returns cleanly without opening a database", async () => {
-		const openAppDb = vi.fn(() => testDb);
+		const openAppDb = vi.fn<typeof realOpenAppDb>(() => testDb);
 		mockDbModule({});
 		vi.doMock("../src/lib/db/connection", async () => {
 			const actual = await vi.importActual<typeof import("../src/lib/db/connection")>("../src/lib/db/connection");

@@ -117,8 +117,8 @@ function menuItems(card: HTMLElement) {
 }
 
 describe("palette row actions card", () => {
-	const writeText = vi.fn(async () => Promise.resolve());
-	const fetchMock = vi.fn(async () => new Promise<Response>(() => {}));
+	const writeText = vi.fn<(text: string) => Promise<void>>(async () => Promise.resolve());
+	const fetchMock = vi.fn<typeof globalThis.fetch>(async () => new Promise<Response>(() => {}));
 
 	beforeEach(() => {
 		installLocalStorage();

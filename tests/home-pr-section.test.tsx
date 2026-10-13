@@ -100,7 +100,7 @@ describe("PullRequestsSection", () => {
 
 	it("opens the session on click and the PR in a new tab on ⌘/Ctrl-click", () => {
 		const onOpen = vi.fn<(sessionId: string) => void>();
-		const open = vi.fn();
+		const open = vi.fn<typeof window.open>();
 		vi.stubGlobal("open", open);
 		render(<PullRequestsSection rows={selectHomePrs([source(7)])} rowLimit={3} now={NOW} onOpen={onOpen} />);
 

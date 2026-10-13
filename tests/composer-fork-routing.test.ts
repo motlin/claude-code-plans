@@ -5,6 +5,7 @@ import {
 	type ComposerSubmit,
 	dispatchComposerSubmit,
 	forkSubmitLabel,
+	type LaunchPromptForkDependencies,
 	launchPromptFork,
 	promptForkArgs,
 	routeComposerSubmit,
@@ -136,9 +137,9 @@ describe("launchPromptFork", () => {
 	};
 
 	it("launches the fork in herdr and navigates to it once it starts", async () => {
-		const onLaunched = vi.fn();
-		const toast = vi.fn();
-		const launcher = vi.fn().mockResolvedValue({sessionId: "session-fork"});
+		const onLaunched = vi.fn<LaunchPromptForkDependencies["onLaunched"]>();
+		const toast = vi.fn<LaunchPromptForkDependencies["toast"]>();
+		const launcher = vi.fn<LaunchPromptForkDependencies["launch"]>().mockResolvedValue({sessionId: "session-fork"});
 
 		const ok = await launchPromptFork(launch, "session-alice", {
 			launch: launcher,
@@ -170,11 +171,13 @@ describe("launchPromptFork", () => {
 	});
 
 	it("toasts the herdr error when the launch fails", async () => {
-		const onLaunched = vi.fn();
-		const toast = vi.fn();
+		const onLaunched = vi.fn<LaunchPromptForkDependencies["onLaunched"]>();
+		const toast = vi.fn<LaunchPromptForkDependencies["toast"]>();
 
 		const ok = await launchPromptFork(launch, "session-alice", {
-			launch: vi.fn().mockRejectedValue(new Error("herdr is not running")),
+			launch: vi
+				.fn<LaunchPromptForkDependencies["launch"]>()
+				.mockRejectedValue(new Error("herdr is not running")),
 			onLaunched,
 			toast,
 			now: () => 1_000,

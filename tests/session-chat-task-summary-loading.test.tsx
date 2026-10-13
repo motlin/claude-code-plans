@@ -3,7 +3,7 @@
 import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat} from "../src/components/session-chat";
-import {TranscriptActionsContext} from "../src/components/transcript-actions-context";
+import {type TranscriptActions, TranscriptActionsContext} from "../src/components/transcript-actions-context";
 import {writeClipboardText} from "../src/lib/clipboard";
 import {processTranscript} from "../src/lib/transcript";
 
@@ -15,15 +15,17 @@ vi.mock("../src/components/settings-context", () => ({
 }));
 vi.mock("../src/lib/hmr-persist", () => ({hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize()}));
 vi.mock("../src/hooks/use-claude-events", () => ({useClaudeEvents: () => ({failedTools: new Map()})}));
-vi.mock("../src/lib/clipboard", () => ({writeClipboardText: vi.fn(async () => true)}));
+vi.mock("../src/lib/clipboard", () => ({
+	writeClipboardText: vi.fn<typeof import("../src/lib/clipboard").writeClipboardText>(async () => true),
+}));
 
 class FakeResizeObserver {
 	observe() {}
 	unobserve() {}
 	disconnect() {}
 }
-const forkFrom = vi.fn();
-const pinChapter = vi.fn();
+const forkFrom = vi.fn<NonNullable<TranscriptActions["forkFrom"]>>();
+const pinChapter = vi.fn<NonNullable<TranscriptActions["pinChapter"]>>();
 
 beforeEach(() => {
 	vi.stubGlobal("ResizeObserver", FakeResizeObserver);

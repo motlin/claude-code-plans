@@ -39,7 +39,7 @@ function deferredResponse() {
 
 describe("shared session identity", () => {
 	it("returns ordinary UUIDs immediately without a request or an identity cache entry", () => {
-		const fetch = vi.fn();
+		const fetch = vi.fn<typeof globalThis.fetch>();
 		vi.stubGlobal("fetch", fetch);
 		const {result, rerender} = renderHook<ReturnType<typeof useSessionIdentity>, {id: string | null}>(
 			({id}) => useSessionIdentity(id),
@@ -60,7 +60,7 @@ describe("shared session identity", () => {
 
 	it("shares a pending alias lookup and never returns the alias as a local ID", async () => {
 		const response = deferredResponse();
-		const fetch = vi.fn().mockReturnValue(response.promise);
+		const fetch = vi.fn<typeof globalThis.fetch>().mockReturnValue(response.promise);
 		vi.stubGlobal("fetch", fetch);
 		const first = renderHook(() => useSessionIdentity(ALIAS), {wrapper: Wrapper});
 		const second = renderHook(() => useSessionIdentity(ALIAS), {wrapper: Wrapper});
@@ -76,7 +76,9 @@ describe("shared session identity", () => {
 
 	it.each([404, 409])("rejects cached identity after a fresh %s response without retrying", async (status) => {
 		client.setQueryData(sessionQueryKeys.identity(ALIAS), {sessionId: ALICE});
-		const fetch = vi.fn().mockResolvedValue(Response.json({error: "Example lookup failure"}, {status}));
+		const fetch = vi
+			.fn<typeof globalThis.fetch>()
+			.mockResolvedValue(Response.json({error: "Example lookup failure"}, {status}));
 		vi.stubGlobal("fetch", fetch);
 		const {result} = renderHook(() => useSessionIdentity(ALIAS), {wrapper: Wrapper});
 		expect(result.current).toBe(ALICE);
@@ -90,12 +92,12 @@ describe("shared session identity", () => {
 	it("cancels an in-flight pre-index lookup so a late result cannot overwrite its replacement", async () => {
 		const old = deferredResponse();
 		const fetch = vi
-			.fn()
+			.fn<typeof globalThis.fetch>()
 			.mockReturnValueOnce(old.promise)
 			.mockResolvedValue(Response.json({sessionId: BOB}));
 		vi.stubGlobal("fetch", fetch);
 		const {result} = renderHook(() => useSessionIdentity(ALIAS), {wrapper: Wrapper});
-		const signal = (fetch.mock.calls[0]![1] as RequestInit).signal!;
+		const signal = fetch.mock.calls[0]![1]!.signal!;
 		await act(async () => invalidateSessionIdentities(client));
 		await waitFor(() => {
 			expect(result.current).toBe(BOB);
@@ -112,7 +114,9 @@ describe("shared session identity", () => {
 
 	it("retries indexing-pending responses twice and then stops", async () => {
 		vi.useFakeTimers();
-		const fetch = vi.fn().mockImplementation(async () => Promise.resolve(Response.json({}, {status: 503})));
+		const fetch = vi
+			.fn<typeof globalThis.fetch>()
+			.mockImplementation(async () => Promise.resolve(Response.json({}, {status: 503})));
 		vi.stubGlobal("fetch", fetch);
 		const {result} = renderHook(() => useSessionIdentity(ALIAS), {wrapper: Wrapper});
 		await act(async () => vi.advanceTimersByTimeAsync(6001));
@@ -135,7 +139,7 @@ describe("indexing completion catch-up", () => {
 		vi.useFakeTimers();
 		let indexing = true;
 		const fetch = vi
-			.fn()
+			.fn<(url: string) => Promise<Response>>()
 			.mockImplementation(async (url: string) =>
 				Promise.resolve(
 					url === "/api/indexing-status"
@@ -161,7 +165,7 @@ describe("indexing completion catch-up", () => {
 	it("retries an unseen indexing transition once, even when every status sample is already ready", async () => {
 		vi.useFakeTimers();
 		const fetch = vi
-			.fn()
+			.fn<(url: string) => Promise<Response>>()
 			.mockImplementation(async (url: string) =>
 				Promise.resolve(
 					url === "/api/indexing-status"
@@ -225,7 +229,7 @@ describe("active detail alias backfill catch-up", () => {
 		client.setQueryData(sessionQueryKeys.detail(ALICE), {...DETAIL, canonicalRoutePending: true});
 		client.setQueryData(sessionQueryKeys.detail(BOB), DETAIL);
 		client.setQueryData(sessionQueryKeys.detail("session-charlie"), {...DETAIL, canonicalRoutePending: true});
-		const fetcher = vi.fn(async (url: string) =>
+		const fetcher = vi.fn<(url: string) => Promise<Response>>(async (url: string) =>
 			Promise.resolve(
 				Response.json(
 					url === "/api/indexing-status" ? {isIndexing: indexing} : {...DETAIL, canonicalRouteId: ALIAS},
@@ -261,7 +265,7 @@ describe("active detail alias backfill catch-up", () => {
 		vi.useFakeTimers();
 		const old = deferredResponse();
 		let detailRequests = 0;
-		const fetcher = vi.fn(async (url: string) => {
+		const fetcher = vi.fn<(url: string) => Promise<Response>>(async (url: string) => {
 			if (url === "/api/indexing-status") return Promise.resolve(Response.json({isIndexing: indexing}));
 			detailRequests++;
 			return detailRequests === 1
@@ -302,7 +306,7 @@ describe("active detail alias backfill catch-up", () => {
 		const old = deferredResponse();
 		let detailRequests = 0;
 		client.setQueryData(sessionQueryKeys.detail(ALICE), {...DETAIL, canonicalRoutePending: true});
-		const fetcher = vi.fn(async (url: string) => {
+		const fetcher = vi.fn<(url: string) => Promise<Response>>(async (url: string) => {
 			if (url === "/api/indexing-status") return Promise.resolve(Response.json({isIndexing: false}));
 			detailRequests++;
 			return detailRequests === 1

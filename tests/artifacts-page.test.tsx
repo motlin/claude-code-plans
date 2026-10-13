@@ -605,7 +605,7 @@ describe("artifacts route", () => {
 	});
 
 	it("copies the claude.ai artifact URL and toasts", async () => {
-		const writeText = vi.fn(async (_text: string) => {});
+		const writeText = vi.fn<(text: string) => Promise<void>>(async (_text: string) => {});
 		Object.defineProperty(navigator, "clipboard", {configurable: true, value: {writeText}});
 		await renderArtifactsPage("/artifacts", true);
 

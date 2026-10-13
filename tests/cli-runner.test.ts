@@ -1,9 +1,11 @@
 import {EventEmitter} from "node:events";
 import {PassThrough} from "node:stream";
-import type {ChildProcess} from "node:child_process";
+import type {ChildProcess, SpawnOptions} from "node:child_process";
 import {beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
-const spawnMock = vi.hoisted(() => vi.fn());
+const spawnMock = vi.hoisted(() =>
+	vi.fn<(command: string, args: readonly string[], options: SpawnOptions) => ChildProcess>(),
+);
 
 vi.mock("node:child_process", () => ({spawn: spawnMock}));
 
@@ -15,7 +17,7 @@ function fakeChildProcess(): ChildProcess {
 	const child = new EventEmitter() as ChildProcess;
 	child.stdout = new PassThrough();
 	child.stderr = new PassThrough();
-	child.kill = vi.fn(() => true);
+	child.kill = vi.fn<ChildProcess["kill"]>(() => true);
 	return child;
 }
 

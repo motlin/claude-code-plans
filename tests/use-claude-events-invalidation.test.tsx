@@ -14,7 +14,7 @@ class TestEventSource extends EventTarget {
 
 	static all: TestEventSource[] = [];
 
-	readonly close = vi.fn();
+	readonly close = vi.fn<() => void>();
 	readyState = 0;
 	onerror: ((event: Event) => void) | null = null;
 

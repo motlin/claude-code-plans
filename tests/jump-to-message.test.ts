@@ -11,7 +11,7 @@ interface Row {
 /** A rendered turn, carrying the session-absolute record index it starts at. */
 function addTurnRow(recordIndex: number): Row {
 	const element = document.createElement("div");
-	const scrollIntoView = vi.fn();
+	const scrollIntoView = vi.fn<Element["scrollIntoView"]>();
 	element.dataset["recordIndex"] = String(recordIndex);
 	element.scrollIntoView = scrollIntoView;
 	document.body.appendChild(element);

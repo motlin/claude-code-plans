@@ -4,7 +4,7 @@ import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 vi.mock("@tanstack/react-router", () => ({
-	useNavigate: () => vi.fn(),
+	useNavigate: () => vi.fn<() => Promise<void>>(),
 }));
 
 import {TileHost} from "../src/components/panes/tile-host";
@@ -168,7 +168,7 @@ describe("SideChat variants", () => {
 		const popup = frame.contentWindow;
 		if (popup === null) throw new Error("iframe has no window");
 		const close = vi.spyOn(popup, "close").mockImplementation(() => undefined);
-		const open = vi.fn(() => popup);
+		const open = vi.fn<() => Window>(() => popup);
 		vi.stubGlobal("open", open);
 
 		renderInHost();

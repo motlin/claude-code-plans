@@ -77,7 +77,7 @@ describe("pace banner dismissal storage", () => {
 
 describe("UsagePaceBand", () => {
 	it("renders the upstream band text and dismisses", () => {
-		const onDismiss = vi.fn();
+		const onDismiss = vi.fn<() => void>();
 		render(<UsagePaceBand usedPct={29} resetText="Resets Tue, Oct 6, 4:00 AM" onDismiss={onDismiss} />);
 
 		const band = screen.getByRole("status");

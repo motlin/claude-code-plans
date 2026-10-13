@@ -107,7 +107,7 @@ afterEach(async () => {
 describe("useSidebarDrag", () => {
 	it("treats movement within the 4px threshold as a click", () => {
 		const {onDrop} = setup();
-		const onClick = vi.fn();
+		const onClick = vi.fn<(event: MouseEvent) => void>();
 		screen.getByTestId("row-x").addEventListener("click", onClick);
 
 		pointerDown("row-x", 210);
@@ -226,7 +226,7 @@ describe("useSidebarDrag", () => {
 
 	it("suppresses the click that follows a completed drag", () => {
 		setup();
-		const onClick = vi.fn();
+		const onClick = vi.fn<(event: MouseEvent) => void>();
 		screen.getByTestId("row-x").addEventListener("click", onClick);
 
 		pointerDown("row-x", 210);

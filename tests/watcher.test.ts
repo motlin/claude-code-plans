@@ -1052,9 +1052,9 @@ describe("session registry events", () => {
 		symlinkSync(join(fixture, "real"), join(fixture, "link"));
 		const linkedSessions = join(fixture, "link", "sessions");
 		const recursiveWatcher = {
-			once: vi.fn(() => recursiveWatcher),
-			on: vi.fn(() => recursiveWatcher),
-			close: vi.fn(async () => undefined),
+			once: vi.fn<() => RecursiveWatcher>(() => recursiveWatcher),
+			on: vi.fn<() => RecursiveWatcher>(() => recursiveWatcher),
+			close: vi.fn<RecursiveWatcher["close"]>(async () => undefined),
 		} as unknown as RecursiveWatcher;
 		vi.spyOn(recursiveWatch, "createRecursiveWatcher").mockReturnValue(recursiveWatcher);
 		const changes: string[][] = [];
@@ -1113,12 +1113,14 @@ describe("createWatcher integration", () => {
 		mkdirSync(watchedDirectory);
 		mkdirSync(join(fileContentRoot, ".git"), {recursive: true});
 		let recursiveWatcher: RecursiveWatcher;
-		const once = vi.fn((_event: "ready", _listener: () => void) => recursiveWatcher);
-		const on = vi.fn((_event: "add" | "change" | "unlink", _listener: (path: string) => void) => recursiveWatcher);
+		const once = vi.fn<RecursiveWatcher["once"]>((_event: "ready", _listener: () => void) => recursiveWatcher);
+		const on = vi.fn<RecursiveWatcher["on"]>(
+			(_event: "add" | "change" | "unlink", _listener: (path: string) => void) => recursiveWatcher,
+		);
 		recursiveWatcher = {
 			once,
 			on,
-			close: vi.fn(async () => undefined),
+			close: vi.fn<RecursiveWatcher["close"]>(async () => undefined),
 		};
 		const createRecursiveWatcher = vi
 			.spyOn(recursiveWatch, "createRecursiveWatcher")
@@ -1155,12 +1157,14 @@ describe("createWatcher integration", () => {
 		runGit(repositoryDirectory, ["init", "--quiet", "--initial-branch=main"]);
 		const {repositoryIndexPath} = createLinkedWorktree(repositoryDirectory, fixtureDirectory);
 		let recursiveWatcher: RecursiveWatcher;
-		const once = vi.fn((_event: "ready", _listener: () => void) => recursiveWatcher);
-		const on = vi.fn((_event: "add" | "change" | "unlink", _listener: (path: string) => void) => recursiveWatcher);
+		const once = vi.fn<RecursiveWatcher["once"]>((_event: "ready", _listener: () => void) => recursiveWatcher);
+		const on = vi.fn<RecursiveWatcher["on"]>(
+			(_event: "add" | "change" | "unlink", _listener: (path: string) => void) => recursiveWatcher,
+		);
 		recursiveWatcher = {
 			once,
 			on,
-			close: vi.fn(async () => undefined),
+			close: vi.fn<RecursiveWatcher["close"]>(async () => undefined),
 		};
 		const createRecursiveWatcher = vi
 			.spyOn(recursiveWatch, "createRecursiveWatcher")

@@ -261,8 +261,8 @@ describe("ChangesPaneView file list", () => {
 	};
 
 	it("shows the Changed files tree and commit list, marking the selected file active", () => {
-		Element.prototype.scrollIntoView = vi.fn();
-		const onSelectScope = vi.fn();
+		Element.prototype.scrollIntoView = vi.fn<Element["scrollIntoView"]>();
+		const onSelectScope = vi.fn<(scope: string) => void>();
 		render(
 			<SettingsProvider>
 				<ChangesPaneView
@@ -349,7 +349,7 @@ describe("ChangesPaneView file list", () => {
 		});
 
 		it("scrolls to the file, marks it active and closes on Enter", () => {
-			const scrollIntoView = vi.fn();
+			const scrollIntoView = vi.fn<Element["scrollIntoView"]>();
 			Element.prototype.scrollIntoView = scrollIntoView;
 			renderPane([LOGO_FILE, GREET_FILE]);
 			fireEvent.click(screen.getByRole("button", {name: "Show files"}));

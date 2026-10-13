@@ -144,7 +144,7 @@ describe("fenced code block copy button behaviour", () => {
 	afterEach(cleanup);
 
 	function renderWithClipboard(markdown: string) {
-		const writeText = vi.fn(async () => Promise.resolve());
+		const writeText = vi.fn<Clipboard["writeText"]>(async () => Promise.resolve());
 		Object.defineProperty(navigator, "clipboard", {
 			value: {writeText},
 			configurable: true,

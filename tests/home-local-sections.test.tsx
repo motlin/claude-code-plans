@@ -10,6 +10,7 @@ import {
 	RouterProvider,
 } from "@tanstack/react-router";
 import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
+import type {ComponentProps} from "react";
 import type {z} from "zod";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
@@ -80,7 +81,7 @@ afterEach(() => {
 
 describe("RecentPlansSection", () => {
 	it("renders the three newest plans with the upstream row recipe", () => {
-		const onOpen = vi.fn();
+		const onOpen = vi.fn<ComponentProps<typeof RecentPlansSection>["onOpen"]>();
 		render(
 			<RecentPlansSection
 				plans={[
@@ -132,14 +133,20 @@ describe("RecentPlansSection", () => {
 	});
 
 	it("renders nothing when there are no plans", () => {
-		const {container} = render(<RecentPlansSection plans={[]} now={NOW} onOpen={vi.fn()} />);
+		const {container} = render(
+			<RecentPlansSection
+				plans={[]}
+				now={NOW}
+				onOpen={vi.fn<ComponentProps<typeof RecentPlansSection>["onOpen"]>()}
+			/>,
+		);
 		expect(container.innerHTML).toBe("");
 	});
 });
 
 describe("MemoriesUpdatedSection", () => {
 	it("renders the three most recently updated memories", () => {
-		const onOpen = vi.fn();
+		const onOpen = vi.fn<ComponentProps<typeof MemoriesUpdatedSection>["onOpen"]>();
 		render(
 			<MemoriesUpdatedSection
 				memories={[
@@ -191,7 +198,13 @@ describe("MemoriesUpdatedSection", () => {
 	});
 
 	it("renders nothing when there are no memories", () => {
-		const {container} = render(<MemoriesUpdatedSection memories={[]} now={NOW} onOpen={vi.fn()} />);
+		const {container} = render(
+			<MemoriesUpdatedSection
+				memories={[]}
+				now={NOW}
+				onOpen={vi.fn<ComponentProps<typeof MemoriesUpdatedSection>["onOpen"]>()}
+			/>,
+		);
 		expect(container.innerHTML).toBe("");
 	});
 });

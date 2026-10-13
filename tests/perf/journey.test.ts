@@ -350,7 +350,7 @@ describe("default browser tracker", () => {
 	});
 
 	it("times a journey against the real window and beacons the batch to /api/perf on hide", async () => {
-		const sendBeacon = vi.fn((_path: string, _body: string) => true);
+		const sendBeacon = vi.fn<(path: string, body: string) => boolean>((_path: string, _body: string) => true);
 		vi.stubGlobal("navigator", {sendBeacon, hardwareConcurrency: 4});
 		const row = document.createElement("div");
 		row.setAttribute("data-testid", "transcript-row");

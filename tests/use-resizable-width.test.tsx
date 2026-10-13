@@ -8,9 +8,15 @@ import {type ResizeEdge, useResizableWidth} from "../src/hooks/use-resizable-wid
 function installPointerCapture(handle: HTMLElement) {
 	const capturedPointers = new Set<number>();
 	Object.assign(handle, {
-		setPointerCapture: vi.fn((pointerId: number) => capturedPointers.add(pointerId)),
-		releasePointerCapture: vi.fn((pointerId: number) => capturedPointers.delete(pointerId)),
-		hasPointerCapture: vi.fn((pointerId: number) => capturedPointers.has(pointerId)),
+		setPointerCapture: vi.fn<HTMLElement["setPointerCapture"]>((pointerId: number) =>
+			capturedPointers.add(pointerId),
+		),
+		releasePointerCapture: vi.fn<HTMLElement["releasePointerCapture"]>((pointerId: number) =>
+			capturedPointers.delete(pointerId),
+		),
+		hasPointerCapture: vi.fn<HTMLElement["hasPointerCapture"]>((pointerId: number) =>
+			capturedPointers.has(pointerId),
+		),
 	});
 }
 
@@ -99,7 +105,7 @@ describe("useResizableWidth", () => {
 	});
 
 	it("clamps a pointer drag to the bounds and reports every width change", () => {
-		const onChange = vi.fn();
+		const onChange = vi.fn<(width: number) => void>();
 		render(<Harness onChange={onChange} />);
 		const handle = screen.getByRole("separator", {name: "Resize sidebar"});
 		installPointerCapture(handle);

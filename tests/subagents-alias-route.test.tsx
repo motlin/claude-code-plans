@@ -83,12 +83,14 @@ async function setup({
 		finish = resolve;
 	});
 	let lookup = async () => pending;
-	const fetcher = vi.fn(async (url: string, _init?: RequestInit) => {
-		if (url.endsWith("/identity")) return lookup();
-		if (url === `/api/sessions/${ALICE}/subagents`) return Promise.resolve(Response.json(ALICE_AGENTS));
-		if (url === `/api/sessions/${BOB}/subagents`) return Promise.resolve(Response.json(BOB_AGENTS));
-		throw new Error(`Unexpected request: ${url}`);
-	});
+	const fetcher = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(
+		async (url: string, _init?: RequestInit) => {
+			if (url.endsWith("/identity")) return lookup();
+			if (url === `/api/sessions/${ALICE}/subagents`) return Promise.resolve(Response.json(ALICE_AGENTS));
+			if (url === `/api/sessions/${BOB}/subagents`) return Promise.resolve(Response.json(BOB_AGENTS));
+			throw new Error(`Unexpected request: ${url}`);
+		},
+	);
 	vi.stubGlobal("fetch", fetcher);
 	const client = new QueryClient({defaultOptions: {queries: {retry: false}}});
 	clients.push(client);
@@ -109,7 +111,7 @@ async function setup({
 		path: "/session/$id/subagents",
 		getParentRoute: () => root,
 	} as never);
-	const parentLoader = vi.fn();
+	const parentLoader = vi.fn<() => void>();
 	const session = createRoute({
 		getParentRoute: () => root,
 		path: "/session/$id",

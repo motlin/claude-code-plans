@@ -121,7 +121,9 @@ describe("SessionHoverCard", () => {
 	});
 
 	it("submits an option as the answer to the pending question", async () => {
-		const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => new Response("", {status: 200}));
+		const fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(
+			async (_url: string, _init?: RequestInit) => new Response("", {status: 200}),
+		);
 		vi.stubGlobal("fetch", fetchMock);
 		renderCard({sessionId: "blocked-1", title: "Pick a DB", summary: null, blocked: true}, [QUESTION_APPROVAL]);
 		await hover();
@@ -145,7 +147,9 @@ describe("SessionHoverCard", () => {
 	});
 
 	it("submits a typed quick reply on Enter", async () => {
-		const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => new Response("", {status: 200}));
+		const fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(
+			async (_url: string, _init?: RequestInit) => new Response("", {status: 200}),
+		);
 		vi.stubGlobal("fetch", fetchMock);
 		renderCard({sessionId: "blocked-1", title: "Pick a DB", summary: null, blocked: true}, [QUESTION_APPROVAL]);
 		await hover();

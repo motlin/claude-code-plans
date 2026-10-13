@@ -50,7 +50,7 @@ describe("SessionDock scroll-to-bottom pill", () => {
 	it("shows only when away from the bottom and scrolls the transcript to the end on click", () => {
 		render(<DockInScroller />);
 		const scroller = screen.getByTestId("scroller");
-		const scrollTo = vi.fn();
+		const scrollTo = vi.fn<(options: ScrollToOptions) => void>();
 		Object.defineProperty(scroller, "scrollTo", {configurable: true, value: scrollTo});
 		const pill = screen.getByLabelText("Scroll to bottom", {selector: "button"});
 
@@ -248,7 +248,7 @@ it.each([undefined, -1, 0])(
 		const scroller = screen.getByTestId("scroller");
 		if (tabIndex !== undefined) scroller.tabIndex = tabIndex;
 		const focus = vi.spyOn(scroller, "focus");
-		const scrollTo = vi.fn(() => document.activeElement === scroller);
+		const scrollTo = vi.fn<(options: ScrollToOptions) => boolean>(() => document.activeElement === scroller);
 		Object.defineProperty(scroller, "scrollTo", {configurable: true, value: scrollTo});
 		setScrollMetrics(scroller, {scrollTop: 1000, scrollHeight: 5000, clientHeight: 1000});
 		fireEvent.scroll(scroller);
@@ -279,7 +279,7 @@ it.each([undefined, -1, 0])(
 it("preserves another focused control when the pill is activated without taking focus", () => {
 	render(<DockInScroller />);
 	const scroller = screen.getByTestId("scroller");
-	const scrollTo = vi.fn();
+	const scrollTo = vi.fn<(options: ScrollToOptions) => void>();
 	Object.defineProperty(scroller, "scrollTo", {configurable: true, value: scrollTo});
 	setScrollMetrics(scroller, {scrollTop: 1000, scrollHeight: 5000, clientHeight: 1000});
 	fireEvent.scroll(scroller);

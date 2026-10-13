@@ -163,7 +163,7 @@ describe("Changes scope menu", () => {
 	});
 
 	it("reports each scope choice", async () => {
-		const onSelectScope = vi.fn();
+		const onSelectScope = vi.fn<(scope: string) => void>();
 		renderView(scopesOf(), "branch", onSelectScope);
 
 		await openScopeMenu();

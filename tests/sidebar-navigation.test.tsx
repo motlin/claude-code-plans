@@ -155,7 +155,7 @@ describe("sidebar navigation", () => {
 			pageParams: [null],
 		});
 		const fetch = vi
-			.fn()
+			.fn<typeof globalThis.fetch>()
 			.mockResolvedValueOnce(Response.json({sessionId: "session-alice"}))
 			.mockResolvedValue(Response.json({}, {status: 409}));
 		vi.stubGlobal("fetch", fetch);

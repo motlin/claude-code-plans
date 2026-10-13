@@ -74,7 +74,7 @@ describe("session live input", () => {
 	it("does not synchronously measure or resize the transcript textarea while typing", () => {
 		render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} />);
 		const textarea = screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
-		const readScrollHeight = vi.fn(() => 100);
+		const readScrollHeight = vi.fn<() => number>(() => 100);
 		Object.defineProperty(textarea, "scrollHeight", {
 			configurable: true,
 			get: readScrollHeight,

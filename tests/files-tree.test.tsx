@@ -2,6 +2,7 @@
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
+import type {ComponentProps} from "react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {FilesTree, FilesTreeColumn} from "../src/components/files/files-tree";
@@ -57,7 +58,7 @@ function stubFetch(): void {
 	);
 }
 
-function renderTree(onOpenFile = vi.fn()) {
+function renderTree(onOpenFile = vi.fn<NonNullable<ComponentProps<typeof FilesTree>["onOpenFile"]>>()) {
 	const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
 	render(
 		<QueryClientProvider client={queryClient}>
@@ -494,7 +495,7 @@ describe("FilesTreeColumn resize", () => {
 
 	it("hides the tree on a click that stays within the drag threshold, but not on a drag", () => {
 		responses.set(key("", ""), {kind: "listing", dir: "", entries: [], partial: false});
-		const onHide = vi.fn();
+		const onHide = vi.fn<() => void>();
 		const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
 		render(
 			<QueryClientProvider client={queryClient}>
@@ -508,9 +509,11 @@ describe("FilesTreeColumn resize", () => {
 		const handle = separator();
 		const captured = new Set<number>();
 		Object.assign(handle, {
-			setPointerCapture: vi.fn((pointerId: number) => captured.add(pointerId)),
-			releasePointerCapture: vi.fn((pointerId: number) => captured.delete(pointerId)),
-			hasPointerCapture: vi.fn((pointerId: number) => captured.has(pointerId)),
+			setPointerCapture: vi.fn<Element["setPointerCapture"]>((pointerId: number) => captured.add(pointerId)),
+			releasePointerCapture: vi.fn<Element["releasePointerCapture"]>((pointerId: number) =>
+				captured.delete(pointerId),
+			),
+			hasPointerCapture: vi.fn<Element["hasPointerCapture"]>((pointerId: number) => captured.has(pointerId)),
 		});
 
 		fireEvent.pointerDown(handle, {clientX: 240, pointerId: 1});

@@ -311,7 +311,7 @@ describe("useComposerQueue", () => {
 
 function renderComposer({
 	queue,
-	onSend = vi.fn(),
+	onSend = vi.fn<(prompt: string) => void>(),
 	onSendNow,
 	onStop,
 	slashCommands,

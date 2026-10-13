@@ -15,14 +15,14 @@ const shikiMocks = vi.hoisted(() => {
 	const engine = {name: "test-engine"};
 	const claudeLight = {name: "claude-light", type: "light", settings: []};
 	const githubDark = {name: "github-dark", type: "dark", settings: []};
-	const loadLanguage = vi.fn(async () => {
+	const loadLanguage = vi.fn<HighlighterCore["loadLanguage"]>(async () => {
 		loadedLanguages.push("typescript", "ts", "cts", "mts");
 	});
 	const highlighter = {
 		getLoadedLanguages: () => loadedLanguages,
 		loadLanguage,
 	} as unknown as HighlighterCore;
-	const createHighlighterCore = vi.fn(async () => highlighter);
+	const createHighlighterCore = vi.fn<typeof import("@shikijs/core").createHighlighterCore>(async () => highlighter);
 
 	return {
 		claudeLight,

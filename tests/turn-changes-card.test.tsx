@@ -39,7 +39,7 @@ beforeEach(() => {
 	vi.stubGlobal("cancelAnimationFrame", vi.fn());
 	Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
 		configurable: true,
-		value: vi.fn(),
+		value: vi.fn<() => void>(),
 	});
 });
 

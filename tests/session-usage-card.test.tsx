@@ -24,7 +24,7 @@ const CHIN: ComposerState = {
 
 describe("See detailed breakdown", () => {
 	it("closes the usage popover and asks for the Usage card on a session composer", async () => {
-		const onShowUsageBreakdown = vi.fn();
+		const onShowUsageBreakdown = vi.fn<() => void>();
 		render(
 			<Composer
 				variant="session"
@@ -88,7 +88,7 @@ describe("SessionUsageCard", () => {
 	});
 
 	it("copies a plain-text report", async () => {
-		const writeText = vi.fn(async () => {});
+		const writeText = vi.fn<Clipboard["writeText"]>(async () => {});
 		Object.defineProperty(navigator, "clipboard", {value: {writeText}, configurable: true});
 		render(<SessionUsageCard records={USAGE_RECORDS} limits={null} />);
 

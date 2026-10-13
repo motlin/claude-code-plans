@@ -13,7 +13,7 @@ import {
 	type HistoryState,
 } from "@tanstack/react-router";
 import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
-import {StrictMode, useEffect} from "react";
+import {StrictMode, useEffect, type ReactNode} from "react";
 import {afterEach, expect, it, vi} from "vite-plus/test";
 import {useMainScrollRestoration, type MainScrollRestorationSnapshot} from "../src/hooks/use-main-scroll-restoration";
 import {
@@ -193,12 +193,13 @@ async function setup({
 	const detailResponse = deferredResponse();
 	// StrictMode may cancel and restart a lookup; each fetch owns a distinct response body.
 	let lookup = async () => response.promise.then((result) => result.clone());
-	const fetcher = vi.fn(async (url: string, _init?: RequestInit) =>
-		url.endsWith("/identity")
-			? lookup()
-			: url === `/api/sessions/${ALICE}`
-				? detailResponse.promise
-				: new Promise<Response>(() => {}),
+	const fetcher = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(
+		async (url: string, _init?: RequestInit) =>
+			url.endsWith("/identity")
+				? lookup()
+				: url === `/api/sessions/${ALICE}`
+					? detailResponse.promise
+					: new Promise<Response>(() => {}),
 	);
 	vi.stubGlobal("fetch", fetcher);
 	const client = new QueryClient({defaultOptions: {queries: {retry: false}}});
@@ -1000,9 +1001,9 @@ it("captures the alias visit's own saved position before Back resolves its ident
 it("keeps the default identity callback at three arguments for sibling routes", async () => {
 	const client = new QueryClient();
 	clients.push(client);
-	const child = vi.fn((...args: [string, string, string, MainScrollRestorationSnapshot?]) => (
-		<output>{args[0]}</output>
-	));
+	const child = vi.fn<(...args: [string, string, string, MainScrollRestorationSnapshot?]) => ReactNode>(
+		(...args: [string, string, string, MainScrollRestorationSnapshot?]) => <output>{args[0]}</output>,
+	);
 	const root = createRootRouteWithContext<{queryClient: QueryClient}>()({component: Outlet});
 	const sibling = createRoute({
 		getParentRoute: () => root,

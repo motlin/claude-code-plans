@@ -15,7 +15,7 @@ import type {SessionFiles} from "../src/lib/session-files";
 import {installLocalStorage} from "./fake-storage";
 
 vi.mock("../src/lib/clipboard", () => ({
-	writeClipboardText: vi.fn(),
+	writeClipboardText: vi.fn<typeof import("../src/lib/clipboard").writeClipboardText>(),
 }));
 
 const SESSION_FILES = {
@@ -170,7 +170,7 @@ describe("filesEmptyState", () => {
 describe("Files pane shortcut", () => {
 	it("⇧⌘F toggles the pane, focuses the filter, and never toggles chromeHidden", () => {
 		registerFilesPane();
-		const onExpandWithoutPane = vi.fn();
+		const onExpandWithoutPane = vi.fn<() => void>();
 		renderSession(onExpandWithoutPane);
 
 		const before = filesOpen();

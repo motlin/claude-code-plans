@@ -2,7 +2,7 @@ import {describe, expect, it, beforeEach, afterEach, vi} from "vite-plus/test";
 import {mkdtempSync, rmSync, unlinkSync, writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
-import type {SessionRegistryEntry} from "../src/lib/session-registry";
+import type {LivenessProbe, SessionRegistryEntry} from "../src/lib/session-registry";
 import {
 	clearSessionRegistry,
 	getRegistrySessionState,
@@ -114,7 +114,7 @@ describe("session registry store", () => {
 	it("drops a session once its pid dies, probing only the registered pids", async () => {
 		write(registryFixture({status: "waiting"}));
 		await refreshSessionRegistry(dir, everyoneAlive);
-		const isAlive = vi.fn(() => false);
+		const isAlive = vi.fn<LivenessProbe["isAlive"]>(() => false);
 
 		const changed = await pollSessionRegistryLiveness(dir, {isAlive, readStartTimes: async () => null});
 
@@ -132,7 +132,7 @@ describe("session registry store", () => {
 	it("leaves the registry alone when every pid still answers", async () => {
 		write(registryFixture({status: "busy"}));
 		await refreshSessionRegistry(dir, everyoneAlive);
-		const readStartTimes = vi.fn(async () => null);
+		const readStartTimes = vi.fn<LivenessProbe["readStartTimes"]>(async () => null);
 
 		const changed = await pollSessionRegistryLiveness(dir, {isAlive: () => true, readStartTimes});
 

@@ -18,6 +18,7 @@ import {
 	isForegroundBusy,
 	isLoopbackPeer,
 	type PtyProcess,
+	type ShellRegistry,
 	type ShellRegistryDependencies,
 	type SpawnPty,
 } from "../src/lib/shell-pty";
@@ -267,7 +268,7 @@ describe("shell pty registry", () => {
 		const idlePty = new FakePty(4242);
 		const busyPty = new FakePty(4343);
 		const ptys = [idlePty, busyPty];
-		const foregroundBusy = vi.fn((pid: number) => pid === 4343);
+		const foregroundBusy = vi.fn<ShellRegistryDependencies["foregroundBusy"]>((pid: number) => pid === 4343);
 		const registry = createShellRegistry({
 			...dependencies(idlePty, {foregroundBusy}),
 			spawn: vi.fn<SpawnPty>(() => ptys.shift()!),
@@ -348,7 +349,7 @@ describe("shell pty registry", () => {
 describe("shell pty request gates", () => {
 	function registryStub() {
 		return {
-			create: vi.fn(() => ({ok: true as const, ptyKey: "pty-key-alice"})),
+			create: vi.fn<ShellRegistry["create"]>(() => ({ok: true as const, ptyKey: "pty-key-alice"})),
 		};
 	}
 
@@ -427,7 +428,7 @@ describe("shell pty request gates", () => {
 		const aliceKey = "0f6c1c1e-8a52-4d7e-9a43-2b1f3c1d5e01";
 		const bobKey = "0f6c1c1e-8a52-4d7e-9a43-2b1f3c1d5e02";
 		const registry = {
-			busy: vi.fn((keys: readonly string[]) => keys.filter((key) => key === bobKey)),
+			busy: vi.fn<ShellRegistry["busy"]>((keys: readonly string[]) => keys.filter((key) => key === bobKey)),
 		};
 		const ask = async (request: Request, enabled = true) => {
 			const response = await handleShellBusyRequest(request, {registry, enabled: () => enabled});

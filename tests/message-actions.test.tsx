@@ -9,7 +9,7 @@ import {type TranscriptActions, TranscriptActionsContext} from "../src/component
 import {writeClipboardText} from "../src/lib/clipboard";
 
 vi.mock("../src/lib/clipboard", () => ({
-	writeClipboardText: vi.fn(async () => true),
+	writeClipboardText: vi.fn<typeof import("../src/lib/clipboard").writeClipboardText>(async () => true),
 }));
 
 const MESSAGE = {sessionId: "session-alice", uuid: "message-1"};
@@ -114,8 +114,8 @@ describe("AssistantMessageActions", () => {
 	});
 
 	it("disables Fork and Pin until the transcript provides them, then hands them the message", () => {
-		const forkFrom = vi.fn();
-		const pinChapter = vi.fn();
+		const forkFrom = vi.fn<NonNullable<TranscriptActions["forkFrom"]>>();
+		const pinChapter = vi.fn<NonNullable<TranscriptActions["pinChapter"]>>();
 		const disabled = render(
 			<AssistantMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} />,
 		).container;
@@ -426,8 +426,8 @@ describe("UserMessageActions", () => {
 	});
 
 	it("hands Rewind and Fork the message", () => {
-		const rewindTo = vi.fn();
-		const forkFrom = vi.fn();
+		const rewindTo = vi.fn<NonNullable<TranscriptActions["rewindTo"]>>();
+		const forkFrom = vi.fn<NonNullable<TranscriptActions["forkFrom"]>>();
 		const {container} = render(
 			withActions(
 				{rewindTo, forkFrom},

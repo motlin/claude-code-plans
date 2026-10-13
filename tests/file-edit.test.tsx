@@ -353,8 +353,8 @@ describe("FileView editing", () => {
 	});
 
 	it("Edit swaps in the editor, reports the start and dirtiness, and ⌘S saves with If-Match", async () => {
-		const onEditStart = vi.fn();
-		const onDirtyChange = vi.fn();
+		const onEditStart = vi.fn<() => void>();
+		const onDirtyChange = vi.fn<(dirty: boolean) => void>();
 		renderView({path: PLAN_PATH, onEditStart, onDirtyChange});
 		await screen.findByText("First draft.");
 		const editor = await startEditing();
@@ -369,7 +369,7 @@ describe("FileView editing", () => {
 		expect({
 			startedWith,
 			editStarts: onEditStart.mock.calls.length,
-			dirty: onDirtyChange.mock.calls.map(([dirty]) => dirty as boolean),
+			dirty: onDirtyChange.mock.calls.map(([dirty]) => dirty),
 			puts,
 			stillEditing: screen.queryByRole("textbox", {name: "Markdown editor"}) !== null,
 		}).toStrictEqual({
@@ -427,7 +427,7 @@ describe("FileView editing", () => {
 
 	it("Discard in the conflict dialog drops the edits and shows the file again", async () => {
 		putStatuses = [409];
-		const onDirtyChange = vi.fn();
+		const onDirtyChange = vi.fn<(dirty: boolean) => void>();
 		renderView({path: PLAN_PATH, onDirtyChange});
 		const editor = await startEditing();
 		fireEvent.change(editor, {target: {value: "mine"}});

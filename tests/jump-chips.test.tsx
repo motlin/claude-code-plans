@@ -15,7 +15,7 @@ vi.mock("../src/components/settings-context", () => ({
 }));
 
 vi.mock("../src/lib/jump-to-message", () => ({
-	jumpToMessage: vi.fn(),
+	jumpToMessage: vi.fn<typeof jumpToMessage>(),
 }));
 
 const OCCURRENCES: ResourceOccurrence[] = [
@@ -73,7 +73,7 @@ describe("JumpChips", () => {
 	});
 
 	it("hands a mention outside the loaded window to the jump that pages history in", () => {
-		const requestMessageJump = vi.fn();
+		const requestMessageJump = vi.fn<(uuid: string) => void>();
 		render(
 			<JumpTargetProvider value={{windowStartIndex: 25, requestMessageJump}}>
 				<JumpChips occurrences={OCCURRENCES} />
@@ -104,7 +104,7 @@ describe("JumpChips", () => {
 	});
 
 	it("keeps jumping straight at the DOM once the window holds the mention", () => {
-		const requestMessageJump = vi.fn();
+		const requestMessageJump = vi.fn<(uuid: string) => void>();
 		render(
 			<JumpTargetProvider value={{windowStartIndex: 10, requestMessageJump}}>
 				<JumpChips occurrences={OCCURRENCES} />

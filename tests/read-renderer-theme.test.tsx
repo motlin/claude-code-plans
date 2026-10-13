@@ -5,7 +5,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {ReadRenderer} from "../src/components/tool-renderers/read-renderer";
 import type {ClientToolCall} from "../src/components/tool-renderers/types";
 
-const useHighlightedLines = vi.hoisted(() => vi.fn(() => null));
+const useHighlightedLines = vi.hoisted(() => vi.fn<(code: string, language: string | null) => null>(() => null));
 
 vi.mock("../src/hooks/use-shiki", () => ({useHighlightedLines}));
 

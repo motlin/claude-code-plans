@@ -57,9 +57,9 @@ describe("blank-screen prevention on /session/$id", () => {
 		// this loader must never await the (multi-megabyte) transcript payload.
 		const never = new Promise<never>(() => {});
 		const queryClient = {
-			query: vi.fn(async (_options: {staleTime?: unknown}) => never),
-			infiniteQuery: vi.fn(async (_options: {staleTime?: unknown}) => never),
-			getQueryData: vi.fn(() => undefined),
+			query: vi.fn<(options: {staleTime?: unknown}) => Promise<never>>(async () => never),
+			infiniteQuery: vi.fn<(options: {staleTime?: unknown}) => Promise<never>>(async () => never),
+			getQueryData: vi.fn<() => undefined>(() => undefined),
 		};
 
 		const loader = SessionRoute.options.loader as (args: {context: unknown; params: {id: string}}) => unknown;

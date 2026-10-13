@@ -32,7 +32,7 @@ vi.mock("../src/components/herdr-terminal", () => ({
 
 vi.mock("../src/lib/api/viewed-state", async (importOriginal) => ({
 	...(await importOriginal<typeof import("../src/lib/api/viewed-state")>()),
-	updateSessionViewedState: vi.fn(),
+	updateSessionViewedState: vi.fn<typeof import("../src/lib/api/viewed-state").updateSessionViewedState>(),
 }));
 
 class FakeResizeObserver {

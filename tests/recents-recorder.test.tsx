@@ -36,7 +36,7 @@ const {useRecentsRecorder} = await import("../src/hooks/use-recents-recorder");
 
 const ALIAS = "session_alpha_100";
 let queryClient: QueryClient;
-const fetch = vi.fn();
+const fetch = vi.fn<typeof globalThis.fetch>();
 
 const SESSION_TITLES: Record<string, string | null> = {
 	"session-alpha": "Alpha session",

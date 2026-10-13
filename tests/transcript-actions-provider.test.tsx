@@ -90,7 +90,7 @@ function turnButton(container: HTMLElement, turn: string, label: string): HTMLBu
 
 describe("TranscriptActionsProvider", () => {
 	it("forks an assistant turn at itself and a prompt at the turn before it", () => {
-		const fork = vi.fn();
+		const fork = vi.fn<(target: {sessionId: string; atMessage: string}) => void>();
 		const container = renderTranscript(fork);
 
 		fireEvent.click(turnButton(container, "reply-1", "Fork from here"));

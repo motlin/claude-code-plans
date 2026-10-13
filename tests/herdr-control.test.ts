@@ -34,7 +34,7 @@ function createFakeChild() {
 		stderr: new PassThrough(),
 		exitCode: null,
 		signalCode: null,
-		kill: vi.fn(() => true),
+		kill: vi.fn<(signal?: NodeJS.Signals) => boolean>(() => true),
 	});
 }
 
@@ -67,7 +67,7 @@ describe("herdr terminal control stream", () => {
 
 	it("spawns control without takeover and writes data and resize frames to stdin", async () => {
 		const child = createFakeChild();
-		const spawnController = vi.fn(() => child);
+		const spawnController = vi.fn<(...args: Parameters<SpawnController>) => typeof child>(() => child);
 		const socket = createSocket();
 
 		const controller = startTerminalController(
@@ -130,8 +130,10 @@ describe("herdr terminal control stream", () => {
 
 	it("resolves the session's herdr terminal before spawning control", async () => {
 		const child = createFakeChild();
-		const spawnController = vi.fn(() => child);
-		const resolveTarget = vi.fn(async () => Promise.resolve("terminal-test-200"));
+		const spawnController = vi.fn<(...args: Parameters<SpawnController>) => typeof child>(() => child);
+		const resolveTarget = vi.fn<TerminalControllerDependencies["resolveTarget"]>(async () =>
+			Promise.resolve("terminal-test-200"),
+		);
 
 		const controller = await controlHerdrSession("session-test-100", 90, 30, createSocket(), {
 			resolveTarget,
@@ -140,7 +142,7 @@ describe("herdr terminal control stream", () => {
 
 		expect({
 			resolved: resolveTarget.mock.calls,
-			spawnArguments: spawnController.mock.calls.map((call) => (call as unknown[])[1]),
+			spawnArguments: spawnController.mock.calls.map((call) => call[1]),
 		}).toStrictEqual({
 			resolved: [["session-test-100"]],
 			spawnArguments: [["terminal", "session", "control", "terminal-test-200", "--cols", "90", "--rows", "30"]],
@@ -151,7 +153,7 @@ describe("herdr terminal control stream", () => {
 
 describe("herdr terminal control authorization", () => {
 	it("rejects cross-site upgrades before checking the writes setting", async () => {
-		const writesEnabled = vi.fn(() => true);
+		const writesEnabled = vi.fn<() => boolean>(() => true);
 		const response = authorizeTerminalControl(
 			upgradeRequest({Origin: "https://evil.example", "Sec-Fetch-Site": "cross-site"}),
 			{writesEnabled},

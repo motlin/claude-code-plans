@@ -84,7 +84,7 @@ class TestResizeObserver {
 }
 
 class TestEventSource extends EventTarget {
-	readonly close = vi.fn();
+	readonly close = vi.fn<() => void>();
 	onerror: ((event: Event) => void) | null = null;
 }
 

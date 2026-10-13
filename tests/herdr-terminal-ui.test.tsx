@@ -47,8 +47,8 @@ vi.mock("../src/hooks/use-shortcut", () => ({
 	},
 }));
 
-const appearanceState = vi.hoisted(() => ({
-	appearance: {} as unknown,
+const appearanceState = vi.hoisted((): {appearance: GhosttyAppearance} => ({
+	appearance: {fontFamily: "", fontSize: 0, theme: {background: "", foreground: ""}},
 }));
 
 const terminalThemeState = vi.hoisted(() => ({
@@ -60,11 +60,13 @@ vi.mock("../src/hooks/use-terminal-theme", () => ({
 }));
 
 vi.mock("../src/lib/server-fns", () => ({
-	getGhosttyAppearance: vi.fn(async () => Promise.resolve(appearanceState.appearance)),
+	getGhosttyAppearance: vi.fn<() => Promise<GhosttyAppearance>>(async () =>
+		Promise.resolve(appearanceState.appearance),
+	),
 }));
 
 vi.mock("ghostty-web", () => ({
-	init: vi.fn().mockResolvedValue(undefined),
+	init: vi.fn<typeof import("ghostty-web").init>().mockResolvedValue(undefined),
 	Terminal: class {
 		cols = 80;
 		rows = 24;

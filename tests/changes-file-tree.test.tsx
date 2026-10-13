@@ -119,7 +119,7 @@ describe("ChangedFilesSidebar", () => {
 	});
 
 	it("opens instead of jumping on Cmd/Ctrl+click when an open handler is given", () => {
-		const onOpenFile = vi.fn();
+		const onOpenFile = vi.fn<(path: string) => void>();
 		const props = renderSidebar({onOpenFile});
 
 		fireEvent.click(screen.getByRole("treeitem", {name: /^app\.test\.ts/}), {ctrlKey: true});

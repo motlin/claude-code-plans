@@ -12,8 +12,10 @@ import {
 import {ARTIFACT_ICON_SVG} from "../src/lib/icon-paths";
 
 const {requestLanguageMock, requestThemeMock} = vi.hoisted(() => ({
-	requestLanguageMock: vi.fn(async () => Promise.resolve()),
-	requestThemeMock: vi.fn(async (_theme: string) => Promise.resolve()),
+	requestLanguageMock: vi.fn<typeof import("../src/hooks/use-shiki").requestLanguage>(async () => Promise.resolve()),
+	requestThemeMock: vi.fn<typeof import("../src/hooks/use-shiki").requestTheme>(async (_theme: string) =>
+		Promise.resolve(),
+	),
 }));
 
 vi.mock("../src/hooks/use-shiki", async () => {
@@ -289,7 +291,9 @@ describe("renderMarkdownWithHighlighting", () => {
 
 	it("uses a grammar loaded after the cached markdown instance was created", () => {
 		const loadedLanguages: string[] = [];
-		const codeToHtml = vi.fn(() => '<pre class="shiki"><code>highlighted</code></pre>');
+		const codeToHtml = vi.fn<HighlighterCore["codeToHtml"]>(
+			() => '<pre class="shiki"><code>highlighted</code></pre>',
+		);
 		const highlighter = {
 			getLoadedLanguages: () => loadedLanguages,
 			codeToHtml,
@@ -330,7 +334,9 @@ describe("renderMarkdownWithHighlighting", () => {
 
 	it("highlights with the chosen code themes once they are loaded, else the defaults", () => {
 		const loadedThemes = ["claude-light", "github-dark"];
-		const codeToHtml = vi.fn(() => '<pre class="shiki"><code>highlighted</code></pre>');
+		const codeToHtml = vi.fn<HighlighterCore["codeToHtml"]>(
+			() => '<pre class="shiki"><code>highlighted</code></pre>',
+		);
 		const highlighter = {
 			getLoadedLanguages: () => ["typescript"],
 			getLoadedThemes: () => loadedThemes,

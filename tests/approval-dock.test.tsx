@@ -2,6 +2,7 @@
 
 import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
+import type {ComponentProps} from "react";
 
 import {ApprovalDock} from "../src/components/approval-dock";
 import {AskUserQuestionProvider} from "../src/components/ask-user-question-context";
@@ -180,7 +181,7 @@ describe("approvalDockReducer", () => {
 	});
 });
 
-function renderDock(onSubmit = vi.fn(async () => {})) {
+function renderDock(onSubmit = vi.fn<ComponentProps<typeof ApprovalDock>["onSubmit"]>(async () => {})) {
 	const utils = render(
 		<div>
 			<div data-focus-region="composer">
@@ -286,7 +287,7 @@ describe("ApprovalDock", () => {
 	});
 
 	it("collapses the options and dismisses the card", () => {
-		const onDismiss = vi.fn();
+		const onDismiss = vi.fn<() => void>();
 		const {container} = render(
 			<ApprovalDock toolUseId="t2" questions={QUESTIONS} onSubmit={async () => {}} onDismiss={onDismiss} />,
 		);

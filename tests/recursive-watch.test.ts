@@ -5,8 +5,8 @@ import {tmpdir} from "node:os";
 import {basename, dirname, join} from "node:path";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
-const watchMock = vi.hoisted(() => vi.fn());
-const writeFileMock = vi.hoisted(() => vi.fn());
+const watchMock = vi.hoisted(() => vi.fn<typeof import("node:fs").watch>());
+const writeFileMock = vi.hoisted(() => vi.fn<typeof import("node:fs/promises").writeFile>());
 
 vi.mock("node:fs", async (importOriginal) => {
 	const actual = await importOriginal<typeof import("node:fs")>();

@@ -11,7 +11,7 @@ import {writeClipboardText} from "../src/lib/clipboard";
 import {formatFileSize} from "../src/lib/file-preview";
 
 vi.mock("../src/lib/clipboard", () => ({
-	writeClipboardText: vi.fn(async () => true),
+	writeClipboardText: vi.fn<typeof import("../src/lib/clipboard").writeClipboardText>(async () => true),
 }));
 
 vi.mock("../src/hooks/use-shiki", async (importOriginal) => ({
@@ -24,7 +24,7 @@ type FakeResponse = {status: number; body: unknown};
 let responses: Map<string, FakeResponse>;
 let requests: string[];
 let existingPaths: Set<string>;
-const scrollIntoView = vi.fn();
+const scrollIntoView = vi.fn<HTMLElement["scrollIntoView"]>();
 
 function stubFetch(): void {
 	vi.stubGlobal(
@@ -110,7 +110,7 @@ describe("markdown files", () => {
 
 	it("opens sibling markdown links through onOpenFile instead of navigating", async () => {
 		textFile(README, "See [bob](bob.md) and [carol](./carol.md#intro).");
-		const onOpenFile = vi.fn();
+		const onOpenFile = vi.fn<(path: string) => void>();
 		renderView({path: README, onOpenFile});
 
 		fireEvent.click(await screen.findByRole("link", {name: "bob"}));
@@ -140,7 +140,7 @@ describe("markdown files", () => {
 	it("turns inline-code file paths into buttons that open the file, resolved against the file's directory, then the cwd", async () => {
 		textFile(README, "See `src/lib/foo.ts`, `bob.md:3` and `missing.ts`.");
 		existingPaths = new Set(["/home/alice/src/lib/foo.ts", "/home/alice/notes/bob.md", "/home/alice/bob.md"]);
-		const onOpenFile = vi.fn();
+		const onOpenFile = vi.fn<(path: string) => void>();
 		renderView({path: README, cwd: "/home/alice", onOpenFile});
 
 		// The highlighter can re-render the article, detaching earlier buttons; retry until both land.

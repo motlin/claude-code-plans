@@ -22,7 +22,7 @@ type Observation = {sessionId: string; label: string; state: "working" | "waitin
 
 const harness = vi.hoisted(() => {
 	const listeners = new Set<(session: Observation) => void>();
-	const subscribe = vi.fn((listener: (session: Observation) => void) => {
+	const subscribe = vi.fn<(listener: (session: Observation) => void) => () => void>((listener) => {
 		listeners.add(listener);
 		return () => listeners.delete(listener);
 	});
@@ -38,7 +38,7 @@ vi.mock("../src/components/settings-context", async (importOriginal) => {
 
 let client: QueryClient;
 let notifications: Array<{title: string; tag: string | undefined}>;
-const fetch = vi.fn();
+const fetch = vi.fn<typeof globalThis.fetch>();
 
 beforeEach(() => {
 	client = new QueryClient({defaultOptions: {queries: {retry: false}}});

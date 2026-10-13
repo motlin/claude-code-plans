@@ -27,7 +27,7 @@ describe("hmrPersist", () => {
 
 	it("does not call init again for an existing key", async () => {
 		const {hmrPersist} = await import("../src/lib/hmr-persist");
-		const init = vi.fn(() => 42);
+		const init = vi.fn<() => number>(() => 42);
 		hmrPersist("onceKey", init);
 		hmrPersist("onceKey", init);
 		hmrPersist("onceKey", init);

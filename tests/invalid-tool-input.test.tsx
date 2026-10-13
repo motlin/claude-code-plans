@@ -35,7 +35,10 @@ beforeEach(() => {
 	vi.stubGlobal("requestAnimationFrame", () => 0);
 	vi.stubGlobal("cancelAnimationFrame", vi.fn());
 	vi.stubGlobal("innerHeight", 10_000);
-	Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {configurable: true, value: vi.fn()});
+	Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+		configurable: true,
+		value: vi.fn<HTMLElement["scrollIntoView"]>(),
+	});
 });
 
 afterEach(() => {

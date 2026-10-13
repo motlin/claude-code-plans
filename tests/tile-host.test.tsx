@@ -50,7 +50,7 @@ function ChatContent() {
 	);
 }
 
-function renderHost(sessionId: string, onExpandWithoutPane = vi.fn()) {
+function renderHost(sessionId: string, onExpandWithoutPane = vi.fn<() => void>()) {
 	return render(
 		<TileHost sessionId={sessionId} onExpandWithoutPane={onExpandWithoutPane}>
 			<ChatContent />
@@ -216,7 +216,7 @@ describe("TileHost", () => {
 	});
 
 	it("toggles the expand overlay with ⇧⌘\\", () => {
-		const onExpandWithoutPane = vi.fn();
+		const onExpandWithoutPane = vi.fn<() => void>();
 		renderHost("session-a", onExpandWithoutPane);
 
 		press({key: "|", code: "Backslash", metaKey: true, shiftKey: true});

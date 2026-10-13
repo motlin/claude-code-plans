@@ -64,9 +64,13 @@ async function renderSidebar(): Promise<HTMLElement> {
 	const handle = await waitFor(() => screen.getByRole("separator", {name: "Resize sidebar"}));
 	const capturedPointers = new Set<number>();
 	Object.assign(handle, {
-		setPointerCapture: vi.fn((pointerId: number) => capturedPointers.add(pointerId)),
-		releasePointerCapture: vi.fn((pointerId: number) => capturedPointers.delete(pointerId)),
-		hasPointerCapture: vi.fn((pointerId: number) => capturedPointers.has(pointerId)),
+		setPointerCapture: vi.fn<HTMLElement["setPointerCapture"]>((pointerId) => {
+			capturedPointers.add(pointerId);
+		}),
+		releasePointerCapture: vi.fn<HTMLElement["releasePointerCapture"]>((pointerId) => {
+			capturedPointers.delete(pointerId);
+		}),
+		hasPointerCapture: vi.fn<HTMLElement["hasPointerCapture"]>((pointerId) => capturedPointers.has(pointerId)),
 	});
 	return handle;
 }

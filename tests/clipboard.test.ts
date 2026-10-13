@@ -21,7 +21,7 @@ describe("writeClipboardText", () => {
 	});
 
 	it("uses navigator.clipboard.writeText when available", async () => {
-		const writeText = vi.fn().mockResolvedValue(undefined);
+		const writeText = vi.fn<Clipboard["writeText"]>().mockResolvedValue(undefined);
 		Object.defineProperty(navigator, "clipboard", {
 			value: {writeText},
 			writable: true,
@@ -34,21 +34,21 @@ describe("writeClipboardText", () => {
 	});
 
 	it("falls back to execCommand when clipboard API rejects", async () => {
-		const writeText = vi.fn().mockRejectedValue(new Error("Not allowed"));
+		const writeText = vi.fn<Clipboard["writeText"]>().mockRejectedValue(new Error("Not allowed"));
 		Object.defineProperty(navigator, "clipboard", {
 			value: {writeText},
 			writable: true,
 			configurable: true,
 		});
 
-		const mockTextarea = {value: "", style: {}, select: vi.fn()};
+		const mockTextarea = {value: "", style: {}, select: vi.fn<() => void>()};
 		const mockDocument = {
-			createElement: vi.fn().mockReturnValue(mockTextarea),
+			createElement: vi.fn<(tagName: string) => typeof mockTextarea>().mockReturnValue(mockTextarea),
 			body: {
-				appendChild: vi.fn(),
-				removeChild: vi.fn(),
+				appendChild: vi.fn<(node: Node) => void>(),
+				removeChild: vi.fn<(node: Node) => void>(),
 			},
-			execCommand: vi.fn().mockReturnValue(true),
+			execCommand: vi.fn<(commandId: string) => boolean>().mockReturnValue(true),
 		};
 		// @ts-expect-error partial mock
 		globalThis.document = mockDocument;
@@ -67,14 +67,14 @@ describe("writeClipboardText", () => {
 			configurable: true,
 		});
 
-		const mockTextarea = {value: "", style: {}, select: vi.fn()};
+		const mockTextarea = {value: "", style: {}, select: vi.fn<() => void>()};
 		const mockDocument = {
-			createElement: vi.fn().mockReturnValue(mockTextarea),
+			createElement: vi.fn<(tagName: string) => typeof mockTextarea>().mockReturnValue(mockTextarea),
 			body: {
-				appendChild: vi.fn(),
-				removeChild: vi.fn(),
+				appendChild: vi.fn<(node: Node) => void>(),
+				removeChild: vi.fn<(node: Node) => void>(),
 			},
-			execCommand: vi.fn().mockReturnValue(true),
+			execCommand: vi.fn<(commandId: string) => boolean>().mockReturnValue(true),
 		};
 		// @ts-expect-error partial mock
 		globalThis.document = mockDocument;
@@ -91,14 +91,14 @@ describe("writeClipboardText", () => {
 			configurable: true,
 		});
 
-		const mockTextarea = {value: "", style: {}, select: vi.fn()};
+		const mockTextarea = {value: "", style: {}, select: vi.fn<() => void>()};
 		const mockDocument = {
-			createElement: vi.fn().mockReturnValue(mockTextarea),
+			createElement: vi.fn<(tagName: string) => typeof mockTextarea>().mockReturnValue(mockTextarea),
 			body: {
-				appendChild: vi.fn(),
-				removeChild: vi.fn(),
+				appendChild: vi.fn<(node: Node) => void>(),
+				removeChild: vi.fn<(node: Node) => void>(),
 			},
-			execCommand: vi.fn().mockReturnValue(false),
+			execCommand: vi.fn<(commandId: string) => boolean>().mockReturnValue(false),
 		};
 		// @ts-expect-error partial mock
 		globalThis.document = mockDocument;
@@ -115,14 +115,14 @@ describe("writeClipboardText", () => {
 		});
 
 		const mockDocument = {
-			createElement: vi.fn().mockImplementation(() => {
+			createElement: vi.fn<(tagName: string) => never>().mockImplementation(() => {
 				throw new Error("DOM not available");
 			}),
 			body: {
-				appendChild: vi.fn(),
-				removeChild: vi.fn(),
+				appendChild: vi.fn<(node: Node) => void>(),
+				removeChild: vi.fn<(node: Node) => void>(),
 			},
-			execCommand: vi.fn(),
+			execCommand: vi.fn<(commandId: string) => boolean>(),
 		};
 		// @ts-expect-error partial mock
 		globalThis.document = mockDocument;

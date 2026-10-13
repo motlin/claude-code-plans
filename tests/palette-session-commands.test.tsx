@@ -114,8 +114,10 @@ function optionLabels(dialog: HTMLElement): string[] {
 }
 
 describe("palette contextual session commands", () => {
-	const writeText = vi.fn(async (_text: string) => Promise.resolve());
-	const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => new Promise<Response>(() => {}));
+	const writeText = vi.fn<Clipboard["writeText"]>(async (_text: string) => Promise.resolve());
+	const fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(
+		async (_url: string, _init?: RequestInit) => new Promise<Response>(() => {}),
+	);
 
 	beforeEach(() => {
 		fetchMock.mockImplementation(async () => new Promise<Response>(() => {}));

@@ -117,7 +117,7 @@ describe("thinking block", () => {
 	});
 
 	it("copies the thinking text as a markdown quote", () => {
-		const writeText = vi.fn(async (_text: string) => {});
+		const writeText = vi.fn<Clipboard["writeText"]>(async (_text: string) => {});
 		Object.defineProperty(navigator, "clipboard", {value: {writeText}, configurable: true});
 		renderThinking();
 

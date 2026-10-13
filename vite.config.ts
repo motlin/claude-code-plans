@@ -435,7 +435,6 @@ export default defineConfig({
 					"@typescript-eslint/no-unsafe-type-assertion": "off", // 382
 					"@typescript-eslint/require-await": "off", // 387
 					"@typescript-eslint/strict-boolean-expressions": "off", // 647
-					"vitest/require-mock-type-parameters": "off", // 332
 				},
 			},
 		],

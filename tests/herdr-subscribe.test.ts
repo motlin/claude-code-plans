@@ -54,14 +54,17 @@ async function unavailable() {
 	};
 }
 
+type BridgeDependencies = Parameters<typeof __testing.createBridge>[0];
+type Tracker = BridgeDependencies["viewedStateTracker"];
+
 async function flushPromises(): Promise<void> {
 	for (let index = 0; index < 5; index += 1) await Promise.resolve();
 }
 
 function viewedStateTracker() {
 	return {
-		syncPanes: vi.fn(async () => {}),
-		handleStatusEvent: vi.fn(async () => {}),
+		syncPanes: vi.fn<Tracker["syncPanes"]>(async () => {}),
+		handleStatusEvent: vi.fn<Tracker["handleStatusEvent"]>(async () => {}),
 	};
 }
 
@@ -78,11 +81,11 @@ describe("herdr event bridge", () => {
 		const sockets: FakeSocket[] = [];
 		const lineReaders: FakeLineReader[] = [];
 		const scheduledDelays: number[] = [];
-		const getPanes = vi.fn(async () => []);
+		const getPanes = vi.fn<BridgeDependencies["getPanes"]>(async () => []);
 		const broadcasts: Broadcast[] = [];
 		const expectedBackoffs = [250, 500, 1_000, 2_000, 4_000, 8_000, 10_000, 10_000];
 		let probeAttempts = 0;
-		const probe = vi.fn(async () => {
+		const probe = vi.fn<BridgeDependencies["probe"]>(async () => {
 			probeAttempts += 1;
 			return probeAttempts <= expectedBackoffs.length ? unavailable() : available();
 		});
@@ -131,8 +134,8 @@ describe("herdr event bridge", () => {
 
 	it("cancels an unavailable probe retry during teardown", async () => {
 		const scheduledDelays: number[] = [];
-		const probe = vi.fn(unavailable);
-		const cancel = vi.fn((timer: ReturnType<typeof setTimeout>) => {
+		const probe = vi.fn<BridgeDependencies["probe"]>(unavailable);
+		const cancel = vi.fn<BridgeDependencies["cancel"]>((timer) => {
 			clearTimeout(timer);
 		});
 
@@ -166,7 +169,7 @@ describe("herdr event bridge", () => {
 		const sockets: FakeSocket[] = [];
 		const lineReaders: FakeLineReader[] = [];
 		const broadcasts: Broadcast[] = [];
-		const getPanes = vi.fn(async () => []);
+		const getPanes = vi.fn<BridgeDependencies["getPanes"]>(async () => []);
 		const tracker = viewedStateTracker();
 		const stop = __testing.createBridge({
 			probe: available,
@@ -362,7 +365,7 @@ describe("herdr event bridge", () => {
 	it("destroys the active socket and cancels pending resync during teardown", async () => {
 		const sockets: FakeSocket[] = [];
 		const lineReaders: FakeLineReader[] = [];
-		const getPanes = vi.fn(async () => []);
+		const getPanes = vi.fn<BridgeDependencies["getPanes"]>(async () => []);
 		const stop = __testing.createBridge({
 			probe: available,
 			connect: () => {
@@ -520,7 +523,7 @@ describe("herdr event bridge", () => {
 			handleStatusEvent: vi.fn<() => Promise<void>>().mockRejectedValueOnce(busy),
 		};
 		const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
-		const getPanes = vi.fn(async () => []);
+		const getPanes = vi.fn<BridgeDependencies["getPanes"]>(async () => []);
 		const stop = __testing.createBridge({
 			probe: available,
 			connect: () => {

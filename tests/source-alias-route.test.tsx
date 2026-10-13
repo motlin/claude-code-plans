@@ -65,7 +65,7 @@ async function setup({
 	const pendingSource = new Promise<Response>((resolve) => {
 		finishSource = resolve;
 	});
-	const fetcher = vi.fn(async (url: string) =>
+	const fetcher = vi.fn<(url: string) => Promise<Response>>(async (url: string) =>
 		url.endsWith("/identity") ? lookup() : delaySource ? pendingSource : Promise.resolve(Response.json(source)),
 	);
 	vi.stubGlobal("fetch", fetcher);

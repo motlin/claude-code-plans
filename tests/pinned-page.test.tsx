@@ -42,7 +42,7 @@ const SESSIONS = [
 	session("session-carol", "Carol session", "2000-01-01T00:00:00.000Z"),
 ];
 
-const fetchMock = vi.fn(async (url: string) => {
+const fetchMock = vi.fn<(url: string) => Promise<Response>>(async (url: string) => {
 	const ids = new URL(url, "http://localhost").searchParams.get("ids")?.split(",") ?? [];
 	return Response.json(SESSIONS.filter((s) => ids.includes(s.id)));
 });

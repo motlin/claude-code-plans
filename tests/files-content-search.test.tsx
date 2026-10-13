@@ -3,6 +3,7 @@
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
+import type {ComponentProps} from "react";
 
 import {FilesTree, FilesTreeColumn} from "../src/components/files/files-tree";
 import {SettingsProvider} from "../src/components/settings-provider";
@@ -237,8 +238,8 @@ function stubFetch(): void {
 }
 
 function renderTree() {
-	const onOpenFile = vi.fn();
-	const onAsk = vi.fn();
+	const onOpenFile = vi.fn<NonNullable<ComponentProps<typeof FilesTree>["onOpenFile"]>>();
+	const onAsk = vi.fn<NonNullable<ComponentProps<typeof FilesTree>["onAsk"]>>();
 	const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
 	render(
 		<QueryClientProvider client={queryClient}>

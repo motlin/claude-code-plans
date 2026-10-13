@@ -11,7 +11,7 @@ afterEach(cleanup);
 
 describe("UsagePanel", () => {
 	it("renders the header, pace headline, meters and last-updated line", () => {
-		const onRefresh = vi.fn();
+		const onRefresh = vi.fn<() => void>();
 		render(
 			<UsagePanel
 				usage={{

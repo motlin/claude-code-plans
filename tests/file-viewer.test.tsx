@@ -9,7 +9,7 @@ const useHighlightedLines = vi.hoisted(() => vi.fn<(code: string, language: stri
 
 vi.mock("../src/hooks/use-shiki", () => ({useHighlightedLines}));
 
-const scrollIntoView = vi.fn();
+const scrollIntoView = vi.fn<() => void>();
 
 function renderViewer(content: string, path = "/test/alice.unknown") {
 	return render(<FileViewer file={{content, path}} />);

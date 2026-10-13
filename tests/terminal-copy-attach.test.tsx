@@ -11,6 +11,7 @@ import {
 	guardTerminalLinks,
 	handleTerminalSelectionKey,
 	openLinkPrompt,
+	type LinkOpener,
 	openTerminalLink,
 	TERMINAL_ATTACHED_MESSAGE,
 	trimTerminalSelection,
@@ -129,8 +130,8 @@ describe("attachTerminalSelection", () => {
 
 describe("terminal links", () => {
 	it("asks before opening an http(s) link", () => {
-		const confirm = vi.fn(() => true);
-		const open = vi.fn();
+		const confirm = vi.fn<LinkOpener["confirm"]>(() => true);
+		const open = vi.fn<LinkOpener["open"]>();
 		const opened = openTerminalLink("https://example.com/alice?q=1", {confirm, open});
 
 		expect({
@@ -145,14 +146,14 @@ describe("terminal links", () => {
 	});
 
 	it("does not open a link the user declines", () => {
-		const open = vi.fn();
+		const open = vi.fn<LinkOpener["open"]>();
 		const opened = openTerminalLink("http://bob.test/", {confirm: () => false, open});
 		expect({opened, opens: open.mock.calls}).toStrictEqual({opened: false, opens: []});
 	});
 
 	it("ignores non-http links without asking", () => {
-		const confirm = vi.fn(() => true);
-		const open = vi.fn();
+		const confirm = vi.fn<LinkOpener["confirm"]>(() => true);
+		const open = vi.fn<LinkOpener["open"]>();
 		const results = ["file:///etc/passwd", "javascript:alert(1)", "mailto:alice@example.com", "not a url"].map(
 			(href) => openTerminalLink(href, {confirm, open}),
 		);
@@ -175,8 +176,8 @@ describe("terminal links", () => {
 	});
 
 	it("routes every provided link through the guard instead of opening it directly", () => {
-		const direct = vi.fn();
-		const invalidateCache = vi.fn();
+		const direct = vi.fn<ILink["activate"]>();
+		const invalidateCache = vi.fn<() => void>();
 		const link: ILink = {
 			text: "https://example.com/carol",
 			range: {start: {x: 0, y: 0}, end: {x: 24, y: 0}},

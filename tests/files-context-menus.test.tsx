@@ -6,7 +6,7 @@ import {join} from "node:path";
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
-import {type ReactNode, useReducer} from "react";
+import {type ComponentProps, type ReactNode, useReducer} from "react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {Composer} from "../src/components/composer";
@@ -31,7 +31,7 @@ import {handleRevealInFinder} from "../src/lib/open-in-finder";
 import {installLocalStorage} from "./fake-storage";
 
 vi.mock("../src/lib/clipboard", () => ({
-	writeClipboardText: vi.fn(async () => true),
+	writeClipboardText: vi.fn<typeof writeClipboardText>(async () => true),
 }));
 
 vi.mock("../src/hooks/use-shiki", async (importOriginal) => ({
@@ -208,7 +208,7 @@ describe("appendAttachment", () => {
 
 describe("tree row context menu", () => {
 	it("offers Attach as context and Copy ▸ {Absolute path, Relative path, Filename}", async () => {
-		const onAttachContext = vi.fn();
+		const onAttachContext = vi.fn<AttachContextHandler>();
 		render(
 			wrap(
 				<FilesTreeColumn>
@@ -288,7 +288,7 @@ describe("tab context menu", () => {
 	}
 
 	it("matches claude.ai/code for a loaded preview tab and an unreadable pinned tab", async () => {
-		const onRevealInTree = vi.fn();
+		const onRevealInTree = vi.fn<(path: string) => void>();
 		await renderLoaded(onRevealInTree);
 
 		const loaded = await openTabMenu(/agent\.ts/);
@@ -426,7 +426,7 @@ describe("viewer context menu", () => {
 	});
 
 	it("attaches the selected lines from the menu", async () => {
-		const onAttachContext = vi.fn();
+		const onAttachContext = vi.fn<AttachContextHandler>();
 		render(wrap(<FileView path={AGENT} cwd={CWD} onAttachContext={onAttachContext} />));
 		await waitFor(() => {
 			if (!document.querySelector("#L3")) throw new Error("not loaded");
@@ -470,7 +470,7 @@ describe("⇧⌘L attach selection", () => {
 	}
 
 	it("attaches the selection when it is inside the viewer", async () => {
-		const onAttachContext = vi.fn();
+		const onAttachContext = vi.fn<AttachContextHandler>();
 		await renderLoaded(onAttachContext);
 		selectLines(2, 3);
 
@@ -496,7 +496,7 @@ describe("⇧⌘L attach selection", () => {
 	});
 
 	it("does nothing without a selection or with one outside the viewer", async () => {
-		const onAttachContext = vi.fn();
+		const onAttachContext = vi.fn<AttachContextHandler>();
 		await renderLoaded(onAttachContext);
 
 		const empty = press(CMD_SHIFT_L);
@@ -539,7 +539,7 @@ describe("composer attach requests", () => {
 	});
 
 	it("shows attached context as removable chips and sends it ahead of the prompt", () => {
-		const onSend = vi.fn();
+		const onSend = vi.fn<ComponentProps<typeof Composer>["onSend"]>();
 		render(<Composer variant="session" draftKey="alice-session" onSend={onSend} />);
 		const textarea = screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
 
@@ -615,7 +615,7 @@ describe("handleRevealInFinder", () => {
 	}
 
 	it("reveals an allowed file and refuses paths outside the allowed roots", async () => {
-		const revealPath = vi.fn(async () => {});
+		const revealPath = vi.fn<(path: string) => Promise<void>>(async () => {});
 		const allowed = await reveal({path: join(root, "allowed", "alice.ts")}, revealPath);
 		const outside = await reveal({path: join(root, "outside.ts")}, revealPath);
 		const malformed = await reveal({path: 42}, revealPath);

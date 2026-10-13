@@ -677,7 +677,7 @@ describe("?pane= deep link", () => {
 	});
 
 	it("opens the requested pane once the layout loads, then reports it handled", () => {
-		const onHandled = vi.fn();
+		const onHandled = vi.fn<() => void>();
 		renderSession(true, {pane: "terminal", onHandled});
 
 		expect({

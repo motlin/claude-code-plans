@@ -5,7 +5,7 @@ import {join} from "node:path";
 import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat, type SessionChatProps} from "../src/components/session-chat";
-import {TranscriptActionsContext} from "../src/components/transcript-actions-context";
+import {TranscriptActionsContext, type TranscriptActions} from "../src/components/transcript-actions-context";
 import {writeClipboardText} from "../src/lib/clipboard";
 import {messageText} from "../src/lib/transcript-action-targets";
 import {processTranscript} from "../src/lib/transcript";
@@ -15,10 +15,10 @@ vi.mock("../src/components/settings-context", () => ({
 }));
 vi.mock("../src/lib/hmr-persist", () => ({hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize()}));
 vi.mock("../src/hooks/use-claude-events", () => ({useClaudeEvents: () => ({failedTools: new Map()})}));
-vi.mock("../src/lib/clipboard", () => ({writeClipboardText: vi.fn(async () => true)}));
+vi.mock("../src/lib/clipboard", () => ({writeClipboardText: vi.fn<typeof writeClipboardText>(async () => true)}));
 vi.mock("../src/lib/transcript-action-targets", async (importOriginal) => {
 	const actual = await importOriginal<typeof import("../src/lib/transcript-action-targets")>();
-	return {...actual, messageText: vi.fn(actual.messageText)};
+	return {...actual, messageText: vi.fn<typeof actual.messageText>(actual.messageText)};
 });
 
 class FakeResizeObserver {
@@ -32,10 +32,10 @@ class FakeUtterance {
 	constructor(readonly text: string) {}
 }
 const VOICE = {name: "Samantha", lang: "en-US", voiceURI: "Samantha", localService: true, default: true};
-const forkFrom = vi.fn();
-const pinChapter = vi.fn();
-const speak = vi.fn();
-const cancel = vi.fn();
+const forkFrom = vi.fn<NonNullable<TranscriptActions["forkFrom"]>>();
+const pinChapter = vi.fn<NonNullable<TranscriptActions["pinChapter"]>>();
+const speak = vi.fn<SpeechSynthesis["speak"]>();
+const cancel = vi.fn<SpeechSynthesis["cancel"]>();
 
 beforeEach(() => {
 	vi.stubGlobal("ResizeObserver", FakeResizeObserver);
@@ -734,7 +734,7 @@ describe("assistant display-span actions", () => {
 			window.dispatchEvent(new CustomEvent("transcript-jump-request", {detail: 98}));
 		});
 		const target = view.container.querySelector<HTMLElement>('[data-record-index="98"]')!;
-		const scrollIntoView = vi.fn();
+		const scrollIntoView = vi.fn<HTMLElement["scrollIntoView"]>();
 		target.scrollIntoView = scrollIntoView;
 		act(() => {
 			for (const id of [...frames.keys()]) {

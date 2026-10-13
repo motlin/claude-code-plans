@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
+import type {ComponentProps} from "react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {PermissionCard} from "../src/components/permission-card";
@@ -173,7 +174,7 @@ describe("permissionDecisionForKey", () => {
 });
 
 function renderCard({canAnswer = true}: {canAnswer?: boolean} = {}) {
-	const onDecision = vi.fn(async (_decision: "allow" | "deny") => {});
+	const onDecision = vi.fn<ComponentProps<typeof PermissionCard>["onDecision"]>(async () => {});
 	const utils = render(
 		<div>
 			<div data-focus-region="composer">

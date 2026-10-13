@@ -33,7 +33,10 @@ beforeEach(() => {
 	vi.stubGlobal("cancelAnimationFrame", vi.fn());
 	// A tall viewport, so the virtualized list mounts every row.
 	vi.stubGlobal("innerHeight", 10_000);
-	Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {configurable: true, value: vi.fn()});
+	Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+		configurable: true,
+		value: vi.fn<HTMLElement["scrollIntoView"]>(),
+	});
 });
 
 afterEach(() => {

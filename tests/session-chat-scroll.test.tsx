@@ -20,8 +20,8 @@ vi.mock("../src/hooks/use-claude-events", () => ({
 }));
 
 const animationFrames: Array<FrameRequestCallback> = [];
-const scrollIntoView = vi.fn();
-const scrollTo = vi.fn();
+const scrollIntoView = vi.fn<Element["scrollIntoView"]>();
+const scrollTo = vi.fn<(options: ScrollToOptions) => void>();
 
 class FakeResizeObserver {
 	static instances: FakeResizeObserver[] = [];

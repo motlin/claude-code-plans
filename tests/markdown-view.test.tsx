@@ -16,20 +16,28 @@ const shikiMocks = vi.hoisted(() => {
 		subscriber: null,
 		version: 0,
 	};
-	const codeToHtml = vi.fn(() => '<pre class="shiki"><code>highlighted</code></pre>');
+	const codeToHtml = vi.fn<() => string>(() => '<pre class="shiki"><code>highlighted</code></pre>');
 	const highlighter = {
 		getLoadedLanguages: () => state.loadedLanguages,
 		codeToHtml,
 	} as unknown as HighlighterCore;
-	const getHighlighterSync = vi.fn(() => state.highlighter);
-	const getHighlighterVersion = vi.fn(() => state.version);
-	const requestLanguage = vi.fn(async () => Promise.resolve());
-	const subscribeHighlighter = vi.fn((subscriber: () => void) => {
-		state.subscriber = subscriber;
-		return () => {
-			if (state.subscriber === subscriber) state.subscriber = null;
-		};
-	});
+	const getHighlighterSync = vi.fn<typeof import("../src/hooks/use-shiki").getHighlighterSync>(
+		() => state.highlighter,
+	);
+	const getHighlighterVersion = vi.fn<typeof import("../src/hooks/use-shiki").getHighlighterVersion>(
+		() => state.version,
+	);
+	const requestLanguage = vi.fn<typeof import("../src/hooks/use-shiki").requestLanguage>(async () =>
+		Promise.resolve(),
+	);
+	const subscribeHighlighter = vi.fn<typeof import("../src/hooks/use-shiki").subscribeHighlighter>(
+		(subscriber: () => void) => {
+			state.subscriber = subscriber;
+			return () => {
+				if (state.subscriber === subscriber) state.subscriber = null;
+			};
+		},
+	);
 
 	return {
 		codeToHtml,

@@ -26,10 +26,12 @@ import {
  * the TTL sweep (no real `Date.now`/sleep), per the project test-data guidance.
  */
 
-const broadcastSpy = vi.fn();
+const broadcastSpy = vi.fn<(...args: unknown[]) => void>();
 
 vi.mock("../src/lib/sse-broadcast", () => ({
-	broadcastTyped: (...args: unknown[]) => broadcastSpy(...args),
+	broadcastTyped: (...args: unknown[]) => {
+		broadcastSpy(...args);
+	},
 }));
 
 const PROJECT_ID = "-Users-craig-projects-app";

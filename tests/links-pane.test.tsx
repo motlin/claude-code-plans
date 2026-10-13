@@ -28,11 +28,11 @@ import type {SessionLine} from "../src/lib/transcript";
 import {installLocalStorage} from "./fake-storage";
 
 vi.mock("../src/lib/clipboard", () => ({
-	writeClipboardText: vi.fn(),
+	writeClipboardText: vi.fn<typeof writeClipboardText>(),
 }));
 
 vi.mock("../src/lib/jump-to-message", () => ({
-	jumpToMessage: vi.fn(),
+	jumpToMessage: vi.fn<typeof jumpToMessage>(),
 }));
 
 vi.mock("../src/components/settings-context", () => ({
@@ -151,7 +151,7 @@ describe("LinksPaneView", () => {
 					{url: "http://127.0.0.1:3000", live: false},
 				]}
 				includeToolsAndThinking={false}
-				onIncludeToolsAndThinkingChange={vi.fn()}
+				onIncludeToolsAndThinkingChange={vi.fn<(include: boolean) => void>()}
 			/>,
 		);
 

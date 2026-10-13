@@ -54,9 +54,9 @@ function queryClient(): QueryClient {
 }
 
 function renderSearch(properties: Partial<ComponentProps<typeof FileSearchResults>> = {}) {
-	const onClose = vi.fn();
-	const onOpen = vi.fn();
-	const onQueryChange = vi.fn();
+	const onClose = vi.fn<ComponentProps<typeof FileSearchResults>["onClose"]>();
+	const onOpen = vi.fn<ComponentProps<typeof FileSearchResults>["onOpen"]>();
+	const onQueryChange = vi.fn<ComponentProps<typeof FileSearchResults>["onQueryChange"]>();
 	const client = queryClient();
 	const view = render(
 		<QueryClientProvider client={client}>
@@ -72,7 +72,7 @@ function renderSearch(properties: Partial<ComponentProps<typeof FileSearchResult
 	return {client, onClose, onOpen, onQueryChange, view};
 }
 
-const scrollIntoView = vi.fn();
+const scrollIntoView = vi.fn<() => void>();
 
 beforeEach(() => {
 	Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {

@@ -9,7 +9,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {openTestDb, type AppDb} from "../src/lib/db/connection";
 import * as schema from "../src/lib/db/schema";
 
-const spawnMock = vi.hoisted(() => vi.fn());
+const spawnMock = vi.hoisted(() => vi.fn<typeof import("node:child_process").spawn>());
 const state = vi.hoisted(() => ({db: undefined as unknown, broadcasts: 0}));
 
 vi.mock("node:child_process", () => ({spawn: spawnMock}));
@@ -36,7 +36,7 @@ function fakeChildProcess(): ChildProcess {
 	const child = new EventEmitter() as ChildProcess;
 	child.stdout = new PassThrough();
 	child.stderr = new PassThrough();
-	child.kill = vi.fn(() => true);
+	child.kill = vi.fn<ChildProcess["kill"]>(() => true);
 	return child;
 }
 

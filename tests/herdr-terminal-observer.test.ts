@@ -23,6 +23,8 @@ function frame(sequence: number, full: boolean): HerdrTerminalRecord {
 	};
 }
 
+type FakeChild = ReturnType<typeof createFakeChild>;
+
 function createFakeChild() {
 	const emitter = new EventEmitter();
 	const child = Object.assign(emitter, {
@@ -30,7 +32,7 @@ function createFakeChild() {
 		stderr: new PassThrough(),
 		exitCode: null,
 		signalCode: null,
-		kill: vi.fn(() => true),
+		kill: vi.fn<() => boolean>(() => true),
 	});
 	return child;
 }
@@ -96,7 +98,7 @@ describe("herdr terminal observer NDJSON bridge", () => {
 
 	it("spawns only observe, forwards a monotonic stream, and cleans up on terminal.closed", () => {
 		const child = createFakeChild();
-		const spawnObserver = vi.fn(() => child);
+		const spawnObserver = vi.fn<() => FakeChild>(() => child);
 		const socket = createSocket();
 
 		startTerminalObserver(
@@ -136,7 +138,7 @@ describe("herdr terminal observer NDJSON bridge", () => {
 		const firstChild = createFakeChild();
 		const secondChild = createFakeChild();
 		const children = [firstChild, secondChild];
-		const spawnObserver = vi.fn(() => children.shift()!);
+		const spawnObserver = vi.fn<() => FakeChild>(() => children.shift()!);
 		const firstSocket = createSocket();
 		const secondSocket = createSocket();
 
@@ -196,8 +198,8 @@ describe("herdr terminal observer NDJSON bridge", () => {
 
 	it("resolves a session to a terminal and closes sockets during server shutdown", async () => {
 		const child = createFakeChild();
-		const spawnObserver = vi.fn(() => child);
-		const resolveTarget = vi.fn(async () => "terminal-test-100");
+		const spawnObserver = vi.fn<() => FakeChild>(() => child);
+		const resolveTarget = vi.fn<TerminalObserverDependencies["resolveTarget"]>(async () => "terminal-test-100");
 		const socket = createSocket();
 
 		await observeHerdrSession("session-test-100", 90, 30, socket, {
@@ -233,7 +235,7 @@ describe("herdr terminal observer NDJSON bridge", () => {
 		const observer = startTerminalObserver(
 			{target: "terminal-test-100", columns: 80, rows: 24},
 			socket,
-			vi.fn(() => child) as unknown as TerminalObserverDependencies["spawnObserver"],
+			vi.fn<() => FakeChild>(() => child) as unknown as TerminalObserverDependencies["spawnObserver"],
 		);
 
 		observer.stop();

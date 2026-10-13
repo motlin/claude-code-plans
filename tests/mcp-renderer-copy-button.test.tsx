@@ -68,7 +68,7 @@ afterEach(cleanup);
 describe("custom MCP renderers expose the shared copy button", () => {
 	for (const {label, element, result} of CASES) {
 		it(`copies the ${label} result text on click`, () => {
-			const writeText = vi.fn();
+			const writeText = vi.fn<Clipboard["writeText"]>();
 			Object.defineProperty(navigator, "clipboard", {
 				configurable: true,
 				value: {writeText},

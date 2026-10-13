@@ -4,7 +4,7 @@ import {act, cleanup, renderHook} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {useCommandPalette} from "../src/hooks/use-command-palette";
-import {useShortcut} from "../src/hooks/use-shortcut";
+import {type ShortcutHandler, useShortcut} from "../src/hooks/use-shortcut";
 import {isEditableTarget, isInModalLayer, matchBinding} from "../src/lib/shortcuts/match";
 
 interface KeyInit {
@@ -109,7 +109,7 @@ describe("useShortcut", () => {
 	});
 
 	it("calls the handler and prevents default on a match", () => {
-		const handler = vi.fn();
+		const handler = vi.fn<ShortcutHandler>();
 		renderHook(() => {
 			useShortcut("search_or_start", handler);
 		});
@@ -119,7 +119,7 @@ describe("useShortcut", () => {
 	});
 
 	it("swallows auto-repeat without calling the handler", () => {
-		const handler = vi.fn();
+		const handler = vi.fn<ShortcutHandler>();
 		renderHook(() => {
 			useShortcut("search_or_start", handler);
 		});
@@ -129,7 +129,7 @@ describe("useShortcut", () => {
 	});
 
 	it("ignores non-matching keys", () => {
-		const handler = vi.fn();
+		const handler = vi.fn<ShortcutHandler>();
 		renderHook(() => {
 			useShortcut("search_or_start", handler);
 		});
@@ -141,7 +141,7 @@ describe("useShortcut", () => {
 	it("fires in editable targets by default and skips them when allowInEditable is false", () => {
 		document.body.innerHTML = `<textarea id="area"></textarea>`;
 		const area = document.getElementById("area")!;
-		const allowed = vi.fn();
+		const allowed = vi.fn<ShortcutHandler>();
 		const {unmount} = renderHook(() => {
 			useShortcut("search_or_start", allowed);
 		});
@@ -149,7 +149,7 @@ describe("useShortcut", () => {
 		expect(allowed).toHaveBeenCalledTimes(1);
 		unmount();
 
-		const skipped = vi.fn();
+		const skipped = vi.fn<ShortcutHandler>();
 		renderHook(() => {
 			useShortcut("search_or_start", skipped, {allowInEditable: false});
 		});
@@ -162,7 +162,7 @@ describe("useShortcut", () => {
 		document.body.innerHTML = `<div role="dialog"><button id="inside"></button></div>`;
 		const inside = document.getElementById("inside")!;
 		inside.focus();
-		const blocked = vi.fn();
+		const blocked = vi.fn<ShortcutHandler>();
 		const {unmount} = renderHook(() => {
 			useShortcut("search_or_start", blocked);
 		});
@@ -170,7 +170,7 @@ describe("useShortcut", () => {
 		expect(blocked).not.toHaveBeenCalled();
 		unmount();
 
-		const allowed = vi.fn();
+		const allowed = vi.fn<ShortcutHandler>();
 		renderHook(() => {
 			useShortcut("search_or_start", allowed, {allowInModal: true});
 		});
@@ -179,7 +179,7 @@ describe("useShortcut", () => {
 	});
 
 	it("does nothing when disabled", () => {
-		const handler = vi.fn();
+		const handler = vi.fn<ShortcutHandler>();
 		renderHook(() => {
 			useShortcut("search_or_start", handler, {disabled: true});
 		});

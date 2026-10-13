@@ -154,8 +154,8 @@ describe("CoachMark", () => {
 	}
 
 	it("renders an accent tip with a Dismiss button that dismisses", async () => {
-		const onDismiss = vi.fn();
-		const onClose = vi.fn();
+		const onDismiss = vi.fn<() => void>();
+		const onClose = vi.fn<() => void>();
 		render(<Harness onDismiss={onDismiss} onClose={onClose} />);
 		await tick();
 
@@ -173,8 +173,8 @@ describe("CoachMark", () => {
 	});
 
 	it("dismisses on Escape and only closes on an outside click", async () => {
-		const onDismiss = vi.fn();
-		const onClose = vi.fn();
+		const onDismiss = vi.fn<() => void>();
+		const onClose = vi.fn<() => void>();
 		render(<Harness onDismiss={onDismiss} onClose={onClose} />);
 		await screen.findByRole("dialog", {name: "Tip text"});
 

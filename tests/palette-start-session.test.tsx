@@ -25,7 +25,7 @@ const MAC_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.
 class TestEventSource extends EventTarget {
 	static current: TestEventSource | null = null;
 
-	readonly close = vi.fn();
+	readonly close = vi.fn<() => void>();
 	onerror: ((event: Event) => void) | null = null;
 
 	constructor(readonly url: string | URL) {
@@ -203,7 +203,7 @@ async function pickProject(dialog: HTMLElement, input: HTMLElement, name: string
 }
 
 describe("⌘K palette: start a new session", () => {
-	const writeText = vi.fn(async (_text: string) => Promise.resolve());
+	const writeText = vi.fn<Clipboard["writeText"]>(async (_text: string) => Promise.resolve());
 
 	beforeEach(() => {
 		launchCalls = [];

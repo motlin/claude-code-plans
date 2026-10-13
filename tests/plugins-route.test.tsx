@@ -5,7 +5,7 @@ describe("blank-screen prevention on /customize/plugins", () => {
 	it("the loader warms caches without awaiting them", () => {
 		const never = new Promise<never>(() => {});
 		const queryClient = {
-			query: vi.fn(async (_options: {staleTime?: unknown}) => never),
+			query: vi.fn<(options: {staleTime?: unknown}) => Promise<never>>(async () => never),
 		};
 		const loader = CustomizePluginsRoute.options.loader as (args: {context: unknown}) => unknown;
 

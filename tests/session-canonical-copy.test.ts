@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import {QueryClient} from "@tanstack/react-query";
-import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
+import {QueryClient, type QueryCache} from "@tanstack/react-query";
+import {afterEach, beforeEach, describe, expect, it, vi, type Mock} from "vite-plus/test";
 import {getCachedCanonicalSessionRouteId} from "../src/lib/api/session-identity";
 import {sessionQueryKeys} from "../src/lib/api/sessions";
 import {copySessionLink, sessionResumeCommand, sessionUrl} from "../src/lib/session-open-in";
@@ -9,11 +9,11 @@ const ALICE = "00000000-0000-4000-8000-000000000001";
 const BOB = "00000000-0000-4000-8000-000000000002";
 const ALIAS = "session_alice_100";
 let client: QueryClient;
-let fetchMock: ReturnType<typeof vi.fn>;
+let fetchMock: Mock<typeof fetch>;
 
 beforeEach(() => {
 	client = new QueryClient({defaultOptions: {queries: {retry: false, staleTime: Infinity}}});
-	fetchMock = vi.fn();
+	fetchMock = vi.fn<typeof fetch>();
 	vi.stubGlobal("fetch", fetchMock);
 });
 afterEach(() => {
@@ -30,7 +30,7 @@ function assertProof(expected: string) {
 		.getQueryCache()
 		.getAll()
 		.map((query) => ({key: query.queryKey, state: query.state}));
-	const events = vi.fn();
+	const events = vi.fn<Parameters<QueryCache["subscribe"]>[0]>();
 	const unsubscribe = client.getQueryCache().subscribe(events);
 	const routeId = getCachedCanonicalSessionRouteId(client, ALICE);
 	unsubscribe();
@@ -116,7 +116,7 @@ describe("copied local session URL", () => {
 		seedProof();
 		const writeText = vi.fn<(text: string) => Promise<void>>().mockResolvedValue(undefined);
 		vi.stubGlobal("navigator", {clipboard: {writeText}});
-		const toast = vi.fn();
+		const toast = vi.fn<Parameters<typeof copySessionLink>[1]>();
 		const copy = copySessionLink(ALICE, toast, client);
 		// Before awaiting: no network or pre-clipboard await was introduced.
 		expect({writes: writeText.mock.calls, requests: fetchMock.mock.calls}).toStrictEqual({

@@ -7,7 +7,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat} from "../src/components/session-chat";
 import {type TranscriptActions, TranscriptActionsContext} from "../src/components/transcript-actions-context";
 import {writeClipboardText} from "../src/lib/clipboard";
-import {getContextChips, registerComposer, takeContextChips} from "../src/lib/context-attach";
+import {type ComposerHandle, getContextChips, registerComposer, takeContextChips} from "../src/lib/context-attach";
 import {processTranscript} from "../src/lib/transcript";
 
 vi.mock("../src/components/settings-context", () => ({
@@ -22,7 +22,7 @@ vi.mock("../src/hooks/use-claude-events", () => ({
 	useClaudeEvents: () => ({failedTools: new Map()}),
 }));
 vi.mock("../src/lib/clipboard", () => ({
-	writeClipboardText: vi.fn(async () => true),
+	writeClipboardText: vi.fn<typeof import("../src/lib/clipboard").writeClipboardText>(async () => true),
 }));
 
 class FakeResizeObserver {
@@ -40,7 +40,7 @@ beforeEach(() => {
 	vi.stubGlobal("cancelAnimationFrame", vi.fn());
 	Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
 		configurable: true,
-		value: vi.fn(),
+		value: vi.fn<HTMLElement["scrollIntoView"]>(),
 	});
 });
 
@@ -226,7 +226,10 @@ describe("transcript context menus", () => {
 	});
 
 	it("attaches the message to the composer as a context chip", () => {
-		const unregister = registerComposer("test-session", {insertText: vi.fn(), focus: vi.fn()});
+		const unregister = registerComposer("test-session", {
+			insertText: vi.fn<ComposerHandle["insertText"]>(),
+			focus: vi.fn<ComposerHandle["focus"]>(),
+		});
 		const container = renderChat();
 		clickItem(openMenuOn(find(container, ".user-message-bubble p")), "Attach message as context");
 		const chips = getContextChips("test-session").map(({id: _id, ...chip}) => chip);

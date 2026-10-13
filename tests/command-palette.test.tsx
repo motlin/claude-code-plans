@@ -640,7 +640,7 @@ describe("CommandPalette Recents from the per-tab visit MRU", () => {
 		const pending = new Promise<Response>((resolve) => {
 			resolveIdentity = resolve;
 		});
-		const fetch = vi.fn(async (_url: string) => pending);
+		const fetch = vi.fn<(url: string) => Promise<Response>>(async (_url: string) => pending);
 		vi.stubGlobal("fetch", fetch);
 		saveRecents([
 			entry("session", "session_alice_100", "/session/session_alice_100", "Recent Alice"),
@@ -670,7 +670,9 @@ describe("CommandPalette Recents from the per-tab visit MRU", () => {
 	});
 
 	it.each([404, 409])("omits historical aliases from actionable session rows after %s", async (status) => {
-		const fetch = vi.fn().mockResolvedValue(Response.json({error: "Fabricated alias failure"}, {status}));
+		const fetch = vi
+			.fn<(url: string) => Promise<Response>>()
+			.mockResolvedValue(Response.json({error: "Fabricated alias failure"}, {status}));
 		vi.stubGlobal("fetch", fetch);
 		saveRecents([
 			entry("session", "session_alice_100", "/session/session_alice_100", "Unresolved Alice"),

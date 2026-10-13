@@ -9,10 +9,10 @@ import {fetchEarlierTranscript} from "../src/lib/api/sessions";
 import {jumpToMessage} from "../src/lib/jump-to-message";
 
 vi.mock("../src/lib/api/sessions", () => ({
-	fetchEarlierTranscript: vi.fn(async () => Promise.resolve()),
+	fetchEarlierTranscript: vi.fn<typeof fetchEarlierTranscript>(async () => Promise.resolve()),
 }));
 vi.mock("../src/lib/jump-to-message", () => ({
-	jumpToMessage: vi.fn(() => true),
+	jumpToMessage: vi.fn<typeof jumpToMessage>(() => true),
 }));
 
 function wrapper({children}: {children: ReactNode}) {

@@ -62,7 +62,7 @@ function RowMenuBody({onCopy, onDelete}: {onCopy: () => void; onDelete: () => vo
 	);
 }
 
-function renderDropdown(handlers = {onCopy: vi.fn(), onDelete: vi.fn()}) {
+function renderDropdown(handlers = {onCopy: vi.fn<() => void>(), onDelete: vi.fn<() => void>()}) {
 	render(
 		<Menu>
 			<MenuTrigger aria-label="More options">...</MenuTrigger>
@@ -137,7 +137,7 @@ describe("Menu", () => {
 			<Menu>
 				<MenuTrigger aria-label="More options">...</MenuTrigger>
 				<MenuContent density="comfortable">
-					<RowMenuBody onCopy={vi.fn()} onDelete={vi.fn()} />
+					<RowMenuBody onCopy={vi.fn<() => void>()} onDelete={vi.fn<() => void>()} />
 				</MenuContent>
 			</Menu>,
 		);
@@ -319,14 +319,14 @@ describe("Menu", () => {
 
 describe("ContextMenu", () => {
 	it("opens the same content on right-click", async () => {
-		const onCopy = vi.fn();
+		const onCopy = vi.fn<() => void>();
 		render(
 			<ContextMenu>
 				<ContextMenuTrigger>
 					<div>Row title</div>
 				</ContextMenuTrigger>
 				<MenuContent>
-					<RowMenuBody onCopy={onCopy} onDelete={vi.fn()} />
+					<RowMenuBody onCopy={onCopy} onDelete={vi.fn<() => void>()} />
 				</MenuContent>
 			</ContextMenu>,
 		);

@@ -2,6 +2,7 @@
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
+import type {useNavigate} from "@tanstack/react-router";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {Composer} from "../src/components/composer";
 import {customizeMcpServersQueryOptions, type McpServerSummary} from "../src/lib/api/customize";
@@ -10,7 +11,7 @@ import type {ComposerState} from "../src/lib/composer-state";
 import type {LiveLaunchControls} from "../src/hooks/use-live-launch-options";
 import type {LaunchOptions} from "../src/lib/launch-options";
 
-const navigate = vi.hoisted(() => vi.fn());
+const navigate = vi.hoisted(() => vi.fn<ReturnType<typeof useNavigate>>());
 vi.mock("@tanstack/react-router", async (importOriginal) => ({
 	...(await importOriginal<typeof import("@tanstack/react-router")>()),
 	useNavigate: () => navigate,

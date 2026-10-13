@@ -14,7 +14,7 @@ const WITHOUT_BYPASS: LaunchPermissionMode[] = ["auto", "default", "acceptEdits"
 type Send = (sessionId: string, change: LiveOptionChange) => Promise<void>;
 
 function renderLive(initial: Partial<LiveLaunchOptionsInput> & {send: Send}) {
-	const toast = vi.fn();
+	const toast = vi.fn<LiveLaunchOptionsInput["toast"]>();
 	const base: LiveLaunchOptionsInput = {
 		sessionId: "session-ivan",
 		currentMode: "default",

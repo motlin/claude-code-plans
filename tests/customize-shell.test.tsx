@@ -30,7 +30,11 @@ import {Route as CustomizeSkillsRoute} from "../src/routes/customize.skills";
 import {startClaudeSession} from "../src/lib/start-claude-session";
 import {installLocalStorage} from "./fake-storage";
 
-vi.mock("../src/lib/start-claude-session", () => ({startClaudeSession: vi.fn(async () => "launched")}));
+vi.mock("../src/lib/start-claude-session", () => ({
+	startClaudeSession: vi.fn<typeof import("../src/lib/start-claude-session").startClaudeSession>(
+		async () => "launched",
+	),
+}));
 
 beforeEach(() => {
 	installLocalStorage();
@@ -484,7 +488,7 @@ describe("customize discover", () => {
 	});
 
 	it("copies the install command from the + button", async () => {
-		const writeText = vi.fn(async () => Promise.resolve());
+		const writeText = vi.fn<Clipboard["writeText"]>(async () => Promise.resolve());
 		Object.defineProperty(navigator, "clipboard", {value: {writeText}, configurable: true});
 		await renderCustomize("/customize/plugins?view=discover");
 
@@ -570,7 +574,7 @@ describe("customize add menu", () => {
 	});
 
 	it("offers Add marketplace and Create with Claude in the Plugins Add menu", async () => {
-		const writeText = vi.fn(async () => Promise.resolve());
+		const writeText = vi.fn<Clipboard["writeText"]>(async () => Promise.resolve());
 		Object.defineProperty(navigator, "clipboard", {value: {writeText}, configurable: true});
 		await renderCustomize("/customize/plugins");
 		await openAddMenu("Add plugin");
@@ -593,7 +597,7 @@ describe("customize add menu", () => {
 	});
 
 	it("copies the claude mcp add command from the Connectors Add menu", async () => {
-		const writeText = vi.fn(async () => Promise.resolve());
+		const writeText = vi.fn<Clipboard["writeText"]>(async () => Promise.resolve());
 		Object.defineProperty(navigator, "clipboard", {value: {writeText}, configurable: true});
 		await renderCustomize("/customize/connectors");
 		await openAddMenu("Add connector");

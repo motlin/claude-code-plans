@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 
 import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
+import type {useNavigate} from "@tanstack/react-router";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
-const navigate = vi.fn();
+const navigate = vi.fn<ReturnType<typeof useNavigate>>();
 vi.mock("@tanstack/react-router", () => ({
 	useNavigate: () => navigate,
 }));
@@ -12,6 +13,7 @@ import {SideChat} from "../src/components/side-chat";
 import {handleBtwPrompt} from "../src/components/btw-prompt";
 import {useSideChatShortcut} from "../src/components/use-side-chat-shortcut";
 import {ToastProvider} from "../src/components/toast";
+import type {ToastOptions} from "../src/components/toast-context";
 import {parseBtwCommand, sideChatBranchTitle} from "../src/lib/side-chat";
 import {askSideChat, getSideChat, openSideChat, resetSideChatStore} from "../src/lib/side-chat-store";
 
@@ -162,7 +164,7 @@ describe("SideChat", () => {
 	});
 
 	it("switches the placeholder to Follow up… once there is an answer, and Clear resets it", async () => {
-		const fetchMock = vi.fn(async () =>
+		const fetchMock = vi.fn<typeof fetch>(async () =>
 			ndjsonResponse([
 				textDelta("It parses "),
 				textDelta("the config."),
@@ -225,7 +227,7 @@ describe("SideChat", () => {
 
 	it("sends earlier Q/A pairs with a follow-up", async () => {
 		const fetchMock = vi
-			.fn()
+			.fn<(url: string, init: RequestInit) => Promise<Response>>()
 			.mockResolvedValueOnce(ndjsonResponse([textDelta("First answer.")]))
 			.mockResolvedValueOnce(ndjsonResponse([textDelta("Second answer.")]));
 		vi.stubGlobal("fetch", fetchMock);
@@ -329,7 +331,7 @@ describe("SideChat", () => {
 
 	it("branches an answer into a titled fork and navigates to it", async () => {
 		const fetchMock = vi
-			.fn()
+			.fn<(url: string, init: RequestInit) => Promise<Response>>()
 			.mockResolvedValueOnce(ndjsonResponse([textDelta("An answer.")]))
 			.mockResolvedValueOnce(
 				ndjsonResponse([
@@ -393,13 +395,13 @@ describe("useSideChatShortcut", () => {
 
 describe("handleBtwPrompt", () => {
 	it("passes ordinary prompts through", () => {
-		const toast = vi.fn();
+		const toast = vi.fn<(options: ToastOptions) => void>();
 		expect(handleBtwPrompt("fix the build", {sessionId: SESSION_ID, messageCount: 3, toast})).toBe(false);
 		expect([getSideChat(SESSION_ID).open, toast.mock.calls]).toEqual([false, []]);
 	});
 
 	it("opens the side chat for a bare /btw", () => {
-		const toast = vi.fn();
+		const toast = vi.fn<(options: ToastOptions) => void>();
 		expect(handleBtwPrompt("/btw", {sessionId: SESSION_ID, messageCount: 3, toast})).toBe(true);
 		expect([getSideChat(SESSION_ID), toast.mock.calls]).toEqual([{open: true, mode: "floating", entries: []}, []]);
 	});
@@ -412,7 +414,7 @@ describe("handleBtwPrompt", () => {
 		handleBtwPrompt("/btw is it cached?", {
 			sessionId: SESSION_ID,
 			messageCount: 3,
-			toast: vi.fn(),
+			toast: vi.fn<(options: ToastOptions) => void>(),
 		});
 		await waitFor(() => {
 			expect(getSideChat(SESSION_ID).entries[0]?.status).toBe("done");
@@ -424,7 +426,7 @@ describe("handleBtwPrompt", () => {
 	});
 
 	it("refuses before the session's first message", () => {
-		const toast = vi.fn();
+		const toast = vi.fn<(options: ToastOptions) => void>();
 		expect(handleBtwPrompt("/btw hi", {sessionId: SESSION_ID, messageCount: 0, toast})).toBe(true);
 		expect([getSideChat(SESSION_ID).open, toast.mock.calls]).toEqual([
 			false,

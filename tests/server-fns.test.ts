@@ -10,14 +10,14 @@ vi.mock("../src/lib/ghostty/config", async (importOriginal) => {
 	const original = await importOriginal<typeof import("../src/lib/ghostty/config")>();
 	return {
 		...original,
-		readGhosttyConfig: vi.fn(() => ghosttyConfigState.config),
+		readGhosttyConfig: vi.fn<typeof original.readGhosttyConfig>(() => ghosttyConfigState.config),
 	};
 });
 
 vi.mock("@tanstack/react-start", () => ({
-	createServerFn: vi.fn(() => ({
-		handler: vi.fn((handler: () => unknown) => async () => handler()),
-	})),
+	createServerFn: () => ({
+		handler: (handler: () => unknown) => async () => handler(),
+	}),
 }));
 
 describe("server functions", () => {

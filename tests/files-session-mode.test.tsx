@@ -22,7 +22,7 @@ import type {SessionFiles} from "../src/lib/session-files";
 import {installLocalStorage} from "./fake-storage";
 
 vi.mock("../src/lib/clipboard", () => ({
-	writeClipboardText: vi.fn(),
+	writeClipboardText: vi.fn<typeof import("../src/lib/clipboard").writeClipboardText>(),
 }));
 
 const SESSION_ID = "session-mode";

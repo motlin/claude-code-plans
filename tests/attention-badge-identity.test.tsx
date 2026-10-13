@@ -23,10 +23,12 @@ type Observation = {sessionId: string; label: string; state: "working" | "waitin
 
 const harness = vi.hoisted(() => {
 	const listeners = new Set<(session: Observation) => void>();
-	const subscribe = vi.fn((listener: (session: Observation) => void) => {
-		listeners.add(listener);
-		return () => listeners.delete(listener);
-	});
+	const subscribe = vi.fn<(listener: (session: Observation) => void) => () => boolean>(
+		(listener: (session: Observation) => void) => {
+			listeners.add(listener);
+			return () => listeners.delete(listener);
+		},
+	);
 	return {listeners, subscribe};
 });
 
@@ -39,7 +41,7 @@ vi.mock("../src/components/settings-context", async (importOriginal) => {
 
 let client: QueryClient;
 let badge: number;
-const fetch = vi.fn();
+const fetch = vi.fn<typeof globalThis.fetch>();
 
 beforeEach(() => {
 	client = new QueryClient({defaultOptions: {queries: {retry: false}}});
@@ -51,13 +53,13 @@ beforeEach(() => {
 	vi.spyOn(window, "scrollTo").mockImplementation(() => {});
 	Object.defineProperty(navigator, "setAppBadge", {
 		configurable: true,
-		value: vi.fn(async (count: number) => {
+		value: vi.fn<(count: number) => Promise<void>>(async (count: number) => {
 			badge = count;
 		}),
 	});
 	Object.defineProperty(navigator, "clearAppBadge", {
 		configurable: true,
-		value: vi.fn(async () => {
+		value: vi.fn<() => Promise<void>>(async () => {
 			badge = 0;
 		}),
 	});

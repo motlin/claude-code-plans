@@ -10,10 +10,12 @@ const fakeRouter = vi.hoisted(() => ({
 		location: {href: "/session/example-alice", state: {}},
 		resolvedLocation: {href: "/session/example-alice", state: {}},
 	},
-	subscribe: vi.fn(
-		(_event: string, _listener: (event: {toLocation: {state: {__TSR_key: string}; href: string}}) => void) =>
-			() => {},
-	),
+	subscribe: vi.fn<
+		(
+			event: string,
+			listener: (event: {toLocation: {state: {__TSR_key: string}; href: string}}) => void,
+		) => () => void
+	>(() => () => {}),
 }));
 vi.mock("@tanstack/react-router", () => ({useRouter: () => fakeRouter}));
 const frames: FrameRequestCallback[] = [];

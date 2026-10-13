@@ -134,7 +134,7 @@ describe("ToastProvider", () => {
 	});
 
 	it("runs the action once and closes the toast", () => {
-		const onAction = vi.fn();
+		const onAction = vi.fn<() => void>();
 		renderWithToast({
 			message: "Archived 1 session",
 			kind: "success",
@@ -149,7 +149,7 @@ describe("ToastProvider", () => {
 	});
 
 	it("closes the toast from the dismiss button without running the action", () => {
-		const onAction = vi.fn();
+		const onAction = vi.fn<() => void>();
 		renderWithToast({
 			message: "Unpinned Fix login",
 			kind: "success",

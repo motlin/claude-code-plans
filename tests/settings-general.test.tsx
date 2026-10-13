@@ -9,7 +9,7 @@ import {ThemeProvider} from "../src/components/theme-provider";
 import {installLocalStorage} from "./fake-storage";
 
 function stubNotification(permission: NotificationPermission) {
-	const requestPermission = vi.fn(async () => permission);
+	const requestPermission = vi.fn<typeof Notification.requestPermission>(async () => permission);
 	vi.stubGlobal(
 		"Notification",
 		Object.assign(function Notification() {}, {permission, requestPermission}),

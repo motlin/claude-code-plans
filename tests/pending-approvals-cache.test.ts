@@ -19,10 +19,12 @@ import {DOMAIN_EVENTS} from "../src/lib/hook-events";
  * exact events emitted when entries are added, updated, or resolved.
  */
 
-const broadcastSpy = vi.fn();
+const broadcastSpy = vi.fn<(...args: unknown[]) => void>();
 
 vi.mock("../src/lib/sse-broadcast", () => ({
-	broadcastTyped: (...args: unknown[]) => broadcastSpy(...args),
+	broadcastTyped: (...args: unknown[]) => {
+		broadcastSpy(...args);
+	},
 }));
 
 function jsonl(...lines: Record<string, unknown>[]): string {
@@ -192,7 +194,7 @@ describe("pending-approvals-cache", () => {
 
 		const {initPendingApprovalsCache, getPendingApprovals} = await import("../src/lib/db/pending-approvals-cache");
 		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-		const unhandled = vi.fn();
+		const unhandled = vi.fn<(reason: unknown, promise: Promise<unknown>) => void>();
 		process.on("unhandledRejection", unhandled);
 		try {
 			const controller = new AbortController();

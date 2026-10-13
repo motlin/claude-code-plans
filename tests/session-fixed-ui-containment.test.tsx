@@ -27,7 +27,7 @@ const lateSnapshot = vi.hoisted(() => ({entry: undefined as {scrollX: number; sc
 vi.mock("../src/hooks/use-main-scroll-restoration", () => ({useMainScrollRestoration: () => lateSnapshot.entry}));
 
 class TestEventSource extends EventTarget {
-	readonly close = vi.fn();
+	readonly close = vi.fn<() => void>();
 	onerror: ((event: Event) => void) | null = null;
 }
 
