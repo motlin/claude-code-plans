@@ -5,6 +5,7 @@ import {
 	stripResultTags,
 	truncateResult,
 	stripCommandTags,
+	stripHarnessTags,
 	extractSessionTitle,
 } from "../src/lib/session-utils";
 
@@ -1053,6 +1054,30 @@ describe("stripCommandTags", () => {
 	it("keeps a pasted_content tag that is quoted mid-line rather than wrapping a paste", () => {
 		const text = 'bubbles show literal `<pasted_content id="5216">` … `</pasted_content id="5216">` tag lines';
 		expect(stripCommandTags(text)).toBe(text);
+	});
+});
+
+describe("stripHarnessTags", () => {
+	it("drops a teammate-message element with its body and the blank line after it, as upstream does", () => {
+		expect(
+			stripHarnessTags(
+				'Another Claude session sent a message:\n<teammate-message teammate_id="fix-ordered-map-indexed" color="cyan">\n{"type":"idle_notification","from":"fix-ordered-map-indexed"}\n</teammate-message>\n\nThis came from another Claude session — not from your user.',
+			),
+		).toBe("Another Claude session sent a message:\nThis came from another Claude session — not from your user.");
+	});
+
+	it("drops system-reminder and cross-session-message elements, but not a tag that only shares a prefix", () => {
+		expect({
+			reminder: stripHarnessTags("Fix it.\n<system-reminder>\nThe date changed.\n</system-reminder>\n"),
+			crossSession: stripHarnessTags(
+				'<cross-session-message from="worker">\nhi\n</cross-session-message>\n\nReply when done.',
+			),
+			prefix: stripHarnessTags("<cellar>wine</cellar>"),
+		}).toStrictEqual({
+			reminder: "Fix it.\n",
+			crossSession: "Reply when done.",
+			prefix: "<cellar>wine</cellar>",
+		});
 	});
 });
 

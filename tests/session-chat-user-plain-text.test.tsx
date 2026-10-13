@@ -189,6 +189,20 @@ describe("SessionChat user bubbles as plain text", () => {
 		}).toStrictEqual({links: 0, code: ["curl https://x.y/z"]});
 	});
 
+	it("hides a teammate-message element in a peer message bubble, as upstream does", () => {
+		const el = bubble(
+			renderRecords([
+				prompt(
+					'Another Claude session sent a message:\n<teammate-message teammate_id="fix-ordered-map-indexed" color="cyan">\n{"type":"idle_notification"}\n</teammate-message>\n\nThis came from another Claude session.',
+				),
+			]),
+		);
+
+		expect(Array.from(el.querySelectorAll("p"), (p) => p.textContent)).toStrictEqual([
+			"Another Claude session sent a message:\nThis came from another Claude session.",
+		]);
+	});
+
 	it("shows a pasted block's text inline in the bubble, without the pasted_content tag lines", () => {
 		const el = bubble(
 			renderRecords([

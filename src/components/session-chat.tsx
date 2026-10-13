@@ -58,6 +58,7 @@ import type {ToolUseBlock} from "../lib/schemas";
 import {AttachmentBanner, Banner, Pre} from "./attachment-banner";
 import {
 	stripCommandTags,
+	stripHarnessTags,
 	parseCommandBlock,
 	parseBashInput,
 	parseBashOutput,
@@ -3506,6 +3507,11 @@ function UserPromptText({text, leading}: {text: string; leading: boolean}) {
 	return <SlashCommandText name={command.name} rest={command.rest} />;
 }
 
+/** A prompt's bubble text, without command tags or the harness tags upstream hides. */
+function cleanPromptText(text: string): string {
+	return stripHarnessTags(stripCommandTags(text)).trim();
+}
+
 function renderUserContentBlocks(
 	line: MessageSessionLine,
 	sessionId: string,
@@ -3515,7 +3521,7 @@ function renderUserContentBlocks(
 	if (!content) return {textNodes: [], mediaNodes: []};
 
 	if (typeof content === "string") {
-		const cleaned = stripCommandTags(content);
+		const cleaned = cleanPromptText(content);
 		if (!cleaned) return {textNodes: [], mediaNodes: []};
 		return {
 			textNodes: [
@@ -3536,7 +3542,7 @@ function renderUserContentBlocks(
 	for (const [i, block] of content.entries()) {
 		if (block.type === "text" && typeof block.text === "string") {
 			if (block.text.includes("<local-command-caveat>")) continue;
-			const cleaned = stripCommandTags(block.text);
+			const cleaned = cleanPromptText(block.text);
 			if (!cleaned) continue;
 			inlineImageText.push(cleaned);
 			textNodes.push(

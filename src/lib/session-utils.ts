@@ -55,6 +55,56 @@ export function stripCommandTags(text: string): string {
 	return cleanCommandText(text);
 }
 
+/**
+ * Harness tags upstream hides from a user bubble, each element with its body.
+ * `command-args` is listed apart because it carries no attributes.
+ */
+const HARNESS_TAGS = [
+	"system-reminder",
+	"task-notification",
+	"slack_context",
+	"uploaded_files",
+	"available-deferred-tools",
+	"new-diagnostics",
+	"critical_user_preferences_reminder",
+	"persisted-output",
+	"local-command-caveat",
+	"tick",
+	"goal",
+	"mcp-resource",
+	"mcp-resource-update",
+	"mcp-polling-update",
+	"teammate-message",
+	"cross-session-message",
+	"launch-selected-element",
+	"connected_office_files",
+	"thinking",
+	"ide_opened_file",
+	"ide_selection",
+	"ide_diagnostics",
+	"browser_instruction",
+	"cell",
+	"cell_type",
+	"language",
+	"command-message",
+	"no-action-needed",
+	"comprehensive-mode-instructions",
+	"cu_window_hints",
+	"widget_context_hint",
+	"preview-annotation-context",
+];
+
+/** Upstream's strip pattern: a whole tag element, then any whitespace after it. */
+const HARNESS_TAG_RE = new RegExp(
+	`<(?:(command-args)|(${[...HARNESS_TAGS].sort((a, b) => b.length - a.length).join("|")})(?=[\\s/>])[^>]*)>[\\s\\S]*?</\\1\\2>\\s*`,
+	"g",
+);
+
+/** The text with every harness tag element (a teammate message, a system reminder) removed, as upstream shows a user bubble. */
+export function stripHarnessTags(text: string): string {
+	return text.replace(HARNESS_TAG_RE, "");
+}
+
 const BASH_INPUT_RE = /^\s*<bash-input>([\s\S]*?)<\/bash-input>\s*$/;
 const BASH_OUTPUT_RE = /^\s*<bash-stdout>([\s\S]*?)<\/bash-stdout>\s*<bash-stderr>([\s\S]*?)<\/bash-stderr>\s*$/;
 
