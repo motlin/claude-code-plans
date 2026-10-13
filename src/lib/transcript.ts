@@ -230,6 +230,17 @@ const WorktreeLineSchema = z.object({
 });
 
 /**
+ * A `<task-notification>` the queue took in but never delivered: no later
+ * dequeue, removal or popAll took it off. Upstream still draws it as a row.
+ */
+const QueuedTaskNotificationLineSchema = z.object({
+	type: z.literal("queued-task-notification"),
+	content: z.string(),
+	timestamp: z.string().optional(),
+	lineIndex: z.number(),
+});
+
+/**
  * A record the schema rejected. Rendered as a visible gap so schema drift
  * surfaces in the transcript instead of silently deleting messages.
  */
@@ -253,6 +264,7 @@ export const RenderedLineSchema = z.discriminatedUnion("type", [
 	PermissionModeLineSchema,
 	ArtifactLinkLineSchema,
 	ArtifactWatchLineSchema,
+	QueuedTaskNotificationLineSchema,
 	AttachmentLineSchema,
 	SystemLineSchema,
 	WorktreeLineSchema,
@@ -562,6 +574,51 @@ function artifactWatchEntries(
 	});
 }
 
+type QueueOperationRecord = Extract<z.infer<typeof JsonlRecordSchema>, {type: "queue-operation"}>;
+
+/**
+ * Replays one queue operation: an enqueue joins the back (a task notification
+ * also draws a line), a dequeue takes the front, a removal takes the first
+ * entry with its content, and popAll empties the queue. A taken entry's line
+ * goes into `delivered`, for the caller to drop.
+ */
+function trackQueue(
+	record: QueueOperationRecord,
+	lineIndex: number,
+	queued: {content: string | undefined; line: z.infer<typeof QueuedTaskNotificationLineSchema> | null}[],
+	delivered: Set<ProcessedLine>,
+	sessionLines: ProcessedLine[],
+): void {
+	const take = (index: number) => {
+		const [entry] = queued.splice(index, 1);
+		if (entry?.line) delivered.add(entry.line);
+	};
+	switch (record.operation) {
+		case "enqueue": {
+			const {content} = record;
+			let line: z.infer<typeof QueuedTaskNotificationLineSchema> | null = null;
+			if (content?.startsWith("<task-notification>") === true) {
+				line = {type: "queued-task-notification", content, lineIndex};
+				if (record.timestamp !== undefined) line.timestamp = record.timestamp;
+				sessionLines.push(line);
+			}
+			queued.push({content, line});
+			return;
+		}
+		case "dequeue":
+			take(0);
+			return;
+		case "remove": {
+			const index = queued.findIndex((entry) => entry.content === record.content);
+			if (index !== -1) take(index);
+			return;
+		}
+		case "popAll":
+			while (queued.length > 0) take(0);
+			return;
+	}
+}
+
 function processRecordBatch(
 	records: unknown[],
 	startLineIndex: number,
@@ -589,6 +646,9 @@ function processRecordBatch(
 	// and pair on either the command uuid or the delivery id.
 	const absorbedQueueKeys = new Set<string>();
 	const queuedCommandLines = new Map<string, z.infer<typeof AttachmentLineSchema>>();
+	// The queue in order, each entry with the line its task notification would draw.
+	const queued: {content: string | undefined; line: z.infer<typeof QueuedTaskNotificationLineSchema> | null}[] = [];
+	const delivered = new Set<ProcessedLine>();
 	// Per deferred_tools_delta uuid, the description each surfaced tool resolved to.
 	const surfacedDescriptions = new Map<string, Map<string, string | undefined>>();
 
@@ -783,6 +843,7 @@ function processRecordBatch(
 					if (queuedLine !== undefined) queuedLine.absorbedMidTurn = true;
 				}
 			}
+			trackQueue(record, lineIndex, queued, delivered, sessionLines);
 			continue;
 		}
 
@@ -991,7 +1052,9 @@ function processRecordBatch(
 	}
 
 	return {
-		sessionLines: deduplicateCommandGroups(sessionLines),
+		sessionLines: deduplicateCommandGroups(
+			delivered.size === 0 ? sessionLines : sessionLines.filter((line) => !delivered.has(line)),
+		),
 		toolResults,
 		title,
 		customTitle,

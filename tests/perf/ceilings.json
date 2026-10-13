@@ -61,18 +61,18 @@
 		"raisedAt": "2026-10-13"
 	},
 	"bundle.session.gzip": {
-		"ceiling": 536714,
+		"ceiling": 540681,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Port upstream's smart-quote pass (src/lib/smart-quotes.ts) into the markdown pipeline so assistant prose curls its quotes on first paint, as claude.ai/code does; prose renders on session cold load, so it cannot be deferred. Session cold JS rises to 536714 gzip / 1626329 raw from 534643/1620757 measured on the parent commit. Other ceilings and the 1% tolerance are unchanged.",
-		"raisedAt": "2026-10-11"
+		"reason": "Draw upstream's \"Background command completed\" / \"Background task stopped\" row for each task notification the queue never delivered (src/lib/transcript.ts queue replay, src/components/session-chat.tsx undeliveredTaskRows); the rows are built in buildSessionListEntries and paint in the transcript on session cold load, as claude.ai/code does, so they cannot be deferred. Session cold JS rises to 540681 gzip / 1643573 raw from 540249/1642122 measured on the parent commit (only the session._id chunk grows). Other ceilings and the 1% tolerance are unchanged.",
+		"raisedAt": "2026-10-13"
 	},
 	"bundle.session.raw": {
-		"ceiling": 1626329,
+		"ceiling": 1643573,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Port upstream's smart-quote pass (src/lib/smart-quotes.ts) into the markdown pipeline so assistant prose curls its quotes on first paint, as claude.ai/code does; prose renders on session cold load, so it cannot be deferred. Session cold JS rises to 536714 gzip / 1626329 raw from 534643/1620757 measured on the parent commit. Other ceilings and the 1% tolerance are unchanged.",
-		"raisedAt": "2026-10-11"
+		"reason": "Draw upstream's \"Background command completed\" / \"Background task stopped\" row for each task notification the queue never delivered (src/lib/transcript.ts queue replay, src/components/session-chat.tsx undeliveredTaskRows); the rows are built in buildSessionListEntries and paint in the transcript on session cold load, as claude.ai/code does, so they cannot be deferred. Session cold JS rises to 540681 gzip / 1643573 raw from 540249/1642122 measured on the parent commit (only the session._id chunk grows). Other ceilings and the 1% tolerance are unchanged.",
+		"raisedAt": "2026-10-13"
 	},
 	"client.coldHome.default.commitsToRows": {
 		"ceiling": 11,

@@ -1308,6 +1308,32 @@ function TaskEventStatusRow({label, detail, footer}: {label: string; detail: str
 	);
 }
 
+/**
+ * The task-event row each undelivered `<task-notification>` draws, keyed by its
+ * index in `lines`. Upstream draws a completed command and a stopped task; a
+ * task launched in this transcript already settles on its own launch row.
+ */
+function undeliveredTaskRows(lines: readonly SessionLine[]): Map<number, {label: string; detail: string}> {
+	const rows = new Map<number, {label: string; detail: string}>();
+	let launches: Set<string> | null = null;
+	for (const [index, line] of lines.entries()) {
+		if (line.type !== "queued-task-notification") continue;
+		const notification = parseTaskNotification(line.content);
+		if (notification === null) continue;
+		const label =
+			notification.status === "stopped"
+				? "Background task stopped"
+				: notification.status === "completed" && notification.command
+					? "Background command completed"
+					: null;
+		if (label === null) continue;
+		launches ??= transcriptToolUseIds(lines);
+		if (notification.toolUseId !== null && launches.has(notification.toolUseId)) continue;
+		rows.set(index, {label, detail: notification.description});
+	}
+	return rows;
+}
+
 /** A completed background Agent's "<done description> · took Ns" task-event row. */
 function AgentCompletionRow({completion, footer}: {completion: TaskNotification; footer: React.ReactNode}) {
 	return (
@@ -1785,6 +1811,10 @@ function buildSessionListEntries(
 		return false;
 	};
 	const skipSet = buildSkipSet(lines);
+	const undeliveredRows = undeliveredTaskRows(lines);
+	for (const [index, line] of lines.entries()) {
+		if (line.type === "queued-task-notification" && !undeliveredRows.has(index)) skipSet.add(index);
+	}
 	const hoistedCompletions = verbose ? new Map<number, never>() : hoistedAgentCompletions(lines);
 	if (!verbose) {
 		for (const index of settledCompletionIndices(lines)) skipSet.add(index);
@@ -2013,6 +2043,28 @@ function buildSessionListEntries(
 				});
 			}
 			i = j;
+			continue;
+		}
+
+		const undelivered = undeliveredRows.get(i);
+		if (undelivered !== undefined) {
+			prevVisibleType = "assistant";
+			entries.push({
+				key: `line-${line.lineIndex}`,
+				startRecordIndex: line.lineIndex,
+				isPrompt: false,
+				kind: "assistant_tool",
+				assistantSpan: displaySpans?.get(line.lineIndex),
+				opensWithStatus: "marker",
+				element: (
+					<TaskEventStatusRow
+						label={undelivered.label}
+						detail={undelivered.detail}
+						footer={footerFor(line)}
+					/>
+				),
+			});
+			i++;
 			continue;
 		}
 
@@ -2961,6 +3013,9 @@ function renderSessionMessage({
 			return <ArtifactLinkBanner line={line} />;
 		case "artifact-watch":
 			return <ArtifactWatchBanner line={line} />;
+		case "queued-task-notification":
+			// buildSessionListEntries draws the ones upstream shows as task-event rows.
+			return null;
 		case "attachment":
 			return (
 				<AttachmentBanner

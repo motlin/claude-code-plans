@@ -577,6 +577,7 @@ const renderedLineVariants = {
 	"permission-mode": true,
 	"artifact-link": true,
 	"artifact-watch": true,
+	"queued-task-notification": true,
 	attachment: true,
 	system: true,
 	worktree: true,
