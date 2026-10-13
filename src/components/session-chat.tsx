@@ -4374,20 +4374,21 @@ function ToolCallRow({
 					className={
 						isFileParam
 							? "text-body text-primary truncate min-w-0"
-							: `truncate min-w-0 text-body ${paramClass}`
+							: `truncate min-w-0 text-body ${paramHref ? "text-secondary" : paramClass}`
 					}
 				>
 					{paramHref ? (
 						<a
 							href={paramHref}
 							target="_blank"
-							rel="noreferrer"
+							rel="noopener noreferrer"
 							onClick={(e) => {
 								e.stopPropagation();
 							}}
-							className="hover:underline"
+							className="underline decoration-[color-mix(in_srgb,currentColor_65%,transparent)] underline-offset-[3px]"
 						>
-							{displayParam}
+							<bdi>{displayParam}</bdi>
+							<span className="sr-only">(opens in new tab)</span>
 						</a>
 					) : paramIsCode ? (
 						<code className="font-mono">{displayParam}</code>

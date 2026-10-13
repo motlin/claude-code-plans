@@ -1767,8 +1767,47 @@ describe("SessionChat tool rows labelled from the tool result", () => {
 		expect({
 			verb: toolRowLabelSpans(html)[0],
 			link: html.includes('href="https://github.com/o/r/pull/42"'),
-			meta: html.includes(">#42</a>"),
+			meta: html.includes("<bdi>#42</bdi>"),
 		}).toStrictEqual({verb: [SECONDARY, "Created PR"], link: true, meta: true});
+	});
+
+	it("draws a linked PR param in secondary ink, always underlined at 65% alpha, and announces the new tab", () => {
+		const header = renderTranscriptElement(
+			withToolUseResult(
+				{name: "Bash", input: {command: "gh pr create", description: "Open the PR"}},
+				{
+					stdout: "https://github.com/o/r/pull/42",
+					stderr: "",
+					interrupted: false,
+					isImage: false,
+					gitOperation: {
+						pr: {number: 42, url: "https://github.com/o/r/pull/42", action: "created"},
+					},
+				},
+			),
+		).querySelector(".group\\/tool")!;
+		const link = header.querySelector("a")!;
+
+		expect({
+			param: link.parentElement?.className,
+			link: {
+				href: link.getAttribute("href"),
+				target: link.getAttribute("target"),
+				rel: link.getAttribute("rel"),
+				className: link.className,
+				html: link.innerHTML,
+			},
+		}).toStrictEqual({
+			param: "truncate min-w-0 text-body text-secondary",
+			link: {
+				href: "https://github.com/o/r/pull/42",
+				target: "_blank",
+				rel: "noopener noreferrer",
+				className:
+					"underline decoration-[color-mix(in_srgb,currentColor_65%,transparent)] underline-offset-[3px]",
+				html: '<bdi>#42</bdi><span class="sr-only">(opens in new tab)</span>',
+			},
+		});
 	});
 
 	it('labels a Skill row "Ran skill" with the /name in code', () => {
