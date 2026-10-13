@@ -37,6 +37,8 @@ interface MarkdownRenderOptions {
 	codeThemes?: CodeThemePair;
 	/** Curl prose quotes as upstream does for assistant text, leaving code and URLs straight. */
 	smartQuotes?: boolean;
+	/** Underline zoned clock times ("19:24 UTC") with the reader's local time, as upstream's assistant text does. */
+	zonedTimes?: boolean;
 }
 
 /**
@@ -48,12 +50,14 @@ class MarkdownEnv {
 	readonly fileRefs: ReadonlyMap<string, FileRef> | undefined;
 	readonly artifactTitles: ReadonlyMap<string, string> | undefined;
 	readonly smartQuotes: boolean;
+	readonly zonedTimes: boolean;
 
 	constructor(options?: MarkdownRenderOptions) {
 		this.mdLinkBase = options?.mdLinkBase;
 		this.fileRefs = options?.fileRefs;
 		this.artifactTitles = options?.artifactTitles;
 		this.smartQuotes = options?.smartQuotes === true;
+		this.zonedTimes = options?.zonedTimes === true;
 	}
 }
 
@@ -375,6 +379,52 @@ function smartQuotes(state: StateCore): void {
 	}
 }
 
+const ZONED_TIME_TOKEN = "time_with_zone";
+
+/**
+ * The zone tables and parser load only once some prose holds a clock time, so
+ * they stay off the session's cold load; subscribers re-render when they land.
+ */
+let timeWithZone: typeof import("./time-with-zone") | null = null;
+let timeWithZoneLoad: Promise<void> | null = null;
+let zonedTimesLoadVersion = 0;
+const zonedTimesListeners = new Set<() => void>();
+
+/** Cheap test for text that might hold a zoned clock time. */
+const CLOCK_TIME_CANDIDATE = /\d:\d\d/;
+
+async function loadTimeWithZone(): Promise<void> {
+	timeWithZoneLoad ??= import("./time-with-zone").then((module) => {
+		timeWithZone = module;
+		zonedTimesLoadVersion++;
+		for (const listener of zonedTimesListeners) listener();
+	});
+	return timeWithZoneLoad;
+}
+
+/** Subscribe function for useSyncExternalStore: fires once the zoned-time parser loads. */
+export function subscribeZonedTimes(listener: () => void): () => void {
+	zonedTimesListeners.add(listener);
+	return () => {
+		zonedTimesListeners.delete(listener);
+	};
+}
+
+/** Snapshot for useSyncExternalStore that changes only for markdown the parser's arrival can redraw. */
+export function zonedTimesVersion(markdown: string, enabled: boolean): number {
+	return enabled && CLOCK_TIME_CANDIDATE.test(markdown) ? zonedTimesLoadVersion : 0;
+}
+
+/** Split each zoned clock time into its own token, once the parser has loaded and when the render asks for it. */
+function zonedTimes(state: StateCore): void {
+	if (envOf(state.env)?.zonedTimes !== true) return;
+	if (timeWithZone === null) {
+		if (CLOCK_TIME_CANDIDATE.test(state.src)) void loadTimeWithZone();
+		return;
+	}
+	timeWithZone.splitZonedTimes(state, ZONED_TIME_TOKEN);
+}
+
 /** The plugins and renderer overrides every cached instance shares. */
 function applyPlugins(instance: MarkdownIt): void {
 	instance.use(taskLists);
@@ -386,6 +436,12 @@ function applyPlugins(instance: MarkdownIt): void {
 	instance.core.ruler.push(PR_CHIP_TOKEN, pullRequestChips);
 	instance.core.ruler.push("numeric_table_columns", numericTableColumns);
 	instance.core.ruler.push("smart_quotes", smartQuotes);
+	instance.core.ruler.push(ZONED_TIME_TOKEN, zonedTimes);
+	instance.renderer.rules[ZONED_TIME_TOKEN] = (tokens, idx) =>
+		defined(timeWithZone, "zoned time token before its parser loaded").zonedTimeHtml(
+			defined(tokens[idx], "zoned time token index").content,
+			instance.utils.escapeHtml,
+		);
 	instance.renderer.rules[PR_CHIP_TOKEN] = (tokens, idx) =>
 		pullRequestChipHtml(defined(tokens[idx], "PR chip token"), instance.utils.escapeHtml);
 

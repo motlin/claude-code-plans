@@ -363,6 +363,41 @@
 	color: var(--color-t6);
 }
 
+/* Upstream's zoned clock time: the prose ink with a dotted secondary underline,
+   and a tooltip reading "Your local time" over the reader's own clock time. */
+.markdown :global(.time-with-zone) {
+	position: relative;
+	text-decoration-line: underline;
+	text-decoration-style: dotted;
+	text-decoration-thickness: 1px;
+	text-decoration-color: var(--color-secondary);
+	text-underline-offset: 3px;
+}
+
+.markdown :global(.time-with-zone)::after {
+	content: "Your local time\A" attr(data-local-time);
+	position: absolute;
+	bottom: calc(100% + 4px);
+	left: 50%;
+	translate: -50% 0;
+	z-index: 50;
+	padding: 6px 8px;
+	border-radius: 6px;
+	background: var(--tooltip-bg);
+	color: var(--tooltip-fg);
+	font-size: 13px;
+	line-height: 18px;
+	text-align: left;
+	white-space: pre;
+	pointer-events: none;
+	visibility: hidden;
+}
+
+.markdown :global(.time-with-zone):hover::after {
+	visibility: visible;
+	transition-delay: 300ms;
+}
+
 /* Bold prose sits at upstream's 600, not the browser's 700. */
 .markdown strong {
 	font-weight: 600;

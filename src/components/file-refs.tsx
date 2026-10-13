@@ -159,18 +159,20 @@ function LinkedProseMarkdown({
 			onFileRef={open}
 			artifactTitles={artifactTitles}
 			smartQuotes={smartQuotes}
+			zonedTimes={smartQuotes}
 		/>
 	);
 }
 
 /**
  * Assistant prose whose inline-code paths become clickable file refs; with
- * `smartQuotes`, its quotes curl as upstream's assistant text does.
+ * `smartQuotes`, its quotes curl and its zoned clock times underline as
+ * upstream's assistant text does.
  */
 export function ProseMarkdown({markdown, smartQuotes = false}: {markdown: string; smartQuotes?: boolean}) {
 	const open = useOpenFileRef();
 	return open === null ? (
-		<MarkdownArticle markdown={markdown} smartQuotes={smartQuotes} />
+		<MarkdownArticle markdown={markdown} smartQuotes={smartQuotes} zonedTimes={smartQuotes} />
 	) : (
 		<LinkedProseMarkdown markdown={markdown} open={open} smartQuotes={smartQuotes} />
 	);
