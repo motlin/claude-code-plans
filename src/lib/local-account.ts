@@ -4,6 +4,7 @@ import {join} from "node:path";
 import {createServerFn} from "@tanstack/react-start";
 import type {z} from "zod";
 import {ClaudeJsonOauthAccountSchema} from "./schemas";
+import {nonEmpty} from "./non-empty";
 
 type OauthAccount = z.infer<typeof ClaudeJsonOauthAccountSchema>;
 
@@ -63,9 +64,8 @@ async function readOauthAccount(home: string): Promise<OauthAccount> {
 	return parsed.success ? parsed.data : {};
 }
 
-function nonEmpty(value: string | undefined): string | undefined {
-	const trimmed = value?.trim();
-	return trimmed ? trimmed : undefined;
+function nonEmptyTrimmed(value: string | undefined): string | undefined {
+	return nonEmpty(value?.trim());
 }
 
 function plan(account: OauthAccount): {label: string; detail: string} | undefined {
@@ -86,8 +86,8 @@ export async function readLocalAccount({
 	username = osUsername(),
 }: ReadLocalAccountOptions = {}): Promise<LocalAccount> {
 	const account = await readOauthAccount(home);
-	const displayName = nonEmpty(account.displayName);
-	const fullName = nonEmpty(account.fullName);
+	const displayName = nonEmptyTrimmed(account.displayName);
+	const fullName = nonEmptyTrimmed(account.fullName);
 	const name = displayName ?? fullName ?? username;
 	const firstName = displayName ?? fullName?.split(/\s+/)[0] ?? name;
 
@@ -96,7 +96,7 @@ export async function readLocalAccount({
 		firstName,
 		initial: name.charAt(0).toUpperCase(),
 	};
-	const email = nonEmpty(account.emailAddress);
+	const email = nonEmptyTrimmed(account.emailAddress);
 	if (email !== undefined) result.email = email;
 	const planInfo = plan(account);
 	if (planInfo !== undefined) {

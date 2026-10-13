@@ -1,5 +1,6 @@
 import {Bot, CalendarClock, Gauge, KeyRound} from "lucide-react";
 import type {SessionHookContextPayload} from "../lib/hook-events";
+import {nonEmpty} from "../lib/non-empty";
 
 function ContextPill({label, value}: {label: string; value: string}) {
 	return (
@@ -49,7 +50,9 @@ export function SessionHookContext({context}: {context: SessionHookContextPayloa
 								<span className="shrink-0 rounded bg-surface-0 px-1.5 py-0.5 text-[10px]">
 									{task.status}
 								</span>
-								<span className="truncate">{task.description || task.name || task.type}</span>
+								<span className="truncate">
+									{nonEmpty(task.description) ?? nonEmpty(task.name) ?? task.type}
+								</span>
 							</li>
 						))}
 					</ul>

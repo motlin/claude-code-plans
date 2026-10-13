@@ -3,6 +3,7 @@ import {dirname, join, resolve} from "node:path";
 import {homedir} from "node:os";
 import {extractTitle} from "./markdown-utils.server.js";
 import {resolveProjectName} from "./memory.js";
+import {nonEmpty} from "./non-empty";
 
 export interface FileTreeNode {
 	path: string;
@@ -84,8 +85,8 @@ async function readMdFiles(dir: string, type: PluginFile["type"]): Promise<Plugi
 		try {
 			const content = await readFile(join(dir, filename), "utf-8");
 			const {frontmatter} = parseFrontmatter(content);
-			const name = frontmatter["name"] || (await extractTitle(join(dir, filename), filename));
-			const description = frontmatter["description"] || "";
+			const name = nonEmpty(frontmatter["name"]) ?? (await extractTitle(join(dir, filename), filename));
+			const description = frontmatter["description"] ?? "";
 			files.push({filename, name, description, type, frontmatter});
 		} catch {
 			// skip unreadable files
@@ -123,8 +124,8 @@ async function scanSkills(skillsDir: string): Promise<PluginSkill[]> {
 		}
 
 		const {frontmatter} = parseFrontmatter(content);
-		const name = frontmatter["name"] || dirname;
-		const description = frontmatter["description"] || "";
+		const name = nonEmpty(frontmatter["name"]) ?? dirname;
+		const description = frontmatter["description"] ?? "";
 		const skillFile: PluginFile = {
 			filename: "SKILL.md",
 			name,
@@ -205,15 +206,15 @@ export async function listPlugins(claudeDir: string = join(homedir(), ".claude")
 		const commands = await readMdFiles(join(install.installPath, "commands"), "command");
 		const skills = await scanSkills(join(install.installPath, "skills"));
 
-		const version = pluginJson.version || install.version;
+		const version = nonEmpty(pluginJson.version) ?? install.version;
 
 		plugins.push({
 			id,
-			name: pluginJson.name || id.split("@")[0] || id,
+			name: nonEmpty(pluginJson.name) ?? nonEmpty(id.split("@")[0]) ?? id,
 			version,
 			versionKind: getPluginVersionKind(version),
-			description: pluginJson.description || "",
-			author: pluginJson.author?.name || "",
+			description: pluginJson.description ?? "",
+			author: pluginJson.author?.name ?? "",
 			marketplace: extractMarketplace(id),
 			installPath: install.installPath,
 			agents,

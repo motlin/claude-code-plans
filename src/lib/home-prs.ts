@@ -1,5 +1,6 @@
 import type {PrChecks, PrStatus} from "./pr-status";
 import type {PullRequestState} from "./session-state";
+import {nonEmpty} from "./non-empty";
 
 /** Upstream's PR states for the home pill map; review decisions fold into `open`. */
 export type HomePrState = PullRequestState | "approved" | "changesRequested" | "conflicting" | "queued";
@@ -94,7 +95,7 @@ export function selectHomePrs(sources: readonly HomePrSource[]): HomePrRow[] {
 			sessionId,
 			url: pr.url,
 			number: pr.number,
-			title: pr.title?.trim() || sessionTitle.trim() || "Untitled session",
+			title: nonEmpty(pr.title?.trim()) ?? nonEmpty(sessionTitle.trim()) ?? "Untitled session",
 			repo: repoSlug(pr.url),
 			lastActivityAt,
 			pill: prPill(homePrState(pr), pr.checks ?? null),

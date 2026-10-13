@@ -91,7 +91,7 @@ export function ReadRenderer({toolCall}: ToolRendererProps) {
 									className="min-h-[var(--upstream-leading-code)] select-none text-right text-secondary"
 									style={{padding: "0 0.6em 0 1.2em"}}
 								>
-									{line.lineNum || ""}
+									{line.lineNum ?? ""}
 								</div>
 								<div
 									data-content=""

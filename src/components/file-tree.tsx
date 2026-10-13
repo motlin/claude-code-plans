@@ -62,7 +62,7 @@ function FileTreeItem({node, pluginId, depth}: {node: FileTreeNode; pluginId: st
 	}
 
 	const pathParts = node.path.split("/");
-	const type = pathParts[0] || "";
+	const type = pathParts[0] ?? "";
 	const filePath = pathParts.slice(1).join("/");
 	const Icon = getFileIcon(name);
 

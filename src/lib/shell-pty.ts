@@ -22,6 +22,7 @@ import {getSessionDirectory} from "./db/queries";
 import type {TerminalObserverSocket} from "./herdr/terminal-observer";
 import {decodeTerminalText, encodeTerminalText, parseShellClientFrame} from "./herdr/terminal-protocol";
 import {rejectCrossSite} from "./same-origin-guard";
+import {nonEmpty} from "./non-empty";
 
 export interface PtyProcess {
 	readonly pid: number;
@@ -168,7 +169,7 @@ export function createShellRegistry(dependencies: ShellRegistryDependencies): Sh
 			});
 			pty.onExit(({exitCode, signal}) => {
 				remove(ptyKey);
-				send(entry, {type: "exit", exitCode, signal: signal ? signal : null});
+				send(entry, {type: "exit", exitCode, signal: signal !== undefined && signal !== 0 ? signal : null});
 				entry.socket?.close(1000, "shell exited");
 				entry.socket = null;
 			});
@@ -352,7 +353,7 @@ export function getShellRegistry(): ShellRegistry {
 	const holder = globalThis as typeof globalThis & {[REGISTRY_KEY]?: ShellRegistry};
 	holder[REGISTRY_KEY] ??= createShellRegistry({
 		resolveCwd: (sessionId) => getSessionDirectory(getDb().index, sessionId),
-		shell: () => process.env["SHELL"] || "/bin/zsh",
+		shell: () => nonEmpty(process.env["SHELL"]) ?? "/bin/zsh",
 		environment: () => process.env,
 		spawn: spawnNodePty,
 		idleTimeoutMs: SHELL_IDLE_TIMEOUT_MS,

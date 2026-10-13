@@ -5,6 +5,7 @@ import {describe, expect, it} from "vite-plus/test";
 import {findLargeTierDrift, findUnjustifiedRaises, LARGE_TIER_OFFSETS} from "./ceiling-policy";
 import {loadCeilings, type Ceilings} from "./ratchet";
 import {runGit} from "../git-fixture";
+import {nonEmpty} from "../../src/lib/non-empty";
 
 const previous: Ceilings = {
 	"a.bytes": {ceiling: 1000, unit: "bytes", tolerance: 0},
@@ -100,7 +101,7 @@ function git(...args: string[]): string | undefined {
 	}
 }
 
-const baseRef = git("merge-base", "HEAD", "@{upstream}")?.trim() || "HEAD~1";
+const baseRef = nonEmpty(git("merge-base", "HEAD", "@{upstream}")?.trim()) ?? "HEAD~1";
 const baseCeilingsJson = git("show", `${baseRef}:tests/perf/ceilings.json`);
 
 describe("tests/perf/ceilings.json", () => {

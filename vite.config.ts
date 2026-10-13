@@ -429,7 +429,6 @@ export default defineConfig({
 					"@typescript-eslint/no-non-null-assertion": "off", // 297
 					"@typescript-eslint/no-unnecessary-condition": "off", // 324
 					"@typescript-eslint/no-unsafe-type-assertion": "off", // 382
-					"@typescript-eslint/prefer-nullish-coalescing": "off", // 46
 					"@typescript-eslint/require-await": "off", // 387
 					"@typescript-eslint/strict-boolean-expressions": "off", // 647
 					"no-negated-condition": "off", // 71

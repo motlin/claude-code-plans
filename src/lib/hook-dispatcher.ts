@@ -43,6 +43,7 @@ import {stateForEvent, type ActivityState} from "./session-state";
 import {isSessionVisible as isSessionVisibleInBrowser} from "./session-visibility";
 import {getCurrentSessionMessageIndex, markSessionCompletionUnreviewed} from "./db/viewed-state";
 import {expirePendingApprovalForSession, resumePendingApprovalsForSession} from "./db/pending-approvals-cache";
+import {nonEmpty} from "./non-empty";
 
 /**
  * TTL covering the gap between the hook fast-path broadcast and the chokidar
@@ -150,7 +151,7 @@ function projectIdFromTranscriptPath(transcriptPath: string, projectsDir: string
 	if (!isUnder(transcriptPath, projectsDir)) return undefined;
 	const relative = transcriptPath.slice(projectsDir.length + 1);
 	const parts = relative.split("/");
-	return parts[0] || undefined;
+	return nonEmpty(parts[0]);
 }
 
 /** Session id derived from a JSONL transcript filename. */

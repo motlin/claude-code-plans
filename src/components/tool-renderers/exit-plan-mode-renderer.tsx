@@ -5,6 +5,7 @@ import {KeyValueCard} from "./shared";
 import {MarkdownArticle} from "../markdown-article";
 import {toMdSlug} from "../../lib/md-slug";
 import {describeExitPlanModeResult, parseAllowedPrompts, type ExitPlanModeStatusTone} from "../../lib/exit-plan-mode";
+import {nonEmpty} from "../../lib/non-empty";
 
 const PLAN_FILE_RE = /\.claude\/plans\/([^/\s]+\.md)/;
 
@@ -24,7 +25,7 @@ export function ExitPlanModeRenderer({toolCall}: ToolRendererProps) {
 	const status = describeExitPlanModeResult(result, toolCall.isError);
 
 	return (
-		<KeyValueCard isError={toolCall.isError} params={[]} copyText={plan || result || ""}>
+		<KeyValueCard isError={toolCall.isError} params={[]} copyText={nonEmpty(plan) ?? result ?? ""}>
 			{planMatch && (
 				<Link
 					to="/plan/$filename"

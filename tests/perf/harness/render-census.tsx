@@ -1,4 +1,5 @@
 import {type ComponentType, Profiler, type ReactNode} from "react";
+import {nonEmpty} from "../../../src/lib/non-empty";
 
 /**
  * Render census (measurement plan §2.4 L11): which components rendered in each step of an interaction, and how many
@@ -39,7 +40,7 @@ function componentName(fiber: Fiber): string {
 		displayName?: string;
 		name?: string;
 	};
-	return type.displayName ?? (type.name || "Anonymous");
+	return type.displayName ?? nonEmpty(type.name) ?? "Anonymous";
 }
 
 function* children(fiber: Fiber): Generator<Fiber> {

@@ -43,7 +43,8 @@ export function SessionRouteIdentity({
 	const initialRouteId = visit.entryKey === entryKey ? visit.routeId : routeId;
 	if (visit.entryKey !== entryKey || visit.sessionId !== owner)
 		setVisit({entryKey, sessionId: owner, routeId: initialRouteId});
-	const lostOwner = alias && owner !== null && (identity?.isError || (freshOwner !== null && freshOwner !== owner));
+	const lostOwner =
+		alias && owner !== null && (identity?.isError === true || (freshOwner !== null && freshOwner !== owner));
 	const failure = sessionIdentityFailure(identity?.error);
 	const unresolvedError = identity?.isError && owner === null;
 

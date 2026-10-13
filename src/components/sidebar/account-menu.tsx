@@ -28,6 +28,7 @@ import {
 	MenuSubTrigger,
 	MenuTrigger,
 } from "../ui/menu";
+import {nonEmpty} from "../../lib/non-empty";
 
 /** Upstream's Learn more links; a separator sits between these two groups. */
 const UPSTREAM_PRODUCT_LINKS = [
@@ -69,8 +70,8 @@ export function AccountMenu() {
 	const settingsTab = pathname === "/" || pathname.startsWith("/session/") ? "claude-code" : "general";
 	const settingsKeys = useShortcutKeys("settings").keys;
 	const shortcutsKeys = useShortcutKeys("shortcuts_modal").keys;
-	const name = data?.name || "Local";
-	const initial = data?.initial || name.charAt(0).toUpperCase();
+	const name = nonEmpty(data?.name) ?? "Local";
+	const initial = nonEmpty(data?.initial) ?? name.charAt(0).toUpperCase();
 
 	return (
 		<Menu>

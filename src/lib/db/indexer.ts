@@ -38,6 +38,7 @@ import {
 	replaceSessionBridgeAliases,
 	sessionBridgeMetadataKey,
 } from "./bridge-session-index";
+import {nonEmpty} from "../non-empty";
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
 
@@ -553,7 +554,7 @@ class SubagentLinkCollector {
 				if (match?.[1]) {
 					this.links.push({
 						agentId: `agent-${match[1]}`,
-						description: this.toolCallDescriptions.get(block.tool_use_id) || null,
+						description: nonEmpty(this.toolCallDescriptions.get(block.tool_use_id)) ?? null,
 					});
 				}
 			}
@@ -1082,7 +1083,7 @@ export async function indexSubagentFile(
 					resolvedModel = recordModel;
 				}
 				if (obj.timestamp) {
-					if (!startedAt) startedAt = obj.timestamp;
+					startedAt ??= obj.timestamp;
 					finishedAt = obj.timestamp;
 				}
 				artifactEvents.add(obj);

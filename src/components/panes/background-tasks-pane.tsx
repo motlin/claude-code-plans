@@ -7,6 +7,7 @@ import {HighlightedCommand} from "../tool-renderers/bash-renderer";
 import {AnsiText} from "../tool-renderers/shared";
 import {Tooltip} from "../ui/tooltip";
 import {registerPane} from "./pane-registry";
+import {nonEmpty} from "../../lib/non-empty";
 
 const EMPTY_COPY = "No background tasks in this session.";
 
@@ -17,7 +18,7 @@ const ICON_BUTTON =
 const REGION_CAP = "max-h-[200px] overflow-auto";
 
 function taskTitle(task: BackgroundTask): string {
-	return task.description || task.command || task.id;
+	return nonEmpty(task.description) ?? nonEmpty(task.command) ?? task.id;
 }
 
 /**

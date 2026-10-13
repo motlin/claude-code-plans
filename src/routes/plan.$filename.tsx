@@ -7,6 +7,7 @@ import {stripLeadingTitleHeading} from "../lib/markdown-utils";
 import {ArrowLeft, Pencil, FolderOpen, MessageSquare, Clock} from "lucide-react";
 import {DetailTopBar, pillStyles} from "../components/detail-top-bar";
 import {DebugLink} from "../components/debug-link";
+import {nonEmpty} from "../lib/non-empty";
 
 function formatDate(iso: string): string {
 	return new Date(iso).toLocaleDateString("en-US", {
@@ -116,7 +117,9 @@ function PlanPage() {
 											className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs text-secondary no-underline transition-colors hover:bg-surface-0/50 hover:text-primary"
 										>
 											<MessageSquare className="h-3 w-3 shrink-0 text-t6" />
-											<span className="truncate">{link.sessionTitle || "Untitled session"}</span>
+											<span className="truncate">
+												{nonEmpty(link.sessionTitle) ?? "Untitled session"}
+											</span>
 										</Link>
 									))}
 								</div>

@@ -2,6 +2,7 @@ import {createFileRoute} from "@tanstack/react-router";
 import {withMethodNotAllowed} from "../../lib/api/method-not-allowed";
 import {PluginFileResponse} from "../../lib/api/plugins";
 import {fromPluginFileSlug} from "../../lib/md-slug";
+import {nonEmpty} from "../../lib/non-empty";
 
 export const Route = createFileRoute("/api/plugins/$id/files/$")({
 	server: {
@@ -30,7 +31,7 @@ export const Route = createFileRoute("/api/plugins/$id/files/$")({
 
 				const {frontmatter, body} = parseFrontmatter(content);
 				const lastSegment = pathSegments[pathSegments.length - 1] ?? "";
-				const title = frontmatter["name"] || extractTitleFromContent(body, lastSegment);
+				const title = nonEmpty(frontmatter["name"]) ?? extractTitleFromContent(body, lastSegment);
 
 				return Response.json(
 					PluginFileResponse.parse({

@@ -318,11 +318,9 @@ export function useSidebarDrag(options: UseSidebarDragOptions): UseSidebarDrag {
 			state.pointerX = event.clientX;
 			state.pointerY = event.clientY;
 			update(state);
-			if (state.frame === null) {
-				state.frame = requestAnimationFrame(() => {
-					autoScroll(state);
-				});
-			}
+			state.frame ??= requestAnimationFrame(() => {
+				autoScroll(state);
+			});
 		};
 		const onUp = (event: PointerEvent) => {
 			const owner = active.current ?? pending.current;

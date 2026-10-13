@@ -1,6 +1,7 @@
+import {nonEmpty} from "./non-empty";
 function firstHeaderValue(value: string | null): string | null {
 	const first = value?.split(",", 1)[0]?.trim();
-	return first ? first : null;
+	return nonEmpty(first) ?? null;
 }
 
 function originMatchesRequest(request: Request, origin: string): boolean {

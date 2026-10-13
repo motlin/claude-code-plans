@@ -104,9 +104,9 @@ const store = hmrPersist("activeSessionStore", () => new Map<string, ActiveSessi
 
 function normalizeEntryState(entry: ActiveSessionEntry): ActiveSessionEntry {
 	// HMR may retain entries created before these fields existed.
-	if (entry.state === undefined) entry.state = "unknown";
-	if (entry.lastSubagentActivityAt === undefined) entry.lastSubagentActivityAt = null;
-	if (entry.backgroundTasks === undefined) entry.backgroundTasks = [];
+	entry.state ??= "unknown";
+	entry.lastSubagentActivityAt ??= null;
+	entry.backgroundTasks ??= [];
 	return entry;
 }
 

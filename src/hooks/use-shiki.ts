@@ -177,9 +177,7 @@ async function initHighlighter(): Promise<HighlighterCore> {
  */
 // oxlint-disable-next-line typescript/promise-function-async -- returns the one shared highlighter promise
 function getHighlighterInstance(): Promise<HighlighterCore> {
-	if (!highlighterPromise) {
-		highlighterPromise = initHighlighter();
-	}
+	highlighterPromise ??= initHighlighter();
 	return highlighterPromise;
 }
 

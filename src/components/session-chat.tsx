@@ -4246,13 +4246,12 @@ function ToolCallRow({
 	// written ("Rebase and push X"); upstream past-tenses it only on success.
 	const failedDescription = status !== null ? getToolDescription(call.name, call.input) : null;
 	const phrase =
-		failedDescription !== null
-			? failedDescription
-			: isAgent && (nested || !pending)
-				? null
-				: running !== null
-					? (running.label ?? null)
-					: (toolRowLabel.doneLabel ?? null);
+		failedDescription ??
+		(isAgent && (nested || !pending)
+			? null
+			: running !== null
+				? (running.label ?? null)
+				: (toolRowLabel.doneLabel ?? null));
 	const label = phrase ?? running?.verb ?? toolRowLabel.verb;
 	// A label that is a whole phrase owns the row and truncates; a bare verb
 	// keeps its width so the param beside it truncates instead.

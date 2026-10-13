@@ -654,9 +654,7 @@ export async function listSessions(projectsDir: string): Promise<SessionProjectG
 		}
 
 		let sessions = await listSessionsForProject(projectsDir, project);
-		if (!sessions) {
-			sessions = await listSessionsFromJsonl(projectsDir, project);
-		}
+		sessions ??= await listSessionsFromJsonl(projectsDir, project);
 
 		if (sessions.length === 0) continue;
 		sessions.sort((a, b) => b.mtime.getTime() - a.mtime.getTime());

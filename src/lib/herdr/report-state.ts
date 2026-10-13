@@ -5,6 +5,7 @@ import {herdrRequest} from "./client";
 import {herdrWritesEnabled, resolveHerdrPromptTarget} from "./prompt";
 import type {HerdrRequester} from "./panes";
 import {HerdrPaneInfoResultSchema} from "./schema";
+import {nonEmpty} from "../non-empty";
 
 export type HerdrReportedState = "idle" | "working" | "blocked" | "unknown";
 
@@ -323,7 +324,7 @@ export function reportHookStateToHerdr(
 		dependencies.observe({
 			outcome: "request-error",
 			method: event.hook_event_name === "SessionEnd" ? "pane.clear_agent_authority" : "pane.report_agent",
-			paneId: entry?.herdrPane || null,
+			paneId: nonEmpty(entry?.herdrPane) ?? null,
 			message: error instanceof Error ? error.message : String(error),
 		});
 	});

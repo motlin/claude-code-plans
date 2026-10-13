@@ -6,6 +6,7 @@ import {join, resolve} from "node:path";
 import {homedir} from "node:os";
 import * as schema from "./schema";
 import {instrumentDatabase} from "../perf/server-scope";
+import {nonEmpty} from "../non-empty";
 
 type SchemaDb = BetterSQLite3Database<typeof schema> & {$client: Database.Database};
 
@@ -491,7 +492,7 @@ function openSqlite(filename: string): Database.Database {
 
 export function getCacheDir(): string {
 	const xdg = process.env["XDG_CACHE_HOME"];
-	const base = xdg || join(homedir(), ".cache");
+	const base = nonEmpty(xdg) ?? join(homedir(), ".cache");
 	return join(base, "claude-code-plans");
 }
 

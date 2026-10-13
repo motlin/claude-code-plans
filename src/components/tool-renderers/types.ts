@@ -8,6 +8,7 @@ import type {Subagent} from "../../lib/subagents";
 import {getAgentTypeOrNull, getTaskCreateDisplaySubject} from "../../lib/tool-utils";
 import {buildSubagentTree} from "../../lib/subagent-tree";
 import type {ParallelSubagentGroup, SubagentTreeEntry, SubagentTreeNode} from "../../lib/subagent-tree";
+import {nonEmpty} from "../../lib/non-empty";
 
 type ToolInput = Record<string, unknown>;
 
@@ -253,7 +254,7 @@ export function buildClientToolCall(
 	const liveFailure = liveFailures?.get(id);
 	if (liveFailure && !call.isError) {
 		call.isError = true;
-		if (!call.result) call.result = liveFailure.error;
+		call.result = nonEmpty(call.result) ?? liveFailure.error;
 	}
 
 	// Resolve inline subagent info client-side from the session's subagent list.

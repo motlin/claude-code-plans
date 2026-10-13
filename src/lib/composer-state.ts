@@ -4,6 +4,7 @@ import {isBypassPermissionsAllowed, resolveLaunchModel} from "./launch-options";
 import {formatModelName, SYNTHETIC_MODEL} from "./model-name";
 import {ClaudeSettingsSchema} from "./schemas";
 import {formatWeeklyReset} from "./usage";
+import {nonEmpty} from "./non-empty";
 
 /**
  * The composer chin's readouts (mode · model · effort · usage ring), resolved
@@ -90,10 +91,6 @@ export interface ComposerState {
 	usage: ComposerUsage | null;
 }
 
-function nonEmpty(value: string | null | undefined): string | null {
-	return value ? value : null;
-}
-
 function toWindow(window: {used_percentage: number; resets_at: number} | undefined): RateLimitWindow | null {
 	return window ? {usedPercentage: window.used_percentage, resetsAt: window.resets_at} : null;
 }
@@ -157,7 +154,8 @@ export function resolveComposerState(sources: ComposerStateSources): ComposerSta
 	const modeId =
 		nonEmpty(sources.hookPermissionMode) ??
 		nonEmpty(sources.jsonlPermissionMode) ??
-		nonEmpty(sources.settingsDefaultMode);
+		nonEmpty(sources.settingsDefaultMode) ??
+		null;
 	const effortId = nonEmpty(sources.lastAssistantEffort) ?? nonEmpty(sources.settingsEffortLevel) ?? DEFAULT_EFFORT;
 	const modelId =
 		nonEmpty(sources.statuslineModelId) ??

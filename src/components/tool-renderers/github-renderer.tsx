@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import type {ToolRendererProps} from "./types";
 import {CollapsibleSection, CopyableBody, ErrorBorder} from "./shared";
+import {nonEmpty} from "../../lib/non-empty";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -473,7 +474,7 @@ function SuccessActionRenderer({data, action}: {data: unknown; action: string}) 
 				<CheckCircle className="h-4 w-4 text-green-500" />
 				<span className="text-body text-primary">{action}</span>
 			</div>
-			{(title || number) && (
+			{(nonEmpty(title) !== undefined || number !== undefined) && (
 				<div className="flex items-center gap-2 mt-1 text-body">
 					{number !== undefined && <span className="text-secondary">#{number}</span>}
 					{htmlUrl ? (

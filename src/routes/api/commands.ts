@@ -1,12 +1,13 @@
 import {createFileRoute} from "@tanstack/react-router";
 import {SlashCommandListResponse} from "../../lib/api/commands";
 import {withMethodNotAllowed} from "../../lib/api/method-not-allowed";
+import {nonEmpty} from "../../lib/non-empty";
 
 export const Route = createFileRoute("/api/commands")({
 	server: {
 		handlers: withMethodNotAllowed({
 			GET: async ({request}: {request: Request}) => {
-				const cwd = new URL(request.url).searchParams.get("cwd")?.trim() || undefined;
+				const cwd = nonEmpty(new URL(request.url).searchParams.get("cwd")?.trim());
 				if (cwd !== undefined && !cwd.startsWith("/")) {
 					return Response.json({error: "cwd must be an absolute path"}, {status: 400});
 				}

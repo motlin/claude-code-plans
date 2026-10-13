@@ -135,7 +135,7 @@ export function parseAnsiCodes(text: string): StyledPart[] {
 					const colorIdx = codes[i + 2];
 					if (colorIdx !== undefined) {
 						if (colorIdx >= 0 && colorIdx <= 15) {
-							currentFg = BASIC_COLORS[30 + (colorIdx % 8)] || "#ffffff";
+							currentFg = BASIC_COLORS[30 + (colorIdx % 8)] ?? "#ffffff";
 						} else if (colorIdx >= 16 && colorIdx <= 231) {
 							// Standard 216-color cube
 							const idx = colorIdx - 16;
@@ -166,7 +166,7 @@ export function parseAnsiCodes(text: string): StyledPart[] {
 					const colorIdx = codes[i + 2];
 					if (colorIdx !== undefined) {
 						if (colorIdx >= 0 && colorIdx <= 15) {
-							currentBg = BG_COLORS[40 + (colorIdx % 8)] || "#000000";
+							currentBg = BG_COLORS[40 + (colorIdx % 8)] ?? "#000000";
 						} else if (colorIdx >= 16 && colorIdx <= 231) {
 							const idx = colorIdx - 16;
 							const r = Math.floor(idx / 36) * 51;

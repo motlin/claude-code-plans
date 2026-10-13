@@ -8,6 +8,7 @@ import {listFileSearchProjectPathsFromDb} from "./db/queries";
 import type * as schema from "./db/schema";
 import {isGitRepository} from "./git-tracked";
 import {migrateLegacyNavFlags, renameLegacyNavSections, VisibleNavSectionsSchema} from "./nav-sections";
+import {nonEmpty} from "./non-empty";
 
 /**
  * Directory holding this application's own configuration. Follows the XDG
@@ -18,7 +19,7 @@ import {migrateLegacyNavFlags, renameLegacyNavSections, VisibleNavSectionsSchema
  */
 function getConfigDir(): string {
 	const xdg = process.env["XDG_CONFIG_HOME"];
-	const base = xdg || join(homedir(), ".config");
+	const base = nonEmpty(xdg) ?? join(homedir(), ".config");
 	return join(base, "claude-code-plans");
 }
 

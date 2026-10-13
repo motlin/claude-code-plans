@@ -1,4 +1,5 @@
 import {execFile} from "node:child_process";
+import {nonEmpty} from "./non-empty";
 
 const MAX_GIT_OUTPUT_BYTES = 100 * 1024 * 1024;
 const COMMIT_LIST_CAP = 50;
@@ -172,7 +173,7 @@ export async function listScopes(cwd: string, runGit: RunGit = execRunGit): Prom
 		base: resolved.base,
 		baseRef: resolved.baseRef,
 		mergeBase: resolved.mergeBase,
-		head: head || null,
+		head: nonEmpty(head) ?? null,
 		uncommittedAvailable: status.trim() !== "",
 		commits,
 		totalCommits,
