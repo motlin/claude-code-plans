@@ -349,12 +349,12 @@ function applyPlugins(instance: MarkdownIt): void {
 	instance.inline.ruler.before("link", "wikilink", wikiLink);
 	instance.core.ruler.push(ARTIFACT_LINK_TOKEN, artifactLinks);
 	instance.renderer.rules[ARTIFACT_LINK_TOKEN] = (tokens, idx, _options, env) =>
-		artifactLinkHtml(tokens[idx]!, (env ?? {}) as MarkdownEnv, instance.utils.escapeHtml);
+		artifactLinkHtml(tokens[idx], (env ?? {}) as MarkdownEnv, instance.utils.escapeHtml);
 	instance.core.ruler.push(PR_CHIP_TOKEN, pullRequestChips);
 	instance.core.ruler.push("numeric_table_columns", numericTableColumns);
 	instance.core.ruler.push("smart_quotes", smartQuotes);
 	instance.renderer.rules[PR_CHIP_TOKEN] = (tokens, idx) =>
-		pullRequestChipHtml(tokens[idx]!, instance.utils.escapeHtml);
+		pullRequestChipHtml(tokens[idx], instance.utils.escapeHtml);
 
 	// Links written inside a memory file keep their `.md` extension, but the
 	// route that serves them is keyed by the extension-less slug, so an
