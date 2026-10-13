@@ -1,4 +1,5 @@
 import type {HookBackgroundTaskPayload} from "./hook-events";
+import {asRecord} from "./narrow";
 import {isRunningBackgroundTask} from "./session-state";
 import type {ActiveSubagent} from "./subagents";
 
@@ -75,12 +76,6 @@ export function backgroundTasksFacts(
 	};
 }
 
-function asObject(value: unknown): Readonly<Record<string, unknown>> | null {
-	return typeof value === "object" && value !== null && !Array.isArray(value)
-		? (value as Record<string, unknown>)
-		: null;
-}
-
 function asString(value: unknown): string | null {
 	return typeof value === "string" ? value : null;
 }
@@ -89,7 +84,7 @@ function textOf(content: unknown): string {
 	if (typeof content === "string") return content;
 	if (!Array.isArray(content)) return "";
 	return content
-		.map((block) => asString(asObject(block)?.["text"]) ?? "")
+		.map((block) => asString(asRecord(block)?.["text"]) ?? "")
 		.filter((text) => text !== "")
 		.join("\n");
 }
@@ -185,7 +180,7 @@ const LAUNCH_ID_PATTERNS = [
 	/agentId:\s*(\S+)/,
 ];
 
-function launchedTaskId(result: Readonly<Record<string, unknown>> | null, text: string): string | null {
+function launchedTaskId(result: Readonly<Record<string, unknown>> | undefined, text: string): string | null {
 	for (const key of ["backgroundTaskId", "taskId", "agentId"]) {
 		const id = asString(result?.[key]);
 		if (id !== null) return id;
@@ -241,7 +236,7 @@ export function extractBackgroundTasks(
 	};
 
 	for (const record of records) {
-		const message = asObject(record["message"]);
+		const message = asRecord(record["message"]);
 		const content = message?.["content"];
 
 		if (record["type"] === "user" && typeof content === "string") {
@@ -266,13 +261,13 @@ export function extractBackgroundTasks(
 
 		if (!Array.isArray(content)) continue;
 		for (const raw of content) {
-			const block = asObject(raw);
-			if (block === null) continue;
+			const block = asRecord(raw);
+			if (block === undefined) continue;
 
 			if (block["type"] === "tool_use") {
 				const id = asString(block["id"]);
 				const name = asString(block["name"]);
-				const input = asObject(block["input"]) ?? {};
+				const input = asRecord(block["input"]) ?? {};
 				if (id === null) continue;
 				const background = input["run_in_background"] === true;
 				const description = asString(input["description"]);
@@ -315,7 +310,7 @@ export function extractBackgroundTasks(
 			const toolUseId = asString(block["tool_use_id"]);
 			if (toolUseId === null) continue;
 			const text = textOf(block["content"]);
-			const result = asObject(record["toolUseResult"]);
+			const result = asRecord(record["toolUseResult"]);
 			const isError = block["is_error"] === true;
 
 			const agent = pendingAgents.get(toolUseId);

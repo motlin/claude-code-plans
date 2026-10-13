@@ -20,6 +20,7 @@ function persistentStore(): Record<string, unknown> {
 }
 
 export function hmrPersist<T>(key: string, init: () => T): T {
+	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the store is untyped; each key is only ever written by its own hmrPersist<T> call site
 	return (persistentStore()[key] ??= init()) as T;
 }
 

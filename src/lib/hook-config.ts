@@ -11,6 +11,7 @@
 
 import {KNOWN_HOOK_EVENTS} from "./hook-events";
 import type {HookEventName} from "./hook-events";
+import {asRecord} from "./narrow";
 
 export const DEFAULT_HOOK_PORT = 7526;
 
@@ -109,10 +110,6 @@ export function generateHooksConfig(options?: GenerateOptions): HooksConfig {
 }
 
 /** A hook matcher as it appears in an already-written settings.json. */
-interface InstalledHookMatcher {
-	hooks?: Array<{command?: string}>;
-}
-
 /**
  * Which hook events are absent from an existing settings.json `hooks` block —
  * an event counts as installed only when one of its matchers carries the exact
@@ -133,9 +130,12 @@ export function missingHookEvents(
 		const entries = installed?.[eventName];
 		if (!Array.isArray(entries)) return true;
 		const desiredCommand = desired.hooks[eventName]?.[0]?.hooks[0]?.command;
-		return !entries.some((entry) =>
-			(entry as InstalledHookMatcher).hooks?.some((hook) => hook.command === desiredCommand),
-		);
+		return !entries.some((entry: unknown) => {
+			const hooks = asRecord(entry)?.["hooks"];
+			return (
+				Array.isArray(hooks) && hooks.some((hook: unknown) => asRecord(hook)?.["command"] === desiredCommand)
+			);
+		});
 	});
 }
 

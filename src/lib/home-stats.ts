@@ -1,5 +1,6 @@
 import {isCountableMessageRecord} from "./message-count";
 import {SYNTHETIC_MODEL} from "./model-name";
+import {asRecord} from "./narrow";
 
 /**
  * The home empty state's usage stats card: the local counterpart of the CLI
@@ -224,12 +225,6 @@ export interface UsageDailyRow {
 	outputTokens: number;
 	cacheReadTokens: number;
 	cacheCreationTokens: number;
-}
-
-function asRecord(value: unknown): Record<string, unknown> | undefined {
-	return typeof value === "object" && value !== null && !Array.isArray(value)
-		? (value as Record<string, unknown>)
-		: undefined;
 }
 
 function tokenCount(usage: Record<string, unknown>, key: string): number {

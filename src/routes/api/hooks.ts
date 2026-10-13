@@ -3,6 +3,7 @@ import {withMethodNotAllowed} from "../../lib/api/method-not-allowed";
 import {z} from "zod";
 import {HookMutationResponse} from "../../lib/api/hooks";
 import {rejectCrossSite} from "../../lib/same-origin-guard";
+import {asRecord, isRecord} from "../../lib/narrow";
 import {PersistedCapabilitiesSchema, capabilityIsEnabled} from "../../lib/capabilities";
 
 const HooksMutationBody = z
@@ -19,13 +20,12 @@ async function claudeHomeJoin() {
 }
 
 function containsManagedHook(entry: unknown): boolean {
-	const hooks = (entry as {hooks?: Array<{command?: string}>}).hooks;
-	return (
-		hooks?.some(
-			(hook) =>
-				hook.command?.includes("/api/hook") === true || hook.command?.includes("/api/context-brief") === true,
-		) === true
-	);
+	const hooks = isRecord(entry) ? entry["hooks"] : undefined;
+	if (!Array.isArray(hooks)) return false;
+	return hooks.some((hook: unknown) => {
+		const command = isRecord(hook) ? hook["command"] : undefined;
+		return typeof command === "string" && (command.includes("/api/hook") || command.includes("/api/context-brief"));
+	});
 }
 
 export const Route = createFileRoute("/api/hooks")({
@@ -52,14 +52,15 @@ export const Route = createFileRoute("/api/hooks")({
 				let existing: Record<string, unknown> = {};
 				try {
 					const raw = await readFile(settingsPath, "utf-8");
-					existing = JSON.parse(raw) as Record<string, unknown>;
+					existing = asRecord(JSON.parse(raw)) ?? {};
 				} catch {
 					// File doesn't exist or is invalid — start fresh
 				}
 
-				const existingHooks = (existing["hooks"] ?? {}) as Record<string, unknown[]>;
+				const existingHooks = asRecord(existing["hooks"]) ?? {};
 				for (const [eventName, matchers] of Object.entries(config.hooks)) {
-					const eventEntries = Array.isArray(existingHooks[eventName]) ? [...existingHooks[eventName]] : [];
+					const current = existingHooks[eventName];
+					const eventEntries = Array.isArray(current) ? Array.from<unknown>(current) : [];
 
 					const filtered = eventEntries.filter((entry) => !containsManagedHook(entry));
 
@@ -93,11 +94,14 @@ export const Route = createFileRoute("/api/hooks")({
 					includeContextBrief: true,
 				});
 
-				let existing: Record<string, unknown>;
+				let existing: Record<string, unknown> | undefined;
 				try {
 					const raw = await readFile(settingsPath, "utf-8");
-					existing = JSON.parse(raw) as Record<string, unknown>;
+					existing = asRecord(JSON.parse(raw));
 				} catch {
+					existing = undefined;
+				}
+				if (existing === undefined) {
 					return Response.json(HookMutationResponse.parse({ok: true, settingsPath}), {
 						headers: {
 							"Cache-Control": "private, max-age=0, must-revalidate",
@@ -106,9 +110,9 @@ export const Route = createFileRoute("/api/hooks")({
 				}
 
 				const managedEvents = new Set(Object.keys(config.hooks));
-				const existingHooks = (existing["hooks"] ?? {}) as Record<string, unknown[]>;
+				const existingHooks = asRecord(existing["hooks"]) ?? {};
 				const remainingHooks = Object.fromEntries(
-					Object.entries(existingHooks).flatMap(([eventName, eventEntries]): Array<[string, unknown[]]> => {
+					Object.entries(existingHooks).flatMap(([eventName, eventEntries]): Array<[string, unknown]> => {
 						if (!managedEvents.has(eventName) || !Array.isArray(eventEntries))
 							return [[eventName, eventEntries]];
 						const kept = eventEntries.filter((entry) => !containsManagedHook(entry));

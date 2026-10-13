@@ -1,5 +1,6 @@
 import {z} from "zod";
 import {formatCount} from "./pluralize";
+import {asRecord} from "./narrow";
 import {toolInputSchemas} from "./tool-input-schemas";
 
 /** Where a routine runs: a session cron, a session wakeup, or a cloud (CCR) trigger. */
@@ -68,12 +69,6 @@ interface PendingCall {
 	input: unknown;
 	recordUuid: string | null;
 	timestamp: number | undefined;
-}
-
-function asRecord(value: unknown): Record<string, unknown> | undefined {
-	return typeof value === "object" && value !== null && !Array.isArray(value)
-		? (value as Record<string, unknown>)
-		: undefined;
 }
 
 function parseTimestamp(value: unknown): number | undefined {

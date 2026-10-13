@@ -1,6 +1,7 @@
 import {eq, inArray} from "drizzle-orm";
 import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
 import {normalizeArtifactUrl, parseArtifactOutput} from "../artifact-output";
+import {asRecord} from "../narrow";
 import * as schema from "./schema";
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
@@ -16,12 +17,6 @@ interface PendingCall {
 	action: string;
 	input: Record<string, unknown>;
 	timestamp: string | undefined;
-}
-
-function asRecord(value: unknown): Record<string, unknown> | undefined {
-	return typeof value === "object" && value !== null && !Array.isArray(value)
-		? (value as Record<string, unknown>)
-		: undefined;
 }
 
 function nonEmptyString(value: unknown): string | null {

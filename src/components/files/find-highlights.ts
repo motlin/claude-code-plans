@@ -19,8 +19,8 @@ export function collectFindBlocks(root: Element, query: string): FindBlock[] {
 			node.parentElement?.closest("[data-find-ignore]") ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT,
 	});
 	const groups: {block: Element; nodes: [Text, ...Text[]]}[] = [];
-	for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
-		const text = node as Text;
+	for (let text = walker.nextNode(); text !== null; text = walker.nextNode()) {
+		if (!(text instanceof Text)) continue;
 		const block = text.parentElement?.closest(FIND_BLOCK_SELECTOR) ?? root;
 		const last = groups.at(-1);
 		if (last?.block === block) last.nodes.push(text);

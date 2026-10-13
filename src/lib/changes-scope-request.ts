@@ -3,7 +3,7 @@ import {saveChangesScope} from "./pane-layout";
 /** Window event an already-open Changes pane listens for to switch scope. */
 export const CHANGES_SCOPE_REQUEST_EVENT = "ccp:changes-scope-request";
 
-export interface ChangesScopeRequest {
+interface ChangesScopeRequest {
 	sessionId: string;
 	/** A formatted `SessionDiffScope`, e.g. `turn:<uuid>`. */
 	scope: string;

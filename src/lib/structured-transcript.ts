@@ -5,6 +5,7 @@ import {trackedReadFileSync} from "./perf/tracked-fs";
 import * as schema from "./db/schema";
 import {getSubagentById} from "./db/queries";
 import {isCountableMessageRecord, mightBeCountableMessageLine} from "./message-count";
+import {asRecord} from "./narrow";
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
 
@@ -50,10 +51,10 @@ const EMPTY_TRANSCRIPT: StructuredTranscript = {
 	precedingMessageCount: 0,
 };
 
-/** One JSONL line as a record, or undefined when the line is not valid JSON. */
+/** One JSONL line as a record, or undefined when the line is not a valid JSON object. */
 export function parseTranscriptLine(line: string): Record<string, unknown> | undefined {
 	try {
-		return JSON.parse(line) as Record<string, unknown>;
+		return asRecord(JSON.parse(line));
 	} catch {
 		return undefined;
 	}

@@ -7,30 +7,22 @@ import {homedir} from "node:os";
 import {eq} from "drizzle-orm";
 import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
 import * as schema from "./db/schema";
+import {asRecord, isRecord} from "./narrow";
 
 type SummariesDb = BetterSQLite3Database<typeof schema>;
 
 const PROJECTS_DIR = join(homedir(), ".claude", "projects");
 const MAX_CHARS = 150_000;
 
-interface JsonlMessage {
-	type: string;
-	uuid?: string;
-	message?: {
-		role?: string;
-		content?: string | Array<{type: string; text?: string}>;
-	};
-}
-
-function extractText(msg: JsonlMessage): string | null {
-	const content = msg.message?.content;
+function extractText(msg: Record<string, unknown>): string | null {
+	const content = asRecord(msg["message"])?.["content"];
 	if (!content) return null;
 	if (typeof content === "string") return content;
 	if (Array.isArray(content)) {
 		const texts: string[] = [];
 		for (const block of content) {
-			if (block.type === "text" && typeof block.text === "string") {
-				texts.push(block.text);
+			if (isRecord(block) && block["type"] === "text" && typeof block["text"] === "string") {
+				texts.push(block["text"]);
 			}
 		}
 		return texts.length > 0 ? texts.join("\n") : null;
@@ -74,12 +66,14 @@ async function readSessionMessages(sessionId: string): Promise<{
 		for await (const line of rl) {
 			if (!line.trim()) continue;
 			try {
-				const obj = JSON.parse(line) as JsonlMessage;
-				if (obj.type !== "user" && obj.type !== "assistant") continue;
+				const obj: unknown = JSON.parse(line);
+				if (!isRecord(obj)) continue;
+				const type = obj["type"];
+				if (type !== "user" && type !== "assistant") continue;
 				const text = extractText(obj);
 				if (!text) continue;
-				messages.push({role: obj.type, text});
-				if (obj.uuid) lastMessageId = obj.uuid;
+				messages.push({role: type, text});
+				if (typeof obj["uuid"] === "string" && obj["uuid"]) lastMessageId = obj["uuid"];
 			} catch {
 				// skip
 			}

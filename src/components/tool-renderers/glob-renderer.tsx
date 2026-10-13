@@ -4,7 +4,7 @@ import {KeyValueCard} from "./shared";
 
 export function GlobRenderer({toolCall}: ToolRendererProps) {
 	const pattern = inputString(toolCall.input, "pattern") ?? "";
-	const path = toolCall.input["path"] as string | undefined;
+	const path = inputString(toolCall.input, "path");
 	const {result, isError} = toolCall;
 
 	const params: Array<{key: string; value: string}> = [];

@@ -1,12 +1,12 @@
-import {inputString} from "../../lib/tool-utils";
+import {inputBoolean, inputString} from "../../lib/tool-utils";
 import type {ToolRendererProps} from "./types";
 import {KeyValueCard} from "./shared";
 
 export function CronCreateRenderer({toolCall}: ToolRendererProps) {
 	const cron = inputString(toolCall.input, "cron") ?? "";
 	const prompt = inputString(toolCall.input, "prompt") ?? "";
-	const recurring = toolCall.input["recurring"] as boolean | undefined;
-	const durable = toolCall.input["durable"] as boolean | undefined;
+	const recurring = inputBoolean(toolCall.input, "recurring");
+	const durable = inputBoolean(toolCall.input, "durable");
 
 	const params: Array<{key: string; value: string}> = [];
 	if (cron) params.push({key: "cron", value: cron});

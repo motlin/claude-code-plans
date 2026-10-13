@@ -1,3 +1,4 @@
+import {objectKeys} from "../lib/narrow";
 import {SHORTCUTS, type ShortcutGroup, type ShortcutId} from "../lib/shortcuts/registry";
 
 const SECTION_TITLES = {
@@ -6,7 +7,7 @@ const SECTION_TITLES = {
 	composer: "Composer",
 } as const satisfies Record<ShortcutGroup, string>;
 
-const SECTION_ORDER = Object.keys(SECTION_TITLES) as ShortcutGroup[];
+const SECTION_ORDER = objectKeys(SECTION_TITLES);
 
 export interface ShortcutSection {
 	title: string;

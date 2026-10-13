@@ -1,3 +1,5 @@
+import {isKeyOf, isRecord} from "./narrow";
+
 /**
  * Minimal shape needed by summarizeToolCalls, categorize, and diffStatsForCall.
  * Satisfied by raw content blocks, readSession tool call objects, and test data alike.
@@ -373,9 +375,7 @@ export function diffStatsForCall(call: ToolCallLike): {
 }
 
 function categorize(call: ToolCallLike): ToolCategory | null {
-	return Object.hasOwn(CATEGORY_BY_TOOL, call.name)
-		? CATEGORY_BY_TOOL[call.name as keyof typeof CATEGORY_BY_TOOL]
-		: null;
+	return isKeyOf(CATEGORY_BY_TOOL, call.name) ? CATEGORY_BY_TOOL[call.name] : null;
 }
 
 export function formatToolName(toolName: string): string {
@@ -409,11 +409,8 @@ export function extractToolResultContent(content: unknown): string | undefined {
 	if (Array.isArray(content)) {
 		const texts: string[] = [];
 		for (const item of content) {
-			if (typeof item === "object" && item !== null && "type" in item && "text" in item) {
-				const block = item as {type: string; text: string};
-				if (block.type === "text" && typeof block.text === "string") {
-					texts.push(block.text);
-				}
+			if (isRecord(item) && item["type"] === "text" && typeof item["text"] === "string") {
+				texts.push(item["text"]);
 			}
 		}
 		return texts.length > 0 ? texts.join("\n") : undefined;

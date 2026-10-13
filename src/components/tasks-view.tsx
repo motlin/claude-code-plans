@@ -37,7 +37,7 @@ function extractAgents(toolCalls: ClientToolCall[]): AgentItem[] {
 			const prompt = inputString(call.input, "prompt") ?? "";
 			const desc = inputString(call.input, "description") ?? prompt.slice(0, 80);
 			const agentType = getAgentTypeWithDefault(call.input);
-			const effort = call.input["effort"] as string | undefined;
+			const effort = inputString(call.input, "effort");
 			const hasResult = call.result !== undefined;
 			const isError = call.isError === true;
 

@@ -15,15 +15,11 @@ import {
 	sessionDiffQueryOptions,
 	sessionDiffScopesQueryOptions,
 } from "../../lib/api/session-diff";
-import {
-	CHANGES_REVIEW_REQUEST_EVENT,
-	type ChangesReviewRequest,
-	formatFixFindingPrompt,
-	loadChangesReview,
-} from "../../lib/changes-review";
-import {CHANGES_SCOPE_REQUEST_EVENT, type ChangesScopeRequest} from "../../lib/changes-scope-request";
+import {CHANGES_REVIEW_REQUEST_EVENT, formatFixFindingPrompt, loadChangesReview} from "../../lib/changes-review";
+import {CHANGES_SCOPE_REQUEST_EVENT} from "../../lib/changes-scope-request";
 import {writeClipboardText} from "../../lib/clipboard";
 import {requestComposerInsert} from "../../lib/context-attach";
+import {asRecord} from "../../lib/narrow";
 import {loadChangesScope, saveChangesScope} from "../../lib/pane-layout";
 import type {ReviewFinding} from "../../lib/review-diff";
 import {CoachMark} from "../coach-mark";
@@ -852,8 +848,9 @@ function usePersistedScope(sessionId: string): [string, (scope: string) => void]
 	);
 	useEffect(() => {
 		function onRequest(event: Event) {
-			const {detail} = event as CustomEvent<ChangesScopeRequest>;
-			if (detail.sessionId === sessionId) setEntry({sessionId, scope: detail.scope});
+			const detail = asRecord(event instanceof CustomEvent ? event.detail : undefined);
+			const scope = detail?.["scope"];
+			if (detail?.["sessionId"] === sessionId && typeof scope === "string") setEntry({sessionId, scope});
 		}
 		window.addEventListener(CHANGES_SCOPE_REQUEST_EVENT, onRequest);
 		return () => {
@@ -868,8 +865,9 @@ function usePersistedReview(sessionId: string): string | null {
 	useEffect(() => {
 		setEntry({sessionId, reviewId: loadChangesReview(sessionId)});
 		function onRequest(event: Event) {
-			const {detail} = event as CustomEvent<ChangesReviewRequest>;
-			if (detail.sessionId === sessionId) setEntry({sessionId, reviewId: detail.reviewId});
+			const detail = asRecord(event instanceof CustomEvent ? event.detail : undefined);
+			const reviewId = detail?.["reviewId"];
+			if (detail?.["sessionId"] === sessionId && typeof reviewId === "string") setEntry({sessionId, reviewId});
 		}
 		window.addEventListener(CHANGES_REVIEW_REQUEST_EVENT, onRequest);
 		return () => {

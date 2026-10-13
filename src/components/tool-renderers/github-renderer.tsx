@@ -13,9 +13,12 @@ import {
 	CircleAlert,
 	GitMerge,
 } from "lucide-react";
+import {z} from "zod";
 import type {ToolRendererProps} from "./types";
 import {CollapsibleSection, CopyableBody, ErrorBorder} from "./shared";
 import {nonEmpty} from "../../lib/non-empty";
+import {asRecord} from "../../lib/narrow";
+import {inputString} from "../../lib/tool-utils";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -27,6 +30,22 @@ function tryParseJson(text: string): unknown {
 	} catch {
 		return null;
 	}
+}
+
+// GitHub API payloads are third-party data: every field is optional and a
+// field of an unexpected type reads as absent rather than rejecting the item.
+const optionalString = z.string().optional().catch(undefined);
+const optionalNumber = z.number().optional().catch(undefined);
+const optionalBoolean = z.boolean().optional().catch(undefined);
+const optionalUser = z.object({login: optionalString}).optional().catch(undefined);
+
+/** The object elements of a JSON array that `schema` accepts; anything else is an empty list. */
+function parseList<T>(data: unknown, schema: z.ZodType<T>): T[] {
+	if (!Array.isArray(data)) return [];
+	return data.flatMap((item: unknown) => {
+		const parsed = schema.safeParse(item);
+		return parsed.success ? [parsed.data] : [];
+	});
 }
 
 function truncate(text: string, max: number): string {
@@ -75,14 +94,15 @@ function stateBadge(state: string) {
 // Sub-renderers
 // ---------------------------------------------------------------------------
 
-interface ListItem {
-	number?: number;
-	title?: string;
-	state?: string;
-	user?: {login?: string};
-	html_url?: string;
-	merged?: boolean;
-}
+const ListItemSchema = z.object({
+	number: optionalNumber,
+	title: optionalString,
+	state: optionalString,
+	user: optionalUser,
+	html_url: optionalString,
+	merged: optionalBoolean,
+});
+type ListItem = z.infer<typeof ListItemSchema>;
 
 function ItemList({items, icon}: {items: ListItem[]; icon: "pr" | "issue"}) {
 	const Icon = icon === "pr" ? GitPullRequest : CircleAlert;
@@ -127,7 +147,7 @@ function ItemList({items, icon}: {items: ListItem[]; icon: "pr" | "issue"}) {
 }
 
 function ListPullRequestsRenderer({data}: {data: unknown}) {
-	const items = Array.isArray(data) ? (data as ListItem[]) : [];
+	const items = parseList(data, ListItemSchema);
 	return (
 		<div className="px-2 py-2">
 			<div className="flex items-center gap-2 mb-2">
@@ -140,7 +160,7 @@ function ListPullRequestsRenderer({data}: {data: unknown}) {
 }
 
 function ListIssuesRenderer({data}: {data: unknown}) {
-	const items = Array.isArray(data) ? (data as ListItem[]) : [];
+	const items = parseList(data, ListItemSchema);
 	return (
 		<div className="px-2 py-2">
 			<div className="flex items-center gap-2 mb-2">
@@ -222,15 +242,22 @@ function SingleItemRenderer({data, icon}: {data: DetailData; icon: "pr" | "issue
 	);
 }
 
-interface CommitData {
-	sha?: string;
-	commit?: {message?: string; author?: {name?: string; date?: string}};
-	html_url?: string;
-	author?: {login?: string};
-}
+const CommitDataSchema = z.object({
+	sha: optionalString,
+	commit: z
+		.object({
+			message: optionalString,
+			author: z.object({name: optionalString, date: optionalString}).optional().catch(undefined),
+		})
+		.optional()
+		.catch(undefined),
+	html_url: optionalString,
+	author: optionalUser,
+});
+type CommitData = z.infer<typeof CommitDataSchema>;
 
 function CommitListRenderer({data}: {data: unknown}) {
-	const commits = Array.isArray(data) ? (data as CommitData[]) : [];
+	const commits = parseList(data, CommitDataSchema);
 	return (
 		<div className="px-2 py-2">
 			<div className="flex items-center gap-2 mb-2">
@@ -352,22 +379,22 @@ function FileContentsRenderer({data}: {data: FileContentsData}) {
 	);
 }
 
-interface SearchResultItem {
-	name?: string;
-	path?: string;
-	html_url?: string;
-	repository?: {full_name?: string};
-	title?: string;
-	number?: number;
-	state?: string;
-	user?: {login?: string};
-	body?: string;
-}
+const SearchResultItemSchema = z.object({
+	name: optionalString,
+	path: optionalString,
+	html_url: optionalString,
+	repository: z.object({full_name: optionalString}).optional().catch(undefined),
+	title: optionalString,
+	number: optionalNumber,
+	state: optionalString,
+	user: optionalUser,
+	body: optionalString,
+});
 
 function SearchResultsRenderer({data}: {data: unknown}) {
-	const parsed = data as {items?: SearchResultItem[]; total_count?: number};
-	const items = parsed.items ?? (Array.isArray(data) ? (data as SearchResultItem[]) : []);
-	const total = parsed.total_count;
+	const parsed = asRecord(data);
+	const items = parseList(parsed?.["items"] ?? data, SearchResultItemSchema);
+	const total = optionalNumber.parse(parsed?.["total_count"]);
 
 	return (
 		<div className="px-2 py-2">
@@ -425,14 +452,14 @@ function SearchResultsRenderer({data}: {data: unknown}) {
 	);
 }
 
-interface BranchData {
-	name?: string;
-	commit?: {sha?: string};
-	protected?: boolean;
-}
+const BranchDataSchema = z.object({
+	name: optionalString,
+	commit: z.object({sha: optionalString}).optional().catch(undefined),
+	protected: optionalBoolean,
+});
 
 function BranchListRenderer({data}: {data: unknown}) {
-	const branches = Array.isArray(data) ? (data as BranchData[]) : [];
+	const branches = parseList(data, BranchDataSchema);
 	return (
 		<div className="px-2 py-2">
 			<div className="flex items-center gap-2 mb-2">
@@ -462,11 +489,11 @@ function BranchListRenderer({data}: {data: unknown}) {
 	);
 }
 
-function SuccessActionRenderer({data, action}: {data: unknown; action: string}) {
-	const d = data as Record<string, unknown>;
-	const title = d["title"] as string | undefined;
-	const number = d["number"] as number | undefined;
-	const htmlUrl = d["html_url"] as string | undefined;
+const SuccessActionSchema = z.object({title: optionalString, number: optionalNumber, html_url: optionalString});
+
+function SuccessActionRenderer({data, action}: {data: object; action: string}) {
+	const parsed = SuccessActionSchema.safeParse(data);
+	const {title, number, html_url: htmlUrl} = parsed.success ? parsed.data : {};
 
 	return (
 		<div className="px-2 py-2">
@@ -517,8 +544,8 @@ function DefaultGithubRenderer({resultText}: {resultText: string}) {
 // ---------------------------------------------------------------------------
 
 function InputSummary({tool, input}: {tool: string; input: Record<string, unknown>}) {
-	const owner = input["owner"] as string | undefined;
-	const repo = input["repo"] as string | undefined;
+	const owner = inputString(input, "owner");
+	const repo = inputString(input, "repo");
 	const repoStr = owner && repo ? `${owner}/${repo}` : (repo ?? "");
 
 	const parts: string[] = [];
@@ -533,10 +560,10 @@ function InputSummary({tool, input}: {tool: string; input: Record<string, unknow
 	const query = input["q"] ?? input["query"];
 	if (typeof query === "string" && query) parts.push(`"${truncate(query, 40)}"`);
 
-	const path = input["path"] as string | undefined;
+	const path = inputString(input, "path");
 	if (path) parts.push(path);
 
-	const branch = input["branch"] as string | undefined;
+	const branch = inputString(input, "branch");
 	if (branch && tool.includes("branch")) parts.push(branch);
 
 	if (parts.length === 0) return null;
@@ -574,7 +601,7 @@ export function GithubRenderer({toolCall}: ToolRendererProps) {
 		switch (tool) {
 			case "list_pull_requests":
 			case "search_pull_requests":
-				if (data && typeof data === "object" && "items" in (data as Record<string, unknown>)) {
+				if (data && typeof data === "object" && "items" in data) {
 					return <SearchResultsRenderer data={data} />;
 				}
 				return <ListPullRequestsRenderer data={data ?? resultText} />;
@@ -587,7 +614,7 @@ export function GithubRenderer({toolCall}: ToolRendererProps) {
 
 			case "list_issues":
 			case "search_issues":
-				if (data && typeof data === "object" && "items" in (data as Record<string, unknown>)) {
+				if (data && typeof data === "object" && "items" in data) {
 					return <SearchResultsRenderer data={data} />;
 				}
 				return <ListIssuesRenderer data={data ?? resultText} />;

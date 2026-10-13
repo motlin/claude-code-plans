@@ -4,6 +4,7 @@ import {fileURLToPath} from "node:url";
 import {z} from "zod";
 import type {AppDb} from "../../../src/lib/db/connection";
 import {indexJsonlFile} from "../../../src/lib/db/indexer";
+import {asRecord} from "../../../src/lib/narrow";
 
 /**
  * Deterministic perf transcripts (measurement plan §4.1). A seeded mulberry32 PRNG emits schema-valid JSONL whose
@@ -417,9 +418,11 @@ export function renderTranscript(shape: PerfShape, seed: number): string {
 		for (const index of wide) {
 			const line = lines[index];
 			if (line?.tool !== "Read") continue;
-			const record = JSON.parse(line.skeleton) as {message: {content: Array<{content: unknown}>}};
-			const block = record.message.content[0];
-			if (block) block.content = [{type: "image", source: {type: "base64", media_type: "image/png", data: PAD}}];
+			const record: unknown = JSON.parse(line.skeleton);
+			const content = asRecord(asRecord(record)?.["message"])?.["content"];
+			const block = Array.isArray(content) ? asRecord(content[0]) : undefined;
+			if (block)
+				block["content"] = [{type: "image", source: {type: "base64", media_type: "image/png", data: PAD}}];
 			line.skeleton = JSON.stringify(record);
 			line.base64 = true;
 		}

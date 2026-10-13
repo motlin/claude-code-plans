@@ -1,4 +1,4 @@
-import {inputString} from "../../lib/tool-utils";
+import {inputString, inputStringArray} from "../../lib/tool-utils";
 import {
 	CheckCircle,
 	Globe,
@@ -188,7 +188,7 @@ function ScreenshotRenderer({resultText}: {resultText: string}) {
 					className="max-w-full rounded-r6 border border-border"
 					style={{maxHeight: 300}}
 					onError={(e) => {
-						(e.target as HTMLImageElement).style.display = "none";
+						e.currentTarget.style.display = "none";
 					}}
 				/>
 			)}
@@ -536,7 +536,7 @@ function PlaywrightContent({
 				<ActionResult
 					icon={<Upload className="h-4 w-4 text-blue-500" />}
 					label="Uploaded file"
-					detail={(input["paths"] as string[] | undefined)?.join(", ")}
+					detail={inputStringArray(input, "paths")?.join(", ")}
 					resultText={resultText}
 				/>
 			);

@@ -2,6 +2,7 @@ import {afterEach, beforeEach} from "vite-plus/test";
 import {
 	createJourneyTracker,
 	type JourneyEnvironment,
+	type ObservedEntry,
 	type JourneySample,
 	type JourneyTracker,
 } from "../../../src/lib/perf/journey";
@@ -27,25 +28,31 @@ class FakePerformance {
 }
 
 class FakeObserverHub {
-	private readonly callbacks = new Map<string, ((entries: PerformanceEntry[]) => void)[]>();
+	private readonly callbacks = new Map<string, ((entries: readonly ObservedEntry[]) => void)[]>();
 
 	readonly Observer = fakeObserverClass(this.callbacks);
 
-	emit(type: string, entries: object[]): void {
-		for (const callback of this.callbacks.get(type) ?? []) callback(entries as PerformanceEntry[]);
+	emit(type: string, entries: readonly object[]): void {
+		const observed = entries.filter(isObservedEntry);
+		for (const callback of this.callbacks.get(type) ?? []) callback(observed);
 	}
 }
 
-function fakeObserverClass(callbacks: Map<string, ((entries: PerformanceEntry[]) => void)[]>) {
-	return class {
-		constructor(readonly callback: PerformanceObserverCallback) {}
+function isObservedEntry(entry: object): entry is ObservedEntry {
+	return "startTime" in entry && typeof entry.startTime === "number";
+}
 
-		observe(options: {type: string}): void {
-			const list = callbacks.get(options.type) ?? [];
+function fakeObserverClass(callbacks: Map<string, ((entries: readonly ObservedEntry[]) => void)[]>) {
+	return class {
+		constructor(readonly callback: (list: {getEntries(): readonly ObservedEntry[]}) => void) {}
+
+		observe(options: PerformanceObserverInit): void {
+			const type = options.type ?? "";
+			const list = callbacks.get(type) ?? [];
 			list.push((entries) => {
-				this.callback({getEntries: () => entries} as PerformanceObserverEntryList, this as never);
+				this.callback({getEntries: () => entries});
 			});
-			callbacks.set(options.type, list);
+			callbacks.set(type, list);
 		}
 
 		disconnect(): void {}
@@ -93,8 +100,8 @@ export function makeJourneyHarness(overrides: Partial<JourneyEnvironment> = {}):
 	const timers: (() => void)[] = [];
 	const environment: JourneyEnvironment = {
 		document,
-		performance: performance as unknown as Performance,
-		PerformanceObserver: observers.Observer as unknown as typeof PerformanceObserver,
+		performance,
+		PerformanceObserver: observers.Observer,
 		hostname: "localhost",
 		pathname: "/session/abc",
 		matchesCoarsePointer: () => false,

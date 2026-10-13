@@ -1,5 +1,5 @@
 import {ChevronDown, Plus, Search} from "lucide-react";
-import {useEffect, useState, type CSSProperties} from "react";
+import {useEffect, useState} from "react";
 import {DEFAULT_VISIBLE_NAV_SECTIONS} from "../lib/nav-sections";
 import {DEFAULT_SIDEBAR_STATE} from "../lib/sidebar-store";
 import {getVisibleNavItems, navItems} from "./sidebar/navigation";
@@ -36,7 +36,7 @@ export function AppShellFallback() {
 		<div id="app-shell-fallback" data-testid="app-shell-fallback" aria-hidden="true" className="flex h-screen">
 			<div
 				aria-label="Sidebar"
-				style={{"--sidebar-width": `${DEFAULT_SIDEBAR_STATE.width}px`} as CSSProperties}
+				style={{"--sidebar-width": `${DEFAULT_SIDEBAR_STATE.width}px`}}
 				className="relative hidden h-full w-[var(--sidebar-width)] shrink-0 flex-col border-r-[0.5px] border-border bg-[var(--sb-bg)] md:flex"
 			>
 				<div className="flex h-11 shrink-0 items-center px-2">

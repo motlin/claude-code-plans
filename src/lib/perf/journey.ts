@@ -101,10 +101,33 @@ export interface JourneySample {
 	events: EventTimingSample[];
 }
 
+/** The slice of `performance` the tracker uses. */
+export interface JourneyPerformance {
+	readonly timeOrigin: number;
+	now(): number;
+	mark(name: string, options?: {startTime?: number}): unknown;
+	measure(name: string, options: {start: number; end: number}): unknown;
+}
+
+/** The one field every observed entry shares; the type guards narrow the rest. */
+export interface ObservedEntry {
+	readonly startTime: number;
+}
+
+export interface JourneyObserver {
+	observe(options: PerformanceObserverInit & {durationThreshold?: number}): void;
+	disconnect(): void;
+}
+
+/** The slice of the `PerformanceObserver` constructor the tracker uses. */
+export type JourneyObserverConstructor = new (
+	callback: (list: {getEntries(): readonly ObservedEntry[]}) => void,
+) => JourneyObserver;
+
 export interface JourneyEnvironment {
 	document: Document;
-	performance: Performance;
-	PerformanceObserver: typeof PerformanceObserver | undefined;
+	performance: JourneyPerformance;
+	PerformanceObserver: JourneyObserverConstructor | undefined;
 	hostname: string;
 	pathname: string;
 	matchesCoarsePointer: () => boolean;
@@ -251,19 +274,39 @@ interface ElementTimingEntry {
 	renderTime: number;
 }
 
+function isResourceTiming(entry: ObservedEntry): entry is PerformanceResourceTiming {
+	return "initiatorType" in entry && "serverTiming" in entry;
+}
+
+function isLongAnimationFrame(entry: ObservedEntry): entry is ObservedEntry & RawLongAnimationFrame {
+	return "blockingDuration" in entry;
+}
+
+function isLayoutShift(entry: ObservedEntry): entry is ObservedEntry & LayoutShiftSample {
+	return "value" in entry && "hadRecentInput" in entry;
+}
+
+function isEventTiming(entry: ObservedEntry): entry is PerformanceEventTiming {
+	return "processingStart" in entry && "interactionId" in entry;
+}
+
+function isElementTiming(entry: ObservedEntry): entry is ObservedEntry & ElementTimingEntry {
+	return "element" in entry && "renderTime" in entry;
+}
+
 const OBSERVED_TYPES = ["resource", "long-animation-frame", "layout-shift", "event", "element"] as const;
 type ObservedType = (typeof OBSERVED_TYPES)[number];
 
 export function createJourneyTracker(environment: JourneyEnvironment): JourneyTracker {
 	const {document, performance} = environment;
-	const buffers: Record<ObservedType, PerformanceEntry[]> = {
+	const buffers: Record<ObservedType, ObservedEntry[]> = {
 		resource: [],
 		"long-animation-frame": [],
 		"layout-shift": [],
 		event: [],
 		element: [],
 	};
-	const observers: PerformanceObserver[] = [];
+	const observers: JourneyObserver[] = [];
 	const active = new Map<string, ActiveJourney>();
 	const cancelWaits = new Set<() => void>();
 	let queue: JourneySample[] = [];
@@ -304,28 +347,29 @@ export function createJourneyTracker(environment: JourneyEnvironment): JourneyTr
 		flushTimer ??= environment.setInterval(flush, FLUSH_INTERVAL_MS);
 	}
 
-	function entriesBetween<T extends PerformanceEntry>(type: ObservedType, start: number, end: number): T[] {
-		return buffers[type].filter((entry) => entry.startTime >= start && entry.startTime <= end) as T[];
+	function entriesBetween<T extends ObservedEntry>(
+		type: ObservedType,
+		isType: (entry: ObservedEntry) => entry is T,
+		start: number,
+		end: number,
+	): T[] {
+		return buffers[type].filter(isType).filter((entry) => entry.startTime >= start && entry.startTime <= end);
 	}
 
 	function eventTimingEnd(journey: ActiveJourney): number | undefined {
-		const entry = (buffers.event as PerformanceEventTiming[]).find(
-			(candidate) => candidate.name === journey.trigger && candidate.startTime === journey.start,
-		);
+		const entry = buffers.event
+			.filter(isEventTiming)
+			.find((candidate) => candidate.name === journey.trigger && candidate.startTime === journey.start);
 		return entry === undefined ? undefined : entry.startTime + entry.duration;
 	}
 
 	function elementRenderTime(anchor: Element): number | undefined {
-		const entries = buffers.element as unknown as ElementTimingEntry[];
-		return entries.find((entry) => entry.element === anchor && entry.renderTime > 0)?.renderTime;
+		return buffers.element.filter(isElementTiming).find((entry) => entry.element === anchor && entry.renderTime > 0)
+			?.renderTime;
 	}
 
 	function buildSample(id: string, journey: ActiveJourney, end: number, endSource: EndSource): JourneySample {
-		const layoutShifts = entriesBetween<PerformanceEntry & LayoutShiftSample>(
-			"layout-shift",
-			journey.start,
-			end,
-		).map(toLayoutShift);
+		const layoutShifts = entriesBetween("layout-shift", isLayoutShift, journey.start, end).map(toLayoutShift);
 		return {
 			journey: id,
 			trigger: journey.trigger,
@@ -344,15 +388,13 @@ export function createJourneyTracker(environment: JourneyEnvironment): JourneyTr
 				viewportWidth: environment.viewportWidth(),
 			}),
 			hardwareConcurrency: environment.hardwareConcurrency,
-			resources: entriesBetween<PerformanceResourceTiming>("resource", journey.start, end).map(toResource),
-			longAnimationFrames: entriesBetween<PerformanceEntry & RawLongAnimationFrame>(
-				"long-animation-frame",
-				journey.start,
-				end,
-			).map(toLongAnimationFrame),
+			resources: entriesBetween("resource", isResourceTiming, journey.start, end).map(toResource),
+			longAnimationFrames: entriesBetween("long-animation-frame", isLongAnimationFrame, journey.start, end).map(
+				toLongAnimationFrame,
+			),
 			layoutShifts,
 			cls: layoutShifts.filter((shift) => !shift.hadRecentInput).reduce((sum, shift) => sum + shift.value, 0),
-			events: entriesBetween<PerformanceEventTiming>("event", journey.start, end).map(toEventTiming),
+			events: entriesBetween("event", isEventTiming, journey.start, end).map(toEventTiming),
 		};
 	}
 
@@ -499,7 +541,7 @@ function browserEnvironment(): JourneyEnvironment {
 		setTimeout: (callback, ms) => window.setTimeout(callback, ms),
 		setInterval: (callback, ms) => window.setInterval(callback, ms),
 		clearInterval: (handle) => {
-			window.clearInterval(handle as number);
+			if (typeof handle === "number") window.clearInterval(handle);
 		},
 		send: (batch) => {
 			navigator.sendBeacon(PERF_BEACON_PATH, JSON.stringify({samples: batch}));

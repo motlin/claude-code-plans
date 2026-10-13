@@ -147,7 +147,7 @@ export function PaletteRowActionsCard({
 
 	function moveFocus(event: KeyboardEvent<HTMLDivElement>, delta: number | "first" | "last") {
 		const elements = [...(menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])];
-		const current = elements.indexOf(document.activeElement as HTMLElement);
+		const current = elements.findIndex((element) => element === document.activeElement);
 		let next: number;
 		if (delta === "first") next = 0;
 		else if (delta === "last") next = elements.length - 1;
@@ -188,7 +188,8 @@ export function PaletteRowActionsCard({
 				return;
 			case "Enter":
 			case " ": {
-				const id = (document.activeElement as HTMLElement | null)?.dataset["cardItem"];
+				const active = document.activeElement;
+				const id = active instanceof HTMLElement ? active.dataset["cardItem"] : undefined;
 				const item = items.find((candidate) => candidate.id === id);
 				if (item !== undefined) {
 					event.preventDefault();

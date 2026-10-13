@@ -1,6 +1,7 @@
 import {createFileRoute} from "@tanstack/react-router";
 import {withMethodNotAllowed} from "../../lib/api/method-not-allowed";
 import {HookStatusResponse} from "../../lib/api/hooks";
+import {asRecord} from "../../lib/narrow";
 
 export const Route = createFileRoute("/api/hooks/status")({
 	server: {
@@ -15,12 +16,12 @@ export const Route = createFileRoute("/api/hooks/status")({
 				let existing: Record<string, unknown> = {};
 				try {
 					const raw = await readFile(settingsPath, "utf-8");
-					existing = JSON.parse(raw) as Record<string, unknown>;
+					existing = asRecord(JSON.parse(raw)) ?? {};
 				} catch {
 					// No readable settings file: nothing is installed.
 				}
 
-				const hooks = existing["hooks"] as Record<string, unknown> | undefined;
+				const hooks = asRecord(existing["hooks"]);
 				const missingEvents = missingHookEvents(hooks);
 				const installedCount = HOOK_EVENT_NAMES.length - missingEvents.length;
 

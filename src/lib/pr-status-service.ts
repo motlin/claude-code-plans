@@ -13,6 +13,7 @@ import {
 	type PrStatus,
 } from "./pr-status";
 import type {SessionEntry, SessionPrLink} from "./sessions";
+import {errnoCode} from "./narrow";
 
 /** Runs `gh <args>` (argv, never a shell) in `cwd` and resolves its stdout. */
 export type GhRunner = (args: string[], cwd: string | undefined) => Promise<string>;
@@ -124,7 +125,7 @@ export function createPrStatusService({
 				for (const projectId of entry.projects) onChange(projectId);
 			}
 		} catch (error) {
-			if ((error as NodeJS.ErrnoException).code === "ENOENT") ghMissing = true;
+			if (errnoCode(error) === "ENOENT") ghMissing = true;
 			entry.failures += 1;
 			entry.retryAt = now() + Math.min(MINUTE * 2 ** (entry.failures - 1), MAX_BACKOFF_MS);
 		} finally {

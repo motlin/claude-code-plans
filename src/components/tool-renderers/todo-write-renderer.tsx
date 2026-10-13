@@ -1,3 +1,4 @@
+import {isRecord} from "../../lib/narrow";
 import type {ToolRendererProps} from "./types";
 import {KeyValueCard} from "./shared";
 
@@ -15,9 +16,7 @@ function statusMarker(status: string): string {
 
 function parseTodos(raw: unknown): TodoItem[] {
 	if (!Array.isArray(raw)) return [];
-	return raw.filter(
-		(t): t is TodoItem => typeof t === "object" && t !== null && typeof (t as TodoItem).content === "string",
-	);
+	return raw.filter((t: unknown): t is TodoItem => isRecord(t) && typeof t["content"] === "string");
 }
 
 /**

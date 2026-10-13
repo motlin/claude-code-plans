@@ -4,7 +4,9 @@ import {readdir, readFile, stat} from "node:fs/promises";
 import {basename, dirname, join} from "node:path";
 import {createLineReader} from "./line-reader";
 import {decodeProjectDir, resolveProjectName} from "./memory";
-import type {JsonValue} from "./hook-events";
+import {TypedJsonValueSchema, type JsonValue} from "./hook-events";
+import {isRecord} from "./narrow";
+import {z} from "zod";
 import {normalizeGitBranch} from "./git-branch";
 import {
 	AiTitleRecordSchema,
@@ -163,35 +165,33 @@ import {
 
 export {parseCommandBlock, extractSessionTitle, summarizeToolCalls, summarizeToolCallsStructured, formatToolName};
 
-interface RawContentBlock {
-	type: string;
-	text?: string;
-	thinking?: string;
-	name?: string;
-	id?: string;
-	input?: Record<string, unknown>;
-	tool_use_id?: string;
-	content?: unknown;
-	is_error?: boolean;
-	source?: {type: string; media_type: string; data: string};
-}
-
-interface JsonlEntry {
-	type: string;
-	uuid?: string;
-	timestamp?: string;
-	customTitle?: string;
-	sessionId?: string;
-	entrypoint?: string;
-	sessionKind?: string;
-	teamName?: string;
-	forkedFrom?: string | Record<string, unknown>;
-	isMeta?: boolean;
-	message?: {
-		role?: string;
-		content?: string | RawContentBlock[];
-	};
-}
+/**
+ * The fields of a user/assistant `message` the session readers use. Loose, not
+ * the strict JsonlRecordSchema: a record that drifts from the strict schema
+ * should still render here.
+ */
+const RawMessageSchema = z.looseObject({
+	role: z.string().optional(),
+	content: z
+		.union([
+			z.string(),
+			z.array(
+				z.looseObject({
+					type: z.string(),
+					text: z.string().optional(),
+					thinking: z.string().optional(),
+					name: z.string().optional(),
+					id: z.string().optional(),
+					input: z.looseObject({}).optional(),
+					tool_use_id: z.string().optional(),
+					content: z.unknown().optional(),
+					is_error: z.boolean().optional(),
+					source: z.looseObject({type: z.string(), media_type: z.string(), data: z.string()}).optional(),
+				}),
+			),
+		])
+		.optional(),
+});
 
 const SHELL_COMPLETION_RE = /^(?:Already up to date|Done in \d+(?:\.\d+)?(?:ms|s)(?: using \S+)?)/;
 
@@ -228,13 +228,14 @@ export interface FirstUserPrompt {
 
 function extractFirstUserText(line: string): FirstUserPrompt | null {
 	try {
-		const obj = JSON.parse(line) as JsonlEntry;
-		if (obj.type !== "user") return null;
+		const obj: unknown = JSON.parse(line);
+		if (!isRecord(obj) || obj["type"] !== "user") return null;
 
-		const content = obj.message?.content;
+		const message = RawMessageSchema.safeParse(obj["message"]);
+		const content = message.success ? message.data.content : undefined;
 		if (!content) return null;
 
-		const isMeta = obj.isMeta === true;
+		const isMeta = obj["isMeta"] === true;
 
 		if (typeof content === "string") {
 			return isSessionTitlePrompt(content) ? {text: content, isMeta} : null;
@@ -740,8 +741,8 @@ export interface RawWindow {
 
 function parseRawLine(raw: string, lineIndex: number): RawJsonlLine {
 	try {
-		const parsed = JSON.parse(raw) as Record<string, unknown>;
-		const uuid = typeof parsed["uuid"] === "string" ? parsed["uuid"] : undefined;
+		const parsed: unknown = JSON.parse(raw);
+		const uuid = isRecord(parsed) && typeof parsed["uuid"] === "string" ? parsed["uuid"] : undefined;
 		const result: RawJsonlLine = {raw, lineIndex};
 		if (uuid !== undefined) result.uuid = uuid;
 		return result;
@@ -821,30 +822,31 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 			lineIndex++;
 			if (!line.trim()) continue;
 
-			let obj: JsonlEntry;
+			let obj: unknown;
 			try {
-				obj = JSON.parse(line) as JsonlEntry;
+				obj = JSON.parse(line);
 			} catch {
 				continue;
 			}
+			if (!isRecord(obj)) continue;
 
-			const sourceUuid = typeof obj.uuid === "string" ? obj.uuid : "";
+			const sourceUuid = typeof obj["uuid"] === "string" ? obj["uuid"] : "";
 			if (sourceUuid) uuidToLine.set(sourceUuid, lineIndex);
 
-			if (entrypoint === undefined && typeof obj.entrypoint === "string") {
-				entrypoint = obj.entrypoint;
+			if (entrypoint === undefined && typeof obj["entrypoint"] === "string") {
+				entrypoint = obj["entrypoint"];
 			}
-			if (sessionKind === undefined && typeof obj.sessionKind === "string") {
-				sessionKind = obj.sessionKind;
+			if (sessionKind === undefined && typeof obj["sessionKind"] === "string") {
+				sessionKind = obj["sessionKind"];
 			}
-			if (typeof obj.teamName === "string") {
-				teamNameSet.add(obj.teamName);
+			if (typeof obj["teamName"] === "string") {
+				teamNameSet.add(obj["teamName"]);
 			}
-			if (forkedFromSessionId === undefined && obj.forkedFrom !== undefined) {
-				const forked = obj.forkedFrom;
+			if (forkedFromSessionId === undefined) {
+				const forked = obj["forkedFrom"];
 				if (typeof forked === "string") {
 					forkedFromSessionId = forked;
-				} else {
+				} else if (isRecord(forked)) {
 					const forkedId = forked["sessionId"];
 					if (typeof forkedId === "string") {
 						forkedFromSessionId = forkedId;
@@ -852,23 +854,24 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 				}
 			}
 
-			if (obj.type === "custom-title" || obj.type === "ai-title") {
+			if (obj["type"] === "custom-title" || obj["type"] === "ai-title") {
 				titleRecords.add(obj);
 				continue;
 			}
-			if (obj.type === "cost-state") {
+			if (obj["type"] === "cost-state") {
 				costState = costStateFromRecord(obj) ?? costState;
 				continue;
 			}
 
-			const type = obj.type;
+			const type = obj["type"];
 			if (type !== "user" && type !== "assistant") continue;
 			if (isCountableMessageRecord(obj)) messageCount++;
 
-			const message = obj.message;
-			if (!message) continue;
+			const parsedMessage = RawMessageSchema.safeParse(obj["message"]);
+			if (!parsedMessage.success) continue;
+			const message = parsedMessage.data;
 
-			const timestamp = obj.timestamp ?? "";
+			const timestamp = typeof obj["timestamp"] === "string" ? obj["timestamp"] : "";
 			const textBlocks: string[] = [];
 			const contentBlocks: MessageContent[] = [];
 			const toolCalls: ToolCallInfo[] = [];
@@ -1013,7 +1016,7 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 			// names the work, and settles for the acknowledgement only if none does.
 			const firstText = textBlocks[0];
 			if (type === "user" && firstText !== undefined && !titleNamesWork) {
-				const isMeta = obj.isMeta === true;
+				const isMeta = obj["isMeta"] === true;
 				titleNamesWork = isInformativePrompt(firstText, {isMeta});
 				if (titleNamesWork || title === sessionId) {
 					title = extractSessionTitle(firstText, sessionId, {isMeta});
@@ -1074,6 +1077,8 @@ export async function jsonlWrittenAt(filePath: string): Promise<number> {
 	return Math.trunc((await stat(filePath)).mtimeMs);
 }
 
+const JsonObjectSchema = z.record(z.string(), TypedJsonValueSchema);
+
 /**
  * Read new JSONL lines from a file starting at a byte offset.
  * Returns the parsed JSON objects and the next byte offset to resume from.
@@ -1105,8 +1110,8 @@ export async function readNewJsonlLines(
 				continue;
 			}
 			try {
-				const parsed = JSON.parse(line) as Record<string, JsonValue>;
-				lines.push(parsed);
+				const parsed = JsonObjectSchema.safeParse(JSON.parse(line));
+				if (parsed.success) lines.push(parsed.data);
 				bytesConsumed += lineByteLength;
 			} catch {
 				// Partial/malformed line at the end of the file. Do not advance

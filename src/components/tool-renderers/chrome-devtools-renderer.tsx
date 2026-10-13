@@ -24,6 +24,7 @@ import {
 	parsePageList,
 } from "./chrome-devtools-parsers";
 import {defined} from "../../lib/defined";
+import {asRecord} from "../../lib/narrow";
 
 // ---------------------------------------------------------------------------
 // Style helpers
@@ -315,7 +316,7 @@ function TakeScreenshotRenderer({resultText}: {resultText: string}) {
 					className="max-w-full rounded-r6 border border-border"
 					style={{maxHeight: 300}}
 					onError={(e) => {
-						(e.target as HTMLImageElement).style.display = "none";
+						e.currentTarget.style.display = "none";
 					}}
 				/>
 			)}
@@ -337,7 +338,7 @@ function ScreenshotRenderer({path}: {path: string}) {
 				className="max-w-full rounded-r6 border border-border"
 				style={{maxHeight: 300}}
 				onError={(e) => {
-					(e.target as HTMLImageElement).style.display = "none";
+					e.currentTarget.style.display = "none";
 				}}
 			/>
 		</div>
@@ -600,14 +601,14 @@ function ChromeDevtoolsContent({
 	input: Record<string, unknown>;
 	resultText: string;
 }) {
-	let parsedResult: Record<string, unknown> | null = null;
+	let parsedResult: Record<string, unknown> | undefined;
 	try {
-		parsedResult = JSON.parse(resultText) as Record<string, unknown>;
+		parsedResult = asRecord(JSON.parse(resultText));
 	} catch {
 		/* text result */
 	}
 
-	const screenshotPath = (parsedResult?.["screenshot_path"] ?? parsedResult?.["path"]) as string | undefined;
+	const screenshotPath = parsedResult && inputString(parsedResult, "screenshot_path", "path");
 	if (screenshotPath && /\.(png|jpg|jpeg|gif|webp)$/i.test(screenshotPath)) {
 		return <ScreenshotRenderer path={screenshotPath} />;
 	}

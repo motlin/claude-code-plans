@@ -1,5 +1,5 @@
 import {useRouter} from "@tanstack/react-router";
-import {useEffect, useRef, useState, type CSSProperties, type PointerEvent} from "react";
+import {useEffect, useRef, useState, type PointerEvent} from "react";
 import {shouldClose, swipeIntent} from "../../lib/sheet-swipe";
 import {PHONE_SIDEBAR_TOGGLE} from "../../lib/top-left-clearance";
 import {Sidebar} from "./Sidebar";
@@ -124,7 +124,7 @@ export function PhoneSheet({open, onClose}: {open: boolean; onClose: () => void}
 			inert={!open}
 			data-open={open ? "" : undefined}
 			data-phone-sheet-dragging={dragging ? "" : undefined}
-			style={dragging ? ({"--df-phone-sheet-drag": `${-drag}px`} as CSSProperties) : undefined}
+			style={dragging ? {"--df-phone-sheet-drag": `${-drag}px`} : undefined}
 			onPointerDown={onPointerDown}
 			onPointerMove={onPointerMove}
 			onPointerUp={onPointerUp}

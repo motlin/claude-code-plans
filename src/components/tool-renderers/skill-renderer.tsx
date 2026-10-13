@@ -4,7 +4,7 @@ import {KeyValueCard} from "./shared";
 
 export function SkillRenderer({toolCall}: ToolRendererProps) {
 	const skill = inputString(toolCall.input, "skill") ?? "";
-	const args = toolCall.input["args"] as string | undefined;
+	const args = inputString(toolCall.input, "args");
 	const {result, isError} = toolCall;
 
 	const params: Array<{key: string; value: string}> = [];

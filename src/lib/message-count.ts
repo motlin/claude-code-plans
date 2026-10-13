@@ -1,3 +1,5 @@
+import {isRecord} from "./narrow";
+
 /**
  * The single definition of a "message" for session message counts.
  *
@@ -16,24 +18,16 @@
  * Isomorphic: no Node-specific imports, usable in browser and server code.
  */
 export function isCountableMessageRecord(record: unknown): boolean {
-	if (typeof record !== "object" || record === null) return false;
-	const candidate = record as {
-		type?: unknown;
-		isSidechain?: unknown;
-		message?: unknown;
-	};
-	if (candidate.type !== "user" && candidate.type !== "assistant") return false;
-	if (candidate.isSidechain === true) return false;
+	if (!isRecord(record)) return false;
+	if (record["type"] !== "user" && record["type"] !== "assistant") return false;
+	if (record["isSidechain"] === true) return false;
 
-	const message = candidate.message;
-	if (typeof message !== "object" || message === null) return false;
-	const content = (message as {content?: unknown}).content;
+	const message = record["message"];
+	if (!isRecord(message)) return false;
+	const content = message["content"];
 	if (typeof content === "string") return true;
 	if (Array.isArray(content)) {
-		return content.some(
-			(block) =>
-				typeof block === "object" && block !== null && (block as {type?: unknown}).type !== "tool_result",
-		);
+		return content.some((block: unknown) => isRecord(block) && block["type"] !== "tool_result");
 	}
 	return false;
 }

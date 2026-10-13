@@ -1,6 +1,6 @@
 import {Link, useMatches} from "@tanstack/react-router";
 import {useQuery} from "@tanstack/react-query";
-import {useEffect, useRef, useState, type CSSProperties, type ReactNode} from "react";
+import {useEffect, useRef, useState, type ReactNode} from "react";
 import type {Section} from "./types";
 import {activeSectionFor} from "./hooks";
 import {MoreNavMenu, type NavBadge} from "./more-menu";
@@ -155,7 +155,7 @@ export function Sidebar({
 		<nav
 			aria-label="Sidebar"
 			data-focus-region="navigation"
-			style={{"--sidebar-width": `${width}px`} as CSSProperties}
+			style={{"--sidebar-width": `${width}px`}}
 			className="group/sidebar relative hidden h-full w-[var(--sidebar-width)] shrink-0 flex-col border-r-[0.5px] border-border bg-[var(--sb-bg)] md:flex"
 		>
 			<div data-testid="sidebar-titlebar" className="flex h-11 shrink-0 items-center px-2">

@@ -1,6 +1,8 @@
 import {useState, useCallback, useRef} from "react";
+import {z} from "zod";
 
 import {defined} from "../lib/defined";
+import {errorMessage} from "../lib/narrow";
 import type {LaunchOptions} from "../lib/launch-options";
 
 interface ChatStreamState {
@@ -12,21 +14,22 @@ interface ChatStreamState {
 	sentPrompt?: string | undefined;
 }
 
-interface StreamEvent {
-	type: string;
-	subtype?: string;
-	event?: {
-		type: string;
-		delta?: {type: string; text?: string};
-		content_block?: {type: string; text?: string};
-	};
-	session_id?: string;
-	message?: {
-		content?: Array<{type: string; text?: string}>;
-	};
-	result?: string;
-	is_error?: boolean;
-}
+/** The fields read from a `claude -p --output-format stream-json` line; the CLI's other fields are dropped. */
+const StreamEventSchema = z.object({
+	type: z.string(),
+	subtype: z.string().optional(),
+	event: z
+		.object({
+			type: z.string(),
+			delta: z.object({type: z.string(), text: z.string().optional()}).optional(),
+		})
+		.optional(),
+	session_id: z.string().optional(),
+	// An object on assistant lines, the error text on `error` lines.
+	message: z.unknown(),
+	result: z.string().optional(),
+	is_error: z.boolean().optional(),
+});
 
 async function readResponseError(response: Response): Promise<string> {
 	const fallback = `Request failed (${response.status})`;
@@ -101,12 +104,15 @@ export function useChatStream() {
 					const trimmed = line.trim();
 					if (!trimmed) continue;
 
-					let event: StreamEvent;
+					let parsed: unknown;
 					try {
-						event = JSON.parse(trimmed) as StreamEvent;
+						parsed = JSON.parse(trimmed);
 					} catch {
 						continue;
 					}
+					const result = StreamEventSchema.safeParse(parsed);
+					if (!result.success) continue;
+					const event = result.data;
 
 					if (event.type === "stream_event" && event.event) {
 						const ev = event.event;
@@ -140,7 +146,7 @@ export function useChatStream() {
 							...s,
 							isStreaming: false,
 							isComplete: true,
-							error: (event as unknown as {message: string}).message,
+							error: typeof event.message === "string" ? event.message : undefined,
 						}));
 						return;
 					}
@@ -159,14 +165,14 @@ export function useChatStream() {
 				return next;
 			});
 		} catch (err) {
-			if ((err as Error).name === "AbortError") {
+			if (err instanceof Error && err.name === "AbortError") {
 				setState((s) => ({...s, isStreaming: false, isComplete: true}));
 			} else {
 				setState((s) => ({
 					...s,
 					isStreaming: false,
 					isComplete: true,
-					error: (err as Error).message,
+					error: errorMessage(err),
 				}));
 			}
 		} finally {

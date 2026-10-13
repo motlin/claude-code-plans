@@ -14,7 +14,9 @@ import {createServer} from "node:net";
 import {delimiter, dirname, join, resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {chromium, type BrowserContext, type Page} from "playwright";
+import {z} from "zod";
 import {defined} from "../src/lib/defined";
+import {IndexingStatusResponse} from "../src/lib/api/indexing";
 
 const REPOSITORY_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const SCREENSHOTS_DIRECTORY = join(REPOSITORY_ROOT, "screenshots");
@@ -548,7 +550,7 @@ export async function stopDevServer(server: ChildProcess): Promise<void> {
 async function waitForIndexing(): Promise<void> {
 	for (let attempt = 0; attempt < 120; attempt += 1) {
 		const response = await fetch(`${BASE_URL}/api/indexing-status`);
-		const status = (await response.json()) as {isIndexing: boolean};
+		const status = IndexingStatusResponse.parse(await response.json());
 		if (!status.isIndexing) return;
 		await new Promise((resolvePromise) => {
 			setTimeout(resolvePromise, 100);
@@ -638,9 +640,10 @@ async function collectRendererManifest(page: Page, chromiumVersion: string): Pro
 			},
 		]),
 	);
-	const packageJson = JSON.parse(
-		readFileSync(join(REPOSITORY_ROOT, "node_modules", "playwright", "package.json"), "utf8"),
-	) as {version: string};
+	const packageJson = z
+		.object({version: z.string()})
+		.loose()
+		.parse(JSON.parse(readFileSync(join(REPOSITORY_ROOT, "node_modules", "playwright", "package.json"), "utf8")));
 
 	return {
 		playwrightVersion: packageJson.version,

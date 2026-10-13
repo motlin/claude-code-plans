@@ -1,11 +1,10 @@
 import {createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore} from "react";
 import {useQueryClient, type QueryClient} from "@tanstack/react-query";
+import {z} from "zod";
 import {
 	DOMAIN_EVENTS,
 	SSE_EVENTS,
 	type HookSchemaDriftPayload,
-	type HookBackgroundTaskPayload,
-	type HookSessionCronPayload,
 	type MemorySummaryPayload,
 	type NotificationPayload,
 	type NotificationEntryPayload,
@@ -36,6 +35,11 @@ import {
 	transcriptEndIndex,
 	type TranscriptData,
 } from "../lib/api/sessions";
+import {
+	HookBackgroundTaskPayloadSchema,
+	HookSessionCronPayloadSchema,
+	LiveSubagentNodeSchema,
+} from "../lib/domain-event-payload-schemas";
 import {toMdSlug} from "../lib/md-slug";
 import {getSubagentLifecycleKey, toSubagentSessionId} from "../lib/subagents";
 import {isLiveSessionState, type ActivityState, type SessionSummaryState} from "../lib/session-state";
@@ -130,21 +134,24 @@ export type ClaudeEventsAction =
 // the Query cache and patched directly from the SSE listener.
 // ---------------------------------------------------------------------------
 
+/** A fresh state with every map and set empty: the provider's initial state and what RESET returns. */
+export function emptyClaudeEventsState(): ClaudeEventsState {
+	return {
+		activeSessions: new Map(),
+		hookContexts: new Map(),
+		hookSchemaDrifts: new Map(),
+		dismissedDrifts: new Set(),
+		pendingTools: new Map(),
+		failedTools: new Map(),
+		compactingSessions: new Set(),
+		notifications: new Map(),
+		runningSubagents: new Map(),
+		liveSubagents: new Map(),
+	};
+}
+
 export function claudeEventsReducer(state: ClaudeEventsState, action: ClaudeEventsAction): ClaudeEventsState {
-	if (action.type === "RESET") {
-		return {
-			activeSessions: new Map(),
-			hookContexts: new Map(),
-			hookSchemaDrifts: new Map(),
-			dismissedDrifts: new Set(),
-			pendingTools: new Map(),
-			failedTools: new Map(),
-			compactingSessions: new Set(),
-			notifications: new Map(),
-			runningSubagents: new Map(),
-			liveSubagents: new Map(),
-		};
-	}
+	if (action.type === "RESET") return emptyClaudeEventsState();
 
 	if (action.type === "SWEEP_LIVE_SUBAGENTS") {
 		const liveSubagents = new Map(state.liveSubagents);
@@ -189,7 +196,8 @@ export function claudeEventsReducer(state: ClaudeEventsState, action: ClaudeEven
 		const liveSubagents = new Map<string, LiveSubagentNode>();
 		const runningSubagents = new Map<string, SubagentStartedPayload>();
 		for (const value of nodes) {
-			const node = value as LiveSubagentNode;
+			const node = LiveSubagentNodeSchema.safeParse(value).data;
+			if (node === undefined) continue;
 			liveSubagents.set(node.agentId, node);
 			if (node.endedAt === null) {
 				runningSubagents.set(getSubagentLifecycleKey(node.sessionId, node.agentId, node.agentType), node);
@@ -267,8 +275,11 @@ export function claudeEventsReducer(state: ClaudeEventsState, action: ClaudeEven
 		case DOMAIN_EVENTS.SESSION_UPDATED: {
 			// Domain SESSION_UPDATED carries the full session summary; only the id
 			// is needed here to keep the active indicator alive.
-			const session = action.data["session"] as {id?: string} | undefined;
-			const id = session?.id ?? sessionId;
+			const session = action.data["session"];
+			// Narrowed inline (not via asRecord) to keep this per-event hot path free of helper calls.
+			const sessionIdField =
+				typeof session === "object" && session !== null && "id" in session ? session.id : undefined;
+			const id = (typeof sessionIdField === "string" ? sessionIdField : undefined) ?? sessionId;
 			if (!id) return state;
 			const existing = state.activeSessions.get(id);
 			if (!existing) return state;
@@ -290,12 +301,10 @@ export function claudeEventsReducer(state: ClaudeEventsState, action: ClaudeEven
 			if (typeof action.data["effortLevel"] === "string") {
 				next.effortLevel = action.data["effortLevel"];
 			}
-			if (Array.isArray(action.data["backgroundTasks"])) {
-				next.backgroundTasks = action.data["backgroundTasks"] as HookBackgroundTaskPayload[];
-			}
-			if (Array.isArray(action.data["sessionCrons"])) {
-				next.sessionCrons = action.data["sessionCrons"] as HookSessionCronPayload[];
-			}
+			const backgroundTasks = z.array(HookBackgroundTaskPayloadSchema).safeParse(action.data["backgroundTasks"]);
+			if (backgroundTasks.success) next.backgroundTasks = backgroundTasks.data;
+			const sessionCrons = z.array(HookSessionCronPayloadSchema).safeParse(action.data["sessionCrons"]);
+			if (sessionCrons.success) next.sessionCrons = sessionCrons.data;
 			const hookContexts = new Map(state.hookContexts);
 			hookContexts.set(sessionId, next);
 			return {...state, hookContexts};

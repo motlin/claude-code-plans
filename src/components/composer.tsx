@@ -618,7 +618,8 @@ export function Composer({
 					setDragging(true);
 				}}
 				onDragLeave={(e) => {
-					if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDragging(false);
+					if (!(e.relatedTarget instanceof Node && e.currentTarget.contains(e.relatedTarget)))
+						setDragging(false);
 				}}
 				onDrop={(e) => {
 					if (disabled || !hasFiles(e)) return;

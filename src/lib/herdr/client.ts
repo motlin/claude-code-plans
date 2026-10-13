@@ -1,4 +1,5 @@
 import {createConnection, type Socket} from "node:net";
+import {asRecord, errorMessage} from "../narrow";
 import {resolveHerdrSocketPath} from "./socket-path";
 
 export type HerdrResult<T> = {ok: true; value: T} | {ok: false; code: string; message: string};
@@ -9,12 +10,8 @@ function failure(code: string, message: string): HerdrResult<never> {
 	return {ok: false, code, message};
 }
 
-function errorMessage(error: unknown): string {
-	return error instanceof Error ? error.message : String(error);
-}
-
 function serializeRequest(request: object): HerdrResult<string> {
-	const fields = request as Record<string, unknown>;
+	const fields: Record<string, unknown> = {...request};
 	if (typeof fields["id"] !== "string") {
 		return failure("invalid-request", "herdr request id must be a string");
 	}
@@ -41,7 +38,7 @@ function serializeRequest(request: object): HerdrResult<string> {
 	return {ok: true, value: line};
 }
 
-function parseResponse<T>(line: string): HerdrResult<T> {
+function parseResponse(line: string): HerdrResult<unknown> {
 	let message: unknown;
 	try {
 		message = JSON.parse(line);
@@ -49,21 +46,19 @@ function parseResponse<T>(line: string): HerdrResult<T> {
 		return failure("bad-response", "herdr returned invalid JSON");
 	}
 
-	if (message === null || typeof message !== "object" || Array.isArray(message)) {
+	const fields = asRecord(message);
+	if (fields === undefined) {
 		return failure("bad-response", "herdr returned an invalid response envelope");
 	}
 
-	const fields = message as Record<string, unknown>;
 	if (Object.hasOwn(fields, "result")) {
-		return {ok: true, value: fields["result"] as T};
+		return {ok: true, value: fields["result"]};
 	}
 	if (Object.hasOwn(fields, "error")) {
 		const responseError = fields["error"];
-		if (responseError !== null && typeof responseError === "object" && !Array.isArray(responseError)) {
-			const errorFields = responseError as Record<string, unknown>;
-			if (typeof errorFields["code"] === "string" && typeof errorFields["message"] === "string") {
-				return failure(errorFields["code"], errorFields["message"]);
-			}
+		const errorFields = asRecord(responseError);
+		if (typeof errorFields?.["code"] === "string" && typeof errorFields["message"] === "string") {
+			return failure(errorFields["code"], errorFields["message"]);
 		}
 	}
 
@@ -77,7 +72,7 @@ function parseResponse<T>(line: string): HerdrResult<T> {
  * may also be empty after a deserialization error, so the connection itself is
  * the correlation boundary.
  */
-export async function herdrRequest<T>(request: object, timeoutMs = 5000): Promise<HerdrResult<T>> {
+export async function herdrRequest(request: object, timeoutMs = 5000): Promise<HerdrResult<unknown>> {
 	const serializedRequest = serializeRequest(request);
 	if (!serializedRequest.ok) return Promise.resolve(serializedRequest);
 
@@ -87,7 +82,7 @@ export async function herdrRequest<T>(request: object, timeoutMs = 5000): Promis
 		let socket: Socket | undefined;
 		let timeout: NodeJS.Timeout | undefined;
 
-		const finish = (result: HerdrResult<T>) => {
+		const finish = (result: HerdrResult<unknown>) => {
 			if (settled) return;
 			settled = true;
 			if (timeout) clearTimeout(timeout);
@@ -108,7 +103,7 @@ export async function herdrRequest<T>(request: object, timeoutMs = 5000): Promis
 			buffer += chunk.toString();
 			const newlineIndex = buffer.indexOf("\n");
 			if (newlineIndex === -1) return;
-			finish(parseResponse<T>(buffer.slice(0, newlineIndex)));
+			finish(parseResponse(buffer.slice(0, newlineIndex)));
 		};
 		const onError = (error: Error) => {
 			finish(failure("connect-failed", error.message));

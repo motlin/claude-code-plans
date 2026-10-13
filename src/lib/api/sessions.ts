@@ -125,8 +125,11 @@ export type SessionDetailData = NonNullable<z.infer<typeof SessionDetailResponse
  * the tail so a megabyte-scale session paints its newest messages immediately,
  * and the client pages backwards from `startIndex`.
  */
+/** One raw JSONL record as the transcript endpoint serves it. */
+export const TranscriptRecordSchema = z.record(z.string(), JsonValueSchema);
+
 export const TranscriptResponse = z.object({
-	records: z.array(z.record(z.string(), JsonValueSchema)),
+	records: z.array(TranscriptRecordSchema),
 	byteOffset: z.number(),
 	/** Index of `records[0]` within the session's full JSONL record list. */
 	startIndex: z.number(),

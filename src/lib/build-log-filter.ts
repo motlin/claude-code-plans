@@ -8,10 +8,10 @@ interface BundlerLog {
  * Rolldown warns once per dependency module that starts with "use client", which the server bundle cannot preserve;
  * React's server rendering ignores the directive anyway, so a dependency's copy is noise. The app's own still warn.
  */
-export function quietDependencyDirectives<Log extends BundlerLog>(
-	level: string,
+export function quietDependencyDirectives<Level extends string, Log extends BundlerLog>(
+	level: Level,
 	log: Log,
-	handler: (level: never, log: Log) => void,
+	handler: (level: Level, log: Log) => void,
 ): void {
 	if (
 		level === "warn" &&
@@ -21,5 +21,5 @@ export function quietDependencyDirectives<Log extends BundlerLog>(
 	) {
 		return;
 	}
-	handler(level as never, log);
+	handler(level, log);
 }

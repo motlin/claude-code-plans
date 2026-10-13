@@ -4,6 +4,7 @@ import {homedir} from "node:os";
 import {extractTitle} from "./markdown-utils.server.js";
 import {resolveProjectName} from "./memory.js";
 import {nonEmpty} from "./non-empty";
+import {z} from "zod";
 
 export interface FileTreeNode {
 	path: string;
@@ -171,14 +172,29 @@ export function getPluginVersionKind(version: string): PluginInfo["versionKind"]
 	return /^[0-9a-f]{7,40}$/i.test(version) ? "commit" : "release";
 }
 
+const PluginRegistrySchema = z.object({
+	plugins: z.record(z.string(), z.array(z.object({installPath: z.string(), version: z.string()}))),
+});
+
+/** The plugin.json fields listPlugins shows; a field of the wrong type reads as absent. */
+const PluginJsonSchema = z.object({
+	name: z.string().optional().catch(undefined),
+	version: z.string().optional().catch(undefined),
+	description: z.string().optional().catch(undefined),
+	author: z
+		.object({name: z.string().optional().catch(undefined)})
+		.optional()
+		.catch(undefined),
+});
+
 export async function listPlugins(claudeDir: string = join(homedir(), ".claude")): Promise<PluginInfo[]> {
 	const registryPath = join(claudeDir, "plugins", "installed_plugins.json");
-	let registry: {
-		plugins: Record<string, Array<{installPath: string; version: string}>>;
-	};
+	let registry: z.infer<typeof PluginRegistrySchema>;
 	try {
 		const raw = await readFile(registryPath, "utf-8");
-		registry = JSON.parse(raw) as typeof registry;
+		const parsed = PluginRegistrySchema.safeParse(JSON.parse(raw));
+		if (!parsed.success) return [];
+		registry = parsed.data;
 	} catch {
 		return [];
 	}
@@ -189,15 +205,10 @@ export async function listPlugins(claudeDir: string = join(homedir(), ".claude")
 		const install = installs[0];
 		if (!install) continue;
 
-		let pluginJson: {
-			name?: string;
-			version?: string;
-			description?: string;
-			author?: {name?: string};
-		} = {};
+		let pluginJson: z.infer<typeof PluginJsonSchema> = {};
 		try {
 			const raw = await readFile(join(install.installPath, ".claude-plugin", "plugin.json"), "utf-8");
-			pluginJson = JSON.parse(raw) as typeof pluginJson;
+			pluginJson = PluginJsonSchema.safeParse(JSON.parse(raw)).data ?? {};
 		} catch {
 			// no plugin.json
 		}

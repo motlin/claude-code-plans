@@ -10,7 +10,7 @@ const CHANGES_REVIEW_STORAGE_KEY = "ccb.changesReview.v1";
 /** Window event an already-open Changes pane listens for to show a review's findings. */
 export const CHANGES_REVIEW_REQUEST_EVENT = "ccp:changes-review-request";
 
-export interface ChangesReviewRequest {
+interface ChangesReviewRequest {
 	sessionId: string;
 	reviewId: string;
 }

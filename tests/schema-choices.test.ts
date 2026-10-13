@@ -41,6 +41,7 @@ import {PaletteFilterSchema, PaletteTypeSchema} from "../src/lib/palette-tokens"
 import {PaneLayoutStateSchema} from "../src/lib/pane-layout";
 import {PinDropOutcomeSchema} from "../src/lib/pinned-sessions";
 import {ContextAttachmentKindSchema} from "../src/lib/context-attach";
+import {PendingApprovalToolNameSchema} from "../src/lib/domain-event-payload-schemas";
 import {GhPrReviewDecisionSchema, GhPrStateSchema, GhPrStatusCacheStateSchema} from "../src/lib/pr-status";
 import {RecentsHistorySchema} from "../src/lib/recents-history";
 import {
@@ -191,6 +192,7 @@ const ROOTS: ReadonlyArray<readonly [string, unknown]> = [
 	["LiveOptionChangeSchema", LiveOptionChangeSchema],
 	["PinDropOutcomeSchema", PinDropOutcomeSchema],
 	["ContextAttachmentKindSchema", ContextAttachmentKindSchema],
+	["PendingApprovalToolNameSchema", PendingApprovalToolNameSchema],
 	["UnifiedSearchParamsSchema", UnifiedSearchParamsSchema],
 	["UnifiedSearchResponse", UnifiedSearchResponse],
 ];

@@ -3,6 +3,7 @@ import {join} from "node:path";
 import type {ITheme} from "ghostty-web";
 import {z} from "zod";
 import {defined} from "../defined";
+import {isKeyOf} from "../narrow";
 
 const HexColorSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 
@@ -134,8 +135,8 @@ export function parseGhosttyConfig(contents: string): GhosttyConfig {
 				"PaletteEntrySchema bounds the palette index",
 			);
 			theme[themeField] = palette.color;
-		} else if (Object.hasOwn(THEME_SETTING_FIELDS, key)) {
-			const themeField = THEME_SETTING_FIELDS[key as keyof typeof THEME_SETTING_FIELDS];
+		} else if (isKeyOf(THEME_SETTING_FIELDS, key)) {
+			const themeField = THEME_SETTING_FIELDS[key];
 			theme[themeField] = value;
 		}
 	}

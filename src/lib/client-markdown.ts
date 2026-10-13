@@ -39,21 +39,31 @@ interface MarkdownRenderOptions {
 	smartQuotes?: boolean;
 }
 
-/** Per-render state; the MarkdownIt instances themselves are cached and shared. */
-interface MarkdownEnv {
-	mdLinkBase?: string;
-	fileRefs?: ReadonlyMap<string, FileRef>;
-	artifactTitles?: ReadonlyMap<string, string>;
-	smartQuotes?: boolean;
+/**
+ * Per-render state; the MarkdownIt instances themselves are cached and shared. A class, so rules can narrow
+ * markdown-it's untyped `env` with `instanceof`.
+ */
+class MarkdownEnv {
+	readonly mdLinkBase: string | undefined;
+	readonly fileRefs: ReadonlyMap<string, FileRef> | undefined;
+	readonly artifactTitles: ReadonlyMap<string, string> | undefined;
+	readonly smartQuotes: boolean;
+
+	constructor(options?: MarkdownRenderOptions) {
+		this.mdLinkBase = options?.mdLinkBase;
+		this.fileRefs = options?.fileRefs;
+		this.artifactTitles = options?.artifactTitles;
+		this.smartQuotes = options?.smartQuotes === true;
+	}
 }
 
 function toEnv(options?: MarkdownRenderOptions): MarkdownEnv {
-	const env: MarkdownEnv = {};
-	if (options?.mdLinkBase !== undefined) env.mdLinkBase = options.mdLinkBase;
-	if (options?.fileRefs !== undefined) env.fileRefs = options.fileRefs;
-	if (options?.artifactTitles !== undefined) env.artifactTitles = options.artifactTitles;
-	if (options?.smartQuotes === true) env.smartQuotes = true;
-	return env;
+	return new MarkdownEnv(options);
+}
+
+/** The render's `MarkdownEnv`, or undefined for an env some other caller passed. */
+function envOf(env: unknown): MarkdownEnv | undefined {
+	return env instanceof MarkdownEnv ? env : undefined;
 }
 
 /** Marks a transcript file ref; its `data-file-*` attributes carry the target. */
@@ -115,7 +125,7 @@ const COPY_STRIP = `<div class="${CODEBLOCK_COPY_RAIL_CLASS}"><div class="${CODE
  * us where siblings live; otherwise decline so the text renders unchanged.
  */
 function wikiLink(state: StateInline, silent: boolean): boolean {
-	const base = (state.env as MarkdownEnv | undefined)?.mdLinkBase;
+	const base = envOf(state.env)?.mdLinkBase;
 	if (base === undefined) return false;
 
 	const start = state.pos;
@@ -152,10 +162,10 @@ function linkText(tokens: readonly Token[]): string {
 
 /**
  * Collapse every link whose href `match` accepts, whether written or
- * linkified, into one `type` token carrying the match as `meta`, the href, and
- * the link's plain text as `content`, so a renderer rule can draw it whole.
+ * linkified, into one `type` token carrying the href, from which a renderer rule
+ * re-derives what matched, and the link's plain text as `content`, so the rule can draw it whole.
  */
-function collapseLinks(state: StateCore, type: string, match: (href: string, token: Token) => unknown): void {
+function collapseLinks(state: StateCore, type: string, match: (href: string, token: Token) => boolean): void {
 	for (const block of state.tokens) {
 		const children = block.children;
 		if (block.type !== "inline" || children === null) continue;
@@ -163,16 +173,14 @@ function collapseLinks(state: StateCore, type: string, match: (href: string, tok
 		for (let index = 0; index < children.length; index++) {
 			const token = defined(children[index], "link token index out of range");
 			const href = token.type === "link_open" ? token.attrGet("href") : null;
-			const meta = href === null ? undefined : match(href, token);
-			const close =
-				meta === undefined ? -1 : children.findIndex((child, at) => at > index && child.type === "link_close");
-			if (href === null || meta === undefined || close === -1) {
+			const matched = href !== null && match(href, token);
+			const close = matched ? children.findIndex((child, at) => at > index && child.type === "link_close") : -1;
+			if (href === null || !matched || close === -1) {
 				rewritten.push(token);
 				continue;
 			}
 			const collapsed = new state.Token(type, "a", 0);
 			collapsed.attrs = [["href", href]];
-			collapsed.meta = meta;
 			collapsed.content = linkText(children.slice(index + 1, close));
 			rewritten.push(collapsed);
 			index = close;
@@ -183,10 +191,7 @@ function collapseLinks(state: StateCore, type: string, match: (href: string, tok
 
 /** Upstream renders a markdown link to a claude.ai artifact as an inline chip rather than plain link text. */
 function artifactLinks(state: StateCore): void {
-	collapseLinks(state, ARTIFACT_LINK_TOKEN, (href) => {
-		const artifact = normalizeArtifactUrl(href);
-		return artifact === undefined ? undefined : {id: artifact.id};
-	});
+	collapseLinks(state, ARTIFACT_LINK_TOKEN, (href) => normalizeArtifactUrl(href) !== undefined);
 }
 
 const PR_CHIP_TOKEN = "pr_chip";
@@ -211,14 +216,17 @@ function parsePullRequestUrl(href: string): PullRequestRef | undefined {
 
 /** Raw PR URLs become chips; authored Markdown links keep their label tokens. */
 function pullRequestChips(state: StateCore): void {
-	collapseLinks(state, PR_CHIP_TOKEN, (href, token) =>
-		token.markup === "linkify" || token.markup === "autolink" ? parsePullRequestUrl(href) : undefined,
+	collapseLinks(
+		state,
+		PR_CHIP_TOKEN,
+		(href, token) =>
+			(token.markup === "linkify" || token.markup === "autolink") && parsePullRequestUrl(href) !== undefined,
 	);
 }
 
 function pullRequestChipHtml(token: Token, escape: (value: string) => string): string {
-	const {owner, repo, number} = token.meta as PullRequestRef;
 	const href = token.attrGet("href") ?? "";
+	const {owner, repo, number} = defined(parsePullRequestUrl(href), "PR chip token href");
 	return `<a href="${escape(href)}" target="_blank" rel="noreferrer" class="pr-chip">${PR_ICON_SVG}${escape(`${owner}/${repo}#${number}`)}</a>`;
 }
 
@@ -228,10 +236,10 @@ function isExternalHref(href: string): boolean {
 }
 
 /** Upstream's inline artifact chip: the artifact glyph and title on an accent-muted fill, in the line of prose. */
-function artifactLinkHtml(token: Token, env: MarkdownEnv, escape: (value: string) => string) {
-	const {id} = token.meta as {id: string};
+function artifactLinkHtml(token: Token, env: MarkdownEnv | undefined, escape: (value: string) => string) {
 	const href = token.attrGet("href") ?? "";
-	const title = env.artifactTitles?.get(id) ?? token.content;
+	const {id} = defined(normalizeArtifactUrl(href), "artifact link token href");
+	const title = env?.artifactTitles?.get(id) ?? token.content;
 	return `<a href="${escape(href)}" target="_blank" rel="noreferrer" class="artifact-link-chip" ${ARTIFACT_LINK_ATTR}="">${ARTIFACT_ICON_SVG}<span class="artifact-link-chip-title">${escape(title)}</span></a>`;
 }
 
@@ -312,7 +320,7 @@ function isBareUrlLink(children: readonly Token[], open: number): boolean {
  * opaque inline content stay straight and read as a word to what follows.
  */
 function smartQuotes(state: StateCore): void {
-	if ((state.env as MarkdownEnv | undefined)?.smartQuotes !== true) return;
+	if (envOf(state.env)?.smartQuotes !== true) return;
 	for (const block of state.tokens) {
 		const children = block.type === "inline" ? block.children : null;
 		if (children === null) continue;
@@ -355,11 +363,7 @@ function applyPlugins(instance: MarkdownIt): void {
 	instance.inline.ruler.before("link", "wikilink", wikiLink);
 	instance.core.ruler.push(ARTIFACT_LINK_TOKEN, artifactLinks);
 	instance.renderer.rules[ARTIFACT_LINK_TOKEN] = (tokens, idx, _options, env) =>
-		artifactLinkHtml(
-			defined(tokens[idx], "artifact link token"),
-			(env ?? {}) as MarkdownEnv,
-			instance.utils.escapeHtml,
-		);
+		artifactLinkHtml(defined(tokens[idx], "artifact link token"), envOf(env), instance.utils.escapeHtml);
 	instance.core.ruler.push(PR_CHIP_TOKEN, pullRequestChips);
 	instance.core.ruler.push("numeric_table_columns", numericTableColumns);
 	instance.core.ruler.push("smart_quotes", smartQuotes);
@@ -372,7 +376,7 @@ function applyPlugins(instance: MarkdownIt): void {
 	const renderCodeInline = defined(instance.renderer.rules.code_inline, "markdown-it code_inline rule");
 	instance.renderer.rules.code_inline = (tokens, idx, options, env, self) => {
 		const text = defined(tokens[idx], "code_inline token").content;
-		const ref = (env as MarkdownEnv | undefined)?.fileRefs?.get(text);
+		const ref = envOf(env)?.fileRefs?.get(text);
 		return ref === undefined
 			? renderCodeInline(tokens, idx, options, env, self)
 			: fileRefHtml(text, ref, instance.utils.escapeHtml);
@@ -381,7 +385,7 @@ function applyPlugins(instance: MarkdownIt): void {
 	instance.renderer.rules["link_open"] = (tokens, idx, options, env, self) => {
 		const token = defined(tokens[idx], "link_open token");
 		const href = token.attrGet("href");
-		const base = (env as MarkdownEnv | undefined)?.mdLinkBase;
+		const base = envOf(env)?.mdLinkBase;
 		if (base !== undefined) {
 			const resolved = href === null ? null : resolveRelativeMdHref(href, base);
 			if (resolved !== null) token.attrSet("href", resolved);

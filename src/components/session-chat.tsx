@@ -83,7 +83,8 @@ import {
 	takeTranscriptHandoff,
 	type TranscriptReadingAnchor,
 } from "../lib/transcript-measurements";
-import {jumpToMessage, TRANSCRIPT_JUMP_REQUEST_EVENT, type TranscriptJumpRequestEvent} from "../lib/jump-to-message";
+import {jumpToMessage, TRANSCRIPT_JUMP_REQUEST_EVENT} from "../lib/jump-to-message";
+import {asRecord, isKeyOf} from "../lib/narrow";
 
 function getSourceSessionId(line: SessionLine, fallbackSessionId: string): string {
 	return "sessionId" in line && line.sessionId !== undefined ? line.sessionId : fallbackSessionId;
@@ -512,10 +513,12 @@ export const SessionChat = React.memo(function SessionChat({
 			return true;
 		};
 		const onWheel = (event: Event) => {
-			if ((event as WheelEvent).deltaY < 0 && scrollReachesOwner(event.target)) cancelLayoutFollow();
+			if (event instanceof WheelEvent && event.deltaY < 0 && scrollReachesOwner(event.target))
+				cancelLayoutFollow();
 		};
 		const onKeyDown = (event: Event) => {
-			const key = event as KeyboardEvent;
+			if (!(event instanceof KeyboardEvent)) return;
+			const key = event;
 			if (isEditableTarget(key.target) || !scrollReachesOwner(key.target)) return;
 			if (
 				key.key === "ArrowUp" ||
@@ -526,10 +529,11 @@ export const SessionChat = React.memo(function SessionChat({
 				cancelLayoutFollow();
 		};
 		const onTouchStart = (event: Event) => {
-			touchY = (event as TouchEvent).touches[0]?.clientY;
+			if (event instanceof TouchEvent) touchY = event.touches[0]?.clientY;
 		};
 		const onTouchMove = (event: Event) => {
-			const nextY = (event as TouchEvent).touches[0]?.clientY;
+			if (!(event instanceof TouchEvent)) return;
+			const nextY = event.touches[0]?.clientY;
 			if (touchY !== undefined && nextY !== undefined && nextY > touchY && scrollReachesOwner(event.target))
 				cancelLayoutFollow();
 			touchY = nextY;
@@ -1674,17 +1678,13 @@ function scrollerViewport(scroller: Element): {top: number; height: number} {
 function queuedHumanPromptOf(line: SessionLine): string | null {
 	if (line.type !== "attachment") return null;
 	try {
-		const parsed = JSON.parse(line.attachmentJson) as {
-			type?: unknown;
-			prompt?: unknown;
-			commandMode?: unknown;
-			origin?: {kind?: unknown};
-		};
-		return parsed.type === "queued_command" &&
-			parsed.commandMode === "prompt" &&
-			parsed.origin?.kind === "human" &&
-			typeof parsed.prompt === "string"
-			? parsed.prompt
+		const parsed = asRecord(JSON.parse(line.attachmentJson));
+		const prompt = parsed?.["prompt"];
+		return parsed?.["type"] === "queued_command" &&
+			parsed["commandMode"] === "prompt" &&
+			asRecord(parsed["origin"])?.["kind"] === "human" &&
+			typeof prompt === "string"
+			? prompt
 			: null;
 	} catch {
 		return null;
@@ -2481,7 +2481,8 @@ function VirtualizedSessionEntries({
 					}
 					continue;
 				}
-				const element = observation.target as HTMLElement;
+				const element = observation.target;
+				if (!(element instanceof HTMLElement)) continue;
 				const index = Number(element.dataset["transcriptEntryIndex"]);
 				const entry = entries[index];
 				if (!entry) continue;
@@ -2543,7 +2544,8 @@ function VirtualizedSessionEntries({
 
 	useEffect(() => {
 		function requestJump(event: Event) {
-			const recordIndex = (event as TranscriptJumpRequestEvent).detail;
+			if (!(event instanceof CustomEvent) || typeof event.detail !== "number") return;
+			const recordIndex = event.detail;
 			const entryIndex = entries.findIndex(
 				(entry) => entry.startRecordIndex <= recordIndex && entry.endRecordIndex >= recordIndex,
 			);
@@ -2796,11 +2798,12 @@ interface AttachmentHead {
 
 function getAttachmentHead(json: string): AttachmentHead {
 	try {
-		const parsed = JSON.parse(json) as {type?: unknown; hookEvent?: unknown; prompt?: unknown};
+		const parsed = asRecord(JSON.parse(json)) ?? {};
+		const {type, hookEvent, prompt} = parsed;
 		return {
-			type: typeof parsed.type === "string" ? parsed.type : null,
-			hookEvent: typeof parsed.hookEvent === "string" ? parsed.hookEvent : null,
-			prompt: typeof parsed.prompt === "string" ? parsed.prompt : null,
+			type: typeof type === "string" ? type : null,
+			hookEvent: typeof hookEvent === "string" ? hookEvent : null,
+			prompt: typeof prompt === "string" ? prompt : null,
 		};
 	} catch {
 		return {type: null, hookEvent: null, prompt: null};
@@ -3150,8 +3153,8 @@ function UserEntry({
 
 	if (kind === "stop-hook") return <StopHookMarker line={line} />;
 
-	if (kind in LABEL_BY_KIND) {
-		const label = LABEL_BY_KIND[kind as LabeledKind];
+	if (isKeyOf(LABEL_BY_KIND, kind)) {
+		const label = LABEL_BY_KIND[kind];
 		return (
 			<LabeledAutomatedEntry
 				line={line}
@@ -3954,9 +3957,8 @@ function ContentBlock({
 		if (!showTools) return null;
 		// Render the full tool call section when we hit the first tool_use block
 		// (subsequent tool_use blocks in the same line are rendered as part of this section)
-		const firstToolUseIndex = ((line.message?.content ?? []) as SessionContentBlock[]).findIndex(
-			(b) => b.type === "tool_use",
-		);
+		const content = line.message?.content;
+		const firstToolUseIndex = Array.isArray(content) ? content.findIndex((b) => b.type === "tool_use") : -1;
 		if (blockIndex !== firstToolUseIndex) return null;
 		return <ToolCallSection calls={toolCalls} sessionId={sessionId} />;
 	}

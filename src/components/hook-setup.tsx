@@ -3,6 +3,7 @@ import {useQuery} from "@tanstack/react-query";
 import {Check, Copy, Settings, Download, Trash2, AlertCircle} from "lucide-react";
 import {generateHooksJson, DEFAULT_HOOK_PORT} from "../lib/hook-config";
 import {hookStatusQueryOptions, useInstallHooks, useUninstallHooks} from "../lib/api/hooks";
+import {errorMessage} from "../lib/narrow";
 import {useSettings} from "./settings-context";
 
 export function HookSetup() {
@@ -44,7 +45,7 @@ export function HookSetup() {
 				text: `Hooks installed to ${result.settingsPath}`,
 			});
 		} catch (err) {
-			setMessage({type: "error", text: (err as Error).message});
+			setMessage({type: "error", text: errorMessage(err)});
 		}
 	}
 
@@ -57,7 +58,7 @@ export function HookSetup() {
 				text: `Hooks removed from ${result.settingsPath}`,
 			});
 		} catch (err) {
-			setMessage({type: "error", text: (err as Error).message});
+			setMessage({type: "error", text: errorMessage(err)});
 		}
 	}
 

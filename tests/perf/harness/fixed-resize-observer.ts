@@ -19,13 +19,14 @@ export function installFixedResizeObserver(size: FixedSize | ((element: Element)
 		observe(target: Element): void {
 			const {width, height} = sizeOf(target);
 			const boxSize = [{inlineSize: width, blockSize: height}];
-			const entry = {
+			const contentRect = {x: 0, y: 0, top: 0, left: 0, right: width, bottom: height, width, height};
+			const entry: ResizeObserverEntry = {
 				target,
-				contentRect: {x: 0, y: 0, top: 0, left: 0, right: width, bottom: height, width, height},
+				contentRect: {...contentRect, toJSON: () => contentRect},
 				borderBoxSize: boxSize,
 				contentBoxSize: boxSize,
 				devicePixelContentBoxSize: boxSize,
-			} as unknown as ResizeObserverEntry;
+			};
 			this.callback([entry], this);
 		}
 

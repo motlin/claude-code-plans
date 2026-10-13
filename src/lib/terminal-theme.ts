@@ -1,5 +1,6 @@
 import type {ITheme} from "ghostty-web";
 import {z} from "zod";
+import {objectKeys} from "./narrow";
 import type {GhosttyAppearance} from "./server-fns";
 
 /**
@@ -80,8 +81,8 @@ export function terminalThemeFromCodeTheme(theme: CodeThemeColors): ITheme {
 	if (cursorAccent !== undefined) result.cursorAccent = cursorAccent;
 	if (selectionBackground !== undefined) result.selectionBackground = selectionBackground;
 	if (selectionForeground !== undefined) result.selectionForeground = selectionForeground;
-	for (const [field, key] of Object.entries(ANSI_KEYS) as Array<[keyof typeof ANSI_KEYS, string]>) {
-		const color = opaqueHex(colors[key]);
+	for (const field of objectKeys(ANSI_KEYS)) {
+		const color = opaqueHex(colors[ANSI_KEYS[field]]);
 		if (color !== undefined) result[field] = color;
 	}
 	return result;

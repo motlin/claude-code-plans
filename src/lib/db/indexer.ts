@@ -40,6 +40,7 @@ import {
 } from "./bridge-session-index";
 import {defined} from "../defined";
 import {nonEmpty} from "../non-empty";
+import {asRecord, isRecord} from "../narrow";
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
 
@@ -512,52 +513,38 @@ class SubagentLinkCollector {
 	private readonly toolCallDescriptions = new Map<string, string>();
 	readonly links: SubagentLink[] = [];
 
-	/** Throws on a record whose content blocks are malformed; callers skip the rest of that record. */
 	add(record: unknown): void {
-		const obj = record as {
-			type?: string;
-			message?: {
-				content?:
-					| string
-					| Array<{
-							type?: string;
-							tool_use_id?: string;
-							content?: string | Array<{type?: string; text?: string}>;
-							name?: string;
-							id?: string;
-							input?: {description?: string; prompt?: string};
-					  }>;
-			};
-		};
-
-		const content = obj.message?.content;
+		const content = asRecord(asRecord(record)?.["message"])?.["content"];
 		if (!Array.isArray(content)) return;
 
 		for (const block of content) {
+			if (!isRecord(block)) continue;
+			const id = stringField(block, "id");
+			const toolUseId = stringField(block, "tool_use_id");
+
 			// Track Agent tool_use calls by their id + description
-			if (block.type === "tool_use" && block.name === "Agent" && block.id) {
-				const desc = block.input?.description ?? "";
-				this.toolCallDescriptions.set(block.id, desc);
+			if (block["type"] === "tool_use" && block["name"] === "Agent" && id) {
+				this.toolCallDescriptions.set(id, stringField(block["input"], "description") ?? "");
 			}
 
 			// Extract agentId from tool_result
-			if (block.type === "tool_result" && block.tool_use_id && this.toolCallDescriptions.has(block.tool_use_id)) {
+			if (block["type"] === "tool_result" && toolUseId && this.toolCallDescriptions.has(toolUseId)) {
 				let resultText = "";
-				if (typeof block.content === "string") {
-					resultText = block.content;
-				} else if (Array.isArray(block.content)) {
-					resultText = block.content
-						.filter(
-							(b): b is {type: string; text: string} => b.type === "text" && typeof b.text === "string",
+				const resultContent = block["content"];
+				if (typeof resultContent === "string") {
+					resultText = resultContent;
+				} else if (Array.isArray(resultContent)) {
+					resultText = resultContent
+						.flatMap((b: unknown) =>
+							isRecord(b) && b["type"] === "text" ? (stringField(b, "text") ?? []) : [],
 						)
-						.map((b) => b.text)
 						.join(" ");
 				}
 				const match = AGENT_ID_RE.exec(resultText);
 				if (match?.[1]) {
 					this.links.push({
 						agentId: `agent-${match[1]}`,
-						description: nonEmpty(this.toolCallDescriptions.get(block.tool_use_id)) ?? null,
+						description: nonEmpty(this.toolCallDescriptions.get(toolUseId)) ?? null,
 					});
 				}
 			}
@@ -650,11 +637,11 @@ class SessionIndexState {
 
 		if (line.includes('"cwd"')) {
 			try {
-				const parsed = JSON.parse(line) as {cwd?: string};
-				if (typeof parsed.cwd === "string") {
-					this.lastSessionCwd = parsed.cwd;
-					if (encodeProjectPath(parsed.cwd) === this.project) {
-						this.anchoredSessionCwd = parsed.cwd;
+				const cwd = stringField(JSON.parse(line), "cwd");
+				if (cwd !== null) {
+					this.lastSessionCwd = cwd;
+					if (encodeProjectPath(cwd) === this.project) {
+						this.anchoredSessionCwd = cwd;
 					}
 				}
 			} catch {
@@ -666,9 +653,9 @@ class SessionIndexState {
 		// null, so keep scanning until a real branch name appears (if any).
 		if (!this.sessionGitBranch && line.includes('"gitBranch"')) {
 			try {
-				const parsed = JSON.parse(line) as {gitBranch?: string};
-				if (typeof parsed.gitBranch === "string") {
-					this.sessionGitBranch = normalizeGitBranch(parsed.gitBranch);
+				const gitBranch = stringField(JSON.parse(line), "gitBranch");
+				if (gitBranch !== null) {
+					this.sessionGitBranch = normalizeGitBranch(gitBranch);
 				}
 			} catch {
 				// skip
@@ -688,8 +675,7 @@ class SessionIndexState {
 		// First wins: every record of a branched session carries the same lineage.
 		if (this.forkedFromSessionId === null && line.includes('"forkedFrom"')) {
 			try {
-				const parsed = JSON.parse(line) as {forkedFrom?: unknown};
-				const result = ForkedFromSchema.safeParse(parsed.forkedFrom);
+				const result = ForkedFromSchema.safeParse(asRecord(JSON.parse(line))?.["forkedFrom"]);
 				if (result.success) {
 					this.forkedFromSessionId = typeof result.data === "string" ? result.data : result.data.sessionId;
 				}
@@ -706,21 +692,18 @@ class SessionIndexState {
 			}
 		}
 
-		let obj: {
-			type?: string;
-			timestamp?: unknown;
-			message?: {
-				content?: string | Array<{type?: string; text?: string; name?: string}>;
-			};
-		};
+		let obj: unknown;
 		try {
-			obj = JSON.parse(line) as typeof obj;
+			obj = JSON.parse(line);
 		} catch {
 			return; // skip malformed lines
 		}
-		if (obj.type === "bridge-session") this.bridgeSessions.add(obj, this.sessionId);
-		if (typeof obj.timestamp === "string") {
-			const recordAt = Date.parse(obj.timestamp);
+		if (!isRecord(obj)) return;
+		const type = obj["type"];
+		if (type === "bridge-session") this.bridgeSessions.add(obj, this.sessionId);
+		const timestamp = obj["timestamp"];
+		if (typeof timestamp === "string") {
+			const recordAt = Date.parse(timestamp);
 			if (recordAt > (this.lastRecordAt ?? -Infinity)) this.lastRecordAt = recordAt;
 		}
 
@@ -736,22 +719,21 @@ class SessionIndexState {
 			this.artifactEvents.add(obj);
 			this.routines.add(obj);
 			this.usage.add(obj);
-			if (obj.type === "user" || obj.type === "assistant") {
-				const content = obj.message?.content;
+			if (type === "user" || type === "assistant") {
+				const content = asRecord(obj["message"])?.["content"];
 				const messageText: string[] = [];
-				const userText = (text: string) => (obj.type === "user" ? unwrapPastedContent(text) : text);
+				const userText = (text: string) => (type === "user" ? unwrapPastedContent(text) : text);
 				if (typeof content === "string") {
 					messageText.push(userText(content));
 				} else if (Array.isArray(content)) {
 					for (const block of content) {
-						if (block.type === "text" && typeof block.text === "string") {
-							messageText.push(userText(block.text));
-						} else if (
-							block.type === "tool_use" &&
-							typeof block.name === "string" &&
-							block.name.startsWith("mcp__")
-						) {
-							this.mcpToolNames.add(block.name);
+						if (!isRecord(block)) continue;
+						const text = stringField(block, "text");
+						const name = stringField(block, "name");
+						if (block["type"] === "text" && text !== null) {
+							messageText.push(userText(text));
+						} else if (block["type"] === "tool_use" && name?.startsWith("mcp__")) {
+							this.mcpToolNames.add(name);
 						}
 					}
 				}
@@ -759,7 +741,7 @@ class SessionIndexState {
 				this.indexedMessages.push({
 					sessionId: this.sessionId,
 					messageIndex: this.indexedMessages.length,
-					role: obj.type,
+					role: type,
 					text: substantiveText === "" ? null : substantiveText,
 				});
 			}
@@ -1047,14 +1029,10 @@ export async function indexSubagentFile(
 	let metaDescription: string | null = null;
 	let requestedModel: string | null = null;
 	try {
-		const meta = JSON.parse(await readFile(metaPath, "utf-8")) as {
-			agentType?: string;
-			description?: string;
-			model?: string;
-		};
-		agentType = meta.agentType ?? null;
-		metaDescription = meta.description ?? null;
-		requestedModel = meta.model ?? null;
+		const meta: unknown = JSON.parse(await readFile(metaPath, "utf-8"));
+		agentType = stringField(meta, "agentType");
+		metaDescription = stringField(meta, "description");
+		requestedModel = stringField(meta, "model");
 	} catch {
 		// no meta file
 	}
@@ -1071,23 +1049,21 @@ export async function indexSubagentFile(
 		for await (const line of rl) {
 			if (!line.trim()) continue;
 			try {
-				const obj = JSON.parse(line) as {
-					attributionAgent?: string;
-					slug?: string;
-					timestamp?: string;
-					message?: {model?: string};
-				};
-				if (obj.attributionAgent && !attributionAgent) {
-					attributionAgent = obj.attributionAgent;
+				const obj: unknown = JSON.parse(line);
+				const recordAttributionAgent = stringField(obj, "attributionAgent");
+				if (recordAttributionAgent && !attributionAgent) {
+					attributionAgent = recordAttributionAgent;
 				}
-				if (obj.slug && !slug) slug = obj.slug;
-				const recordModel = obj.message?.model;
+				const recordSlug = stringField(obj, "slug");
+				if (recordSlug && !slug) slug = recordSlug;
+				const recordModel = stringField(asRecord(obj)?.["message"], "model");
 				if (recordModel && recordModel !== SYNTHETIC_MODEL && !resolvedModel) {
 					resolvedModel = recordModel;
 				}
-				if (obj.timestamp) {
-					startedAt ??= obj.timestamp;
-					finishedAt = obj.timestamp;
+				const timestamp = stringField(obj, "timestamp");
+				if (timestamp) {
+					startedAt ??= timestamp;
+					finishedAt = timestamp;
 				}
 				artifactEvents.add(obj);
 				slowCommands.add(obj);
@@ -1155,6 +1131,12 @@ export async function indexSubagentFile(
 }
 
 const AGENT_ID_RE = /agentId:\s*(\S+)/;
+
+/** `value[key]` when `value` is an object whose `key` holds a string. */
+function stringField(value: unknown, key: string): string | null {
+	const field = isRecord(value) ? value[key] : undefined;
+	return typeof field === "string" ? field : null;
+}
 
 export async function linkSubagentParents(db: IndexDb, jsonlPath: string, parentAgentId: string | null): Promise<void> {
 	const rl = createLineReader(createReadStream(jsonlPath, {encoding: "utf-8"}));

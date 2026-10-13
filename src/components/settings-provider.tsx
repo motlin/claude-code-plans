@@ -2,6 +2,7 @@ import {useCallback, useEffect, useState} from "react";
 
 import {appearanceCssVars} from "../lib/appearance";
 import {codeFontFamily} from "../lib/code-themes";
+import {objectKeys} from "../lib/narrow";
 import {
 	DEFAULTS,
 	detectVerbosity,
@@ -25,7 +26,7 @@ export function SettingsProvider({children}: {children: React.ReactNode}) {
 		migrateLegacyNotificationSetting(localStorage);
 		dropRetiredSettings(localStorage);
 		const loaded = {...DEFAULTS};
-		for (const key of Object.keys(DEFAULTS) as Array<keyof Settings>) {
+		for (const key of objectKeys(DEFAULTS)) {
 			const stored = readStoredValue(key);
 			if (stored !== undefined) {
 				(loaded as Record<keyof Settings, Settings[keyof Settings]>)[key] = stored;
@@ -34,7 +35,7 @@ export function SettingsProvider({children}: {children: React.ReactNode}) {
 		const rawVerbosity = localStorage.getItem(STORAGE_KEYS.verbosity);
 		if (rawVerbosity === "minimal") {
 			const normalPreset = VERBOSITY_PRESETS.normal;
-			for (const key of Object.keys(normalPreset) as Array<keyof Settings>) {
+			for (const key of objectKeys(normalPreset)) {
 				const value = normalPreset[key];
 				if (value === undefined) continue;
 				(loaded as Record<keyof Settings, Settings[keyof Settings]>)[key] = value;
@@ -89,7 +90,7 @@ export function SettingsProvider({children}: {children: React.ReactNode}) {
 		setSettings((previous) => {
 			const preset = VERBOSITY_PRESETS[verbosity];
 			const next = {...previous, ...preset, verbosity};
-			for (const key of Object.keys(preset) as Array<keyof Settings>) {
+			for (const key of objectKeys(preset)) {
 				writeStoredValue(key, next[key]);
 			}
 			writeStoredValue("verbosity", verbosity);
@@ -98,7 +99,7 @@ export function SettingsProvider({children}: {children: React.ReactNode}) {
 	}, []);
 
 	const resetAll = useCallback(() => {
-		for (const key of Object.keys(STORAGE_KEYS) as Array<keyof Settings>) {
+		for (const key of objectKeys(STORAGE_KEYS)) {
 			localStorage.removeItem(STORAGE_KEYS[key]);
 		}
 		setSettings(DEFAULTS);

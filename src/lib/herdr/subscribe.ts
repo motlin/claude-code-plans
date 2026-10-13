@@ -112,7 +112,7 @@ const defaultDependencies: BridgeDependencies = {
 	connect: createConnection,
 	createLineReader: (socket) => createInterface({input: socket}),
 	getPaneSnapshot: async () => {
-		const response = await herdrRequest<unknown>({
+		const response = await herdrRequest({
 			id: "ccp:sub-snap",
 			method: "session.snapshot",
 			params: {},

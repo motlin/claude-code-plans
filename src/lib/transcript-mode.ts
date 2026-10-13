@@ -1,4 +1,5 @@
 import {z} from "zod";
+import {objectKeys} from "./narrow";
 
 /**
  * Per-session transcript view (Normal / Thinking / Verbose), the model behind upstream
@@ -115,7 +116,7 @@ export function transcriptModeFlags<Flags extends object>({
 	const preset = presets[mode];
 	if (mode !== defaultMode) return {...preset};
 	const flags: Partial<Flags> = {};
-	for (const key of Object.keys(preset) as Array<keyof Flags>) {
+	for (const key of objectKeys(preset)) {
 		flags[key] = settings[key];
 	}
 	return flags;

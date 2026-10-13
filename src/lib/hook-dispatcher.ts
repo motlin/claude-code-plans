@@ -45,6 +45,10 @@ import {getCurrentSessionMessageIndex, markSessionCompletionUnreviewed} from "./
 import {expirePendingApprovalForSession, resumePendingApprovalsForSession} from "./db/pending-approvals-cache";
 import {nonEmpty} from "./non-empty";
 import {defined} from "./defined";
+import {asRecord} from "./narrow";
+import {z} from "zod";
+
+const StringArraySchema = z.array(z.string());
 
 /**
  * TTL covering the gap between the hook fast-path broadcast and the chokidar
@@ -172,8 +176,8 @@ function extractEditedFilePath(event: HookEvent): string | undefined {
 	if (event.tool_name !== "Edit" && event.tool_name !== "MultiEdit" && event.tool_name !== "Write") {
 		return undefined;
 	}
-	const toolInput = event.tool_input as {file_path?: unknown};
-	return typeof toolInput.file_path === "string" ? toolInput.file_path : undefined;
+	const filePath = asRecord(event.tool_input)?.["file_path"];
+	return typeof filePath === "string" ? filePath : undefined;
 }
 
 /**
@@ -223,8 +227,8 @@ function broadcastTaskChangedFromDb(
 		status: row.status,
 		activeForm: row.activeForm,
 		owner: row.owner,
-		blocks: JSON.parse(row.blocksJson) as string[],
-		blockedBy: JSON.parse(row.blockedByJson) as string[],
+		blocks: StringArraySchema.parse(JSON.parse(row.blocksJson)),
+		blockedBy: StringArraySchema.parse(JSON.parse(row.blockedByJson)),
 	};
 	const taskKey = `${DOMAIN_EVENTS.TASK_CHANGED}:${filePath}:${row.status}`;
 	if (recentlyBroadcast(taskKey, DEDUPE_TTL_MS)) return;

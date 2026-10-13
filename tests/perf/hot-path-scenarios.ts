@@ -1,10 +1,15 @@
 import {readFileSync} from "node:fs";
 import {basename} from "node:path";
-import {mergeTranscriptData, transcriptEndIndex, type TranscriptData} from "../../src/lib/api/sessions";
+import {
+	mergeTranscriptData,
+	transcriptEndIndex,
+	TranscriptRecordSchema,
+	type TranscriptData,
+} from "../../src/lib/api/sessions";
 import {openTestDb} from "../../src/lib/db/connection";
 import * as schema from "../../src/lib/db/schema";
 import {DOMAIN_EVENTS, SSE_EVENTS} from "../../src/lib/hook-events";
-import {claudeEventsReducer, type ClaudeEventsAction, type ClaudeEventsState} from "../../src/hooks/use-claude-events";
+import {claudeEventsReducer, emptyClaudeEventsState, type ClaudeEventsAction} from "../../src/hooks/use-claude-events";
 import {titleMatches} from "../../src/lib/search-text";
 import {readStructuredTranscript} from "../../src/lib/structured-transcript";
 import {processTranscript} from "../../src/lib/transcript";
@@ -49,9 +54,7 @@ async function prepareShaped(fn: HotPathShapedFn, shape: string): Promise<() => 
 				.filter((line) => line.trim());
 			const old = readStructuredTranscript(db.index, sessionId, {before: lines.length - APPENDED_LINES});
 			const appended: TranscriptData = {
-				records: lines
-					.slice(-APPENDED_LINES)
-					.map((line) => JSON.parse(line) as TranscriptData["records"][number]),
+				records: lines.slice(-APPENDED_LINES).map((line) => TranscriptRecordSchema.parse(JSON.parse(line))),
 				byteOffset: old.byteOffset,
 				startIndex: transcriptEndIndex(old),
 				precedingMessageCount: old.precedingMessageCount,
@@ -158,7 +161,7 @@ function prepareFixed(fn: HotPathFixedFn): () => unknown {
 	switch (fn) {
 		case "claudeEventsReducer": {
 			const events = replayEvents();
-			const initial = claudeEventsReducer({} as ClaudeEventsState, {type: "RESET"});
+			const initial = emptyClaudeEventsState();
 			return () => events.reduce(claudeEventsReducer, initial);
 		}
 		case "paletteRanking": {

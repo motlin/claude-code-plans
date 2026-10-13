@@ -5,6 +5,7 @@ import {openReviewInChanges, reviewChangesHref} from "../lib/changes-review";
 import {useSubscribeReviewOffers} from "../hooks/use-claude-events";
 import {useSettings} from "./settings-context";
 import type {Capabilities} from "../lib/capabilities";
+import {asRecord} from "../lib/narrow";
 import {reviewOfferAction, workingCopyReviewDegradedMessage} from "./working-copy-review-offer";
 
 interface ReviewBannerState {
@@ -48,10 +49,11 @@ export function WorkingCopyReviewBanner({capability}: {capability: Capabilities[
 				.split("\n")
 				.map((line) => line.trim())
 				.filter((line) => line !== "")
-				.map((line) => JSON.parse(line) as {type?: unknown; message?: unknown})
-				.find((event) => event.type === "error");
+				.map((line) => asRecord(JSON.parse(line)))
+				.find((event) => event?.["type"] === "error");
 			if (runnerError) {
-				throw new Error(typeof runnerError.message === "string" ? runnerError.message : "Review runner failed");
+				const message = runnerError["message"];
+				throw new Error(typeof message === "string" ? message : "Review runner failed");
 			}
 			setBanner({sessionId, reviewId, processId: null, status: "complete", error: null});
 		} catch (error) {

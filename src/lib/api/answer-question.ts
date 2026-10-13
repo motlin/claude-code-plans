@@ -1,3 +1,5 @@
+import {asRecord} from "../narrow";
+
 export interface AnswerQuestionRequest {
 	sessionId: string;
 	toolUseId: string;
@@ -16,8 +18,9 @@ export async function postAnswerQuestion(request: AnswerQuestionRequest): Promis
 		body: JSON.stringify(request),
 	});
 	if (!res.ok) {
-		const body = (await res.json().catch(() => ({}))) as {error?: string};
-		throw new Error(body.error ?? `Request failed (${res.status})`);
+		const body: unknown = await res.json().catch(() => ({}));
+		const error = asRecord(body)?.["error"];
+		throw new Error(typeof error === "string" ? error : `Request failed (${res.status})`);
 	}
 	const reader = res.body?.getReader();
 	if (!reader) return;

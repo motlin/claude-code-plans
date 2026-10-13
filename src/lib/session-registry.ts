@@ -4,6 +4,7 @@ import {homedir} from "node:os";
 import {join} from "node:path";
 import type {z} from "zod";
 import {SessionRegistryFileSchema} from "./schemas";
+import {errnoCode} from "./narrow";
 
 /**
  * Reader for the CLI's live session registry, `~/.claude/sessions/<pid>.json`.
@@ -75,7 +76,7 @@ export function isPidAlive(pid: number, kill: KillFn = (target, signal) => proce
 		kill(pid, 0);
 		return true;
 	} catch (error) {
-		return (error as NodeJS.ErrnoException).code === "EPERM";
+		return errnoCode(error) === "EPERM";
 	}
 }
 

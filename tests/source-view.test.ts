@@ -1,4 +1,4 @@
-import {findPairedToolResult} from "../src/routes/session.$id_.source.$uuid";
+import {findPairedToolResult} from "../src/lib/paired-tool-result";
 import type {RawJsonlLine} from "../src/lib/sessions";
 
 function rawLine(obj: unknown, lineIndex: number, uuid?: string): RawJsonlLine {

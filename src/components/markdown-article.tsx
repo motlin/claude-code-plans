@@ -23,7 +23,7 @@ type MarkdownArticleProps = FileRefProps &
 	);
 
 function targetFileRef(event: MouseEvent | KeyboardEvent): FileRef | null {
-	const element = (event.target as Element).closest(`[${FILE_REF_ATTR}]`);
+	const element = event.target instanceof Element ? event.target.closest(`[${FILE_REF_ATTR}]`) : null;
 	return element === null ? null : fileRefFromElement(element);
 }
 

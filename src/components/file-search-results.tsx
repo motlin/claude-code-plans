@@ -336,9 +336,10 @@ function ResultCards({
 									onKeyDown(event, file.path);
 								}}
 								onClick={(event) => {
-									const lineElement = (event.target as HTMLElement).closest<HTMLElement>(
-										"[data-line-number]",
-									);
+									const lineElement =
+										event.target instanceof Element
+											? event.target.closest<HTMLElement>("[data-line-number]")
+											: null;
 									const lineNumber = Number(lineElement?.dataset["lineNumber"] ?? firstLineNumber);
 									onOpen(file.path, lineNumber);
 								}}

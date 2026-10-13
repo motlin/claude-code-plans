@@ -22,6 +22,7 @@ import {fileURLToPath} from "node:url";
 import {promisify} from "node:util";
 import {z} from "zod";
 import {defined} from "../src/lib/defined";
+import {objectKeys} from "../src/lib/narrow";
 import {DIAGNOSTIC_FAMILIES, diagnosticFamily, loadCeilings, type Ceilings} from "../tests/perf/ratchet";
 
 const REPOSITORY_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -431,12 +432,14 @@ async function measureShape(
 
 	const samples: JourneySample[] = [];
 
-	for (const [endpoint, {module, path}] of mode === "main" ? Object.entries(SESSION_OPEN_ROUTES) : []) {
+	for (const endpoint of mode === "main" ? objectKeys(SESSION_OPEN_ROUTES) : []) {
+		const {module, path} = SESSION_OPEN_ROUTES[endpoint];
+		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- a route module loaded by path is untyped; ApiHandler is the slice of TanStack's server-route contract this harness calls
 		const {Route} = (await import(module)) as {
 			Route: {options: {server: {handlers: Record<string, ApiHandler>}}};
 		};
 		const handler = defined(Route.options.server.handlers["GET"], `${module} has no GET handler`);
-		const prefix = ids.sessionOpenPrefix(shapeName, endpoint as keyof typeof SESSION_OPEN_ROUTES);
+		const prefix = ids.sessionOpenPrefix(shapeName, endpoint);
 		const counts: Record<string, number>[] = [];
 		const wallMs: number[] = [];
 		for (let run = 0; run <= runs; run++) {
@@ -561,7 +564,7 @@ async function hotPathCalls(fn: string, shape: ShapeName): Promise<number> {
 		cwd: REPOSITORY_ROOT,
 		maxBuffer: 64 * 1024 * 1024,
 	});
-	return (lastJsonLine(stdout) as {calls: number}).calls;
+	return z.object({calls: z.number()}).parse(lastJsonLine(stdout)).calls;
 }
 
 async function sweepShape(shape: ShapeName, runs: number): Promise<ShapeSweep> {

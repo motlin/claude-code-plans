@@ -1,8 +1,9 @@
+import {errnoCode} from "../narrow";
+
 /** True for SQLITE_BUSY and its extended codes, including when drizzle wraps the SqliteError as the cause. */
 export function isBusyError(err: unknown): boolean {
 	for (let current = err; current instanceof Error; current = current.cause) {
-		const code = (current as {code?: unknown}).code;
-		if (typeof code === "string" && code.startsWith("SQLITE_BUSY")) return true;
+		if (errnoCode(current)?.startsWith("SQLITE_BUSY")) return true;
 	}
 	return false;
 }

@@ -12,6 +12,7 @@ import {useCallback, useEffect, useRef, useState} from "react";
 import {requestChangesScope} from "../lib/changes-scope-request";
 import {type BranchStripSession, type LineCounts, branchStripVisible, middleTruncate} from "./branch-strip-model";
 import {pluralize} from "../lib/pluralize";
+import {isRecord} from "../lib/narrow";
 import {prGlyph} from "../lib/pr-status";
 import {useOptionalPaneHost} from "./panes/pane-host-context";
 import {ProjectMenuItems} from "./session-titlebar";
@@ -30,8 +31,8 @@ const GHOST_BUTTON =
 
 function numberAt(data: Record<string, unknown> | null, group: string, key: string) {
 	const value = data?.[group];
-	if (value === null || typeof value !== "object") return undefined;
-	const leaf = (value as Record<string, unknown>)[key];
+	if (!isRecord(value)) return undefined;
+	const leaf = value[key];
 	return typeof leaf === "number" ? leaf : undefined;
 }
 

@@ -1,6 +1,5 @@
 import {useInfiniteQuery} from "@tanstack/react-query";
 import {SlidersVertical} from "lucide-react";
-import type {z} from "zod";
 
 import {recentSessionsInfiniteQueryOptions} from "../../lib/api/sessions";
 import {
@@ -36,40 +35,37 @@ import {
 import {Tooltip} from "../ui/tooltip";
 import {SessionGroups} from "./session-groups";
 
-type RadioPref = "statusFilter" | "activityDays" | "groupBy" | "sortBy";
-
-function RadioSubmenu<Schema extends z.ZodEnum>({
+function RadioSubmenu<Value extends string>({
 	label,
-	pref,
-	schema,
+	value,
+	defaultValue,
+	options,
 	labels,
-	prefs,
-	onChange,
+	onSelect,
 }: {
 	label: string;
-	pref: RadioPref;
-	schema: Schema;
-	labels: Record<z.infer<Schema>, string>;
-	prefs: SessionListPrefs;
-	onChange: (next: SessionListPrefs) => void;
+	value: Value;
+	defaultValue: Value;
+	options: readonly Value[];
+	labels: Record<Value, string>;
+	onSelect: (next: Value) => void;
 }) {
-	const value = prefs[pref] as z.infer<Schema>;
 	return (
 		<MenuSub>
-			<MenuSubTrigger value={labels[value]} valueAccent={value !== DEFAULT_SESSION_LIST_PREFS[pref]}>
+			<MenuSubTrigger value={labels[value]} valueAccent={value !== defaultValue}>
 				{label}
 			</MenuSubTrigger>
 			<MenuSubContent>
 				<MenuRadioGroup
 					value={value}
 					onValueChange={(next: unknown) => {
-						const parsed = schema.safeParse(next);
-						if (parsed.success) onChange({...prefs, [pref]: parsed.data});
+						const selected = options.find((option) => option === next);
+						if (selected !== undefined) onSelect(selected);
 					}}
 				>
-					{schema.options.map((option) => (
-						<MenuRadioItem key={String(option)} value={option}>
-							{labels[option as z.infer<Schema>]}
+					{options.map((option) => (
+						<MenuRadioItem key={option} value={option}>
+							{labels[option]}
 						</MenuRadioItem>
 					))}
 				</MenuRadioGroup>
@@ -105,36 +101,44 @@ function SessionFilterMenu({
 			<MenuContent align="end" className="!min-w-[200px]">
 				<RadioSubmenu
 					label="Status"
-					pref="statusFilter"
-					schema={SessionStatusFilterSchema}
+					value={prefs.statusFilter}
+					defaultValue={DEFAULT_SESSION_LIST_PREFS.statusFilter}
+					options={SessionStatusFilterSchema.options}
 					labels={sessionStatusFilterLabels}
-					prefs={prefs}
-					onChange={onChange}
+					onSelect={(next) => {
+						onChange({...prefs, statusFilter: next});
+					}}
 				/>
 				<RadioSubmenu
 					label="Last activity"
-					pref="activityDays"
-					schema={SessionActivityDaysSchema}
+					value={prefs.activityDays}
+					defaultValue={DEFAULT_SESSION_LIST_PREFS.activityDays}
+					options={SessionActivityDaysSchema.options}
 					labels={sessionActivityDaysLabels}
-					prefs={prefs}
-					onChange={onChange}
+					onSelect={(next) => {
+						onChange({...prefs, activityDays: next});
+					}}
 				/>
 				<MenuSeparator />
 				<RadioSubmenu
 					label="Group by"
-					pref="groupBy"
-					schema={SessionGroupBySchema}
+					value={prefs.groupBy}
+					defaultValue={DEFAULT_SESSION_LIST_PREFS.groupBy}
+					options={SessionGroupBySchema.options}
 					labels={sessionGroupByLabels}
-					prefs={prefs}
-					onChange={onChange}
+					onSelect={(next) => {
+						onChange({...prefs, groupBy: next});
+					}}
 				/>
 				<RadioSubmenu
 					label="Sort by"
-					pref="sortBy"
-					schema={SessionSortBySchema}
+					value={prefs.sortBy}
+					defaultValue={DEFAULT_SESSION_LIST_PREFS.sortBy}
+					options={SessionSortBySchema.options}
 					labels={sessionSortByLabels}
-					prefs={prefs}
-					onChange={onChange}
+					onSelect={(next) => {
+						onChange({...prefs, sortBy: next});
+					}}
 				/>
 				{(hasPrData || prefs.groupBy === "project" || prefs.groupBy === "custom") && <MenuSeparator />}
 				{(prefs.groupBy === "project" || prefs.groupBy === "custom") && (

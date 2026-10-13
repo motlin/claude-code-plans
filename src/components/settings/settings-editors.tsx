@@ -3,6 +3,7 @@ import {AlertCircle, Check, ChevronDown, ChevronRight, Plus, RotateCcw, Save, Tr
 import {useCallback, useEffect, useId, useRef, useState} from "react";
 import {useHighlightedLines} from "../../hooks/use-shiki";
 import {useSaveSettingsFile} from "../../lib/api/settings";
+import {asRecord, errorMessage} from "../../lib/narrow";
 import {withoutKey} from "../../lib/without-key";
 import {
 	DEDICATED_EDITOR_KEYS,
@@ -24,6 +25,40 @@ const FILE_DESCRIPTIONS: Record<string, string> = {
 };
 
 type Feedback = {type: "success" | "error"; text: string};
+
+type SettingsFilename = "settings.json" | "settings.local.json";
+
+function isSettingsFilename(filename: string): filename is SettingsFilename {
+	return filename === "settings.json" || filename === "settings.local.json";
+}
+
+/** A settings value as a list, or empty when it is not one. */
+function listOf(value: unknown): unknown[] {
+	return Array.isArray(value) ? value : [];
+}
+
+interface StringSlot {
+	value: string;
+	/** Position in the raw list, so edits leave the entries around it untouched. */
+	index: number;
+}
+
+/** The string entries of a settings list with their raw positions; other entries stay in the list but are not edited. */
+function stringSlots(list: readonly unknown[]): StringSlot[] {
+	return list.flatMap((value, index) => (typeof value === "string" ? [{value, index}] : []));
+}
+
+function isString(value: unknown): value is string {
+	return typeof value === "string";
+}
+
+function isBoolean(value: unknown): value is boolean {
+	return typeof value === "boolean";
+}
+
+function isOptional(value: unknown, isValue: (entry: unknown) => boolean): boolean {
+	return value === undefined || isValue(value);
+}
 
 function HighlightedLine({tokens}: {tokens: ThemedToken[]}) {
 	return (
@@ -55,7 +90,7 @@ export function JsonEditor({filename, initialContent, path}: {filename: string; 
 			}
 			return null;
 		} catch (error) {
-			return (error as SyntaxError).message;
+			return errorMessage(error);
 		}
 	}, []);
 
@@ -78,12 +113,13 @@ export function JsonEditor({filename, initialContent, path}: {filename: string; 
 			return;
 		}
 
+		if (!isSettingsFilename(filename)) {
+			setFeedback({type: "error", text: `Cannot save ${filename}`});
+			return;
+		}
 		setFeedback(null);
 		try {
-			const result = await saveMutation.mutateAsync({
-				filename: filename as "settings.json" | "settings.local.json",
-				content,
-			});
+			const result = await saveMutation.mutateAsync({filename, content});
 			setFeedback({type: "success", text: `Saved to ${result.path}`});
 			const pretty = JSON.stringify(JSON.parse(content), null, 2);
 			draftRef.current = pretty;
@@ -91,7 +127,7 @@ export function JsonEditor({filename, initialContent, path}: {filename: string; 
 			setSavedContent(pretty);
 			setValidationError(null);
 		} catch (error) {
-			setFeedback({type: "error", text: (error as Error).message});
+			setFeedback({type: "error", text: errorMessage(error)});
 		}
 	}, [filename, validate, saveMutation]);
 
@@ -414,17 +450,18 @@ function EnvEditor({
 	value,
 	onChange,
 }: {
-	value: Record<string, string>;
+	value: Record<string, unknown>;
 	onChange: (key: string, value: unknown) => void;
 }) {
-	const entries = Object.entries(value);
+	// Non-string values are not editable here but stay in `value`, so saving keeps them.
+	const entries = Object.entries(value).filter((entry): entry is [string, string] => isString(entry[1]));
 	const [newKey, setNewKey] = useState("");
 	const [newValue, setNewValue] = useState("");
 
 	const handleEntryChange = useCallback(
 		(oldKey: string, field: "key" | "value", fieldValue: string) => {
 			if (field === "key") {
-				const currentValue = value[oldKey] ?? "";
+				const currentValue = value[oldKey];
 				const updated = withoutKey(value, oldKey);
 				if (fieldValue) {
 					updated[fieldValue] = currentValue;
@@ -545,32 +582,31 @@ function PermissionListEditor({
 }: {
 	label: string;
 	description: string;
-	entries: string[];
-	onUpdate: (updated: string[]) => void;
+	entries: unknown;
+	onUpdate: (updated: unknown[]) => void;
 }) {
 	const [newEntry, setNewEntry] = useState("");
+	const list = listOf(entries);
+	const slots = stringSlots(list);
 
 	const handleRemove = useCallback(
 		(index: number) => {
-			const updated = entries.filter((_, i) => i !== index);
-			onUpdate(updated);
+			onUpdate(list.filter((_, i) => i !== index));
 		},
-		[entries, onUpdate],
+		[list, onUpdate],
 	);
 
 	const handleAdd = useCallback(() => {
 		if (!newEntry.trim()) return;
-		onUpdate([...entries, newEntry.trim()]);
+		onUpdate([...list, newEntry.trim()]);
 		setNewEntry("");
-	}, [entries, onUpdate, newEntry]);
+	}, [list, onUpdate, newEntry]);
 
 	const handleChange = useCallback(
 		(index: number, value: string) => {
-			const updated = [...entries];
-			updated[index] = value;
-			onUpdate(updated);
+			onUpdate(list.map((entry, i) => (i === index ? value : entry)));
 		},
-		[entries, onUpdate],
+		[list, onUpdate],
 	);
 
 	return (
@@ -580,11 +616,11 @@ function PermissionListEditor({
 				<div className="text-xs text-t6">{description}</div>
 			</div>
 			<div className="space-y-1">
-				{entries.map((entry, index) => (
+				{slots.map(({value: entry, index}, position) => (
 					<div key={index} className="flex items-center gap-2">
 						<input
 							type="text"
-							aria-label={`${label} entry ${index + 1}`}
+							aria-label={`${label} entry ${position + 1}`}
 							value={entry}
 							onChange={(event) => {
 								handleChange(index, event.target.value);
@@ -639,14 +675,11 @@ function PermissionsEditor({
 	value: Record<string, unknown>;
 	onChange: (key: string, value: unknown) => void;
 }) {
-	const allow = Array.isArray(value["allow"]) ? (value["allow"] as string[]) : [];
-	const deny = Array.isArray(value["deny"]) ? (value["deny"] as string[]) : [];
-	const ask = Array.isArray(value["ask"]) ? (value["ask"] as string[]) : [];
 	const defaultMode = typeof value["defaultMode"] === "string" ? value["defaultMode"] : "";
 	const defaultModeId = useId();
 
 	const updateList = useCallback(
-		(listKey: string, updated: string[]) => {
+		(listKey: string, updated: unknown[]) => {
 			onChange("permissions", {...value, [listKey]: updated});
 		},
 		[value, onChange],
@@ -657,7 +690,7 @@ function PermissionsEditor({
 			<PermissionListEditor
 				label="Allow"
 				description="Tools and patterns always permitted without prompting"
-				entries={allow}
+				entries={value["allow"]}
 				onUpdate={(updated) => {
 					updateList("allow", updated);
 				}}
@@ -665,7 +698,7 @@ function PermissionsEditor({
 			<PermissionListEditor
 				label="Deny"
 				description="Tools and patterns that are blocked"
-				entries={deny}
+				entries={value["deny"]}
 				onUpdate={(updated) => {
 					updateList("deny", updated);
 				}}
@@ -673,7 +706,7 @@ function PermissionsEditor({
 			<PermissionListEditor
 				label="Ask"
 				description="Tools and patterns that require confirmation"
-				entries={ask}
+				entries={value["ask"]}
 				onUpdate={(updated) => {
 					updateList("ask", updated);
 				}}
@@ -783,17 +816,58 @@ function StatusLineEditor({
 	);
 }
 
+/** A settings entry this form has no editor for, shown as JSON and saved back unchanged. */
+function RawSetting({value}: {value: unknown}) {
+	return (
+		<pre className="flex-1 overflow-auto rounded-md border border-subtle bg-surface-2 px-2 py-1 font-mono text-xs text-t6">
+			{JSON.stringify(value, null, 2)}
+		</pre>
+	);
+}
+
+/** One hook: command hooks are editable, prompt hooks show their prompt, and anything else shows as raw JSON. */
+function HookBody({
+	hook,
+	label,
+	onCommandChange,
+}: {
+	hook: unknown;
+	label: string;
+	onCommandChange: (command: string) => void;
+}) {
+	const record = asRecord(hook);
+	const command = record?.["command"];
+	if (isString(command)) {
+		return (
+			<textarea
+				aria-label={label}
+				value={command}
+				onChange={(event) => {
+					onCommandChange(event.target.value);
+				}}
+				className="flex-1 rounded-md border border-border bg-surface-2 px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-accent-100 resize-y"
+				rows={Math.min(Math.max(command.split("\n").length, 1), 4)}
+				placeholder="command..."
+			/>
+		);
+	}
+	const prompt = record?.["prompt"];
+	if (record?.["type"] === "prompt" && isString(prompt)) {
+		return (
+			<div className="flex-1 rounded-md border border-subtle bg-surface-2 px-2 py-1 text-xs text-secondary">
+				<span className="text-t6">Prompt: </span>
+				<span className="whitespace-pre-wrap">{prompt}</span>
+			</div>
+		);
+	}
+	return <RawSetting value={hook} />;
+}
+
 function HooksEditor({
 	value,
 	onChange,
 }: {
-	value: Record<
-		string,
-		Array<{
-			matcher?: string;
-			hooks: Array<{type: string; command: string; timeout?: number}>;
-		}>
-	>;
+	value: Record<string, unknown>;
 	onChange: (key: string, value: unknown) => void;
 }) {
 	const events = Object.keys(value);
@@ -828,86 +902,58 @@ function HooksEditor({
 		[value, onChange, expandedEvent],
 	);
 
-	const handleAddMatcher = useCallback(
-		(eventName: string) => {
-			const matchers = [...(value[eventName] ?? [])];
-			matchers.push({hooks: [{type: "command", command: ""}]});
-			onChange("hooks", {...value, [eventName]: matchers});
-		},
-		[value, onChange],
-	);
+	// Every edit rewrites only the entry it targets; entries this editor does not understand are copied through as-is.
+	const updateMatchers = (eventName: string, update: (matchers: unknown[]) => unknown[]) => {
+		onChange("hooks", {...value, [eventName]: update(listOf(value[eventName]))});
+	};
 
-	const handleRemoveMatcher = useCallback(
-		(eventName: string, matcherIndex: number) => {
-			const matchers = (value[eventName] ?? []).filter((_, i) => i !== matcherIndex);
-			onChange("hooks", {...value, [eventName]: matchers});
-		},
-		[value, onChange],
-	);
+	const updateMatcher = (
+		eventName: string,
+		matcherIndex: number,
+		update: (matcher: Record<string, unknown>) => Record<string, unknown>,
+	) => {
+		updateMatchers(eventName, (matchers) =>
+			matchers.map((entry, i) => {
+				const matcher = asRecord(entry);
+				return i === matcherIndex && matcher !== undefined ? update(matcher) : entry;
+			}),
+		);
+	};
 
-	const handleMatcherFieldChange = useCallback(
-		(eventName: string, matcherIndex: number, _field: "matcher", fieldValue: string) => {
-			const matchers = [...(value[eventName] ?? [])];
-			const existing = matchers[matcherIndex];
-			if (!existing) return;
-			if (fieldValue) {
-				matchers[matcherIndex] = {matcher: fieldValue, hooks: existing.hooks};
-			} else {
-				matchers[matcherIndex] = {hooks: existing.hooks};
-			}
-			onChange("hooks", {...value, [eventName]: matchers});
-		},
-		[value, onChange],
-	);
+	const updateHooks = (eventName: string, matcherIndex: number, update: (hooks: unknown[]) => unknown[]) => {
+		updateMatcher(eventName, matcherIndex, (matcher) => ({...matcher, hooks: update(listOf(matcher["hooks"]))}));
+	};
 
-	const handleHookCommandChange = useCallback(
-		(eventName: string, matcherIndex: number, hookIndex: number, command: string) => {
-			const matchers = [...(value[eventName] ?? [])];
-			const existing = matchers[matcherIndex];
-			if (!existing) return;
-			const hooks = [...existing.hooks];
-			hooks[hookIndex] = {type: hooks[hookIndex]?.type ?? "command", command};
-			if (existing.matcher) {
-				matchers[matcherIndex] = {matcher: existing.matcher, hooks};
-			} else {
-				matchers[matcherIndex] = {hooks};
-			}
-			onChange("hooks", {...value, [eventName]: matchers});
-		},
-		[value, onChange],
-	);
+	const handleAddMatcher = (eventName: string) => {
+		updateMatchers(eventName, (matchers) => [...matchers, {hooks: [{type: "command", command: ""}]}]);
+	};
 
-	const handleAddHookCommand = useCallback(
-		(eventName: string, matcherIndex: number) => {
-			const matchers = [...(value[eventName] ?? [])];
-			const existing = matchers[matcherIndex];
-			if (!existing) return;
-			const hooks = [...existing.hooks, {type: "command" as const, command: ""}];
-			if (existing.matcher) {
-				matchers[matcherIndex] = {matcher: existing.matcher, hooks};
-			} else {
-				matchers[matcherIndex] = {hooks};
-			}
-			onChange("hooks", {...value, [eventName]: matchers});
-		},
-		[value, onChange],
-	);
+	const handleRemoveMatcher = (eventName: string, matcherIndex: number) => {
+		updateMatchers(eventName, (matchers) => matchers.filter((_, i) => i !== matcherIndex));
+	};
 
-	const handleRemoveHookCommand = useCallback(
-		(eventName: string, matcherIndex: number, hookIndex: number) => {
-			const matchers = [...(value[eventName] ?? [])];
-			const existing = matchers[matcherIndex];
-			if (!existing) return;
-			const hooks = existing.hooks.filter((_, i) => i !== hookIndex);
-			if (existing.matcher) {
-				matchers[matcherIndex] = {matcher: existing.matcher, hooks};
-			} else {
-				matchers[matcherIndex] = {hooks};
-			}
-			onChange("hooks", {...value, [eventName]: matchers});
-		},
-		[value, onChange],
-	);
+	const handleMatcherFieldChange = (eventName: string, matcherIndex: number, fieldValue: string) => {
+		updateMatcher(eventName, matcherIndex, (matcher) =>
+			fieldValue ? {...matcher, matcher: fieldValue} : withoutKey(matcher, "matcher"),
+		);
+	};
+
+	const handleHookCommandChange = (eventName: string, matcherIndex: number, hookIndex: number, command: string) => {
+		updateHooks(eventName, matcherIndex, (hooks) =>
+			hooks.map((entry, i) => {
+				const hook = asRecord(entry);
+				return i === hookIndex && hook !== undefined ? {...hook, command} : entry;
+			}),
+		);
+	};
+
+	const handleAddHookCommand = (eventName: string, matcherIndex: number) => {
+		updateHooks(eventName, matcherIndex, (hooks) => [...hooks, {type: "command", command: ""}]);
+	};
+
+	const handleRemoveHookCommand = (eventName: string, matcherIndex: number, hookIndex: number) => {
+		updateHooks(eventName, matcherIndex, (hooks) => hooks.filter((_, i) => i !== hookIndex));
+	};
 
 	return (
 		<div className="py-2">
@@ -919,7 +965,7 @@ function HooksEditor({
 			</div>
 			<div className="space-y-2">
 				{events.map((eventName) => {
-					const matchers = value[eventName] ?? [];
+					const matchers = listOf(value[eventName]);
 					const isExpanded = expandedEvent === eventName;
 					return (
 						<div key={eventName} className="rounded-md border border-border">
@@ -954,92 +1000,95 @@ function HooksEditor({
 							</div>
 							{isExpanded && (
 								<div className="border-t border-border px-3 py-2 space-y-3">
-									{matchers.map((matcher, matcherIndex) => (
-										<div
-											key={matcherIndex}
-											className="rounded-md border border-subtle bg-surface-1 p-2 space-y-2"
-										>
-											<div className="flex items-center justify-between gap-2">
-												<div className="flex items-center gap-2 flex-1">
-													<span className="text-xs text-secondary shrink-0">Matcher:</span>
-													<input
-														type="text"
-														aria-label={`${eventName} rule ${matcherIndex + 1} matcher`}
-														value={matcher.matcher ?? ""}
-														onChange={(event) => {
-															handleMatcherFieldChange(
-																eventName,
-																matcherIndex,
-																"matcher",
-																event.target.value,
-															);
-														}}
-														className="flex-1 rounded-md border border-border bg-surface-2 px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
-														placeholder="e.g. Bash (optional)"
-													/>
-												</div>
-												<button
-													type="button"
-													onClick={() => {
-														handleRemoveMatcher(eventName, matcherIndex);
-													}}
-													className="rounded p-1 text-t6 hover:bg-surface-0 hover:text-danger-000"
-													title="Remove rule"
-												>
-													<Trash2 className="h-3 w-3" />
-												</button>
-											</div>
-											<div className="space-y-1">
-												<span className="text-xs text-secondary">Commands:</span>
-												{matcher.hooks.map((hook, hookIndex) => (
-													<div key={hookIndex} className="flex items-start gap-2">
-														<textarea
-															aria-label={`${eventName} rule ${matcherIndex + 1} command ${hookIndex + 1}`}
-															value={hook.command}
+									{matchers.map((entry, matcherIndex) => {
+										const matcher = asRecord(entry);
+										if (matcher === undefined) {
+											return <RawSetting key={matcherIndex} value={entry} />;
+										}
+										return (
+											<div
+												key={matcherIndex}
+												className="rounded-md border border-subtle bg-surface-1 p-2 space-y-2"
+											>
+												<div className="flex items-center justify-between gap-2">
+													<div className="flex items-center gap-2 flex-1">
+														<span className="text-xs text-secondary shrink-0">
+															Matcher:
+														</span>
+														<input
+															type="text"
+															aria-label={`${eventName} rule ${matcherIndex + 1} matcher`}
+															value={
+																isString(matcher["matcher"]) ? matcher["matcher"] : ""
+															}
 															onChange={(event) => {
-																handleHookCommandChange(
+																handleMatcherFieldChange(
 																	eventName,
 																	matcherIndex,
-																	hookIndex,
 																	event.target.value,
 																);
 															}}
-															className="flex-1 rounded-md border border-border bg-surface-2 px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-accent-100 resize-y"
-															rows={Math.min(
-																Math.max(hook.command.split("\n").length, 1),
-																4,
-															)}
-															placeholder="command..."
+															className="flex-1 rounded-md border border-border bg-surface-2 px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
+															placeholder="e.g. Bash (optional)"
 														/>
-														<button
-															type="button"
-															onClick={() => {
-																handleRemoveHookCommand(
-																	eventName,
-																	matcherIndex,
-																	hookIndex,
-																);
-															}}
-															className="rounded p-1 text-t6 hover:bg-surface-0 hover:text-danger-000 mt-0.5"
-															title="Remove command"
-														>
-															<X className="h-3 w-3" />
-														</button>
 													</div>
-												))}
-												<button
-													type="button"
-													onClick={() => {
-														handleAddHookCommand(eventName, matcherIndex);
-													}}
-													className="flex items-center gap-1 text-xs text-secondary hover:text-accent-100"
-												>
-													<Plus className="h-3 w-3" />
-													Add command
-												</button>
+													<button
+														type="button"
+														onClick={() => {
+															handleRemoveMatcher(eventName, matcherIndex);
+														}}
+														className="rounded p-1 text-t6 hover:bg-surface-0 hover:text-danger-000"
+														title="Remove rule"
+													>
+														<Trash2 className="h-3 w-3" />
+													</button>
+												</div>
+												<div className="space-y-1">
+													<span className="text-xs text-secondary">Commands:</span>
+													{listOf(matcher["hooks"]).map((hookEntry, hookIndex) => (
+														<div key={hookIndex} className="flex items-start gap-2">
+															<HookBody
+																hook={hookEntry}
+																label={`${eventName} rule ${matcherIndex + 1} command ${hookIndex + 1}`}
+																onCommandChange={(command) => {
+																	handleHookCommandChange(
+																		eventName,
+																		matcherIndex,
+																		hookIndex,
+																		command,
+																	);
+																}}
+															/>
+															<button
+																type="button"
+																onClick={() => {
+																	handleRemoveHookCommand(
+																		eventName,
+																		matcherIndex,
+																		hookIndex,
+																	);
+																}}
+																className="rounded p-1 text-t6 hover:bg-surface-0 hover:text-danger-000 mt-0.5"
+																title="Remove command"
+															>
+																<X className="h-3 w-3" />
+															</button>
+														</div>
+													))}
+													<button
+														type="button"
+														onClick={() => {
+															handleAddHookCommand(eventName, matcherIndex);
+														}}
+														className="flex items-center gap-1 text-xs text-secondary hover:text-accent-100"
+													>
+														<Plus className="h-3 w-3" />
+														Add command
+													</button>
+												</div>
 											</div>
-										</div>
-									))}
+										);
+									})}
 									<button
 										type="button"
 										onClick={() => {
@@ -1092,10 +1141,13 @@ function PluginsEditor({
 	value,
 	onChange,
 }: {
-	value: Record<string, boolean>;
+	value: Record<string, unknown>;
 	onChange: (key: string, value: unknown) => void;
 }) {
-	const entries = Object.entries(value).sort(([a], [b]) => a.localeCompare(b));
+	// Non-boolean values are not editable here but stay in `value`, so saving keeps them.
+	const entries = Object.entries(value)
+		.filter((entry): entry is [string, boolean] => isBoolean(entry[1]))
+		.sort(([a], [b]) => a.localeCompare(b));
 	const [newPlugin, setNewPlugin] = useState("");
 
 	const handleToggle = useCallback(
@@ -1189,33 +1241,38 @@ export function StringListEditor({
 	label: string;
 	description: string;
 	fieldKey: string;
-	entries: string[];
+	entries: unknown;
 	onChange: (key: string, value: unknown) => void;
 	placeholder?: string;
 }) {
 	const [newEntry, setNewEntry] = useState("");
+	const list = listOf(entries);
+	const slots = stringSlots(list);
 
 	const handleRemove = useCallback(
 		(index: number) => {
-			const updated = entries.filter((_, i) => i !== index);
-			onChange(fieldKey, updated);
+			onChange(
+				fieldKey,
+				list.filter((_, i) => i !== index),
+			);
 		},
-		[entries, onChange, fieldKey],
+		[list, onChange, fieldKey],
 	);
 
 	const handleAdd = useCallback(() => {
 		if (!newEntry.trim()) return;
-		onChange(fieldKey, [...entries, newEntry.trim()]);
+		onChange(fieldKey, [...list, newEntry.trim()]);
 		setNewEntry("");
-	}, [entries, onChange, fieldKey, newEntry]);
+	}, [list, onChange, fieldKey, newEntry]);
 
 	const handleChange = useCallback(
 		(index: number, value: string) => {
-			const updated = [...entries];
-			updated[index] = value;
-			onChange(fieldKey, updated);
+			onChange(
+				fieldKey,
+				list.map((entry, i) => (i === index ? value : entry)),
+			);
 		},
-		[entries, onChange, fieldKey],
+		[list, onChange, fieldKey],
 	);
 
 	return (
@@ -1225,11 +1282,11 @@ export function StringListEditor({
 				<div className="text-xs text-t6">{description}</div>
 			</div>
 			<div className="space-y-1">
-				{entries.map((entry, index) => (
+				{slots.map(({value: entry, index}, position) => (
 					<div key={index} className="flex items-center gap-2">
 						<input
 							type="text"
-							aria-label={`${label} entry ${index + 1}`}
+							aria-label={`${label} entry ${position + 1}`}
 							value={entry}
 							onChange={(event) => {
 								handleChange(index, event.target.value);
@@ -1402,7 +1459,7 @@ export function ObjectFieldsEditor({
 									label={subField.label}
 									description={subField.description ?? ""}
 									fieldKey={subField.key}
-									entries={Array.isArray(subValue) ? (subValue as string[]) : []}
+									entries={subValue}
 									onChange={update}
 								/>
 							);
@@ -1456,14 +1513,38 @@ interface MarketplaceEntry {
 	url?: string;
 }
 
+function isMarketplaceSource(value: unknown): value is MarketplaceSource {
+	const source = asRecord(value);
+	return (
+		source !== undefined &&
+		isString(source["source"]) &&
+		isOptional(source["repo"], isString) &&
+		isOptional(source["path"], isString) &&
+		isOptional(source["url"], isString)
+	);
+}
+
+function isMarketplaceEntry(value: unknown): value is MarketplaceEntry {
+	const entry = asRecord(value);
+	return (
+		entry !== undefined &&
+		isMarketplaceSource(entry["source"]) &&
+		isOptional(entry["autoUpdate"], isBoolean) &&
+		isOptional(entry["url"], isString)
+	);
+}
+
 export function MarketplacesEditor({
 	value,
 	onChange,
 }: {
-	value: Record<string, MarketplaceEntry>;
+	value: Record<string, unknown>;
 	onChange: (key: string, value: unknown) => void;
 }) {
-	const entries = Object.entries(value);
+	// Unrecognized entries are not editable here but stay in `value`, so saving keeps them.
+	const entries = Object.entries(value).filter((entry): entry is [string, MarketplaceEntry] =>
+		isMarketplaceEntry(entry[1]),
+	);
 	const [expanded, setExpanded] = useState<string | null>(null);
 	const [newName, setNewName] = useState("");
 	const idPrefix = useId();
@@ -1490,7 +1571,7 @@ export function MarketplacesEditor({
 	const updateSourceField = useCallback(
 		(name: string, field: keyof MarketplaceSource, fieldValue: string) => {
 			const entry = value[name];
-			if (!entry) return;
+			if (!isMarketplaceEntry(entry)) return;
 			const source: MarketplaceSource = {...entry.source};
 			if (field === "source") {
 				source.source = fieldValue;
@@ -1507,7 +1588,7 @@ export function MarketplacesEditor({
 	const updateAutoUpdate = useCallback(
 		(name: string, autoUpdate: boolean) => {
 			const entry = value[name];
-			if (!entry) return;
+			if (!isMarketplaceEntry(entry)) return;
 			onChange("extraKnownMarketplaces", {...value, [name]: {...entry, autoUpdate}});
 		},
 		[value, onChange],
@@ -1516,11 +1597,11 @@ export function MarketplacesEditor({
 	const updateUrl = useCallback(
 		(name: string, url: string) => {
 			const entry = value[name];
-			if (!entry) return;
-			const updatedEntry: MarketplaceEntry = {source: entry.source};
-			if (entry.autoUpdate !== undefined) updatedEntry.autoUpdate = entry.autoUpdate;
-			if (url) updatedEntry.url = url;
-			onChange("extraKnownMarketplaces", {...value, [name]: updatedEntry});
+			if (!isMarketplaceEntry(entry)) return;
+			onChange("extraKnownMarketplaces", {
+				...value,
+				[name]: url ? {...entry, url} : withoutKey({...entry}, "url"),
+			});
 		},
 		[value, onChange],
 	);
@@ -1720,7 +1801,7 @@ function isEmptyContainer(val: unknown): boolean {
 export function FormEditor({filename, initialContent, path}: {filename: string; initialContent: string; path: string}) {
 	const [data, setData] = useState<Record<string, unknown>>(() => {
 		try {
-			return JSON.parse(initialContent) as Record<string, unknown>;
+			return asRecord(JSON.parse(initialContent)) ?? {};
 		} catch {
 			return {};
 		}
@@ -1744,14 +1825,15 @@ export function FormEditor({filename, initialContent, path}: {filename: string; 
 				Object.entries(data).filter(([key, val]) => !DEDICATED_EDITOR_KEYS.has(key) || !isEmptyContainer(val)),
 			);
 			const content = JSON.stringify(cleaned, null, 2);
-			const result = await saveMutation.mutateAsync({
-				filename: filename as "settings.json" | "settings.local.json",
-				content,
-			});
+			if (!isSettingsFilename(filename)) {
+				setFeedback({type: "error", text: `Cannot save ${filename}`});
+				return;
+			}
+			const result = await saveMutation.mutateAsync({filename, content});
 			setFeedback({type: "success", text: `Saved to ${result.path}`});
 			setSavedData({...data});
 		} catch (error) {
-			setFeedback({type: "error", text: (error as Error).message});
+			setFeedback({type: "error", text: errorMessage(error)});
 		}
 	}, [data, filename, saveMutation]);
 
@@ -1798,73 +1880,27 @@ export function FormEditor({filename, initialContent, path}: {filename: string; 
 
 				<div>
 					<h3 className="text-xs font-semibold uppercase tracking-wider text-t6 mb-1">Environment</h3>
-					<EnvEditor
-						value={
-							(typeof data["env"] === "object" && data["env"] !== null ? data["env"] : {}) as Record<
-								string,
-								string
-							>
-						}
-						onChange={handleFieldChange}
-					/>
+					<EnvEditor value={asRecord(data["env"]) ?? {}} onChange={handleFieldChange} />
 				</div>
 
 				<div>
 					<h3 className="text-xs font-semibold uppercase tracking-wider text-t6 mb-1">Permissions</h3>
-					<PermissionsEditor
-						value={
-							(typeof data["permissions"] === "object" && data["permissions"] !== null
-								? data["permissions"]
-								: {}) as Record<string, unknown>
-						}
-						onChange={handleFieldChange}
-					/>
+					<PermissionsEditor value={asRecord(data["permissions"]) ?? {}} onChange={handleFieldChange} />
 				</div>
 
 				<div>
 					<h3 className="text-xs font-semibold uppercase tracking-wider text-t6 mb-1">Status Line</h3>
-					<StatusLineEditor
-						value={
-							(typeof data["statusLine"] === "object" && data["statusLine"] !== null
-								? data["statusLine"]
-								: {}) as Record<string, unknown>
-						}
-						onChange={handleFieldChange}
-					/>
+					<StatusLineEditor value={asRecord(data["statusLine"]) ?? {}} onChange={handleFieldChange} />
 				</div>
 
 				<div>
 					<h3 className="text-xs font-semibold uppercase tracking-wider text-t6 mb-1">Hooks</h3>
-					<HooksEditor
-						value={
-							(typeof data["hooks"] === "object" && data["hooks"] !== null
-								? data["hooks"]
-								: {}) as Record<
-								string,
-								Array<{
-									matcher?: string;
-									hooks: Array<{
-										type: string;
-										command: string;
-										timeout?: number;
-									}>;
-								}>
-							>
-						}
-						onChange={handleFieldChange}
-					/>
+					<HooksEditor value={asRecord(data["hooks"]) ?? {}} onChange={handleFieldChange} />
 				</div>
 
 				<div>
 					<h3 className="text-xs font-semibold uppercase tracking-wider text-t6 mb-1">Plugins</h3>
-					<PluginsEditor
-						value={
-							(typeof data["enabledPlugins"] === "object" && data["enabledPlugins"] !== null
-								? data["enabledPlugins"]
-								: {}) as Record<string, boolean>
-						}
-						onChange={handleFieldChange}
-					/>
+					<PluginsEditor value={asRecord(data["enabledPlugins"]) ?? {}} onChange={handleFieldChange} />
 				</div>
 
 				<div>
@@ -1873,11 +1909,7 @@ export function FormEditor({filename, initialContent, path}: {filename: string; 
 						label="Enabled MCP JSON servers"
 						description="MCP servers from project .mcp.json to auto-enable"
 						fieldKey="enabledMcpjsonServers"
-						entries={
-							Array.isArray(data["enabledMcpjsonServers"])
-								? (data["enabledMcpjsonServers"] as string[])
-								: []
-						}
+						entries={data["enabledMcpjsonServers"]}
 						onChange={handleFieldChange}
 						placeholder="server-name"
 					/>
@@ -1885,11 +1917,7 @@ export function FormEditor({filename, initialContent, path}: {filename: string; 
 						label="Additional directories"
 						description="Extra directories Claude Code can access"
 						fieldKey="additionalDirectories"
-						entries={
-							Array.isArray(data["additionalDirectories"])
-								? (data["additionalDirectories"] as string[])
-								: []
-						}
+						entries={data["additionalDirectories"]}
 						onChange={handleFieldChange}
 						placeholder="/path/to/dir"
 					/>
@@ -1898,12 +1926,7 @@ export function FormEditor({filename, initialContent, path}: {filename: string; 
 				<div>
 					<h3 className="text-xs font-semibold uppercase tracking-wider text-t6 mb-1">Marketplaces</h3>
 					<MarketplacesEditor
-						value={
-							(typeof data["extraKnownMarketplaces"] === "object" &&
-							data["extraKnownMarketplaces"] !== null
-								? data["extraKnownMarketplaces"]
-								: {}) as Record<string, MarketplaceEntry>
-						}
+						value={asRecord(data["extraKnownMarketplaces"]) ?? {}}
 						onChange={handleFieldChange}
 					/>
 				</div>
@@ -1913,11 +1936,7 @@ export function FormEditor({filename, initialContent, path}: {filename: string; 
 						<h3 className="text-xs font-semibold uppercase tracking-wider text-t6 mb-1">{def.label}</h3>
 						<ObjectFieldsEditor
 							def={def}
-							value={
-								(typeof data[def.key] === "object" && data[def.key] !== null
-									? data[def.key]
-									: {}) as Record<string, unknown>
-							}
+							value={asRecord(data[def.key]) ?? {}}
 							onChange={handleFieldChange}
 						/>
 					</div>

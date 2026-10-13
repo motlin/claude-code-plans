@@ -1,3 +1,4 @@
+import {objectKeys} from "../narrow";
 import {type Binding, getShortcut, type ShortcutId, type ShortcutModifier} from "./registry";
 
 type ShortcutKeyEvent = Pick<
@@ -12,7 +13,7 @@ const MODIFIER_FLAGS = {
 	shift: "shiftKey",
 } as const satisfies Record<ShortcutModifier, keyof ShortcutKeyEvent>;
 
-const MODIFIERS = Object.keys(MODIFIER_FLAGS) as ShortcutModifier[];
+const MODIFIERS: ShortcutModifier[] = objectKeys(MODIFIER_FLAGS);
 
 export function isMacPlatform(): boolean {
 	return typeof navigator !== "undefined" && /mac|iphone|ipad|ipod/i.test(navigator.userAgent);

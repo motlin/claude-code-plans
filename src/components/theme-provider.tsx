@@ -2,6 +2,10 @@ import {useEffect, useState} from "react";
 
 import {type Theme, ThemeProviderContext} from "./theme-context";
 
+function isTheme(value: string | null): value is Theme {
+	return value === "dark" || value === "light" || value === "system";
+}
+
 export function ThemeProvider({
 	children,
 	defaultTheme = "system",
@@ -14,8 +18,8 @@ export function ThemeProvider({
 	const [theme, setTheme] = useState<Theme>(defaultTheme);
 
 	useEffect(() => {
-		const stored = localStorage.getItem(storageKey) as Theme | null;
-		if (stored) setTheme(stored);
+		const stored = localStorage.getItem(storageKey);
+		if (isTheme(stored)) setTheme(stored);
 	}, [storageKey]);
 
 	useEffect(() => {

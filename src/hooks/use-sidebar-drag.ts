@@ -107,7 +107,8 @@ function measureList(list: HTMLElement): ListMeasure {
 
 function createGhost(srcEl: HTMLElement, container: HTMLElement): HTMLElement {
 	const rect = srcEl.getBoundingClientRect();
-	const ghost = srcEl.cloneNode(true) as HTMLElement;
+	const ghost = srcEl.cloneNode(true);
+	if (!(ghost instanceof HTMLElement)) throw new Error("Cloning an HTMLElement produced a non-element");
 	ghost.removeAttribute("data-drag-id");
 	ghost.removeAttribute("id");
 	ghost.setAttribute("data-drag-ghost", "");

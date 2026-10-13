@@ -3,15 +3,27 @@
  * answering a pending prompt in an active session.
  */
 
+import {z} from "zod";
 import type {ToolResultMeta} from "./tool-labels";
 import {parseToolRejection} from "./tool-rejection";
 
 export interface QuestionLike {
 	question: string;
-	header?: string;
-	options: Array<{label: string; description?: string}>;
-	multiSelect?: boolean;
+	header?: string | undefined;
+	options: Array<{label: string; description?: string | undefined}>;
+	multiSelect?: boolean | undefined;
 }
+
+// Loose, so a question keeps the fields (`preview`, ...) the renderers read beyond these.
+const QuestionOptionsSchema = z.array(z.looseObject({label: z.string(), description: z.string().optional()}));
+const QuestionsSchema = z.array(
+	z.looseObject({
+		question: z.string(),
+		header: z.string().optional(),
+		options: QuestionOptionsSchema,
+		multiSelect: z.boolean().optional(),
+	}),
+);
 
 interface AnswerEntry {
 	question: string;
@@ -72,12 +84,12 @@ function escapeQuote(value: string): string {
  * neither form is present (e.g. malformed input).
  */
 export function normalizeQuestions(input: Record<string, unknown>): QuestionLike[] | null {
-	const multi = input["questions"];
-	if (Array.isArray(multi) && multi.length > 0) {
-		return multi as QuestionLike[];
+	const multi = QuestionsSchema.safeParse(input["questions"]);
+	if (multi.success && multi.data.length > 0) {
+		return multi.data;
 	}
 	const singleQ = typeof input["question"] === "string" ? input["question"] : null;
-	const singleOpts = input["options"] as Array<{label: string; description?: string}> | undefined;
+	const singleOpts = QuestionOptionsSchema.safeParse(input["options"]).data;
 	if (singleQ && singleOpts && singleOpts.length > 0) {
 		const data: QuestionLike = {question: singleQ, options: singleOpts};
 		if (typeof input["multiSelect"] === "boolean") data.multiSelect = input["multiSelect"];

@@ -1,23 +1,14 @@
 import {useCallback, useEffect, useMemo, useRef, useState, type ReactNode} from "react";
 import {useQueryClient} from "@tanstack/react-query";
+import {DOMAIN_EVENTS, HERDR_EVENTS, SSE_EVENTS, type JsonValue, type SessionSummaryPayload} from "../lib/hook-events";
 import {
-	DOMAIN_EVENTS,
-	HERDR_EVENTS,
-	SSE_EVENTS,
-	type HookSchemaDriftPayload,
-	type JsonValue,
-	type MemorySummaryPayload,
-	type NotificationPayload,
-	type NotificationEntryPayload,
-	type PendingApprovalPayload,
-	type PlanSummaryPayload,
-	type SessionHookContextPayload,
-	type SessionSummaryPayload,
-	type SessionToolPendingPayload,
-	type SessionToolFailedPayload,
-	type SubagentStartedPayload,
-} from "../lib/hook-events";
-import type {LiveSubagentNode} from "../lib/live-subagent-store";
+	MemorySummaryPayloadSchema,
+	NotificationEntryPayloadSchema,
+	PendingApprovalPayloadSchema,
+	PlanSummaryPayloadSchema,
+	SessionSummaryPayloadSchema,
+} from "../lib/domain-event-payload-schemas";
+import {asRecord} from "../lib/narrow";
 import {groupedSessionsQueryOptions, recentSessionsInfiniteQueryOptions, sessionQueryKeys} from "../lib/api/sessions";
 import {syncUnseenFromSummaries} from "../lib/unread-store";
 import {syncUnseenFromQueryCache} from "../lib/unseen-query-sync";
@@ -45,11 +36,10 @@ import {
 	invalidateActiveSessions,
 	invalidateTerminalPlacements,
 	toSessionStateObservation,
-	type ActiveSessionInfo,
 	type ClaudeEventsAction,
 	type ClaudeEventsContextValue,
-	type ClaudeEventsState,
 	type SessionStateObservation,
+	emptyClaudeEventsState,
 } from "../hooks/use-claude-events";
 
 // ---------------------------------------------------------------------------
@@ -94,6 +84,23 @@ const DOMAIN_EVENT_TYPES = [
 	DOMAIN_EVENTS.JOBS_CHANGED,
 ] as const;
 
+/** The JSON object an SSE event carries, or undefined when its data is missing, not JSON, or not an object. */
+function eventJson(e: Event): Record<string, unknown> | undefined {
+	const raw: unknown = e instanceof MessageEvent ? e.data : undefined;
+	if (typeof raw !== "string") return undefined;
+	try {
+		const parsed: unknown = JSON.parse(raw);
+		return asRecord(parsed);
+	} catch {
+		return undefined;
+	}
+}
+
+/** Whether every appended line is a JSON object; parsed JSON holds only `JsonValue`s, so its fields are too. */
+function isJsonObjectArray(lines: readonly unknown[]): lines is Record<string, JsonValue>[] {
+	return lines.every((line) => asRecord(line) !== undefined);
+}
+
 // ---------------------------------------------------------------------------
 // Provider
 // ---------------------------------------------------------------------------
@@ -102,18 +109,7 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 	// useState, not useReducer: React bails out of an update whose reducer returns
 	// the same state before rendering only for useState, so an event that changes
 	// nothing (lines appended to a session with no pending tool) costs no commit.
-	const [state, setState] = useState<ClaudeEventsState>(() => ({
-		activeSessions: new Map<string, ActiveSessionInfo>(),
-		hookContexts: new Map<string, SessionHookContextPayload>(),
-		hookSchemaDrifts: new Map<string, HookSchemaDriftPayload>(),
-		dismissedDrifts: new Set<string>(),
-		pendingTools: new Map<string, SessionToolPendingPayload>(),
-		failedTools: new Map<string, SessionToolFailedPayload>(),
-		compactingSessions: new Set<string>(),
-		notifications: new Map<string, NotificationPayload>(),
-		runningSubagents: new Map<string, SubagentStartedPayload>(),
-		liveSubagents: new Map<string, LiveSubagentNode>(),
-	}));
+	const [state, setState] = useState(emptyClaudeEventsState);
 	const dispatch = useCallback((action: ClaudeEventsAction) => {
 		setState((current) => claudeEventsReducer(current, action));
 	}, []);
@@ -214,48 +210,31 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 		}
 
 		function handleLifecycleEvent(e: Event) {
-			const me = e as MessageEvent<string>;
-			let data: Record<string, unknown> = {};
-			try {
-				data = JSON.parse(me.data) as Record<string, unknown>;
-			} catch {
-				// empty or non-JSON data is fine
-			}
 			dispatch({
 				type: "SSE_EVENT",
 				eventType: e.type,
-				data,
+				// empty or non-JSON data is fine
+				data: eventJson(e) ?? {},
 				timestamp: Date.now(),
 			});
 		}
 
 		function handleStatuslineEvent(e: Event) {
-			const me = e as MessageEvent<string>;
-			try {
-				const parsed = JSON.parse(me.data) as Record<string, unknown>;
-				const sessionId = parsed["sessionId"];
-				if (typeof sessionId === "string") {
-					for (const listener of statuslineListenersRef.current) {
-						listener(sessionId);
-					}
+			const sessionId = eventJson(e)?.["sessionId"];
+			if (typeof sessionId === "string") {
+				for (const listener of statuslineListenersRef.current) {
+					listener(sessionId);
 				}
-			} catch {
-				// ignore
 			}
 		}
 
 		function handleDomainEvent(e: Event) {
-			const me = e as MessageEvent<string>;
-			let data: Record<string, unknown>;
-			try {
-				data = JSON.parse(me.data) as Record<string, unknown>;
-			} catch {
-				return;
-			}
+			const data = eventJson(e);
+			if (data === undefined) return;
 
 			switch (e.type) {
 				case DOMAIN_EVENTS.SESSION_ADDED: {
-					const session = data["session"] as SessionSummaryPayload | undefined;
+					const session = SessionSummaryPayloadSchema.safeParse(data["session"]).data;
 					if (session) {
 						// Before publishing, so display-state listeners see the server's unseen flag.
 						syncUnseenFromSummaries([session]);
@@ -278,7 +257,7 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 					break;
 				}
 				case DOMAIN_EVENTS.SESSION_UPDATED: {
-					const session = data["session"] as SessionSummaryPayload | undefined;
+					const session = SessionSummaryPayloadSchema.safeParse(data["session"]).data;
 					if (session) {
 						// Before publishing, so display-state listeners see the server's unseen flag.
 						syncUnseenFromSummaries([session]);
@@ -300,10 +279,10 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 				case DOMAIN_EVENTS.SESSION_LINES_APPENDED: {
 					const sessionId = data["sessionId"];
 					const lines = data["lines"];
-					if (typeof sessionId === "string" && Array.isArray(lines)) {
+					if (typeof sessionId === "string" && Array.isArray(lines) && isJsonObjectArray(lines)) {
 						const appended = {
 							sessionId,
-							lines: lines as Record<string, JsonValue>[],
+							lines,
 							...(typeof data["writtenAt"] === "number" ? {writtenAt: data["writtenAt"]} : {}),
 						};
 						const firstLine = applySessionLinesAppended(queryClient, sessionId, appended);
@@ -475,7 +454,7 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 					break;
 				}
 				case DOMAIN_EVENTS.PLAN_CHANGED: {
-					const plan = data["plan"] as PlanSummaryPayload | undefined;
+					const plan = PlanSummaryPayloadSchema.safeParse(data["plan"]).data;
 					if (plan) applyPlanChanged(queryClient, plan);
 					break;
 				}
@@ -485,7 +464,7 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 					break;
 				}
 				case DOMAIN_EVENTS.MEMORY_CHANGED: {
-					const memory = data["memory"] as MemorySummaryPayload | undefined;
+					const memory = MemorySummaryPayloadSchema.safeParse(data["memory"]).data;
 					if (memory) applyMemoryChanged(queryClient, memory);
 					break;
 				}
@@ -498,9 +477,9 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 					break;
 				}
 				case DOMAIN_EVENTS.TASK_CHANGED: {
-					const task = data["task"] as {projectDir?: string} | undefined;
-					if (task && typeof task.projectDir === "string") {
-						applyTaskChanged(queryClient, task.projectDir);
+					const projectDir = asRecord(data["task"])?.["projectDir"];
+					if (typeof projectDir === "string") {
+						applyTaskChanged(queryClient, projectDir);
 					} else {
 						void queryClient.invalidateQueries({queryKey: ["tasks"]});
 					}
@@ -512,7 +491,7 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 					break;
 				}
 				case DOMAIN_EVENTS.APPROVAL_CHANGED: {
-					const approval = data["approval"] as PendingApprovalPayload | undefined;
+					const approval = PendingApprovalPayloadSchema.safeParse(data["approval"]).data;
 					if (approval) {
 						publishSessionState(approval.sessionId, "waiting");
 						applyApprovalChanged(queryClient, approval);
@@ -528,7 +507,7 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 					break;
 				}
 				case DOMAIN_EVENTS.NOTIFICATION_ADDED: {
-					const notification = data["notification"] as NotificationEntryPayload | undefined;
+					const notification = NotificationEntryPayloadSchema.safeParse(data["notification"]).data;
 					if (notification) {
 						applyNotificationAdded(queryClient, notification);
 					}

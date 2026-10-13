@@ -8,6 +8,7 @@ import {
 	type LiveOptionChange,
 	shiftTabCount,
 } from "../lib/launch-options";
+import {isKeyOf} from "../lib/narrow";
 import {launchPermissionModeLabels} from "../lib/schema-choices";
 
 /** The hook fields that confirm a mode change: the next prompt carries `permission_mode`. */
@@ -40,7 +41,7 @@ const FAILURE_MESSAGE: Record<LiveOptionChange["kind"], string> = {
 };
 
 function modeLabel(mode: string): string {
-	return mode in launchPermissionModeLabels ? launchPermissionModeLabels[mode as LaunchPermissionMode] : mode;
+	return isKeyOf(launchPermissionModeLabels, mode) ? launchPermissionModeLabels[mode] : mode;
 }
 
 const NO_OPTIONS: LaunchOptions = {};

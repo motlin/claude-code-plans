@@ -57,7 +57,9 @@ function useMountedChunks(containerRef: RefObject<HTMLDivElement | null>, virtua
 				setMounted((previous) => {
 					let next: Set<number> | null = null;
 					for (const entry of entries) {
-						const chunk = Number((entry.target as HTMLElement).dataset["chunk"]);
+						const chunk = Number(
+							entry.target instanceof HTMLElement ? entry.target.dataset["chunk"] : undefined,
+						);
 						if (previous.has(chunk)) heights.current.set(chunk, entry.boundingClientRect.height);
 						if (entry.isIntersecting === previous.has(chunk)) continue;
 						next ??= new Set(previous);

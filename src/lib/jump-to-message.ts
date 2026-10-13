@@ -3,10 +3,6 @@ const HIGHLIGHT_DURATION_MS = 2_000;
 
 export const TRANSCRIPT_JUMP_REQUEST_EVENT = "transcript-jump-request";
 
-export interface TranscriptJumpRequestEvent extends CustomEvent<number> {
-	type: typeof TRANSCRIPT_JUMP_REQUEST_EVENT;
-}
-
 function flash(element: Element): true {
 	element.scrollIntoView({block: "center", behavior: "smooth"});
 	element.classList.add("message-highlight");

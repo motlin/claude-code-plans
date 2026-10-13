@@ -12,6 +12,7 @@ import {join, resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {getCacheDir} from "../src/lib/db/connection";
 import {defined} from "../src/lib/defined";
+import {errnoCode, errorMessage} from "../src/lib/narrow";
 import {FIELD_LOG_PATTERN, JourneySampleSchema} from "../src/lib/perf/field-sink";
 import type {JourneySample} from "../src/lib/perf/journey";
 
@@ -207,7 +208,7 @@ function main(): void {
 	try {
 		args = parseReportArgs(process.argv.slice(2));
 	} catch (error) {
-		console.error((error as Error).message);
+		console.error(errorMessage(error));
 		process.exitCode = 2;
 		return;
 	}
@@ -216,7 +217,7 @@ function main(): void {
 	try {
 		result = readFieldSamples(perfDir, {now: new Date(), ...args});
 	} catch (error) {
-		if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+		if (errnoCode(error) !== "ENOENT") throw error;
 		result = {samples: [], invalidLines: 0};
 	}
 	console.log(formatReport(result.samples));

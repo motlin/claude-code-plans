@@ -1,6 +1,7 @@
 import {ChevronDown, ChevronRight} from "lucide-react";
 import {useState} from "react";
 
+import {isRecord} from "../../lib/narrow";
 import {formatCount} from "../../lib/pluralize";
 
 // Tokyo Night–inspired segment colors from claude-powerline.json
@@ -54,8 +55,8 @@ function formatTokens(n: number): string {
 function getNestedNumber(obj: Record<string, unknown>, ...keys: string[]): number | undefined {
 	let current: unknown = obj;
 	for (const key of keys) {
-		if (current === null || typeof current !== "object") return undefined;
-		current = (current as Record<string, unknown>)[key];
+		if (!isRecord(current)) return undefined;
+		current = current[key];
 	}
 	return typeof current === "number" ? current : undefined;
 }

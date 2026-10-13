@@ -1,9 +1,21 @@
 import {useCallback, useEffect, useMemo, useState} from "react";
+import {z} from "zod";
 
 import {extractSessionFiles, type FileSourceKey, type SessionFiles} from "../../lib/session-files";
 import type {SessionLine} from "../../lib/transcript";
 
 export type FileSourceSelection = Record<FileSourceKey, boolean>;
+
+const FileSourceSelectionSchema: z.ZodType<FileSourceSelection> = z.strictObject({
+	userMessage: z.boolean(),
+	agentMessage: z.boolean(),
+	read: z.boolean(),
+	editWrite: z.boolean(),
+	bash: z.boolean(),
+	grepGlob: z.boolean(),
+	thinking: z.boolean(),
+	other: z.boolean(),
+});
 
 export const FILE_SOURCE_SELECTION_STORAGE_KEY = "ccp-session-file-sources";
 
@@ -62,14 +74,7 @@ function parseFileSourceSelection(rawValue: string): FileSourceSelection | undef
 	} catch {
 		return undefined;
 	}
-	if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return undefined;
-
-	const record = parsed as Record<string, unknown>;
-	const keys = FILE_SOURCE_OPTIONS.map((option) => option.key);
-	if (Object.keys(record).length !== keys.length) return undefined;
-	if (!keys.every((key) => typeof record[key] === "boolean")) return undefined;
-
-	return Object.fromEntries(keys.map((key) => [key, record[key]])) as FileSourceSelection;
+	return FileSourceSelectionSchema.safeParse(parsed).data;
 }
 
 /** The session-files source checkboxes, hydrated from and persisted to localStorage. */

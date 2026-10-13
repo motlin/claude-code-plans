@@ -2,6 +2,8 @@ import {z} from "zod";
 import type {SessionBucket, SessionSummaryState} from "./session-state";
 import {toolInputSchemas} from "./tool-input-schemas";
 import {JsonValueSchema} from "./schemas";
+import {defined} from "./defined";
+import {objectKeys} from "./narrow";
 import type {PrStatus} from "./pr-status";
 import type {SessionPrLink} from "./sessions";
 
@@ -192,6 +194,18 @@ export interface ActiveSessionPayload {
 
 export type JsonValue = string | number | boolean | null | JsonValue[] | {[key: string]: JsonValue};
 
+/** `JsonValueSchema` typed to the `JsonValue` it validates. */
+export const TypedJsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
+	z.union([
+		z.string(),
+		z.number(),
+		z.boolean(),
+		z.null(),
+		z.array(TypedJsonValueSchema),
+		z.record(z.string(), TypedJsonValueSchema),
+	]),
+);
+
 export interface SessionLinesAppendedPayload {
 	sessionId: string;
 	lines: Record<string, JsonValue>[];
@@ -201,7 +215,7 @@ export interface SessionLinesAppendedPayload {
 
 export const SessionLinesAppendedPayloadSchema: z.ZodType<SessionLinesAppendedPayload> = z.strictObject({
 	sessionId: z.string(),
-	lines: z.array(z.record(z.string(), JsonValueSchema as z.ZodType<JsonValue>)),
+	lines: z.array(z.record(z.string(), TypedJsonValueSchema)),
 	writtenAt: z.int().nonnegative(),
 });
 
@@ -922,9 +936,7 @@ const TOOL_VARIANTS = {
 	Workflow: {input: toolInputSchemas.Workflow, response: JsonValueSchema}, // no hook samples observed yet
 } satisfies Record<keyof typeof toolInputSchemas, ToolVariant>;
 
-type ToolName = keyof typeof TOOL_VARIANTS;
-
-const toolUseVariants = (Object.keys(TOOL_VARIANTS) as ToolName[]).map((toolName) => {
+const toolUseVariants = objectKeys(TOOL_VARIANTS).map((toolName) => {
 	const {input, response} = TOOL_VARIANTS[toolName] as ToolVariant;
 	return z.strictObject({
 		tool_name: z.literal(toolName),
@@ -934,10 +946,10 @@ const toolUseVariants = (Object.keys(TOOL_VARIANTS) as ToolName[]).map((toolName
 });
 
 /** Discriminated union over every built-in tool declared in `toolInputSchemas`. */
-export const ToolUseUnion = z.discriminatedUnion(
-	"tool_name",
-	toolUseVariants as [(typeof toolUseVariants)[number], ...typeof toolUseVariants],
-);
+export const ToolUseUnion = z.discriminatedUnion("tool_name", [
+	defined(toolUseVariants[0], "TOOL_VARIANTS declares at least one tool"),
+	...toolUseVariants.slice(1),
+]);
 
 const SessionStartHookEvent = z.strictObject({
 	...BaseHookFields,
@@ -1079,10 +1091,7 @@ function buildToolUseEvent(eventName: "PreToolUse" | "PostToolUse") {
 		tool_response: JsonValueSchema.optional(),
 		duration_ms: z.number().optional(),
 	});
-	return z.union([...variants, mcpVariant] as unknown as [
-		(typeof variants)[number],
-		...Array<(typeof variants)[number] | typeof mcpVariant>,
-	]);
+	return z.union([...variants, mcpVariant]);
 }
 
 const PreToolUseHookEvent = buildToolUseEvent("PreToolUse");
@@ -1133,10 +1142,7 @@ function buildPostToolUseFailureEvent() {
 		error: z.string().optional(),
 		hook_specific_output: PostToolUseFailureHookSpecificOutput.optional(),
 	});
-	return z.union([...variants, mcpVariant] as unknown as [
-		(typeof variants)[number],
-		...Array<(typeof variants)[number] | typeof mcpVariant>,
-	]);
+	return z.union([...variants, mcpVariant]);
 }
 
 const PostToolUseFailureHookEvent = buildPostToolUseFailureEvent();

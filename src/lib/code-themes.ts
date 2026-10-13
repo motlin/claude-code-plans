@@ -50,12 +50,23 @@ export interface CodeThemePair {
 
 export const DEFAULT_CODE_THEMES: CodeThemePair = {light: "claude-light", dark: "github-dark"};
 
-type ThemeModule = Promise<{default: unknown}>;
+type ThemeModule = Promise<{default: ThemeRegistration}>;
+
+type PierreTheme = (typeof import("@pierre/theme/pierre-light"))["default"];
+
+/**
+ * Pierre's themes are deeply readonly, so Shiki's registration type rejects their `tokenColors`; their
+ * `semanticTokenColors` (which Shiki never reads) also nest records where Shiki's type admits only strings.
+ */
+function pierreTheme({semanticTokenColors: _semanticTokenColors, ...theme}: PierreTheme): ThemeRegistration {
+	return {...theme, tokenColors: [...theme.tokenColors]};
+}
 
 const THEME_LOADERS: Record<CodeThemeId, () => ThemeModule> = {
 	"claude-light": async () => import("./claude-light-theme").then(({claudeLight}) => ({default: claudeLight})),
 	"github-light": async () => import("shiki/themes/github-light.mjs"),
-	"pierre-light": async () => import("@pierre/theme/pierre-light"),
+	"pierre-light": async () =>
+		import("@pierre/theme/pierre-light").then(({default: theme}) => ({default: pierreTheme(theme)})),
 	"one-light": async () => import("shiki/themes/one-light.mjs"),
 	"catppuccin-latte": async () => import("shiki/themes/catppuccin-latte.mjs"),
 	"solarized-light": async () => import("shiki/themes/solarized-light.mjs"),
@@ -65,7 +76,8 @@ const THEME_LOADERS: Record<CodeThemeId, () => ThemeModule> = {
 	"slack-ochin": async () => import("shiki/themes/slack-ochin.mjs"),
 	"github-dark": async () => import("shiki/themes/github-dark.mjs"),
 	"github-dark-dimmed": async () => import("shiki/themes/github-dark-dimmed.mjs"),
-	"pierre-dark": async () => import("@pierre/theme/pierre-dark"),
+	"pierre-dark": async () =>
+		import("@pierre/theme/pierre-dark").then(({default: theme}) => ({default: pierreTheme(theme)})),
 	"one-dark-pro": async () => import("shiki/themes/one-dark-pro.mjs"),
 	dracula: async () => import("shiki/themes/dracula.mjs"),
 	"dracula-soft": async () => import("shiki/themes/dracula-soft.mjs"),
@@ -85,7 +97,7 @@ const THEME_LOADERS: Record<CodeThemeId, () => ThemeModule> = {
 /** Imports a theme's module on demand, registered under its settings id. */
 export async function loadCodeTheme(id: CodeThemeId): Promise<ThemeRegistration> {
 	const module = await THEME_LOADERS[id]();
-	return {...(module.default as ThemeRegistration), name: id};
+	return {...module.default, name: id};
 }
 
 /**

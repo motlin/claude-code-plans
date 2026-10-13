@@ -28,10 +28,9 @@ async function streamFile(
 	download: boolean,
 	headers: Record<string, string>,
 ): Promise<Response> {
-	const {createReadStream} = await import("node:fs");
-	const {Readable} = await import("node:stream");
+	const {fileBodyStream} = await import("../../lib/file-stream");
 	const name = path.slice(path.lastIndexOf("/") + 1);
-	return new Response(Readable.toWeb(createReadStream(path)) as ReadableStream<Uint8Array>, {
+	return new Response(fileBodyStream(path), {
 		headers: {
 			...headers,
 			"Content-Length": String(sizeBytes),

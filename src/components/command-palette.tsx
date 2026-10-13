@@ -1184,7 +1184,7 @@ function PalettePopup({
 			className={`fixed left-1/2 z-50 w-[calc(100vw-2rem)] max-w-2xl -translate-x-1/2 outline-none md:w-[calc(100vw-5rem)] ${PALETTE_RADIUS}`}
 			style={{
 				top: "max(1rem, min(25vh, calc((100vh - var(--cp-settled-h, 0px)) / 2)))",
-				...(settledHeight === null ? {} : ({"--cp-settled-h": `${settledHeight}px`} as React.CSSProperties)),
+				...(settledHeight === null ? {} : {"--cp-settled-h": `${settledHeight}px`}),
 			}}
 		>
 			<Dialog.Title className="sr-only">Search</Dialog.Title>

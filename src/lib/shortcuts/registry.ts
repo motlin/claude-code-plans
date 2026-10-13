@@ -6,6 +6,8 @@
  * shortcuts dialog never advertises a dead key.
  */
 
+import {objectKeys} from "../narrow";
+
 export type ShortcutModifier = "cmd" | "ctrl" | "alt" | "shift";
 /** "non-mac" covers both Windows and Linux; "windows" and "linux" narrow it. */
 export type ShortcutPlatform = "mac" | "non-mac" | "windows" | "linux";
@@ -349,7 +351,7 @@ export const SHORTCUTS = {
 export type ShortcutId = keyof typeof SHORTCUTS;
 
 /** Registry ids in upstream dialog order. */
-export const SHORTCUT_IDS = Object.keys(SHORTCUTS) as ShortcutId[];
+export const SHORTCUT_IDS: ShortcutId[] = objectKeys(SHORTCUTS);
 
 export function getShortcut(id: ShortcutId): ShortcutDefinition {
 	return SHORTCUTS[id];

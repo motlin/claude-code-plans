@@ -63,3 +63,21 @@ export function getTaskCreateParams(input: Record<string, unknown>): Array<{key:
 	}
 	return params;
 }
+
+/** Read a boolean field from an unvalidated tool input; anything else is undefined. */
+export function inputBoolean(input: Record<string, unknown>, key: string): boolean | undefined {
+	const value = input[key];
+	return typeof value === "boolean" ? value : undefined;
+}
+
+/** Read a finite number field from an unvalidated tool input; anything else is undefined. */
+export function inputNumber(input: Record<string, unknown>, key: string): number | undefined {
+	const value = input[key];
+	return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+/** Read an all-strings array field from an unvalidated tool input; anything else is undefined. */
+export function inputStringArray(input: Record<string, unknown>, key: string): string[] | undefined {
+	const value = input[key];
+	return Array.isArray(value) && value.every((item): item is string => typeof item === "string") ? value : undefined;
+}

@@ -80,7 +80,7 @@ const VIEW_TAB_CLASS =
 	"inline-flex h-6 shrink-0 items-center rounded-md px-2 text-[13px] font-medium whitespace-nowrap text-ink-muted transition-colors hover:text-primary aria-selected:bg-fill-ghost-hover aria-selected:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-100";
 
 function isTypeFilter(value: unknown): value is ArtifactTypeFilter {
-	return TYPE_FILTERS.includes(value as ArtifactTypeFilter);
+	return TYPE_FILTERS.some((filter) => filter === value);
 }
 
 function ArtifactsPage() {

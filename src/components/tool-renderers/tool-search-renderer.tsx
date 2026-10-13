@@ -1,10 +1,10 @@
-import {inputString} from "../../lib/tool-utils";
+import {inputNumber, inputString} from "../../lib/tool-utils";
 import type {ToolRendererProps} from "./types";
 import {KeyValueCard} from "./shared";
 
 export function ToolSearchRenderer({toolCall}: ToolRendererProps) {
 	const query = inputString(toolCall.input, "query") ?? "";
-	const maxResults = toolCall.input["max_results"] as number | undefined;
+	const maxResults = inputNumber(toolCall.input, "max_results");
 	const {result, isError} = toolCall;
 
 	const params: Array<{key: string; value: string}> = [];

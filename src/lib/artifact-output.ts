@@ -5,6 +5,8 @@
  * the CLI's "Published <file_path> at <url>" text.
  */
 
+import {asRecord} from "./narrow";
+
 export type ArtifactUrlKind = "uuid" | "slug";
 
 export interface ParsedArtifact {
@@ -65,8 +67,8 @@ function parseJsonOutput(text: string): ParsedArtifact | undefined {
 	} catch {
 		return undefined;
 	}
-	if (typeof value !== "object" || value === null || Array.isArray(value)) return undefined;
-	const record = value as Record<string, unknown>;
+	const record = asRecord(value);
+	if (record === undefined) return undefined;
 	if (typeof record["url"] !== "string") return undefined;
 	const artifact = normalizeArtifactUrl(record["url"]);
 	if (artifact === undefined) return undefined;
@@ -105,8 +107,7 @@ function parsePublishedOutput(text: string): ParsedArtifact | undefined {
 }
 
 function readString(value: unknown, key: string): string | undefined {
-	if (typeof value !== "object" || value === null || Array.isArray(value)) return undefined;
-	const field = (value as Record<string, unknown>)[key];
+	const field = asRecord(value)?.[key];
 	return typeof field === "string" && field !== "" ? field : undefined;
 }
 
@@ -135,7 +136,8 @@ export function parseArtifactOutput(resultText: string, toolUseResult?: unknown)
  * (no action, or "publish") or open.
  */
 export function isArtifactCardCall(input: unknown, isError: boolean): boolean {
-	if (isError || typeof input !== "object" || input === null || Array.isArray(input)) return false;
-	const action = (input as Record<string, unknown>)["action"];
+	const record = asRecord(input);
+	if (isError || record === undefined) return false;
+	const action = record["action"];
 	return action === undefined || action === "publish" || action === "open";
 }

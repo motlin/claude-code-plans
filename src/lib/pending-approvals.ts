@@ -4,10 +4,13 @@ import {basename} from "node:path";
 import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
 import * as schema from "./db/schema";
 import {getPlanFilenameForSession} from "./db/queries";
+import type {z} from "zod";
+import type {PendingApprovalToolNameSchema} from "./domain-event-payload-schemas";
+import {asRecord, isRecord} from "./narrow";
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
 
-export type PendingApprovalToolName = "ExitPlanMode" | "AskUserQuestion";
+export type PendingApprovalToolName = z.infer<typeof PendingApprovalToolNameSchema>;
 
 const STALE_APPROVAL_THRESHOLD_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
@@ -34,26 +37,6 @@ interface PendingEntry {
 	questionOptions: string[];
 }
 
-interface JsonlContentBlock {
-	type?: string;
-	id?: string;
-	name?: string;
-	input?: Record<string, unknown>;
-	tool_use_id?: string;
-}
-
-interface JsonlMessage {
-	role?: string;
-	content?: unknown;
-}
-
-interface JsonlEntry {
-	type?: string;
-	sessionId?: string;
-	timestamp?: string;
-	message?: JsonlMessage;
-}
-
 function extractPlanFilename(input: Record<string, unknown> | undefined): string | null {
 	if (!input) return null;
 	const candidate =
@@ -73,8 +56,8 @@ function extractQuestionPreview(input: Record<string, unknown> | undefined): str
 	const questions = input["questions"];
 	if (Array.isArray(questions) && questions.length > 0) {
 		const first: unknown = questions[0];
-		if (first && typeof first === "object") {
-			const text = (first as Record<string, unknown>)["question"];
+		if (isRecord(first)) {
+			const text = first["question"];
 			if (typeof text === "string" && text.trim()) return text.trim();
 		}
 		if (typeof first === "string" && first.trim()) return first.trim();
@@ -86,8 +69,8 @@ function optionLabels(options: unknown): string[] {
 	if (!Array.isArray(options)) return [];
 	const labels: string[] = [];
 	for (const option of options) {
-		if (option && typeof option === "object") {
-			const label = (option as Record<string, unknown>)["label"];
+		if (isRecord(option)) {
+			const label = option["label"];
 			if (typeof label === "string" && label.trim()) labels.push(label.trim());
 		}
 	}
@@ -100,8 +83,8 @@ function extractQuestionOptions(input: Record<string, unknown> | undefined): str
 	const questions = input["questions"];
 	if (!Array.isArray(questions)) return [];
 	const first: unknown = questions[0];
-	if (!first || typeof first !== "object") return [];
-	return optionLabels((first as Record<string, unknown>)["options"]);
+	if (!isRecord(first)) return [];
+	return optionLabels(first["options"]);
 }
 
 /** The tool calls still waiting on an answer, folded one transcript line at a time. */
@@ -113,52 +96,54 @@ export interface PendingApprovalScanState {
 const pendingApprovalFold: JsonlFold<PendingApprovalScanState> = {
 	create: () => ({pending: new Map(), sessionId: ""}),
 	add(state, line) {
-		let obj: JsonlEntry;
+		let obj: unknown;
 		try {
-			obj = JSON.parse(line) as JsonlEntry;
+			obj = JSON.parse(line);
 		} catch {
 			return;
 		}
+		if (!isRecord(obj)) return;
 
-		if (typeof obj.sessionId === "string" && obj.sessionId) {
-			state.sessionId = obj.sessionId;
+		if (typeof obj["sessionId"] === "string" && obj["sessionId"]) {
+			state.sessionId = obj["sessionId"];
 		}
 
-		const type = obj.type;
+		const type = obj["type"];
 		if (type !== "user" && type !== "assistant") return;
 
-		const message = obj.message;
-		if (!message) return;
+		const message = obj["message"];
+		if (!isRecord(message)) return;
 
-		const content = message.content;
+		const content = message["content"];
 		if (!Array.isArray(content)) return;
 
-		const timestamp = typeof obj.timestamp === "string" ? obj.timestamp : "";
+		const timestamp = typeof obj["timestamp"] === "string" ? obj["timestamp"] : "";
 
 		if (type === "assistant") {
-			for (const block of content as JsonlContentBlock[]) {
-				if (block.type !== "tool_use") continue;
-				const name = block.name;
+			for (const block of content) {
+				if (!isRecord(block) || block["type"] !== "tool_use") continue;
+				const name = block["name"];
 				// Claude exposes no permission-request hook, so plain tool permission
 				// prompts cannot be reconstructed here. Only transcript-visible
 				// ExitPlanMode and AskUserQuestion approvals are durable signals.
 				if (name !== "ExitPlanMode" && name !== "AskUserQuestion") continue;
-				const id = typeof block.id === "string" ? block.id : "";
+				const id = typeof block["id"] === "string" ? block["id"] : "";
 				if (!id) continue;
+				const input = asRecord(block["input"]);
 				state.pending.set(id, {
 					sessionId: state.sessionId,
 					toolName: name,
 					toolUseId: id,
 					blockedSince: timestamp,
-					planFilename: name === "ExitPlanMode" ? extractPlanFilename(block.input) : null,
-					questionPreview: name === "AskUserQuestion" ? extractQuestionPreview(block.input) : null,
-					questionOptions: name === "AskUserQuestion" ? extractQuestionOptions(block.input) : [],
+					planFilename: name === "ExitPlanMode" ? extractPlanFilename(input) : null,
+					questionPreview: name === "AskUserQuestion" ? extractQuestionPreview(input) : null,
+					questionOptions: name === "AskUserQuestion" ? extractQuestionOptions(input) : [],
 				});
 			}
 		} else {
-			for (const block of content as JsonlContentBlock[]) {
-				if (block.type !== "tool_result") continue;
-				const id = typeof block.tool_use_id === "string" ? block.tool_use_id : "";
+			for (const block of content) {
+				if (!isRecord(block) || block["type"] !== "tool_result") continue;
+				const id = typeof block["tool_use_id"] === "string" ? block["tool_use_id"] : "";
 				if (!id) continue;
 				state.pending.delete(id);
 			}

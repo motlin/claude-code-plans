@@ -18,6 +18,7 @@ import {useQuery} from "@tanstack/react-query";
 import {useMemo} from "react";
 import {applicationSettingsQueryOptions} from "../../lib/api/application-settings";
 import {DEFAULT_VISIBLE_NAV_SECTIONS, type NavSection} from "../../lib/nav-sections";
+import {objectKeys} from "../../lib/narrow";
 import type {Section} from "./types";
 
 interface NavEntry {
@@ -105,7 +106,7 @@ const navEntries = {
 	},
 } satisfies Record<Section, NavEntry>;
 
-export const navItems = (Object.keys(navEntries) as Section[]).map((section) => ({
+export const navItems = objectKeys(navEntries).map((section) => ({
 	section,
 	...navEntries[section],
 }));

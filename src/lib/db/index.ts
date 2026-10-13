@@ -2,6 +2,7 @@ import {openAppDb, type AppDb} from "./connection";
 import {isBusyError} from "./busy";
 import {fullScan, scanFileContentRoots} from "./indexer";
 import {hmrPersist, hmrTake} from "../hmr-persist";
+import {isRecord} from "../narrow";
 import {homedir} from "node:os";
 import {join} from "node:path";
 
@@ -25,9 +26,14 @@ type DbHolder = {db: AppDb | null};
 // the HMR state, and its scan cannot be aborted, so give the holder a fresh one.
 function getScanHolder(): ScanHolder {
 	const holder = hmrPersist<Partial<ScanHolder>>("appDbScanPromise", () => ({}));
-	holder.promise ??= null;
-	holder.controller ??= new AbortController();
-	return holder as ScanHolder;
+	return Object.assign(holder, {
+		promise: holder.promise ?? null,
+		controller: holder.controller ?? new AbortController(),
+	});
+}
+
+function isClosable(value: unknown): value is Pick<AppDb, "close"> {
+	return isRecord(value) && typeof value["close"] === "function";
 }
 
 function getDbHolder(): DbHolder {
@@ -113,6 +119,6 @@ export async function shutdownDb(): Promise<void> {
 	dbHolder.db = null;
 	db?.close();
 	// Instances that predate the holder kept their connection under `appDb`.
-	const legacyDb = hmrTake("appDb") as AppDb | undefined;
-	legacyDb?.close();
+	const legacyDb = hmrTake("appDb");
+	if (isClosable(legacyDb)) legacyDb.close();
 }

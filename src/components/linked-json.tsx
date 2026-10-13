@@ -1,5 +1,6 @@
 import {resolveLink} from "./linked-json-links";
 import type {LinkedJsonContext} from "./linked-json-links";
+import {isRecord} from "../lib/narrow";
 
 interface LinkedJsonProps {
 	value: unknown;
@@ -37,6 +38,8 @@ function JsonValue({
 }) {
 	if (value === null) return <span className="text-t6 italic">null</span>;
 	if (value === undefined) return <span className="text-t6 italic">undefined</span>;
+	if (Array.isArray(value)) return <JsonArray items={value} path={path} ctx={ctx} indent={indent} />;
+	if (isRecord(value)) return <JsonObject obj={value} path={path} ctx={ctx} indent={indent} />;
 
 	switch (typeof value) {
 		case "string":
@@ -45,11 +48,6 @@ function JsonValue({
 			return <span className="text-[#b5cea8]">{String(value)}</span>;
 		case "boolean":
 			return <span className="text-[#569cd6]">{String(value)}</span>;
-		case "object":
-			if (Array.isArray(value)) {
-				return <JsonArray items={value} path={path} ctx={ctx} indent={indent} />;
-			}
-			return <JsonObject obj={value as Record<string, unknown>} path={path} ctx={ctx} indent={indent} />;
 		default:
 			return <span className="text-secondary">{JSON.stringify(value)}</span>;
 	}

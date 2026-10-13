@@ -12,6 +12,7 @@ import type {
 import type {ChangedFileKindSchema} from "./changed-file-kind";
 import type {CodeThemeDark, CodeThemeLight} from "./code-themes";
 import type {ContextAttachmentKindSchema} from "./context-attach";
+import type {PendingApprovalToolNameSchema} from "./domain-event-payload-schemas";
 import type {TerminalAppearance} from "./terminal-theme";
 import type {McpScopeSchema, PermissionBehaviorSchema, SkillSourceSchema} from "./api/customize";
 import type {PluginFileSchema, PluginListResponse} from "./api/plugins";
@@ -1048,6 +1049,12 @@ const pluginCatalogSourceKindLabels = {
 	"git-subdir": "Git subdirectory",
 } satisfies Record<z.infer<typeof PluginCatalogSourceKindSchema>, string>;
 
+/** Pending approval `toolName` (src/lib/domain-event-payload-schemas.ts). */
+const pendingApprovalToolNameLabels = {
+	ExitPlanMode: "Plan approval",
+	AskUserQuestion: "Question",
+} satisfies Record<z.infer<typeof PendingApprovalToolNameSchema>, string>;
+
 const toolNamesWithMcp = {...toolNames, "mcp__*": true} as const;
 
 /** Maps walker path keys (see tests/schema-choices.test.ts) to choice maps. */
@@ -1142,6 +1149,7 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
 	GroupColorSchema: groupColorLabels,
 	PinDropOutcomeSchema: pinDropOutcomeLabels,
 	ContextAttachmentKindSchema: contextAttachmentKindLabels,
+	PendingApprovalToolNameSchema: pendingApprovalToolNameLabels,
 	ArtifactActionSchema: artifactActionLabels,
 	ArtifactIntentSchema: artifactIntentLabels,
 	ArtifactListScopeSchema: artifactListScopeLabels,

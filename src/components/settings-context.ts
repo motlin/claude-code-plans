@@ -3,6 +3,7 @@ import {z} from "zod";
 
 import {ACTIVE_SESSION_WINDOW_MS} from "../lib/active-session-window";
 import {DEFAULT_CAPABILITIES, PersistedCapabilitiesSchema, type PersistedCapabilities} from "../lib/capabilities";
+import {objectKeys} from "../lib/narrow";
 import {DEFAULT_SESSION_LIST_PREFS, migrateSessionListPrefs, type SessionListPrefs} from "../lib/session-groups";
 import {
 	CodeThemeDarkSchema,
@@ -20,12 +21,17 @@ import {
 	type TranscriptTextSize,
 } from "../lib/appearance";
 
-type SubagentView = "tree" | "gantt" | "sequence";
+const SubagentViewSchema = z.enum(["tree", "gantt", "sequence"]);
+type SubagentView = z.infer<typeof SubagentViewSchema>;
 
 /** The Changes pane's diff layout: one column, or old and new side by side. */
 export const DiffStyleSchema = z.enum(["unified", "split"]);
 export type DiffStyle = z.infer<typeof DiffStyleSchema>;
-export type Verbosity = "normal" | "thinking" | "verbose";
+const VerbositySchema = z.enum(["normal", "thinking", "verbose"]);
+export type Verbosity = z.infer<typeof VerbositySchema>;
+
+const SessionSortSchema = z.enum(["urgency", "stable"]);
+const SessionsGroupingSchema = z.enum(["project", "time"]);
 
 /** Upstream General ▸ Appearance ▸ Motion: follow the OS, or always reduce. */
 const MotionSchema = z.enum(["system", "reduced"]);
@@ -78,10 +84,10 @@ export interface Settings {
 
 	activeTimeoutSec: number;
 
-	sessionSort: "urgency" | "stable";
+	sessionSort: z.infer<typeof SessionSortSchema>;
 
 	/** How /sessions organizes its list. "project" matches the sidebar's tree. */
-	sessionsGrouping: "project" | "time";
+	sessionsGrouping: z.infer<typeof SessionsGroupingSchema>;
 
 	/** The sidebar session list's Filter & group menu choices. */
 	sessionListPrefs: SessionListPrefs;
@@ -301,7 +307,7 @@ export const VERBOSITY_PRESETS: Record<Verbosity, Partial<Settings>> = {
 	},
 };
 
-export const VERBOSITY_KEYS = Object.keys(VERBOSITY_PRESETS.normal) as Array<keyof Settings>;
+export const VERBOSITY_KEYS = objectKeys(VERBOSITY_PRESETS.normal);
 
 /** The preset the transcript toggles match, or null when they have been customized. */
 export function matchedVerbosityPreset(settings: Settings): Verbosity | null {
@@ -318,75 +324,94 @@ export function detectVerbosity(settings: Settings): Verbosity {
 	return matchedVerbosityPreset(settings) ?? settings.verbosity;
 }
 
-export function readStoredValue<K extends keyof Settings>(key: K): Settings[K] | undefined {
-	const storageKey = STORAGE_KEYS[key];
-	const stored = localStorage.getItem(storageKey);
-	if (key === "sessionListPrefs") {
-		return migrateSessionListPrefs({
+type StoredValueReader<V> = (stored: string | null) => V | undefined;
+
+function readSchema<V>(schema: z.ZodType<V>): StoredValueReader<V> {
+	return (stored) => {
+		if (stored === null) return undefined;
+		const parsed = schema.safeParse(stored);
+		return parsed.success ? parsed.data : undefined;
+	};
+}
+
+function readJsonSchema<V>(schema: z.ZodType<V>): StoredValueReader<V> {
+	return (stored) => {
+		if (stored === null) return undefined;
+		try {
+			const parsed = schema.safeParse(JSON.parse(stored));
+			return parsed.success ? parsed.data : undefined;
+		} catch {
+			return undefined;
+		}
+	};
+}
+
+const readBoolean: StoredValueReader<boolean> = (stored) => (stored === null ? undefined : stored === "true");
+
+const readNumber: StoredValueReader<number> = (stored) => {
+	if (stored === null) return undefined;
+	const parsed = Number(stored);
+	return Number.isFinite(parsed) ? parsed : undefined;
+};
+
+const readString: StoredValueReader<string> = (stored) => stored ?? undefined;
+
+const STORED_VALUE_READERS: {[K in keyof Settings]: StoredValueReader<Settings[K]>} = {
+	showThinking: readBoolean,
+	showTools: readBoolean,
+	showDebug: readBoolean,
+	showToolDuration: readBoolean,
+	showPassedHooks: readBoolean,
+	showHookWarnings: readBoolean,
+	showHookErrors: readBoolean,
+	showSystemBanners: readBoolean,
+	showCompactSummaries: readBoolean,
+	showTranscriptOnly: readBoolean,
+	defaultSubagentView: readSchema(SubagentViewSchema),
+	chromeHidden: readBoolean,
+	motion: readSchema(MotionSchema),
+	transcriptWidth: readSchema(TranscriptWidthSchema),
+	interfaceFont: readSchema(InterfaceFontSchema),
+	transcriptTextSize: readSchema(TranscriptTextSizeSchema),
+	homeShowLocalSections: readBoolean,
+	codeThemeLight: readSchema(CodeThemeLightSchema),
+	codeThemeDark: readSchema(CodeThemeDarkSchema),
+	codeFont: readString,
+	terminalAppearance: readSchema(TerminalAppearanceSchema),
+	showSummaryButton: readBoolean,
+	capabilities: readJsonSchema(PersistedCapabilitiesSchema),
+	activeTimeoutSec: readNumber,
+	sessionSort: readSchema(SessionSortSchema),
+	sessionsGrouping: readSchema(SessionsGroupingSchema),
+	// Read even when unset: older installs stored the grouping and sort under separate keys.
+	sessionListPrefs: (stored) =>
+		migrateSessionListPrefs({
 			stored,
 			sessionsGrouping: localStorage.getItem(STORAGE_KEYS.sessionsGrouping),
 			sessionSort: localStorage.getItem(STORAGE_KEYS.sessionSort),
-		}) as Settings[K];
-	}
-	if (stored === null) return undefined;
+		}),
+	notifyCompletions: readBoolean,
+	notifyPermissionRequests: readBoolean,
+	verbosity: readSchema(VerbositySchema),
+	linkCategoryRules: readJsonSchema(LINK_CATEGORY_RULES_SCHEMA),
+	diffShowTree: readBoolean,
+	diffGroupByFolder: readBoolean,
+	diffGroupByKind: readBoolean,
+	diffStyle: readSchema(DiffStyleSchema),
+	diffWordWrap: readBoolean,
+	diffWordDiff: readBoolean,
+	diffHideWhitespace: readBoolean,
+	filesHideIgnored: readBoolean,
+	filesPreviewTabs: readBoolean,
+	filesTreeWidth: readNumber,
+	filesWordWrap: readBoolean,
+	filesTabSize: readNumber,
+	seenDragPinHint: readBoolean,
+};
 
-	const defaultValue = DEFAULTS[key];
-	if (key === "capabilities") {
-		try {
-			const parsed = PersistedCapabilitiesSchema.safeParse(JSON.parse(stored));
-			return (parsed.success ? parsed.data : undefined) as Settings[K] | undefined;
-		} catch {
-			return undefined;
-		}
-	}
-	if (key === "diffStyle") {
-		const parsed = DiffStyleSchema.safeParse(stored);
-		return (parsed.success ? parsed.data : undefined) as Settings[K] | undefined;
-	}
-	if (key === "motion") {
-		const parsed = MotionSchema.safeParse(stored);
-		return (parsed.success ? parsed.data : undefined) as Settings[K] | undefined;
-	}
-	if (key === "codeThemeLight") {
-		const parsed = CodeThemeLightSchema.safeParse(stored);
-		return (parsed.success ? parsed.data : undefined) as Settings[K] | undefined;
-	}
-	if (key === "codeThemeDark") {
-		const parsed = CodeThemeDarkSchema.safeParse(stored);
-		return (parsed.success ? parsed.data : undefined) as Settings[K] | undefined;
-	}
-	if (key === "terminalAppearance") {
-		const parsed = TerminalAppearanceSchema.safeParse(stored);
-		return (parsed.success ? parsed.data : undefined) as Settings[K] | undefined;
-	}
-	if (key === "transcriptWidth") {
-		const parsed = TranscriptWidthSchema.safeParse(stored);
-		return (parsed.success ? parsed.data : undefined) as Settings[K] | undefined;
-	}
-	if (key === "interfaceFont") {
-		const parsed = InterfaceFontSchema.safeParse(stored);
-		return (parsed.success ? parsed.data : undefined) as Settings[K] | undefined;
-	}
-	if (key === "transcriptTextSize") {
-		const parsed = TranscriptTextSizeSchema.safeParse(stored);
-		return (parsed.success ? parsed.data : undefined) as Settings[K] | undefined;
-	}
-	if (Array.isArray(defaultValue)) {
-		try {
-			const parsed = LINK_CATEGORY_RULES_SCHEMA.safeParse(JSON.parse(stored));
-			return (parsed.success ? parsed.data : undefined) as Settings[K] | undefined;
-		} catch {
-			return undefined;
-		}
-	}
-	if (typeof defaultValue === "boolean") {
-		return (stored === "true") as Settings[K];
-	}
-	if (typeof defaultValue === "number") {
-		const parsed = Number(stored);
-		return (Number.isFinite(parsed) ? parsed : undefined) as Settings[K] | undefined;
-	}
-	return stored as Settings[K];
+export function readStoredValue<K extends keyof Settings>(key: K): Settings[K] | undefined {
+	const reader: StoredValueReader<Settings[K]> = STORED_VALUE_READERS[key];
+	return reader(localStorage.getItem(STORAGE_KEYS[key]));
 }
 
 export function writeStoredValue<K extends keyof Settings>(key: K, value: Settings[K]): void {

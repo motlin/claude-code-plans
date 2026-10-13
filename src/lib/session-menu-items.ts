@@ -1,5 +1,6 @@
 import {z} from "zod";
 
+import {isKeyOf} from "./narrow";
 import {sessionMenuItemLabels, transcriptModeLabels} from "./schema-choices";
 import type {SessionBucket} from "./session-state";
 import {TRANSCRIPT_MODES, type TranscriptMode} from "./transcript-mode";
@@ -389,8 +390,8 @@ export function getSessionMenuItems(
 	if (surface === "palette") {
 		const name = paletteName(session.title);
 		return [...actions, ...lifecycle].flatMap((entry) => {
-			if (!(entry.id in PALETTE_LABELS)) return [];
-			const label = PALETTE_LABELS[entry.id as keyof typeof PALETTE_LABELS](name);
+			if (!isKeyOf(PALETTE_LABELS, entry.id)) return [];
+			const label = PALETTE_LABELS[entry.id](name);
 			const command: SessionMenuItem = {kind: "item", id: entry.id, label};
 			if (entry.disabledReason !== undefined) {
 				command.disabled = true;

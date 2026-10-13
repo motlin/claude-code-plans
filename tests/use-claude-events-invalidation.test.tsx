@@ -7,7 +7,7 @@ import {useEffect, type ReactNode} from "react";
 import {useSubscribeSessionRemovals} from "../src/hooks/use-claude-events";
 import {ClaudeEventsProvider} from "../src/components/claude-events-provider";
 import {sessionQueryKeys, transcriptQueryOptions, type TranscriptData} from "../src/lib/api/sessions";
-import {DOMAIN_EVENTS, HERDR_EVENTS} from "../src/lib/hook-events";
+import {DOMAIN_EVENTS, HERDR_EVENTS, type SessionSummaryPayload} from "../src/lib/hook-events";
 
 class TestEventSource extends EventTarget {
 	static current: TestEventSource | null = null;
@@ -234,12 +234,20 @@ describe("ClaudeEventsProvider SSE reconnect", () => {
 								session: {
 									id: "session-bob",
 									title: "Example Bob session",
+									summary: undefined,
+									mtime: "1999-12-31T00:00:00.000Z",
+									created: "1999-12-31T00:00:00.000Z",
 									project: "example-project",
 									projectName: "Example project",
-									state: "idle",
+									messageCount: 0,
+									gitBranch: undefined,
 									archived: false,
+									state: "idle",
+									bucket: "done",
+									liveAgentCount: 0,
 									unseen: false,
-								},
+									blockedSince: null,
+								} satisfies SessionSummaryPayload,
 							},
 				);
 			});

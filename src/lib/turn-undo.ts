@@ -1,6 +1,7 @@
 import {readFile, unlink, writeFile} from "node:fs/promises";
 import type {TurnUndoFile} from "./api/turn-undo";
 import type {JsonlRecord} from "./schemas";
+import {errnoCode} from "./narrow";
 import {aggregateSessionEdits, findTurnUuids, type SessionEditFile} from "./session-edits-diff";
 
 export type TurnUndoPreview = {kind: "not-found"} | {kind: "ok"; files: TurnUndoFile[]};
@@ -20,7 +21,7 @@ async function readCurrent(path: string): Promise<string | null> {
 	try {
 		return await readFile(path, "utf8");
 	} catch (error) {
-		if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+		if (errnoCode(error) === "ENOENT") return null;
 		throw error;
 	}
 }

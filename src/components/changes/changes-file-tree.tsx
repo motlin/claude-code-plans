@@ -24,7 +24,8 @@ const ROW_CLASS =
 function moveRowFocus(event: KeyboardEvent<HTMLElement>, selector: string): void {
 	const rows = [...event.currentTarget.querySelectorAll<HTMLElement>(selector)];
 	if (rows.length === 0) return;
-	const index = rows.indexOf(document.activeElement as HTMLElement);
+	const active = document.activeElement;
+	const index = active instanceof HTMLElement ? rows.indexOf(active) : -1;
 	let next: number;
 	if (event.key === "ArrowDown") next = index === -1 ? 0 : Math.min(rows.length - 1, index + 1);
 	else if (event.key === "ArrowUp") next = index === -1 ? 0 : Math.max(0, index - 1);

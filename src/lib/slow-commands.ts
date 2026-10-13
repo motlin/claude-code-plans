@@ -1,3 +1,5 @@
+import {isRecord} from "./narrow";
+
 /**
  * Upstream tracks a subagent's foreground command as a background task once it
  * has run about four seconds, and that task's start and finish events stop the
@@ -7,32 +9,26 @@
  */
 const SLOW_COMMAND_MS = 3750;
 
-interface CommandRecord {
-	type?: unknown;
-	timestamp?: unknown;
-	message?: {content?: unknown} | undefined;
-}
-
 /** The finish time of every slow foreground Bash call, fed one transcript record at a time. */
 export class SlowCommandCollector {
 	private readonly started = new Map<string, number>();
 	private readonly finished: string[] = [];
 
 	add(transcriptRecord: unknown): void {
-		if (typeof transcriptRecord !== "object" || transcriptRecord === null) return;
-		const record = transcriptRecord as CommandRecord;
-		const content = record.message?.content;
-		if (typeof record.timestamp !== "string" || !Array.isArray(content)) return;
-		const at = Date.parse(record.timestamp);
-		for (const block of content as unknown[]) {
-			if (typeof block !== "object" || block === null) continue;
-			const {type, id, name, input, tool_use_id: resultFor} = block as Record<string, unknown>;
-			if (record.type === "assistant" && type === "tool_use" && name === "Bash" && typeof id === "string") {
-				const background = (input as {run_in_background?: unknown} | undefined)?.run_in_background === true;
+		if (!isRecord(transcriptRecord)) return;
+		const {type: recordType, timestamp, message} = transcriptRecord;
+		const content = isRecord(message) ? message["content"] : undefined;
+		if (typeof timestamp !== "string" || !Array.isArray(content)) return;
+		const at = Date.parse(timestamp);
+		for (const block of content) {
+			if (!isRecord(block)) continue;
+			const {type, id, name, input, tool_use_id: resultFor} = block;
+			if (recordType === "assistant" && type === "tool_use" && name === "Bash" && typeof id === "string") {
+				const background = isRecord(input) && input["run_in_background"] === true;
 				if (!background) this.started.set(id, at);
-			} else if (record.type === "user" && type === "tool_result" && typeof resultFor === "string") {
+			} else if (recordType === "user" && type === "tool_result" && typeof resultFor === "string") {
 				const start = this.started.get(resultFor);
-				if (start !== undefined && at - start >= SLOW_COMMAND_MS) this.finished.push(record.timestamp);
+				if (start !== undefined && at - start >= SLOW_COMMAND_MS) this.finished.push(timestamp);
 			}
 		}
 	}

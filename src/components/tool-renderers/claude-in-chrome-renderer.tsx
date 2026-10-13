@@ -224,7 +224,11 @@ function ReadPageRenderer({resultText}: {resultText: string}) {
 
 function ComputerRenderer({input, resultText}: {input: Record<string, unknown>; resultText: string}) {
 	const action = inputString(input, "action") ?? "";
-	const coordinate = input["coordinate"] as number[] | undefined;
+	const coordinateValue = input["coordinate"];
+	const coordinate =
+		Array.isArray(coordinateValue) && coordinateValue.every((n): n is number => typeof n === "number")
+			? coordinateValue
+			: undefined;
 	const text = inputString(input, "text") ?? "";
 	const isError = resultText.toLowerCase().includes("no element found") || resultText.toLowerCase().includes("error");
 

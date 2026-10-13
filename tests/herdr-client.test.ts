@@ -67,7 +67,7 @@ describe("herdrRequest", () => {
 			});
 		});
 
-		const result = await herdrRequest<{type: string; content: string}>({
+		const result = await herdrRequest({
 			id: "request-100",
 			method: "session.snapshot",
 		});

@@ -6,14 +6,9 @@ import {sessionIdentityFailure} from "../lib/api/session-identity";
 import {sessionQueryKeys} from "../lib/api/sessions";
 import {sessionSourceQueryOptions} from "../lib/api/session-source";
 import {LinkedJson} from "../components/linked-json";
+import {asRecord, isRecord} from "../lib/narrow";
 import type {LinkedJsonContext} from "../components/linked-json-links";
 import {Bot, MessageSquare, Cpu, FileText, AlertTriangle} from "lucide-react";
-
-export interface PairedResult {
-	resultEntry: {raw: string; lineIndex: number; uuid?: string};
-	resultLineIndex: number;
-	toolUseId: string;
-}
 
 export const Route = createFileRoute("/session/$id_/source/$uuid")({
 	component: SourceViewPage,
@@ -42,47 +37,6 @@ function safeParse(raw: string): unknown {
 	}
 }
 
-export function findPairedToolResult(
-	focalRaw: string,
-	candidates: Array<{raw: string; lineIndex: number; uuid?: string}>,
-): PairedResult | null {
-	const focalParsed = safeParse(focalRaw) as
-		| {
-				type?: string;
-				message?: {content?: Array<{type?: string; id?: string}>};
-		  }
-		| undefined;
-	if (focalParsed?.type !== "assistant" || !Array.isArray(focalParsed.message?.content)) return null;
-
-	const toolUseIds = focalParsed.message.content.flatMap((c) =>
-		c.type === "tool_use" && typeof c.id === "string" ? [c.id] : [],
-	);
-	if (toolUseIds.length === 0) return null;
-
-	for (const candidate of candidates) {
-		const cParsed = safeParse(candidate.raw) as
-			| {
-					type?: string;
-					message?: {
-						content?: Array<{type?: string; tool_use_id?: string}>;
-					};
-			  }
-			| undefined;
-		if (cParsed?.type !== "user" || !Array.isArray(cParsed.message?.content)) continue;
-		const toolUseId = cParsed.message.content.find(
-			(c) => c.type === "tool_result" && typeof c.tool_use_id === "string" && toolUseIds.includes(c.tool_use_id),
-		)?.tool_use_id;
-		if (toolUseId !== undefined) {
-			return {
-				resultEntry: candidate,
-				resultLineIndex: candidate.lineIndex,
-				toolUseId,
-			};
-		}
-	}
-	return null;
-}
-
 function prettyJsonl(raw: string): string {
 	try {
 		return JSON.stringify(JSON.parse(raw), null, 2);
@@ -108,8 +62,8 @@ interface RecordSummary {
 }
 
 function summarizeRecord(raw: string): RecordSummary {
-	const parsed = safeParse(raw) as Record<string, unknown> | undefined;
-	if (!parsed || typeof parsed !== "object") {
+	const parsed = asRecord(safeParse(raw));
+	if (!parsed) {
 		return {type: "unknown", contentPreview: raw.slice(0, 80), toolNames: []};
 	}
 
@@ -117,18 +71,16 @@ function summarizeRecord(raw: string): RecordSummary {
 	const toolNames: string[] = [];
 	let contentPreview = "";
 
-	const message = parsed["message"] as Record<string, unknown> | undefined;
-	const content = message?.["content"];
+	const content = asRecord(parsed["message"])?.["content"];
 
 	if (Array.isArray(content)) {
 		for (const block of content) {
-			if (typeof block === "object" && block !== null) {
-				const blockRecord = block as Record<string, unknown>;
-				if (blockRecord["type"] === "text" && typeof blockRecord["text"] === "string" && !contentPreview) {
-					contentPreview = blockRecord["text"].slice(0, 120).replace(/\n/g, " ");
-				} else if (blockRecord["type"] === "tool_use" && typeof blockRecord["name"] === "string") {
-					toolNames.push(blockRecord["name"]);
-				} else if (blockRecord["type"] === "tool_result") {
+			if (isRecord(block)) {
+				if (block["type"] === "text" && typeof block["text"] === "string" && !contentPreview) {
+					contentPreview = block["text"].slice(0, 120).replace(/\n/g, " ");
+				} else if (block["type"] === "tool_use" && typeof block["name"] === "string") {
+					toolNames.push(block["name"]);
+				} else if (block["type"] === "tool_result") {
 					toolNames.push("tool_result");
 				}
 			} else if (typeof block === "string" && !contentPreview) {

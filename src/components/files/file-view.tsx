@@ -454,7 +454,7 @@ export function FileView({
 
 	const openSiblingLink = (event: MouseEvent<HTMLDivElement>) => {
 		if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey) return;
-		const anchor = (event.target as Element).closest("a");
+		const anchor = event.target instanceof Element ? event.target.closest("a") : null;
 		const href = anchor?.getAttribute("href");
 		if (onOpenFile === undefined || !href?.startsWith(`${SIBLING_MD_BASE}/`)) return;
 		event.preventDefault();

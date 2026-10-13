@@ -1,3 +1,4 @@
+import {isKeyOf} from "../narrow";
 import type {HerdrPaneLink} from "./panes";
 
 type HerdrAttentionStatus = "blocked" | "done" | "working" | "idle" | "unknown";
@@ -47,7 +48,7 @@ const ATTENTION_RANK: Readonly<Record<HerdrAttentionStatus, number>> = {
 };
 
 function knownAttentionStatus(status: string): HerdrAttentionStatus {
-	return status in ATTENTION_RANK ? (status as HerdrAttentionStatus) : "unknown";
+	return isKeyOf(ATTENTION_RANK, status) ? status : "unknown";
 }
 
 /** Copy herdr's workspace ordering, where completed work outranks active work. */

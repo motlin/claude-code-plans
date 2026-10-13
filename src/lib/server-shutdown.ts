@@ -1,5 +1,7 @@
 import {randomUUID} from "node:crypto";
 import {BroadcastChannel} from "node:worker_threads";
+import {z} from "zod";
+import {isRecord} from "./narrow";
 
 type ShutdownHook = () => void | Promise<void>;
 
@@ -8,9 +10,17 @@ type ShutdownHook = () => void | Promise<void>;
 // hooks registered by the SSR entry run from the Nitro plugin's close hook.
 const REGISTRY = Symbol.for("claude-code-browser.server-shutdown-hooks");
 
+/** Only this module's copies write the registry slot, so a Set there holds shutdown hooks. */
+function isHookRegistry(value: unknown): value is Set<ShutdownHook> {
+	return value instanceof Set;
+}
+
 function hooks(): Set<ShutdownHook> {
-	const holder = globalThis as {[REGISTRY]?: Set<ShutdownHook>};
-	return (holder[REGISTRY] ??= new Set());
+	const existing: unknown = Reflect.get(globalThis, REGISTRY);
+	if (isHookRegistry(existing)) return existing;
+	const created = new Set<ShutdownHook>();
+	Reflect.set(globalThis, REGISTRY, created);
+	return created;
 }
 
 /** Register cleanup that releases a long-lived handle when the server shuts down. */
@@ -40,9 +50,16 @@ const TAKEOVER_CHANNEL = "claude-code-browser.server-takeover";
 const DEFAULT_ACK_WINDOW_MS = 250;
 const DEFAULT_RELEASE_TIMEOUT_MS = 15_000;
 
-type TakeoverMessage =
-	| {type: "takeover"; requestId: string}
-	| {type: "stopping" | "released"; requestId: string; instanceId: string};
+const TakeoverMessageSchema = z.discriminatedUnion("type", [
+	z.strictObject({type: z.literal("takeover"), requestId: z.string()}),
+	z.strictObject({type: z.literal(["stopping", "released"]), requestId: z.string(), instanceId: z.string()}),
+]);
+type TakeoverMessage = z.infer<typeof TakeoverMessageSchema>;
+
+/** The takeover message a channel event carries, or undefined for anything else. */
+function takeoverMessage(event: unknown): TakeoverMessage | undefined {
+	return TakeoverMessageSchema.safeParse(isRecord(event) ? event["data"] : undefined).data;
+}
 
 function openTakeoverChannel(): BroadcastChannel {
 	const channel = new BroadcastChannel(TAKEOVER_CHANNEL);
@@ -60,8 +77,8 @@ export function listenForTakeover(teardown: ShutdownHook): () => void {
 	const instanceId = randomUUID();
 	let done = false;
 	channel.onmessage = (event) => {
-		const message = (event as MessageEvent<TakeoverMessage>).data;
-		if (done || message.type !== "takeover") return;
+		const message = takeoverMessage(event);
+		if (done || message?.type !== "takeover") return;
 		done = true;
 		const {requestId} = message;
 		channel.postMessage({type: "stopping", requestId, instanceId} satisfies TakeoverMessage);
@@ -106,8 +123,8 @@ export async function requestTakeover({
 			if (windowClosed && [...stopping].every((id) => released.has(id))) finish();
 		};
 		channel.onmessage = (event) => {
-			const message = (event as MessageEvent<TakeoverMessage>).data;
-			if (message.type === "takeover" || message.requestId !== requestId) return;
+			const message = takeoverMessage(event);
+			if (message === undefined || message.type === "takeover" || message.requestId !== requestId) return;
 			stopping.add(message.instanceId);
 			if (message.type === "released") released.add(message.instanceId);
 			finishIfReleased();

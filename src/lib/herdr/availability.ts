@@ -2,6 +2,7 @@ import {existsSync} from "node:fs";
 import {herdrRequest} from "./client";
 import {resolveHerdrSocketPath} from "./socket-path";
 import {hmrPersist} from "../hmr-persist";
+import {asRecord} from "../narrow";
 
 export interface HerdrAvailability {
 	available: boolean;
@@ -43,19 +44,16 @@ function resolvedSocketPath(): string {
 async function runProbe(socketPath: string): Promise<HerdrAvailability> {
 	if (!socketPath || !existsSync(socketPath)) return unavailable(socketPath, "no-socket");
 
-	const response = await herdrRequest<unknown>({id: "ccp:ping", method: "ping", params: {}}, PROBE_TIMEOUT_MS);
+	const response = await herdrRequest({id: "ccp:ping", method: "ping", params: {}}, PROBE_TIMEOUT_MS);
 	if (!response.ok) {
 		if (response.code === "connect-failed") return unavailable(socketPath, "connect-failed");
 		if (response.code === "timeout") return unavailable(socketPath, "timeout");
 		return unavailable(socketPath, "bad-response");
 	}
 
-	if (response.value === null || typeof response.value !== "object" || Array.isArray(response.value)) {
-		return unavailable(socketPath, "bad-response");
-	}
-
-	const result = response.value as Record<string, unknown>;
+	const result = asRecord(response.value);
 	if (
+		result === undefined ||
 		result["type"] !== "pong" ||
 		typeof result["version"] !== "string" ||
 		typeof result["protocol"] !== "number" ||

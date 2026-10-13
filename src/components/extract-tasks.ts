@@ -17,10 +17,10 @@ export function extractTasks(toolCalls: ClientToolCall[]): TaskItem[] {
 				status: "pending",
 			});
 		} else if (call.name === "TaskUpdate") {
-			const taskId = call.input["taskId"] as string | undefined;
+			const taskId = inputString(call.input, "taskId");
 			const existing = taskId ? tasks.get(taskId) : undefined;
 			if (existing !== undefined) {
-				const newStatus = call.input["status"] as string | undefined;
+				const newStatus = inputString(call.input, "status");
 				if (newStatus === "pending" || newStatus === "in_progress" || newStatus === "completed") {
 					existing.status = newStatus;
 				}

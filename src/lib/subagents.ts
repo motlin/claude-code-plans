@@ -1,7 +1,7 @@
 import {z} from "zod";
-import type {JsonValue} from "./hook-events";
 import type {DbSubagent} from "./db/queries";
 import {getAgentTypeOrNull} from "./tool-utils";
+import {asRecord, isRecord} from "./narrow";
 
 /**
  * Subagent record extracted from transcript JSONL records.
@@ -79,20 +79,10 @@ const SlowCommandEndsSchema = z.array(z.string());
 
 const AGENT_ID_RE = /agentId:\s*(\S+)/;
 
-interface ToolUseBlock {
-	type: "tool_use";
-	id: string;
-	name?: string;
-	input?: Record<string, JsonValue>;
+interface ContentBlock {
+	type: string;
+	[key: string]: unknown;
 }
-
-interface ToolResultBlock {
-	type: "tool_result";
-	tool_use_id?: string;
-	content?: string | Array<{type?: string; text?: string}>;
-}
-
-type ContentBlock = ToolUseBlock | ToolResultBlock | {type: string};
 
 interface TranscriptRecord {
 	type?: string;
@@ -101,12 +91,15 @@ interface TranscriptRecord {
 	message?: {content?: string | ContentBlock[]};
 }
 
-function getResultText(block: ToolResultBlock): string {
-	if (typeof block.content === "string") return block.content;
-	if (Array.isArray(block.content)) {
-		return block.content
-			.filter((b): b is {type: string; text: string} => b.type === "text" && typeof b.text === "string")
-			.map((b) => b.text)
+function getResultText(block: ContentBlock): string {
+	const content = block["content"];
+	if (typeof content === "string") return content;
+	if (Array.isArray(content)) {
+		return content
+			.flatMap((b: unknown) => {
+				const text = isRecord(b) && b["type"] === "text" ? b["text"] : undefined;
+				return typeof text === "string" ? [text] : [];
+			})
 			.join(" ");
 	}
 	return "";
@@ -144,12 +137,12 @@ function extractSubagentSnapshot(
 
 		for (const block of content) {
 			if (block.type === "tool_use") {
-				const toolUse = block as ToolUseBlock;
-				if (toolUse.name !== "Agent" || typeof toolUse.id !== "string") continue;
-				const input = toolUse.input ?? {};
+				const toolUseId = block["id"];
+				if (block["name"] !== "Agent" || typeof toolUseId !== "string") continue;
+				const input = asRecord(block["input"]) ?? {};
 				const agentType = getAgentTypeOrNull(input);
 				const description = typeof input["description"] === "string" ? input["description"] : null;
-				pendingByToolUseId.set(toolUse.id, {
+				pendingByToolUseId.set(toolUseId, {
 					agentType,
 					description,
 					startedAt: record.timestamp ?? null,
@@ -159,14 +152,14 @@ function extractSubagentSnapshot(
 			}
 
 			if (block.type === "tool_result") {
-				const toolResult = block as ToolResultBlock;
-				if (typeof toolResult.tool_use_id !== "string") continue;
-				const pending = pendingByToolUseId.get(toolResult.tool_use_id);
+				const toolUseId = block["tool_use_id"];
+				if (typeof toolUseId !== "string") continue;
+				const pending = pendingByToolUseId.get(toolUseId);
 				if (!pending) continue;
-				const text = getResultText(toolResult);
+				const text = getResultText(block);
 				const match = AGENT_ID_RE.exec(text);
 				if (!match?.[1]) {
-					pendingByToolUseId.delete(toolResult.tool_use_id);
+					pendingByToolUseId.delete(toolUseId);
 					continue;
 				}
 				const id = `agent-${match[1]}`;
@@ -183,7 +176,7 @@ function extractSubagentSnapshot(
 					startedAt: pending.startedAt,
 					finishedAt: record.timestamp ?? null,
 				});
-				pendingByToolUseId.delete(toolResult.tool_use_id);
+				pendingByToolUseId.delete(toolUseId);
 			}
 		}
 	}
@@ -212,16 +205,18 @@ export function extractAgentPrompts(records: TranscriptRecord[]): Map<string, st
 		if (!Array.isArray(content)) continue;
 		for (const block of content) {
 			if (block.type === "tool_use") {
-				const toolUse = block as ToolUseBlock;
-				const prompt = toolUse.input?.["prompt"];
-				if (toolUse.name === "Agent" && typeof prompt === "string") promptByToolUseId.set(toolUse.id, prompt);
+				const toolUseId = block["id"];
+				const prompt = asRecord(block["input"])?.["prompt"];
+				if (block["name"] === "Agent" && typeof toolUseId === "string" && typeof prompt === "string") {
+					promptByToolUseId.set(toolUseId, prompt);
+				}
 				continue;
 			}
 			if (block.type !== "tool_result") continue;
-			const toolResult = block as ToolResultBlock;
-			if (typeof toolResult.tool_use_id !== "string") continue;
-			const prompt = promptByToolUseId.get(toolResult.tool_use_id);
-			const agentId = AGENT_ID_RE.exec(getResultText(toolResult))?.[1];
+			const toolUseId = block["tool_use_id"];
+			if (typeof toolUseId !== "string") continue;
+			const prompt = promptByToolUseId.get(toolUseId);
+			const agentId = AGENT_ID_RE.exec(getResultText(block))?.[1];
 			if (prompt !== undefined && agentId !== undefined) prompts.set(toSubagentSessionId(agentId), prompt);
 		}
 	}

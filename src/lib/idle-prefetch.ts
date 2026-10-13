@@ -7,8 +7,8 @@ export interface IdleHost {
 	};
 	requestIdleCallback?: (callback: () => void, options?: IdleRequestOptions) => number;
 	cancelIdleCallback?: (handle: number) => void;
-	setTimeout: (callback: () => void, delay?: number) => unknown;
-	clearTimeout: (handle: never) => void;
+	setTimeout: (callback: () => void, delay?: number) => number;
+	clearTimeout: (handle: number) => void;
 }
 
 /** How long an idle callback may wait for a busy page, and the delay used where requestIdleCallback is missing. */
@@ -43,7 +43,7 @@ export function prefetchWhenIdle(loaders: ReadonlyArray<() => Promise<unknown>>,
 		if (host.requestIdleCallback === undefined) {
 			const handle = host.setTimeout(run, FALLBACK_DELAY_MS);
 			cancelScheduled = () => {
-				host.clearTimeout(handle as never);
+				host.clearTimeout(handle);
 			};
 		} else {
 			const handle = host.requestIdleCallback(run, {timeout: IDLE_TIMEOUT_MS});

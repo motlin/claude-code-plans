@@ -25,6 +25,7 @@ import {hookSchemaDrift} from "../../lib/db/schema";
 import {indexFile} from "../../lib/db/indexer";
 import {hmrPersist} from "../../lib/hmr-persist";
 import {rejectCrossSite} from "../../lib/same-origin-guard";
+import {isRecord} from "../../lib/narrow";
 import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
 import * as dbSchema from "../../lib/db/schema";
 
@@ -91,8 +92,8 @@ function walkZodIssues(issues: core.$ZodIssue[], output: core.$ZodIssue[], state
 }
 
 function extractUnmatchedToolName(body: unknown, matchedToolArm: boolean): string | undefined {
-	if (matchedToolArm || typeof body !== "object" || body === null) return undefined;
-	const record = body as Record<string, unknown>;
+	if (matchedToolArm || !isRecord(body)) return undefined;
+	const record = body;
 	if (
 		record["hook_event_name"] !== "PreToolUse" &&
 		record["hook_event_name"] !== "PostToolUse" &&
@@ -119,18 +120,13 @@ export function classifyZodIssues(
 	for (const issue of relevantIssues) {
 		const path = issue.path.join(".");
 		if (issue.code === "unrecognized_keys") {
-			const keys = (issue as {keys?: unknown}).keys;
-			if (Array.isArray(keys)) {
-				for (const key of keys) {
-					if (typeof key === "string") {
-						unknownFields.add(path ? `${path}.${key}` : key);
-					}
-				}
+			for (const key of issue.keys) {
+				unknownFields.add(path ? `${path}.${key}` : key);
 			}
 			continue;
 		}
 		if (issue.code === "invalid_type") {
-			const received = (issue as {received?: unknown}).received;
+			const received = "received" in issue ? issue.received : undefined;
 			if (received === "undefined") {
 				if (path) missingFields.add(path);
 			}
@@ -150,16 +146,16 @@ export function classifyZodIssues(
  * and return undefined for anything that isn't a plain string.
  */
 function extractFilePath(body: unknown): string | undefined {
-	if (typeof body !== "object" || body === null) return undefined;
-	const toolInput = (body as Record<string, unknown>)["tool_input"];
-	if (typeof toolInput !== "object" || toolInput === null) return undefined;
-	const filePath = (toolInput as Record<string, unknown>)["file_path"];
+	if (!isRecord(body)) return undefined;
+	const toolInput = body["tool_input"];
+	if (!isRecord(toolInput)) return undefined;
+	const filePath = toolInput["file_path"];
 	return typeof filePath === "string" ? filePath : undefined;
 }
 
 function extractHookEventName(body: unknown): string {
-	if (typeof body !== "object" || body === null) return "unknown";
-	const name = (body as Record<string, unknown>)["hook_event_name"];
+	if (!isRecord(body)) return "unknown";
+	const name = body["hook_event_name"];
 	return typeof name === "string" ? name : "unknown";
 }
 

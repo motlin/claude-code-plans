@@ -7,6 +7,7 @@ import {
 	gitPrActionLabels,
 	remoteTriggerActionLabels,
 } from "./schema-choices";
+import {isRecord} from "./narrow";
 import {pastTense} from "./past-tense";
 import {AskUserQuestionResultSchema, ExitWorktreeActionSchema, RemoteTriggerActionSchema} from "./tool-input-schemas";
 
@@ -253,9 +254,9 @@ const AGENT_ID = /^(?:[a-z0-9]{9}|a(?:[\w-]{1,63}-)?[0-9a-f]{16})$/;
 
 function messageText(message: unknown): string | null {
 	if (typeof message === "string") return message.trim() === "" ? null : message;
-	if (typeof message !== "object" || message === null) return null;
+	if (!isRecord(message)) return null;
 	for (const key of ["feedback", "reason"]) {
-		const value: unknown = (message as Record<string, unknown>)[key];
+		const value = message[key];
 		if (typeof value === "string" && value.trim() !== "") return value;
 	}
 	return null;
@@ -288,8 +289,8 @@ function sendMessageLabel(call: ToolLabelCall): ToolLabel {
 	if (to === null || SESSION_ADDRESS.test(to)) return {verb: "Messaged another session"};
 	const message = input["message"];
 	const meta = oneLineMeta(messageText(message));
-	if (typeof message === "object" && message !== null) {
-		const verb = handshakeVerb(message as Record<string, unknown>, to);
+	if (isRecord(message)) {
+		const verb = handshakeVerb(message, to);
 		if (verb !== null) return withMeta({verb}, meta);
 	}
 	const summaryMeta = oneLineMeta(input["summary"]) ?? meta;

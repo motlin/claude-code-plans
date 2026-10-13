@@ -11,6 +11,7 @@ import {
 	toolPermissionChoice,
 	type ToolPermissionChoice,
 } from "../../lib/customize/mcp-tool-permissions";
+import {errorMessage} from "../../lib/narrow";
 import {Switch} from "../settings/switch";
 import {useToast} from "../toast-context";
 import {Menu, MenuContent, MenuRadioGroup, MenuRadioItem, MenuTrigger} from "../ui/menu";
@@ -289,7 +290,7 @@ export function ToolPermissions({
 			await queryClient.invalidateQueries({queryKey: detailQueryKey});
 			toast({kind: "success", message: "Tool permissions saved"});
 		} catch (error) {
-			toast({kind: "error", message: `Could not save: ${(error as Error).message}`});
+			toast({kind: "error", message: `Could not save: ${errorMessage(error)}`});
 		}
 	};
 

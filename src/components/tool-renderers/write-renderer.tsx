@@ -11,7 +11,7 @@ const PLAN_RE = /\.claude\/plans\/([^/]+\.md)$/;
 
 export function WriteRenderer({toolCall}: ToolRendererProps) {
 	const filePath = inputString(toolCall.input, "file_path") ?? "";
-	const content = toolCall.input["content"] as string | undefined;
+	const content = inputString(toolCall.input, "content");
 	const {result, isError} = toolCall;
 	const planFile = filePath.match(PLAN_RE)?.[1];
 	const copyText = content ?? result ?? filePath;

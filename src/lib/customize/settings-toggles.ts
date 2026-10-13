@@ -10,6 +10,7 @@ import {
 } from "../api/customize";
 import {rejectCrossSite} from "../same-origin-guard";
 import {ClaudeSettingsSchema} from "../schemas";
+import {errnoCode} from "../narrow";
 
 const SETTINGS_FILENAME = "settings.json";
 const RESPONSE_HEADERS = {"Cache-Control": "private, max-age=0, must-revalidate"};
@@ -43,7 +44,7 @@ async function loadSettings(path: string): Promise<LoadedSettings> {
 		mtimeMs = (await stat(path)).mtimeMs;
 		text = await readFile(path, "utf-8");
 	} catch (error) {
-		if ((error as NodeJS.ErrnoException).code === "ENOENT") return {kind: "missing"};
+		if (errnoCode(error) === "ENOENT") return {kind: "missing"};
 		throw error;
 	}
 	let json: unknown;

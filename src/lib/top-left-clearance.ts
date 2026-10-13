@@ -39,5 +39,5 @@ export function topLeftClearanceStyle(layout: SidebarLayout): CSSProperties | un
 	return {
 		"--top-left-clearance-start": `${clearance.start}px`,
 		"--top-left-clearance-top": `${clearance.top}px`,
-	} as CSSProperties;
+	};
 }

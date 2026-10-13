@@ -8,6 +8,7 @@ import {readdirSync, readFileSync} from "node:fs";
 import {join} from "node:path";
 import {homedir} from "node:os";
 import {defined} from "../src/lib/defined";
+import {asRecord} from "../src/lib/narrow";
 
 const args = process.argv.slice(2);
 const limitIdx = args.indexOf("--limit");
@@ -42,9 +43,8 @@ function collectFieldPaths(obj: Record<string, unknown>, prefix: string): string
 	for (const [key, value] of Object.entries(obj)) {
 		const fieldPath = prefix ? `${prefix}.${key}` : key;
 		paths.push(fieldPath);
-		if (value !== null && typeof value === "object" && !Array.isArray(value)) {
-			paths.push(...collectFieldPaths(value as Record<string, unknown>, fieldPath));
-		}
+		const nested = asRecord(value);
+		if (nested) paths.push(...collectFieldPaths(nested, fieldPath));
 	}
 	return paths;
 }
@@ -67,16 +67,16 @@ for (const filePath of filesToProcess) {
 		const trimmed = line.trim();
 		if (!trimmed) continue;
 
-		let obj: Record<string, unknown>;
+		let obj: Record<string, unknown> | undefined;
 		try {
-			obj = JSON.parse(trimmed) as Record<string, unknown>;
+			obj = asRecord(JSON.parse(trimmed));
 		} catch {
 			parseFails++;
 			continue;
 		}
 
-		const recordType = obj["type"] as string | undefined;
-		if (!recordType) continue;
+		const recordType = obj?.["type"];
+		if (obj === undefined || typeof recordType !== "string" || !recordType) continue;
 		if (typeFilter && recordType !== typeFilter) continue;
 
 		totalRecords++;

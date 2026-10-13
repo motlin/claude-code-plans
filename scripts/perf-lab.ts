@@ -26,6 +26,9 @@ import {tmpdir} from "node:os";
 import {dirname, join, resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {chromium, type BrowserContext, type CDPSession, type Page} from "playwright";
+import {z} from "zod";
+import {IndexingStatusResponse} from "../src/lib/api/indexing";
+import {asRecord} from "../src/lib/narrow";
 import {generateTranscript, PERF_SHAPES} from "../tests/perf/fixtures/generate-transcript";
 import {ratchet} from "../tests/perf/ratchet";
 import {FIXED_TIME, fixtureServerEnv, seedFixtureHome, stopDevServer} from "./screenshots";
@@ -70,6 +73,13 @@ export interface PreflightProbe {
 export interface LayoutShiftEntry {
 	value: number;
 	hadRecentInput: boolean;
+}
+
+declare global {
+	/** Layout shifts the lab's init script records in the page under test. */
+	var __perfLabShifts: LayoutShiftEntry[];
+	/** Set on the document that took a journey's baseline, to tell SPA navigations from full reloads. */
+	var __perfLabMarker: boolean | undefined;
 }
 
 export interface JourneySample extends MetricsDelta {
@@ -219,7 +229,7 @@ interface LabFixture {
 
 function sessionIdOf(transcript: string): string {
 	for (const line of transcript.split("\n")) {
-		const sessionId = (JSON.parse(line) as {sessionId?: unknown}).sessionId;
+		const sessionId = asRecord(JSON.parse(line))?.["sessionId"];
 		if (typeof sessionId === "string") return sessionId;
 	}
 	throw new Error("Generated transcript has no sessionId");
@@ -275,10 +285,9 @@ async function indexedOpenSession(
 	baseUrl: string,
 	fixture: LabFixture,
 ): Promise<{messageCount: number; mtime: string} | undefined> {
-	const rows = JSON.parse(await httpGet(`${baseUrl}/api/sessions/lookup?ids=${fixture.openSessionId}`)) as Array<{
-		messageCount: number;
-		mtime: string;
-	}>;
+	const rows = z
+		.array(z.object({messageCount: z.number(), mtime: z.string()}))
+		.parse(JSON.parse(await httpGet(`${baseUrl}/api/sessions/lookup?ids=${fixture.openSessionId}`)));
 	return rows[0];
 }
 
@@ -343,7 +352,7 @@ async function waitForIdleIndex(baseUrl: string, server: ChildProcess, output: s
 		if (server.exitCode !== null)
 			throw new Error(`Lab dev server exited with ${server.exitCode}:\n${output.join("")}`);
 		try {
-			if (!(JSON.parse(await httpGet(`${baseUrl}/api/indexing-status`)) as {isIndexing: boolean}).isIndexing)
+			if (!IndexingStatusResponse.parse(JSON.parse(await httpGet(`${baseUrl}/api/indexing-status`))).isIndexing)
 				return;
 		} catch {
 			// Still starting.
@@ -469,14 +478,11 @@ async function settle(page: Page): Promise<void> {
 }
 
 async function shiftCount(page: Page): Promise<number> {
-	return page.evaluate(() => (globalThis as unknown as {__perfLabShifts: unknown[]}).__perfLabShifts.length);
+	return page.evaluate(() => globalThis.__perfLabShifts.length);
 }
 
 async function shiftsSince(page: Page, start: number): Promise<LayoutShiftEntry[]> {
-	return page.evaluate(
-		(from) => (globalThis as unknown as {__perfLabShifts: LayoutShiftEntry[]}).__perfLabShifts.slice(from),
-		start,
-	);
+	return page.evaluate((from) => globalThis.__perfLabShifts.slice(from), start);
 }
 
 /**
@@ -502,12 +508,12 @@ async function measure(probe: Probe, interaction: () => Promise<void>): Promise<
 
 /** True while the document that took the baseline is still the one on screen (SPA navigation). */
 async function sameDocument(page: Page): Promise<boolean> {
-	return page.evaluate(() => (globalThis as unknown as {__perfLabMarker?: boolean}).__perfLabMarker === true);
+	return page.evaluate(() => globalThis.__perfLabMarker === true);
 }
 
 async function markDocument(page: Page): Promise<void> {
 	await page.evaluate(() => {
-		(globalThis as unknown as {__perfLabMarker: boolean}).__perfLabMarker = true;
+		globalThis.__perfLabMarker = true;
 	});
 }
 
@@ -520,8 +526,8 @@ function sessionView(sessionId: string): string {
 
 function appendedLines(fixture: LabFixture, run: number): string {
 	const lines = readFileSync(fixture.openSessionPath, "utf8").trimEnd().split("\n");
-	const last = JSON.parse(lines.at(-1) ?? "{}") as {uuid?: string};
-	const parentUuid = typeof last.uuid === "string" ? last.uuid : null;
+	const lastUuid = asRecord(JSON.parse(lines.at(-1) ?? "{}"))?.["uuid"];
+	const parentUuid = typeof lastUuid === "string" ? lastUuid : null;
 	const base = {
 		parentUuid,
 		isSidechain: false,
@@ -714,9 +720,16 @@ function buildReport(runs: LabRun[]): Partial<Record<JourneyId, JourneyReport>> 
 	for (const id of JOURNEYS) {
 		const samples = runs.flatMap((run) => (run[id] === undefined ? [] : [run[id]]));
 		if (samples.length === 0) continue;
-		const entry = {title: JOURNEY_TITLES[id]} as JourneyReport;
-		for (const key of METRIC_KEYS) entry[key] = summarize(samples.map((sample) => sample[key]));
-		report[id] = entry;
+		const metric = (key: MetricKey) => summarize(samples.map((sample) => sample[key]));
+		report[id] = {
+			title: JOURNEY_TITLES[id],
+			recalcStyleCount: metric("recalcStyleCount"),
+			layoutCount: metric("layoutCount"),
+			requests: metric("requests"),
+			layoutShift: metric("layoutShift"),
+			recalcStyleDurationMs: metric("recalcStyleDurationMs"),
+			layoutDurationMs: metric("layoutDurationMs"),
+		};
 	}
 	return report;
 }

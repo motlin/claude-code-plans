@@ -1,15 +1,15 @@
-import {inputString} from "../../lib/tool-utils";
+import {inputBoolean, inputNumber, inputString} from "../../lib/tool-utils";
 import type {ToolRendererProps} from "./types";
 import {KeyValueCard} from "./shared";
 
 export function GrepRenderer({toolCall}: ToolRendererProps) {
 	const pattern = inputString(toolCall.input, "pattern") ?? "";
-	const path = toolCall.input["path"] as string | undefined;
-	const glob = toolCall.input["glob"] as string | undefined;
-	const fileType = toolCall.input["type"] as string | undefined;
-	const outputMode = toolCall.input["output_mode"] as string | undefined;
-	const caseInsensitive = toolCall.input["-i"] as boolean | undefined;
-	const headLimit = toolCall.input["head_limit"] as number | undefined;
+	const path = inputString(toolCall.input, "path");
+	const glob = inputString(toolCall.input, "glob");
+	const fileType = inputString(toolCall.input, "type");
+	const outputMode = inputString(toolCall.input, "output_mode");
+	const caseInsensitive = inputBoolean(toolCall.input, "-i");
+	const headLimit = inputNumber(toolCall.input, "head_limit");
 	const {result, isError} = toolCall;
 
 	const params: Array<{key: string; value: string}> = [];

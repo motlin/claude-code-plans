@@ -6,6 +6,10 @@ import * as schema from "./schema";
 import type {SessionEntry, SessionPrLink} from "../sessions";
 import type {SessionStatusFilter} from "../session-groups";
 import {ORPHANED_TASKS_PROJECT_ID, ORPHANED_TASKS_PROJECT_NAME} from "../task-groups";
+import {asRecord} from "../narrow";
+import {z} from "zod";
+
+const StringArraySchema = z.array(z.string());
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
 
@@ -1232,9 +1236,9 @@ function parseTaskRow(row: {
 		status: row.status,
 		activeForm: row.activeForm,
 		owner: row.owner,
-		blocks: JSON.parse(row.blocksJson) as string[],
-		blockedBy: JSON.parse(row.blockedByJson) as string[],
-		metadata: JSON.parse(row.metadataJson) as Record<string, unknown>,
+		blocks: StringArraySchema.parse(JSON.parse(row.blocksJson)),
+		blockedBy: StringArraySchema.parse(JSON.parse(row.blockedByJson)),
+		metadata: asRecord(JSON.parse(row.metadataJson)) ?? {},
 	};
 }
 

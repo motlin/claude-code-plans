@@ -37,11 +37,27 @@ const PERFORMED_WORK = 1;
 const CONTAINER_KEY_PREFIX = "__reactContainer$";
 
 function componentName(fiber: Fiber): string {
-	const type = (fiber.tag === FORWARD_REF ? (fiber.type as {render: unknown}).render : fiber.type) as {
-		displayName?: string;
-		name?: string;
-	};
-	return type.displayName ?? nonEmpty(type.name) ?? "Anonymous";
+	const type = fiber.tag === FORWARD_REF ? field(fiber.type, "render") : fiber.type;
+	const displayName = field(type, "displayName");
+	if (typeof displayName === "string") return displayName;
+	const name = field(type, "name");
+	return (typeof name === "string" ? nonEmpty(name) : undefined) ?? "Anonymous";
+}
+
+/** One property of a function or object React hands back untyped (a component type, a container root). */
+function field(value: unknown, key: string): unknown {
+	return (typeof value === "function" || (typeof value === "object" && value !== null)) && key in value
+		? Reflect.get(value, key)
+		: undefined;
+}
+
+/**
+ * React does not export its fiber type, so a fiber read off a DOM container is taken on trust, the way React DevTools
+ * reads it.
+ */
+function asFiber(value: unknown): Fiber {
+	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- React's internal fiber shape has no exported type or runtime schema
+	return value as Fiber;
 }
 
 function* children(fiber: Fiber): Generator<Fiber> {
@@ -54,11 +70,9 @@ function* children(fiber: Fiber): Generator<Fiber> {
 function hostRoots(): Fiber[] {
 	const roots: Fiber[] = [];
 	for (const element of document.body.children) {
-		const container = Object.entries(element as unknown as Record<string, Fiber>).find(([name]) =>
-			name.startsWith(CONTAINER_KEY_PREFIX),
-		)?.[1];
+		const container: unknown = Object.entries(element).find(([name]) => name.startsWith(CONTAINER_KEY_PREFIX))?.[1];
 		if (container !== undefined) {
-			roots.push((container.stateNode as {current: Fiber}).current);
+			roots.push(asFiber(field(asFiber(container).stateNode, "current")));
 		}
 	}
 	return roots;

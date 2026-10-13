@@ -13,7 +13,7 @@ export const TRANSCRIPT_WIDTH_PX: Record<TranscriptWidth, number> = {
 
 /** Sets the chat column measure for every transcript row and the dock below it. */
 export function transcriptWidthStyle(width: TranscriptWidth): CSSProperties {
-	return {"--max-content-width": `${TRANSCRIPT_WIDTH_PX[width]}px`} as CSSProperties;
+	return {"--max-content-width": `${TRANSCRIPT_WIDTH_PX[width]}px`};
 }
 
 /** Shared message/dock measure. Tile shells override the desktop gutters to 32px/40px. */

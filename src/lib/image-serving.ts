@@ -1,8 +1,7 @@
-import {createReadStream} from "node:fs";
 import {realpath, stat} from "node:fs/promises";
 import {extname, isAbsolute, sep} from "node:path";
-import {Readable} from "node:stream";
 import {readConfig} from "./config";
+import {fileBodyStream} from "./file-stream";
 
 const MAXIMUM_IMAGE_SIZE = 50 * 1024 * 1024;
 const CACHE_CONTROL = "private, max-age=300";
@@ -73,7 +72,7 @@ export async function handleImageRequest(request: Request, configPath?: string):
 		return new Response(null, {status: 304, headers: cacheHeaders});
 	}
 
-	const body = Readable.toWeb(createReadStream(resolvedPath)) as ReadableStream<Uint8Array>;
+	const body = fileBodyStream(resolvedPath);
 	return new Response(body, {
 		headers: {
 			...cacheHeaders,

@@ -12,6 +12,7 @@ import {z} from "zod";
 import type {ToolResultInfo} from "./sessions";
 import {toolResultMetaFrom} from "./tool-labels";
 import {formatModelName} from "./model-name";
+import {isRecord} from "./narrow";
 import {normalizeArtifactUrl, parseArtifactOutput} from "./artifact-output";
 import {ArtifactToolResultSchema} from "./artifact-schemas";
 import {
@@ -296,7 +297,7 @@ function buildUnparsedLine(
 	lineIndex: number,
 	error: z.ZodError,
 ): Extract<ProcessedLine, {type: "unparsed"}> {
-	const raw = typeof obj === "object" && obj !== null ? (obj as Record<string, unknown>) : {};
+	const raw = isRecord(obj) ? obj : {};
 	const line: Extract<ProcessedLine, {type: "unparsed"}> = {
 		type: "unparsed",
 		lineIndex,
@@ -324,11 +325,11 @@ function parseWithInvalidToolInputs(
 	obj: unknown,
 	error: z.ZodError,
 ): {record: JsonlRecord; invalidToolInputIds: string[]} | undefined {
-	if (typeof obj !== "object" || obj === null) return undefined;
-	const raw = obj as Record<string, unknown>;
+	if (!isRecord(obj)) return undefined;
+	const raw = obj;
 	const message = raw["message"];
-	if (raw["type"] !== "assistant" || typeof message !== "object" || message === null) return undefined;
-	const content = (message as Record<string, unknown>)["content"];
+	if (raw["type"] !== "assistant" || !isRecord(message)) return undefined;
+	const content = message["content"];
 	if (!Array.isArray(content)) return undefined;
 
 	const invalid = new Map<number, {id: string; name: string}>();
@@ -337,15 +338,15 @@ function parseWithInvalidToolInputs(
 		if (messageKey !== "message" || contentKey !== "content" || inputKey !== "input") return undefined;
 		if (typeof index !== "number") return undefined;
 		const block: unknown = content[index];
-		if (typeof block !== "object" || block === null) return undefined;
-		const {type, id, name, input} = block as Record<string, unknown>;
+		if (!isRecord(block)) return undefined;
+		const {type, id, name, input} = block;
 		if (type !== "tool_use" || typeof id !== "string" || typeof name !== "string") return undefined;
 		if (typeof input !== "object" || input === null || Array.isArray(input)) return undefined;
 		invalid.set(index, {id, name});
 	}
 
 	const renamed = content.map((block: unknown, index) =>
-		invalid.has(index) ? {...(block as object), name: INVALID_INPUT_TOOL_NAME} : block,
+		invalid.has(index) && isRecord(block) ? {...block, name: INVALID_INPUT_TOOL_NAME} : block,
 	);
 	const reparsed = JsonlRecordSchema.safeParse({...raw, message: {...message, content: renamed}});
 	if (!reparsed.success || reparsed.data.type !== "assistant") return undefined;

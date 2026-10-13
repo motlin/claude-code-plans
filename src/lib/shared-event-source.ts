@@ -4,15 +4,18 @@
 // BroadcastChannel. When the leader closes, the lock passes to a waiting tab, which opens the stream and has every
 // tab catch up on the events missed in between.
 
+import {z} from "zod";
 import {openReconnectingEventSource, type ReconnectingEventSourceOptions} from "./reconnecting-event-source";
 
 /** An event a fresh stream sends as soon as it connects, which a following tab fetches instead. */
-export interface SnapshotEvent {
-	type: string;
-	data: string;
-}
+const SnapshotEventSchema = z.strictObject({type: z.string(), data: z.string()});
+export type SnapshotEvent = z.infer<typeof SnapshotEventSchema>;
 
-type RelayMessage = {kind: "event"; type: string; data: string} | {kind: "resync"};
+const RelayMessageSchema = z.discriminatedUnion("kind", [
+	z.strictObject({kind: z.literal("event"), type: z.string(), data: z.string()}),
+	z.strictObject({kind: z.literal("resync")}),
+]);
+type RelayMessage = z.infer<typeof RelayMessageSchema>;
 
 interface ChannelLike {
 	onmessage: ((event: MessageEvent) => void) | null;
@@ -55,7 +58,7 @@ function browserDeps(): SharedEventSourceDeps {
 		async fetchSnapshot(url) {
 			const response = await fetch(snapshotUrl(url));
 			if (!response.ok) throw new Error(`${response.status} fetching ${snapshotUrl(url)}`);
-			return (await response.json()) as SnapshotEvent[];
+			return z.array(SnapshotEventSchema).parse(await response.json());
 		},
 	};
 }
@@ -115,7 +118,9 @@ export function openSharedEventSource(
 	};
 
 	channel.onmessage = (event: MessageEvent) => {
-		const message = event.data as RelayMessage;
+		const parsed = RelayMessageSchema.safeParse(event.data);
+		if (!parsed.success) return;
+		const message = parsed.data;
 		if (message.kind === "event") deliver(message.type, message.data);
 		else options.onReconnected();
 	};
@@ -129,7 +134,8 @@ export function openSharedEventSource(
 			attach(es) {
 				for (const type of hub.types) {
 					es.addEventListener(type, (event) => {
-						const data = (event as MessageEvent<string>).data;
+						const data: unknown = event instanceof MessageEvent ? event.data : undefined;
+						if (typeof data !== "string") return;
 						hub.deliver(type, data);
 						channel.postMessage({kind: "event", type, data});
 					});

@@ -7,6 +7,7 @@ import {homedir} from "node:os";
 import * as schema from "./schema";
 import {instrumentDatabase} from "../perf/server-scope";
 import {nonEmpty} from "../non-empty";
+import {z} from "zod";
 
 type SchemaDb = BetterSQLite3Database<typeof schema> & {$client: Database.Database};
 
@@ -396,17 +397,22 @@ CREATE TABLE IF NOT EXISTS summaries (
 );
 `;
 
+const SchemaObjectRowsSchema = z.array(
+	z.strictObject({type: z.enum(["table", "view", "trigger"]), name: z.string(), sql: z.string().nullable()}),
+);
+
 // A schema version or DDL fingerprint mismatch wipes the whole index database,
 // user-state tables included, and recreates it from CREATE_TABLES_SQL +
 // CREATE_FTS_SQL. There is no migration chain: DDL edits rebuild by themselves;
 // bump SCHEMA_VERSION for an indexed-data change that leaves the DDL alone.
 function dropAllObjects(sqlite: Database.Database): void {
-	const objects = sqlite
+	const rows = sqlite
 		.prepare(
 			`SELECT type, name, sql FROM sqlite_master
        WHERE type IN ('table', 'view', 'trigger') AND name NOT LIKE 'sqlite_%'`,
 		)
-		.all() as {type: "table" | "view" | "trigger"; name: string; sql: string | null}[];
+		.all();
+	const objects = SchemaObjectRowsSchema.parse(rows);
 	const isVirtual = (object: {sql: string | null}) => /^CREATE VIRTUAL TABLE/i.test(object.sql ?? "");
 	// Virtual tables first: dropping one also drops its FTS5 shadow tables.
 	const ordered = [
@@ -429,13 +435,17 @@ export const INDEX_SCHEMA_FINGERPRINT = createHash("sha256")
 	.update(CREATE_FTS_SQL)
 	.digest("hex");
 
+const MetadataValueRowSchema = z.strictObject({value: z.string()});
+
 function readMetadata(sqlite: Database.Database, key: string): string | null {
 	const metadataExists = sqlite
 		.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='metadata'")
-		.get() as {name: string} | undefined;
+		.get();
 	if (!metadataExists) return null;
 
-	const row = sqlite.prepare("SELECT value FROM metadata WHERE key = ?").get(key) as {value: string} | undefined;
+	const row = MetadataValueRowSchema.optional().parse(
+		sqlite.prepare("SELECT value FROM metadata WHERE key = ?").get(key),
+	);
 	return row?.value ?? null;
 }
 
