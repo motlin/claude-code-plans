@@ -133,4 +133,23 @@ describe("AppShellFallback", () => {
 			ownTranscriptBars: host.querySelectorAll(".chat-column.space-y-4").length,
 		}).toStrictEqual({skeleton: true, header: 2, bubbles: 1, lines: 10, ownTranscriptBars: 0});
 	});
+
+	it("paints the composer as upstream does while loading: a 40px box with the session placeholder over a chin", () => {
+		const host = document.createElement("div");
+		host.innerHTML = renderToStaticMarkup(<AppShellFallback />);
+		const composer = host.querySelector('[data-cds="ChatComposer"]');
+		const box = composer?.querySelector("[data-fallback-composer]");
+
+		expect({
+			placeholder: box?.textContent,
+			box: box?.className,
+			oldEmptyBox: composer?.querySelector(".min-h-\\[88px\\]") ?? null,
+			chin: composer?.querySelector('[data-cds="ChatComposerChin"] svg') !== null,
+		}).toStrictEqual({
+			placeholder: "Type / for commands",
+			box: "relative flex flex-col rounded-card bg-surface-3 p-2 shadow-[var(--composer-shadow-idle)]",
+			oldEmptyBox: null,
+			chin: true,
+		});
+	});
 });

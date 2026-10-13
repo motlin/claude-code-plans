@@ -115,8 +115,22 @@ export function AppShellFallback() {
 					<SessionSkeleton />
 				</div>
 				<div className="chat-column shrink-0 pb-4">
+					{/* Upstream draws its composer while loading: the 40px box with the placeholder, over the chin. */}
 					<div data-cds="ChatComposer" className="flex w-full min-w-0 flex-col font-sans">
-						<div className="min-h-[88px] rounded-card bg-surface-3 p-2 shadow-[var(--composer-shadow-idle)]" />
+						<div
+							data-fallback-composer=""
+							className="relative flex flex-col rounded-card bg-surface-3 p-2 shadow-[var(--composer-shadow-idle)]"
+						>
+							<span className="block py-0.5 pl-1 text-[14px]/[20px] text-[rgb(137,135,129)]">
+								Type / for commands
+							</span>
+						</div>
+						<div
+							data-cds="ChatComposerChin"
+							className="mt-1.5 flex min-h-5 items-center ps-[7px] pe-2.5 text-[12px]/[15px] text-secondary"
+						>
+							<Plus aria-hidden="true" className="size-4" />
+						</div>
 					</div>
 				</div>
 			</div>
