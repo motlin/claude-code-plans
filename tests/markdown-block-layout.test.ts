@@ -104,4 +104,27 @@ describe("markdown block layout", () => {
 	it("leaves non-table markdown unwrapped", () => {
 		expect(renderMarkdownToHtml("plain paragraph").includes("markdown-table-wrapper")).toBe(false);
 	});
+
+	it("sets a blockquote upright in secondary ink, inset 7px with 14px of padding inside its 4px rule, as upstream does", () => {
+		expect({
+			blockquote: ruleDeclarations(markdownCss, ".markdown blockquote"),
+			paragraph: ruleDeclarations(markdownCss, ".markdown blockquote p"),
+			paragraphAfterParagraph: ruleDeclarations(markdownCss, ".markdown blockquote p + p"),
+			transcriptSpacing: ruleDeclarations(
+				markdownCss,
+				":global([data-transcript-prose]) .markdown > * + blockquote",
+			),
+		}).toStrictEqual({
+			blockquote: {
+				"border-left": "4px solid var(--color-border)",
+				"padding-left": "14px",
+				"font-style": "normal",
+				color: "var(--color-secondary)",
+				margin: "8px 0 8px 7px",
+			},
+			paragraph: {margin: "0"},
+			paragraphAfterParagraph: {"margin-top": "10.5px"},
+			transcriptSpacing: {"margin-top": "3.5px"},
+		});
+	});
 });
