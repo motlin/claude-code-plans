@@ -1,6 +1,5 @@
 import {ArrowDown} from "lucide-react";
 import {useCallback, useEffect, useRef, useState, type MouseEvent, type ReactNode, type RefObject} from "react";
-import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
 import {findScrollContainer} from "./scroll-container";
 
 /** How far above the end the reader must be before the pill appears. */
@@ -53,7 +52,7 @@ export function SessionDock({anchorRef, children}: {anchorRef: RefObject<HTMLEle
 	const {awayFromBottom, scrollToBottom} = useScrollToBottom(anchorRef);
 
 	return (
-		<div className={`${CHAT_COLUMN_CLASS} relative flex flex-col gap-1.5`}>
+		<div className="chat-dock-column relative flex flex-col gap-1.5">
 			<button
 				type="button"
 				aria-label="Scroll to bottom"

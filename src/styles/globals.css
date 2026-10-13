@@ -870,6 +870,19 @@ html[data-motion="reduced"] .terminal-caret {
 		padding-inline-end: var(--chat-column-end, 16px);
 	}
 
+	/* The composer dock's column. Upstream docks it outside the scrollport, so it
+	   spans the scrollbar gutters the transcript loses; inside the scroller it
+	   takes them back from its padding and max width. */
+	.chat-dock-column {
+		margin-inline: auto;
+		width: 100%;
+		max-width: calc(
+			var(--max-content-width, 768px) + var(--chat-column-extra, 64px) - 2 * var(--scroll-gutter, 0px)
+		);
+		padding-inline-start: calc(var(--chat-column-start, 16px) - var(--scroll-gutter, 0px));
+		padding-inline-end: calc(var(--chat-column-end, 16px) - var(--scroll-gutter, 0px));
+	}
+
 	@media (width >= 40rem) {
 		[data-route-tile-shell] {
 			border: 1px solid transparent;
@@ -886,6 +899,11 @@ html[data-motion="reduced"] .terminal-caret {
 		.chat-column {
 			padding-inline-start: var(--chat-column-start, 32px);
 			padding-inline-end: var(--chat-column-end, 32px);
+		}
+
+		.chat-dock-column {
+			padding-inline-start: calc(var(--chat-column-start, 32px) - var(--scroll-gutter, 0px));
+			padding-inline-end: calc(var(--chat-column-end, 32px) - var(--scroll-gutter, 0px));
 		}
 	}
 }
