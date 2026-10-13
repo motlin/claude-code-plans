@@ -145,6 +145,7 @@ async function renderSessionPage(
 	data: SessionDetailData,
 	subagents: Subagent[],
 	seed: (queryClient: QueryClient) => void = () => {},
+	extraRecords: Record<string, unknown>[] = [],
 ) {
 	const queryClient = newQueryClient();
 	seed(queryClient);
@@ -158,6 +159,7 @@ async function renderSessionPage(
 				timestamp: "2026-09-28T10:00:00.000Z",
 				message: {role: "user", content: "Fabricated prompt: sync the fork"},
 			},
+			...extraRecords,
 		],
 		byteOffset: 0,
 		startIndex: 0,
@@ -318,18 +320,20 @@ describe("SessionPage dock composition", () => {
 	function dockContents() {
 		return [
 			...document.querySelectorAll(
-				"[data-session-footer] [data-branch-strip], [data-session-footer] [role=status], [data-session-footer] [data-composer-card]",
+				"[data-session-footer] [data-branch-strip], [data-session-footer] [role=status], [data-session-footer] [data-composer-card], [data-session-footer] [data-approval-card-root]",
 			),
 		].map((element) =>
-			element.hasAttribute("data-waiting-input-notice")
-				? "waiting"
-				: element.hasAttribute("data-pull-request-strip")
-					? "pr"
-					: element.hasAttribute("data-branch-strip")
-						? "branch"
-						: element.hasAttribute("data-composer-card")
-							? "composer"
-							: "usage",
+			element.hasAttribute("data-approval-card-root")
+				? "permission"
+				: element.hasAttribute("data-waiting-input-notice")
+					? "waiting"
+					: element.hasAttribute("data-pull-request-strip")
+						? "pr"
+						: element.hasAttribute("data-branch-strip")
+							? "branch"
+							: element.hasAttribute("data-composer-card")
+								? "composer"
+								: "usage",
 		);
 	}
 	it.each([
@@ -356,6 +360,41 @@ describe("SessionPage dock composition", () => {
 			} as never);
 		});
 		expect(dockContents()).toStrictEqual(order);
+	});
+	it("docks the permission card directly above the composer, below the PR and usage chips", async () => {
+		await renderSessionPage(
+			{...detail, pr},
+			[],
+			(queryClient) => {
+				seedUsage(queryClient);
+				queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
+					pages: [
+						{sessions: [{id: SESSION_ID, state: "waiting", awaitingPermission: true}], nextCursor: null},
+					],
+					pageParams: [null],
+				} as never);
+			},
+			[
+				{
+					type: "assistant",
+					uuid: "a1",
+					sessionId: SESSION_ID,
+					timestamp: "2026-09-28T10:00:01.000Z",
+					message: {
+						role: "assistant",
+						content: [
+							{
+								type: "tool_use",
+								id: "toolu_waiting",
+								name: "Bash",
+								input: {command: "gh pr create --draft", description: "Open the draft PR"},
+							},
+						],
+					},
+				},
+			],
+		);
+		expect(dockContents()).toStrictEqual(["pr", "usage", "permission", "composer"]);
 	});
 	it("suppresses PR, usage, and composer when the session has neither a project path nor a cwd", async () => {
 		await renderSessionPage({...detail, pr, projectPath: null, cwd: null}, [], seedUsage);

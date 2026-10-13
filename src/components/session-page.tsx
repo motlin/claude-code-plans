@@ -714,26 +714,6 @@ function SessionView({
 							>
 								<div className={!chromeHidden && sessionDirectory ? "pt-2" : ""}>
 									<SessionDock anchorRef={scrollAnchorRef}>
-										{dockedQuestion && (
-											<ApprovalDock
-												key={dockedQuestion.toolUseId}
-												toolUseId={dockedQuestion.toolUseId}
-												questions={dockedQuestion.questions}
-												onSubmit={submitAnswer}
-												onDismiss={() => {
-													setDismissedToolUseId(dockedQuestion.toolUseId);
-												}}
-											/>
-										)}
-										{pendingPermission && (
-											<PermissionCard
-												key={pendingPermission.notificationId}
-												title={pendingPermission.title}
-												command={pendingPermission.command}
-												canAnswer={promptBehavior.hasLivePane && herdr.writesEnabled}
-												onDecision={answerPermission}
-											/>
-										)}
 										{!chromeHidden &&
 											sessionDirectory &&
 											(data.pr !== undefined || data.prStatus !== undefined) && (
@@ -754,6 +734,27 @@ function SessionView({
 													statusline={statusline}
 												/>
 											)}
+										{/* Upstream docks every approval card directly above the composer, below the PR and usage chips */}
+										{dockedQuestion && (
+											<ApprovalDock
+												key={dockedQuestion.toolUseId}
+												toolUseId={dockedQuestion.toolUseId}
+												questions={dockedQuestion.questions}
+												onSubmit={submitAnswer}
+												onDismiss={() => {
+													setDismissedToolUseId(dockedQuestion.toolUseId);
+												}}
+											/>
+										)}
+										{pendingPermission && (
+											<PermissionCard
+												key={pendingPermission.notificationId}
+												title={pendingPermission.title}
+												command={pendingPermission.command}
+												canAnswer={promptBehavior.hasLivePane && herdr.writesEnabled}
+												onDecision={answerPermission}
+											/>
+										)}
 										{/* Upstream docks its pending question card directly above the composer, below the chips; hooks supply a read-only copy */}
 										{showsWaitingForInputNotice({
 											state: sessionSummaryState,
