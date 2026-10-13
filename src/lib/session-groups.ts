@@ -3,6 +3,7 @@ import {z} from "zod";
 import {sessionBucketLabels} from "./schema-choices";
 import {resolveFamilies} from "./session-families";
 import type {SessionBucket} from "./session-state";
+import {assertNever} from "./assert-never";
 
 export const SessionGroupBySchema = z.enum(["date", "project", "state", "custom", "none"]);
 type SessionGroupBy = z.infer<typeof SessionGroupBySchema>;
@@ -372,6 +373,8 @@ export function buildGroups<Row extends SessionGroupRow>(
 			return visible.length === 0
 				? []
 				: [group("recents", "Recents", visible, groupCap(true, "recents", uncapped), nested)];
+		default:
+			return assertNever(prefs.groupBy);
 	}
 }
 

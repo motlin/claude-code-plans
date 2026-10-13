@@ -1,6 +1,7 @@
 import type {SkillSummary} from "../../lib/api/customize";
 import type {UserCommandGroupData} from "../../lib/api/plugins";
 import {matchesQuery} from "./sections";
+import {assertNever} from "../../lib/assert-never";
 
 export interface SkillGroup {
 	key: string;
@@ -38,6 +39,8 @@ function groupOf(skill: SkillSummary): {key: string; title: string; rank: number
 			};
 		case "plugin":
 			return {key: "plugin", title: "From plugins", rank: 2};
+		default:
+			return assertNever(skill.source);
 	}
 }
 

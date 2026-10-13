@@ -22,7 +22,7 @@ export function useFileMentionSuggestions(
 	const [suggestions, setSuggestions] = useState<FileMentionSuggestions | null>(null);
 
 	useEffect(() => {
-		if (sessionId === undefined || query === null) return;
+		if (sessionId === undefined || query === null) return undefined;
 		const controller = new AbortController();
 		const timer = setTimeout(() => {
 			apiFetch(fileMentionsUrl(sessionId, query), SessionFilesResponseSchema, {

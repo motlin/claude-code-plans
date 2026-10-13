@@ -39,7 +39,7 @@ export function useTerminalTheme(): TerminalThemeState {
 	const [loadedTheme, setLoadedTheme] = useState<{id: CodeThemeId; theme: ITheme} | null>(null);
 
 	useEffect(() => {
-		if (!loaded || !followCodeTheme) return;
+		if (!loaded || !followCodeTheme) return undefined;
 		let cancelled = false;
 		void mappedTheme(id).then((theme) => {
 			if (!cancelled) setLoadedTheme({id, theme});

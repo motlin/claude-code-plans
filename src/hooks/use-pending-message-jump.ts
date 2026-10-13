@@ -39,23 +39,23 @@ export function usePendingMessageJump(
 	const [pending, setPending] = useState<PendingJump | undefined>(undefined);
 
 	useEffect(() => {
-		if (pending === undefined) return;
+		if (pending === undefined) return undefined;
 		// Landing on the message is a one-shot. Reading on from there means
 		// scrolling up, which auto-loads the previous page and grows `uuidToLine`
 		// -- re-running this effect, which would otherwise snap the reader straight
 		// back to where they jumped in.
-		if (jumpedRequestRef.current === pending.requestId) return;
+		if (jumpedRequestRef.current === pending.requestId) return undefined;
 
 		const recordIndex = uuidToLine.get(pending.uuid);
 		if (recordIndex === undefined) {
 			// `windowStartIndex === 0` is the terminating case: the whole file is
 			// loaded, so the message simply does not belong to this session.
-			if (windowStartIndex === 0 || inFlightRef.current) return;
+			if (windowStartIndex === 0 || inFlightRef.current) return undefined;
 			inFlightRef.current = true;
 			void fetchEarlierTranscript(queryClient, sessionId).finally(() => {
 				inFlightRef.current = false;
 			});
-			return;
+			return undefined;
 		}
 
 		jumpedRequestRef.current = pending.requestId;

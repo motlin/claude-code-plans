@@ -69,7 +69,7 @@ export function ApprovalDock({
 	);
 
 	useEffect(() => {
-		if (!open || submitting) return;
+		if (!open || submitting) return undefined;
 		function onKeyDown(event: KeyboardEvent) {
 			if (event.metaKey || event.ctrlKey || event.altKey || event.defaultPrevented) return;
 			if (!/^[1-9]$/.test(event.key) || !dockKeyAllowed(event.target)) return;

@@ -150,7 +150,7 @@ export function useSessionViewedState(
 	markReviewedRef.current = markReviewed;
 
 	useEffect(() => {
-		if (!visibilityElement) return;
+		if (!visibilityElement) return undefined;
 		const clientId = `${Date.now().toString(36)}-${Math.random().toString(36)}`;
 		let intersecting = false;
 		const {attempt, retryIfFailed} = createRetryableSync(async () => markReviewedRef.current());

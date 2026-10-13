@@ -301,7 +301,7 @@ function useFindInFile({
 
 	useEffect(() => {
 		const root = viewerRef.current;
-		if (!open || root === null) return;
+		if (!open || root === null) return undefined;
 		const apply = () => {
 			const blocks = collectFindBlocks(root, query);
 			const ranges: Range[] = [];

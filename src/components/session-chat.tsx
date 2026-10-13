@@ -2171,7 +2171,7 @@ function VirtualizedSessionEntries({
 	useLayoutEffect(() => {
 		const list = listRef.current;
 		const source = restoration.source;
-		if (!list || source === undefined) return;
+		if (!list || source === undefined) return undefined;
 		const hidden = list.closest("[hidden]") !== null;
 		let width = hidden
 			? (restoration.saved?.width ?? measurementWidthRef.current)
@@ -2418,7 +2418,7 @@ function VirtualizedSessionEntries({
 
 	useLayoutEffect(() => {
 		const list = listRef.current;
-		if (!list) return;
+		if (!list) return undefined;
 		const scroller = findScrollContainer(list);
 		scrollerRef.current = scroller;
 		updateVisibleRange();
@@ -2440,7 +2440,7 @@ function VirtualizedSessionEntries({
 
 	useLayoutEffect(() => {
 		const list = listRef.current;
-		if (!list || typeof ResizeObserver === "undefined") return;
+		if (!list || typeof ResizeObserver === "undefined") return undefined;
 		const observer = new ResizeObserver((observations) => {
 			// Expanded panes hide chat with display:none; zero rectangles are not new row measurements.
 			if (list.closest("[hidden]")) return;
@@ -2538,11 +2538,11 @@ function VirtualizedSessionEntries({
 		const recordIndex = pendingJumpRef.current;
 		const list = listRef.current;
 		const scroller = scrollerRef.current;
-		if (recordIndex === null || !list || !scroller) return;
+		if (recordIndex === null || !list || !scroller) return undefined;
 		const entryIndex = entries.findIndex(
 			(entry) => entry.startRecordIndex <= recordIndex && entry.endRecordIndex >= recordIndex,
 		);
-		if (entryIndex < range.startIndex || entryIndex >= range.endIndex) return;
+		if (entryIndex < range.startIndex || entryIndex >= range.endIndex) return undefined;
 		const viewport = scrollerViewport(scroller);
 		const listOffset = list.getBoundingClientRect().top - viewport.top + scroller.scrollTop;
 		scroller.scrollTop = Math.max(0, listOffset + prefixHeights[entryIndex]! - viewport.height / 2);

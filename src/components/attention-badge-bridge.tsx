@@ -43,7 +43,7 @@ export function AttentionBadgeBridge(): null {
 	const queryClient = useQueryClient();
 
 	useEffect(() => {
-		if (typeof document === "undefined" || typeof navigator === "undefined") return;
+		if (typeof document === "undefined" || typeof navigator === "undefined") return undefined;
 
 		const activityStates = new Map<string, {state: ActivityState; archived: boolean}>();
 

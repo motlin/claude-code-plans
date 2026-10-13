@@ -215,7 +215,7 @@ export function FilesTree({
 
 	useEffect(() => {
 		const tree = treeRef.current;
-		if (tree === null || typeof ResizeObserver === "undefined") return;
+		if (tree === null || typeof ResizeObserver === "undefined") return undefined;
 		const observer = new ResizeObserver(() => {
 			if (tree.clientHeight > 0) setViewportHeight(tree.clientHeight);
 		});

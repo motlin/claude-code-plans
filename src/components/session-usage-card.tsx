@@ -26,7 +26,7 @@ export function SessionUsageCard({records, limits}: {records: readonly unknown[]
 	const breakdown = useMemo(() => aggregateSessionUsage(records), [records]);
 	const [copied, setCopied] = useState(false);
 	useEffect(() => {
-		if (!copied) return;
+		if (!copied) return undefined;
 		const timer = setTimeout(() => {
 			setCopied(false);
 		}, 2000);

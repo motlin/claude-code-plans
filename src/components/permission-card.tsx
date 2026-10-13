@@ -44,7 +44,7 @@ export function PermissionCard({
 	);
 
 	useEffect(() => {
-		if (!enabled) return;
+		if (!enabled) return undefined;
 		function onKeyDown(event: KeyboardEvent) {
 			if (event.defaultPrevented || !dockKeyAllowed(event.target)) return;
 			const decision = permissionDecisionForKey(event);

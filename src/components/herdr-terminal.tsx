@@ -71,7 +71,7 @@ export function HerdrTerminal({
 
 	useEffect(() => {
 		const element = container.current;
-		if (!element || !themeReady) return;
+		if (!element || !themeReady) return undefined;
 
 		let disposed = false;
 		let teardown: (() => void) | null = null;

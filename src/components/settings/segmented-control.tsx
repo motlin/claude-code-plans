@@ -61,7 +61,7 @@ export function SegmentedControl<T extends string>({
 
 	useLayoutEffect(() => {
 		measure();
-		if (typeof ResizeObserver === "undefined") return;
+		if (typeof ResizeObserver === "undefined") return undefined;
 		const observer = new ResizeObserver(measure);
 		for (const radio of radioRefs.current) {
 			if (radio !== null) observer.observe(radio);

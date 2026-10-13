@@ -5,6 +5,7 @@ import {rejectCrossSite} from "../same-origin-guard";
 import {herdrRequest, type HerdrResult} from "./client";
 import type {HerdrRequester} from "./panes";
 import {herdrWritesEnabled, resolveHerdrPromptTarget, type HerdrPromptTarget} from "./prompt";
+import {assertNever} from "../assert-never";
 
 const HerdrLiveOptionSchema = z.strictObject({
 	sessionId: z.string().min(1),
@@ -47,6 +48,8 @@ function liveOptionCall(paneId: string, change: LiveOptionChange): {method: stri
 				method: "agent.send_keys",
 				params: {target: paneId, keys: Array.from({length: change.presses}, () => "shift+tab")},
 			};
+		default:
+			return assertNever(change);
 	}
 }
 

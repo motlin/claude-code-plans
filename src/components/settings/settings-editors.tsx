@@ -130,7 +130,7 @@ export function JsonEditor({filename, initialContent, path}: {filename: string; 
 	useEffect(() => {
 		const textarea = textareaRef.current;
 		const highlight = highlightRef.current;
-		if (!textarea || !highlight) return;
+		if (!textarea || !highlight) return undefined;
 
 		function handleScroll(): void {
 			if (highlight && textarea) {

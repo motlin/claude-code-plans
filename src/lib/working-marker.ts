@@ -1,5 +1,6 @@
 import {z} from "zod";
 import {isRequestInterrupted} from "./session-utils";
+import {assertNever} from "./assert-never";
 
 /**
  * One signal in a session's current turn, normalized from transcript records
@@ -105,6 +106,8 @@ export function workingMarkerText(state: WorkingMarkerState): string {
 			return `${state.label} · ${formatElapsed(state.elapsedSeconds)}`;
 		case "retrying":
 			return `${state.error} · Retrying (${state.attempt}/${state.maxRetries}) · ${formatElapsed(state.elapsedSeconds)}`;
+		default:
+			return assertNever(state);
 	}
 }
 

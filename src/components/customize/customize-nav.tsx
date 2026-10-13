@@ -2,6 +2,7 @@ import {Link, linkOptions, useNavigate} from "@tanstack/react-router";
 import {createContext, type MouseEvent, type ReactNode, useContext} from "react";
 import type {PluginTabId} from "./plugin-view";
 import type {CustomizeSearch, CustomizeSectionId} from "./sections";
+import {assertNever} from "../../lib/assert-never";
 
 /** A place inside Customize: a section list, or a skill, plugin or connector detail tab. */
 export type CustomizeTarget =
@@ -52,6 +53,8 @@ function routeOptions(target: CustomizeTarget) {
 				: linkOptions({to: PLUGIN_TAB_ROUTES[target.tab], params: {pluginId: target.id}});
 		case "connector":
 			return linkOptions({to: "/customize/connectors/id/$serverId", params: {serverId: target.slug}});
+		default:
+			return assertNever(target);
 	}
 }
 

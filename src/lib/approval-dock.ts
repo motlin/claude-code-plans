@@ -7,6 +7,7 @@ import {
 	type QuestionDraft,
 	type QuestionLike,
 } from "./ask-user-question";
+import {assertNever} from "./assert-never";
 
 export interface PendingQuestion {
 	toolUseId: string;
@@ -155,6 +156,8 @@ export function approvalDockReducer(
 			return {...state, collapsed: !state.collapsed};
 		case "dismiss":
 			return {...state, dismissed: true};
+		default:
+			return assertNever(action);
 	}
 }
 

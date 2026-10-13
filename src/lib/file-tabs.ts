@@ -1,4 +1,5 @@
 import {z} from "zod";
+import {assertNever} from "./assert-never";
 
 /**
  * The Files pane's open-file tabs with VS Code preview semantics, as on
@@ -121,5 +122,7 @@ export function fileTabsReducer(state: FileTabsState, action: FileTabsAction, op
 			return indexOf(state, action.path) < 0 || state.active === action.path
 				? state
 				: {...state, active: action.path};
+		default:
+			return assertNever(action);
 	}
 }

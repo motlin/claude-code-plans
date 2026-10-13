@@ -17,7 +17,7 @@ const INTENT = {
 export function ChunkPrefetch() {
 	useIdlePrefetch(SHELL_CHUNKS);
 	useEffect(() => {
-		if (import.meta.env.MODE === "test") return;
+		if (import.meta.env.MODE === "test") return undefined;
 		return warmOnIntent(document, INTENT);
 	}, []);
 	return null;

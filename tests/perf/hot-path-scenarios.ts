@@ -10,6 +10,7 @@ import {readStructuredTranscript} from "../../src/lib/structured-transcript";
 import {processTranscript} from "../../src/lib/transcript";
 import {generateTranscript, PERF_SHAPES, type PerfShapeName} from "./fixtures/generate-transcript";
 import {HOT_PATH_FIXED_SHAPES, type HotPathFixedFn, type HotPathFn, type HotPathShapedFn} from "./perf-ids";
+import {assertNever} from "../../src/lib/assert-never";
 
 /**
  * The inputs for each hot path in tests/perf/run-hot-path.mjs (measurement plan §2.4 L5). Preparing builds the input
@@ -56,6 +57,8 @@ async function prepareShaped(fn: HotPathShapedFn, shape: string): Promise<() => 
 			};
 			return () => mergeTranscriptData(old, appended);
 		}
+		default:
+			return assertNever(fn);
 	}
 }
 
@@ -160,6 +163,8 @@ function prepareFixed(fn: HotPathFixedFn): () => unknown {
 			const titles = paletteTitles(500);
 			return () => PALETTE_QUERIES.map((query) => titles.filter((title) => titleMatches(title, query) !== null));
 		}
+		default:
+			return assertNever(fn);
 	}
 }
 

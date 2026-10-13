@@ -86,7 +86,7 @@ export function TranscriptHistoryLoader({sessionId, startIndex}: TranscriptHisto
 	 */
 	useEffect(() => {
 		const sentinel = sentinelRef.current;
-		if (!sentinel) return;
+		if (!sentinel) return undefined;
 		const observer = new IntersectionObserver(
 			(entries) => {
 				// A fast scroll down and back up arrives as one callback carrying both

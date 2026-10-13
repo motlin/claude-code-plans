@@ -1527,7 +1527,7 @@ export function useStatusline(sessionId: string): Statusline | null {
 
 	// Subscribe to statusline updates via the shared provider EventSource
 	useEffect(() => {
-		if (!ctx) return;
+		if (!ctx) return undefined;
 		return ctx.subscribeStatusline((updatedSessionId) => {
 			if (updatedSessionId === sessionId) {
 				void fetchStatusline();
@@ -1563,7 +1563,7 @@ export function useComposerServerState(sessionId: string): ComposerServerState |
 	}, [fetchState]);
 
 	useEffect(() => {
-		if (!ctx) return;
+		if (!ctx) return undefined;
 		return ctx.subscribeStatusline((updatedSessionId) => {
 			if (updatedSessionId === sessionId) void fetchState();
 		});

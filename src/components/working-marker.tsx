@@ -70,7 +70,7 @@ export function WorkingMarker({state}: Readonly<{state: WorkingMarkerState}>) {
 function useNow(ticking: boolean): number {
 	const [now, setNow] = useState(() => Date.now());
 	useEffect(() => {
-		if (!ticking) return;
+		if (!ticking) return undefined;
 		setNow(Date.now());
 		const timer = setInterval(() => {
 			setNow(Date.now());

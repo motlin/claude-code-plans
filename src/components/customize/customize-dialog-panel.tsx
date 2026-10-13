@@ -9,6 +9,7 @@ import {PluginConnectors, PluginFiles, PluginHooks, PluginOverview, PluginSkills
 import {ConnectorsSection, PluginsSection, SkillsSection} from "./section-views";
 import {CUSTOMIZE_SECTIONS, type CustomizeSearch} from "./sections";
 import {SkillOverview} from "./skill-detail";
+import {assertNever} from "../../lib/assert-never";
 
 /** The hash (without `#`) a Customize target opens inside the Settings dialog. */
 function targetHash(target: CustomizeTarget, withFile = true): string {
@@ -33,6 +34,8 @@ function targetHash(target: CustomizeTarget, withFile = true): string {
 			});
 		case "connector":
 			return customizeHash({section: "connectors", id: target.slug});
+		default:
+			return assertNever(target);
 	}
 }
 
@@ -109,6 +112,8 @@ function SectionBody({location, search}: {location: CustomizeLocation; search: C
 			return <ConnectorsSection search={search} />;
 		case "plugins":
 			return <PluginsSection search={search} />;
+		default:
+			return assertNever(location.section);
 	}
 }
 
@@ -158,9 +163,13 @@ function DetailBody({location, id}: {location: CustomizeLocation; id: string}) {
 								return <PluginFiles plugin={detail.plugin} kind={location.tab} />;
 							case "hooks":
 								return <PluginHooks hooks={detail.hooks} />;
+							default:
+								return assertNever(location.tab);
 						}
 					}}
 				</PluginDetailFrame>
 			);
+		default:
+			return assertNever(location.section);
 	}
 }

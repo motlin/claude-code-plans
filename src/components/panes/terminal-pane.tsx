@@ -13,6 +13,7 @@ import {Menu, MenuContent, MenuItem, MenuTrigger} from "../ui/menu";
 import {type PaneChrome, registerPane} from "./pane-registry";
 import {GHOST_ICON_BUTTON, type TerminalTabActions, TerminalTabStrip} from "./terminal-tab-strip";
 import {useOptionalPaneHost, usePaneHost} from "./tile-host";
+import {assertNever} from "../../lib/assert-never";
 
 export type TerminalShortcutAction = "noop" | "open" | "focus" | "close" | "caret";
 
@@ -441,7 +442,7 @@ export function useRegisterTerminalPane(
 	const claudeEnded = !livePane && livePaneSeenFor === sessionId;
 
 	useEffect(() => {
-		if (!livePane && !shells && !claudeEnded) return;
+		if (!livePane && !shells && !claudeEnded) return undefined;
 		return registerPane("terminal", {
 			title: "Terminal",
 			header: "custom",
@@ -481,6 +482,8 @@ export function TerminalPaneShortcut({available}: {available: boolean}) {
 			case "caret":
 				focusTerminal();
 				return true;
+			default:
+				return assertNever(action);
 		}
 	});
 	return null;

@@ -63,7 +63,7 @@ export function GoToFile({
 	useShortcut("go_to_file_in_changes", openPopup);
 
 	useEffect(() => {
-		if (!open) return;
+		if (!open) return undefined;
 		const handlePointerDown = (event: MouseEvent) => {
 			if (event.target instanceof Node && rootRef.current?.contains(event.target)) return;
 			setOpen(false);

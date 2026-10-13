@@ -81,7 +81,7 @@ export function SessionGroups({
 	const [selection, dispatchSelection] = useReducer(sidebarSelectionReducer, EMPTY_SELECTION);
 	const hasSelection = selection.ids.length > 0;
 	useEffect(() => {
-		if (!hasSelection) return;
+		if (!hasSelection) return undefined;
 		const onKeyDown = (event: KeyboardEvent) => {
 			if (event.key === "Escape") dispatchSelection({type: "clear"});
 		};
@@ -155,7 +155,7 @@ export function SessionGroups({
 	const listEndRef = useRef<HTMLDivElement>(null);
 	useEffect(() => {
 		const end = listEndRef.current;
-		if (!loadOnScroll || end === null || typeof IntersectionObserver === "undefined") return;
+		if (!loadOnScroll || end === null || typeof IntersectionObserver === "undefined") return undefined;
 		const observer = new IntersectionObserver(
 			(entries) => {
 				if (entries.some((entry) => entry.isIntersecting)) void fetchNextPage();

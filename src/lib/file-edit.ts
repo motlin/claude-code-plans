@@ -1,4 +1,5 @@
 import type {FileTabsAction, FileTabsState} from "./file-tabs";
+import {assertNever} from "./assert-never";
 
 /**
  * In-pane editing of `~/.claude` markdown: which files the Files viewer can
@@ -64,6 +65,8 @@ function leavesTab(tabs: FileTabsState, action: FileTabsAction, path: string): b
 		case "pin":
 		case "move":
 			return false;
+		default:
+			return assertNever(action);
 	}
 }
 
@@ -91,5 +94,7 @@ export function editGuardReducer(
 			return {state: EMPTY_EDIT_GUARD, forward: state.pending};
 		case "keepEditing":
 			return {state: {...state, pending: null}, forward: null};
+		default:
+			return assertNever(event);
 	}
 }

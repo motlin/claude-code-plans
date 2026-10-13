@@ -45,7 +45,7 @@ export function ThemedCombobox<T extends string>({
 	const current = options.find((option) => option.value === value);
 
 	useEffect(() => {
-		if (!open) return;
+		if (!open) return undefined;
 		const handlePointerDown = (event: PointerEvent | MouseEvent) => {
 			if (event.target instanceof Node && rootRef.current?.contains(event.target)) return;
 			setOpen(false);

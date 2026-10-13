@@ -30,7 +30,7 @@ export function DesktopNotificationBridge(): null {
 	const activityStates = useRef(new Map<string, Parameters<typeof displayState>[0]>());
 
 	useEffect(() => {
-		if (typeof Notification === "undefined") return;
+		if (typeof Notification === "undefined") return undefined;
 
 		const seedFromUnseenWork = () => {
 			for (const [sessionId, state] of activityStates.current) {

@@ -246,7 +246,7 @@ function CollapsedSidebar({narrowViewport, children}: {narrowViewport: boolean; 
 
 	// A tapped-open peek has no pointerleave to close it, so an outside press dismisses it.
 	useEffect(() => {
-		if (!narrowViewport || !hovering) return;
+		if (!narrowViewport || !hovering) return undefined;
 		const onPointerDown = (event: PointerEvent) => {
 			if (event.target instanceof Node && rootRef.current?.contains(event.target)) return;
 			setHovering(false);

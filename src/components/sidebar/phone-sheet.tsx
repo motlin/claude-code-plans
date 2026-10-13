@@ -48,7 +48,7 @@ export function PhoneSheet({open, onClose}: {open: boolean; onClose: () => void}
 	const [drag, setDrag] = useState<number | null>(null);
 
 	useEffect(() => {
-		if (!open) return;
+		if (!open) return undefined;
 		sheetRef.current?.querySelector<HTMLElement>("[data-phone-sheet-close]")?.focus();
 		const onKeyDown = (event: KeyboardEvent) => {
 			if (event.key === "Escape") onClose();

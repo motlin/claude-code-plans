@@ -96,7 +96,7 @@ function useTitlebarMeasure() {
 	const [width, setWidth] = useState<number | null>(null);
 	useEffect(() => {
 		const element = ref.current;
-		if (element === null || typeof ResizeObserver === "undefined") return;
+		if (element === null || typeof ResizeObserver === "undefined") return undefined;
 		const observer = new ResizeObserver((entries) => {
 			const measured = entries[0]?.contentRect.width;
 			if (measured !== undefined) setWidth(measured);

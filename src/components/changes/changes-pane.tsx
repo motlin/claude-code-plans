@@ -371,7 +371,7 @@ function useElementWidth(ref: RefObject<HTMLElement | null>): number {
 	const [width, setWidth] = useState(0);
 	useEffect(() => {
 		const element = ref.current;
-		if (element === null || typeof ResizeObserver === "undefined") return;
+		if (element === null || typeof ResizeObserver === "undefined") return undefined;
 		const observer = new ResizeObserver((entries) => {
 			const entry = entries[entries.length - 1];
 			if (entry) setWidth(entry.contentRect.width);

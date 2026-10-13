@@ -186,13 +186,13 @@ function useElementSize(ref: RefObject<HTMLElement | null>): {
 	const [size, setSize] = useState({width: 0, height: 0});
 	useEffect(() => {
 		const element = ref.current;
-		if (!element) return;
+		if (!element) return undefined;
 		const measure = () => {
 			const {width, height} = element.getBoundingClientRect();
 			setSize((prev) => (prev.width === width && prev.height === height ? prev : {width, height}));
 		};
 		measure();
-		if (typeof ResizeObserver === "undefined") return;
+		if (typeof ResizeObserver === "undefined") return undefined;
 		const observer = new ResizeObserver(measure);
 		observer.observe(element);
 		return () => {

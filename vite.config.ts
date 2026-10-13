@@ -424,7 +424,6 @@ export default defineConfig({
 				files: ["**/*.{ts,tsx}"],
 				plugins: ["typescript", "react", "import", "vitest"],
 				rules: {
-					"@typescript-eslint/consistent-return": "off", // 65
 					"@typescript-eslint/no-deprecated": "off", // 83
 					"@typescript-eslint/no-non-null-assertion": "off", // 297
 					"@typescript-eslint/no-unnecessary-condition": "off", // 324

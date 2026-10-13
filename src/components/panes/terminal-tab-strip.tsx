@@ -51,7 +51,7 @@ export function TerminalTabStrip({
 
 	useLayoutEffect(() => {
 		const list = listRef.current;
-		if (!list) return;
+		if (!list) return undefined;
 		const measure = () => {
 			setOverflowing(list.scrollWidth > list.clientWidth);
 		};

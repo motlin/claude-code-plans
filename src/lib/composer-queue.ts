@@ -1,4 +1,5 @@
 import {useSyncExternalStore} from "react";
+import {assertNever} from "./assert-never";
 
 /**
  * Prompts typed while the live pane is working, per session and in memory
@@ -35,6 +36,8 @@ export function composerQueueReducer(
 			const index = Math.max(0, Math.min(action.toIndex, rest.length));
 			return [...rest.slice(0, index), item, ...rest.slice(index)];
 		}
+		default:
+			return assertNever(action);
 	}
 }
 

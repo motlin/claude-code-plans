@@ -51,7 +51,7 @@ export function useComposerQueue({
 	const [waiting, setWaiting] = useState(false);
 
 	useEffect(() => {
-		if (!waiting) return;
+		if (!waiting) return undefined;
 		const timer = setTimeout(() => {
 			setWaiting(false);
 		}, retryMs);

@@ -173,7 +173,7 @@ export function SettingsDialog() {
 		if (deepLinkRow !== null) selectTab(tab);
 	}, [selectTab, tab, deepLinkRow]);
 	useEffect(() => {
-		if (flash === null) return;
+		if (flash === null) return undefined;
 		const timer = setTimeout(() => {
 			setFlash(null);
 		}, FLASH_MS);

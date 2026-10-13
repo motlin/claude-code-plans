@@ -7,7 +7,7 @@ import {prefetchWhenIdle} from "../lib/idle-prefetch";
  */
 export function useIdlePrefetch(loaders: ReadonlyArray<() => Promise<unknown>>): void {
 	useEffect(() => {
-		if (import.meta.env.MODE === "test") return;
+		if (import.meta.env.MODE === "test") return undefined;
 		return prefetchWhenIdle(loaders);
 	}, [loaders]);
 }

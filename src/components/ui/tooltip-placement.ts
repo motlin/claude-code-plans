@@ -1,3 +1,4 @@
+import {assertNever} from "../../lib/assert-never";
 export type TooltipSide = "top" | "bottom" | "left" | "right";
 
 export interface TooltipRect {
@@ -37,6 +38,8 @@ function fitsOnSide(
 			return trigger.left - OFFSET - tip.width >= 0;
 		case "right":
 			return trigger.left + trigger.width + OFFSET + tip.width <= viewport.width;
+		default:
+			return assertNever(side);
 	}
 }
 

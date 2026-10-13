@@ -1,6 +1,7 @@
 import {z} from "zod";
 import {UnifiedSearchDateSchema, type UnifiedSearchDate, type UnifiedSearchParams} from "./api/search";
 import {paletteFilterLabels, paletteTypeLabels, unifiedSearchDateLabels} from "./schema-choices";
+import {assertNever} from "./assert-never";
 
 /**
  * The ⌘K palette's filter grammar, copied from claude.ai/code minus its cloud
@@ -248,6 +249,8 @@ function filterValues(
 		case "archived":
 		case "actions":
 			return [[paletteFilterLabels[filter], "true"]];
+		default:
+			return assertNever(filter);
 	}
 }
 

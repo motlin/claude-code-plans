@@ -10,6 +10,7 @@ import {
 	type Ceilings,
 	type Results,
 } from "../tests/perf/ratchet";
+import {assertNever} from "../src/lib/assert-never";
 
 /**
  * `just perf-ceilings` (measurement plan §4.4): a manual convenience that locks improvements into
@@ -95,6 +96,8 @@ function formatChange({id, kind, from, to}: CeilingChange): string {
 			return `- ${id}: ${from} -> ${to}`;
 		case "raised":
 			return `! ${id}: ${from} -> ${to} (left alone; raise it by hand with a reason and raisedAt)`;
+		default:
+			return assertNever(kind);
 	}
 }
 

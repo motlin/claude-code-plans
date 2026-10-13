@@ -10,6 +10,7 @@ import type * as schema from "./db/schema";
 import type {JsonlRecord} from "./schemas";
 import {errorResponse, findSession, jsonResponse, readRecords} from "./session-diff-handler";
 import {previewTurnUndo, undoTurn} from "./turn-undo";
+import {assertNever} from "./assert-never";
 
 export interface TurnUndoHandlerDependencies {
 	index: BetterSQLite3Database<typeof schema>;
@@ -68,5 +69,7 @@ export async function handleTurnUndoRequest(
 			);
 		case "reverted":
 			return jsonResponse(TurnUndoRevertedResponseSchema.parse({reverted: result.files}));
+		default:
+			return assertNever(result);
 	}
 }

@@ -1,5 +1,6 @@
 import {readFile, stat} from "node:fs/promises";
 import {join, resolve, sep} from "node:path";
+import {assertNever} from "./assert-never";
 
 /**
  * Generic source-view kinds. Each kind maps to a known root directory under ~/.claude/
@@ -88,6 +89,8 @@ export function buildSourceConfig(kind: SourceKind, claudeHome: string): SourceK
 			};
 		case "command":
 			return null; // commands live in plugin trees; not supported via this generic helper yet
+		default:
+			return assertNever(kind);
 	}
 }
 

@@ -470,12 +470,12 @@ function FadeLabel({text}: {text: string}) {
 
 	useLayoutEffect(() => {
 		const element = ref.current;
-		if (element === null) return;
+		if (element === null) return undefined;
 		const measure = () => {
 			setOverflowing(element.scrollWidth > element.clientWidth);
 		};
 		measure();
-		if (typeof ResizeObserver === "undefined") return;
+		if (typeof ResizeObserver === "undefined") return undefined;
 		const observer = new ResizeObserver(measure);
 		observer.observe(element);
 		return () => {

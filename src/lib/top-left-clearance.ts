@@ -1,4 +1,5 @@
 import type {CSSProperties} from "react";
+import {assertNever} from "./assert-never";
 
 /** How the sidebar shows: docked beside main, collapsed to the floating toggle, or the phone sheet. */
 export type SidebarLayout = "docked" | "collapsed" | "phone";
@@ -26,6 +27,8 @@ export function topLeftClearance(layout: SidebarLayout): {start: number; top: nu
 			return {start: 41, top: 9};
 		case "phone":
 			return {start: PHONE_SIDEBAR_TOGGLE.left + PHONE_SIDEBAR_TOGGLE.size + 4, top: 0};
+		default:
+			return assertNever(layout);
 	}
 }
 

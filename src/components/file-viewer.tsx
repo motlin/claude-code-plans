@@ -69,7 +69,7 @@ function useMountedChunks(containerRef: RefObject<HTMLDivElement | null>, virtua
 	const heights = useRef(new Map<number, number>());
 
 	useEffect(() => {
-		if (!virtualized || typeof IntersectionObserver === "undefined") return;
+		if (!virtualized || typeof IntersectionObserver === "undefined") return undefined;
 		const observer = new IntersectionObserver(
 			(entries) => {
 				setMounted((previous) => {
@@ -150,7 +150,7 @@ export function FileViewer({
 	}, [selection, chunks.mounted]);
 
 	useEffect(() => {
-		if (!hashNavigation) return;
+		if (!hashNavigation) return undefined;
 		const handleHashChange = () => {
 			const range = parseFileLineRangeHash(window.location.hash);
 			if (range === null) setSelection(null);
