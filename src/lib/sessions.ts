@@ -137,11 +137,14 @@ export interface ToolResultInfo {
 	artifact?: ParsedArtifact | undefined;
 	/** The artifacts an `Artifact` `list` call returned. */
 	artifactList?: ArtifactListEntry[] | undefined;
+	/** How the call was permitted or denied, from the result record's `permissionDecision`. */
+	permission?: PermissionDecision | undefined;
 }
 
 import type {ToolResultMeta} from "./tool-labels";
 import type {ParsedArtifact} from "./artifact-output";
 import type {ArtifactListEntry} from "./artifact-schemas";
+import type {PermissionDecision} from "./permission-decision";
 import {
 	stripCommandTags,
 	parseBashInput,

@@ -444,6 +444,41 @@ describe("AttachmentBanner", () => {
 			]);
 		});
 
+		it("shows the session context's user email and git status", () => {
+			expect(
+				detailSections({
+					type: "session_context",
+					context: {userEmail: "dev@example.com", gitStatus: "Current branch: main\n\nStatus:\n(clean)"},
+				}),
+			).toStrictEqual([
+				["Session context", "User email: dev@example.com"],
+				["Git status", "Current branch: main\n\nStatus:\n(clean)"],
+			]);
+		});
+
+		it("lists surfaced deferred tool definitions with their descriptions", () => {
+			expect(
+				detailSections({
+					type: "deferred_tools_delta",
+					surfacedDefinitions: [
+						{
+							name: "WebFetch",
+							listing: "abc123",
+							definition: {name: "WebFetch", description: "Fetches a URL.\nMore detail."},
+						},
+						{name: "mcp__docs__read", listing: "def456", definition: {name: "mcp__docs__read"}},
+						{name: "mcp__docs__write", listing: "abc123", sameAs: "WebFetch"},
+					],
+				}),
+			).toStrictEqual([["Surfaced tools (3)", "WebFetch: Fetches a URL.\nmcp__docs__read\nmcp__docs__write"]]);
+		});
+
+		it("shows the run a queued command belongs to", () => {
+			expect(detailSections({type: "queued_command", prompt: "go", runId: "0mv45nq7g-73fb270e"})).toStrictEqual([
+				["Queued command", "Run ID: 0mv45nq7g-73fb270e"],
+			]);
+		});
+
 		it("puts the type-specific details before the rendered reminder", () => {
 			expect(
 				detailSections(

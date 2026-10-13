@@ -239,6 +239,25 @@ function attachmentDetailSections(attachment: AttachmentPayload): DetailSection[
 		];
 	}
 	if (attachment.type === "fork_briefing") return textSection("Briefing", attachment.text);
+	if (attachment.type === "session_context") {
+		return [
+			...linesSection("Session context", [labeled("User email", attachment.context?.userEmail)]),
+			...textSection("Git status", attachment.context?.gitStatus),
+		];
+	}
+	if (attachment.type === "deferred_tools_delta") {
+		const surfaced = attachment.surfacedDefinitions ?? [];
+		return linesSection(
+			`Surfaced tools (${surfaced.length})`,
+			surfaced.map((tool) => {
+				const summary = "definition" in tool ? tool.definition.description?.split("\n")[0] : undefined;
+				return summary ? `${tool.name}: ${summary}` : tool.name;
+			}),
+		);
+	}
+	if (attachment.type === "queued_command") {
+		return linesSection("Queued command", [labeled("Run ID", attachment.runId)]);
+	}
 	if (attachment.type === "output_style") {
 		return textSection("Turn reminder", attachment.turnReminder);
 	}

@@ -164,6 +164,22 @@ describe("processTranscript", () => {
 		});
 	});
 
+	it("carries the permission decision onto the tool result", () => {
+		const records = [
+			assistantRecord([{type: "tool_use", id: "tool-1", name: "Bash", input: {command: "ls"}}], {uuid: "a-1"}),
+			userRecord([{type: "tool_result", tool_use_id: "tool-1", content: "ok"}], {
+				uuid: "u-1",
+				permissionDecision: {decision: "accept", source: "config", reasonType: "classifier"},
+			}),
+		];
+		expect(processTranscript(records).toolResultMap.get("tool-1")).toStrictEqual({
+			result: "ok",
+			isError: false,
+			resultUuid: "u-1",
+			permission: {decision: "accept", source: "config", reasonType: "classifier"},
+		});
+	});
+
 	it("marks error tool results", () => {
 		const records = [
 			assistantRecord(
@@ -1172,6 +1188,32 @@ describe("message metadata fields", () => {
 				type: "assistant",
 				lineIndex: 1,
 				message: {role: "assistant", content: [{type: "text", text: "plain"}]},
+			},
+		]);
+	});
+
+	it("records a requested model only when a different model answered", () => {
+		const records = [
+			assistantRecord([{type: "text", text: "fallback"}], {
+				message: {role: "assistant", model: "claude-sonnet-5-5", content: [{type: "text", text: "fallback"}]},
+				requestedModel: "claude-opus-5-5",
+			}),
+			assistantRecord([{type: "text", text: "same"}], {
+				message: {role: "assistant", model: "claude-opus-5", content: [{type: "text", text: "same"}]},
+				requestedModel: "claude-opus-5[1m]",
+			}),
+		];
+		expect(processTranscript(records).lines).toStrictEqual([
+			{
+				type: "assistant",
+				lineIndex: 0,
+				modelMismatch: {requested: "claude-opus-5-5", actual: "claude-sonnet-5-5"},
+				message: {role: "assistant", model: "claude-sonnet-5-5", content: [{type: "text", text: "fallback"}]},
+			},
+			{
+				type: "assistant",
+				lineIndex: 1,
+				message: {role: "assistant", model: "claude-opus-5", content: [{type: "text", text: "same"}]},
 			},
 		]);
 	});

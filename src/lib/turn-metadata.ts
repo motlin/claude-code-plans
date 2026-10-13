@@ -71,8 +71,16 @@ function safeguardDetail(results: readonly SafeguardResult[] | undefined): strin
 	return `safeguard ${parts.join(" · ")} (${details.join("; ")})`;
 }
 
+/** A turn some other model answered than the one requested, e.g. after a fallback. */
+function modelMismatchDetail(mismatch: MessageSessionLine["modelMismatch"]): string | undefined {
+	if (mismatch === undefined) return undefined;
+	const requested = formatModelName(mismatch.requested) ?? mismatch.requested;
+	const actual = formatModelName(mismatch.actual) ?? mismatch.actual;
+	return `requested ${requested}, answered by ${actual}`;
+}
+
 /**
- * An assistant turn's usage, truncation, effort, advisor, dropped thinking and safeguard flags.
+ * An assistant turn's usage, truncation, effort, advisor, model fallback, dropped thinking and safeguard flags.
  * The dropped-thinking count is a diagnostic upstream never shows, so only Verbose lists it.
  */
 export function assistantTurnDetails(line: MessageSessionLine, {verbose}: {verbose: boolean}): string[] {
@@ -83,6 +91,7 @@ export function assistantTurnDetails(line: MessageSessionLine, {verbose}: {verbo
 		line.stopReason === "max_tokens" ? "Truncated at max tokens" : undefined,
 		line.perTurnEffort !== undefined ? `${line.perTurnEffort} effort` : undefined,
 		advisor !== undefined ? `advisor ${advisor}` : undefined,
+		modelMismatchDetail(line.modelMismatch),
 		verbose ? droppedThinkingDetail(line.message?.input_transformations) : undefined,
 		safeguardDetail(line.message?.safeguard_results),
 	].filter((detail) => detail !== undefined);

@@ -110,12 +110,12 @@ export const turnOriginLabels = {
 	scheduled: "Scheduled task",
 } satisfies Record<z.infer<typeof TurnOriginSchema>, string>;
 
-const permissionDecisionDecisionLabels = {
+export const permissionDecisionDecisionLabels = {
 	accept: "Accepted",
 	reject: "Rejected",
 } satisfies Record<z.infer<typeof PermissionDecisionDecisionSchema>, string>;
 
-const permissionDecisionSourceLabels = {
+export const permissionDecisionSourceLabels = {
 	config: "Configuration",
 	hook: "Hook",
 	user_permanent: "User (always)",
@@ -123,7 +123,7 @@ const permissionDecisionSourceLabels = {
 	user_temporary: "User (once)",
 } satisfies Record<z.infer<typeof PermissionDecisionSourceSchema>, string>;
 
-const permissionDecisionReasonTypeLabels = {
+export const permissionDecisionReasonTypeLabels = {
 	classifier: "Classifier",
 	hook: "Hook",
 	mode: "Permission mode",

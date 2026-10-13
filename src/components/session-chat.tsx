@@ -35,6 +35,7 @@ import {useClaudeEvents} from "../hooks/use-claude-events";
 import {ChevronIcon, CollapsibleSection, CopyButton, DiffStats, TerminalOutput} from "./tool-renderers/shared";
 import {compactBoundaryLabel, localCommandOutput, SystemBanner, type CompactMetadata} from "./system-banner";
 import {ArtifactLinkBanner, ArtifactWatchBanner} from "./artifact-banner";
+import {permissionDecisionLabel, permissionDecisionTitle} from "../lib/permission-decision";
 import {DebugLink} from "./debug-link";
 import {type TranscriptMessageRef, TranscriptMessageMenu} from "./transcript-context-menu";
 import {AssistantMessageActions, UserMessageActions} from "./message-actions";
@@ -4239,6 +4240,8 @@ function ToolCallRow({
 	const paramHref = displayParam === toolRowLabel.meta ? toolRowLabel.metaHref : undefined;
 	const paramIsCode = displayParam === toolRowLabel.meta && toolRowLabel.metaIsCode === true && !isFailedSkill;
 	const rangeLabel = displayParam ? readRangeLabel(call) : null;
+	// What allowed or blocked the call is a diagnostic upstream never shows, so only Verbose names it.
+	const permissionLabel = verbose && call.permission !== undefined ? permissionDecisionLabel(call.permission) : null;
 
 	const rowLabel = (
 		<>
@@ -4277,6 +4280,15 @@ function ToolCallRow({
 			{status !== null && (
 				<span className={`shrink-0 text-body ${status === "Failed" ? "text-danger-ink" : "text-secondary"}`}>
 					{status}
+				</span>
+			)}
+			{permissionLabel !== null && call.permission !== undefined && (
+				<span
+					data-permission-decision=""
+					title={permissionDecisionTitle(call.permission)}
+					className="shrink-0 text-body text-t6"
+				>
+					{permissionLabel}
 				</span>
 			)}
 		</>

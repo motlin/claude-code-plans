@@ -982,6 +982,43 @@ const FAILED_SUFFIX = {text: "Failed", className: "shrink-0 text-body text-dange
 const STOPPED_SUFFIX = {text: "Stopped", className: "shrink-0 text-body text-secondary"};
 const ROW_CHEVRON = {text: "", className: "shrink-0 -ms-1 text-ink-muted group-hover/tool:text-secondary"};
 
+describe("SessionChat tool row permission decision", () => {
+	const records = toolResultRecords({name: "Grep", input: {pattern: "alice"}}, "found", false, {
+		permissionDecision: {decision: "accept", source: "config", reasonType: "classifier"},
+	});
+	const permissionSpans = (transcriptMode: TranscriptMode) => {
+		const {lines, toolResultMap} = processTranscript(records);
+		const container = render(
+			<SessionChat
+				sessionId="test-session"
+				lines={lines}
+				toolResultMap={toolResultMap}
+				transcriptMode={transcriptMode}
+				shouldScrollToEnd={false}
+			/>,
+		).container;
+		return Array.from(container.querySelectorAll("[data-permission-decision]"), (el) => ({
+			text: el.textContent,
+			title: el.getAttribute("title"),
+			className: el.className,
+		}));
+	};
+
+	it("names what allowed the call in Verbose, with the raw decision as its tooltip", () => {
+		expect(permissionSpans("verbose")).toStrictEqual([
+			{
+				text: "Allowed by auto mode",
+				title: "Permission: Accepted · Configuration · Classifier",
+				className: "shrink-0 text-body text-t6",
+			},
+		]);
+	});
+
+	it("leaves the permission decision out of Normal, which upstream never shows", () => {
+		expect(permissionSpans("normal")).toStrictEqual([]);
+	});
+});
+
 describe("SessionChat failed tool row label", () => {
 	const bash = (description: string) => ({name: "Bash", input: {command: "git push", description}});
 	const denied = (kind: string) =>

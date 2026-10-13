@@ -11,6 +11,7 @@
 import {z} from "zod";
 import type {ToolResultInfo} from "./sessions";
 import {toolResultMetaFrom} from "./tool-labels";
+import {formatModelName} from "./model-name";
 import {normalizeArtifactUrl, parseArtifactOutput} from "./artifact-output";
 import {ArtifactToolResultSchema} from "./artifact-schemas";
 import {
@@ -95,6 +96,8 @@ const MessageLineSchema = z.object({
 	attributionMcpTool: z.string().optional(),
 	perTurnEffort: z.string().optional(),
 	advisorModel: z.string().optional(),
+	/** The model the turn asked for and the one that answered, kept only when they differ. */
+	modelMismatch: z.object({requested: z.string(), actual: z.string()}).optional(),
 	/** Whole milliseconds the model spent thinking on this assistant turn. */
 	thinkingDurationMs: z.number().optional(),
 	/** What the server-side permission classifier saw for this user turn. */
@@ -697,6 +700,7 @@ function processRecordBatch(
 							name === undefined || input === undefined ? undefined : {name, input},
 						);
 						if (resultMeta !== undefined) info.resultMeta = resultMeta;
+						if (record.permissionDecision !== undefined) info.permission = record.permissionDecision;
 						if (!info.isError) {
 							addArtifactDecoration(
 								info,
@@ -937,6 +941,14 @@ function processRecordBatch(
 				processedLine.perTurnEffort = record.perTurnEffort;
 			}
 			if (record.advisorModel !== undefined) processedLine.advisorModel = record.advisorModel;
+			const actualModel = record.message.model;
+			if (
+				record.requestedModel !== undefined &&
+				typeof actualModel === "string" &&
+				formatModelName(record.requestedModel) !== formatModelName(actualModel)
+			) {
+				processedLine.modelMismatch = {requested: record.requestedModel, actual: actualModel};
+			}
 			if (record.thinkingDurationMs !== undefined) processedLine.thinkingDurationMs = record.thinkingDurationMs;
 			// Attribution repeats on every turn of a skill/MCP block; only carry it
 			// onto the first line of each run so the UI shows one pill per block.

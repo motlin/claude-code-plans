@@ -3,6 +3,7 @@ import type {ToolUseBlock} from "../../lib/schemas";
 import type {ToolResultMeta} from "../../lib/tool-labels";
 import {isArtifactCardCall, type ParsedArtifact} from "../../lib/artifact-output";
 import type {ArtifactListEntry} from "../../lib/artifact-schemas";
+import type {PermissionDecision} from "../../lib/permission-decision";
 import type {Subagent} from "../../lib/subagents";
 import {getAgentTypeOrNull, getTaskCreateDisplaySubject} from "../../lib/tool-utils";
 import {buildSubagentTree} from "../../lib/subagent-tree";
@@ -53,6 +54,8 @@ export interface ClientToolCall {
 	resultMeta?: ToolResultMeta | undefined;
 	artifact?: ParsedArtifact | undefined;
 	artifactList?: ArtifactListEntry[] | undefined;
+	/** How the call was permitted or denied; see `ToolResultInfo.permission`. */
+	permission?: PermissionDecision | undefined;
 	/** The input failed the tool's schema, so the call renders raw under a generic label. */
 	invalidInput?: true | undefined;
 }
@@ -242,6 +245,7 @@ export function buildClientToolCall(
 		if (resultInfo.resultMeta !== undefined) call.resultMeta = resultInfo.resultMeta;
 		if (resultInfo.artifact !== undefined) call.artifact = resultInfo.artifact;
 		if (resultInfo.artifactList !== undefined) call.artifactList = resultInfo.artifactList;
+		if (resultInfo.permission !== undefined) call.permission = resultInfo.permission;
 	}
 
 	// Live failure override: if SSE told us this tool_use_id failed but the

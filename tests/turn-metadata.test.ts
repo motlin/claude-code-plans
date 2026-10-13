@@ -56,6 +56,15 @@ describe("assistantTurnDetails", () => {
 		).toStrictEqual(["595.8k in / 595 out", "Truncated at max tokens", "high effort", "advisor Opus 5.5"]);
 	});
 
+	it("names the requested model when a different one answered", () => {
+		expect(
+			assistantTurnDetails(
+				assistantLine({modelMismatch: {requested: "claude-opus-5-5", actual: "claude-sonnet-5-5"}}),
+				VERBOSE,
+			),
+		).toStrictEqual(["requested Opus 5.5, answered by Sonnet 5.5"]);
+	});
+
 	it("counts dropped thinking blocks with their reasons", () => {
 		expect(
 			assistantTurnDetails(
