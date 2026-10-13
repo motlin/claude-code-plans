@@ -122,6 +122,39 @@ export function TruncatedFilePathHeader({filePath}: {filePath: string}) {
  *                                       > span.text-extended-pink  "−M" (U+2212)
  * `tabular-nums` keeps the digits aligned when Edit rows stack.
  */
+const DIFF_STAT_SEGMENT = "flex items-center gap-[1px] px-1";
+
+/**
+ * Upstream's group-header diff stat: a 16px, 10px/500 pill of two segments on
+ * the git added/removed tints, both drawn even when one side is 0, with the
+ * counts spelled out for screen readers.
+ */
+export function DiffStatPill({added, removed}: {added: number; removed: number}) {
+	return (
+		<span
+			data-diff-stat-pill=""
+			className="ms-1 inline-flex h-[1lh] shrink-0 items-center text-ink-muted tabular-nums"
+		>
+			<span
+				aria-hidden="true"
+				className="inline-flex h-4 items-center overflow-clip rounded-r3 text-[10px]/[13px] font-medium"
+			>
+				<span data-diff-stat-segment="" className={`${DIFF_STAT_SEGMENT} text-diff-added bg-diff-added/20`}>
+					<span>+</span>
+					<span>{added}</span>
+				</span>
+				<span data-diff-stat-segment="" className={`${DIFF_STAT_SEGMENT} text-diff-removed bg-diff-removed/20`}>
+					<span>−</span>
+					<span>{removed}</span>
+				</span>
+			</span>
+			<span className="sr-only">
+				{added} added, {removed} removed
+			</span>
+		</span>
+	);
+}
+
 export function DiffStats({added, removed}: {added: number; removed: number}) {
 	if (added === 0 && removed === 0) return null;
 	return (

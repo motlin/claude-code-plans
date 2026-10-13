@@ -35,7 +35,14 @@ import type {LiveToolFailure, SubagentLookup} from "./tool-renderers/types";
 import type {Subagent} from "../lib/subagents";
 import {useSubagentOpener} from "./subagent-opener-context";
 import {useClaudeEvents} from "../hooks/use-claude-events";
-import {ChevronIcon, CollapsibleSection, CopyButton, DiffStats, TerminalOutput} from "./tool-renderers/shared";
+import {
+	ChevronIcon,
+	CollapsibleSection,
+	CopyButton,
+	DiffStatPill,
+	DiffStats,
+	TerminalOutput,
+} from "./tool-renderers/shared";
 import {SystemBanner, type CompactMetadata} from "./system-banner";
 import {compactBoundaryLabel, localCommandOutput} from "./system-banner-text";
 import {ArtifactLinkBanner, ArtifactWatchBanner} from "./artifact-banner";
@@ -4612,12 +4619,7 @@ function ToolCallSummary({
 								</span>
 							)}
 						</span>
-						{hasDiffStats(summary) && (
-							<span className="flex gap-g1 tabular-nums shrink-0">
-								<span className="text-diff-added">+{summary.added}</span>
-								<span className="text-diff-removed">−{summary.removed}</span>
-							</span>
-						)}
+						{hasDiffStats(summary) && <DiffStatPill added={summary.added} removed={summary.removed} />}
 						<span className={`shrink-0 ${ink}`}>
 							<ChevronIcon expanded={expanded} size={12} />
 						</span>

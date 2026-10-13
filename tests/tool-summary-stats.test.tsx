@@ -97,10 +97,18 @@ function summaryLabel(html: string): string {
 	return (match?.[1] ?? "").replaceAll(/<[^>]+>/g, "");
 }
 
-function statSpans(html: string): string[] {
-	return [...summaryButton(html).matchAll(/<span class="(text-diff-(?:added|removed))">([^<]*)<\/span>/g)].map(
-		(m) => `${m[1]}:${m[2]}`,
-	);
+/** The group header's diff stat pill: each segment's ink and text, and the screen-reader line. */
+function statSpans(html: string): {segments: string[]; srOnly: string | null} {
+	const button = document.createElement("div");
+	button.innerHTML = summaryButton(html);
+	const pill = button.querySelector("[data-diff-stat-pill]");
+	return {
+		segments: [...(pill?.querySelectorAll("[data-diff-stat-segment]") ?? [])].map(
+			(segment) =>
+				`${segment.className.split(" ").find((name) => name.startsWith("text-diff-")) ?? ""}:${segment.textContent}`,
+		),
+		srOnly: pill?.querySelector(".sr-only")?.textContent ?? null,
+	};
 }
 
 describe("summarizeToolCallStats", () => {
@@ -265,11 +273,11 @@ describe("ToolCallSummary stats and ink", () => {
 		]);
 		expect({label: summaryLabel(html), stats: statSpans(html)}).toStrictEqual({
 			label: "Ran 3 commands (1 failed)",
-			stats: [],
+			stats: {segments: [], srOnly: null},
 		});
 	});
 
-	it("renders diff stats in a trailing tabular span, separate from the label", () => {
+	it("renders diff stats as upstream's trailing two-tone pill, separate from the label", () => {
 		const html = renderRun([
 			{id: "t1", name: "Read", input: {file_path: "/repo/a.ts"}},
 			{
@@ -278,14 +286,26 @@ describe("ToolCallSummary stats and ink", () => {
 				input: {file_path: "/repo/b.ts", old_string: "a\nb\nc", new_string: "d"},
 			},
 		]);
+		const container = document.createElement("div");
+		container.innerHTML = summaryButton(html);
+		const pill = container.querySelector("[data-diff-stat-pill]");
 		expect({
 			label: summaryLabel(html),
 			stats: statSpans(html),
-			hasStatsWrapper: summaryButton(html).includes('<span class="flex gap-g1 tabular-nums shrink-0">'),
+			wrapper: pill?.className,
+			chip: pill?.firstElementChild?.className,
+			segments: [...(pill?.querySelectorAll("[data-diff-stat-segment]") ?? [])].map(
+				(segment) => segment.className,
+			),
 		}).toStrictEqual({
 			label: "Read a file, edited a file",
-			stats: ["text-diff-added:+1", "text-diff-removed:−3"],
-			hasStatsWrapper: true,
+			stats: {segments: ["text-diff-added:+1", "text-diff-removed:−3"], srOnly: "1 added, 3 removed"},
+			wrapper: "ms-1 inline-flex h-[1lh] shrink-0 items-center text-ink-muted tabular-nums",
+			chip: "inline-flex h-4 items-center overflow-clip rounded-r3 text-[10px]/[13px] font-medium",
+			segments: [
+				"flex items-center gap-[1px] px-1 text-diff-added bg-diff-added/20",
+				"flex items-center gap-[1px] px-1 text-diff-removed bg-diff-removed/20",
+			],
 		});
 	});
 
@@ -299,7 +319,10 @@ describe("ToolCallSummary stats and ink", () => {
 				input: {file_path: "/repo/b.ts", old_string: removed, new_string: ""},
 			},
 		]);
-		expect(statSpans(html)).toStrictEqual(["text-diff-added:+0", "text-diff-removed:−28"]);
+		expect(statSpans(html)).toStrictEqual({
+			segments: ["text-diff-added:+0", "text-diff-removed:−28"],
+			srOnly: "0 added, 28 removed",
+		});
 	});
 
 	it("uses muted ink with a secondary hover on the collapsed label", () => {
