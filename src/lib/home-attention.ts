@@ -13,8 +13,6 @@ export interface HomeAttentionRow extends SessionGroupRow {
 	/** Hook or herdr status detail, e.g. the running task summary. */
 	statusDetail: string | null;
 	lastAssistantText: string | null;
-	/** GitHub `owner/name` from the session's PR link; upstream's row shows this, never the local project. */
-	repository: string | null;
 }
 
 export interface HomeAttentionInput<Row extends HomeAttentionRow> {

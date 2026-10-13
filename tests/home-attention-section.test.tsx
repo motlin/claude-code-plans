@@ -40,7 +40,6 @@ function row(sessionId: string, overrides: Partial<HomeAttentionRow> = {}): Home
 		summary: null,
 		statusDetail: null,
 		lastAssistantText: null,
-		repository: null,
 		...overrides,
 	};
 }
@@ -61,7 +60,7 @@ afterEach(() => {
 });
 
 describe("AttentionSection", () => {
-	it("renders the upstream Sessions markup with pills, status line, repo (never the project), time and dismiss", () => {
+	it("renders the upstream Sessions markup with pills, status line, time and dismiss, and no repo or project label", () => {
 		render(
 			<AttentionSection
 				items={items([
@@ -73,7 +72,6 @@ describe("AttentionSection", () => {
 					row("review", {
 						bucket: "review",
 						title: "Refactor parser",
-						repository: "alice/example-repo",
 						lastActivityAt: NOW - 20 * 1000,
 					}),
 				])}
@@ -144,7 +142,7 @@ describe("AttentionSection", () => {
 					pillClass: "whitespace-nowrap text-[12px] leading-[15px] text-accent-100",
 					title: "Refactor parser",
 					status: null,
-					repo: "alice/example-repo",
+					repo: null,
 					trailingIcons: [
 						"lucide lucide-chevron-right size-5 text-ink-muted group-hover:text-secondary",
 						"lucide lucide-x size-4",

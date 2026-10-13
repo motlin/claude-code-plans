@@ -185,14 +185,6 @@ function AttentionRow<Row extends HomeAttentionRow>({
 						</span>
 					</span>
 					<span className="flex shrink-0 items-center gap-1">
-						{session.repository !== null && (
-							<span
-								data-row-repo
-								className="max-w-[180px] truncate text-[12px] leading-[15px] text-ink-muted"
-							>
-								{session.repository}
-							</span>
-						)}
 						<span className="-mr-1 min-w-5 text-center text-[12px] leading-[15px] text-ink-muted tabular-nums">
 							<time dateTime={new Date(session.lastActivityAt).toISOString()}>
 								{formatNarrowRelativeTime(session.lastActivityAt, now)}
