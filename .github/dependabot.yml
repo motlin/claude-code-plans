@@ -11,6 +11,9 @@ updates:
       default-days: 7
     labels:
       - "dependencies"
+    # Renovate's "vite-plus monorepo" group owns vite-plus so its vite alias moves with it.
+    ignore:
+      - dependency-name: "vite-plus"
     # Only group dependencies that must move in lockstep. typescript was a
     # single-package group, so it gets its own PR either way -- dropped so a
     # breaking bump is labelled by name rather than hidden behind a group.
@@ -25,13 +28,14 @@ updates:
           - "@vitest/*"
           - "@testing-library/*"
           - "playwright"
-      # Storybook ships its core and addons on one release train, so they have
-      # to move together. @chromatic-com/storybook is deliberately excluded:
-      # different vendor, independent versioning.
+      # Storybook ships its core, addons and eslint plugin on one release train
+      # (all at 10.6.1), so they have to move together. @chromatic-com/storybook
+      # is deliberately excluded: different vendor, independent versioning.
       storybook:
         patterns:
           - "storybook"
           - "@storybook/*"
+          - "eslint-plugin-storybook"
       # Listed explicitly rather than as "react-*", which would also match
       # unrelated "react-*" packages and leave the winning group ambiguous.
       react-ecosystem:
