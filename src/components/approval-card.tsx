@@ -120,6 +120,16 @@ function LinkifiedText({text}: {text: string}) {
 	);
 }
 
+/** An option's right-hand mark: its number keycap, or upstream's empty 14px checkbox for a multi-select question. */
+function ChoiceMark({multiSelect, keys}: {multiSelect: boolean; keys: string}) {
+	if (!multiSelect) return <Shortcut keys={keys} className="pointer-coarse:hidden" />;
+	return (
+		<span className="flex shrink-0">
+			<span data-pending-question-checkbox="" className="size-3.5 shrink-0 rounded-r3 border border-primary/20" />
+		</span>
+	);
+}
+
 const PENDING_ICON_BUTTON =
 	"inline-flex size-6 shrink-0 items-center justify-center rounded-r4 text-secondary disabled:cursor-not-allowed disabled:opacity-50";
 
@@ -202,6 +212,7 @@ export function PendingQuestionCard({questions}: {questions: PendingQuestionItem
 									type="button"
 									disabled
 									data-pending-question-option
+									aria-pressed={question.multiSelect === true ? false : undefined}
 									className="flex w-full cursor-not-allowed items-center gap-2 rounded-r4 p-2 bg-alpha-1 text-left"
 								>
 									<span className="flex min-w-0 flex-1 flex-col">
@@ -217,20 +228,32 @@ export function PendingQuestionCard({questions}: {questions: PendingQuestionItem
 											</span>
 										)}
 									</span>
-									<Shortcut keys={String(optionIndex + 1)} className="pointer-coarse:hidden" />
+									<ChoiceMark
+										multiSelect={question.multiSelect === true}
+										keys={String(optionIndex + 1)}
+									/>
 								</button>
 							))}
 							<div
 								data-pending-question-other
 								className="flex w-full flex-col gap-3 rounded-r4 p-2 bg-alpha-1"
 							>
-								<div className="flex items-center gap-2">
-									<span className="flex-1 text-body text-primary">Other</span>
-									<Shortcut
-										keys={String(question.options.length + 1)}
-										className="pointer-coarse:hidden"
-									/>
-								</div>
+								{question.multiSelect === true ? (
+									<button
+										type="button"
+										disabled
+										aria-pressed={false}
+										className="flex w-full cursor-not-allowed items-center gap-2 text-left"
+									>
+										<span className="flex-1 text-body text-primary">Other</span>
+										<ChoiceMark multiSelect keys="" />
+									</button>
+								) : (
+									<div className="flex items-center gap-2">
+										<span className="flex-1 text-body text-primary">Other</span>
+										<ChoiceMark multiSelect={false} keys={String(question.options.length + 1)} />
+									</div>
+								)}
 								<textarea
 									disabled
 									aria-label="Other option"
@@ -240,11 +263,6 @@ export function PendingQuestionCard({questions}: {questions: PendingQuestionItem
 								/>
 							</div>
 						</div>
-						{question.multiSelect === true && (
-							<p data-pending-question-multiselect className="text-footnote text-secondary">
-								Select one or more options.
-							</p>
-						)}
 					</div>
 					<span
 						data-pending-question-footnote

@@ -217,4 +217,23 @@ describe("PendingQuestionCard", () => {
 			},
 		});
 	});
+
+	it("draws a multi-select question's options and Other with upstream's 14px checkboxes, no keycaps and no helper line", () => {
+		render(<PendingQuestionCard questions={[QUESTIONS[1]!]} />);
+		const card = screen.getByRole("group", {name: "Waiting for your input"});
+		const options = [...card.querySelectorAll("[data-pending-question-option]")];
+		const other = card.querySelector("[data-pending-question-other]");
+
+		expect({
+			pressed: options.map((option) => option.getAttribute("aria-pressed")),
+			keycaps: [...options, other].reduce((count, row) => count + (row?.querySelectorAll("kbd").length ?? 0), 0),
+			checkboxes: [...card.querySelectorAll("[data-pending-question-checkbox]")].map((box) => box.className),
+			helper: card.textContent.includes("Select one or more options"),
+		}).toStrictEqual({
+			pressed: ["false", "false"],
+			keycaps: 0,
+			checkboxes: Array.from({length: 3}, () => "size-3.5 shrink-0 rounded-r3 border border-primary/20"),
+			helper: false,
+		});
+	});
 });
