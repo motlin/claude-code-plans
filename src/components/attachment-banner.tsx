@@ -49,6 +49,7 @@ export function AttachmentBanner({
 	renderedInHumanTurn,
 	renderedRole,
 	absorbedMidTurn,
+	sameAsDescriptions,
 }: {
 	attachmentJson: string;
 	sessionId?: string | undefined;
@@ -59,6 +60,8 @@ export function AttachmentBanner({
 	renderedRole?: RenderedRole | undefined;
 	/** A queued_command the CLI absorbed into the running turn instead of starting a new one. */
 	absorbedMidTurn?: boolean | undefined;
+	/** Descriptions of deferred tools surfaced by `sameAs`, resolved from the earlier definition. */
+	sameAsDescriptions?: Readonly<Record<string, string>> | undefined;
 }) {
 	const attachment = useMemo<AttachmentPayload | null>(() => {
 		const parsed = AttachmentPayloadSchema.safeParse(JSON.parse(attachmentJson));
@@ -68,7 +71,7 @@ export function AttachmentBanner({
 	if (!attachment) return null;
 
 	const sections = [
-		...attachmentDetailSections(attachment),
+		...attachmentDetailSections(attachment, sameAsDescriptions ?? {}),
 		...renderedSections(rendered, renderedInHumanTurn, renderedRole),
 	];
 	const details = sections.length > 0 ? <DetailSections sections={sections} /> : undefined;
@@ -135,7 +138,10 @@ function labeled(label: string, value: string | undefined): string | undefined {
 }
 
 /** Type-specific details for the context attachments injected into the model's turn. */
-function attachmentDetailSections(attachment: AttachmentPayload): DetailSection[] {
+function attachmentDetailSections(
+	attachment: AttachmentPayload,
+	sameAsDescriptions: Readonly<Record<string, string>>,
+): DetailSection[] {
 	if (attachment.type === "environment") {
 		const snap = attachment.snapshot;
 		return [
@@ -247,13 +253,19 @@ function attachmentDetailSections(attachment: AttachmentPayload): DetailSection[
 	}
 	if (attachment.type === "deferred_tools_delta") {
 		const surfaced = attachment.surfacedDefinitions ?? [];
-		return linesSection(
-			`Surfaced tools (${surfaced.length})`,
-			surfaced.map((tool) => {
-				const summary = "definition" in tool ? tool.definition.description?.split("\n")[0] : undefined;
-				return summary ? `${tool.name}: ${summary}` : tool.name;
-			}),
-		);
+		const removedByBlock = attachment.removedByBlock ?? [];
+		return [
+			...linesSection(
+				`Surfaced tools (${surfaced.length})`,
+				surfaced.map((tool) => {
+					const description =
+						"definition" in tool ? tool.definition.description : sameAsDescriptions[tool.name];
+					const summary = description?.split("\n")[0];
+					return summary ? `${tool.name}: ${summary}` : tool.name;
+				}),
+			),
+			...linesSection(`Removed by block (${removedByBlock.length})`, removedByBlock),
+		];
 	}
 	if (attachment.type === "queued_command") {
 		return linesSection("Queued command", [labeled("Run ID", attachment.runId)]);
@@ -558,6 +570,7 @@ function AttachmentContent({
 			const parts: string[] = [];
 			if (attachment.addedNames?.length) parts.push(`+${attachment.addedNames.length} tools`);
 			if (attachment.removedNames?.length) parts.push(`-${attachment.removedNames.length} tools`);
+			if (attachment.removedByBlock?.length) parts.push(`${attachment.removedByBlock.length} blocked`);
 			if (attachment.pendingMcpServers?.length) {
 				const n = attachment.pendingMcpServers.length;
 				parts.push(`${n} MCP server${n === 1 ? "" : "s"} pending`);

@@ -273,6 +273,15 @@ describe("AttachmentBanner", () => {
 			expect(html).not.toContain("1 MCP servers pending");
 		});
 
+		it("counts the removed tools a block took away", () => {
+			const html = renderBanner({
+				type: "deferred_tools_delta",
+				removedNames: ["mcp__docs__batch", "mcp__docs__guide", "mcp__docs__query"],
+				removedByBlock: ["mcp__docs__batch", "mcp__docs__guide"],
+			});
+			expect(html).toContain("Deferred tools: -3 tools, 2 blocked");
+		});
+
 		it("omits the pending segment when there are no pending MCP servers", () => {
 			const html = renderBanner({
 				type: "deferred_tools_delta",
@@ -306,6 +315,7 @@ describe("AttachmentBanner", () => {
 				rendered?: string[];
 				renderedInHumanTurn?: string[];
 				renderedRole?: "system" | "user";
+				sameAsDescriptions?: Record<string, string>;
 			} = {},
 		): [string, string][] {
 			const view = render(<AttachmentBanner attachmentJson={JSON.stringify(payload)} {...extra} />);
@@ -467,10 +477,43 @@ describe("AttachmentBanner", () => {
 							definition: {name: "WebFetch", description: "Fetches a URL.\nMore detail."},
 						},
 						{name: "mcp__docs__read", listing: "def456", definition: {name: "mcp__docs__read"}},
-						{name: "mcp__docs__write", listing: "abc123", sameAs: "WebFetch"},
+						{name: "mcp__docs__write", listing: "abc123", sameAs: "398d17b2-379f-4a8c-9d42-6180faf07536"},
 					],
 				}),
 			).toStrictEqual([["Surfaced tools (3)", "WebFetch: Fetches a URL.\nmcp__docs__read\nmcp__docs__write"]]);
+		});
+
+		it("describes sameAs-surfaced tools with the earlier record's definition", () => {
+			expect(
+				detailSections(
+					{
+						type: "deferred_tools_delta",
+						surfacedDefinitions: [
+							{
+								name: "mcp__docs__guide",
+								listing: "abc123",
+								sameAs: "398d17b2-379f-4a8c-9d42-6180faf07536",
+							},
+							{
+								name: "mcp__docs__write",
+								listing: "def456",
+								sameAs: "398d17b2-379f-4a8c-9d42-6180faf07536",
+							},
+						],
+					},
+					{sameAsDescriptions: {mcp__docs__guide: "Docs guides.\nMore detail."}},
+				),
+			).toStrictEqual([["Surfaced tools (2)", "mcp__docs__guide: Docs guides.\nmcp__docs__write"]]);
+		});
+
+		it("lists the deferred tools a block removed", () => {
+			expect(
+				detailSections({
+					type: "deferred_tools_delta",
+					removedNames: ["mcp__docs__batch", "mcp__docs__guide", "mcp__docs__query"],
+					removedByBlock: ["mcp__docs__batch", "mcp__docs__guide"],
+				}),
+			).toStrictEqual([["Removed by block (2)", "mcp__docs__batch\nmcp__docs__guide"]]);
 		});
 
 		it("shows the run a queued command belongs to", () => {

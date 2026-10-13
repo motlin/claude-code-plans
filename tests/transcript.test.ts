@@ -415,6 +415,70 @@ describe("processTranscript", () => {
 		]);
 	});
 
+	describe("sameAs-surfaced deferred tool definitions", () => {
+		const firstUuid = "398d17b2-379f-4a8c-9d42-6180faf07536";
+		const first = {
+			type: "attachment",
+			uuid: firstUuid,
+			attachment: {
+				type: "deferred_tools_delta",
+				surfacedDefinitions: [
+					{
+						name: "mcp__docs__guide",
+						listing: "aaa",
+						definition: {name: "mcp__docs__guide", description: "Docs guides.\nMore detail."},
+					},
+					{name: "mcp__docs__batch", listing: "bbb", definition: {name: "mcp__docs__batch"}},
+				],
+			},
+		};
+		const second = {
+			type: "attachment",
+			uuid: "att-2",
+			attachment: {
+				type: "deferred_tools_delta",
+				surfacedDefinitions: [
+					{name: "mcp__docs__guide", listing: "aaa", sameAs: firstUuid},
+					{name: "mcp__docs__batch", listing: "bbb", sameAs: firstUuid},
+				],
+			},
+		};
+		const third = {
+			type: "attachment",
+			uuid: "att-3",
+			attachment: {
+				type: "deferred_tools_delta",
+				surfacedDefinitions: [{name: "mcp__docs__guide", listing: "aaa", sameAs: "att-2"}],
+			},
+		};
+
+		it("resolves sameAs references, including chained ones, to the earlier definition's description", () => {
+			expect(processTranscript([first, second, third]).lines).toStrictEqual([
+				{type: "attachment", attachmentJson: JSON.stringify(first.attachment), uuid: firstUuid, lineIndex: 0},
+				{
+					type: "attachment",
+					attachmentJson: JSON.stringify(second.attachment),
+					sameAsDescriptions: {mcp__docs__guide: "Docs guides.\nMore detail."},
+					uuid: "att-2",
+					lineIndex: 1,
+				},
+				{
+					type: "attachment",
+					attachmentJson: JSON.stringify(third.attachment),
+					sameAsDescriptions: {mcp__docs__guide: "Docs guides.\nMore detail."},
+					uuid: "att-3",
+					lineIndex: 2,
+				},
+			]);
+		});
+
+		it("leaves sameAs references to unseen records unresolved", () => {
+			expect(processTranscript([second]).lines).toStrictEqual([
+				{type: "attachment", attachmentJson: JSON.stringify(second.attachment), uuid: "att-2", lineIndex: 0},
+			]);
+		});
+	});
+
 	describe("queued commands absorbed mid-turn", () => {
 		const absorbedRemove = {
 			type: "queue-operation",

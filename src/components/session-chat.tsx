@@ -2917,6 +2917,7 @@ function renderSessionMessage({
 					renderedInHumanTurn={line.renderedInHumanTurn}
 					renderedRole={line.renderedRole}
 					absorbedMidTurn={line.absorbedMidTurn}
+					sameAsDescriptions={line.sameAsDescriptions}
 				/>
 			);
 		case "system":

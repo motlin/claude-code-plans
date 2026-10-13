@@ -167,6 +167,9 @@ const AttachmentLineSchema = z.object({
 	// a `queue-operation` removal's commandUuid matching the attachment's source_uuid,
 	// or its deliveryId matching the attachment's delivery_id.
 	absorbedMidTurn: z.literal(true).optional(),
+	// Descriptions of deferred tools a deferred_tools_delta surfaced only by a
+	// `sameAs` pointer, resolved from the earlier record that carried the definition.
+	sameAsDescriptions: z.record(z.string(), z.string()).optional(),
 	uuid: z.string().optional(),
 	timestamp: z.string().optional(),
 	sessionId: z.string().optional(),
@@ -597,6 +600,8 @@ function processRecordBatch(
 	// and pair on either the command uuid or the delivery id.
 	const absorbedQueueKeys = new Set<string>();
 	const queuedCommandLines = new Map<string, z.infer<typeof AttachmentLineSchema>>();
+	// Per deferred_tools_delta uuid, the description each surfaced tool resolved to.
+	const surfacedDescriptions = new Map<string, Map<string, string | undefined>>();
 
 	for (let i = 0; i < records.length; i++) {
 		const obj = records[i]!;
@@ -809,6 +814,20 @@ function processRecordBatch(
 				const keys = queuePairingKeys(record.attachment.source_uuid, record.attachment.delivery_id);
 				if (keys.some((key) => absorbedQueueKeys.has(key))) attachmentLine.absorbedMidTurn = true;
 				else for (const key of keys) queuedCommandLines.set(key, attachmentLine);
+			}
+			if (record.attachment.type === "deferred_tools_delta" && record.attachment.surfacedDefinitions) {
+				const descriptions = new Map<string, string | undefined>();
+				const sameAsDescriptions: Record<string, string> = {};
+				for (const tool of record.attachment.surfacedDefinitions) {
+					const description =
+						"definition" in tool
+							? tool.definition.description
+							: surfacedDescriptions.get(tool.sameAs)?.get(tool.name);
+					descriptions.set(tool.name, description);
+					if ("sameAs" in tool && description !== undefined) sameAsDescriptions[tool.name] = description;
+				}
+				if (uuid !== undefined) surfacedDescriptions.set(uuid, descriptions);
+				if (Object.keys(sameAsDescriptions).length > 0) attachmentLine.sameAsDescriptions = sameAsDescriptions;
 			}
 			if (uuid !== undefined) attachmentLine.uuid = uuid;
 			if (record.timestamp !== undefined) attachmentLine.timestamp = record.timestamp;
