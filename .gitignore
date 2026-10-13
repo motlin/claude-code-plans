@@ -29,7 +29,6 @@ yarn-error.log*
 
 .envrc
 /.vite/
-eslint_report.json
 
 # Local documentation and context
 .llm/
@@ -38,7 +37,6 @@ eslint_report.json
 !/.claude/includes/
 /.claude/settings.local.json
 mockups/
-tree-view-*.png
 
 *storybook.log
 
