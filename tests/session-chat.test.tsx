@@ -1050,7 +1050,7 @@ describe("SessionChat failed tool row label", () => {
 		});
 	});
 
-	it("names a stopped multi-question AskUserQuestion row by its first header, with a 12px chevron 2px after the status", () => {
+	it('names a stopped multi-question AskUserQuestion row "Asked <first header>" as one text run, with a 12px chevron 2px after the status', () => {
 		const records = toolResultRecords(
 			{
 				name: "AskUserQuestion",
@@ -1073,8 +1073,7 @@ describe("SessionChat failed tool row label", () => {
 			chevron: [chevron?.getAttribute("width"), chevron?.getAttribute("height")],
 		}).toStrictEqual({
 			children: [
-				{text: "Asked", className: `shrink-0 ${MUTED_LABEL}`},
-				{text: "Change", className: `truncate min-w-0 ${MUTED_LABEL}`},
+				{text: "Asked Change", className: `truncate min-w-0 ${MUTED_LABEL}`},
 				STOPPED_SUFFIX,
 				ROW_CHEVRON,
 			],

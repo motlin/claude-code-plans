@@ -567,7 +567,8 @@ export function toolLabel(call: ToolLabelCall): ToolLabel {
 			return sendMessageLabel(call);
 		case "AskUserQuestion": {
 			const meta = askedMeta(input);
-			return meta === null ? {verb: "Asked"} : {verb: "Asked", meta};
+			// Upstream draws "Asked <header>" as one text run, not a verb and a param.
+			return meta === null ? {verb: "Asked"} : {verb: "Asked", meta, doneLabel: `Asked ${meta}`};
 		}
 	}
 

@@ -135,8 +135,8 @@ describe("toolLabel", () => {
 				}),
 			),
 		}).toStrictEqual({
-			one: {verb: "Asked", meta: "Auth method"},
-			many: {verb: "Asked", meta: "A"},
+			one: {verb: "Asked", meta: "Auth method", doneLabel: "Asked Auth method"},
+			many: {verb: "Asked", meta: "A", doneLabel: "Asked A"},
 		});
 	});
 
