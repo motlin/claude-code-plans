@@ -119,6 +119,7 @@ export function toSessionSummaryPayload(
 		archived,
 		state: pendingInput || awaitingPermission ? "waiting" : main.state,
 		...(awaitingPermission ? {awaitingPermission: true} : {}),
+		...(registrySession === null ? {} : {processStartedAt: registrySession.startedAt}),
 		bucket,
 		liveAgentCount,
 		unseen,

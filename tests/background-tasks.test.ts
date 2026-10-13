@@ -314,3 +314,122 @@ describe("backgroundTasksFacts", () => {
 		]);
 	});
 });
+
+describe("extractBackgroundTasks running count, from 01d132c8's real record shapes", () => {
+	const launch = (id: string, taskId: string, description: string, at: string): TranscriptRecord[] => [
+		toolUse(id, "Bash", {command: "git test run", description, run_in_background: true}, at),
+		toolResult(
+			id,
+			`Command running in background with ID: ${taskId}. Output is being written to: /tmp/fab/${taskId}.output.`,
+			{stdout: "", stderr: "", interrupted: false, backgroundTaskId: taskId},
+			at,
+		),
+	];
+	const finished = (taskId: string, toolUseId: string) =>
+		`<task-notification>\n<task-id>${taskId}</task-id>\n<tool-use-id>${toolUseId}</tool-use-id>\n<status>completed</status>\n<summary>Background command "x" completed (exit code 0)</summary>\n</task-notification>`;
+	const teammate = (
+		id: string,
+		agentId: string,
+		name: string,
+		description: string,
+		at: string,
+	): TranscriptRecord[] => [
+		toolUse(id, "Agent", {description, name, prompt: "p", run_in_background: true}, at),
+		toolResult(
+			id,
+			`Spawned successfully. (This tool result is internal metadata — never quote or paste any part of it, including the ID below, into a user-facing reply.)\nagent_id: ${agentId}\nname: ${name}\nThe agent is now running and will receive instructions via mailbox.`,
+			{
+				status: "teammate_spawned",
+				agent_id: agentId,
+				agentId,
+				name,
+				teammate_id: `${name}@session-1de30364`,
+				team_name: "session-1de30364",
+			},
+			at,
+		),
+	];
+	const records: TranscriptRecord[] = [
+		...launch("toolu_queued", "bqueued1", "Poll PR checks until none pending", "2026-10-13T21:00:00.000Z"),
+		...launch("toolu_enqueued", "benqueued", "Queue a plain-mvn retest", "2026-10-13T21:01:00.000Z"),
+		toolUse(
+			"toolu_monitor",
+			"Monitor",
+			{command: "watch-ci", description: "CI results for klass PRs #840-846"},
+			"2026-10-13T21:02:00.000Z",
+		),
+		toolResult(
+			"toolu_monitor",
+			"Monitor started (task b8agjsu70, timeout 1800000ms).",
+			{taskId: "b8agjsu70"},
+			"2026-10-13T21:02:01.000Z",
+		),
+		notification(
+			'<task-id>b8agjsu70</task-id>\n<summary>Monitor event: "CI results for klass PRs #840-846"</summary>\n<event>[Monitor expired after 30m with 3 events delivered. Re-arm it if you still need the watch.]</event>',
+			"2026-10-13T21:32:01.000Z",
+		),
+		...teammate(
+			"toolu_mate1",
+			"atemplate-drift-4240",
+			"template-drift",
+			"Fix shared include drift in templates",
+			"2026-10-13T21:36:33.430Z",
+		),
+		...teammate(
+			"toolu_mate2",
+			"adrop-audit-script-9ba3",
+			"drop-audit-script",
+			"Remove audit script from 4 repos",
+			"2026-10-13T21:36:42.401Z",
+		),
+		...teammate(
+			"toolu_mate3",
+			"apr845-rework-c818",
+			"pr845-rework",
+			"Rework #845 with array and test",
+			"2026-10-13T22:05:50.161Z",
+		),
+		// Delivered mid-turn as a queued_command attachment, the way the CLI writes most completions.
+		{
+			type: "attachment",
+			sessionId: SESSION,
+			timestamp: "2026-10-13T22:44:35.000Z",
+			attachment: {
+				type: "queued_command",
+				prompt: finished("bqueued1", "toolu_queued"),
+				commandMode: "task-notification",
+				origin: {kind: "task-notification", producer: "session-task"},
+			},
+		},
+		// Enqueued and never delivered as its own record.
+		{
+			type: "queue-operation",
+			operation: "enqueue",
+			timestamp: "2026-10-13T22:59:43.000Z",
+			sessionId: SESSION,
+			content: finished("benqueued", "toolu_enqueued"),
+		},
+	];
+
+	it("settles commands from queued and enqueued notifications and expired monitors, and counts live in-process teammates, as upstream reads 3", () => {
+		expect(
+			extractBackgroundTasks(records, {
+				sessionActive: true,
+				processStartedAt: Date.parse("2026-10-11T14:56:48.013Z"),
+			}).running.map((task) => [task.kind, task.id, task.description]),
+		).toStrictEqual([
+			["agent", "atemplate-drift-4240", "Fix shared include drift in templates"],
+			["agent", "adrop-audit-script-9ba3", "Remove audit script from 4 repos"],
+			["agent", "apr845-rework-c818", "Rework #845 with array and test"],
+		]);
+	});
+
+	it("counts only teammates spawned since the session's process started, as a resumed process has none of the old ones", () => {
+		expect(
+			extractBackgroundTasks(records, {
+				sessionActive: true,
+				processStartedAt: Date.parse("2026-10-13T22:00:00.000Z"),
+			}).running.map((task) => task.id),
+		).toStrictEqual(["apr845-rework-c818"]);
+	});
+});

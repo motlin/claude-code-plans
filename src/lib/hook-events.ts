@@ -133,6 +133,8 @@ export interface SessionSummaryPayload {
 	state: SessionSummaryState;
 	/** Blocked on a tool permission prompt (a hook notification or the registry's `waitingFor`); absent otherwise. */
 	awaitingPermission?: true;
+	/** When the session's live CLI process started, from its registry entry; absent without one. */
+	processStartedAt?: number;
 	/** Display bucket from `resolveSessionBucket`. */
 	bucket: SessionBucket;
 	/** Running subagent nodes (`endedAt === null`) rooted at this session. */

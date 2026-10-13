@@ -36,6 +36,7 @@ export const SessionSummaryPayloadSchema: z.ZodType<SessionSummaryPayload> = z
 		archived: z.boolean(),
 		state: SessionSummaryStateSchema,
 		awaitingPermission: z.literal(true).exactOptional(),
+		processStartedAt: z.number().exactOptional(),
 		bucket: SessionBucketSchema,
 		liveAgentCount: z.number(),
 		unseen: z.boolean(),

@@ -35,6 +35,8 @@ const SessionListItemSchema = z.object({
 	state: SessionSummaryStateSchema,
 	/** Blocked on a tool permission prompt; the session page docks the permission card from it. */
 	awaitingPermission: z.literal(true).optional(),
+	/** When the session's live CLI process started; in-process teammates from before it are gone. */
+	processStartedAt: z.number().optional(),
 	bucket: SessionBucketSchema,
 	liveAgentCount: z.number(),
 	unseen: z.boolean(),

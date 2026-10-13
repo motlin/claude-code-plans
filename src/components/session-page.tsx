@@ -374,10 +374,18 @@ function SessionView({
 		() =>
 			extractBackgroundTasks(transcript.records, {
 				sessionActive: sessionProcessLive({hookActive: isActive, summaryState: sessionSummaryState}),
+				processStartedAt: sessionSummary?.processStartedAt ?? null,
 				runningSubagents: activeSubagents,
 				...(hookContext?.backgroundTasks === undefined ? {} : {hookTasks: hookContext.backgroundTasks}),
 			}),
-		[transcript.records, isActive, sessionSummaryState, activeSubagents, hookContext?.backgroundTasks],
+		[
+			transcript.records,
+			isActive,
+			sessionSummaryState,
+			sessionSummary?.processStartedAt,
+			activeSubagents,
+			hookContext?.backgroundTasks,
+		],
 	);
 	useRegisterBackgroundTasksPane(sessionId, backgroundTasks, subagents.length);
 	const runningBackgroundLaunches = useMemo(

@@ -33,6 +33,8 @@ export interface BackgroundTaskLiveState {
 	/** The latest Stop hook's `background_tasks`. */
 	hookTasks?: readonly HookBackgroundTaskPayload[];
 	runningSubagents?: readonly ActiveSubagent[];
+	/** When the session's current CLI process started (its registry entry); in-process teammates spawned before it are gone. */
+	processStartedAt?: number | null;
 }
 
 const KIND_LABELS: Record<BackgroundTaskKind, string> = {
@@ -167,6 +169,18 @@ export function parseTaskNotification(text: string): TaskNotification | null {
 	};
 }
 
+const MONITOR_EXPIRED = "[Monitor expired";
+
+/** The `<task-notification>` a queued_command attachment or a queue enqueue carries, or null. */
+function queuedNotification(record: Readonly<Record<string, unknown>>): string | null {
+	if (record["type"] === "attachment") {
+		const attachment = asRecord(record["attachment"]);
+		return attachment?.["type"] === "queued_command" ? asString(attachment["prompt"]) : null;
+	}
+	if (record["type"] === "queue-operation" && record["operation"] === "enqueue") return asString(record["content"]);
+	return null;
+}
+
 function hookKind(type: string): BackgroundTaskKind {
 	if (type.includes("bash") || type.includes("shell")) return "bash";
 	if (type.includes("agent")) return "agent";
@@ -235,12 +249,12 @@ export function extractBackgroundTasks(
 		tracked.settledAt = ++clock;
 	};
 
-	for (const record of records) {
-		const message = asRecord(record["message"]);
-		const content = message?.["content"];
-
-		if (record["type"] === "user" && typeof content === "string") {
-			if (!content.startsWith("<task-notification>")) continue;
+	// The CLI writes one notification as a user record, a queued_command attachment or a queue enqueue, often more than one of these.
+	const seenNotifications = new Set<string>();
+	const applyNotification = (content: string): void => {
+		if (!content.startsWith("<task-notification>") || seenNotifications.has(content)) return;
+		seenNotifications.add(content);
+		{
 			const toolUseId = tag(content, "tool-use-id");
 			const status = notificationStatus(tag(content, "status"));
 			const summary = tag(content, "summary");
@@ -255,7 +269,23 @@ export function extractBackgroundTasks(
 				const result = tag(content, "result");
 				if (result !== null) tracked.task.output = result;
 				if (status !== null) settle(tracked, status);
+				// A monitor ends with an expiry event that carries no status.
+				else if (event?.startsWith(MONITOR_EXPIRED) === true) settle(tracked, "completed");
 			}
+		}
+	};
+
+	for (const record of records) {
+		const message = asRecord(record["message"]);
+		const content = message?.["content"];
+
+		if (record["type"] === "user" && typeof content === "string") {
+			applyNotification(content);
+			continue;
+		}
+		const queued = queuedNotification(record);
+		if (queued !== null) {
+			applyNotification(queued);
 			continue;
 		}
 
@@ -314,6 +344,26 @@ export function extractBackgroundTasks(
 			const isError = block["is_error"] === true;
 
 			const agent = pendingAgents.get(toolUseId);
+			if (agent !== undefined && result?.["status"] === "teammate_spawned") {
+				// An in-process teammate lives as long as the process that spawned it; upstream counts it as a task.
+				pendingAgents.delete(toolUseId);
+				const spawnedAt = Date.parse(asString(record["timestamp"]) ?? "");
+				if (live.processStartedAt == null || !(spawnedAt >= live.processStartedAt)) continue;
+				const agentId =
+					asString(result["agent_id"]) ?? asString(result["agentId"]) ?? launchedTaskId(result, text);
+				const tracked = track({
+					id: agentId ?? toolUseId,
+					toolUseId,
+					kind: "agent",
+					description: agent.description,
+					command: null,
+					status: "running",
+					output: null,
+					summary: null,
+				});
+				if (agentId !== null) byTaskId.set(agentId, tracked);
+				continue;
+			}
 			if (agent !== undefined) {
 				pendingAgents.delete(toolUseId);
 				if (result?.["isAsync"] === true || text.startsWith("Async agent launched")) {
