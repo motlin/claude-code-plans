@@ -1,7 +1,7 @@
 import type {Meta, StoryObj} from "@storybook/react-vite";
 import {FileTree} from "../../components/file-tree";
 import type {FileTreeNode} from "../../lib/plugins";
-import {withRouterAndQuery} from "../sidebar/decorators";
+import {withRouterAndQuery} from "../sidebar/router-and-query";
 
 const simpleTree: FileTreeNode = {
 	path: "",

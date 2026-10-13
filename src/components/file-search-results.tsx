@@ -3,8 +3,8 @@ import {ChevronDown, ChevronRight, FolderSearch, LoaderCircle, Search, X} from "
 import {Fragment, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode} from "react";
 import {fileSearchQueryOptions, fileSearchRootsQueryOptions, type FileSearchResult} from "../lib/api/search";
 import {useDebouncedValue} from "../hooks/use-debounced-value";
-import {encodeFilePath} from "../lib/api/file";
 import {formatCount} from "../lib/pluralize";
+import {fileSearchViewerTarget} from "./file-search-viewer-target";
 
 const DEBOUNCE_MILLISECONDS = 200;
 const MINIMUM_QUERY_LENGTH = 2;
@@ -54,33 +54,6 @@ function scopeSegments(root: string, scope: string): Array<{label: string; path:
 		segments.push({label, path});
 	}
 	return segments;
-}
-
-export function fileSearchViewerTarget(
-	absolutePath: string,
-	lineNumber: number,
-): {
-	absolutePath: string;
-	lineNumber: number;
-} {
-	if (!absolutePath.startsWith("/") || !Number.isSafeInteger(lineNumber) || lineNumber < 1) {
-		throw new Error("File search results require an absolute path and positive line number");
-	}
-	return {absolutePath, lineNumber};
-}
-
-export function fileSearchViewerNavigation(
-	absolutePath: string,
-	lineNumber: number,
-): {
-	pathToken: string;
-	hash: string;
-} {
-	const target = fileSearchViewerTarget(absolutePath, lineNumber);
-	return {
-		pathToken: encodeFilePath(target.absolutePath),
-		hash: `L${target.lineNumber}`,
-	};
 }
 
 interface FileSearchResultsProps {

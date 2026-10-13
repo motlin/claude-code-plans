@@ -7,7 +7,7 @@ import type {SlashCommand} from "../src/lib/slash-commands";
 import type {TranscriptMode} from "../src/lib/transcript-mode";
 import {processTranscript} from "../src/lib/transcript";
 
-vi.mock("../src/components/settings-provider", () => ({
+vi.mock("../src/components/settings-context", () => ({
 	useSettings: () => ({
 		settings: {showDebug: false, codeThemeLight: "claude-light", codeThemeDark: "github-dark"},
 	}),

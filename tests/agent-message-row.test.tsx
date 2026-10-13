@@ -8,7 +8,7 @@ import {processTranscript} from "../src/lib/transcript";
 import type {Subagent} from "../src/lib/subagents";
 import type {TranscriptMode} from "../src/lib/transcript-mode";
 
-vi.mock("../src/components/settings-provider", () => ({
+vi.mock("../src/components/settings-context", () => ({
 	useSettings: () => ({
 		settings: {showDebug: false, codeThemeLight: "claude-light", codeThemeDark: "github-dark"},
 	}),

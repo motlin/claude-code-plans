@@ -21,7 +21,7 @@ import {ThemeProvider} from "../../src/components/theme-provider";
 import {ToastProvider} from "../../src/components/toast";
 import type {AppDb} from "../../src/lib/db/connection";
 import {FILE_MENTION_DEBOUNCE_MS} from "../../src/lib/file-mentions";
-import {ClaudeEventsProvider} from "../../src/hooks/use-claude-events";
+import {ClaudeEventsProvider} from "../../src/components/claude-events-provider";
 import {COMPOSER_DRAFT_DEBOUNCE_MS} from "../../src/hooks/use-composer-draft";
 import {Route as RootRoute} from "../../src/routes/__root";
 import {Route as HomeRoute} from "../../src/routes/index";

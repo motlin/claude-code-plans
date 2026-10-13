@@ -26,7 +26,7 @@ import {useResizableWidth} from "../../hooks/use-resizable-width";
 import {useShortcutKeys} from "../../hooks/use-shortcut";
 import {useSessionIdentity} from "../../hooks/use-session-identity";
 import {Tooltip} from "../ui/tooltip";
-import {useSettings} from "../settings-provider";
+import {useSettings} from "../settings-context";
 
 export function Sidebar({
 	collapsed,

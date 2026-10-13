@@ -4,7 +4,8 @@ import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {registerPane} from "../src/components/panes/pane-registry";
-import {TileHost, usePaneHost} from "../src/components/panes/tile-host";
+import {usePaneHost} from "../src/components/panes/pane-host-context";
+import {TileHost} from "../src/components/panes/tile-host";
 import {PHONE_SHEET_QUERY} from "../src/lib/use-phone-sheet";
 
 class FakeStorage implements Storage {

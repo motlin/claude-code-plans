@@ -1,7 +1,7 @@
 import type {Meta, StoryObj} from "@storybook/react-vite";
 import {WriteRenderer} from "../../../components/tool-renderers/write-renderer";
 import type {ClientToolCall} from "../../../components/tool-renderers/types";
-import {withRouterAndQuery} from "../../sidebar/decorators";
+import {withRouterAndQuery} from "../../sidebar/router-and-query";
 
 function makeToolCall(overrides: Partial<ClientToolCall> & {input: ClientToolCall["input"]}): ClientToolCall {
 	return {

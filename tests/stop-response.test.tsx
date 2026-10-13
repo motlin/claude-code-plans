@@ -3,7 +3,8 @@
 import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {Composer} from "../src/components/composer";
-import {useWorkingMarkerState, WorkingMarker} from "../src/components/working-marker";
+import {WorkingMarker} from "../src/components/working-marker";
+import {useWorkingMarkerState} from "../src/components/use-working-marker-state";
 import {canStopResponse, STOP_FORCE_WINDOW_MS, useStopResponse} from "../src/hooks/use-stop-response";
 import {sendHerdrInterrupt} from "../src/lib/api/herdr";
 import {getShortcut} from "../src/lib/shortcuts/registry";

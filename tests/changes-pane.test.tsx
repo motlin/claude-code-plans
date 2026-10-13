@@ -3,12 +3,8 @@
 import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
-import {
-	ChangesPaneView,
-	isLargeDiff,
-	LARGE_DIFF_MAX_FILES,
-	LARGE_DIFF_MAX_LINES,
-} from "../src/components/changes/changes-pane";
+import {ChangesPaneView} from "../src/components/changes/changes-pane";
+import {isLargeDiff, LARGE_DIFF_MAX_FILES, LARGE_DIFF_MAX_LINES} from "../src/components/changes/large-diff";
 import {SettingsProvider} from "../src/components/settings-provider";
 import type {SessionDiffFile, SessionDiffResponse, SessionDiffScopesResponse} from "../src/lib/api/session-diff";
 import {installLocalStorage} from "./fake-storage";

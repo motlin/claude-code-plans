@@ -1,7 +1,7 @@
 import {type KeyboardEvent, type ReactNode, useCallback, useLayoutEffect, useRef, useState} from "react";
 
 import {Tooltip} from "../ui/tooltip";
-import {useSettingsRowIds} from "./settings-row";
+import {useSettingsRowIds} from "./settings-row-context";
 
 /*
  * The claude.ai/code SegmentedControl: a 32px radiogroup on a 5%-alpha track

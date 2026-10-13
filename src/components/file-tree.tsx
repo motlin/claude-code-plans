@@ -1,31 +1,13 @@
 import {useState} from "react";
 import {Link} from "@tanstack/react-router";
-import {ChevronRight, Folder, FileText, FileCode, FileJson, File} from "lucide-react";
+import {ChevronRight, Folder} from "lucide-react";
 import type {FileTreeNodeData as FileTreeNode} from "../lib/api/plugins";
 import {toPluginFileSlug} from "../lib/md-slug";
+import {getFileIcon} from "./file-icon";
 
 function getName(node: FileTreeNode) {
 	const i = node.path.lastIndexOf("/");
 	return i === -1 ? node.path : node.path.slice(i + 1);
-}
-
-export function getFileIcon(name: string) {
-	const ext = name.split(".").pop()?.toLowerCase();
-	switch (ext) {
-		case "md":
-			return FileText;
-		case "ts":
-		case "tsx":
-		case "js":
-		case "jsx":
-		case "py":
-		case "sh":
-			return FileCode;
-		case "json":
-			return FileJson;
-		default:
-			return File;
-	}
 }
 
 function FileTreeItem({node, pluginId, depth}: {node: FileTreeNode; pluginId: string; depth: number}) {

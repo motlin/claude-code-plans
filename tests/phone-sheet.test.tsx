@@ -12,7 +12,8 @@ import {
 import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {AppFrame} from "../src/components/app-frame";
-import {DEFAULTS, SettingsProvider} from "../src/components/settings-provider";
+import {SettingsProvider} from "../src/components/settings-provider";
+import {DEFAULTS} from "../src/components/settings-context";
 import {ToastProvider} from "../src/components/toast";
 import {applicationSettingsQueryOptions} from "../src/lib/api/application-settings";
 import {approvalsQueryOptions} from "../src/lib/api/approvals";

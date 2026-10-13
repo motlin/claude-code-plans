@@ -1,6 +1,11 @@
 import {createFileRoute, Outlet, useLocation, useNavigate} from "@tanstack/react-router";
-import {CustomizeHeader, dropEmpty} from "../components/customize/customize-header";
-import {type CustomizeSearch, customizeSearchSchema, sectionForPathname} from "../components/customize/sections";
+import {CustomizeHeader} from "../components/customize/customize-header";
+import {
+	type CustomizeSearch,
+	customizeSearchSchema,
+	dropEmpty,
+	sectionForPathname,
+} from "../components/customize/sections";
 
 export const Route = createFileRoute("/customize")({
 	component: CustomizeLayout,

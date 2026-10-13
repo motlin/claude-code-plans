@@ -1,7 +1,8 @@
 import type {Meta, StoryObj} from "@storybook/react-vite";
 import {Sidebar} from "../../components/sidebar/Sidebar";
 import {activeSessionsQueryOptions} from "../../lib/api/sessions";
-import {createStoryQueryClient, StoryWrapper} from "./decorators";
+import {StoryWrapper} from "./decorators";
+import {createStoryQueryClient} from "./router-and-query";
 
 function createSeededQueryClient() {
 	const queryClient = createStoryQueryClient();

@@ -1,6 +1,6 @@
 import type {Meta, StoryObj} from "@storybook/react-vite";
 import {SubagentTree} from "../../components/subagent-tree";
-import {withRouterAndQuery} from "../sidebar/decorators";
+import {withRouterAndQuery} from "../sidebar/router-and-query";
 import {makeAgent} from "./subagent-fixtures";
 
 const agents = [

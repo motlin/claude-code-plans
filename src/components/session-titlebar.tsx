@@ -26,16 +26,13 @@ import {getSessionMenuItems, type SessionMenuSession} from "../lib/session-menu-
 import {ArchivedBadge} from "./archived-badge";
 import {SessionCostPill} from "./session-cost-pill";
 import {SessionEnvironmentGlyph} from "./session-environment-glyph";
-import {
-	MenuEntries,
-	SESSION_MENU_CAPABILITIES,
-	type TranscriptViewActions,
-	useRenameAfterMenuClose,
-	useSessionMenuRunner,
-} from "./session-actions-menu";
-import {SessionTitleButton, useSessionTitleShortcuts} from "./session-title-heading";
+import {MenuEntries, SESSION_MENU_CAPABILITIES, type TranscriptViewActions} from "./session-actions-menu";
+import {useRenameAfterMenuClose} from "./use-rename-after-menu-close";
+import {useSessionMenuRunner} from "./use-session-menu-runner";
+import {SessionTitleButton} from "./session-title-heading";
+import {useSessionTitleShortcuts} from "./use-session-title-shortcuts";
 import {TitlebarWidthContext} from "./titlebar-width";
-import {useToast} from "./toast";
+import {useToast} from "./toast-context";
 import {
 	ContextMenu,
 	ContextMenuTrigger,

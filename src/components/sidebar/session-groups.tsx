@@ -41,10 +41,11 @@ import {
 } from "../../lib/sidebar-selection";
 import {familyKey, useSidebarState} from "../../lib/sidebar-store";
 import {assertNever} from "../../lib/assert-never";
-import {useSettings} from "../settings-provider";
-import {useToast} from "../toast";
+import {useSettings} from "../settings-context";
+import {useToast} from "../toast-context";
 import {LoadingBars} from "./primitives/LoadingBars";
-import {EmptyGroupSection, GroupSection, ROW_CLASS, type SidebarSessionRow, toGroupRow} from "./session-group-section";
+import {EmptyGroupSection, GroupSection, ROW_CLASS} from "./session-group-section";
+import {type SidebarSessionRow, toGroupRow} from "./sidebar-session-row";
 import {SidebarSelectionContext, type SidebarSelectionApi} from "./selection-context";
 import {PinnedSubList} from "./sublists";
 import {useRovingFocus} from "./use-roving-focus";

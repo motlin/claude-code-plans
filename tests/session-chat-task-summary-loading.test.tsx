@@ -3,14 +3,14 @@
 import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat} from "../src/components/session-chat";
-import {TranscriptActionsContext} from "../src/components/transcript-context-menu";
+import {TranscriptActionsContext} from "../src/components/transcript-actions-context";
 import {writeClipboardText} from "../src/lib/clipboard";
 import {processTranscript} from "../src/lib/transcript";
 
 // Its own file: the tasks view is lazy, and once any earlier test in the module graph has loaded it,
 // the Loading tasks… fallback this test asserts on never renders.
 
-vi.mock("../src/components/settings-provider", () => ({
+vi.mock("../src/components/settings-context", () => ({
 	useSettings: () => ({settings: {showDebug: false, codeThemeLight: "claude-light", codeThemeDark: "github-dark"}}),
 }));
 vi.mock("../src/lib/hmr-persist", () => ({hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize()}));

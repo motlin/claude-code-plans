@@ -18,13 +18,14 @@ import {sessionIdentityQueryOptions} from "../src/lib/api/session-identity";
 import * as measurements from "../src/lib/transcript-measurements";
 import {SessionChat} from "../src/components/session-chat";
 import {AppFrame} from "../src/components/app-frame";
-import {TileHost, usePaneHost} from "../src/components/panes/tile-host";
+import {usePaneHost} from "../src/components/panes/pane-host-context";
+import {TileHost} from "../src/components/panes/tile-host";
 import {registerPane} from "../src/components/panes/pane-registry";
 import {SessionTileFrame, type SessionTileScrollPosition} from "../src/components/session-tile-frame";
 import type {SessionLine} from "../src/lib/sessions";
 
 vi.mock("../src/components/sidebar/index", () => ({Sidebar: () => null}));
-vi.mock("../src/components/settings-provider", () => ({
+vi.mock("../src/components/settings-context", () => ({
 	useSettings: () => ({settings: {showDebug: false, codeThemeLight: "claude-light", codeThemeDark: "github-dark"}}),
 }));
 vi.mock("../src/lib/hmr-persist", () => ({hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize()}));

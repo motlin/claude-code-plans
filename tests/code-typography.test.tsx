@@ -3,7 +3,7 @@
 import {readFileSync} from "node:fs";
 import {cleanup, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
-import {DIFFS_STYLE_OVERRIDES} from "../src/components/changes/diff-file";
+import {DIFFS_STYLE_OVERRIDES} from "../src/components/changes/diffs-config";
 import {EditRenderer} from "../src/components/tool-renderers/edit-renderer";
 import {ReadRenderer} from "../src/components/tool-renderers/read-renderer";
 import {WriteRenderer} from "../src/components/tool-renderers/write-renderer";

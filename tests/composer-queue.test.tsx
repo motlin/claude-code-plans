@@ -4,7 +4,7 @@ import {act, cleanup, fireEvent, render, renderHook, screen, waitFor, within} fr
 import {useState} from "react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {Composer, type ComposerQueueView} from "../src/components/composer";
-import {useLiveHerdrPrompt} from "../src/components/session-page";
+import {useLiveHerdrPrompt} from "../src/components/use-live-herdr-prompt";
 import {type DeliveryResult, useComposerQueue} from "../src/hooks/use-composer-queue";
 import {useStopResponse} from "../src/hooks/use-stop-response";
 import {HerdrRequestError, isAgentNotReady, sendHerdrPrompt} from "../src/lib/api/herdr";

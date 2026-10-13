@@ -9,7 +9,7 @@ import {
 	type SubagentTreeEntry,
 	type SubagentTreeNode,
 } from "../lib/subagent-tree";
-import {formatDuration} from "./tool-renderers/shared";
+import {formatDuration} from "../lib/format-duration";
 import {formatModelName} from "../lib/model-name";
 import {useClaudeEvents} from "../hooks/use-claude-events";
 import {mergeLiveSubagents} from "../lib/live-subagent-store";

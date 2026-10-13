@@ -1,6 +1,6 @@
 import {describe, expect, it} from "vite-plus/test";
 
-import {resolveLink} from "../src/components/linked-json";
+import {resolveLink} from "../src/components/linked-json-links";
 
 describe("resolveLink", () => {
 	it("drops the Markdown extension from plan links", () => {

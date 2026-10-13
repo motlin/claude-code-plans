@@ -1,7 +1,7 @@
 import type {ITheme} from "ghostty-web";
 import {useEffect, useMemo, useState} from "react";
-import {useSettings} from "../components/settings-provider";
-import {useResolvedTheme} from "../components/theme-provider";
+import {useSettings} from "../components/settings-context";
+import {useResolvedTheme} from "../components/theme-context";
 import {type CodeThemeId, loadCodeTheme} from "../lib/code-themes";
 import {terminalThemeFromCodeTheme} from "../lib/terminal-theme";
 

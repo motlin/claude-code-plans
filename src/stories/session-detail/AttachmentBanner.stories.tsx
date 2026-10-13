@@ -1,7 +1,8 @@
 import type {Meta, StoryObj} from "@storybook/react-vite";
 import {AttachmentBanner} from "../../components/attachment-banner";
 import {plansQueryOptions, type PlanListItem} from "../../lib/api/plans";
-import {createStoryQueryClient, StoryWrapper, withRouterAndQuery} from "../sidebar/decorators";
+import {StoryWrapper} from "../sidebar/decorators";
+import {createStoryQueryClient, withRouterAndQuery} from "../sidebar/router-and-query";
 
 const meta = {
 	title: "Session Detail/AttachmentBanner",

@@ -3,7 +3,8 @@
 import {cleanup, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it} from "vite-plus/test";
 
-import {WaitingForInputNotice, showsWaitingForInputNotice} from "../src/components/approval-card";
+import {WaitingForInputNotice} from "../src/components/approval-card";
+import {showsWaitingForInputNotice} from "../src/components/waiting-for-input-notice";
 
 afterEach(cleanup);
 

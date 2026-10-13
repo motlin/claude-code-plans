@@ -4,7 +4,7 @@ import {
 	buildChangedFileTree,
 	type ChangedFileInput,
 	classifyChangedFile,
-} from "../src/components/changes/changes-file-tree";
+} from "../src/components/changes/changed-file-tree";
 
 function file(path: string, additions = 1, deletions = 0): ChangedFileInput {
 	return {path, additions, deletions};

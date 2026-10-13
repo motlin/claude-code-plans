@@ -50,19 +50,11 @@ function sortedRecord(map: Map<string, number>): Record<string, number> {
 	return Object.fromEntries([...map].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
 }
 
-function onSubtreeRender(id: string): void {
+/** The `<Profiler>` callback behind `PerfSubtree`: counts commits under `commitsBySubtree[id]`. */
+export function onSubtreeRender(id: string): void {
 	if (activeRecorder?.measuring === true) {
 		increment(activeRecorder.commitsBySubtree, id);
 	}
-}
-
-/** A named `<Profiler>` whose commits are reported under `commitsBySubtree[id]`. */
-export function PerfSubtree({id, children}: {id: string; children: ReactNode}) {
-	return (
-		<Profiler id={id} onRender={onSubtreeRender}>
-			{children}
-		</Profiler>
-	);
 }
 
 /** Counts this component's renders under `rendersByComponent[name]` while an interaction is measured. */

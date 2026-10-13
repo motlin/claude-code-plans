@@ -1,5 +1,5 @@
 import {describe, expect, it} from "vite-plus/test";
-import {layoutGraph, type GraphTask} from "../src/components/task-dependency-graph";
+import {layoutGraph, type GraphTask} from "../src/components/task-dependency-graph-layout";
 
 function makeTask(id: string, overrides: Partial<GraphTask> = {}): GraphTask {
 	return {

@@ -3,7 +3,8 @@
 import {act, cleanup, fireEvent, render, type RenderResult, screen} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
-import {BranchStrip, type BranchStripSession, branchStripVisible, middleTruncate} from "../src/components/branch-strip";
+import {BranchStrip} from "../src/components/branch-strip";
+import {type BranchStripSession, branchStripVisible, middleTruncate} from "../src/components/branch-strip-model";
 import {ToastProvider} from "../src/components/toast";
 
 let stripWidth = 800;

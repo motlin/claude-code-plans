@@ -29,7 +29,7 @@ import type {ReviewFinding} from "../../lib/review-diff";
 import {CoachMark} from "../coach-mark";
 import {PANE_HEADER_ICON_BUTTON_CLASS} from "../panes/pane-classes";
 import type {PaneChrome} from "../panes/pane-registry";
-import {type Settings, useSettings} from "../settings-provider";
+import {type Settings, useSettings} from "../settings-context";
 import {
 	Menu,
 	MenuCheckboxItem,
@@ -43,23 +43,15 @@ import {
 	MenuSubTrigger,
 	MenuTrigger,
 } from "../ui/menu";
-import {useToast} from "../toast";
+import {useToast} from "../toast-context";
 import {Tooltip} from "../ui/tooltip";
 import {ChangedFilesSidebar} from "./changes-file-tree";
 import {openDiffCommentDraft, useDiffComments} from "../../lib/diff-comments";
 import {DiffContextMenu} from "./diff-context-menu";
 import {DiffFile, type DiffFileAnnotation, DiffFileHeader, type DiffLineRange} from "./diff-file";
 import {GoToFile} from "./go-to-file";
-import {commentAnnotations} from "./line-comment-card";
-import {findingAnnotations} from "./review-finding-annotation";
-
-/**
- * Large-diff thresholds. Upstream collapses every file of a large diff but its
- * threshold was not decoded, so these are local picks: more than 100 files or
- * more than 10,000 changed lines (additions + deletions) counts as large.
- */
-export const LARGE_DIFF_MAX_FILES = 100;
-export const LARGE_DIFF_MAX_LINES = 10_000;
+import {commentAnnotations, findingAnnotations} from "./diff-annotations";
+import {isLargeDiff} from "./large-diff";
 
 /** Upstream offers "Side by side" only when the pane is at least this wide. */
 const SIDE_BY_SIDE_MIN_WIDTH = 560;
@@ -68,12 +60,6 @@ const FILE_LIST_FIT_MIN_WIDTH = 320;
 export const DIFF_FILE_LIST_COACH_MARK_KEY = "ccb.coachmark.diffFileList";
 
 const TOO_LARGE_TO_EXPAND = "This diff is too large to expand at once. Select a file to expand it.";
-
-export function isLargeDiff(files: readonly SessionDiffFile[]): boolean {
-	if (files.length > LARGE_DIFF_MAX_FILES) return true;
-	const lines = files.reduce((sum, file) => sum + file.additions + file.deletions, 0);
-	return lines > LARGE_DIFF_MAX_LINES;
-}
 
 type ScopeLabel = {kind: "range"; base: string; head: string} | {kind: "text"; text: string};
 

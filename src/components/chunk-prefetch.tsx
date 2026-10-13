@@ -1,8 +1,8 @@
 import {useEffect} from "react";
 import {useIdlePrefetch} from "../hooks/use-idle-prefetch";
 import {warmOnIntent} from "../lib/idle-prefetch";
-import {loadCommandPalette} from "./command-palette-entry";
-import {loadSettingsDialog} from "./settings/settings-dialog-entry";
+import {loadCommandPalette} from "./command-palette-loader";
+import {loadSettingsDialog} from "./settings/settings-dialog-loader";
 
 const SHELL_CHUNKS = [loadCommandPalette, loadSettingsDialog];
 const INTENT = {

@@ -5,7 +5,8 @@ import {SessionRouteIdentity} from "../components/session-route-identity";
 import {sessionIdentityFailure} from "../lib/api/session-identity";
 import {sessionQueryKeys} from "../lib/api/sessions";
 import {sessionSourceQueryOptions} from "../lib/api/session-source";
-import {LinkedJson, type LinkedJsonContext} from "../components/linked-json";
+import {LinkedJson} from "../components/linked-json";
+import type {LinkedJsonContext} from "../components/linked-json-links";
 import {Bot, MessageSquare, Cpu, FileText, AlertTriangle} from "lucide-react";
 
 export interface PairedResult {

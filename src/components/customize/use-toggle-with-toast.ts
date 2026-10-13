@@ -1,5 +1,5 @@
 import {isSettingsConflict, type SettingsToggle, useSettingsToggle} from "../../lib/api/customize";
-import {useToast} from "../toast";
+import {useToast} from "../toast-context";
 
 /**
  * Fire an optimistic enable/disable write and report it: "<name> enabled" /

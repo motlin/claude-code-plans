@@ -4,13 +4,13 @@ import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
+import {FilesPaneView} from "../src/components/panes/files-pane";
+import {FilesPaneShortcut} from "../src/components/panes/files-pane-shortcut";
 import {
 	DEFAULT_FILE_SOURCE_SELECTION,
 	FILE_SOURCE_SELECTION_STORAGE_KEY,
-	FilesPaneView,
-} from "../src/components/panes/files-pane";
-import {FilesPaneShortcut} from "../src/components/panes/files-pane-entry";
-import {sessionFileLabel} from "../src/components/panes/session-files-list";
+	sessionFileLabel,
+} from "../src/components/panes/session-file-sources";
 import {registerPane} from "../src/components/panes/pane-registry";
 import {TileHost} from "../src/components/panes/tile-host";
 import {SettingsProvider} from "../src/components/settings-provider";

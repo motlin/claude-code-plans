@@ -10,7 +10,7 @@ import {
 	groupContentSearchResults,
 	type MarkedText,
 } from "../../lib/files-content-search";
-import {getFileIcon} from "../file-tree";
+import {getFileIcon} from "../file-icon";
 
 const QUERY_DEBOUNCE_MS = 120;
 

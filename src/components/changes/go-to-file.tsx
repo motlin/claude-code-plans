@@ -3,7 +3,7 @@ import {type KeyboardEvent, type ReactNode, useEffect, useId, useRef, useState} 
 
 import {useShortcut, useShortcutKeys} from "../../hooks/use-shortcut";
 import {type MatchRange, goToFileFooter, searchPaths} from "../../lib/fuzzy-path";
-import {getFileIcon} from "../file-tree";
+import {getFileIcon} from "../file-icon";
 import {Tooltip} from "../ui/tooltip";
 import {DiffCounts} from "./changes-file-tree";
 

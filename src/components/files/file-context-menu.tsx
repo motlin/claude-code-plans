@@ -6,26 +6,15 @@ import type {AttachContextHandler, ContextAttachment} from "../../lib/context-at
 import type {FileTabsAction} from "../../lib/file-tabs";
 import {requestFindInFile} from "../../lib/find-in-file-request";
 import {vscodeFolderUrl} from "../../lib/session-open-in";
-import {useToast} from "../toast";
+import {useToast} from "../toast-context";
 import {MenuItem, MenuSeparator, MenuSub, MenuSubContent, MenuSubTrigger} from "../ui/menu";
+import {mentionPath, relativeToCwd} from "./mention-path";
 
 /*
  * The Files pane's right-click menus, copied from claude.ai/code: tree rows,
  * open-file tabs and the viewer share "Attach as context" and Copy ▸, and each
  * surface adds its own actions below them.
  */
-
-/** A file's path relative to the working directory, or null outside it. */
-function relativeToCwd(path: string, cwd: string | undefined): string | null {
-	if (cwd === undefined) return null;
-	const prefix = `${cwd.replace(/\/+$/, "")}/`;
-	return path.startsWith(prefix) ? path.slice(prefix.length) : null;
-}
-
-/** The path an `@` mention uses: relative inside the working directory, absolute outside. */
-export function mentionPath(path: string, cwd: string | undefined): string {
-	return relativeToCwd(path, cwd) ?? path;
-}
 
 /** `vscode://file/<abs>:<line>`, which opens the file at that line in VS Code. */
 function vscodeFileUrl(path: string, line: number): string {

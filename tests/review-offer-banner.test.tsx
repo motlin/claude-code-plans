@@ -1,5 +1,5 @@
 import {describe, expect, it} from "vite-plus/test";
-import {reviewOfferAction} from "../src/components/working-copy-review-banner";
+import {reviewOfferAction} from "../src/components/working-copy-review-offer";
 
 describe("working-copy review offer mode", () => {
 	it("maps every persisted mode to the Stop-hook action", () => {

@@ -23,7 +23,7 @@ const ALICE = "local-alice-100";
 const BOB = "local-bob-200";
 const harness = vi.hoisted(() => ({liveSubagents: new Map<string, LiveSubagentNode>()}));
 vi.mock("../src/hooks/use-claude-events", () => ({useClaudeEvents: () => harness}));
-vi.mock("../src/components/settings-provider", () => ({
+vi.mock("../src/components/settings-context", () => ({
 	useSettings: () => ({settings: {defaultSubagentView: "tree"}}),
 }));
 vi.mock("../src/lib/hmr-persist", () => ({

@@ -4,7 +4,8 @@ import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {ChangesPaneView, DIFF_FILE_LIST_COACH_MARK_KEY} from "../src/components/changes/changes-pane";
-import {SettingsProvider, settingStorageKey} from "../src/components/settings-provider";
+import {SettingsProvider} from "../src/components/settings-provider";
+import {settingStorageKey} from "../src/components/settings-context";
 import type {SessionDiffFile, SessionDiffResponse} from "../src/lib/api/session-diff";
 import {installLocalStorage} from "./fake-storage";
 

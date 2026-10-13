@@ -172,18 +172,6 @@ export function CustomizeHeader({
 	);
 }
 
-/** The search with empty and unset keys removed, so URLs and state stay minimal. */
-export function dropEmpty(search: CustomizeSearch): CustomizeSearch {
-	const result: CustomizeSearch = {};
-	if (search.q !== undefined && search.q !== "") result.q = search.q;
-	if (search.view !== undefined) result.view = search.view;
-	if (search.filter !== undefined) result.filter = search.filter;
-	if (search.sort !== undefined) result.sort = search.sort;
-	if (search.category !== undefined) result.category = search.category;
-	if (search.order !== undefined) result.order = search.order;
-	return result;
-}
-
 interface SearchFieldProps {
 	placeholder: string;
 	value: string;

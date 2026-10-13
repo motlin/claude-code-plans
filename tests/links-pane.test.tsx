@@ -8,15 +8,15 @@ import {act, cleanup, fireEvent, render, renderHook, screen, waitFor} from "@tes
 import {useState, type ReactNode} from "react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
+import {LinksPaneView} from "../src/components/panes/links-pane";
 import {
 	INCLUDE_TOOLS_AND_THINKING_STORAGE_KEY,
 	LINK_ENRICHERS,
-	LinksPaneView,
 	useExtractedSessionLinks,
 	useGroupedSessionLinks,
 	useIncludeToolsAndThinking,
 	useSessionLinkDisplay,
-} from "../src/components/panes/links-pane";
+} from "../src/components/panes/session-link-display";
 import {useRegisterLinksPane} from "../src/components/panes/links-pane-entry";
 import {usePaneDefinitions} from "../src/components/panes/pane-registry";
 import type {JumpTargetWindow} from "../src/components/jump-target-context";
@@ -35,7 +35,7 @@ vi.mock("../src/lib/jump-to-message", () => ({
 	jumpToMessage: vi.fn(),
 }));
 
-vi.mock("../src/components/settings-provider", () => ({
+vi.mock("../src/components/settings-context", () => ({
 	useSettings: () => ({
 		settings: {showThinking: true, showTools: true, linkCategoryRules: []},
 	}),

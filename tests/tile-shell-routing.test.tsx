@@ -25,12 +25,11 @@ vi.mock("../src/components/sidebar/index", () => ({Sidebar: () => null}));
 vi.mock("../src/components/theme-provider", () => ({
 	ThemeProvider: ({children}: {children: ReactNode}): ReactNode => children,
 }));
-vi.mock("../src/components/settings-provider", async (importOriginal) => ({
-	...(await importOriginal<typeof import("../src/components/settings-provider")>()),
+vi.mock("../src/components/settings-provider", () => ({
 	SettingsProvider: ({children}: {children: ReactNode}): ReactNode => children,
 }));
 vi.mock("../src/components/toast", () => ({ToastProvider: ({children}: {children: ReactNode}): ReactNode => children}));
-vi.mock("../src/hooks/use-claude-events", () => ({
+vi.mock("../src/components/claude-events-provider", () => ({
 	ClaudeEventsProvider: ({children}: {children: ReactNode}): ReactNode => children,
 }));
 vi.mock("@tanstack/react-query-devtools", () => ({ReactQueryDevtools: () => null}));

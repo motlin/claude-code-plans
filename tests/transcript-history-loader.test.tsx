@@ -4,12 +4,8 @@ import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {render, screen, waitFor} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
-import {
-	TranscriptHistoryLoader,
-	TranscriptTopFade,
-	findScrollContainer,
-	toObserverRoot,
-} from "../src/components/transcript-history-loader";
+import {TranscriptHistoryLoader, TranscriptTopFade} from "../src/components/transcript-history-loader";
+import {findScrollContainer, toObserverRoot} from "../src/components/scroll-container";
 import {sessionQueryKeys, type TranscriptData} from "../src/lib/api/sessions";
 
 /**

@@ -3,42 +3,17 @@ import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {z} from "zod";
 
 import {useShortcut} from "../../hooks/use-shortcut";
-import type {TileId} from "../../lib/pane-layout";
 import {dispatchTerminalTabs, useShellTabs} from "../../lib/shell-tabs";
 import {CLAUDE_TAB_ID, type CloseGuard, closeGuard} from "../../lib/terminal-tabs";
 import {ConfirmDialog} from "../confirm-dialog";
 import {type ConnectionStatus, HerdrTerminal} from "../herdr-terminal";
 import {ShellTerminal} from "../shell-terminal";
 import {Menu, MenuContent, MenuItem, MenuTrigger} from "../ui/menu";
-import {type PaneChrome, registerPane} from "./pane-registry";
+import type {PaneChrome} from "./pane-registry";
+import {terminalShortcutAction} from "./terminal-shortcut-action";
 import {GHOST_ICON_BUTTON, type TerminalTabActions, TerminalTabStrip} from "./terminal-tab-strip";
-import {useOptionalPaneHost, usePaneHost} from "./tile-host";
+import {useOptionalPaneHost, usePaneHost} from "./pane-host-context";
 import {assertNever} from "../../lib/assert-never";
-
-export type TerminalShortcutAction = "noop" | "open" | "focus" | "close" | "caret";
-
-/**
- * Upstream's ⌃` state machine: nothing without a transport, open a closed
- * pane, pull focus over from another tile, close when focus is already inside
- * the terminal, and otherwise put the caret back into the active terminal.
- */
-export function terminalShortcutAction({
-	available,
-	open,
-	focusedTile,
-	focusInTerminal,
-}: {
-	available: boolean;
-	open: boolean;
-	focusedTile: TileId;
-	focusInTerminal: boolean;
-}): TerminalShortcutAction {
-	if (!available) return "noop";
-	if (!open) return "open";
-	if (focusInTerminal) return "close";
-	if (focusedTile !== "terminal") return "focus";
-	return "caret";
-}
 
 const TERMINAL_FOCUS_SELECTOR = '[data-pane-kind="terminal"] [data-terminal-focus]';
 
@@ -423,40 +398,6 @@ export function TerminalPane({
 function noop(): void {}
 
 async function resolved(): Promise<void> {}
-
-/**
- * Registers the `terminal` pane kind while it has something to show: a live
- * herdr pane for this session (the Claude tab), Shell tabs, or a Claude tab
- * whose herdr pane has since closed, mirroring upstream showing the toggle
- * only when a transport exists. `interactive` follows the herdr writes
- * setting; without it the Claude tab stays a read-only observer.
- */
-export function useRegisterTerminalPane(
-	sessionId: string,
-	{livePane, interactive, shells}: TerminalPaneAvailability,
-): void {
-	const [livePaneSeenFor, setLivePaneSeenFor] = useState<string | null>(null);
-	useEffect(() => {
-		if (livePane) setLivePaneSeenFor(sessionId);
-	}, [livePane, sessionId]);
-	const claudeEnded = !livePane && livePaneSeenFor === sessionId;
-
-	useEffect(() => {
-		if (!livePane && !shells && !claudeEnded) return undefined;
-		return registerPane("terminal", {
-			title: "Terminal",
-			header: "custom",
-			render: (chrome) => (
-				<TerminalPane
-					sessionId={sessionId}
-					availability={{livePane, interactive, shells}}
-					claudeEnded={claudeEnded}
-					chrome={chrome}
-				/>
-			),
-		});
-	}, [sessionId, livePane, interactive, shells, claudeEnded]);
-}
 
 /** Binds ⌃` to the Terminal pane state machine. */
 export function TerminalPaneShortcut({available}: {available: boolean}) {

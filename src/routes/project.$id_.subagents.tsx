@@ -2,11 +2,12 @@ import {createFileRoute, Link} from "@tanstack/react-router";
 import {useSuspenseQuery} from "@tanstack/react-query";
 import {ArrowLeft} from "lucide-react";
 import {projectDetailQueryOptions, projectSubagentsQueryOptions} from "../lib/api/projects";
-import {DetailTopBar, pillStyles} from "../components/detail-top-bar";
+import {DetailTopBar} from "../components/detail-top-bar";
+import {pillStyles} from "../components/pill-styles";
 import {SubagentGantt} from "../components/subagent-gantt";
 import {SubagentSequence} from "../components/subagent-sequence";
 import {SubagentTree} from "../components/subagent-tree";
-import {useSettings} from "../components/settings-provider";
+import {useSettings} from "../components/settings-context";
 
 export const Route = createFileRoute("/project/$id_/subagents")({
 	component: ProjectSubagentsPage,

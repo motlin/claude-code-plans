@@ -1,4 +1,4 @@
-import {formatTokens} from "../components/system-banner";
+import {formatTokens} from "../components/system-banner-text";
 import {formatModelName} from "./model-name";
 import {promptSourceLabels, turnOriginLabels} from "./schema-choices";
 import type {MessageSessionLine} from "./transcript";

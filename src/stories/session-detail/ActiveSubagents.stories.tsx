@@ -1,6 +1,6 @@
 import type {Meta, StoryObj} from "@storybook/react-vite";
 import {ActiveSubagents} from "../../components/active-subagents";
-import {withRouterAndQuery} from "../sidebar/decorators";
+import {withRouterAndQuery} from "../sidebar/router-and-query";
 
 const meta = {
 	title: "Session Detail/Subagents/ActiveSubagents",

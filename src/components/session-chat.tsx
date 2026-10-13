@@ -1,4 +1,4 @@
-import {SessionTileGeometryReadyContext} from "./session-tile-frame";
+import {SessionTileGeometryReadyContext} from "./session-tile-geometry-context";
 import React, {
 	Suspense,
 	createContext,
@@ -19,10 +19,12 @@ import {isWithdrawnQuestion, type AskedCall} from "../lib/ask-user-question";
 import {ProseMarkdown} from "./file-refs";
 import {MarkdownArticle} from "./markdown-article";
 import {TruncatedContent} from "./truncated-content";
-import {AgentMessageRow, AgentNameContext, type AgentNameResolver} from "./agent-message-row";
+import {AgentMessageRow} from "./agent-message-row";
+import {AgentNameContext, type AgentNameResolver} from "./agent-name-context";
 import {parseAgentMessage, type AgentMessage} from "../lib/agent-message";
 import {parseTaskNotification, stoppedAgentDescription, type TaskNotification} from "../lib/background-tasks";
-import {SlashCommandText, SlashCommandsContext} from "./slash-command-chip";
+import {SlashCommandText} from "./slash-command-chip";
+import {SlashCommandsContext} from "./slash-commands-context";
 import {UserPlainText} from "./user-plain-text";
 import {splitLeadingSlashCommand, type SlashCommand} from "../lib/slash-commands";
 import {getCallRenderer} from "./tool-renderers";
@@ -30,21 +32,23 @@ import {buildClientToolCall, buildSubagentLookup, getToolDescription, isArtifact
 import type {ClientToolCall} from "./tool-renderers";
 import type {LiveToolFailure, SubagentLookup} from "./tool-renderers/types";
 import type {Subagent} from "../lib/subagents";
-import {useSubagentOpener} from "./subagent-opener";
+import {useSubagentOpener} from "./subagent-opener-context";
 import {useClaudeEvents} from "../hooks/use-claude-events";
 import {ChevronIcon, CollapsibleSection, CopyButton, DiffStats, TerminalOutput} from "./tool-renderers/shared";
-import {compactBoundaryLabel, localCommandOutput, SystemBanner, type CompactMetadata} from "./system-banner";
+import {SystemBanner, type CompactMetadata} from "./system-banner";
+import {compactBoundaryLabel, localCommandOutput} from "./system-banner-text";
 import {ArtifactLinkBanner, ArtifactWatchBanner} from "./artifact-banner";
 import {permissionDecisionLabel, permissionDecisionTitle} from "../lib/permission-decision";
 import {DebugLink} from "./debug-link";
-import {type TranscriptMessageRef, TranscriptMessageMenu} from "./transcript-context-menu";
+import {TranscriptMessageMenu} from "./transcript-context-menu";
+import type {TranscriptMessageRef} from "./transcript-actions-context";
 import {AssistantMessageActions, UserMessageActions} from "./message-actions";
 import {narrationProse} from "../lib/thinking-narration";
 import {messageHeading, messageText} from "../lib/transcript-action-targets";
 import {assistantTurnDetails, userTurnDetails} from "../lib/turn-metadata";
 import {TurnChangesCard} from "./turn-changes-card";
 import {collectTurnChanges, type TurnChanges} from "../lib/turn-changes";
-import {useSettings} from "./settings-provider";
+import {useSettings} from "./settings-context";
 import type {TranscriptMode} from "../lib/transcript-mode";
 import {hmrPersist} from "../lib/hmr-persist";
 import type {MessageSessionLine, SessionLine, SessionContentBlock, ToolResultInfo} from "../lib/sessions";
@@ -66,7 +70,7 @@ import {runningToolLabel, runningToolLabelText, toolLabel} from "../lib/tool-lab
 import {formatElapsed} from "../lib/working-marker";
 import {InlinePathImages, SESSION_IMAGE_CLASS_NAME} from "./inline-path-images";
 import {isEditableTarget} from "../lib/shortcuts/match";
-import {findScrollContainer} from "./transcript-history-loader";
+import {findScrollContainer} from "./scroll-container";
 import {usePromptJump} from "../hooks/use-prompt-jump";
 import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
 import {

@@ -1,4 +1,4 @@
-import {useQueries, useQuery} from "@tanstack/react-query";
+import {useQuery} from "@tanstack/react-query";
 import {
 	createContext,
 	type KeyboardEvent,
@@ -10,13 +10,13 @@ import {
 } from "react";
 
 import {type ArtifactSummary, artifactsQueryOptions} from "../lib/api/artifacts";
-import {fileExistsQueryOptions} from "../lib/api/file-refs";
 import {inlineCodeTexts, mentionsArtifactUrl} from "../lib/client-markdown";
 import {requestFileOpen} from "../lib/file-open-requests";
-import {type FileRef, fileRefStatCandidates, resolveFileRefs} from "../lib/file-refs";
+import {type FileRef} from "../lib/file-refs";
 import type {SessionFiles} from "../lib/session-files";
 import {MarkdownArticle} from "./markdown-article";
-import {usePaneHost} from "./panes/tile-host";
+import {usePaneHost} from "./panes/pane-host-context";
+import {useResolvedFileRefs, EMPTY_REFS} from "./use-resolved-file-refs";
 
 interface FileRefsContextValue {
 	/** The session's working directory; relative refs resolve against it first. */
@@ -29,8 +29,6 @@ interface FileRefsContextValue {
 const FileRefsContext = createContext<FileRefsContextValue | null>(null);
 
 export const FileRefsProvider = FileRefsContext.Provider;
-
-const EMPTY_REFS: ReadonlyMap<string, FileRef> = new Map();
 
 /**
  * Transcript file refs for a session page: clicking one opens the file as a
@@ -59,42 +57,6 @@ export function SessionFileRefs({
 	);
 	const value = useMemo(() => ({cwd, sessionPaths, open}), [cwd, sessionPaths, open]);
 	return <FileRefsProvider value={value}>{children}</FileRefsProvider>;
-}
-
-/**
- * Resolve inline-code texts to refs, linking only paths the server confirmed
- * exist inside the allowed file roots. Relative paths try each base directory
- * in order; the first that resolves wins.
- */
-export function useResolvedFileRefs(
-	texts: readonly string[],
-	sessionPaths: readonly string[],
-	bases: readonly (string | undefined)[],
-): ReadonlyMap<string, FileRef> {
-	const basesKey = bases.map((base) => base ?? "").join("\0");
-	const candidates = useMemo(() => {
-		const all = new Set<string>();
-		for (const base of basesKey.split("\0")) {
-			for (const path of fileRefStatCandidates(texts, sessionPaths, base === "" ? undefined : base))
-				all.add(path);
-		}
-		return [...all];
-	}, [texts, sessionPaths, basesKey]);
-	const existingKey = useQueries({
-		queries: candidates.map((path) => fileExistsQueryOptions(path)),
-		combine: (results) => candidates.filter((_path, index) => results[index]?.data === true).join("\0"),
-	});
-	return useMemo(() => {
-		if (existingKey === "") return EMPTY_REFS;
-		const existing = existingKey.split("\0");
-		const refs = new Map<string, FileRef>();
-		for (const base of basesKey.split("\0")) {
-			for (const [text, ref] of resolveFileRefs(texts, existing, base === "" ? undefined : base)) {
-				if (!refs.has(text)) refs.set(text, ref);
-			}
-		}
-		return refs;
-	}, [texts, existingKey, basesKey]);
 }
 
 const NO_PATHS: readonly string[] = [];

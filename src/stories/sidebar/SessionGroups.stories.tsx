@@ -2,7 +2,8 @@ import type {Meta, StoryObj} from "@storybook/react-vite";
 import {SessionGroups} from "../../components/sidebar/session-groups";
 import {RecentSessionsResponse, recentSessionsInfiniteQueryOptions} from "../../lib/api/sessions";
 import type {SessionBucket} from "../../lib/session-state";
-import {createStoryQueryClient, StoryWrapper} from "./decorators";
+import {StoryWrapper} from "./decorators";
+import {createStoryQueryClient} from "./router-and-query";
 
 const MINUTE = 60 * 1000;
 

@@ -4,7 +4,8 @@ import {MarkdownView} from "../components/markdown-view";
 import {memoryDetailQueryOptions, useRemoveMemory} from "../lib/api/memories";
 import {fromMdSlug} from "../lib/md-slug";
 import {ArrowLeft, Pencil, Trash2} from "lucide-react";
-import {DetailTopBar, pillStyles} from "../components/detail-top-bar";
+import {DetailTopBar} from "../components/detail-top-bar";
+import {pillStyles} from "../components/pill-styles";
 import {DebugLink} from "../components/debug-link";
 import {useCallback, useState} from "react";
 

@@ -7,7 +7,7 @@ import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat} from "../src/components/session-chat";
 import {processTranscript} from "../src/lib/transcript";
 
-vi.mock("../src/components/settings-provider", () => ({
+vi.mock("../src/components/settings-context", () => ({
 	useSettings: () => ({
 		settings: {showDebug: true, codeThemeLight: "claude-light", codeThemeDark: "github-dark"},
 	}),

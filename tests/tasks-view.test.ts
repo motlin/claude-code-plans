@@ -2,8 +2,9 @@ import {describe, expect, it} from "vite-plus/test";
 import {createElement} from "react";
 import {renderToStaticMarkup} from "react-dom/server";
 import {AgentRenderer} from "../src/components/tool-renderers/agent-renderer";
-import {getTaskCreateParams} from "../src/components/tool-renderers/task-create-renderer";
-import {extractTasks, TasksView} from "../src/components/tasks-view";
+import {getTaskCreateParams} from "../src/lib/tool-utils";
+import {TasksView} from "../src/components/tasks-view";
+import {extractTasks} from "../src/components/extract-tasks";
 import type {ClientToolCall} from "../src/components/tool-renderers/types";
 
 /** Params render as separate key and value spans, so match on text rather than markup. */

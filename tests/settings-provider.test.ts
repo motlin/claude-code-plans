@@ -7,7 +7,7 @@ import {
 	settingStorageKey,
 	type Settings,
 	type Verbosity,
-} from "../src/components/settings-provider";
+} from "../src/components/settings-context";
 
 describe("settings-provider", () => {
 	// Pins the preset key set against upstream-parity churn. Settled on

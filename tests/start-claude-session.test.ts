@@ -1,5 +1,5 @@
 import {describe, expect, it, vi} from "vite-plus/test";
-import type {ToastOptions} from "../src/components/toast";
+import type {ToastOptions} from "../src/components/toast-context";
 import {startClaudeSession, type StartClaudeSessionDependencies} from "../src/lib/start-claude-session";
 
 function dependencies(overrides: Partial<StartClaudeSessionDependencies> = {}) {

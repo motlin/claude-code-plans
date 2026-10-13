@@ -1,4 +1,4 @@
-import type {ToastOptions} from "../components/toast";
+import type {ToastOptions} from "../components/toast-context";
 import {launchHerdrSession} from "./api/herdr";
 import {buildClaudeCopyCommand} from "./claude-launch-command";
 import {writeClipboardText} from "./clipboard";

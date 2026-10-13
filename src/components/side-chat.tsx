@@ -14,25 +14,22 @@ import {
 import {type ReactNode, useEffect, useRef, useState} from "react";
 import {createPortal} from "react-dom";
 
-import {useShortcut, useShortcutKeys} from "../hooks/use-shortcut";
+import {useShortcutKeys} from "../hooks/use-shortcut";
 import {writeClipboardText} from "../lib/clipboard";
-import {parseBtwCommand} from "../lib/side-chat";
 import {
 	askSideChat,
 	branchSideChatEntry,
 	clearSideChat,
 	closeSideChat,
-	openSideChat,
 	type SideChatEntry,
 	setSideChatMode,
 	stopEntry,
-	toggleSideChat,
 	useSideChat,
 } from "../lib/side-chat-store";
 import {MarkdownArticle} from "./markdown-article";
 import {type PaneChrome, registerPane} from "./panes/pane-registry";
-import {useOptionalPaneHost} from "./panes/tile-host";
-import {type ToastOptions, useToast} from "./toast";
+import {useOptionalPaneHost} from "./panes/pane-host-context";
+import {useToast} from "./toast-context";
 import {Shortcut} from "./ui/shortcut";
 import {Tooltip} from "./ui/tooltip";
 import {ViewportPortal} from "./viewport-portal";
@@ -45,56 +42,6 @@ const ICON_BUTTON_CLASS =
 
 const ANSWER_ACTION_CLASS =
 	"flex items-center gap-1 rounded-r5 px-1.5 py-0.5 text-caption text-t6 transition-colors hover:bg-fill-ghost-hover hover:text-primary disabled:pointer-events-none disabled:opacity-40";
-
-const SECONDARY_PANE_MESSAGE = "Side chat is only available in the primary pane.";
-
-/**
- * Whether keyboard focus sits inside a tile-host pane rather than the main
- * chat. The docked side chat's own pane does not count.
- */
-function focusInSecondaryPane(): boolean {
-	const pane = document.activeElement?.closest<HTMLElement>("[data-pane-root]");
-	return pane != null && pane.dataset["paneKind"] !== "side-chat";
-}
-
-/**
- * ⌘; on a session page. Declines the key (so other handlers may claim it)
- * when the session is not found, and refuses with a toast when focus is in a
- * secondary pane, as upstream does.
- */
-export function useSideChatShortcut(sessionId: string, available: boolean): void {
-	const toast = useToast();
-	useShortcut("toggle_side_chat", () => {
-		if (!available) return false;
-		if (focusInSecondaryPane()) {
-			toast({kind: "error", message: SECONDARY_PANE_MESSAGE});
-			return true;
-		}
-		toggleSideChat(sessionId);
-		return true;
-	});
-}
-
-const NOT_STARTED_MESSAGE = "Side chat is available once this session starts. Send your first message to start it.";
-
-/**
- * The composer's `/btw` interception, run before a prompt is sent. Returns
- * true when the prompt was a `/btw` command and must not reach the session.
- */
-export function handleBtwPrompt(
-	prompt: string,
-	{sessionId, messageCount, toast}: {sessionId: string; messageCount: number; toast: (options: ToastOptions) => void},
-): boolean {
-	const command = parseBtwCommand(prompt);
-	if (command === null) return false;
-	if (messageCount === 0) {
-		toast({kind: "error", message: NOT_STARTED_MESSAGE});
-		return true;
-	}
-	openSideChat(sessionId);
-	if (command.question !== "") void askSideChat(sessionId, command.question);
-	return true;
-}
 
 const POPOUT_BLOCKED_MESSAGE = "Couldn’t open a new window. Allow pop-ups for this site.";
 

@@ -1,18 +1,8 @@
-import {createContext, type ReactNode, useCallback, useContext} from "react";
+import {type ReactNode, useCallback} from "react";
 
 import {requestSubagentFocus} from "../lib/subagent-focus-requests";
-import {usePaneHost} from "./panes/tile-host";
-
-type SubagentOpener = (agentId: string) => void;
-
-const SubagentOpenerContext = createContext<SubagentOpener | null>(null);
-
-export const SubagentOpenerProvider = SubagentOpenerContext.Provider;
-
-/** Opens the Subagent pane on an agent, or null where no pane can host it. */
-export function useSubagentOpener(): SubagentOpener | null {
-	return useContext(SubagentOpenerContext);
-}
+import {usePaneHost} from "./panes/pane-host-context";
+import {SubagentOpenerProvider} from "./subagent-opener-context";
 
 /** Lets a session page's Agent rows open the `subagents` pane focused on their agent. */
 export function SessionSubagentOpener({sessionId, children}: {sessionId: string; children: ReactNode}) {

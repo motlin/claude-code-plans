@@ -1,12 +1,11 @@
 import {Link} from "@tanstack/react-router";
 import {ChevronRight, Trash2} from "lucide-react";
-import {useEffect, useId, useState} from "react";
+import {useId, useState} from "react";
 
 import {type BackgroundTask, type BackgroundTaskGroups, backgroundTaskMeta} from "../../lib/background-tasks";
 import {HighlightedCommand} from "../tool-renderers/bash-renderer";
 import {AnsiText} from "../tool-renderers/shared";
 import {Tooltip} from "../ui/tooltip";
-import {registerPane} from "./pane-registry";
 import {nonEmpty} from "../../lib/non-empty";
 
 const EMPTY_COPY = "No background tasks in this session.";
@@ -164,27 +163,5 @@ export function BackgroundTasksList({
 				</Link>
 			)}
 		</div>
-	);
-}
-
-/** Registers the `background-tasks` pane kind for this session while mounted. */
-export function useRegisterBackgroundTasksPane(
-	sessionId: string,
-	groups: BackgroundTaskGroups,
-	subagentCount: number,
-): void {
-	useEffect(
-		() =>
-			registerPane("background-tasks", {
-				title: "Background tasks",
-				render: () => (
-					<BackgroundTasksList
-						key={sessionId}
-						groups={groups}
-						subagents={{sessionId, count: subagentCount}}
-					/>
-				),
-			}),
-		[sessionId, groups, subagentCount],
 	);
 }

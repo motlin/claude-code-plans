@@ -4,11 +4,8 @@ import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import type {ComponentProps} from "react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
-import {
-	FileSearchResults,
-	fileSearchViewerNavigation,
-	fileSearchViewerTarget,
-} from "../src/components/file-search-results";
+import {FileSearchResults} from "../src/components/file-search-results";
+import {fileSearchViewerNavigation, fileSearchViewerTarget} from "../src/components/file-search-viewer-target";
 import {decodeFilePath} from "../src/lib/api/file";
 import {fileSearchRootsResponse} from "../src/routes/api/search.file-roots";
 import {validateSearchParameters} from "../src/routes/search";

@@ -1,5 +1,6 @@
 import type {Meta, StoryObj} from "@storybook/react-vite";
-import {DetailTopBar, pillStyles} from "../../components/detail-top-bar";
+import {DetailTopBar} from "../../components/detail-top-bar";
+import {pillStyles} from "../../components/pill-styles";
 
 const meta = {
 	title: "Shared/DetailTopBar",

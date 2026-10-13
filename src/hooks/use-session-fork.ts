@@ -1,6 +1,6 @@
 import {useQuery} from "@tanstack/react-query";
 
-import {useToast} from "../components/toast";
+import {useToast} from "../components/toast-context";
 import {herdrPanesQueryOptions, launchHerdrSession} from "../lib/api/herdr";
 import {writeClipboardText} from "../lib/clipboard";
 import {type ForkTarget, forkSession, setPendingFork} from "../lib/session-fork";

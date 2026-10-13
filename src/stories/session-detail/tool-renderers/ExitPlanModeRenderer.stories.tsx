@@ -1,7 +1,7 @@
 import type {Meta, StoryObj} from "@storybook/react-vite";
 import {ExitPlanModeRenderer} from "../../../components/tool-renderers/exit-plan-mode-renderer";
 import type {ClientToolCall} from "../../../components/tool-renderers/types";
-import {withRouterAndQuery} from "../../sidebar/decorators";
+import {withRouterAndQuery} from "../../sidebar/router-and-query";
 
 const PLAN = `# Switch git pager from delta to hunk
 

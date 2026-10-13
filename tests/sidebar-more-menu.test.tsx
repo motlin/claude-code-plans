@@ -11,7 +11,8 @@ import {
 } from "@tanstack/react-router";
 import {cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
-import {DEFAULTS, SettingsProvider} from "../src/components/settings-provider";
+import {SettingsProvider} from "../src/components/settings-provider";
+import {DEFAULTS} from "../src/components/settings-context";
 import {Sidebar} from "../src/components/sidebar/Sidebar";
 import {applicationSettingsQueryOptions} from "../src/lib/api/application-settings";
 import {approvalsQueryOptions} from "../src/lib/api/approvals";

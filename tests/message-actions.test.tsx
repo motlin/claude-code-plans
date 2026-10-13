@@ -5,7 +5,7 @@ import type {ReactNode} from "react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {AssistantMessageActions, UserMessageActions} from "../src/components/message-actions";
-import {type TranscriptActions, TranscriptActionsContext} from "../src/components/transcript-context-menu";
+import {type TranscriptActions, TranscriptActionsContext} from "../src/components/transcript-actions-context";
 import {writeClipboardText} from "../src/lib/clipboard";
 
 vi.mock("../src/lib/clipboard", () => ({

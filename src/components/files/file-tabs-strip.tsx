@@ -3,10 +3,11 @@ import {type KeyboardEvent, useId} from "react";
 
 import type {AttachContextHandler} from "../../lib/context-attach";
 import type {FileTabsAction, FileTabsState} from "../../lib/file-tabs";
-import {getFileIcon} from "../file-tree";
+import {getFileIcon} from "../file-icon";
 import {ContextMenu, ContextMenuTrigger, MenuContent} from "../ui/menu";
 import {Tooltip} from "../ui/tooltip";
-import {TabMenuItems, mentionPath} from "./file-context-menu";
+import {TabMenuItems} from "./file-context-menu";
+import {mentionPath} from "./mention-path";
 
 function baseName(path: string): string {
 	return path.slice(path.lastIndexOf("/") + 1) || path;

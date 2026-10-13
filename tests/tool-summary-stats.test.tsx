@@ -7,7 +7,7 @@ import {SessionChat} from "../src/components/session-chat";
 import {summarizeToolCalls, summarizeToolCallStats} from "../src/lib/session-utils";
 import {processTranscript} from "../src/lib/transcript";
 
-vi.mock("../src/components/settings-provider", () => ({
+vi.mock("../src/components/settings-context", () => ({
 	useSettings: () => ({settings: {showDebug: true}}),
 }));
 vi.mock("../src/lib/hmr-persist", () => ({

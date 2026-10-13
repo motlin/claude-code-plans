@@ -1,6 +1,6 @@
 import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 
-import type {ToastOptions} from "../components/toast";
+import type {ToastOptions} from "../components/toast-context";
 import {sendHerdrLiveOption} from "../lib/api/herdr";
 import {
 	type LaunchOptions,

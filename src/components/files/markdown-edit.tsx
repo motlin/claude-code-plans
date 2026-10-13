@@ -1,17 +1,14 @@
 import {useQueryClient} from "@tanstack/react-query";
 import {Pencil} from "lucide-react";
-import {type KeyboardEvent, lazy, type ReactNode, Suspense, useEffect, useRef, useState} from "react";
+import {type KeyboardEvent, type ReactNode, Suspense, useEffect, useRef, useState} from "react";
 
 import {FileConflictError, loadEditableMarkdown, saveEditableMarkdown} from "../../lib/api/file-edit";
 import {type EditableMarkdownTarget, FILE_CONFLICT_MESSAGE} from "../../lib/file-edit";
 import {isMacPlatform} from "../../lib/shortcuts/match";
 import {ConfirmDialog} from "../confirm-dialog";
-import {useToast} from "../toast";
+import {useToast} from "../toast-context";
 import {Tooltip} from "../ui/tooltip";
-
-const MarkdownEditor = lazy(async () =>
-	import("../markdown-editor").then((module) => ({default: module.MarkdownEditor})),
-);
+import {LazyMarkdownEditor} from "./lazy-markdown-editor";
 
 type EditState =
 	| {phase: "viewing"}
@@ -184,7 +181,7 @@ export function useMarkdownEdit({
 						<p className="text-footnote text-t6">Loading editor…</p>
 					) : (
 						<Suspense fallback={<p className="text-footnote text-t6">Loading editor…</p>}>
-							<MarkdownEditor markdown={state.initial} onChange={change} />
+							<LazyMarkdownEditor markdown={state.initial} onChange={change} />
 						</Suspense>
 					)}
 				</div>

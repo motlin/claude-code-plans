@@ -10,8 +10,10 @@ import {
 import type {PluginInfoData} from "../../lib/api/plugins";
 import {toConnectorSlug} from "../../lib/customize/mcp-tool-permissions";
 import {PluginVersion} from "../plugin-version";
-import {ScopeBadge, transportLabel} from "./connectors-table";
-import {CustomizeLink, useCustomizeGo} from "./customize-nav";
+import {ScopeBadge} from "./connectors-table";
+import {transportLabel} from "./connector-labels";
+import {CustomizeLink} from "./customize-nav";
+import {useCustomizeGo} from "./customize-navigation";
 import {IconTile} from "./icon-tile";
 import {ListRow} from "./list-row";
 import {PluginRowActions} from "./plugin-row-actions";

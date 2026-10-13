@@ -12,10 +12,11 @@ import {
 	type ToolPermissionChoice,
 } from "../../lib/customize/mcp-tool-permissions";
 import {Switch} from "../settings/switch";
-import {useToast} from "../toast";
+import {useToast} from "../toast-context";
 import {Menu, MenuContent, MenuRadioGroup, MenuRadioItem, MenuTrigger} from "../ui/menu";
-import {ConnectorTile, connectorDomain} from "./connector-tile";
-import {SCOPE_LABEL, ScopeBadge, transportLabel} from "./connectors-table";
+import {ConnectorTile} from "./connector-tile";
+import {ScopeBadge} from "./connectors-table";
+import {SCOPE_LABEL, connectorDomain, transportLabel} from "./connector-labels";
 import {CustomizeLink} from "./customize-nav";
 
 const CHOICES: readonly {value: ToolPermissionChoice; label: string; icon: LucideIcon}[] = [

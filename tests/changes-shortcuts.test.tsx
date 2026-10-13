@@ -4,8 +4,9 @@ import {act, cleanup, render, screen, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {ChangesPaneView} from "../src/components/changes/changes-pane";
-import {ChangesPaneShortcut} from "../src/components/changes/changes-pane-entry";
-import {KeyboardShortcutsDialog, setKeyboardShortcutsOpen} from "../src/components/keyboard-shortcuts-dialog";
+import {ChangesPaneShortcut} from "../src/components/changes/changes-pane-shortcut";
+import {KeyboardShortcutsDialog} from "../src/components/keyboard-shortcuts-dialog";
+import {setKeyboardShortcutsOpen} from "../src/components/keyboard-shortcuts-open";
 import {registerPane} from "../src/components/panes/pane-registry";
 import {TileHost} from "../src/components/panes/tile-host";
 import {SettingsProvider} from "../src/components/settings-provider";

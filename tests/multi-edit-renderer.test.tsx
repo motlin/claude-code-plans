@@ -17,7 +17,7 @@ vi.mock("../src/components/tool-renderers/inline-diff", async () => {
 	};
 });
 
-vi.mock("../src/components/settings-provider", () => ({
+vi.mock("../src/components/settings-context", () => ({
 	useSettings: () => ({settings: {showDebug: false}}),
 }));
 vi.mock("../src/lib/hmr-persist", () => ({

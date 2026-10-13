@@ -5,7 +5,7 @@ import {approvalsQueryOptions} from "../lib/api/approvals";
 import {sessionTitlesQueryOptions} from "../lib/api/sessions";
 import {toMdSlug} from "../lib/md-slug";
 import {formatRelativeTimeFromIso} from "../lib/relative-time";
-import {pillStyles} from "../components/detail-top-bar";
+import {pillStyles} from "../components/pill-styles";
 import {ListPageHeader} from "../components/list-page-header";
 
 export const Route = createFileRoute("/approvals")({

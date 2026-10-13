@@ -1,4 +1,5 @@
-import {createContext, type ReactNode, useContext, useEffect, useId, useRef} from "react";
+import {type ReactNode, useContext, useEffect, useId, useRef} from "react";
+import {SettingsFlashContext, SettingsRowContext} from "./settings-row-context";
 
 /*
  * Settings section and row anatomy copied from claude.ai/code: an h3 at
@@ -7,25 +8,6 @@ import {createContext, type ReactNode, useContext, useEffect, useId, useRef} fro
  * control column (data-settings-control) on the right, gap-lg (28px) apart and
  * py-md (12px) with hairline dividers between rows.
  */
-
-interface SettingsRowIds {
-	titleId: string;
-	descriptionId: string | undefined;
-}
-
-const SettingsRowContext = createContext<SettingsRowIds | null>(null);
-
-/** The enclosing row's title/description ids, so controls can label themselves. */
-export function useSettingsRowIds(): SettingsRowIds | null {
-	return useContext(SettingsRowContext);
-}
-
-/** A deep-linked row to scroll to and flash; a new object re-flashes the same row. */
-export interface SettingsFlash {
-	row: string;
-}
-
-export const SettingsFlashContext = createContext<SettingsFlash | null>(null);
 
 export function SettingsSection({title, children}: {title: string; children: ReactNode}) {
 	return (

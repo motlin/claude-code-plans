@@ -22,7 +22,7 @@ import {ToastProvider} from "../../src/components/toast";
 import {sessionQueryKeys, type TranscriptData} from "../../src/lib/api/sessions";
 import type {AppDb} from "../../src/lib/db/connection";
 import {DOMAIN_EVENTS} from "../../src/lib/hook-events";
-import {ClaudeEventsProvider} from "../../src/hooks/use-claude-events";
+import {ClaudeEventsProvider} from "../../src/components/claude-events-provider";
 import {Route as RootRoute} from "../../src/routes/__root";
 import {Route as SessionRoute} from "../../src/routes/session.$id";
 import {generateTranscript, PERF_SHAPES, seedFixtureDb} from "./fixtures/generate-transcript";
@@ -52,7 +52,7 @@ vi.mock(import("../../src/lib/hmr-persist"), async (importOriginal) => {
 
 vi.mock(import("../../src/components/session-page"), async (importOriginal) => {
 	const actual = await importOriginal();
-	const {PerfSubtree} = await import("./harness/measure-interaction");
+	const {PerfSubtree} = await import("./harness/perf-subtree");
 	return {
 		...actual,
 		SessionPage: (props: Parameters<typeof actual.SessionPage>[0]) => (
@@ -66,7 +66,7 @@ vi.mock(import("../../src/components/session-page"), async (importOriginal) => {
 vi.mock(import("../../src/components/session-chat"), async (importOriginal) => {
 	const actual = await importOriginal();
 	const {memo} = await import("react");
-	const {PerfSubtree} = await import("./harness/measure-interaction");
+	const {PerfSubtree} = await import("./harness/perf-subtree");
 	return {
 		...actual,
 		// Memoized like the real SessionChat, so the wrapper never adds a render the real component would skip.

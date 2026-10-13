@@ -4,7 +4,7 @@ import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
-import {useRegisterSubagentPane} from "../src/components/panes/subagent-pane";
+import {useRegisterSubagentPane} from "../src/components/panes/subagent-pane-entry";
 import {TileHost} from "../src/components/panes/tile-host";
 import {SettingsProvider} from "../src/components/settings-provider";
 import {sessionQueryKeys, type TranscriptData} from "../src/lib/api/sessions";

@@ -1,7 +1,8 @@
 import {describe, expect, it} from "vite-plus/test";
 import {createElement} from "react";
 import {renderToStaticMarkup} from "react-dom/server";
-import {layoutSwimlanes, SubagentGantt, type SwimlaneLayout} from "../src/components/subagent-gantt";
+import {SubagentGantt} from "../src/components/subagent-gantt";
+import {layoutSwimlanes, type SwimlaneLayout} from "../src/components/subagent-gantt-layout";
 import type {DbSubagent} from "../src/lib/db/queries";
 
 function makeAgent(overrides: Partial<DbSubagent> & {id: string}): DbSubagent {

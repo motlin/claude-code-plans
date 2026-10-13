@@ -8,7 +8,6 @@ import {
 	removeQueuedDiffComment,
 	saveDiffComment,
 } from "../../lib/diff-comments";
-import type {DiffFileAnnotation} from "./diff-file";
 
 const CARD_CLASS =
 	"flex flex-col gap-1.5 rounded-r6 border border-border bg-surface-3 p-2 font-sans text-body text-primary";
@@ -32,7 +31,7 @@ function isSaveShortcut(event: React.KeyboardEvent): boolean {
  * Upstream's inline comment card: "Line N", a "Request changes" textarea and
  * Save comment. Escape on an empty card removes it.
  */
-function LineCommentCard({sessionId, draft}: {sessionId: string; draft: DiffCommentDraft}) {
+export function LineCommentCard({sessionId, draft}: {sessionId: string; draft: DiffCommentDraft}) {
 	const [text, setText] = useState("");
 	const empty = text.trim() === "";
 	const save = () => {
@@ -75,7 +74,7 @@ function LineCommentCard({sessionId, draft}: {sessionId: string; draft: DiffComm
 }
 
 /** A saved comment under its line, "Queued" until the next prompt sends it. */
-function QueuedCommentCard({sessionId, comment}: {sessionId: string; comment: QueuedDiffComment}) {
+export function QueuedCommentCard({sessionId, comment}: {sessionId: string; comment: QueuedDiffComment}) {
 	return (
 		<div className="px-2 py-1">
 			<div data-queued-comment={comment.id} className={CARD_CLASS}>
@@ -97,29 +96,4 @@ function QueuedCommentCard({sessionId, comment}: {sessionId: string; comment: Qu
 			</div>
 		</div>
 	);
-}
-
-/** Open comment cards and queued comments on `path` as inline diff annotations. */
-export function commentAnnotations(
-	sessionId: string,
-	drafts: readonly DiffCommentDraft[],
-	queued: readonly QueuedDiffComment[],
-	path: string,
-): DiffFileAnnotation[] {
-	return [
-		...queued
-			.filter((comment) => comment.path === path)
-			.map((comment) => ({
-				side: comment.side,
-				lineNumber: comment.endLine ?? comment.line,
-				content: <QueuedCommentCard key={comment.id} sessionId={sessionId} comment={comment} />,
-			})),
-		...drafts
-			.filter((draft) => draft.path === path)
-			.map((draft) => ({
-				side: draft.side,
-				lineNumber: draft.endLine ?? draft.line,
-				content: <LineCommentCard key={draft.id} sessionId={sessionId} draft={draft} />,
-			})),
-	];
 }

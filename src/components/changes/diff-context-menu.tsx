@@ -4,7 +4,7 @@ import {writeClipboardText} from "../../lib/clipboard";
 import {attachContext} from "../../lib/context-attach";
 import {type DiffSide, openDiffCommentDraft} from "../../lib/diff-comments";
 import {detectLanguage} from "../../lib/diff-utils";
-import {useToast} from "../toast";
+import {useToast} from "../toast-context";
 import {ContextMenu, ContextMenuTrigger, MenuContent, MenuItem, MenuSeparator} from "../ui/menu";
 
 /** The diff lines a right-click lands on: the selection inside the diff, or the clicked line. */

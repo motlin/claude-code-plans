@@ -1,5 +1,5 @@
 import {describe, expect, it} from "vite-plus/test";
-import {DEFAULTS, VERBOSITY_PRESETS} from "../src/components/settings-provider";
+import {DEFAULTS, VERBOSITY_PRESETS} from "../src/components/settings-context";
 import {
 	TRANSCRIPT_MODES,
 	TRANSCRIPT_MODE_MAX_OVERRIDES,

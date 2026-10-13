@@ -3,7 +3,7 @@ import {useMemo} from "react";
 import {jumpToMessage} from "../lib/jump-to-message";
 import type {ResourceOccurrence} from "../lib/session-resources";
 import {useJumpTargetWindow, type JumpTargetWindow} from "./jump-target-context";
-import {useSettings} from "./settings-provider";
+import {useSettings} from "./settings-context";
 
 interface JumpChipsProps {
 	occurrences: ResourceOccurrence[];

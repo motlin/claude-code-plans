@@ -9,7 +9,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionPage} from "../src/components/session-page";
 import {SettingsProvider} from "../src/components/settings-provider";
 import {ToastProvider} from "../src/components/toast";
-import {ClaudeEventsProvider} from "../src/hooks/use-claude-events";
+import {ClaudeEventsProvider} from "../src/components/claude-events-provider";
 import {herdrPanesQueryOptions} from "../src/lib/api/herdr";
 import {type PlanDetail, planQueryOptions} from "../src/lib/api/plans";
 import {

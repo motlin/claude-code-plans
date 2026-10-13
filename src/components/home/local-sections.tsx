@@ -8,7 +8,7 @@ import {plansQueryOptions, type PlanListItem} from "../../lib/api/plans";
 import {projectsQueryOptions} from "../../lib/api/projects";
 import {toMdSlug} from "../../lib/md-slug";
 import {formatNarrowRelativeTime} from "../../lib/relative-time";
-import {useSettings} from "../settings-provider";
+import {useSettings} from "../settings-context";
 
 const MAX_LOCAL_ROWS = 3;
 

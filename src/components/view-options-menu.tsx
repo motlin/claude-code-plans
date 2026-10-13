@@ -1,35 +1,17 @@
-import {
-	AppWindow,
-	EllipsisVertical,
-	FileDiff,
-	Files,
-	GitFork,
-	Info,
-	Link2,
-	ListChecks,
-	ListTodo,
-	type LucideIcon,
-	SquareTerminal,
-} from "lucide-react";
+import {EllipsisVertical, FileDiff} from "lucide-react";
 
 import {useIsMac} from "../hooks/use-is-mac";
 import {useShortcutKeys} from "../hooks/use-shortcut";
-import type {PaneKind} from "../lib/pane-layout";
 import {bindingsFor} from "../lib/shortcuts/match";
 import {bindingToKeys, type ShortcutId} from "../lib/shortcuts/registry";
 import {usePaneDefinitions} from "./panes/pane-registry";
-import {usePaneHost} from "./panes/tile-host";
+import {usePaneHost} from "./panes/pane-host-context";
 import {TITLEBAR_ICON_BUTTON_CLASS} from "./titlebar-classes";
 import {useTitlebarWidth} from "./titlebar-width";
 import {Menu, MenuCheckboxItem, MenuContent, MenuItem, MenuSeparator, MenuTrigger} from "./ui/menu";
 import {Tooltip} from "./ui/tooltip";
-
-export interface PaneMenuEntry {
-	kind: PaneKind;
-	label: string;
-	icon: LucideIcon;
-	shortcut?: ShortcutId;
-}
+import {viewOptionsItems, hiddenToggleCount} from "./view-options-items";
+import type {ViewOptionsFacts, ViewOptionsItem, PaneMenuEntry} from "./view-options-items";
 
 type MainPaneEntry = PaneMenuEntry & {shortcut: ShortcutId};
 
@@ -37,90 +19,6 @@ type MainPaneEntry = PaneMenuEntry & {shortcut: ShortcutId};
 const MAIN_PANE_TOGGLES: readonly MainPaneEntry[] = [
 	{kind: "changes", label: "Changes", icon: FileDiff, shortcut: "toggle_changes"},
 ];
-
-/** What the session offers, deciding which View options items apply. */
-export interface ViewOptionsFacts {
-	artifactCount?: number;
-	/** The session is linked to a plan file through `plan_sessions`. */
-	hasPlan?: boolean;
-	backgroundTasks?: {total: number; running: number};
-	subagentCount?: number;
-}
-
-export interface ViewOptionsItem extends PaneMenuEntry {
-	/** Running-count badge (Background tasks). */
-	badge?: number;
-}
-
-interface ViewOptionsCandidate extends ViewOptionsItem {
-	applies: boolean;
-}
-
-function candidates(facts: ViewOptionsFacts): ViewOptionsCandidate[] {
-	const running = facts.backgroundTasks?.running ?? 0;
-	return [
-		{kind: "terminal", label: "Terminal", icon: SquareTerminal, shortcut: "toggle_terminal", applies: true},
-		{
-			kind: "artifacts",
-			label: "Artifacts",
-			icon: AppWindow,
-			applies: (facts.artifactCount ?? 0) > 0,
-		},
-		{kind: "files", label: "Files", icon: Files, shortcut: "toggle_files", applies: true},
-		{kind: "links", label: "Links", icon: Link2, applies: true},
-		{
-			kind: "background-tasks",
-			label: "Background tasks",
-			icon: ListChecks,
-			applies: (facts.backgroundTasks?.total ?? 0) > 0,
-			...(running > 0 ? {badge: running} : {}),
-		},
-		{kind: "plan", label: "Plan", icon: ListTodo, applies: facts.hasPlan === true},
-		{
-			kind: "subagents",
-			label: "Subagents",
-			icon: GitFork,
-			applies: (facts.subagentCount ?? 0) > 0,
-		},
-		{kind: "session-details", label: "Session details", icon: Info, applies: true},
-	];
-}
-
-/**
- * The View options items after any folded toggles: a registered pane shows
- * when it applies to the session or is already open, like upstream.
- */
-export function viewOptionsItems({
-	registered,
-	isOpen,
-	facts,
-}: {
-	registered: ReadonlySet<PaneKind>;
-	isOpen: (kind: PaneKind) => boolean;
-	facts: ViewOptionsFacts;
-}): ViewOptionsItem[] {
-	return candidates(facts)
-		.filter((item) => registered.has(item.kind) && (item.applies || isOpen(item.kind)))
-		.map(({applies: _applies, ...item}) => item);
-}
-
-/** Titlebar lead kept clear of the trail: title, chevron and a pill or two. */
-const LEAD_RESERVE_PX = 240;
-/** The trail's `pl-6`. */
-const TRAIL_PADDING_PX = 24;
-const CONTROL_PX = 26;
-const GAP_PX = 4;
-
-/**
- * How many of the trailing main toggles fold into View options: whatever does
- * not fit beside the lead reserve and the menu trigger.
- */
-export function hiddenToggleCount({titlebarWidth, count}: {titlebarWidth: number | null; count: number}): number {
-	if (titlebarWidth === null) return 0;
-	const room = titlebarWidth - LEAD_RESERVE_PX - TRAIL_PADDING_PX - (CONTROL_PX + GAP_PX);
-	const shown = Math.max(0, Math.floor(room / (CONTROL_PX + GAP_PX)));
-	return Math.max(0, count - shown);
-}
 
 function MainPaneToggle({entry}: {entry: MainPaneEntry}) {
 	const host = usePaneHost();

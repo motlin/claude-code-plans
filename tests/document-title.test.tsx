@@ -13,7 +13,7 @@ import {
 import {act, cleanup, render} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
-import {DEFAULTS} from "../src/components/settings-provider";
+import {DEFAULTS} from "../src/components/settings-context";
 import type {ActivityState} from "../src/lib/session-state";
 
 const harness = vi.hoisted(() => ({
@@ -30,8 +30,8 @@ vi.mock("../src/hooks/use-claude-events", () => ({
 	},
 }));
 
-vi.mock("../src/components/settings-provider", async (importOriginal) => ({
-	...(await importOriginal<typeof import("../src/components/settings-provider")>()),
+vi.mock("../src/components/settings-context", async (importOriginal) => ({
+	...(await importOriginal<typeof import("../src/components/settings-context")>()),
 	useSettings: () => ({
 		settings: {
 			...DEFAULTS,

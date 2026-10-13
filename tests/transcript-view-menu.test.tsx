@@ -5,7 +5,8 @@ import {createMemoryHistory, createRootRoute, createRouter, RouterProvider} from
 import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
-import {SettingsProvider, useSettings} from "../src/components/settings-provider";
+import {SettingsProvider} from "../src/components/settings-provider";
+import {useSettings} from "../src/components/settings-context";
 import {SessionTitlebar} from "../src/components/session-titlebar";
 import {ToastProvider} from "../src/components/toast";
 import {useTranscriptModeShortcut} from "../src/hooks/use-session-transcript-mode";

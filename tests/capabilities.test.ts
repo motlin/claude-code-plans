@@ -1,5 +1,5 @@
 import {describe, expect, it, vi} from "vite-plus/test";
-import {workingCopyReviewDegradedMessage} from "../src/components/working-copy-review-banner";
+import {workingCopyReviewDegradedMessage} from "../src/components/working-copy-review-offer";
 import {capabilityVisible, resolveCapabilityFlags} from "../src/hooks/use-capabilities";
 import {
 	DEFAULT_CAPABILITIES,

@@ -2,11 +2,8 @@
 import {act, cleanup, render} from "@testing-library/react";
 import {useContext, useLayoutEffect, useRef} from "react";
 import {afterEach, beforeEach, expect, it, vi} from "vite-plus/test";
-import {
-	SessionTileFrame,
-	SessionTileGeometryReadyContext,
-	type SessionTileScrollPosition,
-} from "../src/components/session-tile-frame";
+import {SessionTileFrame, type SessionTileScrollPosition} from "../src/components/session-tile-frame";
+import {SessionTileGeometryReadyContext} from "../src/components/session-tile-geometry-context";
 
 const fakeRouter = vi.hoisted(() => ({
 	state: {

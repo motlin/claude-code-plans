@@ -1,10 +1,6 @@
-import {useQuery} from "@tanstack/react-query";
-import {useEffect} from "react";
-
-import {type SessionArtifact, sessionArtifactsQueryOptions} from "../../lib/api/artifacts";
+import type {SessionArtifact} from "../../lib/api/artifacts";
 import {artifactPreviewPath} from "../../lib/artifact-source-paths";
 import {ArtifactCard} from "../tool-renderers/artifact-renderer";
-import {registerPane} from "./pane-registry";
 
 const EMPTY_COPY = "Artifacts published in this session appear here.";
 
@@ -29,22 +25,5 @@ export function SessionArtifactsList({artifacts}: {artifacts: readonly SessionAr
 				</li>
 			))}
 		</ul>
-	);
-}
-
-/** The session's artifacts, refetched whenever the session itself refreshes. */
-export function useSessionArtifacts(sessionId: string): SessionArtifact[] {
-	return useQuery(sessionArtifactsQueryOptions(sessionId)).data ?? [];
-}
-
-/** Registers the `artifacts` pane kind for this session while mounted. */
-export function useRegisterArtifactsPane(artifacts: readonly SessionArtifact[]): void {
-	useEffect(
-		() =>
-			registerPane("artifacts", {
-				title: "Artifacts",
-				render: () => <SessionArtifactsList artifacts={artifacts} />,
-			}),
-		[artifacts],
 	);
 }

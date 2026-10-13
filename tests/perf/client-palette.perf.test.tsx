@@ -22,7 +22,7 @@ import {ESTIMATED_TURN_HEIGHT_PIXELS} from "../../src/components/session-chat";
 import {SettingsProvider} from "../../src/components/settings-provider";
 import {ThemeProvider} from "../../src/components/theme-provider";
 import {ToastProvider} from "../../src/components/toast";
-import {ClaudeEventsProvider} from "../../src/hooks/use-claude-events";
+import {ClaudeEventsProvider} from "../../src/components/claude-events-provider";
 import {useCommandPalette} from "../../src/hooks/use-command-palette";
 import type {AppDb} from "../../src/lib/db/connection";
 import {sessions} from "../../src/lib/db/schema";

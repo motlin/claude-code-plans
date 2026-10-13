@@ -1,21 +1,10 @@
 import {Check, ExternalLink} from "lucide-react";
 import type {KeyboardEvent, ReactNode} from "react";
-import type {ClaudeAiConnectorSummary, McpScope, McpServerSummary} from "../../lib/api/customize";
-import {ConnectorTile, connectorDomain} from "./connector-tile";
+import type {ClaudeAiConnectorSummary, McpServerSummary} from "../../lib/api/customize";
+import {ConnectorTile} from "./connector-tile";
+import {SCOPE_LABEL, connectorDomain, transportLabel} from "./connector-labels";
 
 const CLAUDE_AI_CONNECTORS_URL = "https://claude.ai/customize/connectors/yours";
-
-export const SCOPE_LABEL = {
-	user: "User",
-	local: "Local",
-	project: "Project",
-	plugin: "Plugin",
-} as const satisfies Record<McpScope, string>;
-
-/** Upstream Type column: "Local" for stdio servers, "Web" for http/sse. */
-export function transportLabel(transport: string): "Local" | "Web" {
-	return transport === "stdio" ? "Local" : "Web";
-}
 
 const TH_CLASS = "h-8 truncate px-3 text-left text-footnote font-medium text-secondary";
 const TD_CLASS =

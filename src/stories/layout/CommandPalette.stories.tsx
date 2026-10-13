@@ -3,7 +3,7 @@ import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {RouterProvider} from "@tanstack/react-router";
 import {recentSessionsQueryOptions, type SessionListItem} from "../../lib/api/sessions";
 import {CommandPalette, PALETTE_RECENT_LIMIT} from "../../components/command-palette";
-import {createStoryRouter} from "../sidebar/decorators";
+import {createStoryRouter} from "../sidebar/router-and-query";
 
 const now = Date.now();
 

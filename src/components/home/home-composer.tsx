@@ -16,7 +16,7 @@ import {buildLaunchFlags, type LaunchOptions} from "../../lib/launch-options";
 import {onHomeComposerFocusRequest} from "../../lib/home-composer-focus";
 import {findLaunchedSession, startSessionProjects, type PendingLaunch} from "../../lib/palette-start-session";
 import {Composer} from "../composer";
-import {useToast} from "../toast";
+import {useToast} from "../toast-context";
 import {ClawdMascot} from "./clawd-mascot";
 import {ProjectPicker} from "./project-picker";
 

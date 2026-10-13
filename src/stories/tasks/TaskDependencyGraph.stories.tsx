@@ -1,6 +1,7 @@
 import type {Meta, StoryObj} from "@storybook/react-vite";
 import {TaskDependencyGraph} from "../../components/task-dependency-graph";
-import type {GraphTask, TaskGraphGroup} from "../../components/task-dependency-graph";
+import type {TaskGraphGroup} from "../../components/task-dependency-graph";
+import type {GraphTask} from "../../components/task-dependency-graph-layout";
 
 function makeTask(overrides: Partial<GraphTask> & Pick<GraphTask, "taskId" | "subject">): GraphTask {
 	return {

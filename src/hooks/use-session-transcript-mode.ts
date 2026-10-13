@@ -1,6 +1,6 @@
 import {useCallback, useMemo, useSyncExternalStore} from "react";
 import {useShortcut} from "./use-shortcut";
-import {VERBOSITY_PRESETS, type Settings, useSettings} from "../components/settings-provider";
+import {VERBOSITY_PRESETS, type Settings, useSettings} from "../components/settings-context";
 import {
 	type TranscriptMode,
 	type TranscriptModeOverrides,

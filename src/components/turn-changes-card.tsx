@@ -4,9 +4,10 @@ import {useState} from "react";
 import {fileViewerPath} from "../lib/api/file";
 import {requestChangesScope} from "../lib/changes-scope-request";
 import type {TurnChanges} from "../lib/turn-changes";
-import {useOptionalPaneHost} from "./panes/tile-host";
+import {useOptionalPaneHost} from "./panes/pane-host-context";
 import {ChevronIcon} from "./tool-renderers/shared";
-import {TurnUndoConfirm, useTurnUndo} from "./turn-undo";
+import {TurnUndoConfirm} from "./turn-undo";
+import {useTurnUndo} from "./use-turn-undo";
 import {Tooltip} from "./ui/tooltip";
 
 /** Upstream shows four file rows before "Show N more". */

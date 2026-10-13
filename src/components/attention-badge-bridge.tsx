@@ -7,7 +7,7 @@ import {countSessionsNeedingAttention, stripAttentionCount} from "../lib/attenti
 import {resolvedRouteTitle} from "../lib/route-title";
 import {displayState, type ActivityState} from "../lib/session-state";
 import {hasUnseenWork, subscribeUnseenWork} from "../lib/unread-store";
-import {useSettings} from "./settings-provider";
+import {useSettings} from "./settings-context";
 import {getCachedSessionIdentity} from "../lib/api/session-identity";
 import {sessionQueryKeys} from "../lib/api/sessions";
 import {eventQueryKey} from "../lib/query-cache-event";

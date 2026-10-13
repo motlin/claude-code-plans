@@ -23,7 +23,8 @@ import {
 	SetupSettings,
 	TranscriptSettings,
 } from "./settings-sections";
-import {SettingsFlashContext, type SettingsFlash} from "./settings-row";
+import {loadedCustomizeDialogPanel, preloadCustomizeDialogPanel} from "./customize-dialog-panel-loader";
+import {SettingsFlashContext, type SettingsFlash} from "./settings-row-context";
 import {SettingsSearch} from "./settings-search";
 import {CUSTOMIZE_SECTION_ICONS, SETTINGS_TAB_ICONS} from "./settings-tab-icons";
 import {UsageSettings} from "./usage-settings";
@@ -43,20 +44,6 @@ const TAB_PANELS = {
 type CustomizeDialogPanelModule = typeof import("../customize/customize-dialog-panel");
 type CustomizeDialogPanelProps = ComponentProps<CustomizeDialogPanelModule["default"]>;
 
-// Skills, Connectors and Plugins pull in the Customize lists and detail views, so they load on first open.
-let customizeDialogPanelModule: Promise<CustomizeDialogPanelModule> | undefined;
-let loadedCustomizeDialogPanel: CustomizeDialogPanelModule["default"] | undefined;
-
-/** Starts loading the Customize panel; the nav calls it on hover/focus so the first open needn't wait. */
-// oxlint-disable-next-line typescript/promise-function-async -- returns the one cached download, which use() needs to be stable
-export function preloadCustomizeDialogPanel(): Promise<CustomizeDialogPanelModule> {
-	customizeDialogPanelModule ??= import("../customize/customize-dialog-panel").then((module) => {
-		loadedCustomizeDialogPanel = module.default;
-		return module;
-	});
-	return customizeDialogPanelModule;
-}
-
 /** Event-handler form of {@link preloadCustomizeDialogPanel}, for hover and focus. */
 function warmCustomizeDialogPanel(): void {
 	void preloadCustomizeDialogPanel();
@@ -68,7 +55,7 @@ function warmCustomizeDialogPanel(): void {
  * panel renders in the same pass.
  */
 function CustomizeDialogPanel(props: CustomizeDialogPanelProps) {
-	const Panel = loadedCustomizeDialogPanel ?? use(preloadCustomizeDialogPanel()).default;
+	const Panel = loadedCustomizeDialogPanel() ?? use(preloadCustomizeDialogPanel()).default;
 	return <Panel {...props} />;
 }
 

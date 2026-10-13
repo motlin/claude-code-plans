@@ -1,4 +1,4 @@
-import type {ToastOptions} from "../components/toast";
+import type {ToastOptions} from "../components/toast-context";
 import {buildClaudeCopyCommand} from "./claude-launch-command";
 import {findLaunchedSession, type PendingLaunch} from "./palette-start-session";
 

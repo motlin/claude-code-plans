@@ -3,6 +3,7 @@ import {File, FileCode, Folder} from "lucide-react";
 
 import type {SessionFilesEntry} from "../lib/api/session-files";
 import {isMutedMention} from "../lib/file-mentions";
+import {fileMentionOptionId} from "./file-mention-option-id";
 
 const POPUP_CLASS =
 	"absolute bottom-full left-0 z-[130] mb-2 flex max-h-96 w-[560px] max-w-[calc(100vw-2rem)] flex-col overflow-y-auto rounded-card bg-[var(--menu-bg)] p-1 text-body text-primary shadow-[var(--menu-shadow)] select-none";
@@ -16,10 +17,6 @@ const SOURCE_EXTENSION =
 function EntryIcon({entry}: {entry: SessionFilesEntry}) {
 	const Icon = entry.isDirectory ? Folder : SOURCE_EXTENSION.test(entry.name) ? FileCode : File;
 	return <Icon aria-hidden="true" className="size-4 shrink-0 text-secondary" />;
-}
-
-export function fileMentionOptionId(menuId: string, index: number): string {
-	return `${menuId}-option-${index}`;
 }
 
 /**

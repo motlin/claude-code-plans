@@ -6,7 +6,8 @@ import {useEffect, useState} from "react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {FakeEventSource, installFakeEventSource} from "./fake-event-source";
 import {installFixedResizeObserver} from "./fixed-resize-observer";
-import {measureInteraction, PerfSubtree, useRenderCount} from "./measure-interaction";
+import {measureInteraction, useRenderCount} from "./measure-interaction";
+import {PerfSubtree} from "./perf-subtree";
 
 afterEach(() => {
 	cleanup();

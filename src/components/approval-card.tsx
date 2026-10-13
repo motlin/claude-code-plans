@@ -1,5 +1,4 @@
 import type {ButtonHTMLAttributes, ReactNode} from "react";
-import type {SessionSummaryState} from "../lib/session-state";
 
 const ACTION_BUTTON =
 	"inline-flex h-6 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-r5 px-2 text-[13px]/[19px] whitespace-nowrap select-none disabled:cursor-not-allowed disabled:opacity-50 [&_kbd]:text-[11px] @max-[500px]/approval-dock:w-full";
@@ -68,22 +67,6 @@ export function ApprovalCardShell({
 			</div>
 		</div>
 	);
-}
-
-/**
- * Whether the dock shows the waiting notice: the session waits on input (from
- * the CLI registry or hooks) but no question or permission card can dock. The
- * CLI writes a pending AskUserQuestion to the transcript only once answered, so
- * upstream's docked question card has nothing local to render from.
- */
-export function showsWaitingForInputNotice({
-	state,
-	hasDockedCard,
-}: {
-	state: SessionSummaryState | null;
-	hasDockedCard: boolean;
-}): boolean {
-	return state === "waiting" && !hasDockedCard;
 }
 
 /**

@@ -12,7 +12,7 @@ import {buildClientToolCall, type ClientToolCall} from "../src/components/tool-r
 import {toolLabel} from "../src/lib/tool-labels";
 import {processTranscript} from "../src/lib/transcript";
 
-vi.mock("../src/components/settings-provider", () => ({
+vi.mock("../src/components/settings-context", () => ({
 	useSettings: () => ({settings: {showDebug: false}}),
 }));
 vi.mock("../src/lib/hmr-persist", () => ({

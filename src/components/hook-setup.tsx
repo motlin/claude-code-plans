@@ -3,7 +3,7 @@ import {useQuery} from "@tanstack/react-query";
 import {Check, Copy, Settings, Download, Trash2, AlertCircle} from "lucide-react";
 import {generateHooksJson, DEFAULT_HOOK_PORT} from "../lib/hook-config";
 import {hookStatusQueryOptions, useInstallHooks, useUninstallHooks} from "../lib/api/hooks";
-import {useSettings} from "./settings-provider";
+import {useSettings} from "./settings-context";
 
 export function HookSetup() {
 	const {settings} = useSettings();

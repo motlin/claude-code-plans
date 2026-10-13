@@ -4,12 +4,11 @@ import {ChevronRight} from "lucide-react";
 import {Fragment, useEffect, useLayoutEffect, useRef, useState, type ReactNode} from "react";
 
 import type {SidebarDragRowProps} from "../../hooks/use-sidebar-drag";
-import type {SessionListItem} from "../../lib/api/sessions";
 import {startSessionSwitchJourney} from "../../lib/perf/field-journeys";
 import type {GroupAppearance} from "../../lib/group-appearance";
 import {useProjectAppearance} from "../../lib/project-appearance-store";
 import {useSessionGroups} from "../../lib/session-group-store";
-import {customGroupIdOfKey, isProjectGroupKey, type SessionGroup, type SessionGroupRow} from "../../lib/session-groups";
+import {customGroupIdOfKey, isProjectGroupKey, type SessionGroup} from "../../lib/session-groups";
 import {
 	familyKey,
 	setFamiliesCollapsed,
@@ -27,28 +26,8 @@ import {GroupAppearanceMark} from "./group-appearance";
 import {ProjectGroupHeader} from "./project-group-header";
 import {SelectAllGroupHeader} from "./select-all-group-header";
 import {useSidebarSelection} from "./selection-context";
+import type {SidebarSessionRow} from "./sidebar-session-row";
 import {ROVING_ITEM_PROPS} from "./use-roving-focus";
-
-export interface SidebarSessionRow extends SessionGroupRow {
-	id: string;
-	session: SessionListItem;
-}
-
-export function toGroupRow(session: SessionListItem): SidebarSessionRow {
-	return {
-		session,
-		id: session.id,
-		sessionId: session.id,
-		title: session.title,
-		bucket: session.bucket,
-		project: session.projectName,
-		archived: session.archived,
-		createdAt: Date.parse(session.created),
-		lastActivityAt: Date.parse(session.mtime),
-		forkedFromSessionId: session.forkedFromSessionId,
-		live: session.state !== "ended",
-	};
-}
 
 /** The section's unarchived sessions, family members included, for Archive all. */
 function archivableIds(group: SessionGroup<SidebarSessionRow>): string[] {

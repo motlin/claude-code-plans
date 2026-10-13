@@ -1,7 +1,7 @@
 import {Check, ChevronDown} from "lucide-react";
 import {type KeyboardEvent, useEffect, useId, useRef, useState} from "react";
 
-import {useSettingsRowIds} from "./settings-row";
+import {useSettingsRowIds} from "./settings-row-context";
 
 /*
  * The claude.ai/code settings Combobox: a full-width 32px trigger whose popup

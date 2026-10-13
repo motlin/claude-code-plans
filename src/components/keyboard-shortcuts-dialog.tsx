@@ -5,51 +5,15 @@ import {useCallback, useRef, useSyncExternalStore} from "react";
 import {useIsMac, useIsWindows} from "../hooks/use-is-mac";
 import {useShortcut} from "../hooks/use-shortcut";
 import {bindingsFor} from "../lib/shortcuts/match";
-import {bindingToKeys, SHORTCUT_IDS, SHORTCUTS, type ShortcutGroup, type ShortcutId} from "../lib/shortcuts/registry";
+import {bindingToKeys, SHORTCUT_IDS, SHORTCUTS, type ShortcutId} from "../lib/shortcuts/registry";
 import {Shortcut} from "./ui/shortcut";
-
-const SECTION_TITLES = {
-	general: "General",
-	panes: "Panes",
-	composer: "Composer",
-} as const satisfies Record<ShortcutGroup, string>;
-
-const SECTION_ORDER = Object.keys(SECTION_TITLES) as ShortcutGroup[];
-
-export interface ShortcutSection {
-	title: string;
-	ids: ShortcutId[];
-}
-
-/** Registry ids grouped General → Panes → Composer in registry order, skipping empty groups. */
-export function shortcutSections(ids: readonly ShortcutId[], include: (id: ShortcutId) => boolean): ShortcutSection[] {
-	return SECTION_ORDER.map((group) => ({
-		title: SECTION_TITLES[group],
-		ids: ids.filter((id) => SHORTCUTS[id].group === group && include(id)),
-	})).filter((section) => section.ids.length > 0);
-}
-
-let open = false;
-const listeners = new Set<() => void>();
-
-export function setKeyboardShortcutsOpen(next: boolean): void {
-	if (open === next) return;
-	open = next;
-	for (const listener of listeners) listener();
-}
-
-function subscribe(listener: () => void): () => void {
-	listeners.add(listener);
-	return () => listeners.delete(listener);
-}
-
-function getOpen(): boolean {
-	return open;
-}
-
-function getServerOpen(): boolean {
-	return false;
-}
+import {shortcutSections} from "./keyboard-shortcut-sections";
+import {
+	getKeyboardShortcutsOpen,
+	getServerKeyboardShortcutsOpen,
+	setKeyboardShortcutsOpen,
+	subscribeKeyboardShortcutsOpen,
+} from "./keyboard-shortcuts-open";
 
 function ShortcutRow({id, isMac, isWindows}: {id: ShortcutId; isMac: boolean; isWindows: boolean}) {
 	const definition = SHORTCUTS[id];
@@ -70,7 +34,11 @@ function ShortcutRow({id, isMac, isWindows}: {id: ShortcutId; isMac: boolean; is
 
 /** The upstream ⌘/ Keyboard shortcuts modal, listing only shortcuts wired locally. */
 export function KeyboardShortcutsDialog() {
-	const isOpen = useSyncExternalStore(subscribe, getOpen, getServerOpen);
+	const isOpen = useSyncExternalStore(
+		subscribeKeyboardShortcutsOpen,
+		getKeyboardShortcutsOpen,
+		getServerKeyboardShortcutsOpen,
+	);
 	const isMac = useIsMac();
 	const isWindows = useIsWindows();
 	const returnFocusRef = useRef<HTMLElement | null>(null);

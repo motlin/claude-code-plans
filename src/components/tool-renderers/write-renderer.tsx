@@ -2,7 +2,8 @@ import {Link} from "@tanstack/react-router";
 import {FileText} from "lucide-react";
 import type {ToolRendererProps} from "./types";
 import {InlineDiff} from "./inline-diff";
-import {CopyButton, TOOL_OUTPUT_REGION, TruncatedFilePathHeader} from "./shared";
+import {CopyButton, TruncatedFilePathHeader} from "./shared";
+import {TOOL_OUTPUT_REGION} from "./tool-output-region";
 import {toMdSlug} from "../../lib/md-slug";
 
 const PLAN_RE = /\.claude\/plans\/([^/]+\.md)$/;

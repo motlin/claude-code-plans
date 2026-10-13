@@ -5,7 +5,8 @@ import {createMemoryHistory, createRootRoute, createRouter, RouterProvider} from
 import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
-import {GroupSection, type SidebarSessionRow, toGroupRow} from "../src/components/sidebar/session-group-section";
+import {GroupSection} from "../src/components/sidebar/session-group-section";
+import {type SidebarSessionRow, toGroupRow} from "../src/components/sidebar/sidebar-session-row";
 import {ToastProvider} from "../src/components/toast";
 import {herdrPanesQueryOptions} from "../src/lib/api/herdr";
 import type {SessionListItem} from "../src/lib/api/sessions";

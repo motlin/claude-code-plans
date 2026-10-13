@@ -7,7 +7,7 @@ import {processTranscript} from "../src/lib/transcript";
 
 let showDebug = false;
 
-vi.mock("../src/components/settings-provider", () => ({
+vi.mock("../src/components/settings-context", () => ({
 	useSettings: () => ({settings: {showDebug}}),
 }));
 vi.mock("../src/lib/hmr-persist", () => ({

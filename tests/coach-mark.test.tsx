@@ -14,7 +14,8 @@ import {useState} from "react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {CoachMark} from "../src/components/coach-mark";
-import {SettingsProvider, settingStorageKey} from "../src/components/settings-provider";
+import {SettingsProvider} from "../src/components/settings-provider";
+import {settingStorageKey} from "../src/components/settings-context";
 import {SessionGroups} from "../src/components/sidebar/session-groups";
 import {ToastProvider} from "../src/components/toast";
 import {RecentSessionsResponse, recentSessionsInfiniteQueryOptions} from "../src/lib/api/sessions";

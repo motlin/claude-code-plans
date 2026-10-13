@@ -11,7 +11,7 @@ import {
 	FileText,
 	MessageSquare,
 } from "lucide-react";
-import {type ComponentType, type SVGProps} from "react";
+import type {ComponentType, SVGProps} from "react";
 import {
 	projectDetailQueryOptions,
 	projectSessionsQueryOptions,
@@ -23,7 +23,8 @@ import {projectApprovalsQueryOptions} from "../lib/api/approvals";
 import {toMdSlug} from "../lib/md-slug";
 import {formatRelativeTimeFromIso} from "../lib/relative-time";
 import {formatCount} from "../lib/pluralize";
-import {DetailTopBar, pillStyles} from "../components/detail-top-bar";
+import {DetailTopBar} from "../components/detail-top-bar";
+import {pillStyles} from "../components/pill-styles";
 import {MarkdownInline} from "../components/markdown-view";
 import {TaskOwner} from "../components/task-owner";
 

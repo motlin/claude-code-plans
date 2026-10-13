@@ -31,7 +31,7 @@ import {useRecentsRecorder} from "../hooks/use-recents-recorder";
 import {useSidebarState, useSidebarToggleShortcut} from "../lib/sidebar-store";
 import {IndexingBanner} from "../components/indexing-banner";
 import {HookSchemaDriftBanner} from "../components/hook-schema-drift-banner";
-import {ClaudeEventsProvider} from "../hooks/use-claude-events";
+import {ClaudeEventsProvider} from "../components/claude-events-provider";
 import {DesktopNotificationBridge} from "../components/desktop-notification-bridge";
 import {AttentionBadgeBridge} from "../components/attention-badge-bridge";
 import {WorkingCopyReviewBanner} from "../components/working-copy-review-banner";

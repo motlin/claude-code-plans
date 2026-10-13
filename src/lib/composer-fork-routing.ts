@@ -1,4 +1,4 @@
-import type {ToastOptions} from "../components/toast";
+import type {ToastOptions} from "../components/toast-context";
 import {buildLaunchFlags, type LaunchOptions} from "./launch-options";
 import {type PendingFork, sessionForkArgs} from "./session-fork";
 

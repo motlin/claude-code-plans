@@ -21,7 +21,7 @@ import * as measurements from "../src/lib/transcript-measurements";
 import {processTranscript} from "../src/lib/transcript";
 import type {SessionLine} from "../src/lib/sessions";
 
-vi.mock("../src/components/settings-provider", () => ({
+vi.mock("../src/components/settings-context", () => ({
 	useSettings: () => ({settings: {showDebug: false, codeThemeLight: "claude-light", codeThemeDark: "github-dark"}}),
 }));
 vi.mock("../src/lib/hmr-persist", () => ({hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize()}));

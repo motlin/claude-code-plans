@@ -1,7 +1,7 @@
 import {readFileSync} from "node:fs";
 import {resolve} from "node:path";
 import {describe, expect, it} from "vite-plus/test";
-import {DIFFS_STYLE_OVERRIDES} from "../src/components/changes/diff-file";
+import {DIFFS_STYLE_OVERRIDES} from "../src/components/changes/diffs-config";
 
 const ROOT = resolve(__dirname, "..");
 const GLOBALS_CSS = resolve(ROOT, "src", "styles", "globals.css");

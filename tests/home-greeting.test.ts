@@ -3,7 +3,8 @@
 import {render, screen} from "@testing-library/react";
 import {createElement} from "react";
 import {describe, expect, it} from "vite-plus/test";
-import {greetingText, HomeGreeting} from "../src/components/home/greeting";
+import {HomeGreeting} from "../src/components/home/greeting";
+import {greetingText} from "../src/components/home/greeting-text";
 
 describe("greetingText", () => {
 	it.each([

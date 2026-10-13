@@ -3,7 +3,8 @@ import type {ThemedToken} from "@shikijs/core";
 import {extractLineNumbers, detectLanguage} from "../../lib/diff-utils";
 import {useHighlightedLines} from "../../hooks/use-shiki";
 import type {ToolRendererProps} from "./types";
-import {CopyButton, TOOL_OUTPUT_REGION, TruncatedFilePathHeader} from "./shared";
+import {CopyButton, TruncatedFilePathHeader} from "./shared";
+import {TOOL_OUTPUT_REGION} from "./tool-output-region";
 
 interface ParsedLine {
 	lineNum: string | null;

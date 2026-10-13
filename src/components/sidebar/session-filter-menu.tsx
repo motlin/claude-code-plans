@@ -19,7 +19,7 @@ import {
 	SessionStatusFilterSchema,
 	type SessionListPrefs,
 } from "../../lib/session-groups";
-import {useSettings} from "../settings-provider";
+import {useSettings} from "../settings-context";
 import {
 	Menu,
 	MenuCheckboxItem,

@@ -1,7 +1,7 @@
 import {Ellipsis} from "lucide-react";
 import type {SkillSummary} from "../../lib/api/customize";
 import {writeClipboardText} from "../../lib/clipboard";
-import {useToast} from "../toast";
+import {useToast} from "../toast-context";
 import {Menu, MenuContent, MenuItem, MenuTrigger} from "../ui/menu";
 import {skillInvocation} from "./skills-view";
 

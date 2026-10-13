@@ -2,7 +2,7 @@ import {useQuery} from "@tanstack/react-query";
 import {Ellipsis} from "lucide-react";
 import {customizeSettingsTogglesQueryOptions, isPluginEnabled} from "../../lib/api/customize";
 import {writeClipboardText} from "../../lib/clipboard";
-import {useToast} from "../toast";
+import {useToast} from "../toast-context";
 import {Menu, MenuContent, MenuItem, MenuTrigger} from "../ui/menu";
 import {pluginInstallCommand} from "./plugin-view";
 import {useToggleWithToast} from "./use-toggle-with-toast";

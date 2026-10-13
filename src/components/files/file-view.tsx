@@ -24,15 +24,18 @@ import {registerFindInFile} from "../../lib/find-in-file-request";
 import {inlineCodeTexts} from "../../lib/client-markdown";
 import {fromMdSlug} from "../../lib/md-slug";
 import {isMacPlatform} from "../../lib/shortcuts/match";
-import {useResolvedFileRefs} from "../file-refs";
-import {FileViewer, fileViewerLanguage} from "../file-viewer";
+import {useResolvedFileRefs} from "../use-resolved-file-refs";
+import {FileViewer} from "../file-viewer";
+import {fileViewerLanguage} from "../file-viewer-utils";
 import {MarkdownArticle} from "../markdown-article";
-import {useSettings} from "../settings-provider";
-import {useToast} from "../toast";
+import {useSettings} from "../settings-context";
+import {useToast} from "../toast-context";
 import {ContextMenu, ContextMenuTrigger, MenuContent} from "../ui/menu";
 import {Tooltip} from "../ui/tooltip";
-import {mentionPath, ViewerMenuItems} from "./file-context-menu";
-import {clearFindHighlights, collectFindBlocks, FindBar, paintFindHighlights} from "./find-in-file";
+import {ViewerMenuItems} from "./file-context-menu";
+import {mentionPath} from "./mention-path";
+import {FindBar} from "./find-in-file";
+import {clearFindHighlights, collectFindBlocks, paintFindHighlights} from "./find-highlights";
 import {useMarkdownEdit} from "./markdown-edit";
 
 /**

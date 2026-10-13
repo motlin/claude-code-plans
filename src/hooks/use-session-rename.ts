@@ -1,6 +1,6 @@
 import {useCallback, useState} from "react";
 
-import {useToast} from "../components/toast";
+import {useToast} from "../components/toast-context";
 import {useRenameSessionMutation} from "../lib/api/sessions";
 
 const RENAME_FAILED_MESSAGE = "Couldn’t save the new name. Try again.";

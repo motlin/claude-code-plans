@@ -17,9 +17,11 @@ import {
 	terminalOverlay,
 	terminalStatus,
 } from "../lib/terminal-lifecycle";
-import {type ConnectionStatus, loadGhostty} from "./herdr-terminal";
+import {type ConnectionStatus} from "./herdr-terminal";
+import {loadGhostty} from "./load-ghostty";
 import {TerminalPlaceholder} from "./terminal-placeholder";
-import {installTerminalInput, TerminalSelectionStatus, useTerminalSelectionActions} from "./terminal-selection-status";
+import {TerminalSelectionStatus} from "./terminal-selection-status";
+import {installTerminalInput, useTerminalSelectionActions} from "./terminal-input";
 
 /** Socket closes that mean "stop", not "reconnect". */
 const FINAL_CLOSE_CODES = new Set([1000, 1008, 4001, 4404]);

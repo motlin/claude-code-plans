@@ -5,8 +5,10 @@ import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/
 import {useState} from "react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {useRegisterChangesPane} from "../src/components/changes/changes-pane-entry";
-import {TileHost, usePaneHost} from "../src/components/panes/tile-host";
-import {DEFAULTS, SettingsProvider} from "../src/components/settings-provider";
+import {usePaneHost} from "../src/components/panes/pane-host-context";
+import {TileHost} from "../src/components/panes/tile-host";
+import {SettingsProvider} from "../src/components/settings-provider";
+import {DEFAULTS} from "../src/components/settings-context";
 import {ToastProvider} from "../src/components/toast";
 import {sessionDiffQueryOptions, sessionDiffScopesQueryOptions} from "../src/lib/api/session-diff";
 import {defaultPaneLayout, loadPaneLayout, openPane, savePaneLayout, type PaneKind} from "../src/lib/pane-layout";

@@ -14,7 +14,7 @@ import {ConnectorsTable, ScopeBadge} from "./connectors-table";
 import {CustomizeDiscover} from "./customize-discover";
 import {CustomizeNotice, NoSearchMatches} from "./customize-empty";
 import {CustomizeList, ShortDate} from "./customize-list";
-import {useCustomizeGo} from "./customize-nav";
+import {useCustomizeGo} from "./customize-navigation";
 import {useSectionSort} from "./persisted-sort";
 import {PluginRowActions} from "./plugin-row-actions";
 import {CUSTOMIZE_SECTIONS, type CustomizeSearch, matchesQuery, resolveOption} from "./sections";

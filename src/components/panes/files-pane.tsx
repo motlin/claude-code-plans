@@ -19,7 +19,7 @@ import {FileView} from "../files/file-view";
 import {FileTabsStrip} from "../files/file-tabs-strip";
 import {FilesTree, FilesTreeColumn} from "../files/files-tree";
 import {JumpTargetProvider, type JumpTargetWindow} from "../jump-target-context";
-import {useSettings} from "../settings-provider";
+import {useSettings} from "../settings-context";
 import {
 	Menu,
 	MenuCheckboxItem,
@@ -36,38 +36,16 @@ import {
 import {Tooltip} from "../ui/tooltip";
 import {PANE_HEADER_ICON_BUTTON_CLASS} from "./pane-classes";
 import {consumePendingFilterFocus} from "./files-filter-focus";
-import {usePaneHost} from "./tile-host";
+import {usePaneHost} from "./pane-host-context";
 import type {PaneChrome} from "./pane-registry";
+import {filesEmptyState} from "./files-empty-state";
 import {
 	FILE_SOURCE_OPTIONS,
 	type FileSourceSelection,
 	sessionFileLabel,
-	SessionFilesList,
 	useFileSourceSelection,
-} from "./session-files-list";
-
-export {DEFAULT_FILE_SOURCE_SELECTION, FILE_SOURCE_SELECTION_STORAGE_KEY} from "./session-files-list";
-
-export interface FilesEmptyState {
-	title: string;
-	detail: string;
-}
-
-/** Upstream's three viewer empty states, chosen by whether the tree shows and how many tabs are open. */
-export function filesEmptyState(hasTree: boolean, tabCount: number): FilesEmptyState {
-	if (tabCount > 0) {
-		return {
-			title: "No file selected",
-			detail: "Pick an open file above, or click a file path in the conversation.",
-		};
-	}
-	return {
-		title: "Open files appear here",
-		detail: hasTree
-			? "Pick a file in the tree, or click a file path in the conversation."
-			: "Click a file path in the conversation to open it.",
-	};
-}
+} from "./session-file-sources";
+import {SessionFilesList} from "./session-files-list";
 
 function TreeToggle({shown, onToggle}: {shown: boolean; onToggle: () => void}) {
 	const keys = useShortcutKeys("toggle_changes_file_list");

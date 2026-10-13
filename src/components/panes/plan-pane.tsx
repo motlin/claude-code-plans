@@ -1,16 +1,14 @@
 import {useQuery} from "@tanstack/react-query";
 import {Link} from "@tanstack/react-router";
 import {ExternalLink} from "lucide-react";
-import {useEffect} from "react";
 
 import {planQueryOptions} from "../../lib/api/plans";
 import {stripLeadingTitleHeading} from "../../lib/markdown-utils";
 import {toMdSlug} from "../../lib/md-slug";
 import {MarkdownView} from "../markdown-view";
-import {registerPane} from "./pane-registry";
 
 /** The session's linked plan, rendered as markdown with a link out to its plan page. */
-function SessionPlanPane({planFilename}: {planFilename: string}) {
+export function SessionPlanPane({planFilename}: {planFilename: string}) {
 	const slug = toMdSlug(planFilename);
 	const {data: plan, isPending} = useQuery(planQueryOptions(slug));
 
@@ -36,15 +34,4 @@ function SessionPlanPane({planFilename}: {planFilename: string}) {
 			)}
 		</div>
 	);
-}
-
-/** Registers the `plan` pane kind while the session has a linked plan. */
-export function useRegisterPlanPane(planFilename: string | undefined): void {
-	useEffect(() => {
-		if (planFilename === undefined) return undefined;
-		return registerPane("plan", {
-			title: "Plan",
-			render: () => <SessionPlanPane key={planFilename} planFilename={planFilename} />,
-		});
-	}, [planFilename]);
 }

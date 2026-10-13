@@ -1,5 +1,5 @@
 import {describe, expect, it} from "vite-plus/test";
-import {DEFAULTS, settingStorageKey} from "../src/components/settings-provider";
+import {DEFAULTS, settingStorageKey} from "../src/components/settings-context";
 import {CodeThemeDarkSchema, CodeThemeLightSchema, codeFontFamily, loadCodeTheme} from "../src/lib/code-themes";
 import {codeThemeDarkLabels, codeThemeLightLabels} from "../src/lib/schema-choices";
 

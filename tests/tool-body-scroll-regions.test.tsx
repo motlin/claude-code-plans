@@ -10,7 +10,7 @@ import {WriteRenderer} from "../src/components/tool-renderers/write-renderer";
 import type {ClientToolCall} from "../src/components/tool-renderers/types";
 import {processTranscript} from "../src/lib/transcript";
 
-vi.mock("../src/components/settings-provider", () => ({
+vi.mock("../src/components/settings-context", () => ({
 	useSettings: () => ({settings: {showDebug: false}}),
 }));
 vi.mock("../src/lib/hmr-persist", () => ({

@@ -1,4 +1,4 @@
-import {createContext, useContext, type ReactNode} from "react";
+import {createContext, useContext} from "react";
 
 interface AnswerSubmission {
 	toolUseId: string;
@@ -26,9 +26,7 @@ export interface AskUserQuestionContextValue {
 
 const AskUserQuestionContext = createContext<AskUserQuestionContextValue | null>(null);
 
-export function AskUserQuestionProvider({value, children}: {value: AskUserQuestionContextValue; children: ReactNode}) {
-	return <AskUserQuestionContext.Provider value={value}>{children}</AskUserQuestionContext.Provider>;
-}
+export const AskUserQuestionProvider = AskUserQuestionContext.Provider;
 
 /**
  * Returns the AskUserQuestion context if a provider is mounted, otherwise null.

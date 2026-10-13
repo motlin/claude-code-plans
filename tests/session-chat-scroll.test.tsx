@@ -7,7 +7,7 @@ import {jumpToMessage} from "../src/lib/jump-to-message";
 import type {SessionLine} from "../src/lib/sessions";
 import {CHAT_COLUMN_CLASS} from "../src/lib/transcript-width";
 
-vi.mock("../src/components/settings-provider", () => ({
+vi.mock("../src/components/settings-context", () => ({
 	useSettings: () => ({
 		settings: {showDebug: false, codeThemeLight: "claude-light", codeThemeDark: "github-dark"},
 	}),

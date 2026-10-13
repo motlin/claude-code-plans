@@ -5,12 +5,12 @@ import {join} from "node:path";
 import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat, type SessionChatProps} from "../src/components/session-chat";
-import {TranscriptActionsContext} from "../src/components/transcript-context-menu";
+import {TranscriptActionsContext} from "../src/components/transcript-actions-context";
 import {writeClipboardText} from "../src/lib/clipboard";
 import {messageText} from "../src/lib/transcript-action-targets";
 import {processTranscript} from "../src/lib/transcript";
 
-vi.mock("../src/components/settings-provider", () => ({
+vi.mock("../src/components/settings-context", () => ({
 	useSettings: () => ({settings: {showDebug: false, codeThemeLight: "claude-light", codeThemeDark: "github-dark"}}),
 }));
 vi.mock("../src/lib/hmr-persist", () => ({hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize()}));

@@ -3,7 +3,8 @@
 import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
-import {ToastProvider, useToast, type ToastOptions} from "../src/components/toast";
+import {ToastProvider} from "../src/components/toast";
+import {useToast, type ToastOptions} from "../src/components/toast-context";
 
 function Trigger({options}: {options: ToastOptions}) {
 	const toast = useToast();

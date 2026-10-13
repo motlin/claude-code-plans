@@ -4,7 +4,8 @@ import {QueryClient, QueryClientProvider, useQuery} from "@tanstack/react-query"
 import {act, cleanup, render, waitFor} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {useEffect, type ReactNode} from "react";
-import {ClaudeEventsProvider, useSubscribeSessionRemovals} from "../src/hooks/use-claude-events";
+import {useSubscribeSessionRemovals} from "../src/hooks/use-claude-events";
+import {ClaudeEventsProvider} from "../src/components/claude-events-provider";
 import {sessionQueryKeys, transcriptQueryOptions, type TranscriptData} from "../src/lib/api/sessions";
 import {DOMAIN_EVENTS, HERDR_EVENTS} from "../src/lib/hook-events";
 

@@ -1,6 +1,6 @@
 import type {KeyboardEvent} from "react";
 
-import {useSettingsRowIds} from "./settings-row";
+import {useSettingsRowIds} from "./settings-row-context";
 
 /*
  * The claude.ai/code Switch: a 36×20 track with 2px padding and a 16px knob,

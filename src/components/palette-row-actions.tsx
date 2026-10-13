@@ -15,8 +15,8 @@ import {
 } from "../lib/session-menu-items";
 import type {SessionBucket} from "../lib/session-state";
 import {markSeen, markUnseen} from "../lib/unread-store";
-import {useHasUnseenWork} from "./session-unread-control";
-import {useToast} from "./toast";
+import {useHasUnseenWork} from "./use-has-unseen-work";
+import {useToast} from "./toast-context";
 import {Shortcut} from "./ui/shortcut";
 import {Tooltip} from "./ui/tooltip";
 

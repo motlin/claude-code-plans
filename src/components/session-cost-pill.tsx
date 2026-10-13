@@ -4,7 +4,7 @@ import type {ReactNode} from "react";
 import {formatTokenCount} from "../lib/home-stats";
 import {formatModelName} from "../lib/model-name";
 import {formatUsd, type SessionCostState} from "../lib/session-cost";
-import {formatDuration} from "./tool-renderers/shared";
+import {formatDuration} from "../lib/format-duration";
 
 const POPUP_CLASS =
 	"flex w-[320px] max-w-[calc(100vw-16px)] flex-col gap-2 rounded-card bg-[var(--menu-bg)] p-3 text-[12px]/[16px] text-primary shadow-[var(--menu-shadow)] outline-none";

@@ -17,17 +17,19 @@ import {useResizableWidth} from "../../hooks/use-resizable-width";
 import {type SessionFilesResponse, sessionFilesQueryOptions} from "../../lib/api/session-files";
 import type {AttachContextHandler} from "../../lib/context-attach";
 import {parseContentSearchQuery} from "../../lib/files-content-search";
-import {getFileIcon} from "../file-tree";
-import {settingStorageKey, useSettings} from "../settings-provider";
+import {getFileIcon} from "../file-icon";
+import {useSettings} from "../settings-context";
+import {
+	FILES_TREE_MAX_WIDTH,
+	FILES_TREE_MIN_WIDTH,
+	clampFilesTreeWidth,
+	goUpTarget,
+	parseTreeQuery,
+} from "./files-tree-layout";
 import {ContextMenu, ContextMenuTrigger, MenuContent} from "../ui/menu";
 import {Tooltip} from "../ui/tooltip";
 import {type ContentMatchOpenOptions, ContentSearchResults} from "./content-search-results";
 import {TreeRowMenuItems} from "./file-context-menu";
-
-const FILES_TREE_DEFAULT_WIDTH = 240;
-const FILES_TREE_MIN_WIDTH = 160;
-const FILES_TREE_MAX_WIDTH = 640;
-export const FILES_TREE_WIDTH_STORAGE_KEY = settingStorageKey("filesTreeWidth");
 
 const ROW_HEIGHT = 21.33;
 const OVERSCAN_ROWS = 8;
@@ -37,37 +39,6 @@ const QUERY_DEBOUNCE_MS = 120;
 const PARTIAL_FOOTER = "Some entries may not be listed. Keep typing to narrow.";
 
 type WorkspaceEntry = Extract<SessionFilesResponse, {kind: "listing"}>["entries"][number];
-
-export function clampFilesTreeWidth(width: number): number {
-	if (!Number.isFinite(width)) return FILES_TREE_DEFAULT_WIDTH;
-	return Math.min(FILES_TREE_MAX_WIDTH, Math.max(FILES_TREE_MIN_WIDTH, Math.round(width)));
-}
-
-export interface TreeQuery {
-	/** The drilled-in folder, relative to the working directory; "" for the root. */
-	dir: string;
-	/** Fuzzy path query inside `dir`; "" lists `dir`. */
-	search: string;
-}
-
-/** Splits the filter at its last "/": everything before it is the drilled-in folder. */
-export function parseTreeQuery(query: string): TreeQuery {
-	const trimmed = query.trim();
-	const lastSlash = trimmed.lastIndexOf("/");
-	if (lastSlash === -1) return {dir: "", search: trimmed};
-	return {
-		dir: trimmed.slice(0, lastSlash).replace(/^\/+|\/+$/g, ""),
-		search: trimmed.slice(lastSlash + 1),
-	};
-}
-
-/** The "Go up" button for a drilled-in folder: its label and the filter it restores. */
-export function goUpTarget(dir: string): {label: string; query: string} {
-	const segments = dir.split("/");
-	if (segments.length <= 1) return {label: "Go up to project files", query: ""};
-	const parent = segments.slice(0, -1);
-	return {label: `Go up to ${parent.at(-1)}`, query: `${parent.join("/")}/`};
-}
 
 function parentDir(relPath: string): string {
 	const lastSlash = relPath.lastIndexOf("/");

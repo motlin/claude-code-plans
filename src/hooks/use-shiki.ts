@@ -7,7 +7,7 @@
  */
 import type {DynamicImportLanguageRegistration, HighlighterCore, ThemedToken} from "@shikijs/core";
 import {useEffect, useMemo, useSyncExternalStore} from "react";
-import {useResolvedTheme} from "../components/theme-provider";
+import {useResolvedTheme} from "../components/theme-context";
 import {type CodeThemeId, DEFAULT_CODE_THEMES, loadCodeTheme, loadedThemeOr} from "../lib/code-themes";
 import {SHIKI_TOKENIZE_OPTIONS} from "../lib/shiki-tokenize-options";
 import {useCodeThemes} from "./use-code-themes";

@@ -7,7 +7,7 @@ import {DiffStats} from "../src/components/tool-renderers/shared";
 import {SessionChat} from "../src/components/session-chat";
 import {processTranscript} from "../src/lib/transcript";
 
-vi.mock("../src/components/settings-provider", () => ({
+vi.mock("../src/components/settings-context", () => ({
 	useSettings: () => ({settings: {showDebug: false, verbosity: "compact"}}),
 }));
 vi.mock("../src/lib/hmr-persist", () => ({

@@ -1,18 +1,12 @@
-import {useCallback, useSyncExternalStore} from "react";
-
 import type {SessionListItem} from "../lib/api/sessions";
 import {prGlyph} from "../lib/pr-status";
 import {sessionMenuReadState} from "../lib/session-menu-items";
 import {sessionRowIconKind} from "../lib/session-state";
-import {hasUnseenWork, subscribeUnseenWork, toggleUnseen} from "../lib/unread-store";
-import {useSettings} from "./settings-provider";
+import {toggleUnseen} from "../lib/unread-store";
+import {useSettings} from "./settings-context";
 import {SessionStateIcon} from "./status-dot";
 import {Tooltip} from "./ui/tooltip";
-
-export function useHasUnseenWork(sessionId: string): boolean {
-	const getSnapshot = useCallback(() => hasUnseenWork(sessionId), [sessionId]);
-	return useSyncExternalStore(subscribeUnseenWork, getSnapshot, () => false);
-}
+import {useHasUnseenWork} from "./use-has-unseen-work";
 
 /**
  * Upstream session row status dot. Awaiting and running glyphs carry a top tooltip, a read finished

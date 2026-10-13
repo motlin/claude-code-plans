@@ -2,7 +2,8 @@ import type {ReactNode} from "react";
 import type {ThemedToken} from "@shikijs/core";
 import {useHighlightedLines} from "../../hooks/use-shiki";
 import type {ToolRendererProps} from "./types";
-import {AnsiText, CopyButton, TOOL_OUTPUT_REGION} from "./shared";
+import {AnsiText, CopyButton} from "./shared";
+import {TOOL_OUTPUT_REGION} from "./tool-output-region";
 import {getMcpRenderer} from "./mcp-registry";
 
 const MCP_CLI_RE = /^mcp-cli\s+call\s+(\S+)\s+(\S+)/;

@@ -5,12 +5,11 @@ import {useEffect} from "react";
 import {z} from "zod";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
-import {TileHost, usePaneHost} from "../src/components/panes/tile-host";
-import {
-	TerminalPaneShortcut,
-	terminalShortcutAction,
-	useRegisterTerminalPane,
-} from "../src/components/panes/terminal-pane";
+import {usePaneHost} from "../src/components/panes/pane-host-context";
+import {TileHost} from "../src/components/panes/tile-host";
+import {TerminalPaneShortcut} from "../src/components/panes/terminal-pane";
+import {useRegisterTerminalPane} from "../src/components/panes/terminal-pane-entry";
+import {terminalShortcutAction} from "../src/components/panes/terminal-shortcut-action";
 import {SettingsProvider} from "../src/components/settings-provider";
 import {clearShellTabs} from "../src/lib/shell-tabs";
 import {terminalTabsStorageKey} from "../src/lib/terminal-tabs";

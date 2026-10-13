@@ -1,7 +1,7 @@
 import {useQuery} from "@tanstack/react-query";
-import {useSettings} from "../components/settings-provider";
+import {useSettings} from "../components/settings-context";
 import {capabilitiesQueryOptions} from "../lib/api/capabilities";
-import {type Capabilities, type CapabilityId, type PersistedCapabilities} from "../lib/capabilities";
+import type {Capabilities, CapabilityId, PersistedCapabilities} from "../lib/capabilities";
 
 export interface CapabilityFlags {
 	loaded: boolean;

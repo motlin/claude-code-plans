@@ -4,7 +4,8 @@ import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {createMemoryHistory, createRootRoute, createRouter, RouterProvider} from "@tanstack/react-router";
 import {act, cleanup, render, screen, waitFor} from "@testing-library/react";
 import {afterEach, describe, expect, it} from "vite-plus/test";
-import {PlanLink, selectPlanFilenames} from "../src/components/plan-link";
+import {PlanLink} from "../src/components/plan-link";
+import {selectPlanFilenames} from "../src/components/plan-filenames";
 import {plansQueryOptions, type PlanListItem} from "../src/lib/api/plans";
 
 const alphaPlan: PlanListItem = {

@@ -8,7 +8,9 @@ vi.mock("@tanstack/react-router", () => ({
 	useNavigate: () => navigate,
 }));
 
-import {handleBtwPrompt, SideChat, useSideChatShortcut} from "../src/components/side-chat";
+import {SideChat} from "../src/components/side-chat";
+import {handleBtwPrompt} from "../src/components/btw-prompt";
+import {useSideChatShortcut} from "../src/components/use-side-chat-shortcut";
 import {ToastProvider} from "../src/components/toast";
 import {parseBtwCommand, sideChatBranchTitle} from "../src/lib/side-chat";
 import {askSideChat, getSideChat, openSideChat, resetSideChatStore} from "../src/lib/side-chat-store";

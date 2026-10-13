@@ -10,7 +10,7 @@ import {processTranscript} from "../src/lib/transcript";
 import specimens from "./fixtures/group-label-specimens.json";
 import rowSpecimens from "./fixtures/transcript-row-specimens.json";
 
-vi.mock("../src/components/settings-provider", () => ({
+vi.mock("../src/components/settings-context", () => ({
 	useSettings: () => ({
 		settings: {showDebug: false, codeThemeLight: "claude-light", codeThemeDark: "github-dark"},
 	}),

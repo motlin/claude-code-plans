@@ -2,16 +2,12 @@
 
 import {cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
-import {
-	extractInlineImagePaths,
-	InlinePathImages,
-	isPathInsideAllowedImageRoot,
-	SESSION_IMAGE_CLASS_NAME,
-} from "../src/components/inline-path-images";
+import {InlinePathImages, SESSION_IMAGE_CLASS_NAME} from "../src/components/inline-path-images";
+import {extractInlineImagePaths, isPathInsideAllowedImageRoot} from "../src/components/inline-image-paths";
 import {SessionChat} from "../src/components/session-chat";
 import type {SessionLine} from "../src/lib/sessions";
 
-vi.mock("../src/components/settings-provider", () => ({
+vi.mock("../src/components/settings-context", () => ({
 	useSettings: () => ({
 		settings: {showDebug: false, codeThemeLight: "claude-light", codeThemeDark: "github-dark"},
 	}),

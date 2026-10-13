@@ -1,5 +1,5 @@
 import {describe, expect, it} from "vite-plus/test";
-import {layoutSequence, type SequenceLayout} from "../src/components/subagent-sequence";
+import {layoutSequence, type SequenceLayout} from "../src/components/subagent-sequence-layout";
 import type {DbSubagent} from "../src/lib/db/queries";
 
 function makeAgent(overrides: Partial<DbSubagent> & {id: string}): DbSubagent {

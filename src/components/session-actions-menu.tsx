@@ -1,13 +1,10 @@
-import {useQuery, useQueryClient} from "@tanstack/react-query";
-import {useNavigate} from "@tanstack/react-router";
+import {useQuery} from "@tanstack/react-query";
 import {EllipsisVertical} from "lucide-react";
 import {createContext, type ReactNode, useCallback, useContext, useRef, useState, useSyncExternalStore} from "react";
 
 import {herdrPanesQueryOptions} from "../lib/api/herdr";
-import {openSessionInFinder, sessionOpenInQueryOptions, type SessionListItem} from "../lib/api/sessions";
-import {assertNever} from "../lib/assert-never";
-import {useArchiveSessions, useSessionArchive} from "../hooks/use-session-archive";
-import {useSessionFork} from "../hooks/use-session-fork";
+import {sessionOpenInQueryOptions, type SessionListItem} from "../lib/api/sessions";
+import {useArchiveSessions} from "../hooks/use-session-archive";
 import {type SessionRename, useSessionRename} from "../hooks/use-session-rename";
 import {
 	getBulkSessionMenuItems,
@@ -19,22 +16,8 @@ import {
 	type SessionMenuSession,
 	sessionMenuReadState,
 } from "../lib/session-menu-items";
-import {
-	claudeAiSessionUrl,
-	copySessionLink,
-	copySessionResumeCommand,
-	openPullRequest,
-	vscodeFolderUrl,
-} from "../lib/session-open-in";
 import {forkDisabledReason} from "../lib/session-fork";
-import {transcriptModeLabels} from "../lib/schema-choices";
-import {
-	loadTranscriptViewNudge,
-	recordTranscriptViewPick,
-	saveTranscriptViewNudge,
-	type TranscriptMode,
-	TranscriptModeSchema,
-} from "../lib/transcript-mode";
+import {type TranscriptMode} from "../lib/transcript-mode";
 import {maybeShowDragPinHint} from "../lib/drag-pin-hint";
 import {pin, readPinState, unpin, usePins, writePinState} from "../lib/pin-store";
 import {assign, createGroup, useSessionGroups} from "../lib/session-group-store";
@@ -43,9 +26,8 @@ import {hasUnseenWork, markSeen, markUnseen, subscribeUnseenWork} from "../lib/u
 import {InlineRenameInput} from "./inline-rename-input";
 import {NewGroupDialog} from "./new-group-dialog";
 import {bulkSelectionFor, type SidebarSelectionApi, useSidebarSelection} from "./sidebar/selection-context";
-import {useSettings} from "./settings-provider";
-import {useHasUnseenWork} from "./session-unread-control";
-import {useToast} from "./toast";
+import {useSettings} from "./settings-context";
+import {useHasUnseenWork} from "./use-has-unseen-work";
 import {
 	ContextMenu,
 	ContextMenuTrigger,
@@ -61,6 +43,9 @@ import {
 	MenuSubTrigger,
 	MenuTrigger,
 } from "./ui/menu";
+import {useSessionMenuRunner} from "./use-session-menu-runner";
+import {useRenameAfterMenuClose} from "./use-rename-after-menu-close";
+import {type SessionMenuRun} from "./use-session-menu-runner";
 
 /** Actions wired locally so far; the rest appear as their features land. */
 export const SESSION_MENU_CAPABILITIES: ReadonlySet<SessionMenuCapability> = new Set<SessionMenuCapability>([
@@ -108,173 +93,11 @@ export function SessionRowTitle({render}: {render?: (title: string) => ReactNode
 	return render === undefined ? rename.title : render(rename.title);
 }
 
-export interface SessionMenuRunnerOptions {
-	sessionId: string;
-	cwd: string | null;
-	bridgeSessionId: string | null;
-	prUrl: string | null;
-	/** Opens the inline rename input once the menu has finished closing. */
-	requestRename: () => void;
-	/** Pin/Unpin; surfaces without the pin item leave it out. */
-	setPinned?: (pinned: boolean) => void;
-	/** Move up / Move down within the sidebar Pinned section. */
-	movePinned?: (delta: -1 | 1) => void;
-	/** Opens the New group dialog for Move to group ▸ New group…. */
-	requestNewGroup?: () => void;
-	/** The session's transcript view, for the header's Transcript view submenu. */
-	transcriptView?: TranscriptViewActions;
-}
-
 export interface TranscriptViewActions {
 	mode: TranscriptMode;
 	defaultMode: TranscriptMode;
 	setMode: (mode: TranscriptMode) => void;
 	makeDefault: (mode: TranscriptMode) => void;
-}
-
-/** Runs a menu item; radios also pass their value (a Move to group target or a transcript mode). */
-export type SessionMenuRun = (id: SessionMenuItemId, value?: string) => void;
-
-/** Transcript view ▸ radios and Make default, with upstream's toasts and default-view nudge. */
-function useTranscriptViewRunner(sessionId: string, view: TranscriptViewActions | undefined) {
-	const toast = useToast();
-	const makeDefault = (mode: TranscriptMode) => {
-		view?.makeDefault(mode);
-		toast({kind: "success", message: `${transcriptModeLabels[mode]} is now the default view.`});
-	};
-	const pick = (value: string | undefined) => {
-		const parsed = TranscriptModeSchema.safeParse(value);
-		if (view === undefined || !parsed.success || parsed.data === view.mode) return;
-		const mode = parsed.data;
-		view.setMode(mode);
-		const {state, due} = recordTranscriptViewPick(loadTranscriptViewNudge(), {
-			sessionId,
-			mode,
-			defaultMode: view.defaultMode,
-		});
-		saveTranscriptViewNudge(state);
-		if (!due) return;
-		const label = transcriptModeLabels[mode];
-		toast({
-			kind: "success",
-			message: `Make ${label} your default view?`,
-			description: `You’ve picked ${label} in more than one session. You can change the default anytime in Settings.`,
-			action: {
-				label: "Make default",
-				onAction: () => {
-					makeDefault(mode);
-				},
-			},
-		});
-	};
-	const makeCurrentDefault = () => {
-		if (view !== undefined) makeDefault(view.mode);
-	};
-	return {pick, makeCurrentDefault};
-}
-
-/** Runs one session menu item; shared by the row menu and the titlebar chevron menu. */
-export function useSessionMenuRunner({
-	sessionId,
-	cwd,
-	bridgeSessionId,
-	prUrl,
-	requestRename,
-	setPinned,
-	movePinned,
-	requestNewGroup,
-	transcriptView,
-}: SessionMenuRunnerOptions): SessionMenuRun {
-	const queryClient = useQueryClient();
-	const toast = useToast();
-	const transcriptViewRunner = useTranscriptViewRunner(sessionId, transcriptView);
-	const setArchived = useSessionArchive(sessionId);
-	const navigate = useNavigate();
-	const fork = useSessionFork();
-
-	const revealInFinder = () => {
-		openSessionInFinder(sessionId).catch(() => {
-			toast({kind: "error", message: "Couldn’t open the folder in Finder."});
-		});
-	};
-
-	return (id, value): void => {
-		switch (id) {
-			case "open-live-terminal":
-				void navigate({
-					to: "/session/$id",
-					params: {id: sessionId},
-					search: {pane: "terminal"},
-				});
-				return;
-			case "open-terminal":
-				if (cwd !== null) void copySessionResumeCommand(sessionId, cwd, toast);
-				return;
-			case "open-vscode":
-				if (cwd !== null) window.open(vscodeFolderUrl(cwd), "_self");
-				return;
-			case "open-finder":
-				revealInFinder();
-				return;
-			case "open-claude-ai":
-				if (bridgeSessionId !== null) {
-					window.open(claudeAiSessionUrl(bridgeSessionId), "_blank", "noopener,noreferrer");
-				}
-				return;
-			case "open-pr":
-				if (prUrl !== null) openPullRequest(prUrl);
-				return;
-			case "move-up":
-			case "move-down":
-				movePinned?.(id === "move-up" ? -1 : 1);
-				return;
-			case "pin":
-			case "unpin":
-				setPinned?.(id === "pin");
-				return;
-			case "mark-read":
-			case "mark-completed":
-				markSeen(sessionId);
-				return;
-			case "mark-unread":
-				markUnseen(sessionId);
-				return;
-			case "copy-link":
-				void copySessionLink(sessionId, toast, queryClient);
-				return;
-			case "rename":
-				requestRename();
-				return;
-			case "archive":
-			case "unarchive":
-				setArchived(id === "archive");
-				return;
-			case "fork":
-				if (cwd !== null) fork({sessionId, cwd});
-				return;
-			case "move-to-custom-group":
-				if (value !== undefined) assign(sessionId, value);
-				return;
-			case "ungroup":
-				assign(sessionId, null);
-				return;
-			case "new-group":
-				requestNewGroup?.();
-				return;
-			case "transcript-mode":
-				transcriptViewRunner.pick(value);
-				return;
-			case "make-default-transcript-mode":
-				transcriptViewRunner.makeCurrentDefault();
-				return;
-			case "open-in":
-			case "move-to-group":
-			case "transcript-view":
-				return;
-			default:
-				assertNever(id);
-		}
-	};
 }
 
 /** The sidebar Pinned section's display order, for a row rendered inside it. */
@@ -524,33 +347,6 @@ function RowMenuBody({
 		return <BulkMenuBody ids={bulkIds} selection={selection} requestNewGroup={requestBulkNewGroup} />;
 	}
 	return <SessionMenuBody session={session} pinnedRow={pinnedRow} />;
-}
-
-/**
- * The open menu holds focus, so the rename input may only mount (and take
- * focus) once the menu has closed; the closing menu must not hand focus back.
- * Base UI may ask for the final focus only after the close completed and the
- * input took focus, so the no-return flag lasts until the menu next opens.
- */
-export function useRenameAfterMenuClose(startEditing: () => void) {
-	const renameAfterClose = useRef(false);
-	const keepFocus = useRef(false);
-	return {
-		requestRename: () => {
-			renameAfterClose.current = true;
-			keepFocus.current = true;
-		},
-		onOpenChangeComplete: (open: boolean) => {
-			if (open) {
-				keepFocus.current = false;
-				return;
-			}
-			if (!renameAfterClose.current) return;
-			renameAfterClose.current = false;
-			startEditing();
-		},
-		finalFocus: () => !keepFocus.current,
-	};
 }
 
 const KEBAB_CLASS =

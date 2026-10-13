@@ -2,7 +2,8 @@
 
 import {cleanup, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
-import {DeferredCommandPalette, loadCommandPalette} from "../src/components/command-palette-entry";
+import {DeferredCommandPalette} from "../src/components/command-palette-entry";
+import {loadCommandPalette} from "../src/components/command-palette-loader";
 import {deferredPane} from "../src/components/panes/deferred-pane";
 import {prefetchWhenIdle, warmOnIntent, type IdleHost} from "../src/lib/idle-prefetch";
 

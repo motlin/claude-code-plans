@@ -1,7 +1,7 @@
 import {ArrowDown} from "lucide-react";
 import {useCallback, useEffect, useRef, useState, type MouseEvent, type ReactNode, type RefObject} from "react";
 import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
-import {findScrollContainer} from "./transcript-history-loader";
+import {findScrollContainer} from "./scroll-container";
 
 /** How far above the end the reader must be before the pill appears. */
 const AWAY_FROM_BOTTOM_PIXELS = 100;

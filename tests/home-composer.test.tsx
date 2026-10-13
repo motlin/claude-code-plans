@@ -15,7 +15,7 @@ import {Composer} from "../src/components/composer";
 import {HOME_RECENT_LIMIT, HomeComposer} from "../src/components/home/home-composer";
 import {NewSessionShortcut} from "../src/components/new-session-shortcut";
 import {ToastProvider} from "../src/components/toast";
-import {ClaudeEventsProvider} from "../src/hooks/use-claude-events";
+import {ClaudeEventsProvider} from "../src/components/claude-events-provider";
 import {composerDefaultsQueryOptions} from "../src/lib/api/composer-defaults";
 import {projectsQueryOptions} from "../src/lib/api/projects";
 import {recentSessionsQueryOptions} from "../src/lib/api/sessions";

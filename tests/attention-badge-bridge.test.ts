@@ -1,6 +1,6 @@
 import {describe, expect, it} from "vite-plus/test";
 
-import {DEFAULTS, type Settings} from "../src/components/settings-provider";
+import {DEFAULTS, type Settings} from "../src/components/settings-context";
 import {countSessionsNeedingAttention} from "../src/lib/attention";
 
 const enabled: Settings = {...DEFAULTS, notifyCompletions: true, notifyPermissionRequests: true};

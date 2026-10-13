@@ -30,8 +30,8 @@ const harness = vi.hoisted(() => {
 });
 
 vi.mock("../src/hooks/use-claude-events", () => ({useSubscribeSessionStates: () => harness.subscribe}));
-vi.mock("../src/components/settings-provider", async (importOriginal) => {
-	const original = await importOriginal<typeof import("../src/components/settings-provider")>();
+vi.mock("../src/components/settings-context", async (importOriginal) => {
+	const original = await importOriginal<typeof import("../src/components/settings-context")>();
 	const settings = {...original.DEFAULTS, notifyPermissionRequests: true};
 	return {...original, useSettings: () => ({settings})};
 });

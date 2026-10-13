@@ -10,7 +10,7 @@ import type {ResourceOccurrence} from "../src/lib/session-resources";
 
 const displaySettings = vi.hoisted(() => ({showThinking: true, showTools: true}));
 
-vi.mock("../src/components/settings-provider", () => ({
+vi.mock("../src/components/settings-context", () => ({
 	useSettings: () => ({settings: displaySettings}),
 }));
 

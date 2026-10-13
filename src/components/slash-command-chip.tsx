@@ -1,13 +1,8 @@
 import {PreviewCard} from "@base-ui/react/preview-card";
-import {createContext, useContext} from "react";
+import {useContext} from "react";
 
-import type {SlashCommand} from "../lib/slash-commands";
+import {SlashCommandsContext} from "./slash-commands-context";
 import {UserPlainText} from "./user-plain-text";
-
-const EMPTY_SLASH_COMMANDS: readonly SlashCommand[] = [];
-
-/** The commands `/api/commands` knows for this session's project, for the chip's description. */
-export const SlashCommandsContext = createContext<readonly SlashCommand[]>(EMPTY_SLASH_COMMANDS);
 
 const CHIP_CLASS =
 	"group relative inline-flex items-baseline rounded-r5 text-upstream-accent cursor-pointer align-baseline";

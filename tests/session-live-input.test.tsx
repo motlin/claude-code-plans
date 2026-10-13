@@ -4,7 +4,8 @@ import {act, fireEvent, render, renderHook, screen, waitFor} from "@testing-libr
 import {describe, expect, it, vi} from "vite-plus/test";
 import {Composer} from "../src/components/composer";
 import {useChatStream} from "../src/hooks/use-chat-stream";
-import {getSessionPromptBehavior, useLiveHerdrPrompt} from "../src/components/session-page";
+import {useLiveHerdrPrompt} from "../src/components/use-live-herdr-prompt";
+import {getSessionPromptBehavior} from "../src/components/session-prompt-behavior";
 
 vi.mock("../src/components/session-chat", () => ({
 	SessionChat: () => null,

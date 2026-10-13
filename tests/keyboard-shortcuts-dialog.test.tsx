@@ -6,11 +6,9 @@ import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {CommandPalette} from "../src/components/command-palette";
 import {ToastProvider} from "../src/components/toast";
-import {
-	KeyboardShortcutsDialog,
-	setKeyboardShortcutsOpen,
-	shortcutSections,
-} from "../src/components/keyboard-shortcuts-dialog";
+import {KeyboardShortcutsDialog} from "../src/components/keyboard-shortcuts-dialog";
+import {setKeyboardShortcutsOpen} from "../src/components/keyboard-shortcuts-open";
+import {shortcutSections} from "../src/components/keyboard-shortcut-sections";
 import {SHORTCUT_IDS, SHORTCUTS} from "../src/lib/shortcuts/registry";
 
 const MAC_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36";

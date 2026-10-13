@@ -3,7 +3,9 @@
 import {cleanup, render} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
-import {useWorkingMarkerState, WorkingMarker, type WorkingMarkerSignals} from "../src/components/working-marker";
+import {WorkingMarker} from "../src/components/working-marker";
+import {type WorkingMarkerSignals} from "../src/components/use-working-marker-state";
+import {useWorkingMarkerState} from "../src/components/use-working-marker-state";
 import {
 	formatElapsed,
 	markerEventsFromRecords,

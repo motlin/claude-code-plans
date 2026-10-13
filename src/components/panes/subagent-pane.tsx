@@ -6,11 +6,11 @@ import {transcriptQueryOptions} from "../../lib/api/sessions";
 import {formatModelName} from "../../lib/model-name";
 import {loadSubagentPaneAgent, saveSubagentPaneAgent} from "../../lib/pane-layout";
 import {onSubagentFocusRequest, takePendingSubagentFocus} from "../../lib/subagent-focus-requests";
-import {extractAgentPrompts, type Subagent} from "../../lib/subagents";
+import type {Subagent} from "../../lib/subagents";
 import {processTranscript} from "../../lib/transcript";
 import {SessionChat} from "../session-chat";
 import {Tooltip} from "../ui/tooltip";
-import {registerPane, type PaneChrome} from "./pane-registry";
+import type {PaneChrome} from "./pane-registry";
 
 const GHOST_ICON_BUTTON =
 	"flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-r5 text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary";
@@ -86,7 +86,7 @@ interface SubagentPaneProps {
 	chrome: PaneChrome;
 }
 
-function SubagentPane({sessionId, subagents, prompts, chrome}: SubagentPaneProps) {
+export function SubagentPane({sessionId, subagents, prompts, chrome}: SubagentPaneProps) {
 	const [agentId, setAgentId] = useState<string | null>(
 		() => takePendingSubagentFocus(sessionId) ?? loadSubagentPaneAgent(sessionId),
 	);
@@ -161,28 +161,5 @@ function SubagentPane({sessionId, subagents, prompts, chrome}: SubagentPaneProps
 				)}
 			</div>
 		</>
-	);
-}
-
-interface SubagentPaneRegistration {
-	sessionId: string;
-	subagents: readonly Subagent[];
-	/** The parent transcript window, whose `Agent` calls carry each subagent's prompt. */
-	records: Parameters<typeof extractAgentPrompts>[0];
-}
-
-/** Registers the `subagents` pane kind (View options ▸ Subagents) while mounted. */
-export function useRegisterSubagentPane({sessionId, subagents, records}: SubagentPaneRegistration): void {
-	const prompts = useMemo(() => extractAgentPrompts(records), [records]);
-	useEffect(
-		() =>
-			registerPane("subagents", {
-				title: "Subagents",
-				header: "custom",
-				render: (chrome) => (
-					<SubagentPane sessionId={sessionId} subagents={subagents} prompts={prompts} chrome={chrome} />
-				),
-			}),
-		[sessionId, subagents, prompts],
 	);
 }

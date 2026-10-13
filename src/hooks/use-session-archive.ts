@@ -1,7 +1,7 @@
 import {useQueryClient} from "@tanstack/react-query";
 import {useCallback} from "react";
 
-import {useToast} from "../components/toast";
+import {useToast} from "../components/toast-context";
 import {requestSessionArchived} from "../lib/api/sessions";
 
 const ARCHIVE_FAILED_MESSAGE = "Couldn’t archive the session. Try again.";

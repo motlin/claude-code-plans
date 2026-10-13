@@ -4,7 +4,8 @@ import {ArrowLeft, GitBranch, X} from "lucide-react";
 import {useMemo} from "react";
 import {z} from "zod";
 import {projectDetailQueryOptions, projectSessionsQueryOptions} from "../lib/api/projects";
-import {DetailTopBar, pillStyles} from "../components/detail-top-bar";
+import {DetailTopBar} from "../components/detail-top-bar";
+import {pillStyles} from "../components/pill-styles";
 import {useClaudeEvents} from "../hooks/use-claude-events";
 import {formatCount} from "../lib/pluralize";
 

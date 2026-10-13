@@ -1,8 +1,7 @@
 import {useRouter} from "@tanstack/react-router";
 import {sessionScrollKey} from "../lib/session-route-location";
-import {createContext, useCallback, useLayoutEffect, useRef, type ReactNode, type Ref, type RefObject} from "react";
-
-export const SessionTileGeometryReadyContext = createContext<(() => void) | undefined>(undefined);
+import {SessionTileGeometryReadyContext} from "./session-tile-geometry-context";
+import {useCallback, useLayoutEffect, useRef, type ReactNode, type Ref, type RefObject} from "react";
 
 /** The one live chat tile's offset while a pane move reparents it; never a cross-route cache. */
 export interface SessionTileScrollPosition {

@@ -9,11 +9,11 @@ import {
 } from "lucide-react";
 import {useCallback, useEffect, useRef, useState} from "react";
 
-import type {SessionDetailData} from "../lib/api/sessions";
 import {requestChangesScope} from "../lib/changes-scope-request";
+import {type BranchStripSession, type LineCounts, branchStripVisible, middleTruncate} from "./branch-strip-model";
 import {pluralize} from "../lib/pluralize";
 import {prGlyph} from "../lib/pr-status";
-import {useOptionalPaneHost} from "./panes/tile-host";
+import {useOptionalPaneHost} from "./panes/pane-host-context";
 import {ProjectMenuItems} from "./session-titlebar";
 import {Menu, MenuContent, MenuTrigger} from "./ui/menu";
 
@@ -28,31 +28,11 @@ const DISMISS_KEY_PREFIX = "branch-strip-dismissed:";
 const GHOST_BUTTON =
 	"inline-flex h-6 min-w-0 shrink-0 cursor-pointer items-center gap-1 rounded-r5 px-1.5 text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100 data-[popup-open]:bg-fill-ghost-hover";
 
-/** The session fields the strip reads. */
-export type BranchStripSession = Pick<
-	SessionDetailData,
-	"projectName" | "projectPath" | "cwd" | "gitBranch" | "pr" | "prStatus"
->;
-
-/** `feature/abc…xyz`: keeps the start and end of a name longer than `max` characters. */
-export function middleTruncate(text: string, max: number): string {
-	if (text.length <= max) return text;
-	const kept = max - 1;
-	const head = Math.ceil(kept / 2);
-	const tail = kept - head;
-	return `${text.slice(0, head)}…${text.slice(text.length - tail)}`;
-}
-
 function numberAt(data: Record<string, unknown> | null, group: string, key: string) {
 	const value = data?.[group];
 	if (value === null || typeof value !== "object") return undefined;
 	const leaf = (value as Record<string, unknown>)[key];
 	return typeof leaf === "number" ? leaf : undefined;
-}
-
-interface LineCounts {
-	additions: number;
-	deletions: number;
 }
 
 /** `+N −M` from the statusline's `cost.total_lines_added/removed`, or null when nothing changed. */
@@ -131,12 +111,6 @@ function DiffStatButton({sessionId, additions, deletions}: {sessionId: string; a
 			</span>
 		</button>
 	);
-}
-
-/** Show known PR metadata, or the existing session branch and line-count strip before a PR. */
-export function branchStripVisible(session: BranchStripSession, counts: LineCounts | null): boolean {
-	if (session.pr !== undefined || session.prStatus !== undefined) return true;
-	return session.gitBranch !== null || counts !== null;
 }
 
 /** A linked PR owns its identity; only status with the same number and URL may decorate it. */

@@ -1,7 +1,5 @@
 import {
-	createContext,
 	useCallback,
-	useContext,
 	useEffect,
 	useMemo,
 	useRef,
@@ -43,6 +41,7 @@ import {
 import {usePhoneSheet} from "../../lib/use-phone-sheet";
 import {Tooltip} from "../ui/tooltip";
 import {PANE_HEADER_ICON_BUTTON_CLASS} from "./pane-classes";
+import {PaneHostContext, type PaneHostApi} from "./pane-host-context";
 import {type PaneDefinition, usePaneDefinitions} from "./pane-registry";
 
 /** Upstream `--tiles-gap`, mirrored by the reducer's gap maths. */
@@ -57,27 +56,6 @@ const PHONE_SLOT_CLASSES = "fixed inset-0 z-40 w-full h-dvh";
 const EXPANDED_SLOT_CLASSES = "fixed inset-[9px] z-40";
 
 type LayoutUpdate = (state: PaneLayoutState) => PaneLayoutState;
-
-export interface PaneHostApi {
-	layout: PaneLayoutState;
-	isOpen: (kind: PaneKind) => boolean;
-	openPane: (kind: PaneKind) => void;
-	closePane: (kind: PaneKind) => void;
-	togglePane: (kind: PaneKind) => void;
-}
-
-const PaneHostContext = createContext<PaneHostApi | null>(null);
-
-export function usePaneHost(): PaneHostApi {
-	const host = useContext(PaneHostContext);
-	if (host === null) throw new Error("usePaneHost must be used inside <TileHost>");
-	return host;
-}
-
-/** The pane host, or null outside a `<TileHost>` (e.g. a transcript shown on its own). */
-export function useOptionalPaneHost(): PaneHostApi | null {
-	return useContext(PaneHostContext);
-}
 
 interface PendingMove {
 	tileId: TileId;

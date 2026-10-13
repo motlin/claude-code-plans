@@ -8,7 +8,7 @@ import {recentSessionsInfiniteQueryOptions, type SessionListItem} from "../../li
 import {selectHomeAttention, type HomeAttentionItem, type HomeAttentionRow} from "../../lib/home-attention";
 import {selectHomePrs, type HomePrRow} from "../../lib/home-prs";
 import {usePins} from "../../lib/pin-store";
-import {toGroupRow} from "../sidebar/session-group-section";
+import {toGroupRow} from "../sidebar/sidebar-session-row";
 
 function toAttentionRow(session: SessionListItem, approvalTools: ReadonlyMap<string, string>): HomeAttentionRow {
 	const toolName = approvalTools.get(session.id);

@@ -8,7 +8,7 @@ import {SessionChat} from "../src/components/session-chat";
 import {messageText} from "../src/lib/transcript-action-targets";
 import {processTranscript, type MessageSessionLine} from "../src/lib/transcript";
 
-vi.mock("../src/components/settings-provider", () => ({
+vi.mock("../src/components/settings-context", () => ({
 	useSettings: () => ({settings: {showDebug: false, codeThemeLight: "claude-light", codeThemeDark: "github-dark"}}),
 }));
 vi.mock("../src/lib/hmr-persist", () => ({hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize()}));

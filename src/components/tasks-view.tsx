@@ -1,14 +1,9 @@
 import {useState} from "react";
 import {CheckCircle, Circle, ChevronDown, ChevronRight} from "lucide-react";
 import type {ClientToolCall} from "./tool-renderers/types";
-import {getAgentTypeWithDefault, getTaskCreateDisplaySubject} from "../lib/tool-utils";
-
-interface TaskItem {
-	id: string;
-	subject: string;
-	description: string;
-	status: "pending" | "in_progress" | "completed";
-}
+import {getAgentTypeWithDefault} from "../lib/tool-utils";
+import {extractTasks} from "./extract-tasks";
+import type {TaskItem} from "./extract-tasks";
 
 interface AgentItem {
 	id: number;
@@ -30,36 +25,6 @@ const DEFAULT_AGENT_COLOR = "bg-orange-100 text-orange-700 dark:bg-orange-900/30
 
 function getAgentColor(agentType: string): string {
 	return AGENT_TYPE_COLORS[agentType] ?? DEFAULT_AGENT_COLOR;
-}
-
-export function extractTasks(toolCalls: ClientToolCall[]): TaskItem[] {
-	const tasks = new Map<string, TaskItem>();
-	let autoId = 0;
-
-	for (const call of toolCalls) {
-		if (call.name === "TaskCreate") {
-			autoId++;
-			const id = String(autoId);
-			const description = (call.input["description"] as string) ?? "";
-			tasks.set(id, {
-				id,
-				subject: getTaskCreateDisplaySubject(call.input) || `Task ${id}`,
-				description,
-				status: "pending",
-			});
-		} else if (call.name === "TaskUpdate") {
-			const taskId = call.input["taskId"] as string | undefined;
-			if (taskId && tasks.has(taskId)) {
-				const existing = tasks.get(taskId)!;
-				const newStatus = call.input["status"] as string | undefined;
-				if (newStatus === "pending" || newStatus === "in_progress" || newStatus === "completed") {
-					existing.status = newStatus;
-				}
-			}
-		}
-	}
-
-	return Array.from(tasks.values());
 }
 
 function extractAgents(toolCalls: ClientToolCall[]): AgentItem[] {

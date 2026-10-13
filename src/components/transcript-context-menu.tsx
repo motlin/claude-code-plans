@@ -1,10 +1,11 @@
-import {type ComponentProps, createContext, type ReactNode, useContext, useRef, useState} from "react";
+import {type ComponentProps, type ReactNode, useContext, useRef, useState} from "react";
 
 import {type ReadAloudStatus, useReadAloud} from "../hooks/use-read-aloud";
 import {writeClipboardText} from "../lib/clipboard";
 import {attachContext} from "../lib/context-attach";
 import {markdownToPlainText} from "../lib/markdown-plain-text";
 import {ContextMenu, ContextMenuTrigger, MenuContent, MenuItem, MenuSeparator} from "./ui/menu";
+import {TranscriptActionsContext, type TranscriptMessageRef} from "./transcript-actions-context";
 
 const READ_ALOUD_MENU_LABELS: Record<ReadAloudStatus, string> = {
 	idle: "Read aloud",
@@ -18,20 +19,6 @@ const READ_ALOUD_MENU_LABELS: Record<ReadAloudStatus, string> = {
  * inline code (adds Copy code), links (adds Open in default browser and Copy
  * link), tool rows (Pin and Fork only) and user bubbles (adds Rewind).
  */
-
-export interface TranscriptMessageRef {
-	sessionId: string;
-	uuid: string;
-}
-
-/** Per-message transcript actions; an item whose action is absent renders disabled. */
-export interface TranscriptActions {
-	pinChapter?: (message: TranscriptMessageRef) => void;
-	forkFrom?: (message: TranscriptMessageRef) => void;
-	rewindTo?: (message: TranscriptMessageRef) => void;
-}
-
-export const TranscriptActionsContext = createContext<TranscriptActions>({});
 
 type TranscriptMenuTarget =
 	| {kind: "prose"}

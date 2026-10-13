@@ -1,6 +1,6 @@
 import {describe, expect, it, vi} from "vite-plus/test";
 
-import type {ToastOptions} from "../src/components/toast";
+import type {ToastOptions} from "../src/components/toast-context";
 import {launchHerdrSession} from "../src/lib/api/herdr";
 import {validateClaudeLaunchArgs} from "../src/lib/claude-launch-command";
 import {

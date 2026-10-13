@@ -5,7 +5,8 @@ import {planQueryOptions, planLinksQueryOptions} from "../lib/api/plans";
 import {fromMdSlug} from "../lib/md-slug";
 import {stripLeadingTitleHeading} from "../lib/markdown-utils";
 import {ArrowLeft, Pencil, FolderOpen, MessageSquare, Clock} from "lucide-react";
-import {DetailTopBar, pillStyles} from "../components/detail-top-bar";
+import {DetailTopBar} from "../components/detail-top-bar";
+import {pillStyles} from "../components/pill-styles";
 import {DebugLink} from "../components/debug-link";
 import {nonEmpty} from "../lib/non-empty";
 

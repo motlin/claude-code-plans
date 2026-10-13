@@ -4,7 +4,7 @@ import {afterEach, beforeEach, expect, it, vi} from "vite-plus/test";
 import {SessionChat} from "../src/components/session-chat";
 import type {SessionLine} from "../src/lib/sessions";
 
-vi.mock("../src/components/settings-provider", () => ({
+vi.mock("../src/components/settings-context", () => ({
 	useSettings: () => ({settings: {showDebug: false, codeThemeLight: "claude-light", codeThemeDark: "github-dark"}}),
 }));
 vi.mock("../src/lib/hmr-persist", () => ({hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize()}));

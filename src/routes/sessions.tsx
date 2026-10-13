@@ -8,7 +8,7 @@ import {
 import {ListPageHeader} from "../components/list-page-header";
 import {SessionProjectGroups} from "../components/session-project-groups";
 import {SessionRow} from "../components/session-row";
-import {useSettings} from "../components/settings-provider";
+import {useSettings} from "../components/settings-context";
 
 export const Route = createFileRoute("/sessions")({
 	component: SessionsPage,

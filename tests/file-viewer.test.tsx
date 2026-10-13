@@ -2,7 +2,8 @@
 
 import {cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
-import {FileViewer, fileViewerLanguage, parseFileLineHash} from "../src/components/file-viewer";
+import {FileViewer} from "../src/components/file-viewer";
+import {fileViewerLanguage, parseFileLineHash} from "../src/components/file-viewer-utils";
 
 const useHighlightedLines = vi.hoisted(() => vi.fn<(code: string, language: string | null) => null>(() => null));
 

@@ -2,7 +2,7 @@ import {Link} from "@tanstack/react-router";
 import {useQuery} from "@tanstack/react-query";
 import {lazy, type ReactNode, Suspense, useEffect, useState} from "react";
 import {ArrowDown, ArrowUp, Monitor, Moon, Plus, Sun, Trash2} from "lucide-react";
-import {matchedVerbosityPreset, useSettings, type Motion, type Settings, type Verbosity} from "../settings-provider";
+import {matchedVerbosityPreset, useSettings, type Motion, type Settings, type Verbosity} from "../settings-context";
 import type {InterfaceFont, TranscriptTextSize} from "../../lib/appearance";
 import type {CapabilityId} from "../../lib/capabilities";
 import {
@@ -14,7 +14,7 @@ import {
 import {codeThemeDarkLabels, codeThemeLightLabels, terminalAppearanceLabels} from "../../lib/schema-choices";
 import {TerminalAppearanceSchema} from "../../lib/terminal-theme";
 import type {TranscriptWidth} from "../../lib/transcript-width";
-import {useTheme} from "../theme-provider";
+import {useTheme} from "../theme-context";
 import {HookSetup} from "../hook-setup";
 import {SegmentedControl} from "./segmented-control";
 import {SettingsRow, SettingsSection} from "./settings-row";

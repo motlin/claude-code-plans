@@ -5,7 +5,7 @@ import {createMemoryHistory, createRootRoute, createRouter, RouterProvider} from
 import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
-import {ClaudeEventsProvider} from "../src/hooks/use-claude-events";
+import {ClaudeEventsProvider} from "../src/components/claude-events-provider";
 import {SESSION_MENU_CAPABILITIES} from "../src/components/session-actions-menu";
 import {SessionPage} from "../src/components/session-page";
 import {SettingsProvider} from "../src/components/settings-provider";

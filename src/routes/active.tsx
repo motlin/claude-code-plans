@@ -4,7 +4,7 @@ import {useEffect, useState} from "react";
 import type {z} from "zod";
 import {ActiveSessionListResponse, activeSessionsQueryOptions} from "../lib/api/sessions";
 import {useClaudeEvents} from "../hooks/use-claude-events";
-import {DEFAULTS, useSettings} from "../components/settings-provider";
+import {DEFAULTS, useSettings} from "../components/settings-context";
 import {NeedsReviewMarker, SessionReviewAction} from "../components/session-reviewed-toggle";
 import {SessionStatusIndicator} from "../components/session-status-indicator";
 import {ListPageHeader} from "../components/list-page-header";

@@ -12,7 +12,8 @@ import {
 import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
-import {KeyboardShortcutsDialog, setKeyboardShortcutsOpen} from "../src/components/keyboard-shortcuts-dialog";
+import {KeyboardShortcutsDialog} from "../src/components/keyboard-shortcuts-dialog";
+import {setKeyboardShortcutsOpen} from "../src/components/keyboard-shortcuts-open";
 import {RecentsSwitcher} from "../src/components/recents-switcher";
 import {sessionQueryKeys} from "../src/lib/api/sessions";
 import {saveRecents, type RecentEntry} from "../src/lib/recents-history";

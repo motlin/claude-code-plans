@@ -5,7 +5,8 @@ import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {useRef} from "react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionDock} from "../src/components/session-dock";
-import {SettingsProvider, useSettings} from "../src/components/settings-provider";
+import {SettingsProvider} from "../src/components/settings-provider";
+import {useSettings} from "../src/components/settings-context";
 import {CHAT_COLUMN_CLASS, TRANSCRIPT_WIDTH_PX, transcriptWidthStyle} from "../src/lib/transcript-width";
 
 function setScrollMetrics(

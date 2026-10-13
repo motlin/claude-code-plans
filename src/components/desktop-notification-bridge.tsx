@@ -7,7 +7,7 @@ import {getCachedSessionIdentity} from "../lib/api/session-identity";
 import {notificationCopy, shouldNotify} from "../lib/attention";
 import {displayState, type DisplayState} from "../lib/session-state";
 import {hasUnseenWork, subscribeUnseenWork} from "../lib/unread-store";
-import {useSettings} from "./settings-provider";
+import {useSettings} from "./settings-context";
 
 function viewedRouteId(router: ReturnType<typeof useRouter>): string | null {
 	const sessionMatch = router.state.matches.find((match) => match.routeId.startsWith("/session/$id"));

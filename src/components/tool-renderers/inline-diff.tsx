@@ -4,8 +4,8 @@ import type {FileDiffOptions} from "@pierre/diffs/react";
 import {useMemo} from "react";
 import {useCodeThemes} from "../../hooks/use-code-themes";
 import {buildUnifiedHunk} from "../../lib/diff-utils";
-import {DIFFS_STYLE_OVERRIDES} from "../changes/diff-file";
-import {useResolvedTheme} from "../theme-provider";
+import {DIFFS_STYLE_OVERRIDES} from "../changes/diffs-config";
+import {useResolvedTheme} from "../theme-context";
 
 /**
  * A tool call's inline diff, rendered by `@pierre/diffs` like the Changes

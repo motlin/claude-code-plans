@@ -3,7 +3,8 @@ import {useSuspenseQuery} from "@tanstack/react-query";
 import {ArrowLeft} from "lucide-react";
 import {projectDetailQueryOptions, projectPlansQueryOptions} from "../lib/api/projects";
 import {toMdSlug} from "../lib/md-slug";
-import {DetailTopBar, pillStyles} from "../components/detail-top-bar";
+import {DetailTopBar} from "../components/detail-top-bar";
+import {pillStyles} from "../components/pill-styles";
 import {DebugLink} from "../components/debug-link";
 
 export const Route = createFileRoute("/project/$id_/plans")({

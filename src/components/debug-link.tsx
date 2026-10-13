@@ -1,5 +1,5 @@
 import {ExternalLink} from "lucide-react";
-import {useSettings} from "./settings-provider";
+import {useSettings} from "./settings-context";
 
 type DebugLinkProps =
 	| {

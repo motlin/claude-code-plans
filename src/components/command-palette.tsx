@@ -113,12 +113,12 @@ import {startPaletteSearchJourney} from "../lib/perf/field-journeys";
 import {HighlightRuns} from "./highlight-runs";
 import {type PaletteCardSession, PaletteRowActionsButton, PaletteRowActionsCard} from "./palette-row-actions";
 import {AttachedContextChips} from "./attached-context-chips";
-import {useToast} from "./toast";
+import {useToast} from "./toast-context";
 import {Shortcut} from "./ui/shortcut";
 import {ArchivedBadge} from "./archived-badge";
 import {Tooltip} from "./ui/tooltip";
 import {useOpenSettings} from "./settings/open-settings";
-import {setKeyboardShortcutsOpen} from "./keyboard-shortcuts-dialog";
+import {setKeyboardShortcutsOpen} from "./keyboard-shortcuts-open";
 
 /*
  * The claude.ai/code ⌘K palette shell, split Search | Compose variant

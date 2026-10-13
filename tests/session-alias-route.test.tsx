@@ -119,8 +119,8 @@ vi.mock("../src/hooks/use-claude-events", () => ({
 	useClaudeEvents: () => ({failedTools: new Map()}),
 }));
 vi.mock("../src/lib/hmr-persist", () => ({hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize()}));
-vi.mock("../src/components/settings-provider", async (importOriginal) => {
-	const actual = await importOriginal<typeof import("../src/components/settings-provider")>();
+vi.mock("../src/components/settings-context", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("../src/components/settings-context")>();
 	return {...actual, useSettings: () => ({settings: actual.DEFAULTS})};
 });
 

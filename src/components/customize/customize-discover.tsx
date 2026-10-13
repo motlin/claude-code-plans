@@ -2,7 +2,7 @@ import {useQuery} from "@tanstack/react-query";
 import {Check, Plus, Puzzle, Scroll} from "lucide-react";
 import {customizeDiscoverQueryOptions, type DiscoverPlugin} from "../../lib/api/customize";
 import {writeClipboardText} from "../../lib/clipboard";
-import {useToast} from "../toast";
+import {useToast} from "../toast-context";
 import {Tooltip} from "../ui/tooltip";
 import {CustomizeNotice} from "./customize-empty";
 import {CustomizeList} from "./customize-list";

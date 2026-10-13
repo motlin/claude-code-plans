@@ -1,5 +1,5 @@
 import {describe, it, expect} from "vite-plus/test";
-import {parseAnsiCodes} from "../src/components/tool-renderers/shared";
+import {parseAnsiCodes} from "../src/lib/ansi-codes";
 
 /**
  * Comprehensive test cases for ANSI code parsing

@@ -3,7 +3,7 @@ import {join} from "node:path";
 import {homedir} from "node:os";
 import {ClaudeSettingsSchema, McpConfigSchema, SessionsIndexSchema} from "../src/lib/schemas";
 import {DEFAULT_CAPABILITIES, PersistedCapabilitiesSchema} from "../src/lib/capabilities";
-import {DEFAULTS, DiffStyleSchema} from "../src/components/settings-provider";
+import {DEFAULTS, DiffStyleSchema} from "../src/components/settings-context";
 
 /**
  * Collect all project root directories under `~/projects`, scanning up to 2 levels deep.

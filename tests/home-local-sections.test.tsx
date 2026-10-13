@@ -19,7 +19,8 @@ import {
 	RecentPlansSection,
 	type RecentMemory,
 } from "../src/components/home/local-sections";
-import {SettingsProvider, settingStorageKey} from "../src/components/settings-provider";
+import {SettingsProvider} from "../src/components/settings-provider";
+import {settingStorageKey} from "../src/components/settings-context";
 import {MemoryListResponse, projectMemoriesQueryOptions} from "../src/lib/api/memories";
 import {plansQueryOptions, type PlanListItem} from "../src/lib/api/plans";
 import {projectsQueryOptions} from "../src/lib/api/projects";

@@ -2,12 +2,12 @@ import {useState} from "react";
 import {customizePluginFileQueryOptions, customizeSkillFileQueryOptions} from "../../lib/api/customize";
 import {type CustomizeLocation, type CustomizeSection, customizeHash} from "../../lib/settings-hash";
 import {ContentsViewer} from "./contents-viewer";
-import {CustomizeHeader, dropEmpty} from "./customize-header";
-import {CustomizeNavContext, type CustomizeNavigator, type CustomizeTarget} from "./customize-nav";
+import {CustomizeHeader} from "./customize-header";
+import {CustomizeNavContext, type CustomizeNavigator, type CustomizeTarget} from "./customize-navigation";
 import {ConnectorDetailFrame, PluginDetailFrame, SkillDetailFrame} from "./detail-frames";
 import {PluginConnectors, PluginFiles, PluginHooks, PluginOverview, PluginSkills} from "./plugin-detail";
 import {ConnectorsSection, PluginsSection, SkillsSection} from "./section-views";
-import {CUSTOMIZE_SECTIONS, type CustomizeSearch} from "./sections";
+import {CUSTOMIZE_SECTIONS, type CustomizeSearch, dropEmpty} from "./sections";
 import {SkillOverview} from "./skill-detail";
 import {assertNever} from "../../lib/assert-never";
 

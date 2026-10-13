@@ -6,8 +6,9 @@ import {closeDragPinHint, useDragPinHintRequested} from "../../../lib/drag-pin-h
 import {PINNED_GROUP_KEY, pinnedGroup} from "../../../lib/session-groups";
 import {useSidebarState} from "../../../lib/sidebar-store";
 import {CoachMark} from "../../coach-mark";
-import {useSettings} from "../../settings-provider";
-import {GroupSection, ROW_CLASS, type SidebarSessionRow} from "../session-group-section";
+import {useSettings} from "../../settings-context";
+import {GroupSection, ROW_CLASS} from "../session-group-section";
+import type {SidebarSessionRow} from "../sidebar-session-row";
 
 /** Drop row states: idle (revealed without a drag), a drag in progress, or the pointer over it. */
 type PinDropRowState = "idle" | "dragging" | "hot";

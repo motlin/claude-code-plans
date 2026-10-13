@@ -31,7 +31,7 @@ import {
 import {pinArtifact, unpinArtifact, useArtifactPins} from "../lib/artifact-pins";
 import {writeClipboardText} from "../lib/clipboard";
 import {formatCount} from "../lib/pluralize";
-import {useToast} from "../components/toast";
+import {useToast} from "../components/toast-context";
 import {TOOLBAR_ICON_BUTTON, ToolbarSearch} from "../components/toolbar-search";
 import {
 	ContextMenu,

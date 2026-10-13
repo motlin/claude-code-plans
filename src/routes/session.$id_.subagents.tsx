@@ -8,8 +8,9 @@ import {sessionSubagentsQueryOptions} from "../lib/api/sessions";
 import {SubagentGantt} from "../components/subagent-gantt";
 import {SubagentSequence} from "../components/subagent-sequence";
 import {SubagentTree} from "../components/subagent-tree";
-import {DetailTopBar, pillStyles} from "../components/detail-top-bar";
-import {useSettings} from "../components/settings-provider";
+import {DetailTopBar} from "../components/detail-top-bar";
+import {pillStyles} from "../components/pill-styles";
+import {useSettings} from "../components/settings-context";
 import {useClaudeEvents} from "../hooks/use-claude-events";
 import {toSubagentSessionId} from "../lib/subagents";
 

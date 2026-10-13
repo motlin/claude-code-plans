@@ -4,7 +4,8 @@ import {act, renderHook, waitFor} from "@testing-library/react";
 import {createElement, type ReactNode} from "react";
 import {beforeEach, describe, expect, it} from "vite-plus/test";
 
-import {DEFAULTS, SettingsProvider, useSettings, type LinkCategoryRule} from "../src/components/settings-provider";
+import {SettingsProvider} from "../src/components/settings-provider";
+import {DEFAULTS, useSettings, type LinkCategoryRule} from "../src/components/settings-context";
 import {installLocalStorage} from "./fake-storage";
 
 const LINK_CATEGORY_RULES_STORAGE_KEY = "ccp-link-category-rules";

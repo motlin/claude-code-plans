@@ -7,12 +7,12 @@ import {afterEach, beforeEach, describe, it, expect, vi} from "vite-plus/test";
 import {renderToStaticMarkup} from "react-dom/server";
 import {SessionChat} from "../src/components/session-chat";
 import {StreamingMessage} from "../src/components/streaming-message";
-import {SubagentOpenerProvider} from "../src/components/subagent-opener";
+import {SubagentOpenerProvider} from "../src/components/subagent-opener-context";
 import {processTranscript} from "../src/lib/transcript";
 import type {Subagent} from "../src/lib/subagents";
 import type {TranscriptMode} from "../src/lib/transcript-mode";
 
-vi.mock("../src/components/settings-provider", () => ({
+vi.mock("../src/components/settings-context", () => ({
 	useSettings: () => ({
 		settings: {showDebug: true, codeThemeLight: "claude-light", codeThemeDark: "github-dark"},
 	}),

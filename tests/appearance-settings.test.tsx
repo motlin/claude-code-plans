@@ -9,7 +9,8 @@ import {
 	TRANSCRIPT_TEXT_SIZES,
 	TranscriptTextSizeSchema,
 } from "../src/lib/appearance";
-import {DEFAULTS, SettingsProvider} from "../src/components/settings-provider";
+import {SettingsProvider} from "../src/components/settings-provider";
+import {DEFAULTS} from "../src/components/settings-context";
 import {ClaudeCodeSettings, GeneralSettings, TranscriptSettings} from "../src/components/settings/settings-sections";
 import {ThemeProvider} from "../src/components/theme-provider";
 import {installLocalStorage} from "./fake-storage";

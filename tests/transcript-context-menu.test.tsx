@@ -5,12 +5,12 @@ import type {ReactNode} from "react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {SessionChat} from "../src/components/session-chat";
-import {type TranscriptActions, TranscriptActionsContext} from "../src/components/transcript-context-menu";
+import {type TranscriptActions, TranscriptActionsContext} from "../src/components/transcript-actions-context";
 import {writeClipboardText} from "../src/lib/clipboard";
 import {getContextChips, registerComposer, takeContextChips} from "../src/lib/context-attach";
 import {processTranscript} from "../src/lib/transcript";
 
-vi.mock("../src/components/settings-provider", () => ({
+vi.mock("../src/components/settings-context", () => ({
 	useSettings: () => ({
 		settings: {showDebug: false, codeThemeLight: "claude-light", codeThemeDark: "github-dark"},
 	}),

@@ -3,7 +3,7 @@ import {
 	parsePageList,
 	parseConsoleMessage,
 	parseNetworkRequest,
-} from "../src/components/tool-renderers/chrome-devtools-renderer";
+} from "../src/components/tool-renderers/chrome-devtools-parsers";
 
 describe("parsePageList", () => {
 	it("parses a single page", () => {

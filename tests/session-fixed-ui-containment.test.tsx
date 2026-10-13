@@ -4,7 +4,7 @@ import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {createMemoryHistory, createRootRoute, createRouter, RouterProvider} from "@tanstack/react-router";
 import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
-import {ClaudeEventsProvider} from "../src/hooks/use-claude-events";
+import {ClaudeEventsProvider} from "../src/components/claude-events-provider";
 import {herdrPanesQueryOptions} from "../src/lib/api/herdr";
 import {
 	sessionDetailQueryOptions,

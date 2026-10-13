@@ -7,16 +7,6 @@ const SIZE = {
 	lg: {tile: "size-9 rounded-r6", glyph: 20},
 } as const;
 
-/** The host of an http/sse server URL, used for its favicon. */
-export function connectorDomain(transport: string, urlOrCommand: string): string | null {
-	if (transport === "stdio") return null;
-	try {
-		return new URL(urlOrCommand).hostname || null;
-	} catch {
-		return null;
-	}
-}
-
 interface ConnectorTileProps {
 	name: string;
 	domain: string | null;

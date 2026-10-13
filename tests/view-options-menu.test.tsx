@@ -7,12 +7,8 @@ import {registerPane} from "../src/components/panes/pane-registry";
 import {TileHost} from "../src/components/panes/tile-host";
 import {SettingsProvider} from "../src/components/settings-provider";
 import {TitlebarWidthContext} from "../src/components/titlebar-width";
-import {
-	hiddenToggleCount,
-	SessionPaneControls,
-	type ViewOptionsFacts,
-	viewOptionsItems,
-} from "../src/components/view-options-menu";
+import {SessionPaneControls} from "../src/components/view-options-menu";
+import {hiddenToggleCount, type ViewOptionsFacts, viewOptionsItems} from "../src/components/view-options-items";
 import type {PaneKind} from "../src/lib/pane-layout";
 import {installLocalStorage} from "./fake-storage";
 

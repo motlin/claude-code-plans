@@ -1,36 +1,13 @@
 import {Info, TriangleAlert} from "lucide-react";
-import {createContext, type ReactNode, useCallback, useContext, useEffect, useRef, useState} from "react";
+import {type ReactNode, useCallback, useEffect, useRef, useState} from "react";
 
-export type ToastKind = "success" | "error";
-
-export interface ToastAction {
-	label: string;
-	onAction: () => void;
-}
-
-export interface ToastOptions {
-	message: string;
-	kind: ToastKind;
-	description?: string;
-	action?: ToastAction;
-	durationMs?: number;
-}
+import {ToastContext, type ToastOptions} from "./toast-context";
 
 interface ToastEntry extends ToastOptions {
 	id: number;
 }
 
 const DEFAULT_DURATION_MS = 4000;
-
-const ToastContext = createContext<((options: ToastOptions) => void) | null>(null);
-
-export function useToast(): (options: ToastOptions) => void {
-	const toast = useContext(ToastContext);
-	if (!toast) {
-		throw new Error("useToast must be used within a ToastProvider");
-	}
-	return toast;
-}
 
 const REGION_CLASS = "flex w-full flex-col items-end gap-2";
 

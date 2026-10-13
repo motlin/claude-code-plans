@@ -8,7 +8,7 @@ import {createMemoryHistory, createRootRoute, createRouter, RouterProvider} from
 import {cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
 import {createElement} from "react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
-import {DEFAULTS} from "../src/components/settings-provider";
+import {DEFAULTS} from "../src/components/settings-context";
 import {activeSessionsQueryOptions} from "../src/lib/api/sessions";
 import type {ActivityState} from "../src/lib/session-state";
 import {__unreadStoreTesting as unreadTesting, syncUnseenFromSummaries} from "../src/lib/unread-store";

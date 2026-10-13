@@ -13,7 +13,7 @@ import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {CommandPalette, PALETTE_RECENT_LIMIT} from "../src/components/command-palette";
 import {ToastProvider} from "../src/components/toast";
-import {ClaudeEventsProvider} from "../src/hooks/use-claude-events";
+import {ClaudeEventsProvider} from "../src/components/claude-events-provider";
 import {useCommandPalette} from "../src/hooks/use-command-palette";
 import {projectsQueryOptions} from "../src/lib/api/projects";
 import {recentSessionsQueryOptions} from "../src/lib/api/sessions";

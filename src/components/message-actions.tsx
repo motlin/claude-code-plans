@@ -6,7 +6,7 @@ import {writeClipboardText} from "../lib/clipboard";
 import {messageHeading} from "../lib/transcript-action-targets";
 import {type ReadAloudStatus, useReadAloud} from "../hooks/use-read-aloud";
 import {formatRelativeTimestamp, formatTimestamp} from "../lib/timestamp-format";
-import {type TranscriptMessageRef, TranscriptActionsContext} from "./transcript-context-menu";
+import {type TranscriptMessageRef, TranscriptActionsContext} from "./transcript-actions-context";
 import {Tooltip} from "./ui/tooltip";
 
 /*

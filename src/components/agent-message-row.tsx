@@ -1,13 +1,8 @@
-import {createContext, useId, useState} from "react";
+import {useId, useState} from "react";
 import type {AgentMessage} from "../lib/agent-message";
 import {ProseMarkdown} from "./file-refs";
 import {ChevronIcon} from "./tool-renderers/shared";
 import {TruncatedContent} from "./truncated-content";
-
-/** Resolves a bare agent id to the subagent's description, or null when the session does not know it. */
-export type AgentNameResolver = (agentId: string) => string | null;
-
-export const AgentNameContext = createContext<AgentNameResolver>(() => null);
 
 /**
  * Upstream's "Message from subagent" row for a subagent hand-back: no bubble,

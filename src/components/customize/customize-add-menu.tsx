@@ -3,7 +3,7 @@ import {ChevronDown} from "lucide-react";
 import {customizeSkillsQueryOptions} from "../../lib/api/customize";
 import {writeClipboardText} from "../../lib/clipboard";
 import {startClaudeSession} from "../../lib/start-claude-session";
-import {useToast} from "../toast";
+import {useToast} from "../toast-context";
 import {Menu, MenuContent, MenuItem, MenuTrigger} from "../ui/menu";
 import type {CustomizeSectionId} from "./sections";
 

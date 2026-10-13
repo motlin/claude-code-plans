@@ -1,5 +1,5 @@
 import type {QueryClient} from "@tanstack/react-query";
-import type {ToastOptions} from "../components/toast";
+import type {ToastOptions} from "../components/toast-context";
 import {getCachedCanonicalSessionRouteId} from "./api/session-identity";
 import {buildClaudeCopyCommand} from "./claude-launch-command";
 import {writeClipboardText} from "./clipboard";

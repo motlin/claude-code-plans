@@ -6,7 +6,7 @@ import {SessionChat} from "../src/components/session-chat";
 import {processTranscript} from "../src/lib/transcript";
 import type {TranscriptMode} from "../src/lib/transcript-mode";
 
-vi.mock("../src/components/settings-provider", () => ({
+vi.mock("../src/components/settings-context", () => ({
 	useSettings: () => ({settings: {showDebug: false}}),
 }));
 vi.mock("../src/lib/hmr-persist", () => ({

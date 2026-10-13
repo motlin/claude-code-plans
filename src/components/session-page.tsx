@@ -12,7 +12,7 @@ import {useSessionFork} from "../hooks/use-session-fork";
 import {Composer} from "./composer";
 import {StreamingMessage} from "./streaming-message";
 import {SessionHookContext} from "./session-hook-context";
-import {useSettings} from "./settings-provider";
+import {useSettings} from "./settings-context";
 import {useTranscriptModeShortcut} from "../hooks/use-session-transcript-mode";
 import {sessionHasThinking} from "../lib/transcript-mode";
 import {SessionTitlebar} from "./session-titlebar";
@@ -23,17 +23,20 @@ import {SessionFileRefs} from "./file-refs";
 import type {JumpTargetWindow} from "./jump-target-context";
 import {LegacyMessageLinkNotice} from "./legacy-message-link-notice";
 import {TileHost} from "./panes/tile-host";
-import {useRegisterArtifactsPane, useSessionArtifacts} from "./panes/artifacts-pane";
-import {useRegisterBackgroundTasksPane} from "./panes/background-tasks-pane";
+import {useRegisterArtifactsPane, useSessionArtifacts} from "./panes/artifacts-pane-entry";
+import {useRegisterBackgroundTasksPane} from "./panes/background-tasks-pane-entry";
 import {preloadLinksPane, useRegisterLinksPane} from "./panes/links-pane-entry";
-import {useRegisterSessionDetailsPane} from "./panes/session-details-pane";
-import {useRegisterSubagentPane} from "./panes/subagent-pane";
+import {useRegisterSessionDetailsPane} from "./panes/session-details-pane-entry";
+import {useRegisterSubagentPane} from "./panes/subagent-pane-entry";
 import {SessionSubagentOpener} from "./subagent-opener";
-import {useRegisterPlanPane} from "./panes/plan-pane";
-import {ChangesPaneShortcut, useRegisterChangesPane} from "./changes/changes-pane-entry";
-import {FilesPaneShortcut, preloadFilesPane, useRegisterFilesPane} from "./panes/files-pane-entry";
-import {useExtractedSessionFiles} from "./panes/session-files-list";
-import {TerminalPaneShortcut, useRegisterTerminalPane} from "./panes/terminal-pane";
+import {useRegisterPlanPane} from "./panes/plan-pane-entry";
+import {useRegisterChangesPane} from "./changes/changes-pane-entry";
+import {ChangesPaneShortcut} from "./changes/changes-pane-shortcut";
+import {preloadFilesPane, useRegisterFilesPane} from "./panes/files-pane-entry";
+import {FilesPaneShortcut} from "./panes/files-pane-shortcut";
+import {useExtractedSessionFiles} from "./panes/session-file-sources";
+import {TerminalPaneShortcut} from "./panes/terminal-pane";
+import {useRegisterTerminalPane} from "./panes/terminal-pane-entry";
 import {ApprovalDock} from "./approval-dock";
 import {PermissionCard} from "./permission-card";
 import {BranchStrip} from "./branch-strip";
@@ -41,11 +44,15 @@ import {TranscriptHistoryLoader, TranscriptTopFade} from "./transcript-history-l
 import {Tooltip} from "./ui/tooltip";
 import {SessionPaneControls} from "./view-options-menu";
 import {SessionDock} from "./session-dock";
-import {WaitingForInputNotice, showsWaitingForInputNotice} from "./approval-card";
+import {WaitingForInputNotice} from "./approval-card";
+import {showsWaitingForInputNotice} from "./waiting-for-input-notice";
 import {UsagePaceBanner} from "./usage-pace-banner";
-import {useWorkingMarkerState, WorkingMarker} from "./working-marker";
-import {handleBtwPrompt, SideChat, useSideChatShortcut} from "./side-chat";
-import {useToast} from "./toast";
+import {WorkingMarker} from "./working-marker";
+import {useWorkingMarkerState} from "./use-working-marker-state";
+import {SideChat} from "./side-chat";
+import {handleBtwPrompt} from "./btw-prompt";
+import {useSideChatShortcut} from "./use-side-chat-shortcut";
+import {useToast} from "./toast-context";
 import {transcriptWidthStyle} from "../lib/transcript-width";
 import {useChatStream} from "../hooks/use-chat-stream";
 import {slashCommandsQueryOptions} from "../lib/api/commands";
@@ -53,7 +60,7 @@ import {promptHistoryQueryOptions} from "../lib/api/prompt-history";
 import {useShortcutKeys} from "../hooks/use-shortcut";
 import {useLiveLaunchOptions} from "../hooks/use-live-launch-options";
 import {canStopResponse, useStopResponse} from "../hooks/use-stop-response";
-import {type DeliveryResult, useComposerQueue} from "../hooks/use-composer-queue";
+import {useComposerQueue} from "../hooks/use-composer-queue";
 import {
 	type ComposerPaneState,
 	type ComposerSubmit,
@@ -85,11 +92,9 @@ import {findPendingAskUserQuestion} from "../lib/approval-dock";
 import {applicationSettingsQueryOptions} from "../lib/api/application-settings";
 import {
 	herdrPanesQueryOptions,
-	isAgentNotReady,
 	launchHerdrSession,
 	sendHerdrInterrupt,
 	sendHerdrPermissionDecision,
-	sendHerdrPrompt,
 } from "../lib/api/herdr";
 import {notificationsQueryOptions} from "../lib/api/notifications";
 import {findPendingPermission, isAwaitingPermission, type PermissionDecision} from "../lib/permission-card";
@@ -110,106 +115,11 @@ import {processTranscript} from "../lib/transcript";
 import {backgroundTasksFacts, extractBackgroundTasks} from "../lib/background-tasks";
 import {createSessionCommands} from "../lib/session-commands";
 import {useIdlePrefetch} from "../hooks/use-idle-prefetch";
+import {getSessionPromptBehavior} from "./session-prompt-behavior";
+import {useLiveHerdrPrompt} from "./use-live-herdr-prompt";
 
 /** The Files and Links renderers, warmed once the session page goes idle so their first show skips the loading row. */
 const SESSION_PANE_CHUNKS = [preloadFilesPane, preloadLinksPane];
-
-interface SessionPromptBehavior {
-	disabled: boolean;
-	deliveryHint: string;
-	hasLivePane: boolean;
-	usesHerdr: boolean;
-}
-
-export function getSessionPromptBehavior(
-	sessionId: string,
-	isActive: boolean,
-	herdr: {panes: Array<{sessionId: string}>; writesEnabled: boolean},
-): SessionPromptBehavior {
-	const hasLivePane = herdr.panes.some((pane) => pane.sessionId === sessionId);
-
-	if (!hasLivePane) {
-		return {
-			disabled: isActive,
-			deliveryHint: "Starts a forked session",
-			hasLivePane,
-			usesHerdr: false,
-		};
-	}
-	if (!herdr.writesEnabled) {
-		return {
-			disabled: true,
-			deliveryHint: "Live terminal input is disabled",
-			hasLivePane,
-			usesHerdr: false,
-		};
-	}
-	return {
-		disabled: false,
-		deliveryHint: "Sends to the live terminal",
-		hasLivePane,
-		usesHerdr: true,
-	};
-}
-
-interface LiveHerdrPromptState {
-	error: string;
-	isPending: boolean;
-	prompt: string;
-}
-
-const EMPTY_LIVE_HERDR_PROMPT_STATE: LiveHerdrPromptState = {
-	error: "",
-	isPending: false,
-	prompt: "",
-};
-
-export function useLiveHerdrPrompt(
-	sessionId: string,
-	transcriptRecordCount: number,
-	postPrompt: (sessionId: string, prompt: string) => Promise<void> = sendHerdrPrompt,
-) {
-	const [state, setState] = useState<LiveHerdrPromptState>(EMPTY_LIVE_HERDR_PROMPT_STATE);
-	const pendingRecordCountRef = useRef<number | null>(null);
-
-	useEffect(() => {
-		pendingRecordCountRef.current = null;
-		setState(EMPTY_LIVE_HERDR_PROMPT_STATE);
-	}, [sessionId]);
-
-	useEffect(() => {
-		const pendingRecordCount = pendingRecordCountRef.current;
-		if (pendingRecordCount === null || transcriptRecordCount <= pendingRecordCount) return;
-		pendingRecordCountRef.current = null;
-		setState(EMPTY_LIVE_HERDR_PROMPT_STATE);
-	}, [transcriptRecordCount]);
-
-	const send = useCallback(
-		async (prompt: string): Promise<DeliveryResult> => {
-			pendingRecordCountRef.current = transcriptRecordCount;
-			setState({error: "", isPending: true, prompt});
-			try {
-				await postPrompt(sessionId, prompt);
-				return "sent";
-			} catch (error) {
-				pendingRecordCountRef.current = null;
-				if (isAgentNotReady(error)) {
-					setState(EMPTY_LIVE_HERDR_PROMPT_STATE);
-					return "not-ready";
-				}
-				setState({
-					error: error instanceof Error ? error.message : "Failed to send prompt",
-					isPending: false,
-					prompt,
-				});
-				return "failed";
-			}
-		},
-		[postPrompt, sessionId, transcriptRecordCount],
-	);
-
-	return {send, state};
-}
 
 function SessionChrome({children}: {children: React.ReactNode}) {
 	return <div className="h-full overflow-auto">{children}</div>;

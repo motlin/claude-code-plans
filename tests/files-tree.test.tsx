@@ -4,14 +4,13 @@ import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
+import {FilesTree, FilesTreeColumn} from "../src/components/files/files-tree";
 import {
 	FILES_TREE_WIDTH_STORAGE_KEY,
-	FilesTree,
-	FilesTreeColumn,
 	clampFilesTreeWidth,
 	goUpTarget,
 	parseTreeQuery,
-} from "../src/components/files/files-tree";
+} from "../src/components/files/files-tree-layout";
 import {SettingsProvider} from "../src/components/settings-provider";
 import type {SessionFilesResponse} from "../src/lib/api/session-files";
 import {installLocalStorage} from "./fake-storage";

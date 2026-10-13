@@ -1,5 +1,5 @@
 import {useMemo} from "react";
-import {useSettings} from "../components/settings-provider";
+import {useSettings} from "../components/settings-context";
 import type {CodeThemePair} from "../lib/code-themes";
 
 /**

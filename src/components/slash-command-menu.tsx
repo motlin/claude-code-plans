@@ -1,6 +1,7 @@
 import {useLayoutEffect, useRef, useState} from "react";
 
 import {highlightMatches, isCustomCommand, type SlashCommand} from "../lib/slash-commands";
+import {slashCommandOptionId} from "./slash-command-option-id";
 
 const POPUP_CLASS =
 	"absolute bottom-full left-0 z-[130] mb-2 flex max-h-96 w-60 max-w-lg flex-col rounded-card bg-[var(--menu-bg)] text-body text-primary shadow-[var(--menu-shadow)] select-none";
@@ -21,10 +22,6 @@ function Highlighted({text, query}: {text: string; query: string}) {
 			segment.text
 		),
 	);
-}
-
-export function slashCommandOptionId(menuId: string, index: number): string {
-	return `${menuId}-option-${index}`;
 }
 
 /**

@@ -418,6 +418,14 @@ export default defineConfig({
 				},
 				plugins: ["typescript", "vitest"],
 			},
+			{
+				// TanStack Router file routes must export Route beside their components; the router plugin owns their HMR.
+				files: ["src/routes/**"],
+				plugins: ["react"],
+				rules: {
+					"react/only-export-components": "off",
+				},
+			},
 			// Project burn-down: template rules that still have findings here, each followed by its finding count.
 			// Delete a line once its rule is clean; .llm/todo.md tracks the work.
 			{
@@ -429,7 +437,6 @@ export default defineConfig({
 					"@typescript-eslint/no-unsafe-type-assertion": "off", // 382
 					"@typescript-eslint/require-await": "off", // 387
 					"@typescript-eslint/strict-boolean-expressions": "off", // 647
-					"react/only-export-components": "off", // 239 warnings, 86 in TanStack route modules that must export Route
 					"vitest/require-mock-type-parameters": "off", // 332
 				},
 			},
