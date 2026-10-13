@@ -35,7 +35,7 @@ function getShellComponent(): ShellComponent {
 }
 
 function renderServerShell(): string {
-	return renderToStaticMarkup(createElement(getShellComponent(), {children: null}));
+	return renderToStaticMarkup(createElement(getShellComponent(), null, null));
 }
 
 describe("server shell", () => {

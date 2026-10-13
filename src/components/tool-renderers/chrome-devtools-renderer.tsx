@@ -431,6 +431,19 @@ function ListNetworkRequestsRenderer({resultText}: {resultText: string}) {
 	);
 }
 
+function HeadersList({headers}: {headers: Array<{name: string; value: string}>}) {
+	return (
+		<div className="mt-1 bg-t1 rounded-r6 p-2 max-h-32 overflow-auto">
+			{headers.map((h, i) => (
+				<div key={i} className="text-code font-mono">
+					<span className="text-secondary">{h.name}:</span>
+					<span className="text-primary"> {h.value}</span>
+				</div>
+			))}
+		</div>
+	);
+}
+
 function GetNetworkRequestRenderer({resultText}: {resultText: string}) {
 	// Parse URL from "## Request <url>"
 	const urlMatch = /^##\s+Request\s+(.+)/m.exec(resultText);
@@ -474,19 +487,6 @@ function GetNetworkRequestRenderer({resultText}: {resultText: string}) {
 			}
 		}
 		return body.length > 2000 ? body.slice(0, 2000) + "..." : body;
-	}
-
-	function HeadersList({headers}: {headers: Array<{name: string; value: string}>}) {
-		return (
-			<div className="mt-1 bg-t1 rounded-r6 p-2 max-h-32 overflow-auto">
-				{headers.map((h, i) => (
-					<div key={i} className="text-code font-mono">
-						<span className="text-secondary">{h.name}:</span>
-						<span className="text-primary"> {h.value}</span>
-					</div>
-				))}
-			</div>
-		);
 	}
 
 	const statusLabel = statusCode === undefined ? status : `${statusCode} ${status}`;

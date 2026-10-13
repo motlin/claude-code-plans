@@ -192,7 +192,7 @@ describe("parseAnswerResult", () => {
 
 	it("returns null when no questions are provided", () => {
 		const text =
-			'User has answered your questions: "Q1"="A1".' + " You can now continue with the user's answers in mind.";
+			'User has answered your questions: "Q1"="A1". You can now continue with the user\'s answers in mind.';
 		expect(parseAnswerResult(text, [])).toBe(null);
 	});
 

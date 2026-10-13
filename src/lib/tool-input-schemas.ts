@@ -8,7 +8,7 @@ import {
 	ArtifactListScopeSchema,
 } from "./artifact-schemas";
 
-const JsonInputValueSchema: z.ZodType<unknown> = z.lazy(() =>
+const JsonInputValueSchema: z.ZodType = z.lazy(() =>
 	z.union([
 		z.string(),
 		z.number(),

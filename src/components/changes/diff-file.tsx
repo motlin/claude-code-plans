@@ -210,7 +210,7 @@ export function DiffFile({
 	);
 
 	return (
-		<FileDiff<ReactNode, undefined>
+		<FileDiff<ReactNode>
 			fileDiff={fileDiff}
 			options={options}
 			style={DIFFS_STYLE_OVERRIDES}

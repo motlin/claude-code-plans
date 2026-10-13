@@ -85,10 +85,13 @@ async function openEventStream(): Promise<ClientRequest> {
 
 /** srvx's graceful-shutdown outcome lines from the server log, without their terminal escapes. */
 function shutdownLogLines(): string[] {
-	return readFileSync(join(runDir, "server.log"), "utf8")
-		.split(/[\r\n]/)
-		.map((line) => line.replaceAll(/\u001B\[[0-9;]*[A-Za-z]/g, "").trim())
-		.filter((line) => /^(Server closed successfully|Graceful shutdown timed out|Forcibly closing)/.test(line));
+	return (
+		readFileSync(join(runDir, "server.log"), "utf8")
+			.split(/[\r\n]/)
+			// oxlint-disable-next-line no-control-regex -- strips terminal color escapes
+			.map((line) => line.replaceAll(/\u001B\[[0-9;]*[A-Za-z]/g, "").trim())
+			.filter((line) => /^(Server closed successfully|Graceful shutdown timed out|Forcibly closing)/.test(line))
+	);
 }
 
 beforeAll(async () => {

@@ -248,7 +248,7 @@ describe("herdr launch write handler", () => {
 		expect({
 			status: response.status,
 			methods: herdr.requests.map(({request: sent}) => (sent as {method: string}).method),
-			startArgs: (herdr.requests[1]?.request as {params: {args: string[]}}).params.args,
+			startArgs: (herdr.requests[1]!.request as {params: {args: string[]}}).params.args,
 		}).toStrictEqual({status: 200, methods: ["tab.create", "agent.start"], startArgs: []});
 	});
 

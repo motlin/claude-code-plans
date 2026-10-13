@@ -11,7 +11,7 @@ import {isMcpTool, toolInputSchemaByName} from "./tool-input-schemas";
  * assert "valid JSON" (rejecting undefined/functions/symbols) without breaking
  * when the upstream shape gains new fields.
  */
-export const JsonValueSchema: z.ZodType<unknown> = z.lazy(() =>
+export const JsonValueSchema: z.ZodType = z.lazy(() =>
 	z.union([
 		z.string(),
 		z.number(),

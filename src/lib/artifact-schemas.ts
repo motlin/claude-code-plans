@@ -7,7 +7,7 @@ import {z} from "zod";
  * tool-input-schemas.ts and reuses the enums below.
  */
 
-const JsonDataSchema: z.ZodType<unknown> = z.lazy(() =>
+const JsonDataSchema: z.ZodType = z.lazy(() =>
 	z.union([
 		z.string(),
 		z.number(),

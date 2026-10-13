@@ -65,7 +65,7 @@ function jqRoundTrip(stdinPayload: object): unknown {
 		return JSON.parse(stdout.toString("utf8")) as unknown;
 	} catch (err) {
 		result = err as SpawnSyncReturns<Buffer>;
-		throw new Error(`jq failed: ${result.stderr.toString("utf8")}`);
+		throw new Error(`jq failed: ${result.stderr.toString("utf8")}`, {cause: err});
 	}
 }
 

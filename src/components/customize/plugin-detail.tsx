@@ -98,13 +98,14 @@ export function PluginOverview({detail}: {detail: PluginDetail}) {
 	const {plugin} = detail;
 	const facts: [string, ReactNode][] = [
 		["Author", plugin.author === "" ? "Unknown" : plugin.author],
-		["Version", <PluginVersion version={plugin.version} versionKind={plugin.versionKind} />],
+		["Version", <PluginVersion key="version" version={plugin.version} versionKind={plugin.versionKind} />],
 		["Marketplace", plugin.marketplace],
 	];
 	if (detail.homepage !== undefined) {
 		facts.push([
 			"Homepage",
 			<a
+				key="homepage"
 				href={detail.homepage}
 				target="_blank"
 				rel="noreferrer"
