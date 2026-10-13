@@ -716,6 +716,8 @@ it("waits for invalid-width geometry to commit before restoring Back", async () 
 		router.history.back();
 	});
 	await screen.findByRole("button", {name: "Open fabricated pane"});
+	// The cold restore lands a frame after geometry commits; under load the button can appear first.
+	await flushFrames();
 	const returned = actualScrollport();
 	// The only restore sees estimated spacers for the new width, never the old measured spacer.
 	expect(
@@ -729,15 +731,21 @@ it("waits for invalid-width geometry to commit before restoring Back", async () 
 			})),
 	).toStrictEqual([{expected: 0, actual: 0, requested: 8000, applied: 8000}]);
 });
-async function settleFresh(host: HTMLElement) {
-	for (let turn = 0; turn < 3; turn++) {
-		await act(async () => {
-			await new Promise<void>((resolve) => {
-				requestAnimationFrame(() => {
-					resolve();
-				});
+async function flushFrame() {
+	await act(async () => {
+		await new Promise<void>((resolve) => {
+			requestAnimationFrame(() => {
+				resolve();
 			});
 		});
+	});
+}
+async function flushFrames() {
+	for (let turn = 0; turn < 3; turn++) await flushFrame();
+}
+async function settleFresh(host: HTMLElement) {
+	for (let turn = 0; turn < 3; turn++) {
+		await flushFrame();
 		settleMeasurements(host);
 	}
 }
