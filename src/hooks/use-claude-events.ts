@@ -548,7 +548,8 @@ export function useIsSessionActive(sessionId: string): boolean {
 	return activeSessions.has(sessionId);
 }
 
-function cachedSessionSummary(queryClient: QueryClient, sessionId: string): SessionSummaryPayload | undefined {
+/** The session's row in the loaded session list caches, read once without subscribing. */
+export function cachedSessionSummary(queryClient: QueryClient, sessionId: string): SessionSummaryPayload | undefined {
 	const recent = queryClient.getQueryData<{
 		pages: Array<{sessions: SessionSummaryPayload[]}>;
 	}>(recentSessionsInfiniteQueryOptions().queryKey);

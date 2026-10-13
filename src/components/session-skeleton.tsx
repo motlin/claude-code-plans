@@ -1,3 +1,5 @@
+import {Laptop} from "lucide-react";
+
 const BAR_CLASS = "animate-pulse bg-fill-ghost-hover";
 
 /** Upstream's paragraph bars, as widths of the column's 760px text area: three groups on a 20px pitch. */
@@ -11,14 +13,29 @@ const PARAGRAPH_WIDTHS = [
  * Upstream's pending session on an in-app switch: an 18px dot and title bar in
  * the header slot, then a right-aligned user bubble and three paragraphs of 8px
  * bars in the chat column, inset by the same scrollbar gutters as the
- * transcript that replaces it.
+ * transcript that replaces it. A title the session list already knows takes
+ * the bar's place, beside the device glyph, as upstream's header shows it.
  */
-export function SessionSkeleton() {
+export function SessionSkeleton({title}: {title?: string | undefined} = {}) {
 	return (
 		<div data-testid="session-skeleton">
 			<div data-skeleton-header="" className="flex items-center gap-[7px] px-[7px] pt-[6px]">
-				<div className={`size-[18px] shrink-0 rounded-full ${BAR_CLASS}`} />
-				<div className="h-[18px] w-[190px] animate-pulse rounded bg-fill-ghost-hover" />
+				{title === undefined ? (
+					<>
+						<div className={`size-[18px] shrink-0 rounded-full ${BAR_CLASS}`} />
+						<div className="h-[18px] w-[190px] animate-pulse rounded bg-fill-ghost-hover" />
+					</>
+				) : (
+					<>
+						<Laptop aria-hidden="true" className="size-[18px] shrink-0 text-primary" />
+						<span
+							data-skeleton-title=""
+							className="min-w-0 truncate text-[13px]/[19px] font-medium text-primary"
+						>
+							{title}
+						</span>
+					</>
+				)}
 			</div>
 			<div className="overflow-y-auto [scrollbar-gutter:stable_both-edges]">
 				<div className="chat-column mt-[56px] flex flex-col">

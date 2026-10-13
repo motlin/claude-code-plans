@@ -38,4 +38,15 @@ describe("SessionSkeleton", () => {
 			],
 		});
 	});
+
+	it("shows the session's known title with the device glyph in the header slot instead of the placeholder bar", () => {
+		const {container} = render(<SessionSkeleton title="ImmutableTreeMap entrySet contains upstream PR" />);
+		const header = container.querySelector("[data-skeleton-header]")!;
+
+		expect({
+			title: header.querySelector("[data-skeleton-title]")?.textContent,
+			glyph: header.querySelector("svg") !== null,
+			bars: header.querySelectorAll(".animate-pulse").length,
+		}).toStrictEqual({title: "ImmutableTreeMap entrySet contains upstream PR", glyph: true, bars: 0});
+	});
 });

@@ -1,7 +1,7 @@
 import {SessionSkeleton} from "./session-skeleton";
 import {sessionScrollKey} from "../lib/session-route-location";
 import {useLocation} from "@tanstack/react-router";
-import {useQuery} from "@tanstack/react-query";
+import {useQuery, useQueryClient} from "@tanstack/react-query";
 import {lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {Minimize2} from "lucide-react";
 import {SessionTileFrame, type SessionTileScrollPosition} from "./session-tile-frame";
@@ -77,6 +77,7 @@ import {
 	useClaudeEvents,
 	useComposerServerState,
 	useIsSessionActive,
+	cachedSessionSummary,
 	useCachedSessionSummary,
 	useStatusline,
 } from "../hooks/use-claude-events";
@@ -178,6 +179,8 @@ export function SessionPage({
 	// An explicitly captured undefined entry is authoritative: it is a fresh visit.
 	const restoredScrollPosition =
 		scrollRestoration === undefined ? standaloneRestoredPosition : scrollRestoration.entry;
+	// The session list usually knows the title before the session itself loads; read once, as only the skeleton uses it.
+	const queryClient = useQueryClient();
 
 	if (detailQuery.isError) throw detailQuery.error;
 	if (transcriptQuery.isError) throw transcriptQuery.error;
@@ -194,7 +197,7 @@ export function SessionPage({
 	if (!data || !transcript || !subagents || !herdr)
 		return (
 			<SessionChrome>
-				<SessionSkeleton />
+				<SessionSkeleton title={cachedSessionSummary(queryClient, sessionId)?.title} />
 			</SessionChrome>
 		);
 
