@@ -10,7 +10,8 @@ export function layoutGraph(tasks: GraphTask[]): {
 	const layerOf = new Map<string, number>();
 
 	function getLayer(id: string, visited: Set<string>): number {
-		if (layerOf.has(id)) return layerOf.get(id)!;
+		const cached = layerOf.get(id);
+		if (cached !== undefined) return cached;
 		if (visited.has(id)) return 0; // cycle guard
 		visited.add(id);
 		const task = byId.get(id);
@@ -40,12 +41,12 @@ export function layoutGraph(tasks: GraphTask[]): {
 
 	for (let l = 0; l <= maxLayer; l++) {
 		const layerTasks = layers.get(l) ?? [];
-		for (let i = 0; i < layerTasks.length; i++) {
+		for (const [i, task] of layerTasks.entries()) {
 			nodes.push({
 				x: PADDING + l * LAYER_GAP_X,
 				y: PADDING + i * NODE_GAP_Y,
 				layer: l,
-				task: layerTasks[i]!,
+				task,
 			});
 		}
 	}

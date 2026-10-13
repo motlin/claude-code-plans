@@ -52,7 +52,7 @@ interface CustomizeDialogPanelProps {
  */
 export default function CustomizeDialogPanel({location, onNavigate}: CustomizeDialogPanelProps) {
 	const [searches, setSearches] = useState<Partial<Record<CustomizeSection, CustomizeSearch>>>({});
-	const section = CUSTOMIZE_SECTIONS.find((config) => config.id === location.section) ?? CUSTOMIZE_SECTIONS[0]!;
+	const section = CUSTOMIZE_SECTIONS.find((config) => config.id === location.section) ?? CUSTOMIZE_SECTIONS[0];
 
 	const patchSearch = (id: CustomizeSection, patch: CustomizeSearch) => {
 		setSearches((previous) => ({...previous, [id]: dropEmpty({...previous[id], ...patch, view: undefined})}));

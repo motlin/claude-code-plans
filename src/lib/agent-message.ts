@@ -16,10 +16,8 @@ const HARNESS_INDENT = "  ";
  * indent the harness puts on every report line.
  */
 export function parseAgentMessage(text: string): AgentMessage | null {
-	const match = AGENT_MESSAGE_RE.exec(text);
-	if (match === null) return null;
-	const from = match[1]!;
-	const raw = match[2]!;
+	const [, from, raw] = AGENT_MESSAGE_RE.exec(text) ?? [];
+	if (from === undefined || raw === undefined) return null;
 	if (!HANDBACK_FRAME_RE.test(raw)) return {from, body: raw.trim()};
 	const body = raw
 		.replace(HANDBACK_FRAME_RE, "")

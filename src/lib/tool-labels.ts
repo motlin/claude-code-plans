@@ -374,7 +374,7 @@ function artifactLabel(input: Record<string, unknown>): ToolLabel {
 		case "publish": {
 			const filePath = stringInput(input, "file_path");
 			const label = {verb: "Published artifact"};
-			return filePath === null ? label : {...label, meta: filePath.split("/").pop()!};
+			return filePath === null ? label : {...label, meta: filePath.split("/").at(-1) ?? filePath};
 		}
 		case "pin":
 			return {verb: "Pinned artifact"};
@@ -397,7 +397,7 @@ function artifactLabel(input: Record<string, unknown>): ToolLabel {
  */
 function mcpToolLabel(name: string): string {
 	const [server = "", ...toolParts] = name.slice("mcp__".length).split("__");
-	const serverName = server.startsWith("plugin_") ? server.split("_").pop()! : server;
+	const serverName = server.startsWith("plugin_") ? (server.split("_").at(-1) ?? server) : server;
 	const tool = toolParts.join("__").replaceAll("_", " ");
 	return `${serverName}: ${tool}`;
 }
@@ -457,10 +457,10 @@ const IRREGULAR_BASE_PROGRESSIVE: Record<string, string> = {
 };
 
 function replaceLeadingWord(text: string, transform: (lower: string) => string | null): string {
-	const match = /^([A-Za-z]+)([\s\S]*)$/.exec(text);
-	if (!match) return text;
-	const replaced = transform(match[1]!.toLowerCase());
-	return replaced === null ? text : capitalizeFirst(replaced) + match[2]!;
+	const [, word, rest] = /^([A-Za-z]+)([\s\S]*)$/.exec(text) ?? [];
+	if (word === undefined || rest === undefined) return text;
+	const replaced = transform(word.toLowerCase());
+	return replaced === null ? text : capitalizeFirst(replaced) + rest;
 }
 
 /** "Ran agent" -> "Running agent", "Searched web" -> "Searching web". */

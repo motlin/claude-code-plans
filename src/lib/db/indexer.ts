@@ -38,6 +38,7 @@ import {
 	replaceSessionBridgeAliases,
 	sessionBridgeMetadataKey,
 } from "./bridge-session-index";
+import {defined} from "../defined";
 import {nonEmpty} from "../non-empty";
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
@@ -1602,12 +1603,10 @@ const SCAN_CONCURRENCY = 8;
 
 /** Run `fn` over `items` with at most `limit` in flight at once. */
 async function mapLimit<T>(items: T[], limit: number, fn: (item: T) => Promise<void>): Promise<void> {
-	let next = 0;
+	// One shared iterator: each worker pulls the next unclaimed item.
+	const remaining = items.values();
 	const workers = Array.from({length: Math.min(limit, items.length)}, async () => {
-		while (next < items.length) {
-			const idx = next++;
-			await fn(items[idx]!);
-		}
+		for (const item of remaining) await fn(item);
 	});
 	await Promise.all(workers);
 }
@@ -1624,7 +1623,12 @@ function loadIndexedFileMtimes(db: IndexDb): Map<string, number> {
 function isPrimaryTranscriptPath(projectsDir: string, filePath: string): boolean {
 	const relativePath = relative(projectsDir, filePath);
 	const pathParts = relativePath.split(sep);
-	return pathParts.length === 2 && pathParts[0] !== ".." && pathParts[0] !== "." && pathParts[1]!.endsWith(".jsonl");
+	return (
+		pathParts.length === 2 &&
+		pathParts[0] !== ".." &&
+		pathParts[0] !== "." &&
+		pathParts[1]?.endsWith(".jsonl") === true
+	);
 }
 
 /**
@@ -1911,7 +1915,10 @@ export async function indexFile(
 		if (filePath.includes("/subagents/") && basename(filePath).startsWith("agent-")) {
 			const subagentsIdx = normalizedProjectFile.relativeParts.indexOf("subagents");
 			if (subagentsIdx >= 2) {
-				const sessionId = normalizedProjectFile.relativeParts[subagentsIdx - 1]!;
+				const sessionId = defined(
+					normalizedProjectFile.relativeParts[subagentsIdx - 1],
+					"A subagents directory at index >= 2 has a session directory before it",
+				);
 				await indexSubagentFile(db, filePath, sessionId, normalizedProjectFile.project);
 				// Link nested parent-child relationships from this subagent's JSONL
 				const agentFilename = basename(filePath, ".jsonl");

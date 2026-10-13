@@ -226,7 +226,7 @@ export function CustomizeDiscover({section, q, category, order, yours}: Customiz
 	// Any Filter or Sort choice replaces the sectioned landing with one grid.
 	const chosenCategory = category === undefined || category === ALL_CATEGORIES ? undefined : category;
 	const sort = resolveOption(DISCOVER_SORT_OPTIONS, order).value;
-	const narrowed = chosenCategory !== undefined || sort !== DISCOVER_SORT_OPTIONS[0]!.value;
+	const narrowed = chosenCategory !== undefined || sort !== DISCOVER_SORT_OPTIONS[0].value;
 	const filtered = {
 		categoryTitle: chosenCategory === undefined ? "All categories" : categoryLabel(chosenCategory),
 		plugins: sortDiscover(filterDiscover(plugins, chosenCategory), sort),

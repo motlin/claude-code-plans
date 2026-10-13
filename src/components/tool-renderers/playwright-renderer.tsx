@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import type {ToolRendererProps} from "./types";
 import {CopyableBody, ErrorBorder} from "./shared";
+import {defined} from "../../lib/defined";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -328,7 +329,11 @@ function ConsoleMessagesRenderer({resultText}: {resultText: string}) {
 	const messages = lines.map((line, i) => {
 		const m = /^\[(\w+)\]\s+(.+)$/.exec(line);
 		if (m) {
-			return {id: i, level: m[1]!, message: m[2]!};
+			return {
+				id: i,
+				level: defined(m[1], "console level group"),
+				message: defined(m[2], "console message group"),
+			};
 		}
 		return {id: i, level: "log", message: line};
 	});
@@ -381,7 +386,12 @@ function NetworkRequestsRenderer({resultText}: {resultText: string}) {
 	const requests = lines.map((line, i) => {
 		const m = /^(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\s+(\S+)\s+(\d+)/.exec(line);
 		if (m) {
-			return {id: i, method: m[1]!, url: m[2]!, status: parseInt(m[3]!, 10)};
+			return {
+				id: i,
+				method: defined(m[1], "network method group"),
+				url: defined(m[2], "network URL group"),
+				status: parseInt(defined(m[3], "network status group"), 10),
+			};
 		}
 		return {id: i, method: "", url: line, status: 0};
 	});

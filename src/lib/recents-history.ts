@@ -1,4 +1,5 @@
 import {z} from "zod";
+import {defined} from "./defined";
 import {toMdSlug} from "./md-slug";
 
 /**
@@ -93,7 +94,7 @@ export function resolveRecentSessions(
 		const resolved = resolveRecentSession(entry, resolveAlias);
 		const previousIndex = positions.get(resolved.key);
 		if (previousIndex !== undefined) {
-			const previous = result[previousIndex]!;
+			const previous = defined(result[previousIndex], "positions only holds indices already pushed to result");
 			if (previous.title === undefined && resolved.title !== undefined) {
 				result[previousIndex] = {...previous, title: resolved.title};
 			}

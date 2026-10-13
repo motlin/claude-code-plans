@@ -14,6 +14,7 @@ import {createServer} from "node:net";
 import {delimiter, dirname, join, resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {chromium, type BrowserContext, type Page} from "playwright";
+import {defined} from "../src/lib/defined";
 
 const REPOSITORY_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const SCREENSHOTS_DIRECTORY = join(REPOSITORY_ROOT, "screenshots");
@@ -622,7 +623,10 @@ async function collectRendererManifest(page: Page, chromiumVersion: string): Pro
 			continue;
 		}
 		fontAvailability[family] = Object.entries(fontData.baselines).some(
-			([fallback, baseline]) => Math.abs(sampleWidths[family]![fallback]! - baseline) > 0.01,
+			([fallback, baseline]) =>
+				Math.abs(
+					defined(sampleWidths[family]?.[fallback], `no ${fallback} width sample for ${family}`) - baseline,
+				) > 0.01,
 		);
 	}
 	const fontResolution = Object.fromEntries(

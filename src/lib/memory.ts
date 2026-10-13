@@ -50,8 +50,7 @@ export async function resolveProjectName(encoded: string, projectPath?: string):
 
 	const resolvedPath = await resolveProjectPath(encoded);
 	if (resolvedPath) {
-		const segments = resolvedPath.split("/");
-		const name = segments[segments.length - 1]!;
+		const name = resolvedPath.split("/").at(-1) ?? resolvedPath;
 		resolvedProjectNames.set(encoded, name);
 		return name;
 	}
@@ -78,8 +77,7 @@ export async function resolveProjectPath(encoded: string): Promise<string | null
 		if (chars[i] === "-") hyphenPositions.push(i);
 	}
 
-	for (let i = hyphenPositions.length - 1; i >= 0; i--) {
-		const pos = hyphenPositions[i]!;
+	for (const pos of [...hyphenPositions].reverse()) {
 		const pathPart = "/" + chars.slice(0, pos).replace(/-/g, "/");
 		const namePart = chars.slice(pos + 1);
 		const candidate = pathPart + "/" + namePart;
@@ -148,10 +146,10 @@ export async function listMemories(projectsDir: string): Promise<ProjectGroup[]>
 	const results = await Promise.all(projectDirs.map(async (project) => processProject(projectsDir, project)));
 	const groups = results.filter((g): g is ProjectGroup => g !== null);
 
-	const maxMtimes = new Map(groups.map((g) => [g.project, Math.max(...g.memories.map((m) => m.mtime.getTime()))]));
-	groups.sort((a, b) => maxMtimes.get(b.project)! - maxMtimes.get(a.project)!);
-
-	return groups;
+	return groups
+		.map((group) => ({group, maxMtime: Math.max(...group.memories.map((m) => m.mtime.getTime()))}))
+		.sort((a, b) => b.maxMtime - a.maxMtime)
+		.map(({group}) => group);
 }
 
 export async function readMemory(projectsDir: string, project: string, filename: string): Promise<string | null> {

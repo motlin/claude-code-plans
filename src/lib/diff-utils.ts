@@ -4,6 +4,8 @@
  * (no Shiki, no MarkdownIt, no Node.js dependencies).
  */
 
+import {defined} from "./defined";
+
 type DiffOp = readonly ["equal", string] | readonly ["remove", string] | readonly ["add", string];
 
 interface DiffData {
@@ -57,12 +59,13 @@ function computeDiff(oldLines: string[], newLines: string[]): DiffOp[] {
 	// LCS via dynamic programming
 	const dp: number[][] = Array.from({length: m + 1}, () => Array.from({length: n + 1}, () => 0));
 	for (let i = 1; i <= m; i++) {
+		const row = defined(dp[i], "LCS row out of range");
+		const previousRow = defined(dp[i - 1], "LCS row out of range");
 		for (let j = 1; j <= n; j++) {
-			if (oldMiddle[i - 1] === newMiddle[j - 1]) {
-				dp[i]![j] = dp[i - 1]![j - 1]! + 1;
-			} else {
-				dp[i]![j] = Math.max(dp[i - 1]![j]!, dp[i]![j - 1]!);
-			}
+			row[j] =
+				oldMiddle[i - 1] === newMiddle[j - 1]
+					? (previousRow[j - 1] ?? 0) + 1
+					: Math.max(previousRow[j] ?? 0, row[j - 1] ?? 0);
 		}
 	}
 
@@ -71,15 +74,17 @@ function computeDiff(oldLines: string[], newLines: string[]): DiffOp[] {
 	let i = m;
 	let j = n;
 	while (i > 0 || j > 0) {
-		if (i > 0 && j > 0 && oldMiddle[i - 1] === newMiddle[j - 1]) {
-			ops.push(["equal", oldMiddle[i - 1]!]);
+		const oldLine = oldMiddle[i - 1];
+		const newLine = newMiddle[j - 1];
+		if (oldLine !== undefined && newLine !== undefined && oldLine === newLine) {
+			ops.push(["equal", oldLine]);
 			i--;
 			j--;
-		} else if (j > 0 && (i === 0 || dp[i]![j - 1]! >= dp[i - 1]![j]!)) {
-			ops.push(["add", newMiddle[j - 1]!]);
+		} else if (newLine !== undefined && (i === 0 || (dp[i]?.[j - 1] ?? 0) >= (dp[i - 1]?.[j] ?? 0))) {
+			ops.push(["add", newLine]);
 			j--;
 		} else {
-			ops.push(["remove", oldMiddle[i - 1]!]);
+			ops.push(["remove", defined(oldLine, "LCS backtrack ran past the old lines")]);
 			i--;
 		}
 	}
@@ -195,8 +200,8 @@ export function buildFilePatch(oldText: string | null, newText: string, filePath
 		const hunkOps = ops.slice(from, to + 1);
 		const oldCount = hunkOps.filter(([type]) => type !== "add").length;
 		const newCount = hunkOps.filter(([type]) => type !== "remove").length;
-		const oldStart = oldLineBefore[from]! + (oldCount === 0 ? 0 : 1);
-		const newStart = newLineBefore[from]! + (newCount === 0 ? 0 : 1);
+		const oldStart = defined(oldLineBefore[from], "hunk start out of range") + (oldCount === 0 ? 0 : 1);
+		const newStart = defined(newLineBefore[from], "hunk start out of range") + (newCount === 0 ? 0 : 1);
 		body.push(`@@ -${oldStart},${oldCount} +${newStart},${newCount} @@`);
 		for (const [type, line] of hunkOps) {
 			body.push((type === "equal" ? " " : type === "add" ? "+" : "-") + line);
@@ -270,7 +275,7 @@ export function extractLineNumbers(text: string): {
 		if (match) {
 			hasLineNumbers = true;
 			if (index === 0) {
-				startLine = parseInt(match[1]!, 10);
+				startLine = parseInt(defined(match[1], "line-number group missing"), 10);
 			}
 			// Remove the prefix and preserve the rest of the line
 			return line.replace(/^\s*\d+[→\t]/, "");

@@ -16,11 +16,14 @@ export interface EventLoopStall {
 interface Activity {
 	label: string;
 	startedAt: number;
-	endedAt?: number;
+}
+
+interface EndedActivity extends Activity {
+	endedAt: number;
 }
 
 const inFlight = new Set<Activity>();
-let recentlyEnded: Activity[] = [];
+let recentlyEnded: EndedActivity[] = [];
 let runningMonitors = 0;
 
 /** Runs `fn` as a named activity, so a stall monitor can report it if the event loop stalls meanwhile. */
@@ -31,9 +34,8 @@ export async function trackActivity<T>(label: string, fn: () => T | Promise<T>):
 		return await fn();
 	} finally {
 		inFlight.delete(activity);
-		activity.endedAt = performance.now();
 		// Ended activities are only kept while a monitor can still attribute a stall to them.
-		if (runningMonitors > 0) recentlyEnded.push(activity);
+		if (runningMonitors > 0) recentlyEnded.push({...activity, endedAt: performance.now()});
 	}
 }
 
@@ -45,8 +47,7 @@ export function trackActivitySync<T>(label: string, fn: () => T): T {
 		return fn();
 	} finally {
 		inFlight.delete(activity);
-		activity.endedAt = performance.now();
-		if (runningMonitors > 0) recentlyEnded.push(activity);
+		if (runningMonitors > 0) recentlyEnded.push({...activity, endedAt: performance.now()});
 	}
 }
 
@@ -56,7 +57,7 @@ function threadCpuMs(): number {
 }
 
 function activitiesSince(windowStart: number): string[] {
-	const overlapping = [...recentlyEnded.filter((activity) => activity.endedAt! >= windowStart), ...inFlight];
+	const overlapping = [...recentlyEnded.filter((activity) => activity.endedAt >= windowStart), ...inFlight];
 	overlapping.sort((a, b) => a.startedAt - b.startedAt);
 	return [...new Set(overlapping.map((activity) => activity.label))];
 }
@@ -89,7 +90,7 @@ export function startStallMonitor({thresholdMs, onStall, intervalMs = 100}: Stal
 		}
 		windowStart = now;
 		windowStartCpuMs = nowCpuMs;
-		recentlyEnded = recentlyEnded.filter((activity) => activity.endedAt! >= windowStart);
+		recentlyEnded = recentlyEnded.filter((activity) => activity.endedAt >= windowStart);
 	}, intervalMs);
 	timer.unref();
 

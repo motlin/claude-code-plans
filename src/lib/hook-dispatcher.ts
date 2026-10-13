@@ -44,6 +44,7 @@ import {isSessionVisible as isSessionVisibleInBrowser} from "./session-visibilit
 import {getCurrentSessionMessageIndex, markSessionCompletionUnreviewed} from "./db/viewed-state";
 import {expirePendingApprovalForSession, resumePendingApprovalsForSession} from "./db/pending-approvals-cache";
 import {nonEmpty} from "./non-empty";
+import {defined} from "./defined";
 
 /**
  * TTL covering the gap between the hook fast-path broadcast and the chokidar
@@ -484,7 +485,7 @@ export async function dispatchHookEvent({
 					sessionId: node.sessionId,
 					agentType: node.agentType,
 					agentId: node.agentId,
-					endedAt: node.endedAt!,
+					endedAt: defined(node.endedAt, "a stopped subagent has an end time"),
 				} satisfies SubagentStoppedPayload);
 			}
 			// The finished turn is unseen work unless a browser is already showing it.
@@ -544,7 +545,7 @@ export async function dispatchHookEvent({
 					sessionId: liveSubagent.sessionId,
 					agentType: liveSubagent.agentType,
 					agentId: liveSubagent.agentId,
-					endedAt: liveSubagent.endedAt!,
+					endedAt: defined(liveSubagent.endedAt, "an ended subagent has an end time"),
 				} satisfies SubagentStoppedPayload);
 			}
 			const subagent = db

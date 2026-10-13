@@ -25,7 +25,7 @@ interface SectionProps {
 	search: CustomizeSearch;
 }
 
-const SKILLS_SECTION = CUSTOMIZE_SECTIONS[0]!;
+const SKILLS_SECTION = CUSTOMIZE_SECTIONS[0];
 
 /** The Skills list body under the Customize header (Yours, or Discover when it has one). */
 export function SkillsSection({search}: SectionProps) {
@@ -117,7 +117,7 @@ export function SkillsSection({search}: SectionProps) {
 	);
 }
 
-const CONNECTORS_SECTION = CUSTOMIZE_SECTIONS[1]!;
+const CONNECTORS_SECTION = CUSTOMIZE_SECTIONS[1];
 
 /** The Connectors list body under the Customize header (Yours, or Discover when it has one). */
 export function ConnectorsSection({search}: SectionProps) {
@@ -160,7 +160,7 @@ export function ConnectorsSection({search}: SectionProps) {
 	);
 }
 
-const PLUGINS_SECTION = CUSTOMIZE_SECTIONS[2]!;
+const PLUGINS_SECTION = CUSTOMIZE_SECTIONS[2];
 
 /** The Plugins list body under the Customize header (Yours, or Discover when it has one). */
 export function PluginsSection({search}: SectionProps) {

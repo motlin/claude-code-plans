@@ -42,9 +42,9 @@ export function unwrapPastedContent(text: string): string {
 
 function cleanCommandText(rawText: string): string {
 	const text = rawText.replace(PASTED_CONTENT_RE, PASTED_CONTENT_TEXT);
-	const msgMatch = text.match(COMMAND_MESSAGE_RE);
-	if (msgMatch) {
-		return msgMatch[1]!.replace(STRIP_TAG_RE, "").trim();
+	const message = text.match(COMMAND_MESSAGE_RE)?.[1];
+	if (message !== undefined) {
+		return message.replace(STRIP_TAG_RE, "").trim();
 	}
 	return text.replace(STRIP_BLOCK_RE, "").replace(STRIP_TAG_RE, "").trim();
 }
@@ -57,23 +57,22 @@ const BASH_INPUT_RE = /^\s*<bash-input>([\s\S]*?)<\/bash-input>\s*$/;
 const BASH_OUTPUT_RE = /^\s*<bash-stdout>([\s\S]*?)<\/bash-stdout>\s*<bash-stderr>([\s\S]*?)<\/bash-stderr>\s*$/;
 
 export function parseBashInput(text: string): {command: string} | null {
-	const m = text.match(BASH_INPUT_RE);
-	if (!m) return null;
-	return {command: m[1]!};
+	const command = text.match(BASH_INPUT_RE)?.[1];
+	return command === undefined ? null : {command};
 }
 
 export function parseBashOutput(text: string): {stdout: string; stderr: string} | null {
-	const m = text.match(BASH_OUTPUT_RE);
-	if (!m) return null;
-	return {stdout: m[1]!, stderr: m[2]!};
+	const [, stdout, stderr] = text.match(BASH_OUTPUT_RE) ?? [];
+	if (stdout === undefined || stderr === undefined) return null;
+	return {stdout, stderr};
 }
 
 export function parseCommandBlock(text: string): {name: string; args?: string} | null {
-	const nameMatch = text.match(/<command-name>(.*?)<\/command-name>/);
-	if (!nameMatch) return null;
+	const name = text.match(/<command-name>(.*?)<\/command-name>/)?.[1];
+	if (name === undefined) return null;
 	const argsMatch = text.match(/<command-args>(.*?)<\/command-args>/s);
 	const args = argsMatch?.[1]?.trim();
-	const result: {name: string; args?: string} = {name: nameMatch[1]!};
+	const result: {name: string; args?: string} = {name};
 	if (args) result.args = args;
 	return result;
 }
@@ -95,8 +94,9 @@ const ARG_TAG_RE = /<\/?(?:description|instructions|arguments|args|user-request)
  */
 function stripCommandBoilerplate(text: string): string {
 	const match = text.match(ARG_BLOCK_RE);
-	if (match) {
-		const args = match[2]!.trim();
+	const rawArgs = match?.[2];
+	if (match && rawArgs !== undefined) {
+		const args = rawArgs.trim();
 		if (args) return args;
 
 		const openingLine = text.slice(0, match.index).trim().split("\n")[0];
@@ -381,10 +381,10 @@ function categorize(call: ToolCallLike): ToolCategory | null {
 export function formatToolName(toolName: string): string {
 	if (toolName.startsWith("mcp__")) {
 		const withoutPrefix = toolName.slice("mcp__".length);
-		const serverName = withoutPrefix.split("__")[0]!;
+		const serverName = withoutPrefix.split("__")[0] ?? withoutPrefix;
 		if (serverName.startsWith("plugin_")) {
 			const segments = serverName.split("_");
-			return segments[segments.length - 1]!;
+			return segments.at(-1) ?? serverName;
 		}
 		return serverName;
 	}
@@ -531,7 +531,7 @@ function soleFilePath(calls: ToolCallLike[], categories: (ToolCategory | null)[]
 		if (path === null) return null;
 		paths.add(path);
 	}
-	return paths.size === 1 ? [...paths][0]! : null;
+	return paths.size === 1 ? ([...paths][0] ?? null) : null;
 }
 
 const VERB_LIST = new Intl.ListFormat("en", {type: "conjunction"});
@@ -674,7 +674,7 @@ function buildSummarySegments(
 
 	const categories = categorizeWithWrites(calls);
 	calls.forEach((call, index) => {
-		const cat = categories[index]!;
+		const cat = categories[index] ?? null;
 		const outcome = callOutcome(call, failedLaunches);
 		if (cat === null) {
 			otherTools++;

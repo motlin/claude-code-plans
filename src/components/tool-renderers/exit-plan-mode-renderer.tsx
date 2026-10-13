@@ -19,17 +19,17 @@ const TONE_CLASS: Record<ExitPlanModeStatusTone, string> = {
 export function ExitPlanModeRenderer({toolCall}: ToolRendererProps) {
 	const {result} = toolCall;
 	const planFilePath = (toolCall.input["planFilePath"] as string) ?? "";
-	const planMatch = planFilePath.match(PLAN_FILE_RE) ?? result?.match(PLAN_FILE_RE);
+	const planFile = (planFilePath.match(PLAN_FILE_RE) ?? result?.match(PLAN_FILE_RE))?.[1];
 	const plan = typeof toolCall.input["plan"] === "string" ? toolCall.input["plan"] : "";
 	const allowedPrompts = parseAllowedPrompts(toolCall.input["allowedPrompts"]);
 	const status = describeExitPlanModeResult(result, toolCall.isError);
 
 	return (
 		<KeyValueCard isError={toolCall.isError} params={[]} copyText={nonEmpty(plan) ?? result ?? ""}>
-			{planMatch && (
+			{planFile !== undefined && (
 				<Link
 					to="/plan/$filename"
-					params={{filename: toMdSlug(planMatch[1]!)}}
+					params={{filename: toMdSlug(planFile)}}
 					className="inline-flex items-center gap-1 text-body text-accent-100 hover:underline"
 				>
 					<FileText size={12} />

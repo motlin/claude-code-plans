@@ -88,13 +88,12 @@ function PlanPage() {
 						const byProject = new Map<string, {projectName: string; sessions: typeof links}>();
 						for (const link of links) {
 							const key = link.project;
-							if (!byProject.has(key)) {
-								byProject.set(key, {
-									projectName: link.projectName,
-									sessions: [],
-								});
+							let group = byProject.get(key);
+							if (group === undefined) {
+								group = {projectName: link.projectName, sessions: []};
+								byProject.set(key, group);
 							}
-							byProject.get(key)!.sessions.push(link);
+							group.sessions.push(link);
 						}
 						return [...byProject.entries()].map(([projectId, group]) => (
 							<div key={projectId} className="mt-3">

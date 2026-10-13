@@ -83,7 +83,7 @@ export function discoverCategoryOptions(plugins: readonly DiscoverPlugin[]): Men
 }
 
 /** Upstream Discover Sort; the first option is the default. */
-export const DISCOVER_SORT_OPTIONS: readonly MenuOption[] = [
+export const DISCOVER_SORT_OPTIONS: readonly [MenuOption, ...MenuOption[]] = [
 	{value: "installs", label: "Most installed"},
 	{value: "recent", label: "Recently added"},
 	{value: "name", label: "Name"},

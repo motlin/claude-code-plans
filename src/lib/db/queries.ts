@@ -887,8 +887,7 @@ function lineMatches(
 ): DbFileSearchMatch[] {
 	const matches: DbFileSearchMatch[] = [];
 	const lines = highlightedContent.split(/\r?\n/);
-	for (let index = 0; index < lines.length; index += 1) {
-		const line = lines[index]!;
+	for (const [index, line] of lines.entries()) {
 		if (!line.includes(highlightStart)) continue;
 		matches.push({
 			lineNumber: index + 1,

@@ -22,8 +22,7 @@ function getBarColor(agentType: string | null): string {
 
 function getShortType(agentType: string | null): string {
 	if (!agentType) return "agent";
-	const parts = agentType.split(":");
-	return parts[parts.length - 1]!;
+	return agentType.split(":").at(-1) ?? agentType;
 }
 
 // Wide enough for the indented type, the description, and the model name the

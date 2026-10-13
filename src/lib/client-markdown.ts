@@ -13,6 +13,7 @@ import {ARTIFACT_ICON_SVG, COPY_ICON_SVG, PR_ICON_SVG} from "./icon-paths";
 import {mdFileHref, resolveRelativeMdHref} from "./md-links";
 import {afterBreak, afterOpaque, newQuoteState, smartenQuotes} from "./smart-quotes";
 import {SHIKI_TOKENIZE_OPTIONS} from "./shiki-tokenize-options";
+import {defined} from "./defined";
 
 interface MarkdownRenderOptions {
 	typographer?: boolean;
@@ -160,7 +161,7 @@ function collapseLinks(state: StateCore, type: string, match: (href: string, tok
 		if (block.type !== "inline" || children === null) continue;
 		const rewritten: Token[] = [];
 		for (let index = 0; index < children.length; index++) {
-			const token = children[index]!;
+			const token = defined(children[index], "link token index out of range");
 			const href = token.type === "link_open" ? token.attrGet("href") : null;
 			const meta = href === null ? undefined : match(href, token);
 			const close =
@@ -201,7 +202,11 @@ interface PullRequestRef {
 function parsePullRequestUrl(href: string): PullRequestRef | undefined {
 	const match = GITHUB_PR_URL.exec(href);
 	if (match === null) return undefined;
-	return {owner: match[1]!, repo: match[2]!, number: match[3]!};
+	return {
+		owner: defined(match[1], "PR URL owner group"),
+		repo: defined(match[2], "PR URL repo group"),
+		number: defined(match[3], "PR URL number group"),
+	};
 }
 
 /** Raw PR URLs become chips; authored Markdown links keep their label tokens. */
@@ -267,8 +272,9 @@ function tableColumns(tokens: Token[], start: number): {end: number; columns: {c
 	const columns: {cells: Token[]; body: string[]}[] = [];
 	let column = 0;
 	let index = start + 1;
-	for (; index < tokens.length && tokens[index]!.type !== "table_close"; index++) {
-		const token = tokens[index]!;
+	for (; index < tokens.length; index++) {
+		const token = defined(tokens[index], "table token index out of range");
+		if (token.type === "table_close") break;
 		if (token.type === "tr_open") column = 0;
 		if (token.type !== "th_open" && token.type !== "td_open") continue;
 		const entry = (columns[column] ??= {cells: [], body: []});
@@ -282,7 +288,7 @@ function tableColumns(tokens: Token[], start: number): {end: number; columns: {c
 /** Marks every cell of a column whose body cells all parse as numbers, so it can right-align like upstream's. */
 function numericTableColumns(state: StateCore): void {
 	for (let index = 0; index < state.tokens.length; index++) {
-		if (state.tokens[index]!.type !== "table_open") continue;
+		if (state.tokens[index]?.type !== "table_open") continue;
 		const {end, columns} = tableColumns(state.tokens, index);
 		for (const {cells, body} of columns) {
 			if (body.length === 0 || !body.every(isNumericCell)) continue;
@@ -296,7 +302,7 @@ function numericTableColumns(state: StateCore): void {
 function isBareUrlLink(children: readonly Token[], open: number): boolean {
 	const text = children[open + 1];
 	if (text?.type !== "text" || children[open + 2]?.type !== "link_close") return false;
-	const href = children[open]!.attrGet("href");
+	const href = children[open]?.attrGet("href");
 	return href === text.content || href === `http://${text.content}` || href === `mailto:${text.content}`;
 }
 
@@ -312,7 +318,7 @@ function smartQuotes(state: StateCore): void {
 		if (children === null) continue;
 		const quotes = newQuoteState();
 		for (let i = 0; i < children.length; i++) {
-			const token = children[i]!;
+			const token = defined(children[i], "inline token index out of range");
 			switch (token.type) {
 				case "text":
 					token.content = smartenQuotes(token.content, quotes);
@@ -349,19 +355,23 @@ function applyPlugins(instance: MarkdownIt): void {
 	instance.inline.ruler.before("link", "wikilink", wikiLink);
 	instance.core.ruler.push(ARTIFACT_LINK_TOKEN, artifactLinks);
 	instance.renderer.rules[ARTIFACT_LINK_TOKEN] = (tokens, idx, _options, env) =>
-		artifactLinkHtml(tokens[idx]!, (env ?? {}) as MarkdownEnv, instance.utils.escapeHtml);
+		artifactLinkHtml(
+			defined(tokens[idx], "artifact link token"),
+			(env ?? {}) as MarkdownEnv,
+			instance.utils.escapeHtml,
+		);
 	instance.core.ruler.push(PR_CHIP_TOKEN, pullRequestChips);
 	instance.core.ruler.push("numeric_table_columns", numericTableColumns);
 	instance.core.ruler.push("smart_quotes", smartQuotes);
 	instance.renderer.rules[PR_CHIP_TOKEN] = (tokens, idx) =>
-		pullRequestChipHtml(tokens[idx]!, instance.utils.escapeHtml);
+		pullRequestChipHtml(defined(tokens[idx], "PR chip token"), instance.utils.escapeHtml);
 
 	// Links written inside a memory file keep their `.md` extension, but the
 	// route that serves them is keyed by the extension-less slug, so an
 	// unrewritten link is a hard 404 rather than a redirect.
-	const renderCodeInline = instance.renderer.rules.code_inline!;
+	const renderCodeInline = defined(instance.renderer.rules.code_inline, "markdown-it code_inline rule");
 	instance.renderer.rules.code_inline = (tokens, idx, options, env, self) => {
-		const text = tokens[idx]!.content;
+		const text = defined(tokens[idx], "code_inline token").content;
 		const ref = (env as MarkdownEnv | undefined)?.fileRefs?.get(text);
 		return ref === undefined
 			? renderCodeInline(tokens, idx, options, env, self)
@@ -369,7 +379,7 @@ function applyPlugins(instance: MarkdownIt): void {
 	};
 
 	instance.renderer.rules["link_open"] = (tokens, idx, options, env, self) => {
-		const token = tokens[idx]!;
+		const token = defined(tokens[idx], "link_open token");
 		const href = token.attrGet("href");
 		const base = (env as MarkdownEnv | undefined)?.mdLinkBase;
 		if (base !== undefined) {
@@ -386,7 +396,7 @@ function applyPlugins(instance: MarkdownIt): void {
 	// Upstream wraps every fence in a relative box carrying an absolutely
 	// positioned top-right control strip with an icon-only copy button; a bare
 	// markdown-it `<pre>` has nowhere to anchor one.
-	const renderFence = instance.renderer.rules.fence!;
+	const renderFence = defined(instance.renderer.rules.fence, "markdown-it fence rule");
 	instance.renderer.rules.fence = (tokens, idx, options, env, self) =>
 		`<div class="${CODEBLOCK_CLASS}">${renderFence(tokens, idx, options, env, self).trimEnd()}${COPY_STRIP}</div>\n`;
 

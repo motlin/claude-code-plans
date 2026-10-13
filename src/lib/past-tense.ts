@@ -401,10 +401,8 @@ function pastTenseFollowingVerbs(text: string): string {
 
 /** A hyphen-prefixed verb ("Re-run") in past tense ("Re-ran"), or null when it is not a known verb. */
 function pastOfPrefixed(word: string): string | null {
-	const match = VERB_PREFIX_RE.exec(word);
-	if (!match || !isBareWord(match[2]!)) return null;
-	const prefix = match[1]!;
-	const base = match[2]!;
+	const [, prefix, base] = VERB_PREFIX_RE.exec(word) ?? [];
+	if (prefix === undefined || base === undefined || !isBareWord(base)) return null;
 	const joined = (prefix + base).toLowerCase();
 	const lowerBase = base.toLowerCase();
 	if (PAST_FORMS.has(joined) || PAST_FORMS.has(lowerBase)) return null;
@@ -417,10 +415,8 @@ function pastOfPrefixed(word: string): string | null {
 export function pastTense(description: string): string {
 	const trimmed = description.trimStart();
 	const indent = description.slice(0, description.length - trimmed.length);
-	const match = /^(\S+)([\s\S]*)$/.exec(trimmed);
-	if (!match) return description;
-	const word = match[1]!;
-	const rest = match[2]!;
+	const [, word, rest] = /^(\S+)([\s\S]*)$/.exec(trimmed) ?? [];
+	if (word === undefined || rest === undefined) return description;
 	const prefixed = pastOfPrefixed(word);
 	if (prefixed !== null) return indent + prefixed + pastTenseFollowingVerbs(rest);
 	if (!isBareWord(word) || !KNOWN_VERBS.has(word.toLowerCase())) return description;

@@ -27,6 +27,7 @@ import type {RecursiveWatcher} from "./lib/recursive-watch";
 import {initPrStatusService} from "./lib/pr-status-service";
 import {takeOverServerShutdown} from "./lib/server-shutdown";
 import {announceThisDevEnvReady} from "./lib/dev-env-ready-gate";
+import {defined} from "./lib/defined";
 
 const PLANS_DIR = join(homedir(), ".claude", "plans");
 const PROJECTS_DIR = join(homedir(), ".claude", "projects");
@@ -143,7 +144,7 @@ void (async () => {
 			sessionId: node.sessionId,
 			agentType: node.agentType,
 			agentId: node.agentId,
-			endedAt: node.endedAt!,
+			endedAt: defined(node.endedAt, "a stopped subagent has an end time"),
 		} satisfies SubagentStoppedPayload);
 	});
 	stopHerdrEventBridge = startHerdrEventBridge();

@@ -46,7 +46,7 @@ function normalizeLang(lang: string): string {
 }
 
 function baseLang(lang: string): string {
-	return lang.split("-")[0]!;
+	return lang.split("-")[0] ?? lang;
 }
 
 /**
@@ -72,7 +72,7 @@ export function chooseVoice<V extends VoiceLike>(voices: readonly V[], lang: str
 
 function isHigher(rank: readonly number[], than: readonly number[]): boolean {
 	for (let index = 0; index < rank.length; index++) {
-		if (rank[index] !== than[index]) return rank[index]! > than[index]!;
+		if (rank[index] !== than[index]) return (rank[index] ?? -Infinity) > (than[index] ?? -Infinity);
 	}
 	return false;
 }

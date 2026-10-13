@@ -8,6 +8,7 @@ import {listFileSearchProjectPathsFromDb} from "./db/queries";
 import type * as schema from "./db/schema";
 import {isGitRepository} from "./git-tracked";
 import {migrateLegacyNavFlags, renameLegacyNavSections, VisibleNavSectionsSchema} from "./nav-sections";
+import {defined} from "./defined";
 import {nonEmpty} from "./non-empty";
 
 /**
@@ -253,7 +254,7 @@ export async function resolveDirectoryRoots(
 		// Keep roots non-overlapping so chokidar and the initial scan traverse
 		// each file only once.
 		for (let index = resolvedRoots.length - 1; index >= 0; index -= 1) {
-			const existingRoot = resolvedRoots[index]!;
+			const existingRoot = defined(resolvedRoots[index], "index counts down within resolvedRoots");
 			const shouldReplace =
 				overlapPreference === "widest"
 					? isContainedPath(existingRoot, resolvedRoot)

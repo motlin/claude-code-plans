@@ -194,7 +194,7 @@ function resolveTarget(
 	if (anchored && first !== undefined && knownSet.has(first)) return first;
 	if (target.startsWith("/")) return null;
 	const suffixMatches = anchored ? rest : candidates;
-	return suffixMatches.length === 1 ? suffixMatches[0]! : null;
+	return suffixMatches.length === 1 ? (suffixMatches[0] ?? null) : null;
 }
 
 /**

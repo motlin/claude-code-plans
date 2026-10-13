@@ -18,8 +18,8 @@ export function extractTasks(toolCalls: ClientToolCall[]): TaskItem[] {
 			});
 		} else if (call.name === "TaskUpdate") {
 			const taskId = call.input["taskId"] as string | undefined;
-			if (taskId && tasks.has(taskId)) {
-				const existing = tasks.get(taskId)!;
+			const existing = taskId ? tasks.get(taskId) : undefined;
+			if (existing !== undefined) {
 				const newStatus = call.input["status"] as string | undefined;
 				if (newStatus === "pending" || newStatus === "in_progress" || newStatus === "completed") {
 					existing.status = newStatus;

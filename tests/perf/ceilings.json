@@ -574,12 +574,12 @@
 		"tolerance": 0
 	},
 	"hot.processTranscript.small.calls": {
-		"ceiling": 3924,
+		"ceiling": 3547,
 		"unit": "calls",
 		"tolerance": 0
 	},
 	"hot.processTranscript.typical.calls": {
-		"ceiling": 2743,
+		"ceiling": 2489,
 		"unit": "calls",
 		"tolerance": 0
 	},

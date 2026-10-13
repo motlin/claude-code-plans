@@ -62,7 +62,7 @@ export const ManyTasks: Story = {
 			input: {},
 			result: Array.from({length: 12}, (_, i) => {
 				const statuses = ["completed", "in_progress", "pending"];
-				const status = statuses[i % 3]!;
+				const status = statuses[i % statuses.length];
 				return `#${i + 1} [${status}] Task ${i + 1}: ${["Fix login bug", "Add unit tests", "Deploy to staging", "Refactor database layer", "Update documentation", "Add error handling", "Optimize queries", "Add caching", "Setup CI/CD", "Write integration tests", "Add monitoring", "Fix memory leak"][i]}`;
 			}).join("\n"),
 		}),

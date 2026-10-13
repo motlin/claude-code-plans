@@ -2,6 +2,7 @@ import {readFileSync} from "node:fs";
 import {join} from "node:path";
 import type {ITheme} from "ghostty-web";
 import {z} from "zod";
+import {defined} from "../defined";
 
 const HexColorSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 
@@ -128,7 +129,10 @@ export function parseGhosttyConfig(contents: string): GhosttyConfig {
 			config.fontSize = Number(value);
 		} else if (key === "palette") {
 			const palette = parsePaletteEntry(value, lineIndex + 1);
-			const themeField = PALETTE_THEME_FIELDS[palette.index]!;
+			const themeField = defined(
+				PALETTE_THEME_FIELDS[palette.index],
+				"PaletteEntrySchema bounds the palette index",
+			);
 			theme[themeField] = palette.color;
 		} else if (Object.hasOwn(THEME_SETTING_FIELDS, key)) {
 			const themeField = THEME_SETTING_FIELDS[key as keyof typeof THEME_SETTING_FIELDS];

@@ -87,8 +87,8 @@ function normalizeStartTime(value: string): string {
 export function parsePsStartTimes(output: string): Map<number, string> {
 	const times = new Map<number, string>();
 	for (const line of output.split("\n")) {
-		const match = /^\s*(\d+)\s+(.+)$/.exec(line);
-		if (match) times.set(Number(match[1]), normalizeStartTime(match[2]!));
+		const [, pid, startTime] = /^\s*(\d+)\s+(.+)$/.exec(line) ?? [];
+		if (pid !== undefined && startTime !== undefined) times.set(Number(pid), normalizeStartTime(startTime));
 	}
 	return times;
 }

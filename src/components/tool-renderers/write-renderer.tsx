@@ -12,7 +12,7 @@ export function WriteRenderer({toolCall}: ToolRendererProps) {
 	const filePath = (toolCall.input["file_path"] as string) ?? "";
 	const content = toolCall.input["content"] as string | undefined;
 	const {result, isError} = toolCall;
-	const planMatch = filePath.match(PLAN_RE);
+	const planFile = filePath.match(PLAN_RE)?.[1];
 	const copyText = content ?? result ?? filePath;
 
 	if (!content) {
@@ -33,10 +33,10 @@ export function WriteRenderer({toolCall}: ToolRendererProps) {
 			{/* Header: smart-truncated file path + hover copy button */}
 			<div className="flex items-center gap-g3 px-p6 py-p5">
 				<TruncatedFilePathHeader filePath={filePath} />
-				{planMatch && (
+				{planFile !== undefined && (
 					<Link
 						to="/plan/$filename"
-						params={{filename: toMdSlug(planMatch[1]!)}}
+						params={{filename: toMdSlug(planFile)}}
 						className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 hover:underline shrink-0"
 					>
 						<FileText size={12} />

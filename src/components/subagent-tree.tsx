@@ -32,7 +32,7 @@ function getTypeStyle(agentType: string | null): string {
 
 function getShortType(agentType: string | null): string {
 	if (agentType === null) return "agent";
-	return agentType.split(":").at(-1)!;
+	return agentType.split(":").at(-1) ?? agentType;
 }
 
 export function SubagentTypeBadges({
@@ -174,8 +174,8 @@ function ParallelGroupNode({group, presentation}: {group: ParallelSubagentGroup;
 
 function summarizeParallelGroup(group: ParallelSubagentGroup): string {
 	const types = new Set(group.children.map((child) => getShortType(child.agent.agentType)));
-	if (types.size === 1) return `${[...types][0]!} tasks`;
-	return [...types].join(", ");
+	const names = [...types].join(", ");
+	return types.size === 1 ? `${names} tasks` : names;
 }
 
 function isParallelGroup(entry: SubagentTreeEntry): entry is ParallelSubagentGroup {

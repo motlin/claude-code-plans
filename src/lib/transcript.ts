@@ -464,37 +464,29 @@ function deduplicateCommandGroups(lines: ProcessedLine[]): ProcessedLine[] {
 	let lastCommandContent: string | undefined;
 	let lastCommandGroupEnd = -1;
 
-	for (let i = 0; i < lines.length; i++) {
-		if (!isCommandLine(lines[i]!)) {
+	for (const [i, line] of lines.entries()) {
+		const commandContent = getUserStringContent(line);
+		if (commandContent?.includes("<command-name>") !== true) {
 			// Non-command lines that aren't part of a command group reset tracking,
 			// unless they're caveats, stdouts, or blank assistant messages.
-			if (!isCaveatLine(lines[i]!) && !isStdoutLine(lines[i]!) && !isBlankAssistantLine(lines[i]!)) {
+			if (!isCaveatLine(line) && !isStdoutLine(line) && !isBlankAssistantLine(line)) {
 				lastCommandContent = undefined;
 				lastCommandGroupEnd = -1;
 			}
 			continue;
 		}
 
-		const commandContent = getUserStringContent(lines[i]!)!;
-
 		// Determine the boundaries of this command group
-		const groupStart = i > 0 && isCaveatLine(lines[i - 1]!) ? i - 1 : i;
-		const groupEnd = i + 1 < lines.length && isStdoutLine(lines[i + 1]!) ? i + 1 : i;
+		const previous = lines[i - 1];
+		const following = lines[i + 1];
+		const groupStart = previous !== undefined && isCaveatLine(previous) ? i - 1 : i;
+		const groupEnd = following !== undefined && isStdoutLine(following) ? i + 1 : i;
 
 		// Check adjacency: all lines between the previous group end and this group start
 		// must be blank assistants (transparent lines) for the groups to be "adjacent".
 		const gapStart = lastCommandGroupEnd + 1;
-		const gapEnd = groupStart;
-		let adjacentToPrevious = gapStart >= gapEnd;
-		if (!adjacentToPrevious) {
-			adjacentToPrevious = true;
-			for (let j = gapStart; j < gapEnd; j++) {
-				if (!isBlankAssistantLine(lines[j]!)) {
-					adjacentToPrevious = false;
-					break;
-				}
-			}
-		}
+		const gap = lines.slice(gapStart, groupStart);
+		const adjacentToPrevious = gap.every(isBlankAssistantLine);
 
 		if (commandContent === lastCommandContent && adjacentToPrevious) {
 			// Duplicate command group -- mark for removal
@@ -502,9 +494,9 @@ function deduplicateCommandGroups(lines: ProcessedLine[]): ProcessedLine[] {
 				indicesToRemove.add(j);
 			}
 			// Also remove blank assistant messages in the gap
-			for (let j = gapStart; j < gapEnd; j++) {
-				if (isBlankAssistantLine(lines[j]!)) {
-					indicesToRemove.add(j);
+			for (const [offset, gapLine] of gap.entries()) {
+				if (isBlankAssistantLine(gapLine)) {
+					indicesToRemove.add(gapStart + offset);
 				}
 			}
 		} else {
@@ -600,7 +592,7 @@ function processRecordBatch(
 	const surfacedDescriptions = new Map<string, Map<string, string | undefined>>();
 
 	for (let i = 0; i < records.length; i++) {
-		const obj = records[i]!;
+		const obj = records[i];
 		const lineIndex = startLineIndex + i;
 
 		const parsed = JsonlRecordSchema.safeParse(obj);

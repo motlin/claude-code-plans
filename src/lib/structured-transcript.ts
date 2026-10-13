@@ -67,8 +67,8 @@ export function parseTranscriptLine(line: string): Record<string, unknown> | und
 function findWindowStart(lines: string[], end: number, maxBytes: number, maxRecords: number) {
 	let start = end;
 	let bytes = 0;
-	while (start > 0) {
-		const size = Buffer.byteLength(lines[start - 1]!, "utf8") + 1;
+	for (let line = lines[start - 1]; line !== undefined; line = lines[start - 1]) {
+		const size = Buffer.byteLength(line, "utf8") + 1;
 		if (start < end && (bytes + size > maxBytes || end - start >= maxRecords)) break;
 		bytes += size;
 		start -= 1;
@@ -116,8 +116,8 @@ export function readStructuredTranscript(
 		}
 
 		let precedingMessageCount = 0;
-		for (let i = 0; i < startIndex; i += 1) {
-			const line = lines[i]!;
+		for (const [i, line] of lines.entries()) {
+			if (i >= startIndex) break;
 			if (!mightBeCountableMessageLine(line)) continue;
 			if (isCountableMessageRecord(parseTranscriptLine(line))) precedingMessageCount += 1;
 		}

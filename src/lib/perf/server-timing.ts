@@ -1,3 +1,4 @@
+import {defined} from "../defined";
 import {currentPerfCounters, withPerfScope, type PerfCounters} from "./server-scope";
 
 type FetchHandler = (request: Request) => Response | Promise<Response>;
@@ -45,7 +46,7 @@ export function withServerTiming(handler: FetchHandler): (request: Request) => P
 			const totalMs = performance.now() - start;
 			if (isEventStream(response)) return response;
 
-			const counters = currentPerfCounters()!;
+			const counters = defined(currentPerfCounters(), "withPerfScope provides perf counters");
 			if (process.env["CCB_PERF_LOG"] === "1") {
 				console.log(
 					JSON.stringify({

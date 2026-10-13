@@ -1,4 +1,5 @@
 import {type ComponentType, Profiler, type ReactNode} from "react";
+import {defined} from "../../../src/lib/defined";
 import {nonEmpty} from "../../../src/lib/non-empty";
 
 /**
@@ -53,9 +54,10 @@ function* children(fiber: Fiber): Generator<Fiber> {
 function hostRoots(): Fiber[] {
 	const roots: Fiber[] = [];
 	for (const element of document.body.children) {
-		const key = Object.keys(element).find((name) => name.startsWith(CONTAINER_KEY_PREFIX));
-		if (key !== undefined) {
-			const container = (element as unknown as Record<string, Fiber>)[key]!;
+		const container = Object.entries(element as unknown as Record<string, Fiber>).find(([name]) =>
+			name.startsWith(CONTAINER_KEY_PREFIX),
+		)?.[1];
+		if (container !== undefined) {
 			roots.push((container.stateNode as {current: Fiber}).current);
 		}
 	}
@@ -86,7 +88,7 @@ export function createRenderCensus(): RenderCensus {
 	let recording = false;
 
 	const record = (fiber: Fiber) => {
-		const step = steps.at(-1)!;
+		const step = defined(steps.at(-1), "renders are only recorded inside a step");
 		const name = componentName(fiber);
 		step.set(name, (step.get(name) ?? 0) + 1);
 	};

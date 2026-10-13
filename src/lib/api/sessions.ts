@@ -164,13 +164,20 @@ export function mergeTranscriptData(primary: TranscriptData, secondary: Transcri
 	}
 	const indices = [...byIndex.keys()].sort((a, b) => a - b);
 	let runStart = indices.length - 1;
-	while (runStart > 0 && indices[runStart - 1] === indices[runStart]! - 1) runStart -= 1;
+	for (
+		let current = indices[runStart];
+		current !== undefined && indices[runStart - 1] === current - 1;
+		current = indices[runStart]
+	) {
+		runStart -= 1;
+	}
 	const contiguous = indices.slice(Math.max(runStart, 0));
 
 	const records: TranscriptData["records"] = [];
 	const seenUuids = new Set<string>();
 	for (const index of contiguous) {
-		const record = byIndex.get(index)!;
+		const record = byIndex.get(index);
+		if (record === undefined) continue;
 		const uuid = record["uuid"];
 		if (typeof uuid === "string") {
 			if (seenUuids.has(uuid)) continue;

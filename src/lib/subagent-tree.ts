@@ -32,7 +32,7 @@ function durationMs(agent: Subagent): number {
 }
 
 function entryStartedAt(entry: SubagentTreeEntry): string | null {
-	return "type" in entry ? entry.children[0]!.agent.startedAt : entry.agent.startedAt;
+	return "type" in entry ? (entry.children[0]?.agent.startedAt ?? null) : entry.agent.startedAt;
 }
 
 function localDateKey(date: Date): string {
@@ -96,12 +96,12 @@ export function buildSubagentTree(agents: Subagent[]): SubagentTreeEntry[] {
 		const entries: SubagentTreeEntry[] = [];
 
 		for (let index = 0; index < children.length; index++) {
-			const first = children[index]!;
+			const first = children[index];
+			if (first === undefined) break;
 			const parallelAgents = [first];
 			const firstStartedAt = first.startedAt === null ? null : new Date(first.startedAt).getTime();
 
-			while (index + 1 < children.length) {
-				const next = children[index + 1]!;
+			for (let next = children[index + 1]; next !== undefined; next = children[index + 1]) {
 				const nextStartedAt = next.startedAt === null ? null : new Date(next.startedAt).getTime();
 				if (
 					firstStartedAt === null ||
@@ -118,8 +118,9 @@ export function buildSubagentTree(agents: Subagent[]): SubagentTreeEntry[] {
 				agent,
 				children: buildChildren(agent.id),
 			}));
-			if (nodes.length === 1) {
-				entries.push(nodes[0]!);
+			const [only] = nodes;
+			if (only !== undefined && nodes.length === 1) {
+				entries.push(only);
 				continue;
 			}
 

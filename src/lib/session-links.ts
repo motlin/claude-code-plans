@@ -46,13 +46,19 @@ const TRAILING_PUNCTUATION = /[.,;:!?]+$/;
 const ISSUE_KEY = /[A-Z][A-Z0-9]+-\d+/;
 const GITHUB_ISSUE_OR_PULL = /^\/([^/]+)\/([^/]+)\/(?:issues|pull)\/(\d+)(?:\/|$)/;
 
+const MY_HOST_CATEGORY: LinkCategory = {categoryId: "MyHost", label: "My Host"};
+const GITHUB_CATEGORY: LinkCategory = {categoryId: "GitHub", label: "GitHub"};
+const ISSUE_TRACKER_CATEGORY: LinkCategory = {categoryId: "IssueTracker", label: "Issue Tracker"};
+const GOOGLE_DOCS_CATEGORY: LinkCategory = {categoryId: "GoogleDocs", label: "Google Docs"};
+const GOOGLE_SHEETS_CATEGORY: LinkCategory = {categoryId: "GoogleSheets", label: "Google Sheets"};
+const GOOGLE_SLIDES_CATEGORY: LinkCategory = {categoryId: "GoogleSlides", label: "Google Slides"};
 const BUILT_IN_CATEGORIES: LinkCategory[] = [
-	{categoryId: "MyHost", label: "My Host"},
-	{categoryId: "GitHub", label: "GitHub"},
-	{categoryId: "IssueTracker", label: "Issue Tracker"},
-	{categoryId: "GoogleDocs", label: "Google Docs"},
-	{categoryId: "GoogleSheets", label: "Google Sheets"},
-	{categoryId: "GoogleSlides", label: "Google Slides"},
+	MY_HOST_CATEGORY,
+	GITHUB_CATEGORY,
+	ISSUE_TRACKER_CATEGORY,
+	GOOGLE_DOCS_CATEGORY,
+	GOOGLE_SHEETS_CATEGORY,
+	GOOGLE_SLIDES_CATEGORY,
 ];
 const EXTERNAL_CATEGORY: LinkCategory = {categoryId: "External", label: "External"};
 
@@ -139,23 +145,23 @@ function categorizeUrl(
 	if (parsedUrl === undefined) return EXTERNAL_CATEGORY;
 
 	const {hostname, pathname} = parsedUrl;
-	if (currentHost !== undefined && hostname === currentHost) return BUILT_IN_CATEGORIES[0]!;
-	if (isGitHubHost(hostname)) return BUILT_IN_CATEGORIES[1]!;
+	if (currentHost !== undefined && hostname === currentHost) return MY_HOST_CATEGORY;
+	if (isGitHubHost(hostname)) return GITHUB_CATEGORY;
 	if (
 		hostname.endsWith(".atlassian.net") ||
 		hostnameMatchesGlob(hostname, "jira.*") ||
 		hostnameMatchesGlob(hostname, "confluence.*")
 	) {
-		return BUILT_IN_CATEGORIES[2]!;
+		return ISSUE_TRACKER_CATEGORY;
 	}
 	if (hostname === "docs.google.com" && pathname.includes("/document")) {
-		return BUILT_IN_CATEGORIES[3]!;
+		return GOOGLE_DOCS_CATEGORY;
 	}
 	if (hostname === "docs.google.com" && pathname.includes("/spreadsheets")) {
-		return BUILT_IN_CATEGORIES[4]!;
+		return GOOGLE_SHEETS_CATEGORY;
 	}
 	if (hostname === "docs.google.com" && pathname.includes("/presentation")) {
-		return BUILT_IN_CATEGORIES[5]!;
+		return GOOGLE_SLIDES_CATEGORY;
 	}
 
 	for (const rule of userRules) {
@@ -215,8 +221,8 @@ export function collectSessionLinks(lines: SessionLine[]): CollectedLink[] {
 	};
 
 	for (const chunk of scanSessionContent(lines)) {
-		for (const match of chunk.text.matchAll(MARKDOWN_LINK)) {
-			addUrl(match[2]!, match[1], occurrenceFromChunk(chunk));
+		for (const [, text, url] of chunk.text.matchAll(MARKDOWN_LINK)) {
+			if (url !== undefined) addUrl(url, text, occurrenceFromChunk(chunk));
 		}
 
 		const textWithoutMarkdownLinks = chunk.text.replace(MARKDOWN_LINK, " ");

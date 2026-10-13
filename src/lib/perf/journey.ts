@@ -256,7 +256,13 @@ type ObservedType = (typeof OBSERVED_TYPES)[number];
 
 export function createJourneyTracker(environment: JourneyEnvironment): JourneyTracker {
 	const {document, performance} = environment;
-	const buffers = new Map<ObservedType, PerformanceEntry[]>(OBSERVED_TYPES.map((type) => [type, []]));
+	const buffers: Record<ObservedType, PerformanceEntry[]> = {
+		resource: [],
+		"long-animation-frame": [],
+		"layout-shift": [],
+		event: [],
+		element: [],
+	};
 	const observers: PerformanceObserver[] = [];
 	const active = new Map<string, ActiveJourney>();
 	const cancelWaits = new Set<() => void>();
@@ -267,7 +273,7 @@ export function createJourneyTracker(environment: JourneyEnvironment): JourneyTr
 		for (const type of OBSERVED_TYPES) {
 			try {
 				const observer = new environment.PerformanceObserver((list) => {
-					const buffer = buffers.get(type)!;
+					const buffer = buffers[type];
 					buffer.push(...list.getEntries());
 					if (buffer.length > ENTRY_BUFFER_LIMIT) buffer.splice(0, buffer.length - ENTRY_BUFFER_LIMIT);
 				});
@@ -299,18 +305,18 @@ export function createJourneyTracker(environment: JourneyEnvironment): JourneyTr
 	}
 
 	function entriesBetween<T extends PerformanceEntry>(type: ObservedType, start: number, end: number): T[] {
-		return buffers.get(type)!.filter((entry) => entry.startTime >= start && entry.startTime <= end) as T[];
+		return buffers[type].filter((entry) => entry.startTime >= start && entry.startTime <= end) as T[];
 	}
 
 	function eventTimingEnd(journey: ActiveJourney): number | undefined {
-		const entry = (buffers.get("event") as PerformanceEventTiming[]).find(
+		const entry = (buffers.event as PerformanceEventTiming[]).find(
 			(candidate) => candidate.name === journey.trigger && candidate.startTime === journey.start,
 		);
 		return entry === undefined ? undefined : entry.startTime + entry.duration;
 	}
 
 	function elementRenderTime(anchor: Element): number | undefined {
-		const entries = buffers.get("element") as unknown as ElementTimingEntry[];
+		const entries = buffers.element as unknown as ElementTimingEntry[];
 		return entries.find((entry) => entry.element === anchor && entry.renderTime > 0)?.renderTime;
 	}
 

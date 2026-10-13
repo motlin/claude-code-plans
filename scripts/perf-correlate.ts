@@ -21,6 +21,7 @@ import {basename, dirname, join, resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {promisify} from "node:util";
 import {z} from "zod";
+import {defined} from "../src/lib/defined";
 import {DIAGNOSTIC_FAMILIES, diagnosticFamily, loadCeilings, type Ceilings} from "../tests/perf/ratchet";
 
 const REPOSITORY_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -38,7 +39,10 @@ export function median(values: readonly number[]): number {
 	if (values.length === 0) throw new Error("median of an empty list");
 	const sorted = [...values].sort((a, b) => a - b);
 	const middle = Math.floor(sorted.length / 2);
-	return sorted.length % 2 === 1 ? sorted[middle]! : (sorted[middle - 1]! + sorted[middle]!) / 2;
+	const upper = defined(sorted[middle], "median middle index is in range");
+	return sorted.length % 2 === 1
+		? upper
+		: (defined(sorted[middle - 1], "median lower index is in range") + upper) / 2;
 }
 
 /** 1-based ranks, ties sharing their average rank. */
@@ -47,9 +51,10 @@ function ranks(values: readonly number[]): number[] {
 	const result = Array.from({length: values.length}, () => 0);
 	for (let start = 0; start < order.length;) {
 		let end = start;
-		while (end + 1 < order.length && order[end + 1]!.value === order[start]!.value) end++;
+		const {value} = defined(order[start], "rank start is in range");
+		while (order[end + 1]?.value === value) end++;
 		const rank = (start + end) / 2 + 1;
-		for (let position = start; position <= end; position++) result[order[position]!.index] = rank;
+		for (const {index} of order.slice(start, end + 1)) result[index] = rank;
 		start = end + 1;
 	}
 	return result;
@@ -65,9 +70,9 @@ function pearson(x: readonly number[], y: readonly number[]): number | undefined
 	let covariance = 0;
 	let varianceX = 0;
 	let varianceY = 0;
-	for (let index = 0; index < x.length; index++) {
-		const dx = x[index]! - meanX;
-		const dy = y[index]! - meanY;
+	for (const [index, xValue] of x.entries()) {
+		const dx = xValue - meanX;
+		const dy = defined(y[index], "pearson lists have equal length") - meanY;
 		covariance += dx * dy;
 		varianceX += dx * dx;
 		varianceY += dy * dy;
@@ -89,9 +94,9 @@ export function slope(x: readonly number[], y: readonly number[]): number | unde
 	const meanY = mean(y);
 	let covariance = 0;
 	let varianceX = 0;
-	for (let index = 0; index < x.length; index++) {
-		covariance += (x[index]! - meanX) * (y[index]! - meanY);
-		varianceX += (x[index]! - meanX) ** 2;
+	for (const [index, xValue] of x.entries()) {
+		covariance += (xValue - meanX) * (defined(y[index], "slope lists have equal length") - meanY);
+		varianceX += (xValue - meanX) ** 2;
 	}
 	return varianceX === 0 ? undefined : covariance / varianceX;
 }
@@ -232,16 +237,15 @@ function journeyWalls(sweep: Sweep): Map<string, number[]> {
 
 function negativeControl(before: Sweep, after: Sweep): string {
 	const previous = new Map(correlate(before).map((row) => [row.family, row]));
-	const moved = correlate(after).filter((row) => {
+	const moved = correlate(after).flatMap((row) => {
 		const old = previous.get(row.family);
-		return old?.counts.some((count, index) => count !== row.counts[index]) === true;
+		return old?.counts.some((count, index) => count !== row.counts[index]) === true ? [{row, old}] : [];
 	});
 	const shapes = after.shapes.map(({shape}) => shape);
 	if (moved.length === 0) return "No lab count moved between the two sweeps.";
 	return table(
 		["count", ...shapes.map((shape) => `${shape} count`), ...shapes.map((shape) => `${shape} wall ms`)],
-		moved.map((row) => {
-			const old = previous.get(row.family)!;
+		moved.map(({row, old}) => {
 			return [
 				`\`${row.family}\``,
 				...row.counts.map((count, index) => `${old.counts[index]} → ${count}`),
@@ -363,7 +367,14 @@ function appendedLines(sessionId: string, count: number, batch: number): string 
 }
 
 function medianCounts(samples: readonly Record<string, number>[]): Record<string, number> {
-	return Object.fromEntries(Object.keys(samples[0]!).map((id) => [id, median(samples.map((sample) => sample[id]!))]));
+	const [first] = samples;
+	if (first === undefined) throw new Error("medianCounts of an empty list");
+	return Object.fromEntries(
+		Object.keys(first).map((id) => [
+			id,
+			median(samples.map((sample) => defined(sample[id], `sample is missing ${id}`))),
+		]),
+	);
 }
 
 type ApiHandler = (context: {params: {id: string}; request: Request}) => Response | Promise<Response>;
@@ -424,7 +435,7 @@ async function measureShape(
 		const {Route} = (await import(module)) as {
 			Route: {options: {server: {handlers: Record<string, ApiHandler>}}};
 		};
-		const handler = Route.options.server.handlers["GET"]!;
+		const handler = defined(Route.options.server.handlers["GET"], `${module} has no GET handler`);
 		const prefix = ids.sessionOpenPrefix(shapeName, endpoint as keyof typeof SESSION_OPEN_ROUTES);
 		const counts: Record<string, number>[] = [];
 		const wallMs: number[] = [];
@@ -437,7 +448,7 @@ async function measureShape(
 				});
 				const body = await response.text();
 				const elapsed = performance.now() - started;
-				const counters = serverScope.currentPerfCounters()!;
+				const counters = defined(serverScope.currentPerfCounters(), "handler ran outside a perf scope");
 				// Run 0 warms the module graph and the OS page cache; it is not timed.
 				if (run === 0) return;
 				wallMs.push(elapsed);
@@ -481,7 +492,7 @@ async function measureShape(
 				{projectsDir, plansDir: ""},
 			);
 			const elapsed = performance.now() - started;
-			const counters = serverScope.currentPerfCounters()!;
+			const counters = defined(serverScope.currentPerfCounters(), "live append ran outside a perf scope");
 			return {
 				elapsed,
 				bytesRead: counters.jsonl.bytesRead,
@@ -540,8 +551,7 @@ async function measureShape(
 const execFileAsync = promisify(execFile);
 
 function lastJsonLine(stdout: string): unknown {
-	const lines = stdout.trim().split("\n");
-	return JSON.parse(lines[lines.length - 1]!);
+	return JSON.parse(defined(stdout.trim().split("\n").at(-1), "split always yields a line"));
 }
 
 async function hotPathCalls(fn: string, shape: ShapeName): Promise<number> {
@@ -562,13 +572,13 @@ async function sweepShape(shape: ShapeName, runs: number): Promise<ShapeSweep> {
 	const cold: JourneySample[] = [];
 	for (let run = 0; run < runs; run++) cold.push(...(await runChild(shape, 1, "cold-append")));
 	journeys.push({
-		journey: cold[0]!.journey,
+		journey: defined(cold[0], "cold-append produced no samples").journey,
 		counts: medianCounts(cold.map(({counts}) => counts)),
 		wallMs: cold.flatMap(({wallMs}) => wallMs),
 	});
 	for (const sample of journeys) {
-		const match = /^hot\.([^.]+)\./.exec(sample.journey);
-		if (match) sample.counts = {[sample.journey]: await hotPathCalls(match[1]!, shape)};
+		const fn = /^hot\.([^.]+)\./.exec(sample.journey)?.[1];
+		if (fn !== undefined) sample.counts = {[sample.journey]: await hotPathCalls(fn, shape)};
 	}
 	return {shape, fileBytes, loadBefore, loadAfter: loadavg(), journeys};
 }
@@ -609,7 +619,7 @@ async function main(argv: readonly string[]): Promise<void> {
 		const [, shape, root, runs, mode] = argv;
 		const samples = await measureShape(
 			z.enum(SHAPES).parse(shape),
-			root!,
+			defined(root, "--child needs a root directory"),
 			Number(runs),
 			z.enum(CHILD_MODES).parse(mode),
 		);

@@ -7,10 +7,11 @@
 import {readdirSync, readFileSync} from "node:fs";
 import {join} from "node:path";
 import {homedir} from "node:os";
+import {defined} from "../src/lib/defined";
 
 const args = process.argv.slice(2);
 const limitIdx = args.indexOf("--limit");
-const fileLimit = limitIdx >= 0 ? parseInt(args[limitIdx + 1]!, 10) : Infinity;
+const fileLimit = limitIdx >= 0 ? parseInt(defined(args[limitIdx + 1], "--limit needs a value"), 10) : Infinity;
 const typeIdx = args.indexOf("--type");
 const typeFilter = typeIdx >= 0 ? args[typeIdx + 1] : undefined;
 

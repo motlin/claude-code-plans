@@ -10,6 +10,7 @@ import {
 	type ApprovalDockState,
 } from "../lib/approval-dock";
 import type {QuestionLike} from "../lib/ask-user-question";
+import {defined} from "../lib/defined";
 import {dockKeyAllowed} from "../lib/dock-keys";
 import {APPROVAL_CARD_TITLE, ApprovalActionButton, ApprovalCardShell} from "./approval-card";
 import {Shortcut} from "./ui/shortcut";
@@ -48,8 +49,8 @@ export function ApprovalDock({
 	const [error, setError] = useState<string | null>(null);
 	const otherRef = useRef<HTMLTextAreaElement>(null);
 
-	const question = questions[state.index]!;
-	const draft = state.drafts[state.index]!;
+	const question = defined(questions[state.index], "ApprovalDock index past the last question");
+	const draft = defined(state.drafts[state.index], "ApprovalDock draft missing for the current question");
 	const isLast = state.index === questions.length - 1;
 	const answered = currentAnswered(questions, state);
 	const open = !state.collapsed && !state.dismissed;

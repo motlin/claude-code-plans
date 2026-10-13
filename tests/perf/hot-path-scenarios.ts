@@ -11,6 +11,7 @@ import {processTranscript} from "../../src/lib/transcript";
 import {generateTranscript, PERF_SHAPES, type PerfShapeName} from "./fixtures/generate-transcript";
 import {HOT_PATH_FIXED_SHAPES, type HotPathFixedFn, type HotPathFn, type HotPathShapedFn} from "./perf-ids";
 import {assertNever} from "../../src/lib/assert-never";
+import {defined} from "../../src/lib/defined";
 
 /**
  * The inputs for each hot path in tests/perf/run-hot-path.mjs (measurement plan §2.4 L5). Preparing builds the input
@@ -145,7 +146,9 @@ function paletteTitles(count: number): string[] {
 		return seed;
 	};
 	return Array.from({length: count}, () =>
-		Array.from({length: 3 + (next() % 6)}, () => TITLE_WORDS[next() % TITLE_WORDS.length]!).join(" "),
+		Array.from({length: 3 + (next() % 6)}, () =>
+			defined(TITLE_WORDS[next() % TITLE_WORDS.length], "word index is in range"),
+		).join(" "),
 	);
 }
 

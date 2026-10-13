@@ -72,10 +72,10 @@ export function measureBundles(
 	readChunk: (file: string) => string,
 ): Record<string, number> {
 	const measured: Record<string, number> = {};
-	for (const name of Object.keys(routes).sort()) {
+	for (const [name, entries] of Object.entries(routes).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) {
 		let raw = 0;
 		let gzip = 0;
-		for (const file of coldLoadFiles(manifest, routes[name]!)) {
+		for (const file of coldLoadFiles(manifest, entries)) {
 			const source = Buffer.from(readChunk(file));
 			raw += source.byteLength;
 			gzip += gzipSync(source).byteLength;

@@ -1,5 +1,6 @@
 import {stat} from "node:fs/promises";
 import {destroyStream} from "./line-reader";
+import {defined} from "./defined";
 import {trackedCreateReadStream} from "./perf/tracked-fs";
 
 /** Bytes re-read before a cached offset to confirm the file still holds what was parsed, not a rewrite. */
@@ -100,16 +101,19 @@ export async function foldJsonl<S>(path: string, fold: JsonlFold<S>, cache?: Inc
 			});
 		} catch (error) {
 			// The cached state may have taken some of the new lines; it no longer matches its offset.
-			cache!.delete(path);
+			cache?.delete(path);
 			throw error;
 		}
 		if (read !== null) state = entry.state;
 	}
 	if (read === null || state === undefined) {
 		const fresh = fold.create();
-		read = (await readLines(path, 0, EMPTY, (line) => {
-			fold.add(fresh, line);
-		}))!;
+		read = defined(
+			await readLines(path, 0, EMPTY, (line) => {
+				fold.add(fresh, line);
+			}),
+			"A read with an empty signature always verifies",
+		);
 		state = fresh;
 	}
 

@@ -164,6 +164,7 @@ const LEADING_SLASH_COMMAND_RE = /^\/([A-Za-z0-9][\w:.-]*)(?:[ \t]+|\n|$)/;
  */
 export function splitLeadingSlashCommand(text: string): {name: string; rest: string} | null {
 	const match = LEADING_SLASH_COMMAND_RE.exec(text);
-	if (match === null) return null;
-	return {name: match[1]!, rest: text.slice(match[0].length)};
+	const name = match?.[1];
+	if (match === null || name === undefined) return null;
+	return {name, rest: text.slice(match[0].length)};
 }

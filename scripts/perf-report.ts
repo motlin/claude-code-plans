@@ -11,6 +11,7 @@ import {readdirSync, readFileSync} from "node:fs";
 import {join, resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {getCacheDir} from "../src/lib/db/connection";
+import {defined} from "../src/lib/defined";
 import {FIELD_LOG_PATTERN, JourneySampleSchema} from "../src/lib/perf/field-sink";
 import type {JourneySample} from "../src/lib/perf/journey";
 
@@ -94,7 +95,7 @@ export function readFieldSamples(
 export function nearestRank(values: readonly number[], percentile: number): number {
 	const sorted = [...values].sort((a, b) => a - b);
 	const rank = Math.max(1, Math.ceil((percentile / 100) * sorted.length));
-	return sorted[rank - 1]!;
+	return defined(sorted[rank - 1], "nearestRank needs at least one value");
 }
 
 /**
@@ -140,8 +141,8 @@ function compareCells(a: string, b: string): number {
 }
 
 function compareKeys(a: readonly string[], b: readonly string[]): number {
-	for (let index = 0; index < a.length; index++) {
-		const order = compareCells(a[index]!, b[index]!);
+	for (const [index, cell] of a.entries()) {
+		const order = compareCells(cell, defined(b[index], "compared keys have equal length"));
 		if (order !== 0) return order;
 	}
 	return 0;
@@ -185,7 +186,7 @@ export function formatReport(samples: readonly JourneySample[]): string {
 	const table = [header, ...rows];
 	const firstNumeric = 6;
 	const lastColumn = header.length - 1;
-	const widths = header.map((_, column) => Math.max(...table.map((row) => row[column]!.length)));
+	const widths = header.map((_, column) => Math.max(...table.map((row) => row[column]?.length ?? 0)));
 	return table
 		.map((row) =>
 			row
@@ -193,8 +194,8 @@ export function formatReport(samples: readonly JourneySample[]): string {
 					column === lastColumn
 						? cell
 						: column >= firstNumeric
-							? cell.padStart(widths[column]!)
-							: cell.padEnd(widths[column]!),
+							? cell.padStart(widths[column] ?? 0)
+							: cell.padEnd(widths[column] ?? 0),
 				)
 				.join("  "),
 		)

@@ -14,7 +14,8 @@ export function AgentRenderer({toolCall}: ToolRendererProps) {
 	const {result, isError, subagentInfo} = toolCall;
 
 	const agentIdMatch = result?.match(AGENT_ID_RE);
-	const displayResult = agentIdMatch?.[1] ? result!.replace(/agentId:\s*\S+\n?/, "").trim() : result;
+	const displayResult =
+		result !== undefined && agentIdMatch?.[1] ? result.replace(/agentId:\s*\S+\n?/, "").trim() : result;
 	const slug = subagentInfo?.slug ?? "";
 	const parallelSize = subagentInfo?.parallelGroupSize;
 	const status = subagentInfo?.status;

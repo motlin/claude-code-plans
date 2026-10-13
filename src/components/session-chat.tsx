@@ -11,6 +11,7 @@ import React, {
 	useMemo,
 	useRef,
 	useState,
+	type Context,
 } from "react";
 import {flushSync} from "react-dom";
 import {AlertTriangle, Bot, FileWarning, GitBranch, Lock, Palette, Plug, Zap} from "lucide-react";
@@ -43,6 +44,7 @@ import {DebugLink} from "./debug-link";
 import {TranscriptMessageMenu} from "./transcript-context-menu";
 import type {TranscriptMessageRef} from "./transcript-actions-context";
 import {AssistantMessageActions, UserMessageActions} from "./message-actions";
+import {defined} from "../lib/defined";
 import {narrationProse} from "../lib/thinking-narration";
 import {messageHeading, messageText} from "../lib/transcript-action-targets";
 import {assistantTurnDetails, userTurnDetails} from "../lib/turn-metadata";
@@ -131,6 +133,13 @@ interface ExpansionToggle {
  * comes back in the state the user left it.
  */
 const ExpansionStoreContext = createContext<Map<string, ExpansionToggle> | null>(null);
+
+/** Reads a context this module always provides above its consumers, failing loudly when rendered outside it. */
+function useProvidedContext<T>(context: Context<T | null>, name: string): T {
+	const value = useContext(context);
+	if (value === null) throw new Error(`${name} must be rendered inside its provider`);
+	return value;
+}
 
 /**
  * A disclosure that starts expanded in Verbose and collapsed otherwise, like upstream. A user
@@ -316,8 +325,8 @@ function AssistantSpanInteractions({children, held, setHeld}: AssistantFooterFoc
 
 /** Every member has a slot, so a focused footer can remain at its former endpoint. */
 function AssistantDisplaySpanFooter({span}: {span: AssistantDisplaySpan}) {
-	const interaction = useContext(AssistantSpanInteractionContext)!;
-	const entry = useContext(AssistantSpanEntryContext)!;
+	const interaction = useProvidedContext(AssistantSpanInteractionContext, "AssistantSpanInteractionContext");
+	const entry = useProvidedContext(AssistantSpanEntryContext, "AssistantSpanEntryContext");
 	const {setHeld} = interaction;
 	useEffect(
 		() => () => {
@@ -612,9 +621,9 @@ export const SessionChat = React.memo(function SessionChat({
  */
 function buildSkipSet(lines: SessionLine[]): Set<number> {
 	const skip = new Set<number>();
-	for (let i = 0; i < lines.length - 1; i++) {
-		const line = lines[i]!;
-		const next = lines[i + 1]!;
+	for (const [i, line] of lines.entries()) {
+		const next = lines[i + 1];
+		if (next === undefined) break;
 		if (line.type === "user" && next.type === "user" && hasBashInput(line) && hasBashOutput(next)) {
 			skip.add(i + 1);
 		}
@@ -872,15 +881,16 @@ function GroupedToolCallEntry({
 		return result;
 	}, [entries, sessionId, toolResultMap, liveFailures, subagentLookup]);
 
-	if (batches.length === 0)
+	const lastBatch = batches.at(-1);
+	if (lastBatch === undefined)
 		return notices.length === 0 ? null : <BackgroundNoticeRows notices={notices} footer={footer} />;
 
 	// Upstream's 12px below a group is 16px less its TurnStatus outset. The tasks view and a lone
 	// Agent row have no outset, so a group ending with either keeps its turn gap.
-	const lastCalls = batches.at(-1)!.calls;
+	const lastCalls = lastBatch.calls;
 	const endsWithStatus =
 		lastCalls.length === 1 && notices.length === 0
-			? lastCalls[0]!.name !== "Agent"
+			? lastCalls[0]?.name !== "Agent"
 			: lastCalls.filter((call) => TASK_TOOLS.has(call.name)).length < 3;
 
 	return (
@@ -966,11 +976,12 @@ function heldBySlowCommand(
 	subagentLookup: SubagentLookup,
 ): boolean {
 	const ends = subagentLookup.byBareId.get(sender)?.slowCommandEnds;
-	const arrived = lineTimestamp(lines[index]!);
+	const arrived = lineTimestamp(defined(lines[index], "heldBySlowCommand index is in range"));
 	if (ends === undefined || arrived === undefined) return false;
 	let previous = index - 1;
-	while (previous >= 0 && lines[previous]!.type !== "assistant") previous--;
-	const parentSpoke = previous >= 0 ? lineTimestamp(lines[previous]!) : undefined;
+	while (previous >= 0 && lines[previous]?.type !== "assistant") previous--;
+	const parent = lines[previous];
+	const parentSpoke = parent === undefined ? undefined : lineTimestamp(parent);
 	const after = parentSpoke === undefined ? -Infinity : Date.parse(parentSpoke);
 	const until = Date.parse(arrived);
 	return ends.some((end) => {
@@ -990,11 +1001,11 @@ function foldablePeerMessage(
 	index: number,
 	subagentLookup: SubagentLookup,
 ): AgentMessage | null {
-	const message = agentMessageOf(lines[index]!);
+	const message = agentMessageOf(defined(lines[index], "foldablePeerMessage index is in range"));
 	if (message === null || heldBySlowCommand(lines, index, message.from, subagentLookup)) return null;
 	for (let next = index + 1; next < lines.length; next++) {
-		const line = lines[next]!;
-		if (line.type !== "assistant") continue;
+		const line = lines[next];
+		if (line?.type !== "assistant") continue;
 		const content = line.message?.content;
 		return Array.isArray(content) && content[0]?.type === "tool_use" ? message : null;
 	}
@@ -1398,7 +1409,7 @@ function SessionInitEntry({
 						{indices.map((index) => (
 							<LineEntry
 								key={`line-${index}`}
-								line={lines[index]!}
+								line={defined(lines[index], "initialization group index is in range")}
 								nextLine={lines[index + 1]}
 								{...renderProps}
 							/>
@@ -1574,12 +1585,17 @@ export const ESTIMATED_TURN_HEIGHT_PIXELS = 320;
 export const TRANSCRIPT_OVERSCAN_PIXELS = 320;
 export const INITIAL_MOUNTED_TURN_COUNT = 8;
 
+/** The summed height of the entries before `index`; callers stay within 0..entries.length. */
+function prefixHeightAt(prefixHeights: readonly number[], index: number): number {
+	return defined(prefixHeights[index], "prefix height index is in range");
+}
+
 function entryIndexAtOffset(prefixHeights: readonly number[], offset: number): number {
 	let lower = 0;
 	let upper = prefixHeights.length - 1;
 	while (lower < upper) {
 		const middle = Math.floor((lower + upper + 1) / 2);
-		if (prefixHeights[middle]! <= offset) lower = middle;
+		if (prefixHeightAt(prefixHeights, middle) <= offset) lower = middle;
 		else upper = middle - 1;
 	}
 	return Math.min(lower, prefixHeights.length - 2);
@@ -1607,7 +1623,7 @@ function prependedRowCount(
 ): number {
 	const nextIndex = new Map(next.map((entry, index) => [entry.key, index]));
 	for (let index = startIndex; index < committed.length; index++) {
-		const moved = nextIndex.get(committed[index]!.key);
+		const moved = nextIndex.get(defined(committed[index], "committed index is in range").key);
 		if (moved !== undefined) return moved - index;
 	}
 	return 0;
@@ -1743,10 +1759,11 @@ function buildSessionListEntries(
 	held: HeldAssistantFooter | null,
 ): SessionListEntry[] {
 	const lines = verbose ? recordLines : withLocalCommandProse(withQueuedPrompts(recordLines));
+	const lineAt = (index: number): SessionLine => defined(lines[index], "session line index is in range");
 	const foldNotifications = !verbose;
 	const noticeOf = (index: number): FoldedNotice | null => {
 		if (!foldNotifications) return null;
-		const line = lines[index]!;
+		const line = lineAt(index);
 		const notification = taskNotificationOf(line);
 		if (notification !== null && agentCompletionOf(line) === null) {
 			return {kind: "task", lineIndex: line.lineIndex, notification};
@@ -1759,11 +1776,11 @@ function buildSessionListEntries(
 	};
 	/** Stop-hook feedback whose next shown line is a tool-only line, which upstream folds it into. */
 	const repromptsIntoTools = (index: number): boolean => {
-		const line = lines[index]!;
+		const line = lineAt(index);
 		if (line.type !== "user" || classifyUserContent(line) !== "stop-hook" || !renderProps.showTools) return false;
 		for (let next = index + 1; next < lines.length; next++) {
-			if (skipSet.has(next) || !isLineVisible(lines[next]!, renderProps, verbose)) continue;
-			return isGroupableToolOnlyAssistantLine(lines[next]!);
+			if (skipSet.has(next) || !isLineVisible(lineAt(next), renderProps, verbose)) continue;
+			return isGroupableToolOnlyAssistantLine(lineAt(next));
 		}
 		return false;
 	};
@@ -1801,7 +1818,7 @@ function buildSessionListEntries(
 
 	const initIndices: number[] = [];
 	while (i < lines.length) {
-		const line = lines[i]!;
+		const line = lineAt(i);
 		if (skipSet.has(i) || !isLineVisible(line, renderProps, verbose)) {
 			i++;
 			continue;
@@ -1810,10 +1827,11 @@ function buildSessionListEntries(
 		initIndices.push(i);
 		i++;
 	}
-	if (initIndices.length > 0) {
+	const [firstInitIndex] = initIndices;
+	if (firstInitIndex !== undefined) {
 		entries.push({
 			key: "session-init",
-			startRecordIndex: lines[initIndices[0]!]!.lineIndex,
+			startRecordIndex: lineAt(firstInitIndex).lineIndex,
 			isPrompt: false,
 			kind: "marker",
 			element: (
@@ -1833,7 +1851,7 @@ function buildSessionListEntries(
 	let leadingNotices: FoldedNotice[] = [];
 
 	while (i < lines.length) {
-		const line = lines[i]!;
+		const line = lineAt(i);
 
 		if (skipSet.has(i) || !isLineVisible(line, renderProps, verbose)) {
 			i++;
@@ -1860,13 +1878,13 @@ function buildSessionListEntries(
 			const notices = [notice];
 			let j = i + 1;
 			while (j < lines.length) {
-				if (crossesHeldEntry(line.lineIndex, lines[j]!.lineIndex)) break;
-				if (skipSet.has(j) || !isLineVisible(lines[j]!, renderProps, verbose)) {
+				if (crossesHeldEntry(line.lineIndex, lineAt(j).lineIndex)) break;
+				if (skipSet.has(j) || !isLineVisible(lineAt(j), renderProps, verbose)) {
 					j++;
 					continue;
 				}
 				const next = noticeOf(j);
-				if (next === null || !sameSpan(line, lines[j]!)) break;
+				if (next === null || !sameSpan(line, lineAt(j))) break;
 				notices.push(next);
 				j++;
 			}
@@ -1904,7 +1922,7 @@ function buildSessionListEntries(
 			const startRecordIndex = notices[0]?.lineIndex ?? line.lineIndex;
 			let j = i + 1;
 			while (j < lines.length) {
-				const nextLine = lines[j]!;
+				const nextLine = lineAt(j);
 				if (skipSet.has(j) || !isLineVisible(nextLine, renderProps, verbose)) {
 					j++;
 					continue;
@@ -1959,7 +1977,7 @@ function buildSessionListEntries(
 					),
 				});
 			} else {
-				const groupLines = groupIndices.map((index) => lines[index]!);
+				const groupLines = groupIndices.map((index) => lineAt(index));
 				const groupChanges = groupLines
 					.map((groupLine) => turnChangesByLine.get(groupLine.lineIndex))
 					.find((changes) => changes !== undefined);
@@ -2130,7 +2148,7 @@ function VirtualizedSessionEntries({
 	const pendingHandoff = useRef<Map<string, number> | null>(null);
 	const listRef = useRef<HTMLDivElement>(null);
 	const scrollerRef = useRef<Element | null>(null);
-	const expansionStore = useContext(ExpansionStoreContext)!;
+	const expansionStore = useProvidedContext(ExpansionStoreContext, "ExpansionStoreContext");
 	const [restoration] = useState(() => {
 		const saved =
 			measurementSource !== undefined && expansionStore.size === 0
@@ -2212,7 +2230,9 @@ function VirtualizedSessionEntries({
 		}
 		return () => {
 			if (pendingHandoff.current) return;
+			const savedRange = savedRangeRef.current;
 			if (
+				savedRange !== undefined &&
 				managesTileGeometry &&
 				handoffCompatibleRef.current &&
 				expansionStore.size === 0 &&
@@ -2221,12 +2241,13 @@ function VirtualizedSessionEntries({
 				rememberTranscriptHandoff(measurementKey, {
 					width: list.closest("[hidden]") ? measurementWidthRef.current : list.getBoundingClientRect().width,
 					heights: new Map(measuredHeightsRef.current),
-					range: savedRangeRef.current!,
+					range: savedRange,
 					source,
 					anchor: readingAnchorRef.current,
 				});
 			}
 			if (
+				savedRange === undefined ||
 				!reusableRef.current ||
 				expansionStore.size !== 0 ||
 				(!list.closest("[hidden]") && list.getBoundingClientRect().width !== measurementWidthRef.current)
@@ -2239,7 +2260,7 @@ function VirtualizedSessionEntries({
 				{
 					width: measurementWidthRef.current,
 					heights: measuredHeightsRef.current,
-					range: savedRangeRef.current!,
+					range: savedRange,
 				},
 				source,
 			);
@@ -2311,10 +2332,11 @@ function VirtualizedSessionEntries({
 	}, [measuredHeights]);
 
 	const prefixHeights = useMemo(() => {
-		const result = [0];
+		let total = 0;
+		const result = [total];
 		for (const entry of entries) {
-			const height = measuredHeights.get(entry.key) ?? ESTIMATED_TURN_HEIGHT_PIXELS;
-			result.push(result.at(-1)! + height);
+			total += measuredHeights.get(entry.key) ?? ESTIMATED_TURN_HEIGHT_PIXELS;
+			result.push(total);
 		}
 		return result;
 	}, [entries, measuredHeights]);
@@ -2384,10 +2406,11 @@ function VirtualizedSessionEntries({
 		const viewportEnd = Math.max(viewportStart, viewport.top + viewport.height - listTop);
 		const anchorIndex = entryIndexAtOffset(prefixHeights, viewportStart);
 		const row = list.querySelector<HTMLElement>(`[data-transcript-entry-index="${anchorIndex}"]`);
-		if (row) {
+		const anchorEntry = entries[anchorIndex];
+		if (row && anchorEntry !== undefined) {
 			const {scrollTop, scrollHeight, clientHeight} = scrollMetrics(scroller);
 			readingAnchorRef.current = {
-				entryKey: entries[anchorIndex]!.key,
+				entryKey: anchorEntry.key,
 				offset: row.getBoundingClientRect().top - viewport.top,
 				atEnd: scrollHeight - scrollTop - clientHeight <= END_FOLLOW_THRESHOLD_PIXELS,
 			};
@@ -2485,10 +2508,11 @@ function VirtualizedSessionEntries({
 	useLayoutEffect(() => {
 		const scroller = scrollerRef.current;
 		const anchor = handoffAnchorRef.current;
+		const list = listRef.current;
 		if (anchor && !pendingHandoff.current && scroller) {
 			const index = entries.findIndex((entry) => entry.key === anchor.entryKey);
-			const row = listRef.current?.querySelector<HTMLElement>(`[data-transcript-entry-index="${index}"]`);
-			if (row) {
+			const row = list?.querySelector<HTMLElement>(`[data-transcript-entry-index="${index}"]`);
+			if (row && list) {
 				scroller.scrollTop = anchor.atEnd
 					? scroller.scrollHeight
 					: scroller.scrollTop +
@@ -2496,7 +2520,7 @@ function VirtualizedSessionEntries({
 						scrollerViewport(scroller).top -
 						anchor.offset;
 				const viewport = scrollerViewport(scroller);
-				const start = Math.max(0, viewport.top - listRef.current!.getBoundingClientRect().top);
+				const start = Math.max(0, viewport.top - list.getBoundingClientRect().top);
 				const nextRange = rangeForViewport(prefixHeights, start, start + viewport.height);
 				if (nextRange.startIndex !== range.startIndex || nextRange.endIndex !== range.endIndex) {
 					pendingHandoff.current = measuredHeights;
@@ -2549,7 +2573,7 @@ function VirtualizedSessionEntries({
 		if (entryIndex < range.startIndex || entryIndex >= range.endIndex) return undefined;
 		const viewport = scrollerViewport(scroller);
 		const listOffset = list.getBoundingClientRect().top - viewport.top + scroller.scrollTop;
-		scroller.scrollTop = Math.max(0, listOffset + prefixHeights[entryIndex]! - viewport.height / 2);
+		scroller.scrollTop = Math.max(0, listOffset + prefixHeightAt(prefixHeights, entryIndex) - viewport.height / 2);
 		const frame = requestAnimationFrame(() => {
 			pendingJumpRef.current = null;
 			jumpToMessage(recordIndex);
@@ -2563,7 +2587,7 @@ function VirtualizedSessionEntries({
 	const promptIndices = useMemo(() => entries.flatMap((entry, index) => (entry.isPrompt ? [index] : [])), [entries]);
 	usePromptJump({
 		promptIndices,
-		entryOffset: (index) => prefixHeights[index]!,
+		entryOffset: (index) => prefixHeightAt(prefixHeights, index),
 		viewportOffset: () => {
 			const list = listRef.current;
 			const scroller = scrollerRef.current;
@@ -2577,7 +2601,10 @@ function VirtualizedSessionEntries({
 			if (!list || !scroller) return;
 			const viewport = scrollerViewport(scroller);
 			const listOffset = list.getBoundingClientRect().top - viewport.top + scroller.scrollTop;
-			scroller.scrollTop = Math.max(0, listOffset + prefixHeights[index]! - stickyHeaderInset(scroller));
+			scroller.scrollTop = Math.max(
+				0,
+				listOffset + prefixHeightAt(prefixHeights, index) - stickyHeaderInset(scroller),
+			);
 			updateVisibleRange();
 		},
 	});
@@ -2672,7 +2699,7 @@ function VirtualizedSessionEntries({
 			<div
 				aria-hidden="true"
 				data-transcript-spacer="after"
-				style={{height: totalHeight - prefixHeights[endIndex]!}}
+				style={{height: totalHeight - prefixHeightAt(prefixHeights, endIndex)}}
 			/>
 		</div>
 	);
@@ -3504,8 +3531,7 @@ function renderUserContentBlocks(
 	const textNodes: React.ReactNode[] = [];
 	const mediaNodes: React.ReactNode[] = [];
 	const inlineImageText: string[] = [];
-	for (let i = 0; i < content.length; i++) {
-		const block = content[i]!;
+	for (const [i, block] of content.entries()) {
 		if (block.type === "text" && typeof block.text === "string") {
 			if (block.text.includes("<local-command-caveat>")) continue;
 			const cleaned = stripCommandTags(block.text);
@@ -4032,11 +4058,12 @@ function ToolCallSection({
 }) {
 	const prominentCalls = calls.filter(isProminentCall);
 	const backgroundCalls = calls.filter((c) => !isProminentCall(c));
+	const [loneBackgroundCall] = backgroundCalls;
 
 	return (
 		<>
-			{backgroundCalls.length === 1 && notices.length === 0 && (
-				<ToolCallRow call={backgroundCalls[0]!} sessionId={sessionId} leading={leading} />
+			{backgroundCalls.length === 1 && notices.length === 0 && loneBackgroundCall !== undefined && (
+				<ToolCallRow call={loneBackgroundCall} sessionId={sessionId} leading={leading} />
 			)}
 			{(backgroundCalls.length > 1 || notices.length > 0) && (
 				<ToolCallSummary calls={backgroundCalls} sessionId={sessionId} notices={notices} leading={leading} />

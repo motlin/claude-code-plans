@@ -201,8 +201,12 @@ function isPastedShellOutput(text: string): boolean {
 		.split(/\r?\n/)
 		.map((line) => line.trim())
 		.filter(Boolean);
+	const [first, ...rest] = lines;
 	return (
-		lines.length >= 3 && /^>\s+\S/.test(lines[0]!) && lines.slice(1).some((line) => SHELL_COMPLETION_RE.test(line))
+		lines.length >= 3 &&
+		first !== undefined &&
+		/^>\s+\S/.test(first) &&
+		rest.some((line) => SHELL_COMPLETION_RE.test(line))
 	);
 }
 
@@ -662,10 +666,10 @@ export async function listSessions(projectsDir: string): Promise<SessionProjectG
 		groups.push({project, projectName, sessions});
 	}
 
-	const maxMtimes = new Map(groups.map((g) => [g.project, Math.max(...g.sessions.map((s) => s.mtime.getTime()))]));
-	groups.sort((a, b) => maxMtimes.get(b.project)! - maxMtimes.get(a.project)!);
-
-	return groups;
+	return groups
+		.map((group) => ({group, maxMtime: Math.max(...group.sessions.map((s) => s.mtime.getTime()))}))
+		.sort((a, b) => b.maxMtime - a.maxMtime)
+		.map(({group}) => group);
 }
 
 const SESSION_ID_RE = /^[a-z0-9-]+$/;
@@ -1007,11 +1011,12 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 
 			// A session resumed with a bare "yes" keeps looking for the message that
 			// names the work, and settles for the acknowledgement only if none does.
-			if (type === "user" && textBlocks.length > 0 && !titleNamesWork) {
+			const firstText = textBlocks[0];
+			if (type === "user" && firstText !== undefined && !titleNamesWork) {
 				const isMeta = obj.isMeta === true;
-				titleNamesWork = isInformativePrompt(textBlocks[0]!, {isMeta});
+				titleNamesWork = isInformativePrompt(firstText, {isMeta});
 				if (titleNamesWork || title === sessionId) {
-					title = extractSessionTitle(textBlocks[0]!, sessionId, {isMeta});
+					title = extractSessionTitle(firstText, sessionId, {isMeta});
 				}
 			}
 

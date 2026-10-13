@@ -70,9 +70,10 @@ export function formatResultsTable(ceilings: Ceilings, results: Results): string
 			status(entry?.ceiling, value),
 		];
 	});
-	const table = [["id", "value", "ceiling", "unit", "status"], ...rows];
+	const header = ["id", "value", "ceiling", "unit", "status"];
+	const table = [header, ...rows];
 	const rightAligned = new Set([1, 2]);
-	const widths = table[0]!.map((_, column) => Math.max(...table.map((row) => row[column]!.length)));
+	const widths = header.map((_, column) => Math.max(...table.map((row) => row[column]?.length ?? 0)));
 	return table
 		.map((row) =>
 			row
@@ -80,8 +81,8 @@ export function formatResultsTable(ceilings: Ceilings, results: Results): string
 					column === row.length - 1
 						? cell
 						: rightAligned.has(column)
-							? cell.padStart(widths[column]!)
-							: cell.padEnd(widths[column]!),
+							? cell.padStart(widths[column] ?? 0)
+							: cell.padEnd(widths[column] ?? 0),
 				)
 				.join("  "),
 		)

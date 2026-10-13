@@ -22,6 +22,7 @@ import {
 	parseNetworkRequest,
 	parsePageList,
 } from "./chrome-devtools-parsers";
+import {defined} from "../../lib/defined";
 
 // ---------------------------------------------------------------------------
 // Style helpers
@@ -248,7 +249,10 @@ function GetConsoleMessageRenderer({resultText}: {resultText: string}) {
 	if (argsSection) {
 		const argMatches = argsSection.matchAll(/Arg\s+#(\d+):\s*([\s\S]*?)(?=Arg\s+#|\s*$)/g);
 		for (const m of argMatches) {
-			args.push({index: parseInt(m[1]!, 10), value: m[2]!.trim()});
+			args.push({
+				index: parseInt(defined(m[1], "argument index group"), 10),
+				value: defined(m[2], "argument value group").trim(),
+			});
 		}
 	}
 
@@ -441,7 +445,7 @@ function GetNetworkRequestRenderer({resultText}: {resultText: string}) {
 		for (const line of section.split("\n")) {
 			const m = /^-\s+(.+?):\s+(.+)/.exec(line.trim());
 			if (m) {
-				headers.push({name: m[1]!, value: m[2]!});
+				headers.push({name: defined(m[1], "header name group"), value: defined(m[2], "header value group")});
 			}
 		}
 		return headers;

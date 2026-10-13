@@ -105,9 +105,9 @@ export function getToolRenderer(name: string): ComponentType<ToolRendererProps> 
 	if (name.startsWith("mcp__")) {
 		const server = name.slice(5).split("__")[0];
 		if (server) return getMcpRenderer(server);
-		return registry["__fallback__"]!;
+		return FallbackRenderer;
 	}
-	return registry[name] ?? registry["__fallback__"]!;
+	return registry[name] ?? FallbackRenderer;
 }
 
 /** The renderer for one call: its tool's own, or the raw input when the input failed the tool's schema. */

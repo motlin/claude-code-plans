@@ -54,7 +54,8 @@ export const DEFAULT_RESULTS_PATH = join(HERE, "..", "..", "node_modules", ".cac
 export function loadCeilings(json: string = readFileSync(CEILINGS_PATH, "utf8")): Ceilings {
 	const ceilings = CeilingsSchema.parse(JSON.parse(json));
 	const keys = Object.keys(ceilings);
-	if (keys.some((key, index) => index > 0 && keys[index - 1]! > key)) {
+	const sorted = [...keys].sort();
+	if (keys.some((key, index) => key !== sorted[index])) {
 		throw new Error("tests/perf/ceilings.json keys must be sorted");
 	}
 	return ceilings;
@@ -210,7 +211,9 @@ export function createRatchet(options: {
 		const entry = ceilings[id];
 		const family = diagnosticFamily(id, diagnostics);
 		if (family !== undefined) {
-			const {unit, reason} = diagnostics[family]!;
+			const diagnostic = diagnostics[family];
+			if (diagnostic === undefined) throw new Error(`${family} is not a diagnostic family`);
+			const {unit, reason} = diagnostic;
 			recordResult(diagnosticsPath, tree, id, value, unit);
 			if (entry !== undefined) {
 				throw new Error(`${id} is a diagnostic (${reason}); remove its ceiling from tests/perf/ceilings.json`);

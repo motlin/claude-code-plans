@@ -94,12 +94,12 @@ export function TurnChangesCard({sessionId, changes}: {sessionId: string; change
 					host.openPane("changes");
 				};
 
-	if (count === 1) {
-		const file = changes.files[0]!;
+	const [soleFile] = changes.files;
+	if (count === 1 && soleFile !== undefined) {
 		const name = (
 			<>
 				<Code aria-hidden="true" className="size-4 shrink-0 text-ink-muted" />
-				<span className="min-w-0 truncate text-body text-primary">{basename(file.path)}</span>
+				<span className="min-w-0 truncate text-body text-primary">{basename(soleFile.path)}</span>
 			</>
 		);
 		return (
@@ -110,7 +110,7 @@ export function TurnChangesCard({sessionId, changes}: {sessionId: string; change
 				<ul aria-label={title} className="flex flex-col">
 					<li className="relative -mx-1 flex min-w-0 items-center gap-1 px-1">
 						{openChanges === undefined ? (
-							<a href={fileViewerPath(file.path)} title={file.path} className={LONE_ROW_CLASS}>
+							<a href={fileViewerPath(soleFile.path)} title={soleFile.path} className={LONE_ROW_CLASS}>
 								{name}
 							</a>
 						) : (
@@ -125,7 +125,7 @@ export function TurnChangesCard({sessionId, changes}: {sessionId: string; change
 							</Tooltip>
 						)}
 						<span className="pointer-events-none flex shrink-0 items-center gap-1">
-							<Stats added={file.added} removed={file.removed} />
+							<Stats added={soleFile.added} removed={soleFile.removed} />
 							<span className="text-secondary">
 								<ChevronIcon expanded={false} />
 							</span>

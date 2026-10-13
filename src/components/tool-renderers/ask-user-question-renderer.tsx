@@ -3,6 +3,7 @@ import {ChevronDown, Loader2} from "lucide-react";
 import type {ToolRendererProps} from "./types";
 import {useAskUserQuestionContext} from "../ask-user-question-context";
 import {MarkdownArticle} from "../markdown-article";
+import {defined} from "../../lib/defined";
 import {
 	answerForQuestion,
 	answersFromResultMeta,
@@ -137,21 +138,22 @@ function AnswerForm({
 	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
-	const completed = questions.every((q, i) => answerForQuestion(q, drafts[i]!) !== null);
+	const completed = questions.every(
+		(q, i) => answerForQuestion(q, defined(drafts[i], "AskUserQuestion draft missing for its question")) !== null,
+	);
 
 	function updateDraft(index: number, mutator: (draft: QuestionDraft) => QuestionDraft) {
 		setDrafts((prev) => prev.map((d, i) => (i === index ? mutator(d) : d)));
 	}
 
 	function toggleOption(index: number, label: string) {
-		const question = questions[index]!;
 		updateDraft(index, (draft) => {
 			const next: QuestionDraft = {
 				selected: new Set(draft.selected),
 				otherText: draft.otherText,
 				useOther: false,
 			};
-			if (question.multiSelect) {
+			if (questions[index]?.multiSelect === true) {
 				if (next.selected.has(label)) {
 					next.selected.delete(label);
 				} else {
@@ -187,7 +189,8 @@ function AnswerForm({
 		try {
 			const answers = questions.map((q, i) => ({
 				question: q.question,
-				answer: answerForQuestion(q, drafts[i]!) ?? "",
+				answer:
+					answerForQuestion(q, defined(drafts[i], "AskUserQuestion draft missing for its question")) ?? "",
 			}));
 			await onSubmit(answers);
 		} catch (err) {
@@ -215,7 +218,7 @@ function AnswerForm({
 	return (
 		<div className={CARD_SHELL}>
 			{questions.map((q, index) => {
-				const draft = drafts[index]!;
+				const draft = defined(drafts[index], "AskUserQuestion draft missing for its question");
 				const isMulti = q.multiSelect ?? false;
 				return (
 					<Fragment key={index}>

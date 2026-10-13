@@ -1,30 +1,26 @@
 import type {Subagent} from "../lib/subagents";
 
 export function layoutSwimlanes(agents: Subagent[]): SwimlaneLayout {
-	const timed = agents.filter((a) => toMsOrNull(a.startedAt) !== null && toMsOrNull(a.finishedAt) !== null);
+	const spans = timedSpans(agents);
+	const timed = spans.map((span) => span.agent);
 
 	if (timed.length === 0) {
 		return {lanes: [], startMs: 0, endMs: 0, totalMs: 0, ticks: []};
 	}
 
 	const depthOf = computeDepths(timed);
-	const childrenByParent = new Map<string, Subagent[]>();
-	for (const a of timed) {
-		const key = a.parentAgentId;
+	const childrenByParent = new Map<string, TimedSpan[]>();
+	for (const span of spans) {
+		const key = span.agent.parentAgentId;
 		if (!key) continue;
 		const list = childrenByParent.get(key) ?? [];
-		list.push(a);
+		list.push(span);
 		childrenByParent.set(key, list);
 	}
 
-	const lanes: Swimlane[] = timed.map((agent) => {
-		const startMs = toMsOrNull(agent.startedAt)!;
-		const endMs = toMsOrNull(agent.finishedAt)!;
+	const lanes: Swimlane[] = spans.map(({agent, startMs, endMs}) => {
 		const childRanges: TimeRange[] = (childrenByParent.get(agent.id) ?? [])
-			.map((c) => ({
-				startMs: toMsOrNull(c.startedAt)!,
-				endMs: toMsOrNull(c.finishedAt)!,
-			}))
+			.map((c) => ({startMs: c.startMs, endMs: c.endMs}))
 			.filter((r) => r.endMs > r.startMs);
 		return {
 			agent,
@@ -75,6 +71,21 @@ export interface SwimlaneLayout {
 	ticks: SwimlaneTick[];
 }
 
+interface TimedSpan {
+	agent: Subagent;
+	startMs: number;
+	endMs: number;
+}
+
+/** Agents with a parseable start and finish, paired with those timestamps in ms. */
+function timedSpans(agents: Subagent[]): TimedSpan[] {
+	return agents.flatMap((agent) => {
+		const startMs = toMsOrNull(agent.startedAt);
+		const endMs = toMsOrNull(agent.finishedAt);
+		return startMs === null || endMs === null ? [] : [{agent, startMs, endMs}];
+	});
+}
+
 function toMsOrNull(iso: string | null): number | null {
 	if (!iso) return null;
 	const ms = new Date(iso).getTime();
@@ -107,11 +118,10 @@ function computeDepths(timed: Subagent[]): Map<string, number> {
 function mergeRanges(ranges: TimeRange[]): TimeRange[] {
 	if (ranges.length === 0) return [];
 	const sorted = [...ranges].sort((a, b) => a.startMs - b.startMs);
-	const merged: TimeRange[] = [sorted[0]!];
-	for (let i = 1; i < sorted.length; i++) {
-		const last = merged[merged.length - 1]!;
-		const next = sorted[i]!;
-		if (next.startMs <= last.endMs) {
+	const merged: TimeRange[] = [];
+	for (const next of sorted) {
+		const last = merged.at(-1);
+		if (last !== undefined && next.startMs <= last.endMs) {
 			if (next.endMs > last.endMs) last.endMs = next.endMs;
 		} else {
 			merged.push({...next});
@@ -127,7 +137,7 @@ function buildTicks(totalMs: number): SwimlaneTick[] {
 	for (let t = 0; t <= totalMs; t += intervalMs) {
 		ticks.push({offsetMs: t, label: format(t)});
 	}
-	if (ticks[ticks.length - 1]!.offsetMs < totalMs) {
+	if ((ticks.at(-1)?.offsetMs ?? 0) < totalMs) {
 		ticks.push({offsetMs: totalMs, label: format(totalMs)});
 	}
 	return ticks;
@@ -145,6 +155,7 @@ function pickTickInterval(totalMs: number): {
 	const sec = 1000;
 	const min = 60 * sec;
 	const hour = 60 * min;
+	const largest = {intervalMs: hour, format: (ms: number) => `${Math.round(ms / hour)}h`};
 	const candidates: Array<{
 		intervalMs: number;
 		format: (ms: number) => string;
@@ -157,10 +168,10 @@ function pickTickInterval(totalMs: number): {
 		{intervalMs: 5 * min, format: (ms) => `${Math.round(ms / min)}m`},
 		{intervalMs: 15 * min, format: (ms) => `${Math.round(ms / min)}m`},
 		{intervalMs: 30 * min, format: (ms) => `${Math.round(ms / min)}m`},
-		{intervalMs: hour, format: (ms) => `${Math.round(ms / hour)}h`},
+		largest,
 	];
 	for (const c of candidates) {
 		if (totalMs / c.intervalMs <= 10) return c;
 	}
-	return candidates[candidates.length - 1]!;
+	return largest;
 }

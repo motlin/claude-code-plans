@@ -227,8 +227,7 @@ export function parseAnswerResult(text: string, questions: QuestionLike[]): Pars
 	let body = envelopeBody;
 
 	const result: ParsedAnswer[] = [];
-	for (let i = 0; i < questions.length; i++) {
-		const question = questions[i]!.question;
+	for (const [i, {question}] of questions.entries()) {
 		const anchor = `"${escapeQuote(question)}"=`;
 		if (!body.startsWith(anchor)) return null;
 		let cursor = anchor.length;
@@ -241,8 +240,9 @@ export function parseAnswerResult(text: string, questions: QuestionLike[]): Pars
 		// (after a ", " separator) is the boundary; otherwise the segment runs
 		// to the end of the body.
 		let segmentEnd = body.length;
-		if (i + 1 < questions.length) {
-			const nextAnchor = `${PAIR_SEPARATOR}"${escapeQuote(questions[i + 1]!.question)}"=`;
+		const nextQuestion = questions[i + 1];
+		if (nextQuestion !== undefined) {
+			const nextAnchor = `${PAIR_SEPARATOR}"${escapeQuote(nextQuestion.question)}"=`;
 			const nextIdx = body.indexOf(nextAnchor, cursor);
 			if (nextIdx < 0) return null;
 			segmentEnd = nextIdx;

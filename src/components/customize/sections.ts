@@ -1,5 +1,7 @@
 import {z} from "zod";
 
+import {defined} from "../../lib/defined";
+
 export const customizeSearchSchema = z.object({
 	q: z.string().max(200).optional(),
 	view: z.literal("discover").optional(),
@@ -34,7 +36,8 @@ export interface CustomizeSectionConfig {
 	sortStorageKey?: string;
 }
 
-export const CUSTOMIZE_SECTIONS: readonly CustomizeSectionConfig[] = [
+/** Skills, Connectors, Plugins: a fixed tuple so section-views can take each by position. */
+export const CUSTOMIZE_SECTIONS: readonly [CustomizeSectionConfig, CustomizeSectionConfig, CustomizeSectionConfig] = [
 	{
 		id: "skills",
 		label: "Skills",
@@ -99,12 +102,15 @@ export const CUSTOMIZE_SECTIONS: readonly CustomizeSectionConfig[] = [
 
 export function sectionForPathname(pathname: string): CustomizeSectionConfig {
 	const segment = pathname.split("/")[2];
-	return CUSTOMIZE_SECTIONS.find((section) => section.id === segment) ?? CUSTOMIZE_SECTIONS[0]!;
+	return CUSTOMIZE_SECTIONS.find((section) => section.id === segment) ?? CUSTOMIZE_SECTIONS[0];
 }
 
 /** The chosen option, falling back to the first when the URL holds an unknown value. */
 export function resolveOption(options: readonly MenuOption[], value: string | undefined): MenuOption {
-	return options.find((option) => option.value === value) ?? options[0]!;
+	return (
+		options.find((option) => option.value === value) ??
+		defined(options[0], "resolveOption needs at least one option")
+	);
 }
 
 export function matchesQuery(q: string | undefined, ...fields: readonly string[]): boolean {

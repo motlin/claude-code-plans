@@ -71,9 +71,9 @@ export function BashRenderer({toolCall, nested = false}: ToolRendererProps) {
 	const {result, isError} = toolCall;
 	const resultContent = result ? stripCommandPrefix(result, command) : null;
 
-	const mcpMatch = MCP_CLI_RE.exec(command);
-	if (mcpMatch && result) {
-		return <McpCliBashRenderer toolCall={toolCall} server={mcpMatch[1]!} tool={mcpMatch[2]!} />;
+	const [, mcpServer, mcpTool] = MCP_CLI_RE.exec(command) ?? [];
+	if (mcpServer !== undefined && mcpTool !== undefined && result) {
+		return <McpCliBashRenderer toolCall={toolCall} server={mcpServer} tool={mcpTool} />;
 	}
 
 	const copyText = resultContent ? `${command}\n${resultContent}` : command;

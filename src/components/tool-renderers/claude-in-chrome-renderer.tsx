@@ -16,6 +16,7 @@ import {CollapsibleSection, CopyableBody, ErrorBorder, ExpandableBlock} from "./
 import {MarkdownArticle} from "../markdown-article";
 import {looksLikeMarkdown} from "../../lib/client-markdown";
 import {useHighlightedLines} from "../../hooks/use-shiki";
+import {defined} from "../../lib/defined";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -312,7 +313,11 @@ function ReadConsoleMessagesRenderer({resultText}: {resultText: string}) {
 		// Try "[level] message" format
 		const m = /^\[(\w+)\]\s+(.+)$/.exec(line);
 		if (m) {
-			return {id: i, level: m[1]!, message: m[2]!};
+			return {
+				id: i,
+				level: defined(m[1], "console level group"),
+				message: defined(m[2], "console message group"),
+			};
 		}
 		return {id: i, level: "log", message: line};
 	});

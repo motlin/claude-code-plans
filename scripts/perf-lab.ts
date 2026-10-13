@@ -734,8 +734,11 @@ function formatTable(report: Partial<Record<JourneyId, JourneyReport>>): string 
 			entry.title,
 		]);
 	}
-	const widths = rows[0]!.map((_, column) => Math.max(...rows.map((row) => row[column]!.length)));
-	return rows.map((row) => row.map((value, column) => value.padEnd(widths[column]!)).join("  ")).join("\n");
+	const widths: number[] = [];
+	for (const row of rows) {
+		for (const [column, value] of row.entries()) widths[column] = Math.max(widths[column] ?? 0, value.length);
+	}
+	return rows.map((row) => row.map((value, column) => value.padEnd(widths[column] ?? 0)).join("  ")).join("\n");
 }
 
 export type LabRun = Partial<Record<JourneyId, JourneySample>>;

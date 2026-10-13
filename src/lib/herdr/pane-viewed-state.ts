@@ -8,6 +8,7 @@ import {
 } from "../db/viewed-state";
 import * as schema from "../db/schema";
 import type {HerdrPaneLink} from "./panes";
+import {defined} from "../defined";
 import {compareHerdrAttention} from "./viewed-state";
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
@@ -35,14 +36,18 @@ export function addViewedStateToHerdrPanes(db: IndexDb, panes: HerdrPaneLink[]):
 		pruneHerdrTerminalLinks(db, sessionId, terminalIds);
 	}
 
-	for (const pane of panes) {
-		if (!viewedStates.has(pane.sessionId)) {
-			viewedStates.set(
-				pane.sessionId,
-				getSessionViewedState(db, pane.sessionId, currentMessageIndices.get(pane.sessionId)!),
-			);
-		}
-	}
-
-	return panes.map((pane) => ({...pane, viewedState: viewedStates.get(pane.sessionId)!})).sort(compareHerdrAttention);
+	return panes
+		.map((pane) => {
+			let viewedState = viewedStates.get(pane.sessionId);
+			if (viewedState === undefined) {
+				const currentMessageIndex = defined(
+					currentMessageIndices.get(pane.sessionId),
+					"Every pane's session got a current message index above",
+				);
+				viewedState = getSessionViewedState(db, pane.sessionId, currentMessageIndex);
+				viewedStates.set(pane.sessionId, viewedState);
+			}
+			return {...pane, viewedState};
+		})
+		.sort(compareHerdrAttention);
 }

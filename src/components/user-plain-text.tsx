@@ -1,5 +1,7 @@
 import type {ReactNode} from "react";
 
+import {defined} from "../lib/defined";
+
 const PARAGRAPH_CLASS = "text-body whitespace-pre-wrap [overflow-wrap:anywhere]";
 
 const CODE_CLASS =
@@ -78,9 +80,19 @@ interface ListItemStart {
 
 function listItemStart(line: string): ListItemStart | null {
 	const ordered = ORDERED_ITEM.exec(line);
-	if (ordered !== null) return {ordered: true, marker: ordered[1]!, text: ordered[2]!};
+	if (ordered !== null)
+		return {
+			ordered: true,
+			marker: defined(ordered[1], "ORDERED_ITEM has a number group"),
+			text: defined(ordered[2], "ORDERED_ITEM has a text group"),
+		};
 	const bullet = BULLET_ITEM.exec(line);
-	if (bullet !== null) return {ordered: false, marker: bullet[1]!, text: bullet[2]!};
+	if (bullet !== null)
+		return {
+			ordered: false,
+			marker: defined(bullet[1], "BULLET_ITEM has a bullet group"),
+			text: defined(bullet[2], "BULLET_ITEM has a text group"),
+		};
 	return null;
 }
 
@@ -101,24 +113,23 @@ function splitBlocks(text: string): Block[] {
 	const blocks: Block[] = [];
 	let textLines: string[] = [];
 	const flushText = () => {
-		while (textLines.length > 0 && textLines.at(-1)!.trim() === "") textLines.pop();
+		while (textLines.at(-1)?.trim() === "") textLines.pop();
 		if (textLines.length > 0) blocks.push({kind: "text", text: textLines.join("\n")});
 		textLines = [];
 	};
 	let i = 0;
-	while (i < lines.length) {
-		const first = listItemStart(lines[i]!);
-		const afterText = textLines.length > 0 && textLines.at(-1)!.trim() !== "";
+	for (let head = lines[i]; head !== undefined; head = lines[i]) {
+		const first = listItemStart(head);
+		const afterText = (textLines.at(-1)?.trim() ?? "") !== "";
 		if (first === null || (afterText && first.ordered && first.marker !== "1")) {
-			textLines.push(lines[i]!);
+			textLines.push(head);
 			i++;
 			continue;
 		}
 		flushText();
 		const items = [first.text];
 		i++;
-		while (i < lines.length) {
-			const line = lines[i]!;
+		for (let line = lines[i]; line !== undefined; line = lines[i]) {
 			const item = listItemStart(line);
 			if (item !== null) {
 				if (!sameList(first, item)) break;
@@ -136,7 +147,7 @@ function splitBlocks(text: string): Block[] {
 			items[items.length - 1] += `\n${line.trim()}`;
 			i++;
 		}
-		while (i < lines.length && lines[i]!.trim() === "") i++;
+		while (lines[i]?.trim() === "") i++;
 		blocks.push({kind: "list", ordered: first.ordered, start: first.ordered ? Number(first.marker) : 1, items});
 	}
 	flushText();
@@ -160,7 +171,7 @@ export function UserPlainText({text, prefix}: {text: string; prefix?: ReactNode}
 			</p>
 		);
 	}
-	const leadingPrefix = prefix !== undefined && blocks[0]!.kind === "list";
+	const leadingPrefix = prefix !== undefined && blocks[0]?.kind === "list";
 	return (
 		<>
 			{leadingPrefix && <p className={PARAGRAPH_CLASS}>{prefix}</p>}

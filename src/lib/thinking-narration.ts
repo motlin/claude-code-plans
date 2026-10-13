@@ -37,10 +37,9 @@ function decodeBase64(text: string): Uint8Array | null {
 function readVarint(bytes: Uint8Array, offset: number): [value: number, next: number] | null {
 	let value = 0;
 	let scale = 1;
-	for (let index = offset; index < bytes.length && index < offset + 10; index++) {
-		const byte = bytes[index]!;
+	for (const [index, byte] of bytes.subarray(offset, offset + 10).entries()) {
 		value += (byte & 0x7f) * scale;
-		if ((byte & 0x80) === 0) return [value, index + 1];
+		if ((byte & 0x80) === 0) return [value, offset + index + 1];
 		scale *= 128;
 	}
 	return null;

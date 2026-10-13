@@ -1,5 +1,6 @@
 import {useState, useCallback, useRef} from "react";
 
+import {defined} from "../lib/defined";
 import type {LaunchOptions} from "../lib/launch-options";
 
 interface ChatStreamState {
@@ -82,7 +83,7 @@ export function useChatStream() {
 
 			processIdRef.current = res.headers.get("X-Process-Id");
 
-			const reader = res.body!.getReader();
+			const reader = defined(res.body, "A successful chat stream response has a body").getReader();
 			const decoder = new TextDecoder();
 			let buffer = "";
 			let accumulatedText = "";
@@ -94,7 +95,7 @@ export function useChatStream() {
 
 				buffer += decoder.decode(value, {stream: true});
 				const lines = buffer.split("\n");
-				buffer = lines.pop()!;
+				buffer = lines.pop() ?? "";
 
 				for (const line of lines) {
 					const trimmed = line.trim();
