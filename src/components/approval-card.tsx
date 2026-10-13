@@ -1,5 +1,6 @@
 import {ChevronRight, X} from "lucide-react";
-import type {ButtonHTMLAttributes, ReactNode} from "react";
+import {useCallback, useEffect, useState, type ButtonHTMLAttributes, type ReactNode} from "react";
+import {dockKeyAllowed} from "../lib/dock-keys";
 import type {PendingQuestionItem} from "../lib/hook-events";
 import {Shortcut} from "./ui/shortcut";
 
@@ -98,6 +99,27 @@ export function WaitingForInputNotice() {
 	);
 }
 
+const URL_PATTERN = /(https?:\/\/[^\s<>"')\]]+)/;
+
+/** The text with each http(s) URL drawn as an underlined link that opens in a new tab. */
+function LinkifiedText({text}: {text: string}) {
+	return text.split(URL_PATTERN).map((part, index) =>
+		index % 2 === 1 ? (
+			<a
+				key={index}
+				href={part}
+				target="_blank"
+				rel="noopener noreferrer"
+				className="underline underline-offset-[3px]"
+			>
+				{part}
+			</a>
+		) : (
+			part
+		),
+	);
+}
+
 const PENDING_ICON_BUTTON =
 	"inline-flex size-6 shrink-0 items-center justify-center rounded-r4 text-secondary disabled:cursor-not-allowed disabled:opacity-50";
 
@@ -108,98 +130,122 @@ const PENDING_ICON_BUTTON =
  * every control disabled because only the terminal can answer.
  */
 export function PendingQuestionCard({questions}: {questions: PendingQuestionItem[]}) {
+	// One question at a time, as upstream pages them. Paging only reads, so it stays enabled.
+	const [page, setPage] = useState(0);
+	const questionIndex = Math.min(page, questions.length - 1);
+	const isLast = questionIndex === questions.length - 1;
+	const next = useCallback(() => {
+		setPage((current) => Math.min(current + 1, questions.length - 1));
+	}, [questions.length]);
+
+	useEffect(() => {
+		if (isLast) return undefined;
+		function onKeyDown(event: KeyboardEvent) {
+			if (event.key !== "Enter" || !(event.metaKey || event.ctrlKey) || event.defaultPrevented) return;
+			if (!dockKeyAllowed(event.target)) return;
+			event.preventDefault();
+			next();
+		}
+		document.addEventListener("keydown", onKeyDown);
+		return () => {
+			document.removeEventListener("keydown", onKeyDown);
+		};
+	}, [isLast, next]);
+
+	const question = questions[questionIndex];
+	if (question === undefined) return null;
 	return (
 		<ApprovalCardShell
 			label="Waiting for your input"
 			body={
 				<>
-					{questions.map((question, questionIndex) => (
-						<div key={question.question} data-pending-question className="flex flex-col gap-2.5">
-							<div className="flex items-start gap-2">
-								{questions.length > 1 && (
-									<span className="flex h-6 shrink-0 items-center">
-										<span
-											data-approval-pill
-											className="rounded-full bg-warning-100/10 px-1.5 text-caption text-warning-000"
-										>
-											{questionIndex + 1}/{questions.length}
-										</span>
-									</span>
-								)}
-								<span data-approval-card-title className={`min-w-0 flex-1 ${APPROVAL_CARD_TITLE}`}>
-									{question.question}
-								</span>
-								<button
-									type="button"
-									disabled
-									data-pending-question-icon
-									aria-label="View question options"
-									className={PENDING_ICON_BUTTON}
-								>
-									<ChevronRight aria-hidden="true" className="size-4 rotate-90" />
-								</button>
-								<button
-									type="button"
-									disabled
-									data-pending-question-icon
-									aria-label="Dismiss question"
-									className={PENDING_ICON_BUTTON}
-								>
-									<X aria-hidden="true" className="size-4" />
-								</button>
-							</div>
-							<div className="flex flex-col gap-[3px]">
-								{question.options.map((option, optionIndex) => (
-									<button
-										key={option.label}
-										type="button"
-										disabled
-										data-pending-question-option
-										className="flex w-full cursor-not-allowed items-center gap-2 rounded-r4 p-2 bg-alpha-1 text-left"
+					<div key={question.question} data-pending-question className="flex flex-col gap-2.5">
+						<div className="flex items-start gap-2">
+							{questions.length > 1 && (
+								<span className="flex h-6 shrink-0 items-center">
+									<span
+										data-approval-pill
+										className="rounded-full bg-warning-100/10 px-1.5 text-caption text-warning-000"
 									>
-										<span className="flex min-w-0 flex-1 flex-col">
-											<span data-option-label className="text-body text-primary">
-												{option.label}
-											</span>
-											{option.description !== undefined && (
-												<span
-													data-option-description
-													className="text-[12px]/[15px] text-ink-muted whitespace-pre-wrap"
-												>
-													{option.description}
-												</span>
-											)}
-										</span>
-										<Shortcut keys={String(optionIndex + 1)} className="pointer-coarse:hidden" />
-									</button>
-								))}
-								<div
-									data-pending-question-other
-									className="flex w-full flex-col gap-3 rounded-r4 p-2 bg-alpha-1"
+										{questionIndex + 1}/{questions.length}
+									</span>
+								</span>
+							)}
+							<span data-approval-card-title className={`min-w-0 flex-1 ${APPROVAL_CARD_TITLE}`}>
+								<span className="whitespace-pre-wrap [overflow-wrap:anywhere]">
+									<LinkifiedText text={question.question} />
+								</span>
+							</span>
+							<button
+								type="button"
+								disabled
+								data-pending-question-icon
+								aria-label="View question options"
+								className={PENDING_ICON_BUTTON}
+							>
+								<ChevronRight aria-hidden="true" className="size-4 rotate-90" />
+							</button>
+							<button
+								type="button"
+								disabled
+								data-pending-question-icon
+								aria-label="Dismiss question"
+								className={PENDING_ICON_BUTTON}
+							>
+								<X aria-hidden="true" className="size-4" />
+							</button>
+						</div>
+						<div className="flex flex-col gap-[3px]">
+							{question.options.map((option, optionIndex) => (
+								<button
+									key={option.label}
+									type="button"
+									disabled
+									data-pending-question-option
+									className="flex w-full cursor-not-allowed items-center gap-2 rounded-r4 p-2 bg-alpha-1 text-left"
 								>
-									<div className="flex items-center gap-2">
-										<span className="flex-1 text-body text-primary">Other</span>
-										<Shortcut
-											keys={String(question.options.length + 1)}
-											className="pointer-coarse:hidden"
-										/>
-									</div>
-									<textarea
-										disabled
-										aria-label="Other option"
-										placeholder="Type your own answer here"
-										rows={1}
-										className="w-full resize-none cursor-not-allowed rounded-r5 bg-white/50 px-2 py-1.5 text-body text-primary outline-none ring-1 ring-border placeholder:text-secondary"
+									<span className="flex min-w-0 flex-1 flex-col">
+										<span data-option-label className="text-body text-primary">
+											{option.label}
+										</span>
+										{option.description !== undefined && (
+											<span
+												data-option-description
+												className="text-[12px]/[15px] text-ink-muted whitespace-pre-wrap"
+											>
+												{option.description}
+											</span>
+										)}
+									</span>
+									<Shortcut keys={String(optionIndex + 1)} className="pointer-coarse:hidden" />
+								</button>
+							))}
+							<div
+								data-pending-question-other
+								className="flex w-full flex-col gap-3 rounded-r4 p-2 bg-alpha-1"
+							>
+								<div className="flex items-center gap-2">
+									<span className="flex-1 text-body text-primary">Other</span>
+									<Shortcut
+										keys={String(question.options.length + 1)}
+										className="pointer-coarse:hidden"
 									/>
 								</div>
+								<textarea
+									disabled
+									aria-label="Other option"
+									placeholder="Type your own answer here"
+									rows={1}
+									className="w-full resize-none cursor-not-allowed rounded-r5 bg-white/50 px-2 py-1.5 text-body text-primary outline-none ring-1 ring-border placeholder:text-secondary"
+								/>
 							</div>
-							{question.multiSelect === true && (
-								<p data-pending-question-multiselect className="text-footnote text-secondary">
-									Select one or more options.
-								</p>
-							)}
 						</div>
-					))}
+						{question.multiSelect === true && (
+							<p data-pending-question-multiselect className="text-footnote text-secondary">
+								Select one or more options.
+							</p>
+						)}
+					</div>
 					<span
 						data-pending-question-footnote
 						className="flex items-center gap-2 text-footnote text-secondary"
@@ -211,13 +257,30 @@ export function PendingQuestionCard({questions}: {questions: PendingQuestionItem
 			}
 			actions={
 				<span className="ms-auto flex items-center gap-2">
+					{questionIndex > 0 && (
+						<ApprovalActionButton
+							variant="secondary"
+							onClick={() => {
+								setPage(questionIndex - 1);
+							}}
+						>
+							Back
+						</ApprovalActionButton>
+					)}
 					<ApprovalActionButton variant="secondary" disabled>
 						Skip
 					</ApprovalActionButton>
-					<ApprovalActionButton variant="primary" disabled>
-						Submit
-						<Shortcut keys="cmd+enter" className="pointer-coarse:hidden" />
-					</ApprovalActionButton>
+					{isLast ? (
+						<ApprovalActionButton variant="primary" disabled>
+							Submit
+							<Shortcut keys="cmd+enter" className="pointer-coarse:hidden" />
+						</ApprovalActionButton>
+					) : (
+						<ApprovalActionButton variant="primary" onClick={next}>
+							Next
+							<Shortcut keys="cmd+enter" className="pointer-coarse:hidden" />
+						</ApprovalActionButton>
+					)}
 				</span>
 			}
 		/>

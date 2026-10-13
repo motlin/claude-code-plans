@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {cleanup, render, screen} from "@testing-library/react";
+import {cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it} from "vite-plus/test";
 
 import {PendingQuestionCard} from "../src/components/approval-card";
@@ -94,15 +94,79 @@ describe("PendingQuestionCard", () => {
 		});
 	});
 
-	it("pills each of several questions i/n", () => {
+	it("shows several questions one at a time with an i/n pill, paging with Next and Back while Skip and Submit stay disabled", () => {
 		render(<PendingQuestionCard questions={QUESTIONS} />);
+		const page = () => {
+			const card = screen.getByRole("group", {name: "Waiting for your input"});
+			return {
+				questions: [...card.querySelectorAll("[data-pending-question]")].map((question) => ({
+					pill: question.querySelector("[data-approval-pill]")?.textContent,
+					title: question.querySelector("[data-approval-card-title]")?.textContent,
+				})),
+				actions: [...card.querySelectorAll("[data-approval-card-actions] button")].map((button) => ({
+					text: button.firstChild?.textContent,
+					disabled: (button as HTMLButtonElement).disabled,
+				})),
+			};
+		};
+		const first = page();
+		fireEvent.click(screen.getByRole("button", {name: /^Next/}));
+		const second = page();
+		fireEvent.click(screen.getByRole("button", {name: "Back"}));
+
+		expect({first, second, back: page().questions}).toStrictEqual({
+			first: {
+				questions: [{pill: "1/2", title: "Which color do you prefer?"}],
+				actions: [
+					{text: "Skip", disabled: true},
+					{text: "Next", disabled: false},
+				],
+			},
+			second: {
+				questions: [{pill: "2/2", title: "Which toppings?"}],
+				actions: [
+					{text: "Back", disabled: false},
+					{text: "Skip", disabled: true},
+					{text: "Submit", disabled: true},
+				],
+			},
+			back: [{pill: "1/2", title: "Which color do you prefer?"}],
+		});
+	});
+
+	it("pages to the next question on ⌘⏎", () => {
+		render(<PendingQuestionCard questions={QUESTIONS} />);
+		fireEvent.keyDown(document, {key: "Enter", metaKey: true});
 
 		expect(
-			describeCard().questions.map(({pill, question, multiSelect}) => ({pill, question, multiSelect})),
-		).toStrictEqual([
-			{pill: "1/2", question: "Which color do you prefer?", multiSelect: null},
-			{pill: "2/2", question: "Which toppings?", multiSelect: "Select one or more options."},
-		]);
+			screen.getByRole("group", {name: "Waiting for your input"}).querySelector("[data-approval-pill]")
+				?.textContent,
+		).toBe("2/2");
+	});
+
+	it("keeps a title's line breaks and links its URLs", () => {
+		render(
+			<PendingQuestionCard
+				questions={[
+					{
+						question: "Which candidate? See https://workflowy.com/#/abc\nCandidates:\n- c03: Talk directly",
+						options: [{label: "c03"}],
+					},
+				]}
+			/>,
+		);
+		const title = screen
+			.getByRole("group", {name: "Waiting for your input"})
+			.querySelector("[data-approval-card-title]")!;
+		const link = title.querySelector("a");
+
+		expect({
+			text: title.firstElementChild?.className,
+			link: {href: link?.getAttribute("href"), text: link?.textContent, target: link?.getAttribute("target")},
+		}).toStrictEqual({
+			text: "whitespace-pre-wrap [overflow-wrap:anywhere]",
+			link: {href: "https://workflowy.com/#/abc", text: "https://workflowy.com/#/abc", target: "_blank"},
+		});
 	});
 
 	it("uses upstream's 580 title, 8px option padding on a 3px column, and muted 12/15 descriptions", () => {
