@@ -494,6 +494,7 @@
 .text-link {
 	color: var(--upstream-accent);
 	text-decoration-line: underline;
+	text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
 	text-underline-offset: 3px;
 	border-radius: 2px;
 }

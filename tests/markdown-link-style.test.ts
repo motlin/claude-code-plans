@@ -39,10 +39,11 @@ describe("transcript link styles", () => {
 		});
 	});
 
-	it("draws prose links in the accent, underlined 3px below, with no hover fade", () => {
+	it("draws prose links in the accent, underlined 3px below at 40% of the link colour, with no hover fade", () => {
 		expect(ruleDeclarations(markdownCss, ".markdown a")).toStrictEqual({
 			color: "var(--upstream-accent)",
 			"text-decoration-line": "underline",
+			"text-decoration-color": "color-mix(in srgb, currentColor 40%, transparent)",
 			"text-underline-offset": "3px",
 			"border-radius": "2px",
 		});
@@ -53,6 +54,7 @@ describe("transcript link styles", () => {
 		expect(ruleDeclarations(globalsCss, ".text-link")).toStrictEqual({
 			color: "var(--upstream-accent)",
 			"text-decoration-line": "underline",
+			"text-decoration-color": "color-mix(in srgb, currentColor 40%, transparent)",
 			"text-underline-offset": "3px",
 			"border-radius": "2px",
 		});
