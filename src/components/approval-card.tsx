@@ -1,4 +1,5 @@
 import type {ButtonHTMLAttributes, ReactNode} from "react";
+import type {PendingQuestionItem} from "../lib/hook-events";
 
 const ACTION_BUTTON =
 	"inline-flex h-6 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-r5 px-2 text-[13px]/[19px] whitespace-nowrap select-none disabled:cursor-not-allowed disabled:opacity-50 [&_kbd]:text-[11px] @max-[500px]/approval-dock:w-full";
@@ -69,10 +70,12 @@ export function ApprovalCardShell({
 	);
 }
 
+const TERMINAL_FOOTNOTE = "Answer in the terminal running this session.";
+
 /**
- * Stands where upstream docks the pending question card, directly above the composer:
- * the awaiting dot and a plain line, with no options to pick, since the
- * question itself is not on disk yet.
+ * Stands where upstream docks the pending question card, directly above the composer,
+ * when no hook reported the question: the awaiting dot and a plain line, with
+ * no options to pick, since the question itself is not on disk yet.
  */
 export function WaitingForInputNotice() {
 	return (
@@ -87,8 +90,71 @@ export function WaitingForInputNotice() {
 			</span>
 			<span className="flex min-w-0 flex-col">
 				<span className="font-[580]">Waiting for your input</span>
-				<span className="text-footnote text-secondary">Answer in the terminal running this session.</span>
+				<span className="text-footnote text-secondary">{TERMINAL_FOOTNOTE}</span>
 			</span>
 		</div>
+	);
+}
+
+/**
+ * Upstream's docked question card, read-only: every question the session's
+ * `PreToolUse` hook reported, with its i/n pill, header and options, which
+ * stay disabled because only the terminal can answer.
+ */
+export function PendingQuestionCard({questions}: {questions: PendingQuestionItem[]}) {
+	return (
+		<ApprovalCardShell
+			label="Waiting for your input"
+			body={questions.map((question, questionIndex) => (
+				<div key={question.question} data-pending-question className="flex flex-col gap-2.5">
+					<div className="flex items-start gap-2">
+						<span className="flex h-6 shrink-0 items-center">
+							<span
+								data-approval-pill
+								className="rounded-full bg-warning-100/10 px-1.5 text-caption text-warning-000"
+							>
+								{questionIndex + 1}/{questions.length}
+							</span>
+						</span>
+						<div className="flex min-w-0 flex-1 flex-col">
+							{question.header !== undefined && (
+								<span data-pending-question-header className="text-caption text-secondary">
+									{question.header}
+								</span>
+							)}
+							<span data-approval-card-title className={APPROVAL_CARD_TITLE}>
+								{question.question}
+							</span>
+						</div>
+					</div>
+					{question.options.map((option) => (
+						<button
+							key={option.label}
+							type="button"
+							disabled
+							className="flex w-full cursor-not-allowed items-center gap-2 rounded-r4 bg-alpha-1 px-3 py-3 text-left"
+						>
+							<span className="flex min-w-0 flex-1 flex-col">
+								<span className="text-body text-primary">{option.label}</span>
+								{option.description !== undefined && (
+									<span className="text-footnote text-secondary">{option.description}</span>
+								)}
+							</span>
+						</button>
+					))}
+					{question.multiSelect === true && (
+						<p data-pending-question-multiselect className="text-footnote text-secondary">
+							Select one or more options.
+						</p>
+					)}
+				</div>
+			))}
+			actions={
+				<span className="flex items-center gap-2 text-footnote text-secondary">
+					<span aria-hidden="true" className="status-dot" data-kind="awaiting" />
+					{TERMINAL_FOOTNOTE}
+				</span>
+			}
+		/>
 	);
 }

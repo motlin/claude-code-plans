@@ -44,7 +44,7 @@ import {TranscriptHistoryLoader, TranscriptTopFade} from "./transcript-history-l
 import {Tooltip} from "./ui/tooltip";
 import {SessionPaneControls} from "./view-options-menu";
 import {SessionDock} from "./session-dock";
-import {WaitingForInputNotice} from "./approval-card";
+import {PendingQuestionCard, WaitingForInputNotice} from "./approval-card";
 import {showsWaitingForInputNotice} from "./waiting-for-input-notice";
 import {UsagePaceBanner} from "./usage-pace-banner";
 import {WorkingMarker} from "./working-marker";
@@ -97,6 +97,7 @@ import {
 	sendHerdrPermissionDecision,
 } from "../lib/api/herdr";
 import {notificationsQueryOptions} from "../lib/api/notifications";
+import {pendingQuestionQueryOptions} from "../lib/api/pending-question";
 import {findPendingPermission, isAwaitingPermission, type PermissionDecision} from "../lib/permission-card";
 import type {HerdrPaneIndexData} from "../lib/api/herdr";
 import type {PaneKind} from "../lib/pane-layout";
@@ -332,6 +333,12 @@ function SessionView({
 		[sessionId, notifications, transcript.records],
 	);
 	const sessionSummaryState = useSessionSummaryState(sessionId);
+	const hookQuestion = useQuery({
+		...pendingQuestionQueryOptions(sessionId),
+		// Only a waiting session can have one; SSE patches the cache either way.
+		enabled: sessionSummaryState === "waiting",
+		select: (data) => data.pendingQuestion,
+	}).data;
 	const workingMarkerState = useWorkingMarkerState({
 		records: transcript.records,
 		sessionState: sessionSummaryState,
@@ -735,11 +742,16 @@ function SessionView({
 													statusline={statusline}
 												/>
 											)}
-										{/* Upstream docks its pending question card directly above the composer, below the chips */}
+										{/* Upstream docks its pending question card directly above the composer, below the chips; hooks supply a read-only copy */}
 										{showsWaitingForInputNotice({
 											state: sessionSummaryState,
 											hasDockedCard: dockedQuestion !== null || pendingPermission !== null,
-										}) && <WaitingForInputNotice />}
+										}) &&
+											(hookQuestion ? (
+												<PendingQuestionCard questions={hookQuestion.questions} />
+											) : (
+												<WaitingForInputNotice />
+											))}
 										{!chromeHidden && sessionDirectory && (
 											<Composer
 												variant="session"
