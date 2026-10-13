@@ -250,7 +250,7 @@ function pullRequestChips(state: StateCore): void {
 function pullRequestChipHtml(token: Token, escape: (value: string) => string): string {
 	const href = token.attrGet("href") ?? "";
 	const {owner, repo, number} = defined(parsePullRequestUrl(href), "PR chip token href");
-	return `<a href="${escape(href)}" target="_blank" rel="noreferrer" class="pr-chip">${PR_ICON_SVG}${escape(`${owner}/${repo}#${number}`)}</a>`;
+	return `<a href="${escape(href)}" target="_blank" rel="noreferrer" class="pr-chip"><span class="whitespace-nowrap">${PR_ICON_SVG}${escape(`${owner}/${repo}#${number}`)}</span></a>`;
 }
 
 /** Whether `href` leaves the app, so it opens in a new tab like upstream's links. */

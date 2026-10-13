@@ -461,6 +461,9 @@ describe("GitHub PR chips", () => {
 				rel: chip.getAttribute("rel"),
 				text: chip.textContent,
 				icon: chip.querySelector("svg")?.getAttribute("width"),
+				// Upstream keeps the icon and label on one line inside a nowrap span.
+				nowrap: chip.children.length === 1 && chip.firstElementChild?.className === "whitespace-nowrap",
+				iconInNowrap: chip.querySelector(".whitespace-nowrap > svg") !== null,
 			})),
 		).toStrictEqual([
 			{
@@ -469,6 +472,8 @@ describe("GitHub PR chips", () => {
 				rel: "noreferrer",
 				text: "motlin/claude-code-plans#1954",
 				icon: "12",
+				nowrap: true,
+				iconInNowrap: true,
 			},
 		]);
 	});
