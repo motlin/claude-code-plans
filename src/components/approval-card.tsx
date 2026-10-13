@@ -175,18 +175,21 @@ export function PendingQuestionCard({questions}: {questions: PendingQuestionItem
 								))}
 								<div
 									data-pending-question-other
-									className="flex w-full items-center gap-3 rounded-r4 p-2 bg-alpha-1"
+									className="flex w-full flex-col gap-3 rounded-r4 p-2 bg-alpha-1"
 								>
+									<div className="flex items-center gap-2">
+										<span className="flex-1 text-body text-primary">Other</span>
+										<Shortcut
+											keys={String(question.options.length + 1)}
+											className="pointer-coarse:hidden"
+										/>
+									</div>
 									<textarea
 										disabled
 										aria-label="Other option"
 										placeholder="Type your own answer here"
 										rows={1}
-										className="min-w-0 flex-1 resize-none cursor-not-allowed rounded-r5 bg-white/50 px-2 py-1.5 text-body text-primary outline-none ring-1 ring-border placeholder:text-secondary"
-									/>
-									<Shortcut
-										keys={String(question.options.length + 1)}
-										className="pointer-coarse:hidden"
+										className="w-full resize-none cursor-not-allowed rounded-r5 bg-white/50 px-2 py-1.5 text-body text-primary outline-none ring-1 ring-border placeholder:text-secondary"
 									/>
 								</div>
 							</div>

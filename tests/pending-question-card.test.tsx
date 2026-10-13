@@ -127,4 +127,30 @@ describe("PendingQuestionCard", () => {
 			description: "text-[12px]/[15px] text-ink-muted whitespace-pre-wrap",
 		});
 	});
+
+	it("lays the Other row out as upstream does: the 'Other' label and its keycap on one line, the textarea full width below", () => {
+		render(<PendingQuestionCard questions={[QUESTIONS[0]!]} />);
+		const other = screen
+			.getByRole("group", {name: "Waiting for your input"})
+			.querySelector("[data-pending-question-other]")!;
+		const [line, textarea] = Array.from(other.children);
+
+		expect({
+			row: other.className,
+			line: {
+				className: line?.className,
+				label: line?.firstElementChild?.textContent,
+				key: line?.querySelector("kbd")?.textContent,
+			},
+			textarea: {tag: textarea?.tagName, className: textarea?.className},
+		}).toStrictEqual({
+			row: "flex w-full flex-col gap-3 rounded-r4 p-2 bg-alpha-1",
+			line: {className: "flex items-center gap-2", label: "Other", key: "3"},
+			textarea: {
+				tag: "TEXTAREA",
+				className:
+					"w-full resize-none cursor-not-allowed rounded-r5 bg-white/50 px-2 py-1.5 text-body text-primary outline-none ring-1 ring-border placeholder:text-secondary",
+			},
+		});
+	});
 });
