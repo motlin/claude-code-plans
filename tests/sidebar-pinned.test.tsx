@@ -115,7 +115,9 @@ function visibleGroupNames(container: HTMLElement): string[] {
 async function openRowMenu(title: string): Promise<HTMLElement> {
 	fireEvent.contextMenu(screen.getByText(title), {clientX: 40, clientY: 50});
 	await act(async () => {
-		await new Promise((resolve) => setTimeout(resolve, 0));
+		await new Promise((resolve) => {
+			setTimeout(resolve, 0);
+		});
 	});
 	return screen.getByRole("menu");
 }

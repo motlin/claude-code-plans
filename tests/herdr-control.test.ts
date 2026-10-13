@@ -48,7 +48,9 @@ function createSocket() {
 type SpawnController = TerminalControllerDependencies["spawnController"];
 
 async function flushStreams(): Promise<void> {
-	await new Promise((resolve) => setImmediate(resolve));
+	await new Promise((resolve) => {
+		setImmediate(resolve);
+	});
 }
 
 function upgradeRequest(headers: Record<string, string>): Request {

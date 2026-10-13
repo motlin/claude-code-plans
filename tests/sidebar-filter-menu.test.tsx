@@ -46,7 +46,9 @@ const FIXTURE = [session("w1", "Working one", "working", "beta"), session("d1", 
 
 async function flush() {
 	await act(async () => {
-		await new Promise((resolve) => setTimeout(resolve, 0));
+		await new Promise((resolve) => {
+			setTimeout(resolve, 0);
+		});
 	});
 }
 

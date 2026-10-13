@@ -27,7 +27,9 @@ afterEach(() => {
 
 async function flush() {
 	await act(async () => {
-		await new Promise((resolve) => setTimeout(resolve, 0));
+		await new Promise((resolve) => {
+			setTimeout(resolve, 0);
+		});
 	});
 }
 
@@ -201,7 +203,9 @@ describe("Menu", () => {
 		fireEvent.pointerMove(trigger, {pointerType: "mouse"});
 		fireEvent.mouseMove(trigger);
 		await act(async () => {
-			await new Promise((resolve) => setTimeout(resolve, 250));
+			await new Promise((resolve) => {
+				setTimeout(resolve, 250);
+			});
 		});
 
 		expect({

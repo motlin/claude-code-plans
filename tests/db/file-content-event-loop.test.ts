@@ -87,7 +87,9 @@ describe("file content indexing and the event loop", () => {
 		});
 		try {
 			await Promise.all(filePaths.map(async (filePath) => watcherTesting.handleFileChange(filePath)));
-			await new Promise((resolve) => setTimeout(resolve, 20));
+			await new Promise((resolve) => {
+				setTimeout(resolve, 20);
+			});
 		} finally {
 			countingTurns = false;
 			stopMonitor();

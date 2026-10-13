@@ -123,11 +123,11 @@ void (async () => {
 	await trackActivity(
 		"startup watcher ready",
 		async () =>
-			new Promise<void>((resolve) =>
+			new Promise<void>((resolve) => {
 				watcher.once("ready", () => {
 					resolve();
-				}),
-			),
+				});
+			}),
 	);
 
 	try {

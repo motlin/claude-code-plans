@@ -187,7 +187,9 @@ function listItem(): SessionListItem {
 
 async function flush() {
 	await act(async () => {
-		await new Promise((resolve) => setTimeout(resolve, 0));
+		await new Promise((resolve) => {
+			setTimeout(resolve, 0);
+		});
 	});
 }
 

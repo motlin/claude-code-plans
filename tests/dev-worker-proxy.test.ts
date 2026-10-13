@@ -84,11 +84,11 @@ async function startFront(
 	await once(server, "listening");
 	onTestFinished(
 		async () =>
-			new Promise<void>((resolve) =>
+			new Promise<void>((resolve) => {
 				server.close(() => {
 					resolve();
-				}),
-			),
+				});
+			}),
 	);
 	return {url: `http://127.0.0.1:${(server.address() as AddressInfo).port}/`, errors};
 }
@@ -103,7 +103,9 @@ async function requestWhileWorkerStalls(
 	await first.text();
 	const unblocked = once(worker, "message");
 	worker.postMessage(2300);
-	await new Promise((resolve) => setTimeout(resolve, 50));
+	await new Promise((resolve) => {
+		setTimeout(resolve, 50);
+	});
 	const second = await fetch(front.url);
 	await second.text();
 	await unblocked;

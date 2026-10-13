@@ -731,11 +731,11 @@ it("waits for invalid-width geometry to commit before restoring Back", async () 
 async function settleFresh(host: HTMLElement) {
 	for (let turn = 0; turn < 3; turn++) {
 		await act(async () => {
-			await new Promise<void>((resolve) =>
+			await new Promise<void>((resolve) => {
 				requestAnimationFrame(() => {
 					resolve();
-				}),
-			);
+				});
+			});
 		});
 		await settleMeasurements(host);
 	}

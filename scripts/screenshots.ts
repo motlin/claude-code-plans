@@ -508,7 +508,9 @@ async function waitForServer(server: ChildProcess, output: string[]): Promise<vo
 		} catch {
 			// The dev server is still starting.
 		}
-		await new Promise((resolvePromise) => setTimeout(resolvePromise, 250));
+		await new Promise((resolvePromise) => {
+			setTimeout(resolvePromise, 250);
+		});
 	}
 	throw new Error(`Fixture dev server was not ready after 30 seconds:\n${output.join("")}`);
 }
@@ -528,17 +530,17 @@ export async function stopDevServer(server: ChildProcess): Promise<void> {
 	signal("SIGTERM");
 	if (server.exitCode !== null) return;
 	await Promise.race([
-		new Promise<void>((resolvePromise) =>
+		new Promise<void>((resolvePromise) => {
 			server.once("exit", () => {
 				resolvePromise();
-			}),
-		),
-		new Promise<void>((resolvePromise) =>
+			});
+		}),
+		new Promise<void>((resolvePromise) => {
 			setTimeout(() => {
 				signal("SIGKILL");
 				resolvePromise();
-			}, 5_000),
-		),
+			}, 5_000);
+		}),
 	]);
 }
 
@@ -547,7 +549,9 @@ async function waitForIndexing(): Promise<void> {
 		const response = await fetch(`${BASE_URL}/api/indexing-status`);
 		const status = (await response.json()) as {isIndexing: boolean};
 		if (!status.isIndexing) return;
-		await new Promise((resolvePromise) => setTimeout(resolvePromise, 100));
+		await new Promise((resolvePromise) => {
+			setTimeout(resolvePromise, 100);
+		});
 	}
 	throw new Error("Fixture database indexing did not finish after 12 seconds.");
 }

@@ -299,7 +299,9 @@ describe("Files pane header", () => {
 
 		fireEvent.click(within(filesPane()).getByRole("button", {name: "Files settings"}));
 		await act(async () => {
-			await new Promise((resolve) => setTimeout(resolve, 0));
+			await new Promise((resolve) => {
+				setTimeout(resolve, 0);
+			});
 		});
 		const before = [...screen.getByRole("menu").querySelectorAll<HTMLElement>("[role^=menuitem]")].map((item) => [
 			item.textContent ?? "",
@@ -332,7 +334,9 @@ describe("Files pane header", () => {
 
 		fireEvent.click(within(filesPane()).getByRole("button", {name: "Files settings"}));
 		await act(async () => {
-			await new Promise((resolve) => setTimeout(resolve, 0));
+			await new Promise((resolve) => {
+				setTimeout(resolve, 0);
+			});
 		});
 		fireEvent.click(screen.getByRole("menuitemcheckbox", {name: "Word wrap"}));
 		fireEvent.click(screen.getByRole("menuitem", {name: /^Tab size/}));
@@ -362,7 +366,9 @@ describe("Files pane header", () => {
 
 		fireEvent.click(within(filesPane()).getByRole("button", {name: "Files settings"}));
 		await act(async () => {
-			await new Promise((resolve) => setTimeout(resolve, 0));
+			await new Promise((resolve) => {
+				setTimeout(resolve, 0);
+			});
 		});
 		const rows = [
 			...screen.getByRole("menu").querySelectorAll<HTMLElement>("[role^=menuitem], [role=separator]"),

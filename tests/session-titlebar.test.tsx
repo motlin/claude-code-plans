@@ -85,7 +85,9 @@ function resizeTitlebar(width: number) {
 
 async function flush() {
 	await act(async () => {
-		await new Promise((resolve) => setTimeout(resolve, 0));
+		await new Promise((resolve) => {
+			setTimeout(resolve, 0);
+		});
 	});
 }
 
@@ -303,7 +305,9 @@ describe("SessionTitlebar title and chevron", () => {
 	async function hoverTooltip(target: Element): Promise<{text: string | null; describedBy: boolean}> {
 		fireEvent.pointerEnter(target);
 		await act(async () => {
-			await new Promise((resolve) => setTimeout(resolve, 350));
+			await new Promise((resolve) => {
+				setTimeout(resolve, 350);
+			});
 		});
 		const tooltip = screen.queryByRole("tooltip");
 		const result = {

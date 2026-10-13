@@ -99,7 +99,9 @@ function snapshot() {
 afterEach(async () => {
 	cleanup();
 	// A drop leaves a one-shot click suppressor on window until the next macrotask; let it expire before the next test clicks.
-	await new Promise((resolve) => setTimeout(resolve, 0));
+	await new Promise((resolve) => {
+		setTimeout(resolve, 0);
+	});
 });
 
 describe("useSidebarDrag", () => {

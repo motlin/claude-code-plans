@@ -145,7 +145,9 @@ function currentWebSocket(): FakeWebSocket {
 }
 
 async function flushPendingWork(): Promise<void> {
-	await new Promise((resolve) => setTimeout(resolve, 0));
+	await new Promise((resolve) => {
+		setTimeout(resolve, 0);
+	});
 }
 
 describe("live herdr terminal UI", () => {
@@ -276,7 +278,9 @@ describe("live herdr terminal UI", () => {
 			);
 			webSocket.dispatchEvent(new CloseEvent("close", {code: 1011, reason: "terminal observer failed"}));
 		});
-		await new Promise((resolve) => setTimeout(resolve, 800));
+		await new Promise((resolve) => {
+			setTimeout(resolve, 800);
+		});
 
 		expect({
 			status: screen.getByText("error").textContent,
@@ -374,7 +378,9 @@ describe("live herdr terminal UI", () => {
 		act(() => {
 			for (const callback of terminalState.resizeCallbacks) callback();
 		});
-		await new Promise((resolve) => setTimeout(resolve, 200));
+		await new Promise((resolve) => {
+			setTimeout(resolve, 200);
+		});
 
 		expect({
 			disableStdin: (terminalState.constructorOptions[0] as {disableStdin: boolean}).disableStdin,

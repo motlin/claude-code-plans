@@ -244,7 +244,9 @@ describe(`live append to a ${SHAPE.name} transcript`, () => {
 		try {
 			await indexJsonlFile(live.index, file, PROJECT, {cache});
 			await scanPendingApproval(file, createPendingApprovalScanCache());
-			await new Promise((resolve) => setTimeout(resolve, 150));
+			await new Promise((resolve) => {
+				setTimeout(resolve, 150);
+			});
 		} finally {
 			stopMonitor();
 		}

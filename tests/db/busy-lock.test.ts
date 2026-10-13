@@ -45,11 +45,11 @@ async function holdWriteLock(dbPath: string, holdMs: number): Promise<ChildProce
 
 async function exited(child: ChildProcess): Promise<void> {
 	if (child.exitCode !== null) return Promise.resolve();
-	return new Promise((resolve) =>
+	return new Promise((resolve) => {
 		child.once("exit", () => {
 			resolve();
-		}),
-	);
+		});
+	});
 }
 
 describe("index DB writes while another connection holds the write lock", () => {

@@ -21,11 +21,11 @@ describe("probeHerdr", () => {
 	afterEach(async () => {
 		__testing.clearCache();
 		if (server) {
-			await new Promise<void>((resolve) =>
+			await new Promise<void>((resolve) => {
 				server?.close(() => {
 					resolve();
-				}),
-			);
+				});
+			});
 			server = undefined;
 		}
 		rmSync(directory, {recursive: true, force: true});

@@ -202,7 +202,9 @@ describe("pending-approvals-cache", () => {
 			db.close();
 
 			await expect(init).resolves.toBeUndefined();
-			await new Promise((resolve) => setImmediate(resolve));
+			await new Promise((resolve) => {
+				setImmediate(resolve);
+			});
 			expect({
 				approvals: getPendingApprovals(),
 				errors: errorSpy.mock.calls,

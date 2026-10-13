@@ -983,7 +983,9 @@ describe("assistant display-span actions", () => {
 		focus(article);
 		fireEvent.keyDown(article, {key: "F10", shiftKey: true});
 		await act(async () => {
-			await new Promise((resolve) => setTimeout(resolve, 0));
+			await new Promise((resolve) => {
+				setTimeout(resolve, 0);
+			});
 		});
 		const menu = screen.getByRole("menu");
 		const opened = {
@@ -992,7 +994,9 @@ describe("assistant display-span actions", () => {
 		};
 		fireEvent.keyDown(menu, {key: "Escape"});
 		await act(async () => {
-			await new Promise((resolve) => setTimeout(resolve, 0));
+			await new Promise((resolve) => {
+				setTimeout(resolve, 0);
+			});
 		});
 		const escaped = {
 			closedMenus: screen.queryAllByRole("menu").length,
@@ -1000,7 +1004,9 @@ describe("assistant display-span actions", () => {
 		};
 		fireEvent.keyDown(article, {key: "ContextMenu"});
 		await act(async () => {
-			await new Promise((resolve) => setTimeout(resolve, 0));
+			await new Promise((resolve) => {
+				setTimeout(resolve, 0);
+			});
 		});
 		fireEvent.keyDown(screen.getByRole("menu"), {key: "ArrowDown"});
 		const selected = document.activeElement!;
@@ -1008,7 +1014,9 @@ describe("assistant display-span actions", () => {
 		fireEvent.keyDown(selected, {key: "Enter"});
 		fireEvent.keyUp(selected, {key: "Enter"});
 		await act(async () => {
-			await new Promise((resolve) => setTimeout(resolve, 0));
+			await new Promise((resolve) => {
+				setTimeout(resolve, 0);
+			});
 		});
 		expect({
 			opened,
@@ -1052,7 +1060,9 @@ describe("assistant display-span actions", () => {
 				fireEvent.keyDown(article, {key: "F10", shiftKey: true});
 			}
 			await act(async () => {
-				await new Promise((resolve) => setTimeout(resolve, 0));
+				await new Promise((resolve) => {
+					setTimeout(resolve, 0);
+				});
 			});
 			const menu = screen.getByRole("menu");
 			const openedWithMenuFocus = menu.contains(document.activeElement);
@@ -1071,7 +1081,9 @@ describe("assistant display-span actions", () => {
 				fireEvent.click(screen.getByRole("menuitem", {name: "Pin as chapter"}));
 			}
 			await act(async () => {
-				await new Promise((resolve) => setTimeout(resolve, 0));
+				await new Promise((resolve) => {
+					setTimeout(resolve, 0);
+				});
 			});
 			expect({
 				openedWithMenuFocus,

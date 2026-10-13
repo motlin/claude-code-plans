@@ -88,7 +88,9 @@ async function waitFor(condition: () => boolean): Promise<void> {
 		if (condition()) {
 			return;
 		}
-		await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
+		await new Promise((resolveDelay) => {
+			setTimeout(resolveDelay, 100);
+		});
 	}
 	throw new Error("Timed out waiting for condition");
 }

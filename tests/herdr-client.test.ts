@@ -19,11 +19,11 @@ describe("herdrRequest", () => {
 
 	afterEach(async () => {
 		if (server) {
-			await new Promise<void>((resolve) =>
+			await new Promise<void>((resolve) => {
 				server?.close(() => {
 					resolve();
-				}),
-			);
+				});
+			});
 			server = undefined;
 		}
 		rmSync(directory, {recursive: true, force: true});
@@ -166,7 +166,9 @@ describe("herdrRequest", () => {
 		let connectionClosed: Promise<void> | undefined;
 		await listen((socket) => {
 			socket.on("error", () => undefined);
-			connectionClosed = new Promise((resolve) => socket.once("close", resolve));
+			connectionClosed = new Promise((resolve) => {
+				socket.once("close", resolve);
+			});
 			socket.resume();
 		});
 

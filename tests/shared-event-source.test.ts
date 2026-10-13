@@ -140,7 +140,10 @@ class FakeStream extends EventTarget {
 }
 
 async function settle(): Promise<void> {
-	for (let i = 0; i < 10; i++) await new Promise((resolve) => setTimeout(resolve, 0));
+	for (let i = 0; i < 10; i++)
+		await new Promise((resolve) => {
+			setTimeout(resolve, 0);
+		});
 }
 
 describe("openSharedEventSource", () => {

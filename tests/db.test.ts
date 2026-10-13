@@ -2909,7 +2909,9 @@ describe("task indexer", () => {
 		await indexTaskFile(db.index, filePath, "my-project");
 		expect(db.index.select().from(schema.tasks).all()[0]?.status).toBe("pending");
 
-		await new Promise((r) => setTimeout(r, 50));
+		await new Promise((r) => {
+			setTimeout(r, 50);
+		});
 
 		writeFileSync(filePath, makeTaskFile({status: "completed"}));
 		await indexTaskFile(db.index, filePath, "my-project");
@@ -3498,7 +3500,9 @@ describe("task queries", () => {
 
 	it("getIncompleteTasksGroupedByProject returns empty when all completed", async () => {
 		const tasksDir = join(testDir, "tasks", sessionId);
-		await new Promise((r) => setTimeout(r, 50));
+		await new Promise((r) => {
+			setTimeout(r, 50);
+		});
 		writeFileSync(
 			join(tasksDir, "2.json"),
 			JSON.stringify({

@@ -61,7 +61,9 @@ describe("SessionRowStatusDot", () => {
 		const afterMarkUnread = shownDot(container);
 		fireEvent.click(screen.getByRole("button", {name: "Click to mark as read"}));
 		await act(async () => {
-			await new Promise((resolve) => setTimeout(resolve, 0));
+			await new Promise((resolve) => {
+				setTimeout(resolve, 0);
+			});
 		});
 
 		expect({before, afterMarkUnread, after: shownDot(container), calls}).toStrictEqual({

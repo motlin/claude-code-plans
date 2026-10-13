@@ -286,7 +286,9 @@ describe("View options ▸ Artifacts", () => {
 
 	async function settle() {
 		await act(async () => {
-			await new Promise((resolve) => setTimeout(resolve, 0));
+			await new Promise((resolve) => {
+				setTimeout(resolve, 0);
+			});
 		});
 	}
 

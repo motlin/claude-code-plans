@@ -44,7 +44,10 @@ describe("withPerfScope", () => {
 	});
 
 	it("keeps concurrent scopes separate", async () => {
-		const tick = async (): Promise<void> => new Promise((resolve) => setImmediate(resolve));
+		const tick = async (): Promise<void> =>
+			new Promise((resolve) => {
+				setImmediate(resolve);
+			});
 
 		const [a, b] = await Promise.all([
 			withPerfScope("a", async () => {

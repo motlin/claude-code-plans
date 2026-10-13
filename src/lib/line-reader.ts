@@ -13,11 +13,11 @@ export interface LineReader extends AsyncIterable<string> {
  */
 export async function destroyStream(stream: Readable): Promise<void> {
 	if (stream.closed) return Promise.resolve();
-	const closed = new Promise<void>((resolve) =>
+	const closed = new Promise<void>((resolve) => {
 		stream.once("close", () => {
 			resolve();
-		}),
-	);
+		});
+	});
 	stream.destroy();
 	return closed;
 }

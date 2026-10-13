@@ -182,7 +182,9 @@ describe("the recursive watcher", () => {
 		const baselineWatchers = activeWatchers();
 
 		const watcher = createRecursiveWatcher([projectsDir], () => false);
-		await new Promise<void>((resolve) => watcher.once("ready", resolve));
+		await new Promise<void>((resolve) => {
+			watcher.once("ready", resolve);
+		});
 		const whileWatching = {descriptors: openPathsUnder(root).length, watchers: activeWatchers() - baselineWatchers};
 
 		await watcher.close();

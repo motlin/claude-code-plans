@@ -41,7 +41,9 @@ describe("deferred command palette", () => {
 		await act(async () => {
 			view.rerender(<Harness open />);
 			harness.finish();
-			await new Promise((resolve) => setTimeout(resolve, 50));
+			await new Promise((resolve) => {
+				setTimeout(resolve, 50);
+			});
 		});
 		const failed = {imports: harness.imports, dialog: screen.queryByRole("dialog")};
 

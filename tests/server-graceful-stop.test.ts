@@ -127,7 +127,9 @@ describe.skipIf(!existsSync(builtServer))("scripts/server.sh with the built serv
 		// A connected browser tab holds an SSE stream open; startup finishes its
 		// initial scan and starts the background sweeps in the meantime.
 		const stream = await openEventStream();
-		await new Promise((resolveDelay) => setTimeout(resolveDelay, 1500));
+		await new Promise((resolveDelay) => {
+			setTimeout(resolveDelay, 1500);
+		});
 
 		try {
 			const stopped = run("stop");

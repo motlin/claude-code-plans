@@ -78,7 +78,9 @@ describe("server shutdown hooks", () => {
 		const events: string[] = [];
 		const stop = listenForTakeover(async () => {
 			events.push("previous:teardown:start");
-			await new Promise((resolve) => setTimeout(resolve, 50));
+			await new Promise((resolve) => {
+				setTimeout(resolve, 50);
+			});
 			events.push("previous:teardown:end");
 		});
 

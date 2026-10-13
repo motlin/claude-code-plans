@@ -14,7 +14,9 @@ describe("CooperativeQueue", () => {
 		const events: string[] = [];
 		const job = (name: string) => async () => {
 			events.push(`start ${name}`);
-			await new Promise((resolve) => setTimeout(resolve, 5));
+			await new Promise((resolve) => {
+				setTimeout(resolve, 5);
+			});
 			events.push(`end ${name}`);
 		};
 
@@ -33,7 +35,9 @@ describe("CooperativeQueue", () => {
 				releaseFirst = resolve;
 			});
 		});
-		await new Promise((resolve) => setImmediate(resolve));
+		await new Promise((resolve) => {
+			setImmediate(resolve);
+		});
 		const second = queue.enqueue("alice", async () => {
 			runs.push("alice 2");
 		});

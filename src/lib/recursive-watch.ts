@@ -108,7 +108,9 @@ class RecursiveWatcherImpl extends EventEmitter implements RecursiveWatcher {
 	 */
 	private async waitUntilArmed(root: string): Promise<void> {
 		const probePath = join(await resolveProbeDirectory(root), `${PROBE_PREFIX}${process.pid}-${randomUUID()}`);
-		const observed = new Promise<void>((resolve) => this.probeObservers.set(probePath, resolve));
+		const observed = new Promise<void>((resolve) => {
+			this.probeObservers.set(probePath, resolve);
+		});
 		const deadline = Date.now() + PROBE_TIMEOUT_MS;
 
 		try {

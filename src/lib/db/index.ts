@@ -62,7 +62,9 @@ async function runScanWithRetry(label: string, signal: AbortSignal, scan: () => 
 				console.error(`${label} failed:`, err);
 				return;
 			}
-			await new Promise((resolve) => setTimeout(resolve, delayMs));
+			await new Promise((resolve) => {
+				setTimeout(resolve, delayMs);
+			});
 		}
 	}
 }

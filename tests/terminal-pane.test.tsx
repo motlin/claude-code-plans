@@ -179,7 +179,9 @@ describe("Terminal pane", () => {
 		renderSession(true);
 		fireEvent.click(screen.getByRole("button", {name: "View options"}));
 		await act(async () => {
-			await new Promise((resolve) => setTimeout(resolve, 0));
+			await new Promise((resolve) => {
+				setTimeout(resolve, 0);
+			});
 		});
 		const item = screen.getByRole("menuitemcheckbox", {name: /^Terminal/});
 
@@ -274,7 +276,9 @@ describe("Shell tabs", () => {
 
 	async function flush() {
 		await act(async () => {
-			await new Promise((resolve) => setTimeout(resolve, 0));
+			await new Promise((resolve) => {
+				setTimeout(resolve, 0);
+			});
 		});
 	}
 

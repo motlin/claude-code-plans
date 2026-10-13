@@ -389,7 +389,9 @@ export async function scanFileContentRoots(
 				}
 			});
 		}, signal);
-		await new Promise<void>((resolveYield) => setImmediate(resolveYield));
+		await new Promise<void>((resolveYield) => {
+			setImmediate(resolveYield);
+		});
 	}
 }
 

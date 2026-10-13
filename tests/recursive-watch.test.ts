@@ -36,11 +36,15 @@ function probeWriteDirectories(): Set<string> {
 }
 
 async function waitForReady(watcher: RecursiveWatcher): Promise<void> {
-	return new Promise((resolve) => watcher.once("ready", resolve));
+	return new Promise((resolve) => {
+		watcher.once("ready", resolve);
+	});
 }
 
 async function delay(milliseconds: number): Promise<void> {
-	return new Promise((resolve) => setTimeout(resolve, milliseconds));
+	return new Promise((resolve) => {
+		setTimeout(resolve, milliseconds);
+	});
 }
 
 /** A native watcher that accepts listeners but never delivers a single event. */
@@ -219,7 +223,9 @@ describe("createRecursiveWatcher", () => {
 		await watcher.close();
 
 		await writeFile(filePath, "after close\n", "utf8");
-		await new Promise((resolve) => setTimeout(resolve, 300));
+		await new Promise((resolve) => {
+			setTimeout(resolve, 300);
+		});
 
 		expect(events).toStrictEqual([]);
 	});

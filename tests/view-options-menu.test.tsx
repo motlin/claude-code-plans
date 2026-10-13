@@ -162,7 +162,9 @@ function renderControls(width: number | null, facts: ViewOptionsFacts = {}, onEx
 async function openViewOptions() {
 	fireEvent.click(screen.getByRole("button", {name: "View options"}));
 	await act(async () => {
-		await new Promise((resolve) => setTimeout(resolve, 0));
+		await new Promise((resolve) => {
+			setTimeout(resolve, 0);
+		});
 	});
 }
 
@@ -198,7 +200,9 @@ describe("SessionPaneControls", () => {
 
 		fireEvent.click(screen.getByRole("menuitemcheckbox", {name: /^Files/}));
 		await act(async () => {
-			await new Promise((resolve) => setTimeout(resolve, 0));
+			await new Promise((resolve) => {
+				setTimeout(resolve, 0);
+			});
 		});
 
 		expect({
@@ -231,7 +235,9 @@ describe("SessionPaneControls", () => {
 
 		fireEvent.click(screen.getByRole("menuitemcheckbox", {name: "Session details"}));
 		await act(async () => {
-			await new Promise((resolve) => setTimeout(resolve, 0));
+			await new Promise((resolve) => {
+				setTimeout(resolve, 0);
+			});
 		});
 
 		expect(
@@ -261,7 +267,9 @@ describe("SessionPaneControls", () => {
 		const changes = screen.getByRole("button", {name: "Changes"});
 		fireEvent.click(changes);
 		await act(async () => {
-			await new Promise((resolve) => setTimeout(resolve, 0));
+			await new Promise((resolve) => {
+				setTimeout(resolve, 0);
+			});
 		});
 
 		const classes = changes.className.split(" ");
@@ -301,7 +309,9 @@ describe("SessionPaneControls", () => {
 
 		fireEvent.click(screen.getByRole("menuitemcheckbox", {name: /^Changes/}));
 		await act(async () => {
-			await new Promise((resolve) => setTimeout(resolve, 0));
+			await new Promise((resolve) => {
+				setTimeout(resolve, 0);
+			});
 		});
 
 		expect(within(screen.getByRole("region", {name: "changes"})).getByText("changes pane body").tagName).toBe("P");

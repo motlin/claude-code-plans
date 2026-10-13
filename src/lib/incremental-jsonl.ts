@@ -162,7 +162,9 @@ async function readLines(
 				lastBytes = tail(Buffer.concat([lastBytes, tail(buffer.subarray(0, start))]));
 			}
 			carry = Buffer.from(buffer.subarray(start));
-			await new Promise<void>((resolveYield) => setImmediate(resolveYield));
+			await new Promise<void>((resolveYield) => {
+				setImmediate(resolveYield);
+			});
 		}
 	} finally {
 		await destroyStream(stream);

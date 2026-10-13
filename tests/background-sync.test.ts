@@ -18,7 +18,9 @@ describe("runBackgroundSync", () => {
 		runBackgroundSync("visibility-update", async () => Promise.reject(failure));
 
 		// Give the microtask queue and the rejection check a full turn to settle.
-		await new Promise((resolve) => setTimeout(resolve, 10));
+		await new Promise((resolve) => {
+			setTimeout(resolve, 10);
+		});
 		process.off("unhandledRejection", onUnhandled);
 
 		expect({
@@ -38,7 +40,9 @@ describe("runBackgroundSync", () => {
 			throw failure;
 		});
 
-		await new Promise((resolve) => setTimeout(resolve, 10));
+		await new Promise((resolve) => {
+			setTimeout(resolve, 10);
+		});
 		expect(debugSpy.mock.calls.map((call) => [call[0], call[1]])).toStrictEqual([
 			["[session-viewed-state] background mark-reviewed failed", failure],
 		]);
@@ -53,7 +57,9 @@ describe("runBackgroundSync", () => {
 			level: "warn",
 			onError: (error) => reportedErrors.push(error),
 		});
-		await new Promise((resolve) => setTimeout(resolve, 10));
+		await new Promise((resolve) => {
+			setTimeout(resolve, 10);
+		});
 
 		expect({
 			reportedErrors,
@@ -68,7 +74,9 @@ describe("runBackgroundSync", () => {
 		const debugSpy = vi.spyOn(console, "debug").mockImplementation(() => {});
 
 		runBackgroundSync("visibility-update", async () => Promise.resolve());
-		await new Promise((resolve) => setTimeout(resolve, 10));
+		await new Promise((resolve) => {
+			setTimeout(resolve, 10);
+		});
 
 		expect(debugSpy.mock.calls).toStrictEqual([]);
 	});

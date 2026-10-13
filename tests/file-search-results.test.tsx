@@ -323,7 +323,10 @@ describe("file search results", () => {
 				if (requestUrl(input).endsWith("/api/search/file-roots")) {
 					return Promise.resolve(jsonResponse({roots: [FIRST_ROOT]}));
 				}
-				if (outcome === "loading") return new Promise<Response>(() => undefined);
+				if (outcome === "loading")
+					return new Promise<Response>(() => {
+						// Never settles, so the search stays loading.
+					});
 				if (outcome === "error") return Promise.resolve(jsonResponse({error: "fabricated"}, 500));
 				return Promise.resolve(jsonResponse(searchResult([])));
 			}),

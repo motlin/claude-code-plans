@@ -8,7 +8,9 @@ interface QueuedJob {
 }
 
 async function yieldToEventLoop(): Promise<void> {
-	return new Promise((resolve) => setImmediate(resolve));
+	return new Promise((resolve) => {
+		setImmediate(resolve);
+	});
 }
 
 /**

@@ -1002,11 +1002,11 @@ describe("createWatcher resilience", () => {
 
 	afterEach(async () => {
 		if (server) {
-			await new Promise<void>((resolve) =>
+			await new Promise<void>((resolve) => {
 				server!.close(() => {
 					resolve();
-				}),
-			);
+				});
+			});
 			server = null;
 		}
 		rmSync(dir, {recursive: true, force: true});
@@ -1025,13 +1025,15 @@ describe("createWatcher resilience", () => {
 		});
 
 		const watcher = await createWatcher([dir]);
-		const ready = new Promise<void>((resolve) =>
+		const ready = new Promise<void>((resolve) => {
 			watcher.once("ready", () => {
 				resolve();
-			}),
-		);
+			});
+		});
 		await expect(ready).resolves.toBeUndefined();
-		await new Promise((r) => setTimeout(r, 100));
+		await new Promise((r) => {
+			setTimeout(r, 100);
+		});
 		await watcher.close();
 	});
 });

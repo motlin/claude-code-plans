@@ -22,7 +22,9 @@ export async function retryWhileBusy<T>(step: () => T | Promise<T>, signal?: Abo
 		} catch (err) {
 			const delayMs = RETRY_DELAYS_MS[attempt];
 			if (delayMs === undefined || !isBusyError(err) || signal?.aborted) throw err;
-			await new Promise((resolve) => setTimeout(resolve, delayMs));
+			await new Promise((resolve) => {
+				setTimeout(resolve, delayMs);
+			});
 		}
 	}
 }

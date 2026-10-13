@@ -51,11 +51,11 @@ async function holdWriteLock(dbPath: string, holdMs: number): Promise<ChildProce
 
 async function exited(child: ChildProcess): Promise<void> {
 	if (child.exitCode !== null) return Promise.resolve();
-	return new Promise((resolve) =>
+	return new Promise((resolve) => {
 		child.once("exit", () => {
 			resolve();
-		}),
-	);
+		});
+	});
 }
 
 describe("fullScan and the event loop", () => {
@@ -101,7 +101,9 @@ describe("fullScan and the event loop", () => {
 		await fullScan(db.index, db.summaries, projectsDir);
 		await exited(child);
 		// Let the monitor observe the last slice before stopping it.
-		await new Promise((resolve) => setTimeout(resolve, 150));
+		await new Promise((resolve) => {
+			setTimeout(resolve, 150);
+		});
 		stopMonitor();
 
 		const indexed = db.index.all<{id: string}>(sql`SELECT id FROM sessions ORDER BY id`);

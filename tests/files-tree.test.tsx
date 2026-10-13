@@ -434,7 +434,9 @@ describe("FilesTree name tooltips", () => {
 		Object.defineProperty(long, "clientWidth", {configurable: true, value: 120});
 
 		fireEvent.pointerEnter(screen.getByText("short.ts"));
-		await new Promise((resolve) => setTimeout(resolve, 400));
+		await new Promise((resolve) => {
+			setTimeout(resolve, 400);
+		});
 		const shortTooltip = screen.queryByRole("tooltip");
 		fireEvent.pointerLeave(screen.getByText("short.ts"));
 		fireEvent.pointerEnter(long);

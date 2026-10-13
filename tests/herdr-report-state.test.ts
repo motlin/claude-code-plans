@@ -70,7 +70,9 @@ function dependencies(
 }
 
 async function settleDetachedReport(): Promise<void> {
-	await new Promise<void>((resolve) => setImmediate(resolve));
+	await new Promise<void>((resolve) => {
+		setImmediate(resolve);
+	});
 }
 
 describe("herdr hook-state reporting", () => {

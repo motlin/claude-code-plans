@@ -295,7 +295,9 @@ async function resetOpenSession(baseUrl: string, fixture: LabFixture, seededMess
 	for (let attempt = 0; attempt < 240; attempt += 1) {
 		const indexed = await indexedOpenSession(baseUrl, fixture).catch(() => undefined);
 		if (indexed?.messageCount === seededMessageCount && indexed.mtime === mtime) return;
-		await new Promise((resolvePromise) => setTimeout(resolvePromise, 250));
+		await new Promise((resolvePromise) => {
+			setTimeout(resolvePromise, 250);
+		});
 	}
 	throw new Error(`The lab server did not re-index the reset session ${fixture.openSessionId} within 60 seconds`);
 }
@@ -346,7 +348,9 @@ async function waitForIdleIndex(baseUrl: string, server: ChildProcess, output: s
 		} catch {
 			// Still starting.
 		}
-		await new Promise((resolvePromise) => setTimeout(resolvePromise, 250));
+		await new Promise((resolvePromise) => {
+			setTimeout(resolvePromise, 250);
+		});
 	}
 	throw new Error(`Lab dev server was not ready and indexed after 60 seconds:\n${output.join("")}`);
 }

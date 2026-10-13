@@ -73,7 +73,9 @@ describe("db boot ordering", () => {
 			awaitInitialScan().then(() => {
 				resolved = true;
 			}),
-			new Promise<void>((resolve) => setTimeout(resolve, 0)),
+			new Promise<void>((resolve) => {
+				setTimeout(resolve, 0);
+			}),
 		]);
 		expect(resolved).toBe(true);
 
@@ -84,7 +86,9 @@ describe("db boot ordering", () => {
 
 	it("runInitialScan() is idempotent — concurrent calls share one promise and run fullScan once", async () => {
 		const fullScan = vi.fn(async () => {
-			await new Promise((resolve) => setTimeout(resolve, 5));
+			await new Promise((resolve) => {
+				setTimeout(resolve, 5);
+			});
 		});
 		mockDbModule({fullScan});
 
@@ -166,7 +170,9 @@ describe("db boot ordering", () => {
 			awaitInitialScan().then(() => {
 				resolved = true;
 			}),
-			new Promise<void>((resolve) => setTimeout(resolve, 0)),
+			new Promise<void>((resolve) => {
+				setTimeout(resolve, 0);
+			}),
 		]);
 		expect(resolved).toBe(true);
 	});
@@ -295,7 +301,9 @@ describe("db boot ordering", () => {
 		const {initDb, shutdownDb} = await import("../src/lib/db");
 		await initDb();
 		const shutdown = shutdownDb();
-		await new Promise((resolve) => setTimeout(resolve, 0));
+		await new Promise((resolve) => {
+			setTimeout(resolve, 0);
+		});
 		finishLegacyScan();
 		await shutdown;
 

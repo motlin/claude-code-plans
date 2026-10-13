@@ -112,7 +112,9 @@ function headerButton(path: string): HTMLElement {
 async function openSettings() {
 	fireEvent.click(screen.getByRole("button", {name: "Changes settings"}));
 	await act(async () => {
-		await new Promise((resolve) => setTimeout(resolve, 0));
+		await new Promise((resolve) => {
+			setTimeout(resolve, 0);
+		});
 	});
 }
 

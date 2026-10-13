@@ -282,9 +282,13 @@ describe("retryable session viewed sync", () => {
 		});
 
 		sync.attempt("mark-reviewed");
-		await new Promise((resolve) => setTimeout(resolve, 10));
+		await new Promise((resolve) => {
+			setTimeout(resolve, 10);
+		});
 		sync.retryIfFailed("mark-reviewed-retry");
-		await new Promise((resolve) => setTimeout(resolve, 10));
+		await new Promise((resolve) => {
+			setTimeout(resolve, 10);
+		});
 
 		expect(operations).toStrictEqual(["call"]);
 	});
@@ -299,9 +303,13 @@ describe("retryable session viewed sync", () => {
 		});
 
 		sync.attempt("mark-reviewed");
-		await new Promise((resolve) => setTimeout(resolve, 10));
+		await new Promise((resolve) => {
+			setTimeout(resolve, 10);
+		});
 		sync.retryIfFailed("mark-reviewed-retry");
-		await new Promise((resolve) => setTimeout(resolve, 10));
+		await new Promise((resolve) => {
+			setTimeout(resolve, 10);
+		});
 
 		expect(operations).toStrictEqual(["call", "call"]);
 	});
@@ -316,11 +324,17 @@ describe("retryable session viewed sync", () => {
 		});
 
 		sync.attempt("mark-reviewed");
-		await new Promise((resolve) => setTimeout(resolve, 10));
+		await new Promise((resolve) => {
+			setTimeout(resolve, 10);
+		});
 		sync.retryIfFailed("mark-reviewed-retry");
-		await new Promise((resolve) => setTimeout(resolve, 10));
+		await new Promise((resolve) => {
+			setTimeout(resolve, 10);
+		});
 		sync.retryIfFailed("mark-reviewed-retry");
-		await new Promise((resolve) => setTimeout(resolve, 10));
+		await new Promise((resolve) => {
+			setTimeout(resolve, 10);
+		});
 
 		expect(operations).toStrictEqual(["call", "call"]);
 	});

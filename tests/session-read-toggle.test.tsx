@@ -60,7 +60,9 @@ function viewedCalls(): Array<{url: string; method: string; body: unknown}> {
 
 async function flush() {
 	await act(async () => {
-		await new Promise((resolve) => setTimeout(resolve, 0));
+		await new Promise((resolve) => {
+			setTimeout(resolve, 0);
+		});
 	});
 }
 

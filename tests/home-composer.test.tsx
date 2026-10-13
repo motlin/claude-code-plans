@@ -425,7 +425,9 @@ describe("HomeComposer", () => {
 			eventSource.emit(SSE_EVENTS.SESSION_START, {sessionId: "stay-session", cwd: "/users/dev/it's", model: ""});
 		});
 		await act(async () => {
-			await new Promise((resolve) => setTimeout(resolve, 50));
+			await new Promise((resolve) => {
+				setTimeout(resolve, 50);
+			});
 		});
 		expect({path: router.state.location.pathname, prompt: (textarea as HTMLTextAreaElement).value}).toStrictEqual({
 			path: "/",

@@ -105,7 +105,9 @@ function renderPane() {
 async function openSettings() {
 	fireEvent.click(screen.getByRole("button", {name: "Changes settings"}));
 	await act(async () => {
-		await new Promise((resolve) => setTimeout(resolve, 0));
+		await new Promise((resolve) => {
+			setTimeout(resolve, 0);
+		});
 	});
 }
 
@@ -173,7 +175,9 @@ describe("Changes settings menu", () => {
 
 		renderPane();
 		await act(async () => {
-			await new Promise((resolve) => setTimeout(resolve, 0));
+			await new Promise((resolve) => {
+				setTimeout(resolve, 0);
+			});
 		});
 		const showFilesPressed = screen.getByRole("button", {name: "Hide files"}).getAttribute("aria-pressed");
 		await openSettings();
@@ -220,7 +224,9 @@ describe("Changes settings menu", () => {
 		localStorage.setItem("ccp-diff-style", "side-by-side");
 		renderPane();
 		await act(async () => {
-			await new Promise((resolve) => setTimeout(resolve, 0));
+			await new Promise((resolve) => {
+				setTimeout(resolve, 0);
+			});
 		});
 		await openSettings();
 
