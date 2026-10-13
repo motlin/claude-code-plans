@@ -281,13 +281,13 @@ export function LinksPaneView({
 	}
 
 	const emptyMessage =
-		query !== ""
-			? `No links match “${filterText}”.`
-			: !includeToolsAndThinking && display.hiddenCount > 0
-				? `No links in visible messages. Enable 'Include tools and thinking' to see ${display.hiddenCount} more.`
-				: includeToolsAndThinking
-					? "No links in this session."
-					: "No links in visible messages.";
+		query === ""
+			? includeToolsAndThinking
+				? "No links in this session."
+				: display.hiddenCount > 0
+					? `No links in visible messages. Enable 'Include tools and thinking' to see ${display.hiddenCount} more.`
+					: "No links in visible messages."
+			: `No links match “${filterText}”.`;
 
 	const coverageNote = resourceCoverageNote(unscannedRecordCount);
 

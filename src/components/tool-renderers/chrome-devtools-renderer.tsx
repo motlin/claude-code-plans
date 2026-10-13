@@ -546,7 +546,7 @@ function GetNetworkRequestRenderer({resultText}: {resultText: string}) {
 		);
 	}
 
-	const statusLabel = statusCode !== undefined ? `${statusCode} ${status}` : status;
+	const statusLabel = statusCode === undefined ? status : `${statusCode} ${status}`;
 
 	return (
 		<div className="px-2 py-2 space-y-3 max-h-96 overflow-auto">

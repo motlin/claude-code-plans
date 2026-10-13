@@ -146,13 +146,13 @@ export function Tooltip({
 		</>
 	);
 	const tooltipClass =
-		description !== undefined
-			? STACKED_TOOLTIP_CLASS
-			: secondary !== undefined
-				? ACTION_ROWS_TOOLTIP_CLASS
-				: multiline
+		description === undefined
+			? secondary === undefined
+				? multiline
 					? MULTILINE_TOOLTIP_CLASS
-					: TOOLTIP_CLASS;
+					: TOOLTIP_CLASS
+				: ACTION_ROWS_TOOLTIP_CLASS
+			: STACKED_TOOLTIP_CLASS;
 
 	return (
 		<span

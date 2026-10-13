@@ -437,13 +437,13 @@ describe("SessionsIndexSchema against disk", () => {
 			}
 
 			const result = SessionsIndexSchema.safeParse(parsed);
-			if (!result.success) {
+			if (result.success) {
+				validated++;
+			} else {
 				const issues = result.error.issues
 					.map((issue) => `  ${issue.path.join(".")}: ${issue.message}`)
 					.join("\n");
 				failures.push(`${projectDir}/sessions-index.json:\n${issues}`);
-			} else {
-				validated++;
 			}
 		}
 
@@ -512,13 +512,13 @@ describe("ClaudeSettingsSchema against disk", () => {
 			}
 
 			const result = ClaudeSettingsSchema.safeParse(parsed);
-			if (!result.success) {
+			if (result.success) {
+				validated++;
+			} else {
 				const issues = result.error.issues
 					.map((issue) => `  ${issue.path.join(".")}: ${issue.message}`)
 					.join("\n");
 				failures.push(`${relative}:\n${issues}`);
-			} else {
-				validated++;
 			}
 		}
 
@@ -583,13 +583,13 @@ describe("McpConfigSchema against disk", () => {
 			}
 
 			const result = McpConfigSchema.safeParse(parsed);
-			if (!result.success) {
+			if (result.success) {
+				validated++;
+			} else {
 				const issues = result.error.issues
 					.map((issue) => `  ${issue.path.join(".")}: ${issue.message}`)
 					.join("\n");
 				failures.push(`${relative}:\n${issues}`);
-			} else {
-				validated++;
 			}
 		}
 

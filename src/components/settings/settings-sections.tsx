@@ -198,15 +198,17 @@ function NotificationsSection() {
 				settingKey="notifyCompletions"
 				notificationPermission={notificationPermission}
 				footnote={
-					!supported ? (
+					supported ? (
+						permission === "denied" ? (
+							<div className="text-body text-amber-600">
+								Notifications are blocked. Allow them for this site in your browser settings to enable.
+							</div>
+						) : null
+					) : (
 						<div className="text-body text-amber-600">
 							This browser does not support desktop notifications.
 						</div>
-					) : permission === "denied" ? (
-						<div className="text-body text-amber-600">
-							Notifications are blocked. Allow them for this site in your browser settings to enable.
-						</div>
-					) : null
+					)
 				}
 			/>
 			<NotificationRow

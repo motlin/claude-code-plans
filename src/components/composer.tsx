@@ -199,11 +199,11 @@ const SendSlot = memo(function SendSlot({
 	const forkKeys = useShortcutKeys("fork_with_prompt").keys;
 	const sendAndStayKeys = useIsMac() ? "cmd+enter" : "ctrl+enter";
 	const secondary =
-		forkLabel !== undefined
-			? {content: forkLabel, shortcut: forkKeys}
-			: sendAndStay
+		forkLabel === undefined
+			? sendAndStay
 				? {content: "Send and stay here", shortcut: sendAndStayKeys}
-				: undefined;
+				: undefined
+			: {content: forkLabel, shortcut: forkKeys};
 	return (
 		<div className="absolute right-0 bottom-0 flex min-h-6 items-center pl-1.5">
 			{isStreaming || onStop !== undefined ? (

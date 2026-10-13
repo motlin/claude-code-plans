@@ -326,12 +326,12 @@ function collectChoices(): Map<string, string[]> {
 			case "union": {
 				const discriminator =
 					typeof def.discriminator === "string" ? def.discriminator : defactoDiscriminator(schema);
-				if (discriminator !== undefined) {
-					walkUnion(schema, path, discriminator);
-				} else {
+				if (discriminator === undefined) {
 					for (const [index, option] of optionsOf(schema).entries()) {
 						walk(option, `${path}|${index}`);
 					}
+				} else {
+					walkUnion(schema, path, discriminator);
 				}
 				return;
 			}

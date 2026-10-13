@@ -40,14 +40,14 @@ export function prefetchWhenIdle(loaders: ReadonlyArray<() => Promise<unknown>>,
 		for (const loader of loaders) warmChunk(loader);
 	};
 	const schedule = () => {
-		if (host.requestIdleCallback !== undefined) {
-			const handle = host.requestIdleCallback(run, {timeout: IDLE_TIMEOUT_MS});
-			cancelScheduled = () => host.cancelIdleCallback?.(handle);
-		} else {
+		if (host.requestIdleCallback === undefined) {
 			const handle = host.setTimeout(run, FALLBACK_DELAY_MS);
 			cancelScheduled = () => {
 				host.clearTimeout(handle as never);
 			};
+		} else {
+			const handle = host.requestIdleCallback(run, {timeout: IDLE_TIMEOUT_MS});
+			cancelScheduled = () => host.cancelIdleCallback?.(handle);
 		}
 	};
 	const onVisibilityChange = () => {

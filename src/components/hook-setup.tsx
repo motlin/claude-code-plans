@@ -118,19 +118,7 @@ export function HookSetup() {
 			</div>
 
 			<div className="flex items-center gap-2">
-				{!status?.installed ? (
-					<button
-						type="button"
-						onClick={() => {
-							void handleInstall();
-						}}
-						disabled={installing}
-						className="flex items-center gap-1.5 rounded-md bg-accent-100 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-accent-100/80 disabled:opacity-50"
-					>
-						<Download className="h-3.5 w-3.5" />
-						{installing ? "Installing..." : "Install Hooks"}
-					</button>
-				) : (
+				{status?.installed ? (
 					<button
 						type="button"
 						onClick={() => {
@@ -141,6 +129,18 @@ export function HookSetup() {
 					>
 						<Trash2 className="h-3.5 w-3.5" />
 						{uninstalling ? "Removing..." : "Uninstall Hooks"}
+					</button>
+				) : (
+					<button
+						type="button"
+						onClick={() => {
+							void handleInstall();
+						}}
+						disabled={installing}
+						className="flex items-center gap-1.5 rounded-md bg-accent-100 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-accent-100/80 disabled:opacity-50"
+					>
+						<Download className="h-3.5 w-3.5" />
+						{installing ? "Installing..." : "Install Hooks"}
 					</button>
 				)}
 				<button

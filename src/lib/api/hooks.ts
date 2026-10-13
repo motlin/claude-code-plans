@@ -36,7 +36,7 @@ export const useInstallHooks = () => {
 			apiFetch("/api/hooks", HookMutationResponse, {
 				method: "POST",
 				headers: {"Content-Type": "application/json"},
-				body: JSON.stringify(port !== undefined ? {port, capabilities} : {capabilities}),
+				body: JSON.stringify(port === undefined ? {capabilities} : {port, capabilities}),
 			}),
 		onSuccess: () => {
 			void qc.invalidateQueries({queryKey: ["hooks", "status"]});
@@ -52,7 +52,7 @@ export const useUninstallHooks = () => {
 			apiFetch("/api/hooks", HookMutationResponse, {
 				method: "DELETE",
 				headers: {"Content-Type": "application/json"},
-				body: JSON.stringify(port !== undefined ? {port} : {}),
+				body: JSON.stringify(port === undefined ? {} : {port}),
 			}),
 		onSuccess: () => {
 			void qc.invalidateQueries({queryKey: ["hooks", "status"]});

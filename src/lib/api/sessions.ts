@@ -379,9 +379,9 @@ export const sessionTitlesQueryOptions = (ids: string[]) =>
 
 export const activeSessionsQueryOptions = (activeTimeoutMs?: number) => {
 	const url =
-		activeTimeoutMs !== undefined
-			? `/api/sessions/active?activeTimeoutMs=${activeTimeoutMs}`
-			: "/api/sessions/active";
+		activeTimeoutMs === undefined
+			? "/api/sessions/active"
+			: `/api/sessions/active?activeTimeoutMs=${activeTimeoutMs}`;
 	return queryOptions({
 		queryKey: sessionQueryKeys.active(activeTimeoutMs),
 		queryFn: async () => apiFetch(url, ActiveSessionListResponse),

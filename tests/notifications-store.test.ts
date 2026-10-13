@@ -81,7 +81,7 @@ function makeEntry(overrides: Partial<NotificationEntry> & {id: string}): Notifi
 		notificationType: overrides.notificationType ?? "agent_needs_input",
 		createdAt,
 		createdAtIso: overrides.createdAtIso ?? new Date(createdAt).toISOString(),
-		...(overrides.title !== undefined ? {title: overrides.title} : {}),
+		...(overrides.title === undefined ? {} : {title: overrides.title}),
 	};
 }
 

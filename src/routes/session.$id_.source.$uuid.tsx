@@ -262,7 +262,7 @@ function ResolvedSourceView({sessionId, recordUuid}: {sessionId: string; recordU
 	const jsonCtx: LinkedJsonContext = useMemo(
 		() => ({
 			sessionId,
-			...(data?.projectId !== undefined ? {projectId: data.projectId} : {}),
+			...(data?.projectId === undefined ? {} : {projectId: data.projectId}),
 			knownUuids: new Set(data?.knownUuids ?? []),
 		}),
 		[sessionId, data?.projectId, data?.knownUuids],
@@ -304,10 +304,10 @@ function ResolvedSourceView({sessionId, recordUuid}: {sessionId: string; recordU
 					<h2 className="text-sm font-medium text-secondary">Focal raw JSONL</h2>
 					<CopyButton text={focalRaw} />
 				</div>
-				{focalParsed !== undefined ? (
-					<LinkedJson value={focalParsed} context={jsonCtx} />
-				) : (
+				{focalParsed === undefined ? (
 					<CodeBlock content={focalRaw} />
+				) : (
+					<LinkedJson value={focalParsed} context={jsonCtx} />
 				)}
 			</section>
 
@@ -328,10 +328,10 @@ function ResolvedSourceView({sessionId, recordUuid}: {sessionId: string; recordU
 							</a>
 						)}
 					</div>
-					{pairedParsed !== undefined ? (
-						<LinkedJson value={pairedParsed} context={jsonCtx} />
-					) : (
+					{pairedParsed === undefined ? (
 						<CodeBlock content={prettyJsonl(paired.resultEntry.raw)} />
+					) : (
+						<LinkedJson value={pairedParsed} context={jsonCtx} />
 					)}
 				</section>
 			)}
@@ -344,10 +344,10 @@ function ResolvedSourceView({sessionId, recordUuid}: {sessionId: string; recordU
 					<p className="text-xs text-t6 italic">
 						No parsed block — this entry was skipped by the parser (e.g. system, file-history-snapshot).
 					</p>
-				) : parsedBlocksParsed !== undefined ? (
-					<LinkedJson value={parsedBlocksParsed} context={jsonCtx} />
-				) : (
+				) : parsedBlocksParsed === undefined ? (
 					<CodeBlock content={parsedBlocksJson} />
+				) : (
+					<LinkedJson value={parsedBlocksParsed} context={jsonCtx} />
 				)}
 			</section>
 

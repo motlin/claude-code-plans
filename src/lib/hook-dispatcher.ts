@@ -412,7 +412,7 @@ export async function dispatchHookEvent({
 			broadcastHookContext(event, broadcast, {
 				clearPausedWork: true,
 				clearTurnContext: true,
-				...(event.session_title !== undefined ? {sessionTitle: event.session_title} : {}),
+				...(event.session_title === undefined ? {} : {sessionTitle: event.session_title}),
 			});
 
 			// Lifecycle signal for the active-session indicator.
@@ -457,11 +457,11 @@ export async function dispatchHookEvent({
 				type: task.type,
 				status: task.status,
 				description: task.description,
-				...(task.command !== undefined ? {command: task.command} : {}),
-				...(task.agent_type !== undefined ? {agentType: task.agent_type} : {}),
-				...(task.server !== undefined ? {server: task.server} : {}),
-				...(task.tool !== undefined ? {tool: task.tool} : {}),
-				...(task.name !== undefined ? {name: task.name} : {}),
+				...(task.command === undefined ? {} : {command: task.command}),
+				...(task.agent_type === undefined ? {} : {agentType: task.agent_type}),
+				...(task.server === undefined ? {} : {server: task.server}),
+				...(task.tool === undefined ? {} : {tool: task.tool}),
+				...(task.name === undefined ? {} : {name: task.name}),
 			}));
 			store.setBackgroundTasks(event.session_id, backgroundTasks ?? []);
 			if (event.session_crons !== undefined) {
@@ -469,11 +469,11 @@ export async function dispatchHookEvent({
 			}
 			const context: SessionHookContextPayload = {
 				sessionId: event.session_id,
-				...(backgroundTasks !== undefined ? {backgroundTasks} : {}),
-				...(event.session_crons !== undefined ? {sessionCrons: event.session_crons} : {}),
-				...(event.prompt_id !== undefined ? {promptId: event.prompt_id} : {}),
-				...(event.permission_mode !== undefined ? {permissionMode: event.permission_mode} : {}),
-				...(event.effort !== undefined ? {effortLevel: event.effort.level} : {}),
+				...(backgroundTasks === undefined ? {} : {backgroundTasks}),
+				...(event.session_crons === undefined ? {} : {sessionCrons: event.session_crons}),
+				...(event.prompt_id === undefined ? {} : {promptId: event.prompt_id}),
+				...(event.permission_mode === undefined ? {} : {permissionMode: event.permission_mode}),
+				...(event.effort === undefined ? {} : {effortLevel: event.effort.level}),
 			};
 			if (Object.keys(context).length > 1) {
 				broadcast(DOMAIN_EVENTS.SESSION_HOOK_CONTEXT_CHANGED, {...context});
@@ -621,7 +621,7 @@ export async function dispatchHookEvent({
 			// the store keeps any prior mapping rather than clobbering it with "".
 			store.touchSession(
 				event.session_id,
-				event.claude_env !== undefined ? {claudeEnv: event.claude_env} : undefined,
+				event.claude_env === undefined ? undefined : {claudeEnv: event.claude_env},
 			);
 			broadcastHookContext(event, broadcast, {clearPausedWork: true, clearTurnContext: true});
 			broadcast(DOMAIN_EVENTS.SESSION_PROMPT_SUBMITTED, {

@@ -20,7 +20,7 @@ export const Route = createFileRoute("/api/sessions/$id/viewed")({
 					db: getDb().index,
 					sessionId: params.id,
 					action: body.action,
-					...(body.messageIndex !== undefined ? {messageIndex: body.messageIndex} : {}),
+					...(body.messageIndex === undefined ? {} : {messageIndex: body.messageIndex}),
 					broadcast: broadcastTyped,
 				});
 				return Response.json(SessionViewedStateSchema.parse(viewedState), {

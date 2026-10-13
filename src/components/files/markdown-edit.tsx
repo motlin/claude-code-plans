@@ -156,7 +156,7 @@ export function useMarkdownEdit({
 		);
 
 	const toolbar: ReactNode =
-		state.phase !== "editing" ? null : (
+		state.phase === "editing" ? (
 			<>
 				<button
 					type="button"
@@ -174,7 +174,7 @@ export function useMarkdownEdit({
 					Save
 				</button>
 			</>
-		);
+		) : null;
 
 	const editor: ReactNode =
 		state.phase === "viewing" ? null : (

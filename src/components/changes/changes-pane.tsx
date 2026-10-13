@@ -706,9 +706,7 @@ export function ChangesPaneView({
 	let body: ReactNode;
 	if (diff === undefined) {
 		body = <CenteredMessage muted>{message ?? "Loading changes…"}</CenteredMessage>;
-	} else if (!hasFiles) {
-		body = <CenteredMessage>No changes to show</CenteredMessage>;
-	} else {
+	} else if (hasFiles) {
 		body = (
 			<div className="flex min-h-0 flex-1">
 				{showFiles && (
@@ -796,6 +794,8 @@ export function ChangesPaneView({
 				</div>
 			</div>
 		);
+	} else {
+		body = <CenteredMessage>No changes to show</CenteredMessage>;
 	}
 
 	return (

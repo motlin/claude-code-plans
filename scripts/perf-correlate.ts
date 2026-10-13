@@ -626,9 +626,7 @@ async function main(argv: readonly string[]): Promise<void> {
 	const out = resolve(option(argv, "--out") ?? DEFAULT_OUT);
 
 	let sweep: Sweep;
-	if (from !== undefined) {
-		sweep = parseSweep(readFileSync(from, "utf8"));
-	} else {
+	if (from === undefined) {
 		const measured: ShapeSweep[] = [];
 		for (const shape of shapes) {
 			console.error(`measuring ${shape} (${runs} runs)…`);
@@ -641,6 +639,8 @@ async function main(argv: readonly string[]): Promise<void> {
 			runs,
 			shapes: measured,
 		};
+	} else {
+		sweep = parseSweep(readFileSync(from, "utf8"));
 	}
 	if (jsonPath !== undefined) writeFileSync(jsonPath, `${JSON.stringify(sweep, null, "\t")}\n`);
 

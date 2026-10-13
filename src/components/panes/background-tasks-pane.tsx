@@ -63,7 +63,9 @@ function BackgroundTaskCard({task}: {task: BackgroundTask}) {
 							<HighlightedCommand command={task.command} />
 						</div>
 					)}
-					{task.output !== null ? (
+					{task.output === null ? (
+						<p className="text-caption text-ink-muted">{task.summary ?? "No output recorded."}</p>
+					) : (
 						<pre
 							role="region"
 							aria-label={`Output for ${title}`}
@@ -71,8 +73,6 @@ function BackgroundTaskCard({task}: {task: BackgroundTask}) {
 						>
 							<AnsiText content={task.output} />
 						</pre>
-					) : (
-						<p className="text-caption text-ink-muted">{task.summary ?? "No output recorded."}</p>
 					)}
 				</div>
 			)}

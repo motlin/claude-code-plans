@@ -23,7 +23,7 @@ export const Route = createFileRoute("/api/sessions/$id/source/$uuid")({
 
 				const url = new URL(request.url);
 				const contextParam = url.searchParams.get("context");
-				const contextN = contextParam !== null ? Math.max(0, Math.min(50, Number(contextParam) || 0)) : 5;
+				const contextN = contextParam === null ? 5 : Math.max(0, Math.min(50, Number(contextParam) || 0));
 
 				const {readSession, readSessionRawWindow} = await import("../../lib/sessions");
 				const window = await readSessionRawWindow(PROJECTS_DIR, sessionId, uuid, contextN);
@@ -67,7 +67,7 @@ export const Route = createFileRoute("/api/sessions/$id/source/$uuid")({
 					paired,
 					sessionTitle,
 					knownUuids,
-					...(projectId !== undefined ? {projectId} : {}),
+					...(projectId === undefined ? {} : {projectId}),
 				};
 
 				return Response.json(SessionSourceResponse.parse(payload), {

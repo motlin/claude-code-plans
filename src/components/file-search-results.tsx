@@ -406,7 +406,7 @@ function ResultCards({
 									)}
 								</span>
 							</button>
-							{directory !== scope ? (
+							{directory === scope ? null : (
 								<button
 									type="button"
 									aria-label={`Search within ${directory}`}
@@ -418,7 +418,7 @@ function ResultCards({
 								>
 									<FolderSearch className="h-3.5 w-3.5" />
 								</button>
-							) : null}
+							)}
 							{hiddenCount > 0 ? (
 								<button
 									type="button"

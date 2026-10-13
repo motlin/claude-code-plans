@@ -383,7 +383,7 @@ export function routineStatus(
 	if (live === undefined) return "completed";
 	if (live.sessionCrons !== null && live.sessionCronsAt !== null && live.sessionCronsAt >= routine.createdAt) {
 		const listed = live.sessionCrons.some((cron) =>
-			routine.routineId !== null ? cron.id === routine.routineId : cron.prompt === routine.prompt,
+			routine.routineId === null ? cron.prompt === routine.prompt : cron.id === routine.routineId,
 		);
 		return listed ? "active" : "completed";
 	}

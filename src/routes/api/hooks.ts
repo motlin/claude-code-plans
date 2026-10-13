@@ -41,7 +41,7 @@ export const Route = createFileRoute("/api/hooks")({
 				const body = HooksMutationBody.parse(await request.json().catch(() => ({})));
 				const settingsPath = join(claudeHome, "settings.json");
 				const config = generateHooksConfig({
-					...(body.port !== undefined ? {port: body.port} : {}),
+					...(body.port === undefined ? {} : {port: body.port}),
 					includeContextBrief:
 						body.capabilities !== undefined &&
 						capabilityIsEnabled(body.capabilities, "sessionContextBrief"),
@@ -89,7 +89,7 @@ export const Route = createFileRoute("/api/hooks")({
 				}
 				const settingsPath = join(claudeHome, "settings.json");
 				const config = generateHooksConfig({
-					...(body.port !== undefined ? {port: body.port} : {}),
+					...(body.port === undefined ? {} : {port: body.port}),
 					includeContextBrief: true,
 				});
 

@@ -430,7 +430,6 @@ export default defineConfig({
 					"@typescript-eslint/no-unsafe-type-assertion": "off", // 382
 					"@typescript-eslint/require-await": "off", // 387
 					"@typescript-eslint/strict-boolean-expressions": "off", // 647
-					"no-negated-condition": "off", // 71
 					"no-promise-executor-return": "off", // 122
 					"react/only-export-components": "off", // 239 warnings, 86 in TanStack route modules that must export Route
 					"vitest/require-mock-type-parameters": "off", // 332

@@ -374,7 +374,7 @@ function SearchResultsRenderer({data}: {data: unknown}) {
 			<div className="flex items-center gap-2 mb-2">
 				<Search className="h-4 w-4 text-secondary" />
 				<span className="text-body text-primary">
-					{total !== undefined ? `${total} result(s)` : `${items.length} result(s)`}
+					{total === undefined ? `${items.length} result(s)` : `${total} result(s)`}
 				</span>
 			</div>
 			<div className="space-y-0.5">
@@ -383,14 +383,14 @@ function SearchResultsRenderer({data}: {data: unknown}) {
 						key={item.html_url ?? i}
 						className="flex items-center gap-2 px-2 py-1 hover:bg-t2 rounded-r6 text-body"
 					>
-						{item.number !== undefined ? (
+						{item.number === undefined ? (
+							<FileCode className="h-3.5 w-3.5 text-secondary shrink-0" />
+						) : (
 							<>
 								<CircleAlert className="h-3.5 w-3.5 text-secondary shrink-0" />
 								<span className="text-secondary shrink-0">#{item.number}</span>
 								{item.state && stateBadge(item.state)}
 							</>
-						) : (
-							<FileCode className="h-3.5 w-3.5 text-secondary shrink-0" />
 						)}
 						{item.html_url ? (
 							<a

@@ -436,9 +436,9 @@ function AttachmentContent({
 		case "selected_lines_in_ide": {
 			const filePart = attachment.displayPath ?? attachment.filename ?? "file";
 			const linePart =
-				attachment.lineStart !== undefined
-					? `:${attachment.lineStart}${attachment.lineEnd !== undefined ? `-${attachment.lineEnd}` : ""}`
-					: "";
+				attachment.lineStart === undefined
+					? ""
+					: `:${attachment.lineStart}${attachment.lineEnd === undefined ? "" : `-${attachment.lineEnd}`}`;
 			return (
 				<Banner
 					icon={<Search className="h-3.5 w-3.5" />}
@@ -534,7 +534,7 @@ function AttachmentContent({
 			return (
 				<Banner
 					icon={<AlertTriangle className="h-3.5 w-3.5" />}
-					label={`Max turns reached${attachment.maxTurns !== undefined ? ` (${attachment.turnCount ?? "?"}/${attachment.maxTurns})` : ""}`}
+					label={`Max turns reached${attachment.maxTurns === undefined ? "" : ` (${attachment.turnCount ?? "?"}/${attachment.maxTurns})`}`}
 					{...shared}
 				/>
 			);
@@ -611,7 +611,7 @@ function AttachmentContent({
 			return (
 				<Banner
 					icon={<Zap className="h-3.5 w-3.5" />}
-					label={`Skills${attachment.skillCount !== undefined ? ` (${attachment.skillCount})` : ""}${attachment.isInitial ? " — initial" : ""}`}
+					label={`Skills${attachment.skillCount === undefined ? "" : ` (${attachment.skillCount})`}${attachment.isInitial ? " — initial" : ""}`}
 					{...shared}
 				/>
 			);
@@ -639,7 +639,7 @@ function AttachmentContent({
 			return (
 				<Banner
 					icon={<Pin className="h-3.5 w-3.5" />}
-					label={`${kind} reminder${attachment.itemCount !== undefined ? ` (${attachment.itemCount} items)` : ""}`}
+					label={`${kind} reminder${attachment.itemCount === undefined ? "" : ` (${attachment.itemCount} items)`}`}
 					{...shared}
 				/>
 			);
@@ -806,7 +806,7 @@ function AttachmentContent({
 					icon={<Brain className="h-3.5 w-3.5" />}
 					label={
 						attachment.type === "thinking_drop"
-							? `Thinking dropped${attachment.newlyDropped?.blockCount !== undefined ? ` (${attachment.newlyDropped.blockCount} blocks)` : ""}`
+							? `Thinking dropped${attachment.newlyDropped?.blockCount === undefined ? "" : ` (${attachment.newlyDropped.blockCount} blocks)`}`
 							: "Thinking stripped"
 					}
 					{...shared}

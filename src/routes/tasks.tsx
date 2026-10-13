@@ -165,7 +165,11 @@ function TasksPage() {
 														}}
 													/>
 												</button>
-												{group.sessionId !== null ? (
+												{group.sessionId === null ? (
+													<span className="text-sm font-semibold text-primary">
+														{group.sessionTitle}
+													</span>
+												) : (
 													<Link
 														to="/session/$id"
 														params={{id: group.sessionId}}
@@ -173,10 +177,6 @@ function TasksPage() {
 													>
 														{group.sessionTitle}
 													</Link>
-												) : (
-													<span className="text-sm font-semibold text-primary">
-														{group.sessionTitle}
-													</span>
 												)}
 												<span className="flex items-center gap-2 text-xs text-t6">
 													{group.totalPending > 0 && (

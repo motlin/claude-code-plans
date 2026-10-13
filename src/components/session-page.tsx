@@ -602,11 +602,11 @@ function SessionView({
 		},
 		[enqueuePrompt, liveHerdrPrompt, queueBusy, queuedPrompts.length],
 	);
-	const paneState: ComposerPaneState = !promptBehavior.hasLivePane
-		? "none"
-		: workingMarkerState.status === "idle"
+	const paneState: ComposerPaneState = promptBehavior.hasLivePane
+		? workingMarkerState.status === "idle"
 			? "idle"
-			: "working";
+			: "working"
+		: "none";
 	const submitComposer = (submit: ComposerSubmit, prompt: string, launchOptions: LaunchOptions) =>
 		dispatchComposerSubmit(
 			{

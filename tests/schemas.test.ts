@@ -1781,10 +1781,10 @@ describe("TaskFileSchema against disk", () => {
 				}
 
 				const result = TaskFileSchema.safeParse(parsed);
-				if (!result.success) {
-					failures.push(`${projectDir}/${file}: ${result.error.issues.map((i) => i.message).join(", ")}`);
-				} else {
+				if (result.success) {
 					validated++;
+				} else {
+					failures.push(`${projectDir}/${file}: ${result.error.issues.map((i) => i.message).join(", ")}`);
 				}
 			}
 		}

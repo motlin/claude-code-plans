@@ -61,8 +61,8 @@ export function markdownToPlainText(markdown: string): string {
 				tableRows = null;
 				break;
 			case "inline":
-				if (row !== null) row.push(inlineText(token));
-				else push(inlineText(token));
+				if (row === null) push(inlineText(token));
+				else row.push(inlineText(token));
 				break;
 			case "fence":
 			case "code_block":

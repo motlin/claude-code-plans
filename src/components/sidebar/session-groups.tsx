@@ -209,7 +209,7 @@ export function SessionGroups({
 	const sectionDrag = drag !== null && sectionOfDragId(drag.srcId) !== null;
 	const rowDrag = drag !== null && !sectionDrag;
 	const multiDrag = rowDrag && selectedIds.length > 1 && selectedIds.includes(drag.srcId);
-	const draggedIds = !rowDrag ? [] : multiDrag ? selectedIds : [drag.srcId];
+	const draggedIds = rowDrag ? (multiDrag ? selectedIds : [drag.srcId]) : [];
 	const showUngroupRow = custom && draggedIds.some((id) => assignments[id] !== undefined);
 	const target = drag?.target ?? null;
 	const hotGroupId = groups

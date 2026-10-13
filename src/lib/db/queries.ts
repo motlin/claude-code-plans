@@ -962,7 +962,7 @@ export function searchFileContentDb(db: IndexDb, query: string, scopeRoot: strin
 		.sort((left, right) => {
 			if (left.rank !== right.rank) return left.rank - right.rank;
 			const mtimeComparison = right.mtime.localeCompare(left.mtime);
-			return mtimeComparison !== 0 ? mtimeComparison : left.path.localeCompare(right.path);
+			return mtimeComparison === 0 ? left.path.localeCompare(right.path) : mtimeComparison;
 		});
 
 	const totalResults = rankedFiles.reduce((total, file) => total + file.matchCount, 0);

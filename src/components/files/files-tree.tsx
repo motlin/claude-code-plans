@@ -417,9 +417,7 @@ export function FilesTree({
 						}}
 						className="min-h-0 flex-1 overflow-y-auto px-1 py-1.25 outline-none [contain:strict]"
 					>
-						{emptyMessage !== null ? (
-							<p className="px-2 py-1.5 text-footnote text-ink-muted select-none">{emptyMessage}</p>
-						) : (
+						{emptyMessage === null ? (
 							<div role="none" style={{height: entries.length * ROW_HEIGHT, position: "relative"}}>
 								{entries.slice(firstRow, lastRow).map((entry, offset) => {
 									const index = firstRow + offset;
@@ -492,6 +490,8 @@ export function FilesTree({
 									);
 								})}
 							</div>
+						) : (
+							<p className="px-2 py-1.5 text-footnote text-ink-muted select-none">{emptyMessage}</p>
 						)}
 						{footer !== null && emptyMessage === null && (
 							<div

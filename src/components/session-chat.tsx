@@ -323,7 +323,7 @@ function AssistantDisplaySpanFooter({span}: {span: AssistantDisplaySpan}) {
 	);
 	const held = interaction.held?.span.key === span.key ? interaction.held : null;
 	const isEndpoint = span.anchorLineIndex >= entry.startRecordIndex && span.anchorLineIndex <= entry.endRecordIndex;
-	if (held !== null ? held.entryKey !== entry.key : !isEndpoint) return null;
+	if (held === null ? !isEndpoint : held.entryKey !== entry.key) return null;
 	const displayed = held?.span ?? span;
 	return (
 		<div
@@ -3865,7 +3865,7 @@ function ApiErrorCallout({line}: {line: MessageSessionLine}) {
 		<div className="border-l-2 border-danger-000 bg-danger-000/10 rounded-r px-3 py-2">
 			<div className="flex items-center gap-1.5 text-xs text-danger-000">
 				<AlertTriangle className="h-3.5 w-3.5" />
-				API Error{line.apiErrorStatus !== undefined ? ` ${line.apiErrorStatus}` : ""}
+				API Error{line.apiErrorStatus === undefined ? "" : ` ${line.apiErrorStatus}`}
 			</div>
 			{detailsText !== undefined && (
 				<div className="mt-1">
@@ -4244,14 +4244,14 @@ function ToolCallRow({
 	const chevronClass = isAgent ? "shrink-0 -ms-1 self-center text-t6" : `shrink-0 -ms-1 ${ink}`;
 	// A failed call whose param is its own description keeps that description as
 	// written ("Rebase and push X"); upstream past-tenses it only on success.
-	const failedDescription = status !== null ? getToolDescription(call.name, call.input) : null;
+	const failedDescription = status === null ? null : getToolDescription(call.name, call.input);
 	const phrase =
 		failedDescription ??
 		(isAgent && (nested || !pending)
 			? null
-			: running !== null
-				? (running.label ?? null)
-				: (toolRowLabel.doneLabel ?? null));
+			: running === null
+				? (toolRowLabel.doneLabel ?? null)
+				: (running.label ?? null));
 	const label = phrase ?? running?.verb ?? toolRowLabel.verb;
 	// A label that is a whole phrase owns the row and truncates; a bare verb
 	// keeps its width so the param beside it truncates instead.
@@ -4322,24 +4322,26 @@ function ToolCallRow({
 		</>
 	);
 
-	const body = !hasBody ? null : isCardStyle ? (
-		<div className="group/body py-p6">
-			<div
-				className={`card-outline ${isCodeCard ? "code-card " : ""}rounded-r6 overflow-clip flex flex-col relative`}
-			>
-				<Suspense fallback={null}>
-					<Renderer toolCall={call} verbose={verbose} />
-				</Suspense>
-				<DebugLink sessionId={sessionId} uuid={call.sourceUuid} className="absolute top-1 right-1" />
+	const body = hasBody ? (
+		isCardStyle ? (
+			<div className="group/body py-p6">
+				<div
+					className={`card-outline ${isCodeCard ? "code-card " : ""}rounded-r6 overflow-clip flex flex-col relative`}
+				>
+					<Suspense fallback={null}>
+						<Renderer toolCall={call} verbose={verbose} />
+					</Suspense>
+					<DebugLink sessionId={sessionId} uuid={call.sourceUuid} className="absolute top-1 right-1" />
+				</div>
 			</div>
-		</div>
-	) : (
-		<div className={bodyClass}>
-			<Suspense fallback={null}>
-				<Renderer toolCall={call} nested={nested} verbose={verbose} />
-			</Suspense>
-		</div>
-	);
+		) : (
+			<div className={bodyClass}>
+				<Suspense fallback={null}>
+					<Renderer toolCall={call} nested={nested} verbose={verbose} />
+				</Suspense>
+			</div>
+		)
+	) : null;
 
 	if (paneAgentId !== undefined && openSubagent !== null) {
 		const open = () => {

@@ -100,7 +100,7 @@ export function getSessionArtifacts(db: IndexDb, sessionId: string): SessionArti
 		const title =
 			urlRows.find((row) => row.event.title !== null)?.event.title ??
 			artifact.title ??
-			(sourcePath !== null ? basename(sourcePath) : artifact.id);
+			(sourcePath === null ? artifact.id : basename(sourcePath));
 		return {
 			url: event.url,
 			id: artifact.id,

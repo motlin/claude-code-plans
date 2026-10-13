@@ -149,7 +149,7 @@ export function SystemBanner({line, sessionId}: {line: SystemLine; sessionId?: s
 			return (
 				<Banner
 					variant="status"
-					label={line.durationMs !== undefined ? `Turn took ${formatMs(line.durationMs)}` : "Turn finished"}
+					label={line.durationMs === undefined ? "Turn finished" : `Turn took ${formatMs(line.durationMs)}`}
 					sessionId={sessionId}
 					uuid={line.uuid}
 				>
@@ -173,7 +173,7 @@ export function SystemBanner({line, sessionId}: {line: SystemLine; sessionId?: s
 					{line.cron !== undefined && (
 						<span
 							className="font-mono"
-							{...(line.taskId !== undefined ? {title: `task ${line.taskId}`} : {})}
+							{...(line.taskId === undefined ? {} : {title: `task ${line.taskId}`})}
 						>
 							{line.cron}
 						</span>
@@ -208,7 +208,7 @@ export function SystemBanner({line, sessionId}: {line: SystemLine; sessionId?: s
 			return (
 				<Banner
 					icon={<Laptop className="h-3.5 w-3.5" />}
-					label={line.url !== undefined ? "Remote Control connected" : (line.content ?? "Remote Control")}
+					label={line.url === undefined ? (line.content ?? "Remote Control") : "Remote Control connected"}
 					sessionId={sessionId}
 					uuid={line.uuid}
 				>

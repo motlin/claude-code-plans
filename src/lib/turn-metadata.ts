@@ -85,12 +85,12 @@ function modelMismatchDetail(mismatch: MessageSessionLine["modelMismatch"]): str
  */
 export function assistantTurnDetails(line: MessageSessionLine, {verbose}: {verbose: boolean}): string[] {
 	const advisor =
-		line.advisorModel !== undefined ? (formatModelName(line.advisorModel) ?? line.advisorModel) : undefined;
+		line.advisorModel === undefined ? undefined : (formatModelName(line.advisorModel) ?? line.advisorModel);
 	return [
 		usageDetail(line.usage),
 		line.stopReason === "max_tokens" ? "Truncated at max tokens" : undefined,
-		line.perTurnEffort !== undefined ? `${line.perTurnEffort} effort` : undefined,
-		advisor !== undefined ? `advisor ${advisor}` : undefined,
+		line.perTurnEffort === undefined ? undefined : `${line.perTurnEffort} effort`,
+		advisor === undefined ? undefined : `advisor ${advisor}`,
 		modelMismatchDetail(line.modelMismatch),
 		verbose ? droppedThinkingDetail(line.message?.input_transformations) : undefined,
 		safeguardDetail(line.message?.safeguard_results),
