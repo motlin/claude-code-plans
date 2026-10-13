@@ -177,4 +177,17 @@ describe("AppShellFallback", () => {
 			sessionSkeleton: null,
 		});
 	});
+
+	it("lays the home skeleton in the same tile shell and title-bar spacer as the loaded home page, so the greeting does not jump", () => {
+		const host = document.createElement("div");
+		host.innerHTML = renderToStaticMarkup(<AppShellFallback pathname="/" />);
+		const home = host.querySelector('[data-testid="home-skeleton"]');
+		const shell = home?.parentElement?.parentElement;
+
+		expect({
+			shell: shell?.hasAttribute("data-route-tile-shell"),
+			spacer: shell?.firstElementChild?.className,
+			homeAfterSpacer: shell?.firstElementChild?.nextElementSibling?.firstElementChild === home,
+		}).toStrictEqual({shell: true, spacer: "h-9 shrink-0 sm:h-8", homeAfterSpacer: true});
+	});
 });

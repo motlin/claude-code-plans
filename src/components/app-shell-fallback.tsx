@@ -169,7 +169,13 @@ export function AppShellFallback({pathname = ""}: {pathname?: string}) {
 
 			<div className="flex min-w-0 flex-1 flex-col bg-surface-2">
 				{pathname === "/" ? (
-					<HomeSkeleton />
+					// The loaded home page's tile shell and title-bar spacer, so the greeting does not jump on hydration.
+					<div data-route-tile-shell="home">
+						<div aria-hidden className="h-9 shrink-0 sm:h-8" />
+						<div className="min-h-0 flex-1">
+							<HomeSkeleton />
+						</div>
+					</div>
 				) : (
 					<>
 						{/* The in-app session skeleton, in the tile shell it paints in, so both loads look alike. */}
