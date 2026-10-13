@@ -65,7 +65,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
         run: |
-          pnpm install
+          pnpm install --no-frozen-lockfile
           CHECK_STATUS=0
           pnpm exec vp run check --fix || CHECK_STATUS=$?
 
