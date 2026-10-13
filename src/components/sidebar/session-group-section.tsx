@@ -3,6 +3,7 @@ import {useQueryClient} from "@tanstack/react-query";
 import {ChevronRight} from "lucide-react";
 import {Fragment, useEffect, useLayoutEffect, useRef, useState, type ReactNode} from "react";
 
+import {useSecondaryAiTitle} from "../../hooks/use-secondary-ai-title";
 import type {SidebarDragRowProps} from "../../hooks/use-sidebar-drag";
 import {startSessionSwitchJourney} from "../../lib/perf/field-journeys";
 import type {GroupAppearance} from "../../lib/group-appearance";
@@ -18,7 +19,6 @@ import {
 } from "../../lib/sidebar-store";
 import {ArchivedBadge} from "../archived-badge";
 import {SessionActionsMenu, SessionRowTitle} from "../session-actions-menu";
-import {useSecondaryAiTitle} from "../session-ai-title-line";
 import {SessionHoverCard} from "../session-hover-card";
 import {SessionRowStatusDot} from "../session-unread-control";
 import {Tooltip} from "../ui/tooltip";
