@@ -169,6 +169,7 @@ export function GoToFile({
 								const Icon = getFileIcon(name);
 								const selected = result === active;
 								return (
+									// oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/interactive-supports-focus -- an aria-activedescendant option: focus and arrow keys stay in the input that owns the list
 									<div
 										key={result.path}
 										id={`${baseId}-${result.path}`}

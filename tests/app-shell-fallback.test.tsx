@@ -44,7 +44,7 @@ function renderServerShell(): string {
 describe("server shell", () => {
 	it("paints the app frame instead of an empty body", () => {
 		const html = renderServerShell();
-		const body = html.slice(html.indexOf("<body>"));
+		const body = html.substring(html.indexOf("<body>"));
 
 		expect({
 			emptyBody: /<body>\s*<\/body>/.test(html),
@@ -63,7 +63,7 @@ describe("server shell", () => {
 
 	it("resolves the theme before first paint so the frame is never a white flash", () => {
 		const html = renderServerShell();
-		const head = html.slice(0, html.indexOf("<body>"));
+		const head = html.substring(0, html.indexOf("<body>"));
 
 		expect({
 			readsStoredTheme: head.includes('localStorage.getItem("theme")'),

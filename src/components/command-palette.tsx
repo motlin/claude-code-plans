@@ -1760,6 +1760,7 @@ function ModeSwitch({mode, onModeChange}: {mode: PaletteMode; onModeChange: (mod
 					{options.map((option) => {
 						const checked = option.value === mode;
 						return (
+							// oxlint-disable-next-line jsx-a11y/click-events-have-key-events -- a roving radio: the radiogroup handles the arrow keys
 							<span
 								key={option.value}
 								role="radio"

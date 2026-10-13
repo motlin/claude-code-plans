@@ -74,9 +74,11 @@ export function FileSearchResults({initialQuery, onClose, onOpen, onQueryChange}
 	const debouncedQuery = useDebouncedValue(query.trim(), DEBOUNCE_MILLISECONDS);
 	const rootsQuery = useQuery(fileSearchRootsQueryOptions);
 
-	useEffect(() => {
+	const [syncedInitialQuery, setSyncedInitialQuery] = useState(initialQuery);
+	if (initialQuery !== syncedInitialQuery) {
+		setSyncedInitialQuery(initialQuery);
 		setQuery(initialQuery);
-	}, [initialQuery]);
+	}
 
 	useEffect(() => {
 		const firstRoot = rootsQuery.data?.roots[0];

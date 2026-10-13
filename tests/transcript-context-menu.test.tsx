@@ -138,6 +138,14 @@ const ASSISTANT_ROWS = [
 	"Fork from here / Starts a new session, keeps this one",
 ];
 
+function recordingActions(calls: string[]): TranscriptActions {
+	return {
+		pinChapter: ({uuid}) => calls.push(`pin ${uuid}`),
+		forkFrom: ({uuid}) => calls.push(`fork ${uuid}`),
+		rewindTo: ({uuid}) => calls.push(`rewind ${uuid}`),
+	};
+}
+
 describe("transcript context menus", () => {
 	it("opens the assistant prose menu at upstream's width", () => {
 		const container = renderChat();
@@ -242,11 +250,7 @@ describe("transcript context menus", () => {
 
 	it("routes Pin, Fork and Rewind to the transcript actions with the message uuid", () => {
 		const calls: string[] = [];
-		const actions: TranscriptActions = {
-			pinChapter: ({uuid}) => calls.push(`pin ${uuid}`),
-			forkFrom: ({uuid}) => calls.push(`fork ${uuid}`),
-			rewindTo: ({uuid}) => calls.push(`rewind ${uuid}`),
-		};
+		const actions = recordingActions(calls);
 		const container = renderChat((chat) => (
 			<TranscriptActionsContext.Provider value={actions}>{chat}</TranscriptActionsContext.Provider>
 		));

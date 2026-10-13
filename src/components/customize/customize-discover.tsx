@@ -86,6 +86,7 @@ function AddButton({plugin}: {plugin: DiscoverPlugin}) {
 function Installs({count}: {count: number}) {
 	return (
 		<Tooltip content={formatExactInstalls(count)}>
+			{/* oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- focusable so keyboard users can open the exact-count tooltip */}
 			<span tabIndex={0} className="outline-none">
 				{formatInstallCount(count)} installs
 			</span>

@@ -158,6 +158,7 @@ function lastChainedRecord(file: string): Record<string, unknown> {
 		.split("\n")
 		.filter((line) => line.length > 0)
 		.map((line) => JSON.parse(line) as Record<string, unknown>);
+	// oxlint-disable-next-line unicorn/prefer-array-find -- findLast is not in the ES2022 lib
 	const last = records.filter((record) => typeof record["uuid"] === "string").at(-1);
 	if (last === undefined) throw new Error(`no chained record in ${file}`);
 	return last;

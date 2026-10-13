@@ -95,7 +95,7 @@ export default defineConfig({
 		},
 	},
 	lint: {
-		plugins: ["typescript", "unicorn", "oxc", "import", "react", "vitest", "promise", "node"],
+		plugins: ["typescript", "unicorn", "oxc", "import", "react", "vitest", "promise", "node", "jsx-a11y"],
 		jsPlugins: [
 			{
 				name: "vite-plus",
@@ -105,6 +105,7 @@ export default defineConfig({
 		categories: {
 			correctness: "error",
 			suspicious: "error",
+			perf: "error",
 		},
 		rules: {
 			"vite-plus/prefer-vite-plus-imports": "error",
@@ -165,6 +166,31 @@ export default defineConfig({
 			"unicorn/require-post-message-target-origin": "off",
 			// Its loops wait on flags that callbacks flip between awaits.
 			"no-unmodified-loop-condition": "off",
+			// Sequential awaits are deliberate: ordered file reads, DB writes and test steps that must not interleave.
+			"no-await-in-loop": "off",
+			// Spreading inside map is the immutable-update idiom here; the copies are small and short-lived.
+			"oxc/no-map-spread": "off",
+			// Index keys sit on static token, line and text lists that never reorder, where the index is the identity.
+			"react/no-array-index-key": "off",
+			// Markup mirrors claude.ai/code, which puts ARIA roles on divs and spans rather than swapping tags.
+			"jsx-a11y/prefer-tag-over-role": "off",
+			// role="list" on list-style:none lists restores the list semantics Safari VoiceOver drops.
+			"jsx-a11y/no-redundant-roles": "off",
+			// Pickers, search fields and dialogs focus their input on open, as upstream does.
+			"jsx-a11y/no-autofocus": "off",
+			// Base UI render props and expression children carry the label where the rule cannot see it; every finding was a labelled control.
+			"jsx-a11y/control-has-associated-label": "off",
+			// The upstream eslint-plugin-jsx-a11y recommended allowances: list markup may carry listbox and option roles.
+			"jsx-a11y/no-noninteractive-element-to-interactive-role": [
+				"error",
+				{
+					ul: ["listbox", "menu", "menubar", "radiogroup", "tablist", "tree", "treegrid"],
+					ol: ["listbox", "menu", "menubar", "radiogroup", "tablist", "tree", "treegrid"],
+					li: ["menuitem", "menuitemradio", "menuitemcheckbox", "option", "row", "tab", "treeitem"],
+					table: ["grid"],
+					td: ["gridcell"],
+				},
+			],
 		},
 		env: {
 			builtin: true,

@@ -63,6 +63,7 @@ function writeDismissed(sessionId: string): void {
 function useDismissed(sessionId: string): [boolean, () => void] {
 	const [dismissed, setDismissed] = useState(false);
 	useEffect(() => {
+		// oxlint-disable-next-line react/no-deriving-state-in-effects -- sessionStorage exists only on the client, so reading it during render would break hydration
 		setDismissed(readDismissed(sessionId));
 	}, [sessionId]);
 	const dismiss = useCallback(() => {

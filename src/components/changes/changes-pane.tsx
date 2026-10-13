@@ -64,6 +64,7 @@ type SessionDiffCommit = Extract<SessionDiffScopesResponse, {kind: "git"}>["comm
 const BRANCH_SCOPE = "branch";
 const UNCOMMITTED_SCOPE = "uncommitted";
 const NO_FINDINGS: readonly ReviewFinding[] = [];
+const noop = (): void => {};
 const NO_MESSAGE = "(no message)";
 
 function commitShaOf(scope: string): string | null {
@@ -629,11 +630,11 @@ export function ChangesPaneView({
 	onOpenFile,
 	fetchContext,
 	scope = BRANCH_SCOPE,
-	onSelectScope = () => {},
-	onCopyCommitSha = () => {},
+	onSelectScope = noop,
+	onCopyCommitSha = noop,
 	findings = NO_FINDINGS,
-	onFixFinding = () => {},
-	onDismissFinding = () => {},
+	onFixFinding = noop,
+	onDismissFinding = noop,
 	sessionId,
 }: ChangesPaneViewProps) {
 	const comments = useDiffComments(sessionId);

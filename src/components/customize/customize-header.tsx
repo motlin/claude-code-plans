@@ -1,7 +1,7 @@
 import {useQuery} from "@tanstack/react-query";
 import {Link} from "@tanstack/react-router";
 import {ArrowDownUp, Search, SlidersHorizontal, X} from "lucide-react";
-import {type ReactNode, useEffect, useState} from "react";
+import {type ReactNode, useState} from "react";
 import {customizeDiscoverQueryOptions} from "../../lib/api/customize";
 import {SegmentedControl} from "../settings/segmented-control";
 import {Menu, MenuContent, MenuLabel, MenuRadioGroup, MenuRadioItem, MenuTrigger} from "../ui/menu";
@@ -181,9 +181,11 @@ interface SearchFieldProps {
 function SearchField({placeholder, value, onChange}: SearchFieldProps) {
 	// Local draft keeps the caret stable while each keystroke updates `?q=`.
 	const [draft, setDraft] = useState(value);
-	useEffect(() => {
+	const [syncedValue, setSyncedValue] = useState(value);
+	if (value !== syncedValue) {
+		setSyncedValue(value);
 		setDraft(value);
-	}, [value]);
+	}
 
 	const change = (next: string) => {
 		setDraft(next);

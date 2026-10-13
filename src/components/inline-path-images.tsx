@@ -20,7 +20,7 @@ export function InlinePathImages({text, allowedRoots}: {text: string; allowedRoo
 					<a key={path} href={imageUrl} target="_blank" rel="noopener noreferrer" className="cursor-zoom-in">
 						<img
 							src={imageUrl}
-							alt={`Referenced image ${path}`}
+							alt={`Referenced file ${path}`}
 							className={SESSION_IMAGE_CLASS_NAME}
 							loading="lazy"
 							onError={hideFailedImage}

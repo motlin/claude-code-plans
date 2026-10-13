@@ -2,6 +2,8 @@ import {Popover} from "@base-ui/react/popover";
 import {Hand, X} from "lucide-react";
 import type {ReactNode} from "react";
 
+const HAND_ICON = <Hand aria-hidden="true" className="size-4 shrink-0" />;
+
 /**
  * A one-time tip popover, like claude.ai/code's accent CoachMark: an accent-filled
  * card with an arrow pointing at `anchor`, an icon, the message and a Dismiss X,
@@ -15,7 +17,7 @@ export function CoachMark({
 	title,
 	message,
 	action,
-	icon = <Hand aria-hidden="true" className="size-4 shrink-0" />,
+	icon = HAND_ICON,
 	side = "right",
 	onDismiss,
 	onClose,

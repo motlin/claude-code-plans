@@ -93,6 +93,7 @@ export function KeyboardShortcutsDialog() {
 						<div
 							role="region"
 							aria-label="Keyboard shortcuts"
+							// oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a scrollable region needs focus for keyboard scrolling
 							tabIndex={0}
 							className="-mx-6 -mb-6 min-h-0 flex-1 overflow-y-auto rounded-b-[inherit] px-6 pb-6 focus-visible:ring-2 focus-visible:ring-[var(--accent-100)] focus-visible:outline-none focus-visible:ring-inset"
 						>

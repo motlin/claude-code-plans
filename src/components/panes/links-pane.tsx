@@ -120,9 +120,11 @@ interface LinksPaneViewProps {
 	onIncludeToolsAndThinkingChange: (include: boolean) => void;
 }
 
+const NO_DEV_SERVERS: readonly DevServerLink[] = [];
+
 export function LinksPaneView({
 	display,
-	devServers = [],
+	devServers = NO_DEV_SERVERS,
 	unscannedRecordCount = 0,
 	includeToolsAndThinking,
 	onIncludeToolsAndThinkingChange,

@@ -129,7 +129,7 @@ describe("client-side image root filtering", () => {
 
 		expect(describeImages()).toStrictEqual([
 			{
-				alt: "Referenced image /tmp/test/images/alice+detail.png",
+				alt: "Referenced file /tmp/test/images/alice+detail.png",
 				anchorClassName: "cursor-zoom-in",
 				className: SESSION_IMAGE_CLASS_NAME,
 				href: "/api/image?path=%2Ftmp%2Ftest%2Fimages%2Falice%2Bdetail.png",
@@ -139,7 +139,7 @@ describe("client-side image root filtering", () => {
 				target: "_blank",
 			},
 			{
-				alt: "Referenced image /tmp/test/images/bob.gif",
+				alt: "Referenced file /tmp/test/images/bob.gif",
 				anchorClassName: "cursor-zoom-in",
 				className: SESSION_IMAGE_CLASS_NAME,
 				href: "/api/image?path=%2Ftmp%2Ftest%2Fimages%2Fbob.gif",
@@ -213,12 +213,12 @@ describe("SessionChat integration", () => {
 			articleText: [assistantText],
 			images: [
 				{
-					alt: "Session image",
+					alt: "Attachment",
 					className: SESSION_IMAGE_CLASS_NAME,
 					insideUserBubble: false,
 				},
 				{
-					alt: `Referenced image ${ALLOWED_ROOT}/alice.png`,
+					alt: `Referenced file ${ALLOWED_ROOT}/alice.png`,
 					className: SESSION_IMAGE_CLASS_NAME,
 					insideUserBubble: false,
 				},

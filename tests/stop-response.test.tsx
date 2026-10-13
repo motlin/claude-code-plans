@@ -17,10 +17,12 @@ afterEach(() => {
 
 type Interrupt = (sessionId: string, force: boolean) => Promise<void>;
 
+const noop = (): void => {};
+
 function Harness({
 	enabled,
 	interrupt,
-	onInterrupt = () => {},
+	onInterrupt = noop,
 	now,
 	withDialog = false,
 }: {

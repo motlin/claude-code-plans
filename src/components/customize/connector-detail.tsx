@@ -305,6 +305,7 @@ export function ToolPermissions({
 						Choose when Claude is allowed to use these tools. Rules are read from ~/.claude/settings.json.
 					</p>
 				</div>
+				{/* oxlint-disable-next-line jsx-a11y/label-has-associated-control -- wraps the Base UI Switch, which the rule cannot see as a control */}
 				<label className="flex shrink-0 items-center gap-2 text-footnote text-secondary">
 					Edit
 					<Switch

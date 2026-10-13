@@ -298,6 +298,7 @@ export function MenuItem({
 export function MenuHotkey({accelerator, onSelect}: {accelerator: string; onSelect: () => void}) {
 	const close = useContext(MenuCloseContext);
 	return (
+		// oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- a hidden node the menu accelerator handler clicks; it never receives input itself
 		<span
 			hidden
 			data-accelerator={accelerator.toLowerCase()}

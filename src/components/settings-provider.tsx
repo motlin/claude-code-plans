@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useState} from "react";
+import {useCallback, useEffect, useMemo, useState} from "react";
 
 import {appearanceCssVars} from "../lib/appearance";
 import {codeFontFamily} from "../lib/code-themes";
@@ -105,9 +105,10 @@ export function SettingsProvider({children}: {children: React.ReactNode}) {
 		setSettings(DEFAULTS);
 	}, []);
 
-	return (
-		<SettingsContext.Provider value={{settings, loaded, setSetting, setVerbosity, resetAll}}>
-			{children}
-		</SettingsContext.Provider>
+	const value = useMemo(
+		() => ({settings, loaded, setSetting, setVerbosity, resetAll}),
+		[settings, loaded, setSetting, setVerbosity, resetAll],
 	);
+
+	return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
 }

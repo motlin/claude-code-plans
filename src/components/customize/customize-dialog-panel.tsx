@@ -1,4 +1,4 @@
-import {useState} from "react";
+import {useCallback, useMemo, useState} from "react";
 import {customizePluginFileQueryOptions, customizeSkillFileQueryOptions} from "../../lib/api/customize";
 import {type CustomizeLocation, type CustomizeSection, customizeHash} from "../../lib/settings-hash";
 import {ContentsViewer} from "./contents-viewer";
@@ -54,19 +54,22 @@ export default function CustomizeDialogPanel({location, onNavigate}: CustomizeDi
 	const [searches, setSearches] = useState<Partial<Record<CustomizeSection, CustomizeSearch>>>({});
 	const section = CUSTOMIZE_SECTIONS.find((config) => config.id === location.section) ?? CUSTOMIZE_SECTIONS[0];
 
-	const patchSearch = (id: CustomizeSection, patch: CustomizeSearch) => {
+	const patchSearch = useCallback((id: CustomizeSection, patch: CustomizeSearch) => {
 		setSearches((previous) => ({...previous, [id]: dropEmpty({...previous[id], ...patch, view: undefined})}));
-	};
+	}, []);
 
 	const current = customizeHash({...location, file: null});
-	const navigator: CustomizeNavigator = {
-		href: (target) => `#${targetHash(target)}`,
-		isCurrent: (target) => targetHash(target, false) === current,
-		go: (target) => {
-			if (target.kind === "list" && target.search !== undefined) patchSearch(target.section, target.search);
-			onNavigate(targetHash(target), false);
-		},
-	};
+	const navigator = useMemo(
+		(): CustomizeNavigator => ({
+			href: (target) => `#${targetHash(target)}`,
+			isCurrent: (target) => targetHash(target, false) === current,
+			go: (target) => {
+				if (target.kind === "list" && target.search !== undefined) patchSearch(target.section, target.search);
+				onNavigate(targetHash(target), false);
+			},
+		}),
+		[current, onNavigate, patchSearch],
+	);
 
 	const search: CustomizeSearch = {
 		...searches[section.id],

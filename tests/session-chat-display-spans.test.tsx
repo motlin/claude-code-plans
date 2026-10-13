@@ -36,6 +36,7 @@ class FakeUtterance {
 const VOICE = {name: "Samantha", lang: "en-US", voiceURI: "Samantha", localService: true, default: true};
 const forkFrom = vi.fn<NonNullable<TranscriptActions["forkFrom"]>>();
 const pinChapter = vi.fn<NonNullable<TranscriptActions["pinChapter"]>>();
+const transcriptActions: TranscriptActions = {forkFrom, pinChapter};
 const speak = vi.fn<SpeechSynthesis["speak"]>();
 const cancel = vi.fn<SpeechSynthesis["cancel"]>();
 
@@ -107,7 +108,7 @@ function notification(uuid: string) {
 function chat(records: unknown[], options: Partial<SessionChatProps> = {}) {
 	const {lines, toolResultMap} = processTranscript(records);
 	return (
-		<TranscriptActionsContext.Provider value={{forkFrom, pinChapter}}>
+		<TranscriptActionsContext.Provider value={transcriptActions}>
 			<SessionChat
 				sessionId="example-main"
 				lines={lines}

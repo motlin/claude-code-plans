@@ -383,6 +383,7 @@ function InlineMarkdown({text}: {text: string}) {
 		return renderMarkdownWithHighlighting(text, getHighlighterSync(), {codeThemes});
 	}, [text, codeThemes, highlighterVersion]);
 	return (
+		// oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- delegates clicks from the rendered links and copy buttons inside it, which are keyboard-reachable themselves
 		<div
 			className={markdownStyles["markdown"]}
 			onClick={handleCodeCopyClick}

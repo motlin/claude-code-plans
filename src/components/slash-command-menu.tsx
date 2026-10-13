@@ -57,6 +57,7 @@ export function SlashCommandMenu({
 	}, [highlighted, commands]);
 
 	return (
+		// oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- cancels mousedown so the composer textarea keeps focus
 		<div
 			className={POPUP_CLASS}
 			onMouseDown={(e) => {

@@ -88,6 +88,7 @@ export function MarkdownArticle(props: MarkdownArticleProps) {
 	};
 
 	return (
+		// oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- delegates clicks from the rendered links and copy buttons inside it, which are keyboard-reachable themselves
 		<article
 			className={styles["markdown"]}
 			onClick={handleClick}

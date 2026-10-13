@@ -30,6 +30,8 @@ import {useSidebarSelection} from "./selection-context";
 import type {SidebarSessionRow} from "./sidebar-session-row";
 import {ROVING_ITEM_PROPS} from "./use-roving-focus";
 
+const NO_FAMILY_HEAD_IDS: readonly string[] = [];
+
 /** The section's unarchived sessions, family members included, for Archive all. */
 function archivableIds(group: SessionGroup<SidebarSessionRow>): string[] {
 	const rows = group.rows.flatMap((row) => [row, ...(group.nested.get(row.sessionId) ?? [])]);
@@ -49,7 +51,7 @@ export function GroupSection({
 	onShowLess,
 	dragRowProps,
 	pinnedIds,
-	familyHeadIds = [],
+	familyHeadIds = NO_FAMILY_HEAD_IDS,
 	headerDragProps,
 	headerRef,
 	rowsRef,

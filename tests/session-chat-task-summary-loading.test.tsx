@@ -28,6 +28,7 @@ class FakeResizeObserver {
 }
 const forkFrom = vi.fn<NonNullable<TranscriptActions["forkFrom"]>>();
 const pinChapter = vi.fn<NonNullable<TranscriptActions["pinChapter"]>>();
+const transcriptActions: TranscriptActions = {forkFrom, pinChapter};
 
 beforeEach(() => {
 	vi.stubGlobal("ResizeObserver", FakeResizeObserver);
@@ -55,7 +56,7 @@ function text(uuid: string, value: string) {
 function chat(records: unknown[]) {
 	const {lines, toolResultMap} = processTranscript(records);
 	return (
-		<TranscriptActionsContext.Provider value={{forkFrom, pinChapter}}>
+		<TranscriptActionsContext.Provider value={transcriptActions}>
 			<SessionChat
 				sessionId="example-main"
 				lines={lines}

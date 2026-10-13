@@ -204,6 +204,7 @@ export function PaletteRowActionsCard({
 	const bucket = relativeBucket(Date.parse(session.mtime), Date.now());
 
 	return (
+		// oxlint-disable-next-line jsx-a11y/interactive-supports-focus -- focus lives on its menu items, which take it programmatically
 		<div
 			ref={menuRef}
 			role="menu"
@@ -228,6 +229,7 @@ export function PaletteRowActionsCard({
 			<div className="min-h-0 flex-1 overflow-y-auto p-1 pt-0">
 				<div role="separator" className="mx-2.5 my-1 h-px bg-border" />
 				{items.map((item, index) => (
+					// oxlint-disable-next-line jsx-a11y/click-events-have-key-events -- the menu container handles the arrow, number and Enter keys
 					<div
 						key={item.id}
 						role="menuitem"

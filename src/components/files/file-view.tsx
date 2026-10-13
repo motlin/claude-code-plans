@@ -498,6 +498,7 @@ export function FileView({
 		if (data.content === "") return <ViewerMessage title="This file is empty." />;
 		if (markdown && !showSource) {
 			return (
+				// oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- delegates clicks from the rendered links inside it, which are keyboard-reachable themselves
 				<div className="p-4" onClick={openSiblingLink}>
 					<div className="mx-auto max-w-[860px]">
 						{onOpenFile === undefined ? (
@@ -526,6 +527,7 @@ export function FileView({
 
 	const canToggleSource = markdown && file.data?.kind === "text" && !edit.editing;
 	return (
+		// oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- catches the editor and find shortcuts bubbling up from the focused pane content
 		<div
 			className="flex min-h-0 flex-1 flex-col"
 			onKeyDown={(event) => {

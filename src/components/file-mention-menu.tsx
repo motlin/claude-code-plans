@@ -44,6 +44,7 @@ export function FileMentionMenu({
 	}, [highlighted, entries]);
 
 	return (
+		// oxlint-disable-next-line jsx-a11y/interactive-supports-focus -- the composer textarea keeps focus and drives the list through aria-activedescendant
 		<div
 			ref={listRef}
 			id={id}
@@ -58,6 +59,7 @@ export function FileMentionMenu({
 				const slash = entry.relPath.lastIndexOf("/");
 				const dirname = slash === -1 ? "" : entry.relPath.slice(0, slash);
 				return (
+					// oxlint-disable-next-line jsx-a11y/interactive-supports-focus -- an aria-activedescendant option: focus and arrow keys stay in the input that owns the list
 					<div
 						key={entry.relPath}
 						id={fileMentionOptionId(id, index)}

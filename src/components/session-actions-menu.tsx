@@ -1,6 +1,15 @@
 import {useQuery} from "@tanstack/react-query";
 import {EllipsisVertical} from "lucide-react";
-import {createContext, type ReactNode, useCallback, useContext, useRef, useState, useSyncExternalStore} from "react";
+import {
+	createContext,
+	type ReactNode,
+	useCallback,
+	useContext,
+	useMemo,
+	useRef,
+	useState,
+	useSyncExternalStore,
+} from "react";
 
 import {herdrPanesQueryOptions} from "../lib/api/herdr";
 import {sessionOpenInQueryOptions, type SessionListItem} from "../lib/api/sessions";
@@ -418,18 +427,21 @@ export function SessionActionsMenu({
 						focusRowAfterClose.current = true;
 					},
 				};
+	const requestNewGroup = newGroupAfterClose.requestRename;
+	const rowRename = useMemo(
+		() => ({
+			rename,
+			requestRename,
+			requestNewGroup: () => {
+				newGroupIds.current = null;
+				requestNewGroup();
+			},
+		}),
+		[rename, requestRename, requestNewGroup],
+	);
 	const menuBody = <RowMenuBody session={session} pinnedRow={pinnedRow} requestBulkNewGroup={requestBulkNewGroup} />;
 	return (
-		<RowRenameContext.Provider
-			value={{
-				rename,
-				requestRename,
-				requestNewGroup: () => {
-					newGroupIds.current = null;
-					newGroupAfterClose.requestRename();
-				},
-			}}
-		>
+		<RowRenameContext.Provider value={rowRename}>
 			<div ref={rowRef} data-session-actions="" className={`group/session-row relative ${className ?? ""}`}>
 				<ContextMenu onOpenChangeComplete={onOpenChangeComplete}>
 					<ContextMenuTrigger>{children}</ContextMenuTrigger>

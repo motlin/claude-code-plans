@@ -80,6 +80,24 @@ interface TreePresentation {
 	indexedAgentIds: Set<string>;
 }
 
+/** The keyboard-reachable chevron; the row's own click is a pointer shortcut for it. */
+function ExpandToggle({expanded, onToggle}: {expanded: boolean; onToggle: (next: boolean) => void}) {
+	return (
+		<button
+			type="button"
+			aria-expanded={expanded}
+			aria-label={expanded ? "Collapse" : "Expand"}
+			className="flex w-4 shrink-0 cursor-pointer text-t6"
+			onClick={(event) => {
+				event.stopPropagation();
+				onToggle(!expanded);
+			}}
+		>
+			{expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+		</button>
+	);
+}
+
 function TreeNode({node, presentation}: {node: SubagentTreeNode; presentation: TreePresentation}) {
 	const hasChildren = node.children.length > 0;
 	const [expanded, setExpanded] = useState(true);
@@ -89,15 +107,18 @@ function TreeNode({node, presentation}: {node: SubagentTreeNode; presentation: T
 
 	return (
 		<div>
+			{/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- a pointer shortcut for the chevron button, which is the keyboard control */}
 			<div
 				className={`group flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1 hover:bg-surface-0/50 ${liveStatus === "ended" ? "opacity-60" : ""}`}
 				onClick={() => {
 					if (hasChildren) setExpanded((current) => !current);
 				}}
 			>
-				<span className="w-4 shrink-0 text-t6">
-					{hasChildren ? expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} /> : null}
-				</span>
+				{hasChildren ? (
+					<ExpandToggle expanded={expanded} onToggle={setExpanded} />
+				) : (
+					<span className="w-4 shrink-0" />
+				)}
 				<SubagentTypeBadges
 					agentType={node.agent.agentType}
 					attributionAgent={node.agent.attributionAgent}
@@ -144,15 +165,14 @@ function ParallelGroupNode({group, presentation}: {group: ParallelSubagentGroup;
 
 	return (
 		<div>
+			{/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- a pointer shortcut for the chevron button, which is the keyboard control */}
 			<div
 				className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1 hover:bg-surface-0/50"
 				onClick={() => {
 					setExpanded((current) => !current);
 				}}
 			>
-				<span className="w-4 shrink-0 text-t6">
-					{expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-				</span>
+				<ExpandToggle expanded={expanded} onToggle={setExpanded} />
 				<span className="shrink-0 rounded bg-accent-000/12 px-1.5 py-0.5 text-[10px] font-medium text-accent-100">
 					parallel &times;{group.children.length}
 				</span>

@@ -608,6 +608,7 @@ export function Composer({
 					e.target.value = "";
 				}}
 			/>
+			{/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- a pointer shortcut that focuses the textarea, which is keyboard-reachable itself */}
 			<div
 				data-composer-card
 				className={CARD_CLASS}

@@ -1,4 +1,4 @@
-import {type ReactNode, useContext, useEffect, useId, useRef} from "react";
+import {type ReactNode, useContext, useEffect, useId, useMemo, useRef} from "react";
 import {SettingsFlashContext, SettingsRowContext} from "./settings-row-context";
 
 /*
@@ -37,13 +37,14 @@ export function SettingsRow({slug, title, description, children, footnote, class
 	const flash = useContext(SettingsFlashContext);
 	const flashing = flash?.row === slug;
 	const rowRef = useRef<HTMLDivElement>(null);
+	const rowIds = useMemo(() => ({titleId, descriptionId}), [titleId, descriptionId]);
 
 	useEffect(() => {
 		if (flashing) rowRef.current?.scrollIntoView({block: "center", behavior: "smooth"});
 	}, [flash, flashing]);
 
 	return (
-		<SettingsRowContext.Provider value={{titleId, descriptionId}}>
+		<SettingsRowContext.Provider value={rowIds}>
 			<div
 				role="group"
 				aria-labelledby={titleId}

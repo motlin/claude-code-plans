@@ -275,6 +275,7 @@ function AnswerForm({
 								</button>
 							);
 						})}
+						{/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- a pointer shortcut for the Other radio and textarea inside it, which are keyboard-reachable themselves */}
 						<div
 							className={`flex w-full items-center gap-g6 text-left cursor-text ${
 								draft.useOther ? "bg-t2" : "hover:bg-t1"

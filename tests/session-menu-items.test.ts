@@ -177,8 +177,8 @@ describe("getSessionMenuItems", () => {
 	});
 
 	it("never offers Share or Delete", () => {
-		const cloudOrDestructive: readonly string[] = ["share", "delete"];
-		expect(SessionMenuItemIdSchema.options.filter((id) => cloudOrDestructive.includes(id))).toEqual([]);
+		const cloudOrDestructive: ReadonlySet<string> = new Set(["share", "delete"]);
+		expect(SessionMenuItemIdSchema.options.filter((id) => cloudOrDestructive.has(id))).toEqual([]);
 	});
 
 	it("drops Pin and read state from the header menu", () => {

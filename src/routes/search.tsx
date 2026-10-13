@@ -268,6 +268,7 @@ function UnifiedResults({q, type}: {q: string; type: Exclude<UnifiedSearchType, 
 				className="mt-2"
 			>
 				{items?.map((item, index) => (
+					// oxlint-disable-next-line jsx-a11y/click-events-have-key-events -- an aria-activedescendant option: focus and arrow keys stay in the search input
 					<li
 						key={`${item.kind}:${item.id}`}
 						id={optionId(item)}

@@ -155,6 +155,7 @@ export function Tooltip({
 			: STACKED_TOOLTIP_CLASS;
 
 	return (
+		// oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- closes the tooltip on click; focus and blur already open and close it from the keyboard
 		<span
 			ref={anchorRef}
 			className={className ? `relative inline-flex ${className}` : "relative inline-flex"}

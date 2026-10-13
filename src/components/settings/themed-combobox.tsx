@@ -152,6 +152,7 @@ export function ThemedCombobox<T extends string>({
 							filtered.map((option, index) => {
 								const selected = option.value === value;
 								return (
+									// oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/interactive-supports-focus -- an aria-activedescendant option: focus and arrow keys stay in the input that owns the list
 									<div
 										key={option.value}
 										id={`${baseId}-${option.value}`}

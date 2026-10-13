@@ -173,6 +173,7 @@ function useModeExpansion(key: string): [boolean, () => void] {
 
 const autoScrolledLocations = hmrPersist("autoScrolledLocations", () => new Set<string>());
 const EMPTY_IMAGE_ROOTS: readonly string[] = [];
+const NO_SUBAGENTS: Subagent[] = [];
 const EMPTY_SLASH_COMMANDS: readonly SlashCommand[] = [];
 const END_FOLLOW_THRESHOLD_PIXELS = 32;
 
@@ -406,7 +407,7 @@ export const SessionChat = React.memo(function SessionChat({
 	lines,
 	toolResultMap,
 	allowedImageRoots = EMPTY_IMAGE_ROOTS,
-	subagents = [],
+	subagents = NO_SUBAGENTS,
 	showThinking = false,
 	showTools = true,
 	showPassedHooks = false,
@@ -2751,12 +2752,14 @@ function VirtualizedSessionEntries({
 				const index = startIndex + offset;
 				const isLast = index === entries.length - 1;
 				return (
+					// oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- ARIA feed articles take focus and move it with the arrow keys
 					<div
 						key={entry.key}
 						role="article"
 						aria-label={`Message ${index + 1}`}
 						aria-posinset={index + 1}
 						aria-setsize={entries.length}
+						// oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- ARIA feed articles are focusable
 						tabIndex={isLast ? 0 : -1}
 						onKeyDown={(event) => {
 							focusNeighbour(event, index);
@@ -3639,7 +3642,7 @@ function renderUserContentBlocks(
 				<div key={`img-${i}`} className="relative inline-block">
 					<img
 						src={`data:${block.source.media_type};base64,${block.source.data}`}
-						alt="Session image"
+						alt="Attachment"
 						className={SESSION_IMAGE_CLASS_NAME}
 					/>
 					<DebugLink sessionId={sessionId} uuid={line.uuid} className="absolute top-1 right-1" />
@@ -4055,7 +4058,7 @@ function ContentBlock({
 			<div className="relative inline-block">
 				<img
 					src={`data:${block.source.media_type};base64,${block.source.data}`}
-					alt="Session image"
+					alt="Attachment"
 					className="max-w-full max-h-96 rounded-lg border border-border shadow-sm"
 				/>
 				<DebugLink sessionId={sessionId} uuid={line.uuid} className="absolute top-1 right-1" />
@@ -4629,6 +4632,7 @@ function ToolCallSummary({
 	);
 	// While a call is in flight, upstream names the group by that call's
 	// progressive label instead of the tally.
+	// oxlint-disable-next-line unicorn/prefer-array-find -- findLast is not in the ES2022 lib
 	const pendingCall = displayCalls.filter(isPendingToolCall).at(-1);
 	const permissionWaitId = useContext(PermissionWaitContext);
 	const runningText =

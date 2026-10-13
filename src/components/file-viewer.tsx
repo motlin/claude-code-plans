@@ -172,20 +172,21 @@ export function FileViewer({
 				data-highlighted={isHighlighted ? "true" : undefined}
 				className={`flex min-h-5 scroll-mt-16 ${isHighlighted ? "bg-accent-100/15" : ""}`}
 			>
-				<a
-					href={`#${lineId}`}
-					aria-current={isHighlighted && lineNumber === selection.start ? "location" : undefined}
-					aria-label={`Go to line ${lineNumber}`}
-					data-find-ignore=""
-					className="w-14 shrink-0 select-none border-r border-strong pr-3 text-right text-t6 hover:text-accent-100"
-					onClick={(event) => {
-						event.preventDefault();
-						selectLine(lineNumber);
-					}}
-					role="cell"
-				>
-					{lineNumber}
-				</a>
+				<div role="cell" className="w-14 shrink-0 select-none border-r border-strong pr-3 text-right">
+					<a
+						href={`#${lineId}`}
+						aria-current={isHighlighted && lineNumber === selection.start ? "location" : undefined}
+						aria-label={`Go to line ${lineNumber}`}
+						data-find-ignore=""
+						className="text-t6 hover:text-accent-100"
+						onClick={(event) => {
+							event.preventDefault();
+							selectLine(lineNumber);
+						}}
+					>
+						{lineNumber}
+					</a>
+				</div>
 				<code
 					className={`block min-w-0 flex-1 px-4 text-primary ${
 						wrap ? "whitespace-pre-wrap break-words" : "whitespace-pre"

@@ -1,4 +1,4 @@
-import {useEffect, useState} from "react";
+import {useEffect, useMemo, useState} from "react";
 
 import {type Theme, ThemeProviderContext} from "./theme-context";
 
@@ -43,17 +43,16 @@ export function ThemeProvider({
 		return undefined;
 	}, [theme]);
 
-	return (
-		<ThemeProviderContext.Provider
-			value={{
-				theme,
-				setTheme: (t: Theme) => {
-					localStorage.setItem(storageKey, t);
-					setTheme(t);
-				},
-			}}
-		>
-			{children}
-		</ThemeProviderContext.Provider>
+	const value = useMemo(
+		() => ({
+			theme,
+			setTheme: (t: Theme) => {
+				localStorage.setItem(storageKey, t);
+				setTheme(t);
+			},
+		}),
+		[theme, storageKey],
 	);
+
+	return <ThemeProviderContext.Provider value={value}>{children}</ThemeProviderContext.Provider>;
 }

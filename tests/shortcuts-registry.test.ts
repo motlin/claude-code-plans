@@ -3,7 +3,7 @@ import {describe, expect, it} from "vite-plus/test";
 import {bindingsFor} from "../src/lib/shortcuts/match";
 import {SHORTCUT_IDS, SHORTCUTS, type Binding, bindingToKeys} from "../src/lib/shortcuts/registry";
 
-const BROWSER_RESERVED = ["l", "t", "w", "n"];
+const BROWSER_RESERVED = new Set(["l", "t", "w", "n"]);
 
 function chord(binding: Binding): string {
 	return bindingToKeys(binding);
@@ -24,7 +24,7 @@ describe("shortcut registry", () => {
 			SHORTCUTS[id].bindings
 				.filter(
 					(b) =>
-						BROWSER_RESERVED.includes(b.key) &&
+						BROWSER_RESERVED.has(b.key) &&
 						b.modifiers.length === 1 &&
 						(b.modifiers[0] === "cmd" || (b.modifiers[0] === "ctrl" && b.platform !== "mac")),
 				)

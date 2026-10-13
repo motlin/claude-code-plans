@@ -232,7 +232,9 @@ export function SessionGroups({
 	) : null;
 
 	return (
+		// oxlint-disable-next-line react/jsx-no-constructed-context-values -- built after the loading early return, where hooks cannot run, from selection state that changes whenever the rows re-render anyway
 		<SidebarSelectionContext.Provider value={selectionApi}>
+			{/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- the roving-focus container handles arrow keys for the rows inside it */}
 			<div ref={roving.ref} onFocus={roving.onFocus} onKeyDown={roving.onKeyDown} className="contents">
 				<PinnedSubList
 					rows={split.pinned}

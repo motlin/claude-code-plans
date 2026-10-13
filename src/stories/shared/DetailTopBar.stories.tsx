@@ -15,10 +15,10 @@ export const WithTitleAndPills: Story = {
 		children: (
 			<>
 				<h1 className="text-sm font-semibold">Session Details</h1>
-				<a href="#" className={pillStyles.primary}>
+				<a href="/sessions" className={pillStyles.primary}>
 					Primary
 				</a>
-				<a href="#" className={pillStyles.outline}>
+				<a href="/sessions" className={pillStyles.outline}>
 					Outline
 				</a>
 			</>
@@ -37,7 +37,7 @@ export const OverflowPills: Story = {
 		children: (
 			<>
 				{Array.from({length: 12}, (_, i) => (
-					<a key={i} href="#" className={pillStyles.primary}>
+					<a key={i} href="/sessions" className={pillStyles.primary}>
 						Pill {i + 1}
 					</a>
 				))}

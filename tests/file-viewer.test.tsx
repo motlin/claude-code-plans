@@ -40,7 +40,7 @@ describe("read-only file viewer", () => {
 		renderViewer(Array.from({length: 150}, (_, index) => `line ${index + 1}`).join("\n"));
 
 		expect({
-			currentGutter: screen.getByRole("cell", {name: "Go to line 142"}).getAttribute("aria-current"),
+			currentGutter: screen.getByRole("link", {name: "Go to line 142"}).getAttribute("aria-current"),
 			highlightedLineIds: highlightedLineIds(),
 			lineText: document.querySelector("#L142")?.textContent,
 			scrollCalls: scrollIntoView.mock.calls,
@@ -68,7 +68,7 @@ describe("read-only file viewer", () => {
 	it("updates the hash from an accessible gutter and preserves source whitespace safely", () => {
 		const {container} = renderViewer("<img src=x onerror=alert(1)>\n\tconst alice = 100;");
 
-		fireEvent.click(screen.getByRole("cell", {name: "Go to line 2"}));
+		fireEvent.click(screen.getByRole("link", {name: "Go to line 2"}));
 
 		expect({
 			hash: window.location.hash,
@@ -112,11 +112,11 @@ describe("read-only file viewer", () => {
 		fireEvent(window, new HashChangeEvent("hashchange"));
 		window.history.pushState(null, "", "#L1");
 		fireEvent(window, new HashChangeEvent("hashchange"));
-		fireEvent.click(screen.getByRole("cell", {name: "Go to line 1"}));
+		fireEvent.click(screen.getByRole("link", {name: "Go to line 1"}));
 
 		expect({
 			currentGutters: screen
-				.getAllByRole("cell", {name: /Go to line/})
+				.getAllByRole("link", {name: /Go to line/})
 				.map((element) => element.getAttribute("aria-current")),
 			hash: window.location.hash,
 			highlightedLineIds: highlightedLineIds(),

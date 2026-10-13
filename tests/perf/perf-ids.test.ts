@@ -17,8 +17,8 @@ describe("large perf tier", () => {
 
 	it("runs large-long and large-wide with PERF_LARGE=1", () => {
 		process.env["PERF_LARGE"] = "1";
-		const names = perfShapes().map((shape) => shape.name);
-		expect(LARGE_SHAPES.filter((name) => names.includes(name))).toStrictEqual([...LARGE_SHAPES]);
+		const names: ReadonlySet<string> = new Set(perfShapes().map((shape) => shape.name));
+		expect(LARGE_SHAPES.filter((name) => names.has(name))).toStrictEqual([...LARGE_SHAPES]);
 	});
 
 	it.each(LARGE_SHAPES)("has a ceiling for exactly the ids the perf tests ratchet for %s", (shape) => {

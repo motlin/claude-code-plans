@@ -89,6 +89,7 @@ export function ProjectPicker({projects, selected, onSelect}: ProjectPickerProps
 	return (
 		<Popover.Root open={open} onOpenChange={handleOpenChange}>
 			<Popover.Trigger
+				// oxlint-disable-next-line jsx-a11y/role-has-required-aria-props -- Base UI's Popover.Trigger sets aria-controls to the popup it opens
 				role="combobox"
 				aria-label="Select project"
 				aria-haspopup="dialog"
@@ -130,6 +131,7 @@ export function ProjectPicker({projects, selected, onSelect}: ProjectPickerProps
 								filtered.map((p, index) => {
 									const isSelected = p.id === selected?.id;
 									return (
+										// oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/interactive-supports-focus -- an aria-activedescendant option: focus and arrow keys stay in the input that owns the list
 										<div
 											key={p.id}
 											id={`${baseId}-${p.id}`}
