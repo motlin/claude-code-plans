@@ -13,6 +13,7 @@ import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing
 import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {preloadCustomizeDialogPanel} from "../src/components/settings/customize-dialog-panel-loader";
 import {DeferredSettingsDialog} from "../src/components/settings/settings-dialog-entry";
+import {loadSettingsDialog} from "../src/components/settings/settings-dialog-loader";
 import {SettingsProvider} from "../src/components/settings-provider";
 import {ThemeProvider} from "../src/components/theme-provider";
 import {ToastProvider} from "../src/components/toast";
@@ -90,6 +91,12 @@ function currentTabs(): string[] {
 	const nav = screen.getByRole("navigation", {name: "Settings"});
 	return [...nav.querySelectorAll('[aria-current="page"]')].map((tab) => tab.textContent);
 }
+
+// The modal's module loads on first open. Without this, the first test to open it pays for importing the Settings
+// module graph inside findBy's 1s window, which times out under heavy parallel load.
+beforeAll(async () => {
+	await loadSettingsDialog();
+});
 
 describe("SettingsDialog", () => {
 	beforeEach(() => {
