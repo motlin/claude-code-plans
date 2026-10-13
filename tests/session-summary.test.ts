@@ -2,7 +2,7 @@ import {writeFileSync, mkdirSync, rmSync} from "node:fs";
 import {join} from "node:path";
 import {tmpdir} from "node:os";
 import {openTestDb, type AppDb} from "../src/lib/db/connection";
-import {indexSessionsIndex} from "../src/lib/db/indexer";
+import {indexJsonlFile, indexSessionsIndex} from "../src/lib/db/indexer";
 import {
 	getActiveSessionEntries,
 	markSessionActive,
@@ -383,6 +383,19 @@ describe("buildSessionSummaryPayloadFromDb with the CLI session registry", () =>
 		expect(
 			Object.hasOwn(buildSessionSummaryPayloadFromDb(db.index, "session-test-100") ?? {}, "awaitingPermission"),
 		).toBe(false);
+	});
+
+	it("reads a stale busy registry status as idle once the transcript records the turn ending after it", async () => {
+		const turnEnd = (timestamp: string) =>
+			`${JSON.stringify({type: "system", subtype: "turn_duration", durationMs: 1000, timestamp, uuid: "u1", sessionId: "session-test-100"})}\n`;
+		await indexSession(turnEnd("1999-12-31T00:01:02.000Z"));
+		await indexJsonlFile(db.index, join(testDir, PROJECT_ID, "session-test-100.jsonl"), PROJECT_ID);
+		await registerProcess("busy", 946_598_402_000);
+		const ended = stateOf().state;
+		await indexSession(turnEnd("1999-12-31T00:00:01.000Z"));
+		await indexJsonlFile(db.index, join(testDir, PROJECT_ID, "session-test-100.jsonl"), PROJECT_ID);
+
+		expect([ended, stateOf().state]).toStrictEqual(["idle", "working"]);
 	});
 
 	it("lets a hook state written after the registry status win", async () => {

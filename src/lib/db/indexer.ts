@@ -45,6 +45,8 @@ import {asRecord, isRecord} from "../narrow";
 type IndexDb = BetterSQLite3Database<typeof schema>;
 
 const PLAN_PATH_RE = /\.claude\/plans\/([^/]+\.md)$/;
+/** System records the CLI writes once a turn has ended. */
+const TURN_END_SUBTYPES: ReadonlySet<unknown> = new Set(["turn_duration", "stop_hook_summary", "away_summary"]);
 const FILE_CONTENT_CACHE_PREFIX = "file-content:";
 const FILE_CONTENT_CLEANUP_BATCH_SIZE = 100;
 // Four bound values per row keep each insert below SQLite's historical 999-variable limit.
@@ -581,6 +583,8 @@ class SessionIndexState {
 	sessionGitBranch: string | null = null;
 	/** The newest record `timestamp`: the CLI touches a waiting session's file without appending, so mtime overstates activity. */
 	lastRecordAt: number | null = null;
+	/** The newest record that ends a turn: turn_duration, a stop-hook summary or an away summary. */
+	lastTurnEndAt: number | null = null;
 	readonly mcpToolNames = new Set<string>();
 	readonly artifactEvents = new ArtifactEventCollector();
 	readonly routines = new RoutineCollector();
@@ -705,6 +709,13 @@ class SessionIndexState {
 		if (typeof timestamp === "string") {
 			const recordAt = Date.parse(timestamp);
 			if (recordAt > (this.lastRecordAt ?? -Infinity)) this.lastRecordAt = recordAt;
+			if (
+				type === "system" &&
+				TURN_END_SUBTYPES.has(obj["subtype"]) &&
+				recordAt > (this.lastTurnEndAt ?? -Infinity)
+			) {
+				this.lastTurnEndAt = recordAt;
+			}
 		}
 
 		try {
@@ -872,6 +883,7 @@ async function persistSessionIndexState(
 		const updates: Record<string, unknown> = {
 			mtimeMs: activityAt,
 			messageCount,
+			turnEndedAt: state.lastTurnEndAt,
 		};
 		updates["filePath"] = filePath;
 		updates["projectId"] = project;
@@ -924,6 +936,7 @@ async function persistSessionIndexState(
 				createdAt: fileStat.birthtimeMs,
 				mtimeMs: activityAt,
 				filePath,
+				turnEndedAt: state.lastTurnEndAt,
 			})
 			.run();
 	}

@@ -47,6 +47,8 @@ export interface SessionEntry {
 	teamNames?: string[] | undefined;
 	forkedFromSessionId?: string | undefined;
 	pr?: SessionPrLink | undefined;
+	/** Epoch ms of the transcript's newest turn-ending record, from the index. */
+	turnEndedAt?: number | undefined;
 }
 
 export interface SessionProjectGroup {

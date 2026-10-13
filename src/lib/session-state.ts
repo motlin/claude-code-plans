@@ -86,8 +86,8 @@ const REGISTRY_ACTIVITY_STATES = {
 	idle: "idle",
 	busy: "working",
 	waiting: "waiting",
-	// A user `!` command runs in the session; nothing upstream-specific is known, so it reads as running.
-	shell: "working",
+	// A user `!` command or background shell at the prompt; upstream reports the worker idle.
+	shell: "idle",
 } as const satisfies Record<SessionRegistryStatus, ActivityState>;
 
 export interface MainStateSources {
@@ -95,6 +95,8 @@ export interface MainStateSources {
 	hook: {state: ActivityState; lastActivity: number} | null;
 	/** The live `~/.claude/sessions/<pid>.json` entry, or null when no live process runs the session. */
 	registry: {status: SessionRegistryStatus; statusUpdatedAt: number} | null;
+	/** When the transcript last recorded a turn ending (turn_duration, stop hooks, away summary), if ever. */
+	turnEndedAt?: number | null;
 }
 
 export interface MainStateResolution {
@@ -107,12 +109,14 @@ export interface MainStateResolution {
  * Whichever was written last wins (the registry on a tie, and over a hook entry
  * that never learned a state); neither means the session has ended.
  */
-export function resolveMainState({hook, registry}: MainStateSources): MainStateResolution {
+export function resolveMainState({hook, registry, turnEndedAt = null}: MainStateSources): MainStateResolution {
 	if (
 		registry !== null &&
 		(hook === null || hook.state === "unknown" || registry.statusUpdatedAt >= hook.lastActivity)
 	) {
-		return {state: REGISTRY_ACTIVITY_STATES[registry.status], source: "registry"};
+		// The CLI can leave "busy" behind after the turn it described has ended.
+		const stale = registry.status === "busy" && turnEndedAt !== null && turnEndedAt > registry.statusUpdatedAt;
+		return {state: stale ? "idle" : REGISTRY_ACTIVITY_STATES[registry.status], source: "registry"};
 	}
 	if (hook !== null) return {state: hook.state, source: "hook"};
 	return {state: "ended", source: null};

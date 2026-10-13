@@ -48,6 +48,8 @@ export const sessions = sqliteTable(
 		createdAt: integer("created_at").notNull(),
 		mtimeMs: integer("mtime_ms").notNull(),
 		filePath: text("file_path").notNull(),
+		/** The newest turn_duration, stop-hook summary or away summary record, which outdates a stale "busy" registry status. */
+		turnEndedAt: integer("turn_ended_at"),
 	},
 	(table) => [
 		index("sessions_project_id_idx").on(table.projectId),

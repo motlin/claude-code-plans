@@ -55,7 +55,8 @@ CREATE TABLE IF NOT EXISTS sessions (
   is_sidechain INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL,
   mtime_ms INTEGER NOT NULL,
-  file_path TEXT NOT NULL
+  file_path TEXT NOT NULL,
+  turn_ended_at INTEGER
 );
 CREATE INDEX IF NOT EXISTS sessions_project_id_idx ON sessions(project_id);
 CREATE INDEX IF NOT EXISTS sessions_mtime_desc_idx ON sessions(mtime_ms);

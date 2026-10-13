@@ -68,7 +68,11 @@ export function toSessionSummaryPayload(
 	const liveAgentCount = getLiveSubagentNodes().filter(
 		(node) => node.sessionId === entry.id && node.endedAt === null,
 	).length;
-	const main = resolveMainState({hook: activeSession, registry: registrySession});
+	const main = resolveMainState({
+		hook: activeSession,
+		registry: registrySession,
+		turnEndedAt: entry.turnEndedAt ?? null,
+	});
 	// Only live sessions can wait on a transcript-derived approval; a missing
 	// entry is an ended session, even if the approval survived a server restart.
 	// The registry knows the live status outright, and the CLI only flushes a
@@ -162,6 +166,7 @@ export function buildSessionSummaryPayloadFromDb(
 			isSidechain: row.isSidechain === 1,
 			forkedFromSessionId: row.forkedFromSessionId ?? undefined,
 			pr: getSessionPrLink(db, sessionId) ?? undefined,
+			turnEndedAt: row.turnEndedAt ?? undefined,
 		},
 		{
 			unseen: isSessionUnseen(db, sessionId),

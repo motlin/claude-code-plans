@@ -87,6 +87,7 @@ function rowToSessionEntry(row: SessionRow, projectNames: Map<string, string>): 
 		isSidechain: row.isSidechain === 1,
 		forkedFromSessionId: row.forkedFromSessionId ?? undefined,
 		pr: sessionPrLink(row),
+		turnEndedAt: row.turnEndedAt ?? undefined,
 	};
 }
 

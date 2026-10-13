@@ -370,7 +370,7 @@ describe("resolveMainState", () => {
 	});
 	const hook = (state: ActivityState, lastActivity: number) => ({state, lastActivity});
 
-	it("maps registry statuses to activity states when no hook entry exists", () => {
+	it("maps registry statuses to activity states when no hook entry exists, a `!` shell reading idle as upstream", () => {
 		expect(
 			(["idle", "busy", "waiting", "shell"] as const).map((status) =>
 				resolveMainState({hook: null, registry: registry(status, 1_000)}),
@@ -379,7 +379,21 @@ describe("resolveMainState", () => {
 			{state: "idle", source: "registry"},
 			{state: "working", source: "registry"},
 			{state: "waiting", source: "registry"},
+			{state: "idle", source: "registry"},
+		]);
+	});
+
+	it("reads a busy registry status as idle once the transcript's turn ended after it, as upstream does", () => {
+		expect([
+			resolveMainState({hook: null, registry: registry("busy", 1_000), turnEndedAt: 61_000}),
+			resolveMainState({hook: null, registry: registry("busy", 1_000), turnEndedAt: 500}),
+			resolveMainState({hook: null, registry: registry("busy", 1_000), turnEndedAt: null}),
+			resolveMainState({hook: null, registry: registry("waiting", 1_000), turnEndedAt: 61_000}),
+		]).toStrictEqual([
+			{state: "idle", source: "registry"},
 			{state: "working", source: "registry"},
+			{state: "working", source: "registry"},
+			{state: "waiting", source: "registry"},
 		]);
 	});
 
