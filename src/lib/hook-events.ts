@@ -129,6 +129,8 @@ export interface SessionSummaryPayload {
 	/** App-side archive flag (`archived_sessions`); the JSONL is never touched. */
 	archived: boolean;
 	state: SessionSummaryState;
+	/** Blocked on a tool permission prompt (a hook notification or the registry's `waitingFor`); absent otherwise. */
+	awaitingPermission?: true;
 	/** Display bucket from `resolveSessionBucket`. */
 	bucket: SessionBucket;
 	/** Running subagent nodes (`endedAt === null`) rooted at this session. */

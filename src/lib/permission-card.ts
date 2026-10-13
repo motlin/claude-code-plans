@@ -64,15 +64,26 @@ interface PermissionSignals {
 	sessionId: string;
 	notifications: readonly PermissionNotification[];
 	records: readonly unknown[];
+	/**
+	 * The session itself reports a permission wait (its registry `waitingFor`),
+	 * which still holds when the hook notification predates this server.
+	 */
+	awaitingPermission?: boolean;
 }
 
 /**
  * The session is blocked on a tool permission prompt: its last tool call is
  * unanswered and the hook state still holds a `permission_prompt`
- * notification. Upstream treats this as live however old the transcript is.
+ * notification, or the session reports the wait itself. Upstream treats this as live however old the transcript is.
  */
-export function isAwaitingPermission({sessionId, notifications, records}: PermissionSignals): boolean {
-	return findPermissionNotification(sessionId, notifications) !== undefined && findWaitingToolUse(records) !== null;
+export function isAwaitingPermission({
+	sessionId,
+	notifications,
+	records,
+	awaitingPermission = false,
+}: PermissionSignals): boolean {
+	const prompted = awaitingPermission || findPermissionNotification(sessionId, notifications) !== undefined;
+	return prompted && findWaitingToolUse(records) !== null;
 }
 
 /**
@@ -87,24 +98,34 @@ export function findPendingPermission({
 	isActive,
 	notifications,
 	records,
+	awaitingPermission = false,
 }: PermissionSignals & {isActive: boolean}): PendingPermission | null {
 	const notification = findPermissionNotification(sessionId, notifications);
-	if (notification === undefined) return null;
+	if (notification === undefined) {
+		// Without a notification only the waiting call can describe the prompt.
+		const waiting = awaitingPermission ? findWaitingToolUse(records) : null;
+		return waiting === null ? null : permissionFor(waiting.id, waiting);
+	}
 	const toolUse = isActive ? findLastPendingToolUse(records) : findWaitingToolUse(records);
 	if (toolUse === null) {
 		return isActive ? {notificationId: notification.id, title: notification.message, command: null} : null;
 	}
 	if (OWN_CARD_TOOLS.has(toolUse.name)) return null;
+	return permissionFor(notification.id, toolUse);
+}
+
+/** "Allow Claude to run <description>?" over the command for Bash, the tool name and its main input otherwise. */
+function permissionFor(notificationId: string, toolUse: PendingToolUse): PendingPermission {
 	if (toolUse.name === "Bash") {
 		const description = stringInput(toolUse.input, "description");
 		return {
-			notificationId: notification.id,
+			notificationId,
 			title: `Allow Claude to run ${description ?? "this command"}?`,
 			command: stringInput(toolUse.input, "command"),
 		};
 	}
 	return {
-		notificationId: notification.id,
+		notificationId,
 		title: `Allow Claude to use ${toolUse.name}?`,
 		command: primaryInput(toolUse.input),
 	};

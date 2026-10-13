@@ -74,7 +74,7 @@ import {
 	useClaudeEvents,
 	useComposerServerState,
 	useIsSessionActive,
-	useSessionSummaryState,
+	useCachedSessionSummary,
 	useStatusline,
 } from "../hooks/use-claude-events";
 import {
@@ -328,11 +328,19 @@ function SessionView({
 		...notificationsQueryOptions(),
 		select: (data) => data.notifications,
 	}).data;
+	const sessionSummary = useCachedSessionSummary(sessionId);
+	const sessionPermissionWait = sessionSummary?.awaitingPermission === true;
 	const awaitingPermission = useMemo(
-		() => isAwaitingPermission({sessionId, notifications: notifications ?? [], records: transcript.records}),
-		[sessionId, notifications, transcript.records],
+		() =>
+			isAwaitingPermission({
+				sessionId,
+				notifications: notifications ?? [],
+				records: transcript.records,
+				awaitingPermission: sessionPermissionWait,
+			}),
+		[sessionId, notifications, transcript.records, sessionPermissionWait],
 	);
-	const sessionSummaryState = useSessionSummaryState(sessionId);
+	const sessionSummaryState = sessionSummary?.state ?? null;
 	const hookQuestion = useQuery({
 		...pendingQuestionQueryOptions(sessionId),
 		// Only a waiting session can have one; SSE patches the cache either way.
@@ -481,9 +489,10 @@ function SessionView({
 						isActive,
 						notifications: notifications ?? [],
 						records: transcript.records,
+						awaitingPermission: sessionPermissionWait,
 					})
 				: null,
-		[isActive, dockedQuestion, sessionId, notifications, transcript.records],
+		[isActive, dockedQuestion, sessionId, notifications, transcript.records, sessionPermissionWait],
 	);
 	const answerPermission = useCallback(
 		async (decision: PermissionDecision) => sendHerdrPermissionDecision(sessionId, decision),

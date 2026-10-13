@@ -365,11 +365,24 @@ describe("buildSessionSummaryPayloadFromDb with the CLI session registry", () =>
 		);
 		await refreshSessionRegistry(dir, {isAlive: () => true, readStartTimes: async () => Promise.resolve(null)});
 
-		expect(stateOf()).toStrictEqual({
+		expect({
+			...stateOf(),
+			awaitingPermission: buildSessionSummaryPayloadFromDb(db.index, "session-test-100")?.awaitingPermission,
+		}).toStrictEqual({
 			state: "waiting",
 			bucket: "blocked",
 			blockedSince: "1999-12-31T00:00:02.000Z",
+			awaitingPermission: true,
 		});
+	});
+
+	it("flags no permission wait while the registry waits for input", async () => {
+		await indexSession();
+		await registerProcess("waiting", 946_598_402_000);
+
+		expect(
+			Object.hasOwn(buildSessionSummaryPayloadFromDb(db.index, "session-test-100") ?? {}, "awaitingPermission"),
+		).toBe(false);
 	});
 
 	it("lets a hook state written after the registry status win", async () => {

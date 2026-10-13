@@ -42,7 +42,7 @@ import {
 } from "../lib/domain-event-payload-schemas";
 import {toMdSlug} from "../lib/md-slug";
 import {getSubagentLifecycleKey, toSubagentSessionId} from "../lib/subagents";
-import {isLiveSessionState, type ActivityState, type SessionSummaryState} from "../lib/session-state";
+import {isLiveSessionState, type ActivityState} from "../lib/session-state";
 import type {Statusline} from "../lib/api/statusline";
 import type {ComposerServerState} from "../lib/composer-state";
 import type {Notification, NotificationsData} from "../lib/api/notifications";
@@ -548,24 +548,24 @@ export function useIsSessionActive(sessionId: string): boolean {
 	return activeSessions.has(sessionId);
 }
 
-function cachedSessionSummaryState(queryClient: QueryClient, sessionId: string): SessionSummaryState | null {
+function cachedSessionSummary(queryClient: QueryClient, sessionId: string): SessionSummaryPayload | undefined {
 	const recent = queryClient.getQueryData<{
 		pages: Array<{sessions: SessionSummaryPayload[]}>;
 	}>(recentSessionsInfiniteQueryOptions().queryKey);
 	const grouped = queryClient.getQueryData<Array<{sessions: SessionSummaryPayload[]}>>(
 		groupedSessionsQueryOptions().queryKey,
 	);
-	const summary =
+	return (
 		recent?.pages.flatMap((page) => page.sessions).find((session) => session.id === sessionId) ??
-		grouped?.flatMap((group) => group.sessions).find((session) => session.id === sessionId);
-	return summary?.state ?? null;
+		grouped?.flatMap((group) => group.sessions).find((session) => session.id === sessionId)
+	);
 }
 
 /**
- * The hook-derived state of a session from the SSE-patched session list
- * caches, or null when no loaded list includes it.
+ * The session's row from the SSE-patched session list caches, or undefined
+ * when no loaded list includes it: one cache subscription for every field.
  */
-export function useSessionSummaryState(sessionId: string): SessionSummaryState | null {
+export function useCachedSessionSummary(sessionId: string): SessionSummaryPayload | undefined {
 	const queryClient = useQueryClient();
 	const subscribe = useCallback(
 		(onChange: () => void) => queryClient.getQueryCache().subscribe(onChange),
@@ -573,8 +573,8 @@ export function useSessionSummaryState(sessionId: string): SessionSummaryState |
 	);
 	return useSyncExternalStore(
 		subscribe,
-		() => cachedSessionSummaryState(queryClient, sessionId),
-		() => null,
+		() => cachedSessionSummary(queryClient, sessionId),
+		() => undefined,
 	);
 }
 

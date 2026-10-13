@@ -111,6 +111,39 @@ describe("findPendingPermission", () => {
 		).toBeNull();
 	});
 
+	it("shows the card from the session's own permission wait when no notification was recorded", () => {
+		const records = [
+			assistantToolUse("t4", "Bash", {
+				command: "gh pr create --fill",
+				description: "Open the oxfmt comment PR and check the other test",
+			}),
+		];
+
+		expect({
+			permissionWait: findPendingPermission({
+				sessionId: "session-test-100",
+				isActive: false,
+				notifications: [],
+				awaitingPermission: true,
+				records,
+			}),
+			inputWait: findPendingPermission({
+				sessionId: "session-test-100",
+				isActive: false,
+				notifications: [],
+				awaitingPermission: false,
+				records,
+			}),
+		}).toStrictEqual({
+			permissionWait: {
+				notificationId: "t4",
+				title: "Allow Claude to run Open the oxfmt comment PR and check the other test?",
+				command: "gh pr create --fill",
+			},
+			inputWait: null,
+		});
+	});
+
 	it("still shows the card when the session is idle and the tool call is waiting on the prompt", () => {
 		expect(
 			findPendingPermission({
