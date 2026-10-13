@@ -480,11 +480,38 @@ describe("GitHub PR chips", () => {
 		);
 	});
 
-	it("preserve an explicitly authored URL label", () => {
-		const url = "https://github.com/example-owner/example-repo/pull/123";
-		expect(renderMarkdownToHtml(`[${url}](${url})`)).toBe(
-			`<p><a href="${url}" target="_blank" rel="noreferrer">${url}</a></p>\n`,
-		);
+	it("render a link labelled by its own URL, its #n, its owner/repo#n or nothing as a chip, as upstream does", () => {
+		const url = "https://github.com/motlin/neighbors/pull/78";
+		const chipText = (markdown: string) => {
+			const container = document.createElement("div");
+			container.innerHTML = renderMarkdownToHtml(markdown);
+			return [...container.querySelectorAll("a")].map((a) => ({className: a.className, text: a.textContent}));
+		};
+
+		expect({
+			url: chipText(`[${url}](${url})`),
+			number: chipText(`[#78](${url})`),
+			ownerRepo: chipText(`[motlin/neighbors#78](${url})`),
+			empty: chipText(`[](${url})`),
+		}).toStrictEqual({
+			url: [{className: "pr-chip", text: "motlin/neighbors#78"}],
+			number: [{className: "pr-chip", text: "motlin/neighbors#78"}],
+			ownerRepo: [{className: "pr-chip", text: "motlin/neighbors#78"}],
+			empty: [{className: "pr-chip", text: "motlin/neighbors#78"}],
+		});
+	});
+
+	it("keep a PR link plain when its label is prose, another number or another repo", () => {
+		const url = "https://github.com/motlin/neighbors/pull/79";
+		expect({
+			prose: renderMarkdownToHtml(`[neighbors #79](${url})`),
+			otherNumber: renderMarkdownToHtml(`[#80](${url})`),
+			otherRepo: renderMarkdownToHtml(`[motlin/other#79](${url})`),
+		}).toStrictEqual({
+			prose: `<p><a href="${url}" target="_blank" rel="noreferrer">neighbors #79</a></p>\n`,
+			otherNumber: `<p><a href="${url}" target="_blank" rel="noreferrer">#80</a></p>\n`,
+			otherRepo: `<p><a href="${url}" target="_blank" rel="noreferrer">motlin/other#79</a></p>\n`,
+		});
 	});
 
 	it("preserve formatting inside an authored PR label", () => {

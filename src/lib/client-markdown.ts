@@ -165,7 +165,11 @@ function linkText(tokens: readonly Token[]): string {
  * linkified, into one `type` token carrying the href, from which a renderer rule
  * re-derives what matched, and the link's plain text as `content`, so the rule can draw it whole.
  */
-function collapseLinks(state: StateCore, type: string, match: (href: string, token: Token) => boolean): void {
+function collapseLinks(
+	state: StateCore,
+	type: string,
+	match: (href: string, token: Token, text: string) => boolean,
+): void {
 	for (const block of state.tokens) {
 		const children = block.children;
 		if (block.type !== "inline" || children === null) continue;
@@ -173,15 +177,16 @@ function collapseLinks(state: StateCore, type: string, match: (href: string, tok
 		for (let index = 0; index < children.length; index++) {
 			const token = defined(children[index], "link token index out of range");
 			const href = token.type === "link_open" ? token.attrGet("href") : null;
-			const matched = href !== null && match(href, token);
-			const close = matched ? children.findIndex((child, at) => at > index && child.type === "link_close") : -1;
-			if (href === null || !matched || close === -1) {
+			const close =
+				href === null ? -1 : children.findIndex((child, at) => at > index && child.type === "link_close");
+			const text = close === -1 ? "" : linkText(children.slice(index + 1, close));
+			if (href === null || close === -1 || !match(href, token, text)) {
 				rewritten.push(token);
 				continue;
 			}
 			const collapsed = new state.Token(type, "a", 0);
 			collapsed.attrs = [["href", href]];
-			collapsed.content = linkText(children.slice(index + 1, close));
+			collapsed.content = text;
 			rewritten.push(collapsed);
 			index = close;
 		}
@@ -214,14 +219,28 @@ function parsePullRequestUrl(href: string): PullRequestRef | undefined {
 	};
 }
 
-/** Raw PR URLs become chips; authored Markdown links keep their label tokens. */
+const PR_REF_LABEL = /^(?:([\w.-]+)\/([\w.-]+))?#(\d{1,9})$/;
+
+/**
+ * Whether an authored link's text only restates the PR it links, which
+ * upstream draws as a chip: no text, the URL itself, or `#n` / `owner/repo#n`
+ * naming the same pull request.
+ */
+function labelNamesPullRequest(text: string, href: string, ref: PullRequestRef): boolean {
+	const label = text.trim();
+	if (label === "" || label === href) return true;
+	const match = PR_REF_LABEL.exec(label);
+	if (match === null || match[3] !== ref.number) return false;
+	return match[1] === undefined || (match[1] === ref.owner && match[2] === ref.repo);
+}
+
+/** Raw PR URLs, and links whose text only restates the PR, become chips; other authored links keep their label tokens. */
 function pullRequestChips(state: StateCore): void {
-	collapseLinks(
-		state,
-		PR_CHIP_TOKEN,
-		(href, token) =>
-			(token.markup === "linkify" || token.markup === "autolink") && parsePullRequestUrl(href) !== undefined,
-	);
+	collapseLinks(state, PR_CHIP_TOKEN, (href, token, text) => {
+		const ref = parsePullRequestUrl(href);
+		if (ref === undefined) return false;
+		return token.markup === "linkify" || token.markup === "autolink" || labelNamesPullRequest(text, href, ref);
+	});
 }
 
 function pullRequestChipHtml(token: Token, escape: (value: string) => string): string {
