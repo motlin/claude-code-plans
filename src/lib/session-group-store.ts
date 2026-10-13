@@ -196,7 +196,7 @@ export function moveGroup(id: string, toIndex: number): void {
 /** Reorder every group section by name, A to Z. */
 export function sortGroupsByName(): void {
 	const state = readSessionGroupState();
-	const groups = [...state.groups].sort((first, second) =>
+	const groups = state.groups.toSorted((first, second) =>
 		first.name.localeCompare(second.name, undefined, {sensitivity: "base"}),
 	);
 	write({...state, groups});

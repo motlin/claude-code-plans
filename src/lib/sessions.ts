@@ -673,7 +673,7 @@ export async function listSessions(projectsDir: string): Promise<SessionProjectG
 
 	return groups
 		.map((group) => ({group, maxMtime: Math.max(...group.sessions.map((s) => s.mtime.getTime()))}))
-		.sort((a, b) => b.maxMtime - a.maxMtime)
+		.toSorted((a, b) => b.maxMtime - a.maxMtime)
 		.map(({group}) => group);
 }
 

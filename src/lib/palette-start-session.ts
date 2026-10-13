@@ -25,13 +25,13 @@ export function startSessionProjects(
 		.flatMap(({id, name, projectPath, lastActivity}) =>
 			projectPath === null ? [] : [{id, name, projectPath, lastActivity}],
 		)
-		.sort((a, b) => Date.parse(b.lastActivity) - Date.parse(a.lastActivity));
+		.toSorted((a, b) => Date.parse(b.lastActivity) - Date.parse(a.lastActivity));
 	const rank = new Map<string, number>();
 	const leading = currentProjectId === undefined ? recentProjectIds : [currentProjectId, ...recentProjectIds];
 	for (const id of leading) if (!rank.has(id)) rank.set(id, rank.size);
 	return launchable
 		.map((project, index) => ({project, order: rank.get(project.id) ?? rank.size + index}))
-		.sort((a, b) => a.order - b.order)
+		.toSorted((a, b) => a.order - b.order)
 		.map(({project: {id, name, projectPath}}) => ({id, name, projectPath}));
 }
 

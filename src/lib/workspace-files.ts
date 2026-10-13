@@ -128,7 +128,7 @@ async function toEntry(root: string, directory: string, rel: string, dirent: Dir
 async function readEntries(root: string, directory: string, rel: string): Promise<WorkspaceEntry[]> {
 	const dirents = await readdir(directory, {withFileTypes: true});
 	const entries = await Promise.all(dirents.map(async (dirent) => toEntry(root, directory, rel, dirent)));
-	return entries.sort(compareEntries);
+	return entries.toSorted(compareEntries);
 }
 
 async function dropIgnored(

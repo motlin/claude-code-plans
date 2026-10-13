@@ -14,7 +14,7 @@ function collectRouteFiles(dir: string): string[] {
 			files.push(fullPath);
 		}
 	}
-	return files.sort();
+	return files.toSorted();
 }
 
 const ROUTE_COMPONENT_OPTION =

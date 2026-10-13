@@ -102,7 +102,7 @@ export async function scanActiveSessions(activeTimeoutMs = ACTIVE_SESSION_WINDOW
 		});
 	}
 
-	const candidates = [...bySessionId.values()].sort((a, b) => b.lastModified - a.lastModified);
+	const candidates = [...bySessionId.values()].toSorted((a, b) => b.lastModified - a.lastModified);
 	const candidateIds = candidates.map((candidate) => candidate.sessionId);
 	const titles = getSessionTitlesByIds(getDb().index, candidateIds);
 	const unseenIds = getUnseenSessionIds(getDb().index, candidateIds);
@@ -116,7 +116,7 @@ export async function scanActiveSessions(activeTimeoutMs = ACTIVE_SESSION_WINDOW
 async function getActiveSessionsFromStore(
 	entries: ReturnType<typeof getActiveSessionEntries>,
 ): Promise<ActiveSessionCandidate[]> {
-	const sorted = [...entries].sort((a, b) => b.lastActivity - a.lastActivity);
+	const sorted = entries.toSorted((a, b) => b.lastActivity - a.lastActivity);
 	const nameCache = new Map<string, string>();
 	const result: ActiveSessionCandidate[] = [];
 

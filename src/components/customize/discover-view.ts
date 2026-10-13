@@ -38,7 +38,7 @@ export function discoverForSection(
 export function mostInstalled(plugins: readonly DiscoverPlugin[], limit: number): DiscoverPlugin[] {
 	return plugins
 		.filter((plugin) => plugin.installs !== null)
-		.sort((a, b) => (b.installs ?? 0) - (a.installs ?? 0) || a.name.localeCompare(b.name))
+		.toSorted((a, b) => (b.installs ?? 0) - (a.installs ?? 0) || a.name.localeCompare(b.name))
 		.slice(0, limit);
 }
 
@@ -47,7 +47,7 @@ export function recentlyUpdated(plugins: readonly DiscoverPlugin[], limit: numbe
 	const time = (plugin: DiscoverPlugin) => Date.parse(plugin.lastUpdated ?? "");
 	return plugins
 		.filter((plugin) => !Number.isNaN(time(plugin)))
-		.sort((a, b) => time(b) - time(a) || a.name.localeCompare(b.name))
+		.toSorted((a, b) => time(b) - time(a) || a.name.localeCompare(b.name))
 		.slice(0, limit);
 }
 
@@ -65,7 +65,7 @@ export function categoryCounts(plugins: readonly DiscoverPlugin[]): CategoryCoun
 	}
 	return [...counts]
 		.map(([category, count]) => ({category, count}))
-		.sort((a, b) => b.count - a.count || a.category.localeCompare(b.category));
+		.toSorted((a, b) => b.count - a.count || a.category.localeCompare(b.category));
 }
 
 export function categoryLabel(category: string): string {
@@ -103,7 +103,7 @@ export function filterDiscover(plugins: readonly DiscoverPlugin[], category: str
  */
 export function sortDiscover(plugins: readonly DiscoverPlugin[], sort: string | undefined): DiscoverPlugin[] {
 	const byName = (a: DiscoverPlugin, b: DiscoverPlugin) => a.title.localeCompare(b.title);
-	if (sort === "name") return [...plugins].sort(byName);
+	if (sort === "name") return plugins.toSorted(byName);
 	const key =
 		sort === "recent"
 			? (plugin: DiscoverPlugin) => {
@@ -111,7 +111,7 @@ export function sortDiscover(plugins: readonly DiscoverPlugin[], sort: string | 
 					return Number.isNaN(time) ? -Infinity : time;
 				}
 			: (plugin: DiscoverPlugin) => plugin.installs ?? -Infinity;
-	return [...plugins].sort((a, b) => {
+	return plugins.toSorted((a, b) => {
 		const ka = key(a);
 		const kb = key(b);
 		return ka === kb ? byName(a, b) : kb - ka;
@@ -144,6 +144,6 @@ export function groupDiscoverSearch<T>(
 						...plugin.skills,
 					),
 			)
-			.sort((a, b) => (b.installs ?? -1) - (a.installs ?? -1) || a.name.localeCompare(b.name)),
+			.toSorted((a, b) => (b.installs ?? -1) - (a.installs ?? -1) || a.name.localeCompare(b.name)),
 	};
 }

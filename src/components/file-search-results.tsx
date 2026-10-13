@@ -25,7 +25,7 @@ function pathTerms(query: string): string[] {
 }
 
 function highlightedText(value: string, query: string): ReactNode {
-	const terms = pathTerms(query).sort((left, right) => right.length - left.length);
+	const terms = pathTerms(query).toSorted((left, right) => right.length - left.length);
 	if (terms.length === 0) return value;
 	const escapedTerms = terms.map((term) => term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
 	const pattern = new RegExp(`(${escapedTerms.join("|")})`, "giu");

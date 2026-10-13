@@ -129,8 +129,8 @@ describe("AttachmentBanner", () => {
 	const schemaTypes = AttachmentPayloadSchema.options.map((opt) => opt.shape.type.value);
 
 	it("covers every attachment type declared in AttachmentPayloadSchema", () => {
-		const fixtureTypes = Object.keys(MINIMAL_BY_TYPE).sort();
-		expect(fixtureTypes).toEqual([...schemaTypes].sort());
+		const fixtureTypes = Object.keys(MINIMAL_BY_TYPE).toSorted();
+		expect(fixtureTypes).toEqual(schemaTypes.toSorted());
 	});
 
 	it("keeps provider-less fixtures free of plan file paths", () => {

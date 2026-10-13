@@ -56,7 +56,7 @@ describe("index DB writes while another connection holds the write lock", () => 
 	const cleanups: (() => void)[] = [];
 
 	afterEach(() => {
-		for (const cleanup of cleanups.splice(0).reverse()) cleanup();
+		for (const cleanup of cleanups.splice(0).toReversed()) cleanup();
 	});
 
 	function openTempDb(): {db: AppDb; dbPath: string} {

@@ -105,7 +105,7 @@ export function latestBashResultTexts(records: readonly unknown[], limit = DEV_S
 			}
 		}
 	}
-	return texts.slice(-limit).reverse();
+	return texts.slice(-limit).toReversed();
 }
 
 const LaunchJson = z.object({

@@ -117,7 +117,7 @@ function computeDepths(timed: Subagent[]): Map<string, number> {
 
 function mergeRanges(ranges: TimeRange[]): TimeRange[] {
 	if (ranges.length === 0) return [];
-	const sorted = [...ranges].sort((a, b) => a.startMs - b.startMs);
+	const sorted = ranges.toSorted((a, b) => a.startMs - b.startMs);
 	const merged: TimeRange[] = [];
 	for (const next of sorted) {
 		const last = merged.at(-1);

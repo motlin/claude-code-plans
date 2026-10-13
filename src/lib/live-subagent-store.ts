@@ -50,7 +50,7 @@ function getActivity(): Map<string, number> {
 function enforceSessionCap(target: Map<string, LiveSubagentNode>, sessionId: string): void {
 	const sessionNodes = [...target.values()]
 		.filter((node) => node.sessionId === sessionId)
-		.sort((left, right) => left.startedAt.localeCompare(right.startedAt));
+		.toSorted((left, right) => left.startedAt.localeCompare(right.startedAt));
 
 	while (sessionNodes.length > MAX_LIVE_SUBAGENTS_PER_SESSION) {
 		const oldestEndedIndex = sessionNodes.findIndex((node) => node.endedAt !== null);

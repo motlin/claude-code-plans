@@ -49,5 +49,5 @@ export function addViewedStateToHerdrPanes(db: IndexDb, panes: HerdrPaneLink[]):
 			}
 			return {...pane, viewedState};
 		})
-		.sort(compareHerdrAttention);
+		.toSorted(compareHerdrAttention);
 }

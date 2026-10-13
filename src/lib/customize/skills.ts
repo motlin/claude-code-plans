@@ -180,7 +180,7 @@ async function scanSkillsDir(skillsDir: string): Promise<ParsedSkill[]> {
 		const skill = await readSkill(dir, entry);
 		if (skill !== null) skills.push(skill);
 	}
-	return skills.sort((a, b) => a.name.localeCompare(b.name));
+	return skills.toSorted((a, b) => a.name.localeCompare(b.name));
 }
 
 export async function readJson(path: string): Promise<unknown> {
@@ -210,7 +210,7 @@ export async function readInstalledPlugins(
 			const at = id.indexOf("@");
 			return [{id, name: at === -1 ? id : id.slice(0, at), installPath: install.installPath}];
 		})
-		.sort((a, b) => a.id.localeCompare(b.id));
+		.toSorted((a, b) => a.id.localeCompare(b.id));
 }
 
 export interface SkillProjectSource {

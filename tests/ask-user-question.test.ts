@@ -101,7 +101,7 @@ describe("answerForQuestion", () => {
 		};
 		const result = answerForQuestion(multi, draft);
 		expect(result).not.toBe(null);
-		expect(result!.split(", ").sort()).toStrictEqual(["A", "C"]);
+		expect(result!.split(", ").toSorted()).toStrictEqual(["A", "C"]);
 	});
 
 	it("returns the trimmed Other text when useOther is true", () => {

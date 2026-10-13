@@ -244,7 +244,7 @@ describe("compareByUrgency", () => {
 			{id: "working-older", state: "working", lastModified: 2_000},
 		] satisfies Array<{id: string; state: DisplayState; lastModified: number}>;
 
-		expect(sessions.sort(compareByUrgency).map(({id}) => id)).toStrictEqual([
+		expect(sessions.toSorted(compareByUrgency).map(({id}) => id)).toStrictEqual([
 			"waiting-newer",
 			"waiting-older",
 			"review",
@@ -264,7 +264,7 @@ describe("compareByStableCreation", () => {
 			{sessionId: "session-a", createdAt: 1_000, lastModified: 8_000},
 		];
 
-		expect(sessions.sort(compareByStableCreation).map(({sessionId}) => sessionId)).toStrictEqual([
+		expect(sessions.toSorted(compareByStableCreation).map(({sessionId}) => sessionId)).toStrictEqual([
 			"session-a",
 			"session-b",
 			"session-c",

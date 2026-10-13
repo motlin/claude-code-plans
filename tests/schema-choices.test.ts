@@ -291,7 +291,7 @@ function defactoDiscriminator(schema: unknown): string | undefined {
 		candidates = candidates === undefined ? literalKeys : candidates.filter((key) => literalKeys.includes(key));
 	}
 	const distinctValues = (key: string): number => new Set(arms.flatMap((arm) => tagsOfVariant(arm, key))).size;
-	return candidates?.sort().sort((a, b) => distinctValues(b) - distinctValues(a))[0];
+	return candidates?.toSorted().toSorted((a, b) => distinctValues(b) - distinctValues(a))[0];
 }
 
 function collectChoices(): Map<string, string[]> {
@@ -299,7 +299,7 @@ function collectChoices(): Map<string, string[]> {
 	const visited = new Set<unknown>();
 
 	function record(path: string, values: string[]): void {
-		found.set(path, [...new Set(values)].sort());
+		found.set(path, [...new Set(values)].toSorted());
 	}
 
 	function walkUnion(schema: unknown, path: string, discriminator: string): void {
@@ -312,7 +312,7 @@ function collectChoices(): Map<string, string[]> {
 					? flattenUnionArms(inner).flatMap((arm) => tagsOfVariant(arm, discriminator))
 					: tagsOfVariant(inner, discriminator);
 			tags.push(...optionTags);
-			walk(inner, `${path}.<${[...new Set(optionTags)].sort().join("|")}>`);
+			walk(inner, `${path}.<${[...new Set(optionTags)].toSorted().join("|")}>`);
 		}
 		record(path, tags);
 	}
@@ -386,14 +386,14 @@ describe("schema choice registry", () => {
 
 	it("registers every choice node found in the schemas", () => {
 		const problems: string[] = [];
-		const sortedEntries = [...found.entries()].sort(([a], [b]) => a.localeCompare(b));
+		const sortedEntries = [...found.entries()].toSorted(([a], [b]) => a.localeCompare(b));
 		for (const [path, values] of sortedEntries) {
 			const entry = schemaChoiceRegistry[path];
 			if (entry === undefined) {
 				problems.push(`UNREGISTERED ${path}: [${values.join(", ")}]`);
 				continue;
 			}
-			const registered = Object.keys(entry).sort();
+			const registered = Object.keys(entry).toSorted();
 			if (JSON.stringify(registered) !== JSON.stringify(values)) {
 				problems.push(
 					`MISMATCH ${path}: schema has [${values.join(", ")}] but registry has [${registered.join(", ")}]`,

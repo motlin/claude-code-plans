@@ -171,5 +171,5 @@ export function toJob(id: string, state: JobStateFile, timeline: JobTimelineEntr
 
 /** Most recently updated first. */
 export function sortJobs(jobs: readonly Job[]): Job[] {
-	return [...jobs].sort((a, b) => b.updatedAt - a.updatedAt);
+	return jobs.toSorted((a, b) => b.updatedAt - a.updatedAt);
 }

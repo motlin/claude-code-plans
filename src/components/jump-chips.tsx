@@ -50,7 +50,7 @@ export function JumpChips({occurrences, resourceLabel = "file"}: JumpChipsProps)
 	const {settings} = useSettings();
 	const jumpWindow = useJumpTargetWindow();
 	const orderedOccurrences = useMemo(
-		() => [...occurrences].sort((left, right) => left.anchorIndex - right.anchorIndex),
+		() => occurrences.toSorted((left, right) => left.anchorIndex - right.anchorIndex),
 		[occurrences],
 	);
 

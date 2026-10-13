@@ -47,7 +47,7 @@ function increment(map: Map<string, number>, key: string): void {
 }
 
 function sortedRecord(map: Map<string, number>): Record<string, number> {
-	return Object.fromEntries([...map].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
+	return Object.fromEntries([...map].toSorted(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
 }
 
 /** The `<Profiler>` callback behind `PerfSubtree`: counts commits under `commitsBySubtree[id]`. */

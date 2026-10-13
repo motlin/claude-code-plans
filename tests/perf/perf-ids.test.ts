@@ -24,7 +24,7 @@ describe("large perf tier", () => {
 	it.each(LARGE_SHAPES)("has a ceiling for exactly the ids the perf tests ratchet for %s", (shape) => {
 		const ceilingIds = Object.keys(loadCeilings()).filter((id) => id.includes(`.${shape}.`));
 		const ratcheted = shapeMetricIds(shape).filter((id) => diagnosticFamily(id, DIAGNOSTIC_FAMILIES) === undefined);
-		expect(ceilingIds).toStrictEqual(ratcheted.sort());
+		expect(ceilingIds).toStrictEqual(ratcheted.toSorted());
 	});
 
 	it("has a measured id behind every diagnostic family", () => {

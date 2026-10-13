@@ -69,7 +69,7 @@ export function readFieldSamples(
 		sinceDays === undefined ? "" : new Date(now.getTime() - sinceDays * DAY_MS).toISOString().slice(0, 10);
 	const samples: JourneySample[] = [];
 	let invalidLines = 0;
-	for (const name of readdirSync(perfDir).sort()) {
+	for (const name of readdirSync(perfDir).toSorted()) {
 		const day = FIELD_LOG_PATTERN.exec(name)?.[1];
 		if (day === undefined || day < cutoff) continue;
 		for (const line of readFileSync(join(perfDir, name), "utf-8").split("\n")) {
@@ -94,7 +94,7 @@ export function readFieldSamples(
 
 /** The nearest-rank percentile: the value at rank ceil(p/100 * n) of the sorted values. */
 export function nearestRank(values: readonly number[], percentile: number): number {
-	const sorted = [...values].sort((a, b) => a - b);
+	const sorted = values.toSorted((a, b) => a - b);
 	const rank = Math.max(1, Math.ceil((percentile / 100) * sorted.length));
 	return defined(sorted[rank - 1], "nearestRank needs at least one value");
 }
@@ -114,7 +114,7 @@ export function splitSample(sample: JourneySample): SampleSplit {
 			(resource) =>
 				[Math.max(resource.startTime, sample.start), Math.min(resource.responseEnd, windowEnd)] as const,
 		)
-		.sort((a, b) => a[0] - b[0]);
+		.toSorted((a, b) => a[0] - b[0]);
 	let inFlight = 0;
 	let coveredUntil = sample.start;
 	for (const [start, end] of intervals) {
@@ -166,7 +166,7 @@ export function formatReport(samples: readonly JourneySample[]): string {
 	}
 
 	const rows = [...buckets.values()]
-		.sort((a, b) => compareKeys(a.key, b.key))
+		.toSorted((a, b) => compareKeys(a.key, b.key))
 		.map(({key, splits}) => [
 			...key,
 			String(splits.length),

@@ -52,7 +52,7 @@ function collectSourceFiles(dir: string): string[] {
 			files.push(fullPath);
 		}
 	}
-	return files.sort();
+	return files.toSorted();
 }
 
 function toolCall(name: string, input: Record<string, unknown>, result: string): ClientToolCall {

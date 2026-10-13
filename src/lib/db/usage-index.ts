@@ -81,5 +81,5 @@ export function getHomeStatsDays(db: IndexDb): HomeStatsDay[] {
 		if (model !== null) row.tokensByModel = {...row.tokensByModel, [model]: tokens};
 	}
 
-	return [...byDate.values()].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+	return [...byDate.values()].toSorted((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
 }

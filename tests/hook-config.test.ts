@@ -3,7 +3,7 @@ import {generateHooksConfig, missingHookEvents, DEFAULT_HOOK_PORT, HOOK_EVENT_NA
 
 describe("HOOK_EVENT_NAMES", () => {
 	it("contains all expected Claude hook event names", () => {
-		expect([...HOOK_EVENT_NAMES].sort()).toStrictEqual(
+		expect(HOOK_EVENT_NAMES.toSorted()).toStrictEqual(
 			[
 				"SessionStart",
 				"SessionEnd",
@@ -25,7 +25,7 @@ describe("HOOK_EVENT_NAMES", () => {
 				"InstructionsLoaded",
 				"ConfigChange",
 				"MessageDisplay",
-			].sort(),
+			].toSorted(),
 		);
 	});
 
@@ -58,7 +58,7 @@ describe("generateHooksConfig", () => {
 	it("generates a hook entry for each supported event", () => {
 		const config = generateHooksConfig();
 		const hooks = config.hooks as Record<string, unknown>;
-		expect(Object.keys(hooks).sort()).toStrictEqual([...HOOK_EVENT_NAMES].sort());
+		expect(Object.keys(hooks).toSorted()).toStrictEqual(HOOK_EVENT_NAMES.toSorted());
 	});
 
 	it("each hook entry posts to /api/hook", () => {

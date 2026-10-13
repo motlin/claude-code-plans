@@ -115,7 +115,7 @@ export function groupPluginsByMarketplace(plugins: PluginListData): PluginMarket
 		group.plugins.push(plugin);
 	}
 
-	return [...groups.values()].sort((a, b) => {
+	return [...groups.values()].toSorted((a, b) => {
 		if (a.isOfficial !== b.isOfficial) return a.isOfficial ? -1 : 1;
 		return a.marketplace.displayName.localeCompare(b.marketplace.displayName);
 	});

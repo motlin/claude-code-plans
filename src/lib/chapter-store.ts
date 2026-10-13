@@ -82,7 +82,7 @@ export function toggleChapter(sessionId: string, chapter: Chapter): void {
 	}
 	writeChapters(
 		sessionId,
-		[...chapters, chapter].sort((a, b) => a.recordIndex - b.recordIndex),
+		[...chapters, chapter].toSorted((a, b) => a.recordIndex - b.recordIndex),
 	);
 }
 

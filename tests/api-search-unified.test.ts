@@ -87,7 +87,7 @@ describe("unified search API", () => {
 			items
 				.slice(0, 2)
 				.map((item) => item.id)
-				.sort(),
+				.toSorted(),
 		).toStrictEqual(["s-both", "s-title"]);
 		expect(items[2]).toStrictEqual({
 			kind: "session",
@@ -198,7 +198,7 @@ describe("unified search API", () => {
 		seedSession("s-20d", {title: "login twenty days", mtimeMs: NOW - 20 * DAY});
 		seedSession("s-60d", {title: "login sixty days", mtimeMs: NOW - 60 * DAY});
 
-		const ids = async (date: string) => (await search({query: "login", date})).map((item) => item.id).sort();
+		const ids = async (date: string) => (await search({query: "login", date})).map((item) => item.id).toSorted();
 
 		expect(await ids("today")).toStrictEqual(["s-hour"]);
 		expect(await ids("week")).toStrictEqual(["s-3d", "s-hour"]);

@@ -149,7 +149,7 @@ export function createRenderCensus(): RenderCensus {
 			recording = false;
 		},
 		steps: () =>
-			steps.map((step) => Object.fromEntries([...step].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)))),
+			steps.map((step) => Object.fromEntries([...step].toSorted(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)))),
 		contextConsumers: (provider) => {
 			const fibers = hostRoots().flatMap((root) => [...allFibers(root)]);
 			const providerFiber = fibers.find((fiber) => fiber.type === provider);

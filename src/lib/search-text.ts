@@ -110,7 +110,7 @@ function remapMatches(matches: readonly TextMatch[], map: (offset: number) => nu
 	return matches
 		.map((match) => ({start: map(match.start), end: map(match.end)}))
 		.filter((match) => match.end > match.start)
-		.sort((a, b) => a.start - b.start);
+		.toSorted((a, b) => a.start - b.start);
 }
 
 function clipMatches(matches: readonly TextMatch[], start: number, end: number): TextMatch[] {

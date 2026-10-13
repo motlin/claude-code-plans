@@ -253,7 +253,7 @@ function buildDateGroups<Row extends SessionGroupRow>(
 		else existing.rows.push(row);
 	}
 	return [...byDay.entries()]
-		.sort(([, first], [, second]) => second.dayStart - first.dayStart)
+		.toSorted(([, first], [, second]) => second.dayStart - first.dayStart)
 		.map(([key, entry]) =>
 			group(key, entry.label, entry.rows, groupCap(key === "date-older", key, uncapped), nested),
 		);
@@ -272,7 +272,7 @@ function buildProjectGroups<Row extends SessionGroupRow>(
 		else projects.add(row.project);
 	}
 	const groups = [...projects]
-		.sort((first, second) => first.localeCompare(second, undefined, {sensitivity: "base"}))
+		.toSorted((first, second) => first.localeCompare(second, undefined, {sensitivity: "base"}))
 		.map((project) =>
 			group(
 				`project-${project}`,
@@ -317,7 +317,7 @@ function buildCustomGroups<Row extends SessionGroupRow>(
 			return index === -1 ? manual.length : index;
 		};
 		// Array.sort is stable, so rows outside the manual order keep the Sort by order.
-		const groupRows = (byGroup.get(entry.id) ?? []).sort((first, second) => rank(first) - rank(second));
+		const groupRows = (byGroup.get(entry.id) ?? []).toSorted((first, second) => rank(first) - rank(second));
 		if (groupRows.length === 0 && !showEmptyGroups) return [];
 		return [group(`${CUSTOM_GROUP_KEY_PREFIX}${entry.id}`, entry.name, groupRows, "none", nested)];
 	});
@@ -342,7 +342,7 @@ export function buildGroups<Row extends SessionGroupRow>(
 	custom: CustomGroups = NO_CUSTOM_GROUPS,
 ): SessionGroup<Row>[] {
 	const families = resolveFamilies(
-		rows.filter((row) => isVisible(row, prefs, now)).sort(ROW_COMPARATORS[prefs.sortBy]),
+		rows.filter((row) => isVisible(row, prefs, now)).toSorted(ROW_COMPARATORS[prefs.sortBy]),
 	);
 	const visible = families.map((family) => family.head);
 	const familyBucket = new Map(families.map((family) => [family.head.sessionId, family.bucket]));

@@ -454,13 +454,13 @@ describe("indexer", () => {
 		);
 
 		// Sort both sides — the indexer is free to traverse the Set in any order.
-		const returned = [...result.linkedPlans].sort();
+		const returned = result.linkedPlans.toSorted();
 		const inDb = db.index
 			.select({planFilename: schema.planSessions.planFilename})
 			.from(schema.planSessions)
 			.all()
 			.map((r) => r.planFilename)
-			.sort();
+			.toSorted();
 		expect(returned).toStrictEqual(["alpha.md", "beta.md"]);
 		expect(returned).toStrictEqual(inDb);
 	});
@@ -1781,7 +1781,7 @@ describe("queries", () => {
 
 		const mappings = getPlanProjectMappings(db.index);
 		expect(mappings.length).toBe(2);
-		const filenames = mappings.map((m) => m.planFilename).sort();
+		const filenames = mappings.map((m) => m.planFilename).toSorted();
 		expect(filenames).toStrictEqual(["plan-a.md", "plan-b.md"]);
 	});
 
@@ -2062,7 +2062,7 @@ describe("subagents", () => {
 
 		const agents = getSubagentsForProject(db.index, "proj-y");
 		expect(agents.length).toBe(2);
-		expect(agents.map((a) => a.id).sort()).toStrictEqual(["agent-1", "agent-2"]);
+		expect(agents.map((a) => a.id).toSorted()).toStrictEqual(["agent-1", "agent-2"]);
 	});
 
 	it("getSubagentsForProject returns empty array when project has no subagents", () => {
@@ -2954,7 +2954,7 @@ describe("scanTasksDir", () => {
 
 		const tasks = db.index.select().from(schema.tasks).all();
 		expect(tasks.length).toBe(2);
-		expect(tasks.map((t) => t.projectDir).sort()).toStrictEqual(["project-a", "project-b"]);
+		expect(tasks.map((t) => t.projectDir).toSorted()).toStrictEqual(["project-a", "project-b"]);
 	});
 
 	it("cleans up deleted files", async () => {
@@ -3051,7 +3051,7 @@ describe("task queries", () => {
 
 	it("getTasksForProject returns all tasks for a project", () => {
 		const tasks = getTasksForProject(db.index, projectId);
-		expect(tasks.map((t) => t.subject).sort()).toStrictEqual(["Deploy", "Fix bug", "Write tests"]);
+		expect(tasks.map((t) => t.subject).toSorted()).toStrictEqual(["Deploy", "Fix bug", "Write tests"]);
 		expect(tasks.map((task) => task.projectDir)).toStrictEqual([sessionId, sessionId, sessionId]);
 	});
 
@@ -3082,7 +3082,7 @@ describe("task queries", () => {
 		expect(
 			tasks
 				.map(({taskId, owner}) => ({taskId, owner}))
-				.sort((left, right) => left.taskId.localeCompare(right.taskId)),
+				.toSorted((left, right) => left.taskId.localeCompare(right.taskId)),
 		).toStrictEqual([
 			{taskId: "1", owner: "alice"},
 			{taskId: "2", owner: null},
@@ -3160,7 +3160,7 @@ describe("task queries", () => {
 
 		const subjects = getTasksForProject(db.index, projectId)
 			.map((task) => task.subject)
-			.sort();
+			.toSorted();
 		expect(subjects).toStrictEqual(["Deploy", "Fix bug", "Prefixed-dir task", "Project-dir task", "Write tests"]);
 	});
 
@@ -3192,7 +3192,7 @@ describe("task queries", () => {
 		expect(
 			groups.map(({tasks, ...group}) => ({
 				...group,
-				taskIds: tasks.map((task) => task.taskId).sort(),
+				taskIds: tasks.map((task) => task.taskId).toSorted(),
 			})),
 		).toStrictEqual([
 			{

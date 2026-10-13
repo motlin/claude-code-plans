@@ -1147,7 +1147,7 @@ function PluginsEditor({
 	// Non-boolean values are not editable here but stay in `value`, so saving keeps them.
 	const entries = Object.entries(value)
 		.filter((entry): entry is [string, boolean] => isBoolean(entry[1]))
-		.sort(([a], [b]) => a.localeCompare(b));
+		.toSorted(([a], [b]) => a.localeCompare(b));
 	const [newPlugin, setNewPlugin] = useState("");
 
 	const handleToggle = useCallback(

@@ -71,7 +71,7 @@ export function clientBoundaryViolations(
 		}
 	}
 
-	return [...violations].sort();
+	return [...violations].toSorted();
 }
 
 function main(): void {

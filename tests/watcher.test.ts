@@ -876,13 +876,13 @@ describe("resolveIgnoredDirNames", () => {
 
 	it("uses the hard-coded defaults when neither env var nor config provides values", () => {
 		const resolved = resolveIgnoredDirNames(missingPath);
-		expect([...resolved].sort()).toStrictEqual([...__testing.DEFAULT_IGNORED_DIR_NAMES].sort());
+		expect([...resolved].toSorted()).toStrictEqual(__testing.DEFAULT_IGNORED_DIR_NAMES.toSorted());
 	});
 
 	it("overrides defaults with the ignored_dirs array in config.json", () => {
 		writeFileSync(configPath, JSON.stringify({ignored_dirs: ["vendor", "tmp"]}));
 		const resolved = resolveIgnoredDirNames(configPath);
-		expect([...resolved].sort()).toStrictEqual(["tmp", "vendor"]);
+		expect([...resolved].toSorted()).toStrictEqual(["tmp", "vendor"]);
 	});
 
 	it("ignores the retired environment alias when config is present", () => {
@@ -898,25 +898,25 @@ describe("resolveIgnoredDirNames", () => {
 	it("falls back to defaults when config.json is malformed JSON", () => {
 		writeFileSync(configPath, "{ not json");
 		const resolved = resolveIgnoredDirNames(configPath);
-		expect([...resolved].sort()).toStrictEqual([...__testing.DEFAULT_IGNORED_DIR_NAMES].sort());
+		expect([...resolved].toSorted()).toStrictEqual(__testing.DEFAULT_IGNORED_DIR_NAMES.toSorted());
 	});
 
 	it("falls back to defaults when ignored_dirs is not an array", () => {
 		writeFileSync(configPath, JSON.stringify({ignored_dirs: "node_modules"}));
 		const resolved = resolveIgnoredDirNames(configPath);
-		expect([...resolved].sort()).toStrictEqual([...__testing.DEFAULT_IGNORED_DIR_NAMES].sort());
+		expect([...resolved].toSorted()).toStrictEqual(__testing.DEFAULT_IGNORED_DIR_NAMES.toSorted());
 	});
 
 	it("rejects the whole file and falls back to defaults when an array entry is invalid", () => {
 		writeFileSync(configPath, JSON.stringify({ignored_dirs: ["keep", "", "  ", 42, null]}));
 		const resolved = resolveIgnoredDirNames(configPath);
-		expect([...resolved].sort()).toStrictEqual([...__testing.DEFAULT_IGNORED_DIR_NAMES].sort());
+		expect([...resolved].toSorted()).toStrictEqual(__testing.DEFAULT_IGNORED_DIR_NAMES.toSorted());
 	});
 
 	it("rejects the whole file and falls back to defaults on unknown config keys", () => {
 		writeFileSync(configPath, JSON.stringify({ignored_dirs: ["vendor"], bogus: true}));
 		const resolved = resolveIgnoredDirNames(configPath);
-		expect([...resolved].sort()).toStrictEqual([...__testing.DEFAULT_IGNORED_DIR_NAMES].sort());
+		expect([...resolved].toSorted()).toStrictEqual(__testing.DEFAULT_IGNORED_DIR_NAMES.toSorted());
 	});
 
 	it("trims whitespace around valid configured directory names", () => {

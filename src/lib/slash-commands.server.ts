@@ -26,7 +26,7 @@ async function readCommandsDir(dir: string, source: SlashCommandSource, prefix =
 		return [];
 	}
 	const commands: SlashCommand[] = [];
-	for (const entry of entries.filter((e) => e.endsWith(".md")).sort()) {
+	for (const entry of entries.filter((e) => e.endsWith(".md")).toSorted()) {
 		let content: string;
 		try {
 			content = await readFile(join(dir, entry), "utf-8");

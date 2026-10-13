@@ -88,7 +88,7 @@ describe("deferred Files and Links panes", () => {
 			registered,
 			loading,
 			loaded: {files: paneText("Files"), links: paneText("Links")},
-			imports: [...harness.imports].sort((left, right) => left.localeCompare(right)),
+			imports: harness.imports.toSorted((left, right) => left.localeCompare(right)),
 		}).toStrictEqual({
 			registered: {imports: []},
 			loading: {files: "FilesMoveLoading files…", links: "Loading links…"},

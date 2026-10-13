@@ -94,7 +94,7 @@ function parsePrefixedOutput(text: string): ParsedArtifact | null | undefined {
 }
 
 function parsePublishedOutput(text: string): ParsedArtifact | undefined {
-	const candidates = [...text.matchAll(/https:\/\/\S+/g)].reverse();
+	const candidates = [...text.matchAll(/https:\/\/\S+/g)].toReversed();
 	for (const candidate of candidates) {
 		const artifact = normalizeArtifactUrl(candidate[0].replace(TRAILING_PUNCTUATION, ""));
 		if (artifact === undefined) continue;

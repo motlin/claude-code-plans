@@ -130,8 +130,8 @@ describe("getTmuxWindows", () => {
 			return Promise.resolve("%1\tmain\t0\tx\t1\n");
 		};
 		const windows = await getTmuxWindows(entries, runTmux);
-		expect(seen.sort()).toStrictEqual(["/tmp/sock-a", "/tmp/sock-b"]);
-		expect(windows.map((w) => w.socket).sort()).toStrictEqual(["/tmp/sock-a", "/tmp/sock-b"]);
+		expect(seen.toSorted()).toStrictEqual(["/tmp/sock-a", "/tmp/sock-b"]);
+		expect(windows.map((w) => w.socket).toSorted()).toStrictEqual(["/tmp/sock-a", "/tmp/sock-b"]);
 	});
 
 	it("drops only the failing socket's windows on tmux failure", async () => {

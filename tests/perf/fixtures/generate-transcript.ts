@@ -433,7 +433,7 @@ export function renderTranscript(shape: PerfShape, seed: number): string {
 		}
 		const skeletonBytes = (indices: number[]) =>
 			indices.reduce((sum, index) => sum + (lines[index]?.skeleton.length ?? 0) - PAD.length + 1, 0);
-		const wideIndices = [...wide].sort((a, b) => a - b);
+		const wideIndices = [...wide].toSorted((a, b) => a - b);
 		const narrowIndices = lines.flatMap((line, index) =>
 			!wide.has(index) && line.skeleton.includes(PAD) ? [index] : [],
 		);

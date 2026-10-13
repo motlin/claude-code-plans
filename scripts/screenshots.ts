@@ -601,7 +601,7 @@ async function collectRendererManifest(page: Page, chromiumVersion: string): Pro
 	const stacks = Object.fromEntries(
 		Object.entries(fontData.stacks).map(([name, stack]) => [name, parseFontStack(stack)]),
 	);
-	const requestedFamilies = [...new Set(Object.values(stacks).flat())].sort();
+	const requestedFamilies = [...new Set(Object.values(stacks).flat())].toSorted();
 	const sampleWidths = await page.evaluate((families) => {
 		const canvas = document.createElement("canvas");
 		const context = canvas.getContext("2d");
@@ -657,7 +657,7 @@ async function collectRendererManifest(page: Page, chromiumVersion: string): Pro
 		fontsMissing: Object.entries(fontAvailability)
 			.filter(([, available]) => !available)
 			.map(([family]) => family)
-			.sort(),
+			.toSorted(),
 	};
 }
 
@@ -678,7 +678,7 @@ export function diffRendererManifests(expected: unknown, actual: unknown): strin
 	const expectedFields = flattenManifest(expected);
 	const actualFields = flattenManifest(actual);
 	const fields = new Set([...expectedFields.keys(), ...actualFields.keys()]);
-	return [...fields].filter((field) => expectedFields.get(field) !== actualFields.get(field)).sort();
+	return [...fields].filter((field) => expectedFields.get(field) !== actualFields.get(field)).toSorted();
 }
 
 function printDriftBanner(fields: string[]): void {

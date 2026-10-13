@@ -62,7 +62,7 @@ describe("fullScan and the event loop", () => {
 	const cleanups: (() => void)[] = [];
 
 	afterEach(() => {
-		for (const cleanup of cleanups.splice(0).reverse()) cleanup();
+		for (const cleanup of cleanups.splice(0).toReversed()) cleanup();
 	});
 
 	async function setUp(): Promise<{db: AppDb; dbPath: string; projectsDir: string; sessionIds: string[]}> {

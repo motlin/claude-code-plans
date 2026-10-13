@@ -63,7 +63,7 @@ export function coldLoadFiles(manifest: ViteManifest, entryKeys: string[]): stri
 	for (const key of entryKeys) {
 		visit(key);
 	}
-	return [...files].sort();
+	return [...files].toSorted();
 }
 
 export function measureBundles(
@@ -72,7 +72,7 @@ export function measureBundles(
 	readChunk: (file: string) => string,
 ): Record<string, number> {
 	const measured: Record<string, number> = {};
-	for (const [name, entries] of Object.entries(routes).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) {
+	for (const [name, entries] of Object.entries(routes).toSorted(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) {
 		let raw = 0;
 		let gzip = 0;
 		for (const file of coldLoadFiles(manifest, entries)) {

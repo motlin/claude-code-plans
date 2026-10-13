@@ -218,7 +218,7 @@ export function PluginsSection({search}: SectionProps) {
 					go({kind: "plugin", id: plugin.id, tab: "overview"});
 				},
 			}))
-			.sort(byName),
+			.toSorted(byName),
 	}));
 	const groups =
 		sort === "name"
@@ -226,7 +226,7 @@ export function PluginsSection({search}: SectionProps) {
 					{
 						key: "all",
 						title: "All plugins",
-						items: marketplaceGroups.flatMap((group) => group.items).sort(byName),
+						items: marketplaceGroups.flatMap((group) => group.items).toSorted(byName),
 					},
 				]
 			: marketplaceGroups;

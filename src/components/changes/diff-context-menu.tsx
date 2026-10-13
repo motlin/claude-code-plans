@@ -46,7 +46,7 @@ function rowsBetween(first: Element, last: Element): Element[] {
 	const code = last.closest("[data-code]");
 	if (code === null) return [last];
 	const rows = [...code.querySelectorAll("[data-line]")];
-	const [from, to] = [rows.indexOf(first), rows.indexOf(last)].sort((a, b) => a - b);
+	const [from, to] = [rows.indexOf(first), rows.indexOf(last)].toSorted((a, b) => a - b);
 	if (from === undefined || to === undefined || from === -1) return [last];
 	const side = rowSide(last);
 	return rows.slice(from, to + 1).filter((row) => rowSide(row) === side);

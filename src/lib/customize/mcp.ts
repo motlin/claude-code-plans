@@ -66,7 +66,7 @@ async function readClaudeJson(path: string): Promise<ClaudeJsonMcp> {
 }
 
 function sortedEntries(servers: McpServers): [string, McpServerEntry][] {
-	return Object.entries(servers).sort(([a], [b]) => a.localeCompare(b));
+	return Object.entries(servers).toSorted(([a], [b]) => a.localeCompare(b));
 }
 
 /**
@@ -90,8 +90,8 @@ function summarize(
 		transport: entry.type ?? (entry.url === undefined ? "stdio" : "http"),
 		urlOrCommand: entry.url ?? command,
 		enabled,
-		envKeys: Object.keys(entry.env ?? {}).sort(),
-		headerKeys: Object.keys(entry.headers ?? {}).sort(),
+		envKeys: Object.keys(entry.env ?? {}).toSorted(),
+		headerKeys: Object.keys(entry.headers ?? {}).toSorted(),
 		needsAuth,
 	};
 	if (projectPath !== undefined) summary.projectPath = projectPath;

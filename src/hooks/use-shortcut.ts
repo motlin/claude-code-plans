@@ -49,7 +49,7 @@ function dispatch(event: KeyboardEvent): void {
 	const isMac = isMacPlatform();
 	const inModal = isInModalLayer(document.activeElement);
 	const inEditable = isEditableTarget(event.target);
-	for (const registration of [...registrations].sort(byPriority)) {
+	for (const registration of registrations.toSorted(byPriority)) {
 		const {disabled = false, allowInEditable = true, allowInModal = false} = registration.options.current;
 		if (disabled) continue;
 		const binding = bindingsFor(registration.id, isMac).find((b) => matchBinding(event, b));

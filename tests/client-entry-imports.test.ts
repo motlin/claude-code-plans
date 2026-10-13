@@ -15,7 +15,7 @@ describe("client entry imports", () => {
 				}
 				return specifier;
 			})
-			.sort((first, second) => first.localeCompare(second));
+			.toSorted((first, second) => first.localeCompare(second));
 
 		expect(importSpecifiers).toStrictEqual(["./router", "@tanstack/react-start/client", "react-dom/client"]);
 	});

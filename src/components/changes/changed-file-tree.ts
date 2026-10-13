@@ -84,7 +84,7 @@ function byName(a: string, b: string): number {
 
 function trieNodes(trie: Trie, parentPath: string, depth: number): ChangedFileTreeNode[] {
 	const dirs = [...trie.dirs.entries()]
-		.sort(([a], [b]) => byName(a, b))
+		.toSorted(([a], [b]) => byName(a, b))
 		.map(([segment, initial]): ChangedFileTreeDir => {
 			let name = segment;
 			let child = initial;
@@ -98,7 +98,7 @@ function trieNodes(trie: Trie, parentPath: string, depth: number): ChangedFileTr
 			return {type: "dir", path, name, depth, children: trieNodes(child, path, depth + 1)};
 		});
 	const files = [...trie.files]
-		.sort((a, b) => byName(baseName(a.path), baseName(b.path)))
+		.toSorted((a, b) => byName(baseName(a.path), baseName(b.path)))
 		.map((file) => fileNode(file, depth));
 	return [...dirs, ...files];
 }

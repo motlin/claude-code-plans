@@ -193,7 +193,7 @@ describe("PUT /api/sessions/$id/title", () => {
 			parsed
 				.filter((r) => r.type === "custom-title")
 				.map((r) => (r as {customTitle?: string}).customTitle ?? "")
-				.sort((a, b) => a.localeCompare(b)),
+				.toSorted((a, b) => a.localeCompare(b)),
 		).toEqual(Array.from({length: 10}, (_, i) => `Name ${i}`));
 		expect(parsed.filter((r) => r.uuid?.startsWith("live-")).map((r) => r.uuid)).toEqual(
 			writerLines.map((_, i) => `live-${i}`),

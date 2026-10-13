@@ -92,9 +92,7 @@ function makeStore() {
 				if (!call) return null;
 				return {
 					sessionId,
-					state:
-						[...stateCalls].reverse().find((stateCall) => stateCall.sessionId === sessionId)?.state ??
-						"unknown",
+					state: stateCalls.findLast((stateCall) => stateCall.sessionId === sessionId)?.state ?? "unknown",
 					cwd: call.meta.cwd,
 					model: call.meta.model ?? "",
 					startedAt: 946_598_400_000,

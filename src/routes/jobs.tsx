@@ -65,7 +65,7 @@ function StatePill({state}: {state: JobState}) {
 }
 
 function JobRow({job, now}: {job: Job; now: number}) {
-	const timeline = [...job.timeline].reverse();
+	const timeline = job.timeline.toReversed();
 	return (
 		<li className="group/cdsrow relative">
 			{job.sessionId !== null && (

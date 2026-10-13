@@ -68,7 +68,7 @@ function contentBlocks(parsed: Record<string, unknown>): Record<string, unknown>
 }
 
 function sortKeys<T>(object: Record<string, T>): Record<string, T> {
-	return Object.fromEntries(Object.entries(object).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
+	return Object.fromEntries(Object.entries(object).toSorted(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
 }
 
 function listJsonl(dir: string): string[] {
@@ -81,7 +81,7 @@ function listJsonl(dir: string): string[] {
 			found.push(path);
 		}
 	}
-	return found.sort();
+	return found.toSorted();
 }
 
 export function scanRecordMix(projectsDir: string): RecordMix {

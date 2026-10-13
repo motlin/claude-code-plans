@@ -189,7 +189,7 @@ describe("POST /api/perf field sink", () => {
 
 		const response = await handlePerfBeacon(beaconRequest({samples: [sample()]}), {cacheDir, now: () => NOW});
 
-		expect({status: response.status, files: readdirSync(perfDir()).sort()}).toStrictEqual({
+		expect({status: response.status, files: readdirSync(perfDir()).toSorted()}).toStrictEqual({
 			status: 204,
 			files: ["field-2026-09-02.jsonl", "field-2026-10-01.jsonl", "notes.txt"],
 		});

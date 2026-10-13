@@ -174,7 +174,7 @@ describe("scanPluginTree", () => {
 		const tree = await scanPluginTree(testDir);
 		expect(tree).not.toBe(null);
 
-		const paths = tree!.children!.map((c) => c.path).sort();
+		const paths = tree!.children!.map((c) => c.path).toSorted();
 		expect(paths).toContain("README.md");
 		expect(paths).toContain("agents");
 		expect(paths).toContain("commands");

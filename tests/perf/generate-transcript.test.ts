@@ -29,7 +29,7 @@ function lineSizes(text: string): number[] {
 }
 
 function topPercentShare(sizes: number[]): number {
-	const sorted = [...sizes].sort((a, b) => b - a);
+	const sorted = sizes.toSorted((a, b) => b - a);
 	const top = sorted.slice(0, Math.ceil(sorted.length / 100));
 	const sum = (values: number[]) => values.reduce((total, value) => total + value, 0);
 	return sum(top) / sum(sorted);

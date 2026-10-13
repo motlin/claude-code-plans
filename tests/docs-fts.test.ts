@@ -163,7 +163,7 @@ describe("docs_fts plan and memory index", () => {
 		await fullScan(db.index, db.summaries, projectsDir, undefined, plansDir);
 
 		const ids = async (parameters: Record<string, string>) =>
-			(await search({query: "platypus", ...parameters})).map((item) => item.id).sort();
+			(await search({query: "platypus", ...parameters})).map((item) => item.id).toSorted();
 
 		expect({
 			all: await ids({}),
@@ -172,7 +172,7 @@ describe("docs_fts plan and memory index", () => {
 			sessions: await ids({type: "sessions"}),
 			project: await ids({project: PROJECT}),
 		}).toStrictEqual({
-			all: [memoryPath, planPath].sort(),
+			all: [memoryPath, planPath].toSorted(),
 			plans: [planPath],
 			memories: [memoryPath],
 			sessions: [],

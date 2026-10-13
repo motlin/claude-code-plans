@@ -236,7 +236,7 @@ describe("supersede per session", () => {
 		});
 
 		const all = getNotifications();
-		expect(all.map((n) => n.message).sort()).toStrictEqual(["other session", "second"]);
+		expect(all.map((n) => n.message).toSorted()).toStrictEqual(["other session", "second"]);
 		expect(all.some((n) => n.id === other.id)).toBe(true);
 	});
 });

@@ -23,7 +23,7 @@ export function sortSkills(skills: readonly SkillSummary[], sort: string): Skill
 	const byName = (a: SkillSummary, b: SkillSummary) =>
 		a.name.localeCompare(b.name) || a.sourceLabel.localeCompare(b.sourceLabel);
 	const compare = sort === "name" ? byName : (a: SkillSummary, b: SkillSummary) => b.mtime - a.mtime || byName(a, b);
-	return [...skills].sort(compare);
+	return skills.toSorted(compare);
 }
 
 function groupOf(skill: SkillSummary): {key: string; title: string; rank: number} {
@@ -60,7 +60,7 @@ export function groupSkills(skills: readonly SkillSummary[]): SkillGroup[] {
 		group.skills.push(skill);
 	}
 	return [...groups.values()]
-		.sort((a, b) => a.rank - b.rank || a.title.localeCompare(b.title))
+		.toSorted((a, b) => a.rank - b.rank || a.title.localeCompare(b.title))
 		.map(({key, title, skills: members}) => ({key, title, skills: members}));
 }
 
@@ -97,5 +97,5 @@ export function commandRows(
 			})),
 		)
 		.filter((row) => matchesQuery(q, row.invocation, row.description, row.sourceName))
-		.sort((a, b) => a.invocation.localeCompare(b.invocation) || a.key.localeCompare(b.key));
+		.toSorted((a, b) => a.invocation.localeCompare(b.invocation) || a.key.localeCompare(b.key));
 }

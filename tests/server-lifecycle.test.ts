@@ -64,7 +64,7 @@ function run(command: string): string {
 
 function serverPids(): string[] {
 	try {
-		return execSync(`pgrep -f '${MATCH}'`, {encoding: "utf8"}).trim().split("\n").filter(Boolean).sort();
+		return execSync(`pgrep -f '${MATCH}'`, {encoding: "utf8"}).trim().split("\n").filter(Boolean).toSorted();
 	} catch {
 		return [];
 	}
@@ -122,7 +122,7 @@ function portOwners(): string[] {
 	if (process.platform === "darwin") {
 		return darwinListeners()
 			.map(({processId}) => processId)
-			.sort();
+			.toSorted();
 	}
 	try {
 		return execFileSync("lsof", ["-nP", "-t", `-iTCP:${PORT}`, "-sTCP:LISTEN"], {
@@ -131,7 +131,7 @@ function portOwners(): string[] {
 			.trim()
 			.split("\n")
 			.filter(Boolean)
-			.sort();
+			.toSorted();
 	} catch {
 		return [];
 	}

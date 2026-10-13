@@ -79,7 +79,7 @@ describe("listMemories", () => {
 		if (groups.length !== 1) throw new Error(`Expected 1 group, got ${groups.length}`);
 		expect(groups[0]!.project).toBe("-Users-craig-projects-app");
 		expect(groups[0]!.projectName).toBe("app");
-		expect(groups[0]!.memories.map((m) => m.filename).sort()).toStrictEqual(["MEMORY.md", "patterns.md"]);
+		expect(groups[0]!.memories.map((m) => m.filename).toSorted()).toStrictEqual(["MEMORY.md", "patterns.md"]);
 	});
 
 	it("skips projects without memory directories", async () => {

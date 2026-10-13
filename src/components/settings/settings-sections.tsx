@@ -564,9 +564,9 @@ export function ApplicationConfigurationSection() {
 
 	const settings = applicationSettings.data;
 	const save = (next: typeof settings) => {
-		saveSettings.mutate({...next, ignoredDirs: [...next.ignoredDirs].sort()});
+		saveSettings.mutate({...next, ignoredDirs: next.ignoredDirs.toSorted()});
 	};
-	const savedIgnoredDirectories = [...settings.ignoredDirs].sort().join("\n");
+	const savedIgnoredDirectories = settings.ignoredDirs.toSorted().join("\n");
 
 	return (
 		<SettingsSection title="Application">

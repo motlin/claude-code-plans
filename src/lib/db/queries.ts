@@ -966,7 +966,7 @@ export function searchFileContentDb(db: IndexDb, query: string, scopeRoot: strin
 				rank: row.body_rank - pathBoost(row.path, scopeRoot, terms),
 			};
 		})
-		.sort((left, right) => {
+		.toSorted((left, right) => {
 			if (left.rank !== right.rank) return left.rank - right.rank;
 			const mtimeComparison = right.mtime.localeCompare(left.mtime);
 			return mtimeComparison === 0 ? left.path.localeCompare(right.path) : mtimeComparison;
@@ -1299,7 +1299,7 @@ export function getOpenTasksForProject(db: IndexDb, projectId: string, limit: nu
 
 	return getRawTaskRowsForProject(db, projectId)
 		.filter((row) => row.status === "pending" || row.status === "in_progress")
-		.sort(
+		.toSorted(
 			(left, right) =>
 				Number(left.status !== "in_progress") - Number(right.status !== "in_progress") ||
 				right.mtimeMs - left.mtimeMs ||
@@ -1481,7 +1481,7 @@ export function getIncompleteTasksGroupedByProject(db: IndexDb): TaskProjectGrou
 
 	// Orphaned groups name no project the user can act on, so they sink below
 	// every real project instead of interleaving with them.
-	return result.sort(
+	return result.toSorted(
 		(left, right) =>
 			Number(left.projectId === ORPHANED_TASKS_PROJECT_ID) -
 			Number(right.projectId === ORPHANED_TASKS_PROJECT_ID),

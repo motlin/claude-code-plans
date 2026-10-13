@@ -96,7 +96,7 @@ for (const filePath of filesToProcess) {
 
 console.log(`Scanned ${filesToProcess.length} files, ${totalRecords} records, ${parseFails} parse failures\n`);
 
-const sortedTypes = [...statsByType.entries()].sort((a, b) => b[1].total - a[1].total);
+const sortedTypes = [...statsByType.entries()].toSorted((a, b) => b[1].total - a[1].total);
 
 for (const [typeName, stats] of sortedTypes) {
 	console.log(`\n${"=".repeat(70)}`);
@@ -105,7 +105,7 @@ for (const [typeName, stats] of sortedTypes) {
 
 	const fieldEntries = [...stats.fields.entries()]
 		.filter(([f]) => f !== "type")
-		.sort((a, b) => {
+		.toSorted((a, b) => {
 			const aRate = a[1] / stats.total;
 			const bRate = b[1] / stats.total;
 			if (bRate !== aRate) return bRate - aRate;

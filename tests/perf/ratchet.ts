@@ -54,7 +54,7 @@ export const DEFAULT_RESULTS_PATH = join(HERE, "..", "..", "node_modules", ".cac
 export function loadCeilings(json: string = readFileSync(CEILINGS_PATH, "utf8")): Ceilings {
 	const ceilings = CeilingsSchema.parse(JSON.parse(json));
 	const keys = Object.keys(ceilings);
-	const sorted = [...keys].sort();
+	const sorted = keys.toSorted();
 	if (keys.some((key, index) => key !== sorted[index])) {
 		throw new Error("tests/perf/ceilings.json keys must be sorted");
 	}
@@ -143,7 +143,7 @@ function recordResult(resultsPath: string, tree: string, id: string, value: numb
 	withResultsLock(resultsPath, () => {
 		const results = readResults(resultsPath, tree);
 		results[id] = unit === undefined ? {value} : {value, unit};
-		const sorted = Object.fromEntries(Object.entries(results).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
+		const sorted = Object.fromEntries(Object.entries(results).toSorted(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
 		const tempPath = `${resultsPath}.${process.pid}.${threadId}.tmp`;
 		writeFileSync(tempPath, `${JSON.stringify({tree, results: sorted}, null, "\t")}\n`);
 		renameSync(tempPath, resultsPath);

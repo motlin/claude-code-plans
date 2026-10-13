@@ -13,7 +13,7 @@ const fixtureEntries = registeredRecordTypes.map(
 
 describe("JSONL record fixtures", () => {
 	it("covers every variant registered by the schema-choice registry", () => {
-		expect(Object.keys(jsonlRecordFixtures).sort()).toStrictEqual([...registeredRecordTypes].sort());
+		expect(Object.keys(jsonlRecordFixtures).toSorted()).toStrictEqual(registeredRecordTypes.toSorted());
 	});
 
 	it.each(fixtureEntries)("parses the %s fixture", (_recordType, fixture) => {

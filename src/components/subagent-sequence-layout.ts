@@ -26,7 +26,7 @@ export function layoutSequence(agents: Subagent[]): SequenceLayout {
 		childrenByParent.set(key, list);
 	}
 
-	const ordered = [...spans].sort((a, b) => {
+	const ordered = spans.toSorted((a, b) => {
 		if (a.startMs !== b.startMs) return a.startMs - b.startMs;
 		const aDepth = depthOf.get(a.agent.id) ?? 0;
 		const bDepth = depthOf.get(b.agent.id) ?? 0;
@@ -175,7 +175,7 @@ function computeDepths(timed: Subagent[]): Map<string, number> {
 
 function mergeRanges(ranges: SequenceTimeRange[]): SequenceTimeRange[] {
 	if (ranges.length === 0) return [];
-	const sorted = [...ranges].sort((a, b) => a.startMs - b.startMs);
+	const sorted = ranges.toSorted((a, b) => a.startMs - b.startMs);
 	const merged: SequenceTimeRange[] = [];
 	for (const next of sorted) {
 		const last = merged.at(-1);

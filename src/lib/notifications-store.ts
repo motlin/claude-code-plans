@@ -179,7 +179,7 @@ export function addNotification(
 }
 
 export function getNotifications(): NotificationEntry[] {
-	return [...store.values()].sort((a, b) => b.createdAt - a.createdAt);
+	return [...store.values()].toSorted((a, b) => b.createdAt - a.createdAt);
 }
 
 export function getNotificationsForProject(projectId: string): NotificationEntry[] {

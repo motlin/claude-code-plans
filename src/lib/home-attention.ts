@@ -72,7 +72,7 @@ export function selectHomeAttention<Row extends HomeAttentionRow>({
 		if (isDismissed(session, dismissed)) continue;
 		items.push({session, kind, statusLine: attentionStatusLine(session)});
 	}
-	return items.sort(
+	return items.toSorted(
 		(first, second) =>
 			KIND_ORDER[first.kind] - KIND_ORDER[second.kind] ||
 			second.session.lastActivityAt - first.session.lastActivityAt,

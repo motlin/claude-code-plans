@@ -90,7 +90,7 @@ export async function initPendingApprovalsCache(db: IndexDb, signal?: AbortSigna
 }
 
 export function getPendingApprovals(): PendingApproval[] {
-	return Array.from(cache.values(), (entry) => entry.approval).sort((a, b) =>
+	return Array.from(cache.values(), (entry) => entry.approval).toSorted((a, b) =>
 		a.blockedSince.localeCompare(b.blockedSince),
 	);
 }

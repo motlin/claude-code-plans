@@ -7,7 +7,7 @@ interface Run {
 
 function toRuns(text: string, matches: readonly TextMatch[]): Run[] {
 	const merged: TextMatch[] = [];
-	for (const match of [...matches].sort((a, b) => a.start - b.start)) {
+	for (const match of matches.toSorted((a, b) => a.start - b.start)) {
 		const start = Math.max(0, match.start);
 		const end = Math.min(text.length, match.end);
 		if (end <= start) continue;

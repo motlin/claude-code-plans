@@ -28,7 +28,7 @@ describe("server shutdown hooks", () => {
 		await runServerShutdownHooks();
 		await runServerShutdownHooks();
 
-		expect(calls.sort()).toStrictEqual(["async", "sync"]);
+		expect(calls.toSorted()).toStrictEqual(["async", "sync"]);
 	});
 
 	it("shares hooks across separately bundled module instances", async () => {

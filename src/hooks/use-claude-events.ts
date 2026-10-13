@@ -721,7 +721,7 @@ function upsertApproval(
 	const next =
 		existingIndex >= 0 ? approvals.map((a, i) => (i === existingIndex ? approval : a)) : [...approvals, approval];
 	// Sort oldest-waiting first (ascending by blockedSince) to match the API.
-	return [...next].sort((a, b) => (a.blockedSince < b.blockedSince ? -1 : a.blockedSince > b.blockedSince ? 1 : 0));
+	return next.toSorted((a, b) => (a.blockedSince < b.blockedSince ? -1 : a.blockedSince > b.blockedSince ? 1 : 0));
 }
 
 export function applyApprovalChanged(queryClient: QueryClient, approval: PendingApprovalPayload): void {

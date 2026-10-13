@@ -480,7 +480,7 @@ describe("artifacts route", () => {
 			return screen
 				.getAllByRole("listitem")
 				.map((row) => rowSummary(row).title ?? "")
-				.sort();
+				.toSorted();
 		}
 		const tabs = within(screen.getByRole("tablist", {name: "Artifacts"})).getAllByRole("tab");
 		const initial = {

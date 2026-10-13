@@ -23,7 +23,7 @@ export function partitionTestFiles(root: string, directory: string): {shared: st
 	const files = readdirSync(path.join(root, directory), {recursive: true, encoding: "utf8"})
 		.filter((file) => TEST_FILE.test(file))
 		.map((file) => path.posix.join(directory, file.split(path.sep).join("/")))
-		.sort();
+		.toSorted();
 	for (const file of files) {
 		(needsIsolation(readFileSync(path.join(root, file), "utf8")) ? isolated : shared).push(file);
 	}

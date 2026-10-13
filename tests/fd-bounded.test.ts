@@ -48,7 +48,7 @@ function openPathsUnder(root: string): string[] {
 	const realRoot = realpathSync(root);
 	return openPaths()
 		.filter((path) => path === realRoot || path.startsWith(`${realRoot}/`))
-		.sort();
+		.toSorted();
 }
 
 /**

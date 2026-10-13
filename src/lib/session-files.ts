@@ -232,8 +232,8 @@ export function extractSessionFiles(lines: SessionLine[], homeRoot: string): Ses
 	const files = Array.from(collectedFiles.values(), (file): FileEntry => ({
 		path: file.path,
 		absolutePath: file.absolutePath,
-		occurrences: Array.from(file.occurrences.values()).sort(compareOccurrences),
-	})).sort(compareFiles);
+		occurrences: Array.from(file.occurrences.values()).toSorted(compareOccurrences),
+	})).toSorted(compareFiles);
 
 	const counts: Record<FileSourceKey, number> = {
 		userMessage: 0,

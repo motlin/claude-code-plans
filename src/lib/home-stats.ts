@@ -88,7 +88,7 @@ function rangeStart(days: readonly HomeStatsDay[], range: HomeStatsRange, today:
 	const firstActive = days
 		.filter((row) => row.sessions > 0 || row.messages > 0)
 		.map((row) => row.date)
-		.sort()[0];
+		.toSorted()[0];
 	if (firstActive === undefined || firstActive > today) return today;
 	return firstActive < earliestCap ? earliestCap : firstActive;
 }
@@ -139,7 +139,7 @@ export function computeHomeStats(days: readonly HomeStatsDay[], range: HomeStats
 	const totalTokens = hasTokens ? [...modelTokens.values()].reduce((a, b) => a + b, 0) : null;
 	const models = [...modelTokens]
 		.filter(([, tokens]) => tokens > 0)
-		.sort(([a, aTokens], [b, bTokens]) => bTokens - aTokens || (a < b ? -1 : a > b ? 1 : 0))
+		.toSorted(([a, aTokens], [b, bTokens]) => bTokens - aTokens || (a < b ? -1 : a > b ? 1 : 0))
 		.map(([model, tokens]) => ({model, tokens, share: totalTokens ? tokens / totalTokens : 0}));
 
 	const peak = maxBy(
@@ -212,7 +212,7 @@ export function mergeStatsCacheTokens(
 			tokensByModel: {...tokensByModel},
 		});
 	}
-	return [...merged.values()].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+	return [...merged.values()].toSorted((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
 }
 
 /** One `usage_daily` row: a transcript's messages and token usage for a local day and model. */
@@ -283,7 +283,7 @@ export class UsageCollector {
 	}
 
 	rows(): UsageDailyRow[] {
-		return [...this.totals.values()].sort(
+		return [...this.totals.values()].toSorted(
 			(a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0) || (a.model ?? "").localeCompare(b.model ?? ""),
 		);
 	}

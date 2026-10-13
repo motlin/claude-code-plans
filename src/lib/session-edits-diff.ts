@@ -135,7 +135,7 @@ export function aggregateSessionEdits(
 			});
 		}
 	}
-	return output.sort((a, b) => a.path.localeCompare(b.path));
+	return output.toSorted((a, b) => a.path.localeCompare(b.path));
 }
 
 function isRealUserPrompt(record: JsonlRecord): boolean {

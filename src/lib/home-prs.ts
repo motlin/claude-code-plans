@@ -88,7 +88,7 @@ const CATEGORY_RANK = {
  */
 export function selectHomePrs(sources: readonly HomePrSource[]): HomePrRow[] {
 	const byUrl = new Map<string, HomePrRow>();
-	const newestFirst = [...sources].sort((a, b) => b.lastActivityAt - a.lastActivityAt);
+	const newestFirst = sources.toSorted((a, b) => b.lastActivityAt - a.lastActivityAt);
 	for (const {sessionId, sessionTitle, lastActivityAt, pr} of newestFirst) {
 		if (pr?.url === undefined || pr.state !== "open" || byUrl.has(pr.url)) continue;
 		byUrl.set(pr.url, {
@@ -101,5 +101,5 @@ export function selectHomePrs(sources: readonly HomePrSource[]): HomePrRow[] {
 			pill: prPill(homePrState(pr), pr.checks ?? null),
 		});
 	}
-	return [...byUrl.values()].sort((a, b) => CATEGORY_RANK[a.pill.category] - CATEGORY_RANK[b.pill.category]);
+	return [...byUrl.values()].toSorted((a, b) => CATEGORY_RANK[a.pill.category] - CATEGORY_RANK[b.pill.category]);
 }

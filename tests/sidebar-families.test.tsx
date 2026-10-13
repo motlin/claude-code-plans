@@ -194,7 +194,7 @@ describe("sidebar session families", () => {
 
 		fireEvent.click(handle(container, "h2"), {altKey: true});
 
-		expect([...readSidebarState().collapsedFamilies].sort()).toStrictEqual(["code:h1", "code:h2"]);
+		expect([...readSidebarState().collapsedFamilies].toSorted()).toStrictEqual(["code:h1", "code:h2"]);
 		expect(rowTitles(family(container, "h1"))).toStrictEqual([]);
 		expect(rowTitles(family(container, "h2"))).toStrictEqual([]);
 

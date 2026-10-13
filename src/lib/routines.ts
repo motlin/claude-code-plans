@@ -456,8 +456,8 @@ export function filterRoutines<T extends RoutineRow>(
 
 export function sortRoutines<T extends RoutineRow>(routines: readonly T[], sort: RoutineSort): T[] {
 	const byName = (a: T, b: T) => routineTitle(a).localeCompare(routineTitle(b), undefined, {sensitivity: "base"});
-	if (sort === "name") return [...routines].sort((a, b) => byName(a, b) || b.createdAt - a.createdAt);
-	return [...routines].sort((a, b) => {
+	if (sort === "name") return routines.toSorted((a, b) => byName(a, b) || b.createdAt - a.createdAt);
+	return routines.toSorted((a, b) => {
 		if (a.nextRunAt !== b.nextRunAt) {
 			if (a.nextRunAt === null) return 1;
 			if (b.nextRunAt === null) return -1;

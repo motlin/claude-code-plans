@@ -117,7 +117,7 @@ export async function getHerdrWorkspaces(
 		workspace.shellPanes.sort(comparePanes);
 	}
 
-	return [...workspaces.values()].sort(
+	return [...workspaces.values()].toSorted(
 		(left, right) => compareHerdrAttention(left, right) || left.number - right.number,
 	);
 }

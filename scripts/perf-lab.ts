@@ -157,7 +157,7 @@ export function layoutShiftSum(entries: readonly LayoutShiftEntry[]): number {
 }
 
 export function summarize(values: number[]): Summary {
-	const sorted = [...values].sort((a, b) => a - b);
+	const sorted = values.toSorted((a, b) => a - b);
 	const middle = Math.floor(sorted.length / 2);
 	const median =
 		sorted.length % 2 === 1 ? (sorted[middle] ?? 0) : ((sorted[middle - 1] ?? 0) + (sorted[middle] ?? 0)) / 2;
@@ -814,7 +814,7 @@ export async function runLab(
 					openSession: {shape: "typical", bytes: fixture.openSessionBytes},
 					switchSession: {shape: "small", bytes: fixture.switchSessionBytes},
 				},
-				blockedHosts: [...new Set(blocked)].sort(),
+				blockedHosts: [...new Set(blocked)].toSorted(),
 				runs,
 			};
 		} finally {

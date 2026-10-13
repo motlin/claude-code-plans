@@ -36,7 +36,7 @@ export function parseHistoryJsonl(text: string): HistoryPrompt[] {
 			prompts.push({display: parsed.data.display, sessionId: parsed.data.sessionId});
 		}
 	}
-	return prompts.reverse();
+	return prompts.toReversed();
 }
 
 /** Session prompts first, then the rest; blank and repeated prompts dropped, capped at `limit`. */

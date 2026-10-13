@@ -247,7 +247,7 @@ function projectRows(projects: readonly PaletteProjectItem[], text: string): Sea
 /** The Artifacts tab: newest first, narrowed by the query text. */
 function artifactRows(artifacts: readonly ArtifactSummary[], text: string): SearchRow[] {
 	const rows: SearchRow[] = [];
-	for (const artifact of [...artifacts].sort((a, b) => artifactTimestamp(b) - artifactTimestamp(a))) {
+	for (const artifact of artifacts.toSorted((a, b) => artifactTimestamp(b) - artifactTimestamp(a))) {
 		const matches = text === "" ? [] : titleMatches(artifact.title, text);
 		if (matches === null) continue;
 		rows.push({
@@ -338,7 +338,7 @@ function recentDocRows(
 			if (cutoff !== null && Date.parse(doc.mtime) < cutoff) return false;
 			return project === undefined || (resolved !== undefined && doc.projectIds.includes(resolved.id));
 		})
-		.sort((a, b) => Date.parse(b.mtime) - Date.parse(a.mtime))
+		.toSorted((a, b) => Date.parse(b.mtime) - Date.parse(a.mtime))
 		.slice(0, PALETTE_RECENT_LIMIT)
 		.map((doc) => ({
 			kind: doc.kind,

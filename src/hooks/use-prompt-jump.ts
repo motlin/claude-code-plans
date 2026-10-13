@@ -22,7 +22,7 @@ function promptJumpTarget(virtualizer: PromptJumpVirtualizer, direction: Directi
 	const {promptIndices} = virtualizer;
 	if (direction === "previous") {
 		return [...promptIndices]
-			.reverse()
+			.toReversed()
 			.find((index) => virtualizer.entryOffset(index) < viewportTop - ALIGNMENT_TOLERANCE_PIXELS);
 	}
 	return promptIndices.find((index) => virtualizer.entryOffset(index) > viewportTop + ALIGNMENT_TOLERANCE_PIXELS);

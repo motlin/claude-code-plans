@@ -16,7 +16,7 @@ describe("collectJsonlFiles", () => {
 		const collected = await collectJsonlFiles(projectsDirectory);
 
 		expect({
-			relativePaths: collected.files.map((file) => file.relativePath).sort(),
+			relativePaths: collected.files.map((file) => file.relativePath).toSorted(),
 			skippedUnavailablePaths: collected.skippedUnavailablePaths,
 		}).toStrictEqual({
 			relativePaths: [

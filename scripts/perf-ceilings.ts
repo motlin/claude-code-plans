@@ -32,7 +32,7 @@ function compareKeys(a: string, b: string): number {
 export function rewriteCeilings(ceilings: Ceilings, results: Results): {ceilings: Ceilings; changes: CeilingChange[]} {
 	const next: Ceilings = {...ceilings};
 	const changes: CeilingChange[] = [];
-	for (const [id, {value, unit}] of Object.entries(results).sort(([a], [b]) => compareKeys(a, b))) {
+	for (const [id, {value, unit}] of Object.entries(results).toSorted(([a], [b]) => compareKeys(a, b))) {
 		const entry = ceilings[id];
 		if (entry === undefined) {
 			next[id] = {ceiling: value, unit: unit ?? "count", tolerance: 0};
@@ -44,7 +44,7 @@ export function rewriteCeilings(ceilings: Ceilings, results: Results): {ceilings
 			changes.push({id, kind: "raised", from: entry.ceiling, to: value});
 		}
 	}
-	const sorted = Object.fromEntries(Object.entries(next).sort(([a], [b]) => compareKeys(a, b)));
+	const sorted = Object.fromEntries(Object.entries(next).toSorted(([a], [b]) => compareKeys(a, b)));
 	return {ceilings: sorted, changes};
 }
 
@@ -56,7 +56,7 @@ function status(ceiling: number | undefined, value: number): string {
 }
 
 export function formatResultsTable(ceilings: Ceilings, results: Results): string {
-	const entries = Object.entries(results).sort(([a], [b]) => compareKeys(a, b));
+	const entries = Object.entries(results).toSorted(([a], [b]) => compareKeys(a, b));
 	if (entries.length === 0) {
 		return "No perf results recorded.";
 	}

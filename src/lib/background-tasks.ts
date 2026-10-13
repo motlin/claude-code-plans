@@ -58,7 +58,7 @@ export function backgroundTaskMeta(task: BackgroundTask): string {
 export function groupBackgroundTasks(tasks: readonly BackgroundTask[]): BackgroundTaskGroups {
 	return {
 		running: tasks.filter((task) => task.status === "running"),
-		finished: tasks.filter((task) => task.status !== "running").reverse(),
+		finished: tasks.filter((task) => task.status !== "running").toReversed(),
 	};
 }
 
@@ -406,7 +406,7 @@ export function extractBackgroundTasks(
 		...liveTasks,
 		...tasks
 			.filter((tracked) => tracked.task.status !== "running")
-			.sort((a, b) => a.settledAt - b.settledAt)
+			.toSorted((a, b) => a.settledAt - b.settledAt)
 			.map((tracked) => tracked.task),
 	];
 	return groupBackgroundTasks(ordered);

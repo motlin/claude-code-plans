@@ -11,7 +11,7 @@ function collectRouteFiles(dir: string): string[] {
 		if (entry.isDirectory()) files.push(...collectRouteFiles(fullPath));
 		else if (entry.name.endsWith(".tsx") || entry.name.endsWith(".ts")) files.push(fullPath);
 	}
-	return files.sort();
+	return files.toSorted();
 }
 
 /** `src/routes/herdr.terminal.$sessionId.tsx` -> `herdr.terminal.$sessionId` */
@@ -54,7 +54,7 @@ describe("parent routes must render an Outlet", () => {
 		}
 
 		const violations: string[] = [];
-		for (const parent of [...parents].sort()) {
+		for (const parent of [...parents].toSorted()) {
 			const source = readFileSync(byId.get(parent)!, "utf8");
 			if (!RENDERS_A_COMPONENT.test(source)) continue;
 			if (!source.includes("<Outlet")) violations.push(parent);

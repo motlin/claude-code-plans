@@ -134,9 +134,6 @@ export default defineConfig({
 				},
 			],
 			// Project opt-outs from the categories, each with dozens to hundreds of findings or a convention clash.
-			// tsconfig lib is ES2022, which has no toSorted/toReversed.
-			"unicorn/no-array-sort": "off",
-			"unicorn/no-array-reverse": "off",
 			// Test helpers and route callbacks sit beside the code that uses them on purpose.
 			"unicorn/consistent-function-scoping": "off",
 			// The `_` prefix marks unused bindings (see no-unused-vars) and Vite defines use __NAME__.

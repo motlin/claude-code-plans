@@ -26,7 +26,7 @@ export async function readLatestUsage(statuslineDirectory: string): Promise<Usag
 			}
 		}),
 	);
-	const newestFirst = files.filter((file) => file !== null).sort((left, right) => right.mtimeMs - left.mtimeMs);
+	const newestFirst = files.filter((file) => file !== null).toSorted((left, right) => right.mtimeMs - left.mtimeMs);
 
 	for (const {filePath, mtimeMs} of newestFirst) {
 		let json: unknown;

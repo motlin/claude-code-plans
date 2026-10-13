@@ -65,7 +65,7 @@ const ZONE_ALIASES: Readonly<Record<string, string>> = {
 };
 
 const WS = "[^\\S\\r\\n]";
-const ZONE_NAMES = [...Object.keys(ZONE_OFFSETS), ...Object.keys(ZONE_ALIASES)].sort((a, b) => b.length - a.length);
+const ZONE_NAMES = [...Object.keys(ZONE_OFFSETS), ...Object.keys(ZONE_ALIASES)].toSorted((a, b) => b.length - a.length);
 const ZONED_TIME = new RegExp(
 	`(\\d{1,2}):(\\d{2})(?::(\\d{2}))?(?:(?:${WS}?([AaPp])(?:\\.[Mm]\\.|${WS}?[Mm]))?${WS}+|(?=Z\\b))(?:(?:UTC|GMT)([+\\u2212\\u2013-])(\\d{1,2})(?::?(\\d{2}))?|(${ZONE_NAMES.join("|")}))(?![\\w+\\u2212\\u2013-])`,
 	"g",

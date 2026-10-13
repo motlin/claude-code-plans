@@ -66,7 +66,7 @@ export class BridgeSessionCollector {
 	/** Ordinary live appends do not change bridge identity and need no metadata query. */
 	persist(db: IndexDb, sessionId: string): void {
 		if (!this.dirty && this.persistedDatabase === db) return;
-		updateAliases(db, sessionId, {aliases: [...this.aliases].sort(), canonical: this.canonical});
+		updateAliases(db, sessionId, {aliases: [...this.aliases].toSorted(), canonical: this.canonical});
 		this.persistedDatabase = db;
 		this.dirty = false;
 	}
@@ -100,7 +100,7 @@ function updateAliases(db: IndexDb, sessionId: string, next: BridgeAliases | nul
 			if (nextAliases.has(alias)) owners.add(sessionId);
 			else owners.delete(sessionId);
 			if (owners.size === 0) db.delete(schema.metadata).where(eq(schema.metadata.key, aliasKey)).run();
-			else writeMetadata(db, aliasKey, JSON.stringify([...owners].sort()));
+			else writeMetadata(db, aliasKey, JSON.stringify([...owners].toSorted()));
 		}
 		if (nextValue === undefined) db.delete(schema.metadata).where(eq(schema.metadata.key, key)).run();
 		else writeMetadata(db, key, nextValue);

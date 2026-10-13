@@ -497,14 +497,14 @@ export function movePaneTo(
 	if (parent.direction === axis) {
 		const half = round(target.flex / 2);
 		const pair = [tile(tileId, half), {...target, flex: half}];
-		children.splice(index, 1, ...(before ? pair : pair.reverse()));
+		children.splice(index, 1, ...(before ? pair : pair.toReversed()));
 	} else {
 		const pair = [tile(tileId, 1), {...target, flex: 1}];
 		children[index] = {
 			kind: "stack",
 			direction: axis,
 			flex: target.flex,
-			children: before ? pair : pair.reverse(),
+			children: before ? pair : pair.toReversed(),
 		};
 	}
 	return {...state, root: normalizeRoot(replaceAt(root, parentPath, {...parent, children})), focused: tileId};

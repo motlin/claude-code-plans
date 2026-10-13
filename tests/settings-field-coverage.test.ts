@@ -12,13 +12,13 @@ import {CAPABILITY_IDS, DEFAULT_CAPABILITIES, PersistedCapabilitiesSchema} from 
 describe("settings field coverage", () => {
 	it("every ClaudeSettingsSchema key has form coverage", () => {
 		const schemaKeys = Object.keys(ClaudeSettingsSchema.shape);
-		const uncovered = schemaKeys.filter((key) => !COVERED_SETTINGS_KEYS.has(key)).sort();
+		const uncovered = schemaKeys.filter((key) => !COVERED_SETTINGS_KEYS.has(key)).toSorted();
 		expect(uncovered).toEqual([]);
 	});
 
 	it("every COVERED_SETTINGS_KEYS member is a schema key or $schema", () => {
 		const schemaKeys = new Set(Object.keys(ClaudeSettingsSchema.shape));
-		const stale = [...COVERED_SETTINGS_KEYS].filter((key) => key !== "$schema" && !schemaKeys.has(key)).sort();
+		const stale = [...COVERED_SETTINGS_KEYS].filter((key) => key !== "$schema" && !schemaKeys.has(key)).toSorted();
 		expect(stale).toEqual([]);
 	});
 });

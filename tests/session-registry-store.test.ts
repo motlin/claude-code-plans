@@ -54,7 +54,7 @@ describe("session registry store", () => {
 
 		const changed = await refreshSessionRegistry(dir, everyoneAlive);
 
-		expect({changed: [...changed].sort(), states: getRegistrySessionStates()}).toStrictEqual({
+		expect({changed: [...changed].toSorted(), states: getRegistrySessionStates()}).toStrictEqual({
 			changed: ["session-test-100", "session-test-200"],
 			states: [
 				{
@@ -88,7 +88,7 @@ describe("session registry store", () => {
 		const changed = await refreshSessionRegistry(dir, everyoneAlive);
 		const unchanged = await refreshSessionRegistry(dir, everyoneAlive);
 
-		expect({changed: [...changed].sort(), unchanged: [...unchanged]}).toStrictEqual({
+		expect({changed: [...changed].toSorted(), unchanged: [...unchanged]}).toStrictEqual({
 			changed: ["session-test-100", "session-test-200"],
 			unchanged: [],
 		});

@@ -111,7 +111,7 @@ export function orderedPins<T extends {id: string}>(
 	const orderIndex = new Map(state.pinnedOrder.map((id, index) => [id, index]));
 	return sessions
 		.filter((session) => pinned.has(session.id))
-		.sort((a, b) => {
+		.toSorted((a, b) => {
 			const aIndex = orderIndex.get(a.id) ?? Infinity;
 			const bIndex = orderIndex.get(b.id) ?? Infinity;
 			if (aIndex !== bIndex) return aIndex - bIndex;

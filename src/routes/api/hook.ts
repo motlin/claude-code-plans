@@ -135,8 +135,8 @@ export function classifyZodIssues(
 	const unmatchedToolName = extractUnmatchedToolName(body, state.matchedToolArm);
 	if (unmatchedToolName) unknownFields.add(`tool_name: ${unmatchedToolName}`);
 	return {
-		missingFields: [...missingFields].sort(),
-		unknownFields: [...unknownFields].sort(),
+		missingFields: [...missingFields].toSorted(),
+		unknownFields: [...unknownFields].toSorted(),
 	};
 }
 

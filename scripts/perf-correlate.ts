@@ -38,7 +38,7 @@ const MIN_SPREAD = 0.1;
 
 export function median(values: readonly number[]): number {
 	if (values.length === 0) throw new Error("median of an empty list");
-	const sorted = [...values].sort((a, b) => a - b);
+	const sorted = values.toSorted((a, b) => a - b);
 	const middle = Math.floor(sorted.length / 2);
 	const upper = defined(sorted[middle], "median middle index is in range");
 	return sorted.length % 2 === 1
@@ -48,7 +48,7 @@ export function median(values: readonly number[]): number {
 
 /** 1-based ranks, ties sharing their average rank. */
 function ranks(values: readonly number[]): number[] {
-	const order = values.map((value, index) => ({value, index})).sort((a, b) => a.value - b.value);
+	const order = values.map((value, index) => ({value, index})).toSorted((a, b) => a.value - b.value);
 	const result = Array.from({length: values.length}, () => 0);
 	for (let start = 0; start < order.length;) {
 		let end = start;
@@ -189,7 +189,7 @@ export function correlate(sweep: Sweep): Correlation[] {
 			const rho = spearman(row.counts, row.wallMs);
 			return {...row, rho, slope: slope(row.counts, row.wallMs), verdict: verdict(row.counts, rho)};
 		})
-		.sort((a, b) => (a.family < b.family ? -1 : a.family > b.family ? 1 : 0));
+		.toSorted((a, b) => (a.family < b.family ? -1 : a.family > b.family ? 1 : 0));
 }
 
 // --- report --------------------------------------------------------------------------------------------------------
@@ -233,7 +233,7 @@ function journeyWalls(sweep: Sweep): Map<string, number[]> {
 			walls.set(key, [...(walls.get(key) ?? []), median(wallMs)]);
 		}
 	}
-	return new Map([...walls].sort(([a], [b]) => (a < b ? -1 : 1)));
+	return new Map([...walls].toSorted(([a], [b]) => (a < b ? -1 : 1)));
 }
 
 function negativeControl(before: Sweep, after: Sweep): string {

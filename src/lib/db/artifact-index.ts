@@ -128,7 +128,7 @@ function lastNonNull<T>(values: ReadonlyArray<T | null | undefined>): T | null {
 }
 
 function firstNonNull<T>(values: ReadonlyArray<T | null | undefined>): T | null {
-	return lastNonNull([...values].reverse());
+	return lastNonNull(values.toReversed());
 }
 
 function recomputeArtifact(transaction: IndexDb, url: string): void {
@@ -137,7 +137,7 @@ function recomputeArtifact(transaction: IndexDb, url: string): void {
 		.from(schema.artifactEvents)
 		.where(eq(schema.artifactEvents.url, url))
 		.all()
-		.sort((a, b) => a.ts - b.ts || a.toolUseId.localeCompare(b.toolUseId));
+		.toSorted((a, b) => a.ts - b.ts || a.toolUseId.localeCompare(b.toolUseId));
 	const latest = events.at(-1);
 	const normalized = normalizeArtifactUrl(url);
 	if (latest === undefined || normalized === undefined) {

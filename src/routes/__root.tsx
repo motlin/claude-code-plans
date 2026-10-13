@@ -147,7 +147,7 @@ function RootLayout({children}: Readonly<{children: ReactNode}>) {
 	});
 	const tileShell = useMatches({
 		select: (matches) =>
-			[...matches].reverse().find((match) => match.staticData.tileShell !== undefined)?.staticData.tileShell,
+			matches.findLast((match) => match.staticData.tileShell !== undefined)?.staticData.tileShell,
 	});
 	// Field journeys J1/J2 (launch, deep link) run once, timed from navigation start on the route the tab opened.
 	useEffect(() => {

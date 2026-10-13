@@ -220,7 +220,7 @@ describe("RecentsSwitcher", () => {
 						.getQueryCache()
 						.find({queryKey})!
 						.setState({status: "error", error: new Error("Ambiguous alias")});
-				saveRecents([...ENTRIES].reverse());
+				saveRecents(ENTRIES.toReversed());
 			});
 			expect({
 				rows: within(dialog)

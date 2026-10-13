@@ -43,7 +43,7 @@ export async function readPromptHistory({
 	]);
 	const history = parseHistoryJsonl(historyText);
 	const session = [
-		...transcript.reverse(),
+		...transcript.toReversed(),
 		...history.filter((p) => p.sessionId === sessionId).map((p) => p.display),
 	];
 	const global = history.filter((p) => p.sessionId !== sessionId).map((p) => p.display);

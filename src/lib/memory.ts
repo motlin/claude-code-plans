@@ -77,7 +77,7 @@ export async function resolveProjectPath(encoded: string): Promise<string | null
 		if (chars[i] === "-") hyphenPositions.push(i);
 	}
 
-	for (const pos of [...hyphenPositions].reverse()) {
+	for (const pos of hyphenPositions.toReversed()) {
 		const pathPart = "/" + chars.slice(0, pos).replace(/-/g, "/");
 		const namePart = chars.slice(pos + 1);
 		const candidate = pathPart + "/" + namePart;
@@ -148,7 +148,7 @@ export async function listMemories(projectsDir: string): Promise<ProjectGroup[]>
 
 	return groups
 		.map((group) => ({group, maxMtime: Math.max(...group.memories.map((m) => m.mtime.getTime()))}))
-		.sort((a, b) => b.maxMtime - a.maxMtime)
+		.toSorted((a, b) => b.maxMtime - a.maxMtime)
 		.map(({group}) => group);
 }
 

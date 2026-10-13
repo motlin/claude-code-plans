@@ -177,7 +177,7 @@ describe("list queries", () => {
 		const ids = (status?: "active" | "archived" | "all") =>
 			getSessionsByIds(db.index, [ALICE, BOB], status ? {status} : {})
 				.map((s) => s.id)
-				.sort();
+				.toSorted();
 
 		expect({default: ids(), all: ids("all")}).toStrictEqual({
 			default: [ALICE],
@@ -443,7 +443,7 @@ describe("GET /api/notifications", () => {
 				request: new Request(`http://localhost/api/notifications${query}`),
 			});
 			const body = (await response.json()) as {notifications: Array<{sessionId: string}>};
-			return body.notifications.map((n) => n.sessionId).sort();
+			return body.notifications.map((n) => n.sessionId).toSorted();
 		};
 
 		const result = {

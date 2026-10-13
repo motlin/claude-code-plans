@@ -99,7 +99,7 @@ function SessionsByTime({activeIds}: {activeIds: ReadonlySet<string>}) {
 	// The first page carries running sessions older than it; restore mtime order for the period headers.
 	const allSessions = recent.pages
 		.flatMap((page) => page.sessions)
-		.sort((first, second) => Date.parse(second.mtime) - Date.parse(first.mtime));
+		.toSorted((first, second) => Date.parse(second.mtime) - Date.parse(first.mtime));
 	const timePeriodGroups: Array<{period: string; sessions: typeof allSessions}> = [];
 	for (const session of allSessions) {
 		const period = getTimePeriod(session.mtime);

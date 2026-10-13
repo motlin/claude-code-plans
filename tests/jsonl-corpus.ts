@@ -28,7 +28,7 @@ export function selectFilesForScan(
 	currentTimeMilliseconds: number,
 	fileLimit: number,
 ): FileSelection {
-	const newestFirst = [...files].sort(
+	const newestFirst = files.toSorted(
 		(left, right) =>
 			right.modifiedAtMilliseconds - left.modifiedAtMilliseconds ||
 			left.relativePath.localeCompare(right.relativePath),

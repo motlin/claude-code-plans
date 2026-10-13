@@ -36,7 +36,7 @@ describe("environment settings inventory", () => {
 			}
 		}
 
-		expect(reads.sort()).toStrictEqual(EXPECTED_ENVIRONMENT_READS.sort());
+		expect(reads.toSorted()).toStrictEqual(EXPECTED_ENVIRONMENT_READS.toSorted());
 	});
 
 	it("documents injected Herdr runtime context and build-time context", () => {
@@ -49,7 +49,7 @@ describe("environment settings inventory", () => {
 		}
 
 		expect({
-			injectedReads: injectedReads.sort(),
+			injectedReads: injectedReads.toSorted(),
 			developmentBuildReads: readFileSync(resolve(ROOT, "src/routes/__root.tsx"), "utf8").match(
 				/import\.meta\.env\.DEV/g,
 			)?.length,
@@ -57,7 +57,7 @@ describe("environment settings inventory", () => {
 				"...process.env",
 			),
 		}).toStrictEqual({
-			injectedReads: EXPECTED_INJECTED_RUNTIME_READS.sort(),
+			injectedReads: EXPECTED_INJECTED_RUNTIME_READS.toSorted(),
 			developmentBuildReads: 2,
 			processEnvironmentPassThrough: true,
 		});

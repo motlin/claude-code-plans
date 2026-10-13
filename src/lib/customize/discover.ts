@@ -49,7 +49,7 @@ async function readManifestPlugins(
 	const root = join(claudeDir, "plugins", "marketplaces");
 	let marketplaces: string[];
 	try {
-		marketplaces = (await readdir(root)).sort();
+		marketplaces = (await readdir(root)).toSorted();
 	} catch {
 		return [];
 	}

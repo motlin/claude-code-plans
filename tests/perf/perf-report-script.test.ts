@@ -151,7 +151,7 @@ describe("perf-report", () => {
 	it("reads every retained file without --since and keeps only builds matching the --sha prefix", () => {
 		const {samples} = readFieldSamples(perfDir, {now: NOW, sha: "abc"});
 
-		expect(samples.map((s) => s.journey).sort()).toStrictEqual([
+		expect(samples.map((s) => s.journey).toSorted()).toStrictEqual([
 			"F1",
 			"F1",
 			"F2",

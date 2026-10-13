@@ -18,7 +18,7 @@ function sortLevel(nodes: readonly FileTreeNodeData[], root: boolean): FileTreeN
 		return priority === -1 ? PRIORITY_FILES.length + 1 : priority;
 	};
 	return [...nodes]
-		.sort((a, b) => rank(a) - rank(b) || baseName(a.path).localeCompare(baseName(b.path)))
+		.toSorted((a, b) => rank(a) - rank(b) || baseName(a.path).localeCompare(baseName(b.path)))
 		.map((node) =>
 			node.children === undefined ? node : {path: node.path, children: sortLevel(node.children, false)},
 		);

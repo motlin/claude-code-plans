@@ -63,7 +63,7 @@ function ProjectSessionsPage() {
 				counts.set(s.gitBranch, (counts.get(s.gitBranch) ?? 0) + 1);
 			}
 		}
-		return [...counts.entries()].sort((a, b) => b[1] - a[1]);
+		return [...counts.entries()].toSorted((a, b) => b[1] - a[1]);
 	}, [allSessions]);
 
 	if (!project) {

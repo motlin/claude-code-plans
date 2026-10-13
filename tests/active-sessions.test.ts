@@ -170,7 +170,7 @@ describe("scanActiveSessions", () => {
 
 		const result = await scanMod.scanActiveSessions();
 
-		expect(result.map((r) => r.sessionId).sort()).toStrictEqual(["fs-only", "store-only"]);
+		expect(result.map((r) => r.sessionId).toSorted()).toStrictEqual(["fs-only", "store-only"]);
 		const byId = new Map(result.map((r) => [r.sessionId, r]));
 		expect(byId.get("fs-only")!.projectName).toBe("alpha");
 		expect(byId.get("store-only")!.projectName).toBe("beta");

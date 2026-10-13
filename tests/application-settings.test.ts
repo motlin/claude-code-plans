@@ -27,7 +27,7 @@ describe("persisted application settings", () => {
 	});
 
 	it("keeps the default ignored directory names in alphabetical order", () => {
-		expect(DEFAULT_IGNORED_DIR_NAMES).toStrictEqual([...DEFAULT_IGNORED_DIR_NAMES].sort());
+		expect(DEFAULT_IGNORED_DIR_NAMES).toStrictEqual(DEFAULT_IGNORED_DIR_NAMES.toSorted());
 	});
 
 	it("strictly validates every persisted setting", () => {

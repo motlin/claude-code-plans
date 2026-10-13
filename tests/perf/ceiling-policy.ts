@@ -21,7 +21,7 @@ export function findUnjustifiedRaises(previous: Ceilings, current: Ceilings): st
 			return !entry.reason?.trim() || !entry.raisedAt?.trim();
 		})
 		.map(([id]) => id)
-		.sort();
+		.toSorted();
 }
 
 export type LargeShapeName = "large-long" | "large-wide";
@@ -77,7 +77,7 @@ export function findLargeTierDrift(
 		)
 		.filter((message) => message !== undefined)
 		.filter((message, index, messages) => messages.indexOf(message) === index)
-		.sort();
+		.toSorted();
 }
 
 function typicalPlus(offset: number): string {

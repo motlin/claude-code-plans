@@ -61,7 +61,7 @@ export function mcpToolsForServer(names: Iterable<string>, serverKey: string): s
 		const tool = name.slice(prefix.length);
 		if (tool !== "" && tool !== "*") tools.add(tool);
 	}
-	return [...tools].sort((a, b) => a.localeCompare(b));
+	return [...tools].toSorted((a, b) => a.localeCompare(b));
 }
 
 function serverWideRules(serverKey: string): string[] {
@@ -231,7 +231,7 @@ export function claudeAiConnectors(names: Iterable<string>): ClaudeAiConnector[]
 		if (parsed?.serverKey.startsWith(CLAUDE_AI_PREFIX)) keys.add(parsed.serverKey);
 	}
 	return [...keys]
-		.sort((a, b) => a.localeCompare(b))
+		.toSorted((a, b) => a.localeCompare(b))
 		.map((key) => ({
 			key,
 			name: key.slice(CLAUDE_AI_PREFIX.length).replace(/_/g, " "),

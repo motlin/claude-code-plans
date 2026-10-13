@@ -99,7 +99,7 @@ export function searchSettings(query: string): SettingsSearchGroup[] {
 	const ranked = SETTINGS_INDEX.flatMap((entry, order) => {
 		const start = bestMatch(entry.title.toLowerCase(), needle);
 		return start === -1 ? [] : [{result: {...entry, start}, order}];
-	}).sort(
+	}).toSorted(
 		(a, b) =>
 			matchRank(a.result.title, a.result.start) - matchRank(b.result.title, b.result.start) || a.order - b.order,
 	);

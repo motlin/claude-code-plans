@@ -202,7 +202,7 @@ export async function updateApplicationSettings(
 	configPath: string = getConfigPath(),
 ): Promise<ApplicationSettings> {
 	const parsed = ApplicationSettingsSchema.parse(settings);
-	const ignoredDirs = [...parsed.ignoredDirs].sort();
+	const ignoredDirs = parsed.ignoredDirs.toSorted();
 	await updateConfig(
 		{
 			herdr_writes_enabled: parsed.herdrWritesEnabled,

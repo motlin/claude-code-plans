@@ -45,7 +45,7 @@ export function costStateFromRecord(record: unknown): SessionCostState | null {
 			cacheReadInputTokens: usage.cacheReadInputTokens ?? 0,
 			cacheCreationInputTokens: usage.cacheCreationInputTokens ?? 0,
 		}))
-		.sort((a, b) => b.costUSD - a.costUSD);
+		.toSorted((a, b) => b.costUSD - a.costUSD);
 	const state: SessionCostState = {
 		totalCostUSD: cost.totalCostUSD ?? 0,
 		linesAdded: cost.totalLinesAdded ?? 0,

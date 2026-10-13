@@ -22,7 +22,7 @@ function referencedTokens(): string[] {
 	for (const value of Object.values(OVERRIDES)) {
 		for (const match of value.matchAll(/var\((--[\w-]+)\)/g)) tokens.add(match[1]!);
 	}
-	return [...tokens].sort();
+	return [...tokens].toSorted();
 }
 
 describe("diff view tokens", () => {

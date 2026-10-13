@@ -22,7 +22,7 @@ interface LocalRow {
 }
 
 function newest<T extends {mtime: string}>(items: readonly T[]): T[] {
-	return [...items].sort((a, b) => Date.parse(b.mtime) - Date.parse(a.mtime)).slice(0, MAX_LOCAL_ROWS);
+	return items.toSorted((a, b) => Date.parse(b.mtime) - Date.parse(a.mtime)).slice(0, MAX_LOCAL_ROWS);
 }
 
 /** A home section of local ~/.claude files in the upstream Sessions markup: h2 plus 40px rows. */

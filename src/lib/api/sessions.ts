@@ -171,7 +171,7 @@ export function mergeTranscriptData(primary: TranscriptData, secondary: Transcri
 	for (const source of [secondary, primary]) {
 		source.records.forEach((record, offset) => byIndex.set(source.startIndex + offset, record));
 	}
-	const indices = [...byIndex.keys()].sort((a, b) => a - b);
+	const indices = [...byIndex.keys()].toSorted((a, b) => a - b);
 	let runStart = indices.length - 1;
 	for (
 		let current = indices[runStart];
@@ -291,8 +291,8 @@ export const sessionQueryKeys = {
 		[...RECENT_SESSIONS_QUERY_ROOT, "infinite", limit, status] as const,
 	groupedLists: () => GROUPED_SESSIONS_QUERY_ROOT,
 	grouped: (perProject: number = SESSION_GROUP_PAGE_SIZE) => [...GROUPED_SESSIONS_QUERY_ROOT, perProject] as const,
-	byIds: (ids: readonly string[]) => [...SESSION_QUERY_ROOT, "by-ids", [...ids].sort()] as const,
-	titles: (ids: string[]) => [...SESSION_QUERY_ROOT, "titles", [...ids].sort()] as const,
+	byIds: (ids: readonly string[]) => [...SESSION_QUERY_ROOT, "by-ids", ids.toSorted()] as const,
+	titles: (ids: string[]) => [...SESSION_QUERY_ROOT, "titles", ids.toSorted()] as const,
 	activeLists: () => ACTIVE_SESSIONS_QUERY_ROOT,
 	active: (activeTimeoutMs?: number) => [...ACTIVE_SESSIONS_QUERY_ROOT, activeTimeoutMs] as const,
 	detail: (id: string) => [...SESSION_QUERY_ROOT, id] as const,
@@ -373,7 +373,7 @@ export const sessionsByIdsQueryOptions = (ids: readonly string[]) =>
 			ids.length === 0
 				? Promise.resolve([])
 				: apiFetch(
-						`/api/sessions/lookup?ids=${encodeURIComponent([...ids].sort().join(","))}`,
+						`/api/sessions/lookup?ids=${encodeURIComponent(ids.toSorted().join(","))}`,
 						SessionsByIdsResponse,
 					),
 		staleTime: Infinity,

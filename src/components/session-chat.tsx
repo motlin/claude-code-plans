@@ -4633,7 +4633,7 @@ function ToolCallSummary({
 	// While a call is in flight, upstream names the group by that call's
 	// progressive label instead of the tally.
 	// oxlint-disable-next-line unicorn/prefer-array-find -- findLast is not in the ES2022 lib
-	const pendingCall = displayCalls.filter(isPendingToolCall).at(-1);
+	const pendingCall = displayCalls.findLast(isPendingToolCall);
 	const permissionWaitId = useContext(PermissionWaitContext);
 	const runningText =
 		pendingCall === undefined

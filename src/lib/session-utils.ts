@@ -96,7 +96,7 @@ const HARNESS_TAGS = [
 
 /** Upstream's strip pattern: a whole tag element, then any whitespace after it. */
 const HARNESS_TAG_RE = new RegExp(
-	`<(?:(command-args)|(${[...HARNESS_TAGS].sort((a, b) => b.length - a.length).join("|")})(?=[\\s/>])[^>]*)>[\\s\\S]*?</\\1\\2>\\s*`,
+	`<(?:(command-args)|(${HARNESS_TAGS.toSorted((a, b) => b.length - a.length).join("|")})(?=[\\s/>])[^>]*)>[\\s\\S]*?</\\1\\2>\\s*`,
 	"g",
 );
 

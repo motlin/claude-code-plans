@@ -295,7 +295,7 @@ describe("ceilings.json", () => {
 	it("parses and keeps its keys sorted", () => {
 		const loaded = loadCeilings();
 		const keys = Object.keys(loaded);
-		expect(keys).toStrictEqual([...keys].sort());
+		expect(keys).toStrictEqual(keys.toSorted());
 	});
 
 	it("rejects entries with unknown fields", () => {

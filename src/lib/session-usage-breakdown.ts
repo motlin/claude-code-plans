@@ -147,7 +147,7 @@ export function aggregateSessionUsage(records: readonly unknown[]): SessionUsage
 		read += totals.cacheReadTokens;
 		allInput += totals.inputTokens + totals.cacheReadTokens + totals.cacheWriteTokens;
 		return totals;
-	}).sort((a, b) => (b.costUSD ?? 0) - (a.costUSD ?? 0));
+	}).toSorted((a, b) => (b.costUSD ?? 0) - (a.costUSD ?? 0));
 
 	return {
 		models,
