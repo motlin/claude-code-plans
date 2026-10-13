@@ -355,7 +355,7 @@ export default defineConfig({
 					"@typescript-eslint/no-unsafe-call": "error",
 					"@typescript-eslint/no-unsafe-argument": "error",
 					"@typescript-eslint/no-unnecessary-condition": ["error", {allowConstantLoopConditions: true}],
-					"@typescript-eslint/strict-boolean-expressions": "error",
+					"@typescript-eslint/strict-boolean-expressions": "off", // User opted out: it forces `=== true` noise.
 					"react-hooks/rules-of-hooks": "error",
 					"react-hooks/exhaustive-deps": "error",
 					eqeqeq: ["error", "smart"],
@@ -424,15 +424,6 @@ export default defineConfig({
 				plugins: ["react"],
 				rules: {
 					"react/only-export-components": "off",
-				},
-			},
-			// Project burn-down: template rules that still have findings here, each followed by its finding count.
-			// Delete a line once its rule is clean; .llm/todo.md tracks the work.
-			{
-				files: ["**/*.{ts,tsx}"],
-				plugins: ["typescript", "react", "import", "vitest"],
-				rules: {
-					"@typescript-eslint/strict-boolean-expressions": "off", // 647
 				},
 			},
 		],
