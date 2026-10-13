@@ -110,10 +110,6 @@ describe("markdown block layout", () => {
 			blockquote: ruleDeclarations(markdownCss, ".markdown blockquote"),
 			paragraph: ruleDeclarations(markdownCss, ".markdown blockquote p"),
 			paragraphAfterParagraph: ruleDeclarations(markdownCss, ".markdown blockquote p + p"),
-			transcriptSpacing: ruleDeclarations(
-				markdownCss,
-				":global([data-transcript-prose]) .markdown > * + blockquote",
-			),
 		}).toStrictEqual({
 			blockquote: {
 				"border-left": "4px solid var(--color-border)",
@@ -124,7 +120,33 @@ describe("markdown block layout", () => {
 			},
 			paragraph: {margin: "0"},
 			paragraphAfterParagraph: {"margin-top": "10.5px"},
-			transcriptSpacing: {"margin-top": "3.5px"},
+		});
+	});
+
+	it("spaces transcript prose by upstream's 10.5px flow: 21px after a list or table, 7px after a heading", () => {
+		const flow =
+			"p, ul:not(:global(.contains-task-list)), ol, dl, blockquote, pre, figure, details, :global(.markdown-codeblock), :global(.markdown-table-wrapper)";
+		const prose = ":global([data-transcript-prose]) .markdown >";
+		// The formatter breaks these long selectors over several lines.
+		const css = markdownCss.replace(/\s+/g, " ").replaceAll("( ", "(").replaceAll(" )", ")");
+
+		expect({
+			base: ruleDeclarations(css, `${prose} * + :is(${flow})`),
+			afterListOrTable: ruleDeclarations(
+				css,
+				`${prose} :is(ul:not(:global(.contains-task-list)), ol, dl, :global(.markdown-table-wrapper)) + :is(${flow})`,
+			),
+			afterHeading: ruleDeclarations(css, `${prose} :is(h1, h2, h3, h4, h5, h6) + :is(${flow})`),
+			oldPairRules: [
+				css.includes(`${prose} p + p`),
+				css.includes(`${prose} * + blockquote`),
+				css.includes(`${prose} ul:not(:global(.contains-task-list)) + p`),
+			],
+		}).toStrictEqual({
+			base: {"margin-top": "3.5px"},
+			afterListOrTable: {"margin-top": "14px"},
+			afterHeading: {"margin-top": "0"},
+			oldPairRules: [false, false, false],
 		});
 	});
 });

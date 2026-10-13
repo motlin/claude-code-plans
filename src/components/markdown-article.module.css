@@ -463,18 +463,60 @@
 	padding-right: 56px;
 }
 
-:global([data-transcript-prose]) .markdown > p + p,
-:global([data-transcript-prose]) .markdown > p + ul:not(:global(.contains-task-list)) {
+/* Upstream's prose flow on top of the 7px gap: 10.5px above each flow block,
+   21px after a list or table, and 7px (two-thirds) after a heading. */
+:global([data-transcript-prose])
+	.markdown
+	> *
+	+ :is(
+		p,
+		ul:not(:global(.contains-task-list)),
+		ol,
+		dl,
+		blockquote,
+		pre,
+		figure,
+		details,
+		:global(.markdown-codeblock),
+		:global(.markdown-table-wrapper)
+	) {
 	margin-top: 3.5px;
 }
 
-/* Upstream's 10.5px prose flow above a quote: the 7px gap plus 3.5px. */
-:global([data-transcript-prose]) .markdown > * + blockquote {
-	margin-top: 3.5px;
-}
-
-:global([data-transcript-prose]) .markdown > ul:not(:global(.contains-task-list)) + p {
+:global([data-transcript-prose])
+	.markdown
+	> :is(ul:not(:global(.contains-task-list)), ol, dl, :global(.markdown-table-wrapper))
+	+ :is(
+		p,
+		ul:not(:global(.contains-task-list)),
+		ol,
+		dl,
+		blockquote,
+		pre,
+		figure,
+		details,
+		:global(.markdown-codeblock),
+		:global(.markdown-table-wrapper)
+	) {
 	margin-top: 14px;
+}
+
+:global([data-transcript-prose])
+	.markdown
+	> :is(h1, h2, h3, h4, h5, h6)
+	+ :is(
+		p,
+		ul:not(:global(.contains-task-list)),
+		ol,
+		dl,
+		blockquote,
+		pre,
+		figure,
+		details,
+		:global(.markdown-codeblock),
+		:global(.markdown-table-wrapper)
+	) {
+	margin-top: 0;
 }
 
 :global([data-transcript-prose]) .markdown > ul:not(:global(.contains-task-list)) > li {
