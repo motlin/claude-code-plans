@@ -36,6 +36,14 @@ describe("group label: tool categories", () => {
 		{calls: [tool("mcp__a__x"), tool("mcp__a__x"), tool("mcp__plugin_b_b__y")], expected: "Used 3 tools"},
 		{
 			calls: [
+				tool("mcp__claude_ai_Claude_Docs__read", {container: {kind: "project", id: "doc-1"}}),
+				tool("mcp__claude_ai_Claude_Docs__update", {container: {kind: "project", id: "doc-1"}}),
+				tool("mcp__claude_ai_Claude_Docs__read", {container: {kind: "project", id: "doc-1"}}),
+			],
+			expected: "Read 2 files, used a tool",
+		},
+		{
+			calls: [
 				tool("TaskCreate"),
 				tool("EnterPlanMode"),
 				tool("SendMessage"),

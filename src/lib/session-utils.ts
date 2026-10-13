@@ -424,7 +424,11 @@ export function diffStatsForCall(call: ToolCallLike): {
 	return {added: 0, removed: 0};
 }
 
+/** An MCP tool whose method is exactly `read` (Claude Docs' read), which upstream counts as reading a file. */
+const MCP_READ_TOOL = /^mcp__.+__read$/;
+
 function categorize(call: ToolCallLike): ToolCategory | null {
+	if (MCP_READ_TOOL.test(call.name)) return "read";
 	return isKeyOf(CATEGORY_BY_TOOL, call.name) ? CATEGORY_BY_TOOL[call.name] : null;
 }
 
