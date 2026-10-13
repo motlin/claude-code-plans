@@ -1,4 +1,5 @@
 import {createFileRoute} from "@tanstack/react-router";
+import {ownRepositoryPr, readOriginRepoName} from "../../lib/session-own-pr";
 import {withMethodNotAllowed} from "../../lib/api/method-not-allowed";
 import {SessionDetailResponse} from "../../lib/api/sessions";
 import {secondaryAiTitle} from "../../lib/ai-title";
@@ -141,7 +142,12 @@ export const Route = createFileRoute("/api/sessions/$id")({
 				if (aiTitle !== null) detail.aiTitle = aiTitle;
 				if (sessionRow.canonicalRouteId !== null) detail.canonicalRouteId = sessionRow.canonicalRouteId;
 				if (sessionRow.canonicalRoutePending === 1) detail.canonicalRoutePending = true;
-				const pr = getSessionPrLink(index, id);
+				// A PR the session only touched in another repository is not the session's own.
+				const linkedPr = getSessionPrLink(index, id);
+				const pr =
+					linkedPr === null
+						? null
+						: ownRepositoryPr(linkedPr, projectPath ? await readOriginRepoName(projectPath) : null);
 				if (pr !== null) detail.pr = pr;
 
 				const {lookupPrStatus} = await import("../../lib/pr-status-service");
