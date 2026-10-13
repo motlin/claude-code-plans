@@ -82,7 +82,7 @@ describe("indexed Remote Control aliases", () => {
 				.filter(({key}) => !key.startsWith("bridge:v1:")),
 		});
 		const before = preservedRows();
-		const scanCounters = () =>
+		const scanCounters = async () =>
 			withPerfScope("bridge-backfill", async () => {
 				await fullScan(db.index, db.summaries, directory);
 				return {...currentPerfCounters()!.jsonl};

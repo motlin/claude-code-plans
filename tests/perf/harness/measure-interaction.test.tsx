@@ -52,9 +52,13 @@ function DeferredThingSize() {
 	const [mounted, setMounted] = useState(false);
 	useEffect(() => {
 		let timer = setTimeout(() => {
-			timer = setTimeout(() => setMounted(true), 0);
+			timer = setTimeout(() => {
+				setMounted(true);
+			}, 0);
 		}, 0);
-		return () => clearTimeout(timer);
+		return () => {
+			clearTimeout(timer);
+		};
 	}, []);
 	return mounted ? <ThingSize /> : null;
 }
@@ -73,7 +77,9 @@ function FetchingBadge() {
 	useEffect(() => {
 		const source = new EventSource("/api/events");
 		source.addEventListener("session:lines-appended", () => {});
-		return () => source.close();
+		return () => {
+			source.close();
+		};
 	}, []);
 	return <span>{fetching}</span>;
 }
@@ -81,7 +87,15 @@ function FetchingBadge() {
 function Typed() {
 	useRenderCount("Typed");
 	const [text, setText] = useState("");
-	return <input aria-label="typed" value={text} onChange={(event) => setText(event.target.value)} />;
+	return (
+		<input
+			aria-label="typed"
+			value={text}
+			onChange={(event) => {
+				setText(event.target.value);
+			}}
+		/>
+	);
 }
 
 function Invalidator() {
@@ -195,7 +209,7 @@ describe("measureInteraction", () => {
 		expect({
 			commits: result.commits,
 			renders: result.rendersByComponent,
-			value: (screen.getByRole("textbox") as HTMLInputElement).value,
+			value: screen.getByRole<HTMLInputElement>("textbox").value,
 		}).toStrictEqual({commits: 3, renders: {Typed: 3}, value: "abc"});
 	});
 

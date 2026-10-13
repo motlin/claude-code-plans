@@ -135,7 +135,9 @@ export function RecentsSwitcher() {
 			if (event.key === modifier || !held) commitRef.current(current.index);
 		};
 
-		const onBlur = () => update(null);
+		const onBlur = () => {
+			update(null);
+		};
 
 		document.addEventListener("keydown", onKeyDown, true);
 		window.addEventListener("keyup", onKeyUp);
@@ -192,7 +194,9 @@ export function RecentsSwitcher() {
 										id={rowId(i)}
 										aria-selected={selected}
 										tabIndex={-1}
-										onClick={() => commitRef.current(i)}
+										onClick={() => {
+											commitRef.current(i);
+										}}
 										className="flex w-full items-center justify-between gap-3 truncate rounded-lg px-3 py-2 text-left text-sm leading-5 text-secondary hover:bg-fill-ghost-hover aria-selected:bg-fill-ghost-hover aria-selected:text-primary"
 									>
 										<span className="flex min-w-0 items-center gap-2 [&>svg]:size-5 [&>svg]:shrink-0">

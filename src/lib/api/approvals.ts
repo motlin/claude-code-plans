@@ -23,7 +23,7 @@ export const ApprovalsResponse = z.object({
 export const approvalsQueryOptions = () =>
 	queryOptions({
 		queryKey: ["approvals"] as const,
-		queryFn: () => apiFetch("/api/approvals", ApprovalsResponse),
+		queryFn: async () => apiFetch("/api/approvals", ApprovalsResponse),
 		staleTime: Infinity,
 		gcTime: Infinity,
 	});
@@ -31,7 +31,7 @@ export const approvalsQueryOptions = () =>
 export const projectApprovalsQueryOptions = (projectId: string) =>
 	queryOptions({
 		queryKey: ["approvals", projectId] as const,
-		queryFn: () => apiFetch(`/api/approvals?projectId=${encodeURIComponent(projectId)}`, ApprovalsResponse),
+		queryFn: async () => apiFetch(`/api/approvals?projectId=${encodeURIComponent(projectId)}`, ApprovalsResponse),
 		staleTime: Infinity,
 		gcTime: Infinity,
 	});

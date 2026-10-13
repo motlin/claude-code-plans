@@ -19,7 +19,7 @@ export const HookStatusResponse = z.object({
 
 export const hookStatusQueryOptions = queryOptions({
 	queryKey: ["hooks", "status"] as const,
-	queryFn: () => apiFetch("/api/hooks/status", HookStatusResponse),
+	queryFn: async () => apiFetch("/api/hooks/status", HookStatusResponse),
 	staleTime: Infinity,
 	gcTime: Infinity,
 });
@@ -32,7 +32,7 @@ export const HookMutationResponse = z.object({
 export const useInstallHooks = () => {
 	const qc = useQueryClient();
 	return useMutation({
-		mutationFn: ({port, capabilities}: {port?: number; capabilities: PersistedCapabilities}) =>
+		mutationFn: async ({port, capabilities}: {port?: number; capabilities: PersistedCapabilities}) =>
 			apiFetch("/api/hooks", HookMutationResponse, {
 				method: "POST",
 				headers: {"Content-Type": "application/json"},
@@ -48,7 +48,7 @@ export const useInstallHooks = () => {
 export const useUninstallHooks = () => {
 	const qc = useQueryClient();
 	return useMutation({
-		mutationFn: ({port}: {port?: number}) =>
+		mutationFn: async ({port}: {port?: number}) =>
 			apiFetch("/api/hooks", HookMutationResponse, {
 				method: "DELETE",
 				headers: {"Content-Type": "application/json"},

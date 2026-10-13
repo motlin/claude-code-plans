@@ -28,7 +28,7 @@ describe("file content FTS", () => {
 	let db: AppDb;
 
 	function rows(): FileContentRow[] {
-		return db.index.all(sql`SELECT path, content FROM file_content_fts ORDER BY path`) as FileContentRow[];
+		return db.index.all(sql`SELECT path, content FROM file_content_fts ORDER BY path`);
 	}
 
 	function indexedPaths(): string[] {
@@ -179,10 +179,10 @@ describe("file content FTS", () => {
 		const filePath = join(allowedRoot, "alice.txt");
 		writeFileSync(filePath, "Stable content for Alice.\n");
 		await indexFileContent(db.index, filePath, [allowedRoot]);
-		const before = db.index.get(sql`SELECT total_changes() AS changes`) as {changes: number};
+		const before = db.index.get(sql`SELECT total_changes() AS changes`);
 
 		const result = await indexFileContent(db.index, filePath, [allowedRoot]);
-		const after = db.index.get(sql`SELECT total_changes() AS changes`) as {changes: number};
+		const after = db.index.get(sql`SELECT total_changes() AS changes`);
 
 		expect({after, before, result}).toStrictEqual({
 			after: before,
@@ -196,10 +196,10 @@ describe("file content FTS", () => {
 		writeFileSync(filePath, "Stable startup content for Alice.\n");
 		git("add", "alice.txt");
 		await scanFileContentRoots(db.index, [allowedRoot], EMPTY_IGNORED_DIR_NAMES);
-		const before = db.index.get(sql`SELECT total_changes() AS changes`) as {changes: number};
+		const before = db.index.get(sql`SELECT total_changes() AS changes`);
 
 		await scanFileContentRoots(db.index, [allowedRoot], EMPTY_IGNORED_DIR_NAMES);
-		const after = db.index.get(sql`SELECT total_changes() AS changes`) as {changes: number};
+		const after = db.index.get(sql`SELECT total_changes() AS changes`);
 
 		expect({after, before, rows: rows()}).toStrictEqual({
 			after: before,

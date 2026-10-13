@@ -481,9 +481,14 @@ function startDevServer(
 async function assertPortAvailable(): Promise<void> {
 	const probe = createServer();
 	await new Promise<void>((resolvePromise, rejectPromise) => {
-		probe.once("error", (error) => rejectPromise(error));
+		probe.once("error", (error) => {
+			rejectPromise(error);
+		});
 		probe.listen(PORT, "127.0.0.1", () => {
-			probe.close((error) => (error ? rejectPromise(error) : resolvePromise()));
+			probe.close((error) => {
+				if (error) rejectPromise(error);
+				else resolvePromise();
+			});
 		});
 	}).catch((error: unknown) => {
 		throw new Error(`Screenshot port ${PORT} must be free before starting the fixture server.`, {
@@ -523,7 +528,11 @@ export async function stopDevServer(server: ChildProcess): Promise<void> {
 	signal("SIGTERM");
 	if (server.exitCode !== null) return;
 	await Promise.race([
-		new Promise<void>((resolvePromise) => server.once("exit", () => resolvePromise())),
+		new Promise<void>((resolvePromise) =>
+			server.once("exit", () => {
+				resolvePromise();
+			}),
+		),
 		new Promise<void>((resolvePromise) =>
 			setTimeout(() => {
 				signal("SIGKILL");
@@ -553,7 +562,7 @@ function parseFontStack(stack: string): string[] {
 async function collectRendererManifest(page: Page, chromiumVersion: string): Promise<RendererManifest> {
 	await page.goto(`${BASE_URL}/sessions`, {waitUntil: "domcontentloaded"});
 	await page.getByRole("heading", {name: "Claude Sessions", exact: true}).waitFor();
-	await page.evaluate(() => document.fonts.ready);
+	await page.evaluate(async () => document.fonts.ready);
 
 	const fontData = await page.evaluate(() => {
 		const monoProbe = document.createElement("code");
@@ -579,7 +588,7 @@ async function collectRendererManifest(page: Page, chromiumVersion: string): Pro
 			"sans-serif": width("sans-serif"),
 			serif: width("serif"),
 		};
-		return {stacks, baselines, sampleWidths: {} as Record<string, Record<string, number>>};
+		return {stacks, baselines, sampleWidths: {}};
 	});
 
 	const stacks = Object.fromEntries(
@@ -596,7 +605,7 @@ async function collectRendererManifest(page: Page, chromiumVersion: string): Pro
 			widths[family] = {};
 			for (const fallback of ["monospace", "sans-serif", "serif"]) {
 				context.font = `72px "${family.replaceAll('"', '\\"')}", ${fallback}`;
-				widths[family]![fallback] = context.measureText(sample).width;
+				widths[family][fallback] = context.measureText(sample).width;
 			}
 		}
 		return widths;
@@ -725,13 +734,13 @@ async function captureScreenshots(page: Page): Promise<void> {
 	for (const target of TARGETS) {
 		await page.goto(`${BASE_URL}${target.path}`, {waitUntil: "domcontentloaded"});
 		await page.getByRole("heading", {name: target.heading, exact: true}).waitFor();
-		await page.evaluate(() => document.fonts.ready);
+		await page.evaluate(async () => document.fonts.ready);
 		// Markdown and syntax highlighting resolve through Suspense after the route
 		// heading appears. Give those imports a deterministic window, then require
 		// a quiet DOM before committing pixels.
 		await page.waitForTimeout(1_000);
 		await page.evaluate(
-			() =>
+			async () =>
 				new Promise<void>((resolvePromise) => {
 					let quietTimer = setTimeout(finish, 250);
 					const maximumTimer = setTimeout(finish, 3_000);

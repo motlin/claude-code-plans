@@ -97,7 +97,9 @@ async function renderGroups(sessions: unknown[]) {
 	});
 	await router.load();
 	const result = render(<RouterProvider router={router} />);
-	await waitFor(() => expect(result.container.querySelector("[data-group-toggle]")).toBeTruthy());
+	await waitFor(() => {
+		expect(result.container.querySelector("[data-group-toggle]")).toBeTruthy();
+	});
 	return result;
 }
 
@@ -214,6 +216,8 @@ describe("sidebar session families", () => {
 
 		expect(readSidebarState().collapsedFamilies).toStrictEqual([]);
 		const firstChild = screen.getByRole("link", {name: /Child one\s*Forked from Head one$/});
-		await waitFor(() => expect(document.activeElement).toBe(firstChild));
+		await waitFor(() => {
+			expect(document.activeElement).toBe(firstChild);
+		});
 	});
 });

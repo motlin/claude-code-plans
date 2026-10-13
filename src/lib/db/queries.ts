@@ -263,7 +263,7 @@ export function listSessionGroupsFromDb(
 
 	// Top-N per project via a window function, ordered so rows arrive grouped by
 	// project and newest-first within each project.
-	const cappedRows = db.all(
+	const cappedRows = db.all<{id: string}>(
 		sql`SELECT id FROM (
           SELECT id, project_id,
                  row_number() OVER (PARTITION BY project_id ORDER BY mtime_ms DESC, id DESC) AS rn
@@ -271,7 +271,7 @@ export function listSessionGroupsFromDb(
           WHERE is_sidechain = 0${statusCondition ? sql` AND ${statusCondition}` : sql``}
         ) WHERE rn <= ${perProject}
         ORDER BY project_id, rn`,
-	) as Array<{id: string}>;
+	);
 
 	const sessionMap = batchFetchSessions(
 		db,
@@ -582,16 +582,7 @@ export function searchSessionsFromDb(db: IndexDb, query: string): DbSearchResult
 	const ftsQuery = toFtsQuery(terms);
 	const projectNames = getProjectNameMap(db);
 
-	const rows = db.all(
-		sql`SELECT session_id, title, first_prompt, summary, rank,
-				snippet(sessions_fts, 1, '<mark>', '</mark>', '...', 32) AS title_snippet,
-				snippet(sessions_fts, 2, '<mark>', '</mark>', '...', 32) AS prompt_snippet,
-				snippet(sessions_fts, 3, '<mark>', '</mark>', '...', 32) AS summary_snippet
-			FROM sessions_fts
-			WHERE sessions_fts MATCH ${ftsQuery}
-			ORDER BY rank
-			LIMIT 50`,
-	) as Array<{
+	const rows = db.all<{
 		session_id: string;
 		title: string;
 		first_prompt: string;
@@ -600,7 +591,16 @@ export function searchSessionsFromDb(db: IndexDb, query: string): DbSearchResult
 		title_snippet: string;
 		prompt_snippet: string;
 		summary_snippet: string;
-	}>;
+	}>(
+		sql`SELECT session_id, title, first_prompt, summary, rank,
+				snippet(sessions_fts, 1, '<mark>', '</mark>', '...', 32) AS title_snippet,
+				snippet(sessions_fts, 2, '<mark>', '</mark>', '...', 32) AS prompt_snippet,
+				snippet(sessions_fts, 3, '<mark>', '</mark>', '...', 32) AS summary_snippet
+			FROM sessions_fts
+			WHERE sessions_fts MATCH ${ftsQuery}
+			ORDER BY rank
+			LIMIT 50`,
+	);
 
 	const sessionMap = batchFetchSessions(
 		db,
@@ -720,7 +720,7 @@ export function searchMessageContentSessions(
 			JOIN message_content_fts ON message_content_fts.rowid = best.best_row
 			WHERE message_content_fts MATCH ${anyTerm}
 			ORDER BY best.rank, best.mtime_ms DESC, best.session_id`,
-	) as MessageContentSessionHit[];
+	);
 }
 
 export function searchMessageContentDb(db: IndexDb, query: string, limit = 50): DbMessageSearchResult[] {
@@ -914,7 +914,7 @@ export function searchFileContentDb(db: IndexDb, query: string, scopeRoot: strin
 	const highlightIdentifier = randomUUID();
 	const highlightStart = `\uE000${highlightIdentifier}-start\uE001`;
 	const highlightEnd = `\uE000${highlightIdentifier}-end\uE001`;
-	const rows = db.all(
+	const rows = db.all<FileSearchRow>(
 		sql`SELECT file_content_fts.path AS path,
 			highlight(file_content_fts, 1, ${highlightStart}, ${highlightEnd}) AS highlighted_content,
 			snippet(file_content_fts, 1, '<mark>', '</mark>', '...', 48) AS fallback_snippet,
@@ -925,17 +925,17 @@ export function searchFileContentDb(db: IndexDb, query: string, scopeRoot: strin
 		WHERE file_content_fts MATCH ${ftsQuery}
 			AND (file_content_fts.path = ${scopeRoot}
 				OR substr(file_content_fts.path, 1, ${scopePrefix.length}) = ${scopePrefix})`,
-	) as FileSearchRow[];
+	);
 
 	const rowsByPath = new Map(rows.map((row) => [row.path, row]));
-	const pathRows = db.all(
+	const pathRows = db.all<FileSearchPathRow>(
 		sql`SELECT file_content.path AS path,
 			COALESCE(indexed_files.mtime_ms, 0) AS mtime_ms
 		FROM file_content
 		LEFT JOIN indexed_files ON indexed_files.path = 'file-content:' || file_content.path
 		WHERE file_content.path = ${scopeRoot}
 			OR substr(file_content.path, 1, ${scopePrefix.length}) = ${scopePrefix}`,
-	) as FileSearchPathRow[];
+	);
 	for (const row of pathRows) {
 		const relativePath = relative(scopeRoot, row.path).toLowerCase();
 		if (!rowsByPath.has(row.path) && terms.every((term) => relativePath.includes(term.toLowerCase()))) {

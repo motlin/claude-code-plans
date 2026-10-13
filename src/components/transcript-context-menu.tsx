@@ -151,7 +151,11 @@ function actionProps(
 	message: TranscriptMessageRef | undefined,
 ) {
 	if (action === undefined || message === undefined) return {disabled: true};
-	return {onSelect: () => action(message)};
+	return {
+		onSelect: () => {
+			action(message);
+		},
+	};
 }
 
 function TranscriptMenuItems({
@@ -195,7 +199,13 @@ function TranscriptMenuItems({
 		<>
 			{target.kind === "code" && (
 				<>
-					<MenuItem onSelect={() => copy(target.text)}>Copy code</MenuItem>
+					<MenuItem
+						onSelect={() => {
+							copy(target.text);
+						}}
+					>
+						Copy code
+					</MenuItem>
 					<MenuSeparator />
 				</>
 			)}
@@ -204,14 +214,30 @@ function TranscriptMenuItems({
 					<MenuItem onSelect={() => window.open(target.href, "_blank", "noopener,noreferrer")}>
 						Open in default browser
 					</MenuItem>
-					<MenuItem onSelect={() => copy(target.href)}>Copy link</MenuItem>
+					<MenuItem
+						onSelect={() => {
+							copy(target.href);
+						}}
+					>
+						Copy link
+					</MenuItem>
 					<MenuSeparator />
 				</>
 			)}
-			<MenuItem onSelect={() => copy(speaker === "user" ? markdown : markdownToPlainText(markdown))}>
+			<MenuItem
+				onSelect={() => {
+					copy(speaker === "user" ? markdown : markdownToPlainText(markdown));
+				}}
+			>
 				Copy message
 			</MenuItem>
-			<MenuItem onSelect={() => copy(markdown)}>Copy message as Markdown</MenuItem>
+			<MenuItem
+				onSelect={() => {
+					copy(markdown);
+				}}
+			>
+				Copy message as Markdown
+			</MenuItem>
 			{speaker === "assistant" && (
 				<MenuItem {...(readAloud.toggle === undefined ? {disabled: true} : {onSelect: readAloud.toggle})}>
 					{READ_ALOUD_MENU_LABELS[readAloud.status]}

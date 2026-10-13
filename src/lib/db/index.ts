@@ -67,6 +67,7 @@ async function runScanWithRetry(label: string, signal: AbortSignal, scan: () => 
 	}
 }
 
+// oxlint-disable-next-line typescript/promise-function-async -- concurrent calls share one scan promise
 export function runInitialScan(
 	fileContentRoots: readonly string[] = [],
 	ignoredDirNames: ReadonlySet<string> = new Set(),
@@ -76,10 +77,10 @@ export function runInitialScan(
 		const {signal} = holder.controller;
 		holder.promise = (async () => {
 			const db = getDb();
-			await runScanWithRetry("Initial database scan", signal, () =>
+			await runScanWithRetry("Initial database scan", signal, async () =>
 				fullScan(db.index, db.summaries, PROJECTS_DIR, TASKS_DIR, PLANS_DIR, undefined, signal),
 			);
-			await runScanWithRetry("Initial file-content scan", signal, () =>
+			await runScanWithRetry("Initial file-content scan", signal, async () =>
 				scanFileContentRoots(db.index, fileContentRoots, ignoredDirNames, signal),
 			);
 		})();
@@ -87,7 +88,7 @@ export function runInitialScan(
 	return holder.promise;
 }
 
-export function awaitInitialScan(): Promise<void> {
+export async function awaitInitialScan(): Promise<void> {
 	return getScanHolder().promise ?? Promise.resolve();
 }
 

@@ -61,7 +61,7 @@ export function fileContentUrl(path: string, options: {forceText?: boolean; down
 }
 
 /** Reveal one file in Finder; the server refuses paths outside the viewer's allowed roots. */
-export function revealFileInFinder(path: string): Promise<unknown> {
+export async function revealFileInFinder(path: string): Promise<unknown> {
 	return apiFetch("/api/reveal-in-finder", z.strictObject({ok: z.literal(true)}), {
 		method: "POST",
 		headers: {"Content-Type": "application/json"},
@@ -92,7 +92,7 @@ async function fetchFileView(path: string, forceText: boolean, signal: AbortSign
 export const fileViewQueryOptions = (path: string, forceText = false) =>
 	queryOptions({
 		queryKey: ["file", path, forceText ? "text" : "auto"] as const,
-		queryFn: ({signal}) => fetchFileView(path, forceText, signal),
+		queryFn: async ({signal}) => fetchFileView(path, forceText, signal),
 		staleTime: 0,
 		gcTime: 5 * 60_000,
 	});

@@ -15,7 +15,7 @@ const ApplicationSettingsResponse = z
 
 export const applicationSettingsQueryOptions = queryOptions({
 	queryKey: ["application-settings"] as const,
-	queryFn: () => apiFetch("/api/application-settings", ApplicationSettingsResponse),
+	queryFn: async () => apiFetch("/api/application-settings", ApplicationSettingsResponse),
 	staleTime: 0,
 });
 
@@ -24,7 +24,7 @@ type ApplicationSettingsData = z.infer<typeof ApplicationSettingsResponse>;
 export function useSaveApplicationSettings() {
 	const queryClient = useQueryClient();
 	return useMutation({
-		mutationFn: (settings: z.infer<typeof ApplicationSettingsResponse>) =>
+		mutationFn: async (settings: z.infer<typeof ApplicationSettingsResponse>) =>
 			apiFetch("/api/application-settings", ApplicationSettingsResponse, {
 				method: "PUT",
 				headers: {"Content-Type": "application/json"},
@@ -46,7 +46,7 @@ export function useSetNavSectionPinned() {
 	const queryClient = useQueryClient();
 	const {mutate} = useMutation({
 		scope: {id: "application-settings"},
-		mutationFn: (settings: ApplicationSettingsData) =>
+		mutationFn: async (settings: ApplicationSettingsData) =>
 			apiFetch("/api/application-settings", ApplicationSettingsResponse, {
 				method: "PUT",
 				headers: {"Content-Type": "application/json"},

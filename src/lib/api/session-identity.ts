@@ -50,7 +50,7 @@ export const SESSION_IDENTITY_RETRY_DELAY_MS = 3000;
 export const sessionIdentityQueryOptions = (routeId: string) =>
 	queryOptions({
 		queryKey: sessionQueryKeys.identity(routeId),
-		queryFn: ({signal}) =>
+		queryFn: async ({signal}) =>
 			apiFetch(`/api/sessions/${encodeURIComponent(routeId)}/identity`, SessionIdentityResponse, {signal}),
 		staleTime: Infinity,
 		gcTime: Infinity,

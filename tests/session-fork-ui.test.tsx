@@ -117,11 +117,11 @@ describe("⌥⌘O on the session page", () => {
 
 		expect(fetchMock).not.toHaveBeenCalled();
 		expect(writeText.mock.calls).toEqual([[`cd '${CWD}' && claude --resume ${SESSION_ID} --fork-session`]]);
-		await waitFor(() =>
+		await waitFor(() => {
 			expect(document.querySelector("[data-toast-message]")?.textContent).toBe(
 				"Command copied. Paste it in a terminal to fork this session.",
-			),
-		);
+			);
+		});
 	});
 
 	it("does nothing when the session directory is unknown", async () => {
@@ -151,7 +151,9 @@ describe("PendingForkNavigator", () => {
 		const withFork = new Map([...parentOnly, [FORK_ID, {sessionId: FORK_ID, cwd: CWD, startedAt: since + 10}]]);
 		const next = await renderWithRouter(<PendingForkNavigator activeSessions={withFork} />);
 
-		await waitFor(() => expect(next.state.location.pathname).toBe(`/session/${FORK_ID}`));
+		await waitFor(() => {
+			expect(next.state.location.pathname).toBe(`/session/${FORK_ID}`);
+		});
 		expect(getPendingFork()).toBeNull();
 	});
 });

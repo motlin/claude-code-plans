@@ -107,7 +107,9 @@ export function ShellTerminal({
 			const fitAddon = new ghostty.FitAddon();
 			terminal.loadAddon(fitAddon);
 			terminal.open(element);
-			terminalWrite = (text) => terminal.write(text);
+			terminalWrite = (text) => {
+				terminal.write(text);
+			};
 			installTerminalInput(terminal, selectionActions);
 
 			let socket: WebSocket | null = null;
@@ -222,7 +224,9 @@ export function ShellTerminal({
 				dispatch({type: "loaded"});
 				teardown = start(ghostty, ghosttyAppearance);
 			})
-			.catch(() => dispatch({type: "load-failed"}));
+			.catch(() => {
+				dispatch({type: "load-failed"});
+			});
 
 		return () => {
 			disposed = true;
@@ -252,7 +256,9 @@ export function ShellTerminal({
 					message: cause instanceof Error ? cause.message : String(cause),
 				});
 			})
-			.finally(() => setRestarting(false));
+			.finally(() => {
+				setRestarting(false);
+			});
 	};
 
 	const overlay = terminalOverlay(lifecycle);

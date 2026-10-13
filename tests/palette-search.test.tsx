@@ -60,11 +60,13 @@ interface PendingSearch {
 
 let pending: PendingSearch[] = [];
 
-function fetchMock(url: string): Promise<unknown> {
+async function fetchMock(url: string): Promise<unknown> {
 	return new Promise((resolveFetch) => {
 		pending.push({
 			url,
-			resolve: (items) => resolveFetch({ok: true, status: 200, json: async () => ({items})}),
+			resolve: (items) => {
+				resolveFetch({ok: true, status: 200, json: async () => ({items})});
+			},
 		});
 	});
 }
@@ -151,7 +153,9 @@ function boldRuns(element: Element): string[] {
 }
 
 async function awaitRequest(): Promise<PendingSearch> {
-	await waitFor(() => expect(pending.length).toBe(1));
+	await waitFor(() => {
+		expect(pending.length).toBe(1);
+	});
 	const [request] = pending;
 	if (request === undefined) throw new Error("no request");
 	return request;
@@ -198,14 +202,14 @@ describe("⌘K palette live search", () => {
 			},
 		]);
 
-		await waitFor(() =>
+		await waitFor(() => {
 			expect(optionLabels(dialog)).toStrictEqual([
 				"Refactor auth module",
 				"Auth token refresh",
 				"auth-plan.md",
 				"See all results for “auth”",
-			]),
-		);
+			]);
+		});
 		expect(
 			[...resultsGroup(dialog).querySelectorAll("[cmdk-item]")].map((item) =>
 				item.getAttribute("data-item-type"),
@@ -221,7 +225,9 @@ describe("⌘K palette live search", () => {
 			serverSession("sess-2", "Auth token refresh", {titleMatches: [{start: 0, end: 4}]}),
 		]);
 
-		await waitFor(() => expect(optionLabels(dialog)).toContain("Auth token refresh"));
+		await waitFor(() => {
+			expect(optionLabels(dialog)).toContain("Auth token refresh");
+		});
 		expect({
 			instant: boldRuns(option(dialog, "Refactor auth module")),
 			server: boldRuns(option(dialog, "Auth token refresh")),
@@ -238,7 +244,9 @@ describe("⌘K palette live search", () => {
 			}),
 		]);
 
-		await waitFor(() => expect(optionLabels(dialog)).toContain("Cache layer"));
+		await waitFor(() => {
+			expect(optionLabels(dialog)).toContain("Cache layer");
+		});
 		const snippet = option(dialog, "Cache layer").querySelector("[data-palette-snippet]");
 		expect({
 			text: snippet?.textContent,
@@ -262,7 +270,9 @@ describe("⌘K palette live search", () => {
 			}),
 		]);
 
-		await waitFor(() => expect(optionLabels(dialog)).toContain("Cache old"));
+		await waitFor(() => {
+			expect(optionLabels(dialog)).toContain("Cache old");
+		});
 		expect({
 			now: option(dialog, "Cache now").querySelector("[data-palette-meta]")?.textContent,
 			old: option(dialog, "Cache old").querySelector("[data-palette-meta]")?.textContent,
@@ -278,7 +288,9 @@ describe("⌘K palette live search", () => {
 			serverSession("sess-7", "Deploy idle", {state: "idle"}),
 		]);
 
-		await waitFor(() => expect(optionLabels(dialog)).toContain("Deploy idle"));
+		await waitFor(() => {
+			expect(optionLabels(dialog)).toContain("Deploy idle");
+		});
 		expect({
 			waiting: option(dialog, "Deploy waiting").querySelector("[data-palette-attention-dot]")?.tagName,
 			waitingSr: option(dialog, "Deploy waiting").querySelector(".sr-only")?.textContent,
@@ -300,7 +312,9 @@ describe("⌘K palette live search", () => {
 
 		request.resolve([serverSession("sess-2", "Auth token refresh")]);
 
-		await waitFor(() => expect(within(dialog).queryByLabelText("Searching deeper...")).toBeNull());
+		await waitFor(() => {
+			expect(within(dialog).queryByLabelText("Searching deeper...")).toBeNull();
+		});
 		expect({
 			skeletons: dialog.querySelectorAll("[data-palette-skeleton]").length,
 			busy: resultsGroup(dialog).getAttribute("aria-busy"),
@@ -316,9 +330,9 @@ describe("⌘K palette live search", () => {
 			serverSession("sess-8", "Auth docs"),
 		]);
 
-		await waitFor(() =>
-			expect(dialog.querySelector("[aria-live=polite]")?.textContent).toBe("3 results available"),
-		);
+		await waitFor(() => {
+			expect(dialog.querySelector("[aria-live=polite]")?.textContent).toBe("3 results available");
+		});
 	});
 
 	it("navigates to the search page with the query and type from the last row", async () => {
@@ -327,7 +341,9 @@ describe("⌘K palette live search", () => {
 		type(dialog, "auth");
 		fireEvent.click(option(dialog, "See all results for “auth”"));
 
-		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog")).toBeNull();
+		});
 		expect({
 			pathname: router.state.location.pathname,
 			q: router.state.location.search["q" as never],
@@ -462,6 +478,8 @@ describe("⌘K palette filters", () => {
 		fireEvent.click(within(dialog).getByRole("button", {name: "Search all"}));
 
 		expect(tabs(dialog)[0]).toStrictEqual({name: "All", selected: "true"});
-		await waitFor(() => expect(pending.map((search) => search.url)).toContain("/api/search?query=zzqxvq"));
+		await waitFor(() => {
+			expect(pending.map((search) => search.url)).toContain("/api/search?query=zzqxvq");
+		});
 	});
 });

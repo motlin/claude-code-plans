@@ -143,8 +143,8 @@ export function useSessionViewedState(
 		[applyViewedState, currentMessageIndex, sessionId],
 	);
 
-	const markReviewed = useCallback(() => updateViewedState("reviewed"), [updateViewedState]);
-	const markUnreviewed = useCallback(() => updateViewedState("unreviewed"), [updateViewedState]);
+	const markReviewed = useCallback(async () => updateViewedState("reviewed"), [updateViewedState]);
+	const markUnreviewed = useCallback(async () => updateViewedState("unreviewed"), [updateViewedState]);
 
 	const markReviewedRef = useRef(markReviewed);
 	markReviewedRef.current = markReviewed;
@@ -153,7 +153,7 @@ export function useSessionViewedState(
 		if (!visibilityElement) return;
 		const clientId = `${Date.now().toString(36)}-${Math.random().toString(36)}`;
 		let intersecting = false;
-		const {attempt, retryIfFailed} = createRetryableSync(() => markReviewedRef.current());
+		const {attempt, retryIfFailed} = createRetryableSync(async () => markReviewedRef.current());
 
 		const controller = createVisibilityDwellController({
 			cancel: clearTimeout,
@@ -161,9 +161,13 @@ export function useSessionViewedState(
 				attempt("mark-reviewed");
 			},
 			onVisibilityChange: (visible) => {
-				runBackgroundSync("visibility-update", () => updateSessionVisibility(sessionId, clientId, visible), {
-					level: "debug",
-				});
+				runBackgroundSync(
+					"visibility-update",
+					async () => updateSessionVisibility(sessionId, clientId, visible),
+					{
+						level: "debug",
+					},
+				);
 			},
 			schedule: setTimeout,
 		});
@@ -178,9 +182,13 @@ export function useSessionViewedState(
 		document.addEventListener("visibilitychange", updateVisibility);
 		const heartbeat = setInterval(() => {
 			if (intersecting && document.visibilityState === "visible") {
-				runBackgroundSync("visibility-heartbeat", () => updateSessionVisibility(sessionId, clientId, true), {
-					level: "debug",
-				});
+				runBackgroundSync(
+					"visibility-heartbeat",
+					async () => updateSessionVisibility(sessionId, clientId, true),
+					{
+						level: "debug",
+					},
+				);
 				retryIfFailed("mark-reviewed-retry");
 			}
 		}, VISIBILITY_HEARTBEAT_MS);

@@ -128,7 +128,9 @@ export function createShellRegistry(dependencies: ShellRegistryDependencies): Sh
 
 	const startIdleTimer = (ptyKey: string, entry: ShellEntry): void => {
 		if (entry.idleTimer) clearTimeout(entry.idleTimer);
-		entry.idleTimer = setTimeout(() => kill(ptyKey), dependencies.idleTimeoutMs);
+		entry.idleTimer = setTimeout(() => {
+			kill(ptyKey);
+		}, dependencies.idleTimeoutMs);
 	};
 
 	const send = (entry: ShellEntry, frame: Record<string, unknown>): void => {
@@ -352,7 +354,7 @@ export function getShellRegistry(): ShellRegistry {
 		resolveCwd: (sessionId) => getSessionDirectory(getDb().index, sessionId),
 		shell: () => process.env["SHELL"] || "/bin/zsh",
 		environment: () => process.env,
-		spawn: spawnNodePty as SpawnPty,
+		spawn: spawnNodePty,
 		idleTimeoutMs: SHELL_IDLE_TIMEOUT_MS,
 		foregroundBusy: isForegroundBusy,
 	});

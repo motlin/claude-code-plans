@@ -120,7 +120,9 @@ describe("PlanLink", () => {
 			queryClient.setQueryData(plansQueryOptions().queryKey, [alphaPlan]);
 		});
 
-		await waitFor(() => expect(link.getAttribute("data-plan-missing")).toBeNull());
+		await waitFor(() => {
+			expect(link.getAttribute("data-plan-missing")).toBeNull();
+		});
 	});
 });
 

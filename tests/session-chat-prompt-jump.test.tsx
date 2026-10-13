@@ -47,7 +47,7 @@ function assistant(lineIndex: number): SessionLine {
 			role: "assistant",
 			content: [{type: "text", text: `Fabricated reply ${lineIndex}`}],
 		},
-	} as SessionLine;
+	};
 }
 
 const LINES: SessionLine[] = [

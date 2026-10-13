@@ -84,7 +84,9 @@ export function ApprovalDock({
 			}
 		}
 		document.addEventListener("keydown", onKeyDown);
-		return () => document.removeEventListener("keydown", onKeyDown);
+		return () => {
+			document.removeEventListener("keydown", onKeyDown);
+		};
 	}, [open, submitting, question]);
 
 	if (state.dismissed) return null;
@@ -124,7 +126,9 @@ export function ApprovalDock({
 							type="button"
 							aria-label="View question options"
 							aria-expanded={!state.collapsed}
-							onClick={() => rawDispatch({type: "toggleCollapsed"})}
+							onClick={() => {
+								rawDispatch({type: "toggleCollapsed"});
+							}}
 							className={ICON_BUTTON}
 						>
 							<ChevronRight
@@ -154,7 +158,9 @@ export function ApprovalDock({
 										type="button"
 										aria-pressed={selected}
 										disabled={submitting}
-										onClick={() => rawDispatch({type: "select", option: optionIndex})}
+										onClick={() => {
+											rawDispatch({type: "select", option: optionIndex});
+										}}
 										className={`flex w-full cursor-pointer items-center gap-2 rounded-r4 px-3 py-3 text-left disabled:cursor-not-allowed ${
 											selected
 												? "bg-alpha-3 ring-1 ring-accent-100"
@@ -189,8 +195,12 @@ export function ApprovalDock({
 									rows={1}
 									value={draft.otherText}
 									disabled={submitting}
-									onFocus={() => rawDispatch({type: "selectOther"})}
-									onChange={(event) => rawDispatch({type: "setOtherText", text: event.target.value})}
+									onFocus={() => {
+										rawDispatch({type: "selectOther"});
+									}}
+									onChange={(event) => {
+										rawDispatch({type: "setOtherText", text: event.target.value});
+									}}
 									className="max-h-[calc(4lh)] w-full resize-none bg-transparent text-body text-primary outline-none [field-sizing:content] placeholder:text-secondary"
 								/>
 							</label>

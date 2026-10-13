@@ -46,7 +46,9 @@ function assertProof(expected: string) {
 }
 
 describe("fresh canonical route proof", () => {
-	it("uses UUID without any detail query or a network request", () => assertProof(ALICE));
+	it("uses UUID without any detail query or a network request", () => {
+		assertProof(ALICE);
+	});
 	it.each([null, {}, {canonicalRoutePending: true}, {canonicalRouteId: ALIAS, canonicalRoutePending: true}])(
 		"rejects detail without a completed canonical proof: %j",
 		(data) => {

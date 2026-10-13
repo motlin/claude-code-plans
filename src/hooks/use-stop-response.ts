@@ -39,7 +39,7 @@ export function useStopResponse({
 	enabled,
 	onInterrupt,
 	onError,
-	interrupt = (id, force) => sendHerdrInterrupt(id, force),
+	interrupt = async (id, force) => sendHerdrInterrupt(id, force),
 	now = Date.now,
 }: StopResponseOptions): () => void {
 	const lastPressRef = useRef<number | null>(null);

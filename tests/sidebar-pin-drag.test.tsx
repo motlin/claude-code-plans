@@ -93,7 +93,9 @@ async function renderGroups(sessions: unknown[]) {
 	});
 	await router.load();
 	const result = render(<RouterProvider router={router} />);
-	await waitFor(() => expect(result.container.querySelector("[data-group-toggle]")).toBeTruthy());
+	await waitFor(() => {
+		expect(result.container.querySelector("[data-group-toggle]")).toBeTruthy();
+	});
 	return {...result, router};
 }
 
@@ -113,7 +115,7 @@ function rect(top: number, height: number): DOMRect {
 		x: 0,
 		y: top,
 		toJSON: () => ({}),
-	} as DOMRect;
+	};
 }
 
 /**
@@ -226,7 +228,9 @@ describe("sidebar drag to pin", () => {
 		});
 
 		pointerUp(DROP_ROW_TOP + 10);
-		await waitFor(() => expect(pinnedTitles(container)).toStrictEqual(["Review one"]));
+		await waitFor(() => {
+			expect(pinnedTitles(container)).toStrictEqual(["Review one"]);
+		});
 		expect(readPinState()).toStrictEqual({
 			pinnedIds: ["r1"],
 			pinnedOrder: ["r1"],
@@ -240,9 +244,9 @@ describe("sidebar drag to pin", () => {
 
 		dragTo("Review one", 70);
 
-		await waitFor(() =>
-			expect(pinnedTitles(container)).toStrictEqual(["Working one", "Review one", "Completed older"]),
-		);
+		await waitFor(() => {
+			expect(pinnedTitles(container)).toStrictEqual(["Working one", "Review one", "Completed older"]);
+		});
 		expect(readPinState()).toStrictEqual({
 			pinnedIds: ["w1", "d2", "r1"],
 			pinnedOrder: ["w1", "r1", "d2"],
@@ -255,9 +259,9 @@ describe("sidebar drag to pin", () => {
 
 		dragTo("Working one", 130);
 
-		await waitFor(() =>
-			expect(pinnedTitles(container)).toStrictEqual(["Completed older", "Review one", "Working one"]),
-		);
+		await waitFor(() => {
+			expect(pinnedTitles(container)).toStrictEqual(["Completed older", "Review one", "Working one"]);
+		});
 		expect(readPinState()).toStrictEqual({
 			pinnedIds: ["w1", "d2", "r1"],
 			pinnedOrder: ["d2", "r1", "w1"],
@@ -270,7 +274,9 @@ describe("sidebar drag to pin", () => {
 
 		dragTo("Completed older", RECENTS_TOP + 100);
 
-		await waitFor(() => expect(pinnedTitles(container)).toStrictEqual(["Working one", "Review one"]));
+		await waitFor(() => {
+			expect(pinnedTitles(container)).toStrictEqual(["Working one", "Review one"]);
+		});
 		expect(readPinState()).toStrictEqual({
 			pinnedIds: ["w1", "r1"],
 			pinnedOrder: ["w1", "r1"],
@@ -280,9 +286,9 @@ describe("sidebar drag to pin", () => {
 
 		fireEvent.click(screen.getByRole("button", {name: "Undo"}));
 
-		await waitFor(() =>
-			expect(pinnedTitles(container)).toStrictEqual(["Working one", "Completed older", "Review one"]),
-		);
+		await waitFor(() => {
+			expect(pinnedTitles(container)).toStrictEqual(["Working one", "Completed older", "Review one"]);
+		});
 		expect(readPinState()).toStrictEqual({
 			pinnedIds: ["w1", "r1", "d2"],
 			pinnedOrder: ["w1", "d2", "r1"],
@@ -324,7 +330,9 @@ describe("sidebar drag to pin", () => {
 		pointerUp(402);
 		fireEvent.click(rowLink("Review one"));
 
-		await waitFor(() => expect(router.state.location.pathname).toBe("/session/r1"));
+		await waitFor(() => {
+			expect(router.state.location.pathname).toBe("/session/r1");
+		});
 		expect(readPinState()).toStrictEqual({pinnedIds: [], pinnedOrder: []});
 	});
 });

@@ -216,7 +216,7 @@ export function collectSessionLinks(lines: SessionLine[]): CollectedLink[] {
 
 	for (const chunk of scanSessionContent(lines)) {
 		for (const match of chunk.text.matchAll(MARKDOWN_LINK)) {
-			addUrl(match[2]!, match[1]!, occurrenceFromChunk(chunk));
+			addUrl(match[2]!, match[1], occurrenceFromChunk(chunk));
 		}
 
 		const textWithoutMarkdownLinks = chunk.text.replace(MARKDOWN_LINK, " ");

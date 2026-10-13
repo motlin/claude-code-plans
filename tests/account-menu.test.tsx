@@ -62,9 +62,13 @@ async function openMenu(): Promise<HTMLElement> {
 
 async function openLearnMore(menu: HTMLElement): Promise<HTMLElement> {
 	const trigger = within(menu).getByRole("menuitem", {name: "Learn more"});
-	act(() => trigger.focus());
+	act(() => {
+		trigger.focus();
+	});
 	fireEvent.keyDown(trigger, {key: "ArrowRight"});
-	await waitFor(() => expect(screen.getAllByRole("menu")).toHaveLength(2));
+	await waitFor(() => {
+		expect(screen.getAllByRole("menu")).toHaveLength(2);
+	});
 	const submenu = screen.getAllByRole("menu").find((candidate) => candidate !== menu);
 	if (submenu === undefined) throw new Error("no Learn more submenu");
 	return submenu;
@@ -171,13 +175,13 @@ describe("account menu", () => {
 		const menu = await openMenu();
 		fireEvent.click(within(menu).getByRole("menuitem", {name: /Settings/}));
 
-		await waitFor(() =>
+		await waitFor(() => {
 			expect({
 				pathname: router.state.location.pathname,
 				search: router.state.location.searchStr,
 				hash: router.state.location.hash,
-			}).toStrictEqual({pathname: path, search: "?filter=example", hash: `settings/${tab}`}),
-		);
+			}).toStrictEqual({pathname: path, search: "?filter=example", hash: `settings/${tab}`});
+		});
 	});
 
 	it("navigates Usage to #settings/usage", async () => {
@@ -185,21 +189,25 @@ describe("account menu", () => {
 		const menu = await openMenu();
 		fireEvent.click(within(menu).getByRole("menuitem", {name: "Usage"}));
 
-		await waitFor(() =>
+		await waitFor(() => {
 			expect({
 				pathname: router.state.location.pathname,
 				hash: router.state.location.hash,
-			}).toStrictEqual({pathname: "/plans", hash: "settings/usage"}),
-		);
+			}).toStrictEqual({pathname: "/plans", hash: "settings/usage"});
+		});
 	});
 
 	it("navigates Claude Config and Setup to their pages", async () => {
 		const router = await renderAccountMenu();
 		fireEvent.click(within(await openMenu()).getByRole("menuitem", {name: "Claude Config"}));
-		await waitFor(() => expect(router.state.location.pathname).toBe("/settings/edit"));
+		await waitFor(() => {
+			expect(router.state.location.pathname).toBe("/settings/edit");
+		});
 
 		fireEvent.click(within(await openMenu()).getByRole("menuitem", {name: "Setup"}));
-		await waitFor(() => expect(router.state.location.pathname).toBe("/setup"));
+		await waitFor(() => {
+			expect(router.state.location.pathname).toBe("/setup");
+		});
 	});
 
 	it("has no cloud-only items", async () => {

@@ -404,7 +404,9 @@ export function ExpandableBlock({
 			</div>
 			<button
 				type="button"
-				onClick={() => setExpanded(true)}
+				onClick={() => {
+					setExpanded(true);
+				}}
 				className="mt-1 text-xs text-t6 hover:text-primary transition cursor-pointer"
 			>
 				Show all {lineCount} lines
@@ -470,7 +472,9 @@ export function CopyButton({text, label = "Copy", size}: {text: string; label?: 
 	const handleClick = useCallback(() => {
 		void navigator.clipboard.writeText(text);
 		setCopied(true);
-		setTimeout(() => setCopied(false), 1500);
+		setTimeout(() => {
+			setCopied(false);
+		}, 1500);
 	}, [text]);
 	const iconSize = size === "xs" ? 12 : 16;
 
@@ -523,7 +527,9 @@ export function CollapsibleSection({
 		<div>
 			<button
 				type="button"
-				onClick={() => setOpen(!open)}
+				onClick={() => {
+					setOpen(!open);
+				}}
 				className="flex items-center gap-1 text-xs text-t6 hover:text-primary cursor-pointer"
 			>
 				<ChevronIcon expanded={open} />

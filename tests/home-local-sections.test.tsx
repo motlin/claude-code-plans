@@ -213,7 +213,7 @@ describe("HomeLocalSections", () => {
 	async function renderHome(plans: PlanListItem[]) {
 		vi.stubGlobal(
 			"fetch",
-			vi.fn(() => new Promise<Response>(() => {})),
+			vi.fn(async () => new Promise<Response>(() => {})),
 		);
 		const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
 		queryClient.setQueryData(plansQueryOptions().queryKey, plans);
@@ -242,35 +242,35 @@ describe("HomeLocalSections", () => {
 			routeTree: rootRoute.addChildren([homeRoute]),
 			history: createMemoryHistory({initialEntries: ["/"]}),
 		});
-		await act(() => router.load());
+		await act(async () => router.load());
 		render(<RouterProvider router={router} />);
 		return queryClient;
 	}
 
 	it("is hidden by default so home matches claude.ai/code", async () => {
 		await renderHome([plan("newest.md", 5, "alpha")]);
-		await act(() => Promise.resolve());
+		await act(async () => Promise.resolve());
 		expect(screen.queryAllByRole("region").map((region) => region.getAttribute("aria-label"))).toStrictEqual([]);
 	});
 
 	it("shows Recent plans and Memories updated when the setting is on", async () => {
 		localStorage.setItem(settingStorageKey("homeShowLocalSections"), "true");
 		await renderHome([plan("newest.md", 5, "alpha")]);
-		await waitFor(() =>
+		await waitFor(() => {
 			expect(screen.getAllByRole("heading", {level: 2}).map((heading) => heading.textContent)).toStrictEqual([
 				"Recent plans",
 				"Memories updated",
-			]),
-		);
+			]);
+		});
 	});
 
 	it("skips an empty section when the setting is on", async () => {
 		localStorage.setItem(settingStorageKey("homeShowLocalSections"), "true");
 		await renderHome([]);
-		await waitFor(() =>
+		await waitFor(() => {
 			expect(screen.getAllByRole("heading", {level: 2}).map((heading) => heading.textContent)).toStrictEqual([
 				"Memories updated",
-			]),
-		);
+			]);
+		});
 	});
 });

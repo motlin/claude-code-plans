@@ -60,12 +60,12 @@ async function setup({
 	const pending = new Promise<Response>((resolve) => {
 		finish = resolve;
 	});
-	let lookup = () => pending;
+	let lookup = async () => pending;
 	let finishSource!: (response: Response) => void;
 	const pendingSource = new Promise<Response>((resolve) => {
 		finishSource = resolve;
 	});
-	const fetcher = vi.fn((url: string) =>
+	const fetcher = vi.fn(async (url: string) =>
 		url.endsWith("/identity") ? lookup() : delaySource ? pendingSource : Promise.resolve(Response.json(source)),
 	);
 	vi.stubGlobal("fetch", fetcher);
@@ -120,7 +120,9 @@ it("resolves a delayed alias before fetching source and keeps record IDs in ever
 		skeleton: screen.getByTestId("session-skeleton") !== null,
 		urls: fetcher.mock.calls.map(([url]) => url),
 	};
-	await act(async () => finish(Response.json({sessionId: ALICE})));
+	await act(async () => {
+		finish(Response.json({sessionId: ALICE}));
+	});
 	await screen.findByRole("heading", {name: `JSONL source · line 1 · ${RECORD}`});
 	expect({
 		pending,
@@ -164,7 +166,9 @@ it("paints the source loading state before UUID source data arrives", async () =
 		title: "Source: 11111111",
 		urls: [`/api/sessions/${ALICE}/source/${RECORD}?context=5`],
 	});
-	await act(async () => finishSource(Response.json(SOURCE)));
+	await act(async () => {
+		finishSource(Response.json(SOURCE));
+	});
 	await screen.findByRole("heading", {name: `JSONL source · line 1 · ${RECORD}`});
 	expect(screen.queryByRole("status")).toBeNull();
 });
@@ -173,14 +177,20 @@ it.each([404, 409])(
 	"shows the shared %s failure title without a source request and restores the source title after retry",
 	async (status) => {
 		const {finish, setLookup, fetcher} = await setup();
-		await act(async () => finish(new Response(null, {status})));
+		await act(async () => {
+			finish(new Response(null, {status}));
+		});
 		const title = status === 404 ? "Session Not Found" : "Ambiguous session link";
-		await waitFor(() => expect(document.title).toBe(title));
+		await waitFor(() => {
+			expect(document.title).toBe(title);
+		});
 		const failure = {message: screen.getByRole("alert").textContent, urls: fetcher.mock.calls.map(([url]) => url)};
 		setLookup(async () => Response.json({sessionId: ALICE}));
 		fireEvent.click(screen.getByRole("button", {name: "Retry"}));
 		await screen.findByRole("heading", {name: `JSONL source · line 1 · ${RECORD}`});
-		await waitFor(() => expect(document.title).toBe("Source: 11111111"));
+		await waitFor(() => {
+			expect(document.title).toBe("Source: 11111111");
+		});
 		expect(failure).toStrictEqual({
 			message: status === 404 ? "Session Not Found" : "This session link has more than one local session.",
 			urls: [`/api/sessions/${ALIAS}/identity`],
@@ -203,8 +213,10 @@ it.each(["ambiguous", "reassigned"])(
 		setLookup(async () =>
 			change === "ambiguous" ? new Response(null, {status: 409}) : Response.json({sessionId: BOB}),
 		);
-		await act(() => invalidateSessionIdentities(client));
-		await waitFor(() => expect(router.state.location.pathname).toBe(`/session/${ALICE}/source/${RECORD}`));
+		await act(async () => invalidateSessionIdentities(client));
+		await waitFor(() => {
+			expect(router.state.location.pathname).toBe(`/session/${ALICE}/source/${RECORD}`);
+		});
 		expect({
 			title: document.title,
 			sameHeading: screen.getByRole("heading", {name: `JSONL source · line 1 · ${RECORD}`}) === heading,

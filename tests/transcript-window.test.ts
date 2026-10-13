@@ -135,7 +135,7 @@ describe("fetchEarlierTranscript", () => {
 		const queryClient = new QueryClient();
 		const queryKey = sessionQueryKeys.transcript("sess-1");
 		queryClient.setQueryData(queryKey, window_(3, 2, {byteOffset: 900}));
-		const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+		const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async () =>
 			Promise.resolve(
 				new Response(JSON.stringify(window_(0, 3)), {
 					status: 200,
@@ -162,7 +162,7 @@ describe("fetchEarlierTranscript", () => {
 		const queryClient = new QueryClient();
 		const queryKey = sessionQueryKeys.transcript("sess-1");
 		queryClient.setQueryData(queryKey, window_(4, 1));
-		vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+		vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
 			const before = Number(new URL(String(input)).searchParams.get("before"));
 			return Promise.resolve(
 				new Response(JSON.stringify(window_(before - 2, 2)), {

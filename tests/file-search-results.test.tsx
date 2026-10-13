@@ -209,7 +209,7 @@ describe("file search results", () => {
 		const searchSignals: AbortSignal[] = [];
 		vi.stubGlobal(
 			"fetch",
-			vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+			vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
 				if (requestUrl(input).endsWith("/api/search/file-roots")) {
 					return Promise.resolve(jsonResponse({roots: [FIRST_ROOT]}));
 				}
@@ -217,7 +217,9 @@ describe("file search results", () => {
 				if (!signal) throw new Error("Expected React Query to pass an AbortSignal");
 				searchSignals.push(signal);
 				return new Promise<Response>((_resolve, reject) => {
-					signal.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")));
+					signal.addEventListener("abort", () => {
+						reject(new DOMException("Aborted", "AbortError"));
+					});
 				});
 			}),
 		);
@@ -263,12 +265,16 @@ describe("file search results", () => {
 		await screen.findByRole("button", {name: `Search within ${FIRST_ROOT}/alice-folder`});
 
 		fireEvent.click(screen.getByRole("button", {name: `Search within ${FIRST_ROOT}/alice-folder`}));
-		await waitFor(() => expect(scopes).toStrictEqual([FIRST_ROOT, `${FIRST_ROOT}/alice-folder`]));
+		await waitFor(() => {
+			expect(scopes).toStrictEqual([FIRST_ROOT, `${FIRST_ROOT}/alice-folder`]);
+		});
 		fireEvent.click(screen.getByRole("button", {name: "allowed"}));
 		fireEvent.change(screen.getByRole("combobox", {name: "Search root"}), {
 			target: {value: SECOND_ROOT},
 		});
-		await waitFor(() => expect(scopes).toStrictEqual([FIRST_ROOT, `${FIRST_ROOT}/alice-folder`, SECOND_ROOT]));
+		await waitFor(() => {
+			expect(scopes).toStrictEqual([FIRST_ROOT, `${FIRST_ROOT}/alice-folder`, SECOND_ROOT]);
+		});
 		const input = screen.getByRole("searchbox", {name: "Search file contents"});
 		const secondRootCard = await screen.findByRole("button", {
 			name: `Open ${SECOND_ROOT}/charlie.ts at line 100`,
@@ -277,7 +283,7 @@ describe("file search results", () => {
 
 		expect({
 			activeResult: document.activeElement?.getAttribute("aria-label"),
-			activeRoot: (screen.getByRole("combobox", {name: "Search root"}) as HTMLSelectElement).value,
+			activeRoot: screen.getByRole<HTMLSelectElement>("combobox", {name: "Search root"}).value,
 			scopes,
 		}).toStrictEqual({
 			activeResult: secondRootCard.getAttribute("aria-label"),
@@ -296,9 +302,9 @@ describe("file search results", () => {
 			),
 		);
 		const {onQueryChange} = renderSearch({initialQuery: "reloaded query"});
-		const input = screen.getByRole("searchbox", {
+		const input = screen.getByRole<HTMLInputElement>("searchbox", {
 			name: "Search file contents",
-		}) as HTMLInputElement;
+		});
 		const initialValue = input.value;
 
 		fireEvent.change(input, {target: {value: "updated query"}});
@@ -313,7 +319,7 @@ describe("file search results", () => {
 		let outcome: "loading" | "empty" | "error" = "loading";
 		vi.stubGlobal(
 			"fetch",
-			vi.fn((input: RequestInfo | URL) => {
+			vi.fn(async (input: RequestInfo | URL) => {
 				if (requestUrl(input).endsWith("/api/search/file-roots")) {
 					return Promise.resolve(jsonResponse({roots: [FIRST_ROOT]}));
 				}

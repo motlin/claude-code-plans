@@ -127,7 +127,7 @@ function searchSessions(
 	const filters = sessionFilters(params.project, cutoff);
 	const {open, close} = sentinels;
 
-	const titleRows = db.all(
+	const titleRows = db.all<TitleHitRow>(
 		sql`SELECT s.id AS session_id, s.project_id, s.mtime_ms,
 				highlight(sessions_fts, 1, ${open}, ${close}) AS title_highlight,
 				snippet(sessions_fts, 2, ${open}, ${close}, '...', ${SNIPPET_TOKENS}) AS prompt_snippet,
@@ -137,7 +137,7 @@ function searchSessions(
 			WHERE sessions_fts MATCH ${ftsQuery}${filters}
 			ORDER BY bm25(sessions_fts), s.mtime_ms DESC
 			LIMIT ${params.limit}`,
-	) as TitleHitRow[];
+	);
 
 	const messageHits = searchMessageContentSessions(db, terms, {
 		sessionFilters: sql` AND s.id IS NOT NULL${filters}`,
@@ -224,7 +224,7 @@ function searchDocs(
 	const projectFilter = params.project === undefined ? sql`` : sql` AND d.project_id = ${params.project}`;
 	const dateFilter = cutoff === null ? sql`` : sql` AND d.mtime_ms >= ${cutoff}`;
 
-	const rows = db.all(
+	const rows = db.all<DocHitRow>(
 		sql`SELECT d.path, d.kind, d.project_id, d.mtime_ms,
 				highlight(docs_fts, 2, ${open}, ${close}) AS title_highlight,
 				snippet(docs_fts, 3, ${open}, ${close}, '...', ${SNIPPET_TOKENS}) AS content_snippet
@@ -233,7 +233,7 @@ function searchDocs(
 			WHERE docs_fts MATCH ${ftsQuery}${kindFilter}${projectFilter}${dateFilter}
 			ORDER BY bm25(docs_fts), d.mtime_ms DESC
 			LIMIT ${params.limit}`,
-	) as DocHitRow[];
+	);
 
 	return rows.map((row) => {
 		const title = parseHighlighted(row.title_highlight, sentinels);
@@ -287,7 +287,7 @@ function searchFiles(
 	}
 	const dateFilter = cutoff === null ? sql`` : sql` AND COALESCE(indexed_files.mtime_ms, 0) >= ${cutoff}`;
 
-	const rows = db.all(
+	const rows = db.all<FileHitRow>(
 		sql`SELECT file_content_fts.path AS path,
 				snippet(file_content_fts, 1, ${sentinels.open}, ${sentinels.close}, '...', ${SNIPPET_TOKENS}) AS file_snippet,
 				COALESCE(indexed_files.mtime_ms, 0) AS mtime_ms
@@ -296,7 +296,7 @@ function searchFiles(
 			WHERE file_content_fts MATCH ${ftsQuery}${scopeFilter}${dateFilter}
 			ORDER BY bm25(file_content_fts), mtime_ms DESC
 			LIMIT ${params.limit}`,
-	) as FileHitRow[];
+	);
 
 	return rows.map((row) => {
 		const project = owningProject(row.path, projects);
@@ -331,7 +331,7 @@ export function searchUnifiedDb(db: IndexDb, params: UnifiedSearchParams, now: n
 		open: `${identifier}-open`,
 		close: `${identifier}-close`,
 	};
-	const projects = db.all(sql`SELECT id, name, project_path FROM projects`) as ProjectRow[];
+	const projects = db.all<ProjectRow>(sql`SELECT id, name, project_path FROM projects`);
 	const projectNames = new Map(projects.map((project) => [project.id, project.name]));
 
 	const items: UnifiedSearchItem[] = [];

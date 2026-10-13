@@ -598,12 +598,16 @@ describe("persistence", () => {
 	it("is a no-op when storage throws", () => {
 		const storage = new ThrowingStorage();
 		expect(loadPaneLayout("s", storage)).toEqual(defaultPaneLayout());
-		expect(() => savePaneLayout("s", ONE_PANE, storage)).not.toThrow();
+		expect(() => {
+			savePaneLayout("s", ONE_PANE, storage);
+		}).not.toThrow();
 	});
 
 	it("is a no-op without storage", () => {
 		expect(loadPaneLayout("s", null)).toEqual(defaultPaneLayout());
-		expect(() => savePaneLayout("s", ONE_PANE, null)).not.toThrow();
+		expect(() => {
+			savePaneLayout("s", ONE_PANE, null);
+		}).not.toThrow();
 	});
 });
 
@@ -647,8 +651,12 @@ describe("changes scope persistence", () => {
 	});
 
 	it("is a no-op when storage throws or is missing", () => {
-		expect(() => saveChangesScope("s", "session", new ThrowingStorage())).not.toThrow();
-		expect(() => saveChangesScope("s", "session", null)).not.toThrow();
+		expect(() => {
+			saveChangesScope("s", "session", new ThrowingStorage());
+		}).not.toThrow();
+		expect(() => {
+			saveChangesScope("s", "session", null);
+		}).not.toThrow();
 	});
 });
 

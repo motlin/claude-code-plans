@@ -59,7 +59,9 @@ describe("formatPaceBannerReset", () => {
 });
 
 describe("pace banner dismissal storage", () => {
-	beforeEach(() => localStorage.clear());
+	beforeEach(() => {
+		localStorage.clear();
+	});
 
 	it("round-trips the dismissed-until reset time", () => {
 		expect(readPaceBannerDismissedUntil()).toBeNull();

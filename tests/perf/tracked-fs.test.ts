@@ -90,19 +90,19 @@ describe("tracked read helpers", () => {
 describe("JSONL read sites", () => {
 	it("readSession reads the whole file once", async () => {
 		const size = writeTranscript(5);
-		const counters = await jsonlCounters(() => readSession(projectsDir, SESSION_ID));
+		const counters = await jsonlCounters(async () => readSession(projectsDir, SESSION_ID));
 		expect(counters).toStrictEqual({bytesRead: size, fullScans: 1});
 	});
 
 	it("readSessionRawWindow scanning to EOF counts a full scan", async () => {
 		const size = writeTranscript(5);
-		const counters = await jsonlCounters(() => readSessionRawWindow(projectsDir, SESSION_ID, "missing-uuid"));
+		const counters = await jsonlCounters(async () => readSessionRawWindow(projectsDir, SESSION_ID, "missing-uuid"));
 		expect(counters).toStrictEqual({bytesRead: size, fullScans: 1});
 	});
 
 	it("readNewJsonlLines from offset 0 counts a full scan", async () => {
 		const size = writeTranscript(5);
-		const counters = await jsonlCounters(() => readNewJsonlLines(filePath, 0));
+		const counters = await jsonlCounters(async () => readNewJsonlLines(filePath, 0));
 		expect(counters).toStrictEqual({bytesRead: size, fullScans: 1});
 	});
 
@@ -113,7 +113,7 @@ describe("JSONL read sites", () => {
 		writeFileSync(filePath, records.join("\n") + "\n", {flag: "a"});
 		const size = statSync(filePath).size;
 
-		const counters = await jsonlCounters(() => readNewJsonlLines(filePath, offset));
+		const counters = await jsonlCounters(async () => readNewJsonlLines(filePath, offset));
 		expect(counters).toStrictEqual({bytesRead: size - offset, fullScans: 0});
 	});
 
@@ -129,13 +129,13 @@ describe("JSONL read sites", () => {
 
 	it("indexJsonlFile reads the whole file once", async () => {
 		const size = writeTranscript(5);
-		const counters = await jsonlCounters(() => indexJsonlFile(db.index, filePath, PROJECT));
+		const counters = await jsonlCounters(async () => indexJsonlFile(db.index, filePath, PROJECT));
 		expect(counters).toStrictEqual({bytesRead: size, fullScans: 1});
 	});
 
 	it("scanPendingApproval reads the whole file once", async () => {
 		const size = writeTranscript(5);
-		const counters = await jsonlCounters(() => scanPendingApproval(filePath));
+		const counters = await jsonlCounters(async () => scanPendingApproval(filePath));
 		expect(counters).toStrictEqual({bytesRead: size, fullScans: 1});
 	});
 });

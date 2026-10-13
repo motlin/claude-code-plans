@@ -31,7 +31,7 @@ beforeAll(() => {
 	});
 	Element.prototype.scrollTo = function scrollTo(this: Element, options?: ScrollToOptions | number) {
 		if (typeof options === "object" && options.top !== undefined) this.scrollTop = options.top;
-	} as Element["scrollTo"];
+	};
 });
 
 afterAll(() => {
@@ -97,19 +97,25 @@ it("reports no restored <main> position for a fresh navigation, and the page's o
 		render(<RouterProvider router={router} />);
 		const main = await screen.findByTestId("main");
 		// onRendered clears tracked scroll events. Scroll only after the route's restoration pass.
-		await waitFor(() => expect(renderedLocations).toStrictEqual(["/session/first"]));
+		await waitFor(() => {
+			expect(renderedLocations).toStrictEqual(["/session/first"]);
+		});
 		scrollMain(main, 13_939);
 
 		// The router copies the left page's <main> entry into the new location's after it renders.
-		await act(() => router.navigate({to: "/session/$id", params: {id: "second"}}));
-		await waitFor(() => expect(renderedLocations).toStrictEqual(["/session/first", "/session/second"]));
+		await act(async () => router.navigate({to: "/session/$id", params: {id: "second"}}));
+		await waitFor(() => {
+			expect(renderedLocations).toStrictEqual(["/session/first", "/session/second"]);
+		});
 		const afterSwitch = restoredOnRerender();
 		scrollMain(main, 200);
 
-		act(() => router.history.back());
-		await waitFor(() =>
-			expect(renderedLocations).toStrictEqual(["/session/first", "/session/second", "/session/first"]),
-		);
+		act(() => {
+			router.history.back();
+		});
+		await waitFor(() => {
+			expect(renderedLocations).toStrictEqual(["/session/first", "/session/second", "/session/first"]);
+		});
 
 		expect({afterSwitch, afterBack: restoredOnRerender(), scrollTopAfterBack: main.scrollTop}).toStrictEqual({
 			afterSwitch: "none",

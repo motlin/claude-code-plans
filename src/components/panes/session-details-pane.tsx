@@ -160,7 +160,9 @@ export function SessionDetails({data, messageCount}: SessionDetailsProps) {
 			<button
 				type="button"
 				aria-expanded={rawExpanded}
-				onClick={() => setRawExpanded(!rawExpanded)}
+				onClick={() => {
+					setRawExpanded(!rawExpanded);
+				}}
 				className="flex w-fit cursor-pointer items-center gap-1 text-caption text-t6 transition-colors hover:text-primary"
 			>
 				{rawExpanded ? (

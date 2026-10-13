@@ -1002,7 +1002,11 @@ describe("createWatcher resilience", () => {
 
 	afterEach(async () => {
 		if (server) {
-			await new Promise<void>((resolve) => server!.close(() => resolve()));
+			await new Promise<void>((resolve) =>
+				server!.close(() => {
+					resolve();
+				}),
+			);
 			server = null;
 		}
 		rmSync(dir, {recursive: true, force: true});
@@ -1015,11 +1019,17 @@ describe("createWatcher resilience", () => {
 		server = createServer();
 		await new Promise<void>((resolve, reject) => {
 			server!.once("error", reject);
-			server!.listen(sockPath, () => resolve());
+			server!.listen(sockPath, () => {
+				resolve();
+			});
 		});
 
 		const watcher = await createWatcher([dir]);
-		const ready = new Promise<void>((resolve) => watcher.once("ready", () => resolve()));
+		const ready = new Promise<void>((resolve) =>
+			watcher.once("ready", () => {
+				resolve();
+			}),
+		);
 		await expect(ready).resolves.toBeUndefined();
 		await new Promise((r) => setTimeout(r, 100));
 		await watcher.close();
@@ -1076,7 +1086,12 @@ describe("session registry events", () => {
 			);
 			// The recursive watcher reports paths under the root's real path.
 			await __testing.handleFileChange(realFile);
-			await vi.waitFor(() => expect(changes).toStrictEqual([["sess-symlinked"]]), {timeout: 2000});
+			await vi.waitFor(
+				() => {
+					expect(changes).toStrictEqual([["sess-symlinked"]]);
+				},
+				{timeout: 2000},
+			);
 		} finally {
 			await closeWatcher();
 			rmSync(fixture, {recursive: true, force: true});
@@ -1102,7 +1117,7 @@ describe("createWatcher integration", () => {
 			once,
 			on,
 			close: vi.fn(async () => undefined),
-		} as unknown as RecursiveWatcher;
+		};
 		const createRecursiveWatcher = vi
 			.spyOn(recursiveWatch, "createRecursiveWatcher")
 			.mockReturnValue(recursiveWatcher);
@@ -1144,7 +1159,7 @@ describe("createWatcher integration", () => {
 			once,
 			on,
 			close: vi.fn(async () => undefined),
-		} as unknown as RecursiveWatcher;
+		};
 		const createRecursiveWatcher = vi
 			.spyOn(recursiveWatch, "createRecursiveWatcher")
 			.mockReturnValue(recursiveWatcher);

@@ -160,7 +160,7 @@ export async function updatePendingApprovalForSession(
  * has changed since it was scanned is rescanned, and any entry whose file is
  * gone is dropped. Concurrent calls share one pass.
  */
-export function revalidatePendingApprovals(db: IndexDb): Promise<void> {
+export async function revalidatePendingApprovals(db: IndexDb): Promise<void> {
 	revalidation ??= runRevalidation(db).finally(() => {
 		revalidation = null;
 	});

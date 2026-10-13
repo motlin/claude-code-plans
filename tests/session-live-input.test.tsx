@@ -153,7 +153,7 @@ describe("session live input", () => {
 	it("keeps a sent prompt pending until transcript delivery", async () => {
 		let finishPost: (() => void) | undefined;
 		const postPrompt = vi.fn<(sessionId: string, prompt: string) => Promise<void>>(
-			() =>
+			async () =>
 				new Promise<void>((resolve) => {
 					finishPost = resolve;
 				}),

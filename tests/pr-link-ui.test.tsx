@@ -114,11 +114,11 @@ beforeEach(() => {
 	openMock.mockReturnValue(null);
 	vi.stubGlobal(
 		"fetch",
-		vi.fn(() => Promise.resolve(Response.json({}))),
+		vi.fn(async () => Promise.resolve(Response.json({}))),
 	);
 	vi.spyOn(window, "open").mockImplementation(openMock);
 	__unreadStoreTesting.reset();
-	__unreadStoreTesting.setPersist(() => Promise.resolve());
+	__unreadStoreTesting.setPersist(async () => Promise.resolve());
 });
 
 afterEach(() => {

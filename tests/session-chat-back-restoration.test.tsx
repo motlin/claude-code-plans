@@ -174,7 +174,7 @@ async function settleMeasurements(main: HTMLElement) {
 						contentBoxSize: [],
 						devicePixelContentBoxSize: [],
 					}));
-				observer.callback(observations, observer as unknown as ResizeObserver);
+				observer.callback(observations, observer);
 			}
 		});
 		const after = JSON.stringify({
@@ -239,7 +239,9 @@ it.each([
 	async ({routeId, strict, initialAtEnd}) => {
 		installGeometry();
 		vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) =>
-			window.setTimeout(() => callback(performance.now()), 0),
+			window.setTimeout(() => {
+				callback(performance.now());
+			}, 0),
 		);
 		vi.stubGlobal("cancelAnimationFrame", window.clearTimeout.bind(window));
 		const root = createRootRoute({
@@ -289,12 +291,14 @@ it.each([
 		const before = {scrollTop: main.scrollTop, anchor: visibleAnchor()};
 		const beforeRows = mountedRows().map((row) => row.dataset["perfLine"]!);
 		phase = "leave";
-		await act(() => router.navigate({to: "/"}));
+		await act(async () => router.navigate({to: "/"}));
 		phase = "back-router";
 		await act(async () => {
 			router.history.back();
 		});
-		await vi.waitFor(() => expect(router.state.resolvedLocation?.pathname).toBe(`/session/${routeId}`));
+		await vi.waitFor(() => {
+			expect(router.state.resolvedLocation?.pathname).toBe(`/session/${routeId}`);
+		});
 		const routerWrites = writes.filter((write) => write.phase === "back-router");
 		const restoredOffset = restored.at(-1);
 		phase = "back-measurement";
@@ -563,7 +567,7 @@ async function deliverTailMeasurements(main: HTMLElement) {
 					contentBoxSize: [],
 					devicePixelContentBoxSize: [],
 				}));
-			observer.callback(observations, observer as unknown as ResizeObserver);
+			observer.callback(observations, observer);
 		}
 	});
 	// Native scrolling from clamping/measurement commits is observed before the queued follow frame.
@@ -789,7 +793,7 @@ async function resizeTailContent() {
 	const content = screen.getByTestId("test-footer").parentElement!;
 	const observer = [...ControlledResizeObserver.active].find((candidate) => candidate.elements.has(content));
 	if (!observer) throw new Error("Expected the complete content wrapper to be observed.");
-	await act(async () =>
+	await act(async () => {
 		observer.callback(
 			[
 				{
@@ -800,9 +804,9 @@ async function resizeTailContent() {
 					devicePixelContentBoxSize: [],
 				},
 			],
-			observer as unknown as ResizeObserver,
-		),
-	);
+			observer,
+		);
+	});
 }
 
 it.each(["none", "typing", "caret", "downward-wheel", "touch-start"])(

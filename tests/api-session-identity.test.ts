@@ -29,7 +29,7 @@ vi.mock("../src/lib/db/indexer", async (importOriginal) => ({
 
 type ApiHandler = (context: {params: {id: string}}) => Response | Promise<Response>;
 
-function get(route: unknown, id: string): Promise<Response> {
+async function get(route: unknown, id: string): Promise<Response> {
 	const {handlers} = (route as {options: {server: {handlers: Record<string, ApiHandler>}}}).options.server;
 	return Promise.resolve(handlers["GET"]!({params: {id}}));
 }
@@ -197,7 +197,7 @@ describe("indexed session identity API", () => {
 
 	it("adds canonical identity to UUID detail without another SQL statement or an empty response field", async () => {
 		await indexSession(ALICE, []);
-		const detail = () =>
+		const detail = async () =>
 			withPerfScope("session-detail", async () => {
 				const response = await get(DetailRoute, ALICE);
 				return {
@@ -286,9 +286,11 @@ describe("detail alias backfill snapshot", () => {
 		});
 		let finish!: () => void;
 		const pending = new Promise<null>((resolve) => {
-			finish = () => resolve(null);
+			finish = () => {
+				resolve(null);
+			};
 		});
-		vi.spyOn(sessionFiles, "readSession").mockImplementationOnce(() => {
+		vi.spyOn(sessionFiles, "readSession").mockImplementationOnce(async () => {
 			entered();
 			return pending;
 		});

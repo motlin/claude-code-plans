@@ -26,7 +26,7 @@ export const ArtifactListResponse = z.array(ArtifactSummarySchema);
 
 export const artifactsQueryOptions = queryOptions({
 	queryKey: ["artifacts"] as const,
-	queryFn: ({signal}) => apiFetch("/api/artifacts", ArtifactListResponse, {signal}),
+	queryFn: async ({signal}) => apiFetch("/api/artifacts", ArtifactListResponse, {signal}),
 	staleTime: 30_000,
 });
 
@@ -49,7 +49,7 @@ export const SessionArtifactListResponse = z.array(SessionArtifactSchema);
 export const sessionArtifactsQueryOptions = (sessionId: string) =>
 	queryOptions({
 		queryKey: sessionQueryKeys.artifacts(sessionId),
-		queryFn: ({signal}) =>
+		queryFn: async ({signal}) =>
 			apiFetch(`/api/sessions/${encodeURIComponent(sessionId)}/artifacts`, SessionArtifactListResponse, {signal}),
 		staleTime: 30_000,
 	});

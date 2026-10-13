@@ -149,7 +149,7 @@ function ResolvedFileRefTarget({
 	path: string;
 	open: (ref: FileRef) => void;
 	render: RenderFileRef;
-}) {
+}): ReactNode {
 	const texts = useMemo(() => [path], [path]);
 	const ref = useFileRefs(texts).get(path);
 	return render(ref === undefined ? null : fileRefButtonProps(ref, open));
@@ -159,7 +159,7 @@ function ResolvedFileRefTarget({
  * Renders a tool path, handing `render` button props once the path is
  * confirmed to exist (null until then, and always null outside a provider).
  */
-export function FileRefTarget({path, render}: {path: string; render: RenderFileRef}) {
+export function FileRefTarget({path, render}: {path: string; render: RenderFileRef}): ReactNode {
 	const open = useOpenFileRef();
 	return open === null ? render(null) : <ResolvedFileRefTarget path={path} open={open} render={render} />;
 }

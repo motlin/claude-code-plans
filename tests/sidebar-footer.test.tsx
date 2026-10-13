@@ -143,7 +143,9 @@ describe("sidebar footer", () => {
 		const search = await waitFor(() => screen.getByRole("button", {name: "Search"}));
 		fireEvent.click(search);
 
-		await waitFor(() => expect(screen.getByTestId("palette-probe").textContent).toBe("open:search"));
+		await waitFor(() => {
+			expect(screen.getByTestId("palette-probe").textContent).toBe("open:search");
+		});
 		expect(router.state.location.pathname).toBe("/");
 	});
 

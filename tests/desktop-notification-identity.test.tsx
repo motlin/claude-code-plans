@@ -130,7 +130,7 @@ describe("desktop notifications for session aliases", () => {
 		publish(ALICE, "working");
 		publish(ALICE);
 		const viewed = [...notifications];
-		await act(() => router.navigate({to: "/session/$id", params: {id: BOB}}));
+		await act(async () => router.navigate({to: "/session/$id", params: {id: BOB}}));
 		publish(ALICE, "working");
 		publish(ALICE);
 		publish(BOB);
@@ -161,7 +161,10 @@ describe("desktop notifications for session aliases", () => {
 		);
 		await act(async () => {
 			await expect(
-				client.fetchQuery({queryKey: sessionQueryKeys.identity(ALIAS), queryFn: () => Promise.reject(error)}),
+				client.fetchQuery({
+					queryKey: sessionQueryKeys.identity(ALIAS),
+					queryFn: async () => Promise.reject(error),
+				}),
 			).rejects.toThrow(error);
 		});
 		const afterCacheError = [...notifications];

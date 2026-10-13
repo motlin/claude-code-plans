@@ -37,7 +37,7 @@ const NotificationMutationResponse = z.object({ok: z.boolean()});
 export const notificationsQueryOptions = () =>
 	queryOptions({
 		queryKey: ["notifications"] as const,
-		queryFn: () => apiFetch("/api/notifications", NotificationsResponse),
+		queryFn: async () => apiFetch("/api/notifications", NotificationsResponse),
 		staleTime: Infinity,
 		gcTime: Infinity,
 	});
@@ -46,7 +46,8 @@ export const notificationsQueryOptions = () =>
 export const projectNotificationsQueryOptions = (projectId: string) =>
 	queryOptions({
 		queryKey: ["notifications", projectId] as const,
-		queryFn: () => apiFetch(`/api/notifications?projectId=${encodeURIComponent(projectId)}`, NotificationsResponse),
+		queryFn: async () =>
+			apiFetch(`/api/notifications?projectId=${encodeURIComponent(projectId)}`, NotificationsResponse),
 		staleTime: Infinity,
 		gcTime: Infinity,
 	});
@@ -89,7 +90,7 @@ export function markNotificationsReadInCache(qc: QueryClient): void {
 export const useDismissNotification = () => {
 	const qc = useQueryClient();
 	return useMutation({
-		mutationFn: (id: string) =>
+		mutationFn: async (id: string) =>
 			apiFetch(`/api/notifications/${encodeURIComponent(id)}`, NotificationMutationResponse, {
 				method: "DELETE",
 			}),
@@ -103,7 +104,7 @@ export const useDismissNotification = () => {
 export const useClearNotifications = () => {
 	const qc = useQueryClient();
 	return useMutation({
-		mutationFn: () => apiFetch("/api/notifications", NotificationMutationResponse, {method: "DELETE"}),
+		mutationFn: async () => apiFetch("/api/notifications", NotificationMutationResponse, {method: "DELETE"}),
 		onMutate: () => {
 			clearCache(qc);
 		},
@@ -114,7 +115,7 @@ export const useClearNotifications = () => {
 export const useMarkNotificationsRead = () => {
 	const qc = useQueryClient();
 	return useMutation({
-		mutationFn: () => apiFetch("/api/notifications", NotificationMutationResponse, {method: "PATCH"}),
+		mutationFn: async () => apiFetch("/api/notifications", NotificationMutationResponse, {method: "PATCH"}),
 		onMutate: () => {
 			markNotificationsReadInCache(qc);
 		},

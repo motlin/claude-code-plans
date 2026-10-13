@@ -174,7 +174,7 @@ describe("file content search API", () => {
 
 	it("caps files after computing honest totals", async () => {
 		await Promise.all(
-			Array.from({length: 101}, (_, index) =>
+			Array.from({length: 101}, async (_, index) =>
 				seedFile(`alice-${String(index).padStart(3, "0")}.txt`, "needle\n"),
 			),
 		);
@@ -306,7 +306,7 @@ describe("file content search API", () => {
 	it("returns the validated route contract with private no-cache metadata", async () => {
 		const filePath = await seedFile("alice.txt", "needle\n");
 		const response = await handleFileSearchRequest(request({query: " needle ", scopeRoot: allowedRoot}), {
-			resolveScope: (scopeRoot) => resolveFileSearchScope(scopeRoot, configPath),
+			resolveScope: async (scopeRoot) => resolveFileSearchScope(scopeRoot, configPath),
 			search: (query, scopeRoot) => searchFileContentDb(db.index, query, scopeRoot),
 		});
 		const described = await describeResponse(response);
@@ -349,7 +349,7 @@ describe("file content search API", () => {
 		await indexFileContent(db.index, filePath, roots);
 
 		const response = await handleFileSearchRequest(request({query: "indexer", scopeRoot: allowedRoot}), {
-			resolveScope: (scopeRoot) => resolveFileSearchScope(scopeRoot, configPath, roots),
+			resolveScope: async (scopeRoot) => resolveFileSearchScope(scopeRoot, configPath, roots),
 			search: (query, scopeRoot) => searchFileContentDb(db.index, query, scopeRoot),
 		});
 		const body = (await response.json()) as {files: Array<{path: string}>};
@@ -368,7 +368,7 @@ describe("file content search API", () => {
 	it("rejects disallowed scopes with private no-cache metadata", async () => {
 		const search = vi.fn<(query: string, scopeRoot: string) => ReturnType<typeof searchFileContentDb>>();
 		const response = await handleFileSearchRequest(request({query: "needle", scopeRoot: outsideRoot}), {
-			resolveScope: (scopeRoot) => resolveFileSearchScope(scopeRoot, configPath),
+			resolveScope: async (scopeRoot) => resolveFileSearchScope(scopeRoot, configPath),
 			search,
 		});
 

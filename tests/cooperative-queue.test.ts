@@ -1,7 +1,7 @@
 import {describe, expect, it} from "vite-plus/test";
 import {CooperativeQueue} from "../src/lib/cooperative-queue";
 
-function settled(promise: Promise<void>): Promise<string> {
+async function settled(promise: Promise<void>): Promise<string> {
 	return promise.then(
 		() => "resolved",
 		(error: unknown) => `rejected: ${(error as Error).message}`,
@@ -72,7 +72,7 @@ describe("CooperativeQueue", () => {
 			events.push(name);
 		};
 
-		await Promise.all(["alice", "bob", "carol"].map((name) => queue.enqueue(name, busyJob(name))));
+		await Promise.all(["alice", "bob", "carol"].map(async (name) => queue.enqueue(name, busyJob(name))));
 
 		expect(events.indexOf("timer")).toBeLessThan(events.indexOf("carol"));
 	});

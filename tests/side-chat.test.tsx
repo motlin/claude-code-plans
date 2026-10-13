@@ -121,7 +121,9 @@ describe("SideChat", () => {
 				.split(" ")
 				.filter((c) => /^(data-\[open\]:)?(invisible|visible|pointer-events-\w+)$|visibility/.test(c));
 		const closed = hiding(aside().className);
-		act(() => openSideChat(SESSION_ID));
+		act(() => {
+			openSideChat(SESSION_ID);
+		});
 		expect({closed, open: aside().hasAttribute("data-open")}).toStrictEqual({
 			closed: [
 				"invisible",
@@ -139,14 +141,18 @@ describe("SideChat", () => {
 		expect(aside().hasAttribute("data-open")).toBe(false);
 		expect(aside().hasAttribute("inert")).toBe(true);
 
-		act(() => openSideChat(SESSION_ID));
+		act(() => {
+			openSideChat(SESSION_ID);
+		});
 		expect(aside().hasAttribute("data-open")).toBe(true);
 		expect(screen.getByText("Sees 12 messages from main chat · read-only")).toBeTruthy();
 
 		fireEvent.click(screen.getByRole("button", {name: "Close side chat"}));
 		expect(aside().hasAttribute("data-open")).toBe(false);
 
-		act(() => openSideChat(SESSION_ID));
+		act(() => {
+			openSideChat(SESSION_ID);
+		});
 		fireEvent.keyDown(screen.getByRole("textbox", {name: "Side chat question"}), {
 			key: "Escape",
 		});
@@ -163,7 +169,9 @@ describe("SideChat", () => {
 		);
 		vi.stubGlobal("fetch", fetchMock);
 		renderSideChat();
-		act(() => openSideChat(SESSION_ID));
+		act(() => {
+			openSideChat(SESSION_ID);
+		});
 
 		const input = screen.getByRole("textbox", {name: "Side chat question"});
 		expect(input.getAttribute("placeholder")).toBe("Ask a quick question…");
@@ -201,9 +209,11 @@ describe("SideChat", () => {
 			vi.fn(async () => ndjsonResponse([textDelta("Use **load()**:\n\n- reads `config.ts`")])),
 		);
 		renderSideChat();
-		act(() => openSideChat(SESSION_ID));
+		act(() => {
+			openSideChat(SESSION_ID);
+		});
 
-		await act(() => askSideChat(SESSION_ID, "How?"));
+		await act(async () => askSideChat(SESSION_ID, "How?"));
 
 		expect([within(aside()).getByText("load()").tagName, within(aside()).getByText("config.ts").tagName]).toEqual([
 			"STRONG",
@@ -246,9 +256,11 @@ describe("SideChat", () => {
 			),
 		);
 		renderSideChat();
-		act(() => openSideChat(SESSION_ID));
+		act(() => {
+			openSideChat(SESSION_ID);
+		});
 
-		await act(() => askSideChat(SESSION_ID, "Anything?"));
+		await act(async () => askSideChat(SESSION_ID, "Anything?"));
 
 		expect(within(aside()).getByRole("alert").textContent).toBe(
 			"Could not determine project directory for session",
@@ -261,9 +273,11 @@ describe("SideChat", () => {
 			vi.fn(async () => ndjsonResponse([])),
 		);
 		renderSideChat();
-		act(() => openSideChat(SESSION_ID));
+		act(() => {
+			openSideChat(SESSION_ID);
+		});
 
-		await act(() => askSideChat(SESSION_ID, "Anything?"));
+		await act(async () => askSideChat(SESSION_ID, "Anything?"));
 
 		expect(within(aside()).getByRole("alert").textContent).toBe(
 			"No answer yet. Send a message in the main chat first, then ask again.",
@@ -285,7 +299,9 @@ describe("SideChat", () => {
 						})}\n`,
 					),
 				);
-				finish = () => controller.close();
+				finish = () => {
+					controller.close();
+				};
 			},
 		});
 		vi.stubGlobal(
@@ -293,7 +309,9 @@ describe("SideChat", () => {
 			vi.fn(async () => new Response(stream, {status: 200})),
 		);
 		renderSideChat();
-		act(() => openSideChat(SESSION_ID));
+		act(() => {
+			openSideChat(SESSION_ID);
+		});
 
 		let pending: Promise<void> = Promise.resolve();
 		act(() => {
@@ -321,12 +339,16 @@ describe("SideChat", () => {
 			.mockResolvedValueOnce(Response.json({customTitle: "btw: Why?", title: "btw: Why?"}));
 		vi.stubGlobal("fetch", fetchMock);
 		renderSideChat();
-		act(() => openSideChat(SESSION_ID));
-		await act(() => askSideChat(SESSION_ID, "Why?"));
+		act(() => {
+			openSideChat(SESSION_ID);
+		});
+		await act(async () => askSideChat(SESSION_ID, "Why?"));
 
 		fireEvent.click(screen.getByRole("button", {name: "Branch to new chat"}));
 
-		await waitFor(() => expect(navigate).toHaveBeenCalled());
+		await waitFor(() => {
+			expect(navigate).toHaveBeenCalled();
+		});
 		expect(fetchMock.mock.calls.slice(1).map(([url, init]) => [url, init.method, init.body])).toEqual([
 			["/api/chat", "POST", JSON.stringify({sessionId: SESSION_ID, prompt: "Why?"})],
 			["/api/sessions/session-fork-200/title", "PUT", JSON.stringify({title: "btw: Why?"})],
@@ -390,7 +412,9 @@ describe("handleBtwPrompt", () => {
 			messageCount: 3,
 			toast: vi.fn(),
 		});
-		await waitFor(() => expect(getSideChat(SESSION_ID).entries[0]?.status).toBe("done"));
+		await waitFor(() => {
+			expect(getSideChat(SESSION_ID).entries[0]?.status).toBe("done");
+		});
 		expect(getSideChat(SESSION_ID).entries.map(({question, answer}) => ({question, answer}))).toEqual([
 			{question: "is it cached?", answer: "Yes."},
 		]);

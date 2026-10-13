@@ -45,7 +45,9 @@ export function prefetchWhenIdle(loaders: ReadonlyArray<() => Promise<unknown>>,
 			cancelScheduled = () => host.cancelIdleCallback?.(handle);
 		} else {
 			const handle = host.setTimeout(run, FALLBACK_DELAY_MS);
-			cancelScheduled = () => host.clearTimeout(handle as never);
+			cancelScheduled = () => {
+				host.clearTimeout(handle as never);
+			};
 		}
 	};
 	const onVisibilityChange = () => {

@@ -349,7 +349,7 @@ describe("HerdrPage", () => {
 
 		fireEvent.click(screen.getByRole("button", {name: "Mark reviewed"}));
 
-		await waitFor(() =>
+		await waitFor(() => {
 			expect({
 				marker: screen.queryByText(/Needs review/),
 				action: screen.queryByRole("button", {name: "Mark reviewed"}),
@@ -363,8 +363,8 @@ describe("HerdrPage", () => {
 					[{queryKey: ["terminal", "placements"]}],
 					[{queryKey: sessionQueryKeys.detail("session-test-100")}],
 				],
-			}),
-		);
+			});
+		});
 	});
 
 	it("shows a retryable error when marking an unseen session reviewed fails", async () => {
@@ -398,7 +398,7 @@ describe("HerdrPage", () => {
 
 		fireEvent.click(screen.getByRole("button", {name: "Retry mark reviewed"}));
 
-		await waitFor(() =>
+		await waitFor(() => {
 			expect({
 				error: screen.queryByRole("alert"),
 				action: screen.queryByRole("button", {name: /mark reviewed/i}),
@@ -415,8 +415,8 @@ describe("HerdrPage", () => {
 					[{queryKey: ["terminal", "placements"]}],
 					[{queryKey: sessionQueryKeys.detail("session-test-100")}],
 				],
-			}),
-		);
+			});
+		});
 	});
 
 	it("uses Herdr agent state rather than pane focus for each row's status color", async () => {

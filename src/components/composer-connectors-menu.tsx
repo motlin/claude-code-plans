@@ -64,7 +64,9 @@ export function ComposerConnectorsMenu() {
 							key={server.id}
 							icon={<CloudOff />}
 							description="Reconnect"
-							onSelect={() => openServer(server)}
+							onSelect={() => {
+								openServer(server);
+							}}
 						>
 							{server.name}
 						</MenuItem>
@@ -73,7 +75,9 @@ export function ComposerConnectorsMenu() {
 							key={server.id}
 							aria-label={server.name}
 							icon={<Blocks />}
-							onSelect={() => openServer(server)}
+							onSelect={() => {
+								openServer(server);
+							}}
 						>
 							<span className="flex items-center gap-3">
 								<span className="min-w-0 flex-1 truncate">{server.name}</span>

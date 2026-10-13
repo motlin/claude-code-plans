@@ -49,11 +49,8 @@ function snapshotUrl(url: string): string {
 
 function browserDeps(): SharedEventSourceDeps {
 	return {
-		locks: typeof navigator === "undefined" ? undefined : (navigator.locks as LocksLike | undefined),
-		createChannel:
-			typeof BroadcastChannel === "undefined"
-				? undefined
-				: (name) => new BroadcastChannel(name) as unknown as ChannelLike,
+		locks: typeof navigator === "undefined" ? undefined : navigator.locks,
+		createChannel: typeof BroadcastChannel === "undefined" ? undefined : (name) => new BroadcastChannel(name),
 		openStream: openReconnectingEventSource,
 		async fetchSnapshot(url) {
 			const response = await fetch(snapshotUrl(url));
@@ -93,8 +90,12 @@ export function openSharedEventSource(
 	const {locks, createChannel} = deps;
 	if (!locks || !createChannel) {
 		return deps.openStream(url, {
-			attach: (es) => options.attach(es),
-			onReconnected: () => options.onReconnected(),
+			attach: (es) => {
+				options.attach(es);
+			},
+			onReconnected: () => {
+				options.onReconnected();
+			},
 		});
 	}
 
@@ -119,7 +120,7 @@ export function openSharedEventSource(
 		else options.onReconnected();
 	};
 
-	const lead = (resumeAfterGap: boolean): Promise<void> => {
+	const lead = async (resumeAfterGap: boolean): Promise<void> => {
 		if (pending) {
 			for (const event of pending) hub.deliver(event.type, event.data);
 			pending = null;
@@ -162,13 +163,13 @@ export function openSharedEventSource(
 			},
 		);
 		locks
-			.request(url, {signal: abort.signal}, () => (closed ? undefined : lead(true)))
+			.request(url, {signal: abort.signal}, (): Promise<void> | undefined => (closed ? undefined : lead(true)))
 			.catch(() => {
 				// aborted when this tab closed while waiting
 			});
 	};
 
-	void locks.request(url, {ifAvailable: true}, (lock) => {
+	void locks.request(url, {ifAvailable: true}, (lock): Promise<void> | undefined => {
 		if (closed) return undefined;
 		if (lock) return lead(false);
 		follow();

@@ -27,7 +27,9 @@ export function HookSetup() {
 	function handleCopy() {
 		void navigator.clipboard.writeText(json);
 		setCopied(true);
-		setTimeout(() => setCopied(false), 1500);
+		setTimeout(() => {
+			setCopied(false);
+		}, 1500);
 	}
 
 	async function handleInstall() {
@@ -108,7 +110,9 @@ export function HookSetup() {
 					id="hook-port"
 					type="number"
 					value={port}
-					onChange={(e) => setPort(Number(e.target.value) || DEFAULT_HOOK_PORT)}
+					onChange={(e) => {
+						setPort(Number(e.target.value) || DEFAULT_HOOK_PORT);
+					}}
 					className="w-24 rounded-md border border-border bg-surface-1 px-2 py-1 text-sm text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
 				/>
 			</div>
@@ -137,7 +141,9 @@ export function HookSetup() {
 				)}
 				<button
 					type="button"
-					onClick={() => setShowJson(!showJson)}
+					onClick={() => {
+						setShowJson(!showJson);
+					}}
 					className="rounded-md border border-border px-3 py-1.5 text-sm text-secondary transition-colors hover:bg-surface-0"
 				>
 					{showJson ? "Hide JSON" : "Show JSON"}

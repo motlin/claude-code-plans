@@ -23,7 +23,9 @@ export function TruncatedContent({children}: {children: React.ReactNode}) {
 				<button
 					type="button"
 					aria-expanded={expanded}
-					onClick={() => setExpanded((value) => !value)}
+					onClick={() => {
+						setExpanded((value) => !value);
+					}}
 					className="h-5 cursor-pointer rounded-r4 px-1.5 text-caption font-normal text-primary transition-colors hover:bg-alpha-1"
 				>
 					{expanded ? "Show less" : "Show more"}

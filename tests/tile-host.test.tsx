@@ -38,7 +38,12 @@ class FakeStorage implements Storage {
 function ChatContent() {
 	const host = usePaneHost();
 	return (
-		<button type="button" onClick={() => host.openPane("plan")}>
+		<button
+			type="button"
+			onClick={() => {
+				host.openPane("plan");
+			}}
+		>
 			Open test pane
 		</button>
 	);

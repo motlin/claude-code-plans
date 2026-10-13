@@ -41,10 +41,13 @@ describe("shared session identity", () => {
 	it("returns ordinary UUIDs immediately without a request or an identity cache entry", () => {
 		const fetch = vi.fn();
 		vi.stubGlobal("fetch", fetch);
-		const {result, rerender} = renderHook(({id}) => useSessionIdentity(id), {
-			initialProps: {id: ALICE as string | null},
-			wrapper: Wrapper,
-		});
+		const {result, rerender} = renderHook<ReturnType<typeof useSessionIdentity>, {id: string | null}>(
+			({id}) => useSessionIdentity(id),
+			{
+				initialProps: {id: ALICE},
+				wrapper: Wrapper,
+			},
+		);
 		const local = result.current;
 		rerender({id: null});
 		expect({
@@ -62,8 +65,12 @@ describe("shared session identity", () => {
 		const first = renderHook(() => useSessionIdentity(ALIAS), {wrapper: Wrapper});
 		const second = renderHook(() => useSessionIdentity(ALIAS), {wrapper: Wrapper});
 		expect([first.result.current, second.result.current]).toStrictEqual([null, null]);
-		await act(async () => response.resolve(Response.json({sessionId: ALICE})));
-		await waitFor(() => expect([first.result.current, second.result.current]).toStrictEqual([ALICE, ALICE]));
+		await act(async () => {
+			response.resolve(Response.json({sessionId: ALICE}));
+		});
+		await waitFor(() => {
+			expect([first.result.current, second.result.current]).toStrictEqual([ALICE, ALICE]);
+		});
 		expect(fetch.mock.calls.map(([url]) => url)).toStrictEqual([`/api/sessions/${ALIAS}/identity`]);
 	});
 
@@ -73,8 +80,10 @@ describe("shared session identity", () => {
 		vi.stubGlobal("fetch", fetch);
 		const {result} = renderHook(() => useSessionIdentity(ALIAS), {wrapper: Wrapper});
 		expect(result.current).toBe(ALICE);
-		await act(() => invalidateSessionIdentities(client));
-		await waitFor(() => expect(result.current).toBe(null));
+		await act(async () => invalidateSessionIdentities(client));
+		await waitFor(() => {
+			expect(result.current).toBe(null);
+		});
 		expect(fetch.mock.calls.map(([url]) => url)).toStrictEqual([`/api/sessions/${ALIAS}/identity`]);
 	});
 
@@ -87,9 +96,13 @@ describe("shared session identity", () => {
 		vi.stubGlobal("fetch", fetch);
 		const {result} = renderHook(() => useSessionIdentity(ALIAS), {wrapper: Wrapper});
 		const signal = (fetch.mock.calls[0]![1] as RequestInit).signal!;
-		await act(() => invalidateSessionIdentities(client));
-		await waitFor(() => expect(result.current).toBe(BOB));
-		await act(async () => old.resolve(Response.json({sessionId: ALICE})));
+		await act(async () => invalidateSessionIdentities(client));
+		await waitFor(() => {
+			expect(result.current).toBe(BOB);
+		});
+		await act(async () => {
+			old.resolve(Response.json({sessionId: ALICE}));
+		});
 		expect({
 			aborted: signal.aborted,
 			local: result.current,
@@ -99,12 +112,12 @@ describe("shared session identity", () => {
 
 	it("retries indexing-pending responses twice and then stops", async () => {
 		vi.useFakeTimers();
-		const fetch = vi.fn().mockImplementation(() => Promise.resolve(Response.json({}, {status: 503})));
+		const fetch = vi.fn().mockImplementation(async () => Promise.resolve(Response.json({}, {status: 503})));
 		vi.stubGlobal("fetch", fetch);
 		const {result} = renderHook(() => useSessionIdentity(ALIAS), {wrapper: Wrapper});
-		await act(() => vi.advanceTimersByTimeAsync(6001));
+		await act(async () => vi.advanceTimersByTimeAsync(6001));
 		const requestsAfterRetries = fetch.mock.calls.length;
-		await act(() => vi.advanceTimersByTimeAsync(30_000));
+		await act(async () => vi.advanceTimersByTimeAsync(30_000));
 		expect({
 			local: result.current,
 			requestsAfterRetries,
@@ -123,7 +136,7 @@ describe("indexing completion catch-up", () => {
 		let indexing = true;
 		const fetch = vi
 			.fn()
-			.mockImplementation((url: string) =>
+			.mockImplementation(async (url: string) =>
 				Promise.resolve(
 					url === "/api/indexing-status"
 						? Response.json({isIndexing: indexing})
@@ -139,9 +152,9 @@ describe("indexing completion catch-up", () => {
 				<IdentityProbe />
 			</Wrapper>,
 		);
-		await act(() => vi.advanceTimersByTimeAsync(1));
+		await act(async () => vi.advanceTimersByTimeAsync(1));
 		indexing = false;
-		await act(() => vi.advanceTimersByTimeAsync(3001));
+		await act(async () => vi.advanceTimersByTimeAsync(3001));
 		expect(screen.getByRole("status").textContent).toBe(ALICE);
 	});
 
@@ -149,7 +162,7 @@ describe("indexing completion catch-up", () => {
 		vi.useFakeTimers();
 		const fetch = vi
 			.fn()
-			.mockImplementation((url: string) =>
+			.mockImplementation(async (url: string) =>
 				Promise.resolve(
 					url === "/api/indexing-status"
 						? Response.json({isIndexing: false})
@@ -163,10 +176,10 @@ describe("indexing completion catch-up", () => {
 				<IdentityProbe />
 			</Wrapper>,
 		);
-		await act(() => vi.advanceTimersByTimeAsync(20_000));
+		await act(async () => vi.advanceTimersByTimeAsync(20_000));
 		const count = () => fetch.mock.calls.filter(([url]) => url !== "/api/indexing-status").length;
 		const afterCatchUp = count();
-		await act(() => vi.advanceTimersByTimeAsync(30_000));
+		await act(async () => vi.advanceTimersByTimeAsync(30_000));
 		expect({afterCatchUp, afterWaiting: count(), identity: screen.getByRole("status").textContent}).toStrictEqual({
 			afterCatchUp: 6,
 			afterWaiting: 6,
@@ -212,7 +225,7 @@ describe("active detail alias backfill catch-up", () => {
 		client.setQueryData(sessionQueryKeys.detail(ALICE), {...DETAIL, canonicalRoutePending: true});
 		client.setQueryData(sessionQueryKeys.detail(BOB), DETAIL);
 		client.setQueryData(sessionQueryKeys.detail("session-charlie"), {...DETAIL, canonicalRoutePending: true});
-		const fetcher = vi.fn((url: string) =>
+		const fetcher = vi.fn(async (url: string) =>
 			Promise.resolve(
 				Response.json(
 					url === "/api/indexing-status" ? {isIndexing: indexing} : {...DETAIL, canonicalRouteId: ALIAS},
@@ -227,9 +240,9 @@ describe("active detail alias backfill catch-up", () => {
 				<DetailProbe id={BOB} />
 			</Wrapper>,
 		);
-		await act(() => vi.advanceTimersByTimeAsync(1));
+		await act(async () => vi.advanceTimersByTimeAsync(1));
 		indexing = false;
-		await act(() => vi.advanceTimersByTimeAsync(30_001));
+		await act(async () => vi.advanceTimersByTimeAsync(30_001));
 		expect({
 			requests: fetcher.mock.calls.filter(([url]) => url !== "/api/indexing-status"),
 			alice: client.getQueryData(sessionQueryKeys.detail(ALICE)),
@@ -248,7 +261,7 @@ describe("active detail alias backfill catch-up", () => {
 		vi.useFakeTimers();
 		const old = deferredResponse();
 		let detailRequests = 0;
-		const fetcher = vi.fn((url: string) => {
+		const fetcher = vi.fn(async (url: string) => {
 			if (url === "/api/indexing-status") return Promise.resolve(Response.json({isIndexing: indexing}));
 			detailRequests++;
 			return detailRequests === 1
@@ -262,20 +275,22 @@ describe("active detail alias backfill catch-up", () => {
 				<DetailProbe id={ALICE} />
 			</Wrapper>,
 		);
-		await act(() => vi.advanceTimersByTimeAsync(1));
-		await act(async () => old.resolve(Response.json({...DETAIL, canonicalRoutePending: true})));
-		await act(() => vi.advanceTimersByTimeAsync(30_001));
+		await act(async () => vi.advanceTimersByTimeAsync(1));
+		await act(async () => {
+			old.resolve(Response.json({...DETAIL, canonicalRoutePending: true}));
+		});
+		await act(async () => vi.advanceTimersByTimeAsync(30_001));
 		const afterCatchUp = detailRequests;
-		await act(() => vi.advanceTimersByTimeAsync(30_000));
+		await act(async () => vi.advanceTimersByTimeAsync(30_000));
 		expect({
 			afterCatchUp,
 			afterWaiting: detailRequests,
 			cached: client.getQueryData(sessionQueryKeys.detail(ALICE)),
 		}).toStrictEqual({afterCatchUp: 2, afterWaiting: 2, cached: {...DETAIL, canonicalRoutePending: true}});
 		indexing = true;
-		await act(() => vi.advanceTimersByTimeAsync(3001));
+		await act(async () => vi.advanceTimersByTimeAsync(3001));
 		indexing = false;
-		await act(() => vi.advanceTimersByTimeAsync(30_001));
+		await act(async () => vi.advanceTimersByTimeAsync(30_001));
 		expect({
 			afterSecondEpisode: detailRequests,
 			cached: client.getQueryData(sessionQueryKeys.detail(ALICE)),
@@ -287,7 +302,7 @@ describe("active detail alias backfill catch-up", () => {
 		const old = deferredResponse();
 		let detailRequests = 0;
 		client.setQueryData(sessionQueryKeys.detail(ALICE), {...DETAIL, canonicalRoutePending: true});
-		const fetcher = vi.fn((url: string) => {
+		const fetcher = vi.fn(async (url: string) => {
 			if (url === "/api/indexing-status") return Promise.resolve(Response.json({isIndexing: false}));
 			detailRequests++;
 			return detailRequests === 1
@@ -305,10 +320,12 @@ describe("active detail alias backfill catch-up", () => {
 				<DetailProbe id={ALICE} />
 			</Wrapper>,
 		);
-		await act(() => vi.advanceTimersByTimeAsync(1));
-		await act(async () => old.resolve(Response.json({...DETAIL, canonicalRoutePending: true})));
+		await act(async () => vi.advanceTimersByTimeAsync(1));
+		await act(async () => {
+			old.resolve(Response.json({...DETAIL, canonicalRoutePending: true}));
+		});
 		await refreshing;
-		await act(() => vi.advanceTimersByTimeAsync(30_001));
+		await act(async () => vi.advanceTimersByTimeAsync(30_001));
 		expect({detailRequests, cached: client.getQueryData(sessionQueryKeys.detail(ALICE))}).toStrictEqual({
 			detailRequests: 2,
 			cached: {...DETAIL, canonicalRouteId: ALIAS},

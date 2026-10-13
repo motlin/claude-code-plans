@@ -86,6 +86,8 @@ export function useHomeAttention(): HomeAttention | undefined {
 		rowLimit,
 		now,
 		onOpen: (id) => void navigate({to: "/session/$id", params: {id}}),
-		onDismiss: (item) => dismiss.mutate(item.session.sessionId),
+		onDismiss: (item) => {
+			dismiss.mutate(item.session.sessionId);
+		},
 	};
 }

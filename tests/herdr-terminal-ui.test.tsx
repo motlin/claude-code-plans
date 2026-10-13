@@ -60,7 +60,7 @@ vi.mock("../src/hooks/use-terminal-theme", () => ({
 }));
 
 vi.mock("../src/lib/server-fns", () => ({
-	getGhosttyAppearance: vi.fn(() => Promise.resolve(appearanceState.appearance)),
+	getGhosttyAppearance: vi.fn(async () => Promise.resolve(appearanceState.appearance)),
 }));
 
 vi.mock("ghostty-web", () => ({
@@ -130,7 +130,7 @@ class FakeWebSocket extends EventTarget {
  */
 let releaseFonts: () => void;
 let fontRequests: string[] = [];
-let fontLoadResult: () => Promise<unknown> = () => Promise.resolve([]);
+let fontLoadResult: () => Promise<unknown> = async () => Promise.resolve([]);
 
 function terminalSurface(): HTMLElement {
 	const surface = screen.getByRole("region").lastElementChild;
@@ -168,12 +168,12 @@ describe("live herdr terminal UI", () => {
 			releaseFonts = resolve;
 		});
 		fontRequests = [];
-		fontLoadResult = () => Promise.resolve([]);
+		fontLoadResult = async () => Promise.resolve([]);
 		Object.defineProperty(document, "fonts", {
 			configurable: true,
 			value: {
 				ready,
-				load: (font: string) => {
+				load: async (font: string) => {
 					fontRequests.push(font);
 					return fontLoadResult();
 				},
@@ -193,7 +193,9 @@ describe("live herdr terminal UI", () => {
 		releaseFonts();
 
 		// Ghostty instantiates its WebAssembly parser before the terminal exists.
-		await waitFor(() => expect(terminalState.socketUrls.length).toBe(1));
+		await waitFor(() => {
+			expect(terminalState.socketUrls.length).toBe(1);
+		});
 
 		expect({
 			regionName: screen.getByRole("region").getAttribute("aria-label"),
@@ -231,7 +233,9 @@ describe("live herdr terminal UI", () => {
 		render(<HerdrTerminal sessionId="session-test-100" />);
 		releaseFonts();
 
-		await waitFor(() => expect(terminalState.socketUrls.length).toBe(1));
+		await waitFor(() => {
+			expect(terminalState.socketUrls.length).toBe(1);
+		});
 
 		expect({
 			terminalOptions: terminalState.constructorOptions,
@@ -255,7 +259,9 @@ describe("live herdr terminal UI", () => {
 	it("stops reconnecting when the terminal observer reports an unavailable session", async () => {
 		render(<HerdrTerminal sessionId="session-test-100" />);
 		releaseFonts();
-		await waitFor(() => expect(terminalState.socketUrls.length).toBe(1));
+		await waitFor(() => {
+			expect(terminalState.socketUrls.length).toBe(1);
+		});
 
 		const webSocket = currentWebSocket();
 		act(() => {
@@ -288,7 +294,9 @@ describe("live herdr terminal UI", () => {
 	it("uses a browser-valid application close code for a malformed observer record", async () => {
 		render(<HerdrTerminal sessionId="session-test-100" />);
 		releaseFonts();
-		await waitFor(() => expect(terminalState.socketUrls.length).toBe(1));
+		await waitFor(() => {
+			expect(terminalState.socketUrls.length).toBe(1);
+		});
 
 		act(() => {
 			currentWebSocket().dispatchEvent(
@@ -297,7 +305,9 @@ describe("live herdr terminal UI", () => {
 				}),
 			);
 		});
-		await waitFor(() => expect(screen.getByText("error").textContent).toBe("error"));
+		await waitFor(() => {
+			expect(screen.getByText("error").textContent).toBe("error");
+		});
 
 		expect({
 			status: screen.getByText("error").textContent,
@@ -318,7 +328,9 @@ describe("live herdr terminal UI", () => {
 		const constructionsBeforeFontsReady = terminalState.constructorOptions.length;
 
 		releaseFonts();
-		await waitFor(() => expect(terminalState.socketUrls.length).toBe(1));
+		await waitFor(() => {
+			expect(terminalState.socketUrls.length).toBe(1);
+		});
 
 		expect({
 			constructionsBeforeFontsReady,
@@ -333,12 +345,14 @@ describe("live herdr terminal UI", () => {
 
 	it("still renders the terminal when the Ghostty font stack cannot be loaded", async () => {
 		appearanceState.appearance = GHOSTTY_APPEARANCE;
-		fontLoadResult = () => Promise.reject(new SyntaxError("Could not parse the font shorthand"));
+		fontLoadResult = async () => Promise.reject(new SyntaxError("Could not parse the font shorthand"));
 
 		render(<HerdrTerminal sessionId="session-test-100" />);
 		releaseFonts();
 
-		await waitFor(() => expect(terminalState.socketUrls.length).toBe(1));
+		await waitFor(() => {
+			expect(terminalState.socketUrls.length).toBe(1);
+		});
 
 		expect({
 			terminals: terminalState.constructorOptions.length,
@@ -349,7 +363,9 @@ describe("live herdr terminal UI", () => {
 	it("streams keystrokes and resizes over the control socket when interactive", async () => {
 		render(<HerdrTerminal sessionId="session-test-100" variant="pane" interactive />);
 		releaseFonts();
-		await waitFor(() => expect(terminalState.socketUrls.length).toBe(1));
+		await waitFor(() => {
+			expect(terminalState.socketUrls.length).toBe(1);
+		});
 
 		act(() => {
 			for (const listener of terminalState.dataListeners) listener("Alice types\r");
@@ -379,7 +395,9 @@ describe("live herdr terminal UI", () => {
 	it("never sends data frames from the read-only observer", async () => {
 		render(<HerdrTerminal sessionId="session-test-100" variant="pane" />);
 		releaseFonts();
-		await waitFor(() => expect(terminalState.socketUrls.length).toBe(1));
+		await waitFor(() => {
+			expect(terminalState.socketUrls.length).toBe(1);
+		});
 
 		act(() => {
 			for (const listener of terminalState.dataListeners) listener("Alice types\r");
@@ -399,7 +417,9 @@ describe("live herdr terminal UI", () => {
 	it("hands app shortcuts back to the app instead of the terminal", async () => {
 		render(<HerdrTerminal sessionId="session-test-100" variant="pane" interactive />);
 		releaseFonts();
-		await waitFor(() => expect(terminalState.keyHandlers.length).toBe(1));
+		await waitFor(() => {
+			expect(terminalState.keyHandlers.length).toBe(1);
+		});
 		const handler = terminalState.keyHandlers[0]!;
 
 		const results = {
@@ -422,7 +442,9 @@ describe("live herdr terminal UI", () => {
 
 		render(<HerdrTerminal sessionId="session-test-100" />);
 		releaseFonts();
-		await waitFor(() => expect(terminalState.socketUrls.length).toBe(1));
+		await waitFor(() => {
+			expect(terminalState.socketUrls.length).toBe(1);
+		});
 
 		expect({
 			terminalOptions: terminalState.constructorOptions,
@@ -452,11 +474,15 @@ describe("live herdr terminal UI", () => {
 
 		terminalThemeState.value = {ready: true, theme: {background: "#ffffff"}};
 		view.rerender(<HerdrTerminal sessionId="session-test-100" />);
-		await waitFor(() => expect(terminalState.socketUrls.length).toBe(1));
+		await waitFor(() => {
+			expect(terminalState.socketUrls.length).toBe(1);
+		});
 
 		terminalThemeState.value = {ready: true, theme: {background: "#000000"}};
 		view.rerender(<HerdrTerminal sessionId="session-test-100" />);
-		await waitFor(() => expect(terminalState.socketUrls.length).toBe(2));
+		await waitFor(() => {
+			expect(terminalState.socketUrls.length).toBe(2);
+		});
 
 		expect({
 			beforeReady,

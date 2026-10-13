@@ -39,7 +39,9 @@ export function useTerminalSelectionActions(sessionId: string): {
 		if (!attachTerminalSelection(sessionRef.current, text)) return;
 		setAnnouncement(TERMINAL_ATTACHED_MESSAGE);
 		if (clearTimer.current) clearTimeout(clearTimer.current);
-		clearTimer.current = setTimeout(() => setAnnouncement(""), ANNOUNCEMENT_MS);
+		clearTimer.current = setTimeout(() => {
+			setAnnouncement("");
+		}, ANNOUNCEMENT_MS);
 	}, []);
 
 	const actions = useRef<SelectionActions>({

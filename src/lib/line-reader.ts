@@ -11,9 +11,13 @@ export interface LineReader extends AsyncIterable<string> {
  * threadpool after `destroy()` returns, so a reader that only destroys it resolves while the descriptor is still open,
  * for as long as the threadpool is busy.
  */
-export function destroyStream(stream: Readable): Promise<void> {
+export async function destroyStream(stream: Readable): Promise<void> {
 	if (stream.closed) return Promise.resolve();
-	const closed = new Promise<void>((resolve) => stream.once("close", () => resolve()));
+	const closed = new Promise<void>((resolve) =>
+		stream.once("close", () => {
+			resolve();
+		}),
+	);
 	stream.destroy();
 	return closed;
 }
@@ -27,7 +31,7 @@ export function createLineReader(input: Readable): LineReader {
 	const rl = createInterface({input, crlfDelay: Infinity});
 	return {
 		[Symbol.asyncIterator]: () => rl[Symbol.asyncIterator](),
-		close: () => {
+		close: async () => {
 			rl.close();
 			return destroyStream(input);
 		},

@@ -56,7 +56,9 @@ describe("KeyboardShortcutsDialog", () => {
 	});
 
 	afterEach(() => {
-		act(() => setKeyboardShortcutsOpen(false));
+		act(() => {
+			setKeyboardShortcutsOpen(false);
+		});
 		cleanup();
 		vi.restoreAllMocks();
 		vi.unstubAllGlobals();
@@ -202,8 +204,12 @@ describe("KeyboardShortcutsDialog", () => {
 
 		fireEvent.keyDown(dialog, {key: "Escape", code: "Escape"});
 
-		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-		await waitFor(() => expect(document.activeElement).toBe(composer));
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog")).toBeNull();
+		});
+		await waitFor(() => {
+			expect(document.activeElement).toBe(composer);
+		});
 	});
 
 	it("closes on the Close button", async () => {
@@ -213,7 +219,9 @@ describe("KeyboardShortcutsDialog", () => {
 
 		fireEvent.click(within(dialog).getByRole("button", {name: "Close"}));
 
-		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog")).toBeNull();
+		});
 	});
 });
 
@@ -238,7 +246,7 @@ describe("shortcutSections", () => {
 
 describe("Command palette Keyboard shortcuts item", () => {
 	beforeEach(() => {
-		vi.stubGlobal("fetch", () => new Promise(() => {}));
+		vi.stubGlobal("fetch", async () => new Promise(() => {}));
 		vi.stubGlobal(
 			"ResizeObserver",
 			class {
@@ -251,7 +259,9 @@ describe("Command palette Keyboard shortcuts item", () => {
 	});
 
 	afterEach(() => {
-		act(() => setKeyboardShortcutsOpen(false));
+		act(() => {
+			setKeyboardShortcutsOpen(false);
+		});
 		cleanup();
 		vi.unstubAllGlobals();
 	});

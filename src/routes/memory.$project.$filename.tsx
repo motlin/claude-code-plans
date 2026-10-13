@@ -10,7 +10,7 @@ import {useCallback, useState} from "react";
 
 export const Route = createFileRoute("/memory/$project/$filename")({
 	component: MemoryPage,
-	loader: ({context: {queryClient}, params}) =>
+	loader: async ({context: {queryClient}, params}) =>
 		queryClient.ensureQueryData(memoryDetailQueryOptions(params.project, params.filename)),
 	head: ({params}) => ({
 		meta: [{title: fromMdSlug(params.filename)}],
@@ -82,14 +82,22 @@ function MemoryPage() {
 						>
 							{deleting ? "Deleting..." : "Yes, delete"}
 						</button>
-						<button type="button" onClick={() => setConfirmingDelete(false)} className={pillStyles.outline}>
+						<button
+							type="button"
+							onClick={() => {
+								setConfirmingDelete(false);
+							}}
+							className={pillStyles.outline}
+						>
 							Cancel
 						</button>
 					</span>
 				) : (
 					<button
 						type="button"
-						onClick={() => setConfirmingDelete(true)}
+						onClick={() => {
+							setConfirmingDelete(true);
+						}}
 						className={`${pillStyles.outline} text-danger-000 hover:bg-danger-000/10`}
 					>
 						<Trash2 className="h-3 w-3" />

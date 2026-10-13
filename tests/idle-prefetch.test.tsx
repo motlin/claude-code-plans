@@ -56,11 +56,11 @@ describe("prefetchWhenIdle", () => {
 		const calls: string[] = [];
 		prefetchWhenIdle(
 			[
-				() => {
+				async () => {
 					calls.push("palette");
 					return Promise.reject(new Error("Example chunk unavailable"));
 				},
-				() => {
+				async () => {
 					calls.push("settings");
 					return Promise.resolve();
 				},
@@ -79,7 +79,7 @@ describe("prefetchWhenIdle", () => {
 		const calls: string[] = [];
 		prefetchWhenIdle(
 			[
-				() => {
+				async () => {
 					calls.push("palette");
 					return Promise.resolve();
 				},
@@ -98,7 +98,7 @@ describe("prefetchWhenIdle", () => {
 		const calls: string[] = [];
 		const cancel = prefetchWhenIdle(
 			[
-				() => {
+				async () => {
 					calls.push("palette");
 					return Promise.resolve();
 				},
@@ -114,7 +114,7 @@ describe("prefetchWhenIdle", () => {
 describe("warmOnIntent", () => {
 	it("warms a control's chunks on hover or focus, and the modifier chunks on a ⌘ or Ctrl press", () => {
 		const calls: string[] = [];
-		const loader = (name: string) => () => {
+		const loader = (name: string) => async () => {
 			calls.push(name);
 			return Promise.resolve();
 		};
@@ -149,7 +149,7 @@ describe("warmed lazy boundaries", () => {
 
 	it("renders a preloaded pane without its loading fallback", async () => {
 		let loads = 0;
-		const Pane = deferredPane("Example", () => {
+		const Pane = deferredPane("Example", async () => {
 			loads++;
 			return Promise.resolve(({name}: {name: string}) => <p>Pane of {name}</p>);
 		});

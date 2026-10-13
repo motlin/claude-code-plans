@@ -4,7 +4,7 @@ import {deferredPane} from "../panes/deferred-pane";
 import {registerPane} from "../panes/pane-registry";
 import {usePaneHost} from "../panes/tile-host";
 
-const DeferredChangesPane = deferredPane("Changes", () =>
+const DeferredChangesPane = deferredPane("Changes", async () =>
 	import("./changes-pane").then((module) => module.ChangesPane),
 );
 
@@ -26,6 +26,8 @@ export function useRegisterChangesPane(sessionId: string): void {
 /** Binds ⌃⇧D whether the titlebar toggle is shown or folded. */
 export function ChangesPaneShortcut() {
 	const host = usePaneHost();
-	useShortcut("toggle_changes", () => host.togglePane("changes"));
+	useShortcut("toggle_changes", () => {
+		host.togglePane("changes");
+	});
 	return null;
 }

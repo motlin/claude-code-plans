@@ -53,7 +53,9 @@ function VersionCombobox({name}: {name: string}) {
 				aria-expanded={open}
 				aria-haspopup="listbox"
 				aria-controls="contents-version-listbox"
-				onClick={() => setOpen((value) => !value)}
+				onClick={() => {
+					setOpen((value) => !value);
+				}}
 				onKeyDown={(event) => {
 					if (event.key === "Escape") setOpen(false);
 				}}
@@ -107,7 +109,9 @@ function TreeRows({nodes, depth, selected, collapsed, onSelect, onToggle}: TreeR
 						aria-expanded={expanded}
 						aria-selected={false}
 						tabIndex={-1}
-						onClick={() => onToggle(node.path)}
+						onClick={() => {
+							onToggle(node.path);
+						}}
 						onKeyDown={(event) => {
 							if (event.key === "Enter" || event.key === " ") {
 								event.preventDefault();
@@ -146,7 +150,9 @@ function TreeRows({nodes, depth, selected, collapsed, onSelect, onToggle}: TreeR
 					role="treeitem"
 					aria-selected={active}
 					tabIndex={active ? 0 : -1}
-					onClick={() => onSelect(node.path)}
+					onClick={() => {
+						onSelect(node.path);
+					}}
 					onKeyDown={(event) => {
 						if (event.key === "Enter" || event.key === " ") {
 							event.preventDefault();
@@ -230,13 +236,14 @@ export function ContentsViewer<TKey extends QueryKey>({name, tree, fileQuery, in
 		onChange: setWidth,
 	});
 
-	const toggle = (path: string) =>
+	const toggle = (path: string) => {
 		setCollapsed((current) => {
 			const next = new Set(current);
 			if (next.has(path)) next.delete(path);
 			else next.add(path);
 			return next;
 		});
+	};
 
 	return (
 		<div className="flex flex-col gap-3">

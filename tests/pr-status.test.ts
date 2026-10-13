@@ -214,7 +214,7 @@ describe("createPrStatusService", () => {
 		const onChange = vi.fn<(projectId: string) => void>();
 		const service = createPrStatusService({
 			runGh,
-			readCacheFile: () => Promise.resolve(cacheText),
+			readCacheFile: async () => Promise.resolve(cacheText),
 			now: () => now,
 			onChange,
 		});
@@ -236,7 +236,7 @@ describe("createPrStatusService", () => {
 	};
 
 	it("answers from memory without blocking, then refreshes via gh in the background", async () => {
-		const runGh = vi.fn<GhRunner>(() => Promise.resolve('[{"number":6,"state":"OPEN","isDraft":true}]'));
+		const runGh = vi.fn<GhRunner>(async () => Promise.resolve('[{"number":6,"state":"OPEN","isDraft":true}]'));
 		const {service, onChange} = setup(runGh);
 
 		expect(service.lookup(target)).toBeNull();
@@ -270,7 +270,7 @@ describe("createPrStatusService", () => {
 	});
 
 	it("caches gh results until the TTL and backs off after failures", async () => {
-		const runGh = vi.fn<GhRunner>(() => Promise.reject(new Error("rate limited")));
+		const runGh = vi.fn<GhRunner>(async () => Promise.reject(new Error("rate limited")));
 		const {service, advance} = setup(runGh);
 
 		service.lookup(target);
@@ -289,7 +289,7 @@ describe("createPrStatusService", () => {
 	});
 
 	it("prefers the cache file for pr-link sessions and never runs gh for them", async () => {
-		const runGh = vi.fn<GhRunner>(() => Promise.resolve("{}"));
+		const runGh = vi.fn<GhRunner>(async () => Promise.resolve("{}"));
 		const cacheText = JSON.stringify({
 			[PR_LINK.url]: {
 				number: 42,
@@ -337,8 +337,8 @@ describe("createPrStatusService", () => {
 		let now = NOW;
 		const onChange = vi.fn<(projectId: string) => void>();
 		const service = createPrStatusService({
-			runGh: () => Promise.resolve("{}"),
-			readCacheFile: () => Promise.resolve(cacheText),
+			runGh: async () => Promise.resolve("{}"),
+			readCacheFile: async () => Promise.resolve(cacheText),
 			now: () => now,
 			onChange,
 		});
@@ -362,7 +362,7 @@ describe("createPrStatusService", () => {
 	});
 
 	it("skips gh for sessions idle longer than the lookup window", async () => {
-		const runGh = vi.fn<GhRunner>(() => Promise.resolve("[]"));
+		const runGh = vi.fn<GhRunner>(async () => Promise.resolve("[]"));
 		const {service} = setup(runGh);
 
 		service.lookup({...target, mtimeMs: NOW - 30 * DAY});

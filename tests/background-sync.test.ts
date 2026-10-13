@@ -15,18 +15,16 @@ describe("runBackgroundSync", () => {
 		process.on("unhandledRejection", onUnhandled);
 
 		const failure = new TypeError("Failed to fetch");
-		const returned = runBackgroundSync("visibility-update", () => Promise.reject(failure));
+		runBackgroundSync("visibility-update", async () => Promise.reject(failure));
 
 		// Give the microtask queue and the rejection check a full turn to settle.
 		await new Promise((resolve) => setTimeout(resolve, 10));
 		process.off("unhandledRejection", onUnhandled);
 
 		expect({
-			returned,
 			rejections,
 			debugCalls: debugSpy.mock.calls.map((call) => [call[0], call[1]]),
 		}).toStrictEqual({
-			returned: undefined,
 			rejections: [],
 			debugCalls: [["[session-viewed-state] background visibility-update failed", failure]],
 		});
@@ -36,11 +34,9 @@ describe("runBackgroundSync", () => {
 		const debugSpy = vi.spyOn(console, "debug").mockImplementation(() => {});
 		const failure = new Error("boom");
 
-		expect(
-			runBackgroundSync("mark-reviewed", () => {
-				throw failure;
-			}),
-		).toBe(undefined);
+		runBackgroundSync("mark-reviewed", () => {
+			throw failure;
+		});
 
 		await new Promise((resolve) => setTimeout(resolve, 10));
 		expect(debugSpy.mock.calls.map((call) => [call[0], call[1]])).toStrictEqual([
@@ -53,7 +49,7 @@ describe("runBackgroundSync", () => {
 		const reportedErrors: unknown[] = [];
 		const failure = new Error("background sync failed");
 
-		runBackgroundSync("mark-reviewed", () => Promise.reject(failure), {
+		runBackgroundSync("mark-reviewed", async () => Promise.reject(failure), {
 			level: "warn",
 			onError: (error) => reportedErrors.push(error),
 		});
@@ -71,7 +67,7 @@ describe("runBackgroundSync", () => {
 	it("stays silent when the background call succeeds", async () => {
 		const debugSpy = vi.spyOn(console, "debug").mockImplementation(() => {});
 
-		runBackgroundSync("visibility-update", () => Promise.resolve());
+		runBackgroundSync("visibility-update", async () => Promise.resolve());
 		await new Promise((resolve) => setTimeout(resolve, 10));
 
 		expect(debugSpy.mock.calls).toStrictEqual([]);

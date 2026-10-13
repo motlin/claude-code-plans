@@ -59,7 +59,9 @@ export function InlineRenameInput({
 					settle(false);
 				}
 			}}
-			onBlur={() => settle(!blurCancels)}
+			onBlur={() => {
+				settle(!blurCancels);
+			}}
 		/>
 	);
 }

@@ -96,9 +96,15 @@ export function useReadAloud(text: string) {
 			const utterance = new SpeechSynthesisUtterance(spoken);
 			utterance.lang = voice?.lang ?? lang;
 			if (voice !== null) utterance.voice = voice;
-			utterance.onstart = () => settleCurrent("playing");
-			utterance.onend = () => settleCurrent("idle");
-			utterance.onerror = () => settleCurrent("idle");
+			utterance.onstart = () => {
+				settleCurrent("playing");
+			};
+			utterance.onend = () => {
+				settleCurrent("idle");
+			};
+			utterance.onerror = () => {
+				settleCurrent("idle");
+			};
 			speechSynthesis.speak(utterance);
 		});
 	};

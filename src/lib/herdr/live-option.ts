@@ -53,7 +53,7 @@ function liveOptionCall(paneId: string, change: LiveOptionChange): {method: stri
 const defaultDependencies: HerdrLiveOptionDependencies = {
 	rejectRequest: rejectCrossSite,
 	writesEnabled: herdrWritesEnabled,
-	resolveTarget: (sessionId) => resolveHerdrPromptTarget(sessionId),
+	resolveTarget: async (sessionId) => resolveHerdrPromptTarget(sessionId),
 	request: herdrRequest,
 	createRequestId: () => `ccp:live-option:${crypto.randomUUID()}`,
 };

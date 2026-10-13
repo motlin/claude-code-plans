@@ -21,10 +21,22 @@ function ReviewFindingAnnotation({finding, actions}: {finding: ReviewFinding; ac
 				suggestion={finding.suggestion}
 			/>
 			<div className="flex gap-1 px-1">
-				<button type="button" onClick={() => actions.onFix(finding)} className={ACTION_BUTTON}>
+				<button
+					type="button"
+					onClick={() => {
+						actions.onFix(finding);
+					}}
+					className={ACTION_BUTTON}
+				>
 					Fix this one
 				</button>
-				<button type="button" onClick={() => actions.onDismiss(finding)} className={ACTION_BUTTON}>
+				<button
+					type="button"
+					onClick={() => {
+						actions.onDismiss(finding);
+					}}
+					className={ACTION_BUTTON}
+				>
 					Dismiss finding
 				</button>
 			</div>

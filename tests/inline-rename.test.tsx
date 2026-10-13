@@ -65,13 +65,13 @@ async function renderWithProviders(content: ReactNode) {
 	await flush();
 }
 
-function renderHeading() {
+async function renderHeading() {
 	return renderWithProviders(<SessionTitleHeading sessionId={SESSION_ID} title={OLD_TITLE} archived={false} />);
 }
 
 function openHeadingRename(): HTMLInputElement {
 	fireEvent.click(screen.getByRole("button", {name: `${OLD_TITLE}, rename session`}));
-	return screen.getByRole("textbox", {name: "Rename"}) as HTMLInputElement;
+	return screen.getByRole<HTMLInputElement>("textbox", {name: "Rename"});
 }
 
 function toastText(): string | null | undefined {
@@ -82,7 +82,7 @@ beforeEach(() => {
 	fetchMock.mockReset();
 	vi.stubGlobal("fetch", fetchMock);
 	__unreadStoreTesting.reset();
-	__unreadStoreTesting.setPersist(() => Promise.resolve());
+	__unreadStoreTesting.setPersist(async () => Promise.resolve());
 });
 
 afterEach(() => {
@@ -183,7 +183,9 @@ describe("session title inline rename", () => {
 		fireEvent.change(input, {target: {value: "Doomed name"}});
 		fireEvent.keyDown(input, {key: "Enter"});
 
-		await waitFor(() => expect(toastText()).toBe(FAILURE_TOAST));
+		await waitFor(() => {
+			expect(toastText()).toBe(FAILURE_TOAST);
+		});
 		expect(screen.getByRole("heading", {level: 1}).textContent).toBe(OLD_TITLE);
 	});
 
@@ -216,7 +218,7 @@ describe("sidebar row inline rename", () => {
 		blockedSince: null,
 	};
 
-	function renderRow() {
+	async function renderRow() {
 		return renderWithProviders(
 			<SessionActionsMenu session={session}>
 				<a href={`/session/${SESSION_ID}`} data-testid="row-link">
@@ -235,7 +237,7 @@ describe("sidebar row inline rename", () => {
 		fireEvent.keyDown(screen.getByRole("menu"), {key: "r"});
 		await flush();
 
-		const input = screen.getByRole("textbox", {name: "Rename"}) as HTMLInputElement;
+		const input = screen.getByRole<HTMLInputElement>("textbox", {name: "Rename"});
 		expect(document.activeElement).toBe(input);
 		expect([input.value, input.selectionStart, input.selectionEnd]).toEqual([OLD_TITLE, 0, OLD_TITLE.length]);
 

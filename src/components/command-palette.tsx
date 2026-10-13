@@ -700,7 +700,9 @@ function PalettePopup({
 	// Compose attachments land as chips here (⌘U, the paperclip); they are dropped when the palette closes.
 	useEffect(() => {
 		const unregister = registerComposer(COMPOSE_DRAFT_KEY, {
-			insertText: (text) => setQuery((current) => appendAttachment(current, text)),
+			insertText: (text) => {
+				setQuery((current) => appendAttachment(current, text));
+			},
 			focus: () => inputRef.current?.focus(),
 		});
 		return () => {
@@ -1030,7 +1032,9 @@ function PalettePopup({
 			{
 				label: "Keyboard shortcuts",
 				icon: <Keyboard />,
-				run: () => setKeyboardShortcutsOpen(true),
+				run: () => {
+					setKeyboardShortcutsOpen(true);
+				},
 				shortcut: "shortcuts_modal",
 			},
 			{
@@ -1042,7 +1046,9 @@ function PalettePopup({
 			{
 				label: "Settings",
 				icon: <SlidersHorizontal />,
-				run: () => openSettings("general"),
+				run: () => {
+					openSettings("general");
+				},
 				shortcut: "settings",
 			},
 			{label: "Mark all sessions seen", icon: <CircleCheckBig />, run: clearAll},
@@ -1051,7 +1057,9 @@ function PalettePopup({
 						{
 							label: "Show side chat",
 							icon: <MessagesSquare />,
-							run: () => openSideChat(currentSessionId),
+							run: () => {
+								openSideChat(currentSessionId);
+							},
 							shortcut: "toggle_side_chat",
 						} satisfies PaletteAction,
 					]
@@ -1349,7 +1357,9 @@ function PalettePopup({
 										key={filter}
 										value={`filter:${filter}`}
 										icon={<ListFilter />}
-										onSelect={() => chooseFilter(filter)}
+										onSelect={() => {
+											chooseFilter(filter);
+										}}
 									>
 										Filter by{" "}
 										<span className="ml-1 rounded bg-fill-ghost-hover px-1.5 py-px text-xs text-secondary">
@@ -1369,7 +1379,9 @@ function PalettePopup({
 									<CommandItem
 										key={value.query}
 										value={`filter-value:${value.query}`}
-										onSelect={() => chooseFilterValue(value.query)}
+										onSelect={() => {
+											chooseFilterValue(value.query);
+										}}
 									>
 										{value.label}
 									</CommandItem>
@@ -1384,12 +1396,18 @@ function PalettePopup({
 										{attention.map((session) => (
 											<SessionRowActions
 												key={session.id}
-												onOpen={() => openRowActions(session.id)}
+												onOpen={() => {
+													openRowActions(session.id);
+												}}
 											>
 												<CommandItem
 													icon={<AttentionIcon />}
 													value={`session:${session.id}`}
-													onSelect={() => select(() => openSession(session.id))}
+													onSelect={() => {
+														select(() => {
+															openSession(session.id);
+														});
+													}}
 													rowActions
 												>
 													{session.title}
@@ -1406,12 +1424,18 @@ function PalettePopup({
 											recent.kind === "session" ? (
 												<SessionRowActions
 													key={recent.id}
-													onOpen={() => openRowActions(recent.id)}
+													onOpen={() => {
+														openRowActions(recent.id);
+													}}
 												>
 													<CommandItem
 														icon={<MessageSquare />}
 														value={`session:${recent.id}`}
-														onSelect={() => select(() => openSession(recent.id))}
+														onSelect={() => {
+															select(() => {
+																openSession(recent.id);
+															});
+														}}
 														rowActions
 													>
 														{recent.title}
@@ -1422,9 +1446,9 @@ function PalettePopup({
 													key={recent.entry.key}
 													icon={PAGE_ICONS[recent.entry.kind]}
 													value={`recent:${recent.entry.key}`}
-													onSelect={() =>
-														select(() => void navigate({href: recent.entry.href}))
-													}
+													onSelect={() => {
+														select(() => void navigate({href: recent.entry.href}));
+													}}
 												>
 													{recent.title}
 												</CommandItem>
@@ -1440,7 +1464,9 @@ function PalettePopup({
 												key={action.label}
 												value={`action:${action.label}`}
 												icon={action.icon}
-												onSelect={() => select(action.run)}
+												onSelect={() => {
+													select(action.run);
+												}}
 											>
 												{action.label}
 											</CommandItem>
@@ -1450,7 +1476,9 @@ function PalettePopup({
 												value={`action:${action.label}`}
 												id={action.shortcut}
 												icon={action.icon}
-												onSelect={() => select(action.run)}
+												onSelect={() => {
+													select(action.run);
+												}}
 											>
 												{action.label}
 											</ShortcutCommandItem>
@@ -1473,8 +1501,14 @@ function PalettePopup({
 										key={rowKey(row)}
 										row={row}
 										now={now}
-										onSelect={() => select(() => openRow(row))}
-										onRowActions={() => openRowActions(row.id)}
+										onSelect={() => {
+											select(() => {
+												openRow(row);
+											});
+										}}
+										onRowActions={() => {
+											openRowActions(row.id);
+										}}
 									/>
 								))}
 								{instant.map((row) => (
@@ -1482,8 +1516,14 @@ function PalettePopup({
 										key={rowKey(row)}
 										row={row}
 										now={now}
-										onSelect={() => select(() => openRow(row))}
-										onRowActions={() => openRowActions(row.id)}
+										onSelect={() => {
+											select(() => {
+												openRow(row);
+											});
+										}}
+										onRowActions={() => {
+											openRowActions(row.id);
+										}}
 									/>
 								))}
 								{matchedSessionCommands.map((command) => (
@@ -1491,7 +1531,11 @@ function PalettePopup({
 										key={command.id}
 										value={`session-command:${command.id}`}
 										icon={SESSION_COMMAND_ICONS[command.id]}
-										onSelect={() => select(() => runSessionCommand(command.id))}
+										onSelect={() => {
+											select(() => {
+												runSessionCommand(command.id);
+											});
+										}}
 									>
 										{command.label}
 									</CommandItem>
@@ -1502,7 +1546,9 @@ function PalettePopup({
 											key={action.label}
 											value={`action:${action.label}`}
 											icon={action.icon}
-											onSelect={() => select(action.run)}
+											onSelect={() => {
+												select(action.run);
+											}}
 										>
 											{action.label}
 										</CommandItem>
@@ -1512,7 +1558,9 @@ function PalettePopup({
 											value={`action:${action.label}`}
 											id={action.shortcut}
 											icon={action.icon}
-											onSelect={() => select(action.run)}
+											onSelect={() => {
+												select(action.run);
+											}}
 										>
 											{action.label}
 										</ShortcutCommandItem>
@@ -1523,7 +1571,9 @@ function PalettePopup({
 										key={command.to}
 										value={`nav:${command.to}`}
 										icon={command.icon}
-										onSelect={() => select(() => navigate({to: command.to}))}
+										onSelect={() => {
+											select(async () => navigate({to: command.to}));
+										}}
 									>
 										{command.label}
 									</CommandItem>
@@ -1533,8 +1583,14 @@ function PalettePopup({
 										key={rowKey(row)}
 										row={row}
 										now={now}
-										onSelect={() => select(() => openRow(row))}
-										onRowActions={() => openRowActions(row.id)}
+										onSelect={() => {
+											select(() => {
+												openRow(row);
+											});
+										}}
+										onRowActions={() => {
+											openRowActions(row.id);
+										}}
 									/>
 								))}
 								{searching &&
@@ -1572,7 +1628,11 @@ function PalettePopup({
 									<CommandItem
 										value="see-all-results"
 										icon={<Search />}
-										onSelect={() => select(() => seeAllResults(type))}
+										onSelect={() => {
+											select(() => {
+												seeAllResults(type);
+											});
+										}}
 									>
 										See all results for “{tokens.text}”
 									</CommandItem>
@@ -1604,7 +1664,11 @@ function PalettePopup({
 					key={rowActions.session.id}
 					session={rowActions.session}
 					top={rowActions.top}
-					onOpen={(id) => select(() => openSession(id))}
+					onOpen={(id) => {
+						select(() => {
+							openSession(id);
+						});
+					}}
 					onRename={(id) => {
 						restoreFocusRef.current = false;
 						select(() => {
@@ -1659,8 +1723,12 @@ function TypeTabs({value, onChange}: {value: PaletteType; onChange: (type: Palet
 						role="tab"
 						aria-selected={selected}
 						tabIndex={-1}
-						onMouseDown={(event) => event.preventDefault()}
-						onClick={() => onChange(type)}
+						onMouseDown={(event) => {
+							event.preventDefault();
+						}}
+						onClick={() => {
+							onChange(type);
+						}}
 						className={`h-7 shrink-0 px-2.5 text-sm font-medium transition-colors hover:text-primary ${
 							selected ? "text-primary" : "text-ink-muted"
 						}`}
@@ -1696,7 +1764,9 @@ function ModeSwitch({mode, onModeChange}: {mode: PaletteMode; onModeChange: (mod
 								aria-checked={checked}
 								tabIndex={-1}
 								data-checked={checked ? "" : undefined}
-								onClick={() => onModeChange(option.value)}
+								onClick={() => {
+									onModeChange(option.value);
+								}}
 								className="relative inline-flex h-full cursor-pointer items-center justify-center gap-1.5 rounded-r5 px-3 text-sm text-ink-muted select-none hover:text-primary data-[checked]:bg-[var(--settings-segmented-thumb)] data-[checked]:text-primary data-[checked]:shadow-[inset_0_0_0_1px_var(--color-border),0_1px_2px_0_rgb(0_0_0/0.05)]"
 							>
 								{option.label}

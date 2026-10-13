@@ -115,11 +115,19 @@ export function AccountMenu() {
 					data-testid="user-menu-settings"
 					icon={<Settings />}
 					shortcut={settingsKeys}
-					onSelect={() => openSettings(settingsTab)}
+					onSelect={() => {
+						openSettings(settingsTab);
+					}}
 				>
 					Settings
 				</MenuItem>
-				<MenuItem data-testid="user-menu-usage" icon={<Gauge />} onSelect={() => openSettings("usage")}>
+				<MenuItem
+					data-testid="user-menu-usage"
+					icon={<Gauge />}
+					onSelect={() => {
+						openSettings("usage");
+					}}
+				>
 					Usage
 				</MenuItem>
 				<MenuItem
@@ -171,7 +179,12 @@ export function AccountMenu() {
 							</MenuItem>
 						))}
 						<MenuSeparator />
-						<MenuItem shortcut={shortcutsKeys} onSelect={() => setKeyboardShortcutsOpen(true)}>
+						<MenuItem
+							shortcut={shortcutsKeys}
+							onSelect={() => {
+								setKeyboardShortcutsOpen(true);
+							}}
+						>
 							Keyboard shortcuts
 						</MenuItem>
 					</MenuSubContent>

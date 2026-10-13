@@ -23,7 +23,7 @@ const shikiMocks = vi.hoisted(() => {
 	} as unknown as HighlighterCore;
 	const getHighlighterSync = vi.fn(() => state.highlighter);
 	const getHighlighterVersion = vi.fn(() => state.version);
-	const requestLanguage = vi.fn(() => Promise.resolve());
+	const requestLanguage = vi.fn(async () => Promise.resolve());
 	const subscribeHighlighter = vi.fn((subscriber: () => void) => {
 		state.subscriber = subscriber;
 		return () => {

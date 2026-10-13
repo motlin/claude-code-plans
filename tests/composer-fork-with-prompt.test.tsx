@@ -24,7 +24,9 @@ function renderComposer({
 		<Composer
 			variant="session"
 			draftKey="session-alice"
-			onSend={(prompt) => onSend(prompt)}
+			onSend={(prompt) => {
+				onSend(prompt);
+			}}
 			onSendNow={onSendNow}
 			onFork={onFork}
 			forkLabel={forkLabel}

@@ -124,5 +124,11 @@ export function useSidebarState(): SidebarState {
 
 /** Bind ⌘B / Ctrl+B to the sidebar toggle, including while a text field has focus. */
 export function useSidebarToggleShortcut(): void {
-	useShortcut("toggle_sidebar", () => toggleSidebarCollapsed(), {allowInEditable: true});
+	useShortcut(
+		"toggle_sidebar",
+		() => {
+			toggleSidebarCollapsed();
+		},
+		{allowInEditable: true},
+	);
 }

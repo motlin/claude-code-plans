@@ -108,7 +108,9 @@ export function TranscriptHistoryLoader({sessionId, startIndex}: TranscriptHisto
 			},
 		);
 		observer.observe(sentinel);
-		return () => observer.disconnect();
+		return () => {
+			observer.disconnect();
+		};
 	}, [loadEarlier, startIndex]);
 
 	if (startIndex === 0) return null;

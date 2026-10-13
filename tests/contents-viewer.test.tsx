@@ -143,7 +143,7 @@ describe("ContentsViewer", () => {
 
 	const fileQuery: ContentsFileQuery = (path) => ({
 		queryKey: ["contents-test", path],
-		queryFn: () => Promise.resolve({path, content: FILES[path] ?? ""}),
+		queryFn: async () => Promise.resolve({path, content: FILES[path] ?? ""}),
 	});
 
 	afterEach(() => {

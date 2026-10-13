@@ -36,7 +36,7 @@ import {
 
 export const Route = createFileRoute("/routines")({
 	component: RoutinesPage,
-	loader: ({context: {queryClient}}) => queryClient.ensureQueryData(routinesQueryOptions),
+	loader: async ({context: {queryClient}}) => queryClient.ensureQueryData(routinesQueryOptions),
 	head: () => ({
 		meta: [{title: "Routines"}],
 	}),
@@ -70,7 +70,9 @@ function RoutinesPage() {
 						label="Search routines"
 						placeholder="Search routines..."
 						search={view.search}
-						onSearch={(search) => setView((current) => ({...current, search}))}
+						onSearch={(search) => {
+							setView((current) => ({...current, search}));
+						}}
 					/>
 					<FilterMenu view={view} onChange={setView} />
 					<SortMenu view={view} completedCount={completedCount} onChange={setView} />
@@ -243,9 +245,9 @@ function SortMenu({
 				<MenuSeparator />
 				<MenuCheckboxItem
 					checked={view.includeCompleted}
-					onCheckedChange={(checked: boolean) =>
-						onChange((current) => ({...current, includeCompleted: checked}))
-					}
+					onCheckedChange={(checked: boolean) => {
+						onChange((current) => ({...current, includeCompleted: checked}));
+					}}
 				>
 					<span className="flex w-full items-center justify-between gap-4">
 						<span>Include completed</span>

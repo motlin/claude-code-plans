@@ -118,7 +118,9 @@ function AgentCard({agent}: {agent: AgentItem}) {
 		<div className="border border-border rounded-lg overflow-hidden">
 			<button
 				type="button"
-				onClick={() => agent.result && setExpanded(!expanded)}
+				onClick={() => {
+					if (agent.result) setExpanded(!expanded);
+				}}
 				className={`w-full px-3 py-2 flex items-center gap-2 text-left ${agent.result ? "cursor-pointer hover:bg-surface-0/30" : ""}`}
 			>
 				{agent.result &&

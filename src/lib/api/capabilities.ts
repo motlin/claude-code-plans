@@ -5,7 +5,7 @@ import {apiFetch} from "./client";
 export function capabilitiesQueryOptions(capabilities: PersistedCapabilities) {
 	return queryOptions({
 		queryKey: ["capabilities", capabilities] as const,
-		queryFn: () =>
+		queryFn: async () =>
 			apiFetch("/api/capabilities", CapabilitiesSchema, {
 				method: "POST",
 				headers: {"Content-Type": "application/json"},

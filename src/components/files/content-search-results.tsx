@@ -171,8 +171,12 @@ export function ContentSearchResults({
 									tabIndex={-1}
 									data-content-match
 									data-row-index={index}
-									onKeyDown={(event) => handleRowKeyDown(event, index)}
-									onClick={() => openMatch(group.relPath, match)}
+									onKeyDown={(event) => {
+										handleRowKeyDown(event, index);
+									}}
+									onClick={() => {
+										openMatch(group.relPath, match);
+									}}
 									className="group/match flex min-h-6 cursor-pointer items-baseline gap-2 rounded-r5 py-0.5 pr-1 pl-6 text-footnote outline-none hover:bg-fill-ghost-hover focus-visible:bg-fill-ghost-hover"
 								>
 									<span className="shrink-0 font-mono text-ink-muted tabular-nums">{match.line}</span>

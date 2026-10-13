@@ -190,7 +190,9 @@ export function HomeStatsCard({days, today}: Readonly<{days: readonly HomeStatsD
 							id={`${id}-${option}`}
 							aria-selected={view === option}
 							aria-controls={panelId}
-							onClick={() => setView(option)}
+							onClick={() => {
+								setView(option);
+							}}
 							className="h-7 rounded-md px-2 text-[13px] leading-[19px] text-ink-muted hover:bg-fill-ghost-hover hover:text-secondary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100 aria-selected:bg-alpha-2 aria-selected:text-primary"
 						>
 							{STATS_VIEW_LABELS[option]}

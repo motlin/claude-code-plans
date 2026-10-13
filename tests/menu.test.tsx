@@ -141,7 +141,9 @@ describe("Menu", () => {
 		);
 		await openDropdown();
 		const trigger = screen.getByRole("menuitem", {name: /Status/});
-		act(() => trigger.focus());
+		act(() => {
+			trigger.focus();
+		});
 		fireEvent.keyDown(trigger, {key: "ArrowRight"});
 		await flush();
 
@@ -220,7 +222,9 @@ describe("Menu", () => {
 		await openDropdown();
 		const trigger = screen.getByRole("menuitem", {name: /Status/});
 
-		act(() => trigger.focus());
+		act(() => {
+			trigger.focus();
+		});
 		fireEvent.keyDown(trigger, {key: "ArrowRight"});
 		await flush();
 		const positioner = screen.getAllByRole("menu")[1]?.parentElement;
@@ -235,7 +239,9 @@ describe("Menu", () => {
 		renderDropdown();
 		await openDropdown();
 		const trigger = screen.getByRole("menuitem", {name: /Status/});
-		act(() => trigger.focus());
+		act(() => {
+			trigger.focus();
+		});
 		fireEvent.keyDown(trigger, {key: "ArrowRight"});
 		await flush();
 
@@ -258,7 +264,9 @@ describe("Menu", () => {
 		await openDropdown();
 		const trigger = screen.getByRole("menuitem", {name: /Status/});
 
-		act(() => trigger.focus());
+		act(() => {
+			trigger.focus();
+		});
 		fireEvent.keyDown(trigger, {key: "ArrowRight"});
 		await flush();
 

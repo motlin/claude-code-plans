@@ -37,7 +37,9 @@ function FileTreeItem({node, pluginId, depth}: {node: FileTreeNode; pluginId: st
 			<div>
 				<button
 					type="button"
-					onClick={() => setExpanded(!expanded)}
+					onClick={() => {
+						setExpanded(!expanded);
+					}}
 					className="flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-sm text-secondary transition-colors hover:bg-surface-0/50"
 					style={{paddingLeft: `${depth * 16 + 8}px`}}
 				>

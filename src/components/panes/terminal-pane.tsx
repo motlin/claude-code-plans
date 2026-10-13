@@ -235,8 +235,9 @@ export function TerminalPane({
 	}, [showClaude, shells, shellTabs.tabs.length, newTerminal]);
 
 	const shellStatusChange = useCallback(
-		(id: string) => (status: ConnectionStatus) =>
-			setShellStatuses((current) => (current[id] === status ? current : {...current, [id]: status})),
+		(id: string) => (status: ConnectionStatus) => {
+			setShellStatuses((current) => (current[id] === status ? current : {...current, [id]: status}));
+		},
 		[],
 	);
 	const statusHandlers = useMemo(
@@ -248,7 +249,9 @@ export function TerminalPane({
 			new Map(
 				shellTabs.tabs.map((tab) => [
 					tab.id,
-					() => dispatchTerminalTabs(sessionId, {type: "remove", id: tab.id}),
+					() => {
+						dispatchTerminalTabs(sessionId, {type: "remove", id: tab.id});
+					},
 				]),
 			),
 		[shellTabs.tabs, sessionId],
@@ -275,21 +278,26 @@ export function TerminalPane({
 	const guardedClose = async (kind: "close" | "close-others", id: string) => {
 		const targets = shellTabs.tabs.filter((tab) => (kind === "close" ? tab.id === id : tab.id !== id));
 		if (targets.length === 0) return;
-		const apply = () =>
+		const apply = () => {
 			dispatchTerminalTabs(
 				sessionId,
 				kind === "close" ? {type: "request-close", ids: [id]} : {type: "close-others", id},
 			);
+		};
 		const guard = closeGuard(kind, targets, await busyShells(targets.map((tab) => tab.ptyKey)));
 		if (guard.confirm) setPendingClose({guard, apply});
 		else apply();
 	};
 
 	const tabActions: TerminalTabActions = {
-		rename: (id, title) => dispatchTerminalTabs(sessionId, {type: "rename", id, title}),
+		rename: (id, title) => {
+			dispatchTerminalTabs(sessionId, {type: "rename", id, title});
+		},
 		close: (id) => void guardedClose("close", id),
 		closeOthers: (id) => void guardedClose("close-others", id),
-		move: (id, delta) => dispatchTerminalTabs(sessionId, {type: "move", id, delta}),
+		move: (id, delta) => {
+			dispatchTerminalTabs(sessionId, {type: "move", id, delta});
+		},
 	};
 
 	const activeStatus =

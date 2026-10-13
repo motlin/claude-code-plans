@@ -173,7 +173,7 @@ function pressFilesShortcut(): void {
 }
 
 function filterInput(pane: HTMLElement): HTMLInputElement {
-	return within(pane).getByLabelText("Filter files") as HTMLInputElement;
+	return within(pane).getByLabelText("Filter files");
 }
 
 function sessionRows(pane: HTMLElement): Array<string | null> {
@@ -195,7 +195,9 @@ async function openSourcesSubmenu(pane: HTMLElement): Promise<void> {
 	fireEvent.click(within(pane).getByRole("button", {name: "Files settings"}));
 	await flush();
 	const trigger = screen.getByRole("menuitem", {name: /Show files from/});
-	act(() => trigger.focus());
+	act(() => {
+		trigger.focus();
+	});
 	fireEvent.keyDown(trigger, {key: "ArrowRight"});
 	await flush();
 }
@@ -298,7 +300,9 @@ describe("Files pane mode switch", () => {
 		listing = {kind: "no-cwd"};
 		const pane = await openPane();
 
-		await waitFor(() => expect(sessionRows(pane)).toHaveLength(3));
+		await waitFor(() => {
+			expect(sessionRows(pane)).toHaveLength(3);
+		});
 		expect({
 			radios: within(pane).queryAllByRole("radio"),
 			tree: within(pane).queryByRole("tree", {name: "Project files"}),
@@ -379,13 +383,15 @@ describe("Session mode rows", () => {
 		});
 
 		fireEvent.click(copyButton);
-		await waitFor(() =>
-			expect(vi.mocked(writeClipboardText).mock.calls).toStrictEqual([["/home/alice/example/agent.ts"]]),
-		);
+		await waitFor(() => {
+			expect(vi.mocked(writeClipboardText).mock.calls).toStrictEqual([["/home/alice/example/agent.ts"]]);
+		});
 		expect(copyButton.getAttribute("title")).toBe("Copy absolute path");
 
 		fireEvent.click(copyButton);
-		await waitFor(() => expect(copyButton.getAttribute("title")).toBe("Copied"));
+		await waitFor(() => {
+			expect(copyButton.getAttribute("title")).toBe("Copied");
+		});
 	});
 });
 
@@ -436,7 +442,7 @@ describe("Show files from submenu", () => {
 			rows: sessionRows(pane),
 			emptyMessage: within(pane).getByText("No files match the selected sources.").textContent,
 		}).toStrictEqual({rows: [], emptyMessage: "No files match the selected sources."});
-		await waitFor(() =>
+		await waitFor(() => {
 			expect(JSON.parse(localStorage.getItem(FILE_SOURCE_SELECTION_STORAGE_KEY) ?? "null")).toStrictEqual({
 				userMessage: false,
 				agentMessage: false,
@@ -446,8 +452,8 @@ describe("Show files from submenu", () => {
 				grepGlob: false,
 				thinking: false,
 				other: false,
-			}),
-		);
+			});
+		});
 	});
 
 	it("hydrates a stored source selection", async () => {
@@ -483,11 +489,11 @@ describe("Show files from submenu", () => {
 		localStorage.setItem(FILE_SOURCE_SELECTION_STORAGE_KEY, JSON.stringify({userMessage: false, read: "yes"}));
 		const pane = await openPane();
 
-		await waitFor(() =>
+		await waitFor(() => {
 			expect(localStorage.getItem(FILE_SOURCE_SELECTION_STORAGE_KEY)).toBe(
 				JSON.stringify(DEFAULT_FILE_SOURCE_SELECTION),
-			),
-		);
+			);
+		});
 		await openSourcesSubmenu(pane);
 		expect(sourceItems().map(([, checked]) => checked)).toStrictEqual([
 			"true",
@@ -510,13 +516,13 @@ describe("Opening a session file", () => {
 
 		fireEvent.click(within(pane).getByRole("button", {name: "agent.ts"}));
 		// Read whole lines: once an earlier test has loaded Shiki, each line arrives split into token spans.
-		await waitFor(() =>
+		await waitFor(() => {
 			expect(
 				within(pane)
 					.queryAllByRole("cell")
 					.map((line) => line.textContent),
-			).toContain("export const agent = 1;"),
-		);
+			).toContain("export const agent = 1;");
+		});
 
 		expect({
 			requests: fileRequests,
@@ -535,9 +541,9 @@ describe("Opening a session file", () => {
 
 		fireEvent.click(within(pane).getByRole("button", {name: "/home/alice/notes/user.md"}));
 
-		await waitFor(() =>
-			expect(within(pane).getByText("Couldn’t find this file").textContent).toBe("Couldn’t find this file"),
-		);
+		await waitFor(() => {
+			expect(within(pane).getByText("Couldn’t find this file").textContent).toBe("Couldn’t find this file");
+		});
 		expect(within(pane).getByText("/home/alice/notes/user.md", {selector: "p"}).tagName).toBe("P");
 	});
 });
@@ -587,7 +593,9 @@ describe("File tabs", () => {
 			title: null,
 			tabName: null,
 		});
-		await waitFor(() => expect(fileRequests).toStrictEqual(["/home/alice/example/agent.ts"]));
+		await waitFor(() => {
+			expect(fileRequests).toStrictEqual(["/home/alice/example/agent.ts"]);
+		});
 	});
 
 	it("a double-click pins, and the next click opens a new preview tab beside it", async () => {

@@ -216,7 +216,11 @@ describe("db boot ordering", () => {
 		const order: string[] = [];
 		const fullScan = vi.fn(async (...args: unknown[]) => {
 			const signal = args[6] as AbortSignal;
-			await new Promise<void>((resolve) => signal.addEventListener("abort", () => resolve()));
+			await new Promise<void>((resolve) => {
+				signal.addEventListener("abort", () => {
+					resolve();
+				});
+			});
 			order.push("scan:aborted");
 			signal.throwIfAborted();
 		});

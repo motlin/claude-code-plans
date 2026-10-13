@@ -74,7 +74,9 @@ describe("seedFixtureHome", () => {
 			seedFixtureHome(root);
 			const stub = join(root, "bin", "claude");
 
-			expect(() => accessSync(stub, constants.X_OK)).not.toThrow();
+			expect(() => {
+				accessSync(stub, constants.X_OK);
+			}).not.toThrow();
 			expect(readFileSync(stub, "utf-8")).toBe(
 				'#!/bin/sh\necho "claude is stubbed out on fixture servers" >&2\nexit 1\n',
 			);

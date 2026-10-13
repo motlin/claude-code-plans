@@ -87,7 +87,9 @@ export function useResolvedTheme(): "light" | "dark" {
 			setTheme(root.classList.contains("dark") ? "dark" : "light");
 		});
 		observer.observe(root, {attributes: true, attributeFilter: ["class"]});
-		return () => observer.disconnect();
+		return () => {
+			observer.disconnect();
+		};
 	}, []);
 
 	return theme;

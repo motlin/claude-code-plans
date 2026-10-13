@@ -33,7 +33,7 @@ function waitOffCpu(ms: number): void {
 	Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
 
-function sleep(ms: number): Promise<void> {
+async function sleep(ms: number): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
@@ -70,7 +70,9 @@ describe("startStallMonitor", () => {
 		await trackActivity("GET /api/early", () => undefined);
 		await sleep(150);
 
-		await trackActivity("scan jsonl /a.jsonl", () => blockFor(400));
+		await trackActivity("scan jsonl /a.jsonl", () => {
+			blockFor(400);
+		});
 		await sleep(120);
 
 		expect(stalls.map((stall) => stall.activities)).toStrictEqual([["scan jsonl /a.jsonl"]]);
@@ -90,9 +92,13 @@ describe("startStallMonitor", () => {
 		const stalls = monitor(200);
 		await sleep(60);
 
-		trackActivitySync("on-cpu", () => burnCpu(400));
+		trackActivitySync("on-cpu", () => {
+			burnCpu(400);
+		});
 		await sleep(120);
-		trackActivitySync("off-cpu", () => waitOffCpu(400));
+		trackActivitySync("off-cpu", () => {
+			waitOffCpu(400);
+		});
 		await sleep(120);
 
 		// Select by activity: a loaded machine can add stalls of its own, and it stretches wall

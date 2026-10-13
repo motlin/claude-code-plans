@@ -43,8 +43,12 @@ export function useSessionRename(sessionId: string, serverTitle: string): Sessio
 		[mutation, serverTitle, title, toast],
 	);
 
-	const startEditing = useCallback(() => setEditing(true), []);
-	const cancel = useCallback(() => setEditing(false), []);
+	const startEditing = useCallback(() => {
+		setEditing(true);
+	}, []);
+	const cancel = useCallback(() => {
+		setEditing(false);
+	}, []);
 
 	return {title, editing, startEditing, commit, cancel};
 }

@@ -15,7 +15,9 @@ export function PluginEnableMenuItem({pluginId, name}: {pluginId: string; name: 
 	return (
 		<MenuItem
 			disabled={state === undefined}
-			onSelect={() => toggle({kind: "plugin", id: pluginId, enabled: !enabled}, name)}
+			onSelect={() => {
+				toggle({kind: "plugin", id: pluginId, enabled: !enabled}, name);
+			}}
 		>
 			{enabled ? "Disable" : "Enable"}
 		</MenuItem>

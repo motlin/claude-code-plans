@@ -59,23 +59,25 @@ export function useArchiveSessions(): (sessionIds: readonly string[]) => void {
 	return useCallback(
 		(sessionIds: readonly string[]) => {
 			if (sessionIds.length === 0) return;
-			void Promise.allSettled(sessionIds.map((id) => requestSessionArchived(qc, id, true))).then((results) => {
-				const archived = sessionIds.filter((_, index) => results[index]?.status === "fulfilled");
-				if (archived.length < sessionIds.length) {
-					toast({kind: "error", message: ARCHIVE_FAILED_MESSAGE});
-				}
-				if (archived.length === 0) return;
-				const unarchive = () => {
-					Promise.all(archived.map((id) => requestSessionArchived(qc, id, false))).catch(() => {
-						toast({kind: "error", message: UNARCHIVE_FAILED_MESSAGE});
+			void Promise.allSettled(sessionIds.map(async (id) => requestSessionArchived(qc, id, true))).then(
+				(results) => {
+					const archived = sessionIds.filter((_, index) => results[index]?.status === "fulfilled");
+					if (archived.length < sessionIds.length) {
+						toast({kind: "error", message: ARCHIVE_FAILED_MESSAGE});
+					}
+					if (archived.length === 0) return;
+					const unarchive = () => {
+						Promise.all(archived.map(async (id) => requestSessionArchived(qc, id, false))).catch(() => {
+							toast({kind: "error", message: UNARCHIVE_FAILED_MESSAGE});
+						});
+					};
+					toast({
+						kind: "success",
+						message: archivedSessionsMessage(archived.length),
+						action: {label: "Undo", onAction: unarchive},
 					});
-				};
-				toast({
-					kind: "success",
-					message: archivedSessionsMessage(archived.length),
-					action: {label: "Undo", onAction: unarchive},
-				});
-			});
+				},
+			);
 		},
 		[qc, toast],
 	);

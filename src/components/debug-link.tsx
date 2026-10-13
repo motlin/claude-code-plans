@@ -39,7 +39,9 @@ export function DebugLink(props: DebugLinkProps) {
 			target="_blank"
 			rel="noopener noreferrer"
 			title={title}
-			onClick={(e) => e.stopPropagation()}
+			onClick={(e) => {
+				e.stopPropagation();
+			}}
 			className={`inline-flex items-center justify-center text-t6 hover:text-primary transition-colors z-20 ${className}`}
 		>
 			<ExternalLink className="h-3 w-3" />

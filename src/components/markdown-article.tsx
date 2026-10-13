@@ -35,7 +35,7 @@ export function MarkdownArticle(props: MarkdownArticleProps) {
 	const rendered = useMemo(() => {
 		void highlighterVersion;
 		if (props.html !== undefined) return props.html;
-		return renderMarkdownWithHighlighting(props.markdown!, getHighlighterSync(), {
+		return renderMarkdownWithHighlighting(props.markdown, getHighlighterSync(), {
 			typographer: props.typographer ?? false,
 			smartQuotes: props.smartQuotes ?? false,
 			codeThemes,

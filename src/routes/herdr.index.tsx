@@ -11,7 +11,7 @@ import {splitTerminalTitleGlyph} from "../lib/herdr/terminal-title";
 
 export const Route = createFileRoute("/herdr/")({
 	component: HerdrPage,
-	loader: ({context: {queryClient}}) => queryClient.ensureQueryData(terminalPlacementsQueryOptions),
+	loader: async ({context: {queryClient}}) => queryClient.ensureQueryData(terminalPlacementsQueryOptions),
 	head: () => ({
 		meta: [{title: "Herdr"}],
 	}),
@@ -213,7 +213,7 @@ function HerdrPage() {
 								<div className="justify-self-end">
 									{!pane.viewedState.viewedAnywhere && (
 										<SessionReviewAction
-											onReview={() =>
+											onReview={async () =>
 												markReviewed(placement.sessionId, pane.viewedState.currentMessageIndex)
 											}
 										/>

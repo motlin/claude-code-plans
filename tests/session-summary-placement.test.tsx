@@ -174,10 +174,10 @@ beforeEach(() => {
 	vi.stubGlobal("IntersectionObserver", TestIntersectionObserver);
 	vi.stubGlobal(
 		"fetch",
-		vi.fn(() => new Promise<Response>(() => {})),
+		vi.fn(async () => new Promise<Response>(() => {})),
 	);
 	__unreadStoreTesting.reset();
-	__unreadStoreTesting.setPersist(() => Promise.resolve());
+	__unreadStoreTesting.setPersist(async () => Promise.resolve());
 });
 
 afterEach(() => {

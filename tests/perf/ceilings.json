@@ -409,7 +409,7 @@
 		"tolerance": 0
 	},
 	"client.sessionOpen.small.commits.SessionChat": {
-		"ceiling": 6,
+		"ceiling": 5,
 		"unit": "count",
 		"tolerance": 0,
 		"reason": "The perf fixtures' cwd /repo encodes to their project id, so indexing now resolves the project path from the session's recorded cwd and the session composer mounts as it does on every real session: its slash-command, prompt-history and usage fetches, its chin and its re-renders on live events now count, and the home composer fetches slash commands for the latest project.",
@@ -433,7 +433,7 @@
 		"tolerance": 0
 	},
 	"client.sessionOpen.small.mutations": {
-		"ceiling": 40,
+		"ceiling": 39,
 		"unit": "count",
 		"tolerance": 0,
 		"reason": "The perf fixtures' cwd /repo encodes to their project id, so indexing now resolves the project path from the session's recorded cwd and the session composer mounts as it does on every real session: its slash-command, prompt-history and usage fetches, its chin and its re-renders on live events now count, and the home composer fetches slash commands for the latest project.",
@@ -445,7 +445,7 @@
 		"tolerance": 0
 	},
 	"client.sessionOpen.typical.commits.SessionChat": {
-		"ceiling": 6,
+		"ceiling": 5,
 		"unit": "count",
 		"tolerance": 0,
 		"reason": "The perf fixtures' cwd /repo encodes to their project id, so indexing now resolves the project path from the session's recorded cwd and the session composer mounts as it does on every real session: its slash-command, prompt-history and usage fetches, its chin and its re-renders on live events now count, and the home composer fetches slash commands for the latest project.",
@@ -469,7 +469,7 @@
 		"tolerance": 0
 	},
 	"client.sessionOpen.typical.mutations": {
-		"ceiling": 40,
+		"ceiling": 39,
 		"unit": "count",
 		"tolerance": 0,
 		"reason": "The perf fixtures' cwd /repo encodes to their project id, so indexing now resolves the project path from the session's recorded cwd and the session composer mounts as it does on every real session: its slash-command, prompt-history and usage fetches, its chin and its re-renders on live events now count, and the home composer fetches slash commands for the latest project.",

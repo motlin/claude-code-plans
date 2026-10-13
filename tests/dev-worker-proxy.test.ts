@@ -74,13 +74,22 @@ async function startFront(
 				void forward();
 				return;
 			}
-			middleware(req, res, () => run(index + 1));
+			middleware(req, res, () => {
+				run(index + 1);
+			});
 		};
 		run(0);
 	});
 	server.listen(0, "127.0.0.1");
 	await once(server, "listening");
-	onTestFinished(() => new Promise<void>((resolve) => server.close(() => resolve())));
+	onTestFinished(
+		async () =>
+			new Promise<void>((resolve) =>
+				server.close(() => {
+					resolve();
+				}),
+			),
+	);
 	return {url: `http://127.0.0.1:${(server.address() as AddressInfo).port}/`, errors};
 }
 

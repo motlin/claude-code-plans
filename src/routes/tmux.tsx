@@ -6,7 +6,7 @@ import {ListPageHeader} from "../components/list-page-header";
 
 export const Route = createFileRoute("/tmux")({
 	component: TmuxWindowsPage,
-	loader: ({context: {queryClient}}) => queryClient.ensureQueryData(tmuxWindowsQueryOptions),
+	loader: async ({context: {queryClient}}) => queryClient.ensureQueryData(tmuxWindowsQueryOptions),
 	head: () => ({
 		meta: [{title: "Tmux Windows"}],
 	}),

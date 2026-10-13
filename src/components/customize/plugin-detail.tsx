@@ -189,7 +189,9 @@ export function PluginSkills({plugin}: {plugin: PluginInfoData}) {
 						icon={Scroll}
 						title={`/${namespace}:${skill.name}`}
 						subtitle={skill.description}
-						onView={() => go({kind: "skill", id: `plugin:${plugin.id}:${skill.name}`, tab: "overview"})}
+						onView={() => {
+							go({kind: "skill", id: `plugin:${plugin.id}:${skill.name}`, tab: "overview"});
+						}}
 					/>
 				))}
 			</RowList>
@@ -212,7 +214,9 @@ export function PluginConnectors({detail}: {detail: PluginDetail}) {
 						source={transportLabel(server.transport)}
 						subtitle={server.urlOrCommand}
 						meta={server.enabled ? "Enabled" : "Disabled"}
-						onView={() => go({kind: "connector", slug: toConnectorSlug(server.id)})}
+						onView={() => {
+							go({kind: "connector", slug: toConnectorSlug(server.id)});
+						}}
 					/>
 				))}
 			</RowList>
@@ -237,9 +241,9 @@ export function PluginFiles({plugin, kind}: {plugin: PluginInfoData; kind: "agen
 						icon={kind === "agents" ? Bot : SquareSlash}
 						title={kind === "agents" ? file.name : `/${namespace}:${file.filename.replace(/\.md$/, "")}`}
 						subtitle={file.description}
-						onView={() =>
-							go({kind: "plugin", id: plugin.id, tab: "contents", file: `${kind}/${file.filename}`})
-						}
+						onView={() => {
+							go({kind: "plugin", id: plugin.id, tab: "contents", file: `${kind}/${file.filename}`});
+						}}
 					/>
 				))}
 			</RowList>

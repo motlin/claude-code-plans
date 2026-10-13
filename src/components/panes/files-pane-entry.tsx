@@ -6,7 +6,7 @@ import type {FilesPaneProps} from "./files-pane";
 import {registerPane} from "./pane-registry";
 import {usePaneHost} from "./tile-host";
 
-const DeferredFilesPane = deferredPane("Files", () => import("./files-pane").then((module) => module.FilesPane));
+const DeferredFilesPane = deferredPane("Files", async () => import("./files-pane").then((module) => module.FilesPane));
 
 /** Downloads the Files pane renderer ahead of its first show. */
 export const preloadFilesPane = DeferredFilesPane.preload;

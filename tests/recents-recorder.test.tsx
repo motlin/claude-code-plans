@@ -244,7 +244,9 @@ describe("recorder session identities", () => {
 		await go(router, "/settings");
 		act(() => queryClient.setQueryData(sessionQueryKeys.identity(ALIAS), {sessionId: "session-alpha"}));
 		const resolved = loadRecents();
-		act(() => queryClient.removeQueries({queryKey: sessionQueryKeys.identity(ALIAS), exact: true}));
+		act(() => {
+			queryClient.removeQueries({queryKey: sessionQueryKeys.identity(ALIAS), exact: true});
+		});
 		expect({resolved, removed: loadRecents(), requests: fetch.mock.calls}).toStrictEqual({
 			resolved: [BETA, {...ALPHA, href: `/session/${ALIAS}`}],
 			removed: [BETA, ALPHA],
@@ -262,7 +264,9 @@ describe("recorder session identities", () => {
 		act(() => {
 			navigation = router.navigate({to: "/session/$id", params: {id: "session-beta"}});
 		});
-		await vi.waitFor(() => expect(router.state.status).toBe("pending"));
+		await vi.waitFor(() => {
+			expect(router.state.status).toBe("pending");
+		});
 		act(() => queryClient.setQueryData(sessionQueryKeys.identity(ALIAS), {sessionId: "session-alpha"}));
 		const duringNavigation = loadRecents();
 		await act(async () => {
@@ -284,14 +288,14 @@ describe("recorder session identities", () => {
 			await expect(
 				queryClient.fetchQuery({
 					queryKey: sessionQueryKeys.identity(ALIAS),
-					queryFn: () => Promise.reject(error),
+					queryFn: async () => Promise.reject(error),
 				}),
 			).rejects.toThrow(error);
 		});
 		const ambiguous = loadRecents();
 		act(() => queryClient.setQueryData(sessionQueryKeys.identity(ALIAS), {sessionId: "session-beta"}));
 		SESSION_TITLES[ALIAS] = "Alpha updated";
-		await act(() => router.invalidate());
+		await act(async () => router.invalidate());
 		const reassigned = loadRecents();
 		document.title = "(2) Alpha renamed";
 		await go(router, "/settings");

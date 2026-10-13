@@ -98,7 +98,12 @@ function ActionButton({
 function CopyAction({text}: {text: string}) {
 	const [copied, setCopied] = useState(false);
 	const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-	useEffect(() => () => clearTimeout(timer.current), []);
+	useEffect(
+		() => () => {
+			clearTimeout(timer.current);
+		},
+		[],
+	);
 
 	return (
 		<>
@@ -109,7 +114,9 @@ function CopyAction({text}: {text: string}) {
 						if (!ok) return;
 						setCopied(true);
 						clearTimeout(timer.current);
-						timer.current = setTimeout(() => setCopied(false), COPIED_MS);
+						timer.current = setTimeout(() => {
+							setCopied(false);
+						}, COPIED_MS);
 					});
 				}}
 			>
@@ -132,7 +139,9 @@ function bound(
 	message: TranscriptMessageRef | undefined,
 ): (() => void) | undefined {
 	if (action === undefined || message === undefined) return undefined;
-	return () => action(message);
+	return () => {
+		action(message);
+	};
 }
 
 function ForkAction({message}: {message: TranscriptMessageRef | undefined}) {

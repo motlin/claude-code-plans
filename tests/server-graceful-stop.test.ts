@@ -37,7 +37,7 @@ for (const directory of ["projects", "plans", "commands", join("plugins", "cache
 let PORT = "";
 let env: NodeJS.ProcessEnv = {};
 
-function freePort(): Promise<string> {
+async function freePort(): Promise<string> {
 	return new Promise((resolvePort, reject) => {
 		const probe = createServer();
 		probe.once("error", reject);
@@ -71,7 +71,7 @@ function isAlive(pid: number): boolean {
 	}
 }
 
-function openEventStream(): Promise<ClientRequest> {
+async function openEventStream(): Promise<ClientRequest> {
 	return new Promise((resolveStream, reject) => {
 		const request = get(`http://localhost:${PORT}/api/events`, (response) => {
 			response.once("data", () => {

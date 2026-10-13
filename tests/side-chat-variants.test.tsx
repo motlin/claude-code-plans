@@ -97,7 +97,7 @@ async function askOneQuestion() {
 		"fetch",
 		vi.fn(async () => ndjsonResponse("It loads the config.")),
 	);
-	await act(() => askSideChat(SESSION_ID, "What does load() do?"));
+	await act(async () => askSideChat(SESSION_ID, "What does load() do?"));
 }
 
 const HISTORY = ["What does load() do?It loads the config.\nCopyBranch"];
@@ -119,7 +119,9 @@ afterEach(() => {
 describe("SideChat variants", () => {
 	it("switches floating → docked → floating while keeping the Q/A history", async () => {
 		renderInHost();
-		act(() => openSideChat(SESSION_ID));
+		act(() => {
+			openSideChat(SESSION_ID);
+		});
 		await askOneQuestion();
 		const floating = snapshot();
 
@@ -140,14 +142,18 @@ describe("SideChat variants", () => {
 
 	it("closes the docked pane with Close side chat and reopens docked with ⌘;-style toggles", async () => {
 		renderInHost();
-		act(() => openSideChat(SESSION_ID));
+		act(() => {
+			openSideChat(SESSION_ID);
+		});
 		await askOneQuestion();
 		fireEvent.click(screen.getByRole("button", {name: "Dock side chat"}));
 
 		fireEvent.click(within(dockedPane() ?? document.body).getByRole("button", {name: "Close side chat"}));
 		const closed = {...snapshot(), open: getSideChat(SESSION_ID).open};
 
-		act(() => openSideChat(SESSION_ID));
+		act(() => {
+			openSideChat(SESSION_ID);
+		});
 		const reopened = {...snapshot(), open: getSideChat(SESSION_ID).open};
 
 		expect({closed, reopened}).toEqual({
@@ -166,7 +172,9 @@ describe("SideChat variants", () => {
 		vi.stubGlobal("open", open);
 
 		renderInHost();
-		act(() => openSideChat(SESSION_ID));
+		act(() => {
+			openSideChat(SESSION_ID);
+		});
 		await askOneQuestion();
 		fireEvent.click(screen.getByRole("button", {name: "Open in new window"}));
 
@@ -199,7 +207,9 @@ describe("SideChat variants", () => {
 			vi.fn(() => null),
 		);
 		renderInHost();
-		act(() => openSideChat(SESSION_ID));
+		act(() => {
+			openSideChat(SESSION_ID);
+		});
 		await askOneQuestion();
 
 		fireEvent.click(screen.getByRole("button", {name: "Open in new window"}));

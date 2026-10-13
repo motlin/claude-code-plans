@@ -22,7 +22,7 @@ function resolveHeadHandler(route: unknown): ApiHandler {
  */
 function neverEndingStream(onCancel: () => void): ReadableStream<Uint8Array> {
 	return new ReadableStream({
-		pull() {
+		async pull() {
 			return new Promise<void>(() => {});
 		},
 		cancel() {
@@ -80,7 +80,7 @@ describe("withHeadBodyCancel", () => {
 		const fetchImpl = (): Response =>
 			new Response(
 				new ReadableStream({
-					pull() {
+					async pull() {
 						return new Promise<void>(() => {});
 					},
 					cancel() {
@@ -104,7 +104,7 @@ describe("HEAD /api/events", () => {
 		const handler = resolveHeadHandler(EventsRoute);
 		const before = sseClientCount();
 
-		const response = await withHeadBodyCancel((request) => handler({request}))(
+		const response = await withHeadBodyCancel(async (request) => handler({request}))(
 			new Request("http://localhost/api/events", {method: "HEAD"}),
 		);
 

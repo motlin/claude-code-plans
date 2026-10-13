@@ -308,7 +308,9 @@ describe("AttentionSection", () => {
 					rowLimit={5}
 					now={NOW}
 					onOpen={() => undefined}
-					onDismiss={(item) => setDismissed((previous) => ({...previous, [item.session.sessionId]: NOW}))}
+					onDismiss={(item) => {
+						setDismissed((previous) => ({...previous, [item.session.sessionId]: NOW}));
+					}}
 				/>
 			);
 		}
@@ -355,7 +357,9 @@ describe("useViewportRowLimit", () => {
 		const {result} = renderHook(() => useViewportRowLimit());
 		const seen = [result.current];
 		for (const height of [800, 900, 1000, 1100, 850]) {
-			act(() => resize(height));
+			act(() => {
+				resize(height);
+			});
 			seen.push(result.current);
 		}
 
@@ -385,7 +389,7 @@ describe("HomeLanding sessions", () => {
 
 	it("shows blocked and review sessions, skips dismissed ones, and persists a dismissal", async () => {
 		const dismissedAt = {hidden: Date.now() - 10 * MINUTE};
-		const fetchMock = vi.fn((_input: string, _init?: RequestInit) =>
+		const fetchMock = vi.fn(async (_input: string, _init?: RequestInit) =>
 			Promise.resolve(Response.json({dismissals: {...dismissedAt, waiting: Date.now()}})),
 		);
 		vi.stubGlobal("fetch", fetchMock);
@@ -454,7 +458,9 @@ describe("HomeLanding sessions", () => {
 		const [firstDismiss] = screen.getAllByRole("button", {name: "Dismiss session"});
 		if (!firstDismiss) throw new Error("expected a dismiss button");
 		fireEvent.click(firstDismiss);
-		await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+		await waitFor(() => {
+			expect(fetchMock).toHaveBeenCalled();
+		});
 
 		expect({
 			before,
@@ -516,7 +522,9 @@ describe("AttentionSection hover cards", () => {
 			});
 			fireEvent.pointerLeave(li, {pointerType: "mouse"});
 			fireEvent.mouseLeave(li);
-			await waitFor(() => expect(document.querySelector("[data-session-hover-card]")).toBeNull());
+			await waitFor(() => {
+				expect(document.querySelector("[data-session-hover-card]")).toBeNull();
+			});
 		}
 		expect(cards).toStrictEqual([
 			{kind: "blocked", summary: "Waiting for your input."},

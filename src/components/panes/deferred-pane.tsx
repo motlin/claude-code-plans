@@ -54,7 +54,8 @@ export function deferredPane<P extends object>(
 ): DeferredPaneComponent<P> {
 	let pending: Promise<ComponentType<P>> | undefined;
 	let Loaded: ComponentType<P> | undefined;
-	const preload = () => {
+	// oxlint-disable-next-line typescript/promise-function-async -- returns the one cached download shared by every warm-up
+	const preload = (): Promise<ComponentType<P>> => {
 		pending ??= load().then(
 			(component) => {
 				Loaded = component;
@@ -68,7 +69,7 @@ export function deferredPane<P extends object>(
 		);
 		return pending;
 	};
-	const loadDefault = () => preload().then((component) => ({default: component}));
+	const loadDefault = async () => preload().then((component) => ({default: component}));
 	let Renderer = lazy(loadDefault);
 	function DeferredPane({resetKey, chrome, props}: DeferredPaneProps<P>) {
 		const [Pane, setPane] = useState(() => Loaded ?? Renderer);

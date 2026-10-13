@@ -162,9 +162,13 @@ describe("sidebar navigation", () => {
 		const title = await screen.findByText("Example Alice session");
 		const row = title.closest("a[data-row-main-button]");
 		if (row === null) throw new Error("Example session row is missing");
-		await waitFor(() => expect(row.getAttribute("data-selected")).toBe("focused"));
-		await act(() => invalidateSessionIdentities(queryClient));
-		await waitFor(() => expect(row.getAttribute("data-selected")).toBe(null));
+		await waitFor(() => {
+			expect(row.getAttribute("data-selected")).toBe("focused");
+		});
+		await act(async () => invalidateSessionIdentities(queryClient));
+		await waitFor(() => {
+			expect(row.getAttribute("data-selected")).toBe(null);
+		});
 		expect(fetch.mock.calls.map(([url]) => url)).toStrictEqual([
 			"/api/sessions/session_alice_100/identity",
 			"/api/sessions/session_alice_100/identity",
@@ -483,7 +487,9 @@ describe("sidebar New row", () => {
 
 			fireEvent.click(navLinks()[0] as HTMLElement);
 
-			await waitFor(() => expect(focusRequests).toStrictEqual(["focus"]));
+			await waitFor(() => {
+				expect(focusRequests).toStrictEqual(["focus"]);
+			});
 			expect(router.state.location.pathname).toBe("/");
 		} finally {
 			unsubscribe();

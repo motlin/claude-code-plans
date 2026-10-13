@@ -40,9 +40,9 @@ describe("application settings controls", () => {
 
 		const herdrInputToggle = await screen.findByRole("switch", {name: "Live Herdr input"});
 		const shellTabsToggle = screen.getByRole("switch", {name: "Shell tabs"});
-		const ignoredDirectories = screen.getByRole("textbox", {
+		const ignoredDirectories = screen.getByRole<HTMLTextAreaElement>("textbox", {
 			name: "Ignored watcher directories",
-		}) as HTMLTextAreaElement;
+		});
 		expect({
 			herdrInput: herdrInputToggle.getAttribute("aria-checked"),
 			shellTabs: shellTabsToggle.getAttribute("aria-checked"),
@@ -63,16 +63,24 @@ describe("application settings controls", () => {
 		});
 
 		fireEvent.click(herdrInputToggle);
-		await waitFor(() => expect(herdrInputToggle.getAttribute("aria-checked")).toBe("true"));
+		await waitFor(() => {
+			expect(herdrInputToggle.getAttribute("aria-checked")).toBe("true");
+		});
 		fireEvent.click(shellTabsToggle);
-		await waitFor(() => expect(shellTabsToggle.getAttribute("aria-checked")).toBe("false"));
+		await waitFor(() => {
+			expect(shellTabsToggle.getAttribute("aria-checked")).toBe("false");
+		});
 
 		fireEvent.change(ignoredDirectories, {
 			target: {value: "node_modules\ncustom-cache"},
 		});
 		fireEvent.click(screen.getByRole("button", {name: "Save ignored directories"}));
-		await waitFor(() => expect(requests).toHaveLength(3));
-		await waitFor(() => expect(ignoredDirectories.value).toBe("custom-cache\nnode_modules"));
+		await waitFor(() => {
+			expect(requests).toHaveLength(3);
+		});
+		await waitFor(() => {
+			expect(ignoredDirectories.value).toBe("custom-cache\nnode_modules");
+		});
 
 		expect(requests).toStrictEqual([
 			{

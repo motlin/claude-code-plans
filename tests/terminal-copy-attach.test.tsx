@@ -183,9 +183,15 @@ describe("terminal links", () => {
 			activate: direct,
 		};
 		const provider: ILinkProvider = {
-			provideLinks: (_y, callback) => callback([link]),
+			provideLinks: (_y, callback) => {
+				callback([link]);
+			},
 		};
-		const empty: ILinkProvider = {provideLinks: (_y, callback) => callback(undefined)};
+		const empty: ILinkProvider = {
+			provideLinks: (_y, callback) => {
+				callback(undefined);
+			},
+		};
 		const terminal = {linkDetector: {providers: [provider, empty], invalidateCache}};
 		const activated: string[] = [];
 

@@ -152,7 +152,9 @@ describe("transcript context menus", () => {
 		const menu = openMenuOn(find(container, "code", "npm test"));
 		const rows = menuRows(menu);
 		clickItem(menu, "Copy code");
-		await vi.waitFor(() => expect(writeClipboardText).toHaveBeenCalled());
+		await vi.waitFor(() => {
+			expect(writeClipboardText).toHaveBeenCalled();
+		});
 
 		expect({rows, clipboard: vi.mocked(writeClipboardText).mock.calls}).toStrictEqual({
 			rows: ["Copy code", "---", ...ASSISTANT_ROWS],
@@ -165,7 +167,9 @@ describe("transcript context menus", () => {
 		const menu = openMenuOn(find(container, "a[href]", "the docs"));
 		const rows = menuRows(menu);
 		clickItem(menu, "Copy link");
-		await vi.waitFor(() => expect(writeClipboardText).toHaveBeenCalled());
+		await vi.waitFor(() => {
+			expect(writeClipboardText).toHaveBeenCalled();
+		});
 
 		expect({rows, clipboard: vi.mocked(writeClipboardText).mock.calls}).toStrictEqual({
 			rows: ["Open in default browser", "Copy link", "---", ...ASSISTANT_ROWS],
@@ -177,7 +181,9 @@ describe("transcript context menus", () => {
 		const container = renderChat();
 		clickItem(openMenuOn(find(container, "strong", "details")), "Copy message");
 		clickItem(openMenuOn(find(container, "strong", "details")), "Copy message as Markdown");
-		await vi.waitFor(() => expect(writeClipboardText).toHaveBeenCalledTimes(2));
+		await vi.waitFor(() => {
+			expect(writeClipboardText).toHaveBeenCalledTimes(2);
+		});
 
 		expect(vi.mocked(writeClipboardText).mock.calls).toStrictEqual([
 			["Run npm test then read the docs for details."],

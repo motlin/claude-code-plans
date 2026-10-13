@@ -125,12 +125,12 @@ const PLUGINS_STALE_TIME_MS = 30_000;
 
 export const pluginsQueryOptions = queryOptions({
 	queryKey: ["plugins"] as const,
-	queryFn: () => apiFetch("/api/plugins", PluginListResponse),
+	queryFn: async () => apiFetch("/api/plugins", PluginListResponse),
 	staleTime: PLUGINS_STALE_TIME_MS,
 });
 
 export const userCommandsQueryOptions = queryOptions({
 	queryKey: ["plugins", "user-commands"] as const,
-	queryFn: () => apiFetch("/api/plugins/user-commands", UserCommandListResponse),
+	queryFn: async () => apiFetch("/api/plugins/user-commands", UserCommandListResponse),
 	staleTime: PLUGINS_STALE_TIME_MS,
 });

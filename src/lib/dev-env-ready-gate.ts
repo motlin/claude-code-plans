@@ -41,7 +41,9 @@ interface DevPlugin {
 export function announceDevEnvReady(hot: HotChannelLike | undefined): void {
 	if (hot === undefined) return;
 	hot.send(DEV_ENV_READY_EVENT);
-	hot.on(DEV_ENV_READY_QUERY, () => hot.send(DEV_ENV_READY_EVENT));
+	hot.on(DEV_ENV_READY_QUERY, () => {
+		hot.send(DEV_ENV_READY_EVENT);
+	});
 }
 
 /** {@link announceDevEnvReady} for whichever server environment loaded this module; each loads its own copy. */
@@ -89,7 +91,9 @@ export function holdNitroRequestsUntilReady({timeoutMs = DEFAULT_TIMEOUT_MS}: {t
 				if (waiting.size > 0 && !gaveUp) {
 					let timer: ReturnType<typeof setTimeout> | undefined;
 					const timedOut = new Promise<true>((resolve) => {
-						timer = setTimeout(() => resolve(true), timeoutMs);
+						timer = setTimeout(() => {
+							resolve(true);
+						}, timeoutMs);
 					});
 					const timeout = await Promise.race([ready.then(() => false), timedOut]);
 					clearTimeout(timer);

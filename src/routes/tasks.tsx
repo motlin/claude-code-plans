@@ -14,7 +14,7 @@ import {ORPHANED_TASKS_DESCRIPTION, ORPHANED_TASKS_PROJECT_ID} from "../lib/task
 
 export const Route = createFileRoute("/tasks")({
 	component: TasksPage,
-	loader: ({context: {queryClient}}) => queryClient.ensureQueryData(tasksQueryOptions),
+	loader: async ({context: {queryClient}}) => queryClient.ensureQueryData(tasksQueryOptions),
 	head: () => ({
 		meta: [{title: "Tasks"}],
 	}),
@@ -94,7 +94,9 @@ function TasksPage() {
 					<div className="flex items-center gap-1 rounded-md border border-strong p-0.5">
 						<button
 							type="button"
-							onClick={() => setView("list")}
+							onClick={() => {
+								setView("list");
+							}}
 							className={`rounded px-2 py-1 text-xs transition-colors ${view === "list" ? "bg-surface-0 text-primary" : "text-t6 hover:text-secondary"}`}
 							title="List view"
 						>
@@ -102,7 +104,9 @@ function TasksPage() {
 						</button>
 						<button
 							type="button"
-							onClick={() => setView("graph")}
+							onClick={() => {
+								setView("graph");
+							}}
 							className={`rounded px-2 py-1 text-xs transition-colors ${view === "graph" ? "bg-surface-0 text-primary" : "text-t6 hover:text-secondary"}`}
 							title="Dependency graph"
 						>
@@ -115,7 +119,9 @@ function TasksPage() {
 			<input
 				type="search"
 				value={searchQuery}
-				onChange={(event) => setSearchQuery(event.target.value)}
+				onChange={(event) => {
+					setSearchQuery(event.target.value);
+				}}
 				placeholder="Search tasks by title, description, active form, or owner..."
 				aria-label="Search tasks"
 				className="mt-4 w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-accent-100"
@@ -147,7 +153,9 @@ function TasksPage() {
 													type="button"
 													aria-expanded={!isCollapsed}
 													aria-label={`${isCollapsed ? "Expand" : "Collapse"} ${group.sessionTitle}`}
-													onClick={() => toggleGroup(group.projectDir)}
+													onClick={() => {
+														toggleGroup(group.projectDir);
+													}}
 													className="cursor-pointer"
 												>
 													<ChevronRight

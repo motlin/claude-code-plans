@@ -106,4 +106,4 @@ export async function readLocalAccount({
 	return result;
 }
 
-export const getLocalAccount = createServerFn({method: "GET"}).handler(() => readLocalAccount());
+export const getLocalAccount = createServerFn({method: "GET"}).handler(async () => readLocalAccount());

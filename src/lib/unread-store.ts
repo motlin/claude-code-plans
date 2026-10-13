@@ -13,7 +13,7 @@ type Persist = (sessionId: string, action: ViewedAction) => Promise<unknown>;
 const listeners = new Set<() => void>();
 const unseenBySession = new Map<string, boolean>();
 
-let persist: Persist = (sessionId, action) => updateSessionViewedState(sessionId, action);
+let persist: Persist = async (sessionId, action) => updateSessionViewedState(sessionId, action);
 
 function emitChange(): void {
 	for (const listener of listeners) listener();
@@ -38,7 +38,7 @@ function applyOptimistically(sessionId: string, unseen: boolean): void {
 	const previous = unseenBySession.get(sessionId) ?? false;
 	if (setUnseen(sessionId, unseen)) emitChange();
 	void Promise.resolve()
-		.then(() => persist(sessionId, unseen ? "unreviewed" : "reviewed"))
+		.then(async () => persist(sessionId, unseen ? "unreviewed" : "reviewed"))
 		.catch((error: unknown) => {
 			console.warn("[unread-store] failed to persist unseen flag", error);
 			// Roll back only if nothing (such as an SSE summary) has replaced the optimistic value.

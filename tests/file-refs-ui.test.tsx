@@ -44,7 +44,7 @@ class FakeObserver {
 
 const statRequests: string[][] = [];
 
-function fakeFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+async function fakeFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
 	const url = String(input);
 	if (url === "/api/file-refs") {
 		const {paths} = JSON.parse(String(init?.body)) as {paths: string[]};
@@ -92,7 +92,9 @@ describe("ProseMarkdown file refs", () => {
 			),
 		);
 
-		await waitFor(() => expect(container.querySelectorAll("[data-file-ref]")).toHaveLength(2));
+		await waitFor(() => {
+			expect(container.querySelectorAll("[data-file-ref]")).toHaveLength(2);
+		});
 		const refs = [...container.querySelectorAll<HTMLElement>("[data-file-ref]")];
 		expect({
 			refs: refs.map((ref) => ({
@@ -167,7 +169,9 @@ describe("TruncatedFilePathHeader file refs", () => {
 describe("SessionFileRefs", () => {
 	let unregister: () => void = () => {};
 
-	afterEach(() => unregister());
+	afterEach(() => {
+		unregister();
+	});
 
 	it("clicking a transcript ref opens the closed Files pane with a preview tab", async () => {
 		unregister = registerPane("files", {
@@ -197,7 +201,9 @@ describe("SessionFileRefs", () => {
 			),
 		);
 
-		await waitFor(() => expect(container.querySelectorAll("[data-file-ref]")).toHaveLength(2));
+		await waitFor(() => {
+			expect(container.querySelectorAll("[data-file-ref]")).toHaveLength(2);
+		});
 		expect(screen.queryByRole("region", {name: "Files"})).toBeNull();
 		act(() => {
 			container.querySelector<HTMLElement>("[data-file-ref]")!.click();

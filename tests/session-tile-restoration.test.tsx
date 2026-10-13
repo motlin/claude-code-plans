@@ -200,7 +200,7 @@ async function settleMeasurements(main: HTMLElement) {
 						contentBoxSize: [],
 						devicePixelContentBoxSize: [],
 					}));
-				observer.callback(observations, observer as unknown as ResizeObserver);
+				observer.callback(observations, observer);
 			}
 		});
 		const after = JSON.stringify({
@@ -229,7 +229,15 @@ afterEach(() => {
 
 function PaneOpenButton() {
 	const host = usePaneHost();
-	return <button onClick={() => host.openPane("plan")}>Open fabricated pane</button>;
+	return (
+		<button
+			onClick={() => {
+				host.openPane("plan");
+			}}
+		>
+			Open fabricated pane
+		</button>
+	);
 }
 const EMPTY_RESULTS = new Map();
 function ShellVisit({
@@ -330,7 +338,9 @@ async function renderShell(strict: boolean, routeId = LOCAL_ID, fresh = false, r
 		return contentHeight(this);
 	});
 	vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) =>
-		window.setTimeout(() => callback(performance.now()), 0),
+		window.setTimeout(() => {
+			callback(performance.now());
+		}, 0),
 	);
 	vi.stubGlobal("cancelAnimationFrame", window.clearTimeout.bind(window));
 	unregister = registerPane("plan", {title: "Fabricated pane", render: () => <p>Alice pane</p>});
@@ -470,8 +480,10 @@ it.each([false, true])(
 		fireEvent.click(screen.getByRole("button", {name: "Close"}));
 		await settleMeasurements(actualScrollport());
 		const before = state(actualScrollport());
-		await act(() => router.navigate({to: "/plans"}));
-		await act(async () => router.history.back());
+		await act(async () => router.navigate({to: "/plans"}));
+		await act(async () => {
+			router.history.back();
+		});
 		await screen.findByRole("button", {name: "Open fabricated pane"});
 		await settleMeasurements(actualScrollport());
 		expect(state(actualScrollport())).toStrictEqual(before);
@@ -493,8 +505,10 @@ it("restores the settled reading anchor after a live width round trip without re
 		await settleMeasurements(initial);
 	}
 	const before = state(initial);
-	await act(() => router.navigate({to: "/plans"}));
-	await act(async () => router.history.back());
+	await act(async () => router.navigate({to: "/plans"}));
+	await act(async () => {
+		router.history.back();
+	});
 	await screen.findByRole("button", {name: "Open fabricated pane"});
 	await settleMeasurements(actualScrollport());
 	expect(state(actualScrollport())).toStrictEqual(before);
@@ -512,7 +526,7 @@ it("rejects a tile width change that has not delivered observations before depar
 	await settleMeasurements(initial);
 	const remember = vi.spyOn(measurements, "rememberTranscriptMeasurements");
 	hostWidths.set(initial, 640);
-	await act(() => router.navigate({to: "/plans"}));
+	await act(async () => router.navigate({to: "/plans"}));
 	expect(remember.mock.calls).toStrictEqual([]);
 });
 
@@ -552,14 +566,16 @@ it.each([LOCAL_ID, ALIAS])("restores chat on Back after an ordinary route owns m
 	});
 	await settleMeasurements(initial);
 	const before = state(initial);
-	await act(() => router.navigate({to: "/plans"}));
+	await act(async () => router.navigate({to: "/plans"}));
 	expect(
 		[...document.querySelectorAll('[data-scroll-restoration-id="main"]')].map((node) => ({
 			tag: node.tagName,
 			chat: node.hasAttribute("data-session-scrollport"),
 		})),
 	).toStrictEqual([{tag: "MAIN", chat: false}]);
-	await act(async () => router.history.back());
+	await act(async () => {
+		router.history.back();
+	});
 	await screen.findByRole("button", {name: "Open fabricated pane"});
 	const returned = actualScrollport();
 	await settleMeasurements(returned);
@@ -654,7 +670,7 @@ it.each(["source", "layout"] as const)("rejects incompatible same-commit %s meas
 	expect(actualScrollport() === initial).toBe(false);
 	// No observer measurements occur before departure, so the new instance saves only the
 	// rows it measured as it committed, never the old snapshot's height map.
-	await act(() => router.navigate({to: "/plans"}));
+	await act(async () => router.navigate({to: "/plans"}));
 	expect(remember.mock.calls.at(-1)?.[1].heights).toStrictEqual(
 		new Map([
 			["line-0", 200],
@@ -692,10 +708,12 @@ it("waits for invalid-width geometry to commit before restoring Back", async () 
 		fireEvent.scroll(initial);
 	});
 	await settleMeasurements(initial);
-	await act(() => router.navigate({to: "/plans"}));
+	await act(async () => router.navigate({to: "/plans"}));
 	listWidth = 640;
 	phase = "changed-width-back";
-	await act(async () => router.history.back());
+	await act(async () => {
+		router.history.back();
+	});
 	await screen.findByRole("button", {name: "Open fabricated pane"});
 	const returned = actualScrollport();
 	// The only restore sees estimated spacers for the new width, never the old measured spacer.
@@ -713,7 +731,11 @@ it("waits for invalid-width geometry to commit before restoring Back", async () 
 async function settleFresh(host: HTMLElement) {
 	for (let turn = 0; turn < 3; turn++) {
 		await act(async () => {
-			await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+			await new Promise<void>((resolve) =>
+				requestAnimationFrame(() => {
+					resolve();
+				}),
+			);
 		});
 		await settleMeasurements(host);
 	}
@@ -819,27 +841,29 @@ it.each([0, 8000])("restores a captured offset when alias resolution mounts the 
 	});
 	await settleMeasurements(initial);
 	const before = state(initial);
-	await act(() => router.navigate({to: "/plans"}));
+	await act(async () => router.navigate({to: "/plans"}));
 	clients.at(-1)!.removeQueries({queryKey: sessionIdentityQueryOptions(ALIAS).queryKey});
 	let resolveIdentity: (response: Response) => void = () => {};
 	vi.stubGlobal(
 		"fetch",
 		vi.fn(
-			() =>
+			async () =>
 				new Promise<Response>((resolve) => {
 					resolveIdentity = resolve;
 				}),
 		),
 	);
-	await act(async () => router.history.back());
+	await act(async () => {
+		router.history.back();
+	});
 	await screen.findByTestId("session-skeleton");
 	expect(document.querySelector("[data-session-scrollport]")).toBeNull();
 	phase = "cold-host";
-	await act(async () =>
+	await act(async () => {
 		resolveIdentity(
 			new Response(JSON.stringify({sessionId: LOCAL_ID}), {headers: {"Content-Type": "application/json"}}),
-		),
-	);
+		);
+	});
 	await screen.findByRole("button", {name: "Open fabricated pane"});
 	const returned = actualScrollport();
 	await settleFresh(returned);
@@ -859,19 +883,21 @@ it("cancels a delayed-host restore when the reader scrolls before its fallback f
 		fireEvent.scroll(initial);
 	});
 	await settleMeasurements(initial);
-	await act(() => router.navigate({to: "/plans"}));
+	await act(async () => router.navigate({to: "/plans"}));
 	clients.at(-1)!.removeQueries({queryKey: sessionIdentityQueryOptions(ALIAS).queryKey});
 	let resolveIdentity: (response: Response) => void = () => {};
 	vi.stubGlobal(
 		"fetch",
 		vi.fn(
-			() =>
+			async () =>
 				new Promise<Response>((resolve) => {
 					resolveIdentity = resolve;
 				}),
 		),
 	);
-	await act(async () => router.history.back());
+	await act(async () => {
+		router.history.back();
+	});
 	await screen.findByTestId("session-skeleton");
 	const frames = new Map<number, FrameRequestCallback>();
 	let nextFrame = 0;
@@ -883,11 +909,11 @@ it("cancels a delayed-host restore when the reader scrolls before its fallback f
 	vi.stubGlobal("cancelAnimationFrame", (id: number) => {
 		frames.delete(id);
 	});
-	await act(async () =>
+	await act(async () => {
 		resolveIdentity(
 			new Response(JSON.stringify({sessionId: LOCAL_ID}), {headers: {"Content-Type": "application/json"}}),
-		),
-	);
+		);
+	});
 	await screen.findByRole("button", {name: "Open fabricated pane"});
 	const returned = actualScrollport();
 	await act(async () => {
@@ -962,7 +988,7 @@ it.each(["source", "layout", "width"] as const)(
 		}
 		const remember = vi.spyOn(measurements, "rememberTranscriptMeasurements");
 		fireEvent.click(screen.getByRole("button", {name: "Collapse"}));
-		await act(() => router.navigate({to: "/plans"}));
+		await act(async () => router.navigate({to: "/plans"}));
 		// A layout change remounts the chat, which saves only the rows it measured as it committed.
 		expect(remember.mock.calls.at(-1)?.[1].heights ?? new Map()).toStrictEqual(
 			change === "layout"

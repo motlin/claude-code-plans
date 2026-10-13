@@ -38,5 +38,5 @@ export const HerdrWorkspaceIndexResponse = z.object({workspaces: z.array(HerdrWo
 
 export const herdrWorkspacesQueryOptions = queryOptions({
 	queryKey: ["herdr", "workspaces"] as const,
-	queryFn: () => apiFetch("/api/herdr-workspaces", HerdrWorkspaceIndexResponse),
+	queryFn: async () => apiFetch("/api/herdr-workspaces", HerdrWorkspaceIndexResponse),
 });

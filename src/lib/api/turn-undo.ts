@@ -26,7 +26,7 @@ function turnUndoUrl(sessionId: string): string {
 	return `/api/sessions/${encodeURIComponent(sessionId)}/turn-undo`;
 }
 
-export function fetchTurnUndoPreview(sessionId: string, turnUuid: string) {
+export async function fetchTurnUndoPreview(sessionId: string, turnUuid: string) {
 	return apiFetch(`${turnUndoUrl(sessionId)}?turn=${encodeURIComponent(turnUuid)}`, TurnUndoPreviewResponseSchema, {
 		cache: "no-store",
 	});

@@ -89,7 +89,9 @@ function ToastItem({entry, onDismiss}: {entry: ToastEntry; onDismiss: (id: numbe
 	useEffect(() => {
 		if (paused) return undefined;
 		const startedAt = Date.now();
-		const timer = setTimeout(() => onDismiss(id), remaining.current);
+		const timer = setTimeout(() => {
+			onDismiss(id);
+		}, remaining.current);
 		return () => {
 			clearTimeout(timer);
 			remaining.current -= Date.now() - startedAt;
@@ -101,10 +103,18 @@ function ToastItem({entry, onDismiss}: {entry: ToastEntry; onDismiss: (id: numbe
 			data-toast
 			data-kind={kind}
 			className="pointer-events-auto flex max-w-[360px] items-start gap-3 rounded-card bg-surface-popover px-4 py-3 text-sm text-primary shadow-panel-sm motion-safe:animate-[toast-in_150ms_ease-out]"
-			onMouseEnter={() => setHovered(true)}
-			onMouseLeave={() => setHovered(false)}
-			onFocus={() => setFocused(true)}
-			onBlur={() => setFocused(false)}
+			onMouseEnter={() => {
+				setHovered(true);
+			}}
+			onMouseLeave={() => {
+				setHovered(false);
+			}}
+			onFocus={() => {
+				setFocused(true);
+			}}
+			onBlur={() => {
+				setFocused(false);
+			}}
 		>
 			{kind === "error" ? (
 				<TriangleAlert
@@ -138,7 +148,9 @@ function ToastItem({entry, onDismiss}: {entry: ToastEntry; onDismiss: (id: numbe
 				type="button"
 				aria-label="Dismiss"
 				className="flex size-5 shrink-0 items-center justify-center rounded-lg p-1 text-secondary hover:bg-fill-ghost-hover hover:text-primary"
-				onClick={() => onDismiss(id)}
+				onClick={() => {
+					onDismiss(id);
+				}}
 			>
 				<svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16" fill="none">
 					<path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />

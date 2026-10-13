@@ -77,7 +77,9 @@ describe("SessionRowStatusDot glyph", () => {
 
 	it("keeps the toggle on an unread row's dot, labelled by the shared tooltip", () => {
 		const {container} = render(<SessionRowStatusDot session={listItem("done")} />);
-		act(() => syncUnseenFromSummaries([{id: "session-status-dot-1", unseen: true}]));
+		act(() => {
+			syncUnseenFromSummaries([{id: "session-status-dot-1", unseen: true}]);
+		});
 		const button = screen.getByRole("button", {name: "Click to mark as read"});
 
 		expect({

@@ -446,7 +446,9 @@ function initIndexDb(sqlite: Database.Database): void {
 		readMetadata(sqlite, "schema_version") !== schema.SCHEMA_VERSION ||
 		readMetadata(sqlite, "schema_fingerprint") !== INDEX_SCHEMA_FINGERPRINT
 	) {
-		sqlite.transaction(() => dropAllObjects(sqlite))();
+		sqlite.transaction(() => {
+			dropAllObjects(sqlite);
+		})();
 	}
 
 	sqlite.exec(CREATE_TABLES_SQL);

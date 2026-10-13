@@ -190,7 +190,7 @@ describe("ClaudeEventsProvider SSE reconnect", () => {
 			eventSource.reconnect();
 		});
 
-		await waitFor(() =>
+		await waitFor(() => {
 			expect(
 				Object.fromEntries(
 					Object.entries(keys).map(([name, key]) => [name, client.getQueryState(key)?.isInvalidated]),
@@ -210,8 +210,8 @@ describe("ClaudeEventsProvider SSE reconnect", () => {
 				localAccount: false,
 				applicationSettings: false,
 				herdrPanes: false,
-			}),
-		);
+			});
+		});
 	});
 
 	it.each([DOMAIN_EVENTS.SESSION_ADDED, DOMAIN_EVENTS.SESSION_UPDATED, DOMAIN_EVENTS.SESSION_REMOVED])(
@@ -242,12 +242,12 @@ describe("ClaudeEventsProvider SSE reconnect", () => {
 							},
 				);
 			});
-			await waitFor(() =>
+			await waitFor(() => {
 				expect({
 					aliases: aliases.map((key) => client.getQueryState(key)?.isInvalidated),
 					transcript: client.getQueryState(sessionQueryKeys.transcript("session-alice"))?.isInvalidated,
-				}).toStrictEqual({aliases: [true, true], transcript: false}),
-			);
+				}).toStrictEqual({aliases: [true, true], transcript: false});
+			});
 		},
 	);
 
@@ -255,7 +255,7 @@ describe("ClaudeEventsProvider SSE reconnect", () => {
 		const {client, eventSource} = renderProvider();
 		const key = sessionQueryKeys.identity("session_alice_100");
 		client.setQueryData(key, {sessionId: "session-alice"});
-		act(() =>
+		act(() => {
 			eventSource.emit(DOMAIN_EVENTS.SESSION_LINES_APPENDED, {
 				sessionId: "session-bob",
 				lines: [
@@ -266,8 +266,8 @@ describe("ClaudeEventsProvider SSE reconnect", () => {
 						lastSequenceNum: 0,
 					},
 				],
-			}),
-		);
+			});
+		});
 		expect({
 			identity: client.getQueryData(key),
 			invalidated: client.getQueryState(key)?.isInvalidated,

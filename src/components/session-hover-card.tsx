@@ -120,7 +120,11 @@ function BlockedCardBody({
 							? `Waiting on plan approval${approval.planFilename === null ? "" : `: ${approval.planFilename}`}`
 							: (summary ?? "Waiting for your input.")}
 					</p>
-					<OpenSessionButton onClick={() => onOpen(sessionId)} />
+					<OpenSessionButton
+						onClick={() => {
+							onOpen(sessionId);
+						}}
+					/>
 				</>
 			) : (
 				<QuickReply approval={answerable} />
@@ -146,7 +150,7 @@ function OpenSessionButton({onClick}: {onClick: () => void}) {
 function QuickReply({approval}: {approval: PendingApprovalItem & {questionPreview: string}}) {
 	const [draft, setDraft] = useState("");
 	const answer = useMutation({
-		mutationFn: (text: string) =>
+		mutationFn: async (text: string) =>
 			postAnswerQuestion({
 				sessionId: approval.sessionId,
 				toolUseId: approval.toolUseId,
@@ -182,7 +186,9 @@ function QuickReply({approval}: {approval: PendingApprovalItem & {questionPrevie
 									type="button"
 									data-card-option
 									disabled={answer.isPending}
-									onClick={() => send(option)}
+									onClick={() => {
+										send(option);
+									}}
 									className="h-7 max-w-full truncate rounded-md border border-subtle px-2.5 text-[12px] text-primary hover:bg-alpha-2 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100"
 								>
 									{option}
@@ -197,7 +203,9 @@ function QuickReply({approval}: {approval: PendingApprovalItem & {questionPrevie
 							rows={1}
 							value={draft}
 							disabled={answer.isPending}
-							onChange={(event) => setDraft(event.target.value)}
+							onChange={(event) => {
+								setDraft(event.target.value);
+							}}
 							onKeyDown={(event) => {
 								if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) return;
 								event.preventDefault();
@@ -209,7 +217,9 @@ function QuickReply({approval}: {approval: PendingApprovalItem & {questionPrevie
 							type="button"
 							aria-label="Send reply"
 							disabled={answer.isPending || draft.trim() === ""}
-							onClick={() => send(draft)}
+							onClick={() => {
+								send(draft);
+							}}
 							className="flex size-7 shrink-0 items-center justify-center rounded-md bg-accent-100 text-white disabled:opacity-40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100"
 						>
 							<ArrowUp aria-hidden="true" className="size-4" />

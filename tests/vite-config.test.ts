@@ -148,7 +148,7 @@ describe("quiet output", () => {
 		expect({
 			reporters: vitestConfig.test?.reporters,
 			silent: vitestConfig.test?.silent,
-			projects: vitestConfig.test?.projects?.map((project) =>
+			projects: vitestConfig.test?.projects?.map((project): unknown =>
 				typeof project === "object" && "test" in project
 					? [project.test?.name, project.test?.isolate]
 					: project,

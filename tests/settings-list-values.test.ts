@@ -25,7 +25,9 @@ describe("SettingsProvider list persistence", () => {
 		] satisfies LinkCategoryRule[];
 		const firstRender = renderHook(() => useSettings(), {wrapper});
 
-		act(() => firstRender.result.current.setSetting("linkCategoryRules", rules));
+		act(() => {
+			firstRender.result.current.setSetting("linkCategoryRules", rules);
+		});
 
 		expect({
 			stored: localStorage.getItem(LINK_CATEGORY_RULES_STORAGE_KEY),
@@ -34,7 +36,9 @@ describe("SettingsProvider list persistence", () => {
 
 		firstRender.unmount();
 		const reloaded = renderHook(() => useSettings(), {wrapper});
-		await waitFor(() => expect(reloaded.result.current.settings.linkCategoryRules).toStrictEqual(rules));
+		await waitFor(() => {
+			expect(reloaded.result.current.settings.linkCategoryRules).toStrictEqual(rules);
+		});
 	});
 
 	it.each([
@@ -49,9 +53,9 @@ describe("SettingsProvider list persistence", () => {
 
 		const {result} = renderHook(() => useSettings(), {wrapper});
 
-		await waitFor(() =>
-			expect(result.current.settings.linkCategoryRules).toStrictEqual(DEFAULTS.linkCategoryRules),
-		);
+		await waitFor(() => {
+			expect(result.current.settings.linkCategoryRules).toStrictEqual(DEFAULTS.linkCategoryRules);
+		});
 	});
 
 	it("preserves scalar string, boolean, and numeric serialization and parsing", async () => {
@@ -93,7 +97,7 @@ describe("SettingsProvider list persistence", () => {
 
 		firstRender.unmount();
 		const reloaded = renderHook(() => useSettings(), {wrapper});
-		await waitFor(() =>
+		await waitFor(() => {
 			expect({
 				stringValue: reloaded.result.current.settings.defaultSubagentView,
 				sessionSort: reloaded.result.current.settings.sessionSort,
@@ -112,8 +116,8 @@ describe("SettingsProvider list persistence", () => {
 				},
 				booleanValue: true,
 				numericValue: 120,
-			}),
-		);
+			});
+		});
 	});
 
 	it("rejects capability runtime facts and unknown config values from persistence", async () => {
@@ -131,6 +135,8 @@ describe("SettingsProvider list persistence", () => {
 		);
 		const {result} = renderHook(() => useSettings(), {wrapper});
 
-		await waitFor(() => expect(result.current.settings.capabilities).toStrictEqual(DEFAULTS.capabilities));
+		await waitFor(() => {
+			expect(result.current.settings.capabilities).toStrictEqual(DEFAULTS.capabilities);
+		});
 	});
 });

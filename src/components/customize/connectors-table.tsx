@@ -105,7 +105,13 @@ export function ConnectorsTable({servers, claudeAi, onView}: ConnectorsTableProp
 			</thead>
 			<tbody>
 				{servers.map((server) => (
-					<Row key={server.id} label={`View ${server.name}`} onView={() => onView(server)}>
+					<Row
+						key={server.id}
+						label={`View ${server.name}`}
+						onView={() => {
+							onView(server);
+						}}
+					>
 						<NameCell name={server.name} domain={connectorDomain(server.transport, server.urlOrCommand)} />
 						<TypeCell type={transportLabel(server.transport)} badge={SCOPE_LABEL[server.scope]} />
 						<td className={`${TD_CLASS} text-secondary`}>

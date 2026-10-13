@@ -134,7 +134,9 @@ function MainPaneToggle({entry}: {entry: MainPaneEntry}) {
 				aria-label={entry.label}
 				aria-pressed={open}
 				aria-keyshortcuts={keys.ariaKeyShortcuts}
-				onClick={() => host.togglePane(entry.kind)}
+				onClick={() => {
+					host.togglePane(entry.kind);
+				}}
 				className={TITLEBAR_ICON_BUTTON_CLASS}
 			>
 				<Icon aria-hidden="true" />
@@ -168,7 +170,9 @@ function ViewOptionsMenu({
 						<MenuCheckboxItem
 							key={entry.kind}
 							checked={host.isOpen(entry.kind)}
-							onCheckedChange={() => host.togglePane(entry.kind)}
+							onCheckedChange={() => {
+								host.togglePane(entry.kind);
+							}}
 							{...(binding === undefined ? {} : {shortcut: bindingToKeys(binding)})}
 						>
 							<span className="flex items-center gap-2">

@@ -111,8 +111,8 @@ function dependencies(overrides: Partial<SessionDiffHandlerDependencies> = {}): 
 	return {
 		index: db.index,
 		resolveDirectory: async (cwd) => cwd,
-		listScopes: (cwd) => listScopes(cwd),
-		buildScopeDiff: (cwd, scope, options) => buildScopeDiff(cwd, scope, options),
+		listScopes: async (cwd) => listScopes(cwd),
+		buildScopeDiff: async (cwd, scope, options) => buildScopeDiff(cwd, scope, options),
 		readRecords: async () => sessionRecords(repository),
 		...overrides,
 	};

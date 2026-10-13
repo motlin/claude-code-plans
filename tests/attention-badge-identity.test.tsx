@@ -119,7 +119,9 @@ describe("attention badges for session aliases", () => {
 		const pending = snapshot();
 		act(() => client.setQueryData(sessionQueryKeys.identity(ALIAS), {sessionId: ALICE}));
 		const resolved = snapshot();
-		act(() => client.removeQueries({queryKey: sessionQueryKeys.identity(ALIAS), exact: true}));
+		act(() => {
+			client.removeQueries({queryKey: sessionQueryKeys.identity(ALIAS), exact: true});
+		});
 		expect({pending, resolved, removed: snapshot(), requests: fetch.mock.calls}).toStrictEqual({
 			pending: {badge: 2, title: "(2) Example session", subscriptions: 1},
 			resolved: {badge: 1, title: "(1) Example session", subscriptions: 1},
@@ -140,7 +142,10 @@ describe("attention badges for session aliases", () => {
 		);
 		await act(async () => {
 			await expect(
-				client.fetchQuery({queryKey: sessionQueryKeys.identity(ALIAS), queryFn: () => Promise.reject(error)}),
+				client.fetchQuery({
+					queryKey: sessionQueryKeys.identity(ALIAS),
+					queryFn: async () => Promise.reject(error),
+				}),
 			).rejects.toThrow(error);
 		});
 		expect({
@@ -167,7 +172,7 @@ describe("attention badges for session aliases", () => {
 		act(() => document.dispatchEvent(new Event("visibilitychange")));
 		const hidden = snapshot();
 		vi.spyOn(document, "hidden", "get").mockReturnValue(false);
-		await act(() => router.navigate({to: "/session/$id", params: {id: BOB}}));
+		await act(async () => router.navigate({to: "/session/$id", params: {id: BOB}}));
 		const differentSession = snapshot();
 		publish(BOB);
 		expect({

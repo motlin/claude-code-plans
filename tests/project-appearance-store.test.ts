@@ -68,13 +68,17 @@ describe("project appearance store", () => {
 			throw new Error("denied");
 		});
 
-		expect(() => setProjectAppearance("project-alpha", {icon: "star"})).not.toThrow();
+		expect(() => {
+			setProjectAppearance("project-alpha", {icon: "star"});
+		}).not.toThrow();
 		expect(readProjectAppearance()).toStrictEqual({});
 	});
 
 	it("updates hooks locally and from another tab's storage event", () => {
 		const hook = renderHook(() => useProjectAppearance());
-		act(() => setProjectAppearance("project-alpha", {icon: "star"}));
+		act(() => {
+			setProjectAppearance("project-alpha", {icon: "star"});
+		});
 		const afterLocal = hook.result.current;
 
 		const otherTab = JSON.stringify({"project-beta": {color: "purple"}});

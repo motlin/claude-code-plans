@@ -41,7 +41,7 @@ describe("blank-screen prevention on /session/$id", () => {
 		// A fetch that never resolves keeps every session query pending forever.
 		vi.stubGlobal(
 			"fetch",
-			vi.fn(() => new Promise<Response>(() => {})),
+			vi.fn(async () => new Promise<Response>(() => {})),
 		);
 
 		await renderWithRouter(<SessionPage sessionId="session-test-100" />);
@@ -57,10 +57,10 @@ describe("blank-screen prevention on /session/$id", () => {
 		// this loader must never await the (multi-megabyte) transcript payload.
 		const never = new Promise<never>(() => {});
 		const queryClient = {
-			prefetchQuery: vi.fn(() => never),
-			prefetchInfiniteQuery: vi.fn(() => never),
-			ensureQueryData: vi.fn(() => never),
-			ensureInfiniteQueryData: vi.fn(() => never),
+			prefetchQuery: vi.fn(async () => never),
+			prefetchInfiniteQuery: vi.fn(async () => never),
+			ensureQueryData: vi.fn(async () => never),
+			ensureInfiniteQueryData: vi.fn(async () => never),
 			getQueryData: vi.fn(() => undefined),
 		};
 

@@ -234,7 +234,9 @@ describe("non-previewable files", () => {
 		const message = await screen.findByText("This file looks like binary data and can’t be previewed as text.");
 		const messageText = message.textContent;
 		fireEvent.click(screen.getByRole("button", {name: "View as text anyway"}));
-		await waitFor(() => expect(document.querySelector("#L1 code")?.textContent).toBe("A\u0000B"));
+		await waitFor(() => {
+			expect(document.querySelector("#L1 code")?.textContent).toBe("A\u0000B");
+		});
 
 		expect({messageText, requests}).toStrictEqual({
 			messageText: "This file looks like binary data and can’t be previewed as text.",
@@ -285,7 +287,9 @@ describe("source view", () => {
 		textFile(SOURCE, Array.from({length: 10}, (_, index) => `line ${index + 1}`).join("\n"));
 		renderView({path: SOURCE, line: 3, endLine: 4});
 
-		await waitFor(() => expect(highlightedLineIds()).toStrictEqual(["L3", "L4"]));
+		await waitFor(() => {
+			expect(highlightedLineIds()).toStrictEqual(["L3", "L4"]);
+		});
 		expect(scrollIntoView.mock.calls).toStrictEqual([[{block: "center"}]]);
 	});
 
@@ -308,7 +312,9 @@ describe("source view", () => {
 		textFile(SOURCE, Array.from({length: 5000}, (_, index) => `line ${index + 1}`).join("\n"));
 		renderView({path: SOURCE, line: 4500});
 
-		await waitFor(() => expect(highlightedLineIds()).toStrictEqual(["L4500"]));
+		await waitFor(() => {
+			expect(highlightedLineIds()).toStrictEqual(["L4500"]);
+		});
 		expect({
 			mountedRowsBelowCap: document.querySelectorAll("[data-file-source] [role=row]").length < 1000,
 			target: document.querySelector("#L4500 code")?.textContent,
@@ -348,7 +354,9 @@ describe("find in file", () => {
 	it("opens on ⌘F inside the pane, counts source matches with smart-case and steps with Enter / ⇧Enter", async () => {
 		textFile(SOURCE, "const alice = 1;\nconst bob = alice;\nconst Alice = bob;");
 		renderView({path: SOURCE});
-		await waitFor(() => expect(document.querySelector("#L3 code")).not.toBeNull());
+		await waitFor(() => {
+			expect(document.querySelector("#L3 code")).not.toBeNull();
+		});
 
 		const opened = fireEvent.keyDown(viewer(), {key: "f", ctrlKey: true});
 		fireEvent.change(findInput(), {target: {value: "alice"}});
@@ -386,7 +394,9 @@ describe("find in file", () => {
 	it("closes on Escape and with the Close find bar button", async () => {
 		textFile(SOURCE, "alice");
 		renderView({path: SOURCE});
-		await waitFor(() => expect(document.querySelector("#L1 code")).not.toBeNull());
+		await waitFor(() => {
+			expect(document.querySelector("#L1 code")).not.toBeNull();
+		});
 
 		fireEvent.keyDown(viewer(), {key: "f", ctrlKey: true});
 		fireEvent.keyDown(findInput(), {key: "Escape"});
@@ -403,7 +413,9 @@ describe("find in file", () => {
 	it("leaves ⌘F alone when focus is outside the pane", async () => {
 		textFile(SOURCE, "alice");
 		renderView({path: SOURCE});
-		await waitFor(() => expect(document.querySelector("#L1 code")).not.toBeNull());
+		await waitFor(() => {
+			expect(document.querySelector("#L1 code")).not.toBeNull();
+		});
 
 		const notPrevented = fireEvent.keyDown(document.body, {key: "f", ctrlKey: true});
 
@@ -417,7 +429,9 @@ describe("find in file", () => {
 		textFile(SOURCE, "needle one\nhay\nneedle two\nneedle three");
 		renderView({path: SOURCE, line: 3, findQuery: "needle"});
 
-		await waitFor(() => expect(counter()).toBe("2 of 3"));
+		await waitFor(() => {
+			expect(counter()).toBe("2 of 3");
+		});
 		expect(findInput().value).toBe("needle");
 	});
 
@@ -427,13 +441,17 @@ describe("find in file", () => {
 			Array.from({length: 5000}, (_, index) => (index % 1000 === 999 ? "needle" : "hay")).join("\n"),
 		);
 		renderView({path: SOURCE});
-		await waitFor(() => expect(document.querySelector("#L1 code")).not.toBeNull());
+		await waitFor(() => {
+			expect(document.querySelector("#L1 code")).not.toBeNull();
+		});
 
 		fireEvent.keyDown(viewer(), {key: "f", ctrlKey: true});
 		fireEvent.change(findInput(), {target: {value: "needle"}});
 		fireEvent.keyDown(findInput(), {key: "Enter", shiftKey: true});
 
-		await waitFor(() => expect(document.querySelector("#L5000 code")?.textContent).toBe("needle"));
+		await waitFor(() => {
+			expect(document.querySelector("#L5000 code")?.textContent).toBe("needle");
+		});
 		expect(counter()).toBe("5 of 5");
 	});
 

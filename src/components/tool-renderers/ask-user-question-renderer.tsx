@@ -231,7 +231,9 @@ function AnswerForm({
 								<button
 									key={opt.label}
 									type="button"
-									onClick={() => toggleOption(index, opt.label)}
+									onClick={() => {
+										toggleOption(index, opt.label);
+									}}
 									disabled={submitting}
 									className={`flex w-full items-center gap-g6 text-left cursor-pointer transition-colors ${
 										selected ? "bg-t2" : "hover:bg-t1"
@@ -273,7 +275,9 @@ function AnswerForm({
 							className={`flex w-full items-center gap-g6 text-left cursor-text ${
 								draft.useOther ? "bg-t2" : "hover:bg-t1"
 							}`}
-							onClick={() => selectOther(index)}
+							onClick={() => {
+								selectOther(index);
+							}}
 						>
 							{isMulti ? (
 								<div className="flex size-[30px] shrink-0 items-center justify-center">
@@ -292,8 +296,12 @@ function AnswerForm({
 							<input
 								type="text"
 								value={draft.otherText}
-								onChange={(e) => setOtherText(index, e.target.value)}
-								onFocus={() => selectOther(index)}
+								onChange={(e) => {
+									setOtherText(index, e.target.value);
+								}}
+								onFocus={() => {
+									selectOther(index);
+								}}
 								disabled={submitting}
 								placeholder="Type your answer"
 								className="flex-1 min-w-0 w-full bg-transparent text-body text-primary placeholder:text-secondary outline-none ring-0 border-0 shadow-none focus:ring-0 focus:!outline-none focus:border-0 focus:shadow-none"
@@ -339,7 +347,9 @@ function DockedSummary({questions}: {questions: QuestionLike[]}) {
 			<button
 				type="button"
 				aria-expanded={expanded}
-				onClick={() => setExpanded((open) => !open)}
+				onClick={() => {
+					setExpanded((open) => !open);
+				}}
 				className="inline-flex w-fit cursor-pointer items-center gap-g3 text-body text-secondary hover:text-primary"
 			>
 				Asking {header}
@@ -379,7 +389,7 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps) {
 		return (
 			<AnswerForm
 				questions={questions}
-				onSubmit={(answers) => ctx.submitAnswer({toolUseId: toolCall.id, answers})}
+				onSubmit={async (answers) => ctx.submitAnswer({toolUseId: toolCall.id, answers})}
 			/>
 		);
 	}

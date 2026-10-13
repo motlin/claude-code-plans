@@ -100,7 +100,7 @@ function useRowRename(): RowRename {
  * The row's title text, which the menu's Rename item swaps for an inline
  * input. `render` styles the idle title, e.g. with an overflow fade.
  */
-export function SessionRowTitle({render}: {render?: (title: string) => ReactNode}) {
+export function SessionRowTitle({render}: {render?: (title: string) => ReactNode}): ReactNode {
 	const {rename} = useRowRename();
 	if (rename.editing) {
 		return <InlineRenameInput value={rename.title} onCommit={rename.commit} onCancel={rename.cancel} blurCancels />;
@@ -159,7 +159,12 @@ function useTranscriptViewRunner(sessionId: string, view: TranscriptViewActions 
 			kind: "success",
 			message: `Make ${label} your default view?`,
 			description: `You’ve picked ${label} in more than one session. You can change the default anytime in Settings.`,
-			action: {label: "Make default", onAction: () => makeDefault(mode)},
+			action: {
+				label: "Make default",
+				onAction: () => {
+					makeDefault(mode);
+				},
+			},
 		});
 	};
 	const makeCurrentDefault = () => {
@@ -370,7 +375,13 @@ function MenuEntryList({entries, run}: {entries: SessionMenuEntry[]; run: Sessio
 		if (entry.kind === "separator") return <MenuSeparator key={`separator-${index}`} />;
 		if (entry.kind === "hotkey") {
 			return (
-				<MenuHotkey key={`hotkey-${entry.id}`} accelerator={entry.accelerator} onSelect={() => run(entry.id)} />
+				<MenuHotkey
+					key={`hotkey-${entry.id}`}
+					accelerator={entry.accelerator}
+					onSelect={() => {
+						run(entry.id);
+					}}
+				/>
 			);
 		}
 		if (entry.submenu !== undefined) {
@@ -390,7 +401,9 @@ function MenuEntryList({entries, run}: {entries: SessionMenuEntry[]; run: Sessio
 					value={radioValue(entry)}
 					closeOnClick
 					{...(entry.accelerator === undefined ? {} : {accelerator: entry.accelerator})}
-					onClick={() => run(entry.id, entry.groupId ?? entry.transcriptMode)}
+					onClick={() => {
+						run(entry.id, entry.groupId ?? entry.transcriptMode);
+					}}
 				>
 					{entry.label}
 				</MenuRadioItem>
@@ -404,7 +417,9 @@ function MenuEntryList({entries, run}: {entries: SessionMenuEntry[]; run: Sessio
 				{...(entry.hiddenAccelerator ? {hideAccelerator: true} : {})}
 				{...(entry.disabled ? {disabled: true} : {})}
 				{...(entry.disabledReason === undefined ? {} : {title: entry.disabledReason})}
-				onSelect={() => run(entry.id)}
+				onSelect={() => {
+					run(entry.id);
+				}}
 			>
 				{entry.label}
 			</MenuItem>
@@ -565,7 +580,9 @@ export function SessionActionsMenu({
 	const renameAfterClose = useRenameAfterMenuClose(rename.startEditing);
 	const {requestRename} = renameAfterClose;
 	const [newGroupOpen, setNewGroupOpen] = useState(false);
-	const newGroupAfterClose = useRenameAfterMenuClose(() => setNewGroupOpen(true));
+	const newGroupAfterClose = useRenameAfterMenuClose(() => {
+		setNewGroupOpen(true);
+	});
 	const {settings, setSetting} = useSettings();
 	const listPrefs = settings.sessionListPrefs;
 	// The rows a bulk New group… moves, captured when the menu asked for the dialog.

@@ -110,22 +110,32 @@ export function DiffContextMenu({sessionId, path, children}: {sessionId: string;
 	}
 
 	function copy(lines: DiffLineSelection) {
-		void writeClipboardText(lines.text).then((copied) =>
+		void writeClipboardText(lines.text).then((copied) => {
 			toast(
 				copied
 					? {kind: "success", message: "Copied to clipboard."}
 					: {kind: "error", message: "Couldn’t copy the selection."},
-			),
-		);
+			);
+		});
 	}
 
 	return (
 		<ContextMenu>
-			<ContextMenuTrigger render={<div />} onContextMenu={(event: MouseEvent) => setTarget(diffLinesAt(event))}>
+			<ContextMenuTrigger
+				render={<div />}
+				onContextMenu={(event: MouseEvent) => {
+					setTarget(diffLinesAt(event));
+				}}
+			>
 				{children}
 			</ContextMenuTrigger>
 			<MenuContent>
-				<MenuItem disabled={target === null} onSelect={() => target && attach(target)}>
+				<MenuItem
+					disabled={target === null}
+					onSelect={() => {
+						if (target) attach(target);
+					}}
+				>
 					Attach as context
 				</MenuItem>
 				<MenuItem
@@ -143,7 +153,13 @@ export function DiffContextMenu({sessionId, path, children}: {sessionId: string;
 					Request changes
 				</MenuItem>
 				<MenuSeparator />
-				<MenuItem shortcut="cmd+c" disabled={target === null} onSelect={() => target && copy(target)}>
+				<MenuItem
+					shortcut="cmd+c"
+					disabled={target === null}
+					onSelect={() => {
+						if (target) copy(target);
+					}}
+				>
 					Copy
 				</MenuItem>
 			</MenuContent>

@@ -41,7 +41,12 @@ let stopHerdrEventBridge: (() => void) | null = null;
 // In dev, log every event-loop stall longer than this with the requests and scan steps that ran during it.
 const EVENT_LOOP_STALL_LOG_MS = 500;
 let stopStallMonitor: (() => void) | null = import.meta.env.DEV
-	? startStallMonitor({thresholdMs: EVENT_LOOP_STALL_LOG_MS, onStall: (stall) => console.warn(formatStall(stall))})
+	? startStallMonitor({
+			thresholdMs: EVENT_LOOP_STALL_LOG_MS,
+			onStall: (stall) => {
+				console.warn(formatStall(stall));
+			},
+		})
 	: null;
 
 void (async () => {
@@ -62,7 +67,7 @@ void (async () => {
 	});
 
 	try {
-		await trackActivity("startup open database", () => initDb());
+		await trackActivity("startup open database", async () => initDb());
 	} catch (err) {
 		console.error("Failed to initialize database:", err);
 		return;
@@ -70,10 +75,14 @@ void (async () => {
 
 	// Live status from the CLI's ~/.claude/sessions registry, re-broadcast as session:updated rows.
 	// Started before the slow scans: summaries read it directly, so rows show live state at once.
-	startSessionRegistryMonitor({onChange: (sessionIds) => rebroadcastSessionsById(sessionIds)});
+	startSessionRegistryMonitor({
+		onChange: (sessionIds) => {
+			rebroadcastSessionsById(sessionIds);
+		},
+	});
 
 	try {
-		await trackActivity("startup pending-approvals scan", () =>
+		await trackActivity("startup pending-approvals scan", async () =>
 			initPendingApprovalsCache(getDb().index, getShutdownSignal()),
 		);
 	} catch (err) {
@@ -81,12 +90,12 @@ void (async () => {
 	}
 
 	let watcher: RecursiveWatcher;
-	const fileContentRoots = await trackActivity("startup file search roots", () =>
+	const fileContentRoots = await trackActivity("startup file search roots", async () =>
 		resolveFileSearchRoots(getDb().index),
 	);
 	const ignoredDirNames = resolveIgnoredDirNames();
 	try {
-		watcher = await trackActivity("startup watcher", () =>
+		watcher = await trackActivity("startup watcher", async () =>
 			createWatcher(
 				[
 					PLANS_DIR,
@@ -113,11 +122,16 @@ void (async () => {
 
 	await trackActivity(
 		"startup watcher ready",
-		() => new Promise<void>((resolve) => watcher.once("ready", () => resolve())),
+		async () =>
+			new Promise<void>((resolve) =>
+				watcher.once("ready", () => {
+					resolve();
+				}),
+			),
 	);
 
 	try {
-		await trackActivity("startup initial scan", () => runInitialScan(fileContentRoots, ignoredDirNames));
+		await trackActivity("startup initial scan", async () => runInitialScan(fileContentRoots, ignoredDirNames));
 	} catch (err) {
 		console.error("Initial scan failed:", err);
 	}
@@ -137,7 +151,9 @@ void (async () => {
 })();
 
 export default createServerEntry({
-	fetch: withHeadBodyCancel(withServerTiming(withActivityTracking((request) => handler.fetch(request)))),
+	fetch: withHeadBodyCancel(
+		withServerTiming(withActivityTracking((request): Response | Promise<Response> => handler.fetch(request))),
+	),
 });
 
 // Last statement of the SSR entry: tells the dev server's request gate (holdNitroRequestsUntilReady in

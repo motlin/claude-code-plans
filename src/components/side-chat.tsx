@@ -228,7 +228,9 @@ function usePopoutWindow(sessionId: string, active: boolean): HTMLElement | null
 		const container = popup.document.createElement("div");
 		container.className = "flex h-dvh flex-col";
 		popup.document.body.append(container);
-		const onPageHide = () => setSideChatMode(sessionId, "floating");
+		const onPageHide = () => {
+			setSideChatMode(sessionId, "floating");
+		};
 		popup.addEventListener("pagehide", onPageHide);
 		setRoot(container);
 		return () => {
@@ -300,29 +302,51 @@ function SideChatPanel({
 				<h2 className="flex-1 truncate text-body font-medium text-primary">Side chat</h2>
 				{variant !== "popout" && <Shortcut keys={shortcut.keys} className="mr-1" />}
 				{entries.length > 0 && (
-					<HeaderButton label="Clear side chat" onClick={() => clearSideChat(sessionId)}>
+					<HeaderButton
+						label="Clear side chat"
+						onClick={() => {
+							clearSideChat(sessionId);
+						}}
+					>
 						<Trash2 className="size-3.5" aria-hidden="true" />
 					</HeaderButton>
 				)}
 				{variant === "floating" && canDock && (
-					<HeaderButton label="Dock side chat" onClick={() => setSideChatMode(sessionId, "docked")}>
+					<HeaderButton
+						label="Dock side chat"
+						onClick={() => {
+							setSideChatMode(sessionId, "docked");
+						}}
+					>
 						<PanelRight className="size-3.5" aria-hidden="true" />
 					</HeaderButton>
 				)}
 				{variant === "docked" && (
-					<HeaderButton label="Undock side chat" onClick={() => setSideChatMode(sessionId, "floating")}>
+					<HeaderButton
+						label="Undock side chat"
+						onClick={() => {
+							setSideChatMode(sessionId, "floating");
+						}}
+					>
 						<PictureInPicture2 className="size-3.5" aria-hidden="true" />
 					</HeaderButton>
 				)}
 				{variant !== "popout" && (
-					<HeaderButton label="Open in new window" onClick={() => setSideChatMode(sessionId, "popout")}>
+					<HeaderButton
+						label="Open in new window"
+						onClick={() => {
+							setSideChatMode(sessionId, "popout");
+						}}
+					>
 						<ExternalLink className="size-3.5" aria-hidden="true" />
 					</HeaderButton>
 				)}
 				<HeaderButton
 					label="Close side chat"
 					ariaKeyShortcuts={variant === "popout" ? undefined : shortcut.ariaKeyShortcuts}
-					onClick={() => closeSideChat(sessionId)}
+					onClick={() => {
+						closeSideChat(sessionId);
+					}}
 				>
 					<X className="size-4" aria-hidden="true" />
 				</HeaderButton>
@@ -346,7 +370,9 @@ function SideChatPanel({
 					value={draft}
 					rows={1}
 					placeholder={entries.length > 0 ? "Follow up…" : "Ask a quick question…"}
-					onChange={(event) => setDraft(event.target.value)}
+					onChange={(event) => {
+						setDraft(event.target.value);
+					}}
 					onKeyDown={(event) => {
 						if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
 							event.preventDefault();
@@ -425,7 +451,9 @@ function SideChatItem({sessionId, entry}: {sessionId: string; entry: SideChatEnt
 	async function copy() {
 		if (await writeClipboardText(entry.answer)) {
 			setCopied(true);
-			setTimeout(() => setCopied(false), 1500);
+			setTimeout(() => {
+				setCopied(false);
+			}, 1500);
 		}
 	}
 

@@ -48,7 +48,9 @@ export function useCommandPalette() {
 		setOpen((prev) => !prev);
 	}, []);
 
-	const openSearch = useCallback(() => openPalette("search"), [openPalette]);
+	const openSearch = useCallback(() => {
+		openPalette("search");
+	}, [openPalette]);
 
 	useShortcut(
 		"search_or_start",

@@ -128,7 +128,7 @@ describe("HomeLanding pull requests", () => {
 	it("shows open PRs instead of the stats card when no session needs attention", async () => {
 		vi.stubGlobal(
 			"fetch",
-			vi.fn(() => Promise.resolve(new Response("{}", {status: 404}))),
+			vi.fn(async () => Promise.resolve(new Response("{}", {status: 404}))),
 		);
 		const session: SessionListItem = {
 			id: "busy",

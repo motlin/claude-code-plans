@@ -27,8 +27,12 @@ export function SessionUsageCard({records, limits}: {records: readonly unknown[]
 	const [copied, setCopied] = useState(false);
 	useEffect(() => {
 		if (!copied) return;
-		const timer = setTimeout(() => setCopied(false), 2000);
-		return () => clearTimeout(timer);
+		const timer = setTimeout(() => {
+			setCopied(false);
+		}, 2000);
+		return () => {
+			clearTimeout(timer);
+		};
 	}, [copied]);
 	const copyReport = async () => {
 		if (await writeClipboardText(formatUsageReport(breakdown, limits, Date.now()))) setCopied(true);

@@ -98,9 +98,26 @@ function QueuedPromptChips({
 									<Ellipsis aria-hidden="true" className="size-3.5" />
 								</MenuTrigger>
 								<MenuContent align="end">
-									<MenuItem onSelect={() => onEdit(item)}>Edit in composer</MenuItem>
-									<MenuItem onSelect={() => onSendNow(item.id)}>Send now</MenuItem>
-									<MenuItem variant="danger" onSelect={() => onRemove(item.id)}>
+									<MenuItem
+										onSelect={() => {
+											onEdit(item);
+										}}
+									>
+										Edit in composer
+									</MenuItem>
+									<MenuItem
+										onSelect={() => {
+											onSendNow(item.id);
+										}}
+									>
+										Send now
+									</MenuItem>
+									<MenuItem
+										variant="danger"
+										onSelect={() => {
+											onRemove(item.id);
+										}}
+									>
 										Remove from queue
 									</MenuItem>
 								</MenuContent>
@@ -271,9 +288,27 @@ export function Composer({
 	const launchOptions = launch.draftKey === draftKey ? launch.options : NO_LAUNCH_OPTIONS;
 	const [openMenu, setOpenMenu] = useState<ChinMenu | null>(null);
 	const menuShortcutOptions = {disabled: chin === undefined};
-	useShortcut("open_mode_menu", () => setOpenMenu("mode"), menuShortcutOptions);
-	useShortcut("open_model_menu", () => setOpenMenu("model"), menuShortcutOptions);
-	useShortcut("open_effort_selector", () => setOpenMenu("effort"), menuShortcutOptions);
+	useShortcut(
+		"open_mode_menu",
+		() => {
+			setOpenMenu("mode");
+		},
+		menuShortcutOptions,
+	);
+	useShortcut(
+		"open_model_menu",
+		() => {
+			setOpenMenu("model");
+		},
+		menuShortcutOptions,
+	);
+	useShortcut(
+		"open_effort_selector",
+		() => {
+			setOpenMenu("effort");
+		},
+		menuShortcutOptions,
+	);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const [attachError, setAttachError] = useState<string | null>(null);
 	const [dragging, setDragging] = useState(false);
@@ -384,7 +419,9 @@ export function Composer({
 	}
 
 	function handleSubmit(
-		send: (prompt: string) => void = (text) => onSend(text, launchOptions),
+		send: (prompt: string) => void = (text) => {
+			onSend(text, launchOptions);
+		},
 		trigger?: Event,
 	): void {
 		if (!canSend) return;
@@ -401,7 +438,9 @@ export function Composer({
 	// The send slot and chin are memoized, so they read the latest render's handlers through refs.
 	const handleSubmitRef = useRef(handleSubmit);
 	handleSubmitRef.current = handleSubmit;
-	const submit = useCallback((event: React.MouseEvent) => handleSubmitRef.current(undefined, event.nativeEvent), []);
+	const submit = useCallback((event: React.MouseEvent) => {
+		handleSubmitRef.current(undefined, event.nativeEvent);
+	}, []);
 
 	const [discardId, setDiscardId] = useState<string | null>(null);
 	const [historyWalk, setHistoryWalk] = useState<{
@@ -490,7 +529,9 @@ export function Composer({
 			launchOptions: chinLaunchOptions,
 			onLaunchOptionsChange:
 				live === undefined
-					? (options) => setLaunch({draftKey, options})
+					? (options) => {
+							setLaunch({draftKey, options});
+						}
 					: (options) => void live.apply(options),
 			confirmEffortChange: live !== undefined,
 			openMenu,
@@ -510,11 +551,15 @@ export function Composer({
 			const commandChord = e.metaKey || e.ctrlKey;
 			const trigger = e.nativeEvent;
 			if (commandChord && e.altKey && onFork !== undefined) {
-				handleSubmit((text) => onFork(text, chinLaunchOptions), trigger);
+				handleSubmit((text) => {
+					onFork(text, chinLaunchOptions);
+				}, trigger);
 			} else if (commandChord && !e.altKey && onSendNow !== undefined) {
 				handleSubmit(onSendNow, trigger);
 			} else if (commandChord && !e.altKey && onSendAndStay !== undefined) {
-				handleSubmit((text) => onSendAndStay(text, chinLaunchOptions), trigger);
+				handleSubmit((text) => {
+					onSendAndStay(text, chinLaunchOptions);
+				}, trigger);
 			} else {
 				handleSubmit(undefined, trigger);
 			}
@@ -592,7 +637,9 @@ export function Composer({
 							commands={matches}
 							query={query}
 							highlighted={highlighted}
-							onHighlight={(index) => setHighlight({query, index})}
+							onHighlight={(index) => {
+								setHighlight({query, index});
+							}}
 							onAccept={acceptSlashCommand}
 						/>
 					)}
@@ -601,7 +648,9 @@ export function Composer({
 							id={mentionMenuId}
 							entries={mentionEntries}
 							highlighted={mentionHighlighted}
-							onHighlight={(index) => setMentionHighlight({entries: mentionEntries, index})}
+							onHighlight={(index) => {
+								setMentionHighlight({entries: mentionEntries, index});
+							}}
 							onAccept={acceptFileMention}
 						/>
 					)}
@@ -626,7 +675,9 @@ export function Composer({
 							setCaret(e.target.selectionStart);
 							setPrompt(e.target.value);
 						}}
-						onSelect={(e) => setCaret(e.currentTarget.selectionStart)}
+						onSelect={(e) => {
+							setCaret(e.currentTarget.selectionStart);
+						}}
 						onKeyDown={handleKeyDown}
 						onPaste={handlePaste}
 						aria-controls={slashOpen ? slashMenuId : mentionOpen ? mentionMenuId : undefined}

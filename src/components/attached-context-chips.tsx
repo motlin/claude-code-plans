@@ -52,7 +52,9 @@ function ImageChip({sessionId, chip}: {sessionId: string; chip: ContextChip}) {
 			<button
 				type="button"
 				aria-label={`Remove ${label}`}
-				onClick={() => removeChip(sessionId, chip)}
+				onClick={() => {
+					removeChip(sessionId, chip);
+				}}
 				className="absolute end-0.5 top-0.5 flex size-4 cursor-pointer items-center justify-center rounded-full bg-surface-3/90 text-secondary hover:text-primary"
 			>
 				<X aria-hidden="true" className="size-2.5" />
@@ -95,7 +97,9 @@ export function AttachedContextChips({
 						<button
 							type="button"
 							aria-label={`Remove ${label}`}
-							onClick={() => removeChip(sessionId, chip)}
+							onClick={() => {
+								removeChip(sessionId, chip);
+							}}
 							className={CHIP_REMOVE_CLASS}
 						>
 							<X aria-hidden="true" className="size-3" />
@@ -113,7 +117,9 @@ export function AttachedContextChips({
 						<button
 							type="button"
 							aria-label={`Remove comment on ${label}`}
-							onClick={() => removeQueuedDiffComment(sessionId, comment.id)}
+							onClick={() => {
+								removeQueuedDiffComment(sessionId, comment.id);
+							}}
 							className={CHIP_REMOVE_CLASS}
 						>
 							<X aria-hidden="true" className="size-3" />

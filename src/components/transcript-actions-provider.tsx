@@ -24,13 +24,13 @@ export interface TranscriptActionsProviderProps {
  */
 export function TranscriptActionsProvider({sessionId, lines, fork, children}: TranscriptActionsProviderProps) {
 	const toast = useToast();
-	const undo = useTurnUndo((outcome) =>
+	const undo = useTurnUndo((outcome) => {
 		toast(
 			outcome.kind === "done"
 				? {kind: "success", message: outcome.message}
 				: {kind: "error", message: outcome.message},
-		),
-	);
+		);
+	});
 	// Read through a ref so the context value, and every toolbar under it, stays put as lines grow.
 	const latest = useRef({lines, start: undo.start, fork});
 	useEffect(() => {

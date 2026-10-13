@@ -69,7 +69,7 @@ export async function cancelWorkingCopyReview(reviewId: string, processId: strin
 export const reviewQueryOptions = (reviewId: string) =>
 	queryOptions({
 		queryKey: ["reviews", reviewId] as const,
-		queryFn: () => apiFetch(`/api/reviews/${encodeURIComponent(reviewId)}`, ReviewBundleSchema),
+		queryFn: async () => apiFetch(`/api/reviews/${encodeURIComponent(reviewId)}`, ReviewBundleSchema),
 		staleTime: Infinity,
 		gcTime: Infinity,
 	});

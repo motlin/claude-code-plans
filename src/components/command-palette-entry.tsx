@@ -9,6 +9,7 @@ let paletteModule: Promise<CommandPaletteModule> | undefined;
 let LoadedPalette: CommandPaletteModule["CommandPalette"] | undefined;
 
 /** The palette's one module download, shared by its lazy boundary and the idle and intent warm-ups. */
+// oxlint-disable-next-line typescript/promise-function-async -- returns the one cached download, which use() needs to be stable
 export function loadCommandPalette(): Promise<CommandPaletteModule> {
 	paletteModule ??= import("./command-palette")
 		.then((module) => {

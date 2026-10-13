@@ -17,8 +17,8 @@ function renderEditor() {
 
 function ruleValues(): Array<{label: string; hostPattern: string}> {
 	return screen.queryAllByRole("group", {name: /^Link category rule /}).map((row) => ({
-		label: (within(row).getByRole("textbox", {name: /^Label for rule /}) as HTMLInputElement).value,
-		hostPattern: (within(row).getByRole("textbox", {name: /^Host pattern for rule /}) as HTMLInputElement).value,
+		label: within(row).getByRole<HTMLInputElement>("textbox", {name: /^Label for rule /}).value,
+		hostPattern: within(row).getByRole<HTMLInputElement>("textbox", {name: /^Host pattern for rule /}).value,
 	}));
 }
 
@@ -70,10 +70,10 @@ describe("LinkCategoryRulesSection", () => {
 		);
 		renderEditor();
 
-		const firstUp = screen.getByRole("button", {name: "Move rule 1 up"}) as HTMLButtonElement;
-		const secondDown = screen.getByRole("button", {
+		const firstUp = screen.getByRole<HTMLButtonElement>("button", {name: "Move rule 1 up"});
+		const secondDown = screen.getByRole<HTMLButtonElement>("button", {
 			name: "Move rule 2 down",
-		}) as HTMLButtonElement;
+		});
 		expect({
 			firstUpDisabled: firstUp.disabled,
 			secondDownDisabled: secondDown.disabled,

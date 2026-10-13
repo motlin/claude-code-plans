@@ -12,7 +12,7 @@ export function promptHistoryQueryOptions(sessionId: string | undefined) {
 			: `/api/prompt-history?sessionId=${encodeURIComponent(sessionId)}`;
 	return queryOptions({
 		queryKey: ["prompt-history", sessionId ?? null],
-		queryFn: () => apiFetch(url, PromptHistoryResponse),
+		queryFn: async () => apiFetch(url, PromptHistoryResponse),
 		staleTime: 30_000,
 	});
 }

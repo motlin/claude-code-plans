@@ -176,7 +176,7 @@ describe("PUT /api/sessions/$id/title", () => {
 		const writer = (async () => {
 			for (const line of writerLines) await appendFile(sessionPath, line + "\n");
 		})();
-		const renames = Array.from({length: 10}, (_, i) =>
+		const renames = Array.from({length: 10}, async (_, i) =>
 			renameSession({
 				db: db.index,
 				claudeDir: join(home, ".claude"),

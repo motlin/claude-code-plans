@@ -182,13 +182,21 @@ export function bridgeTerminalStream(child: TerminalStreamChild, socket: Termina
 		socket.send(JSON.stringify(record));
 	};
 
-	const parser = createTerminalRecordParser(onRecord, (error) => fail(error.message));
-	const onStandardOutput = (chunk: Buffer | string): void => parser.push(chunk);
-	const onStandardOutputEnd = (): void => parser.end();
+	const parser = createTerminalRecordParser(onRecord, (error) => {
+		fail(error.message);
+	});
+	const onStandardOutput = (chunk: Buffer | string): void => {
+		parser.push(chunk);
+	};
+	const onStandardOutputEnd = (): void => {
+		parser.end();
+	};
 	const onStandardError = (chunk: Buffer | string): void => {
 		standardError = `${standardError}${chunk.toString()}`.slice(-2000);
 	};
-	const onChildError = (error: Error): void => fail(error.message);
+	const onChildError = (error: Error): void => {
+		fail(error.message);
+	};
 	const onChildExit = (code: number | null, signal: NodeJS.Signals | null): void => {
 		if (stopped || receivedClosed) return;
 		const detail = standardError.trim() || `exit ${String(code)} signal ${String(signal)}`;

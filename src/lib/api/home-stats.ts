@@ -21,6 +21,6 @@ export type HomeStatsPayload = z.infer<typeof HomeStatsResponse>;
 
 export const homeStatsQueryOptions = queryOptions({
 	queryKey: ["home-stats"] as const,
-	queryFn: ({signal}) => apiFetch("/api/home-stats", HomeStatsResponse, {signal}),
+	queryFn: async ({signal}) => apiFetch("/api/home-stats", HomeStatsResponse, {signal}),
 	staleTime: 5 * 60 * 1000,
 });

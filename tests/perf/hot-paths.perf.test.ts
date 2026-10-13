@@ -51,13 +51,21 @@ describe("hot path call counts", () => {
 		for (const fn of HOT_PATH_SHAPED_FNS) {
 			it(
 				`${fn} ${shape.name}`,
-				async () => ratchet(hotPathId(fn, shape.name), await measureCalls(fn, shape.name)),
+				async () => {
+					ratchet(hotPathId(fn, shape.name), await measureCalls(fn, shape.name));
+				},
 				TIMEOUT,
 			);
 		}
 	}
 
 	for (const [fn, shape] of Object.entries(HOT_PATH_FIXED_SHAPES) as [HotPathFixedFn, string][]) {
-		it(`${fn} ${shape}`, async () => ratchet(hotPathId(fn, shape), await measureCalls(fn, shape)), TIMEOUT);
+		it(
+			`${fn} ${shape}`,
+			async () => {
+				ratchet(hotPathId(fn, shape), await measureCalls(fn, shape));
+			},
+			TIMEOUT,
+		);
 	}
 });

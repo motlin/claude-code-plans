@@ -35,7 +35,9 @@ vi.mock("../src/components/markdown-editor", () => ({
 		<textarea
 			aria-label="Markdown editor"
 			defaultValue={markdown}
-			onChange={(event) => onChange(event.target.value)}
+			onChange={(event) => {
+				onChange(event.target.value);
+			}}
 		/>
 	),
 }));
@@ -328,7 +330,7 @@ function renderView(props: Parameters<typeof FileView>[0]) {
 
 async function startEditing(): Promise<HTMLTextAreaElement> {
 	fireEvent.click(await screen.findByRole("button", {name: "Edit"}));
-	return (await screen.findByRole("textbox", {name: "Markdown editor"})) as HTMLTextAreaElement;
+	return await screen.findByRole("textbox", {name: "Markdown editor"});
 }
 
 function pressSave(target: Element): void {
@@ -357,7 +359,9 @@ describe("FileView editing", () => {
 		const startedWith = editor.value;
 		fireEvent.change(editor, {target: {value: "# Alpha plan\n\nSecond draft.\n"}});
 		pressSave(editor);
-		await waitFor(() => expect(puts).toHaveLength(1));
+		await waitFor(() => {
+			expect(puts).toHaveLength(1);
+		});
 		await flush();
 
 		expect({
@@ -386,11 +390,15 @@ describe("FileView editing", () => {
 		const editor = await startEditing();
 		fireEvent.change(editor, {target: {value: "one"}});
 		fireEvent.click(screen.getByRole("button", {name: "Save"}));
-		await waitFor(() => expect(puts).toHaveLength(1));
+		await waitFor(() => {
+			expect(puts).toHaveLength(1);
+		});
 		await flush();
 		fireEvent.change(editor, {target: {value: "two"}});
 		pressSave(editor);
-		await waitFor(() => expect(puts).toHaveLength(2));
+		await waitFor(() => {
+			expect(puts).toHaveLength(2);
+		});
 		expect(puts.map((put) => put.ifMatch)).toStrictEqual([
 			mtimeEtag(new Date(PLAN_MTIME)),
 			mtimeEtag(new Date(SAVED_MTIME)),
@@ -406,7 +414,9 @@ describe("FileView editing", () => {
 		const dialog = await screen.findByRole("alertdialog");
 		const text = dialog.textContent;
 		fireEvent.click(within(dialog).getByRole("button", {name: "Override"}));
-		await waitFor(() => expect(puts).toHaveLength(2));
+		await waitFor(() => {
+			expect(puts).toHaveLength(2);
+		});
 		expect({text, ifMatch: puts.map((put) => put.ifMatch)}).toStrictEqual({
 			text: "This file changed on disk since you started editing.DiscardOverride",
 			ifMatch: [mtimeEtag(new Date(PLAN_MTIME)), null],
@@ -546,9 +556,9 @@ describe("Files pane editing", () => {
 		fireEvent.click(within(pane).getByRole("button", {name: PLAN_PATH}));
 		await flush();
 		fireEvent.click(await within(pane).findByRole("button", {name: "Edit"}));
-		return (await within(pane).findByRole("textbox", {
+		return await within(pane).findByRole("textbox", {
 			name: "Markdown editor",
-		})) as HTMLTextAreaElement;
+		});
 	}
 
 	it("starting an edit pins the preview tab", async () => {

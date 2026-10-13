@@ -16,7 +16,7 @@ class FakeOrigin {
 	snapshotFetches = 0;
 
 	readonly locks: SharedEventSourceDeps["locks"] = {
-		request: (name, options, callback) => {
+		request: async (name, options, callback) => {
 			const tryGrant = (): Promise<unknown> | undefined => {
 				if (this.holders.has(name)) return undefined;
 				const token = Symbol(name);
@@ -68,9 +68,9 @@ class FakeOrigin {
 			locks: options.locks === false ? undefined : this.locks,
 			createChannel: this.createChannel,
 			openStream: (url, streamOptions) => {
-				const stream = new FakeStream(url, streamOptions.resumeAfterGap === true, () =>
-					streamOptions.onReconnected(),
-				);
+				const stream = new FakeStream(url, streamOptions.resumeAfterGap === true, () => {
+					streamOptions.onReconnected();
+				});
 				streamOptions.attach(stream as unknown as EventSource);
 				this.streams.push(stream);
 				return () => {
@@ -193,7 +193,7 @@ describe("openSharedEventSource", () => {
 		const [leader, ...followers] = [origin.openTab(), origin.openTab(), origin.openTab()];
 		await settle();
 
-		leader!.close();
+		leader.close();
 		await settle();
 		const [takeover] = origin.openStreams();
 		const resyncsBeforeOpen = followers.map((tab) => tab.resyncs);

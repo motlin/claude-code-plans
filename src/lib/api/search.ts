@@ -39,7 +39,7 @@ export const FileSearchRootsResponse = z
 export const fileSearchQueryOptions = (query: string, scopeRoot: string) =>
 	queryOptions({
 		queryKey: ["search", "files", query, scopeRoot] as const,
-		queryFn: ({signal}) => {
+		queryFn: async ({signal}) => {
 			const parameters = new URLSearchParams({query, scopeRoot});
 			return apiFetch(`/api/search/files?${parameters.toString()}`, FileSearchResponse, {signal});
 		},
@@ -123,14 +123,14 @@ function unifiedSearchUrl({query, type, project, date, limit}: UnifiedSearchRequ
 export const unifiedSearchQueryOptions = (request: UnifiedSearchRequest) =>
 	queryOptions({
 		queryKey: ["search", "unified", unifiedSearchUrl(request)] as const,
-		queryFn: ({signal}) => apiFetch(unifiedSearchUrl(request), UnifiedSearchResponse, {signal}),
+		queryFn: async ({signal}) => apiFetch(unifiedSearchUrl(request), UnifiedSearchResponse, {signal}),
 		staleTime: 30_000,
 		gcTime: 5 * 60_000,
 	});
 
 export const fileSearchRootsQueryOptions = queryOptions({
 	queryKey: ["search", "file-roots"] as const,
-	queryFn: ({signal}) => apiFetch("/api/search/file-roots", FileSearchRootsResponse, {signal}),
+	queryFn: async ({signal}) => apiFetch("/api/search/file-roots", FileSearchRootsResponse, {signal}),
 	staleTime: 30_000,
 	gcTime: 5 * 60_000,
 });

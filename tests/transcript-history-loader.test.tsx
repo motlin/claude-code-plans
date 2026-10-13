@@ -23,11 +23,12 @@ let intersect: (...states: boolean[]) => void = () => undefined;
 
 class TestIntersectionObserver {
 	constructor(private readonly callback: IntersectionObserverCallback) {
-		intersect = (...states: boolean[]) =>
+		intersect = (...states: boolean[]) => {
 			this.callback(
 				states.map((isIntersecting) => ({isIntersecting}) as IntersectionObserverEntry),
 				this as unknown as IntersectionObserver,
 			);
+		};
 	}
 	observe() {}
 	disconnect() {}
@@ -51,12 +52,13 @@ function renderLoader(cached: TranscriptData) {
 			<TranscriptHistoryLoader sessionId="sess-1" startIndex={cached.startIndex} />
 		</QueryClientProvider>,
 	);
-	const rerenderWithStartIndex = (startIndex: number) =>
+	const rerenderWithStartIndex = (startIndex: number) => {
 		view.rerender(
 			<QueryClientProvider client={queryClient}>
 				<TranscriptHistoryLoader sessionId="sess-1" startIndex={startIndex} />
 			</QueryClientProvider>,
 		);
+	};
 	return {queryClient, rerenderWithStartIndex};
 }
 
@@ -71,7 +73,7 @@ function mockEarlierPage(page: TranscriptData) {
 
 /** Serves a two-record page for whatever `?before=` the client asks for. */
 function mockPagedHistory() {
-	return vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+	return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
 		const before = Number(new URL(String(input), "http://localhost").searchParams.get("before"));
 		const startIndex = Math.max(0, before - 2);
 		const page: TranscriptData = {
@@ -116,14 +118,14 @@ describe("TranscriptHistoryLoader", () => {
 		intersect(false);
 		intersect(true);
 
-		await waitFor(() =>
+		await waitFor(() => {
 			expect(queryClient.getQueryData<TranscriptData>(sessionQueryKeys.transcript("sess-1"))).toStrictEqual({
 				records: [record(0), record(1), record(2), record(3)],
 				byteOffset: 900,
 				startIndex: 0,
 				precedingMessageCount: 0,
-			}),
-		);
+			});
+		});
 	});
 
 	it("offers no button, and shows upstream's Loading... spinner while the earlier page is in flight", async () => {
@@ -154,7 +156,9 @@ describe("TranscriptHistoryLoader", () => {
 		resolveFetch(
 			new Response(JSON.stringify(EARLIER_PAGE), {status: 200, headers: {"Content-Type": "application/json"}}),
 		);
-		await waitFor(() => expect(screen.queryByRole("status")).toBeNull());
+		await waitFor(() => {
+			expect(screen.queryByRole("status")).toBeNull();
+		});
 
 		expect({idle, loading}).toStrictEqual({
 			// The spinner's row is reserved either way, so its coming and going never moves the transcript.
@@ -189,9 +193,9 @@ describe("TranscriptHistoryLoader", () => {
 
 		intersect(false, true);
 
-		await waitFor(() =>
-			expect(queryClient.getQueryData<TranscriptData>(sessionQueryKeys.transcript("sess-1"))?.startIndex).toBe(0),
-		);
+		await waitFor(() => {
+			expect(queryClient.getQueryData<TranscriptData>(sessionQueryKeys.transcript("sess-1"))?.startIndex).toBe(0);
+		});
 	});
 
 	it("keeps paging when the landed page is too short to move the sentinel out of view", async () => {
@@ -203,11 +207,15 @@ describe("TranscriptHistoryLoader", () => {
 
 		intersect(false);
 		intersect(true);
-		await waitFor(() => expect(fetchSpy.mock.calls.length).toBe(1));
+		await waitFor(() => {
+			expect(fetchSpy.mock.calls.length).toBe(1);
+		});
 		rerenderWithStartIndex(4);
 		intersect(true);
 
-		await waitFor(() => expect(fetchSpy.mock.calls.length).toBe(2));
+		await waitFor(() => {
+			expect(fetchSpy.mock.calls.length).toBe(2);
+		});
 	});
 
 	it("still ignores the opening frame after a page lands without the reader scrolling", async () => {
@@ -234,7 +242,9 @@ describe("TranscriptHistoryLoader", () => {
 		intersect(false);
 		intersect(true);
 
-		await waitFor(() => expect(screen.getByText("fabricated network failure")).toBeDefined());
+		await waitFor(() => {
+			expect(screen.getByText("fabricated network failure")).toBeDefined();
+		});
 	});
 });
 

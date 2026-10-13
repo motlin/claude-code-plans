@@ -41,9 +41,15 @@ function press(init: KeyboardEventInit) {
 	fireEvent.keyDown(document.activeElement ?? document.body, init);
 }
 
-const openModeMenu = () => press({key: "µ", code: "KeyM", metaKey: true, altKey: true});
-const openModelMenu = () => press({key: "I", code: "KeyI", metaKey: true, shiftKey: true});
-const openEffort = () => press({key: "E", code: "KeyE", metaKey: true, shiftKey: true});
+const openModeMenu = () => {
+	press({key: "µ", code: "KeyM", metaKey: true, altKey: true});
+};
+const openModelMenu = () => {
+	press({key: "I", code: "KeyI", metaKey: true, shiftKey: true});
+};
+const openEffort = () => {
+	press({key: "E", code: "KeyE", metaKey: true, shiftKey: true});
+};
 
 function sendPrompt(text: string) {
 	const textarea = screen.getByRole("textbox", {name: "Prompt"});
@@ -112,7 +118,9 @@ describe("Composer mode menu", () => {
 
 		openModeMenu();
 		fireEvent.keyDown(await screen.findByRole("menu"), {key: "3", code: "Digit3"});
-		await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+		await waitFor(() => {
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
 		const readout = document.querySelector("[data-chin-mode]")?.textContent;
 		sendPrompt("Continue Alice's test");
 
@@ -137,7 +145,9 @@ describe("Composer mode menu", () => {
 		const confirm = await screen.findByRole("alertdialog");
 		const confirmText = confirm.textContent;
 		fireEvent.click(within(confirm).getByRole("button", {name: "Enable"}));
-		await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+		await waitFor(() => {
+			expect(screen.queryByRole("alertdialog")).toBeNull();
+		});
 		const readout = document.querySelector("[data-chin-mode]")?.textContent;
 		sendPrompt("Continue Bob's test");
 
@@ -167,7 +177,9 @@ describe("Composer model menu", () => {
 		const rows = radioRows(menu).map(({label, key, checked}) => ({label, key, checked}));
 		const more = within(menu).getByRole("menuitem", {name: /More models/}).textContent;
 		fireEvent.keyDown(menu, {key: "2", code: "Digit2"});
-		await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+		await waitFor(() => {
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
 		const trigger = screen.getByRole("button", {name: /^Model:/}).getAttribute("aria-label");
 		sendPrompt("Continue Carol's test");
 
@@ -194,7 +206,9 @@ describe("Composer model menu", () => {
 			.getAllByRole("menuitemradio")
 			.map((item) => item.textContent);
 		fireEvent.keyDown(menu, {key: "3", code: "Digit3"});
-		await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+		await waitFor(() => {
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
 		sendPrompt("Continue Erin's test");
 
 		expect({rows, text, calls: onSend.mock.calls}).toStrictEqual({
@@ -218,11 +232,15 @@ describe("Composer model menu", () => {
 		fireEvent.mouseEnter(subTrigger);
 		fireEvent.pointerMove(subTrigger, {pointerType: "mouse"});
 		fireEvent.mouseMove(subTrigger);
-		await waitFor(() => expect(screen.getAllByRole("menu")).toHaveLength(2));
+		await waitFor(() => {
+			expect(screen.getAllByRole("menu")).toHaveLength(2);
+		});
 		const submenu = screen.getAllByRole("menu")[1] as HTMLElement;
 		const labels = radioRows(submenu).map((row) => row.label);
 		fireEvent.click(within(submenu).getByRole("menuitemradio", {name: "Opus 4.6"}));
-		await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+		await waitFor(() => {
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
 		sendPrompt("Continue Dave's test");
 
 		expect({labels, calls: onSend.mock.calls}).toStrictEqual({
@@ -274,7 +292,9 @@ describe("Composer effort selector", () => {
 
 		openEffort();
 		fireEvent.keyDown(await screen.findByRole("dialog"), {key: "1", code: "Digit1"});
-		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog")).toBeNull();
+		});
 		sendPrompt("Continue Frank's test");
 
 		expect(onSend.mock.calls).toStrictEqual([["Continue Frank's test", {effort: "low"}]]);
@@ -392,7 +412,9 @@ describe("Composer on a live pane", () => {
 
 		openModeMenu();
 		fireEvent.keyDown(await screen.findByRole("menu"), {key: "4", code: "Digit4"});
-		await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+		await waitFor(() => {
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
 		sendPrompt("Continue Heidi's test");
 
 		expect({applied: apply.mock.calls, sends: onSend.mock.calls}).toStrictEqual({
@@ -443,7 +465,9 @@ describe("Composer on a live pane", () => {
 		const confirmText = confirm.textContent;
 		const appliedBeforeConfirm = apply.mock.calls.length;
 		fireEvent.click(within(confirm).getByRole("button", {name: "Change effort"}));
-		await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+		await waitFor(() => {
+			expect(screen.queryByRole("alertdialog")).toBeNull();
+		});
 
 		expect({confirmText, appliedBeforeConfirm, applied: apply.mock.calls}).toStrictEqual({
 			confirmText:
@@ -461,7 +485,9 @@ describe("Composer on a live pane", () => {
 		fireEvent.keyDown(await screen.findByRole("dialog"), {key: "5", code: "Digit5"});
 		const confirm = await screen.findByRole("alertdialog");
 		fireEvent.click(within(confirm).getByRole("button", {name: "Cancel"}));
-		await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+		await waitFor(() => {
+			expect(screen.queryByRole("alertdialog")).toBeNull();
+		});
 
 		expect({
 			applied: apply.mock.calls,
@@ -569,9 +595,13 @@ describe("Composer + menu Connectors submenu", () => {
 		fireEvent.click(screen.getByRole("button", {name: "Add"}));
 		const menu = await screen.findByRole("menu");
 		const trigger = await within(menu).findByRole("menuitem", {name: /^Connectors/});
-		act(() => trigger.focus());
+		act(() => {
+			trigger.focus();
+		});
 		fireEvent.keyDown(trigger, {key: "ArrowRight"});
-		await waitFor(() => expect(screen.getAllByRole("menu")).toHaveLength(2));
+		await waitFor(() => {
+			expect(screen.getAllByRole("menu")).toHaveLength(2);
+		});
 		const submenu = screen.getAllByRole("menu").find((candidate) => candidate !== menu);
 		if (submenu === undefined) throw new Error("no Connectors submenu");
 		return {menu, trigger, submenu};
@@ -625,7 +655,9 @@ describe("Composer + menu Connectors submenu", () => {
 			navigate.mockClear();
 			const {submenu} = await openConnectors();
 			fireEvent.click(within(submenu).getByRole("menuitem", {name}));
-			await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+			await waitFor(() => {
+				expect(screen.queryByRole("menu")).toBeNull();
+			});
 			targets.push(...navigate.mock.calls.map(([options]) => options));
 		}
 

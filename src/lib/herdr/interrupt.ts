@@ -33,7 +33,7 @@ function errorStatus(code: string): number {
 const defaultDependencies: HerdrInterruptDependencies = {
 	rejectRequest: rejectCrossSite,
 	writesEnabled: herdrWritesEnabled,
-	resolveTarget: (sessionId) => resolveHerdrPromptTarget(sessionId),
+	resolveTarget: async (sessionId) => resolveHerdrPromptTarget(sessionId),
 	request: herdrRequest,
 	createRequestId: () => `ccp:interrupt:${crypto.randomUUID()}`,
 };

@@ -37,21 +37,21 @@ interface Broadcast {
 	data: Record<string, unknown>;
 }
 
-function available() {
-	return Promise.resolve({
+async function available() {
+	return {
 		available: true as const,
 		socketPath: "/test/herdr.sock",
 		version: "0.8.0-test",
 		protocol: 100,
-	});
+	};
 }
 
-function unavailable() {
-	return Promise.resolve({
+async function unavailable() {
+	return {
 		available: false as const,
 		socketPath: "/test/herdr.sock",
 		reason: "no-socket" as const,
-	});
+	};
 }
 
 async function flushPromises(): Promise<void> {
@@ -82,7 +82,7 @@ describe("herdr event bridge", () => {
 		const broadcasts: Broadcast[] = [];
 		const expectedBackoffs = [250, 500, 1_000, 2_000, 4_000, 8_000, 10_000, 10_000];
 		let probeAttempts = 0;
-		const probe = vi.fn(() => {
+		const probe = vi.fn(async () => {
 			probeAttempts += 1;
 			return probeAttempts <= expectedBackoffs.length ? unavailable() : available();
 		});
@@ -132,7 +132,9 @@ describe("herdr event bridge", () => {
 	it("cancels an unavailable probe retry during teardown", async () => {
 		const scheduledDelays: number[] = [];
 		const probe = vi.fn(unavailable);
-		const cancel = vi.fn((timer: ReturnType<typeof setTimeout>) => clearTimeout(timer));
+		const cancel = vi.fn((timer: ReturnType<typeof setTimeout>) => {
+			clearTimeout(timer);
+		});
 
 		const stop = __testing.createBridge({
 			probe,

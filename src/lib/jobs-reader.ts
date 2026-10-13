@@ -33,7 +33,7 @@ export async function readJobs(jobsDir: string): Promise<Job[]> {
 		return [];
 	}
 	const jobs = await Promise.all(
-		entries.filter((entry) => entry.isDirectory()).map((entry) => readJob(jobsDir, entry.name)),
+		entries.filter((entry) => entry.isDirectory()).map(async (entry) => readJob(jobsDir, entry.name)),
 	);
 	return sortJobs(jobs.filter((job): job is Job => job !== null));
 }

@@ -124,7 +124,9 @@ async function renderRow(
 	});
 	await router.load();
 	render(<RouterProvider router={router} />);
-	await waitFor(() => expect(screen.getByText("Row title")).toBeTruthy());
+	await waitFor(() => {
+		expect(screen.getByText("Row title")).toBeTruthy();
+	});
 	return router;
 }
 
@@ -150,7 +152,7 @@ beforeEach(() => {
 	writeText.mockResolvedValue(undefined);
 	Object.defineProperty(navigator, "clipboard", {value: {writeText}, configurable: true});
 	__unreadStoreTesting.reset();
-	__unreadStoreTesting.setPersist(() => Promise.resolve());
+	__unreadStoreTesting.setPersist(async () => Promise.resolve());
 });
 
 afterEach(() => {
@@ -162,16 +164,18 @@ afterEach(() => {
 
 describe("SessionActionsMenu", () => {
 	it("copies the fresh canonical URL from the row menu without looking up an identity", async () => {
-		const fetch = vi.fn<(input: RequestInfo | URL) => Promise<Response>>(() => new Promise<Response>(() => {}));
+		const fetch = vi.fn<(input: RequestInfo | URL) => Promise<Response>>(
+			async () => new Promise<Response>(() => {}),
+		);
 		vi.stubGlobal("fetch", fetch);
 		await renderRow(listItem("done"), [], {}, (client) => {
 			client.setQueryData(sessionQueryKeys.detail(SESSION_ID), {canonicalRouteId: "session_alice_100"});
 		});
 		await rightClickRow();
 		fireEvent.click(screen.getByRole("menuitem", {name: /^Copy link/}));
-		await waitFor(() =>
-			expect(writeText.mock.calls).toStrictEqual([[`${window.location.origin}/session/session_alice_100`]]),
-		);
+		await waitFor(() => {
+			expect(writeText.mock.calls).toStrictEqual([[`${window.location.origin}/session/session_alice_100`]]);
+		});
 		expect(fetch.mock.calls.filter(([url]) => String(url).endsWith("/identity"))).toStrictEqual([]);
 	});
 
@@ -268,9 +272,9 @@ describe("SessionActionsMenu", () => {
 
 		expect(writeText.mock.calls).toEqual([[`${window.location.origin}/session/${SESSION_ID}`]]);
 		expect(screen.queryByRole("menu")).toBeNull();
-		await waitFor(() =>
-			expect(document.querySelector("[data-toast-message]")?.textContent).toBe("Link copied to clipboard."),
-		);
+		await waitFor(() => {
+			expect(document.querySelector("[data-toast-message]")?.textContent).toBe("Link copied to clipboard.");
+		});
 	});
 
 	it("marks the session unread when u is pressed", async () => {
@@ -324,14 +328,14 @@ describe("SessionActionsMenu", () => {
 				}),
 			],
 		]);
-		await waitFor(() =>
+		await waitFor(() => {
 			expect(getPendingFork()).toEqual({
 				cwd: "/Users/alice/alpha",
 				since: expect.any(Number),
 				sessionId: null,
 				parentSessionId: SESSION_ID,
-			}),
-		);
+			});
+		});
 		expect(writeText).not.toHaveBeenCalled();
 	});
 
@@ -345,11 +349,11 @@ describe("SessionActionsMenu", () => {
 		expect(writeText.mock.calls).toEqual([
 			[`cd '/Users/alice/alpha' && claude --resume ${SESSION_ID} --fork-session`],
 		]);
-		await waitFor(() =>
+		await waitFor(() => {
 			expect(document.querySelector("[data-toast-message]")?.textContent).toBe(
 				"Command copied. Paste it in a terminal to fork this session.",
-			),
-		);
+			);
+		});
 		expect(getPendingFork()).toBeNull();
 	});
 });

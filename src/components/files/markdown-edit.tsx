@@ -9,7 +9,9 @@ import {ConfirmDialog} from "../confirm-dialog";
 import {useToast} from "../toast";
 import {Tooltip} from "../ui/tooltip";
 
-const MarkdownEditor = lazy(() => import("../markdown-editor").then((module) => ({default: module.MarkdownEditor})));
+const MarkdownEditor = lazy(async () =>
+	import("../markdown-editor").then((module) => ({default: module.MarkdownEditor})),
+);
 
 type EditState =
 	| {phase: "viewing"}
@@ -128,8 +130,9 @@ export function useMarkdownEdit({
 		refresh();
 	};
 
-	const change = (markdown: string) =>
+	const change = (markdown: string) => {
 		setState((current) => (current.phase === "editing" ? {...current, draft: markdown} : current));
+	};
 
 	const handleKeyDown = (event: KeyboardEvent) => {
 		if (state.phase !== "editing" || !isSaveShortcut(event)) return;

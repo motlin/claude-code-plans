@@ -77,7 +77,7 @@ export function createPrStatusService({
 	let queue: Promise<void> = Promise.resolve();
 	let ghMissing = false;
 
-	function ensureCacheFile(): Promise<void> {
+	async function ensureCacheFile(): Promise<void> {
 		if (cacheFileLoad !== null) return cacheFileLoad;
 		if (cacheFileReadAt !== null && now() - cacheFileReadAt < cacheFileTtlMs) {
 			return Promise.resolve();
@@ -159,7 +159,7 @@ export function createPrStatusService({
 			if (eligible) {
 				entry.pending = true;
 				const queued = entry;
-				queue = queue.then(() => refresh(queued, target, request.args, request.cwd, request.kind));
+				queue = queue.then(async () => refresh(queued, target, request.args, request.cwd, request.kind));
 			}
 		}
 		return resolvePrStatus({prLink, cacheFile, gh: entry?.value ?? null});
@@ -178,7 +178,7 @@ export function createPrStatusService({
 
 const GH_TIMEOUT_MS = 15 * 1000;
 
-function runGhCommand(args: string[], cwd: string | undefined): Promise<string> {
+async function runGhCommand(args: string[], cwd: string | undefined): Promise<string> {
 	return new Promise((resolve, reject) => {
 		execFile(
 			"gh",

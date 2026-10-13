@@ -9,12 +9,12 @@ export const HomeDismissBodySchema = z.object({sessionId: z.string().min(1)}).st
 
 export const homeDismissalsQueryOptions = queryOptions({
 	queryKey: ["home-dismissals"] as const,
-	queryFn: () => apiFetch("/api/home/dismissals", HomeDismissalsResponse),
+	queryFn: async () => apiFetch("/api/home/dismissals", HomeDismissalsResponse),
 	staleTime: Infinity,
 });
 
 /** Hide a session from the home action center until it has newer activity. */
-export function postHomeDismissal(sessionId: string): Promise<HomeDismissals> {
+export async function postHomeDismissal(sessionId: string): Promise<HomeDismissals> {
 	return apiFetch("/api/home/dismissals", HomeDismissalsResponse, {
 		method: "POST",
 		headers: {"Content-Type": "application/json"},

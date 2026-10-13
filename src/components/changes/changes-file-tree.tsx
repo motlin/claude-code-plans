@@ -204,7 +204,9 @@ function TreeRows({nodes, sectionKey, flat, collapsedDirs, onToggleDir, activePa
 						aria-level={node.depth + 1}
 						aria-expanded={expanded}
 						title={node.path}
-						onClick={() => onToggleDir(key)}
+						onClick={() => {
+							onToggleDir(key);
+						}}
 						className={ROW_CLASS}
 						style={{paddingLeft}}
 					>
@@ -240,8 +242,12 @@ function TreeRows({nodes, sectionKey, flat, collapsedDirs, onToggleDir, activePa
 				aria-current={node.path === activePath ? "true" : undefined}
 				title={node.path}
 				draggable
-				onDragStart={(event) => event.dataTransfer.setData("text/plain", node.path)}
-				onClick={(event) => onFileClick(event, node.path)}
+				onDragStart={(event) => {
+					event.dataTransfer.setData("text/plain", node.path);
+				}}
+				onClick={(event) => {
+					onFileClick(event, node.path);
+				}}
 				className={ROW_CLASS}
 				style={{paddingLeft}}
 			>
@@ -286,7 +292,9 @@ function CommitList({
 				aria-orientation="vertical"
 				aria-label="Commits"
 				tabIndex={0}
-				onKeyDown={(event) => moveRowFocus(event, "[data-commit-row]")}
+				onKeyDown={(event) => {
+					moveRowFocus(event, "[data-commit-row]");
+				}}
 				className="flex flex-col gap-[2px] py-2 outline-none"
 			>
 				<button
@@ -294,7 +302,9 @@ function CommitList({
 					data-commit-row
 					tabIndex={-1}
 					aria-pressed={selectedCommitSha === null}
-					onClick={() => onSelectCommit(null)}
+					onClick={() => {
+						onSelectCommit(null);
+					}}
 					className={rowClass}
 				>
 					All changes
@@ -307,7 +317,9 @@ function CommitList({
 							tabIndex={-1}
 							aria-pressed={selectedCommitSha === commit.sha}
 							title={commit.subject}
-							onClick={() => onSelectCommit(commit.sha)}
+							onClick={() => {
+								onSelectCommit(commit.sha);
+							}}
 							className={`flex flex-col items-start gap-[2px] pr-7 ${rowClass}`}
 						>
 							<span className="block w-full min-w-0 truncate">{commit.subject}</span>
@@ -325,7 +337,9 @@ function CommitList({
 							type="button"
 							aria-label="Copy commit SHA"
 							title="Copy commit SHA"
-							onClick={() => onCopyCommitSha(commit.sha)}
+							onClick={() => {
+								onCopyCommitSha(commit.sha);
+							}}
 							className="absolute top-1 right-1 flex size-5 cursor-pointer items-center justify-center rounded-r5 text-ink-muted opacity-0 transition-opacity group-hover:opacity-100 hover:bg-fill-ghost-hover hover:text-primary focus-visible:opacity-100"
 						>
 							<Copy aria-hidden="true" className="size-3" />
@@ -411,7 +425,9 @@ export function ChangedFilesSidebar({
 					role="tree"
 					aria-label="Changed files"
 					tabIndex={0}
-					onKeyDown={(event) => moveRowFocus(event, "[data-diff-tree-row]")}
+					onKeyDown={(event) => {
+						moveRowFocus(event, "[data-diff-tree-row]");
+					}}
 					className="flex h-full flex-col overflow-y-auto px-1 py-1.25 outline-none"
 				>
 					{sections.map((section) => {

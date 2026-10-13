@@ -14,7 +14,7 @@ export const SourceFileResponse = z
 export const sourceFileQueryOptions = (kind: string, relativePath: string) =>
 	queryOptions({
 		queryKey: ["source", kind, relativePath] as const,
-		queryFn: () =>
+		queryFn: async () =>
 			apiFetch(
 				`/api/source/${encodeURIComponent(kind)}/${relativePath.split("/").map(encodeURIComponent).join("/")}`,
 				SourceFileResponse,

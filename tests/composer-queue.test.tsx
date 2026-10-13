@@ -193,7 +193,11 @@ function renderQueue({
 				return hook.result.current.queue;
 			},
 		},
-		setBusy: (next: boolean) => act(() => hook.result.current.setBusy(next)),
+		setBusy: (next: boolean) => {
+			act(() => {
+				hook.result.current.setBusy(next);
+			});
+		},
 	};
 }
 
@@ -215,7 +219,9 @@ describe("useComposerQueue", () => {
 		});
 
 		setBusy(false);
-		await waitFor(() => expect(deliver.mock.calls.length).toBe(1));
+		await waitFor(() => {
+			expect(deliver.mock.calls.length).toBe(1);
+		});
 		expect({
 			texts: result.current.items.map((item) => item.text),
 			delivered: deliver.mock.calls,
@@ -225,7 +231,9 @@ describe("useComposerQueue", () => {
 		});
 
 		setBusy(false);
-		await waitFor(() => expect(deliver.mock.calls.length).toBe(2));
+		await waitFor(() => {
+			expect(deliver.mock.calls.length).toBe(2);
+		});
 		expect({
 			texts: result.current.items.map((item) => item.text),
 			delivered: deliver.mock.calls,
@@ -244,7 +252,9 @@ describe("useComposerQueue", () => {
 		});
 
 		setBusy(false);
-		await waitFor(() => expect(deliver.mock.calls.length).toBe(2));
+		await waitFor(() => {
+			expect(deliver.mock.calls.length).toBe(2);
+		});
 
 		expect({
 			delivered: deliver.mock.calls,
@@ -266,8 +276,12 @@ describe("useComposerQueue", () => {
 		const bob = result.current.items[1];
 		if (bob === undefined) throw new Error("Expected Bob's queued prompt");
 
-		act(() => result.current.sendNow(bob.id));
-		act(() => result.current.sendNowText("Carol's urgent prompt"));
+		act(() => {
+			result.current.sendNow(bob.id);
+		});
+		act(() => {
+			result.current.sendNowText("Carol's urgent prompt");
+		});
 
 		expect({
 			texts: result.current.items.map((item) => item.text),
@@ -284,7 +298,9 @@ describe("useComposerQueue", () => {
 		const deliver = vi.fn<Deliver>(async () => "sent");
 		const alice = renderQueue({busy: true, deliver, sessionId: "session-alice"});
 		const bob = renderQueue({busy: true, deliver, sessionId: "session-bob"});
-		act(() => alice.result.current.enqueue("Alice's follow-up"));
+		act(() => {
+			alice.result.current.enqueue("Alice's follow-up");
+		});
 
 		expect({
 			alice: alice.result.current.items.map((item) => item.text),
@@ -310,7 +326,9 @@ function renderComposer({
 		<Composer
 			variant="session"
 			draftKey="session-alice"
-			onSend={(prompt) => onSend(prompt)}
+			onSend={(prompt) => {
+				onSend(prompt);
+			}}
 			onStop={onStop}
 			queue={queue}
 			onSendNow={onSendNow}

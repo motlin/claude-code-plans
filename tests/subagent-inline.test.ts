@@ -21,7 +21,7 @@ function makeAgent(overrides: Partial<Subagent> & {id: string}): Subagent {
 }
 
 function agentBlock(id: string, input: Record<string, unknown>): ToolUseBlock {
-	return {type: "tool_use", id, name: "Agent", input} as ToolUseBlock;
+	return {type: "tool_use", id, name: "Agent", input};
 }
 
 function resultMap(entries: Record<string, string>): Map<string, ToolResultInfo> {
@@ -134,7 +134,7 @@ describe("buildSubagentLookup + resolveSubagentInfo (inline)", () => {
 	it("does not attach subagentInfo to non-Agent tool calls", () => {
 		const lookup = buildSubagentLookup([makeAgent({id: "agent-a"})]);
 		const call = buildClientToolCall(
-			{type: "tool_use", id: "tu-5", name: "Bash", input: {command: "ls"}} as ToolUseBlock,
+			{type: "tool_use", id: "tu-5", name: "Bash", input: {command: "ls"}},
 			"src-uuid",
 			resultMap({"tu-5": "agentId: a"}),
 			undefined,

@@ -91,108 +91,108 @@ const allStoryModules: Array<{
 }> = [
 	{
 		moduleName: "BashRenderer",
-		module: BashStories as Record<string, unknown>,
+		module: BashStories,
 	},
 	{
 		moduleName: "GlobRenderer",
-		module: GlobStories as Record<string, unknown>,
+		module: GlobStories,
 	},
 	{
 		moduleName: "GrepRenderer",
-		module: GrepStories as Record<string, unknown>,
+		module: GrepStories,
 	},
 	{
 		moduleName: "WriteRenderer",
-		module: WriteStories as Record<string, unknown>,
+		module: WriteStories,
 	},
 	{
 		moduleName: "EditRenderer",
-		module: EditStories as Record<string, unknown>,
+		module: EditStories,
 	},
 	{
 		moduleName: "ReadRenderer",
-		module: ReadStories as Record<string, unknown>,
+		module: ReadStories,
 	},
 	{
 		moduleName: "AgentRenderer",
-		module: AgentStories as Record<string, unknown>,
+		module: AgentStories,
 	},
 	{
 		moduleName: "WebFetchRenderer",
-		module: WebFetchStories as Record<string, unknown>,
+		module: WebFetchStories,
 	},
 	{
 		moduleName: "SkillRenderer",
-		module: SkillStories as Record<string, unknown>,
+		module: SkillStories,
 	},
 	{
 		moduleName: "AskUserQuestionRenderer",
-		module: AskUserQuestionStories as Record<string, unknown>,
+		module: AskUserQuestionStories,
 	},
 	{
 		moduleName: "ExitPlanModeRenderer",
-		module: ExitPlanModeStories as Record<string, unknown>,
+		module: ExitPlanModeStories,
 	},
 	{
 		moduleName: "TaskCreateRenderer",
-		module: TaskCreateStories as Record<string, unknown>,
+		module: TaskCreateStories,
 	},
 	{
 		moduleName: "TaskGetRenderer",
-		module: TaskGetStories as Record<string, unknown>,
+		module: TaskGetStories,
 	},
 	{
 		moduleName: "TaskListRenderer",
-		module: TaskListStories as Record<string, unknown>,
+		module: TaskListStories,
 	},
 	{
 		moduleName: "TaskUpdateRenderer",
-		module: TaskUpdateStories as Record<string, unknown>,
+		module: TaskUpdateStories,
 	},
 	{
 		moduleName: "EnterPlanModeRenderer",
-		module: EnterPlanModeStories as Record<string, unknown>,
+		module: EnterPlanModeStories,
 	},
 	{
 		moduleName: "TodoWriteRenderer",
-		module: TodoWriteStories as Record<string, unknown>,
+		module: TodoWriteStories,
 	},
 	{
 		moduleName: "WebSearchRenderer",
-		module: WebSearchStories as Record<string, unknown>,
+		module: WebSearchStories,
 	},
 	{
 		moduleName: "SendMessageRenderer",
-		module: SendMessageStories as Record<string, unknown>,
+		module: SendMessageStories,
 	},
 	{
 		moduleName: "TaskStopRenderer",
-		module: TaskStopStories as Record<string, unknown>,
+		module: TaskStopStories,
 	},
 	{
 		moduleName: "CronCreateRenderer",
-		module: CronCreateStories as Record<string, unknown>,
+		module: CronCreateStories,
 	},
-	{moduleName: "McpRenderer", module: McpStories as Record<string, unknown>},
+	{moduleName: "McpRenderer", module: McpStories},
 	{
 		moduleName: "GithubRenderer",
-		module: GithubStories as Record<string, unknown>,
+		module: GithubStories,
 	},
 	{
 		moduleName: "PlaywrightRenderer",
-		module: PlaywrightStories as Record<string, unknown>,
+		module: PlaywrightStories,
 	},
 	{
 		moduleName: "Context7Renderer",
-		module: Context7Stories as Record<string, unknown>,
+		module: Context7Stories,
 	},
 	{
 		moduleName: "ChromeDevtoolsRenderer",
-		module: ChromeDevtoolsStories as Record<string, unknown>,
+		module: ChromeDevtoolsStories,
 	},
 	{
 		moduleName: "ClaudeInChromeRenderer",
-		module: ClaudeInChromeStories as Record<string, unknown>,
+		module: ClaudeInChromeStories,
 	},
 ];
 

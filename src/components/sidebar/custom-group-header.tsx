@@ -97,13 +97,25 @@ export function CustomGroupHeader({
 			count={groups.length}
 			archiveCount={archivableIds.length}
 			appearance={appearance}
-			onAppearance={(patch) => setGroupAppearance(groupId, patch)}
-			onRename={later(() => setRenaming(true))}
-			onNewGroup={later(() => setDialog("new-group"))}
-			onMove={(delta) => moveGroup(groupId, index + delta)}
+			onAppearance={(patch) => {
+				setGroupAppearance(groupId, patch);
+			}}
+			onRename={later(() => {
+				setRenaming(true);
+			})}
+			onNewGroup={later(() => {
+				setDialog("new-group");
+			})}
+			onMove={(delta) => {
+				moveGroup(groupId, index + delta);
+			}}
 			onSort={sortGroupsByName}
-			onArchiveAll={later(() => setDialog("archive-all"))}
-			onDelete={later(() => setDialog("delete"))}
+			onArchiveAll={later(() => {
+				setDialog("archive-all");
+			})}
+			onDelete={later(() => {
+				setDialog("delete");
+			})}
 		/>
 	);
 
@@ -139,13 +151,17 @@ export function CustomGroupHeader({
 			</Menu>
 			<NewGroupDialog
 				open={dialog === "new-group"}
-				onOpenChange={(open) => setDialog(open ? "new-group" : null)}
+				onOpenChange={(open) => {
+					setDialog(open ? "new-group" : null);
+				}}
 				switchesGroupBy={false}
 				onCreate={(name) => createGroup(name)}
 			/>
 			<ConfirmDialog
 				open={dialog === "delete"}
-				onOpenChange={(open) => setDialog(open ? "delete" : null)}
+				onOpenChange={(open) => {
+					setDialog(open ? "delete" : null);
+				}}
 				title="Delete group?"
 				body={deleteGroupBody(label, assignedCount)}
 				confirmLabel="Delete"
@@ -157,10 +173,14 @@ export function CustomGroupHeader({
 			/>
 			<ConfirmDialog
 				open={dialog === "archive-all"}
-				onOpenChange={(open) => setDialog(open ? "archive-all" : null)}
+				onOpenChange={(open) => {
+					setDialog(open ? "archive-all" : null);
+				}}
 				title={`Archive all sessions in “${label}”?`}
 				confirmLabel="Archive"
-				onConfirm={() => archiveSessions(archivableIds)}
+				onConfirm={() => {
+					archiveSessions(archivableIds);
+				}}
 			/>
 		</>
 	);
@@ -201,8 +221,24 @@ function CustomGroupMenuItems({
 			{canReorder && (
 				<>
 					<MenuSeparator />
-					{index > 0 && <MenuItem onSelect={() => onMove(-1)}>Move up</MenuItem>}
-					{index < count - 1 && <MenuItem onSelect={() => onMove(1)}>Move down</MenuItem>}
+					{index > 0 && (
+						<MenuItem
+							onSelect={() => {
+								onMove(-1);
+							}}
+						>
+							Move up
+						</MenuItem>
+					)}
+					{index < count - 1 && (
+						<MenuItem
+							onSelect={() => {
+								onMove(1);
+							}}
+						>
+							Move down
+						</MenuItem>
+					)}
 					<MenuItem onSelect={onSort}>Sort A to Z</MenuItem>
 				</>
 			)}

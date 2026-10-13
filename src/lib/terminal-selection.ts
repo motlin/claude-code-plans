@@ -97,10 +97,18 @@ export const browserLinkOpener: LinkOpener = {
 
 function guardProvider(provider: ILinkProvider, activate: (href: string) => void): ILinkProvider {
 	const guarded: ILinkProvider = {
-		provideLinks: (y, callback) =>
-			provider.provideLinks(y, (links) =>
-				callback(links?.map((link): ILink => ({...link, activate: () => activate(link.text)}))),
-			),
+		provideLinks: (y, callback) => {
+			provider.provideLinks(y, (links) => {
+				callback(
+					links?.map((link): ILink => ({
+						...link,
+						activate: () => {
+							activate(link.text);
+						},
+					})),
+				);
+			});
+		},
 	};
 	if (provider.dispose) guarded.dispose = () => provider.dispose?.();
 	return guarded;

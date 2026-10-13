@@ -99,7 +99,7 @@ function stripCommandBoilerplate(text: string): string {
 		const args = match[2]!.trim();
 		if (args) return args;
 
-		const openingLine = text.slice(0, match.index!).trim().split("\n")[0];
+		const openingLine = text.slice(0, match.index).trim().split("\n")[0];
 		if (openingLine) return openingLine;
 	}
 	return text.replace(ARG_TAG_RE, "");

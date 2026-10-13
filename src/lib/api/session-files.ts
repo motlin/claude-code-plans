@@ -76,5 +76,5 @@ export function fileMentionsUrl(sessionId: string, query: string): string {
 export const sessionFilesQueryOptions = (sessionId: string, query: SessionFilesQuery) =>
 	queryOptions({
 		queryKey: ["session-files", sessionId, query.dir, query.query, query.hideIgnored] as const,
-		queryFn: () => apiFetch(sessionFilesUrl(sessionId, query), SessionFilesResponseSchema),
+		queryFn: async () => apiFetch(sessionFilesUrl(sessionId, query), SessionFilesResponseSchema),
 	});

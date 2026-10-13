@@ -4,5 +4,5 @@ import {apiFetch} from "./client";
 
 export const composerDefaultsQueryOptions = queryOptions({
 	queryKey: ["composer-defaults"] as const,
-	queryFn: () => apiFetch("/api/composer-defaults", ComposerDefaultsResponse),
+	queryFn: async () => apiFetch("/api/composer-defaults", ComposerDefaultsResponse),
 });

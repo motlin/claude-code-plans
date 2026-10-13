@@ -117,7 +117,9 @@ export function FindBar({
 					spellCheck={false}
 					autoComplete="off"
 					value={query}
-					onChange={(event) => onQueryChange(event.target.value)}
+					onChange={(event) => {
+						onQueryChange(event.target.value);
+					}}
 					onKeyDown={handleKeyDown}
 					className="h-6 w-44 bg-transparent px-1.5 text-xs text-primary outline-none placeholder:text-t6"
 				/>
@@ -135,7 +137,9 @@ export function FindBar({
 					aria-label="Previous match"
 					title="Previous match (⇧Enter)"
 					disabled={total === 0}
-					onClick={() => onStep(-1)}
+					onClick={() => {
+						onStep(-1);
+					}}
 					className={BAR_BUTTON}
 				>
 					<ChevronUp aria-hidden="true" className="size-4" />
@@ -145,7 +149,9 @@ export function FindBar({
 					aria-label="Next match"
 					title="Next match (Enter)"
 					disabled={total === 0}
-					onClick={() => onStep(1)}
+					onClick={() => {
+						onStep(1);
+					}}
 					className={BAR_BUTTON}
 				>
 					<ChevronDown aria-hidden="true" className="size-4" />

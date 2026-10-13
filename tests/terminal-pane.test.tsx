@@ -62,7 +62,9 @@ function TestTerminalToggle() {
 			type="button"
 			aria-label="Terminal"
 			aria-pressed={host.isOpen("terminal")}
-			onClick={() => host.togglePane("terminal")}
+			onClick={() => {
+				host.togglePane("terminal");
+			}}
 		/>
 	);
 }
@@ -109,7 +111,9 @@ function renderSession(available: boolean, requested: SessionOptions = {}) {
 	const result = render(sessionTree(available, requested));
 	return {
 		...result,
-		setAvailable: (next: boolean) => result.rerender(sessionTree(next, requested)),
+		setAvailable: (next: boolean) => {
+			result.rerender(sessionTree(next, requested));
+		},
 	};
 }
 
@@ -188,7 +192,9 @@ describe("Terminal pane", () => {
 	it("opens the Claude tab with the toggle", () => {
 		renderSession(true);
 
-		act(() => screen.getByRole("button", {name: "Terminal"}).click());
+		act(() => {
+			screen.getByRole("button", {name: "Terminal"}).click();
+		});
 
 		expect({
 			pressed: screen.getByRole("button", {name: "Terminal"}).getAttribute("aria-pressed"),
@@ -210,7 +216,9 @@ describe("Terminal pane", () => {
 	])("makes the Claude tab interactive only when herdr writes are enabled (%s)", (writes, expected) => {
 		renderSession(true, {interactive: writes});
 
-		act(() => screen.getByRole("button", {name: "Terminal"}).click());
+		act(() => {
+			screen.getByRole("button", {name: "Terminal"}).click();
+		});
 
 		expect(screen.getByTestId("herdr-terminal").getAttribute("data-interactive")).toBe(expected);
 	});
@@ -276,10 +284,14 @@ describe("Shell tabs", () => {
 			busy,
 		);
 		const view = renderSession(true, {shells: true});
-		act(() => screen.getByRole("button", {name: "Terminal"}).click());
+		act(() => {
+			screen.getByRole("button", {name: "Terminal"}).click();
+		});
 		for (const [index] of ptyKeys.entries()) {
 			fireEvent.click(screen.getByRole("button", {name: "New terminal"}));
-			await waitFor(() => expect(screen.getAllByRole("tab")).toHaveLength(index + 2));
+			await waitFor(() => {
+				expect(screen.getAllByRole("tab")).toHaveLength(index + 2);
+			});
 		}
 		return view;
 	}
@@ -311,7 +323,9 @@ describe("Shell tabs", () => {
 		const fetcher = stubShellApi([{status: 200, body: {ptyKey: "pty-alice-1"}}]);
 		renderSession(false, {shells: true});
 
-		act(() => screen.getByRole("button", {name: "Terminal"}).click());
+		act(() => {
+			screen.getByRole("button", {name: "Terminal"}).click();
+		});
 		await screen.findByTestId("shell-terminal");
 
 		expect({
@@ -333,15 +347,23 @@ describe("Shell tabs", () => {
 			{status: 200, body: {ptyKey: "pty-alice-2"}},
 		]);
 		renderSession(true, {shells: true});
-		act(() => screen.getByRole("button", {name: "Terminal"}).click());
+		act(() => {
+			screen.getByRole("button", {name: "Terminal"}).click();
+		});
 
 		fireEvent.click(screen.getByRole("button", {name: "New terminal"}));
-		await waitFor(() => expect(screen.getAllByRole("tab")).toHaveLength(2));
+		await waitFor(() => {
+			expect(screen.getAllByRole("tab")).toHaveLength(2);
+		});
 		fireEvent.click(screen.getByRole("button", {name: "New terminal"}));
-		await waitFor(() => expect(screen.getAllByRole("tab")).toHaveLength(3));
+		await waitFor(() => {
+			expect(screen.getAllByRole("tab")).toHaveLength(3);
+		});
 		const afterAdd = tabs();
 		fireEvent.click(screen.getByRole("button", {name: "Close Shell 2"}));
-		await waitFor(() => expect(screen.getAllByRole("tab")).toHaveLength(2));
+		await waitFor(() => {
+			expect(screen.getAllByRole("tab")).toHaveLength(2);
+		});
 
 		expect({afterAdd, afterClose: tabs()}).toStrictEqual({
 			afterAdd: [
@@ -359,7 +381,9 @@ describe("Shell tabs", () => {
 	it("reports a missing session folder instead of adding a tab", async () => {
 		stubShellApi([{status: 409, body: {error: "Session folder not found"}}]);
 		renderSession(true, {shells: true});
-		act(() => screen.getByRole("button", {name: "Terminal"}).click());
+		act(() => {
+			screen.getByRole("button", {name: "Terminal"}).click();
+		});
 
 		fireEvent.click(screen.getByRole("button", {name: "New terminal"}));
 
@@ -374,7 +398,9 @@ describe("Shell tabs", () => {
 
 	it("hides New terminal when Shell tabs are turned off", () => {
 		renderSession(true, {shells: false});
-		act(() => screen.getByRole("button", {name: "Terminal"}).click());
+		act(() => {
+			screen.getByRole("button", {name: "Terminal"}).click();
+		});
 
 		expect(screen.queryByRole("button", {name: "New terminal"})).toBeNull();
 	});
@@ -386,7 +412,9 @@ describe("Shell tabs", () => {
 			[...menu.querySelectorAll('[role="menuitem"]')].map((node) => node.textContent);
 		const shellMenu = outline(await openTabMenu("Shell 2"));
 		fireEvent.keyDown(screen.getByRole("menu"), {key: "Escape"});
-		await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+		await waitFor(() => {
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
 		const claudeMenu = outline(await openTabMenu("Claude"));
 
 		expect({shellMenu, claudeMenu}).toStrictEqual({
@@ -424,7 +452,9 @@ describe("Shell tabs", () => {
 		await openWithShells(["pty-alice-1", "pty-alice-2", "pty-alice-3"]);
 
 		await chooseFromTabMenu("Shell 2", "Close other terminals");
-		await waitFor(() => expect(screen.getAllByRole("tab")).toHaveLength(2));
+		await waitFor(() => {
+			expect(screen.getAllByRole("tab")).toHaveLength(2);
+		});
 
 		expect(tabs()).toStrictEqual([
 			{name: "Claude", selected: "false"},
@@ -436,9 +466,13 @@ describe("Shell tabs", () => {
 		await openWithShells(["pty-alice-1", "pty-alice-2"]);
 
 		fireEvent.keyDown(screen.getByRole("tab", {name: "Shell 2"}), {key: "Backspace"});
-		await waitFor(() => expect(screen.getAllByRole("tab")).toHaveLength(2));
+		await waitFor(() => {
+			expect(screen.getAllByRole("tab")).toHaveLength(2);
+		});
 		fireEvent.keyDown(screen.getByRole("tab", {name: "Shell"}), {key: "Delete"});
-		await waitFor(() => expect(screen.getAllByRole("tab")).toHaveLength(1));
+		await waitFor(() => {
+			expect(screen.getAllByRole("tab")).toHaveLength(1);
+		});
 		fireEvent.keyDown(screen.getByRole("tab", {name: "Claude"}), {key: "Delete"});
 		await flush();
 
@@ -486,7 +520,9 @@ describe("Shell tabs", () => {
 			tabs: screen.getAllByRole("tab", {hidden: true}).length,
 		};
 		fireEvent.click(screen.getByRole("button", {name: "Close terminal"}));
-		await waitFor(() => expect(screen.getAllByRole("tab")).toHaveLength(2));
+		await waitFor(() => {
+			expect(screen.getAllByRole("tab")).toHaveLength(2);
+		});
 
 		expect(asked).toStrictEqual({
 			text: "Close terminal?A command is still running in Shell 2. Closing the terminal stops it.CancelClose terminal",
@@ -500,7 +536,9 @@ describe("Shell tabs", () => {
 		fireEvent.keyDown(screen.getByRole("tab", {name: "Shell"}), {key: "Delete"});
 		await waitFor(() => screen.getByRole("alertdialog"));
 		fireEvent.click(screen.getByRole("button", {name: "Cancel"}));
-		await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+		await waitFor(() => {
+			expect(screen.queryByRole("alertdialog")).toBeNull();
+		});
 
 		expect(tabs()).toStrictEqual([
 			{name: "Claude", selected: "false"},
@@ -523,7 +561,9 @@ describe("Shell tabs", () => {
 		const fetcher = stubShellApi([]);
 		renderSession(false, {shells: true});
 
-		act(() => screen.getByRole("button", {name: "Terminal"}).click());
+		act(() => {
+			screen.getByRole("button", {name: "Terminal"}).click();
+		});
 		await flush();
 
 		expect({
@@ -569,7 +609,9 @@ describe("Terminal pane header menu", () => {
 	it("pops the terminal out to its /herdr page with Open in new window", async () => {
 		const open = vi.spyOn(window, "open").mockReturnValue(null);
 		renderSession(true);
-		act(() => screen.getByRole("button", {name: "Terminal"}).click());
+		act(() => {
+			screen.getByRole("button", {name: "Terminal"}).click();
+		});
 
 		fireEvent.click(screen.getByRole("button", {name: "More options"}));
 		const menu = await waitFor(() => screen.getByRole("menu"));
@@ -589,7 +631,9 @@ describe("Terminal pane header menu", () => {
 describe("Claude tab lifecycle", () => {
 	it("shows Session ended with a transcript link when the herdr pane closes", () => {
 		const view = renderSession(true);
-		act(() => screen.getByRole("button", {name: "Terminal"}).click());
+		act(() => {
+			screen.getByRole("button", {name: "Terminal"}).click();
+		});
 
 		view.setAvailable(false);
 		const panel = screen.getByRole("tabpanel", {name: "Claude terminal"});
@@ -609,7 +653,9 @@ describe("Claude tab lifecycle", () => {
 
 	it("closes the pane from the transcript link", () => {
 		const view = renderSession(true);
-		act(() => screen.getByRole("button", {name: "Terminal"}).click());
+		act(() => {
+			screen.getByRole("button", {name: "Terminal"}).click();
+		});
 		view.setAvailable(false);
 
 		fireEvent.click(screen.getByRole("link", {name: "View transcript"}));

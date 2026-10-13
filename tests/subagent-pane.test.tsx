@@ -213,7 +213,9 @@ describe("Subagent pane", () => {
 	it("focuses the agent an Agent row requests while the pane is already open", () => {
 		renderPane();
 		const before = within(header()).getByRole("heading").textContent;
-		act(() => requestSubagentFocus(SESSION_ID, "agent-b2"));
+		act(() => {
+			requestSubagentFocus(SESSION_ID, "agent-b2");
+		});
 
 		expect({
 			before,

@@ -38,7 +38,9 @@ describe("See detailed breakdown", () => {
 		fireEvent.click(screen.getByRole("button", {name: /^Usage:/}));
 		fireEvent.click(await screen.findByRole("button", {name: "See detailed breakdown"}));
 
-		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog")).toBeNull();
+		});
 		expect(onShowUsageBreakdown.mock.calls).toStrictEqual([[]]);
 	});
 
@@ -92,7 +94,9 @@ describe("SessionUsageCard", () => {
 
 		fireEvent.click(screen.getByRole("button", {name: "Copy report"}));
 
-		await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+		await waitFor(() => {
+			expect(writeText).toHaveBeenCalledTimes(1);
+		});
 		expect(writeText.mock.calls).toStrictEqual([
 			[
 				[

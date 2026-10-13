@@ -16,7 +16,7 @@ const baseProject = {
 describe("ProjectCardCounts", () => {
 	it("renders singular labels when every count is 1", () => {
 		const view = render(<ProjectCardCounts project={{...baseProject, activeCount: 1}} />);
-		const text = view.container.textContent!;
+		const text = view.container.textContent;
 
 		expect(text).toContain("1 active");
 		expect(text).toContain("1 session");
@@ -43,7 +43,7 @@ describe("ProjectCardCounts", () => {
 				}}
 			/>,
 		);
-		const text = view.container.textContent!;
+		const text = view.container.textContent;
 
 		expect(text).toContain("2 active");
 		expect(text).toContain("3 sessions");
@@ -58,7 +58,7 @@ describe("ProjectCardCounts", () => {
 				project={{...baseProject, sessionCount: 0, planCount: 0, memoryCount: 0, taskCount: 0}}
 			/>,
 		);
-		const text = view.container.textContent!;
+		const text = view.container.textContent;
 
 		expect(text).toContain("0 sessions");
 		expect(text).not.toContain("active");

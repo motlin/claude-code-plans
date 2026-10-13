@@ -53,7 +53,9 @@ export function FileMentionMenu({
 			role="listbox"
 			aria-label="Mention suggestions"
 			className={POPUP_CLASS}
-			onMouseDown={(e) => e.preventDefault()}
+			onMouseDown={(e) => {
+				e.preventDefault();
+			}}
 		>
 			{entries.map((entry, index) => {
 				const slash = entry.relPath.lastIndexOf("/");

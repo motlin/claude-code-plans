@@ -51,8 +51,9 @@ export default function CustomizeDialogPanel({location, onNavigate}: CustomizeDi
 	const [searches, setSearches] = useState<Partial<Record<CustomizeSection, CustomizeSearch>>>({});
 	const section = CUSTOMIZE_SECTIONS.find((config) => config.id === location.section) ?? CUSTOMIZE_SECTIONS[0]!;
 
-	const patchSearch = (id: CustomizeSection, patch: CustomizeSearch) =>
+	const patchSearch = (id: CustomizeSection, patch: CustomizeSearch) => {
 		setSearches((previous) => ({...previous, [id]: dropEmpty({...previous[id], ...patch, view: undefined})}));
+	};
 
 	const current = customizeHash({...location, file: null});
 	const navigator: CustomizeNavigator = {

@@ -106,7 +106,7 @@ const baseCeilingsJson = git("show", `${baseRef}:tests/perf/ceilings.json`);
 describe("tests/perf/ceilings.json", () => {
 	it.skipIf(baseCeilingsJson === undefined)(`justifies every raise since ${baseRef}`, () => {
 		const current = loadCeilings(readFileSync(join(REPO_ROOT, "tests", "perf", "ceilings.json"), "utf8"));
-		expect(findUnjustifiedRaises(loadCeilings(baseCeilingsJson!), current)).toStrictEqual([]);
+		expect(findUnjustifiedRaises(loadCeilings(baseCeilingsJson), current)).toStrictEqual([]);
 	});
 });
 

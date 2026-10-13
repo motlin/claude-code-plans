@@ -186,7 +186,7 @@ beforeEach(() => {
 	onGenerateSummary.mockReset();
 	Object.defineProperty(navigator, "clipboard", {value: {writeText}, configurable: true});
 	__unreadStoreTesting.reset();
-	__unreadStoreTesting.setPersist(() => Promise.resolve());
+	__unreadStoreTesting.setPersist(async () => Promise.resolve());
 });
 
 afterEach(() => {
@@ -331,7 +331,7 @@ describe("session header menu", () => {
 
 		expect({
 			menus: screen.queryAllByRole("menu").length,
-			input: (screen.getByRole("textbox") as HTMLInputElement).value,
+			input: screen.getByRole<HTMLInputElement>("textbox").value,
 		}).toStrictEqual({menus: 0, input: TITLE});
 	});
 });
@@ -394,7 +394,7 @@ describe("session page header", () => {
 		vi.stubGlobal("IntersectionObserver", TestIntersectionObserver);
 		vi.stubGlobal(
 			"fetch",
-			vi.fn(() => new Promise<Response>(() => {})),
+			vi.fn(async () => new Promise<Response>(() => {})),
 		);
 
 		await renderSessionPage();

@@ -58,7 +58,9 @@ function LocalSection({
 						<button
 							type="button"
 							aria-label={`Open ${pill.toLowerCase()} ${row.title}`}
-							onClick={() => onOpen(row.key)}
+							onClick={() => {
+								onOpen(row.key);
+							}}
 							className="flex min-w-0 flex-1 items-center justify-between gap-2 rounded-r3 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100"
 						>
 							<span className="flex min-w-0 flex-1 items-center gap-2">

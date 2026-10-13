@@ -51,7 +51,9 @@ export function ThemedCombobox<T extends string>({
 			setOpen(false);
 		};
 		document.addEventListener("mousedown", handlePointerDown);
-		return () => document.removeEventListener("mousedown", handlePointerDown);
+		return () => {
+			document.removeEventListener("mousedown", handlePointerDown);
+		};
 	}, [open]);
 
 	const openPopup = () => {
@@ -107,7 +109,10 @@ export function ThemedCombobox<T extends string>({
 				aria-haspopup="listbox"
 				aria-expanded={open}
 				aria-controls={open ? listboxId : undefined}
-				onClick={() => (open ? setOpen(false) : openPopup())}
+				onClick={() => {
+					if (open) setOpen(false);
+					else openPopup();
+				}}
 				onKeyDown={(event) => {
 					if (event.key === "ArrowDown" && !open) {
 						event.preventDefault();
@@ -153,9 +158,15 @@ export function ThemedCombobox<T extends string>({
 										role="option"
 										aria-selected={selected}
 										data-highlighted={index === activeIndex ? "" : undefined}
-										onMouseEnter={() => setActiveIndex(index)}
-										onMouseDown={(event) => event.preventDefault()}
-										onClick={() => choose(option)}
+										onMouseEnter={() => {
+											setActiveIndex(index);
+										}}
+										onMouseDown={(event) => {
+											event.preventDefault();
+										}}
+										onClick={() => {
+											choose(option);
+										}}
 										className="flex h-8 cursor-default items-center gap-1 rounded-r6 px-2.5 text-body text-primary select-none data-[highlighted]:bg-fill-ghost-hover"
 									>
 										<span className="min-w-0 flex-1 truncate">{option.label}</span>

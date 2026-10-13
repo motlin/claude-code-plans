@@ -153,7 +153,9 @@ function ToolGroup({title, tools, editable, onChange}: ToolGroupProps) {
 				<button
 					type="button"
 					aria-expanded={expanded}
-					onClick={() => setExpanded(!expanded)}
+					onClick={() => {
+						setExpanded(!expanded);
+					}}
 					className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
 				>
 					<ChevronDown
@@ -219,7 +221,9 @@ function ToolGroup({title, tools, editable, onChange}: ToolGroupProps) {
 								tool={tool.name}
 								value={choiceOf(tool)}
 								disabled={!editable}
-								onChange={(choice) => onChange([tool.name], choice)}
+								onChange={(choice) => {
+									onChange([tool.name], choice);
+								}}
 							/>
 						</div>
 					))}

@@ -13,7 +13,7 @@ export interface RunGitOptions {
 /** Runs git with an argv array (never a shell) and resolves to stdout. */
 export type RunGit = (cwd: string, arguments_: string[], options?: RunGitOptions) => Promise<string>;
 
-const execRunGit: RunGit = (cwd, arguments_, options = {}) =>
+const execRunGit: RunGit = async (cwd, arguments_, options = {}) =>
 	new Promise((resolve, reject) => {
 		execFile("git", arguments_, {cwd, encoding: "utf8", maxBuffer: MAX_GIT_OUTPUT_BYTES}, (error, stdout) => {
 			if (error && !(options.allowDifferences === true && error.code === 1)) {

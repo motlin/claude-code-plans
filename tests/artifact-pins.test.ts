@@ -66,7 +66,9 @@ describe("artifact pin store", () => {
 			throw new Error("denied");
 		});
 
-		expect(() => pinArtifact(LADDER_URL)).not.toThrow();
+		expect(() => {
+			pinArtifact(LADDER_URL);
+		}).not.toThrow();
 		expect(readArtifactPins()).toStrictEqual([]);
 	});
 
@@ -74,7 +76,9 @@ describe("artifact pin store", () => {
 		const first = renderHook(() => useArtifactPins());
 		const second = renderHook(() => useArtifactPins());
 
-		act(() => pinArtifact(LADDER_URL));
+		act(() => {
+			pinArtifact(LADDER_URL);
+		});
 		const afterLocal = {
 			first: first.result.current.pinned,
 			second: second.result.current.isPinned(LADDER_URL),

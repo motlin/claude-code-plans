@@ -88,7 +88,12 @@ export function Tooltip({
 	const tipRef = useRef<HTMLSpanElement>(null);
 	const [placement, setPlacement] = useState<TooltipPlacement | undefined>(undefined);
 
-	useEffect(() => () => clearTimeout(timer.current), []);
+	useEffect(
+		() => () => {
+			clearTimeout(timer.current);
+		},
+		[],
+	);
 
 	useLayoutEffect(() => {
 		const anchor = anchorRef.current;
@@ -116,7 +121,9 @@ export function Tooltip({
 		clearTimeout(timer.current);
 		const anchor = anchorRef.current;
 		if (openWhen !== undefined && (anchor === null || !openWhen(anchor))) return;
-		timer.current = setTimeout(() => setOpen(true), OPEN_DELAY_MS);
+		timer.current = setTimeout(() => {
+			setOpen(true);
+		}, OPEN_DELAY_MS);
 	}
 
 	function hide() {

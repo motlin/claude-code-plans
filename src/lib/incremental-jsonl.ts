@@ -95,7 +95,9 @@ export async function foldJsonl<S>(path: string, fold: JsonlFold<S>, cache?: Inc
 	let state: S | undefined;
 	if (entry !== undefined && entry.ino === fileStat.ino && fileStat.size >= entry.offset) {
 		try {
-			read = await readLines(path, entry.offset, entry.signature, (line) => fold.add(entry.state, line));
+			read = await readLines(path, entry.offset, entry.signature, (line) => {
+				fold.add(entry.state, line);
+			});
 		} catch (error) {
 			// The cached state may have taken some of the new lines; it no longer matches its offset.
 			cache!.delete(path);
@@ -105,7 +107,9 @@ export async function foldJsonl<S>(path: string, fold: JsonlFold<S>, cache?: Inc
 	}
 	if (read === null || state === undefined) {
 		const fresh = fold.create();
-		read = (await readLines(path, 0, EMPTY, (line) => fold.add(fresh, line)))!;
+		read = (await readLines(path, 0, EMPTY, (line) => {
+			fold.add(fresh, line);
+		}))!;
 		state = fresh;
 	}
 

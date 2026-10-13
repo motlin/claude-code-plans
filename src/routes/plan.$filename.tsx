@@ -21,7 +21,7 @@ function formatDate(iso: string): string {
 
 export const Route = createFileRoute("/plan/$filename")({
 	component: PlanPage,
-	loader: ({context: {queryClient}, params}) =>
+	loader: async ({context: {queryClient}, params}) =>
 		Promise.all([
 			queryClient.ensureQueryData(planQueryOptions(params.filename)),
 			queryClient.ensureQueryData(planLinksQueryOptions(params.filename)),

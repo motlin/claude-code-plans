@@ -62,7 +62,7 @@ export function isAgentNotReady(error: unknown): boolean {
 
 export const herdrPanesQueryOptions = queryOptions({
 	queryKey: ["herdr", "panes"] as const,
-	queryFn: () => apiFetch("/api/herdr-panes", HerdrPaneIndexResponse),
+	queryFn: async () => apiFetch("/api/herdr-panes", HerdrPaneIndexResponse),
 });
 
 export async function sendHerdrPrompt(sessionId: string, prompt: string, fetcher: typeof fetch = fetch): Promise<void> {

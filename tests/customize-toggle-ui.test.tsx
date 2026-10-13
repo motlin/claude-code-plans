@@ -75,8 +75,12 @@ describe("SkillEnableSwitch", () => {
 		await act(async () => {
 			fireEvent.click(toggle);
 		});
-		await waitFor(() => expect(release).toBeDefined());
-		await waitFor(() => expect(toggle.getAttribute("aria-checked")).toBe("false"));
+		await waitFor(() => {
+			expect(release).toBeDefined();
+		});
+		await waitFor(() => {
+			expect(toggle.getAttribute("aria-checked")).toBe("false");
+		});
 		await act(async () => {
 			release?.();
 		});

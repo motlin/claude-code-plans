@@ -163,12 +163,13 @@ function usePersistedLayout(
 	}, [entry]);
 
 	const update = useCallback(
-		(fn: LayoutUpdate) =>
+		(fn: LayoutUpdate) => {
 			setEntry((prev) => {
 				if (prev.sessionId !== sessionId) return prev;
 				const next = fn(pruneUnregistered(prev.layout, definitions));
 				return next === prev.layout ? prev : {sessionId, layout: next};
-			}),
+			});
+		},
 		[sessionId, definitions],
 	);
 
@@ -194,7 +195,9 @@ function useElementSize(ref: RefObject<HTMLElement | null>): {
 		if (typeof ResizeObserver === "undefined") return;
 		const observer = new ResizeObserver(measure);
 		observer.observe(element);
-		return () => observer.disconnect();
+		return () => {
+			observer.disconnect();
+		};
 	}, [ref]);
 	return size;
 }
@@ -553,7 +556,10 @@ function PaneSurface({kind, definition, host}: {kind: PaneKind; definition: Pane
 					aria-label={isExpanded ? "Collapse" : "Expand"}
 					aria-keyshortcuts={expandKeys.ariaKeyShortcuts}
 					{...(isExpanded ? {} : {"aria-haspopup": "dialog" as const})}
-					onClick={() => (isExpanded ? host.collapse() : host.update((state) => expandPane(state, kind)))}
+					onClick={() => {
+						if (isExpanded) host.collapse();
+						else host.update((state) => expandPane(state, kind));
+					}}
 					className={PANE_HEADER_ICON_BUTTON_CLASS}
 				>
 					{isExpanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
@@ -564,7 +570,9 @@ function PaneSurface({kind, definition, host}: {kind: PaneKind; definition: Pane
 					type="button"
 					aria-label="Close"
 					aria-keyshortcuts={closeKeys.ariaKeyShortcuts}
-					onClick={() => host.update((state) => closePane(state, kind))}
+					onClick={() => {
+						host.update((state) => closePane(state, kind));
+					}}
 					className={PANE_HEADER_ICON_BUTTON_CLASS}
 				>
 					<X className="h-4 w-4" />
@@ -760,7 +768,9 @@ function TileSlot({
 	children: ReactNode;
 	"data-pane-overlay"?: boolean;
 }) {
-	const focus = () => host.update((state) => focusPane(state, tileId));
+	const focus = () => {
+		host.update((state) => focusPane(state, tileId));
+	};
 	return (
 		<div
 			data-tile-host={tileId}
@@ -848,10 +858,15 @@ export function TileHost({
 		() => ({
 			layout,
 			isOpen: (kind) => openKinds.includes(kind),
-			openPane: (kind) => update((state) => open(state, kind)),
-			closePane: (kind) => update((state) => closePane(state, kind)),
-			togglePane: (kind) =>
-				update((state) => (tileIdsOf(state.root).includes(kind) ? closePane(state, kind) : open(state, kind))),
+			openPane: (kind) => {
+				update((state) => open(state, kind));
+			},
+			closePane: (kind) => {
+				update((state) => closePane(state, kind));
+			},
+			togglePane: (kind) => {
+				update((state) => (tileIdsOf(state.root).includes(kind) ? closePane(state, kind) : open(state, kind)));
+			},
 		}),
 		[layout, openKinds, update, open],
 	);

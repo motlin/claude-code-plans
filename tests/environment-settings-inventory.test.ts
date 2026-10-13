@@ -1,5 +1,4 @@
-import {readFileSync} from "node:fs";
-import {globSync} from "node:fs";
+import {readFileSync, globSync} from "node:fs";
 import {relative, resolve} from "node:path";
 import {describe, expect, it} from "vite-plus/test";
 

@@ -8,7 +8,7 @@ import {jobChildKindLabels, jobStateLabels} from "../lib/schema-choices";
 
 export const Route = createFileRoute("/jobs")({
 	component: JobsPage,
-	loader: ({context: {queryClient}}) => queryClient.ensureQueryData(jobsQueryOptions),
+	loader: async ({context: {queryClient}}) => queryClient.ensureQueryData(jobsQueryOptions),
 	head: () => ({
 		meta: [{title: "Background jobs"}],
 	}),

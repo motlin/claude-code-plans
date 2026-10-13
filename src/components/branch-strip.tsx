@@ -81,7 +81,9 @@ function writeDismissed(sessionId: string): void {
 /** Dismissal is per session and per tab, like upstream. */
 function useDismissed(sessionId: string): [boolean, () => void] {
 	const [dismissed, setDismissed] = useState(false);
-	useEffect(() => setDismissed(readDismissed(sessionId)), [sessionId]);
+	useEffect(() => {
+		setDismissed(readDismissed(sessionId));
+	}, [sessionId]);
 	const dismiss = useCallback(() => {
 		writeDismissed(sessionId);
 		setDismissed(true);
@@ -100,7 +102,9 @@ function useContainerWidth() {
 			if (measured !== undefined) setWidth(measured);
 		});
 		observer.observe(element);
-		return () => observer.disconnect();
+		return () => {
+			observer.disconnect();
+		};
 	}, []);
 	return {ref, width};
 }

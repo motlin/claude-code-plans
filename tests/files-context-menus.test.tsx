@@ -222,7 +222,9 @@ describe("tree row context menu", () => {
 		const rows = await waitFor(() => menuRows());
 		const copyRows = openSubmenu("Copy");
 		clickItem("Absolute path");
-		await waitFor(() => expect(writeClipboardText).toHaveBeenCalled());
+		await waitFor(() => {
+			expect(writeClipboardText).toHaveBeenCalled();
+		});
 
 		fireEvent.contextMenu(screen.getByText("README.md"), {clientX: 10, clientY: 10});
 		await waitFor(() => menuRows());
@@ -292,7 +294,9 @@ describe("tab context menu", () => {
 		const loaded = await openTabMenu(/agent\.ts/);
 		const copyRows = openSubmenu("Copy");
 		clickItem("Filename");
-		await waitFor(() => expect(writeClipboardText).toHaveBeenCalled());
+		await waitFor(() => {
+			expect(writeClipboardText).toHaveBeenCalled();
+		});
 		const unreadable = await openTabMenu(/README\.md/);
 		clickItem("Reveal in file tree");
 
@@ -339,7 +343,9 @@ describe("tab context menu", () => {
 		await renderLoaded();
 		await openTabMenu(/agent\.ts/);
 		clickItem("Copy file contents");
-		await waitFor(() => expect(writeClipboardText).toHaveBeenCalled());
+		await waitFor(() => {
+			expect(writeClipboardText).toHaveBeenCalled();
+		});
 
 		expect(vi.mocked(writeClipboardText).mock.calls).toStrictEqual([[AGENT_SOURCE]]);
 	});
@@ -354,7 +360,9 @@ describe("tab context menu", () => {
 
 		await openTabMenu(/agent\.ts/);
 		clickItem("Reload file");
-		await waitFor(() => expect(agentFetches()).toBe(2));
+		await waitFor(() => {
+			expect(agentFetches()).toBe(2);
+		});
 
 		expect(before).toBe(1);
 	});
@@ -390,12 +398,16 @@ describe("viewer context menu", () => {
 		await waitFor(() => menuRows());
 		openSubmenu("Open in");
 		clickItem("Finder");
-		await waitFor(() => expect(fetchCalls.some((call) => call.url === "/api/reveal-in-finder")).toBe(true));
+		await waitFor(() => {
+			expect(fetchCalls.some((call) => call.url === "/api/reveal-in-finder")).toBe(true);
+		});
 
 		fireEvent.contextMenu(viewer, {clientX: 10, clientY: 10});
 		await waitFor(() => menuRows());
 		clickItem("Copy file contents");
-		await waitFor(() => expect(writeClipboardText).toHaveBeenCalled());
+		await waitFor(() => {
+			expect(writeClipboardText).toHaveBeenCalled();
+		});
 
 		const reveal = fetchCalls.find((call) => call.url === "/api/reveal-in-finder");
 		expect({
@@ -587,7 +599,7 @@ describe("handleRevealInFinder", () => {
 		await rm(root, {recursive: true, force: true});
 	});
 
-	function reveal(body: unknown, revealPath: (path: string) => Promise<void>) {
+	async function reveal(body: unknown, revealPath: (path: string) => Promise<void>) {
 		return handleRevealInFinder(
 			new Request("http://localhost/api/reveal-in-finder", {
 				method: "POST",

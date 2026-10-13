@@ -90,9 +90,9 @@ function indexStatus(context: ToolContext): {
 	stale: boolean;
 	note?: string;
 } {
-	const row = context.db.get(sql`SELECT max(indexed_at) AS indexed_at FROM indexed_files`) as {
-		indexed_at: number | null;
-	};
+	const row = context.db.get<{indexed_at: number | null}>(
+		sql`SELECT max(indexed_at) AS indexed_at FROM indexed_files`,
+	);
 	const indexedAt = row.indexed_at;
 	const stale = indexedAt === null || context.now() - indexedAt > INDEX_STALE_AFTER_MS;
 	return {

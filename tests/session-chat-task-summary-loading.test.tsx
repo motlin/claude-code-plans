@@ -69,7 +69,9 @@ function button(footer: HTMLElement, label: string) {
 	return footer.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`)!;
 }
 function focus(element: HTMLElement) {
-	act(() => element.focus());
+	act(() => {
+		element.focus();
+	});
 }
 function anchor(footer: HTMLElement) {
 	return footer.closest<HTMLElement>("[data-perf-line]")?.dataset["perfLine"];

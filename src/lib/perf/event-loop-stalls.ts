@@ -113,5 +113,8 @@ export function formatStall(stall: EventLoopStall): string {
 export function withActivityTracking(
 	handler: (request: Request) => Response | Promise<Response>,
 ): (request: Request) => Promise<Response> {
-	return (request) => trackActivity(`${request.method} ${new URL(request.url).pathname}`, () => handler(request));
+	return async (request) =>
+		trackActivity(`${request.method} ${new URL(request.url).pathname}`, (): Response | Promise<Response> =>
+			handler(request),
+		);
 }

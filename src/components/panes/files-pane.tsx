@@ -118,14 +118,18 @@ function FilesSettingsMenu({
 				<MenuSeparator />
 				<MenuCheckboxItem
 					checked={settings.filesPreviewTabs}
-					onCheckedChange={(checked) => setSetting("filesPreviewTabs", checked)}
+					onCheckedChange={(checked) => {
+						setSetting("filesPreviewTabs", checked);
+					}}
 				>
 					Preview tabs
 				</MenuCheckboxItem>
 				<MenuSeparator />
 				<MenuCheckboxItem
 					checked={settings.filesWordWrap}
-					onCheckedChange={(checked) => setSetting("filesWordWrap", checked)}
+					onCheckedChange={(checked) => {
+						setSetting("filesWordWrap", checked);
+					}}
 				>
 					Word wrap
 				</MenuCheckboxItem>
@@ -134,9 +138,9 @@ function FilesSettingsMenu({
 					<MenuSubContent>
 						<MenuRadioGroup
 							value={normalizeFileTabSize(settings.filesTabSize)}
-							onValueChange={(value: unknown) =>
-								setSetting("filesTabSize", normalizeFileTabSize(Number(value)))
-							}
+							onValueChange={(value: unknown) => {
+								setSetting("filesTabSize", normalizeFileTabSize(Number(value)));
+							}}
 						>
 							{FILE_TAB_SIZES.map((size) => (
 								<MenuRadioItem key={size} value={size}>
@@ -149,7 +153,9 @@ function FilesSettingsMenu({
 				<MenuSeparator />
 				<MenuCheckboxItem
 					checked={settings.filesHideIgnored}
-					onCheckedChange={(checked) => setSetting("filesHideIgnored", checked)}
+					onCheckedChange={(checked) => {
+						setSetting("filesHideIgnored", checked);
+					}}
 				>
 					Hide ignored files
 				</MenuCheckboxItem>
@@ -160,7 +166,9 @@ function FilesSettingsMenu({
 							<MenuCheckboxItem
 								key={option.key}
 								checked={sources.sourceSelection[option.key]}
-								onCheckedChange={(checked) => sources.onSourceSelectedChange(option.key, checked)}
+								onCheckedChange={(checked) => {
+									sources.onSourceSelectedChange(option.key, checked);
+								}}
 							>
 								{option.label} ({sources.counts[option.key]})
 							</MenuCheckboxItem>
@@ -208,7 +216,9 @@ function FilesModeSwitch({mode, onModeChange}: {mode: FilesListMode; onModeChang
 						type="button"
 						role="radio"
 						aria-checked={mode === option.mode}
-						onClick={() => onModeChange(option.mode)}
+						onClick={() => {
+							onModeChange(option.mode);
+						}}
 						className="flex h-5 flex-1 cursor-pointer items-center justify-center rounded-r3 text-footnote text-secondary transition-colors hover:text-primary aria-checked:bg-surface-0 aria-checked:text-primary aria-checked:shadow-sm"
 					>
 						{option.label}
@@ -254,7 +264,7 @@ function WorkspaceOrSessionList({
 	cwd,
 	onAttachContext,
 	onAsk,
-}: WorkspaceOrSessionListProps) {
+}: WorkspaceOrSessionListProps): ReactNode {
 	const {settings} = useSettings();
 	// Same key as the tree's root listing, so this shares its request.
 	const root = useQuery(
@@ -318,11 +328,12 @@ function useFileTabs(sessionId: string | undefined): [FileTabsState, (action: Fi
 	}, [entry, sessionId]);
 
 	const dispatch = useCallback(
-		(action: FileTabsAction) =>
+		(action: FileTabsAction) => {
 			setEntry((prev) => {
 				const tabs = fileTabsReducer(prev.tabs, action, {previewTabs});
 				return tabs === prev.tabs ? prev : {...prev, tabs};
-			}),
+			});
+		},
 		[previewTabs],
 	);
 
@@ -358,10 +369,17 @@ function useEditGuard(
 		[dispatchTabs],
 	);
 	const dispatch = useCallback(
-		(action: FileTabsAction) => apply({type: "request", action, tabs: tabsRef.current}),
+		(action: FileTabsAction) => {
+			apply({type: "request", action, tabs: tabsRef.current});
+		},
 		[apply],
 	);
-	const reportDirty = useCallback((path: string, dirty: boolean) => apply({type: "dirty", path, dirty}), [apply]);
+	const reportDirty = useCallback(
+		(path: string, dirty: boolean) => {
+			apply({type: "dirty", path, dirty});
+		},
+		[apply],
+	);
 
 	const dirtyName = guard.dirtyPath?.slice(guard.dirtyPath.lastIndexOf("/") + 1) ?? "";
 	const dialog = (
@@ -375,7 +393,9 @@ function useEditGuard(
 			cancelLabel="Keep editing"
 			confirmLabel="Discard"
 			variant="danger"
-			onConfirm={() => apply({type: "discard"})}
+			onConfirm={() => {
+				apply({type: "discard"});
+			}}
 		/>
 	);
 	return {dispatch, reportDirty, dialog};
@@ -428,8 +448,9 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 		}),
 	);
 	const [lineTarget, setLineTarget] = useState<(FileRef & {findQuery?: string}) | null>(null);
-	const openFile = (path: string, options: {pin: boolean}): void =>
+	const openFile = (path: string, options: {pin: boolean}): void => {
 		dispatchFileTabs({type: "open", path, pin: options.pin});
+	};
 	const target = lineTarget !== null && lineTarget.path === openPath ? lineTarget : null;
 
 	// Transcript file refs open as a preview tab, including one clicked while
@@ -523,7 +544,12 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 		<>
 			<div data-files-header className="relative flex h-8 shrink-0 items-center justify-between gap-2 px-1">
 				<div className="flex min-w-0 flex-1 items-center gap-1">
-					<TreeToggle shown={treeShown} onToggle={() => setTreeShown((shown) => !shown)} />
+					<TreeToggle
+						shown={treeShown}
+						onToggle={() => {
+							setTreeShown((shown) => !shown);
+						}}
+					/>
 					{fileTabs.tabs.length === 0 ? (
 						<span data-pane-title className="truncate text-pane text-secondary select-none">
 							Files
@@ -566,7 +592,11 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 			</div>
 			<div className="flex min-h-0 flex-1 overflow-hidden rounded-b-[inherit]">
 				{treeShown && (
-					<FilesTreeColumn onHide={() => setTreeShown(false)}>
+					<FilesTreeColumn
+						onHide={() => {
+							setTreeShown(false);
+						}}
+					>
 						{sessionId === undefined ? (
 							sessionFilesList
 						) : (
@@ -610,10 +640,16 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 							line={target?.line}
 							endLine={target?.endLine}
 							findQuery={target?.findQuery}
-							onOpenFile={(path) => openFile(path, {pin: false})}
+							onOpenFile={(path) => {
+								openFile(path, {pin: false});
+							}}
 							onAttachContext={attachToChat}
-							onEditStart={() => dispatchTabs({type: "pin", path: openPath})}
-							onDirtyChange={(dirty) => editGuard.reportDirty(openPath, dirty)}
+							onEditStart={() => {
+								dispatchTabs({type: "pin", path: openPath});
+							}}
+							onDirtyChange={(dirty) => {
+								editGuard.reportDirty(openPath, dirty);
+							}}
 						/>
 					)}
 				</div>

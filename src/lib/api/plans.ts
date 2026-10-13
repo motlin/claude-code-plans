@@ -33,7 +33,7 @@ export type PlanListItem = z.infer<typeof PlanListItemSchema>;
 export const plansQueryOptions = () =>
 	queryOptions({
 		queryKey: ["plans"] as const,
-		queryFn: () => apiFetch("/api/plans", PlanListResponse),
+		queryFn: async () => apiFetch("/api/plans", PlanListResponse),
 		staleTime: Infinity,
 		gcTime: Infinity,
 	});
@@ -44,7 +44,7 @@ export const plansQueryOptions = () =>
 export const planQueryOptions = (slug: string) =>
 	queryOptions({
 		queryKey: ["plans", slug] as const,
-		queryFn: () => apiFetchOptional(`/api/plans/${encodeURIComponent(slug)}`, PlanDetailResponse),
+		queryFn: async () => apiFetchOptional(`/api/plans/${encodeURIComponent(slug)}`, PlanDetailResponse),
 		staleTime: Infinity,
 		gcTime: Infinity,
 	});
@@ -52,7 +52,7 @@ export const planQueryOptions = (slug: string) =>
 export const planLinksQueryOptions = (slug: string) =>
 	queryOptions({
 		queryKey: ["plans", slug, "links"] as const,
-		queryFn: () => apiFetch(`/api/plans/${encodeURIComponent(slug)}/links`, PlanLinksResponse),
+		queryFn: async () => apiFetch(`/api/plans/${encodeURIComponent(slug)}/links`, PlanLinksResponse),
 		staleTime: Infinity,
 		gcTime: Infinity,
 	});

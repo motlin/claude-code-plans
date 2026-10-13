@@ -62,7 +62,9 @@ export function usePendingMessageJump(
 		// One frame late so the scroll measures the transcript React has just
 		// committed rather than the layout it is replacing.
 		const frame = requestAnimationFrame(() => jumpToMessage(recordIndex));
-		return () => cancelAnimationFrame(frame);
+		return () => {
+			cancelAnimationFrame(frame);
+		};
 	}, [pending, windowStartIndex, uuidToLine, sessionId, queryClient]);
 
 	return useCallback((uuid: string) => {

@@ -55,13 +55,17 @@ describe("useComposerDraft", () => {
 		vi.useFakeTimers();
 		const {result} = renderHook(() => useComposerDraft("session-bob"));
 
-		act(() => result.current.setText("Continue Bob's test"));
+		act(() => {
+			result.current.setText("Continue Bob's test");
+		});
 		const beforeDebounce = storedDrafts();
 		act(() => {
 			vi.advanceTimersByTime(COMPOSER_DRAFT_DEBOUNCE_MS);
 		});
 		const afterDebounce = storedDrafts();
-		act(() => result.current.setText(""));
+		act(() => {
+			result.current.setText("");
+		});
 		act(() => {
 			vi.advanceTimersByTime(COMPOSER_DRAFT_DEBOUNCE_MS);
 		});
@@ -87,7 +91,9 @@ describe("useComposerDraft", () => {
 			initialProps: {draftKey: "session-alice"},
 		});
 
-		act(() => result.current.setText("Continue Alice's test"));
+		act(() => {
+			result.current.setText("Continue Alice's test");
+		});
 		rerender({draftKey: "session-bob"});
 
 		expect({text: result.current.text, stored: storedDrafts()}).toStrictEqual({
@@ -111,12 +117,16 @@ describe("useComposerDraft", () => {
 		});
 
 		const {result} = renderHook(() => useComposerDraft("session-alice"));
-		act(() => result.current.setText("Continue Alice's test"));
+		act(() => {
+			result.current.setText("Continue Alice's test");
+		});
 		act(() => {
 			vi.advanceTimersByTime(COMPOSER_DRAFT_DEBOUNCE_MS);
 		});
 		const typed = result.current.text;
-		act(() => result.current.clear());
+		act(() => {
+			result.current.clear();
+		});
 
 		expect({typed, cleared: result.current.text}).toStrictEqual({
 			typed: "Continue Alice's test",

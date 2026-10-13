@@ -226,7 +226,7 @@ describe("ActivePage rows", () => {
 
 		fireEvent.click(screen.getByRole("button", {name: "Mark reviewed"}));
 
-		await waitFor(() =>
+		await waitFor(() => {
 			expect({
 				marker: screen.queryByText(/Needs review/),
 				action: screen.queryByRole("button", {name: "Mark reviewed"}),
@@ -235,8 +235,8 @@ describe("ActivePage rows", () => {
 				marker: null,
 				action: null,
 				persistCalls: [{sessionId: "session-test-100", action: "reviewed"}],
-			}),
-		);
+			});
+		});
 	});
 
 	it("renders a session the SSE reducer knows about before the loader refetches it", async () => {

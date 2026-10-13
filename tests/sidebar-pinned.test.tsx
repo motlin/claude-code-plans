@@ -89,7 +89,9 @@ async function renderGroups(sessions: unknown[]) {
 	});
 	await router.load();
 	const result = render(<RouterProvider router={router} />);
-	await waitFor(() => expect(result.container.querySelector("[data-group-toggle]")).toBeTruthy());
+	await waitFor(() => {
+		expect(result.container.querySelector("[data-group-toggle]")).toBeTruthy();
+	});
 	return result;
 }
 
@@ -195,7 +197,9 @@ describe("sidebar Pinned section", () => {
 		if (!(toggle instanceof HTMLElement)) throw new Error("no Pinned toggle");
 		fireEvent.click(toggle);
 
-		await waitFor(() => expect(rowTitles(section)).toEqual([]));
+		await waitFor(() => {
+			expect(rowTitles(section)).toEqual([]);
+		});
 		expect(readSidebarState().collapsedGroups).toEqual(["pinned"]);
 		expect(toggle.getAttribute("aria-expanded")).toBe("false");
 	});
@@ -209,9 +213,13 @@ describe("sidebar Pinned section", () => {
 
 		expect(rowTitles(pinnedSection(container))).toHaveLength(20);
 		fireEvent.click(screen.getByRole("button", {name: "Show 3 more in Pinned"}));
-		await waitFor(() => expect(rowTitles(pinnedSection(container))).toHaveLength(23));
+		await waitFor(() => {
+			expect(rowTitles(pinnedSection(container))).toHaveLength(23);
+		});
 		fireEvent.click(screen.getByRole("button", {name: "Show less in Pinned"}));
-		await waitFor(() => expect(rowTitles(pinnedSection(container))).toHaveLength(20));
+		await waitFor(() => {
+			expect(rowTitles(pinnedSection(container))).toHaveLength(20);
+		});
 		expect(screen.getByRole("button", {name: "Show 3 more in Pinned"})).toBeTruthy();
 	});
 
@@ -221,10 +229,14 @@ describe("sidebar Pinned section", () => {
 
 		const top = menuItemNames(await openRowMenu("Review one"));
 		fireEvent.keyDown(screen.getByRole("menu"), {key: "Escape"});
-		await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+		await waitFor(() => {
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
 		const middle = menuItemNames(await openRowMenu("Working one"));
 		fireEvent.keyDown(screen.getByRole("menu"), {key: "Escape"});
-		await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+		await waitFor(() => {
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
 		const bottom = menuItemNames(await openRowMenu("Completed older"));
 
 		expect({
@@ -250,10 +262,12 @@ describe("sidebar Pinned section", () => {
 		if (moveUp === undefined) throw new Error("no Move up");
 		fireEvent.click(moveUp);
 
-		await waitFor(() =>
-			expect(rowTitles(pinnedSection(container))).toEqual(["Working one", "Completed older", "Review one"]),
-		);
-		await waitFor(() => expect(document.activeElement?.textContent).toBe("Completed older"));
+		await waitFor(() => {
+			expect(rowTitles(pinnedSection(container))).toEqual(["Working one", "Completed older", "Review one"]);
+		});
+		await waitFor(() => {
+			expect(document.activeElement?.textContent).toBe("Completed older");
+		});
 		expect({
 			pins: readPinState(),
 			focusedRow: document.activeElement?.hasAttribute("data-row-main-button"),

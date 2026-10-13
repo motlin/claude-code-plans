@@ -46,7 +46,9 @@ export function PullRequestsSection({rows, rowLimit, now, onOpen}: Readonly<Pull
 					<button
 						type="button"
 						aria-expanded={expanded}
-						onClick={() => setExpanded((previous) => !previous)}
+						onClick={() => {
+							setExpanded((previous) => !previous);
+						}}
 						className="h-6 rounded-md px-1.5 text-[12px] leading-[15px] text-ink-muted hover:bg-fill-ghost-hover hover:text-secondary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100"
 					>
 						{expanded ? "Show less" : `Show ${hiddenCount} more`}

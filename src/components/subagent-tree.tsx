@@ -91,7 +91,9 @@ function TreeNode({node, presentation}: {node: SubagentTreeNode; presentation: T
 		<div>
 			<div
 				className={`group flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1 hover:bg-surface-0/50 ${liveStatus === "ended" ? "opacity-60" : ""}`}
-				onClick={() => hasChildren && setExpanded((current) => !current)}
+				onClick={() => {
+					if (hasChildren) setExpanded((current) => !current);
+				}}
 			>
 				<span className="w-4 shrink-0 text-t6">
 					{hasChildren ? expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} /> : null}
@@ -119,7 +121,9 @@ function TreeNode({node, presentation}: {node: SubagentTreeNode; presentation: T
 						to="/session/$id"
 						params={{id: node.agent.id}}
 						className="hidden shrink-0 items-center gap-1 text-[10px] text-accent-100 hover:underline group-hover:inline-flex"
-						onClick={(event) => event.stopPropagation()}
+						onClick={(event) => {
+							event.stopPropagation();
+						}}
 					>
 						<Bot size={10} />
 						view
@@ -142,7 +146,9 @@ function ParallelGroupNode({group, presentation}: {group: ParallelSubagentGroup;
 		<div>
 			<div
 				className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1 hover:bg-surface-0/50"
-				onClick={() => setExpanded((current) => !current)}
+				onClick={() => {
+					setExpanded((current) => !current);
+				}}
 			>
 				<span className="w-4 shrink-0 text-t6">
 					{expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}

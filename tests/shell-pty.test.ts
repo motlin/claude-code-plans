@@ -289,7 +289,7 @@ describe("shell pty registry", () => {
 			resolveCwd: () => directory,
 			shell: () => "/bin/sh",
 			environment: () => ({PATH: "/usr/bin:/bin", HOME: directory}),
-			spawn: spawn as unknown as SpawnPty,
+			spawn: spawn,
 			idleTimeoutMs: 60_000,
 			foregroundBusy: isForegroundBusy,
 		});

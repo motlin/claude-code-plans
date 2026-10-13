@@ -10,7 +10,7 @@ import {ListPageHeader} from "../components/list-page-header";
 
 export const Route = createFileRoute("/approvals")({
 	component: ApprovalsPage,
-	loader: ({context: {queryClient}}) => queryClient.ensureQueryData(approvalsQueryOptions()),
+	loader: async ({context: {queryClient}}) => queryClient.ensureQueryData(approvalsQueryOptions()),
 	head: () => ({
 		meta: [{title: "Approvals"}],
 	}),

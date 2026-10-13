@@ -180,7 +180,7 @@ export async function scanPendingApproval(
 	filePath: string,
 	cache?: PendingApprovalScanCache,
 ): Promise<PendingApproval | null> {
-	if (cache !== undefined) return cache.exclusive(filePath, () => scanPendingApprovalUnlocked(filePath, cache));
+	if (cache !== undefined) return cache.exclusive(filePath, async () => scanPendingApprovalUnlocked(filePath, cache));
 	return scanPendingApprovalUnlocked(filePath);
 }
 

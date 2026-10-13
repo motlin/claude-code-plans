@@ -75,9 +75,15 @@ export function FileTabsStrip({state, dispatch, cwd, onAttachContext, onRevealIn
 									aria-selected={active}
 									tabIndex={active ? 0 : -1}
 									aria-describedby={`${hintId}-close ${hintId}-move`}
-									onClick={() => dispatch({type: "reveal", path: tab.path})}
-									onDoubleClick={() => dispatch({type: "pin", path: tab.path})}
-									onKeyDown={(event) => handleKeyDown(event, tab.path)}
+									onClick={() => {
+										dispatch({type: "reveal", path: tab.path});
+									}}
+									onDoubleClick={() => {
+										dispatch({type: "pin", path: tab.path});
+									}}
+									onKeyDown={(event) => {
+										handleKeyDown(event, tab.path);
+									}}
 									className={`flex h-5 min-w-0 flex-1 cursor-pointer items-center gap-1 rounded-r5 pr-[22px] pl-1.5 text-left text-pane outline-none transition-colors focus-visible:ring-1 focus-visible:ring-accent-100 ${active ? "bg-fill-control" : "bg-transparent hover:bg-fill-ghost-hover"} ${tab.preview ? "italic" : ""}`}
 								>
 									<Icon aria-hidden="true" className="size-3 shrink-0 text-ink-muted" />
@@ -89,7 +95,9 @@ export function FileTabsStrip({state, dispatch, cwd, onAttachContext, onRevealIn
 								type="button"
 								tabIndex={-1}
 								aria-label={`Close ${name}`}
-								onClick={() => dispatch({type: "close", path: tab.path})}
+								onClick={() => {
+									dispatch({type: "close", path: tab.path});
+								}}
 								className={`absolute right-0 flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-r3 transition-opacity group-hover/tab:opacity-100 hover:bg-fill-ghost-hover hover:text-primary ${active ? "text-primary opacity-100" : "text-t6 opacity-0"}`}
 							>
 								<X aria-hidden="true" className="size-3" />

@@ -36,7 +36,9 @@ export function HookSchemaDriftBanner() {
 					</div>
 					<button
 						type="button"
-						onClick={() => dismiss(drift.hookEventName)}
+						onClick={() => {
+							dismiss(drift.hookEventName);
+						}}
 						className="shrink-0 text-amber-700 hover:text-amber-900 dark:text-amber-400 dark:hover:text-amber-200"
 						aria-label={`Dismiss ${drift.hookEventName} drift notice`}
 					>

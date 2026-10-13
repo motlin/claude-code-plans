@@ -53,7 +53,9 @@ export function PermissionCard({
 			void decide(decision);
 		}
 		document.addEventListener("keydown", onKeyDown);
-		return () => document.removeEventListener("keydown", onKeyDown);
+		return () => {
+			document.removeEventListener("keydown", onKeyDown);
+		};
 	}, [enabled, decide]);
 
 	return (

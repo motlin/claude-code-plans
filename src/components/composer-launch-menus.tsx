@@ -145,7 +145,9 @@ export function ModeMenu({
 				body="Claude will read, edit, and execute files without asking — including potentially destructive commands. Only use this in isolated or disposable environments."
 				confirmLabel="Enable"
 				variant="danger"
-				onConfirm={() => onSelect("bypassPermissions")}
+				onConfirm={() => {
+					onSelect("bypassPermissions");
+				}}
 			/>
 		</>
 	);
@@ -174,7 +176,12 @@ export function ModelMenu({
 				{currentLabel}
 			</MenuTrigger>
 			<MenuContent side="top" align="end">
-				<MenuRadioGroup value={primary} onValueChange={(value: string) => onSelect(value)}>
+				<MenuRadioGroup
+					value={primary}
+					onValueChange={(value: string) => {
+						onSelect(value);
+					}}
+				>
 					{PRIMARY_MODELS.map((model, index) => (
 						<MenuRadioItem
 							key={model.id}

@@ -8,7 +8,7 @@ import {ListPageHeader} from "../components/list-page-header";
 
 export const Route = createFileRoute("/memories")({
 	component: MemoriesPage,
-	loader: ({context: {queryClient}}) => queryClient.ensureQueryData(projectsQueryOptions()),
+	loader: async ({context: {queryClient}}) => queryClient.ensureQueryData(projectsQueryOptions()),
 	head: () => ({
 		meta: [{title: "Claude Memories"}],
 	}),

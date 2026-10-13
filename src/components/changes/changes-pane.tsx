@@ -150,7 +150,9 @@ function CommitsSubmenu({
 						aria-label="Search commits"
 						placeholder="Search commits"
 						value={search}
-						onChange={(event) => setSearch(event.target.value)}
+						onChange={(event) => {
+							setSearch(event.target.value);
+						}}
 						onKeyDown={(event) => {
 							if (event.key !== "Escape" && event.key !== "ArrowDown" && event.key !== "ArrowUp") {
 								event.stopPropagation();
@@ -286,7 +288,9 @@ function PrefCheckboxItem({
 	return (
 		<MenuCheckboxItem
 			checked={settings[prefKey]}
-			onCheckedChange={(checked) => setSetting(prefKey, checked)}
+			onCheckedChange={(checked) => {
+				setSetting(prefKey, checked);
+			}}
 			{...(shortcut === undefined ? {} : {shortcut})}
 		>
 			{children}
@@ -343,7 +347,9 @@ function SettingsMenu({
 						{sideBySideAvailable && (
 							<MenuCheckboxItem
 								checked={settings.diffStyle === "split"}
-								onCheckedChange={(checked) => setSetting("diffStyle", checked ? "split" : "unified")}
+								onCheckedChange={(checked) => {
+									setSetting("diffStyle", checked ? "split" : "unified");
+								}}
 							>
 								Side by side
 							</MenuCheckboxItem>
@@ -371,7 +377,9 @@ function useElementWidth(ref: RefObject<HTMLElement | null>): number {
 			if (entry) setWidth(entry.contentRect.width);
 		});
 		observer.observe(element);
-		return () => observer.disconnect();
+		return () => {
+			observer.disconnect();
+		};
 	}, [ref]);
 	return width;
 }
@@ -408,7 +416,9 @@ function useCoachMarkSeen(key: string) {
 				// Storage unavailable: the tip stays dismissed for this mount.
 			}
 		},
-		close: () => setClosed(true),
+		close: () => {
+			setClosed(true);
+		},
 	};
 }
 
@@ -493,7 +503,9 @@ function LazyDiffFile({
 				additions={file.additions}
 				deletions={file.deletions}
 				collapsed={collapsed}
-				onToggle={() => onCollapsedChange(!collapsed)}
+				onToggle={() => {
+					onCollapsedChange(!collapsed);
+				}}
 				onOpenFile={onOpenFile}
 			/>
 			{!collapsed && (
@@ -649,7 +661,9 @@ export function ChangesPaneView({
 	const [collapsedOverrides, setCollapsedOverrides] = useState<Record<string, boolean>>({});
 	const {settings, loaded, setSetting} = useSettings();
 	const showFiles = settings.diffShowTree;
-	useShortcut("toggle_changes_file_list", () => setSetting("diffShowTree", !showFiles));
+	useShortcut("toggle_changes_file_list", () => {
+		setSetting("diffShowTree", !showFiles);
+	});
 	const headerRef = useRef<HTMLDivElement>(null);
 	const paneWidth = useElementWidth(headerRef);
 	const sideBySideAvailable = paneWidth >= SIDE_BY_SIDE_MIN_WIDTH;
@@ -678,8 +692,9 @@ export function ChangesPaneView({
 	}, [diff]);
 
 	const isCollapsed = (path: string) => collapsedOverrides[path] ?? large;
-	const setAllCollapsed = (collapsed: boolean) =>
+	const setAllCollapsed = (collapsed: boolean) => {
 		setCollapsedOverrides(Object.fromEntries(files.map((file) => [file.path, collapsed])));
+	};
 
 	function selectFile(path: string) {
 		setActivePath(path);
@@ -706,7 +721,9 @@ export function ChangesPaneView({
 						{...(onOpenFile ? {onOpenFile} : {})}
 						commits={scopes?.kind === "git" ? scopes.commits : []}
 						selectedCommitSha={selectedCommitSha}
-						onSelectCommit={(sha) => onSelectScope(sha === null ? BRANCH_SCOPE : commitScope(sha))}
+						onSelectCommit={(sha) => {
+							onSelectScope(sha === null ? BRANCH_SCOPE : commitScope(sha));
+						}}
 						onCopyCommitSha={onCopyCommitSha}
 					/>
 				)}
@@ -742,10 +759,16 @@ export function ChangesPaneView({
 									file={file}
 									view={view}
 									collapsed={isCollapsed(file.path)}
-									onCollapsedChange={(collapsed) =>
-										setCollapsedOverrides((previous) => ({...previous, [file.path]: collapsed}))
+									onCollapsedChange={(collapsed) => {
+										setCollapsedOverrides((previous) => ({...previous, [file.path]: collapsed}));
+									}}
+									onOpenFile={
+										onOpenFile
+											? () => {
+													onOpenFile(file.path);
+												}
+											: undefined
 									}
-									onOpenFile={onOpenFile ? () => onOpenFile(file.path) : undefined}
 									fetchContext={fetchContext}
 									annotations={annotations.length === 0 ? undefined : annotations}
 									onRequestChanges={
@@ -783,7 +806,9 @@ export function ChangesPaneView({
 						<ShowFilesToggle
 							ref={setShowFilesButton}
 							pressed={showFiles}
-							onToggle={() => setSetting("diffShowTree", !showFiles)}
+							onToggle={() => {
+								setSetting("diffShowTree", !showFiles);
+							}}
 						/>
 					)}
 					<CoachMark
@@ -813,8 +838,12 @@ export function ChangesPaneView({
 						hasFiles={hasFiles}
 						large={large}
 						sideBySideAvailable={sideBySideAvailable}
-						onCollapseAll={() => setAllCollapsed(true)}
-						onExpandAll={() => setAllCollapsed(false)}
+						onCollapseAll={() => {
+							setAllCollapsed(true);
+						}}
+						onExpandAll={() => {
+							setAllCollapsed(false);
+						}}
 						onRefresh={onRefresh}
 					/>
 					{controls}
@@ -841,7 +870,9 @@ function usePersistedScope(sessionId: string): [string, (scope: string) => void]
 			if (detail.sessionId === sessionId) setEntry({sessionId, scope: detail.scope});
 		}
 		window.addEventListener(CHANGES_SCOPE_REQUEST_EVENT, onRequest);
-		return () => window.removeEventListener(CHANGES_SCOPE_REQUEST_EVENT, onRequest);
+		return () => {
+			window.removeEventListener(CHANGES_SCOPE_REQUEST_EVENT, onRequest);
+		};
 	}, [sessionId]);
 	return [current, setScope];
 }
@@ -855,7 +886,9 @@ function usePersistedReview(sessionId: string): string | null {
 			if (detail.sessionId === sessionId) setEntry({sessionId, reviewId: detail.reviewId});
 		}
 		window.addEventListener(CHANGES_REVIEW_REQUEST_EVENT, onRequest);
-		return () => window.removeEventListener(CHANGES_REVIEW_REQUEST_EVENT, onRequest);
+		return () => {
+			window.removeEventListener(CHANGES_REVIEW_REQUEST_EVENT, onRequest);
+		};
 	}, [sessionId]);
 	return entry.sessionId === sessionId ? entry.reviewId : null;
 }

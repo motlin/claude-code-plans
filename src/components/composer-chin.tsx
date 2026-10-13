@@ -32,7 +32,7 @@ import {Tooltip} from "./ui/tooltip";
 import {UsageLimitRow, UsageMeter} from "./usage-limit-row";
 
 // Keeps the Customize API schemas and router hooks out of the composer's cold load.
-const loadConnectorsMenu = () =>
+const loadConnectorsMenu = async () =>
 	import("./composer-connectors-menu").then((module) => ({default: module.ComposerConnectorsMenu}));
 const ComposerConnectorsMenu = lazy(loadConnectorsMenu);
 
@@ -138,7 +138,9 @@ function UsageRing({usage, onShowBreakdown}: {usage: ComposerUsage | null; onSho
 					<Popover.Popup className={POPUP_CLASS}>
 						<UsagePopoverBody
 							usage={usage}
-							onNavigate={() => setOpen(false)}
+							onNavigate={() => {
+								setOpen(false);
+							}}
 							onShowBreakdown={
 								onShowBreakdown &&
 								(() => {
@@ -207,7 +209,9 @@ export const ComposerChin = memo(function ComposerChin({
 	};
 	const menuProps = (menu: ChinMenu) => ({
 		open: openMenu === menu,
-		onOpenChange: (open: boolean) => onOpenMenuChange(open ? menu : null),
+		onOpenChange: (open: boolean) => {
+			onOpenMenuChange(open ? menu : null);
+		},
 	});
 	const modeLabel =
 		launchOptions.permissionMode === undefined
@@ -240,7 +244,9 @@ export const ComposerChin = memo(function ComposerChin({
 					current={launchOptions.permissionMode ?? state.mode?.id ?? "default"}
 					currentLabel={modeLabel}
 					bypassPermissionsAllowed={launch.bypassPermissionsAllowed}
-					onSelect={(permissionMode) => onLaunchOptionsChange({...launchOptions, permissionMode})}
+					onSelect={(permissionMode) => {
+						onLaunchOptionsChange({...launchOptions, permissionMode});
+					}}
 				/>
 			</div>
 			<div className="ms-auto flex min-w-0 items-center gap-1 ps-2">
@@ -248,18 +254,24 @@ export const ComposerChin = memo(function ComposerChin({
 					{...menuProps("model")}
 					current={launchOptions.model ?? modelMenuValue(state.modelId) ?? undefined}
 					currentLabel={modelText}
-					onSelect={(model) => onLaunchOptionsChange({...launchOptions, model})}
+					onSelect={(model) => {
+						onLaunchOptionsChange({...launchOptions, model});
+					}}
 				/>
 				<EffortSelector {...menuProps("effort")} current={currentEffort} onSelect={selectEffort} />
 				<UsageRing usage={state.usage} onShowBreakdown={onShowUsageBreakdown} />
 			</div>
 			<ConfirmDialog
 				open={effortConfirm.open}
-				onOpenChange={(open) => setEffortConfirm((prev) => ({...prev, open}))}
+				onOpenChange={(open) => {
+					setEffortConfirm((prev) => ({...prev, open}));
+				}}
 				title="Change effort?"
 				body={`This session is cached with effort set to ${effortText(currentEffort)}. Changing it to ${effortText(effortConfirm.effort)} means Claude re-reads the whole session on your next message, which uses more of your limit.`}
 				confirmLabel="Change effort"
-				onConfirm={() => onLaunchOptionsChange({...launchOptions, effort: effortConfirm.effort})}
+				onConfirm={() => {
+					onLaunchOptionsChange({...launchOptions, effort: effortConfirm.effort});
+				}}
 			/>
 		</>
 	);

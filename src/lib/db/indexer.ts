@@ -319,9 +319,9 @@ export async function scanFileContentRoots(
 ): Promise<void> {
 	const discoveredPaths = new Set<string>();
 	let scanComplete = true;
-	const cachedFiles = db.all(
+	const cachedFiles = db.all<{path: string; mtime_ms: number; size_bytes: number}>(
 		sql`SELECT path, mtime_ms, size_bytes FROM indexed_files WHERE path LIKE ${`${FILE_CONTENT_CACHE_PREFIX}%`}`,
-	) as Array<{path: string; mtime_ms: number; size_bytes: number}>;
+	);
 	const cachedMetadataByPath = new Map(
 		cachedFiles.map((file) => [
 			file.path.slice(FILE_CONTENT_CACHE_PREFIX.length),
@@ -360,13 +360,13 @@ export async function scanFileContentRoots(
 			} catch {
 				continue;
 			}
-			await trackActivity(`file-content scan ${trackedPath}`, () =>
-				retryWhileBusy(() => indexFileContent(db, trackedPath, roots), signal),
+			await trackActivity(`file-content scan ${trackedPath}`, async () =>
+				retryWhileBusy(async () => indexFileContent(db, trackedPath, roots), signal),
 			);
 		}
 	}
 
-	const indexedPaths = db.all(sql`SELECT path FROM file_content`) as Array<{path: string}>;
+	const indexedPaths = db.all<{path: string}>(sql`SELECT path FROM file_content`);
 	const stalePaths = indexedPaths
 		.map((indexedPath) => indexedPath.path)
 		.filter(
@@ -377,19 +377,17 @@ export async function scanFileContentRoots(
 	for (let offset = 0; offset < stalePaths.length; offset += FILE_CONTENT_CLEANUP_BATCH_SIZE) {
 		signal?.throwIfAborted();
 		const batch = stalePaths.slice(offset, offset + FILE_CONTENT_CLEANUP_BATCH_SIZE);
-		await retryWhileBusy(
-			() =>
-				db.transaction((transaction) => {
-					for (const stalePath of batch) {
-						transaction.run(sql`DELETE FROM file_content WHERE path = ${stalePath}`);
-						transaction
-							.delete(schema.indexedFiles)
-							.where(eq(schema.indexedFiles.path, fileContentCachePath(stalePath)))
-							.run();
-					}
-				}),
-			signal,
-		);
+		await retryWhileBusy(() => {
+			db.transaction((transaction) => {
+				for (const stalePath of batch) {
+					transaction.run(sql`DELETE FROM file_content WHERE path = ${stalePath}`);
+					transaction
+						.delete(schema.indexedFiles)
+						.where(eq(schema.indexedFiles.path, fileContentCachePath(stalePath)))
+						.run();
+				}
+			});
+		}, signal);
 		await new Promise<void>((resolveYield) => setImmediate(resolveYield));
 	}
 }
@@ -431,10 +429,10 @@ export async function indexSessionsIndex(db: IndexDb, projectDir: string, projec
 	// Upsert sessions
 	for (const entry of result.data.entries) {
 		const fp = await resolveFirstPrompt(entry.firstPrompt, entry.fullPath);
-		const summ = entry.summary as string | undefined;
-		const branch = normalizeGitBranch(entry.gitBranch as string | undefined);
-		const entryProjectPath = entry.projectPath as string | undefined;
-		const sidechain = entry.isSidechain as boolean | undefined;
+		const summ = entry.summary;
+		const branch = normalizeGitBranch(entry.gitBranch);
+		const entryProjectPath = entry.projectPath;
+		const sidechain = entry.isSidechain;
 		// Transcript-derived titles (custom, then ai) outrank anything
 		// sessions-index.json knows; the coalesce below keeps them on rewrite.
 		const title = resolveSessionTitle({
@@ -442,7 +440,7 @@ export async function indexSessionsIndex(db: IndexDb, projectDir: string, projec
 			firstPrompt: fp ?? undefined,
 			sessionId: entry.sessionId,
 		});
-		const createdAt = entry.created ? new Date(entry.created as string).getTime() : entry.fileMtime;
+		const createdAt = entry.created ? new Date(entry.created).getTime() : entry.fileMtime;
 
 		db.insert(schema.sessions)
 			.values({
@@ -841,7 +839,12 @@ async function indexJsonlFileWithLinks(
 		if (cache !== undefined && cache.get(filePath)?.state.project !== project) cache.delete(filePath);
 		const state = await foldJsonl(
 			filePath,
-			{create: () => new SessionIndexState(sessionId, project), add: (folded, line) => folded.add(line)},
+			{
+				create: () => new SessionIndexState(sessionId, project),
+				add: (folded, line) => {
+					folded.add(line);
+				},
+			},
 			cache,
 		);
 		await persistSessionIndexState(db, filePath, project, fileStat, state);
@@ -948,11 +951,11 @@ async function persistSessionIndexState(
 	db.transaction((transaction) => {
 		const persisted =
 			persistedMessages > 0
-				? (transaction.get(
+				? transaction.get<{messages: number; content: number}>(
 						sql`SELECT
 							(SELECT count(*) FROM session_messages WHERE session_id = ${sessionId}) AS messages,
 							(SELECT count(*) FROM message_content WHERE session_id = ${sessionId}) AS content`,
-					) as {messages: number; content: number})
+					)
 				: undefined;
 		const resumed = persisted?.messages === persistedMessages && persisted.content === state.persistedContentRows;
 		if (!resumed) {
@@ -1694,12 +1697,14 @@ export async function fullScan(
 	// Each step is one unit of work that another connection's write lock can
 	// hold up. It retries after an asynchronous pause instead of sleeping the
 	// thread, and names itself for the dev event-loop stall monitor.
-	const step = <T>(label: string, run: () => T | Promise<T>): Promise<T> =>
-		trackActivity(`scan ${label}`, () => retryWhileBusy(run, signal));
+	const step = async <T>(label: string, run: () => T | Promise<T>): Promise<T> =>
+		trackActivity(`scan ${label}`, async () => retryWhileBusy(run, signal));
 
 	indexingInProgress = true;
 	try {
-		await step("project names", () => repairProjectDisplayNames(indexDb));
+		await step("project names", () => {
+			repairProjectDisplayNames(indexDb);
+		});
 
 		let projectDirs: string[];
 		try {
@@ -1746,7 +1751,7 @@ export async function fullScan(
 		for (const {project, projectPath} of projects) {
 			signal?.throwIfAborted();
 			// Index sessions-index.json
-			await step(`sessions-index ${projectPath}`, () => indexSessionsIndex(indexDb, projectPath, project));
+			await step(`sessions-index ${projectPath}`, async () => indexSessionsIndex(indexDb, projectPath, project));
 
 			// Discover session JSONL files with their mtimes, newest first.
 			let files: string[];
@@ -1778,7 +1783,7 @@ export async function fullScan(
 			// Index JSONL files with bounded concurrency.
 			await mapLimit(sessionFiles, SCAN_CONCURRENCY, async ({path}) => {
 				signal?.throwIfAborted();
-				await step(`jsonl ${path}`, () => indexJsonlFile(indexDb, path, project));
+				await step(`jsonl ${path}`, async () => indexJsonlFile(indexDb, path, project));
 			});
 
 			// Index subagents and (re)link parent-child relationships. Linking
@@ -1805,47 +1810,51 @@ export async function fullScan(
 						continue;
 					}
 					if (knownMtimes.get(sfPath) !== sfMtime) changed = true;
-					await step(`subagent ${sfPath}`, () => indexSubagentFile(indexDb, sfPath, sessionId, project));
+					await step(`subagent ${sfPath}`, async () =>
+						indexSubagentFile(indexDb, sfPath, sessionId, project),
+					);
 					subagentJsonlPaths.push(sfPath);
 				}
 
 				if (changed && subagentJsonlPaths.length > 0) {
 					for (const saPath of subagentJsonlPaths) {
-						await step(`subagent links ${saPath}`, () =>
+						await step(`subagent links ${saPath}`, async () =>
 							linkSubagentParents(indexDb, saPath, basename(saPath, ".jsonl")),
 						);
 					}
-					await step(`subagent links ${sessionJsonlPath}`, () =>
+					await step(`subagent links ${sessionJsonlPath}`, async () =>
 						linkSubagentParents(indexDb, sessionJsonlPath, null),
 					);
 				}
 			}
 
 			// Index memory markdown files for this project
-			await step(`memories ${projectPath}`, () => scanMemoriesForProject(indexDb, projectsDir, project));
+			await step(`memories ${projectPath}`, async () => scanMemoriesForProject(indexDb, projectsDir, project));
 		}
 
 		// Pruning is only safe after every project directory was enumerated. A
 		// transient permission or mount failure must leave the existing index intact.
 		if (scanComplete) {
-			await step("prune deleted sessions", () =>
-				pruneDeletedSessions(indexDb, summariesDb, projectsDir, onDiskPaths),
-			);
+			await step("prune deleted sessions", () => {
+				pruneDeletedSessions(indexDb, summariesDb, projectsDir, onDiskPaths);
+			});
 		}
 
 		if (tasksDir) {
-			await step(`tasks ${tasksDir}`, () => scanTasksDir(indexDb, tasksDir));
+			await step(`tasks ${tasksDir}`, async () => scanTasksDir(indexDb, tasksDir));
 		}
 
 		if (plansDir) {
-			await step(`plans ${plansDir}`, () => scanPlansDir(indexDb, plansDir));
-			await step("prune plan links", () => pruneStalePlanLinks(indexDb, plansDir));
+			await step(`plans ${plansDir}`, async () => scanPlansDir(indexDb, plansDir));
+			await step("prune plan links", async () => pruneStalePlanLinks(indexDb, plansDir));
 		}
 
 		// The scan visits projects in recency order, so a worktree can be
 		// persisted before the parent project it derives its display name from.
 		// A final pass renames it once every parent is present.
-		await step("project names", () => repairProjectDisplayNames(indexDb));
+		await step("project names", () => {
+			repairProjectDisplayNames(indexDb);
+		});
 	} finally {
 		indexingInProgress = false;
 	}

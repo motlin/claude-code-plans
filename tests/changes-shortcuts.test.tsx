@@ -96,7 +96,9 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-	act(() => setKeyboardShortcutsOpen(false));
+	act(() => {
+		setKeyboardShortcutsOpen(false);
+	});
 	unregister();
 	cleanup();
 	vi.unstubAllGlobals();
@@ -170,7 +172,9 @@ describe("Changes pane shortcuts", () => {
 
 	it("lists the three Changes shortcuts in the shortcuts dialog", async () => {
 		render(<KeyboardShortcutsDialog />);
-		act(() => setKeyboardShortcutsOpen(true));
+		act(() => {
+			setKeyboardShortcutsOpen(true);
+		});
 
 		const dialog = await screen.findByRole("dialog", {name: "Keyboard shortcuts"});
 		const labels = within(dialog)

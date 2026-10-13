@@ -379,7 +379,9 @@ describe("readStatsCacheTokens", () => {
 	const dir = join(tmpdir(), `claude-stats-cache-test-${process.pid}`);
 
 	beforeEach(() => mkdirSync(dir, {recursive: true}));
-	afterEach(() => rmSync(dir, {recursive: true, force: true}));
+	afterEach(() => {
+		rmSync(dir, {recursive: true, force: true});
+	});
 
 	const cache = {
 		version: 3,

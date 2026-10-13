@@ -205,7 +205,7 @@ describe("ApprovalDock", () => {
 			question: card.querySelector("[data-approval-question]")?.textContent,
 			keycaps: [...card.querySelectorAll("kbd")].map((kbd) => kbd.textContent),
 			other: screen.getByRole("textbox", {name: "Other option"}).getAttribute("placeholder"),
-			next: (screen.getByRole("button", {name: "Next"}) as HTMLButtonElement).disabled,
+			next: screen.getByRole<HTMLButtonElement>("button", {name: "Next"}).disabled,
 		}).toStrictEqual({
 			pill: "1/2",
 			question: "Which test runner?",
@@ -228,7 +228,7 @@ describe("ApprovalDock", () => {
 
 	it("digit keys are ignored while the composer has text", () => {
 		renderDock();
-		const prompt = screen.getByRole("textbox", {name: "Prompt"}) as HTMLTextAreaElement;
+		const prompt = screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
 		fireEvent.change(prompt, {target: {value: "hello"}});
 		prompt.focus();
 		fireEvent.keyDown(prompt, {key: "1"});

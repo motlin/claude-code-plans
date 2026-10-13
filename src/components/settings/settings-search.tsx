@@ -107,7 +107,9 @@ export function SettingsSearch({onSelect}: {onSelect: (tab: SettingsTab, row: st
 													key={`${result.tab}/${result.rowSlug}`}
 													type="button"
 													aria-label={`${settingsTabLabels[group.tab]} ${result.title}`}
-													onClick={() => choose(result)}
+													onClick={() => {
+														choose(result);
+													}}
 													className="flex w-full items-center gap-2 rounded-r6 px-1 py-1.5 text-left text-body text-primary transition-colors hover:bg-fill-ghost-hover focus-visible:bg-fill-ghost-hover focus-visible:outline-none"
 												>
 													<Icon aria-hidden="true" className="size-5 shrink-0 p-0.5" />

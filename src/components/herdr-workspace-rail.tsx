@@ -97,7 +97,9 @@ function WorkspaceGroup({
 		<div>
 			<button
 				type="button"
-				onClick={() => setExpanded((current) => !current)}
+				onClick={() => {
+					setExpanded((current) => !current);
+				}}
 				aria-expanded={expanded}
 				aria-label={`${expanded ? "Collapse" : "Expand"} workspace ${workspace.number} ${workspace.label}`}
 				title={workspace.worktreeName === null ? undefined : `Linked worktree of ${workspace.worktreeName}`}
@@ -129,7 +131,9 @@ function WorkspaceGroup({
 						<>
 							<button
 								type="button"
-								onClick={() => setShellsShown((current) => !current)}
+								onClick={() => {
+									setShellsShown((current) => !current);
+								}}
 								aria-expanded={shellsShown}
 								aria-label={`${shellsShown ? "Hide" : "Show"} ${shellCount} shell pane${
 									shellCount === 1 ? "" : "s"

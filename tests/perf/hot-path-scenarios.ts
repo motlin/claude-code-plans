@@ -51,10 +51,10 @@ async function prepareShaped(fn: HotPathShapedFn, shape: string): Promise<() => 
 					.slice(-APPENDED_LINES)
 					.map((line) => JSON.parse(line) as TranscriptData["records"][number]),
 				byteOffset: old.byteOffset,
-				startIndex: transcriptEndIndex(old as TranscriptData),
+				startIndex: transcriptEndIndex(old),
 				precedingMessageCount: old.precedingMessageCount,
 			};
-			return () => mergeTranscriptData(old as TranscriptData, appended);
+			return () => mergeTranscriptData(old, appended);
 		}
 	}
 }

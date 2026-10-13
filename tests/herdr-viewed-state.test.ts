@@ -58,11 +58,21 @@ describe("herdr viewed-state transitions", () => {
 		let visible = false;
 		const tracker = createHerdrViewedStateTracker({
 			isSessionVisible: () => visible,
-			linkTerminal: (terminalId, sessionId) => record({type: "link", terminalId, sessionId}),
-			pruneTerminalLinks: (sessionId) => record({type: "prune", sessionId}),
-			markSessionCompletionUnreviewed: (sessionId) => record({type: "completion", sessionId}),
-			markTerminalUnviewed: (terminalId, sessionId) => record({type: "terminal-unviewed", terminalId, sessionId}),
-			markTerminalViewed: (terminalId, sessionId) => record({type: "terminal-viewed", terminalId, sessionId}),
+			linkTerminal: (terminalId, sessionId) => {
+				record({type: "link", terminalId, sessionId});
+			},
+			pruneTerminalLinks: (sessionId) => {
+				record({type: "prune", sessionId});
+			},
+			markSessionCompletionUnreviewed: (sessionId) => {
+				record({type: "completion", sessionId});
+			},
+			markTerminalUnviewed: (terminalId, sessionId) => {
+				record({type: "terminal-unviewed", terminalId, sessionId});
+			},
+			markTerminalViewed: (terminalId, sessionId) => {
+				record({type: "terminal-viewed", terminalId, sessionId});
+			},
 		});
 
 		await tracker.syncPanes([pane({agentStatus: "working"})]);
@@ -124,7 +134,7 @@ describe("herdr viewed-state transitions", () => {
 		let releaseLink: () => void = () => {};
 		const tracker = createHerdrViewedStateTracker({
 			isSessionVisible: () => true,
-			linkTerminal: (terminalId) =>
+			linkTerminal: async (terminalId) =>
 				new Promise<void>((resolve) => {
 					releaseLink = () => {
 						calls.push(`link ${terminalId}`);
@@ -151,9 +161,10 @@ describe("herdr viewed-state transitions", () => {
 		calls.push("released");
 		releaseLink();
 
-		expect({syncError: ((await synced) as Error).message, status: await statusHandled, calls}).toStrictEqual({
+		const syncError = ((await synced) as Error).message;
+		await statusHandled;
+		expect({syncError, calls}).toStrictEqual({
 			syncError: "prune failed",
-			status: undefined,
 			calls: ["released", "link terminal-test-100", "unviewed terminal-test-100"],
 		});
 	});

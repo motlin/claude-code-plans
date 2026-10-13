@@ -210,7 +210,9 @@ const rootLoader = RootRoute.options.loader as (args: {context: {queryClient: Qu
 /** The root layout's frame (providers, sidebar, main) with the real root loader and the real home route. */
 function createAppRouter(queryClient: QueryClient) {
 	const rootRoute = createRootRouteWithContext<{queryClient: QueryClient}>()({
-		loader: ({context}) => rootLoader({context}),
+		loader: ({context}) => {
+			rootLoader({context});
+		},
 		component: () => (
 			<ThemeProvider>
 				<SettingsProvider>
@@ -263,7 +265,9 @@ function createLauncher(queryClient: QueryClient) {
 
 	function Launcher() {
 		const [launched, setLaunched] = useState(false);
-		launch = () => setLaunched(true);
+		launch = () => {
+			setLaunched(true);
+		};
 		return launched ? (
 			<Profiler
 				id="cold-launch"
@@ -279,7 +283,13 @@ function createLauncher(queryClient: QueryClient) {
 		) : null;
 	}
 
-	return {Launcher, launch: () => launch(), commitsToRows: () => commitsToRows};
+	return {
+		Launcher,
+		launch: () => {
+			launch();
+		},
+		commitsToRows: () => commitsToRows,
+	};
 }
 
 type ColdHomeMetric = "fetches" | "responseBytes" | "commitsToRows";

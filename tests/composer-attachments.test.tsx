@@ -156,7 +156,9 @@ describe("Composer attachments", () => {
 		const onSend = renderComposer();
 
 		paste({files: [new File(["# Notes"], "notes.md", {type: "text/markdown"})]});
-		await waitFor(() => expect(chipNames()).toStrictEqual(["notes.md"]));
+		await waitFor(() => {
+			expect(chipNames()).toStrictEqual(["notes.md"]);
+		});
 		fireEvent.keyDown(prompt(), {key: "Enter"});
 
 		expect(onSend.mock.calls).toStrictEqual([[`@${ATTACHMENTS}/0002.md`, {}]]);

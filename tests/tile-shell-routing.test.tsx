@@ -22,14 +22,16 @@ import {localAccountQueryOptions} from "../src/lib/api/local-account";
 // Keep the actual root component, route metadata, AppFrame and home/chat frames.
 // Background services and unrelated dialogs do not participate in ownership.
 vi.mock("../src/components/sidebar/index", () => ({Sidebar: () => null}));
-vi.mock("../src/components/theme-provider", () => ({ThemeProvider: ({children}: {children: ReactNode}) => children}));
+vi.mock("../src/components/theme-provider", () => ({
+	ThemeProvider: ({children}: {children: ReactNode}): ReactNode => children,
+}));
 vi.mock("../src/components/settings-provider", async (importOriginal) => ({
 	...(await importOriginal<typeof import("../src/components/settings-provider")>()),
-	SettingsProvider: ({children}: {children: ReactNode}) => children,
+	SettingsProvider: ({children}: {children: ReactNode}): ReactNode => children,
 }));
-vi.mock("../src/components/toast", () => ({ToastProvider: ({children}: {children: ReactNode}) => children}));
+vi.mock("../src/components/toast", () => ({ToastProvider: ({children}: {children: ReactNode}): ReactNode => children}));
 vi.mock("../src/hooks/use-claude-events", () => ({
-	ClaudeEventsProvider: ({children}: {children: ReactNode}) => children,
+	ClaudeEventsProvider: ({children}: {children: ReactNode}): ReactNode => children,
 }));
 vi.mock("@tanstack/react-query-devtools", () => ({ReactQueryDevtools: () => null}));
 vi.mock("agentation", () => ({Agentation: () => null}));
@@ -141,7 +143,7 @@ it("actual root selects home/chat shells while source, subagents, and ordinary r
 		"/session/alice/subagents",
 		"/plans",
 	]) {
-		await act(() => router.navigate({to}));
+		await act(async () => router.navigate({to}));
 		states.push(ownership());
 	}
 	expect(states).toStrictEqual([

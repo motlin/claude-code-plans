@@ -343,15 +343,17 @@ describe("LinksPaneView", () => {
 		});
 
 		fireEvent.click(copyButton);
-		await waitFor(() =>
+		await waitFor(() => {
 			expect(vi.mocked(writeClipboardText).mock.calls).toStrictEqual([
 				["https://github.com/alice/project/pull/100"],
-			]),
-		);
+			]);
+		});
 		expect(copyButton.getAttribute("title")).toBe("Copy URL");
 
 		fireEvent.click(copyButton);
-		await waitFor(() => expect(copyButton.getAttribute("title")).toBe("Copied"));
+		await waitFor(() => {
+			expect(copyButton.getAttribute("title")).toBe("Copied");
+		});
 		fireEvent.click(jumpButton);
 
 		expect({
@@ -377,15 +379,19 @@ describe("links pane include toggle persistence", () => {
 		localStorage.setItem(INCLUDE_TOOLS_AND_THINKING_STORAGE_KEY, "true");
 
 		const {result} = renderHook(() => useIncludeToolsAndThinking());
-		await waitFor(() => expect(result.current[0]).toBe(true));
+		await waitFor(() => {
+			expect(result.current[0]).toBe(true);
+		});
 
-		act(() => result.current[1](false));
-		await waitFor(() =>
+		act(() => {
+			result.current[1](false);
+		});
+		await waitFor(() => {
 			expect({
 				include: result.current[0],
 				stored: localStorage.getItem(INCLUDE_TOOLS_AND_THINKING_STORAGE_KEY),
-			}).toStrictEqual({include: false, stored: "false"}),
-		);
+			}).toStrictEqual({include: false, stored: "false"});
+		});
 	});
 });
 
@@ -419,7 +425,7 @@ describe("links pane registration", () => {
 		installLocalStorage();
 		vi.stubGlobal(
 			"fetch",
-			vi.fn(() => new Promise<Response>(() => {})),
+			vi.fn(async () => new Promise<Response>(() => {})),
 		);
 	});
 

@@ -131,10 +131,12 @@ function toastTexts(): string[] {
 beforeEach(() => {
 	vi.spyOn(navigator, "userAgent", "get").mockReturnValue(MAC_UA);
 	fetchMock.mockReset();
-	fetchMock.mockImplementation((_input, init) => Promise.resolve(Response.json({archived: init?.method === "PUT"})));
+	fetchMock.mockImplementation(async (_input, init) =>
+		Promise.resolve(Response.json({archived: init?.method === "PUT"})),
+	);
 	vi.stubGlobal("fetch", fetchMock);
 	__unreadStoreTesting.reset();
-	__unreadStoreTesting.setPersist(() => Promise.resolve());
+	__unreadStoreTesting.setPersist(async () => Promise.resolve());
 });
 
 afterEach(() => {
@@ -161,24 +163,30 @@ describe("archive in the session row menu", () => {
 		const menu = await openRowMenu(listItem());
 
 		fireEvent.keyDown(menu, {key: "a"});
-		await waitFor(() => expect(toastTexts()).toEqual(["Archived 1 sessionUndo"]));
+		await waitFor(() => {
+			expect(toastTexts()).toEqual(["Archived 1 sessionUndo"]);
+		});
 		expect(archiveCalls()).toEqual([{url: ARCHIVED_URL, method: "PUT"}]);
 
 		fireEvent.click(screen.getByRole("button", {name: "Undo"}));
-		await waitFor(() =>
+		await waitFor(() => {
 			expect(archiveCalls()).toEqual([
 				{url: ARCHIVED_URL, method: "PUT"},
 				{url: ARCHIVED_URL, method: "DELETE"},
-			]),
-		);
-		await waitFor(() => expect(toastTexts()).toEqual([]));
+			]);
+		});
+		await waitFor(() => {
+			expect(toastTexts()).toEqual([]);
+		});
 	});
 
 	it("unarchives on a without an Undo toast", async () => {
 		const menu = await openRowMenu(listItem({archived: true}));
 
 		fireEvent.keyDown(menu, {key: "a"});
-		await waitFor(() => expect(archiveCalls()).toEqual([{url: ARCHIVED_URL, method: "DELETE"}]));
+		await waitFor(() => {
+			expect(archiveCalls()).toEqual([{url: ARCHIVED_URL, method: "DELETE"}]);
+		});
 		await flush();
 		expect(toastTexts()).toEqual([]);
 	});
@@ -189,7 +197,9 @@ describe("archive in the session row menu", () => {
 
 		fireEvent.keyDown(menu, {key: "a"});
 
-		await waitFor(() => expect(toastTexts()).toEqual(["Couldn’t archive the session. Try again."]));
+		await waitFor(() => {
+			expect(toastTexts()).toEqual(["Couldn’t archive the session. Try again."]);
+		});
 	});
 });
 
@@ -201,16 +211,18 @@ describe("⌥⌘A on the session page", () => {
 
 		fireEvent.keyDown(document.body, {key: "å", code: "KeyA", metaKey: true, altKey: true});
 
-		await waitFor(() => expect(toastTexts()).toEqual(["Archived 1 sessionUndo"]));
+		await waitFor(() => {
+			expect(toastTexts()).toEqual(["Archived 1 sessionUndo"]);
+		});
 		expect(archiveCalls()).toEqual([{url: ARCHIVED_URL, method: "PUT"}]);
 
 		fireEvent.click(screen.getByRole("button", {name: "Undo"}));
-		await waitFor(() =>
+		await waitFor(() => {
 			expect(archiveCalls()).toEqual([
 				{url: ARCHIVED_URL, method: "PUT"},
 				{url: ARCHIVED_URL, method: "DELETE"},
-			]),
-		);
+			]);
+		});
 	});
 
 	it("unarchives an archived session and shows its Archived badge", async () => {
@@ -219,7 +231,9 @@ describe("⌥⌘A on the session page", () => {
 
 		fireEvent.keyDown(document.body, {key: "å", code: "KeyA", metaKey: true, altKey: true});
 
-		await waitFor(() => expect(archiveCalls()).toEqual([{url: ARCHIVED_URL, method: "DELETE"}]));
+		await waitFor(() => {
+			expect(archiveCalls()).toEqual([{url: ARCHIVED_URL, method: "DELETE"}]);
+		});
 	});
 });
 

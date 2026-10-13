@@ -22,7 +22,9 @@ export function SkillEnableSwitch({skill}: {skill: SkillSummary}) {
 		<Switch
 			aria-label="Enable skill"
 			checked={checked}
-			onCheckedChange={(enabled) => toggle({kind: "skill", name: skill.name, enabled}, skill.name)}
+			onCheckedChange={(enabled) => {
+				toggle({kind: "skill", name: skill.name, enabled}, skill.name);
+			}}
 		/>
 	);
 }

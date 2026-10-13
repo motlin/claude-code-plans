@@ -38,7 +38,7 @@ function defaultProviders(): TerminalPlacementProvider[] {
 export async function getTerminalPlacements(
 	providers: TerminalPlacementProvider[] = defaultProviders(),
 ): Promise<TerminalPlacement[]> {
-	const results = await Promise.allSettled(providers.map((provider) => provider.getPlacements()));
+	const results = await Promise.allSettled(providers.map(async (provider) => provider.getPlacements()));
 	const placements = results.flatMap((result) => (result.status === "fulfilled" ? result.value : []));
 	const herdrPlacements = placements.filter(
 		(placement): placement is HerdrTerminalPlacement => placement.provider === "herdr",

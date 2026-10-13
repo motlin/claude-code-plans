@@ -360,7 +360,7 @@ export function createJourneyTracker(environment: JourneyEnvironment): JourneyTr
 		return anchors;
 	}
 
-	function waitForAnchors(selectors: readonly string[]): Promise<Element[] | null> {
+	async function waitForAnchors(selectors: readonly string[]): Promise<Element[] | null> {
 		const existing = findAnchors(selectors);
 		if (existing) return Promise.resolve(existing);
 		return new Promise((resolve) => {
@@ -387,10 +387,12 @@ export function createJourneyTracker(environment: JourneyEnvironment): JourneyTr
 		});
 	}
 
-	function afterPaint(): Promise<number> {
+	async function afterPaint(): Promise<number> {
 		return new Promise((resolve) => {
 			environment.requestAnimationFrame(() => {
-				environment.setTimeout(() => resolve(performance.now()), 0);
+				environment.setTimeout(() => {
+					resolve(performance.now());
+				}, 0);
 			});
 		});
 	}
@@ -440,9 +442,7 @@ export function createJourneyTracker(environment: JourneyEnvironment): JourneyTr
 			if (!settle(id, journey)) return null;
 
 			const renderTimes = anchors.map(elementRenderTime);
-			const renderTime = renderTimes.every((time) => time !== undefined)
-				? Math.max(...(renderTimes as number[]))
-				: undefined;
+			const renderTime = renderTimes.every((time) => time !== undefined) ? Math.max(...renderTimes) : undefined;
 			return renderTime === undefined
 				? complete(id, journey, paintedAt, "raf")
 				: complete(id, journey, renderTime, "element-timing");
@@ -491,7 +491,9 @@ function browserEnvironment(): JourneyEnvironment {
 		requestAnimationFrame: (callback) => window.requestAnimationFrame(callback),
 		setTimeout: (callback, ms) => window.setTimeout(callback, ms),
 		setInterval: (callback, ms) => window.setInterval(callback, ms),
-		clearInterval: (handle) => window.clearInterval(handle as number),
+		clearInterval: (handle) => {
+			window.clearInterval(handle as number);
+		},
 		send: (batch) => {
 			navigator.sendBeacon?.(PERF_BEACON_PATH, JSON.stringify({samples: batch}));
 		},
@@ -513,6 +515,9 @@ export function startJourney(id: string, options: StartJourneyOptions): void {
 }
 
 /** Ends journey `id` at the paint after `anchorSelector` matches an element with data, and queues the sample. */
-export function endJourneyWhenRendered(id: string, anchorSelector: AnchorSelector): Promise<JourneySample | null> {
+export async function endJourneyWhenRendered(
+	id: string,
+	anchorSelector: AnchorSelector,
+): Promise<JourneySample | null> {
 	return defaultJourneyTracker()?.endJourneyWhenRendered(id, anchorSelector) ?? Promise.resolve(null);
 }

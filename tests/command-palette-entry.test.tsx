@@ -47,7 +47,9 @@ describe("deferred command palette", () => {
 
 		view.rerender(<Harness open={false} />);
 		harness.fail = false;
-		await act(async () => view.rerender(<Harness open />));
+		await act(async () => {
+			view.rerender(<Harness open />);
+		});
 		const opened = await screen.findByRole("dialog", {name: "Command palette"});
 
 		view.rerender(<Harness open={false} />);

@@ -79,7 +79,9 @@ async function renderGroups(activeItemId: string | null = null) {
 	});
 	await router.load();
 	const result = render(<RouterProvider router={router} />);
-	await waitFor(() => expect(result.container.querySelector("a[data-row-main-button]")).toBeTruthy());
+	await waitFor(() => {
+		expect(result.container.querySelector("a[data-row-main-button]")).toBeTruthy();
+	});
 	return result;
 }
 

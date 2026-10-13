@@ -73,7 +73,7 @@ function renderTree(onOpenFile = vi.fn()) {
 }
 
 function filterInput(): HTMLInputElement {
-	return screen.getByRole("textbox", {name: "Filter files"}) as HTMLInputElement;
+	return screen.getByRole("textbox", {name: "Filter files"});
 }
 
 function rowNames(): string[] {
@@ -464,7 +464,9 @@ describe("FilesTreeColumn resize", () => {
 		fireEvent.keyDown(separator(), {key: "Home"});
 		fireEvent.keyDown(separator(), {key: "ArrowLeft"});
 		const min = separator().getAttribute("aria-valuenow");
-		await waitFor(() => expect(storage.getItem(FILES_TREE_WIDTH_STORAGE_KEY)).toBe("160"));
+		await waitFor(() => {
+			expect(storage.getItem(FILES_TREE_WIDTH_STORAGE_KEY)).toBe("160");
+		});
 		expect({initial, stepped, max, min}).toStrictEqual({
 			initial: "240",
 			stepped: "248",
@@ -524,6 +526,8 @@ describe("FilesTreeColumn resize", () => {
 		storage.setItem(FILES_TREE_WIDTH_STORAGE_KEY, "9000");
 		responses.set(key("", ""), {kind: "listing", dir: "", entries: [], partial: false});
 		renderTree();
-		await waitFor(() => expect(separator().getAttribute("aria-valuenow")).toBe("640"));
+		await waitFor(() => {
+			expect(separator().getAttribute("aria-valuenow")).toBe("640");
+		});
 	});
 });

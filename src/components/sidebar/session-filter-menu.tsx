@@ -140,7 +140,9 @@ function SessionFilterMenu({
 				{(prefs.groupBy === "project" || prefs.groupBy === "custom") && (
 					<MenuCheckboxItem
 						checked={prefs.showEmptyGroups}
-						onCheckedChange={(checked) => onChange({...prefs, showEmptyGroups: checked})}
+						onCheckedChange={(checked) => {
+							onChange({...prefs, showEmptyGroups: checked});
+						}}
 					>
 						Show empty groups
 					</MenuCheckboxItem>
@@ -148,13 +150,21 @@ function SessionFilterMenu({
 				{hasPrData && (
 					<MenuCheckboxItem
 						checked={prefs.showPrStatus}
-						onCheckedChange={(checked) => onChange({...prefs, showPrStatus: checked})}
+						onCheckedChange={(checked) => {
+							onChange({...prefs, showPrStatus: checked});
+						}}
 					>
 						Show PR status
 					</MenuCheckboxItem>
 				)}
 				<MenuSeparator />
-				<MenuItem onSelect={() => onChange(clearSessionFilters(prefs))}>Clear filters</MenuItem>
+				<MenuItem
+					onSelect={() => {
+						onChange(clearSessionFilters(prefs));
+					}}
+				>
+					Clear filters
+				</MenuItem>
 			</MenuContent>
 		</Menu>
 	);
@@ -175,7 +185,9 @@ export function SidebarSessionGroups({activeItemId}: {activeItemId: string | nul
 			filterSlot={
 				<SessionFilterMenu
 					prefs={prefs}
-					onChange={(next) => setSetting("sessionListPrefs", next)}
+					onChange={(next) => {
+						setSetting("sessionListPrefs", next);
+					}}
 					hasPrData={hasPrData}
 				/>
 			}

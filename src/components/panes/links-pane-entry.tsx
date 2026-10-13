@@ -3,7 +3,7 @@ import {deferredPane} from "./deferred-pane";
 import type {LinksPaneProps} from "./links-pane";
 import {registerPane} from "./pane-registry";
 
-const DeferredLinksPane = deferredPane("Links", () => import("./links-pane").then((module) => module.LinksPane));
+const DeferredLinksPane = deferredPane("Links", async () => import("./links-pane").then((module) => module.LinksPane));
 
 /** Downloads the Links pane renderer ahead of its first show. */
 export const preloadLinksPane = DeferredLinksPane.preload;

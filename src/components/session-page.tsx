@@ -231,7 +231,7 @@ interface RequestedPaneProps {
 }
 
 // The usage breakdown card only loads once "See detailed breakdown" is clicked.
-const SessionUsageCard = lazy(() =>
+const SessionUsageCard = lazy(async () =>
 	import("./session-usage-card").then((module) => ({default: module.SessionUsageCard})),
 );
 
@@ -473,9 +473,16 @@ function SessionView({
 	const [generating, setGenerating] = useState(false);
 	const summaryMutation = useRequestSummary(sessionId);
 	const chromeHidden = settings.chromeHidden;
-	const setChromeHidden = useCallback((v: boolean) => setSetting("chromeHidden", v), [setSetting]);
+	const setChromeHidden = useCallback(
+		(v: boolean) => {
+			setSetting("chromeHidden", v);
+		},
+		[setSetting],
+	);
 	const chromeShortcut = useShortcutKeys("expand_collapse_pane");
-	const toggleChromeHidden = useCallback(() => setChromeHidden(!chromeHidden), [chromeHidden, setChromeHidden]);
+	const toggleChromeHidden = useCallback(() => {
+		setChromeHidden(!chromeHidden);
+	}, [chromeHidden, setChromeHidden]);
 
 	const submitAnswer = useCallback(
 		async ({toolUseId, answers}: {toolUseId: string; answers: Array<{question: string; answer: string}>}) => {
@@ -487,7 +494,9 @@ function SessionView({
 	const [dismissedToolUseId, setDismissedToolUseId] = useState<string | null>(null);
 	// The ephemeral Usage card, keyed to the session it was opened in.
 	const [usageCardSessionId, setUsageCardSessionId] = useState<string | null>(null);
-	const showUsageBreakdown = useCallback(() => setUsageCardSessionId(sessionId), [sessionId]);
+	const showUsageBreakdown = useCallback(() => {
+		setUsageCardSessionId(sessionId);
+	}, [sessionId]);
 	const dockedQuestion =
 		isActive && pendingQuestion !== null && pendingQuestion.toolUseId !== dismissedToolUseId
 			? pendingQuestion
@@ -504,7 +513,9 @@ function SessionView({
 	const forkFromMessage =
 		forkCwd === null
 			? undefined
-			: (target: {sessionId: string; atMessage: string}) => forkSession({...target, cwd: forkCwd});
+			: (target: {sessionId: string; atMessage: string}) => {
+					forkSession({...target, cwd: forkCwd});
+				};
 	const liveHerdrPrompt = useLiveHerdrPrompt(sessionId, endIndex);
 	const promptBehavior = getSessionPromptBehavior(sessionId, isActive, herdr);
 	const stopAvailable = canStopResponse({
@@ -529,14 +540,20 @@ function SessionView({
 		writesEnabled: herdr.writesEnabled,
 		working: workingMarkerState.status !== "idle",
 	});
-	const onInterrupt = useCallback((at: number) => setLastInterrupt({sessionId, at}), [sessionId]);
+	const onInterrupt = useCallback(
+		(at: number) => {
+			setLastInterrupt({sessionId, at});
+		},
+		[sessionId],
+	);
 	const onInterruptError = useCallback(
-		(error: unknown) =>
+		(error: unknown) => {
 			toast({
 				kind: "error",
 				message: "Couldn't stop the response",
 				description: error instanceof Error ? error.message : String(error),
-			}),
+			});
+		},
 		[toast],
 	);
 	const pendingPermission = useMemo(
@@ -552,7 +569,7 @@ function SessionView({
 		[isActive, dockedQuestion, sessionId, notifications, transcript.records],
 	);
 	const answerPermission = useCallback(
-		(decision: PermissionDecision) => sendHerdrPermissionDecision(sessionId, decision),
+		async (decision: PermissionDecision) => sendHerdrPermissionDecision(sessionId, decision),
 		[sessionId],
 	);
 	const stopResponse = useStopResponse({
@@ -723,7 +740,9 @@ function SessionView({
 													),
 													subagentCount: subagents.length,
 												}}
-												onExpandChat={() => setChromeHidden(true)}
+												onExpandChat={() => {
+													setChromeHidden(true);
+												}}
 											/>
 										}
 									/>
@@ -743,7 +762,9 @@ function SessionView({
 									>
 										<button
 											type="button"
-											onClick={() => setChromeHidden(false)}
+											onClick={() => {
+												setChromeHidden(false);
+											}}
 											className="rounded-md bg-surface-0 border border-border px-2 py-1 text-xs text-t6 hover:text-primary hover:bg-fill-control transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm"
 											aria-keyshortcuts={chromeShortcut.ariaKeyShortcuts}
 										>
@@ -770,7 +791,9 @@ function SessionView({
 												toolUseId={dockedQuestion.toolUseId}
 												questions={dockedQuestion.questions}
 												onSubmit={submitAnswer}
-												onDismiss={() => setDismissedToolUseId(dockedQuestion.toolUseId)}
+												onDismiss={() => {
+													setDismissedToolUseId(dockedQuestion.toolUseId);
+												}}
 											/>
 										)}
 										{pendingPermission && (

@@ -137,9 +137,15 @@ export function ProjectPicker({projects, selected, onSelect}: ProjectPickerProps
 											aria-selected={isSelected}
 											title={p.projectPath}
 											data-highlighted={index === activeIndex ? "" : undefined}
-											onMouseEnter={() => setActiveIndex(index)}
-											onMouseDown={(event) => event.preventDefault()}
-											onClick={() => choose(p)}
+											onMouseEnter={() => {
+												setActiveIndex(index);
+											}}
+											onMouseDown={(event) => {
+												event.preventDefault();
+											}}
+											onClick={() => {
+												choose(p);
+											}}
 											className={OPTION_CLASS}
 										>
 											<span className="min-w-0 flex-1 truncate">{p.name}</span>

@@ -186,7 +186,9 @@ describe("SettingsDialog", () => {
 
 		fireEvent.keyDown(dialog, {key: "Escape", code: "Escape"});
 
-		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog")).toBeNull();
+		});
 		expect(location(router)).toStrictEqual({pathname: "/", hash: ""});
 	});
 
@@ -195,12 +197,16 @@ describe("SettingsDialog", () => {
 		const trigger = await screen.findByRole("button", {name: "Page trigger"});
 		trigger.focus();
 
-		await act(() => router.navigate({to: "/", hash: "settings/general"}));
+		await act(async () => router.navigate({to: "/", hash: "settings/general"}));
 		await screen.findByRole("dialog", {name: "Settings"});
 		fireEvent.click(screen.getByRole("button", {name: "Close"}));
 
-		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-		await waitFor(() => expect(document.activeElement).toBe(trigger));
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog")).toBeNull();
+		});
+		await waitFor(() => {
+			expect(document.activeElement).toBe(trigger);
+		});
 		expect(location(router)).toStrictEqual({pathname: "/", hash: ""});
 	});
 
@@ -210,7 +216,9 @@ describe("SettingsDialog", () => {
 
 		fireEvent.click(screen.getByRole("button", {name: "Transcript"}));
 
-		await waitFor(() => expect(currentTabs()).toStrictEqual(["Transcript"]));
+		await waitFor(() => {
+			expect(currentTabs()).toStrictEqual(["Transcript"]);
+		});
 		expect(location(router)).toStrictEqual({pathname: "/", hash: "settings/transcript"});
 	});
 
@@ -257,7 +265,7 @@ describe("SettingsDialog local tabs", () => {
 
 	beforeEach(() => {
 		stubBrowser();
-		vi.stubGlobal("fetch", () => new Promise(() => {}));
+		vi.stubGlobal("fetch", async () => new Promise(() => {}));
 	});
 
 	afterEach(() => {
@@ -350,9 +358,9 @@ describe("SettingsDialog local tabs", () => {
 
 		fireEvent.click(within(views).getByRole("radio", {name: "Discover"}));
 
-		await waitFor(() =>
-			expect(location(router)).toStrictEqual({pathname: "/", hash: "customize/plugins/discover"}),
-		);
+		await waitFor(() => {
+			expect(location(router)).toStrictEqual({pathname: "/", hash: "customize/plugins/discover"});
+		});
 		expect(currentTabs()).toStrictEqual(["Plugins"]);
 	});
 
@@ -411,12 +419,12 @@ describe("SettingsDialog local tabs", () => {
 
 		fireEvent.click(within(sections).getByRole("link", {name: "Contents · 0"}));
 
-		await waitFor(() =>
+		await waitFor(() => {
 			expect(location(router)).toStrictEqual({
 				pathname: "/",
 				hash: "customize/skills/yours/id/personal%3Afoo/contents",
-			}),
-		);
+			});
+		});
 	});
 
 	it("links the Claude Config tab to the settings editor", async () => {

@@ -89,7 +89,9 @@ function useSessionTranscriptMode(
 	);
 
 	const setMode = useCallback(
-		(next: TranscriptMode) => update(setSessionMode(getSnapshot(), sessionId, next, defaultMode)),
+		(next: TranscriptMode) => {
+			update(setSessionMode(getSnapshot(), sessionId, next, defaultMode));
+		},
 		[sessionId, defaultMode],
 	);
 	const makeDefault = useCallback(
@@ -99,7 +101,9 @@ function useSessionTranscriptMode(
 		},
 		[sessionId, setVerbosity],
 	);
-	const cycle = useCallback(() => setMode(nextTranscriptMode(mode, {hasThinking})), [setMode, mode, hasThinking]);
+	const cycle = useCallback(() => {
+		setMode(nextTranscriptMode(mode, {hasThinking}));
+	}, [setMode, mode, hasThinking]);
 
 	return {
 		mode,

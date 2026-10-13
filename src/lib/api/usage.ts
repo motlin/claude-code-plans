@@ -4,5 +4,5 @@ import {apiFetch} from "./client";
 
 export const usageQueryOptions = queryOptions({
 	queryKey: ["usage"] as const,
-	queryFn: () => apiFetch("/api/usage", UsageSummaryResponse),
+	queryFn: async () => apiFetch("/api/usage", UsageSummaryResponse),
 });

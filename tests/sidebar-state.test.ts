@@ -137,7 +137,9 @@ describe("sidebar-store", () => {
 		});
 
 		expect(readSidebarState()).toStrictEqual(DEFAULT_SIDEBAR_STATE);
-		expect(() => toggleSidebarCollapsed()).not.toThrow();
+		expect(() => {
+			toggleSidebarCollapsed();
+		}).not.toThrow();
 		expect(setItem).toHaveBeenCalledTimes(1);
 	});
 });

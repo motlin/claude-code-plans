@@ -4,7 +4,7 @@ import {memoryDetailQueryOptions, useSaveMemory} from "../lib/api/memories";
 import {fromMdSlug} from "../lib/md-slug";
 import {lazy, Suspense, useCallback, useEffect, useRef, useState} from "react";
 
-const MarkdownEditor = lazy(() =>
+const MarkdownEditor = lazy(async () =>
 	import("../components/markdown-editor").then((m) => ({
 		default: m.MarkdownEditor,
 	})),
@@ -12,7 +12,7 @@ const MarkdownEditor = lazy(() =>
 
 export const Route = createFileRoute("/memory/$project/$filename_/edit")({
 	component: MemoryEditPage,
-	loader: ({context: {queryClient}, params}) =>
+	loader: async ({context: {queryClient}, params}) =>
 		queryClient.ensureQueryData(memoryDetailQueryOptions(params.project, params.filename)),
 	head: ({params}) => ({
 		meta: [{title: `Edit: ${fromMdSlug(params.filename)}`}],

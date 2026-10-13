@@ -56,7 +56,7 @@ describe("GET/POST /api/home/dismissals", () => {
 		const handlers = (Route as unknown as {options: {server: {handlers: Record<string, ApiHandler>}}}).options
 			.server.handlers;
 		const url = "http://localhost/api/home/dismissals";
-		const post = (body: unknown, headers: Record<string, string> = {}) =>
+		const post = async (body: unknown, headers: Record<string, string> = {}) =>
 			handlers["POST"]!({
 				request: new Request(url, {
 					method: "POST",

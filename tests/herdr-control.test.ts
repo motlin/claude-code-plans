@@ -129,7 +129,7 @@ describe("herdr terminal control stream", () => {
 	it("resolves the session's herdr terminal before spawning control", async () => {
 		const child = createFakeChild();
 		const spawnController = vi.fn(() => child);
-		const resolveTarget = vi.fn(() => Promise.resolve("terminal-test-200"));
+		const resolveTarget = vi.fn(async () => Promise.resolve("terminal-test-200"));
 
 		const controller = await controlHerdrSession("session-test-100", 90, 30, createSocket(), {
 			resolveTarget,

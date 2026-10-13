@@ -459,7 +459,13 @@ async function measureShape(
 	// the session, then `count` lines land and one fire picks them up. In `main`, the untimed run 0 is the cold one-line
 	// append, so the 20-line runs that follow see the same warm caches as the ratcheted run.
 	const offsets = new Map<string, number>();
-	const fire = (): Promise<{elapsed: number; bytesRead: number; fullScans: number; sql: number; payload: number}> =>
+	const fire = async (): Promise<{
+		elapsed: number;
+		bytesRead: number;
+		fullScans: number;
+		sql: number;
+		payload: number;
+	}> =>
 		serverScope.withPerfScope("correlate-live-append", async () => {
 			let payload = 0;
 			const started = performance.now();

@@ -185,7 +185,9 @@ export function TurnChangesCard({sessionId, changes}: {sessionId: string; change
 						<button
 							type="button"
 							aria-expanded={false}
-							onClick={() => setShowAll(true)}
+							onClick={() => {
+								setShowAll(true);
+							}}
 							className={`${ROW_CLASS} cursor-pointer text-body text-secondary`}
 						>
 							Show {hidden} more

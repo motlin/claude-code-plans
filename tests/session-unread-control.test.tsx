@@ -55,7 +55,9 @@ describe("SessionRowStatusDot", () => {
 		const {container} = render(<SessionRowStatusDot session={listItem("done")} />);
 		const before = shownDot(container);
 
-		act(() => toggleUnseen("session-test-100"));
+		act(() => {
+			toggleUnseen("session-test-100");
+		});
 		const afterMarkUnread = shownDot(container);
 		fireEvent.click(screen.getByRole("button", {name: "Click to mark as read"}));
 		await act(async () => {
@@ -76,7 +78,9 @@ describe("SessionRowStatusDot", () => {
 	it("shows the ready dot when the server summary reports the session unseen", () => {
 		const {container} = render(<SessionRowStatusDot session={listItem("done")} />);
 
-		act(() => syncUnseenFromSummaries([{id: "session-test-100", unseen: true}]));
+		act(() => {
+			syncUnseenFromSummaries([{id: "session-test-100", unseen: true}]);
+		});
 
 		expect(shownDot(container)).toStrictEqual({toggle: "Click to mark as read", kind: "ready"});
 	});

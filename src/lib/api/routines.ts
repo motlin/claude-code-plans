@@ -32,6 +32,6 @@ export const RoutineListResponse = z.array(RoutineSchema);
 
 export const routinesQueryOptions = queryOptions({
 	queryKey: ["routines"] as const,
-	queryFn: ({signal}) => apiFetch("/api/routines", RoutineListResponse, {signal}),
+	queryFn: async ({signal}) => apiFetch("/api/routines", RoutineListResponse, {signal}),
 	staleTime: 30_000,
 });

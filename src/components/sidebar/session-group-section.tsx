@@ -108,7 +108,9 @@ export function GroupSection({
 			{...ROVING_ITEM_PROPS}
 			data-group-toggle
 			aria-expanded={expanded}
-			onClick={() => toggleSidebarGroup(group.key)}
+			onClick={() => {
+				toggleSidebarGroup(group.key);
+			}}
 			className="group/label -my-1 -ml-1 flex min-w-0 flex-1 items-center gap-1 rounded-[var(--sb-radius)] py-1 pl-1 text-left hover:text-secondary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100"
 		>
 			<GroupAppearanceMark appearance={appearance} />
@@ -304,8 +306,12 @@ function SessionFamily({
 					tabIndex={-1}
 					aria-expanded={!collapsed}
 					aria-label={label}
-					onPointerEnter={() => setHot(true)}
-					onPointerLeave={() => setHot(false)}
+					onPointerEnter={() => {
+						setHot(true);
+					}}
+					onPointerLeave={() => {
+						setHot(false);
+					}}
 					onClick={(event) => {
 						if (event.altKey) setFamiliesCollapsed(familyHeadIds, !collapsed);
 						else toggleFamilyCollapsed(head.sessionId);
@@ -431,7 +437,9 @@ function SessionRowLink({
 					data-row-main-button
 					data-selected={selected ? "focused" : undefined}
 					data-multi-selected={multiSelected ? "" : undefined}
-					onPointerDown={(event) => startSessionSwitchJourney(event.nativeEvent, row.sessionId, queryClient)}
+					onPointerDown={(event) => {
+						startSessionSwitchJourney(event.nativeEvent, row.sessionId, queryClient);
+					}}
 					onClick={(event) => {
 						if (selection?.onRowClick(row.sessionId, event) === true) event.preventDefault();
 					}}
@@ -463,12 +471,16 @@ function FadeLabel({text}: {text: string}) {
 	useLayoutEffect(() => {
 		const element = ref.current;
 		if (element === null) return;
-		const measure = () => setOverflowing(element.scrollWidth > element.clientWidth);
+		const measure = () => {
+			setOverflowing(element.scrollWidth > element.clientWidth);
+		};
 		measure();
 		if (typeof ResizeObserver === "undefined") return;
 		const observer = new ResizeObserver(measure);
 		observer.observe(element);
-		return () => observer.disconnect();
+		return () => {
+			observer.disconnect();
+		};
 	}, [text]);
 
 	return (

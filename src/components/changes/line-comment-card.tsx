@@ -35,7 +35,9 @@ function isSaveShortcut(event: React.KeyboardEvent): boolean {
 function LineCommentCard({sessionId, draft}: {sessionId: string; draft: DiffCommentDraft}) {
 	const [text, setText] = useState("");
 	const empty = text.trim() === "";
-	const save = () => saveDiffComment(sessionId, draft.id, text);
+	const save = () => {
+		saveDiffComment(sessionId, draft.id, text);
+	};
 	return (
 		<div className="px-2 py-1">
 			<div data-line-comment={draft.id} className={CARD_CLASS}>
@@ -47,7 +49,9 @@ function LineCommentCard({sessionId, draft}: {sessionId: string; draft: DiffComm
 					placeholder="Request changes"
 					value={text}
 					rows={1}
-					onChange={(event) => setText(event.target.value)}
+					onChange={(event) => {
+						setText(event.target.value);
+					}}
 					onKeyDown={(event) => {
 						if (event.key === "Escape" && empty) {
 							event.preventDefault();
@@ -81,7 +85,9 @@ function QueuedCommentCard({sessionId, comment}: {sessionId: string; comment: Qu
 					<button
 						type="button"
 						aria-label="Remove comment"
-						onClick={() => removeQueuedDiffComment(sessionId, comment.id)}
+						onClick={() => {
+							removeQueuedDiffComment(sessionId, comment.id);
+						}}
 						className="ml-auto flex size-5 cursor-pointer items-center justify-center rounded-r5 text-secondary hover:bg-fill-ghost-hover hover:text-primary"
 					>
 						<X aria-hidden="true" className="size-3" />

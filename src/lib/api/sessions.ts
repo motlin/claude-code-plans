@@ -292,7 +292,7 @@ export const sessionQueryKeys = {
 export const recentSessionsQueryOptions = (limit: number, status: SessionStatusFilter = "active") =>
 	queryOptions({
 		queryKey: sessionQueryKeys.recent(limit, status),
-		queryFn: () =>
+		queryFn: async () =>
 			apiFetch(
 				`/api/sessions/recent?limit=${limit}${status === "active" ? "" : `&status=${status}`}`,
 				RecentSessionsResponse,
@@ -330,7 +330,7 @@ export const recentSessionsInfiniteQueryOptions = (
 ) =>
 	infiniteQueryOptions({
 		queryKey: sessionQueryKeys.recentInfinite(limit, status),
-		queryFn: ({pageParam}) => {
+		queryFn: async ({pageParam}) => {
 			const cursor = pageParam ? `&cursor=${encodeURIComponent(pageParam)}` : "";
 			const statusParam = status === "active" ? "" : `&status=${status}`;
 			return apiFetch(
@@ -348,7 +348,7 @@ export const recentSessionsInfiniteQueryOptions = (
 export const groupedSessionsQueryOptions = (perProject: number = SESSION_GROUP_PAGE_SIZE) =>
 	queryOptions({
 		queryKey: sessionQueryKeys.grouped(perProject),
-		queryFn: () => apiFetch(`/api/sessions/grouped?perProject=${perProject}`, GroupedSessionsResponse),
+		queryFn: async () => apiFetch(`/api/sessions/grouped?perProject=${perProject}`, GroupedSessionsResponse),
 		staleTime: Infinity,
 		gcTime: Infinity,
 	});
@@ -356,7 +356,7 @@ export const groupedSessionsQueryOptions = (perProject: number = SESSION_GROUP_P
 export const sessionsByIdsQueryOptions = (ids: readonly string[]) =>
 	queryOptions({
 		queryKey: sessionQueryKeys.byIds(ids),
-		queryFn: () =>
+		queryFn: async () =>
 			ids.length === 0
 				? Promise.resolve([])
 				: apiFetch(
@@ -370,7 +370,8 @@ export const sessionsByIdsQueryOptions = (ids: readonly string[]) =>
 export const sessionTitlesQueryOptions = (ids: string[]) =>
 	queryOptions({
 		queryKey: sessionQueryKeys.titles(ids),
-		queryFn: () => apiFetch(`/api/sessions/titles?ids=${encodeURIComponent(ids.join(","))}`, SessionTitlesResponse),
+		queryFn: async () =>
+			apiFetch(`/api/sessions/titles?ids=${encodeURIComponent(ids.join(","))}`, SessionTitlesResponse),
 		enabled: ids.length > 0,
 		staleTime: Infinity,
 		gcTime: Infinity,
@@ -383,7 +384,7 @@ export const activeSessionsQueryOptions = (activeTimeoutMs?: number) => {
 			: "/api/sessions/active";
 	return queryOptions({
 		queryKey: sessionQueryKeys.active(activeTimeoutMs),
-		queryFn: () => apiFetch(url, ActiveSessionListResponse),
+		queryFn: async () => apiFetch(url, ActiveSessionListResponse),
 		staleTime: Infinity,
 		gcTime: Infinity,
 	});
@@ -392,6 +393,7 @@ export const activeSessionsQueryOptions = (activeTimeoutMs?: number) => {
 export const sessionDetailQueryOptions = (id: string) =>
 	queryOptions({
 		queryKey: sessionQueryKeys.detail(id),
+		// oxlint-disable-next-line typescript/promise-function-async -- an async wrapper settles detail a tick after the transcript, splitting the session open into extra commits (client-session-open perf ratchet)
 		queryFn: () => apiFetch(`/api/sessions/${encodeURIComponent(id)}`, SessionDetailResponse),
 		staleTime: Infinity,
 		gcTime: Infinity,
@@ -400,11 +402,11 @@ export const sessionDetailQueryOptions = (id: string) =>
 export const sessionOpenInQueryOptions = (id: string) =>
 	queryOptions({
 		queryKey: sessionQueryKeys.openIn(id),
-		queryFn: () => apiFetch(`/api/sessions/${encodeURIComponent(id)}/open-in`, SessionOpenInResponse),
+		queryFn: async () => apiFetch(`/api/sessions/${encodeURIComponent(id)}/open-in`, SessionOpenInResponse),
 	});
 
 /** Reveal the session's own directory in Finder; the server resolves the path from the index. */
-export function openSessionInFinder(sessionId: string): Promise<unknown> {
+export async function openSessionInFinder(sessionId: string): Promise<unknown> {
 	return apiFetch("/api/open-in-finder", z.object({ok: z.literal(true)}).strict(), {
 		method: "POST",
 		headers: {"Content-Type": "application/json"},
@@ -415,7 +417,7 @@ export function openSessionInFinder(sessionId: string): Promise<unknown> {
 export const transcriptQueryOptions = (id: string) =>
 	queryOptions({
 		queryKey: sessionQueryKeys.transcript(id),
-		queryFn: () => apiFetch(`/api/sessions/${encodeURIComponent(id)}/transcript`, TranscriptResponse),
+		queryFn: async () => apiFetch(`/api/sessions/${encodeURIComponent(id)}/transcript`, TranscriptResponse),
 		structuralSharing: (oldData, newData) => {
 			const refreshed = TranscriptResponse.parse(newData);
 			if (oldData === undefined) return refreshed;
@@ -437,7 +439,7 @@ export const transcriptQueryOptions = (id: string) =>
 export const sessionResourcesQueryOptions = (id: string, enabled: boolean) =>
 	queryOptions({
 		queryKey: sessionQueryKeys.resources(id),
-		queryFn: () => apiFetch(`/api/sessions/${encodeURIComponent(id)}/resources`, SessionResourcesResponse),
+		queryFn: async () => apiFetch(`/api/sessions/${encodeURIComponent(id)}/resources`, SessionResourcesResponse),
 		enabled,
 		staleTime: Infinity,
 		gcTime: Infinity,
@@ -450,7 +452,7 @@ export const sessionResourcesQueryOptions = (id: string, enabled: boolean) =>
 export const sessionDevServersQueryOptions = (id: string, enabled: boolean) =>
 	queryOptions({
 		queryKey: sessionQueryKeys.devServers(id),
-		queryFn: () => apiFetch(`/api/sessions/${encodeURIComponent(id)}/dev-servers`, SessionDevServersResponse),
+		queryFn: async () => apiFetch(`/api/sessions/${encodeURIComponent(id)}/dev-servers`, SessionDevServersResponse),
 		enabled,
 		staleTime: 0,
 	});
@@ -480,7 +482,7 @@ function inFlightEarlierPages(queryClient: QueryClient): Map<string, Promise<voi
  * overlap on the same page share one request; each landed page moves the
  * window, so the next call is a fresh request for the page before it.
  */
-export function fetchEarlierTranscript(queryClient: QueryClient, sessionId: string): Promise<void> {
+export async function fetchEarlierTranscript(queryClient: QueryClient, sessionId: string): Promise<void> {
 	const queryKey = sessionQueryKeys.transcript(sessionId);
 	const cached = queryClient.getQueryData<TranscriptData>(queryKey);
 	if (!cached || cached.startIndex === 0) return Promise.resolve();
@@ -525,7 +527,7 @@ export type SessionSubagentsData = z.infer<typeof SessionSubagentsResponse>;
 export const sessionSubagentsQueryOptions = (id: string) =>
 	queryOptions({
 		queryKey: sessionQueryKeys.subagents(id),
-		queryFn: () => apiFetch(`/api/sessions/${encodeURIComponent(id)}/subagents`, SessionSubagentsResponse),
+		queryFn: async () => apiFetch(`/api/sessions/${encodeURIComponent(id)}/subagents`, SessionSubagentsResponse),
 		staleTime: Infinity,
 		gcTime: Infinity,
 	});
@@ -551,7 +553,7 @@ export const RenameSessionResponse = z.object({customTitle: z.string().nullable(
 export const useRenameSessionMutation = (sessionId: string) => {
 	const qc = useQueryClient();
 	return useMutation({
-		mutationFn: (title: string) =>
+		mutationFn: async (title: string) =>
 			apiFetch(`/api/sessions/${encodeURIComponent(sessionId)}/title`, RenameSessionResponse, {
 				method: "PUT",
 				headers: {"Content-Type": "application/json"},
@@ -576,7 +578,7 @@ export const SummaryMutationResponse = z.object({
 export const useRequestSummary = (sessionId: string) => {
 	const qc = useQueryClient();
 	return useMutation({
-		mutationFn: () =>
+		mutationFn: async () =>
 			apiFetch(`/api/sessions/${encodeURIComponent(sessionId)}/summary`, SummaryMutationResponse, {
 				method: "POST",
 			}),

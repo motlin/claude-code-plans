@@ -50,7 +50,7 @@ export function createCorpusMcpServer(context: ToolContext): McpServer {
 			},
 			annotations: READ_ONLY_ANNOTATIONS,
 		},
-		(input) =>
+		async (input) =>
 			Promise.resolve(
 				toolResult(
 					listSessions(context, {
@@ -72,7 +72,7 @@ export function createCorpusMcpServer(context: ToolContext): McpServer {
 			},
 			annotations: READ_ONLY_ANNOTATIONS,
 		},
-		(input) => Promise.resolve(toolResult(readConversation(context, input))),
+		async (input) => Promise.resolve(toolResult(readConversation(context, input))),
 	);
 
 	server.registerTool(
@@ -85,7 +85,7 @@ export function createCorpusMcpServer(context: ToolContext): McpServer {
 			},
 			annotations: READ_ONLY_ANNOTATIONS,
 		},
-		(input) => Promise.resolve(toolResult(search(context, input))),
+		async (input) => Promise.resolve(toolResult(search(context, input))),
 	);
 
 	server.registerTool(
@@ -98,7 +98,7 @@ export function createCorpusMcpServer(context: ToolContext): McpServer {
 			},
 			annotations: READ_ONLY_ANNOTATIONS,
 		},
-		(input) =>
+		async (input) =>
 			Promise.resolve(
 				toolResult(
 					getPrompt(context, {
@@ -116,7 +116,7 @@ export function createCorpusMcpServer(context: ToolContext): McpServer {
 			inputSchema: {id: z.string().min(1)},
 			annotations: READ_ONLY_ANNOTATIONS,
 		},
-		(input) => Promise.resolve(toolResult(getSession(context, input))),
+		async (input) => Promise.resolve(toolResult(getSession(context, input))),
 	);
 
 	server.registerTool(
@@ -129,7 +129,7 @@ export function createCorpusMcpServer(context: ToolContext): McpServer {
 			},
 			annotations: READ_ONLY_ANNOTATIONS,
 		},
-		(input) => Promise.resolve(toolResult(listSubagents(context, input))),
+		async (input) => Promise.resolve(toolResult(listSubagents(context, input))),
 	);
 
 	server.registerTool(
@@ -139,7 +139,7 @@ export function createCorpusMcpServer(context: ToolContext): McpServer {
 			inputSchema: {limit: z.number().int().min(1).max(50).default(20)},
 			annotations: READ_ONLY_ANNOTATIONS,
 		},
-		(input) => Promise.resolve(toolResult(listProjects(context, input))),
+		async (input) => Promise.resolve(toolResult(listProjects(context, input))),
 	);
 
 	return server;

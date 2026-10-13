@@ -23,5 +23,5 @@ export const TmuxWindowListResponse = z.array(TmuxWindowSchema);
 
 export const tmuxWindowsQueryOptions = queryOptions({
 	queryKey: ["tmux", "windows"] as const,
-	queryFn: () => apiFetch("/api/tmux-windows", TmuxWindowListResponse),
+	queryFn: async () => apiFetch("/api/tmux-windows", TmuxWindowListResponse),
 });

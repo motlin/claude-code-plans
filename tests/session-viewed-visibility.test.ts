@@ -276,7 +276,7 @@ describe("retryable session viewed sync", () => {
 	it("does not retry after a successful attempt", async () => {
 		vi.spyOn(console, "warn").mockImplementation(() => {});
 		const operations: string[] = [];
-		const sync = createRetryableSync(() => {
+		const sync = createRetryableSync(async () => {
 			operations.push("call");
 			return Promise.resolve();
 		});
@@ -293,7 +293,7 @@ describe("retryable session viewed sync", () => {
 		vi.spyOn(console, "warn").mockImplementation(() => {});
 		const operations: string[] = [];
 		const failure = new Error("mark reviewed failed");
-		const sync = createRetryableSync(() => {
+		const sync = createRetryableSync(async () => {
 			operations.push("call");
 			return operations.length === 1 ? Promise.reject(failure) : Promise.resolve();
 		});
@@ -310,7 +310,7 @@ describe("retryable session viewed sync", () => {
 		vi.spyOn(console, "warn").mockImplementation(() => {});
 		const operations: string[] = [];
 		const failure = new Error("mark reviewed failed");
-		const sync = createRetryableSync(() => {
+		const sync = createRetryableSync(async () => {
 			operations.push("call");
 			return operations.length === 1 ? Promise.reject(failure) : Promise.resolve();
 		});

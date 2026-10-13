@@ -50,7 +50,9 @@ export function UsagePaceBanner() {
 		<UsagePaceBand
 			usedPct={usedPct}
 			resetText={formatPaceBannerReset(resetsAt)}
-			onDismiss={() => writePaceBannerDismissedUntil(resetsAt)}
+			onDismiss={() => {
+				writePaceBannerDismissedUntil(resetsAt);
+			}}
 		/>
 	);
 }

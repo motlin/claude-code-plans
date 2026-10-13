@@ -20,7 +20,9 @@ export function ChapterChips({sessionId, onJump}: {sessionId: string; onJump: (u
 						type="button"
 						aria-label={`Jump to chapter: ${chapter.label}`}
 						title={chapter.label}
-						onClick={() => onJump(chapter.uuid)}
+						onClick={() => {
+							onJump(chapter.uuid);
+						}}
 						className="min-w-0 cursor-pointer truncate py-0.5 pl-2 pr-1 transition-colors hover:text-primary"
 					>
 						{chapter.label}
@@ -28,7 +30,9 @@ export function ChapterChips({sessionId, onJump}: {sessionId: string; onJump: (u
 					<button
 						type="button"
 						aria-label={`Unpin chapter: ${chapter.label}`}
-						onClick={() => removeChapter(sessionId, chapter.uuid)}
+						onClick={() => {
+							removeChapter(sessionId, chapter.uuid);
+						}}
 						className="flex size-4 shrink-0 cursor-pointer items-center justify-center rounded-full text-ink-muted transition-colors hover:text-primary mr-0.5"
 					>
 						<X aria-hidden="true" className="size-3" />

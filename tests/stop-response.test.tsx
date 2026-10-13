@@ -215,9 +215,13 @@ describe("working marker Stopping…", () => {
 		vi.stubGlobal("matchMedia", undefined);
 		const view = render(<MarkerHarness interruptedAt={null} />);
 		const before = view.getByRole("status").textContent;
-		act(() => view.rerender(<MarkerHarness interruptedAt={PROMPT_AT + 3000} />));
+		act(() => {
+			view.rerender(<MarkerHarness interruptedAt={PROMPT_AT + 3000} />);
+		});
 		const after = view.getByRole("status").textContent;
-		act(() => view.rerender(<MarkerHarness interruptedAt={PROMPT_AT - 60_000} />));
+		act(() => {
+			view.rerender(<MarkerHarness interruptedAt={PROMPT_AT - 60_000} />);
+		});
 		const stale = view.getByRole("status").textContent;
 		vi.unstubAllGlobals();
 

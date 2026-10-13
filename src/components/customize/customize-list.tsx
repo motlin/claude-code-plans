@@ -29,7 +29,7 @@ interface CustomizeListProps {
 }
 
 /** One `<section>` per group, each a SectionHeader + Counter over its ListRows. */
-export function CustomizeList({groups, icon, noun, searching, empty}: CustomizeListProps) {
+export function CustomizeList({groups, icon, noun, searching, empty}: CustomizeListProps): ReactNode {
 	const visible = groups.filter((group) => group.items.length > 0);
 	if (visible.length === 0) return searching ? <NoSearchMatches noun={noun} /> : empty;
 

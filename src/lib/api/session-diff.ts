@@ -125,7 +125,7 @@ export const sessionDiffQueryOptions = (sessionId: string, scope: string, flags:
 	const hideWhitespace = flags.hideWhitespace === true;
 	return queryOptions({
 		queryKey: sessionDiffQueryKeys.diff(sessionId, scope, hideWhitespace),
-		queryFn: () => apiFetch(diffUrl(sessionId, scope, hideWhitespace), SessionDiffResponseSchema),
+		queryFn: async () => apiFetch(diffUrl(sessionId, scope, hideWhitespace), SessionDiffResponseSchema),
 	});
 };
 
@@ -139,13 +139,13 @@ export const sessionDiffFileQueryOptions = (
 	const hideWhitespace = flags.hideWhitespace === true;
 	return queryOptions({
 		queryKey: sessionDiffQueryKeys.file(sessionId, scope, hideWhitespace, path),
-		queryFn: () => apiFetch(diffUrl(sessionId, scope, hideWhitespace, path), SessionDiffFileResponseSchema),
+		queryFn: async () => apiFetch(diffUrl(sessionId, scope, hideWhitespace, path), SessionDiffFileResponseSchema),
 	});
 };
 
 export const sessionDiffScopesQueryOptions = (sessionId: string) =>
 	queryOptions({
 		queryKey: sessionDiffQueryKeys.scopes(sessionId),
-		queryFn: () =>
+		queryFn: async () =>
 			apiFetch(`/api/sessions/${encodeURIComponent(sessionId)}/diff/scopes`, SessionDiffScopesResponseSchema),
 	});

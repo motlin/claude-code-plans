@@ -5,7 +5,7 @@ import {planQueryOptions} from "../lib/api/plans";
 import {apiFetch} from "../lib/api/client";
 import {lazy, Suspense, useCallback, useEffect, useRef, useState} from "react";
 
-const MarkdownEditor = lazy(() =>
+const MarkdownEditor = lazy(async () =>
 	import("../components/markdown-editor").then((m) => ({
 		default: m.MarkdownEditor,
 	})),
@@ -17,7 +17,7 @@ const PlanSaveResponse = z.object({
 
 export const Route = createFileRoute("/plan/$filename_/edit")({
 	component: PlanEditPage,
-	loader: ({context: {queryClient}, params}) => queryClient.ensureQueryData(planQueryOptions(params.filename)),
+	loader: async ({context: {queryClient}, params}) => queryClient.ensureQueryData(planQueryOptions(params.filename)),
 	head: ({loaderData}) => ({
 		meta: [{title: loaderData ? `Edit: ${loaderData.title}` : "Plan Not Found"}],
 	}),
@@ -44,7 +44,7 @@ function PlanEditPage() {
 	const navigate = useNavigate();
 
 	const saveMutation = useMutation({
-		mutationFn: (markdown: string) =>
+		mutationFn: async (markdown: string) =>
 			apiFetch(`/api/plans/${encodeURIComponent(slug)}`, PlanSaveResponse, {
 				method: "PUT",
 				headers: {"Content-Type": "text/plain"},

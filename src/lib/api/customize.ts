@@ -137,14 +137,14 @@ const CUSTOMIZE_STALE_TIME_MS = 30_000;
 
 export const customizeSkillsQueryOptions = queryOptions({
 	queryKey: ["customize", "skills"] as const,
-	queryFn: () => apiFetch("/api/customize/skills", SkillListResponse),
+	queryFn: async () => apiFetch("/api/customize/skills", SkillListResponse),
 	staleTime: CUSTOMIZE_STALE_TIME_MS,
 });
 
 export const customizeSkillDetailQueryOptions = (skillId: string) =>
 	queryOptions({
 		queryKey: ["customize", "skills", skillId] as const,
-		queryFn: () => apiFetch(`/api/customize/skills/${encodeURIComponent(skillId)}`, SkillDetailResponse),
+		queryFn: async () => apiFetch(`/api/customize/skills/${encodeURIComponent(skillId)}`, SkillDetailResponse),
 		staleTime: CUSTOMIZE_STALE_TIME_MS,
 	});
 
@@ -152,7 +152,7 @@ export const customizeSkillDetailQueryOptions = (skillId: string) =>
 export const customizeSkillFileQueryOptions = (skillId: string, path: string) =>
 	queryOptions({
 		queryKey: ["customize", "skills", skillId, "file", path] as const,
-		queryFn: () =>
+		queryFn: async () =>
 			apiFetch(
 				`/api/customize/file?${new URLSearchParams({skill: skillId, path}).toString()}`,
 				CustomizeFileResponse,
@@ -163,7 +163,7 @@ export const customizeSkillFileQueryOptions = (skillId: string, path: string) =>
 export const customizePluginDetailQueryOptions = (pluginId: string) =>
 	queryOptions({
 		queryKey: ["customize", "plugins", pluginId] as const,
-		queryFn: () => apiFetch(`/api/customize/plugins/${encodeURIComponent(pluginId)}`, PluginDetailResponse),
+		queryFn: async () => apiFetch(`/api/customize/plugins/${encodeURIComponent(pluginId)}`, PluginDetailResponse),
 		staleTime: CUSTOMIZE_STALE_TIME_MS,
 	});
 
@@ -171,7 +171,7 @@ export const customizePluginDetailQueryOptions = (pluginId: string) =>
 export const customizePluginFileQueryOptions = (pluginId: string, path: string) =>
 	queryOptions({
 		queryKey: ["customize", "plugins", pluginId, "file", path] as const,
-		queryFn: () =>
+		queryFn: async () =>
 			apiFetch(
 				`/api/customize/file?${new URLSearchParams({plugin: pluginId, path}).toString()}`,
 				CustomizeFileResponse,
@@ -181,27 +181,27 @@ export const customizePluginFileQueryOptions = (pluginId: string, path: string) 
 
 export const customizeDiscoverQueryOptions = queryOptions({
 	queryKey: ["customize", "discover"] as const,
-	queryFn: () => apiFetch("/api/customize/discover", DiscoverCatalogResponse),
+	queryFn: async () => apiFetch("/api/customize/discover", DiscoverCatalogResponse),
 	staleTime: CUSTOMIZE_STALE_TIME_MS,
 });
 
 export const customizeMcpServersQueryOptions = queryOptions({
 	queryKey: ["customize", "mcp-servers"] as const,
-	queryFn: () => apiFetch("/api/customize/mcp-servers", McpServerListResponse),
+	queryFn: async () => apiFetch("/api/customize/mcp-servers", McpServerListResponse),
 	staleTime: CUSTOMIZE_STALE_TIME_MS,
 });
 
 export const customizeMcpServerDetailQueryOptions = (serverSlug: string) =>
 	queryOptions({
 		queryKey: ["customize", "mcp-servers", serverSlug] as const,
-		queryFn: () =>
+		queryFn: async () =>
 			apiFetch(`/api/customize/mcp-servers/${encodeURIComponent(serverSlug)}`, McpServerDetailResponse),
 		staleTime: CUSTOMIZE_STALE_TIME_MS,
 	});
 
 export const customizeClaudeAiConnectorsQueryOptions = queryOptions({
 	queryKey: ["customize", "claude-ai-connectors"] as const,
-	queryFn: () => apiFetch("/api/customize/claude-ai-connectors", ClaudeAiConnectorListResponse),
+	queryFn: async () => apiFetch("/api/customize/claude-ai-connectors", ClaudeAiConnectorListResponse),
 	staleTime: CUSTOMIZE_STALE_TIME_MS,
 });
 
@@ -246,7 +246,7 @@ export const SettingsToggleRequestSchema = z.strictObject({
 const SETTINGS_TOGGLES_URL = "/api/customize/settings-toggles";
 export const customizeSettingsTogglesQueryOptions = queryOptions({
 	queryKey: ["customize", "settings-toggles"] as const,
-	queryFn: () => apiFetch(SETTINGS_TOGGLES_URL, SettingsToggleStateSchema),
+	queryFn: async () => apiFetch(SETTINGS_TOGGLES_URL, SettingsToggleStateSchema),
 	staleTime: CUSTOMIZE_STALE_TIME_MS,
 });
 

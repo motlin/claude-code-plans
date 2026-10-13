@@ -46,7 +46,7 @@ export const Route = createFileRoute("/api/search/files")({
 				const roots = await resolveFileSearchRoots(index);
 
 				return handleFileSearchRequest(request, {
-					resolveScope: (scopeRoot) => resolveFileSearchScope(scopeRoot, undefined, roots),
+					resolveScope: async (scopeRoot) => resolveFileSearchScope(scopeRoot, undefined, roots),
 					search: (query, scopeRoot) => searchFileContentDb(index, query, scopeRoot),
 				});
 			},

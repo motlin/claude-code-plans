@@ -43,7 +43,7 @@ const defaultDependencies: HerdrPermissionDependencies = {
 			(entry) => entry.sessionId === sessionId && entry.notificationType === PERMISSION_PROMPT_NOTIFICATION,
 		),
 	clearPendingPermission: clearNotificationsForSession,
-	resolveTarget: (sessionId) => resolveHerdrPromptTarget(sessionId),
+	resolveTarget: async (sessionId) => resolveHerdrPromptTarget(sessionId),
 	request: herdrRequest,
 	createRequestId: () => `ccp:permission:${crypto.randomUUID()}`,
 };

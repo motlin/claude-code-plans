@@ -244,7 +244,9 @@ function sweepStoredLiveSubagents(onStaleEnded: (node: LiveSubagentNode) => void
 /** `onStaleEnded` receives each running node the stale sweep ends. */
 export function startLiveSubagentSweep(onStaleEnded: (node: LiveSubagentNode) => void): void {
 	stopLiveSubagentSweep();
-	sweepTimer = setInterval(() => sweepStoredLiveSubagents(onStaleEnded), LIVE_SUBAGENT_SWEEP_INTERVAL_MS);
+	sweepTimer = setInterval(() => {
+		sweepStoredLiveSubagents(onStaleEnded);
+	}, LIVE_SUBAGENT_SWEEP_INTERVAL_MS);
 }
 
 export function stopLiveSubagentSweep(): void {

@@ -145,7 +145,7 @@ export async function listMemories(projectsDir: string): Promise<ProjectGroup[]>
 		return [];
 	}
 
-	const results = await Promise.all(projectDirs.map((project) => processProject(projectsDir, project)));
+	const results = await Promise.all(projectDirs.map(async (project) => processProject(projectsDir, project)));
 	const groups = results.filter((g): g is ProjectGroup => g !== null);
 
 	const maxMtimes = new Map(groups.map((g) => [g.project, Math.max(...g.memories.map((m) => m.mtime.getTime()))]));

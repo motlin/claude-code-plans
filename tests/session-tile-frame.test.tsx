@@ -10,8 +10,8 @@ import {
 
 const fakeRouter = vi.hoisted(() => ({
 	state: {
-		location: {href: "/session/example-alice", state: {} as Record<string, unknown>},
-		resolvedLocation: {href: "/session/example-alice", state: {} as Record<string, unknown>},
+		location: {href: "/session/example-alice", state: {}},
+		resolvedLocation: {href: "/session/example-alice", state: {}},
 	},
 	subscribe: vi.fn(
 		(_event: string, _listener: (event: {toLocation: {state: {__TSR_key: string}; href: string}}) => void) =>
@@ -122,7 +122,9 @@ it("does not hand a stale rendered event to a cold restore after departure", () 
 	const view = render(<Visit visitKey="example-alice-entry" />);
 	const [event, listener] = fakeRouter.subscribe.mock.calls[0]!;
 	fakeRouter.state.location = {href: "/session/example-bob", state: {__TSR_key: "example-bob-entry"}};
-	act(() => listener({toLocation: {href: "/session/example-alice", state: {__TSR_key: "example-alice-entry"}}}));
+	act(() => {
+		listener({toLocation: {href: "/session/example-alice", state: {__TSR_key: "example-alice-entry"}}});
+	});
 	expect({
 		event,
 		queuedFrames: frames.length,

@@ -134,7 +134,9 @@ describe("sidebar session list", () => {
 	it("groups sessions by state with their titles", async () => {
 		const {container} = await renderSidebar();
 
-		await waitFor(() => expect(screen.getByRole("button", {name: "Working"})).toBeTruthy());
+		await waitFor(() => {
+			expect(screen.getByRole("button", {name: "Working"})).toBeTruthy();
+		});
 
 		expect(
 			[...container.querySelectorAll('[data-testid="sidebar-recents"] [data-group-name]')].map(
@@ -148,14 +150,18 @@ describe("sidebar session list", () => {
 	it("keeps a collapsed group collapsed after visiting a session", async () => {
 		const {navigate} = await renderSidebar();
 
-		await waitFor(() => expect(screen.getByRole("button", {name: "Completed"})).toBeTruthy());
+		await waitFor(() => {
+			expect(screen.getByRole("button", {name: "Completed"})).toBeTruthy();
+		});
 		fireEvent.click(screen.getByRole("button", {name: "Completed"}));
 		expect(screen.queryByRole("link", {name: /Gamma done$/})).toBeNull();
 
 		await navigate({to: "/session/$id", params: {id: "w1"}});
 		await navigate({to: "/plans"});
 
-		await waitFor(() => expect(screen.getByRole("link", {name: /Gamma working$/})).toBeTruthy());
+		await waitFor(() => {
+			expect(screen.getByRole("link", {name: /Gamma working$/})).toBeTruthy();
+		});
 		expect(screen.queryByRole("link", {name: /Gamma done$/})).toBeNull();
 		expect(screen.getByRole("button", {name: "Completed"}).getAttribute("aria-expanded")).toBe("false");
 	});

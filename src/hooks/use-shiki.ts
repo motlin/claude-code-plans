@@ -21,47 +21,47 @@ let highlighterInstance: HighlighterCore | null = null;
 const languageLoadPromises = new Map<DynamicImportLanguageRegistration, Promise<void>>();
 const themeLoadPromises = new Map<CodeThemeId, Promise<void>>();
 
-const loadTypeScript = () => import("shiki/langs/typescript.mjs");
-const loadTsx = () => import("shiki/langs/tsx.mjs");
-const loadJavaScript = () => import("shiki/langs/javascript.mjs");
-const loadJsx = () => import("shiki/langs/jsx.mjs");
-const loadJson = () => import("shiki/langs/json.mjs");
-const loadPython = () => import("shiki/langs/python.mjs");
-const loadCss = () => import("shiki/langs/css.mjs");
-const loadHtml = () => import("shiki/langs/html.mjs");
-const loadMarkdown = () => import("shiki/langs/markdown.mjs");
-const loadYaml = () => import("shiki/langs/yaml.mjs");
-const loadShellScript = () => import("shiki/langs/shellscript.mjs");
-const loadRust = () => import("shiki/langs/rust.mjs");
-const loadGo = () => import("shiki/langs/go.mjs");
-const loadRuby = () => import("shiki/langs/ruby.mjs");
-const loadJava = () => import("shiki/langs/java.mjs");
-const loadSql = () => import("shiki/langs/sql.mjs");
-const loadToml = () => import("shiki/langs/toml.mjs");
-const loadXml = () => import("shiki/langs/xml.mjs");
-const loadC = () => import("shiki/langs/c.mjs");
-const loadCpp = () => import("shiki/langs/cpp.mjs");
-const loadCsharp = () => import("shiki/langs/csharp.mjs");
-const loadKotlin = () => import("shiki/langs/kotlin.mjs");
-const loadSwift = () => import("shiki/langs/swift.mjs");
-const loadPhp = () => import("shiki/langs/php.mjs");
-const loadScss = () => import("shiki/langs/scss.mjs");
-const loadLess = () => import("shiki/langs/less.mjs");
-const loadJsonc = () => import("shiki/langs/jsonc.mjs");
-const loadGraphql = () => import("shiki/langs/graphql.mjs");
-const loadDocker = () => import("shiki/langs/docker.mjs");
-const loadLua = () => import("shiki/langs/lua.mjs");
-const loadR = () => import("shiki/langs/r.mjs");
-const loadVue = () => import("shiki/langs/vue.mjs");
-const loadSvelte = () => import("shiki/langs/svelte.mjs");
-const loadAstro = () => import("shiki/langs/astro.mjs");
-const loadZig = () => import("shiki/langs/zig.mjs");
-const loadElixir = () => import("shiki/langs/elixir.mjs");
-const loadErlang = () => import("shiki/langs/erlang.mjs");
-const loadHcl = () => import("shiki/langs/hcl.mjs");
-const loadIni = () => import("shiki/langs/ini.mjs");
-const loadDotenv = () => import("shiki/langs/dotenv.mjs");
-const loadFish = () => import("shiki/langs/fish.mjs");
+const loadTypeScript = async () => import("shiki/langs/typescript.mjs");
+const loadTsx = async () => import("shiki/langs/tsx.mjs");
+const loadJavaScript = async () => import("shiki/langs/javascript.mjs");
+const loadJsx = async () => import("shiki/langs/jsx.mjs");
+const loadJson = async () => import("shiki/langs/json.mjs");
+const loadPython = async () => import("shiki/langs/python.mjs");
+const loadCss = async () => import("shiki/langs/css.mjs");
+const loadHtml = async () => import("shiki/langs/html.mjs");
+const loadMarkdown = async () => import("shiki/langs/markdown.mjs");
+const loadYaml = async () => import("shiki/langs/yaml.mjs");
+const loadShellScript = async () => import("shiki/langs/shellscript.mjs");
+const loadRust = async () => import("shiki/langs/rust.mjs");
+const loadGo = async () => import("shiki/langs/go.mjs");
+const loadRuby = async () => import("shiki/langs/ruby.mjs");
+const loadJava = async () => import("shiki/langs/java.mjs");
+const loadSql = async () => import("shiki/langs/sql.mjs");
+const loadToml = async () => import("shiki/langs/toml.mjs");
+const loadXml = async () => import("shiki/langs/xml.mjs");
+const loadC = async () => import("shiki/langs/c.mjs");
+const loadCpp = async () => import("shiki/langs/cpp.mjs");
+const loadCsharp = async () => import("shiki/langs/csharp.mjs");
+const loadKotlin = async () => import("shiki/langs/kotlin.mjs");
+const loadSwift = async () => import("shiki/langs/swift.mjs");
+const loadPhp = async () => import("shiki/langs/php.mjs");
+const loadScss = async () => import("shiki/langs/scss.mjs");
+const loadLess = async () => import("shiki/langs/less.mjs");
+const loadJsonc = async () => import("shiki/langs/jsonc.mjs");
+const loadGraphql = async () => import("shiki/langs/graphql.mjs");
+const loadDocker = async () => import("shiki/langs/docker.mjs");
+const loadLua = async () => import("shiki/langs/lua.mjs");
+const loadR = async () => import("shiki/langs/r.mjs");
+const loadVue = async () => import("shiki/langs/vue.mjs");
+const loadSvelte = async () => import("shiki/langs/svelte.mjs");
+const loadAstro = async () => import("shiki/langs/astro.mjs");
+const loadZig = async () => import("shiki/langs/zig.mjs");
+const loadElixir = async () => import("shiki/langs/elixir.mjs");
+const loadErlang = async () => import("shiki/langs/erlang.mjs");
+const loadHcl = async () => import("shiki/langs/hcl.mjs");
+const loadIni = async () => import("shiki/langs/ini.mjs");
+const loadDotenv = async () => import("shiki/langs/dotenv.mjs");
+const loadFish = async () => import("shiki/langs/fish.mjs");
 
 const shikiLanguageLoaders: Record<string, DynamicImportLanguageRegistration> = {
 	astro: loadAstro,
@@ -175,6 +175,7 @@ async function initHighlighter(): Promise<HighlighterCore> {
  * Get the shared highlighter instance (resolves once, then cached).
  * Callers that need async access (e.g., markdown-it integration) use this.
  */
+// oxlint-disable-next-line typescript/promise-function-async -- returns the one shared highlighter promise
 function getHighlighterInstance(): Promise<HighlighterCore> {
 	if (!highlighterPromise) {
 		highlighterPromise = initHighlighter();
@@ -183,6 +184,7 @@ function getHighlighterInstance(): Promise<HighlighterCore> {
 }
 
 /** Load a supported grammar once and notify subscribers when it becomes available. */
+// oxlint-disable-next-line typescript/promise-function-async -- concurrent requests share one in-flight promise
 export function requestLanguage(language: string): Promise<void> {
 	if (highlighterInstance?.getLoadedLanguages().includes(language)) {
 		return Promise.resolve();
@@ -208,6 +210,7 @@ export function requestLanguage(language: string): Promise<void> {
 }
 
 /** Load a code theme once and notify subscribers when it becomes available. */
+// oxlint-disable-next-line typescript/promise-function-async -- concurrent requests share one in-flight promise
 export function requestTheme(theme: CodeThemeId): Promise<void> {
 	if (highlighterInstance?.getLoadedThemes().includes(theme)) return Promise.resolve();
 

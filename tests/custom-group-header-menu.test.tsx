@@ -399,7 +399,9 @@ describe("Delete group", () => {
 			assignments: {s2: "cg-blog"},
 			order: {},
 		});
-		await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+		await waitFor(() => {
+			expect(screen.queryByRole("alertdialog")).toBeNull();
+		});
 	});
 
 	it("keeps the group on Cancel", async () => {
@@ -409,7 +411,9 @@ describe("Delete group", () => {
 
 		expect(groupNames()).toEqual(["Blog", "GTD", "Alpha"]);
 		expect(readSessionGroupState().assignments).toEqual({s1: "cg-gtd"});
-		await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+		await waitFor(() => {
+			expect(screen.queryByRole("alertdialog")).toBeNull();
+		});
 	});
 });
 
@@ -435,6 +439,8 @@ describe("Archive all", () => {
 			{url: expect.stringMatching(/\/api\/sessions\/s1\/archived$/), method: "PUT"},
 			{url: expect.stringMatching(/\/api\/sessions\/s2\/archived$/), method: "PUT"},
 		]);
-		await waitFor(() => expect(screen.getByText("Archived 2 sessions")).toBeTruthy());
+		await waitFor(() => {
+			expect(screen.getByText("Archived 2 sessions")).toBeTruthy();
+		});
 	});
 });

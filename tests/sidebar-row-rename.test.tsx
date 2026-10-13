@@ -90,7 +90,9 @@ async function renderSidebar() {
 	});
 	await router.load();
 	const result = render(<RouterProvider router={router} />);
-	await waitFor(() => expect(result.container.querySelector("a[data-row-main-button]")).toBeTruthy());
+	await waitFor(() => {
+		expect(result.container.querySelector("a[data-row-main-button]")).toBeTruthy();
+	});
 	return {...result, router};
 }
 
@@ -116,7 +118,7 @@ async function chooseRename(): Promise<HTMLInputElement> {
 	fireEvent.click(screen.getByRole("menuitem", {name: /Rename/}));
 	await flush();
 	await flush();
-	return (await waitFor(() => screen.getByRole("textbox", {name: "Rename"}))) as HTMLInputElement;
+	return await waitFor(() => screen.getByRole("textbox", {name: "Rename"}));
 }
 
 function inputState(input: HTMLInputElement) {
@@ -137,7 +139,7 @@ afterEach(() => {
 beforeEach(() => {
 	installLocalStorage();
 	fetchMock.mockReset();
-	fetchMock.mockImplementation((input, init) =>
+	fetchMock.mockImplementation(async (input, init) =>
 		Promise.resolve(
 			input.endsWith("/title")
 				? Response.json({customTitle: "Renamed row", title: "Renamed row"})
@@ -146,7 +148,7 @@ beforeEach(() => {
 	);
 	vi.stubGlobal("fetch", fetchMock);
 	__unreadStoreTesting.reset();
-	__unreadStoreTesting.setPersist(() => Promise.resolve());
+	__unreadStoreTesting.setPersist(async () => Promise.resolve());
 });
 
 describe("sidebar row rename", () => {

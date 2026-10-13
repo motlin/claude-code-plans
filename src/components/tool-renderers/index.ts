@@ -4,71 +4,73 @@ import {getMcpRenderer} from "./mcp-registry";
 // Question cards are always visible, so they must not wait behind a blank lazy-loading fallback.
 import {AskUserQuestionRenderer} from "./ask-user-question-renderer";
 
-const EditRenderer = lazy(() => import("./edit-renderer").then((m) => ({default: m.EditRenderer})));
-const BashRenderer = lazy(() => import("./bash-renderer").then((m) => ({default: m.BashRenderer})));
-const ReadRenderer = lazy(() => import("./read-renderer").then((m) => ({default: m.ReadRenderer})));
-const WriteRenderer = lazy(() => import("./write-renderer").then((m) => ({default: m.WriteRenderer})));
-const GlobRenderer = lazy(() => import("./glob-renderer").then((m) => ({default: m.GlobRenderer})));
-const GrepRenderer = lazy(() => import("./grep-renderer").then((m) => ({default: m.GrepRenderer})));
-const AgentRenderer = lazy(() => import("./agent-renderer").then((m) => ({default: m.AgentRenderer})));
-const TaskCreateRenderer = lazy(() =>
+const EditRenderer = lazy(async () => import("./edit-renderer").then((m) => ({default: m.EditRenderer})));
+const BashRenderer = lazy(async () => import("./bash-renderer").then((m) => ({default: m.BashRenderer})));
+const ReadRenderer = lazy(async () => import("./read-renderer").then((m) => ({default: m.ReadRenderer})));
+const WriteRenderer = lazy(async () => import("./write-renderer").then((m) => ({default: m.WriteRenderer})));
+const GlobRenderer = lazy(async () => import("./glob-renderer").then((m) => ({default: m.GlobRenderer})));
+const GrepRenderer = lazy(async () => import("./grep-renderer").then((m) => ({default: m.GrepRenderer})));
+const AgentRenderer = lazy(async () => import("./agent-renderer").then((m) => ({default: m.AgentRenderer})));
+const TaskCreateRenderer = lazy(async () =>
 	import("./task-create-renderer").then((m) => ({
 		default: m.TaskCreateRenderer,
 	})),
 );
-const TaskUpdateRenderer = lazy(() =>
+const TaskUpdateRenderer = lazy(async () =>
 	import("./task-update-renderer").then((m) => ({
 		default: m.TaskUpdateRenderer,
 	})),
 );
-const TaskGetRenderer = lazy(() => import("./task-get-renderer").then((m) => ({default: m.TaskGetRenderer})));
-const TaskListRenderer = lazy(() => import("./task-list-renderer").then((m) => ({default: m.TaskListRenderer})));
-const ExitPlanModeRenderer = lazy(() =>
+const TaskGetRenderer = lazy(async () => import("./task-get-renderer").then((m) => ({default: m.TaskGetRenderer})));
+const TaskListRenderer = lazy(async () => import("./task-list-renderer").then((m) => ({default: m.TaskListRenderer})));
+const ExitPlanModeRenderer = lazy(async () =>
 	import("./exit-plan-mode-renderer").then((m) => ({
 		default: m.ExitPlanModeRenderer,
 	})),
 );
-const EnterPlanModeRenderer = lazy(() =>
+const EnterPlanModeRenderer = lazy(async () =>
 	import("./enter-plan-mode-renderer").then((m) => ({
 		default: m.EnterPlanModeRenderer,
 	})),
 );
-const TodoWriteRenderer = lazy(() =>
+const TodoWriteRenderer = lazy(async () =>
 	import("./todo-write-renderer").then((m) => ({
 		default: m.TodoWriteRenderer,
 	})),
 );
-const WebSearchRenderer = lazy(() =>
+const WebSearchRenderer = lazy(async () =>
 	import("./web-search-renderer").then((m) => ({
 		default: m.WebSearchRenderer,
 	})),
 );
-const SendMessageRenderer = lazy(() =>
+const SendMessageRenderer = lazy(async () =>
 	import("./send-message-renderer").then((m) => ({
 		default: m.SendMessageRenderer,
 	})),
 );
-const TaskStopRenderer = lazy(() => import("./task-stop-renderer").then((m) => ({default: m.TaskStopRenderer})));
-const CronCreateRenderer = lazy(() =>
+const TaskStopRenderer = lazy(async () => import("./task-stop-renderer").then((m) => ({default: m.TaskStopRenderer})));
+const CronCreateRenderer = lazy(async () =>
 	import("./cron-create-renderer").then((m) => ({
 		default: m.CronCreateRenderer,
 	})),
 );
-const SkillRenderer = lazy(() => import("./skill-renderer").then((m) => ({default: m.SkillRenderer})));
-const WebFetchRenderer = lazy(() => import("./webfetch-renderer").then((m) => ({default: m.WebFetchRenderer})));
-const ToolSearchRenderer = lazy(() =>
+const SkillRenderer = lazy(async () => import("./skill-renderer").then((m) => ({default: m.SkillRenderer})));
+const WebFetchRenderer = lazy(async () => import("./webfetch-renderer").then((m) => ({default: m.WebFetchRenderer})));
+const ToolSearchRenderer = lazy(async () =>
 	import("./tool-search-renderer").then((m) => ({
 		default: m.ToolSearchRenderer,
 	})),
 );
-const ArtifactRenderer = lazy(() => import("./artifact-renderer").then((m) => ({default: m.ArtifactRenderer})));
-const ReportFindingsRenderer = lazy(() =>
+const ArtifactRenderer = lazy(async () => import("./artifact-renderer").then((m) => ({default: m.ArtifactRenderer})));
+const ReportFindingsRenderer = lazy(async () =>
 	import("./report-findings-renderer").then((m) => ({
 		default: m.ReportFindingsRenderer,
 	})),
 );
-const FallbackRenderer = lazy(() => import("./fallback-renderer").then((m) => ({default: m.FallbackRenderer})));
-const InvalidInputRenderer = lazy(() => import("./fallback-renderer").then((m) => ({default: m.InvalidInputRenderer})));
+const FallbackRenderer = lazy(async () => import("./fallback-renderer").then((m) => ({default: m.FallbackRenderer})));
+const InvalidInputRenderer = lazy(async () =>
+	import("./fallback-renderer").then((m) => ({default: m.InvalidInputRenderer})),
+);
 
 const registry: Record<string, ComponentType<ToolRendererProps>> = {
 	Edit: EditRenderer,

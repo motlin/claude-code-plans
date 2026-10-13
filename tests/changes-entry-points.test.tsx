@@ -45,10 +45,7 @@ vi.mock("../src/lib/api/reviews", async (importOriginal) => ({
 class FakeObserver {
 	constructor(private readonly callback?: ResizeObserverCallback) {}
 	observe(target: Element) {
-		this.callback?.(
-			[{target, contentRect: {width: 800}} as unknown as ResizeObserverEntry],
-			this as unknown as ResizeObserver,
-		);
+		this.callback?.([{target, contentRect: {width: 800}} as unknown as ResizeObserverEntry], this);
 	}
 	unobserve() {}
 	disconnect() {}
@@ -193,7 +190,9 @@ describe("Changes entry points", () => {
 		});
 		const link = await screen.findByRole("link", {name: "View findings"});
 		act(() => {
-			link.addEventListener("click", (event) => event.preventDefault());
+			link.addEventListener("click", (event) => {
+				event.preventDefault();
+			});
 			fireEvent.click(link);
 		});
 

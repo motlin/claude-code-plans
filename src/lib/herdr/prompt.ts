@@ -92,7 +92,7 @@ function herdrFailure(code: string, message: string): Response {
 const defaultDependencies: HerdrPromptDependencies = {
 	rejectRequest: rejectCrossSite,
 	writesEnabled: herdrWritesEnabled,
-	resolveTarget: (sessionId) => resolveHerdrPromptTarget(sessionId),
+	resolveTarget: async (sessionId) => resolveHerdrPromptTarget(sessionId),
 	request: herdrRequest,
 	createRequestId: () => `ccp:prompt:${crypto.randomUUID()}`,
 };

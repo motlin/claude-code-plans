@@ -48,7 +48,7 @@ interface TmuxPane {
 /** Runs `tmux -S <socket> list-panes -a` and resolves its stdout. */
 export type TmuxRunner = (socket: string) => Promise<string>;
 
-function runTmuxListPanes(socket: string): Promise<string> {
+async function runTmuxListPanes(socket: string): Promise<string> {
 	return new Promise((resolve, reject) => {
 		execFile(
 			"tmux",
@@ -170,6 +170,6 @@ export function createTmuxPlacementProvider(
 	return {
 		id: "tmux",
 		capabilities: TMUX_CAPABILITIES,
-		getPlacements: () => getTmuxPlacements(entries, runTmux),
+		getPlacements: async () => getTmuxPlacements(entries, runTmux),
 	};
 }

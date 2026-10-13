@@ -235,7 +235,9 @@ export function SubagentGantt({agents}: {agents: Subagent[]}) {
 						<button
 							key={z}
 							type="button"
-							onClick={() => setZoom(z)}
+							onClick={() => {
+								setZoom(z);
+							}}
 							aria-pressed={zoom === z}
 							className={`rounded px-1.5 py-0.5 tabular-nums ${
 								zoom === z ? "bg-accent-000/15 text-accent-100" : "hover:bg-surface-0/50 text-t6"
@@ -316,8 +318,12 @@ export function SubagentGantt({agents}: {agents: Subagent[]}) {
 							return (
 								<g
 									key={lane.agent.id}
-									onMouseEnter={() => setHoveredId(lane.agent.id)}
-									onMouseLeave={() => setHoveredId(null)}
+									onMouseEnter={() => {
+										setHoveredId(lane.agent.id);
+									}}
+									onMouseLeave={() => {
+										setHoveredId(null);
+									}}
 									style={{
 										opacity: dimmed ? 0.35 : 1,
 										transition: "opacity 0.15s",

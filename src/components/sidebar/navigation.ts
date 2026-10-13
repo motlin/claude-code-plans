@@ -107,7 +107,7 @@ const navEntries = {
 
 export const navItems = (Object.keys(navEntries) as Section[]).map((section) => ({
 	section,
-	...(navEntries[section] as NavEntry),
+	...navEntries[section],
 }));
 
 export type NavItem = (typeof navItems)[number];

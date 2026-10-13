@@ -54,7 +54,7 @@ export function spawnClaude({
 
 	const stream = new ReadableStream<Uint8Array>({
 		start(controller) {
-			child.stdout!.on("data", (chunk: Buffer) => {
+			child.stdout.on("data", (chunk: Buffer) => {
 				try {
 					controller.enqueue(new Uint8Array(chunk));
 				} catch {
@@ -62,7 +62,7 @@ export function spawnClaude({
 				}
 			});
 
-			child.stderr!.on("data", (chunk: Buffer) => {
+			child.stderr.on("data", (chunk: Buffer) => {
 				const text = chunk.toString().trim();
 				if (text) {
 					try {

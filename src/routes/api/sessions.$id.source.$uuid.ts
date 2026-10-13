@@ -104,8 +104,8 @@ function findPairedToolResult(
 		| undefined;
 	if (focalParsed?.type !== "assistant" || !Array.isArray(focalParsed.message?.content)) return null;
 
-	const toolUseIds = focalParsed
-		.message!.content.filter((c) => c?.type === "tool_use" && typeof c.id === "string")
+	const toolUseIds = focalParsed.message.content
+		.filter((c) => c?.type === "tool_use" && typeof c.id === "string")
 		.map((c) => c.id as string);
 	if (toolUseIds.length === 0) return null;
 
@@ -119,7 +119,7 @@ function findPairedToolResult(
 			  }
 			| undefined;
 		if (cParsed?.type !== "user" || !Array.isArray(cParsed.message?.content)) continue;
-		const matching = cParsed.message!.content.find(
+		const matching = cParsed.message.content.find(
 			(c) => c?.type === "tool_result" && typeof c.tool_use_id === "string" && toolUseIds.includes(c.tool_use_id),
 		);
 		if (matching) {

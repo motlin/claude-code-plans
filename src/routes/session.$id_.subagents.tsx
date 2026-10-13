@@ -15,7 +15,7 @@ import {toSubagentSessionId} from "../lib/subagents";
 
 export const Route = createFileRoute("/session/$id_/subagents")({
 	component: SubagentsPage,
-	loader: ({context: {queryClient}, params}) => {
+	loader: ({context: {queryClient}, params}): {title: string} | Promise<{title: string}> => {
 		if (params.id.startsWith("session_")) {
 			const options = sessionIdentityQueryOptions(params.id);
 			const identity = queryClient.getQueryState(options.queryKey);

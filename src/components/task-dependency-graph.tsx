@@ -146,8 +146,12 @@ export function TaskDependencyGraph({groups}: {groups: TaskGraphGroup[]}) {
 		return set;
 	}, [hoveredId, edges]);
 
-	const handleMouseEnter = useCallback((id: string) => setHoveredId(id), []);
-	const handleMouseLeave = useCallback(() => setHoveredId(null), []);
+	const handleMouseEnter = useCallback((id: string) => {
+		setHoveredId(id);
+	}, []);
+	const handleMouseLeave = useCallback(() => {
+		setHoveredId(null);
+	}, []);
 
 	if (allTasks.length === 0) {
 		return <p className="mt-4 text-t6">No tasks to display.</p>;
@@ -219,7 +223,9 @@ export function TaskDependencyGraph({groups}: {groups: TaskGraphGroup[]}) {
 					return (
 						<g
 							key={n.task.taskId}
-							onMouseEnter={() => handleMouseEnter(n.task.taskId)}
+							onMouseEnter={() => {
+								handleMouseEnter(n.task.taskId);
+							}}
 							onMouseLeave={handleMouseLeave}
 							style={{
 								cursor: "default",

@@ -102,7 +102,9 @@ function useTitlebarMeasure() {
 			if (measured !== undefined) setWidth(measured);
 		});
 		observer.observe(element);
-		return () => observer.disconnect();
+		return () => {
+			observer.disconnect();
+		};
 	}, []);
 	return {ref, width, compact: width !== null && width < PILLS_COMPACT_BELOW_PX};
 }
@@ -154,7 +156,7 @@ export function ProjectMenuItems({sessionId, session}: {sessionId: string; sessi
 	const repository = repositoryUrl(session.pr);
 	const branch = session.gitBranch;
 
-	const copy = (text: string, what: string) => copyWithToast(toast, text, what);
+	const copy = async (text: string, what: string) => copyWithToast(toast, text, what);
 
 	return (
 		<>
@@ -215,7 +217,13 @@ function HeaderLocalSection({
 			<MenuItem onSelect={() => void copyWithToast(toast, local.forkCommand, "Fork command")}>
 				Copy fork command
 			</MenuItem>
-			<MenuItem onSelect={() => downloadUrl(`/api/raw?sessionId=${sessionId}`)}>Download raw JSONL</MenuItem>
+			<MenuItem
+				onSelect={() => {
+					downloadUrl(`/api/raw?sessionId=${sessionId}`);
+				}}
+			>
+				Download raw JSONL
+			</MenuItem>
 			{local.onGenerateSummary !== undefined &&
 				(local.generatingSummary === true ? (
 					<MenuItem disabled>Generating summary…</MenuItem>

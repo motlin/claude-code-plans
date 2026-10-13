@@ -67,7 +67,13 @@ export function MoreNavMenu({
 							);
 						})}
 						{overflow.length > 0 && <MenuSeparator />}
-						<MenuItem onSelect={() => setEditing(true)}>Edit sidebar…</MenuItem>
+						<MenuItem
+							onSelect={() => {
+								setEditing(true);
+							}}
+						>
+							Edit sidebar…
+						</MenuItem>
 					</MenuContent>
 				</Menu>
 			</div>
@@ -118,7 +124,9 @@ function EditSidebarDialog({
 									<Checkbox.Root
 										key={item.section}
 										checked={visible.has(item.section)}
-										onCheckedChange={(checked) => setPinned(item.section, checked)}
+										onCheckedChange={(checked) => {
+											setPinned(item.section, checked);
+										}}
 										className="group/cb -mx-2 inline-flex w-auto items-start gap-2 rounded-r6 px-2 py-1 text-left text-body text-primary outline-none hover:bg-fill-ghost-hover focus-visible:shadow-[0_0_0_2px_var(--accent-100)]"
 									>
 										<span className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-r4 border border-strong group-data-[checked]/cb:border-transparent group-data-[checked]/cb:bg-accent-100">

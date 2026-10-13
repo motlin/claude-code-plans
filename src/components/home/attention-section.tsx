@@ -88,7 +88,9 @@ export function AttentionSection<Row extends HomeAttentionRow>({
 					<button
 						type="button"
 						aria-expanded={expanded}
-						onClick={() => setExpanded((previous) => !previous)}
+						onClick={() => {
+							setExpanded((previous) => !previous);
+						}}
 						className="h-6 rounded-md px-1.5 text-[12px] leading-[15px] text-ink-muted hover:bg-fill-ghost-hover hover:text-secondary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100"
 					>
 						{expanded ? "Show less" : `Show ${hiddenCount} more`}
@@ -102,7 +104,9 @@ export function AttentionSection<Row extends HomeAttentionRow>({
 						item={item}
 						now={now}
 						onOpen={onOpen}
-						onDismiss={() => dismiss(index)}
+						onDismiss={() => {
+							dismiss(index);
+						}}
 					/>
 				))}
 			</ul>
@@ -147,7 +151,9 @@ function AttentionRow<Row extends HomeAttentionRow>({
 					type="button"
 					data-row-main-button
 					aria-label={`Open session ${title}`}
-					onClick={() => onOpen(session.sessionId)}
+					onClick={() => {
+						onOpen(session.sessionId);
+					}}
 					className="flex min-w-0 flex-1 items-center justify-between gap-2 rounded-r3 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100"
 				>
 					<span className="flex min-w-0 flex-1 items-center gap-2">

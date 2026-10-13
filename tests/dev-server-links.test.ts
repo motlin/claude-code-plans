@@ -171,7 +171,7 @@ describe("probeDevServer", () => {
 				"http://10.0.0.1:3000/",
 				"file:///etc/passwd",
 				"not a url",
-			].map((url) => probeDevServer(url, fetchImpl)),
+			].map(async (url) => probeDevServer(url, fetchImpl)),
 		);
 		expect(results).toStrictEqual(["refused", "refused", "refused", "refused", "refused"]);
 		expect(fetchImpl).not.toHaveBeenCalled();

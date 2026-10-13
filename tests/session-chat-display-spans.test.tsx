@@ -124,7 +124,9 @@ function button(footer: HTMLElement, label: string) {
 	return footer.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`)!;
 }
 function focus(element: HTMLElement) {
-	act(() => element.focus());
+	act(() => {
+		element.focus();
+	});
 }
 function anchor(footer: HTMLElement) {
 	return footer.closest<HTMLElement>("[data-perf-line]")?.dataset["perfLine"];
@@ -961,7 +963,11 @@ describe("assistant display-span actions", () => {
 		},
 	);
 	it("focuses a keyboard-opened record menu and returns to its article on Escape", async () => {
-		vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => setTimeout(() => callback(0), 0));
+		vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) =>
+			setTimeout(() => {
+				callback(0);
+			}, 0),
+		);
 		vi.stubGlobal("cancelAnimationFrame", clearTimeout);
 		const view = render(
 			chat([
@@ -1058,7 +1064,9 @@ describe("assistant display-span actions", () => {
 			} else {
 				pinChapter.mockImplementationOnce(() => {
 					if (scenario === "another menu focus") outside.setAttribute("role", "menu");
-					queueMicrotask(() => outside.focus());
+					queueMicrotask(() => {
+						outside.focus();
+					});
 				});
 				fireEvent.click(screen.getByRole("menuitem", {name: "Pin as chapter"}));
 			}

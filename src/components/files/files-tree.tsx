@@ -104,7 +104,9 @@ export function FilesTreeColumn({children, onHide}: {children: ReactNode; onHide
 		step: 8,
 		edge: "end",
 		value: width,
-		onChange: (next) => setSetting("filesTreeWidth", next),
+		onChange: (next) => {
+			setSetting("filesTreeWidth", next);
+		},
 		...(onHide === undefined ? {} : {onClick: onHide}),
 	});
 	return (
@@ -176,7 +178,7 @@ export function FilesTree({
 	cwd,
 	onAttachContext,
 	onAsk,
-}: FilesTreeProps) {
+}: FilesTreeProps): ReactNode {
 	const {settings} = useSettings();
 	const [localQuery, setLocalQuery] = useState("");
 	const query = controlledQuery ?? localQuery;
@@ -218,7 +220,9 @@ export function FilesTree({
 			if (tree.clientHeight > 0) setViewportHeight(tree.clientHeight);
 		});
 		observer.observe(tree);
-		return () => observer.disconnect();
+		return () => {
+			observer.disconnect();
+		};
 	}, []);
 
 	useEffect(() => {
@@ -344,7 +348,9 @@ export function FilesTree({
 						spellCheck={false}
 						autoComplete="off"
 						value={query}
-						onChange={(event) => changeQuery(event.target.value)}
+						onChange={(event) => {
+							changeQuery(event.target.value);
+						}}
 						onKeyDown={handleInputKeyDown}
 						placeholder="Search files…"
 						className="h-6 w-full rounded-md border border-strong bg-surface-1 pl-7 pr-6 text-pane text-primary outline-none placeholder:text-t6 focus:shadow-[0_0_0_1px_rgb(42,120,214),0_0_6px_1px_rgb(205,226,251)]"
@@ -384,7 +390,9 @@ export function FilesTree({
 						<div className="shrink-0 px-1 pt-1.25">
 							<button
 								type="button"
-								onClick={() => changeQuery(goUp.query)}
+								onClick={() => {
+									changeQuery(goUp.query);
+								}}
 								className="flex h-[21.33px] w-full cursor-pointer items-center gap-1 rounded-r5 bg-fill-control px-2 text-pane text-primary hover:bg-fill-ghost-hover"
 							>
 								<ArrowUp aria-hidden="true" className="size-4 shrink-0 text-ink-muted" />
@@ -399,7 +407,9 @@ export function FilesTree({
 						aria-label="Project files"
 						tabIndex={0}
 						onKeyDown={handleTreeKeyDown}
-						onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}
+						onScroll={(event) => {
+							setScrollTop(event.currentTarget.scrollTop);
+						}}
 						onFocus={(event) => {
 							if (event.target === event.currentTarget && entries.length > 0) {
 								focusRow(Math.max(0, activeIndex));
@@ -426,7 +436,9 @@ export function FilesTree({
 												aria-current={entry.relPath === activeRelPath ? "true" : undefined}
 												tabIndex={-1}
 												title={symlinkLabel(entry)}
-												onFocus={() => setActiveIndex(index)}
+												onFocus={() => {
+													setActiveIndex(index);
+												}}
 												className="absolute left-0 flex h-[21.33px] w-full items-center rounded-r5 text-pane text-primary outline-none select-none hover:bg-fill-ghost-hover focus-visible:bg-fill-ghost-hover"
 												style={{top: index * ROW_HEIGHT, paddingLeft: 8}}
 											>
@@ -439,7 +451,9 @@ export function FilesTree({
 														type="button"
 														data-tree-primary
 														tabIndex={-1}
-														onClick={() => activate(entry, {pin: false})}
+														onClick={() => {
+															activate(entry, {pin: false});
+														}}
 														onDoubleClick={() => {
 															if (!entry.isDirectory)
 																onOpenFile?.(entry.relPath, {pin: true});

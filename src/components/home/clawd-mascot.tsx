@@ -20,8 +20,12 @@ export function ClawdMascot() {
 				aria-hidden="true"
 				data-clawd-mascot
 				data-hopping={hopping ? "" : undefined}
-				onClick={() => setHopping(true)}
-				onAnimationEnd={() => setHopping(false)}
+				onClick={() => {
+					setHopping(true);
+				}}
+				onAnimationEnd={() => {
+					setHopping(false);
+				}}
 				className="clawd-mascot pointer-events-none absolute right-[-16px] bottom-[-13px] h-[80px] w-[80px] -scale-x-100 cursor-default border-0 bg-transparent p-0 outline-none [&_path]:pointer-events-auto"
 			>
 				<svg viewBox="0 0 2750 1850" width="100%" height="100%" shapeRendering="crispEdges">

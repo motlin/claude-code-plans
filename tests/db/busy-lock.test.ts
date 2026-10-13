@@ -27,23 +27,29 @@ setTimeout(() => {
 }, Number(process.argv[2]));
 `;
 
-function holdWriteLock(dbPath: string, holdMs: number): Promise<ChildProcess> {
+async function holdWriteLock(dbPath: string, holdMs: number): Promise<ChildProcess> {
 	const child = spawn(process.execPath, ["-e", HOLD_LOCK_SCRIPT, dbPath, String(holdMs)], {
 		cwd: REPO_ROOT,
 		stdio: ["ignore", "pipe", "inherit"],
 	});
 	return new Promise((resolve, reject) => {
 		child.once("error", reject);
-		child.once("exit", (code) => reject(new Error(`lock holder exited early with ${code}`)));
-		child.stdout!.on("data", (chunk: Buffer) => {
+		child.once("exit", (code) => {
+			reject(new Error(`lock holder exited early with ${code}`));
+		});
+		child.stdout.on("data", (chunk: Buffer) => {
 			if (chunk.toString().includes("locked")) resolve(child);
 		});
 	});
 }
 
-function exited(child: ChildProcess): Promise<void> {
+async function exited(child: ChildProcess): Promise<void> {
 	if (child.exitCode !== null) return Promise.resolve();
-	return new Promise((resolve) => child.once("exit", () => resolve()));
+	return new Promise((resolve) =>
+		child.once("exit", () => {
+			resolve();
+		}),
+	);
 }
 
 describe("index DB writes while another connection holds the write lock", () => {
@@ -56,8 +62,12 @@ describe("index DB writes while another connection holds the write lock", () => 
 	function openTempDb(): {db: AppDb; dbPath: string} {
 		const cacheDir = mkdtempSync(join(tmpdir(), "busy-lock-test-"));
 		const db = openAppDb({cacheDir});
-		cleanups.push(() => rmSync(cacheDir, {recursive: true, force: true}));
-		cleanups.push(() => db.close());
+		cleanups.push(() => {
+			rmSync(cacheDir, {recursive: true, force: true});
+		});
+		cleanups.push(() => {
+			db.close();
+		});
 		return {db, dbPath: join(cacheDir, "index.db")};
 	}
 

@@ -5,7 +5,7 @@ import {sourceFileQueryOptions} from "../lib/api/source";
 
 export const Route = createFileRoute("/source/$kind/$")({
 	component: GenericSourcePage,
-	loader: ({context: {queryClient}, params}) =>
+	loader: async ({context: {queryClient}, params}) =>
 		queryClient.ensureQueryData(sourceFileQueryOptions(params.kind, params._splat ?? "")),
 	head: ({params}) => {
 		const tail = (params._splat ?? "").split("/").pop() ?? params.kind;
@@ -22,7 +22,9 @@ function CopyButton({text}: {text: string}) {
 				try {
 					await navigator.clipboard.writeText(text);
 					setCopied(true);
-					setTimeout(() => setCopied(false), 1500);
+					setTimeout(() => {
+						setCopied(false);
+					}, 1500);
 				} catch {
 					// clipboard not available
 				}

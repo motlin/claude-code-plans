@@ -78,7 +78,9 @@ export function SessionProjectGroups({
 			{hiddenProjects > 0 && (
 				<button
 					type="button"
-					onClick={() => setShowAllProjects(true)}
+					onClick={() => {
+						setShowAllProjects(true);
+					}}
 					className="mt-5 cursor-pointer text-sm text-accent-100 hover:underline"
 				>
 					Show {hiddenProjects} more projects

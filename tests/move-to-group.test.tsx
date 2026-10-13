@@ -237,7 +237,9 @@ async function renderRow() {
 	});
 	await router.load();
 	render(<RouterProvider router={router} />);
-	await waitFor(() => expect(screen.getByText("Row title")).toBeTruthy());
+	await waitFor(() => {
+		expect(screen.getByText("Row title")).toBeTruthy();
+	});
 }
 
 async function openMoveToGroup(): Promise<HTMLElement> {
@@ -245,7 +247,9 @@ async function openMoveToGroup(): Promise<HTMLElement> {
 	await flush();
 	const trigger = screen.getByRole("menuitem", {name: /^Move to group/});
 	expect(trigger.getAttribute("data-testid")).toBe("move-to-group-trigger");
-	act(() => trigger.focus());
+	act(() => {
+		trigger.focus();
+	});
 	fireEvent.keyDown(trigger, {key: "ArrowRight"});
 	await flush();
 	const menus = screen.getAllByRole("menu");
@@ -341,7 +345,9 @@ describe("New group dialog", () => {
 		expect(dialog.textContent).toContain("The list will switch to Custom groups to show it.");
 		const input = screen.getByRole("textbox", {name: "Group name"});
 		expect(input.getAttribute("placeholder")).toBe("Group name");
-		await waitFor(() => expect(document.activeElement).toBe(input));
+		await waitFor(() => {
+			expect(document.activeElement).toBe(input);
+		});
 		const create = screen.getByRole("button", {name: "Create and group by custom"});
 		expect(create.hasAttribute("disabled")).toBe(true);
 
@@ -357,7 +363,9 @@ describe("New group dialog", () => {
 		expect(state.groups.map((group) => group.name)).toEqual(["Blog", "GTD", "Upstream sync"]);
 		expect(state.assignments).toEqual({[SESSION_ID]: created?.id});
 		expect(storedPrefs()).toEqual({...DEFAULT_SESSION_LIST_PREFS, groupBy: "custom"});
-		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog")).toBeNull();
+		});
 	});
 
 	it("reads Create group without the switch note when already grouped by custom", async () => {
@@ -393,7 +401,9 @@ describe("New group dialog", () => {
 		fireEvent.keyDown(screen.getByRole("textbox", {name: "Group name"}), {key: "Escape"});
 		await flush();
 
-		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog")).toBeNull();
+		});
 		expect(readSessionGroupState().groups.map((group) => group.name)).toEqual(["Blog", "GTD"]);
 		expect(storedPrefs()).toBeNull();
 	});

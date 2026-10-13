@@ -4,7 +4,9 @@ import {PluginsSection} from "../components/customize/section-views";
 
 export const Route = createFileRoute("/customize/plugins")({
 	component: CustomizePlugins,
-	loader: ({context: {queryClient}}) => prefetchCustomizeSection(queryClient, "plugins"),
+	loader: ({context: {queryClient}}) => {
+		prefetchCustomizeSection(queryClient, "plugins");
+	},
 	head: () => ({meta: [{title: "Plugins · Customize"}]}),
 });
 

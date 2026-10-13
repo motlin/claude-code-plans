@@ -171,7 +171,7 @@ describe("fixed-position session UI and the contained transcript scroller", () =
 		vi.stubGlobal("IntersectionObserver", TestIntersectionObserver);
 		vi.stubGlobal(
 			"fetch",
-			vi.fn(() => new Promise<Response>(() => {})),
+			vi.fn(async () => new Promise<Response>(() => {})),
 		);
 
 		await renderSessionInScroller();
@@ -216,7 +216,7 @@ describe("fixed-position session UI and the contained transcript scroller", () =
 		vi.stubGlobal("IntersectionObserver", TestIntersectionObserver);
 		vi.stubGlobal(
 			"fetch",
-			vi.fn(() => new Promise<Response>(() => {})),
+			vi.fn(async () => new Promise<Response>(() => {})),
 		);
 
 		const scroller = await renderSessionInScroller();
@@ -235,7 +235,7 @@ describe("fixed-position session UI and the contained transcript scroller", () =
 		vi.stubGlobal("IntersectionObserver", TestIntersectionObserver);
 		vi.stubGlobal(
 			"fetch",
-			vi.fn(() => new Promise<Response>(() => {})),
+			vi.fn(async () => new Promise<Response>(() => {})),
 		);
 
 		await renderSessionInScroller();
@@ -261,7 +261,7 @@ describe("fixed-position session UI and the contained transcript scroller", () =
 		vi.stubGlobal("IntersectionObserver", TestIntersectionObserver);
 		vi.stubGlobal(
 			"fetch",
-			vi.fn((input: RequestInfo | URL) =>
+			vi.fn(async (input: RequestInfo | URL) =>
 				String(input).endsWith("/statusline")
 					? Promise.resolve(
 							new Response(JSON.stringify({version: "1.0.23", cost: {total_cost_usd: 1.47}}), {
@@ -301,7 +301,7 @@ describe("fixed-position session UI and the contained transcript scroller", () =
 		vi.stubGlobal("IntersectionObserver", TestIntersectionObserver);
 		vi.stubGlobal(
 			"fetch",
-			vi.fn(() => new Promise<Response>(() => {})),
+			vi.fn(async () => new Promise<Response>(() => {})),
 		);
 
 		const scroller = await renderSessionInScroller();
@@ -334,7 +334,7 @@ it.each([
 	vi.stubGlobal("IntersectionObserver", TestIntersectionObserver);
 	vi.stubGlobal(
 		"fetch",
-		vi.fn(() => new Promise<Response>(() => {})),
+		vi.fn(async () => new Promise<Response>(() => {})),
 	);
 	await renderSessionInScroller(props);
 	expect(screen.getByTestId("follow-end").textContent).toStrictEqual(expected);

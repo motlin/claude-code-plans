@@ -1029,7 +1029,7 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 				}
 			} else {
 				const msg: SessionMessage = {
-					role: type as "user" | "assistant",
+					role: type,
 					textBlocks,
 					content: contentBlocks,
 					toolCalls,

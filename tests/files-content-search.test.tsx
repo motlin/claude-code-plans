@@ -253,7 +253,7 @@ function renderTree() {
 }
 
 function filterInput(): HTMLInputElement {
-	return screen.getByRole("textbox", {name: "Filter files"}) as HTMLInputElement;
+	return screen.getByRole("textbox", {name: "Filter files"});
 }
 
 beforeEach(() => {

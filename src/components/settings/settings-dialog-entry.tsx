@@ -11,6 +11,7 @@ let dialogModule: Promise<SettingsDialogModule> | undefined;
 let LoadedDialog: SettingsDialogModule["SettingsDialog"] | undefined;
 
 /** The Settings modal's one module download, shared by its lazy boundary and the idle and intent warm-ups. */
+// oxlint-disable-next-line typescript/promise-function-async -- returns the one cached download, which use() needs to be stable
 export function loadSettingsDialog(): Promise<SettingsDialogModule> {
 	dialogModule ??= import("./settings-dialog")
 		.then((module) => {
@@ -38,7 +39,9 @@ function SettingsDialogLoader() {
 export function DeferredSettingsDialog() {
 	const hash = useLocation({select: (location) => location.hash});
 	const openSettings = useOpenSettings();
-	useShortcut("settings", () => openSettings("general"));
+	useShortcut("settings", () => {
+		openSettings("general");
+	});
 	const open = parseSettingsHash(hash) !== null || parseCustomizeHash(hash) !== null;
 	if (LoadedDialog === undefined && !open) return null;
 	return (

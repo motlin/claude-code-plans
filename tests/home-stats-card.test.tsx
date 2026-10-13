@@ -127,7 +127,7 @@ describe("HomeLanding empty state", () => {
 	it("greets with What’s up next and shows the stats card when nothing needs attention", async () => {
 		vi.stubGlobal(
 			"fetch",
-			vi.fn(() => Promise.resolve(new Response("{}", {status: 404}))),
+			vi.fn(async () => Promise.resolve(new Response("{}", {status: 404}))),
 		);
 		const queryClient = new QueryClient({
 			defaultOptions: {queries: {retry: false, staleTime: Infinity}},

@@ -115,7 +115,7 @@ export interface SessionChatProps {
 
 const TranscriptModeContext = createContext<TranscriptMode>("normal");
 
-const TasksView = lazy(() => import("./tasks-view").then((module) => ({default: module.TasksView})));
+const TasksView = lazy(async () => import("./tasks-view").then((module) => ({default: module.TasksView})));
 
 interface ExpansionToggle {
 	mode: TranscriptMode;
@@ -291,10 +291,18 @@ function AssistantSpanInteractions({children, held, setHeld}: AssistantFooterFoc
 		<AssistantSpanInteractionContext.Provider value={value}>
 			<div
 				className="contents"
-				onPointerOver={(event) => setHoveredKey(assistantSpanAt(event.target))}
-				onPointerOut={(event) => setHoveredKey(assistantSpanAt(event.relatedTarget))}
-				onFocusCapture={(event) => setFocusedKey(assistantSpanAt(event.target))}
-				onBlurCapture={(event) => setFocusedKey(assistantSpanAt(event.relatedTarget))}
+				onPointerOver={(event) => {
+					setHoveredKey(assistantSpanAt(event.target));
+				}}
+				onPointerOut={(event) => {
+					setHoveredKey(assistantSpanAt(event.relatedTarget));
+				}}
+				onFocusCapture={(event) => {
+					setFocusedKey(assistantSpanAt(event.target));
+				}}
+				onBlurCapture={(event) => {
+					setFocusedKey(assistantSpanAt(event.relatedTarget));
+				}}
 			>
 				{children}
 			</div>
@@ -1376,7 +1384,9 @@ function SessionInitEntry({
 				label={resumed ? "Resumed session" : "Initialized session"}
 				expanded={expanded}
 				bodyId={bodyId}
-				onToggle={() => setExpanded(!expanded)}
+				onToggle={() => {
+					setExpanded(!expanded);
+				}}
 			/>
 			{expanded && (
 				<div id={bodyId} className="flow-root">
@@ -2415,7 +2425,9 @@ function VirtualizedSessionEntries({
 		const frame = restoringRangeRef.current ? requestAnimationFrame(updateVisibleRange) : undefined;
 		// Commit the window inside the scroll event, ahead of this frame's paint. A
 		// scheduled render lands a frame later, after the scrolled-to spacer paints blank.
-		const onScroll = () => flushSync(updateVisibleRange);
+		const onScroll = () => {
+			flushSync(updateVisibleRange);
+		};
 		scroller.addEventListener("scroll", onScroll, {passive: true});
 		window.addEventListener("resize", updateVisibleRange, {passive: true});
 		return () => {
@@ -2461,7 +2473,9 @@ function VirtualizedSessionEntries({
 		for (const element of list.querySelectorAll<HTMLElement>("[data-transcript-entry-index]")) {
 			observer.observe(element);
 		}
-		return () => observer.disconnect();
+		return () => {
+			observer.disconnect();
+		};
 	}, [entries, range.startIndex, range.endIndex, managesTileGeometry, holdScrollAnchor]);
 
 	useLayoutEffect(() => {
@@ -2515,7 +2529,9 @@ function VirtualizedSessionEntries({
 			setJumpVersion((version) => version + 1);
 		}
 		window.addEventListener(TRANSCRIPT_JUMP_REQUEST_EVENT, requestJump);
-		return () => window.removeEventListener(TRANSCRIPT_JUMP_REQUEST_EVENT, requestJump);
+		return () => {
+			window.removeEventListener(TRANSCRIPT_JUMP_REQUEST_EVENT, requestJump);
+		};
 	}, [entries]);
 
 	useLayoutEffect(() => {
@@ -2535,7 +2551,9 @@ function VirtualizedSessionEntries({
 			jumpToMessage(recordIndex);
 			updateVisibleRange();
 		});
-		return () => cancelAnimationFrame(frame);
+		return () => {
+			cancelAnimationFrame(frame);
+		};
 	}, [entries, jumpVersion, prefixHeights, range.endIndex, range.startIndex, updateVisibleRange]);
 
 	const promptIndices = useMemo(() => entries.flatMap((entry, index) => (entry.isPrompt ? [index] : [])), [entries]);
@@ -2629,7 +2647,9 @@ function VirtualizedSessionEntries({
 						aria-posinset={index + 1}
 						aria-setsize={entries.length}
 						tabIndex={isLast ? 0 : -1}
-						onKeyDown={(event) => focusNeighbour(event, index)}
+						onKeyDown={(event) => {
+							focusNeighbour(event, index);
+						}}
 						data-assistant-span={entry.assistantSpan?.key}
 						data-reply-boundary={entry.opensReply ? "" : undefined}
 						className={entry.opensReply ? "pt-p5" : undefined}
@@ -3159,7 +3179,9 @@ function StopHookMarker({line}: {line: MessageSessionLine}) {
 				type="button"
 				aria-expanded={expanded}
 				aria-controls={bodyId}
-				onClick={() => setExpanded(!expanded)}
+				onClick={() => {
+					setExpanded(!expanded);
+				}}
 				className="group/step flex self-stretch min-w-0 me-[52px] items-center gap-g2 px-1 py-0.5 text-left outline-none hide-focus-ring focus:ring-focus rounded-r3"
 			>
 				<span className="text-body min-w-0 truncate text-ink-muted group-hover/step:text-secondary">
@@ -3242,7 +3264,9 @@ function CompactedSessionStatus({
 					type="button"
 					aria-expanded={expanded}
 					aria-controls={bodyId}
-					onClick={() => setExpanded(!expanded)}
+					onClick={() => {
+						setExpanded(!expanded);
+					}}
 					className="group/tool flex self-stretch min-w-0 me-[52px] items-center gap-g1 px-1 py-0.5 text-left outline-none hide-focus-ring focus:ring-focus rounded-r3"
 				>
 					<span className="text-body min-w-0 truncate text-ink-muted group-hover/tool:text-secondary">
@@ -3301,7 +3325,9 @@ function CompactSummaryStub({
 					label="Compacted conversation"
 					expanded={expanded}
 					bodyId={bodyId}
-					onToggle={() => setExpanded(!expanded)}
+					onToggle={() => {
+						setExpanded(!expanded);
+					}}
 				/>
 				{expanded && (
 					<CompactSummaryBody
@@ -4264,7 +4290,9 @@ function ToolCallRow({
 							href={paramHref}
 							target="_blank"
 							rel="noreferrer"
-							onClick={(e) => e.stopPropagation()}
+							onClick={(e) => {
+								e.stopPropagation();
+							}}
 							className="hover:underline"
 						>
 							{displayParam}
@@ -4315,7 +4343,9 @@ function ToolCallRow({
 	);
 
 	if (paneAgentId !== undefined && openSubagent !== null) {
-		const open = () => openSubagent(paneAgentId);
+		const open = () => {
+			openSubagent(paneAgentId);
+		};
 		return (
 			<div
 				data-tool-row=""

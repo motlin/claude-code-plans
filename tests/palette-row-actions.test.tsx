@@ -117,8 +117,8 @@ function menuItems(card: HTMLElement) {
 }
 
 describe("palette row actions card", () => {
-	const writeText = vi.fn(() => Promise.resolve());
-	const fetchMock = vi.fn(() => new Promise<Response>(() => {}));
+	const writeText = vi.fn(async () => Promise.resolve());
+	const fetchMock = vi.fn(async () => new Promise<Response>(() => {}));
 
 	beforeEach(() => {
 		installLocalStorage();
@@ -149,7 +149,9 @@ describe("palette row actions card", () => {
 	it("⌥⏎ opens the card for the selected session row with focus on Open", async () => {
 		const {card, input} = await openCard();
 
-		await waitFor(() => expect(document.activeElement).toBe(within(card).getByRole("menuitem", {name: /^Open1/})));
+		await waitFor(() => {
+			expect(document.activeElement).toBe(within(card).getByRole("menuitem", {name: /^Open1/}));
+		});
 		expect({
 			heading: card.querySelector("[data-palette-card-title]")?.textContent,
 			meta: card.querySelector("[data-palette-card-meta]")?.textContent,
@@ -186,9 +188,9 @@ describe("palette row actions card", () => {
 		const {card, queryClient} = await openCard();
 		queryClient.setQueryData(sessionQueryKeys.detail("sess-1"), {canonicalRouteId: "session_alice_100"});
 		fireEvent.keyDown(card, {key: "3", code: "Digit3"});
-		await waitFor(() =>
-			expect(writeText.mock.calls).toStrictEqual([["http://localhost:3000/session/session_alice_100"]]),
-		);
+		await waitFor(() => {
+			expect(writeText.mock.calls).toStrictEqual([["http://localhost:3000/session/session_alice_100"]]);
+		});
 	});
 
 	it("ignores stale or conflicting canonical ownership when copying from a row card", async () => {
@@ -196,7 +198,9 @@ describe("palette row actions card", () => {
 		queryClient.setQueryData(sessionQueryKeys.detail("sess-1"), {canonicalRouteId: "session_alice_100"});
 		queryClient.setQueryData(sessionQueryKeys.identity("session_alice_100"), {sessionId: "sess-2"});
 		fireEvent.keyDown(card, {key: "3", code: "Digit3"});
-		await waitFor(() => expect(writeText.mock.calls).toStrictEqual([["http://localhost:3000/session/sess-1"]]));
+		await waitFor(() => {
+			expect(writeText.mock.calls).toStrictEqual([["http://localhost:3000/session/sess-1"]]);
+		});
 	});
 
 	it("number keys activate items", async () => {
@@ -204,7 +208,9 @@ describe("palette row actions card", () => {
 
 		fireEvent.keyDown(card, {key: "3", code: "Digit3"});
 
-		await waitFor(() => expect(writeText.mock.calls).toStrictEqual([["http://localhost:3000/session/sess-1"]]));
+		await waitFor(() => {
+			expect(writeText.mock.calls).toStrictEqual([["http://localhost:3000/session/sess-1"]]);
+		});
 		expect(await screen.findByText("Link copied to clipboard.")).toBeTruthy();
 		expect(screen.queryByRole("menu", {name: "Actions"})).toBeNull();
 	});
@@ -222,7 +228,9 @@ describe("palette row actions card", () => {
 
 		fireEvent.keyDown(card, {key: "6", code: "Digit6"});
 
-		await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+		await waitFor(() => {
+			expect(fetchMock).toHaveBeenCalled();
+		});
 		expect(fetchMock.mock.calls.at(-1)).toStrictEqual([
 			"/api/sessions/sess-1/archived",
 			expect.objectContaining({method: "PUT"}),
@@ -234,7 +242,9 @@ describe("palette row actions card", () => {
 
 		fireEvent.keyDown(card, {key: "4", code: "Digit4"});
 
-		await waitFor(() => expect(readPinState()).toStrictEqual({pinnedIds: ["sess-1"], pinnedOrder: []}));
+		await waitFor(() => {
+			expect(readPinState()).toStrictEqual({pinnedIds: ["sess-1"], pinnedOrder: []});
+		});
 	});
 
 	it("Rename closes the palette and starts the session's inline rename", async () => {
@@ -242,8 +252,12 @@ describe("palette row actions card", () => {
 
 		fireEvent.click(within(card).getByRole("menuitem", {name: /^Rename/}));
 
-		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-		await waitFor(() => expect(renameRequests).toStrictEqual(["sess-1"]));
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog")).toBeNull();
+		});
+		await waitFor(() => {
+			expect(renameRequests).toStrictEqual(["sess-1"]);
+		});
 		expect(screen.getByRole("status", {name: "Location"}).textContent).toBe("/session/sess-1");
 	});
 
@@ -272,7 +286,9 @@ describe("palette row actions card", () => {
 
 		fireEvent.keyDown(card, {key: "1", code: "Digit1"});
 
-		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog")).toBeNull();
+		});
 		expect(screen.getByRole("status", {name: "Location"}).textContent).toBe("/session/sess-1");
 	});
 
@@ -281,7 +297,9 @@ describe("palette row actions card", () => {
 
 		fireEvent.keyDown(card, {key: "ArrowLeft", code: "ArrowLeft"});
 
-		await waitFor(() => expect(within(dialog).queryByRole("menu")).toBeNull());
+		await waitFor(() => {
+			expect(within(dialog).queryByRole("menu")).toBeNull();
+		});
 		expect({
 			focused: document.activeElement === input,
 			selected: within(dialog)
@@ -295,12 +313,16 @@ describe("palette row actions card", () => {
 
 		fireEvent.keyDown(card, {key: "Escape", code: "Escape"});
 
-		await waitFor(() => expect(within(dialog).queryByRole("menu")).toBeNull());
+		await waitFor(() => {
+			expect(within(dialog).queryByRole("menu")).toBeNull();
+		});
 		expect(screen.getByRole("dialog", {name: "Search"})).toBe(dialog);
 		expect(document.activeElement).toBe(input);
 
 		fireEvent.keyDown(input, {key: "Escape", code: "Escape"});
 
-		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog")).toBeNull();
+		});
 	});
 });

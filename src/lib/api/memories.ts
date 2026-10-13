@@ -34,7 +34,7 @@ export const MemoryDetailResponse = z
 export const projectMemoriesQueryOptions = (id: string) =>
 	queryOptions({
 		queryKey: ["projects", id, "memories"] as const,
-		queryFn: () => apiFetch(`/api/projects/${encodeURIComponent(id)}/memories`, MemoryListResponse),
+		queryFn: async () => apiFetch(`/api/projects/${encodeURIComponent(id)}/memories`, MemoryListResponse),
 		staleTime: Infinity,
 		gcTime: Infinity,
 	});
@@ -45,7 +45,7 @@ export const projectMemoriesQueryOptions = (id: string) =>
 export const memoryDetailQueryOptions = (project: string, slug: string) =>
 	queryOptions({
 		queryKey: ["projects", project, "memories", slug] as const,
-		queryFn: () =>
+		queryFn: async () =>
 			apiFetch(
 				`/api/projects/${encodeURIComponent(project)}/memories/${encodeURIComponent(slug)}`,
 				MemoryDetailResponse,
@@ -60,7 +60,7 @@ export const MemoryDeleteResponse = z.object({ok: z.boolean()});
 export const useSaveMemory = (project: string, slug: string) => {
 	const qc = useQueryClient();
 	return useMutation({
-		mutationFn: (content: string) =>
+		mutationFn: async (content: string) =>
 			apiFetch(
 				`/api/projects/${encodeURIComponent(project)}/memories/${encodeURIComponent(slug)}`,
 				MemorySaveResponse,
@@ -84,7 +84,7 @@ export const useSaveMemory = (project: string, slug: string) => {
 export const useRemoveMemory = (project: string, slug: string) => {
 	const qc = useQueryClient();
 	return useMutation({
-		mutationFn: () =>
+		mutationFn: async () =>
 			apiFetch(
 				`/api/projects/${encodeURIComponent(project)}/memories/${encodeURIComponent(slug)}`,
 				MemoryDeleteResponse,

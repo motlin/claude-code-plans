@@ -141,7 +141,9 @@ function LinkedMarkdown({
 			markdown={markdown}
 			mdLinkBase={SIBLING_MD_BASE}
 			fileRefs={refs.size === 0 ? undefined : refs}
-			onFileRef={(ref) => onOpenFile(ref.path)}
+			onFileRef={(ref) => {
+				onOpenFile(ref.path);
+			}}
 		/>
 	);
 }
@@ -178,7 +180,9 @@ function ImageView({path}: {path: string}) {
 			<img
 				alt={path.slice(path.lastIndexOf("/") + 1)}
 				src={fileContentUrl(path)}
-				onError={() => setFailed(true)}
+				onError={() => {
+					setFailed(true);
+				}}
 				className="max-h-full max-w-full object-contain"
 			/>
 		</div>
@@ -464,7 +468,13 @@ export function FileView({
 		if (data.kind === "binary") {
 			return (
 				<ViewerMessage title="This file looks like binary data and can’t be previewed as text.">
-					<button type="button" className={MESSAGE_BUTTON} onClick={() => setForceText(true)}>
+					<button
+						type="button"
+						className={MESSAGE_BUTTON}
+						onClick={() => {
+							setForceText(true);
+						}}
+					>
 						View as text anyway
 					</button>
 				</ViewerMessage>
@@ -529,7 +539,9 @@ export function FileView({
 						<button
 							type="button"
 							aria-label={showSource ? "Preview" : "View source"}
-							onClick={() => setShowSource((shown) => !shown)}
+							onClick={() => {
+								setShowSource((shown) => !shown);
+							}}
 							className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-r5 text-secondary hover:bg-fill-ghost-hover hover:text-primary"
 						>
 							{showSource ? (
@@ -550,9 +562,9 @@ export function FileView({
 						data-file-viewer="true"
 						data-find-query={findQuery}
 						className="min-h-0 flex-1 overflow-auto outline-none select-text"
-						onContextMenu={() =>
-							setMenuSelection(selectionAttachment(viewerRef.current, path, cwd, content))
-						}
+						onContextMenu={() => {
+							setMenuSelection(selectionAttachment(viewerRef.current, path, cwd, content));
+						}}
 					>
 						{body()}
 					</ContextMenuTrigger>

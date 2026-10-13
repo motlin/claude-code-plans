@@ -42,9 +42,9 @@ function fakeObserverClass(callbacks: Map<string, ((entries: PerformanceEntry[])
 
 		observe(options: {type: string}): void {
 			const list = callbacks.get(options.type) ?? [];
-			list.push((entries) =>
-				this.callback({getEntries: () => entries} as PerformanceObserverEntryList, this as never),
-			);
+			list.push((entries) => {
+				this.callback({getEntries: () => entries} as PerformanceObserverEntryList, this as never);
+			});
 			callbacks.set(options.type, list);
 		}
 
@@ -103,7 +103,9 @@ export function makeJourneyHarness(overrides: Partial<JourneyEnvironment> = {}):
 		buildSha: "abc1234",
 		mode: "dev",
 		requestAnimationFrame: (callback) => {
-			frames.push(() => callback(performance.clock));
+			frames.push(() => {
+				callback(performance.clock);
+			});
 			return frames.length;
 		},
 		// Only zero-delay timers are part of a frame; the 30 s anchor timeout never fires on its own.

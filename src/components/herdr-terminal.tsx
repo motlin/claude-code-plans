@@ -105,7 +105,11 @@ export function HerdrTerminal({
 			const sendFrame = (frame: Record<string, unknown>): void => {
 				if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify(frame));
 			};
-			const dataSubscription = interactive ? terminal.onData((data) => sendFrame({type: "data", data})) : null;
+			const dataSubscription = interactive
+				? terminal.onData((data) => {
+						sendFrame({type: "data", data});
+					})
+				: null;
 
 			const connect = (): void => {
 				if (stopped) return;
@@ -117,9 +121,15 @@ export function HerdrTerminal({
 				viewport = {columns: terminal.cols, rows: terminal.rows};
 				const nextSocket = new WebSocket(streamUrl(interactive, sessionId, viewport.columns, viewport.rows));
 				const consumer = createTerminalFrameConsumer({
-					reset: () => terminal.reset(),
-					resize: (columns, rows) => terminal.resize(columns, rows),
-					write: (bytes) => terminal.write(bytes),
+					reset: () => {
+						terminal.reset();
+					},
+					resize: (columns, rows) => {
+						terminal.resize(columns, rows);
+					},
+					write: (bytes) => {
+						terminal.write(bytes);
+					},
 				});
 				socket = nextSocket;
 				setStatus((current) => (current === "connecting" ? "connecting" : "reconnecting"));

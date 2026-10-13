@@ -16,8 +16,12 @@ import {CommandPalette, PALETTE_RECENT_LIMIT} from "../src/components/command-pa
 import {SessionTitleHeading} from "../src/components/session-title-heading";
 import {ToastProvider} from "../src/components/toast";
 import {useCommandPalette} from "../src/hooks/use-command-palette";
-import {recentSessionsQueryOptions, sessionDetailQueryOptions, type SessionDetailData} from "../src/lib/api/sessions";
-import {sessionQueryKeys} from "../src/lib/api/sessions";
+import {
+	recentSessionsQueryOptions,
+	sessionDetailQueryOptions,
+	type SessionDetailData,
+	sessionQueryKeys,
+} from "../src/lib/api/sessions";
 import {pin, readPinState} from "../src/lib/pin-store";
 import {getSideChat, resetSideChatStore} from "../src/lib/side-chat-store";
 import {installLocalStorage} from "./fake-storage";
@@ -110,11 +114,11 @@ function optionLabels(dialog: HTMLElement): string[] {
 }
 
 describe("palette contextual session commands", () => {
-	const writeText = vi.fn((_text: string) => Promise.resolve());
-	const fetchMock = vi.fn((_url: string, _init?: RequestInit) => new Promise<Response>(() => {}));
+	const writeText = vi.fn(async (_text: string) => Promise.resolve());
+	const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => new Promise<Response>(() => {}));
 
 	beforeEach(() => {
-		fetchMock.mockImplementation(() => new Promise<Response>(() => {}));
+		fetchMock.mockImplementation(async () => new Promise<Response>(() => {}));
 		installLocalStorage();
 		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(MAC_UA);
 		vi.stubGlobal("fetch", fetchMock);
@@ -162,7 +166,7 @@ describe("palette contextual session commands", () => {
 		},
 		{query: "link", label: `Copy link to ${QUOTED}`, copied: "http://localhost:3000/session/sess-1"},
 	])("uses the resolved local ID for the alias route's $query command", async ({query, label, copied}) => {
-		fetchMock.mockImplementation((url) =>
+		fetchMock.mockImplementation(async (url) =>
 			url.endsWith("/identity")
 				? Promise.resolve(Response.json({sessionId: "sess-1"}))
 				: new Promise<Response>(() => {}),
@@ -170,14 +174,16 @@ describe("palette contextual session commands", () => {
 		const {dialog, input} = await openPalette("/session/session_alice_100");
 		fireEvent.change(input, {target: {value: query}});
 		fireEvent.click(await within(dialog).findByRole("option", {name: label}));
-		await waitFor(() => expect(writeText.mock.calls).toStrictEqual([[copied]]));
+		await waitFor(() => {
+			expect(writeText.mock.calls).toStrictEqual([[copied]]);
+		});
 		expect(
 			fetchMock.mock.calls.filter(([url]) => url.includes("session_alice_100")).map(([url]) => url),
 		).toStrictEqual(["/api/sessions/session_alice_100/identity"]);
 	});
 
 	it("pins the local UUID after resolving an alias", async () => {
-		fetchMock.mockImplementation((url) =>
+		fetchMock.mockImplementation(async (url) =>
 			url.endsWith("/identity")
 				? Promise.resolve(Response.json({sessionId: "sess-1"}))
 				: new Promise<Response>(() => {}),
@@ -185,11 +191,13 @@ describe("palette contextual session commands", () => {
 		const {dialog, input} = await openPalette("/session/session_alice_100");
 		fireEvent.change(input, {target: {value: "pin"}});
 		fireEvent.click(await within(dialog).findByRole("option", {name: `Pin ${QUOTED}`}));
-		await waitFor(() => expect(readPinState()).toStrictEqual({pinnedIds: ["sess-1"], pinnedOrder: []}));
+		await waitFor(() => {
+			expect(readPinState()).toStrictEqual({pinnedIds: ["sess-1"], pinnedOrder: []});
+		});
 	});
 
 	it("archives the local UUID after resolving an alias", async () => {
-		fetchMock.mockImplementation((url) =>
+		fetchMock.mockImplementation(async (url) =>
 			url.endsWith("/identity")
 				? Promise.resolve(Response.json({sessionId: "sess-1"}))
 				: new Promise<Response>(() => {}),
@@ -197,27 +205,27 @@ describe("palette contextual session commands", () => {
 		const {dialog, input} = await openPalette("/session/session_alice_100");
 		fireEvent.change(input, {target: {value: "archive"}});
 		fireEvent.click(await within(dialog).findByRole("option", {name: `Archive ${QUOTED}`}));
-		await waitFor(() =>
+		await waitFor(() => {
 			expect(
 				fetchMock.mock.calls
 					.filter(([, init]) => init?.method === "PUT")
 					.map(([url, init]) => ({url, method: init?.method})),
-			).toStrictEqual([{url: "/api/sessions/sess-1/archived", method: "PUT"}]),
-		);
+			).toStrictEqual([{url: "/api/sessions/sess-1/archived", method: "PUT"}]);
+		});
 	});
 
 	it.each([null, 404, 409])("does not offer local session actions for an unresolved alias (%s)", async (status) => {
 		if (status !== null)
-			fetchMock.mockImplementation((url) =>
+			fetchMock.mockImplementation(async (url) =>
 				url.endsWith("/identity")
 					? Promise.resolve(Response.json({error: "Fabricated identity failure"}, {status}))
 					: new Promise<Response>(() => {}),
 			);
 		const {dialog, input, queryClient} = await openPalette("/session/session_alice_100");
 		if (status !== null)
-			await waitFor(() =>
-				expect(queryClient.getQueryState(sessionQueryKeys.identity("session_alice_100"))?.status).toBe("error"),
-			);
+			await waitFor(() => {
+				expect(queryClient.getQueryState(sessionQueryKeys.identity("session_alice_100"))?.status).toBe("error");
+			});
 		fireEvent.change(input, {target: {value: "session"}});
 		await within(dialog).findByRole("option", {name: /See all results/});
 		expect({
@@ -272,11 +280,11 @@ describe("palette contextual session commands", () => {
 
 		fireEvent.click(await within(dialog).findByRole("option", {name: `Archive ${QUOTED}`}));
 
-		await waitFor(() =>
+		await waitFor(() => {
 			expect(fetchMock.mock.calls.filter(([url]) => url === "/api/sessions/sess-1/archived")).toEqual([
 				["/api/sessions/sess-1/archived", expect.objectContaining({method: "PUT"})],
-			]),
-		);
+			]);
+		});
 	});
 
 	it("hides the commands in the empty state", async () => {
@@ -323,9 +331,9 @@ describe("palette contextual session commands", () => {
 		fireEvent.change(input, {target: {value: "resume"}});
 		fireEvent.click(await within(dialog).findByRole("option", {name: "Copy resume command"}));
 
-		await waitFor(() =>
-			expect(writeText.mock.calls).toStrictEqual([["cd '/users/dev/project-a' && claude -r sess-1"]]),
-		);
+		await waitFor(() => {
+			expect(writeText.mock.calls).toStrictEqual([["cd '/users/dev/project-a' && claude -r sess-1"]]);
+		});
 		expect(await screen.findByText("Command copied to clipboard.")).toBeTruthy();
 	});
 
@@ -335,11 +343,11 @@ describe("palette contextual session commands", () => {
 		fireEvent.change(input, {target: {value: "fork"}});
 		fireEvent.click(await within(dialog).findByRole("option", {name: "Copy fork command"}));
 
-		await waitFor(() =>
+		await waitFor(() => {
 			expect(writeText.mock.calls).toStrictEqual([
 				["cd '/users/dev/project-a' && claude -r sess-1 --fork-session"],
-			]),
-		);
+			]);
+		});
 	});
 
 	it.each([
@@ -359,7 +367,9 @@ describe("palette contextual session commands", () => {
 			);
 			fireEvent.change(input, {target: {value: query}});
 			fireEvent.click(await within(dialog).findByRole("option", {name: label}));
-			await waitFor(() => expect(writeText.mock.calls).toStrictEqual([[copied]]));
+			await waitFor(() => {
+				expect(writeText.mock.calls).toStrictEqual([[copied]]);
+			});
 			expect(fetchMock.mock.calls.filter(([url]) => url.endsWith("/identity"))).toStrictEqual([]);
 		},
 	);
@@ -370,7 +380,9 @@ describe("palette contextual session commands", () => {
 		fireEvent.change(input, {target: {value: "link"}});
 		fireEvent.click(await within(dialog).findByRole("option", {name: `Copy link to ${QUOTED}`}));
 
-		await waitFor(() => expect(writeText.mock.calls).toStrictEqual([["http://localhost:3000/session/sess-1"]]));
+		await waitFor(() => {
+			expect(writeText.mock.calls).toStrictEqual([["http://localhost:3000/session/sess-1"]]);
+		});
 		expect(await screen.findByText("Link copied to clipboard.")).toBeTruthy();
 	});
 
@@ -380,7 +392,9 @@ describe("palette contextual session commands", () => {
 		fireEvent.change(input, {target: {value: "pin"}});
 		fireEvent.click(await within(dialog).findByRole("option", {name: `Pin ${QUOTED}`}));
 
-		await waitFor(() => expect(readPinState()).toStrictEqual({pinnedIds: ["sess-1"], pinnedOrder: []}));
+		await waitFor(() => {
+			expect(readPinState()).toStrictEqual({pinnedIds: ["sess-1"], pinnedOrder: []});
+		});
 		expect(fetchMock.mock.calls.filter(([url]) => url.includes("/starred"))).toStrictEqual([]);
 	});
 

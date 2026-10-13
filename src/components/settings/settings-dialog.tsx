@@ -48,6 +48,7 @@ let customizeDialogPanelModule: Promise<CustomizeDialogPanelModule> | undefined;
 let loadedCustomizeDialogPanel: CustomizeDialogPanelModule["default"] | undefined;
 
 /** Starts loading the Customize panel; the nav calls it on hover/focus so the first open needn't wait. */
+// oxlint-disable-next-line typescript/promise-function-async -- returns the one cached download, which use() needs to be stable
 export function preloadCustomizeDialogPanel(): Promise<CustomizeDialogPanelModule> {
 	customizeDialogPanelModule ??= import("../customize/customize-dialog-panel").then((module) => {
 		loadedCustomizeDialogPanel = module.default;
@@ -168,8 +169,12 @@ export function SettingsDialog() {
 	}, [selectTab, tab, deepLinkRow]);
 	useEffect(() => {
 		if (flash === null) return;
-		const timer = setTimeout(() => setFlash(null), FLASH_MS);
-		return () => clearTimeout(timer);
+		const timer = setTimeout(() => {
+			setFlash(null);
+		}, FLASH_MS);
+		return () => {
+			clearTimeout(timer);
+		};
 	}, [flash]);
 
 	return (
@@ -233,11 +238,10 @@ export function SettingsDialog() {
 															? preloadCustomizeDialogPanel
 															: undefined
 													}
-													onClick={() =>
-														item.kind === "settings"
-															? selectTab(item.tab)
-															: navigateHash(customizeHash({section: item.section}), true)
-													}
+													onClick={() => {
+														if (item.kind === "settings") selectTab(item.tab);
+														else navigateHash(customizeHash({section: item.section}), true);
+													}}
 													className={`flex h-8 shrink-0 items-center gap-3 rounded-r6 px-2 text-left text-body transition-colors ${
 														selected
 															? "bg-fill-control font-medium text-primary"

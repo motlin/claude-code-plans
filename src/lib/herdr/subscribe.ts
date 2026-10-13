@@ -83,19 +83,27 @@ export function createHerdrViewedStateDbDependencies(
 ): HerdrViewedStateTrackerDependencies {
 	return {
 		isSessionVisible: isVisible,
-		linkTerminal: (terminalId, sessionId) =>
-			retryWhileBusy(() => linkHerdrTerminalToSession(getIndex(), terminalId, sessionId)),
-		pruneTerminalLinks: (sessionId, activeTerminalIds) =>
-			retryWhileBusy(() => pruneHerdrTerminalLinks(getIndex(), sessionId, activeTerminalIds)),
-		markSessionCompletionUnreviewed: (sessionId) =>
+		linkTerminal: async (terminalId, sessionId) =>
+			retryWhileBusy(() => {
+				linkHerdrTerminalToSession(getIndex(), terminalId, sessionId);
+			}),
+		pruneTerminalLinks: async (sessionId, activeTerminalIds) =>
+			retryWhileBusy(() => {
+				pruneHerdrTerminalLinks(getIndex(), sessionId, activeTerminalIds);
+			}),
+		markSessionCompletionUnreviewed: async (sessionId) =>
 			retryWhileBusy(() => {
 				const index = getIndex();
 				markSessionCompletionUnreviewed(index, sessionId, getCurrentSessionMessageIndex(index, sessionId));
 			}),
-		markTerminalUnviewed: (terminalId, sessionId) =>
-			retryWhileBusy(() => setHerdrTerminalViewed(getIndex(), terminalId, sessionId, false)),
-		markTerminalViewed: (terminalId, sessionId) =>
-			retryWhileBusy(() => setHerdrTerminalViewed(getIndex(), terminalId, sessionId, true)),
+		markTerminalUnviewed: async (terminalId, sessionId) =>
+			retryWhileBusy(() => {
+				setHerdrTerminalViewed(getIndex(), terminalId, sessionId, false);
+			}),
+		markTerminalViewed: async (terminalId, sessionId) =>
+			retryWhileBusy(() => {
+				setHerdrTerminalViewed(getIndex(), terminalId, sessionId, true);
+			}),
 	};
 }
 
@@ -117,7 +125,7 @@ const defaultDependencies: BridgeDependencies = {
 			revision: pane.revision,
 		}));
 	},
-	getPanes: () => getHerdrPanes(),
+	getPanes: async () => getHerdrPanes(),
 	broadcast: broadcastTyped,
 	schedule: setTimeout,
 	cancel: clearTimeout,

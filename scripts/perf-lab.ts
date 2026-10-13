@@ -321,7 +321,7 @@ function startServer(fixture: LabFixture, port: number): {process: ChildProcess;
  * Plain `node:http` rather than `fetch`: under heavy load Node's undici can throw `setTypeOfService EINVAL` from a
  * socket callback while the server is still starting, which no try/catch around `fetch` can intercept.
  */
-function httpGet(url: string): Promise<string> {
+async function httpGet(url: string): Promise<string> {
 	return new Promise((resolvePromise, reject) => {
 		const request = get(url, {agent: false}, (response) => {
 			const chunks: Buffer[] = [];
@@ -417,7 +417,7 @@ async function openProbe(context: BrowserContext): Promise<Probe> {
 async function runPreflight(page: Page): Promise<void> {
 	await page.bringToFront();
 	const probe = await page.evaluate(
-		(frames) =>
+		async (frames) =>
 			new Promise<{visibilityState: string; rafTimestamps: number[]}>((resolvePromise) => {
 				const rafTimestamps: number[] = [];
 				const tick = (timestamp: number) => {
@@ -436,7 +436,7 @@ async function runPreflight(page: Page): Promise<void> {
 /** Wait until the DOM has been quiet for 300 ms (3 s cap), then two frames so the last commit is painted. */
 async function settle(page: Page): Promise<void> {
 	await page.evaluate(
-		() =>
+		async () =>
 			new Promise<void>((resolvePromise) => {
 				let quiet = setTimeout(finish, 300);
 				const cap = setTimeout(finish, 3_000);
@@ -448,7 +448,11 @@ async function settle(page: Page): Promise<void> {
 					clearTimeout(quiet);
 					clearTimeout(cap);
 					observer.disconnect();
-					requestAnimationFrame(() => requestAnimationFrame(() => resolvePromise()));
+					requestAnimationFrame(() =>
+						requestAnimationFrame(() => {
+							resolvePromise();
+						}),
+					);
 				}
 				observer.observe(document.documentElement, {
 					attributes: true,
@@ -476,13 +480,13 @@ async function shiftsSince(page: Page, start: number): Promise<LayoutShiftEntry[
  * on a same-origin blank page: the renderer stays the same and the layout-shift buffer starts empty.
  */
 async function measure(probe: Probe, interaction: () => Promise<void>): Promise<JourneySample> {
-	const before = (await probe.cdp.send("Performance.getMetrics")) as CdpMetricsPayload;
+	const before = await probe.cdp.send("Performance.getMetrics");
 	const requestsBefore = probe.requests();
 	const shiftsBefore = await shiftCount(probe.page).catch(() => 0);
 	const urlBefore = probe.page.url();
 	await interaction();
 	await settle(probe.page);
-	const after = (await probe.cdp.send("Performance.getMetrics")) as CdpMetricsPayload;
+	const after = await probe.cdp.send("Performance.getMetrics");
 	const navigated = probe.page.url() !== urlBefore && !(await sameDocument(probe.page));
 	const shifts = await shiftsSince(probe.page, navigated ? 0 : shiftsBefore);
 	return {
@@ -804,7 +808,9 @@ export async function runLab(
 
 async function main(): Promise<void> {
 	const args = parseLabArgs(process.argv.slice(2));
-	const session = await runLab(args, (run) => console.log(`run ${run}/${args.runs} done`));
+	const session = await runLab(args, (run) => {
+		console.log(`run ${run}/${args.runs} done`);
+	});
 	const sha = gitSha();
 	const result = {
 		sha,

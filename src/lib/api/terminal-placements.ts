@@ -48,5 +48,5 @@ export const TerminalPlacementIndexResponse = z
 
 export const terminalPlacementsQueryOptions = queryOptions({
 	queryKey: ["terminal", "placements"] as const,
-	queryFn: () => apiFetch("/api/terminal-placements", TerminalPlacementIndexResponse),
+	queryFn: async () => apiFetch("/api/terminal-placements", TerminalPlacementIndexResponse),
 });

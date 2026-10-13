@@ -23,7 +23,12 @@ export function ProjectGroupHeader({
 }) {
 	const appearance = useProjectAppearance()[groupKey];
 	const items = (
-		<GroupAppearanceSubmenu appearance={appearance} onChange={(patch) => setProjectAppearance(groupKey, patch)} />
+		<GroupAppearanceSubmenu
+			appearance={appearance}
+			onChange={(patch) => {
+				setProjectAppearance(groupKey, patch);
+			}}
+		/>
 	);
 	return (
 		<>

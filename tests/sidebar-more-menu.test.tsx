@@ -48,7 +48,7 @@ const puts: unknown[] = [];
 function stubFetch() {
 	vi.stubGlobal(
 		"fetch",
-		vi.fn((url: string, init?: RequestInit) => {
+		vi.fn(async (url: string, init?: RequestInit) => {
 			if (url === "/api/application-settings" && init?.method === "PUT") {
 				const body: unknown = JSON.parse(String(init.body));
 				puts.push(body);
@@ -163,7 +163,9 @@ describe("sidebar More menu", () => {
 		const menu = await openMoreMenu();
 		fireEvent.click(within(menu).getByRole("menuitem", {name: "Tasks"}));
 
-		await waitFor(() => expect(router.state.location.pathname).toBe("/tasks"));
+		await waitFor(() => {
+			expect(router.state.location.pathname).toBe("/tasks");
+		});
 	});
 });
 
@@ -202,9 +204,13 @@ describe("Edit sidebar dialog", () => {
 		const dialog = await openEditSidebar();
 
 		fireEvent.click(within(dialog).getByRole("checkbox", {name: "Herdr"}));
-		await waitFor(() => expect(sidebarNavLabels()).toContain("Herdr"));
+		await waitFor(() => {
+			expect(sidebarNavLabels()).toContain("Herdr");
+		});
 		fireEvent.click(within(dialog).getByRole("checkbox", {name: "Memories"}));
-		await waitFor(() => expect(puts).toHaveLength(2));
+		await waitFor(() => {
+			expect(puts).toHaveLength(2);
+		});
 
 		expect({puts, sidebar: sidebarNavLabels()}).toStrictEqual({
 			puts: [
@@ -223,7 +229,9 @@ describe("Edit sidebar dialog", () => {
 		const dialog = await openEditSidebar();
 
 		fireEvent.click(within(dialog).getByRole("checkbox", {name: "Sessions"}));
-		await waitFor(() => expect(puts).toHaveLength(1));
+		await waitFor(() => {
+			expect(puts).toHaveLength(1);
+		});
 
 		expect({puts, sidebar: sidebarNavLabels()}).toStrictEqual({
 			puts: [{...BASE_SETTINGS, visibleNavSections: ["artifacts", "plans", "memories", "sessions", "customize"]}],
@@ -237,7 +245,9 @@ describe("Edit sidebar dialog", () => {
 
 		fireEvent.click(within(dialog).getByRole("button", {name: "Done"}));
 
-		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog")).toBeNull();
+		});
 	});
 
 	it("closes on Escape", async () => {
@@ -246,6 +256,8 @@ describe("Edit sidebar dialog", () => {
 
 		fireEvent.keyDown(dialog, {key: "Escape"});
 
-		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog")).toBeNull();
+		});
 	});
 });

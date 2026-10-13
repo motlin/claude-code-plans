@@ -171,7 +171,9 @@ describe("routines route", () => {
 		fireEvent.click(screen.getByRole("button", {name: "Sort routines"}));
 		fireEvent.click(await screen.findByRole("menuitemcheckbox", {name: /Include completed/}));
 
-		await waitFor(() => expect(rows()).toHaveLength(4));
+		await waitFor(() => {
+			expect(rows()).toHaveLength(4);
+		});
 		expect(screen.queryByText("1 completed routine hidden")).toBeNull();
 	});
 
@@ -180,7 +182,9 @@ describe("routines route", () => {
 
 		fireEvent.click(screen.getByRole("button", {name: "Filter routines"}));
 		fireEvent.click(await screen.findByRole("menuitemradio", {name: "Recurring"}));
-		await waitFor(() => expect(rows().map((row) => row.title)).toStrictEqual(["Poll the PR"]));
+		await waitFor(() => {
+			expect(rows().map((row) => row.title)).toStrictEqual(["Poll the PR"]);
+		});
 
 		fireEvent.click(screen.getByRole("menuitemradio", {name: "One-time"}));
 		fireEvent.click(screen.getByRole("button", {name: "Search routines"}));
@@ -188,7 +192,9 @@ describe("routines route", () => {
 			target: {value: "playdate"},
 		});
 
-		await waitFor(() => expect(rows().map((row) => row.title)).toStrictEqual(["Upload reminder"]));
+		await waitFor(() => {
+			expect(rows().map((row) => row.title)).toStrictEqual(["Upload reminder"]);
+		});
 	});
 
 	it("shows only the hidden count when every routine has completed", async () => {

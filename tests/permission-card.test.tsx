@@ -284,7 +284,7 @@ describe("PermissionCard", () => {
 
 	it("ignores Esc, digits and ⌘⏎ while the composer has text", () => {
 		const {onDecision} = renderCard();
-		const prompt = screen.getByRole("textbox", {name: "Prompt"}) as HTMLTextAreaElement;
+		const prompt = screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
 		fireEvent.change(prompt, {target: {value: "hello"}});
 		prompt.focus();
 		for (const init of [{key: "1"}, {key: "2"}, {key: "Escape"}, {key: "Enter", metaKey: true}]) {
@@ -310,7 +310,7 @@ describe("PermissionCard", () => {
 		fireEvent.keyDown(document.body, {key: "2"});
 		expect({
 			calls: onDecision.mock.calls,
-			allowDisabled: (screen.getByRole("button", {name: /^Allow once/}) as HTMLButtonElement).disabled,
+			allowDisabled: screen.getByRole<HTMLButtonElement>("button", {name: /^Allow once/}).disabled,
 			hint: screen.getByText("Answer in the terminal").textContent,
 		}).toStrictEqual({calls: [], allowDisabled: true, hint: "Answer in the terminal"});
 	});

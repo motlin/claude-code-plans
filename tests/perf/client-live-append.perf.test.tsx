@@ -275,7 +275,9 @@ const rootLoader = RootRoute.options.loader as (args: {context: {queryClient: Qu
 /** The root layout's frame (providers, sidebar, main) with the real root loader and the real session route. */
 function createAppRouter(queryClient: QueryClient, initialPath: string) {
 	const rootRoute = createRootRouteWithContext<{queryClient: QueryClient}>()({
-		loader: ({context}) => rootLoader({context}),
+		loader: ({context}) => {
+			rootLoader({context});
+		},
 		component: () => (
 			<ThemeProvider>
 				<SettingsProvider>

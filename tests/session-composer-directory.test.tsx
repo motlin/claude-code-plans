@@ -165,7 +165,7 @@ describe("session page composer directory", () => {
 		vi.stubGlobal("IntersectionObserver", TestIntersectionObserver);
 		vi.stubGlobal(
 			"fetch",
-			vi.fn(() => new Promise<Response>(() => {})),
+			vi.fn(async () => new Promise<Response>(() => {})),
 		);
 
 		await renderSession();

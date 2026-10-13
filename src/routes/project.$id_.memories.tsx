@@ -8,7 +8,8 @@ import {DebugLink} from "../components/debug-link";
 
 export const Route = createFileRoute("/project/$id_/memories")({
 	component: ProjectMemoriesPage,
-	loader: ({context: {queryClient}, params}) => queryClient.ensureQueryData(projectMemoriesQueryOptions(params.id)),
+	loader: async ({context: {queryClient}, params}) =>
+		queryClient.ensureQueryData(projectMemoriesQueryOptions(params.id)),
 	head: ({loaderData}) => ({
 		meta: [
 			{

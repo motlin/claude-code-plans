@@ -278,7 +278,9 @@ function FormToggle({
 			aria-labelledby={labelledBy}
 			aria-label={label}
 			aria-checked={checked}
-			onClick={() => onChange(!checked)}
+			onClick={() => {
+				onChange(!checked);
+			}}
 			className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
 				checked ? "bg-fill-primary" : "bg-fill-control"
 			}`}
@@ -323,7 +325,9 @@ function FormField({
 						id={controlId}
 						labelledBy={labelId}
 						checked={value === true}
-						onChange={(checked) => onChange(field.key, checked)}
+						onChange={(checked) => {
+							onChange(field.key, checked);
+						}}
 					/>
 				</div>
 			);
@@ -336,7 +340,9 @@ function FormField({
 						id={controlId}
 						aria-describedby={descriptionId}
 						value={typeof value === "string" ? value : ""}
-						onChange={(event) => onChange(field.key, event.target.value)}
+						onChange={(event) => {
+							onChange(field.key, event.target.value);
+						}}
 						className="rounded-md border border-border bg-surface-1 px-2 py-1 text-sm text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
 					>
 						{!field.options?.some((o) => o.value === value) && (
@@ -384,7 +390,9 @@ function FormField({
 						id={controlId}
 						aria-describedby={descriptionId}
 						value={typeof value === "string" ? value : ""}
-						onChange={(event) => onChange(field.key, event.target.value)}
+						onChange={(event) => {
+							onChange(field.key, event.target.value);
+						}}
 						className="w-48 rounded-md border border-border bg-surface-1 px-2 py-1 text-sm text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
 					/>
 				</div>
@@ -457,7 +465,9 @@ function EnvEditor({
 							type="text"
 							aria-label={`Name of environment variable ${entryKey}`}
 							value={entryKey}
-							onChange={(event) => handleEntryChange(entryKey, "key", event.target.value)}
+							onChange={(event) => {
+								handleEntryChange(entryKey, "key", event.target.value);
+							}}
 							className="w-48 rounded-md border border-border bg-surface-1 px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
 							placeholder="KEY"
 						/>
@@ -466,13 +476,17 @@ function EnvEditor({
 							type="text"
 							aria-label={`Value of environment variable ${entryKey}`}
 							value={entryValue}
-							onChange={(event) => handleEntryChange(entryKey, "value", event.target.value)}
+							onChange={(event) => {
+								handleEntryChange(entryKey, "value", event.target.value);
+							}}
 							className="flex-1 rounded-md border border-border bg-surface-1 px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
 							placeholder="value"
 						/>
 						<button
 							type="button"
-							onClick={() => handleRemove(entryKey)}
+							onClick={() => {
+								handleRemove(entryKey);
+							}}
 							className="rounded p-1 text-t6 hover:bg-surface-0 hover:text-danger-000"
 							title="Remove"
 						>
@@ -485,7 +499,9 @@ function EnvEditor({
 						type="text"
 						aria-label="New environment variable name"
 						value={newKey}
-						onChange={(event) => setNewKey(event.target.value)}
+						onChange={(event) => {
+							setNewKey(event.target.value);
+						}}
 						onKeyDown={(event) => {
 							if (event.key === "Enter") handleAdd();
 						}}
@@ -497,7 +513,9 @@ function EnvEditor({
 						type="text"
 						aria-label="New environment variable value"
 						value={newValue}
-						onChange={(event) => setNewValue(event.target.value)}
+						onChange={(event) => {
+							setNewValue(event.target.value);
+						}}
 						onKeyDown={(event) => {
 							if (event.key === "Enter") handleAdd();
 						}}
@@ -568,12 +586,16 @@ function PermissionListEditor({
 							type="text"
 							aria-label={`${label} entry ${index + 1}`}
 							value={entry}
-							onChange={(event) => handleChange(index, event.target.value)}
+							onChange={(event) => {
+								handleChange(index, event.target.value);
+							}}
 							className="flex-1 rounded-md border border-border bg-surface-1 px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
 						/>
 						<button
 							type="button"
-							onClick={() => handleRemove(index)}
+							onClick={() => {
+								handleRemove(index);
+							}}
 							className="rounded p-1 text-t6 hover:bg-surface-0 hover:text-danger-000"
 							title="Remove"
 						>
@@ -586,7 +608,9 @@ function PermissionListEditor({
 						type="text"
 						aria-label={`New ${label} entry`}
 						value={newEntry}
-						onChange={(event) => setNewEntry(event.target.value)}
+						onChange={(event) => {
+							setNewEntry(event.target.value);
+						}}
 						onKeyDown={(event) => {
 							if (event.key === "Enter") handleAdd();
 						}}
@@ -634,19 +658,25 @@ function PermissionsEditor({
 				label="Allow"
 				description="Tools and patterns always permitted without prompting"
 				entries={allow}
-				onUpdate={(updated) => updateList("allow", updated)}
+				onUpdate={(updated) => {
+					updateList("allow", updated);
+				}}
 			/>
 			<PermissionListEditor
 				label="Deny"
 				description="Tools and patterns that are blocked"
 				entries={deny}
-				onUpdate={(updated) => updateList("deny", updated)}
+				onUpdate={(updated) => {
+					updateList("deny", updated);
+				}}
 			/>
 			<PermissionListEditor
 				label="Ask"
 				description="Tools and patterns that require confirmation"
 				entries={ask}
-				onUpdate={(updated) => updateList("ask", updated)}
+				onUpdate={(updated) => {
+					updateList("ask", updated);
+				}}
 			/>
 			<div className="flex items-center justify-between gap-4 py-2">
 				<div>
@@ -658,12 +688,12 @@ function PermissionsEditor({
 				<select
 					id={defaultModeId}
 					value={defaultMode}
-					onChange={(event) =>
+					onChange={(event) => {
 						onChange("permissions", {
 							...value,
 							defaultMode: event.target.value || undefined,
-						})
-					}
+						});
+					}}
 					className="rounded-md border border-border bg-surface-1 px-2 py-1 text-sm text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
 				>
 					<option value="">(not set)</option>
@@ -708,7 +738,9 @@ function StatusLineEditor({
 					<select
 						id={`${idPrefix}-type`}
 						value={statusType}
-						onChange={(event) => update("type", event.target.value || undefined)}
+						onChange={(event) => {
+							update("type", event.target.value || undefined);
+						}}
 						className="rounded-md border border-border bg-surface-1 px-2 py-1 text-sm text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
 					>
 						<option value="">(not set)</option>
@@ -723,7 +755,9 @@ function StatusLineEditor({
 						type="text"
 						id={`${idPrefix}-command`}
 						value={command}
-						onChange={(event) => update("command", event.target.value || undefined)}
+						onChange={(event) => {
+							update("command", event.target.value || undefined);
+						}}
 						className="flex-1 max-w-sm rounded-md border border-border bg-surface-1 px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
 						placeholder="~/.claude/statusline.sh"
 					/>
@@ -894,7 +928,9 @@ function HooksEditor({
 							<div className="flex items-center justify-between px-3 py-2">
 								<button
 									type="button"
-									onClick={() => setExpandedEvent(isExpanded ? null : eventName)}
+									onClick={() => {
+										setExpandedEvent(isExpanded ? null : eventName);
+									}}
 									className="flex items-center gap-1.5 text-sm font-medium text-primary hover:text-accent-100"
 								>
 									{isExpanded ? (
@@ -909,7 +945,9 @@ function HooksEditor({
 								</button>
 								<button
 									type="button"
-									onClick={() => handleRemoveEvent(eventName)}
+									onClick={() => {
+										handleRemoveEvent(eventName);
+									}}
 									className="rounded p-1 text-t6 hover:bg-surface-0 hover:text-danger-000"
 									title="Remove event"
 								>
@@ -930,21 +968,23 @@ function HooksEditor({
 														type="text"
 														aria-label={`${eventName} rule ${matcherIndex + 1} matcher`}
 														value={matcher.matcher ?? ""}
-														onChange={(event) =>
+														onChange={(event) => {
 															handleMatcherFieldChange(
 																eventName,
 																matcherIndex,
 																"matcher",
 																event.target.value,
-															)
-														}
+															);
+														}}
 														className="flex-1 rounded-md border border-border bg-surface-2 px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
 														placeholder="e.g. Bash (optional)"
 													/>
 												</div>
 												<button
 													type="button"
-													onClick={() => handleRemoveMatcher(eventName, matcherIndex)}
+													onClick={() => {
+														handleRemoveMatcher(eventName, matcherIndex);
+													}}
 													className="rounded p-1 text-t6 hover:bg-surface-0 hover:text-danger-000"
 													title="Remove rule"
 												>
@@ -958,14 +998,14 @@ function HooksEditor({
 														<textarea
 															aria-label={`${eventName} rule ${matcherIndex + 1} command ${hookIndex + 1}`}
 															value={hook.command}
-															onChange={(event) =>
+															onChange={(event) => {
 																handleHookCommandChange(
 																	eventName,
 																	matcherIndex,
 																	hookIndex,
 																	event.target.value,
-																)
-															}
+																);
+															}}
 															className="flex-1 rounded-md border border-border bg-surface-2 px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-accent-100 resize-y"
 															rows={Math.min(
 																Math.max(hook.command.split("\n").length, 1),
@@ -975,13 +1015,13 @@ function HooksEditor({
 														/>
 														<button
 															type="button"
-															onClick={() =>
+															onClick={() => {
 																handleRemoveHookCommand(
 																	eventName,
 																	matcherIndex,
 																	hookIndex,
-																)
-															}
+																);
+															}}
 															className="rounded p-1 text-t6 hover:bg-surface-0 hover:text-danger-000 mt-0.5"
 															title="Remove command"
 														>
@@ -991,7 +1031,9 @@ function HooksEditor({
 												))}
 												<button
 													type="button"
-													onClick={() => handleAddHookCommand(eventName, matcherIndex)}
+													onClick={() => {
+														handleAddHookCommand(eventName, matcherIndex);
+													}}
 													className="flex items-center gap-1 text-xs text-secondary hover:text-accent-100"
 												>
 													<Plus className="h-3 w-3" />
@@ -1002,7 +1044,9 @@ function HooksEditor({
 									))}
 									<button
 										type="button"
-										onClick={() => handleAddMatcher(eventName)}
+										onClick={() => {
+											handleAddMatcher(eventName);
+										}}
 										className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-secondary transition-colors hover:bg-surface-0"
 									>
 										<Plus className="h-3 w-3" />
@@ -1018,7 +1062,9 @@ function HooksEditor({
 						<select
 							aria-label="New hook event"
 							value={newEventName}
-							onChange={(event) => setNewEventName(event.target.value)}
+							onChange={(event) => {
+								setNewEventName(event.target.value);
+							}}
 							className="rounded-md border border-border bg-surface-1 px-2 py-1 text-xs text-secondary focus:outline-none focus:ring-1 focus:ring-accent-100"
 						>
 							<option value="">Select event...</option>
@@ -1090,11 +1136,15 @@ function PluginsEditor({
 							<FormToggle
 								label={pluginName}
 								checked={enabled}
-								onChange={(checked) => handleToggle(pluginName, checked)}
+								onChange={(checked) => {
+									handleToggle(pluginName, checked);
+								}}
 							/>
 							<button
 								type="button"
-								onClick={() => handleRemove(pluginName)}
+								onClick={() => {
+									handleRemove(pluginName);
+								}}
 								className="rounded p-1 text-t6 hover:bg-surface-0 hover:text-danger-000"
 								title="Remove"
 							>
@@ -1108,7 +1158,9 @@ function PluginsEditor({
 						type="text"
 						aria-label="New plugin"
 						value={newPlugin}
-						onChange={(event) => setNewPlugin(event.target.value)}
+						onChange={(event) => {
+							setNewPlugin(event.target.value);
+						}}
 						onKeyDown={(event) => {
 							if (event.key === "Enter") handleAdd();
 						}}
@@ -1183,12 +1235,16 @@ export function StringListEditor({
 							type="text"
 							aria-label={`${label} entry ${index + 1}`}
 							value={entry}
-							onChange={(event) => handleChange(index, event.target.value)}
+							onChange={(event) => {
+								handleChange(index, event.target.value);
+							}}
 							className="flex-1 rounded-md border border-border bg-surface-1 px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
 						/>
 						<button
 							type="button"
-							onClick={() => handleRemove(index)}
+							onClick={() => {
+								handleRemove(index);
+							}}
 							className="rounded p-1 text-t6 hover:bg-surface-0 hover:text-danger-000"
 							title="Remove"
 						>
@@ -1201,7 +1257,9 @@ export function StringListEditor({
 						type="text"
 						aria-label={`New ${label} entry`}
 						value={newEntry}
-						onChange={(event) => setNewEntry(event.target.value)}
+						onChange={(event) => {
+							setNewEntry(event.target.value);
+						}}
 						onKeyDown={(event) => {
 							if (event.key === "Enter") handleAdd();
 						}}
@@ -1239,7 +1297,9 @@ function ObjectSummary({label, value}: {label: string; value: unknown}) {
 		<div className="py-2">
 			<button
 				type="button"
-				onClick={() => setExpanded(!expanded)}
+				onClick={() => {
+					setExpanded(!expanded);
+				}}
 				className="flex items-center gap-1.5 text-sm font-medium text-primary hover:text-accent-100"
 			>
 				{expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
@@ -1306,7 +1366,9 @@ export function ObjectFieldsEditor({
 										id={controlId}
 										labelledBy={`${controlId}-label`}
 										checked={subValue === true}
-										onChange={(checked) => update(subField.key, checked)}
+										onChange={(checked) => {
+											update(subField.key, checked);
+										}}
 									/>
 								</div>
 							);
@@ -1486,7 +1548,9 @@ export function MarketplacesEditor({
 							<div className="flex items-center justify-between px-3 py-2">
 								<button
 									type="button"
-									onClick={() => setExpanded(isExpanded ? null : name)}
+									onClick={() => {
+										setExpanded(isExpanded ? null : name);
+									}}
 									className="flex items-center gap-1.5 text-sm font-medium text-primary hover:text-accent-100"
 								>
 									{isExpanded ? (
@@ -1498,7 +1562,9 @@ export function MarketplacesEditor({
 								</button>
 								<button
 									type="button"
-									onClick={() => handleRemove(name)}
+									onClick={() => {
+										handleRemove(name);
+									}}
 									className="rounded p-1 text-t6 hover:bg-surface-0 hover:text-danger-000"
 									title="Remove marketplace"
 								>
@@ -1519,7 +1585,9 @@ export function MarketplacesEditor({
 											type="text"
 											id={`${entryId}-source`}
 											value={entry.source.source}
-											onChange={(event) => updateSourceField(name, "source", event.target.value)}
+											onChange={(event) => {
+												updateSourceField(name, "source", event.target.value);
+											}}
 											className="w-48 rounded-md border border-border bg-surface-2 px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
 											placeholder="github"
 										/>
@@ -1536,7 +1604,9 @@ export function MarketplacesEditor({
 											type="text"
 											id={`${entryId}-repo`}
 											value={entry.source.repo ?? ""}
-											onChange={(event) => updateSourceField(name, "repo", event.target.value)}
+											onChange={(event) => {
+												updateSourceField(name, "repo", event.target.value);
+											}}
 											className="w-48 rounded-md border border-border bg-surface-2 px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
 											placeholder="owner/repo"
 										/>
@@ -1553,7 +1623,9 @@ export function MarketplacesEditor({
 											type="text"
 											id={`${entryId}-path`}
 											value={entry.source.path ?? ""}
-											onChange={(event) => updateSourceField(name, "path", event.target.value)}
+											onChange={(event) => {
+												updateSourceField(name, "path", event.target.value);
+											}}
 											className="w-48 rounded-md border border-border bg-surface-2 px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
 											placeholder="/path"
 										/>
@@ -1570,7 +1642,9 @@ export function MarketplacesEditor({
 											type="text"
 											id={`${entryId}-source-url`}
 											value={entry.source.url ?? ""}
-											onChange={(event) => updateSourceField(name, "url", event.target.value)}
+											onChange={(event) => {
+												updateSourceField(name, "url", event.target.value);
+											}}
 											className="w-48 rounded-md border border-border bg-surface-2 px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
 											placeholder="https://..."
 										/>
@@ -1587,7 +1661,9 @@ export function MarketplacesEditor({
 											id={`${entryId}-auto-update`}
 											labelledBy={`${entryId}-auto-update-label`}
 											checked={entry.autoUpdate === true}
-											onChange={(checked) => updateAutoUpdate(name, checked)}
+											onChange={(checked) => {
+												updateAutoUpdate(name, checked);
+											}}
 										/>
 									</div>
 									<div className="flex items-center justify-between gap-4">
@@ -1602,7 +1678,9 @@ export function MarketplacesEditor({
 											type="text"
 											id={`${entryId}-url`}
 											value={entry.url ?? ""}
-											onChange={(event) => updateUrl(name, event.target.value)}
+											onChange={(event) => {
+												updateUrl(name, event.target.value);
+											}}
 											className="w-48 rounded-md border border-border bg-surface-2 px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
 											placeholder="https://..."
 										/>
@@ -1617,7 +1695,9 @@ export function MarketplacesEditor({
 						type="text"
 						aria-label="New marketplace name"
 						value={newName}
-						onChange={(event) => setNewName(event.target.value)}
+						onChange={(event) => {
+							setNewName(event.target.value);
+						}}
 						onKeyDown={(event) => {
 							if (event.key === "Enter") handleAdd();
 						}}
@@ -1668,7 +1748,7 @@ export function FormEditor({filename, initialContent, path}: {filename: string; 
 				if (val === undefined || val === null) continue;
 				if (Array.isArray(val) && val.length === 0) {
 					delete cleaned[key];
-				} else if (typeof val === "object" && !Array.isArray(val) && Object.keys(val as object).length === 0) {
+				} else if (typeof val === "object" && !Array.isArray(val) && Object.keys(val).length === 0) {
 					delete cleaned[key];
 				}
 			}

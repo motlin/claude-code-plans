@@ -43,7 +43,7 @@ async function flush(): Promise<void> {
 	}
 }
 
-function checkFileExists(path: string): Promise<boolean> {
+async function checkFileExists(path: string): Promise<boolean> {
 	return new Promise((resolve, reject) => {
 		const checks = pending.get(path) ?? [];
 		checks.push({resolve, reject});
@@ -59,6 +59,6 @@ function checkFileExists(path: string): Promise<boolean> {
 export const fileExistsQueryOptions = (path: string) =>
 	queryOptions({
 		queryKey: ["file-exists", path] as const,
-		queryFn: () => checkFileExists(path),
+		queryFn: async () => checkFileExists(path),
 		staleTime: 60_000,
 	});

@@ -50,7 +50,12 @@ class FakeObserver {
 function OpenChanges() {
 	const host = usePaneHost();
 	return (
-		<button type="button" onClick={() => host.openPane("changes")}>
+		<button
+			type="button"
+			onClick={() => {
+				host.openPane("changes");
+			}}
+		>
 			Open changes
 		</button>
 	);
@@ -64,7 +69,9 @@ function App({requested}: {requested?: PaneKind}) {
 			sessionId={SESSION}
 			onExpandWithoutPane={() => {}}
 			requestedPane={requestedPane}
-			onRequestedPaneHandled={() => setRequestedPane(undefined)}
+			onRequestedPaneHandled={() => {
+				setRequestedPane(undefined);
+			}}
 		>
 			<OpenChanges />
 		</TileHost>
@@ -126,7 +133,9 @@ describe("deferred Changes renderer", () => {
 		renderApp();
 		const loading = paneState();
 		const coldSaved = loadPaneLayout(SESSION);
-		await act(async () => harness.finish());
+		await act(async () => {
+			harness.finish();
+		});
 		await within(screen.getByRole("region", {name: "Changes"})).findByRole("alert", {}, {timeout: 10_000});
 		const failed = paneState();
 		harness.fail = false;

@@ -53,7 +53,9 @@ describe("chapter store", () => {
 	it("re-renders subscribers when a chapter is pinned", () => {
 		const {result} = renderHook(() => useChapters("session-alice"));
 		const before = result.current;
-		act(() => toggleChapter("session-alice", INTRO));
+		act(() => {
+			toggleChapter("session-alice", INTRO);
+		});
 
 		expect({before, after: result.current}).toStrictEqual({before: [], after: [INTRO]});
 	});

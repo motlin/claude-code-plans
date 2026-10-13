@@ -77,8 +77,12 @@ export function PinnedSubList({
 				expanded={expanded}
 				activeItemId={activeItemId}
 				filterSlot={null}
-				onShowMore={() => setUncapped(new Set([PINNED_GROUP_KEY]))}
-				onShowLess={() => setUncapped(new Set())}
+				onShowMore={() => {
+					setUncapped(new Set([PINNED_GROUP_KEY]));
+				}}
+				onShowLess={() => {
+					setUncapped(new Set());
+				}}
 				pinnedIds={pinnedIds}
 				{...(dragRowProps === undefined ? {} : {dragRowProps})}
 			/>

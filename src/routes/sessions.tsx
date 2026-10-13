@@ -12,7 +12,7 @@ import {useSettings} from "../components/settings-provider";
 
 export const Route = createFileRoute("/sessions")({
 	component: SessionsPage,
-	loader: ({context: {queryClient}}) =>
+	loader: async ({context: {queryClient}}) =>
 		Promise.all([
 			queryClient.ensureInfiniteQueryData(recentSessionsInfiniteQueryOptions()),
 			queryClient.ensureQueryData(groupedSessionsQueryOptions()),
@@ -59,7 +59,9 @@ function SessionsPage() {
 					<button
 						key={grouping}
 						type="button"
-						onClick={() => setSetting("sessionsGrouping", grouping)}
+						onClick={() => {
+							setSetting("sessionsGrouping", grouping);
+						}}
 						className={`cursor-pointer rounded-md px-2.5 py-1 transition-colors ${
 							settings.sessionsGrouping === grouping
 								? "bg-fill-ghost-hover font-medium text-primary"

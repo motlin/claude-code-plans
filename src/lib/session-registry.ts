@@ -98,7 +98,7 @@ export function parsePsStartTimes(output: string): Map<number, string> {
  * `ps` exits non-zero when some pids are gone but still prints the rest.
  * Null when `ps` cannot run at all.
  */
-function readProcessStartTimes(pids: readonly number[]): Promise<Map<number, string> | null> {
+async function readProcessStartTimes(pids: readonly number[]): Promise<Map<number, string> | null> {
 	if (pids.length === 0) return Promise.resolve(new Map());
 	return new Promise((resolve) => {
 		execFile(

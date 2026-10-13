@@ -96,7 +96,9 @@ async function renderGroups() {
 	});
 	await router.load();
 	const result = render(<RouterProvider router={router} />);
-	await waitFor(() => expect(result.container.querySelector("[data-group-toggle]")).toBeTruthy());
+	await waitFor(() => {
+		expect(result.container.querySelector("[data-group-toggle]")).toBeTruthy();
+	});
 	return result;
 }
 
@@ -115,7 +117,7 @@ function rect(top: number, height: number): DOMRect {
 		x: 0,
 		y: top,
 		toJSON: () => ({}),
-	} as DOMRect;
+	};
 }
 
 /**
@@ -209,13 +211,13 @@ describe("sidebar drag to custom groups", () => {
 
 		drag(rowLink("Loose one"), unitY(6), unitY(1) + 12);
 
-		await waitFor(() =>
+		await waitFor(() => {
 			expect(sections(container)).toStrictEqual([
 				["Alpha", ["Alpha one", "Loose one", "Alpha two"]],
 				["Beta", ["Beta one"]],
 				["Ungrouped", ["Loose two"]],
-			]),
-		);
+			]);
+		});
 		expect(readSessionGroupState()).toStrictEqual({
 			groups: [ALPHA, BETA],
 			assignments: {...SEEDED_ASSIGNMENTS, u1: "cg-a"},
@@ -228,13 +230,13 @@ describe("sidebar drag to custom groups", () => {
 
 		drag(rowLink("Loose two"), unitY(7), unitY(3));
 
-		await waitFor(() =>
+		await waitFor(() => {
 			expect(sections(container)).toStrictEqual([
 				["Alpha", ["Alpha one", "Alpha two"]],
 				["Beta", ["Loose two", "Beta one"]],
 				["Ungrouped", ["Loose one"]],
-			]),
-		);
+			]);
+		});
 		expect(readSessionGroupState().order).toStrictEqual({"cg-b": ["u2", "b1"]});
 	});
 
@@ -264,13 +266,13 @@ describe("sidebar drag to custom groups", () => {
 		const hot = {text: ungroupRow()?.textContent, hot: ungroupRow()?.hasAttribute("data-hot")};
 		pointerUp(unitY(5));
 
-		await waitFor(() =>
+		await waitFor(() => {
 			expect(sections(container)).toStrictEqual([
 				["Alpha", ["Alpha two"]],
 				["Beta", ["Beta one"]],
 				["Ungrouped", ["Alpha one", "Loose one", "Loose two"]],
-			]),
-		);
+			]);
+		});
 		expect({
 			whileLoose,
 			hot,
@@ -289,9 +291,9 @@ describe("sidebar drag to custom groups", () => {
 
 		drag(groupToggle("Beta"), unitY(3), unitY(0));
 
-		await waitFor(() =>
-			expect(sections(container).map(([label]) => label)).toStrictEqual(["Beta", "Alpha", "Ungrouped"]),
-		);
+		await waitFor(() => {
+			expect(sections(container).map(([label]) => label)).toStrictEqual(["Beta", "Alpha", "Ungrouped"]);
+		});
 		expect(readSessionGroupState().groups).toStrictEqual([BETA, ALPHA]);
 	});
 
@@ -301,13 +303,13 @@ describe("sidebar drag to custom groups", () => {
 
 		drag(rowLink("Loose two"), 33 + 16, unitY(1) + 12);
 
-		await waitFor(() =>
+		await waitFor(() => {
 			expect(sections(container)).toStrictEqual([
 				["Alpha", ["Alpha one", "Loose two", "Alpha two"]],
 				["Beta", ["Beta one"]],
 				["Ungrouped", ["Loose one"]],
-			]),
-		);
+			]);
+		});
 		expect({
 			pins: readPinState(),
 			order: readSessionGroupState().order,
@@ -323,13 +325,13 @@ describe("sidebar drag to custom groups", () => {
 
 		drag(rowLink("Loose two"), 33 + 16, unitY(6));
 
-		await waitFor(() =>
+		await waitFor(() => {
 			expect(sections(container)).toStrictEqual([
 				["Alpha", ["Alpha one", "Alpha two"]],
 				["Beta", ["Beta one"]],
 				["Ungrouped", ["Loose one", "Loose two"]],
-			]),
-		);
+			]);
+		});
 		expect(readPinState()).toStrictEqual({pinnedIds: [], pinnedOrder: []});
 	});
 });

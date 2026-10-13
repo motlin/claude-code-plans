@@ -4,7 +4,9 @@ import {SkillsSection} from "../components/customize/section-views";
 
 export const Route = createFileRoute("/customize/skills")({
 	component: CustomizeSkills,
-	loader: ({context: {queryClient}}) => prefetchCustomizeSection(queryClient, "skills"),
+	loader: ({context: {queryClient}}) => {
+		prefetchCustomizeSection(queryClient, "skills");
+	},
 	head: () => ({meta: [{title: "Skills · Customize"}]}),
 });
 

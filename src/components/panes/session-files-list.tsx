@@ -145,8 +145,12 @@ function FileRow({file, label, open, copied, onOpen, onCopy}: FileRowProps) {
 					dir="rtl"
 					title={file.absolutePath}
 					aria-current={open ? "true" : undefined}
-					onClick={() => onOpen(file.absolutePath, {pin: false})}
-					onDoubleClick={() => onOpen(file.absolutePath, {pin: true})}
+					onClick={() => {
+						onOpen(file.absolutePath, {pin: false});
+					}}
+					onDoubleClick={() => {
+						onOpen(file.absolutePath, {pin: true});
+					}}
 					className="min-w-0 flex-1 cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap bg-transparent pl-2 text-left text-body text-primary outline-none aria-[current=true]:font-medium"
 				>
 					<bdi>{label}</bdi>
@@ -240,7 +244,9 @@ export function SessionFilesList({
 		if (copiedTimeoutReference.current !== undefined) {
 			window.clearTimeout(copiedTimeoutReference.current);
 		}
-		copiedTimeoutReference.current = window.setTimeout(() => setCopiedPath(null), 1_500);
+		copiedTimeoutReference.current = window.setTimeout(() => {
+			setCopiedPath(null);
+		}, 1_500);
 	}, []);
 
 	function handleQueryChange(event: ChangeEvent<HTMLInputElement>): void {

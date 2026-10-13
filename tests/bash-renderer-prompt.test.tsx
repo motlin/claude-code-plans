@@ -71,7 +71,7 @@ describe("BashRenderer command prompt", () => {
 	});
 
 	it("copies the command and output without the shell prompt", () => {
-		const writeText = vi.fn(() => Promise.resolve());
+		const writeText = vi.fn(async () => Promise.resolve());
 		Object.defineProperty(navigator, "clipboard", {value: {writeText}, configurable: true});
 
 		const {container} = render(<BashRenderer toolCall={CALL} />);

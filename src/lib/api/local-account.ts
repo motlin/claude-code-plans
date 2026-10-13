@@ -15,6 +15,6 @@ const LocalAccountResponse = z
 
 export const localAccountQueryOptions = queryOptions({
 	queryKey: ["local-account"] as const,
-	queryFn: () => apiFetch("/api/local-account", LocalAccountResponse),
+	queryFn: async () => apiFetch("/api/local-account", LocalAccountResponse),
 	staleTime: Infinity,
 });

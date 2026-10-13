@@ -33,7 +33,9 @@ describe("useTerminalTheme", () => {
 
 		const {result} = renderHook(() => useTerminalTheme(), {wrapper});
 
-		await waitFor(() => expect(result.current).toStrictEqual({ready: true, theme: expected}));
+		await waitFor(() => {
+			expect(result.current).toStrictEqual({ready: true, theme: expected});
+		});
 	});
 
 	it("switches to the dark code theme when the page goes dark", async () => {
@@ -42,11 +44,17 @@ describe("useTerminalTheme", () => {
 		const dark = terminalThemeFromCodeTheme(await loadCodeTheme("nord"));
 
 		const {result} = renderHook(() => useTerminalTheme(), {wrapper});
-		await waitFor(() => expect(result.current).toStrictEqual({ready: true, theme: light}));
+		await waitFor(() => {
+			expect(result.current).toStrictEqual({ready: true, theme: light});
+		});
 
-		act(() => document.documentElement.classList.add("dark"));
+		act(() => {
+			document.documentElement.classList.add("dark");
+		});
 
-		await waitFor(() => expect(result.current).toStrictEqual({ready: true, theme: dark}));
+		await waitFor(() => {
+			expect(result.current).toStrictEqual({ready: true, theme: dark});
+		});
 	});
 
 	it("uses the Ghostty colours when Terminal colors is set to Ghostty", async () => {
@@ -54,6 +62,8 @@ describe("useTerminalTheme", () => {
 
 		const {result} = renderHook(() => useTerminalTheme(), {wrapper});
 
-		await waitFor(() => expect(result.current).toStrictEqual({ready: true, theme: null}));
+		await waitFor(() => {
+			expect(result.current).toStrictEqual({ready: true, theme: null});
+		});
 	});
 });

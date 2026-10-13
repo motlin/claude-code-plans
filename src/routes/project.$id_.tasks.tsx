@@ -80,7 +80,9 @@ function ProjectTasksPage() {
 			<input
 				type="search"
 				value={searchQuery}
-				onChange={(event) => setSearchQuery(event.target.value)}
+				onChange={(event) => {
+					setSearchQuery(event.target.value);
+				}}
 				placeholder="Search tasks by title, description, active form, or owner..."
 				aria-label="Search tasks"
 				className="mt-4 w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-accent-100"

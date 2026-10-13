@@ -136,7 +136,7 @@ function footer(dialog: HTMLElement): Element | null {
 describe("CommandPalette shell", () => {
 	beforeEach(() => {
 		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(MAC_UA);
-		vi.stubGlobal("fetch", () => new Promise(() => {}));
+		vi.stubGlobal("fetch", async () => new Promise(() => {}));
 		vi.stubGlobal(
 			"ResizeObserver",
 			class {
@@ -167,7 +167,9 @@ describe("CommandPalette shell", () => {
 		const dialog = await openPalette();
 
 		const input = within(dialog).getByRole("combobox", {name: "Search"});
-		await waitFor(() => expect(document.activeElement).toBe(input));
+		await waitFor(() => {
+			expect(document.activeElement).toBe(input);
+		});
 		expect({
 			tag: input.tagName,
 			placeholder: input.getAttribute("placeholder"),
@@ -220,7 +222,9 @@ describe("CommandPalette shell", () => {
 
 		fireEvent.change(within(dialog).getByRole("combobox"), {target: {value: "auth"}});
 
-		await waitFor(() => expect(footer(dialog)).toBeNull());
+		await waitFor(() => {
+			expect(footer(dialog)).toBeNull();
+		});
 	});
 
 	it("← and → step through the type tabs and wrap when the query is empty", async () => {
@@ -243,7 +247,7 @@ describe("CommandPalette shell", () => {
 
 	it("leaves ← and → to the caret when it is inside the query", async () => {
 		const dialog = await openPalette();
-		const input = within(dialog).getByRole("combobox") as HTMLTextAreaElement;
+		const input = within(dialog).getByRole<HTMLTextAreaElement>("combobox");
 		fireEvent.change(input, {target: {value: "auth"}});
 		input.setSelectionRange(2, 2);
 
@@ -260,7 +264,9 @@ describe("CommandPalette shell", () => {
 		fireEvent.keyDown(within(dialog).getByRole("combobox"), {key: "Enter", code: "Enter", altKey: true});
 
 		const card = await within(dialog).findByRole("menu", {name: "Actions"});
-		await waitFor(() => expect(document.activeElement).toBe(within(card).getByRole("menuitem", {name: /^Open1/})));
+		await waitFor(() => {
+			expect(document.activeElement).toBe(within(card).getByRole("menuitem", {name: /^Open1/}));
+		});
 		expect({
 			keyShortcuts: row.getAttribute("aria-keyshortcuts"),
 			dialogOpen: screen.queryByRole("dialog", {name: "Search"}) === dialog,
@@ -272,7 +278,9 @@ describe("CommandPalette shell", () => {
 
 		fireEvent.keyDown(within(dialog).getByRole("combobox"), {key: "Escape", code: "Escape"});
 
-		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog")).toBeNull();
+		});
 	});
 
 	it("closes on the Close button", async () => {
@@ -280,7 +288,9 @@ describe("CommandPalette shell", () => {
 
 		fireEvent.click(within(dialog).getByRole("button", {name: "Close"}));
 
-		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog")).toBeNull();
+		});
 	});
 
 	it("toggles closed on a second ⌘K", async () => {
@@ -288,7 +298,9 @@ describe("CommandPalette shell", () => {
 
 		pressK(within(dialog).getByRole("combobox"), {metaKey: true});
 
-		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog")).toBeNull();
+		});
 	});
 
 	it("does not open on Ctrl+K on mac", async () => {
@@ -380,14 +392,18 @@ describe("CommandPalette shell", () => {
 		fireEvent.keyDown(within(dialog).getByRole("combobox"), {key: "Tab", code: "Tab"});
 		const composer = await within(dialog).findByRole("combobox", {name: "Write a message…"});
 		fireEvent.keyDown(composer, {key: "Escape", code: "Escape"});
-		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog")).toBeNull();
+		});
 		const outside = screen.getByRole("textbox", {name: "Composer"});
 
 		pressK(outside, {metaKey: true, shiftKey: true, key: "K"});
 		const searchDialog = await screen.findByRole("dialog", {name: "Search"});
 		const searchInput = await within(searchDialog).findByRole("combobox", {name: "Search"});
 		fireEvent.keyDown(searchInput, {key: "Escape", code: "Escape"});
-		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog")).toBeNull();
+		});
 
 		pressK(outside, {metaKey: true});
 		const reopened = await screen.findByRole("dialog", {name: "Search"});
@@ -436,7 +452,7 @@ describe("CommandPalette shell", () => {
 
 		fireEvent.change(composer, {target: {value: "Settings"}});
 
-		await waitFor(() =>
+		await waitFor(() => {
 			expect({
 				groups: groupLabels(dialog),
 				results: within(dialog).queryByRole("group", {name: "Search results"}),
@@ -447,8 +463,8 @@ describe("CommandPalette shell", () => {
 				results: null,
 				tabs: null,
 				footer: "Send⏎Enter",
-			}),
-		);
+			});
+		});
 	});
 
 	it("gives Compose a paperclip and Send button and no Close", async () => {
@@ -461,7 +477,7 @@ describe("CommandPalette shell", () => {
 				.getAllByRole("button")
 				.map((button) => button.getAttribute("aria-label")),
 			fileInput: dialog.querySelector('input[type="file"]')?.getAttribute("aria-label"),
-			send: (within(dialog).getByRole("button", {name: "Send"}) as HTMLButtonElement).disabled,
+			send: within(dialog).getByRole<HTMLButtonElement>("button", {name: "Send"}).disabled,
 		}).toStrictEqual({
 			buttons: ["Add files or photos", "Send"],
 			fileInput: "Add files or photos",
@@ -483,14 +499,14 @@ describe("CommandPalette shell", () => {
 		fireEvent.keyDown(within(dialog).getByRole("combobox"), {key: "Tab", code: "Tab"});
 		const composer = await within(dialog).findByRole("combobox", {name: "Write a message…"});
 		fireEvent.change(composer, {target: {value: "fix the parser"}});
-		const send = within(dialog).getByRole("button", {name: "Send"}) as HTMLButtonElement;
+		const send = within(dialog).getByRole<HTMLButtonElement>("button", {name: "Send"});
 		expect(send.disabled).toBe(false);
 
 		fireEvent.click(send);
 
-		await waitFor(() =>
-			expect(groupLabels(dialog).map(([heading]) => heading)).toStrictEqual(["Choose a project"]),
-		);
+		await waitFor(() => {
+			expect(groupLabels(dialog).map(([heading]) => heading)).toStrictEqual(["Choose a project"]);
+		});
 	});
 
 	it("shows Needs attention, Recents and Actions in the empty state", async () => {
@@ -563,25 +579,29 @@ describe("CommandPalette shell", () => {
 		const dialog = await openPalette([], "/session/s-current");
 
 		fireEvent.change(within(dialog).getByRole("combobox"), {target: {value: "setup"}});
-		await waitFor(() => expect(within(dialog).queryByRole("option", {name: "Setup"})).toBeNull());
+		await waitFor(() => {
+			expect(within(dialog).queryByRole("option", {name: "Setup"})).toBeNull();
+		});
 		fireEvent.change(within(dialog).getByRole("combobox"), {target: {value: "config"}});
-		await waitFor(() => expect(within(dialog).queryByRole("option", {name: "Claude Config"})).toBeNull());
+		await waitFor(() => {
+			expect(within(dialog).queryByRole("option", {name: "Claude Config"})).toBeNull();
+		});
 		fireEvent.change(within(dialog).getByRole("combobox"), {target: {value: "settings"}});
 		fireEvent.click(await within(dialog).findByRole("option", {name: /^Settings/}));
 
-		await waitFor(() =>
+		await waitFor(() => {
 			expect({
 				pathname: currentRouter?.state.location.pathname,
 				hash: currentRouter?.state.location.hash,
-			}).toStrictEqual({pathname: "/session/s-current", hash: "settings/general"}),
-		);
+			}).toStrictEqual({pathname: "/session/s-current", hash: "settings/general"});
+		});
 	});
 });
 
 describe("CommandPalette Recents from the per-tab visit MRU", () => {
 	beforeEach(() => {
 		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(MAC_UA);
-		vi.stubGlobal("fetch", () => new Promise(() => {}));
+		vi.stubGlobal("fetch", async () => new Promise(() => {}));
 		vi.stubGlobal(
 			"ResizeObserver",
 			class {
@@ -620,7 +640,7 @@ describe("CommandPalette Recents from the per-tab visit MRU", () => {
 		const pending = new Promise<Response>((resolve) => {
 			resolveIdentity = resolve;
 		});
-		const fetch = vi.fn((_url: string) => pending);
+		const fetch = vi.fn(async (_url: string) => pending);
 		vi.stubGlobal("fetch", fetch);
 		saveRecents([
 			entry("session", "session_alice_100", "/session/session_alice_100", "Recent Alice"),
@@ -633,16 +653,20 @@ describe("CommandPalette Recents from the per-tab visit MRU", () => {
 			{value: "session:local-alice", label: "Earlier Alice"},
 		]);
 		saveRecents([entry("plan", "new-plan", "/plan/new-plan", "New visit while open")]);
-		await act(async () => resolveIdentity(Response.json({sessionId: "local-alice"})));
-		await waitFor(() =>
+		await act(async () => {
+			resolveIdentity(Response.json({sessionId: "local-alice"}));
+		});
+		await waitFor(() => {
 			expect(recentsGroup(dialog)).toStrictEqual([
 				{value: "session:local-alice", label: "Recent Alice"},
 				{value: "recent:plan:alice-plan", label: "Alice plan"},
-			]),
-		);
+			]);
+		});
 		expect(fetch.mock.calls.map((call) => call[0])).toStrictEqual(["/api/sessions/session_alice_100/identity"]);
 		fireEvent.click(within(dialog).getByRole("option", {name: "Recent Alice"}));
-		await waitFor(() => expect(currentRouter?.state.location.pathname).toBe("/session/local-alice"));
+		await waitFor(() => {
+			expect(currentRouter?.state.location.pathname).toBe("/session/local-alice");
+		});
 	});
 
 	it.each([404, 409])("omits historical aliases from actionable session rows after %s", async (status) => {
@@ -656,9 +680,9 @@ describe("CommandPalette Recents from the per-tab visit MRU", () => {
 		const dialog = await openPalette([], "/", (queryClient) => {
 			client = queryClient;
 		});
-		await waitFor(() =>
-			expect(client.getQueryState(sessionQueryKeys.identity("session_alice_100"))?.status).toBe("error"),
-		);
+		await waitFor(() => {
+			expect(client.getQueryState(sessionQueryKeys.identity("session_alice_100"))?.status).toBe("error");
+		});
 		expect(recentsGroup(dialog)).toStrictEqual([{value: "recent:plan:alice-plan", label: "Alice plan"}]);
 		expect(fetch.mock.calls.map(([url]) => url)).toStrictEqual(["/api/sessions/session_alice_100/identity"]);
 	});
@@ -753,7 +777,9 @@ describe("CommandPalette Recents from the per-tab visit MRU", () => {
 
 		fireEvent.click(await within(dialog).findByRole("option", {name: /Big plan/}));
 
-		await waitFor(() => expect(currentRouter?.state.location.pathname).toBe("/plan/big-plan"));
+		await waitFor(() => {
+			expect(currentRouter?.state.location.pathname).toBe("/plan/big-plan");
+		});
 	});
 });
 
@@ -806,7 +832,7 @@ function routine(toolUseId: string, overrides: Partial<Routine>): Routine {
 describe("CommandPalette Artifacts and Scheduled tabs", () => {
 	beforeEach(() => {
 		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(MAC_UA);
-		vi.stubGlobal("fetch", () => new Promise(() => {}));
+		vi.stubGlobal("fetch", async () => new Promise(() => {}));
 		vi.stubGlobal(
 			"ResizeObserver",
 			class {
@@ -920,7 +946,9 @@ describe("CommandPalette Artifacts and Scheduled tabs", () => {
 		fireEvent.click(row);
 
 		expect(rows).toStrictEqual([{label: "Mid deck", meta: "Past hour"}]);
-		await waitFor(() => expect(currentRouter?.state.location.pathname).toBe("/artifact/art-mid"));
+		await waitFor(() => {
+			expect(currentRouter?.state.location.pathname).toBe("/artifact/art-mid");
+		});
 	});
 
 	it("lists active routines with their schedule on the Scheduled tab and opens /routines", async () => {
@@ -931,14 +959,16 @@ describe("CommandPalette Artifacts and Scheduled tabs", () => {
 		fireEvent.click(within(dialog).getByRole("option", {name: /Nightly digest/}));
 
 		expect(rows).toStrictEqual([{label: "Nightly digest", meta: "Every day at 9:00 AM"}]);
-		await waitFor(() => expect(currentRouter?.state.location.pathname).toBe("/routines"));
+		await waitFor(() => {
+			expect(currentRouter?.state.location.pathname).toBe("/routines");
+		});
 	});
 });
 
 describe("CommandPalette Plans, Memories and Files tabs with an empty query", () => {
 	beforeEach(() => {
 		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(MAC_UA);
-		vi.stubGlobal("fetch", () => new Promise(() => {}));
+		vi.stubGlobal("fetch", async () => new Promise(() => {}));
 		vi.stubGlobal(
 			"ResizeObserver",
 			class {
@@ -1056,7 +1086,7 @@ describe("CommandPalette Plans, Memories and Files tabs with an empty query", ()
 describe("CommandPalette filter values", () => {
 	beforeEach(() => {
 		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(MAC_UA);
-		vi.stubGlobal("fetch", () => new Promise(() => {}));
+		vi.stubGlobal("fetch", async () => new Promise(() => {}));
 		vi.stubGlobal(
 			"ResizeObserver",
 			class {

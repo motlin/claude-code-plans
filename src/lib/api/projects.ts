@@ -19,7 +19,7 @@ export const ProjectListResponse = z.array(ProjectListItemSchema);
 export const projectsQueryOptions = () =>
 	queryOptions({
 		queryKey: ["projects"] as const,
-		queryFn: () => apiFetch("/api/projects", ProjectListResponse),
+		queryFn: async () => apiFetch("/api/projects", ProjectListResponse),
 		staleTime: Infinity,
 		gcTime: Infinity,
 	});
@@ -36,7 +36,7 @@ export const ProjectDetailResponse = z
 export const projectDetailQueryOptions = (id: string) =>
 	queryOptions({
 		queryKey: ["projects", id] as const,
-		queryFn: () => apiFetch(`/api/projects/${encodeURIComponent(id)}`, ProjectDetailResponse),
+		queryFn: async () => apiFetch(`/api/projects/${encodeURIComponent(id)}`, ProjectDetailResponse),
 		staleTime: Infinity,
 		gcTime: Infinity,
 	});
@@ -56,7 +56,7 @@ export const ProjectSessionListResponse = z.array(ProjectSessionItemSchema);
 export const projectSessionsQueryOptions = (id: string) =>
 	queryOptions({
 		queryKey: ["projects", id, "sessions"] as const,
-		queryFn: () => apiFetch(`/api/projects/${encodeURIComponent(id)}/sessions`, ProjectSessionListResponse),
+		queryFn: async () => apiFetch(`/api/projects/${encodeURIComponent(id)}/sessions`, ProjectSessionListResponse),
 		staleTime: Infinity,
 		gcTime: Infinity,
 	});
@@ -86,7 +86,7 @@ export const ProjectSubagentsResponse = z.array(ProjectSubagentSchema);
 export const projectSubagentsQueryOptions = (id: string) =>
 	queryOptions({
 		queryKey: ["projects", id, "subagents"] as const,
-		queryFn: () => apiFetch(`/api/projects/${encodeURIComponent(id)}/subagents`, ProjectSubagentsResponse),
+		queryFn: async () => apiFetch(`/api/projects/${encodeURIComponent(id)}/subagents`, ProjectSubagentsResponse),
 		staleTime: Infinity,
 		gcTime: Infinity,
 	});
@@ -102,7 +102,7 @@ export const ProjectPlanListResponse = z.array(ProjectPlanItemSchema);
 export const projectPlansQueryOptions = (id: string) =>
 	queryOptions({
 		queryKey: ["projects", id, "plans"] as const,
-		queryFn: () => apiFetch(`/api/projects/${encodeURIComponent(id)}/plans`, ProjectPlanListResponse),
+		queryFn: async () => apiFetch(`/api/projects/${encodeURIComponent(id)}/plans`, ProjectPlanListResponse),
 		staleTime: Infinity,
 		gcTime: Infinity,
 	});
@@ -135,7 +135,7 @@ export const ProjectTasksResponse = z.object({
 export const projectTasksQueryOptions = (id: string) =>
 	queryOptions({
 		queryKey: ["projects", id, "tasks"] as const,
-		queryFn: () => apiFetch(`/api/projects/${encodeURIComponent(id)}/tasks`, ProjectTasksResponse),
+		queryFn: async () => apiFetch(`/api/projects/${encodeURIComponent(id)}/tasks`, ProjectTasksResponse),
 		staleTime: Infinity,
 		gcTime: Infinity,
 	});

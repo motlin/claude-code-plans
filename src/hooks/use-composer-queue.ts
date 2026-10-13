@@ -52,8 +52,12 @@ export function useComposerQueue({
 
 	useEffect(() => {
 		if (!waiting) return;
-		const timer = setTimeout(() => setWaiting(false), retryMs);
-		return () => clearTimeout(timer);
+		const timer = setTimeout(() => {
+			setWaiting(false);
+		}, retryMs);
+		return () => {
+			clearTimeout(timer);
+		};
 	}, [retryMs, waiting]);
 
 	useEffect(() => {
@@ -71,10 +75,17 @@ export function useComposerQueue({
 	}, [busy, deliver, flushing, items, sessionId, waiting]);
 
 	const enqueue = useCallback(
-		(text: string) => dispatchComposerQueue(sessionId, {type: "enqueue", item: newQueuedPrompt(text)}),
+		(text: string) => {
+			dispatchComposerQueue(sessionId, {type: "enqueue", item: newQueuedPrompt(text)});
+		},
 		[sessionId],
 	);
-	const remove = useCallback((id: string) => dispatchComposerQueue(sessionId, {type: "remove", id}), [sessionId]);
+	const remove = useCallback(
+		(id: string) => {
+			dispatchComposerQueue(sessionId, {type: "remove", id});
+		},
+		[sessionId],
+	);
 	const sendNow = useCallback(
 		(id: string) => {
 			dispatchComposerQueue(sessionId, {type: "reorder", id, toIndex: 0});

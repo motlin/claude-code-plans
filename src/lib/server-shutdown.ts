@@ -86,7 +86,7 @@ export function listenForTakeover(teardown: ShutdownHook): () => void {
  * Ask every other server instance in this process to tear down, and wait until
  * each one that answers within `ackWindowMs` has released its handles.
  */
-export function requestTakeover({
+export async function requestTakeover({
 	ackWindowMs = DEFAULT_ACK_WINDOW_MS,
 	releaseTimeoutMs = DEFAULT_RELEASE_TIMEOUT_MS,
 }: {ackWindowMs?: number; releaseTimeoutMs?: number} = {}): Promise<void> {

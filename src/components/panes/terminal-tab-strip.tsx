@@ -52,11 +52,15 @@ export function TerminalTabStrip({
 	useLayoutEffect(() => {
 		const list = listRef.current;
 		if (!list) return;
-		const measure = () => setOverflowing(list.scrollWidth > list.clientWidth);
+		const measure = () => {
+			setOverflowing(list.scrollWidth > list.clientWidth);
+		};
 		measure();
 		const observer = new ResizeObserver(measure);
 		observer.observe(list);
-		return () => observer.disconnect();
+		return () => {
+			observer.disconnect();
+		};
 	}, [tabCount]);
 
 	useEffect(() => {
@@ -98,8 +102,12 @@ export function TerminalTabStrip({
 			aria-selected={active === id}
 			aria-controls={`terminal-pane-${id}`}
 			aria-describedby={shell ? SHELL_TAB_HINT_ID : undefined}
-			onClick={() => onActivate(id)}
-			onKeyDown={(event) => onTabKeyDown(event, id)}
+			onClick={() => {
+				onActivate(id);
+			}}
+			onKeyDown={(event) => {
+				onTabKeyDown(event, id);
+			}}
 			className={TAB_CLASS}
 		>
 			{title}
@@ -118,7 +126,12 @@ export function TerminalTabStrip({
 	);
 
 	const closeOthersItem = (id: string) => (
-		<MenuItem disabled={tabs.every((tab) => tab.id === id)} onSelect={() => actions.closeOthers(id)}>
+		<MenuItem
+			disabled={tabs.every((tab) => tab.id === id)}
+			onSelect={() => {
+				actions.closeOthers(id);
+			}}
+		>
 			Close other terminals
 		</MenuItem>
 	);
@@ -163,7 +176,9 @@ export function TerminalTabStrip({
 								type="button"
 								aria-label={`Close ${tab.title}`}
 								disabled={tab.closing}
-								onClick={() => actions.close(tab.id)}
+								onClick={() => {
+									actions.close(tab.id);
+								}}
 								className={GHOST_ICON_BUTTON}
 							>
 								<X aria-hidden="true" className="size-3" />
@@ -172,12 +187,20 @@ export function TerminalTabStrip({
 						<>
 							<MenuItem
 								onSelect={() => {
-									afterMenuClose.current = () => setRenaming(tab.id);
+									afterMenuClose.current = () => {
+										setRenaming(tab.id);
+									};
 								}}
 							>
 								Rename terminal
 							</MenuItem>
-							<MenuItem onSelect={() => actions.close(tab.id)}>Close terminal</MenuItem>
+							<MenuItem
+								onSelect={() => {
+									actions.close(tab.id);
+								}}
+							>
+								Close terminal
+							</MenuItem>
 							{closeOthersItem(tab.id)}
 						</>,
 					),
@@ -193,9 +216,22 @@ export function TerminalTabStrip({
 						<ChevronDown aria-hidden="true" className="size-4" />
 					</MenuTrigger>
 					<MenuContent>
-						{showClaude && <MenuItem onSelect={() => onActivate(CLAUDE_TAB_ID)}>Claude</MenuItem>}
+						{showClaude && (
+							<MenuItem
+								onSelect={() => {
+									onActivate(CLAUDE_TAB_ID);
+								}}
+							>
+								Claude
+							</MenuItem>
+						)}
 						{tabs.map((tab) => (
-							<MenuItem key={tab.id} onSelect={() => onActivate(tab.id)}>
+							<MenuItem
+								key={tab.id}
+								onSelect={() => {
+									onActivate(tab.id);
+								}}
+							>
 								{tab.title}
 							</MenuItem>
 						))}

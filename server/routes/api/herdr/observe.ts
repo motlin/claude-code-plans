@@ -39,7 +39,9 @@ export default defineWebSocketHandler({
 	async open(peer) {
 		const query = QuerySchema.parse(peer.context);
 		const connection: Connection = {
-			close: () => peer.close(1012, "terminal observer server restarted"),
+			close: () => {
+				peer.close(1012, "terminal observer server restarted");
+			},
 			observer: null,
 			stopped: false,
 		};

@@ -72,7 +72,9 @@ async function openScopeMenu(): Promise<void> {
 
 async function openCommitsSubmenu(): Promise<void> {
 	const trigger = screen.getByRole("menuitem", {name: /^Commits/});
-	act(() => trigger.focus());
+	act(() => {
+		trigger.focus();
+	});
 	fireEvent.keyDown(trigger, {key: "ArrowRight"});
 	await flush();
 }
@@ -264,21 +266,29 @@ describe("ChangesPane scope", () => {
 
 	it("refetches with each scope's query key and persists the choice per session", async () => {
 		const queryClient = renderPane();
-		await waitFor(() => expect(fetchedScopes).toEqual(["branch"]));
+		await waitFor(() => {
+			expect(fetchedScopes).toEqual(["branch"]);
+		});
 
 		await openScopeMenu();
 		fireEvent.click(screen.getByRole("menuitemradio", {name: "Uncommitted changes"}));
-		await waitFor(() => expect(fetchedScopes).toEqual(["branch", "uncommitted"]));
+		await waitFor(() => {
+			expect(fetchedScopes).toEqual(["branch", "uncommitted"]);
+		});
 		const afterUncommitted = storedScope();
 
 		await openScopeMenu();
 		fireEvent.click(screen.getByRole("menuitemradio", {name: "Session edits"}));
-		await waitFor(() => expect(fetchedScopes).toEqual(["branch", "uncommitted", "session"]));
+		await waitFor(() => {
+			expect(fetchedScopes).toEqual(["branch", "uncommitted", "session"]);
+		});
 
 		await openScopeMenu();
 		await openCommitsSubmenu();
 		fireEvent.click(screen.getByRole("menuitemradio", {name: /^Fix the parser/}));
-		await waitFor(() => expect(fetchedScopes).toHaveLength(4));
+		await waitFor(() => {
+			expect(fetchedScopes).toHaveLength(4);
+		});
 
 		expect({
 			fetchedScopes,
@@ -304,7 +314,9 @@ describe("ChangesPane scope", () => {
 			JSON.stringify({s1: {...defaultPaneLayout(), changesScope: "session"}}),
 		);
 		renderPane();
-		await waitFor(() => expect(fetchedScopes).toEqual(["session"]));
+		await waitFor(() => {
+			expect(fetchedScopes).toEqual(["session"]);
+		});
 	});
 
 	it("resets to the branch scope when the selected commit disappears", async () => {
@@ -313,7 +325,9 @@ describe("ChangesPane scope", () => {
 			JSON.stringify({s1: {...defaultPaneLayout(), changesScope: "commit:deadbee"}}),
 		);
 		renderPane();
-		await waitFor(() => expect(fetchedScopes.at(-1)).toBe("branch"));
+		await waitFor(() => {
+			expect(fetchedScopes.at(-1)).toBe("branch");
+		});
 
 		expect({
 			stored: storedScope(),

@@ -8,7 +8,12 @@ import {ToastProvider, useToast, type ToastOptions} from "../src/components/toas
 function Trigger({options}: {options: ToastOptions}) {
 	const toast = useToast();
 	return (
-		<button type="button" onClick={() => toast(options)}>
+		<button
+			type="button"
+			onClick={() => {
+				toast(options);
+			}}
+		>
 			fire
 		</button>
 	);

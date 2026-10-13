@@ -69,7 +69,9 @@ export function GoToFile({
 			setOpen(false);
 		};
 		document.addEventListener("mousedown", handlePointerDown);
-		return () => document.removeEventListener("mousedown", handlePointerDown);
+		return () => {
+			document.removeEventListener("mousedown", handlePointerDown);
+		};
 	}, [open]);
 
 	const byPath = new Map(files.map((file) => [file.path, file]));
@@ -121,7 +123,10 @@ export function GoToFile({
 					aria-haspopup="listbox"
 					aria-expanded={open}
 					aria-keyshortcuts={keys.ariaKeyShortcuts}
-					onClick={() => (open ? setOpen(false) : openPopup())}
+					onClick={() => {
+						if (open) setOpen(false);
+						else openPopup();
+					}}
 					className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-r5 text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary aria-expanded:bg-fill-control aria-expanded:text-primary"
 				>
 					<Search aria-hidden="true" className="size-4" />
@@ -170,9 +175,15 @@ export function GoToFile({
 										role="option"
 										aria-selected={selected}
 										title={result.path}
-										onMouseEnter={() => setActiveIndex(results.indexOf(result))}
-										onMouseDown={(event) => event.preventDefault()}
-										onClick={() => choose(result.path)}
+										onMouseEnter={() => {
+											setActiveIndex(results.indexOf(result));
+										}}
+										onMouseDown={(event) => {
+											event.preventDefault();
+										}}
+										onClick={() => {
+											choose(result.path);
+										}}
 										className="flex h-6 shrink-0 cursor-default items-center gap-1.5 rounded-r5 px-2 text-body select-none aria-selected:bg-fill-ghost-hover"
 									>
 										<Icon aria-hidden="true" className="size-3 shrink-0 text-ink-muted" />

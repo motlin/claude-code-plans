@@ -12,8 +12,8 @@ import {
 import {ARTIFACT_ICON_SVG} from "../src/lib/icon-paths";
 
 const {requestLanguageMock, requestThemeMock} = vi.hoisted(() => ({
-	requestLanguageMock: vi.fn(() => Promise.resolve()),
-	requestThemeMock: vi.fn((_theme: string) => Promise.resolve()),
+	requestLanguageMock: vi.fn(async () => Promise.resolve()),
+	requestThemeMock: vi.fn(async (_theme: string) => Promise.resolve()),
 }));
 
 vi.mock("../src/hooks/use-shiki", async () => {

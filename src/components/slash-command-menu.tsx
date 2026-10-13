@@ -60,7 +60,12 @@ export function SlashCommandMenu({
 	}, [highlighted, commands]);
 
 	return (
-		<div className={POPUP_CLASS} onMouseDown={(e) => e.preventDefault()}>
+		<div
+			className={POPUP_CLASS}
+			onMouseDown={(e) => {
+				e.preventDefault();
+			}}
+		>
 			<div
 				ref={scrollerRef}
 				id={id}

@@ -12,10 +12,7 @@ let stripWidth = 800;
 class WidthObserver {
 	constructor(private readonly callback: ResizeObserverCallback) {}
 	observe(target: Element) {
-		this.callback(
-			[{target, contentRect: {width: stripWidth}} as unknown as ResizeObserverEntry],
-			this as unknown as ResizeObserver,
-		);
+		this.callback([{target, contentRect: {width: stripWidth}} as unknown as ResizeObserverEntry], this);
 	}
 	unobserve() {}
 	disconnect() {}
@@ -57,7 +54,7 @@ function strip(view: RenderResult): Element | null {
 
 beforeEach(() => {
 	stripWidth = 800;
-	globalThis.ResizeObserver = WidthObserver as unknown as typeof ResizeObserver;
+	globalThis.ResizeObserver = WidthObserver;
 	sessionStorage.clear();
 });
 

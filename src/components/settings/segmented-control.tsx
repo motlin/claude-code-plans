@@ -66,7 +66,9 @@ export function SegmentedControl<T extends string>({
 		for (const radio of radioRefs.current) {
 			if (radio !== null) observer.observe(radio);
 		}
-		return () => observer.disconnect();
+		return () => {
+			observer.disconnect();
+		};
 	}, [measure, options.length]);
 
 	const select = (index: number) => {
@@ -138,8 +140,12 @@ export function SegmentedControl<T extends string>({
 						aria-checked={checked}
 						aria-label={iconOnly ? option.label : undefined}
 						data-checked={checked ? "" : undefined}
-						onClick={() => select(index)}
-						onKeyDown={(event) => handleKeyDown(event, index)}
+						onClick={() => {
+							select(index);
+						}}
+						onKeyDown={(event) => {
+							handleKeyDown(event, index);
+						}}
 						className={`relative z-[1] inline-flex h-full cursor-pointer items-center justify-center gap-1.5 rounded-r5 text-body font-normal outline-none select-none transition-shadow hover:text-primary focus-visible:ring-2 focus-visible:ring-accent-100/40 data-[checked]:text-primary text-[var(--settings-muted)] ${
 							iconOnly ? "w-[30px] [&_svg]:size-4" : "px-3"
 						}`}

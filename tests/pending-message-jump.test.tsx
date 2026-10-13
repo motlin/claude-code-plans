@@ -9,7 +9,7 @@ import {fetchEarlierTranscript} from "../src/lib/api/sessions";
 import {jumpToMessage} from "../src/lib/jump-to-message";
 
 vi.mock("../src/lib/api/sessions", () => ({
-	fetchEarlierTranscript: vi.fn(() => Promise.resolve()),
+	fetchEarlierTranscript: vi.fn(async () => Promise.resolve()),
 }));
 vi.mock("../src/lib/jump-to-message", () => ({
 	jumpToMessage: vi.fn(() => true),
@@ -54,7 +54,9 @@ describe("usePendingMessageJump", () => {
 	it("scrolls straight to a message the loaded records already hold", () => {
 		const {result} = renderPendingJump({startIndex: 1_500, uuidToLine: HELD});
 
-		act(() => result.current("u-1700"));
+		act(() => {
+			result.current("u-1700");
+		});
 
 		expect({
 			jumps: vi.mocked(jumpToMessage).mock.calls,
@@ -68,7 +70,9 @@ describe("usePendingMessageJump", () => {
 			uuidToLine: NOT_HELD,
 		});
 
-		act(() => result.current("u-1700"));
+		act(() => {
+			result.current("u-1700");
+		});
 		const afterRequest = {
 			jumps: vi.mocked(jumpToMessage).mock.calls.length,
 			fetches: vi.mocked(fetchEarlierTranscript).mock.calls.length,
@@ -93,7 +97,9 @@ describe("usePendingMessageJump", () => {
 			uuidToLine: NOT_HELD,
 		});
 
-		act(() => result.current("u-1700"));
+		act(() => {
+			result.current("u-1700");
+		});
 		rerender({startIndex: 1_500, uuidToLine: new Map()});
 
 		expect(vi.mocked(fetchEarlierTranscript).mock.calls.length).toBe(1);
@@ -102,7 +108,9 @@ describe("usePendingMessageJump", () => {
 	it("stops asking for history once the window covers the whole file", () => {
 		const {result} = renderPendingJump({startIndex: 0, uuidToLine: NOT_HELD});
 
-		act(() => result.current("u-1700"));
+		act(() => {
+			result.current("u-1700");
+		});
 
 		expect({
 			jumps: vi.mocked(jumpToMessage).mock.calls.length,
@@ -113,7 +121,9 @@ describe("usePendingMessageJump", () => {
 	it("jumps once, so paging further back does not yank the reader off what they scrolled to", () => {
 		const {result, rerender} = renderPendingJump({startIndex: 1_500, uuidToLine: HELD});
 
-		act(() => result.current("u-1700"));
+		act(() => {
+			result.current("u-1700");
+		});
 		rerender({startIndex: 1_100, uuidToLine: new Map(HELD)});
 		rerender({startIndex: 700, uuidToLine: new Map(HELD)});
 

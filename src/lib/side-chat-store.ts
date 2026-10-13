@@ -282,7 +282,7 @@ async function readStreamEvents(response: Response, onEvent: (event: StreamEvent
 		} catch {
 			return;
 		}
-		if (typeof parsed === "object" && parsed !== null) onEvent(parsed as StreamEvent);
+		if (typeof parsed === "object" && parsed !== null) onEvent(parsed);
 	};
 	while (true) {
 		const {done, value} = await reader.read();

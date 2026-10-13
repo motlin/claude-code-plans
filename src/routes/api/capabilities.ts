@@ -81,7 +81,7 @@ async function probeCapabilityRuntime(dependencies: CapabilityProbeDependencies)
 			),
 			dependencies.pathExists(join(dependencies.projectRoot, "src", "lib", "context-brief.ts")),
 			dependencies.executableExists("claude"),
-			probeDatabaseAvailability(() => dependencies.databaseAvailable()),
+			probeDatabaseAvailability(async () => dependencies.databaseAvailable()),
 		]);
 
 	const databaseReason = databaseProbe.unavailabilityReason;

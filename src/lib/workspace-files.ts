@@ -127,7 +127,7 @@ async function toEntry(root: string, directory: string, rel: string, dirent: Dir
 
 async function readEntries(root: string, directory: string, rel: string): Promise<WorkspaceEntry[]> {
 	const dirents = await readdir(directory, {withFileTypes: true});
-	const entries = await Promise.all(dirents.map((dirent) => toEntry(root, directory, rel, dirent)));
+	const entries = await Promise.all(dirents.map(async (dirent) => toEntry(root, directory, rel, dirent)));
 	return entries.sort(compareEntries);
 }
 
@@ -204,7 +204,7 @@ export function fuzzyFilePaths(
  * `git check-ignore` over `relPaths` in `root`. Outside a git repository (or
  * when git fails) nothing is reported as ignored.
  */
-export const gitCheckIgnored: IgnoreCheck = (root, relPaths) =>
+export const gitCheckIgnored: IgnoreCheck = async (root, relPaths) =>
 	new Promise((resolve) => {
 		const child = spawn("git", ["check-ignore", "--stdin", "-z"], {
 			cwd: root,
@@ -212,7 +212,9 @@ export const gitCheckIgnored: IgnoreCheck = (root, relPaths) =>
 		});
 		const chunks: Buffer[] = [];
 		child.stdout.on("data", (chunk: Buffer) => chunks.push(chunk));
-		child.on("error", () => resolve(new Set()));
+		child.on("error", () => {
+			resolve(new Set());
+		});
 		child.on("close", (code) => {
 			if (code !== 0 && code !== 1) {
 				resolve(new Set());

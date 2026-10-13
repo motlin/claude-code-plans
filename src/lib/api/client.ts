@@ -28,7 +28,7 @@ async function parseOk<S extends z.ZodTypeAny>(url: string, schema: S, res: Resp
 		throw new ApiResponseError(url, res);
 	}
 	const json: unknown = await res.json();
-	return schema.parse(json) as z.infer<S>;
+	return schema.parse(json);
 }
 
 /**

@@ -19,8 +19,12 @@ export function AppFrame({
 	const phoneSheet = usePhoneSheet();
 	const narrowViewport = useNarrowViewport();
 	const [sheetOpen, setSheetOpen] = useState(false);
-	const openSheet = useCallback(() => setSheetOpen(true), []);
-	const closeSheet = useCallback(() => setSheetOpen(false), []);
+	const openSheet = useCallback(() => {
+		setSheetOpen(true);
+	}, []);
+	const closeSheet = useCallback(() => {
+		setSheetOpen(false);
+	}, []);
 	const mainInert = phoneSheet && sheetOpen;
 	const sidebarLayout = phoneSheet ? "phone" : collapsed || narrowViewport ? "collapsed" : "docked";
 

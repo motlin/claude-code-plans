@@ -170,7 +170,9 @@ describe("AssistantMessageActions", () => {
 		states.push(readAloudState(container));
 		press();
 		press();
-		act(() => speech.finish());
+		act(() => {
+			speech.finish();
+		});
 		states.push(readAloudState(container));
 
 		expect({spoken: speech.spoken, calls: speech.calls, states}).toStrictEqual({
@@ -207,7 +209,9 @@ describe("AssistantMessageActions", () => {
 
 		fireEvent.click(bar(container).querySelector<HTMLButtonElement>("[data-read-aloud]")!);
 		const whileWaiting = {voices: [...speech.voices], state: readAloudState(container)};
-		act(() => speech.loadVoices([SAMANTHA, ZOE_PREMIUM]));
+		act(() => {
+			speech.loadVoices([SAMANTHA, ZOE_PREMIUM]);
+		});
 
 		expect({whileWaiting, voices: speech.voices}).toStrictEqual({
 			whileWaiting: {voices: [], state: {label: "Loading\u2026", icon: "spinner", pressed: null}},
@@ -338,7 +342,9 @@ function stubSpeech(initialVoices: StubVoice[] = [SAMANTHA]) {
 		...record,
 		loadVoices: (next: StubVoice[]) => {
 			voices = next;
-			listeners.forEach((listener) => listener());
+			listeners.forEach((listener) => {
+				listener();
+			});
 		},
 		start: () => queue[0]?.onstart?.(),
 		finish: () => {

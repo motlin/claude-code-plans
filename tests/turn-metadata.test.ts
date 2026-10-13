@@ -8,7 +8,7 @@ function assistantLine(extra: Partial<MessageSessionLine>, message: Record<strin
 		lineIndex: 0,
 		message: {role: "assistant", content: [{type: "text", text: "hi"}], ...message},
 		...extra,
-	} as MessageSessionLine;
+	};
 }
 
 const VERBOSE = {verbose: true};

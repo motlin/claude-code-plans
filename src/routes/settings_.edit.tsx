@@ -7,7 +7,7 @@ import {settingsQueryOptions} from "../lib/api/settings";
 
 export const Route = createFileRoute("/settings_/edit")({
 	component: SettingsEditPage,
-	loader: ({context: {queryClient}}) => queryClient.ensureQueryData(settingsQueryOptions),
+	loader: async ({context: {queryClient}}) => queryClient.ensureQueryData(settingsQueryOptions),
 	head: () => ({
 		meta: [{title: "Edit Settings"}],
 	}),
@@ -32,7 +32,9 @@ function SettingsEditPage() {
 					<div className="flex rounded-md border border-border">
 						<button
 							type="button"
-							onClick={() => setActiveTab("form")}
+							onClick={() => {
+								setActiveTab("form");
+							}}
 							className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium transition-colors first:rounded-l-md ${
 								activeTab === "form" ? "bg-accent-100 text-white" : "text-secondary hover:bg-surface-0"
 							}`}
@@ -42,7 +44,9 @@ function SettingsEditPage() {
 						</button>
 						<button
 							type="button"
-							onClick={() => setActiveTab("json")}
+							onClick={() => {
+								setActiveTab("json");
+							}}
 							className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium transition-colors last:rounded-r-md ${
 								activeTab === "json" ? "bg-accent-100 text-white" : "text-secondary hover:bg-surface-0"
 							}`}

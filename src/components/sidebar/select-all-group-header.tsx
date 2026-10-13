@@ -17,7 +17,7 @@ export function SelectAllGroupHeader({
 	group: SessionGroup<SessionGroupRow>;
 	/** The label's toggle button. */
 	children: ReactNode;
-}) {
+}): ReactNode {
 	const selection = useSidebarSelection();
 	const {collapsedFamilies} = useSidebarState();
 	if (selection === null) return children;

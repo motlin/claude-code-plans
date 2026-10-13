@@ -84,7 +84,7 @@ function SessionErrorComponent({error, reset}: ErrorComponentProps) {
 				</button>
 				<button
 					type="button"
-					onClick={() => router.navigate({to: "/sessions"})}
+					onClick={async () => router.navigate({to: "/sessions"})}
 					className="rounded-md border border-border px-3 py-1.5 text-sm font-medium text-secondary hover:bg-surface-0"
 				>
 					Back to sessions

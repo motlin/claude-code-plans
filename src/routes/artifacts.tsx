@@ -55,7 +55,7 @@ export const Route = createFileRoute("/artifacts")({
 			...(view === "yours" || view === "shared" ? {view} : {}),
 		};
 	},
-	loader: ({context: {queryClient}}) => queryClient.ensureQueryData(artifactsQueryOptions),
+	loader: async ({context: {queryClient}}) => queryClient.ensureQueryData(artifactsQueryOptions),
 	head: () => ({
 		meta: [{title: "Artifacts"}],
 	}),
@@ -134,7 +134,9 @@ function ArtifactsPage() {
 						label="Search your artifacts"
 						placeholder="Search artifacts..."
 						search={search}
-						onSearch={(next) => updateSearch({search: next, view})}
+						onSearch={(next) => {
+							updateSearch({search: next, view});
+						}}
 					/>
 					<Tooltip content={layoutLabel}>
 						<button
@@ -161,7 +163,9 @@ function ArtifactsPage() {
 						role="tab"
 						aria-selected={tab.view === view}
 						className={VIEW_TAB_CLASS}
-						onClick={() => updateSearch({search, view: tab.view})}
+						onClick={() => {
+							updateSearch({search, view: tab.view});
+						}}
 					>
 						{tab.label}
 					</button>
@@ -348,7 +352,9 @@ function ArtifactMenuItems({artifact, pinned}: {artifact: ArtifactSummary; pinne
 		<>
 			<MenuItem
 				icon={pinned ? <PinOff aria-hidden="true" /> : <Pin aria-hidden="true" />}
-				onSelect={() => togglePin(artifact, pinned)}
+				onSelect={() => {
+					togglePin(artifact, pinned);
+				}}
 			>
 				{pinned ? "Unpin" : "Pin"}
 			</MenuItem>
@@ -370,7 +376,9 @@ function ArtifactRowActions({artifact, pinned}: {artifact: ArtifactSummary; pinn
 					aria-label={`${pinLabel} ${artifact.title}`}
 					aria-pressed={pinned}
 					className={ROW_ACTION_CLASS}
-					onClick={() => togglePin(artifact, pinned)}
+					onClick={() => {
+						togglePin(artifact, pinned);
+					}}
 				>
 					{pinned ? (
 						<PinOff aria-hidden="true" className="size-4" />

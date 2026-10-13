@@ -248,7 +248,7 @@ describe("plugin Contents tab", () => {
 						initialFile={initialFile}
 						fileQuery={(path) => ({
 							queryKey: ["file", path],
-							queryFn: () => new Promise<never>(() => {}),
+							queryFn: async () => new Promise<never>(() => {}),
 						})}
 					/>
 				</QueryClientProvider>,

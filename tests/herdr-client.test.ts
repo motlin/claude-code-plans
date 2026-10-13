@@ -19,7 +19,11 @@ describe("herdrRequest", () => {
 
 	afterEach(async () => {
 		if (server) {
-			await new Promise<void>((resolve) => server?.close(() => resolve()));
+			await new Promise<void>((resolve) =>
+				server?.close(() => {
+					resolve();
+				}),
+			);
 			server = undefined;
 		}
 		rmSync(directory, {recursive: true, force: true});

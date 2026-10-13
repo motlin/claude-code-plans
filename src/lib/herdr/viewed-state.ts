@@ -73,7 +73,7 @@ export function createHerdrViewedStateTracker(dependencies: HerdrViewedStateTrac
 	const statusByTerminalId = new Map<string, AgentStatusPart>();
 	let writeQueue: Promise<void> = Promise.resolve();
 
-	const enqueueWrites = (writes: Array<() => Write>): Promise<void> => {
+	const enqueueWrites = async (writes: Array<() => Write>): Promise<void> => {
 		if (writes.length === 0) return Promise.resolve();
 		const run = writeQueue.then(async () => {
 			for (const write of writes) await write();
@@ -82,7 +82,7 @@ export function createHerdrViewedStateTracker(dependencies: HerdrViewedStateTrac
 		return run;
 	};
 
-	const syncPanes = (panes: HerdrPaneLink[]): Promise<void> => {
+	const syncPanes = async (panes: HerdrPaneLink[]): Promise<void> => {
 		panesByPaneId.clear();
 		const writes: Array<() => Write> = [];
 		const terminalIdsBySessionId = new Map<string, string[]>();
@@ -97,18 +97,18 @@ export function createHerdrViewedStateTracker(dependencies: HerdrViewedStateTrac
 			});
 			// A snapshot can follow a herdr restart, which resets its server-side
 			// `seen` bit. Seed transition state, but never manufacture a viewed edge.
-			writes.push(() => dependencies.linkTerminal(pane.terminalId, pane.sessionId));
+			writes.push((): Write => dependencies.linkTerminal(pane.terminalId, pane.sessionId));
 			const terminalIds = terminalIdsBySessionId.get(pane.sessionId);
 			if (terminalIds) terminalIds.push(pane.terminalId);
 			else terminalIdsBySessionId.set(pane.sessionId, [pane.terminalId]);
 		}
 		for (const [sessionId, terminalIds] of terminalIdsBySessionId) {
-			writes.push(() => dependencies.pruneTerminalLinks(sessionId, terminalIds));
+			writes.push((): Write => dependencies.pruneTerminalLinks(sessionId, terminalIds));
 		}
 		return enqueueWrites(writes);
 	};
 
-	const handleStatusEvent = (data: Record<string, unknown>): Promise<void> => {
+	const handleStatusEvent = async (data: Record<string, unknown>): Promise<void> => {
 		const paneId = data["pane_id"];
 		const agentStatus = data["agent_status"];
 		const agent = data["agent"];
@@ -134,13 +134,13 @@ export function createHerdrViewedStateTracker(dependencies: HerdrViewedStateTrac
 		const {terminalId, sessionId} = pane;
 		const writes: Array<() => Write> = [];
 		if (previous.status === "done" && next.status === "idle") {
-			writes.push(() => dependencies.markTerminalViewed(terminalId, sessionId));
+			writes.push((): Write => dependencies.markTerminalViewed(terminalId, sessionId));
 		}
 
 		if (isCompletionTransitionParts(previous, next)) {
-			writes.push(() => dependencies.markTerminalUnviewed(terminalId, sessionId));
+			writes.push((): Write => dependencies.markTerminalUnviewed(terminalId, sessionId));
 			if (!dependencies.isSessionVisible(sessionId)) {
-				writes.push(() => dependencies.markSessionCompletionUnreviewed(sessionId));
+				writes.push((): Write => dependencies.markSessionCompletionUnreviewed(sessionId));
 			}
 		}
 		return enqueueWrites(writes);

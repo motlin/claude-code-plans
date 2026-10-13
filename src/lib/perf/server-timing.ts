@@ -38,7 +38,7 @@ function withHeader(response: Response, value: string): Response {
  * With CCB_PERF_LOG=1 each request also logs one JSON line to stdout.
  */
 export function withServerTiming(handler: FetchHandler): (request: Request) => Promise<Response> {
-	return (request) =>
+	return async (request) =>
 		withPerfScope("http", async () => {
 			const start = performance.now();
 			const response = await handler(request);

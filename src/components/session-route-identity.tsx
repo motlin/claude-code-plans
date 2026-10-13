@@ -21,7 +21,7 @@ export function SessionRouteIdentity({
 		scrollKey: string,
 		scrollRestoration?: MainScrollRestorationSnapshot,
 	) => ReactNode;
-}) {
+}): ReactNode {
 	const router = useRouter();
 	const location = useLocation();
 	const alias = routeId.startsWith("session_");
@@ -87,8 +87,8 @@ export function SessionRouteIdentity({
 		entryKey,
 	]);
 
-	const renderVisit = (scrollRestoration?: MainScrollRestorationSnapshot) => {
-		const renderResolved = (sessionId: string) =>
+	const renderVisit = (scrollRestoration?: MainScrollRestorationSnapshot): ReactNode => {
+		const renderResolved = (sessionId: string): ReactNode =>
 			scrollRestoration === undefined
 				? children(sessionId, initialRouteId, entryKey)
 				: children(sessionId, initialRouteId, entryKey, scrollRestoration);
@@ -128,7 +128,7 @@ function SessionVisitScrollSnapshot({
 }: {
 	entryKey: string;
 	children: (snapshot: MainScrollRestorationSnapshot) => ReactNode;
-}) {
+}): ReactNode {
 	const entry = useMainScrollRestoration(entryKey);
 	return children({entry});
 }

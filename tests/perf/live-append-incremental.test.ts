@@ -131,7 +131,7 @@ describe(`live append to a ${SHAPE.name} transcript`, () => {
 		for (const batch of [1, 2]) {
 			const appended = append(batch);
 			counters.push({
-				appended: await jsonlCounters(() => indexJsonlFile(live.index, file, PROJECT, {cache})),
+				appended: await jsonlCounters(async () => indexJsonlFile(live.index, file, PROJECT, {cache})),
 				expected: {bytesRead: appended + SIGNATURE_BYTES, fullScans: 0},
 			});
 		}
@@ -182,7 +182,7 @@ describe(`live append to a ${SHAPE.name} transcript`, () => {
 		const cache = createJsonlIndexCache();
 		await indexFile(live.index, file, projectsDir, undefined, {jsonlCache: cache});
 		const appended = append(1);
-		const counters = await jsonlCounters(() =>
+		const counters = await jsonlCounters(async () =>
 			indexFile(live.index, file, projectsDir, undefined, {jsonlCache: cache}),
 		);
 		expect(counters).toStrictEqual({bytesRead: appended + SIGNATURE_BYTES, fullScans: 0});

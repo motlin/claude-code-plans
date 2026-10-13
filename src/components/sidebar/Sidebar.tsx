@@ -252,7 +252,9 @@ function CollapsedSidebar({narrowViewport, children}: {narrowViewport: boolean; 
 			setHovering(false);
 		};
 		document.addEventListener("pointerdown", onPointerDown);
-		return () => document.removeEventListener("pointerdown", onPointerDown);
+		return () => {
+			document.removeEventListener("pointerdown", onPointerDown);
+		};
 	}, [narrowViewport, hovering]);
 
 	return (
@@ -260,8 +262,12 @@ function CollapsedSidebar({narrowViewport, children}: {narrowViewport: boolean; 
 			ref={rootRef}
 			data-testid="sidebar-collapsed"
 			data-hovering={hovering ? "" : undefined}
-			onPointerEnter={() => setHovering(true)}
-			onPointerLeave={() => setHovering(false)}
+			onPointerEnter={() => {
+				setHovering(true);
+			}}
+			onPointerLeave={() => {
+				setHovering(false);
+			}}
 			className="group/peek absolute left-3 top-3 z-50 flex"
 		>
 			<div
@@ -272,7 +278,13 @@ function CollapsedSidebar({narrowViewport, children}: {narrowViewport: boolean; 
 			<SidebarToggleButton
 				collapsed
 				controls={{id: PEEK_ID, expanded: hovering}}
-				{...(narrowViewport ? {onClick: () => setHovering(true)} : {})}
+				{...(narrowViewport
+					? {
+							onClick: () => {
+								setHovering(true);
+							},
+						}
+					: {})}
 				className="relative z-10 flex size-6 items-center justify-center rounded-r5 text-primary transition-colors hover:bg-fill-ghost-hover [&_svg]:size-4"
 			/>
 			<nav

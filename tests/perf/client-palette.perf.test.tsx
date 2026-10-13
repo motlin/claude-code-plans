@@ -203,7 +203,9 @@ function PaletteHost() {
 /** The root layout's frame (providers, sidebar, main) and palette, with the real root loader and home route. */
 function createAppRouter(queryClient: QueryClient) {
 	const rootRoute = createRootRouteWithContext<{queryClient: QueryClient}>()({
-		loader: ({context}) => rootLoader({context}),
+		loader: ({context}) => {
+			rootLoader({context});
+		},
 		component: () => (
 			<ThemeProvider>
 				<SettingsProvider>
@@ -333,10 +335,13 @@ describe("client lab: command palette", () => {
 		const waitOutDebounce: Interaction = () => {
 			vi.advanceTimersByTime(PALETTE_SEARCH_DEBOUNCE_MS);
 		};
-		const steps = [open, ...keystrokes, waitOutDebounce].map((step): Interaction => (context) => {
-			tally.startStep();
-			return step(context);
-		});
+		const steps = [open, ...keystrokes, waitOutDebounce].map(
+			(step): Interaction =>
+				(context): ReturnType<Interaction> => {
+					tally.startStep();
+					return step(context);
+				},
+		);
 		await measureInteraction(
 			() => (
 				<tally.Root>

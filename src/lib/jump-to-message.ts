@@ -10,7 +10,9 @@ export interface TranscriptJumpRequestEvent extends CustomEvent<number> {
 function flash(element: Element): true {
 	element.scrollIntoView({block: "center", behavior: "smooth"});
 	element.classList.add("message-highlight");
-	setTimeout(() => element.classList.remove("message-highlight"), HIGHLIGHT_DURATION_MS);
+	setTimeout(() => {
+		element.classList.remove("message-highlight");
+	}, HIGHLIGHT_DURATION_MS);
 	return true;
 }
 

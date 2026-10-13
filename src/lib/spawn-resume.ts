@@ -81,6 +81,8 @@ async function drainAndBroadcast(stream: ReadableStream<Uint8Array>): Promise<vo
 	} finally {
 		reader.releaseLock();
 		// Small delay so JSONL writes flush before consumers refetch.
-		setTimeout(() => broadcast(), 1000);
+		setTimeout(() => {
+			broadcast();
+		}, 1000);
 	}
 }

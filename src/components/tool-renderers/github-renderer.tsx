@@ -580,7 +580,7 @@ export function GithubRenderer({toolCall}: ToolRendererProps) {
 
 			case "pull_request_read":
 				if (data && typeof data === "object" && !Array.isArray(data)) {
-					return <SingleItemRenderer data={data as DetailData} icon="pr" />;
+					return <SingleItemRenderer data={data} icon="pr" />;
 				}
 				return <DefaultGithubRenderer resultText={resultText} />;
 
@@ -593,7 +593,7 @@ export function GithubRenderer({toolCall}: ToolRendererProps) {
 
 			case "issue_read":
 				if (data && typeof data === "object" && !Array.isArray(data)) {
-					return <SingleItemRenderer data={data as DetailData} icon="issue" />;
+					return <SingleItemRenderer data={data} icon="issue" />;
 				}
 				return <DefaultGithubRenderer resultText={resultText} />;
 
@@ -602,13 +602,13 @@ export function GithubRenderer({toolCall}: ToolRendererProps) {
 
 			case "get_commit":
 				if (data && typeof data === "object" && !Array.isArray(data)) {
-					return <SingleCommitRenderer data={data as CommitData} />;
+					return <SingleCommitRenderer data={data} />;
 				}
 				return <DefaultGithubRenderer resultText={resultText} />;
 
 			case "get_file_contents":
 				if (data && typeof data === "object" && !Array.isArray(data)) {
-					return <FileContentsRenderer data={data as FileContentsData} />;
+					return <FileContentsRenderer data={data} />;
 				}
 				return <DefaultGithubRenderer resultText={resultText} />;
 

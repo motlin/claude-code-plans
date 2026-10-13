@@ -216,6 +216,6 @@ export function createHerdrPlacementProvider(
 	return {
 		id: "herdr",
 		capabilities: HERDR_CAPABILITIES,
-		getPlacements: () => getHerdrPlacements(entries, request, indexedSessionFilter),
+		getPlacements: async () => getHerdrPlacements(entries, request, indexedSessionFilter),
 	};
 }

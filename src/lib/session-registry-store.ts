@@ -151,14 +151,14 @@ export function startSessionRegistryMonitor({
 		onChange,
 		dir,
 		timer: setInterval(() => {
-			if (live.size > 0) enqueue(() => pollSessionRegistryLiveness(dir, probe));
+			if (live.size > 0) enqueue(async () => pollSessionRegistryLiveness(dir, probe));
 		}, pollMs),
 		probe,
 		debounce: null,
 		queue: Promise.resolve(),
 	};
 	monitor.timer.unref?.();
-	enqueue(() => refreshSessionRegistry(dir, probe));
+	enqueue(async () => refreshSessionRegistry(dir, probe));
 }
 
 export function scheduleSessionRegistryRefresh(): void {
@@ -167,7 +167,7 @@ export function scheduleSessionRegistryRefresh(): void {
 	if (current.debounce !== null) clearTimeout(current.debounce);
 	current.debounce = setTimeout(() => {
 		current.debounce = null;
-		enqueue(() => refreshSessionRegistry(current.dir, current.probe));
+		enqueue(async () => refreshSessionRegistry(current.dir, current.probe));
 	}, REFRESH_DEBOUNCE_MS);
 }
 

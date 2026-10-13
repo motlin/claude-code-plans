@@ -116,7 +116,9 @@ describe("Verbose transcript mode pre-expands tool rows", () => {
 	it("expands the group and every nested row in verbose", async () => {
 		const {container} = render(transcript(toolCallRecords(GREPS), "verbose"));
 
-		await waitFor(() => expect(disclosures(container)).toStrictEqual(EXPANDED_GROUP));
+		await waitFor(() => {
+			expect(disclosures(container)).toStrictEqual(EXPANDED_GROUP);
+		});
 	});
 
 	it.each(["normal", "thinking"] as const)("keeps the group collapsed in %s", (mode) => {
@@ -136,20 +138,22 @@ describe("Verbose transcript mode pre-expands tool rows", () => {
 		]);
 		const {container} = render(transcript(records, "verbose"));
 
-		await waitFor(() =>
+		await waitFor(() => {
 			expect(disclosures(container)).toStrictEqual([
 				{
 					expanded: "true",
 					body: "description: Find the schemaprompt: Look for schema.tsFound it in src/lib/db",
 				},
-			]),
-		);
+			]);
+		});
 	});
 
 	it("keeps a user toggle until the mode changes, then resets to the mode's default", async () => {
 		const records = toolCallRecords(GREPS);
 		const {container, rerender} = render(transcript(records, "verbose"));
-		await waitFor(() => expect(disclosures(container)).toStrictEqual(EXPANDED_GROUP));
+		await waitFor(() => {
+			expect(disclosures(container)).toStrictEqual(EXPANDED_GROUP);
+		});
 
 		fireEvent.click(container.querySelector("button[aria-expanded]") as Element);
 		const toggledInVerbose = disclosures(container);

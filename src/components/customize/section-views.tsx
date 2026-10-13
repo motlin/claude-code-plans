@@ -46,7 +46,9 @@ export function SkillsSection({search}: SectionProps) {
 					title: skill.name,
 					source: `from ${skill.sourceLabel}`,
 					subtitle: skill.description,
-					onView: () => go({kind: "skill", id: skill.id, tab: "overview"}),
+					onView: () => {
+						go({kind: "skill", id: skill.id, tab: "overview"});
+					},
 				}))}
 			/>
 		);
@@ -95,7 +97,9 @@ export function SkillsSection({search}: SectionProps) {
 							subtitle: skill.description,
 							meta: <ShortDate ms={skill.mtime} />,
 							actions: <SkillRowActions skill={skill} />,
-							onView: () => go({kind: "skill", id: skill.id, tab: "overview"}),
+							onView: () => {
+								go({kind: "skill", id: skill.id, tab: "overview"});
+							},
 						})),
 					})),
 					commandGroup,
@@ -149,7 +153,9 @@ export function ConnectorsSection({search}: SectionProps) {
 		<ConnectorsTable
 			servers={visibleServers}
 			claudeAi={visibleClaudeAi}
-			onView={(server) => go({kind: "connector", slug: toConnectorSlug(server.id)})}
+			onView={(server) => {
+				go({kind: "connector", slug: toConnectorSlug(server.id)});
+			}}
 		/>
 	);
 }
@@ -174,7 +180,9 @@ export function PluginsSection({search}: SectionProps) {
 					title: plugin.name,
 					source: `from ${plugin.marketplace}`,
 					subtitle: plugin.description,
-					onView: () => go({kind: "plugin", id: plugin.id, tab: "overview"}),
+					onView: () => {
+						go({kind: "plugin", id: plugin.id, tab: "overview"});
+					},
 				}))}
 			/>
 		);
@@ -206,7 +214,9 @@ export function PluginsSection({search}: SectionProps) {
 					</>
 				),
 				actions: <PluginRowActions pluginId={plugin.id} name={plugin.name} installPath={plugin.installPath} />,
-				onView: () => go({kind: "plugin", id: plugin.id, tab: "overview"}),
+				onView: () => {
+					go({kind: "plugin", id: plugin.id, tab: "overview"});
+				},
 			}))
 			.sort(byName),
 	}));

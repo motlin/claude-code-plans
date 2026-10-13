@@ -76,12 +76,12 @@ export function normalizeQuestions(input: Record<string, unknown>): QuestionLike
 	if (Array.isArray(multi) && multi.length > 0) {
 		return multi as QuestionLike[];
 	}
-	const singleQ = typeof input["question"] === "string" ? (input["question"] as string) : null;
+	const singleQ = typeof input["question"] === "string" ? input["question"] : null;
 	const singleOpts = input["options"] as Array<{label: string; description?: string}> | undefined;
 	if (singleQ && singleOpts && singleOpts.length > 0) {
 		const data: QuestionLike = {question: singleQ, options: singleOpts};
 		if (typeof input["multiSelect"] === "boolean") data.multiSelect = input["multiSelect"];
-		if (typeof input["header"] === "string") data.header = input["header"] as string;
+		if (typeof input["header"] === "string") data.header = input["header"];
 		return [data];
 	}
 	return null;

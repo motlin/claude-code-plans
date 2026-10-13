@@ -77,7 +77,7 @@ function parseResponse<T>(line: string): HerdrResult<T> {
  * may also be empty after a deserialization error, so the connection itself is
  * the correlation boundary.
  */
-export function herdrRequest<T>(request: object, timeoutMs = 5000): Promise<HerdrResult<T>> {
+export async function herdrRequest<T>(request: object, timeoutMs = 5000): Promise<HerdrResult<T>> {
 	const serializedRequest = serializeRequest(request);
 	if (!serializedRequest.ok) return Promise.resolve(serializedRequest);
 

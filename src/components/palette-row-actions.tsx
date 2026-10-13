@@ -233,8 +233,12 @@ export function PaletteRowActionsCard({
 						tabIndex={-1}
 						data-card-item={item.id}
 						aria-keyshortcuts={String(index + 1)}
-						onClick={() => run(item.id)}
-						onMouseMove={(event) => event.currentTarget.focus()}
+						onClick={() => {
+							run(item.id);
+						}}
+						onMouseMove={(event) => {
+							event.currentTarget.focus();
+						}}
 						className="flex w-full cursor-pointer items-center gap-1.5 rounded-md px-2.5 py-1.5 outline-none select-none hover:bg-fill-ghost-hover focus:bg-fill-ghost-hover"
 					>
 						<span className="min-w-0 flex-1 truncate">{item.label}</span>
@@ -261,7 +265,9 @@ export function PaletteRowActionsButton({onOpen}: {onOpen: () => void}) {
 					aria-label="Actions"
 					tabIndex={-1}
 					data-palette-row-actions-button=""
-					onMouseDown={(event) => event.preventDefault()}
+					onMouseDown={(event) => {
+						event.preventDefault();
+					}}
 					onClick={onOpen}
 					className="flex size-6 items-center justify-center rounded-r5 text-primary transition-colors hover:bg-fill-ghost-hover"
 				>

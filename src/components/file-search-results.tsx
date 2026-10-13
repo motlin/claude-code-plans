@@ -101,7 +101,9 @@ export function FileSearchResults({initialQuery, onClose, onOpen, onQueryChange}
 	const debouncedQuery = useDebouncedValue(query.trim(), DEBOUNCE_MILLISECONDS);
 	const rootsQuery = useQuery(fileSearchRootsQueryOptions);
 
-	useEffect(() => setQuery(initialQuery), [initialQuery]);
+	useEffect(() => {
+		setQuery(initialQuery);
+	}, [initialQuery]);
 
 	useEffect(() => {
 		const firstRoot = rootsQuery.data?.roots[0];
@@ -225,7 +227,9 @@ export function FileSearchResults({initialQuery, onClose, onOpen, onQueryChange}
 					aria-label="Search root"
 					disabled={rootsQuery.isPending || rootsQuery.isError}
 					value={activeRoot ?? ""}
-					onChange={(event) => selectRoot(event.target.value)}
+					onChange={(event) => {
+						selectRoot(event.target.value);
+					}}
 					className="max-w-full rounded-md border border-border bg-surface-1 px-2 py-1 text-primary"
 				>
 					{rootsQuery.isPending ? <option value="">Loading roots...</option> : null}
@@ -243,7 +247,9 @@ export function FileSearchResults({initialQuery, onClose, onOpen, onQueryChange}
 								{index > 0 ? <ChevronRight className="h-3 w-3 shrink-0" /> : null}
 								<button
 									type="button"
-									onClick={() => selectScope(segment.path)}
+									onClick={() => {
+										selectScope(segment.path);
+									}}
 									className="max-w-40 truncate rounded px-1 py-0.5 hover:bg-surface-0 hover:text-primary"
 									title={segment.path}
 								>
@@ -282,14 +288,14 @@ export function FileSearchResults({initialQuery, onClose, onOpen, onQueryChange}
 					expandedPaths={expandedPaths}
 					selectedPath={selectedPath}
 					registerResult={registerResult}
-					onExpand={(path) =>
+					onExpand={(path) => {
 						setExpandedPaths((current) => {
 							const next = new Set(current);
 							if (next.has(path)) next.delete(path);
 							else next.add(path);
 							return next;
-						})
-					}
+						});
+					}}
 					onFocus={setSelectedPath}
 					onKeyDown={handleResultKeyDown}
 					onOpen={(path, lineNumber) => {
@@ -350,8 +356,12 @@ function ResultCards({
 								type="button"
 								aria-label={`Open ${file.path} at line ${firstLineNumber}`}
 								data-selected={selectedPath === file.path ? "true" : undefined}
-								onFocus={() => onFocus(file.path)}
-								onKeyDown={(event) => onKeyDown(event, file.path)}
+								onFocus={() => {
+									onFocus(file.path);
+								}}
+								onKeyDown={(event) => {
+									onKeyDown(event, file.path);
+								}}
 								onClick={(event) => {
 									const lineElement = (event.target as HTMLElement).closest<HTMLElement>(
 										"[data-line-number]",
@@ -401,7 +411,9 @@ function ResultCards({
 									type="button"
 									aria-label={`Search within ${directory}`}
 									title="Search within this directory"
-									onClick={() => onScopeChange(directory)}
+									onClick={() => {
+										onScopeChange(directory);
+									}}
 									className="absolute right-2 top-2 rounded p-1 text-t6 hover:bg-fill-ghost-hover hover:text-primary"
 								>
 									<FolderSearch className="h-3.5 w-3.5" />
@@ -411,7 +423,9 @@ function ResultCards({
 								<button
 									type="button"
 									aria-expanded={expanded}
-									onClick={() => onExpand(file.path)}
+									onClick={() => {
+										onExpand(file.path);
+									}}
 									className="mx-3 mb-2 flex items-center gap-1 rounded px-1 py-0.5 text-xs text-accent-100 hover:bg-surface-0"
 								>
 									{expanded ? (

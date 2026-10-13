@@ -86,7 +86,9 @@ export function SessionGroups({
 			if (event.key === "Escape") dispatchSelection({type: "clear"});
 		};
 		window.addEventListener("keydown", onKeyDown);
-		return () => window.removeEventListener("keydown", onKeyDown);
+		return () => {
+			window.removeEventListener("keydown", onKeyDown);
+		};
 	}, [hasSelection]);
 	const latestSelected = useRef<readonly string[]>([]);
 	const [uncapped, setUncapped] = useState<ReadonlySet<string>>(() => new Set());
@@ -161,7 +163,9 @@ export function SessionGroups({
 			{root: end.closest("[data-testid=nav-scroll]"), rootMargin: "200px"},
 		);
 		observer.observe(end);
-		return () => observer.disconnect();
+		return () => {
+			observer.disconnect();
+		};
 	}, [loadOnScroll, fetchNextPage]);
 
 	if (split === undefined || groups === undefined) {
@@ -195,8 +199,12 @@ export function SessionGroups({
 			);
 			return true;
 		},
-		selectAll: (ids) => dispatchSelection({type: "add", ids, order: displayOrder}),
-		clear: () => dispatchSelection({type: "clear"}),
+		selectAll: (ids) => {
+			dispatchSelection({type: "add", ids, order: displayOrder});
+		},
+		clear: () => {
+			dispatchSelection({type: "clear"});
+		},
 	};
 	const sectionDrag = drag !== null && sectionOfDragId(drag.srcId) !== null;
 	const rowDrag = drag !== null && !sectionDrag;
@@ -260,13 +268,13 @@ export function SessionGroups({
 										void fetchNextPage();
 									}
 								}}
-								onShowLess={() =>
+								onShowLess={() => {
 									setUncapped((previous) => {
 										const next = new Set(previous);
 										next.delete(group.key);
 										return next;
-									})
-								}
+									});
+								}}
 								dragRowProps={rowProps}
 								familyHeadIds={familyHeadIds}
 								{...(groupId === null

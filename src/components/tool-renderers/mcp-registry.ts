@@ -1,24 +1,24 @@
 import {lazy, type ComponentType} from "react";
 import type {ToolRendererProps} from "./types";
 
-const ChromeDevtoolsRenderer = lazy(() =>
+const ChromeDevtoolsRenderer = lazy(async () =>
 	import("./chrome-devtools-renderer").then((m) => ({
 		default: m.ChromeDevtoolsRenderer,
 	})),
 );
-const GithubRenderer = lazy(() => import("./github-renderer").then((m) => ({default: m.GithubRenderer})));
-const PlaywrightRenderer = lazy(() =>
+const GithubRenderer = lazy(async () => import("./github-renderer").then((m) => ({default: m.GithubRenderer})));
+const PlaywrightRenderer = lazy(async () =>
 	import("./playwright-renderer").then((m) => ({
 		default: m.PlaywrightRenderer,
 	})),
 );
-const ClaudeInChromeRenderer = lazy(() =>
+const ClaudeInChromeRenderer = lazy(async () =>
 	import("./claude-in-chrome-renderer").then((m) => ({
 		default: m.ClaudeInChromeRenderer,
 	})),
 );
-const Context7Renderer = lazy(() => import("./context7-renderer").then((m) => ({default: m.Context7Renderer})));
-const McpRenderer = lazy(() => import("./mcp-renderer").then((m) => ({default: m.McpRenderer})));
+const Context7Renderer = lazy(async () => import("./context7-renderer").then((m) => ({default: m.Context7Renderer})));
+const McpRenderer = lazy(async () => import("./mcp-renderer").then((m) => ({default: m.McpRenderer})));
 
 const mcpRegistry: Record<string, ComponentType<ToolRendererProps>> = {
 	"chrome-devtools": ChromeDevtoolsRenderer,

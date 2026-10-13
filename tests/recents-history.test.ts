@@ -227,9 +227,13 @@ describe("storage", () => {
 
 	it("is a no-op when storage throws or is missing", () => {
 		expect(loadRecents(new ThrowingStorage())).toEqual([]);
-		expect(() => saveRecents([session("a")], new ThrowingStorage())).not.toThrow();
+		expect(() => {
+			saveRecents([session("a")], new ThrowingStorage());
+		}).not.toThrow();
 		expect(loadRecents(null)).toEqual([]);
-		expect(() => saveRecents([session("a")], null)).not.toThrow();
+		expect(() => {
+			saveRecents([session("a")], null);
+		}).not.toThrow();
 	});
 });
 

@@ -141,7 +141,9 @@ function TypeTabs({value, onChange}: {value: UnifiedSearchType; onChange: (type:
 						type="button"
 						role="tab"
 						aria-selected={selected}
-						onClick={() => onChange(type)}
+						onClick={() => {
+							onChange(type);
+						}}
 						className={`h-7 shrink-0 rounded-r6 px-2 text-sm transition-colors hover:bg-fill-ghost-hover hover:text-primary ${
 							selected ? "bg-fill-ghost-hover font-medium text-primary" : "text-secondary"
 						}`}
@@ -238,7 +240,9 @@ function UnifiedResults({q, type}: {q: string; type: Exclude<UnifiedSearchType, 
 				aria-expanded={items !== undefined && items.length > 0}
 				{...(selected === undefined ? {} : {"aria-activedescendant": optionId(selected)})}
 				value={query}
-				onChange={(event) => setQuery(event.target.value)}
+				onChange={(event) => {
+					setQuery(event.target.value);
+				}}
 				onKeyDown={handleKeyDown}
 				placeholder="Search sessions, plans and memories"
 				className="mt-4 w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-accent-100"
@@ -271,7 +275,9 @@ function UnifiedResults({q, type}: {q: string; type: Exclude<UnifiedSearchType, 
 						onMouseMove={() => {
 							if (index !== selectedIndex) setSelection({items, index});
 						}}
-						onClick={() => openItem(item)}
+						onClick={() => {
+							openItem(item);
+						}}
 						className="group flex w-full cursor-pointer items-center justify-between gap-3 truncate rounded-lg px-3 py-2 text-sm leading-5 text-secondary select-none aria-selected:bg-fill-ghost-hover aria-selected:text-primary"
 					>
 						<SearchResultCard item={item} now={now} />

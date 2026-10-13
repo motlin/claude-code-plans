@@ -90,7 +90,9 @@ async function renderGroups(sessions: unknown[], options: {nextCursor?: string |
 	});
 	await router.load();
 	const result = render(<RouterProvider router={router} />);
-	await waitFor(() => expect(result.container.querySelector("[data-group-toggle]")).toBeTruthy());
+	await waitFor(() => {
+		expect(result.container.querySelector("[data-group-toggle]")).toBeTruthy();
+	});
 	return result;
 }
 
@@ -282,13 +284,13 @@ describe("sidebar SessionGroups", () => {
 		});
 		const {container} = await renderGroups(FIXTURE, {nextCursor: "cursor-2"});
 
-		await waitFor(() =>
+		await waitFor(() => {
 			expect(rowTitlesIn(container, "state-done")).toStrictEqual([
 				"Completed newest",
 				"Completed older",
 				"Completed next page",
-			]),
-		);
+			]);
+		});
 		expect(requests).toStrictEqual(["/api/sessions/recent?limit=50&cursor=cursor-2&live=1"]);
 	});
 
@@ -307,7 +309,9 @@ describe("sidebar SessionGroups", () => {
 
 		fireEvent.click(screen.getByRole("button", {name: "Show 3 more in Completed"}));
 
-		await waitFor(() => expect(rowTitlesIn(container, "state-done")).toHaveLength(24));
+		await waitFor(() => {
+			expect(rowTitlesIn(container, "state-done")).toHaveLength(24);
+		});
 		expect(rowTitlesIn(container, "state-done").at(-1)).toBe("Done older page");
 		expect(requests).toStrictEqual(["/api/sessions/recent?limit=50&cursor=cursor-2&live=1"]);
 		expect(screen.getByRole("button", {name: "Show less in Completed"})).toBeTruthy();

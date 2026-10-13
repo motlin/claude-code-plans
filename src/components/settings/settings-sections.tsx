@@ -56,7 +56,12 @@ function ToggleRow({label, description, settingKey}: ToggleRowProps) {
 
 	return (
 		<SettingsRow slug={toSlug(label)} title={label} description={description}>
-			<Switch checked={checked} onCheckedChange={(next) => setSetting(settingKey, next)} />
+			<Switch
+				checked={checked}
+				onCheckedChange={(next) => {
+					setSetting(settingKey, next);
+				}}
+			/>
 		</SettingsRow>
 	);
 }
@@ -77,12 +82,12 @@ function CapabilityToggleRow({
 		<SettingsRow slug={toSlug(label)} title={label} description={description}>
 			<Switch
 				checked={checked}
-				onCheckedChange={(enabled) =>
+				onCheckedChange={(enabled) => {
 					setSetting("capabilities", {
 						...settings.capabilities,
 						[capabilityId]: {...settings.capabilities[capabilityId], enabled},
-					})
-				}
+					});
+				}}
 			/>
 		</SettingsRow>
 	);
@@ -106,15 +111,15 @@ function WorkingCopyReviewModeRow() {
 			<SegmentedControl
 				value={mode}
 				options={REVIEW_MODE_OPTIONS}
-				onValueChange={(offerMode) =>
+				onValueChange={(offerMode) => {
 					setSetting("capabilities", {
 						...settings.capabilities,
 						workingCopyReview: {
 							...settings.capabilities.workingCopyReview,
 							config: {offerMode},
 						},
-					})
-				}
+					});
+				}}
 			/>
 		</SettingsRow>
 	);
@@ -231,7 +236,9 @@ function SelectRow({label, description, settingKey, options}: SelectRowProps) {
 				aria-label={label}
 				value={settings[settingKey]}
 				options={options}
-				onValueChange={(next) => setSetting(settingKey, next)}
+				onValueChange={(next) => {
+					setSetting(settingKey, next);
+				}}
 			/>
 		</SettingsRow>
 	);
@@ -260,7 +267,7 @@ function NumberRow({label, description, settingKey, min, max}: NumberRowProps) {
 				onChange={(e) => {
 					const parsed = Number(e.target.value);
 					if (Number.isFinite(parsed)) {
-						setSetting(settingKey, parsed as Settings[NumberSettingKey]);
+						setSetting(settingKey, parsed);
 					}
 				}}
 				className="h-8 w-24 rounded-r6 border border-border bg-[var(--settings-field-bg)] px-3 text-body text-primary outline-none focus-visible:ring-2 focus-visible:ring-accent-100/40"
@@ -305,7 +312,9 @@ function AppearanceSection() {
 				<SegmentedControl
 					value={settings.interfaceFont}
 					options={INTERFACE_FONT_OPTIONS}
-					onValueChange={(next) => setSetting("interfaceFont", next)}
+					onValueChange={(next) => {
+						setSetting("interfaceFont", next);
+					}}
 				/>
 			</SettingsRow>
 			<SettingsRow
@@ -316,7 +325,9 @@ function AppearanceSection() {
 				<SegmentedControl
 					value={settings.transcriptTextSize}
 					options={TRANSCRIPT_TEXT_SIZE_OPTIONS}
-					onValueChange={(next) => setSetting("transcriptTextSize", next)}
+					onValueChange={(next) => {
+						setSetting("transcriptTextSize", next);
+					}}
 				/>
 			</SettingsRow>
 			<SettingsRow
@@ -365,7 +376,9 @@ function TranscriptWidthRow() {
 			<SegmentedControl
 				value={settings.transcriptWidth}
 				options={TRANSCRIPT_WIDTH_OPTIONS}
-				onValueChange={(next) => setSetting("transcriptWidth", next)}
+				onValueChange={(next) => {
+					setSetting("transcriptWidth", next);
+				}}
 			/>
 		</SettingsRow>
 	);
@@ -383,7 +396,9 @@ function MotionRow() {
 			<SegmentedControl
 				value={settings.motion}
 				options={MOTION_OPTIONS}
-				onValueChange={(next) => setSetting("motion", next)}
+				onValueChange={(next) => {
+					setSetting("motion", next);
+				}}
 			/>
 		</SettingsRow>
 	);
@@ -445,7 +460,9 @@ export function LinkCategoryRulesSection() {
 								<input
 									type="text"
 									value={rule.label}
-									onChange={(event) => replaceRule(index, {...rule, label: event.target.value})}
+									onChange={(event) => {
+										replaceRule(index, {...rule, label: event.target.value});
+									}}
 									className="mt-1 block w-full rounded-md border border-border bg-surface-1 px-2 py-1.5 text-sm text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
 								/>
 							</label>
@@ -455,12 +472,12 @@ export function LinkCategoryRulesSection() {
 									type="text"
 									value={rule.hostPattern}
 									placeholder="*.example.com"
-									onChange={(event) =>
+									onChange={(event) => {
 										replaceRule(index, {
 											...rule,
 											hostPattern: event.target.value,
-										})
-									}
+										});
+									}}
 									className="mt-1 block w-full rounded-md border border-border bg-surface-1 px-2 py-1.5 text-sm text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
 								/>
 							</label>
@@ -470,7 +487,9 @@ export function LinkCategoryRulesSection() {
 									aria-label={`Move rule ${index + 1} up`}
 									title="Move up"
 									disabled={index === 0}
-									onClick={() => moveRule(index, index - 1)}
+									onClick={() => {
+										moveRule(index, index - 1);
+									}}
 									className="rounded-md border border-border p-1.5 text-secondary transition-colors hover:bg-surface-0 disabled:cursor-not-allowed disabled:opacity-40"
 								>
 									<ArrowUp className="h-4 w-4" />
@@ -480,7 +499,9 @@ export function LinkCategoryRulesSection() {
 									aria-label={`Move rule ${index + 1} down`}
 									title="Move down"
 									disabled={index === rules.length - 1}
-									onClick={() => moveRule(index, index + 1)}
+									onClick={() => {
+										moveRule(index, index + 1);
+									}}
 									className="rounded-md border border-border p-1.5 text-secondary transition-colors hover:bg-surface-0 disabled:cursor-not-allowed disabled:opacity-40"
 								>
 									<ArrowDown className="h-4 w-4" />
@@ -489,12 +510,12 @@ export function LinkCategoryRulesSection() {
 									type="button"
 									aria-label={`Delete rule ${index + 1}`}
 									title="Delete rule"
-									onClick={() =>
+									onClick={() => {
 										setSetting(
 											"linkCategoryRules",
 											rules.filter((_, ruleIndex) => ruleIndex !== index),
-										)
-									}
+										);
+									}}
 									className="rounded-md border border-border p-1.5 text-red-600 transition-colors hover:bg-red-600/10"
 								>
 									<Trash2 className="h-4 w-4" />
@@ -506,7 +527,9 @@ export function LinkCategoryRulesSection() {
 
 				<button
 					type="button"
-					onClick={() => setSetting("linkCategoryRules", [...rules, {label: "", hostPattern: ""}])}
+					onClick={() => {
+						setSetting("linkCategoryRules", [...rules, {label: "", hostPattern: ""}]);
+					}}
 					className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm text-secondary transition-colors hover:bg-surface-0"
 				>
 					<Plus className="h-4 w-4" />
@@ -538,7 +561,9 @@ export function ApplicationConfigurationSection() {
 	}
 
 	const settings = applicationSettings.data;
-	const save = (next: typeof settings) => saveSettings.mutate({...next, ignoredDirs: [...next.ignoredDirs].sort()});
+	const save = (next: typeof settings) => {
+		saveSettings.mutate({...next, ignoredDirs: [...next.ignoredDirs].sort()});
+	};
 	const savedIgnoredDirectories = [...settings.ignoredDirs].sort().join("\n");
 
 	return (
@@ -548,12 +573,12 @@ export function ApplicationConfigurationSection() {
 				description="Allow prompts, interrupts, and state reports for live Herdr terminals. Applies immediately without a server restart."
 				checked={settings.herdrWritesEnabled}
 				disabled={saveSettings.isPending}
-				onToggle={() =>
+				onToggle={() => {
 					save({
 						...settings,
 						herdrWritesEnabled: !settings.herdrWritesEnabled,
-					})
-				}
+					});
+				}}
 			/>
 
 			<ApplicationToggleRow
@@ -561,18 +586,20 @@ export function ApplicationConfigurationSection() {
 				description="Open login shells in the session folder from the Terminal pane. Only served to this computer."
 				checked={settings.shellPaneEnabled}
 				disabled={saveSettings.isPending}
-				onToggle={() =>
+				onToggle={() => {
 					save({
 						...settings,
 						shellPaneEnabled: !settings.shellPaneEnabled,
-					})
-				}
+					});
+				}}
 			/>
 
 			<IgnoredDirectoriesField
 				savedIgnoredDirectories={savedIgnoredDirectories}
 				disabled={saveSettings.isPending}
-				onSave={(ignoredDirs) => save({...settings, ignoredDirs})}
+				onSave={(ignoredDirs) => {
+					save({...settings, ignoredDirs});
+				}}
 			/>
 
 			{saveSettings.isError ? (
@@ -610,21 +637,23 @@ function IgnoredDirectoriesField({
 				id="application-ignored-directories"
 				aria-label="Ignored watcher directories"
 				value={ignoredDirectories}
-				onChange={(event) => setIgnoredDirectories(event.target.value)}
+				onChange={(event) => {
+					setIgnoredDirectories(event.target.value);
+				}}
 				rows={6}
 				className="mt-2 w-full rounded-md border border-border bg-surface-1 px-3 py-2 font-mono text-sm text-primary"
 			/>
 			<button
 				type="button"
 				disabled={disabled}
-				onClick={() =>
+				onClick={() => {
 					onSave(
 						ignoredDirectories
 							.split("\n")
 							.map((directory) => directory.trim())
 							.filter(Boolean),
-					)
-				}
+					);
+				}}
 				className="mt-2 rounded-md border border-border px-3 py-1.5 text-sm text-secondary transition-colors hover:bg-surface-0 disabled:cursor-wait disabled:opacity-50"
 			>
 				Save ignored directories
@@ -674,7 +703,9 @@ function ResetAllSettings() {
 					</button>
 					<button
 						type="button"
-						onClick={() => setConfirmReset(false)}
+						onClick={() => {
+							setConfirmReset(false);
+						}}
 						className="rounded-md border border-border px-3 py-1.5 text-sm text-secondary transition-colors hover:bg-surface-0"
 					>
 						Cancel
@@ -683,7 +714,9 @@ function ResetAllSettings() {
 			) : (
 				<button
 					type="button"
-					onClick={() => setConfirmReset(true)}
+					onClick={() => {
+						setConfirmReset(true);
+					}}
 					className="rounded-md border border-border px-3 py-1.5 text-sm text-secondary transition-colors hover:bg-surface-0"
 				>
 					Reset all to defaults
@@ -720,7 +753,7 @@ export function GeneralSettings() {
 }
 
 // Lazy so the Settings dialog, which the root mounts, keeps Shiki out of the entry bundle.
-const CodeThemePreview = lazy(() =>
+const CodeThemePreview = lazy(async () =>
 	import("./code-theme-preview").then((module) => ({default: module.CodeThemePreview})),
 );
 
@@ -742,7 +775,9 @@ function CodeAppearanceSection() {
 						aria-label="Light code theme"
 						value={settings.codeThemeLight}
 						options={CODE_THEME_LIGHT_OPTIONS}
-						onValueChange={(next) => setSetting("codeThemeLight", next)}
+						onValueChange={(next) => {
+							setSetting("codeThemeLight", next);
+						}}
 						className="w-full"
 					/>
 					<Suspense>
@@ -754,7 +789,9 @@ function CodeAppearanceSection() {
 						aria-label="Dark code theme"
 						value={settings.codeThemeDark}
 						options={CODE_THEME_DARK_OPTIONS}
-						onValueChange={(next) => setSetting("codeThemeDark", next)}
+						onValueChange={(next) => {
+							setSetting("codeThemeDark", next);
+						}}
 						className="w-full"
 					/>
 					<Suspense>
@@ -781,7 +818,9 @@ function CodeAppearanceSection() {
 					aria-label="Code font"
 					placeholder="e.g. JetBrains Mono"
 					value={settings.codeFont}
-					onChange={(event) => setSetting("codeFont", event.target.value)}
+					onChange={(event) => {
+						setSetting("codeFont", event.target.value);
+					}}
 					className="h-8 w-[220px] rounded-r6 border border-border bg-[var(--settings-field-bg)] px-3 text-body text-primary outline-none placeholder:text-[var(--settings-muted)] focus-visible:ring-2 focus-visible:ring-accent-100/40"
 				/>
 			</SettingsRow>

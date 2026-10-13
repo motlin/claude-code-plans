@@ -99,5 +99,11 @@ export function IndexingBanner() {
 
 	if (!isIndexing || dismissed) return null;
 
-	return <IndexingBannerView onDismiss={() => setDismissed(true)} />;
+	return (
+		<IndexingBannerView
+			onDismiss={() => {
+				setDismissed(true);
+			}}
+		/>
+	);
 }

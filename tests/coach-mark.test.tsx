@@ -92,7 +92,9 @@ async function renderSidebar() {
 	});
 	await router.load();
 	const result = render(<RouterProvider router={router} />);
-	await waitFor(() => expect(result.container.querySelector("[data-group-toggle]")).toBeTruthy());
+	await waitFor(() => {
+		expect(result.container.querySelector("[data-group-toggle]")).toBeTruthy();
+	});
 	return result;
 }
 
@@ -194,17 +196,23 @@ describe("drag-to-pin coach mark", () => {
 
 		await menuPin("Review one");
 
-		await waitFor(() => expect(hint()).not.toBeNull());
+		await waitFor(() => {
+			expect(hint()).not.toBeNull();
+		});
 		expect(container.querySelector("[data-pin-drop-row]")?.textContent).toBe("Drag to pin");
 	});
 
 	it("is shown once: Dismiss persists the flag and later menu pins stay quiet", async () => {
 		const {container} = await renderSidebar();
 		await menuPin("Review one");
-		await waitFor(() => expect(hint()).not.toBeNull());
+		await waitFor(() => {
+			expect(hint()).not.toBeNull();
+		});
 
 		fireEvent.click(screen.getByRole("button", {name: "Dismiss"}));
-		await waitFor(() => expect(hint()).toBeNull());
+		await waitFor(() => {
+			expect(hint()).toBeNull();
+		});
 		expect(localStorage.getItem(SEEN_KEY)).toBe("true");
 		expect(container.querySelector("[data-pin-drop-row]")).toBeNull();
 
@@ -215,24 +223,34 @@ describe("drag-to-pin coach mark", () => {
 	it("Escape marks the hint seen", async () => {
 		await renderSidebar();
 		await menuPin("Review one");
-		await waitFor(() => expect(hint()).not.toBeNull());
+		await waitFor(() => {
+			expect(hint()).not.toBeNull();
+		});
 
 		fireEvent.keyDown(document.body, {key: "Escape"});
-		await waitFor(() => expect(hint()).toBeNull());
+		await waitFor(() => {
+			expect(hint()).toBeNull();
+		});
 		expect(localStorage.getItem(SEEN_KEY)).toBe("true");
 	});
 
 	it("an outside click closes it without marking it seen, so the next menu pin shows it again", async () => {
 		await renderSidebar();
 		await menuPin("Review one");
-		await waitFor(() => expect(hint()).not.toBeNull());
+		await waitFor(() => {
+			expect(hint()).not.toBeNull();
+		});
 
 		clickOutside();
-		await waitFor(() => expect(hint()).toBeNull());
+		await waitFor(() => {
+			expect(hint()).toBeNull();
+		});
 		expect(localStorage.getItem(SEEN_KEY)).toBeNull();
 
 		await menuPin("Completed older");
-		await waitFor(() => expect(hint()).not.toBeNull());
+		await waitFor(() => {
+			expect(hint()).not.toBeNull();
+		});
 	});
 
 	it("stays hidden when the flag is already persisted", async () => {
@@ -273,7 +291,7 @@ describe("drag-to-pin coach mark", () => {
 				x: 0,
 				y: top,
 				toJSON: () => ({}),
-			} as DOMRect;
+			};
 		});
 		await renderSidebar();
 		const link = screen.getByText("Review one").closest("a[data-row-main-button]");
@@ -290,7 +308,11 @@ describe("drag-to-pin coach mark", () => {
 			fireEvent.pointerUp(window, {pointerId: 1, clientX: 50, clientY: 210});
 		});
 
-		await waitFor(() => expect(readPinState().pinnedIds).toStrictEqual(["r1"]));
-		await waitFor(() => expect(localStorage.getItem(SEEN_KEY)).toBe("true"));
+		await waitFor(() => {
+			expect(readPinState().pinnedIds).toStrictEqual(["r1"]);
+		});
+		await waitFor(() => {
+			expect(localStorage.getItem(SEEN_KEY)).toBe("true");
+		});
 	});
 });

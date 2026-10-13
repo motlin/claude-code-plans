@@ -13,7 +13,7 @@ export function useSessionFork(): (target: ForkTarget) => void {
 	return (target) => {
 		void forkSession(target, {
 			herdrWritable,
-			launch: (launch) => launchHerdrSession(launch),
+			launch: async (launch) => launchHerdrSession(launch),
 			copy: writeClipboardText,
 			toast,
 			onLaunched: setPendingFork,

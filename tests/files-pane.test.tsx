@@ -400,7 +400,7 @@ describe("Files pane header", () => {
 		registerFilesPane();
 		renderSession();
 		press(CMD_SHIFT_F);
-		const input = within(filesPane()).getByRole("searchbox", {name: "Filter files"}) as HTMLInputElement;
+		const input = within(filesPane()).getByRole<HTMLInputElement>("searchbox", {name: "Filter files"});
 		fireEvent.change(input, {target: {value: "agent"}});
 		input.setSelectionRange(5, 5);
 		input.blur();
@@ -427,12 +427,12 @@ describe("Files pane header", () => {
 
 		fireEvent.click(within(pane).getByRole("button", {name: "Go to file or search"}));
 
-		await waitFor(() =>
+		await waitFor(() => {
 			expect({
 				tree: pane.querySelector("[data-files-tree]") !== null,
 				focused: document.activeElement?.getAttribute("aria-label"),
-			}).toStrictEqual({tree: true, focused: "Filter files"}),
-		);
+			}).toStrictEqual({tree: true, focused: "Filter files"});
+		});
 	});
 });
 

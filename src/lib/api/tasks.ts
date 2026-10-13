@@ -31,7 +31,7 @@ export const TaskListResponse = z.array(TaskGroupSchema);
 
 export const tasksQueryOptions = queryOptions({
 	queryKey: ["tasks"] as const,
-	queryFn: () => apiFetch("/api/tasks", TaskListResponse),
+	queryFn: async () => apiFetch("/api/tasks", TaskListResponse),
 	staleTime: Infinity,
 	gcTime: Infinity,
 });

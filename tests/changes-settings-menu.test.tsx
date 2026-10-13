@@ -64,10 +64,7 @@ class WidthObserver {
 	constructor(private readonly callback: ResizeObserverCallback) {}
 	observe(target: Element) {
 		if (target.querySelector('[aria-label="Changes settings"]') === null) return;
-		this.callback(
-			[{target, contentRect: {width: paneWidth}} as unknown as ResizeObserverEntry],
-			this as unknown as ResizeObserver,
-		);
+		this.callback([{target, contentRect: {width: paneWidth}} as unknown as ResizeObserverEntry], this);
 	}
 	unobserve() {}
 	disconnect() {}

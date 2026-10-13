@@ -15,7 +15,7 @@ import {ListPageHeader} from "../components/list-page-header";
 
 export const Route = createFileRoute("/notifications")({
 	component: NotificationsPage,
-	loader: ({context: {queryClient}}) => queryClient.ensureQueryData(notificationsQueryOptions()),
+	loader: async ({context: {queryClient}}) => queryClient.ensureQueryData(notificationsQueryOptions()),
 	head: () => ({
 		meta: [{title: "Notifications"}],
 	}),
@@ -85,7 +85,9 @@ function NotificationsPage() {
 					notifications.length > 0 ? (
 						<button
 							type="button"
-							onClick={() => clearAll.mutate()}
+							onClick={() => {
+								clearAll.mutate();
+							}}
 							className="text-xs text-t6 hover:text-primary"
 						>
 							Clear all
@@ -124,7 +126,9 @@ function NotificationsPage() {
 								<button
 									type="button"
 									aria-label="Dismiss notification"
-									onClick={() => dismiss.mutate(notification.id)}
+									onClick={() => {
+										dismiss.mutate(notification.id);
+									}}
 									className="absolute right-2 top-2 rounded p-1 text-t6 opacity-0 transition-opacity hover:bg-fill-ghost-hover hover:text-primary group-hover:opacity-100"
 								>
 									<X className="size-4" />

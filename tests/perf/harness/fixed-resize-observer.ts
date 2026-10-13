@@ -26,7 +26,7 @@ export function installFixedResizeObserver(size: FixedSize | ((element: Element)
 				contentBoxSize: boxSize,
 				devicePixelContentBoxSize: boxSize,
 			} as unknown as ResizeObserverEntry;
-			this.callback([entry], this as unknown as ResizeObserver);
+			this.callback([entry], this);
 		}
 
 		unobserve(): void {}

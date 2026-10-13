@@ -112,7 +112,7 @@ export const Route = createFileRoute("/api/hooks")({
 
 					existingHooks[eventName] = eventEntries.filter((entry) => !containsManagedHook(entry));
 
-					if ((existingHooks[eventName] as unknown[]).length === 0) {
+					if (existingHooks[eventName].length === 0) {
 						delete existingHooks[eventName];
 					}
 				}

@@ -144,7 +144,9 @@ describe("pin store", () => {
 			throw new Error("denied");
 		});
 
-		expect(() => pin("session-alice")).not.toThrow();
+		expect(() => {
+			pin("session-alice");
+		}).not.toThrow();
 		expect(readPinState()).toStrictEqual({pinnedIds: [], pinnedOrder: []});
 	});
 
@@ -152,7 +154,9 @@ describe("pin store", () => {
 		const first = renderHook(() => usePins());
 		const second = renderHook(() => usePins());
 
-		act(() => pin("session-alice"));
+		act(() => {
+			pin("session-alice");
+		});
 		const afterLocal = {
 			first: first.result.current.pinnedIds,
 			second: second.result.current.isPinned("session-alice"),

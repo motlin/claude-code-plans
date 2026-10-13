@@ -12,7 +12,7 @@ export const SettingsResponse = z.array(SettingsFileSchema);
 
 export const settingsQueryOptions = queryOptions({
 	queryKey: ["settings"] as const,
-	queryFn: () => apiFetch("/api/settings", SettingsResponse),
+	queryFn: async () => apiFetch("/api/settings", SettingsResponse),
 	staleTime: Infinity,
 	gcTime: Infinity,
 });
@@ -22,7 +22,7 @@ export const SettingsSaveResponse = z.object({path: z.string()});
 export const useSaveSettingsFile = () => {
 	const qc = useQueryClient();
 	return useMutation({
-		mutationFn: ({filename, content}: {filename: "settings.json" | "settings.local.json"; content: string}) =>
+		mutationFn: async ({filename, content}: {filename: "settings.json" | "settings.local.json"; content: string}) =>
 			apiFetch(`/api/settings/${encodeURIComponent(filename)}`, SettingsSaveResponse, {
 				method: "PUT",
 				headers: {"Content-Type": "application/json"},

@@ -17,7 +17,7 @@ const GHOSTTY: TerminalThemeState = {ready: true, theme: null};
 
 const mappedThemes = new Map<CodeThemeId, Promise<ITheme>>();
 
-function mappedTheme(id: CodeThemeId): Promise<ITheme> {
+async function mappedTheme(id: CodeThemeId): Promise<ITheme> {
 	let pending = mappedThemes.get(id);
 	if (pending === undefined) {
 		pending = loadCodeTheme(id).then(terminalThemeFromCodeTheme);

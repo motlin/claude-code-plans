@@ -158,7 +158,9 @@ describe("RecentsSwitcher", () => {
 	});
 
 	afterEach(() => {
-		act(() => setKeyboardShortcutsOpen(false));
+		act(() => {
+			setKeyboardShortcutsOpen(false);
+		});
 		cleanup();
 		vi.restoreAllMocks();
 	});
@@ -184,7 +186,9 @@ describe("RecentsSwitcher", () => {
 			selected: {active: "recents-switcher-row-1", title: "Big plan"},
 		});
 		releaseControl();
-		await waitFor(() => expect(router.state.location.pathname).toBe("/plan/big-plan"));
+		await waitFor(() => {
+			expect(router.state.location.pathname).toBe("/plan/big-plan");
+		});
 	});
 
 	it.each(["reassigned", "removed", "failed"])(
@@ -227,7 +231,9 @@ describe("RecentsSwitcher", () => {
 				selected: {active: "recents-switcher-row-0", title: "Alpha alias"},
 			});
 			releaseControl();
-			await waitFor(() => expect(router.state.location.pathname).toBe("/session/alpha"));
+			await waitFor(() => {
+				expect(router.state.location.pathname).toBe("/session/alpha");
+			});
 			expect(fetch.mock.calls).toStrictEqual([]);
 		},
 	);
@@ -248,7 +254,9 @@ describe("RecentsSwitcher", () => {
 		await screen.findByRole("dialog", {name: "Recents"});
 		expect(selectedRow()).toStrictEqual({active: "recents-switcher-row-0", title: "Unknown session"});
 		releaseControl();
-		await waitFor(() => expect(router.state.location.pathname).toBe("/session/session_example"));
+		await waitFor(() => {
+			expect(router.state.location.pathname).toBe("/session/session_example");
+		});
 		expect(fetch.mock.calls).toStrictEqual([]);
 	});
 
@@ -262,7 +270,9 @@ describe("RecentsSwitcher", () => {
 		act(() => queryClient.setQueryData(sessionQueryKeys.identity("session_example"), {sessionId: "alpha"}));
 		expect(selectedRow()).toStrictEqual({active: "recents-switcher-row-0", title: "Alpha session"});
 		releaseControl();
-		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog")).toBeNull();
+		});
 		expect(navigate.mock.calls).toStrictEqual([]);
 	});
 
@@ -341,8 +351,12 @@ describe("RecentsSwitcher", () => {
 		pressQ();
 		releaseControl();
 
-		await waitFor(() => expect(router.state.location.pathname).toBe("/memory/proj/notes"));
-		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		await waitFor(() => {
+			expect(router.state.location.pathname).toBe("/memory/proj/notes");
+		});
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog")).toBeNull();
+		});
 	});
 
 	it("commits on Enter", async () => {
@@ -353,7 +367,9 @@ describe("RecentsSwitcher", () => {
 		await screen.findByRole("dialog", {name: "Recents"});
 		fireEvent.keyDown(document.body, {key: "Enter", ctrlKey: true});
 
-		await waitFor(() => expect(router.state.location.pathname).toBe("/plan/big-plan"));
+		await waitFor(() => {
+			expect(router.state.location.pathname).toBe("/plan/big-plan");
+		});
 	});
 
 	it("closes without navigating on Esc", async () => {
@@ -365,7 +381,9 @@ describe("RecentsSwitcher", () => {
 		fireEvent.keyDown(document.body, {key: "Escape", ctrlKey: true});
 		releaseControl();
 
-		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog")).toBeNull();
+		});
 		expect(router.state.location.pathname).toBe("/session/alpha");
 	});
 
@@ -377,7 +395,9 @@ describe("RecentsSwitcher", () => {
 		await screen.findByRole("dialog", {name: "Recents"});
 		fireEvent.blur(window);
 
-		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog")).toBeNull();
+		});
 		expect(router.state.location.pathname).toBe("/session/alpha");
 	});
 
@@ -392,7 +412,9 @@ describe("RecentsSwitcher", () => {
 		pressQ();
 		releaseControl();
 
-		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog")).toBeNull();
+		});
 		expect(navigate).not.toHaveBeenCalled();
 	});
 
@@ -433,14 +455,18 @@ describe("RecentsSwitcher", () => {
 		fireEvent.keyUp(document.body, {key: "Alt", code: "AltLeft"});
 
 		expect(afterCtrl).toBeNull();
-		await waitFor(() => expect(router.state.location.pathname).toBe("/plan/big-plan"));
+		await waitFor(() => {
+			expect(router.state.location.pathname).toBe("/plan/big-plan");
+		});
 	});
 
 	it("is listed in the shortcuts dialog as Switch between recents ⌃Q", async () => {
 		renderApp();
 		await screen.findByText("page");
 
-		act(() => setKeyboardShortcutsOpen(true));
+		act(() => {
+			setKeyboardShortcutsOpen(true);
+		});
 
 		const dialog = await screen.findByRole("dialog", {name: "Keyboard shortcuts"});
 		const row = within(dialog).getByText("Switch between recents").parentElement;
@@ -455,7 +481,9 @@ describe("RecentsSwitcher", () => {
 		renderApp();
 		await screen.findByText("page");
 
-		act(() => setKeyboardShortcutsOpen(true));
+		act(() => {
+			setKeyboardShortcutsOpen(true);
+		});
 
 		const dialog = await screen.findByRole("dialog", {name: "Keyboard shortcuts"});
 		const row = within(dialog).getByText("Switch between recents").parentElement;

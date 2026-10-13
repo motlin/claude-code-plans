@@ -86,7 +86,9 @@ export function useTurnUndo(onSettled?: (outcome: TurnUndoSettled) => void): Tur
 	};
 
 	// Functional so the dialog's close after confirm cannot clobber the busy state.
-	const cancel = () => setState((current) => (current.kind === "confirming" ? {kind: "idle"} : current));
+	const cancel = () => {
+		setState((current) => (current.kind === "confirming" ? {kind: "idle"} : current));
+	};
 
 	return {state, start, confirm, cancel};
 }

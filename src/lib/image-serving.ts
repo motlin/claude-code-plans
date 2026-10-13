@@ -35,7 +35,7 @@ export async function handleImageRequest(request: Request, configPath?: string):
 	const configuredRoots = readConfig(configPath)?.image_roots ?? [];
 	let resolvedRoots: string[];
 	try {
-		resolvedRoots = await Promise.all(configuredRoots.map((root) => realpath(root)));
+		resolvedRoots = await Promise.all(configuredRoots.map(async (root) => realpath(root)));
 	} catch {
 		return textResponse("Image path is not allowed", 403);
 	}

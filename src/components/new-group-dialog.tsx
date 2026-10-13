@@ -57,7 +57,9 @@ export function NewGroupDialog({
 								ref={inputRef}
 								type="text"
 								value={name}
-								onChange={(event) => setName(event.target.value)}
+								onChange={(event) => {
+									setName(event.target.value);
+								}}
 								placeholder="Group name"
 								aria-label="Group name"
 								autoComplete="off"

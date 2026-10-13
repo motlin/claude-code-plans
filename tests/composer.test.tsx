@@ -295,7 +295,9 @@ describe("Composer", () => {
 			});
 
 			fireEvent.click(link);
-			await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+			await waitFor(() => {
+				expect(screen.queryByRole("dialog")).toBeNull();
+			});
 		});
 
 		it("inserts a slash from the Add menu", async () => {

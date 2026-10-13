@@ -235,7 +235,9 @@ export function useSidebarDrag(options: UseSidebarDragOptions): UseSidebarDrag {
 			}
 			container.scrollTop += delta;
 			update(state);
-			state.frame = requestAnimationFrame(() => autoScroll(state));
+			state.frame = requestAnimationFrame(() => {
+				autoScroll(state);
+			});
 		},
 		[update],
 	);
@@ -265,7 +267,9 @@ export function useSidebarDrag(options: UseSidebarDragOptions): UseSidebarDrag {
 			event.stopPropagation();
 		};
 		window.addEventListener("click", suppressClick, {capture: true, once: true});
-		setTimeout(() => window.removeEventListener("click", suppressClick, {capture: true}), 0);
+		setTimeout(() => {
+			window.removeEventListener("click", suppressClick, {capture: true});
+		}, 0);
 
 		if (drop && state.target !== null) {
 			optionsRef.current.onDrop({srcId: state.srcId, target: state.target});
@@ -315,7 +319,9 @@ export function useSidebarDrag(options: UseSidebarDragOptions): UseSidebarDrag {
 			state.pointerY = event.clientY;
 			update(state);
 			if (state.frame === null) {
-				state.frame = requestAnimationFrame(() => autoScroll(state));
+				state.frame = requestAnimationFrame(() => {
+					autoScroll(state);
+				});
 			}
 		};
 		const onUp = (event: PointerEvent) => {
@@ -331,7 +337,9 @@ export function useSidebarDrag(options: UseSidebarDragOptions): UseSidebarDrag {
 			}
 			finish(true);
 		};
-		const onCancel = () => finish(false);
+		const onCancel = () => {
+			finish(false);
+		};
 		const onKeyDown = (event: KeyboardEvent) => {
 			if (event.key === "Escape" && active.current !== null) {
 				event.preventDefault();
@@ -350,7 +358,12 @@ export function useSidebarDrag(options: UseSidebarDragOptions): UseSidebarDrag {
 		};
 	}, [autoScroll, finish, start, update]);
 
-	useEffect(() => () => finish(false), [finish]);
+	useEffect(
+		() => () => {
+			finish(false);
+		},
+		[finish],
+	);
 
 	const rowProps = useCallback(
 		(id: string): SidebarDragRowProps => ({

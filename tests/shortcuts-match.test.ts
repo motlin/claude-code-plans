@@ -104,11 +104,15 @@ describe("guards", () => {
 });
 
 describe("useShortcut", () => {
-	beforeEach(() => setMac(true));
+	beforeEach(() => {
+		setMac(true);
+	});
 
 	it("calls the handler and prevents default on a match", () => {
 		const handler = vi.fn();
-		renderHook(() => useShortcut("search_or_start", handler));
+		renderHook(() => {
+			useShortcut("search_or_start", handler);
+		});
 		const event = press({key: "k", metaKey: true});
 		expect(handler).toHaveBeenCalledTimes(1);
 		expect(event.defaultPrevented).toBe(true);
@@ -116,7 +120,9 @@ describe("useShortcut", () => {
 
 	it("swallows auto-repeat without calling the handler", () => {
 		const handler = vi.fn();
-		renderHook(() => useShortcut("search_or_start", handler));
+		renderHook(() => {
+			useShortcut("search_or_start", handler);
+		});
 		const event = press({key: "k", metaKey: true, repeat: true});
 		expect(handler).not.toHaveBeenCalled();
 		expect(event.defaultPrevented).toBe(true);
@@ -124,7 +130,9 @@ describe("useShortcut", () => {
 
 	it("ignores non-matching keys", () => {
 		const handler = vi.fn();
-		renderHook(() => useShortcut("search_or_start", handler));
+		renderHook(() => {
+			useShortcut("search_or_start", handler);
+		});
 		const event = press({key: "K", metaKey: true, shiftKey: true});
 		expect(handler).not.toHaveBeenCalled();
 		expect(event.defaultPrevented).toBe(false);
@@ -134,13 +142,17 @@ describe("useShortcut", () => {
 		document.body.innerHTML = `<textarea id="area"></textarea>`;
 		const area = document.getElementById("area")!;
 		const allowed = vi.fn();
-		const {unmount} = renderHook(() => useShortcut("search_or_start", allowed));
+		const {unmount} = renderHook(() => {
+			useShortcut("search_or_start", allowed);
+		});
 		press({key: "k", metaKey: true}, area);
 		expect(allowed).toHaveBeenCalledTimes(1);
 		unmount();
 
 		const skipped = vi.fn();
-		renderHook(() => useShortcut("search_or_start", skipped, {allowInEditable: false}));
+		renderHook(() => {
+			useShortcut("search_or_start", skipped, {allowInEditable: false});
+		});
 		const event = press({key: "k", metaKey: true}, area);
 		expect(skipped).not.toHaveBeenCalled();
 		expect(event.defaultPrevented).toBe(false);
@@ -151,42 +163,56 @@ describe("useShortcut", () => {
 		const inside = document.getElementById("inside")!;
 		inside.focus();
 		const blocked = vi.fn();
-		const {unmount} = renderHook(() => useShortcut("search_or_start", blocked));
+		const {unmount} = renderHook(() => {
+			useShortcut("search_or_start", blocked);
+		});
 		press({key: "k", metaKey: true}, inside);
 		expect(blocked).not.toHaveBeenCalled();
 		unmount();
 
 		const allowed = vi.fn();
-		renderHook(() => useShortcut("search_or_start", allowed, {allowInModal: true}));
+		renderHook(() => {
+			useShortcut("search_or_start", allowed, {allowInModal: true});
+		});
 		press({key: "k", metaKey: true}, inside);
 		expect(allowed).toHaveBeenCalledTimes(1);
 	});
 
 	it("does nothing when disabled", () => {
 		const handler = vi.fn();
-		renderHook(() => useShortcut("search_or_start", handler, {disabled: true}));
+		renderHook(() => {
+			useShortcut("search_or_start", handler, {disabled: true});
+		});
 		press({key: "k", metaKey: true});
 		expect(handler).not.toHaveBeenCalled();
 	});
 
 	it("lets the most recently registered handler at the highest priority claim the event", () => {
 		const order: string[] = [];
-		renderHook(() => useShortcut("search_or_start", () => void order.push("low")));
-		renderHook(() => useShortcut("search_or_start", () => void order.push("high"), {priority: 10}));
-		renderHook(() => useShortcut("search_or_start", () => void order.push("later")));
+		renderHook(() => {
+			useShortcut("search_or_start", () => void order.push("low"));
+		});
+		renderHook(() => {
+			useShortcut("search_or_start", () => void order.push("high"), {priority: 10});
+		});
+		renderHook(() => {
+			useShortcut("search_or_start", () => void order.push("later"));
+		});
 		press({key: "k", metaKey: true});
 		expect(order).toEqual(["high"]);
 	});
 
 	it("falls through when a handler declines by returning false", () => {
 		const order: string[] = [];
-		renderHook(() => useShortcut("search_or_start", () => void order.push("first")));
-		renderHook(() =>
+		renderHook(() => {
+			useShortcut("search_or_start", () => void order.push("first"));
+		});
+		renderHook(() => {
 			useShortcut("search_or_start", () => {
 				order.push("declined");
 				return false;
-			}),
-		);
+			});
+		});
 		press({key: "k", metaKey: true});
 		expect(order).toEqual(["declined", "first"]);
 	});
@@ -225,7 +251,9 @@ describe("useCommandPalette", () => {
 		const input = document.getElementById("palette-input")!;
 		input.focus();
 		const {result} = renderHook(() => useCommandPalette());
-		act(() => result.current.onOpenChange(true));
+		act(() => {
+			result.current.onOpenChange(true);
+		});
 		press({key: "k", metaKey: true}, input);
 		expect(result.current.open).toBe(false);
 	});

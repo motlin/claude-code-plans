@@ -73,7 +73,9 @@ async function openAppearanceSubmenu(label: string): Promise<HTMLElement> {
 	fireEvent.click(screen.getByRole("button", {name: `More options for ${label}`}));
 	await flush();
 	const trigger = await waitFor(() => screen.getByRole("menuitem", {name: "Icon and color"}));
-	act(() => trigger.focus());
+	act(() => {
+		trigger.focus();
+	});
 	fireEvent.keyDown(trigger, {key: "ArrowRight"});
 	await flush();
 	const menus = screen.getAllByRole("menu");

@@ -50,7 +50,9 @@ export async function createAppContext(config: AppContextConfig): Promise<AppCon
 		},
 	);
 
-	const sweepTimer = setInterval(() => sweepSessions(sessionStore), SWEEP_INTERVAL_MS);
+	const sweepTimer = setInterval(() => {
+		sweepSessions(sessionStore);
+	}, SWEEP_INTERVAL_MS);
 
 	return {db, watcher, sseClients, sessionStore, sweepTimer, config};
 }

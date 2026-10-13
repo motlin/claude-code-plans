@@ -178,7 +178,7 @@ describe("session page chrome toggle shortcut", () => {
 		vi.stubGlobal("IntersectionObserver", TestIntersectionObserver);
 		vi.stubGlobal(
 			"fetch",
-			vi.fn(() => new Promise<Response>(() => {})),
+			vi.fn(async () => new Promise<Response>(() => {})),
 		);
 		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(
 			"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",

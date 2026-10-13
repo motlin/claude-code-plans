@@ -299,7 +299,9 @@ export function SubagentSequence({agents}: {agents: Subagent[]}) {
 						<button
 							key={z}
 							type="button"
-							onClick={() => setZoom(z)}
+							onClick={() => {
+								setZoom(z);
+							}}
 							aria-pressed={zoom === z}
 							className={`rounded px-1.5 py-0.5 tabular-nums ${
 								zoom === z ? "bg-accent-000/15 text-accent-100" : "hover:bg-surface-0/50 text-t6"
@@ -371,8 +373,12 @@ export function SubagentSequence({agents}: {agents: Subagent[]}) {
 										opacity: dimmed ? 0.35 : 1,
 										transition: "opacity 0.15s",
 									}}
-									onMouseEnter={() => setHoveredId(lane.agent.id)}
-									onMouseLeave={() => setHoveredId(null)}
+									onMouseEnter={() => {
+										setHoveredId(lane.agent.id);
+									}}
+									onMouseLeave={() => {
+										setHoveredId(null);
+									}}
 								>
 									<rect
 										x={x - COLUMN_WIDTH / 2 + 6}
@@ -473,8 +479,12 @@ export function SubagentSequence({agents}: {agents: Subagent[]}) {
 										opacity: dimmed ? 0.35 : 1,
 										transition: "opacity 0.15s",
 									}}
-									onMouseEnter={() => setHoveredId(lane.agent.id)}
-									onMouseLeave={() => setHoveredId(null)}
+									onMouseEnter={() => {
+										setHoveredId(lane.agent.id);
+									}}
+									onMouseLeave={() => {
+										setHoveredId(null);
+									}}
 								>
 									<line
 										x1={x}

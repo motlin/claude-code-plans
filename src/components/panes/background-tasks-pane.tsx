@@ -37,7 +37,9 @@ function BackgroundTaskCard({task}: {task: BackgroundTask}) {
 				aria-label={`Background task: ${title}`}
 				aria-expanded={expanded}
 				aria-controls={detailsId}
-				onClick={() => setExpanded((value) => !value)}
+				onClick={() => {
+					setExpanded((value) => !value);
+				}}
 				className="flex w-full min-w-0 cursor-pointer flex-col text-left"
 			>
 				<span className="flex min-w-0 items-center gap-0.5 text-footnote text-ink-muted">
@@ -123,7 +125,9 @@ export function BackgroundTasksList({
 							<button
 								type="button"
 								aria-expanded={finishedOpen}
-								onClick={() => setFinishedOpen((open) => !open)}
+								onClick={() => {
+									setFinishedOpen((open) => !open);
+								}}
 								className="flex cursor-pointer items-center gap-0.5 hover:text-primary"
 							>
 								Finished {finished.length}
@@ -137,9 +141,9 @@ export function BackgroundTasksList({
 							<button
 								type="button"
 								aria-label="Clear finished tasks"
-								onClick={() =>
-									setClearedIds(new Set([...clearedIds, ...finished.map((task) => task.id)]))
-								}
+								onClick={() => {
+									setClearedIds(new Set([...clearedIds, ...finished.map((task) => task.id)]));
+								}}
 								className={ICON_BUTTON}
 							>
 								<Trash2 aria-hidden="true" className="size-3.5" />

@@ -134,8 +134,12 @@ describe("deletePlan", () => {
 		const plansDir = join(testDir, "plans");
 		mkdirSync(plansDir, {recursive: true});
 
-		expect(() => deletePlan(db.index, plansDir, "never-existed.md")).not.toThrow();
-		expect(() => deletePlan(db.index, plansDir, "never-existed.md")).not.toThrow();
+		expect(() => {
+			deletePlan(db.index, plansDir, "never-existed.md");
+		}).not.toThrow();
+		expect(() => {
+			deletePlan(db.index, plansDir, "never-existed.md");
+		}).not.toThrow();
 
 		expect(db.index.select().from(schema.plans).all()).toStrictEqual([]);
 	});

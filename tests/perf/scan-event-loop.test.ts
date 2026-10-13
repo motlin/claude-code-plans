@@ -33,23 +33,29 @@ setTimeout(() => {
 }, Number(process.argv[2]));
 `;
 
-function holdWriteLock(dbPath: string, holdMs: number): Promise<ChildProcess> {
+async function holdWriteLock(dbPath: string, holdMs: number): Promise<ChildProcess> {
 	const child = spawn(process.execPath, ["-e", HOLD_LOCK_SCRIPT, dbPath, String(holdMs)], {
 		cwd: REPO_ROOT,
 		stdio: ["ignore", "pipe", "inherit"],
 	});
 	return new Promise((resolve, reject) => {
 		child.once("error", reject);
-		child.once("exit", (code) => reject(new Error(`lock holder exited early with ${code}`)));
-		child.stdout!.on("data", (chunk: Buffer) => {
+		child.once("exit", (code) => {
+			reject(new Error(`lock holder exited early with ${code}`));
+		});
+		child.stdout.on("data", (chunk: Buffer) => {
 			if (chunk.toString().includes("locked")) resolve(child);
 		});
 	});
 }
 
-function exited(child: ChildProcess): Promise<void> {
+async function exited(child: ChildProcess): Promise<void> {
 	if (child.exitCode !== null) return Promise.resolve();
-	return new Promise((resolve) => child.once("exit", () => resolve()));
+	return new Promise((resolve) =>
+		child.once("exit", () => {
+			resolve();
+		}),
+	);
 }
 
 describe("fullScan and the event loop", () => {
@@ -61,7 +67,9 @@ describe("fullScan and the event loop", () => {
 
 	async function setUp(): Promise<{db: AppDb; dbPath: string; projectsDir: string; sessionIds: string[]}> {
 		const root = mkdtempSync(join(tmpdir(), "scan-event-loop-"));
-		cleanups.push(() => rmSync(root, {recursive: true, force: true}));
+		cleanups.push(() => {
+			rmSync(root, {recursive: true, force: true});
+		});
 		const projectsDir = join(root, "projects");
 		const sessionIds: string[] = [];
 		const fixtures = [
@@ -77,7 +85,9 @@ describe("fullScan and the event loop", () => {
 		}
 		const cacheDir = join(root, "cache");
 		const db = openAppDb({cacheDir});
-		cleanups.push(() => db.close());
+		cleanups.push(() => {
+			db.close();
+		});
 		return {db, dbPath: join(cacheDir, "index.db"), projectsDir, sessionIds};
 	}
 
@@ -94,7 +104,7 @@ describe("fullScan and the event loop", () => {
 		await new Promise((resolve) => setTimeout(resolve, 150));
 		stopMonitor();
 
-		const indexed = db.index.all(sql`SELECT id FROM sessions ORDER BY id`) as Array<{id: string}>;
+		const indexed = db.index.all<{id: string}>(sql`SELECT id FROM sessions ORDER BY id`);
 		expect({
 			stalls: stalls.map((stall) => ({durationMs: Math.round(stall.durationMs), activities: stall.activities})),
 			indexed: indexed.map((row) => row.id),

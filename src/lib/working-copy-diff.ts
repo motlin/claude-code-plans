@@ -2,7 +2,7 @@ import {execFile} from "node:child_process";
 
 const MAX_GIT_OUTPUT_BYTES = 100 * 1024 * 1024;
 
-function runGit(cwd: string, arguments_: string[], allowDifferences = false): Promise<string> {
+async function runGit(cwd: string, arguments_: string[], allowDifferences = false): Promise<string> {
 	return new Promise((resolve, reject) => {
 		execFile("git", arguments_, {cwd, encoding: "utf8", maxBuffer: MAX_GIT_OUTPUT_BYTES}, (error, stdout) => {
 			if (error && !(allowDifferences && error.code === 1)) {

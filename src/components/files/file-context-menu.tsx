@@ -39,13 +39,13 @@ function baseName(path: string): string {
 function useCopyText(): (text: string, what: string) => void {
 	const toast = useToast();
 	return (text, what) => {
-		void writeClipboardText(text).then((copied) =>
+		void writeClipboardText(text).then((copied) => {
 			toast(
 				copied
 					? {kind: "success", message: `${what} copied to clipboard.`}
 					: {kind: "error", message: `Couldn’t copy the ${what.toLowerCase()}.`},
-			),
-		);
+			);
+		});
 	};
 }
 
@@ -70,7 +70,9 @@ function SharedItems({path, cwd, attachment, onAttachContext, attachShortcut, ab
 		<>
 			{onAttachContext !== undefined && (
 				<MenuItem
-					onSelect={() => onAttachContext(attachment())}
+					onSelect={() => {
+						onAttachContext(attachment());
+					}}
 					{...(attachShortcut === undefined ? {} : {shortcut: attachShortcut})}
 				>
 					Attach as context
@@ -79,7 +81,15 @@ function SharedItems({path, cwd, attachment, onAttachContext, attachShortcut, ab
 			<MenuSub>
 				<MenuSubTrigger>Copy</MenuSubTrigger>
 				<MenuSubContent>
-					{absolutePath && <MenuItem onSelect={() => copy(path, "Path")}>Absolute path</MenuItem>}
+					{absolutePath && (
+						<MenuItem
+							onSelect={() => {
+								copy(path, "Path");
+							}}
+						>
+							Absolute path
+						</MenuItem>
+					)}
 					<MenuItem
 						disabled={relPath === null}
 						onSelect={() => {
@@ -88,7 +98,13 @@ function SharedItems({path, cwd, attachment, onAttachContext, attachShortcut, ab
 					>
 						Relative path
 					</MenuItem>
-					<MenuItem onSelect={() => copy(baseName(path), "Filename")}>Filename</MenuItem>
+					<MenuItem
+						onSelect={() => {
+							copy(baseName(path), "Filename");
+						}}
+					>
+						Filename
+					</MenuItem>
 				</MenuSubContent>
 			</MenuSub>
 		</>
@@ -185,8 +201,22 @@ export function TabMenuItems({path, preview, cwd, onAttachContext, onRevealInTre
 					<MenuSeparator />
 				</>
 			)}
-			{preview && <MenuItem onSelect={() => dispatch({type: "pin", path})}>Keep open</MenuItem>}
-			<MenuItem onSelect={() => dispatch({type: "close", path})}>Close file</MenuItem>
+			{preview && (
+				<MenuItem
+					onSelect={() => {
+						dispatch({type: "pin", path});
+					}}
+				>
+					Keep open
+				</MenuItem>
+			)}
+			<MenuItem
+				onSelect={() => {
+					dispatch({type: "close", path});
+				}}
+			>
+				Close file
+			</MenuItem>
 		</>
 	);
 }
@@ -214,7 +244,9 @@ export function ViewerMenuItems({
 }: ViewerMenuItemsProps) {
 	const toast = useToast();
 	const revealInFinder = () => {
-		revealFileInFinder(path).catch(() => toast({kind: "error", message: "Couldn’t reveal the file in Finder."}));
+		revealFileInFinder(path).catch(() => {
+			toast({kind: "error", message: "Couldn’t reveal the file in Finder."});
+		});
 	};
 	return (
 		<>

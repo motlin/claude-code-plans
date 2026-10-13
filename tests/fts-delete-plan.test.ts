@@ -39,10 +39,10 @@ async function recordStatements(db: AppDb, action: () => Promise<void>): Promise
 	const client = rawClient(db);
 	const originalPrepare = client.prepare.bind(client);
 	const statements: string[] = [];
-	client.prepare = ((source: string) => {
+	client.prepare = (source: string) => {
 		statements.push(source);
 		return originalPrepare(source);
-	}) as typeof client.prepare;
+	};
 	try {
 		await action();
 	} finally {

@@ -30,18 +30,17 @@ function Harness({onDrop}: {onDrop: (drop: SidebarDrop) => void}) {
 
 function mockRect(testId: string, top: number, height: number): void {
 	const el = screen.getByTestId(testId);
-	el.getBoundingClientRect = () =>
-		({
-			top,
-			bottom: top + height,
-			height,
-			left: 0,
-			right: 200,
-			width: 200,
-			x: 0,
-			y: top,
-			toJSON: () => ({}),
-		}) as DOMRect;
+	el.getBoundingClientRect = () => ({
+		top,
+		bottom: top + height,
+		height,
+		left: 0,
+		right: 200,
+		width: 200,
+		x: 0,
+		y: top,
+		toJSON: () => ({}),
+	});
 }
 
 function setup() {

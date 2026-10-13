@@ -25,7 +25,7 @@ export function isGitRepository(directory: string): boolean {
 }
 
 /** List the cached Git index entries as absolute paths. */
-export function listTrackedFiles(root: string): Promise<string[]> {
+export async function listTrackedFiles(root: string): Promise<string[]> {
 	const resolvedRoot = resolve(root);
 	return new Promise((resolveFiles, rejectFiles) => {
 		execFile(
@@ -89,7 +89,7 @@ export class TrackedFileIndex {
 		return new Set(this.entriesByRoot.get(resolve(root))?.files ?? []);
 	}
 
-	refresh(root: string): Promise<Set<string>> {
+	async refresh(root: string): Promise<Set<string>> {
 		const resolvedRoot = resolve(root);
 		const existingTimer = this.refreshTimersByRoot.get(resolvedRoot);
 		if (existingTimer !== undefined) clearTimeout(existingTimer);

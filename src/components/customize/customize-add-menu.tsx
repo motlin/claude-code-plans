@@ -54,14 +54,24 @@ export function CustomizeAddMenu({section}: {section: CustomizeSectionId}) {
 			</MenuTrigger>
 			<MenuContent align="end">
 				{section === "skills" && (
-					<MenuItem onSelect={() => create(skillCreatorPrompt((skills ?? []).map((skill) => skill.name)))}>
+					<MenuItem
+						onSelect={() => {
+							create(skillCreatorPrompt((skills ?? []).map((skill) => skill.name)));
+						}}
+					>
 						Create with Claude
 					</MenuItem>
 				)}
 				{section === "plugins" && (
 					<>
 						<MenuItem onSelect={() => void copyCommand(MARKETPLACE_ADD_COMMAND)}>Add marketplace</MenuItem>
-						<MenuItem onSelect={() => create(PLUGIN_CREATOR_PROMPT)}>Create with Claude</MenuItem>
+						<MenuItem
+							onSelect={() => {
+								create(PLUGIN_CREATOR_PROMPT);
+							}}
+						>
+							Create with Claude
+						</MenuItem>
 					</>
 				)}
 				{section === "connectors" && (

@@ -89,9 +89,9 @@ interface LaunchCall {
 }
 
 let launchCalls: LaunchCall[] = [];
-let launchResponse: () => Promise<Response> = () => new Promise<Response>(() => {});
+let launchResponse: () => Promise<Response> = async () => new Promise<Response>(() => {});
 
-function fetchMock(url: string, init?: RequestInit): Promise<Response> {
+async function fetchMock(url: string, init?: RequestInit): Promise<Response> {
 	if (url === "/api/herdr/launch") {
 		launchCalls.push({url, init});
 		return launchResponse();
@@ -161,11 +161,11 @@ async function typePrompt(text: string) {
 }
 
 describe("HomeComposer", () => {
-	const writeText = vi.fn((_text: string) => Promise.resolve());
+	const writeText = vi.fn(async (_text: string) => Promise.resolve());
 
 	beforeEach(() => {
 		launchCalls = [];
-		launchResponse = () => new Promise<Response>(() => {});
+		launchResponse = async () => new Promise<Response>(() => {});
 		TestEventSource.current = null;
 		installLocalStorage();
 		vi.stubGlobal("EventSource", TestEventSource);
@@ -256,7 +256,9 @@ describe("HomeComposer", () => {
 
 		fireEvent.click(screen.getByRole("button", {name: "Send"}));
 
-		await waitFor(() => expect(launchCalls.length).toBe(1));
+		await waitFor(() => {
+			expect(launchCalls.length).toBe(1);
+		});
 		expect({
 			url: launchCalls[0]?.url,
 			method: launchCalls[0]?.init?.method,
@@ -284,13 +286,19 @@ describe("HomeComposer", () => {
 
 		fireEvent.click(screen.getByRole("button", {name: "Model: Opus 4.8"}));
 		fireEvent.keyDown(await screen.findByRole("menu"), {key: "3", code: "Digit3"});
-		await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+		await waitFor(() => {
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
 		fireEvent.click(document.querySelector<HTMLElement>("[data-chin-mode]")!);
 		fireEvent.keyDown(await screen.findByRole("menu"), {key: "3", code: "Digit3"});
-		await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+		await waitFor(() => {
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
 		fireEvent.click(screen.getByRole("button", {name: "Send"}));
 
-		await waitFor(() => expect(launchCalls.length).toBe(1));
+		await waitFor(() => {
+			expect(launchCalls.length).toBe(1);
+		});
 		expect(launchBody(launchCalls[0])).toStrictEqual({
 			cwd: "/users/dev/it's",
 			prompt: "fix the flaky test",
@@ -302,12 +310,16 @@ describe("HomeComposer", () => {
 		await renderApp();
 		fireEvent.click(screen.getByRole("combobox", {name: "Select project"}));
 		fireEvent.click(await screen.findByRole("option", {name: "newest"}));
-		await waitFor(() => expect(screen.getByRole("combobox", {name: "Select project"}).textContent).toBe("newest"));
+		await waitFor(() => {
+			expect(screen.getByRole("combobox", {name: "Select project"}).textContent).toBe("newest");
+		});
 		await typePrompt("hello");
 
 		fireEvent.click(screen.getByRole("button", {name: "Send"}));
 
-		await waitFor(() => expect(launchCalls.length).toBe(1));
+		await waitFor(() => {
+			expect(launchCalls.length).toBe(1);
+		});
 		expect(launchBody(launchCalls[0])).toStrictEqual({cwd: "/users/dev/newest", prompt: "hello"});
 	});
 
@@ -321,7 +333,9 @@ describe("HomeComposer", () => {
 
 		fireEvent.click(chip);
 		const search = await screen.findByRole("textbox", {name: "Search projects"});
-		await waitFor(() => expect(document.activeElement).toBe(search));
+		await waitFor(() => {
+			expect(document.activeElement).toBe(search);
+		});
 		expect(search.getAttribute("placeholder")).toBe("Search projects…");
 		expect(
 			screen.getAllByRole("option").map((option) => ({
@@ -340,7 +354,9 @@ describe("HomeComposer", () => {
 		fireEvent.keyDown(search, {key: "ArrowDown"});
 		fireEvent.keyDown(search, {key: "Enter"});
 
-		await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
+		await waitFor(() => {
+			expect(screen.queryByRole("listbox")).toBeNull();
+		});
 		expect(chip.textContent).toBe("newest");
 	});
 
@@ -349,7 +365,9 @@ describe("HomeComposer", () => {
 		const {router, eventSource} = await renderApp();
 		await typePrompt("fix the flaky test");
 		fireEvent.click(screen.getByRole("button", {name: "Send"}));
-		await waitFor(() => expect(launchCalls.length).toBe(1));
+		await waitFor(() => {
+			expect(launchCalls.length).toBe(1);
+		});
 
 		act(() => {
 			eventSource.emit(SSE_EVENTS.SESSION_START, {
@@ -368,7 +386,9 @@ describe("HomeComposer", () => {
 			});
 		});
 
-		await waitFor(() => expect(router.state.location.pathname).toBe("/session/new-session"));
+		await waitFor(() => {
+			expect(router.state.location.pathname).toBe("/session/new-session");
+		});
 	});
 
 	it("navigates to the new session after a plain Enter send", async () => {
@@ -377,12 +397,16 @@ describe("HomeComposer", () => {
 		const textarea = await typePrompt("fix the flaky test");
 
 		fireEvent.keyDown(textarea, {key: "Enter", code: "Enter"});
-		await waitFor(() => expect(launchCalls.length).toBe(1));
+		await waitFor(() => {
+			expect(launchCalls.length).toBe(1);
+		});
 		act(() => {
 			eventSource.emit(SSE_EVENTS.SESSION_START, {sessionId: "new-session", cwd: "/users/dev/it's", model: ""});
 		});
 
-		await waitFor(() => expect(router.state.location.pathname).toBe("/session/new-session"));
+		await waitFor(() => {
+			expect(router.state.location.pathname).toBe("/session/new-session");
+		});
 	});
 
 	it("sends with ⌘⏎ and stays home with a cleared prompt and a success toast", async () => {
@@ -392,7 +416,9 @@ describe("HomeComposer", () => {
 
 		fireEvent.keyDown(textarea, {key: "Enter", code: "Enter", metaKey: true});
 
-		await waitFor(() => expect(launchCalls.length).toBe(1));
+		await waitFor(() => {
+			expect(launchCalls.length).toBe(1);
+		});
 		expect(launchBody(launchCalls[0])).toStrictEqual({cwd: "/users/dev/it's", prompt: "fix the flaky test"});
 		expect((await screen.findByRole("status")).textContent).toContain("Started a session in it's");
 		act(() => {
@@ -427,11 +453,11 @@ describe("HomeComposer", () => {
 
 		fireEvent.click(screen.getByRole("button", {name: "Send"}));
 
-		await waitFor(() =>
+		await waitFor(() => {
 			expect(writeText.mock.calls).toStrictEqual([
 				[`cd '/users/dev/it'\\''s' && claude 'don'\\''t break $HOME'`],
-			]),
-		);
+			]);
+		});
 		expect((await screen.findByRole("status")).textContent).toContain("Copied command — herdr unavailable");
 	});
 
@@ -444,7 +470,9 @@ describe("HomeComposer", () => {
 
 		fireEvent.keyDown(picker, {key: "O", code: "KeyO", metaKey: true, shiftKey: true});
 
-		await waitFor(() => expect(document.activeElement).toBe(textarea));
+		await waitFor(() => {
+			expect(document.activeElement).toBe(textarea);
+		});
 	});
 
 	it("navigates home and focuses the composer on ⇧⌘O from another page", async () => {
@@ -453,9 +481,13 @@ describe("HomeComposer", () => {
 
 		fireEvent.keyDown(elsewhere, {key: "O", code: "KeyO", metaKey: true, shiftKey: true});
 
-		await waitFor(() => expect(router.state.location.pathname).toBe("/"));
+		await waitFor(() => {
+			expect(router.state.location.pathname).toBe("/");
+		});
 		const textarea = await screen.findByRole("textbox", {name: "Prompt"});
-		await waitFor(() => expect(document.activeElement).toBe(textarea));
+		await waitFor(() => {
+			expect(document.activeElement).toBe(textarea);
+		});
 	});
 });
 

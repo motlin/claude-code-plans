@@ -54,7 +54,7 @@ const defaultDependencies: HerdrLaunchDependencies = {
 	writesEnabled: herdrWritesEnabled,
 	request: herdrRequest,
 	createLaunchId: () => crypto.randomUUID().replaceAll("-", "").slice(0, 12),
-	wait: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+	wait: async (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
 	homeDir: homedir,
 };
 

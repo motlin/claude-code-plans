@@ -298,7 +298,9 @@ describe("buildSessionSummaryPayloadFromDb with the CLI session registry", () =>
 		return {state: payload?.state, bucket: payload?.bucket, blockedSince: payload?.blockedSince};
 	}
 
-	afterEach(() => clearSessionRegistry());
+	afterEach(() => {
+		clearSessionRegistry();
+	});
 
 	it("needs input while the registry says waiting, blocked since the status write", async () => {
 		await indexSession();

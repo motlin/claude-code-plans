@@ -143,7 +143,9 @@ describe("holdNitroRequestsUntilReady", () => {
 	});
 
 	it("does nothing for a server without a nitro environment", () => {
-		expect(() => holdNitroRequestsUntilReady().configureServer({environments: {}})).not.toThrow();
+		expect(() => {
+			holdNitroRequestsUntilReady().configureServer({environments: {}});
+		}).not.toThrow();
 	});
 });
 
@@ -157,6 +159,8 @@ describe("announceDevEnvReady", () => {
 	});
 
 	it("does nothing outside the dev server, where there is no hot channel", () => {
-		expect(() => announceDevEnvReady(undefined)).not.toThrow();
+		expect(() => {
+			announceDevEnvReady(undefined);
+		}).not.toThrow();
 	});
 });

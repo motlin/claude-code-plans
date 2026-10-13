@@ -16,7 +16,7 @@ export function slashCommandsQueryOptions(cwd: string | undefined) {
 	const url = cwd === undefined ? "/api/commands" : `/api/commands?cwd=${encodeURIComponent(cwd)}`;
 	return queryOptions({
 		queryKey: ["slash-commands", cwd ?? null],
-		queryFn: () => apiFetch(url, SlashCommandListResponse),
+		queryFn: async () => apiFetch(url, SlashCommandListResponse),
 		staleTime: 30_000,
 	});
 }

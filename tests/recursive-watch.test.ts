@@ -35,11 +35,11 @@ function probeWriteDirectories(): Set<string> {
 	);
 }
 
-function waitForReady(watcher: RecursiveWatcher): Promise<void> {
+async function waitForReady(watcher: RecursiveWatcher): Promise<void> {
 	return new Promise((resolve) => watcher.once("ready", resolve));
 }
 
-function delay(milliseconds: number): Promise<void> {
+async function delay(milliseconds: number): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
@@ -49,12 +49,15 @@ function createDeafNativeWatcher(): FSWatcher {
 	return Object.assign(emitter, {close: () => {}}) as unknown as FSWatcher;
 }
 
-function waitForPath(watcher: RecursiveWatcher, event: "change" | "unlink", expectedPath: string): Promise<string> {
+async function waitForPath(
+	watcher: RecursiveWatcher,
+	event: "change" | "unlink",
+	expectedPath: string,
+): Promise<string> {
 	return new Promise((resolve, reject) => {
-		const timeout = setTimeout(
-			() => reject(new Error(`Timed out waiting for ${event}: ${expectedPath}`)),
-			EVENT_TIMEOUT_MS,
-		);
+		const timeout = setTimeout(() => {
+			reject(new Error(`Timed out waiting for ${event}: ${expectedPath}`));
+		}, EVENT_TIMEOUT_MS);
 		watcher.on(event, (path) => {
 			if (path !== expectedPath) return;
 			clearTimeout(timeout);

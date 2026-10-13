@@ -211,7 +211,9 @@ describe("status dot toggle", () => {
 		render(<SessionRowStatusDot session={listItem("done")} />);
 		const before = dot();
 
-		act(() => toggleUnseen(SESSION_ID));
+		act(() => {
+			toggleUnseen(SESSION_ID);
+		});
 		await flush();
 		const afterUnread = dot();
 

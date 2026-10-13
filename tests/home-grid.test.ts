@@ -33,7 +33,7 @@ async function renderNavigation() {
 	});
 	vi.stubGlobal(
 		"fetch",
-		vi.fn(() => new Promise<Response>(() => {})),
+		vi.fn(async () => new Promise<Response>(() => {})),
 	);
 
 	const rootRoute = createRootRoute({

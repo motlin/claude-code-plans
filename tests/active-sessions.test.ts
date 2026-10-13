@@ -196,7 +196,7 @@ describe("scanActiveSessions", () => {
 		pendingApprovals = [{sessionId: "busy-session", blockedSince: "2000-01-01T00:00:00.000Z"}];
 		const registryDir = join(tempHome, ".claude", "sessions");
 		mkdirSync(registryDir, {recursive: true});
-		const registryFile = (pid: number, sessionId: string, cwd: string, status: string, statusUpdatedAt: number) =>
+		const registryFile = (pid: number, sessionId: string, cwd: string, status: string, statusUpdatedAt: number) => {
 			writeFileSync(
 				join(registryDir, `${pid}.json`),
 				JSON.stringify({
@@ -214,6 +214,7 @@ describe("scanActiveSessions", () => {
 					statusUpdatedAt,
 				}),
 			);
+		};
 		registryFile(4242, "waiting-session", "/Users/test/beta", "waiting", 946_598_402_000);
 		registryFile(4343, "busy-session", "/Users/test/alpha", "busy", 946_598_403_000);
 		const {scanMod} = await loadModules();

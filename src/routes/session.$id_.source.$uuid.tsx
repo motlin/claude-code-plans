@@ -53,8 +53,8 @@ export function findPairedToolResult(
 		| undefined;
 	if (focalParsed?.type !== "assistant" || !Array.isArray(focalParsed.message?.content)) return null;
 
-	const toolUseIds = focalParsed
-		.message!.content.filter((c) => c?.type === "tool_use" && typeof c.id === "string")
+	const toolUseIds = focalParsed.message.content
+		.filter((c) => c?.type === "tool_use" && typeof c.id === "string")
 		.map((c) => c.id as string);
 	if (toolUseIds.length === 0) return null;
 
@@ -68,7 +68,7 @@ export function findPairedToolResult(
 			  }
 			| undefined;
 		if (cParsed?.type !== "user" || !Array.isArray(cParsed.message?.content)) continue;
-		const matching = cParsed.message!.content.find(
+		const matching = cParsed.message.content.find(
 			(c) => c?.type === "tool_result" && typeof c.tool_use_id === "string" && toolUseIds.includes(c.tool_use_id),
 		);
 		if (matching) {
@@ -124,9 +124,9 @@ function summarizeRecord(raw: string): RecordSummary {
 			if (typeof block === "object" && block !== null) {
 				const blockRecord = block as Record<string, unknown>;
 				if (blockRecord["type"] === "text" && typeof blockRecord["text"] === "string" && !contentPreview) {
-					contentPreview = (blockRecord["text"] as string).slice(0, 120).replace(/\n/g, " ");
+					contentPreview = blockRecord["text"].slice(0, 120).replace(/\n/g, " ");
 				} else if (blockRecord["type"] === "tool_use" && typeof blockRecord["name"] === "string") {
-					toolNames.push(blockRecord["name"] as string);
+					toolNames.push(blockRecord["name"]);
 				} else if (blockRecord["type"] === "tool_result") {
 					toolNames.push("tool_result");
 				}
@@ -214,7 +214,9 @@ function CopyButton({text}: {text: string}) {
 				try {
 					await navigator.clipboard.writeText(text);
 					setCopied(true);
-					setTimeout(() => setCopied(false), 1500);
+					setTimeout(() => {
+						setCopied(false);
+					}, 1500);
 				} catch {
 					// clipboard not available
 				}

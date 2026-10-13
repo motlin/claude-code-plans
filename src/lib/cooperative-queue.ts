@@ -7,7 +7,7 @@ interface QueuedJob {
 	reject: (error: unknown) => void;
 }
 
-function yieldToEventLoop(): Promise<void> {
+async function yieldToEventLoop(): Promise<void> {
 	return new Promise((resolve) => setImmediate(resolve));
 }
 
@@ -23,6 +23,7 @@ export class CooperativeQueue {
 
 	constructor(private readonly sliceMs = DEFAULT_SLICE_MS) {}
 
+	// oxlint-disable-next-line typescript/promise-function-async -- a duplicate enqueue returns the waiting job's own promise
 	enqueue(key: string, run: () => Promise<void>): Promise<void> {
 		const existing = this.waiting.get(key);
 		if (existing) return existing.promise;

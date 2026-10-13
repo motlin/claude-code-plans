@@ -128,7 +128,9 @@ function clearanceVars(container: HTMLElement): {start: string; top: string} {
 async function openSheet() {
 	const trigger = screen.getByRole("button", {name: "Show sidebar"});
 	fireEvent.click(trigger);
-	await waitFor(() => expect(sheet().hasAttribute("data-open")).toBe(true));
+	await waitFor(() => {
+		expect(sheet().hasAttribute("data-open")).toBe(true);
+	});
 }
 
 afterEach(() => {
@@ -205,7 +207,9 @@ describe("phone sheet sidebar", () => {
 
 		fireEvent.keyDown(document, {key: "Escape"});
 
-		await waitFor(() => expect(sheet().hasAttribute("data-open")).toBe(false));
+		await waitFor(() => {
+			expect(sheet().hasAttribute("data-open")).toBe(false);
+		});
 		expect(mainElement(container).hasAttribute("inert")).toBe(false);
 	});
 
@@ -216,7 +220,9 @@ describe("phone sheet sidebar", () => {
 
 		fireEvent.click(screen.getByRole("button", {name: "Close sidebar"}));
 
-		await waitFor(() => expect(sheet().hasAttribute("data-open")).toBe(false));
+		await waitFor(() => {
+			expect(sheet().hasAttribute("data-open")).toBe(false);
+		});
 		expect(mainElement(container).hasAttribute("inert")).toBe(false);
 	});
 
@@ -225,7 +231,7 @@ describe("phone sheet sidebar", () => {
 		const {router} = await renderFrame();
 		await openSheet();
 
-		await act(() => router.navigate({to: "/plans"}));
+		await act(async () => router.navigate({to: "/plans"}));
 
 		await waitFor(() => screen.getByText("Other page"));
 		expect(sheet().hasAttribute("data-open")).toBe(false);
@@ -240,7 +246,9 @@ describe("phone sheet sidebar", () => {
 			window.dispatchEvent(new PopStateEvent("popstate"));
 		});
 
-		await waitFor(() => expect(sheet().hasAttribute("data-open")).toBe(false));
+		await waitFor(() => {
+			expect(sheet().hasAttribute("data-open")).toBe(false);
+		});
 	});
 
 	it("does not render the sheet at 640px and wider", async () => {

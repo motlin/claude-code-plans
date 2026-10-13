@@ -89,7 +89,9 @@ export function CustomizeHeader({
 						<SegmentedControl<"yours" | "discover">
 							aria-label={section.label}
 							value={search.view ?? "yours"}
-							onValueChange={(view) => updateSearch({view: view === "yours" ? undefined : view})}
+							onValueChange={(view) => {
+								updateSearch({view: view === "yours" ? undefined : view});
+							}}
 							options={VIEW_OPTIONS}
 						/>
 					</div>
@@ -99,7 +101,9 @@ export function CustomizeHeader({
 				<SearchField
 					placeholder={section.searchPlaceholder}
 					value={search.q ?? ""}
-					onChange={(q) => updateSearch({q})}
+					onChange={(q) => {
+						updateSearch({q});
+					}}
 				/>
 				{discover && (
 					<>
@@ -115,7 +119,9 @@ export function CustomizeHeader({
 							)}
 							value={search.category}
 							disabled={searching}
-							onChange={(category) => updateSearch({category})}
+							onChange={(category) => {
+								updateSearch({category});
+							}}
 						/>
 						<OptionMenu
 							label="Sort"
@@ -124,7 +130,9 @@ export function CustomizeHeader({
 							options={DISCOVER_SORT_OPTIONS}
 							value={search.order}
 							disabled={searching}
-							onChange={(order) => updateSearch({order})}
+							onChange={(order) => {
+								updateSearch({order});
+							}}
 						/>
 					</>
 				)}
@@ -136,7 +144,9 @@ export function CustomizeHeader({
 						options={section.filter.options}
 						value={search.filter}
 						disabled={searching}
-						onChange={(filter) => updateSearch({filter})}
+						onChange={(filter) => {
+							updateSearch({filter});
+						}}
 					/>
 				)}
 				{sortOptions !== null && !discover && (
@@ -183,7 +193,9 @@ interface SearchFieldProps {
 function SearchField({placeholder, value, onChange}: SearchFieldProps) {
 	// Local draft keeps the caret stable while each keystroke updates `?q=`.
 	const [draft, setDraft] = useState(value);
-	useEffect(() => setDraft(value), [value]);
+	useEffect(() => {
+		setDraft(value);
+	}, [value]);
 
 	const change = (next: string) => {
 		setDraft(next);
@@ -199,7 +211,9 @@ function SearchField({placeholder, value, onChange}: SearchFieldProps) {
 				aria-label={placeholder}
 				maxLength={200}
 				value={draft}
-				onChange={(event) => change(event.target.value)}
+				onChange={(event) => {
+					change(event.target.value);
+				}}
 				data-testid="customize-header-search"
 				className="min-w-0 flex-1 bg-transparent text-body text-primary outline-none placeholder:text-t6 [&::-webkit-search-cancel-button]:hidden"
 			/>
@@ -207,7 +221,9 @@ function SearchField({placeholder, value, onChange}: SearchFieldProps) {
 				<button
 					type="button"
 					aria-label="Clear search"
-					onClick={() => change("")}
+					onClick={() => {
+						change("");
+					}}
 					className="inline-flex size-5 shrink-0 items-center justify-center rounded-r3 text-t6 hover:text-primary"
 				>
 					<X aria-hidden="true" className="size-3.5" />
@@ -239,7 +255,9 @@ function OptionMenu({label, groupLabel, icon, options, value, disabled, onChange
 				<MenuLabel>{groupLabel}</MenuLabel>
 				<MenuRadioGroup
 					value={selected.value}
-					onValueChange={(next: string) => onChange(next === defaultValue ? undefined : next)}
+					onValueChange={(next: string) => {
+						onChange(next === defaultValue ? undefined : next);
+					}}
 				>
 					{options.map((option) => (
 						<MenuRadioItem key={option.value} value={option.value}>

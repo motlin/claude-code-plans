@@ -17,7 +17,9 @@ function subscribeReducedMotion(onChange: () => void): () => void {
 	if (typeof window.matchMedia !== "function") return () => {};
 	const list = window.matchMedia(REDUCED_MOTION_QUERY);
 	list.addEventListener("change", onChange);
-	return () => list.removeEventListener("change", onChange);
+	return () => {
+		list.removeEventListener("change", onChange);
+	};
 }
 
 function prefersReducedMotion(): boolean {
@@ -70,8 +72,12 @@ function useNow(ticking: boolean): number {
 	useEffect(() => {
 		if (!ticking) return;
 		setNow(Date.now());
-		const timer = setInterval(() => setNow(Date.now()), 1000);
-		return () => clearInterval(timer);
+		const timer = setInterval(() => {
+			setNow(Date.now());
+		}, 1000);
+		return () => {
+			clearInterval(timer);
+		};
 	}, [ticking]);
 	return now;
 }

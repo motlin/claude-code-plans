@@ -74,7 +74,7 @@ async function runProbe(socketPath: string): Promise<HerdrAvailability> {
 }
 
 /** Probe the local herdr API, caching availability for thirty seconds. */
-export function probeHerdr(): Promise<HerdrAvailability> {
+export async function probeHerdr(): Promise<HerdrAvailability> {
 	const socketPath = resolvedSocketPath();
 	const now = Date.now();
 	if (cache.result?.socketPath === socketPath && now < cache.expiresAt) {

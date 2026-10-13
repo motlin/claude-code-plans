@@ -40,7 +40,9 @@ function SubagentPrompt({prompt}: {prompt: string}) {
 				<button
 					type="button"
 					aria-expanded={false}
-					onClick={() => setExpanded(true)}
+					onClick={() => {
+						setExpanded(true);
+					}}
 					className="h-5 cursor-pointer rounded-r5 px-1.5 text-xs text-primary transition-colors hover:bg-fill-ghost-hover"
 				>
 					Show more
@@ -109,7 +111,9 @@ function SubagentPane({sessionId, subagents, prompts, chrome}: SubagentPaneProps
 							<button
 								type="button"
 								aria-label="Back"
-								onClick={() => focus(null)}
+								onClick={() => {
+									focus(null);
+								}}
 								className={GHOST_ICON_BUTTON}
 							>
 								<ChevronLeft aria-hidden="true" className="size-4" />
@@ -136,7 +140,9 @@ function SubagentPane({sessionId, subagents, prompts, chrome}: SubagentPaneProps
 										<button
 											type="button"
 											aria-label={`Open subagent ${label}`}
-											onClick={() => focus(candidate.id)}
+											onClick={() => {
+												focus(candidate.id);
+											}}
 											className="w-full cursor-pointer truncate rounded-r5 px-2 py-1.5 text-left text-body text-primary transition-colors hover:bg-fill-ghost-hover"
 										>
 											{label}

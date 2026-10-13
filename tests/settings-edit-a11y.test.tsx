@@ -116,11 +116,7 @@ describe("settings form editor accessible names", () => {
 		expect(screen.getByRole("switch", {name: "Enabled"}).getAttribute("aria-checked")).toBe("true");
 		expect(screen.getByRole("switch", {name: "alpha@market"}).getAttribute("aria-checked")).toBe("true");
 		expect(screen.getByRole("switch", {name: "Auto-update"}).getAttribute("aria-checked")).toBe("true");
-		expect((screen.getByRole("textbox", {name: "Command"}) as HTMLInputElement).value).toBe(
-			"~/.claude/statusline.sh",
-		);
-		expect((screen.getByRole("textbox", {name: "Repo"}) as HTMLInputElement).value).toBe(
-			"motlin/claude-code-plugins",
-		);
+		expect(screen.getByRole<HTMLInputElement>("textbox", {name: "Command"}).value).toBe("~/.claude/statusline.sh");
+		expect(screen.getByRole<HTMLInputElement>("textbox", {name: "Repo"}).value).toBe("motlin/claude-code-plugins");
 	});
 });

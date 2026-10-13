@@ -41,7 +41,7 @@ function stubBrowser() {
 				dispatchEvent: () => false,
 			}) satisfies MediaQueryList,
 	);
-	vi.stubGlobal("fetch", (input: string) =>
+	vi.stubGlobal("fetch", async (input: string) =>
 		input.endsWith("/api/application-settings")
 			? Promise.resolve(
 					new Response(JSON.stringify(APPLICATION_SETTINGS), {
@@ -124,7 +124,9 @@ describe("settings search", () => {
 			entry.title,
 		]);
 
-		await waitFor(() => expect(renderedRows(dialog)).toStrictEqual(expected));
+		await waitFor(() => {
+			expect(renderedRows(dialog)).toStrictEqual(expected);
+		});
 	});
 
 	it("deep links scroll to and flash the row for 1.5s, then collapse the hash", async () => {
@@ -184,7 +186,9 @@ describe("settings search", () => {
 
 		fireEvent.click(within(popover).getByRole("button", {name: "Sessions Default view"}));
 
-		await waitFor(() => expect(router.state.location.hash).toBe("settings/sessions"));
+		await waitFor(() => {
+			expect(router.state.location.hash).toBe("settings/sessions");
+		});
 		expect(flashingRows()).toStrictEqual(["default-view"]);
 		expect(scrolled).toStrictEqual(["default-view"]);
 		expect(screen.queryByRole("dialog", {name: "Search results"})).toBeNull();

@@ -37,9 +37,15 @@ export function useSessionTitleShortcuts({
 	const setArchived = useSessionArchive(sessionId);
 	const toast = useToast();
 	const fork = useSessionFork();
-	useShortcut("rename_session", () => startEditing());
-	useShortcut("archive_session", () => setArchived(!archived));
-	useShortcut("toggle_read_session", () => toggleUnseen(sessionId));
+	useShortcut("rename_session", () => {
+		startEditing();
+	});
+	useShortcut("archive_session", () => {
+		setArchived(!archived);
+	});
+	useShortcut("toggle_read_session", () => {
+		toggleUnseen(sessionId);
+	});
 	useShortcut("copy_session_link", () => void copySessionLink(sessionId, toast, queryClient));
 	useShortcut(
 		"open_session_pr",

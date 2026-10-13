@@ -94,7 +94,9 @@ async function openSubmenu(bridgeSessionId: string | null): Promise<string[]> {
 	fireEvent.contextMenu(screen.getByText("Row title"), {clientX: 40, clientY: 50});
 	await flush();
 	const trigger = await screen.findByRole("menuitem", {name: /Open in/});
-	act(() => trigger.focus());
+	act(() => {
+		trigger.focus();
+	});
 	fireEvent.keyDown(trigger, {key: "ArrowRight"});
 	await flush();
 	const submenu = screen.getAllByRole("menu")[1];
@@ -117,7 +119,7 @@ beforeEach(() => {
 	openMock.mockReturnValue(null);
 	Object.defineProperty(navigator, "clipboard", {value: {writeText}, configurable: true});
 	__unreadStoreTesting.reset();
-	__unreadStoreTesting.setPersist(() => Promise.resolve());
+	__unreadStoreTesting.setPersist(async () => Promise.resolve());
 });
 
 afterEach(() => {
@@ -149,7 +151,9 @@ describe("Open in ▸ in the row menu", () => {
 		await flush();
 
 		expect(writeText.mock.calls).toEqual([[`cd '/Users/alice/it'\\''s alpha' && claude -r ${SESSION_ID}`]]);
-		await waitFor(() => expect(toastText()).toBe("Command copied. Paste it in a terminal to open this session."));
+		await waitFor(() => {
+			expect(toastText()).toBe("Command copied. Paste it in a terminal to open this session.");
+		});
 	});
 
 	it("opens the folder in VS Code", async () => {
@@ -193,9 +197,9 @@ describe("⌥⌘L on the session page", () => {
 				client.setQueryData(sessionQueryKeys.detail(SESSION_ID), {canonicalRouteId: "session_alice_100"}),
 		);
 		fireEvent.keyDown(document.body, {key: "¬", code: "KeyL", metaKey: true, altKey: true});
-		await waitFor(() =>
-			expect(writeText.mock.calls).toStrictEqual([[`${window.location.origin}/session/session_alice_100`]]),
-		);
+		await waitFor(() => {
+			expect(writeText.mock.calls).toStrictEqual([[`${window.location.origin}/session/session_alice_100`]]);
+		});
 		expect(calls().filter(({url}) => url.endsWith("/identity"))).toStrictEqual([]);
 	});
 
@@ -209,6 +213,8 @@ describe("⌥⌘L on the session page", () => {
 		await flush();
 
 		expect(writeText.mock.calls).toEqual([[`${window.location.origin}/session/${SESSION_ID}`]]);
-		await waitFor(() => expect(toastText()).toBe("Link copied to clipboard."));
+		await waitFor(() => {
+			expect(toastText()).toBe("Link copied to clipboard.");
+		});
 	});
 });

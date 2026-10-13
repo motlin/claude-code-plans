@@ -91,9 +91,9 @@ interface LaunchCall {
 }
 
 let launchCalls: LaunchCall[] = [];
-let launchResponse: () => Promise<Response> = () => new Promise<Response>(() => {});
+let launchResponse: () => Promise<Response> = async () => new Promise<Response>(() => {});
 
-function fetchMock(url: string, init?: RequestInit): Promise<Response> {
+async function fetchMock(url: string, init?: RequestInit): Promise<Response> {
 	if (url === "/api/herdr/launch") {
 		launchCalls.push({url, init});
 		return launchResponse();
@@ -192,7 +192,9 @@ function launchBody(call: LaunchCall | undefined): unknown {
 
 async function pickProject(dialog: HTMLElement, input: HTMLElement, name: string) {
 	fireEvent.keyDown(input, {key: "Enter", code: "Enter"});
-	await waitFor(() => expect(headings(dialog)).toStrictEqual(["Choose a project"]));
+	await waitFor(() => {
+		expect(headings(dialog)).toStrictEqual(["Choose a project"]);
+	});
 	const row = [...dialog.querySelectorAll<HTMLElement>("[cmdk-item]")].find(
 		(item) => item.querySelector("[data-palette-label]")?.textContent === name,
 	);
@@ -201,11 +203,11 @@ async function pickProject(dialog: HTMLElement, input: HTMLElement, name: string
 }
 
 describe("⌘K palette: start a new session", () => {
-	const writeText = vi.fn((_text: string) => Promise.resolve());
+	const writeText = vi.fn(async (_text: string) => Promise.resolve());
 
 	beforeEach(() => {
 		launchCalls = [];
-		launchResponse = () => new Promise<Response>(() => {});
+		launchResponse = async () => new Promise<Response>(() => {});
 		TestEventSource.current = null;
 		vi.stubGlobal("EventSource", TestEventSource);
 		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(MAC_UA);
@@ -266,7 +268,9 @@ describe("⌘K palette: start a new session", () => {
 
 		fireEvent.keyDown(input, {key: "Enter", code: "Enter"});
 
-		await waitFor(() => expect(headings(dialog)).toStrictEqual(["Choose a project"]));
+		await waitFor(() => {
+			expect(headings(dialog)).toStrictEqual(["Choose a project"]);
+		});
 		expect(groupLabels(dialog, "Choose a project")).toStrictEqual(["it's", "older", "newest"]);
 		expect(dialog.querySelector('[cmdk-item][data-selected="true"]')?.textContent).toBe("it's");
 		expect(launchCalls).toStrictEqual([]);
@@ -279,20 +283,28 @@ describe("⌘K palette: start a new session", () => {
 
 		fireEvent.keyDown(input, {key: "Enter", code: "Enter", metaKey: true});
 
-		await waitFor(() => expect(headings(dialog)).toStrictEqual(["Choose a project"]));
+		await waitFor(() => {
+			expect(headings(dialog)).toStrictEqual(["Choose a project"]);
+		});
 	});
 
 	it("returns from the picker to the results on Escape", async () => {
 		const {dialog, input} = await openPalette();
 		fireEvent.change(input, {target: {value: "fix the flaky test"}});
 		fireEvent.keyDown(input, {key: "Enter", code: "Enter"});
-		await waitFor(() => expect(headings(dialog)).toStrictEqual(["Choose a project"]));
+		await waitFor(() => {
+			expect(headings(dialog)).toStrictEqual(["Choose a project"]);
+		});
 
 		fireEvent.keyDown(input, {key: "Escape", code: "Escape"});
 
-		await waitFor(() => expect(headings(dialog)[0]).toBe("Quick actions"));
+		await waitFor(() => {
+			expect(headings(dialog)[0]).toBe("Quick actions");
+		});
 		expect(screen.getByRole("dialog", {name: "Search"})).toBe(dialog);
-		await waitFor(() => expect(newSessionRow(dialog).getAttribute("data-selected")).toBe("true"));
+		await waitFor(() => {
+			expect(newSessionRow(dialog).getAttribute("data-selected")).toBe("true");
+		});
 	});
 
 	it("posts the prompt and project to the herdr launch API and shows Starting session…", async () => {
@@ -301,7 +313,9 @@ describe("⌘K palette: start a new session", () => {
 
 		await pickProject(dialog, input, "older");
 
-		await waitFor(() => expect(launchCalls.length).toBe(1));
+		await waitFor(() => {
+			expect(launchCalls.length).toBe(1);
+		});
 		expect({
 			method: launchCalls[0]?.init?.method,
 			body: launchBody(launchCalls[0]),
@@ -324,14 +338,18 @@ describe("⌘K palette: start a new session", () => {
 		fireEvent.change(composer, {target: {value: "summarize this"}});
 
 		fireEvent.click(within(dialog).getByRole("button", {name: "Send"}));
-		await waitFor(() => expect(headings(dialog)).toStrictEqual(["Choose a project"]));
+		await waitFor(() => {
+			expect(headings(dialog)).toStrictEqual(["Choose a project"]);
+		});
 		const row = [...dialog.querySelectorAll<HTMLElement>("[cmdk-item]")].find(
 			(item) => item.querySelector("[data-palette-label]")?.textContent === "older",
 		);
 		if (row === undefined) throw new Error("No project row older");
 		fireEvent.click(row);
 
-		await waitFor(() => expect(launchCalls.length).toBe(1));
+		await waitFor(() => {
+			expect(launchCalls.length).toBe(1);
+		});
 		expect(launchBody(launchCalls[0])).toStrictEqual({
 			cwd: "/users/dev/older",
 			prompt: "@/cache/attachments/uuid.txt\n\nsummarize this",
@@ -343,7 +361,9 @@ describe("⌘K palette: start a new session", () => {
 		const {dialog, input, router, eventSource} = await openPalette();
 		fireEvent.change(input, {target: {value: "fix the flaky test"}});
 		await pickProject(dialog, input, "older");
-		await waitFor(() => expect(launchCalls.length).toBe(1));
+		await waitFor(() => {
+			expect(launchCalls.length).toBe(1);
+		});
 
 		act(() => {
 			eventSource.emit(SSE_EVENTS.SESSION_START, {
@@ -362,8 +382,12 @@ describe("⌘K palette: start a new session", () => {
 			});
 		});
 
-		await waitFor(() => expect(router.state.location.pathname).toBe("/session/new-session"));
-		await waitFor(() => expect(screen.queryByRole("dialog", {name: "Search"})).toBeNull());
+		await waitFor(() => {
+			expect(router.state.location.pathname).toBe("/session/new-session");
+		});
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog", {name: "Search"})).toBeNull();
+		});
 	});
 
 	it("copies the exact shell-escaped command when herdr is unavailable", async () => {
@@ -373,22 +397,24 @@ describe("⌘K palette: start a new session", () => {
 
 		await pickProject(dialog, input, "it's");
 
-		await waitFor(() =>
+		await waitFor(() => {
 			expect(writeText.mock.calls).toStrictEqual([
 				[`cd '/users/dev/it'\\''s' && claude 'don'\\''t break $HOME'`],
-			]),
-		);
+			]);
+		});
 		expect((await screen.findByRole("status")).textContent).toContain("Copied command — herdr unavailable");
 	});
 
 	it("falls back to copying when the launch request itself fails", async () => {
-		launchResponse = () => Promise.reject(new TypeError("Failed to fetch"));
+		launchResponse = async () => Promise.reject(new TypeError("Failed to fetch"));
 		const {dialog, input} = await openPalette();
 		fireEvent.change(input, {target: {value: "hello"}});
 
 		await pickProject(dialog, input, "newest");
 
-		await waitFor(() => expect(writeText.mock.calls).toStrictEqual([["cd '/users/dev/newest' && claude 'hello'"]]));
+		await waitFor(() => {
+			expect(writeText.mock.calls).toStrictEqual([["cd '/users/dev/newest' && claude 'hello'"]]);
+		});
 	});
 });
 

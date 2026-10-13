@@ -148,7 +148,7 @@ function extractSubagentSnapshot(
 				if (toolUse.name !== "Agent" || typeof toolUse.id !== "string") continue;
 				const input = toolUse.input ?? {};
 				const agentType = getAgentTypeOrNull(input);
-				const description = typeof input["description"] === "string" ? (input["description"] as string) : null;
+				const description = typeof input["description"] === "string" ? input["description"] : null;
 				pendingByToolUseId.set(toolUse.id, {
 					agentType,
 					description,

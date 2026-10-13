@@ -1065,7 +1065,9 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 		const timer = setInterval(() => {
 			dispatch({type: "SWEEP_LIVE_SUBAGENTS", timestamp: Date.now()});
 		}, 60_000);
-		return () => clearInterval(timer);
+		return () => {
+			clearInterval(timer);
+		};
 	}, []);
 
 	useEffect(() => {
@@ -1463,7 +1465,9 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 				}
 				es.addEventListener(SSE_EVENTS.STATUSLINE_UPDATED, handleStatuslineEvent);
 			},
-			onReconnected: () => applyReconnected(queryClient),
+			onReconnected: () => {
+				applyReconnected(queryClient);
+			},
 		});
 	}, [queryClient]);
 

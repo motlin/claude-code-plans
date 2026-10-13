@@ -262,7 +262,9 @@ export function LinksPaneView({
 		if (copiedTimeoutReference.current !== undefined) {
 			window.clearTimeout(copiedTimeoutReference.current);
 		}
-		copiedTimeoutReference.current = window.setTimeout(() => setCopiedUrl(null), 1_500);
+		copiedTimeoutReference.current = window.setTimeout(() => {
+			setCopiedUrl(null);
+		}, 1_500);
 	}, []);
 
 	function toggleCategory(categoryId: string): void {
@@ -296,7 +298,9 @@ export function LinksPaneView({
 					<input
 						type="checkbox"
 						checked={includeToolsAndThinking}
-						onChange={(event) => onIncludeToolsAndThinkingChange(event.target.checked)}
+						onChange={(event) => {
+							onIncludeToolsAndThinkingChange(event.target.checked);
+						}}
 						className="size-3.5 shrink-0 accent-accent-100"
 					/>
 					<span className="truncate">Include tools and thinking</span>
@@ -352,7 +356,9 @@ export function LinksPaneView({
 									type="button"
 									id={`links-${group.categoryId}`}
 									aria-expanded={!isCollapsed}
-									onClick={() => toggleCategory(group.categoryId)}
+									onClick={() => {
+										toggleCategory(group.categoryId);
+									}}
 									className="sticky top-[57px] z-10 flex w-full items-center gap-2 border-b border-border bg-surface-2 px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-secondary hover:bg-fill-ghost-hover"
 								>
 									{isCollapsed ? (
@@ -396,7 +402,9 @@ export interface LinksPaneProps {
 export function LinksPane({sessionId, lines, windowStartIndex, jumpTargetWindow}: LinksPaneProps) {
 	const {settings} = useSettings();
 	const [currentHost, setCurrentHost] = useState<string | undefined>(undefined);
-	useEffect(() => setCurrentHost(window.location.hostname), []);
+	useEffect(() => {
+		setCurrentHost(window.location.hostname);
+	}, []);
 	const [includeToolsAndThinking, setIncludeToolsAndThinking] = useIncludeToolsAndThinking();
 	// A whole-session inventory costs a full pass over the JSONL, and each dev
 	// server fetch re-probes liveness, so only an open Links pane asks for them.

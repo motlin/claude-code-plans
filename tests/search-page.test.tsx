@@ -37,7 +37,7 @@ const ITEMS: UnifiedSearchItem[] = [
 
 let requests: string[] = [];
 
-function fetchMock(url: string): Promise<unknown> {
+async function fetchMock(url: string): Promise<unknown> {
 	requests.push(url);
 	return Promise.resolve({ok: true, status: 200, json: async () => ({items: ITEMS})});
 }
@@ -112,7 +112,9 @@ describe("/search page", () => {
 	it("renders unified search rows as highlight runs, not <mark>", async () => {
 		await renderPage("/search?q=auth");
 
-		await waitFor(() => expect(optionTitles()).toStrictEqual(["auth one", "auth two", "auth plan"]));
+		await waitFor(() => {
+			expect(optionTitles()).toStrictEqual(["auth one", "auth two", "auth plan"]);
+		});
 		expect({
 			requests,
 			marks: document.querySelectorAll("mark").length,
@@ -126,7 +128,9 @@ describe("/search page", () => {
 
 	it("moves the selection with ↑/↓ and opens the selected row on Enter", async () => {
 		const router = await renderPage("/search?q=auth");
-		await waitFor(() => expect(optionTitles()).toHaveLength(3));
+		await waitFor(() => {
+			expect(optionTitles()).toHaveLength(3);
+		});
 		const input = screen.getByRole("combobox", {name: "Search"});
 
 		const trail = [selectedTitle()];
@@ -149,7 +153,9 @@ describe("/search page", () => {
 
 	it("opens plans and memories by their href", async () => {
 		const router = await renderPage("/search?q=auth");
-		await waitFor(() => expect(optionTitles()).toHaveLength(3));
+		await waitFor(() => {
+			expect(optionTitles()).toHaveLength(3);
+		});
 		const input = screen.getByRole("combobox", {name: "Search"});
 
 		fireEvent.keyDown(input, {key: "ArrowDown"});
@@ -162,16 +168,24 @@ describe("/search page", () => {
 
 	it("writes the typed query and the chosen type tab back to the URL", async () => {
 		const router = await renderPage("/search?q=auth");
-		await waitFor(() => expect(optionTitles()).toHaveLength(3));
+		await waitFor(() => {
+			expect(optionTitles()).toHaveLength(3);
+		});
 
 		fireEvent.change(screen.getByRole("combobox", {name: "Search"}), {
 			target: {value: "token"},
 		});
-		await waitFor(() => expect({...router.state.location.search}).toStrictEqual({q: "token", type: "all"}));
+		await waitFor(() => {
+			expect({...router.state.location.search}).toStrictEqual({q: "token", type: "all"});
+		});
 
 		fireEvent.click(screen.getByRole("tab", {name: "Plans"}));
-		await waitFor(() => expect({...router.state.location.search}).toStrictEqual({q: "token", type: "plans"}));
-		await waitFor(() => expect(requests.at(-1)).toBe("/api/search?query=token&type=plans&limit=100"));
+		await waitFor(() => {
+			expect({...router.state.location.search}).toStrictEqual({q: "token", type: "plans"});
+		});
+		await waitFor(() => {
+			expect(requests.at(-1)).toBe("/api/search?query=token&type=plans&limit=100");
+		});
 		expect(screen.getByRole("tab", {name: "Plans"}).getAttribute("aria-selected")).toBe("true");
 	});
 });

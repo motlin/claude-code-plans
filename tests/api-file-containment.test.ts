@@ -159,7 +159,7 @@ describe("file viewer API", () => {
 		symlinkSync(outsidePath, symlinkPath);
 
 		const responses = await Promise.all(
-			[outsidePath, symlinkPath].map((path) =>
+			[outsidePath, symlinkPath].map(async (path) =>
 				handleFileRequest(fileRequest(path), encodeFilePath(path), configPath),
 			),
 		);
@@ -185,7 +185,7 @@ describe("file viewer API", () => {
 		truncateSync(oversizedPath, FILE_CONTENT_SIZE_CAP_BYTES + 1);
 
 		const responses = await Promise.all(
-			[directoryPath, binaryPath, oversizedPath, missingPath].map((path) =>
+			[directoryPath, binaryPath, oversizedPath, missingPath].map(async (path) =>
 				handleFileRequest(fileRequest(path), encodeFilePath(path), configPath),
 			),
 		);
@@ -253,7 +253,7 @@ describe("file viewer API", () => {
 		writeFileSync(outsideImage, bytes);
 
 		const [inside, outside] = await Promise.all(
-			[imagePath, outsideImage].map((path) =>
+			[imagePath, outsideImage].map(async (path) =>
 				handleFileRequest(fileRequest(path), encodeFilePath(path), configPath),
 			),
 		);

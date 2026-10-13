@@ -123,7 +123,7 @@ async function deliverMeasurements() {
 					contentBoxSize: [],
 					devicePixelContentBoxSize: [],
 				}));
-			observer.callback(observations, observer as unknown as ResizeObserver);
+			observer.callback(observations, observer);
 		}
 	});
 }
@@ -261,7 +261,9 @@ it("keeps the reader's rows in place when an earlier page of records lands above
 	await settle(main);
 	const before = paintedMessages();
 
-	await act(async () => rerender(chat(lines)));
+	await act(async () => {
+		rerender(chat(lines));
+	});
 	const landed = paintedMessages();
 	await settle(main);
 
@@ -280,7 +282,9 @@ it("keeps the reader's rows in place across repeated earlier pages while scrolli
 	for (const start of [60, 40, 20, 0]) {
 		const [anchor] = paintedMessages();
 		await scrollTo(main, main.scrollTop - 100);
-		await act(async () => rerender(chat(lines.slice(start))));
+		await act(async () => {
+			rerender(chat(lines.slice(start)));
+		});
 		await settle(main);
 		const now = paintedMessages().find((row) => row.message === anchor!.message);
 		moves.push({message: anchor!.message, moved: now!.top - anchor!.top});

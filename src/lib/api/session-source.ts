@@ -37,7 +37,7 @@ export const SessionSourceResponse = z
 export const sessionSourceQueryOptions = (sessionId: string, uuid: string, contextN = 5) =>
 	queryOptions({
 		queryKey: [...sessionQueryKeys.all(), sessionId, "source", uuid, contextN] as const,
-		queryFn: () =>
+		queryFn: async () =>
 			apiFetch(
 				`/api/sessions/${encodeURIComponent(sessionId)}/source/${encodeURIComponent(uuid)}?context=${contextN}`,
 				SessionSourceResponse,

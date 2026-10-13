@@ -446,9 +446,9 @@ function handleJobFileEvent(path: string, jobsRoot: string, broadcast: Broadcast
 function safeDiffSessions(projectId: string, broadcast: BroadcastFn = broadcastTyped, db?: IndexDb): void {
 	if (!projectId) return;
 	try {
-		trackActivitySync(`session diff ${projectId}`, () =>
-			diffAndBroadcastSessions(db ?? getDb().index, projectId, broadcast),
-		);
+		trackActivitySync(`session diff ${projectId}`, () => {
+			diffAndBroadcastSessions(db ?? getDb().index, projectId, broadcast);
+		});
 	} catch {
 		// transient DB error; next file event will retry
 	}
@@ -488,7 +488,10 @@ function safeDiffTasks(sessionId: string): void {
 	try {
 		const {index} = getDb();
 		const projectId = getSessionProjectId(index, sessionId);
-		if (projectId) trackActivitySync(`task diff ${projectId}`, () => diffAndBroadcastTasks(projectId));
+		if (projectId)
+			trackActivitySync(`task diff ${projectId}`, () => {
+				diffAndBroadcastTasks(projectId);
+			});
 	} catch {
 		// transient DB error; next file event will retry
 	}
@@ -514,8 +517,8 @@ async function indexSilently(
 ): Promise<{linkedPlans: string[]}> {
 	try {
 		const index = db ?? getDb().index;
-		return await trackActivity(`index ${path}`, () =>
-			retryWhileBusy(() =>
+		return await trackActivity(`index ${path}`, async () =>
+			retryWhileBusy(async () =>
 				indexFile(index, path, projectsDir, plansDirectory || undefined, {jsonlCache: liveJsonlIndexCache}),
 			),
 		);
@@ -536,8 +539,8 @@ function fileContentQueue(db: IndexDb): CooperativeQueue {
 
 async function handleFileContentChange(db: IndexDb, path: string, roots: readonly string[]): Promise<void> {
 	await fileContentQueue(db).enqueue(path, async () => {
-		await trackActivity(`file-content index ${path}`, () =>
-			retryWhileBusy(() => indexFileContent(db, path, roots)),
+		await trackActivity(`file-content index ${path}`, async () =>
+			retryWhileBusy(async () => indexFileContent(db, path, roots)),
 		);
 	});
 }
@@ -661,7 +664,7 @@ async function handleFileChange(path: string): Promise<void> {
 	const gitIndexRoot = fileContentRootByGitIndexPath.get(normalizedPath);
 	if (gitIndexRoot) {
 		try {
-			await trackActivity(`git index refresh ${gitIndexRoot}`, () =>
+			await trackActivity(`git index refresh ${gitIndexRoot}`, async () =>
 				refreshTrackedFileRoot(getDb().index, gitIndexRoot),
 			);
 		} catch {
@@ -692,7 +695,7 @@ async function handleFileChange(path: string): Promise<void> {
 		const fire = async () => {
 			throttleState.lastFired = Date.now();
 			delete throttleState.timer;
-			await trackActivity(`jsonl append ${path}`, () =>
+			await trackActivity(`jsonl append ${path}`, async () =>
 				processJsonlAppend(getDb().index, path, jsonlOffsets, broadcastTyped),
 			);
 		};

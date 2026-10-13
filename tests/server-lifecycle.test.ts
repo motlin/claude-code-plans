@@ -26,7 +26,7 @@ const TITLE = `claude-code-browser-server-${instance}`;
 let PORT = "";
 let env: NodeJS.ProcessEnv = {};
 
-function freePort(): Promise<string> {
+async function freePort(): Promise<string> {
 	return new Promise((resolvePort, reject) => {
 		const probe = createServer();
 		probe.once("error", reject);

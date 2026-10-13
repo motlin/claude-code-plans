@@ -379,7 +379,7 @@ describe("artifacts route", () => {
 		await renderArtifactsPage("/artifacts?search=ladder", true);
 
 		expect({
-			input: (screen.getByRole("searchbox", {name: "Search your artifacts"}) as HTMLInputElement).value,
+			input: screen.getByRole<HTMLInputElement>("searchbox", {name: "Search your artifacts"}).value,
 			placeholder: screen.getByRole("searchbox").getAttribute("placeholder"),
 			status: pageStatuses()[0],
 			rows: screen.getAllByRole("listitem").map((row) => rowSummary(row).title),

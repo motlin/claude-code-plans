@@ -108,17 +108,23 @@ describe("PinnedSessionsPage", () => {
 
 		await renderPage();
 
-		await waitFor(() => expect(titles()).toStrictEqual(["Carol session", "Alice session", "Bob session"]));
+		await waitFor(() => {
+			expect(titles()).toStrictEqual(["Carol session", "Alice session", "Bob session"]);
+		});
 	});
 
 	it("unpins from the hover button and follows other tabs", async () => {
 		pin("session-alice");
 		pin("session-bob");
 		await renderPage();
-		await waitFor(() => expect(titles()).toStrictEqual(["Alice session", "Bob session"]));
+		await waitFor(() => {
+			expect(titles()).toStrictEqual(["Alice session", "Bob session"]);
+		});
 
 		fireEvent.click(screen.getAllByRole("button", {name: "Unpin"})[0]!);
-		await waitFor(() => expect(titles()).toStrictEqual(["Bob session"]));
+		await waitFor(() => {
+			expect(titles()).toStrictEqual(["Bob session"]);
+		});
 		const afterUnpin = readPinState();
 
 		const otherTab = JSON.stringify({
@@ -130,7 +136,9 @@ describe("PinnedSessionsPage", () => {
 			window.dispatchEvent(new StorageEvent("storage", {key: "ccp-pins", newValue: otherTab}));
 		});
 
-		await waitFor(() => expect(titles()).toStrictEqual(["Bob session", "Carol session"]));
+		await waitFor(() => {
+			expect(titles()).toStrictEqual(["Bob session", "Carol session"]);
+		});
 		expect(afterUnpin).toStrictEqual({pinnedIds: ["session-bob"], pinnedOrder: []});
 	});
 });

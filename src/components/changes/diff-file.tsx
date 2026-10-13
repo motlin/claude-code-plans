@@ -11,7 +11,7 @@ import {useResolvedTheme} from "../theme-provider";
 
 // Register our claude.ai code theme with the library's shared highlighter so
 // the Changes pane highlights with the same Shiki themes as the transcript.
-registerCustomTheme("claude-light", () => Promise.resolve(claudeLight));
+registerCustomTheme("claude-light", async () => Promise.resolve(claudeLight));
 
 /**
  * The `--diffs-*` variables upstream's Changes pane sets on its CodeView,
@@ -251,7 +251,7 @@ export function DiffFile({
 			disableWorkerPool
 			{...(lineAnnotations === undefined
 				? {}
-				: {lineAnnotations, renderAnnotation: (annotation) => annotation.metadata})}
+				: {lineAnnotations, renderAnnotation: (annotation): ReactNode => annotation.metadata})}
 			{...(onRequestChanges === undefined
 				? {}
 				: {

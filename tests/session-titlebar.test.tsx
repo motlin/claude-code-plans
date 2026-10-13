@@ -160,7 +160,7 @@ beforeEach(() => {
 	openMock.mockReturnValue(null);
 	Object.defineProperty(navigator, "clipboard", {value: {writeText}, configurable: true});
 	__unreadStoreTesting.reset();
-	__unreadStoreTesting.setPersist(() => Promise.resolve());
+	__unreadStoreTesting.setPersist(async () => Promise.resolve());
 });
 
 afterEach(() => {
@@ -439,7 +439,9 @@ describe("SessionTitlebar repository pill", () => {
 	it("opens by keyboard without a request and restores focus on Escape", async () => {
 		await renderTitlebar({...baseDetail, pr});
 		const trigger = screen.getByRole("button", {name: "Repository alice/example-repository"});
-		act(() => trigger.focus());
+		act(() => {
+			trigger.focus();
+		});
 		fireEvent.keyDown(trigger, {key: "ArrowDown"});
 		await flush();
 		const items = screen.getAllByRole("menuitem").map((item) => item.textContent);

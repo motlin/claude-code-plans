@@ -83,10 +83,12 @@ class RecursiveWatcherImpl extends EventEmitter implements RecursiveWatcher {
 		const attachedRoots: string[] = [];
 		for (const root of resolvedRoots) {
 			try {
-				const watcher = watchNative(root, {recursive: true, persistent: true}, (_event, relativePath) =>
-					this.handleNativeEvent(root, relativePath),
-				);
-				watcher.on("error", (error) => this.handleNativeError(root, watcher, error));
+				const watcher = watchNative(root, {recursive: true, persistent: true}, (_event, relativePath) => {
+					this.handleNativeEvent(root, relativePath);
+				});
+				watcher.on("error", (error) => {
+					this.handleNativeError(root, watcher, error);
+				});
 				this.nativeWatchers.set(root, watcher);
 				attachedRoots.push(root);
 			} catch (error) {
@@ -94,7 +96,7 @@ class RecursiveWatcherImpl extends EventEmitter implements RecursiveWatcher {
 			}
 		}
 
-		await Promise.all(attachedRoots.map((root) => this.waitUntilArmed(root)));
+		await Promise.all(attachedRoots.map(async (root) => this.waitUntilArmed(root)));
 		if (!this.closed) this.emit("ready");
 	}
 
@@ -127,7 +129,7 @@ class RecursiveWatcherImpl extends EventEmitter implements RecursiveWatcher {
 	}
 
 	/** Resolve true when the probe came back, false when it is time to rewrite it. */
-	private raceProbe(observed: Promise<void>): Promise<boolean> {
+	private async raceProbe(observed: Promise<void>): Promise<boolean> {
 		return new Promise((resolve) => {
 			const timer = setTimeout(() => {
 				this.probeTimers.delete(timer);

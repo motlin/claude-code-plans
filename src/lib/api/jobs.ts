@@ -39,6 +39,6 @@ export const JobListResponse = z.array(JobSchema);
 
 export const jobsQueryOptions = queryOptions({
 	queryKey: ["jobs"] as const,
-	queryFn: ({signal}) => apiFetch("/api/jobs", JobListResponse, {signal}),
+	queryFn: async ({signal}) => apiFetch("/api/jobs", JobListResponse, {signal}),
 	staleTime: 30_000,
 });

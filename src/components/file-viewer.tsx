@@ -90,7 +90,9 @@ function useMountedChunks(containerRef: RefObject<HTMLDivElement | null>, virtua
 		for (const element of containerRef.current?.querySelectorAll("[data-chunk]") ?? []) {
 			observer.observe(element);
 		}
-		return () => observer.disconnect();
+		return () => {
+			observer.disconnect();
+		};
 	}, [containerRef, virtualized]);
 
 	const mount = useCallback((chunk: number) => {
@@ -156,7 +158,9 @@ export function FileViewer({
 		};
 		handleHashChange();
 		window.addEventListener("hashchange", handleHashChange);
-		return () => window.removeEventListener("hashchange", handleHashChange);
+		return () => {
+			window.removeEventListener("hashchange", handleHashChange);
+		};
 	}, [hashNavigation, select, file.path]);
 
 	useEffect(() => {

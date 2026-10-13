@@ -15,7 +15,7 @@ type ActiveSession = z.infer<typeof ActiveSessionListResponse>[number];
 
 export const Route = createFileRoute("/active")({
 	component: ActivePage,
-	loader: ({context: {queryClient}}) =>
+	loader: async ({context: {queryClient}}) =>
 		queryClient.ensureQueryData(activeSessionsQueryOptions(DEFAULTS.activeTimeoutSec * 1000)),
 	head: () => ({
 		meta: [{title: "Active Sessions"}],
@@ -59,13 +59,19 @@ function ActivePage() {
 	const {activeSessions} = useClaudeEvents();
 
 	useEffect(() => {
-		const timer = window.setInterval(() => setNow(Date.now()), 60_000);
-		return () => window.clearInterval(timer);
+		const timer = window.setInterval(() => {
+			setNow(Date.now());
+		}, 60_000);
+		return () => {
+			window.clearInterval(timer);
+		};
 	}, []);
 
 	useEffect(() => {
 		setUnseenWorkVersion((version) => version + 1);
-		return subscribeUnseenWork(() => setUnseenWorkVersion((version) => version + 1));
+		return subscribeUnseenWork(() => {
+			setUnseenWorkVersion((version) => version + 1);
+		});
 	}, []);
 
 	// Union of the loader result and the SSE reducer map. Loader entries carry full

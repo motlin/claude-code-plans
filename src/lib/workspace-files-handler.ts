@@ -116,7 +116,7 @@ export async function handleSessionFilesRequest(
 	const options = hideIgnoredFlag === "1" ? {ignored: resolvedDependencies.checkIgnored} : {};
 	const mark =
 		markIgnoredFlag === "1" && hideIgnoredFlag === "0"
-			? (entries: WorkspaceEntry[]) => markIgnored(root, entries, resolvedDependencies.checkIgnored)
+			? async (entries: WorkspaceEntry[]) => markIgnored(root, entries, resolvedDependencies.checkIgnored)
 			: async (entries: WorkspaceEntry[]) => entries;
 	try {
 		if (query === "") {

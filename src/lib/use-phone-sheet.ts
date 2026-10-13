@@ -17,7 +17,9 @@ function useMediaQuery(query: string): boolean {
 			const list = mediaQuery(query);
 			if (!list) return () => undefined;
 			list.addEventListener("change", onChange);
-			return () => list.removeEventListener("change", onChange);
+			return () => {
+				list.removeEventListener("change", onChange);
+			};
 		},
 		() => mediaQuery(query)?.matches ?? false,
 		() => false,

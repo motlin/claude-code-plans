@@ -167,9 +167,9 @@ describe("J2 deep-link session open", () => {
 describe("J3 session switch", () => {
 	function sidebarRow(sessionId: string, queryClient: QueryClient, harness: JourneyHarness): HTMLElement {
 		const row = element(`<a data-row-main-button href="/session/${sessionId}">Session</a>`);
-		row.addEventListener("pointerdown", (event) =>
-			startSessionSwitchJourney(event as PointerEvent, sessionId, queryClient, harness.tracker),
-		);
+		row.addEventListener("pointerdown", (event) => {
+			startSessionSwitchJourney(event, sessionId, queryClient, harness.tracker);
+		});
 		document.body.append(row);
 		return row;
 	}

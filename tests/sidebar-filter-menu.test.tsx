@@ -103,7 +103,9 @@ async function renderSidebarGroups(
 	});
 	await router.load();
 	const result = render(<RouterProvider router={router} />);
-	await waitFor(() => expect(result.container.querySelector("[data-sidebar-group-label]")).toBeTruthy());
+	await waitFor(() => {
+		expect(result.container.querySelector("[data-sidebar-group-label]")).toBeTruthy();
+	});
 	await flush();
 	return result;
 }
@@ -132,7 +134,9 @@ function menuOutline(menu: HTMLElement): string[] {
 
 async function openSubmenu(name: RegExp): Promise<void> {
 	const trigger = screen.getByRole("menuitem", {name});
-	act(() => trigger.focus());
+	act(() => {
+		trigger.focus();
+	});
 	fireEvent.keyDown(trigger, {key: "ArrowRight"});
 	await flush();
 }

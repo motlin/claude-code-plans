@@ -216,7 +216,9 @@ describe("SessionChat initial scrolling", () => {
 		);
 
 		act(flushAnimationFrames);
-		act(() => observerFor(view.container.firstElementChild!).resize());
+		act(() => {
+			observerFor(view.container.firstElementChild!).resize();
+		});
 		act(flushAnimationFrames);
 
 		Object.defineProperty(window, "scrollY", {configurable: true, value: 100, writable: true});
@@ -229,7 +231,9 @@ describe("SessionChat initial scrolling", () => {
 				toolResultMap={new Map()}
 			/>,
 		);
-		act(() => observerFor(view.container.firstElementChild!).resize());
+		act(() => {
+			observerFor(view.container.firstElementChild!).resize();
+		});
 		act(flushAnimationFrames);
 
 		expect({

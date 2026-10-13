@@ -410,7 +410,6 @@ export default defineConfig({
 					"@typescript-eslint/await-thenable": "off", // 3
 					"@typescript-eslint/consistent-return": "off", // 65
 					"@typescript-eslint/dot-notation": "off", // 9
-					"@typescript-eslint/no-confusing-void-expression": "off", // 1242
 					"@typescript-eslint/no-deprecated": "off", // 83
 					"@typescript-eslint/no-dynamic-delete": "off", // 14
 					"@typescript-eslint/no-floating-promises": "off", // 25
@@ -421,7 +420,6 @@ export default defineConfig({
 					"@typescript-eslint/no-unnecessary-boolean-literal-compare": "off", // 3
 					"@typescript-eslint/no-unnecessary-condition": "off", // 324
 					"@typescript-eslint/no-unnecessary-template-expression": "off", // 1
-					"@typescript-eslint/no-unnecessary-type-assertion": "off", // 146
 					"@typescript-eslint/no-unnecessary-type-parameters": "off", // 3
 					"@typescript-eslint/no-unsafe-argument": "off", // 8
 					"@typescript-eslint/no-unsafe-assignment": "off", // 13
@@ -437,12 +435,10 @@ export default defineConfig({
 					"@typescript-eslint/prefer-promise-reject-errors": "off", // 6
 					"@typescript-eslint/prefer-readonly": "off", // 2
 					"@typescript-eslint/prefer-string-starts-ends-with": "off", // 5
-					"@typescript-eslint/promise-function-async": "off", // 621
 					"@typescript-eslint/require-await": "off", // 387
 					"@typescript-eslint/return-await": "off", // 1
 					"@typescript-eslint/strict-boolean-expressions": "off", // 647
 					"@typescript-eslint/switch-exhaustiveness-check": "off", // 14
-					"import/no-duplicates": "off", // 2
 					"no-negated-condition": "off", // 71
 					"no-promise-executor-return": "off", // 122
 					"no-useless-constructor": "off", // 1

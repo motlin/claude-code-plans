@@ -47,8 +47,8 @@ function defaultDependencies(): SessionDiffHandlerDependencies {
 	return {
 		index: getDb().index,
 		resolveDirectory,
-		listScopes: (cwd) => listScopes(cwd),
-		buildScopeDiff: (cwd, scope, options) => buildScopeDiff(cwd, scope, options),
+		listScopes: async (cwd) => listScopes(cwd),
+		buildScopeDiff: async (cwd, scope, options) => buildScopeDiff(cwd, scope, options),
 		readRecords,
 	};
 }
@@ -159,7 +159,7 @@ async function resolveDiff(
 		return sessionEditsDiff(dependencies, location, scope);
 	}
 
-	const fallback = () => sessionEditsDiff(dependencies, location, {kind: "session"});
+	const fallback = async () => sessionEditsDiff(dependencies, location, {kind: "session"});
 	const directory = await dependencies.resolveDirectory(location.cwd);
 	if (directory === null) return fallback();
 

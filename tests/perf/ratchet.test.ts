@@ -46,51 +46,69 @@ function readResults(): unknown {
 describe("ratchet", () => {
 	it("passes when the value equals the ceiling", () => {
 		const ratchet = createRatchet({ceilings, resultsPath, tree});
-		expect(() => ratchet("server.sessionOpen.large-wide.detail.jsonl.bytesRead", 1000)).not.toThrow();
+		expect(() => {
+			ratchet("server.sessionOpen.large-wide.detail.jsonl.bytesRead", 1000);
+		}).not.toThrow();
 	});
 
 	it("fails with the rise message when the value is above the ceiling", () => {
 		const ratchet = createRatchet({ceilings, resultsPath, tree});
-		expect(() => ratchet("server.sessionOpen.large-wide.detail.jsonl.bytesRead", 1001)).toThrow(
+		expect(() => {
+			ratchet("server.sessionOpen.large-wide.detail.jsonl.bytesRead", 1001);
+		}).toThrow(
 			"server.sessionOpen.large-wide.detail.jsonl.bytesRead rose from 1000 to 1001; fix the regression or raise the ceiling with a reason",
 		);
 	});
 
 	it("fails with the lower-the-ceiling message when the value is below the ceiling", () => {
 		const ratchet = createRatchet({ceilings, resultsPath, tree});
-		expect(() => ratchet("server.sessionOpen.large-wide.detail.jsonl.bytesRead", 999)).toThrow(
+		expect(() => {
+			ratchet("server.sessionOpen.large-wide.detail.jsonl.bytesRead", 999);
+		}).toThrow(
 			"server.sessionOpen.large-wide.detail.jsonl.bytesRead improved from 1000 to 999; lower the ceiling in tests/perf/ceilings.json in this same commit",
 		);
 	});
 
 	it("passes within tolerance in both directions", () => {
 		const ratchet = createRatchet({ceilings, resultsPath, tree});
-		expect(() => ratchet("lab.sessionSwitch.typical.inp", 220)).not.toThrow();
-		expect(() => ratchet("lab.sessionSwitch.typical.inp", 180)).not.toThrow();
+		expect(() => {
+			ratchet("lab.sessionSwitch.typical.inp", 220);
+		}).not.toThrow();
+		expect(() => {
+			ratchet("lab.sessionSwitch.typical.inp", 180);
+		}).not.toThrow();
 	});
 
 	it("fails just outside tolerance in both directions", () => {
 		const ratchet = createRatchet({ceilings, resultsPath, tree});
-		expect(() => ratchet("lab.sessionSwitch.typical.inp", 221)).toThrow(
+		expect(() => {
+			ratchet("lab.sessionSwitch.typical.inp", 221);
+		}).toThrow(
 			"lab.sessionSwitch.typical.inp rose from 200 to 221; fix the regression or raise the ceiling with a reason",
 		);
-		expect(() => ratchet("lab.sessionSwitch.typical.inp", 179)).toThrow(
+		expect(() => {
+			ratchet("lab.sessionSwitch.typical.inp", 179);
+		}).toThrow(
 			"lab.sessionSwitch.typical.inp improved from 200 to 179; lower the ceiling in tests/perf/ceilings.json in this same commit",
 		);
 	});
 
 	it("fails for an id missing from the ceilings", () => {
 		const ratchet = createRatchet({ceilings, resultsPath, tree});
-		expect(() => ratchet("client.unknown.metric", 5)).toThrow(
-			"client.unknown.metric has no ceiling; add it to tests/perf/ceilings.json",
-		);
+		expect(() => {
+			ratchet("client.unknown.metric", 5);
+		}).toThrow("client.unknown.metric has no ceiling; add it to tests/perf/ceilings.json");
 	});
 
 	it("records every measurement to results.json, including failing and unknown ones", () => {
 		const ratchet = createRatchet({ceilings, resultsPath, tree});
 		ratchet("server.sessionOpen.large-wide.detail.jsonl.bytesRead", 1000);
-		expect(() => ratchet("lab.sessionSwitch.typical.inp", 500)).toThrow();
-		expect(() => ratchet("client.unknown.metric", 5)).toThrow();
+		expect(() => {
+			ratchet("lab.sessionSwitch.typical.inp", 500);
+		}).toThrow();
+		expect(() => {
+			ratchet("client.unknown.metric", 5);
+		}).toThrow();
 		expect(readResults()).toStrictEqual({
 			"client.unknown.metric": {value: 5},
 			"lab.sessionSwitch.typical.inp": {value: 500, unit: "ms"},
@@ -102,7 +120,9 @@ describe("ratchet", () => {
 		const first = createRatchet({ceilings, resultsPath, tree});
 		first("server.sessionOpen.large-wide.detail.jsonl.bytesRead", 1000);
 		const second = createRatchet({ceilings, resultsPath, tree});
-		expect(() => second("server.sessionOpen.large-wide.detail.jsonl.bytesRead", 1200)).toThrow();
+		expect(() => {
+			second("server.sessionOpen.large-wide.detail.jsonl.bytesRead", 1200);
+		}).toThrow();
 		second("lab.sessionSwitch.typical.inp", 200);
 		expect(readResults()).toStrictEqual({
 			"lab.sessionSwitch.typical.inp": {value: 200, unit: "ms"},
@@ -141,7 +161,9 @@ describe("diagnostics", () => {
 			tree,
 			diagnostics,
 		});
-		expect(() => ratchet("hot.slowPath.typical.calls", 640)).toThrow(
+		expect(() => {
+			ratchet("hot.slowPath.typical.calls", 640);
+		}).toThrow(
 			"hot.slowPath.typical.calls is a diagnostic (ρ 0.4 against wall time); remove its ceiling from tests/perf/ceilings.json",
 		);
 	});
@@ -160,7 +182,7 @@ describe("diagnostics", () => {
 	});
 });
 
-function runRecorder(script: string, worker: number): Promise<void> {
+async function runRecorder(script: string, worker: number): Promise<void> {
 	return new Promise((resolve, reject) => {
 		const child = spawn(process.execPath, [script, resultsPath, String(worker)], {
 			stdio: ["ignore", "ignore", "pipe"],
@@ -200,7 +222,7 @@ for (let index = 0; index < ${idsPerWorker}; index++) {
 }
 `,
 		);
-		await Promise.all(Array.from({length: workers}, (_, worker) => runRecorder(script, worker)));
+		await Promise.all(Array.from({length: workers}, async (_, worker) => runRecorder(script, worker)));
 		const expected = Object.fromEntries(
 			Array.from({length: workers}, (_, worker) =>
 				Array.from({length: idsPerWorker}, (_, index) => [

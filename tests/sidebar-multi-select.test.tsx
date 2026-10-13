@@ -98,7 +98,9 @@ async function renderGroups({groupBy = "custom"}: {groupBy?: "custom" | "state"}
 	});
 	await router.load();
 	const result = render(<RouterProvider router={router} />);
-	await waitFor(() => expect(result.container.querySelector("[data-group-toggle]")).toBeTruthy());
+	await waitFor(() => {
+		expect(result.container.querySelector("[data-group-toggle]")).toBeTruthy();
+	});
 	return {...result, router};
 }
 
@@ -143,7 +145,9 @@ function menuOutline(menu: HTMLElement): string[] {
 
 async function openSubmenu(name: RegExp): Promise<HTMLElement> {
 	const trigger = screen.getByRole("menuitem", {name});
-	act(() => trigger.focus());
+	act(() => {
+		trigger.focus();
+	});
 	fireEvent.keyDown(trigger, {key: "ArrowRight"});
 	await flush();
 	const menus = screen.getAllByRole("menu");
@@ -164,10 +168,12 @@ beforeEach(() => {
 		JSON.stringify({groups: [ALPHA, BETA], assignments: SEEDED_ASSIGNMENTS, order: {}}),
 	);
 	fetchMock.mockReset();
-	fetchMock.mockImplementation((_input, init) => Promise.resolve(Response.json({archived: init?.method === "PUT"})));
+	fetchMock.mockImplementation(async (_input, init) =>
+		Promise.resolve(Response.json({archived: init?.method === "PUT"})),
+	);
 	vi.stubGlobal("fetch", fetchMock);
 	__unreadStoreTesting.reset();
-	__unreadStoreTesting.setPersist(() => Promise.resolve());
+	__unreadStoreTesting.setPersist(async () => Promise.resolve());
 });
 
 describe("sidebar multi-select", () => {
@@ -202,7 +208,9 @@ describe("sidebar multi-select", () => {
 
 		fireEvent.click(rowLink("Loose three"));
 
-		await waitFor(() => expect(router.state.location.pathname).toBe("/session/u3"));
+		await waitFor(() => {
+			expect(router.state.location.pathname).toBe("/session/u3");
+		});
 		expect(selectedTitles(container)).toStrictEqual([]);
 	});
 
@@ -320,7 +328,9 @@ describe("sidebar bulk menu", () => {
 
 		fireEvent.keyDown(menu, {key: "a"});
 
-		await waitFor(() => expect(screen.getByText("Archived 2 sessions")).toBeTruthy());
+		await waitFor(() => {
+			expect(screen.getByText("Archived 2 sessions")).toBeTruthy();
+		});
 		expect(archiveCalls()).toStrictEqual([
 			{url: "/api/sessions/u1/archived", method: "PUT"},
 			{url: "/api/sessions/u2/archived", method: "PUT"},
@@ -343,7 +353,7 @@ function rect(top: number, height: number): DOMRect {
 		x: 0,
 		y: top,
 		toJSON: () => ({}),
-	} as DOMRect;
+	};
 }
 
 /** Pinned spans 0-250; below it every header and row takes a 33px step from 300. */
@@ -400,13 +410,13 @@ describe("sidebar multi-row drag", () => {
 		pointer("move", unitY(0));
 		pointer("up", unitY(0));
 
-		await waitFor(() =>
+		await waitFor(() => {
 			expect(readSessionGroupState()).toStrictEqual({
 				groups: [ALPHA, BETA],
 				assignments: {...SEEDED_ASSIGNMENTS, u1: "cg-a", u3: "cg-a"},
 				order: {"cg-a": ["u1", "u3", "a1"]},
-			}),
-		);
+			});
+		});
 		expect({pinDropRow, selected: selectedTitles(container)}).toStrictEqual({
 			pinDropRow: null,
 			selected: [],
