@@ -8,7 +8,8 @@ async function loadTab(calls: PersistCall[], fail = false): Promise<UnreadStore>
 	const store = await import("../src/lib/unread-store");
 	store.__unreadStoreTesting.setPersist(async (sessionId, action) => {
 		calls.push({sessionId, action});
-		if (fail) throw new Error("fabricated persist failure");
+		if (fail) return Promise.reject(new Error("fabricated persist failure"));
+		return Promise.resolve();
 	});
 	return store;
 }

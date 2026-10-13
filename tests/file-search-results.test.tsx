@@ -94,9 +94,11 @@ describe("file search results", () => {
 		vi.stubGlobal(
 			"fetch",
 			vi.fn(async (input: RequestInfo | URL) =>
-				requestUrl(input).endsWith("/api/search/file-roots")
-					? jsonResponse({roots: [FIRST_ROOT]})
-					: jsonResponse(searchResult()),
+				Promise.resolve(
+					requestUrl(input).endsWith("/api/search/file-roots")
+						? jsonResponse({roots: [FIRST_ROOT]})
+						: jsonResponse(searchResult()),
+				),
 			),
 		);
 		const {onOpen} = renderSearch();
@@ -128,9 +130,11 @@ describe("file search results", () => {
 		vi.stubGlobal(
 			"fetch",
 			vi.fn(async (input: RequestInfo | URL) =>
-				requestUrl(input).endsWith("/api/search/file-roots")
-					? jsonResponse({roots: [FIRST_ROOT]})
-					: jsonResponse(searchResult([FIRST_PATH])),
+				Promise.resolve(
+					requestUrl(input).endsWith("/api/search/file-roots")
+						? jsonResponse({roots: [FIRST_ROOT]})
+						: jsonResponse(searchResult([FIRST_PATH])),
+				),
 			),
 		);
 		const {onOpen} = renderSearch();
@@ -156,9 +160,11 @@ describe("file search results", () => {
 		vi.stubGlobal(
 			"fetch",
 			vi.fn(async (input: RequestInfo | URL) =>
-				requestUrl(input).endsWith("/api/search/file-roots")
-					? jsonResponse({roots: [FIRST_ROOT]})
-					: jsonResponse(searchResult([FIRST_PATH])),
+				Promise.resolve(
+					requestUrl(input).endsWith("/api/search/file-roots")
+						? jsonResponse({roots: [FIRST_ROOT]})
+						: jsonResponse(searchResult([FIRST_PATH])),
+				),
 			),
 		);
 		renderSearch({initialQuery: "alice needle"});
@@ -181,9 +187,11 @@ describe("file search results", () => {
 		vi.stubGlobal(
 			"fetch",
 			vi.fn(async (input: RequestInfo | URL) =>
-				requestUrl(input).endsWith("/api/search/file-roots")
-					? jsonResponse({roots: [FIRST_ROOT]})
-					: jsonResponse(searchResult([FIRST_PATH])),
+				Promise.resolve(
+					requestUrl(input).endsWith("/api/search/file-roots")
+						? jsonResponse({roots: [FIRST_ROOT]})
+						: jsonResponse(searchResult([FIRST_PATH])),
+				),
 			),
 		);
 		const {onClose} = renderSearch();
@@ -251,11 +259,13 @@ describe("file search results", () => {
 			vi.fn(async (input: RequestInfo | URL) => {
 				const url = new URL(requestUrl(input), "http://example.com");
 				if (url.pathname === "/api/search/file-roots") {
-					return jsonResponse({roots: [FIRST_ROOT, SECOND_ROOT]});
+					return Promise.resolve(jsonResponse({roots: [FIRST_ROOT, SECOND_ROOT]}));
 				}
 				scopes.push(url.searchParams.get("scopeRoot") ?? "missing");
 				const scope = url.searchParams.get("scopeRoot");
-				return jsonResponse(searchResult([scope === SECOND_ROOT ? `${SECOND_ROOT}/charlie.ts` : FIRST_PATH]));
+				return Promise.resolve(
+					jsonResponse(searchResult([scope === SECOND_ROOT ? `${SECOND_ROOT}/charlie.ts` : FIRST_PATH])),
+				);
 			}),
 		);
 		renderSearch();
@@ -293,9 +303,11 @@ describe("file search results", () => {
 		vi.stubGlobal(
 			"fetch",
 			vi.fn(async (input: RequestInfo | URL) =>
-				requestUrl(input).endsWith("/api/search/file-roots")
-					? jsonResponse({roots: [FIRST_ROOT]})
-					: jsonResponse(searchResult([])),
+				Promise.resolve(
+					requestUrl(input).endsWith("/api/search/file-roots")
+						? jsonResponse({roots: [FIRST_ROOT]})
+						: jsonResponse(searchResult([])),
+				),
 			),
 		);
 		const {onQueryChange} = renderSearch({initialQuery: "reloaded query"});
@@ -345,7 +357,7 @@ describe("file search results", () => {
 	it("links the empty roots state to the settings editor", async () => {
 		vi.stubGlobal(
 			"fetch",
-			vi.fn(async () => jsonResponse({roots: []})),
+			vi.fn(async () => Promise.resolve(jsonResponse({roots: []}))),
 		);
 		renderSearch();
 

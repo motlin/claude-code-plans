@@ -14,7 +14,7 @@ function connectEvents(): SnapshotEvent[] {
 export const Route = createFileRoute("/api/events")({
 	server: {
 		handlers: withMethodNotAllowed({
-			GET: async ({request}: {request: Request}) => {
+			GET: ({request}: {request: Request}) => {
 				if (new URL(request.url).searchParams.has("snapshot")) {
 					return Response.json(connectEvents(), {headers: {"Cache-Control": "no-cache"}});
 				}

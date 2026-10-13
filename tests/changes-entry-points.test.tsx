@@ -34,14 +34,18 @@ vi.mock("../src/hooks/use-claude-events", () => ({
 }));
 vi.mock("../src/lib/api/reviews", async (importOriginal) => ({
 	...(await importOriginal<typeof import("../src/lib/api/reviews")>()),
-	createWorkingCopyReview: vi.fn<typeof import("../src/lib/api/reviews").createWorkingCopyReview>(
-		async () => "review-1",
+	createWorkingCopyReview: vi.fn<typeof import("../src/lib/api/reviews").createWorkingCopyReview>(async () =>
+		Promise.resolve("review-1"),
 	),
-	runWorkingCopyReview: vi.fn<typeof import("../src/lib/api/reviews").runWorkingCopyReview>(async () => ({
-		processId: "process-1",
-		completion: Promise.resolve(""),
-	})),
-	cancelWorkingCopyReview: vi.fn<typeof import("../src/lib/api/reviews").cancelWorkingCopyReview>(async () => true),
+	runWorkingCopyReview: vi.fn<typeof import("../src/lib/api/reviews").runWorkingCopyReview>(async () =>
+		Promise.resolve({
+			processId: "process-1",
+			completion: Promise.resolve(""),
+		}),
+	),
+	cancelWorkingCopyReview: vi.fn<typeof import("../src/lib/api/reviews").cancelWorkingCopyReview>(async () =>
+		Promise.resolve(true),
+	),
 }));
 
 class FakeObserver {
@@ -184,10 +188,10 @@ describe("Changes entry points", () => {
 				/>
 			</SettingsProvider>,
 		);
-		await act(async () => {
+		act(() => {
 			reviewOffers.listener?.("banner-session");
 		});
-		await act(async () => {
+		act(() => {
 			fireEvent.click(screen.getByRole("button", {name: "Review"}));
 		});
 		const link = await screen.findByRole("link", {name: "View findings"});

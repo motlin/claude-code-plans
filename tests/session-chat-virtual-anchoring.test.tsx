@@ -111,8 +111,8 @@ class ControlledResizeObserver {
 	}
 }
 
-async function deliverMeasurements() {
-	await act(async () => {
+function deliverMeasurements() {
+	act(() => {
 		for (const observer of ControlledResizeObserver.active) {
 			const observations = [...observer.elements]
 				.filter((element) => element.isConnected)
@@ -128,8 +128,8 @@ async function deliverMeasurements() {
 	});
 }
 
-async function scrollTo(main: HTMLElement, top: number) {
-	await act(async () => {
+function scrollTo(main: HTMLElement, top: number) {
+	act(() => {
 		main.scrollTop = top;
 		fireEvent.scroll(main);
 	});
@@ -138,8 +138,8 @@ async function scrollTo(main: HTMLElement, top: number) {
 async function settle(main: HTMLElement) {
 	for (let batch = 0; batch < 30; batch++) {
 		const before = JSON.stringify({top: main.scrollTop, rows: paintedRows(), height: contentHeight()});
-		await deliverMeasurements();
-		await act(async () => fireEvent.scroll(main));
+		deliverMeasurements();
+		await act(() => fireEvent.scroll(main));
 		if (before === JSON.stringify({top: main.scrollTop, rows: paintedRows(), height: contentHeight()})) return;
 	}
 	throw new Error("Transcript geometry did not settle within 30 batches.");
@@ -221,12 +221,12 @@ afterEach(() => {
 
 it("keeps the painted rows in place when scrolling up mounts a row shorter than its estimate", async () => {
 	const main = await mountChat();
-	await scrollTo(main, 3000);
+	scrollTo(main, 3000);
 	await settle(main);
 	const [anchor] = paintedRows();
 
 	// Mount the unmeasured row above the window; nothing has observed it yet.
-	await scrollTo(main, main.scrollTop - 400);
+	scrollTo(main, main.scrollTop - 400);
 
 	const row = mountedRows().find((candidate) => candidate.dataset["transcriptEntryIndex"] === anchor!.entry)!;
 	expect({entry: anchor!.entry, top: rowBox(row).top}).toStrictEqual({entry: anchor!.entry, top: anchor!.top + 400});
@@ -235,7 +235,7 @@ it("keeps the painted rows in place when scrolling up mounts a row shorter than 
 it("covers the viewport in the scroll's own commit when the mounted rows are shorter than their estimates", async () => {
 	const main = await mountChat();
 
-	await scrollTo(main, 1500);
+	scrollTo(main, 1500);
 
 	expect({blank: blankPixels(), rows: paintedRows().length}).toStrictEqual({blank: 0, rows: 10});
 });
@@ -257,11 +257,11 @@ it("keeps the reader's rows in place when an earlier page of records lands above
 	Object.defineProperty(main, "clientHeight", {configurable: true, value: VIEWPORT_HEIGHT});
 	Object.defineProperty(main, "scrollHeight", {configurable: true, get: contentHeight});
 	await settle(main);
-	await scrollTo(main, 900);
+	scrollTo(main, 900);
 	await settle(main);
 	const before = paintedMessages();
 
-	await act(async () => {
+	act(() => {
 		rerender(chat(lines));
 	});
 	const landed = paintedMessages();
@@ -276,13 +276,13 @@ it("keeps the reader's rows in place across repeated earlier pages while scrolli
 	Object.defineProperty(main, "clientHeight", {configurable: true, value: VIEWPORT_HEIGHT});
 	Object.defineProperty(main, "scrollHeight", {configurable: true, get: contentHeight});
 	await settle(main);
-	await scrollTo(main, 400);
+	scrollTo(main, 400);
 	await settle(main);
 	const moves: Array<{message: string; moved: number}> = [];
 	for (const start of [60, 40, 20, 0]) {
 		const [anchor] = paintedMessages();
-		await scrollTo(main, main.scrollTop - 100);
-		await act(async () => {
+		scrollTo(main, main.scrollTop - 100);
+		act(() => {
 			rerender(chat(lines.slice(start)));
 		});
 		await settle(main);
@@ -298,14 +298,14 @@ it("lets the reader scroll up past a long prompt whose clamp lands after it moun
 		index === 0 ? {...line, message: {role: "user", content: `${LONG_PROMPT}\n${"plan step\n".repeat(80)}`}} : line,
 	);
 	const main = await mountChat(withLongPrompt);
-	await scrollTo(main, 1500);
+	scrollTo(main, 1500);
 	await settle(main);
 
 	// Wheel up 400px at a time, one frame each, as the reader would.
 	const pushedBack: Array<{asked: number; landed: number}> = [];
 	for (let wheel = 0; wheel < 12 && main.scrollTop > 0 && pushedBack.length === 0; wheel++) {
 		const asked = Math.max(0, main.scrollTop - 400);
-		await scrollTo(main, asked);
+		scrollTo(main, asked);
 		await settle(main);
 		if (main.scrollTop > asked + 400) pushedBack.push({asked, landed: main.scrollTop});
 	}

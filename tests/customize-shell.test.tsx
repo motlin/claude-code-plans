@@ -10,6 +10,7 @@ import {
 	RouterProvider,
 } from "@tanstack/react-router";
 import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/react";
+import {actAndSettle} from "./act-and-settle";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SkillDetailHeader} from "../src/components/customize/skill-detail";
 import {ToastProvider} from "../src/components/toast";
@@ -31,8 +32,8 @@ import {startClaudeSession} from "../src/lib/start-claude-session";
 import {installLocalStorage} from "./fake-storage";
 
 vi.mock("../src/lib/start-claude-session", () => ({
-	startClaudeSession: vi.fn<typeof import("../src/lib/start-claude-session").startClaudeSession>(
-		async () => "launched",
+	startClaudeSession: vi.fn<typeof import("../src/lib/start-claude-session").startClaudeSession>(async () =>
+		Promise.resolve("launched"),
 	),
 }));
 
@@ -208,7 +209,7 @@ describe("customize shell", () => {
 		]);
 		expect(screen.getByRole("radiogroup", {name: "Skills"})).toBeTruthy();
 
-		await act(async () => {
+		await actAndSettle(() => {
 			fireEvent.click(screen.getByRole("tab", {name: "Connectors"}));
 		});
 
@@ -233,7 +234,7 @@ describe("customize shell", () => {
 		const router = await renderCustomize("/customize/skills");
 		const group = screen.getByRole("radiogroup", {name: "Skills"});
 
-		await act(async () => {
+		await actAndSettle(() => {
 			fireEvent.click(within(group).getByRole("radio", {name: "Discover"}));
 		});
 
@@ -257,12 +258,12 @@ describe("customize shell", () => {
 
 		expect(input).toHaveProperty("value", "deploy");
 
-		await act(async () => {
+		await actAndSettle(() => {
 			fireEvent.change(input, {target: {value: "review"}});
 		});
 		expect(router.state.location.searchStr).toBe("?q=review");
 
-		await act(async () => {
+		await actAndSettle(() => {
 			fireEvent.click(screen.getByRole("button", {name: "Clear search"}));
 		});
 		expect({
@@ -492,7 +493,7 @@ describe("customize discover", () => {
 		Object.defineProperty(navigator, "clipboard", {value: {writeText}, configurable: true});
 		await renderCustomize("/customize/plugins?view=discover");
 
-		await act(async () => {
+		await actAndSettle(() => {
 			fireEvent.click(screen.getAllByRole("button", {name: "Copy install command for Deploy"})[0]!);
 		});
 
@@ -529,7 +530,7 @@ describe("customize add menu", () => {
 	}
 
 	async function openAddMenu(name: string) {
-		await act(async () => {
+		await actAndSettle(() => {
 			fireEvent.click(screen.getByRole("button", {name}));
 		});
 		await flush();
@@ -550,7 +551,7 @@ describe("customize add menu", () => {
 		await openAddMenu("Add skill");
 		const items = menuItems();
 
-		await act(async () => {
+		await actAndSettle(() => {
 			fireEvent.click(screen.getByRole("menuitem", {name: "Create with Claude"}));
 		});
 
@@ -564,7 +565,7 @@ describe("customize add menu", () => {
 		await renderCustomize("/customize/skills");
 		await openAddMenu("Add skill");
 
-		await act(async () => {
+		await actAndSettle(() => {
 			fireEvent.click(screen.getByRole("menuitem", {name: "Create with Claude"}));
 		});
 
@@ -580,7 +581,7 @@ describe("customize add menu", () => {
 		await openAddMenu("Add plugin");
 		const items = menuItems();
 
-		await act(async () => {
+		await actAndSettle(() => {
 			fireEvent.click(screen.getByRole("menuitem", {name: "Add marketplace"}));
 		});
 		await flush();
@@ -603,7 +604,7 @@ describe("customize add menu", () => {
 		await openAddMenu("Add connector");
 		const items = menuItems();
 
-		await act(async () => {
+		await actAndSettle(() => {
 			fireEvent.click(screen.getByRole("menuitem", {name: "Add custom connector"}));
 		});
 		await flush();

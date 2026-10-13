@@ -99,7 +99,7 @@ function wireWorkspace({
 function snapshotRequester(snapshot: Record<string, unknown>, requests: object[] = []): HerdrRequester {
 	return async (request) => {
 		requests.push(request);
-		return {
+		return Promise.resolve({
 			ok: true,
 			value: {
 				type: "session_snapshot",
@@ -114,7 +114,7 @@ function snapshotRequester(snapshot: Record<string, unknown>, requests: object[]
 					...snapshot,
 				},
 			},
-		};
+		});
 	};
 }
 
@@ -266,12 +266,13 @@ describe("getHerdrWorkspaces", () => {
 	});
 
 	it("returns no workspaces when herdr is unreachable or the protocol drifted", async () => {
-		const unreachable: HerdrRequester = async () => ({
-			ok: false,
-			code: "connect-failed",
-			message: "no herdr socket",
-		});
-		const drifted: HerdrRequester = async () => ({ok: true, value: {type: "surprise"}});
+		const unreachable: HerdrRequester = async () =>
+			Promise.resolve({
+				ok: false,
+				code: "connect-failed",
+				message: "no herdr socket",
+			});
+		const drifted: HerdrRequester = async () => Promise.resolve({ok: true, value: {type: "surprise"}});
 
 		const [unreachable_, drifted_] = await Promise.all([
 			getHerdrWorkspaces(unreachable, indexEverything),

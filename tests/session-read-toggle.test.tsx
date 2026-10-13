@@ -120,7 +120,7 @@ function pressOptionCommandU() {
 
 beforeEach(() => {
 	vi.stubGlobal("fetch", fetchMock);
-	fetchMock.mockImplementation(async () => Response.json(VIEWED_STATE));
+	fetchMock.mockImplementation(async () => Promise.resolve(Response.json(VIEWED_STATE)));
 	vi.spyOn(navigator, "userAgent", "get").mockReturnValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)");
 	__unreadStoreTesting.reset();
 });

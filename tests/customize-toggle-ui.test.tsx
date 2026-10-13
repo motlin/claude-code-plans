@@ -72,7 +72,7 @@ describe("SkillEnableSwitch", () => {
 
 		const toggle = screen.getByRole("switch", {name: "Enable skill"});
 		expect(toggle.getAttribute("aria-checked")).toBe("true");
-		await act(async () => {
+		act(() => {
 			fireEvent.click(toggle);
 		});
 		await waitFor(() => {
@@ -81,7 +81,7 @@ describe("SkillEnableSwitch", () => {
 		await waitFor(() => {
 			expect(toggle.getAttribute("aria-checked")).toBe("false");
 		});
-		await act(async () => {
+		act(() => {
 			release?.();
 		});
 
@@ -100,13 +100,13 @@ describe("SkillEnableSwitch", () => {
 
 	it("rolls back and explains a conflict when settings.json changed on disk", async () => {
 		const fetcher = vi.fn<typeof fetch>(async (_input, init) =>
-			init?.method === "POST" ? Response.json(STATE, {status: 409}) : Response.json(STATE),
+			Promise.resolve(init?.method === "POST" ? Response.json(STATE, {status: 409}) : Response.json(STATE)),
 		);
 		vi.stubGlobal("fetch", fetcher);
 		renderWithState(<SkillEnableSwitch skill={DEPLOY} />);
 
 		const toggle = screen.getByRole("switch", {name: "Enable skill"});
-		await act(async () => {
+		act(() => {
 			fireEvent.click(toggle);
 		});
 
@@ -117,7 +117,7 @@ describe("SkillEnableSwitch", () => {
 	it("is read-only for plugin skills, which follow their plugin", () => {
 		vi.stubGlobal(
 			"fetch",
-			vi.fn<typeof fetch>(async () => Response.json(STATE)),
+			vi.fn<typeof fetch>(async () => Promise.resolve(Response.json(STATE))),
 		);
 		renderWithState(
 			<SkillEnableSwitch
@@ -140,9 +140,11 @@ describe("SkillEnableSwitch", () => {
 describe("PluginEnableMenuItem", () => {
 	it("disables an enabled plugin via enabledPlugins", async () => {
 		const fetcher = vi.fn<typeof fetch>(async (_input, init) =>
-			init?.method === "POST"
-				? Response.json({...STATE, mtimeMs: 2000, enabledPlugins: {"tools@market": false}})
-				: Response.json(STATE),
+			Promise.resolve(
+				init?.method === "POST"
+					? Response.json({...STATE, mtimeMs: 2000, enabledPlugins: {"tools@market": false}})
+					: Response.json(STATE),
+			),
 		);
 		vi.stubGlobal("fetch", fetcher);
 		renderWithState(
@@ -156,7 +158,7 @@ describe("PluginEnableMenuItem", () => {
 
 		fireEvent.click(screen.getByRole("button", {name: "More actions for tools"}));
 		const menu = await screen.findByRole("menu");
-		await act(async () => {
+		act(() => {
 			fireEvent.click(within(menu).getByRole("menuitem", {name: "Disable"}));
 		});
 

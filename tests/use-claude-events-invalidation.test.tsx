@@ -308,7 +308,7 @@ describe("ClaudeEventsProvider SSE reconnect", () => {
 			startIndex: 1,
 			precedingMessageCount: 1,
 		};
-		const fetchMock = vi.fn<typeof fetch>(async () => Response.json(tail));
+		const fetchMock = vi.fn<typeof fetch>(async () => Promise.resolve(Response.json(tail)));
 		vi.stubGlobal("fetch", fetchMock);
 
 		function TranscriptProbe(): null {

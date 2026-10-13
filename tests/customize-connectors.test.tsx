@@ -10,6 +10,7 @@ import {
 	RouterProvider,
 } from "@tanstack/react-router";
 import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/react";
+import {actAndSettle} from "./act-and-settle";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {ToastProvider} from "../src/components/toast";
 import {
@@ -221,7 +222,7 @@ describe("connectors table", () => {
 		await act(async () => {
 			await router.navigate({to: "/customize/connectors", search: {}});
 		});
-		await act(async () => {
+		await actAndSettle(() => {
 			fireEvent.click(screen.getByRole("row", {name: "View render"}));
 		});
 
@@ -266,20 +267,22 @@ describe("connector detail", () => {
 
 	it("writes the chosen rule to settings.json once edits are enabled", async () => {
 		const fetcher = vi.fn<typeof fetch>(async (input, init) =>
-			init?.method === "PUT"
-				? Response.json({path: "/Users/test/.claude/settings.json"})
-				: String(input) === "/api/settings"
-					? Response.json(SETTINGS_FILES)
-					: Response.json({error: "unexpected"}, {status: 500}),
+			Promise.resolve(
+				init?.method === "PUT"
+					? Response.json({path: "/Users/test/.claude/settings.json"})
+					: String(input) === "/api/settings"
+						? Response.json(SETTINGS_FILES)
+						: Response.json({error: "unexpected"}, {status: 500}),
+			),
 		);
 		vi.stubGlobal("fetch", fetcher);
 		await renderAt(`/customize/connectors/id/${RENDER_SLUG}`);
 		await screen.findByRole("heading", {level: 2, name: "render"});
 
-		await act(async () => {
+		await actAndSettle(() => {
 			fireEvent.click(screen.getByRole("switch", {name: "Edit tool permissions"}));
 		});
-		await act(async () => {
+		await actAndSettle(() => {
 			fireEvent.click(
 				within(screen.getByRole("radiogroup", {name: "list_services"})).getByRole("radio", {
 					name: "Needs approval",

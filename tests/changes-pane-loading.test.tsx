@@ -135,7 +135,7 @@ describe("deferred Changes renderer", () => {
 		renderApp();
 		const loading = paneState();
 		const coldSaved = loadPaneLayout(SESSION);
-		await act(async () => {
+		act(() => {
 			harness.finish();
 		});
 		await within(screen.getByRole("region", {name: "Changes"})).findByRole("alert", {}, {timeout: 10_000});

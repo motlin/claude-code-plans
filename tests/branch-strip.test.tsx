@@ -237,7 +237,7 @@ describe("BranchStrip project menu", () => {
 		vi.stubGlobal("fetch", fetchMock);
 		vi.stubGlobal("open", openMock);
 		fetchMock.mockReset();
-		fetchMock.mockImplementation(async () => Response.json({ok: true}));
+		fetchMock.mockImplementation(async () => Promise.resolve(Response.json({ok: true})));
 		writeText.mockReset();
 		writeText.mockResolvedValue(undefined);
 		openMock.mockReset();

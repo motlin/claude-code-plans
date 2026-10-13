@@ -483,12 +483,12 @@ export async function generateTranscript(
 ): Promise<string> {
 	const cacheDir = options.cacheDir ?? DEFAULT_CACHE_DIR;
 	const path = join(cacheDir, `${shape.name}-${seed}-${GENERATOR_VERSION}.jsonl`);
-	if (existsSync(path)) return path;
+	if (existsSync(path)) return Promise.resolve(path);
 	mkdirSync(cacheDir, {recursive: true});
 	const temporary = `${path}.${process.pid}.${Date.now()}.tmp`;
 	writeFileSync(temporary, renderTranscript(shape, seed));
 	renameSync(temporary, path);
-	return path;
+	return Promise.resolve(path);
 }
 
 const PERF_PROJECT = "-repo";

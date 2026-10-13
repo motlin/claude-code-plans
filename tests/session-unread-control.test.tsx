@@ -44,6 +44,7 @@ describe("SessionRowStatusDot", () => {
 		calls = [];
 		__testing.setPersist(async (sessionId, action) => {
 			calls.push({sessionId, action});
+			return Promise.resolve();
 		});
 	});
 

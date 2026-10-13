@@ -94,11 +94,12 @@ function dependencies(overrides: Partial<HerdrPromptDependencies> = {}): HerdrPr
 	return {
 		rejectRequest: rejectCrossSite,
 		writesEnabled: () => true,
-		resolveTarget: async () => ({
-			ok: true,
-			value: {terminalId: "terminal-test-100", paneId: "w100:p100"},
-		}),
-		request: async () => ({ok: true, value: {type: "agent_prompted"}}),
+		resolveTarget: async () =>
+			Promise.resolve({
+				ok: true,
+				value: {terminalId: "terminal-test-100", paneId: "w100:p100"},
+			}),
+		request: async () => Promise.resolve({ok: true, value: {type: "agent_prompted"}}),
 		createRequestId: () => "ccp:prompt:test-100",
 		...overrides,
 	};
@@ -188,8 +189,8 @@ describe("herdr prompt write handler", () => {
 		const requester: HerdrRequester = async (requestValue) => {
 			requests.push(requestValue);
 			const value = snapshots.shift();
-			if (!value) throw new Error("missing fabricated snapshot");
-			return {ok: true, value};
+			if (!value) return Promise.reject(new Error("missing fabricated snapshot"));
+			return Promise.resolve({ok: true, value});
 		};
 		const entries = [entry()];
 
@@ -220,7 +221,7 @@ describe("herdr prompt write handler", () => {
 		const requests: object[] = [];
 		const sendRequest: HerdrRequester = async (requestValue) => {
 			requests.push(requestValue);
-			return {ok: true, value: {type: "agent_prompted"}};
+			return Promise.resolve({ok: true, value: {type: "agent_prompted"}});
 		};
 
 		const response = await handleHerdrPrompt(
@@ -257,7 +258,7 @@ describe("herdr prompt write handler", () => {
 
 		const response = await handleHerdrPrompt(
 			request({sessionId: "session-test-100", prompt: "Test prompt"}),
-			dependencies({request: async () => error}),
+			dependencies({request: async () => Promise.resolve(error)}),
 		);
 
 		expect(await describeResponse(response)).toStrictEqual({

@@ -23,7 +23,7 @@ function withoutMs(counters: PerfCounters | undefined): unknown {
 }
 
 describe("withPerfScope", () => {
-	it("counts each SQL statement run inside the scope", async () => {
+	it("counts each SQL statement run inside the scope", () => {
 		const counters = withPerfScope("three-selects", () => {
 			selectMetadata();
 			selectMetadata();
@@ -39,7 +39,7 @@ describe("withPerfScope", () => {
 		expect(counters?.sql.ms).toBeGreaterThanOrEqual(0);
 	});
 
-	it("returns the value of the wrapped function", async () => {
+	it("returns the value of the wrapped function", () => {
 		expect(withPerfScope("value", () => 42)).toBe(42);
 	});
 
@@ -71,7 +71,7 @@ describe("withPerfScope", () => {
 		expect({a, b}).toStrictEqual({a: 2, b: 4});
 	});
 
-	it("counts nothing outside a scope", async () => {
+	it("counts nothing outside a scope", () => {
 		selectMetadata();
 		expect(currentPerfCounters()).toBeUndefined();
 

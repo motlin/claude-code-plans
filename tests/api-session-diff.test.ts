@@ -110,10 +110,10 @@ function sessionRecords(cwd: string): JsonlRecord[] {
 function dependencies(overrides: Partial<SessionDiffHandlerDependencies> = {}): SessionDiffHandlerDependencies {
 	return {
 		index: db.index,
-		resolveDirectory: async (cwd) => cwd,
+		resolveDirectory: async (cwd) => Promise.resolve(cwd),
 		listScopes: async (cwd) => listScopes(cwd),
 		buildScopeDiff: async (cwd, scope, options) => buildScopeDiff(cwd, scope, options),
-		readRecords: async () => sessionRecords(repository),
+		readRecords: async () => Promise.resolve(sessionRecords(repository)),
 		...overrides,
 	};
 }
@@ -269,7 +269,7 @@ describe("handleSessionDiffRequest", () => {
 			await handleSessionDiffRequest(
 				SESSION_ID,
 				query({scope: "branch"}),
-				dependencies({resolveDirectory: async () => null}),
+				dependencies({resolveDirectory: async () => Promise.resolve(null)}),
 			),
 		);
 
@@ -402,7 +402,7 @@ describe("handleSessionDiffScopesRequest", () => {
 
 		const response = await handleSessionDiffScopesRequest(
 			SESSION_ID,
-			dependencies({resolveDirectory: async () => null}),
+			dependencies({resolveDirectory: async () => Promise.resolve(null)}),
 		);
 
 		expect(await response.json()).toStrictEqual({kind: "no-git"});

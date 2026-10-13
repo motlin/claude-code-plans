@@ -439,15 +439,19 @@ describe("StatuslineSchema rate_limits", () => {
 
 describe("getComposerState", () => {
 	it("reads settings and the statusline with its mtime", async () => {
-		const readStatusline = vi.fn<ComposerStateDependencies["readStatusline"]>(async () => ({
-			json: ALICE_STATUSLINE,
-			mtimeMs: Date.parse("2026-09-29T09:00:00.000Z"),
-		}));
-		const readSettings = vi.fn<ComposerStateDependencies["readSettings"]>(async () => ({
-			model: "fable",
-			effortLevel: "xhigh",
-			permissions: {defaultMode: "auto"},
-		}));
+		const readStatusline = vi.fn<ComposerStateDependencies["readStatusline"]>(async () =>
+			Promise.resolve({
+				json: ALICE_STATUSLINE,
+				mtimeMs: Date.parse("2026-09-29T09:00:00.000Z"),
+			}),
+		);
+		const readSettings = vi.fn<ComposerStateDependencies["readSettings"]>(async () =>
+			Promise.resolve({
+				model: "fable",
+				effortLevel: "xhigh",
+				permissions: {defaultMode: "auto"},
+			}),
+		);
 
 		expect(await getComposerState("alice-session", {readStatusline, readSettings})).toStrictEqual({
 			settingsDefaultMode: "auto",
@@ -462,10 +466,8 @@ describe("getComposerState", () => {
 
 	it("returns nulls when files are missing or invalid", async () => {
 		const result = await getComposerState("bob-session", {
-			readStatusline: async () => {
-				throw new Error("ENOENT: fabricated");
-			},
-			readSettings: async () => ({permissions: {defaultMode: 42}}),
+			readStatusline: async () => Promise.reject(new Error("ENOENT: fabricated")),
+			readSettings: async () => Promise.resolve({permissions: {defaultMode: 42}}),
 		});
 		expect(result).toStrictEqual({
 			settingsDefaultMode: null,
@@ -481,10 +483,8 @@ describe("getComposerState", () => {
 		const allowed = async (settings: unknown) =>
 			(
 				await getComposerState("carol-session", {
-					readStatusline: async () => {
-						throw new Error("ENOENT: fabricated");
-					},
-					readSettings: async () => settings,
+					readStatusline: async () => Promise.reject(new Error("ENOENT: fabricated")),
+					readSettings: async () => Promise.resolve(settings),
 				})
 			).settingsBypassPermissionsAllowed;
 
@@ -496,10 +496,12 @@ describe("getComposerState", () => {
 	});
 
 	it("never reads a statusline for a traversal session id", async () => {
-		const readStatusline = vi.fn<ComposerStateDependencies["readStatusline"]>(async () => ({json: {}, mtimeMs: 0}));
+		const readStatusline = vi.fn<ComposerStateDependencies["readStatusline"]>(async () =>
+			Promise.resolve({json: {}, mtimeMs: 0}),
+		);
 		const response = await handleComposerStateRequest("../../etc/passwd", {
 			readStatusline,
-			readSettings: async () => ({}),
+			readSettings: async () => Promise.resolve({}),
 		});
 		expect({
 			body: await response.json(),

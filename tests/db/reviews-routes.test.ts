@@ -64,8 +64,8 @@ function insertSession(cwd: string | null = SESSION_CWD): void {
 function dependencies(overrides: Partial<ReviewHandlerDependencies> = {}): ReviewHandlerDependencies {
 	return {
 		index: db.index,
-		buildDiff: async () => DIFF,
-		resolveDirectory: async (cwd) => cwd,
+		buildDiff: async () => Promise.resolve(DIFF),
+		resolveDirectory: async (cwd) => Promise.resolve(cwd),
 		now: () => GENERATED_AT,
 		...overrides,
 	};
@@ -195,11 +195,11 @@ describe("review route handlers", () => {
 			dependencies({
 				resolveDirectory: async (cwd) => {
 					resolvedDirectories.push(cwd);
-					return "/fixture/canonical-alice-repository";
+					return Promise.resolve("/fixture/canonical-alice-repository");
 				},
 				buildDiff: async (cwd) => {
 					diffDirectories.push(cwd);
-					return DIFF;
+					return Promise.resolve(DIFF);
 				},
 			}),
 		);
@@ -346,7 +346,7 @@ describe("review route handlers", () => {
 		const regenerated = await handleCreateReviewRequest(
 			SESSION_ID,
 			dependencies({
-				buildDiff: async () => "diff --git a/new.txt b/new.txt\n",
+				buildDiff: async () => Promise.resolve("diff --git a/new.txt b/new.txt\n"),
 				now: () => new Date("2000-01-02T00:00:00.000Z"),
 			}),
 		);
@@ -446,7 +446,7 @@ describe("review route handlers", () => {
 		insertSession();
 		const staleCwd = await handleCreateReviewRequest(
 			SESSION_ID,
-			dependencies({buildDiff, resolveDirectory: async () => null}),
+			dependencies({buildDiff, resolveDirectory: async () => Promise.resolve(null)}),
 		);
 		const missingReview = handleGetReviewRequest("local-session-test-missing", db.index);
 		const missingFindingsReview = await handleReplaceReviewFindingsRequest(

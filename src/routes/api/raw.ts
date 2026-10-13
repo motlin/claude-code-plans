@@ -9,7 +9,7 @@ import {eq} from "drizzle-orm";
 export const Route = createFileRoute("/api/raw")({
 	server: {
 		handlers: withMethodNotAllowed({
-			GET: async ({request}: {request: Request}) => {
+			GET: ({request}: {request: Request}) => {
 				const url = new URL(request.url);
 				const sessionId = url.searchParams.get("sessionId");
 				if (!sessionId || !/^[a-z0-9-]+$/.test(sessionId)) {

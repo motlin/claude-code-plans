@@ -178,7 +178,7 @@ beforeEach(() => {
 	vi.stubGlobal("ResizeObserver", TestResizeObserver);
 	vi.stubGlobal(
 		"fetch",
-		vi.fn(async () => Response.json({ok: true})),
+		vi.fn(async () => Promise.resolve(Response.json({ok: true}))),
 	);
 	writeText.mockReset();
 	writeText.mockResolvedValue(undefined);

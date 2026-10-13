@@ -46,7 +46,7 @@ export function getDb(): AppDb {
 }
 
 export async function initDb(): Promise<AppDb> {
-	return getDb();
+	return Promise.resolve(getDb());
 }
 
 // A restarted dev server can start its scan while the previous instance's

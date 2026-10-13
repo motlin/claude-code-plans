@@ -33,10 +33,12 @@ beforeEach(() => {
 		"fetch",
 		vi.fn(async (_url: string, init?: RequestInit) => {
 			savedBodies.push(typeof init?.body === "string" ? init.body : "");
-			return new Response(JSON.stringify({path: "/home/test/.claude/settings.json"}), {
-				status: 200,
-				headers: {"Content-Type": "application/json"},
-			});
+			return Promise.resolve(
+				new Response(JSON.stringify({path: "/home/test/.claude/settings.json"}), {
+					status: 200,
+					headers: {"Content-Type": "application/json"},
+				}),
+			);
 		}),
 	);
 });

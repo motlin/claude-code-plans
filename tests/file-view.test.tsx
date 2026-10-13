@@ -11,7 +11,9 @@ import {writeClipboardText} from "../src/lib/clipboard";
 import {formatFileSize} from "../src/lib/file-preview";
 
 vi.mock("../src/lib/clipboard", () => ({
-	writeClipboardText: vi.fn<typeof import("../src/lib/clipboard").writeClipboardText>(async () => true),
+	writeClipboardText: vi.fn<typeof import("../src/lib/clipboard").writeClipboardText>(async () =>
+		Promise.resolve(true),
+	),
 }));
 
 vi.mock("../src/hooks/use-shiki", async (importOriginal) => ({
@@ -32,14 +34,14 @@ function stubFetch(): void {
 		vi.fn(async (input: string, init?: RequestInit) => {
 			if (input === "/api/file-refs") {
 				const {paths} = JSON.parse(String(init?.body)) as {paths: string[]};
-				return Response.json({existing: paths.filter((path) => existingPaths.has(path))});
+				return Promise.resolve(Response.json({existing: paths.filter((path) => existingPaths.has(path))}));
 			}
 			const url = new URL(input, "http://localhost");
 			const path = decodeFilePath(url.pathname.slice("/api/file/".length)) ?? "";
 			const key = `${path}${url.search}`;
 			requests.push(key);
 			const response = responses.get(key) ?? {status: 404, body: {error: "File not found"}};
-			return Response.json(response.body, {status: response.status});
+			return Promise.resolve(Response.json(response.body, {status: response.status}));
 		}),
 	);
 }
@@ -176,7 +178,7 @@ describe("breadcrumb", () => {
 		renderView({path: "/home/alice/project/src/agent.ts", cwd: "/home/alice/project"});
 
 		const button = screen.getByRole("button", {name: "Copy path src/agent.ts"});
-		await act(async () => {
+		act(() => {
 			fireEvent.click(button);
 		});
 

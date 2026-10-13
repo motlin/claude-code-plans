@@ -40,11 +40,13 @@ function stubFetch(responses: unknown[]): FetchCall[] {
 				method: init?.method ?? "GET",
 				body: typeof init?.body === "string" ? JSON.parse(init.body) : null,
 			});
-			if (responses.length === 0) throw new Error(`Unexpected fetch ${url}`);
-			return new Response(JSON.stringify(responses.shift()), {
-				status: 200,
-				headers: {"Content-Type": "application/json"},
-			});
+			if (responses.length === 0) return Promise.reject(new Error(`Unexpected fetch ${url}`));
+			return Promise.resolve(
+				new Response(JSON.stringify(responses.shift()), {
+					status: 200,
+					headers: {"Content-Type": "application/json"},
+				}),
+			);
 		}),
 	);
 	return calls;

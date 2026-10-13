@@ -277,9 +277,11 @@ describe("sidebar SessionGroups", () => {
 		const requests: string[] = [];
 		vi.stubGlobal("fetch", async (input: RequestInfo | URL) => {
 			requests.push(String(input));
-			return new Response(
-				JSON.stringify({sessions: [session("d-old", "Completed next page", "done", 60)], nextCursor: null}),
-				{status: 200, headers: {"Content-Type": "application/json"}},
+			return Promise.resolve(
+				new Response(
+					JSON.stringify({sessions: [session("d-old", "Completed next page", "done", 60)], nextCursor: null}),
+					{status: 200, headers: {"Content-Type": "application/json"}},
+				),
 			);
 		});
 		const {container} = await renderGroups(FIXTURE, {nextCursor: "cursor-2"});
@@ -300,10 +302,12 @@ describe("sidebar SessionGroups", () => {
 		const requests: string[] = [];
 		vi.stubGlobal("fetch", async (input: RequestInfo | URL) => {
 			requests.push(String(input));
-			return new Response(JSON.stringify({sessions: [older], nextCursor: null}), {
-				status: 200,
-				headers: {"Content-Type": "application/json"},
-			});
+			return Promise.resolve(
+				new Response(JSON.stringify({sessions: [older], nextCursor: null}), {
+					status: 200,
+					headers: {"Content-Type": "application/json"},
+				}),
+			);
 		});
 		const {container} = await renderGroups(done, {nextCursor: "cursor-2"});
 

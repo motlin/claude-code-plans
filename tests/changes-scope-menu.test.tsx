@@ -234,10 +234,10 @@ describe("ChangesPane scope", () => {
 			"fetch",
 			vi.fn(async (input: string) => {
 				const url = new URL(input, "http://localhost");
-				if (url.pathname.endsWith("/diff/scopes")) return Response.json(scopesResponse);
+				if (url.pathname.endsWith("/diff/scopes")) return Promise.resolve(Response.json(scopesResponse));
 				const scope = url.searchParams.get("scope") ?? "";
 				fetchedScopes.push(scope);
-				return Response.json(emptyDiff(scope));
+				return Promise.resolve(Response.json(emptyDiff(scope)));
 			}),
 		);
 	});

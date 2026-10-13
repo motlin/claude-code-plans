@@ -109,7 +109,7 @@ describe("session viewed visibility dwell", () => {
 		};
 		vi.stubGlobal(
 			"fetch",
-			vi.fn(async () => Response.json(viewedState)),
+			vi.fn(async () => Promise.resolve(Response.json(viewedState))),
 		);
 		const client = new QueryClient({defaultOptions: {queries: {retry: false}}});
 		client.setQueryData(sessionQueryKeys.detail("session-test-100"), {
@@ -152,13 +152,15 @@ describe("session viewed visibility dwell", () => {
 		vi.stubGlobal(
 			"fetch",
 			vi.fn(async () =>
-				Response.json({
-					currentMessageIndex: 100,
-					lastViewedMessageIndex: 100,
-					newMessageCount: 0,
-					viewedInHerdr: false,
-					...responses.shift(),
-				}),
+				Promise.resolve(
+					Response.json({
+						currentMessageIndex: 100,
+						lastViewedMessageIndex: 100,
+						newMessageCount: 0,
+						viewedInHerdr: false,
+						...responses.shift(),
+					}),
+				),
 			),
 		);
 		const client = new QueryClient({defaultOptions: {queries: {retry: false}}});
@@ -201,22 +203,26 @@ describe("session viewed visibility dwell", () => {
 				if (path.endsWith("/viewed")) {
 					viewedAttempts += 1;
 					if (viewedAttempts === 1) {
-						return new Response("{}", {
-							status: 500,
-							headers: {"Content-Type": "application/json"},
-						});
+						return Promise.resolve(
+							new Response("{}", {
+								status: 500,
+								headers: {"Content-Type": "application/json"},
+							}),
+						);
 					}
-					return Response.json({
-						currentMessageIndex: 100,
-						lastViewedMessageIndex: 100,
-						reviewTargetMessageIndex: 100,
-						newMessageCount: 0,
-						viewedInCcp: true,
-						viewedInHerdr: false,
-						viewedAnywhere: true,
-					});
+					return Promise.resolve(
+						Response.json({
+							currentMessageIndex: 100,
+							lastViewedMessageIndex: 100,
+							reviewTargetMessageIndex: 100,
+							newMessageCount: 0,
+							viewedInCcp: true,
+							viewedInHerdr: false,
+							viewedAnywhere: true,
+						}),
+					);
 				}
-				return new Response(null, {status: 204});
+				return Promise.resolve(new Response(null, {status: 204}));
 			}),
 		);
 
@@ -239,7 +245,7 @@ describe("session viewed visibility dwell", () => {
 			wrapper,
 		});
 
-		await act(async () => {
+		act(() => {
 			result.current.visibilityRef(document.createElement("div"));
 		});
 		await act(async () => {

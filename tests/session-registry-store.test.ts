@@ -29,7 +29,7 @@ function registryFixture(overrides: Partial<SessionRegistryEntry> = {}): Session
 	};
 }
 
-const everyoneAlive = {isAlive: () => true, readStartTimes: async () => null};
+const everyoneAlive = {isAlive: () => true, readStartTimes: async () => Promise.resolve(null)};
 
 describe("session registry store", () => {
 	let dir: string;
@@ -116,7 +116,10 @@ describe("session registry store", () => {
 		await refreshSessionRegistry(dir, everyoneAlive);
 		const isAlive = vi.fn<LivenessProbe["isAlive"]>(() => false);
 
-		const changed = await pollSessionRegistryLiveness(dir, {isAlive, readStartTimes: async () => null});
+		const changed = await pollSessionRegistryLiveness(dir, {
+			isAlive,
+			readStartTimes: async () => Promise.resolve(null),
+		});
 
 		expect({
 			changed: [...changed],
@@ -132,7 +135,7 @@ describe("session registry store", () => {
 	it("leaves the registry alone when every pid still answers", async () => {
 		write(registryFixture({status: "busy"}));
 		await refreshSessionRegistry(dir, everyoneAlive);
-		const readStartTimes = vi.fn<LivenessProbe["readStartTimes"]>(async () => null);
+		const readStartTimes = vi.fn<LivenessProbe["readStartTimes"]>(async () => Promise.resolve(null));
 
 		const changed = await pollSessionRegistryLiveness(dir, {isAlive: () => true, readStartTimes});
 

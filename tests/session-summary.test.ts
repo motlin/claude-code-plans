@@ -286,7 +286,7 @@ describe("buildSessionSummaryPayloadFromDb with the CLI session registry", () =>
 				statusUpdatedAt,
 			}),
 		);
-		await refreshSessionRegistry(dir, {isAlive: () => true, readStartTimes: async () => null});
+		await refreshSessionRegistry(dir, {isAlive: () => true, readStartTimes: async () => Promise.resolve(null)});
 	}
 
 	function stateOf(): {
@@ -363,7 +363,7 @@ describe("buildSessionSummaryPayloadFromDb with the CLI session registry", () =>
 				waitingFor: "permission prompt",
 			}),
 		);
-		await refreshSessionRegistry(dir, {isAlive: () => true, readStartTimes: async () => null});
+		await refreshSessionRegistry(dir, {isAlive: () => true, readStartTimes: async () => Promise.resolve(null)});
 
 		expect(stateOf()).toStrictEqual({
 			state: "waiting",

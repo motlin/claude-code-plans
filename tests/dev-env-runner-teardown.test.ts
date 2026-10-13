@@ -3,7 +3,7 @@ import {closeNitroRunnerOnServerClose} from "../src/lib/dev-env-runner-teardown"
 
 function fakeRunner(log: string[], name: string) {
 	return {
-		close: async () => {
+		close: () => {
 			log.push(`close ${name}`);
 		},
 	};

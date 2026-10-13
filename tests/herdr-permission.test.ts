@@ -23,11 +23,12 @@ function dependencies(overrides: Partial<HerdrPermissionDependencies> = {}): Her
 		writesEnabled: () => true,
 		hasPendingPermission: () => true,
 		clearPendingPermission: () => {},
-		resolveTarget: async () => ({
-			ok: true,
-			value: {terminalId: "terminal-test-100", paneId: "w100:p100"},
-		}),
-		request: async () => ({ok: true, value: {type: "ok"}}),
+		resolveTarget: async () =>
+			Promise.resolve({
+				ok: true,
+				value: {terminalId: "terminal-test-100", paneId: "w100:p100"},
+			}),
+		request: async () => Promise.resolve({ok: true, value: {type: "ok"}}),
 		createRequestId: () => "ccp:permission:test-100",
 		...overrides,
 	};
@@ -109,7 +110,7 @@ describe("herdr permission decision handler", () => {
 			dependencies({
 				request: async (value) => {
 					requests.push(value);
-					return {ok: true, value: {type: "ok"}};
+					return Promise.resolve({ok: true, value: {type: "ok"}});
 				},
 				clearPendingPermission: (sessionId) => cleared.push(sessionId),
 			}),
@@ -132,7 +133,7 @@ describe("herdr permission decision handler", () => {
 		const response = await handleHerdrPermission(
 			request({sessionId: "session-test-100", decision: "allow"}),
 			dependencies({
-				request: async () => ({ok: false, code: "agent_not_ready", message: "Fabricated"}),
+				request: async () => Promise.resolve({ok: false, code: "agent_not_ready", message: "Fabricated"}),
 				clearPendingPermission: (sessionId) => cleared.push(sessionId),
 			}),
 		);

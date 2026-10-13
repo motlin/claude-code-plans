@@ -172,10 +172,11 @@ describe("POST /api/open-in-finder", () => {
 		const opened: string[] = [];
 		const dependencies: OpenInFinderDependencies = {
 			rejectRequest: rejectCrossSite,
-			resolveSessionCwd: async (sessionId) => cwds[sessionId] ?? null,
-			isDirectory: async (path) => directories.includes(path),
+			resolveSessionCwd: async (sessionId) => Promise.resolve(cwds[sessionId] ?? null),
+			isDirectory: async (path) => Promise.resolve(directories.includes(path)),
 			openPath: async (path) => {
 				opened.push(path);
+				return Promise.resolve();
 			},
 		};
 		return {dependencies, opened};

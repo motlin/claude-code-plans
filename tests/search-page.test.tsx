@@ -39,7 +39,7 @@ let requests: string[] = [];
 
 async function fetchMock(url: string): Promise<unknown> {
 	requests.push(url);
-	return Promise.resolve({ok: true, status: 200, json: async () => ({items: ITEMS})});
+	return Promise.resolve({ok: true, status: 200, json: async () => Promise.resolve({items: ITEMS})});
 }
 
 async function renderPage(initialEntry: string) {

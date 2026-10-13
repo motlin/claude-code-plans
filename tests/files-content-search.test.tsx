@@ -226,13 +226,15 @@ function stubFetch(): void {
 			const url = new URL(input, "http://localhost");
 			requests.push(`${url.pathname}?${url.searchParams.toString()}`);
 			if (url.pathname === "/api/search/files") {
-				return Response.json(
-					url.searchParams.get("query") === "needle"
-						? SEARCH_RESPONSE
-						: {files: [], totalResults: 0, totalFiles: 0, isTruncated: false},
+				return Promise.resolve(
+					Response.json(
+						url.searchParams.get("query") === "needle"
+							? SEARCH_RESPONSE
+							: {files: [], totalResults: 0, totalFiles: 0, isTruncated: false},
+					),
 				);
 			}
-			return Response.json({kind: "listing", dir: "", entries: [], partial: false});
+			return Promise.resolve(Response.json({kind: "listing", dir: "", entries: [], partial: false}));
 		}),
 	);
 }

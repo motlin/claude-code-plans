@@ -59,10 +59,11 @@ function dependencies(
 ): HerdrHookStateDependencies {
 	return {
 		writesEnabled: () => true,
-		resolveTarget: async () => ({
-			ok: true,
-			value: {terminalId: "terminal-test-100", paneId: "w100:p100"},
-		}),
+		resolveTarget: async () =>
+			Promise.resolve({
+				ok: true,
+				value: {terminalId: "terminal-test-100", paneId: "w100:p100"},
+			}),
 		request,
 		nextSequence: () => ({timestamp: 946_684_800_000, ordinal: 0, value: 946_684_800_000_000}),
 		observe: (observation) => observations.push(observation),
@@ -182,13 +183,13 @@ describe("herdr hook-state reporting", () => {
 				params: {state: "idle" | "working"; seq: number};
 			};
 			if (request.method === "pane.get") {
-				return {
+				return Promise.resolve({
 					ok: true,
 					value: paneInfo({
 						agent_status: settledState,
 						agent: settledState === "unknown" ? null : "claude",
 					}),
-				};
+				});
 			}
 			if (request.method === "pane.report_agent") {
 				const report = {
@@ -201,7 +202,7 @@ describe("herdr hook-state reporting", () => {
 					settledState = report.state;
 				}
 			}
-			return {ok: true, value: {type: "ok"}};
+			return Promise.resolve({ok: true, value: {type: "ok"}});
 		}, observations);
 		hookDependencies.resolveTarget = async () => {
 			snapshotCount += 1;
@@ -247,12 +248,12 @@ describe("herdr hook-state reporting", () => {
 			const method = (requestValue as {method: string}).method;
 			if (method === "pane.get") {
 				paneReads += 1;
-				return {
+				return Promise.resolve({
 					ok: true,
 					value: paneReads === 1 ? paneInfo() : paneInfo({agent_status: "idle", agent: "claude"}),
-				};
+				});
 			}
-			return {ok: true, value: {type: "ok"}};
+			return Promise.resolve({ok: true, value: {type: "ok"}});
 		};
 
 		reportHookStateToHerdr({...baseEvent, hook_event_name: "Stop"}, entry(), dependencies(request, observations));
@@ -310,7 +311,7 @@ describe("herdr hook-state reporting", () => {
 			requests.push(requestValue);
 			if ((requestValue as {method: string}).method === "pane.get") {
 				paneReads += 1;
-				return {
+				return Promise.resolve({
 					ok: true,
 					value:
 						paneReads === 1
@@ -322,9 +323,9 @@ describe("herdr hook-state reporting", () => {
 									state_labels: labels,
 									tokens: {ccp_state: "working"},
 								}),
-				};
+				});
 			}
-			return {ok: true, value: {type: "ok"}};
+			return Promise.resolve({ok: true, value: {type: "ok"}});
 		};
 
 		reportHookStateToHerdr(
@@ -379,9 +380,9 @@ describe("herdr hook-state reporting", () => {
 		const request = async (requestValue: object): Promise<HerdrResult<unknown>> => {
 			requests.push(requestValue);
 			if ((requestValue as {method: string}).method === "pane.get") {
-				return {ok: true, value: paneInfo()};
+				return Promise.resolve({ok: true, value: paneInfo()});
 			}
-			return {ok: true, value: {type: "ok"}};
+			return Promise.resolve({ok: true, value: {type: "ok"}});
 		};
 
 		reportHookStateToHerdr(
@@ -422,12 +423,12 @@ describe("herdr hook-state reporting", () => {
 		const request = async (requestValue: object): Promise<HerdrResult<unknown>> => {
 			if ((requestValue as {method: string}).method === "pane.get") {
 				paneReads += 1;
-				return {
+				return Promise.resolve({
 					ok: true,
 					value: paneReads === 1 ? paneInfo() : paneInfo({agent_status: "unknown", agent: null}),
-				};
+				});
 			}
-			return {ok: true, value: {type: "ok"}};
+			return Promise.resolve({ok: true, value: {type: "ok"}});
 		};
 
 		reportHookStateToHerdr({...baseEvent, hook_event_name: "Stop"}, entry(), dependencies(request, observations));
@@ -452,9 +453,7 @@ describe("herdr hook-state reporting", () => {
 			reportHookStateToHerdr(
 				{...baseEvent, hook_event_name: "Stop"},
 				entry(),
-				dependencies(async () => {
-					throw new Error("fabricated socket rejection");
-				}, observations),
+				dependencies(async () => Promise.reject(new Error("fabricated socket rejection")), observations),
 			);
 			await settleDetachedReport();
 

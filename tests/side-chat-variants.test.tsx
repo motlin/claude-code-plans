@@ -95,7 +95,7 @@ function snapshot() {
 async function askOneQuestion() {
 	vi.stubGlobal(
 		"fetch",
-		vi.fn(async () => ndjsonResponse("It loads the config.")),
+		vi.fn(async () => Promise.resolve(ndjsonResponse("It loads the config."))),
 	);
 	await act(async () => askSideChat(SESSION_ID, "What does load() do?"));
 }

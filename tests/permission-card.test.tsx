@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
-import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
+import {cleanup, fireEvent, render, screen} from "@testing-library/react";
+import {actAndSettle} from "./act-and-settle";
 import type {ComponentProps} from "react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
@@ -272,12 +273,12 @@ describe("PermissionCard", () => {
 		const {container, onDecision} = renderCard();
 		const prompt = screen.getByRole("textbox", {name: "Prompt"});
 		prompt.focus();
-		await act(async () => {
+		await actAndSettle(() => {
 			fireEvent.keyDown(prompt, {key: "2"});
 		});
 		const card = container.querySelector<HTMLElement>("[data-approval-card-root]")!;
 		card.focus();
-		await act(async () => {
+		await actAndSettle(() => {
 			fireEvent.keyDown(card, {key: "Escape"});
 		});
 		expect(onDecision.mock.calls).toStrictEqual([["allow"], ["deny"]]);

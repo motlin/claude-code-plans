@@ -357,7 +357,8 @@ describe("⌘K palette: start a new session", () => {
 	});
 
 	it("navigates to the new session when SessionStart for that cwd arrives", async () => {
-		launchResponse = async () => Response.json({ok: true, tabId: "t1", paneId: "p1", sessionId: null});
+		launchResponse = async () =>
+			Promise.resolve(Response.json({ok: true, tabId: "t1", paneId: "p1", sessionId: null}));
 		const {dialog, input, router, eventSource} = await openPalette();
 		fireEvent.change(input, {target: {value: "fix the flaky test"}});
 		await pickProject(dialog, input, "older");
@@ -391,7 +392,8 @@ describe("⌘K palette: start a new session", () => {
 	});
 
 	it("copies the exact shell-escaped command when herdr is unavailable", async () => {
-		launchResponse = async () => Response.json({error: "herdr writes are disabled"}, {status: 403});
+		launchResponse = async () =>
+			Promise.resolve(Response.json({error: "herdr writes are disabled"}, {status: 403}));
 		const {dialog, input} = await openPalette();
 		fireEvent.change(input, {target: {value: "don't break $HOME"}});
 

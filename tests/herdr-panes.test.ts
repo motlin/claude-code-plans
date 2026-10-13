@@ -38,7 +38,7 @@ describe("getHerdrPanes", () => {
 		};
 		const request: HerdrRequester = async (requestValue) => {
 			requests.push(requestValue);
-			return {
+			return Promise.resolve({
 				ok: true,
 				value: {
 					type: "session_snapshot",
@@ -176,7 +176,7 @@ describe("getHerdrPanes", () => {
 						focused_pane_id: "w100:p100",
 					},
 				},
-			};
+			});
 		};
 		const entries = [
 			entry({sessionId: "session-test-100", herdrPane: "w100:p100"}),
@@ -265,15 +265,17 @@ describe("getHerdrPanes", () => {
 	});
 
 	it("returns an empty table for unavailable or invalid herdr responses", async () => {
-		const unavailable: HerdrRequester = async () => ({
-			ok: false,
-			code: "connect-failed",
-			message: "fabricated connection failure",
-		});
-		const invalid: HerdrRequester = async () => ({
-			ok: true,
-			value: {type: "unexpected-test-result"},
-		});
+		const unavailable: HerdrRequester = async () =>
+			Promise.resolve({
+				ok: false,
+				code: "connect-failed",
+				message: "fabricated connection failure",
+			});
+		const invalid: HerdrRequester = async () =>
+			Promise.resolve({
+				ok: true,
+				value: {type: "unexpected-test-result"},
+			});
 		await expect(Promise.all([getHerdrPanes([], unavailable), getHerdrPanes([], invalid)])).resolves.toStrictEqual([
 			[],
 			[],
@@ -281,34 +283,35 @@ describe("getHerdrPanes", () => {
 	});
 
 	it("returns an empty table without initializing the database when panes lack session ids", async () => {
-		const request: HerdrRequester = async () => ({
-			ok: true,
-			value: {
-				type: "session_snapshot",
-				snapshot: {
-					version: "99.0.0-test",
-					protocol: 100,
-					workspaces: [],
-					tabs: [],
-					panes: [
-						{
-							pane_id: "w100:p100",
-							terminal_id: "terminal-test-100",
-							workspace_id: "w100",
-							tab_id: "w100:t100",
-							focused: true,
-							agent_status: "idle",
-							revision: 100,
-						},
-					],
-					layouts: [],
-					agents: [],
-					focused_workspace_id: "w100",
-					focused_tab_id: "w100:t100",
-					focused_pane_id: "w100:p100",
+		const request: HerdrRequester = async () =>
+			Promise.resolve({
+				ok: true,
+				value: {
+					type: "session_snapshot",
+					snapshot: {
+						version: "99.0.0-test",
+						protocol: 100,
+						workspaces: [],
+						tabs: [],
+						panes: [
+							{
+								pane_id: "w100:p100",
+								terminal_id: "terminal-test-100",
+								workspace_id: "w100",
+								tab_id: "w100:t100",
+								focused: true,
+								agent_status: "idle",
+								revision: 100,
+							},
+						],
+						layouts: [],
+						agents: [],
+						focused_workspace_id: "w100",
+						focused_tab_id: "w100:t100",
+						focused_pane_id: "w100:p100",
+					},
 				},
-			},
-		});
+			});
 
 		await expect(getHerdrPanes([], request)).resolves.toStrictEqual([]);
 	});

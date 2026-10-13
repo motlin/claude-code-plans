@@ -355,6 +355,7 @@ describe("client lab: opening a session and switching from the sidebar", () => {
 		it(`${shape} open`, async () => {
 			const measurement = await measureApp("/", async () => {
 				fireEvent.click(sidebarRow(sessionIds[shape]));
+				return Promise.resolve();
 			});
 			const mountedRows = mountedTranscriptRows();
 

@@ -48,7 +48,7 @@ function insertSession(cwd: string | null): void {
 function dependencies(allowedRoots: string[] = [root]): SessionFilesHandlerDependencies {
 	return {
 		index: db.index,
-		allowedRoots: async () => allowedRoots,
+		allowedRoots: async () => Promise.resolve(allowedRoots),
 		checkIgnored: gitCheckIgnored,
 	};
 }

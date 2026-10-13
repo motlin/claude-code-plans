@@ -178,7 +178,7 @@ describe("probeDevServer", () => {
 	});
 
 	it("sends a HEAD without following redirects and reports live on any response", async () => {
-		const fetchImpl = vi.fn<typeof fetch>(async () => new Response(null, {status: 404}));
+		const fetchImpl = vi.fn<typeof fetch>(async () => Promise.resolve(new Response(null, {status: 404})));
 		expect(await probeDevServer("http://localhost:5173", fetchImpl)).toBe("live");
 		expect(fetchImpl).toHaveBeenCalledTimes(1);
 		const [url, init] = fetchImpl.mock.calls[0] ?? [];
@@ -190,9 +190,7 @@ describe("probeDevServer", () => {
 	});
 
 	it("reports down when the connection fails", async () => {
-		const fetchImpl = vi.fn<typeof fetch>(async () => {
-			throw new TypeError("fetch failed");
-		});
+		const fetchImpl = vi.fn<typeof fetch>(async () => Promise.reject(new TypeError("fetch failed")));
 		expect(await probeDevServer("http://127.0.0.1:5999", fetchImpl)).toBe("down");
 	});
 });
@@ -227,8 +225,8 @@ describe("readSessionDevServers", () => {
 			JSON.stringify({version: "0.0.1", configurations: [{name: "web", port: 5173}]}),
 		);
 		const fetchImpl = vi.fn<typeof fetch>(async (input) => {
-			if (input === "http://localhost:5173/") return new Response(null, {status: 200});
-			throw new TypeError("fetch failed");
+			if (input === "http://localhost:5173/") return Promise.resolve(new Response(null, {status: 200}));
+			return Promise.reject(new TypeError("fetch failed"));
 		});
 
 		expect(await readSessionDevServers(transcript, tempDir, fetchImpl)).toStrictEqual([

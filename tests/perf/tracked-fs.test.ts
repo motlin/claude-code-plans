@@ -80,7 +80,7 @@ describe("tracked read helpers", () => {
 		expect(counters).toStrictEqual({bytesRead: size - 10, fullScans: 0});
 	});
 
-	it("does nothing outside a perf scope", async () => {
+	it("does nothing outside a perf scope", () => {
 		writeTranscript(3);
 		expect(trackedReadFileSync(filePath).length).toBeGreaterThan(0);
 		expect(currentPerfCounters()).toBeUndefined();

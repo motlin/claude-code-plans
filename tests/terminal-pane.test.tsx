@@ -263,11 +263,11 @@ describe("Shell tabs", () => {
 				const {ptyKeys} = z
 					.object({ptyKeys: z.array(z.string())})
 					.parse(JSON.parse(typeof init?.body === "string" ? init.body : "null"));
-				return Response.json({busy: ptyKeys.filter((key) => busy.includes(key))});
+				return Promise.resolve(Response.json({busy: ptyKeys.filter((key) => busy.includes(key))}));
 			}
 			const next = created.shift();
-			if (!next) throw new Error("unexpected shell request");
-			return Response.json(next.body, {status: next.status});
+			if (!next) return Promise.reject(new Error("unexpected shell request"));
+			return Promise.resolve(Response.json(next.body, {status: next.status}));
 		});
 		vi.stubGlobal("fetch", fetcher);
 		return fetcher;

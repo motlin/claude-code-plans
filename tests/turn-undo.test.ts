@@ -205,7 +205,7 @@ function insertSession(): void {
 }
 
 function dependencies() {
-	return {index: db.index, readRecords: async () => sessionRecords()};
+	return {index: db.index, readRecords: async () => Promise.resolve(sessionRecords())};
 }
 
 function post(body: unknown): Request {

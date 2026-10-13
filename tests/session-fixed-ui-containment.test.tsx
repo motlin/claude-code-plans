@@ -281,7 +281,7 @@ describe("fixed-position session UI and the contained transcript scroller", () =
 			buttons: [...(footer?.querySelectorAll("button") ?? [])].map((button) => button.getAttribute("aria-label")),
 			segments: footer?.querySelectorAll("[data-status-segment]").length,
 		};
-		await act(async () => {
+		act(() => {
 			fireEvent.click(item);
 		});
 		const pane = screen.getByRole("region", {name: "Session details"});

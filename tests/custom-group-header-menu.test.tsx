@@ -422,7 +422,7 @@ describe("Delete group", () => {
 
 describe("Archive all", () => {
 	it("confirms, archives every active row and toasts the count", async () => {
-		fetchMock.mockImplementation(async () => Response.json({archived: true}));
+		fetchMock.mockImplementation(async () => Promise.resolve(Response.json({archived: true})));
 		storeGroups({s1: "cg-gtd", s2: "cg-gtd"});
 		await renderGroup("cg-gtd", [toGroupRow(listItem("s1")), toGroupRow(listItem("s2"))]);
 		await choose("GTD", "Archive all (2)");

@@ -199,7 +199,9 @@ describe("herdr terminal observer NDJSON bridge", () => {
 	it("resolves a session to a terminal and closes sockets during server shutdown", async () => {
 		const child = createFakeChild();
 		const spawnObserver = vi.fn<() => FakeChild>(() => child);
-		const resolveTarget = vi.fn<TerminalObserverDependencies["resolveTarget"]>(async () => "terminal-test-100");
+		const resolveTarget = vi.fn<TerminalObserverDependencies["resolveTarget"]>(async () =>
+			Promise.resolve("terminal-test-100"),
+		);
 		const socket = createSocket();
 
 		await observeHerdrSession("session-test-100", 90, 30, socket, {

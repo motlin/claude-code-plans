@@ -89,7 +89,7 @@ async function start(routeId: string) {
 		history: createMemoryHistory({initialEntries: [`/session/${routeId}`]}),
 	});
 	await router.load();
-	await act(async () => {
+	act(() => {
 		render(<RouterProvider router={router} />);
 	});
 	return router;

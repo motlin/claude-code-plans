@@ -165,11 +165,13 @@ describe("SideChat", () => {
 
 	it("switches the placeholder to Follow up… once there is an answer, and Clear resets it", async () => {
 		const fetchMock = vi.fn<typeof fetch>(async () =>
-			ndjsonResponse([
-				textDelta("It parses "),
-				textDelta("the config."),
-				{type: "result", subtype: "success", is_error: false, result: "It parses the config."},
-			]),
+			Promise.resolve(
+				ndjsonResponse([
+					textDelta("It parses "),
+					textDelta("the config."),
+					{type: "result", subtype: "success", is_error: false, result: "It parses the config."},
+				]),
+			),
 		);
 		vi.stubGlobal("fetch", fetchMock);
 		renderSideChat();
@@ -210,7 +212,7 @@ describe("SideChat", () => {
 	it("renders answers as markdown", async () => {
 		vi.stubGlobal(
 			"fetch",
-			vi.fn(async () => ndjsonResponse([textDelta("Use **load()**:\n\n- reads `config.ts`")])),
+			vi.fn(async () => Promise.resolve(ndjsonResponse([textDelta("Use **load()**:\n\n- reads `config.ts`")]))),
 		);
 		renderSideChat();
 		act(() => {
@@ -256,7 +258,9 @@ describe("SideChat", () => {
 		vi.stubGlobal(
 			"fetch",
 			vi.fn(async () =>
-				Response.json({error: "Could not determine project directory for session"}, {status: 404}),
+				Promise.resolve(
+					Response.json({error: "Could not determine project directory for session"}, {status: 404}),
+				),
 			),
 		);
 		renderSideChat();
@@ -274,7 +278,7 @@ describe("SideChat", () => {
 	it("asks the user to send a main-chat message first when no answer comes back", async () => {
 		vi.stubGlobal(
 			"fetch",
-			vi.fn(async () => ndjsonResponse([])),
+			vi.fn(async () => Promise.resolve(ndjsonResponse([]))),
 		);
 		renderSideChat();
 		act(() => {
@@ -310,7 +314,7 @@ describe("SideChat", () => {
 		});
 		vi.stubGlobal(
 			"fetch",
-			vi.fn(async () => new Response(stream, {status: 200})),
+			vi.fn(async () => Promise.resolve(new Response(stream, {status: 200}))),
 		);
 		renderSideChat();
 		act(() => {
@@ -409,7 +413,7 @@ describe("handleBtwPrompt", () => {
 	it("opens the side chat and asks the question", async () => {
 		vi.stubGlobal(
 			"fetch",
-			vi.fn(async () => ndjsonResponse([textDelta("Yes.")])),
+			vi.fn(async () => Promise.resolve(ndjsonResponse([textDelta("Yes.")]))),
 		);
 		handleBtwPrompt("/btw is it cached?", {
 			sessionId: SESSION_ID,

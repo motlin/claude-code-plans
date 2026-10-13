@@ -34,7 +34,7 @@ function mockUploads(respond: (file: File) => Response) {
 		vi.fn(async (_url: string, init: RequestInit) => {
 			const file = (init.body as FormData).get("file") as File;
 			uploads.push(file.name);
-			return respond(file);
+			return Promise.resolve(respond(file));
 		}),
 	);
 }

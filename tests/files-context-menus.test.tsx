@@ -31,7 +31,7 @@ import {handleRevealInFinder} from "../src/lib/open-in-finder";
 import {installLocalStorage} from "./fake-storage";
 
 vi.mock("../src/lib/clipboard", () => ({
-	writeClipboardText: vi.fn<typeof writeClipboardText>(async () => true),
+	writeClipboardText: vi.fn<typeof writeClipboardText>(async () => Promise.resolve(true)),
 }));
 
 vi.mock("../src/hooks/use-shiki", async (importOriginal) => ({
@@ -62,22 +62,24 @@ function stubFetch(): void {
 			const url = new URL(input, "http://localhost");
 			if (url.pathname.startsWith("/api/file/")) {
 				const path = decodeFilePath(url.pathname.slice("/api/file/".length)) ?? "";
-				if (path === AGENT) return Response.json({content: AGENT_SOURCE, path});
-				return Response.json({error: "File not found"}, {status: 404});
+				if (path === AGENT) return Promise.resolve(Response.json({content: AGENT_SOURCE, path}));
+				return Promise.resolve(Response.json({error: "File not found"}, {status: 404}));
 			}
-			if (url.pathname === "/api/reveal-in-finder") return Response.json({ok: true});
+			if (url.pathname === "/api/reveal-in-finder") return Promise.resolve(Response.json({ok: true}));
 			if (url.pathname.endsWith("/files")) {
-				return Response.json({
-					kind: "listing",
-					dir: "",
-					entries: [
-						{name: "src", relPath: "src", isDirectory: true},
-						{name: "README.md", relPath: "README.md", isDirectory: false},
-					],
-					partial: false,
-				});
+				return Promise.resolve(
+					Response.json({
+						kind: "listing",
+						dir: "",
+						entries: [
+							{name: "src", relPath: "src", isDirectory: true},
+							{name: "README.md", relPath: "README.md", isDirectory: false},
+						],
+						partial: false,
+					}),
+				);
 			}
-			return Response.json({error: "not found"}, {status: 404});
+			return Promise.resolve(Response.json({error: "not found"}, {status: 404}));
 		}),
 	);
 }
@@ -607,7 +609,7 @@ describe("handleRevealInFinder", () => {
 			}),
 			{
 				rejectRequest: () => null,
-				resolveRoots: async () => [join(root, "allowed")],
+				resolveRoots: async () => Promise.resolve([join(root, "allowed")]),
 				configPath: join(root, "missing-config.json"),
 				revealPath,
 			},

@@ -29,11 +29,12 @@ function dependencies(overrides: Partial<HerdrInterruptDependencies> = {}): Herd
 	return {
 		rejectRequest: rejectCrossSite,
 		writesEnabled: () => true,
-		resolveTarget: async () => ({
-			ok: true,
-			value: {terminalId: "terminal-test-100", paneId: "w100:p100"},
-		}),
-		request: async () => ({ok: true, value: {type: "ok"}}),
+		resolveTarget: async () =>
+			Promise.resolve({
+				ok: true,
+				value: {terminalId: "terminal-test-100", paneId: "w100:p100"},
+			}),
+		request: async () => Promise.resolve({ok: true, value: {type: "ok"}}),
 		createRequestId: () => "ccp:interrupt:test-100",
 		...overrides,
 	};
@@ -130,7 +131,7 @@ describe("herdr interrupt write handler", () => {
 		const requests: object[] = [];
 		const sendRequest: HerdrRequester = async (requestValue) => {
 			requests.push(requestValue);
-			return {ok: true, value: {type: "ok"}};
+			return Promise.resolve({ok: true, value: {type: "ok"}});
 		};
 
 		const response = await handleHerdrInterrupt(request(body), dependencies({request: sendRequest}));
@@ -161,7 +162,7 @@ describe("herdr interrupt write handler", () => {
 
 		const response = await handleHerdrInterrupt(
 			request({sessionId: "session-test-100"}),
-			dependencies({request: async () => error}),
+			dependencies({request: async () => Promise.resolve(error)}),
 		);
 
 		expect(await describeResponse(response)).toStrictEqual({
@@ -176,11 +177,12 @@ describe("herdr interrupt write handler", () => {
 		const response = await handleHerdrInterrupt(
 			request({sessionId: "session-test-100"}),
 			dependencies({
-				resolveTarget: async () => ({
-					ok: false,
-					code: "session-not-found",
-					message: "Fabricated session is not attached to herdr",
-				}),
+				resolveTarget: async () =>
+					Promise.resolve({
+						ok: false,
+						code: "session-not-found",
+						message: "Fabricated session is not attached to herdr",
+					}),
 				request: sendRequest,
 			}),
 		);

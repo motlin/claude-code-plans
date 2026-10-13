@@ -987,7 +987,8 @@ describe("applySessionLinesAppended", () => {
 		await queryClient.query({
 			...transcriptQueryOptions("session-test-100"),
 			staleTime: 0,
-			queryFn: async () => makeTranscriptCache({records: [existingRecord, appendedRecord], byteOffset: 200}),
+			queryFn: async () =>
+				Promise.resolve(makeTranscriptCache({records: [existingRecord, appendedRecord], byteOffset: 200})),
 		});
 		applySessionLinesAppended(queryClient, "session-test-100", {
 			sessionId: "session-test-100",

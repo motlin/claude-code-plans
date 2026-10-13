@@ -60,7 +60,7 @@ class RecursiveWatcherImpl extends EventEmitter implements RecursiveWatcher {
 	}
 
 	async close(): Promise<void> {
-		if (this.closed) return;
+		if (this.closed) return Promise.resolve();
 		this.closed = true;
 
 		for (const timer of this.debounceByPath.values()) clearTimeout(timer);
@@ -74,6 +74,7 @@ class RecursiveWatcherImpl extends EventEmitter implements RecursiveWatcher {
 		this.nativeWatchers.clear();
 
 		this.removeAllListeners();
+		return Promise.resolve();
 	}
 
 	private async start(roots: readonly string[]): Promise<void> {

@@ -242,7 +242,7 @@ describe("ApprovalDock", () => {
 		expect(document.activeElement).toStrictEqual(screen.getByRole("textbox", {name: "Other option"}));
 	});
 
-	it("walks Next to the last question and submits the answer payload", async () => {
+	it("walks Next to the last question and submits the answer payload", () => {
 		const {onSubmit} = renderDock();
 		fireEvent.click(optionButton("Jest"));
 		fireEvent.click(screen.getByRole("button", {name: "Next"}));
@@ -250,7 +250,7 @@ describe("ApprovalDock", () => {
 		fireEvent.change(screen.getByRole("textbox", {name: "Other option"}), {
 			target: {value: "Snapshots"},
 		});
-		await act(async () => {
+		act(() => {
 			fireEvent.click(screen.getByRole("button", {name: "Submit"}));
 		});
 		expect(onSubmit.mock.calls).toStrictEqual([
@@ -266,11 +266,11 @@ describe("ApprovalDock", () => {
 		]);
 	});
 
-	it("Skip on the last question submits with that answer blank", async () => {
+	it("Skip on the last question submits with that answer blank", () => {
 		const {onSubmit} = renderDock();
 		fireEvent.click(optionButton("Vitest"));
 		fireEvent.click(screen.getByRole("button", {name: "Next"}));
-		await act(async () => {
+		act(() => {
 			fireEvent.click(screen.getByRole("button", {name: "Skip"}));
 		});
 		expect(onSubmit.mock.calls).toStrictEqual([

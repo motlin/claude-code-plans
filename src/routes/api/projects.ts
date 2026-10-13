@@ -37,23 +37,21 @@ export const Route = createFileRoute("/api/projects")({
 
 				const memoryCounts = getMemoryCountsForProjects(index);
 
-				const enriched = await Promise.all(
-					projects.map(async (p) => {
-						const taskCounts = getTaskCountsForProject(index, p.id);
+				const enriched = projects.map((p) => {
+					const taskCounts = getTaskCountsForProject(index, p.id);
 
-						return {
-							id: p.id,
-							name: p.name,
-							projectPath: p.projectPath,
-							sessionCount: p.sessionCount,
-							memoryCount: memoryCounts.get(p.id) ?? 0,
-							planCount: planCountByProject.get(p.id)?.size ?? 0,
-							taskCount: taskCounts.pending + taskCounts.inProgress,
-							activeCount: activeByProject.get(p.id) ?? 0,
-							lastActivity: new Date(p.lastActivity).toISOString(),
-						};
-					}),
-				);
+					return {
+						id: p.id,
+						name: p.name,
+						projectPath: p.projectPath,
+						sessionCount: p.sessionCount,
+						memoryCount: memoryCounts.get(p.id) ?? 0,
+						planCount: planCountByProject.get(p.id)?.size ?? 0,
+						taskCount: taskCounts.pending + taskCounts.inProgress,
+						activeCount: activeByProject.get(p.id) ?? 0,
+						lastActivity: new Date(p.lastActivity).toISOString(),
+					};
+				});
 
 				return Response.json(ProjectListResponse.parse(enriched), {
 					headers: {"Cache-Control": "private, max-age=0, must-revalidate"},

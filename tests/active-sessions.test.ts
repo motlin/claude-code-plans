@@ -57,7 +57,7 @@ async function loadModules() {
 			resolveProjectName: async (encoded: string): Promise<string> => {
 				const decoded = "/" + encoded.slice(1).replace(/-/g, "/");
 				const segments = decoded.split("/");
-				return segments[segments.length - 1]!;
+				return Promise.resolve(segments[segments.length - 1]!);
 			},
 		};
 	});
@@ -219,7 +219,10 @@ describe("scanActiveSessions", () => {
 		registryFile(4343, "busy-session", "/Users/test/alpha", "busy", 946_598_403_000);
 		const {scanMod} = await loadModules();
 		const registryMod = await import("../src/lib/session-registry-store");
-		await registryMod.refreshSessionRegistry(registryDir, {isAlive: () => true, readStartTimes: async () => null});
+		await registryMod.refreshSessionRegistry(registryDir, {
+			isAlive: () => true,
+			readStartTimes: async () => Promise.resolve(null),
+		});
 
 		const result = await scanMod.scanActiveSessions();
 

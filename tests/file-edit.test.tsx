@@ -266,15 +266,17 @@ function stubFetch(): void {
 			if (url.pathname.startsWith("/api/file/")) {
 				const path = decodeFilePath(url.pathname.slice("/api/file/".length)) ?? "";
 				const content = fileContents.get(path);
-				if (content === undefined) return Response.json({error: "missing"}, {status: 404});
-				return Response.json({content, path});
+				if (content === undefined) return Promise.resolve(Response.json({error: "missing"}, {status: 404}));
+				return Promise.resolve(Response.json({content, path}));
 			}
 			if (url.pathname === "/api/plans/alpha-plan" && (init?.method ?? "GET") === "GET") {
-				return Response.json({
-					markdown: fileContents.get(PLAN_PATH),
-					mtime: PLAN_MTIME,
-					title: "Alpha plan",
-				});
+				return Promise.resolve(
+					Response.json({
+						markdown: fileContents.get(PLAN_PATH),
+						mtime: PLAN_MTIME,
+						title: "Alpha plan",
+					}),
+				);
 			}
 			if (url.pathname === "/api/plans/alpha-plan" && init?.method === "PUT") {
 				const headers = new Headers(init.headers);
@@ -285,13 +287,17 @@ function stubFetch(): void {
 				});
 				const status = putStatuses.shift() ?? 200;
 				if (status === 409) {
-					return new Response("This file changed on disk since you started editing.", {
-						status,
-					});
+					return Promise.resolve(
+						new Response("This file changed on disk since you started editing.", {
+							status,
+						}),
+					);
 				}
-				return Response.json({title: "Alpha plan"}, {headers: {ETag: mtimeEtag(new Date(SAVED_MTIME))}});
+				return Promise.resolve(
+					Response.json({title: "Alpha plan"}, {headers: {ETag: mtimeEtag(new Date(SAVED_MTIME))}}),
+				);
 			}
-			return Response.json({error: "unexpected"}, {status: 500});
+			return Promise.resolve(Response.json({error: "unexpected"}, {status: 500}));
 		}),
 	);
 }

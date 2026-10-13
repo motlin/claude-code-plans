@@ -637,7 +637,10 @@ describe("rebroadcastSessionsById", () => {
 				statusUpdatedAt,
 			}),
 		);
-		await refreshSessionRegistry(registryDir, {isAlive: () => true, readStartTimes: async () => null});
+		await refreshSessionRegistry(registryDir, {
+			isAlive: () => true,
+			readStartTimes: async () => Promise.resolve(null),
+		});
 	}
 
 	beforeEach(() => {
@@ -1054,14 +1057,14 @@ describe("session registry events", () => {
 		const recursiveWatcher = {
 			once: vi.fn<() => RecursiveWatcher>(() => recursiveWatcher),
 			on: vi.fn<() => RecursiveWatcher>(() => recursiveWatcher),
-			close: vi.fn<RecursiveWatcher["close"]>(async () => undefined),
+			close: vi.fn<RecursiveWatcher["close"]>(async () => Promise.resolve(undefined)),
 		} as unknown as RecursiveWatcher;
 		vi.spyOn(recursiveWatch, "createRecursiveWatcher").mockReturnValue(recursiveWatcher);
 		const changes: string[][] = [];
 		startSessionRegistryMonitor({
 			dir: linkedSessions,
 			pollMs: 60_000,
-			probe: {isAlive: () => true, readStartTimes: async () => null},
+			probe: {isAlive: () => true, readStartTimes: async () => Promise.resolve(null)},
 			onChange: (sessionIds) => changes.push([...sessionIds]),
 		});
 
@@ -1120,7 +1123,7 @@ describe("createWatcher integration", () => {
 		recursiveWatcher = {
 			once,
 			on,
-			close: vi.fn<RecursiveWatcher["close"]>(async () => undefined),
+			close: vi.fn<RecursiveWatcher["close"]>(async () => Promise.resolve(undefined)),
 		};
 		const createRecursiveWatcher = vi
 			.spyOn(recursiveWatch, "createRecursiveWatcher")
@@ -1164,7 +1167,7 @@ describe("createWatcher integration", () => {
 		recursiveWatcher = {
 			once,
 			on,
-			close: vi.fn<RecursiveWatcher["close"]>(async () => undefined),
+			close: vi.fn<RecursiveWatcher["close"]>(async () => Promise.resolve(undefined)),
 		};
 		const createRecursiveWatcher = vi
 			.spyOn(recursiveWatch, "createRecursiveWatcher")

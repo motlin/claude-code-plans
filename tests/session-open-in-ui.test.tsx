@@ -84,9 +84,9 @@ function toastText(): string | null | undefined {
 async function openSubmenu(bridgeSessionId: string | null): Promise<string[]> {
 	fetchMock.mockImplementation(async (input) => {
 		if (String(input) === `/api/sessions/${SESSION_ID}/open-in`) {
-			return Response.json({cwd: CWD, bridgeSessionId});
+			return Promise.resolve(Response.json({cwd: CWD, bridgeSessionId}));
 		}
-		return Response.json({ok: true});
+		return Promise.resolve(Response.json({ok: true}));
 	});
 	await renderWithProviders(
 		<SessionActionsMenu session={session}>

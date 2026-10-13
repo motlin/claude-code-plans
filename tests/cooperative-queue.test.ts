@@ -40,9 +40,11 @@ describe("CooperativeQueue", () => {
 		});
 		const second = queue.enqueue("alice", async () => {
 			runs.push("alice 2");
+			return Promise.resolve();
 		});
 		const duplicate = queue.enqueue("alice", async () => {
 			runs.push("alice 3");
+			return Promise.resolve();
 		});
 		releaseFirst();
 		await Promise.all([first, second, duplicate]);
@@ -53,11 +55,7 @@ describe("CooperativeQueue", () => {
 	it("rejects only the failing job and keeps draining", async () => {
 		const queue = new CooperativeQueue();
 		const results = await Promise.all([
-			settled(
-				queue.enqueue("alice", async () => {
-					throw new Error("alice failed");
-				}),
-			),
+			settled(queue.enqueue("alice", async () => Promise.reject(new Error("alice failed")))),
 			settled(queue.enqueue("bob", async () => {})),
 		]);
 
@@ -74,6 +72,7 @@ describe("CooperativeQueue", () => {
 				// Synchronous work, like an SQLite write.
 			}
 			events.push(name);
+			return Promise.resolve();
 		};
 
 		await Promise.all(["alice", "bob", "carol"].map(async (name) => queue.enqueue(name, busyJob(name))));

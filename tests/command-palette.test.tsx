@@ -653,7 +653,7 @@ describe("CommandPalette Recents from the per-tab visit MRU", () => {
 			{value: "session:local-alice", label: "Earlier Alice"},
 		]);
 		saveRecents([entry("plan", "new-plan", "/plan/new-plan", "New visit while open")]);
-		await act(async () => {
+		act(() => {
 			resolveIdentity(Response.json({sessionId: "local-alice"}));
 		});
 		await waitFor(() => {

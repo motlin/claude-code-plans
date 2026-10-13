@@ -60,7 +60,8 @@ describe("getTmuxWindows", () => {
 			entry({sessionId: "sA", tmuxPane: "%1"}),
 			entry({sessionId: "sB", tmuxPane: "%2", cwd: "/Users/craig/projects/foo"}),
 		];
-		const runTmux = async () => "%1\tmain\t0\teditor\t1\n%2\tmain\t2\tbuild\t0\n%9\tmain\t5\tother\t0\n";
+		const runTmux = async () =>
+			Promise.resolve("%1\tmain\t0\teditor\t1\n%2\tmain\t2\tbuild\t0\n%9\tmain\t5\tother\t0\n");
 
 		const windows = await getTmuxWindows(entries, runTmux);
 		const expected: TmuxWindow[] = [
@@ -88,7 +89,7 @@ describe("getTmuxWindows", () => {
 
 	it("sorts by window index", async () => {
 		const entries = [entry({sessionId: "sA", tmuxPane: "%1"}), entry({sessionId: "sB", tmuxPane: "%2"})];
-		const runTmux = async () => "%1\tmain\t7\ta\t0\n%2\tmain\t3\tb\t0\n";
+		const runTmux = async () => Promise.resolve("%1\tmain\t7\ta\t0\n%2\tmain\t3\tb\t0\n");
 		const windows = await getTmuxWindows(entries, runTmux);
 		expect(windows.map((w) => w.windowIndex)).toStrictEqual([3, 7]);
 	});
@@ -99,21 +100,21 @@ describe("getTmuxWindows", () => {
 			entry({sessionId: "sB", tmuxPane: "%2", tmuxServerSocket: ""}),
 			entry({sessionId: "sC", tmuxPane: "%3"}),
 		];
-		const runTmux = async () => "%3\tmain\t1\tc\t1\n";
+		const runTmux = async () => Promise.resolve("%3\tmain\t1\tc\t1\n");
 		const windows = await getTmuxWindows(entries, runTmux);
 		expect(windows.map((w) => w.sessionId)).toStrictEqual(["sC"]);
 	});
 
 	it("emits only matched panes", async () => {
 		const entries = [entry({sessionId: "sA", tmuxPane: "%missing"})];
-		const runTmux = async () => "%1\tmain\t0\tx\t1\n";
+		const runTmux = async () => Promise.resolve("%1\tmain\t0\tx\t1\n");
 		const windows = await getTmuxWindows(entries, runTmux);
 		expect(windows).toStrictEqual([]);
 	});
 
 	it("collapses multiple entries mapping to the same pane", async () => {
 		const entries = [entry({sessionId: "sA", tmuxPane: "%1"}), entry({sessionId: "sB", tmuxPane: "%1"})];
-		const runTmux = async () => "%1\tmain\t0\tx\t1\n";
+		const runTmux = async () => Promise.resolve("%1\tmain\t0\tx\t1\n");
 		const windows = await getTmuxWindows(entries, runTmux);
 		expect(windows.map((w) => w.sessionId)).toStrictEqual(["sA"]);
 	});
@@ -126,7 +127,7 @@ describe("getTmuxWindows", () => {
 		const seen: string[] = [];
 		const runTmux = async (socket: string) => {
 			seen.push(socket);
-			return "%1\tmain\t0\tx\t1\n";
+			return Promise.resolve("%1\tmain\t0\tx\t1\n");
 		};
 		const windows = await getTmuxWindows(entries, runTmux);
 		expect(seen.sort()).toStrictEqual(["/tmp/sock-a", "/tmp/sock-b"]);
@@ -139,15 +140,15 @@ describe("getTmuxWindows", () => {
 			entry({sessionId: "sB", tmuxPane: "%1", tmuxServerSocket: "/tmp/sock-b"}),
 		];
 		const runTmux = async (socket: string) => {
-			if (socket === "/tmp/sock-a") throw new Error("no server running");
-			return "%1\tmain\t0\tx\t1\n";
+			if (socket === "/tmp/sock-a") return Promise.reject(new Error("no server running"));
+			return Promise.resolve("%1\tmain\t0\tx\t1\n");
 		};
 		const windows = await getTmuxWindows(entries, runTmux);
 		expect(windows.map((w) => w.sessionId)).toStrictEqual(["sB"]);
 	});
 
 	it("returns [] when there are no tmux entries", async () => {
-		const windows = await getTmuxWindows([], async () => "");
+		const windows = await getTmuxWindows([], async () => Promise.resolve(""));
 		expect(windows).toStrictEqual([]);
 	});
 });

@@ -332,10 +332,10 @@ describe("resolveDiffBase with an injected runGit", () => {
 		const runGit: RunGit = async (_cwd, arguments_) => {
 			calls.push(arguments_);
 			const key = arguments_.join(" ");
-			if (key === "rev-parse --is-inside-work-tree") return "true\n";
-			if (key === "rev-parse --verify --quiet master^{commit}") return "abc\n";
-			if (key === "merge-base master HEAD") return "abc\n";
-			throw new Error(`fatal: ${key}`);
+			if (key === "rev-parse --is-inside-work-tree") return Promise.resolve("true\n");
+			if (key === "rev-parse --verify --quiet master^{commit}") return Promise.resolve("abc\n");
+			if (key === "merge-base master HEAD") return Promise.resolve("abc\n");
+			return Promise.reject(new Error(`fatal: ${key}`));
 		};
 
 		expect(await resolveDiffBase("/repo", runGit)).toStrictEqual({

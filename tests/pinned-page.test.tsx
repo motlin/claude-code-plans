@@ -44,7 +44,7 @@ const SESSIONS = [
 
 const fetchMock = vi.fn<(url: string) => Promise<Response>>(async (url: string) => {
 	const ids = new URL(url, "http://localhost").searchParams.get("ids")?.split(",") ?? [];
-	return Response.json(SESSIONS.filter((s) => ids.includes(s.id)));
+	return Promise.resolve(Response.json(SESSIONS.filter((s) => ids.includes(s.id))));
 });
 
 async function renderPage() {

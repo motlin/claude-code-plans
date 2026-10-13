@@ -173,7 +173,7 @@ describe("session live input", () => {
 			prompt: "Continue Alice's test",
 		});
 
-		await act(async () => {
+		act(() => {
 			if (!finishPost) throw new Error("Expected fabricated prompt request");
 			finishPost();
 		});

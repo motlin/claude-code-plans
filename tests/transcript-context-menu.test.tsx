@@ -22,7 +22,9 @@ vi.mock("../src/hooks/use-claude-events", () => ({
 	useClaudeEvents: () => ({failedTools: new Map()}),
 }));
 vi.mock("../src/lib/clipboard", () => ({
-	writeClipboardText: vi.fn<typeof import("../src/lib/clipboard").writeClipboardText>(async () => true),
+	writeClipboardText: vi.fn<typeof import("../src/lib/clipboard").writeClipboardText>(async () =>
+		Promise.resolve(true),
+	),
 }));
 
 class FakeResizeObserver {

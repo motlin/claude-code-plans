@@ -361,7 +361,8 @@ describe("HomeComposer", () => {
 	});
 
 	it("navigates to the new session when its SessionStart arrives over SSE", async () => {
-		launchResponse = async () => Response.json({ok: true, tabId: "t1", paneId: "p1", sessionId: null});
+		launchResponse = async () =>
+			Promise.resolve(Response.json({ok: true, tabId: "t1", paneId: "p1", sessionId: null}));
 		const {router, eventSource} = await renderApp();
 		await typePrompt("fix the flaky test");
 		fireEvent.click(screen.getByRole("button", {name: "Send"}));
@@ -392,7 +393,8 @@ describe("HomeComposer", () => {
 	});
 
 	it("navigates to the new session after a plain Enter send", async () => {
-		launchResponse = async () => Response.json({ok: true, tabId: "t1", paneId: "p1", sessionId: null});
+		launchResponse = async () =>
+			Promise.resolve(Response.json({ok: true, tabId: "t1", paneId: "p1", sessionId: null}));
 		const {router, eventSource} = await renderApp();
 		const textarea = await typePrompt("fix the flaky test");
 
@@ -410,7 +412,8 @@ describe("HomeComposer", () => {
 	});
 
 	it("sends with ⌘⏎ and stays home with a cleared prompt and a success toast", async () => {
-		launchResponse = async () => Response.json({ok: true, tabId: "t1", paneId: "p1", sessionId: "stay-session"});
+		launchResponse = async () =>
+			Promise.resolve(Response.json({ok: true, tabId: "t1", paneId: "p1", sessionId: "stay-session"}));
 		const {router, eventSource} = await renderApp();
 		const textarea = await typePrompt("fix the flaky test");
 
@@ -449,7 +452,8 @@ describe("HomeComposer", () => {
 	});
 
 	it("copies the shell-escaped command with a toast when herdr is unavailable", async () => {
-		launchResponse = async () => Response.json({error: "herdr writes are disabled"}, {status: 403});
+		launchResponse = async () =>
+			Promise.resolve(Response.json({error: "herdr writes are disabled"}, {status: 403}));
 		await renderApp();
 		await typePrompt("don't break $HOME");
 
@@ -496,11 +500,13 @@ describe("HomeComposer", () => {
 describe("getComposerDefaults", () => {
 	it("reads model, effort and default mode from settings.json", async () => {
 		expect(
-			await getComposerDefaults(async () => ({
-				model: "opus",
-				effortLevel: "xhigh",
-				permissions: {defaultMode: "acceptEdits"},
-			})),
+			await getComposerDefaults(async () =>
+				Promise.resolve({
+					model: "opus",
+					effortLevel: "xhigh",
+					permissions: {defaultMode: "acceptEdits"},
+				}),
+			),
 		).toStrictEqual({
 			model: "opus",
 			effortLevel: "xhigh",
@@ -510,11 +516,7 @@ describe("getComposerDefaults", () => {
 	});
 
 	it("returns nulls when settings.json is missing", async () => {
-		expect(
-			await getComposerDefaults(async () => {
-				throw new Error("ENOENT");
-			}),
-		).toStrictEqual({
+		expect(await getComposerDefaults(async () => Promise.reject(new Error("ENOENT")))).toStrictEqual({
 			model: null,
 			effortLevel: null,
 			defaultMode: null,

@@ -110,7 +110,7 @@ describe("AttentionBadgeBridge document title", () => {
 			await router.navigate({to: "/beta"} as never);
 		});
 
-		await act(async () => {
+		act(() => {
 			harness.emit?.({sessionId: "session-test-waiting", state: "waiting"});
 		});
 

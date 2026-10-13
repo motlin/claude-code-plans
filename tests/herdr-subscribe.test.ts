@@ -38,27 +38,27 @@ interface Broadcast {
 }
 
 async function available() {
-	return {
+	return Promise.resolve({
 		available: true as const,
 		socketPath: "/test/herdr.sock",
 		version: "0.8.0-test",
 		protocol: 100,
-	};
+	});
 }
 
 async function unavailable() {
-	return {
+	return Promise.resolve({
 		available: false as const,
 		socketPath: "/test/herdr.sock",
 		reason: "no-socket" as const,
-	};
+	});
 }
 
 type BridgeDependencies = Parameters<typeof __testing.createBridge>[0];
 type Tracker = BridgeDependencies["viewedStateTracker"];
 
 async function flushPromises(): Promise<void> {
-	for (let index = 0; index < 5; index += 1) await Promise.resolve();
+	for (let index = 0; index < 10; index += 1) await Promise.resolve();
 }
 
 function viewedStateTracker() {
@@ -81,7 +81,7 @@ describe("herdr event bridge", () => {
 		const sockets: FakeSocket[] = [];
 		const lineReaders: FakeLineReader[] = [];
 		const scheduledDelays: number[] = [];
-		const getPanes = vi.fn<BridgeDependencies["getPanes"]>(async () => []);
+		const getPanes = vi.fn<BridgeDependencies["getPanes"]>(async () => Promise.resolve([]));
 		const broadcasts: Broadcast[] = [];
 		const expectedBackoffs = [250, 500, 1_000, 2_000, 4_000, 8_000, 10_000, 10_000];
 		let probeAttempts = 0;
@@ -102,7 +102,7 @@ describe("herdr event bridge", () => {
 				lineReaders.push(lineReader);
 				return lineReader as unknown as ReadlineInterface;
 			},
-			getPaneSnapshot: async () => [{paneId: "workspace-100:pane-100", revision: 0}],
+			getPaneSnapshot: async () => Promise.resolve([{paneId: "workspace-100:pane-100", revision: 0}]),
 			getPanes,
 			broadcast: (type, data) => broadcasts.push({type, data}),
 			schedule: (callback, delayMs) => {
@@ -143,8 +143,8 @@ describe("herdr event bridge", () => {
 			probe,
 			connect: () => new FakeSocket() as unknown as Socket,
 			createLineReader: () => new FakeLineReader() as unknown as ReadlineInterface,
-			getPaneSnapshot: async () => [{paneId: "workspace-100:pane-100", revision: 0}],
-			getPanes: async () => [],
+			getPaneSnapshot: async () => Promise.resolve([{paneId: "workspace-100:pane-100", revision: 0}]),
+			getPanes: async () => Promise.resolve([]),
 			broadcast: () => {},
 			schedule: (callback, delayMs) => {
 				scheduledDelays.push(delayMs);
@@ -169,7 +169,7 @@ describe("herdr event bridge", () => {
 		const sockets: FakeSocket[] = [];
 		const lineReaders: FakeLineReader[] = [];
 		const broadcasts: Broadcast[] = [];
-		const getPanes = vi.fn<BridgeDependencies["getPanes"]>(async () => []);
+		const getPanes = vi.fn<BridgeDependencies["getPanes"]>(async () => Promise.resolve([]));
 		const tracker = viewedStateTracker();
 		const stop = __testing.createBridge({
 			probe: available,
@@ -183,7 +183,7 @@ describe("herdr event bridge", () => {
 				lineReaders.push(lineReader);
 				return lineReader as unknown as ReadlineInterface;
 			},
-			getPaneSnapshot: async () => [{paneId: "workspace-100:pane-100", revision: 0}],
+			getPaneSnapshot: async () => Promise.resolve([{paneId: "workspace-100:pane-100", revision: 0}]),
 			getPanes,
 			broadcast: (type, data) => broadcasts.push({type, data}),
 			schedule: setTimeout,
@@ -278,8 +278,8 @@ describe("herdr event bridge", () => {
 				lineReaders.push(lineReader);
 				return lineReader as unknown as ReadlineInterface;
 			},
-			getPaneSnapshot: async () => [{paneId: "workspace-100:pane-100", revision: 0}],
-			getPanes: async () => [],
+			getPaneSnapshot: async () => Promise.resolve([{paneId: "workspace-100:pane-100", revision: 0}]),
+			getPanes: async () => Promise.resolve([]),
 			broadcast: () => {},
 			schedule: (callback, delayMs) => {
 				scheduledDelays.push(delayMs);
@@ -327,8 +327,8 @@ describe("herdr event bridge", () => {
 				return socket as unknown as Socket;
 			},
 			createLineReader: () => new FakeLineReader() as unknown as ReadlineInterface,
-			getPaneSnapshot: async () => [{paneId: "workspace-100:pane-100", revision: 0}],
-			getPanes: async () => [],
+			getPaneSnapshot: async () => Promise.resolve([{paneId: "workspace-100:pane-100", revision: 0}]),
+			getPanes: async () => Promise.resolve([]),
 			broadcast: () => {},
 			schedule: (callback, delayMs) => {
 				scheduledDelays.push(delayMs);
@@ -365,7 +365,7 @@ describe("herdr event bridge", () => {
 	it("destroys the active socket and cancels pending resync during teardown", async () => {
 		const sockets: FakeSocket[] = [];
 		const lineReaders: FakeLineReader[] = [];
-		const getPanes = vi.fn<BridgeDependencies["getPanes"]>(async () => []);
+		const getPanes = vi.fn<BridgeDependencies["getPanes"]>(async () => Promise.resolve([]));
 		const stop = __testing.createBridge({
 			probe: available,
 			connect: () => {
@@ -378,7 +378,7 @@ describe("herdr event bridge", () => {
 				lineReaders.push(lineReader);
 				return lineReader as unknown as ReadlineInterface;
 			},
-			getPaneSnapshot: async () => [{paneId: "workspace-100:pane-100", revision: 0}],
+			getPaneSnapshot: async () => Promise.resolve([{paneId: "workspace-100:pane-100", revision: 0}]),
 			getPanes,
 			broadcast: () => {},
 			schedule: setTimeout,
@@ -426,9 +426,9 @@ describe("herdr event bridge", () => {
 			},
 			getPaneSnapshot: async () => {
 				snapshotCalls += 1;
-				return snapshotCalls === 1 ? [] : [{paneId: "wE:p17", revision: 0}];
+				return Promise.resolve(snapshotCalls === 1 ? [] : [{paneId: "wE:p17", revision: 0}]);
 			},
-			getPanes: async () => [],
+			getPanes: async () => Promise.resolve([]),
 			broadcast: (type, data) => broadcasts.push({type, data}),
 			schedule: setTimeout,
 			cancel: clearTimeout,
@@ -480,8 +480,8 @@ describe("herdr event bridge", () => {
 				lineReaders.push(lineReader);
 				return lineReader as unknown as ReadlineInterface;
 			},
-			getPaneSnapshot: async () => [{paneId: "w19:p9", revision: 228}],
-			getPanes: async () => [],
+			getPaneSnapshot: async () => Promise.resolve([{paneId: "w19:p9", revision: 228}]),
+			getPanes: async () => Promise.resolve([]),
 			broadcast: (type, data) => broadcasts.push({type, data}),
 			schedule: setTimeout,
 			cancel: clearTimeout,
@@ -523,7 +523,7 @@ describe("herdr event bridge", () => {
 			handleStatusEvent: vi.fn<() => Promise<void>>().mockRejectedValueOnce(busy),
 		};
 		const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
-		const getPanes = vi.fn<BridgeDependencies["getPanes"]>(async () => []);
+		const getPanes = vi.fn<BridgeDependencies["getPanes"]>(async () => Promise.resolve([]));
 		const stop = __testing.createBridge({
 			probe: available,
 			connect: () => {
@@ -536,7 +536,7 @@ describe("herdr event bridge", () => {
 				lineReaders.push(lineReader);
 				return lineReader as unknown as ReadlineInterface;
 			},
-			getPaneSnapshot: async () => [{paneId: "w1:p1", revision: 1}],
+			getPaneSnapshot: async () => Promise.resolve([{paneId: "w1:p1", revision: 1}]),
 			getPanes,
 			broadcast: () => {},
 			schedule: setTimeout,

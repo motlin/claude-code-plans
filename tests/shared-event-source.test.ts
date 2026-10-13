@@ -79,7 +79,7 @@ class FakeOrigin {
 			},
 			fetchSnapshot: async () => {
 				this.snapshotFetches++;
-				return this.snapshot;
+				return Promise.resolve(this.snapshot);
 			},
 		});
 		return tab;

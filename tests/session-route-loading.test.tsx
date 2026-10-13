@@ -81,7 +81,7 @@ describe("blank-screen prevention on /session/$id", () => {
 		]).toStrictEqual(["Loading session…", "Session Not Found", "Fix the blank session page"]);
 	});
 
-	it("never titles a pending match Session Not Found", async () => {
+	it("never titles a pending match Session Not Found", () => {
 		const head = SessionRoute.options.head as (args: {loaderData: undefined}) => {
 			meta?: Array<{title?: string}>;
 		};

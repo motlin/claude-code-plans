@@ -127,7 +127,7 @@ describe("settings search", () => {
 		const router = buildRouter("/#settings/claude-code/code-font");
 		await router.load();
 		vi.useFakeTimers({toFake: ["setTimeout", "clearTimeout"]});
-		await act(async () => {
+		act(() => {
 			render(<RouterProvider router={router} />);
 		});
 

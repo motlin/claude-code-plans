@@ -34,9 +34,9 @@ function renderCard(
 	);
 }
 
-async function hover() {
+function hover() {
 	const row = screen.getByTestId("row");
-	await act(async () => {
+	act(() => {
 		fireEvent.pointerEnter(row, {pointerType: "mouse"});
 		fireEvent.mouseEnter(row);
 		fireEvent.mouseMove(row);
@@ -66,7 +66,7 @@ afterEach(() => {
 describe("SessionHoverCard", () => {
 	it("opens a 440px card for blocked rows after 400ms", async () => {
 		renderCard({sessionId: "blocked-1", title: "Pick a DB", summary: null, blocked: true}, [QUESTION_APPROVAL]);
-		await hover();
+		hover();
 		await advance(399);
 		expect(card()).toBeNull();
 		await advance(1);
@@ -83,7 +83,7 @@ describe("SessionHoverCard", () => {
 			summary: "Split the tokenizer out of the parser.",
 			blocked: false,
 		});
-		await hover();
+		hover();
 		await advance(499);
 		expect(card()).toBeNull();
 		await advance(1);
@@ -102,7 +102,7 @@ describe("SessionHoverCard", () => {
 
 	it("shows the pending question with its options and a quick reply box", async () => {
 		renderCard({sessionId: "blocked-1", title: "Pick a DB", summary: null, blocked: true}, [QUESTION_APPROVAL]);
-		await hover();
+		hover();
 		await advance(400);
 		const root = card()!;
 		expect({
@@ -122,13 +122,13 @@ describe("SessionHoverCard", () => {
 
 	it("submits an option as the answer to the pending question", async () => {
 		const fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(
-			async (_url: string, _init?: RequestInit) => new Response("", {status: 200}),
+			async (_url: string, _init?: RequestInit) => Promise.resolve(new Response("", {status: 200})),
 		);
 		vi.stubGlobal("fetch", fetchMock);
 		renderCard({sessionId: "blocked-1", title: "Pick a DB", summary: null, blocked: true}, [QUESTION_APPROVAL]);
-		await hover();
+		hover();
 		await advance(400);
-		await act(async () => {
+		act(() => {
 			fireEvent.click(screen.getByRole("button", {name: "SQLite"}));
 		});
 		await advance(0);
@@ -148,14 +148,14 @@ describe("SessionHoverCard", () => {
 
 	it("submits a typed quick reply on Enter", async () => {
 		const fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(
-			async (_url: string, _init?: RequestInit) => new Response("", {status: 200}),
+			async (_url: string, _init?: RequestInit) => Promise.resolve(new Response("", {status: 200})),
 		);
 		vi.stubGlobal("fetch", fetchMock);
 		renderCard({sessionId: "blocked-1", title: "Pick a DB", summary: null, blocked: true}, [QUESTION_APPROVAL]);
-		await hover();
+		hover();
 		await advance(400);
 		const reply = screen.getByRole("textbox", {name: "Quick reply"});
-		await act(async () => {
+		act(() => {
 			fireEvent.change(reply, {target: {value: "  Use DuckDB  "}});
 			fireEvent.keyDown(reply, {key: "Enter"});
 		});
@@ -171,7 +171,7 @@ describe("SessionHoverCard", () => {
 
 	it("points blocked rows without an answerable question at the session", async () => {
 		renderCard({sessionId: "blocked-2", title: "Needs a look", summary: null, blocked: true});
-		await hover();
+		hover();
 		await advance(400);
 		const root = card()!;
 		expect({

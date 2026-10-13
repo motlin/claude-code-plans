@@ -26,7 +26,9 @@ function twoQueryHandler(): Response {
 describe("withServerTiming", () => {
 	it("sets a Server-Timing header with the request's counters", async () => {
 		const {withServerTiming} = await import("../../src/lib/perf/server-timing");
-		const response = await withServerTiming(async () => twoQueryHandler())(new Request("http://localhost/x"));
+		const response = await withServerTiming(async () => Promise.resolve(twoQueryHandler()))(
+			new Request("http://localhost/x"),
+		);
 
 		const match = HEADER_PATTERN.exec(response.headers.get("server-timing") ?? "");
 		expect(match?.slice(3)).toStrictEqual(["2", "0", "0", "0"]);
@@ -57,7 +59,9 @@ describe("withServerTiming", () => {
 		vi.stubEnv("CCB_PERF_LOG", "1");
 		const log = vi.spyOn(console, "log").mockImplementation(() => {});
 		const {withServerTiming} = await import("../../src/lib/perf/server-timing");
-		await withServerTiming(async () => twoQueryHandler())(new Request("http://localhost/x?y=1", {method: "POST"}));
+		await withServerTiming(async () => Promise.resolve(twoQueryHandler()))(
+			new Request("http://localhost/x?y=1", {method: "POST"}),
+		);
 
 		expect(log).toHaveBeenCalledTimes(1);
 		const line = JSON.parse(String(log.mock.calls[0]?.[0])) as Record<string, unknown>;
@@ -79,7 +83,7 @@ describe("withServerTiming", () => {
 		vi.stubEnv("CCB_PERF_LOG", "");
 		const log = vi.spyOn(console, "log").mockImplementation(() => {});
 		const {withServerTiming} = await import("../../src/lib/perf/server-timing");
-		await withServerTiming(async () => twoQueryHandler())(new Request("http://localhost/x"));
+		await withServerTiming(async () => Promise.resolve(twoQueryHandler()))(new Request("http://localhost/x"));
 
 		expect(log).not.toHaveBeenCalled();
 	});

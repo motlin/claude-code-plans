@@ -84,7 +84,7 @@ describe("composerQueueReducer", () => {
 
 describe("409 agent_not_ready → queued", () => {
 	function fetcherReturning(status: number, body: unknown): typeof fetch {
-		return async () => Response.json(body, {status});
+		return async () => Promise.resolve(Response.json(body, {status}));
 	}
 
 	it("throws a HerdrRequestError carrying the status and herdr code", async () => {
@@ -203,7 +203,7 @@ function renderQueue({
 
 describe("useComposerQueue", () => {
 	it("holds prompts while busy and flushes one at a time on each idle", async () => {
-		const deliver = vi.fn<Deliver>(async () => "sent");
+		const deliver = vi.fn<Deliver>(async () => Promise.resolve("sent"));
 		const {result, setBusy} = renderQueue({busy: true, deliver});
 
 		act(() => {
@@ -266,7 +266,7 @@ describe("useComposerQueue", () => {
 	});
 
 	it("Send now moves a queued prompt to the head and interrupts a busy session", () => {
-		const deliver = vi.fn<Deliver>(async () => "sent");
+		const deliver = vi.fn<Deliver>(async () => Promise.resolve("sent"));
 		const interrupt = vi.fn<() => void>();
 		const {result} = renderQueue({busy: true, deliver, interrupt});
 		act(() => {
@@ -295,7 +295,7 @@ describe("useComposerQueue", () => {
 	});
 
 	it("keeps queues per session", () => {
-		const deliver = vi.fn<Deliver>(async () => "sent");
+		const deliver = vi.fn<Deliver>(async () => Promise.resolve("sent"));
 		const alice = renderQueue({busy: true, deliver, sessionId: "session-alice"});
 		const bob = renderQueue({busy: true, deliver, sessionId: "session-bob"});
 		act(() => {

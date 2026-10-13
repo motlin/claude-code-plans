@@ -5,8 +5,10 @@ import {startClaudeSession, type StartClaudeSessionDependencies} from "../src/li
 function dependencies(overrides: Partial<StartClaudeSessionDependencies> = {}) {
 	const toasts: ToastOptions[] = [];
 	const deps: StartClaudeSessionDependencies = {
-		launch: vi.fn<StartClaudeSessionDependencies["launch"]>(async () => ({sessionId: "session-test-100"})),
-		copy: vi.fn<StartClaudeSessionDependencies["copy"]>(async () => true),
+		launch: vi.fn<StartClaudeSessionDependencies["launch"]>(async () =>
+			Promise.resolve({sessionId: "session-test-100"}),
+		),
+		copy: vi.fn<StartClaudeSessionDependencies["copy"]>(async () => Promise.resolve(true)),
 		toast: (options) => toasts.push(options),
 		...overrides,
 	};
@@ -34,9 +36,9 @@ describe("startClaudeSession", () => {
 
 	it("copies the command when herdr cannot launch it", async () => {
 		const {deps, toasts} = dependencies({
-			launch: vi.fn<StartClaudeSessionDependencies["launch"]>(async () => {
-				throw new Error("herdr writes are disabled");
-			}),
+			launch: vi.fn<StartClaudeSessionDependencies["launch"]>(async () =>
+				Promise.reject(new Error("herdr writes are disabled")),
+			),
 		});
 
 		const outcome = await startClaudeSession("Create a new skill", deps);
@@ -50,10 +52,8 @@ describe("startClaudeSession", () => {
 
 	it("reports a failure when neither launch nor copy works", async () => {
 		const {deps, toasts} = dependencies({
-			launch: vi.fn<StartClaudeSessionDependencies["launch"]>(async () => {
-				throw new Error("down");
-			}),
-			copy: vi.fn<StartClaudeSessionDependencies["copy"]>(async () => false),
+			launch: vi.fn<StartClaudeSessionDependencies["launch"]>(async () => Promise.reject(new Error("down"))),
+			copy: vi.fn<StartClaudeSessionDependencies["copy"]>(async () => Promise.resolve(false)),
 		});
 
 		const outcome = await startClaudeSession("/skill-creator", deps);

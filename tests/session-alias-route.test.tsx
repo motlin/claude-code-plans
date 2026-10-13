@@ -13,6 +13,7 @@ import {
 	type HistoryState,
 } from "@tanstack/react-router";
 import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
+import {actAndSettle} from "./act-and-settle";
 import {StrictMode, useEffect, type ReactNode} from "react";
 import {afterEach, expect, it, vi} from "vite-plus/test";
 import {useMainScrollRestoration, type MainScrollRestorationSnapshot} from "../src/hooks/use-main-scroll-restoration";
@@ -236,7 +237,7 @@ async function setup({
 		scrollRestoration: true,
 	});
 	await router.load();
-	await act(async () => {
+	await actAndSettle(() => {
 		render(
 			<QueryClientProvider client={client}>
 				{strict ? (
@@ -267,7 +268,7 @@ it("keeps a cold alias pending without sending it to UUID APIs, then opens its r
 		skeleton: screen.queryByTestId("session-skeleton") !== null,
 		calls: fetcher.mock.calls.map(([url]) => url),
 	};
-	await act(async () => {
+	await actAndSettle(() => {
 		finish(Response.json({sessionId: ALICE}));
 	});
 	const page = await screen.findByTestId("session");
@@ -303,7 +304,7 @@ it("leaves UUID navigation immediate with exactly four synchronous prefetches an
 it("waits for a fresh lookup rather than pinning invalidated success from a previous visit", async () => {
 	const {finish} = await setup({cachedOwner: ALICE, invalidated: true});
 	const pending = {owners: [...observed.owners], skeleton: screen.queryByTestId("session-skeleton") !== null};
-	await act(async () => {
+	await actAndSettle(() => {
 		finish(Response.json({sessionId: BOB}));
 	});
 	const page = await screen.findByTestId("session");
@@ -316,8 +317,8 @@ it("waits for a fresh lookup rather than pinning invalidated success from a prev
 
 it.each([404, 409, 503])("shows an honest %s lookup error and supports manual retry", async (status) => {
 	const {finish, setLookup, fetcher, client} = await setup();
-	setLookup(async () => new Response(null, {status}));
-	await act(async () => {
+	setLookup(async () => Promise.resolve(new Response(null, {status})));
+	await actAndSettle(() => {
 		finish(new Response(null, {status}));
 	});
 	const message = (await screen.findByRole("alert")).textContent;
@@ -328,7 +329,7 @@ it.each([404, 409, 503])("shows an honest %s lookup error and supports manual re
 	});
 	const attentionTitle = document.title;
 	client.setQueryData<SessionDetailData | null>(sessionDetailQueryOptions(ALICE).queryKey, ALICE_DETAIL);
-	setLookup(async () => Response.json({sessionId: ALICE}));
+	setLookup(async () => Promise.resolve(Response.json({sessionId: ALICE})));
 	fireEvent.click(screen.getByRole("button", {name: "Retry"}));
 	const page = await screen.findByTestId("session");
 	await waitFor(() => {
@@ -367,7 +368,7 @@ it.each(["ambiguous", "new-owner"])(
 			cachedOwner: ALICE,
 		});
 		const page = await screen.findByTestId("session");
-		await act(async () => {
+		await actAndSettle(() => {
 			client.setQueryData<SessionDetailData | null>(sessionDetailQueryOptions(ALICE).queryKey, ALICE_DETAIL);
 		});
 		await waitFor(() => {
@@ -379,7 +380,9 @@ it.each(["ambiguous", "new-owner"])(
 		main.scrollTop = 300;
 		main.dispatchEvent(new Event("scroll"));
 		setLookup(async () =>
-			change === "ambiguous" ? new Response(null, {status: 409}) : Response.json({sessionId: BOB}),
+			Promise.resolve(
+				change === "ambiguous" ? new Response(null, {status: 409}) : Response.json({sessionId: BOB}),
+			),
 		);
 		await act(async () => invalidateSessionIdentities(client));
 		await waitFor(() => {
@@ -418,7 +421,7 @@ it.each(["ambiguous", "new-owner"])(
 		await waitFor(() => {
 			expect(router.state.location.pathname).toBe("/session/local-charlie-300");
 		});
-		setLookup(async () => Response.json({sessionId: BOB}));
+		setLookup(async () => Promise.resolve(Response.json({sessionId: BOB})));
 		await act(async () => router.navigate({to: "/session/$id", params: {id: ALIAS}}));
 		await waitFor(() => {
 			expect(screen.getByTestId("session").dataset["session"]).toBe(BOB);
@@ -439,7 +442,7 @@ it.each([BOB, "session_bob_200"])(
 			}),
 		);
 		if (target.startsWith("session_"))
-			await act(async () => {
+			await actAndSettle(() => {
 				finish(Response.json({sessionId: BOB}));
 			});
 		await screen.findByTestId("session");
@@ -454,7 +457,7 @@ it.each([BOB, "session_bob_200"])(
 it("does not open a late alias result after navigation leaves that visit", async () => {
 	const {router, finish, fetcher} = await setup();
 	await act(async () => router.navigate({to: "/session/$id", params: {id: BOB}}));
-	await act(async () => {
+	await actAndSettle(() => {
 		finish(Response.json({sessionId: ALICE}));
 	});
 	expect({
@@ -483,7 +486,7 @@ it("retains the pinned visit when consuming a pane deep link during an identity 
 	});
 	const page = screen.getByTestId("session");
 	const originalKey = router.state.location.state.__TSR_key;
-	await act(async () => {
+	await actAndSettle(() => {
 		void invalidateSessionIdentities(client);
 	});
 	await waitFor(() => {
@@ -493,7 +496,7 @@ it("retains the pinned visit when consuming a pane deep link during an identity 
 	await waitFor(() => {
 		expect({...router.state.location.search}).toStrictEqual({});
 	});
-	await act(async () => {
+	await actAndSettle(() => {
 		finish(new Response(null, {status: 409}));
 	});
 	await waitFor(() => {
@@ -528,7 +531,7 @@ it("replaces a UUID with its fresh alias without another request or losing the m
 	fireEvent.change(screen.getByRole("textbox", {name: "Draft"}), {target: {value: "Keep Alice's draft"}});
 	main.scrollTop = 300;
 	main.dispatchEvent(new Event("scroll"));
-	await act(async () => {
+	await actAndSettle(() => {
 		finishDetail(Response.json({...ALICE_DETAIL, canonicalRouteId: ALIAS}));
 	});
 	await waitFor(() => {
@@ -587,20 +590,22 @@ it.each(["ambiguous", "new-owner"])(
 		const {router, client, finishDetail, fetcher, setLookup} = await setup({initial: `/session/${ALICE}`});
 		const page = screen.getByTestId("session");
 		const key = router.state.location.state.__TSR_key;
-		await act(async () => {
+		await actAndSettle(() => {
 			finishDetail(Response.json({...ALICE_DETAIL, canonicalRouteId: ALIAS}));
 		});
 		await waitFor(() => {
 			expect(router.state.location.pathname).toBe(`/session/${ALIAS}`);
 		});
 		setLookup(async () =>
-			change === "ambiguous" ? new Response(null, {status: 409}) : Response.json({sessionId: BOB}),
+			Promise.resolve(
+				change === "ambiguous" ? new Response(null, {status: 409}) : Response.json({sessionId: BOB}),
+			),
 		);
 		await act(async () => invalidateSessionIdentities(client));
 		await waitFor(() => {
 			expect(router.state.location.pathname).toBe(`/session/${ALICE}`);
 		});
-		await act(async () => {
+		await actAndSettle(() => {
 			client.setQueryData<SessionDetailData | null>(sessionDetailQueryOptions(ALICE).queryKey, () => ({
 				...ALICE_DETAIL,
 				canonicalRouteId: ALIAS,
@@ -632,7 +637,7 @@ it.each(["ambiguous", "new-owner"])(
 
 it("preserves an explicitly opened historical alias even when detail advertises a newer alias", async () => {
 	const {router, client, finishDetail, fetcher} = await setup({cachedOwner: ALICE});
-	await act(async () => {
+	await actAndSettle(() => {
 		finishDetail(Response.json({...ALICE_DETAIL, canonicalRouteId: "session_alice_200"}));
 	});
 	await waitFor(() => {
@@ -653,7 +658,7 @@ it("preserves an explicitly opened historical alias even when detail advertises 
 
 it("waits for a pending backfill marker to clear before seeding a canonical alias", async () => {
 	const {router, client, finishDetail, fetcher} = await setup({initial: `/session/${ALICE}`});
-	await act(async () => {
+	await actAndSettle(() => {
 		finishDetail(Response.json({...ALICE_DETAIL, canonicalRouteId: ALIAS, canonicalRoutePending: true}));
 	});
 	const pending = {
@@ -699,7 +704,7 @@ it.each(["fetching", "invalidated"])(
 			pathname: router.state.location.pathname,
 			identity: client.getQueryState(sessionIdentityQueryOptions(ALIAS).queryKey),
 		};
-		await act(async () => {
+		await actAndSettle(() => {
 			finishDetail(Response.json({...ALICE_DETAIL, canonicalRouteId: ALIAS}));
 		});
 		await waitFor(() => {
@@ -735,7 +740,7 @@ it.each(["matching", "different", "invalidated", "error", "fetching"])(
 				} else void client.query(options).catch(noop);
 			},
 		});
-		await act(async () => {
+		await actAndSettle(() => {
 			finishDetail(Response.json({...ALICE_DETAIL, canonicalRouteId: ALIAS}));
 		});
 		await waitFor(() => {
@@ -754,7 +759,7 @@ it.each(["matching", "different", "invalidated", "error", "fetching"])(
 			pathname: router.state.location.pathname,
 			cached: client.getQueryData(sessionIdentityQueryOptions(ALIAS).queryKey),
 		};
-		await act(async () => {
+		await actAndSettle(() => {
 			finish(Response.json({sessionId: BOB}));
 		});
 		if (state === "invalidated" || state === "error" || state === "fetching") {
@@ -791,13 +796,13 @@ it.each(["matching", "different", "invalidated", "error", "fetching"])(
 
 it("requires a new lookup after losing a canonical alias and removing its cache", async () => {
 	const {client, router, finishDetail, setLookup, fetcher} = await setup({initial: `/session/${ALICE}`});
-	await act(async () => {
+	await actAndSettle(() => {
 		finishDetail(Response.json({...ALICE_DETAIL, canonicalRouteId: ALIAS}));
 	});
 	await waitFor(() => {
 		expect(router.state.location.pathname).toBe(`/session/${ALIAS}`);
 	});
-	setLookup(async () => new Response(null, {status: 409}));
+	setLookup(async () => Promise.resolve(new Response(null, {status: 409})));
 	await act(async () => invalidateSessionIdentities(client));
 	await waitFor(() => {
 		expect(router.state.location.pathname).toBe(`/session/${ALICE}`);
@@ -819,7 +824,7 @@ it("requires a new lookup after losing a canonical alias and removing its cache"
 		pathname: router.state.location.pathname,
 		cached: client.getQueryData(sessionIdentityQueryOptions(ALIAS).queryKey),
 	};
-	await act(async () => {
+	await actAndSettle(() => {
 		replacement.finish(Response.json({sessionId: ALICE}));
 	});
 	await waitFor(() => {
@@ -921,7 +926,7 @@ it.each([ALICE, ALIAS])("keeps the outgoing %s chat at its reading position whil
 			fireEvent.scroll(main);
 		});
 		let navigation!: Promise<void>;
-		await act(async () => {
+		await actAndSettle(() => {
 			navigation = router.navigate({to: "/"});
 		});
 		await waitFor(() => {
@@ -959,7 +964,7 @@ it.each([false, true])(
 		await act(async () => router.navigate({to: "/session/$id", params: {id: ALIAS}}));
 		await screen.findByTestId("session-skeleton");
 		await act(async () => {});
-		await act(async () => {
+		await actAndSettle(() => {
 			finish(Response.json({sessionId: ALICE}));
 		});
 		const page = await screen.findByTestId("session");
@@ -982,11 +987,11 @@ it("captures the alias visit's own saved position before Back resolves its ident
 	const response = deferredResponse();
 	setLookup(async () => response.promise);
 	client.removeQueries({queryKey: sessionIdentityQueryOptions(ALIAS).queryKey, exact: true});
-	await act(async () => {
+	await actAndSettle(() => {
 		router.history.back();
 	});
 	await screen.findByTestId("session-skeleton");
-	await act(async () => {
+	await actAndSettle(() => {
 		response.finish(Response.json({sessionId: ALICE}));
 	});
 	const page = await screen.findByTestId("session");

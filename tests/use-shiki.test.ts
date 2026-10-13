@@ -17,12 +17,15 @@ const shikiMocks = vi.hoisted(() => {
 	const githubDark = {name: "github-dark", type: "dark", settings: []};
 	const loadLanguage = vi.fn<HighlighterCore["loadLanguage"]>(async () => {
 		loadedLanguages.push("typescript", "ts", "cts", "mts");
+		return Promise.resolve();
 	});
 	const highlighter = {
 		getLoadedLanguages: () => loadedLanguages,
 		loadLanguage,
 	} as unknown as HighlighterCore;
-	const createHighlighterCore = vi.fn<typeof import("@shikijs/core").createHighlighterCore>(async () => highlighter);
+	const createHighlighterCore = vi.fn<typeof import("@shikijs/core").createHighlighterCore>(async () =>
+		Promise.resolve(highlighter),
+	);
 
 	return {
 		claudeLight,

@@ -138,6 +138,7 @@ function ActivePage() {
 									<SessionReviewAction
 										onReview={async () => {
 											markSeen(session.sessionId);
+											return Promise.resolve();
 										}}
 									/>
 								)}

@@ -56,15 +56,15 @@ describe("capability resolution", () => {
 			{
 				pathExists: async () => {
 					probes.push("path");
-					return true;
+					return Promise.resolve(true);
 				},
 				executableExists: async () => {
 					probes.push("executable");
-					return true;
+					return Promise.resolve(true);
 				},
 				databaseAvailable: async () => {
 					probes.push("database");
-					return true;
+					return Promise.resolve(true);
 				},
 				projectRoot: "/fixture/alice-repository",
 			},
@@ -85,15 +85,10 @@ describe("capability resolution", () => {
 				body: "{}",
 			}),
 			{
-				pathExists: async () => {
-					throw new Error("invalid settings must not probe paths");
-				},
-				executableExists: async () => {
-					throw new Error("invalid settings must not probe executables");
-				},
-				databaseAvailable: async () => {
-					throw new Error("invalid settings must not probe the database");
-				},
+				pathExists: async () => Promise.reject(new Error("invalid settings must not probe paths")),
+				executableExists: async () => Promise.reject(new Error("invalid settings must not probe executables")),
+				databaseAvailable: async () =>
+					Promise.reject(new Error("invalid settings must not probe the database")),
 				projectRoot: "/fixture/alice-repository",
 			},
 		);
@@ -141,9 +136,9 @@ describe("capability resolution", () => {
 
 	it("reports a missing Claude executable when the database is available", async () => {
 		const response = await handleCapabilitiesRequest(capabilitiesRequest(), {
-			pathExists: async () => true,
-			executableExists: async () => false,
-			databaseAvailable: async () => true,
+			pathExists: async () => Promise.resolve(true),
+			executableExists: async () => Promise.resolve(false),
+			databaseAvailable: async () => Promise.resolve(true),
 			projectRoot: "/fixture/alice-repository",
 		});
 
@@ -179,11 +174,9 @@ describe("capability resolution", () => {
 		const databaseError = new Error("Test database unavailable");
 		const errorLog = vi.spyOn(console, "error").mockImplementation(() => undefined);
 		const response = await handleCapabilitiesRequest(capabilitiesRequest(), {
-			pathExists: async () => true,
-			executableExists: async () => true,
-			databaseAvailable: async () => {
-				throw databaseError;
-			},
+			pathExists: async () => Promise.resolve(true),
+			executableExists: async () => Promise.resolve(true),
+			databaseAvailable: async () => Promise.reject(databaseError),
 			projectRoot: "/fixture/alice-repository",
 		});
 

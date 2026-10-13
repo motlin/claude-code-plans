@@ -65,7 +65,7 @@ describe("shared session identity", () => {
 		const first = renderHook(() => useSessionIdentity(ALIAS), {wrapper: Wrapper});
 		const second = renderHook(() => useSessionIdentity(ALIAS), {wrapper: Wrapper});
 		expect([first.result.current, second.result.current]).toStrictEqual([null, null]);
-		await act(async () => {
+		act(() => {
 			response.resolve(Response.json({sessionId: ALICE}));
 		});
 		await waitFor(() => {
@@ -102,7 +102,7 @@ describe("shared session identity", () => {
 		await waitFor(() => {
 			expect(result.current).toBe(BOB);
 		});
-		await act(async () => {
+		act(() => {
 			old.resolve(Response.json({sessionId: ALICE}));
 		});
 		expect({
@@ -280,7 +280,7 @@ describe("active detail alias backfill catch-up", () => {
 			</Wrapper>,
 		);
 		await act(async () => vi.advanceTimersByTimeAsync(1));
-		await act(async () => {
+		act(() => {
 			old.resolve(Response.json({...DETAIL, canonicalRoutePending: true}));
 		});
 		await act(async () => vi.advanceTimersByTimeAsync(30_001));
@@ -323,7 +323,7 @@ describe("active detail alias backfill catch-up", () => {
 			</Wrapper>,
 		);
 		await act(async () => vi.advanceTimersByTimeAsync(1));
-		await act(async () => {
+		act(() => {
 			old.resolve(Response.json({...DETAIL, canonicalRoutePending: true}));
 		});
 		await refreshing;

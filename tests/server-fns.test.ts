@@ -16,7 +16,7 @@ vi.mock("../src/lib/ghostty/config", async (importOriginal) => {
 
 vi.mock("@tanstack/react-start", () => ({
 	createServerFn: () => ({
-		handler: (handler: () => unknown) => async () => handler(),
+		handler: (handler: () => unknown) => async () => Promise.resolve(handler()),
 	}),
 }));
 

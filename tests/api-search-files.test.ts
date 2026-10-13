@@ -395,7 +395,7 @@ describe("file content search API", () => {
 
 		await expect(
 			handleFileSearchRequest(request({query: "needle", scopeRoot: allowedRoot}), {
-				resolveScope: async () => allowedRoot,
+				resolveScope: async () => Promise.resolve(allowedRoot),
 				// @ts-expect-error Deliberately malformed to verify the runtime contract.
 				search: malformedSearch,
 			}),

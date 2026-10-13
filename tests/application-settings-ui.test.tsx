@@ -21,11 +21,11 @@ describe("application settings controls", () => {
 		const fetcher = vi.fn<typeof fetch>(async (_input, init) => {
 			const method = init?.method ?? "GET";
 			if (method === "PUT") {
-				if (typeof init?.body !== "string") throw new Error("Expected a JSON request body");
+				if (typeof init?.body !== "string") return Promise.reject(new Error("Expected a JSON request body"));
 				settings = JSON.parse(init.body);
 				requests.push({method, body: settings});
 			}
-			return Response.json(settings);
+			return Promise.resolve(Response.json(settings));
 		});
 		vi.stubGlobal("fetch", fetcher);
 		const queryClient = new QueryClient({
@@ -117,12 +117,14 @@ describe("application settings controls", () => {
 		vi.stubGlobal(
 			"fetch",
 			vi.fn<typeof fetch>(async () =>
-				Response.json({
-					herdrWritesEnabled: false,
-					shellPaneEnabled: true,
-					visibleNavSections: ["herdr"],
-					ignoredDirs: ["node_modules", "dist"],
-				}),
+				Promise.resolve(
+					Response.json({
+						herdrWritesEnabled: false,
+						shellPaneEnabled: true,
+						visibleNavSections: ["herdr"],
+						ignoredDirs: ["node_modules", "dist"],
+					}),
+				),
 			),
 		);
 		const firstCommittedValues: string[] = [];

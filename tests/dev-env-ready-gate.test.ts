@@ -31,7 +31,7 @@ function fakeServer() {
 		hot: nitroHot,
 		dispatchFetch: async (request: Request) => {
 			dispatched.push(new URL(request.url).pathname);
-			return new Response("ok");
+			return Promise.resolve(new Response("ok"));
 		},
 	};
 	const server = {environments: {nitro, ssr: {hot: ssrHot}}};
@@ -131,7 +131,7 @@ describe("holdNitroRequestsUntilReady", () => {
 			hot,
 			dispatchFetch: async (request: Request) => {
 				dispatched.push(new URL(request.url).pathname);
-				return new Response("ok");
+				return Promise.resolve(new Response("ok"));
 			},
 		};
 		holdNitroRequestsUntilReady().configureServer({environments: {nitro}});

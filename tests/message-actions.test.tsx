@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import {act, cleanup, fireEvent, render} from "@testing-library/react";
+import {actAndSettle} from "./act-and-settle";
 import type {ReactNode} from "react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
@@ -9,7 +10,9 @@ import {type TranscriptActions, TranscriptActionsContext} from "../src/component
 import {writeClipboardText} from "../src/lib/clipboard";
 
 vi.mock("../src/lib/clipboard", () => ({
-	writeClipboardText: vi.fn<typeof import("../src/lib/clipboard").writeClipboardText>(async () => true),
+	writeClipboardText: vi.fn<typeof import("../src/lib/clipboard").writeClipboardText>(async () =>
+		Promise.resolve(true),
+	),
 }));
 
 const MESSAGE = {sessionId: "session-alice", uuid: "message-1"};
@@ -544,7 +547,7 @@ describe("message action toolbar sizing and reveal", () => {
 		);
 		const status = () => container.querySelector('[role="status"]');
 		const before = status()?.textContent ?? null;
-		await act(async () => {
+		await actAndSettle(() => {
 			fireEvent.click(button(container, "Copy"));
 		});
 

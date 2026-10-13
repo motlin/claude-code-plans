@@ -117,7 +117,7 @@ export async function handleSessionFilesRequest(
 	const mark =
 		markIgnoredFlag === "1" && hideIgnoredFlag === "0"
 			? async (entries: WorkspaceEntry[]) => markIgnored(root, entries, resolvedDependencies.checkIgnored)
-			: async (entries: WorkspaceEntry[]) => entries;
+			: async (entries: WorkspaceEntry[]) => Promise.resolve(entries);
 	try {
 		if (query === "") {
 			const listing = await listDir(root, dir, options);

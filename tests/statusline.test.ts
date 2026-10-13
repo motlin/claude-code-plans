@@ -113,8 +113,8 @@ describe("StatuslineSchema", () => {
 describe("statusline batch API", () => {
 	it("returns normalized metrics and null for missing files without reading invalid ids", async () => {
 		const readStatusline = vi.fn<(sessionId: string) => Promise<unknown>>(async (sessionId) => {
-			if (sessionId === "alice-session") return CAPTURED_STATUSLINE;
-			throw new Error("ENOENT: fabricated missing statusline");
+			if (sessionId === "alice-session") return Promise.resolve(CAPTURED_STATUSLINE);
+			return Promise.reject(new Error("ENOENT: fabricated missing statusline"));
 		});
 		const url = new URL("http://127.0.0.1:7526/api/sessions/statusline");
 		url.searchParams.set("ids", "alice-session,bob-session,../not-a-session,alice-session");
@@ -154,7 +154,9 @@ describe("statusline session API", () => {
 			name: "fabricated-package",
 			private: true,
 		};
-		const readStatusline = vi.fn<(sessionId: string) => Promise<unknown>>(async () => fileContents);
+		const readStatusline = vi.fn<(sessionId: string) => Promise<unknown>>(async () =>
+			Promise.resolve(fileContents),
+		);
 
 		const response = await handleSessionStatuslineRequest("../../../fixture/project/package/statusline", {
 			readStatusline,

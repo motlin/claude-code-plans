@@ -103,6 +103,7 @@ describe("ActivePage rows", () => {
 		persistCalls = [];
 		unreadTesting.setPersist(async (sessionId, action) => {
 			persistCalls.push({sessionId, action});
+			return Promise.resolve();
 		});
 	});
 

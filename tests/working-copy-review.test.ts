@@ -170,8 +170,8 @@ describe("review skill runner", () => {
 			.run();
 		await handleCreateReviewRequest(SESSION_ID, {
 			index: db.index,
-			buildDiff: async () => "diff --git a/example.ts b/example.ts",
-			resolveDirectory: async () => TEST_ROOT,
+			buildDiff: async () => Promise.resolve("diff --git a/example.ts b/example.ts"),
+			resolveDirectory: async () => Promise.resolve(TEST_ROOT),
 			now: () => new Date("2000-01-01T00:00:00.000Z"),
 		});
 
@@ -319,7 +319,7 @@ describe("deterministic working-copy review forward test", () => {
 		const createResponse = await handleCreateReviewRequest(SESSION_ID, {
 			index: db.index,
 			buildDiff: buildWorkingCopyDiff,
-			resolveDirectory: async () => repository,
+			resolveDirectory: async () => Promise.resolve(repository),
 			now: () => new Date("2000-01-01T00:00:00.000Z"),
 		});
 		expect(await createResponse.json()).toStrictEqual({reviewId: `local-${SESSION_ID}`});

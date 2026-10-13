@@ -79,7 +79,7 @@ describe("deferred Files and Links panes", () => {
 		const registered = {imports: [...harness.imports]};
 		view.rerender(<Panes shown={["files", "links"]} />);
 		const loading = {files: paneText("Files"), links: paneText("Links")};
-		await act(async () => {
+		act(() => {
 			harness.finish();
 		});
 		await screen.findByText("Files of session-alice");

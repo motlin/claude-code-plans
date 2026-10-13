@@ -125,7 +125,7 @@ async function setup({
 		scrollRestoration: true,
 	});
 	await router.load();
-	await act(async () => {
+	act(() => {
 		render(
 			<QueryClientProvider client={client}>
 				<RouterProvider router={router} />
@@ -153,7 +153,7 @@ it("resolves aliases before fetching UUID subagents and filters/deduplicates rea
 		skeleton: screen.queryByTestId("session-skeleton") !== null,
 		urls: fetcher.mock.calls.map(([url]) => url),
 	};
-	await act(async () => {
+	act(() => {
 		finish(Response.json({sessionId: ALICE}));
 	});
 	await screen.findByRole("heading", {name: "Subagents (3)"});
@@ -205,14 +205,14 @@ it("keeps UUID subagent visits free of identity requests", async () => {
 
 it.each([404, 409])("restores the subagents title after retrying the shared %s alias failure", async (status) => {
 	const {finish, setLookup, fetcher} = await setup();
-	await act(async () => {
+	act(() => {
 		finish(new Response(null, {status}));
 	});
 	await waitFor(() => {
 		expect(document.title).toBe(status === 404 ? "Session Not Found" : "Ambiguous session link");
 	});
 	const failure = {message: screen.getByRole("alert").textContent, urls: fetcher.mock.calls.map(([url]) => url)};
-	setLookup(async () => Response.json({sessionId: ALICE}));
+	setLookup(async () => Promise.resolve(Response.json({sessionId: ALICE})));
 	fireEvent.click(screen.getByRole("button", {name: "Retry"}));
 	await screen.findByRole("heading", {name: "Subagents (2)"});
 	await waitFor(() => {
@@ -230,7 +230,7 @@ it("waits for fresh B when a new entry has invalidated cached owner A", async ()
 		alice: screen.queryByText("Alice parent"),
 		skeleton: screen.queryByTestId("session-skeleton") !== null,
 	};
-	await act(async () => {
+	act(() => {
 		finish(Response.json({sessionId: BOB}));
 	});
 	await screen.findByText("Bob parent");
@@ -261,7 +261,9 @@ it.each(["ambiguous", "reassigned"])(
 		main.scrollTop = 300;
 		const originalKey = router.state.location.state.__TSR_key;
 		setLookup(async () =>
-			change === "ambiguous" ? new Response(null, {status: 409}) : Response.json({sessionId: BOB}),
+			Promise.resolve(
+				change === "ambiguous" ? new Response(null, {status: 409}) : Response.json({sessionId: BOB}),
+			),
 		);
 		await act(async () => invalidateSessionIdentities(client));
 		await waitFor(() => {
@@ -304,7 +306,7 @@ it.each(["ambiguous", "reassigned"])(
 it("cancels a pending lookup and ignores its late answer after leaving the subagents visit", async () => {
 	const {router, finish, fetcher} = await setup();
 	await act(async () => router.navigate({to: "/session/$id", params: {id: BOB}}));
-	await act(async () => {
+	act(() => {
 		finish(Response.json({sessionId: ALICE}));
 	});
 	expect({

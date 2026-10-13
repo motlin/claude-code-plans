@@ -216,7 +216,7 @@ describe("unified search API", () => {
 
 	it.each([{type: "bogus"}, {date: "year"}, {limit: "0"}, {limit: "abc"}])(
 		"rejects invalid parameters %o",
-		async (parameters) => {
+		(parameters) => {
 			const response = request({query: "login", ...parameters});
 			expect(response.status).toBe(400);
 		},

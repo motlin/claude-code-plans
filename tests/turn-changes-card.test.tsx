@@ -452,8 +452,8 @@ function stubFetch(responses: Response[]): FetchCall[] {
 				body: typeof init?.body === "string" ? JSON.parse(init.body) : null,
 			});
 			const next = responses.shift();
-			if (next === undefined) throw new Error(`Unexpected fetch ${url}`);
-			return next;
+			if (next === undefined) return Promise.reject(new Error(`Unexpected fetch ${url}`));
+			return Promise.resolve(next);
 		}),
 	);
 	return calls;

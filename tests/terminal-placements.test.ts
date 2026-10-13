@@ -25,44 +25,45 @@ function entry(overrides: Partial<ActiveSessionEntry>): ActiveSessionEntry {
 }
 
 function herdrSnapshot(sessionId = "session-test-200"): HerdrRequester {
-	return async () => ({
-		ok: true,
-		value: {
-			type: "session_snapshot",
-			snapshot: {
-				version: "99.0.0-test",
-				protocol: 100,
-				workspaces: [],
-				tabs: [],
-				panes: [
-					{
-						pane_id: "w200:p200",
-						terminal_id: "terminal-test-200",
-						workspace_id: "w200",
-						tab_id: "w200:t200",
-						focused: true,
-						cwd: "/tmp/test/bob-project",
-						foreground_cwd: "/tmp/test/bob-project/src",
-						agent_status: "working",
-						agent: "claude",
-						terminal_title: "Bob test terminal",
-						agent_session: {
-							source: "test-source",
+	return async () =>
+		Promise.resolve({
+			ok: true,
+			value: {
+				type: "session_snapshot",
+				snapshot: {
+					version: "99.0.0-test",
+					protocol: 100,
+					workspaces: [],
+					tabs: [],
+					panes: [
+						{
+							pane_id: "w200:p200",
+							terminal_id: "terminal-test-200",
+							workspace_id: "w200",
+							tab_id: "w200:t200",
+							focused: true,
+							cwd: "/tmp/test/bob-project",
+							foreground_cwd: "/tmp/test/bob-project/src",
+							agent_status: "working",
 							agent: "claude",
-							kind: "id",
-							value: sessionId,
+							terminal_title: "Bob test terminal",
+							agent_session: {
+								source: "test-source",
+								agent: "claude",
+								kind: "id",
+								value: sessionId,
+							},
+							revision: 200,
 						},
-						revision: 200,
-					},
-				],
-				layouts: [],
-				agents: [],
-				focused_workspace_id: "w200",
-				focused_tab_id: "w200:t200",
-				focused_pane_id: "w200:p200",
+					],
+					layouts: [],
+					agents: [],
+					focused_workspace_id: "w200",
+					focused_tab_id: "w200:t200",
+					focused_pane_id: "w200:p200",
+				},
 			},
-		},
-	});
+		});
 }
 
 function tmuxProvider(sessionId = "session-test-100"): TerminalPlacementProvider {
@@ -74,7 +75,7 @@ function tmuxProvider(sessionId = "session-test-100"): TerminalPlacementProvider
 				tmuxServerSocket: "/tmp/test/tmux.sock",
 			}),
 		],
-		async () => "%100\ttest-session\t10\tAlice test window\t1\n",
+		async () => Promise.resolve("%100\ttest-session\t10\tAlice test window\t1\n"),
 	);
 }
 
@@ -264,9 +265,7 @@ describe("terminal placement providers", () => {
 				supportsEvents: true,
 				supportsObserve: true,
 			},
-			getPlacements: async () => {
-				throw new Error("Fabricated provider failure");
-			},
+			getPlacements: async () => Promise.reject(new Error("Fabricated provider failure")),
 		};
 
 		const placements = await getTerminalPlacements([rejectedProvider, tmuxProvider()]);
@@ -279,11 +278,12 @@ describe("terminal placement providers", () => {
 	it("isolates an unavailable herdr response from the tmux provider", async () => {
 		const unavailableHerdr = createHerdrPlacementProvider(
 			[],
-			async () => ({
-				ok: false,
-				code: "connect-failed",
-				message: "Fabricated unavailable herdr service",
-			}),
+			async () =>
+				Promise.resolve({
+					ok: false,
+					code: "connect-failed",
+					message: "Fabricated unavailable herdr service",
+				}),
 			() => new Set(),
 		);
 

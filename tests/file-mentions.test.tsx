@@ -102,7 +102,9 @@ beforeEach(() => {
 	responses = new Map();
 	fetchMock = vi.fn<(url: string) => Promise<Response>>(async (url) => {
 		const body = responses.get(url);
-		return body === undefined ? Response.json({error: "unexpected"}, {status: 500}) : Response.json(body);
+		return Promise.resolve(
+			body === undefined ? Response.json({error: "unexpected"}, {status: 500}) : Response.json(body),
+		);
 	});
 	vi.stubGlobal("fetch", fetchMock);
 });

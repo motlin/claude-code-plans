@@ -9,7 +9,7 @@ import {ThemeProvider} from "../src/components/theme-provider";
 import {installLocalStorage} from "./fake-storage";
 
 function stubNotification(permission: NotificationPermission) {
-	const requestPermission = vi.fn<typeof Notification.requestPermission>(async () => permission);
+	const requestPermission = vi.fn<typeof Notification.requestPermission>(async () => Promise.resolve(permission));
 	vi.stubGlobal(
 		"Notification",
 		Object.assign(function Notification() {}, {permission, requestPermission}),
@@ -198,7 +198,7 @@ describe("General settings ▸ Notifications", () => {
 			completions: switchState("Response completions"),
 			permissionRequests: switchState("Code permission requests"),
 		};
-		await act(async () => {
+		act(() => {
 			fireEvent.click(screen.getByRole("switch", {name: "Code permission requests"}));
 		});
 

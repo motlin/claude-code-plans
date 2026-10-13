@@ -150,10 +150,12 @@ describe("liveRegistryEntries", () => {
 		const result = await liveRegistryEntries([alive, dead, reused], {
 			isAlive: (pid) => pid !== 200,
 			readStartTimes: async () =>
-				new Map([
-					[100, "Fri Oct 9 12:03:29 2026"],
-					[300, "Sat Oct 10 09:00:00 2026"],
-				]),
+				Promise.resolve(
+					new Map([
+						[100, "Fri Oct 9 12:03:29 2026"],
+						[300, "Sat Oct 10 09:00:00 2026"],
+					]),
+				),
 		});
 
 		expect(result).toStrictEqual([alive]);
@@ -162,7 +164,7 @@ describe("liveRegistryEntries", () => {
 	it("keeps live pids when start times cannot be read", async () => {
 		const result = await liveRegistryEntries([alive, reused], {
 			isAlive: () => true,
-			readStartTimes: async () => null,
+			readStartTimes: async () => Promise.resolve(null),
 		});
 
 		expect(result).toStrictEqual([alive, reused]);
@@ -171,7 +173,7 @@ describe("liveRegistryEntries", () => {
 	it("drops a live pid that ps no longer reports", async () => {
 		const result = await liveRegistryEntries([alive, reused], {
 			isAlive: () => true,
-			readStartTimes: async () => new Map([[100, "Fri Oct 9 12:03:29 2026"]]),
+			readStartTimes: async () => Promise.resolve(new Map([[100, "Fri Oct 9 12:03:29 2026"]])),
 		});
 
 		expect(result).toStrictEqual([alive]);

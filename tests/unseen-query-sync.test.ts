@@ -52,7 +52,7 @@ describe("syncUnseenFromQueryCache", () => {
 		const afterManualPatch = hasUnseenWork("session-test-100");
 		await client.query({
 			queryKey: sessionQueryKeys.active(),
-			queryFn: async () => [{sessionId: "session-test-200", unseen: true}],
+			queryFn: async () => Promise.resolve([{sessionId: "session-test-200", unseen: true}]),
 		});
 		unsubscribe();
 

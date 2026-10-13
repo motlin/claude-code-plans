@@ -164,7 +164,7 @@ describe("useStopResponse", () => {
 
 describe("sendHerdrInterrupt", () => {
 	it("POSTs sessionId and force to /api/herdr/interrupt", async () => {
-		const fetcher = vi.fn<typeof fetch>(async () => Response.json({ok: true}));
+		const fetcher = vi.fn<typeof fetch>(async () => Promise.resolve(Response.json({ok: true})));
 
 		await sendHerdrInterrupt("session-alice", true, fetcher);
 
@@ -183,7 +183,7 @@ describe("sendHerdrInterrupt", () => {
 
 	it("throws the server error", async () => {
 		const fetcher = vi.fn<typeof fetch>(async () =>
-			Response.json({error: "herdr writes are disabled"}, {status: 403}),
+			Promise.resolve(Response.json({error: "herdr writes are disabled"}, {status: 403})),
 		);
 
 		await expect(sendHerdrInterrupt("session-alice", false, fetcher)).rejects.toThrow("herdr writes are disabled");

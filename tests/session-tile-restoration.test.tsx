@@ -180,7 +180,7 @@ function installGeometry() {
 	});
 }
 
-async function settleMeasurements(main: HTMLElement) {
+function settleMeasurements(main: HTMLElement) {
 	// Browser scroll and resize callbacks arrive after the router's rendered pass.
 	for (let batch = 0; batch < 20; batch++) {
 		const before = JSON.stringify({
@@ -188,7 +188,7 @@ async function settleMeasurements(main: HTMLElement) {
 			top: main.scrollTop,
 			rows: mountedRows(main).map((row) => row.dataset["transcriptEntryIndex"]),
 		});
-		await act(async () => {
+		act(() => {
 			fireEvent.scroll(main);
 			const observers = [...ControlledResizeObserver.active];
 			for (const observer of observers) {
@@ -381,12 +381,12 @@ it.each([false, true])(
 		const initial = actualScrollport();
 		fireEvent.click(screen.getByRole("button", {name: "Open fabricated pane"}));
 		expect(actualScrollport()).toBe(initial);
-		await settleMeasurements(initial);
-		await act(async () => {
+		settleMeasurements(initial);
+		act(() => {
 			initial.scrollTop = 8000;
 			fireEvent.scroll(initial);
 		});
-		await settleMeasurements(initial);
+		settleMeasurements(initial);
 		const before = state(initial);
 		expect(before.top > 0).toBe(true);
 		fireEvent.keyDown(paneMove(), {key: "ArrowDown"});
@@ -395,7 +395,7 @@ it.each([false, true])(
 		fireEvent.keyDown(paneMove(), {key: "Enter"});
 		const moved = actualScrollport();
 		expect(moved === initial).toBe(false);
-		await settleMeasurements(moved);
+		settleMeasurements(moved);
 		expect({
 			after: state(moved),
 			clamped: writes
@@ -403,13 +403,13 @@ it.each([false, true])(
 				.map(({requested, applied}) => ({requested, applied})),
 			oldMain: writes.filter((w) => w.phase === "move" && w.host.tagName === "MAIN").length,
 		}).toStrictEqual({after: before, clamped: [], oldMain: 0});
-		await act(async () => {
+		act(() => {
 			moved.scrollTop -= 100;
 			fireEvent.scroll(moved);
 		});
-		await settleMeasurements(moved);
+		settleMeasurements(moved);
 		const user = state(moved);
-		await settleMeasurements(moved);
+		settleMeasurements(moved);
 		expect(state(moved)).toStrictEqual(user);
 	},
 );
@@ -426,12 +426,12 @@ it.each([
 		const routerHost = actualScrollport();
 		fireEvent.click(screen.getByRole("button", {name: "Open fabricated pane"}));
 		hostWidths.set(routerHost, initialWidth);
-		await settleMeasurements(routerHost);
-		await act(async () => {
+		settleMeasurements(routerHost);
+		act(() => {
 			routerHost.scrollTop = 8050;
 			fireEvent.scroll(routerHost);
 		});
-		await settleMeasurements(routerHost);
+		settleMeasurements(routerHost);
 		const before = visibleAnchor(routerHost);
 		const snapshots = [];
 		for (const [width, direction] of [
@@ -444,7 +444,7 @@ it.each([
 			fireEvent.keyDown(paneMove(), {key: "Enter"});
 			const moved = actualScrollport();
 			const immediate = visibleAnchor(moved);
-			await settleMeasurements(moved);
+			settleMeasurements(moved);
 			snapshots.push({immediate, settled: visibleAnchor(moved)});
 		}
 		expect({before, snapshots}).toStrictEqual({
@@ -461,12 +461,12 @@ it.each([false, true])(
 		widthDependentRows = true;
 		const initial = actualScrollport();
 		fireEvent.click(screen.getByRole("button", {name: "Open fabricated pane"}));
-		await settleMeasurements(initial);
-		await act(async () => {
+		settleMeasurements(initial);
+		act(() => {
 			initial.scrollTop = 8050;
 			fireEvent.scroll(initial);
 		});
-		await settleMeasurements(initial);
+		settleMeasurements(initial);
 		for (const [width, direction] of [
 			[640, "ArrowDown"],
 			[800, "ArrowRight"],
@@ -476,17 +476,17 @@ it.each([false, true])(
 			listWidth = width;
 			fireEvent.keyDown(paneMove(), {key: direction});
 			fireEvent.keyDown(paneMove(), {key: "Enter"});
-			await settleMeasurements(actualScrollport());
+			settleMeasurements(actualScrollport());
 		}
 		fireEvent.click(screen.getByRole("button", {name: "Close"}));
-		await settleMeasurements(actualScrollport());
+		settleMeasurements(actualScrollport());
 		const before = state(actualScrollport());
 		await act(async () => router.navigate({to: "/plans"}));
-		await act(async () => {
+		act(() => {
 			router.history.back();
 		});
 		await screen.findByRole("button", {name: "Open fabricated pane"});
-		await settleMeasurements(actualScrollport());
+		settleMeasurements(actualScrollport());
 		expect(state(actualScrollport())).toStrictEqual(before);
 	},
 );
@@ -495,23 +495,23 @@ it("restores the settled reading anchor after a live width round trip without re
 	const router = await renderShell(false, ALIAS);
 	widthDependentRows = true;
 	const initial = actualScrollport();
-	await settleMeasurements(initial);
-	await act(async () => {
+	settleMeasurements(initial);
+	act(() => {
 		initial.scrollTop = 8050;
 		fireEvent.scroll(initial);
 	});
-	await settleMeasurements(initial);
+	settleMeasurements(initial);
 	for (const width of [640, 800]) {
 		hostWidths.set(initial, width);
-		await settleMeasurements(initial);
+		settleMeasurements(initial);
 	}
 	const before = state(initial);
 	await act(async () => router.navigate({to: "/plans"}));
-	await act(async () => {
+	act(() => {
 		router.history.back();
 	});
 	await screen.findByRole("button", {name: "Open fabricated pane"});
-	await settleMeasurements(actualScrollport());
+	settleMeasurements(actualScrollport());
 	expect(state(actualScrollport())).toStrictEqual(before);
 });
 
@@ -519,12 +519,12 @@ it("rejects a tile width change that has not delivered observations before depar
 	const router = await renderShell(false);
 	widthDependentRows = true;
 	const initial = actualScrollport();
-	await settleMeasurements(initial);
-	await act(async () => {
+	settleMeasurements(initial);
+	act(() => {
 		initial.scrollTop = 8050;
 		fireEvent.scroll(initial);
 	});
-	await settleMeasurements(initial);
+	settleMeasurements(initial);
 	const remember = vi.spyOn(measurements, "rememberTranscriptMeasurements");
 	hostWidths.set(initial, 640);
 	await act(async () => router.navigate({to: "/plans"}));
@@ -535,22 +535,22 @@ it("preserves saved zero through a nested move", async () => {
 	await renderShell(false);
 	const initial = actualScrollport();
 	fireEvent.click(screen.getByRole("button", {name: "Open fabricated pane"}));
-	await settleMeasurements(initial);
-	await act(async () => {
+	settleMeasurements(initial);
+	act(() => {
 		initial.scrollTop = 8000;
 		fireEvent.scroll(initial);
 	});
-	await settleMeasurements(initial);
-	await act(async () => {
+	settleMeasurements(initial);
+	act(() => {
 		initial.scrollTop = 0;
 		fireEvent.scroll(initial);
 	});
-	await settleMeasurements(initial);
+	settleMeasurements(initial);
 	const before = state(initial);
 	fireEvent.keyDown(paneMove(), {key: "ArrowDown"});
 	fireEvent.keyDown(paneMove(), {key: "Enter"});
 	const moved = actualScrollport();
-	await settleMeasurements(moved);
+	settleMeasurements(moved);
 	expect({changedHost: moved !== initial, top: moved.scrollTop, anchor: visibleAnchor(moved)}).toStrictEqual({
 		changedHost: true,
 		top: 0,
@@ -560,12 +560,12 @@ it("preserves saved zero through a nested move", async () => {
 it.each([LOCAL_ID, ALIAS])("restores chat on Back after an ordinary route owns main: %s", async (routeId) => {
 	const router = await renderShell(false, routeId);
 	const initial = actualScrollport();
-	await settleMeasurements(initial);
-	await act(async () => {
+	settleMeasurements(initial);
+	act(() => {
 		initial.scrollTop = 8000;
 		fireEvent.scroll(initial);
 	});
-	await settleMeasurements(initial);
+	settleMeasurements(initial);
 	const before = state(initial);
 	await act(async () => router.navigate({to: "/plans"}));
 	expect(
@@ -574,12 +574,12 @@ it.each([LOCAL_ID, ALIAS])("restores chat on Back after an ordinary route owns m
 			chat: node.hasAttribute("data-session-scrollport"),
 		})),
 	).toStrictEqual([{tag: "MAIN", chat: false}]);
-	await act(async () => {
+	act(() => {
 		router.history.back();
 	});
 	await screen.findByRole("button", {name: "Open fabricated pane"});
 	const returned = actualScrollport();
-	await settleMeasurements(returned);
+	settleMeasurements(returned);
 	expect(state(returned)).toStrictEqual(before);
 });
 it.each([false, true])(
@@ -588,16 +588,16 @@ it.each([false, true])(
 		await renderShell(strict);
 		const initial = actualScrollport();
 		fireEvent.click(screen.getByRole("button", {name: "Open fabricated pane"}));
-		await settleMeasurements(initial);
-		await act(async () => {
+		settleMeasurements(initial);
+		act(() => {
 			initial.scrollTop = 8000;
 			fireEvent.scroll(initial);
 		});
-		await settleMeasurements(initial);
+		settleMeasurements(initial);
 		fireEvent.keyDown(paneMove(), {key: "ArrowDown"});
 		fireEvent.keyDown(paneMove(), {key: "Enter"});
 		const moved = actualScrollport();
-		await settleMeasurements(moved);
+		settleMeasurements(moved);
 		const before = state(moved);
 		const draft = screen.getByRole("textbox", {name: "Fabricated draft"});
 		fireEvent.change(draft, {target: {value: "Alice's unsent revised draft"}});
@@ -621,7 +621,7 @@ it.each([false, true])(
 		fireEvent.click(screen.getByRole("button", {name: "Collapse"}));
 		const collapsed = actualScrollport();
 		expect(collapsed).toBe(moved);
-		await settleMeasurements(collapsed);
+		settleMeasurements(collapsed);
 		expect(state(collapsed)).toStrictEqual(before);
 		expect(screen.getByRole("textbox", {name: "Fabricated draft"})).toBe(draft);
 		expect((draft as HTMLTextAreaElement).value).toBe("Alice's unsent revised draft");
@@ -657,12 +657,12 @@ it.each(["source", "layout"] as const)("rejects incompatible same-commit %s meas
 	const router = await renderShell(false);
 	const initial = actualScrollport();
 	fireEvent.click(screen.getByRole("button", {name: "Open fabricated pane"}));
-	await settleMeasurements(initial);
-	await act(async () => {
+	settleMeasurements(initial);
+	act(() => {
 		initial.scrollTop = 8000;
 		fireEvent.scroll(initial);
 	});
-	await settleMeasurements(initial);
+	settleMeasurements(initial);
 	const remember = vi.spyOn(measurements, "rememberTranscriptMeasurements");
 	if (change === "source") chatSource = {};
 	if (change === "layout") chatLayout = "example-larger-font";
@@ -690,9 +690,9 @@ it("does not hand off geometry after a compact-summary disclosure", async () => 
 	const records = lines.map((line, index) => (index === 0 ? {...line, isCompactSummary: true} : line));
 	await renderShell(false, LOCAL_ID, false, records);
 	fireEvent.click(screen.getByRole("button", {name: "Open fabricated pane"}));
-	await settleMeasurements(actualScrollport());
+	settleMeasurements(actualScrollport());
 	fireEvent.click(screen.getByRole("button", {name: "Compacted conversation"}));
-	await settleMeasurements(actualScrollport());
+	settleMeasurements(actualScrollport());
 	const remember = vi.spyOn(measurements, "rememberTranscriptHandoff");
 	listWidth = 640;
 	fireEvent.keyDown(paneMove(), {key: "ArrowDown"});
@@ -703,16 +703,16 @@ it("does not hand off geometry after a compact-summary disclosure", async () => 
 it("waits for invalid-width geometry to commit before restoring Back", async () => {
 	const router = await renderShell(false);
 	const initial = actualScrollport();
-	await settleMeasurements(initial);
-	await act(async () => {
+	settleMeasurements(initial);
+	act(() => {
 		initial.scrollTop = 8000;
 		fireEvent.scroll(initial);
 	});
-	await settleMeasurements(initial);
+	settleMeasurements(initial);
 	await act(async () => router.navigate({to: "/plans"}));
 	listWidth = 640;
 	phase = "changed-width-back";
-	await act(async () => {
+	act(() => {
 		router.history.back();
 	});
 	await screen.findByRole("button", {name: "Open fabricated pane"});
@@ -738,7 +738,7 @@ async function settleFresh(host: HTMLElement) {
 				});
 			});
 		});
-		await settleMeasurements(host);
+		settleMeasurements(host);
 	}
 }
 it("does not restart fresh tail scrolling when a reader moves the tile after scrolling away", async () => {
@@ -747,12 +747,12 @@ it("does not restart fresh tail scrolling when a reader moves the tile after scr
 	await settleFresh(initial);
 	expect(initial.scrollHeight - initial.clientHeight - initial.scrollTop).toBe(0);
 	fireEvent.click(screen.getByRole("button", {name: "Open fabricated pane"}));
-	await act(async () => {
+	act(() => {
 		fireEvent.wheel(initial, {deltaY: -600});
 		initial.scrollTop -= 600;
 		fireEvent.scroll(initial);
 	});
-	await settleMeasurements(initial);
+	settleMeasurements(initial);
 	const before = state(initial);
 	fireEvent.keyDown(paneMove(), {key: "ArrowDown"});
 	fireEvent.keyDown(paneMove(), {key: "Enter"});
@@ -775,7 +775,7 @@ it.each([
 		const initial = actualScrollport();
 		await settleFresh(initial);
 		if (!fresh) {
-			await act(async () => {
+			act(() => {
 				initial.scrollTo({top: initial.scrollHeight});
 			});
 			await settleFresh(initial);
@@ -798,12 +798,12 @@ it.each([
 		}
 		expect(distances).toStrictEqual([0, 0, 0, 0]);
 		const moved = actualScrollport();
-		await act(async () => {
+		act(() => {
 			fireEvent.wheel(moved, {deltaY: -600});
 			moved.scrollTop -= 600;
 			fireEvent.scroll(moved);
 		});
-		await settleMeasurements(moved);
+		settleMeasurements(moved);
 		const before = state(moved);
 		footerExtent += 200;
 		await settleFresh(moved);
@@ -820,12 +820,12 @@ it("follows footer growth through the actual shell content ref until upward inpu
 	footerExtent = 200;
 	await settleFresh(host);
 	expect(host.scrollHeight - host.clientHeight - host.scrollTop).toBe(0);
-	await act(async () => {
+	act(() => {
 		fireEvent.wheel(host, {deltaY: -600});
 		host.scrollTop -= 600;
 		fireEvent.scroll(host);
 	});
-	await settleMeasurements(host);
+	settleMeasurements(host);
 	const before = state(host);
 	footerExtent = 400;
 	await settleFresh(host);
@@ -835,12 +835,12 @@ it("follows footer growth through the actual shell content ref until upward inpu
 it.each([0, 8000])("restores a captured offset when alias resolution mounts the host late: %s", async (offset) => {
 	const router = await renderShell(false, ALIAS);
 	const initial = actualScrollport();
-	await settleMeasurements(initial);
-	await act(async () => {
+	settleMeasurements(initial);
+	act(() => {
 		initial.scrollTop = offset;
 		fireEvent.scroll(initial);
 	});
-	await settleMeasurements(initial);
+	settleMeasurements(initial);
 	const before = state(initial);
 	await act(async () => router.navigate({to: "/plans"}));
 	clients.at(-1)!.removeQueries({queryKey: sessionIdentityQueryOptions(ALIAS).queryKey});
@@ -854,13 +854,13 @@ it.each([0, 8000])("restores a captured offset when alias resolution mounts the 
 				}),
 		),
 	);
-	await act(async () => {
+	act(() => {
 		router.history.back();
 	});
 	await screen.findByTestId("session-skeleton");
 	expect(document.querySelector("[data-session-scrollport]")).toBeNull();
 	phase = "cold-host";
-	await act(async () => {
+	act(() => {
 		resolveIdentity(
 			new Response(JSON.stringify({sessionId: LOCAL_ID}), {headers: {"Content-Type": "application/json"}}),
 		);
@@ -878,12 +878,12 @@ it.each([0, 8000])("restores a captured offset when alias resolution mounts the 
 it("cancels a delayed-host restore when the reader scrolls before its fallback frame", async () => {
 	const router = await renderShell(false, ALIAS);
 	const initial = actualScrollport();
-	await settleMeasurements(initial);
-	await act(async () => {
+	settleMeasurements(initial);
+	act(() => {
 		initial.scrollTop = 8000;
 		fireEvent.scroll(initial);
 	});
-	await settleMeasurements(initial);
+	settleMeasurements(initial);
 	await act(async () => router.navigate({to: "/plans"}));
 	clients.at(-1)!.removeQueries({queryKey: sessionIdentityQueryOptions(ALIAS).queryKey});
 	let resolveIdentity: (response: Response) => void = () => {};
@@ -896,7 +896,7 @@ it("cancels a delayed-host restore when the reader scrolls before its fallback f
 				}),
 		),
 	);
-	await act(async () => {
+	act(() => {
 		router.history.back();
 	});
 	await screen.findByTestId("session-skeleton");
@@ -910,21 +910,21 @@ it("cancels a delayed-host restore when the reader scrolls before its fallback f
 	vi.stubGlobal("cancelAnimationFrame", (id: number) => {
 		frames.delete(id);
 	});
-	await act(async () => {
+	act(() => {
 		resolveIdentity(
 			new Response(JSON.stringify({sessionId: LOCAL_ID}), {headers: {"Content-Type": "application/json"}}),
 		);
 	});
 	await screen.findByRole("button", {name: "Open fabricated pane"});
 	const returned = actualScrollport();
-	await act(async () => {
+	act(() => {
 		fireEvent.wheel(returned, {deltaY: 500});
 		returned.scrollTop = 500;
 		fireEvent.scroll(returned);
 	});
 	const before = state(returned);
 	phase = "cancelled-fallback";
-	await act(async () => {
+	act(() => {
 		const pending = [...frames];
 		for (const [id, callback] of pending) {
 			frames.delete(id);
@@ -943,12 +943,12 @@ it.each([false, true])("ignores hidden observations without reparenting the root
 	await renderShell(strict);
 	const initial = actualScrollport();
 	fireEvent.click(screen.getByRole("button", {name: "Open fabricated pane"}));
-	await settleMeasurements(initial);
-	await act(async () => {
+	settleMeasurements(initial);
+	act(() => {
 		initial.scrollTop = 8000;
 		fireEvent.scroll(initial);
 	});
-	await settleMeasurements(initial);
+	settleMeasurements(initial);
 	const before = state(initial);
 	phase = "hidden-root";
 	fireEvent.click(screen.getByRole("button", {name: "Expand"}));
@@ -958,7 +958,7 @@ it.each([false, true])("ignores hidden observations without reparenting the root
 		writes.filter((write) => write.phase === "hidden-root").map(({requested, applied}) => ({requested, applied})),
 	).toStrictEqual([]);
 	fireEvent.click(screen.getByRole("button", {name: "Collapse"}));
-	await settleMeasurements(initial);
+	settleMeasurements(initial);
 	expect({sameHost: actualScrollport() === initial, position: state(initial)}).toStrictEqual({
 		sameHost: true,
 		position: before,
@@ -970,15 +970,15 @@ it.each(["source", "layout", "width"] as const)(
 		const router = await renderShell(false);
 		const initial = actualScrollport();
 		fireEvent.click(screen.getByRole("button", {name: "Open fabricated pane"}));
-		await settleMeasurements(initial);
-		await act(async () => {
+		settleMeasurements(initial);
+		act(() => {
 			initial.scrollTop = 8000;
 			fireEvent.scroll(initial);
 		});
-		await settleMeasurements(initial);
+		settleMeasurements(initial);
 		fireEvent.keyDown(paneMove(), {key: "ArrowDown"});
 		fireEvent.keyDown(paneMove(), {key: "Enter"});
-		await settleMeasurements(actualScrollport());
+		settleMeasurements(actualScrollport());
 		fireEvent.click(screen.getByRole("button", {name: "Expand"}));
 		await settleFresh(actualScrollport());
 		if (change === "source") chatSource = {};

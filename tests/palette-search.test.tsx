@@ -65,7 +65,7 @@ async function fetchMock(url: string): Promise<unknown> {
 		pending.push({
 			url,
 			resolve: (items) => {
-				resolveFetch({ok: true, status: 200, json: async () => ({items})});
+				resolveFetch({ok: true, status: 200, json: async () => Promise.resolve({items})});
 			},
 		});
 	});

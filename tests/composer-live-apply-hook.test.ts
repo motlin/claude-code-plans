@@ -94,9 +94,7 @@ describe("useLiveLaunchOptions", () => {
 	});
 
 	it("toasts the upstream copy when the pane rejects an effort change", async () => {
-		const send = vi.fn<Send>(async () => {
-			throw new Error("agent is busy");
-		});
+		const send = vi.fn<Send>(async () => Promise.reject(new Error("agent is busy")));
 		const {result, toast} = renderLive({send});
 
 		await act(async () => result.current.apply({effort: "low"}));

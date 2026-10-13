@@ -52,8 +52,8 @@ function stubFetch(): void {
 			const query = url.searchParams.get("q") ?? "";
 			requests.push(key(dir, query));
 			const body = responses.get(key(dir, query));
-			if (body === undefined) return Response.json({error: "not found"}, {status: 404});
-			return Response.json(body);
+			if (body === undefined) return Promise.resolve(Response.json({error: "not found"}, {status: 404}));
+			return Promise.resolve(Response.json(body));
 		}),
 	);
 }

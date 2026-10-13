@@ -15,7 +15,9 @@ vi.mock("../src/components/settings-context", () => ({
 }));
 vi.mock("../src/lib/hmr-persist", () => ({hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize()}));
 vi.mock("../src/hooks/use-claude-events", () => ({useClaudeEvents: () => ({failedTools: new Map()})}));
-vi.mock("../src/lib/clipboard", () => ({writeClipboardText: vi.fn<typeof writeClipboardText>(async () => true)}));
+vi.mock("../src/lib/clipboard", () => ({
+	writeClipboardText: vi.fn<typeof writeClipboardText>(async () => Promise.resolve(true)),
+}));
 vi.mock("../src/lib/transcript-action-targets", async (importOriginal) => {
 	const actual = await importOriginal<typeof import("../src/lib/transcript-action-targets")>();
 	return {...actual, messageText: vi.fn<typeof actual.messageText>(actual.messageText)};

@@ -90,17 +90,17 @@ function stubFetch(): void {
 		"fetch",
 		vi.fn(async (input: string) => {
 			const url = new URL(input, "http://localhost");
-			if (url.pathname.startsWith("/api/sessions/")) return Response.json(listing);
+			if (url.pathname.startsWith("/api/sessions/")) return Promise.resolve(Response.json(listing));
 			if (url.pathname.startsWith("/api/file/")) {
 				const path = decodeFilePath(url.pathname.slice("/api/file/".length)) ?? "";
 				fileRequests.push(path);
 				const content = fileContents.get(path);
 				if (content === undefined) {
-					return Response.json({error: "File not found"}, {status: 404});
+					return Promise.resolve(Response.json({error: "File not found"}, {status: 404}));
 				}
-				return Response.json({content, path});
+				return Promise.resolve(Response.json({content, path}));
 			}
-			return Response.json({error: "unexpected"}, {status: 500});
+			return Promise.resolve(Response.json({error: "unexpected"}, {status: 500}));
 		}),
 	);
 }

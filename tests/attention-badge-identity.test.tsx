@@ -55,12 +55,14 @@ beforeEach(() => {
 		configurable: true,
 		value: vi.fn<(count: number) => Promise<void>>(async (count: number) => {
 			badge = count;
+			return Promise.resolve();
 		}),
 	});
 	Object.defineProperty(navigator, "clearAppBadge", {
 		configurable: true,
 		value: vi.fn<() => Promise<void>>(async () => {
 			badge = 0;
+			return Promise.resolve();
 		}),
 	});
 });
@@ -95,7 +97,7 @@ async function start(routeId: string) {
 		history: createMemoryHistory({initialEntries: [`/session/${routeId}`]}),
 	});
 	await router.load();
-	await act(async () => {
+	act(() => {
 		render(<RouterProvider router={router} />);
 	});
 	return router;

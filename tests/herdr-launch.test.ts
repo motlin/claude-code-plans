@@ -80,7 +80,7 @@ function fakeHerdr(responses: Record<string, HerdrResult<unknown>>): {
 	const requester: HerdrRequester = async (requestValue, timeoutMs) => {
 		requests.push({request: requestValue, timeoutMs});
 		const method = (requestValue as {method: string}).method;
-		return responses[method] ?? {ok: false, code: "unexpected", message: method};
+		return Promise.resolve(responses[method] ?? {ok: false, code: "unexpected", message: method});
 	};
 	return {requester, requests};
 }
@@ -89,7 +89,7 @@ function dependencies(overrides: Partial<HerdrLaunchDependencies> = {}): HerdrLa
 	return {
 		rejectRequest: rejectCrossSite,
 		writesEnabled: () => true,
-		request: async () => ({ok: true, value: {type: "ok"}}),
+		request: async () => Promise.resolve({ok: true, value: {type: "ok"}}),
 		createLaunchId: () => "test100",
 		wait: async () => {},
 		homeDir: () => "/Users/alice",
@@ -292,9 +292,9 @@ describe("herdr launch write handler", () => {
 		const sendRequest: HerdrRequester = async (requestValue) => {
 			const method = (requestValue as {method: string}).method;
 			methods.push(method);
-			if (method === "tab.create") return {ok: true, value: tabCreated};
-			if (method === "agent.start") return {ok: true, value: agentStarted(["claude"])};
-			return promptResults.shift() ?? {ok: false, code: "unexpected", message: method};
+			if (method === "tab.create") return Promise.resolve({ok: true, value: tabCreated});
+			if (method === "agent.start") return Promise.resolve({ok: true, value: agentStarted(["claude"])});
+			return Promise.resolve(promptResults.shift() ?? {ok: false, code: "unexpected", message: method});
 		};
 
 		const response = await handleHerdrLaunch(
@@ -303,6 +303,7 @@ describe("herdr launch write handler", () => {
 				request: sendRequest,
 				wait: async (ms) => {
 					waits.push(ms);
+					return Promise.resolve();
 				},
 			}),
 		);
@@ -319,9 +320,9 @@ describe("herdr launch write handler", () => {
 		const sendRequest: HerdrRequester = async (requestValue) => {
 			const method = (requestValue as {method: string}).method;
 			methods.push(method);
-			if (method === "tab.create") return {ok: true, value: tabCreated};
-			if (method === "agent.start") return {ok: true, value: agentStarted(["claude"])};
-			return {ok: false, code: "agent_not_ready", message: "Fabricated never ready"};
+			if (method === "tab.create") return Promise.resolve({ok: true, value: tabCreated});
+			if (method === "agent.start") return Promise.resolve({ok: true, value: agentStarted(["claude"])});
+			return Promise.resolve({ok: false, code: "agent_not_ready", message: "Fabricated never ready"});
 		};
 
 		const response = await handleHerdrLaunch(

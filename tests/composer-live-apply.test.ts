@@ -72,10 +72,11 @@ function dependencies(
 	return {
 		rejectRequest: rejectCrossSite,
 		writesEnabled: () => true,
-		resolveTarget: async () => ({
-			ok: true,
-			value: {terminalId: "terminal-test-200", paneId: "w200:p200"},
-		}),
+		resolveTarget: async () =>
+			Promise.resolve({
+				ok: true,
+				value: {terminalId: "terminal-test-200", paneId: "w200:p200"},
+			}),
 		request: sendRequest,
 		createRequestId: () => "ccp:live-option:test-200",
 		...overrides,
@@ -86,7 +87,7 @@ async function callHandler(
 	body: unknown,
 	overrides: Partial<HerdrLiveOptionDependencies> = {},
 ): Promise<{status: number; body: unknown; herdrCalls: unknown[]}> {
-	const sendRequest = vi.fn<HerdrRequester>(async () => ({ok: true, value: {type: "ok"}}));
+	const sendRequest = vi.fn<HerdrRequester>(async () => Promise.resolve({ok: true, value: {type: "ok"}}));
 	const response = await handleHerdrLiveOption(request(body), dependencies(sendRequest, overrides));
 	return {
 		status: response.status,
@@ -181,7 +182,7 @@ describe("herdr live-option handler", () => {
 
 describe("sendHerdrLiveOption", () => {
 	it("posts the change as same-origin JSON", async () => {
-		const fetcher = vi.fn<typeof fetch>(async () => Response.json({ok: true}));
+		const fetcher = vi.fn<typeof fetch>(async () => Promise.resolve(Response.json({ok: true})));
 
 		await sendHerdrLiveOption("session-heidi", {kind: "mode", presses: 2}, fetcher);
 
