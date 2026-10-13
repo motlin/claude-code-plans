@@ -344,37 +344,39 @@ function AnswerForm({
 }
 
 /**
- * Upstream's inline stand-in for a question that is docked above the composer:
- * a collapsed "Asking <header>" row that expands to the read-only question.
+ * Upstream's transcript row for a question still waiting on the user: a running
+ * "Asking <header>" row, expanded, over each question as secondary prose. The
+ * options live only in the card docked above the composer.
  */
-function DockedSummary({questions}: {questions: QuestionLike[]}) {
-	const [expanded, setExpanded] = useState(false);
+function PendingAsking({questions}: {questions: QuestionLike[]}) {
+	const [expanded, setExpanded] = useState(true);
 	const header = questions[0]?.header ?? "a question";
 	return (
-		<div className="flex flex-col gap-g3">
+		<div className="flex flex-col">
 			<button
 				type="button"
 				aria-expanded={expanded}
 				onClick={() => {
 					setExpanded((open) => !open);
 				}}
-				className="inline-flex w-fit cursor-pointer items-center gap-g3 text-body text-secondary hover:text-primary"
+				className="inline-flex w-fit cursor-pointer items-center gap-g5 text-body"
 			>
-				Asking {header}
+				<span className="text-secondary tool-shimmer">Asking {header}</span>
 				<ChevronDown
 					aria-hidden="true"
-					className={`size-3.5 transition-transform ${expanded ? "rotate-180" : ""}`}
+					className={`size-3 shrink-0 text-secondary transition-transform ${expanded ? "" : "-rotate-90"}`}
 				/>
 			</button>
 			{expanded && (
-				<div className={CARD_SHELL}>
-					{questions.map((q, i) => (
-						<UnansweredQuestion
-							key={i}
-							question={q.question}
-							{...(q.header ? {header: q.header} : {})}
-							options={q.options}
-						/>
+				<div className="flex flex-col gap-1 pt-1">
+					{questions.map((question, index) => (
+						<div
+							key={index}
+							data-pending-question-text=""
+							className="text-body text-secondary whitespace-pre-wrap [overflow-wrap:anywhere]"
+						>
+							{question.question}
+						</div>
 					))}
 				</div>
 			)}
@@ -389,7 +391,7 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps) {
 	const isPending = result === undefined;
 
 	if (isPending && questions !== null && ctx?.dockedToolUseId === toolCall.id) {
-		return <DockedSummary questions={questions} />;
+		return <PendingAsking questions={questions} />;
 	}
 	const canAnswer = ctx?.isSessionActive === true && isPending && questions !== null;
 
@@ -401,6 +403,8 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps) {
 			/>
 		);
 	}
+
+	if (isPending && questions !== null) return <PendingAsking questions={questions} />;
 
 	const status = describeAskUserQuestionResult(result);
 

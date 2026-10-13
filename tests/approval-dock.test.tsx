@@ -316,18 +316,20 @@ describe("AskUserQuestionRenderer while docked", () => {
 		);
 	}
 
-	it("shows a collapsed Asking <header> summary instead of the form", () => {
+	it("shows the expanded Asking <header> row over the question instead of the form", () => {
 		renderInline("t2");
 		const summary = screen.getByRole("button", {name: /Asking Runner/});
 		expect({
 			expanded: summary.getAttribute("aria-expanded"),
 			form: screen.queryByRole("button", {name: "Submit"}),
-			question: screen.queryByText("Which test runner?"),
-		}).toStrictEqual({expanded: "false", form: null, question: null});
+			question: screen.queryByText("Which test runner?") !== null,
+		}).toStrictEqual({expanded: "true", form: null, question: true});
 
 		fireEvent.click(summary);
-		expect(summary.getAttribute("aria-expanded")).toStrictEqual("true");
-		expect(screen.getByText("Which test runner?")).toBeTruthy();
+		expect({
+			expanded: summary.getAttribute("aria-expanded"),
+			question: screen.queryByText("Which test runner?"),
+		}).toStrictEqual({expanded: "false", question: null});
 	});
 
 	it("keeps the inline form when another question is docked", () => {

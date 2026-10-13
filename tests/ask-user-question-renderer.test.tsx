@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {cleanup, render} from "@testing-library/react";
+import {cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it} from "vite-plus/test";
 import {AskUserQuestionRenderer} from "../src/components/tool-renderers/ask-user-question-renderer";
 import type {ClientToolCall} from "../src/components/tool-renderers/types";
@@ -37,8 +37,8 @@ function makeCall(overrides: Partial<ClientToolCall> = {}): ClientToolCall {
 }
 
 describe("AskUserQuestionRenderer", () => {
-	it("draws exactly one card shell, using upstream's list-in-card idiom", () => {
-		const {container} = render(<AskUserQuestionRenderer toolCall={makeCall()} />);
+	it("draws a settled-but-unanswered question in exactly one card shell, using upstream's list-in-card idiom", () => {
+		const {container} = render(<AskUserQuestionRenderer toolCall={makeCall({result: REJECTION_RESULT})} />);
 
 		const shells = container.querySelectorAll(".card-outline");
 		const shell = shells[0]!;
@@ -61,7 +61,7 @@ describe("AskUserQuestionRenderer", () => {
 	});
 
 	it("gives the option rows content height instead of a fixed 3.5rem", () => {
-		const {container} = render(<AskUserQuestionRenderer toolCall={makeCall()} />);
+		const {container} = render(<AskUserQuestionRenderer toolCall={makeCall({result: REJECTION_RESULT})} />);
 
 		expect(container.querySelectorAll(".h-\\[3\\.5rem\\]").length).toStrictEqual(0);
 	});
@@ -185,5 +185,58 @@ describe("AskUserQuestionRenderer", () => {
 			pink: container.querySelector(".text-extended-pink"),
 			text: container.textContent.includes("Something else entirely."),
 		}).toStrictEqual({pink: null, text: true});
+	});
+
+	it("shows a pending question as upstream's running 'Asking <header>' row over each question in secondary prose, with no options", () => {
+		const {container} = render(
+			<AskUserQuestionRenderer
+				toolCall={makeCall({
+					input: {
+						questions: [
+							{
+								question: "Which branch should the optimization land on?",
+								header: "Next",
+								options: [{label: "Optimization branch (Recommended)"}, {label: "Main"}],
+							},
+							{
+								question: "Run JMH afterwards?",
+								header: "Bench",
+								options: [{label: "Yes"}, {label: "No"}],
+							},
+						],
+					},
+				})}
+			/>,
+		);
+		const row = screen.getByRole("button", {name: /Asking Next/});
+		const questions = [...container.querySelectorAll("[data-pending-question-text]")];
+
+		expect({
+			expanded: row.getAttribute("aria-expanded"),
+			shimmer: row.querySelector(".tool-shimmer")?.textContent,
+			questions: questions.map((question) => ({text: question.textContent, className: question.className})),
+			column: questions[0]?.parentElement?.className,
+			options: container.textContent.includes("Optimization branch (Recommended)"),
+			card: container.querySelector(".card-outline"),
+		}).toStrictEqual({
+			expanded: "true",
+			shimmer: "Asking Next",
+			questions: [
+				{
+					text: "Which branch should the optimization land on?",
+					className: "text-body text-secondary whitespace-pre-wrap [overflow-wrap:anywhere]",
+				},
+				{
+					text: "Run JMH afterwards?",
+					className: "text-body text-secondary whitespace-pre-wrap [overflow-wrap:anywhere]",
+				},
+			],
+			column: "flex flex-col gap-1 pt-1",
+			options: false,
+			card: null,
+		});
+
+		fireEvent.click(row);
+		expect(container.querySelectorAll("[data-pending-question-text]").length).toBe(0);
 	});
 });
