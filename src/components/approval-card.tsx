@@ -1,5 +1,7 @@
+import {ChevronRight, X} from "lucide-react";
 import type {ButtonHTMLAttributes, ReactNode} from "react";
 import type {PendingQuestionItem} from "../lib/hook-events";
+import {Shortcut} from "./ui/shortcut";
 
 const ACTION_BUTTON =
 	"inline-flex h-6 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-r5 px-2 text-[13px]/[19px] whitespace-nowrap select-none disabled:cursor-not-allowed disabled:opacity-50 [&_kbd]:text-[11px] @max-[500px]/approval-dock:w-full";
@@ -23,7 +25,7 @@ export function ApprovalActionButton({
 	return <button type="button" {...props} className={approvalActionClass(variant)} />;
 }
 
-export const APPROVAL_CARD_TITLE = "flex min-h-6 items-center text-[13px]/[19px] font-bold";
+export const APPROVAL_CARD_TITLE = "flex min-h-6 items-center text-[13px]/[19px] font-[580]";
 
 /**
  * The card docked above the composer for every pending approval, copied from
@@ -51,7 +53,7 @@ export function ApprovalCardShell({
 				role={label === undefined ? undefined : "group"}
 				aria-label={label}
 				tabIndex={0}
-				className="relative isolate flex max-h-[60vh] flex-col gap-6 rounded-r7 bg-surface-popover p-3 text-[13px]/[19px] text-primary shadow-[var(--approval-card-shadow)]"
+				className="relative isolate flex max-h-[60vh] flex-col gap-3 rounded-r7 bg-surface-popover p-3 text-[13px]/[19px] text-primary shadow-[var(--approval-card-shadow)]"
 			>
 				<div
 					data-approval-card-body
@@ -96,63 +98,123 @@ export function WaitingForInputNotice() {
 	);
 }
 
+const PENDING_ICON_BUTTON =
+	"inline-flex size-6 shrink-0 items-center justify-center rounded-r4 text-secondary disabled:cursor-not-allowed disabled:opacity-50";
+
 /**
  * Upstream's docked question card, read-only: every question the session's
- * `PreToolUse` hook reported, with its i/n pill, header and options, which
- * stay disabled because only the terminal can answer.
+ * `PreToolUse` hook reported, drawn as upstream draws it (an i/n pill only for
+ * several questions, keycapped options, an Other row, Skip and Submit), with
+ * every control disabled because only the terminal can answer.
  */
 export function PendingQuestionCard({questions}: {questions: PendingQuestionItem[]}) {
 	return (
 		<ApprovalCardShell
 			label="Waiting for your input"
-			body={questions.map((question, questionIndex) => (
-				<div key={question.question} data-pending-question className="flex flex-col gap-2.5">
-					<div className="flex items-start gap-2">
-						<span className="flex h-6 shrink-0 items-center">
-							<span
-								data-approval-pill
-								className="rounded-full bg-warning-100/10 px-1.5 text-caption text-warning-000"
-							>
-								{questionIndex + 1}/{questions.length}
-							</span>
-						</span>
-						<div className="flex min-w-0 flex-1 flex-col">
-							{question.header !== undefined && (
-								<span data-pending-question-header className="text-caption text-secondary">
-									{question.header}
-								</span>
-							)}
-							<span data-approval-card-title className={APPROVAL_CARD_TITLE}>
-								{question.question}
-							</span>
-						</div>
-					</div>
-					{question.options.map((option) => (
-						<button
-							key={option.label}
-							type="button"
-							disabled
-							className="flex w-full cursor-not-allowed items-center gap-2 rounded-r4 bg-alpha-1 px-3 py-3 text-left"
-						>
-							<span className="flex min-w-0 flex-1 flex-col">
-								<span className="text-body text-primary">{option.label}</span>
-								{option.description !== undefined && (
-									<span className="text-footnote text-secondary">{option.description}</span>
+			body={
+				<>
+					{questions.map((question, questionIndex) => (
+						<div key={question.question} data-pending-question className="flex flex-col gap-2.5">
+							<div className="flex items-start gap-2">
+								{questions.length > 1 && (
+									<span className="flex h-6 shrink-0 items-center">
+										<span
+											data-approval-pill
+											className="rounded-full bg-warning-100/10 px-1.5 text-caption text-warning-000"
+										>
+											{questionIndex + 1}/{questions.length}
+										</span>
+									</span>
 								)}
-							</span>
-						</button>
+								<span data-approval-card-title className={`min-w-0 flex-1 ${APPROVAL_CARD_TITLE}`}>
+									{question.question}
+								</span>
+								<button
+									type="button"
+									disabled
+									data-pending-question-icon
+									aria-label="View question options"
+									className={PENDING_ICON_BUTTON}
+								>
+									<ChevronRight aria-hidden="true" className="size-4 rotate-90" />
+								</button>
+								<button
+									type="button"
+									disabled
+									data-pending-question-icon
+									aria-label="Dismiss question"
+									className={PENDING_ICON_BUTTON}
+								>
+									<X aria-hidden="true" className="size-4" />
+								</button>
+							</div>
+							<div className="flex flex-col gap-[3px]">
+								{question.options.map((option, optionIndex) => (
+									<button
+										key={option.label}
+										type="button"
+										disabled
+										data-pending-question-option
+										className="flex w-full cursor-not-allowed items-center gap-2 rounded-r4 p-2 bg-alpha-1 text-left"
+									>
+										<span className="flex min-w-0 flex-1 flex-col">
+											<span data-option-label className="text-body text-primary">
+												{option.label}
+											</span>
+											{option.description !== undefined && (
+												<span
+													data-option-description
+													className="text-[12px]/[15px] text-ink-muted whitespace-pre-wrap"
+												>
+													{option.description}
+												</span>
+											)}
+										</span>
+										<Shortcut keys={String(optionIndex + 1)} className="pointer-coarse:hidden" />
+									</button>
+								))}
+								<div
+									data-pending-question-other
+									className="flex w-full items-center gap-3 rounded-r4 p-2 bg-alpha-1"
+								>
+									<textarea
+										disabled
+										aria-label="Other option"
+										placeholder="Type your own answer here"
+										rows={1}
+										className="min-w-0 flex-1 resize-none cursor-not-allowed rounded-r5 bg-white/50 px-2 py-1.5 text-body text-primary outline-none ring-1 ring-border placeholder:text-secondary"
+									/>
+									<Shortcut
+										keys={String(question.options.length + 1)}
+										className="pointer-coarse:hidden"
+									/>
+								</div>
+							</div>
+							{question.multiSelect === true && (
+								<p data-pending-question-multiselect className="text-footnote text-secondary">
+									Select one or more options.
+								</p>
+							)}
+						</div>
 					))}
-					{question.multiSelect === true && (
-						<p data-pending-question-multiselect className="text-footnote text-secondary">
-							Select one or more options.
-						</p>
-					)}
-				</div>
-			))}
+					<span
+						data-pending-question-footnote
+						className="flex items-center gap-2 text-footnote text-secondary"
+					>
+						<span aria-hidden="true" className="status-dot" data-kind="awaiting" />
+						{TERMINAL_FOOTNOTE}
+					</span>
+				</>
+			}
 			actions={
-				<span className="flex items-center gap-2 text-footnote text-secondary">
-					<span aria-hidden="true" className="status-dot" data-kind="awaiting" />
-					{TERMINAL_FOOTNOTE}
+				<span className="ms-auto flex items-center gap-2">
+					<ApprovalActionButton variant="secondary" disabled>
+						Skip
+					</ApprovalActionButton>
+					<ApprovalActionButton variant="primary" disabled>
+						Submit
+						<Shortcut keys="cmd+enter" className="pointer-coarse:hidden" />
+					</ApprovalActionButton>
 				</span>
 			}
 		/>

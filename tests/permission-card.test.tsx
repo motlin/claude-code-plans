@@ -255,8 +255,8 @@ describe("PermissionCard", () => {
 		};
 		expect({
 			digits: card.dataset["approvalCardDigits"],
-			card: missing(card, ["rounded-r7", "gap-6", "shadow-[var(--approval-card-shadow)]"]),
-			title: missing(card.querySelector("[data-permission-title]"), ["text-[13px]/[19px]", "font-bold"]),
+			card: missing(card, ["rounded-r7", "gap-3", "shadow-[var(--approval-card-shadow)]"]),
+			title: missing(card.querySelector("[data-permission-title]"), ["text-[13px]/[19px]", "font-[580]"]),
 			value: missing(card.querySelector("[data-approval-value]"), [
 				"font-mono",
 				"text-[12px]/[17px]",
