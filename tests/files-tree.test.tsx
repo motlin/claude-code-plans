@@ -334,10 +334,10 @@ describe("FilesTree keyboard and pointer", () => {
 		input.focus();
 		fireEvent.keyDown(input, {key: "ArrowDown"});
 		const first = document.activeElement?.querySelector("[data-tree-name]")?.textContent;
-		fireEvent.keyDown(document.activeElement as Element, {key: "ArrowDown"});
+		fireEvent.keyDown(document.activeElement!, {key: "ArrowDown"});
 		const second = document.activeElement?.querySelector("[data-tree-name]")?.textContent;
-		fireEvent.keyDown(document.activeElement as Element, {key: "ArrowUp"});
-		fireEvent.keyDown(document.activeElement as Element, {key: "ArrowUp"});
+		fireEvent.keyDown(document.activeElement!, {key: "ArrowUp"});
+		fireEvent.keyDown(document.activeElement!, {key: "ArrowUp"});
 		expect({first, second, back: document.activeElement === input}).toStrictEqual({
 			first: "a.ts",
 			second: "b.ts",
@@ -351,7 +351,7 @@ describe("FilesTree keyboard and pointer", () => {
 		const input = filterInput();
 		input.focus();
 		fireEvent.keyDown(input, {key: "ArrowDown"});
-		fireEvent.keyDown(document.activeElement as Element, {key: "Enter"});
+		fireEvent.keyDown(document.activeElement!, {key: "Enter"});
 		fireEvent.click(screen.getByText("b.ts"));
 		fireEvent.doubleClick(screen.getByText("b.ts"));
 		expect(onOpenFile.mock.calls).toStrictEqual([

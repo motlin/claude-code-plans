@@ -53,9 +53,9 @@ export function findPairedToolResult(
 		| undefined;
 	if (focalParsed?.type !== "assistant" || !Array.isArray(focalParsed.message?.content)) return null;
 
-	const toolUseIds = focalParsed.message.content
-		.filter((c) => c?.type === "tool_use" && typeof c.id === "string")
-		.map((c) => c.id as string);
+	const toolUseIds = focalParsed.message.content.flatMap((c) =>
+		c?.type === "tool_use" && typeof c.id === "string" ? [c.id] : [],
+	);
 	if (toolUseIds.length === 0) return null;
 
 	for (const candidate of candidates) {
@@ -68,14 +68,14 @@ export function findPairedToolResult(
 			  }
 			| undefined;
 		if (cParsed?.type !== "user" || !Array.isArray(cParsed.message?.content)) continue;
-		const matching = cParsed.message.content.find(
+		const toolUseId = cParsed.message.content.find(
 			(c) => c?.type === "tool_result" && typeof c.tool_use_id === "string" && toolUseIds.includes(c.tool_use_id),
-		);
-		if (matching) {
+		)?.tool_use_id;
+		if (toolUseId !== undefined) {
 			return {
 				resultEntry: candidate,
 				resultLineIndex: candidate.lineIndex,
-				toolUseId: matching.tool_use_id as string,
+				toolUseId,
 			};
 		}
 	}
@@ -207,19 +207,22 @@ function NeighborLink({
 
 function CopyButton({text}: {text: string}) {
 	const [copied, setCopied] = useState(false);
+	const copy = async () => {
+		try {
+			await navigator.clipboard.writeText(text);
+			setCopied(true);
+			setTimeout(() => {
+				setCopied(false);
+			}, 1500);
+		} catch {
+			// clipboard not available
+		}
+	};
 	return (
 		<button
 			type="button"
-			onClick={async () => {
-				try {
-					await navigator.clipboard.writeText(text);
-					setCopied(true);
-					setTimeout(() => {
-						setCopied(false);
-					}, 1500);
-				} catch {
-					// clipboard not available
-				}
+			onClick={() => {
+				void copy();
 			}}
 			className="text-xs px-2 py-1 rounded bg-surface-0 hover:bg-fill-control text-secondary"
 		>

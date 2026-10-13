@@ -432,10 +432,10 @@ export function SettingsProvider({children}: {children: React.ReactNode}) {
 		if (rawVerbosity === "minimal") {
 			const normalPreset = VERBOSITY_PRESETS.normal;
 			for (const key of Object.keys(normalPreset) as Array<keyof Settings>) {
-				(loaded as Record<keyof Settings, Settings[keyof Settings]>)[key] = normalPreset[
-					key
-				] as Settings[keyof Settings];
-				writeStoredValue(key, normalPreset[key] as Settings[keyof Settings]);
+				const value = normalPreset[key];
+				if (value === undefined) continue;
+				(loaded as Record<keyof Settings, Settings[keyof Settings]>)[key] = value;
+				writeStoredValue(key, value);
 			}
 			writeStoredValue("verbosity", "normal");
 		}

@@ -433,7 +433,7 @@ describe("viewer context menu", () => {
 		});
 		selectLines(1, 2);
 
-		fireEvent.contextMenu(document.querySelector("#L2 code") as Element, {
+		fireEvent.contextMenu(document.querySelector("#L2 code")!, {
 			clientX: 10,
 			clientY: 10,
 		});

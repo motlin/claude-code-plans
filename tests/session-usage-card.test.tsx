@@ -89,7 +89,7 @@ describe("SessionUsageCard", () => {
 
 	it("copies a plain-text report", async () => {
 		const writeText = vi.fn(async () => {});
-		vi.stubGlobal("navigator", {...navigator, clipboard: {writeText}});
+		Object.defineProperty(navigator, "clipboard", {value: {writeText}, configurable: true});
 		render(<SessionUsageCard records={USAGE_RECORDS} limits={null} />);
 
 		fireEvent.click(screen.getByRole("button", {name: "Copy report"}));

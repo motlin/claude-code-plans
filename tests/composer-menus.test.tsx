@@ -235,7 +235,7 @@ describe("Composer model menu", () => {
 		await waitFor(() => {
 			expect(screen.getAllByRole("menu")).toHaveLength(2);
 		});
-		const submenu = screen.getAllByRole("menu")[1] as HTMLElement;
+		const submenu = screen.getAllByRole("menu")[1]!;
 		const labels = radioRows(submenu).map((row) => row.label);
 		fireEvent.click(within(submenu).getByRole("menuitemradio", {name: "Opus 4.6"}));
 		await waitFor(() => {
@@ -321,7 +321,9 @@ describe("Composer effort slider affordances", () => {
 
 	function tooltipOf(anchor: Element): string | null {
 		fireEvent.pointerEnter(anchor);
-		act(() => vi.advanceTimersByTime(400));
+		act(() => {
+			vi.advanceTimersByTime(400);
+		});
 		const text = screen.queryByRole("tooltip")?.textContent ?? null;
 		fireEvent.pointerLeave(anchor);
 		return text;
@@ -501,7 +503,9 @@ describe("Composer chin tooltips and contrast", () => {
 		const anchor = trigger.parentElement;
 		if (anchor === null) throw new Error("trigger has no parent");
 		fireEvent.pointerEnter(anchor);
-		act(() => vi.advanceTimersByTime(400));
+		act(() => {
+			vi.advanceTimersByTime(400);
+		});
 		const text = screen.queryByRole("tooltip")?.textContent ?? null;
 		fireEvent.pointerLeave(anchor);
 		return text;

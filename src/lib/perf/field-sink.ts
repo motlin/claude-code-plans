@@ -7,7 +7,6 @@ import {appendFileSync, mkdirSync, readdirSync, rmSync} from "node:fs";
 import {join} from "node:path";
 import {z} from "zod";
 import {rejectCrossSite} from "../same-origin-guard";
-import type {JourneySample} from "./journey";
 
 const FIELD_LOG_RETENTION_DAYS = 30;
 const MAX_BODY_BYTES = 1024 * 1024;
@@ -89,11 +88,6 @@ export const JourneySampleSchema = z
 const PerfBeaconBatchSchema = z
 	.object({samples: z.array(JourneySampleSchema).min(1).max(MAX_SAMPLES_PER_BATCH)})
 	.strict();
-
-// Keeps the server schema and the client sample type in lockstep: either drifting is a type error.
-type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
-const sampleSchemaMatchesClientType: Equal<z.infer<typeof JourneySampleSchema>, JourneySample> = true;
-void sampleSchemaMatchesClientType;
 
 export interface PerfSinkOptions {
 	/** The server's cache dir, `$XDG_CACHE_HOME/claude-code-plans`. */

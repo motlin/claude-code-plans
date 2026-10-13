@@ -1,5 +1,6 @@
 import type {QueryClient, QueryKey} from "@tanstack/react-query";
 import {syncUnseenFromSummaries} from "./unread-store";
+import {eventQueryKey} from "./query-cache-event";
 
 interface UnseenFlag {
 	id: string;
@@ -62,6 +63,6 @@ export function syncUnseenFromQueryCache(queryClient: QueryClient): () => void {
 		if (event.type !== "updated" || event.action.type !== "success" || event.action.manual) {
 			return;
 		}
-		syncUnseenFromSummaries(unseenFlagsFromSessionQuery(event.query.queryKey, event.action.data));
+		syncUnseenFromSummaries(unseenFlagsFromSessionQuery(eventQueryKey(event), event.action.data));
 	});
 }

@@ -286,12 +286,10 @@ describe("unknown values", () => {
 			{kind: "skill", name: "tools:format", enabled: false},
 			{kind: "plugin", id: "no-marketplace", enabled: false},
 		];
-		for (const toggle of rejected) {
-			expect(
-				SettingsToggleRequestSchema.safeParse({expectedMtimeMs: 1, toggle}).success,
-				JSON.stringify(toggle),
-			).toBe(false);
-		}
+		const accepted = rejected.filter(
+			(toggle) => SettingsToggleRequestSchema.safeParse({expectedMtimeMs: 1, toggle}).success,
+		);
+		expect(accepted).toEqual([]);
 		expect(
 			SettingsToggleRequestSchema.safeParse({
 				expectedMtimeMs: null,

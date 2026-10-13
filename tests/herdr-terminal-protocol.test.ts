@@ -108,7 +108,7 @@ describe("browser terminal frame consumer", () => {
 		const consumer = createTerminalFrameConsumer(createWriter());
 		consumer.consume(message(100, true, "Alice full screen"));
 
-		expect(() => consumer.consume('{"type":"terminal.frame"}')).toThrow();
+		expect(() => consumer.consume('{"type":"terminal.frame"}')).toThrow("invalid_union");
 		expect(() => consumer.consume(message(100, false, "Alice repeated frame"))).toThrow(
 			"terminal frame sequence did not advance",
 		);

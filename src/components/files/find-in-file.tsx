@@ -21,7 +21,7 @@ export function collectFindBlocks(root: Element, query: string): FindBlock[] {
 		acceptNode: (node) =>
 			node.parentElement?.closest("[data-find-ignore]") ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT,
 	});
-	const groups: {block: Element; nodes: Text[]}[] = [];
+	const groups: {block: Element; nodes: [Text, ...Text[]]}[] = [];
 	for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
 		const text = node as Text;
 		const block = text.parentElement?.closest(FIND_BLOCK_SELECTOR) ?? root;
@@ -37,9 +37,14 @@ export function collectFindBlocks(root: Element, query: string): FindBlock[] {
 			joined += node.data;
 		}
 		const locate = (offset: number, isEnd: boolean): [Text, number] => {
-			let index = nodes.length - 1;
-			while (index > 0 && (starts[index] ?? 0) > offset - (isEnd ? 1 : 0)) index -= 1;
-			return [nodes[index] as Text, offset - (starts[index] ?? 0)];
+			const threshold = offset - (isEnd ? 1 : 0);
+			let located: [Text, number] = [nodes[0], offset];
+			for (const [index, node] of nodes.entries()) {
+				const start = starts[index] ?? 0;
+				if (index > 0 && start > threshold) break;
+				located = [node, offset - start];
+			}
+			return located;
 		};
 		const ranges = findMatches(joined, query).map(({start, end}) => {
 			const range = root.ownerDocument.createRange();

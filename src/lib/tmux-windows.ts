@@ -54,7 +54,7 @@ async function runTmuxListPanes(socket: string): Promise<string> {
 			"tmux",
 			["-S", socket, "list-panes", "-a", "-F", TMUX_FORMAT],
 			{timeout: TMUX_TIMEOUT_MS},
-			(error, stdout) => {
+			(error: Error | null, stdout: string) => {
 				if (error) {
 					reject(error);
 					return;

@@ -81,13 +81,21 @@ function MemoryEditPage() {
 				<Link to="/memories" className="text-sm text-accent-100 hover:underline">
 					&larr; All Memories
 				</Link>
-				<button type="button" onClick={handlePreview} className="text-sm text-accent-100 hover:underline">
+				<button
+					type="button"
+					onClick={() => {
+						void handlePreview();
+					}}
+					className="text-sm text-accent-100 hover:underline"
+				>
 					Preview
 				</button>
 				<span className="text-xs text-t6">{data.projectName}</span>
 				<button
 					type="button"
-					onClick={handleSave}
+					onClick={() => {
+						void handleSave();
+					}}
 					disabled={saving}
 					className="rounded bg-accent-100 px-3 py-1 text-sm text-on-primary hover:bg-accent-100/90 disabled:opacity-50"
 				>

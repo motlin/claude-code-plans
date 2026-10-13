@@ -155,13 +155,13 @@ describe("Verbose transcript mode pre-expands tool rows", () => {
 			expect(disclosures(container)).toStrictEqual(EXPANDED_GROUP);
 		});
 
-		fireEvent.click(container.querySelector("button[aria-expanded]") as Element);
+		fireEvent.click(container.querySelector("button[aria-expanded]")!);
 		const toggledInVerbose = disclosures(container);
 
 		rerender(transcript(records, "normal"));
 		const afterNormal = disclosures(container);
 
-		fireEvent.click(container.querySelector("button[aria-expanded]") as Element);
+		fireEvent.click(container.querySelector("button[aria-expanded]")!);
 		const toggledInNormal = disclosures(container);
 
 		rerender(transcript(records, "thinking"));

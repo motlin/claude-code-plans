@@ -100,7 +100,7 @@ const sortedTypes = [...statsByType.entries()].sort((a, b) => b[1].total - a[1].
 for (const [typeName, stats] of sortedTypes) {
 	console.log(`\n${"=".repeat(70)}`);
 	console.log(`type: "${typeName}"  (${stats.total} records)`);
-	console.log(`${"=".repeat(70)}`);
+	console.log("=".repeat(70));
 
 	const fieldEntries = [...stats.fields.entries()]
 		.filter(([f]) => f !== "type")

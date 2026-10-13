@@ -497,7 +497,7 @@ function SuccessActionRenderer({data, action}: {data: unknown; action: string}) 
 function DefaultGithubRenderer({resultText}: {resultText: string}) {
 	let formatted = resultText;
 	try {
-		const parsed = JSON.parse(resultText);
+		const parsed: unknown = JSON.parse(resultText);
 		formatted = JSON.stringify(parsed, null, 2);
 	} catch {
 		// plain text

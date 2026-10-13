@@ -49,7 +49,6 @@ export interface ChangedFileTreeOptions {
 const TEST_DIR = /(^|\/)(tests?|__tests__|spec)\//;
 const TEST_FILE = /\.(test|spec)\./;
 const GENERATED_DIR = /(^|\/)(dist|\.output|__snapshots__)\//;
-const GENERATED_FILE = /\.gen\./;
 const BUILD_DIR = /(^|\/)\.github\//;
 const BUILD_FILE =
 	/^(package\.json|pnpm-lock\.yaml|package-lock\.json|npm-shrinkwrap\.json|bun\.lockb|go\.sum|[jJ]ustfile|Dockerfile(\..+)?|vite\.config\..+|.+\.lock|.+\.toml)$/;
@@ -61,7 +60,7 @@ function baseName(path: string): string {
 /** Path heuristics for upstream's "Test files", "Build files" and "Generated files" sections. */
 export function classifyChangedFile(path: string): ChangedFileKind {
 	const name = baseName(path);
-	if (GENERATED_DIR.test(path) || GENERATED_FILE.test(name)) return "generated";
+	if (GENERATED_DIR.test(path) || name.includes(".gen.")) return "generated";
 	if (TEST_DIR.test(path) || TEST_FILE.test(name)) return "test";
 	if (BUILD_DIR.test(path) || BUILD_FILE.test(name)) return "build";
 	return "source";

@@ -234,7 +234,7 @@ function negativeControl(before: Sweep, after: Sweep): string {
 	const previous = new Map(correlate(before).map((row) => [row.family, row]));
 	const moved = correlate(after).filter((row) => {
 		const old = previous.get(row.family);
-		return old !== undefined && old.counts.some((count, index) => count !== row.counts[index]);
+		return old?.counts.some((count, index) => count !== row.counts[index]) === true;
 	});
 	const shapes = after.shapes.map(({shape}) => shape);
 	if (moved.length === 0) return "No lab count moved between the two sweeps.";

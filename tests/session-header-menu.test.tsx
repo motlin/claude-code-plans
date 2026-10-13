@@ -88,10 +88,7 @@ function livePanes(): HerdrPaneIndexData {
 const writeText = vi.fn<(text: string) => Promise<void>>();
 const onGenerateSummary = vi.fn<() => void>();
 
-type ResizeCallback = (entries: Array<{contentRect: {width: number}}>) => void;
-
 class TestResizeObserver {
-	constructor(_callback: ResizeCallback) {}
 	observe(): void {}
 	unobserve(): void {}
 	disconnect(): void {}

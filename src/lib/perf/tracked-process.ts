@@ -9,7 +9,7 @@ export async function trackedExecFile(file: string, args: readonly string[], opt
 	const counters = currentPerfCounters();
 	if (counters !== undefined) counters.proc.spawned += 1;
 	return new Promise((resolve, reject) => {
-		execFile(file, args, {cwd: options.cwd, encoding: "utf-8"}, (error, stdout) => {
+		execFile(file, args, {cwd: options.cwd, encoding: "utf-8"}, (error: Error | null, stdout: string) => {
 			if (error) reject(error);
 			else resolve(stdout);
 		});

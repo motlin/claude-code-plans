@@ -4,13 +4,18 @@ const MAX_GIT_OUTPUT_BYTES = 100 * 1024 * 1024;
 
 async function runGit(cwd: string, arguments_: string[], allowDifferences = false): Promise<string> {
 	return new Promise((resolve, reject) => {
-		execFile("git", arguments_, {cwd, encoding: "utf8", maxBuffer: MAX_GIT_OUTPUT_BYTES}, (error, stdout) => {
-			if (error && !(allowDifferences && error.code === 1)) {
-				reject(error);
-				return;
-			}
-			resolve(stdout);
-		});
+		execFile(
+			"git",
+			arguments_,
+			{cwd, encoding: "utf8", maxBuffer: MAX_GIT_OUTPUT_BYTES},
+			(error: (Error & {code?: number | string}) | null, stdout: string) => {
+				if (error && !(allowDifferences && error.code === 1)) {
+					reject(error);
+					return;
+				}
+				resolve(stdout);
+			},
+		);
 	});
 }
 

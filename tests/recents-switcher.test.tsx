@@ -267,7 +267,9 @@ describe("RecentsSwitcher", () => {
 		const navigate = vi.spyOn(router, "navigate");
 		pressQ();
 		await screen.findByRole("dialog", {name: "Recents"});
-		act(() => queryClient.setQueryData(sessionQueryKeys.identity("session_example"), {sessionId: "alpha"}));
+		act(() => {
+			queryClient.setQueryData(sessionQueryKeys.identity("session_example"), {sessionId: "alpha"});
+		});
 		expect(selectedRow()).toStrictEqual({active: "recents-switcher-row-0", title: "Alpha session"});
 		releaseControl();
 		await waitFor(() => {

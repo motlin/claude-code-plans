@@ -397,10 +397,6 @@ function getRecordSessionId(record: z.infer<typeof JsonlRecordSchema>): string |
 // Command group deduplication
 // ---------------------------------------------------------------------------
 
-const COMMAND_NAME_RE = /<command-name>/;
-const LOCAL_COMMAND_CAVEAT_RE = /^<local-command-caveat>/;
-const LOCAL_COMMAND_STDOUT_RE = /^<local-command-stdout>/;
-
 /**
  * Get the string content of a user message line, if it has string content.
  */
@@ -416,7 +412,7 @@ function getUserStringContent(line: ProcessedLine): string | undefined {
  */
 export function isCommandLine(line: ProcessedLine): boolean {
 	const text = getUserStringContent(line);
-	return text !== undefined && COMMAND_NAME_RE.test(text);
+	return text?.includes("<command-name>") === true;
 }
 
 /**
@@ -424,7 +420,7 @@ export function isCommandLine(line: ProcessedLine): boolean {
  */
 export function isCaveatLine(line: ProcessedLine): boolean {
 	const text = getUserStringContent(line);
-	return text !== undefined && LOCAL_COMMAND_CAVEAT_RE.test(text);
+	return text?.startsWith("<local-command-caveat>") === true;
 }
 
 /**
@@ -432,7 +428,7 @@ export function isCaveatLine(line: ProcessedLine): boolean {
  */
 export function isStdoutLine(line: ProcessedLine): boolean {
 	const text = getUserStringContent(line);
-	return text !== undefined && LOCAL_COMMAND_STDOUT_RE.test(text);
+	return text?.startsWith("<local-command-stdout>") === true;
 }
 
 /**

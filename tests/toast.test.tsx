@@ -65,37 +65,53 @@ describe("ToastProvider", () => {
 	it("auto-dismisses after the default 4 seconds", () => {
 		renderWithToast({message: "Link copied to clipboard.", kind: "success"});
 
-		act(() => vi.advanceTimersByTime(3999));
+		act(() => {
+			vi.advanceTimersByTime(3999);
+		});
 		expect(toastTexts("status")).toEqual(["Link copied to clipboard."]);
 
-		act(() => vi.advanceTimersByTime(1));
+		act(() => {
+			vi.advanceTimersByTime(1);
+		});
 		expect(toastTexts("status")).toEqual([]);
 	});
 
 	it("honors a custom duration", () => {
 		renderWithToast({message: "Archived 3 sessions", kind: "success", durationMs: 3000});
 
-		act(() => vi.advanceTimersByTime(2999));
+		act(() => {
+			vi.advanceTimersByTime(2999);
+		});
 		expect(toastTexts("status")).toEqual(["Archived 3 sessions"]);
 
-		act(() => vi.advanceTimersByTime(1));
+		act(() => {
+			vi.advanceTimersByTime(1);
+		});
 		expect(toastTexts("status")).toEqual([]);
 	});
 
 	it("pauses the timer while hovered and resumes with the remaining time", () => {
 		renderWithToast({message: "Link copied to clipboard.", kind: "success"});
-		act(() => vi.advanceTimersByTime(3000));
+		act(() => {
+			vi.advanceTimersByTime(3000);
+		});
 
 		const toastEl = screen.getByRole("status").querySelector("[data-toast]");
 		if (!toastEl) throw new Error("toast not rendered");
 		fireEvent.mouseEnter(toastEl);
-		act(() => vi.advanceTimersByTime(10_000));
+		act(() => {
+			vi.advanceTimersByTime(10_000);
+		});
 		expect(toastTexts("status")).toEqual(["Link copied to clipboard."]);
 
 		fireEvent.mouseLeave(toastEl);
-		act(() => vi.advanceTimersByTime(999));
+		act(() => {
+			vi.advanceTimersByTime(999);
+		});
 		expect(toastTexts("status")).toEqual(["Link copied to clipboard."]);
-		act(() => vi.advanceTimersByTime(1));
+		act(() => {
+			vi.advanceTimersByTime(1);
+		});
 		expect(toastTexts("status")).toEqual([]);
 	});
 
@@ -104,11 +120,15 @@ describe("ToastProvider", () => {
 
 		const dismiss = screen.getByRole("button", {name: "Dismiss"});
 		fireEvent.focus(dismiss);
-		act(() => vi.advanceTimersByTime(10_000));
+		act(() => {
+			vi.advanceTimersByTime(10_000);
+		});
 		expect(toastTexts("status")).toEqual(["Link copied to clipboard."]);
 
 		fireEvent.blur(dismiss);
-		act(() => vi.advanceTimersByTime(4000));
+		act(() => {
+			vi.advanceTimersByTime(4000);
+		});
 		expect(toastTexts("status")).toEqual([]);
 	});
 

@@ -13,21 +13,30 @@
 
 const cache: Record<string, unknown> = {};
 
+/** `import.meta.hot.data` in dev (typed `any` by Vite), else the module-level cache. */
+function persistentStore(): Record<string, unknown> {
+	const hot: {data: Record<string, unknown>} | undefined = import.meta.hot;
+	return hot ? hot.data : cache;
+}
+
 export function hmrPersist<T>(key: string, init: () => T): T {
-	if (import.meta.hot) {
-		return (import.meta.hot.data[key] ??= init()) as T;
-	}
-	return (cache[key] ??= init()) as T;
+	return (persistentStore()[key] ??= init()) as T;
 }
 
 /** Remove and return the value persisted under `key`, if any, without creating one. */
 export function hmrTake(key: string): unknown {
-	const store: Record<string, unknown> = import.meta.hot ? import.meta.hot.data : cache;
+	const store = persistentStore();
 	const value = store[key];
-	delete store[key];
+	Reflect.deleteProperty(store, key);
 	return value;
 }
 
+/** Vite's HMR client awaits dispose callbacks, though its `dispose` type only admits `() => void`. */
+interface AwaitingDisposeContext {
+	dispose(cleanup: () => void | Promise<void>): void;
+}
+
 export function hmrDispose(cleanup: () => void | Promise<void>): void {
-	import.meta.hot?.dispose(cleanup);
+	const hot: AwaitingDisposeContext | undefined = import.meta.hot;
+	hot?.dispose(cleanup);
 }

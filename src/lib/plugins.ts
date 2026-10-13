@@ -177,7 +177,7 @@ export async function listPlugins(claudeDir: string = join(homedir(), ".claude")
 	};
 	try {
 		const raw = await readFile(registryPath, "utf-8");
-		registry = JSON.parse(raw);
+		registry = JSON.parse(raw) as typeof registry;
 	} catch {
 		return [];
 	}
@@ -196,7 +196,7 @@ export async function listPlugins(claudeDir: string = join(homedir(), ".claude")
 		} = {};
 		try {
 			const raw = await readFile(join(install.installPath, ".claude-plugin", "plugin.json"), "utf-8");
-			pluginJson = JSON.parse(raw);
+			pluginJson = JSON.parse(raw) as typeof pluginJson;
 		} catch {
 			// no plugin.json
 		}

@@ -248,7 +248,9 @@ it.each(["ambiguous", "reassigned"])(
 it("renders source data that arrives after a cached missing record without changing hook order", async () => {
 	const {client} = await setup({initial: `/session/${ALICE}/source/${RECORD}`, source: null});
 	await screen.findByRole("heading", {name: "Source not found"});
-	act(() => client.setQueryData(sessionSourceQueryOptions(ALICE, RECORD, 5).queryKey, SOURCE));
+	act(() => {
+		client.setQueryData(sessionSourceQueryOptions(ALICE, RECORD, 5).queryKey, SOURCE);
+	});
 	await screen.findByRole("heading", {name: `JSONL source · line 1 · ${RECORD}`});
 	expect(screen.getByRole("link", {name: "← Alice session"}).getAttribute("href")).toBe(`/session/${ALICE}`);
 });

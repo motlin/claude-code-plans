@@ -154,7 +154,7 @@ describe("jobs route", () => {
 	it("links a job's pull requests and shows its timeline", async () => {
 		await renderJobsPage(JOBS);
 
-		const row = within(jobRows()[0] as HTMLElement);
+		const row = within(jobRows()[0]!);
 
 		expect({
 			pr: row.getByRole("link", {name: "Pull request 12"}).getAttribute("href"),

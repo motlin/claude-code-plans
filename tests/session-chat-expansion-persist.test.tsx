@@ -71,7 +71,7 @@ function chat(sessionId: string, records: unknown[]) {
 function expandUnmountRemount(count: number, selector: string): {before: string | null; after: string | null} {
 	const tools = [USER_PROMPT, ...toolCallRecords(count)];
 	const {container, rerender} = render(chat("s1", tools));
-	fireEvent.click(container.querySelector(selector) as Element);
+	fireEvent.click(container.querySelector(selector)!);
 	const before = container.querySelector(selector)?.getAttribute("aria-expanded") ?? null;
 	rerender(chat("s1", [USER_PROMPT]));
 	const unmounted = container.querySelector(selector);
@@ -95,7 +95,7 @@ describe("SessionChat tool row expansion across remounts", () => {
 	it("does not carry expansion into a different session", () => {
 		const tools = [USER_PROMPT, ...toolCallRecords(1)];
 		const {container, rerender} = render(chat("s1", tools));
-		fireEvent.click(container.querySelector('[role="button"][aria-expanded]') as Element);
+		fireEvent.click(container.querySelector('[role="button"][aria-expanded]')!);
 		rerender(chat("s2", tools));
 		expect(container.querySelector('[role="button"][aria-expanded]')?.getAttribute("aria-expanded")).toBe("false");
 	});

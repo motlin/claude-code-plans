@@ -12,7 +12,7 @@ import {
 import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {DEFAULTS, SettingsProvider} from "../src/components/settings-provider";
-import {useActiveSection} from "../src/components/sidebar/hooks";
+import {activeSectionFor} from "../src/components/sidebar/hooks";
 import {navItems} from "../src/components/sidebar/navigation";
 import {Sidebar} from "../src/components/sidebar/Sidebar";
 import {applicationSettingsQueryOptions} from "../src/lib/api/application-settings";
@@ -211,30 +211,29 @@ describe("sidebar navigation", () => {
 	});
 
 	it("activates the Artifacts section on the gallery", () => {
-		expect(
-			useActiveSection([{fullPath: "/artifacts", params: {}}] as unknown as Parameters<
-				typeof useActiveSection
-			>[0]),
-		).toStrictEqual({section: "artifacts", activeItemId: null});
+		expect(activeSectionFor([{fullPath: "/artifacts", params: {}}])).toStrictEqual({
+			section: "artifacts",
+			activeItemId: null,
+		});
 	});
 
 	it("activates the Routines section on the Routines page", () => {
-		expect(
-			useActiveSection([{fullPath: "/routines", params: {}}] as unknown as Parameters<
-				typeof useActiveSection
-			>[0]),
-		).toStrictEqual({section: "routines", activeItemId: null});
+		expect(activeSectionFor([{fullPath: "/routines", params: {}}])).toStrictEqual({
+			section: "routines",
+			activeItemId: null,
+		});
 	});
 
 	it("activates the Background jobs section on the Background jobs page", () => {
-		expect(
-			useActiveSection([{fullPath: "/jobs", params: {}}] as unknown as Parameters<typeof useActiveSection>[0]),
-		).toStrictEqual({section: "jobs", activeItemId: null});
+		expect(activeSectionFor([{fullPath: "/jobs", params: {}}])).toStrictEqual({
+			section: "jobs",
+			activeItemId: null,
+		});
 	});
 
 	it("activates the Customize section on Customize and legacy plugin routes", () => {
 		const sectionAt = (fullPath: string, params: Record<string, string> = {}) =>
-			useActiveSection([{fullPath, params}] as unknown as Parameters<typeof useActiveSection>[0]);
+			activeSectionFor([{fullPath, params}]);
 
 		expect([
 			sectionAt("/customize/skills"),
@@ -268,8 +267,7 @@ describe("sidebar navigation", () => {
 	});
 
 	it("activates no nav section on the Claude Config editor or Setup pages", () => {
-		const sectionAt = (fullPath: string) =>
-			useActiveSection([{fullPath, params: {}}] as unknown as Parameters<typeof useActiveSection>[0]);
+		const sectionAt = (fullPath: string) => activeSectionFor([{fullPath, params: {}}]);
 
 		expect([sectionAt("/settings/edit"), sectionAt("/setup")]).toStrictEqual([
 			{section: null, activeItemId: null},
@@ -278,17 +276,17 @@ describe("sidebar navigation", () => {
 	});
 
 	it("activates the tmux section on the tmux route", () => {
-		const matches = [{fullPath: "/tmux", params: {}}] as unknown as Parameters<typeof useActiveSection>[0];
+		const matches = [{fullPath: "/tmux", params: {}}] as unknown as Parameters<typeof activeSectionFor>[0];
 
-		expect(useActiveSection(matches)).toStrictEqual({section: "tmux", activeItemId: null});
+		expect(activeSectionFor(matches)).toStrictEqual({section: "tmux", activeItemId: null});
 	});
 
 	it("activates the Herdr section and terminal on a live terminal route", () => {
 		const matches = [
 			{fullPath: "/herdr/terminal/$sessionId", params: {sessionId: "session-test-100"}},
-		] as unknown as Parameters<typeof useActiveSection>[0];
+		] as unknown as Parameters<typeof activeSectionFor>[0];
 
-		expect(useActiveSection(matches)).toStrictEqual({
+		expect(activeSectionFor(matches)).toStrictEqual({
 			section: "herdr",
 			activeItemId: "session-test-100",
 		});
@@ -485,7 +483,7 @@ describe("sidebar New row", () => {
 			const router = await renderSidebarAt("/tasks");
 			await waitFor(() => screen.getByRole("link", {name: "Tasks"}));
 
-			fireEvent.click(navLinks()[0] as HTMLElement);
+			fireEvent.click(navLinks()[0]!);
 
 			await waitFor(() => {
 				expect(focusRequests).toStrictEqual(["focus"]);

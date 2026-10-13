@@ -19,10 +19,9 @@ import {
 import {getCachedSessionIdentity} from "../lib/api/session-identity";
 import {sessionQueryKeys} from "../lib/api/sessions";
 import {resolvedRouteTitle} from "../lib/route-title";
+import {eventQueryKey} from "../lib/query-cache-event";
 
 type AppRouter = ReturnType<typeof useRouter>;
-
-const NOT_FOUND_TITLE = / Not Found$/;
 
 function update(queryClient: QueryClient, change: (entries: RecentEntry[]) => RecentEntry[]): void {
 	const entries = resolveRecentSessions(loadRecents(), (alias) => getCachedSessionIdentity(queryClient, alias));
@@ -54,7 +53,7 @@ function resolvedToNotFound(router: AppRouter, title: string | null): boolean {
 	if (matches.some((match) => match.status === "notFound" || match.status === "error")) {
 		return true;
 	}
-	return title !== null && NOT_FOUND_TITLE.test(title);
+	return title?.endsWith(" Not Found") === true;
 }
 
 /**
@@ -99,7 +98,7 @@ export function useRecentsRecorder(): void {
 					: resolvedTarget(queryClient, fromLocation.pathname)
 				: null;
 			const title = stripAttentionCount(document.title);
-			if (!left || title === "" || NOT_FOUND_TITLE.test(title)) return;
+			if (!left || title === "" || title.endsWith(" Not Found")) return;
 			update(queryClient, (entries) => retitle(entries, left.key, title));
 		});
 		const unsubscribeResolved = router.subscribe("onResolved", () => {
@@ -109,7 +108,7 @@ export function useRecentsRecorder(): void {
 		const [sessionRoot, identityRoot] = sessionQueryKeys.identities();
 		const unsubscribeIdentity = queryClient.getQueryCache().subscribe((event) => {
 			if (event.type !== "added" && event.type !== "updated" && event.type !== "removed") return;
-			const key = event.query.queryKey;
+			const key = eventQueryKey(event);
 			if (key[0] !== sessionRoot || key[1] !== identityRoot) return;
 			// Background resolutions normalize old visits in place; only a still-current pending visit can move front.
 			update(queryClient, (entries) => entries);

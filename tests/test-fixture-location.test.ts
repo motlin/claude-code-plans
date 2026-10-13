@@ -13,7 +13,7 @@ describe("test fixtures stay out of the repository", () => {
 				readFileSync(join(TESTS_DIRECTORY, file), "utf8")
 					.split("\n")
 					.map((line, index) => ({file, line: index + 1, text: line.trim()}))
-					.filter(({text}) => /process\.cwd\(\)/.test(text) && /\.llm|mkdtemp|mkdir/.test(text)),
+					.filter(({text}) => text.includes("process.cwd()") && /\.llm|mkdtemp|mkdir/.test(text)),
 			);
 
 		expect(offenders).toStrictEqual([]);

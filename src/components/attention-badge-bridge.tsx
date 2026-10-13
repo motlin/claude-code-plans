@@ -10,6 +10,7 @@ import {hasUnseenWork, subscribeUnseenWork} from "../lib/unread-store";
 import {useSettings} from "./settings-provider";
 import {getCachedSessionIdentity} from "../lib/api/session-identity";
 import {sessionQueryKeys} from "../lib/api/sessions";
+import {eventQueryKey} from "../lib/query-cache-event";
 
 function viewedRouteId(router: ReturnType<typeof useRouter>): string | null {
 	const sessionMatch = router.state.matches.find((match) => match.routeId.startsWith("/session/$id"));
@@ -71,7 +72,7 @@ export function AttentionBadgeBridge(): null {
 		const [sessionRoot, identityRoot] = sessionQueryKeys.identities();
 		const unsubscribeIdentity = queryClient.getQueryCache().subscribe((event) => {
 			if (event.type !== "added" && event.type !== "updated" && event.type !== "removed") return;
-			const key = event.query.queryKey;
+			const key = eventQueryKey(event);
 			if (key[0] === sessionRoot && key[1] === identityRoot && key[2] === viewedRouteId(router)) updateBadge();
 		});
 		document.addEventListener("visibilitychange", updateBadge);

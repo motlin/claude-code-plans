@@ -1572,7 +1572,9 @@ function PalettePopup({
 										value={`nav:${command.to}`}
 										icon={command.icon}
 										onSelect={() => {
-											select(async () => navigate({to: command.to}));
+											select(() => {
+												void navigate({to: command.to});
+											});
 										}}
 									>
 										{command.label}

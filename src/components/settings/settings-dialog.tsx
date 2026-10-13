@@ -57,6 +57,11 @@ export function preloadCustomizeDialogPanel(): Promise<CustomizeDialogPanelModul
 	return customizeDialogPanelModule;
 }
 
+/** Event-handler form of {@link preloadCustomizeDialogPanel}, for hover and focus. */
+function warmCustomizeDialogPanel(): void {
+	void preloadCustomizeDialogPanel();
+}
+
 /**
  * Suspends only while the module is still loading. Unlike React.lazy, which suspends on its first render even
  * when the module is already in hand and then holds the reveal for React's 300ms Suspense throttle, a preloaded
@@ -150,7 +155,7 @@ export function SettingsDialog() {
 	const finalFocus = useCallback(() => {
 		const target = returnFocusRef.current;
 		returnFocusRef.current = null;
-		return target !== null && target.isConnected ? target : true;
+		return target?.isConnected === true ? target : true;
 	}, []);
 
 	const tab = current?.tab ?? "general";
@@ -229,14 +234,10 @@ export function SettingsDialog() {
 													type="button"
 													aria-current={selected ? "page" : undefined}
 													onPointerEnter={
-														item.kind === "customize"
-															? preloadCustomizeDialogPanel
-															: undefined
+														item.kind === "customize" ? warmCustomizeDialogPanel : undefined
 													}
 													onFocus={
-														item.kind === "customize"
-															? preloadCustomizeDialogPanel
-															: undefined
+														item.kind === "customize" ? warmCustomizeDialogPanel : undefined
 													}
 													onClick={() => {
 														if (item.kind === "settings") selectTab(item.tab);

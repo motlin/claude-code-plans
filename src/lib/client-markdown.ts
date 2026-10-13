@@ -154,11 +154,7 @@ function linkText(tokens: readonly Token[]): string {
  * linkified, into one `type` token carrying the match as `meta`, the href, and
  * the link's plain text as `content`, so a renderer rule can draw it whole.
  */
-function collapseLinks<Meta>(
-	state: StateCore,
-	type: string,
-	match: (href: string, token: Token) => Meta | undefined,
-): void {
+function collapseLinks(state: StateCore, type: string, match: (href: string, token: Token) => unknown): void {
 	for (const block of state.tokens) {
 		const children = block.children;
 		if (block.type !== "inline" || children === null) continue;
@@ -363,8 +359,8 @@ function applyPlugins(instance: MarkdownIt): void {
 	// Links written inside a memory file keep their `.md` extension, but the
 	// route that serves them is keyed by the extension-less slug, so an
 	// unrewritten link is a hard 404 rather than a redirect.
-	const renderCodeInline = instance.renderer.rules["code_inline"]!;
-	instance.renderer.rules["code_inline"] = (tokens, idx, options, env, self) => {
+	const renderCodeInline = instance.renderer.rules.code_inline!;
+	instance.renderer.rules.code_inline = (tokens, idx, options, env, self) => {
 		const text = tokens[idx]!.content;
 		const ref = (env as MarkdownEnv | undefined)?.fileRefs?.get(text);
 		return ref === undefined
@@ -390,8 +386,8 @@ function applyPlugins(instance: MarkdownIt): void {
 	// Upstream wraps every fence in a relative box carrying an absolutely
 	// positioned top-right control strip with an icon-only copy button; a bare
 	// markdown-it `<pre>` has nowhere to anchor one.
-	const renderFence = instance.renderer.rules["fence"]!;
-	instance.renderer.rules["fence"] = (tokens, idx, options, env, self) =>
+	const renderFence = instance.renderer.rules.fence!;
+	instance.renderer.rules.fence = (tokens, idx, options, env, self) =>
 		`<div class="${CODEBLOCK_CLASS}">${renderFence(tokens, idx, options, env, self).trimEnd()}${COPY_STRIP}</div>\n`;
 
 	// Upstream renders every table inside an `overflow-x-auto` div so a table wider
@@ -515,7 +511,7 @@ export function renderMarkdownWithHighlighting(
 export function looksLikeMarkdown(text: string): boolean {
 	let indicators = 0;
 	if (/^#{1,6}\s/m.test(text)) indicators++;
-	if (/```/.test(text)) indicators++;
+	if (text.includes("```")) indicators++;
 	if (/^\s*[-*]\s/m.test(text)) indicators++;
 	if (/\*\*[^*]+\*\*/.test(text)) indicators++;
 	if (/\[[^\]]+\]\([^)]+\)/.test(text)) indicators++;

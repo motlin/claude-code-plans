@@ -298,7 +298,7 @@ describe("FilesTree content search", () => {
 		}));
 
 		fireEvent.keyDown(filterInput(), {key: "ArrowDown"});
-		fireEvent.keyDown(document.activeElement as Element, {key: "Enter"});
+		fireEvent.keyDown(document.activeElement!, {key: "Enter"});
 		fireEvent.click(screen.getAllByRole("button", {name: "Ask about this"})[0]!);
 
 		expect({

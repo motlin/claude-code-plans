@@ -200,7 +200,7 @@ export function isWithdrawnQuestion(call: AskedCall): boolean {
 	const questions = normalizeQuestions(call.input);
 	if (questions === null) return false;
 	const answers = answersFromResultMeta(call.resultMeta, questions) ?? parseAnswerResult(result, questions);
-	return answers !== null && answers.every((entry) => entry.answer.startsWith(DISMISSED_ANSWER_PREFIX));
+	return answers?.every((entry) => entry.answer.startsWith(DISMISSED_ANSWER_PREFIX)) === true;
 }
 
 const NOTES_MARKER = " user notes: ";

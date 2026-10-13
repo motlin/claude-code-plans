@@ -165,7 +165,7 @@ function extractSubagentSnapshot(
 				if (!pending) continue;
 				const text = getResultText(toolResult);
 				const match = AGENT_ID_RE.exec(text);
-				if (!match || !match[1]) {
+				if (!match?.[1]) {
 					pendingByToolUseId.delete(toolResult.tool_use_id);
 					continue;
 				}

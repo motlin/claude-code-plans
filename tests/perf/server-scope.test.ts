@@ -24,7 +24,7 @@ function withoutMs(counters: PerfCounters | undefined): unknown {
 
 describe("withPerfScope", () => {
 	it("counts each SQL statement run inside the scope", async () => {
-		const counters = await withPerfScope("three-selects", () => {
+		const counters = withPerfScope("three-selects", () => {
 			selectMetadata();
 			selectMetadata();
 			db.summaries.select().from(summaries).all();
@@ -40,7 +40,7 @@ describe("withPerfScope", () => {
 	});
 
 	it("returns the value of the wrapped function", async () => {
-		expect(await withPerfScope("value", () => 42)).toBe(42);
+		expect(withPerfScope("value", () => 42)).toBe(42);
 	});
 
 	it("keeps concurrent scopes separate", async () => {
@@ -72,7 +72,7 @@ describe("withPerfScope", () => {
 		selectMetadata();
 		expect(currentPerfCounters()).toBeUndefined();
 
-		const inner = await withPerfScope("after", () => currentPerfCounters()?.sql.count);
+		const inner = withPerfScope("after", () => currentPerfCounters()?.sql.count);
 		expect(inner).toBe(0);
 	});
 });

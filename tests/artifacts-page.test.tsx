@@ -442,7 +442,7 @@ describe("artifacts route", () => {
 			await tooltipFor(screen.getByRole("button", {name: "Search your artifacts"})),
 			await tooltipFor(screen.getByRole("button", {name: "Grid view"})),
 			await tooltipFor(screen.getByRole("button", {name: "Filter by type: All types"})),
-			await tooltipFor(screen.getAllByRole("img", {name: "Private"})[0] as HTMLElement),
+			await tooltipFor(screen.getAllByRole("img", {name: "Private"})[0]!),
 		]).toStrictEqual([
 			{text: "Search your artifacts", keys: "⌘CommandF"},
 			{text: "Grid view", keys: null},

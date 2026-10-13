@@ -53,7 +53,7 @@ export function SettingsRow({slug, title, description, children, footnote, class
 	const titleId = `${baseId}-title`;
 	const descriptionId = description === undefined ? undefined : `${baseId}-description`;
 	const flash = useContext(SettingsFlashContext);
-	const flashing = flash !== null && flash.row === slug;
+	const flashing = flash?.row === slug;
 	const rowRef = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {

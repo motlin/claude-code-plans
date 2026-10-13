@@ -1989,7 +1989,7 @@ describe("Per-tool input schemas", () => {
 	});
 
 	describe("MonitorInputSchema", () => {
-		const schema = toolInputSchemas["Monitor"];
+		const schema = toolInputSchemas.Monitor;
 		if (!schema) throw new Error("Missing Monitor input schema");
 
 		it("accepts persistent as a stringified boolean", () => {
@@ -2003,7 +2003,7 @@ describe("Per-tool input schemas", () => {
 	});
 
 	describe("SendMessageInputSchema", () => {
-		const schema = toolInputSchemas["SendMessage"];
+		const schema = toolInputSchemas.SendMessage;
 		if (!schema) throw new Error("Missing SendMessage input schema");
 
 		it("accepts recipient_kind name and agent", () => {
@@ -2023,7 +2023,7 @@ describe("Per-tool input schemas", () => {
 	});
 
 	describe("WebSearchInputSchema", () => {
-		const schema = toolInputSchemas["WebSearch"];
+		const schema = toolInputSchemas.WebSearch;
 		if (!schema) throw new Error("Missing WebSearch input schema");
 
 		it("accepts mode standard and extended", () => {
@@ -2070,7 +2070,7 @@ describe("Per-tool input schemas", () => {
 
 	describe("task tool schemas", () => {
 		it("accepts TaskCreate input without a subject", () => {
-			const schema = toolInputSchemas["TaskCreate"];
+			const schema = toolInputSchemas.TaskCreate;
 			if (!schema) throw new Error("Missing TaskCreate input schema");
 			const result = schema.safeParse({
 				description: "Create an example task",
@@ -2080,7 +2080,7 @@ describe("Per-tool input schemas", () => {
 		});
 
 		it("accepts TaskGet input with id", () => {
-			const schema = toolInputSchemas["TaskGet"];
+			const schema = toolInputSchemas.TaskGet;
 			if (!schema) throw new Error("Missing TaskGet input schema");
 			const result = schema.safeParse({id: "task-100"});
 			expect(result.success).toBe(true);

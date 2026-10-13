@@ -105,23 +105,20 @@ export const Route = createFileRoute("/api/hooks")({
 					});
 				}
 
+				const managedEvents = new Set(Object.keys(config.hooks));
 				const existingHooks = (existing["hooks"] ?? {}) as Record<string, unknown[]>;
-				for (const eventName of Object.keys(config.hooks)) {
-					const eventEntries = existingHooks[eventName];
-					if (!Array.isArray(eventEntries)) continue;
+				const remainingHooks = Object.fromEntries(
+					Object.entries(existingHooks).flatMap(([eventName, eventEntries]): Array<[string, unknown[]]> => {
+						if (!managedEvents.has(eventName) || !Array.isArray(eventEntries))
+							return [[eventName, eventEntries]];
+						const kept = eventEntries.filter((entry) => !containsManagedHook(entry));
+						return kept.length === 0 ? [] : [[eventName, kept]];
+					}),
+				);
+				const {hooks: _hooks, ...rest} = existing;
+				const updated = Object.keys(remainingHooks).length === 0 ? rest : {...existing, hooks: remainingHooks};
 
-					existingHooks[eventName] = eventEntries.filter((entry) => !containsManagedHook(entry));
-
-					if (existingHooks[eventName].length === 0) {
-						delete existingHooks[eventName];
-					}
-				}
-
-				if (Object.keys(existingHooks).length === 0) {
-					delete existing["hooks"];
-				}
-
-				await writeFile(settingsPath, JSON.stringify(existing, null, 2) + "\n", "utf-8");
+				await writeFile(settingsPath, JSON.stringify(updated, null, 2) + "\n", "utf-8");
 				return Response.json(HookMutationResponse.parse({ok: true, settingsPath}), {
 					headers: {"Cache-Control": "private, max-age=0, must-revalidate"},
 				});

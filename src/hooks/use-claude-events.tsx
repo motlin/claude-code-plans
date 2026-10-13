@@ -336,7 +336,7 @@ export function claudeEventsReducer(state: ClaudeEventsState, action: ClaudeEven
 			// same session — the tool is no longer in flight, it's errored.
 			const pendingTools = new Map(state.pendingTools);
 			const existingPending = pendingTools.get(sessionId);
-			if (existingPending && existingPending.toolUseId === toolUseId) {
+			if (existingPending?.toolUseId === toolUseId) {
 				pendingTools.delete(sessionId);
 			}
 			return {...state, failedTools, pendingTools};
@@ -1055,9 +1055,12 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 		[queryClient],
 	);
 
-	const dismissHookSchemaDrift = useCallback((hookEventName: string) => {
-		dispatch({type: "DISMISS_DRIFT", hookEventName});
-	}, []);
+	const dismissHookSchemaDrift = useCallback(
+		(hookEventName: string) => {
+			dispatch({type: "DISMISS_DRIFT", hookEventName});
+		},
+		[dispatch],
+	);
 
 	useEffect(() => syncUnseenFromQueryCache(queryClient), [queryClient]);
 
@@ -1068,7 +1071,7 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 		return () => {
 			clearInterval(timer);
 		};
-	}, []);
+	}, [dispatch]);
 
 	useEffect(() => {
 		function publishSessionState(sessionId: string, state: ActivityState, summary?: SessionSummaryPayload): void {
@@ -1087,7 +1090,7 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 		}
 
 		function handleLifecycleEvent(e: Event) {
-			const me = e as MessageEvent;
+			const me = e as MessageEvent<string>;
 			let data: Record<string, unknown> = {};
 			try {
 				data = JSON.parse(me.data) as Record<string, unknown>;
@@ -1103,7 +1106,7 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 		}
 
 		function handleStatuslineEvent(e: Event) {
-			const me = e as MessageEvent;
+			const me = e as MessageEvent<string>;
 			try {
 				const parsed = JSON.parse(me.data) as Record<string, unknown>;
 				const sessionId = parsed["sessionId"];
@@ -1118,7 +1121,7 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 		}
 
 		function handleDomainEvent(e: Event) {
-			const me = e as MessageEvent;
+			const me = e as MessageEvent<string>;
 			let data: Record<string, unknown>;
 			try {
 				data = JSON.parse(me.data) as Record<string, unknown>;
@@ -1469,7 +1472,7 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 				applyReconnected(queryClient);
 			},
 		});
-	}, [queryClient]);
+	}, [dispatch, queryClient]);
 
 	const contextValue: ClaudeEventsContextValue = useMemo(
 		() => ({

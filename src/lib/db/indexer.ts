@@ -613,7 +613,7 @@ class SessionIndexState {
 
 		if (line.includes("file-history-snapshot")) {
 			try {
-				const parsed = JSON.parse(line);
+				const parsed: unknown = JSON.parse(line);
 				const result = FileHistorySnapshotSchema.safeParse(parsed);
 				if (result.success) {
 					for (const key of Object.keys(result.data.snapshot.trackedFileBackups)) {
@@ -630,7 +630,7 @@ class SessionIndexState {
 		// the plan is edited (file-history-snapshot only fires after edits).
 		if (line.includes('"plan_mode"')) {
 			try {
-				const parsed = JSON.parse(line);
+				const parsed: unknown = JSON.parse(line);
 				const result = AttachmentRecordSchema.safeParse(parsed);
 				if (result.success && result.data.attachment.type === "plan_mode") {
 					const planPath = result.data.attachment.planFilePath;
@@ -710,7 +710,7 @@ class SessionIndexState {
 			};
 		};
 		try {
-			obj = JSON.parse(line);
+			obj = JSON.parse(line) as typeof obj;
 		} catch {
 			return; // skip malformed lines
 		}

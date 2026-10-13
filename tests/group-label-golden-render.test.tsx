@@ -103,7 +103,8 @@ describe("group label golden specimens rendered from JSONL", () => {
 		},
 	);
 
-	it.skip.each(recorded.filter((specimen) => specimen.skip !== undefined))("$session:$line ($skip)", (specimen) => {
+	it.for(recorded.filter((specimen) => specimen.skip !== undefined))("$session:$line ($skip)", (specimen, {skip}) => {
+		skip(specimen.skip);
 		expect(groupLabels(specimen.records)).toStrictEqual([specimen.upstream]);
 	});
 });

@@ -364,7 +364,7 @@ export function extractBackgroundTasks(
 			const stopTaskId = stoppers.get(toolUseId);
 			if (stopTaskId !== undefined && !isError) {
 				const tracked = byTaskId.get(stopTaskId);
-				if (tracked !== undefined && tracked.task.status === "running") settle(tracked, "stopped");
+				if (tracked?.task.status === "running") settle(tracked, "stopped");
 			}
 		}
 	}

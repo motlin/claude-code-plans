@@ -93,7 +93,7 @@ export function KeyboardShortcutsDialog() {
 	const finalFocus = useCallback(() => {
 		const target = returnFocusRef.current;
 		returnFocusRef.current = null;
-		return target !== null && target.isConnected ? target : true;
+		return target?.isConnected === true ? target : true;
 	}, []);
 
 	const sections = shortcutSections(

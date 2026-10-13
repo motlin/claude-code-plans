@@ -7,7 +7,7 @@ import {KeyValueCard} from "./shared";
  * exploring the codebase ... DO NOT write or edit any files yet."), identical
  * every time. Upstream claude.ai/code shows a short human status line instead.
  */
-const INSTRUCTION_RESULT_RE = /^Entered plan mode/;
+const INSTRUCTION_RESULT_PREFIX = "Entered plan mode";
 
 /**
  * EnterPlanMode takes no input, so there is nothing to show for a successful
@@ -17,7 +17,7 @@ const INSTRUCTION_RESULT_RE = /^Entered plan mode/;
 export function EnterPlanModeRenderer({toolCall}: ToolRendererProps) {
 	const {result} = toolCall;
 
-	const isBoilerplate = !result || result === "success" || INSTRUCTION_RESULT_RE.test(result);
+	const isBoilerplate = !result || result === "success" || result.startsWith(INSTRUCTION_RESULT_PREFIX);
 	if (!toolCall.isError && isBoilerplate) return null;
 
 	return <KeyValueCard isError={toolCall.isError} params={[]} result={result} />;

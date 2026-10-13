@@ -15,13 +15,18 @@ export type RunGit = (cwd: string, arguments_: string[], options?: RunGitOptions
 
 const execRunGit: RunGit = async (cwd, arguments_, options = {}) =>
 	new Promise((resolve, reject) => {
-		execFile("git", arguments_, {cwd, encoding: "utf8", maxBuffer: MAX_GIT_OUTPUT_BYTES}, (error, stdout) => {
-			if (error && !(options.allowDifferences === true && error.code === 1)) {
-				reject(error);
-				return;
-			}
-			resolve(stdout);
-		});
+		execFile(
+			"git",
+			arguments_,
+			{cwd, encoding: "utf8", maxBuffer: MAX_GIT_OUTPUT_BYTES},
+			(error: (Error & {code?: number | string}) | null, stdout: string) => {
+				if (error && !(options.allowDifferences === true && error.code === 1)) {
+					reject(error);
+					return;
+				}
+				resolve(stdout);
+			},
+		);
 	});
 
 export interface NoGit {

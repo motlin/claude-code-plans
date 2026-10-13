@@ -18,11 +18,11 @@ import {
 	keyDownAt,
 	makeJourneyHarness,
 	pointerDownAt,
-	useJourneyHarnessLifecycle,
+	registerJourneyHarnessLifecycle,
 	type JourneyHarness,
 } from "./harness/journey-harness";
 
-useJourneyHarnessLifecycle();
+registerJourneyHarnessLifecycle();
 
 function element(html: string): HTMLElement {
 	const template = document.createElement("template");

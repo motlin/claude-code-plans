@@ -451,7 +451,7 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 	const openFile = (path: string, options: {pin: boolean}): void => {
 		dispatchFileTabs({type: "open", path, pin: options.pin});
 	};
-	const target = lineTarget !== null && lineTarget.path === openPath ? lineTarget : null;
+	const target = lineTarget?.path === openPath ? lineTarget : null;
 
 	// Transcript file refs open as a preview tab, including one clicked while
 	// the pane was closed. Declared after useFileTabs so a restored tab set

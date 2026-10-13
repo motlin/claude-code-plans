@@ -398,7 +398,7 @@ describe("schema choice registry", () => {
 				);
 			}
 		}
-		expect(problems, problems.join("\n")).toEqual([]);
+		expect(problems).toEqual([]);
 	});
 
 	it("has no stale registry entries for removed choice nodes", () => {

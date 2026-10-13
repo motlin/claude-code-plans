@@ -101,7 +101,9 @@ describe("GET /api/usage", () => {
 
 	it("validates with the strict client response schema", async () => {
 		await writeStatusline("session.json", {rate_limits: RATE_LIMITS}, 1_700_000_000);
-		expect(() => UsageSummaryResponse.parse({fiveHour: null, sevenDay: null})).toThrow();
+		expect(() => UsageSummaryResponse.parse({fiveHour: null, sevenDay: null})).toThrow(
+			"Invalid input: expected string, received undefined",
+		);
 		expect(UsageSummaryResponse.parse(await requestUsage(directory))).toStrictEqual({
 			fiveHour: {usedPct: 16, resetsAt: 1_790_000_000},
 			sevenDay: {usedPct: 66, resetsAt: 1_790_300_000},

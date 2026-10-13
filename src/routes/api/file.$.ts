@@ -67,7 +67,7 @@ export async function handleFileRequest(
 				return new Response(null, {status: 304, headers});
 			}
 			const contentType = download ? "application/octet-stream" : (imageType ?? "");
-			return streamFile(file.path, file.sizeBytes, contentType, download, headers);
+			return await streamFile(file.path, file.sizeBytes, contentType, download, headers);
 		}
 
 		const file = await readAllowedFile(requestedPath, configPath, defaultRoots, {

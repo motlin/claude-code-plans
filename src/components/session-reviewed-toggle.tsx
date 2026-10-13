@@ -45,7 +45,9 @@ export function SessionReviewAction({onReview}: {onReview: () => Promise<unknown
 			)}
 			<button
 				type="button"
-				onClick={run}
+				onClick={() => {
+					void run();
+				}}
 				className={`cursor-pointer rounded-md border px-2 py-1 text-xs font-medium transition-colors ${
 					error
 						? "border-danger-000/30 text-danger-000 hover:bg-danger-000/10"

@@ -525,6 +525,10 @@ describe("dispatchHookEvent", () => {
 		const {store} = makeStore();
 		const reportCalls: Array<{event: HookEvent; entry: ActiveSessionEntry | null}> = [];
 		const pendingReport = new Promise<void>(() => {});
+		const neverSettlingReport = async (event: HookEvent, entry: ActiveSessionEntry | null): Promise<void> => {
+			reportCalls.push({event, entry});
+			await pendingReport;
+		};
 
 		await dispatchHookEvent({
 			event: {
@@ -536,10 +540,8 @@ describe("dispatchHookEvent", () => {
 			db: db.index,
 			store,
 			broadcast: () => {},
-			reportHerdrState: async (event, activeEntry) => {
-				reportCalls.push({event, entry: activeEntry});
-				await pendingReport;
-			},
+			// oxlint-disable-next-line typescript/no-misused-promises -- deliberately promise-returning: dispatch must complete without awaiting it
+			reportHerdrState: neverSettlingReport,
 		});
 
 		expect(reportCalls).toStrictEqual([

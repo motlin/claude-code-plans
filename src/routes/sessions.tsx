@@ -104,7 +104,7 @@ function SessionsByTime({activeIds}: {activeIds: ReadonlySet<string>}) {
 	for (const session of allSessions) {
 		const period = getTimePeriod(session.mtime);
 		const last = timePeriodGroups[timePeriodGroups.length - 1];
-		if (last && last.period === period) {
+		if (last?.period === period) {
 			last.sessions.push(session);
 		} else {
 			timePeriodGroups.push({period, sessions: [session]});

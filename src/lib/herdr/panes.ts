@@ -72,7 +72,7 @@ export async function readHerdrSnapshot(request: HerdrRequester): Promise<HerdrS
 /** The Claude transcript id herdr resolved for a pane, if the pane runs Claude at all. */
 export function claudeSessionId(pane: HerdrWirePane): string | null {
 	const session = pane.agent_session;
-	if (!session || session.kind !== "id" || session.agent !== "claude") return null;
+	if (session?.kind !== "id" || session.agent !== "claude") return null;
 	return session.value;
 }
 

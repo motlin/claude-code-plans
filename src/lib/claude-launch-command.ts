@@ -14,8 +14,8 @@ const VALUE_FLAGS: Record<string, (value: string) => boolean> = {
 /** Returns an error message, or null when `args` only uses the supported launch flags. */
 export function validateClaudeLaunchArgs(args: readonly string[]): string | null {
 	const seen = new Set<string>();
-	for (let index = 0; index < args.length; index++) {
-		const flag = args[index] as string;
+	const remaining = [...args];
+	for (let flag = remaining.shift(); flag !== undefined; flag = remaining.shift()) {
 		if (seen.has(flag)) return "duplicate claude argument";
 		seen.add(flag);
 
@@ -24,8 +24,7 @@ export function validateClaudeLaunchArgs(args: readonly string[]): string | null
 		const isValid = VALUE_FLAGS[flag];
 		if (!isValid) return "unsupported claude argument";
 
-		index++;
-		const value = args[index];
+		const value = remaining.shift();
 		if (value === undefined) return `${flag} requires a value`;
 		if (!isValid(value)) return `invalid value for ${flag}`;
 	}

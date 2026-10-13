@@ -67,7 +67,7 @@ let visibility: DocumentVisibilityState = "visible";
 const trackers: JourneyTracker[] = [];
 
 /** Resets the document's visibility and body before each test and disposes every harness tracker after it. */
-export function useJourneyHarnessLifecycle(): void {
+export function registerJourneyHarnessLifecycle(): void {
 	beforeEach(() => {
 		visibility = "visible";
 		Object.defineProperty(document, "visibilityState", {configurable: true, get: () => visibility});

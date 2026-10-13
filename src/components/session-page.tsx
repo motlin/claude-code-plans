@@ -853,7 +853,9 @@ function SessionView({
 													pane: paneState,
 													writesEnabled: herdr.writesEnabled,
 												})}
-												onCancel={chatStream.cancel}
+												onCancel={() => {
+													void chatStream.cancel();
+												}}
 												isStreaming={!promptBehavior.usesHerdr && chatStream.state.isStreaming}
 												onStop={stopAvailable ? stopResponse : undefined}
 												disabled={

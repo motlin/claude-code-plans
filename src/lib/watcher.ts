@@ -234,7 +234,7 @@ function diffAndBroadcastSessions(index: IndexDb, projectId: string, broadcast: 
 		);
 	}
 
-	const previous = lastSessionsByProject.get(projectId) ?? new Map();
+	const previous = lastSessionsByProject.get(projectId) ?? new Map<string, SessionSummaryPayload>();
 	const {added, removed, updated} = diffEntityMaps(previous, next, sessionSummariesEqual);
 
 	for (const session of added) {
@@ -272,7 +272,7 @@ function diffAndBroadcastTasks(projectId: string): void {
 		next.set(row.taskId, toTaskSummaryPayload(row));
 	}
 
-	const previous = lastTasksByProject.get(projectId) ?? new Map();
+	const previous = lastTasksByProject.get(projectId) ?? new Map<string, TaskSummaryPayload>();
 	const {added, removed, updated} = diffEntityMaps(previous, next, tasksEqual);
 
 	for (const task of added) {
@@ -743,6 +743,15 @@ async function handleFileChange(path: string): Promise<void> {
 	}
 }
 
+/** Watcher listeners: the emitter ignores returned promises, so these detach the async handlers explicitly. */
+function onFileChange(path: string): void {
+	void handleFileChange(path);
+}
+
+function onFileUnlink(path: string): void {
+	void handleFileUnlink(path);
+}
+
 async function handleFileUnlink(path: string): Promise<void> {
 	if (handleSessionRegistryEvent(path)) return;
 	if (handleJobFileEvent(path, jobsDir, broadcastTyped)) return;
@@ -835,9 +844,9 @@ export async function createWatcher(
 
 	watcher = createRecursiveWatcher(watchedRoots, shouldIgnoreWatch);
 
-	watcher.on("add", handleFileChange);
-	watcher.on("change", handleFileChange);
-	watcher.on("unlink", handleFileUnlink);
+	watcher.on("add", onFileChange);
+	watcher.on("change", onFileChange);
+	watcher.on("unlink", onFileUnlink);
 
 	return watcher;
 }

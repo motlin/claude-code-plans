@@ -10,14 +10,19 @@ import {
 } from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
-import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
+import {afterEach, beforeEach, describe, expect, expectTypeOf, it} from "vite-plus/test";
+import type {z} from "zod";
 import type {JourneySample} from "../../src/lib/perf/journey";
-import {handlePerfBeacon} from "../../src/lib/perf/field-sink";
+import {handlePerfBeacon, JourneySampleSchema} from "../../src/lib/perf/field-sink";
 
 const NOW = new Date("2026-10-01T12:00:00Z");
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 let cacheDir: string;
+
+it("keeps the server schema and the client sample type in lockstep", () => {
+	expectTypeOf<z.infer<typeof JourneySampleSchema>>().toEqualTypeOf<JourneySample>();
+});
 
 beforeEach(() => {
 	cacheDir = mkdtempSync(join(tmpdir(), "perf-field-sink-test-"));
@@ -72,7 +77,7 @@ function sample(overrides: Partial<JourneySample> = {}): JourneySample {
 	};
 }
 
-function beaconRequest(body: unknown, headers: HeadersInit = {"Sec-Fetch-Site": "same-origin"}): Request {
+function beaconRequest(body: unknown, headers: Record<string, string> = {"Sec-Fetch-Site": "same-origin"}): Request {
 	return new Request("http://localhost:7526/api/perf", {
 		method: "POST",
 		headers: {"Content-Type": "text/plain;charset=UTF-8", ...headers},

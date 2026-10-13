@@ -36,7 +36,7 @@ function toRanges(indices: readonly number[]): MatchRange[] {
 	const ranges: [number, number][] = [];
 	for (const index of indices) {
 		const last = ranges.at(-1);
-		if (last !== undefined && last[1] === index) last[1] = index + 1;
+		if (last?.[1] === index) last[1] = index + 1;
 		else ranges.push([index, index + 1]);
 	}
 	return ranges;

@@ -910,7 +910,7 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 						});
 						return;
 					}
-					if (/<local-command-caveat>/.test(text)) return;
+					if (text.includes("<local-command-caveat>")) return;
 					const cleaned = stripCommandTags(text);
 					if (cleaned) {
 						textBlocks.push(cleaned);
@@ -980,7 +980,7 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 						} else if (block.type === "tool_use") {
 							const tc: ToolCallInfo = {
 								id: block.id ?? "",
-								name: block.name as string,
+								name: block.name ?? "",
 								input: block.input ?? {},
 								sourceUuid,
 							};
@@ -1018,7 +1018,7 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 			}
 
 			const last = messages[messages.length - 1];
-			if (last && last.role === type) {
+			if (last?.role === type) {
 				if (last.isCommand) {
 					last.toolCalls.push(...toolCalls);
 					last.content.push(...contentBlocks);

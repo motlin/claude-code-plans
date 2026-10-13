@@ -32,7 +32,7 @@ export async function listTrackedFiles(root: string): Promise<string[]> {
 			"git",
 			["-C", resolvedRoot, "ls-files", "-z", "--cached"],
 			{encoding: "utf8", maxBuffer: MAX_GIT_OUTPUT_BYTES},
-			(error, stdout) => {
+			(error: Error | null, stdout: string) => {
 				if (error) {
 					rejectFiles(error);
 					return;

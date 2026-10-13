@@ -271,7 +271,9 @@ describe("Composer", () => {
 			if (anchor === null) throw new Error("ring has no tooltip anchor");
 
 			fireEvent.pointerEnter(anchor);
-			act(() => vi.advanceTimersByTime(400));
+			act(() => {
+				vi.advanceTimersByTime(400);
+			});
 
 			expect(screen.getByRole("tooltip").textContent?.split("\n")).toStrictEqual([
 				"Context 190.2k / 1M (19%)",

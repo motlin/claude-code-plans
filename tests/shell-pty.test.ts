@@ -27,8 +27,8 @@ class FakePty implements PtyProcess {
 	readonly written: string[] = [];
 	readonly resizes: Array<[number, number]> = [];
 	readonly kills: Array<string | undefined> = [];
-	private dataListeners: Array<(data: string) => void> = [];
-	private exitListeners: Array<(event: {exitCode: number; signal?: number}) => void> = [];
+	private readonly dataListeners: Array<(data: string) => void> = [];
+	private readonly exitListeners: Array<(event: {exitCode: number; signal?: number}) => void> = [];
 
 	onData(listener: (data: string) => void) {
 		this.dataListeners.push(listener);

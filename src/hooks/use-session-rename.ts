@@ -24,7 +24,7 @@ export function useSessionRename(sessionId: string, serverTitle: string): Sessio
 	const mutation = useRenameSessionMutation(sessionId);
 	const [editing, setEditing] = useState(false);
 	const [pending, setPending] = useState<{title: string; replaces: string} | null>(null);
-	const title = pending !== null && pending.replaces === serverTitle ? pending.title : serverTitle;
+	const title = pending?.replaces === serverTitle ? pending.title : serverTitle;
 
 	const commit = useCallback(
 		(value: string) => {

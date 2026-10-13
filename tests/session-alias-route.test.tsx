@@ -322,7 +322,9 @@ it.each([404, 409, 503])("shows an honest %s lookup error and supports manual re
 	const message = (await screen.findByRole("alert")).textContent;
 	const failedRequests = fetcher.mock.calls.length;
 	const title = document.title;
-	act(() => document.dispatchEvent(new Event("visibilitychange")));
+	act(() => {
+		document.dispatchEvent(new Event("visibilitychange"));
+	});
 	const attentionTitle = document.title;
 	client.setQueryData<SessionDetailData | null>(sessionDetailQueryOptions(ALICE).queryKey, ALICE_DETAIL);
 	setLookup(async () => Response.json({sessionId: ALICE}));
@@ -657,12 +659,12 @@ it("waits for a pending backfill marker to clear before seeding a canonical alia
 		pathname: router.state.location.pathname,
 		identity: client.getQueryState(sessionIdentityQueryOptions(ALIAS).queryKey),
 	};
-	act(() =>
+	act(() => {
 		client.setQueryData<SessionDetailData | null>(sessionDetailQueryOptions(ALICE).queryKey, () => ({
 			...ALICE_DETAIL,
 			canonicalRouteId: ALIAS,
-		})),
-	);
+		}));
+	});
 	await waitFor(() => {
 		expect(router.state.location.pathname).toBe(`/session/${ALIAS}`);
 	});

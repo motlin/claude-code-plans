@@ -173,7 +173,7 @@ export function useSidebarDrag(options: UseSidebarDragOptions): UseSidebarDrag {
 		// otherwise zones come before lists, each in registration order.
 		let best = candidates[0];
 		for (const candidate of candidates.slice(1)) {
-			if (best !== undefined && best.element.contains(candidate.element)) {
+			if (best?.element.contains(candidate.element) === true) {
 				best = candidate;
 			}
 		}

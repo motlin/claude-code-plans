@@ -23,6 +23,9 @@ function scalarFixture(): Record<string, unknown> {
 			case "string":
 				result[field.key] = "value";
 				break;
+			case "object":
+				// Object fields render through OBJECT_EDITORS; objectEditorsFixture covers them.
+				break;
 		}
 	}
 	return result;

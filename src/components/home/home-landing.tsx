@@ -13,7 +13,7 @@ import {PullRequestsSection} from "./pull-requests-section";
  */
 export function HomeLanding({dock}: Readonly<{dock?: ReactNode}>) {
 	const attention = useHomeAttention();
-	const clear = attention !== undefined && attention.items.length === 0 && attention.prs.length === 0;
+	const clear = attention?.items.length === 0 && attention.prs.length === 0;
 
 	return (
 		<HomePage clear={clear} dock={dock}>

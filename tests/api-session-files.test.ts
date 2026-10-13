@@ -384,7 +384,9 @@ describe("GET /api/sessions/$id/files", () => {
 describe("session files client", () => {
 	it("parses every response kind strictly", () => {
 		expect(SessionFilesResponseSchema.parse({kind: "no-cwd"})).toStrictEqual({kind: "no-cwd"});
-		expect(() => SessionFilesResponseSchema.parse({kind: "no-cwd", extra: 1})).toThrow();
+		expect(() => SessionFilesResponseSchema.parse({kind: "no-cwd", extra: 1})).toThrow(
+			/Unrecognized key: \\"extra\\"/,
+		);
 	});
 
 	it("builds the query key and URL from the query-string parameters", () => {

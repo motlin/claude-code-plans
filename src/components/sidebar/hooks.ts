@@ -1,14 +1,19 @@
-import type {useMatches} from "@tanstack/react-router";
 import {fromMdSlug} from "../../lib/md-slug";
 import type {Section} from "./types";
 
-export function useActiveSection(matches: ReturnType<typeof useMatches>): {
+/** The parts of a router match this reads; `useMatches()` results satisfy it. */
+interface ActiveMatch {
+	fullPath: string;
+	params: Partial<Record<string, string>>;
+}
+
+export function activeSectionFor(matches: readonly ActiveMatch[]): {
 	section: Section | null;
 	activeItemId: string | null;
 } {
-	const lastMatch = matches[matches.length - 1];
+	const lastMatch = matches.at(-1);
 	const path = lastMatch?.fullPath ?? "/";
-	const params = lastMatch?.params as Record<string, string> | undefined;
+	const params = lastMatch?.params;
 
 	if (path.startsWith("/artifacts")) {
 		return {section: "artifacts", activeItemId: null};

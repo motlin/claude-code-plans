@@ -1,5 +1,5 @@
 declare module "markdown-it-task-lists" {
-	import type MarkdownIt from "markdown-it";
-	const taskLists: MarkdownIt.PluginSimple;
+	import type {PluginSimple} from "markdown-it";
+	const taskLists: PluginSimple;
 	export default taskLists;
 }

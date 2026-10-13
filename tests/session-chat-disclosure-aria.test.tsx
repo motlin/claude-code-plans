@@ -97,7 +97,7 @@ describe("SessionChat disclosure accessibility", () => {
 		const control = container.querySelector('[role="button"]');
 		const collapsed = disclosureState(control);
 
-		fireEvent.click(control as Element);
+		fireEvent.click(control!);
 
 		await waitFor(() => {
 			expect(disclosureState(control)).toStrictEqual({
@@ -109,7 +109,7 @@ describe("SessionChat disclosure accessibility", () => {
 		});
 
 		const expanded = disclosureState(control);
-		fireEvent.click(control as Element);
+		fireEvent.click(control!);
 
 		expect({collapsed, expanded, collapsedAgain: disclosureState(control)}).toStrictEqual({
 			collapsed: {

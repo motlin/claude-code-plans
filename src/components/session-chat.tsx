@@ -136,7 +136,7 @@ function useModeExpansion(key: string): [boolean, () => void] {
 	const mode = useContext(TranscriptModeContext);
 	const store = useContext(ExpansionStoreContext);
 	const [toggle, setToggle] = useState<ExpansionToggle | null>(() => store?.get(key) ?? null);
-	const expanded = toggle !== null && toggle.mode === mode ? toggle.expanded : mode === "verbose";
+	const expanded = toggle?.mode === mode ? toggle.expanded : mode === "verbose";
 	const flip = useCallback(() => {
 		const next = {mode, expanded: !expanded};
 		store?.set(key, next);
@@ -858,7 +858,7 @@ function GroupedToolCallEntry({
 			const calls = buildLineToolCalls(line, toolResultMap, liveFailures, subagentLookup);
 			if (calls.length === 0) continue;
 			const sourceSessionId = getSourceSessionId(line, sessionId);
-			if (openBatch !== undefined && openBatch.sourceSessionId === sourceSessionId) {
+			if (openBatch?.sourceSessionId === sourceSessionId) {
 				openBatch.calls.push(...calls);
 				continue;
 			}
@@ -1070,7 +1070,7 @@ function hoistedAgentCompletions(
 	let launches: Map<string, number> | null = null;
 	for (const [index, line] of lines.entries()) {
 		const completion = agentCompletionOf(line);
-		if (completion === null || completion.toolUseId === null) continue;
+		if (completion?.toolUseId == null) continue;
 		launches ??= new Map(
 			lines.flatMap((candidate, candidateIndex) =>
 				candidate.type === "assistant" && Array.isArray(candidate.message?.content)
@@ -2476,7 +2476,7 @@ function VirtualizedSessionEntries({
 		return () => {
 			observer.disconnect();
 		};
-	}, [entries, range.startIndex, range.endIndex, managesTileGeometry, holdScrollAnchor]);
+	}, [entries, range.startIndex, range.endIndex, managesTileGeometry, holdScrollAnchor, restoration.source]);
 
 	useLayoutEffect(() => {
 		const scroller = scrollerRef.current;
@@ -3050,7 +3050,7 @@ function classifyUserContent(line: MessageSessionLine): UserContentKind {
 			if (parseCommandBlock(block.text)) hasCommand = true;
 			else if (parseBashInput(block.text)) hasBash = true;
 			else if (parseBashOutput(block.text)) hasBash = true;
-			else if (/<local-command-caveat>/.test(block.text)) {
+			else if (block.text.includes("<local-command-caveat>")) {
 				// skip caveat blocks
 			} else {
 				const cleaned = stripCommandTags(block.text);
@@ -3416,7 +3416,7 @@ function SubagentPromptEntry({line, sessionId}: {line: MessageSessionLine; sessi
 	} else if (Array.isArray(content)) {
 		for (const block of content) {
 			if (block.type === "text" && typeof block.text === "string") {
-				if (/<local-command-caveat>/.test(block.text)) continue;
+				if (block.text.includes("<local-command-caveat>")) continue;
 				const cleaned = stripCommandTags(block.text);
 				if (cleaned) textBlocks.push(cleaned);
 			}
@@ -3503,7 +3503,7 @@ function renderUserContentBlocks(
 	for (let i = 0; i < content.length; i++) {
 		const block = content[i]!;
 		if (block.type === "text" && typeof block.text === "string") {
-			if (/<local-command-caveat>/.test(block.text)) continue;
+			if (block.text.includes("<local-command-caveat>")) continue;
 			const cleaned = stripCommandTags(block.text);
 			if (!cleaned) continue;
 			inlineImageText.push(cleaned);

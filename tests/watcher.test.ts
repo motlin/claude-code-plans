@@ -1133,9 +1133,9 @@ describe("createWatcher integration", () => {
 				result: recursiveWatcher,
 				createCalls: [[[watchedDirectory, fileContentRoot], shouldIgnoreWatch]],
 				onCalls: [
-					["add", "handleFileChange"],
-					["change", "handleFileChange"],
-					["unlink", "handleFileUnlink"],
+					["add", "onFileChange"],
+					["change", "onFileChange"],
+					["unlink", "onFileUnlink"],
 				],
 			});
 		} finally {

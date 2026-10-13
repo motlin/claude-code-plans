@@ -198,7 +198,7 @@ describe("routines route", () => {
 	});
 
 	it("shows only the hidden count when every routine has completed", async () => {
-		await renderRoutinesPage([ROUTINES[3] as Routine]);
+		await renderRoutinesPage([ROUTINES[3]!]);
 
 		expect({
 			list: screen.queryByRole("list", {name: "Routines"}),

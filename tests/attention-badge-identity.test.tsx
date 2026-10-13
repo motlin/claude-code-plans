@@ -117,7 +117,9 @@ describe("attention badges for session aliases", () => {
 		publish(ALICE);
 		publish(BOB);
 		const pending = snapshot();
-		act(() => client.setQueryData(sessionQueryKeys.identity(ALIAS), {sessionId: ALICE}));
+		act(() => {
+			client.setQueryData(sessionQueryKeys.identity(ALIAS), {sessionId: ALICE});
+		});
 		const resolved = snapshot();
 		act(() => {
 			client.removeQueries({queryKey: sessionQueryKeys.identity(ALIAS), exact: true});
@@ -169,7 +171,9 @@ describe("attention badges for session aliases", () => {
 		publish(ALICE);
 		const visible = snapshot();
 		vi.spyOn(document, "hidden", "get").mockReturnValue(true);
-		act(() => document.dispatchEvent(new Event("visibilitychange")));
+		act(() => {
+			document.dispatchEvent(new Event("visibilitychange"));
+		});
 		const hidden = snapshot();
 		vi.spyOn(document, "hidden", "get").mockReturnValue(false);
 		await act(async () => router.navigate({to: "/session/$id", params: {id: BOB}}));

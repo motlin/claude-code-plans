@@ -72,7 +72,7 @@ function extractQuestionPreview(input: Record<string, unknown> | undefined): str
 	if (typeof direct === "string" && direct.trim()) return direct.trim();
 	const questions = input["questions"];
 	if (Array.isArray(questions) && questions.length > 0) {
-		const first = questions[0];
+		const first: unknown = questions[0];
 		if (first && typeof first === "object") {
 			const text = (first as Record<string, unknown>)["question"];
 			if (typeof text === "string" && text.trim()) return text.trim();

@@ -321,7 +321,7 @@ export function FilesTree({
 	let footer: string | null = null;
 	if (data?.kind === "search" && data.capped) {
 		footer = `Only the first ${data.results.length} results are shown. Keep typing to narrow.`;
-	} else if (data !== undefined && data.partial) {
+	} else if (data?.partial === true) {
 		footer = PARTIAL_FOOTER;
 	}
 

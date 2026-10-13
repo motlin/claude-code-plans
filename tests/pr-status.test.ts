@@ -53,9 +53,13 @@ describe("parseGhPrList", () => {
 	});
 
 	it("rejects output that does not match the strict schema", () => {
-		expect(() => parseGhPrList('[{"number":6,"state":"OPEN"}]')).toThrow();
-		expect(() => parseGhPrList('[{"number":6,"state":"OPEN","isDraft":false,"x":1}]')).toThrow();
-		expect(() => parseGhPrList("not json")).toThrow();
+		expect(() => parseGhPrList('[{"number":6,"state":"OPEN"}]')).toThrow(
+			"Invalid input: expected boolean, received undefined",
+		);
+		expect(() => parseGhPrList('[{"number":6,"state":"OPEN","isDraft":false,"x":1}]')).toThrow(
+			/Unrecognized key: \\"x\\"/,
+		);
+		expect(() => parseGhPrList("not json")).toThrow("is not valid JSON");
 	});
 });
 

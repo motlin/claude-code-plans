@@ -97,7 +97,7 @@ function regions(container: HTMLElement): Region[] {
 describe("expanded tool bodies expose labelled, focusable scroll regions", () => {
 	it("names an expanded Skill row's scroller 'Tool call details'", async () => {
 		const container = renderTranscript(oneToolCall("Skill", {skill: "alice-skill"}, "Launching skill"));
-		fireEvent.click(container.querySelector('[role="button"]') as Element);
+		fireEvent.click(container.querySelector('[role="button"]')!);
 
 		await waitFor(() => {
 			expect(regions(container)).toStrictEqual([
@@ -108,7 +108,7 @@ describe("expanded tool bodies expose labelled, focusable scroll regions", () =>
 
 	it("names an expanded Bash row's output 'Tool output'", async () => {
 		const container = renderTranscript(oneToolCall("Bash", {command: "ls"}, "alice.ts"));
-		fireEvent.click(container.querySelector('[role="button"]') as Element);
+		fireEvent.click(container.querySelector('[role="button"]')!);
 
 		await waitFor(() => {
 			expect(regions(container)).toStrictEqual([{label: "Tool output", tabIndex: 0, text: "alice.ts"}]);
@@ -217,7 +217,7 @@ describe("CopyButton", () => {
 
 	it("uses the xs size in the Bash command card", () => {
 		const {container} = render(<BashRenderer toolCall={toolCall("Bash", {command: "ls"}, "$ ls\nalice.ts")} />);
-		const card = container.querySelector("[data-bash-code-card]") as HTMLElement;
+		const card = container.querySelector<HTMLElement>("[data-bash-code-card]")!;
 
 		expect(buttonShape(card)).toStrictEqual({
 			className:

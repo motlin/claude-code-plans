@@ -14,10 +14,10 @@ import {
 	makeJourneyHarness as makeHarness,
 	pointerDownAt,
 	setDocumentVisibility,
-	useJourneyHarnessLifecycle,
+	registerJourneyHarnessLifecycle,
 } from "./harness/journey-harness";
 
-useJourneyHarnessLifecycle();
+registerJourneyHarnessLifecycle();
 
 describe("deriveOrigin", () => {
 	it("classifies loopback hostnames as localhost and everything else as remote", () => {

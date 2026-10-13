@@ -43,7 +43,7 @@ export function UsagePaceBand({
 export function UsagePaceBanner() {
 	const {data: usage, dataUpdatedAt} = useQuery(usageQueryOptions);
 	const dismissedUntil = usePaceBannerDismissedUntil();
-	if (usage === undefined || usage.sevenDay === null) return null;
+	if (usage?.sevenDay == null) return null;
 	if (!shouldShowPaceBanner(usage, dataUpdatedAt, dismissedUntil)) return null;
 	const {usedPct, resetsAt} = usage.sevenDay;
 	return (

@@ -330,7 +330,7 @@ function GetConsoleMessageRenderer({resultText}: {resultText: string}) {
 						let isJson = false;
 						let formatted = arg.value;
 						try {
-							const parsed = JSON.parse(arg.value);
+							const parsed: unknown = JSON.parse(arg.value);
 							formatted = JSON.stringify(parsed, null, 2);
 							isJson = true;
 						} catch {

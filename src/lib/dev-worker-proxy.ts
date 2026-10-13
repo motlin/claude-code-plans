@@ -20,7 +20,7 @@ interface DevPlugin {
 	name: string;
 	apply: "serve";
 	enforce?: "pre";
-	configureServer(server: DevServerLike): void | (() => void);
+	configureServer(server: DevServerLike): (() => void) | undefined;
 }
 
 const CLIENT_DISCONNECT_CODES = new Set([

@@ -6,7 +6,9 @@ import {type Binding, bindingToKeys, type ShortcutId} from "../lib/shortcuts/reg
 import {useIsMac} from "./use-is-mac";
 
 /** Return `false` to decline the event and let the next handler claim it. */
-export type ShortcutHandler = (event: KeyboardEvent, binding: Binding) => boolean | void;
+export type ShortcutHandler =
+	| ((event: KeyboardEvent, binding: Binding) => boolean)
+	| ((event: KeyboardEvent, binding: Binding) => void);
 
 export interface ShortcutOptions {
 	disabled?: boolean;

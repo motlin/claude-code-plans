@@ -3,6 +3,7 @@ import {AlertCircle, Check, ChevronDown, ChevronRight, Plus, RotateCcw, Save, Tr
 import {useCallback, useEffect, useId, useRef, useState} from "react";
 import {useHighlightedLines} from "../../hooks/use-shiki";
 import {useSaveSettingsFile} from "../../lib/api/settings";
+import {withoutKey} from "../../lib/without-key";
 import {
 	DEDICATED_EDITOR_KEYS,
 	FIELD_DEFINITIONS,
@@ -208,7 +209,9 @@ export function JsonEditor({filename, initialContent, path}: {filename: string; 
 			<div className="flex items-center gap-2">
 				<button
 					type="button"
-					onClick={handleSave}
+					onClick={() => {
+						void handleSave();
+					}}
 					disabled={saving || validationError !== null || !isDirty}
 					className="flex items-center gap-1.5 rounded-md bg-accent-100 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-accent-100/80 disabled:opacity-50"
 				>
@@ -420,26 +423,23 @@ function EnvEditor({
 
 	const handleEntryChange = useCallback(
 		(oldKey: string, field: "key" | "value", fieldValue: string) => {
-			const updated = {...value};
 			if (field === "key") {
-				const currentValue = updated[oldKey] ?? "";
-				delete updated[oldKey];
+				const currentValue = value[oldKey] ?? "";
+				const updated = withoutKey(value, oldKey);
 				if (fieldValue) {
 					updated[fieldValue] = currentValue;
 				}
+				onChange("env", updated);
 			} else {
-				updated[oldKey] = fieldValue;
+				onChange("env", {...value, [oldKey]: fieldValue});
 			}
-			onChange("env", updated);
 		},
 		[value, onChange],
 	);
 
 	const handleRemove = useCallback(
 		(key: string) => {
-			const updated = {...value};
-			delete updated[key];
-			onChange("env", updated);
+			onChange("env", withoutKey(value, key));
 		},
 		[value, onChange],
 	);
@@ -822,9 +822,7 @@ function HooksEditor({
 
 	const handleRemoveEvent = useCallback(
 		(eventName: string) => {
-			const updated = {...value};
-			delete updated[eventName];
-			onChange("hooks", updated);
+			onChange("hooks", withoutKey(value, eventName));
 			if (expandedEvent === eventName) setExpandedEvent(null);
 		},
 		[value, onChange, expandedEvent],
@@ -1109,9 +1107,7 @@ function PluginsEditor({
 
 	const handleRemove = useCallback(
 		(pluginName: string) => {
-			const updated = {...value};
-			delete updated[pluginName];
-			onChange("enabledPlugins", updated);
+			onChange("enabledPlugins", withoutKey(value, pluginName));
 		},
 		[value, onChange],
 	);
@@ -1333,9 +1329,7 @@ export function ObjectFieldsEditor({
 
 	const clear = useCallback(
 		(subKey: string) => {
-			const updated = {...value};
-			delete updated[subKey];
-			onChange(def.key, updated);
+			onChange(def.key, withoutKey(value, subKey));
 		},
 		[def.key, value, onChange],
 	);
@@ -1487,9 +1481,7 @@ export function MarketplacesEditor({
 
 	const handleRemove = useCallback(
 		(name: string) => {
-			const updated = {...value};
-			delete updated[name];
-			onChange("extraKnownMarketplaces", updated);
+			onChange("extraKnownMarketplaces", withoutKey(value, name));
 			if (expanded === name) setExpanded(null);
 		},
 		[value, onChange, expanded],
@@ -1505,7 +1497,7 @@ export function MarketplacesEditor({
 			} else if (fieldValue) {
 				source[field] = fieldValue;
 			} else {
-				delete source[field];
+				Reflect.deleteProperty(source, field);
 			}
 			onChange("extraKnownMarketplaces", {...value, [name]: {...entry, source}});
 		},
@@ -1719,6 +1711,12 @@ export function MarketplacesEditor({
 	);
 }
 
+/** An empty array or empty plain object, which the dedicated editors leave behind and saving drops. */
+function isEmptyContainer(val: unknown): boolean {
+	if (Array.isArray(val)) return val.length === 0;
+	return typeof val === "object" && val !== null && Object.keys(val).length === 0;
+}
+
 export function FormEditor({filename, initialContent, path}: {filename: string; initialContent: string; path: string}) {
 	const [data, setData] = useState<Record<string, unknown>>(() => {
 		try {
@@ -1742,16 +1740,9 @@ export function FormEditor({filename, initialContent, path}: {filename: string; 
 	const handleSave = useCallback(async () => {
 		setFeedback(null);
 		try {
-			const cleaned = {...data};
-			for (const key of DEDICATED_EDITOR_KEYS) {
-				const val = cleaned[key];
-				if (val === undefined || val === null) continue;
-				if (Array.isArray(val) && val.length === 0) {
-					delete cleaned[key];
-				} else if (typeof val === "object" && !Array.isArray(val) && Object.keys(val).length === 0) {
-					delete cleaned[key];
-				}
-			}
+			const cleaned = Object.fromEntries(
+				Object.entries(data).filter(([key, val]) => !DEDICATED_EDITOR_KEYS.has(key) || !isEmptyContainer(val)),
+			);
 			const content = JSON.stringify(cleaned, null, 2);
 			const result = await saveMutation.mutateAsync({
 				filename: filename as "settings.json" | "settings.local.json",
@@ -1960,7 +1951,9 @@ export function FormEditor({filename, initialContent, path}: {filename: string; 
 			<div className="flex items-center gap-2">
 				<button
 					type="button"
-					onClick={handleSave}
+					onClick={() => {
+						void handleSave();
+					}}
 					disabled={saving || !isDirty}
 					className="flex items-center gap-1.5 rounded-md bg-accent-100 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-accent-100/80 disabled:opacity-50"
 				>

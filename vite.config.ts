@@ -293,8 +293,24 @@ export default defineConfig({
 					"@typescript-eslint/await-thenable": "error",
 					"@typescript-eslint/require-await": "error",
 					"@typescript-eslint/return-await": ["error", "error-handling-correctness-only"],
-					"@typescript-eslint/only-throw-error": "error",
-					"@typescript-eslint/switch-exhaustiveness-check": "error",
+					"@typescript-eslint/only-throw-error": [
+						"error",
+						{
+							// TanStack Router control flow and crossws upgrade rejections are thrown by design.
+							allow: [
+								{
+									from: "package",
+									package: "@tanstack/router-core",
+									name: ["Redirect", "NotFoundError"],
+								},
+								{from: "lib", name: "Response"},
+							],
+						},
+					],
+					"@typescript-eslint/switch-exhaustiveness-check": [
+						"error",
+						{considerDefaultExhaustiveForUnions: true},
+					],
 					"@typescript-eslint/no-unnecessary-type-assertion": "error",
 					"@typescript-eslint/prefer-nullish-coalescing": "error",
 					"@typescript-eslint/no-unsafe-enum-comparison": "error",
@@ -392,6 +408,7 @@ export default defineConfig({
 					"@typescript-eslint/no-unsafe-member-access": "off",
 					"@typescript-eslint/no-unsafe-call": "off",
 					"@typescript-eslint/no-unsafe-argument": "off",
+					"@typescript-eslint/no-unsafe-return": "off",
 					"vitest/no-focused-tests": "error",
 					"vitest/no-disabled-tests": "error",
 					"vitest/no-identical-title": "error",
@@ -407,55 +424,18 @@ export default defineConfig({
 				files: ["**/*.{ts,tsx}"],
 				plugins: ["typescript", "react", "import", "vitest"],
 				rules: {
-					"@typescript-eslint/await-thenable": "off", // 3
 					"@typescript-eslint/consistent-return": "off", // 65
-					"@typescript-eslint/dot-notation": "off", // 9
 					"@typescript-eslint/no-deprecated": "off", // 83
-					"@typescript-eslint/no-dynamic-delete": "off", // 14
-					"@typescript-eslint/no-floating-promises": "off", // 25
-					"@typescript-eslint/no-invalid-void-type": "off", // 2
-					"@typescript-eslint/no-misused-promises": "off", // 24
-					"@typescript-eslint/no-misused-spread": "off", // 2
 					"@typescript-eslint/no-non-null-assertion": "off", // 297
-					"@typescript-eslint/no-unnecessary-boolean-literal-compare": "off", // 3
 					"@typescript-eslint/no-unnecessary-condition": "off", // 324
-					"@typescript-eslint/no-unnecessary-template-expression": "off", // 1
-					"@typescript-eslint/no-unnecessary-type-parameters": "off", // 3
-					"@typescript-eslint/no-unsafe-argument": "off", // 8
-					"@typescript-eslint/no-unsafe-assignment": "off", // 13
-					"@typescript-eslint/no-unsafe-call": "off", // 17
-					"@typescript-eslint/no-unsafe-member-access": "off", // 25
-					"@typescript-eslint/no-unsafe-return": "off", // 23
 					"@typescript-eslint/no-unsafe-type-assertion": "off", // 382
-					"@typescript-eslint/non-nullable-type-assertion-style": "off", // 29
-					"@typescript-eslint/only-throw-error": "off", // 13
-					"@typescript-eslint/prefer-includes": "off", // 8
 					"@typescript-eslint/prefer-nullish-coalescing": "off", // 46
-					"@typescript-eslint/prefer-optional-chain": "off", // 23
-					"@typescript-eslint/prefer-promise-reject-errors": "off", // 6
-					"@typescript-eslint/prefer-readonly": "off", // 2
-					"@typescript-eslint/prefer-string-starts-ends-with": "off", // 5
 					"@typescript-eslint/require-await": "off", // 387
-					"@typescript-eslint/return-await": "off", // 1
 					"@typescript-eslint/strict-boolean-expressions": "off", // 647
-					"@typescript-eslint/switch-exhaustiveness-check": "off", // 14
 					"no-negated-condition": "off", // 71
 					"no-promise-executor-return": "off", // 122
-					"no-useless-constructor": "off", // 1
-					"react-hooks/exhaustive-deps": "off", // 6
 					"react/only-export-components": "off", // 239 warnings, 86 in TanStack route modules that must export Route
-					"vitest/no-disabled-tests": "off", // 2
 					"vitest/require-mock-type-parameters": "off", // 332
-					"vitest/require-to-throw-message": "off", // 13
-					"vitest/valid-expect": "off", // 2
-				},
-			},
-			// Test harness helpers named use* run at module scope and in anonymous callbacks.
-			{
-				files: ["tests/**/*.{ts,tsx}"],
-				plugins: ["react"],
-				rules: {
-					"react-hooks/rules-of-hooks": "off", // 4
 				},
 			},
 		],

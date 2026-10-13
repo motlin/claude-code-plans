@@ -188,7 +188,7 @@ async function runGhCommand(args: string[], cwd: string | undefined): Promise<st
 				timeout: GH_TIMEOUT_MS,
 				env: {...process.env, GH_PROMPT_DISABLED: "1", NO_COLOR: "1"},
 			},
-			(error, stdout) => {
+			(error: Error | null, stdout: string) => {
 				if (error) {
 					reject(error);
 					return;

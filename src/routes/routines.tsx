@@ -49,9 +49,9 @@ export const Route = createFileRoute("/routines")({
  * inside a session here.
  */
 function RoutinesPage() {
-	const {data: routines} = useSuspenseQuery(routinesQueryOptions);
+	// Relative times are measured from when this data arrived, so they stay stable across re-renders.
+	const {data: routines, dataUpdatedAt: now} = useSuspenseQuery(routinesQueryOptions);
 	const [view, setView] = useState<RoutineView>(DEFAULT_ROUTINE_VIEW);
-	const now = useMemo(() => Date.now(), [routines]);
 
 	const {visible, hiddenCompleted} = useMemo(() => {
 		const filtered = filterRoutines(routines, view);

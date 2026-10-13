@@ -121,7 +121,9 @@ export function HookSetup() {
 				{!status?.installed ? (
 					<button
 						type="button"
-						onClick={handleInstall}
+						onClick={() => {
+							void handleInstall();
+						}}
 						disabled={installing}
 						className="flex items-center gap-1.5 rounded-md bg-accent-100 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-accent-100/80 disabled:opacity-50"
 					>
@@ -131,7 +133,9 @@ export function HookSetup() {
 				) : (
 					<button
 						type="button"
-						onClick={handleUninstall}
+						onClick={() => {
+							void handleUninstall();
+						}}
 						disabled={uninstalling}
 						className="flex items-center gap-1.5 rounded-md border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/30"
 					>

@@ -1,5 +1,5 @@
 declare module "markdown-it-footnote" {
-	import type MarkdownIt from "markdown-it";
-	const footnote: MarkdownIt.PluginSimple;
+	import type {PluginSimple} from "markdown-it";
+	const footnote: PluginSimple;
 	export default footnote;
 }

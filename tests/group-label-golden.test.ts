@@ -30,7 +30,8 @@ describe("group label golden specimens", () => {
 		expect(label(specimen)).toBe(specimen.upstream);
 	});
 
-	it.skip.each(all.filter((specimen) => specimen.skip !== undefined))("$session:$line ($skip)", (specimen) => {
+	it.for(all.filter((specimen) => specimen.skip !== undefined))("$session:$line ($skip)", (specimen, {skip}) => {
+		skip(specimen.skip);
 		expect(label(specimen)).toBe(specimen.upstream);
 	});
 });

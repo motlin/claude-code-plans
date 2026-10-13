@@ -1,6 +1,5 @@
 import {createFileRoute, Link} from "@tanstack/react-router";
 import {useSuspenseQuery} from "@tanstack/react-query";
-import {useMemo} from "react";
 import {jobsQueryOptions} from "../lib/api/jobs";
 import type {Job, JobState} from "../lib/jobs";
 import {formatNarrowRelativeTime} from "../lib/relative-time";
@@ -28,8 +27,8 @@ const STATE_PILL_CLASSES = {
  * session transcript when its `linkScanPath` names one.
  */
 function JobsPage() {
-	const {data: jobs} = useSuspenseQuery(jobsQueryOptions);
-	const now = useMemo(() => Date.now(), [jobs]);
+	// Relative times are measured from when this data arrived, so they stay stable across re-renders.
+	const {data: jobs, dataUpdatedAt: now} = useSuspenseQuery(jobsQueryOptions);
 
 	return (
 		<div className="mx-auto flex w-full max-w-5xl flex-col">

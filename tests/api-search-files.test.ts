@@ -399,6 +399,6 @@ describe("file content search API", () => {
 				// @ts-expect-error Deliberately malformed to verify the runtime contract.
 				search: malformedSearch,
 			}),
-		).rejects.toThrow();
+		).rejects.toThrow("Invalid input: expected number, received undefined");
 	});
 });

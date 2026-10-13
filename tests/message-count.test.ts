@@ -135,8 +135,7 @@ describe("single message-count definition", () => {
 		]);
 
 		const undercounted = encodings.filter(
-			(line) =>
-				isCountableMessageRecord(JSON.parse(line)) === true && mightBeCountableMessageLine(line) === false,
+			(line) => isCountableMessageRecord(JSON.parse(line)) && !mightBeCountableMessageLine(line),
 		);
 
 		expect(undercounted).toStrictEqual([]);

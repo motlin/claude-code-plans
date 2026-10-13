@@ -50,7 +50,7 @@ describe("test suite git isolation", () => {
 
 	afterEach(() => {
 		for (const [name, value] of savedGitEnvironment) {
-			if (value === undefined) delete process.env[name];
+			if (value === undefined) Reflect.deleteProperty(process.env, name);
 			else process.env[name] = value;
 		}
 		rmSync(fixtureDirectory, {recursive: true, force: true});
@@ -184,7 +184,7 @@ describe("test suite git fsmonitor isolation", () => {
 		const env = Object.fromEntries(Object.entries(process.env).filter(([name]) => !name.startsWith("GIT_")));
 		spawnSync("git", ["fsmonitor--daemon", "stop"], {cwd: repository, env, stdio: "ignore"});
 		for (const [name, value] of savedEnvironment) {
-			if (value === undefined) delete process.env[name];
+			if (value === undefined) Reflect.deleteProperty(process.env, name);
 			else process.env[name] = value;
 		}
 		rmSync(fixtureDirectory, {recursive: true, force: true});

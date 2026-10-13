@@ -2,7 +2,7 @@ import {Link, useMatches} from "@tanstack/react-router";
 import {useQuery} from "@tanstack/react-query";
 import {useEffect, useRef, useState, type CSSProperties, type ReactNode} from "react";
 import type {Section} from "./types";
-import {useActiveSection} from "./hooks";
+import {activeSectionFor} from "./hooks";
 import {MoreNavMenu, type NavBadge} from "./more-menu";
 import {useVisibleNavItems} from "./navigation";
 import {NavScroll} from "./nav-scroll";
@@ -45,7 +45,7 @@ export function Sidebar({
 	const {width} = useSidebarState();
 	const matches = useMatches();
 	const currentPath = matches[matches.length - 1]?.fullPath ?? "/";
-	const {section: activeSection, activeItemId} = useActiveSection(matches);
+	const {section: activeSection, activeItemId} = activeSectionFor(matches);
 	const activeSessionId = useSessionIdentity(activeSection === "sessions" ? activeItemId : null);
 	const {pinned: navigationItems, overflow: overflowItems, visibleNavSections} = useVisibleNavItems();
 	const {data: approvalsData} = useQuery(approvalsQueryOptions());

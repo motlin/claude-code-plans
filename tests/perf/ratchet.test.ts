@@ -105,10 +105,10 @@ describe("ratchet", () => {
 		ratchet("server.sessionOpen.large-wide.detail.jsonl.bytesRead", 1000);
 		expect(() => {
 			ratchet("lab.sessionSwitch.typical.inp", 500);
-		}).toThrow();
+		}).toThrow("lab.sessionSwitch.typical.inp rose from 200 to 500");
 		expect(() => {
 			ratchet("client.unknown.metric", 5);
-		}).toThrow();
+		}).toThrow("client.unknown.metric has no ceiling");
 		expect(readResults()).toStrictEqual({
 			"client.unknown.metric": {value: 5},
 			"lab.sessionSwitch.typical.inp": {value: 500, unit: "ms"},
@@ -122,7 +122,7 @@ describe("ratchet", () => {
 		const second = createRatchet({ceilings, resultsPath, tree});
 		expect(() => {
 			second("server.sessionOpen.large-wide.detail.jsonl.bytesRead", 1200);
-		}).toThrow();
+		}).toThrow("server.sessionOpen.large-wide.detail.jsonl.bytesRead rose from 1000 to 1200");
 		second("lab.sessionSwitch.typical.inp", 200);
 		expect(readResults()).toStrictEqual({
 			"lab.sessionSwitch.typical.inp": {value: 200, unit: "ms"},
@@ -283,7 +283,7 @@ describe("results written by another tree", () => {
 
 	it("still rejects an unknown field in a results file stamped with this tree", () => {
 		writeRaw(resultsPath, {tree, results: {"a.b": {value: 1, diagnostic: true}}});
-		expect(() => readStampedResults(resultsPath, tree)).toThrow();
+		expect(() => readStampedResults(resultsPath, tree)).toThrow(/Unrecognized key: \\"diagnostic\\"/);
 	});
 
 	it("stamps with the git tree of HEAD", () => {
@@ -299,7 +299,9 @@ describe("ceilings.json", () => {
 	});
 
 	it("rejects entries with unknown fields", () => {
-		expect(() => loadCeilings('{"a.b": {"ceiling": 1, "unit": "count", "tolerance": 0, "extra": 1}}')).toThrow();
+		expect(() => loadCeilings('{"a.b": {"ceiling": 1, "unit": "count", "tolerance": 0, "extra": 1}}')).toThrow(
+			/Unrecognized key: \\"extra\\"/,
+		);
 	});
 
 	it("rejects keys that are out of order", () => {

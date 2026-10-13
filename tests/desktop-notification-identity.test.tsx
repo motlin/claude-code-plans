@@ -125,7 +125,9 @@ describe("desktop notifications for session aliases", () => {
 		publish(ALICE);
 		const pending = [...notifications];
 		notifications = [];
-		act(() => client.setQueryData(sessionQueryKeys.identity(ALIAS), {sessionId: ALICE}));
+		act(() => {
+			client.setQueryData(sessionQueryKeys.identity(ALIAS), {sessionId: ALICE});
+		});
 		const resolved = [...notifications];
 		publish(ALICE, "working");
 		publish(ALICE);

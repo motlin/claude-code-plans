@@ -384,7 +384,9 @@ describe("TileHost", () => {
 			if (anchor === null) throw new Error("Move has no tooltip anchor");
 
 			fireEvent.pointerEnter(anchor);
-			act(() => vi.advanceTimersByTime(400));
+			act(() => {
+				vi.advanceTimersByTime(400);
+			});
 
 			expect(screen.queryByRole("tooltip")?.textContent ?? null).toBe("Move");
 		} finally {

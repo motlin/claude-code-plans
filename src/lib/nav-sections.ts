@@ -35,7 +35,8 @@ const RETIRED_NAV_SECTIONS: ReadonlySet<unknown> = new Set(["starred", "settings
  */
 export function renameLegacyNavSections(value: unknown): unknown {
 	if (!Array.isArray(value)) return value;
-	return value
+	const sections: unknown[] = value;
+	return sections
 		.filter((section) => !RETIRED_NAV_SECTIONS.has(section))
 		.map((section) => (section === "plugins" ? "customize" : section));
 }

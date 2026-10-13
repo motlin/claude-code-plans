@@ -67,7 +67,7 @@ function computeDepths(timed: Subagent[]): Map<string, number> {
 		if (seen.has(id)) return 0;
 		seen.add(id);
 		const agent = byId.get(id);
-		if (!agent || !agent.parentAgentId || !byId.has(agent.parentAgentId)) {
+		if (!agent?.parentAgentId || !byId.has(agent.parentAgentId)) {
 			depthOf.set(id, 0);
 			return 0;
 		}

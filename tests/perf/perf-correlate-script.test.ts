@@ -143,6 +143,6 @@ describe("correlate", () => {
 describe("parseSweep", () => {
 	it("round-trips a sweep and rejects unknown keys", () => {
 		expect(parseSweep(JSON.stringify(sweep))).toStrictEqual(sweep);
-		expect(() => parseSweep(JSON.stringify({...sweep, extra: 1}))).toThrow();
+		expect(() => parseSweep(JSON.stringify({...sweep, extra: 1}))).toThrow(/Unrecognized key: \\"extra\\"/);
 	});
 });

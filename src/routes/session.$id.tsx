@@ -45,7 +45,9 @@ export const Route = createFileRoute("/session/$id")({
 		void queryClient.prefetchQuery(transcriptQueryOptions(sessionId));
 		void queryClient.prefetchQuery(sessionSubagentsQueryOptions(sessionId));
 		void queryClient.prefetchQuery(herdrPanesQueryOptions);
-		return queryClient.getQueryData(sessionDetailQueryOptions(sessionId).queryKey);
+		// Bound before returning: as a return expression, getQueryData infers its data type from the loader (any).
+		const detail = queryClient.getQueryData(sessionDetailQueryOptions(sessionId).queryKey);
+		return detail;
 	},
 	errorComponent: SessionErrorComponent,
 	head: ({loaderData}) => ({
@@ -84,7 +86,9 @@ function SessionErrorComponent({error, reset}: ErrorComponentProps) {
 				</button>
 				<button
 					type="button"
-					onClick={async () => router.navigate({to: "/sessions"})}
+					onClick={() => {
+						void router.navigate({to: "/sessions"});
+					}}
 					className="rounded-md border border-border px-3 py-1.5 text-sm font-medium text-secondary hover:bg-surface-0"
 				>
 					Back to sessions

@@ -315,7 +315,9 @@ function AnswerForm({
 			<div className="flex items-center justify-end gap-g6">
 				<button
 					type="button"
-					onClick={handleSkip}
+					onClick={() => {
+						void handleSkip();
+					}}
 					disabled={submitting}
 					className="inline-flex items-center gap-g3 rounded-r4 card-outline px-p7 py-p5 text-footnote font-medium text-secondary hover:bg-t1 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
 				>
@@ -323,7 +325,9 @@ function AnswerForm({
 				</button>
 				<button
 					type="button"
-					onClick={handleSubmit}
+					onClick={() => {
+						void handleSubmit();
+					}}
 					disabled={!completed || submitting}
 					className="inline-flex items-center gap-g3 rounded-r4 bg-accent-100 px-p7 py-p5 text-footnote font-medium text-white hover:bg-accent-100/80 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
 				>

@@ -217,7 +217,9 @@ describe("recorder session identities", () => {
 		queryClient.getQueryCache().build(queryClient, {queryKey: sessionQueryKeys.identity(ALIAS)});
 		const router = await start(`/session/${ALIAS}`);
 		const pending = loadRecents();
-		act(() => queryClient.setQueryData(sessionQueryKeys.identity(ALIAS), {sessionId: "session-alpha"}));
+		act(() => {
+			queryClient.setQueryData(sessionQueryKeys.identity(ALIAS), {sessionId: "session-alpha"});
+		});
 		const resolved = loadRecents();
 		await go(router, "/session/session-alpha");
 		expect({
@@ -242,7 +244,9 @@ describe("recorder session identities", () => {
 		saveRecents([BETA, {...ALPHA, key: `session:${ALIAS}`, href: `/session/${ALIAS}`}]);
 		const router = await start(`/session/${ALIAS}`);
 		await go(router, "/settings");
-		act(() => queryClient.setQueryData(sessionQueryKeys.identity(ALIAS), {sessionId: "session-alpha"}));
+		act(() => {
+			queryClient.setQueryData(sessionQueryKeys.identity(ALIAS), {sessionId: "session-alpha"});
+		});
 		const resolved = loadRecents();
 		act(() => {
 			queryClient.removeQueries({queryKey: sessionQueryKeys.identity(ALIAS), exact: true});
@@ -267,7 +271,9 @@ describe("recorder session identities", () => {
 		await vi.waitFor(() => {
 			expect(router.state.status).toBe("pending");
 		});
-		act(() => queryClient.setQueryData(sessionQueryKeys.identity(ALIAS), {sessionId: "session-alpha"}));
+		act(() => {
+			queryClient.setQueryData(sessionQueryKeys.identity(ALIAS), {sessionId: "session-alpha"});
+		});
 		const duringNavigation = loadRecents();
 		await act(async () => {
 			release();
@@ -293,7 +299,9 @@ describe("recorder session identities", () => {
 			).rejects.toThrow(error);
 		});
 		const ambiguous = loadRecents();
-		act(() => queryClient.setQueryData(sessionQueryKeys.identity(ALIAS), {sessionId: "session-beta"}));
+		act(() => {
+			queryClient.setQueryData(sessionQueryKeys.identity(ALIAS), {sessionId: "session-beta"});
+		});
 		SESSION_TITLES[ALIAS] = "Alpha updated";
 		await act(async () => router.invalidate());
 		const reassigned = loadRecents();

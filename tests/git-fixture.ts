@@ -7,7 +7,7 @@ import {execFileSync} from "node:child_process";
  */
 export function scrubGitEnvironment(environment: NodeJS.ProcessEnv = process.env): void {
 	for (const name of Object.keys(environment)) {
-		if (name.startsWith("GIT_")) delete environment[name];
+		if (name.startsWith("GIT_")) Reflect.deleteProperty(environment, name);
 	}
 }
 

@@ -76,7 +76,9 @@ function MemoryPage() {
 						<span className="text-danger-000">Delete this memory?</span>
 						<button
 							type="button"
-							onClick={handleDelete}
+							onClick={() => {
+								void handleDelete();
+							}}
 							disabled={deleting}
 							className="rounded bg-danger-000 px-2 py-1 text-xs font-medium text-white hover:bg-danger-000/80 disabled:opacity-50"
 						>

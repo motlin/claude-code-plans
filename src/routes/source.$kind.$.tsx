@@ -15,19 +15,22 @@ export const Route = createFileRoute("/source/$kind/$")({
 
 function CopyButton({text}: {text: string}) {
 	const [copied, setCopied] = useState(false);
+	const copy = async () => {
+		try {
+			await navigator.clipboard.writeText(text);
+			setCopied(true);
+			setTimeout(() => {
+				setCopied(false);
+			}, 1500);
+		} catch {
+			// clipboard not available
+		}
+	};
 	return (
 		<button
 			type="button"
-			onClick={async () => {
-				try {
-					await navigator.clipboard.writeText(text);
-					setCopied(true);
-					setTimeout(() => {
-						setCopied(false);
-					}, 1500);
-				} catch {
-					// clipboard not available
-				}
+			onClick={() => {
+				void copy();
 			}}
 			className="text-xs px-2 py-1 rounded bg-surface-0 hover:bg-fill-control text-secondary"
 		>
