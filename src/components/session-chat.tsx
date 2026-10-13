@@ -221,6 +221,17 @@ interface AssistantDisplaySpan {
 	text: string;
 }
 
+/** Whether the line asks an AskUserQuestion that has no answer yet. */
+function asksPendingQuestion(line: SessionLine, toolResultMap: ReadonlyMap<string, ToolResultInfo>): boolean {
+	const content = line.type === "assistant" ? line.message?.content : undefined;
+	return (
+		Array.isArray(content) &&
+		content.some(
+			(block) => block.type === "tool_use" && block.name === "AskUserQuestion" && !toolResultMap.has(block.id),
+		)
+	);
+}
+
 /** Rendered assistant contributions, not API request/usage boundaries. */
 function collectAssistantDisplaySpans(
 	lines: readonly SessionLine[],
@@ -1866,7 +1877,9 @@ function buildSessionListEntries(
 	const footerFor = (line: SessionLine) => {
 		if (verbose) return undefined;
 		const span = displaySpans?.get(line.lineIndex);
-		return span === undefined ? null : <AssistantDisplaySpanFooter span={span} />;
+		// A turn still waiting on its question has no actions yet upstream.
+		if (span === undefined || asksPendingQuestion(line, renderProps.toolResultMap)) return null;
+		return <AssistantDisplaySpanFooter span={span} />;
 	};
 	const turnChangesByLine = collectTurnChanges(lines, renderProps.toolResultMap, renderProps.showTools);
 	const entries: PendingSessionListEntry[] = [];

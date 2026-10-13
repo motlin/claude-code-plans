@@ -161,4 +161,58 @@ describe("an in-flight call's row", () => {
 			opened: 1,
 		});
 	});
+
+	it("draws no message actions under a turn still waiting on its question, as upstream leaves the gap to the next row", () => {
+		const ask = {
+			type: "assistant",
+			uuid: "assistant-q",
+			timestamp: "2026-10-13T22:40:00.000Z",
+			message: {
+				role: "assistant",
+				content: [
+					{
+						type: "tool_use",
+						id: "toolu_question",
+						name: "AskUserQuestion",
+						input: {
+							questions: [{question: "Which PRs?", header: "PRs", options: [{label: "A"}, {label: "B"}]}],
+						},
+					},
+				],
+			},
+		};
+		const pending = renderRecords([
+			{type: "user", uuid: "user-1", message: {role: "user", content: "Open PRs"}},
+			ask,
+		]);
+		const pendingFooters = pending.querySelectorAll("[data-assistant-span-footer]").length;
+		cleanup();
+		const answered = renderRecords([
+			{type: "user", uuid: "user-1", message: {role: "user", content: "Open PRs"}},
+			ask,
+			{
+				type: "user",
+				uuid: "user-2",
+				message: {
+					role: "user",
+					content: [
+						{
+							type: "tool_result",
+							tool_use_id: "toolu_question",
+							content:
+								'User has answered your questions: "Which PRs?"="A". You can now continue with the user\'s answers in mind.',
+						},
+					],
+				},
+			},
+		]);
+
+		expect({
+			pending: pendingFooters,
+			answered: answered.querySelectorAll("[data-assistant-span-footer]").length,
+		}).toStrictEqual({
+			pending: 0,
+			answered: 1,
+		});
+	});
 });
