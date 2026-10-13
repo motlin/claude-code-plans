@@ -22,6 +22,11 @@ import {instructionsLoadedFixture} from "./fixtures/instructions-loaded";
 import {messageDisplayFixture} from "./fixtures/message-display";
 import {postCompactFixture} from "./fixtures/post-compact";
 import {postToolUseFailureFixture} from "./fixtures/post-tool-use-failure";
+import {
+	postToolUseWithScratchpadFixture,
+	preToolUseWithScratchpadFixture,
+	stopWithScratchpadFixture,
+} from "./fixtures/scratchpad-dir-events";
 import {subagentStartFixture} from "./fixtures/subagent-start";
 import {taskCreatedFixture} from "./fixtures/task-created";
 import {worktreeRemoveFixture} from "./fixtures/worktree-remove";
@@ -200,6 +205,10 @@ const cases: Case[] = [
 		name: "MessageDisplay",
 		payload: messageDisplayFixture,
 	},
+	// Claude Code 2.1.296 sends scratchpad_dir on every event.
+	{name: "PreToolUse", payload: preToolUseWithScratchpadFixture},
+	{name: "PostToolUse", payload: postToolUseWithScratchpadFixture},
+	{name: "Stop", payload: stopWithScratchpadFixture},
 ];
 
 describe("hook stdin -> jq filter -> HookEventEnvelope round-trip", () => {

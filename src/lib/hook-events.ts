@@ -527,6 +527,8 @@ const BaseHookFields = {
 	/** Reasoning effort for the current turn, after any per-model downgrade. */
 	effort: z.strictObject({level: z.string()}).optional(),
 	claude_env: z.record(z.string(), z.string()).optional(),
+	/** The session's scratchpad directory, sent on every event since Claude Code 2.1.3xx. */
+	scratchpad_dir: z.string().optional(),
 } as const;
 
 /**

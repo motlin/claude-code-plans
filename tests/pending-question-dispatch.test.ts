@@ -1,8 +1,9 @@
 import {vi} from "vite-plus/test";
 import {openTestDb, type AppDb} from "../src/lib/db/connection";
 import {dispatchHookEvent} from "../src/lib/hook-dispatcher";
-import {DOMAIN_EVENTS, type HookEvent} from "../src/lib/hook-events";
+import {DOMAIN_EVENTS, HookEventEnvelope, type HookEvent} from "../src/lib/hook-events";
 import {clearAllPendingQuestions, getPendingQuestion} from "../src/lib/pending-question-store";
+import {preToolUseWithScratchpadFixture} from "./fixtures/scratchpad-dir-events";
 
 vi.mock("../src/lib/herdr/report-state", async (importOriginal) => ({
 	...(await importOriginal<typeof import("../src/lib/herdr/report-state")>()),
@@ -107,6 +108,12 @@ afterEach(() => {
 });
 
 describe("pending AskUserQuestion from hooks", () => {
+	it("stores the question from a real Claude Code 2.1.296 payload, which carries scratchpad_dir", async () => {
+		await dispatchAll([HookEventEnvelope.parse(preToolUseWithScratchpadFixture)]);
+
+		expect(getPendingQuestion("abc-123")?.toolUseId).toBe("toolu_abc");
+	});
+
 	it("keeps the PreToolUse questions as the session's pending question and broadcasts them", async () => {
 		const broadcasts = await dispatchAll([ASK]);
 
