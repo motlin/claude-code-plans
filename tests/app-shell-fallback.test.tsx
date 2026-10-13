@@ -119,4 +119,18 @@ describe("AppShellFallback", () => {
 			column: true,
 		});
 	});
+
+	it("paints the same session skeleton as an in-app switch: the header dot and bar, a bubble and 10 line bars in the column", () => {
+		const host = document.createElement("div");
+		host.innerHTML = renderToStaticMarkup(<AppShellFallback />);
+		const skeleton = host.querySelector('[data-testid="session-skeleton"]');
+
+		expect({
+			skeleton: skeleton !== null,
+			header: skeleton?.querySelectorAll("[data-skeleton-header] > div").length,
+			bubbles: skeleton?.querySelectorAll("[data-skeleton-bubble]").length,
+			lines: skeleton?.querySelectorAll("[data-skeleton-paragraph] > div").length,
+			ownTranscriptBars: host.querySelectorAll(".chat-column.space-y-4").length,
+		}).toStrictEqual({skeleton: true, header: 2, bubbles: 1, lines: 10, ownTranscriptBars: 0});
+	});
 });
