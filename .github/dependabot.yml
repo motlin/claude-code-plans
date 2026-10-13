@@ -11,21 +11,37 @@ updates:
       default-days: 7
     labels:
       - "dependencies"
+    # Only group dependencies that must move in lockstep. typescript was a
+    # single-package group, so it gets its own PR either way -- dropped so a
+    # breaking bump is labelled by name rather than hidden behind a group.
     groups:
-      typescript-ecosystem:
+      vite-ecosystem:
         patterns:
-          - "typescript"
-          - "@typescript-eslint/*"
+          - "vite"
+          - "@vitejs/*"
       testing:
         patterns:
           - "vitest"
           - "@vitest/*"
+          - "@testing-library/*"
+          - "playwright"
+      # Storybook ships its core and addons on one release train, so they have
+      # to move together. @chromatic-com/storybook is deliberately excluded:
+      # different vendor, independent versioning.
+      storybook:
+        patterns:
+          - "storybook"
+          - "@storybook/*"
+      # Listed explicitly rather than as "react-*", which would also match
+      # unrelated "react-*" packages and leave the winning group ambiguous.
       react-ecosystem:
         patterns:
           - "react"
           - "react-dom"
-          - "@types/react"
-          - "@types/react-dom"
+          - "@types/react*"
+      tanstack:
+        patterns:
+          - "@tanstack/*"
     commit-message:
       prefix: "dependabot"
       include: "scope"
@@ -41,8 +57,6 @@ updates:
       default-days: 7
     labels:
       - "dependencies"
-    ignore:
-      - dependency-name: "ataylorme/eslint-annotate-action"
     commit-message:
       prefix: "dependabot"
       include: "scope"
