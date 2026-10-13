@@ -49,6 +49,7 @@ import {nonEmpty} from "./non-empty";
 import {defined} from "./defined";
 import {asRecord} from "./narrow";
 import {clearPendingQuestion, pendingQuestionFromToolInput, setPendingQuestion} from "./pending-question-store";
+import {forgetHookContext, recordHookContext} from "./hook-context-store";
 import {z} from "zod";
 
 const StringArraySchema = z.array(z.string());
@@ -141,6 +142,7 @@ function broadcastHookContext(
 		payload.sessionCrons = [];
 	}
 	if (Object.keys(payload).length === 1) return;
+	recordHookContext(payload);
 	broadcast(DOMAIN_EVENTS.SESSION_HOOK_CONTEXT_CHANGED, {...payload});
 }
 
@@ -491,6 +493,7 @@ export async function dispatchHookEvent({
 		case "SessionEnd": {
 			expirePendingApprovalForSession(event.session_id);
 			store.markSessionEnded(event.session_id);
+			forgetHookContext(event.session_id);
 			broadcast(SSE_EVENTS.SESSION_END, {sessionId: event.session_id});
 			broadcast(DOMAIN_EVENTS.SESSION_ENDED, {sessionId: event.session_id});
 			break;
@@ -523,6 +526,7 @@ export async function dispatchHookEvent({
 				...(event.effort === undefined ? {} : {effortLevel: event.effort.level}),
 			};
 			if (Object.keys(context).length > 1) {
+				recordHookContext(context);
 				broadcast(DOMAIN_EVENTS.SESSION_HOOK_CONTEXT_CHANGED, {...context});
 			}
 			// Agents still running in the background outlive the main turn's Stop.

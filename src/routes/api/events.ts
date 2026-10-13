@@ -1,15 +1,8 @@
 import {createFileRoute} from "@tanstack/react-router";
 import {withMethodNotAllowed} from "../../lib/api/method-not-allowed";
 import {addClient, removeClient} from "../../lib/watcher";
-import {DOMAIN_EVENTS} from "../../lib/hook-events";
-import {getLiveSubagentNodes} from "../../lib/live-subagent-store";
 import {onServerShutdown} from "../../lib/server-shutdown";
-import type {SnapshotEvent} from "../../lib/shared-event-source";
-
-/** The events a stream sends as soon as it connects, which a tab following another tab's stream fetches instead. */
-function connectEvents(): SnapshotEvent[] {
-	return [{type: DOMAIN_EVENTS.SUBAGENTS_SNAPSHOT, data: JSON.stringify({subagents: getLiveSubagentNodes()})}];
-}
+import {connectEvents} from "../../lib/sse-connect-events";
 
 export const Route = createFileRoute("/api/events")({
 	server: {
