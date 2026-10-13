@@ -38,6 +38,8 @@ export interface ToolLabelCall {
 	invalidInput?: true | undefined;
 	/** A SendMessage recipient's subagent description, when this session launched it. */
 	recipientDescription?: string | null | undefined;
+	/** The call is the one the session's tool permission prompt waits on. */
+	awaitingPermission?: true | undefined;
 }
 
 /**
@@ -506,9 +508,10 @@ export function runningToolLabel(call: ToolLabelCall): RunningToolLabel {
 	const running: RunningToolLabel = {verb};
 	if (done.doneLabel !== undefined) {
 		const description = stringInput(call.input, "description");
-		// A running subagent shows its description as written.
+		// A running subagent, and a call held at its permission prompt, show the description as written.
 		const isAgent = call.name === "Agent" || call.name === "Task";
-		running.label = description === null ? done.doneLabel : isAgent ? description : progressive(description);
+		const verbatim = isAgent || call.awaitingPermission === true;
+		running.label = description === null ? done.doneLabel : verbatim ? description : progressive(description);
 		return running;
 	}
 	if (done.meta !== undefined) running.meta = done.meta;

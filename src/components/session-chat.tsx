@@ -126,6 +126,8 @@ export interface SessionChatProps {
 	summary?: string | null;
 	/** Commands known for this project, so a slash-command chip can show its description. */
 	slashCommands?: readonly SlashCommand[];
+	/** The tool call the session's permission prompt waits on, whose row keeps its description as written. */
+	permissionWaitToolUseId?: string | null;
 }
 
 const TranscriptModeContext = createContext<TranscriptMode>("normal");
@@ -419,6 +421,7 @@ export const SessionChat = React.memo(function SessionChat({
 	scrollContentRef,
 	summary = null,
 	slashCommands = EMPTY_SLASH_COMMANDS,
+	permissionWaitToolUseId = null,
 }: SessionChatProps) {
 	const measurementKey = JSON.stringify([
 		sessionId,
@@ -582,46 +585,48 @@ export const SessionChat = React.memo(function SessionChat({
 	return (
 		<TranscriptModeContext.Provider value={transcriptMode}>
 			<SlashCommandsContext.Provider value={slashCommands}>
-				<AgentNameContext.Provider value={resolveAgentName}>
-					<BackgroundOutcomeContext.Provider value={backgroundOutcomes}>
-						<CompactBoundaryContext.Provider value={compactBoundaries}>
-							<div
-								ref={containerRef}
-								className={`${CHAT_COLUMN_CLASS} pt-4 pb-4 text-body transcript-text`}
-							>
-								{summary !== null && summary !== "" && (
-									<p
-										data-testid="session-summary-row"
-										title={summary}
-										className="mb-4 truncate text-sm text-t6"
-									>
-										{summary}
-									</p>
-								)}
-								<SessionLineList
-									key={sessionId}
-									lines={lines}
-									sessionId={sessionId}
-									toolResultMap={toolResultMap}
-									allowedImageRoots={allowedImageRoots}
-									subagentLookup={subagentLookup}
-									isSubagentSession={isSubagentSession}
-									showThinking={showThinking}
-									showTools={showTools}
-									showPassedHooks={showPassedHooks}
-									showHookWarnings={showHookWarnings}
-									showHookErrors={showHookErrors}
-									showSystemBanners={showSystemBanners}
-									showCompactSummaries={showCompactSummaries}
-									showTranscriptOnly={showTranscriptOnly}
-									shouldScrollToEnd={shouldScrollToEnd}
-									measurementKey={measurementKey}
-									measurementSource={measurementSource}
-								/>
-							</div>
-						</CompactBoundaryContext.Provider>
-					</BackgroundOutcomeContext.Provider>
-				</AgentNameContext.Provider>
+				<PermissionWaitContext.Provider value={permissionWaitToolUseId}>
+					<AgentNameContext.Provider value={resolveAgentName}>
+						<BackgroundOutcomeContext.Provider value={backgroundOutcomes}>
+							<CompactBoundaryContext.Provider value={compactBoundaries}>
+								<div
+									ref={containerRef}
+									className={`${CHAT_COLUMN_CLASS} pt-4 pb-4 text-body transcript-text`}
+								>
+									{summary !== null && summary !== "" && (
+										<p
+											data-testid="session-summary-row"
+											title={summary}
+											className="mb-4 truncate text-sm text-t6"
+										>
+											{summary}
+										</p>
+									)}
+									<SessionLineList
+										key={sessionId}
+										lines={lines}
+										sessionId={sessionId}
+										toolResultMap={toolResultMap}
+										allowedImageRoots={allowedImageRoots}
+										subagentLookup={subagentLookup}
+										isSubagentSession={isSubagentSession}
+										showThinking={showThinking}
+										showTools={showTools}
+										showPassedHooks={showPassedHooks}
+										showHookWarnings={showHookWarnings}
+										showHookErrors={showHookErrors}
+										showSystemBanners={showSystemBanners}
+										showCompactSummaries={showCompactSummaries}
+										showTranscriptOnly={showTranscriptOnly}
+										shouldScrollToEnd={shouldScrollToEnd}
+										measurementKey={measurementKey}
+										measurementSource={measurementSource}
+									/>
+								</div>
+							</CompactBoundaryContext.Provider>
+						</BackgroundOutcomeContext.Provider>
+					</AgentNameContext.Provider>
+				</PermissionWaitContext.Provider>
 			</SlashCommandsContext.Provider>
 		</TranscriptModeContext.Provider>
 	);
@@ -1153,6 +1158,17 @@ interface BackgroundOutcomes {
 }
 
 const BackgroundOutcomeContext = createContext<BackgroundOutcomes>({byLaunch: new Map(), stoppedBy: new Map()});
+
+/** The tool_use id the session's permission prompt waits on, if any. */
+const PermissionWaitContext = createContext<string | null>(null);
+
+/** The call as its running label reads it: flagged when the permission prompt holds it. */
+function withPermissionWait<Call extends {id: string}>(
+	call: Call,
+	waitingId: string | null,
+): Call & {awaitingPermission?: true} {
+	return call.id === waitingId ? {...call, awaitingPermission: true} : call;
+}
 
 const BACKGROUND_LAUNCH_ID = /running in background with ID: (\S+?)\.?(?:\s|$)/;
 const TASK_STOPPERS = new Set(["TaskStop", "KillShell"]);
@@ -4294,7 +4310,8 @@ function ToolCallRow({
 			? {...call, recipientDescription: resolveAgentName(call.input["to"])}
 			: call;
 	const toolRowLabel = toolLabel(labelCall);
-	const running = pending ? runningToolLabel(labelCall) : null;
+	const permissionWaitId = useContext(PermissionWaitContext);
+	const running = pending ? runningToolLabel(withPermissionWait(labelCall, permissionWaitId)) : null;
 	const isFileParam = FILE_PARAM_TOOLS.has(call.name);
 	const diffStats = useEditDiffStats(call);
 	const isCardStyle = CARD_STYLE_TOOLS.has(call.name) && !nested;
@@ -4571,7 +4588,11 @@ function ToolCallSummary({
 	// While a call is in flight, upstream names the group by that call's
 	// progressive label instead of the tally.
 	const pendingCall = displayCalls.filter(isPendingToolCall).at(-1);
-	const runningText = pendingCall === undefined ? null : runningToolLabelText(runningToolLabel(pendingCall));
+	const permissionWaitId = useContext(PermissionWaitContext);
+	const runningText =
+		pendingCall === undefined
+			? null
+			: runningToolLabelText(runningToolLabel(withPermissionWait(pendingCall, permissionWaitId)));
 	// A failed completion leads only when its launch is outside the group; a
 	// launch inside it takes the failure, so its notice trails like any other.
 	const leadsLabel = (notice: BackgroundNotice) =>

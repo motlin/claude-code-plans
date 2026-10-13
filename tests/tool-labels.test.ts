@@ -317,6 +317,17 @@ describe("toolResultMetaFrom agent results", () => {
 });
 
 describe("runningToolLabel", () => {
+	it("keeps a Bash description as written while the call waits on its permission prompt, as upstream does", () => {
+		const input = {command: "gh pr create --draft", description: "Open draft PR for the AssertJ branch"};
+		expect({
+			awaiting: runningToolLabel({...call("Bash", input), awaitingPermission: true}),
+			running: runningToolLabel(call("Bash", input)),
+		}).toStrictEqual({
+			awaiting: {verb: "Running", label: "Open draft PR for the AssertJ branch"},
+			running: {verb: "Running", label: "Opening draft PR for the AssertJ branch"},
+		});
+	});
+
 	it("gives an in-flight call the progressive form of its label", () => {
 		expect({
 			bashDescription: runningToolLabel(

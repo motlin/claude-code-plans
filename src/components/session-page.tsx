@@ -98,7 +98,7 @@ import {
 } from "../lib/api/herdr";
 import {notificationsQueryOptions} from "../lib/api/notifications";
 import {pendingQuestionQueryOptions} from "../lib/api/pending-question";
-import {findPendingPermission, isAwaitingPermission, type PermissionDecision} from "../lib/permission-card";
+import {findPendingPermission, permissionWaitToolUseId, type PermissionDecision} from "../lib/permission-card";
 import type {HerdrPaneIndexData} from "../lib/api/herdr";
 import type {PaneKind} from "../lib/pane-layout";
 import {
@@ -330,9 +330,9 @@ function SessionView({
 	}).data;
 	const sessionSummary = useCachedSessionSummary(sessionId);
 	const sessionPermissionWait = sessionSummary?.awaitingPermission === true;
-	const awaitingPermission = useMemo(
+	const permissionWaitId = useMemo(
 		() =>
-			isAwaitingPermission({
+			permissionWaitToolUseId({
 				sessionId,
 				notifications: notifications ?? [],
 				records: transcript.records,
@@ -340,6 +340,7 @@ function SessionView({
 			}),
 		[sessionId, notifications, transcript.records, sessionPermissionWait],
 	);
+	const awaitingPermission = permissionWaitId !== null;
 	const sessionSummaryState = sessionSummary?.state ?? null;
 	const hookQuestion = useQuery({
 		...pendingQuestionQueryOptions(sessionId),
@@ -855,6 +856,7 @@ function SessionView({
 											showCompactSummaries={transcriptFlags.showCompactSummaries}
 											showTranscriptOnly={transcriptFlags.showTranscriptOnly}
 											transcriptMode={transcriptMode}
+											permissionWaitToolUseId={permissionWaitId}
 											initialScrollKey={initialScrollKey}
 											scrollContentRef={scrollAnchorRef}
 											shouldScrollToEnd={

@@ -76,14 +76,19 @@ interface PermissionSignals {
  * unanswered and the hook state still holds a `permission_prompt`
  * notification, or the session reports the wait itself. Upstream treats this as live however old the transcript is.
  */
-export function isAwaitingPermission({
+export function isAwaitingPermission(signals: PermissionSignals): boolean {
+	return permissionWaitToolUseId(signals) !== null;
+}
+
+/** The id of the unanswered tool call the session's permission prompt holds, or null when none does. */
+export function permissionWaitToolUseId({
 	sessionId,
 	notifications,
 	records,
 	awaitingPermission = false,
-}: PermissionSignals): boolean {
+}: PermissionSignals): string | null {
 	const prompted = awaitingPermission || findPermissionNotification(sessionId, notifications) !== undefined;
-	return prompted && findWaitingToolUse(records) !== null;
+	return prompted ? (findWaitingToolUse(records)?.id ?? null) : null;
 }
 
 /**
