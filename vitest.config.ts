@@ -20,7 +20,10 @@ export default defineConfig({
 		silent: "passed-only",
 		projects: [
 			// Plain node tests share each worker's module graph, so common modules load once per worker instead of once per file.
-			{extends: true, test: {name: "shared", include: testFiles.shared, isolate: false}},
+			{
+				extends: true,
+				test: {name: "shared", include: [...testFiles.shared, "scripts/*.test.mjs"], isolate: false},
+			},
 			{extends: true, test: {name: "isolated", include: testFiles.isolated, isolate: true}},
 		],
 	},
