@@ -59,6 +59,8 @@ export interface ClientToolCall {
 	permission?: PermissionDecision | undefined;
 	/** The input failed the tool's schema, so the call renders raw under a generic label. */
 	invalidInput?: true | undefined;
+	/** When the assistant record that made the call was written, for an in-flight row's elapsed time. */
+	startedAt?: string | undefined;
 }
 
 /**

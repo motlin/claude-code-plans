@@ -24,7 +24,7 @@ describe("RunningTasksControl", () => {
 		const shape = {
 			wrapper: "epitaxy-status-control inline-flex items-center",
 			button: "inline-flex h-5 items-center gap-1 rounded-r4 px-1.5 text-body text-ink-muted",
-			column: "chat-column",
+			column: "chat-column pb-8",
 		};
 
 		expect({two: control(2), one: control(1), none: control(0)}).toStrictEqual({

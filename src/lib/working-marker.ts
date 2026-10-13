@@ -95,6 +95,15 @@ export function formatElapsed(totalSeconds: number): string {
 	return `${Math.floor(minutes / 60)}h ${pad2(minutes % 60)}m`;
 }
 
+/**
+ * The tail marker's state once the transcript draws the in-flight call as its
+ * own running row: upstream shows that row alone, with no second "working"
+ * line under it. Stopping and retrying still say so.
+ */
+export function tailMarkerState(state: WorkingMarkerState, inFlightRow: boolean): WorkingMarkerState {
+	return inFlightRow && state.status === "working" ? {status: "idle"} : state;
+}
+
 export function workingMarkerText(state: WorkingMarkerState): string {
 	switch (state.status) {
 		case "idle":

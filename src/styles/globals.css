@@ -676,6 +676,25 @@
 	}
 }
 
+/* Upstream's 20px running spinner before an in-flight tool row: a 3x3 matrix of
+   clay dots whose brightness sweeps across the grid. */
+.running-spinner {
+	background-image: radial-gradient(circle, rgb(217 119 87) 1.6px, transparent 1.8px);
+	background-size: calc(20px / 3) calc(20px / 3);
+	mask-image: linear-gradient(90deg, rgb(0 0 0 / 0.35), #000, rgb(0 0 0 / 0.35));
+	mask-size: 200% 100%;
+	animation: running-spinner-sweep 1.2s linear infinite;
+}
+
+@keyframes running-spinner-sweep {
+	from {
+		mask-position: 100% 0;
+	}
+	to {
+		mask-position: -100% 0;
+	}
+}
+
 /* The terminal loading placeholder's caret, blinking like a terminal cursor. */
 .terminal-caret {
 	animation: caret-blink 1s steps(1, end) infinite;
@@ -693,6 +712,7 @@
 
 @media (prefers-reduced-motion: reduce) {
 	.status-dot[data-kind="running"],
+	.running-spinner,
 	.terminal-caret {
 		animation: none;
 	}

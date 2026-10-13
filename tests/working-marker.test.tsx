@@ -9,6 +9,7 @@ import {useWorkingMarkerState} from "../src/components/use-working-marker-state"
 import {
 	formatElapsed,
 	markerEventsFromRecords,
+	tailMarkerState,
 	toolActivityLabel,
 	workingMarkerState,
 	workingMarkerText,
@@ -135,6 +136,18 @@ describe("workingMarkerState", () => {
 			turnStartedAt: at(10),
 			elapsedSeconds: 0,
 		});
+	});
+});
+
+describe("tailMarkerState", () => {
+	const working = {status: "working", label: "Recheck SSH auth", turnStartedAt: 0, elapsedSeconds: 24} as const;
+
+	it("leaves the turn to the in-flight call's own row, as upstream draws no second status line", () => {
+		expect({
+			inFlight: tailMarkerState(working, true),
+			noRow: tailMarkerState(working, false),
+			stopping: tailMarkerState({status: "stopping"}, true),
+		}).toStrictEqual({inFlight: {status: "idle"}, noRow: working, stopping: {status: "stopping"}});
 	});
 });
 

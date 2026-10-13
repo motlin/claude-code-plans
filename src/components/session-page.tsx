@@ -46,6 +46,7 @@ import {SessionPaneControls} from "./view-options-menu";
 import {SessionDock} from "./session-dock";
 import {RunningTasksControl} from "./running-tasks-control";
 import {sessionProcessLive} from "../lib/session-state";
+import {tailMarkerState} from "../lib/working-marker";
 import {PendingQuestionCard, WaitingForInputNotice} from "./approval-card";
 import {showsWaitingForInputNotice} from "./waiting-for-input-notice";
 import {UsagePaceBanner} from "./usage-pace-banner";
@@ -90,7 +91,7 @@ import {useSessionViewedState} from "../hooks/use-session-viewed-state";
 import {usePendingMessageJump} from "../hooks/use-pending-message-jump";
 import {useMainScrollRestoration, type MainScrollRestorationSnapshot} from "../hooks/use-main-scroll-restoration";
 import {postAnswerQuestion} from "../lib/api/answer-question";
-import {findPendingAskUserQuestion} from "../lib/approval-dock";
+import {findLastPendingToolUse, findPendingAskUserQuestion} from "../lib/approval-dock";
 import {applicationSettingsQueryOptions} from "../lib/api/application-settings";
 import {
 	herdrPanesQueryOptions,
@@ -358,6 +359,13 @@ function SessionView({
 		interruptedAt: lastInterrupt?.sessionId === sessionId ? lastInterrupt.at : null,
 		awaitingPermission,
 	});
+	// The turn's in-flight call has its own running row in the transcript (a subagent's row stays a plain link).
+	const pendingCall = useMemo(() => findLastPendingToolUse(transcript.records), [transcript.records]);
+	const inFlightRow =
+		workingMarkerState.status === "working" &&
+		pendingCall !== null &&
+		pendingCall.name !== "Agent" &&
+		pendingCall.name !== "Task";
 	const backgroundTasks = useMemo(
 		() =>
 			extractBackgroundTasks(transcript.records, {
@@ -901,9 +909,9 @@ function SessionView({
 							</Suspense>
 						)}
 
-						<WorkingMarker state={workingMarkerState} />
+						<WorkingMarker state={tailMarkerState(workingMarkerState, inFlightRow)} />
 
-						<RunningTasksControl count={backgroundTasks.running.length} />
+						{!inFlightRow && <RunningTasksControl count={backgroundTasks.running.length} />}
 
 						<SideChat sessionId={sessionId} messageCount={data.messageCount} />
 					</div>

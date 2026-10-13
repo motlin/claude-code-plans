@@ -78,6 +78,7 @@ import type {BackgroundCompletionLike, SummarySegment} from "../lib/session-util
 import {pastTense} from "../lib/past-tense";
 import {runningToolLabel, runningToolLabelText, toolLabel} from "../lib/tool-labels";
 import {formatElapsed} from "../lib/working-marker";
+import {useElapsedSeconds} from "../hooks/use-elapsed-seconds";
 import {InlinePathImages, SESSION_IMAGE_CLASS_NAME} from "./inline-path-images";
 import {isEditableTarget} from "../lib/shortcuts/match";
 import {findScrollContainer} from "./scroll-container";
@@ -825,16 +826,17 @@ function buildLineToolCalls(
 	const invalid = new Set(line.invalidToolInputIds);
 	return content
 		.filter((b): b is ToolUseBlock => b.type === "tool_use")
-		.map((block) =>
-			buildClientToolCall(
+		.map((block) => {
+			const call = buildClientToolCall(
 				block,
 				line.uuid ?? "",
 				toolResultMap,
 				liveFailures,
 				subagentLookup,
 				invalid.has(block.id),
-			),
-		);
+			);
+			return line.timestamp === undefined ? call : {...call, startedAt: line.timestamp};
+		});
 }
 
 /** A run of tool calls sharing one source session, ready to summarize. */
@@ -4257,6 +4259,17 @@ function isPendingToolCall(call: ClientToolCall): boolean {
 	return call.resultUuid === undefined && call.result === undefined && call.isError !== true;
 }
 
+/** An in-flight row's live elapsed time, in muted ink after its label. */
+function RunningElapsed({startedAt}: {startedAt: string | undefined}) {
+	const seconds = useElapsedSeconds(startedAt);
+	if (seconds === null) return null;
+	return (
+		<span data-running-elapsed="" className="shrink-0 text-body text-ink-muted tabular-nums">
+			{formatElapsed(seconds)}
+		</span>
+	);
+}
+
 /** Upstream draws an in-flight tool label in primary ink with a shimmer sweep. */
 const RUNNING_LABEL_CLASS = "text-primary tool-shimmer";
 
@@ -4386,8 +4399,17 @@ function ToolCallRow({
 	// What allowed or blocked the call is a diagnostic upstream never shows, so only Verbose names it.
 	const permissionLabel = verbose && call.permission !== undefined ? permissionDecisionLabel(call.permission) : null;
 
+	// Upstream leads a standalone in-flight row with its running spinner and follows the label with the elapsed time.
+	const runningRow = pending && isTurnStatus;
 	const rowLabel = (
 		<>
+			{runningRow && (
+				<span
+					aria-hidden="true"
+					data-running-spinner=""
+					className="running-spinner me-1.5 inline-flex size-5 shrink-0"
+				/>
+			)}
 			{label && (
 				<span className={`${isPhraseLabel ? "truncate min-w-0" : "shrink-0"} text-body ${labelClass}`}>
 					{label}
@@ -4422,6 +4444,7 @@ function ToolCallRow({
 				</span>
 			)}
 			{rangeLabel && <span className={`text-body ${labelClass} truncate min-w-0`}>{rangeLabel}</span>}
+			{runningRow && <RunningElapsed startedAt={call.startedAt} />}
 			{diffStats && <DiffStats added={diffStats.added} removed={diffStats.removed} />}
 			{status !== null && (
 				<span className={`shrink-0 text-body ${status === "Failed" ? "text-danger-ink" : "text-secondary"}`}>

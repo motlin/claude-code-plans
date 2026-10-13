@@ -7,7 +7,8 @@ import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
 export function RunningTasksControl({count}: {count: number}) {
 	if (count === 0) return null;
 	return (
-		<div className={CHAT_COLUMN_CLASS}>
+		// Clears the dock's 32px fade, which would otherwise wash out the transcript's last line.
+		<div className={`${CHAT_COLUMN_CLASS} pb-8`}>
 			<span className="epitaxy-status-control inline-flex items-center">
 				<button
 					type="button"
