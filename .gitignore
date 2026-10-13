@@ -31,7 +31,7 @@ yarn-error.log*
 /.vite/
 
 # Local documentation and context
-.llm/
+.llm
 /.claude/*
 !/.claude/commands/
 !/.claude/includes/
