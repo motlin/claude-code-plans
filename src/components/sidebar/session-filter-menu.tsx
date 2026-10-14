@@ -1,4 +1,6 @@
 import {useInfiniteQuery} from "@tanstack/react-query";
+import {useNavigate} from "@tanstack/react-router";
+import {useState} from "react";
 import {SlidersVertical} from "lucide-react";
 
 import {recentSessionsInfiniteQueryOptions} from "../../lib/api/sessions";
@@ -9,21 +11,19 @@ import {
 	sessionStatusFilterLabels,
 } from "../../lib/schema-choices";
 import {
-	clearSessionFilters,
 	DEFAULT_SESSION_LIST_PREFS,
-	filterLabel,
 	SessionActivityDaysSchema,
-	SessionGroupBySchema,
-	SessionSortBySchema,
 	SessionStatusFilterSchema,
 	type SessionListPrefs,
 } from "../../lib/session-groups";
+import {createGroup} from "../../lib/session-group-store";
 import {useSettings} from "../settings-context";
 import {
 	Menu,
 	MenuCheckboxItem,
 	MenuContent,
 	MenuItem,
+	MenuLabel,
 	MenuRadioGroup,
 	MenuRadioItem,
 	MenuSeparator,
@@ -32,6 +32,7 @@ import {
 	MenuSubTrigger,
 	MenuTrigger,
 } from "../ui/menu";
+import {NewGroupDialog} from "../new-group-dialog";
 import {Tooltip} from "../ui/tooltip";
 import {SessionGroups} from "./session-groups";
 
@@ -74,9 +75,54 @@ function RadioSubmenu<Value extends string>({
 	);
 }
 
+/** Upstream's Group by order; Folder stands in for its cloud-only Environment. */
+const GROUP_BY_ORDER = [
+	"none",
+	"state",
+	"date",
+	"project",
+	"custom",
+] as const satisfies readonly SessionListPrefs["groupBy"][];
+/** Upstream's Last updated and Date created, then the local Name sort. */
+const SORT_BY_ORDER = ["activity", "created", "name"] as const satisfies readonly SessionListPrefs["sortBy"][];
+
+/** A labelled radio group inside the Show submenu, for the local-only list filters. */
+function ShowRadioGroup<Value extends string>({
+	label,
+	value,
+	options,
+	labels,
+	onSelect,
+}: {
+	label: string;
+	value: Value;
+	options: readonly Value[];
+	labels: Record<Value, string>;
+	onSelect: (next: Value) => void;
+}) {
+	return (
+		<MenuRadioGroup
+			value={value}
+			onValueChange={(next: unknown) => {
+				const selected = options.find((option) => option === next);
+				if (selected !== undefined) onSelect(selected);
+			}}
+		>
+			<MenuLabel>{label}</MenuLabel>
+			{options.map((option) => (
+				<MenuRadioItem key={option} value={option}>
+					{labels[option]}
+				</MenuRadioItem>
+			))}
+		</MenuRadioGroup>
+	);
+}
+
 /**
- * claude.ai/code's Filter & group menu, minus Environment (cloud-only). Show PR
- * status stays hidden until some row has PR data.
+ * claude.ai/code's session-list "Group and sort" menu: Group by, Sort by and Show submenus, New
+ * section, Reset to defaults and View all. Folder stands in for the cloud-only Environment; the
+ * local Status and Last activity filters and the PR status toggle sit under Show, the PR toggle
+ * only once some row has PR data. Upstream's sort direction and Show ▸ Metadata have no local data.
  */
 function SessionFilterMenu({
 	prefs,
@@ -87,90 +133,113 @@ function SessionFilterMenu({
 	onChange: (next: SessionListPrefs) => void;
 	hasPrData: boolean;
 }) {
+	const navigate = useNavigate();
+	const [newSectionOpen, setNewSectionOpen] = useState(false);
 	return (
-		<Menu>
-			<Tooltip content={filterLabel(prefs)} className="-my-1 shrink-0">
-				<MenuTrigger
-					aria-label={filterLabel(prefs)}
-					data-row-action=""
-					className="relative flex size-6 shrink-0 items-center justify-center rounded-r5 text-secondary hover:bg-[var(--sb-hover)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100 data-[popup-open]:bg-[var(--sb-hover)]"
-				>
-					<SlidersVertical aria-hidden="true" className="size-4" />
-				</MenuTrigger>
-			</Tooltip>
-			<MenuContent align="end" className="!min-w-[200px]">
-				<RadioSubmenu
-					label="Status"
-					value={prefs.statusFilter}
-					defaultValue={DEFAULT_SESSION_LIST_PREFS.statusFilter}
-					options={SessionStatusFilterSchema.options}
-					labels={sessionStatusFilterLabels}
-					onSelect={(next) => {
-						onChange({...prefs, statusFilter: next});
-					}}
-				/>
-				<RadioSubmenu
-					label="Last activity"
-					value={prefs.activityDays}
-					defaultValue={DEFAULT_SESSION_LIST_PREFS.activityDays}
-					options={SessionActivityDaysSchema.options}
-					labels={sessionActivityDaysLabels}
-					onSelect={(next) => {
-						onChange({...prefs, activityDays: next});
-					}}
-				/>
-				<MenuSeparator />
-				<RadioSubmenu
-					label="Group by"
-					value={prefs.groupBy}
-					defaultValue={DEFAULT_SESSION_LIST_PREFS.groupBy}
-					options={SessionGroupBySchema.options}
-					labels={sessionGroupByLabels}
-					onSelect={(next) => {
-						onChange({...prefs, groupBy: next});
-					}}
-				/>
-				<RadioSubmenu
-					label="Sort by"
-					value={prefs.sortBy}
-					defaultValue={DEFAULT_SESSION_LIST_PREFS.sortBy}
-					options={SessionSortBySchema.options}
-					labels={sessionSortByLabels}
-					onSelect={(next) => {
-						onChange({...prefs, sortBy: next});
-					}}
-				/>
-				{(hasPrData || prefs.groupBy === "project" || prefs.groupBy === "custom") && <MenuSeparator />}
-				{(prefs.groupBy === "project" || prefs.groupBy === "custom") && (
-					<MenuCheckboxItem
-						checked={prefs.showEmptyGroups}
-						onCheckedChange={(checked) => {
-							onChange({...prefs, showEmptyGroups: checked});
+		<>
+			<Menu>
+				<Tooltip content="Group and sort" className="-my-1 shrink-0">
+					<MenuTrigger
+						aria-label="Group and sort"
+						data-row-action=""
+						className="relative flex size-6 shrink-0 items-center justify-center rounded-r5 text-secondary hover:bg-[var(--sb-hover)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100 data-[popup-open]:bg-[var(--sb-hover)]"
+					>
+						<SlidersVertical aria-hidden="true" className="size-4" />
+					</MenuTrigger>
+				</Tooltip>
+				<MenuContent align="end" className="!min-w-[200px]">
+					<RadioSubmenu
+						label="Group by"
+						value={prefs.groupBy}
+						defaultValue={DEFAULT_SESSION_LIST_PREFS.groupBy}
+						options={GROUP_BY_ORDER}
+						labels={sessionGroupByLabels}
+						onSelect={(next) => {
+							onChange({...prefs, groupBy: next});
+						}}
+					/>
+					<RadioSubmenu
+						label="Sort by"
+						value={prefs.sortBy}
+						defaultValue={DEFAULT_SESSION_LIST_PREFS.sortBy}
+						options={SORT_BY_ORDER}
+						labels={sessionSortByLabels}
+						onSelect={(next) => {
+							onChange({...prefs, sortBy: next});
+						}}
+					/>
+					<MenuSub>
+						<MenuSubTrigger>Show</MenuSubTrigger>
+						<MenuSubContent>
+							<MenuCheckboxItem
+								checked={prefs.showEmptyGroups}
+								onCheckedChange={(checked) => {
+									onChange({...prefs, showEmptyGroups: checked});
+								}}
+							>
+								Empty groups
+							</MenuCheckboxItem>
+							{hasPrData && (
+								<MenuCheckboxItem
+									checked={prefs.showPrStatus}
+									onCheckedChange={(checked) => {
+										onChange({...prefs, showPrStatus: checked});
+									}}
+								>
+									PR status
+								</MenuCheckboxItem>
+							)}
+							<MenuSeparator />
+							<ShowRadioGroup
+								label="Status"
+								value={prefs.statusFilter}
+								options={SessionStatusFilterSchema.options}
+								labels={sessionStatusFilterLabels}
+								onSelect={(next) => {
+									onChange({...prefs, statusFilter: next});
+								}}
+							/>
+							<MenuSeparator />
+							<ShowRadioGroup
+								label="Last activity"
+								value={prefs.activityDays}
+								options={SessionActivityDaysSchema.options}
+								labels={sessionActivityDaysLabels}
+								onSelect={(next) => {
+									onChange({...prefs, activityDays: next});
+								}}
+							/>
+						</MenuSubContent>
+					</MenuSub>
+					<MenuSeparator />
+					<MenuItem
+						onSelect={() => {
+							setNewSectionOpen(true);
 						}}
 					>
-						Show empty groups
-					</MenuCheckboxItem>
-				)}
-				{hasPrData && (
-					<MenuCheckboxItem
-						checked={prefs.showPrStatus}
-						onCheckedChange={(checked) => {
-							onChange({...prefs, showPrStatus: checked});
+						New section
+					</MenuItem>
+					<MenuSeparator />
+					<MenuItem
+						onSelect={() => {
+							onChange(DEFAULT_SESSION_LIST_PREFS);
 						}}
 					>
-						Show PR status
-					</MenuCheckboxItem>
-				)}
-				<MenuSeparator />
-				<MenuItem
-					onSelect={() => {
-						onChange(clearSessionFilters(prefs));
-					}}
-				>
-					Clear filters
-				</MenuItem>
-			</MenuContent>
-		</Menu>
+						Reset to defaults
+					</MenuItem>
+					<MenuItem onSelect={() => void navigate({to: "/sessions"})}>View all</MenuItem>
+				</MenuContent>
+			</Menu>
+			<NewGroupDialog
+				open={newSectionOpen}
+				onOpenChange={setNewSectionOpen}
+				switchesGroupBy={prefs.groupBy !== "custom"}
+				onCreate={(name) => {
+					createGroup(name);
+					if (prefs.groupBy !== "custom") onChange({...prefs, groupBy: "custom"});
+				}}
+			/>
+		</>
 	);
 }
 

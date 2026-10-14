@@ -200,7 +200,7 @@ export const homeAttentionKindLabels = {
 export const sessionGroupByLabels = {
 	date: "Date",
 	project: "Folder",
-	state: "State",
+	state: "Status",
 	custom: "Custom groups",
 	none: "None",
 } satisfies Record<z.infer<typeof SessionGroupBySchema>, string>;
@@ -237,7 +237,7 @@ export const groupColorLabels = {
 export const sessionSortByLabels = {
 	name: "Name",
 	created: "Date created",
-	activity: "Last activity",
+	activity: "Last updated",
 } satisfies Record<z.infer<typeof SessionSortBySchema>, string>;
 
 export const sessionStatusFilterLabels = {

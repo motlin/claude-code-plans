@@ -135,22 +135,6 @@ export function pinnedGroup<Row extends SessionGroupRow>(
 	return group(PINNED_GROUP_KEY, "Pinned", rows, groupCap(true, PINNED_GROUP_KEY, uncapped));
 }
 
-/** The filter button reads "Filter (active)" while any non-default filter applies. */
-export function filterLabel(prefs: SessionListPrefs): "Filter" | "Filter (active)" {
-	const statusActive = prefs.statusFilter !== DEFAULT_SESSION_LIST_PREFS.statusFilter;
-	const activityActive = prefs.activityDays !== DEFAULT_SESSION_LIST_PREFS.activityDays;
-	return statusActive || activityActive ? "Filter (active)" : "Filter";
-}
-
-/** "Clear filters" resets Status and Last activity; grouping and sorting stay. */
-export function clearSessionFilters(prefs: SessionListPrefs): SessionListPrefs {
-	return {
-		...prefs,
-		statusFilter: DEFAULT_SESSION_LIST_PREFS.statusFilter,
-		activityDays: DEFAULT_SESSION_LIST_PREFS.activityDays,
-	};
-}
-
 function isVisible(row: SessionGroupRow, prefs: SessionListPrefs, now: number): boolean {
 	if (prefs.statusFilter === "active" && row.archived) return false;
 	if (prefs.statusFilter === "archived" && !row.archived) return false;

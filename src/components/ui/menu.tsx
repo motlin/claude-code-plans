@@ -448,5 +448,9 @@ export function MenuLabel({
 	/** Replaces the default classes, e.g. upstream's 500-weight Mode header padded 4px 8px. */
 	className?: string;
 }) {
-	return <div className={className}>{children}</div>;
+	return (
+		<div data-menu-label="" className={className}>
+			{children}
+		</div>
+	);
 }

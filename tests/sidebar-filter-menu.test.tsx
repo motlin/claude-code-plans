@@ -11,7 +11,7 @@ import {
 } from "@tanstack/react-router";
 import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
 import {ToastProvider} from "../src/components/toast";
-import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
+import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
 
 import {SettingsProvider} from "../src/components/settings-provider";
 import {SidebarSessionGroups} from "../src/components/sidebar/session-filter-menu";
@@ -21,6 +21,7 @@ import type {SessionBucket} from "../src/lib/session-state";
 import {installLocalStorage} from "./fake-storage";
 
 const MINUTE = 60 * 1000;
+const routerRef: {current: {state: {location: {pathname: string}}} | null} = {current: null};
 const PREFS_KEY = "ccp-session-list-prefs";
 
 function session(id: string, title: string, bucket: SessionBucket, projectName: string) {
@@ -99,12 +100,18 @@ async function renderSidebarGroups(
 		path: "/session/$id",
 		component: () => null,
 	});
+	const sessionsRoute = createRoute({
+		getParentRoute: () => rootRoute,
+		path: "/sessions",
+		component: () => <p>All sessions page</p>,
+	});
 	const router = createRouter({
-		routeTree: rootRoute.addChildren([homeRoute, sessionRoute]),
+		routeTree: rootRoute.addChildren([homeRoute, sessionRoute, sessionsRoute]),
 		history: createMemoryHistory({initialEntries: ["/"]}),
 	});
 	await router.load();
 	const result = render(<RouterProvider router={router} />);
+	routerRef.current = router;
 	await waitFor(() => {
 		expect(result.container.querySelector("[data-sidebar-group-label]")).toBeTruthy();
 	});
@@ -119,7 +126,7 @@ function groupNames(container: HTMLElement): string[] {
 }
 
 function filterButton(): HTMLElement {
-	return screen.getByRole("button", {name: /^Filter/});
+	return screen.getByRole("button", {name: "Group and sort"});
 }
 
 async function openFilterMenu(): Promise<HTMLElement> {
@@ -129,18 +136,24 @@ async function openFilterMenu(): Promise<HTMLElement> {
 }
 
 function menuOutline(menu: HTMLElement): string[] {
-	return [...menu.querySelectorAll('[role="menuitem"], [role="menuitemcheckbox"], [role="separator"]')].map((node) =>
-		node.getAttribute("role") === "separator" ? "---" : node.textContent.trim(),
-	);
+	return [
+		...menu.querySelectorAll(
+			':scope [role="menuitem"], :scope [role="menuitemcheckbox"], :scope [role="menuitemradio"], :scope [role="separator"], :scope [data-menu-label]',
+		),
+	].map((node) => (node.getAttribute("role") === "separator" ? "---" : node.textContent.trim()));
 }
 
-async function openSubmenu(name: RegExp): Promise<void> {
+async function openSubmenu(name: RegExp): Promise<HTMLElement> {
 	const trigger = screen.getByRole("menuitem", {name});
 	act(() => {
 		trigger.focus();
 	});
 	fireEvent.keyDown(trigger, {key: "ArrowRight"});
 	await flush();
+	const menus = screen.getAllByRole("menu");
+	const submenu = menus.at(-1);
+	if (submenu === undefined) throw new Error("Expected a submenu");
+	return submenu;
 }
 
 afterEach(cleanup);
@@ -149,16 +162,16 @@ beforeEach(() => {
 	installLocalStorage();
 });
 
-describe("sidebar Filter & group menu", () => {
-	it("sits on the first group header only, labelled Filter by default", async () => {
+describe("sidebar Group and sort menu", () => {
+	it("sits on the first group header only, labelled Group and sort as upstream's session list", async () => {
 		const {container} = await renderSidebarGroups();
 
 		const headers = [...container.querySelectorAll('[data-testid="sidebar-recents"] [data-sidebar-group-label]')];
 		expect(headers.map((header) => header.querySelectorAll('button[aria-haspopup="menu"]').length)).toEqual([1, 0]);
-		expect(filterButton().getAttribute("aria-label")).toBe("Filter");
+		expect(filterButton().getAttribute("aria-label")).toBe("Group and sort");
 	});
 
-	it("styles the Filter button like upstream: radius 6 (r5), secondary ink", async () => {
+	it("styles the trigger like upstream: radius 6 (r5), secondary ink", async () => {
 		await renderSidebarGroups();
 
 		const classes = filterButton().className.split(" ");
@@ -168,71 +181,198 @@ describe("sidebar Filter & group menu", () => {
 		}).toStrictEqual({radius: ["rounded-r5"], ink: ["text-secondary"]});
 	});
 
-	it("lists State-mode items in upstream order", async () => {
+	it("lists upstream's top level: Group by, Sort by, Show, New section, Reset to defaults and View all", async () => {
 		await renderSidebarGroups();
 		const menu = await openFilterMenu();
 
 		expect(menuOutline(menu)).toEqual([
-			"StatusActive",
-			"Last activity7d",
+			"Group byStatus",
+			"Sort byLast updated",
+			"Show",
 			"---",
-			"Group byState",
-			"Sort byLast activity",
+			"New section",
 			"---",
-			"Clear filters",
+			"Reset to defaults",
+			"View all",
 		]);
 	});
 
-	it("keeps Last activity and shows Show empty groups in Folder mode", async () => {
+	it("offers upstream's Group by order, with Folder standing in for Environment and Custom groups after it", async () => {
+		await renderSidebarGroups();
+		await openFilterMenu();
+		await openSubmenu(/^Group by/);
+
+		expect(
+			screen.getAllByRole("menuitemradio").map((node) => [node.textContent, node.getAttribute("aria-checked")]),
+		).toEqual([
+			["None", "false"],
+			["Status", "true"],
+			["Date", "false"],
+			["Folder", "false"],
+			["Custom groups", "false"],
+		]);
+	});
+
+	it("sorts by Last updated or Date created, keeping the local Name sort", async () => {
+		await renderSidebarGroups();
+		await openFilterMenu();
+		await openSubmenu(/^Sort by/);
+
+		expect(
+			screen.getAllByRole("menuitemradio").map((node) => [node.textContent, node.getAttribute("aria-checked")]),
+		).toEqual([
+			["Last updated", "true"],
+			["Date created", "false"],
+			["Name", "false"],
+		]);
+	});
+
+	it("keeps the local Status and Last activity filters and the empty-group and PR toggles under Show", async () => {
+		const withPr = [
+			...FIXTURE,
+			{...session("p1", "PR one", "review", "alpha"), prStatus: {number: 6, state: "draft"}},
+		];
+		await renderSidebarGroups(withPr);
+		await openFilterMenu();
+		const show = await openSubmenu(/^Show/);
+
+		expect(menuOutline(show)).toEqual([
+			"Empty groups",
+			"PR status",
+			"---",
+			"Status",
+			"Active",
+			"Archived",
+			"All",
+			"---",
+			"Last activity",
+			"1d",
+			"3d",
+			"7d",
+			"30d",
+			"All",
+		]);
+	});
+
+	it("marks non-default trailing values in accent", async () => {
 		storePrefs({groupBy: "project"});
 		await renderSidebarGroups();
-		const menu = await openFilterMenu();
+		await openFilterMenu();
 
-		expect(menuOutline(menu)).toEqual([
-			"StatusActive",
-			"Last activity7d",
-			"---",
-			"Group byFolder",
-			"Sort byLast activity",
-			"---",
-			"Show empty groups",
-			"---",
-			"Clear filters",
-		]);
+		const accentOf = (name: RegExp) =>
+			screen
+				.getByRole("menuitem", {name})
+				.querySelector("[data-menu-value]")
+				?.className.includes("text-accent-100");
+		expect([accentOf(/^Sort by/), accentOf(/^Group by/)]).toEqual([false, true]);
 	});
 
-	it("shows Show empty groups in Custom groups mode", async () => {
-		storePrefs({groupBy: "custom"});
-		await renderSidebarGroups();
-		const menu = await openFilterMenu();
+	it("regroups the list and persists when a Group by option is chosen", async () => {
+		const {container} = await renderSidebarGroups();
+		expect(groupNames(container)).toEqual(["Working", "Completed"]);
 
-		expect(menuOutline(menu)).toEqual([
-			"StatusActive",
-			"Last activity7d",
-			"---",
-			"Group byCustom groups",
-			"Sort byLast activity",
-			"---",
-			"Show empty groups",
-			"---",
-			"Clear filters",
-		]);
+		await openFilterMenu();
+		await openSubmenu(/^Group by/);
+		fireEvent.click(screen.getByRole("menuitemradio", {name: "Folder"}));
+		await flush();
+
+		expect(groupNames(container)).toEqual(["alpha", "beta"]);
+		expect(storedPrefs()).toEqual({...DEFAULT_SESSION_LIST_PREFS, groupBy: "project"});
 	});
 
-	it.each(["date", "none"] as const)("keeps Last activity in %s mode", async (groupBy) => {
-		storePrefs({groupBy});
+	it("filters by Status from Show and persists it", async () => {
 		await renderSidebarGroups();
-		const menu = await openFilterMenu();
+		await openFilterMenu();
+		await openSubmenu(/^Show/);
+		const [statusAll] = screen.getAllByRole("menuitemradio", {name: "All"});
+		if (statusAll === undefined) throw new Error("Expected Status ▸ All");
+		fireEvent.click(statusAll);
+		await flush();
 
-		expect(menuOutline(menu)).toEqual([
-			"StatusActive",
-			"Last activity7d",
-			"---",
-			`Group by${groupBy === "date" ? "Date" : "None"}`,
-			"Sort byLast activity",
-			"---",
-			"Clear filters",
-		]);
+		expect(storedPrefs()).toEqual({...DEFAULT_SESSION_LIST_PREFS, statusFilter: "all"});
+	});
+
+	it("persists turning PR status off from Show", async () => {
+		const withPr = [
+			...FIXTURE,
+			{...session("p1", "PR one", "review", "alpha"), prStatus: {number: 6, state: "draft"}},
+		];
+		const {container} = await renderSidebarGroups(withPr);
+		const glyph = () => container.querySelector('[role="img"][aria-label="#6 · Draft"]') !== null;
+		expect(glyph()).toBe(true);
+		await openFilterMenu();
+		await openSubmenu(/^Show/);
+		fireEvent.click(screen.getByRole("menuitemcheckbox", {name: "PR status"}));
+		await flush();
+
+		expect({glyph: glyph(), stored: storedPrefs()}).toStrictEqual({
+			glyph: false,
+			stored: {...DEFAULT_SESSION_LIST_PREFS, showPrStatus: false},
+		});
+	});
+
+	it("resets every list preference with Reset to defaults", async () => {
+		storePrefs({statusFilter: "all", activityDays: "1d", sortBy: "name", groupBy: "date"});
+		await renderSidebarGroups();
+
+		await openFilterMenu();
+		fireEvent.click(screen.getByRole("menuitem", {name: "Reset to defaults"}));
+		await flush();
+
+		expect(storedPrefs()).toEqual(DEFAULT_SESSION_LIST_PREFS);
+	});
+
+	it("opens the all-sessions page with View all", async () => {
+		await renderSidebarGroups();
+		await openFilterMenu();
+		fireEvent.click(screen.getByRole("menuitem", {name: "View all"}));
+		await flush();
+
+		expect(routerRef.current?.state.location.pathname).toBe("/sessions");
+	});
+
+	it("starts a custom section from New section, switching the list to Custom groups", async () => {
+		const {container} = await renderSidebarGroups();
+		await openFilterMenu();
+		fireEvent.click(screen.getByRole("menuitem", {name: "New section"}));
+		await flush();
+
+		fireEvent.change(screen.getByRole("textbox", {name: "Group name"}), {target: {value: "Reading"}});
+		fireEvent.click(screen.getByRole("button", {name: "Create and group by custom"}));
+		await flush();
+
+		const stored = JSON.parse(localStorage.getItem("ccp-session-groups") ?? "{}") as {
+			groups?: Array<{name: string}>;
+		};
+		expect({
+			groupBy: (storedPrefs() as SessionListPrefs).groupBy,
+			sections: stored.groups?.map((group) => group.name),
+			// An empty section stays hidden until Show ▸ Empty groups is on.
+			groups: groupNames(container),
+		}).toStrictEqual({groupBy: "custom", sections: ["Reading"], groups: ["Ungrouped"]});
+	});
+
+	it("keeps the trigger on an empty-list header so Reset to defaults can bring the rows back", async () => {
+		storePrefs({statusFilter: "archived"});
+		const {container} = await renderSidebarGroups(FIXTURE, {archived: []});
+
+		const recents = container.querySelector<HTMLElement>('[data-testid="sidebar-recents"]');
+		expect({
+			labels: [...(recents?.querySelectorAll("[data-sidebar-group-label]") ?? [])].map((node) =>
+				node.textContent.trim(),
+			),
+			empty: recents?.querySelector("[data-sidebar-empty]")?.textContent,
+		}).toStrictEqual({labels: ["Completed"], empty: "No sessions"});
+
+		await openFilterMenu();
+		fireEvent.click(screen.getByRole("menuitem", {name: "Reset to defaults"}));
+		await flush();
+
+		expect({
+			groups: groupNames(container),
+			empty: container.querySelector("[data-sidebar-empty]"),
+			stored: storedPrefs(),
+		}).toStrictEqual({groups: ["Working", "Completed"], empty: null, stored: DEFAULT_SESSION_LIST_PREFS});
 	});
 
 	it("groups the list by this browser's custom groups in Custom groups mode", async () => {
@@ -251,146 +391,5 @@ describe("sidebar Filter & group menu", () => {
 		const {container} = await renderSidebarGroups();
 
 		expect(groupNames(container)).toEqual(["Blog", "Ungrouped"]);
-	});
-
-	it("marks non-default trailing values in accent", async () => {
-		storePrefs({groupBy: "project"});
-		await renderSidebarGroups();
-		await openFilterMenu();
-
-		const accentOf = (name: RegExp) =>
-			screen
-				.getByRole("menuitem", {name})
-				.querySelector("[data-menu-value]")
-				?.className.includes("text-accent-100");
-		expect([accentOf(/^Status/), accentOf(/^Group by/)]).toEqual([false, true]);
-	});
-
-	it("opens a submenu with ArrowRight", async () => {
-		await renderSidebarGroups();
-		await openFilterMenu();
-		await openSubmenu(/^Group by/);
-
-		expect(screen.getAllByRole("menu")).toHaveLength(2);
-		expect(
-			screen.getAllByRole("menuitemradio").map((node) => [node.textContent, node.getAttribute("aria-checked")]),
-		).toEqual([
-			["Date", "false"],
-			["Folder", "false"],
-			["State", "true"],
-			["Custom groups", "false"],
-			["None", "false"],
-		]);
-	});
-
-	it("regroups the list and persists when a Group by option is chosen", async () => {
-		const {container} = await renderSidebarGroups();
-		expect(groupNames(container)).toEqual(["Working", "Completed"]);
-
-		await openFilterMenu();
-		await openSubmenu(/^Group by/);
-		fireEvent.click(screen.getByRole("menuitemradio", {name: "Folder"}));
-		await flush();
-
-		expect(groupNames(container)).toEqual(["alpha", "beta"]);
-		expect(storedPrefs()).toEqual({...DEFAULT_SESSION_LIST_PREFS, groupBy: "project"});
-	});
-
-	it('becomes "Filter (active)" once a non-default filter is chosen', async () => {
-		await renderSidebarGroups();
-		await openFilterMenu();
-		await openSubmenu(/^Status/);
-		fireEvent.click(screen.getByRole("menuitemradio", {name: "All"}));
-		await flush();
-
-		expect(filterButton().getAttribute("aria-label")).toBe("Filter (active)");
-		expect(storedPrefs()).toEqual({...DEFAULT_SESSION_LIST_PREFS, statusFilter: "all"});
-	});
-
-	it.each([
-		[{}, "Filter"],
-		[{groupBy: "none", activityDays: "30d"}, "Filter (active)"],
-	] as const)("shows the trigger's label %j in a tooltip on hover", async (prefs, label) => {
-		storePrefs(prefs);
-		await renderSidebarGroups();
-		vi.useFakeTimers({toFake: ["setTimeout", "clearTimeout"]});
-		try {
-			fireEvent.pointerEnter(filterButton());
-			act(() => {
-				vi.advanceTimersByTime(300);
-			});
-
-			expect(screen.getByRole("tooltip").textContent).toBe(label);
-		} finally {
-			vi.useRealTimers();
-		}
-	});
-
-	it("shows Show PR status once a row has PR data, and persists turning it off", async () => {
-		const withPr = [
-			...FIXTURE,
-			{...session("p1", "PR one", "review", "alpha"), prStatus: {number: 6, state: "draft"}},
-		];
-		const {container} = await renderSidebarGroups(withPr);
-		const glyph = () => container.querySelector('[role="img"][aria-label="#6 · Draft"]') !== null;
-		expect(glyph()).toBe(true);
-		const menu = await openFilterMenu();
-
-		expect(menuOutline(menu)).toEqual([
-			"StatusActive",
-			"Last activity7d",
-			"---",
-			"Group byState",
-			"Sort byLast activity",
-			"---",
-			"Show PR status",
-			"---",
-			"Clear filters",
-		]);
-
-		fireEvent.click(screen.getByRole("menuitemcheckbox", {name: "Show PR status"}));
-		await flush();
-
-		expect({glyph: glyph(), stored: storedPrefs()}).toStrictEqual({
-			glyph: false,
-			stored: {...DEFAULT_SESSION_LIST_PREFS, showPrStatus: false},
-		});
-	});
-
-	it("resets the filters with Clear filters", async () => {
-		storePrefs({statusFilter: "all", activityDays: "1d", sortBy: "name"});
-		await renderSidebarGroups();
-		expect(filterButton().getAttribute("aria-label")).toBe("Filter (active)");
-
-		await openFilterMenu();
-		fireEvent.click(screen.getByRole("menuitem", {name: "Clear filters"}));
-		await flush();
-
-		expect(filterButton().getAttribute("aria-label")).toBe("Filter");
-		expect(storedPrefs()).toEqual({...DEFAULT_SESSION_LIST_PREFS, sortBy: "name"});
-	});
-
-	it("keeps Filter on an empty-list header so Clear filters can bring the rows back", async () => {
-		storePrefs({statusFilter: "archived"});
-		const {container} = await renderSidebarGroups(FIXTURE, {archived: []});
-
-		const recents = container.querySelector<HTMLElement>('[data-testid="sidebar-recents"]');
-		expect({
-			labels: [...(recents?.querySelectorAll("[data-sidebar-group-label]") ?? [])].map((node) =>
-				node.textContent.trim(),
-			),
-			empty: recents?.querySelector("[data-sidebar-empty]")?.textContent,
-			filter: filterButton().getAttribute("aria-label"),
-		}).toStrictEqual({labels: ["Completed"], empty: "No sessions", filter: "Filter (active)"});
-
-		await openFilterMenu();
-		fireEvent.click(screen.getByRole("menuitem", {name: "Clear filters"}));
-		await flush();
-
-		expect({
-			groups: groupNames(container),
-			empty: container.querySelector("[data-sidebar-empty]"),
-			stored: storedPrefs(),
-		}).toStrictEqual({groups: ["Working", "Completed"], empty: null, stored: DEFAULT_SESSION_LIST_PREFS});
 	});
 });

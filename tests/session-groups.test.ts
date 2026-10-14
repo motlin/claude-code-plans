@@ -4,7 +4,6 @@ import {
 	DEFAULT_SESSION_LIST_PREFS,
 	SessionListPrefsSchema,
 	buildGroups,
-	filterLabel,
 	migrateSessionListPrefs,
 	shouldLoadNextPage,
 	type SessionGroup,
@@ -451,18 +450,6 @@ describe("buildGroups none mode", () => {
 
 	it("returns no groups for no rows", () => {
 		expect(buildGroups([], prefs({groupBy: "none"}), NOW)).toStrictEqual([]);
-	});
-});
-
-describe("filterLabel", () => {
-	it.each<[Partial<SessionListPrefs>, string]>([
-		[{}, "Filter"],
-		[{groupBy: "date", sortBy: "name", showEmptyGroups: true}, "Filter"],
-		[{statusFilter: "all"}, "Filter (active)"],
-		[{activityDays: "30d"}, "Filter (active)"],
-		[{groupBy: "project", activityDays: "30d"}, "Filter (active)"],
-	])("labels %j as %s", (overrides, expected) => {
-		expect(filterLabel(prefs(overrides))).toBe(expected);
 	});
 });
 
