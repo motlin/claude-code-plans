@@ -317,6 +317,22 @@ describe("customize shell", () => {
 		});
 	});
 
+	it("labels the open field Search with an always-shown Clear search, and opens it on / outside a field, as upstream does", async () => {
+		await renderCustomize("/customize/skills");
+		fireEvent.keyDown(document.body, {key: "/"});
+		const input = screen.getByRole("searchbox", {name: "Search"});
+		expect({
+			focused: document.activeElement === input,
+			clear: screen.queryByRole("button", {name: "Clear search"}) !== null,
+		}).toStrictEqual({focused: true, clear: true});
+
+		fireEvent.click(screen.getByRole("button", {name: "Clear search"}));
+		expect({
+			collapsed: screen.queryByRole("searchbox") === null,
+			focusedButton: document.activeElement === screen.getByRole("button", {name: "Search"}),
+		}).toStrictEqual({collapsed: true, focusedButton: true});
+	});
+
 	it("keeps a held search term's field open, and Clear search collapses it back to the magnifier", async () => {
 		await renderCustomize("/customize/skills?q=deploy");
 		expect(screen.getByRole("searchbox")).toHaveProperty("value", "deploy");
@@ -331,7 +347,7 @@ describe("customize shell", () => {
 
 	it("round-trips the search term through ?q=", async () => {
 		const router = await renderCustomize("/customize/skills?q=deploy");
-		const input = screen.getByRole("searchbox", {name: "Search skills and plugins"});
+		const input = screen.getByRole("searchbox", {name: "Search"});
 
 		expect(input).toHaveProperty("value", "deploy");
 

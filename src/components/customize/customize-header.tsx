@@ -1,7 +1,7 @@
 import {useQuery} from "@tanstack/react-query";
 import {Link} from "@tanstack/react-router";
 import {ArrowDownUp, Search, SlidersHorizontal, X} from "lucide-react";
-import {type ReactNode, useRef, useState} from "react";
+import {type ReactNode, useEffect, useRef, useState} from "react";
 import {customizeDiscoverQueryOptions} from "../../lib/api/customize";
 import {SegmentedControl} from "../settings/segmented-control";
 import {Menu, MenuContent, MenuLabel, MenuRadioGroup, MenuRadioItem, MenuTrigger} from "../ui/menu";
@@ -103,7 +103,6 @@ export function CustomizeHeader({
 				className="flex min-w-min flex-1 basis-0 flex-nowrap items-center justify-end gap-1"
 			>
 				<SearchField
-					label={section.searchLabel}
 					placeholder={section.searchPlaceholder}
 					value={search.q ?? ""}
 					onChange={(q) => {
@@ -178,18 +177,22 @@ export function CustomizeHeader({
 }
 
 interface SearchFieldProps {
-	label: string;
 	placeholder: string;
 	value: string;
 	onChange: (value: string) => void;
 }
 
+function isEditableTarget(target: EventTarget | null): boolean {
+	if (!(target instanceof HTMLElement)) return false;
+	return target.isContentEditable || target.closest("input, textarea, select, [contenteditable]") !== null;
+}
+
 /**
  * Upstream's collapsible Customize search: a magnifier button while empty, expanding inline to a
- * 256px field on click. Escape clears the text first, then collapses; Clear search and blurring
- * an empty field collapse it too, handing focus back to the magnifier.
+ * 256px field on click or "/". Escape clears the text first, then collapses; Clear search and
+ * blurring an empty field collapse it too, handing focus back to the magnifier.
  */
-function SearchField({label, placeholder, value, onChange}: SearchFieldProps) {
+function SearchField({placeholder, value, onChange}: SearchFieldProps) {
 	// Local draft keeps the caret stable while each keystroke updates `?q=`.
 	const [draft, setDraft] = useState(value);
 	const [syncedValue, setSyncedValue] = useState(value);
@@ -209,6 +212,21 @@ function SearchField({label, placeholder, value, onChange}: SearchFieldProps) {
 		focusButton.current = true;
 		setExpanded(false);
 	};
+
+	// Upstream opens the search on "/" when focus is not in a field.
+	useEffect(() => {
+		if (expanded || draft !== "") return undefined;
+		const onKeyDown = (event: KeyboardEvent) => {
+			if (event.key !== "/" || event.metaKey || event.ctrlKey || event.altKey || event.defaultPrevented) return;
+			if (isEditableTarget(event.target)) return;
+			event.preventDefault();
+			setExpanded(true);
+		};
+		document.addEventListener("keydown", onKeyDown);
+		return () => {
+			document.removeEventListener("keydown", onKeyDown);
+		};
+	}, [expanded, draft]);
 
 	if (!expanded && draft === "") {
 		return (
@@ -243,7 +261,7 @@ function SearchField({label, placeholder, value, onChange}: SearchFieldProps) {
 				// oxlint-disable-next-line jsx-a11y/no-autofocus -- the field replaces the magnifier the user just pressed
 				autoFocus
 				placeholder={placeholder}
-				aria-label={label}
+				aria-label="Search"
 				maxLength={200}
 				value={draft}
 				onChange={(event) => {
@@ -261,19 +279,18 @@ function SearchField({label, placeholder, value, onChange}: SearchFieldProps) {
 				data-testid="customize-header-search"
 				className="min-w-0 flex-1 bg-transparent text-body text-primary outline-none placeholder:text-t6 [&::-webkit-search-cancel-button]:hidden"
 			/>
-			{draft !== "" && (
-				<button
-					type="button"
-					aria-label="Clear search"
-					onClick={() => {
-						change("");
-						collapse();
-					}}
-					className="inline-flex size-5 shrink-0 items-center justify-center rounded-r3 text-t6 hover:text-primary"
-				>
-					<X aria-hidden="true" className="size-3.5" />
-				</button>
-			)}
+			{/* Upstream's open field always offers Clear search, which also collapses it */}
+			<button
+				type="button"
+				aria-label="Clear search"
+				onClick={() => {
+					change("");
+					collapse();
+				}}
+				className="inline-flex size-5 shrink-0 items-center justify-center rounded-r3 text-t6 hover:text-primary"
+			>
+				<X aria-hidden="true" className="size-3.5" />
+			</button>
 		</div>
 	);
 }
