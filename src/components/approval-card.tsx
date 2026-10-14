@@ -5,7 +5,7 @@ import type {PendingQuestionItem} from "../lib/hook-events";
 import {Shortcut} from "./ui/shortcut";
 
 const ACTION_BUTTON =
-	"inline-flex h-6 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-r5 px-2 text-[13px]/[19px] whitespace-nowrap select-none disabled:cursor-not-allowed disabled:opacity-50 [&_kbd]:text-[11px] @max-[500px]/approval-dock:w-full";
+	"inline-flex h-6 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-r5 px-2 text-[13px]/[19px] whitespace-nowrap select-none disabled:cursor-not-allowed disabled:opacity-50 [&_kbd]:text-[11px]";
 
 const ACTION_VARIANTS = {
 	secondary: "border border-strong text-primary hover:bg-alpha-2",
@@ -31,13 +31,15 @@ export const APPROVAL_CARD_TITLE = "flex min-h-6 items-center text-[13px]/[19px]
 /**
  * The card docked above the composer for every pending approval, copied from
  * claude.ai/code: one shell (upstream shadow, 10px radius, 12px padding) with a
- * scrolling body and an action row that stacks full width below 500px.
+ * scrolling body and an action row. Below 500px a permission card stacks its
+ * actions full width, while a question card keeps them compact at the right.
  */
 export function ApprovalCardShell({
 	label,
 	digits,
 	body,
 	actions,
+	stackActions = true,
 }: {
 	/** The card's accessible group label; omitted cards are a plain focusable box. */
 	label?: string;
@@ -45,6 +47,8 @@ export function ApprovalCardShell({
 	digits?: number;
 	body: ReactNode;
 	actions: ReactNode;
+	/** Whether the actions stack full width below 500px; question cards keep upstream's compact row. */
+	stackActions?: boolean;
 }) {
 	return (
 		<div className="@container/approval-dock [--approval-dock-floor:144px] @max-[500px]/approval-dock:[--approval-dock-floor:208px]">
@@ -64,7 +68,7 @@ export function ApprovalCardShell({
 				</div>
 				<div
 					data-approval-card-actions
-					className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2 @max-[500px]/approval-dock:flex-col"
+					className={`flex flex-wrap items-start justify-between gap-x-3 gap-y-2 ${stackActions ? "@max-[500px]/approval-dock:flex-col @max-[500px]/approval-dock:*:w-full" : "@max-[500px]/approval-dock:justify-end"}`}
 				>
 					{actions}
 				</div>
@@ -166,6 +170,7 @@ export function PendingQuestionCard({questions}: {questions: PendingQuestionItem
 	if (question === undefined) return null;
 	return (
 		<ApprovalCardShell
+			stackActions={false}
 			label="Waiting for your input"
 			body={
 				<>

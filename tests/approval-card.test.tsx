@@ -4,6 +4,7 @@ import {cleanup, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it} from "vite-plus/test";
 
 import {ApprovalDock} from "../src/components/approval-dock";
+import {PendingQuestionCard} from "../src/components/approval-card";
 import {PermissionCard} from "../src/components/permission-card";
 import type {QuestionLike} from "../src/lib/ask-user-question";
 
@@ -46,7 +47,41 @@ describe("shared approval card chrome", () => {
 		const {permission, dock} = chrome();
 		expect(permission.card).not.toBeNull();
 		expect(permission.secondary).not.toBeNull();
-		expect(dock).toStrictEqual(permission);
+		const sharedChrome = ({actions: _a, secondary: _s, primary: _p, ...rest}: typeof dock) => rest;
+		expect(sharedChrome(dock)).toStrictEqual(sharedChrome(permission));
+	});
+
+	it("stacks only the permission card's actions full width below 500px, keeping a question's Skip and Submit compact and right-aligned as upstream does", () => {
+		const {permission, dock} = chrome();
+		render(
+			<PendingQuestionCard
+				questions={[{question: "Pick one", header: "Pick", multiSelect: false, options: [{label: "A"}]}]}
+			/>,
+		);
+		const pending = screen.getByRole("group", {name: "Waiting for your input"});
+		const narrow = (value: string | null | undefined) =>
+			(value ?? "").split(/\s+/).filter((name) => name.startsWith("@max-[500px]/approval-dock:"));
+		const card = (actions: string | null | undefined, buttons: (string | null | undefined)[]) => ({
+			actions: narrow(actions),
+			buttons: buttons.flatMap(narrow),
+		});
+		expect({
+			permission: card(permission.actions, [permission.secondary, permission.primary]),
+			dock: card(dock.actions, [dock.secondary, dock.primary]),
+			pending: card(
+				pending.querySelector("[data-approval-card-actions]")?.getAttribute("class"),
+				[...pending.querySelectorAll("[data-approval-card-actions] button")].map((b) =>
+					b.getAttribute("class"),
+				),
+			),
+		}).toStrictEqual({
+			permission: {
+				actions: ["@max-[500px]/approval-dock:flex-col", "@max-[500px]/approval-dock:*:w-full"],
+				buttons: [],
+			},
+			dock: {actions: ["@max-[500px]/approval-dock:justify-end"], buttons: []},
+			pending: {actions: ["@max-[500px]/approval-dock:justify-end"], buttons: []},
+		});
 	});
 
 	it("uses the outline secondary and black primary variants with 11px keycaps", () => {
