@@ -465,6 +465,39 @@ describe("⌘K palette filters", () => {
 		expect((await awaitRequest()).url).toBe("/api/search?query=auth&type=plans&date=week");
 	});
 
+	it("centers upstream's No results found and announces it when the All search finds nothing", async () => {
+		const {dialog} = await openPalette([]);
+
+		type(dialog, "zzqxvq");
+		(await awaitRequest()).resolve([]);
+
+		const empty = await within(dialog).findByText("No results found", {selector: "p"});
+		expect({
+			tag: empty.tagName,
+			block: empty.parentElement?.className
+				.split(" ")
+				.filter((name) => ["items-center", "justify-center", "text-center"].includes(name)),
+			clear: within(dialog).queryByRole("button", {name: "Clear filters"}),
+			live: dialog.querySelector("[aria-live=polite]")?.textContent,
+		}).toStrictEqual({
+			tag: "P",
+			block: ["items-center", "justify-center", "text-center"],
+			clear: null,
+			live: "No results found",
+		});
+	});
+
+	it("offers Clear filters when the filters emptied the list, keeping the typed text", async () => {
+		const {dialog} = await openPalette([]);
+
+		type(dialog, "date:week zzqxvq");
+		(await awaitRequest()).resolve([]);
+
+		fireEvent.click(await within(dialog).findByRole("button", {name: "Clear filters"}));
+
+		expect(within(dialog).getByRole("combobox")).toHaveProperty("value", "zzqxvq");
+	});
+
 	it("shows the filtered no-results copy and Search all resets the tab", async () => {
 		const {dialog} = await openPalette([]);
 

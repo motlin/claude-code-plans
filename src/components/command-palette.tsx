@@ -728,6 +728,8 @@ function PalettePopup({
 	const trimmedQuery = query.trim();
 	const hints = hintsFor(trimmedQuery);
 	const tokens = useMemo(() => parsePaletteTokens(trimmedQuery), [trimmedQuery]);
+	/** Date, repo or archived narrowing, which upstream's Clear filters drops while keeping the text. */
+	const hasFilterTokens = tokens.date !== undefined || tokens.project !== undefined || tokens.archived === true;
 	// A trailing bare `key:` lists that filter's values instead of results.
 	const valueSuggestions = useMemo(
 		() => (hints === null ? paletteValueSuggestions(query, data?.sessions ?? []) : null),
@@ -1609,8 +1611,22 @@ function PalettePopup({
 										</div>
 									))}
 								{!searching && resultCount === 0 && type === "all" && (
-									<div className="px-3 py-2 text-sm text-secondary">
-										No results for “{trimmedQuery}”
+									<div
+										data-palette-empty=""
+										className="flex min-h-fit flex-1 flex-col items-center justify-center gap-3 px-6 py-6 text-center"
+									>
+										<p className="m-0 max-w-full break-words text-secondary">No results found</p>
+										{hasFilterTokens && (
+											<button
+												type="button"
+												onClick={() => {
+													setQuery(tokens.text);
+												}}
+												className="h-7 rounded-r6 px-2.5 text-sm text-primary shadow-[inset_0_0_0_1px_var(--color-border)] transition-colors hover:bg-fill-ghost-hover focus-visible:shadow-[0_0_0_2px_var(--accent-100)] focus-visible:outline-none"
+											>
+												Clear filters
+											</button>
+										)}
 									</div>
 								)}
 								{!searching && resultCount === 0 && type !== "all" && (
@@ -1645,7 +1661,7 @@ function PalettePopup({
 					</Command.List>
 					{showResults && !searching && (
 						<div aria-live="polite" className="sr-only">
-							{resultCount} results available
+							{resultCount === 0 ? "No results found" : `${resultCount} results available`}
 						</div>
 					)}
 
