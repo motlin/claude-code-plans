@@ -60,7 +60,10 @@ function stubFetch() {
 	);
 }
 
-async function renderSidebar(visibleNavSections: NavSection[] = ["artifacts", "plans", "memories", "customize"]) {
+async function renderSidebar(
+	visibleNavSections: NavSection[] = ["artifacts", "plans", "memories", "customize"],
+	initialPath = "/plans",
+) {
 	const queryClient = seedQueryClient(visibleNavSections);
 	const rootRoute = createRootRoute({
 		component: () => (
@@ -79,9 +82,14 @@ async function renderSidebar(visibleNavSections: NavSection[] = ["artifacts", "p
 		path: "$",
 		component: () => null,
 	});
+	const routinesRoute = createRoute({
+		getParentRoute: () => rootRoute,
+		path: "routines",
+		component: () => null,
+	});
 	const router = createRouter({
-		routeTree: rootRoute.addChildren([pageRoute]),
-		history: createMemoryHistory({initialEntries: ["/plans"]}),
+		routeTree: rootRoute.addChildren([routinesRoute, pageRoute]),
+		history: createMemoryHistory({initialEntries: [initialPath]}),
 	});
 	await router.load();
 	render(<RouterProvider router={router} />);
@@ -126,6 +134,15 @@ afterEach(() => {
 });
 
 describe("sidebar More menu", () => {
+	it("turns the More row into a selected Scheduled row while on an overflow page, as upstream does", async () => {
+		await renderSidebar(["artifacts", "plans", "memories", "customize"], "/routines");
+		const more = screen.getByRole("button", {name: "More navigation items"});
+		expect({text: more.textContent, selected: more.getAttribute("data-selected")}).toStrictEqual({
+			text: "Scheduled",
+			selected: "focused",
+		});
+	});
+
 	it("shows only the pinned sections as sidebar rows", async () => {
 		await renderSidebar();
 
@@ -161,7 +178,7 @@ describe("sidebar More menu", () => {
 			separators: within(menu).getAllByRole("separator").length,
 		}).toStrictEqual({
 			items: [
-				"Routines",
+				"Scheduled",
 				"Background jobs",
 				"Active",
 				"Herdr",
@@ -202,7 +219,7 @@ describe("Edit sidebar dialog", () => {
 				})),
 		).toStrictEqual([
 			{label: "Artifacts", checked: "true"},
-			{label: "Routines", checked: "false"},
+			{label: "Scheduled", checked: "false"},
 			{label: "Background jobs", checked: "false"},
 			{label: "Active", checked: "false"},
 			{label: "Herdr", checked: "false"},

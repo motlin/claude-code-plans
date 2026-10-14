@@ -39,7 +39,7 @@ export const Route = createFileRoute("/routines")({
 	component: RoutinesPage,
 	loader: async ({context: {queryClient}}) => queryClient.query({...routinesQueryOptions, staleTime: "static"}),
 	head: () => ({
-		meta: [{title: "Routines"}],
+		meta: [{title: "Scheduled tasks"}],
 	}),
 });
 
@@ -63,12 +63,12 @@ function RoutinesPage() {
 	return (
 		<div className="mx-auto flex w-full max-w-5xl flex-col">
 			<CodePageHeader
-				title="Routines"
+				title="Scheduled tasks"
 				toolbar={
 					<>
 						<ToolbarSearch
-							label="Search routines"
-							placeholder="Search routines..."
+							label="Search scheduled tasks"
+							placeholder="Search scheduled tasks..."
 							search={view.search}
 							onSearch={(search) => {
 								setView((current) => ({...current, search}));
@@ -82,7 +82,7 @@ function RoutinesPage() {
 
 			<div className="flex flex-col pb-12 pt-1">
 				{visible.length > 0 && (
-					<ul role="list" aria-label="Routines" className="-mx-3 flex flex-col">
+					<ul role="list" aria-label="Scheduled tasks" className="-mx-3 flex flex-col">
 						{visible.map((routine) => (
 							<RoutineRow key={routine.toolUseId} routine={routine} now={now} />
 						))}
@@ -96,7 +96,7 @@ function RoutinesPage() {
 					</div>
 				)}
 				{hiddenCompleted > 0 && (
-					<div className="flex flex-col items-center justify-center gap-3 py-16 text-body text-ink-muted">
+					<div className="flex flex-col items-center justify-center gap-3 py-16 text-[13px]/[19px] text-ink-muted">
 						<span>{hiddenCompletedText(hiddenCompleted)}</span>
 					</div>
 				)}
@@ -169,10 +169,10 @@ function FilterMenu({
 }) {
 	return (
 		<Menu>
-			<Tooltip content="Filter routines">
+			<Tooltip content="Filter scheduled tasks">
 				<MenuTrigger
 					className={TOOLBAR_ICON_BUTTON}
-					aria-label="Filter routines"
+					aria-label="Filter scheduled tasks"
 					aria-pressed={view.schedule !== "all" || view.status !== "all"}
 				>
 					<SlidersHorizontal aria-hidden="true" />
@@ -224,8 +224,8 @@ function SortMenu({
 }) {
 	return (
 		<Menu>
-			<Tooltip content="Sort routines">
-				<MenuTrigger className={TOOLBAR_ICON_BUTTON} aria-label="Sort routines">
+			<Tooltip content="Sort scheduled tasks">
+				<MenuTrigger className={TOOLBAR_ICON_BUTTON} aria-label="Sort scheduled tasks">
 					<ArrowUpDown aria-hidden="true" />
 				</MenuTrigger>
 			</Tooltip>

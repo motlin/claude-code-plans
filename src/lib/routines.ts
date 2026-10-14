@@ -467,9 +467,9 @@ export function sortRoutines<T extends RoutineRow>(routines: readonly T[], sort:
 	});
 }
 
-/** Upstream's centered muted line, e.g. "1 completed routine hidden". */
+/** Upstream's centered muted line, e.g. "1 completed scheduled task hidden". */
 export function hiddenCompletedText(count: number): string {
-	return `${formatCount(count, "completed routine")} hidden`;
+	return `${formatCount(count, "completed scheduled task")} hidden`;
 }
 
 function sameLocalDay(a: Date, b: Date): boolean {

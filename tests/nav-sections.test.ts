@@ -18,7 +18,7 @@ describe("getVisibleNavItems", () => {
 		expect({pinned: labels(pinned), overflow: labels(overflow)}).toStrictEqual({
 			pinned: ["Artifacts", "Plans", "Memories", "Customize"],
 			overflow: [
-				"Routines",
+				"Scheduled",
 				"Background jobs",
 				"Active",
 				"Herdr",

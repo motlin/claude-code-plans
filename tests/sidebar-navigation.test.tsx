@@ -178,7 +178,7 @@ describe("sidebar navigation", () => {
 	it("links to each top-level section", () => {
 		expect(navItems.map(({label, to}) => ({label, to}))).toStrictEqual([
 			{label: "Artifacts", to: "/artifacts"},
-			{label: "Routines", to: "/routines"},
+			{label: "Scheduled", to: "/routines"},
 			{label: "Background jobs", to: "/jobs"},
 			{label: "Active", to: "/active"},
 			{label: "Herdr", to: "/herdr"},

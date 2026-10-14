@@ -461,8 +461,8 @@ describe("formatNextRun", () => {
 describe("hiddenCompletedText", () => {
 	it("matches upstream's hidden-count copy", () => {
 		expect([hiddenCompletedText(1), hiddenCompletedText(3)]).toStrictEqual([
-			"1 completed routine hidden",
-			"3 completed routines hidden",
+			"1 completed scheduled task hidden",
+			"3 completed scheduled tasks hidden",
 		]);
 	});
 });

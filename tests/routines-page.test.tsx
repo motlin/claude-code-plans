@@ -116,12 +116,12 @@ async function renderRoutinesPage(routines: Routine[]) {
 	});
 	await router.load();
 	render(<RouterProvider router={router} />);
-	await screen.findByRole("heading", {level: 1, name: "Routines"});
+	await screen.findByRole("heading", {level: 1, name: "Scheduled tasks"});
 	return router;
 }
 
 function rows() {
-	return within(screen.getByRole("list", {name: "Routines"}))
+	return within(screen.getByRole("list", {name: "Scheduled tasks"}))
 		.getAllByRole("listitem")
 		.map((row) => ({
 			title: row.querySelector("[data-routine-title]")?.textContent,
@@ -135,7 +135,7 @@ describe("routines route", () => {
 
 		expect({
 			rows: rows(),
-			hidden: screen.getByText("1 completed routine hidden").tagName,
+			hidden: screen.getByText("1 completed scheduled task hidden").tagName,
 			newRoutine: screen.queryByRole("button", {name: "New routine"}),
 			templates: screen.queryByRole("tab", {name: "Templates"}),
 		}).toStrictEqual({
@@ -152,7 +152,7 @@ describe("routines route", () => {
 
 	it("marks the schedule type, cloud routines and status on each row", async () => {
 		await renderRoutinesPage(ROUTINES);
-		const list = screen.getByRole("list", {name: "Routines"});
+		const list = screen.getByRole("list", {name: "Scheduled tasks"});
 
 		expect(
 			within(list)
@@ -168,27 +168,27 @@ describe("routines route", () => {
 	it("includes completed routines from the Sort menu", async () => {
 		await renderRoutinesPage(ROUTINES);
 
-		fireEvent.click(screen.getByRole("button", {name: "Sort routines"}));
+		fireEvent.click(screen.getByRole("button", {name: "Sort scheduled tasks"}));
 		fireEvent.click(await screen.findByRole("menuitemcheckbox", {name: /Include completed/}));
 
 		await waitFor(() => {
 			expect(rows()).toHaveLength(4);
 		});
-		expect(screen.queryByText("1 completed routine hidden")).toBeNull();
+		expect(screen.queryByText("1 completed scheduled task hidden")).toBeNull();
 	});
 
 	it("filters by schedule and searches routines", async () => {
 		await renderRoutinesPage(ROUTINES);
 
-		fireEvent.click(screen.getByRole("button", {name: "Filter routines"}));
+		fireEvent.click(screen.getByRole("button", {name: "Filter scheduled tasks"}));
 		fireEvent.click(await screen.findByRole("menuitemradio", {name: "Recurring"}));
 		await waitFor(() => {
 			expect(rows().map((row) => row.title)).toStrictEqual(["Poll the PR"]);
 		});
 
 		fireEvent.click(screen.getByRole("menuitemradio", {name: "One-time"}));
-		fireEvent.click(screen.getByRole("button", {name: "Search routines"}));
-		fireEvent.change(screen.getByRole("searchbox", {name: "Search routines"}), {
+		fireEvent.click(screen.getByRole("button", {name: "Search scheduled tasks"}));
+		fireEvent.change(screen.getByRole("searchbox", {name: "Search scheduled tasks"}), {
 			target: {value: "playdate"},
 		});
 
@@ -201,9 +201,9 @@ describe("routines route", () => {
 		await renderRoutinesPage([ROUTINES[3]!]);
 
 		expect({
-			list: screen.queryByRole("list", {name: "Routines"}),
-			hidden: screen.getByText("1 completed routine hidden").textContent,
-		}).toStrictEqual({list: null, hidden: "1 completed routine hidden"});
+			list: screen.queryByRole("list", {name: "Scheduled tasks"}),
+			hidden: screen.getByText("1 completed scheduled task hidden").textContent,
+		}).toStrictEqual({list: null, hidden: "1 completed scheduled task hidden"});
 	});
 
 	it("shows the toolbar tooltips with ⌘F on search", async () => {
@@ -223,13 +223,13 @@ describe("routines route", () => {
 		}
 
 		expect([
-			await tooltipFor("Search routines"),
-			await tooltipFor("Filter routines"),
-			await tooltipFor("Sort routines"),
+			await tooltipFor("Search scheduled tasks"),
+			await tooltipFor("Filter scheduled tasks"),
+			await tooltipFor("Sort scheduled tasks"),
 		]).toStrictEqual([
-			{text: "Search routines", keys: "⌘CommandF"},
-			{text: "Filter routines", keys: null},
-			{text: "Sort routines", keys: null},
+			{text: "Search scheduled tasks", keys: "⌘CommandF"},
+			{text: "Filter scheduled tasks", keys: null},
+			{text: "Sort scheduled tasks", keys: null},
 		]);
 	});
 
@@ -240,7 +240,7 @@ describe("routines route", () => {
 		fireEvent.keyDown(document.body, {key: "f", code: "KeyF", metaKey: true});
 
 		await waitFor(() => {
-			expect(document.activeElement).toBe(screen.getByRole("searchbox", {name: "Search routines"}));
+			expect(document.activeElement).toBe(screen.getByRole("searchbox", {name: "Search scheduled tasks"}));
 		});
 	});
 });

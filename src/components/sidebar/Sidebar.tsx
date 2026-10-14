@@ -110,6 +110,7 @@ export function Sidebar({
 							overflow={overflowItems}
 							visibleNavSections={visibleNavSections}
 							badgeFor={badgeFor}
+							activeSection={activeSection}
 						/>
 						<div data-nav-groups-gap="" className="h-[13px] shrink-0" />
 					</div>

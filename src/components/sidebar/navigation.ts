@@ -41,7 +41,8 @@ const navEntries = {
 	},
 	routines: {
 		to: "/routines",
-		label: "Routines",
+		// Upstream's nav label for its Scheduled tasks page
+		label: "Scheduled",
 		icon: Clock,
 	},
 	jobs: {
