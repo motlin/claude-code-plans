@@ -23,6 +23,7 @@ import {TruncatedContent} from "./truncated-content";
 import {AgentMessageRow} from "./agent-message-row";
 import {AgentNameContext, type AgentNameResolver} from "./agent-name-context";
 import {parseAgentMessage, type AgentMessage} from "../lib/agent-message";
+import {backgroundNoticeSummary, type NoticeEntry} from "../lib/background-notice-summary";
 import {parseTaskNotification, stoppedAgentDescription, type TaskNotification} from "../lib/background-tasks";
 import {SlashCommandText} from "./slash-command-chip";
 import {SlashCommandsContext} from "./slash-commands-context";
@@ -1322,7 +1323,15 @@ function FoldedNoticeRow({notice}: {notice: FoldedNotice}) {
  * no disclosure, "Background task stopped · <description>" or an agent's
  * "<done description> · took 27s".
  */
-function TaskEventStatusRow({label, detail, footer}: {label: string; detail: string | null; footer: React.ReactNode}) {
+function TaskEventStatusRow({
+	label,
+	detail,
+	footer,
+}: {
+	label: React.ReactNode;
+	detail: string | null;
+	footer: React.ReactNode;
+}) {
 	return (
 		<div
 			data-task-event-row=""
@@ -1346,16 +1355,41 @@ function TaskEventStatusRow({label, detail, footer}: {label: string; detail: str
 	);
 }
 
+interface UndeliveredRow {
+	label: React.ReactNode;
+	detail: string | null;
+}
+
 /**
- * The task-event row each undelivered `<task-notification>` draws, keyed by its
- * index in `lines`. Upstream draws a completed command and a stopped task; a
- * task launched in this transcript already settles on its own launch row.
+ * The task-event row each slot of undelivered `<task-notification>`s draws, keyed by the slot's
+ * first index in `lines`. Upstream draws a completed command and a stopped task, one alone as its
+ * own row and two or more in a row as one summary row; a task launched in this transcript already
+ * settles on its own launch row.
  */
-function undeliveredTaskRows(lines: readonly SessionLine[]): Map<number, {label: string; detail: string}> {
-	const rows = new Map<number, {label: string; detail: string}>();
+function undeliveredTaskRows(lines: readonly SessionLine[]): Map<number, UndeliveredRow> {
+	const rows = new Map<number, UndeliveredRow>();
 	let launches: Set<string> | null = null;
+	let slot: Array<{index: number; label: string; notification: TaskNotification}> = [];
+	const flush = () => {
+		const [first] = slot;
+		if (first !== undefined) {
+			rows.set(
+				first.index,
+				slot.length === 1
+					? {label: first.label, detail: first.notification.description}
+					: {
+							label: <NoticeSummary entries={slot.map(({notification}) => noticeEntry(notification))} />,
+							detail: null,
+						},
+			);
+		}
+		slot = [];
+	};
 	for (const [index, line] of lines.entries()) {
-		if (line.type !== "queued-task-notification") continue;
+		if (line.type !== "queued-task-notification") {
+			flush();
+			continue;
+		}
 		const notification = parseTaskNotification(line.content);
 		if (notification === null) continue;
 		const label =
@@ -1367,9 +1401,27 @@ function undeliveredTaskRows(lines: readonly SessionLine[]): Map<number, {label:
 		if (label === null) continue;
 		launches ??= transcriptToolUseIds(lines);
 		if (notification.toolUseId !== null && launches.has(notification.toolUseId)) continue;
-		rows.set(index, {label, detail: notification.description});
+		slot.push({index, label, notification});
 	}
+	flush();
 	return rows;
+}
+
+function noticeEntry(notification: TaskNotification): NoticeEntry {
+	return {
+		status: notification.status,
+		kind: notification.command ? "shell" : notification.agent ? "agent" : "task",
+	};
+}
+
+/** Upstream's summary row text: one span per part, joined by ", ", with failed in danger ink. */
+function NoticeSummary({entries}: {entries: readonly NoticeEntry[]}) {
+	return backgroundNoticeSummary(entries).map((part, index) => (
+		<React.Fragment key={part.key}>
+			{index > 0 && ", "}
+			<span className={part.danger ? "text-danger-ink" : undefined}>{part.text}</span>
+		</React.Fragment>
+	));
 }
 
 /** A completed background Agent's "<done description> · took Ns" task-event row. */

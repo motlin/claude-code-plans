@@ -92,7 +92,22 @@ function taskEventRows(container: HTMLElement): string[] {
 }
 
 describe("undelivered background-task notifications", () => {
-	it("draws a status row for each notification the queue never delivered, labelled by its status", () => {
+	it("draws one notification the queue never delivered as its own row, labelled by its status", () => {
+		const container = renderRecords([
+			reply,
+			enqueue(
+				notification(
+					"toolu_elsewhere2",
+					"killed",
+					'Background command "Wait for test-branch to finish" was stopped',
+				),
+			),
+		]);
+
+		expect(taskEventRows(container)).toStrictEqual(["Background task stopped · Wait for test-branch to finish"]);
+	});
+
+	it("collapses two or more undelivered notifications in one slot into upstream's single summary row", () => {
 		const container = renderRecords([
 			reply,
 			enqueue(
@@ -111,10 +126,7 @@ describe("undelivered background-task notifications", () => {
 			),
 		]);
 
-		expect(taskEventRows(container)).toStrictEqual([
-			"Background command completed · Wait for test-branch runs to finish",
-			"Background task stopped · Wait for test-branch to finish",
-		]);
+		expect(taskEventRows(container)).toStrictEqual(["1 background command completed, 1 stopped"]);
 	});
 
 	it("draws no status row for a notification the queue delivered", () => {
