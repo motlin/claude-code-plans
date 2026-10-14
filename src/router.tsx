@@ -39,5 +39,7 @@ declare module "@tanstack/react-router" {
 		fullBleed?: boolean;
 		/** Home/chat have bounded tiles with their own scrollports. */
 		tileShell?: "home" | "session";
+		/** Customize's upstream 8px page gutter, inside which its own column adds 32px. */
+		pageGutter?: "tight";
 	}
 }

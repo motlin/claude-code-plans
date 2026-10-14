@@ -138,6 +138,9 @@ function RootLayout({children}: Readonly<{children: ReactNode}>) {
 	const fullBleed = useMatches({
 		select: (matches) => matches.some((match) => match.staticData.fullBleed === true),
 	});
+	const tightGutter = useMatches({
+		select: (matches) => matches.some((match) => match.staticData.pageGutter === "tight"),
+	});
 	const tileShell = useMatches({
 		select: (matches) =>
 			matches.findLast((match) => match.staticData.tileShell !== undefined)?.staticData.tileShell,
@@ -169,7 +172,9 @@ function RootLayout({children}: Readonly<{children: ReactNode}>) {
 						{fullBleed ? (
 							<div className="min-h-0 flex-1">{children}</div>
 						) : (
-							<div className="px-4 pb-24 sm:px-8 sm:pb-8">{children}</div>
+							<div className={tightGutter ? "px-2 pb-24 sm:pb-8" : "px-4 pb-24 sm:px-8 sm:pb-8"}>
+								{children}
+							</div>
 						)}
 					</>
 				) : (

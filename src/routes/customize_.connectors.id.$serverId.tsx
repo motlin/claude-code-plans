@@ -9,6 +9,7 @@ export const Route = createFileRoute("/customize_/connectors/id/$serverId")({
 		void queryClient.query(customizeMcpServerDetailQueryOptions(params.serverId)).catch(noop);
 	},
 	head: () => ({meta: [{title: "Connector · Customize"}]}),
+	staticData: {pageGutter: "tight"},
 });
 
 /** Local MCP server detail: header, copyable URL or command, and tool permissions. */

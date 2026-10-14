@@ -11,6 +11,7 @@ export const Route = createFileRoute("/customize")({
 	component: CustomizeLayout,
 	validateSearch: customizeSearchSchema,
 	head: () => ({meta: [{title: "Customize"}]}),
+	staticData: {pageGutter: "tight"},
 });
 
 /**

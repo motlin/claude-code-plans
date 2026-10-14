@@ -39,16 +39,13 @@ export function PluginDetailHeader({detail}: {detail: PluginDetail}) {
 	const disabled = toggles !== undefined && !isPluginEnabled(toggles, plugin.id);
 	return (
 		<header className="flex flex-col gap-4">
-			<div className="flex items-center justify-between gap-3">
-				<CustomizeLink
-					target={{kind: "list", section: "plugins"}}
-					className="-ms-2 inline-flex h-6 w-fit items-center gap-1.5 rounded-r6 px-2 text-[13px]/[19px] text-secondary no-underline hover:bg-fill-ghost-hover hover:text-primary"
-				>
-					<ArrowLeft aria-hidden="true" className="size-4" />
-					Plugins
-				</CustomizeLink>
-				<CopyLinkButton />
-			</div>
+			<CustomizeLink
+				target={{kind: "list", section: "plugins"}}
+				className="-ms-2 inline-flex h-6 w-fit items-center gap-1.5 rounded-r6 px-2 text-[13px]/[19px] text-secondary no-underline hover:bg-fill-ghost-hover hover:text-primary"
+			>
+				<ArrowLeft aria-hidden="true" className="size-4" />
+				Plugins
+			</CustomizeLink>
 			<div className="flex items-center gap-3">
 				<IconTile icon={Puzzle} size="lg" />
 				<div className="flex min-w-0 flex-1 flex-col">
@@ -85,8 +82,22 @@ export function PluginDetailHeader({detail}: {detail: PluginDetail}) {
 	);
 }
 
-/** Upstream's top-right "Copy link": copies this detail page's URL. */
-function CopyLinkButton() {
+/**
+ * The plugin detail page's frame. Upstream's "Copy link" sits in the page's top chrome row, 10px
+ * from the top and 16px from the window's right edge: the frame starts below the root's 36px top
+ * row inside its 8px Customize gutter.
+ */
+export function PluginDetailPage({children}: {children: ReactNode}) {
+	return (
+		<div className="relative flex w-full flex-col bg-surface-1 text-body text-primary">
+			<CopyLinkButton className="absolute -top-[26px] right-2" />
+			<div className="mx-auto w-full max-w-5xl px-4 pt-4 pb-8 md:px-8">{children}</div>
+		</div>
+	);
+}
+
+/** Upstream's "Copy link": copies this detail page's URL. */
+function CopyLinkButton({className}: {className: string}) {
 	const toast = useToast();
 	return (
 		<button
@@ -96,7 +107,7 @@ function CopyLinkButton() {
 					toast(copied ? {kind: "success", message: "Link copied"} : {kind: "error", message: "Copy failed"});
 				});
 			}}
-			className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-r6 px-2.5 text-[14px]/[20px] text-primary hover:bg-fill-ghost-hover"
+			className={`inline-flex h-7 shrink-0 items-center gap-1.5 rounded-r6 px-2.5 text-[14px]/[20px] text-primary hover:bg-fill-ghost-hover ${className}`}
 		>
 			<Link aria-hidden="true" className="size-4" />
 			Copy link

@@ -9,6 +9,7 @@ export const Route = createFileRoute("/customize_/skills/id/$skillId")({
 		void queryClient.query(customizeSkillDetailQueryOptions(params.skillId)).catch(noop);
 	},
 	head: () => ({meta: [{title: "Skill · Customize"}]}),
+	staticData: {pageGutter: "tight"},
 });
 
 /** Skill detail shell: header and Overview · Contents tabs over the active tab. */

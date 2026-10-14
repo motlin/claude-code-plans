@@ -15,6 +15,7 @@ import {Route as HomeRoute} from "../src/routes/index";
 import {Route as SessionRoute} from "../src/routes/session.$id";
 import {Route as SourceRoute} from "../src/routes/session.$id_.source.$uuid";
 import {Route as SubagentsRoute} from "../src/routes/session.$id_.subagents";
+import {Route as CustomizeRoute} from "../src/routes/customize";
 import {HomePage} from "../src/components/home/home-page";
 import {SessionTileFrame, type SessionTileScrollPosition} from "../src/components/session-tile-frame";
 import {localAccountQueryOptions} from "../src/lib/api/local-account";
@@ -150,4 +151,33 @@ it("actual root selects home/chat shells while source, subagents, and ordinary r
 		{shell: "session", owners: [{tag: "DIV", home: false, chat: true}]},
 		...Array.from({length: 3}, () => ({shell: null, owners: [{tag: "MAIN", home: false, chat: false}]})),
 	]);
+});
+
+it("gives Customize upstream's 8px page gutter, so its 32px-padded column starts 40px from the sidebar, while other pages keep 32px", async () => {
+	vi.stubGlobal("scrollTo", () => {});
+	const client = new QueryClient({defaultOptions: {queries: {retry: false}}});
+	clients.push(client);
+	const root = createRootRouteWithContext<{queryClient: QueryClient}>()({component: RootRoute.options.component!});
+	const customize = createRoute({
+		getParentRoute: () => root,
+		path: "/customize",
+		staticData: CustomizeRoute.options.staticData ?? {},
+		component: () => <p>Fabricated customize</p>,
+	});
+	const plans = createRoute({getParentRoute: () => root, path: "/plans", component: () => <p>Fabricated plans</p>});
+	const router = createRouter({
+		routeTree: root.addChildren([customize, plans]),
+		history: createMemoryHistory({initialEntries: ["/customize"]}),
+		context: {queryClient: client},
+	});
+	await router.load();
+	render(<RouterProvider router={router} />);
+	const gutter = (text: string) =>
+		(screen.getByText(text).parentElement?.className.split(" ") ?? []).filter((name) => /^(sm:)?px-/.test(name));
+	const customizeGutter = gutter("Fabricated customize");
+	await act(async () => router.navigate({to: "/plans"}));
+	expect({customize: customizeGutter, plans: gutter("Fabricated plans")}).toStrictEqual({
+		customize: ["px-2"],
+		plans: ["px-4", "sm:px-8"],
+	});
 });

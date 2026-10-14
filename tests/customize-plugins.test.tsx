@@ -9,7 +9,12 @@ import {cleanup, fireEvent, render, screen, waitFor, within} from "@testing-libr
 import type {ReactNode} from "react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {ContentsViewer} from "../src/components/customize/contents-viewer";
-import {PluginDetailHeader, PluginHooks, PluginOverview} from "../src/components/customize/plugin-detail";
+import {
+	PluginDetailHeader,
+	PluginDetailPage,
+	PluginHooks,
+	PluginOverview,
+} from "../src/components/customize/plugin-detail";
 import {pluginDetailTabs} from "../src/components/customize/plugin-view";
 import {commandRows} from "../src/components/customize/skills-view";
 import {ToastProvider} from "../src/components/toast";
@@ -225,17 +230,24 @@ describe("plugin detail UI", () => {
 		});
 	});
 
-	it("gives the header upstream's Copy link button and a 15/20 580 title, with 400-weight secondary section labels", async () => {
+	it("puts upstream's Copy link in the page's top chrome row, with a 15/20 580 title and 400-weight secondary section labels", async () => {
 		const writeText = vi.fn<Clipboard["writeText"]>(async () => Promise.resolve());
 		Object.defineProperty(navigator, "clipboard", {value: {writeText}, configurable: true});
 		const detail = await detailFor("tools@market");
 		await renderInRouter(
-			<>
+			<PluginDetailPage>
 				<PluginDetailHeader detail={detail} />
 				<PluginOverview detail={detail} />
-			</>,
+			</PluginDetailPage>,
 		);
 		const copy = await screen.findByRole("button", {name: "Copy link"});
+		// Upstream's chrome row sits 10px from the top and 16px from the window's right edge, above "← Plugins".
+		expect({
+			inHeader: copy.closest("header") !== null,
+			placement: copy.className
+				.split(" ")
+				.filter((name) => ["absolute", "-top-[26px]", "right-2"].includes(name)),
+		}).toStrictEqual({inHeader: false, placement: ["absolute", "-top-[26px]", "right-2"]});
 		fireEvent.click(copy);
 		await waitFor(() => {
 			expect(writeText).toHaveBeenCalledTimes(1);
