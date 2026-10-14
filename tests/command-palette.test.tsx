@@ -209,7 +209,7 @@ describe("CommandPalette shell", () => {
 		const dialog = await openPalette();
 
 		expect(
-			[...(footer(dialog)?.children[0]?.children ?? [])].map((hint) => [
+			[...(footer(dialog)?.children[0]?.children[0]?.children ?? [])].map((hint) => [
 				hint.firstElementChild?.textContent,
 				[...hint.querySelectorAll("kbd")].map((kbd) => kbd.textContent),
 			]),
@@ -890,6 +890,22 @@ describe("CommandPalette Artifacts and Scheduled tabs", () => {
 			}),
 		);
 	}
+
+	it("opens the sidebar Search entry without the floating pill, with upstream's right-aligned Compose ⇥ footer hint", async () => {
+		const composer = await renderPalette();
+		pressK(composer, {metaKey: true, shiftKey: true});
+		const dialog = await screen.findByRole("dialog", {name: "Search"});
+		const hint = within(footer(dialog) as HTMLElement).getByRole("button", {name: /^Compose/});
+		expect({
+			pill: within(dialog).queryByRole("radiogroup", {name: "Search or compose"}),
+			keys: hint.getAttribute("aria-keyshortcuts"),
+			kbd: hint.querySelector("kbd")?.textContent,
+		}).toStrictEqual({pill: null, keys: "Tab", kbd: "⇥"});
+
+		fireEvent.click(hint);
+
+		expect(await within(dialog).findByText("Send")).toBeTruthy();
+	});
 
 	it("names the Compose radio without a Tab keycap", async () => {
 		const dialog = await openPalette();

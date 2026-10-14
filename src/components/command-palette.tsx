@@ -42,7 +42,7 @@ import {
 	ArrowUp,
 } from "lucide-react";
 import {useActiveSessionsIfAvailable} from "../hooks/use-claude-events";
-import type {PaletteMode} from "../hooks/use-command-palette";
+import type {PaletteEntrypoint, PaletteMode} from "../hooks/use-command-palette";
 import {useDebouncedValue} from "../hooks/use-debounced-value";
 import {sessionIdentityQueryOptions} from "../lib/api/session-identity";
 import {useSessionIdentity} from "../hooks/use-session-identity";
@@ -643,9 +643,17 @@ export interface CommandPaletteProps {
 	onOpenChange: (open: boolean) => void;
 	mode?: PaletteMode;
 	onModeChange?: (mode: PaletteMode) => void;
+	/** "search" for the sidebar Search entry, which upstream opens without the floating pill. */
+	entrypoint?: PaletteEntrypoint;
 }
 
-export function CommandPalette({open, onOpenChange, mode: controlledMode, onModeChange}: CommandPaletteProps) {
+export function CommandPalette({
+	open,
+	onOpenChange,
+	mode: controlledMode,
+	onModeChange,
+	entrypoint = "default",
+}: CommandPaletteProps) {
 	const [uncontrolledMode, setUncontrolledMode] = useState<PaletteMode>("search");
 	const mode = controlledMode ?? uncontrolledMode;
 	const setMode = onModeChange ?? setUncontrolledMode;
@@ -654,7 +662,7 @@ export function CommandPalette({open, onOpenChange, mode: controlledMode, onMode
 		<Dialog.Root open={open} onOpenChange={onOpenChange}>
 			<Dialog.Portal>
 				<Dialog.Backdrop className="fixed inset-0 z-50 bg-backdrop backdrop-blur-[2px] transition-opacity duration-200 ease-out data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 motion-reduce:transition-none" />
-				<PalettePopup mode={mode} onModeChange={setMode} onOpenChange={onOpenChange} />
+				<PalettePopup mode={mode} onModeChange={setMode} onOpenChange={onOpenChange} entrypoint={entrypoint} />
 			</Dialog.Portal>
 		</Dialog.Root>
 	);
@@ -665,10 +673,12 @@ function PalettePopup({
 	mode,
 	onModeChange,
 	onOpenChange,
+	entrypoint,
 }: {
 	mode: PaletteMode;
 	onModeChange: (mode: PaletteMode) => void;
 	onOpenChange: (open: boolean) => void;
+	entrypoint: PaletteEntrypoint;
 }) {
 	const navigate = useNavigate();
 	const openSettings = useOpenSettings();
@@ -1194,7 +1204,7 @@ function PalettePopup({
 			}}
 		>
 			<Dialog.Title className="sr-only">Search</Dialog.Title>
-			<ModeSwitch mode={mode} onModeChange={onModeChange} />
+			{entrypoint !== "search" && <ModeSwitch mode={mode} onModeChange={onModeChange} />}
 			<div
 				ref={cardRef}
 				className={`relative overflow-hidden border-[0.5px] border-strong bg-surface-3 shadow-2xl transition-transform duration-150 ease-out motion-reduce:transition-none ${
@@ -1662,6 +1672,18 @@ function PalettePopup({
 								["Filters", ["/"]],
 								["Actions", ["alt+enter"]],
 							]}
+							{...(entrypoint === "search"
+								? {
+										trailing: (
+											<ViewHint
+												label="Compose"
+												onSwitch={() => {
+													onModeChange("compose");
+												}}
+											/>
+										),
+									}
+								: {})}
 						/>
 					)}
 				</Command>
@@ -1695,23 +1717,53 @@ const ICON_BUTTON_BASE_CLASS =
 const ICON_BUTTON_CLASS = `${ICON_BUTTON_BASE_CLASS} h-7 w-7`;
 
 /** Upstream's keyboard-hint footer: "Close Esc · Change type ←→ · Filters / · Actions ⌥⏎", or "Send ⏎" in Compose. */
-function PaletteFooter({hints}: {hints: ReadonlyArray<readonly [label: string, keys: readonly string[]]>}) {
+/** Upstream's footer view hint for the sidebar Search entry: a ghost "Compose ⇥" that switches views like Tab. */
+function ViewHint({label, onSwitch}: {label: string; onSwitch: () => void}) {
+	return (
+		<button
+			type="button"
+			aria-keyshortcuts="Tab"
+			onMouseDown={(event) => {
+				event.preventDefault();
+			}}
+			onClick={onSwitch}
+			className="inline-flex h-5 cursor-pointer items-center rounded-r4 px-1.5 text-xs text-ink-muted hover:bg-fill-ghost-hover hover:text-secondary"
+		>
+			{label}
+			<kbd aria-hidden="true" className="ms-1 font-sans">
+				⇥
+			</kbd>
+		</button>
+	);
+}
+
+function PaletteFooter({
+	hints,
+	trailing,
+}: {
+	hints: ReadonlyArray<readonly [label: string, keys: readonly string[]]>;
+	/** Right-aligned extra, like the Search entry's view hint. */
+	trailing?: ReactNode;
+}) {
 	return (
 		<div
 			data-palette-footer=""
 			className="border-t-[0.5px] border-border bg-surface-3 py-2.5 pr-4 pl-5 pointer-coarse:hidden"
 		>
-			<div className="flex min-h-5 items-center gap-5 text-xs text-ink-muted">
-				{hints.map(([label, keys]) => (
-					<span key={label} className="flex items-center gap-2">
-						<span>{label}</span>
-						<span className="flex items-center gap-[2px]">
-							{keys.map((key) => (
-								<Shortcut key={key} keys={key} />
-							))}
+			<div className="flex min-h-5 items-center justify-between text-xs text-ink-muted">
+				<div className="flex items-center gap-5">
+					{hints.map(([label, keys]) => (
+						<span key={label} className="flex items-center gap-2">
+							<span>{label}</span>
+							<span className="flex items-center gap-[2px]">
+								{keys.map((key) => (
+									<Shortcut key={key} keys={key} />
+								))}
+							</span>
 						</span>
-					</span>
-				))}
+					))}
+				</div>
+				{trailing}
 			</div>
 		</div>
 	);
