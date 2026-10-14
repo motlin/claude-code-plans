@@ -907,6 +907,22 @@ describe("CommandPalette Artifacts and Scheduled tabs", () => {
 		expect(await within(dialog).findByText("Send")).toBeTruthy();
 	});
 
+	it("centres the card on upstream's fixed 583.9px settled height, capped at 15vh on medium and 25vh on wide screens", async () => {
+		const dialog = await openPalette();
+		const classes = dialog.className.split(" ");
+		expect({
+			tops: classes.filter((name) => /^(sm:|lg:)?top-/.test(name)),
+			inline: dialog.style.top,
+		}).toStrictEqual({
+			tops: [
+				"top-4",
+				"sm:top-[max(0px,min(15vh,max(2rem,calc((100vh-583.9px)/2))))]",
+				"lg:top-[max(0px,min(25vh,max(2rem,calc((100vh-583.9px)/2))))]",
+			],
+			inline: "",
+		});
+	});
+
 	it("names the Compose radio without a Tab keycap", async () => {
 		const dialog = await openPalette();
 

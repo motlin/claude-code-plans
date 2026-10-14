@@ -2,7 +2,7 @@ import {isSessionRouteAlias} from "../lib/session-route-alias";
 import {Dialog} from "@base-ui/react/dialog";
 import {Command, defaultFilter} from "cmdk";
 import {useNavigate, useRouterState} from "@tanstack/react-router";
-import {type KeyboardEvent, type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState} from "react";
+import {type KeyboardEvent, type ReactNode, useEffect, useMemo, useRef, useState} from "react";
 import {useQueries, useQuery, useQueryClient} from "@tanstack/react-query";
 import {
 	FileText,
@@ -688,7 +688,6 @@ function PalettePopup({
 	const [rowActions, setRowActions] = useState<{session: PaletteCardSession; top: number} | null>(null);
 	const [query, setQuery] = useState("");
 	const [tab, setTab] = useState<PaletteType>("all");
-	const [settledHeight, setSettledHeight] = useState<number | null>(null);
 	const {data} = useQuery(recentSessionsQueryOptions(PALETTE_RECENT_LIMIT));
 	const queryClient = useQueryClient();
 	const currentSessionId = useCurrentSessionId();
@@ -1083,12 +1082,6 @@ function PalettePopup({
 		] satisfies PaletteAction[]
 	).filter((action: PaletteAction) => action.shortcut === undefined || SHORTCUTS[action.shortcut].enabled);
 
-	// Upstream centres the card on its first settled height so it does not jump while filtering.
-	useLayoutEffect(() => {
-		const height = cardRef.current?.offsetHeight ?? 0;
-		if (settledHeight === null && height > 0) setSettledHeight(height);
-	}, [settledHeight, attention.length, recents.length]);
-
 	function select(callback: () => void) {
 		onOpenChange(false);
 		callback();
@@ -1197,11 +1190,9 @@ function PalettePopup({
 			data-perf-overlay="command_palette"
 			initialFocus={inputRef}
 			finalFocus={() => restoreFocusRef.current}
-			className={`fixed left-1/2 z-50 w-[calc(100vw-2rem)] max-w-2xl -translate-x-1/2 outline-none md:w-[calc(100vw-5rem)] ${PALETTE_RADIUS}`}
-			style={{
-				top: "max(1rem, min(25vh, calc((100vh - var(--cp-settled-h, 0px)) / 2)))",
-				...(settledHeight === null ? {} : {"--cp-settled-h": `${settledHeight}px`}),
-			}}
+			// Upstream centres the card on a fixed 583.9px settled height, capped at 15vh (sm) or 25vh (lg),
+			// so it never jumps while results load or filter.
+			className={`fixed top-4 left-1/2 z-50 w-[calc(100vw-2rem)] max-w-2xl -translate-x-1/2 outline-none sm:top-[max(0px,min(15vh,max(2rem,calc((100vh-583.9px)/2))))] md:w-[calc(100vw-5rem)] lg:top-[max(0px,min(25vh,max(2rem,calc((100vh-583.9px)/2))))] ${PALETTE_RADIUS}`}
 		>
 			<Dialog.Title className="sr-only">Search</Dialog.Title>
 			{entrypoint !== "search" && <ModeSwitch mode={mode} onModeChange={onModeChange} />}
