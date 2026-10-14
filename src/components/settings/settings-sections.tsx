@@ -320,19 +320,6 @@ function AppearanceSection() {
 				/>
 			</SettingsRow>
 			<SettingsRow
-				slug="transcript-text-size"
-				title="Transcript text size"
-				description="Size of the conversation transcript text."
-			>
-				<SegmentedControl
-					value={settings.transcriptTextSize}
-					options={TRANSCRIPT_TEXT_SIZE_OPTIONS}
-					onValueChange={(next) => {
-						setSetting("transcriptTextSize", next);
-					}}
-				/>
-			</SettingsRow>
-			<SettingsRow
 				slug="default-transcript-view"
 				title="Default transcript view"
 				description="The view sessions open in. Picking a view from a session’s Transcript view menu changes only that session."
@@ -365,6 +352,26 @@ const MOTION_OPTIONS: Array<{value: Motion; label: string}> = [
 	{value: "system", label: "System"},
 	{value: "reduced", label: "Reduced"},
 ];
+
+function TranscriptTextSizeRow() {
+	const {settings, setSetting} = useSettings();
+
+	return (
+		<SettingsRow
+			slug="transcript-text-size"
+			title="Transcript text size"
+			description="Size of the conversation transcript text."
+		>
+			<SegmentedControl
+				value={settings.transcriptTextSize}
+				options={TRANSCRIPT_TEXT_SIZE_OPTIONS}
+				onValueChange={(next) => {
+					setSetting("transcriptTextSize", next);
+				}}
+			/>
+		</SettingsRow>
+	);
+}
 
 function TranscriptWidthRow() {
 	const {settings, setSetting} = useSettings();
@@ -733,6 +740,7 @@ export function GeneralSettings() {
 		<>
 			<SettingsSection title="Appearance">
 				<ThemeRow />
+				<TranscriptTextSizeRow />
 				<TranscriptWidthRow />
 				<MotionRow />
 				<ToggleRow

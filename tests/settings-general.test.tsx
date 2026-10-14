@@ -62,19 +62,19 @@ afterEach(() => {
 });
 
 describe("General settings ▸ Appearance", () => {
-	it("renders Theme, Transcript width, then Motion with the upstream width description", async () => {
+	it("renders Theme, Transcript text size, Transcript width, then Motion with the upstream width description", async () => {
 		stubNotification("granted");
 		await renderGeneral();
 
 		const appearance = screen.getByRole("heading", {name: "Appearance"}).closest("section");
 		const rows = [...(appearance?.querySelectorAll("[data-settings-row]") ?? [])];
 		expect({
-			order: rows.map((row) => row.getAttribute("data-settings-row")).slice(0, 3),
+			order: rows.map((row) => row.getAttribute("data-settings-row")).slice(0, 4),
 			description: document.querySelector('[data-settings-row="transcript-width"] [data-settings-desc]')
 				?.textContent,
 			width: radios("Transcript width"),
 		}).toStrictEqual({
-			order: ["theme", "transcript-width", "motion"],
+			order: ["theme", "transcript-text-size", "transcript-width", "motion"],
 			description: "Maximum width of the transcript and composer columns.",
 			width: [
 				{name: "Narrow", checked: "true"},
