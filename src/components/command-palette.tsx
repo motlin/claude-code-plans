@@ -15,6 +15,7 @@ import {
 	Home,
 	SlidersHorizontal,
 	CircleCheckBig,
+	CirclePlus,
 	Keyboard,
 	CornerDownLeft,
 	X,
@@ -72,6 +73,7 @@ import {
 	useContextChips,
 } from "../lib/context-attach";
 import {writeClipboardText} from "../lib/clipboard";
+import {requestHomeComposerFocus} from "../lib/home-composer-focus";
 import {
 	PALETTE_FILTER_TOKENS,
 	PaletteTypeSchema,
@@ -1461,33 +1463,18 @@ function PalettePopup({
 									</Command.Group>
 								)}
 
+								{/* Upstream's empty state lists only New session; the other actions answer a typed query */}
 								<Command.Group heading="Actions" className={GROUP_CLASS}>
-									{actions.map((action) =>
-										action.shortcut === undefined ? (
-											<CommandItem
-												key={action.label}
-												value={`action:${action.label}`}
-												icon={action.icon}
-												onSelect={() => {
-													select(action.run);
-												}}
-											>
-												{action.label}
-											</CommandItem>
-										) : (
-											<ShortcutCommandItem
-												key={action.label}
-												value={`action:${action.label}`}
-												id={action.shortcut}
-												icon={action.icon}
-												onSelect={() => {
-													select(action.run);
-												}}
-											>
-												{action.label}
-											</ShortcutCommandItem>
-										),
-									)}
+									<ShortcutCommandItem
+										value="action:New session"
+										id="new_session"
+										icon={<CirclePlus />}
+										onSelect={() => {
+											select(() => void navigate({to: "/"}).then(requestHomeComposerFocus));
+										}}
+									>
+										New session
+									</ShortcutCommandItem>
 								</Command.Group>
 							</>
 						)}

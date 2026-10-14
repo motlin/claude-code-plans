@@ -386,7 +386,7 @@
 		"tolerance": 0
 	},
 	"client.palette.open.mutations": {
-		"ceiling": 44,
+		"ceiling": 32,
 		"unit": "count",
 		"tolerance": 0
 	},

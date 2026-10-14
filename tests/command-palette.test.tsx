@@ -530,11 +530,16 @@ describe("CommandPalette shell", () => {
 		expect(groupLabels(dialog)).toStrictEqual([
 			["Needs attention", ["Blocked one Awaiting input", "Review one Needs review"]],
 			["Recents", ["Recent one", "Recent two", "Recent three", "Recent four", "Recent five"]],
-			[
-				"Actions",
-				["Search sessions", "Keyboard shortcuts", "Toggle sidebar", "Settings", "Mark all sessions seen"],
-			],
+			["Actions", ["New session"]],
 		]);
+		const newSession = within(dialog).getByRole("option", {name: /^New session/});
+		expect(
+			newSession
+				.querySelector("svg")
+				?.getAttribute("class")
+				?.split(" ")
+				.find((name) => name.startsWith("lucide-")),
+		).toBe("lucide-circle-plus");
 		expect(dialog.querySelectorAll("[data-palette-attention-dot]").length).toBe(2);
 		// Upstream's group headers are 12/17 muted, and their rows sit flush at a 36px pitch.
 		const group = dialog.querySelector("[cmdk-group]");
@@ -542,6 +547,12 @@ describe("CommandPalette shell", () => {
 			heading: group?.className.split(" ").includes("[&_[cmdk-group-heading]]:text-[12px]/[17px]"),
 			rowGap: group?.className.split(" ").some((name) => name.startsWith("[&_[cmdk-group-items]]:gap-")),
 		}).toStrictEqual({heading: true, rowGap: false});
+	});
+
+	it("keeps the other actions reachable by typing, as upstream's empty state lists only New session", async () => {
+		const dialog = await openPalette([recentSession("s-1", "Recent one")]);
+		fireEvent.change(within(dialog).getByRole("combobox"), {target: {value: "keyboard"}});
+		expect(await within(dialog).findByRole("option", {name: /^Keyboard shortcuts/})).toBeTruthy();
 	});
 
 	it("caps Needs attention at the organic total of 7", async () => {
@@ -552,7 +563,7 @@ describe("CommandPalette shell", () => {
 		await within(dialog).findByRole("option", {name: /Waiting 0/});
 		expect(groupLabels(dialog).map(([heading, labels]) => [heading, labels.length])).toStrictEqual([
 			["Needs attention", 7],
-			["Actions", 5],
+			["Actions", 1],
 		]);
 	});
 

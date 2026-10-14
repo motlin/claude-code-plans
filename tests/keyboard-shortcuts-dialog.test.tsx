@@ -282,8 +282,10 @@ describe("Command palette Keyboard shortcuts item", () => {
 		});
 		await router.load();
 		render(<RouterProvider router={router} />);
+		// The palette's empty state lists only New session; the action answers a typed query.
+		fireEvent.change(await screen.findByRole("combobox"), {target: {value: "keyboard"}});
 
-		fireEvent.click(await screen.findByRole("option", {name: "Keyboard shortcuts"}));
+		fireEvent.click(await screen.findByRole("option", {name: /^Keyboard shortcuts/}));
 
 		await screen.findByRole("dialog", {name: "Keyboard shortcuts"});
 	});

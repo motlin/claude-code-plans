@@ -292,13 +292,15 @@ describe("palette contextual session commands", () => {
 	it("hides the commands in the empty state", async () => {
 		const {dialog} = await openPalette("/session/sess-1");
 
-		await within(dialog).findByRole("option", {name: "Settings"});
+		await within(dialog).findByRole("option", {name: /^New session/});
 		expect(optionLabels(dialog).filter((label) => label.includes("Copy"))).toStrictEqual([]);
 	});
 
 	it("offers Show side chat with its ⌘; keycaps on a session page and opens it", async () => {
 		resetSideChatStore();
-		const {dialog} = await openPalette("/session/sess-1");
+		const {dialog, input} = await openPalette("/session/sess-1");
+		// Upstream's empty state lists only New session; the action answers a typed query.
+		fireEvent.change(input, {target: {value: "side chat"}});
 
 		const option = await within(dialog).findByRole("option", {name: /Show side chat/});
 		expect([
@@ -312,9 +314,10 @@ describe("palette contextual session commands", () => {
 	});
 
 	it("does not offer Show side chat off a session page", async () => {
-		const {dialog} = await openPalette("/plans");
+		const {dialog, input} = await openPalette("/plans");
+		fireEvent.change(input, {target: {value: "side chat"}});
 
-		await within(dialog).findByRole("option", {name: "Settings"});
+		await within(dialog).findByRole("option", {name: /See all results/});
 		expect(optionLabels(dialog).filter((label) => label === "Show side chat")).toStrictEqual([]);
 	});
 
