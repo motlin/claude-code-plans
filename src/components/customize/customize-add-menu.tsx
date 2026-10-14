@@ -1,5 +1,5 @@
 import {useQuery} from "@tanstack/react-query";
-import {ChevronDown} from "lucide-react";
+import {ChevronDown, Plus} from "lucide-react";
 import {customizeSkillsQueryOptions} from "../../lib/api/customize";
 import {writeClipboardText} from "../../lib/clipboard";
 import {startClaudeSession} from "../../lib/start-claude-session";
@@ -49,6 +49,7 @@ export function CustomizeAddMenu({section}: {section: CustomizeSectionId}) {
 	return (
 		<Menu>
 			<MenuTrigger aria-label={ADD_LABEL[section]} className={ADD_BUTTON_CLASS}>
+				<Plus aria-hidden="true" className="size-4" />
 				Add
 				<ChevronDown aria-hidden="true" className="size-4" />
 			</MenuTrigger>

@@ -33,14 +33,14 @@ function CustomizeLayout() {
 
 	return (
 		<div data-testid="customize-page" className="flex w-full flex-col bg-surface-1 text-body text-primary">
-			<div className="mx-auto w-full max-w-5xl pb-6">
+			<div className="mx-auto w-full max-w-5xl px-4 pt-3 pb-6 md:px-8">
 				<CustomizeHeader section={section} search={search} onSearchChange={updateSearch} />
 			</div>
 			<div
 				id="customize-pane"
 				role="tabpanel"
 				aria-labelledby={`customize-tab-${section.id}`}
-				className="mx-auto w-full max-w-5xl"
+				className="mx-auto w-full max-w-5xl px-4 md:px-8"
 			>
 				<Outlet />
 			</div>

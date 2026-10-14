@@ -99,6 +99,7 @@ export function CustomizeHeader({
 			</div>
 			<div data-customize-controls="" className="flex min-w-0 flex-wrap items-center justify-end gap-1">
 				<SearchField
+					label={section.searchLabel}
 					placeholder={section.searchPlaceholder}
 					value={search.q ?? ""}
 					onChange={(q) => {
@@ -173,12 +174,13 @@ export function CustomizeHeader({
 }
 
 interface SearchFieldProps {
+	label: string;
 	placeholder: string;
 	value: string;
 	onChange: (value: string) => void;
 }
 
-function SearchField({placeholder, value, onChange}: SearchFieldProps) {
+function SearchField({label, placeholder, value, onChange}: SearchFieldProps) {
 	// Local draft keeps the caret stable while each keystroke updates `?q=`.
 	const [draft, setDraft] = useState(value);
 	const [syncedValue, setSyncedValue] = useState(value);
@@ -193,12 +195,12 @@ function SearchField({placeholder, value, onChange}: SearchFieldProps) {
 	};
 
 	return (
-		<div className="inline-flex h-8 w-64 cursor-text items-center gap-1.5 rounded-r6 bg-surface-0/50 px-3 shadow-[inset_0_0_0_1px_var(--color-border)] has-[:focus-visible]:shadow-[inset_0_0_0_1px_var(--color-accent-100)]">
+		<div className="inline-flex h-8 w-52 cursor-text items-center gap-1.5 rounded-r6 bg-surface-0/50 px-3 shadow-[inset_0_0_0_1px_var(--color-border)] has-[:focus-visible]:shadow-[inset_0_0_0_1px_var(--color-accent-100)]">
 			<Search aria-hidden="true" className="size-4 shrink-0 text-t6" />
 			<input
 				type="search"
 				placeholder={placeholder}
-				aria-label={placeholder}
+				aria-label={label}
 				maxLength={200}
 				value={draft}
 				onChange={(event) => {

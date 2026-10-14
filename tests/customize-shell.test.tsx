@@ -252,6 +252,33 @@ describe("customize shell", () => {
 		});
 	});
 
+	it("lays the page out on upstream's padded column with a 'Search' placeholder and a + Add button", async () => {
+		await renderCustomize("/customize/skills");
+		const page = screen.getByTestId("customize-page");
+		const add = screen.getByRole("button", {name: "Add skill"});
+		expect({
+			column: page.firstElementChild?.className.split(" ").filter((name) => /^(md:)?p[xt]-/.test(name)),
+			pane: page
+				.querySelector("#customize-pane")
+				?.className.split(" ")
+				.filter((name) => /^(md:)?px-/.test(name)),
+			placeholder: screen.getByRole("searchbox", {name: "Search skills and plugins"}).getAttribute("placeholder"),
+			addIcons: [...add.querySelectorAll("svg")].map((svg) =>
+				svg
+					.getAttribute("class")
+					?.split(" ")
+					.find((name) => name.startsWith("lucide-")),
+			),
+			addLabelAfterPlus: add.firstElementChild?.tagName.toLowerCase(),
+		}).toStrictEqual({
+			column: ["px-4", "pt-3", "md:px-8"],
+			pane: ["px-4", "md:px-8"],
+			placeholder: "Search",
+			addIcons: ["lucide-plus", "lucide-chevron-down"],
+			addLabelAfterPlus: "svg",
+		});
+	});
+
 	it("round-trips the search term through ?q=", async () => {
 		const router = await renderCustomize("/customize/skills?q=deploy");
 		const input = screen.getByRole("searchbox", {name: "Search skills and plugins"});
