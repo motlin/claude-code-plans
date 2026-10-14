@@ -53,6 +53,7 @@ describe("DEFAULT_SESSION_LIST_PREFS", () => {
 			activityDays: "7d",
 			showEmptyGroups: false,
 			showPrStatus: false,
+			version: 2,
 		});
 	});
 });
@@ -481,6 +482,28 @@ describe("migrateSessionListPrefs", () => {
 		).toStrictEqual(stored);
 	});
 
+	it("turns off the old default-on PR status in unversioned prefs, bumping them to version 2", () => {
+		const stored = {
+			groupBy: "project",
+			sortBy: "name",
+			sortDirection: "asc",
+			statusFilter: "all",
+			activityDays: "30d",
+			showEmptyGroups: true,
+			showPrStatus: true,
+		};
+		expect(
+			migrateSessionListPrefs({stored: JSON.stringify(stored), sessionsGrouping: null, sessionSort: null}),
+		).toStrictEqual({...stored, showPrStatus: false, version: 2});
+	});
+
+	it("keeps PR status on when version 2 prefs turned it on after the migration", () => {
+		const stored = {...DEFAULT_SESSION_LIST_PREFS, showPrStatus: true};
+		expect(
+			migrateSessionListPrefs({stored: JSON.stringify(stored), sessionsGrouping: null, sessionSort: null}),
+		).toStrictEqual(stored);
+	});
+
 	it("keeps prefs stored before Show PR status existed, defaulting it off as upstream shows no PR glyph", () => {
 		const stored = {
 			groupBy: "project",
@@ -495,7 +518,7 @@ describe("migrateSessionListPrefs", () => {
 				sessionsGrouping: null,
 				sessionSort: null,
 			}),
-		).toStrictEqual({...stored, showPrStatus: false, sortDirection: "desc"});
+		).toStrictEqual({...stored, showPrStatus: false, sortDirection: "desc", version: 2});
 	});
 
 	it("falls back to defaults with no stored or legacy values", () => {
