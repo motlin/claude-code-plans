@@ -308,25 +308,24 @@ describe("sidebar Group and sort menu", () => {
 		expect(storedPrefs()).toEqual({...DEFAULT_SESSION_LIST_PREFS, statusFilter: "all"});
 	});
 
-	it("persists turning PR status off from Show", async () => {
+	it("shows no PR glyph by default, as upstream, and persists turning PR status on from Show", async () => {
 		const withPr = [
 			...FIXTURE,
 			{...session("p1", "PR one", "review", "alpha"), prStatus: {number: 6, state: "draft"}},
 		];
 		const {container} = await renderSidebarGroups(withPr);
 		const glyph = () => container.querySelector('[role="img"][aria-label="#6 · Draft"]') !== null;
-		expect(glyph()).toBe(true);
+		expect(glyph()).toBe(false);
 		await openFilterMenu();
 		await openSubmenu(/^Show/);
 		fireEvent.click(screen.getByRole("menuitemcheckbox", {name: "PR status"}));
 		await flush();
 
 		expect({glyph: glyph(), stored: storedPrefs()}).toStrictEqual({
-			glyph: false,
-			stored: {...DEFAULT_SESSION_LIST_PREFS, showPrStatus: false},
+			glyph: true,
+			stored: {...DEFAULT_SESSION_LIST_PREFS, showPrStatus: true},
 		});
 	});
-
 	it("resets every list preference with Reset to defaults", async () => {
 		storePrefs({statusFilter: "all", activityDays: "1d", sortBy: "name", groupBy: "date"});
 		await renderSidebarGroups();

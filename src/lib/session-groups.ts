@@ -29,7 +29,7 @@ export const SessionListPrefsSchema = z
 		statusFilter: SessionStatusFilterSchema,
 		activityDays: SessionActivityDaysSchema,
 		showEmptyGroups: z.boolean(),
-		/** The PR glyph replaces the row dot on sessions with a pull request. */
+		/** The PR glyph replaces the row dot on sessions with a pull request; off by default, as upstream shows none. */
 		showPrStatus: z.boolean(),
 	})
 	.strict();
@@ -42,7 +42,7 @@ export const DEFAULT_SESSION_LIST_PREFS: SessionListPrefs = {
 	statusFilter: "active",
 	activityDays: "7d",
 	showEmptyGroups: false,
-	showPrStatus: true,
+	showPrStatus: false,
 };
 
 export interface SessionGroupRow {

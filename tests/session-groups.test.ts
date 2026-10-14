@@ -52,7 +52,7 @@ describe("DEFAULT_SESSION_LIST_PREFS", () => {
 			statusFilter: "active",
 			activityDays: "7d",
 			showEmptyGroups: false,
-			showPrStatus: true,
+			showPrStatus: false,
 		});
 	});
 });
@@ -481,7 +481,7 @@ describe("migrateSessionListPrefs", () => {
 		).toStrictEqual(stored);
 	});
 
-	it("keeps prefs stored before Show PR status existed, defaulting it on", () => {
+	it("keeps prefs stored before Show PR status existed, defaulting it off as upstream shows no PR glyph", () => {
 		const stored = {
 			groupBy: "project",
 			sortBy: "name",
@@ -495,7 +495,7 @@ describe("migrateSessionListPrefs", () => {
 				sessionsGrouping: null,
 				sessionSort: null,
 			}),
-		).toStrictEqual({...stored, showPrStatus: true, sortDirection: "desc"});
+		).toStrictEqual({...stored, showPrStatus: false, sortDirection: "desc"});
 	});
 
 	it("falls back to defaults with no stored or legacy values", () => {
