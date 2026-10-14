@@ -9,6 +9,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {pendingQuestionQueryOptions} from "../src/lib/api/pending-question";
 import {SessionPage} from "../src/components/session-page";
 import {SettingsProvider} from "../src/components/settings-provider";
+import {STORAGE_KEYS} from "../src/components/settings-context";
 import {ToastProvider} from "../src/components/toast";
 import {ClaudeEventsProvider} from "../src/components/claude-events-provider";
 import {herdrPanesQueryOptions} from "../src/lib/api/herdr";
@@ -344,14 +345,19 @@ describe("SessionPage dock composition", () => {
 			fields: {prStatus: {number: 100, state: "open" as const}},
 			order: ["pr", "usage", "composer"],
 		},
-		{name: "no PR", fields: {}, order: ["usage", "branch", "composer"]},
+		{name: "no PR", fields: {}, order: ["usage", "composer"]},
 	])("renders $name dock parts exactly once in their actual production order", async ({fields, order}) => {
 		await renderSessionPage({...detail, ...fields}, [], seedUsage);
 		expect(dockContents()).toStrictEqual(order);
 	});
+	it("renders the working-copy changes strip below the usage chip when the setting is on", async () => {
+		localStorage.setItem(STORAGE_KEYS.showChangesStrip, "true");
+		await renderSessionPage(detail, [], seedUsage);
+		expect(dockContents()).toStrictEqual(["usage", "branch", "composer"]);
+	});
 	it.each([
 		{name: "linked PR", fields: {pr}, order: ["pr", "usage", "waiting", "composer"]},
-		{name: "no PR", fields: {}, order: ["usage", "branch", "waiting", "composer"]},
+		{name: "no PR", fields: {}, order: ["usage", "waiting", "composer"]},
 	])("docks the waiting notice directly above the composer, below the $name chips", async ({fields, order}) => {
 		await renderSessionPage({...detail, ...fields}, [], (queryClient) => {
 			seedUsage(queryClient);

@@ -46,6 +46,11 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
 	{tab: "sessions", rowSlug: "sessions-page-grouping", title: "Sessions page grouping"},
 	{tab: "sessions", rowSlug: "active-timeout-seconds", title: "Active timeout (seconds)"},
 	{tab: "sessions", rowSlug: "show-ai-titles", title: "Show AI titles"},
+	{
+		tab: "sessions",
+		rowSlug: "show-working-copy-changes-strip",
+		title: "Show working-copy changes strip",
+	},
 	{tab: "sessions", rowSlug: "default-view", title: "Default view"},
 	{tab: "application", rowSlug: "live-herdr-input", title: "Live Herdr input"},
 	{tab: "application", rowSlug: "shell-tabs", title: "Shell tabs"},

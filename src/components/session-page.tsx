@@ -758,6 +758,7 @@ function SessionView({
 										{!chromeHidden && sessionDirectory && <UsagePaceBanner />}
 										{!chromeHidden &&
 											sessionDirectory &&
+											settings.showChangesStrip &&
 											data.pr === undefined &&
 											data.prStatus === undefined && (
 												<BranchStrip

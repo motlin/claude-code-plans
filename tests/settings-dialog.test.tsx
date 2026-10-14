@@ -303,6 +303,7 @@ describe("SettingsDialog local tabs", () => {
 			[
 				["Active sessions", ["Active session order", "Sessions page grouping", "Active timeout (seconds)"]],
 				["Titles", ["Show AI titles"]],
+				["Composer", ["Show working-copy changes strip"]],
 				["Sub-agents", ["Default view"]],
 			],
 		],

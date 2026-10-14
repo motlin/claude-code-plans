@@ -942,6 +942,14 @@ export function SessionsSettings() {
 				/>
 			</SettingsSection>
 
+			<SettingsSection title="Composer">
+				<ToggleRow
+					label="Show working-copy changes strip"
+					description="Show the project, branch, and +N −M line counts above the composer when there is no pull request"
+					settingKey="showChangesStrip"
+				/>
+			</SettingsSection>
+
 			<SettingsSection title="Sub-agents">
 				<SelectRow
 					label="Default view"
