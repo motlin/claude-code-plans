@@ -165,8 +165,8 @@ describe("deferred Changes renderer", () => {
 					direction: "row",
 					flex: 1,
 					children: [
-						{kind: "tile", tileId: "chat", flex: 1},
-						{kind: "tile", tileId: "changes", flex: 0.25},
+						{kind: "tile", tileId: "chat", flex: 2},
+						{kind: "tile", tileId: "changes", flex: 3},
 					],
 				},
 			},
@@ -202,9 +202,10 @@ describe("deferred Changes renderer", () => {
 						kind: "stack",
 						direction: "row",
 						flex: 1,
+						// Changes as the only side pane takes upstream's 2:3 first split, measured or not.
 						children: [
-							{kind: "tile", tileId: "chat", flex: 1},
-							{kind: "tile", tileId: "changes", flex: entry === "saved" ? 0.25 : 0.30837},
+							{kind: "tile", tileId: "chat", flex: 2},
+							{kind: "tile", tileId: "changes", flex: 3},
 						],
 					},
 				},

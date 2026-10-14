@@ -138,9 +138,9 @@ describe("openPane follows upstream placement", () => {
 			),
 		],
 		[
-			"Changes without a measured row takes a fifth of it",
+			"Changes as the first side pane splits the row 2:3, like upstream's other panes",
 			["changes"],
-			layout([tile("chat", 1), tile("changes", 0.25)], "changes"),
+			layout([tile("chat", 2), tile("changes", 3)], "changes"),
 		],
 	] satisfies Array<[string, PaneKind[], PaneLayoutState]>)("%s", (_name, kinds, expected) => {
 		expect(openAll(...kinds)).toEqual(expected);
@@ -167,7 +167,7 @@ describe("openPane follows upstream placement", () => {
 	it("never stacks a later pane into the Changes column", () => {
 		const state = openPane(defaultPaneLayout(), "changes", 1412);
 		expect([state, openPane(state, "files"), openAll("changes", "plan", "files")]).toEqual([
-			layout([tile("chat", 1), tile("changes", 0.25)], "changes"),
+			layout([tile("chat", 2), tile("changes", 3)], "changes"),
 			layout([tile("chat", 2), tile("files", 3), tile("changes", 1.25)], "files"),
 			layout(
 				[tile("chat", 2), stack("column", 3, [tile("plan", 1), tile("files", 1)]), tile("changes", 1.25)],

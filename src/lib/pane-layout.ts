@@ -248,17 +248,29 @@ function changesFlex(root: StackNode, rowSizePx: number | undefined): number {
 }
 
 /**
- * Opens a pane the way upstream does. Changes always gets its own column at
- * the far right, sized to its minimum against `rowSizePx` (the measured row
- * width). Other panes split the row 2:3 when they are the first side pane,
- * then stack under / add columns before the Changes column, never inside it.
+ * Opens a pane the way upstream does. Every pane, Changes included, splits the
+ * row 2:3 when it is the first side pane. Changes otherwise gets its own column
+ * at the far right, sized to its minimum against `rowSizePx` (the measured row
+ * width); other panes stack under / add columns before it, never inside it.
  */
 export function openPane(state: PaneLayoutState, kind: PaneKind, rowSizePx?: number): PaneLayoutState {
 	if (isOpen(state, kind)) return focusPane(state, kind);
 	const children = [...state.root.children];
-	if (kind === "changes") {
+	const onlyChat = children.length === 1 && children[0] !== undefined && isChat(children[0]);
+	if (kind === "changes" && !onlyChat) {
 		children.push(tile(kind, changesFlex(state.root, rowSizePx)));
 		return {root: {...state.root, children}, expanded: null, focused: kind};
+	}
+	const changesColumn = children.find((child) => containsTile(child, "changes"));
+	if (kind !== "changes" && changesColumn !== undefined && children.length === 2) {
+		// A first side pane after a lone Changes takes the 2:3 split, and Changes falls back to its minimum.
+		const opened = openPane(
+			{...state, root: {...state.root, children: children.filter((c) => c !== changesColumn)}},
+			kind,
+			rowSizePx,
+		);
+		const withChanges = [...opened.root.children, tile("changes", changesFlex(opened.root, rowSizePx))];
+		return {...opened, root: {...opened.root, children: withChanges}};
 	}
 	const isSide = (child: LayoutNode): boolean => !isChat(child) && !containsTile(child, "changes");
 	const lastSide = children.reduce((last, child, index) => (isSide(child) ? index : last), -1);
