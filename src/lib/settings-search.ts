@@ -51,6 +51,11 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
 		rowSlug: "show-working-copy-changes-strip",
 		title: "Show working-copy changes strip",
 	},
+	{
+		tab: "sessions",
+		rowSlug: "offer-to-review-uncommitted-changes",
+		title: "Offer to review uncommitted changes",
+	},
 	{tab: "sessions", rowSlug: "default-view", title: "Default view"},
 	{tab: "application", rowSlug: "live-herdr-input", title: "Live Herdr input"},
 	{tab: "application", rowSlug: "shell-tabs", title: "Shell tabs"},

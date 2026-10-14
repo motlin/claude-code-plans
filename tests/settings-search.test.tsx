@@ -168,10 +168,12 @@ describe("settings search", () => {
 		).toStrictEqual([
 			["Claude Code", "Default transcript view"],
 			["Sessions", "Default view"],
+			["Sessions", "Offer to review uncommitted changes"],
 			["AI features", "Working-copy review"],
 			["AI features", "Review behavior"],
 		]);
 		expect([...popover.querySelectorAll(".text-accent-100")].map((match) => match.textContent)).toStrictEqual([
+			"view",
 			"view",
 			"view",
 			"view",

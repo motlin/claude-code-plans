@@ -948,6 +948,11 @@ export function SessionsSettings() {
 					description="Show the project, branch, and +N −M line counts above the composer when there is no pull request"
 					settingKey="showChangesStrip"
 				/>
+				<ToggleRow
+					label="Offer to review uncommitted changes"
+					description="Show a banner above the session offering to review the turn's uncommitted changes"
+					settingKey="offerWorkingCopyReview"
+				/>
 			</SettingsSection>
 
 			<SettingsSection title="Sub-agents">

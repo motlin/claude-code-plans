@@ -16,7 +16,14 @@ interface ReviewBannerState {
 	error: string | null;
 }
 
+/** Off by default (claude.ai/code has no such banner); when off, nothing subscribes to review offers or starts a review. */
 export function WorkingCopyReviewBanner({capability}: {capability: Capabilities["workingCopyReview"]}) {
+	const {settings} = useSettings();
+	if (!settings.offerWorkingCopyReview) return null;
+	return <OfferedWorkingCopyReviewBanner capability={capability} />;
+}
+
+function OfferedWorkingCopyReviewBanner({capability}: {capability: Capabilities["workingCopyReview"]}) {
 	const {settings} = useSettings();
 	const subscribeReviewOffers = useSubscribeReviewOffers();
 	const [banner, setBanner] = useState<ReviewBannerState | null>(null);

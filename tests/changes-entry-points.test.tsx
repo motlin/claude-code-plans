@@ -7,6 +7,7 @@ import {BranchStrip} from "../src/components/branch-strip";
 import {ChangesPaneView} from "../src/components/changes/changes-pane";
 import {registerPane} from "../src/components/panes/pane-registry";
 import {TileHost} from "../src/components/panes/tile-host";
+import {STORAGE_KEYS} from "../src/components/settings-context";
 import {SettingsProvider} from "../src/components/settings-provider";
 import {ToastProvider} from "../src/components/toast";
 import {TurnChangesCard} from "../src/components/turn-changes-card";
@@ -175,6 +176,7 @@ describe("Changes entry points", () => {
 	});
 
 	it("points the review banner's View findings at the session's Changes pane on the Uncommitted scope", async () => {
+		localStorage.setItem(STORAGE_KEYS.offerWorkingCopyReview, "true");
 		render(
 			<SettingsProvider>
 				<WorkingCopyReviewBanner

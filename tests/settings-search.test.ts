@@ -53,7 +53,10 @@ describe("searchSettings", () => {
 				},
 				{
 					tab: "sessions",
-					rows: [["default-view", "Default view"]],
+					rows: [
+						["default-view", "Default view"],
+						["offer-to-review-uncommitted-changes", "Offer to review uncommitted changes"],
+					],
 				},
 				{
 					tab: "ai-features",
