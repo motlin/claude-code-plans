@@ -912,7 +912,7 @@ describe("CommandPalette Artifacts and Scheduled tabs", () => {
 					),
 				]),
 		).toStrictEqual(
-			["All", "Artifacts", "Projects", "Sessions", "Scheduled", "Plans", "Memories", "Files"].map((label) => [
+			["All", "Artifacts", "Code", "Projects", "Scheduled", "Plans", "Memories", "Files"].map((label) => [
 				label,
 				false,
 				true,
@@ -939,7 +939,7 @@ describe("CommandPalette Artifacts and Scheduled tabs", () => {
 			within(within(dialog).getByRole("tablist", {name: "Type"}))
 				.getAllByRole("tab")
 				.map((tab) => tab.textContent),
-		).toStrictEqual(["All", "Artifacts", "Projects", "Sessions", "Scheduled", "Plans", "Memories", "Files"]);
+		).toStrictEqual(["All", "Artifacts", "Code", "Projects", "Scheduled", "Plans", "Memories", "Files"]);
 	});
 
 	it("lists the artifacts newest first with a relative time on the Artifacts tab", async () => {

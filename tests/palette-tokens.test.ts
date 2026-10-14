@@ -16,8 +16,8 @@ describe("PaletteTypeSchema", () => {
 		expect(PaletteTypeSchema.options).toStrictEqual([
 			"all",
 			"artifacts",
-			"projects",
 			"sessions",
+			"projects",
 			"scheduled",
 			"plans",
 			"memories",
@@ -171,8 +171,8 @@ describe("paletteValueSuggestions", () => {
 	it("lists the palette types after type:", () => {
 		expect(paletteValueSuggestions("type:", sessions)?.values).toStrictEqual([
 			{label: "Artifacts", query: "type:artifacts "},
+			{label: "Code", query: "type:code "},
 			{label: "Projects", query: "type:projects "},
-			{label: "Sessions", query: "type:sessions "},
 			{label: "Scheduled", query: "type:scheduled "},
 			{label: "Plans", query: "type:plans "},
 			{label: "Memories", query: "type:memories "},

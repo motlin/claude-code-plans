@@ -349,8 +349,9 @@ const unifiedSearchKindLabels = {
 export const paletteTypeLabels = {
 	all: "All",
 	artifacts: "Artifacts",
+	// Upstream's code-context label for its code-session tab
+	sessions: "Code",
 	projects: "Projects",
-	sessions: "Sessions",
 	scheduled: "Scheduled",
 	plans: "Plans",
 	memories: "Memories",

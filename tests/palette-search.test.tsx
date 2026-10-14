@@ -402,8 +402,8 @@ describe("⌘K palette filters", () => {
 		expect(tabs(dialog)).toStrictEqual([
 			{name: "All", selected: "true"},
 			{name: "Artifacts", selected: "false"},
+			{name: "Code", selected: "false"},
 			{name: "Projects", selected: "false"},
-			{name: "Sessions", selected: "false"},
 			{name: "Scheduled", selected: "false"},
 			{name: "Plans", selected: "false"},
 			{name: "Memories", selected: "false"},
@@ -448,13 +448,13 @@ describe("⌘K palette filters", () => {
 		expect(within(dialog).getByRole("combobox")).toHaveProperty("value", "repo:");
 	});
 
-	it("lists recents with bucket meta on the Sessions tab with an empty query", async () => {
+	it("lists recents with bucket meta on the Code tab with an empty query", async () => {
 		const {dialog} = await openPalette([
 			recentSession("sess-1", "Refactor auth module"),
 			recentSession("sess-2", "Fix login"),
 		]);
 
-		fireEvent.click(within(dialog).getByRole("tab", {name: "Sessions"}));
+		fireEvent.click(within(dialog).getByRole("tab", {name: "Code"}));
 
 		expect({
 			labels: optionLabels(dialog),
@@ -465,6 +465,14 @@ describe("⌘K palette filters", () => {
 			meta: ["Just now", "Just now"],
 			headings: [],
 		});
+	});
+
+	it("maps type:code onto upstream's Code tab, the local sessions type", async () => {
+		const {dialog} = await openPalette([]);
+
+		type(dialog, "type:code auth");
+
+		expect((await awaitRequest()).url).toBe("/api/search?query=auth&type=sessions");
 	});
 
 	it("maps tokens onto the search request", async () => {
@@ -508,16 +516,16 @@ describe("⌘K palette filters", () => {
 		expect(within(dialog).getByRole("combobox")).toHaveProperty("value", "zzqxvq");
 	});
 
-	it("shows the filtered no-results copy and Search all resets the tab", async () => {
+	it("shows the filtered no-results copy on the Code tab and Search all resets the tab", async () => {
 		const {dialog} = await openPalette([]);
 
-		fireEvent.click(within(dialog).getByRole("tab", {name: "Sessions"}));
+		fireEvent.click(within(dialog).getByRole("tab", {name: "Code"}));
 		type(dialog, "zzqxvq");
 		const request = await awaitRequest();
 		expect(request.url).toBe("/api/search?query=zzqxvq&type=sessions");
 		request.resolve([]);
 
-		await within(dialog).findByText("No results in Sessions");
+		await within(dialog).findByText("No results in Code");
 		fireEvent.click(within(dialog).getByRole("button", {name: "Search all"}));
 
 		expect(tabs(dialog)[0]).toStrictEqual({name: "All", selected: "true"});

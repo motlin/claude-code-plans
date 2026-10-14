@@ -10,11 +10,12 @@ import {assertNever} from "./assert-never";
  */
 
 /** The palette's type tabs in upstream's order, with the local-only types last. */
+/** Upstream's code-context tab order (All, Artifacts, Code, Projects, Scheduled), then the local-only types. */
 export const PaletteTypeSchema = z.enum([
 	"all",
 	"artifacts",
-	"projects",
 	"sessions",
+	"projects",
 	"scheduled",
 	"plans",
 	"memories",
@@ -53,6 +54,8 @@ const TYPE_ALIASES: Readonly<Record<string, PaletteType>> = {
 	all: "all",
 	session: "sessions",
 	sessions: "sessions",
+	// Upstream's Code tab lists code sessions, the only sessions this app has.
+	code: "sessions",
 	plan: "plans",
 	plans: "plans",
 	memory: "memories",
@@ -239,9 +242,12 @@ function filterValues(
 		case "date":
 			return UnifiedSearchDateSchema.options.map((date) => [unifiedSearchDateLabels[date], date]);
 		case "type":
-			return PaletteTypeSchema.options
-				.filter((type) => type !== "all")
-				.map((type) => [paletteTypeLabels[type], type]);
+			return (
+				PaletteTypeSchema.options
+					.filter((type) => type !== "all")
+					// The Code tab's token is upstream's `type:code`.
+					.map((type) => [paletteTypeLabels[type], type === "sessions" ? "code" : type])
+			);
 		case "repo":
 			return recentValues(sessions.map((session) => basename(session.project))).map((repo) => [repo, repo]);
 		case "project":
