@@ -10,13 +10,11 @@ import {
 } from "@tanstack/react-router";
 import type {ErrorComponentProps} from "@tanstack/react-router";
 import {noop, QueryClientProvider, type QueryClient} from "@tanstack/react-query";
-import {ReactQueryDevtools} from "@tanstack/react-query-devtools";
 import {useEffect, type ReactNode} from "react";
-import {Agentation} from "agentation";
-import {AGENTATION_ENDPOINT, agentationEndpoint} from "../lib/agentation-endpoint";
 import {ThemeProvider} from "../components/theme-provider";
 import {SettingsProvider} from "../components/settings-provider";
 import {ToastProvider} from "../components/toast";
+import {DevOverlays} from "../components/dev-overlays";
 import {AppFrame} from "../components/app-frame";
 import {AppShellFallback} from "../components/app-shell-fallback";
 import {ChunkPrefetch} from "../components/chunk-prefetch";
@@ -124,13 +122,8 @@ function RootApplication({children}: Readonly<{children: ReactNode}>) {
 						</ClaudeEventsProvider>
 					</SettingsProvider>
 				</ThemeProvider>
-				{import.meta.env.DEV ? <ReactQueryDevtools buttonPosition="bottom-left" /> : null}
+				{import.meta.env.DEV ? <DevOverlays /> : null}
 			</QueryClientProvider>
-			{import.meta.env.DEV && (
-				<Agentation
-					endpoint={typeof window === "undefined" ? AGENTATION_ENDPOINT : agentationEndpoint(window.location)}
-				/>
-			)}
 		</>
 	);
 }

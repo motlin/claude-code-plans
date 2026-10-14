@@ -58,7 +58,7 @@ describe("environment settings inventory", () => {
 			),
 		}).toStrictEqual({
 			injectedReads: EXPECTED_INJECTED_RUNTIME_READS.toSorted(),
-			developmentBuildReads: 2,
+			developmentBuildReads: 1,
 			processEnvironmentPassThrough: true,
 		});
 	});
