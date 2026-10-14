@@ -6,7 +6,8 @@ import {usePaceBannerDismissedUntil, writePaceBannerDismissedUntil} from "../lib
 
 /**
  * claude.ai/code's weekly pace band between the dock card and the composer: a gauge, "On pace to
- * hit your weekly limit early", the used percent and reset time, and a Dismiss ×.
+ * hit your weekly limit early", the used percent and reset time (wrapping below it on a narrow
+ * dock, as upstream does), and a Dismiss ×.
  */
 export function UsagePaceBand({
 	usedPct,
@@ -23,9 +24,11 @@ export function UsagePaceBand({
 			className="flex min-h-[40px] items-center gap-[5px] rounded-r7 bg-alpha-1 p-[8px] text-[13px] leading-[19px]"
 		>
 			<Gauge className="size-4 shrink-0 text-secondary" aria-hidden="true" />
-			<span className="text-primary">On pace to hit your weekly limit early</span>
-			<span className="ml-1 min-w-0 truncate text-secondary">
-				{meterPercent(usedPct)}% used · {resetText}
+			<span className="flex min-w-0 flex-wrap gap-x-1">
+				<span className="text-primary">On pace to hit your weekly limit early</span>
+				<span className="text-secondary">
+					{meterPercent(usedPct)}% used · {resetText}
+				</span>
 			</span>
 			<button
 				type="button"

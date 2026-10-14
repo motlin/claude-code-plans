@@ -755,7 +755,6 @@ function SessionView({
 													statusline={statusline}
 												/>
 											)}
-										{!chromeHidden && sessionDirectory && <UsagePaceBanner />}
 										{!chromeHidden &&
 											sessionDirectory &&
 											settings.showChangesStrip &&
@@ -767,7 +766,7 @@ function SessionView({
 													statusline={statusline}
 												/>
 											)}
-										{/* Upstream docks every approval card directly above the composer, below the PR and usage chips */}
+										{/* Upstream docks every approval card below the PR chip, with only the usage chip between it and the composer */}
 										{dockedQuestion && (
 											<ApprovalDock
 												key={dockedQuestion.toolUseId}
@@ -788,7 +787,7 @@ function SessionView({
 												onDecision={answerPermission}
 											/>
 										)}
-										{/* Upstream docks its pending question card directly above the composer, below the chips; hooks supply a read-only copy */}
+										{/* Upstream docks its pending question card below the PR chip, above the usage chip; hooks supply a read-only copy */}
 										{showsWaitingForInputNotice({
 											state: sessionSummaryState,
 											hasDockedCard: dockedQuestion !== null || pendingPermission !== null,
@@ -798,6 +797,8 @@ function SessionView({
 											) : (
 												<WaitingForInputNotice />
 											))}
+										{/* Upstream sets the usage chip between the docked card and the composer */}
+										{!chromeHidden && sessionDirectory && <UsagePaceBanner />}
 										{!chromeHidden && sessionDirectory && (
 											<Composer
 												variant="session"

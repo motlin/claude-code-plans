@@ -85,6 +85,12 @@ describe("UsagePaceBand", () => {
 		expect(band.className).toBe(
 			"flex min-h-[40px] items-center gap-[5px] rounded-r7 bg-alpha-1 p-[8px] text-[13px] leading-[19px]",
 		);
+		// Upstream wraps the detail under the title on a narrow dock instead of truncating it.
+		const detail = screen.getByText("29% used · Resets Tue, Oct 6, 4:00 AM");
+		expect({
+			truncates: detail.className.split(" ").includes("truncate"),
+			wraps: detail.parentElement?.className.split(" ").includes("flex-wrap"),
+		}).toStrictEqual({truncates: false, wraps: true});
 
 		fireEvent.click(screen.getByRole("button", {name: "Dismiss"}));
 		expect(onDismiss).toHaveBeenCalledTimes(1);

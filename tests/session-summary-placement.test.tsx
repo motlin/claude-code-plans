@@ -350,25 +350,28 @@ describe("SessionPage dock composition", () => {
 		await renderSessionPage({...detail, ...fields}, [], seedUsage);
 		expect(dockContents()).toStrictEqual(order);
 	});
-	it("renders the working-copy changes strip below the usage chip when the setting is on", async () => {
+	it("renders the working-copy changes strip above the usage chip when the setting is on", async () => {
 		localStorage.setItem(STORAGE_KEYS.showChangesStrip, "true");
 		await renderSessionPage(detail, [], seedUsage);
-		expect(dockContents()).toStrictEqual(["usage", "branch", "composer"]);
+		expect(dockContents()).toStrictEqual(["branch", "usage", "composer"]);
 	});
 	it.each([
-		{name: "linked PR", fields: {pr}, order: ["pr", "usage", "waiting", "composer"]},
-		{name: "no PR", fields: {}, order: ["usage", "waiting", "composer"]},
-	])("docks the waiting notice directly above the composer, below the $name chips", async ({fields, order}) => {
-		await renderSessionPage({...detail, ...fields}, [], (queryClient) => {
-			seedUsage(queryClient);
-			queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
-				pages: [{sessions: [{id: SESSION_ID, state: "waiting"}], nextCursor: null}],
-				pageParams: [null],
-			} as never);
-		});
-		expect(dockContents()).toStrictEqual(order);
-	});
-	it("docks the permission card directly above the composer, below the PR and usage chips", async () => {
+		{name: "linked PR", fields: {pr}, order: ["pr", "waiting", "usage", "composer"]},
+		{name: "no PR", fields: {}, order: ["waiting", "usage", "composer"]},
+	])(
+		"docks the waiting notice below the $name chips, then the usage chip above the composer as upstream does",
+		async ({fields, order}) => {
+			await renderSessionPage({...detail, ...fields}, [], (queryClient) => {
+				seedUsage(queryClient);
+				queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
+					pages: [{sessions: [{id: SESSION_ID, state: "waiting"}], nextCursor: null}],
+					pageParams: [null],
+				} as never);
+			});
+			expect(dockContents()).toStrictEqual(order);
+		},
+	);
+	it("docks the permission card below the PR chip and above the usage chip, which sits directly on the composer", async () => {
 		await renderSessionPage(
 			{...detail, pr},
 			[],
@@ -401,7 +404,7 @@ describe("SessionPage dock composition", () => {
 				},
 			],
 		);
-		expect(dockContents()).toStrictEqual(["pr", "usage", "permission", "composer"]);
+		expect(dockContents()).toStrictEqual(["pr", "permission", "usage", "composer"]);
 	});
 	it("docks the stored question, not a permission card, when the registry's permission wait is really a question", async () => {
 		await renderSessionPage(
