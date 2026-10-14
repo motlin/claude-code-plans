@@ -61,18 +61,18 @@
 		"raisedAt": "2026-10-13"
 	},
 	"bundle.session.gzip": {
-		"ceiling": 540681,
+		"ceiling": 546322,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Draw upstream's \"Background command completed\" / \"Background task stopped\" row for each task notification the queue never delivered (src/lib/transcript.ts queue replay, src/components/session-chat.tsx undeliveredTaskRows); the rows are built in buildSessionListEntries and paint in the transcript on session cold load, as claude.ai/code does, so they cannot be deferred. Session cold JS rises to 540681 gzip / 1643573 raw from 540249/1642122 measured on the parent commit (only the session._id chunk grows). Other ceilings and the 1% tolerance are unchanged.",
-		"raisedAt": "2026-10-13"
+		"reason": "Make the docked AskUserQuestion card answerable through POST /api/herdr/question when the session runs in a writable live herdr pane (src/components/pending-question-card.tsx: option and checkbox selection, Other text, Skip/Next/Submit); the card docks above the composer on session cold load, so it cannot be deferred. Session cold JS rises to 546322 gzip / 1662416 raw from 545242/1658732 measured on the parent commit dc244a91 (only the session._id chunk grows). Other ceilings and the 1% tolerance are unchanged.",
+		"raisedAt": "2026-10-14"
 	},
 	"bundle.session.raw": {
-		"ceiling": 1643573,
+		"ceiling": 1662416,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Draw upstream's \"Background command completed\" / \"Background task stopped\" row for each task notification the queue never delivered (src/lib/transcript.ts queue replay, src/components/session-chat.tsx undeliveredTaskRows); the rows are built in buildSessionListEntries and paint in the transcript on session cold load, as claude.ai/code does, so they cannot be deferred. Session cold JS rises to 540681 gzip / 1643573 raw from 540249/1642122 measured on the parent commit (only the session._id chunk grows). Other ceilings and the 1% tolerance are unchanged.",
-		"raisedAt": "2026-10-13"
+		"reason": "Make the docked AskUserQuestion card answerable through POST /api/herdr/question when the session runs in a writable live herdr pane (src/components/pending-question-card.tsx: option and checkbox selection, Other text, Skip/Next/Submit); the card docks above the composer on session cold load, so it cannot be deferred. Session cold JS rises to 546322 gzip / 1662416 raw from 545242/1658732 measured on the parent commit dc244a91 (only the session._id chunk grows). Other ceilings and the 1% tolerance are unchanged.",
+		"raisedAt": "2026-10-14"
 	},
 	"client.coldHome.default.commitsToRows": {
 		"ceiling": 11,

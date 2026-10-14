@@ -1,7 +1,15 @@
-import {ChevronRight, X} from "lucide-react";
-import {useCallback, useEffect, useState, type ButtonHTMLAttributes, type ReactNode} from "react";
+import {Check, ChevronRight, Loader2, X} from "lucide-react";
+import {useCallback, useEffect, useRef, useState, type ButtonHTMLAttributes, type ReactNode} from "react";
 import {dockKeyAllowed} from "../lib/dock-keys";
-import type {PendingQuestionItem} from "../lib/hook-events";
+import type {PendingQuestionItem, QuestionAnswer} from "../lib/hook-events";
+import {
+	chooseOther,
+	draftAnswer,
+	EMPTY_QUESTION_DRAFT,
+	pickOption,
+	typeOther,
+	type QuestionCardDraft,
+} from "../lib/question-card-draft";
 import {Shortcut} from "./ui/shortcut";
 
 const ACTION_BUTTON =
@@ -124,50 +132,153 @@ function LinkifiedText({text}: {text: string}) {
 	);
 }
 
-/** An option's right-hand mark: its number keycap, or upstream's empty 14px checkbox for a multi-select question. */
-function ChoiceMark({multiSelect, keys}: {multiSelect: boolean; keys: string}) {
+/** An option's right-hand mark: its number keycap, or upstream's 14px checkbox for a multi-select question. */
+function ChoiceMark({multiSelect, keys, checked = false}: {multiSelect: boolean; keys: string; checked?: boolean}) {
 	if (!multiSelect) return <Shortcut keys={keys} className="pointer-coarse:hidden" />;
 	return (
 		<span className="flex shrink-0">
-			<span data-pending-question-checkbox="" className="size-3.5 shrink-0 rounded-r3 border border-primary/20" />
+			<span
+				data-pending-question-checkbox=""
+				data-checked={checked ? "" : undefined}
+				className={
+					checked
+						? "flex size-3.5 shrink-0 items-center justify-center rounded-r3 bg-primary text-surface-1"
+						: "size-3.5 shrink-0 rounded-r3 border border-primary/20"
+				}
+			>
+				{checked && <Check aria-hidden="true" className="size-3" strokeWidth={3} />}
+			</span>
 		</span>
 	);
 }
 
 const PENDING_ICON_BUTTON =
-	"inline-flex size-6 shrink-0 items-center justify-center rounded-r4 text-secondary disabled:cursor-not-allowed disabled:opacity-50";
+	"inline-flex size-6 shrink-0 items-center justify-center rounded-r4 text-secondary enabled:cursor-pointer enabled:hover:bg-fill-ghost-hover enabled:hover:text-primary disabled:cursor-not-allowed disabled:opacity-50";
+
+const READ_ONLY_OPTION = "flex w-full cursor-not-allowed items-center gap-2 rounded-r4 p-2 bg-alpha-1 text-left";
+
+function optionClass(chosen: boolean): string {
+	return `flex w-full cursor-pointer items-center gap-2 rounded-r4 p-2 text-left disabled:cursor-not-allowed ${
+		chosen ? "bg-alpha-3 ring-1 ring-accent-100" : "bg-alpha-1 hover:bg-alpha-2"
+	}`;
+}
+
+const OTHER_TEXTAREA =
+	"w-full resize-none rounded-r5 bg-white/50 px-2 py-1.5 text-body text-primary outline-none ring-1 ring-border placeholder:text-secondary disabled:cursor-not-allowed";
+const OTHER_TEXTAREA_READ_ONLY =
+	"w-full resize-none cursor-not-allowed rounded-r5 bg-white/50 px-2 py-1.5 text-body text-primary outline-none ring-1 ring-border placeholder:text-secondary";
 
 /**
- * Upstream's docked question card, read-only: every question the session's
- * `PreToolUse` hook reported, drawn as upstream draws it (an i/n pill only for
- * several questions, keycapped options, an Other row, Skip and Submit), with
- * every control disabled because only the terminal can answer.
+ * Upstream's docked question card for the question the session's `PreToolUse`
+ * hook reported, drawn as upstream draws it: an i/n pill only for several
+ * questions, keycapped options (checkboxes for multi-select), an Other row,
+ * Skip and Next/Submit. With `onSubmit` it answers as upstream's does (click
+ * or digit keys pick, the Other digit focuses its textarea, ⌘⏎ moves on and
+ * submits); without it every control is disabled and the card points at the
+ * terminal, the only place left that can answer.
  */
-export function PendingQuestionCard({questions}: {questions: PendingQuestionItem[]}) {
-	// One question at a time, as upstream pages them. Paging only reads, so it stays enabled.
+export function PendingQuestionCard({
+	questions,
+	onSubmit,
+}: {
+	questions: PendingQuestionItem[];
+	/** Sends one answer per question, null for a skipped one; omitted when nothing here can answer. */
+	onSubmit?: ((answers: Array<QuestionAnswer | null>) => Promise<void>) | undefined;
+}) {
+	const answerable = onSubmit !== undefined;
+	// One question at a time, as upstream pages them.
 	const [page, setPage] = useState(0);
+	const [drafts, setDrafts] = useState<QuestionCardDraft[]>(() => questions.map(() => EMPTY_QUESTION_DRAFT));
+	const [collapsed, setCollapsed] = useState(false);
+	const [dismissed, setDismissed] = useState(false);
+	const [sending, setSending] = useState<"idle" | "sending" | "sent">("idle");
+	const [error, setError] = useState<string | null>(null);
+	const otherRef = useRef<HTMLTextAreaElement>(null);
 	const questionIndex = Math.min(page, questions.length - 1);
 	const isLast = questionIndex === questions.length - 1;
-	const next = useCallback(() => {
-		setPage((current) => Math.min(current + 1, questions.length - 1));
-	}, [questions.length]);
+	const question = questions[questionIndex];
+	const draft = drafts[questionIndex] ?? EMPTY_QUESTION_DRAFT;
+	const editable = answerable && sending === "idle";
+	const answered = draftAnswer(draft) !== null;
+
+	const updateDraft = useCallback(
+		(update: (current: QuestionCardDraft) => QuestionCardDraft) => {
+			setDrafts((current) => current.map((entry, index) => (index === questionIndex ? update(entry) : entry)));
+		},
+		[questionIndex],
+	);
+
+	const submit = useCallback(
+		async (finalDrafts: QuestionCardDraft[]) => {
+			if (onSubmit === undefined) return;
+			setError(null);
+			setSending("sending");
+			try {
+				await onSubmit(questions.map((_, index) => draftAnswer(finalDrafts[index] ?? EMPTY_QUESTION_DRAFT)));
+				setSending("sent");
+			} catch (err) {
+				setError(err instanceof Error ? err.message : "Failed to send the answer");
+				setSending("idle");
+			}
+		},
+		[onSubmit, questions],
+	);
+
+	// Next or Submit: paging only reads while read-only; answering needs this question answered first.
+	const advance = useCallback(() => {
+		if (!answerable) {
+			setPage((current) => Math.min(current + 1, questions.length - 1));
+			return;
+		}
+		if (!editable || !answered) return;
+		if (isLast) void submit(drafts);
+		else setPage(questionIndex + 1);
+	}, [answerable, answered, drafts, editable, isLast, questionIndex, questions.length, submit]);
+
+	const skip = useCallback(() => {
+		const skipped = drafts.map((entry, index) => (index === questionIndex ? EMPTY_QUESTION_DRAFT : entry));
+		setDrafts(skipped);
+		if (isLast) void submit(skipped);
+		else setPage(questionIndex + 1);
+	}, [drafts, isLast, questionIndex, submit]);
+
+	const pickOther = useCallback(() => {
+		if (question === undefined) return;
+		const chosen = question.multiSelect === true ? !draft.otherChosen : true;
+		updateDraft((current) => chooseOther(question, current));
+		if (chosen) otherRef.current?.focus();
+	}, [draft.otherChosen, question, updateDraft]);
 
 	useEffect(() => {
-		if (isLast) return undefined;
+		if (dismissed || (!answerable && isLast)) return undefined;
 		function onKeyDown(event: KeyboardEvent) {
-			if (event.key !== "Enter" || !(event.metaKey || event.ctrlKey) || event.defaultPrevented) return;
-			if (!dockKeyAllowed(event.target)) return;
-			event.preventDefault();
-			next();
+			if (event.defaultPrevented || event.altKey) return;
+			const inCard = event.target instanceof Element && event.target.closest("[data-pending-question]") !== null;
+			if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+				if (!inCard && !dockKeyAllowed(event.target)) return;
+				event.preventDefault();
+				advance();
+				return;
+			}
+			if (!editable || collapsed || event.metaKey || event.ctrlKey || question === undefined) return;
+			if (!/^[1-9]$/.test(event.key) || !dockKeyAllowed(event.target)) return;
+			const option = Number(event.key) - 1;
+			if (option < question.options.length) {
+				event.preventDefault();
+				updateDraft((current) => pickOption(question, current, option));
+			} else if (option === question.options.length) {
+				event.preventDefault();
+				pickOther();
+			}
 		}
 		document.addEventListener("keydown", onKeyDown);
 		return () => {
 			document.removeEventListener("keydown", onKeyDown);
 		};
-	}, [isLast, next]);
+	}, [advance, answerable, collapsed, dismissed, editable, isLast, pickOther, question, updateDraft]);
 
-	const question = questions[questionIndex];
-	if (question === undefined) return null;
+	if (question === undefined || dismissed) return null;
+	const multiSelect = question.multiSelect === true;
 	return (
 		<ApprovalCardShell
 			stackActions={false}
@@ -193,89 +304,134 @@ export function PendingQuestionCard({questions}: {questions: PendingQuestionItem
 							</span>
 							<button
 								type="button"
-								disabled
+								disabled={!answerable}
 								data-pending-question-icon
 								aria-label="View question options"
+								aria-expanded={answerable ? !collapsed : undefined}
+								onClick={() => {
+									setCollapsed((current) => !current);
+								}}
 								className={PENDING_ICON_BUTTON}
 							>
-								<ChevronRight aria-hidden="true" className="size-4 rotate-90" />
+								<ChevronRight
+									aria-hidden="true"
+									className={`size-4 transition-transform ${collapsed ? "" : "rotate-90"}`}
+								/>
 							</button>
 							<button
 								type="button"
-								disabled
+								disabled={!answerable}
 								data-pending-question-icon
 								aria-label="Dismiss question"
+								onClick={() => {
+									setDismissed(true);
+								}}
 								className={PENDING_ICON_BUTTON}
 							>
 								<X aria-hidden="true" className="size-4" />
 							</button>
 						</div>
-						<div className="flex flex-col gap-[3px]">
-							{question.options.map((option, optionIndex) => (
-								<button
-									key={option.label}
-									type="button"
-									disabled
-									data-pending-question-option
-									aria-pressed={question.multiSelect === true ? false : undefined}
-									className="flex w-full cursor-not-allowed items-center gap-2 rounded-r4 p-2 bg-alpha-1 text-left"
-								>
-									<span className="flex min-w-0 flex-1 flex-col">
-										<span data-option-label className="text-body text-primary">
-											{option.label}
-										</span>
-										{option.description !== undefined && (
-											<span
-												data-option-description
-												className="text-[12px]/[15px] text-ink-muted whitespace-pre-wrap"
-											>
-												{option.description}
+						{!collapsed && (
+							<div className="flex flex-col gap-[3px]">
+								{question.options.map((option, optionIndex) => {
+									const chosen = draft.selected.includes(optionIndex);
+									return (
+										<button
+											key={option.label}
+											type="button"
+											disabled={!editable}
+											data-pending-question-option
+											aria-pressed={answerable || multiSelect ? chosen : undefined}
+											onClick={() => {
+												updateDraft((current) => pickOption(question, current, optionIndex));
+											}}
+											className={answerable ? optionClass(chosen) : READ_ONLY_OPTION}
+										>
+											<span className="flex min-w-0 flex-1 flex-col">
+												<span data-option-label className="text-body text-primary">
+													{option.label}
+												</span>
+												{option.description !== undefined && (
+													<span
+														data-option-description
+														className="text-[12px]/[15px] text-ink-muted whitespace-pre-wrap"
+													>
+														{option.description}
+													</span>
+												)}
 											</span>
-										)}
-									</span>
-									<ChoiceMark
-										multiSelect={question.multiSelect === true}
-										keys={String(optionIndex + 1)}
+											<ChoiceMark
+												multiSelect={multiSelect}
+												keys={String(optionIndex + 1)}
+												checked={chosen}
+											/>
+										</button>
+									);
+								})}
+								<div
+									data-pending-question-other
+									className={`flex w-full flex-col gap-3 rounded-r4 p-2 ${
+										answerable && draft.otherChosen
+											? "bg-alpha-3 ring-1 ring-accent-100"
+											: "bg-alpha-1"
+									}`}
+								>
+									{multiSelect ? (
+										<button
+											type="button"
+											disabled={!editable}
+											aria-pressed={draft.otherChosen}
+											onClick={pickOther}
+											className={`flex w-full items-center gap-2 text-left ${
+												editable ? "cursor-pointer" : "cursor-not-allowed"
+											}`}
+										>
+											<span className="flex-1 text-body text-primary">Other</span>
+											<ChoiceMark multiSelect keys="" checked={draft.otherChosen} />
+										</button>
+									) : (
+										<div className="flex items-center gap-2">
+											<span className="flex-1 text-body text-primary">Other</span>
+											<ChoiceMark
+												multiSelect={false}
+												keys={String(question.options.length + 1)}
+											/>
+										</div>
+									)}
+									<textarea
+										ref={otherRef}
+										disabled={!editable}
+										aria-label="Other option"
+										placeholder="Type your own answer here"
+										rows={1}
+										value={draft.other}
+										onFocus={() => {
+											if (!multiSelect) updateDraft((current) => chooseOther(question, current));
+										}}
+										onChange={(event) => {
+											const text = event.target.value;
+											updateDraft((current) => typeOther(question, current, text));
+										}}
+										className={answerable ? OTHER_TEXTAREA : OTHER_TEXTAREA_READ_ONLY}
 									/>
-								</button>
-							))}
-							<div
-								data-pending-question-other
-								className="flex w-full flex-col gap-3 rounded-r4 p-2 bg-alpha-1"
-							>
-								{question.multiSelect === true ? (
-									<button
-										type="button"
-										disabled
-										aria-pressed={false}
-										className="flex w-full cursor-not-allowed items-center gap-2 text-left"
-									>
-										<span className="flex-1 text-body text-primary">Other</span>
-										<ChoiceMark multiSelect keys="" />
-									</button>
-								) : (
-									<div className="flex items-center gap-2">
-										<span className="flex-1 text-body text-primary">Other</span>
-										<ChoiceMark multiSelect={false} keys={String(question.options.length + 1)} />
-									</div>
-								)}
-								<textarea
-									disabled
-									aria-label="Other option"
-									placeholder="Type your own answer here"
-									rows={1}
-									className="w-full resize-none cursor-not-allowed rounded-r5 bg-white/50 px-2 py-1.5 text-body text-primary outline-none ring-1 ring-border placeholder:text-secondary"
-								/>
+								</div>
 							</div>
-						</div>
+						)}
 					</div>
-					<span
-						data-pending-question-footnote
-						className="flex items-center gap-2 text-footnote text-secondary"
-					>
-						<span aria-hidden="true" className="status-dot" data-kind="awaiting" />
-						{TERMINAL_FOOTNOTE}
-					</span>
+					{error !== null && (
+						<p data-pending-question-error className="text-footnote text-extended-pink">
+							{error}
+						</p>
+					)}
+					{!answerable && (
+						<span
+							data-pending-question-footnote
+							className="flex items-center gap-2 text-footnote text-secondary"
+						>
+							<span aria-hidden="true" className="status-dot" data-kind="awaiting" />
+							{TERMINAL_FOOTNOTE}
+						</span>
+					)}
 				</>
 			}
 			actions={
@@ -283,6 +439,7 @@ export function PendingQuestionCard({questions}: {questions: PendingQuestionItem
 					{questionIndex > 0 && (
 						<ApprovalActionButton
 							variant="secondary"
+							disabled={answerable && !editable}
 							onClick={() => {
 								setPage(questionIndex - 1);
 							}}
@@ -290,20 +447,18 @@ export function PendingQuestionCard({questions}: {questions: PendingQuestionItem
 							Back
 						</ApprovalActionButton>
 					)}
-					<ApprovalActionButton variant="secondary" disabled>
+					<ApprovalActionButton variant="secondary" disabled={!editable} onClick={skip}>
 						Skip
 					</ApprovalActionButton>
-					{isLast ? (
-						<ApprovalActionButton variant="primary" disabled>
-							Submit
-							<Shortcut keys="cmd+enter" className="pointer-coarse:hidden" />
-						</ApprovalActionButton>
-					) : (
-						<ApprovalActionButton variant="primary" onClick={next}>
-							Next
-							<Shortcut keys="cmd+enter" className="pointer-coarse:hidden" />
-						</ApprovalActionButton>
-					)}
+					<ApprovalActionButton
+						variant="primary"
+						disabled={answerable ? !editable || !answered : isLast}
+						onClick={advance}
+					>
+						{sending === "sending" && <Loader2 aria-hidden="true" className="size-3 animate-spin" />}
+						{isLast ? "Submit" : "Next"}
+						<Shortcut keys="cmd+enter" className="pointer-coarse:hidden" />
+					</ApprovalActionButton>
 				</span>
 			}
 		/>

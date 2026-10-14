@@ -9,7 +9,7 @@ import {
 } from "./ask-user-question";
 import {assertNever} from "./assert-never";
 
-export interface PendingQuestion {
+export interface TranscriptPendingQuestion {
 	toolUseId: string;
 	questions: QuestionLike[];
 }
@@ -59,7 +59,7 @@ export function findLastPendingToolUse(records: readonly unknown[]): PendingTool
  * has no tool_result yet, or null. This is the question upstream docks above
  * the composer as a "needs input" card.
  */
-export function findPendingAskUserQuestion(records: readonly unknown[]): PendingQuestion | null {
+export function findPendingAskUserQuestion(records: readonly unknown[]): TranscriptPendingQuestion | null {
 	const pending = findLastPendingToolUse(records);
 	if (pending?.name !== "AskUserQuestion") return null;
 	const questions = normalizeQuestions(pending.input);

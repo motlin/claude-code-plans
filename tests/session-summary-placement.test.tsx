@@ -448,6 +448,77 @@ describe("SessionPage dock composition", () => {
 		const card = document.querySelector("[data-session-footer] [data-approval-card-root]");
 		expect(card?.getAttribute("aria-label")).toBe("Waiting for your input");
 	});
+	describe("answering the stored question", () => {
+		const herdrPane = {
+			paneId: "w100:p100",
+			terminalId: "terminal-test-100",
+			workspaceId: "w100",
+			tabId: "w100:t100",
+			focused: false,
+			cwd: PROJECT_PATH,
+			foregroundCwd: PROJECT_PATH,
+			agentStatus: "blocked",
+			agent: "claude",
+			terminalTitle: null,
+			agentSessionId: SESSION_ID,
+			revision: 100,
+			sessionId: SESSION_ID,
+			via: "agent-session" as const,
+			viewedState: detail.viewedState,
+		};
+
+		async function renderWaitingQuestion(herdr: {panes: (typeof herdrPane)[]; writesEnabled: boolean}) {
+			await renderSessionPage({...detail, pr}, [], (queryClient) => {
+				seedUsage(queryClient);
+				queryClient.setQueryData(herdrPanesQueryOptions.queryKey, herdr);
+				queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
+					pages: [{sessions: [{id: SESSION_ID, state: "waiting"}], nextCursor: null}],
+					pageParams: [null],
+				} as never);
+				queryClient.setQueryData(pendingQuestionQueryOptions(SESSION_ID).queryKey, {
+					pendingQuestion: {
+						toolUseId: "toolu_question",
+						questions: [{question: "Ship it?", options: [{label: "Yes"}, {label: "No"}]}],
+					},
+				});
+			});
+			return within(screen.getByRole("group", {name: "Waiting for your input"}));
+		}
+
+		it("lets a session in a writable live herdr pane answer, posting the choice to the pane's question endpoint", async () => {
+			const fetchMock = vi.fn<typeof fetch>(async (input) =>
+				String(input) === "/api/herdr/question" ? Response.json({ok: true}) : new Promise<Response>(() => {}),
+			);
+			vi.stubGlobal("fetch", fetchMock);
+			const card = await renderWaitingQuestion({panes: [herdrPane], writesEnabled: true});
+
+			fireEvent.click(card.getByRole("button", {name: /^No/}));
+			fireEvent.click(card.getByRole("button", {name: /^Submit/}));
+			await flush();
+
+			expect({
+				footnote: card.queryByText("Answer in the terminal running this session."),
+				posts: fetchMock.mock.calls
+					.filter(([input]) => String(input) === "/api/herdr/question")
+					.map(([, init]) => JSON.parse(String(init?.body)) as unknown),
+			}).toStrictEqual({
+				footnote: null,
+				posts: [{sessionId: SESSION_ID, toolUseId: "toolu_question", answers: [{selected: [1]}]}],
+			});
+		});
+
+		it.each([
+			{name: "herdr writes are off", herdr: {panes: [herdrPane], writesEnabled: false}},
+			{name: "the session has no live herdr pane", herdr: {panes: [], writesEnabled: true}},
+		])("keeps the card read-only when $name", async ({herdr}) => {
+			const card = await renderWaitingQuestion(herdr);
+
+			expect({
+				footnote: card.queryByText("Answer in the terminal running this session.") !== null,
+				option: card.getByRole<HTMLButtonElement>("button", {name: /^No/}).disabled,
+			}).toStrictEqual({footnote: true, option: true});
+		});
+	});
 	it("suppresses PR, usage, and composer when the session has neither a project path nor a cwd", async () => {
 		await renderSessionPage({...detail, pr, projectPath: null, cwd: null}, [], seedUsage);
 		expect(dockContents()).toStrictEqual([]);

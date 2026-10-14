@@ -1,5 +1,6 @@
 import {queryOptions} from "@tanstack/react-query";
 import {z} from "zod";
+import type {QuestionAnswer} from "../hook-events";
 import type {LiveOptionChange} from "../launch-options";
 import {apiFetch} from "./client";
 import {SessionViewedStateSchema} from "./viewed-state";
@@ -124,6 +125,28 @@ export async function sendHerdrPermissionDecision(
 		credentials: "same-origin",
 		headers: {"Content-Type": "application/json"},
 		body: JSON.stringify({sessionId, decision}),
+	});
+	const json: unknown = await response.json();
+
+	if (!response.ok) {
+		throw new Error(HerdrPromptErrorResponse.parse(json).error);
+	}
+
+	HerdrPromptSuccessResponse.parse(json);
+}
+
+/** Answer the session's pending AskUserQuestion by typing it into its live herdr pane; null skips a question. */
+export async function sendHerdrQuestionAnswer(
+	sessionId: string,
+	toolUseId: string,
+	answers: Array<QuestionAnswer | null>,
+	fetcher: typeof fetch = fetch,
+): Promise<void> {
+	const response = await fetcher("/api/herdr/question", {
+		method: "POST",
+		credentials: "same-origin",
+		headers: {"Content-Type": "application/json"},
+		body: JSON.stringify({sessionId, toolUseId, answers}),
 	});
 	const json: unknown = await response.json();
 

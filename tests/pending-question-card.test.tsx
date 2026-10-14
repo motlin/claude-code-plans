@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 
-import {cleanup, fireEvent, render, screen} from "@testing-library/react";
-import {afterEach, describe, expect, it} from "vite-plus/test";
+import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/react";
+import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {PendingQuestionCard} from "../src/components/approval-card";
-import type {PendingQuestionItem} from "../src/lib/hook-events";
+import type {PendingQuestionItem, QuestionAnswer} from "../src/lib/hook-events";
 
 afterEach(cleanup);
 
@@ -235,5 +235,151 @@ describe("PendingQuestionCard", () => {
 			checkboxes: Array.from({length: 3}, () => "size-3.5 shrink-0 rounded-r3 border border-primary/20"),
 			helper: false,
 		});
+	});
+});
+
+describe("PendingQuestionCard answering", () => {
+	function renderAnswerable(
+		questions: PendingQuestionItem[],
+		submit?: (answers: Array<QuestionAnswer | null>) => Promise<void>,
+	) {
+		const onSubmit = vi.fn<(answers: Array<QuestionAnswer | null>) => Promise<void>>(
+			submit ?? (async () => Promise.resolve()),
+		);
+		render(<PendingQuestionCard questions={questions} onSubmit={onSubmit} />);
+		return {onSubmit, card: within(screen.getByRole("group", {name: "Waiting for your input"}))};
+	}
+
+	function actions() {
+		return [...document.querySelectorAll("[data-approval-card-actions] button")].map((button) => ({
+			text: button.firstChild?.textContent,
+			disabled: (button as HTMLButtonElement).disabled,
+		}));
+	}
+
+	async function settle() {
+		await act(async () => Promise.resolve());
+	}
+
+	it("enables every control and drops the terminal footnote, with Submit waiting for an answer", () => {
+		renderAnswerable([QUESTIONS[0]!]);
+
+		expect({
+			footnote: document.querySelector("[data-pending-question-footnote]"),
+			disabledControls: document.querySelectorAll(
+				"[data-pending-question] button:disabled, [data-pending-question] textarea:disabled",
+			).length,
+			actions: actions(),
+		}).toStrictEqual({
+			footnote: null,
+			disabledControls: 0,
+			actions: [
+				{text: "Skip", disabled: false},
+				{text: "Submit", disabled: true},
+			],
+		});
+	});
+
+	it("picks a single-select option by click and submits its index", async () => {
+		const {onSubmit, card} = renderAnswerable([QUESTIONS[0]!]);
+
+		fireEvent.click(card.getByRole("button", {name: /^Blue/}));
+		const pressed = [...document.querySelectorAll("[data-pending-question-option]")].map((option) =>
+			option.getAttribute("aria-pressed"),
+		);
+		fireEvent.click(card.getByRole("button", {name: /^Submit/}));
+		await settle();
+
+		expect({pressed, calls: onSubmit.mock.calls}).toStrictEqual({
+			pressed: ["false", "true"],
+			calls: [[[{selected: [1]}]]],
+		});
+	});
+
+	it("answers from the keyboard: digits pick, the Other digit focuses its textarea, ⌘⏎ moves on and submits", async () => {
+		const {onSubmit} = renderAnswerable(QUESTIONS);
+
+		fireEvent.keyDown(document, {key: "3"});
+		const otherFocused = document.activeElement?.getAttribute("aria-label");
+		fireEvent.change(document.activeElement!, {target: {value: "Green"}});
+		(document.activeElement as HTMLElement).blur();
+		fireEvent.keyDown(document, {key: "Enter", metaKey: true});
+		const page = document.querySelector("[data-approval-pill]")?.textContent;
+		fireEvent.keyDown(document, {key: "1"});
+		fireEvent.keyDown(document, {key: "2"});
+		fireEvent.keyDown(document, {key: "1"});
+		fireEvent.keyDown(document, {key: "2"});
+		fireEvent.keyDown(document, {key: "2"});
+		fireEvent.keyDown(document, {key: "Enter", metaKey: true});
+		await settle();
+
+		expect({otherFocused, page, calls: onSubmit.mock.calls}).toStrictEqual({
+			otherFocused: "Other option",
+			page: "2/2",
+			calls: [[[{selected: [], other: "Green"}, {selected: [1]}]]],
+		});
+	});
+
+	it("checks multi-select options and Other together", async () => {
+		const {onSubmit, card} = renderAnswerable([QUESTIONS[1]!]);
+
+		fireEvent.click(card.getByRole("button", {name: /^Olives/}));
+		fireEvent.click(card.getByRole("button", {name: /^Cheese/}));
+		fireEvent.change(card.getByRole("textbox", {name: "Other option"}), {target: {value: "Pepper"}});
+		const checked = [...document.querySelectorAll("[data-pending-question-checkbox]")].map((box) =>
+			box.hasAttribute("data-checked"),
+		);
+		fireEvent.click(card.getByRole("button", {name: /^Submit/}));
+		await settle();
+
+		expect({checked, calls: onSubmit.mock.calls}).toStrictEqual({
+			checked: [true, true, true],
+			calls: [[[{selected: [0, 1], other: "Pepper"}]]],
+		});
+	});
+
+	it("skips a question to the next and submits a skipped last question as unanswered", async () => {
+		const {onSubmit, card} = renderAnswerable(QUESTIONS);
+
+		fireEvent.click(card.getByRole("button", {name: "Skip"}));
+		fireEvent.click(screen.getByRole("button", {name: /^Olives/}));
+		fireEvent.click(screen.getByRole("button", {name: "Skip"}));
+		await settle();
+
+		expect(onSubmit.mock.calls).toStrictEqual([[[null, null]]]);
+	});
+
+	it("shows a failed submission's error and lets the answer be sent again", async () => {
+		const {onSubmit, card} = renderAnswerable([QUESTIONS[0]!], async () =>
+			Promise.reject(new Error("Fabricated pane is gone")),
+		);
+
+		fireEvent.click(card.getByRole("button", {name: /^Red/}));
+		fireEvent.click(card.getByRole("button", {name: /^Submit/}));
+		await settle();
+
+		expect({
+			error: document.querySelector("[data-pending-question-error]")?.textContent,
+			actions: actions(),
+			calls: onSubmit.mock.calls.length,
+		}).toStrictEqual({
+			error: "Fabricated pane is gone",
+			actions: [
+				{text: "Skip", disabled: false},
+				{text: "Submit", disabled: false},
+			],
+			calls: 1,
+		});
+	});
+
+	it("ignores digits and ⌘⏎ submission while read-only", () => {
+		render(<PendingQuestionCard questions={[QUESTIONS[0]!]} />);
+		fireEvent.keyDown(document, {key: "1"});
+
+		expect(
+			[...document.querySelectorAll("[data-pending-question-option]")].map((option) =>
+				option.getAttribute("aria-pressed"),
+			),
+		).toStrictEqual([null, null]);
 	});
 });

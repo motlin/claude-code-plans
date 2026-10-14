@@ -100,12 +100,14 @@ import {
 	launchHerdrSession,
 	sendHerdrInterrupt,
 	sendHerdrPermissionDecision,
+	sendHerdrQuestionAnswer,
 } from "../lib/api/herdr";
 import {notificationsQueryOptions} from "../lib/api/notifications";
 import {pendingQuestionQueryOptions} from "../lib/api/pending-question";
 import {findPendingPermission, permissionWaitToolUseId, type PermissionDecision} from "../lib/permission-card";
 import type {HerdrPaneIndexData} from "../lib/api/herdr";
 import type {PaneKind} from "../lib/pane-layout";
+import type {QuestionAnswer} from "../lib/hook-events";
 import {
 	sessionDetailQueryOptions,
 	sessionResourcesQueryOptions,
@@ -523,6 +525,15 @@ function SessionView({
 				: null,
 		[isActive, dockedQuestion, sessionId, notifications, transcript.records, sessionPermissionWait],
 	);
+	const hookQuestionToolUseId = hookQuestion?.toolUseId;
+	const answerHookQuestion = useCallback(
+		async (answers: Array<QuestionAnswer | null>) => {
+			if (hookQuestionToolUseId !== undefined) {
+				await sendHerdrQuestionAnswer(sessionId, hookQuestionToolUseId, answers);
+			}
+		},
+		[sessionId, hookQuestionToolUseId],
+	);
 	const answerPermission = useCallback(
 		async (decision: PermissionDecision) => sendHerdrPermissionDecision(sessionId, decision),
 		[sessionId],
@@ -793,7 +804,11 @@ function SessionView({
 											hasDockedCard: dockedQuestion !== null || pendingPermission !== null,
 										}) &&
 											(hookQuestion ? (
-												<PendingQuestionCard questions={hookQuestion.questions} />
+												<PendingQuestionCard
+													key={hookQuestion.toolUseId}
+													questions={hookQuestion.questions}
+													onSubmit={promptBehavior.usesHerdr ? answerHookQuestion : undefined}
+												/>
 											) : (
 												<WaitingForInputNotice />
 											))}

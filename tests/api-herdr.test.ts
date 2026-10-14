@@ -1,5 +1,10 @@
 import {describe, expect, it, vi} from "vite-plus/test";
-import {HerdrPaneIndexResponse, herdrPanesQueryOptions, sendHerdrPrompt} from "../src/lib/api/herdr";
+import {
+	HerdrPaneIndexResponse,
+	herdrPanesQueryOptions,
+	sendHerdrPrompt,
+	sendHerdrQuestionAnswer,
+} from "../src/lib/api/herdr";
 
 const linkedPane = {
 	paneId: "w100:p100",
@@ -76,5 +81,42 @@ describe("herdr panes API contract", () => {
 		await expect(sendHerdrPrompt("session-test-100", "Ask Alice to inspect the test", fetcher)).rejects.toThrow(
 			"Fabricated agent is not ready",
 		);
+	});
+
+	it("posts a question's answers to the live-pane question endpoint", async () => {
+		const fetcher = vi.fn<typeof fetch>();
+		fetcher.mockResolvedValue(Response.json({ok: true}));
+
+		await sendHerdrQuestionAnswer(
+			"session-test-100",
+			"toolu_test_100",
+			[{selected: [1]}, null, {selected: [0], other: "Pepper"}],
+			fetcher,
+		);
+
+		expect(fetcher.mock.calls).toStrictEqual([
+			[
+				"/api/herdr/question",
+				{
+					method: "POST",
+					credentials: "same-origin",
+					headers: {"Content-Type": "application/json"},
+					body: JSON.stringify({
+						sessionId: "session-test-100",
+						toolUseId: "toolu_test_100",
+						answers: [{selected: [1]}, null, {selected: [0], other: "Pepper"}],
+					}),
+				},
+			],
+		]);
+	});
+
+	it("surfaces the question endpoint's error", async () => {
+		const fetcher = vi.fn<typeof fetch>();
+		fetcher.mockResolvedValue(Response.json({error: "That question is no longer pending"}, {status: 409}));
+
+		await expect(
+			sendHerdrQuestionAnswer("session-test-100", "toolu_test_100", [{selected: [0]}], fetcher),
+		).rejects.toThrow("That question is no longer pending");
 	});
 });
