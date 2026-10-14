@@ -25,7 +25,7 @@ function ShortcutRow({id, isMac, isWindows}: {id: ShortcutId; isMac: boolean; is
 				? undefined
 				: bindingToKeys(binding);
 	return (
-		<div className="flex items-center justify-between border-b-[0.5px] border-border py-2 last:border-0">
+		<div className="flex min-h-[37px] items-center justify-between border-b-[0.5px] border-border py-2 last:border-0">
 			<span className="flex items-center gap-2 text-sm text-secondary">{definition.description}</span>
 			<span className="flex items-center gap-2">{keys === undefined ? null : <Shortcut keys={keys} />}</span>
 		</div>
@@ -79,7 +79,7 @@ export function KeyboardShortcutsDialog() {
 				>
 					<div className="isolate flex min-h-0 flex-1 flex-col overflow-y-auto rounded-[inherit] p-6">
 						<div className="-mx-6 -mt-6 mb-3 flex h-[47px] shrink-0 items-center gap-1 border-b-[0.5px] border-strong bg-alpha-1 px-2">
-							<Dialog.Title className="min-w-0 truncate px-1.5 text-[15px] leading-5 font-[580] text-primary">
+							<Dialog.Title className="min-w-0 truncate px-1.5 text-[22px]/[28px] font-[580] text-primary">
 								Keyboard shortcuts
 							</Dialog.Title>
 							<div className="flex-1" />

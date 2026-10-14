@@ -182,6 +182,22 @@ describe("KeyboardShortcutsDialog", () => {
 		]);
 	});
 
+	it("sizes the dialog as upstream: 520px wide, a 22/28 title and 37px rows", async () => {
+		const composer = renderWithComposer();
+		pressShortcutsKey(composer);
+
+		const dialog = await screen.findByRole("dialog", {name: "Keyboard shortcuts"});
+		const classes = (element: Element | null | undefined) => element?.className.split(" ") ?? [];
+		const row = within(dialog).getByText("Settings").parentElement;
+		expect({
+			width: classes(dialog).includes("max-w-[520px]"),
+			title: classes(within(dialog).getByRole("heading", {name: "Keyboard shortcuts"})).filter((name) =>
+				["text-[22px]/[28px]", "font-[580]"].includes(name),
+			),
+			row: classes(row).includes("min-h-[37px]"),
+		}).toStrictEqual({width: true, title: ["text-[22px]/[28px]", "font-[580]"], row: true});
+	});
+
 	it("lists Search with ⇧⌘K keycaps", async () => {
 		const composer = renderWithComposer();
 		pressShortcutsKey(composer);
