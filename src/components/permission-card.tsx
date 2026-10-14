@@ -1,5 +1,5 @@
 import {Loader2} from "lucide-react";
-import {useCallback, useEffect, useState} from "react";
+import {useCallback, useEffect, useState, type ReactNode} from "react";
 
 import {dockKeyAllowed} from "../lib/dock-keys";
 import {permissionDecisionForKey, type PermissionDecision} from "../lib/permission-card";
@@ -17,12 +17,15 @@ export function PermissionCard({
 	command,
 	canAnswer,
 	onDecision,
+	footer,
 }: {
 	title: string;
 	command: string | null;
 	/** False without a live herdr pane that accepts writes. */
 	canAnswer: boolean;
 	onDecision: (decision: PermissionDecision) => Promise<void>;
+	/** Rendered under the actions; the session page passes the notify tip. */
+	footer?: ReactNode;
 }) {
 	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -61,6 +64,7 @@ export function PermissionCard({
 	return (
 		<ApprovalCardShell
 			label="Permission request: run"
+			footer={footer}
 			digits={2}
 			body={
 				<>

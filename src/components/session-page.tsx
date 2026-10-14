@@ -154,6 +154,11 @@ const SessionUsageCard = lazy(async () =>
 	import("./session-usage-card").then((module) => ({default: module.SessionUsageCard})),
 );
 
+// The notify tip shows nothing until the user comes back from 30s away, so it loads with the first permission card.
+const ToolApprovalNotifyTip = lazy(async () =>
+	import("./tool-approval-notify-tip").then((module) => ({default: module.ToolApprovalNotifyTip})),
+);
+
 export function SessionPage({
 	sessionId,
 	routeId = sessionId,
@@ -797,6 +802,11 @@ function SessionView({
 												command={pendingPermission.command}
 												canAnswer={promptBehavior.hasLivePane && herdr.writesEnabled}
 												onDecision={answerPermission}
+												footer={
+													<Suspense fallback={null}>
+														<ToolApprovalNotifyTip sessionId={sessionId} />
+													</Suspense>
+												}
 											/>
 										)}
 										{/* Upstream docks its pending question card below the PR chip, above the usage chip; hooks supply a read-only copy */}

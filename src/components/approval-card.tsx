@@ -48,6 +48,7 @@ export function ApprovalCardShell({
 	body,
 	actions,
 	stackActions = true,
+	footer,
 }: {
 	/** The card's accessible group label; omitted cards are a plain focusable box. */
 	label?: string;
@@ -57,6 +58,8 @@ export function ApprovalCardShell({
 	actions: ReactNode;
 	/** Whether the actions stack full width below 500px; question cards keep upstream's compact row. */
 	stackActions?: boolean;
+	/** A line under the actions, such as the tool-approval notify tip. */
+	footer?: ReactNode;
 }) {
 	return (
 		<div className="@container/approval-dock [--approval-dock-floor:144px] @max-[500px]/approval-dock:[--approval-dock-floor:208px]">
@@ -80,6 +83,7 @@ export function ApprovalCardShell({
 				>
 					{actions}
 				</div>
+				{footer}
 			</div>
 		</div>
 	);
