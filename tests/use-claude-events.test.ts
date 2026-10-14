@@ -887,6 +887,25 @@ describe("applySessionLinesAppended", () => {
 		});
 	});
 
+	it("marks the api request log stale only when api request records are appended", () => {
+		const queryClient = new QueryClient();
+		queryClient.setQueryData(sessionQueryKeys.transcript("sess-1"), makeTranscriptCache());
+		queryClient.setQueryData(sessionQueryKeys.apiRequests("sess-1"), {requests: {}, shapes: {}});
+		const isStale = () => queryClient.getQueryState(sessionQueryKeys.apiRequests("sess-1"))?.isInvalidated;
+
+		applySessionLinesAppended(queryClient, "sess-1", {
+			sessionId: "sess-1",
+			lines: [{type: "user", uuid: "u-1", message: {role: "user", content: "hello"}}],
+		});
+		expect(isStale()).toBe(false);
+
+		applySessionLinesAppended(queryClient, "sess-1", {
+			sessionId: "sess-1",
+			lines: [{type: "api-request", id: "r1"}],
+		});
+		expect(isStale()).toBe(true);
+	});
+
 	it("does not modify cache when lines array is empty", () => {
 		const queryClient = new QueryClient();
 		const original = makeTranscriptCache({byteOffset: 50});

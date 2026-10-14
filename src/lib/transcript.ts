@@ -87,6 +87,8 @@ const MessageLineSchema = z.object({
 	scheduledTaskId: z.string().optional(),
 	queuePriority: z.literal("later").optional(),
 	isApiErrorMessage: z.boolean().optional(),
+	/** The `api-request` this line's run of records came from; only the run's first line carries it. */
+	requestRef: z.string().optional(),
 	apiErrorStatus: z.union([z.number(), z.string()]).optional(),
 	errorDetails: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
 	stopReason: z.literal("max_tokens").optional(),
@@ -637,6 +639,7 @@ function processRecordBatch(
 	let title = "";
 	let lastWorktreeKey: string | undefined;
 	let lastAttributionKey: string | undefined;
+	let lastRequestRef: string | undefined;
 	let customTitle: string | undefined;
 	const publishedArtifactKeys = new Set<string>();
 	let lastMonitor: Extract<z.infer<typeof JsonlRecordSchema>, {type: "artifact-comment-monitor"}> | undefined;
@@ -1002,6 +1005,10 @@ function processRecordBatch(
 		}
 		if (record.type === "assistant") {
 			if (record.isApiErrorMessage === true) processedLine.isApiErrorMessage = true;
+			if (record.requestRef !== undefined && record.requestRef !== lastRequestRef) {
+				processedLine.requestRef = record.requestRef;
+			}
+			lastRequestRef = record.requestRef;
 			if (record.apiErrorStatus !== undefined) processedLine.apiErrorStatus = record.apiErrorStatus;
 			if (record.errorDetails !== undefined) processedLine.errorDetails = record.errorDetails;
 			if (record.message.stop_reason === "max_tokens") processedLine.stopReason = "max_tokens";

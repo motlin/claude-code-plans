@@ -1599,7 +1599,7 @@ const DevModsRecordSchema = z
 // produced it.
 // ---------------------------------------------------------------------------
 
-const ApiRequestShapeRecordSchema = z
+export const ApiRequestShapeRecordSchema = z
 	.object({
 		type: z.literal("api-request-shape"),
 		sessionId: z.string(),
@@ -1762,7 +1762,7 @@ const DangerousToolUseClassifierContextSchema = z
 	})
 	.strict();
 
-const ApiRequestRecordSchema = z
+export const ApiRequestRecordSchema = z
 	.object({
 		type: z.literal("api-request"),
 		sessionId: z.string(),

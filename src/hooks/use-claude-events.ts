@@ -820,6 +820,9 @@ export function applySessionLinesAppended(
 	// one only marks the query stale, so a live session costs nothing until
 	// somebody is actually looking at an inventory.
 	void queryClient.invalidateQueries({queryKey: sessionQueryKeys.resources(sessionId)});
+	if (payload.lines.some((line) => line["type"] === "api-request" || line["type"] === "api-request-shape")) {
+		void queryClient.invalidateQueries({queryKey: sessionQueryKeys.apiRequests(sessionId)});
+	}
 	return firstLine;
 }
 

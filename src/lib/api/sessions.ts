@@ -6,6 +6,7 @@ import {SessionViewedStateSchema} from "./viewed-state";
 import {SessionBucketSchema} from "../session-state";
 import {PrStatusSchema} from "../pr-status";
 import {SessionCostStateSchema} from "../session-cost";
+import {ApiRequestLogSchema} from "../api-request-log";
 import type {SessionStatusFilter} from "../session-groups";
 
 export const SessionSummaryStateSchema = z.enum(["idle", "working", "waiting", "unknown", "ended"]);
@@ -300,6 +301,7 @@ export const sessionQueryKeys = {
 	detail: (id: string) => [...SESSION_QUERY_ROOT, id] as const,
 	transcript: (id: string) => [...SESSION_QUERY_ROOT, id, "transcript"] as const,
 	resources: (id: string) => [...SESSION_QUERY_ROOT, id, "resources"] as const,
+	apiRequests: (id: string) => [...SESSION_QUERY_ROOT, id, "api-requests"] as const,
 	devServers: (id: string) => [...SESSION_QUERY_ROOT, id, "dev-servers"] as const,
 	artifacts: (id: string) => [...SESSION_QUERY_ROOT, id, "artifacts"] as const,
 	subagents: (id: string) => [...SESSION_QUERY_ROOT, id, "subagents"] as const,
@@ -455,6 +457,19 @@ export const sessionResourcesQueryOptions = (id: string, enabled: boolean) =>
 	queryOptions({
 		queryKey: sessionQueryKeys.resources(id),
 		queryFn: async () => apiFetch(`/api/sessions/${encodeURIComponent(id)}/resources`, SessionResourcesResponse),
+		enabled,
+		staleTime: Infinity,
+		gcTime: Infinity,
+	});
+
+/**
+ * The whole session's API request log (CLI 2.1.300+), fetched only once a
+ * Request disclosure opens. Appended api-request records invalidate it.
+ */
+export const sessionApiRequestsQueryOptions = (id: string, enabled: boolean) =>
+	queryOptions({
+		queryKey: sessionQueryKeys.apiRequests(id),
+		queryFn: async () => apiFetch(`/api/sessions/${encodeURIComponent(id)}/api-requests`, ApiRequestLogSchema),
 		enabled,
 		staleTime: Infinity,
 		gcTime: Infinity,

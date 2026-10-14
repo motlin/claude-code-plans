@@ -1380,6 +1380,20 @@ describe("message metadata fields", () => {
 		expect(result.lines[3]!).not.toHaveProperty("attributionSkill");
 		expect(result.lines[4]).toMatchObject({attributionSkill: "build:fix"});
 	});
+
+	it("carries an api request's requestRef onto the first line of its run only", () => {
+		const records = [
+			assistantRecord([{type: "thinking", thinking: "t", signature: "s"}], {requestRef: "r1"}),
+			assistantRecord([{type: "text", text: "a"}], {requestRef: "r1"}),
+			{type: "user", message: {role: "user", content: "next"}},
+			assistantRecord([{type: "text", text: "b"}], {requestRef: "r2"}),
+			assistantRecord([{type: "text", text: "c"}]),
+		];
+		const refs = processTranscript(records).lines.map((line) =>
+			"requestRef" in line ? line.requestRef : undefined,
+		);
+		expect(refs).toStrictEqual(["r1", undefined, undefined, "r2", undefined]);
+	});
 });
 
 // ---------------------------------------------------------------------------

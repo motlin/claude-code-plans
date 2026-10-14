@@ -94,6 +94,7 @@ import {
 	takeTranscriptHandoff,
 	type TranscriptReadingAnchor,
 } from "../lib/transcript-measurements";
+import {ApiRequestDisclosure} from "./api-request-disclosure";
 import {jumpToMessage, TRANSCRIPT_JUMP_REQUEST_EVENT} from "../lib/jump-to-message";
 import {asRecord, isKeyOf} from "../lib/narrow";
 
@@ -895,6 +896,7 @@ function GroupedToolCallEntry({
 }) {
 	const liveFailures = useLiveToolFailures(sessionId);
 	const opensReply = useContext(AssistantSpanEntryContext)?.opensReply === true;
+	const verbose = useContext(TranscriptModeContext) === "verbose";
 	const batches = useMemo(() => {
 		const result: ToolCallBatch[] = [];
 		let openBatch: ToolCallBatch | undefined;
@@ -950,6 +952,18 @@ function GroupedToolCallEntry({
 					</TranscriptMessageMenu>
 				))}
 			</div>
+			{verbose &&
+				entries.map(
+					(line) =>
+						line.type === "assistant" &&
+						line.requestRef !== undefined && (
+							<ApiRequestDisclosure
+								key={line.lineIndex}
+								sessionId={getSourceSessionId(line, sessionId)}
+								requestRef={line.requestRef}
+							/>
+						),
+				)}
 			{turnChanges && <TurnChangesCard sessionId={sessionId} changes={turnChanges} />}
 			<div>{footer}</div>
 		</div>
@@ -3978,6 +3992,9 @@ function AssistantEntry({
 	}
 
 	const attributionRow = <AttributionRow line={line} verbose={verbose} />;
+	const requestDisclosure = verbose && line.requestRef !== undefined && (
+		<ApiRequestDisclosure sessionId={sessionId} requestRef={line.requestRef} />
+	);
 
 	// Only tool_use blocks -- render as a tool call section
 	if (!hasVisibleNonToolContent && hasToolUse) {
@@ -3990,6 +4007,7 @@ function AssistantEntry({
 					sessionId={sessionId}
 					leading={opensReply && !hasAttribution(line, verbose)}
 				/>
+				{requestDisclosure}
 			</>
 		);
 	}
@@ -4011,6 +4029,7 @@ function AssistantEntry({
 					toolCalls={toolCalls}
 				/>
 			))}
+			{requestDisclosure}
 		</div>
 	);
 }
