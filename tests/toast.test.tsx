@@ -162,11 +162,15 @@ describe("ToastProvider", () => {
 		expect(toastTexts("status")).toEqual([]);
 	});
 
-	it("stacks multiple toasts in order", () => {
-		renderWithToast({message: "Link copied to clipboard.", kind: "success"});
-		fireEvent.click(screen.getByRole("button", {name: "fire"}));
+	it("keeps distinct toasts in firing order", () => {
+		const fire = renderTriggers([
+			{message: "Link copied to clipboard.", kind: "success"},
+			{message: "Archived 1 session", kind: "success"},
+		]);
+		fire(0);
+		fire(1);
 
-		expect(toastTexts("status")).toEqual(["Link copied to clipboard.", "Link copied to clipboard."]);
+		expect(toastTexts("status")).toEqual(["Link copied to clipboard.", "Archived 1 session"]);
 	});
 
 	it("anchors both live regions bottom-right", () => {
@@ -195,11 +199,11 @@ describe("ToastProvider", () => {
 		}).toEqual({icon: "info", iconBeforeMessage: true, borderClasses: []});
 	});
 
-	it("renders a warning icon for error toasts", () => {
+	it("renders upstream's WarningCircle danger icon for error toasts", () => {
 		renderWithToast({message: "Couldn’t save the new name. Try again.", kind: "error"});
 
 		const icon = screen.getByRole("alert").querySelector("[data-toast-icon]");
-		expect(icon?.getAttribute("data-toast-icon")).toBe("warning");
+		expect(icon?.getAttribute("data-toast-icon")).toBe("danger");
 	});
 
 	it("throws when useToast is called outside a provider", () => {
@@ -207,5 +211,121 @@ describe("ToastProvider", () => {
 		expect(() => render(<Trigger options={{message: "x", kind: "success"}} />)).toThrow(
 			"useToast must be used within a ToastProvider",
 		);
+	});
+});
+
+function MultiTrigger({batches}: {batches: ToastOptions[]}) {
+	const toast = useToast();
+	return (
+		<>
+			{batches.map((options, index) => (
+				<button
+					key={index}
+					type="button"
+					onClick={() => {
+						toast(options);
+					}}
+				>
+					{`fire ${index}`}
+				</button>
+			))}
+		</>
+	);
+}
+
+function renderTriggers(batches: ToastOptions[]) {
+	render(
+		<ToastProvider>
+			<MultiTrigger batches={batches} />
+		</ToastProvider>,
+	);
+	return (index: number) => {
+		fireEvent.click(screen.getByRole("button", {name: `fire ${index}`}));
+	};
+}
+
+function deck() {
+	return [...document.querySelectorAll<HTMLElement>("[data-toast]")]
+		.map((element) => ({
+			message: element.querySelector("[data-toast-message]")?.textContent,
+			transform: element.style.transform,
+			behind: element.hasAttribute("data-behind"),
+		}))
+		.toSorted((a, b) => Number(a.behind) - Number(b.behind));
+}
+
+describe("ToastProvider deck", () => {
+	it("stacks toasts as upstream's deck: each older one 14px up and 4% smaller, its content hidden behind the front", () => {
+		const fire = renderTriggers([
+			{message: "First", kind: "success"},
+			{message: "Second", kind: "error"},
+		]);
+		fire(0);
+		fire(1);
+
+		expect(deck()).toStrictEqual([
+			{message: "Second", transform: "translateY(0px) scale(1)", behind: false},
+			{message: "First", transform: "translateY(-14px) scale(0.96)", behind: true},
+		]);
+	});
+
+	it("tints danger and warning toasts with a ring, their ink and upstream's WarningCircle / Warning icons", () => {
+		const fire = renderTriggers([
+			{message: "Broke", kind: "error"},
+			{message: "Careful", kind: "warning"},
+		]);
+		fire(0);
+		fire(1);
+		const variant = (message: string) => {
+			const toast = screen.getByText(message).closest<HTMLElement>("[data-toast]");
+			return {
+				kind: toast?.getAttribute("data-kind"),
+				icon: toast?.querySelector("[data-toast-icon]")?.getAttribute("data-toast-icon"),
+				tinted: toast?.className.includes("color-mix") ?? false,
+			};
+		};
+		expect([variant("Broke"), variant("Careful")]).toStrictEqual([
+			{kind: "error", icon: "danger", tinted: true},
+			{kind: "warning", icon: "warning", tinted: true},
+		]);
+	});
+
+	it("keeps error and warning toasts for 10 seconds", () => {
+		renderWithToast({message: "Couldn’t save.", kind: "error"});
+		act(() => {
+			vi.advanceTimersByTime(9999);
+		});
+		expect(toastTexts("alert")).toEqual(["Couldn’t save."]);
+		act(() => {
+			vi.advanceTimersByTime(1);
+		});
+		expect(toastTexts("alert")).toEqual([]);
+	});
+
+	it("keeps a toast with an action until it is used or dismissed", () => {
+		renderWithToast({message: "Archived 1 session", kind: "success", action: {label: "Undo", onAction: () => {}}});
+		act(() => {
+			vi.advanceTimersByTime(60_000);
+		});
+		expect(toastTexts("status")).toEqual(["Archived 1 session"]);
+	});
+
+	it("folds a repeat into the open toast as (×2), keeping it at least 6 more seconds", () => {
+		const fire = renderTriggers([{message: "Link copied", kind: "success"}]);
+		fire(0);
+		act(() => {
+			vi.advanceTimersByTime(3500);
+		});
+		fire(0);
+
+		expect(toastTexts("status")).toEqual(["Link copied (×2)"]);
+		act(() => {
+			vi.advanceTimersByTime(5999);
+		});
+		expect(toastTexts("status")).toEqual(["Link copied (×2)"]);
+		act(() => {
+			vi.advanceTimersByTime(1);
+		});
+		expect(toastTexts("status")).toEqual([]);
 	});
 });

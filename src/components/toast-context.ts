@@ -1,6 +1,6 @@
 import {createContext, useContext} from "react";
 
-export type ToastKind = "success" | "error";
+export type ToastKind = "success" | "warning" | "error";
 
 export interface ToastAction {
 	label: string;
