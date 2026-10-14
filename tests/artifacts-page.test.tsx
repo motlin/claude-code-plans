@@ -304,6 +304,21 @@ function rowSummary(row: HTMLElement) {
 }
 
 describe("artifacts route", () => {
+	beforeEach(() => {
+		// These tests read the date-grouped list; the default layout is upstream's grid.
+		storage.setItem(ARTIFACTS_LAYOUT_STORAGE_KEY, "list");
+	});
+
+	it("defaults to upstream's grid of cards when no layout was ever chosen", async () => {
+		storage.removeItem(ARTIFACTS_LAYOUT_STORAGE_KEY);
+		await renderArtifactsPage("/artifacts", true);
+
+		expect({
+			toggle: screen.getByRole("button", {name: "List view"}).tagName,
+			cards: document.querySelectorAll("[data-gallery-card]").length,
+		}).toStrictEqual({toggle: "BUTTON", cards: 3});
+	});
+
 	it("lists artifacts by date group linking out to claude.ai", async () => {
 		await renderArtifactsPage("/artifacts", true);
 

@@ -87,7 +87,7 @@ function ArtifactsPage() {
 	const {data: artifacts} = useSuspenseQuery(artifactsQueryOptions);
 	const {search = "", view = "all"} = Route.useSearch();
 	const navigate = useNavigate();
-	const [layout, setLayout] = useState<ArtifactsLayout>("list");
+	const [layout, setLayout] = useState<ArtifactsLayout>("grid");
 	const [type, setType] = useState<ArtifactTypeFilter>("all");
 	const now = useMemo(() => new Date(), []);
 

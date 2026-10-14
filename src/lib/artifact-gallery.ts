@@ -22,9 +22,9 @@ interface FilterableArtifact {
 
 export function readArtifactsLayout(): ArtifactsLayout {
 	try {
-		return localStorage.getItem(ARTIFACTS_LAYOUT_STORAGE_KEY) === "grid" ? "grid" : "list";
+		return localStorage.getItem(ARTIFACTS_LAYOUT_STORAGE_KEY) === "list" ? "list" : "grid";
 	} catch {
-		return "list";
+		return "grid";
 	}
 }
 
