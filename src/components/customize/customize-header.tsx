@@ -1,10 +1,11 @@
 import {useQuery} from "@tanstack/react-query";
 import {Link} from "@tanstack/react-router";
 import {ArrowDownUp, Search, SlidersHorizontal, X} from "lucide-react";
-import {type ReactNode, useState} from "react";
+import {type ReactNode, useRef, useState} from "react";
 import {customizeDiscoverQueryOptions} from "../../lib/api/customize";
 import {SegmentedControl} from "../settings/segmented-control";
 import {Menu, MenuContent, MenuLabel, MenuRadioGroup, MenuRadioItem, MenuTrigger} from "../ui/menu";
+import {Tooltip} from "../ui/tooltip";
 import {CustomizeAddMenu} from "./customize-add-menu";
 import {DISCOVER_SORT_OPTIONS, discoverCategoryOptions, discoverForSection} from "./discover-view";
 import {useSectionSort, writeStoredSort} from "./persisted-sort";
@@ -97,7 +98,10 @@ export function CustomizeHeader({
 					</div>
 				)}
 			</div>
-			<div data-customize-controls="" className="flex min-w-0 flex-wrap items-center justify-end gap-1">
+			<div
+				data-customize-controls=""
+				className="flex min-w-min flex-1 basis-0 flex-nowrap items-center justify-end gap-1"
+			>
 				<SearchField
 					label={section.searchLabel}
 					placeholder={section.searchPlaceholder}
@@ -180,10 +184,18 @@ interface SearchFieldProps {
 	onChange: (value: string) => void;
 }
 
+/**
+ * Upstream's collapsible Customize search: a magnifier button while empty, expanding inline to a
+ * 256px field on click. Escape clears the text first, then collapses; Clear search and blurring
+ * an empty field collapse it too, handing focus back to the magnifier.
+ */
 function SearchField({label, placeholder, value, onChange}: SearchFieldProps) {
 	// Local draft keeps the caret stable while each keystroke updates `?q=`.
 	const [draft, setDraft] = useState(value);
 	const [syncedValue, setSyncedValue] = useState(value);
+	const [expanded, setExpanded] = useState(false);
+	// Set when a collapse should hand focus back to the magnifier as it mounts.
+	const focusButton = useRef(false);
 	if (value !== syncedValue) {
 		setSyncedValue(value);
 		setDraft(value);
@@ -193,18 +205,58 @@ function SearchField({label, placeholder, value, onChange}: SearchFieldProps) {
 		setDraft(next);
 		onChange(next);
 	};
+	const collapse = () => {
+		focusButton.current = true;
+		setExpanded(false);
+	};
+
+	if (!expanded && draft === "") {
+		return (
+			<Tooltip content="Search">
+				<button
+					ref={(button) => {
+						if (button === null || !focusButton.current) return;
+						focusButton.current = false;
+						button.focus();
+					}}
+					type="button"
+					aria-label="Search"
+					onClick={() => {
+						setExpanded(true);
+					}}
+					className="inline-flex size-8 shrink-0 items-center justify-center rounded-r6 text-secondary hover:bg-fill-ghost-hover hover:text-primary"
+				>
+					<Search aria-hidden="true" className="size-4" />
+				</button>
+			</Tooltip>
+		);
+	}
 
 	return (
-		<div className="inline-flex h-8 w-52 cursor-text items-center gap-1.5 rounded-r6 bg-surface-0/50 px-3 shadow-[inset_0_0_0_1px_var(--color-border)] has-[:focus-visible]:shadow-[inset_0_0_0_1px_var(--color-accent-100)]">
+		<div
+			role="search"
+			className="inline-flex h-8 w-0 max-w-64 min-w-40 flex-1 cursor-text items-center gap-1.5 rounded-r6 bg-surface-0/50 px-3 shadow-[inset_0_0_0_1px_var(--color-border)] has-[:focus-visible]:shadow-[inset_0_0_0_1px_var(--color-accent-100)]"
+		>
 			<Search aria-hidden="true" className="size-4 shrink-0 text-t6" />
 			<input
 				type="search"
+				// oxlint-disable-next-line jsx-a11y/no-autofocus -- the field replaces the magnifier the user just pressed
+				autoFocus
 				placeholder={placeholder}
 				aria-label={label}
 				maxLength={200}
 				value={draft}
 				onChange={(event) => {
 					change(event.target.value);
+				}}
+				onKeyDown={(event) => {
+					if (event.key !== "Escape") return;
+					event.preventDefault();
+					if (draft === "") collapse();
+					else change("");
+				}}
+				onBlur={() => {
+					if (draft === "") setExpanded(false);
 				}}
 				data-testid="customize-header-search"
 				className="min-w-0 flex-1 bg-transparent text-body text-primary outline-none placeholder:text-t6 [&::-webkit-search-cancel-button]:hidden"
@@ -215,6 +267,7 @@ function SearchField({label, placeholder, value, onChange}: SearchFieldProps) {
 					aria-label="Clear search"
 					onClick={() => {
 						change("");
+						collapse();
 					}}
 					className="inline-flex size-5 shrink-0 items-center justify-center rounded-r3 text-t6 hover:text-primary"
 				>

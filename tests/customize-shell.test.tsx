@@ -198,6 +198,12 @@ function sectionTabs() {
 		}));
 }
 
+/** Expands the collapsed Customize search and returns its field. */
+function openSearch(): HTMLInputElement {
+	fireEvent.click(screen.getByRole("button", {name: "Search"}));
+	return screen.getByRole("searchbox");
+}
+
 describe("customize shell", () => {
 	it("marks the active section tab and switches sections through the URL", async () => {
 		const router = await renderCustomize("/customize/skills");
@@ -217,7 +223,7 @@ describe("customize shell", () => {
 			pathname: router.state.location.pathname,
 			tabs: sectionTabs(),
 			segmented: screen.queryByRole("radiogroup", {name: "Connectors"}),
-			placeholder: screen.getByRole("searchbox").getAttribute("placeholder"),
+			placeholder: openSearch().getAttribute("placeholder"),
 		}).toStrictEqual({
 			pathname: "/customize/connectors",
 			tabs: [
@@ -262,7 +268,7 @@ describe("customize shell", () => {
 				.querySelector("#customize-pane")
 				?.className.split(" ")
 				.filter((name) => /^(md:)?px-/.test(name)),
-			placeholder: screen.getByRole("searchbox", {name: "Search skills and plugins"}).getAttribute("placeholder"),
+			placeholder: openSearch().getAttribute("placeholder"),
 			addIcons: [...add.querySelectorAll("svg")].map((svg) =>
 				svg
 					.getAttribute("class")
@@ -277,6 +283,50 @@ describe("customize shell", () => {
 			addIcons: ["lucide-plus", "lucide-chevron-down"],
 			addLabelAfterPlus: "svg",
 		});
+	});
+
+	it("collapses an empty search to upstream's magnifier button, which expands the field inline", async () => {
+		await renderCustomize("/customize/skills");
+		const collapsed = {
+			button: screen.queryByRole("button", {name: "Search"}) !== null,
+			field: screen.queryByRole("searchbox") !== null,
+		};
+		const input = openSearch();
+		const expanded = {
+			focused: document.activeElement === input,
+			width: input.closest("[role=search]")?.className.split(" ").includes("max-w-64"),
+			button: screen.queryByRole("button", {name: "Search"}) !== null,
+		};
+		fireEvent.change(input, {target: {value: "deploy"}});
+		fireEvent.keyDown(input, {key: "Escape"});
+		const afterFirstEscape = {value: screen.getByRole<HTMLInputElement>("searchbox").value};
+		fireEvent.keyDown(screen.getByRole("searchbox"), {key: "Escape"});
+		expect({
+			collapsed,
+			expanded,
+			afterFirstEscape,
+			afterSecondEscape: {
+				field: screen.queryByRole("searchbox") !== null,
+				focusedButton: document.activeElement === screen.getByRole("button", {name: "Search"}),
+			},
+		}).toStrictEqual({
+			collapsed: {button: true, field: false},
+			expanded: {focused: true, width: true, button: false},
+			afterFirstEscape: {value: ""},
+			afterSecondEscape: {field: false, focusedButton: true},
+		});
+	});
+
+	it("keeps a held search term's field open, and Clear search collapses it back to the magnifier", async () => {
+		await renderCustomize("/customize/skills?q=deploy");
+		expect(screen.getByRole("searchbox")).toHaveProperty("value", "deploy");
+		await actAndSettle(() => {
+			fireEvent.click(screen.getByRole("button", {name: "Clear search"}));
+		});
+		expect({
+			field: screen.queryByRole("searchbox") !== null,
+			focusedButton: document.activeElement === screen.getByRole("button", {name: "Search"}),
+		}).toStrictEqual({field: false, focusedButton: true});
 	});
 
 	it("round-trips the search term through ?q=", async () => {
@@ -295,8 +345,8 @@ describe("customize shell", () => {
 		});
 		expect({
 			search: router.state.location.searchStr,
-			value: screen.getByRole("searchbox").getAttribute("value") ?? "",
-		}).toStrictEqual({search: "", value: ""});
+			collapsed: screen.queryByRole("searchbox") === null,
+		}).toStrictEqual({search: "", collapsed: true});
 	});
 
 	it("disables Filter and Sort while a search term is set", async () => {

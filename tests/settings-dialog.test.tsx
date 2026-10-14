@@ -369,7 +369,8 @@ describe("SettingsDialog local tabs", () => {
 
 	it("opens Connectors without a Yours/Discover control", async () => {
 		await renderAt("/#customize/connectors/yours");
-		await screen.findByRole("searchbox", {name: "Search connectors"});
+		// The empty search sits collapsed behind its magnifier.
+		await screen.findByRole("button", {name: "Search"});
 
 		expect({current: currentTabs(), views: screen.queryByRole("radiogroup")}).toStrictEqual({
 			current: ["Connectors"],
