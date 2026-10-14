@@ -18,6 +18,7 @@ import {findLaunchedSession, startSessionProjects, type PendingLaunch} from "../
 import {Composer} from "../composer";
 import {useToast} from "../toast-context";
 import {ClawdMascot} from "./clawd-mascot";
+import {UsagePaceBanner} from "../usage-pace-banner";
 import {ProjectPicker} from "./project-picker";
 
 /** Same recents page the ⌘K palette reads, so both share one cached query. */
@@ -125,6 +126,10 @@ export function HomeComposer() {
 		<div ref={rootRef} data-home-composer className="pb-[var(--home-dock-bottom,24px)]">
 			<div className="flex flex-wrap gap-1 pr-24 pb-1">
 				<ProjectPicker projects={startProjects} selected={project} onSelect={setChosenProjectId} />
+			</div>
+			{/* Upstream's home sets the weekly pace banner between the repository chip and the composer */}
+			<div className="pb-1.5 empty:hidden">
+				<UsagePaceBanner />
 			</div>
 			<ClawdMascot />
 			<Composer

@@ -17,6 +17,7 @@ import {NewSessionShortcut} from "../src/components/new-session-shortcut";
 import {ToastProvider} from "../src/components/toast";
 import {ClaudeEventsProvider} from "../src/components/claude-events-provider";
 import {composerDefaultsQueryOptions} from "../src/lib/api/composer-defaults";
+import {usageQueryOptions} from "../src/lib/api/usage";
 import {projectsQueryOptions} from "../src/lib/api/projects";
 import {recentSessionsQueryOptions} from "../src/lib/api/sessions";
 import {getComposerDefaults} from "../src/lib/composer-state";
@@ -99,8 +100,13 @@ async function fetchMock(url: string, init?: RequestInit): Promise<Response> {
 	return new Promise<Response>(() => {});
 }
 
-async function renderApp(initialPath = "/", settingsModel: string | null = "claude-opus-4-8[1m]") {
+async function renderApp(
+	initialPath = "/",
+	settingsModel: string | null = "claude-opus-4-8[1m]",
+	seed: (queryClient: QueryClient) => void = () => {},
+) {
 	const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
+	seed(queryClient);
 	queryClient.setQueryData(recentSessionsQueryOptions(HOME_RECENT_LIMIT).queryKey, {
 		sessions: RECENTS,
 		nextCursor: null,
@@ -198,6 +204,37 @@ describe("HomeComposer", () => {
 			effort: "Medium",
 			mode: "Plan",
 		});
+	});
+
+	it("sets the usage pace banner between the project chip and the composer when ahead of pace, as upstream's home does", async () => {
+		const now = Date.now();
+		await renderApp("/", "claude-opus-4-8[1m]", (queryClient) => {
+			queryClient.setQueryData(
+				usageQueryOptions.queryKey,
+				{
+					fiveHour: null,
+					sevenDay: {usedPct: 50, resetsAt: now / 1000 + 6 * 24 * 3600},
+					updatedAt: new Date(now).toISOString(),
+				},
+				{updatedAt: now},
+			);
+		});
+		await screen.findByRole("textbox", {name: "Prompt"});
+		const home = document.querySelector("[data-home-composer]");
+		const order = [
+			...(home?.querySelectorAll(
+				"[role=combobox][aria-label='Select project'], [role=status], [data-composer-card]",
+			) ?? []),
+		].map((element) =>
+			element.getAttribute("role") === "combobox"
+				? "project"
+				: element.hasAttribute("data-composer-card")
+					? "composer"
+					: element.textContent.startsWith("On pace")
+						? "usage"
+						: "other",
+		);
+		expect(order).toStrictEqual(["project", "usage", "composer"]);
 	});
 
 	it("peeks the Clawd mascot over the composer as an unfocusable decorative button that hops on click", async () => {
