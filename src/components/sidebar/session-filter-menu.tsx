@@ -149,7 +149,7 @@ function SessionFilterMenu({
 						<SlidersVertical aria-hidden="true" className="size-4" />
 					</MenuTrigger>
 				</Tooltip>
-				<MenuContent align="end" className="!min-w-[200px]">
+				<MenuContent align="end" density="comfortable" className="!min-w-[200px]">
 					<RadioSubmenu
 						label="Group by"
 						value={prefs.groupBy}

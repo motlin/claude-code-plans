@@ -9,7 +9,7 @@ import {
 	Outlet,
 	RouterProvider,
 } from "@tanstack/react-router";
-import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {ToastProvider} from "../src/components/toast";
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
 
@@ -205,6 +205,16 @@ describe("sidebar Group and sort menu", () => {
 			"Reset to defaults",
 			"View all",
 		]);
+	});
+
+	it("draws the menu at upstream's comfortable density: 32px rows of 14/20 type in a 200px menu", async () => {
+		await renderSidebarGroups();
+		const menu = await openFilterMenu();
+		const item = within(menu).getByRole("menuitem", {name: "New section"}).className.split(" ");
+		expect({
+			row: item.filter((name) => ["h-8", "text-[14px]/[20px]"].includes(name)),
+			width: menu.className.split(" ").includes("!min-w-[200px]"),
+		}).toStrictEqual({row: ["h-8", "text-[14px]/[20px]"], width: true});
 	});
 
 	it("offers upstream's Group by order, with Folder standing in for Environment and Custom groups after it", async () => {
