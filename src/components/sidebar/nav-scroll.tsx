@@ -47,7 +47,7 @@ export function NavScroll({activeKey = null, children}: {activeKey?: string | nu
 			onScroll={(event) => {
 				setScrolled(event.currentTarget.scrollTop > 0);
 			}}
-			className="relative -ml-1 -mr-2 flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto pl-1 [scrollbar-gutter:stable] [scrollbar-width:thin] data-[scrolled]:[mask-image:linear-gradient(transparent_0px,#000_12px)]"
+			className="relative -ml-1 -mr-2 flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto pl-1 pr-2 [scrollbar-gutter:stable] [scrollbar-width:thin] data-[scrolled]:[mask-image:linear-gradient(transparent_0px,#000_12px)]"
 		>
 			{children}
 		</div>

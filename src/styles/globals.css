@@ -328,6 +328,8 @@
 	--sb-icon: 20px;
 	--sb-leading-slot: 28px;
 	--sb-row-ctl: 24px;
+	/* Upstream sets a row's trailing control flush with its end: a 272px row's slot at x=256 */
+	--sb-row-ctl-inset: 0px;
 	--sb-radius: 8px;
 	--sb-hover: #f0efec;
 	--sb-selected: #edece8;
@@ -611,6 +613,7 @@
 	outline: none;
 	--sb-row-h: 44px;
 	--sb-row-ctl: 36px;
+	--sb-row-ctl-inset: 4px;
 	transform: translate(-100%);
 	transition:
 		transform 0.3s cubic-bezier(0.165, 0.84, 0.44, 1),

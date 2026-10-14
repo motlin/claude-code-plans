@@ -149,7 +149,7 @@ export function GroupSection({
 				ref={headerRef}
 				data-sidebar-group-label
 				data-drop-hot={dropHot ? "" : undefined}
-				className="group/labelrow df-label-inset rounded-[var(--sb-radius)] data-[drop-hot]:bg-[var(--sb-hover)] flex min-h-[calc(var(--sb-group-pt)+var(--sb-row-h)-4px)] w-full items-center gap-[var(--sb-row-gap)] pt-[var(--sb-group-pt)] pr-[calc((var(--sb-row-h)-24px)/2)] pb-1 text-[length:var(--sb-group-font)] leading-4 text-ink-muted"
+				className="group/labelrow df-label-inset rounded-[var(--sb-radius)] data-[drop-hot]:bg-[var(--sb-hover)] flex min-h-[calc(var(--sb-group-pt)+var(--sb-row-h)-4px)] w-full items-center gap-[var(--sb-row-gap)] pt-[var(--sb-group-pt)] pr-[var(--sb-row-ctl-inset)] pb-1 text-[length:var(--sb-group-font)] leading-4 text-ink-muted"
 			>
 				{customGroupId === null ? (
 					isProject ? (
@@ -284,7 +284,7 @@ export function EmptyGroupSection({
 		>
 			<div
 				data-sidebar-group-label
-				className="group/labelrow df-label-inset flex min-h-[calc(var(--sb-group-pt)+var(--sb-row-h)-4px)] w-full items-center gap-[var(--sb-row-gap)] pt-[var(--sb-group-pt)] pr-[calc((var(--sb-row-h)-24px)/2)] pb-1 text-[length:var(--sb-group-font)] leading-4 text-ink-muted"
+				className="group/labelrow df-label-inset flex min-h-[calc(var(--sb-group-pt)+var(--sb-row-h)-4px)] w-full items-center gap-[var(--sb-row-gap)] pt-[var(--sb-group-pt)] pr-[var(--sb-row-ctl-inset)] pb-1 text-[length:var(--sb-group-font)] leading-4 text-ink-muted"
 			>
 				<span className="min-w-0 flex-1 truncate">{label}</span>
 				<HeaderControls filterSlot={filterSlot} leadsList />

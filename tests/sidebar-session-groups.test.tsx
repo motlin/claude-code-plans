@@ -297,6 +297,7 @@ describe("sidebar SessionGroups", () => {
 						: [mark.getAttribute("role"), mark.getAttribute("aria-label")],
 				env: decoration?.querySelector("[data-env-glyph]")?.getAttribute("data-env-glyph") ?? null,
 				hidesOnHover: decoration?.className.split(" ").includes("group-hover/session-row:opacity-0") ?? false,
+				flushRight: decoration?.className.split(" ").includes("right-[var(--sb-row-ctl-inset)]") ?? false,
 			};
 		};
 		expect({
@@ -305,10 +306,22 @@ describe("sidebar SessionGroups", () => {
 			review: describeRow("Review one"),
 			done: describeRow("Completed newest"),
 		}).toStrictEqual({
-			blocked: {leading: false, mark: ["status", "Awaiting input"], env: null, hidesOnHover: true},
-			working: {leading: false, mark: ["status", "Running"], env: null, hidesOnHover: true},
-			review: {leading: false, mark: ["status", "Unread response"], env: null, hidesOnHover: true},
-			done: {leading: false, mark: null, env: "local", hidesOnHover: true},
+			blocked: {
+				leading: false,
+				mark: ["status", "Awaiting input"],
+				env: null,
+				hidesOnHover: true,
+				flushRight: true,
+			},
+			working: {leading: false, mark: ["status", "Running"], env: null, hidesOnHover: true, flushRight: true},
+			review: {
+				leading: false,
+				mark: ["status", "Unread response"],
+				env: null,
+				hidesOnHover: true,
+				flushRight: true,
+			},
+			done: {leading: false, mark: null, env: "local", hidesOnHover: true, flushRight: true},
 		});
 	});
 

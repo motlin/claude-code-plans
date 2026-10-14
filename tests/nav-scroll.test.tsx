@@ -66,3 +66,16 @@ describe("NavScroll", () => {
 		expect(scroller.scrollTop).toBe(0);
 	});
 });
+
+describe("NavScroll inset", () => {
+	it("insets its rows 4px from the left and 8px from the right, so a session row spans upstream's 272px (8 to 280)", () => {
+		const {getByTestId} = render(<NavScroll activeKey={null}>{rows(1, null)}</NavScroll>);
+		const classes = getByTestId("nav-scroll").className.split(" ");
+		expect(classes.filter((name) => /^(-?m[lr]|p[lr])-/.test(name))).toStrictEqual([
+			"-ml-1",
+			"-mr-2",
+			"pl-1",
+			"pr-2",
+		]);
+	});
+});
