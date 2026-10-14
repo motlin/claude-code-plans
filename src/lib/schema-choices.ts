@@ -29,6 +29,8 @@ import type {PinDropOutcome} from "./pinned-sessions";
 import type {PaletteFilter, PaletteType} from "./palette-tokens";
 import type {Direction, LayoutNode, PaneKind, TileId} from "./pane-layout";
 import type {
+	ApiRequestBlobContentBlockSchema,
+	ApiRequestBlobRoleSchema,
 	AttachmentPayloadSchema,
 	ClaudeSettingsSchema,
 	ContentBlockSchema,
@@ -566,7 +568,25 @@ const jsonlRecordVariants = {
 	"artifact-comment-monitor": true,
 	"artifact-autoreact-ledger": true,
 	"dev-mods": true,
+	"api-request": true,
+	"api-request-blob": true,
+	"api-request-shape": true,
 } satisfies Record<z.infer<typeof JsonlRecordSchema>["type"], true>;
+
+/** Not consumed yet — the API request log is only validated. */
+const apiRequestBlobContentBlockVariants = {
+	text: true,
+	thinking: true,
+	tool_use: true,
+	tool_result: true,
+	tool_addition: true,
+} satisfies Record<z.infer<typeof ApiRequestBlobContentBlockSchema>["type"], true>;
+
+const apiRequestBlobRoleLabels = {
+	user: "User",
+	assistant: "Assistant",
+	system: "System",
+} satisfies Record<z.infer<typeof ApiRequestBlobRoleSchema>, string>;
 
 /** Exhaustive handler: renderSessionMessage switch in src/components/session-chat.tsx. */
 const renderedLineVariants = {
@@ -1088,6 +1108,8 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
 	"UserRecordSchema.permissionDecision.source": permissionDecisionSourceLabels,
 	"UserRecordSchema.permissionDecision.reasonType": permissionDecisionReasonTypeLabels,
 	JsonlRecordSchema: jsonlRecordVariants,
+	"JsonlRecordSchema.<api-request-blob>.message.content[]": apiRequestBlobContentBlockVariants,
+	"JsonlRecordSchema.<api-request-blob>.message.role": apiRequestBlobRoleLabels,
 	"FileEditToolUseResultSchema|0.type": writeToolUseResultTypeLabels,
 	"GitOperationSchema.commit.kind": gitCommitKindLabels,
 	"GitOperationSchema.branch.action": gitBranchActionLabels,

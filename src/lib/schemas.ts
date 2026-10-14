@@ -316,61 +316,65 @@ const GitRemoteVisibilitySchema = z
 	})
 	.strict();
 
+// Git repository state the permission classifier sees.
+const ClassifierGitStateSchema = z
+	.object({
+		cwd: z.string().optional(),
+		root: z.union([z.string(), z.null()]).optional(),
+		branch: z.union([z.string(), z.null()]).optional(),
+		default_branch: z.union([z.string(), z.null()]).optional(),
+		status: z
+			.union([
+				z
+					.object({
+						clean: z.boolean().optional(),
+						counts: z
+							.object({
+								staged: z.number().optional(),
+								modified: z.number().optional(),
+								untracked: z.null().optional(),
+								untracked_normal: z.number().optional(),
+							})
+							.strict()
+							.optional(),
+						porcelain: z.null().optional(),
+						truncated: z.boolean().optional(),
+					})
+					.strict(),
+				z.null(),
+			])
+			.optional(),
+		visibility: z
+			.union([
+				z
+					.object({
+						origin: z.union([GitRemoteVisibilitySchema, z.null()]).optional(),
+						push_remote: z.union([z.string(), z.null()]).optional(),
+						remotes: z.array(GitRemoteVisibilitySchema).optional(),
+						visibility_cache: z.array(GitRemoteVisibilitySchema).optional(),
+					})
+					.strict(),
+				z.null(),
+			])
+			.optional(),
+		error: z.string().optional(),
+	})
+	.strict();
+
+// Git and platform context the permission classifier sees for a turn.
+const ClassifierTurnContextSchema = z
+	.object({
+		git_state: ClassifierGitStateSchema.optional(),
+		live_cwd: z.string().optional(),
+		platform: z.string().optional(),
+	})
+	.strict();
+
 // Git and platform context the server-side permission classifier saw for a turn.
 const ServerClassifierContextSchema = z
 	.object({
 		request: z.string().optional(),
-		context: z
-			.object({
-				git_state: z
-					.object({
-						cwd: z.string().optional(),
-						root: z.union([z.string(), z.null()]).optional(),
-						branch: z.union([z.string(), z.null()]).optional(),
-						default_branch: z.union([z.string(), z.null()]).optional(),
-						status: z
-							.union([
-								z
-									.object({
-										clean: z.boolean().optional(),
-										counts: z
-											.object({
-												staged: z.number().optional(),
-												modified: z.number().optional(),
-												untracked: z.null().optional(),
-												untracked_normal: z.number().optional(),
-											})
-											.strict()
-											.optional(),
-										porcelain: z.null().optional(),
-										truncated: z.boolean().optional(),
-									})
-									.strict(),
-								z.null(),
-							])
-							.optional(),
-						visibility: z
-							.union([
-								z
-									.object({
-										origin: z.union([GitRemoteVisibilitySchema, z.null()]).optional(),
-										push_remote: z.union([z.string(), z.null()]).optional(),
-										remotes: z.array(GitRemoteVisibilitySchema).optional(),
-										visibility_cache: z.array(GitRemoteVisibilitySchema).optional(),
-									})
-									.strict(),
-								z.null(),
-							])
-							.optional(),
-						error: z.string().optional(),
-					})
-					.strict()
-					.optional(),
-				live_cwd: z.string().optional(),
-				platform: z.string().optional(),
-			})
-			.strict()
-			.optional(),
+		context: ClassifierTurnContextSchema.optional(),
 	})
 	.strict();
 
@@ -424,6 +428,8 @@ export const AssistantRecordSchema = z
 		type: z.literal("assistant"),
 		...BaseRecordFields,
 		requestId: z.string().optional(),
+		// `id` of the `api-request` record that produced this message.
+		requestRef: z.string().optional(),
 		requestedModel: z.string().optional(),
 		effort: z.string().optional(),
 		message: z
@@ -1583,6 +1589,228 @@ const DevModsRecordSchema = z
 	})
 	.strict();
 
+// ---------------------------------------------------------------------------
+// API request log (CLI 2.1.300+)
+//
+// Each Messages API call is logged as an `api-request` record. Its system
+// prompt and tool list live in an `api-request-shape` record keyed by
+// `shapeHash`; its messages live in content-addressed `api-request-blob`
+// records. An assistant record's `requestRef` names the `api-request` that
+// produced it.
+// ---------------------------------------------------------------------------
+
+const ApiRequestShapeRecordSchema = z
+	.object({
+		type: z.literal("api-request-shape"),
+		sessionId: z.string(),
+		timestamp: z.string(),
+		version: z.string(),
+		shapeHash: z.string(),
+		shape: z
+			.object({
+				system: z.array(TextBlockSchema),
+				tools: z.array(
+					z.union([
+						ToolDefinitionSchema,
+						// Server tools, e.g. {type: "advisor_20260301", name: "advisor"}.
+						z
+							.object({
+								type: z.string(),
+								name: z.string(),
+								model: z.string(),
+								defer_loading: z.boolean().optional(),
+							})
+							.strict(),
+					]),
+				),
+			})
+			.strict(),
+	})
+	.strict();
+
+const ToolAdditionBlockSchema = z
+	.object({
+		type: z.literal("tool_addition"),
+		tool: z
+			.object({
+				type: z.literal("tool_definition"),
+				definition: ToolDefinitionSchema,
+			})
+			.strict(),
+	})
+	.strict();
+
+export const ApiRequestBlobRoleSchema = z.enum(["user", "assistant", "system"]);
+
+export const ApiRequestBlobContentBlockSchema = z.discriminatedUnion("type", [
+	TextBlockSchema,
+	ThinkingBlockSchema,
+	ToolUseBlockSchema,
+	ToolResultBlockSchema,
+	ToolAdditionBlockSchema,
+]);
+
+const ApiRequestBlobRecordSchema = z
+	.object({
+		type: z.literal("api-request-blob"),
+		sessionId: z.string(),
+		hash: z.string(),
+		message: z
+			.object({
+				role: ApiRequestBlobRoleSchema,
+				content: z.array(ApiRequestBlobContentBlockSchema),
+				output_config: z.object({effort: z.string()}).strict().optional(),
+			})
+			.strict(),
+	})
+	.strict();
+
+const ClassifierRuleSchema = z
+	.object({
+		rule: z.string(),
+		source: z.string(),
+		pattern: z.string().optional(),
+		root: z.union([z.string(), z.null()]).optional(),
+	})
+	.strict();
+
+// What the dangerous-tool-use safeguard's classifier is told about the session.
+// The z.never() arrays and empty objects have only ever been observed empty.
+const DangerousToolUseClassifierContextSchema = z
+	.object({
+		v: z.number(),
+		permission_mode: z.string(),
+		platform: z.string(),
+		live_cwd: z.string(),
+		home_dir: z.string(),
+		// Keyed by settings source, e.g. "userSettings".
+		rule_roots: z.record(z.string(), z.string()),
+		trusted_directories: z
+			.object({
+				primary: z.object({path: z.string(), resolved: z.array(z.string())}).strict(),
+				additional: z.array(z.never()),
+				network: z.array(z.never()),
+				block_reads_outside_working_directories: z.boolean(),
+			})
+			.strict(),
+		rules: z
+			.object({
+				allow: z.array(ClassifierRuleSchema),
+				deny: z.array(ClassifierRuleSchema),
+				ask: z.array(ClassifierRuleSchema),
+			})
+			.strict(),
+		auto_mode: z
+			.object({
+				allow: z.array(z.never()),
+				soft_deny: z.array(z.never()),
+				hard_deny: z.array(z.never()),
+				environment: z.array(z.string()),
+			})
+			.strict(),
+		artifact_consent_holdback: z.boolean(),
+		case_insensitive_paths: z.boolean(),
+		restricted: z.boolean(),
+		is_remote_mode: z.boolean(),
+		classify_all_shell: z.boolean(),
+		user_identity: z.string(),
+		dropped: z.object({allow: z.number()}).strict(),
+		git_state: ClassifierGitStateSchema,
+		artifacts: z
+			.object({
+				by_slug: z.object({}).strict(),
+				by_path: z.object({}).strict(),
+				live_docs: z.array(z.never()),
+				room_armed: z.array(z.never()),
+				type_reads: z.object({}).strict(),
+				session: z
+					.object({
+						frame_env: z.string(),
+						viewer_origin: z.string(),
+						short_links: z.boolean(),
+						ant_build: z.boolean(),
+						comments_in_schema: z.boolean(),
+						handlers: z.boolean(),
+						room_client: z.boolean(),
+						eval_stub: z.boolean(),
+						scratchpad_dir: z.string(),
+						tool_results_dir: z.string(),
+						toolset: z.boolean(),
+						live_edit: z.boolean(),
+						live_doc_stream: z.boolean(),
+						live_paths_schema: z.boolean(),
+						copy_from: z.boolean(),
+						db_str_replace: z.boolean(),
+						types_on: z.boolean(),
+						five_class_asks: z.boolean(),
+						watch_rail: z.string(),
+						auto_react: z.boolean(),
+					})
+					.strict(),
+			})
+			.strict(),
+		prior_turn_context: z
+			.array(
+				z
+					.object({
+						tool_use_ids: z.array(z.string()),
+						context: ClassifierTurnContextSchema,
+					})
+					.strict(),
+			)
+			.optional(),
+	})
+	.strict();
+
+const ApiRequestRecordSchema = z
+	.object({
+		type: z.literal("api-request"),
+		sessionId: z.string(),
+		id: z.string(),
+		timestamp: z.string(),
+		version: z.string(),
+		querySource: z.string(),
+		shapeHash: z.string(),
+		// `id` of the earlier `api-request` whose first `keep` messages this one reuses.
+		base: z.string().optional(),
+		params: z
+			.object({
+				model: z.string(),
+				betas: z.array(z.string()),
+				max_tokens: z.number(),
+				thinking: z.object({type: z.string(), display: z.string()}).strict(),
+				context_management: z
+					.object({edits: z.array(z.object({type: z.string(), keep: z.string()}).strict())})
+					.strict(),
+				safeguards: z.array(
+					z
+						.object({
+							type: z.literal("dangerous_tool_use"),
+							classifier_context: DangerousToolUseClassifierContextSchema,
+						})
+						.strict(),
+				),
+				output_config: z.object({effort: z.string()}).strict(),
+			})
+			.strict(),
+		keep: z.number(),
+		// Message hashes appended after the kept `base` prefix.
+		tail: z.array(z.string()),
+		cacheControl: z.array(
+			z
+				.object({
+					// JSON path into the request body, e.g. ["messages", 31, "content", 0].
+					path: z.array(z.union([z.string(), z.number()])),
+					value: z
+						.object({type: z.literal("ephemeral"), ttl: z.string(), scope: z.string().optional()})
+						.strict(),
+				})
+				.strict(),
+		),
+		requestDigest: z.string(),
+	})
+	.strict();
+
 // `artifacts` is keyed by artifact URL.
 const ArtifactCommentMonitorRecordSchema = z
 	.object({
@@ -1660,6 +1888,9 @@ export const JsonlRecordSchema = z.discriminatedUnion("type", [
 	ArtifactCommentMonitorRecordSchema,
 	ArtifactAutoreactLedgerRecordSchema,
 	DevModsRecordSchema,
+	ApiRequestRecordSchema,
+	ApiRequestBlobRecordSchema,
+	ApiRequestShapeRecordSchema,
 ]);
 
 // ---------------------------------------------------------------------------

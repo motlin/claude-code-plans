@@ -54,11 +54,11 @@
 		"raisedAt": "2026-10-14"
 	},
 	"bundle.home.raw": {
-		"ceiling": 1133758,
+		"ceiling": 1147492,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Validate SSE domain-event payloads on the client with strict Zod schemas (src/lib/domain-event-payload-schemas.ts) and narrow parsed JSON through src/lib/narrow.ts instead of type assertions, as part of the no-unsafe-type-assertion burn-down; the schemas run in the always-loaded events provider, so they cannot be deferred. Home cold JS rises to 368413 gzip / 1133758 raw from 366930/1129776 measured on the parent commit. Other ceilings and the 1% tolerance are unchanged.",
-		"raisedAt": "2026-10-13"
+		"reason": "Schema-sync for CLI 2.1.300: strict schemas for the new api-request, api-request-blob and api-request-shape JSONL records and the assistant requestRef key (src/lib/schemas.ts, which the client bundles with JsonlRecordSchema), modelled field by field instead of loosened, so they cannot be dropped. Home cold JS rises to 372993 gzip / 1147492 raw from 372251/1145092 measured on the parent commit adc47a84; the parent already sat at the edge of the 1% raw tolerance. Other ceilings and the 1% tolerance are unchanged.",
+		"raisedAt": "2026-10-14"
 	},
 	"bundle.session.gzip": {
 		"ceiling": 546322,

@@ -1594,6 +1594,244 @@ describe("JsonlRecordSchema observed 2026-09 transcript fields", () => {
 
 		expect(records.map((record) => JsonlRecordSchema.parse(record))).toStrictEqual(records);
 	});
+
+	it("parses 2.1.300 api-request, api-request-blob, and api-request-shape records and assistant requestRef", () => {
+		const gitState = {
+			cwd: "/Users/test/project",
+			root: "/Users/test/project",
+			branch: "main",
+			default_branch: null,
+			status: {
+				clean: false,
+				counts: {staged: 0, modified: 2, untracked: null, untracked_normal: 1},
+				porcelain: null,
+				truncated: false,
+			},
+			visibility: {
+				origin: {host: "github.com", remote: "origin", visibility: "public"},
+				push_remote: "origin",
+				remotes: [{name: "origin", host: "github.com", remote: "origin", visibility: "public"}],
+				visibility_cache: [{host: "github.com", remote: "origin", visibility: "public"}],
+			},
+		};
+		const records = [
+			{
+				type: "assistant",
+				...baseFields,
+				requestRef: "a8385a7e-4125-443c-9712-789f57569497",
+				message: {role: "assistant", model: "claude-opus-5-5", content: [{type: "text", text: "Done."}]},
+			},
+			{
+				type: "api-request-shape",
+				sessionId: "sess-123",
+				timestamp: "2026-10-14T21:24:41.805Z",
+				version: "2.1.300",
+				shapeHash: "ba8bc7e4",
+				shape: {
+					system: [{type: "text", text: "You are Claude Code."}],
+					tools: [
+						{
+							name: "Read",
+							description: "Reads a file.",
+							input_schema: {type: "object", properties: {file_path: {type: "string"}}},
+							eager_input_streaming: true,
+						},
+						{
+							name: "mcp__docs__guide",
+							description: "Docs guides",
+							input_schema: {type: "object", properties: {}},
+							defer_loading: true,
+						},
+						{type: "advisor_20260301", name: "advisor", model: "claude-opus-5-5", defer_loading: true},
+					],
+				},
+			},
+			{
+				type: "api-request-blob",
+				sessionId: "sess-123",
+				hash: "83f236db",
+				message: {
+					role: "assistant",
+					output_config: {effort: "medium"},
+					content: [
+						{type: "thinking", thinking: "Plan.", signature: "sig"},
+						{type: "text", text: "Reading."},
+						{
+							type: "tool_use",
+							id: "toolu_1",
+							name: "Read",
+							input: {file_path: "/a"},
+							caller: {type: "direct"},
+						},
+					],
+				},
+			},
+			{
+				type: "api-request-blob",
+				sessionId: "sess-123",
+				hash: "55257536",
+				message: {
+					role: "user",
+					content: [
+						{type: "tool_result", tool_use_id: "toolu_1", content: "ok", is_error: false},
+						{
+							type: "tool_addition",
+							tool: {
+								type: "tool_definition",
+								definition: {
+									name: "mcp__docs__update",
+									description: "Edit a tab.",
+									input_schema: {type: "object", properties: {}},
+									eager_input_streaming: true,
+								},
+							},
+						},
+					],
+				},
+			},
+			{
+				type: "api-request-blob",
+				sessionId: "sess-123",
+				hash: "69c94cc0",
+				message: {role: "system", content: [{type: "text", text: "Reminder."}]},
+			},
+			{
+				type: "api-request",
+				sessionId: "sess-123",
+				id: "a8385a7e-4125-443c-9712-789f57569497",
+				timestamp: "2026-10-14T21:24:41.805Z",
+				version: "2.1.300",
+				querySource: "repl_main_thread",
+				shapeHash: "ba8bc7e4",
+				base: "4f2f2830-b1cd-4aa8-9062-e26619000000",
+				params: {
+					model: "claude-opus-5-5",
+					betas: ["claude-code-20250219", "oauth-2025-04-20"],
+					max_tokens: 128000,
+					thinking: {type: "adaptive", display: "updates"},
+					context_management: {edits: [{type: "clear_thinking_20251015", keep: "all"}]},
+					safeguards: [
+						{
+							type: "dangerous_tool_use",
+							classifier_context: {
+								v: 1,
+								permission_mode: "auto",
+								platform: "macos",
+								live_cwd: "/Users/test/project",
+								home_dir: "/Users/test",
+								rule_roots: {
+									userSettings: "/Users/test/.claude",
+									projectSettings: "/Users/test/project",
+									localSettings: "/Users/test/project",
+									flagSettings: "/Users/test/project",
+									policySettings: "/Users/test/project",
+									cliArg: "/Users/test/project",
+									command: "/Users/test/project",
+									session: "/Users/test/project",
+									toolsNarrowing: "/Users/test/project",
+									mcpServerPolicy: "/Users/test/project",
+									hostCredential: "/Users/test/project",
+								},
+								trusted_directories: {
+									primary: {path: "/Users/test/project", resolved: ["/Users/test/project"]},
+									additional: [],
+									network: [],
+									block_reads_outside_working_directories: false,
+								},
+								rules: {
+									allow: [{rule: "Bash(cat:*)", source: "userSettings"}],
+									deny: [
+										{rule: "Bash(git add -A:*)", source: "userSettings"},
+										{
+											rule: "Read(~/.ssh/**)",
+											source: "userSettings",
+											pattern: "/.ssh/**",
+											root: "/Users/test",
+										},
+									],
+									ask: [
+										{rule: "Bash(gh:*)", source: "userSettings"},
+										{
+											rule: "Edit(//etc/**)",
+											source: "userSettings",
+											pattern: "/etc/**",
+											root: null,
+										},
+									],
+								},
+								auto_mode: {allow: [], soft_deny: [], hard_deny: [], environment: ["### Org-wide"]},
+								artifact_consent_holdback: true,
+								case_insensitive_paths: false,
+								restricted: false,
+								is_remote_mode: false,
+								classify_all_shell: false,
+								user_identity: "test",
+								dropped: {allow: 114},
+								git_state: {
+									cwd: "/Users/test/project",
+									root: null,
+									branch: null,
+									default_branch: null,
+									status: null,
+									visibility: null,
+									error: "pending",
+								},
+								artifacts: {
+									by_slug: {},
+									by_path: {},
+									live_docs: [],
+									room_armed: [],
+									type_reads: {},
+									session: {
+										frame_env: "prod",
+										viewer_origin: "https://claude.ai",
+										short_links: true,
+										ant_build: false,
+										comments_in_schema: true,
+										handlers: false,
+										room_client: false,
+										eval_stub: false,
+										scratchpad_dir: "/tmp/scratchpad",
+										tool_results_dir: "/tmp/tool-results",
+										toolset: true,
+										live_edit: false,
+										live_doc_stream: false,
+										live_paths_schema: false,
+										copy_from: true,
+										db_str_replace: true,
+										types_on: true,
+										five_class_asks: true,
+										watch_rail: "live",
+										auto_react: true,
+									},
+								},
+								prior_turn_context: [
+									{
+										tool_use_ids: ["toolu_1"],
+										context: {
+											git_state: gitState,
+											live_cwd: "/Users/test/project",
+											platform: "macos",
+										},
+									},
+								],
+							},
+						},
+					],
+					output_config: {effort: "medium"},
+				},
+				keep: 0,
+				tail: ["83f236db"],
+				cacheControl: [
+					{path: ["system", 1], value: {type: "ephemeral", ttl: "1h", scope: "global"}},
+					{path: ["messages", 1, "content", 3], value: {type: "ephemeral", ttl: "1h"}},
+				],
+				requestDigest: "ffb6a6a3",
+			},
+		];
+
+		expect(records.map((record) => JsonlRecordSchema.parse(record))).toStrictEqual(records);
+	});
 });
 
 describe("parseJsonlRecord", () => {
