@@ -20,7 +20,7 @@ describe("top-left clearance", () => {
 		expect(topLeftClearanceStyle("docked")).toBe(undefined);
 	});
 
-	it("puts the phone toggle in the titlebar's lead slot so the title starts after it at 390px", () => {
+	it("puts the phone toggle in the titlebar's lead slot as upstream's 32px target at x=8, so the title starts after it at 390px", () => {
 		const clearance = topLeftClearance("phone");
 		if (clearance === null) throw new Error("phone clearance missing");
 		const toggle = PHONE_SIDEBAR_TOGGLE;
@@ -32,7 +32,7 @@ describe("top-left clearance", () => {
 			toggleCentredInBar: toggle.top * 2 + toggle.size === TITLEBAR_HEIGHT_PX,
 			style: topLeftClearanceStyle("phone"),
 		}).toStrictEqual({
-			toggle: {left: 16, top: 4, size: 24},
+			toggle: {left: 8, top: 0, size: 32},
 			clearance: {start: 44, top: 0},
 			titleStartsAfterToggle: true,
 			toggleCentredInBar: true,

@@ -7,7 +7,7 @@ import {SidebarToggleIcon} from "./primitives";
 
 const PHONE_SHEET_ID = "sidebar-sheet";
 
-/** claude.ai/code's phone "Show sidebar" trigger: 24px, in the titlebar's lead slot (see `topLeftClearance`). */
+/** claude.ai/code's phone "Show sidebar" trigger: a 32px target, in the titlebar's lead slot (see `topLeftClearance`). */
 export function PhoneSheetTrigger({open, onOpen}: {open: boolean; onOpen: () => void}) {
 	return (
 		<button

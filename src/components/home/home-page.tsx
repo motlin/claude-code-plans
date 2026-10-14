@@ -2,12 +2,11 @@ import {useQuery} from "@tanstack/react-query";
 import type {ReactNode} from "react";
 import {localAccountQueryOptions} from "../../lib/api/local-account";
 import {HomeGreeting} from "./greeting";
-
-const COLUMN = "mx-auto w-full max-w-[840px] pr-10 pl-8";
+import {HOME_COLUMN} from "./home-column";
 
 /**
  * Upstream's /code landing shell: a greeting header, a scrolling body, and a bottom dock, all in
- * an 840px centered column with 32px/40px gutters.
+ * an 840px centered column with 32px/40px gutters (25px on a phone).
  */
 export function HomePage({
 	children,
@@ -18,10 +17,10 @@ export function HomePage({
 
 	return (
 		<div className="flex h-full min-h-0 flex-col">
-			<header className="mx-auto flex w-full max-w-[840px] items-center gap-1.5 pt-3 pr-10 pb-6 pl-8">
+			<header className={`flex items-center gap-1.5 pt-3 pb-6 ${HOME_COLUMN}`}>
 				<HomeGreeting name={account?.firstName} clear={clear} />
 			</header>
-			<div className={`flex min-h-0 flex-1 flex-col ${COLUMN}`}>
+			<div className={`flex min-h-0 flex-1 flex-col ${HOME_COLUMN}`}>
 				<div
 					data-home-body
 					data-scroll-restoration-id="main"
@@ -30,7 +29,7 @@ export function HomePage({
 					{children}
 				</div>
 			</div>
-			{dock === undefined ? null : <div className={`shrink-0 ${COLUMN}`}>{dock}</div>}
+			{dock === undefined ? null : <div className={`shrink-0 ${HOME_COLUMN}`}>{dock}</div>}
 		</div>
 	);
 }

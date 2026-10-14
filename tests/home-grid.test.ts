@@ -94,7 +94,8 @@ describe("home page", () => {
 			}).toStrictEqual({
 				fullBleed: true,
 				heading: "Welcome back, Ada",
-				columnClass: "mx-auto flex w-full max-w-[840px] items-center gap-1.5 pt-3 pr-10 pb-6 pl-8",
+				columnClass:
+					"flex items-center gap-1.5 pt-3 pb-6 mx-auto w-full max-w-[840px] pr-10 pl-8 max-sm:pr-[25px] max-sm:pl-[25px]",
 			});
 		} finally {
 			view.unmount();

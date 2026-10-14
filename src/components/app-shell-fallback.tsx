@@ -7,6 +7,7 @@ import {SidebarToggleIcon} from "./sidebar/primitives";
 import {ROW_CLASS as SESSION_ROW_CLASS} from "./sidebar/session-group-section";
 import {SessionSkeleton} from "./session-skeleton";
 import {HomeGreeting} from "./home/greeting";
+import {HOME_COLUMN} from "./home/home-column";
 
 const NAV_ROW_CLASS = "df-nav-row h-[var(--sb-row-h)] rounded-[var(--sb-radius)] flex-1";
 const BAR_CLASS = "animate-pulse rounded bg-fill-ghost-hover";
@@ -24,8 +25,6 @@ const SESSION_ROW_WIDTHS = ["w-3/4", "w-2/3", "w-5/6", "w-1/2", "w-3/5", "w-4/5"
  * removes itself on hydration, at which point the real `RootLayout` is already
  * mounted underneath it.
  */
-/** The 840px column upstream's home page lays its greeting, body and dock in. */
-const HOME_COLUMN = "mx-auto w-full max-w-[840px] pr-10 pl-8";
 
 /** Upstream draws its composer while loading: the 40px box with the placeholder, over the chin. */
 function FallbackComposer({placeholder}: {placeholder: string}) {
@@ -51,7 +50,7 @@ function FallbackComposer({placeholder}: {placeholder: string}) {
 function HomeSkeleton() {
 	return (
 		<div data-testid="home-skeleton" className="flex h-full min-h-0 flex-col">
-			<header className="mx-auto flex w-full max-w-[840px] items-center gap-1.5 pt-3 pr-10 pb-6 pl-8">
+			<header className={`flex items-center gap-1.5 pt-3 pb-6 ${HOME_COLUMN}`}>
 				<HomeGreeting name={undefined} clear={false} />
 			</header>
 			<div className={`min-h-0 flex-1 overflow-hidden ${HOME_COLUMN}`}>

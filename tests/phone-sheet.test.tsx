@@ -162,7 +162,7 @@ describe("phone sheet sidebar", () => {
 		}).toStrictEqual({
 			expanded: "false",
 			controls: "sidebar-sheet",
-			geometry: {left: "16px", top: "4px", width: "24px", height: "24px"},
+			geometry: {left: "8px", top: "0px", width: "32px", height: "32px"},
 		});
 		expect({
 			role: sheet().getAttribute("role"),

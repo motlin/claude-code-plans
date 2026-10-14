@@ -9,9 +9,9 @@ export const TITLEBAR_HEIGHT_PX = 32;
 
 /**
  * Below 640px the "Show sidebar" toggle sits in the titlebar's lead slot, as on claude.ai/code:
- * a 24px square at the 16px page gutter, vertically centred in the 32px bar.
+ * upstream's 32px square hit target 8px from the edge, filling the 32px bar.
  */
-export const PHONE_SIDEBAR_TOGGLE = {left: 16, top: 4, size: 24} as const;
+export const PHONE_SIDEBAR_TOGGLE = {left: 8, top: 0, size: 32} as const;
 
 /**
  * Space the main pane's top-left corner leaves for the sidebar toggle. Collapsed desktop: the
