@@ -43,6 +43,7 @@ import {
 	MenuRadioItem,
 	MenuTrigger,
 } from "../components/ui/menu";
+import {CodePageHeader} from "../components/code-page-header";
 import {Tooltip} from "../components/ui/tooltip";
 
 export const Route = createFileRoute("/artifacts")({
@@ -125,52 +126,54 @@ function ArtifactsPage() {
 
 	return (
 		<div className="mx-auto flex w-full max-w-5xl flex-col">
-			<header className="flex flex-wrap items-end justify-between gap-x-4 gap-y-4 pb-6">
-				<div className="flex min-h-12 min-w-0 items-center md:min-h-16 md:items-end">
-					<h1 className="min-w-0 font-voice text-[28px]/[36px] font-medium text-primary">Artifacts</h1>
-				</div>
-				<div className="ms-auto flex max-w-full shrink-0 flex-wrap items-center justify-end gap-2">
-					<ToolbarSearch
-						label="Search your artifacts"
-						placeholder="Search artifacts..."
-						search={search}
-						onSearch={(next) => {
-							updateSearch({search: next, view});
-						}}
-					/>
-					<Tooltip content={layoutLabel}>
-						<button
-							type="button"
-							className={TOOLBAR_ICON_BUTTON}
-							aria-label={layoutLabel}
-							onClick={toggleLayout}
-						>
-							{layout === "grid" ? <List aria-hidden="true" /> : <LayoutGrid aria-hidden="true" />}
-						</button>
-					</Tooltip>
-					<TypeFilterMenu artifacts={inView} type={type} onChange={setType} />
-				</div>
+			<CodePageHeader
+				title="Artifacts"
+				tabs={
+					<div role="tablist" aria-label="Artifacts" className="flex items-center gap-1">
+						{VIEW_TABS.map((tab) => (
+							<button
+								key={tab.view}
+								type="button"
+								role="tab"
+								aria-selected={tab.view === view}
+								className={VIEW_TAB_CLASS}
+								onClick={() => {
+									updateSearch({search, view: tab.view});
+								}}
+							>
+								{tab.label}
+							</button>
+						))}
+					</div>
+				}
+				toolbar={
+					<>
+						<ToolbarSearch
+							label="Search your artifacts"
+							placeholder="Search artifacts..."
+							search={search}
+							onSearch={(next) => {
+								updateSearch({search: next, view});
+							}}
+						/>
+						<Tooltip content={layoutLabel}>
+							<button
+								type="button"
+								className={TOOLBAR_ICON_BUTTON}
+								aria-label={layoutLabel}
+								onClick={toggleLayout}
+							>
+								{layout === "grid" ? <List aria-hidden="true" /> : <LayoutGrid aria-hidden="true" />}
+							</button>
+						</Tooltip>
+						<TypeFilterMenu artifacts={inView} type={type} onChange={setType} />
+					</>
+				}
+			>
 				<p role="status" className="sr-only">
 					{searching ? `${formatCount(visible.length, "artifact")} matching “${search}”` : ""}
 				</p>
-			</header>
-
-			<div role="tablist" aria-label="Artifacts" className="flex items-center gap-1 pb-3">
-				{VIEW_TABS.map((tab) => (
-					<button
-						key={tab.view}
-						type="button"
-						role="tab"
-						aria-selected={tab.view === view}
-						className={VIEW_TAB_CLASS}
-						onClick={() => {
-							updateSearch({search, view: tab.view});
-						}}
-					>
-						{tab.label}
-					</button>
-				))}
-			</div>
+			</CodePageHeader>
 
 			<div className="flex flex-col pb-12 pt-1">
 				{artifacts.length === 0 ? (

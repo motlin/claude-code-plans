@@ -1,3 +1,4 @@
+import {CodePageHeader} from "../components/code-page-header";
 import {createFileRoute, Link} from "@tanstack/react-router";
 import {useSuspenseQuery} from "@tanstack/react-query";
 import {ArrowUpDown, SlidersHorizontal} from "lucide-react";
@@ -61,23 +62,23 @@ function RoutinesPage() {
 
 	return (
 		<div className="mx-auto flex w-full max-w-5xl flex-col">
-			<header className="flex flex-wrap items-end justify-between gap-x-4 gap-y-4 pb-6">
-				<div className="flex min-h-12 min-w-0 items-center md:min-h-16 md:items-end">
-					<h1 className="min-w-0 font-voice text-[28px]/[36px] font-medium text-primary">Routines</h1>
-				</div>
-				<div className="ms-auto flex max-w-full shrink-0 flex-wrap items-center justify-end gap-2">
-					<ToolbarSearch
-						label="Search routines"
-						placeholder="Search routines..."
-						search={view.search}
-						onSearch={(search) => {
-							setView((current) => ({...current, search}));
-						}}
-					/>
-					<FilterMenu view={view} onChange={setView} />
-					<SortMenu view={view} completedCount={completedCount} onChange={setView} />
-				</div>
-			</header>
+			<CodePageHeader
+				title="Routines"
+				toolbar={
+					<>
+						<ToolbarSearch
+							label="Search routines"
+							placeholder="Search routines..."
+							search={view.search}
+							onSearch={(search) => {
+								setView((current) => ({...current, search}));
+							}}
+						/>
+						<FilterMenu view={view} onChange={setView} />
+						<SortMenu view={view} completedCount={completedCount} onChange={setView} />
+					</>
+				}
+			/>
 
 			<div className="flex flex-col pb-12 pt-1">
 				{visible.length > 0 && (

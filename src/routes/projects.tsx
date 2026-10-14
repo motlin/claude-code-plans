@@ -1,7 +1,7 @@
 import {createFileRoute, Link} from "@tanstack/react-router";
 import {useSuspenseQuery} from "@tanstack/react-query";
 import {projectsQueryOptions} from "../lib/api/projects";
-import {ListPageHeader} from "../components/list-page-header";
+import {CodePageHeader} from "../components/code-page-header";
 import {formatCount} from "../lib/pluralize";
 
 export const Route = createFileRoute("/projects")({
@@ -71,7 +71,9 @@ function ProjectsPage() {
 
 	return (
 		<div>
-			<ListPageHeader title="Projects" count={projects.length} itemLabel="project" />
+			<CodePageHeader title="Projects">
+				<p className="mt-1 text-sm text-t6">{formatCount(projects.length, "project")}</p>
+			</CodePageHeader>
 
 			{projects.length === 0 ? (
 				<p className="mt-4 text-t6">No projects found.</p>
