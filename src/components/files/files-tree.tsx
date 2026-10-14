@@ -31,7 +31,8 @@ import {Tooltip} from "../ui/tooltip";
 import {type ContentMatchOpenOptions, ContentSearchResults} from "./content-search-results";
 import {TreeRowMenuItems} from "./file-context-menu";
 
-const ROW_HEIGHT = 21.33;
+/** Upstream's 24px row pitch; each row's hover box is 19px tall inside it. */
+const ROW_HEIGHT = 24;
 const OVERSCAN_ROWS = 8;
 /** Assumed viewport height until the tree has been measured (and in jsdom, which never lays out). */
 const FALLBACK_VIEWPORT_HEIGHT = 480;
@@ -408,7 +409,7 @@ export function FilesTree({
 												onFocus={() => {
 													setActiveIndex(index);
 												}}
-												className="absolute left-0 flex h-[21.33px] w-full items-center rounded-r5 text-pane text-primary outline-none select-none hover:bg-fill-ghost-hover focus-visible:bg-fill-ghost-hover"
+												className="absolute left-0 flex h-[19px] w-full items-center rounded-r3 text-pane text-primary outline-none select-none hover:bg-fill-ghost-hover focus-visible:bg-fill-ghost-hover"
 												style={{top: index * ROW_HEIGHT, paddingLeft: 8}}
 											>
 												<Tooltip
@@ -431,7 +432,7 @@ export function FilesTree({
 													>
 														<Icon
 															aria-hidden="true"
-															className="size-4 shrink-0 self-center text-ink-muted"
+															className="size-3 shrink-0 self-center text-ink-muted"
 														/>
 														<span data-tree-name className="truncate text-primary">
 															{entry.name}

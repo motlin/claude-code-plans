@@ -363,14 +363,21 @@ describe("FilesTree keyboard and pointer", () => {
 });
 
 describe("FilesTree density", () => {
-	it("draws 13px rows 21.33px tall with 16px icons, a full-width Go up row and upstream's filter", async () => {
+	it("draws 13px rows 19px tall on upstream's 24px pitch with 12px icons 4px before the name, a full-width Go up row and upstream's filter", async () => {
 		responses.set(key("", ""), {kind: "listing", dir: "", entries: [folder("src")], partial: false});
-		responses.set(key("src", ""), {kind: "listing", dir: "src", entries: [file("src/main.ts")], partial: false});
+		responses.set(key("src", ""), {
+			kind: "listing",
+			dir: "src",
+			entries: [file("src/main.ts"), file("src/util.ts")],
+			partial: false,
+		});
 		renderTree();
 		fireEvent.click(await screen.findByText("src"));
 		await screen.findByText("main.ts");
 
-		const row = screen.getByRole("treeitem");
+		const [row, next] = screen.getAllByRole("treeitem");
+		if (row === undefined || next === undefined) throw new Error("Expected two tree rows");
+		const iconClasses = row.querySelector("svg")?.getAttribute("class")?.split(" ") ?? [];
 		const rowClasses = row.className.split(" ");
 		const goUp = screen.getByRole("button", {name: "Go up to project files"});
 		const goUpClasses = goUp.className.split(" ");
@@ -378,8 +385,10 @@ describe("FilesTree density", () => {
 		const inputClasses = input.className.split(" ");
 		expect({
 			rowText: rowClasses.includes("text-pane"),
-			rowHeight: rowClasses.includes("h-[21.33px]"),
-			icon: row.querySelector("svg")?.getAttribute("class")?.split(" ").includes("size-4"),
+			rowHeight: rowClasses.includes("h-[19px]") && rowClasses.includes("rounded-r3"),
+			pitch: Number.parseFloat(next.style.top) - Number.parseFloat(row.style.top),
+			icon: iconClasses.includes("size-3"),
+			nameGap: row.querySelector("[data-tree-primary]")?.className.split(" ").includes("gap-1"),
 			goUpFullWidth: goUpClasses.includes("w-full"),
 			goUpText: goUpClasses.includes("text-pane"),
 			goUpFill: goUpClasses.includes("bg-fill-control"),
@@ -393,7 +402,9 @@ describe("FilesTree density", () => {
 		}).toStrictEqual({
 			rowText: true,
 			rowHeight: true,
+			pitch: 24,
 			icon: true,
+			nameGap: true,
 			goUpFullWidth: true,
 			goUpText: true,
 			goUpFill: true,
