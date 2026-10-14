@@ -56,7 +56,8 @@ CREATE TABLE IF NOT EXISTS sessions (
   created_at INTEGER NOT NULL,
   mtime_ms INTEGER NOT NULL,
   file_path TEXT NOT NULL,
-  turn_ended_at INTEGER
+  turn_ended_at INTEGER,
+  stopped_task_ids TEXT NOT NULL DEFAULT '[]'
 );
 CREATE INDEX IF NOT EXISTS sessions_project_id_idx ON sessions(project_id);
 CREATE INDEX IF NOT EXISTS sessions_mtime_desc_idx ON sessions(mtime_ms);
@@ -175,6 +176,8 @@ CREATE TABLE IF NOT EXISTS subagents (
   started_at TEXT,
   finished_at TEXT,
   slow_command_ends TEXT NOT NULL DEFAULT '[]',
+  task_kind TEXT,
+  name TEXT,
   file_path TEXT NOT NULL,
   mtime_ms INTEGER NOT NULL
 );

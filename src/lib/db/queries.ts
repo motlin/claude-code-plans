@@ -650,6 +650,10 @@ export interface DbSubagent {
 	finishedAt: string | null;
 	/** JSON array of the timestamps at which the agent's slow foreground commands finished. */
 	slowCommandEndsJson?: string;
+	/** The meta.json `taskKind`, e.g. `in_process_teammate`. */
+	taskKind?: string | null;
+	/** The meta.json `name` a teammate is addressed by. */
+	name?: string | null;
 	filePath: string;
 	mtimeMs: number;
 }

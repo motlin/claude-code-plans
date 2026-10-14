@@ -7,11 +7,10 @@ export const Route = createFileRoute("/api/sessions/$id/subagents")({
 		handlers: withMethodNotAllowed({
 			GET: async ({params}: {params: {id: string}}) => {
 				const {getDb} = await import("../../lib/db");
-				const {getSubagentsForSession} = await import("../../lib/db/queries");
-				const {toClientSubagent} = await import("../../lib/subagents");
+				const {sessionSubagentsWithStops} = await import("../../lib/db/subagent-stops");
 
 				const {index} = getDb();
-				const agents = getSubagentsForSession(index, params.id).map(toClientSubagent);
+				const agents = sessionSubagentsWithStops(index, params.id);
 
 				return Response.json(SessionSubagentsResponse.parse(agents), {
 					headers: {"Cache-Control": "private, max-age=0, must-revalidate"},

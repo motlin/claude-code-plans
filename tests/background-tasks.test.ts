@@ -432,4 +432,59 @@ describe("extractBackgroundTasks running count, from 01d132c8's real record shap
 			}).running.map((task) => task.id),
 		).toStrictEqual(["apr845-rework-c818"]);
 	});
+
+	it("counts live teammates from the session's subagent index when their spawn is outside the loaded transcript window", () => {
+		const teammates = [
+			{
+				id: "agent-atemplate-drift-4240",
+				name: "template-drift",
+				description: "Fix shared include drift in templates",
+				startedAt: "2026-10-13T21:36:42.778Z",
+				taskKind: "in_process_teammate",
+			},
+			{
+				id: "agent-adistribute-prep-2",
+				name: "distribute-prep",
+				description: "Distribute candidates prep",
+				startedAt: "2026-10-13T22:07:50.961Z",
+				taskKind: "in_process_teammate",
+				stopped: true as const,
+			},
+			{
+				id: "agent-aold-prep",
+				name: "old-prep",
+				description: "Spawned by an earlier process",
+				startedAt: "2026-10-10T19:09:40.761Z",
+				taskKind: "in_process_teammate",
+			},
+			{
+				id: "agent-a6765e610297a7bfe",
+				description: "Sync playdate-maze from template",
+				startedAt: "2026-10-13T21:40:00.000Z",
+				taskKind: undefined,
+			},
+		];
+
+		expect(
+			extractBackgroundTasks([], {
+				sessionActive: true,
+				processStartedAt: Date.parse("2026-10-11T14:56:48.013Z"),
+				teammates,
+			}).running.map((task) => [task.kind, task.id, task.description]),
+		).toStrictEqual([["agent", "atemplate-drift-4240", "Fix shared include drift in templates"]]);
+	});
+
+	it("drops a transcript teammate a TaskStop named by its teammate name", () => {
+		const stop = [
+			toolUse("toolu_stop", "TaskStop", {task_id: "pr845-rework"}, "2026-10-13T22:30:00.000Z"),
+			toolResult("toolu_stop", "Stopped pr845-rework", {}, "2026-10-13T22:30:01.000Z"),
+		];
+
+		expect(
+			extractBackgroundTasks([...records, ...stop], {
+				sessionActive: true,
+				processStartedAt: Date.parse("2026-10-11T14:56:48.013Z"),
+			}).running.map((task) => task.id),
+		).toStrictEqual(["atemplate-drift-4240", "adrop-audit-script-9ba3"]);
+	});
 });

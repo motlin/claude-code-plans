@@ -35,6 +35,25 @@ export interface BackgroundTaskLiveState {
 	runningSubagents?: readonly ActiveSubagent[];
 	/** When the session's current CLI process started (its registry entry); in-process teammates spawned before it are gone. */
 	processStartedAt?: number | null;
+	/** The session's indexed subagents, whose in-process teammates may have been spawned outside the loaded transcript. */
+	teammates?: readonly TeammateCandidate[];
+}
+
+/** An indexed subagent, as `/api/sessions/$id/subagents` reports it. */
+export interface TeammateCandidate {
+	id: string;
+	name?: string | null | undefined;
+	description: string | null;
+	startedAt: string | null;
+	taskKind?: string | null | undefined;
+	stopped?: true | undefined;
+}
+
+const IN_PROCESS_TEAMMATE = "in_process_teammate";
+
+function spawnedSince(startedAt: string | null, processStartedAt: number | null | undefined): boolean {
+	if (processStartedAt == null || startedAt === null) return false;
+	return Date.parse(startedAt) >= processStartedAt;
 }
 
 const KIND_LABELS: Record<BackgroundTaskKind, string> = {
@@ -347,8 +366,7 @@ export function extractBackgroundTasks(
 			if (agent !== undefined && result?.["status"] === "teammate_spawned") {
 				// An in-process teammate lives as long as the process that spawned it; upstream counts it as a task.
 				pendingAgents.delete(toolUseId);
-				const spawnedAt = Date.parse(asString(record["timestamp"]) ?? "");
-				if (live.processStartedAt == null || !(spawnedAt >= live.processStartedAt)) continue;
+				if (!spawnedSince(asString(record["timestamp"]), live.processStartedAt)) continue;
 				const agentId =
 					asString(result["agent_id"]) ?? asString(result["agentId"]) ?? launchedTaskId(result, text);
 				const tracked = track({
@@ -362,6 +380,9 @@ export function extractBackgroundTasks(
 					summary: null,
 				});
 				if (agentId !== null) byTaskId.set(agentId, tracked);
+				// TaskStop names a teammate by its name as often as by its id.
+				const name = asString(result["name"]);
+				if (name !== null) byTaskId.set(name, tracked);
 				continue;
 			}
 			if (agent !== undefined) {
@@ -429,6 +450,27 @@ export function extractBackgroundTasks(
 			toolUseId: agentId === "" ? subagent.key : null,
 			kind: "agent",
 			description: subagent.description,
+			command: null,
+			status: "running",
+			output: null,
+			summary: null,
+		});
+	}
+	for (const teammate of live.teammates ?? []) {
+		if (teammate.taskKind !== IN_PROCESS_TEAMMATE) continue;
+		const agentId = unprefixedAgentId(teammate.id);
+		const known = byTaskId.get(agentId);
+		if (teammate.stopped === true) {
+			if (known?.task.status === "running") settle(known, "stopped");
+			continue;
+		}
+		if (!live.sessionActive || known !== undefined || !spawnedSince(teammate.startedAt, live.processStartedAt))
+			continue;
+		liveTasks.push({
+			id: agentId,
+			toolUseId: null,
+			kind: "agent",
+			description: teammate.description ?? teammate.name ?? agentId,
 			command: null,
 			status: "running",
 			output: null,

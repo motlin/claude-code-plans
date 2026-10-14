@@ -50,6 +50,8 @@ export const sessions = sqliteTable(
 		filePath: text("file_path").notNull(),
 		/** The newest turn_duration, stop-hook summary or away summary record, which outdates a stale "busy" registry status. */
 		turnEndedAt: integer("turn_ended_at"),
+		/** JSON array of the task ids (or teammate names) a successful TaskStop or KillShell in the main transcript stopped. */
+		stoppedTaskIdsJson: text("stopped_task_ids").notNull().default("[]"),
 	},
 	(table) => [
 		index("sessions_project_id_idx").on(table.projectId),
@@ -239,6 +241,10 @@ export const subagents = sqliteTable(
 		finishedAt: text("finished_at"),
 		/** JSON array of the timestamps at which the agent's slow foreground commands finished. */
 		slowCommandEndsJson: text("slow_command_ends").notNull().default("[]"),
+		/** The meta.json `taskKind`, e.g. `in_process_teammate`. */
+		taskKind: text("task_kind"),
+		/** The meta.json `name` a teammate is addressed (and stopped) by. */
+		name: text("name"),
 		filePath: text("file_path").notNull(),
 		mtimeMs: integer("mtime_ms").notNull(),
 	},

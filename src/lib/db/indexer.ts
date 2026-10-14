@@ -585,6 +585,10 @@ class SessionIndexState {
 	lastRecordAt: number | null = null;
 	/** The newest record that ends a turn: turn_duration, a stop-hook summary or an away summary. */
 	lastTurnEndAt: number | null = null;
+	/** Task ids (or teammate names) each pending TaskStop or KillShell call targets, by tool_use id. */
+	readonly pendingStops = new Map<string, string>();
+	/** Task ids and teammate names a successful TaskStop or KillShell stopped. */
+	readonly stoppedTaskIds = new Set<string>();
 	readonly mcpToolNames = new Set<string>();
 	readonly artifactEvents = new ArtifactEventCollector();
 	readonly routines = new RoutineCollector();
@@ -602,6 +606,27 @@ class SessionIndexState {
 		readonly sessionId: string,
 		readonly project: string,
 	) {}
+
+	/** Track TaskStop and KillShell calls, keeping the targets of the ones that succeeded. */
+	private collectStops(obj: Record<string, unknown>): void {
+		const content = asRecord(obj["message"])?.["content"];
+		if (!Array.isArray(content)) return;
+		for (const block of content) {
+			if (!isRecord(block)) continue;
+			if (block["type"] === "tool_use" && (block["name"] === "TaskStop" || block["name"] === "KillShell")) {
+				const input = asRecord(block["input"]);
+				const target = stringField(input, "task_id") ?? stringField(input, "shell_id");
+				const id = stringField(block, "id");
+				if (target !== null && id !== null) this.pendingStops.set(id, target);
+			} else if (block["type"] === "tool_result") {
+				const id = stringField(block, "tool_use_id");
+				const target = id === null ? undefined : this.pendingStops.get(id);
+				if (id === null || target === undefined) continue;
+				this.pendingStops.delete(id);
+				if (block["is_error"] !== true) this.stoppedTaskIds.add(target);
+			}
+		}
+	}
 
 	add(line: string): void {
 		this.firstPrompt.add(line);
@@ -723,6 +748,7 @@ class SessionIndexState {
 		} catch {
 			// malformed content blocks
 		}
+		this.collectStops(obj);
 
 		// Extract text content for FTS indexing
 		try {
@@ -884,6 +910,7 @@ async function persistSessionIndexState(
 			mtimeMs: activityAt,
 			messageCount,
 			turnEndedAt: state.lastTurnEndAt,
+			stoppedTaskIdsJson: JSON.stringify([...state.stoppedTaskIds]),
 		};
 		updates["filePath"] = filePath;
 		updates["projectId"] = project;
@@ -937,6 +964,7 @@ async function persistSessionIndexState(
 				mtimeMs: activityAt,
 				filePath,
 				turnEndedAt: state.lastTurnEndAt,
+				stoppedTaskIdsJson: JSON.stringify([...state.stoppedTaskIds]),
 			})
 			.run();
 	}
@@ -1041,11 +1069,15 @@ export async function indexSubagentFile(
 	let agentType: string | null = null;
 	let metaDescription: string | null = null;
 	let requestedModel: string | null = null;
+	let taskKind: string | null = null;
+	let teammateName: string | null = null;
 	try {
 		const meta: unknown = JSON.parse(await readFile(metaPath, "utf-8"));
 		agentType = stringField(meta, "agentType");
 		metaDescription = stringField(meta, "description");
 		requestedModel = stringField(meta, "model");
+		taskKind = stringField(meta, "taskKind");
+		teammateName = stringField(meta, "name");
 	} catch {
 		// no meta file
 	}
@@ -1102,12 +1134,16 @@ export async function indexSubagentFile(
 			startedAt,
 			finishedAt,
 			slowCommandEndsJson,
+			taskKind,
+			name: teammateName,
 			filePath,
 			mtimeMs: fileStat.mtimeMs,
 		})
 		.onConflictDoUpdate({
 			target: schema.subagents.id,
 			set: {
+				taskKind,
+				name: teammateName,
 				projectId: project,
 				agentType: agentType ?? attributionAgent,
 				attributionAgent,

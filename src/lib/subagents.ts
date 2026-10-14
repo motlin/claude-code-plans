@@ -31,6 +31,12 @@ export interface Subagent {
 	finishedAt: string | null;
 	/** When each slow foreground command the agent ran finished; see `SLOW_COMMAND_MS`. */
 	slowCommandEnds?: string[] | undefined;
+	/** The meta.json `taskKind`, e.g. `in_process_teammate`. */
+	taskKind?: string | null | undefined;
+	/** The name a teammate is addressed and stopped by. */
+	name?: string | null | undefined;
+	/** A successful TaskStop in the main transcript stopped this teammate. */
+	stopped?: true | undefined;
 }
 
 export interface ActiveSubagent {
@@ -72,6 +78,8 @@ export function toClientSubagent(row: DbSubagent): Subagent {
 		model: row.model,
 		startedAt: row.startedAt,
 		finishedAt: row.finishedAt,
+		...(row.taskKind == null ? {} : {taskKind: row.taskKind}),
+		...(row.name == null ? {} : {name: row.name}),
 	};
 }
 

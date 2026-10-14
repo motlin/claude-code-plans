@@ -375,6 +375,7 @@ function SessionView({
 			extractBackgroundTasks(transcript.records, {
 				sessionActive: sessionProcessLive({hookActive: isActive, summaryState: sessionSummaryState}),
 				processStartedAt: sessionSummary?.processStartedAt ?? null,
+				teammates: subagents,
 				runningSubagents: activeSubagents,
 				...(hookContext?.backgroundTasks === undefined ? {} : {hookTasks: hookContext.backgroundTasks}),
 			}),
@@ -383,6 +384,7 @@ function SessionView({
 			isActive,
 			sessionSummaryState,
 			sessionSummary?.processStartedAt,
+			subagents,
 			activeSubagents,
 			hookContext?.backgroundTasks,
 		],
