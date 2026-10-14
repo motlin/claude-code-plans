@@ -187,7 +187,7 @@ describe("AskUserQuestionRenderer", () => {
 		}).toStrictEqual({pink: null, text: true});
 	});
 
-	it("shows a pending question as upstream's running 'Asking <header>' row over each question in secondary prose, with no options", () => {
+	it("shows a pending question as upstream's running 'Asking <header>' row over each question as one secondary paragraph at the text inset, with no options", () => {
 		const {container} = render(
 			<AskUserQuestionRenderer
 				toolCall={makeCall({
@@ -212,6 +212,7 @@ describe("AskUserQuestionRenderer", () => {
 		const questions = [...container.querySelectorAll("[data-pending-question-text]")];
 
 		expect({
+			root: row.parentElement?.className,
 			expanded: row.getAttribute("aria-expanded"),
 			shimmer: row.querySelector(".tool-shimmer")?.textContent,
 			questions: questions.map((question) => ({text: question.textContent, className: question.className})),
@@ -219,16 +220,17 @@ describe("AskUserQuestionRenderer", () => {
 			options: container.textContent.includes("Optimization branch (Recommended)"),
 			card: container.querySelector(".card-outline"),
 		}).toStrictEqual({
+			root: "flex flex-col ps-1",
 			expanded: "true",
 			shimmer: "Asking Next",
 			questions: [
 				{
 					text: "Which branch should the optimization land on?",
-					className: "text-body text-secondary whitespace-pre-wrap [overflow-wrap:anywhere]",
+					className: "text-body text-secondary [overflow-wrap:anywhere]",
 				},
 				{
 					text: "Run JMH afterwards?",
-					className: "text-body text-secondary whitespace-pre-wrap [overflow-wrap:anywhere]",
+					className: "text-body text-secondary [overflow-wrap:anywhere]",
 				},
 			],
 			column: "flex flex-col gap-1 pt-1",

@@ -346,14 +346,16 @@ function AnswerForm({
 
 /**
  * Upstream's transcript row for a question still waiting on the user: a running
- * "Asking <header>" row, expanded, over each question as secondary prose. The
+ * "Asking <header>" row, expanded, over each question as one secondary
+ * paragraph (its line breaks collapse; the docked card keeps them), both at
+ * the assistant text inset. The
  * options live only in the card docked above the composer.
  */
 function PendingAsking({questions}: {questions: QuestionLike[]}) {
 	const [expanded, setExpanded] = useState(true);
 	const header = questions[0]?.header ?? "a question";
 	return (
-		<div className="flex flex-col">
+		<div className="flex flex-col ps-1">
 			<button
 				type="button"
 				aria-expanded={expanded}
@@ -374,7 +376,7 @@ function PendingAsking({questions}: {questions: QuestionLike[]}) {
 						<div
 							key={index}
 							data-pending-question-text=""
-							className="text-body text-secondary whitespace-pre-wrap [overflow-wrap:anywhere]"
+							className="text-body text-secondary [overflow-wrap:anywhere]"
 						>
 							{question.question}
 						</div>
