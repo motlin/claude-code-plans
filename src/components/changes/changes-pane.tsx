@@ -1,6 +1,6 @@
 import {Virtualizer} from "@pierre/diffs/react";
 import {useQueries, useQuery, useQueryClient} from "@tanstack/react-query";
-import {ArrowRight, ChevronDown, EllipsisVertical, List} from "lucide-react";
+import {ArrowRight, ChevronDown, EllipsisVertical, List, Loader2, TriangleAlert} from "lucide-react";
 import {Fragment, type ReactNode, type RefObject, useCallback, useEffect, useRef, useState} from "react";
 
 import {useShortcut, useShortcutKeys} from "../../hooks/use-shortcut";
@@ -559,14 +559,48 @@ function ChangesFile({
 	);
 }
 
-function CenteredMessage({children, muted = false}: {children: ReactNode; muted?: boolean}) {
+function CenteredMessage({children, detail}: {children: ReactNode; detail?: string}) {
 	return (
 		<div className="flex h-full w-full flex-col items-center justify-center gap-3 px-4 py-4 text-center">
-			<p
-				className={`max-w-[36ch] text-pretty break-words text-body ${muted ? "text-ink-muted" : "text-primary"}`}
-			>
-				{children}
-			</p>
+			<p className="max-w-[36ch] text-pretty break-words text-body text-primary">{children}</p>
+			{detail !== undefined && (
+				<p className="max-w-[36ch] text-pretty break-words text-footnote text-ink-muted">{detail}</p>
+			)}
+		</div>
+	);
+}
+
+/** Upstream's loading state: a large spinner labelled "Loading changes", no text. */
+function LoadingChanges() {
+	return (
+		<div className="flex h-full w-full items-center justify-center">
+			<span role="status" aria-label="Loading changes" className="flex text-ink-muted">
+				<Loader2 aria-hidden="true" className="size-6 animate-spin" />
+			</span>
+		</div>
+	);
+}
+
+/** Upstream's failed load: a warning alert that either promises an automatic retry or offers Try again. */
+function LoadFailure({failure}: {failure: {retrying: boolean; onRetry: () => void}}) {
+	return (
+		<div
+			role="alert"
+			className="flex h-full w-full flex-col items-center justify-center gap-3 px-4 py-4 text-center"
+		>
+			<TriangleAlert aria-hidden="true" className="size-5 text-ink-muted" />
+			<p className="max-w-[36ch] text-pretty break-words text-body text-primary">Couldn’t load the changes</p>
+			{failure.retrying ? (
+				<p className="max-w-[36ch] text-footnote text-ink-muted">It will try again on its own.</p>
+			) : (
+				<button
+					type="button"
+					onClick={failure.onRetry}
+					className="h-7 cursor-pointer rounded-r6 px-2.5 text-body text-primary shadow-[inset_0_0_0_1px_var(--color-border)] hover:bg-fill-ghost-hover"
+				>
+					Try again
+				</button>
+			)}
 		</div>
 	);
 }
@@ -591,10 +625,11 @@ function isUnavailable(file: SessionDiffFile): boolean {
 }
 
 export interface ChangesPaneViewProps {
-	/** Undefined while loading or after an error; `message` explains which. */
+	/** Undefined while loading or after an error; `failure` says which. */
 	diff: SessionDiffResponse | undefined;
 	scopes: SessionDiffScopesResponse | undefined;
-	message?: string;
+	/** Set once a load has failed: still auto-retrying, or settled with a Try again action. */
+	failure?: {retrying: boolean; onRetry: () => void};
 	/** Host Expand/Close controls, placed at the right end of the header. */
 	controls: ReactNode;
 	moveHandle?: ReactNode;
@@ -623,7 +658,7 @@ export interface ChangesPaneViewProps {
 export function ChangesPaneView({
 	diff,
 	scopes,
-	message,
+	failure,
 	controls,
 	moveHandle,
 	onRefresh,
@@ -688,7 +723,7 @@ export function ChangesPaneView({
 
 	let body: ReactNode;
 	if (diff === undefined) {
-		body = <CenteredMessage muted>{message ?? "Loading changes…"}</CenteredMessage>;
+		body = failure === undefined ? <LoadingChanges /> : <LoadFailure failure={failure} />;
 	} else if (hasFiles) {
 		body = (
 			<div className="flex min-h-0 flex-1">
@@ -777,6 +812,14 @@ export function ChangesPaneView({
 				</div>
 			</div>
 		);
+	} else if (scopes?.kind === "no-git" && diff.source === "session-edits") {
+		body = (
+			<CenteredMessage detail="None was found for this session, or its folder couldn’t be reached.">
+				Changes need a Git repository
+			</CenteredMessage>
+		);
+	} else if (diff.scope === "uncommitted") {
+		body = <CenteredMessage>No uncommitted changes</CenteredMessage>;
 	} else {
 		body = <CenteredMessage>No changes to show</CenteredMessage>;
 	}
@@ -924,7 +967,10 @@ export function ChangesPane({sessionId, chrome}: {sessionId: string; chrome: Pan
 	const scopesQuery = useQuery(sessionDiffScopesQueryOptions(sessionId));
 	const toast = useToast();
 	const review = useReviewFindings(sessionId, scope);
-	const message = diffQuery.error ? `Couldn't load changes: ${diffQuery.error.message}` : undefined;
+	const failure =
+		diffQuery.data === undefined && (diffQuery.isError || diffQuery.failureCount > 0)
+			? {retrying: !diffQuery.isError, onRetry: () => void diffQuery.refetch()}
+			: undefined;
 	const scopes = scopesQuery.data;
 	const selectedCommitSha = commitShaOf(scope);
 	const commitVanished =
@@ -949,7 +995,7 @@ export function ChangesPane({sessionId, chrome}: {sessionId: string; chrome: Pan
 		<ChangesPaneView
 			diff={diffQuery.data}
 			scopes={scopes}
-			{...(message === undefined ? {} : {message})}
+			{...(failure === undefined ? {} : {failure})}
 			controls={chrome.controls}
 			moveHandle={chrome.moveHandle}
 			onRefresh={() => {

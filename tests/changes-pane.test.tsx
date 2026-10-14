@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
-import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
+import type {ComponentProps} from "react";
+import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {ChangesPaneView} from "../src/components/changes/changes-pane";
@@ -159,6 +160,62 @@ describe("ChangesPaneView", () => {
 			settings: "BUTTON",
 			close: "BUTTON",
 		});
+	});
+
+	function renderState(props: Partial<ComponentProps<typeof ChangesPaneView>>) {
+		return render(
+			<SettingsProvider>
+				<ChangesPaneView
+					diff={undefined}
+					scopes={SCOPES}
+					controls={<button type="button">Close</button>}
+					onRefresh={() => {}}
+					{...props}
+				/>
+			</SettingsProvider>,
+		);
+	}
+
+	it("shows upstream's large Loading changes spinner, not text, while the diff loads", () => {
+		renderState({});
+		const status = screen.getByRole("status", {name: "Loading changes"});
+		expect({
+			spinner: status.querySelector("svg")?.getAttribute("class")?.split(" ").includes("animate-spin"),
+			text: status.textContent,
+		}).toStrictEqual({spinner: true, text: ""});
+	});
+
+	it("says it will try again on its own while the load is retrying", () => {
+		renderState({failure: {retrying: true, onRetry: () => {}}});
+		const alert = screen.getByRole("alert");
+		expect({
+			text: alert.textContent,
+			retry: within(alert).queryByRole("button", {name: "Try again"}),
+			icon: alert.querySelector("svg") !== null,
+		}).toStrictEqual({
+			text: "Couldn’t load the changesIt will try again on its own.",
+			retry: null,
+			icon: true,
+		});
+	});
+
+	it("offers Try again once retrying stops", () => {
+		const onRetry = vi.fn<() => void>();
+		renderState({failure: {retrying: false, onRetry}});
+		fireEvent.click(within(screen.getByRole("alert")).getByRole("button", {name: "Try again"}));
+		expect(onRetry).toHaveBeenCalledTimes(1);
+	});
+
+	it("explains a missing repository when no git checkout and no session edits are found", () => {
+		renderState({diff: {...diffOf([]), scope: "session", source: "session-edits"}, scopes: {kind: "no-git"}});
+		expect(screen.getByText("Changes need a Git repository").nextElementSibling?.textContent).toBe(
+			"None was found for this session, or its folder couldn’t be reached.",
+		);
+	});
+
+	it("says No uncommitted changes for an empty uncommitted scope", () => {
+		renderState({diff: {...diffOf([]), scope: "uncommitted"}, scope: "uncommitted"});
+		expect(screen.getByText("No uncommitted changes").tagName).toBe("P");
 	});
 
 	it("shows the file controls when there are changes", () => {
