@@ -98,6 +98,21 @@ describe("PullRequestsSection", () => {
 		});
 	});
 
+	it("keeps the title, #N and repo from overlapping on a phone: the repo hides below 480px and the title group never shrinks past its number", () => {
+		render(
+			<PullRequestsSection rows={selectHomePrs([source(852)])} rowLimit={3} now={NOW} onOpen={() => undefined} />,
+		);
+
+		const row = screen.getByRole("listitem");
+		const classes = (selector: string) => row.querySelector(selector)?.className.split(" ") ?? [];
+		const titleGroup = row.querySelector("[data-row-title]")?.parentElement?.className.split(" ") ?? [];
+		expect({
+			repoHidesOnPhone: classes("[data-row-repo]").includes("max-[480px]:hidden"),
+			titleGroupKeepsNumber: titleGroup.includes("min-w-min"),
+			titleTruncates: classes("[data-row-title]").includes("truncate"),
+		}).toStrictEqual({repoHidesOnPhone: true, titleGroupKeepsNumber: true, titleTruncates: true});
+	});
+
 	it("opens the session on click and the PR in a new tab on ⌘/Ctrl-click", () => {
 		const onOpen = vi.fn<(sessionId: string) => void>();
 		const open = vi.fn<typeof window.open>();

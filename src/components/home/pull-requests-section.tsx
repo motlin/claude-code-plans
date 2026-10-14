@@ -91,7 +91,8 @@ function PullRequestRow({
 				onClick={onClick}
 				className="flex min-w-0 flex-1 items-center justify-between gap-2 rounded-r3 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100"
 			>
-				<span className="flex min-w-0 flex-1 items-center gap-2">
+				{/* min-w-min keeps the pill and #N in the flow on a phone; only the title gives way */}
+				<span className="flex min-w-min flex-1 items-center gap-2">
 					<span className="flex shrink-0 items-center">
 						<span className="inline-flex w-4 items-center justify-center">
 							<span
@@ -104,7 +105,7 @@ function PullRequestRow({
 							{row.pill.label}
 						</span>
 					</span>
-					<span className="flex min-w-0 flex-1 items-baseline gap-[5px]">
+					<span className="flex min-w-min flex-1 items-baseline gap-[5px]">
 						<span data-row-title className="min-w-0 truncate text-[13px] leading-[19px] text-primary">
 							{row.title}
 						</span>
@@ -120,7 +121,7 @@ function PullRequestRow({
 					{row.repo !== null && (
 						<span
 							data-row-repo
-							className="max-w-[180px] truncate text-[12px] leading-[15px] text-ink-muted"
+							className="max-w-[180px] truncate text-[12px] leading-[15px] text-ink-muted max-[480px]:hidden"
 						>
 							{row.repo}
 						</span>
