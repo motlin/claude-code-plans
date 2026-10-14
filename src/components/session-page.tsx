@@ -50,6 +50,7 @@ import {sessionProcessLive} from "../lib/session-state";
 import {tailMarkerState} from "../lib/working-marker";
 import {PendingQuestionCard, WaitingForInputNotice} from "./approval-card";
 import {showsWaitingForInputNotice} from "./waiting-for-input-notice";
+import {NotifyMePrompt} from "./notify-me-prompt";
 import {UsagePaceBanner} from "./usage-pace-banner";
 import {WorkingMarker} from "./working-marker";
 import {useWorkingMarkerState} from "./use-working-marker-state";
@@ -814,6 +815,7 @@ function SessionView({
 											))}
 										{/* Upstream sets the usage chip between the docked card and the composer */}
 										{!chromeHidden && sessionDirectory && <UsagePaceBanner />}
+										{!chromeHidden && sessionDirectory && <NotifyMePrompt sessionId={sessionId} />}
 										{!chromeHidden && sessionDirectory && (
 											<Composer
 												variant="session"

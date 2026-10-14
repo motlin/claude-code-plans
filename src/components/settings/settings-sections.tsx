@@ -1,6 +1,6 @@
 import {Link} from "@tanstack/react-router";
 import {useQuery} from "@tanstack/react-query";
-import {lazy, type ReactNode, Suspense, useEffect, useState} from "react";
+import {lazy, type ReactNode, Suspense, useState} from "react";
 import {ArrowDown, ArrowUp, Monitor, Moon, Plus, Sun, Trash2} from "lucide-react";
 import {matchedVerbosityPreset, useSettings, type Motion, type Settings, type Verbosity} from "../settings-context";
 import type {InterfaceFont, TranscriptTextSize} from "../../lib/appearance";
@@ -14,6 +14,12 @@ import {
 import {codeThemeDarkLabels, codeThemeLightLabels, terminalAppearanceLabels} from "../../lib/schema-choices";
 import {TerminalAppearanceSchema} from "../../lib/terminal-theme";
 import type {TranscriptWidth} from "../../lib/transcript-width";
+import {
+	NOTIFICATIONS_BLOCKED_COPY,
+	NOTIFICATIONS_UNAVAILABLE_COPY,
+	type NotificationPermissionState,
+	useNotificationPermission,
+} from "../../hooks/use-notification-permission";
 import {useTheme} from "../theme-context";
 import {HookSetup} from "../hook-setup";
 import {SegmentedControl} from "./segmented-control";
@@ -125,34 +131,12 @@ function WorkingCopyReviewModeRow() {
 	);
 }
 
-function useNotificationPermission() {
-	const [supported, setSupported] = useState(false);
-	const [permission, setPermission] = useState<NotificationPermission>("default");
-
-	useEffect(() => {
-		if (typeof window !== "undefined" && "Notification" in window) {
-			setSupported(true);
-			setPermission(Notification.permission);
-		}
-	}, []);
-
-	/** Asks the browser when needed; resolves whether notifications may be shown. */
-	const ensureGranted = async (): Promise<boolean> => {
-		if (Notification.permission === "granted") return true;
-		const result = await Notification.requestPermission();
-		setPermission(result);
-		return result === "granted";
-	};
-
-	return {supported, permission, ensureGranted};
-}
-
 interface NotificationRowProps {
 	slug: string;
 	title: string;
 	description: string;
 	settingKey: "notifyCompletions" | "notifyPermissionRequests";
-	notificationPermission: ReturnType<typeof useNotificationPermission>;
+	notificationPermission: NotificationPermissionState;
 	footnote?: ReactNode;
 }
 
@@ -161,7 +145,7 @@ function NotificationRow({
 	title,
 	description,
 	settingKey,
-	notificationPermission: {supported, permission, ensureGranted},
+	notificationPermission: {supported, permission, requestPermission},
 	footnote,
 }: NotificationRowProps) {
 	const {settings, setSetting} = useSettings();
@@ -170,7 +154,7 @@ function NotificationRow({
 
 	const handleToggle = async (next: boolean) => {
 		if (!supported) return;
-		if (next && !(await ensureGranted())) return;
+		if (next && (await requestPermission()) !== "granted") return;
 		setSetting(settingKey, next);
 	};
 
@@ -200,14 +184,10 @@ function NotificationsSection() {
 				footnote={
 					supported ? (
 						permission === "denied" ? (
-							<div className="text-body text-amber-600">
-								Notifications are blocked. Allow them for this site in your browser settings to enable.
-							</div>
+							<div className="text-body text-amber-600">{NOTIFICATIONS_BLOCKED_COPY}</div>
 						) : null
 					) : (
-						<div className="text-body text-amber-600">
-							This browser does not support desktop notifications.
-						</div>
+						<div className="text-body text-amber-600">{NOTIFICATIONS_UNAVAILABLE_COPY}</div>
 					)
 				}
 			/>

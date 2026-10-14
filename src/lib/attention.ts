@@ -12,6 +12,15 @@ export interface AttentionBadgeSession {
 	archived: boolean;
 }
 
+const EVERY_KIND: AttentionSettings = {notifyCompletions: true, notifyPermissionRequests: true};
+
+/** A session opted in with the composer's "Notify me" notifies for every kind, whatever the global switches say. */
+export function notificationSettingsFor(settings: AttentionSettings, optedIn: boolean): AttentionSettings {
+	return optedIn
+		? EVERY_KIND
+		: {notifyCompletions: settings.notifyCompletions, notifyPermissionRequests: settings.notifyPermissionRequests};
+}
+
 /** Waiting asks for a permission decision; review means a response completed. */
 function kindEnabled(settings: AttentionSettings, state: DisplayState): boolean {
 	if (state === "waiting") return settings.notifyPermissionRequests;

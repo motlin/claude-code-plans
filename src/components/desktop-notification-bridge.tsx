@@ -4,7 +4,8 @@ import {useRouter} from "@tanstack/react-router";
 
 import {useSubscribeSessionStates} from "../hooks/use-claude-events";
 import {getCachedSessionIdentity} from "../lib/api/session-identity";
-import {notificationCopy, shouldNotify} from "../lib/attention";
+import {notificationCopy, notificationSettingsFor, shouldNotify} from "../lib/attention";
+import {isSessionNotifyOptedIn} from "../lib/notify-sessions";
 import {displayState, type DisplayState} from "../lib/session-state";
 import {hasUnseenWork, subscribeUnseenWork} from "../lib/unread-store";
 import {useSettings} from "./settings-context";
@@ -19,7 +20,8 @@ function viewedRouteId(router: ReturnType<typeof useRouter>): string | null {
 /**
  * Side-effect-only component (renders nothing). It seeds current display states
  * on subscribe, then raises one native notification for each later transition
- * into waiting or review.
+ * into waiting or review, for every session the global switches cover or the
+ * composer's "Notify me" opted in.
  */
 export function DesktopNotificationBridge(): null {
 	const {settings} = useSettings();
@@ -50,7 +52,7 @@ export function DesktopNotificationBridge(): null {
 			if (seeding || copy === null) return;
 			if (
 				!shouldNotify(
-					settings,
+					notificationSettingsFor(settings, isSessionNotifyOptedIn(session.sessionId)),
 					next,
 					document.hidden,
 					Notification.permission,

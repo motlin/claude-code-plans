@@ -1,7 +1,7 @@
 import {describe, expect, it} from "vite-plus/test";
 
 import {DEFAULTS, type Settings} from "../src/components/settings-context";
-import {notificationCopy, shouldNotify} from "../src/lib/attention";
+import {notificationCopy, notificationSettingsFor, shouldNotify} from "../src/lib/attention";
 
 const enabled: Settings = {...DEFAULTS, notifyCompletions: true, notifyPermissionRequests: true};
 const disabled: Settings = {
@@ -85,5 +85,27 @@ describe("notificationCopy", () => {
 			notificationCopy("waiting", "waiting", "Alice session"),
 			notificationCopy("waiting", "working", "Alice session"),
 		]).toStrictEqual(["Alice session is waiting on you", "Bob session finished — needs review", null, null]);
+	});
+});
+
+describe("notificationSettingsFor", () => {
+	it("turns on both kinds for an opted-in session and keeps the global switches otherwise", () => {
+		expect({
+			optedIn: notificationSettingsFor(disabled, true),
+			global: notificationSettingsFor(disabled, false),
+			reviewOptedIn: shouldNotify(
+				notificationSettingsFor(disabled, true),
+				"review",
+				true,
+				"granted",
+				"session-test-100",
+				null,
+				false,
+			),
+		}).toStrictEqual({
+			optedIn: {notifyCompletions: true, notifyPermissionRequests: true},
+			global: {notifyCompletions: false, notifyPermissionRequests: false},
+			reviewOptedIn: true,
+		});
 	});
 });

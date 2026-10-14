@@ -227,7 +227,7 @@ describe("General settings ▸ Notifications", () => {
 		});
 	});
 
-	it("keeps the blocked-state copy and disables both switches when notifications are denied", async () => {
+	it("shows upstream's blocked copy and disables both switches when notifications are denied", async () => {
 		stubNotification("denied");
 		await renderGeneral();
 
@@ -235,11 +235,52 @@ describe("General settings ▸ Notifications", () => {
 			completions: switchState("Response completions"),
 			permissionRequests: switchState("Code permission requests"),
 			blocked: screen.getAllByText(
-				"Notifications are blocked. Allow them for this site in your browser settings to enable.",
+				"Notifications are blocked. Allow them in your browser or system settings, then try again.",
 			).length,
 		}).toStrictEqual({
 			completions: {checked: "false", disabled: true},
 			permissionRequests: {checked: "false", disabled: true},
+			blocked: 1,
+		});
+	});
+
+	it("tells the user to open its own tab when notifications can't be turned on here", async () => {
+		await renderGeneral();
+
+		expect({
+			completions: switchState("Response completions"),
+			permissionRequests: switchState("Code permission requests"),
+			unavailable: screen.getAllByText(
+				"Notifications can\u2019t be turned on here. Open Claude in its own browser tab and try again.",
+			).length,
+		}).toStrictEqual({
+			completions: {checked: "false", disabled: true},
+			permissionRequests: {checked: "false", disabled: true},
+			unavailable: 1,
+		});
+	});
+
+	it("shows the blocked copy after the browser refuses a toggle", async () => {
+		vi.stubGlobal(
+			"Notification",
+			Object.assign(function Notification() {}, {
+				permission: "default",
+				requestPermission: async () => Promise.resolve("denied"),
+			}),
+		);
+		await renderGeneral();
+		act(() => {
+			fireEvent.click(screen.getByRole("switch", {name: "Response completions"}));
+		});
+		await act(async () => {});
+
+		expect({
+			completions: switchState("Response completions"),
+			blocked: screen.getAllByText(
+				"Notifications are blocked. Allow them in your browser or system settings, then try again.",
+			).length,
+		}).toStrictEqual({
+			completions: {checked: "false", disabled: true},
 			blocked: 1,
 		});
 	});
