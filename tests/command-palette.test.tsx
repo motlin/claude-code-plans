@@ -536,6 +536,12 @@ describe("CommandPalette shell", () => {
 			],
 		]);
 		expect(dialog.querySelectorAll("[data-palette-attention-dot]").length).toBe(2);
+		// Upstream's group headers are 12/17 muted, and their rows sit flush at a 36px pitch.
+		const group = dialog.querySelector("[cmdk-group]");
+		expect({
+			heading: group?.className.split(" ").includes("[&_[cmdk-group-heading]]:text-[12px]/[17px]"),
+			rowGap: group?.className.split(" ").some((name) => name.startsWith("[&_[cmdk-group-items]]:gap-")),
+		}).toStrictEqual({heading: true, rowGap: false});
 	});
 
 	it("caps Needs attention at the organic total of 7", async () => {
@@ -1118,7 +1124,7 @@ describe("CommandPalette filter values", () => {
 	}
 
 	function sessionLabels(dialog: HTMLElement): string[] {
-		return [...dialog.querySelectorAll('[cmdk-item][data-item-type="session"]')].map(
+		return [...dialog.querySelectorAll('[cmdk-item][data-item-type="code_session"]')].map(
 			(item) => item.querySelector("[data-palette-label]")?.textContent ?? "",
 		);
 	}
@@ -1204,7 +1210,7 @@ describe("CommandPalette filter values", () => {
 		typeQuery(dialog, "archived:true refactor");
 
 		expect(
-			[...dialog.querySelectorAll('[cmdk-item][data-item-type="session"]')].map((item) => ({
+			[...dialog.querySelectorAll('[cmdk-item][data-item-type="code_session"]')].map((item) => ({
 				label: item.querySelector("[data-palette-label]")?.textContent ?? "",
 				badge: item.querySelector("[data-archived-badge]")?.textContent ?? null,
 				muted: item.hasAttribute("data-archived"),

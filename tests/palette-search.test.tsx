@@ -214,7 +214,17 @@ describe("⌘K palette live search", () => {
 			[...resultsGroup(dialog).querySelectorAll("[cmdk-item]")].map((item) =>
 				item.getAttribute("data-item-type"),
 			),
-		).toStrictEqual(["session", "session", "plan", null]);
+		).toStrictEqual(["code_session", "code_session", "plan", null]);
+		const group = resultsGroup(dialog);
+		expect({
+			// Upstream's rows are contiguous at a 36px pitch, and code sessions carry the </> Code glyph.
+			gap: group.className.split(" ").filter((name) => name.startsWith("gap-")),
+			glyph: group
+				.querySelector("[data-item-type=code_session] svg")
+				?.getAttribute("class")
+				?.split(" ")
+				.find((name) => name.startsWith("lucide-")),
+		}).toStrictEqual({gap: [], glyph: "lucide-code-xml"});
 	});
 
 	it("renders matched runs in bold for instant and server rows", async () => {

@@ -7,6 +7,7 @@ import {useQueries, useQuery, useQueryClient} from "@tanstack/react-query";
 import {
 	FileText,
 	Brain,
+	CodeXml,
 	MessageSquare,
 	MessagesSquare,
 	FolderOpen,
@@ -139,7 +140,7 @@ const COMPOSE_DRAFT_KEY = "command-palette-compose";
 const PALETTE_RADIUS = "rounded-[calc(var(--radius-composer)+0.375rem)]";
 
 const GROUP_CLASS =
-	"[&_[cmdk-group-heading]]:px-3.5 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:pb-2 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:text-ink-muted [&_[cmdk-group-items]]:flex [&_[cmdk-group-items]]:flex-col [&_[cmdk-group-items]]:gap-1";
+	"[&_[cmdk-group-heading]]:px-3.5 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:pb-2 [&_[cmdk-group-heading]]:text-[12px]/[17px] [&_[cmdk-group-heading]]:text-ink-muted [&_[cmdk-group-items]]:flex [&_[cmdk-group-items]]:flex-col";
 
 /** Fetched deep enough that sessions needing attention surface even when they are not the newest. */
 export const PALETTE_RECENT_LIMIT = 25;
@@ -154,7 +155,7 @@ const SKELETON_ROWS = 3;
 type SearchKind = UnifiedSearchItem["kind"] | "project" | "artifact" | "routine";
 
 const KIND_ICONS = {
-	session: <MessageSquare />,
+	session: <CodeXml />,
 	plan: <FileText />,
 	memory: <Brain />,
 	file: <File />,
@@ -1354,7 +1355,7 @@ function PalettePopup({
 							</Command.Group>
 						)}
 						{idle && !compose && hints !== null && (
-							<div role="group" aria-label="Filters" className="flex flex-col gap-1">
+							<div role="group" aria-label="Filters" className="flex flex-col">
 								{hints.map((filter) => (
 									<CommandItem
 										key={filter}
@@ -1497,7 +1498,7 @@ function PalettePopup({
 								role="group"
 								aria-label="Search results"
 								aria-busy={searching}
-								className="flex flex-col gap-1"
+								className="flex flex-col"
 							>
 								{listing?.map((row) => (
 									<SearchResultItem
@@ -1799,11 +1800,11 @@ function ModeSwitch({mode, onModeChange}: {mode: PaletteMode; onModeChange: (mod
 	);
 }
 
-/** Session icon with upstream's masked notch and 6px accent pulse dot at the top-right. */
+/** Code session icon with upstream's masked notch and 6px accent pulse dot at the top-right. */
 function AttentionIcon() {
 	return (
 		<span className="relative flex size-5 items-center justify-center">
-			<MessageSquare className="[mask-image:radial-gradient(circle_at_calc(100%-2px)_2px,transparent_5px,black_5.5px)]" />
+			<CodeXml className="[mask-image:radial-gradient(circle_at_calc(100%-2px)_2px,transparent_5px,black_5.5px)]" />
 			<span
 				aria-hidden="true"
 				data-palette-attention-dot=""
@@ -1862,7 +1863,7 @@ function SearchResultItem({
 		<Command.Item
 			value={rowKey(row)}
 			onSelect={onSelect}
-			data-item-type={row.kind}
+			data-item-type={row.kind === "session" ? "code_session" : row.kind}
 			{...(session ? {"aria-keyshortcuts": "Alt+Enter"} : {})}
 			{...(archived ? {"data-archived": ""} : {})}
 			className={archived ? ARCHIVED_ROW_CLASS : ROW_CLASS}
