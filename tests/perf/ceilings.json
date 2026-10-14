@@ -68,10 +68,10 @@
 		"raisedAt": "2026-10-14"
 	},
 	"bundle.session.raw": {
-		"ceiling": 1662416,
+		"ceiling": 1679372,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Make the docked AskUserQuestion card answerable through POST /api/herdr/question when the session runs in a writable live herdr pane (src/components/pending-question-card.tsx: option and checkbox selection, Other text, Skip/Next/Submit); the card docks above the composer on session cold load, so it cannot be deferred. Session cold JS rises to 546322 gzip / 1662416 raw from 545242/1658732 measured on the parent commit dc244a91 (only the session._id chunk grows). Other ceilings and the 1% tolerance are unchanged.",
+		"reason": "Wave 88 parity work in the always-loaded shell and chrome: the palette's fixed settled-height centring and Recents reservation, versioned session-list prefs, the shared compact page header, the Scheduled tasks naming and More row, and the shell fallback's own /artifacts skeleton (+665 B raw on its parent, 1678707). Session cold JS measures 1679372 raw; the 1% tolerance and the gzip ceiling are unchanged.",
 		"raisedAt": "2026-10-14"
 	},
 	"client.coldHome.default.commitsToRows": {

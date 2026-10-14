@@ -46,6 +46,49 @@ function FallbackComposer({placeholder}: {placeholder: string}) {
 	);
 }
 
+/**
+ * The artifacts page while it loads, in its own layout: the root's top row and gutter, the compact
+ * header's title and tab row, then a card grid like the loaded page's.
+ */
+function ArtifactsSkeleton() {
+	return (
+		<div data-testid="artifacts-skeleton" className="min-h-0 flex-1 overflow-hidden">
+			<div className="min-h-9" />
+			<div className="px-4 sm:px-8">
+				<div className="mx-auto -mt-1 flex w-full max-w-5xl flex-col">
+					<span className={`h-8 w-36 ${BAR_CLASS}`} />
+					<div className="mt-5 flex h-8 items-center gap-2">
+						<span className={`h-6 w-10 ${BAR_CLASS}`} />
+						<span className={`h-6 w-12 ${BAR_CLASS}`} />
+						<span className={`h-6 w-28 ${BAR_CLASS}`} />
+						<span className="ms-auto flex gap-2">
+							{[0, 1, 2].map((index) => (
+								<span key={index} className={`size-6 ${BAR_CLASS}`} />
+							))}
+						</span>
+					</div>
+					<div
+						data-artifacts-skeleton-grid=""
+						className="grid grid-cols-1 gap-6 pt-5 sm:grid-cols-2 md:grid-cols-3"
+					>
+						{[0, 1, 2, 3, 4, 5].map((index) => (
+							<div
+								key={index}
+								data-artifacts-skeleton-card=""
+								className="flex h-[252px] flex-col overflow-hidden rounded-card border border-border"
+							>
+								<span className="h-[160px] shrink-0 animate-pulse bg-fill-ghost-hover" />
+								<span className={`m-3 h-4 w-3/4 ${BAR_CLASS}`} />
+								<span className={`mx-3 h-3 w-1/3 ${BAR_CLASS}`} />
+							</div>
+						))}
+					</div>
+				</div>
+			</div>
+		</div>
+	);
+}
+
 /** The home page while it loads, in its own layout: greeting, Sessions rows and the home composer. */
 function HomeSkeleton() {
 	return (
@@ -167,7 +210,9 @@ export function AppShellFallback({pathname = ""}: {pathname?: string}) {
 			</div>
 
 			<div className="flex min-w-0 flex-1 flex-col bg-surface-2">
-				{pathname === "/" ? (
+				{pathname === "/artifacts" ? (
+					<ArtifactsSkeleton />
+				) : pathname === "/" ? (
 					// The loaded home page's tile shell and title-bar spacer, so the greeting does not jump on hydration.
 					<div data-route-tile-shell="home">
 						<div aria-hidden className="h-9 shrink-0 sm:h-8" />

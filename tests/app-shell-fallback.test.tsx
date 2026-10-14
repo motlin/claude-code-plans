@@ -178,6 +178,23 @@ describe("AppShellFallback", () => {
 		});
 	});
 
+	it("paints the artifacts page's own skeleton on /artifacts: a compact header, tab row and card grid, with no session skeleton or composer", () => {
+		const host = document.createElement("div");
+		host.innerHTML = renderToStaticMarkup(<AppShellFallback pathname="/artifacts" />);
+		const skeleton = host.querySelector('[data-testid="artifacts-skeleton"]');
+
+		expect({
+			skeleton: skeleton !== null,
+			cards: skeleton?.querySelectorAll("[data-artifacts-skeleton-card]").length,
+			grid: skeleton
+				?.querySelector("[data-artifacts-skeleton-grid]")
+				?.className.split(" ")
+				.includes("md:grid-cols-3"),
+			composer: host.querySelector("[data-fallback-composer]"),
+			sessionSkeleton: host.querySelector('[data-testid="session-skeleton"]'),
+		}).toStrictEqual({skeleton: true, cards: 6, grid: true, composer: null, sessionSkeleton: null});
+	});
+
 	it("lays the home skeleton in the same tile shell and title-bar spacer as the loaded home page, so the greeting does not jump", () => {
 		const host = document.createElement("div");
 		host.innerHTML = renderToStaticMarkup(<AppShellFallback pathname="/" />);
