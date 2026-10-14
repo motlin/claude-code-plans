@@ -299,6 +299,13 @@ export const PendingQuestionSchema = z.strictObject({
 });
 export type PendingQuestion = z.infer<typeof PendingQuestionSchema>;
 
+/** One question's answer from the docked card: the chosen option indexes and any Other text. */
+export const QuestionAnswerSchema = z.strictObject({
+	selected: z.array(z.number().int()),
+	other: z.string().optional(),
+});
+export type QuestionAnswer = z.infer<typeof QuestionAnswerSchema>;
+
 /** Payload broadcast when a session's pending AskUserQuestion appears or resolves. */
 export interface SessionPendingQuestionChangedPayload {
 	sessionId: string;
