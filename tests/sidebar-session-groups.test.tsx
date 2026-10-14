@@ -63,8 +63,14 @@ function seedQueryClient(sessions: unknown[], nextCursor: string | null = null):
 	return queryClient;
 }
 
-async function renderGroups(sessions: unknown[], options: {nextCursor?: string | null; filterSlot?: ReactNode} = {}) {
-	const queryClient = seedQueryClient(sessions, options.nextCursor ?? null);
+async function renderGroups(
+	sessions: unknown[],
+	options: {nextCursor?: string | null; filterSlot?: ReactNode; unseeded?: boolean} = {},
+) {
+	const queryClient =
+		options.unseeded === true
+			? new QueryClient({defaultOptions: {queries: {retry: false}}})
+			: seedQueryClient(sessions, options.nextCursor ?? null);
 	const rootRoute = createRootRoute({
 		component: () => (
 			<QueryClientProvider client={queryClient}>
@@ -92,7 +98,7 @@ async function renderGroups(sessions: unknown[], options: {nextCursor?: string |
 	await router.load();
 	const result = render(<RouterProvider router={router} />);
 	await waitFor(() => {
-		expect(result.container.querySelector("[data-group-toggle]")).toBeTruthy();
+		expect(result.container.querySelector("[data-group-toggle], [role=alert]")).toBeTruthy();
 	});
 	return result;
 }
@@ -304,6 +310,21 @@ describe("sidebar SessionGroups", () => {
 			review: {leading: false, mark: ["status", "Unread response"], env: null, hidesOnHover: true},
 			done: {leading: false, mark: null, env: "local", hidesOnHover: true},
 		});
+	});
+
+	it("shows upstream's Couldn’t load your sessions alert with Try again when the list fails to load", async () => {
+		const fetchMock = vi.fn<typeof fetch>(async () => Promise.reject(new Error("offline")));
+		vi.stubGlobal("fetch", fetchMock);
+		await renderGroups([], {unseeded: true});
+		const message = await screen.findByText("Couldn’t load your sessions");
+		const alert = message.closest<HTMLElement>("[role=alert]");
+		if (alert === null) throw new Error("Expected the load failure to be an alert");
+		const callsBefore = fetchMock.mock.calls.length;
+		fireEvent.click(within(alert).getByRole("button", {name: "Try again"}));
+		await waitFor(() => {
+			expect(fetchMock.mock.calls.length).toBeGreaterThan(callsBefore);
+		});
+		vi.unstubAllGlobals();
 	});
 
 	it("has no Load more sessions row, even while the feed has another page", async () => {

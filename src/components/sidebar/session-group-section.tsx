@@ -9,6 +9,7 @@ import {startSessionSwitchJourney} from "../../lib/perf/field-journeys";
 import type {GroupAppearance} from "../../lib/group-appearance";
 import {useProjectAppearance} from "../../lib/project-appearance-store";
 import {useSessionGroups} from "../../lib/session-group-store";
+import {assertNever} from "../../lib/assert-never";
 import {customGroupIdOfKey, isProjectGroupKey, type SessionGroup} from "../../lib/session-groups";
 import {
 	familyKey,
@@ -214,12 +215,68 @@ export function GroupSection({
 	);
 }
 
+/** Which of upstream's empty sidebar lists to show: nothing yet, filtered to nothing, or a failed load. */
+export type EmptyListReason =
+	| {kind: "none"}
+	| {kind: "filtered"; onShowAll: () => void}
+	| {kind: "failed"; onRetry: () => void};
+
+/** Upstream's empty sidebar list bodies, centered under the header. */
+function EmptyListBody({reason}: {reason: EmptyListReason}) {
+	switch (reason.kind) {
+		case "none":
+			return (
+				<div
+					data-sidebar-empty
+					className="flex min-h-[200px] flex-col items-center justify-center px-4 text-center text-footnote text-ink-muted"
+				>
+					Sessions you start will show up here
+				</div>
+			);
+		case "filtered":
+			return (
+				<div data-sidebar-empty className="flex flex-col items-center gap-2 px-4 py-6 text-center">
+					<p className="m-0 text-footnote text-ink-muted">No sessions match the current filters</p>
+					<button
+						type="button"
+						onClick={reason.onShowAll}
+						className="cursor-pointer text-footnote text-secondary hover:underline"
+					>
+						Show all sessions
+					</button>
+				</div>
+			);
+		case "failed":
+			return (
+				<div role="alert" data-sidebar-empty className="flex flex-col items-center gap-2 px-4 py-6 text-center">
+					<p className="m-0 text-footnote text-ink-muted">Couldn’t load your sessions</p>
+					<button
+						type="button"
+						onClick={reason.onRetry}
+						className="h-6 cursor-pointer rounded-r5 px-2 text-footnote text-secondary shadow-[inset_0_0_0_1px_var(--color-border)] hover:bg-fill-ghost-hover"
+					>
+						Try again
+					</button>
+				</div>
+			);
+		default:
+			return assertNever(reason);
+	}
+}
+
 /**
- * Stands in for the group list when no group renders (say, Status Archived with nothing
- * archived): a header row carrying the Filter slot over a muted "No sessions" row, so a
- * filter can never hide its own control.
+ * Stands in for the group list when no group renders: a header row carrying the Group and sort
+ * slot, so a filter can never hide its own control, over upstream's empty state for the reason.
  */
-export function EmptyGroupSection({label, filterSlot}: {label: string; filterSlot: ReactNode}) {
+export function EmptyGroupSection({
+	label,
+	filterSlot,
+	reason,
+}: {
+	label: string;
+	filterSlot: ReactNode;
+	reason: EmptyListReason;
+}) {
 	return (
 		<div
 			data-group-key="empty"
@@ -232,10 +289,7 @@ export function EmptyGroupSection({label, filterSlot}: {label: string; filterSlo
 				<span className="min-w-0 flex-1 truncate">{label}</span>
 				<HeaderControls filterSlot={filterSlot} leadsList />
 			</div>
-			<div data-sidebar-empty className={`${ROW_CLASS} text-ink-muted`}>
-				<span className="df-leading-slot" />
-				No sessions
-			</div>
+			<EmptyListBody reason={reason} />
 		</div>
 	);
 }

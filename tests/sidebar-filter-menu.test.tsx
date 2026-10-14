@@ -372,7 +372,7 @@ describe("sidebar Group and sort menu", () => {
 				node.textContent.trim(),
 			),
 			empty: recents?.querySelector("[data-sidebar-empty]")?.textContent,
-		}).toStrictEqual({labels: ["Completed"], empty: "No sessions"});
+		}).toStrictEqual({labels: ["Completed"], empty: "No sessions match the current filtersShow all sessions"});
 
 		await openFilterMenu();
 		fireEvent.click(screen.getByRole("menuitem", {name: "Reset to defaults"}));
@@ -383,6 +383,34 @@ describe("sidebar Group and sort menu", () => {
 			empty: container.querySelector("[data-sidebar-empty]"),
 			stored: storedPrefs(),
 		}).toStrictEqual({groups: ["Working", "Completed"], empty: null, stored: DEFAULT_SESSION_LIST_PREFS});
+	});
+
+	it("offers Show all sessions when the filters empty the list, as upstream does", async () => {
+		storePrefs({statusFilter: "archived", activityDays: "1d"});
+		const {container} = await renderSidebarGroups(FIXTURE, {archived: [], all: FIXTURE});
+		const empty = container.querySelector<HTMLElement>("[data-sidebar-empty]");
+		expect({
+			text: empty?.querySelector("p")?.textContent,
+			classes: empty?.className
+				.split(" ")
+				.filter((name) => ["items-center", "text-center", "py-6"].includes(name)),
+		}).toStrictEqual({
+			text: "No sessions match the current filters",
+			classes: ["items-center", "py-6", "text-center"],
+		});
+
+		fireEvent.click(screen.getByRole("button", {name: "Show all sessions"}));
+		await flush();
+
+		expect(storedPrefs()).toEqual({...DEFAULT_SESSION_LIST_PREFS, statusFilter: "all", activityDays: "all"});
+	});
+
+	it("says Sessions you start will show up here when there are no sessions at all", async () => {
+		const {container} = await renderSidebarGroups([]);
+		expect({
+			text: container.querySelector("[data-sidebar-empty]")?.textContent,
+			showAll: screen.queryByRole("button", {name: "Show all sessions"}),
+		}).toStrictEqual({text: "Sessions you start will show up here", showAll: null});
 	});
 
 	it("groups the list by this browser's custom groups in Custom groups mode", async () => {

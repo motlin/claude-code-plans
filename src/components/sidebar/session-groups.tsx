@@ -44,7 +44,7 @@ import {assertNever} from "../../lib/assert-never";
 import {useSettings} from "../settings-context";
 import {useToast} from "../toast-context";
 import {LoadingBars} from "./primitives/LoadingBars";
-import {EmptyGroupSection, GroupSection, ROW_CLASS} from "./session-group-section";
+import {EmptyGroupSection, type EmptyListReason, GroupSection, ROW_CLASS} from "./session-group-section";
 import {type SidebarSessionRow, toGroupRow} from "./sidebar-session-row";
 import {SidebarSelectionContext, type SidebarSelectionApi} from "./selection-context";
 import {PinnedSubList} from "./sublists";
@@ -73,7 +73,7 @@ export function SessionGroups({
 	filterSlot?: ReactNode;
 	prefs?: SessionListPrefs;
 }) {
-	const {data, hasNextPage, isFetchingNextPage, fetchNextPage} = useInfiniteQuery({
+	const {data, hasNextPage, isFetchingNextPage, fetchNextPage, isError, refetch} = useInfiniteQuery({
 		...recentSessionsInfiniteQueryOptions(undefined, prefs.statusFilter),
 		// Keep the current rows (and the filter button) up while a new Status loads.
 		placeholderData: keepPreviousData,
@@ -170,6 +170,15 @@ export function SessionGroups({
 	}, [loadOnScroll, fetchNextPage]);
 
 	if (split === undefined || groups === undefined) {
+		if (isError) {
+			return (
+				<EmptyGroupSection
+					label={EMPTY_LIST_GROUP_LABELS[prefs.groupBy]}
+					filterSlot={filterSlot}
+					reason={{kind: "failed", onRetry: () => void refetch()}}
+				/>
+			);
+		}
 		return (
 			<div className="px-2">
 				<LoadingBars />
@@ -231,6 +240,17 @@ export function SessionGroups({
 		/>
 	) : null;
 
+	const emptyListReason: EmptyListReason =
+		(data?.pages.every((page) => page.sessions.length === 0) ?? false) &&
+		prefs.statusFilter === DEFAULT_SESSION_LIST_PREFS.statusFilter &&
+		prefs.activityDays === DEFAULT_SESSION_LIST_PREFS.activityDays
+			? {kind: "none"}
+			: {
+					kind: "filtered",
+					onShowAll: () => {
+						setSetting("sessionListPrefs", {...prefs, statusFilter: "all", activityDays: "all"});
+					},
+				};
 	return (
 		// oxlint-disable-next-line react/jsx-no-constructed-context-values -- built after the loading early return, where hooks cannot run, from selection state that changes whenever the rows re-render anyway
 		<SidebarSelectionContext.Provider value={selectionApi}>
@@ -295,7 +315,11 @@ export function SessionGroups({
 						return index === firstUngroupedIndex && ungroupRow !== null ? [ungroupRow, section] : section;
 					})}
 					{groups.length === 0 && (
-						<EmptyGroupSection label={EMPTY_LIST_GROUP_LABELS[prefs.groupBy]} filterSlot={filterSlot} />
+						<EmptyGroupSection
+							label={EMPTY_LIST_GROUP_LABELS[prefs.groupBy]}
+							filterSlot={filterSlot}
+							reason={emptyListReason}
+						/>
 					)}
 					{firstUngroupedIndex === -1 && ungroupRow}
 					<div ref={listEndRef} aria-hidden="true" data-sidebar-list-end />
