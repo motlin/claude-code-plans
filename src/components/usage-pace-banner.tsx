@@ -52,7 +52,7 @@ export function UsagePaceBanner() {
 	return (
 		<UsagePaceBand
 			usedPct={usedPct}
-			resetText={formatPaceBannerReset(resetsAt)}
+			resetText={formatPaceBannerReset(resetsAt, Date.now())}
 			onDismiss={() => {
 				writePaceBannerDismissedUntil(resetsAt);
 			}}

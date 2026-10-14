@@ -114,8 +114,11 @@ export function shouldShowPaceBanner(usage: UsageSummary, nowMs: number, dismiss
 	return weeklyAheadOfPace(usage, nowMs);
 }
 
-/** "Resets Tue, Oct 6, 4:00 AM". */
-export function formatPaceBannerReset(resetsAt: number, timeZone?: string): string {
+/** Upstream's pace band reset: "Resets at 5:40 PM" on the reset's own day, else "Resets Tue, Oct 6, 4:00 AM". */
+export function formatPaceBannerReset(resetsAt: number, nowMs: number, timeZone?: string): string {
+	if (calendarDay(resetsAt * 1000, timeZone) === calendarDay(nowMs, timeZone)) {
+		return `Resets at ${formatParts(resetsAt, timeZone)}`;
+	}
 	const when = new Intl.DateTimeFormat("en-US", {
 		weekday: "short",
 		month: "short",

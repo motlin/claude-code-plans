@@ -54,7 +54,15 @@ describe("shouldShowPaceBanner", () => {
 
 describe("formatPaceBannerReset", () => {
 	it("formats the weekly reset with weekday, month, day and time", () => {
-		expect(formatPaceBannerReset(Date.UTC(2026, 9, 6, 4, 0) / 1000, "UTC")).toBe("Resets Tue, Oct 6, 4:00 AM");
+		const otherDay = Date.UTC(2026, 9, 1, 12, 0);
+		expect(formatPaceBannerReset(Date.UTC(2026, 9, 6, 4, 0) / 1000, otherDay, "UTC")).toBe(
+			"Resets Tue, Oct 6, 4:00 AM",
+		);
+	});
+
+	it("reads 'Resets at 5:40 PM' on the reset's own day, as upstream does", () => {
+		const morning = Date.UTC(2026, 9, 14, 9, 0);
+		expect(formatPaceBannerReset(Date.UTC(2026, 9, 14, 17, 40) / 1000, morning, "UTC")).toBe("Resets at 5:40 PM");
 	});
 });
 
