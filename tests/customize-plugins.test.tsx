@@ -5,11 +5,11 @@ import {tmpdir} from "node:os";
 import {dirname, join} from "node:path";
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {createMemoryHistory, createRootRoute, createRoute, createRouter, RouterProvider} from "@tanstack/react-router";
-import {cleanup, render, screen, within} from "@testing-library/react";
+import {cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import type {ReactNode} from "react";
-import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
+import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {ContentsViewer} from "../src/components/customize/contents-viewer";
-import {PluginDetailHeader, PluginHooks} from "../src/components/customize/plugin-detail";
+import {PluginDetailHeader, PluginHooks, PluginOverview} from "../src/components/customize/plugin-detail";
 import {pluginDetailTabs} from "../src/components/customize/plugin-view";
 import {commandRows} from "../src/components/customize/skills-view";
 import {ToastProvider} from "../src/components/toast";
@@ -222,6 +222,35 @@ describe("plugin detail UI", () => {
 				["Commands · 1", "/customize/plugins/id/tools%40market/commands"],
 				["Hooks · 2", "/customize/plugins/id/tools%40market/hooks"],
 			],
+		});
+	});
+
+	it("gives the header upstream's Copy link button and a 15/20 580 title, with 400-weight secondary section labels", async () => {
+		const writeText = vi.fn<Clipboard["writeText"]>(async () => Promise.resolve());
+		Object.defineProperty(navigator, "clipboard", {value: {writeText}, configurable: true});
+		const detail = await detailFor("tools@market");
+		await renderInRouter(
+			<>
+				<PluginDetailHeader detail={detail} />
+				<PluginOverview detail={detail} />
+			</>,
+		);
+		const copy = await screen.findByRole("button", {name: "Copy link"});
+		fireEvent.click(copy);
+		await waitFor(() => {
+			expect(writeText).toHaveBeenCalledTimes(1);
+		});
+		const classes = (element: Element | null) => element?.getAttribute("class")?.split(" ") ?? [];
+		expect({
+			copied: writeText.mock.calls[0]?.[0],
+			title: classes(screen.getByRole("heading", {level: 2})).filter((name) => /^(text-\[|font-)/.test(name)),
+			label: classes(screen.getByRole("heading", {name: "Description"})).filter((name) =>
+				/^(font-|text-(secondary|t6))/.test(name),
+			),
+		}).toStrictEqual({
+			copied: window.location.href,
+			title: ["text-[15px]/[20px]", "font-[580]"],
+			label: ["font-normal", "text-secondary"],
 		});
 	});
 

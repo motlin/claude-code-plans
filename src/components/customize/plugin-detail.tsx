@@ -1,5 +1,5 @@
 import {useQuery} from "@tanstack/react-query";
-import {ArrowLeft, Bot, Plug, Puzzle, Scroll, SquareSlash} from "lucide-react";
+import {ArrowLeft, Bot, Link, Plug, Puzzle, Scroll, SquareSlash} from "lucide-react";
 import type {ReactNode} from "react";
 import {
 	customizeSettingsTogglesQueryOptions,
@@ -8,8 +8,10 @@ import {
 	type PluginHookRow,
 } from "../../lib/api/customize";
 import type {PluginInfoData} from "../../lib/api/plugins";
+import {writeClipboardText} from "../../lib/clipboard";
 import {toConnectorSlug} from "../../lib/customize/mcp-tool-permissions";
 import {PluginVersion} from "../plugin-version";
+import {useToast} from "../toast-context";
 import {ScopeBadge} from "./connectors-table";
 import {transportLabel} from "./connector-labels";
 import {CustomizeLink} from "./customize-nav";
@@ -37,17 +39,20 @@ export function PluginDetailHeader({detail}: {detail: PluginDetail}) {
 	const disabled = toggles !== undefined && !isPluginEnabled(toggles, plugin.id);
 	return (
 		<header className="flex flex-col gap-4">
-			<CustomizeLink
-				target={{kind: "list", section: "plugins"}}
-				className="-ms-2 inline-flex h-6 w-fit items-center gap-1.5 rounded-r6 px-2 text-[13px]/[19px] text-secondary no-underline hover:bg-fill-ghost-hover hover:text-primary"
-			>
-				<ArrowLeft aria-hidden="true" className="size-4" />
-				Plugins
-			</CustomizeLink>
+			<div className="flex items-center justify-between gap-3">
+				<CustomizeLink
+					target={{kind: "list", section: "plugins"}}
+					className="-ms-2 inline-flex h-6 w-fit items-center gap-1.5 rounded-r6 px-2 text-[13px]/[19px] text-secondary no-underline hover:bg-fill-ghost-hover hover:text-primary"
+				>
+					<ArrowLeft aria-hidden="true" className="size-4" />
+					Plugins
+				</CustomizeLink>
+				<CopyLinkButton />
+			</div>
 			<div className="flex items-center gap-3">
 				<IconTile icon={Puzzle} size="lg" />
 				<div className="flex min-w-0 flex-1 flex-col">
-					<h2 className="m-0 truncate text-[20px]/[28px] font-medium text-primary">{plugin.name}</h2>
+					<h2 className="m-0 truncate text-[15px]/[20px] font-[580] text-primary">{plugin.name}</h2>
 					<p className="m-0 flex flex-wrap items-center gap-x-1.5 text-[13px]/[17px] text-t6">
 						{plugin.author !== "" && <span>by {plugin.author} ·</span>}
 						<PluginVersion version={plugin.version} versionKind={plugin.versionKind} />
@@ -80,17 +85,36 @@ export function PluginDetailHeader({detail}: {detail: PluginDetail}) {
 	);
 }
 
+/** Upstream's top-right "Copy link": copies this detail page's URL. */
+function CopyLinkButton() {
+	const toast = useToast();
+	return (
+		<button
+			type="button"
+			onClick={() => {
+				void writeClipboardText(window.location.href).then((copied) => {
+					toast(copied ? {kind: "success", message: "Link copied"} : {kind: "error", message: "Copy failed"});
+				});
+			}}
+			className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-r6 px-2.5 text-[14px]/[20px] text-primary hover:bg-fill-ghost-hover"
+		>
+			<Link aria-hidden="true" className="size-4" />
+			Copy link
+		</button>
+	);
+}
+
 function AsideCard({title, children}: {title: string; children: ReactNode}) {
 	return (
 		<section className="flex flex-col gap-2 rounded-card border border-border bg-surface-0 p-4">
-			<h3 className="m-0 text-caption font-medium text-t6">{title}</h3>
+			<h3 className="m-0 text-caption font-normal text-secondary">{title}</h3>
 			{children}
 		</section>
 	);
 }
 
 function Caption({children}: {children: ReactNode}) {
-	return <h3 className="m-0 text-caption font-medium text-t6">{children}</h3>;
+	return <h3 className="m-0 text-caption font-normal text-secondary">{children}</h3>;
 }
 
 /** Overview: description, details and categories beside the "Connectors & tools" aside. */
