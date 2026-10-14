@@ -134,9 +134,9 @@ export function AppShellFallback({pathname = ""}: {pathname?: string}) {
 						<div className="flex items-center">
 							<span className={NAV_ROW_CLASS}>
 								<span className="df-leading-slot">
-									<Ellipsis aria-hidden="true" className="opacity-50" />
+									<Ellipsis aria-hidden="true" />
 								</span>
-								<span className="min-w-0 flex-1 truncate text-ink-muted">More</span>
+								<span className="min-w-0 flex-1 truncate">More</span>
 							</span>
 						</div>
 						<div className="h-[13px] shrink-0" />

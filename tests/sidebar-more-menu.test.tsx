@@ -132,15 +132,22 @@ describe("sidebar More menu", () => {
 		expect(sidebarNavLabels()).toStrictEqual(["Artifacts", "Plans", "Memories", "Customize"]);
 	});
 
-	it("leads the More row with upstream's three-dot glyph", async () => {
+	it("leads the More row with upstream's three-dot glyph in the normal nav ink", async () => {
 		await renderSidebar();
 		const icon = screen.getByRole("button", {name: "More navigation items"}).querySelector("svg");
-		expect(
-			icon
+		const label = screen.getByRole("button", {name: "More navigation items"}).querySelector(".truncate");
+		expect({
+			glyph: icon
 				?.getAttribute("class")
 				?.split(" ")
 				.find((name) => name.startsWith("lucide-")),
-		).toBe("lucide-ellipsis");
+			// Full opacity and the normal nav ink, like the other nav rows.
+			glyphDimmed: icon
+				?.getAttribute("class")
+				?.split(" ")
+				.some((name) => name.startsWith("opacity-")),
+			labelMuted: label?.className.split(" ").includes("text-ink-muted"),
+		}).toStrictEqual({glyph: "lucide-ellipsis", glyphDimmed: false, labelMuted: false});
 	});
 
 	it("lists hidden sections, a separator, then Edit sidebar…", async () => {
