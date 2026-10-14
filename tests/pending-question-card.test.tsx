@@ -213,7 +213,7 @@ describe("PendingQuestionCard", () => {
 			textarea: {
 				tag: "TEXTAREA",
 				className:
-					"w-full resize-none cursor-not-allowed rounded-r5 bg-white/50 px-2 py-1.5 text-body text-primary outline-none ring-1 ring-border placeholder:text-secondary",
+					"w-full resize-none cursor-not-allowed rounded-r5 bg-surface-1 px-2 py-1.5 text-body text-primary outline-none ring-1 ring-border placeholder:text-secondary",
 			},
 		});
 	});
@@ -260,6 +260,14 @@ describe("PendingQuestionCard answering", () => {
 	async function settle() {
 		await act(async () => Promise.resolve());
 	}
+
+	it("draws the answerable Other field on the theme's surface, not a fixed white wash that glares in dark mode", () => {
+		const {card} = renderAnswerable(QUESTIONS);
+		const classes = card.getAllByRole("textbox")[0]?.className.split(" ") ?? [];
+		expect({
+			surface: classes.filter((name) => name.startsWith("bg-")),
+		}).toStrictEqual({surface: ["bg-surface-1"]});
+	});
 
 	it("enables every control and drops the terminal footnote, with Submit waiting for an answer", () => {
 		renderAnswerable([QUESTIONS[0]!]);

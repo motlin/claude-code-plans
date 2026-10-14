@@ -164,9 +164,9 @@ function optionClass(chosen: boolean): string {
 }
 
 const OTHER_TEXTAREA =
-	"w-full resize-none rounded-r5 bg-white/50 px-2 py-1.5 text-body text-primary outline-none ring-1 ring-border placeholder:text-secondary disabled:cursor-not-allowed";
+	"w-full resize-none rounded-r5 bg-surface-1 px-2 py-1.5 text-body text-primary outline-none ring-1 ring-border placeholder:text-secondary disabled:cursor-not-allowed";
 const OTHER_TEXTAREA_READ_ONLY =
-	"w-full resize-none cursor-not-allowed rounded-r5 bg-white/50 px-2 py-1.5 text-body text-primary outline-none ring-1 ring-border placeholder:text-secondary";
+	"w-full resize-none cursor-not-allowed rounded-r5 bg-surface-1 px-2 py-1.5 text-body text-primary outline-none ring-1 ring-border placeholder:text-secondary";
 
 /**
  * Upstream's docked question card for the question the session's `PreToolUse`
