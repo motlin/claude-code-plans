@@ -49,7 +49,7 @@ describe("UsagePanel", () => {
 			{name: "This week", min: "0", max: "100", now: "66", text: "66% used"},
 		]);
 		expect(screen.getByText("Resets at 3:40 PM").textContent).toBe("Resets at 3:40 PM");
-		expect(screen.getByText("Resets Tue 9:00 AM").textContent).toBe("Resets Tue 9:00 AM");
+		expect(screen.getByText("Resets Tuesday 9:00 AM").textContent).toBe("Resets Tuesday 9:00 AM");
 		expect(screen.getAllByText(/% used$/).map((node) => node.textContent)).toStrictEqual(["16% used", "66% used"]);
 		expect(screen.getByText("Last updated: just now").textContent).toBe("Last updated: just now");
 

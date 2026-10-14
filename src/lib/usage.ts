@@ -36,9 +36,9 @@ export function meterPercent(usedPct: number): number {
 	return Math.min(100, Math.max(0, Math.round(usedPct)));
 }
 
-function formatParts(resetsAt: number, timeZone: string | undefined, weekday: boolean): string {
+function formatParts(resetsAt: number, timeZone: string | undefined, weekday?: "short" | "long"): string {
 	return new Intl.DateTimeFormat("en-US", {
-		...(weekday ? {weekday: "short" as const} : {}),
+		...(weekday === undefined ? {} : {weekday}),
 		hour: "numeric",
 		minute: "2-digit",
 		...(timeZone === undefined ? {} : {timeZone}),
@@ -49,12 +49,17 @@ function formatParts(resetsAt: number, timeZone: string | undefined, weekday: bo
 
 /** "Resets at 5:40 PM". */
 export function formatSessionReset(resetsAt: number, timeZone?: string): string {
-	return `Resets at ${formatParts(resetsAt, timeZone, false)}`;
+	return `Resets at ${formatParts(resetsAt, timeZone)}`;
 }
 
 /** "Resets Fri 9:00 AM". */
 export function formatWeeklyReset(resetsAt: number, timeZone?: string): string {
-	return `Resets ${formatParts(resetsAt, timeZone, true)}`;
+	return `Resets ${formatParts(resetsAt, timeZone, "short")}`;
+}
+
+/** Settings ▸ Usage's "Resets Tuesday 4:00 AM", with upstream's full weekday. */
+export function formatWeeklyResetLong(resetsAt: number, timeZone?: string): string {
+	return `Resets ${formatParts(resetsAt, timeZone, "long")}`;
 }
 
 function calendarDay(ms: number, timeZone: string | undefined): number {
@@ -136,7 +141,7 @@ export function paceHeadline(usage: UsageSummary, nowMs: number, timeZone?: stri
 	const exhausted = windows.find(({window}) => window.usedPct >= 100);
 	if (exhausted) {
 		const {resetsAt} = exhausted.window;
-		const time = formatParts(resetsAt, timeZone, false);
+		const time = formatParts(resetsAt, timeZone);
 		return `You’ve hit the limit. It resets ${resetDay(resetsAt, nowMs, timeZone)} at ${time}.`;
 	}
 

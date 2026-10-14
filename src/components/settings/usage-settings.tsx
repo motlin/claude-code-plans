@@ -6,7 +6,7 @@ import {usageQueryOptions} from "../../lib/api/usage";
 import {formatUpdatedAgo} from "../../lib/composer-state";
 import {
 	formatSessionReset,
-	formatWeeklyReset,
+	formatWeeklyResetLong,
 	meterPercent,
 	paceHeadline,
 	type UsageSummary,
@@ -93,7 +93,7 @@ export function UsagePanel({usage, planDetail, nowMs, timeZone, refreshing, onRe
 					{usage.sevenDay === null ? null : (
 						<UsageMeterRow
 							label="This week"
-							resets={formatWeeklyReset(usage.sevenDay.resetsAt, timeZone)}
+							resets={formatWeeklyResetLong(usage.sevenDay.resetsAt, timeZone)}
 							window={usage.sevenDay}
 						/>
 					)}
