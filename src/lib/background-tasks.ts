@@ -47,6 +47,8 @@ export interface TeammateCandidate {
 	startedAt: string | null;
 	taskKind?: string | null | undefined;
 	stopped?: true | undefined;
+	/** The description of the teammate's foreground Bash call still waiting on its result. */
+	pendingCommand?: string | null | undefined;
 }
 
 const IN_PROCESS_TEAMMATE = "in_process_teammate";
@@ -471,6 +473,24 @@ export function extractBackgroundTasks(
 			toolUseId: null,
 			kind: "agent",
 			description: teammate.description ?? teammate.name ?? agentId,
+			command: null,
+			status: "running",
+			output: null,
+			summary: null,
+		});
+	}
+	// A running teammate's in-flight foreground command is a task of its own upstream.
+	for (const teammate of live.teammates ?? []) {
+		if (teammate.taskKind !== IN_PROCESS_TEAMMATE || teammate.pendingCommand == null) continue;
+		const agentId = unprefixedAgentId(teammate.id);
+		const running =
+			byTaskId.get(agentId)?.task.status === "running" || liveTasks.some((task) => task.id === agentId);
+		if (!running) continue;
+		liveTasks.push({
+			id: `${agentId}:command`,
+			toolUseId: null,
+			kind: "bash",
+			description: teammate.pendingCommand,
 			command: null,
 			status: "running",
 			output: null,

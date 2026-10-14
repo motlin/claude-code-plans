@@ -37,6 +37,8 @@ export interface Subagent {
 	name?: string | null | undefined;
 	/** A successful TaskStop in the main transcript stopped this teammate. */
 	stopped?: true | undefined;
+	/** The description of the agent's foreground Bash call still waiting on its result. */
+	pendingCommand?: string | null | undefined;
 }
 
 export interface ActiveSubagent {
@@ -80,6 +82,7 @@ export function toClientSubagent(row: DbSubagent): Subagent {
 		finishedAt: row.finishedAt,
 		...(row.taskKind == null ? {} : {taskKind: row.taskKind}),
 		...(row.name == null ? {} : {name: row.name}),
+		...(row.pendingCommand == null ? {} : {pendingCommand: row.pendingCommand}),
 	};
 }
 

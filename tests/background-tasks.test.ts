@@ -487,4 +487,45 @@ describe("extractBackgroundTasks running count, from 01d132c8's real record shap
 			}).running.map((task) => task.id),
 		).toStrictEqual(["atemplate-drift-4240", "adrop-audit-script-9ba3"]);
 	});
+
+	it("counts a running teammate's in-flight foreground command as a task of its own, as upstream reads 5", () => {
+		const teammates = [
+			{
+				id: "agent-atemplate-drift-4240",
+				name: "template-drift",
+				description: "Fix shared include drift in templates",
+				startedAt: "2026-10-13T21:36:42.778Z",
+				taskKind: "in_process_teammate",
+			},
+			{
+				id: "agent-agrammar-fix-5",
+				name: "grammar-fix",
+				description: "Grammar fix: primitives not identifiers",
+				startedAt: "2026-10-14T00:04:57.000Z",
+				taskKind: "in_process_teammate",
+				pendingCommand: "Run alternating corpus compile benchmarks",
+			},
+			{
+				id: "agent-astopped-6",
+				name: "stopped-one",
+				description: "Stopped",
+				startedAt: "2026-10-14T00:00:00.000Z",
+				taskKind: "in_process_teammate",
+				stopped: true as const,
+				pendingCommand: "Never counted",
+			},
+		];
+
+		expect(
+			extractBackgroundTasks([], {
+				sessionActive: true,
+				processStartedAt: Date.parse("2026-10-11T14:56:48.013Z"),
+				teammates,
+			}).running.map((task) => [task.kind, task.description]),
+		).toStrictEqual([
+			["agent", "Fix shared include drift in templates"],
+			["agent", "Grammar fix: primitives not identifiers"],
+			["bash", "Run alternating corpus compile benchmarks"],
+		]);
+	});
 });

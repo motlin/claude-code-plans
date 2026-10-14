@@ -245,6 +245,8 @@ export const subagents = sqliteTable(
 		taskKind: text("task_kind"),
 		/** The meta.json `name` a teammate is addressed (and stopped) by. */
 		name: text("name"),
+		/** The description of the agent's foreground Bash call still waiting on its result, if any. */
+		pendingCommand: text("pending_command"),
 		filePath: text("file_path").notNull(),
 		mtimeMs: integer("mtime_ms").notNull(),
 	},

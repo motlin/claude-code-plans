@@ -1048,21 +1048,48 @@ async function persistSessionIndexState(
 		.run();
 }
 
+/** Foreground Bash calls still waiting on their result, newest last. */
+class PendingCommandCollector {
+	private readonly pending = new Map<string, string>();
+
+	add(obj: unknown): void {
+		const content = asRecord(asRecord(obj)?.["message"])?.["content"];
+		if (!Array.isArray(content)) return;
+		for (const block of content) {
+			if (!isRecord(block)) continue;
+			const id = stringField(block, "id");
+			if (block["type"] === "tool_use" && block["name"] === "Bash" && id !== null) {
+				const input = asRecord(block["input"]);
+				if (input?.["run_in_background"] === true) continue;
+				this.pending.set(id, stringField(input, "description") ?? stringField(input, "command") ?? "Bash");
+			} else if (block["type"] === "tool_result") {
+				const toolUseId = stringField(block, "tool_use_id");
+				if (toolUseId !== null) this.pending.delete(toolUseId);
+			}
+		}
+	}
+
+	latest(): string | null {
+		return [...this.pending.values()].at(-1) ?? null;
+	}
+}
+
+/** Index one subagent transcript; true when its pending command changed, which the running-tasks count reads. */
 export async function indexSubagentFile(
 	db: IndexDb,
 	filePath: string,
 	sessionId: string,
 	project: string,
-): Promise<void> {
+): Promise<boolean> {
 	let fileStat: Awaited<ReturnType<typeof stat>>;
 	try {
 		fileStat = await stat(filePath);
 	} catch {
-		return;
+		return false;
 	}
 
 	const existing = db.select().from(schema.indexedFiles).where(eq(schema.indexedFiles.path, filePath)).get();
-	if (existing && existing.mtimeMs === fileStat.mtimeMs) return;
+	if (existing && existing.mtimeMs === fileStat.mtimeMs) return false;
 
 	const agentFilename = basename(filePath, ".jsonl");
 	const metaPath = filePath.replace(/\.jsonl$/, ".meta.json");
@@ -1089,6 +1116,7 @@ export async function indexSubagentFile(
 	let finishedAt: string | null = null;
 	const artifactEvents = new ArtifactEventCollector();
 	const slowCommands = new SlowCommandCollector();
+	const pendingCommands = new PendingCommandCollector();
 	const rl = createLineReader(createReadStream(filePath, {encoding: "utf-8"}));
 	try {
 		for await (const line of rl) {
@@ -1112,6 +1140,7 @@ export async function indexSubagentFile(
 				}
 				artifactEvents.add(obj);
 				slowCommands.add(obj);
+				pendingCommands.add(obj);
 			} catch {
 				// skip
 			}
@@ -1120,6 +1149,12 @@ export async function indexSubagentFile(
 		await rl.close();
 	}
 	const slowCommandEndsJson = JSON.stringify(slowCommands.ends());
+	const pendingCommand = pendingCommands.latest();
+	const previous = db
+		.select({pendingCommand: schema.subagents.pendingCommand})
+		.from(schema.subagents)
+		.where(eq(schema.subagents.id, agentFilename))
+		.get();
 
 	db.insert(schema.subagents)
 		.values({
@@ -1136,6 +1171,7 @@ export async function indexSubagentFile(
 			slowCommandEndsJson,
 			taskKind,
 			name: teammateName,
+			pendingCommand,
 			filePath,
 			mtimeMs: fileStat.mtimeMs,
 		})
@@ -1144,6 +1180,7 @@ export async function indexSubagentFile(
 			set: {
 				taskKind,
 				name: teammateName,
+				pendingCommand,
 				projectId: project,
 				agentType: agentType ?? attributionAgent,
 				attributionAgent,
@@ -1177,6 +1214,7 @@ export async function indexSubagentFile(
 			},
 		})
 		.run();
+	return (previous?.pendingCommand ?? null) !== pendingCommand;
 }
 
 const AGENT_ID_RE = /agentId:\s*(\S+)/;
@@ -1904,7 +1942,7 @@ export async function indexFile(
 	projectsDir: string,
 	plansDir?: string,
 	options: {jsonlCache?: JsonlIndexCache} = {},
-): Promise<{linkedPlans: string[]}> {
+): Promise<{linkedPlans: string[]; subagentsChangedFor?: string}> {
 	// Task file: ~/.claude/tasks/{projectDir}/{id}.json
 	if (filePath.includes("/tasks/") && filePath.endsWith(".json")) {
 		const parts = filePath.split("/");
@@ -1950,10 +1988,11 @@ export async function indexFile(
 					normalizedProjectFile.relativeParts[subagentsIdx - 1],
 					"A subagents directory at index >= 2 has a session directory before it",
 				);
-				await indexSubagentFile(db, filePath, sessionId, normalizedProjectFile.project);
+				const commandChanged = await indexSubagentFile(db, filePath, sessionId, normalizedProjectFile.project);
 				// Link nested parent-child relationships from this subagent's JSONL
 				const agentFilename = basename(filePath, ".jsonl");
 				await linkSubagentParents(db, filePath, agentFilename);
+				if (commandChanged) return {linkedPlans: [], subagentsChangedFor: sessionId};
 			}
 			return {linkedPlans: []};
 		}

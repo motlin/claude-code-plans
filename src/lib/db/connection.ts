@@ -178,6 +178,7 @@ CREATE TABLE IF NOT EXISTS subagents (
   slow_command_ends TEXT NOT NULL DEFAULT '[]',
   task_kind TEXT,
   name TEXT,
+  pending_command TEXT,
   file_path TEXT NOT NULL,
   mtime_ms INTEGER NOT NULL
 );

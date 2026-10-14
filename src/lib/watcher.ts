@@ -514,7 +514,7 @@ async function indexSilently(
 	projectsDir: string,
 	db?: IndexDb,
 	plansDirectory: string = plansDir,
-): Promise<{linkedPlans: string[]}> {
+): Promise<{linkedPlans: string[]; subagentsChangedFor?: string}> {
 	try {
 		const index = db ?? getDb().index;
 		return await trackActivity(`index ${path}`, async () =>
@@ -611,7 +611,11 @@ export async function processJsonlAppend(
 		// File may have been deleted between the watcher event and this read.
 	}
 
-	const {linkedPlans} = await indexSilently(path, dirs.projectsDir, db, dirs.plansDir);
+	const {linkedPlans, subagentsChangedFor} = await indexSilently(path, dirs.projectsDir, db, dirs.plansDir);
+	// A teammate's command started or ended: tabs refetch the subagents the running-tasks count reads.
+	if (subagentsChangedFor !== undefined) {
+		broadcast(DOMAIN_EVENTS.SUBAGENTS_CHANGED, {sessionId: subagentsChangedFor});
+	}
 	const projectId = projectIdFromPath(path, dirs.projectsDir);
 	if (projectId) {
 		try {

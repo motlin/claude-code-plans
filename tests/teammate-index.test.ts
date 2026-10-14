@@ -1,4 +1,4 @@
-import {mkdirSync, rmSync, writeFileSync} from "node:fs";
+import {mkdirSync, readFileSync, rmSync, writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
@@ -6,6 +6,8 @@ import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
 import {openTestDb, type AppDb} from "../src/lib/db/connection";
 import {indexJsonlFile, indexSubagentFile} from "../src/lib/db/indexer";
 import {getSubagentsForSession} from "../src/lib/db/queries";
+import {DOMAIN_EVENTS} from "../src/lib/hook-events";
+import {processJsonlAppend} from "../src/lib/watcher";
 import {sessionSubagentsWithStops} from "../src/lib/db/subagent-stops";
 
 const testDir = join(tmpdir(), `claude-teammate-index-test-${process.pid}`);
@@ -118,5 +120,72 @@ describe("teammate indexing", () => {
 			{id: "agent-ameetings-prep-1", taskKind: "in_process_teammate", name: "meetings-prep", stopped: undefined},
 		]);
 		expect(getSubagentsForSession(db.index, sessionId).length).toBe(2);
+	});
+
+	it("keeps a teammate's in-flight foreground Bash as its pending command until the result lands, telling tabs each time it changes", async () => {
+		const path = writeTeammate(
+			"agrammar-fix-5",
+			"grammar-fix",
+			"Grammar fix: primitives not identifiers",
+			"2026-10-14T00:04:57.000Z",
+		);
+		const call = {
+			type: "assistant",
+			uuid: "g-a1",
+			isSidechain: true,
+			agentId: "agrammar-fix-5",
+			sessionId,
+			timestamp: "2026-10-14T00:08:17.000Z",
+			message: {
+				role: "assistant",
+				content: [
+					{
+						type: "tool_use",
+						id: "toolu_bench",
+						name: "Bash",
+						input: {command: "./bench.sh", description: "Run alternating corpus compile benchmarks"},
+					},
+				],
+			},
+		};
+		const result = {
+			type: "user",
+			uuid: "g-u2",
+			isSidechain: true,
+			agentId: "agrammar-fix-5",
+			sessionId,
+			timestamp: "2026-10-14T00:12:00.000Z",
+			message: {
+				role: "user",
+				content: [{type: "tool_result", tool_use_id: "toolu_bench", content: "done", is_error: false}],
+			},
+		};
+		const offsets = new Map<string, number>();
+		const broadcasts: string[] = [];
+		const append = async (records: unknown[]) => {
+			writeFileSync(
+				path,
+				jsonl([...[JSON.parse(readFileSync(path, "utf8").split("\n")[0]!) as unknown], ...records]),
+			);
+			await processJsonlAppend(
+				db.index,
+				path,
+				offsets,
+				(type, data) => {
+					if (type === DOMAIN_EVENTS.SUBAGENTS_CHANGED) broadcasts.push(String(data["sessionId"]));
+				},
+				{projectsDir: testDir, plansDir: ""},
+			);
+			return getSubagentsForSession(db.index, sessionId)[0]?.pendingCommand ?? null;
+		};
+
+		const running = await append([call]);
+		const finished = await append([call, result]);
+
+		expect({running, finished, broadcasts}).toStrictEqual({
+			running: "Run alternating corpus compile benchmarks",
+			finished: null,
+			broadcasts: [sessionId, sessionId],
+		});
 	});
 });

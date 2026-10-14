@@ -654,6 +654,8 @@ export interface DbSubagent {
 	taskKind?: string | null;
 	/** The meta.json `name` a teammate is addressed by. */
 	name?: string | null;
+	/** The description of the agent's foreground Bash call still waiting on its result. */
+	pendingCommand?: string | null;
 	filePath: string;
 	mtimeMs: number;
 }
