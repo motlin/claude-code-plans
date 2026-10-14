@@ -1363,10 +1363,13 @@ interface UndeliveredRow {
 /**
  * The task-event row each slot of undelivered `<task-notification>`s draws, keyed by the slot's
  * first index in `lines`. Upstream draws a completed command and a stopped task, one alone as its
- * own row and two or more in a row as one summary row; a task launched in this transcript already
- * settles on its own launch row.
+ * own row and two or more in a row as one summary row; only a line that renders ends the run. A
+ * task launched in this transcript already settles on its own launch row.
  */
-function undeliveredTaskRows(lines: readonly SessionLine[]): Map<number, UndeliveredRow> {
+function undeliveredTaskRows(
+	lines: readonly SessionLine[],
+	renders: (index: number) => boolean,
+): Map<number, UndeliveredRow> {
 	const rows = new Map<number, UndeliveredRow>();
 	let launches: Set<string> | null = null;
 	let slot: Array<{index: number; label: string; notification: TaskNotification}> = [];
@@ -1387,7 +1390,7 @@ function undeliveredTaskRows(lines: readonly SessionLine[]): Map<number, Undeliv
 	};
 	for (const [index, line] of lines.entries()) {
 		if (line.type !== "queued-task-notification") {
-			flush();
+			if (renders(index)) flush();
 			continue;
 		}
 		const notification = parseTaskNotification(line.content);
@@ -1901,15 +1904,18 @@ function buildSessionListEntries(
 		return false;
 	};
 	const skipSet = buildSkipSet(lines);
-	const undeliveredRows = undeliveredTaskRows(lines);
-	for (const [index, line] of lines.entries()) {
-		if (line.type === "queued-task-notification" && !undeliveredRows.has(index)) skipSet.add(index);
-	}
 	const hoistedCompletions = verbose ? new Map<number, never>() : hoistedAgentCompletions(lines);
 	if (!verbose) {
 		for (const index of settledCompletionIndices(lines)) skipSet.add(index);
 		for (const index of localCommandIndices(lines)) skipSet.add(index);
 		for (const {index} of hoistedCompletions.values()) skipSet.add(index);
+	}
+	const undeliveredRows = undeliveredTaskRows(
+		lines,
+		(index) => !skipSet.has(index) && isLineVisible(lineAt(index), renderProps, verbose),
+	);
+	for (const [index, line] of lines.entries()) {
+		if (line.type === "queued-task-notification" && !undeliveredRows.has(index)) skipSet.add(index);
 	}
 	const compactionStatuses: ReadonlySet<number> = renderProps.showCompactSummaries
 		? new Set()

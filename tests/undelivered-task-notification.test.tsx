@@ -129,6 +129,30 @@ describe("undelivered background-task notifications", () => {
 		expect(taskEventRows(container)).toStrictEqual(["1 background command completed, 1 stopped"]);
 	});
 
+	it("keeps one summary row when only a hidden line sits between two undelivered notifications, as upstream walks rendered items", () => {
+		const container = renderRecords([
+			reply,
+			enqueue(
+				notification("toolu_elsewhere1", "completed", 'Background command "First" completed (exit code 0)'),
+			),
+			{
+				type: "user",
+				uuid: "meta-1",
+				isMeta: true,
+				timestamp: "2026-10-11T14:56:16.000Z",
+				message: {role: "user", content: "Caveat: hidden meta context"},
+			},
+			enqueue(
+				notification("toolu_elsewhere2", "completed", 'Background command "Second" completed (exit code 0)'),
+			),
+		]);
+
+		expect({
+			rows: taskEventRows(container),
+			metaShown: container.textContent.includes("hidden meta context"),
+		}).toStrictEqual({rows: ["2 background commands completed"], metaShown: false});
+	});
+
 	it("draws no status row for a notification the queue delivered", () => {
 		const content = notification(
 			"toolu_elsewhere1",
