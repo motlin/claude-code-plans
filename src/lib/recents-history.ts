@@ -1,3 +1,4 @@
+import {isSessionRouteAlias} from "./session-route-alias";
 import {z} from "zod";
 import {defined} from "./defined";
 import {toMdSlug} from "./md-slug";
@@ -70,12 +71,12 @@ function parseRecentRoute(pathname: string): RecentTarget | null {
 export function resolveRecentSession(entry: RecentEntry, resolveAlias: (alias: string) => string | null): RecentEntry {
 	if (entry.kind !== "session" && entry.kind !== "subagents") return entry;
 	const id = entry.key.slice(entry.kind.length + 1);
-	const sessionId = id.startsWith("session_") ? resolveAlias(id) : id;
+	const sessionId = isSessionRouteAlias(id) ? resolveAlias(id) : id;
 	if (sessionId === null) return entry;
 	const key = `${entry.kind}:${sessionId}`;
 	const hrefTarget = routeToRecent(entry.href);
 	const hrefId = hrefTarget?.key.slice(hrefTarget.kind.length + 1);
-	const hrefOwner = hrefId?.startsWith("session_") ? resolveAlias(hrefId) : hrefId;
+	const hrefOwner = hrefId !== undefined && isSessionRouteAlias(hrefId) ? resolveAlias(hrefId) : hrefId;
 	const href =
 		hrefTarget?.kind === entry.kind && hrefOwner === sessionId
 			? entry.href

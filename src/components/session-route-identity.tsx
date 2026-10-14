@@ -1,3 +1,4 @@
+import {isSessionRouteAlias} from "../lib/session-route-alias";
 import {useQueries} from "@tanstack/react-query";
 import {useLocation, useRouter} from "@tanstack/react-router";
 import {useEffect, useState, type ReactNode} from "react";
@@ -24,7 +25,7 @@ export function SessionRouteIdentity({
 }): ReactNode {
 	const router = useRouter();
 	const location = useLocation();
-	const alias = routeId.startsWith("session_");
+	const alias = isSessionRouteAlias(routeId);
 	const queries: ReturnType<typeof sessionIdentityQueryOptions>[] = alias
 		? [sessionIdentityQueryOptions(routeId)]
 		: [];

@@ -1,3 +1,4 @@
+import {isSessionRouteAlias} from "../lib/session-route-alias";
 import {useEffect} from "react";
 import {useRouter} from "@tanstack/react-router";
 import {useQueryClient, type QueryClient} from "@tanstack/react-query";
@@ -33,7 +34,7 @@ function resolvedTarget(queryClient: QueryClient, pathname: string): RecentTarge
 	if (!resolved) return null;
 	if (
 		(resolved.kind === "session" || resolved.kind === "subagents") &&
-		resolved.key.slice(resolved.kind.length + 1).startsWith("session_")
+		isSessionRouteAlias(resolved.key.slice(resolved.kind.length + 1))
 	)
 		return null;
 	return resolved;

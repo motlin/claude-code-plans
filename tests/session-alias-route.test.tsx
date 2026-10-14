@@ -285,6 +285,29 @@ it("keeps a cold alias pending without sending it to UUID APIs, then opens its r
 	});
 });
 
+it("resolves a short session ID prefix to its full ID before any session query or subscription is keyed by it", async () => {
+	const {fetcher, finish} = await setup({initial: "/session/6473581f"});
+	const pending = {
+		skeleton: screen.queryByTestId("session-skeleton") !== null,
+		calls: fetcher.mock.calls.map(([url]) => url),
+	};
+	await actAndSettle(() => {
+		finish(Response.json({sessionId: ALICE}));
+	});
+	const page = await screen.findByTestId("session");
+	expect({
+		pending,
+		owner: page.dataset["session"],
+		owners: new Set(observed.owners),
+		urls: fetcher.mock.calls.map(([url]) => url),
+	}).toStrictEqual({
+		pending: {skeleton: true, calls: ["/api/sessions/6473581f/identity"]},
+		owner: ALICE,
+		owners: new Set([ALICE]),
+		urls: ["/api/sessions/6473581f/identity", `/api/sessions/${ALICE}`],
+	});
+});
+
 it("leaves UUID navigation immediate with exactly four synchronous prefetches and no identity lookup", async () => {
 	const {fetcher} = await setup({initial: `/session/${ALICE}`});
 	expect({

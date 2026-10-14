@@ -1,3 +1,4 @@
+import {isSessionRouteAlias} from "../lib/session-route-alias";
 import {createFileRoute, Link, useRouter} from "@tanstack/react-router";
 import {useSuspenseQuery} from "@tanstack/react-query";
 import {Suspense, useEffect, useMemo, useState} from "react";
@@ -14,7 +15,7 @@ export const Route = createFileRoute("/session/$id_/source/$uuid")({
 	component: SourceViewPage,
 	// Identity and source data load inside their boundaries, so navigation can paint the app shell first.
 	loader: ({context: {queryClient}, params}) => {
-		const identity = params.id.startsWith("session_")
+		const identity = isSessionRouteAlias(params.id)
 			? queryClient.getQueryState(sessionQueryKeys.identity(params.id))
 			: undefined;
 		return {

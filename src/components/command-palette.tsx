@@ -1,3 +1,4 @@
+import {isSessionRouteAlias} from "../lib/session-route-alias";
 import {Dialog} from "@base-ui/react/dialog";
 import {Command, defaultFilter} from "cmdk";
 import {useNavigate, useRouterState} from "@tanstack/react-router";
@@ -441,7 +442,7 @@ function mruRecents(
 		if (entry.key === currentKey) continue;
 		if (entry.kind === "session") {
 			const id = entry.key.slice("session:".length);
-			if (id.startsWith("session_") || attentionIds.has(id)) continue;
+			if (isSessionRouteAlias(id) || attentionIds.has(id)) continue;
 			recents.push({
 				kind: "session",
 				id,
@@ -619,7 +620,7 @@ function usePaletteHistory(): RecentEntry[] {
 				snapshot
 					.filter((entry) => entry.kind === "session")
 					.map((entry) => entry.key.slice("session:".length))
-					.filter((id) => id.startsWith("session_")),
+					.filter(isSessionRouteAlias),
 			),
 		],
 		[snapshot],

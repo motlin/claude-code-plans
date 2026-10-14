@@ -1,3 +1,4 @@
+import {isSessionRouteAlias} from "../lib/session-route-alias";
 import {createFileRoute, Link, useRouter} from "@tanstack/react-router";
 import {Suspense, useEffect} from "react";
 import {SessionRouteIdentity} from "../components/session-route-identity";
@@ -17,7 +18,7 @@ import {toSubagentSessionId} from "../lib/subagents";
 export const Route = createFileRoute("/session/$id_/subagents")({
 	component: SubagentsPage,
 	loader: ({context: {queryClient}, params}): {title: string} | Promise<{title: string}> => {
-		if (params.id.startsWith("session_")) {
+		if (isSessionRouteAlias(params.id)) {
 			const options = sessionIdentityQueryOptions(params.id);
 			const identity = queryClient.getQueryState(options.queryKey);
 			if (identity?.status === "error") return {title: sessionIdentityFailure(identity.error).title};

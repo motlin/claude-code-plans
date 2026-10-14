@@ -1,3 +1,4 @@
+import {isSessionRouteAlias} from "../lib/session-route-alias";
 import type {MainScrollRestorationSnapshot} from "../hooks/use-main-scroll-restoration";
 import {SessionRouteIdentity} from "../components/session-route-identity";
 import {
@@ -26,7 +27,7 @@ export const Route = createFileRoute("/session/$id")({
 	// cache is synchronous, so a warm visit still titles the tab immediately.
 	loader: ({context: {queryClient}, params}) => {
 		let sessionId = params.id;
-		if (sessionId.startsWith("session_")) {
+		if (isSessionRouteAlias(sessionId)) {
 			const options = sessionIdentityQueryOptions(sessionId);
 			const identity = queryClient.getQueryState(options.queryKey);
 			// A title refresh must not restart a terminal failure's automatic retries.
@@ -161,7 +162,7 @@ function ResolvedSessionRoute({
 					sessionId,
 					routeId,
 					...(state.sessionIdentity?.aliasRouteId ? {aliasRouteId: state.sessionIdentity.aliasRouteId} : {}),
-					...(params.id.startsWith("session_") ? {aliasRouteId: params.id} : {}),
+					...(isSessionRouteAlias(params.id) ? {aliasRouteId: params.id} : {}),
 					scrollKey: sessionScrollKey(router.state.location, sessionId),
 				},
 			}),
@@ -199,7 +200,7 @@ function useCanonicalSessionRoute(
 	const replacing = useRef<string | undefined>(undefined);
 	if (visit.current.entryKey !== entryKey) visit.current = {entryKey, seeded: new Set<string>()};
 	// An explicitly opened historical alias is already the user's chosen URL.
-	const canonical = initialRouteId.startsWith("session_") ? undefined : detail.data?.canonicalRouteId;
+	const canonical = isSessionRouteAlias(initialRouteId) ? undefined : detail.data?.canonicalRouteId;
 	const freshDetail =
 		canonical !== undefined &&
 		detail.isSuccess &&

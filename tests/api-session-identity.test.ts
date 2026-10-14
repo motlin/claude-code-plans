@@ -338,3 +338,36 @@ describe("detail alias backfill snapshot", () => {
 		expect(result).toStrictEqual({body: {...expectedDetail(), canonicalRoutePending: true}, sql: 12});
 	});
 });
+
+describe("short session ID prefix identity", () => {
+	const FIRST = "6473581f-86a0-44da-8043-86ef0a506b51";
+	const SECOND = "6473581f-0000-4000-8000-000000000002";
+	const OTHER = "4239b953-1111-4111-8111-111111111111";
+
+	it("resolves a unique prefix to its full session ID and reports ambiguous, missing and pending prefixes", async () => {
+		await indexSession(FIRST, []);
+		await indexSession(OTHER, []);
+		const unique = await identity("6473581f");
+		const dashed = await identity("6473581f-86a0");
+		const full = await identity(FIRST);
+		await indexSession(SECOND, []);
+		const ambiguous = await identity("6473581f");
+		const longer = await identity("6473581f-86");
+		const missing = await identity("deadbeef");
+		indexing = true;
+		const pending = await identity("deadbeef");
+		expect({unique, dashed, full, ambiguous, longer, missing, pending}).toStrictEqual({
+			unique: {status: 200, body: {sessionId: FIRST}, retryAfter: null},
+			dashed: {status: 200, body: {sessionId: FIRST}, retryAfter: null},
+			full: {status: 404, body: {error: "Session alias not found"}, retryAfter: null},
+			ambiguous: {
+				status: 409,
+				body: {error: "Session alias has multiple local owners"},
+				retryAfter: null,
+			},
+			longer: {status: 200, body: {sessionId: FIRST}, retryAfter: null},
+			missing: {status: 404, body: {error: "Session alias not found"}, retryAfter: null},
+			pending: {status: 503, body: {error: "Session index is still loading"}, retryAfter: "3"},
+		});
+	});
+});

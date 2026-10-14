@@ -1359,6 +1359,17 @@ function findProjectForTaskDir(db: IndexDb, projectDir: string): TaskDirProject 
 	return idTailProjects.length === 1 ? idTailProjects[0] : undefined;
 }
 
+/** Up to `limit` indexed session IDs starting with a hex `prefix`, so a caller can tell unique from ambiguous. */
+export function getSessionIdsByPrefix(db: IndexDb, prefix: string, limit: number): string[] {
+	return db
+		.select({id: schema.sessions.id})
+		.from(schema.sessions)
+		.where(like(schema.sessions.id, `${prefix}%`))
+		.limit(limit)
+		.all()
+		.map(({id}) => id);
+}
+
 /**
  * Label a task directory whose name did not match any sessions.id. Directories
  * under ~/.claude/tasks/ are sometimes a `session-<idprefix>` shorthand, a
