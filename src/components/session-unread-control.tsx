@@ -1,3 +1,4 @@
+import {Laptop} from "lucide-react";
 import type {SessionListItem} from "../lib/api/sessions";
 import {prGlyph} from "../lib/pr-status";
 import {sessionMenuReadState} from "../lib/session-menu-items";
@@ -54,5 +55,45 @@ export function SessionRowStatusDot({session, tabIndex}: {session: SessionListIt
 				{icon}
 			</button>
 		</Tooltip>
+	);
+}
+
+/**
+ * claude.ai/code's trailing sidebar-row decoration: the status mark (amber Awaiting input, blinking
+ * muted Running, accent Unread response) or, on a settled row, the muted environment glyph, here
+ * the laptop the local CLI runs on. It fades out while the row is hovered, keyboard-focused or has
+ * its menu open, when the row's More options button takes the same 24px slot.
+ */
+export function SidebarRowDecoration({session}: {session: SessionListItem}) {
+	const unseen = useHasUnseenWork(session.id);
+	const {settings} = useSettings();
+	const kind = sessionRowIconKind({
+		bucket: session.bucket,
+		unseen,
+		serverUnseen: session.unseen,
+		prStatus: session.prStatus,
+		showPrStatus: settings.sessionListPrefs.showPrStatus,
+	});
+	return (
+		<span
+			data-row-decoration=""
+			className="pointer-events-none absolute top-1/2 right-[calc((var(--sb-row-h,32px)-var(--sb-row-ctl,24px))/2)] flex size-[var(--sb-row-ctl,24px)] -translate-y-1/2 items-center justify-center group-hover/session-row:opacity-0 group-has-[:focus-visible]/session-row:opacity-0 group-has-[[data-popup-open]]/session-row:opacity-0 pointer-coarse:opacity-0"
+		>
+			{kind === "idle" ? (
+				<span
+					aria-hidden="true"
+					data-env-glyph="local"
+					className="flex size-full shrink-0 items-center justify-center"
+				>
+					<Laptop className="size-4 shrink-0 text-ink-muted" />
+				</span>
+			) : (
+				<SessionStateIcon
+					kind={kind}
+					{...(kind === "ready" ? {label: "Unread response"} : {})}
+					{...(kind === "pr" && session.prStatus !== undefined ? {pr: prGlyph(session.prStatus)} : {})}
+				/>
+			)}
+		</span>
 	);
 }

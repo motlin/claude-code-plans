@@ -17,6 +17,7 @@ import {SessionGroups} from "../src/components/sidebar/session-groups";
 import {RecentSessionsResponse, recentSessionsInfiniteQueryOptions} from "../src/lib/api/sessions";
 import type {SessionBucket} from "../src/lib/session-state";
 import {readSidebarState} from "../src/lib/sidebar-store";
+import {__unreadStoreTesting, syncUnseenFromSummaries} from "../src/lib/unread-store";
 import {installLocalStorage} from "./fake-storage";
 import {readFileSync} from "node:fs";
 
@@ -156,24 +157,38 @@ describe("sidebar SessionGroups", () => {
 		expect(groupNames(container)).toEqual(["Working", "Completed"]);
 	});
 
-	it("shows each row's session title with its state icon", async () => {
+	it("shows each row's session title with its trailing state mark beside the link", async () => {
 		await renderGroups(FIXTURE);
 
-		// The icon's aria-label joins the title in the accessible name, as upstream's markup does.
-		const blocked = screen.getByRole("link", {name: /Blocked one$/});
-		expect(blocked.getAttribute("href")).toBe("/session/b1");
-		expect(within(blocked).getByRole("status").getAttribute("aria-label")).toBe("Awaiting input");
-		expect(
-			within(screen.getByRole("link", {name: /Working one$/}))
+		const rowOf = (name: RegExp) => {
+			const row = screen.getByRole("link", {name}).closest<HTMLElement>("[data-session-actions]");
+			if (row === null) throw new Error(`no row ${String(name)}`);
+			return row;
+		};
+		// The mark sits beside the link, as upstream's row decoration does, so the link reads as the title.
+		const blocked = screen.getByRole("link", {name: "Blocked one"});
+		expect({
+			href: blocked.getAttribute("href"),
+			blocked: within(rowOf(/^Blocked one$/))
 				.getByRole("status")
 				.getAttribute("aria-label"),
-		).toBe("Running");
-		expect(
-			within(screen.getByRole("link", {name: /Completed older$/}))
-				.getByRole("img")
+			working: within(rowOf(/^Working one$/))
+				.getByRole("status")
 				.getAttribute("aria-label"),
-		).toBe("Idle");
-		expect(screen.queryByText("project-b1")).toBeNull();
+			settled: {
+				mark: within(rowOf(/^Completed older$/)).queryByRole("img"),
+				env: rowOf(/^Completed older$/)
+					.querySelector("[data-env-glyph]")
+					?.getAttribute("aria-hidden"),
+			},
+			project: screen.queryByText("project-b1"),
+		}).toStrictEqual({
+			href: "/session/b1",
+			blocked: "Awaiting input",
+			working: "Running",
+			settled: {mark: null, env: "true"},
+			project: null,
+		});
 	});
 
 	it("styles the row kebab like upstream: radius 6 (r5), ink, no hover background of its own", async () => {
@@ -251,6 +266,44 @@ describe("sidebar SessionGroups", () => {
 		const headers = [...container.querySelectorAll('[data-testid="sidebar-recents"] [data-sidebar-group-label]')];
 		expect(headers.map((header) => within(header as HTMLElement).queryAllByText("Filter").length)).toEqual([1, 1]);
 		expect(within(headers[0] as HTMLElement).getByRole("button", {name: "Working"})).toBeTruthy();
+	});
+
+	it("draws each row's status in upstream's trailing slot, with no leading glyph, the env laptop on a settled row", async () => {
+		__unreadStoreTesting.reset();
+		syncUnseenFromSummaries(FIXTURE.map(({id, unseen}) => ({id, unseen})));
+		const {container} = await renderGroups(FIXTURE);
+		const rowOf = (title: string) => {
+			const link = [...container.querySelectorAll<HTMLElement>("a[data-row-main-button]")].find((node) =>
+				node.textContent.includes(title),
+			);
+			if (link === undefined) throw new Error(`no row ${title}`);
+			return link;
+		};
+		const describeRow = (title: string) => {
+			const link = rowOf(title);
+			const decoration = link.closest("[data-session-actions]")?.querySelector("[data-row-decoration]");
+			const mark = decoration?.querySelector("[role=status], [role=img]");
+			return {
+				leading: link.querySelector(".df-leading-slot") !== null,
+				mark:
+					mark === null || mark === undefined
+						? null
+						: [mark.getAttribute("role"), mark.getAttribute("aria-label")],
+				env: decoration?.querySelector("[data-env-glyph]")?.getAttribute("data-env-glyph") ?? null,
+				hidesOnHover: decoration?.className.split(" ").includes("group-hover/session-row:opacity-0") ?? false,
+			};
+		};
+		expect({
+			blocked: describeRow("Blocked one"),
+			working: describeRow("Working one"),
+			review: describeRow("Review one"),
+			done: describeRow("Completed newest"),
+		}).toStrictEqual({
+			blocked: {leading: false, mark: ["status", "Awaiting input"], env: null, hidesOnHover: true},
+			working: {leading: false, mark: ["status", "Running"], env: null, hidesOnHover: true},
+			review: {leading: false, mark: ["status", "Unread response"], env: null, hidesOnHover: true},
+			done: {leading: false, mark: null, env: "local", hidesOnHover: true},
+		});
 	});
 
 	it("has no Load more sessions row, even while the feed has another page", async () => {

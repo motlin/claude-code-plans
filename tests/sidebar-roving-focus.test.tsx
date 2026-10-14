@@ -151,15 +151,18 @@ describe("sidebar session list roving focus", () => {
 		expect(tabStops()).toEqual([toggle]);
 	});
 
-	it("takes row kebabs and unread status glyphs out of the tab order but keeps them clickable", async () => {
+	it("takes row kebabs out of the tab order but keeps them clickable, and draws unread marks as plain status", async () => {
 		__unreadStoreTesting.reset();
 		syncUnseenFromSummaries(FIXTURE.map(({id}) => ({id, unseen: true})));
 		await renderGroups();
 
 		const kebabs = screen.getAllByRole("button", {name: /^More options for /});
-		const glyphs = screen.getAllByRole("button", {name: "Click to mark as read"});
-		expect(kebabs.map((kebab) => kebab.getAttribute("tabindex"))).toEqual(["-1", "-1", "-1"]);
-		expect(glyphs.map((glyph) => glyph.getAttribute("tabindex"))).toEqual(["-1", "-1", "-1"]);
+		expect({
+			kebabs: kebabs.map((kebab) => kebab.getAttribute("tabindex")),
+			// Upstream's trailing mark is not interactive; the row menu marks a session read.
+			markButtons: screen.queryAllByRole("button", {name: "Click to mark as read"}).length,
+			unread: screen.getAllByRole("status", {name: "Unread response"}).length,
+		}).toStrictEqual({kebabs: ["-1", "-1", "-1"], markButtons: 0, unread: 3});
 
 		fireEvent.click(kebabs[0]!);
 		expect(await screen.findByRole("menu")).toBeTruthy();

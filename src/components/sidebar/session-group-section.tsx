@@ -20,7 +20,7 @@ import {
 import {ArchivedBadge} from "../archived-badge";
 import {SessionActionsMenu, SessionRowTitle} from "../session-actions-menu";
 import {SessionHoverCard} from "../session-hover-card";
-import {SessionRowStatusDot} from "../session-unread-control";
+import {SidebarRowDecoration} from "../session-unread-control";
 import {Tooltip} from "../ui/tooltip";
 import {CustomGroupHeader} from "./custom-group-header";
 import {GroupAppearanceMark} from "./group-appearance";
@@ -457,10 +457,8 @@ function SessionRowLink({
 					}}
 					className={`${ROW_CLASS} text-secondary hover:bg-[var(--sb-hover)] focus-visible:bg-[var(--sb-hover)] data-[selected=focused]:bg-[var(--sb-selected)] data-[selected=focused]:text-primary data-[multi-selected]:bg-[var(--sb-selected)] data-[multi-selected]:text-primary`}
 				>
-					<span className="df-leading-slot text-secondary">
-						<SessionRowStatusDot session={row.session} tabIndex={-1} />
-					</span>
-					<span data-row-label className="min-w-0 flex-1">
+					{/* Upstream starts the title 10px into the row and keeps it clear of the trailing 24px slot */}
+					<span data-row-label className="min-w-0 flex-1 ps-2 pe-7">
 						<SessionRowTitle render={(title) => <FadeLabel text={title} />} />
 					</span>
 					{lineage !== undefined && (
@@ -470,6 +468,8 @@ function SessionRowLink({
 					)}
 					{row.archived && <ArchivedBadge />}
 				</Link>
+				{/* Upstream's status sits beside the link, outside its accessible name */}
+				<SidebarRowDecoration session={row.session} />
 			</SessionActionsMenu>
 		</SessionHoverCard>
 	);
