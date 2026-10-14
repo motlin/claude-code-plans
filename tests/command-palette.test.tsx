@@ -567,6 +567,28 @@ describe("CommandPalette shell", () => {
 		]);
 	});
 
+	it("keeps up to three Recents rows inside the organic 7, between Needs attention and Actions, as upstream's 4 + 3", async () => {
+		const dialog = await openPalette([
+			...Array.from({length: 9}, (_, index) => recentSession(`s-${index}`, `Waiting ${index}`, "blocked")),
+			...Array.from({length: 5}, (_, index) => recentSession(`r-${index}`, `Recent ${index}`)),
+		]);
+
+		await within(dialog).findByRole("option", {name: /Waiting 0/});
+		expect({
+			groups: groupLabels(dialog).map(([heading, labels]) => [heading, labels.length]),
+			named: ["Needs attention", "Recents", "Actions"].map(
+				(name) => within(dialog).queryByRole("group", {name}) !== null,
+			),
+		}).toStrictEqual({
+			groups: [
+				["Needs attention", 4],
+				["Recents", 3],
+				["Actions", 1],
+			],
+			named: [true, true, true],
+		});
+	});
+
 	it("hides navigation commands until typed", async () => {
 		const dialog = await openPalette();
 

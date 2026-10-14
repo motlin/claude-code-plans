@@ -149,6 +149,8 @@ export const PALETTE_RECENT_LIMIT = 25;
 
 /** Upstream caps the default entrypoint's organic list (Needs attention + Recents) at 7. */
 const ORGANIC_LIMIT = 7;
+/** Recents keep up to 3 of those rows, as upstream's 4 Needs attention + 3 Recents. */
+const RECENTS_RESERVED = 3;
 
 export const PALETTE_SEARCH_DEBOUNCE_MS = 150;
 const SKELETON_ROWS = 3;
@@ -478,7 +480,6 @@ function paletteGroups(
 			fallback.push({kind: "session", id: session.id, title: session.title});
 		}
 	}
-	const cappedAttention = attention.slice(0, ORGANIC_LIMIT);
 	const visited = mruRecents(
 		history,
 		currentKey,
@@ -486,6 +487,7 @@ function paletteGroups(
 		new Set(attention.map((session) => session.id)),
 	);
 	const recents = visited.length > 0 ? visited : fallback;
+	const cappedAttention = attention.slice(0, ORGANIC_LIMIT - Math.min(RECENTS_RESERVED, recents.length));
 	return {
 		attention: cappedAttention,
 		recents: recents.slice(0, ORGANIC_LIMIT - cappedAttention.length),
