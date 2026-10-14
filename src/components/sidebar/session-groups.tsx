@@ -264,7 +264,8 @@ export function SessionGroups({
 								group={group}
 								expanded={!collapsed.has(group.key)}
 								activeItemId={activeItemId}
-								filterSlot={index === 0 ? filterSlot : undefined}
+								filterSlot={filterSlot}
+								leadsList={index === 0}
 								onShowMore={() => {
 									setUncapped((previous) => new Set(previous).add(group.key));
 									if (canLoadNextPage(groups.filter((other) => other.key !== group.key))) {

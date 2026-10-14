@@ -24,6 +24,7 @@ import {SessionRowStatusDot} from "../session-unread-control";
 import {Tooltip} from "../ui/tooltip";
 import {CustomGroupHeader} from "./custom-group-header";
 import {GroupAppearanceMark} from "./group-appearance";
+import {NewSessionHeaderButton} from "./new-session-row";
 import {ProjectGroupHeader} from "./project-group-header";
 import {SelectAllGroupHeader} from "./select-all-group-header";
 import {useSidebarSelection} from "./selection-context";
@@ -41,12 +42,36 @@ function archivableIds(group: SessionGroup<SidebarSessionRow>): string[] {
 export const ROW_CLASS =
 	"flex h-[var(--sb-row-h)] w-full shrink-0 items-center gap-[var(--sb-row-gap)] rounded-[var(--sb-radius)] px-[var(--sb-row-px)] text-left text-[length:var(--sb-row-font)] no-underline";
 
+/**
+ * A section header's trailing controls, as upstream lays them out: Group and sort revealed on hover
+ * or keyboard focus (always on touch, and while its menu is open), then the first section's
+ * always-visible New session +.
+ */
+function HeaderControls({filterSlot, leadsList}: {filterSlot: ReactNode; leadsList: boolean}) {
+	const hasFilter = filterSlot !== undefined && filterSlot !== null;
+	if (!hasFilter && !leadsList) return null;
+	return (
+		<div className="flex items-center">
+			{hasFilter && (
+				<span
+					data-header-reveal=""
+					className="flex w-0 overflow-hidden group-hover/labelrow:w-auto group-hover/labelrow:overflow-visible group-has-[:focus-visible]/labelrow:w-auto group-has-[:focus-visible]/labelrow:overflow-visible has-[[data-popup-open]]:w-auto has-[[data-popup-open]]:overflow-visible pointer-coarse:w-auto pointer-coarse:overflow-visible"
+				>
+					{filterSlot}
+				</span>
+			)}
+			{leadsList && <NewSessionHeaderButton />}
+		</div>
+	);
+}
+
 /** A collapsible sidebar group: label row (caret on hover), session rows, "Show N more" / "Show less". */
 export function GroupSection({
 	group,
 	expanded,
 	activeItemId,
 	filterSlot,
+	leadsList = false,
 	onShowMore,
 	onShowLess,
 	dragRowProps,
@@ -62,6 +87,8 @@ export function GroupSection({
 	expanded: boolean;
 	activeItemId: string | null;
 	filterSlot: ReactNode;
+	/** The list's first section, whose header also carries New session. */
+	leadsList?: boolean;
 	onShowMore: () => void;
 	onShowLess: () => void;
 	/** Makes each row a sidebar drag source (pin, reorder, unpin). */
@@ -141,7 +168,7 @@ export function GroupSection({
 						{toggle}
 					</CustomGroupHeader>
 				)}
-				{filterSlot}
+				<HeaderControls filterSlot={filterSlot} leadsList={leadsList} />
 			</div>
 			{expanded && (
 				<div ref={rowsRef} data-group-rows className="flex flex-col gap-px">
@@ -200,10 +227,10 @@ export function EmptyGroupSection({label, filterSlot}: {label: string; filterSlo
 		>
 			<div
 				data-sidebar-group-label
-				className="df-label-inset flex min-h-[calc(var(--sb-group-pt)+var(--sb-row-h)-4px)] w-full items-center gap-[var(--sb-row-gap)] pt-[var(--sb-group-pt)] pr-[calc((var(--sb-row-h)-24px)/2)] pb-1 text-[length:var(--sb-group-font)] leading-4 text-ink-muted"
+				className="group/labelrow df-label-inset flex min-h-[calc(var(--sb-group-pt)+var(--sb-row-h)-4px)] w-full items-center gap-[var(--sb-row-gap)] pt-[var(--sb-group-pt)] pr-[calc((var(--sb-row-h)-24px)/2)] pb-1 text-[length:var(--sb-group-font)] leading-4 text-ink-muted"
 			>
 				<span className="min-w-0 flex-1 truncate">{label}</span>
-				{filterSlot}
+				<HeaderControls filterSlot={filterSlot} leadsList />
 			</div>
 			<div data-sidebar-empty className={`${ROW_CLASS} text-ink-muted`}>
 				<span className="df-leading-slot" />

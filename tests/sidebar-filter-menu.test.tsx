@@ -126,7 +126,9 @@ function groupNames(container: HTMLElement): string[] {
 }
 
 function filterButton(): HTMLElement {
-	return screen.getByRole("button", {name: "Group and sort"});
+	const [first] = screen.getAllByRole("button", {name: "Group and sort"});
+	if (first === undefined) throw new Error("Expected a Group and sort button");
+	return first;
 }
 
 async function openFilterMenu(): Promise<HTMLElement> {
@@ -163,12 +165,20 @@ beforeEach(() => {
 });
 
 describe("sidebar Group and sort menu", () => {
-	it("sits on the first group header only, labelled Group and sort as upstream's session list", async () => {
+	it("puts Group and sort on every section header, revealed on hover, and an always-visible New session + on the first", async () => {
 		const {container} = await renderSidebarGroups();
 
 		const headers = [...container.querySelectorAll('[data-testid="sidebar-recents"] [data-sidebar-group-label]')];
-		expect(headers.map((header) => header.querySelectorAll('button[aria-haspopup="menu"]').length)).toEqual([1, 0]);
-		expect(filterButton().getAttribute("aria-label")).toBe("Group and sort");
+		expect({
+			groupAndSort: headers.map(
+				(header) => header.querySelectorAll('button[aria-label="Group and sort"]').length,
+			),
+			newSession: headers.map((header) => header.querySelectorAll('button[aria-label="New session"]').length),
+			revealed: filterButton()
+				.closest("[data-header-reveal]")
+				?.className.split(" ")
+				.filter((name) => name === "w-0" || name === "group-hover/labelrow:w-auto"),
+		}).toStrictEqual({groupAndSort: [1, 1], newSession: [1, 0], revealed: ["w-0", "group-hover/labelrow:w-auto"]});
 	});
 
 	it("styles the trigger like upstream: radius 6 (r5), secondary ink", async () => {

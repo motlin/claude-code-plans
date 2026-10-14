@@ -242,14 +242,14 @@ describe("sidebar SessionGroups", () => {
 		expect(screen.queryByRole("button", {name: /^Show less/})).toBeNull();
 	});
 
-	it("puts the filter slot on the first group header only", async () => {
+	it("puts the filter slot on every group header, as upstream puts Group and sort on each section", async () => {
 		const {container} = await renderGroups(
 			[session("w1", "Working one", "working", 1), session("d1", "Completed one", "done", 5)],
 			{filterSlot: <button type="button">Filter</button>},
 		);
 
 		const headers = [...container.querySelectorAll('[data-testid="sidebar-recents"] [data-sidebar-group-label]')];
-		expect(headers.map((header) => within(header as HTMLElement).queryAllByText("Filter").length)).toEqual([1, 0]);
+		expect(headers.map((header) => within(header as HTMLElement).queryAllByText("Filter").length)).toEqual([1, 1]);
 		expect(within(headers[0] as HTMLElement).getByRole("button", {name: "Working"})).toBeTruthy();
 	});
 

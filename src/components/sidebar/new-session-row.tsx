@@ -4,6 +4,7 @@ import type {MouseEvent} from "react";
 import {useShortcutKeys} from "../../hooks/use-shortcut";
 import {requestHomeComposerFocus} from "../../lib/home-composer-focus";
 import {Shortcut} from "../ui/shortcut";
+import {Tooltip} from "../ui/tooltip";
 
 const ROW_CLASS =
 	"group df-nav-row h-[var(--sb-row-h)] rounded-[var(--sb-radius)] flex-1 hover:[&_.df-leading-slot]:text-primary data-[selected=focused]:[&_.df-leading-slot]:text-primary";
@@ -49,5 +50,28 @@ export function NewSessionRow() {
 				</span>
 			</Link>
 		</div>
+	);
+}
+
+/**
+ * Upstream's "+" New session button on the first sidebar section header: always visible, it goes
+ * home and focuses the composer like the New row.
+ */
+export function NewSessionHeaderButton() {
+	const navigate = useNavigate();
+	return (
+		<Tooltip content="New session" className="-my-1 shrink-0">
+			<button
+				type="button"
+				aria-label="New session"
+				data-row-action=""
+				// The list keeps one roving tab stop; the New row and ⇧⌘O reach the same action by keyboard.
+				tabIndex={-1}
+				onClick={() => void navigate({to: "/"}).then(requestHomeComposerFocus)}
+				className="relative flex size-6 shrink-0 items-center justify-center rounded-r5 text-secondary hover:bg-[var(--sb-hover)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100"
+			>
+				<Plus aria-hidden="true" className="size-4" />
+			</button>
+		</Tooltip>
 	);
 }
