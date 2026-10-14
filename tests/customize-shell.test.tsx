@@ -488,6 +488,26 @@ describe("customize discover", () => {
 		});
 	});
 
+	it("draws each Discover card as upstream does: 11px radius, 14px padding, transparent with a hairline, a 48px tile with a 26px glyph and 17px/16px text", async () => {
+		await renderCustomize("/customize/plugins?view=discover");
+		const card = screen.getAllByTestId("customize-discover-card")[0];
+		const classes = (element: Element | null | undefined) => new Set(element?.getAttribute("class")?.split(" "));
+		const missing = (element: Element | null | undefined, expected: string[]) =>
+			expected.filter((name) => !classes(element).has(name));
+		expect({
+			card: missing(card, ["rounded-discover-card", "p-3.5", "border", "border-border"]),
+			cardFilled: [...classes(card)].filter((name) => name.startsWith("bg-")),
+			tile: missing(card?.querySelector("[data-testid=customize-icon-tile]"), [
+				"size-12",
+				"rounded-r6",
+				"bg-surface-0",
+			]),
+			glyph: missing(card?.querySelector("[data-testid=customize-icon-tile] svg"), ["size-[26px]"]),
+			description: missing(card?.querySelector("p"), ["leading-[17px]"]),
+			meta: missing(card?.querySelector("[data-discover-meta]"), ["text-[13px]/[16px]", "text-ink-muted"]),
+		}).toStrictEqual({card: [], cardFilled: [], tile: [], glyph: [], description: [], meta: []});
+	});
+
 	it("narrows Discover to one category grid through ?category=", async () => {
 		await renderCustomize("/customize/plugins?view=discover&category=deployment");
 

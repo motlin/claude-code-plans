@@ -97,7 +97,10 @@ function Installs({count}: {count: number}) {
 function CardMeta({plugin}: {plugin: DiscoverPlugin}) {
 	const by = plugin.author ?? plugin.marketplace;
 	return (
-		<span className="flex min-w-0 items-center gap-1.5 truncate text-footnote text-t6">
+		<span
+			data-discover-meta=""
+			className="flex min-w-0 items-center gap-1.5 truncate text-[13px]/[16px] text-ink-muted"
+		>
 			<span className="truncate">by {by}</span>
 			{plugin.installs !== null && (
 				<>
@@ -113,12 +116,12 @@ function DiscoverCard({plugin, icon}: {plugin: DiscoverPlugin; icon: typeof Puzz
 	return (
 		<li
 			data-testid="customize-discover-card"
-			className="flex min-w-0 items-start gap-3 rounded-card border border-border bg-surface-0 p-4"
+			className="flex min-w-0 items-start gap-3 rounded-discover-card border border-border p-3.5"
 		>
-			<IconTile icon={icon} />
+			<IconTile icon={icon} size="card" />
 			<div className="flex min-w-0 flex-1 flex-col gap-1">
 				<span className="truncate text-body font-medium text-primary">{plugin.title}</span>
-				<p className="m-0 line-clamp-2 text-footnote text-secondary">{plugin.description}</p>
+				<p className="m-0 line-clamp-2 text-footnote leading-[17px] text-secondary">{plugin.description}</p>
 				<CardMeta plugin={plugin} />
 			</div>
 			<AddButton plugin={plugin} />
