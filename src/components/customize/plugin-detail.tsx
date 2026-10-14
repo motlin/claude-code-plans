@@ -46,7 +46,7 @@ export function PluginDetailHeader({detail}: {detail: PluginDetail}) {
 				<ArrowLeft aria-hidden="true" className="size-4" />
 				Plugins
 			</CustomizeLink>
-			<div className="flex items-center gap-3">
+			<div className="flex items-center gap-4">
 				<IconTile icon={Puzzle} size="lg" />
 				<div className="flex min-w-0 flex-1 flex-col">
 					<h2 className="m-0 truncate text-[15px]/[20px] font-[580] text-primary">{plugin.name}</h2>
@@ -91,7 +91,7 @@ export function PluginDetailPage({children}: {children: ReactNode}) {
 	return (
 		<div className="relative flex w-full flex-col bg-surface-1 text-body text-primary">
 			<CopyLinkButton className="absolute -top-[26px] right-2" />
-			<div className="mx-auto w-full max-w-5xl px-4 pt-4 pb-8 md:px-8">{children}</div>
+			<div className="mx-auto w-full max-w-5xl px-4 pt-9 pb-8 md:px-8">{children}</div>
 		</div>
 	);
 }

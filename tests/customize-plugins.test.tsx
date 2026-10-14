@@ -248,6 +248,14 @@ describe("plugin detail UI", () => {
 				.split(" ")
 				.filter((name) => ["absolute", "-top-[26px]", "right-2"].includes(name)),
 		}).toStrictEqual({inHeader: false, placement: ["absolute", "-top-[26px]", "right-2"]});
+		// Upstream's back link row sits below the 44px top chrome row, and the title sits 16px after the tile.
+		expect({
+			frame: copy.nextElementSibling?.className.split(" ").includes("pt-9"),
+			tileGap: screen
+				.getByRole("heading", {level: 2})
+				.parentElement?.parentElement?.className.split(" ")
+				.includes("gap-4"),
+		}).toStrictEqual({frame: true, tileGap: true});
 		fireEvent.click(copy);
 		await waitFor(() => {
 			expect(writeText).toHaveBeenCalledTimes(1);
