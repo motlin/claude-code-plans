@@ -1,4 +1,4 @@
-import {ChevronDown, Plus, Search} from "lucide-react";
+import {Ellipsis, Plus, Search} from "lucide-react";
 import {useEffect, useState} from "react";
 import {DEFAULT_VISIBLE_NAV_SECTIONS} from "../lib/nav-sections";
 import {DEFAULT_SIDEBAR_STATE} from "../lib/sidebar-store";
@@ -134,7 +134,7 @@ export function AppShellFallback({pathname = ""}: {pathname?: string}) {
 						<div className="flex items-center">
 							<span className={NAV_ROW_CLASS}>
 								<span className="df-leading-slot">
-									<ChevronDown aria-hidden="true" className="opacity-50" />
+									<Ellipsis aria-hidden="true" className="opacity-50" />
 								</span>
 								<span className="min-w-0 flex-1 truncate text-ink-muted">More</span>
 							</span>

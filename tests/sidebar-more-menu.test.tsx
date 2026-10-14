@@ -132,6 +132,17 @@ describe("sidebar More menu", () => {
 		expect(sidebarNavLabels()).toStrictEqual(["Artifacts", "Plans", "Memories", "Customize"]);
 	});
 
+	it("leads the More row with upstream's three-dot glyph", async () => {
+		await renderSidebar();
+		const icon = screen.getByRole("button", {name: "More navigation items"}).querySelector("svg");
+		expect(
+			icon
+				?.getAttribute("class")
+				?.split(" ")
+				.find((name) => name.startsWith("lucide-")),
+		).toBe("lucide-ellipsis");
+	});
+
 	it("lists hidden sections, a separator, then Edit sidebar…", async () => {
 		await renderSidebar();
 		const menu = await openMoreMenu();
