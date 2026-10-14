@@ -54,6 +54,7 @@ import type {
 	SessionActivityDaysSchema,
 	SessionGroupBySchema,
 	SessionSortBySchema,
+	SessionSortDirectionSchema,
 	SessionStatusFilterSchema,
 } from "./session-groups";
 import type {GhPrReviewDecisionSchema, GhPrStateSchema, GhPrStatusCacheStateSchema} from "./pr-status";
@@ -241,6 +242,11 @@ export const sessionSortByLabels = {
 	created: "Date created",
 	activity: "Last updated",
 } satisfies Record<z.infer<typeof SessionSortBySchema>, string>;
+
+export const sessionSortDirectionLabels = {
+	desc: "Descending",
+	asc: "Ascending",
+} satisfies Record<z.infer<typeof SessionSortDirectionSchema>, string>;
 
 export const sessionStatusFilterLabels = {
 	active: "Active",
@@ -1098,6 +1104,7 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
 	HomeAttentionKindSchema: homeAttentionKindLabels,
 	"SessionListPrefsSchema.groupBy": sessionGroupByLabels,
 	"SessionListPrefsSchema.sortBy": sessionSortByLabels,
+	"SessionListPrefsSchema.sortDirection": sessionSortDirectionLabels,
 	"SessionListPrefsSchema.statusFilter": sessionStatusFilterLabels,
 	"SessionListPrefsSchema.activityDays": sessionActivityDaysLabels,
 	ContentBlockSchema: contentBlockVariants,

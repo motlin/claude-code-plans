@@ -48,6 +48,7 @@ describe("DEFAULT_SESSION_LIST_PREFS", () => {
 		expect(DEFAULT_SESSION_LIST_PREFS).toStrictEqual({
 			groupBy: "state",
 			sortBy: "activity",
+			sortDirection: "desc",
 			statusFilter: "active",
 			activityDays: "7d",
 			showEmptyGroups: false,
@@ -252,6 +253,12 @@ describe("buildGroups sort", () => {
 			"c",
 			"b",
 		]);
+	});
+
+	it("reverses the order with upstream's Ascending sort direction", () => {
+		expect(
+			buildGroups(rows, prefs({sortBy: "created", sortDirection: "asc"}), NOW)[0]?.rows.map((r) => r.sessionId),
+		).toStrictEqual(["b", "c", "a"]);
 	});
 
 	it("sorts by name, case-insensitively A to Z", () => {
@@ -488,7 +495,7 @@ describe("migrateSessionListPrefs", () => {
 				sessionsGrouping: null,
 				sessionSort: null,
 			}),
-		).toStrictEqual({...stored, showPrStatus: true});
+		).toStrictEqual({...stored, showPrStatus: true, sortDirection: "desc"});
 	});
 
 	it("falls back to defaults with no stored or legacy values", () => {

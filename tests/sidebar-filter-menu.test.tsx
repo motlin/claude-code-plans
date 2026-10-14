@@ -223,7 +223,7 @@ describe("sidebar Group and sort menu", () => {
 		]);
 	});
 
-	it("sorts by Last updated or Date created, keeping the local Name sort", async () => {
+	it("sorts by Last updated or Date created, keeping the local Name sort, then Descending or Ascending", async () => {
 		await renderSidebarGroups();
 		await openFilterMenu();
 		await openSubmenu(/^Sort by/);
@@ -234,7 +234,13 @@ describe("sidebar Group and sort menu", () => {
 			["Last updated", "true"],
 			["Date created", "false"],
 			["Name", "false"],
+			["Descending", "true"],
+			["Ascending", "false"],
 		]);
+
+		fireEvent.click(screen.getByRole("menuitemradio", {name: "Ascending"}));
+		await flush();
+		expect(storedPrefs()).toEqual({...DEFAULT_SESSION_LIST_PREFS, sortDirection: "asc"});
 	});
 
 	it("keeps the local Status and Last activity filters and the empty-group and PR toggles under Show", async () => {

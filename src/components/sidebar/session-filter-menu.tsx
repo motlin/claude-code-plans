@@ -8,11 +8,13 @@ import {
 	sessionActivityDaysLabels,
 	sessionGroupByLabels,
 	sessionSortByLabels,
+	sessionSortDirectionLabels,
 	sessionStatusFilterLabels,
 } from "../../lib/schema-choices";
 import {
 	DEFAULT_SESSION_LIST_PREFS,
 	SessionActivityDaysSchema,
+	SessionSortDirectionSchema,
 	SessionStatusFilterSchema,
 	type SessionListPrefs,
 } from "../../lib/session-groups";
@@ -86,15 +88,15 @@ const GROUP_BY_ORDER = [
 /** Upstream's Last updated and Date created, then the local Name sort. */
 const SORT_BY_ORDER = ["activity", "created", "name"] as const satisfies readonly SessionListPrefs["sortBy"][];
 
-/** A labelled radio group inside the Show submenu, for the local-only list filters. */
-function ShowRadioGroup<Value extends string>({
+/** A radio group inside a submenu, with an optional heading (Show's local-only list filters carry one). */
+function ChoiceGroup<Value extends string>({
 	label,
 	value,
 	options,
 	labels,
 	onSelect,
 }: {
-	label: string;
+	label?: string;
 	value: Value;
 	options: readonly Value[];
 	labels: Record<Value, string>;
@@ -108,7 +110,7 @@ function ShowRadioGroup<Value extends string>({
 				if (selected !== undefined) onSelect(selected);
 			}}
 		>
-			<MenuLabel>{label}</MenuLabel>
+			{label !== undefined && <MenuLabel>{label}</MenuLabel>}
 			{options.map((option) => (
 				<MenuRadioItem key={option} value={option}>
 					{labels[option]}
@@ -122,7 +124,7 @@ function ShowRadioGroup<Value extends string>({
  * claude.ai/code's session-list "Group and sort" menu: Group by, Sort by and Show submenus, New
  * section, Reset to defaults and View all. Folder stands in for the cloud-only Environment; the
  * local Status and Last activity filters and the PR status toggle sit under Show, the PR toggle
- * only once some row has PR data. Upstream's sort direction and Show ▸ Metadata have no local data.
+ * only once some row has PR data. Upstream's Show ▸ Metadata has no local data.
  */
 function SessionFilterMenu({
 	prefs,
@@ -158,16 +160,36 @@ function SessionFilterMenu({
 							onChange({...prefs, groupBy: next});
 						}}
 					/>
-					<RadioSubmenu
-						label="Sort by"
-						value={prefs.sortBy}
-						defaultValue={DEFAULT_SESSION_LIST_PREFS.sortBy}
-						options={SORT_BY_ORDER}
-						labels={sessionSortByLabels}
-						onSelect={(next) => {
-							onChange({...prefs, sortBy: next});
-						}}
-					/>
+					<MenuSub>
+						<MenuSubTrigger
+							value={sessionSortByLabels[prefs.sortBy]}
+							valueAccent={
+								prefs.sortBy !== DEFAULT_SESSION_LIST_PREFS.sortBy ||
+								prefs.sortDirection !== DEFAULT_SESSION_LIST_PREFS.sortDirection
+							}
+						>
+							Sort by
+						</MenuSubTrigger>
+						<MenuSubContent>
+							<ChoiceGroup
+								value={prefs.sortBy}
+								options={SORT_BY_ORDER}
+								labels={sessionSortByLabels}
+								onSelect={(next) => {
+									onChange({...prefs, sortBy: next});
+								}}
+							/>
+							<MenuSeparator />
+							<ChoiceGroup
+								value={prefs.sortDirection}
+								options={SessionSortDirectionSchema.options}
+								labels={sessionSortDirectionLabels}
+								onSelect={(next) => {
+									onChange({...prefs, sortDirection: next});
+								}}
+							/>
+						</MenuSubContent>
+					</MenuSub>
 					<MenuSub>
 						<MenuSubTrigger>Show</MenuSubTrigger>
 						<MenuSubContent>
@@ -190,7 +212,7 @@ function SessionFilterMenu({
 								</MenuCheckboxItem>
 							)}
 							<MenuSeparator />
-							<ShowRadioGroup
+							<ChoiceGroup
 								label="Status"
 								value={prefs.statusFilter}
 								options={SessionStatusFilterSchema.options}
@@ -200,7 +222,7 @@ function SessionFilterMenu({
 								}}
 							/>
 							<MenuSeparator />
-							<ShowRadioGroup
+							<ChoiceGroup
 								label="Last activity"
 								value={prefs.activityDays}
 								options={SessionActivityDaysSchema.options}

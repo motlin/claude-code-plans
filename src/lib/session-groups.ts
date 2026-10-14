@@ -9,6 +9,8 @@ export const SessionGroupBySchema = z.enum(["date", "project", "state", "custom"
 type SessionGroupBy = z.infer<typeof SessionGroupBySchema>;
 
 export const SessionSortBySchema = z.enum(["name", "created", "activity"]);
+export const SessionSortDirectionSchema = z.enum(["desc", "asc"]);
+export type SessionSortDirection = z.infer<typeof SessionSortDirectionSchema>;
 type SessionSortBy = z.infer<typeof SessionSortBySchema>;
 
 /** "active" hides archived sessions, "archived" shows only them, "all" shows both. */
@@ -22,6 +24,8 @@ export const SessionListPrefsSchema = z
 	.object({
 		groupBy: SessionGroupBySchema,
 		sortBy: SessionSortBySchema,
+		/** Upstream's Sort by ▸ Descending / Ascending: Ascending reverses the sort's order. */
+		sortDirection: SessionSortDirectionSchema,
 		statusFilter: SessionStatusFilterSchema,
 		activityDays: SessionActivityDaysSchema,
 		showEmptyGroups: z.boolean(),
@@ -34,6 +38,7 @@ export type SessionListPrefs = z.infer<typeof SessionListPrefsSchema>;
 export const DEFAULT_SESSION_LIST_PREFS: SessionListPrefs = {
 	groupBy: "state",
 	sortBy: "activity",
+	sortDirection: "desc",
 	statusFilter: "active",
 	activityDays: "7d",
 	showEmptyGroups: false,
@@ -120,9 +125,10 @@ const ROW_COMPARATORS = {
 		second.lastActivityAt - first.lastActivityAt || first.sessionId.localeCompare(second.sessionId),
 } as const satisfies Record<SessionSortBy, RowComparator>;
 
-/** The row order a Sort by choice gives; Pinned uses it for pins without a user order. */
-export function sessionRowComparator(sortBy: SessionSortBy): RowComparator {
-	return ROW_COMPARATORS[sortBy];
+/** The row order a Sort by choice and direction give; Pinned uses it for pins without a user order. */
+export function sessionRowComparator(sortBy: SessionSortBy, direction: SessionSortDirection = "desc"): RowComparator {
+	const compare = ROW_COMPARATORS[sortBy];
+	return direction === "desc" ? compare : (first, second) => compare(second, first);
 }
 
 export const PINNED_GROUP_KEY = "pinned";
@@ -326,7 +332,9 @@ export function buildGroups<Row extends SessionGroupRow>(
 	custom: CustomGroups = NO_CUSTOM_GROUPS,
 ): SessionGroup<Row>[] {
 	const families = resolveFamilies(
-		rows.filter((row) => isVisible(row, prefs, now)).toSorted(ROW_COMPARATORS[prefs.sortBy]),
+		rows
+			.filter((row) => isVisible(row, prefs, now))
+			.toSorted(sessionRowComparator(prefs.sortBy, prefs.sortDirection)),
 	);
 	const visible = families.map((family) => family.head);
 	const familyBucket = new Map(families.map((family) => [family.head.sessionId, family.bucket]));
@@ -398,12 +406,15 @@ export interface StoredSessionListPrefs {
 export function migrateSessionListPrefs(input: StoredSessionListPrefs): SessionListPrefs {
 	if (input.stored !== null) {
 		try {
-			// Prefs saved before Show PR status existed lack the field; default it on.
-			const parsed = SessionListPrefsSchema.partial({showPrStatus: true}).safeParse(JSON.parse(input.stored));
+			// Prefs saved before Show PR status or Sort direction existed lack those fields; default them.
+			const parsed = SessionListPrefsSchema.partial({showPrStatus: true, sortDirection: true}).safeParse(
+				JSON.parse(input.stored),
+			);
 			if (parsed.success) {
 				return {
 					...parsed.data,
 					showPrStatus: parsed.data.showPrStatus ?? DEFAULT_SESSION_LIST_PREFS.showPrStatus,
+					sortDirection: parsed.data.sortDirection ?? DEFAULT_SESSION_LIST_PREFS.sortDirection,
 				};
 			}
 		} catch {

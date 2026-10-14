@@ -99,8 +99,8 @@ export function SessionGroups({
 	const split = useMemo(() => {
 		if (data === undefined) return undefined;
 		const rows = data.pages.flatMap((page) => page.sessions.map(toGroupRow));
-		return splitPinned(rows, {pinnedIds, pinnedOrder}, sessionRowComparator(prefs.sortBy));
-	}, [data, prefs.sortBy, pinnedIds, pinnedOrder]);
+		return splitPinned(rows, {pinnedIds, pinnedOrder}, sessionRowComparator(prefs.sortBy, prefs.sortDirection));
+	}, [data, prefs.sortBy, prefs.sortDirection, pinnedIds, pinnedOrder]);
 
 	const toast = useToast();
 	const {settings, setSetting} = useSettings();
