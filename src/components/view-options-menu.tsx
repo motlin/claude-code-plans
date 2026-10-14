@@ -1,4 +1,4 @@
-import {EllipsisVertical, FileDiff} from "lucide-react";
+import {EllipsisVertical, FileDiff, Files} from "lucide-react";
 
 import {useIsMac} from "../hooks/use-is-mac";
 import {useShortcutKeys} from "../hooks/use-shortcut";
@@ -15,9 +15,10 @@ import type {ViewOptionsFacts, ViewOptionsItem, PaneMenuEntry} from "./view-opti
 
 type MainPaneEntry = PaneMenuEntry & {shortcut: ShortcutId};
 
-/** Upstream's one trail pane toggle; it shows once its pane kind is registered. */
+/** Upstream's trail pane toggles, Changes then Files; each shows once its pane kind is registered. */
 const MAIN_PANE_TOGGLES: readonly MainPaneEntry[] = [
 	{kind: "changes", label: "Changes", icon: FileDiff, shortcut: "toggle_changes"},
+	{kind: "files", label: "Files", icon: Files, shortcut: "toggle_files"},
 ];
 
 function MainPaneToggle({entry}: {entry: MainPaneEntry}) {

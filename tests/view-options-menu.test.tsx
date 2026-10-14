@@ -82,7 +82,6 @@ describe("viewOptionsItems", () => {
 		).toStrictEqual([
 			["terminal", null],
 			["artifacts", null],
-			["files", null],
 			["links", null],
 			["background-tasks", 1],
 			["plan", null],
@@ -94,7 +93,6 @@ describe("viewOptionsItems", () => {
 	it("hides panes that do not apply to the session", () => {
 		expect(visible(ALL_KINDS, {})).toStrictEqual([
 			["terminal", null],
-			["files", null],
 			["links", null],
 			["session-details", null],
 		]);
@@ -104,7 +102,6 @@ describe("viewOptionsItems", () => {
 		expect(visible(ALL_KINDS, {}, ["artifacts", "plan"])).toStrictEqual([
 			["terminal", null],
 			["artifacts", null],
-			["files", null],
 			["links", null],
 			["plan", null],
 			["session-details", null],
@@ -121,13 +118,13 @@ describe("viewOptionsItems", () => {
 
 	it("hides items for panes that are not registered", () => {
 		expect(
-			visible(new Set<PaneKind>(["files"]), {
+			visible(new Set<PaneKind>(["links"]), {
 				artifactCount: 2,
 				hasPlan: true,
 				backgroundTasks: {total: 3, running: 1},
 				subagentCount: 4,
 			}),
-		).toStrictEqual([["files", null]]);
+		).toStrictEqual([["links", null]]);
 	});
 });
 
@@ -185,16 +182,16 @@ describe("SessionPaneControls", () => {
 	});
 
 	it("checking an item opens its pane and checks it", async () => {
-		registerKinds("files", "artifacts");
+		registerKinds("links", "artifacts");
 		renderControls(1000, {artifactCount: 1});
 		await openViewOptions();
 
 		expect(menuRows()).toStrictEqual([
 			["menuitemcheckbox", "Artifacts", "false"],
-			["menuitemcheckbox", "Files⇧Shift⌘CommandF", "false"],
+			["menuitemcheckbox", "Links", "false"],
 		]);
 
-		fireEvent.click(screen.getByRole("menuitemcheckbox", {name: /^Files/}));
+		fireEvent.click(screen.getByRole("menuitemcheckbox", {name: /^Links/}));
 		await act(async () => {
 			await new Promise((resolve) => {
 				setTimeout(resolve, 0);
@@ -202,17 +199,17 @@ describe("SessionPaneControls", () => {
 		});
 
 		expect({
-			pane: within(screen.getByRole("region", {name: "files"})).getByText("files pane body").tagName,
-			checked: screen.getByRole("menuitemcheckbox", {name: /^Files/}).getAttribute("aria-checked"),
+			pane: within(screen.getByRole("region", {name: "links"})).getByText("links pane body").tagName,
+			checked: screen.getByRole("menuitemcheckbox", {name: /^Links/}).getAttribute("aria-checked"),
 		}).toStrictEqual({pane: "P", checked: "true"});
 	});
 
 	it("draws item icons in full ink, as upstream does", async () => {
-		registerKinds("files");
+		registerKinds("links");
 		renderControls(1000);
 		await openViewOptions();
 
-		const icon = screen.getByRole("menuitemcheckbox", {name: /^Files/}).querySelector("svg");
+		const icon = screen.getByRole("menuitemcheckbox", {name: /^Links/}).querySelector("svg");
 
 		expect(
 			icon
@@ -242,19 +239,36 @@ describe("SessionPaneControls", () => {
 		).toBe("P");
 	});
 
-	it("shows upstream's trail, Changes then View options, with Terminal and Files in the menu", async () => {
+	it("shows upstream's trail, Changes, Files, then View options, with Terminal in the menu", async () => {
 		registerKinds("terminal", "changes", "files");
 		renderControls(1000, {}, () => {});
 
-		expect(toggleButtons()).toStrictEqual(["Changes", "View options"]);
+		expect(toggleButtons()).toStrictEqual(["Changes", "Files", "View options"]);
 
 		await openViewOptions();
 
 		expect(menuRows()).toStrictEqual([
 			["menuitemcheckbox", "Terminal⌃Control`", "false"],
-			["menuitemcheckbox", "Files⇧Shift⌘CommandF", "false"],
 			["menuitem", "Expand chat⇧Shift⌘Command\\", null],
 		]);
+	});
+
+	it("opens the Files pane from its trail toggle, labelled with ⇧⌘F like upstream", async () => {
+		registerKinds("files");
+		renderControls(1000);
+		const files = screen.getByRole("button", {name: "Files"});
+		expect(files.getAttribute("aria-keyshortcuts")).toBe("Shift+Meta+f");
+		fireEvent.click(files);
+		await act(async () => {
+			await new Promise((resolve) => {
+				setTimeout(resolve, 0);
+			});
+		});
+
+		expect({
+			pressed: files.getAttribute("aria-pressed"),
+			pane: within(screen.getByRole("region", {name: "files"})).getByText("files pane body").tagName,
+		}).toStrictEqual({pressed: "true", pane: "P"});
 	});
 
 	it("keeps the trail ink on hover and paints a pressed Changes toggle in upstream's deeper blue", async () => {

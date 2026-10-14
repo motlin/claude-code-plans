@@ -1,6 +1,6 @@
 import type {LucideIcon} from "lucide-react";
 import type {ShortcutId} from "../lib/shortcuts/registry";
-import {AppWindow, Files, GitFork, Info, Link2, ListChecks, ListTodo, SquareTerminal} from "lucide-react";
+import {AppWindow, GitFork, Info, Link2, ListChecks, ListTodo, SquareTerminal} from "lucide-react";
 import type {PaneKind} from "../lib/pane-layout";
 
 /**
@@ -56,7 +56,6 @@ function candidates(facts: ViewOptionsFacts): ViewOptionsCandidate[] {
 			icon: AppWindow,
 			applies: (facts.artifactCount ?? 0) > 0,
 		},
-		{kind: "files", label: "Files", icon: Files, shortcut: "toggle_files", applies: true},
 		{kind: "links", label: "Links", icon: Link2, applies: true},
 		{
 			kind: "background-tasks",

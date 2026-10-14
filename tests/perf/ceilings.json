@@ -435,11 +435,11 @@
 		"tolerance": 0
 	},
 	"client.sessionOpen.small.mutations": {
-		"ceiling": 39,
+		"ceiling": 40,
 		"unit": "count",
 		"tolerance": 0,
-		"reason": "The perf fixtures' cwd /repo encodes to their project id, so indexing now resolves the project path from the session's recorded cwd and the session composer mounts as it does on every real session: its slash-command, prompt-history and usage fetches, its chin and its re-renders on live events now count, and the home composer fetches slash commands for the latest project.",
-		"raisedAt": "2026-10-11"
+		"reason": "The session titlebar trail gains upstream's Files toggle between Changes and View options (W85-01), one more button mounted on every session open.",
+		"raisedAt": "2026-10-14"
 	},
 	"client.sessionOpen.typical.commits": {
 		"ceiling": 12,
@@ -471,11 +471,11 @@
 		"tolerance": 0
 	},
 	"client.sessionOpen.typical.mutations": {
-		"ceiling": 39,
+		"ceiling": 40,
 		"unit": "count",
 		"tolerance": 0,
-		"reason": "The perf fixtures' cwd /repo encodes to their project id, so indexing now resolves the project path from the session's recorded cwd and the session composer mounts as it does on every real session: its slash-command, prompt-history and usage fetches, its chin and its re-renders on live events now count, and the home composer fetches slash commands for the latest project.",
-		"raisedAt": "2026-10-11"
+		"reason": "The session titlebar trail gains upstream's Files toggle between Changes and View options (W85-01), one more button mounted on every session open.",
+		"raisedAt": "2026-10-14"
 	},
 	"client.sessionSwitch.small.commits": {
 		"ceiling": 10,
