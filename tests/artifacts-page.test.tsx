@@ -337,6 +337,23 @@ describe("artifacts route", () => {
 		}).toStrictEqual({frame: [], preview: [], badge: [], body: [], title: [], meta: [], pills: 0});
 	});
 
+	it("keeps every card's straddling type tile neutral and draws the card's private lock at 16px, as upstream", async () => {
+		storage.removeItem(ARTIFACTS_LAYOUT_STORAGE_KEY);
+		await renderArtifactsPage("/artifacts", true);
+		const tiles = [...document.querySelectorAll("[data-card-badge] [data-type-tile]")];
+		const locks = [...document.querySelectorAll("[data-card-meta] svg")];
+
+		expect({
+			kinds: [...new Set(tiles.map((tile) => tile.getAttribute("data-type-tile")))].toSorted((a, b) =>
+				(a ?? "").localeCompare(b ?? ""),
+			),
+			neutral: tiles.every(
+				(tile) => tile.classList.contains("bg-alpha-1") && tile.classList.contains("text-secondary"),
+			),
+			locks: locks.length > 0 && locks.every((lock) => lock.classList.contains("size-4")),
+		}).toStrictEqual({kinds: ["docs", "html"], neutral: true, locks: true});
+	});
+
 	it("lists artifacts by date group linking out to claude.ai", async () => {
 		await renderArtifactsPage("/artifacts", true);
 

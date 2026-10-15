@@ -268,7 +268,11 @@ const TILE_ICON = {menu: "size-3.5", row: "size-5", card: "size-10", badge: "siz
  */
 function TypeTile({kind, size = "row"}: {kind: ArtifactKind | "all"; size?: keyof typeof TILE_BOX}) {
 	const Icon = kind === "docs" ? FileText : kind === "all" ? Shapes : CodeXml;
-	const tone = kind === "docs" ? "bg-blue-500/10 text-blue-600 dark:text-blue-300" : "bg-alpha-1 text-secondary";
+	// Upstream's straddling card tile is neutral for every type.
+	const tone =
+		kind === "docs" && size !== "badge"
+			? "bg-blue-500/10 text-blue-600 dark:text-blue-300"
+			: "bg-alpha-1 text-secondary";
 	const labelled = kind === "docs" && size !== "menu" && size !== "badge";
 	return (
 		<div
@@ -281,7 +285,15 @@ function TypeTile({kind, size = "row"}: {kind: ArtifactKind | "all"; size?: keyo
 	);
 }
 
-function PrivacyAndDate({artifact, now}: {artifact: ArtifactSummary; now: Date}) {
+function PrivacyAndDate({
+	artifact,
+	now,
+	lockClass = "size-3.5",
+}: {
+	artifact: ArtifactSummary;
+	now: Date;
+	lockClass?: string;
+}) {
 	const ms = artifactTimestamp(artifact);
 	return (
 		<>
@@ -289,7 +301,7 @@ function PrivacyAndDate({artifact, now}: {artifact: ArtifactSummary; now: Date})
 				<>
 					<Tooltip content="Private" className="pointer-events-auto shrink-0">
 						<span role="img" aria-label="Private" className="flex shrink-0 items-center">
-							<Lock aria-hidden="true" className="size-3.5" />
+							<Lock aria-hidden="true" className={lockClass} />
 						</span>
 					</Tooltip>
 					<span aria-hidden="true" className="inline-block size-[3px] shrink-0 rounded-full bg-ink-muted" />
@@ -521,7 +533,7 @@ function ArtifactGrid({
 									data-card-meta=""
 									className="mt-auto flex flex-wrap items-center gap-1 text-[11px]/[17px] text-ink-muted"
 								>
-									<PrivacyAndDate artifact={artifact} now={now} />
+									<PrivacyAndDate artifact={artifact} now={now} lockClass="size-4" />
 								</div>
 								<span className="pointer-events-auto absolute right-2.5 bottom-2">
 									<ArtifactRowActions artifact={artifact} pinned={isPinned(artifact.url)} />

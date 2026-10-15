@@ -69,7 +69,7 @@ describe("AskUserQuestionRenderer", () => {
 	it("renders an answered question as upstream's 480px question receipt: question primary w500, answer secondary", () => {
 		const {container} = render(<AskUserQuestionRenderer toolCall={makeCall({result: ANSWERED_RESULT})} />);
 
-		const cards = [...container.querySelectorAll(".card-outline")];
+		const cards = [...container.querySelectorAll(".card-ring")];
 		const card = cards[0]!;
 		const paragraphs = [...card.querySelectorAll("p")].map((p) => ({
 			className: p.className,
@@ -84,7 +84,7 @@ describe("AskUserQuestionRenderer", () => {
 			buttons: container.querySelectorAll("button").length,
 		}).toStrictEqual({
 			cardCount: 1,
-			cardClassName: "card-outline flex w-full max-w-[480px] flex-col overflow-clip rounded-r6 select-text",
+			cardClassName: "card-ring flex w-full max-w-[480px] flex-col overflow-clip rounded-r6 select-text",
 			paragraphs: [
 				{className: "text-body font-medium text-primary break-words", text: "Which test runner?"},
 				{className: "text-body text-secondary [overflow-wrap:anywhere]", text: "Vitest"},
@@ -124,7 +124,7 @@ describe("AskUserQuestionRenderer", () => {
 		});
 		const {container} = render(<AskUserQuestionRenderer toolCall={toolCall} />);
 
-		const cards = [...container.querySelectorAll(".card-outline")].map((card) => ({
+		const cards = [...container.querySelectorAll(".card-ring")].map((card) => ({
 			className: card.className,
 			pairs: [...card.children].map((pair) => ({
 				className: pair.className,
@@ -134,7 +134,7 @@ describe("AskUserQuestionRenderer", () => {
 
 		expect(cards).toStrictEqual([
 			{
-				className: "card-outline flex w-full max-w-[480px] flex-col overflow-clip rounded-r6 select-text",
+				className: "card-ring flex w-full max-w-[480px] flex-col overflow-clip rounded-r6 select-text",
 				pairs: [
 					{
 						className: "flex flex-col gap-0.5 px-3 py-2",

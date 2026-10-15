@@ -27,6 +27,10 @@ describe("404 page", () => {
 			),
 			line: heading.nextElementSibling?.textContent,
 			home: [home.getAttribute("href"), classes(home).includes("bg-fill-primary")],
+			// Upstream leaves 48px from the wordmark to the heading: the 24px stack gap plus 24px.
+			wordmarkGap: classes(heading.closest("[data-not-found]")?.firstElementChild).filter((name) =>
+				name.startsWith("mb-"),
+			),
 			centred: classes(heading.closest("[data-not-found]")).filter((name) =>
 				["items-center", "justify-center", "text-center"].includes(name),
 			),
@@ -35,6 +39,7 @@ describe("404 page", () => {
 			headingType: ["font-voice", "text-[20px]/[28px]", "font-normal"],
 			line: "Claude can help with many things, but finding this page isn’t one of them.",
 			home: ["/", true],
+			wordmarkGap: ["mb-6"],
 			centred: ["items-center", "justify-center", "text-center"],
 		});
 	});

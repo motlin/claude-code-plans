@@ -116,6 +116,14 @@ describe("dark palette", () => {
 		});
 	});
 
+	it("rings upstream's question receipt outside its edge, as epitaxy-card-outline does", () => {
+		expect(
+			/\.card-ring \{\s*background-color: transparent;\s*box-shadow: 0 0 0 1px var\(--card-outline\);/.test(
+				styles,
+			),
+		).toBe(true);
+	});
+
 	it("routes the git status colors through themed tokens with upstream's dark values", () => {
 		const names = GIT_STATES.map((state) => `--git-${state}`);
 

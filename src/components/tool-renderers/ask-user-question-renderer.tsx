@@ -433,7 +433,7 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps) {
 	if (parsed !== null) {
 		// Upstream's `epitaxy-question-receipt`: every answered pair of one call in a 480px card.
 		return (
-			<div className="card-outline flex w-full max-w-[480px] flex-col overflow-clip rounded-r6 select-text">
+			<div className="card-ring flex w-full max-w-[480px] flex-col overflow-clip rounded-r6 select-text">
 				{parsed.map((entry, i) => (
 					<AnsweredQuestion key={i} question={entry.question} parsed={entry} />
 				))}

@@ -468,6 +468,12 @@
 		background-color: transparent;
 		box-shadow: inset 0 0 0 1px var(--card-outline);
 	}
+
+	/* Upstream `epitaxy-card-outline` (the question receipt): the same ring, outside the edge. */
+	.card-ring {
+		background-color: transparent;
+		box-shadow: 0 0 0 1px var(--card-outline);
+	}
 	.code-card {
 		background-color: var(--code-card-bg);
 	}

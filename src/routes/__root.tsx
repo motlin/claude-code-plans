@@ -208,7 +208,7 @@ function NotFoundContent({detail}: Readonly<{detail?: string}>) {
 		>
 			<span
 				aria-hidden="true"
-				className="font-voice text-[20px] leading-none font-medium whitespace-nowrap text-primary"
+				className="mb-6 font-voice text-[20px] leading-none font-medium whitespace-nowrap text-primary"
 			>
 				Claude Code Browser
 			</span>
