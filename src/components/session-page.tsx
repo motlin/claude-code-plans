@@ -30,7 +30,8 @@ import {preloadLinksPane, useRegisterLinksPane} from "./panes/links-pane-entry";
 import {useRegisterSessionDetailsPane} from "./panes/session-details-pane-entry";
 import {useRegisterSubagentPane} from "./panes/subagent-pane-entry";
 import {SessionBackgroundTasksOpener, SessionSubagentOpener} from "./subagent-opener";
-import {useRegisterPlanPane} from "./panes/plan-pane-entry";
+import {hasSessionPlan, useRegisterPlanPane} from "./panes/plan-pane-entry";
+import {sessionPlanModel} from "../lib/session-plan-model";
 import {useRegisterChangesPane} from "./changes/changes-pane-entry";
 import {ChangesPaneShortcut} from "./changes/changes-pane-shortcut";
 import {preloadFilesPane, useRegisterFilesPane} from "./panes/files-pane-entry";
@@ -316,7 +317,8 @@ function SessionView({
 	});
 	const sessionArtifacts = useSessionArtifacts(sessionId);
 	useRegisterArtifactsPane(sessionArtifacts);
-	useRegisterPlanPane(data.planFilename);
+	const planModel = useMemo(() => sessionPlanModel(processed.lines), [processed.lines]);
+	useRegisterPlanPane(data.planFilename, planModel);
 	useRegisterLinksPane({
 		sessionId,
 		lines: processed.lines,
@@ -705,7 +707,7 @@ function SessionView({
 											<SessionPaneControls
 												facts={{
 													artifactCount: sessionArtifacts.length,
-													hasPlan: data.planFilename !== undefined,
+													hasPlan: hasSessionPlan(data.planFilename, planModel),
 													backgroundTasks: backgroundTasksFacts(
 														backgroundTasks,
 														subagents.length,

@@ -279,6 +279,45 @@ describe("plan pane", () => {
 		expect(screen.queryByRole("menuitemcheckbox", {name: "Plan"})).toBeNull();
 	});
 
+	it("offers Plan without a plan file when the transcript has ExitPlanMode plan text or todos, as upstream", async () => {
+		await renderSessionPage(detail, [], () => {}, [
+			{
+				type: "assistant",
+				uuid: "a-plan",
+				sessionId: SESSION_ID,
+				timestamp: "2026-09-28T10:00:01.000Z",
+				message: {
+					role: "assistant",
+					content: [
+						{
+							type: "tool_use",
+							id: "toolu_plan",
+							name: "ExitPlanMode",
+							input: {plan: "Rebase onto upstream first."},
+						},
+						{
+							type: "tool_use",
+							id: "toolu_todos",
+							name: "TodoWrite",
+							input: {todos: [{content: "Rebase", status: "in_progress", activeForm: "Rebasing"}]},
+						},
+					],
+				},
+			},
+		]);
+		await openViewOptions();
+		fireEvent.click(screen.getByRole("menuitemcheckbox", {name: "Plan"}));
+		await flush();
+		const pane = screen.getByTestId("session-plan-pane");
+
+		expect({
+			plan: within(pane).getByText("Rebase onto upstream first.").tagName,
+			todos: within(within(pane).getByRole("list", {name: "Todos"}))
+				.getAllByRole("listitem")
+				.map((item) => [item.textContent, item.getAttribute("data-todo-status")]),
+		}).toStrictEqual({plan: "P", todos: [["Rebasing", "in_progress"]]});
+	});
+
 	it("renders the linked plan beside the transcript with a link to the plan page", async () => {
 		const plan: PlanDetail = {
 			markdown: "# Fabricated sync plan\n\nRebase the fabricated fork onto upstream.",
