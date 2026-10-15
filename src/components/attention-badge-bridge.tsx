@@ -3,7 +3,7 @@ import {useRouter} from "@tanstack/react-router";
 import {useQueryClient} from "@tanstack/react-query";
 
 import {useSubscribeSessionStates} from "../hooks/use-claude-events";
-import {countSessionsNeedingAttention, stripAttentionCount} from "../lib/attention";
+import {countSessionsNeedingAttention} from "../lib/attention";
 import {resolvedRouteTitle} from "../lib/route-title";
 import {displayState, type ActivityState} from "../lib/session-state";
 import {hasUnseenWork, subscribeUnseenWork} from "../lib/unread-store";
@@ -19,12 +19,15 @@ function viewedRouteId(router: ReturnType<typeof useRouter>): string | null {
 	return typeof id === "string" ? id : null;
 }
 
+/** Upstream's tab title for a page that names none, such as the 404. */
+const DEFAULT_TITLE = "Claude Code";
+
 /**
- * Title the current route asks for. Snapshotting `document.title` instead would pin the badge to
- * whichever route was hard loaded and re-assert it over every later route's title.
+ * Title the current route asks for, else upstream's "Claude Code". Reading `document.title` back
+ * instead would pin the badge to an earlier route's title, or re-prefix its own "(N)" count.
  */
 function routeTitle(router: ReturnType<typeof useRouter>): string {
-	return resolvedRouteTitle(router.state.matches) ?? stripAttentionCount(document.title);
+	return resolvedRouteTitle(router.state.matches) ?? DEFAULT_TITLE;
 }
 
 function setAppBadge(count: number): void {

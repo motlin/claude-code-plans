@@ -116,4 +116,20 @@ describe("AttentionBadgeBridge document title", () => {
 
 		expect(document.title).toBe("(1) Beta");
 	});
+
+	it("titles a page with no route title (the 404) 'Claude Code' as upstream, counting attention once", async () => {
+		harness.alerts = true;
+		const router = renderRoutedApp("/missing");
+		await act(async () => {
+			await router.load();
+		});
+		act(() => {
+			harness.emit?.({sessionId: "session-test-waiting", state: "waiting"});
+		});
+		act(() => {
+			harness.emit?.({sessionId: "session-test-waiting-2", state: "waiting"});
+		});
+
+		expect(document.title).toBe("(2) Claude Code");
+	});
 });
