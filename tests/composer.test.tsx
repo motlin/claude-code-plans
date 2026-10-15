@@ -209,7 +209,7 @@ describe("Composer", () => {
 			},
 		};
 
-		it("shows +, mode, then the model + effort picker and the usage ring left to right", () => {
+		it("shows the mode, then the model + effort picker and the usage ring left to right", () => {
 			vi.useFakeTimers({now: NOW_MS, toFake: ["Date"]});
 			render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} chin={CHIN} />);
 			const chin = document.querySelector('[data-cds="ChatComposerChin"]');
@@ -218,11 +218,25 @@ describe("Composer", () => {
 			);
 
 			expect(labels).toStrictEqual([
-				"Add",
 				"Accept edits",
 				"Model: Opus 5.5, Effort: Extra",
 				"Usage: Context 190.2k / 1M (19%), Weekly · all models: 65%, Resets in 14 hr 31 min",
 			]);
+		});
+
+		it("puts + inside the 44px composer card at its left edge, as upstream does", () => {
+			render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} chin={CHIN} />);
+			const card = document.querySelector("[data-composer-card]");
+			const add = screen.getByRole("button", {name: "Add"});
+			expect({
+				inCard: card?.contains(add),
+				inChin: document.querySelector('[data-cds="ChatComposerChin"]')?.contains(add),
+				slot: add
+					.closest("[data-composer-add]")
+					?.className.split(" ")
+					.filter((name) => ["absolute", "left-0"].includes(name)),
+				padding: card?.className.split(" ").includes("p-2.5"),
+			}).toStrictEqual({inCard: true, inChin: false, slot: ["absolute", "left-0"], padding: true});
 		});
 
 		it("draws the ring arc from the context percentage", () => {

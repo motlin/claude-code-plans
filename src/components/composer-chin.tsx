@@ -156,6 +156,41 @@ function UsageRing({usage, onShowBreakdown}: {usage: ComposerUsage | null; onSho
 	);
 }
 
+/**
+ * Upstream's + menu at the composer card's left edge: Add files or photos (⌘U), Slash commands
+ * and the connectors submenu.
+ */
+export const ComposerAddMenu = memo(function ComposerAddMenu({
+	onInsertSlash,
+	onAddFiles,
+}: {
+	onInsertSlash: () => void;
+	/** ⌘U "Add files or photos": opens the composer's file picker. */
+	onAddFiles: () => void;
+}) {
+	const addFilesKeys = useShortcutKeys("add_files").keys;
+	return (
+		<Menu>
+			<Tooltip content="Add" side="top">
+				<MenuTrigger aria-label="Add" className={`${CHIN_BUTTON_CLASS.replace("h-5", "h-6")} w-6`}>
+					<Plus className="size-4" aria-hidden="true" />
+				</MenuTrigger>
+			</Tooltip>
+			<MenuContent side="top">
+				<MenuItem icon={<Paperclip />} onSelect={onAddFiles} shortcut={addFilesKeys}>
+					Add files or photos
+				</MenuItem>
+				<MenuItem icon={<SquareSlash />} onSelect={onInsertSlash}>
+					Slash commands
+				</MenuItem>
+				<Suspense fallback={null}>
+					<ComposerConnectorsMenu />
+				</Suspense>
+			</MenuContent>
+		</Menu>
+	);
+});
+
 export interface ChinLaunchControls {
 	launchOptions: LaunchOptions;
 	onLaunchOptionsChange: (next: LaunchOptions) => void;
@@ -172,27 +207,21 @@ function effortText(effort: string): string {
 }
 
 /**
- * The claude.ai/code composer chin: `+` and the permission mode on the left;
- * model, effort and the 12px context-usage ring on the right. Mode, model and
+ * The claude.ai/code composer chin: the permission mode on the left; the model +
+ * effort picker and the 12px context-usage ring on the right. Mode, model and
  * effort open menus whose choices apply to the live pane or the next fork or launch.
  */
 export const ComposerChin = memo(function ComposerChin({
 	state,
-	onInsertSlash,
-	onAddFiles,
 	launch,
 	onShowUsageBreakdown,
 }: {
 	state: ComposerState;
-	onInsertSlash: () => void;
-	/** ⌘U "Add files or photos": opens the composer's file picker. */
-	onAddFiles: () => void;
 	launch: ChinLaunchControls;
 	/** "See detailed breakdown": insert the Usage card into the transcript. */
 	onShowUsageBreakdown?: (() => void) | undefined;
 }) {
 	const {launchOptions, onLaunchOptionsChange, openMenu, onOpenMenuChange} = launch;
-	const addFilesKeys = useShortcutKeys("add_files").keys;
 	// Keeps the picked level while the confirm fades out, so its copy doesn't flicker.
 	const [effortConfirm, setEffortConfirm] = useState<{effort: EffortLevel; open: boolean}>({
 		effort: "high",
@@ -221,24 +250,6 @@ export const ComposerChin = memo(function ComposerChin({
 	return (
 		<>
 			<div className="flex min-w-0 items-center self-start">
-				<Menu>
-					<Tooltip content="Add" side="top">
-						<MenuTrigger aria-label="Add" className={`${CHIN_BUTTON_CLASS} aspect-square`}>
-							<Plus className="size-4" aria-hidden="true" />
-						</MenuTrigger>
-					</Tooltip>
-					<MenuContent side="top">
-						<MenuItem icon={<Paperclip />} onSelect={onAddFiles} shortcut={addFilesKeys}>
-							Add files or photos
-						</MenuItem>
-						<MenuItem icon={<SquareSlash />} onSelect={onInsertSlash}>
-							Slash commands
-						</MenuItem>
-						<Suspense fallback={null}>
-							<ComposerConnectorsMenu />
-						</Suspense>
-					</MenuContent>
-				</Menu>
 				<ModeMenu
 					{...menuProps("mode")}
 					current={launchOptions.permissionMode ?? state.mode?.id ?? "default"}

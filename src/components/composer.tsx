@@ -24,7 +24,7 @@ import type {SessionFilesEntry} from "../lib/api/session-files";
 import {fileMentionTrigger, insertFileMention} from "../lib/file-mentions";
 import type {LaunchOptions} from "../lib/launch-options";
 import {filterSlashCommands, type SlashCommand, slashArgumentHint, slashQuery} from "../lib/slash-commands";
-import {type ChinLaunchControls, ComposerChin} from "./composer-chin";
+import {type ChinLaunchControls, ComposerAddMenu, ComposerChin} from "./composer-chin";
 import {AttachedContextChips} from "./attached-context-chips";
 import {ConfirmDialog} from "./confirm-dialog";
 import type {ChinMenu} from "./composer-launch-menus";
@@ -44,7 +44,7 @@ const PLACEHOLDER: Record<ComposerVariant, string> = {
 };
 
 const CARD_CLASS =
-	"relative z-[1] flex cursor-text flex-col gap-y-1.5 rounded-card bg-surface-3 p-2 shadow-[var(--composer-shadow-idle)] transition-shadow focus-within:shadow-[var(--composer-shadow-focus)]";
+	"relative z-[1] flex cursor-text flex-col gap-y-1.5 rounded-card bg-surface-3 p-2.5 shadow-[var(--composer-shadow-idle)] transition-shadow focus-within:shadow-[var(--composer-shadow-focus)]";
 
 const EDITOR_CLASS =
 	"block w-full resize-none overflow-y-auto bg-transparent py-0.5 pl-1 font-sans text-[14px]/[20px] text-primary [field-sizing:content] placeholder:text-[rgb(137,135,129)] focus:outline-none disabled:opacity-50 pointer-coarse:text-[16px]";
@@ -634,7 +634,12 @@ export function Composer({
 						Drop files here
 					</div>
 				)}
-				<div className="relative pr-[30px]">
+				<div className={`relative pr-[30px] ${chin ? "pl-[30px]" : ""}`}>
+					{chin && (
+						<div data-composer-add="" className="absolute left-0 bottom-0 flex min-h-6 items-center">
+							<ComposerAddMenu onInsertSlash={insertSlash} onAddFiles={openFilePicker} />
+						</div>
+					)}
 					{slashOpen && (
 						<SlashCommandMenu
 							id={slashMenuId}
@@ -661,7 +666,7 @@ export function Composer({
 					{argumentHint !== null && (
 						<div
 							aria-hidden="true"
-							className="pointer-events-none absolute inset-y-0 right-[30px] left-0 overflow-hidden py-0.5 pl-1 font-sans text-[14px]/[20px] break-words whitespace-pre-wrap pointer-coarse:text-[16px]"
+							className={`pointer-events-none absolute inset-y-0 right-[30px] overflow-hidden py-0.5 pl-1 font-sans text-[14px]/[20px] break-words whitespace-pre-wrap pointer-coarse:text-[16px] ${chin ? "left-[30px]" : "left-0"}`}
 						>
 							<span className="invisible">{prompt}</span>
 							<span data-testid="slash-argument-hint" className="text-[rgb(137,135,129)]">
@@ -719,8 +724,6 @@ export function Composer({
 				{chin && (
 					<ComposerChin
 						state={chin}
-						onInsertSlash={insertSlash}
-						onAddFiles={openFilePicker}
 						launch={launchControls}
 						onShowUsageBreakdown={variant === "session" ? onShowUsageBreakdown : undefined}
 					/>
