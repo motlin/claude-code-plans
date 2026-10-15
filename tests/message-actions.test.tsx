@@ -370,6 +370,18 @@ function readAloudState(container: HTMLElement) {
 }
 
 describe("UserMessageActions", () => {
+	it("draws Fork from here with an arrow splitting right, as upstream's ArrowSplitRight", () => {
+		const {container} = render(
+			<UserMessageActions message={MESSAGE} text="Hi" timestamp={TIMESTAMP} details={[]} />,
+		);
+		const icon = button(container, "Fork from here").querySelector("svg")?.getAttribute("class")?.split(" ") ?? [];
+
+		expect(icon.filter((name) => name.startsWith("lucide-") || name === "rotate-90")).toStrictEqual([
+			"lucide-split",
+			"rotate-90",
+		]);
+	});
+
 	it("dates a week-old message as upstream's user <time> does: 11px caption ink in a 24px slot, relative before", () => {
 		const time = (timestamp: string) => {
 			const {container, unmount} = render(

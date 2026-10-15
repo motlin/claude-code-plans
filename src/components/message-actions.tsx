@@ -1,4 +1,4 @@
-import {Check, Copy, GitFork, Loader2, Pause, Pin, RotateCcw, Volume2} from "lucide-react";
+import {Check, Copy, Loader2, Pause, Pin, RotateCcw, Split, Volume2} from "lucide-react";
 import {createContext, type FocusEvent, type ReactNode, useContext, useEffect, useRef, useState} from "react";
 
 import {useChapters} from "../lib/chapter-store";
@@ -152,7 +152,8 @@ function ForkAction({message}: {message: TranscriptMessageRef | undefined}) {
 			description="Starts a new session, keeps this one"
 			onClick={bound(forkFrom, message)}
 		>
-			<GitFork aria-hidden="true" className={ICON_CLASS} />
+			{/* Upstream's ArrowSplitRight: lucide's upward split, turned to point right. */}
+			<Split aria-hidden="true" className={`${ICON_CLASS} rotate-90`} />
 		</ActionButton>
 	);
 }
