@@ -1,5 +1,5 @@
 import type {Meta, StoryObj} from "@storybook/react-vite";
-import {TaskListRenderer} from "../../../components/tool-renderers/task-list-renderer";
+import {TaskChecklistRenderer} from "../../../components/tool-renderers/task-checklist-renderer";
 import type {ClientToolCall} from "../../../components/tool-renderers/types";
 
 function makeToolCall(overrides: Partial<ClientToolCall> & {input: ClientToolCall["input"]}): ClientToolCall {
@@ -14,8 +14,8 @@ function makeToolCall(overrides: Partial<ClientToolCall> & {input: ClientToolCal
 
 const meta = {
 	title: "Session Detail/Tool Renderers/TaskListRenderer",
-	component: TaskListRenderer,
-} satisfies Meta<typeof TaskListRenderer>;
+	component: TaskChecklistRenderer,
+} satisfies Meta<typeof TaskChecklistRenderer>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;

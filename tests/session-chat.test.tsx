@@ -1947,7 +1947,7 @@ function toolRowChrome(html: string): Record<string, unknown> {
 }
 
 describe("SessionChat non-expanding tool rows", () => {
-	it("draws a TodoWrite call as a bare label row with no chevron or disclosure", () => {
+	it("discloses a TodoWrite call with todos, as upstream's checklist body", () => {
 		const html = renderTranscript(
 			failedToolCallRecords(false, {
 				name: "TodoWrite",
@@ -1958,11 +1958,11 @@ describe("SessionChat non-expanding tool rows", () => {
 		);
 
 		expect({...toolRowChrome(html), label: html.includes(">Updated todos<")}).toStrictEqual({
-			bareHeaderClass: "relative group/tool flex self-start max-w-full items-center py-0 gap-g5 text-left",
-			roleButton: false,
-			ariaExpanded: false,
+			bareHeaderClass: null,
+			roleButton: true,
+			ariaExpanded: true,
 			bodyMounted: false,
-			chevron: false,
+			chevron: true,
 			label: true,
 		});
 	});
@@ -2003,28 +2003,16 @@ describe("SessionChat non-expanding tool rows", () => {
 		});
 	});
 
-	it("keeps the disclosure chrome on a TaskList call that returned tasks", () => {
-		const html = renderTranscript(toolResultRecords({name: "TaskList", input: {}}, "#1 Ship it"));
+	it("draws TaskList, TaskGet and a status-only TaskUpdate as bare rows even with results, as their upstream checklists are empty", () => {
+		const bare = "relative group/tool flex self-start max-w-full items-center py-0 gap-g5 text-left";
 
-		expect(toolRowChrome(html)).toStrictEqual({
-			bareHeaderClass: null,
-			roleButton: true,
-			ariaExpanded: true,
-			bodyMounted: false,
-			chevron: true,
-		});
-	});
-
-	it("keeps the disclosure chrome on a resultless TaskGet that still carries a task id", () => {
-		const html = renderTranscript(toolResultRecords({name: "TaskGet", input: {taskId: "42"}}, ""));
-
-		expect(toolRowChrome(html)).toStrictEqual({
-			bareHeaderClass: null,
-			roleButton: true,
-			ariaExpanded: true,
-			bodyMounted: false,
-			chevron: true,
-		});
+		expect(
+			[
+				toolResultRecords({name: "TaskList", input: {}}, "#1 Ship it"),
+				toolResultRecords({name: "TaskGet", input: {taskId: "42"}}, "Task #42: Ship it"),
+				toolResultRecords({name: "TaskUpdate", input: {taskId: "42", status: "completed"}}, "Updated task #42"),
+			].map((records) => toolRowChrome(renderTranscript(records))["bareHeaderClass"]),
+		).toStrictEqual([bare, bare, bare]);
 	});
 
 	it("keeps the disclosure chrome on every other tool row", () => {

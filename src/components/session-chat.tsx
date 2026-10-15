@@ -28,6 +28,7 @@ import {parseTaskNotification, stoppedAgentDescription, type TaskNotification} f
 import {SlashCommandText} from "./slash-command-chip";
 import {SlashCommandsContext} from "./slash-commands-context";
 import {UserPlainText} from "./user-plain-text";
+import {taskChecklist} from "../lib/task-checklist";
 import {splitLeadingSlashCommand, type SlashCommand} from "../lib/slash-commands";
 import {getCallRenderer} from "./tool-renderers";
 import {buildClientToolCall, buildSubagentLookup, getToolDescription, isArtifactCard} from "./tool-renderers/types";
@@ -4309,24 +4310,13 @@ const CODE_CARD_TOOLS = new Set(["Read", "Edit", "MultiEdit", "Write"]);
  * aria-expanded, no disclosure -- clicking one does nothing. Their body (when
  * we still have something worth showing) renders inline, always visible.
  */
-const NON_EXPANDING_TOOLS = new Set(["TodoWrite", "EnterPlanMode"]);
+const NON_EXPANDING_TOOLS = new Set(["EnterPlanMode"]);
 
-/**
- * Tools whose renderer body is nothing but the call's result plus the input
- * keys listed here. With no result and none of those keys, the renderer draws
- * an empty card, so the row has nothing to disclose -- upstream renders such a
- * row bare, with no chevron and no expander.
- */
-const RESULT_ONLY_BODY_INPUT_KEYS: Record<string, readonly string[]> = {
-	TaskList: [],
-	TaskGet: ["taskId", "id"],
-};
+/** Task tools draw upstream's checklist; a call whose list is empty has nothing to disclose. */
+const TASK_CHECKLIST_TOOLS = new Set(["TodoWrite", "TaskCreate", "TaskUpdate", "TaskGet", "TaskList", "TaskStop"]);
 
 function rendersEmptyBody(call: ClientToolCall): boolean {
-	const inputKeys = RESULT_ONLY_BODY_INPUT_KEYS[call.name];
-	if (inputKeys === undefined) return false;
-	if (call.result) return false;
-	return !inputKeys.some((key) => call.input[key] !== undefined);
+	return TASK_CHECKLIST_TOOLS.has(call.name) && taskChecklist(call.name, call.input).length === 0;
 }
 
 /** Tools that show inline diff stats (+N -M) in the clickable row. */

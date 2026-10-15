@@ -11,18 +11,9 @@ const WriteRenderer = lazy(async () => import("./write-renderer").then((m) => ({
 const GlobRenderer = lazy(async () => import("./glob-renderer").then((m) => ({default: m.GlobRenderer})));
 const GrepRenderer = lazy(async () => import("./grep-renderer").then((m) => ({default: m.GrepRenderer})));
 const AgentRenderer = lazy(async () => import("./agent-renderer").then((m) => ({default: m.AgentRenderer})));
-const TaskCreateRenderer = lazy(async () =>
-	import("./task-create-renderer").then((m) => ({
-		default: m.TaskCreateRenderer,
-	})),
+const TaskChecklistRenderer = lazy(async () =>
+	import("./task-checklist-renderer").then((m) => ({default: m.TaskChecklistRenderer})),
 );
-const TaskUpdateRenderer = lazy(async () =>
-	import("./task-update-renderer").then((m) => ({
-		default: m.TaskUpdateRenderer,
-	})),
-);
-const TaskGetRenderer = lazy(async () => import("./task-get-renderer").then((m) => ({default: m.TaskGetRenderer})));
-const TaskListRenderer = lazy(async () => import("./task-list-renderer").then((m) => ({default: m.TaskListRenderer})));
 const ExitPlanModeRenderer = lazy(async () =>
 	import("./exit-plan-mode-renderer").then((m) => ({
 		default: m.ExitPlanModeRenderer,
@@ -31,11 +22,6 @@ const ExitPlanModeRenderer = lazy(async () =>
 const EnterPlanModeRenderer = lazy(async () =>
 	import("./enter-plan-mode-renderer").then((m) => ({
 		default: m.EnterPlanModeRenderer,
-	})),
-);
-const TodoWriteRenderer = lazy(async () =>
-	import("./todo-write-renderer").then((m) => ({
-		default: m.TodoWriteRenderer,
 	})),
 );
 const WebSearchRenderer = lazy(async () =>
@@ -48,7 +34,6 @@ const SendMessageRenderer = lazy(async () =>
 		default: m.SendMessageRenderer,
 	})),
 );
-const TaskStopRenderer = lazy(async () => import("./task-stop-renderer").then((m) => ({default: m.TaskStopRenderer})));
 const CronCreateRenderer = lazy(async () =>
 	import("./cron-create-renderer").then((m) => ({
 		default: m.CronCreateRenderer,
@@ -82,16 +67,16 @@ const registry: Record<string, ComponentType<ToolRendererProps>> = {
 	Grep: GrepRenderer,
 	AskUserQuestion: AskUserQuestionRenderer,
 	Agent: AgentRenderer,
-	TaskCreate: TaskCreateRenderer,
-	TaskUpdate: TaskUpdateRenderer,
-	TaskGet: TaskGetRenderer,
-	TaskList: TaskListRenderer,
+	TaskCreate: TaskChecklistRenderer,
+	TaskUpdate: TaskChecklistRenderer,
+	TaskGet: TaskChecklistRenderer,
+	TaskList: TaskChecklistRenderer,
 	ExitPlanMode: ExitPlanModeRenderer,
 	EnterPlanMode: EnterPlanModeRenderer,
-	TodoWrite: TodoWriteRenderer,
+	TodoWrite: TaskChecklistRenderer,
 	WebSearch: WebSearchRenderer,
 	SendMessage: SendMessageRenderer,
-	TaskStop: TaskStopRenderer,
+	TaskStop: TaskChecklistRenderer,
 	CronCreate: CronCreateRenderer,
 	Skill: SkillRenderer,
 	WebFetch: WebFetchRenderer,

@@ -364,7 +364,7 @@ describe("SessionChat turn rows", () => {
 					frame: "flex flex-col w-full py-p3",
 				},
 				{line: "7", replyBoundary: "", turnStatus: "", outset: true, frame: "flex flex-col w-full pb-p3"},
-				{line: "12", replyBoundary: "", turnStatus: undefined, outset: false, frame: undefined},
+				{line: "12", replyBoundary: "", turnStatus: "", outset: true, frame: "flex flex-col w-full pb-p3"},
 				{line: "15", replyBoundary: "", turnStatus: "", outset: true, frame: "flex flex-col w-full pb-p3"},
 			]);
 		});

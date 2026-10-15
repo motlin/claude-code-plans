@@ -1,5 +1,5 @@
 import type {Meta, StoryObj} from "@storybook/react-vite";
-import {TodoWriteRenderer} from "../../../components/tool-renderers/todo-write-renderer";
+import {TaskChecklistRenderer} from "../../../components/tool-renderers/task-checklist-renderer";
 import type {ClientToolCall} from "../../../components/tool-renderers/types";
 
 function makeToolCall(overrides: Partial<ClientToolCall> & {input: ClientToolCall["input"]}): ClientToolCall {
@@ -25,8 +25,8 @@ const MULTIPLE_TODOS = makeToolCall({
 
 const meta = {
 	title: "Session Detail/Tool Renderers/TodoWriteRenderer",
-	component: TodoWriteRenderer,
-} satisfies Meta<typeof TodoWriteRenderer>;
+	component: TaskChecklistRenderer,
+} satisfies Meta<typeof TaskChecklistRenderer>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
