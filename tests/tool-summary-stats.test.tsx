@@ -252,6 +252,12 @@ describe("failed edits in diff stats", () => {
 		).toStrictEqual({text: "Createdx.mjs+2−02 added, 0 removed", stats: ["+2", "−0"], pill: true});
 	});
 
+	it("reads a ToolSearch row as upstream's bare 'Loaded tools', without its query", () => {
+		expect(
+			lonePathRow({id: "t-search", name: "ToolSearch", input: {query: "select:WebSearch,WebFetch"}}),
+		).toStrictEqual({text: "Loaded tools", stats: []});
+	});
+
 	it("draws a failed Write row with no diff stat", () => {
 		expect(
 			lonePathRow({

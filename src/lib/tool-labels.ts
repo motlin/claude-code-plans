@@ -178,8 +178,8 @@ const FIXED_LABELS: Record<string, {verb: string}> = {
 	TaskStop: {verb: "Stopped task"},
 	EnterPlanMode: {verb: "Started planning"},
 	ExitPlanMode: {verb: "Proposed plan"},
-	// Not in upstream's table (claude.ai/code has no deferred tools); kept local.
-	ToolSearch: {verb: "Searched tools"},
+	// Upstream's generic map: tool_search reads "Loaded tools", with no parameter.
+	ToolSearch: {verb: "Loaded tools"},
 	ReportFindings: {
 		verb: "Reported review findings",
 	},

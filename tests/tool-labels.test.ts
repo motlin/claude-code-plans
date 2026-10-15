@@ -83,7 +83,7 @@ describe("toolLabel", () => {
 			taskStop: {verb: "Stopped task"},
 			enterPlanMode: {verb: "Started planning"},
 			exitPlanMode: {verb: "Proposed plan"},
-			toolSearch: {verb: "Searched tools"},
+			toolSearch: {verb: "Loaded tools"},
 		});
 	});
 

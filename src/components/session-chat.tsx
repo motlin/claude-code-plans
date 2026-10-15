@@ -4273,6 +4273,9 @@ const RENDERER_HANDLES_PARAM = new Set([
 	"mcp__plugin_playwright_playwright__browser_navigate",
 ]);
 
+/** Tools upstream labels with a bare phrase, drawing no parameter beside it. */
+const PARAMLESS_TOOLS = new Set(["ToolSearch"]);
+
 /**
  * Tools whose renderer provides its own card shell (header + body).
  * These get a `group/body py-p6` wrapper with a `card-outline rounded-r6` inner
@@ -4475,7 +4478,7 @@ function ToolCallRow({
 	const isPhraseLabel = phrase !== null;
 
 	const displayParam =
-		RENDERER_HANDLES_PARAM.has(call.name) || isPhraseLabel
+		RENDERER_HANDLES_PARAM.has(call.name) || PARAMLESS_TOOLS.has(call.name) || isPhraseLabel
 			? ""
 			: isFileParam
 				? (call.param.split("/").pop() ?? call.param)

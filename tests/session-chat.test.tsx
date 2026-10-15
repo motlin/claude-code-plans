@@ -1693,10 +1693,7 @@ describe("SessionChat tool row verbs", () => {
 				[SECONDARY, "Started loop"],
 				[SECONDARY_PARAM, "Review the weekly metrics"],
 			],
-			toolSearch: [
-				[SECONDARY, "Searched tools"],
-				[SECONDARY_PARAM, "select:Read,Edit"],
-			],
+			toolSearch: [[SECONDARY, "Loaded tools"]],
 		});
 	});
 
@@ -1717,7 +1714,7 @@ describe("SessionChat tool row verbs", () => {
 			enterPlanMode: ["Started planning", "Failed"],
 			exitPlanMode: ["Proposed plan", "Failed"],
 			cronCreate: ["Started loop", "p", "Failed"],
-			toolSearch: ["Searched tools", "select:Read", "Failed"],
+			toolSearch: ["Loaded tools", "Failed"],
 		});
 	});
 });
