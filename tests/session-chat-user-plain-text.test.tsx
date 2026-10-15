@@ -90,7 +90,8 @@ describe("SessionChat user bubbles as plain text", () => {
 						"font-mono text-[12px]/[12px] text-code-ink bg-alpha-1 border-[0.5px] border-border rounded-[4.8px] px-[3px] py-[0.75px]",
 				},
 			],
-			paragraphClass: "text-body whitespace-pre-wrap [overflow-wrap:anywhere]",
+			paragraphClass:
+				"text-body whitespace-pre-wrap [overflow-wrap:anywhere] text-pretty [unicode-bidi:plaintext]",
 		});
 	});
 
@@ -103,22 +104,52 @@ describe("SessionChat user bubbles as plain text", () => {
 		});
 	});
 
-	it("lifts a bullet list out of the prompt, keeping a paragraph line literal and a later number its start", () => {
-		const el = bubble(
-			renderRecords([prompt("Plan:\n- **one** `a`\n  wrapped\n- two\n\n3. three\n4. four\nafter")]),
-		);
-
-		expect(
-			Array.from(el.querySelectorAll("p, ul, ol"), (block) => ({
+	function blocks(el: Element) {
+		return Array.from(el.querySelectorAll("p, ul, ol"))
+			.filter((block) => block.parentElement?.closest("li") == null)
+			.map((block) => ({
 				tag: block.tagName,
 				start: block.getAttribute("start"),
 				texts: block.tagName === "P" ? [block.textContent] : Array.from(block.children, (li) => li.textContent),
-			})),
-		).toStrictEqual([
+			}));
+	}
+
+	it("lifts '*' and 'N.' lists that start the prompt or follow a blank line, keeping a later number its start", () => {
+		const el = bubble(
+			renderRecords([prompt("Plan:\n\n* **one** `a`\n  wrapped\n* two\n\n3. three\n4. four\nafter")]),
+		);
+
+		expect(blocks(el)).toStrictEqual([
 			{tag: "P", start: null, texts: ["Plan:"]},
 			{tag: "UL", start: null, texts: ["**one** a\nwrapped", "two"]},
 			{tag: "OL", start: "3", texts: ["three", "four\nafter"]},
 		]);
+	});
+
+	it("keeps upstream's non-list lines as typed: a bullet straight after text, a 1-space indent, '-' and '+' bullets, '01.'", () => {
+		const texts = [
+			"From github.com:motlin/prettier-java-next-line\n * branch            main       -> FETCH_HEAD\nmise ERROR",
+			"Plan:\n1. a\n2. b",
+			"- one\n- two",
+			"+ one",
+			"Plan:\n\n * one",
+			"01. one",
+		];
+
+		expect(texts.map((text) => blocks(bubble(renderRecords([prompt(text)]))))).toStrictEqual(
+			texts.map((text) => [{tag: "P", start: null, texts: [text]}]),
+		);
+	});
+
+	it("nests items indented by 3 spaces per level, and ends a list at a blank line", () => {
+		const el = bubble(renderRecords([prompt("* a\n   1. b\n   2. c\n* d\n\nafter")]));
+		const list = el.querySelector("ul");
+
+		expect({
+			top: Array.from(list?.children ?? [], (item) => item.firstChild?.textContent),
+			nested: Array.from(list?.querySelector("ol")?.children ?? [], (item) => item.textContent),
+			after: Array.from(el.querySelectorAll("p"), (paragraph) => paragraph.textContent),
+		}).toStrictEqual({top: ["a", "d"], nested: ["b", "c"], after: ["after"]});
 	});
 
 	it("does not turn markdown links into session links", () => {

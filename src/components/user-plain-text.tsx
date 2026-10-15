@@ -2,7 +2,7 @@ import type {ReactNode} from "react";
 
 import {defined} from "../lib/defined";
 
-const PARAGRAPH_CLASS = "text-body whitespace-pre-wrap [overflow-wrap:anywhere]";
+const PARAGRAPH_CLASS = "text-body whitespace-pre-wrap [overflow-wrap:anywhere] text-pretty [unicode-bidi:plaintext]";
 
 const CODE_CLASS =
 	"font-mono text-[12px]/[12px] text-code-ink bg-alpha-1 border-[0.5px] border-border rounded-[4.8px] px-[3px] py-[0.75px]";
@@ -63,50 +63,43 @@ function renderInline(text: string): ReactNode[] {
 }
 
 /** Upstream's list: a 6px-gap column of items whose text starts 20px in, the marker hanging in that padding. */
-const LIST_CLASS = "text-body flex flex-col gap-[6px] ps-5 [&>li]:whitespace-pre-wrap [&>li]:[overflow-wrap:anywhere]";
+const LIST_CLASS =
+	"text-body flex flex-col gap-[6px] ps-5 text-pretty [&>li]:whitespace-pre-wrap [&>li]:[overflow-wrap:anywhere]";
 
 /** Spacing between a bubble's blocks, as upstream's 5px-gap markdown root spaces them. */
 const BLOCK_GAP_CLASS = "mt-[5px]";
 
-const ORDERED_ITEM = /^ {0,3}(\d{1,9})[.)][ \t]+(.*)$/;
-const BULLET_ITEM = /^ {0,3}([-*+])[ \t]+(.*)$/;
+/** Upstream's list items: "* " or a canonical "N. ", indented in 3-space steps (a bare marker only on the last line). */
+const BULLET_ITEM = /^((?: {3})*)\*(?: (.*))?$/;
+const ORDERED_ITEM = /^((?: {3})*)(\d+)\.(?: (.*))?$/;
 
-interface ListItemStart {
+interface ListEntry {
+	level: number;
 	ordered: boolean;
-	/** The ordered list's number, or the bullet character. */
-	marker: string;
+	/** The ordered item's number. */
+	start: number;
 	text: string;
 }
 
-function listItemStart(line: string): ListItemStart | null {
-	const ordered = ORDERED_ITEM.exec(line);
-	if (ordered !== null)
-		return {
-			ordered: true,
-			marker: defined(ordered[1], "ORDERED_ITEM has a number group"),
-			text: defined(ordered[2], "ORDERED_ITEM has a text group"),
-		};
+function listEntry(line: string, isLast: boolean): ListEntry | null {
 	const bullet = BULLET_ITEM.exec(line);
-	if (bullet !== null)
-		return {
-			ordered: false,
-			marker: defined(bullet[1], "BULLET_ITEM has a bullet group"),
-			text: defined(bullet[2], "BULLET_ITEM has a text group"),
-		};
-	return null;
+	if (bullet !== null && (bullet[2] !== undefined || isLast)) {
+		return {level: (bullet[1] ?? "").length / 3, ordered: false, start: 1, text: bullet[2] ?? ""};
+	}
+	const ordered = ORDERED_ITEM.exec(line);
+	const number = ordered?.[2];
+	if (ordered === null || number === undefined || String(Number(number)) !== number) return null;
+	if (ordered[3] === undefined && !isLast) return null;
+	return {level: (ordered[1] ?? "").length / 3, ordered: true, start: Number(number), text: ordered[3] ?? ""};
 }
 
-function sameList(a: ListItemStart, b: ListItemStart): boolean {
-	return a.ordered === b.ordered && (a.ordered || a.marker === b.marker);
-}
-
-type Block = {kind: "text"; text: string} | {kind: "list"; ordered: boolean; start: number; items: string[]};
+type Block = {kind: "text"; text: string} | {kind: "list"; entries: ListEntry[]};
 
 /**
  * Split a prompt into runs of literal text and the lists upstream lifts out of
- * it. A list starts at a line opening with "1." or "-" (a paragraph line may
- * only be interrupted by an ordered list that starts at 1, as in CommonMark)
- * and runs while its lines are items of the same list or their continuations.
+ * it (its `ccd_user_message_lists_main` parser). A list starts with a top-level
+ * item at the start of the prompt or after a blank line, never straight after
+ * text; it takes deeper items and continuation lines, and ends at a blank line.
  */
 function splitBlocks(text: string): Block[] {
 	const lines = text.split("\n");
@@ -119,39 +112,72 @@ function splitBlocks(text: string): Block[] {
 	};
 	let i = 0;
 	for (let head = lines[i]; head !== undefined; head = lines[i]) {
-		const first = listItemStart(head);
+		const first = listEntry(head, i === lines.length - 1);
 		const afterText = (textLines.at(-1)?.trim() ?? "") !== "";
-		if (first === null || (afterText && first.ordered && first.marker !== "1")) {
+		if (first?.level !== 0 || afterText) {
 			textLines.push(head);
 			i++;
 			continue;
 		}
 		flushText();
-		const items = [first.text];
+		const entries = [first];
 		i++;
-		for (let line = lines[i]; line !== undefined; line = lines[i]) {
-			const item = listItemStart(line);
-			if (item !== null) {
-				if (!sameList(first, item)) break;
-				items.push(item.text);
-				i++;
-				continue;
+		for (let line = lines[i]; line !== undefined && line.trim() !== ""; line = lines[i]) {
+			const entry = listEntry(line, i === lines.length - 1);
+			if (entry === null) {
+				const last = defined(entries.at(-1), "a list has its first entry");
+				last.text += `\n${line.trim()}`;
+			} else {
+				const parent = entries.at(-1)?.level ?? 0;
+				entries.push({...entry, level: Math.min(entry.level, parent + 1)});
 			}
-			if (line.trim() === "") {
-				const next = lines.slice(i).find((candidate) => candidate.trim() !== "");
-				const nextItem = next === undefined ? null : listItemStart(next);
-				if (nextItem === null || !sameList(first, nextItem)) break;
-				i++;
-				continue;
-			}
-			items[items.length - 1] += `\n${line.trim()}`;
 			i++;
 		}
 		while (lines[i]?.trim() === "") i++;
-		blocks.push({kind: "list", ordered: first.ordered, start: first.ordered ? Number(first.marker) : 1, items});
+		blocks.push({kind: "list", entries});
 	}
 	flushText();
 	return blocks;
+}
+
+/** Runs of same-kind sibling entries at `level`, each with the deeper entries under it. */
+function renderList(entries: readonly ListEntry[], level: number, className: string, key: number): ReactNode[] {
+	const lists: ReactNode[] = [];
+	let index = 0;
+	while (index < entries.length) {
+		const head = defined(entries[index], "index is in range");
+		const items: ReactNode[] = [];
+		while (index < entries.length) {
+			const entry = defined(entries[index], "index is in range");
+			if (entry.level !== level || entry.ordered !== head.ordered) break;
+			let end = index + 1;
+			while (end < entries.length && defined(entries[end], "end is in range").level > level) end++;
+			items.push(
+				<li key={index}>
+					{renderInline(entry.text)}
+					{renderList(entries.slice(index + 1, end), level + 1, "", index)}
+				</li>,
+			);
+			index = end;
+		}
+		const listKey = `${key}-${level}-${lists.length}`;
+		lists.push(
+			head.ordered ? (
+				<ol
+					key={listKey}
+					start={head.start === 1 ? undefined : head.start}
+					className={`list-decimal ${LIST_CLASS} ${className}`}
+				>
+					{items}
+				</ol>
+			) : (
+				<ul key={listKey} className={`list-disc ${LIST_CLASS} ${className}`}>
+					{items}
+				</ul>
+			),
+		);
+	}
+	return lists;
 }
 
 /**
@@ -186,20 +212,7 @@ export function UserPlainText({text, prefix}: {text: string; prefix?: ReactNode}
 						</p>
 					);
 				}
-				const items = block.items.map((item, itemIndex) => <li key={itemIndex}>{renderInline(item)}</li>);
-				return block.ordered ? (
-					<ol
-						key={index}
-						start={block.start === 1 ? undefined : block.start}
-						className={`list-decimal ${LIST_CLASS} ${gap}`}
-					>
-						{items}
-					</ol>
-				) : (
-					<ul key={index} className={`list-disc ${LIST_CLASS} ${gap}`}>
-						{items}
-					</ul>
-				);
+				return renderList(block.entries, 0, gap, index);
 			})}
 		</>
 	);
