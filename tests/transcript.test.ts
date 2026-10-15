@@ -1194,6 +1194,54 @@ describe("message metadata fields", () => {
 		expect(result.lines[1]!).not.toHaveProperty("isApiErrorMessage");
 	});
 
+	it("carries the usage-limit window from apiErrorParams, falling back to quotaLimits", () => {
+		const info = {
+			status: "rejected",
+			resetsAt: 1792396800,
+			rateLimitType: "seven_day",
+			overageStatus: "rejected",
+			overageDisabledReason: "org_level_disabled",
+			isUsingOverage: false,
+		};
+		const records = [
+			assistantRecord([{type: "text", text: "You've hit your weekly limit"}], {
+				isApiErrorMessage: true,
+				apiErrorStatus: 429,
+				apiError: "usage_limit_reached",
+				apiErrorParams: {rate_limit_info: info},
+				quotaLimits: {
+					...info,
+					unifiedRateLimitFallbackAvailable: false,
+					upgradePaths: ["overage"],
+				},
+			}),
+			assistantRecord([{type: "text", text: "You've hit your 5-hour limit"}], {
+				isApiErrorMessage: true,
+				apiError: "usage_limit_reached",
+				quotaLimits: {
+					...info,
+					rateLimitType: "five_hour",
+					unifiedRateLimitFallbackAvailable: false,
+					upgradePaths: [],
+				},
+			}),
+			assistantRecord([{type: "text", text: "overloaded"}], {
+				isApiErrorMessage: true,
+				apiErrorStatus: 529,
+			}),
+		];
+		const expected = {
+			resetsAt: 1792396800,
+			rateLimitType: "seven_day",
+			overageStatus: "rejected",
+			overageDisabledReason: "org_level_disabled",
+			isUsingOverage: false,
+		};
+		expect(
+			processTranscript(records).lines.map((line) => ("usageLimit" in line ? line.usageLimit : null)),
+		).toStrictEqual([expected, {...expected, rateLimitType: "five_hour"}, null]);
+	});
+
 	it("carries stopReason only when max_tokens", () => {
 		const records = [
 			assistantRecord([{type: "text", text: "cut"}], {

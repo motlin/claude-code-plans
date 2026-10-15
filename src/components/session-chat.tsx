@@ -74,6 +74,7 @@ import type {BackgroundCompletionLike, SummarySegment} from "../lib/session-util
 import {pastTense} from "../lib/past-tense";
 import {runningToolLabel, runningToolLabelText, toolLabel} from "../lib/tool-labels";
 import {formatElapsed} from "../lib/working-marker";
+import {describeUsageLimit, type UsageLimit} from "../lib/usage-limit-notice";
 import {useElapsedSeconds} from "../hooks/use-elapsed-seconds";
 import {InlinePathImages, SESSION_IMAGE_CLASS_NAME} from "./inline-path-images";
 import {isEditableTarget} from "../lib/shortcuts/match";
@@ -4010,7 +4011,11 @@ function AssistantEntry({
 	return (
 		<div className="flex flex-col gap-[var(--chat-item-gap)] min-w-0 select-text">
 			{attributionRow}
-			{line.isApiErrorMessage === true && <ApiErrorCallout line={line} />}
+			{line.usageLimit === undefined ? (
+				line.isApiErrorMessage === true && <ApiErrorCallout line={line} />
+			) : (
+				<UsageLimitCallout limit={line.usageLimit} />
+			)}
 			{content.map((block, i) => (
 				<ContentBlock
 					key={i}
@@ -4057,6 +4062,32 @@ function AttributionRow({line, verbose}: {line: MessageSessionLine; verbose: boo
 					<Plug className="h-3 w-3" />
 					{mcpLabel}
 				</span>
+			)}
+		</div>
+	);
+}
+
+/** Notice for a synthetic usage-limit turn: which window ran out, when it resets, and extra-usage state. */
+function UsageLimitCallout({limit}: {limit: UsageLimit}) {
+	const notice = describeUsageLimit(limit, Date.now());
+	return (
+		<div
+			data-testid="usage-limit-notice"
+			className="border-l-2 border-danger-000 bg-danger-000/10 rounded-r px-3 py-2 text-xs"
+		>
+			<div className="flex items-center gap-1.5 text-danger-000">
+				<AlertTriangle className="h-3.5 w-3.5" />
+				<span data-usage-limit-title="">Usage limit reached</span>
+			</div>
+			<div className="mt-1 flex flex-wrap gap-x-2 text-secondary">
+				<span data-usage-limit-window="">{notice.limitLabel}</span>
+				<span aria-hidden="true">·</span>
+				<span data-usage-limit-reset="">{notice.resetLabel}</span>
+			</div>
+			{notice.overageLabel !== undefined && (
+				<div data-usage-limit-overage="" className="mt-0.5 text-secondary">
+					{notice.overageLabel}
+				</div>
 			)}
 		</div>
 	);

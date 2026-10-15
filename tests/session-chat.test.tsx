@@ -2243,3 +2243,63 @@ describe("SessionChat smart quotes", () => {
 		});
 	});
 });
+
+describe("SessionChat usage-limit notice", () => {
+	const usageLimitRecord = (extra: Record<string, unknown>) => ({
+		type: "assistant",
+		message: {
+			role: "assistant",
+			model: "<synthetic>",
+			content: [{type: "text", text: "You've hit your weekly limit"}],
+		},
+		isApiErrorMessage: true,
+		apiErrorStatus: 429,
+		...extra,
+	});
+	const defaults = {showCompactSummaries: true, showTranscriptOnly: true};
+
+	it("renders a seven_day usage-limit record as a notice naming the window, reset, and overage state", () => {
+		const html = renderRecord(
+			usageLimitRecord({
+				apiError: "usage_limit_reached",
+				apiErrorParams: {
+					rate_limit_info: {
+						status: "rejected",
+						resetsAt: 1,
+						rateLimitType: "seven_day",
+						overageStatus: "rejected",
+						overageDisabledReason: "org_level_disabled",
+						isUsingOverage: false,
+					},
+				},
+			}),
+			{},
+			defaults,
+		);
+		const notice = new DOMParser()
+			.parseFromString(html, "text/html")
+			.querySelector('[data-testid="usage-limit-notice"]');
+		expect({
+			title: notice?.querySelector("[data-usage-limit-title]")?.textContent ?? null,
+			window: notice?.querySelector("[data-usage-limit-window]")?.textContent ?? null,
+			reset: notice?.querySelector("[data-usage-limit-reset]")?.textContent.startsWith("Reset ") ?? null,
+			overage: notice?.querySelector("[data-usage-limit-overage]")?.textContent ?? null,
+			apiErrorHeader: html.includes("API Error"),
+		}).toStrictEqual({
+			title: "Usage limit reached",
+			window: "Weekly · all models",
+			reset: true,
+			overage: "Extra usage unavailable: org level disabled",
+			apiErrorHeader: false,
+		});
+	});
+
+	it("falls back to the plain API error callout and text when the record has no limit fields", () => {
+		const html = renderRecord(usageLimitRecord({}), {}, defaults);
+		expect({
+			notice: html.includes('data-testid="usage-limit-notice"'),
+			apiErrorHeader: html.includes("API Error 429"),
+			text: html.includes("You&#x27;ve hit your weekly limit"),
+		}).toStrictEqual({notice: false, apiErrorHeader: true, text: true});
+	});
+});

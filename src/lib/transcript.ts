@@ -13,6 +13,7 @@ import type {ToolResultInfo} from "./sessions";
 import {toolResultMetaFrom} from "./tool-labels";
 import {formatModelName} from "./model-name";
 import {isRecord} from "./narrow";
+import {UsageLimitSchema} from "./usage-limit-notice";
 import {normalizeArtifactUrl, parseArtifactOutput} from "./artifact-output";
 import {ArtifactToolResultSchema} from "./artifact-schemas";
 import {
@@ -90,6 +91,8 @@ const MessageLineSchema = z.object({
 	/** The `api-request` this line's run of records came from; only the run's first line carries it. */
 	requestRef: z.string().optional(),
 	apiErrorStatus: z.union([z.number(), z.string()]).optional(),
+	/** The rate-limit window of a synthetic usage-limit message. */
+	usageLimit: UsageLimitSchema.optional(),
 	errorDetails: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
 	stopReason: z.literal("max_tokens").optional(),
 	usage: z.record(z.string(), JsonValueSchema).optional(),
@@ -1011,6 +1014,16 @@ function processRecordBatch(
 			lastRequestRef = record.requestRef;
 			if (record.apiErrorStatus !== undefined) processedLine.apiErrorStatus = record.apiErrorStatus;
 			if (record.errorDetails !== undefined) processedLine.errorDetails = record.errorDetails;
+			const limitInfo = record.apiErrorParams?.rate_limit_info ?? record.quotaLimits;
+			if (limitInfo !== undefined) {
+				processedLine.usageLimit = {
+					resetsAt: limitInfo.resetsAt,
+					rateLimitType: limitInfo.rateLimitType,
+					overageStatus: limitInfo.overageStatus,
+					overageDisabledReason: limitInfo.overageDisabledReason,
+					isUsingOverage: limitInfo.isUsingOverage,
+				};
+			}
 			if (record.message.stop_reason === "max_tokens") processedLine.stopReason = "max_tokens";
 			if (record.message.usage !== undefined) processedLine.usage = record.message.usage;
 			if (typeof record.perTurnEffort === "string") {
