@@ -161,11 +161,11 @@ describe("expanded tool bodies expose labelled, focusable scroll regions", () =>
 		});
 	});
 
-	it("renders the key label at 12px mono, opacity .7", () => {
+	it("renders the key label at 12/17 mono, opacity .7", () => {
 		const {container} = render(<KeyValueCard params={[{key: "pattern", value: "alice"}]} />);
-		const label = [...container.querySelectorAll("span")].find((span) => span.textContent === "pattern: ");
+		const label = [...container.querySelectorAll("span")].find((span) => span.textContent === "pattern:");
 
-		expect(label?.className).toBe("text-[12px] font-mono opacity-70");
+		expect(label?.className).toBe("text-[12px]/[17px] font-mono opacity-70");
 	});
 });
 

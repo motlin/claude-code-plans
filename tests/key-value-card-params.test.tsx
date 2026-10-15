@@ -20,11 +20,11 @@ function paramsContainer(container: HTMLElement): HTMLElement {
 afterEach(cleanup);
 
 describe("KeyValueCard params", () => {
-	it("stacks each param as a break-words row of mono key and value spans", () => {
+	it("stacks each param as upstream's break-words row: a 12/17 mono key, a space, then the value as plain body text", () => {
 		const {container} = render(
 			<KeyValueCard
 				params={[
-					{key: "pattern", value: "alice"},
+					{key: "query", value: "ROXON tool"},
 					{key: "path", value: "src"},
 				]}
 			/>,
@@ -35,27 +35,21 @@ describe("KeyValueCard params", () => {
 			containerClass: params.className,
 			rows: [...params.children].map((row) => ({
 				className: row.className,
-				spans: [...row.children].map((span) => ({
-					className: span.className,
-					text: span.textContent,
-				})),
+				key: row.firstElementChild?.className,
+				nodes: [...row.childNodes].map((node) => node.textContent),
 			})),
 		}).toStrictEqual({
 			containerClass: "text-secondary flex flex-col gap-g2",
 			rows: [
 				{
 					className: "break-words",
-					spans: [
-						{className: "text-[12px] font-mono opacity-70", text: "pattern: "},
-						{className: "text-code font-mono whitespace-pre-wrap break-all", text: "alice"},
-					],
+					key: "text-[12px]/[17px] font-mono opacity-70",
+					nodes: ["query:", " ", "ROXON tool"],
 				},
 				{
 					className: "break-words",
-					spans: [
-						{className: "text-[12px] font-mono opacity-70", text: "path: "},
-						{className: "text-code font-mono whitespace-pre-wrap break-all", text: "src"},
-					],
+					key: "text-[12px]/[17px] font-mono opacity-70",
+					nodes: ["path:", " ", "src"],
 				},
 			],
 		});

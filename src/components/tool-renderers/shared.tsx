@@ -444,14 +444,9 @@ export function KeyValueCard({
 						<div className="text-secondary flex flex-col gap-g2">
 							{params.map((p) => (
 								<div key={p.key} className="break-words">
-									<span className="text-[12px] font-mono opacity-70">{`${p.key}: `}</span>
-									{p.markdown ? (
-										<InlineMarkdown text={p.value} />
-									) : (
-										<span className="text-code font-mono whitespace-pre-wrap break-all">
-											{p.value}
-										</span>
-									)}
+									{/* Upstream's generic row: a muted mono key, a space, then the value as plain body text. */}
+									<span className="text-[12px]/[17px] font-mono opacity-70">{`${p.key}:`}</span>{" "}
+									{p.markdown ? <InlineMarkdown text={p.value} /> : p.value}
 								</div>
 							))}
 						</div>
