@@ -319,6 +319,24 @@ describe("artifacts route", () => {
 		}).toStrictEqual({toggle: "BUTTON", cards: 3});
 	});
 
+	it("draws grid cards as upstream: r10, a 160px preview, a 28px type tile straddling the divider, 14px body, 13/20 title, 11/17 meta, no pills", async () => {
+		storage.removeItem(ARTIFACTS_LAYOUT_STORAGE_KEY);
+		await renderArtifactsPage("/artifacts", true);
+		const card = document.querySelector<HTMLElement>("[data-gallery-card]");
+		if (card === null) throw new Error("no card");
+		const classes = (selector: string) => card.querySelector(selector)?.className.split(" ") ?? [];
+		const has = (selector: string, names: string[]) => names.filter((name) => !classes(selector).includes(name));
+		expect({
+			frame: has("[data-card-frame]", ["rounded-r7", "min-h-[252px]"]),
+			preview: has("[data-card-preview]", ["h-[160px]"]),
+			badge: has("[data-card-badge]", ["absolute", "left-3", "top-[142px]", "size-7", "rounded-r6", "p-0.5"]),
+			body: has("[data-card-body]", ["p-3.5"]),
+			title: has("[data-card-title]", ["text-[13px]/[20px]", "font-medium"]),
+			meta: has("[data-card-meta]", ["text-[11px]/[17px]", "mt-auto"]),
+			pills: within(card).queryAllByRole("link", {name: /^(Session|Preview)$/}).length,
+		}).toStrictEqual({frame: [], preview: [], badge: [], body: [], title: [], meta: [], pills: 0});
+	});
+
 	it("lists artifacts by date group linking out to claude.ai", async () => {
 		await renderArtifactsPage("/artifacts", true);
 

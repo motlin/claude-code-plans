@@ -254,8 +254,13 @@ function TypeFilterMenu({
 	);
 }
 
-const TILE_BOX = {menu: "size-5 rounded", row: "size-9 rounded-lg", card: "h-full w-full"} as const;
-const TILE_ICON = {menu: "size-3.5", row: "size-5", card: "size-10"} as const;
+const TILE_BOX = {
+	menu: "size-5 rounded",
+	row: "size-9 rounded-lg",
+	card: "h-full w-full",
+	badge: "size-6 rounded-r5",
+} as const;
+const TILE_ICON = {menu: "size-3.5", row: "size-5", card: "size-10", badge: "size-4"} as const;
 
 /**
  * Upstream's type tile: a neutral `</>` tile for HTML pages ("Other"), a blue document tile for Docs, and
@@ -264,7 +269,7 @@ const TILE_ICON = {menu: "size-3.5", row: "size-5", card: "size-10"} as const;
 function TypeTile({kind, size = "row"}: {kind: ArtifactKind | "all"; size?: keyof typeof TILE_BOX}) {
 	const Icon = kind === "docs" ? FileText : kind === "all" ? Shapes : CodeXml;
 	const tone = kind === "docs" ? "bg-blue-500/10 text-blue-600 dark:text-blue-300" : "bg-alpha-1 text-secondary";
-	const labelled = kind === "docs" && size !== "menu";
+	const labelled = kind === "docs" && size !== "menu" && size !== "badge";
 	return (
 		<div
 			{...(labelled ? {role: "img", "aria-label": "Docs"} : {"aria-hidden": true})}
@@ -485,28 +490,42 @@ function ArtifactGrid({
 			{artifacts.map((artifact) => (
 				<li key={artifact.url} data-gallery-card="" className="group group/cdsrow relative h-full">
 					<ArtifactContextMenu artifact={artifact} pinned={isPinned(artifact.url)}>
-						<PrimaryLink artifact={artifact} className="rounded-card" />
-						<div className="pointer-events-none relative flex h-full flex-col overflow-hidden rounded-card border border-border bg-surface-2 group-hover:bg-surface-1">
-							<div className="relative h-[160px] select-none overflow-hidden">
+						<PrimaryLink artifact={artifact} className="rounded-r7" />
+						<div
+							data-card-frame=""
+							className="pointer-events-none relative flex h-full min-h-[252px] flex-col overflow-hidden rounded-r7 border border-border bg-surface-2 group-hover:bg-surface-1"
+						>
+							<div
+								data-card-preview=""
+								className="relative h-[160px] shrink-0 select-none overflow-hidden"
+							>
 								<TypeTile kind={artifact.kind} size="card" />
 							</div>
 							<div className="mx-px border-t border-alpha-1" />
-							<div className="relative flex flex-1 flex-col gap-1.5 p-3">
+							{/* Upstream's 28px type tile straddles the divider, 12px in from the card's edge */}
+							<div
+								data-card-badge=""
+								className="absolute left-3 top-[142px] size-7 rounded-r6 bg-surface-2 p-0.5"
+							>
+								<TypeTile kind={artifact.kind} size="badge" />
+							</div>
+							<div data-card-body="" className="relative flex flex-1 flex-col p-3.5">
 								<div
 									aria-hidden="true"
-									className="line-clamp-2 min-w-0 text-left text-body leading-5 font-medium text-primary"
+									data-card-title=""
+									className="line-clamp-2 min-w-0 text-left text-[13px]/[20px] font-medium text-primary"
 								>
 									{artifact.title}
 								</div>
-								<div className="mt-auto flex flex-wrap items-center gap-1 text-caption text-ink-muted">
+								<div
+									data-card-meta=""
+									className="mt-auto flex flex-wrap items-center gap-1 text-[11px]/[17px] text-ink-muted"
+								>
 									<PrivacyAndDate artifact={artifact} now={now} />
 								</div>
-								<div className="flex items-center gap-1.5">
-									<ArtifactChips artifact={artifact} />
-									<span className="ms-auto">
-										<ArtifactRowActions artifact={artifact} pinned={isPinned(artifact.url)} />
-									</span>
-								</div>
+								<span className="pointer-events-auto absolute right-2.5 bottom-2">
+									<ArtifactRowActions artifact={artifact} pinned={isPinned(artifact.url)} />
+								</span>
 							</div>
 						</div>
 					</ArtifactContextMenu>
