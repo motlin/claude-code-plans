@@ -17,9 +17,9 @@ function basename(path: string): string {
 	return path.slice(path.lastIndexOf("/") + 1) || path;
 }
 
-function Stats({added, removed}: {added: number; removed: number}) {
+function Stats({added, removed, className = ""}: {added: number; removed: number; className?: string}) {
 	return (
-		<span className="flex shrink-0 gap-g1 tabular-nums">
+		<span className={`flex shrink-0 gap-g1 tabular-nums ${className}`}>
 			<span className="text-diff-added">+{added}</span>
 			<span className="text-diff-removed">−{removed}</span>
 		</span>
@@ -27,7 +27,11 @@ function Stats({added, removed}: {added: number; removed: number}) {
 }
 
 const ROW_CLASS =
-	"group/row flex min-h-7 w-full min-w-0 items-center gap-2 rounded-r5 px-2 py-0.5 text-left transition-colors hover:bg-fill-ghost-hover";
+	"group/row -mx-1 flex min-h-7 w-full min-w-0 items-center gap-2 rounded-r5 px-1 py-0.5 text-left transition-colors hover:bg-fill-ghost-hover";
+
+/** Upstream's summary-card control text: 13/19 rows over 12/15 git stats. */
+const CONTROL_TEXT = "text-[13px]/[19px]";
+const STAT_TEXT = "text-[12px]/[15px]";
 
 const UNDO_CLASS =
 	"h-7 shrink-0 cursor-pointer rounded-r5 px-2 text-body text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary disabled:cursor-default disabled:opacity-50";
@@ -39,9 +43,9 @@ const LONE_ROW_CLASS =
 function FileRowContent({path, added, removed}: {path: string; added: number; removed: number}) {
 	return (
 		<>
-			<FileText aria-hidden="true" className="size-3.5 shrink-0 text-ink-muted" />
-			<span className="min-w-0 truncate text-body text-primary">{basename(path)}</span>
-			<Stats added={added} removed={removed} />
+			<FileText aria-hidden="true" className="size-4 shrink-0 text-ink-muted" />
+			<span className={`min-w-0 truncate ${CONTROL_TEXT} text-primary`}>{basename(path)}</span>
+			<Stats added={added} removed={removed} className={STAT_TEXT} />
 			<ChevronRight
 				aria-hidden="true"
 				className="ml-auto size-3.5 shrink-0 text-ink-muted opacity-0 group-hover/row:opacity-100"
@@ -145,18 +149,24 @@ export function TurnChangesCard({sessionId, changes}: {sessionId: string; change
 		);
 	}
 
-	const headerContent = (
+	const headerContent = <span className={`min-w-0 truncate ${CONTROL_TEXT} text-primary`}>{title}</span>;
+	const seeAllContent = (
 		<>
-			<span className="min-w-0 truncate text-body text-primary">{title}</span>
-			<Stats added={changes.added} removed={changes.removed} />
+			<span className={`${CONTROL_TEXT} text-secondary`}>See all</span>
+			<Stats added={changes.added} removed={changes.removed} className={STAT_TEXT} />
 		</>
 	);
 
+	// Upstream's summary card: an inset-ringed 10px card of 13/19 rows closing on "See all +A −R".
+	// Undo is a local extra beside the header.
 	return (
-		<div data-turn-changes-card className="mt-2 flex w-full flex-col">
+		<div
+			data-turn-changes-card
+			className="mt-2 flex w-full select-text flex-col gap-1 rounded-r7 px-2 py-1.5 shadow-[inset_0_0_0_1px_var(--color-border)]"
+		>
 			<div className="flex min-w-0 items-center gap-1">
 				{openChanges === undefined ? (
-					<div className="flex min-h-7 min-w-0 flex-1 items-center gap-2 px-2">{headerContent}</div>
+					<div className="flex min-h-7 min-w-0 flex-1 items-center gap-2">{headerContent}</div>
 				) : (
 					<button type="button" onClick={openChanges} className={`${ROW_CLASS} flex-1 cursor-pointer`}>
 						{headerContent}
@@ -189,13 +199,20 @@ export function TurnChangesCard({sessionId, changes}: {sessionId: string; change
 							onClick={() => {
 								setShowAll(true);
 							}}
-							className={`${ROW_CLASS} cursor-pointer text-body text-secondary`}
+							className={`${ROW_CLASS} cursor-pointer ${CONTROL_TEXT} text-secondary`}
 						>
 							Show {hidden} more
 						</button>
 					</li>
 				)}
 			</ul>
+			{openChanges === undefined ? (
+				<div className="flex min-h-7 min-w-0 items-center gap-2">{seeAllContent}</div>
+			) : (
+				<button type="button" onClick={openChanges} className={`${ROW_CLASS} cursor-pointer`}>
+					{seeAllContent}
+				</button>
+			)}
 		</div>
 	);
 }

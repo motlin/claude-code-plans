@@ -37,14 +37,7 @@ import type {Subagent} from "../lib/subagents";
 import {useSubagentOpener} from "./subagent-opener-context";
 import {useBackgroundTasksOpener} from "./background-tasks-opener-context";
 import {useClaudeEvents} from "../hooks/use-claude-events";
-import {
-	ChevronIcon,
-	CollapsibleSection,
-	CopyButton,
-	DiffStatPill,
-	DiffStats,
-	TerminalOutput,
-} from "./tool-renderers/shared";
+import {ChevronIcon, CollapsibleSection, CopyButton, DiffStatPill, TerminalOutput} from "./tool-renderers/shared";
 import {SystemBanner, type CompactMetadata} from "./system-banner";
 import {compactBoundaryLabel, localCommandOutput} from "./system-banner-text";
 import {ArtifactLinkBanner, ArtifactWatchBanner} from "./artifact-banner";
@@ -4557,7 +4550,7 @@ function ToolCallRow({
 					View live output
 				</button>
 			)}
-			{diffStats && <DiffStats added={diffStats.added} removed={diffStats.removed} />}
+			{diffStats && <DiffStatPill added={diffStats.added} removed={diffStats.removed} />}
 			{status !== null && (
 				<span className={`shrink-0 text-body ${status === "Failed" ? "text-danger-ink" : "text-secondary"}`}>
 					{status}

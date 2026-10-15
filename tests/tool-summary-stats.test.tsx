@@ -228,7 +228,7 @@ describe("failed edits in diff stats", () => {
 		}).toStrictEqual({text: "Editeda.tsxFailed", stats: []});
 	});
 
-	function lonePathRow(call: FakeCall): {text: string | null; stats: (string | null)[]} {
+	function lonePathRow(call: FakeCall): {text: string | null; stats: (string | null)[]; pill?: boolean} {
 		const {lines: transcript, toolResultMap} = processTranscript(toolRunRecords([call]));
 		const {container} = render(
 			<SessionChat
@@ -240,16 +240,16 @@ describe("failed edits in diff stats", () => {
 			/>,
 		);
 		const row = container.querySelector<HTMLElement>("[data-tool-row]")!;
-		return {
-			text: row.textContent,
-			stats: Array.from(row.querySelectorAll("[class*='text-diff-']"), (span) => span.textContent),
-		};
+		const stats = Array.from(row.querySelectorAll("[class*='text-diff-']"), (span) => span.textContent);
+		return stats.length === 0
+			? {text: row.textContent, stats}
+			: {text: row.textContent, stats, pill: row.querySelector("[data-diff-stat-pill]") !== null};
 	}
 
-	it("counts a lone Write row's created lines as a group does", () => {
+	it("counts a lone Write row's created lines as a group does, in upstream's stat pill", () => {
 		expect(
 			lonePathRow({id: "t-write", name: "Write", input: {file_path: "/repo/x.mjs", content: "a\nb\n"}}),
-		).toStrictEqual({text: "Createdx.mjs+2−0", stats: ["+2", "−0"]});
+		).toStrictEqual({text: "Createdx.mjs+2−02 added, 0 removed", stats: ["+2", "−0"], pill: true});
 	});
 
 	it("draws a failed Write row with no diff stat", () => {

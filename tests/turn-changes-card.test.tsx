@@ -200,7 +200,7 @@ describe("SessionChat end-of-turn card", () => {
 			entry: card.closest("[data-record-index]")?.getAttribute("data-record-index"),
 			text: card.textContent,
 		}));
-		expect(cards).toStrictEqual([{entry: "5", text: "Edited 2 files+3−1Undocache.ts+2−1index.ts+1−0"}]);
+		expect(cards).toStrictEqual([{entry: "5", text: "Edited 2 filesUndocache.ts+2−1index.ts+1−0See all+3−1"}]);
 	});
 });
 
@@ -332,11 +332,49 @@ describe("TurnChangesCard", () => {
 		}).toStrictEqual({header: "Edited 2 files", spacing: ["mt-2"]});
 	});
 
-	it("uses upstream's U+2212 minus in the header and row stats", () => {
+	it("uses upstream's U+2212 minus in the row stats and the closing See all totals", () => {
 		const {container} = render(<TurnChangesCard sessionId="test-session" changes={changesWith(2)} />);
 		expect(container.querySelector("[data-turn-changes-card]")?.textContent).toBe(
-			"Edited 2 files+3\u22122Undofile-1.ts+1\u22121file-2.ts+2\u22121",
+			"Edited 2 filesUndofile-1.ts+1\u22121file-2.ts+2\u22121See all+3\u22122",
 		);
+	});
+
+	it("draws upstream's summary card: inset ring, 10px radius, 13/19 rows with 16px icons and 12/15 git stats", () => {
+		const {container} = render(<TurnChangesCard sessionId="test-session" changes={changesWith(2)} />);
+		const card = container.querySelector<HTMLElement>("[data-turn-changes-card]")!;
+		const [row] = screen.getAllByRole("link");
+		const pick = (element: Element | null | undefined, names: string[]) =>
+			names.filter((name) => element?.classList.contains(name) === true);
+
+		expect({
+			card: pick(card, [
+				"rounded-r7",
+				"px-2",
+				"py-1.5",
+				"gap-1",
+				"select-text",
+				"shadow-[inset_0_0_0_1px_var(--color-border)]",
+			]),
+			title: pick(screen.getByText("Edited 2 files"), ["text-[13px]/[19px]", "text-primary"]),
+			icon: pick(row?.querySelector("svg"), ["size-4"]),
+			name: pick(within(row!).getByText("file-1.ts"), ["text-[13px]/[19px]"]),
+			stats: pick(within(row!).getByText("+1").parentElement, ["text-[12px]/[15px]"]),
+			seeAll: within(card).getByText("See all").className,
+		}).toStrictEqual({
+			card: [
+				"rounded-r7",
+				"px-2",
+				"py-1.5",
+				"gap-1",
+				"select-text",
+				"shadow-[inset_0_0_0_1px_var(--color-border)]",
+			],
+			title: ["text-[13px]/[19px]", "text-primary"],
+			icon: ["size-4"],
+			name: ["text-[13px]/[19px]"],
+			stats: ["text-[12px]/[15px]"],
+			seeAll: "text-[13px]/[19px] text-secondary",
+		});
 	});
 
 	it("links each file row to the file viewer", () => {
@@ -376,6 +414,7 @@ describe("TurnChangesCard", () => {
 			act(() => {
 				fireEvent.click(within(card).getByRole("button", {name: /^Edited 2 files/}));
 			});
+			const seeAll = within(card.parentElement!).getByRole("button", {name: /^See all/});
 
 			expect({
 				before,
@@ -388,6 +427,10 @@ describe("TurnChangesCard", () => {
 				scope: "turn:u-1",
 				requests: [{sessionId: "turn-card-session", scope: "turn:u-1"}],
 			});
+			act(() => {
+				fireEvent.click(seeAll);
+			});
+			expect(requests).toHaveLength(2);
 		} finally {
 			window.removeEventListener(CHANGES_SCOPE_REQUEST_EVENT, listener);
 			unregister();

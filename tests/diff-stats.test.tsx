@@ -99,7 +99,7 @@ const EDIT_RECORD = {
 };
 
 describe("Edit tool row stats", () => {
-	it("uses the shared tabular-nums cluster so stacked rows stay aligned", () => {
+	it("draws upstream's tabular-nums stat pill on the row, as in an edit group", () => {
 		const {lines, toolResultMap} = processTranscript([EDIT_RECORD]);
 		const html = renderToStaticMarkup(
 			<SessionChat
@@ -111,8 +111,9 @@ describe("Edit tool row stats", () => {
 			/>,
 		);
 
-		expect(html).toContain(`class="${CLUSTER_CLASS}"`);
-		expect(html).toContain(">+2</span>");
-		expect(html).toContain(">−1</span>");
+		expect(html).toContain(
+			'<span data-diff-stat-pill="" class="ms-1 inline-flex h-[1lh] shrink-0 items-center text-ink-muted tabular-nums">',
+		);
+		expect(html).toContain('<span class="sr-only">2 added, 1 removed</span>');
 	});
 });
