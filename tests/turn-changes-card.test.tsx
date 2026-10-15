@@ -373,7 +373,7 @@ describe("TurnChangesCard", () => {
 			icon: ["size-4"],
 			name: ["text-[13px]/[19px]"],
 			stats: ["text-[12px]/[15px]"],
-			seeAll: "text-[13px]/[19px] text-secondary",
+			seeAll: "text-[13px]/[19px] text-primary",
 		});
 	});
 

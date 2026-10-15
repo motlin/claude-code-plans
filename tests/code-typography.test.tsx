@@ -76,6 +76,12 @@ describe("code typography", () => {
 		});
 	});
 
+	it("turns Inter's contextual alternates off for sans text, so '->' stays two characters as in upstream's font", () => {
+		const styles = readFileSync("src/styles/globals.css", "utf8");
+
+		expect(customProperty(styles, "--font-sans--font-feature-settings")).toBe('"calt" 0');
+	});
+
 	it("turns ligatures off for every code, pre and font-mono element", () => {
 		const styles = readFileSync("src/styles/globals.css", "utf8");
 		const selector = "code,\n\tkbd,\n\tsamp,\n\tpre,\n\t.font-mono {";

@@ -152,7 +152,7 @@ export function TurnChangesCard({sessionId, changes}: {sessionId: string; change
 	const headerContent = <span className={`min-w-0 truncate ${CONTROL_TEXT} text-primary`}>{title}</span>;
 	const seeAllContent = (
 		<>
-			<span className={`${CONTROL_TEXT} text-secondary`}>See all</span>
+			<span className={`${CONTROL_TEXT} text-primary`}>See all</span>
 			<Stats added={changes.added} removed={changes.removed} className={STAT_TEXT} />
 		</>
 	);

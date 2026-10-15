@@ -28,6 +28,8 @@
 	--font-mono: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
 	--font-mono--font-feature-settings: "liga" 0, "calt" 0;
 	--font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+	/* Upstream's anthropic-sans has no contextual arrows; Inter's calt would draw "->" as "→". */
+	--font-sans--font-feature-settings: "calt" 0;
 }
 
 @theme inline {
