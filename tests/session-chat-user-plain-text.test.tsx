@@ -141,6 +141,35 @@ describe("SessionChat user bubbles as plain text", () => {
 		);
 	});
 
+	it("draws a ``` fence as upstream's code snippet, its body verbatim, parsing lists only between fences", () => {
+		const text = "Run this:\n\n```sh\n\n* x\n1. y\n```\n\n* after";
+		const el = bubble(renderRecords([prompt(text)]));
+		const block = el.querySelector("[data-user-code-block]");
+
+		expect({
+			lists: Array.from(el.querySelectorAll("ul, ol"), (list) => list.textContent),
+			paragraphs: Array.from(el.querySelectorAll("p"), (paragraph) => paragraph.textContent),
+			lang: block?.getAttribute("data-user-code-block"),
+			body: block?.textContent,
+			shell: block?.className,
+		}).toStrictEqual({
+			lists: ["after"],
+			paragraphs: ["Run this:"],
+			lang: "sh",
+			body: "\n* x\n1. y",
+			shell: "epitaxy-diff overflow-clip rounded-r4 mt-[5px]",
+		});
+	});
+
+	it("keeps an unclosed fence as typed, as upstream's fence regex needs its closing run", () => {
+		const el = bubble(renderRecords([prompt("```sh\nnpm test")]));
+
+		expect({
+			blocks: el.querySelectorAll("[data-user-code-block]").length,
+			text: el.querySelector("p")?.textContent,
+		}).toStrictEqual({blocks: 0, text: "```sh\nnpm test"});
+	});
+
 	it("nests items indented by 3 spaces per level, and ends a list at a blank line", () => {
 		const el = bubble(renderRecords([prompt("* a\n   1. b\n   2. c\n* d\n\nafter")]));
 		const list = el.querySelector("ul");

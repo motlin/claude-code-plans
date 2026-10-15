@@ -1,4 +1,4 @@
-import type {ReactNode} from "react";
+import {lazy, type ReactNode, Suspense} from "react";
 
 import {defined} from "../lib/defined";
 
@@ -180,13 +180,82 @@ function renderList(entries: readonly ListEntry[], level: number, className: str
 	return lists;
 }
 
+const UserCodeBlock = lazy(async () => import("./user-code-block").then((module) => ({default: module.UserCodeBlock})));
+
 /**
- * A user prompt as upstream shows it: its lists drawn as lists, the rest kept as
- * typed. Other markdown syntax stays literal; only backtick code spans (plus an
+ * Upstream's user-message fence: a column-0 run of 3+ backticks with a spaceless
+ * info string, closed by the same run alone on its line. An unclosed fence stays text.
+ */
+const FENCE = /^(`{3,})(\S*)\n([\s\S]*?)\n\1[ \t]*$/gm;
+
+type Segment = {kind: "text"; text: string} | {kind: "code"; code: string; lang: string};
+
+/** Split out the fences, trimming the text between them, as upstream does before parsing lists. */
+function splitFences(text: string): Segment[] {
+	const segments: Segment[] = [];
+	let cursor = 0;
+	const pushText = (part: string) => {
+		const trimmed = part.trim();
+		if (trimmed !== "") segments.push({kind: "text", text: trimmed});
+	};
+	for (const match of text.matchAll(FENCE)) {
+		pushText(text.slice(cursor, match.index));
+		const code = (match[3] ?? "").replace(/\r?\n$/, "").replace(/\r(?!\n)/g, "\u240d");
+		const info = match[2] ?? "";
+		segments.push({kind: "code", code, lang: info === "" ? "text" : info});
+		cursor = match.index + match[0].length;
+	}
+	pushText(text.slice(cursor));
+	return segments;
+}
+
+/**
+ * A user prompt as upstream shows it: ``` fences as code snippets, lists in the
+ * text between them drawn as lists, the rest kept as typed.
+ */
+export function UserPlainText({text, prefix}: {text: string; prefix?: ReactNode}) {
+	const segments = text.includes("```") ? splitFences(text) : [];
+	if (!segments.some((segment) => segment.kind === "code")) return <UserTextBlocks text={text} prefix={prefix} />;
+	const prefixed = segments[0]?.kind === "text";
+	return (
+		<>
+			{!prefixed && prefix !== undefined && <p className={PARAGRAPH_CLASS}>{prefix}</p>}
+			{segments.map((segment, index) => {
+				const gap = index > 0 || (!prefixed && prefix !== undefined) ? BLOCK_GAP_CLASS : "";
+				if (segment.kind === "text") {
+					return (
+						<div key={index} className={`flex flex-col ${gap}`}>
+							<UserTextBlocks text={segment.text} prefix={index === 0 ? prefix : undefined} />
+						</div>
+					);
+				}
+				return (
+					<div
+						key={index}
+						data-user-code-block={segment.lang}
+						className={`epitaxy-diff overflow-clip rounded-r4 ${gap}`}
+					>
+						<Suspense
+							fallback={
+								<pre className="font-mono text-[12px]/[17px] whitespace-pre-wrap">{segment.code}</pre>
+							}
+						>
+							<UserCodeBlock code={segment.code} lang={segment.lang} />
+						</Suspense>
+					</div>
+				);
+			})}
+		</>
+	);
+}
+
+/**
+ * Text as upstream shows it: its lists drawn as lists, the rest kept as typed.
+ * Other markdown syntax stays literal; only backtick code spans (plus an
  * optional leading slash-command chip) are styled and bare http(s) URLs outside
  * code spans become accent links.
  */
-export function UserPlainText({text, prefix}: {text: string; prefix?: ReactNode}) {
+function UserTextBlocks({text, prefix}: {text: string; prefix?: ReactNode}) {
 	const blocks = splitBlocks(text);
 	if (!blocks.some((block) => block.kind === "list")) {
 		return (
