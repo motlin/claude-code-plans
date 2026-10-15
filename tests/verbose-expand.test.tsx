@@ -105,7 +105,7 @@ function disclosures(container: HTMLElement): Disclosure[] {
 const EXPANDED_GROUP: Disclosure[] = [
 	{
 		expanded: "true",
-		body: "Searchedpattern-1pattern: pattern-11 matchSearchedpattern-2pattern: pattern-22 match",
+		body: "Searched pattern-1pattern: pattern-11 matchSearched pattern-2pattern: pattern-22 match",
 	},
 	{expanded: "true", body: "pattern: pattern-11 match"},
 	{expanded: "true", body: "pattern: pattern-22 match"},
@@ -182,7 +182,7 @@ describe("Verbose transcript mode pre-expands tool rows", () => {
 			toggledInNormal: [
 				{
 					expanded: "true",
-					body: "Searchedpattern-1Searchedpattern-2",
+					body: "Searched pattern-1Searched pattern-2",
 				},
 				{expanded: "false", body: null},
 				{expanded: "false", body: null},

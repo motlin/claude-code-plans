@@ -151,7 +151,7 @@ describe("SessionChat disclosure accessibility", () => {
 				ariaExpanded: "true",
 				controlsBody: true,
 				bodyClassName: "flow-root",
-				bodyText: "Searchedpattern-t1Searchedpattern-t2",
+				bodyText: "Searched pattern-t1Searched pattern-t2",
 			},
 		});
 	});

@@ -4421,9 +4421,10 @@ function ToolCallRow({
 	const isCodeCard = CODE_CARD_TOOLS.has(call.name);
 	// Renderers that draw nothing leave no padded gap.
 	const bodyClass =
+		// Upstream opens a grouped row's body 10px below its header line.
 		(nested && ROW_BODY_TOOLS.has(call.name)
-			? "group/body relative flex w-full pt-p3"
-			: "group/body relative flex w-full flex-col pt-p3") + " empty:hidden";
+			? "group/body relative flex w-full pt-2.5"
+			: `group/body relative flex w-full flex-col ${nested ? "pt-2.5" : "pt-p3"}`) + " empty:hidden";
 	// Collapsed rows recede to muted ink and lift to secondary on hover; an open
 	// row stays secondary, as upstream does.
 	const ink = expanded ? "text-secondary" : "text-ink-muted group-hover/tool:text-secondary";
@@ -4497,6 +4498,30 @@ function ToolCallRow({
 		backgroundTasks !== null && call.name === "Bash" && backgroundTasks.running.has(call.id)
 			? backgroundTasks.open
 			: null;
+	const paramInk = isFileParam ? "text-primary" : paramHref ? "text-secondary" : paramClass;
+	const paramContent = (
+		<>
+			{paramHref ? (
+				<a
+					href={paramHref}
+					target="_blank"
+					rel="noopener noreferrer"
+					onClick={(e) => {
+						e.stopPropagation();
+					}}
+					className="underline decoration-[color-mix(in_srgb,currentColor_65%,transparent)] underline-offset-[3px]"
+				>
+					<bdi>{displayParam}</bdi>
+					<span className="sr-only">(opens in new tab)</span>
+				</a>
+			) : paramIsCode ? (
+				<code className="font-mono">{displayParam}</code>
+			) : (
+				displayParam
+			)}
+		</>
+	);
+	const joinedLabel = nested && label !== "" && displayParam !== "";
 	const rowLabel = (
 		<>
 			{runningRow && (
@@ -4506,38 +4531,30 @@ function ToolCallRow({
 					className="running-spinner me-1.5 inline-flex size-5 shrink-0"
 				/>
 			)}
-			{label && (
-				<span className={`${isPhraseLabel ? "truncate min-w-0" : "shrink-0"} text-body ${labelClass}`}>
-					{label}
-				</span>
-			)}
-			{displayParam && (
-				<span
-					className={
-						isFileParam
-							? "text-body text-primary truncate min-w-0"
-							: `truncate min-w-0 text-body ${paramHref ? "text-secondary" : paramClass}`
-					}
-				>
-					{paramHref ? (
-						<a
-							href={paramHref}
-							target="_blank"
-							rel="noopener noreferrer"
-							onClick={(e) => {
-								e.stopPropagation();
-							}}
-							className="underline decoration-[color-mix(in_srgb,currentColor_65%,transparent)] underline-offset-[3px]"
-						>
-							<bdi>{displayParam}</bdi>
-							<span className="sr-only">(opens in new tab)</span>
-						</a>
-					) : paramIsCode ? (
-						<code className="font-mono">{displayParam}</code>
-					) : (
-						displayParam
+			{joinedLabel ? (
+				// Upstream's grouped row: label and parameter in one <bdi>, joined by a plain space.
+				<bdi className="truncate min-w-0 text-body">
+					<span className={labelClass}>{label}</span> <span className={paramInk}>{paramContent}</span>
+				</bdi>
+			) : (
+				<>
+					{label && (
+						<span className={`${isPhraseLabel ? "truncate min-w-0" : "shrink-0"} text-body ${labelClass}`}>
+							{label}
+						</span>
 					)}
-				</span>
+					{displayParam && (
+						<span
+							className={
+								isFileParam
+									? "text-body text-primary truncate min-w-0"
+									: `truncate min-w-0 text-body ${paramInk}`
+							}
+						>
+							{paramContent}
+						</span>
+					)}
+				</>
 			)}
 			{rangeLabel && <span className={`text-body ${labelClass} truncate min-w-0`}>{rangeLabel}</span>}
 			{runningRow && <RunningElapsed startedAt={call.startedAt} />}
@@ -4782,7 +4799,7 @@ function ToolCallSummary({
 							{/* Upstream separates the grouped rows with hairline dividers and
                   per-child padding inside one outlined card, not with gaps
                   between rows floating on a tinted panel. */}
-							<div className="flex flex-col card-outline rounded-r7 overflow-clip mt-p6 divide-y [&>*]:px-p7 [&>*]:py-p6">
+							<div className="flex flex-col card-outline rounded-r7 overflow-clip mt-p6 divide-y [&>*]:px-2 [&>*]:py-1.5">
 								{/* Upstream lists failed completions first, as the group label leads with them. */}
 								{failedNotices.map((notice) => (
 									<BackgroundNoticeRow key={`notice-${notice.lineIndex}`} notice={notice} />

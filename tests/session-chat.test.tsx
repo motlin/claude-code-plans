@@ -638,22 +638,48 @@ describe("SessionChat nested tool rows", () => {
 		}).toStrictEqual({
 			collapsedBodies: {groupedBash: [], groupedRead: [], singleBash: []},
 			groupedBashCards: [
-				"flex flex-col card-outline rounded-r7 overflow-clip mt-p6 divide-y [&>*]:px-p7 [&>*]:py-p6",
+				"flex flex-col card-outline rounded-r7 overflow-clip mt-p6 divide-y [&>*]:px-2 [&>*]:py-1.5",
 			],
 			groupedBashBodies: [
-				"group/body relative flex w-full pt-p3 empty:hidden",
-				"group/body relative flex w-full pt-p3 empty:hidden",
+				"group/body relative flex w-full pt-2.5 empty:hidden",
+				"group/body relative flex w-full pt-2.5 empty:hidden",
 			],
 			groupedReadCards: [
-				"flex flex-col card-outline rounded-r7 overflow-clip mt-p6 divide-y [&>*]:px-p7 [&>*]:py-p6",
+				"flex flex-col card-outline rounded-r7 overflow-clip mt-p6 divide-y [&>*]:px-2 [&>*]:py-1.5",
 			],
 			groupedReadBodies: [
-				"group/body relative flex w-full flex-col pt-p3 empty:hidden",
-				"group/body relative flex w-full flex-col pt-p3 empty:hidden",
+				"group/body relative flex w-full flex-col pt-2.5 empty:hidden",
+				"group/body relative flex w-full flex-col pt-2.5 empty:hidden",
 			],
 			singleBashCards: ["card-outline rounded-r6 overflow-clip flex flex-col relative"],
 			singleBashBodies: ["group/body py-p6"],
 		});
+	});
+});
+
+describe("SessionChat grouped tool rows", () => {
+	it("joins each row's label and parameter with one plain space inside a single <bdi>, as upstream", () => {
+		const grouped = renderTranscriptElement(
+			toolCallRecords([
+				{id: "t1", name: "Read", input: {file_path: "/repo/src/a.ts"}},
+				{id: "t2", name: "Bash", input: {command: "git status", description: "Show status"}},
+			]),
+		);
+		expandGroupSummary(grouped);
+		const rows = [
+			...grouped.querySelectorAll(".divide-y > [data-tool-row] [role=button], .divide-y > [data-tool-row] > div"),
+		];
+		const labels = [...new Set(rows)].map((row) => {
+			const bdi = row.querySelector(":scope > bdi");
+			return bdi === null
+				? null
+				: {
+						text: bdi.textContent,
+						spaced: [...bdi.childNodes].some((node) => node.nodeType === 3 && node.textContent === " "),
+					};
+		});
+
+		expect(labels.filter((label) => label !== null)).toStrictEqual([{text: "Read a.ts", spaced: true}]);
 	});
 });
 
@@ -680,7 +706,7 @@ describe("SessionChat grouped tool card", () => {
 			fillsWithT1: groupedBash.querySelector(".bg-t1") !== null,
 		}).toStrictEqual({
 			collapsed: [],
-			expanded: ["flex flex-col card-outline rounded-r7 overflow-clip mt-p6 divide-y [&>*]:px-p7 [&>*]:py-p6"],
+			expanded: ["flex flex-col card-outline rounded-r7 overflow-clip mt-p6 divide-y [&>*]:px-2 [&>*]:py-1.5"],
 			fillsWithT1: false,
 		});
 	});
@@ -1567,16 +1593,21 @@ describe("SessionChat Agent row opening the Subagent pane", () => {
 		);
 	});
 
-	it('reads "Ran agent" followed by the description inside a group', () => {
+	it('reads "Ran agent" followed by the description inside a group, joined in one <bdi>', () => {
 		const container = renderWithOpener(
 			toolCallRecords([{id: "t0", name: "Bash", input: {command: "git status"}}, AGENT_CALL]),
 			() => {},
 		);
 		expandGroupSummary(container);
+		const bdi = agentRow(container).querySelector(":scope > bdi");
 
-		expect(
-			[...agentRow(container).querySelectorAll("span.text-body")].map((span) => span.textContent),
-		).toStrictEqual(["Ran agent", "Commit lazy allocation fixup"]);
+		expect({
+			parts: [...(bdi?.children ?? [])].map((span) => span.textContent),
+			text: bdi?.textContent,
+		}).toStrictEqual({
+			parts: ["Ran agent", "Commit lazy allocation fixup"],
+			text: "Ran agent Commit lazy allocation fixup",
+		});
 	});
 
 	it("keeps the inline disclosure when no subagent resolves for the call", () => {
