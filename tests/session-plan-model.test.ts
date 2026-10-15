@@ -21,6 +21,7 @@ describe("sessionPlanModel", () => {
 		expect(model([assistant("a1", [{id: "t1", name: "Bash", input: {command: "ls"}}])])).toStrictEqual({
 			content: null,
 			todos: [],
+			editsPlanFile: false,
 		});
 	});
 
@@ -74,6 +75,44 @@ describe("sessionPlanModel", () => {
 		).toStrictEqual([
 			{content: "Audit the schema", status: "completed", activeForm: "Auditing"},
 			{content: "Fix the drift", status: "pending"},
+		]);
+	});
+
+	it("takes a Write to ~/.claude/plans/*.md as the plan and notes an Edit to one, as upstream", () => {
+		expect([
+			model([
+				assistant("a1", [
+					{
+						id: "t1",
+						name: "Write",
+						input: {
+							file_path: "/Users/someone/.claude/plans/fabricated-plan.md",
+							content: "# Written plan",
+						},
+					},
+				]),
+			]),
+			model([
+				assistant("a1", [
+					{
+						id: "t1",
+						name: "Edit",
+						input: {
+							file_path: "/Users/someone/.claude/plans/fabricated-plan.md",
+							old_string: "a",
+							new_string: "b",
+						},
+					},
+					{
+						id: "t2",
+						name: "Write",
+						input: {file_path: "/Users/someone/project/notes.md", content: "Not a plan"},
+					},
+				]),
+			]),
+		]).toStrictEqual([
+			{content: "# Written plan", todos: [], editsPlanFile: true},
+			{content: null, todos: [], editsPlanFile: true},
 		]);
 	});
 });

@@ -11,7 +11,11 @@ export interface PlanTodo {
 export interface SessionPlanModel {
 	content: string | null;
 	todos: PlanTodo[];
+	/** Whether the session wrote or edited a `~/.claude/plans/*.md` file. */
+	editsPlanFile: boolean;
 }
+
+const PLAN_FILE_PATH = /\/\.claude\/plans\/[^/]+\.md$/;
 
 function todoOf(value: unknown): PlanTodo | null {
 	if (!isRecord(value) || typeof value["content"] !== "string") return null;
@@ -25,12 +29,13 @@ function todoOf(value: unknown): PlanTodo | null {
 
 /**
  * claude.ai/code's plan model, built from the main transcript's assistant tool calls: the latest
- * ExitPlanMode `plan`, and the checklist from TodoWrite (replacing it) or TaskCreate / TaskUpdate
+ * ExitPlanMode `plan` or Write to a plan file, and the checklist from TodoWrite (replacing it) or TaskCreate / TaskUpdate
  * (task ids numbered in creation order, as the CLI's task list numbers them).
  */
 export function sessionPlanModel(lines: readonly SessionLine[]): SessionPlanModel {
 	let content: string | null = null;
 	let todos: PlanTodo[] = [];
+	let editsPlanFile = false;
 	const tasks = new Map<string, PlanTodo>();
 	for (const line of lines) {
 		if (line.type !== "assistant" || !Array.isArray(line.message?.content)) continue;
@@ -40,6 +45,12 @@ export function sessionPlanModel(lines: readonly SessionLine[]): SessionPlanMode
 			switch (block.name) {
 				case "ExitPlanMode":
 					if (typeof input["plan"] === "string" && input["plan"] !== "") content = input["plan"];
+					break;
+				case "Write":
+				case "Edit":
+					if (typeof input["file_path"] !== "string" || !PLAN_FILE_PATH.test(input["file_path"])) break;
+					editsPlanFile = true;
+					if (block.name === "Write" && typeof input["content"] === "string") content = input["content"];
 					break;
 				case "TodoWrite":
 					if (Array.isArray(input["todos"])) {
@@ -69,5 +80,5 @@ export function sessionPlanModel(lines: readonly SessionLine[]): SessionPlanMode
 			}
 		}
 	}
-	return {content, todos};
+	return {content, todos, editsPlanFile};
 }
