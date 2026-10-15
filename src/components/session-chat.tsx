@@ -4786,7 +4786,7 @@ function ToolCallSummary({
 							{/* Upstream separates the grouped rows with hairline dividers and
                   per-child padding inside one outlined card, not with gaps
                   between rows floating on a tinted panel. */}
-							<div className="flex flex-col card-outline rounded-r6 overflow-clip mt-p6 divide-y [&>*]:px-p7 [&>*]:py-p6">
+							<div className="flex flex-col card-outline rounded-r7 overflow-clip mt-p6 divide-y [&>*]:px-p7 [&>*]:py-p6">
 								{/* Upstream lists failed completions first, as the group label leads with them. */}
 								{failedNotices.map((notice) => (
 									<BackgroundNoticeRow key={`notice-${notice.lineIndex}`} notice={notice} />

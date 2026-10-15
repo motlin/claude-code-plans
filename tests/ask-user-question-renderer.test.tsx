@@ -66,7 +66,7 @@ describe("AskUserQuestionRenderer", () => {
 		expect(container.querySelectorAll(".h-\\[3\\.5rem\\]").length).toStrictEqual(0);
 	});
 
-	it("renders an answered question as upstream's compact question-and-answer card", () => {
+	it("renders an answered question as upstream's 480px question receipt: question primary w500, answer secondary", () => {
 		const {container} = render(<AskUserQuestionRenderer toolCall={makeCall({result: ANSWERED_RESULT})} />);
 
 		const cards = [...container.querySelectorAll(".card-outline")];
@@ -84,10 +84,10 @@ describe("AskUserQuestionRenderer", () => {
 			buttons: container.querySelectorAll("button").length,
 		}).toStrictEqual({
 			cardCount: 1,
-			cardClassName: "card-outline rounded-r6 p-p7 w-fit min-w-[min(100%,318px)] flex flex-col gap-g7",
+			cardClassName: "card-outline flex w-full max-w-[480px] flex-col overflow-clip rounded-r6 select-text",
 			paragraphs: [
-				{className: "text-body text-secondary whitespace-pre-wrap", text: "Which test runner?"},
-				{className: "text-body text-primary whitespace-pre-wrap", text: "Vitest"},
+				{className: "text-body font-medium text-primary break-words", text: "Which test runner?"},
+				{className: "text-body text-secondary [overflow-wrap:anywhere]", text: "Vitest"},
 			],
 			mentionsUnchosen: false,
 			buttons: 0,
@@ -134,13 +134,16 @@ describe("AskUserQuestionRenderer", () => {
 
 		expect(cards).toStrictEqual([
 			{
-				className: "card-outline rounded-r6 p-p7 w-fit min-w-[min(100%,318px)] flex flex-col gap-g7",
+				className: "card-outline flex w-full max-w-[480px] flex-col overflow-clip rounded-r6 select-text",
 				pairs: [
 					{
-						className: "flex flex-col gap-g2",
+						className: "flex flex-col gap-0.5 px-3 py-2",
 						lines: ["How should the JOL test treat LinkedHashMap?", "Exact, JDK-version-aware"],
 					},
-					{className: "flex flex-col gap-g2", lines: ["Which runner?", "Bun", "Notes: Fastest locally"]},
+					{
+						className: "flex flex-col gap-0.5 px-3 py-2",
+						lines: ["Which runner?", "Bun", "Notes: Fastest locally"],
+					},
 				],
 			},
 		]);

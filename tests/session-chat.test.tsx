@@ -638,14 +638,14 @@ describe("SessionChat nested tool rows", () => {
 		}).toStrictEqual({
 			collapsedBodies: {groupedBash: [], groupedRead: [], singleBash: []},
 			groupedBashCards: [
-				"flex flex-col card-outline rounded-r6 overflow-clip mt-p6 divide-y [&>*]:px-p7 [&>*]:py-p6",
+				"flex flex-col card-outline rounded-r7 overflow-clip mt-p6 divide-y [&>*]:px-p7 [&>*]:py-p6",
 			],
 			groupedBashBodies: [
 				"group/body relative flex w-full pt-p3 empty:hidden",
 				"group/body relative flex w-full pt-p3 empty:hidden",
 			],
 			groupedReadCards: [
-				"flex flex-col card-outline rounded-r6 overflow-clip mt-p6 divide-y [&>*]:px-p7 [&>*]:py-p6",
+				"flex flex-col card-outline rounded-r7 overflow-clip mt-p6 divide-y [&>*]:px-p7 [&>*]:py-p6",
 			],
 			groupedReadBodies: [
 				"group/body relative flex w-full flex-col pt-p3 empty:hidden",
@@ -659,7 +659,7 @@ describe("SessionChat nested tool rows", () => {
 
 /** Class of the expanded grouped-tool-call container. */
 function groupContainerClassNames(container: HTMLElement): string[] {
-	return [...container.querySelectorAll("div.card-outline.rounded-r6")].map((element) => element.className);
+	return [...container.querySelectorAll("div.card-outline.divide-y")].map((element) => element.className);
 }
 
 describe("SessionChat grouped tool card", () => {
@@ -680,7 +680,7 @@ describe("SessionChat grouped tool card", () => {
 			fillsWithT1: groupedBash.querySelector(".bg-t1") !== null,
 		}).toStrictEqual({
 			collapsed: [],
-			expanded: ["flex flex-col card-outline rounded-r6 overflow-clip mt-p6 divide-y [&>*]:px-p7 [&>*]:py-p6"],
+			expanded: ["flex flex-col card-outline rounded-r7 overflow-clip mt-p6 divide-y [&>*]:px-p7 [&>*]:py-p6"],
 			fillsWithT1: false,
 		});
 	});

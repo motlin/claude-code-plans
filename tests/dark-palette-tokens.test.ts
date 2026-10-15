@@ -104,6 +104,18 @@ describe("dark palette", () => {
 		});
 	});
 
+	it("defines upstream's fill-accent as #2a78d6 in both modes", () => {
+		expect({
+			theme: tokens("@theme inline", ["--color-fill-accent"]),
+			light: tokens(":root", ["--upstream-fill-accent"]),
+			dark: tokens(".dark", ["--upstream-fill-accent"]),
+		}).toStrictEqual({
+			theme: {"--color-fill-accent": "var(--upstream-fill-accent)"},
+			light: {"--upstream-fill-accent": "#2a78d6"},
+			dark: {"--upstream-fill-accent": "#2a78d6"},
+		});
+	});
+
 	it("routes the git status colors through themed tokens with upstream's dark values", () => {
 		const names = GIT_STATES.map((state) => `--git-${state}`);
 

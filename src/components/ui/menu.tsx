@@ -75,8 +75,8 @@ const LABEL_CLASS = "min-w-0 flex-1 truncate";
 const DESCRIPTION_CLASS = "truncate pt-[2px] text-[12px]/[15px] text-[var(--menu-muted)]";
 const TRAILING_CLASS = "ml-auto flex shrink-0 items-center gap-1";
 const CHECK_SLOT_CLASS = "-mr-1 flex size-5 shrink-0 items-center justify-center";
-/** Upstream's checked tick: 16px, bold, in accent ink. */
-const CHECK_ICON_CLASS = "size-4 text-accent-100";
+/** Upstream's checked tick: 16px, bold, in fill-accent ink. */
+const CHECK_ICON_CLASS = "size-4 text-fill-accent";
 /** Hover dwell before a submenu opens. */
 const SUBMENU_HOVER_DELAY_MS = 100;
 const ICON_SLOT_CLASS = "mr-1 flex size-5 shrink-0 items-center justify-center [&_svg]:size-4 [&_svg]:shrink-0";

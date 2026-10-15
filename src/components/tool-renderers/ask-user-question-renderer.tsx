@@ -69,15 +69,15 @@ function notesAddInformation(notes: string | null, answerValue: string): notes i
 }
 
 /**
- * One answered pair: the question in secondary text over the chosen answer (or
- * the Other text) in primary. Unchosen options are omitted.
+ * One row of upstream's question receipt: the question in primary w500 over the
+ * chosen answer (or the Other text) in secondary. Unchosen options are omitted.
  */
 function AnsweredQuestion({question, parsed}: {question: string; parsed: ParsedAnswer}) {
 	const answer = parsed.answer.trim();
 	return (
-		<div data-answered-question className="flex flex-col gap-g2">
-			<p className="text-body text-secondary whitespace-pre-wrap">{question}</p>
-			{answer !== "" && <p className="text-body text-primary whitespace-pre-wrap">{answer}</p>}
+		<div data-answered-question className="flex flex-col gap-0.5 px-3 py-2">
+			<p className="text-body font-medium text-primary break-words">{question}</p>
+			{answer !== "" && <p className="text-body text-secondary [overflow-wrap:anywhere]">{answer}</p>}
 			{notesAddInformation(parsed.notes, answer) && (
 				<p className="text-footnote text-secondary italic whitespace-pre-wrap">
 					<span className="text-primary">Notes: </span>
@@ -431,9 +431,9 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps) {
 			? null
 			: (answersFromResultMeta(toolCall.resultMeta, questions) ?? parseAnswerResult(result, questions));
 	if (parsed !== null) {
-		// Upstream stacks every answered pair of one call in a single static card.
+		// Upstream's `epitaxy-question-receipt`: every answered pair of one call in a 480px card.
 		return (
-			<div className="card-outline rounded-r6 p-p7 w-fit min-w-[min(100%,318px)] flex flex-col gap-g7">
+			<div className="card-outline flex w-full max-w-[480px] flex-col overflow-clip rounded-r6 select-text">
 				{parsed.map((entry, i) => (
 					<AnsweredQuestion key={i} question={entry.question} parsed={entry} />
 				))}

@@ -239,7 +239,7 @@ describe("Menu", () => {
 		}).toEqual({side: "2", align: "0"});
 	});
 
-	it("draws radio and checkbox checks in accent ink at stroke-width 3", async () => {
+	it("draws radio and checkbox checks in upstream fill-accent ink at stroke-width 3", async () => {
 		renderDropdown();
 		await openDropdown();
 		const trigger = screen.getByRole("menuitem", {name: /Status/});
@@ -254,7 +254,7 @@ describe("Menu", () => {
 			screen.getByRole("menuitemradio", {name: "Active"}),
 		].map((item) => {
 			const svg = item.querySelector("svg");
-			return [svg?.getAttribute("class")?.includes("text-accent-100"), svg?.getAttribute("stroke-width")];
+			return [svg?.getAttribute("class")?.includes("text-fill-accent"), svg?.getAttribute("stroke-width")];
 		});
 
 		expect(checks).toEqual([
