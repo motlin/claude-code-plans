@@ -22,6 +22,7 @@
 /* Not inline, so `font-mono` and `font-sans` read their variables and Settings ▸
    Code font / Interface font can override them on <html>. */
 @theme {
+	--animate-notify-tip-in: notify-tip-in 150ms ease-out;
 	/* System monospace fallback stack. The features below keep a custom
 	   Settings ▸ Code font from merging "==" or "->" into ligatures. */
 	--font-mono: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
@@ -531,6 +532,18 @@
 		font-feature-settings:
 			"liga" 0,
 			"calt" 0;
+	}
+}
+
+/* The approval notify tip's icon and line fade in (upstream's animate-notify-tip-in), via `motion-safe:`. */
+@keyframes notify-tip-in {
+	from {
+		opacity: 0;
+		transform: translateY(2px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
 	}
 }
 

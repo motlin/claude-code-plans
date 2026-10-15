@@ -88,6 +88,13 @@ describe("composer Notify me prompt", () => {
 		});
 	});
 
+	it("spaces the band's row with upstream's gap-1.5", async () => {
+		stubNotification("default", "granted");
+		await renderPrompt();
+		const row = screen.getByText("Want to be notified when Claude responds?").parentElement;
+		expect(row?.className.split(" ").filter((name) => name.startsWith("gap-"))).toStrictEqual(["gap-1.5"]);
+	});
+
 	it("is hidden when permission is granted and completions notify for every session", async () => {
 		stubNotification("granted");
 		await renderPrompt();

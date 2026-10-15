@@ -26,7 +26,7 @@ export function NotifyMePrompt({sessionId}: {sessionId: string}) {
 	};
 
 	return (
-		<div className="flex min-h-[40px] items-center gap-2 rounded-r7 bg-alpha-1 p-[8px]">
+		<div className="flex min-h-[40px] items-center gap-1.5 rounded-r7 bg-alpha-1 p-[8px]">
 			<span className="min-w-0 text-sm text-primary">Want to be notified when Claude responds?</span>
 			<span className="ml-auto flex shrink-0">
 				<ApprovalActionButton variant="secondary" onClick={() => void enable()}>

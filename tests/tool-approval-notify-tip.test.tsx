@@ -111,6 +111,19 @@ describe("tool-approval notify tip", () => {
 		});
 	});
 
+	it("pads its divider once, as upstream, and fades its icon and line in with notify-tip-in unless motion is reduced", async () => {
+		stubNotification("default", Promise.resolve("granted"));
+		await renderTip();
+		leaveAndReturn();
+		const status = screen.getByRole("status");
+		const divider = document.querySelector("[data-notify-tip] .border-t-\\[0\\.5px\\]");
+		expect({
+			dividerParent: divider?.parentElement?.className.split(" ").includes("overflow-hidden"),
+			label: status.className.split(" ").includes("motion-safe:animate-notify-tip-in"),
+			icon: status.previousElementSibling?.className.split(" ").includes("motion-safe:animate-notify-tip-in"),
+		}).toStrictEqual({dividerParent: true, label: true, icon: true});
+	});
+
 	it("stops showing after three shows", async () => {
 		stubNotification("default", Promise.resolve("granted"));
 		localStorage.setItem(SHOWS_KEY, JSON.stringify({count: 3, lastShownAt: 0}));
