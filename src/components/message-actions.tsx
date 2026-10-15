@@ -5,7 +5,7 @@ import {useChapters} from "../lib/chapter-store";
 import {writeClipboardText} from "../lib/clipboard";
 import {messageHeading} from "../lib/transcript-action-targets";
 import {type ReadAloudStatus, useReadAloud} from "../hooks/use-read-aloud";
-import {formatRelativeTimestamp, formatTimestamp} from "../lib/timestamp-format";
+import {formatMessageTime, formatRelativeTimestamp, formatTimestamp} from "../lib/timestamp-format";
 import {type TranscriptMessageRef, TranscriptActionsContext} from "./transcript-actions-context";
 import {Tooltip} from "./ui/tooltip";
 
@@ -219,7 +219,8 @@ function MessageTime({
 	inner: "left" | "right";
 }) {
 	const tabIndex = useTabIndex();
-	const relative = formatRelativeTimestamp(timestamp);
+	// Upstream's user <time> turns absolute after a week; the assistant's stays relative.
+	const relative = inner === "right" ? formatMessageTime(timestamp) : formatRelativeTimestamp(timestamp);
 	if (timestamp === undefined || relative === null) return null;
 	const absolute = formatTimestamp(timestamp);
 	const tooltip = [absolute ?? timestamp, ...details].join("\n");
@@ -228,7 +229,11 @@ function MessageTime({
 			<time
 				dateTime={timestamp}
 				tabIndex={tabIndex}
-				className={`${inner === "left" ? "pl-2" : "pr-2"} text-[13px]/[19px] text-ink-muted tabular-nums outline-none`}
+				className={
+					inner === "left"
+						? "pl-2 text-[13px]/[19px] text-ink-muted tabular-nums outline-none"
+						: "flex h-6 items-center pe-1 text-[11px] text-ink-muted tabular-nums outline-none"
+				}
 			>
 				{relative}
 			</time>

@@ -370,6 +370,29 @@ function readAloudState(container: HTMLElement) {
 }
 
 describe("UserMessageActions", () => {
+	it("dates a week-old message as upstream's user <time> does: 11px caption ink in a 24px slot, relative before", () => {
+		const time = (timestamp: string) => {
+			const {container, unmount} = render(
+				<UserMessageActions message={MESSAGE} text="Hi" timestamp={timestamp} details={[]} />,
+			);
+			const element = container.querySelector("time");
+			const result = {text: element?.textContent, className: element?.className};
+			unmount();
+			return result;
+		};
+		const slot = "flex h-6 items-center pe-1 text-[11px] text-ink-muted tabular-nums outline-none";
+
+		expect([
+			time("2026-09-26T10:00:00.000Z"),
+			time("2026-09-20T10:00:00.000Z"),
+			time("2025-09-20T10:00:00.000Z"),
+		]).toStrictEqual([
+			{text: "4 days ago", className: slot},
+			{text: "Sep 20", className: slot},
+			{text: "Sep 20, 2025", className: slot},
+		]);
+	});
+
 	it("puts the time first, then Copy, Rewind to here and Fork from here, right-aligned", () => {
 		const {container} = render(
 			<UserMessageActions message={MESSAGE} text="Hi" timestamp={TIMESTAMP} details={[]} />,
@@ -464,7 +487,7 @@ describe("message action toolbar sizing and reveal", () => {
 		}).toStrictEqual({title: null, tooltip: "Copy"});
 	});
 
-	it("sizes buttons 24px with radius 6 and 16px icons, and the time 13px/19px with 8px inner padding", () => {
+	it("sizes buttons 24px with radius 6 and 16px icons, the assistant time 13px/19px and the user time 11px, each padded on its inner side", () => {
 		const assistant = render(
 			<AssistantMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} />,
 		).container;
@@ -480,7 +503,7 @@ describe("message action toolbar sizing and reveal", () => {
 			button: ["size-6", "rounded-r5"].every((c) => copy.className.split(" ").includes(c)),
 			icon: copy.querySelector("svg")!.getAttribute("class")!.split(" ").includes("size-4"),
 			assistantTime: ["text-[13px]/[19px]", "text-ink-muted", "pl-2"].every((c) => assistantTime.includes(c)),
-			userTime: ["text-[13px]/[19px]", "text-ink-muted", "pr-2"].every((c) => userTime.includes(c)),
+			userTime: ["text-[11px]", "h-6", "text-ink-muted", "pe-1"].every((c) => userTime.includes(c)),
 		}).toStrictEqual({button: true, icon: true, assistantTime: true, userTime: true});
 	});
 
