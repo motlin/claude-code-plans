@@ -209,7 +209,7 @@ describe("Composer", () => {
 			},
 		};
 
-		it("shows +, mode, then model, effort and the usage ring left to right", () => {
+		it("shows +, mode, then the model + effort picker and the usage ring left to right", () => {
 			vi.useFakeTimers({now: NOW_MS, toFake: ["Date"]});
 			render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} chin={CHIN} />);
 			const chin = document.querySelector('[data-cds="ChatComposerChin"]');
@@ -220,8 +220,7 @@ describe("Composer", () => {
 			expect(labels).toStrictEqual([
 				"Add",
 				"Accept edits",
-				"Model: Opus 5.5",
-				"Effort: Extra-high",
+				"Model: Opus 5.5, Effort: Extra",
 				"Usage: Context 190.2k / 1M (19%), Weekly · all models: 65%, Resets in 14 hr 31 min",
 			]);
 		});

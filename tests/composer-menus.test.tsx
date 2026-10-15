@@ -58,6 +58,16 @@ function sendPrompt(text: string) {
 	fireEvent.keyDown(textarea, {key: "Enter"});
 }
 
+async function pickEffort(name: RegExp) {
+	openEffort();
+	await waitFor(() => {
+		expect(screen.getAllByRole("menu")).toHaveLength(2);
+	});
+	const submenu = screen.getAllByRole("menu")[1];
+	if (submenu === undefined) throw new Error("no Effort submenu");
+	fireEvent.click(within(submenu).getByRole("menuitemradio", {name}));
+}
+
 function radioRows(menu: HTMLElement) {
 	return within(menu)
 		.getAllByRole("menuitemradio")
@@ -192,7 +202,7 @@ describe("Composer model menu", () => {
 				{label: "Haiku 5.5", key: "4", checked: "false"},
 			],
 			more: "More models",
-			trigger: "Model: Fable 5.1",
+			trigger: "Model: Fable 5.1, Effort: High",
 			calls: [["Continue Carol's test", {model: "fable"}]],
 		});
 	});
@@ -251,128 +261,69 @@ describe("Composer model menu", () => {
 	});
 });
 
-describe("Composer effort selector", () => {
-	it("opens a 220px dialog on ⇧⌘E with a five-stop slider", async () => {
-		const onSend = renderComposer();
-
+describe("Composer effort submenu", () => {
+	async function openEffortMenu() {
 		openEffort();
-		const dialog = await screen.findByRole("dialog");
-		const slider = within(dialog).getByRole("slider", {name: "Effort"});
-		const before = {
-			cds: dialog.getAttribute("data-cds"),
-			width: dialog.className.includes("w-[220px]"),
-			min: slider.getAttribute("min"),
-			max: slider.getAttribute("max"),
-			value: (slider as HTMLInputElement).value,
-			valueText: slider.getAttribute("aria-valuetext"),
-			captions: dialog.querySelector("[data-effort-captions]")?.textContent,
-		};
-		fireEvent.change(slider, {target: {value: "3"}});
-		const header = dialog.querySelector("[data-effort-current]")?.textContent;
-		const trigger = screen.getByRole("button", {name: /^Effort:/}).getAttribute("aria-label");
-		sendPrompt("Continue Erin's test");
-
-		expect({before, header, trigger, calls: onSend.mock.calls}).toStrictEqual({
-			before: {
-				cds: "ModelSelectorEffort",
-				width: true,
-				min: "0",
-				max: "4",
-				value: "2",
-				valueText: "High (Recommended)",
-				captions: "FasterSmarter",
-			},
-			header: "Extra-high",
-			trigger: "Effort: Extra-high",
-			calls: [["Continue Erin's test", {effort: "xhigh"}]],
-		});
-	});
-
-	it("picks a stop with its digit and closes", async () => {
-		const onSend = renderComposer();
-
-		openEffort();
-		fireEvent.keyDown(await screen.findByRole("dialog"), {key: "1", code: "Digit1"});
 		await waitFor(() => {
-			expect(screen.queryByRole("dialog")).toBeNull();
+			expect(screen.getAllByRole("menu")).toHaveLength(2);
 		});
-		sendPrompt("Continue Frank's test");
-
-		expect(onSend.mock.calls).toStrictEqual([["Continue Frank's test", {effort: "low"}]]);
-	});
-});
-
-describe("Composer effort slider affordances", () => {
-	beforeEach(() => {
-		vi.useFakeTimers();
-	});
-
-	afterEach(() => {
-		vi.useRealTimers();
-	});
-
-	async function openDialog() {
-		openEffort();
-		await act(async () => {
-			await vi.advanceTimersByTimeAsync(0);
-		});
-		const dialog = screen.getByRole("dialog");
-		return dialog;
+		const submenu = screen.getAllByRole("menu")[1];
+		if (submenu === undefined) throw new Error("no Effort submenu");
+		return submenu;
 	}
 
-	function tooltipOf(anchor: Element): string | null {
-		fireEvent.pointerEnter(anchor);
-		act(() => {
-			vi.advanceTimersByTime(400);
-		});
-		const text = screen.queryByRole("tooltip")?.textContent ?? null;
-		fireEvent.pointerLeave(anchor);
-		return text;
-	}
-
-	it("draws five tick dots whose hover tooltips use upstream's short names", async () => {
+	it("opens the model menu on ⇧⌘E at upstream's Effort submenu: its hint, then Low … Max with Recommended and Max's warning", async () => {
 		renderComposer();
-		const dialog = await openDialog();
-		const ticks = [...dialog.querySelectorAll("[data-effort-tick]")];
-
-		expect(
-			ticks.map((tick) => {
-				const anchor = tick.parentElement;
-				if (anchor === null) throw new Error("tick has no anchor");
-				return tooltipOf(anchor);
-			}),
-		).toStrictEqual(["Low", "Medium", "High", "Extra", "Max"]);
-	});
-
-	it("captions High as Recommended and drops the suffix elsewhere in aria-valuetext", async () => {
-		renderComposer();
-		const dialog = await openDialog();
-		const slider = within(dialog).getByRole("slider", {name: "Effort"});
-		const atHigh = slider.getAttribute("aria-valuetext");
-		fireEvent.change(slider, {target: {value: "4"}});
+		const submenu = await openEffortMenu();
+		const main = screen.getAllByRole("menu")[0];
 
 		expect({
-			caption: dialog.querySelector("[data-effort-recommended]")?.textContent,
-			atHigh,
-			atMax: slider.getAttribute("aria-valuetext"),
-			radius: dialog.className.includes("rounded-r7"),
-		}).toStrictEqual({caption: "Recommended", atHigh: "High (Recommended)", atMax: "Max", radius: true});
+			main: within(main!)
+				.getAllByRole("menuitem")
+				.map((item) => item.textContent),
+			hint: submenu.querySelector("[data-menu-label]")?.textContent,
+			width: submenu.className.includes("w-[320px]"),
+			rows: radioRows(submenu).map(({label, checked}) => ({label, checked})),
+			recommended: submenu
+				.querySelector("[data-effort-recommended]")
+				?.closest("[role=menuitemradio]")
+				?.querySelector("[data-menu-item-label]")?.textContent,
+			warning: submenu.querySelector("[data-effort-warning]")?.textContent,
+		}).toStrictEqual({
+			main: ["EffortHigh", "More models"],
+			hint: "Higher effort means more thorough responses, but takes longer and uses your limits faster.",
+			width: true,
+			rows: [
+				{label: "Low", checked: "false"},
+				{label: "Medium", checked: "false"},
+				{label: "High", checked: "true"},
+				{label: "Extra", checked: "false"},
+				{label: "Max", checked: "false"},
+			],
+			recommended: "Medium",
+			warning: "3.5× or more usage",
+		});
 	});
 
-	it("shows the About effort help card on hover", async () => {
-		renderComposer();
-		const dialog = await openDialog();
-		const help = within(dialog).getByRole("button", {name: "About effort"});
-		await act(async () => {
-			fireEvent.pointerEnter(help, {pointerType: "mouse"});
-			fireEvent.mouseEnter(help);
-			fireEvent.mouseMove(help);
-			await vi.advanceTimersByTimeAsync(1000);
+	it("picks an effort, closes, shows it on the shared trigger and sends it", async () => {
+		const onSend = renderComposer();
+		const submenu = await openEffortMenu();
+		fireEvent.click(within(submenu).getByRole("menuitemradio", {name: /^Extra/}));
+		await waitFor(() => {
+			expect(screen.queryByRole("menu")).toBeNull();
 		});
+		const trigger = screen.getByRole("button", {name: /^Model:/});
+		sendPrompt("Continue Erin's test");
 
-		expect(document.querySelector("[data-effort-help]")?.textContent).toBe(
-			"EffortHigher effort means more thorough responses, but takes longer and uses your limits faster.",
-		);
+		expect({
+			name: trigger.getAttribute("aria-label"),
+			text: trigger.textContent,
+			calls: onSend.mock.calls,
+		}).toStrictEqual({
+			name: "Model: Opus 5.5, Effort: Extra",
+			text: "Opus 5.5 Extra",
+			calls: [["Continue Erin's test", {effort: "xhigh"}]],
+		});
 	});
 });
 
@@ -390,10 +341,7 @@ describe("Composer menu shortcuts", () => {
 		openModelMenu();
 		openEffort();
 
-		expect({
-			menus: screen.queryAllByRole("menu").length,
-			effort: document.querySelector('[role="dialog"][data-cds="ModelSelectorEffort"]'),
-		}).toStrictEqual({menus: 0, effort: null});
+		expect(screen.queryAllByRole("menu").length).toBe(0);
 	});
 
 	it("sends no launch options until one is picked", () => {
@@ -437,7 +385,7 @@ describe("Composer on a live pane", () => {
 			trigger: screen.getByRole("button", {name: /^Model:/}).getAttribute("aria-label"),
 			rows: radioRows(menu).map(({label, checked}) => ({label, checked})),
 		}).toStrictEqual({
-			trigger: "Model: Fable 5.1",
+			trigger: "Model: Fable 5.1, Effort: High",
 			rows: [
 				{label: "Opus 5.5", checked: "false"},
 				{label: "Fable 5.1", checked: "true"},
@@ -454,16 +402,14 @@ describe("Composer on a live pane", () => {
 		expect({
 			mode: document.querySelector("[data-chin-mode]")?.textContent,
 			model: screen.getByRole("button", {name: /^Model:/}).getAttribute("aria-label"),
-			effort: screen.getByRole("button", {name: /^Effort:/}).getAttribute("aria-label"),
-		}).toStrictEqual({mode: "Plan", model: "Model: Fable 5.1", effort: "Effort: Max"});
+		}).toStrictEqual({mode: "Plan", model: "Model: Fable 5.1, Effort: Max"});
 	});
 
 	it("asks Change effort? before sending an effort change", async () => {
 		const {live, apply} = liveControls();
 		renderComposer({live});
 
-		openEffort();
-		fireEvent.keyDown(await screen.findByRole("dialog"), {key: "1", code: "Digit1"});
+		await pickEffort(/^Low/);
 		const confirm = await screen.findByRole("alertdialog");
 		const confirmText = confirm.textContent;
 		const appliedBeforeConfirm = apply.mock.calls.length;
@@ -484,8 +430,7 @@ describe("Composer on a live pane", () => {
 		const {live, apply} = liveControls();
 		renderComposer({live});
 
-		openEffort();
-		fireEvent.keyDown(await screen.findByRole("dialog"), {key: "5", code: "Digit5"});
+		await pickEffort(/^Max/);
 		const confirm = await screen.findByRole("alertdialog");
 		fireEvent.click(within(confirm).getByRole("button", {name: "Cancel"}));
 		await waitFor(() => {
@@ -494,8 +439,8 @@ describe("Composer on a live pane", () => {
 
 		expect({
 			applied: apply.mock.calls,
-			effort: screen.getByRole("button", {name: /^Effort:/}).getAttribute("aria-label"),
-		}).toStrictEqual({applied: [], effort: "Effort: High"});
+			trigger: screen.getByRole("button", {name: /^Model:/}).getAttribute("aria-label"),
+		}).toStrictEqual({applied: [], trigger: "Model: Opus 5.5, Effort: High"});
 	});
 });
 
@@ -512,18 +457,17 @@ describe("Composer chin tooltips and contrast", () => {
 		return text;
 	}
 
-	it("shows upstream's Add, Mode ⌥⌘M and Effort tooltips, and none on the model trigger", () => {
+	it("shows upstream's Add and Mode ⌥⌘M tooltips, and none on the model + effort trigger", () => {
 		vi.useFakeTimers();
 		try {
 			renderComposer();
 			const tooltips = {
 				add: hoverTooltip(screen.getByRole("button", {name: "Add"})),
 				mode: hoverTooltip(document.querySelector("[data-chin-mode]") ?? document.body),
-				model: hoverTooltip(screen.getByRole("button", {name: "Model: Opus 5.5"})),
-				effort: hoverTooltip(screen.getByRole("button", {name: "Effort: High"})),
+				model: hoverTooltip(screen.getByRole("button", {name: "Model: Opus 5.5, Effort: High"})),
 			};
 
-			expect(tooltips).toStrictEqual({add: "Add", mode: "Mode⌥Option⌘CommandM", model: null, effort: "Effort"});
+			expect(tooltips).toStrictEqual({add: "Add", mode: "Mode⌥Option⌘CommandM", model: null});
 		} finally {
 			vi.useRealTimers();
 		}
@@ -546,14 +490,12 @@ describe("Composer chin tooltips and contrast", () => {
 			add: pick(add),
 			plusIcon: classes(add.querySelector("svg")).filter((name) => name.startsWith("size-")),
 			mode: pick(document.querySelector("[data-chin-mode]")),
-			model: pick(screen.getByRole("button", {name: "Model: Opus 5.5"})),
-			effort: pick(screen.getByRole("button", {name: "Effort: High"})),
+			model: pick(screen.getByRole("button", {name: "Model: Opus 5.5, Effort: High"})),
 		}).toStrictEqual({
 			add: {ink: ["text-secondary"], radius: ["rounded-r4"], lineHeight: ["leading-[17px]"]},
 			plusIcon: ["size-4"],
 			mode: {ink: ["text-secondary"], radius: ["rounded-r4"], lineHeight: ["leading-[17px]"]},
 			model: {ink: ["text-primary"], radius: ["rounded-r4"], lineHeight: ["leading-[17px]"]},
-			effort: {ink: ["text-primary"], radius: ["rounded-r4"], lineHeight: ["leading-[17px]"]},
 		});
 	});
 

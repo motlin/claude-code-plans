@@ -24,7 +24,7 @@ import {
 } from "../lib/launch-options";
 import {useShortcutKeys} from "../hooks/use-shortcut";
 import {effortLevelLabels} from "../lib/schema-choices";
-import {CHIN_BUTTON_CLASS, type ChinMenu, EffortSelector, ModeMenu, ModelMenu} from "./composer-launch-menus";
+import {CHIN_BUTTON_CLASS, type ChinMenu, ModeMenu, ModelMenu} from "./composer-launch-menus";
 import {settingsHash} from "../lib/settings-hash";
 import {ConfirmDialog} from "./confirm-dialog";
 import {Menu, MenuContent, MenuItem, MenuTrigger} from "./ui/menu";
@@ -250,15 +250,21 @@ export const ComposerChin = memo(function ComposerChin({
 				/>
 			</div>
 			<div className="ms-auto flex min-w-0 items-center gap-1 ps-2">
+				{/* Upstream's one model + effort picker; ⇧⌘E opens it on its Effort submenu */}
 				<ModelMenu
-					{...menuProps("model")}
+					open={openMenu === "model" || openMenu === "effort"}
+					onOpenChange={(open) => {
+						onOpenMenuChange(open ? "model" : null);
+					}}
+					effortOpen={openMenu === "effort"}
 					current={launchOptions.model ?? modelMenuValue(state.modelId) ?? undefined}
 					currentLabel={modelText}
+					currentEffort={currentEffort}
 					onSelect={(model) => {
 						onLaunchOptionsChange({...launchOptions, model});
 					}}
+					onSelectEffort={selectEffort}
 				/>
-				<EffortSelector {...menuProps("effort")} current={currentEffort} onSelect={selectEffort} />
 				<UsageRing usage={state.usage} onShowBreakdown={onShowUsageBreakdown} />
 			</div>
 			<ConfirmDialog

@@ -1,7 +1,5 @@
-import {Popover} from "@base-ui/react/popover";
-import {PreviewCard} from "@base-ui/react/preview-card";
-import {CircleQuestionMark} from "lucide-react";
-import {type KeyboardEvent, useState} from "react";
+import {TriangleAlert} from "lucide-react";
+import {useState} from "react";
 
 import {useShortcutKeys} from "../hooks/use-shortcut";
 
@@ -17,7 +15,7 @@ import {
 	PRIMARY_MODELS,
 	primaryModelMenuValue,
 } from "../lib/launch-options";
-import {effortLevelLabels, effortLevelShortLabels} from "../lib/schema-choices";
+import {effortLevelShortLabels} from "../lib/schema-choices";
 import {ConfirmDialog} from "./confirm-dialog";
 import {
 	Menu,
@@ -46,34 +44,13 @@ const CHIN_TRIGGER_CLASS = `${CHIN_BUTTON_CLASS} truncate px-1.5`;
 /** Upstream reads the model and effort in primary ink; +, mode and usage stay secondary. */
 const CHIN_PRIMARY_TRIGGER_CLASS = CHIN_TRIGGER_CLASS.replace("text-secondary", "text-primary");
 
-const EFFORT_POPUP_CLASS =
-	"flex w-[220px] max-w-[320px] flex-col gap-2 rounded-r7 bg-[var(--menu-bg)] p-3 text-[12px]/[16px] text-primary shadow-[var(--menu-shadow)] outline-none";
-
-/** claude.ai/code captions this stop "Recommended" and appends it to the slider's value text. */
-const RECOMMENDED_EFFORT: EffortLevel = "high";
-
 const EFFORT_HELP = "Higher effort means more thorough responses, but takes longer and uses your limits faster.";
-
-/** Thumb width; stops are inset by half of it so the thumb stays on the track at both ends. */
-const EFFORT_THUMB_PX = 16;
-
-/** The CSS `left` of stop `index` along the slider. */
-function effortStopLeft(index: number): string {
-	const fraction = index / (EFFORT_LEVELS.length - 1);
-	return `calc(${EFFORT_THUMB_PX / 2}px + (100% - ${EFFORT_THUMB_PX}px) * ${fraction})`;
-}
 
 export type ChinMenu = "mode" | "model" | "effort";
 
 interface ControlledMenuProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
-}
-
-/** 1-based digit of a plain keypress, or null. */
-function digitOf(event: KeyboardEvent): number | null {
-	if (event.metaKey || event.ctrlKey || event.altKey) return null;
-	return /^[1-9]$/.test(event.key) ? Number(event.key) : null;
 }
 
 export function ModeMenu({
@@ -153,27 +130,44 @@ export function ModeMenu({
 	);
 }
 
+/** Upstream's Effort list badges Medium as Recommended. */
+const RECOMMENDED_EFFORT: EffortLevel = "medium";
+
+/**
+ * claude.ai/code's single model + effort picker: the trigger reads "Opus 5.5 High", and its menu lists
+ * the primary models with digit keys, an Effort submenu (upstream's hint, then Low … Max with the
+ * Recommended badge and Max's usage warning) and More models. ⇧⌘E opens it with Effort open.
+ */
 export function ModelMenu({
 	open,
 	onOpenChange,
+	effortOpen,
 	current,
 	currentLabel,
+	currentEffort,
 	onSelect,
+	onSelectEffort,
 }: ControlledMenuProps & {
+	/** Opened from ⇧⌘E: show the Effort submenu straight away. */
+	effortOpen: boolean;
 	current: string | undefined;
 	currentLabel: string;
+	currentEffort: string;
 	onSelect: (model: string) => void;
+	onSelectEffort: (effort: EffortLevel) => void;
 }) {
 	/** Upstream's checked row shows its ✓ in place of its digit; the others keep their position's digit. */
 	const primary = primaryModelMenuValue(current);
+	const level = EffortLevelSchema.safeParse(currentEffort);
+	const effortLabel = level.success ? effortLevelShortLabels[level.data] : currentEffort;
 	return (
 		<Menu open={open} onOpenChange={onOpenChange}>
 			<MenuTrigger
 				data-cds="ModelSelector"
-				aria-label={`Model: ${currentLabel}`}
+				aria-label={`Model: ${currentLabel}, Effort: ${effortLabel}`}
 				className={CHIN_PRIMARY_TRIGGER_CLASS}
 			>
-				{currentLabel}
+				{currentLabel} {effortLabel}
 			</MenuTrigger>
 			<MenuContent side="top" align="end">
 				<MenuRadioGroup
@@ -193,6 +187,47 @@ export function ModelMenu({
 						</MenuRadioItem>
 					))}
 				</MenuRadioGroup>
+				<MenuSeparator />
+				<MenuSub defaultOpen={effortOpen}>
+					<MenuSubTrigger value={effortLabel}>Effort</MenuSubTrigger>
+					<MenuSubContent className="w-[320px]">
+						<MenuLabel className="px-2 pt-1.5 pb-1 text-[12px]/[16px] text-[var(--menu-muted)]">
+							{EFFORT_HELP}
+						</MenuLabel>
+						<MenuRadioGroup
+							value={level.success ? level.data : ""}
+							onValueChange={(value: unknown) => {
+								const picked = EffortLevelSchema.safeParse(value);
+								if (!picked.success) return;
+								onSelectEffort(picked.data);
+								onOpenChange(false);
+							}}
+						>
+							{EFFORT_LEVELS.map((effort) => (
+								<MenuRadioItem key={effort} value={effort} closeOnClick>
+									<span data-menu-item-label="">{effortLevelShortLabels[effort]}</span>
+									{effort === RECOMMENDED_EFFORT && (
+										<span
+											data-effort-recommended=""
+											className="ms-1.5 rounded-r3 bg-alpha-2 px-1 text-[11px]/[15px] text-secondary"
+										>
+											Recommended
+										</span>
+									)}
+									{effort === "max" && (
+										<span
+											data-effort-warning=""
+											className="ms-1.5 flex items-center gap-1 text-[12px]/[15px] text-warning-000"
+										>
+											<TriangleAlert aria-hidden="true" className="size-3.5" />
+											3.5× or more usage
+										</span>
+									)}
+								</MenuRadioItem>
+							))}
+						</MenuRadioGroup>
+					</MenuSubContent>
+				</MenuSub>
 				<MenuSeparator />
 				<MenuSub>
 					<MenuSubTrigger>More models</MenuSubTrigger>
@@ -214,178 +249,5 @@ export function ModelMenu({
 				</MenuSub>
 			</MenuContent>
 		</Menu>
-	);
-}
-
-export function EffortSelector({
-	open,
-	onOpenChange,
-	current,
-	onSelect,
-}: ControlledMenuProps & {
-	current: string;
-	onSelect: (effort: EffortLevel) => void;
-}) {
-	const level = EffortLevelSchema.safeParse(current);
-	const label = level.success ? effortLevelLabels[level.data] : current;
-	const index = level.success ? EFFORT_LEVELS.indexOf(level.data) : EFFORT_LEVELS.indexOf("high");
-
-	function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
-		const digit = digitOf(event);
-		const picked = digit === null ? undefined : EFFORT_LEVELS[digit - 1];
-		if (picked === undefined) return;
-		event.preventDefault();
-		event.stopPropagation();
-		onSelect(picked);
-		onOpenChange(false);
-	}
-
-	return (
-		<Popover.Root open={open} onOpenChange={onOpenChange}>
-			<Tooltip content="Effort" side="top">
-				<Popover.Trigger
-					data-cds="ModelSelectorEffort"
-					aria-label={`Effort: ${label}`}
-					className={CHIN_PRIMARY_TRIGGER_CLASS}
-				>
-					{label}
-				</Popover.Trigger>
-			</Tooltip>
-			<Popover.Portal>
-				<Popover.Positioner side="top" align="end" sideOffset={6} className="z-[130]">
-					<Popover.Popup
-						data-cds="ModelSelectorEffort"
-						className={EFFORT_POPUP_CLASS}
-						onKeyDown={handleKeyDown}
-					>
-						<div className="flex items-center gap-1.5">
-							<Popover.Title className="font-normal text-[var(--menu-muted)]">Effort</Popover.Title>
-							<span data-effort-current="" className="font-medium">
-								{label}
-							</span>
-							<EffortHelp />
-						</div>
-						<div
-							data-effort-captions=""
-							className="flex justify-between text-[12px]/[15px] text-[var(--menu-muted)]"
-						>
-							<span>Faster</span>
-							<span>Smarter</span>
-						</div>
-						<EffortSlider
-							index={index}
-							valueText={
-								level.success && level.data === RECOMMENDED_EFFORT ? `${label} (Recommended)` : label
-							}
-							onSelect={onSelect}
-						/>
-					</Popover.Popup>
-				</Popover.Positioner>
-			</Popover.Portal>
-		</Popover.Root>
-	);
-}
-
-function EffortHelp() {
-	return (
-		<PreviewCard.Root>
-			<PreviewCard.Trigger
-				render={<button type="button" />}
-				aria-label="About effort"
-				className="ml-auto inline-flex size-4 shrink-0 items-center justify-center rounded-full text-[var(--menu-muted)] outline-none hover:text-primary focus-visible:shadow-[0_0_0_2px_var(--accent-100)] pointer-coarse:hidden"
-			>
-				<CircleQuestionMark aria-hidden="true" className="size-4" />
-			</PreviewCard.Trigger>
-			<PreviewCard.Portal>
-				<PreviewCard.Positioner side="top" sideOffset={6} className="z-[140]">
-					<PreviewCard.Popup
-						data-effort-help=""
-						className="flex w-[220px] flex-col gap-1 rounded-r7 bg-[var(--menu-bg)] p-3 text-[12px]/[15px] text-primary shadow-[var(--menu-shadow)] outline-none"
-					>
-						<p className="font-medium">Effort</p>
-						<p className="text-[var(--menu-muted)]">{EFFORT_HELP}</p>
-					</PreviewCard.Popup>
-				</PreviewCard.Positioner>
-			</PreviewCard.Portal>
-		</PreviewCard.Root>
-	);
-}
-
-/**
- * Upstream's stepped slider: a native range input (arrow keys, dragging) stretched invisibly over a drawn track
- * with a 3px dot per stop, each naming its level on hover and picking it on press, a 16px pill thumb, and a
- * "Recommended" caption under High.
- */
-function EffortSlider({
-	index,
-	valueText,
-	onSelect,
-}: {
-	index: number;
-	valueText: string;
-	onSelect: (effort: EffortLevel) => void;
-}) {
-	const thumbLeft = effortStopLeft(index);
-	return (
-		<div className="flex flex-col">
-			<div data-effort-slider="" className="relative h-6 w-full">
-				<div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-alpha-2" />
-				<div
-					className="absolute left-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-[var(--accent-100)]"
-					style={{width: thumbLeft}}
-				/>
-				<input
-					type="range"
-					aria-label="Effort"
-					min={0}
-					max={EFFORT_LEVELS.length - 1}
-					step={1}
-					value={index}
-					aria-valuetext={valueText}
-					onChange={(event) => {
-						const picked = EFFORT_LEVELS[Number(event.target.value)];
-						if (picked !== undefined) onSelect(picked);
-					}}
-					className="peer absolute inset-0 m-0 size-full cursor-pointer opacity-0"
-				/>
-				<span
-					aria-hidden="true"
-					className="pointer-events-none absolute top-1/2 h-5 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow-[0_0_0_0.5px_rgb(11_11_11/0.15),0_1px_3px_rgb(11_11_11/0.2)] peer-focus-visible:shadow-[0_0_0_2px_var(--accent-100)]"
-					style={{left: thumbLeft}}
-				/>
-				{EFFORT_LEVELS.map((stop, stopIndex) => (
-					<span
-						key={stop}
-						className={`absolute top-1/2 -translate-x-1/2 -translate-y-1/2 ${stopIndex === index ? "pointer-events-none" : ""}`}
-						style={{left: effortStopLeft(stopIndex)}}
-					>
-						<Tooltip content={effortLevelShortLabels[stop]}>
-							<span
-								data-effort-tick=""
-								aria-hidden="true"
-								onPointerDown={(event) => {
-									event.preventDefault();
-									onSelect(stop);
-								}}
-								className="flex size-3 cursor-pointer items-center justify-center"
-							>
-								<span
-									className={`size-[3px] rounded-full bg-current opacity-25 ${stopIndex === index ? "invisible" : ""}`}
-								/>
-							</span>
-						</Tooltip>
-					</span>
-				))}
-			</div>
-			<div className="relative h-[15px]">
-				<span
-					data-effort-recommended=""
-					className="absolute top-0 -translate-x-1/2 text-[12px]/[15px] whitespace-nowrap text-[var(--menu-muted)]"
-					style={{left: effortStopLeft(EFFORT_LEVELS.indexOf(RECOMMENDED_EFFORT))}}
-				>
-					Recommended
-				</span>
-			</div>
-		</div>
 	);
 }

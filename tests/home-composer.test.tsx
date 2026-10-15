@@ -194,14 +194,12 @@ describe("HomeComposer", () => {
 		expect({
 			placeholder: textarea.getAttribute("placeholder"),
 			picker: screen.getByRole("combobox", {name: "Select project"}).textContent,
-			model: screen.getByLabelText("Model: Opus 4.8").textContent,
-			effort: screen.getByLabelText("Effort: Medium").textContent,
+			model: screen.getByLabelText("Model: Opus 4.8, Effort: Medium").textContent,
 			mode: document.querySelector("[data-chin-mode]")?.textContent,
 		}).toStrictEqual({
 			placeholder: "Describe a task or ask a question",
 			picker: "it's",
-			model: "Opus 4.8",
-			effort: "Medium",
+			model: "Opus 4.8 Medium",
 			mode: "Plan",
 		});
 	});
@@ -312,8 +310,8 @@ describe("HomeComposer", () => {
 
 		const trigger = await screen.findByRole("button", {name: /^Model:/});
 		expect({label: trigger.getAttribute("aria-label"), text: trigger.textContent}).toStrictEqual({
-			label: "Model: Opus 5.5",
-			text: "Opus 5.5",
+			label: "Model: Opus 5.5, Effort: Medium",
+			text: "Opus 5.5 Medium",
 		});
 	});
 
@@ -321,7 +319,7 @@ describe("HomeComposer", () => {
 		await renderApp();
 		await typePrompt("fix the flaky test");
 
-		fireEvent.click(screen.getByRole("button", {name: "Model: Opus 4.8"}));
+		fireEvent.click(screen.getByRole("button", {name: "Model: Opus 4.8, Effort: Medium"}));
 		fireEvent.keyDown(await screen.findByRole("menu"), {key: "3", code: "Digit3"});
 		await waitFor(() => {
 			expect(screen.queryByRole("menu")).toBeNull();
