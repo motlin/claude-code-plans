@@ -96,8 +96,8 @@
 	/* Upstream danger text (failed tool rows and their output) shares the chip ink. */
 	--color-danger-ink: var(--upstream-code-ink);
 	/* Upstream --cds-text-git-added / --cds-text-git-removed: summary row stats. */
-	--color-diff-added: var(--upstream-extended-green);
-	--color-diff-removed: var(--upstream-extended-pink);
+	--color-diff-added: var(--upstream-git-added);
+	--color-diff-removed: var(--upstream-git-removed);
 	--color-git-opened: var(--git-opened);
 	--color-git-draft: var(--git-draft);
 	--color-git-merged: var(--git-merged);
@@ -242,6 +242,9 @@
 
 	/* Upstream claude.ai/code — extended diff stat colors */
 	--upstream-extended-green: hsl(134 68% 37%);
+	/* Upstream --cds-text-git-added / --cds-text-git-removed (diffs and their stats). */
+	--upstream-git-added: #1e9e3c;
+	--upstream-git-removed: #cd2054;
 	--upstream-extended-pink: hsl(342 73% 47%);
 
 	/* Upstream claude.ai/code — transparency layers (gray-900 base) */
@@ -407,6 +410,8 @@
 
 	/* Upstream claude.ai/code — extended diff stat colors (dark mode) */
 	--upstream-extended-green: hsl(134 60% 52%);
+	--upstream-git-added: #32d74b;
+	--upstream-git-removed: #ff2c56;
 	--upstream-extended-pink: hsl(342 65% 62%);
 
 	/* Upstream claude.ai/code — transparency layers (white base) */

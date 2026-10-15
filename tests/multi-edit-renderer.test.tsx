@@ -156,8 +156,8 @@ describe("MultiEdit diff stats", () => {
 			/>,
 		);
 
-		const added = container.querySelector(".text-extended-green");
-		const removed = container.querySelector(".text-extended-pink");
+		const added = container.querySelector(".text-diff-added");
+		const removed = container.querySelector(".text-diff-removed");
 		expect(added?.textContent).toBe("+4");
 		expect(removed?.textContent).toBe("−3");
 	});

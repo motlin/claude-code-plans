@@ -242,7 +242,7 @@ describe("failed edits in diff stats", () => {
 		const row = container.querySelector<HTMLElement>("[data-tool-row]")!;
 		return {
 			text: row.textContent,
-			stats: Array.from(row.querySelectorAll("[class*='text-extended-']"), (span) => span.textContent),
+			stats: Array.from(row.querySelectorAll("[class*='text-diff-']"), (span) => span.textContent),
 		};
 	}
 
@@ -301,7 +301,7 @@ describe("ToolCallSummary stats and ink", () => {
 			label: "Read a file, edited a file",
 			stats: {segments: ["text-diff-added:+1", "text-diff-removed:−3"], srOnly: "1 added, 3 removed"},
 			wrapper: "ms-1 inline-flex h-[1lh] shrink-0 items-center text-ink-muted tabular-nums",
-			chip: "inline-flex h-4 items-center overflow-clip rounded-r3 text-[10px]/[13px] font-medium",
+			chip: "inline-flex h-4 overflow-clip rounded-r3 text-[10px]/[13px] font-medium",
 			segments: [
 				"flex items-center gap-[1px] px-1 text-diff-added bg-diff-added/20",
 				"flex items-center gap-[1px] px-1 text-diff-removed bg-diff-removed/20",

@@ -132,7 +132,7 @@ interface RowSpecimen {
 
 /** A row label part's text, with a diff stat's counts spaced as they read: "+59 −0". */
 function spanText(span: Element): string {
-	const counts = Array.from(span.querySelectorAll("[class*='text-extended-']"), (count) => count.textContent);
+	const counts = Array.from(span.querySelectorAll("[class*='text-diff-']"), (count) => count.textContent);
 	return counts.length > 0 ? counts.join(" ") : span.textContent;
 }
 

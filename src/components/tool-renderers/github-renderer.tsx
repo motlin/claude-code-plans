@@ -215,8 +215,8 @@ function SingleItemRenderer({data, icon}: {data: DetailData; icon: "pr" | "issue
 								{data.comments}
 							</span>
 						)}
-						{data.additions !== undefined && <span className="text-extended-green">+{data.additions}</span>}
-						{data.deletions !== undefined && <span className="text-extended-pink">-{data.deletions}</span>}
+						{data.additions !== undefined && <span className="text-diff-added">+{data.additions}</span>}
+						{data.deletions !== undefined && <span className="text-diff-removed">-{data.deletions}</span>}
 						{data.changed_files !== undefined && <span>{data.changed_files} files</span>}
 					</div>
 				</div>

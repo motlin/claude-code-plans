@@ -4,7 +4,7 @@ import type {FileDiffOptions} from "@pierre/diffs/react";
 import {useMemo} from "react";
 import {useCodeThemes} from "../../hooks/use-code-themes";
 import {buildUnifiedHunk} from "../../lib/diff-utils";
-import {DIFFS_STYLE_OVERRIDES} from "../changes/diffs-config";
+import {INLINE_DIFFS_STYLE_OVERRIDES} from "../changes/diffs-config";
 import {useResolvedTheme} from "../theme-context";
 
 /**
@@ -33,5 +33,5 @@ export function InlineDiff({filePath, oldStr, newStr}: {filePath: string; oldStr
 		[codeThemes, resolvedTheme],
 	);
 
-	return <FileDiff fileDiff={fileDiff} options={options} style={DIFFS_STYLE_OVERRIDES} disableWorkerPool />;
+	return <FileDiff fileDiff={fileDiff} options={options} style={INLINE_DIFFS_STYLE_OVERRIDES} disableWorkerPool />;
 }

@@ -23,10 +23,10 @@ export const DIFFS_STYLE_OVERRIDES = {
 	"--diffs-bg-context-override": "transparent",
 	"--diffs-bg-separator-override": "transparent",
 	"--diffs-fg-number-override": "var(--upstream-text-muted)",
-	"--diffs-fg-number-addition-override": "var(--upstream-extended-green)",
-	"--diffs-fg-number-deletion-override": "var(--upstream-extended-pink)",
-	"--diffs-addition-color-override": "var(--upstream-extended-green)",
-	"--diffs-deletion-color-override": "var(--upstream-extended-pink)",
+	"--diffs-fg-number-addition-override": "var(--upstream-git-added)",
+	"--diffs-fg-number-deletion-override": "var(--upstream-git-removed)",
+	"--diffs-addition-color-override": "var(--upstream-git-added)",
+	"--diffs-deletion-color-override": "var(--upstream-git-removed)",
 	"--diffs-modified-color-override": "var(--color-git-conflicting)",
 	"--diffs-selection-color-override": "var(--accent-100)",
 	"--diffs-bg-selection-override": "var(--accent-900)",
@@ -35,4 +35,11 @@ export const DIFFS_STYLE_OVERRIDES = {
 	"--diffs-gap-style": "0",
 	"--diffs-overflow-override": "clip",
 	"--diffs-scrollbar-gutter-override": "0px",
+} as CSSProperties;
+
+/** Upstream's transcript diffs set the same tokens at 12/17 mono. */
+export const INLINE_DIFFS_STYLE_OVERRIDES = {
+	...DIFFS_STYLE_OVERRIDES,
+	"--diffs-font-size": "12px",
+	"--diffs-line-height": "17px",
 } as CSSProperties;

@@ -118,8 +118,8 @@ export function TruncatedFilePathHeader({filePath}: {filePath: string}) {
 
 /**
  * Inline diff stats matching upstream claude.ai/code:
- *   span.inline-flex > span.flex.gap-g1 > span.text-extended-green "+N"
- *                                       > span.text-extended-pink  "−M" (U+2212)
+ *   span.inline-flex > span.flex.gap-g1 > span.text-git-added "+N"
+ *                                       > span.text-git-removed  "−M" (U+2212)
  * `tabular-nums` keeps the digits aligned when Edit rows stack.
  */
 const DIFF_STAT_SEGMENT = "flex items-center gap-[1px] px-1";
@@ -137,7 +137,7 @@ export function DiffStatPill({added, removed}: {added: number; removed: number})
 		>
 			<span
 				aria-hidden="true"
-				className="inline-flex h-4 items-center overflow-clip rounded-r3 text-[10px]/[13px] font-medium"
+				className="inline-flex h-4 overflow-clip rounded-r3 text-[10px]/[13px] font-medium"
 			>
 				<span data-diff-stat-segment="" className={`${DIFF_STAT_SEGMENT} text-diff-added bg-diff-added/20`}>
 					<span>+</span>
@@ -160,8 +160,8 @@ export function DiffStats({added, removed}: {added: number; removed: number}) {
 	return (
 		<span className="inline-flex">
 			<span className="flex gap-g1 items-center text-body tabular-nums shrink-0">
-				<span className="text-extended-green">+{added}</span>
-				<span className="text-extended-pink">−{removed}</span>
+				<span className="text-diff-added">+{added}</span>
+				<span className="text-diff-removed">−{removed}</span>
 			</span>
 		</span>
 	);

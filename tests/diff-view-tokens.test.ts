@@ -1,7 +1,7 @@
 import {readFileSync} from "node:fs";
 import {resolve} from "node:path";
 import {describe, expect, it} from "vite-plus/test";
-import {DIFFS_STYLE_OVERRIDES} from "../src/components/changes/diffs-config";
+import {DIFFS_STYLE_OVERRIDES, INLINE_DIFFS_STYLE_OVERRIDES} from "../src/components/changes/diffs-config";
 
 const ROOT = resolve(__dirname, "..");
 const GLOBALS_CSS = resolve(ROOT, "src", "styles", "globals.css");
@@ -51,8 +51,38 @@ describe("diff view tokens", () => {
 			font: "var(--font-mono)",
 			size: "var(--upstream-text-code)",
 			leading: "var(--upstream-leading-code)",
-			addition: "var(--upstream-extended-green)",
-			deletion: "var(--upstream-extended-pink)",
+			addition: "var(--upstream-git-added)",
+			deletion: "var(--upstream-git-removed)",
+		});
+	});
+
+	it("defines upstream's git added/removed inks per theme, and the transcript's inline diffs at 12/17", () => {
+		const css = readFileSync(GLOBALS_CSS, "utf8");
+		const token = (selector: string, name: string) => {
+			const start = css.indexOf(`\n${selector} {`);
+			return css.slice(start, css.indexOf("\n}", start + 1)).match(new RegExp(`\\s${name}:\\s*([^;]+);`))?.[1];
+		};
+		const inline = INLINE_DIFFS_STYLE_OVERRIDES as Record<string, string>;
+
+		expect({
+			light: [token(":root", "--upstream-git-added"), token(":root", "--upstream-git-removed")],
+			dark: [token(".dark", "--upstream-git-added"), token(".dark", "--upstream-git-removed")],
+			theme: [token("@theme inline", "--color-diff-added"), token("@theme inline", "--color-diff-removed")],
+			numbers: [
+				OVERRIDES["--diffs-fg-number-addition-override"],
+				OVERRIDES["--diffs-fg-number-deletion-override"],
+			],
+			inline: [
+				inline["--diffs-font-size"],
+				inline["--diffs-line-height"],
+				inline["--diffs-addition-color-override"],
+			],
+		}).toStrictEqual({
+			light: ["#1e9e3c", "#cd2054"],
+			dark: ["#32d74b", "#ff2c56"],
+			theme: ["var(--upstream-git-added)", "var(--upstream-git-removed)"],
+			numbers: ["var(--upstream-git-added)", "var(--upstream-git-removed)"],
+			inline: ["12px", "17px", "var(--upstream-git-added)"],
 		});
 	});
 

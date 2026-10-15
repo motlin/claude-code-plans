@@ -39,8 +39,8 @@ function moveRowFocus(event: KeyboardEvent<HTMLElement>, selector: string): void
 export function DiffCounts({additions, deletions}: {additions: number; deletions: number}) {
 	return (
 		<span className="flex shrink-0 items-center gap-0.5 text-footnote tabular-nums">
-			<span className="text-extended-green">+{additions}</span>
-			<span className="text-extended-pink">−{deletions}</span>
+			<span className="text-diff-added">+{additions}</span>
+			<span className="text-diff-removed">−{deletions}</span>
 		</span>
 	);
 }

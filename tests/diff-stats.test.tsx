@@ -55,8 +55,8 @@ describe("DiffStats", () => {
 			wrapperClass: "inline-flex",
 			clusterClass: CLUSTER_CLASS,
 			parts: [
-				{className: "text-extended-green", text: "+15"},
-				{className: "text-extended-pink", text: "−3"},
+				{className: "text-diff-added", text: "+15"},
+				{className: "text-diff-removed", text: "−3"},
 			],
 		});
 	});
@@ -65,8 +65,8 @@ describe("DiffStats", () => {
 		const {container} = render(<DiffStats added={42} removed={0} />);
 
 		expect(statsMarkup(container).parts).toStrictEqual([
-			{className: "text-extended-green", text: "+42"},
-			{className: "text-extended-pink", text: "−0"},
+			{className: "text-diff-added", text: "+42"},
+			{className: "text-diff-removed", text: "−0"},
 		]);
 	});
 

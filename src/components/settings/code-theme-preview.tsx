@@ -22,8 +22,8 @@ const PREVIEW_CODE = PREVIEW_LINES.map((line) => line.text).join("\n");
 
 const ROW_TINT = {
 	" ": "",
-	"-": "bg-[color-mix(in_srgb,var(--upstream-extended-pink)_18%,transparent)]",
-	"+": "bg-[color-mix(in_srgb,var(--upstream-extended-green)_18%,transparent)]",
+	"-": "bg-[color-mix(in_srgb,var(--upstream-git-removed)_18%,transparent)]",
+	"+": "bg-[color-mix(in_srgb,var(--upstream-git-added)_18%,transparent)]",
 } as const;
 
 interface HighlightedPreview {
