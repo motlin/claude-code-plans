@@ -21,7 +21,7 @@ async function renderError(error: Error) {
 }
 
 describe("DefaultErrorComponent", () => {
-	it("renders API 404 errors as a not-found page with a home link", async () => {
+	it("renders API 404 errors as upstream's not-found page with Go back home and the request detail", async () => {
 		await renderError(
 			new ApiResponseError(
 				"/api/reviews/missing-review",
@@ -29,20 +29,21 @@ describe("DefaultErrorComponent", () => {
 			),
 		);
 
-		const homeLink = screen.getByRole("link", {name: "Back to home"});
+		const homeLink = screen.getByRole("link", {name: "Go back home"});
 		expect({
 			heading: screen.getByRole("heading").textContent,
-			description: screen.getByText("The requested page was not found.").textContent,
+			description: screen.getByText("Claude can help with many things, but finding this page isn’t one of them.")
+				.textContent,
 			detail: screen.getByText("/api/reviews/missing-review -> 404 Not Found").textContent,
 			homeLink: {
 				text: homeLink.textContent,
 				destination: homeLink.getAttribute("href"),
 			},
 		}).toStrictEqual({
-			heading: "404 — Not Found",
-			description: "The requested page was not found.",
+			heading: "Page not found",
+			description: "Claude can help with many things, but finding this page isn’t one of them.",
 			detail: "/api/reviews/missing-review -> 404 Not Found",
-			homeLink: {text: "Back to home", destination: "/"},
+			homeLink: {text: "Go back home", destination: "/"},
 		});
 	});
 

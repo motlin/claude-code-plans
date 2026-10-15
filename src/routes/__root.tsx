@@ -199,14 +199,31 @@ function NotFound() {
 	return <NotFoundContent />;
 }
 
+/** Upstream's 404, centred in the app shell: the wordmark, "Page not found", its line and Go back home. */
 function NotFoundContent({detail}: Readonly<{detail?: string}>) {
 	return (
-		<div>
-			<h1 className="text-lg font-semibold">404 &mdash; Not Found</h1>
-			<p className="mt-2 text-t6">The requested page was not found.</p>
-			{detail ? <pre className="mt-3 max-w-2xl overflow-auto font-mono text-xs text-t6">{detail}</pre> : null}
-			<Link to="/" className="mt-4 inline-block text-sm text-accent-100 hover:underline">
-				Back to home
+		<div
+			data-not-found=""
+			className="flex min-h-[calc(100dvh-8rem)] flex-col items-center justify-center gap-6 px-4 text-center"
+		>
+			<span
+				aria-hidden="true"
+				className="font-voice text-[20px] leading-none font-medium whitespace-nowrap text-primary"
+			>
+				Claude Code Browser
+			</span>
+			<div className="flex flex-col items-center gap-1">
+				<h1 className="font-voice text-[20px]/[28px] font-normal text-primary">Page not found</h1>
+				<p className="text-[15px]/[20px] text-secondary">
+					Claude can help with many things, but finding this page isn’t one of them.
+				</p>
+			</div>
+			{detail ? <pre className="max-w-2xl overflow-auto font-mono text-xs text-t6">{detail}</pre> : null}
+			<Link
+				to="/"
+				className="inline-flex h-8 items-center rounded-r6 bg-fill-primary px-3 text-[14px]/[20px] font-medium text-on-primary no-underline transition-colors hover:bg-fill-primary-hover"
+			>
+				Go back home
 			</Link>
 		</div>
 	);
