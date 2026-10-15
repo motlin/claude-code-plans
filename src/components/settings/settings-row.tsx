@@ -13,7 +13,7 @@ export function SettingsSection({title, children}: {title: string; children: Rea
 	return (
 		<section className="mb-10 last:mb-0">
 			<h3 className="mb-4 text-[15px] leading-[20px] font-[580] text-primary">{title}</h3>
-			<div className="[&>:not([hidden])~:not([hidden])]:border-t [&>:not([hidden])~:not([hidden])]:border-subtle not-dark:[&>:not([hidden])~:not([hidden])]:border-primary/5">
+			<div className="[&>:not([hidden])~:not([hidden])]:border-t [&>:not([hidden])~:not([hidden])]:border-subtle dark:[&>:not([hidden])~:not([hidden])]:border-white/5 not-dark:[&>:not([hidden])~:not([hidden])]:border-primary/5">
 				{children}
 			</div>
 		</section>

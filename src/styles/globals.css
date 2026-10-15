@@ -307,6 +307,7 @@
 	--settings-switch-track: rgb(11 11 11 / 0.15);
 	--settings-switch-track-hover: rgb(11 11 11 / 0.2);
 	--settings-segmented-track: rgb(11 11 11 / 0.05);
+	--settings-segmented-ink: var(--settings-muted);
 	--settings-segmented-thumb: #fff;
 	--settings-field-bg: rgba(255, 255, 255, 0.5);
 
@@ -442,7 +443,8 @@
 	--settings-muted: #898781;
 	--settings-switch-track: hsl(0 0% 100% / 0.18);
 	--settings-switch-track-hover: hsl(0 0% 100% / 0.24);
-	--settings-segmented-track: hsl(0 0% 100% / 0.06);
+	--settings-segmented-track: hsl(0 0% 100% / 0.05);
+	--settings-segmented-ink: var(--upstream-text-secondary);
 	--settings-segmented-thumb: hsl(60 2% 24%);
 	--settings-field-bg: hsl(0 0% 100% / 0.04);
 
