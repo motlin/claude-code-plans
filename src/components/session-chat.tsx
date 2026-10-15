@@ -1489,7 +1489,7 @@ function MarkerDisclosureButton({
 			aria-expanded={expanded}
 			aria-controls={bodyId}
 			onClick={onToggle}
-			className="flex self-start max-w-full items-center gap-g2 text-left outline-none hide-focus-ring focus:ring-focus rounded-r3"
+			className="flex self-start max-w-full items-center gap-g2 text-left outline-none hide-focus-ring focus-visible:ring-focus rounded-r3"
 		>
 			<span className="text-body min-w-0 truncate text-primary">{label}</span>
 			<span className="shrink-0 text-secondary">
@@ -3378,7 +3378,7 @@ function StopHookMarker({line}: {line: MessageSessionLine}) {
 				onClick={() => {
 					setExpanded(!expanded);
 				}}
-				className="group/step flex self-stretch min-w-0 me-[52px] items-center gap-g2 px-1 py-0.5 text-left outline-none hide-focus-ring focus:ring-focus rounded-r3"
+				className="group/step flex self-stretch min-w-0 me-[52px] items-center gap-g2 px-1 py-0.5 text-left outline-none hide-focus-ring focus-visible:ring-focus rounded-r3"
 			>
 				<span className="text-body min-w-0 truncate text-ink-muted group-hover/step:text-secondary">
 					Hook re-prompted Claude
@@ -3463,7 +3463,7 @@ function CompactedSessionStatus({
 					onClick={() => {
 						setExpanded(!expanded);
 					}}
-					className="group/tool flex self-stretch min-w-0 me-[52px] items-center gap-g1 px-1 py-0.5 text-left outline-none hide-focus-ring focus:ring-focus rounded-r3"
+					className="group/tool flex self-stretch min-w-0 me-[52px] items-center gap-g1 px-1 py-0.5 text-left outline-none hide-focus-ring focus-visible:ring-focus rounded-r3"
 				>
 					<span className="text-body min-w-0 truncate text-ink-muted group-hover/tool:text-secondary">
 						{label}
@@ -4610,7 +4610,7 @@ function ToolCallRow({
 							open();
 						}
 					}}
-					className={`relative group/tool flex max-w-full items-center ${isCompletedPaneAgent && !nested ? "min-w-0 self-stretch me-[52px] px-1 py-0.5 gap-1.5" : "self-start py-0 gap-g5"} text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3`}
+					className={`relative group/tool flex max-w-full items-center ${isCompletedPaneAgent && !nested ? "min-w-0 self-stretch me-[52px] px-1 py-0.5 gap-1.5" : "self-start py-0 gap-g5"} text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3`}
 				>
 					{rowLabel}
 				</div>
@@ -4648,7 +4648,7 @@ function ToolCallRow({
 						toggleExpanded();
 					}
 				}}
-				className={`relative group/tool flex max-w-full items-center ${disclosureLayout} gap-g5 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3`}
+				className={`relative group/tool flex max-w-full items-center ${disclosureLayout} gap-g5 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3`}
 			>
 				{rowLabel}
 				<span className={chevronClass}>
@@ -4756,7 +4756,7 @@ function ToolCallSummary({
 						aria-expanded={expanded}
 						aria-controls={bodyId}
 						onClick={toggleExpanded}
-						className={`relative group/tool flex max-w-full items-center ${summaryLayout} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3`}
+						className={`relative group/tool flex max-w-full items-center ${summaryLayout} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3`}
 					>
 						<span className={`inline-flex items-center gap-g3 min-w-0 ${ink}`}>
 							{runningText === null ? (

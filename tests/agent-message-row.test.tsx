@@ -208,7 +208,7 @@ describe("Message from subagent rows", () => {
 			parts: [...button.children].map((child) => ({tag: child.tagName, className: child.className})),
 			chevron: [svg?.getAttribute("width"), svg?.getAttribute("height")],
 		}).toStrictEqual({
-			button: "group/step flex self-stretch min-w-0 me-[52px] items-center gap-g5 px-1 py-0.5 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3",
+			button: "group/step flex self-stretch min-w-0 me-[52px] items-center gap-g5 px-1 py-0.5 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3",
 			parts: [
 				{tag: "SPAN", className: "shrink-0 text-body text-ink-muted group-hover/step:text-secondary"},
 				{tag: "BDI", className: "min-w-0 truncate text-body text-primary"},

@@ -222,7 +222,7 @@ describe("Stop hook feedback", () => {
 				collapsed: {
 					ariaExpanded: "false",
 					buttonClassName:
-						"group/step flex self-stretch min-w-0 me-[52px] items-center gap-g2 px-1 py-0.5 text-left outline-none hide-focus-ring focus:ring-focus rounded-r3",
+						"group/step flex self-stretch min-w-0 me-[52px] items-center gap-g2 px-1 py-0.5 text-left outline-none hide-focus-ring focus-visible:ring-focus rounded-r3",
 					labelClassName: "text-body min-w-0 truncate text-ink-muted group-hover/step:text-secondary",
 					markerClassName: "flex flex-col w-full min-w-0 py-px",
 					rightAligned: false,

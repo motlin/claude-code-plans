@@ -24,7 +24,7 @@ export function AgentMessageRow({message}: {message: AgentMessage}) {
 				onClick={() => {
 					setExpanded((value) => !value);
 				}}
-				className="group/step flex self-stretch min-w-0 me-[52px] items-center gap-g5 px-1 py-0.5 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3"
+				className="group/step flex self-stretch min-w-0 me-[52px] items-center gap-g5 px-1 py-0.5 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3"
 			>
 				<span className="shrink-0 text-body text-ink-muted group-hover/step:text-secondary">Message from</span>
 				<bdi className="min-w-0 truncate text-body text-primary">subagent</bdi>

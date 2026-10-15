@@ -165,7 +165,7 @@ describe("session init disclosure", () => {
 describe("session init disclosure chrome", () => {
 	// Upstream claude.ai/code renders this row as a bare button -- no `group/tool`
 	// wrapper, no hover-coloured chevron, and the `outline-none hide-focus-ring
-	// focus:ring-focus` focus trio (.llm/ui-sync/upstream/code-rich-exemplars.dict.json).
+	// focus-visible:ring-focus` focus trio (.llm/ui-sync/upstream/code-rich-exemplars.dict.json).
 	it("matches upstream's init-row button and chevron classes", () => {
 		const container = renderRecords([AGENT_NAME, USER_TEXT]);
 		const button = initButton(container);
@@ -175,7 +175,7 @@ describe("session init disclosure chrome", () => {
 			button: button.className,
 			chevron: button.querySelectorAll("span")[1]?.className,
 		}).toStrictEqual({
-			button: "flex self-start max-w-full items-center gap-g2 text-left outline-none hide-focus-ring focus:ring-focus rounded-r3",
+			button: "flex self-start max-w-full items-center gap-g2 text-left outline-none hide-focus-ring focus-visible:ring-focus rounded-r3",
 			chevron: "shrink-0 text-secondary",
 		});
 	});
@@ -291,7 +291,7 @@ describe("compaction markers", () => {
 			collapsed: {
 				label: "Compacted conversation",
 				className:
-					"flex self-start max-w-full items-center gap-g2 text-left outline-none hide-focus-ring focus:ring-focus rounded-r3",
+					"flex self-start max-w-full items-center gap-g2 text-left outline-none hide-focus-ring focus-visible:ring-focus rounded-r3",
 				ariaExpanded: "false",
 				hasChevron: true,
 				showsSummary: false,

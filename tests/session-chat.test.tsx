@@ -687,7 +687,7 @@ describe("SessionChat grouped tool card", () => {
 });
 
 // Matches both the disclosure row and the bare non-expanding row, whose class
-// list stops before `cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3`.
+// list stops before `cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3`.
 const TOOL_ROW = /group\/tool[^"]*">([\s\S]*?)<\/div>/g;
 
 /** Class of a tool row's argument span, e.g. the filename on a Read row. */
@@ -2012,8 +2012,8 @@ describe("SessionChat non-expanding tool rows", () => {
 
 // ---------------------------------------------------------------------------
 // Focus treatment: upstream claude.ai/code gives every disclosure row the
-// `outline-none hide-focus-ring focus:ring-focus` trio -- a transparent outline
-// reserved by `hide-focus-ring`, coloured in by `focus:ring-focus`.
+// `outline-none hide-focus-ring focus-visible:ring-focus` trio -- a transparent outline
+// reserved by `hide-focus-ring`, coloured in by `focus-visible:ring-focus`.
 // See .llm/ui-sync/upstream/code-rich-exemplars.dict.json.
 // ---------------------------------------------------------------------------
 
@@ -2067,9 +2067,9 @@ describe("SessionChat grouped header height", () => {
 			failed: disclosureClassName(renderTranscriptElement(groupedBashRecords("error"))),
 			running: disclosureClassName(renderTranscriptElement(groupedBashRecords("pending"))),
 		}).toStrictEqual({
-			completed: `relative group/tool flex max-w-full items-center ${STATUS_ROW_LAYOUT} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3`,
-			failed: `relative group/tool flex max-w-full items-center ${STATUS_ROW_LAYOUT} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3`,
-			running: `relative group/tool flex max-w-full items-center ${STATUS_ROW_LAYOUT} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3`,
+			completed: `relative group/tool flex max-w-full items-center ${STATUS_ROW_LAYOUT} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3`,
+			failed: `relative group/tool flex max-w-full items-center ${STATUS_ROW_LAYOUT} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3`,
+			running: `relative group/tool flex max-w-full items-center ${STATUS_ROW_LAYOUT} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3`,
 		});
 	});
 });
@@ -2083,7 +2083,7 @@ describe("SessionChat standalone status row layout", () => {
 			className: frame.querySelector(".group\\/tool")!.className,
 		};
 	};
-	const rowClass = `relative group/tool flex max-w-full items-center ${STATUS_ROW_LAYOUT} gap-g5 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3`;
+	const rowClass = `relative group/tool flex max-w-full items-center ${STATUS_ROW_LAYOUT} gap-g5 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3`;
 
 	it("draws failed and running standalone rows in the completed row's 24px padded layout, as upstream does", () => {
 		const pending = toolResultRecords(bash, "").slice(0, 1);
@@ -2106,8 +2106,8 @@ describe("SessionChat standalone status row layout", () => {
 		expect(
 			[...container.querySelectorAll<HTMLElement>('[role="button"][aria-expanded]')].map((row) => row.className),
 		).toStrictEqual([
-			"relative group/tool flex max-w-full items-center self-start py-0 gap-g5 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3",
-			"relative group/tool flex max-w-full items-center self-start py-0 gap-g5 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3",
+			"relative group/tool flex max-w-full items-center self-start py-0 gap-g5 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3",
+			"relative group/tool flex max-w-full items-center self-start py-0 gap-g5 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3",
 		]);
 	});
 });
@@ -2128,9 +2128,9 @@ describe("SessionChat disclosure focus treatment", () => {
 			row: disclosureClassName(singleBash),
 			summary: disclosureClassName(groupedBash),
 		}).toStrictEqual({
-			row: "relative group/tool flex max-w-full items-center min-w-0 self-stretch me-[52px] px-1 py-0.5 gap-g5 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3",
+			row: "relative group/tool flex max-w-full items-center min-w-0 self-stretch me-[52px] px-1 py-0.5 gap-g5 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3",
 			summary:
-				"relative group/tool flex max-w-full items-center min-w-0 self-stretch me-[52px] px-1 py-0.5 gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus:ring-focus rounded-r3",
+				"relative group/tool flex max-w-full items-center min-w-0 self-stretch me-[52px] px-1 py-0.5 gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3",
 		});
 	});
 
