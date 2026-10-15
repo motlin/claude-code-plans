@@ -575,7 +575,7 @@ describe("SessionChat tool card chrome", () => {
 			fillsAnyCardWithT1: bash.querySelector(".bg-t1") !== null || edit.querySelector(".bg-t1") !== null,
 		}).toStrictEqual({
 			lightOutline: "hsl(0 0% 4% / 0.1)",
-			darkOutline: "hsl(0 0% 100% / 0.12)",
+			darkOutline: "hsl(0 0% 100% / 0.1)",
 			lightCodeCardBg: "hsl(60 14% 99%)",
 			darkCodeCardBg: "#151515",
 			outlineRing: true,

@@ -50,7 +50,7 @@ describe("Composer", () => {
 			],
 			lightIdle: "0 4px 20px rgb(0 0 0 / 0.035), 0 0 0 1px rgb(11 11 11 / 0.1)",
 			lightFocus: "0 4px 20px rgb(0 0 0 / 0.075), 0 0 0 1px rgb(11 11 11 / 0.2)",
-			darkIdle: "0 4px 20px rgb(0 0 0 / 0.15), 0 0 0 1px rgb(255 255 255 / 0.1)",
+			darkIdle: "0 4px 20px rgb(0 0 0 / 0.035), inset 0 0 0 1px rgb(255 255 255 / 0.1)",
 			darkFocus: "0 4px 20px rgb(0 0 0 / 0.3), 0 0 0 1px rgb(255 255 255 / 0.2)",
 		});
 	});

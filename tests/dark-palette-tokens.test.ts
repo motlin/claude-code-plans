@@ -69,6 +69,41 @@ describe("dark palette", () => {
 		});
 	});
 
+	it("matches upstream's measured dark shadows, outlines, selection and ink (wave 90), leaving light alone", () => {
+		const names = [
+			"--composer-shadow-idle",
+			"--card-outline",
+			"--menu-shadow",
+			"--sb-selected",
+			"--sb-session-selected",
+			"--upstream-on-primary",
+			"--upstream-text-secondary",
+		];
+
+		expect({light: tokens(":root", names), dark: tokens(".dark", names)}).toStrictEqual({
+			light: {
+				"--composer-shadow-idle": "0 4px 20px rgb(0 0 0 / 0.035), 0 0 0 1px rgb(11 11 11 / 0.1)",
+				"--card-outline": "hsl(0 0% 4% / 0.1)",
+				"--menu-shadow":
+					"0 0 0 1px rgb(11 11 11 / 0.1), 0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.08)",
+				"--sb-selected": "#edece8",
+				"--sb-session-selected": "var(--sb-selected)",
+				"--upstream-on-primary": "hsl(0 0% 100%)",
+				"--upstream-text-secondary": "rgb(82 81 78)",
+			},
+			dark: {
+				"--composer-shadow-idle": "0 4px 20px rgb(0 0 0 / 0.035), inset 0 0 0 1px rgb(255 255 255 / 0.1)",
+				"--card-outline": "hsl(0 0% 100% / 0.1)",
+				"--menu-shadow":
+					"inset 0 0 0 1px hsl(0 0% 100% / 0.1), 0 8px 24px rgba(0, 0, 0, 0.32), 0 2px 6px rgba(0, 0, 0, 0.2)",
+				"--sb-selected": "hsl(0 0% 100% / 0.15)",
+				"--sb-session-selected": "hsl(0 0% 100% / 0.075)",
+				"--upstream-on-primary": "#0b0b0b",
+				"--upstream-text-secondary": "#c3c2b7",
+			},
+		});
+	});
+
 	it("routes the git status colors through themed tokens with upstream's dark values", () => {
 		const names = GIT_STATES.map((state) => `--git-${state}`);
 

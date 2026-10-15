@@ -509,7 +509,7 @@ function SessionRowLink({
 					onClick={(event) => {
 						if (selection?.onRowClick(row.sessionId, event) === true) event.preventDefault();
 					}}
-					className={`${ROW_CLASS} text-secondary hover:bg-[var(--sb-hover)] focus-visible:bg-[var(--sb-hover)] data-[selected=focused]:bg-[var(--sb-selected)] data-[selected=focused]:text-primary data-[multi-selected]:bg-[var(--sb-selected)] data-[multi-selected]:text-primary`}
+					className={`${ROW_CLASS} text-secondary hover:bg-[var(--sb-hover)] focus-visible:bg-[var(--sb-hover)] data-[selected=focused]:bg-[var(--sb-session-selected)] data-[selected=focused]:text-primary data-[multi-selected]:bg-[var(--sb-session-selected)] data-[multi-selected]:text-primary`}
 				>
 					{/* Upstream starts the title 10px into the row and keeps it clear of the trailing 24px slot */}
 					<span data-row-label className="min-w-0 flex-1 ps-2 pe-7">

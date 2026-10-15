@@ -334,6 +334,8 @@
 	--sb-radius: 8px;
 	--sb-hover: #f0efec;
 	--sb-selected: #edece8;
+	/* Session rows: upstream selects them lighter than nav rows in dark. */
+	--sb-session-selected: var(--sb-selected);
 	--sb-bg: color-mix(in srgb, var(--upstream-surface-0) 50%, var(--upstream-surface-1));
 }
 
@@ -341,6 +343,7 @@
 	/* Sidebar rows: upstream [data-mode="dark"] .dframe-sidebar overrides */
 	--sb-hover: hsl(0 0% 100% / 0.075);
 	--sb-selected: hsl(0 0% 100% / 0.15);
+	--sb-session-selected: hsl(0 0% 100% / 0.075);
 	--sb-bg: #111;
 
 	/* Upstream semantic palette */
@@ -351,7 +354,7 @@
 	--upstream-surface-3: #20201f;
 	--upstream-surface-popover: #20201f;
 	--pop-shadow: 0 0 0 0.5px hsl(0 0% 100% / 0.12), 0 4px 12px rgb(0 0 0 / 0.3), 0 16px 40px rgb(0 0 0 / 0.4);
-	--composer-shadow-idle: 0 4px 20px rgb(0 0 0 / 0.15), 0 0 0 1px rgb(255 255 255 / 0.1);
+	--composer-shadow-idle: 0 4px 20px rgb(0 0 0 / 0.035), inset 0 0 0 1px rgb(255 255 255 / 0.1);
 	--composer-shadow-focus: 0 4px 20px rgb(0 0 0 / 0.3), 0 0 0 1px rgb(255 255 255 / 0.2);
 	--upstream-alpha-1: rgb(255 255 255 / 0.05);
 	--upstream-alpha-2: rgb(255 255 255 / 0.08);
@@ -363,8 +366,8 @@
 	--upstream-fill-primary: #fff;
 	--upstream-fill-primary-hover: #e1e0d9;
 	--upstream-text-primary: #f0efec;
-	--upstream-text-secondary: hsl(50 9% 74%);
-	--upstream-on-primary: #151515;
+	--upstream-text-secondary: #c3c2b7;
+	--upstream-on-primary: #0b0b0b;
 	--upstream-border-subtle: hsl(0 0% 100% / 0.08);
 	--upstream-border: hsl(0 0% 100% / 0.1);
 	--upstream-border-strong: hsl(0 0% 100% / 0.2);
@@ -414,7 +417,7 @@
 	--upstream-t9: hsl(0 0% 100% / 1);
 
 	/* Upstream claude.ai/code — card surfaces (light-alpha ring, page color) */
-	--card-outline: hsl(0 0% 100% / 0.12);
+	--card-outline: hsl(0 0% 100% / 0.1);
 	--code-card-bg: #151515;
 
 	/* Upstream claude.ai/code — <Shortcut> keycaps */
@@ -423,7 +426,7 @@
 
 	/* Upstream claude.ai/code — Menu / ContextMenu popups */
 	--menu-bg: #20201f;
-	--menu-shadow: 0 0 0 1px hsl(0 0% 100% / 0.12), 0 8px 24px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(0, 0, 0, 0.3);
+	--menu-shadow: inset 0 0 0 1px hsl(0 0% 100% / 0.1), 0 8px 24px rgba(0, 0, 0, 0.32), 0 2px 6px rgba(0, 0, 0, 0.2);
 	--menu-muted: #898781;
 
 	--upstream-text-muted: #898781;
