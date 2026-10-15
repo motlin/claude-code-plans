@@ -1116,7 +1116,7 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
 	"UserRecordSchema.permissionDecision.source": permissionDecisionSourceLabels,
 	"UserRecordSchema.permissionDecision.reasonType": permissionDecisionReasonTypeLabels,
 	JsonlRecordSchema: jsonlRecordVariants,
-	"JsonlRecordSchema.<api-request-blob>.message.content[]": apiRequestBlobContentBlockVariants,
+	"JsonlRecordSchema.<api-request-blob>.message.content|1[]": apiRequestBlobContentBlockVariants,
 	"JsonlRecordSchema.<api-request-blob>.message.role": apiRequestBlobRoleLabels,
 	"FileEditToolUseResultSchema|0.type": writeToolUseResultTypeLabels,
 	"GitOperationSchema.commit.kind": gitCommitKindLabels,

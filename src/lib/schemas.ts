@@ -414,12 +414,25 @@ export const UserRecordSchema = z
 			.optional(),
 		turnCompanion: z.boolean().optional(),
 		queueSkipAttachments: z.boolean().optional(),
+		queueSkipSlashCommands: z.boolean().optional(),
 		queueTranscriptOnly: z.boolean().optional(),
 		scheduledTaskId: z.string().optional(),
 		scheduledFireId: z.string().optional(),
 		classifierMetaLines: z.string().optional(),
 		serverClassifierContext: ServerClassifierContextSchema.optional(),
 		permissionDecision: PermissionDecisionSchema.optional(),
+	})
+	.strict();
+
+// Rate-limit window attached to a synthetic usage-limit assistant message.
+const RateLimitInfoSchema = z
+	.object({
+		status: z.string(),
+		resetsAt: z.number(),
+		rateLimitType: z.string(),
+		overageStatus: z.string(),
+		overageDisabledReason: z.string(),
+		isUsingOverage: z.boolean(),
 	})
 	.strict();
 
@@ -484,6 +497,14 @@ export const AssistantRecordSchema = z
 			.strict(),
 		isApiErrorMessage: z.boolean().optional(),
 		apiErrorStatus: z.union([z.number(), z.string()]).optional(),
+		apiError: z.string().optional(),
+		apiErrorParams: z.object({rate_limit_info: RateLimitInfoSchema}).strict().optional(),
+		quotaLimits: RateLimitInfoSchema.extend({
+			unifiedRateLimitFallbackAvailable: z.boolean(),
+			upgradePaths: z.array(z.string()),
+		})
+			.strict()
+			.optional(),
 		error: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
 		attributionSkill: z.string().optional(),
 		attributionPlugin: z.string().optional(),
@@ -1658,7 +1679,7 @@ const ApiRequestBlobRecordSchema = z
 		message: z
 			.object({
 				role: ApiRequestBlobRoleSchema,
-				content: z.array(ApiRequestBlobContentBlockSchema),
+				content: z.union([z.string(), z.array(ApiRequestBlobContentBlockSchema)]),
 				output_config: z.object({effort: z.string()}).strict().optional(),
 			})
 			.strict(),
@@ -1782,14 +1803,16 @@ export const ApiRequestRecordSchema = z
 				context_management: z
 					.object({edits: z.array(z.object({type: z.string(), keep: z.string()}).strict())})
 					.strict(),
-				safeguards: z.array(
-					z
-						.object({
-							type: z.literal("dangerous_tool_use"),
-							classifier_context: DangerousToolUseClassifierContextSchema,
-						})
-						.strict(),
-				),
+				safeguards: z
+					.array(
+						z
+							.object({
+								type: z.literal("dangerous_tool_use"),
+								classifier_context: DangerousToolUseClassifierContextSchema,
+							})
+							.strict(),
+					)
+					.optional(),
 				output_config: z.object({effort: z.string()}).strict(),
 			})
 			.strict(),

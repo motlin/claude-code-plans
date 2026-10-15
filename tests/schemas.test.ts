@@ -1121,6 +1121,21 @@ describe("JsonlRecordSchema observed 2026-09 transcript fields", () => {
 		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
 	});
 
+	it("parses peer-message user records carrying the queueSkipSlashCommands flag", () => {
+		const record = {
+			type: "user",
+			...baseFields,
+			message: {role: "user", content: "Another Claude session sent a message"},
+			isMeta: true,
+			promptSource: "system",
+			queueSkipSlashCommands: true,
+			turnOrigin: "peer",
+			queueSkipAttachments: true,
+		};
+
+		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
+	});
+
 	it("parses user records carrying turn origin, scheduled-task, and classifier context fields", () => {
 		const record = {
 			type: "user",
@@ -1831,6 +1846,83 @@ describe("JsonlRecordSchema observed 2026-09 transcript fields", () => {
 		];
 
 		expect(records.map((record) => JsonlRecordSchema.parse(record))).toStrictEqual(records);
+	});
+
+	it("parses an api-request without safeguards and api-request-blob messages with string content", () => {
+		const records = [
+			{
+				type: "api-request-blob",
+				sessionId: "sess-123",
+				hash: "25e08ea4",
+				message: {role: "user", content: "Rebase onto 2.11.0."},
+			},
+			{
+				type: "api-request-blob",
+				sessionId: "sess-123",
+				hash: "71ac09b2",
+				message: {role: "system", content: "Reminder."},
+			},
+			{
+				type: "api-request",
+				sessionId: "sess-123",
+				id: "3b9b75b8-50b9-467f-ae1d-b65adecd16c7",
+				timestamp: "2026-10-15T14:12:19.318Z",
+				version: "2.1.300",
+				querySource: "repl_main_thread",
+				shapeHash: "9402313c",
+				params: {
+					model: "claude-sonnet-5-5",
+					betas: ["claude-code-20250219"],
+					max_tokens: 128000,
+					thinking: {type: "adaptive", display: "updates"},
+					context_management: {edits: [{type: "clear_thinking_20251015", keep: "all"}]},
+					output_config: {effort: "medium"},
+				},
+				keep: 0,
+				tail: ["25e08ea4"],
+				cacheControl: [{path: ["system", 2], value: {type: "ephemeral", ttl: "1h"}}],
+				requestDigest: "65a15150",
+			},
+		];
+
+		expect(records.map((record) => JsonlRecordSchema.parse(record))).toStrictEqual(records);
+	});
+
+	it("parses a synthetic usage-limit assistant record with apiError, apiErrorParams, and quotaLimits", () => {
+		const rateLimitInfo = {
+			status: "rejected",
+			resetsAt: 1792483200,
+			rateLimitType: "seven_day",
+			overageStatus: "rejected",
+			overageDisabledReason: "org_level_disabled",
+			isUsingOverage: false,
+		};
+		const record = {
+			type: "assistant",
+			...baseFields,
+			message: {
+				id: "4b65b42d-71c4-4be0-9005-3d8d458b4872",
+				model: "<synthetic>",
+				role: "assistant",
+				stop_reason: "stop_sequence",
+				stop_sequence: "",
+				type: "message",
+				content: [{type: "text", text: "You've hit your weekly limit"}],
+			},
+			requestId: "req_011Cg3pEHpUjuhh73o5x6V6z",
+			apiError: "usage_limit_reached",
+			apiErrorParams: {rate_limit_info: rateLimitInfo},
+			quotaLimits: {
+				...rateLimitInfo,
+				unifiedRateLimitFallbackAvailable: false,
+				upgradePaths: ["overage"],
+			},
+			error: "rate_limit",
+			isApiErrorMessage: true,
+			apiErrorStatus: 429,
+		};
+
+		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
 	});
 });
 

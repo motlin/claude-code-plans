@@ -105,7 +105,7 @@ export function buildApiRequestLog(records: readonly unknown[]): ApiRequestLog {
 			thinking: params.thinking,
 			effort: params.output_config.effort,
 		};
-		const permissionMode = params.safeguards[0]?.classifier_context.permission_mode;
+		const permissionMode = params.safeguards?.[0]?.classifier_context.permission_mode;
 		if (permissionMode !== undefined) summary.permissionMode = permissionMode;
 
 		const previousHash = previousShapeBySource.get(record.querySource);
