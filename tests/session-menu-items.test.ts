@@ -181,7 +181,7 @@ describe("getSessionMenuItems", () => {
 		expect(SessionMenuItemIdSchema.options.filter((id) => cloudOrDestructive.has(id))).toEqual([]);
 	});
 
-	it("drops Pin and read state from the header menu", () => {
+	it("drops Pin and read state from the header menu and orders Rename, Fork, then Copy link in its own group, as upstream", () => {
 		expect(
 			getSessionMenuItems(session({hasLivePane: true, readState: "unread"}), ALL, {
 				surface: "header",
@@ -195,8 +195,9 @@ describe("getSessionMenuItems", () => {
 			},
 			SEPARATOR,
 			{kind: "item", id: "rename", label: "Rename", accelerator: "r"},
-			{kind: "item", id: "copy-link", label: "Copy link", accelerator: "c"},
 			{kind: "item", id: "fork", label: "Fork", accelerator: "f"},
+			SEPARATOR,
+			{kind: "item", id: "copy-link", label: "Copy link", accelerator: "c"},
 			SEPARATOR,
 			{kind: "item", id: "archive", label: "Archive", accelerator: "a"},
 		]);

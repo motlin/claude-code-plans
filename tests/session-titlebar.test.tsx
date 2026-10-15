@@ -237,8 +237,8 @@ describe("SessionTitlebar layout", () => {
 		expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toStrictEqual([
 			"Open in",
 			"RenameR",
-			"Copy linkC",
 			"ForkF",
+			"Copy linkC",
 			"ArchiveA",
 		]);
 	});

@@ -352,8 +352,10 @@ export function getSessionMenuItems(
 		}
 	}
 	if (surface === "row") actions.push(...readState);
+	// Upstream's title menu reads Rename, Fork, then Copy link in a group of its own; rows keep Copy link before Fork.
+	const copyLinkBlock: SessionMenuItem[] = [];
 	if (has("rename")) actions.push(item("rename"));
-	if (has("copyLink")) actions.push(item("copy-link"));
+	if (has("copyLink")) (surface === "header" ? copyLinkBlock : actions).push(item("copy-link"));
 	if (has("fork")) {
 		actions.push(
 			session.forkDisabledReason === null
@@ -401,7 +403,7 @@ export function getSessionMenuItems(
 		});
 	}
 
-	const sections = [navigation, pinReorder, actions, grouping, settingsBlock, lifecycle].filter(
+	const sections = [navigation, pinReorder, actions, copyLinkBlock, grouping, settingsBlock, lifecycle].filter(
 		(section) => section.length > 0,
 	);
 	return [
