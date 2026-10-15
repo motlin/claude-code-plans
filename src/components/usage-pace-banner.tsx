@@ -26,7 +26,7 @@ export function UsagePaceBand({
 			<Gauge className="size-4 shrink-0 text-secondary" aria-hidden="true" />
 			<span className="flex min-w-0 flex-wrap gap-x-1">
 				<span className="text-primary">On pace to hit your weekly limit early</span>
-				<span className="text-secondary">
+				<span className="text-secondary dark:text-ink-muted">
 					{meterPercent(usedPct)}% used · {resetText}
 				</span>
 			</span>

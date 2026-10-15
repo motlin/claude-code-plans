@@ -46,6 +46,11 @@
 	padding-left: 28px;
 }
 
+/* Upstream draws ordered markers in secondary ink (measured in dark). */
+:global(.dark) .markdown ol > li::marker {
+	color: var(--color-secondary);
+}
+
 .markdown ul > li,
 .markdown ol > li {
 	margin-top: 2px;

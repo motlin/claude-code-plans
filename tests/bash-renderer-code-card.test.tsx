@@ -46,7 +46,7 @@ describe("BashRenderer code card", () => {
 			header: {className: "flex items-center px-p6 py-p5", text: "Bash"},
 			label: "flex-1 text-body text-secondary",
 			body: "flex flex-col gap-g6 px-p6 pb-p8 font-mono",
-			card: "relative rounded-r6 bg-surface-1 py-p3 pl-p6 pr-[32px] text-[12px]/[17px]",
+			card: "relative rounded-r6 bg-surface-1 dark:bg-surface-2 dark:ring-1 dark:ring-white/10 py-p3 pl-p6 pr-[32px] text-[12px]/[17px]",
 			cardText: "$ git status",
 			copyInCard: true,
 			output: "max-h-[400px] overflow-y-auto whitespace-pre-wrap break-all text-[12px]/[17px] text-secondary",
@@ -59,7 +59,7 @@ describe("BashRenderer code card", () => {
 
 		expect(layout(container)).toStrictEqual({
 			body: "flex-1 min-w-0 flex flex-col gap-g6 font-mono",
-			card: "relative rounded-r6 bg-surface-1 py-p3 pl-p6 pr-p6 text-[12px]/[17px]",
+			card: "relative rounded-r6 bg-surface-1 dark:bg-surface-2 dark:ring-1 dark:ring-white/10 py-p3 pl-p6 pr-p6 text-[12px]/[17px]",
 			cardText: "$ git status",
 			copyInCard: false,
 			output: "max-h-[400px] overflow-y-auto whitespace-pre-wrap break-all text-[12px]/[17px] text-secondary",

@@ -88,7 +88,7 @@ export function BashRenderer({toolCall, nested = false}: ToolRendererProps) {
 			{command && (
 				<div
 					data-bash-code-card=""
-					className={`relative rounded-r6 bg-surface-1 py-p3 pl-p6 ${nested ? "pr-p6" : "pr-[32px]"} text-[12px]/[17px]`}
+					className={`relative rounded-r6 bg-surface-1 dark:bg-surface-2 dark:ring-1 dark:ring-white/10 py-p3 pl-p6 ${nested ? "pr-p6" : "pr-[32px]"} text-[12px]/[17px]`}
 				>
 					<HighlightedCommand command={command} />
 					{!nested && (
