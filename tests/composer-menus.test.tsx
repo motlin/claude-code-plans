@@ -189,7 +189,7 @@ describe("Composer model menu", () => {
 				{label: "Opus 5.5", key: null, checked: "true"},
 				{label: "Fable 5.1", key: "2", checked: "false"},
 				{label: "Sonnet 5.5", key: "3", checked: "false"},
-				{label: "Haiku 4.5", key: "4", checked: "false"},
+				{label: "Haiku 5.5", key: "4", checked: "false"},
 			],
 			more: "More models",
 			trigger: "Model: Fable 5.1",
@@ -217,9 +217,9 @@ describe("Composer model menu", () => {
 				{label: "Opus 5.5", key: "1"},
 				{label: "Fable 5.1", key: null},
 				{label: "Sonnet 5.5", key: "3"},
-				{label: "Haiku 4.5", key: "4"},
+				{label: "Haiku 5.5", key: "4"},
 			],
-			text: ["Opus 5.51", "Fable 5.1", "Sonnet 5.53", "Haiku 4.54"],
+			text: ["Opus 5.51", "Fable 5.1", "Sonnet 5.53", "Haiku 5.54"],
 			calls: [["Continue Erin's test", {model: "sonnet"}]],
 		});
 	});
@@ -442,7 +442,7 @@ describe("Composer on a live pane", () => {
 				{label: "Opus 5.5", checked: "false"},
 				{label: "Fable 5.1", checked: "true"},
 				{label: "Sonnet 5.5", checked: "false"},
-				{label: "Haiku 4.5", checked: "false"},
+				{label: "Haiku 5.5", checked: "false"},
 			],
 		});
 	});

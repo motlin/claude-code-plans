@@ -90,7 +90,7 @@ const ALIAS_LATEST: Readonly<Record<string, string>> = {
 	opus: "claude-opus-5-5",
 	fable: "claude-fable-5-1",
 	sonnet: "claude-sonnet-5-5",
-	haiku: "claude-haiku-4-5-20251001",
+	haiku: "claude-haiku-5-5",
 };
 
 /** The CLI's family aliases in upstream's menu order, labelled with the version each launches. */
