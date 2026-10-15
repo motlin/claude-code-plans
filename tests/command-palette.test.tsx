@@ -549,6 +549,25 @@ describe("CommandPalette shell", () => {
 		}).toStrictEqual({heading: true, rowGap: false});
 	});
 
+	it("sizes the header, list and group gaps as upstream: 64px input row, tabs overlapping it by 6px, a list held at its 440px cap with 4px between groups", async () => {
+		const dialog = await openPalette([recentSession("s-1", "Recent one")]);
+		const input = within(dialog).getByRole("combobox");
+		const classes = (element: Element | null | undefined) => element?.className.split(" ") ?? [];
+		const inputRow = classes(input.closest("div.relative.flex"));
+		const tabs = classes(within(dialog).getByRole("tablist", {name: "Type"}));
+		const list = classes(dialog.querySelector("[cmdk-list]"));
+
+		expect({
+			inputRow: inputRow.filter((name) => /^(pt|pb)-/.test(name)),
+			tabs: tabs.filter((name) => /^(-?mt|pb)-/.test(name)),
+			list: list.filter((name) => /^(h|max-h)-|cmdk-group\]\+/.test(name)),
+		}).toStrictEqual({
+			inputRow: ["pt-[1.1rem]", "pb-[0.9rem]"],
+			tabs: ["-mt-1.5", "pb-[0.9rem]"],
+			list: ["h-[440px]", "[&_[cmdk-group]+[cmdk-group]]:mt-1"],
+		});
+	});
+
 	it("keeps the other actions reachable by typing, as upstream's empty state lists only New session", async () => {
 		const dialog = await openPalette([recentSession("s-1", "Recent one")]);
 		fireEvent.change(within(dialog).getByRole("combobox"), {target: {value: "keyboard"}});

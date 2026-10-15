@@ -1222,7 +1222,7 @@ function PalettePopup({
 				>
 					<div
 						className={`relative flex items-center gap-2 pr-2.5 pl-6 ${
-							compose ? "flex-wrap pt-[1.1rem] pb-3" : "pt-[17px] pb-[9px]"
+							compose ? "flex-wrap pt-[1.1rem] pb-3" : "pt-[1.1rem] pb-[0.9rem]"
 						}`}
 					>
 						{compose && (
@@ -1324,7 +1324,10 @@ function PalettePopup({
 					{!compose && <TypeTabs value={tab} onChange={chooseTab} />}
 					<div className="h-[0.5px] w-full bg-border" />
 
-					<Command.List className="max-h-[428px] overflow-y-auto p-2.5">
+					{/* Upstream holds the list at its 440px cap outside compose, leaving unused space at the bottom. */}
+					<Command.List
+						className={`${compose ? "max-h-[440px]" : "h-[440px]"} overflow-y-auto p-2.5 [&_[cmdk-group]+[cmdk-group]]:mt-1`}
+					>
 						{startStep === "launching" && (
 							<Command.Group heading="Quick actions" className={GROUP_CLASS}>
 								<CommandItem
@@ -1765,7 +1768,11 @@ function PaletteFooter({
 /** Upstream's 28px type tablist under the input; cloud-only tabs are replaced by local types. */
 function TypeTabs({value, onChange}: {value: PaletteType; onChange: (type: PaletteType) => void}) {
 	return (
-		<div role="tablist" aria-label="Type" className="flex items-center overflow-x-auto px-6 pb-6">
+		<div
+			role="tablist"
+			aria-label="Type"
+			className="relative -mt-1.5 flex items-center overflow-x-auto px-6 pb-[0.9rem]"
+		>
 			{PaletteTypeSchema.options.map((type) => {
 				const selected = type === value;
 				return (
