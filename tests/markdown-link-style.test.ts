@@ -34,7 +34,7 @@ describe("transcript link styles", () => {
 			themeColor: tokenIn("@theme inline", "--color-upstream-accent-pressed"),
 		}).toStrictEqual({
 			light: "rgb(205 226 251)",
-			dark: "hsl(210 55.9% 24.6%)",
+			dark: "#032042",
 			themeColor: "var(--upstream-accent-pressed)",
 		});
 	});

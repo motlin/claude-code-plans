@@ -389,7 +389,7 @@
 	--upstream-accent: #6da7ec;
 	--upstream-fill-accent: #2a78d6;
 	--upstream-warning: var(--warning-000);
-	--upstream-accent-pressed: hsl(210 55.9% 24.6%);
+	--upstream-accent-pressed: #032042;
 	--upstream-accent-muted: rgb(42 120 214 / 0.2);
 	--accent-100: hsl(210 70.9% 51.6%);
 	--accent-900: hsl(210 55.9% 24.6%);
