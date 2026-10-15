@@ -25,9 +25,9 @@ function makeToolCall(overrides: Partial<ClientToolCall>): ClientToolCall {
 	};
 }
 
-async function renderRenderer(toolCall: ClientToolCall) {
+async function renderRenderer(toolCall: ClientToolCall, verbose = false) {
 	const rootRoute = createRootRoute({
-		component: () => <ExitPlanModeRenderer toolCall={toolCall} />,
+		component: () => <ExitPlanModeRenderer toolCall={toolCall} verbose={verbose} />,
 	});
 	const router = createRouter({
 		routeTree: rootRoute,
@@ -37,96 +37,106 @@ async function renderRenderer(toolCall: ClientToolCall) {
 	return render(<RouterProvider router={router} />);
 }
 
+const PLAN_BLOCK = "text-body text-secondary whitespace-pre-wrap break-words ps-2 border-s-2";
+
 describe("ExitPlanModeRenderer", () => {
-	it("renders the plan body as markdown instead of the model-directed result text", async () => {
-		const view = await renderRenderer(
-			makeToolCall({
-				input: {
-					plan: "# Switch git pager\n\n## Context\n\nUse hunk instead of delta.",
-					planFilePath: "/Users/craig/.claude/plans/switch-git-pager.md",
-				},
-				result: APPROVED_RESULT,
-			}),
-		);
+	it("draws a pending plan as upstream's left-bordered secondary block, its text verbatim", async () => {
+		const view = await renderRenderer(makeToolCall({input: {plan: "# Switch git pager\n\n- use hunk"}}));
+		const block = view.container.querySelector("[data-plan-block]");
 
 		expect({
-			heading: view.container.querySelector("h1")?.textContent,
-			subheading: view.container.querySelector("h2")?.textContent,
-			body: view.container.querySelector("p")?.textContent,
+			className: block?.className,
+			text: block?.textContent,
+			headings: view.container.querySelectorAll("h1, ul").length,
+			approved: view.container.textContent.includes("Plan approved"),
+		}).toStrictEqual({
+			className: `${PLAN_BLOCK} py-1.5`,
+			text: "# Switch git pager\n\n- use hunk",
+			headings: 0,
+			approved: false,
+		});
+	});
+
+	it("leads an approved plan with upstream's 'Plan approved' and a check circle, above the block", async () => {
+		const view = await renderRenderer(makeToolCall({input: {plan: "Do it."}, result: APPROVED_RESULT}));
+		const done = view.container.querySelector("[data-plan-done]");
+
+		expect({
+			className: done?.className,
+			children: [...(done?.children ?? [])].map((child) => ({
+				className: child.className,
+				text: child.textContent,
+			})),
+			icon: done?.querySelector("svg")?.getAttribute("class")?.includes("lucide-circle-check"),
 			showsBoilerplate: view.container.textContent.includes("You can now start coding"),
 		}).toStrictEqual({
-			heading: "Switch git pager",
-			subheading: "Context",
-			body: "Use hunk instead of delta.",
+			className: "flex flex-col gap-1 py-1.5",
+			children: [
+				{className: "flex items-center gap-1 text-body text-success-000", text: "Plan approved"},
+				{className: PLAN_BLOCK, text: "Do it."},
+			],
+			icon: true,
 			showsBoilerplate: false,
 		});
 	});
 
-	it("lists allowed prompts as tool/prompt lines", async () => {
-		const view = await renderRenderer(
-			makeToolCall({
-				input: {
-					plan: "Do the thing.",
-					allowedPrompts: [
-						{tool: "Bash", prompt: "stage and commit git changes"},
-						{tool: "Bash", prompt: "run just precommit"},
-					],
-				},
-				result: APPROVED_RESULT,
-			}),
-		);
-
-		const lines = [...view.container.querySelectorAll("[data-allowed-prompt]")].map((el) => el.textContent);
-		expect(lines).toStrictEqual(["Bash — stage and commit git changes", "Bash — run just precommit"]);
-	});
-
-	it("shows a one-line approved status", async () => {
-		await renderRenderer(makeToolCall({input: {plan: "Do it."}, result: APPROVED_RESULT}));
-		expect(screen.getByText("Plan approved").textContent).toStrictEqual("Plan approved");
-	});
-
-	it("shows a rejected status plus the user's own words", async () => {
-		const view = await renderRenderer(
-			makeToolCall({input: {plan: "Do it."}, result: REJECTED_RESULT, isError: true}),
-		);
+	it("omits the status on a rejected plan by default, as upstream does on error, and shows it in Verbose", async () => {
+		const call = makeToolCall({input: {plan: "Do it."}, result: REJECTED_RESULT, isError: true});
+		const normal = (await renderRenderer(call)).container.textContent;
+		cleanup();
+		const verbose = (await renderRenderer(call, true)).container.textContent;
 
 		expect({
-			status: screen.getByText("Plan rejected").textContent,
-			detail: screen.getByText("also plan on working in a new worktree").textContent,
-			showsBoilerplate: view.container.textContent.includes("STOP what you are doing"),
-		}).toStrictEqual({
-			status: "Plan rejected",
-			detail: "also plan on working in a new worktree",
-			showsBoilerplate: false,
+			normal,
+			verbose: [verbose.includes("Plan rejected"), verbose.includes("also plan on working in a new worktree")],
+		}).toStrictEqual({normal: "Do it.", verbose: [true, true]});
+	});
+
+	it("keeps the allowed prompts behind Verbose", async () => {
+		const call = makeToolCall({
+			input: {
+				plan: "Do the thing.",
+				allowedPrompts: [
+					{tool: "Bash", prompt: "stage and commit git changes"},
+					{tool: "Bash", prompt: "run just precommit"},
+				],
+			},
+			result: APPROVED_RESULT,
+		});
+		const normal = (await renderRenderer(call)).container.querySelectorAll("[data-allowed-prompt]").length;
+		cleanup();
+		const verbose = [...(await renderRenderer(call, true)).container.querySelectorAll("[data-allowed-prompt]")].map(
+			(el) => el.textContent,
+		);
+
+		expect({normal, verbose}).toStrictEqual({
+			normal: 0,
+			verbose: ["Bash — stage and commit git changes", "Bash — run just precommit"],
 		});
 	});
 
-	it("links to the saved plan file", async () => {
-		await renderRenderer(
+	it("links to the saved plan file after upstream's content", async () => {
+		const view = await renderRenderer(
 			makeToolCall({
-				input: {
-					plan: "Do it.",
-					planFilePath: "/Users/craig/.claude/plans/switch-git-pager.md",
-				},
+				input: {plan: "Do it.", planFilePath: "/Users/craig/.claude/plans/switch-git-pager.md"},
 				result: APPROVED_RESULT,
 			}),
 		);
+		const link = screen.getByRole("link");
 
-		expect(screen.getByRole("link").getAttribute("href")).toStrictEqual("/plan/switch-git-pager");
+		expect({
+			href: link.getAttribute("href"),
+			last: view.container.firstElementChild?.lastElementChild === link,
+		}).toStrictEqual({href: "/plan/switch-git-pager", last: true});
 	});
 
-	it("renders a genuine tool error verbatim", async () => {
-		await renderRenderer(
-			makeToolCall({
-				input: {plan: "Do it."},
-				result: "You are not in plan mode. To enter plan mode, call the EnterPlanMode tool first.",
-				isError: true,
-			}),
-		);
+	it("shows a genuine tool error's text only in Verbose", async () => {
+		const error = "You are not in plan mode. To enter plan mode, call the EnterPlanMode tool first.";
+		const call = makeToolCall({input: {plan: "Do it."}, result: error, isError: true});
+		const normal = (await renderRenderer(call)).container.textContent.includes(error);
+		cleanup();
+		const verbose = (await renderRenderer(call, true)).container.textContent.includes(error);
 
-		expect(
-			screen.getByText("You are not in plan mode. To enter plan mode, call the EnterPlanMode tool first.")
-				.textContent,
-		).toStrictEqual("You are not in plan mode. To enter plan mode, call the EnterPlanMode tool first.");
+		expect({normal, verbose}).toStrictEqual({normal: false, verbose: true});
 	});
 });
