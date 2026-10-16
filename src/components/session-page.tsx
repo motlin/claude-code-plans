@@ -708,6 +708,14 @@ function SessionView({
 						gitBranch: data.gitBranch,
 						model: composerChin.model,
 						herdrPane: herdr.panes.find((pane) => pane.sessionId === sessionId) ?? null,
+						mode: composerChin.mode?.label ?? null,
+						effort: composerChin.effort.label,
+						usage: composerChin.usage,
+						todos: planModel.todos,
+						artifacts: sessionArtifacts,
+						backgroundTasks,
+						pr: data.pr ?? null,
+						prStatus: data.prStatus ?? null,
 					}}
 					sessionId={sessionId}
 					anchorRef={sessionViewRef}

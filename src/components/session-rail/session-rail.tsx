@@ -84,7 +84,10 @@ function RailSection({
 							className={`size-3 shrink-0 text-ink-muted transition-transform ${open ? "rotate-90" : ""}`}
 						/>
 						{card.summary !== undefined && (
-							<span className="ms-auto truncate ps-1.5 text-[12px]/[15px] font-normal text-ink-muted">
+							<span
+								data-rail-summary=""
+								className="ms-auto truncate ps-1.5 text-[12px]/[15px] font-normal text-ink-muted"
+							>
 								{card.summary}
 							</span>
 						)}
