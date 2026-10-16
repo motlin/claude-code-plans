@@ -78,7 +78,8 @@ export interface SessionMenuSession {
 	readState: SessionMenuReadState;
 	archived: boolean;
 	prUrl: string | null;
-	hasLivePane: boolean;
+	/** A pane of the session's that the live terminal tab can stream. */
+	hasLiveTerminal: boolean;
 	forkDisabledReason: string | null;
 	/** Directory the session runs in; Terminal, VS Code and Finder need it. */
 	cwd: string | null;
@@ -303,7 +304,7 @@ export function getSessionMenuItems(
 
 	const openInTargets: Array<[SessionMenuItemId, boolean]> = [
 		["open-terminal", session.cwd !== null && has("openTerminal")],
-		["open-live-terminal", session.hasLivePane && has("openLiveTerminal")],
+		["open-live-terminal", session.hasLiveTerminal && has("openLiveTerminal")],
 		["open-vscode", session.cwd !== null && has("openVsCode")],
 		["open-finder", session.cwd !== null && has("openFinder")],
 		["open-claude-ai", session.bridgeSessionId !== null && has("openClaudeAi")],

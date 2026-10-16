@@ -16,6 +16,7 @@ import {type ReactNode, useEffect, useRef, useState} from "react";
 
 import {useSessionRename} from "../hooks/use-session-rename";
 import {herdrPanesQueryOptions} from "../lib/api/herdr";
+import {sessionHasLiveTerminal} from "../lib/terminal-host-capabilities";
 import {openSessionInFinder, sessionOpenInQueryOptions, type SessionDetailData} from "../lib/api/sessions";
 import {writeClipboardText} from "../lib/clipboard";
 import {formatModelName} from "../lib/model-name";
@@ -255,14 +256,14 @@ function HeaderMenuBody({
 	const bridgeSessionId = openIn?.bridgeSessionId ?? null;
 	const prUrl = data.pr?.url ?? null;
 	const pinned = pins.isPinned(sessionId);
-	const hasLivePane = herdr?.panes.some((pane) => pane.sessionId === sessionId) ?? false;
+	const hasLiveTerminal = sessionHasLiveTerminal(herdr?.panes, sessionId);
 	const menuSession: SessionMenuSession = {
 		title,
 		pinned,
 		readState: "read",
 		archived: data.archived,
 		prUrl,
-		hasLivePane,
+		hasLiveTerminal,
 		forkDisabledReason: forkDisabledReason({working: isActive, cwd}),
 		cwd,
 		bridgeSessionId,

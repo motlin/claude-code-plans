@@ -38,7 +38,7 @@ function session(overrides: Partial<SessionMenuSession> = {}): SessionMenuSessio
 		readState: "read",
 		archived: false,
 		prUrl: null,
-		hasLivePane: false,
+		hasLiveTerminal: false,
 		forkDisabledReason: null,
 		cwd: null,
 		bridgeSessionId: null,
@@ -115,7 +115,7 @@ describe("getSessionMenuItems", () => {
 
 	it("puts the live terminal in Open in when a herdr pane is live", () => {
 		expect(
-			getSessionMenuItems(session({hasLivePane: true, prUrl: "https://github.com/o/r/pull/7"}), LOCAL, {
+			getSessionMenuItems(session({hasLiveTerminal: true, prUrl: "https://github.com/o/r/pull/7"}), LOCAL, {
 				surface: "row",
 			}),
 		).toEqual([
@@ -134,7 +134,7 @@ describe("getSessionMenuItems", () => {
 
 	it("numbers Open in from Terminal 1, as upstream does", () => {
 		const [openIn] = getSessionMenuItems(
-			session({hasLivePane: true, cwd: "/Users/alice/projects/alpha", bridgeSessionId: "cse_alice_100"}),
+			session({hasLiveTerminal: true, cwd: "/Users/alice/projects/alpha", bridgeSessionId: "cse_alice_100"}),
 			ALL,
 			{surface: "header"},
 		);
@@ -183,7 +183,7 @@ describe("getSessionMenuItems", () => {
 
 	it("drops Pin and read state from the header menu and orders Rename, Fork, then Copy link in its own group, as upstream", () => {
 		expect(
-			getSessionMenuItems(session({hasLivePane: true, readState: "unread"}), ALL, {
+			getSessionMenuItems(session({hasLiveTerminal: true, readState: "unread"}), ALL, {
 				surface: "header",
 			}),
 		).toEqual([
@@ -259,7 +259,7 @@ describe("getSessionMenuItems", () => {
 	});
 
 	it("lists the palette row-actions card items unnumbered in upstream card order", () => {
-		expect(getSessionMenuItems(session({hasLivePane: true}), ALL, {surface: "palette-card"})).toEqual([
+		expect(getSessionMenuItems(session({hasLiveTerminal: true}), ALL, {surface: "palette-card"})).toEqual([
 			{kind: "item", id: "copy-link", label: "Copy link"},
 			{kind: "item", id: "pin", label: "Pin"},
 			{kind: "item", id: "rename", label: "Rename"},
@@ -283,7 +283,7 @@ describe("getSessionMenuItems", () => {
 	it("names the session in flat palette commands, truncated to 39 characters", () => {
 		const title = "A very long session title that keeps going on";
 		expect(
-			getSessionMenuItems(session({title, hasLivePane: true, pinned: true}), ALL, {
+			getSessionMenuItems(session({title, hasLiveTerminal: true, pinned: true}), ALL, {
 				surface: "palette",
 			}),
 		).toEqual([

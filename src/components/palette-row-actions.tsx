@@ -71,7 +71,7 @@ export function PaletteRowActionsCard({
 			readState: sessionMenuReadState(session.bucket, unseen),
 			archived: session.archived ?? false,
 			prUrl: null,
-			hasLivePane: false,
+			hasLiveTerminal: false,
 			forkDisabledReason: null,
 			cwd: null,
 			bridgeSessionId: null,

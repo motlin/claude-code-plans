@@ -311,7 +311,7 @@ describe("tmux terminal host", () => {
 		);
 		expect({id: host.id, canWrite: host.canWrite, panes: await host.listPanes()}).toStrictEqual({
 			id: "tmux",
-			canWrite: false,
+			canWrite: true,
 			panes: [
 				{
 					host: "tmux",

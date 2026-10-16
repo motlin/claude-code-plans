@@ -94,7 +94,7 @@ export interface HerdrQuestionDependencies {
 
 const STEP_PAUSE_MS = 80;
 
-const defaultDependencies: HerdrQuestionDependencies = {
+export const defaultHerdrQuestionDependencies: HerdrQuestionDependencies = {
 	rejectRequest: rejectCrossSite,
 	writesEnabled: herdrWritesEnabled,
 	pendingQuestion: getPendingQuestion,
@@ -121,7 +121,7 @@ function stepCall(paneId: string, step: QuestionAnswerStep): {method: string; pa
  */
 export async function handleHerdrQuestion(
 	request: Request,
-	dependencies: HerdrQuestionDependencies = defaultDependencies,
+	dependencies: HerdrQuestionDependencies = defaultHerdrQuestionDependencies,
 ): Promise<Response> {
 	const rejection = dependencies.rejectRequest(request);
 	if (rejection) return rejection;

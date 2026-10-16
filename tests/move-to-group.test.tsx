@@ -43,7 +43,7 @@ function menuSession(overrides: Partial<SessionMenuSession> = {}): SessionMenuSe
 		readState: "read",
 		archived: false,
 		prUrl: null,
-		hasLivePane: false,
+		hasLiveTerminal: false,
 		forkDisabledReason: null,
 		cwd: null,
 		bridgeSessionId: null,

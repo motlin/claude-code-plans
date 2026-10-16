@@ -53,7 +53,7 @@ function liveOptionCall(paneId: string, change: LiveOptionChange): {method: stri
 	}
 }
 
-const defaultDependencies: HerdrLiveOptionDependencies = {
+export const defaultHerdrLiveOptionDependencies: HerdrLiveOptionDependencies = {
 	rejectRequest: rejectCrossSite,
 	writesEnabled: herdrWritesEnabled,
 	resolveTarget: async (sessionId) => resolveHerdrPromptTarget(sessionId),
@@ -64,7 +64,7 @@ const defaultDependencies: HerdrLiveOptionDependencies = {
 /** Apply a composer mode / model / effort pick to the session's live herdr pane. */
 export async function handleHerdrLiveOption(
 	request: Request,
-	dependencies: HerdrLiveOptionDependencies = defaultDependencies,
+	dependencies: HerdrLiveOptionDependencies = defaultHerdrLiveOptionDependencies,
 ): Promise<Response> {
 	const rejection = dependencies.rejectRequest(request);
 	if (rejection) return rejection;

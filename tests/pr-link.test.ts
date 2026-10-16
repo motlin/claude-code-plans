@@ -106,7 +106,7 @@ describe("Open PR in the session menu model", () => {
 			readState: "read",
 			archived: false,
 			prUrl: PR_URL,
-			hasLivePane: false,
+			hasLiveTerminal: false,
 			forkDisabledReason: null,
 			cwd: null,
 			bridgeSessionId: null,

@@ -30,7 +30,7 @@ function errorStatus(code: string): number {
 	}
 }
 
-const defaultDependencies: HerdrInterruptDependencies = {
+export const defaultHerdrInterruptDependencies: HerdrInterruptDependencies = {
 	rejectRequest: rejectCrossSite,
 	writesEnabled: herdrWritesEnabled,
 	resolveTarget: async (sessionId) => resolveHerdrPromptTarget(sessionId),
@@ -40,7 +40,7 @@ const defaultDependencies: HerdrInterruptDependencies = {
 
 export async function handleHerdrInterrupt(
 	request: Request,
-	dependencies: HerdrInterruptDependencies = defaultDependencies,
+	dependencies: HerdrInterruptDependencies = defaultHerdrInterruptDependencies,
 ): Promise<Response> {
 	const rejection = dependencies.rejectRequest(request);
 	if (rejection) return rejection;

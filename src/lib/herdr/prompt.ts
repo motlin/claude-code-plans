@@ -106,7 +106,7 @@ function herdrFailure(code: string, message: string): Response {
 	return Response.json({error: message, code}, {status: errorStatus(code)});
 }
 
-const defaultDependencies: HerdrPromptDependencies = {
+export const defaultHerdrPromptDependencies: HerdrPromptDependencies = {
 	rejectRequest: rejectCrossSite,
 	writesEnabled: terminalWritesEnabled,
 	resolveTarget: async (sessionId) => resolveHerdrPromptTarget(sessionId),
@@ -116,7 +116,7 @@ const defaultDependencies: HerdrPromptDependencies = {
 
 export async function handleHerdrPrompt(
 	request: Request,
-	dependencies: HerdrPromptDependencies = defaultDependencies,
+	dependencies: HerdrPromptDependencies = defaultHerdrPromptDependencies,
 ): Promise<Response> {
 	const rejection = dependencies.rejectRequest(request);
 	if (rejection) return rejection;

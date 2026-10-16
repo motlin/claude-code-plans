@@ -89,7 +89,7 @@ describe("getSessionMenuItems with a transcript view", () => {
 		readState: "read",
 		archived: false,
 		prUrl: null,
-		hasLivePane: false,
+		hasLiveTerminal: false,
 		forkDisabledReason: null,
 		cwd: null,
 		bridgeSessionId: null,

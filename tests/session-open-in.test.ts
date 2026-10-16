@@ -26,7 +26,7 @@ function session(overrides: Partial<SessionMenuSession> = {}): SessionMenuSessio
 		readState: "read",
 		archived: false,
 		prUrl: null,
-		hasLivePane: false,
+		hasLiveTerminal: false,
 		forkDisabledReason: null,
 		cwd: "/Users/alice/projects/alpha",
 		bridgeSessionId: null,
@@ -41,7 +41,7 @@ function openInSubmenu(overrides: Partial<SessionMenuSession>) {
 
 describe("Open in ▸ submenu", () => {
 	it("numbers every local target when a pane is live and a bridge session exists", () => {
-		expect(openInSubmenu({hasLivePane: true, bridgeSessionId: "cse_alice_100"})).toEqual([
+		expect(openInSubmenu({hasLiveTerminal: true, bridgeSessionId: "cse_alice_100"})).toEqual([
 			{kind: "item", id: "open-terminal", label: "Terminal", accelerator: "1"},
 			{kind: "item", id: "open-live-terminal", label: "Live terminal", accelerator: "2"},
 			{kind: "item", id: "open-vscode", label: "VS Code", accelerator: "3"},

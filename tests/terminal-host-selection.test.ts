@@ -90,18 +90,18 @@ describe("resolveTerminalHost", () => {
 		}).toStrictEqual({herdr: "herdr", autoWithHerdr: "herdr", autoWithTmuxOnly: "tmux", tmux: "tmux"});
 	});
 
-	it("refuses tmux writes until tmux writes land, with no workspaces", async () => {
+	it("refuses tmux launches until tmux launch lands, with no workspaces", async () => {
 		const host = createTmuxTerminalHost({
 			entries: () => [],
 			registry: () => [],
 			listPanes: async () => Promise.resolve(""),
 			processTable: async () => Promise.resolve(""),
 		});
-		const request = new Request("http://127.0.0.1:7526/api/herdr/prompt", {
+		const request = new Request("http://127.0.0.1:7526/api/herdr/launch", {
 			method: "POST",
-			body: JSON.stringify({sessionId: "s", prompt: "hi"}),
+			body: JSON.stringify({cwd: "/tmp/test"}),
 		});
-		const response = await host.prompt(request);
+		const response = await host.launch(request);
 
 		expect({
 			panes: await host.listPanes(),

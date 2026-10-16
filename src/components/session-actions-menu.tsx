@@ -12,6 +12,7 @@ import {
 } from "react";
 
 import {herdrPanesQueryOptions} from "../lib/api/herdr";
+import {sessionHasLiveTerminal} from "../lib/terminal-host-capabilities";
 import {sessionOpenInQueryOptions, type SessionListItem} from "../lib/api/sessions";
 import {useArchiveSessions} from "../hooks/use-session-archive";
 import {type SessionRename, useSessionRename} from "../hooks/use-session-rename";
@@ -133,7 +134,7 @@ function useSessionMenu(session: SessionListItem, pinnedRow: PinnedRowContext | 
 		readState: sessionMenuReadState(session.bucket, unseen),
 		archived: session.archived,
 		prUrl: session.pr?.url ?? null,
-		hasLivePane: herdr?.panes.some((pane) => pane.sessionId === session.id) ?? false,
+		hasLiveTerminal: sessionHasLiveTerminal(herdr?.panes, session.id),
 		forkDisabledReason: forkDisabledReason({working: session.bucket === "working", cwd}),
 		cwd,
 		bridgeSessionId,

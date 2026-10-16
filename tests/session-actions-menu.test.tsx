@@ -54,7 +54,7 @@ async function flush() {
 async function renderRow(
 	session: SessionListItem,
 	livePaneSessionIds: string[] = [],
-	{cwd, writesEnabled = false}: {cwd?: string; writesEnabled?: boolean} = {},
+	{cwd, writesEnabled = false, host = "herdr"}: {cwd?: string; writesEnabled?: boolean; host?: "herdr" | "tmux"} = {},
 	configure?: (client: QueryClient) => void,
 ) {
 	const queryClient = new QueryClient({
@@ -64,7 +64,7 @@ async function renderRow(
 	});
 	const panes: HerdrPaneIndexData = {
 		panes: livePaneSessionIds.map((sessionId) => ({
-			host: "herdr",
+			host,
 			paneId: `pane-${sessionId}`,
 			terminalId: "t1",
 			workspaceId: "w1",
@@ -255,6 +255,23 @@ describe("SessionActionsMenu", () => {
 		expect(outline(menu)).toEqual([
 			"Open in []",
 			"---",
+			"PinP [p]",
+			"RenameR [r]",
+			"Copy linkC [c]",
+			"ForkF [f]",
+			"---",
+			"Move to group []",
+			"---",
+			"ArchiveA [a]",
+		]);
+	});
+
+	it("leaves out the live terminal for a tmux pane, which cannot stream yet", async () => {
+		await renderRow(listItem("working"), [SESSION_ID], {host: "tmux"});
+
+		const menu = await rightClickRow();
+
+		expect(outline(menu)).toEqual([
 			"PinP [p]",
 			"RenameR [r]",
 			"Copy linkC [c]",

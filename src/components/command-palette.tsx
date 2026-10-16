@@ -561,7 +561,7 @@ function currentSessionCommands(detail: SessionDetailData, pinned: boolean): Ses
 			readState: "read",
 			archived: detail.archived,
 			prUrl: null,
-			hasLivePane: false,
+			hasLiveTerminal: false,
 			forkDisabledReason: null,
 			cwd: null,
 			bridgeSessionId: null,

@@ -6,13 +6,15 @@ import type {TerminalHostSetting} from "../terminal-host-setting";
 import {createTmuxPlacementProvider} from "../tmux-windows";
 import {toTmuxPaneLink} from "../tmux/pane-links";
 import {defaultTmuxSessionPaneSources, getTmuxSessionPanes, type TmuxSessionPaneSources} from "../tmux/session-panes";
-import {handleHerdrInterrupt} from "../herdr/interrupt";
+import {TERMINAL_HOST_CAPABILITIES} from "../terminal-host-capabilities";
+import {defaultTmuxWriteIo, tmuxWriteDependencies, type TmuxWriteIo} from "../tmux/writes";
+import {defaultHerdrInterruptDependencies, handleHerdrInterrupt} from "../herdr/interrupt";
 import {handleHerdrLaunch} from "../herdr/launch";
-import {handleHerdrLiveOption} from "../herdr/live-option";
+import {defaultHerdrLiveOptionDependencies, handleHerdrLiveOption} from "../herdr/live-option";
 import {createHerdrPlacementProvider, getHerdrPanes, type HerdrPaneLink} from "../herdr/panes";
-import {handleHerdrPermission} from "../herdr/permission";
-import {handleHerdrPrompt} from "../herdr/prompt";
-import {handleHerdrQuestion} from "../herdr/question";
+import {defaultHerdrPermissionDependencies, handleHerdrPermission} from "../herdr/permission";
+import {defaultHerdrPromptDependencies, handleHerdrPrompt} from "../herdr/prompt";
+import {defaultHerdrQuestionDependencies, handleHerdrQuestion} from "../herdr/question";
 import {reportHookStateToHerdr} from "../herdr/report-state";
 import {startHerdrEventBridge} from "../herdr/subscribe";
 import {controlHerdrSession, type TerminalController} from "../herdr/terminal-controller";
@@ -45,6 +47,8 @@ export interface TerminalHost {
 	readonly id: "herdr" | "tmux" | "none";
 	/** Whether this host can type into panes at all; Live terminal input still gates it. */
 	readonly canWrite: boolean;
+	/** Whether this host can stream a pane into the live terminal tab. */
+	readonly canStream: boolean;
 	/** List panes: live panes linked to Claude sessions. */
 	listPanes: () => Promise<HerdrPaneLink[]>;
 	/** Every pane by workspace, including panes no Claude session owns. */
@@ -87,7 +91,7 @@ export interface TerminalHost {
 
 const herdrTerminalHost: TerminalHost = {
 	id: "herdr",
-	canWrite: true,
+	...TERMINAL_HOST_CAPABILITIES.herdr,
 	listPanes: async () => getHerdrPanes(),
 	listWorkspaces: async () => getHerdrWorkspaces(),
 	placementProvider: () => createHerdrPlacementProvider(),
@@ -120,6 +124,7 @@ async function noHostStream(): Promise<never> {
 const noTerminalHost: TerminalHost = {
 	id: "none",
 	canWrite: false,
+	canStream: false,
 	listPanes: async () => Promise.resolve([]),
 	listWorkspaces: async () => Promise.resolve([]),
 	placementProvider: () => null,
@@ -138,15 +143,52 @@ const noTerminalHost: TerminalHost = {
 
 /**
  * tmux: panes and session-to-pane mapping (hook `TMUX_PANE`, else the session
- * pid's process tree). Writes, launch, pane events and live terminals are
- * refused until later slices wire them up.
+ * pid's process tree), and writes through `tmux send-keys` behind herdr's
+ * handlers, gated by the hook-reported state (see `tmux/writes.ts`). Launch,
+ * pane events and live terminals are refused until later slices wire them up.
  */
-export function createTmuxTerminalHost(sources: TmuxSessionPaneSources = defaultTmuxSessionPaneSources): TerminalHost {
+export function createTmuxTerminalHost(
+	sources: TmuxSessionPaneSources = defaultTmuxSessionPaneSources,
+	io: TmuxWriteIo = defaultTmuxWriteIo,
+): TerminalHost {
+	const writes = {writesEnabled: io.writesEnabled};
 	return {
 		...noTerminalHost,
 		id: "tmux",
+		...TERMINAL_HOST_CAPABILITIES.tmux,
 		listPanes: async () => (await getTmuxSessionPanes(sources)).map(toTmuxPaneLink),
 		placementProvider: () => createTmuxPlacementProvider(sources),
+		prompt: async (request) =>
+			handleHerdrPrompt(request, {
+				...defaultHerdrPromptDependencies,
+				...writes,
+				...tmuxWriteDependencies("prompt", sources, io),
+			}),
+		interrupt: async (request) =>
+			handleHerdrInterrupt(request, {
+				...defaultHerdrInterruptDependencies,
+				...writes,
+				...tmuxWriteDependencies("interrupt", sources, io),
+			}),
+		answerQuestion: async (request) =>
+			handleHerdrQuestion(request, {
+				...defaultHerdrQuestionDependencies,
+				...writes,
+				pause: io.pause,
+				...tmuxWriteDependencies("question", sources, io),
+			}),
+		answerPermission: async (request) =>
+			handleHerdrPermission(request, {
+				...defaultHerdrPermissionDependencies,
+				...writes,
+				...tmuxWriteDependencies("permission", sources, io),
+			}),
+		applyLiveOption: async (request) =>
+			handleHerdrLiveOption(request, {
+				...defaultHerdrLiveOptionDependencies,
+				...writes,
+				...tmuxWriteDependencies("live-option", sources, io),
+			}),
 	};
 }
 

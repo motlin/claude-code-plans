@@ -208,7 +208,7 @@ describe("session header menu", () => {
 				readState: "read",
 				archived: false,
 				prUrl: null,
-				hasLivePane: true,
+				hasLiveTerminal: true,
 				forkDisabledReason: null,
 				cwd: PROJECT_PATH,
 				bridgeSessionId: null,

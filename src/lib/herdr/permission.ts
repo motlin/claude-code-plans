@@ -39,7 +39,7 @@ function errorStatus(code: string): number {
 	}
 }
 
-const defaultDependencies: HerdrPermissionDependencies = {
+export const defaultHerdrPermissionDependencies: HerdrPermissionDependencies = {
 	rejectRequest: rejectCrossSite,
 	writesEnabled: herdrWritesEnabled,
 	hasPendingPermission: (sessionId) =>
@@ -65,7 +65,7 @@ const defaultDependencies: HerdrPermissionDependencies = {
  */
 export async function handleHerdrPermission(
 	request: Request,
-	dependencies: HerdrPermissionDependencies = defaultDependencies,
+	dependencies: HerdrPermissionDependencies = defaultHerdrPermissionDependencies,
 ): Promise<Response> {
 	const rejection = dependencies.rejectRequest(request);
 	if (rejection) return rejection;
