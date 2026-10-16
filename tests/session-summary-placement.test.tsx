@@ -445,7 +445,7 @@ describe("SessionPage dock composition", () => {
 		);
 		expect(dockContents()).toStrictEqual(["pr", "permission", "usage", "composer"]);
 	});
-	it("docks the stored question, not a permission card, when the registry's permission wait is really a question", async () => {
+	it("draws the stored question once, inline in the transcript, not a permission card, when the registry's permission wait is really a question", async () => {
 		await renderSessionPage(
 			{...detail, pr},
 			[],
@@ -484,8 +484,11 @@ describe("SessionPage dock composition", () => {
 				},
 			],
 		);
-		const card = document.querySelector("[data-session-footer] [data-approval-card-root]");
-		expect(card?.getAttribute("aria-label")).toBe("Waiting for your input");
+		expect({
+			footer: document.querySelectorAll("[data-session-footer] [data-approval-card-root]").length,
+			cards: screen.getAllByRole("group", {name: "Ship it?"}).length,
+			tail: document.querySelector("[data-hook-question]"),
+		}).toStrictEqual({footer: 0, cards: 1, tail: null});
 	});
 	describe("answering the stored question", () => {
 		const herdrPane = {
@@ -521,7 +524,9 @@ describe("SessionPage dock composition", () => {
 					},
 				});
 			});
-			return within(screen.getByRole("group", {name: "Waiting for your input"}));
+			const card = screen.getByRole("group", {name: "Ship it?"});
+			expect(card.closest("[data-hook-question]")).not.toBeNull();
+			return within(card);
 		}
 
 		it("lets a session in a writable live herdr pane answer, posting the choice to the pane's question endpoint", async () => {
@@ -536,7 +541,7 @@ describe("SessionPage dock composition", () => {
 			await flush();
 
 			expect({
-				footnote: card.queryByText("Answer in the terminal running this session."),
+				footnote: card.queryByText("Answer in the terminal"),
 				posts: fetchMock.mock.calls
 					.filter(([input]) => String(input) === "/api/herdr/question")
 					.map(([, init]) => JSON.parse(String(init?.body)) as unknown),
@@ -553,7 +558,7 @@ describe("SessionPage dock composition", () => {
 			const card = await renderWaitingQuestion(herdr);
 
 			expect({
-				footnote: card.queryByText("Answer in the terminal running this session.") !== null,
+				footnote: card.queryByText("Answer in the terminal") !== null,
 				option: card.getByRole<HTMLButtonElement>("button", {name: /^No/}).disabled,
 			}).toStrictEqual({footnote: true, option: true});
 		});

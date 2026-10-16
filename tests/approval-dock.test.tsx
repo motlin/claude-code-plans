@@ -1,20 +1,13 @@
 // @vitest-environment jsdom
 
-import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
+import {cleanup, fireEvent, render, screen, within} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
-import type {ComponentProps} from "react";
 
-import {ApprovalDock} from "../src/components/approval-dock";
 import {AskUserQuestionProvider} from "../src/components/ask-user-question-context";
+import {QuestionCard} from "../src/components/question-card";
 import {AskUserQuestionRenderer} from "../src/components/tool-renderers/ask-user-question-renderer";
 import type {ClientToolCall} from "../src/components/tool-renderers/types";
-import {
-	approvalDockReducer,
-	approvalDockAnswers,
-	findPendingAskUserQuestion,
-	initialApprovalDockState,
-	type ApprovalDockState,
-} from "../src/lib/approval-dock";
+import {findPendingAskUserQuestion} from "../src/lib/approval-dock";
 import type {QuestionLike} from "../src/lib/ask-user-question";
 
 afterEach(cleanup);
@@ -99,307 +92,178 @@ describe("findPendingAskUserQuestion", () => {
 	});
 });
 
-describe("approvalDockReducer", () => {
-	function run(...actions: Parameters<typeof approvalDockReducer>[1][]): ApprovalDockState {
-		return actions.reduce(
-			(state, action) => approvalDockReducer(state, action, QUESTIONS),
-			initialApprovalDockState(QUESTIONS),
-		);
-	}
+describe("QuestionCard", () => {
+	it("draws upstream's card: the question in a grey header with an N of M pager, radio rows with descriptions, and Other", () => {
+		render(<QuestionCard questions={QUESTIONS} onSubmit={async () => {}} />);
+		const card = screen.getByRole("group", {name: "Which test runner?"});
 
-	it("starts at the first question with nothing chosen", () => {
-		const state = run();
 		expect({
-			index: state.index,
-			collapsed: state.collapsed,
-			dismissed: state.dismissed,
-			answers: approvalDockAnswers(QUESTIONS, state),
-		}).toStrictEqual({
-			index: 0,
-			collapsed: false,
-			dismissed: false,
-			answers: [
-				{question: "Which test runner?", answer: ""},
-				{question: "Which features?", answer: ""},
+			card: card.className
+				.split(" ")
+				.filter((name) => ["@container", "max-w-[480px]", "card-ring", "rounded-r7"].includes(name)),
+			header: card.firstElementChild?.textContent,
+			pager: [
+				screen.getByRole("button", {name: "Show previous question"}).hasAttribute("disabled"),
+				screen.getByRole("button", {name: "Show next question"}).hasAttribute("disabled"),
 			],
+			options: within(card)
+				.getAllByRole("button")
+				.filter((button) => button.hasAttribute("aria-pressed"))
+				.map((button) => [
+					button.getAttribute("aria-label") ?? button.textContent,
+					button.getAttribute("aria-pressed"),
+				]),
+			otherBox: screen.queryByRole("textbox", {name: "Other option"}),
+			actions: [
+				screen.getByRole("button", {name: "Skip"}).textContent,
+				screen.getByRole("button", {name: /^Next/}).hasAttribute("disabled"),
+			],
+		}).toStrictEqual({
+			card: ["card-ring", "@container", "max-w-[480px]", "rounded-r7"],
+			header: "Which test runner?1 of 2",
+			pager: [true, false],
+			options: [
+				["VitestVite-native", "true"],
+				["JestWidely adopted", "false"],
+				["Other", "false"],
+			],
+			otherBox: null,
+			actions: ["Skip", false],
 		});
 	});
 
-	it("selects a single option, replacing an earlier pick, and refuses Next until chosen", () => {
-		expect(run({type: "next"}).index).toStrictEqual(0);
-		const state = run({type: "select", option: 0}, {type: "select", option: 1});
-		expect(approvalDockAnswers(QUESTIONS, state)[0]).toStrictEqual({
-			question: "Which test runner?",
-			answer: "Jest",
+	it("reveals the Other box only once Other is chosen, and sends an empty Other as Something else", async () => {
+		const onSubmit = vi.fn<(answers: unknown[]) => Promise<void>>(async () => {});
+		render(<QuestionCard questions={[QUESTIONS[0]!]} onSubmit={onSubmit} />);
+		fireEvent.click(screen.getByRole("button", {name: "Other"}));
+		const box = screen.getByRole("textbox", {name: "Other option"});
+		fireEvent.click(screen.getByRole("button", {name: /^Submit/}));
+		await vi.waitFor(() => {
+			expect(onSubmit).toHaveBeenCalledTimes(1);
 		});
-		expect(approvalDockReducer(state, {type: "next"}, QUESTIONS).index).toStrictEqual(1);
+
+		expect({placeholder: box.getAttribute("placeholder"), answers: onSubmit.mock.calls[0]?.[0]}).toStrictEqual({
+			placeholder: "Type your own answer here",
+			answers: [{selected: [], other: "Something else"}],
+		});
 	});
 
-	it("toggles multi-select options on the second question", () => {
-		const state = run(
-			{type: "select", option: 0},
-			{type: "next"},
-			{type: "select", option: 0},
-			{type: "select", option: 2},
-			{type: "select", option: 0},
-		);
-		expect(approvalDockAnswers(QUESTIONS, state)).toStrictEqual([
-			{question: "Which test runner?", answer: "Vitest"},
-			{question: "Which features?", answer: "UI"},
-		]);
+	it("walks Next to the last question, which waits until answered or skipped, then submits one answer each", async () => {
+		const onSubmit = vi.fn<(answers: unknown[]) => Promise<void>>(async () => {});
+		render(<QuestionCard questions={QUESTIONS} onSubmit={onSubmit} />);
+		fireEvent.click(screen.getByRole("button", {name: /^Next/}));
+		const submit = screen.getByRole("button", {name: /^Submit/});
+		const waiting = submit.hasAttribute("disabled");
+		fireEvent.click(screen.getByRole("button", {name: /^Watch/}));
+		fireEvent.click(screen.getByRole("button", {name: /^UI/}));
+		fireEvent.keyDown(submit, {key: "Enter", metaKey: true});
+		await vi.waitFor(() => {
+			expect(onSubmit).toHaveBeenCalledTimes(1);
+		});
+
+		expect({waiting, answers: onSubmit.mock.calls[0]?.[0]}).toStrictEqual({
+			waiting: true,
+			answers: [{selected: [0]}, {selected: [1, 2]}],
+		});
 	});
 
-	it("uses the Other text in place of a selection", () => {
-		const state = run(
-			{type: "select", option: 0},
-			{type: "selectOther"},
-			{type: "setOtherText", text: "  Mocha  "},
-		);
-		expect(approvalDockAnswers(QUESTIONS, state)[0]!.answer).toStrictEqual("Mocha");
+	it("Skip on the last open question submits it as null", async () => {
+		const onSubmit = vi.fn<(answers: unknown[]) => Promise<void>>(async () => {});
+		render(<QuestionCard questions={QUESTIONS} onSubmit={onSubmit} />);
+		fireEvent.click(screen.getByRole("button", {name: /^Next/}));
+		fireEvent.click(screen.getByRole("button", {name: "Skip"}));
+		await vi.waitFor(() => {
+			expect(onSubmit).toHaveBeenCalledTimes(1);
+		});
+
+		expect(onSubmit.mock.calls[0]?.[0]).toStrictEqual([{selected: [0]}, null]);
 	});
 
-	it("Skip clears the current answer and advances", () => {
-		const state = run({type: "select", option: 1}, {type: "skip"});
-		expect({
-			index: state.index,
-			answer: approvalDockAnswers(QUESTIONS, state)[0]!.answer,
-		}).toStrictEqual({index: 1, answer: ""});
-	});
+	it("disables every control without onSubmit", () => {
+		render(<QuestionCard questions={QUESTIONS} />);
 
-	it("goes back to an earlier question with its draft kept", () => {
-		const state = run({type: "select", option: 1}, {type: "next"}, {type: "goto", index: 0});
-		expect({
-			index: state.index,
-			answer: approvalDockAnswers(QUESTIONS, state)[0]!.answer,
-		}).toStrictEqual({index: 0, answer: "Jest"});
-	});
-
-	it("collapses, expands, and dismisses", () => {
-		expect(run({type: "toggleCollapsed"}).collapsed).toStrictEqual(true);
-		expect(run({type: "toggleCollapsed"}, {type: "toggleCollapsed"}).collapsed).toStrictEqual(false);
-		expect(run({type: "dismiss"}).dismissed).toStrictEqual(true);
+		expect(
+			[
+				screen.getByRole("button", {name: /^Vitest/}),
+				screen.getByRole("button", {name: "Skip"}),
+				screen.getByRole("button", {name: /^Next/}),
+			].map((button) => button.hasAttribute("disabled")),
+		).toStrictEqual([true, true, true]);
 	});
 });
 
-function renderDock(onSubmit = vi.fn<NonNullable<ComponentProps<typeof ApprovalDock>["onSubmit"]>>(async () => {})) {
-	const utils = render(
-		<div>
-			<div data-focus-region="composer">
-				<textarea aria-label="Prompt" />
-			</div>
-			<ApprovalDock toolUseId="t2" questions={QUESTIONS} onSubmit={onSubmit} />
-		</div>,
-	);
-	return {...utils, onSubmit};
-}
-
-function optionButton(label: string) {
-	return screen.getByRole("button", {name: new RegExp(`^${label}`)});
-}
-
-describe("ApprovalDock", () => {
-	it("renders the i/n pill, the question, options with keycaps, and Other", () => {
-		const {container} = renderDock();
-		const card = container.querySelector("[data-approval-card-root]")!;
-		expect({
-			pill: card.querySelector("[data-approval-pill]")?.textContent,
-			question: card.querySelector("[data-approval-question]")?.textContent,
-			keycaps: [...card.querySelectorAll("kbd")].map((kbd) => kbd.textContent),
-			other: screen.getByRole("textbox", {name: "Other option"}).getAttribute("placeholder"),
-			next: screen.getByRole<HTMLButtonElement>("button", {name: "Next"}).disabled,
-		}).toStrictEqual({
-			pill: "1/2",
-			question: "Which test runner?",
-			keycaps: ["1", "2", "3"],
-			other: "Type your own answer here",
-			next: true,
-		});
-	});
-
-	it("digit keys select options when the composer is empty or unfocused", () => {
-		renderDock();
-		fireEvent.keyDown(document.body, {key: "2"});
-		expect(optionButton("Jest").getAttribute("aria-pressed")).toStrictEqual("true");
-
-		const prompt = screen.getByRole("textbox", {name: "Prompt"});
-		prompt.focus();
-		fireEvent.keyDown(prompt, {key: "1"});
-		expect(optionButton("Vitest").getAttribute("aria-pressed")).toStrictEqual("true");
-	});
-
-	it("digit keys are ignored while the composer has text", () => {
-		renderDock();
-		const prompt = screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
-		fireEvent.change(prompt, {target: {value: "hello"}});
-		prompt.focus();
-		fireEvent.keyDown(prompt, {key: "1"});
-		expect(optionButton("Vitest").getAttribute("aria-pressed")).toStrictEqual("false");
-	});
-
-	it("the digit after the last option focuses the Other textarea", () => {
-		renderDock();
-		fireEvent.keyDown(document.body, {key: "3"});
-		expect(document.activeElement).toStrictEqual(screen.getByRole("textbox", {name: "Other option"}));
-	});
-
-	it("walks Next to the last question and submits the answer payload", () => {
-		const {onSubmit} = renderDock();
-		fireEvent.click(optionButton("Jest"));
-		fireEvent.click(screen.getByRole("button", {name: "Next"}));
-		expect(screen.getByText("2/2")).toBeTruthy();
-		fireEvent.change(screen.getByRole("textbox", {name: "Other option"}), {
-			target: {value: "Snapshots"},
-		});
-		act(() => {
-			fireEvent.click(screen.getByRole("button", {name: "Submit"}));
-		});
-		expect(onSubmit.mock.calls).toStrictEqual([
-			[
-				{
-					toolUseId: "t2",
-					questions: QUESTIONS,
-					answers: [
-						{question: "Which test runner?", answer: "Jest"},
-						{question: "Which features?", answer: "Snapshots"},
-					],
-				},
-			],
-		]);
-	});
-
-	it("Skip on the last question submits with that answer blank", () => {
-		const {onSubmit} = renderDock();
-		fireEvent.click(optionButton("Vitest"));
-		fireEvent.click(screen.getByRole("button", {name: "Next"}));
-		act(() => {
-			fireEvent.click(screen.getByRole("button", {name: "Skip"}));
-		});
-		expect(onSubmit.mock.calls).toStrictEqual([
-			[
-				{
-					toolUseId: "t2",
-					questions: QUESTIONS,
-					answers: [
-						{question: "Which test runner?", answer: "Vitest"},
-						{question: "Which features?", answer: ""},
-					],
-				},
-			],
-		]);
-	});
-
-	it("collapses the options and dismisses the card", () => {
-		const onDismiss = vi.fn<() => void>();
-		const {container} = render(
-			<ApprovalDock toolUseId="t2" questions={QUESTIONS} onSubmit={async () => {}} onDismiss={onDismiss} />,
-		);
-		fireEvent.click(screen.getByRole("button", {name: "View question options"}));
-		expect(screen.queryByRole("button", {name: /^Vitest/})).toBeNull();
-		fireEvent.click(screen.getByRole("button", {name: "Dismiss question"}));
-		expect(container.querySelector("[data-approval-card-root]")).toBeNull();
-		expect(onDismiss.mock.calls).toStrictEqual([[]]);
-	});
-});
-
-describe("AskUserQuestionRenderer while docked", () => {
+describe("AskUserQuestionRenderer pending", () => {
 	const call: ClientToolCall = {
-		id: "t2",
+		id: "tool-q",
 		name: "AskUserQuestion",
-		param: "",
-		sourceUuid: "uuid-1",
 		input: {questions: QUESTIONS},
+		param: "",
+		sourceUuid: "u-q",
 	};
 
-	function renderInline(dockedToolUseId: string | null) {
-		return render(
-			<AskUserQuestionProvider value={{answerRoute: "live-pane", submitAnswer: async () => {}, dockedToolUseId}}>
+	it("draws a pending question inline as upstream's card, with no Asking row, answering through the session", async () => {
+		const submitAnswer = vi.fn<(submission: unknown) => Promise<void>>(async () => {});
+		render(
+			<AskUserQuestionProvider value={{answerRoute: "live-pane", submitAnswer}}>
 				<AskUserQuestionRenderer toolCall={call} />
 			</AskUserQuestionProvider>,
 		);
-	}
+		const asking = screen.queryByText(/^Asking/);
+		fireEvent.click(screen.getByRole("button", {name: /^Next/}));
+		fireEvent.click(screen.getByRole("button", {name: /^Coverage/}));
+		fireEvent.click(screen.getByRole("button", {name: /^Submit/}));
+		await vi.waitFor(() => {
+			expect(submitAnswer).toHaveBeenCalledTimes(1);
+		});
 
-	it("shows the expanded Asking <header> row over the question instead of the form", () => {
-		renderInline("t2");
-		const summary = screen.getByRole("button", {name: /Asking Runner/});
 		expect({
-			expanded: summary.getAttribute("aria-expanded"),
-			form: screen.queryByRole("button", {name: "Submit"}),
-			question: screen.queryByText("Which test runner?") !== null,
-		}).toStrictEqual({expanded: "true", form: null, question: true});
-
-		fireEvent.click(summary);
-		expect({
-			expanded: summary.getAttribute("aria-expanded"),
-			question: screen.queryByText("Which test runner?"),
-		}).toStrictEqual({expanded: "false", question: null});
-	});
-
-	it("keeps the inline form when another question is docked", () => {
-		renderInline("other");
-		expect(screen.getByRole("button", {name: "Submit"})).toBeTruthy();
+			asking,
+			card: screen.queryByRole("group", {name: "Which features?"}) !== null,
+			submission: submitAnswer.mock.calls[0]?.[0],
+		}).toStrictEqual({
+			asking: null,
+			card: true,
+			submission: {
+				toolUseId: "tool-q",
+				questions: QUESTIONS,
+				answers: [
+					{question: "Which test runner?", answer: "Vitest"},
+					{question: "Which features?", answer: "Coverage"},
+				],
+			},
+		});
 	});
 });
 
 describe("question cards by answer route", () => {
 	const call: ClientToolCall = {
-		id: "t2",
+		id: "tool-q",
 		name: "AskUserQuestion",
+		input: {questions: [QUESTIONS[0]]},
 		param: "",
-		sourceUuid: "uuid-1",
-		input: {questions: QUESTIONS},
+		sourceUuid: "u-q",
 	};
-
-	function renderRoute(answerRoute: "live-pane" | "read-only" | "fork") {
-		const submitAnswer = vi.fn<(submission: unknown) => Promise<void>>(async () => {});
-		const utils = render(
-			<AskUserQuestionProvider value={{answerRoute, submitAnswer, dockedToolUseId: null}}>
+	function renderRoute(answerRoute: "live-pane" | "fork" | "read-only") {
+		return render(
+			<AskUserQuestionProvider value={{answerRoute, submitAnswer: async () => {}}}>
 				<AskUserQuestionRenderer toolCall={call} />
 			</AskUserQuestionProvider>,
 		);
-		return {...utils, submitAnswer};
 	}
-
-	it("submits a live-pane answer with its questions", async () => {
-		const {submitAnswer} = renderRoute("live-pane");
-		fireEvent.click(screen.getByRole("button", {name: "Skip"}));
-		await act(async () => {});
-		expect(submitAnswer.mock.calls).toStrictEqual([
-			[
-				{
-					toolUseId: "t2",
-					questions: QUESTIONS,
-					answers: [
-						{question: "Which test runner?", answer: ""},
-						{question: "Which features?", answer: ""},
-					],
-				},
-			],
-		]);
-	});
 
 	it("labels the fork route's submit button explicitly", () => {
 		renderRoute("fork");
-		expect({
-			fork: screen.queryByRole("button", {name: "Answer in a new fork"}) !== null,
-			submit: screen.queryByRole("button", {name: "Submit"}),
-		}).toStrictEqual({fork: true, submit: null});
+
+		expect(screen.getByRole("button", {name: /^Answer in a new fork/}).hasAttribute("disabled")).toBe(false);
 	});
 
-	it("shows a read-only route as the Asking row pointing at the terminal", () => {
+	it("disables a read-only route's card and points at the terminal", () => {
 		const {container} = renderRoute("read-only");
-		expect({
-			form: screen.queryByRole("button", {name: "Submit"}),
-			hint: container.querySelector("[data-pending-question-hint]")?.textContent,
-		}).toStrictEqual({form: null, hint: "Answer in the terminal"});
-	});
 
-	it("disables the docked card's answers without onSubmit and points at the terminal", () => {
-		const {container} = render(<ApprovalDock toolUseId="t2" questions={QUESTIONS} />);
-		fireEvent.click(optionButton("Jest"));
 		expect({
-			skip: screen.getByRole("button", {name: "Skip"}).hasAttribute("disabled"),
-			next: screen.getByRole("button", {name: "Next"}).hasAttribute("disabled"),
+			option: screen.getByRole("button", {name: /^Vitest/}).hasAttribute("disabled"),
+			submit: screen.getByRole("button", {name: /^Submit/}).hasAttribute("disabled"),
 			hint: container.querySelector("[data-approval-read-only]")?.textContent,
-		}).toStrictEqual({skip: true, next: true, hint: "Answer in the terminal"});
+		}).toStrictEqual({option: true, submit: true, hint: "Answer in the terminal"});
 	});
 });

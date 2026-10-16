@@ -46,7 +46,6 @@ import {FilesPaneShortcut} from "./panes/files-pane-shortcut";
 import {useExtractedSessionFiles} from "./panes/session-file-sources";
 import {TerminalPaneShortcut} from "./panes/terminal-pane";
 import {useRegisterTerminalPane} from "./panes/terminal-pane-entry";
-import {ApprovalDock} from "./approval-dock";
 import {PermissionCard} from "./permission-card";
 import {BranchStrip} from "./branch-strip";
 import {TranscriptHistoryLoader, TranscriptTopFade} from "./transcript-history-loader";
@@ -56,7 +55,8 @@ import {SessionDock} from "./session-dock";
 import {RunningTasksControl} from "./running-tasks-control";
 import {sessionProcessLive} from "../lib/session-state";
 import {tailMarkerState} from "../lib/working-marker";
-import {PendingQuestionCard, WaitingForInputNotice} from "./approval-card";
+import {WaitingForInputNotice} from "./approval-card";
+import {QuestionCard} from "./question-card";
 import {showsWaitingForInputNotice} from "./waiting-for-input-notice";
 import {NotifyMePrompt} from "./notify-me-prompt";
 import {UsagePaceBanner} from "./usage-pace-banner";
@@ -66,7 +66,7 @@ import {SideChat} from "./side-chat";
 import {handleBtwPrompt} from "./btw-prompt";
 import {useSideChatShortcut} from "./use-side-chat-shortcut";
 import {useToast} from "./toast-context";
-import {transcriptWidthStyle} from "../lib/transcript-width";
+import {CHAT_COLUMN_CLASS, transcriptWidthStyle} from "../lib/transcript-width";
 import {useChatStream} from "../hooks/use-chat-stream";
 import {slashCommandsQueryOptions} from "../lib/api/commands";
 import {promptHistoryQueryOptions} from "../lib/api/prompt-history";
@@ -484,21 +484,13 @@ function SessionView({
 		[answerRoute, sessionId],
 	);
 	const pendingQuestion = useMemo(() => findPendingAskUserQuestion(transcript.records), [transcript.records]);
-	const [dismissedToolUseId, setDismissedToolUseId] = useState<string | null>(null);
 	// The ephemeral Usage card, keyed to the session it was opened in.
 	const [usageCardSessionId, setUsageCardSessionId] = useState<string | null>(null);
 	const showUsageBreakdown = useCallback(() => {
 		setUsageCardSessionId(sessionId);
 	}, [sessionId]);
-	const dockedQuestion =
-		isActive && pendingQuestion !== null && pendingQuestion.toolUseId !== dismissedToolUseId
-			? pendingQuestion
-			: null;
-	const dockedToolUseId = dockedQuestion?.toolUseId ?? null;
-	const askUserQuestionCtx: AskUserQuestionContextValue = useMemo(
-		() => ({answerRoute, submitAnswer, dockedToolUseId}),
-		[answerRoute, submitAnswer, dockedToolUseId],
-	);
+	// Upstream draws a pending question inline as its card; one in the transcript answers there while the session runs.
+	const inlineQuestion = isActive ? pendingQuestion : null;
 	const chatStream = useChatStream();
 	const toast = useToast();
 	const forkSession = useSessionFork();
@@ -551,7 +543,7 @@ function SessionView({
 	);
 	const pendingPermission = useMemo(
 		() =>
-			dockedQuestion === null
+			inlineQuestion === null
 				? findPendingPermission({
 						sessionId,
 						isActive,
@@ -560,7 +552,7 @@ function SessionView({
 						awaitingPermission: sessionPermissionWait,
 					})
 				: null,
-		[isActive, dockedQuestion, sessionId, notifications, transcript.records, sessionPermissionWait],
+		[isActive, inlineQuestion, sessionId, notifications, transcript.records, sessionPermissionWait],
 	);
 	const hookQuestionToolUseId = hookQuestion?.toolUseId;
 	const answerHookQuestion = useCallback(
@@ -570,6 +562,10 @@ function SessionView({
 			}
 		},
 		[sessionId, hookQuestionToolUseId],
+	);
+	const askUserQuestionCtx: AskUserQuestionContextValue = useMemo(
+		() => ({answerRoute, submitAnswer}),
+		[answerRoute, submitAnswer],
 	);
 	const answerPermission = useCallback(
 		async (decision: PermissionDecision) => sendHerdrPermissionDecision(sessionId, decision),
@@ -831,18 +827,6 @@ function SessionView({
 													statusline={statusline}
 												/>
 											)}
-										{/* Upstream docks every approval card below the PR chip, with only the usage chip between it and the composer */}
-										{dockedQuestion && (
-											<ApprovalDock
-												key={dockedQuestion.toolUseId}
-												toolUseId={dockedQuestion.toolUseId}
-												questions={dockedQuestion.questions}
-												onSubmit={answerRoute === "read-only" ? undefined : submitAnswer}
-												onDismiss={() => {
-													setDismissedToolUseId(dockedQuestion.toolUseId);
-												}}
-											/>
-										)}
 										{pendingPermission && (
 											<PermissionCard
 												key={pendingPermission.notificationId}
@@ -857,22 +841,12 @@ function SessionView({
 												}
 											/>
 										)}
-										{/* Upstream docks its pending question card below the PR chip, above the usage chip; hooks supply a read-only copy */}
+										{/* With no question to draw inline, a waiting session says it needs input above the composer */}
 										{showsWaitingForInputNotice({
 											state: sessionSummaryState,
-											hasDockedCard: dockedQuestion !== null || pendingPermission !== null,
+											hasDockedCard: inlineQuestion !== null || pendingPermission !== null,
 										}) &&
-											(hookQuestion ? (
-												<PendingQuestionCard
-													key={hookQuestion.toolUseId}
-													questions={hookQuestion.questions}
-													onSubmit={
-														answerRoute === "live-pane" ? answerHookQuestion : undefined
-													}
-												/>
-											) : (
-												<WaitingForInputNotice />
-											))}
+											!hookQuestion && <WaitingForInputNotice />}
 										{/* Upstream sets the usage chip between the docked card and the composer */}
 										{!chromeHidden && sessionDirectory && <UsagePaceBanner />}
 										{!chromeHidden && sessionDirectory && <NotifyMePrompt sessionId={sessionId} />}
@@ -986,6 +960,18 @@ function SessionView({
 							</SessionFileRefs>
 						</AskUserQuestionProvider>
 
+						{/* The CLI writes a question to the JSONL only once answered, so its hook copy is drawn inline at the transcript's end */}
+						{sessionSummaryState === "waiting" &&
+							hookQuestion &&
+							pendingQuestion?.toolUseId !== hookQuestion.toolUseId && (
+								<div data-hook-question="" className={`${CHAT_COLUMN_CLASS} pb-4`}>
+									<QuestionCard
+										key={hookQuestion.toolUseId}
+										questions={hookQuestion.questions}
+										onSubmit={answerRoute === "live-pane" ? answerHookQuestion : undefined}
+									/>
+								</div>
+							)}
 						{(chatStream.state.isStreaming || chatStream.state.isComplete) && (
 							<StreamingMessage
 								text={chatStream.state.text}

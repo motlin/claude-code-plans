@@ -20,11 +20,6 @@ export interface AskUserQuestionContextValue {
 	 * with an error the caller shows; the caller owns any feedback while awaiting.
 	 */
 	submitAnswer: (submission: AnswerSubmission) => Promise<void>;
-	/**
-	 * The pending question currently docked above the composer, if any. Its
-	 * inline renderer collapses to an "Asking <header>" summary instead of a form.
-	 */
-	dockedToolUseId?: string | null;
 }
 
 const AskUserQuestionContext = createContext<AskUserQuestionContextValue | null>(null);

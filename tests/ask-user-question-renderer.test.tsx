@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {cleanup, fireEvent, render, screen} from "@testing-library/react";
+import {cleanup, render} from "@testing-library/react";
 import {afterEach, describe, expect, it} from "vite-plus/test";
 import {AskUserQuestionRenderer} from "../src/components/tool-renderers/ask-user-question-renderer";
 import type {ClientToolCall} from "../src/components/tool-renderers/types";
@@ -196,60 +196,5 @@ describe("AskUserQuestionRenderer", () => {
 			pink: container.querySelector(".text-extended-pink"),
 			text: container.textContent.includes("Something else entirely."),
 		}).toStrictEqual({pink: null, text: true});
-	});
-
-	it("shows a pending question as upstream's running 'Asking <header>' row over each question as one secondary paragraph at the text inset, with no options", () => {
-		const {container} = render(
-			<AskUserQuestionRenderer
-				toolCall={makeCall({
-					input: {
-						questions: [
-							{
-								question: "Which branch should the optimization land on?",
-								header: "Next",
-								options: [{label: "Optimization branch (Recommended)"}, {label: "Main"}],
-							},
-							{
-								question: "Run JMH afterwards?",
-								header: "Bench",
-								options: [{label: "Yes"}, {label: "No"}],
-							},
-						],
-					},
-				})}
-			/>,
-		);
-		const row = screen.getByRole("button", {name: /Asking Next/});
-		const questions = [...container.querySelectorAll("[data-pending-question-text]")];
-
-		expect({
-			root: row.parentElement?.className,
-			expanded: row.getAttribute("aria-expanded"),
-			shimmer: row.querySelector(".tool-shimmer")?.textContent,
-			questions: questions.map((question) => ({text: question.textContent, className: question.className})),
-			column: questions[0]?.parentElement?.className,
-			options: container.textContent.includes("Optimization branch (Recommended)"),
-			card: container.querySelector(".card-outline"),
-		}).toStrictEqual({
-			root: "flex flex-col ps-1",
-			expanded: "true",
-			shimmer: "Asking Next",
-			questions: [
-				{
-					text: "Which branch should the optimization land on?",
-					className: "text-body text-secondary [overflow-wrap:anywhere]",
-				},
-				{
-					text: "Run JMH afterwards?",
-					className: "text-body text-secondary [overflow-wrap:anywhere]",
-				},
-			],
-			column: "flex flex-col gap-1 pt-1",
-			options: false,
-			card: null,
-		});
-
-		fireEvent.click(row);
-		expect(container.querySelectorAll("[data-pending-question-text]").length).toBe(0);
 	});
 });
