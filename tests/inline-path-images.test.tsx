@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 
-import {cleanup, fireEvent, render, screen} from "@testing-library/react";
+import {cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
-import {InlinePathImages, SESSION_IMAGE_CLASS_NAME} from "../src/components/inline-path-images";
+import {inlinePathImages} from "../src/components/inline-path-images";
 import {extractInlineImagePaths, isPathInsideAllowedImageRoot} from "../src/components/inline-image-paths";
 import {SessionChat} from "../src/components/session-chat";
 import type {SessionLine} from "../src/lib/sessions";
@@ -40,32 +40,6 @@ afterEach(() => {
 	vi.unstubAllGlobals();
 });
 
-function describeImages(): Array<{
-	alt: string | null;
-	anchorClassName: string;
-	className: string;
-	href: string | null;
-	loading: string | null;
-	rel: string | null;
-	src: string | null;
-	target: string | null;
-}> {
-	return screen.queryAllByRole("img").map((image) => {
-		const anchor = image.closest("a");
-		if (!(anchor instanceof HTMLAnchorElement)) throw new Error("Expected image link");
-		return {
-			alt: image.getAttribute("alt"),
-			anchorClassName: anchor.className,
-			className: image.className,
-			href: anchor.getAttribute("href"),
-			loading: image.getAttribute("loading"),
-			rel: anchor.getAttribute("rel"),
-			src: image.getAttribute("src"),
-			target: anchor.getAttribute("target"),
-		};
-	});
-}
-
 describe("inline path extraction", () => {
 	it("extracts multiple absolute image paths, removes @ sigils, and deduplicates in first-use order", () => {
 		const text =
@@ -79,15 +53,11 @@ describe("inline path extraction", () => {
 
 	it("ignores relative paths and unsupported extensions", () => {
 		const text = "Compare images/alice.png and /tmp/test/images/notes.txt";
-		render(<InlinePathImages text={text} allowedRoots={[ALLOWED_ROOT]} />);
 
 		expect({
 			extractedPaths: extractInlineImagePaths(text),
-			images: describeImages(),
-		}).toStrictEqual({
-			extractedPaths: [],
-			images: [],
-		});
+			images: inlinePathImages(text, [ALLOWED_ROOT]),
+		}).toStrictEqual({extractedPaths: [], images: []});
 	});
 
 	it("resets the module-level regular expression before every scan", () => {
@@ -117,79 +87,39 @@ describe("client-side image root filtering", () => {
 		]);
 	});
 
-	it("renders only allowed paths with encoded URLs and safe image-link attributes", () => {
-		render(
-			<InlinePathImages
-				text={
-					"Open /tmp/test/images/alice+detail.png, @/tmp/test/images/bob.gif, /tmp/test/images/alice+detail.png again, and /tmp/test/outside/charlie.webp"
-				}
-				allowedRoots={[ALLOWED_ROOT]}
-			/>,
-		);
-
-		expect(describeImages()).toStrictEqual([
+	it("attaches only allowed paths, once each, with encoded byte URLs", () => {
+		expect(
+			inlinePathImages(
+				"Open /tmp/test/images/alice+detail.png, @/tmp/test/images/bob.gif, /tmp/test/images/alice+detail.png again, and /tmp/test/outside/charlie.webp",
+				[ALLOWED_ROOT],
+			),
+		).toStrictEqual([
 			{
-				alt: "Referenced file /tmp/test/images/alice+detail.png",
-				anchorClassName: "cursor-zoom-in",
-				className: SESSION_IMAGE_CLASS_NAME,
-				href: "/api/image?path=%2Ftmp%2Ftest%2Fimages%2Falice%2Bdetail.png",
-				loading: "lazy",
-				rel: "noopener noreferrer",
+				key: "path:/tmp/test/images/alice+detail.png",
 				src: "/api/image?path=%2Ftmp%2Ftest%2Fimages%2Falice%2Bdetail.png",
-				target: "_blank",
+				label: "Referenced file /tmp/test/images/alice+detail.png",
 			},
 			{
-				alt: "Referenced file /tmp/test/images/bob.gif",
-				anchorClassName: "cursor-zoom-in",
-				className: SESSION_IMAGE_CLASS_NAME,
-				href: "/api/image?path=%2Ftmp%2Ftest%2Fimages%2Fbob.gif",
-				loading: "lazy",
-				rel: "noopener noreferrer",
+				key: "path:/tmp/test/images/bob.gif",
 				src: "/api/image?path=%2Ftmp%2Ftest%2Fimages%2Fbob.gif",
-				target: "_blank",
+				label: "Referenced file /tmp/test/images/bob.gif",
 			},
 		]);
-	});
-
-	it("hides an image after the byte endpoint reports an error", () => {
-		render(<InlinePathImages text="/tmp/test/images/alice.png" allowedRoots={[ALLOWED_ROOT]} />);
-		const image = screen.getByRole("img");
-
-		fireEvent.error(image);
-
-		expect(image.style.display).toBe("none");
 	});
 });
 
 describe("SessionChat integration", () => {
-	it("preserves user path text, appends inline media, matches embedded styling, and ignores assistant paths", () => {
-		const userText = "Review /tmp/test/images/alice.png";
-		const assistantText = "Generated /tmp/test/images/bob.png";
+	function chatWith(content: unknown[]) {
 		const lines: SessionLine[] = [
-			{
-				type: "user",
-				uuid: "user-record-100",
-				lineIndex: 0,
-				message: {
-					role: "user",
-					content: [
-						{type: "text", text: userText},
-						{
-							type: "image",
-							source: {type: "base64", media_type: "image/png", data: "ZmFrZQ=="},
-						},
-					],
-				},
-			},
+			{type: "user", uuid: "user-record-100", lineIndex: 0, message: {role: "user", content}},
 			{
 				type: "assistant",
 				uuid: "assistant-record-100",
 				lineIndex: 1,
-				message: {role: "assistant", content: [{type: "text", text: assistantText}]},
+				message: {role: "assistant", content: [{type: "text", text: "Generated /tmp/test/images/bob.png"}]},
 			},
-		];
-
-		const {container} = render(
+		] as SessionLine[];
+		return render(
 			<SessionChat
 				sessionId="session-100"
 				lines={lines}
@@ -197,32 +127,68 @@ describe("SessionChat integration", () => {
 				allowedImageRoots={[ALLOWED_ROOT]}
 				shouldScrollToEnd={false}
 			/>,
-		);
+		).container;
+	}
+	const pasted = {type: "image", source: {type: "base64", media_type: "image/png", data: "ZmFrZQ=="}};
 
-		const images = screen.getAllByRole("img");
+	it("draws a message's pasted and referenced images as upstream's tile strip above the bubble, ignoring assistant paths", () => {
+		const container = chatWith([{type: "text", text: "Review /tmp/test/images/alice.png"}, pasted]);
+		const strip = container.querySelector("[data-attachments]");
+		const bubble = container.querySelector(".user-message-bubble");
+
 		expect({
-			userText: Array.from(container.querySelectorAll(".user-message-bubble p"), (p) => p.textContent.trim()),
-			articleText: Array.from(container.querySelectorAll("article"), (article) => article.textContent.trim()),
-			images: images.map((image) => ({
-				alt: image.getAttribute("alt"),
-				className: image.className,
-				insideUserBubble: image.closest(".user-message-bubble") !== null,
+			strip: strip?.className,
+			aboveBubble:
+				strip !== null &&
+				bubble !== null &&
+				Boolean(strip.compareDocumentPosition(bubble) & Node.DOCUMENT_POSITION_FOLLOWING),
+			tiles: [...(strip?.querySelectorAll("[data-attachment-tile]") ?? [])].map((tile) => ({
+				className: tile.className,
+				control: tile.querySelector("[role=button]")?.getAttribute("aria-label"),
+				src: tile.querySelector("img")?.getAttribute("src"),
+				alt: tile.querySelector("img")?.getAttribute("alt"),
 			})),
+			allImages: container.querySelectorAll("img").length,
 		}).toStrictEqual({
-			userText: [userText],
-			articleText: [assistantText],
-			images: [
+			strip: "attachment-strip",
+			aboveBubble: true,
+			tiles: [
 				{
-					alt: "Attachment",
-					className: SESSION_IMAGE_CLASS_NAME,
-					insideUserBubble: false,
+					className: "attachment-tile",
+					control: "Open Attached image",
+					src: "data:image/png;base64,ZmFrZQ==",
+					alt: "",
 				},
 				{
-					alt: `Referenced file ${ALLOWED_ROOT}/alice.png`,
-					className: SESSION_IMAGE_CLASS_NAME,
-					insideUserBubble: false,
+					className: "attachment-tile",
+					control: `Open Referenced file ${ALLOWED_ROOT}/alice.png`,
+					src: "/api/image?path=%2Ftmp%2Ftest%2Fimages%2Falice.png",
+					alt: "",
 				},
 			],
+			allImages: 2,
+		});
+	});
+
+	it("opens a tile in upstream's full-screen viewer, steps through the images, and closes", async () => {
+		const container = chatWith([{type: "text", text: "Review /tmp/test/images/alice.png"}, pasted]);
+		fireEvent.click(container.querySelectorAll("[data-attachment-tile] [role=button]")[0]!);
+		const viewer = await screen.findByRole("dialog", {name: "Image viewer"});
+		const shown = () => ({
+			image: viewer.querySelector("img")?.getAttribute("alt"),
+			count: viewer.textContent.match(/\d+ of \d+/)?.[0],
+		});
+		const first = shown();
+		fireEvent.click(screen.getByRole("button", {name: "Next image"}));
+		const second = shown();
+		fireEvent.click(screen.getByRole("button", {name: "Close"}));
+
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog", {name: "Image viewer"})).toBeNull();
+		});
+		expect({first, second}).toStrictEqual({
+			first: {image: "Attached image", count: "1 of 2"},
+			second: {image: `Referenced file ${ALLOWED_ROOT}/alice.png`, count: "2 of 2"},
 		});
 	});
 });

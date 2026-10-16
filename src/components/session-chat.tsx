@@ -75,7 +75,8 @@ import {runningToolLabel, runningToolLabelText, toolLabel} from "../lib/tool-lab
 import {formatElapsed} from "../lib/working-marker";
 import {usageLimitCard, type UsageLimitCard} from "../lib/usage-limit-notice";
 import {useElapsedSeconds} from "../hooks/use-elapsed-seconds";
-import {InlinePathImages, SESSION_IMAGE_CLASS_NAME} from "./inline-path-images";
+import {inlinePathImages} from "./inline-path-images";
+import {type AttachedImage, UserAttachments} from "./user-attachments";
 import {isEditableTarget} from "../lib/shortcuts/match";
 import {findScrollContainer} from "./scroll-container";
 import {usePromptJump} from "../hooks/use-prompt-jump";
@@ -3323,7 +3324,7 @@ function UserEntry({
 		);
 	}
 
-	const {textNodes, mediaNodes} = renderUserContentBlocks(line, sessionId, allowedImageRoots);
+	const {textNodes, mediaNodes, images} = renderUserContentBlocks(line, sessionId, allowedImageRoots);
 
 	return (
 		<UserTurn text={messageText(line)}>
@@ -3334,6 +3335,7 @@ function UserEntry({
 				markdown={messageText(line)}
 				render={<div className="flex flex-col items-end gap-g5 max-w-[85%] min-w-0" />}
 			>
+				<UserAttachments images={images} />
 				{textNodes.length > 0 && (
 					<div className="user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body leading-[1.2857] select-text">
 						{textNodes}
@@ -3544,11 +3546,12 @@ function CompactSummaryBody({
 	sessionId: string;
 	allowedImageRoots: readonly string[];
 }) {
-	const {textNodes, mediaNodes} = renderUserContentBlocks(line, sessionId, allowedImageRoots);
+	const {textNodes, mediaNodes, images} = renderUserContentBlocks(line, sessionId, allowedImageRoots);
 
 	return (
 		<div id={id} className="flex justify-end pt-p6">
 			<div className="flex flex-col items-end gap-g6 max-w-[85%] min-w-0">
+				<UserAttachments images={images} />
 				{textNodes.length > 0 && (
 					<div className="user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-auto-msg-bg text-auto-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text">
 						{textNodes}
@@ -3572,9 +3575,9 @@ function LabeledAutomatedEntry({
 	label: string;
 	allowedImageRoots: readonly string[];
 }) {
-	const {textNodes, mediaNodes} = renderUserContentBlocks(line, sessionId, allowedImageRoots);
+	const {textNodes, mediaNodes, images} = renderUserContentBlocks(line, sessionId, allowedImageRoots);
 
-	if (textNodes.length === 0 && mediaNodes.length === 0) return null;
+	if (textNodes.length === 0 && mediaNodes.length === 0 && images.length === 0) return null;
 
 	return (
 		<UserTurn text={messageText(line)}>
@@ -3584,6 +3587,7 @@ function LabeledAutomatedEntry({
 						{label}
 					</span>
 				</div>
+				<UserAttachments images={images} />
 				{textNodes.length > 0 && (
 					<div className="user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-auto-msg-bg text-auto-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text">
 						{textNodes}
@@ -3655,6 +3659,8 @@ function hasBashOutput(line: MessageSessionLine): boolean {
 interface UserContentBlocks {
 	textNodes: React.ReactNode[];
 	mediaNodes: React.ReactNode[];
+	/** Pasted and path-referenced images, for the attachments strip above the bubble. */
+	images: AttachedImage[];
 }
 
 /** A prompt's text; the first block of a prompt opens with a slash-command chip when it starts with `/name`. */
@@ -3675,11 +3681,11 @@ function renderUserContentBlocks(
 	allowedImageRoots: readonly string[],
 ): UserContentBlocks {
 	const content = line.message?.content;
-	if (!content) return {textNodes: [], mediaNodes: []};
+	if (!content) return {textNodes: [], mediaNodes: [], images: []};
 
 	if (typeof content === "string") {
 		const cleaned = cleanPromptText(content);
-		if (!cleaned) return {textNodes: [], mediaNodes: []};
+		if (!cleaned) return {textNodes: [], mediaNodes: [], images: []};
 		return {
 			textNodes: [
 				<React.Fragment key={0}>
@@ -3689,12 +3695,14 @@ function renderUserContentBlocks(
 					<DebugLink sessionId={sessionId} uuid={line.uuid} className="absolute top-1 right-1" />
 				</React.Fragment>,
 			],
-			mediaNodes: [<InlinePathImages key="path-images" text={cleaned} allowedRoots={allowedImageRoots} />],
+			mediaNodes: [],
+			images: inlinePathImages(cleaned, allowedImageRoots),
 		};
 	}
 
 	const textNodes: React.ReactNode[] = [];
 	const mediaNodes: React.ReactNode[] = [];
+	const images: AttachedImage[] = [];
 	const inlineImageText: string[] = [];
 	for (const [i, block] of content.entries()) {
 		if (block.type === "text" && typeof block.text === "string") {
@@ -3711,16 +3719,11 @@ function renderUserContentBlocks(
 				</React.Fragment>,
 			);
 		} else if (block.type === "image") {
-			mediaNodes.push(
-				<div key={`img-${i}`} className="relative inline-block">
-					<img
-						src={`data:${block.source.media_type};base64,${block.source.data}`}
-						alt="Attachment"
-						className={SESSION_IMAGE_CLASS_NAME}
-					/>
-					<DebugLink sessionId={sessionId} uuid={line.uuid} className="absolute top-1 right-1" />
-				</div>,
-			);
+			images.push({
+				key: `img-${i}`,
+				src: `data:${block.source.media_type};base64,${block.source.data}`,
+				label: "Attached image",
+			});
 		} else if (block.type === "document") {
 			mediaNodes.push(
 				<div
@@ -3746,12 +3749,8 @@ function renderUserContentBlocks(
 		}
 		// tool_result blocks are intentionally skipped in user rendering
 	}
-	if (inlineImageText.length > 0) {
-		mediaNodes.push(
-			<InlinePathImages key="path-images" text={inlineImageText.join("\n")} allowedRoots={allowedImageRoots} />,
-		);
-	}
-	return {textNodes, mediaNodes};
+	if (inlineImageText.length > 0) images.push(...inlinePathImages(inlineImageText.join("\n"), allowedImageRoots));
+	return {textNodes, mediaNodes, images};
 }
 
 function CommandEntry({line, sessionId}: {line: MessageSessionLine; sessionId: string}) {

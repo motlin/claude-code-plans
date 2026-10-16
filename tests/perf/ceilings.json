@@ -61,11 +61,11 @@
 		"raisedAt": "2026-10-14"
 	},
 	"bundle.session.gzip": {
-		"ceiling": 552084,
+		"ceiling": 557974,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Wave 88 parity work in the always-loaded shell and chrome: the palette's fixed centring and Recents reservation, versioned session-list prefs, the shared compact page header, the Scheduled tasks More row, the /artifacts shell skeleton, and the toast deck with its warning/danger variants, durations and ×2 coalescing (W88-05). Session cold JS measures 552084 gzip; the 1% tolerance and the raw ceiling are unchanged.",
-		"raisedAt": "2026-10-14"
+		"reason": "W100-01 ports upstream's user-message attachment strip into the always-loaded transcript: natural image tiles above the bubble with their strip and tile CSS (the full-screen viewer and its dialog load lazily on first open). Session cold JS measures 557974 gzip, +562 B on main a1c3304b (557412), which already sat at the edge of the 1% tolerance after the session-rail work. The 1% tolerance and the raw ceiling are unchanged.",
+		"raisedAt": "2026-10-16"
 	},
 	"bundle.session.raw": {
 		"ceiling": 1679372,

@@ -477,6 +477,75 @@
 		box-shadow: 0 0 0 1px var(--card-outline);
 	}
 
+	/* Upstream's MessageAttachments strip of natural image tiles above a user bubble. */
+	.attachment-strip {
+		display: flex;
+		width: 100%;
+		flex-wrap: wrap;
+		justify-content: flex-end;
+		align-items: flex-end;
+		gap: 6px;
+		row-gap: 0;
+		margin-top: -6px;
+	}
+
+	.attachment-strip::after {
+		content: "";
+		flex: 0 0 100%;
+		order: -1;
+		height: 0;
+	}
+
+	.attachment-tile {
+		position: relative;
+		isolation: isolate;
+		display: flex;
+		width: fit-content;
+		height: fit-content;
+		max-width: min(100%, 480px);
+		flex-shrink: 0;
+		align-self: flex-end;
+		margin-top: 6px;
+		border-radius: 10px;
+	}
+
+	/* The tile's inset hairline ring in strong border ink. */
+	.attachment-tile::after {
+		content: "";
+		position: absolute;
+		inset: 0;
+		border-radius: 9px;
+		box-shadow: inset 0 0 0 0.5px var(--upstream-border-strong);
+		pointer-events: none;
+	}
+
+	.attachment-media {
+		display: flex;
+		min-width: 120px;
+		flex: 1;
+		align-items: center;
+		justify-content: center;
+		overflow: hidden;
+		border-radius: 10px;
+	}
+
+	.attachment-media img {
+		display: block;
+		width: auto;
+		height: auto;
+		max-width: 100%;
+		max-height: 320px;
+		object-fit: contain;
+	}
+
+	.attachment-strip:has(.attachment-tile ~ .attachment-tile) .attachment-tile {
+		max-width: min(100%, 240px, calc(50% - 3px));
+	}
+
+	.attachment-strip:has(.attachment-tile ~ .attachment-tile) .attachment-media img {
+		max-height: 160px;
+	}
+
 	/* Upstream `epitaxy-card-outline-layer` (the usage-limit card): the ring inset, drawn on ::after over the card. */
 	.card-outline-layer {
 		position: relative;
