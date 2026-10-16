@@ -6,6 +6,8 @@ import {
 	DEFAULT_RAIL_SECTIONS_STATE,
 	isRailSectionOpen,
 	isRailSectionsPristine,
+	orderRailSections,
+	reorderRailSections,
 	readRailSectionsState,
 	readSessionRailShown,
 	resetRailSections,
@@ -143,5 +145,31 @@ describe("rail section visibility and reset", () => {
 		toggleRailSection("s1", "progress");
 
 		expect(isRailSectionsPristine(readRailSectionsState())).toBe(true);
+	});
+});
+
+describe("rail section order", () => {
+	it("sorts cards by the saved order, leaving unsaved ones in upstream's default order after it", () => {
+		expect(
+			orderRailSections(["environment", "context", "progress", "backgroundTasks"], ["progress", "environment"]),
+		).toStrictEqual(["progress", "environment", "context", "backgroundTasks"]);
+	});
+
+	it("moves the dropped card to the target's place and saves the whole shown order", () => {
+		reorderRailSections(["environment", "context", "progress"], "progress", "environment");
+		const first = readRailSectionsState().order;
+		reorderRailSections(["progress", "environment", "context"], "progress", "progress");
+
+		expect({first, unchanged: readRailSectionsState().order}).toStrictEqual({
+			first: ["progress", "environment", "context"],
+			unchanged: ["progress", "environment", "context"],
+		});
+	});
+
+	it("keeps the place of saved cards that are not shown right now", () => {
+		reorderRailSections(["environment", "servers", "context"], "context", "environment");
+		reorderRailSections(["context", "environment"], "environment", "context");
+
+		expect(readRailSectionsState().order).toStrictEqual(["environment", "context", "servers"]);
 	});
 });

@@ -12,7 +12,12 @@ import {SettingsProvider} from "../src/components/settings-provider";
 import {TitlebarCompactContext} from "../src/components/titlebar-compact-context";
 import {SessionPaneControls} from "../src/components/view-options-menu";
 import type {PaneKind} from "../src/lib/pane-layout";
-import {readRailSectionsState, readSessionRailShown, setSessionRailShown} from "../src/lib/session-rail-store";
+import {
+	RAIL_SECTIONS_STORAGE_KEY,
+	readRailSectionsState,
+	readSessionRailShown,
+	setSessionRailShown,
+} from "../src/lib/session-rail-store";
 import {installLocalStorage} from "./fake-storage";
 
 class FakeObserver {
@@ -328,6 +333,45 @@ describe("session rail header menu", () => {
 			hidden: {cards: ["environment", "progress"], stored: ["context"]},
 			resetDisabled: null,
 			restored: ["environment", "context", "progress"],
+		});
+	});
+});
+
+describe("session rail reorder", () => {
+	it("draws the cards in the saved order", () => {
+		localStorage.setItem(
+			RAIL_SECTIONS_STORAGE_KEY,
+			JSON.stringify({
+				state: {
+					foldsBySession: {},
+					startsOpen: {environment: true, context: true},
+					hidden: [],
+					order: ["progress", "environment"],
+				},
+				version: 0,
+			}),
+		);
+		render(<SessionRail sessionId="s1" cards={CARDS} />);
+
+		expect(cardStates().map(([title]) => title)).toStrictEqual(["Progress1 of 3", "Environment", "Context12%"]);
+	});
+
+	it("gives each header upstream's hover-only Reorder grip, a keyboard-sortable handle", () => {
+		render(<SessionRail sessionId="s1" cards={CARDS} />);
+		const grip = screen.getByRole("button", {name: "Reorder Progress"});
+
+		expect({
+			grip: grip.hasAttribute("data-rail-grip"),
+			roledescription: grip.getAttribute("aria-roledescription"),
+			tabIndex: grip.tabIndex,
+			hoverOnly: grip.className.split(" ").filter((c) => c.includes("opacity")),
+			grips: screen.getAllByRole("button", {name: /^Reorder /}).map((each) => each.getAttribute("aria-label")),
+		}).toStrictEqual({
+			grip: true,
+			roledescription: "sortable",
+			tabIndex: 0,
+			hoverOnly: ["opacity-0", "group-hover/railtop:opacity-100", "focus-visible:opacity-100"],
+			grips: ["Reorder Environment", "Reorder Context", "Reorder Progress"],
 		});
 	});
 });

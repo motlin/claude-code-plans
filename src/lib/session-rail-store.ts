@@ -22,7 +22,7 @@ const RAIL_SECTION_IDS = [
 	"backgroundTasks",
 ] as const;
 
-const RailSectionIdSchema = z.enum(RAIL_SECTION_IDS);
+export const RailSectionIdSchema = z.enum(RAIL_SECTION_IDS);
 export type RailSectionId = z.infer<typeof RailSectionIdSchema>;
 
 /** Upstream's card titles. */
@@ -216,4 +216,31 @@ export function isRailSectionsPristine(state: RailSectionsState): boolean {
 /** Upstream's Reset to defaults: order, hidden sections and every session's folds. */
 export function resetRailSections(): void {
 	sectionsStore.write(DEFAULT_RAIL_SECTIONS_STATE);
+}
+
+/** `ids` in the saved order; cards it does not name keep their default order after the named ones. */
+export function orderRailSections<T extends RailSectionId>(ids: readonly T[], order: readonly RailSectionId[]): T[] {
+	const rank = (id: T) => {
+		const saved = order.indexOf(id);
+		return saved === -1 ? order.length + ids.indexOf(id) : saved;
+	};
+	return ids.toSorted((a, b) => rank(a) - rank(b));
+}
+
+/**
+ * Upstream's drop: `active` takes `over`'s place among the shown cards, and the
+ * new sequence fills the shown cards' slots in the saved order, so hidden or
+ * empty sections keep theirs.
+ */
+export function reorderRailSections(shown: readonly RailSectionId[], active: RailSectionId, over: RailSectionId): void {
+	const from = shown.indexOf(active);
+	const to = shown.indexOf(over);
+	if (from === -1 || to === -1 || from === to) return;
+	const moved = [...shown];
+	moved.splice(to, 0, ...moved.splice(from, 1));
+	const state = readRailSectionsState();
+	const shownSet = new Set(shown);
+	const queue = [...moved];
+	const order = state.order.map((id) => (shownSet.has(id) ? (queue.shift() ?? id) : id));
+	sectionsStore.write({...state, order: [...order, ...queue]});
 }
