@@ -25,7 +25,6 @@ import {forkDisabledReason} from "../lib/session-fork";
 import {getSessionMenuItems, type SessionMenuSession} from "../lib/session-menu-items";
 import {ArchivedBadge} from "./archived-badge";
 import {SessionCostPill} from "./session-cost-pill";
-import {SessionEnvironmentGlyph} from "./session-environment-glyph";
 import {MenuEntries, SESSION_MENU_CAPABILITIES, type TranscriptViewActions} from "./session-actions-menu";
 import {useRenameAfterMenuClose} from "./use-rename-after-menu-close";
 import {useSessionMenuRunner} from "./use-session-menu-runner";
@@ -315,7 +314,7 @@ export interface SessionTitlebarProps {
 }
 
 /**
- * claude.ai/code's 32px session titlebar. Lead: the environment glyph, the parent-session back pill
+ * claude.ai/code's 32px session titlebar. Lead: the parent-session back pill
  * (subagent transcripts only), the rename title button (right-click opens the header menu at the pointer), the chevron header
  * menu and the origin pills (local badges), which collapse
  * to icons when narrow. Trail: the Changes toggle, then View options.
@@ -357,10 +356,6 @@ export function SessionTitlebar({
 				{...(compact ? {"data-pills-compact": ""} : {})}
 				className="flex min-w-0 items-center"
 			>
-				{/* Upstream's session titlebar has no environment glyph; ours keeps it above phone width. */}
-				<span className="flex h-6 w-8 shrink-0 items-center justify-center max-sm:hidden">
-					<SessionEnvironmentGlyph sessionId={sessionId} />
-				</span>
 				<div className="flex min-w-0 items-center gap-1.5">
 					{data.parentSessionId !== undefined && (
 						<Link

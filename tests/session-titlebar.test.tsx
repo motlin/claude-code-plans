@@ -190,7 +190,6 @@ describe("SessionTitlebar layout", () => {
 		}).toStrictEqual({
 			height: true,
 			lead: [
-				"Environment",
 				"Parent session",
 				`${TITLE}, rename session`,
 				`More options for ${TITLE}`,
@@ -211,16 +210,10 @@ describe("SessionTitlebar layout", () => {
 		});
 	});
 
-	it("hides the environment glyph at phone width, as upstream's session titlebar has none", async () => {
+	it("draws no environment glyph, as upstream's titlebar shows one only on a new-session draft", async () => {
 		await renderTitlebar(baseDetail);
 
-		expect(
-			screen
-				.getByRole("button", {name: "Environment"})
-				.closest("[data-titlebar-lead] > span")
-				?.className.split(" ")
-				.includes("max-sm:hidden"),
-		).toBe(true);
+		expect(screen.queryByRole("button", {name: "Environment"})).toBeNull();
 	});
 
 	it("leaves out the back pill and optional badges for a plain CLI session", async () => {
@@ -235,7 +228,7 @@ describe("SessionTitlebar layout", () => {
 			),
 			allSessions: screen.queryByText("All Sessions"),
 		}).toStrictEqual({
-			lead: ["Environment", `${TITLE}, rename session`, `More options for ${TITLE}`],
+			lead: [`${TITLE}, rename session`, `More options for ${TITLE}`],
 			pills: [],
 			allSessions: null,
 		});
@@ -253,41 +246,6 @@ describe("SessionTitlebar layout", () => {
 			"Copy linkC",
 			"ArchiveA",
 		]);
-	});
-});
-
-describe("SessionTitlebar environment glyph", () => {
-	it("shows upstream's 24px laptop glyph before the title", async () => {
-		const titlebar = await renderTitlebar(baseDetail);
-		const glyph = screen.getByRole("button", {name: "Environment"});
-		const title = screen.getByRole("button", {name: `${TITLE}, rename session`});
-
-		expect({
-			inLead: titlebar.querySelector("[data-titlebar-lead]")?.contains(glyph),
-			beforeTitle: Boolean(glyph.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING),
-			size: ["size-6", "rounded-r5"].every((name) => glyph.classList.contains(name)),
-			icon: glyph.querySelector("svg")?.classList.contains("lucide-laptop"),
-		}).toStrictEqual({inLead: true, beforeTitle: true, size: true, icon: true});
-	});
-
-	it("opens upstream's Remote Control status with a Learn more link", async () => {
-		await renderTitlebar(baseDetail);
-		fireEvent.click(screen.getByRole("button", {name: "Environment"}));
-		await flush();
-		const status = document.querySelector("[data-environment-status]");
-		const link = screen.getByRole("link", {name: "Learn more"});
-
-		expect({
-			status: status?.textContent,
-			connected: status?.getAttribute("data-environment-status"),
-			href: link.getAttribute("href"),
-			target: link.getAttribute("target"),
-		}).toStrictEqual({
-			status: "Not connected via Remote Control. Learn more",
-			connected: "disconnected",
-			href: "https://code.claude.com/docs/en/remote-control",
-			target: "_blank",
-		});
 	});
 });
 
