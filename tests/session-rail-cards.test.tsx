@@ -12,7 +12,7 @@ import {ToastProvider} from "../src/components/toast";
 import {customizeMcpServersQueryOptions} from "../src/lib/api/customize";
 import type {HerdrPaneIndexData} from "../src/lib/api/herdr";
 import {sessionDiffQueryOptions} from "../src/lib/api/session-diff";
-import {sessionDevServersQueryOptions} from "../src/lib/api/sessions";
+import {sessionDevServersQueryOptions, sessionOpenInQueryOptions} from "../src/lib/api/sessions";
 import {installLocalStorage} from "./fake-storage";
 
 const SESSION_ID = "8f0c2c7e-1111-4222-8333-944445555666";
@@ -229,19 +229,24 @@ function rows(section: string): Array<[string, string | null]> {
 }
 
 describe("Environment card", () => {
-	it("lists the working directory, branch, model and an unconnected herdr pane", async () => {
+	it("lists the working directory with its Remote Control status, branch, model and a missing herdr pane", async () => {
 		await renderCards(BASE);
 
 		expect(rows("Environment")).toStrictEqual([
-			["~/projects/avalonlogs", null],
+			["~/projects/avalonlogs", "Not connected"],
 			["alice/sync-upstream", null],
 			["Opus 4.7", null],
-			["herdr", "Not connected"],
+			["herdr", "No pane"],
 		]);
 	});
 
-	it("shows a live herdr pane's agent status and links to its terminal", async () => {
-		await renderCards({...BASE, gitBranch: null, model: null, herdrPane: PANE});
+	it("shows a Remote Control connection and a live herdr pane's agent status, linking to its terminal", async () => {
+		await renderCards({...BASE, gitBranch: null, model: null, herdrPane: PANE}, (client) => {
+			client.setQueryData(sessionOpenInQueryOptions(SESSION_ID).queryKey, {
+				cwd: BASE.cwd,
+				bridgeSessionId: "session_bridge",
+			});
+		});
 		const card = screen.getByRole("region", {name: /^Environment/});
 
 		expect({
@@ -249,7 +254,7 @@ describe("Environment card", () => {
 			href: within(card).getByRole("link", {name: /herdr/}).getAttribute("href"),
 		}).toStrictEqual({
 			rows: [
-				["~/projects/avalonlogs", null],
+				["~/projects/avalonlogs", "Remote Control"],
 				["herdr", "working"],
 			],
 			href: `/herdr/terminal/${SESSION_ID}`,

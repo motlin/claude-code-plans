@@ -24,7 +24,12 @@ import type {SessionArtifact} from "../../lib/api/artifacts";
 import {customizeMcpServersQueryOptions, type McpServerSummary} from "../../lib/api/customize";
 import type {HerdrPaneIndexData} from "../../lib/api/herdr";
 import {sessionDiffQueryOptions} from "../../lib/api/session-diff";
-import {openSessionInFinder, sessionDevServersQueryOptions, type SessionDetailData} from "../../lib/api/sessions";
+import {
+	openSessionInFinder,
+	sessionDevServersQueryOptions,
+	sessionOpenInQueryOptions,
+	type SessionDetailData,
+} from "../../lib/api/sessions";
 import type {BackgroundTask, BackgroundTaskGroups} from "../../lib/background-tasks";
 import {writeClipboardText} from "../../lib/clipboard";
 import {toConnectorSlug} from "../../lib/customize/mcp-tool-permissions";
@@ -77,10 +82,14 @@ function Icon({icon: IconComponent}: {icon: LucideIcon}) {
 	return <IconComponent aria-hidden />;
 }
 
-/** Upstream's Environment card: where the session runs. Locally, its folder, branch, model and herdr pane. */
+/**
+ * Upstream's Environment card: where the session runs, hinting "Not connected"
+ * without Remote Control. Locally, its folder, branch, model and herdr pane.
+ */
 function EnvironmentBody({inputs}: {inputs: SessionRailInputs}) {
 	const toast = useToast();
 	const {cwd, gitBranch, model, herdrPane} = inputs;
+	const bridged = (useQuery(sessionOpenInQueryOptions(inputs.sessionId)).data?.bridgeSessionId ?? null) !== null;
 	return (
 		<Rows>
 			{cwd !== null && (
@@ -95,7 +104,11 @@ function EnvironmentBody({inputs}: {inputs: SessionRailInputs}) {
 						});
 					}}
 				>
-					<RailRowContent icon={<Icon icon={Laptop} />} label={homeRelative(cwd, inputs.homeRoot)} />
+					<RailRowContent
+						icon={<Icon icon={Laptop} />}
+						label={homeRelative(cwd, inputs.homeRoot)}
+						hint={bridged ? "Remote Control" : "Not connected"}
+					/>
 				</button>
 			)}
 			{gitBranch !== null && (
@@ -118,7 +131,7 @@ function EnvironmentBody({inputs}: {inputs: SessionRailInputs}) {
 			)}
 			{model !== null && <RailRow icon={<Icon icon={Cpu} />} label={model} />}
 			{herdrPane === null ? (
-				<RailRow icon={<Icon icon={SquareTerminal} />} label="herdr" hint="Not connected" />
+				<RailRow icon={<Icon icon={SquareTerminal} />} label="herdr" hint="No pane" />
 			) : (
 				<Link
 					to="/herdr/terminal/$sessionId"
