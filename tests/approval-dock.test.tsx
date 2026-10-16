@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {cleanup, fireEvent, render, screen, within} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {AskUserQuestionProvider} from "../src/components/ask-user-question-context";
@@ -156,7 +156,7 @@ describe("QuestionCard", () => {
 		const waiting = submit.hasAttribute("disabled");
 		fireEvent.click(screen.getByRole("button", {name: /^Watch/}));
 		fireEvent.click(screen.getByRole("button", {name: /^UI/}));
-		fireEvent.keyDown(submit, {key: "Enter", metaKey: true});
+		fireEvent.keyDown(screen.getByRole("button", {name: /^Submit/}), {key: "Enter", metaKey: true});
 		await vi.waitFor(() => {
 			expect(onSubmit).toHaveBeenCalledTimes(1);
 		});
@@ -177,6 +177,28 @@ describe("QuestionCard", () => {
 		});
 
 		expect(onSubmit.mock.calls[0]?.[0]).toStrictEqual([{selected: [0]}, null]);
+	});
+
+	it("explains a disabled Next or Submit in a tooltip, as upstream's disabled reasons", () => {
+		vi.useFakeTimers();
+		render(<QuestionCard questions={QUESTIONS} onSubmit={async () => {}} />);
+		fireEvent.click(screen.getByRole("button", {name: /^Next/}));
+		const reason = () => {
+			const anchor = screen.getByRole("button", {name: /^Submit/}).parentElement!;
+			fireEvent.pointerEnter(anchor);
+			act(() => {
+				vi.advanceTimersByTime(1000);
+			});
+			const tip = screen.queryByRole("tooltip")?.textContent ?? null;
+			fireEvent.pointerLeave(anchor);
+			return tip;
+		};
+		const unanswered = reason();
+		fireEvent.click(screen.getByRole("button", {name: /^Coverage/}));
+		const answered = reason();
+		vi.useRealTimers();
+
+		expect({unanswered, answered}).toStrictEqual({unanswered: "Question 2 is unanswered", answered: null});
 	});
 
 	it("disables every control without onSubmit", () => {

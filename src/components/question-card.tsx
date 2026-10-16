@@ -7,6 +7,7 @@ import {READ_ONLY_ANSWER_HINT} from "../lib/question-answer-route";
 import {chooseOther, pickOption, type QuestionCardDraft, typeOther} from "../lib/question-card-draft";
 import {ApprovalActionButton} from "./approval-card";
 import {Shortcut} from "./ui/shortcut";
+import {Tooltip} from "./ui/tooltip";
 
 /** Upstream sends an Other picked with nothing typed as this. */
 const EMPTY_OTHER = "Something else";
@@ -84,6 +85,13 @@ export function QuestionCard({
 	const settled = (at: number) => skipped[at] === true || isAnswered(drafts[at] ?? initialDraft(question));
 	const unanswered = questions.findIndex((_, at) => !settled(at));
 	const canAdvance = isLast ? unanswered === -1 : isAnswered(draft);
+	// Upstream's disabledReason for the primary button.
+	const disabledReason =
+		!editable || canAdvance
+			? null
+			: isLast
+				? `Question ${unanswered + 1} is unanswered`
+				: "Choose an option or skip this question";
 
 	const update = (next: QuestionCardDraft) => {
 		setDrafts((current) => current.map((entry, at) => (at === index ? next : entry)));
@@ -247,10 +255,25 @@ export function QuestionCard({
 				<ApprovalActionButton variant="secondary" disabled={!editable} onClick={skip}>
 					Skip
 				</ApprovalActionButton>
-				<ApprovalActionButton variant="primary" disabled={!editable || !canAdvance} onClick={advance}>
-					{isLast ? submitLabel : "Next"}
-					<Shortcut keys="cmd+enter" className="pointer-coarse:hidden" />
-				</ApprovalActionButton>
+				{disabledReason === null ? (
+					<ApprovalActionButton variant="primary" disabled={!editable || !canAdvance} onClick={advance}>
+						{isLast ? submitLabel : "Next"}
+						<Shortcut keys="cmd+enter" className="pointer-coarse:hidden" />
+					</ApprovalActionButton>
+				) : (
+					<Tooltip content={disabledReason}>
+						<span className="flex">
+							<ApprovalActionButton
+								variant="primary"
+								disabled={!editable || !canAdvance}
+								onClick={advance}
+							>
+								{isLast ? submitLabel : "Next"}
+								<Shortcut keys="cmd+enter" className="pointer-coarse:hidden" />
+							</ApprovalActionButton>
+						</span>
+					</Tooltip>
+				)}
 			</div>
 		</div>
 	);
