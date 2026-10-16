@@ -1136,6 +1136,22 @@ describe("JsonlRecordSchema observed 2026-09 transcript fields", () => {
 		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
 	});
 
+	it("parses harness-notice user records with a system turnOrigin", () => {
+		const record = {
+			type: "user",
+			...baseFields,
+			message: {role: "user", content: "[Cross-session idle notice] it is idle now"},
+			isMeta: true,
+			promptSource: "system",
+			turnOrigin: "system",
+			turnPosition: {promptIndex: 20, turnIndex: 67},
+			queuePriority: "later",
+			queueSkipAttachments: true,
+		};
+
+		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
+	});
+
 	it("parses user records carrying turn origin, scheduled-task, and classifier context fields", () => {
 		const record = {
 			type: "user",
@@ -1820,6 +1836,7 @@ describe("JsonlRecordSchema observed 2026-09 transcript fields", () => {
 										auto_react: true,
 									},
 								},
+								system_reminders: [{id: "c900d357d5009e11", provenance: "peer"}],
 								prior_turn_context: [
 									{
 										tool_use_ids: ["toolu_1"],

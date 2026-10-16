@@ -112,6 +112,7 @@ export const turnOriginLabels = {
 	peer: "From another session",
 	task_notification: "Task notification",
 	scheduled: "Scheduled task",
+	system: "System notice",
 } satisfies Record<z.infer<typeof TurnOriginSchema>, string>;
 
 export const permissionDecisionDecisionLabels = {

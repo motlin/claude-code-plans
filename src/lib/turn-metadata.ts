@@ -97,7 +97,7 @@ export function assistantTurnDetails(line: MessageSessionLine, {verbose}: {verbo
 	].filter((detail) => detail !== undefined);
 }
 
-/** Where a user turn came from (peer, task notification, scheduled task) and how it was submitted. */
+/** Where a user turn came from (peer, task notification, scheduled task, system notice) and how it was submitted. */
 function originDetail(line: MessageSessionLine): string | undefined {
 	const parts: string[] = [];
 	if (line.turnOrigin !== undefined && line.turnOrigin !== "human") {

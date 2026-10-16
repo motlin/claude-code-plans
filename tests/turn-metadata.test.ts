@@ -140,10 +140,12 @@ describe("userTurnDetails", () => {
 	it("names a peer origin and a non-typed prompt source", () => {
 		expect({
 			peer: userTurnDetails({type: "user", lineIndex: 0, turnOrigin: "peer"}),
+			harness: userTurnDetails({type: "user", lineIndex: 0, turnOrigin: "system", promptSource: "system"}),
 			suggestion: userTurnDetails({type: "user", lineIndex: 0, promptSource: "suggestion_accepted"}),
 			system: userTurnDetails({type: "user", lineIndex: 0, promptSource: "system", queuePriority: "later"}),
 		}).toStrictEqual({
 			peer: ["From another session"],
+			harness: ["System notice · System prompt"],
 			suggestion: ["Suggestion accepted prompt"],
 			system: ["System prompt · queued for later"],
 		});
