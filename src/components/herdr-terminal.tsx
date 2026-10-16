@@ -6,6 +6,7 @@ import {applyTerminalTheme} from "../lib/terminal-theme";
 import {TerminalPlaceholder} from "./terminal-placeholder";
 import {TerminalSelectionStatus} from "./terminal-selection-status";
 import {installTerminalInput, useTerminalSelectionActions} from "./terminal-input";
+import {createOscFilter} from "../lib/terminal-osc-filter";
 import {loadGhostty} from "./load-ghostty";
 
 export type ConnectionStatus = "connecting" | "live" | "reconnecting" | "closed" | "error";
@@ -98,6 +99,7 @@ export function HerdrTerminal({
 				fitAddon.fit();
 				viewport = {columns: terminal.cols, rows: terminal.rows};
 				const nextSocket = new WebSocket(streamUrl(interactive, sessionId, viewport.columns, viewport.rows));
+				const oscFilter = createOscFilter();
 				const consumer = createTerminalFrameConsumer({
 					reset: () => {
 						terminal.reset();
@@ -106,7 +108,7 @@ export function HerdrTerminal({
 						terminal.resize(columns, rows);
 					},
 					write: (bytes) => {
-						terminal.write(bytes);
+						terminal.write(oscFilter(bytes));
 					},
 				});
 				socket = nextSocket;

@@ -18,6 +18,7 @@ import {
 	terminalStatus,
 } from "../lib/terminal-lifecycle";
 import {type ConnectionStatus} from "./herdr-terminal";
+import {createOscFilter} from "../lib/terminal-osc-filter";
 import {loadGhostty} from "./load-ghostty";
 import {TerminalPlaceholder} from "./terminal-placeholder";
 import {TerminalSelectionStatus} from "./terminal-selection-status";
@@ -135,6 +136,7 @@ export function ShellTerminal({
 				if (stopped) return;
 				retry = null;
 				const nextSocket = new WebSocket(shellSocketUrl(ptyKey));
+				const oscFilter = createOscFilter();
 				socket = nextSocket;
 
 				nextSocket.addEventListener("open", sendSize);
@@ -151,11 +153,11 @@ export function ShellTerminal({
 					switch (frame.type) {
 						case "opened":
 							terminal.reset();
-							terminal.write(decodeTerminalBytes(frame.buffered));
+							terminal.write(oscFilter(decodeTerminalBytes(frame.buffered)));
 							dispatch({type: "opened"});
 							return;
 						case "data":
-							terminal.write(decodeTerminalBytes(frame.data));
+							terminal.write(oscFilter(decodeTerminalBytes(frame.data)));
 							return;
 						case "exit":
 							stopped = true;
