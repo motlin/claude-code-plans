@@ -30,7 +30,7 @@ describe("startClaudeSession", () => {
 			outcome: "launched",
 			launches: [[{prompt: "/skill-creator"}]],
 			copies: [],
-			toasts: [{kind: "success", message: "Started a session in a new herdr tab"}],
+			toasts: [{kind: "success", message: "Started a session in a new terminal tab"}],
 		});
 	});
 
@@ -46,7 +46,7 @@ describe("startClaudeSession", () => {
 		expect({outcome, copies: vi.mocked(deps.copy).mock.calls, toasts}).toStrictEqual({
 			outcome: "copied",
 			copies: [["claude 'Create a new skill'"]],
-			toasts: [{kind: "success", message: "Copied command — herdr unavailable"}],
+			toasts: [{kind: "success", message: "Copied command — no terminal to launch in"}],
 		});
 	});
 

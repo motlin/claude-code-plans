@@ -997,7 +997,7 @@ function PalettePopup({
 			const copied = await writeClipboardText(buildClaudeCopyCommand(launch));
 			toast(
 				copied
-					? {kind: "success", message: "Copied command — herdr unavailable"}
+					? {kind: "success", message: "Copied command — no terminal to launch in"}
 					: {kind: "error", message: "Couldn’t start a session. Try again."},
 			);
 			onOpenChange(false);

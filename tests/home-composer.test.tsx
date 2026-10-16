@@ -499,7 +499,7 @@ describe("HomeComposer", () => {
 				[`cd '/users/dev/it'\\''s' && claude 'don'\\''t break $HOME'`],
 			]);
 		});
-		expect((await screen.findByRole("status")).textContent).toContain("Copied command — herdr unavailable");
+		expect((await screen.findByRole("status")).textContent).toContain("Copied command — no terminal to launch in");
 	});
 
 	it("focuses the composer on ⇧⌘O while already home", async () => {

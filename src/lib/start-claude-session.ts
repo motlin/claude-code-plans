@@ -26,13 +26,13 @@ export async function startClaudeSession(
 ): Promise<StartClaudeSessionOutcome> {
 	try {
 		await launch({prompt});
-		toast({kind: "success", message: "Started a session in a new herdr tab"});
+		toast({kind: "success", message: "Started a session in a new terminal tab"});
 		return "launched";
 	} catch {
 		// Fall through to the copied command.
 	}
 	if (await copy(buildClaudeCopyCommand({prompt}))) {
-		toast({kind: "success", message: "Copied command — herdr unavailable"});
+		toast({kind: "success", message: "Copied command — no terminal to launch in"});
 		return "copied";
 	}
 	toast({kind: "error", message: "Couldn’t start a session. Try again."});

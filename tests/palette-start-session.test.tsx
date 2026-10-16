@@ -404,7 +404,7 @@ describe("⌘K palette: start a new session", () => {
 				[`cd '/users/dev/it'\\''s' && claude 'don'\\''t break $HOME'`],
 			]);
 		});
-		expect((await screen.findByRole("status")).textContent).toContain("Copied command — herdr unavailable");
+		expect((await screen.findByRole("status")).textContent).toContain("Copied command — no terminal to launch in");
 	});
 
 	it("falls back to copying when the launch request itself fails", async () => {

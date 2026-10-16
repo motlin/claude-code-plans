@@ -33,7 +33,10 @@ const HerdrLaunchRequestSchema = z
 
 type HerdrLaunchRequest = z.infer<typeof HerdrLaunchRequestSchema>;
 
-interface HerdrLaunchResult {
+/** A validated launch, with the directory resolved. */
+export type LaunchClaudeRequest = HerdrLaunchRequest & {cwd: string};
+
+export interface HerdrLaunchResult {
 	tabId: string;
 	paneId: string;
 	sessionId: string | null;
@@ -47,9 +50,14 @@ export interface HerdrLaunchDependencies {
 	createLaunchId: () => string;
 	wait: (ms: number) => Promise<void>;
 	homeDir: () => string;
+	/** Opens the new pane running `claude`; herdr's tab and agent when absent. */
+	launchClaude?: (
+		launch: LaunchClaudeRequest,
+		dependencies: Pick<HerdrLaunchDependencies, "request" | "createLaunchId" | "wait">,
+	) => Promise<HerdrResult<HerdrLaunchResult>>;
 }
 
-const defaultDependencies: HerdrLaunchDependencies = {
+export const defaultHerdrLaunchDependencies: HerdrLaunchDependencies = {
 	rejectRequest: rejectCrossSite,
 	writesEnabled: terminalWritesEnabled,
 	request: herdrRequest,
@@ -71,7 +79,7 @@ function failure(code: string, message: string): HerdrResult<never> {
  * herdr refuses to encode multi-line argv for the target shell.
  */
 async function launchClaudeInHerdr(
-	{cwd, prompt, args = []}: HerdrLaunchRequest & {cwd: string},
+	{cwd, prompt, args = []}: LaunchClaudeRequest,
 	{request, createLaunchId, wait}: Pick<HerdrLaunchDependencies, "request" | "createLaunchId" | "wait">,
 ): Promise<HerdrResult<HerdrLaunchResult>> {
 	const launchId = createLaunchId();
@@ -153,7 +161,7 @@ function errorStatus(code: string): number {
 
 export async function handleHerdrLaunch(
 	request: Request,
-	dependencies: HerdrLaunchDependencies = defaultDependencies,
+	dependencies: HerdrLaunchDependencies = defaultHerdrLaunchDependencies,
 ): Promise<Response> {
 	const rejection = dependencies.rejectRequest(request);
 	if (rejection) return rejection;
@@ -168,10 +176,8 @@ export async function handleHerdrLaunch(
 		return Response.json({error: z.prettifyError(parsed.error)}, {status: 400});
 	}
 
-	const result = await launchClaudeInHerdr(
-		{...parsed.data, cwd: parsed.data.cwd ?? dependencies.homeDir()},
-		dependencies,
-	);
+	const launchClaude = dependencies.launchClaude ?? launchClaudeInHerdr;
+	const result = await launchClaude({...parsed.data, cwd: parsed.data.cwd ?? dependencies.homeDir()}, dependencies);
 	if (!result.ok) {
 		return Response.json({error: result.message}, {status: errorStatus(result.code)});
 	}

@@ -7,9 +7,10 @@ import {createTmuxPlacementProvider} from "../tmux-windows";
 import {toTmuxPaneLink} from "../tmux/pane-links";
 import {defaultTmuxSessionPaneSources, getTmuxSessionPanes, type TmuxSessionPaneSources} from "../tmux/session-panes";
 import {TERMINAL_HOST_CAPABILITIES} from "../terminal-host-capabilities";
+import {defaultTmuxLaunchIo, launchClaudeInTmux, type TmuxLaunchIo} from "../tmux/launch";
 import {defaultTmuxWriteIo, tmuxWriteDependencies, type TmuxWriteIo} from "../tmux/writes";
 import {defaultHerdrInterruptDependencies, handleHerdrInterrupt} from "../herdr/interrupt";
-import {handleHerdrLaunch} from "../herdr/launch";
+import {defaultHerdrLaunchDependencies, handleHerdrLaunch} from "../herdr/launch";
 import {defaultHerdrLiveOptionDependencies, handleHerdrLiveOption} from "../herdr/live-option";
 import {createHerdrPlacementProvider, getHerdrPanes, type HerdrPaneLink} from "../herdr/panes";
 import {defaultHerdrPermissionDependencies, handleHerdrPermission} from "../herdr/permission";
@@ -144,12 +145,14 @@ const noTerminalHost: TerminalHost = {
 /**
  * tmux: panes and session-to-pane mapping (hook `TMUX_PANE`, else the session
  * pid's process tree), and writes through `tmux send-keys` behind herdr's
- * handlers, gated by the hook-reported state (see `tmux/writes.ts`). Launch,
- * pane events and live terminals are refused until later slices wire them up.
+ * handlers, gated by the hook-reported state (see `tmux/writes.ts`), and
+ * launches into new detached windows (see `tmux/launch.ts`). Pane events and
+ * live terminals are refused until later slices wire them up.
  */
 export function createTmuxTerminalHost(
 	sources: TmuxSessionPaneSources = defaultTmuxSessionPaneSources,
 	io: TmuxWriteIo = defaultTmuxWriteIo,
+	launchIo: TmuxLaunchIo = defaultTmuxLaunchIo,
 ): TerminalHost {
 	const writes = {writesEnabled: io.writesEnabled};
 	return {
@@ -188,6 +191,12 @@ export function createTmuxTerminalHost(
 				...defaultHerdrLiveOptionDependencies,
 				...writes,
 				...tmuxWriteDependencies("live-option", sources, io),
+			}),
+		launch: async (request) =>
+			handleHerdrLaunch(request, {
+				...defaultHerdrLaunchDependencies,
+				...writes,
+				launchClaude: async (launch) => launchClaudeInTmux(launch, launchIo),
 			}),
 	};
 }
