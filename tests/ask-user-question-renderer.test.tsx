@@ -84,10 +84,17 @@ describe("AskUserQuestionRenderer", () => {
 			buttons: container.querySelectorAll("button").length,
 		}).toStrictEqual({
 			cardCount: 1,
-			cardClassName: "card-ring flex w-full max-w-[480px] flex-col overflow-clip rounded-r6 select-text",
+			cardClassName:
+				"card-ring -mt-[3px] mb-[7px] flex w-full max-w-[480px] flex-col divide-y divide-[var(--card-outline)] overflow-clip rounded-r6 select-text",
 			paragraphs: [
-				{className: "text-body font-medium text-primary break-words", text: "Which test runner?"},
-				{className: "text-body text-secondary [overflow-wrap:anywhere]", text: "Vitest"},
+				{
+					className: "text-body font-medium text-primary break-words [unicode-bidi:plaintext]",
+					text: "Which test runner?",
+				},
+				{
+					className: "text-body text-secondary [overflow-wrap:anywhere] [unicode-bidi:plaintext]",
+					text: "Vitest",
+				},
 			],
 			mentionsUnchosen: false,
 			buttons: 0,
@@ -134,7 +141,8 @@ describe("AskUserQuestionRenderer", () => {
 
 		expect(cards).toStrictEqual([
 			{
-				className: "card-ring flex w-full max-w-[480px] flex-col overflow-clip rounded-r6 select-text",
+				className:
+					"card-ring -mt-[3px] mb-[7px] flex w-full max-w-[480px] flex-col divide-y divide-[var(--card-outline)] overflow-clip rounded-r6 select-text",
 				pairs: [
 					{
 						className: "flex flex-col gap-0.5 px-3 py-2",

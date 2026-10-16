@@ -76,8 +76,10 @@ function AnsweredQuestion({question, parsed}: {question: string; parsed: ParsedA
 	const answer = parsed.answer.trim();
 	return (
 		<div data-answered-question className="flex flex-col gap-0.5 px-3 py-2">
-			<p className="text-body font-medium text-primary break-words">{question}</p>
-			{answer !== "" && <p className="text-body text-secondary [overflow-wrap:anywhere]">{answer}</p>}
+			<p className="text-body font-medium text-primary break-words [unicode-bidi:plaintext]">{question}</p>
+			{answer !== "" && (
+				<p className="text-body text-secondary [overflow-wrap:anywhere] [unicode-bidi:plaintext]">{answer}</p>
+			)}
 			{notesAddInformation(parsed.notes, answer) && (
 				<p className="text-footnote text-secondary italic whitespace-pre-wrap">
 					<span className="text-primary">Notes: </span>
@@ -431,9 +433,10 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps) {
 			? null
 			: (answersFromResultMeta(toolCall.resultMeta, questions) ?? parseAnswerResult(result, questions));
 	if (parsed !== null) {
-		// Upstream's `epitaxy-question-receipt`: every answered pair of one call in a 480px card.
+		// Upstream's `epitaxy-question-receipt`: every answered pair of one call in a 480px card,
+		// divided by its ring's hairline, 3px nearer the row above and 7px further from the next.
 		return (
-			<div className="card-ring flex w-full max-w-[480px] flex-col overflow-clip rounded-r6 select-text">
+			<div className="card-ring -mt-[3px] mb-[7px] flex w-full max-w-[480px] flex-col divide-y divide-[var(--card-outline)] overflow-clip rounded-r6 select-text">
 				{parsed.map((entry, i) => (
 					<AnsweredQuestion key={i} question={entry.question} parsed={entry} />
 				))}
