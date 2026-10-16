@@ -7,10 +7,9 @@ import {bindingToKeys, type ShortcutId} from "../lib/shortcuts/registry";
 import {usePaneDefinitions} from "./panes/pane-registry";
 import {usePaneHost} from "./panes/pane-host-context";
 import {TITLEBAR_ICON_BUTTON_CLASS} from "./titlebar-classes";
-import {useTitlebarWidth} from "./titlebar-width";
 import {Menu, MenuCheckboxItem, MenuContent, MenuItem, MenuSeparator, MenuTrigger} from "./ui/menu";
 import {Tooltip} from "./ui/tooltip";
-import {viewOptionsItems, hiddenToggleCount} from "./view-options-items";
+import {viewOptionsItems} from "./view-options-items";
 import type {ViewOptionsFacts, ViewOptionsItem, PaneMenuEntry} from "./view-options-items";
 
 type MainPaneEntry = PaneMenuEntry & {shortcut: ShortcutId};
@@ -103,10 +102,9 @@ function ViewOptionsMenu({
 }
 
 /**
- * The titlebar trail's pane controls, upstream's set: the Changes toggle, then
- * View options ⋮ holding the other panes (Terminal, Files, …) and Expand chat.
- * When the titlebar is too narrow Changes folds into the top of the menu; the
- * trigger shows only when the menu has items.
+ * The titlebar trail's pane controls, upstream's set: the Changes and Files
+ * toggles, which stay icons at every width, then View options ⋮ holding the
+ * other panes and Expand chat. The trigger shows only when the menu has items.
  */
 export function SessionPaneControls({
 	facts,
@@ -118,15 +116,9 @@ export function SessionPaneControls({
 }) {
 	const host = usePaneHost();
 	const definitions = usePaneDefinitions();
-	const titlebarWidth = useTitlebarWidth();
 	const registered = new Set(definitions.keys());
-	const toggles = MAIN_PANE_TOGGLES.filter((entry) => registered.has(entry.kind));
-	const hidden = hiddenToggleCount({titlebarWidth, count: toggles.length});
-	const shown = toggles.slice(0, toggles.length - hidden);
-	const menuEntries = [
-		...toggles.slice(toggles.length - hidden),
-		...viewOptionsItems({registered, isOpen: host.isOpen, facts}),
-	];
+	const shown = MAIN_PANE_TOGGLES.filter((entry) => registered.has(entry.kind));
+	const menuEntries = viewOptionsItems({registered, isOpen: host.isOpen, facts});
 	return (
 		<>
 			{shown.map((entry) => (

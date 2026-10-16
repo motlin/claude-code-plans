@@ -211,6 +211,18 @@ describe("SessionTitlebar layout", () => {
 		});
 	});
 
+	it("hides the environment glyph at phone width, as upstream's session titlebar has none", async () => {
+		await renderTitlebar(baseDetail);
+
+		expect(
+			screen
+				.getByRole("button", {name: "Environment"})
+				.closest("[data-titlebar-lead] > span")
+				?.className.split(" ")
+				.includes("max-sm:hidden"),
+		).toBe(true);
+	});
+
 	it("leaves out the back pill and optional badges for a plain CLI session", async () => {
 		const titlebar = await renderTitlebar({...baseDetail, entrypoint: "cli"});
 		const lead = titlebar.querySelector("[data-titlebar-lead]");

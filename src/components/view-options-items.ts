@@ -21,17 +21,6 @@ export function viewOptionsItems({
 		.map(({applies: _applies, ...item}) => item);
 }
 
-/**
- * How many of the trailing main toggles fold into View options: whatever does
- * not fit beside the lead reserve and the menu trigger.
- */
-export function hiddenToggleCount({titlebarWidth, count}: {titlebarWidth: number | null; count: number}): number {
-	if (titlebarWidth === null) return 0;
-	const room = titlebarWidth - LEAD_RESERVE_PX - TRAIL_PADDING_PX - (CONTROL_PX + GAP_PX);
-	const shown = Math.max(0, Math.floor(room / (CONTROL_PX + GAP_PX)));
-	return Math.max(0, count - shown);
-}
-
 /** What the session offers, deciding which View options items apply. */
 export interface ViewOptionsFacts {
 	artifactCount?: number;
@@ -74,16 +63,6 @@ function candidates(facts: ViewOptionsFacts): ViewOptionsCandidate[] {
 		{kind: "session-details", label: "Session details", icon: Info, applies: true},
 	];
 }
-
-/** Titlebar lead kept clear of the trail: title, chevron and a pill or two. */
-const LEAD_RESERVE_PX = 240;
-
-/** The trail's `pl-6`. */
-const TRAIL_PADDING_PX = 24;
-
-const CONTROL_PX = 26;
-
-const GAP_PX = 4;
 
 export interface PaneMenuEntry {
 	kind: PaneKind;

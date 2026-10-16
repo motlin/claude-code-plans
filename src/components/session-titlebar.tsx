@@ -31,7 +31,6 @@ import {useRenameAfterMenuClose} from "./use-rename-after-menu-close";
 import {useSessionMenuRunner} from "./use-session-menu-runner";
 import {SessionTitleButton} from "./session-title-heading";
 import {useSessionTitleShortcuts} from "./use-session-title-shortcuts";
-import {TitlebarWidthContext} from "./titlebar-width";
 import {useToast} from "./toast-context";
 import {
 	ContextMenu,
@@ -87,7 +86,7 @@ function downloadUrl(href: string): void {
 	anchor.click();
 }
 
-/** The titlebar's width, which collapses the origin pills and folds the trail's pane toggles. */
+/** The titlebar's width, which collapses the origin pills. */
 function useTitlebarMeasure() {
 	const ref = useRef<HTMLDivElement>(null);
 	const [width, setWidth] = useState<number | null>(null);
@@ -103,7 +102,7 @@ function useTitlebarMeasure() {
 			observer.disconnect();
 		};
 	}, []);
-	return {ref, width, compact: width !== null && width < PILLS_COMPACT_BELOW_PX};
+	return {ref, compact: width !== null && width < PILLS_COMPACT_BELOW_PX};
 }
 
 type PillIcon = React.ComponentType<{className?: string; "aria-hidden"?: boolean}>;
@@ -342,7 +341,7 @@ export function SessionTitlebar({
 	});
 	const menuRename = useRenameAfterMenuClose(rename.startEditing);
 	const contextRename = useRenameAfterMenuClose(rename.startEditing);
-	const {ref, width, compact} = useTitlebarMeasure();
+	const {ref, compact} = useTitlebarMeasure();
 	const modelLabel = formatModelName(data.model);
 	const repositoryName = data.pr?.repository.slice(data.pr.repository.lastIndexOf("/") + 1).trim();
 
@@ -358,7 +357,8 @@ export function SessionTitlebar({
 				{...(compact ? {"data-pills-compact": ""} : {})}
 				className="flex min-w-0 items-center"
 			>
-				<span className="flex h-6 w-8 shrink-0 items-center justify-center">
+				{/* Upstream's session titlebar has no environment glyph; ours keeps it above phone width. */}
+				<span className="flex h-6 w-8 shrink-0 items-center justify-center max-sm:hidden">
 					<SessionEnvironmentGlyph sessionId={sessionId} />
 				</span>
 				<div className="flex min-w-0 items-center gap-1.5">
@@ -495,10 +495,8 @@ export function SessionTitlebar({
 				data-titlebar-trail=""
 				className="relative ml-auto flex shrink-0 items-center gap-1 pl-6 text-secondary"
 			>
-				<TitlebarWidthContext.Provider value={width}>
-					{paneToggles !== undefined && <div className="flex items-center gap-1">{paneToggles}</div>}
-					{viewOptions}
-				</TitlebarWidthContext.Provider>
+				{paneToggles !== undefined && <div className="flex items-center gap-1">{paneToggles}</div>}
+				{viewOptions}
 			</div>
 		</div>
 	);

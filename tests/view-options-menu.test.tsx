@@ -6,9 +6,8 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {registerPane} from "../src/components/panes/pane-registry";
 import {TileHost} from "../src/components/panes/tile-host";
 import {SettingsProvider} from "../src/components/settings-provider";
-import {TitlebarWidthContext} from "../src/components/titlebar-width";
 import {SessionPaneControls} from "../src/components/view-options-menu";
-import {hiddenToggleCount, type ViewOptionsFacts, viewOptionsItems} from "../src/components/view-options-items";
+import {type ViewOptionsFacts, viewOptionsItems} from "../src/components/view-options-items";
 import type {PaneKind} from "../src/lib/pane-layout";
 import {installLocalStorage} from "./fake-storage";
 
@@ -128,25 +127,11 @@ describe("viewOptionsItems", () => {
 	});
 });
 
-describe("hiddenToggleCount", () => {
-	it.each([
-		{width: null, count: 1, hidden: 0},
-		{width: 1000, count: 1, hidden: 0},
-		{width: 325, count: 1, hidden: 0},
-		{width: 300, count: 1, hidden: 1},
-		{width: 100, count: 0, hidden: 0},
-	])("titlebar $width folds $hidden of $count", (row) => {
-		expect(hiddenToggleCount({titlebarWidth: row.width, count: row.count})).toBe(row.hidden);
-	});
-});
-
-function renderControls(width: number | null, facts: ViewOptionsFacts = {}, onExpandChat?: () => void) {
+function renderControls(facts: ViewOptionsFacts = {}, onExpandChat?: () => void) {
 	return render(
 		<SettingsProvider>
 			<TileHost sessionId="view-options">
-				<TitlebarWidthContext.Provider value={width}>
-					<SessionPaneControls facts={facts} {...(onExpandChat === undefined ? {} : {onExpandChat})} />
-				</TitlebarWidthContext.Provider>
+				<SessionPaneControls facts={facts} {...(onExpandChat === undefined ? {} : {onExpandChat})} />
 			</TileHost>
 		</SettingsProvider>,
 	);
@@ -176,14 +161,14 @@ function toggleButtons(): string[] {
 
 describe("SessionPaneControls", () => {
 	it("renders no View options trigger when nothing belongs in the menu", () => {
-		renderControls(1000);
+		renderControls();
 
 		expect(screen.queryByRole("button", {name: "View options"})).toBeNull();
 	});
 
 	it("checking an item opens its pane and checks it", async () => {
 		registerKinds("links", "artifacts");
-		renderControls(1000, {artifactCount: 1});
+		renderControls({artifactCount: 1});
 		await openViewOptions();
 
 		expect(menuRows()).toStrictEqual([
@@ -206,7 +191,7 @@ describe("SessionPaneControls", () => {
 
 	it("draws item icons in full ink, as upstream does", async () => {
 		registerKinds("links");
-		renderControls(1000);
+		renderControls();
 		await openViewOptions();
 
 		const icon = screen.getByRole("menuitemcheckbox", {name: /^Links/}).querySelector("svg");
@@ -221,7 +206,7 @@ describe("SessionPaneControls", () => {
 
 	it("lists Session details and opens it as a pane", async () => {
 		registerKinds("session-details");
-		renderControls(1000);
+		renderControls();
 		await openViewOptions();
 
 		expect(menuRows()).toStrictEqual([["menuitemcheckbox", "Session details", "false"]]);
@@ -241,7 +226,7 @@ describe("SessionPaneControls", () => {
 
 	it("shows upstream's trail, Changes, Files, then View options, with Terminal in the menu", async () => {
 		registerKinds("terminal", "changes", "files");
-		renderControls(1000, {}, () => {});
+		renderControls({}, () => {});
 
 		expect(toggleButtons()).toStrictEqual(["Changes", "Files", "View options"]);
 
@@ -255,7 +240,7 @@ describe("SessionPaneControls", () => {
 
 	it("opens the Files pane from its trail toggle, labelled with ⇧⌘F like upstream", async () => {
 		registerKinds("files");
-		renderControls(1000);
+		renderControls();
 		const files = screen.getByRole("button", {name: "Files"});
 		expect(files.getAttribute("aria-keyshortcuts")).toBe("Shift+Meta+f");
 		fireEvent.click(files);
@@ -273,7 +258,7 @@ describe("SessionPaneControls", () => {
 
 	it("keeps the trail ink on hover and paints a pressed Changes toggle in upstream's deeper blue", async () => {
 		registerKinds("changes");
-		renderControls(1000);
+		renderControls();
 		const changes = screen.getByRole("button", {name: "Changes"});
 		fireEvent.click(changes);
 		await act(async () => {
@@ -297,33 +282,17 @@ describe("SessionPaneControls", () => {
 
 	it("expands the chat from View options", async () => {
 		const onExpandChat = vi.fn<() => void>();
-		renderControls(1000, {}, onExpandChat);
+		renderControls({}, onExpandChat);
 		await openViewOptions();
 		fireEvent.click(screen.getByRole("menuitem", {name: /^Expand chat/}));
 
 		expect(onExpandChat).toHaveBeenCalledTimes(1);
 	});
 
-	it("folds Changes into the top of the menu when there is no room, and it still opens its pane", async () => {
-		registerKinds("terminal", "changes");
-		renderControls(300);
+	it("keeps Changes and Files as 26px titlebar icons at every width, as upstream never folds them", () => {
+		registerKinds("terminal", "changes", "files");
+		renderControls();
 
-		expect(toggleButtons()).toStrictEqual(["View options"]);
-
-		await openViewOptions();
-
-		expect(menuRows()).toStrictEqual([
-			["menuitemcheckbox", "Changes⌃Control⇧ShiftD", "false"],
-			["menuitemcheckbox", "Terminal⌃Control`", "false"],
-		]);
-
-		fireEvent.click(screen.getByRole("menuitemcheckbox", {name: /^Changes/}));
-		await act(async () => {
-			await new Promise((resolve) => {
-				setTimeout(resolve, 0);
-			});
-		});
-
-		expect(within(screen.getByRole("region", {name: "changes"})).getByText("changes pane body").tagName).toBe("P");
+		expect(toggleButtons()).toStrictEqual(["Changes", "Files", "View options"]);
 	});
 });
