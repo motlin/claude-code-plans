@@ -251,9 +251,10 @@ describe("assistant display-span actions", () => {
 			collapsed,
 			expanded: padded(),
 		}).toStrictEqual({
-			marked: ["4", "9", "14"],
-			collapsed: ["4"],
-			expanded: ["4"],
+			// The task group is an ordinary status-led group too, as upstream draws task calls.
+			marked: ["0", "4", "9", "14"],
+			collapsed: ["0", "4"],
+			expanded: ["0", "4"],
 		});
 	});
 
@@ -313,7 +314,7 @@ describe("assistant display-span actions", () => {
 		expect({
 			marked: Array.from(view.container.querySelectorAll("[data-precedes-turn-status]"), rowOf),
 			padded: Array.from(view.container.querySelectorAll(selector ?? "[data-missing-rule]"), rowOf),
-		}).toStrictEqual({marked: ["0", "5"], padded: ["0", "5"]});
+		}).toStrictEqual({marked: ["0", "5", "11"], padded: ["0", "5", "11"]});
 	});
 
 	it("draws a PreToolUse hook's message as prose inside the assistant span, 12px from the failed call above and the call below, keeping the turn gap before a prompt", () => {

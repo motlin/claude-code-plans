@@ -19,17 +19,6 @@ export function getAgentTypeFromInput(input: Record<string, unknown>): string {
 }
 
 /**
- * Extract agent type from tool input with a fallback default.
- * Returns the agent type string or the provided default.
- */
-export function getAgentTypeWithDefault(
-	input: Record<string, unknown>,
-	defaultType: string = "general-purpose",
-): string {
-	return inputString(input, "agentType", "subagent_type") ?? defaultType;
-}
-
-/**
  * Extract agent type from tool input, returning null if not found.
  * Used in cases where null is a valid state (e.g., in database records).
  */
@@ -47,21 +36,6 @@ export function getTaskCreateDisplaySubject(input: Record<string, unknown>): str
 		if (typeof value === "string" && value.trim().length > 0) return value;
 	}
 	return "";
-}
-
-export function getTaskCreateParams(input: Record<string, unknown>): Array<{key: string; value: string}> {
-	const subject = getTaskCreateDisplaySubject(input);
-	const description = inputString(input, "description") ?? "";
-	const activeForm = inputString(input, "activeForm") ?? "";
-	const params: Array<{key: string; value: string}> = [];
-	if (subject) params.push({key: "subject", value: subject});
-	if (description && description !== subject) {
-		params.push({key: "description", value: description});
-	}
-	if (activeForm && activeForm !== subject) {
-		params.push({key: "activeForm", value: activeForm});
-	}
-	return params;
 }
 
 /** Read a boolean field from an unvalidated tool input; anything else is undefined. */

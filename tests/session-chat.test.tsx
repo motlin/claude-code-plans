@@ -657,6 +657,28 @@ describe("SessionChat nested tool rows", () => {
 	});
 });
 
+describe("SessionChat task calls", () => {
+	it("keeps a group of five TaskCreate calls as five ordinary rows, with no tasks view header, as upstream", () => {
+		const grouped = renderTranscriptElement(
+			toolCallRecords(
+				["Alice", "Bob", "Charlie", "Dana", "Eve"].map((name, index) => ({
+					id: `t${index}`,
+					name: "TaskCreate",
+					input: {subject: `Example ${name} task`},
+				})),
+			),
+		);
+		const before = grouped.textContent.match(/\d+ tasks/)?.[0] ?? null;
+		expandGroupSummary(grouped);
+
+		expect({
+			before,
+			rows: grouped.querySelectorAll(".divide-y > [data-tool-row]").length,
+			headings: grouped.querySelectorAll("h3").length,
+		}).toStrictEqual({before: null, rows: 5, headings: 0});
+	});
+});
+
 describe("SessionChat grouped tool rows", () => {
 	it("joins each row's label and parameter with one plain space inside a single <bdi>, as upstream", () => {
 		const grouped = renderTranscriptElement(

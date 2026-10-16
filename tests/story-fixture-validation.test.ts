@@ -28,7 +28,6 @@ import * as TaskStopStories from "../src/stories/session-detail/tool-renderers/T
 import * as CronCreateStories from "../src/stories/session-detail/tool-renderers/CronCreateRenderer.stories";
 
 // Non-tool-renderer stories that contain ClientToolCall fixtures
-import * as TasksViewStories from "../src/stories/tasks/TasksView.stories";
 
 // SessionChat stories with content block fixtures
 import * as SessionChatStories from "../src/stories/session-detail/SessionChat.stories";
@@ -205,38 +204,6 @@ describe("Story fixture validation against strict Zod schemas", () => {
 					if (isMcpTool(toolName)) {
 						return;
 					}
-
-					const schema = toolInputSchemaByName.get(toolName);
-					if (!schema) throw new Error(`No schema registered for tool "${toolName}"`);
-
-					expect(schema.parse(input)).toStrictEqual(input);
-				});
-			}
-		}
-	});
-
-	describe("TasksView stories — toolCalls arrays", () => {
-		interface StoryWithToolCalls {
-			args?: {
-				toolCalls?: Array<{
-					name?: string;
-					input?: Record<string, unknown>;
-				}>;
-			};
-		}
-
-		for (const [storyName, value] of Object.entries(TasksViewStories as Record<string, unknown>)) {
-			if (storyName === "default") continue;
-			const story = value as StoryWithToolCalls;
-			const toolCalls = story.args?.toolCalls ?? [];
-			for (let index = 0; index < toolCalls.length; index++) {
-				const tc = toolCalls[index];
-				if (!tc?.name || !tc.input) continue;
-				const toolName = tc.name;
-				const input = tc.input;
-
-				it(`TasksView/${storyName}[${index}] — ${toolName} input passes schema`, () => {
-					if (isMcpTool(toolName)) return;
 
 					const schema = toolInputSchemaByName.get(toolName);
 					if (!schema) throw new Error(`No schema registered for tool "${toolName}"`);

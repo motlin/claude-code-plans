@@ -2,7 +2,6 @@ import {SessionTileGeometryReadyContext} from "./session-tile-geometry-context";
 import React, {
 	Suspense,
 	createContext,
-	lazy,
 	useCallback,
 	useContext,
 	useEffect,
@@ -130,8 +129,6 @@ export interface SessionChatProps {
 }
 
 const TranscriptModeContext = createContext<TranscriptMode>("normal");
-
-const TasksView = lazy(async () => import("./tasks-view").then((module) => ({default: module.TasksView})));
 
 interface ExpansionToggle {
 	mode: TranscriptMode;
@@ -914,13 +911,10 @@ function GroupedToolCallEntry({
 	if (lastBatch === undefined)
 		return notices.length === 0 ? null : <BackgroundNoticeRows notices={notices} footer={footer} />;
 
-	// Upstream's 12px below a group is 16px less its TurnStatus outset. The tasks view and a lone
-	// Agent row have no outset, so a group ending with either keeps its turn gap.
+	// Upstream's 12px below a group is 16px less its TurnStatus outset. A lone Agent row has no
+	// outset, so a group ending with one keeps its turn gap.
 	const lastCalls = lastBatch.calls;
-	const endsWithStatus =
-		lastCalls.length === 1 && notices.length === 0
-			? lastCalls[0]?.name !== "Agent"
-			: lastCalls.filter((call) => TASK_TOOLS.has(call.name)).length < 3;
+	const endsWithStatus = lastCalls.length !== 1 || notices.length > 0 || lastCalls[0]?.name !== "Agent";
 
 	return (
 		<div
@@ -1614,8 +1608,7 @@ function toolSectionOpensWithStatus(background: readonly string[], noticeCount: 
 	if (background.length === 0 && noticeCount === 0) return false;
 	// A lone Agent row navigates rather than disclosing a status.
 	if (background.length === 1 && noticeCount === 0) return background[0] !== "Agent";
-	// Three task calls turn the summary into the tasks view, which has no status.
-	return background.filter((name) => TASK_TOOLS.has(name)).length < 3;
+	return true;
 }
 
 function isToolResultOnlyUserLine(line: SessionLine): boolean {
@@ -4248,8 +4241,6 @@ function isProminentCall(call: AskedCall & {name: string}): boolean {
 	return PROMINENT_TOOLS.has(call.name) && !isWithdrawnQuestion(call);
 }
 
-const TASK_TOOLS = new Set(["TaskCreate", "TaskUpdate", "TaskGet", "TaskList", "TaskStop"]);
-
 function ToolCallSection({
 	calls,
 	sessionId,
@@ -4739,25 +4730,22 @@ function ToolCallSummary({
 }) {
 	const [expanded, toggleExpanded] = useModeExpansion(`group:${calls[0]?.id ?? `notice-${notices[0]?.lineIndex}`}`);
 	const bodyId = useId();
-	const taskCalls = calls.filter((c) => TASK_TOOLS.has(c.name));
-	const hasTasksView = taskCalls.length >= 3;
-	const displayCalls = hasTasksView ? calls.filter((c) => !TASK_TOOLS.has(c.name)) : calls;
 	const backgroundOutcomes = useContext(BackgroundOutcomeContext);
 	const {taskNotices, leadingPeers, trailingPeers, hooks} = useMemo(() => splitNotices(notices), [notices]);
 	const summary = useMemo(
 		() =>
 			summarizeToolCallStats(
-				displayCalls,
+				calls,
 				[...taskNotices.map((notice) => notice.notification), ...stopCompletions(calls, backgroundOutcomes)],
 				failedLaunchIds(backgroundOutcomes),
 				{leading: leadingPeers.length, trailing: trailingPeers.length, reprompted: hooks.length > 0},
 			),
-		[calls, displayCalls, taskNotices, leadingPeers, trailingPeers, hooks, backgroundOutcomes],
+		[calls, taskNotices, leadingPeers, trailingPeers, hooks, backgroundOutcomes],
 	);
 	// While a call is in flight, upstream names the group by that call's
 	// progressive label instead of the tally.
 	// oxlint-disable-next-line unicorn/prefer-array-find -- findLast is not in the ES2022 lib
-	const pendingCall = displayCalls.findLast(isPendingToolCall);
+	const pendingCall = calls.findLast(isPendingToolCall);
 	const permissionWaitId = useContext(PermissionWaitContext);
 	const runningText =
 		pendingCall === undefined
@@ -4766,31 +4754,18 @@ function ToolCallSummary({
 	// A failed completion leads only when its launch is outside the group; a
 	// launch inside it takes the failure, so its notice trails like any other.
 	const leadsLabel = (notice: BackgroundNotice) =>
-		notice.notification.status === "failed" &&
-		!displayCalls.some((call) => call.id === notice.notification.toolUseId);
+		notice.notification.status === "failed" && !calls.some((call) => call.id === notice.notification.toolUseId);
 	const failedNotices = taskNotices.filter(leadsLabel);
 	const settledNotices = taskNotices.filter((notice) => !leadsLabel(notice));
 	// Upstream draws the grouped header in one 24px padded row whether it completed, failed, or is still running.
-	const summaryLayout = hasTasksView ? "self-start py-0" : "min-w-0 self-stretch me-[52px] px-1 py-0.5";
+	const summaryLayout = "min-w-0 self-stretch me-[52px] px-1 py-0.5";
 	// Collapsed rows recede to muted ink and lift to secondary on hover; an open
 	// row stays secondary, as upstream does.
 	const ink = expanded ? "text-secondary" : "text-ink-muted group-hover/tool:text-secondary";
 
-	// The tasks view shares the wrapper upstream's TurnStatus does not have, so it keeps no outset.
 	const status = (
-		<div
-			data-tool-row=""
-			data-turn-status={hasTasksView ? undefined : ""}
-			className={hasTasksView ? "flex flex-col w-full" : TURN_STATUS_CLASS}
-		>
-			{hasTasksView && (
-				<div className="mb-2">
-					<Suspense fallback={<p role="status">Loading tasks…</p>}>
-						<TasksView toolCalls={calls} />
-					</Suspense>
-				</div>
-			)}
-			{(displayCalls.length > 0 || notices.length > 0) && (
+		<div data-tool-row="" data-turn-status="" className={TURN_STATUS_CLASS}>
+			{(calls.length > 0 || notices.length > 0) && (
 				<>
 					<button
 						type="button"
@@ -4831,7 +4806,7 @@ function ToolCallSummary({
 								{leadingPeers.map((notice) => (
 									<AgentMessageRow key={`notice-${notice.lineIndex}`} message={notice.message} />
 								))}
-								{displayCalls.map((call, i) => (
+								{calls.map((call, i) => (
 									<ToolCallRow key={i} call={call} sessionId={sessionId} nested />
 								))}
 								{trailingPeers.map((notice) => (
@@ -4847,5 +4822,5 @@ function ToolCallSummary({
 			)}
 		</div>
 	);
-	return hasTasksView ? status : <TurnStatusFrame leading={leading}>{status}</TurnStatusFrame>;
+	return <TurnStatusFrame leading={leading}>{status}</TurnStatusFrame>;
 }
