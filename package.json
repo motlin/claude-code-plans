@@ -27,7 +27,7 @@
 		"@dnd-kit/core": "6.3.1",
 		"@dnd-kit/sortable": "10.0.0",
 		"@dnd-kit/utilities": "3.2.2",
-		"@mdxeditor/editor": "^4.2.5",
+		"@mdxeditor/editor": "^4.3.2",
 		"@modelcontextprotocol/sdk": "^1.30.1",
 		"@pierre/diffs": "^1.5.1",
 		"@pierre/theme": "^2.0.0",
