@@ -1,3 +1,4 @@
+import {readFileSync} from "node:fs";
 import {describe, expect, it} from "vite-plus/test";
 import {
 	PHONE_SIDEBAR_TOGGLE,
@@ -20,23 +21,27 @@ describe("top-left clearance", () => {
 		expect(topLeftClearanceStyle("docked")).toBe(undefined);
 	});
 
-	it("puts the phone toggle in the titlebar's lead slot as upstream's 32px target at x=8, so the title starts after it at 390px", () => {
-		const clearance = topLeftClearance("phone");
-		if (clearance === null) throw new Error("phone clearance missing");
-		const toggle = PHONE_SIDEBAR_TOGGLE;
-
+	it("sets the phone toggle 8px down at x=8 and the titlebar row 9px down, as upstream's phone header", () => {
 		expect({
-			toggle,
-			clearance,
-			titleStartsAfterToggle: clearance.start > toggle.left + toggle.size,
-			toggleCentredInBar: toggle.top * 2 + toggle.size === TITLEBAR_HEIGHT_PX,
+			toggle: PHONE_SIDEBAR_TOGGLE,
+			clearance: topLeftClearance("phone"),
 			style: topLeftClearanceStyle("phone"),
+			barHeight: TITLEBAR_HEIGHT_PX,
 		}).toStrictEqual({
-			toggle: {left: 8, top: 0, size: 32},
-			clearance: {start: 44, top: 0},
-			titleStartsAfterToggle: true,
-			toggleCentredInBar: true,
-			style: {"--top-left-clearance-start": "44px", "--top-left-clearance-top": "0px"},
+			toggle: {left: 8, top: 8, size: 32},
+			clearance: {start: 44, top: 9},
+			style: {"--top-left-clearance-start": "44px", "--top-left-clearance-top": "9px"},
+			barHeight: 32,
 		});
+	});
+
+	it("drops a phone tile's content by that clearance, so its titlebar row starts at y=9", () => {
+		const styles = readFileSync("src/styles/globals.css", "utf8");
+		const start = styles.indexOf("[data-route-tile-shell] {");
+		const rule = styles.slice(start, styles.indexOf("}", start));
+
+		expect(
+			rule.split("\n").some((line) => line.trim() === "padding-top: var(--top-left-clearance-top, 0px);"),
+		).toBe(true);
 	});
 });

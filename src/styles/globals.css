@@ -933,6 +933,8 @@ html[data-motion="reduced"] .terminal-caret {
 		flex-direction: column;
 		border-width: 0;
 		padding: 0;
+		/* Phone: upstream's titlebar row sits 9px down, below the toggle at y=8. */
+		padding-top: var(--top-left-clearance-top, 0px);
 		--tile-title-start: var(--top-left-clearance-start, 0px);
 		/* Phone: upstream's prose sits 36px in at 390px wide. */
 		--chat-column-extra: 50px;

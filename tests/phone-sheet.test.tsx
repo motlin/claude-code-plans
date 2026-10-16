@@ -163,7 +163,7 @@ describe("phone sheet sidebar", () => {
 		}).toStrictEqual({
 			expanded: "false",
 			controls: "sidebar-sheet",
-			geometry: {left: "8px", top: "0px", width: "32px", height: "32px"},
+			geometry: {left: "8px", top: "8px", width: "32px", height: "32px"},
 		});
 		expect({
 			role: sheet().getAttribute("role"),
@@ -176,7 +176,7 @@ describe("phone sheet sidebar", () => {
 			clearance: clearanceVars(container),
 		}).toStrictEqual({
 			inert: false,
-			clearance: {start: "44px", top: "0px"},
+			clearance: {start: "44px", top: "9px"},
 		});
 	});
 

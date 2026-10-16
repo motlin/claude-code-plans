@@ -9,15 +9,15 @@ export const TITLEBAR_HEIGHT_PX = 32;
 
 /**
  * Below 640px the "Show sidebar" toggle sits in the titlebar's lead slot, as on claude.ai/code:
- * upstream's 32px square hit target 8px from the edge, filling the 32px bar.
+ * upstream's 32px square hit target at 8,8, beside the titlebar row 9px down.
  */
-export const PHONE_SIDEBAR_TOGGLE = {left: 8, top: 0, size: 32} as const;
+export const PHONE_SIDEBAR_TOGGLE = {left: 8, top: 8, size: 32} as const;
 
 /**
  * Space the main pane's top-left corner leaves for the sidebar toggle. Collapsed desktop: the
  * floating 24x24 toggle at 12,12, so the titlebar row starts at x=41 and its 32px row at y=9 to
- * line its centre up with the toggle's. Phone: the toggle fills the lead slot, so the title
- * starts 4px after it.
+ * line its centre up with the toggle's. Phone: the toggle takes the lead slot, so the title
+ * starts 4px after it, and the row sits 9px down as upstream's phone header.
  */
 export function topLeftClearance(layout: SidebarLayout): {start: number; top: number} | null {
 	switch (layout) {
@@ -26,7 +26,7 @@ export function topLeftClearance(layout: SidebarLayout): {start: number; top: nu
 		case "collapsed":
 			return {start: 41, top: 9};
 		case "phone":
-			return {start: PHONE_SIDEBAR_TOGGLE.left + PHONE_SIDEBAR_TOGGLE.size + 4, top: 0};
+			return {start: PHONE_SIDEBAR_TOGGLE.left + PHONE_SIDEBAR_TOGGLE.size + 4, top: 9};
 		default:
 			return assertNever(layout);
 	}
