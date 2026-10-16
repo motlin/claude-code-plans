@@ -88,6 +88,7 @@ function placement({
 			supportsObserve: true,
 		},
 		herdrPane: {
+			host: "herdr" as const,
 			paneId: `pane-test-${number}`,
 			terminalId: `terminal-test-${number}`,
 			workspaceId: `workspace-test-${number}`,
@@ -547,6 +548,7 @@ describe("HerdrPage", () => {
 			visibleTechnicalMetadata: {
 				provider: row?.textContent.includes("herdr"),
 				workspaceId: row?.textContent.includes("workspace-test-100"),
+				host: "herdr" as const,
 				paneId: row?.textContent.includes("pane-test-100"),
 				terminalId: row?.textContent.includes("terminal-test-100"),
 				capabilityBadges: ["write", "events", "observe"].filter((label) =>
@@ -568,6 +570,7 @@ describe("HerdrPage", () => {
 			visibleTechnicalMetadata: {
 				provider: false,
 				workspaceId: false,
+				host: "herdr" as const,
 				paneId: false,
 				terminalId: false,
 				capabilityBadges: [],

@@ -13,6 +13,7 @@ import {SessionViewedStateSchema} from "./viewed-state";
  */
 export const HerdrPaneSchema = z
 	.object({
+		host: z.enum(["herdr", "tmux"]),
 		paneId: z.string(),
 		terminalId: z.string(),
 		workspaceId: z.string(),
@@ -26,7 +27,7 @@ export const HerdrPaneSchema = z
 		agentSessionId: z.string().nullable(),
 		revision: z.number(),
 		sessionId: z.string(),
-		via: z.enum(["env", "agent-session", "both"]),
+		via: z.enum(["env", "agent-session", "process", "both"]),
 		viewedState: SessionViewedStateSchema,
 	})
 	.strict();

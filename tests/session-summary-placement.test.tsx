@@ -497,6 +497,7 @@ describe("SessionPage dock composition", () => {
 	});
 	describe("answering the stored question", () => {
 		const herdrPane = {
+			host: "herdr" as const,
 			paneId: "w100:p100",
 			terminalId: "terminal-test-100",
 			workspaceId: "w100",

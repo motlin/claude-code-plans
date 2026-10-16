@@ -64,6 +64,7 @@ function livePanes(): HerdrPaneIndexData {
 	return {
 		panes: [
 			{
+				host: "herdr",
 				paneId: `pane-${SESSION_ID}`,
 				terminalId: "t1",
 				workspaceId: "w1",

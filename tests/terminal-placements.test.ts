@@ -67,16 +67,23 @@ function herdrSnapshot(sessionId = "session-test-200"): HerdrRequester {
 }
 
 function tmuxProvider(sessionId = "session-test-100"): TerminalPlacementProvider {
-	return createTmuxPlacementProvider(
-		[
+	return createTmuxPlacementProvider({
+		entries: () => [
 			entry({
 				sessionId,
 				tmuxPane: "%100",
 				tmuxServerSocket: "/tmp/test/tmux.sock",
 			}),
 		],
-		async () => Promise.resolve("%100\ttest-session\t10\tAlice test window\t1\n"),
-	);
+		registry: () => [],
+		listPanes: async (socket) =>
+			Promise.resolve(
+				socket === "/tmp/test/tmux.sock"
+					? "%100\t1000\t/tmp/test/tmux.sock\ttest-session\t10\tAlice test window\t1\t1\t/tmp/test\n"
+					: "",
+			),
+		processTable: async () => Promise.resolve(""),
+	});
 }
 
 function herdrProvider(sessionId = "session-test-200"): TerminalPlacementProvider {
@@ -131,6 +138,7 @@ describe("terminal placement providers", () => {
 					supportsObserve: true,
 				},
 				herdrPane: {
+					host: "herdr",
 					paneId: "w200:p200",
 					terminalId: "terminal-test-200",
 					workspaceId: "w200",
@@ -171,6 +179,7 @@ describe("terminal placement providers", () => {
 					supportsObserve: true,
 				},
 				herdrPane: {
+					host: "herdr",
 					paneId: "w200:p200",
 					terminalId: "terminal-test-200",
 					workspaceId: "w200",

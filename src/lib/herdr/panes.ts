@@ -25,9 +25,15 @@ export interface HerdrPane {
 	revision: number;
 }
 
+/**
+ * A live pane tied to a Claude session. tmux panes reuse this shape (see
+ * `src/lib/tmux/pane-links.ts`), so `host` says which multiplexer owns it and
+ * `via: "process"` marks a tmux match found through the session's pid.
+ */
 export interface HerdrPaneLink extends HerdrPane {
+	host: "herdr" | "tmux";
 	sessionId: string;
-	via: "env" | "agent-session" | "both";
+	via: "env" | "agent-session" | "process" | "both";
 }
 
 export interface HerdrTerminalPlacement extends TerminalPlacementBase {
@@ -182,6 +188,7 @@ export async function getHerdrPanes(
 
 		for (const [sessionId, {matchedByEnvironment, matchedByAgentSession}] of matches) {
 			links.push({
+				host: "herdr",
 				...pane,
 				sessionId,
 				via:

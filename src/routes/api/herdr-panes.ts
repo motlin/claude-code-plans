@@ -13,9 +13,12 @@ export const Route = createFileRoute("/api/herdr-panes")({
 				]);
 				const host = await getTerminalHost();
 				const panes = addViewedStateToPanes(getDb().index, await host.listPanes());
-				return Response.json(HerdrPaneIndexResponse.parse({panes, writesEnabled: terminalWritesEnabled()}), {
-					headers: {"Cache-Control": "private, max-age=0, must-revalidate"},
-				});
+				return Response.json(
+					HerdrPaneIndexResponse.parse({panes, writesEnabled: terminalWritesEnabled() && host.canWrite}),
+					{
+						headers: {"Cache-Control": "private, max-age=0, must-revalidate"},
+					},
+				);
 			},
 		}),
 	},

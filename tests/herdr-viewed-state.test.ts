@@ -8,6 +8,7 @@ import {
 
 function pane(overrides: Partial<HerdrPaneLink>): HerdrPaneLink {
 	return {
+		host: "herdr",
 		paneId: "workspace-100:pane-100",
 		terminalId: "terminal-test-100",
 		workspaceId: "workspace-100",

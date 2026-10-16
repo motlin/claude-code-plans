@@ -4,6 +4,8 @@ import type {HookEvent} from "../hook-events";
 import type {TerminalPlacementProvider} from "../terminal-placements";
 import type {TerminalHostSetting} from "../terminal-host-setting";
 import {createTmuxPlacementProvider} from "../tmux-windows";
+import {toTmuxPaneLink} from "../tmux/pane-links";
+import {defaultTmuxSessionPaneSources, getTmuxSessionPanes, type TmuxSessionPaneSources} from "../tmux/session-panes";
 import {handleHerdrInterrupt} from "../herdr/interrupt";
 import {handleHerdrLaunch} from "../herdr/launch";
 import {handleHerdrLiveOption} from "../herdr/live-option";
@@ -39,8 +41,10 @@ export {authorizeTerminalControl} from "../herdr/terminal-controller";
  * answers with the JSON the browser already expects.
  */
 export interface TerminalHost {
-	/** `none` when the chosen host is not wired up yet (tmux, in this slice). */
-	readonly id: "herdr" | "none";
+	/** `none` when no host is available. */
+	readonly id: "herdr" | "tmux" | "none";
+	/** Whether this host can type into panes at all; Live terminal input still gates it. */
+	readonly canWrite: boolean;
 	/** List panes: live panes linked to Claude sessions. */
 	listPanes: () => Promise<HerdrPaneLink[]>;
 	/** Every pane by workspace, including panes no Claude session owns. */
@@ -83,6 +87,7 @@ export interface TerminalHost {
 
 const herdrTerminalHost: TerminalHost = {
 	id: "herdr",
+	canWrite: true,
 	listPanes: async () => getHerdrPanes(),
 	listWorkspaces: async () => getHerdrWorkspaces(),
 	placementProvider: () => createHerdrPlacementProvider(),
@@ -111,9 +116,10 @@ async function noHostStream(): Promise<never> {
 	return Promise.reject(new Error("No terminal host can stream this session"));
 }
 
-/** The chosen host is not implemented yet: no panes, and every write is refused. */
+/** No host: no panes, and every write is refused. */
 const noTerminalHost: TerminalHost = {
 	id: "none",
+	canWrite: false,
 	listPanes: async () => Promise.resolve([]),
 	listWorkspaces: async () => Promise.resolve([]),
 	placementProvider: () => null,
@@ -130,13 +136,28 @@ const noTerminalHost: TerminalHost = {
 	stopAllStreams: () => undefined,
 };
 
+/**
+ * tmux: panes and session-to-pane mapping (hook `TMUX_PANE`, else the session
+ * pid's process tree). Writes, launch, pane events and live terminals are
+ * refused until later slices wire them up.
+ */
+export function createTmuxTerminalHost(sources: TmuxSessionPaneSources = defaultTmuxSessionPaneSources): TerminalHost {
+	return {
+		...noTerminalHost,
+		id: "tmux",
+		listPanes: async () => (await getTmuxSessionPanes(sources)).map(toTmuxPaneLink),
+		placementProvider: () => createTmuxPlacementProvider(sources),
+	};
+}
+
+const tmuxTerminalHost = createTmuxTerminalHost();
+
 export async function resolveTerminalHost(
 	setting: TerminalHostSetting,
 	probes: TerminalHostProbes = defaultTerminalHostProbes,
 ): Promise<TerminalHost> {
 	const id = await selectTerminalHost(setting, probes);
-	// tmux becomes a real host in a later slice; until then it means "no host".
-	return id === "herdr" ? herdrTerminalHost : noTerminalHost;
+	return id === "herdr" ? herdrTerminalHost : tmuxTerminalHost;
 }
 
 /** The host the Terminal host setting picks right now. */
@@ -158,8 +179,9 @@ export function stopAllTerminalHostStreams(): void {
 	herdrTerminalHost.stopAllStreams();
 }
 
-/** Placement providers for the Terminals view: tmux windows always, plus the host's panes. */
+/** Placement providers for the Terminals view: tmux windows always, plus herdr's panes when herdr is the host. */
 export async function terminalPlacementProviders(): Promise<TerminalPlacementProvider[]> {
-	const hostProvider = (await getTerminalHost()).placementProvider();
+	const host = await getTerminalHost();
+	const hostProvider = host.id === "tmux" ? null : host.placementProvider();
 	return hostProvider === null ? [createTmuxPlacementProvider()] : [createTmuxPlacementProvider(), hostProvider];
 }

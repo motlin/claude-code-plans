@@ -191,6 +191,7 @@ describe("getHerdrPanes", () => {
 			indexedSessionIdBatches: [["session-test-100", "session-test-200", "session-test-500", "session-test-600"]],
 			links: [
 				{
+					host: "herdr",
 					paneId: "w100:p100",
 					terminalId: "terminal-test-100",
 					workspaceId: "w100",
@@ -207,6 +208,7 @@ describe("getHerdrPanes", () => {
 					via: "both",
 				},
 				{
+					host: "herdr",
 					paneId: "w200:p200",
 					terminalId: "terminal-test-200",
 					workspaceId: "w200",
@@ -223,6 +225,7 @@ describe("getHerdrPanes", () => {
 					via: "agent-session",
 				},
 				{
+					host: "herdr",
 					paneId: "w300:p300",
 					terminalId: "terminal-test-300",
 					workspaceId: "w300",
@@ -239,6 +242,7 @@ describe("getHerdrPanes", () => {
 					via: "env",
 				},
 				{
+					host: "herdr",
 					paneId: "w500:p500",
 					terminalId: "terminal-test-500",
 					workspaceId: "w500",
@@ -347,6 +351,7 @@ describe("getHerdrPanes", () => {
 		expect({panes, requests}).toStrictEqual({
 			panes: [
 				{
+					host: "herdr",
 					paneId: "w100:p100",
 					terminalId: "terminal-test-100",
 					workspaceId: "w100",

@@ -20,6 +20,7 @@ const SESSION_ID = "8f0c2c7e-1111-4222-8333-944445555666";
 type HerdrPane = HerdrPaneIndexData["panes"][number];
 
 const PANE: HerdrPane = {
+	host: "herdr",
 	paneId: "p1",
 	terminalId: "t1",
 	workspaceId: "w1",
@@ -258,6 +259,24 @@ describe("Environment card", () => {
 				["herdr", "working"],
 			],
 			href: `/herdr/terminal/${SESSION_ID}`,
+		});
+	});
+
+	it("shows a tmux pane by its pane id, without a terminal link until tmux streams", async () => {
+		await renderCards({
+			...BASE,
+			gitBranch: null,
+			model: null,
+			herdrPane: {...PANE, host: "tmux", paneId: "%7", agentStatus: "unknown", via: "process"},
+		});
+		const card = screen.getByRole("region", {name: /^Environment/});
+
+		expect({rows: rows("Environment"), links: within(card).queryAllByRole("link")}).toStrictEqual({
+			rows: [
+				["~/projects/avalonlogs", "Not connected"],
+				["tmux", "%7"],
+			],
+			links: [],
 		});
 	});
 });

@@ -1,6 +1,6 @@
 import {describe, expect, it} from "vite-plus/test";
 import {TerminalHostSettingSchema} from "../src/lib/terminal-host-setting";
-import {resolveTerminalHost} from "../src/lib/terminal-host";
+import {createTmuxTerminalHost, resolveTerminalHost} from "../src/lib/terminal-host";
 import {detectTmux, selectTerminalHost, type TerminalHostProbes} from "../src/lib/terminal-host/selection";
 
 function probes(herdr: boolean, tmux: boolean, calls: string[] = []): TerminalHostProbes {
@@ -81,17 +81,22 @@ describe("detectTmux", () => {
 });
 
 describe("resolveTerminalHost", () => {
-	it("drives herdr through the herdr host and resolves tmux to no host in this slice", async () => {
+	it("drives herdr through the herdr host and tmux through the tmux host", async () => {
 		expect({
 			herdr: (await resolveTerminalHost("herdr", probes(false, false))).id,
 			autoWithHerdr: (await resolveTerminalHost("auto", probes(true, true))).id,
 			autoWithTmuxOnly: (await resolveTerminalHost("auto", probes(false, true))).id,
 			tmux: (await resolveTerminalHost("tmux", probes(true, true))).id,
-		}).toStrictEqual({herdr: "herdr", autoWithHerdr: "herdr", autoWithTmuxOnly: "none", tmux: "none"});
+		}).toStrictEqual({herdr: "herdr", autoWithHerdr: "herdr", autoWithTmuxOnly: "tmux", tmux: "tmux"});
 	});
 
-	it("answers no host with empty pane lists and refused writes", async () => {
-		const host = await resolveTerminalHost("tmux", probes(false, true));
+	it("refuses tmux writes until tmux writes land, with no workspaces", async () => {
+		const host = createTmuxTerminalHost({
+			entries: () => [],
+			registry: () => [],
+			listPanes: async () => Promise.resolve(""),
+			processTable: async () => Promise.resolve(""),
+		});
 		const request = new Request("http://127.0.0.1:7526/api/herdr/prompt", {
 			method: "POST",
 			body: JSON.stringify({sessionId: "s", prompt: "hi"}),
@@ -101,13 +106,13 @@ describe("resolveTerminalHost", () => {
 		expect({
 			panes: await host.listPanes(),
 			workspaces: await host.listWorkspaces(),
-			placementProvider: host.placementProvider(),
+			placementProvider: host.placementProvider()?.id,
 			status: response.status,
 			body: await response.json(),
 		}).toStrictEqual({
 			panes: [],
 			workspaces: [],
-			placementProvider: null,
+			placementProvider: "tmux",
 			status: 503,
 			body: {error: "No terminal host is available for live input", code: "no-terminal-host"},
 		});

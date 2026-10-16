@@ -28,6 +28,7 @@ const QUESTION: PendingQuestion = {
 };
 
 const PANE: HerdrPaneIndexData["panes"][number] = {
+	host: "herdr",
 	paneId: "p1",
 	terminalId: "t1",
 	workspaceId: "w1",

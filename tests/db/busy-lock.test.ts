@@ -122,6 +122,7 @@ describe("index DB writes while another connection holds the write lock", () => 
 
 		await tracker.syncPanes([
 			{
+				host: "herdr",
 				paneId: "workspace-1:pane-1",
 				terminalId: "terminal-open",
 				workspaceId: "workspace-1",

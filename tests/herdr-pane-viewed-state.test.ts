@@ -6,6 +6,7 @@ import type {HerdrPaneLink} from "../src/lib/herdr/panes";
 
 function pane(terminalId: string, agentStatus: string): HerdrPaneLink {
 	return {
+		host: "herdr",
 		paneId: `workspace-100:pane-${terminalId}`,
 		terminalId,
 		workspaceId: "workspace-100",

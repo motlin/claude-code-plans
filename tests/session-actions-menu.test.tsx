@@ -64,6 +64,7 @@ async function renderRow(
 	});
 	const panes: HerdrPaneIndexData = {
 		panes: livePaneSessionIds.map((sessionId) => ({
+			host: "herdr",
 			paneId: `pane-${sessionId}`,
 			terminalId: "t1",
 			workspaceId: "w1",

@@ -7,6 +7,7 @@ import {
 } from "../src/lib/api/herdr";
 
 const linkedPane = {
+	host: "herdr",
 	paneId: "w100:p100",
 	terminalId: "terminal-test-100",
 	workspaceId: "w100",
