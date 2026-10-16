@@ -476,6 +476,20 @@
 		background-color: transparent;
 		box-shadow: 0 0 0 1px var(--card-outline);
 	}
+
+	/* Upstream `epitaxy-card-outline-layer` (the usage-limit card): the ring inset, drawn on ::after over the card. */
+	.card-outline-layer {
+		position: relative;
+	}
+
+	.card-outline-layer::after {
+		content: "";
+		position: absolute;
+		inset: 0;
+		border-radius: inherit;
+		box-shadow: inset 0 0 0 1px var(--card-outline);
+		pointer-events: none;
+	}
 	.code-card {
 		background-color: var(--code-card-bg);
 	}

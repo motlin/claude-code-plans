@@ -4081,9 +4081,9 @@ function UsageLimitCardView({card}: {card: UsageLimitCard}) {
 	return (
 		<div
 			data-usage-limit-card=""
-			className="card-ring flex w-fit min-w-[min(480px,100%)] max-w-full flex-col overflow-clip rounded-r7"
+			className="card-outline-layer flex w-fit min-w-[min(480px,100%)] max-w-full flex-col overflow-clip rounded-r7"
 		>
-			<div className="flex items-center gap-2 bg-alpha-1 px-3 py-2 contain-inline-size">
+			<div className="flex items-center gap-3 bg-alpha-1 px-3 py-2 contain-inline-size">
 				<Gauge aria-hidden="true" className="size-4 shrink-0 text-danger-000" />
 				<span className="text-body text-primary">{card.headline}</span>
 			</div>

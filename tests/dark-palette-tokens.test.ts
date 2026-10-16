@@ -124,6 +124,31 @@ describe("dark palette", () => {
 		).toBe(true);
 	});
 
+	it("draws upstream's epitaxy-card-outline-layer ring inside the card on ::after, with no shadow on the card", () => {
+		const layerStart = styles.indexOf(".card-outline-layer {");
+		const afterStart = styles.indexOf(".card-outline-layer::after {");
+		const layer = styles.slice(layerStart, afterStart);
+		const rule = styles.slice(afterStart, styles.indexOf("}", afterStart));
+		const declares = (body: string, declaration: string) =>
+			body.split("\n").some((line) => line.trim() === declaration);
+
+		expect({
+			layerShadow: layer.includes("box-shadow"),
+			layerPosition: declares(layer, "position: relative;"),
+			ring: declares(rule, "box-shadow: inset 0 0 0 1px var(--card-outline);"),
+			inset: declares(rule, "inset: 0;"),
+			radius: declares(rule, "border-radius: inherit;"),
+			passThrough: declares(rule, "pointer-events: none;"),
+		}).toStrictEqual({
+			layerShadow: false,
+			layerPosition: true,
+			ring: true,
+			inset: true,
+			radius: true,
+			passThrough: true,
+		});
+	});
+
 	it("routes the git status colors through themed tokens with upstream's dark values", () => {
 		const names = GIT_STATES.map((state) => `--git-${state}`);
 
