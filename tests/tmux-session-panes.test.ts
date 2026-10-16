@@ -1,13 +1,18 @@
 import {describe, expect, it} from "vite-plus/test";
 import type {ActiveSessionEntry} from "../src/lib/active-session-store";
 import {createTmuxTerminalHost} from "../src/lib/terminal-host";
+import {createTmuxPaneTable} from "../src/lib/tmux/pane-table";
 import {
 	findAncestorPane,
 	getTmuxSessionPanes,
+	lookupTmuxSessionPanes,
 	mapSessionsToTmuxPanes,
 	parseProcessParents,
 	parseTmuxListPanes,
+	pollTmuxSessionPanes,
+	TMUX_NOT_INSTALLED,
 	type TmuxListedPane,
+	type TmuxSessionPane,
 	type TmuxSessionPaneSources,
 } from "../src/lib/tmux/session-panes";
 
@@ -283,6 +288,70 @@ describe("getTmuxSessionPanes", () => {
 			}),
 		);
 		expect(result).toStrictEqual([]);
+	});
+});
+
+function missingBinary(): Error {
+	return Object.assign(new Error("spawn tmux ENOENT"), {code: "ENOENT"});
+}
+
+describe("pollTmuxSessionPanes", () => {
+	it("reports tmux as not installed when the tmux binary is missing", async () => {
+		const missing = sources({listPanes: async () => Promise.reject(missingBinary())});
+
+		expect({
+			poll: await pollTmuxSessionPanes(missing),
+			get: await getTmuxSessionPanes(missing),
+		}).toStrictEqual({poll: TMUX_NOT_INSTALLED, get: []});
+	});
+
+	it("lists no panes, not a missing tmux, when tmux is installed but no server runs", async () => {
+		const result = await pollTmuxSessionPanes(
+			sources({listPanes: async () => Promise.reject(new Error("no server running"))}),
+		);
+
+		expect(result).toStrictEqual([]);
+	});
+});
+
+describe("lookupTmuxSessionPanes", () => {
+	const hooked = entry({sessionId: "hooked", tmuxPane: "%1", tmuxServerSocket: DEFAULT_SOCKET});
+	const fromTmux: TmuxSessionPane = {
+		sessionId: "hooked",
+		cwd: "/tmp/test/alice-project",
+		pane: pane({paneId: "%1", panePid: 100}),
+		via: "env",
+	};
+
+	it("serves the poller's table while it is current, without running tmux", async () => {
+		const table = createTmuxPaneTable();
+		const fromTable = {...fromTmux, sessionId: "from-table"};
+		table.hold([fromTable]);
+		const calls: Array<string | null> = [];
+		const result = await lookupTmuxSessionPanes(
+			sources({
+				entries: () => [hooked],
+				listPanes: async (socket) => {
+					calls.push(socket);
+					return Promise.resolve(line({paneId: "%1", panePid: 100}));
+				},
+				paneTable: table,
+			}),
+		);
+
+		expect({result, calls}).toStrictEqual({result: [fromTable], calls: []});
+	});
+
+	it("asks tmux when the table is not current", async () => {
+		const result = await lookupTmuxSessionPanes(
+			sources({
+				entries: () => [hooked],
+				listPanes: async () => Promise.resolve(line({paneId: "%1", panePid: 100})),
+				paneTable: createTmuxPaneTable(),
+			}),
+		);
+
+		expect(result).toStrictEqual([fromTmux]);
 	});
 });
 

@@ -1,5 +1,6 @@
 import {describe, expect, it} from "vite-plus/test";
-import {getTmuxWindows, type TmuxWindow} from "../src/lib/tmux-windows";
+import {createTmuxPlacementProvider, getTmuxWindows, type TmuxWindow} from "../src/lib/tmux-windows";
+import {createTmuxPaneTable} from "../src/lib/tmux/pane-table";
 import type {TmuxListPanesRunner, TmuxSessionPaneSources} from "../src/lib/tmux/session-panes";
 import type {ActiveSessionEntry} from "../src/lib/active-session-store";
 
@@ -135,5 +136,58 @@ describe("getTmuxWindows", () => {
 	it("returns [] when there are no tmux entries", async () => {
 		const windows = await getTmuxWindows(sources([], async () => Promise.resolve("")));
 		expect(windows).toStrictEqual([]);
+	});
+});
+
+describe("tmux placement provider", () => {
+	it("reports tmux placements as writable, since tmux types through send-keys", async () => {
+		const provider = createTmuxPlacementProvider(
+			sources([entry({sessionId: "sA", tmuxPane: "%1"})], async () =>
+				Promise.resolve(paneLine("%1", 0, "x", true)),
+			),
+		);
+		const placements = await provider.getPlacements();
+		const capabilities = {supportsWrite: true, supportsEvents: true, supportsObserve: false};
+
+		expect({
+			provider: provider.capabilities,
+			placements: placements.map((placement) => placement.capabilities),
+		}).toStrictEqual({provider: capabilities, placements: [capabilities]});
+	});
+
+	it("serves placements from the poller's pane table while it is current, without running tmux", async () => {
+		const table = createTmuxPaneTable();
+		table.hold([
+			{
+				sessionId: "sT",
+				cwd: "/tmp/test/table-project",
+				via: "env",
+				pane: {
+					paneId: "%4",
+					panePid: 1004,
+					socketPath: SOCKET,
+					sessionName: "main",
+					windowIndex: 4,
+					windowName: "from-table",
+					windowActive: false,
+					paneActive: true,
+					currentPath: "/tmp",
+				},
+			},
+		]);
+		let runs = 0;
+		const provider = createTmuxPlacementProvider({
+			...sources([entry({sessionId: "sA", tmuxPane: "%1"})], async () => {
+				runs += 1;
+				return Promise.resolve(paneLine("%1", 0, "x", true));
+			}),
+			paneTable: table,
+		});
+		const placements = await provider.getPlacements();
+
+		expect({sessions: placements.map((placement) => placement.sessionId), runs}).toStrictEqual({
+			sessions: ["sT"],
+			runs: 0,
+		});
 	});
 });

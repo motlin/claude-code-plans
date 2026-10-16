@@ -29,14 +29,18 @@ async function outputOrEmpty(io: TmuxLaunchIo, args: readonly string[]): Promise
 	}
 }
 
-/** The session of the client with the highest `client_activity`, or null with no client attached. */
+/**
+ * The session of the client with the highest `client_activity`, or null with
+ * no client attached. Control-mode clients are skipped: ccp's own live
+ * terminal streams are ones, and their activity tracks the session being watched.
+ */
 function mostRecentClientSession(stdout: string): string | null {
 	let best: {activity: number; session: string} | null = null;
 	for (const line of stdout.split("\n")) {
-		const tab = line.indexOf("\t");
-		if (tab === -1) continue;
-		const activity = Number.parseInt(line.slice(0, tab), 10);
-		const session = line.slice(tab + 1);
+		const [activityRaw, controlMode, ...sessionParts] = line.split("\t");
+		if (controlMode === "1") continue;
+		const activity = Number.parseInt(activityRaw ?? "", 10);
+		const session = sessionParts.join("\t");
 		if (Number.isNaN(activity) || session === "") continue;
 		if (best === null || activity > best.activity) best = {activity, session};
 	}
@@ -48,7 +52,11 @@ function mostRecentClientSession(stdout: string): string | null {
  * else the detached `claude` session, which is created when it is missing.
  */
 export async function chooseTmuxLaunchSession(io: TmuxLaunchIo): Promise<TmuxLaunchTarget> {
-	const clients = await outputOrEmpty(io, ["list-clients", "-F", "#{client_activity}\t#{client_session}"]);
+	const clients = await outputOrEmpty(io, [
+		"list-clients",
+		"-F",
+		"#{client_activity}\t#{client_control_mode}\t#{client_session}",
+	]);
 	const session = mostRecentClientSession(clients);
 	if (session !== null) return {session, exists: true};
 	const sessions = await outputOrEmpty(io, ["list-sessions", "-F", "#{session_name}"]);

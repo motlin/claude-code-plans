@@ -5,7 +5,13 @@ import type {HerdrRequester} from "../herdr/panes";
 import type {HerdrPromptTarget} from "../herdr/prompt";
 import {asRecord, errorMessage} from "../narrow";
 import type {ActivityState} from "../session-state";
-import {getTmuxSessionPanes, type TmuxListedPane, type TmuxSessionPaneSources} from "./session-panes";
+import {
+	getTmuxSessionPanes,
+	lookupTmuxSessionPanes,
+	type TmuxListedPane,
+	type TmuxSessionPane,
+	type TmuxSessionPaneSources,
+} from "./session-panes";
 
 /** Runs `tmux <args>`; resolves once tmux exits cleanly. */
 export type TmuxCommandRunner = (args: readonly string[]) => Promise<void>;
@@ -63,12 +69,16 @@ function failure(code: string, message: string): HerdrResult<never> {
 	return {ok: false, code, message};
 }
 
-/** The session's pane right now, from a fresh `list-panes`. */
-async function currentPane(sessionId: string, sources: TmuxSessionPaneSources): Promise<HerdrResult<TmuxListedPane>> {
-	const match = (await getTmuxSessionPanes(sources)).find((pane) => pane.sessionId === sessionId);
+function sessionPane(sessionId: string, panes: readonly TmuxSessionPane[]): HerdrResult<TmuxListedPane> {
+	const match = panes.find((pane) => pane.sessionId === sessionId);
 	return match === undefined
 		? failure("session-not-found", "session is not attached to a live tmux pane")
 		: {ok: true, value: match.pane};
+}
+
+/** The session's pane right now, from a fresh `list-panes`. */
+async function currentPane(sessionId: string, sources: TmuxSessionPaneSources): Promise<HerdrResult<TmuxListedPane>> {
+	return sessionPane(sessionId, await getTmuxSessionPanes(sources));
 }
 
 function readyCheck(kind: TmuxWriteKind, state: ActivityState | undefined): HerdrResult<null> {
@@ -156,7 +166,7 @@ export function tmuxWriteDependencies(
 	let resolved: {sessionId: string; pane: TmuxListedPane} | null = null;
 	return {
 		resolveTarget: async (sessionId) => {
-			const pane = await currentPane(sessionId, sources);
+			const pane = sessionPane(sessionId, await lookupTmuxSessionPanes(sources));
 			if (!pane.ok) return pane;
 			resolved = {sessionId, pane: pane.value};
 			return {

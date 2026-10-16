@@ -12,7 +12,7 @@ import type {TmuxWriteIo} from "../src/lib/tmux/writes";
 const CWD = "/tmp/test/alice-project";
 const NEW_WINDOW_OUTPUT = "@12\t%34\n";
 
-const LIST_CLIENTS = ["list-clients", "-F", "#{client_activity}\t#{client_session}"];
+const LIST_CLIENTS = ["list-clients", "-F", "#{client_activity}\t#{client_control_mode}\t#{client_session}"];
 const LIST_SESSIONS = ["list-sessions", "-F", "#{session_name}"];
 const PRINT_IDS = ["-P", "-F", "#{window_id}\t#{pane_id}"];
 
@@ -36,12 +36,32 @@ function fakeTmux(outputs: Partial<Record<string, string>>): {io: TmuxLaunchIo; 
 describe("chooseTmuxLaunchSession", () => {
 	it("picks the session of the most recently active client", async () => {
 		const {io, calls} = fakeTmux({
-			"list-clients": "1760600000\twork\n1760600300\tside project\n1760600100\tmain\n",
+			"list-clients": "1760600000\t0\twork\n1760600300\t0\tside project\n1760600100\t0\tmain\n",
 		});
 
 		expect({target: await chooseTmuxLaunchSession(io), calls}).toStrictEqual({
 			target: {session: "side project", exists: true} satisfies TmuxLaunchTarget,
 			calls: [LIST_CLIENTS],
+		});
+	});
+
+	it("skips control-mode clients, such as ccp's own live terminal streams", async () => {
+		const {io, calls} = fakeTmux({
+			"list-clients": "1760600000\t0\twork\n1760600900\t1\twatched\n",
+		});
+
+		expect({target: await chooseTmuxLaunchSession(io), calls}).toStrictEqual({
+			target: {session: "work", exists: true} satisfies TmuxLaunchTarget,
+			calls: [LIST_CLIENTS],
+		});
+	});
+
+	it("falls back to the claude session when only control-mode clients are attached", async () => {
+		const {io, calls} = fakeTmux({"list-clients": "1760600900\t1\twatched\n", "list-sessions": "watched\n"});
+
+		expect({target: await chooseTmuxLaunchSession(io), calls}).toStrictEqual({
+			target: {session: "claude", exists: false} satisfies TmuxLaunchTarget,
+			calls: [LIST_CLIENTS, LIST_SESSIONS],
 		});
 	});
 
@@ -75,7 +95,7 @@ describe("chooseTmuxLaunchSession", () => {
 
 describe("launchClaudeInTmux", () => {
 	it("opens a detached window in the active client's session running the herdr launch's command line", async () => {
-		const {io, calls} = fakeTmux({"list-clients": "1760600300\twork\n", "new-window": NEW_WINDOW_OUTPUT});
+		const {io, calls} = fakeTmux({"list-clients": "1760600300\t0\twork\n", "new-window": NEW_WINDOW_OUTPUT});
 
 		const result = await launchClaudeInTmux(
 			{cwd: CWD, prompt: "Fix the bug\nit's in main.ts", args: ["--model", "opus", "--effort", "high"]},
@@ -164,7 +184,7 @@ describe("tmux host launch", () => {
 	}
 
 	it("answers the launch API with the new window and pane", async () => {
-		const {io, calls} = fakeTmux({"list-clients": "1760600300\twork\n", "new-window": NEW_WINDOW_OUTPUT});
+		const {io, calls} = fakeTmux({"list-clients": "1760600300\t0\twork\n", "new-window": NEW_WINDOW_OUTPUT});
 		const response = await createTmuxTerminalHost(sources, writeIo(true), io).launch(
 			launchRequest({cwd: CWD, prompt: "hello"}),
 		);
@@ -177,7 +197,7 @@ describe("tmux host launch", () => {
 	});
 
 	it("refuses to launch while Live terminal input is off, without running tmux", async () => {
-		const {io, calls} = fakeTmux({"list-clients": "1760600300\twork\n", "new-window": NEW_WINDOW_OUTPUT});
+		const {io, calls} = fakeTmux({"list-clients": "1760600300\t0\twork\n", "new-window": NEW_WINDOW_OUTPUT});
 		const response = await createTmuxTerminalHost(sources, writeIo(false), io).launch(launchRequest({cwd: CWD}));
 
 		expect({status: response.status, body: await response.json(), calls}).toStrictEqual({

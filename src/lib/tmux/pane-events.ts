@@ -1,9 +1,12 @@
+import {getActiveSessionEntries} from "../active-session-store";
+import {terminalHostSetting} from "../config";
 import {HERDR_EVENTS} from "../hook-events";
 import {hmrDispose, hmrPersist} from "../hmr-persist";
 import {broadcastTyped} from "../sse-broadcast";
 import {createHerdrPaneDiffer} from "../herdr/pane-differ";
 import {toTmuxPaneLink} from "./pane-links";
-import {getTmuxSessionPanes, type TmuxSessionPane} from "./session-panes";
+import {tmuxPaneTable, type TmuxPaneTable} from "./pane-table";
+import {pollTmuxSessionPanes, TMUX_NOT_INSTALLED, type TmuxSessionPane} from "./session-panes";
 
 /** tmux pushes nothing to a plain client, so ccp polls `list-panes` this often. */
 export const TMUX_PANE_POLL_INTERVAL_MS = 2000;
@@ -79,28 +82,53 @@ export function createTmuxPaneEventTracker(): {poll: (panes: readonly TmuxSessio
 type Timer = ReturnType<typeof setTimeout>;
 
 export interface TmuxPaneEventPollerDependencies {
-	listSessionPanes: () => Promise<TmuxSessionPane[]>;
+	listSessionPanes: () => Promise<TmuxSessionPane[] | typeof TMUX_NOT_INSTALLED>;
 	broadcast: (type: string, data: Record<string, unknown>) => void;
+	/** Kept current with each poll's panes for request handlers. */
+	table: TmuxPaneTable;
+	/**
+	 * A cheap, process-free reading of what could make tmux appear: the
+	 * Terminal host setting and the hook-reported tmux panes. While tmux is not
+	 * installed the poller only polls again once this changes.
+	 */
+	wakeSignature: () => string;
 	schedule: (callback: () => void, delayMs: number) => Timer | number;
 	cancel: (timer: Timer | number) => void;
 }
 
-/** Poll tmux every 2 s and broadcast its pane events; returns the stop. Polls never overlap. */
+/**
+ * Poll tmux every 2 s, broadcast its pane events and keep the pane table
+ * current; returns the stop. Polls never overlap. A missing tmux binary puts
+ * the poller to sleep, quietly and with no table expiry, until the wake
+ * signature changes.
+ */
 export function createTmuxPaneEventPoller(dependencies: TmuxPaneEventPollerDependencies): () => void {
 	const tracker = createTmuxPaneEventTracker();
+	const {table} = dependencies;
 	let stopped = false;
 	const isStopped = (): boolean => stopped;
 	let timer: Timer | number | null = null;
+	let dormantSignature: string | null = null;
 
 	const poll = async (): Promise<void> => {
 		timer = null;
 		if (stopped) return;
-		try {
-			const panes = await dependencies.listSessionPanes();
-			if (isStopped()) return;
-			for (const event of tracker.poll(panes)) dependencies.broadcast(event.type, event.data);
-		} catch (error) {
-			console.error("tmux pane poll failed", error);
+		if (dormantSignature === null || dependencies.wakeSignature() !== dormantSignature) {
+			dormantSignature = null;
+			try {
+				const panes = await dependencies.listSessionPanes();
+				if (isStopped()) return;
+				if (panes === TMUX_NOT_INSTALLED) {
+					dormantSignature = dependencies.wakeSignature();
+					table.hold([]);
+				} else {
+					table.update(panes);
+					for (const event of tracker.poll(panes)) dependencies.broadcast(event.type, event.data);
+				}
+			} catch (error) {
+				table.invalidate();
+				console.error("tmux pane poll failed", error);
+			}
 		}
 		if (isStopped()) return;
 		timer = dependencies.schedule(() => void poll(), TMUX_PANE_POLL_INTERVAL_MS);
@@ -113,12 +141,23 @@ export function createTmuxPaneEventPoller(dependencies: TmuxPaneEventPollerDepen
 		stopped = true;
 		if (timer !== null) dependencies.cancel(timer);
 		timer = null;
+		table.invalidate();
 	};
 }
 
+function tmuxWakeSignature(): string {
+	const hookPanes = getActiveSessionEntries()
+		.filter((entry) => entry.tmuxPane !== "")
+		.map((entry) => `${entry.sessionId}:${entry.tmuxServerSocket}:${entry.tmuxPane}`)
+		.toSorted();
+	return [terminalHostSetting(), ...hookPanes].join("\n");
+}
+
 const defaultDependencies: TmuxPaneEventPollerDependencies = {
-	listSessionPanes: async () => getTmuxSessionPanes(),
+	listSessionPanes: async () => pollTmuxSessionPanes(),
 	broadcast: broadcastTyped,
+	table: tmuxPaneTable,
+	wakeSignature: tmuxWakeSignature,
 	schedule: setTimeout,
 	cancel: (timer) => {
 		clearTimeout(timer);

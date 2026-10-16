@@ -3,6 +3,7 @@ import type {ActiveSessionEntry} from "../src/lib/active-session-store";
 import {sessionAnswerRoute} from "../src/hooks/use-question-answer-route";
 import {clearAllPendingQuestions, setPendingQuestion} from "../src/lib/pending-question-store";
 import {createTmuxTerminalHost, resolveTerminalHost} from "../src/lib/terminal-host";
+import {createTmuxPaneTable} from "../src/lib/tmux/pane-table";
 import type {TmuxSessionPaneSources} from "../src/lib/tmux/session-panes";
 import {tmuxKeyName, type TmuxWriteIo} from "../src/lib/tmux/writes";
 import type {HerdrPaneIndexData} from "../src/lib/api/herdr";
@@ -306,6 +307,75 @@ describe("tmux host writes", () => {
 			},
 			calls: [],
 		});
+	});
+});
+
+describe("tmux host writes with the poller's pane table", () => {
+	function tableSaying(paneId: string, panePid: number) {
+		const table = createTmuxPaneTable();
+		table.hold([
+			{
+				sessionId: SESSION_ID,
+				cwd: "/tmp/test/alice-project",
+				via: "env",
+				pane: {
+					paneId,
+					panePid,
+					socketPath: SOCKET,
+					sessionName: "main",
+					windowIndex: 0,
+					windowName: "zsh",
+					windowActive: true,
+					paneActive: true,
+					currentPath: "/tmp/test",
+				},
+			},
+		]);
+		return table;
+	}
+
+	function countingSources(paneTable: ReturnType<typeof createTmuxPaneTable>, panes: string) {
+		const listed: Array<string | null> = [];
+		const sources: TmuxSessionPaneSources = {
+			entries: () => [entry({tmuxPane: "%8"})],
+			registry: () => [],
+			listPanes: async (socket) => {
+				listed.push(socket);
+				return Promise.resolve(panes);
+			},
+			processTable: async () => Promise.resolve(""),
+			paneTable,
+		};
+		return {sources, listed};
+	}
+
+	it("finds the write target in the table, then re-resolves with tmux right before typing", async () => {
+		const {sources, listed} = countingSources(tableSaying("%8", 800), paneLine("%8", 800));
+		const {io, calls} = recordingIo();
+
+		const response = await createTmuxTerminalHost(sources, io).prompt(
+			post("/api/herdr/prompt", {sessionId: SESSION_ID, prompt: "hi"}),
+		);
+
+		expect({response: await describeResponse(response), listed, calls}).toStrictEqual({
+			response: {status: 200, body: {ok: true}},
+			listed: [null],
+			calls: [
+				["-S", SOCKET, "send-keys", "-t", "%8", "-l", "--", "hi"],
+				["-S", SOCKET, "send-keys", "-t", "%8", "Enter"],
+			],
+		});
+	});
+
+	it("refuses to type when tmux says the pane moved on since the table's poll", async () => {
+		const {sources} = countingSources(tableSaying("%7", 700), paneLine("%8", 800));
+		const {io, calls} = recordingIo();
+
+		const response = await createTmuxTerminalHost(sources, io).prompt(
+			post("/api/herdr/prompt", {sessionId: SESSION_ID, prompt: "hi"}),
+		);
+
+		expect({status: response.status, calls}).toStrictEqual({status: 502, calls: []});
 	});
 });
 

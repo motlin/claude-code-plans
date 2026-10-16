@@ -5,7 +5,11 @@ import type {TerminalPlacementProvider} from "../terminal-placements";
 import type {TerminalHostSetting} from "../terminal-host-setting";
 import {createTmuxPlacementProvider} from "../tmux-windows";
 import {toTmuxPaneLink} from "../tmux/pane-links";
-import {defaultTmuxSessionPaneSources, getTmuxSessionPanes, type TmuxSessionPaneSources} from "../tmux/session-panes";
+import {
+	defaultTmuxSessionPaneSources,
+	lookupTmuxSessionPanes,
+	type TmuxSessionPaneSources,
+} from "../tmux/session-panes";
 import {TERMINAL_HOST_CAPABILITIES} from "../terminal-host-capabilities";
 import {defaultTmuxLaunchIo, launchClaudeInTmux, type TmuxLaunchIo} from "../tmux/launch";
 import {defaultTmuxWriteIo, tmuxWriteDependencies, type TmuxWriteIo} from "../tmux/writes";
@@ -174,7 +178,7 @@ export function createTmuxTerminalHost(
 		interactive: boolean,
 	): Promise<TerminalController> => {
 		parseViewport(columns, rows);
-		const match = (await getTmuxSessionPanes(sources)).find((candidate) => candidate.sessionId === sessionId);
+		const match = (await lookupTmuxSessionPanes(sources)).find((candidate) => candidate.sessionId === sessionId);
 		if (match === undefined) throw new Error("No live tmux pane is linked to this session");
 		return startTmuxTerminalStream({pane: match.pane, interactive}, socket, streamIo);
 	};
@@ -182,7 +186,7 @@ export function createTmuxTerminalHost(
 		...noTerminalHost,
 		id: "tmux",
 		...TERMINAL_HOST_CAPABILITIES.tmux,
-		listPanes: async () => (await getTmuxSessionPanes(sources)).map(toTmuxPaneLink),
+		listPanes: async () => (await lookupTmuxSessionPanes(sources)).map(toTmuxPaneLink),
 		startPaneEvents: startTmuxPaneEvents,
 		placementProvider: () => createTmuxPlacementProvider(sources),
 		prompt: async (request) =>

@@ -1,6 +1,7 @@
 import {execFile} from "node:child_process";
 import {getActiveSessionEntries, type ActiveSessionEntry} from "../active-session-store";
 import {getRegistrySessionStates, type RegistrySessionState} from "../session-registry-store";
+import {tmuxPaneTable, type TmuxPaneTable} from "./pane-table";
 
 /** One pane from `tmux list-panes -a`, with the server socket it came from. */
 export interface TmuxListedPane {
@@ -176,6 +177,8 @@ export interface TmuxSessionPaneSources {
 	listPanes: TmuxListPanesRunner;
 	/** `ps -A -o pid=,ppid=` output. */
 	processTable: () => Promise<string>;
+	/** The poller's in-memory panes, which lookups serve while it is current. */
+	paneTable?: TmuxPaneTable;
 }
 
 const TMUX_TIMEOUT_MS = 2000;
@@ -198,24 +201,34 @@ export const defaultTmuxSessionPaneSources: TmuxSessionPaneSources = {
 	listPanes: async (socket) =>
 		runFile("tmux", [...(socket === null ? [] : ["-S", socket]), "list-panes", "-a", "-F", TMUX_LIST_PANES_FORMAT]),
 	processTable: async () => runFile("ps", ["-A", "-o", "pid=,ppid="]),
+	paneTable: tmuxPaneTable,
 };
+
+/** What a poll reports when the tmux binary is not installed, as opposed to no server running. */
+export const TMUX_NOT_INSTALLED = Symbol("tmux not installed");
+
+function isMissingBinary(error: unknown): boolean {
+	return error instanceof Error && "code" in error && error.code === "ENOENT";
+}
 
 /**
  * Every pane of the default tmux server, plus any other server a hook named by
- * socket. A server that fails (none running) contributes no panes.
+ * socket. A server that fails (none running) contributes no panes; a missing
+ * tmux binary is reported as such.
  */
 async function listAllPanes(
 	entries: readonly ActiveSessionEntry[],
 	listPanes: TmuxListPanesRunner,
-): Promise<TmuxListedPane[]> {
+): Promise<TmuxListedPane[] | typeof TMUX_NOT_INSTALLED> {
 	const read = async (socket: string | null) => {
 		try {
 			return parseTmuxListPanes(await listPanes(socket));
-		} catch {
-			return [];
+		} catch (error) {
+			return isMissingBinary(error) ? TMUX_NOT_INSTALLED : [];
 		}
 	};
 	const panes = await read(null);
+	if (panes === TMUX_NOT_INSTALLED) return panes;
 	const seenSockets = new Set(panes.map((pane) => pane.socketPath));
 	const hookSockets = new Set(
 		entries.flatMap((entry) =>
@@ -225,19 +238,41 @@ async function listAllPanes(
 		),
 	);
 	for (const socket of hookSockets) {
-		for (const pane of await read(socket)) {
+		const socketPanes = await read(socket);
+		if (socketPanes === TMUX_NOT_INSTALLED) continue;
+		for (const pane of socketPanes) {
 			panes.push(pane.socketPath === "" ? {...pane, socketPath: socket} : pane);
 		}
 	}
 	return panes;
 }
 
-/** Live Claude sessions in tmux panes, by hook env and by process tree. */
+/** Live Claude sessions in tmux panes, by hook env and by process tree, freshly from tmux. */
 export async function getTmuxSessionPanes(
 	sources: TmuxSessionPaneSources = defaultTmuxSessionPaneSources,
 ): Promise<TmuxSessionPane[]> {
+	const panes = await pollTmuxSessionPanes(sources);
+	return panes === TMUX_NOT_INSTALLED ? [] : panes;
+}
+
+/**
+ * Live Claude sessions in tmux panes, from the poller's table while it is
+ * current, else freshly from tmux. Writes still re-resolve freshly right
+ * before typing.
+ */
+export async function lookupTmuxSessionPanes(
+	sources: TmuxSessionPaneSources = defaultTmuxSessionPaneSources,
+): Promise<readonly TmuxSessionPane[]> {
+	return sources.paneTable?.current() ?? getTmuxSessionPanes(sources);
+}
+
+/** `getTmuxSessionPanes`, but telling a missing tmux binary apart from no panes. */
+export async function pollTmuxSessionPanes(
+	sources: TmuxSessionPaneSources = defaultTmuxSessionPaneSources,
+): Promise<TmuxSessionPane[] | typeof TMUX_NOT_INSTALLED> {
 	const entries = sources.entries();
 	const panes = await listAllPanes(entries, sources.listPanes);
+	if (panes === TMUX_NOT_INSTALLED) return panes;
 	if (panes.length === 0) return [];
 	const registry = sources.registry();
 	let parents = new Map<number, number>();

@@ -1,6 +1,7 @@
 import {basename} from "node:path";
+import {TERMINAL_HOST_CAPABILITIES} from "./terminal-host-capabilities";
 import type {TerminalPlacementBase, TerminalPlacementProvider} from "./terminal-placements";
-import {defaultTmuxSessionPaneSources, getTmuxSessionPanes, type TmuxSessionPaneSources} from "./tmux/session-panes";
+import {defaultTmuxSessionPaneSources, lookupTmuxSessionPanes, type TmuxSessionPaneSources} from "./tmux/session-panes";
 
 /**
  * A live tmux window running a mapped Claude session. Window numbers/names come
@@ -22,21 +23,21 @@ export interface TmuxTerminalPlacement extends TerminalPlacementBase {
 	tmuxWindow: TmuxWindow;
 }
 
-/** Events come from the 2 s `list-panes` poll in `tmux/pane-events.ts`. */
+/** Writes go through `tmux send-keys`; events come from the 2 s `list-panes` poll in `tmux/pane-events.ts`. */
 const TMUX_CAPABILITIES = {
-	supportsWrite: false,
+	supportsWrite: TERMINAL_HOST_CAPABILITIES.tmux.canWrite,
 	supportsEvents: true,
 	supportsObserve: false,
 };
 
 /**
- * The live tmux windows running Claude sessions, from `getTmuxSessionPanes`
+ * The live tmux windows running Claude sessions, from `lookupTmuxSessionPanes`
  * (hook `TMUX_PANE`, else the session pid's process tree), in window order.
  */
 export async function getTmuxWindows(
 	sources: TmuxSessionPaneSources = defaultTmuxSessionPaneSources,
 ): Promise<TmuxWindow[]> {
-	const sessionPanes = await getTmuxSessionPanes(sources);
+	const sessionPanes = await lookupTmuxSessionPanes(sources);
 	return sessionPanes
 		.map(({sessionId, cwd, pane}) => ({
 			sessionId,
