@@ -10,10 +10,11 @@ describe("application settings controls", () => {
 		vi.unstubAllGlobals();
 	});
 
-	it("persists Herdr input, Shell tabs, and watcher exclusions through the server API", async () => {
+	it("persists Live terminal input, Shell tabs, and watcher exclusions through the server API", async () => {
 		const requests: Array<{method: string; body: unknown}> = [];
 		let settings = {
-			herdrWritesEnabled: false,
+			terminalWritesEnabled: false,
+			terminalHost: "auto",
 			shellPaneEnabled: true,
 			visibleNavSections: ["herdr", "plans", "memories", "customize"],
 			ignoredDirs: ["node_modules", "dist"],
@@ -38,13 +39,13 @@ describe("application settings controls", () => {
 			</QueryClientProvider>,
 		);
 
-		const herdrInputToggle = await screen.findByRole("switch", {name: "Live Herdr input"});
+		const liveInputToggle = await screen.findByRole("switch", {name: "Live terminal input"});
 		const shellTabsToggle = screen.getByRole("switch", {name: "Shell tabs"});
 		const ignoredDirectories = screen.getByRole<HTMLTextAreaElement>("textbox", {
 			name: "Ignored watcher directories",
 		});
 		expect({
-			herdrInput: herdrInputToggle.getAttribute("aria-checked"),
+			liveInput: liveInputToggle.getAttribute("aria-checked"),
 			shellTabs: shellTabsToggle.getAttribute("aria-checked"),
 			sectionToggles: screen.queryAllByRole("switch", {name: /section$/}),
 			immediate: screen.getByText(/Applies immediately without a server restart/).textContent,
@@ -52,19 +53,19 @@ describe("application settings controls", () => {
 			restartNotices: screen.getAllByText(/Restart the server/).length,
 			ignoredDirectories: ignoredDirectories.value,
 		}).toStrictEqual({
-			herdrInput: "false",
+			liveInput: "false",
 			shellTabs: "true",
 			sectionToggles: [],
 			immediate:
-				"Allow prompts, interrupts, and state reports for live Herdr terminals. Applies immediately without a server restart.",
+				"Allow prompts, interrupts, and state reports for live terminal panes. Applies immediately without a server restart.",
 			pollingToggle: null,
 			restartNotices: 1,
 			ignoredDirectories: "dist\nnode_modules",
 		});
 
-		fireEvent.click(herdrInputToggle);
+		fireEvent.click(liveInputToggle);
 		await waitFor(() => {
-			expect(herdrInputToggle.getAttribute("aria-checked")).toBe("true");
+			expect(liveInputToggle.getAttribute("aria-checked")).toBe("true");
 		});
 		fireEvent.click(shellTabsToggle);
 		await waitFor(() => {
@@ -86,7 +87,8 @@ describe("application settings controls", () => {
 			{
 				method: "PUT",
 				body: {
-					herdrWritesEnabled: true,
+					terminalWritesEnabled: true,
+					terminalHost: "auto",
 					shellPaneEnabled: true,
 					visibleNavSections: ["herdr", "plans", "memories", "customize"],
 					ignoredDirs: ["dist", "node_modules"],
@@ -95,7 +97,8 @@ describe("application settings controls", () => {
 			{
 				method: "PUT",
 				body: {
-					herdrWritesEnabled: true,
+					terminalWritesEnabled: true,
+					terminalHost: "auto",
 					shellPaneEnabled: false,
 					visibleNavSections: ["herdr", "plans", "memories", "customize"],
 					ignoredDirs: ["dist", "node_modules"],
@@ -104,7 +107,8 @@ describe("application settings controls", () => {
 			{
 				method: "PUT",
 				body: {
-					herdrWritesEnabled: true,
+					terminalWritesEnabled: true,
+					terminalHost: "auto",
 					shellPaneEnabled: false,
 					visibleNavSections: ["herdr", "plans", "memories", "customize"],
 					ignoredDirs: ["custom-cache", "node_modules"],
@@ -113,13 +117,65 @@ describe("application settings controls", () => {
 		]);
 	});
 
+	it("picks the terminal host and saves it through the server API", async () => {
+		const requests: unknown[] = [];
+		let settings = {
+			terminalWritesEnabled: false,
+			terminalHost: "auto",
+			shellPaneEnabled: true,
+			visibleNavSections: ["plans"],
+			ignoredDirs: ["node_modules"],
+		};
+		vi.stubGlobal(
+			"fetch",
+			vi.fn<typeof fetch>(async (_input, init) => {
+				if (init?.method === "PUT") {
+					if (typeof init.body !== "string") return Promise.reject(new Error("Expected a JSON request body"));
+					settings = JSON.parse(init.body);
+					requests.push(settings);
+				}
+				return Promise.resolve(Response.json(settings));
+			}),
+		);
+
+		render(
+			<QueryClientProvider client={new QueryClient({defaultOptions: {queries: {retry: false}}})}>
+				<ApplicationConfigurationSection />
+			</QueryClientProvider>,
+		);
+
+		const select = await screen.findByRole("combobox", {name: "Terminal host"});
+		const initial = select.textContent;
+		fireEvent.click(select);
+		const options = screen.getAllByRole("option").map((option) => option.textContent);
+		fireEvent.click(screen.getByRole("option", {name: "tmux"}));
+		await waitFor(() => {
+			expect(requests).toHaveLength(1);
+		});
+
+		expect({initial, options, requests}).toStrictEqual({
+			initial: "Auto",
+			options: ["Auto", "herdr", "tmux"],
+			requests: [
+				{
+					terminalWritesEnabled: false,
+					terminalHost: "tmux",
+					shellPaneEnabled: true,
+					visibleNavSections: ["plans"],
+					ignoredDirs: ["node_modules"],
+				},
+			],
+		});
+	});
+
 	it("renders the saved ignored directories in the same commit that first shows the form", async () => {
 		vi.stubGlobal(
 			"fetch",
 			vi.fn<typeof fetch>(async () =>
 				Promise.resolve(
 					Response.json({
-						herdrWritesEnabled: false,
+						terminalWritesEnabled: false,
+						terminalHost: "auto",
 						shellPaneEnabled: true,
 						visibleNavSections: ["herdr"],
 						ignoredDirs: ["node_modules", "dist"],

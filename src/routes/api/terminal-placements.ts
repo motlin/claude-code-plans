@@ -10,14 +10,18 @@ export const Route = createFileRoute("/api/terminal-placements")({
 	server: {
 		handlers: withMethodNotAllowed({
 			GET: async () => {
-				const [{getDb}, {addViewedStateToHerdrPanes}, {herdrWritesEnabled}, {getTerminalPlacements}] =
-					await Promise.all([
-						import("../../lib/db"),
-						import("../../lib/herdr/pane-viewed-state"),
-						import("../../lib/herdr/prompt"),
-						import("../../lib/terminal-placements"),
-					]);
-				const placements = await getTerminalPlacements();
+				const [
+					{getDb},
+					{addViewedStateToPanes, terminalPlacementProviders},
+					{terminalWritesEnabled},
+					{getTerminalPlacements},
+				] = await Promise.all([
+					import("../../lib/db"),
+					import("../../lib/terminal-host"),
+					import("../../lib/config"),
+					import("../../lib/terminal-placements"),
+				]);
+				const placements = await getTerminalPlacements(await terminalPlacementProviders());
 				const tmuxPlacements = placements.filter((placement) => placement.provider === "tmux");
 				const herdrPlacementsByKey = new Map(
 					placements
@@ -27,7 +31,7 @@ export const Route = createFileRoute("/api/terminal-placements")({
 							placement,
 						]),
 				);
-				const herdrPanes = addViewedStateToHerdrPanes(
+				const herdrPanes = addViewedStateToPanes(
 					getDb().index,
 					[...herdrPlacementsByKey.values()].map((placement) => placement.herdrPane),
 				);
@@ -40,7 +44,7 @@ export const Route = createFileRoute("/api/terminal-placements")({
 				return Response.json(
 					TerminalPlacementIndexResponse.parse({
 						placements: [...tmuxPlacements, ...enrichedHerdrPlacements],
-						writesEnabled: herdrWritesEnabled(),
+						writesEnabled: terminalWritesEnabled(),
 					}),
 					{
 						headers: {"Cache-Control": "private, max-age=0, must-revalidate"},

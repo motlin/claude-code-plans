@@ -22,7 +22,7 @@ import {DOMAIN_EVENTS, type SubagentStoppedPayload} from "./lib/hook-events";
 import {broadcastTyped} from "./lib/sse-broadcast";
 import {getCacheDir} from "./lib/db/connection";
 import {initPendingApprovalsCache} from "./lib/db/pending-approvals-cache";
-import {startHerdrEventBridge} from "./lib/herdr/subscribe";
+import {startTerminalHostEvents} from "./lib/terminal-host";
 import {resolveFileSearchRoots} from "./lib/config";
 import type {RecursiveWatcher} from "./lib/recursive-watch";
 import {initPrStatusService} from "./lib/pr-status-service";
@@ -151,7 +151,7 @@ void (async () => {
 			endedAt: defined(node.endedAt, "a stopped subagent has an end time"),
 		} satisfies SubagentStoppedPayload);
 	});
-	stopHerdrEventBridge = startHerdrEventBridge();
+	stopHerdrEventBridge = startTerminalHostEvents();
 	initPrStatusService(rebroadcastProjectSessions);
 })();
 

@@ -5,9 +5,9 @@ import {herdrPaneTable, type HerdrPaneState, type HerdrPaneTable} from "./pane-t
 import type {HerdrRequester} from "./panes";
 import {HerdrSessionSnapshotResultSchema} from "./schema";
 import {z} from "zod";
-import {herdrWritesEnabled} from "../config";
+import {terminalWritesEnabled} from "../config";
 
-export {herdrWritesEnabled} from "../config";
+export {terminalWritesEnabled as herdrWritesEnabled} from "../config";
 
 const HerdrPromptSchema = z.object({
 	sessionId: z.string(),
@@ -108,7 +108,7 @@ function herdrFailure(code: string, message: string): Response {
 
 const defaultDependencies: HerdrPromptDependencies = {
 	rejectRequest: rejectCrossSite,
-	writesEnabled: herdrWritesEnabled,
+	writesEnabled: terminalWritesEnabled,
 	resolveTarget: async (sessionId) => resolveHerdrPromptTarget(sessionId),
 	request: herdrRequest,
 	createRequestId: () => `ccp:prompt:${crypto.randomUUID()}`,

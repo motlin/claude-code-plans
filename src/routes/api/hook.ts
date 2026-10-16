@@ -8,7 +8,7 @@ import type {core, ZodError} from "zod";
 import {DOMAIN_EVENTS, HookEventEnvelope} from "../../lib/hook-events";
 import {broadcastTyped} from "../../lib/watcher";
 import {dispatchHookEvent, type HookDispatchDirs, type HookDispatchState} from "../../lib/hook-dispatcher";
-import {reportHookStateToHerdr} from "../../lib/herdr/report-state";
+import {getTerminalHost} from "../../lib/terminal-host";
 import {
 	getActiveSessionEntry,
 	markSessionActive,
@@ -273,7 +273,11 @@ export const Route = createFileRoute("/api/hook")({
 					broadcast: broadcastTyped,
 					dirs: HOOK_DIRS,
 					state: dispatcherState,
-					reportHerdrState: reportHookStateToHerdr,
+					reportHerdrState: (event, entry) => {
+						void getTerminalHost().then((host) => {
+							host.reportHookState(event, entry);
+						});
+					},
 				});
 
 				return Response.json({ok: true});

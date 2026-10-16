@@ -1,10 +1,10 @@
 import {definePlugin} from "nitro";
-import {stopAllTerminalObservers} from "../../src/lib/herdr/terminal-observer";
+import {stopAllTerminalHostStreams} from "../../src/lib/terminal-host";
 import {runServerShutdownHooks} from "../../src/lib/server-shutdown";
 import {stopAllShells} from "../../src/lib/shell-pty";
 
 export default definePlugin((nitroApp) => {
-	nitroApp.hooks.hook("close", stopAllTerminalObservers);
+	nitroApp.hooks.hook("close", stopAllTerminalHostStreams);
 	nitroApp.hooks.hook("close", stopAllShells);
 	nitroApp.hooks.hook("close", runServerShutdownHooks);
 

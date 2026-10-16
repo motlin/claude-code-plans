@@ -5,8 +5,8 @@ export const Route = createFileRoute("/api/herdr/permission")({
 	server: {
 		handlers: withMethodNotAllowed({
 			POST: async ({request}: {request: Request}) => {
-				const {handleHerdrPermission} = await import("../../lib/herdr/permission");
-				return handleHerdrPermission(request);
+				const {getTerminalHost} = await import("../../lib/terminal-host");
+				return (await getTerminalHost()).answerPermission(request);
 			},
 		}),
 	},

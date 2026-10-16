@@ -1,6 +1,6 @@
 import {defineWebSocketHandler} from "nitro";
 import {z} from "zod";
-import {observeHerdrSession, type TerminalObserverSocket} from "../../../../src/lib/herdr/terminal-observer";
+import {getTerminalHost, type TerminalObserverSocket} from "../../../../src/lib/terminal-host";
 import {hmrDispose} from "../../../../src/lib/hmr-persist";
 import {rejectCrossSite} from "../../../../src/lib/same-origin-guard";
 
@@ -57,7 +57,8 @@ export default defineWebSocketHandler({
 		};
 
 		try {
-			const observer = await observeHerdrSession(query.sessionId, query.columns, query.rows, socket);
+			const host = await getTerminalHost();
+			const observer = await host.observe(query.sessionId, query.columns, query.rows, socket);
 			if (connection.stopped) observer.stop();
 			else connection.observer = observer;
 		} catch (error) {

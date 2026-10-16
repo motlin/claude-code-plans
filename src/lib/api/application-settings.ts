@@ -2,11 +2,13 @@ import {queryOptions, useMutation, useQueryClient} from "@tanstack/react-query";
 import {useCallback} from "react";
 import {z} from "zod";
 import {type NavSection, toggleNavSection, VisibleNavSectionsSchema} from "../nav-sections";
+import {TerminalHostSettingSchema} from "../terminal-host-setting";
 import {apiFetch} from "./client";
 
 const ApplicationSettingsResponse = z
 	.object({
-		herdrWritesEnabled: z.boolean(),
+		terminalWritesEnabled: z.boolean(),
+		terminalHost: TerminalHostSettingSchema,
 		shellPaneEnabled: z.boolean(),
 		visibleNavSections: VisibleNavSectionsSchema,
 		ignoredDirs: z.array(z.string().trim().min(1)).min(1),

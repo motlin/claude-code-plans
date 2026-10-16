@@ -87,11 +87,11 @@
 		"raisedAt": "2026-10-14"
 	},
 	"client.coldHome.default.responseBytes": {
-		"ceiling": 4850,
+		"ceiling": 4875,
 		"unit": "bytes",
 		"tolerance": 0,
-		"reason": "The home composer now shows the weekly usage pace banner between the repository chip and the composer, as upstream's home does (W84-03), so cold home fetches /api/usage once (one request, ~50 bytes).",
-		"raisedAt": "2026-10-14"
+		"reason": "Application settings now carry the Terminal host setting and the Live terminal input key (tmux slice 1), so the cold home /api/application-settings response grows by 25 bytes.",
+		"raisedAt": "2026-10-16"
 	},
 	"client.coldHome.localSections.commitsToRows": {
 		"ceiling": 5,
@@ -106,11 +106,11 @@
 		"raisedAt": "2026-10-14"
 	},
 	"client.coldHome.localSections.responseBytes": {
-		"ceiling": 5034,
+		"ceiling": 5059,
 		"unit": "bytes",
 		"tolerance": 0,
-		"reason": "The home composer now shows the weekly usage pace banner between the repository chip and the composer, as upstream's home does (W84-03), so cold home fetches /api/usage once (one request, ~50 bytes).",
-		"raisedAt": "2026-10-14"
+		"reason": "Application settings now carry the Terminal host setting and the Live terminal input key (tmux slice 1), so the cold home /api/application-settings response grows by 25 bytes.",
+		"raisedAt": "2026-10-16"
 	},
 	"client.composer.home.slashMenu.claudeEventsConsumers": {
 		"ceiling": 1,

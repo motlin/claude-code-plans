@@ -6,15 +6,14 @@ export const Route = createFileRoute("/api/herdr-panes")({
 	server: {
 		handlers: withMethodNotAllowed({
 			GET: async () => {
-				const [{getDb}, {getHerdrPanes}, {addViewedStateToHerdrPanes}, {herdrWritesEnabled}] =
-					await Promise.all([
-						import("../../lib/db"),
-						import("../../lib/herdr/panes"),
-						import("../../lib/herdr/pane-viewed-state"),
-						import("../../lib/herdr/prompt"),
-					]);
-				const panes = addViewedStateToHerdrPanes(getDb().index, await getHerdrPanes());
-				return Response.json(HerdrPaneIndexResponse.parse({panes, writesEnabled: herdrWritesEnabled()}), {
+				const [{getDb}, {addViewedStateToPanes, getTerminalHost}, {terminalWritesEnabled}] = await Promise.all([
+					import("../../lib/db"),
+					import("../../lib/terminal-host"),
+					import("../../lib/config"),
+				]);
+				const host = await getTerminalHost();
+				const panes = addViewedStateToPanes(getDb().index, await host.listPanes());
+				return Response.json(HerdrPaneIndexResponse.parse({panes, writesEnabled: terminalWritesEnabled()}), {
 					headers: {"Cache-Control": "private, max-age=0, must-revalidate"},
 				});
 			},

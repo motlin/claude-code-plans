@@ -92,6 +92,7 @@ import {
 } from "../src/lib/tool-input-schemas";
 import {RenderedLineSchema} from "../src/lib/transcript";
 import {TerminalAppearanceSchema} from "../src/lib/terminal-theme";
+import {TerminalHostSettingSchema} from "../src/lib/terminal-host-setting";
 import {TranscriptModeSchema} from "../src/lib/transcript-mode";
 
 /**
@@ -170,6 +171,7 @@ const ROOTS: ReadonlyArray<readonly [string, unknown]> = [
 	["CodeThemeLightSchema", CodeThemeLightSchema],
 	["CodeThemeDarkSchema", CodeThemeDarkSchema],
 	["TerminalAppearanceSchema", TerminalAppearanceSchema],
+	["TerminalHostSettingSchema", TerminalHostSettingSchema],
 	["NavSectionSchema", NavSectionSchema],
 	["RoutineKindSchema", RoutineKindSchema],
 	["RoutineStatusSchema", RoutineStatusSchema],

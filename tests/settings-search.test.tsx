@@ -19,7 +19,8 @@ import {SETTINGS_INDEX} from "../src/lib/settings-search";
 import {installLocalStorage} from "./fake-storage";
 
 const APPLICATION_SETTINGS = {
-	herdrWritesEnabled: false,
+	terminalWritesEnabled: false,
+	terminalHost: "auto",
 	shellPaneEnabled: false,
 	visibleNavSections: [],
 	ignoredDirs: ["node_modules"],

@@ -71,7 +71,8 @@ function seedQueryClient(): QueryClient {
 	]);
 	queryClient.setQueryData(activeSessionsQueryOptions(DEFAULTS.activeTimeoutSec * 1000).queryKey, []);
 	queryClient.setQueryData(applicationSettingsQueryOptions.queryKey, {
-		herdrWritesEnabled: false,
+		terminalWritesEnabled: false,
+		terminalHost: "auto",
 		shellPaneEnabled: true,
 		visibleNavSections: NAV_SECTIONS.filter((section) => section !== "herdr" && section !== "tmux"),
 		ignoredDirs: ["node_modules"],

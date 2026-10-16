@@ -1,7 +1,7 @@
 import {spawn, type ChildProcessByStdio} from "node:child_process";
 import type {Readable, Writable} from "node:stream";
 import {z} from "zod";
-import {herdrWritesEnabled} from "../config";
+import {terminalWritesEnabled} from "../config";
 import {rejectCrossSite} from "../same-origin-guard";
 import {
 	bridgeTerminalStream,
@@ -119,7 +119,7 @@ export async function controlHerdrSession(
 /** Upgrade gate: same-origin only, and only while herdr writes are enabled. */
 export function authorizeTerminalControl(
 	request: Request,
-	dependencies: {writesEnabled: () => boolean} = {writesEnabled: herdrWritesEnabled},
+	dependencies: {writesEnabled: () => boolean} = {writesEnabled: terminalWritesEnabled},
 ): Response | null {
 	const rejection = rejectCrossSite(request);
 	if (rejection) return rejection;

@@ -14,6 +14,7 @@ import type {CodeThemeDark, CodeThemeLight} from "./code-themes";
 import type {ContextAttachmentKindSchema} from "./context-attach";
 import type {PendingApprovalToolNameSchema} from "./domain-event-payload-schemas";
 import type {TerminalAppearance} from "./terminal-theme";
+import type {TerminalHostSetting} from "./terminal-host-setting";
 import type {McpScopeSchema, PermissionBehaviorSchema, SkillSourceSchema} from "./api/customize";
 import type {PluginFileSchema, PluginListResponse} from "./api/plugins";
 import type {UnifiedSearchDateSchema, UnifiedSearchKindSchema, UnifiedSearchTypeSchema} from "./api/search";
@@ -805,6 +806,13 @@ export const terminalAppearanceLabels = {
 	ghostty: "Ghostty config",
 } satisfies Record<TerminalAppearance, string>;
 
+/** Terminal host picker in Settings › Application (src/lib/terminal-host-setting.ts). */
+export const terminalHostSettingLabels = {
+	auto: "Auto",
+	herdr: "herdr",
+	tmux: "tmux",
+} satisfies Record<TerminalHostSetting, string>;
+
 /** Session actions menu labels (src/lib/session-menu-items.ts), copied from claude.ai/code. */
 export const sessionMenuItemLabels = {
 	"open-in": "Open in",
@@ -1186,6 +1194,7 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
 	CodeThemeLightSchema: codeThemeLightLabels,
 	CodeThemeDarkSchema: codeThemeDarkLabels,
 	TerminalAppearanceSchema: terminalAppearanceLabels,
+	TerminalHostSettingSchema: terminalHostSettingLabels,
 	NavSectionSchema: navSectionLabels,
 	RoutineKindSchema: routineKindLabels,
 	RoutineStatusSchema: routineStatusLabels,

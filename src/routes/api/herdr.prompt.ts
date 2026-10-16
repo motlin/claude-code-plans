@@ -5,8 +5,8 @@ export const Route = createFileRoute("/api/herdr/prompt")({
 	server: {
 		handlers: withMethodNotAllowed({
 			POST: async ({request}: {request: Request}) => {
-				const {handleHerdrPrompt} = await import("../../lib/herdr/prompt");
-				return handleHerdrPrompt(request);
+				const {getTerminalHost} = await import("../../lib/terminal-host");
+				return (await getTerminalHost()).prompt(request);
 			},
 		}),
 	},

@@ -24,6 +24,7 @@ const EXPECTED_INJECTED_RUNTIME_READS = [
 	"src/lib/herdr/socket-path.ts:HERDR_SOCKET_PATH",
 	"src/lib/herdr/socket-path.ts:HOME",
 	"src/lib/herdr/socket-path.ts:XDG_CONFIG_HOME",
+	"src/lib/terminal-host/selection.ts:TMUX",
 ];
 
 describe("environment settings inventory", () => {

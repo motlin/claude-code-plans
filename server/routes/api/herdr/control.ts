@@ -2,10 +2,10 @@ import {defineWebSocketHandler} from "nitro";
 import {z} from "zod";
 import {
 	authorizeTerminalControl,
-	controlHerdrSession,
+	getTerminalHost,
 	type TerminalController,
-} from "../../../../src/lib/herdr/terminal-controller";
-import type {TerminalObserverSocket} from "../../../../src/lib/herdr/terminal-observer";
+	type TerminalObserverSocket,
+} from "../../../../src/lib/terminal-host";
 import {hmrDispose} from "../../../../src/lib/hmr-persist";
 
 const QuerySchema = z.object({
@@ -67,7 +67,8 @@ export default defineWebSocketHandler({
 		};
 
 		try {
-			const controller = await controlHerdrSession(query.sessionId, query.columns, query.rows, socket);
+			const host = await getTerminalHost();
+			const controller = await host.control(query.sessionId, query.columns, query.rows, socket);
 			if (connection.stopped) {
 				controller.stop();
 				return;

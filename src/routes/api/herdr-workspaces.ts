@@ -6,8 +6,9 @@ export const Route = createFileRoute("/api/herdr-workspaces")({
 	server: {
 		handlers: withMethodNotAllowed({
 			GET: async () => {
-				const {getHerdrWorkspaces} = await import("../../lib/herdr/workspaces");
-				return Response.json(HerdrWorkspaceIndexResponse.parse({workspaces: await getHerdrWorkspaces()}), {
+				const {getTerminalHost} = await import("../../lib/terminal-host");
+				const workspaces = await (await getTerminalHost()).listWorkspaces();
+				return Response.json(HerdrWorkspaceIndexResponse.parse({workspaces}), {
 					headers: {"Cache-Control": "private, max-age=0, must-revalidate"},
 				});
 			},

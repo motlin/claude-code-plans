@@ -11,7 +11,8 @@ import {ToastProvider} from "../src/components/toast";
 import {Route as HomeRoute} from "../src/routes/index";
 
 const DEFAULT_APPLICATION_SETTINGS = {
-	herdrWritesEnabled: false,
+	terminalWritesEnabled: false,
+	terminalHost: "auto",
 	shellPaneEnabled: true,
 	visibleNavSections: ["herdr", "plans", "memories", "customize"],
 	ignoredDirs: ["node_modules"],

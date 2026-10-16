@@ -23,7 +23,8 @@ import {ToastProvider} from "../src/components/toast";
 import {installLocalStorage} from "./fake-storage";
 
 const BASE_SETTINGS = {
-	herdrWritesEnabled: false,
+	terminalWritesEnabled: false,
+	terminalHost: "auto" as const,
 	shellPaneEnabled: true,
 	ignoredDirs: ["node_modules"],
 };

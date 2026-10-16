@@ -1,7 +1,7 @@
 import {homedir} from "node:os";
 import {z} from "zod";
 import {validateClaudeLaunchArgs} from "../claude-launch-command";
-import {herdrWritesEnabled} from "../config";
+import {terminalWritesEnabled} from "../config";
 import {rejectCrossSite} from "../same-origin-guard";
 import {herdrRequest, type HerdrResult} from "./client";
 import type {HerdrRequester} from "./panes";
@@ -51,7 +51,7 @@ export interface HerdrLaunchDependencies {
 
 const defaultDependencies: HerdrLaunchDependencies = {
 	rejectRequest: rejectCrossSite,
-	writesEnabled: herdrWritesEnabled,
+	writesEnabled: terminalWritesEnabled,
 	request: herdrRequest,
 	createLaunchId: () => crypto.randomUUID().replaceAll("-", "").slice(0, 12),
 	wait: async (ms) =>

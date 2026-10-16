@@ -11,7 +11,13 @@ import {
 	type CodeThemeDark,
 	type CodeThemeLight,
 } from "../../lib/code-themes";
-import {codeThemeDarkLabels, codeThemeLightLabels, terminalAppearanceLabels} from "../../lib/schema-choices";
+import {
+	codeThemeDarkLabels,
+	codeThemeLightLabels,
+	terminalAppearanceLabels,
+	terminalHostSettingLabels,
+} from "../../lib/schema-choices";
+import {TerminalHostSettingSchema} from "../../lib/terminal-host-setting";
 import {TerminalAppearanceSchema} from "../../lib/terminal-theme";
 import type {TranscriptWidth} from "../../lib/transcript-width";
 import {
@@ -557,15 +563,33 @@ export function ApplicationConfigurationSection() {
 
 	return (
 		<SettingsSection title="Application">
+			<SettingsRow
+				slug="terminal-host"
+				title="Terminal host"
+				description="Which terminal multiplexer runs live sessions. Auto uses herdr when it answers, else tmux."
+			>
+				<ThemedCombobox
+					aria-label="Terminal host"
+					value={settings.terminalHost}
+					options={TerminalHostSettingSchema.options.map((value) => ({
+						value,
+						label: terminalHostSettingLabels[value],
+					}))}
+					onValueChange={(terminalHost) => {
+						save({...settings, terminalHost});
+					}}
+				/>
+			</SettingsRow>
+
 			<ApplicationToggleRow
-				label="Live Herdr input"
-				description="Allow prompts, interrupts, and state reports for live Herdr terminals. Applies immediately without a server restart."
-				checked={settings.herdrWritesEnabled}
+				label="Live terminal input"
+				description="Allow prompts, interrupts, and state reports for live terminal panes. Applies immediately without a server restart."
+				checked={settings.terminalWritesEnabled}
 				disabled={saveSettings.isPending}
 				onToggle={() => {
 					save({
 						...settings,
-						herdrWritesEnabled: !settings.herdrWritesEnabled,
+						terminalWritesEnabled: !settings.terminalWritesEnabled,
 					});
 				}}
 			/>

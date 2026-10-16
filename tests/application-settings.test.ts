@@ -5,10 +5,10 @@ import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
 import {
 	AppConfigSchema,
 	DEFAULT_IGNORED_DIR_NAMES,
-	herdrWritesEnabled,
 	readApplicationSettings,
 	readConfig,
 	shellPaneEnabled,
+	terminalWritesEnabled,
 	updateApplicationSettings,
 } from "../src/lib/config";
 import {handleGetApplicationSettings, handlePutApplicationSettings} from "../src/lib/application-settings-handler";
@@ -33,7 +33,9 @@ describe("persisted application settings", () => {
 	it("strictly validates every persisted setting", () => {
 		expect([
 			AppConfigSchema.safeParse({
+				terminal_writes_enabled: true,
 				herdr_writes_enabled: true,
+				terminal_host: "tmux",
 				shell_pane_enabled: false,
 				show_herdr_section: true,
 				show_tmux_section: false,
@@ -43,6 +45,8 @@ describe("persisted application settings", () => {
 			AppConfigSchema.safeParse({visible_nav_sections: ["nope"]}).success,
 			AppConfigSchema.safeParse({visible_nav_sections: ["plans", "plans"]}).success,
 			AppConfigSchema.safeParse({herdr_writes_enabled: "1"}).success,
+			AppConfigSchema.safeParse({terminal_writes_enabled: "1"}).success,
+			AppConfigSchema.safeParse({terminal_host: "screen"}).success,
 			AppConfigSchema.safeParse({shell_pane_enabled: "on"}).success,
 			AppConfigSchema.safeParse({show_herdr_section: "true"}).success,
 			AppConfigSchema.safeParse({show_tmux_section: 1}).success,
@@ -50,7 +54,7 @@ describe("persisted application settings", () => {
 			AppConfigSchema.safeParse({ignored_dirs: [""]}).success,
 			AppConfigSchema.safeParse({ignored_dirs: []}).success,
 			AppConfigSchema.safeParse({unknown_policy: true}).success,
-		]).toStrictEqual([true, false, false, false, false, false, false, false, false, false, false]);
+		]).toStrictEqual([true, false, false, false, false, false, false, false, false, false, false, false, false]);
 	});
 
 	it("strips the legacy watcher polling key while parsing persisted config", async () => {
@@ -65,16 +69,17 @@ describe("persisted application settings", () => {
 		try {
 			expect({
 				settings: readApplicationSettings(configPath),
-				herdrWritesEnabled: herdrWritesEnabled(configPath),
+				terminalWritesEnabled: terminalWritesEnabled(configPath),
 				shellPaneEnabled: shellPaneEnabled(configPath),
 			}).toStrictEqual({
 				settings: {
-					herdrWritesEnabled: false,
+					terminalWritesEnabled: false,
+					terminalHost: "auto",
 					shellPaneEnabled: true,
 					visibleNavSections: ["artifacts", "plans", "memories", "customize"],
 					ignoredDirs: [...DEFAULT_IGNORED_DIR_NAMES],
 				},
-				herdrWritesEnabled: false,
+				terminalWritesEnabled: false,
 				shellPaneEnabled: true,
 			});
 		} finally {
@@ -103,7 +108,8 @@ describe("persisted application settings", () => {
 		);
 
 		expect(readApplicationSettings(configPath)).toStrictEqual({
-			herdrWritesEnabled: true,
+			terminalWritesEnabled: true,
+			terminalHost: "auto",
 			shellPaneEnabled: true,
 			visibleNavSections: ["plans", "customize"],
 			ignoredDirs: [...DEFAULT_IGNORED_DIR_NAMES],
@@ -137,7 +143,8 @@ describe("persisted application settings", () => {
 		);
 
 		expect(JSON.parse(await readFile(configPath, "utf8"))).toStrictEqual({
-			herdr_writes_enabled: false,
+			terminal_writes_enabled: false,
+			terminal_host: "auto",
 			shell_pane_enabled: true,
 			ignored_dirs: [...DEFAULT_IGNORED_DIR_NAMES],
 			visible_nav_sections: ["herdr", "plans"],
@@ -156,7 +163,8 @@ describe("persisted application settings", () => {
 
 		const saved = await updateApplicationSettings(
 			{
-				herdrWritesEnabled: true,
+				terminalWritesEnabled: true,
+				terminalHost: "auto",
 				shellPaneEnabled: false,
 				visibleNavSections: ["tmux", "plans"],
 				ignoredDirs: ["vendor", "output"],
@@ -170,7 +178,8 @@ describe("persisted application settings", () => {
 			temporaryFiles: await readdir(directory),
 		}).toStrictEqual({
 			saved: {
-				herdrWritesEnabled: true,
+				terminalWritesEnabled: true,
+				terminalHost: "auto",
 				shellPaneEnabled: false,
 				visibleNavSections: ["tmux", "plans"],
 				ignoredDirs: ["output", "vendor"],
@@ -179,7 +188,8 @@ describe("persisted application settings", () => {
 				image_roots: ["/tmp/images"],
 				file_roots: ["/tmp/files"],
 				ignored_dirs: ["output", "vendor"],
-				herdr_writes_enabled: true,
+				terminal_writes_enabled: true,
+				terminal_host: "auto",
 				shell_pane_enabled: false,
 				visible_nav_sections: ["tmux", "plans"],
 			},
@@ -194,7 +204,8 @@ describe("persisted application settings", () => {
 		await expect(
 			updateApplicationSettings(
 				{
-					herdrWritesEnabled: true,
+					terminalWritesEnabled: true,
+					terminalHost: "auto",
 					shellPaneEnabled: true,
 					visibleNavSections: ["plans"],
 					ignoredDirs: ["node_modules"],
@@ -211,7 +222,8 @@ describe("persisted application settings", () => {
 			method: "PUT",
 			headers: {"Content-Type": "application/json", Origin: "http://127.0.0.1:7526"},
 			body: JSON.stringify({
-				herdrWritesEnabled: true,
+				terminalWritesEnabled: true,
+				terminalHost: "auto",
 				shellPaneEnabled: true,
 				visibleNavSections: ["tmux", "plans"],
 				ignoredDirs: ["node_modules", "build"],
@@ -230,14 +242,16 @@ describe("persisted application settings", () => {
 		}).toStrictEqual({
 			savedStatus: 200,
 			saved: {
-				herdrWritesEnabled: true,
+				terminalWritesEnabled: true,
+				terminalHost: "auto",
 				shellPaneEnabled: true,
 				visibleNavSections: ["tmux", "plans"],
 				ignoredDirs: ["build", "node_modules"],
 			},
 			readStatus: 200,
 			read: {
-				herdrWritesEnabled: true,
+				terminalWritesEnabled: true,
+				terminalHost: "auto",
 				shellPaneEnabled: true,
 				visibleNavSections: ["tmux", "plans"],
 				ignoredDirs: ["build", "node_modules"],
@@ -245,7 +259,8 @@ describe("persisted application settings", () => {
 			persisted: {
 				image_roots: ["/tmp/images"],
 				ignored_dirs: ["build", "node_modules"],
-				herdr_writes_enabled: true,
+				terminal_writes_enabled: true,
+				terminal_host: "auto",
 				shell_pane_enabled: true,
 				visible_nav_sections: ["tmux", "plans"],
 			},
@@ -259,7 +274,7 @@ describe("persisted application settings", () => {
 				method: "PUT",
 				headers: {"Content-Type": "application/json"},
 				body: JSON.stringify({
-					herdrWritesEnabled: "yes",
+					terminalWritesEnabled: "yes",
 					visibleNavSections: ["plans"],
 					ignoredDirs: [],
 				}),
@@ -271,5 +286,43 @@ describe("persisted application settings", () => {
 			status: response.status,
 			persisted: JSON.parse(await readFile(configPath, "utf8")),
 		}).toStrictEqual({status: 400, persisted: {herdr_writes_enabled: false}});
+	});
+
+	it("reads the retired Live herdr input key as Live terminal input", async () => {
+		await writeFile(configPath, JSON.stringify({herdr_writes_enabled: true}));
+
+		expect({
+			settings: readApplicationSettings(configPath),
+			terminalWritesEnabled: terminalWritesEnabled(configPath),
+		}).toStrictEqual({
+			settings: {
+				terminalWritesEnabled: true,
+				terminalHost: "auto",
+				shellPaneEnabled: true,
+				visibleNavSections: ["artifacts", "plans", "memories", "customize"],
+				ignoredDirs: [...DEFAULT_IGNORED_DIR_NAMES],
+			},
+			terminalWritesEnabled: true,
+		});
+	});
+
+	it("prefers the Live terminal input key over the retired one", async () => {
+		await writeFile(configPath, JSON.stringify({herdr_writes_enabled: true, terminal_writes_enabled: false}));
+
+		expect(terminalWritesEnabled(configPath)).toBe(false);
+	});
+
+	it("moves the retired Live herdr input key to the new key on the next save", async () => {
+		await writeFile(configPath, JSON.stringify({herdr_writes_enabled: true}));
+
+		await updateApplicationSettings({...readApplicationSettings(configPath), terminalHost: "herdr"}, configPath);
+
+		expect(JSON.parse(await readFile(configPath, "utf8"))).toStrictEqual({
+			terminal_writes_enabled: true,
+			terminal_host: "herdr",
+			shell_pane_enabled: true,
+			ignored_dirs: [...DEFAULT_IGNORED_DIR_NAMES],
+			visible_nav_sections: ["artifacts", "plans", "memories", "customize"],
+		});
 	});
 });

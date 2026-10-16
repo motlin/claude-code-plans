@@ -147,7 +147,8 @@ function seedTerminalQueries(
 		writesEnabled,
 	});
 	queryClient.setQueryData(applicationSettingsQueryOptions.queryKey, {
-		herdrWritesEnabled: writesEnabled,
+		terminalWritesEnabled: writesEnabled,
+		terminalHost: "auto",
 		shellPaneEnabled: false,
 		visibleNavSections: [],
 		ignoredDirs: ["node_modules"],

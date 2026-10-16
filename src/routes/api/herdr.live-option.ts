@@ -5,8 +5,8 @@ export const Route = createFileRoute("/api/herdr/live-option")({
 	server: {
 		handlers: withMethodNotAllowed({
 			POST: async ({request}: {request: Request}) => {
-				const {handleHerdrLiveOption} = await import("../../lib/herdr/live-option");
-				return handleHerdrLiveOption(request);
+				const {getTerminalHost} = await import("../../lib/terminal-host");
+				return (await getTerminalHost()).applyLiveOption(request);
 			},
 		}),
 	},

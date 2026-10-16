@@ -5,8 +5,8 @@ export const Route = createFileRoute("/api/herdr/interrupt")({
 	server: {
 		handlers: withMethodNotAllowed({
 			POST: async ({request}: {request: Request}) => {
-				const {handleHerdrInterrupt} = await import("../../lib/herdr/interrupt");
-				return handleHerdrInterrupt(request);
+				const {getTerminalHost} = await import("../../lib/terminal-host");
+				return (await getTerminalHost()).interrupt(request);
 			},
 		}),
 	},

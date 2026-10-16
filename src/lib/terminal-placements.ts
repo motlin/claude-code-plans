@@ -1,5 +1,5 @@
-import {createHerdrPlacementProvider, type HerdrTerminalPlacement} from "./herdr/panes";
-import {createTmuxPlacementProvider, type TmuxTerminalPlacement} from "./tmux-windows";
+import type {HerdrTerminalPlacement} from "./herdr/panes";
+import type {TmuxTerminalPlacement} from "./tmux-windows";
 
 export type TerminalProviderId = "tmux" | "herdr";
 
@@ -27,17 +27,12 @@ export interface TerminalPlacementProvider {
 	getPlacements: () => Promise<TerminalPlacement[]>;
 }
 
-function defaultProviders(): TerminalPlacementProvider[] {
-	return [createTmuxPlacementProvider(), createHerdrPlacementProvider()];
-}
-
 /**
  * Read every provider independently and merge their placements in stable
  * provider order. Herdr replaces tmux only for sessions reported by both.
+ * The live providers come from `terminalPlacementProviders()` in terminal-host.
  */
-export async function getTerminalPlacements(
-	providers: TerminalPlacementProvider[] = defaultProviders(),
-): Promise<TerminalPlacement[]> {
+export async function getTerminalPlacements(providers: TerminalPlacementProvider[]): Promise<TerminalPlacement[]> {
 	const results = await Promise.allSettled(providers.map(async (provider) => provider.getPlacements()));
 	const placements = results.flatMap((result) => (result.status === "fulfilled" ? result.value : []));
 	const herdrPlacements = placements.filter(

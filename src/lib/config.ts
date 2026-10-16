@@ -10,6 +10,7 @@ import {isGitRepository} from "./git-tracked";
 import {migrateLegacyNavFlags, renameLegacyNavSections, VisibleNavSectionsSchema} from "./nav-sections";
 import {defined} from "./defined";
 import {nonEmpty} from "./non-empty";
+import {DEFAULT_TERMINAL_HOST_SETTING, TerminalHostSettingSchema} from "./terminal-host-setting";
 
 /**
  * Directory holding this application's own configuration. Follows the XDG
@@ -44,8 +45,12 @@ const AppConfigObjectSchema = z
 		file_roots: z
 			.array(z.string().trim().min(1).refine(isAbsolute, "File roots must be absolute paths"))
 			.optional(),
-		/** Permit ccp to send input and state updates to live Herdr panes. */
+		/** Live terminal input: permit ccp to send input and state updates to live terminal panes. */
+		terminal_writes_enabled: z.boolean().optional(),
+		/** Retired by `terminal_writes_enabled`; read only to migrate, dropped on the next save. */
 		herdr_writes_enabled: z.boolean().optional(),
+		/** Terminal multiplexer driven for live sessions: auto, herdr or tmux. */
+		terminal_host: TerminalHostSettingSchema.optional(),
 		/** Offer Shell tabs (login `$SHELL` PTYs in the session folder) in the Terminal pane. */
 		shell_pane_enabled: z.boolean().optional(),
 		/** Sidebar sections pinned outside the More ▸ menu, in nav order. */
@@ -107,7 +112,7 @@ export function readConfig(configPath: string = getConfigPath()): AppConfig | nu
  * server process environment.
  */
 const DEFAULT_APPLICATION_POLICY = {
-	herdrWritesEnabled: false,
+	terminalWritesEnabled: false,
 	shellPaneEnabled: true,
 } as const;
 
@@ -130,7 +135,8 @@ export const DEFAULT_IGNORED_DIR_NAMES = [
 
 export const ApplicationSettingsSchema = z
 	.object({
-		herdrWritesEnabled: z.boolean(),
+		terminalWritesEnabled: z.boolean(),
+		terminalHost: TerminalHostSettingSchema,
 		shellPaneEnabled: z.boolean(),
 		visibleNavSections: VisibleNavSectionsSchema,
 		ignoredDirs: z.array(z.string().trim().min(1)).min(1),
@@ -142,7 +148,11 @@ export type ApplicationSettings = z.infer<typeof ApplicationSettingsSchema>;
 export function readApplicationSettings(configPath: string = getConfigPath()): ApplicationSettings {
 	const config = readConfig(configPath);
 	return {
-		herdrWritesEnabled: config?.herdr_writes_enabled ?? DEFAULT_APPLICATION_POLICY.herdrWritesEnabled,
+		terminalWritesEnabled:
+			config?.terminal_writes_enabled ??
+			config?.herdr_writes_enabled ??
+			DEFAULT_APPLICATION_POLICY.terminalWritesEnabled,
+		terminalHost: config?.terminal_host ?? DEFAULT_TERMINAL_HOST_SETTING,
 		shellPaneEnabled: config?.shell_pane_enabled ?? DEFAULT_APPLICATION_POLICY.shellPaneEnabled,
 		visibleNavSections:
 			config?.visible_nav_sections ??
@@ -154,8 +164,13 @@ export function readApplicationSettings(configPath: string = getConfigPath()): A
 	};
 }
 
-export function herdrWritesEnabled(configPath: string = getConfigPath()): boolean {
-	return readApplicationSettings(configPath).herdrWritesEnabled;
+/** The Live terminal input setting: whether ccp may type into and report state to live panes. */
+export function terminalWritesEnabled(configPath: string = getConfigPath()): boolean {
+	return readApplicationSettings(configPath).terminalWritesEnabled;
+}
+
+export function terminalHostSetting(configPath: string = getConfigPath()): ApplicationSettings["terminalHost"] {
+	return readApplicationSettings(configPath).terminalHost;
 }
 
 export function shellPaneEnabled(configPath: string = getConfigPath()): boolean {
@@ -205,7 +220,9 @@ export async function updateApplicationSettings(
 	const ignoredDirs = parsed.ignoredDirs.toSorted();
 	await updateConfig(
 		{
-			herdr_writes_enabled: parsed.herdrWritesEnabled,
+			terminal_writes_enabled: parsed.terminalWritesEnabled,
+			herdr_writes_enabled: undefined,
+			terminal_host: parsed.terminalHost,
 			shell_pane_enabled: parsed.shellPaneEnabled,
 			visible_nav_sections: parsed.visibleNavSections,
 			show_herdr_section: undefined,
