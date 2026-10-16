@@ -184,3 +184,36 @@ export function toggleRailSection(sessionId: string, id: RailSectionId): void {
 export function setRailSectionsOpen(sessionId: string, ids: readonly RailSectionId[], open: boolean): void {
 	sectionsStore.write(withOpen(readRailSectionsState(), sessionId, ids, open));
 }
+
+/** The sections upstream's header menu lists under Show; Environment, Settings, Usage and Progress always show. */
+export const HIDEABLE_RAIL_SECTIONS = [
+	"goal",
+	"context",
+	"connectors",
+	"outputs",
+	"pullRequests",
+	"servers",
+	"backgroundTasks",
+] as const satisfies readonly RailSectionId[];
+
+export function toggleRailSectionHidden(id: RailSectionId): void {
+	const state = readRailSectionsState();
+	const hidden = state.hidden.includes(id) ? state.hidden.filter((each) => each !== id) : [...state.hidden, id];
+	sectionsStore.write({...state, hidden});
+}
+
+/** Whether Reset to defaults has anything to undo: hidden sections, a custom order or a changed fold. */
+export function isRailSectionsPristine(state: RailSectionsState): boolean {
+	return (
+		state.hidden.length === 0 &&
+		state.order.length === 0 &&
+		Object.values(state.foldsBySession).every(
+			(folds) => folds.collapsed.length === 0 && folds.expanded.length === 0,
+		)
+	);
+}
+
+/** Upstream's Reset to defaults: order, hidden sections and every session's folds. */
+export function resetRailSections(): void {
+	sectionsStore.write(DEFAULT_RAIL_SECTIONS_STATE);
+}

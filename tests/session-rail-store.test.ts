@@ -5,8 +5,11 @@ import {beforeEach, describe, expect, it} from "vite-plus/test";
 import {
 	DEFAULT_RAIL_SECTIONS_STATE,
 	isRailSectionOpen,
+	isRailSectionsPristine,
 	readRailSectionsState,
 	readSessionRailShown,
+	resetRailSections,
+	toggleRailSectionHidden,
 	RAIL_SECTIONS_STORAGE_KEY,
 	SESSION_RAIL_STORAGE_KEY,
 	setRailSectionsOpen,
@@ -107,5 +110,38 @@ describe("rail section folds", () => {
 		);
 
 		expect(readRailSectionsState()).toStrictEqual(DEFAULT_RAIL_SECTIONS_STATE);
+	});
+});
+
+describe("rail section visibility and reset", () => {
+	it("hides and shows a section, and Reset to defaults clears hidden sections and folds", () => {
+		const pristine = isRailSectionsPristine(readRailSectionsState());
+		toggleRailSectionHidden("servers");
+		toggleRailSectionHidden("context");
+		toggleRailSectionHidden("servers");
+		toggleRailSection("s1", "progress");
+		const changed = readRailSectionsState();
+		resetRailSections();
+
+		expect({
+			pristine,
+			hidden: changed.hidden,
+			changedPristine: isRailSectionsPristine(changed),
+			reset: readRailSectionsState(),
+			resetPristine: isRailSectionsPristine(readRailSectionsState()),
+		}).toStrictEqual({
+			pristine: true,
+			hidden: ["context"],
+			changedPristine: false,
+			reset: DEFAULT_RAIL_SECTIONS_STATE,
+			resetPristine: true,
+		});
+	});
+
+	it("counts a session whose folds all returned to their defaults as pristine", () => {
+		toggleRailSection("s1", "progress");
+		toggleRailSection("s1", "progress");
+
+		expect(isRailSectionsPristine(readRailSectionsState())).toBe(true);
 	});
 });

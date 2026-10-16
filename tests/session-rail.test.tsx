@@ -271,3 +271,63 @@ describe("session rail cards", () => {
 		]);
 	});
 });
+
+describe("session rail header menu", () => {
+	function menuRows(): Array<[string | null, string, string | null]> {
+		const menu = screen.getByRole("menu");
+		return [...menu.querySelectorAll<HTMLElement>("[role^=menuitem], [data-menu-label]")].map((item) => [
+			item.getAttribute("role"),
+			item.textContent,
+			item.getAttribute("aria-checked") ?? item.getAttribute("aria-disabled"),
+		]);
+	}
+
+	async function openHeaderMenu(title: RegExp) {
+		fireEvent.contextMenu(screen.getByRole("button", {name: title}));
+		await settle();
+	}
+
+	function cardIds(): string[] {
+		return [...document.querySelectorAll<HTMLElement>("[data-rail-section]")].map(
+			(section) => section.dataset["railSection"] ?? "",
+		);
+	}
+
+	it("lists upstream's Show checkboxes and a disabled Reset to defaults on right-click", async () => {
+		render(<SessionRail sessionId="s1" cards={CARDS} />);
+		await openHeaderMenu(/^Progress/);
+
+		expect(menuRows()).toStrictEqual([
+			[null, "Show", null],
+			["menuitemcheckbox", "Goal", "true"],
+			["menuitemcheckbox", "Context", "true"],
+			["menuitemcheckbox", "Connectors", "true"],
+			["menuitemcheckbox", "Outputs", "true"],
+			["menuitemcheckbox", "Changes", "true"],
+			["menuitemcheckbox", "Servers", "true"],
+			["menuitemcheckbox", "Background tasks", "true"],
+			["menuitem", "Reset to defaults", "true"],
+		]);
+	});
+
+	it("hides a section from the Show group, and Reset to defaults brings it back", async () => {
+		render(<SessionRail sessionId="s1" cards={CARDS} />);
+		await openHeaderMenu(/^Environment/);
+		fireEvent.click(screen.getByRole("menuitemcheckbox", {name: "Context"}));
+		await settle();
+		const hidden = {cards: cardIds(), stored: readRailSectionsState().hidden};
+		fireEvent.keyDown(screen.getByRole("menu"), {key: "Escape"});
+		await settle();
+		await openHeaderMenu(/^Environment/);
+		const reset = screen.getByRole("menuitem", {name: "Reset to defaults"});
+		const resetDisabled = reset.getAttribute("aria-disabled");
+		fireEvent.click(reset);
+		await settle();
+
+		expect({hidden, resetDisabled, restored: cardIds()}).toStrictEqual({
+			hidden: {cards: ["environment", "progress"], stored: ["context"]},
+			resetDisabled: null,
+			restored: ["environment", "context", "progress"],
+		});
+	});
+});

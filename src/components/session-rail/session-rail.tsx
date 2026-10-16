@@ -2,13 +2,27 @@ import {ChevronRight} from "lucide-react";
 import {useId, type MouseEvent, type ReactNode} from "react";
 
 import {
+	HIDEABLE_RAIL_SECTIONS,
 	isRailSectionOpen,
+	isRailSectionsPristine,
+	resetRailSections,
+	toggleRailSectionHidden,
 	RAIL_SECTION_TITLES,
 	setRailSectionsOpen,
 	toggleRailSection,
 	useRailSectionsState,
 	type RailSectionId,
+	type RailSectionsState,
 } from "../../lib/session-rail-store";
+import {
+	ContextMenu,
+	ContextMenuTrigger,
+	MenuCheckboxItem,
+	MenuContent,
+	MenuItem,
+	MenuLabel,
+	MenuSeparator,
+} from "../ui/menu";
 
 /** One card with content; a section with nothing to show passes no card at all. */
 export interface RailCard {
@@ -58,48 +72,80 @@ const CARD_CLASS =
 const HEAD_CLASS =
 	"group/railhead flex min-h-6.5 w-full min-w-0 cursor-pointer items-center gap-1 rounded-r5 px-1 text-left text-[12px]/[15px] font-medium text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100";
 
+/** Upstream's header menu: a Show checkbox per hideable section, then Reset to defaults. */
+function RailHeaderMenu({sections}: {sections: RailSectionsState}) {
+	return (
+		<MenuContent density="compact" className="w-[152px]">
+			<MenuLabel>Show</MenuLabel>
+			{HIDEABLE_RAIL_SECTIONS.map((id) => (
+				<MenuCheckboxItem
+					key={id}
+					checked={!sections.hidden.includes(id)}
+					onCheckedChange={() => {
+						toggleRailSectionHidden(id);
+					}}
+				>
+					{RAIL_SECTION_TITLES[id]}
+				</MenuCheckboxItem>
+			))}
+			<MenuSeparator />
+			<MenuItem disabled={isRailSectionsPristine(sections)} onSelect={resetRailSections}>
+				Reset to defaults
+			</MenuItem>
+		</MenuContent>
+	);
+}
+
 function RailSection({
 	card,
 	open,
+	sections,
 	onToggle,
 }: {
 	card: RailCard;
 	open: boolean;
+	sections: RailSectionsState;
 	onToggle: (event: MouseEvent<HTMLButtonElement>) => void;
 }) {
 	const headingId = useId();
 	return (
-		<section
-			data-rail-section={card.id}
-			{...(open ? {"data-open": ""} : {})}
-			aria-labelledby={headingId}
-			className={CARD_CLASS}
-		>
-			<div className="group/railtop relative flex min-h-6.5 min-w-0 items-center gap-1 px-2">
-				<h3 id={headingId} className="flex min-w-0 flex-1 rounded">
-					<button type="button" aria-expanded={open} onClick={onToggle} className={HEAD_CLASS}>
-						<span className="shrink-0">{RAIL_SECTION_TITLES[card.id]}</span>
-						<ChevronRight
-							aria-hidden
-							className={`size-3 shrink-0 text-ink-muted transition-transform ${open ? "rotate-90" : ""}`}
-						/>
-						{card.summary !== undefined && (
-							<span
-								data-rail-summary=""
-								className="ms-auto truncate ps-1.5 text-[12px]/[15px] font-normal text-ink-muted"
-							>
-								{card.summary}
-							</span>
-						)}
-					</button>
-				</h3>
-			</div>
-			{open && (
-				<div data-rail-body="" className="px-2">
-					{card.body}
-				</div>
-			)}
-		</section>
+		<ContextMenu>
+			<section
+				data-rail-section={card.id}
+				{...(open ? {"data-open": ""} : {})}
+				aria-labelledby={headingId}
+				className={CARD_CLASS}
+			>
+				<ContextMenuTrigger className="group/railtop relative flex min-h-6.5 min-w-0 items-center gap-1 px-2">
+					<h3
+						id={headingId}
+						className="flex min-w-0 flex-1 rounded group-data-[popup-open]/railtop:bg-alpha-1"
+					>
+						<button type="button" aria-expanded={open} onClick={onToggle} className={HEAD_CLASS}>
+							<span className="shrink-0">{RAIL_SECTION_TITLES[card.id]}</span>
+							<ChevronRight
+								aria-hidden
+								className={`size-3 shrink-0 text-ink-muted transition-transform ${open ? "rotate-90" : ""}`}
+							/>
+							{card.summary !== undefined && (
+								<span
+									data-rail-summary=""
+									className="ms-auto truncate ps-1.5 text-[12px]/[15px] font-normal text-ink-muted"
+								>
+									{card.summary}
+								</span>
+							)}
+						</button>
+					</h3>
+				</ContextMenuTrigger>
+				{open && (
+					<div data-rail-body="" className="px-2">
+						{card.body}
+					</div>
+				)}
+			</section>
+			<RailHeaderMenu sections={sections} />
+		</ContextMenu>
 	);
 }
 
@@ -110,6 +156,7 @@ function RailSection({
  */
 export function SessionRail({sessionId, cards}: {sessionId: string; cards: readonly RailCard[]}) {
 	const sections = useRailSectionsState();
+	const shown = cards.filter((card) => !sections.hidden.includes(card.id));
 	return (
 		<aside
 			aria-label="Session details"
@@ -117,18 +164,19 @@ export function SessionRail({sessionId, cards}: {sessionId: string; cards: reado
 			className="flex h-full min-h-0 w-[var(--session-rail-w,17.5rem)] flex-col font-sans outline-none"
 		>
 			<div className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto overscroll-contain p-px [scrollbar-width:none]">
-				{cards.map((card) => {
+				{shown.map((card) => {
 					const open = isRailSectionOpen(sections, sessionId, card.id);
 					return (
 						<RailSection
 							key={card.id}
 							card={card}
 							open={open}
+							sections={sections}
 							onToggle={(event) => {
 								if (event.altKey) {
 									setRailSectionsOpen(
 										sessionId,
-										cards.map((each) => each.id),
+										shown.map((each) => each.id),
 										!open,
 									);
 								} else {
