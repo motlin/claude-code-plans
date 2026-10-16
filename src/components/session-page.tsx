@@ -2,9 +2,12 @@ import {SessionSkeleton} from "./session-skeleton";
 import {sessionScrollKey} from "../lib/session-route-location";
 import {useLocation} from "@tanstack/react-router";
 import {useQuery, useQueryClient} from "@tanstack/react-query";
-import {lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState} from "react";
+import {lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ComponentProps} from "react";
 import {Minimize2} from "lucide-react";
 import {SessionTileFrame, type SessionTileScrollPosition} from "./session-tile-frame";
+import {SessionRailSlot} from "./session-rail/session-rail-slot";
+import {useSessionRailDocked} from "./session-rail/use-session-rail-docked";
+import type {SessionRailInputs} from "./session-rail/session-rail-cards";
 import {SessionChat} from "./session-chat";
 import {ChapterChips} from "./chapter-chips";
 import {TranscriptActionsProvider} from "./transcript-actions-provider";
@@ -154,6 +157,26 @@ interface RequestedPaneProps {
 const SessionUsageCard = lazy(async () =>
 	import("./session-usage-card").then((module) => ({default: module.SessionUsageCard})),
 );
+
+// The session rail's cards load on its first show.
+const SessionRailCards = lazy(async () =>
+	import("./session-rail/session-rail-cards").then((module) => ({default: module.SessionRailCards})),
+);
+
+/** The chat tile with the session rail docked at its end while shown and no side pane is open. */
+function RailTileFrame({
+	railInputs,
+	...props
+}: Omit<ComponentProps<typeof SessionTileFrame>, "rail" | "railDocked"> & {railInputs: SessionRailInputs}) {
+	const railDocked = useSessionRailDocked();
+	return (
+		<SessionTileFrame
+			{...props}
+			railDocked={railDocked}
+			rail={<SessionRailSlot render={() => <SessionRailCards inputs={railInputs} />} />}
+		/>
+	);
+}
 
 // The notify tip shows nothing until the user comes back from 30s away, so it loads with the first permission card.
 const ToolApprovalNotifyTip = lazy(async () =>
@@ -677,7 +700,15 @@ function SessionView({
 				<TerminalPaneShortcut available={promptBehavior.hasLivePane || shellsEnabled} />
 				<FilesPaneShortcut />
 				<ChangesPaneShortcut />
-				<SessionTileFrame
+				<RailTileFrame
+					railInputs={{
+						sessionId,
+						homeRoot: data.homeRoot,
+						cwd: sessionDirectory,
+						gitBranch: data.gitBranch,
+						model: composerChin.model,
+						herdrPane: herdr.panes.find((pane) => pane.sessionId === sessionId) ?? null,
+					}}
 					sessionId={sessionId}
 					anchorRef={sessionViewRef}
 					visitKey={initialScrollKey}
@@ -705,6 +736,7 @@ function SessionView({
 										transcriptView={transcriptView}
 										paneToggles={
 											<SessionPaneControls
+												railAvailable
 												facts={{
 													artifactCount: sessionArtifacts.length,
 													hasPlan: hasSessionPlan(data.planFilename, planModel),
@@ -972,7 +1004,7 @@ function SessionView({
 
 						<SideChat sessionId={sessionId} messageCount={data.messageCount} />
 					</div>
-				</SessionTileFrame>
+				</RailTileFrame>
 			</TileHost>
 		</div>
 	);

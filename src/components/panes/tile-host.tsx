@@ -835,6 +835,7 @@ export function TileHost({
 	const api = useMemo<PaneHostApi>(
 		() => ({
 			layout,
+			openKinds,
 			isOpen: (kind) => openKinds.includes(kind),
 			openPane: (kind) => {
 				update((state) => open(state, kind));

@@ -130,3 +130,38 @@ it("does not hand a stale rendered event to a cold restore after departure", () 
 		top: view.container.querySelector<HTMLElement>("[data-session-scrollport]")?.scrollTop,
 	}).toStrictEqual({event: "onRendered", queuedFrames: 0, top: 0});
 });
+it("docks the session rail beside the scrollport, under the header, and marks the tile while docked", () => {
+	function RailVisit({docked}: {docked: boolean}) {
+		const positionRef = useRef<SessionTileScrollPosition | null>(null);
+		const anchorRef = useRef<HTMLDivElement>(null);
+		return (
+			<SessionTileFrame
+				sessionId="example-alice"
+				visitKey="example-entry"
+				positionRef={positionRef}
+				anchorRef={anchorRef}
+				restoredScrollY={undefined}
+				header={<p>Example header</p>}
+				footer={<p>Example composer</p>}
+				rail={docked ? <aside aria-label="Session details" /> : null}
+				railDocked={docked}
+			>
+				<p>Example transcript</p>
+			</SessionTileFrame>
+		);
+	}
+	const {container, rerender} = render(<RailVisit docked />);
+	const tile = container.firstElementChild;
+	const scrollport = container.querySelector("[data-session-scrollport]");
+	const docked = {
+		marked: tile?.hasAttribute("data-session-rail-docked"),
+		railBesideScrollport: scrollport?.parentElement?.querySelector(":scope > aside")?.getAttribute("aria-label"),
+		headerOutside: scrollport?.parentElement?.textContent.includes("Example header"),
+	};
+	rerender(<RailVisit docked={false} />);
+
+	expect({docked, undocked: tile?.hasAttribute("data-session-rail-docked")}).toStrictEqual({
+		docked: {marked: true, railBesideScrollport: "Session details", headerOutside: false},
+		undocked: false,
+	});
+});

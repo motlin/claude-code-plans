@@ -20,6 +20,8 @@ export function SessionTileFrame({
 	visitKey,
 	positionRef,
 	restoredScrollY,
+	rail = null,
+	railDocked = false,
 }: {
 	sessionId: string;
 	header: ReactNode;
@@ -29,6 +31,10 @@ export function SessionTileFrame({
 	visitKey: string;
 	positionRef: RefObject<SessionTileScrollPosition | null>;
 	restoredScrollY: number | undefined;
+	/** The session rail's column, docked over the scrollport's end below the header. */
+	rail?: ReactNode;
+	/** Re-centres the chat column in the room the docked rail leaves. */
+	railDocked?: boolean;
 }) {
 	const router = useRouter();
 	const pendingRendered = useRef<(() => void) | undefined>(undefined);
@@ -108,31 +114,37 @@ export function SessionTileFrame({
 	};
 
 	return (
-		<div className="flex h-full min-h-0 min-w-0 flex-col">
+		<div
+			className="@container flex h-full min-h-0 min-w-0 flex-col"
+			{...(railDocked ? {"data-session-rail-docked": ""} : {})}
+		>
 			<div className="shrink-0">{header}</div>
-			<div
-				ref={scrollerRef}
-				onWheelCapture={cancelPendingRestore}
-				onTouchMoveCapture={cancelPendingRestore}
-				onPointerDownCapture={cancelPendingRestore}
-				onKeyDownCapture={(event) => {
-					if (["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "].includes(event.key))
-						cancelPendingRestore();
-				}}
-				data-session-scrollport
-				data-scroll-restoration-id="main"
-				onScroll={(event) => {
-					if (event.currentTarget.clientHeight > 0)
-						positionRef.current = {visitKey, top: event.currentTarget.scrollTop};
-				}}
-				className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto [contain:strict] [overflow-anchor:none] [scrollbar-gutter:stable_both-edges]"
-			>
-				<div ref={anchorRef} className="flex min-h-full flex-col">
-					<SessionTileGeometryReadyContext.Provider value={restoreGeometry}>
-						<div className="flex-1">{children}</div>
-					</SessionTileGeometryReadyContext.Provider>
-					{footer}
+			<div className="relative flex min-h-0 flex-1 flex-col">
+				<div
+					ref={scrollerRef}
+					onWheelCapture={cancelPendingRestore}
+					onTouchMoveCapture={cancelPendingRestore}
+					onPointerDownCapture={cancelPendingRestore}
+					onKeyDownCapture={(event) => {
+						if (["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "].includes(event.key))
+							cancelPendingRestore();
+					}}
+					data-session-scrollport
+					data-scroll-restoration-id="main"
+					onScroll={(event) => {
+						if (event.currentTarget.clientHeight > 0)
+							positionRef.current = {visitKey, top: event.currentTarget.scrollTop};
+					}}
+					className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto [contain:strict] [overflow-anchor:none] [scrollbar-gutter:stable_both-edges]"
+				>
+					<div ref={anchorRef} className="flex min-h-full flex-col">
+						<SessionTileGeometryReadyContext.Provider value={restoreGeometry}>
+							<div className="flex-1">{children}</div>
+						</SessionTileGeometryReadyContext.Provider>
+						{footer}
+					</div>
 				</div>
+				{rail}
 			</div>
 		</div>
 	);

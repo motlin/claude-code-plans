@@ -963,6 +963,39 @@ html[data-motion="reduced"] .terminal-caret {
 		padding-inline-end: calc(var(--chat-column-end, 16px) - var(--scroll-gutter, 0px));
 	}
 
+	/* Upstream's docked session rail: a 280px column at the chat tile's end, and the chat
+	   column re-centred in the room left of it, sliding left and then narrowing once the
+	   centred column would run under the rail. */
+	[data-session-rail-docked] {
+		--session-rail-w: 17.5rem;
+		--session-rail-gutter: 24px;
+		/* Upstream insets the rail 13px from the window edge; the tile shell's 1px border is the rest. */
+		--session-rail-end: 12px;
+		--session-rail-reserve: calc(
+			var(--session-rail-end) + var(--session-rail-w) + var(--session-rail-gutter) - var(--chat-column-end, 16px)
+		);
+	}
+
+	[data-session-rail-docked] .chat-column,
+	[data-session-rail-docked] .chat-dock-column {
+		--rail-column-box: calc(var(--max-content-width, 768px) + var(--chat-column-extra, 64px));
+		--rail-column-room: calc(100cqw - var(--scroll-gutter, 0px) - var(--session-rail-reserve));
+		--rail-column-start: max(
+			0px,
+			min(
+				calc((100cqw - 2 * var(--scroll-gutter, 0px) - var(--rail-column-box)) / 2),
+				calc(var(--rail-column-room) - var(--rail-column-box))
+			)
+		);
+		margin-inline-start: calc(var(--rail-column-start) + var(--rail-column-trim, 0px) / 2);
+		margin-inline-end: 0;
+		max-width: calc(min(var(--rail-column-box), var(--rail-column-room)) - var(--rail-column-trim, 0px));
+	}
+
+	[data-session-rail-docked] .chat-dock-column {
+		--rail-column-trim: calc(2 * var(--scroll-gutter, 0px));
+	}
+
 	@media (width >= 40rem) {
 		[data-route-tile-shell] {
 			border: 1px solid transparent;

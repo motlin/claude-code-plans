@@ -6,6 +6,7 @@ import {bindingsFor} from "../lib/shortcuts/match";
 import {bindingToKeys, type ShortcutId} from "../lib/shortcuts/registry";
 import {usePaneDefinitions} from "./panes/pane-registry";
 import {usePaneHost} from "./panes/pane-host-context";
+import {SessionRailToggle} from "./session-rail/session-rail-slot";
 import {TITLEBAR_ICON_BUTTON_CLASS} from "./titlebar-classes";
 import {Menu, MenuCheckboxItem, MenuContent, MenuItem, MenuSeparator, MenuTrigger} from "./ui/menu";
 import {Tooltip} from "./ui/tooltip";
@@ -102,15 +103,19 @@ function ViewOptionsMenu({
 }
 
 /**
- * The titlebar trail's pane controls, upstream's set: the Changes and Files
- * toggles, which stay icons at every width, then View options ⋮ holding the
- * other panes and Expand chat. The trigger shows only when the menu has items.
+ * The titlebar trail's pane controls, upstream's set: the session rail toggle,
+ * then the Changes and Files toggles, which stay icons at every width, then
+ * View options ⋮ holding the other panes and Expand chat. The trigger shows
+ * only when the menu has items.
  */
 export function SessionPaneControls({
 	facts,
+	railAvailable = false,
 	onExpandChat,
 }: {
 	facts: ViewOptionsFacts;
+	/** The session page supplies a rail, so its toggle leads the trail. */
+	railAvailable?: boolean;
 	/** Hides the header and footer; offered as View options ▸ Expand chat. */
 	onExpandChat?: () => void;
 }) {
@@ -121,6 +126,7 @@ export function SessionPaneControls({
 	const menuEntries = viewOptionsItems({registered, isOpen: host.isOpen, facts});
 	return (
 		<>
+			{railAvailable && <SessionRailToggle />}
 			{shown.map((entry) => (
 				<MainPaneToggle key={entry.kind} entry={entry} />
 			))}

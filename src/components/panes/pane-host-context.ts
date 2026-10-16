@@ -4,6 +4,8 @@ import type {PaneKind, PaneLayoutState} from "../../lib/pane-layout";
 
 export interface PaneHostApi {
 	layout: PaneLayoutState;
+	/** The side panes in the layout, whose presence swaps the session rail out. */
+	openKinds: readonly PaneKind[];
 	isOpen: (kind: PaneKind) => boolean;
 	openPane: (kind: PaneKind) => void;
 	closePane: (kind: PaneKind) => void;
