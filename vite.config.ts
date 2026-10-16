@@ -403,6 +403,8 @@ export default defineConfig({
 			[AGENTATION_ENDPOINT]: {
 				target: AGENTATION_SERVER,
 				changeOrigin: true,
+				// changeOrigin rewrites only Host; the Agentation server 403s a non-loopback Origin.
+				headers: {origin: AGENTATION_SERVER},
 				rewrite: (path) => path.slice(AGENTATION_ENDPOINT.length),
 			},
 		},

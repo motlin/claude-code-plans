@@ -44,6 +44,8 @@ describe("vite config", () => {
 		]);
 	});
 
+	// The Agentation server 403s any non-loopback Origin ("Origin not allowed"), so a page served through
+	// another host (the https reverse proxy) must reach it with the server's own origin.
 	it("proxies the Agentation endpoint to the local Agentation server", () => {
 		const proxy = viteConfig.server?.proxy?.[AGENTATION_ENDPOINT];
 		if (proxy === undefined || typeof proxy === "string") {
@@ -53,10 +55,12 @@ describe("vite config", () => {
 		expect({
 			target: proxy.target,
 			changeOrigin: proxy.changeOrigin,
+			headers: proxy.headers,
 			rewritten: proxy.rewrite?.("/__agentation/sessions/abc/events"),
 		}).toStrictEqual({
 			target: AGENTATION_SERVER,
 			changeOrigin: true,
+			headers: {origin: AGENTATION_SERVER},
 			rewritten: "/sessions/abc/events",
 		});
 	});
