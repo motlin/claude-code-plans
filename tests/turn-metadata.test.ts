@@ -141,11 +141,13 @@ describe("userTurnDetails", () => {
 		expect({
 			peer: userTurnDetails({type: "user", lineIndex: 0, turnOrigin: "peer"}),
 			harness: userTurnDetails({type: "user", lineIndex: 0, turnOrigin: "system", promptSource: "system"}),
+			sdk: userTurnDetails({type: "user", lineIndex: 0, turnOrigin: "sdk", promptSource: "sdk"}),
 			suggestion: userTurnDetails({type: "user", lineIndex: 0, promptSource: "suggestion_accepted"}),
 			system: userTurnDetails({type: "user", lineIndex: 0, promptSource: "system", queuePriority: "later"}),
 		}).toStrictEqual({
 			peer: ["From another session"],
 			harness: ["System notice · System prompt"],
+			sdk: ["From the SDK · SDK prompt"],
 			suggestion: ["Suggestion accepted prompt"],
 			system: ["System prompt · queued for later"],
 		});

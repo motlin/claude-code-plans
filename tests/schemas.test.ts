@@ -35,6 +35,7 @@ import {
 	toolInputSchemas,
 } from "../src/lib/tool-input-schemas";
 import {baseFields} from "./fixtures/base-fields";
+import {jsonlRecordFixtures} from "./fixtures/jsonl-records";
 
 describe("SessionIndexEntrySchema", () => {
 	it("parses a minimal entry", () => {
@@ -1147,6 +1148,31 @@ describe("JsonlRecordSchema observed 2026-09 transcript fields", () => {
 			turnPosition: {promptIndex: 20, turnIndex: 67},
 			queuePriority: "later",
 			queueSkipAttachments: true,
+		};
+
+		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
+	});
+
+	it("parses SDK-submitted user records with an sdk turnOrigin", () => {
+		const record = {
+			type: "user",
+			...baseFields,
+			message: {role: "user", content: "Both PRs have GHA failures."},
+			promptSource: "sdk",
+			turnOrigin: "sdk",
+			turnPosition: {promptIndex: 20, turnIndex: 72},
+		};
+
+		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
+	});
+
+	it("parses a 2.1.301 api-request whose classifier_context has no artifacts", () => {
+		const fixture = jsonlRecordFixtures["api-request"];
+		const [safeguard] = fixture.params.safeguards;
+		const {artifacts: _artifacts, ...classifierContext} = safeguard!.classifier_context;
+		const record = {
+			...fixture,
+			params: {...fixture.params, safeguards: [{...safeguard!, classifier_context: classifierContext}]},
 		};
 
 		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);

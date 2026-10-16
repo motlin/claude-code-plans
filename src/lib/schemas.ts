@@ -278,7 +278,7 @@ const BaseRecordFields = {
 export const PromptSourceSchema = z.enum(["typed", "system", "sdk", "queued", "suggestion_accepted"]);
 
 /** Who started a user turn; `human` is the ordinary typed-at-the-keyboard case. */
-export const TurnOriginSchema = z.enum(["human", "peer", "task_notification", "scheduled", "system"]);
+export const TurnOriginSchema = z.enum(["human", "peer", "task_notification", "scheduled", "system", "sdk"]);
 
 export const PermissionDecisionDecisionSchema = z.enum(["accept", "reject"]);
 export const PermissionDecisionSourceSchema = z.enum([
@@ -1769,7 +1769,8 @@ const DangerousToolUseClassifierContextSchema = z
 					})
 					.strict(),
 			})
-			.strict(),
+			.strict()
+			.optional(),
 		// Ids of system reminders injected into the transcript, and who sent each.
 		system_reminders: z.array(z.object({id: z.string(), provenance: z.string()}).strict()).optional(),
 		prior_turn_context: z

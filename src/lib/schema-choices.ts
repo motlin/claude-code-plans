@@ -113,6 +113,7 @@ export const turnOriginLabels = {
 	task_notification: "Task notification",
 	scheduled: "Scheduled task",
 	system: "System notice",
+	sdk: "From the SDK",
 } satisfies Record<z.infer<typeof TurnOriginSchema>, string>;
 
 export const permissionDecisionDecisionLabels = {
