@@ -10,6 +10,12 @@ import {TERMINAL_HOST_CAPABILITIES} from "../terminal-host-capabilities";
 import {defaultTmuxLaunchIo, launchClaudeInTmux, type TmuxLaunchIo} from "../tmux/launch";
 import {defaultTmuxWriteIo, tmuxWriteDependencies, type TmuxWriteIo} from "../tmux/writes";
 import {startTmuxPaneEvents} from "../tmux/pane-events";
+import {
+	defaultTmuxTerminalStreamIo,
+	startTmuxTerminalStream,
+	stopAllTmuxTerminalStreams,
+	type TmuxTerminalStreamIo,
+} from "../tmux/terminal-stream";
 import {defaultHerdrInterruptDependencies, handleHerdrInterrupt} from "../herdr/interrupt";
 import {defaultHerdrLaunchDependencies, handleHerdrLaunch} from "../herdr/launch";
 import {defaultHerdrLiveOptionDependencies, handleHerdrLiveOption} from "../herdr/live-option";
@@ -23,6 +29,7 @@ import {controlHerdrSession, type TerminalController} from "../herdr/terminal-co
 import {
 	observeHerdrSession,
 	stopAllTerminalObservers,
+	parseViewport,
 	type TerminalObserver,
 	type TerminalObserverSocket,
 } from "../herdr/terminal-observer";
@@ -148,15 +155,29 @@ const noTerminalHost: TerminalHost = {
  * pid's process tree), and writes through `tmux send-keys` behind herdr's
  * handlers, gated by the hook-reported state (see `tmux/writes.ts`), and
  * launches into new detached windows (see `tmux/launch.ts`), and pane events
- * from a 2 s `list-panes` poll (see `tmux/pane-events.ts`). Live terminals are
- * refused until a later slice wires them up.
+ * from a 2 s `list-panes` poll (see `tmux/pane-events.ts`), and live
+ * terminals from a control-mode client per watched pane (see
+ * `tmux/terminal-stream.ts`).
  */
 export function createTmuxTerminalHost(
 	sources: TmuxSessionPaneSources = defaultTmuxSessionPaneSources,
 	io: TmuxWriteIo = defaultTmuxWriteIo,
 	launchIo: TmuxLaunchIo = defaultTmuxLaunchIo,
+	streamIo: TmuxTerminalStreamIo = defaultTmuxTerminalStreamIo,
 ): TerminalHost {
 	const writes = {writesEnabled: io.writesEnabled};
+	const stream = async (
+		sessionId: string,
+		columns: number,
+		rows: number,
+		socket: TerminalObserverSocket,
+		interactive: boolean,
+	): Promise<TerminalController> => {
+		parseViewport(columns, rows);
+		const match = (await getTmuxSessionPanes(sources)).find((candidate) => candidate.sessionId === sessionId);
+		if (match === undefined) throw new Error("No live tmux pane is linked to this session");
+		return startTmuxTerminalStream({pane: match.pane, interactive}, socket, streamIo);
+	};
 	return {
 		...noTerminalHost,
 		id: "tmux",
@@ -201,6 +222,9 @@ export function createTmuxTerminalHost(
 				...writes,
 				launchClaude: async (launch) => launchClaudeInTmux(launch, launchIo),
 			}),
+		observe: async (sessionId, columns, rows, socket) => stream(sessionId, columns, rows, socket, false),
+		control: async (sessionId, columns, rows, socket) => stream(sessionId, columns, rows, socket, true),
+		stopAllStreams: stopAllTmuxTerminalStreams,
 	};
 }
 
@@ -251,6 +275,7 @@ export function startTerminalHostEvents(
 /** Server shutdown: stop the live terminal streams of every host that can open one. */
 export function stopAllTerminalHostStreams(): void {
 	herdrTerminalHost.stopAllStreams();
+	tmuxTerminalHost.stopAllStreams();
 }
 
 /** Placement providers for the Terminals view: tmux windows always, plus herdr's panes when herdr is the host. */

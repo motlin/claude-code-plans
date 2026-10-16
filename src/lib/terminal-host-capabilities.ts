@@ -10,11 +10,11 @@ export interface TerminalHostCapabilities {
 
 /**
  * What each host supports, shared by the server's hosts and the browser, which
- * reads it per pane (`pane.host`). tmux streams arrive in a later slice.
+ * reads it per pane (`pane.host`).
  */
 export const TERMINAL_HOST_CAPABILITIES = {
 	herdr: {canWrite: true, canStream: true},
-	tmux: {canWrite: true, canStream: false},
+	tmux: {canWrite: true, canStream: true},
 } as const satisfies Record<TerminalPaneHost, TerminalHostCapabilities>;
 
 /** Whether the session has a pane the live terminal tab can stream. */

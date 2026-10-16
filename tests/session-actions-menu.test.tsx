@@ -266,12 +266,14 @@ describe("SessionActionsMenu", () => {
 		]);
 	});
 
-	it("leaves out the live terminal for a tmux pane, which cannot stream yet", async () => {
+	it("shows the live terminal for a tmux pane too", async () => {
 		await renderRow(listItem("working"), [SESSION_ID], {host: "tmux"});
 
 		const menu = await rightClickRow();
 
 		expect(outline(menu)).toEqual([
+			"Open in []",
+			"---",
 			"PinP [p]",
 			"RenameR [r]",
 			"Copy linkC [c]",

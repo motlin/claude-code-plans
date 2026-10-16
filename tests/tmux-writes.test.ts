@@ -310,7 +310,7 @@ describe("tmux host writes", () => {
 });
 
 describe("answer routing for tmux sessions", () => {
-	it("resolves the tmux host for the tmux setting, which can write but not yet stream", async () => {
+	it("resolves the tmux host for the tmux setting, which can write and stream", async () => {
 		const host = await resolveTerminalHost("tmux", {
 			herdrAvailable: async () => Promise.resolve(true),
 			tmuxAvailable: async () => Promise.resolve(true),
@@ -319,7 +319,7 @@ describe("answer routing for tmux sessions", () => {
 		expect({id: host.id, canWrite: host.canWrite, canStream: host.canStream}).toStrictEqual({
 			id: "tmux",
 			canWrite: true,
-			canStream: false,
+			canStream: true,
 		});
 	});
 
