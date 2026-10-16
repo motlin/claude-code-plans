@@ -31,16 +31,20 @@ describe("TaskChecklistRenderer", () => {
 			list: list?.className,
 			items: [...(list?.children ?? [])].map((item) => ({
 				className: item.className,
-				icon: item.firstElementChild?.firstElementChild?.getAttribute("class")?.split(" ")[0],
+				icon: item.firstElementChild?.firstElementChild
+					?.getAttribute("class")
+					?.split(" ")
+					.filter((name) => name === "running-spinner" || name.startsWith("text-") || name === "lucide")
+					.join(" "),
 				text: item.textContent,
 				markdown: item.querySelector("strong, code")?.tagName ?? null,
 			})),
 		}).toStrictEqual({
-			list: "m-0 flex list-none flex-col gap-1.5 p-0 py-1.5 text-body select-text",
+			list: "m-0 flex list-none flex-col gap-1.5 p-0 py-1 text-body select-text",
 			items: [
 				{
 					className: "flex items-start gap-1 line-through decoration-1 text-secondary",
-					icon: "lucide",
+					icon: "lucide text-primary",
 					text: "doneUpdate docs",
 					markdown: "STRONG",
 				},
@@ -50,7 +54,12 @@ describe("TaskChecklistRenderer", () => {
 					text: "in progressFix login",
 					markdown: "CODE",
 				},
-				{className: "flex items-start gap-1 text-primary", icon: "lucide", text: "Write tests", markdown: null},
+				{
+					className: "flex items-start gap-1 text-primary",
+					icon: "lucide text-ink-muted",
+					text: "Write tests",
+					markdown: null,
+				},
 			],
 		});
 	});

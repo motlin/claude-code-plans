@@ -22,7 +22,7 @@ function StatusIcon({status}: {status: ChecklistItem["status"]}) {
 			</>
 		);
 	}
-	return <CircleDashed aria-hidden="true" className="size-4 text-secondary" />;
+	return <CircleDashed aria-hidden="true" className="size-4 text-ink-muted" />;
 }
 
 /**
@@ -34,7 +34,7 @@ export function TaskChecklistRenderer({toolCall}: ToolRendererProps) {
 	const items = useMemo(() => taskChecklist(toolCall.name, toolCall.input), [toolCall.name, toolCall.input]);
 	if (items.length === 0) return null;
 	return (
-		<ul className="m-0 flex list-none flex-col gap-1.5 p-0 py-1.5 text-body select-text">
+		<ul className="m-0 flex list-none flex-col gap-1.5 p-0 py-1 text-body select-text">
 			{items.map((item) => (
 				<li
 					key={item.id}
