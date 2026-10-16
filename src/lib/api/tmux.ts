@@ -1,9 +1,7 @@
 import {z} from "zod";
-import {queryOptions} from "@tanstack/react-query";
-import {apiFetch} from "./client";
 
 /**
- * Response shape mirroring the `TmuxWindow` interface produced by
+ * Terminal-placement field mirroring the `TmuxWindow` interface produced by
  * `getTmuxWindows` (`../tmux-windows`) — see there for how the fields map to
  * tmux. `.strict()` so any drift from that interface fails loudly at parse time.
  */
@@ -18,10 +16,3 @@ export const TmuxWindowSchema = z
 		socket: z.string(),
 	})
 	.strict();
-
-export const TmuxWindowListResponse = z.array(TmuxWindowSchema);
-
-export const tmuxWindowsQueryOptions = queryOptions({
-	queryKey: ["tmux", "windows"] as const,
-	queryFn: async () => apiFetch("/api/tmux-windows", TmuxWindowListResponse),
-});

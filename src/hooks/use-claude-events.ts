@@ -922,7 +922,6 @@ export function invalidateActiveSessions(queryClient: QueryClient): void {
 export function invalidateTerminalPlacements(queryClient: QueryClient): void {
 	// Terminal pane mappings change exactly when session lifecycle events fire
 	// (start/end re-panes; a prompt re-stamps the pane after a resume).
-	void queryClient.invalidateQueries({queryKey: ["tmux", "windows"]});
 	void queryClient.invalidateQueries({queryKey: ["terminal", "placements"]});
 }
 

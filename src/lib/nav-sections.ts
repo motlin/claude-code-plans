@@ -7,7 +7,6 @@ export const NAV_SECTIONS = [
 	"jobs",
 	"active",
 	"herdr",
-	"tmux",
 	"approvals",
 	"notifications",
 	"tasks",
@@ -29,16 +28,27 @@ export const VisibleNavSectionsSchema = z
 /** Sections that left the nav: Starred became the Pinned group; the rest moved to the account menu. */
 const RETIRED_NAV_SECTIONS: ReadonlySet<unknown> = new Set(["starred", "settings", "config", "setup"]);
 
+/** Sections folded into another: Plugins became Customize; Tmux Windows folded into Terminals (`herdr`). */
+const RENAMED_NAV_SECTIONS: ReadonlyMap<unknown, NavSection> = new Map([
+	["plugins", "customize"],
+	["tmux", "herdr"],
+]);
+
 /**
- * Plugins became Customize, so a saved `"plugins"` pin carries over; retired sections are dropped.
- * Either way the config stays valid.
+ * A saved pin on a renamed section carries over to its successor (once, even if both were pinned; other duplicates stay invalid);
+ * retired sections are dropped. Either way the config stays valid.
  */
 export function renameLegacyNavSections(value: unknown): unknown {
 	if (!Array.isArray(value)) return value;
 	const sections: unknown[] = value;
-	return sections
-		.filter((section) => !RETIRED_NAV_SECTIONS.has(section))
-		.map((section) => (section === "plugins" ? "customize" : section));
+	const kept = sections.filter((section) => !RETIRED_NAV_SECTIONS.has(section));
+	const result: unknown[] = [];
+	for (const section of kept) {
+		const successor = RENAMED_NAV_SECTIONS.get(section);
+		if (successor === undefined) result.push(section);
+		else if (!kept.includes(successor) && !result.includes(successor)) result.push(successor);
+	}
+	return result;
 }
 
 /** Upstream pins New, Artifacts and Customize; Plans and Memories stay local. */
@@ -48,14 +58,13 @@ function inNavOrder(sections: ReadonlySet<NavSection>): NavSection[] {
 	return NAV_SECTIONS.filter((section) => sections.has(section));
 }
 
-/** Carry the retired Herdr/Tmux visibility flags into the pinned set. */
+/** Carry the retired Herdr/Tmux visibility flags into the pinned set; both now pin Terminals (`herdr`). */
 export function migrateLegacyNavFlags(legacy: {
 	showHerdrSection?: boolean | undefined;
 	showTmuxSection?: boolean | undefined;
 }): NavSection[] {
 	const visible = new Set<NavSection>(DEFAULT_VISIBLE_NAV_SECTIONS);
-	if (legacy.showHerdrSection === true) visible.add("herdr");
-	if (legacy.showTmuxSection === true) visible.add("tmux");
+	if (legacy.showHerdrSection === true || legacy.showTmuxSection === true) visible.add("herdr");
 	return inNavOrder(visible);
 }
 

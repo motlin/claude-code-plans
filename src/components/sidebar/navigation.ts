@@ -60,11 +60,6 @@ const navEntries = {
 		label: "Terminals",
 		icon: SquareTerminal,
 	},
-	tmux: {
-		to: "/tmux",
-		label: "Tmux Windows",
-		icon: SquareTerminal,
-	},
 	approvals: {
 		to: "/approvals",
 		label: "Approvals",

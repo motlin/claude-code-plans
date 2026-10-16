@@ -22,7 +22,6 @@ describe("getVisibleNavItems", () => {
 				"Background jobs",
 				"Active",
 				"Terminals",
-				"Tmux Windows",
 				"Approvals",
 				"Notifications",
 				"Tasks",
@@ -37,7 +36,7 @@ describe("getVisibleNavItems", () => {
 
 		expect({pinned: labels(pinned), overflowCount: overflow.length}).toStrictEqual({
 			pinned: ["Active", "Tasks", "Sessions"],
-			overflowCount: 11,
+			overflowCount: 10,
 		});
 	});
 
@@ -46,7 +45,7 @@ describe("getVisibleNavItems", () => {
 
 		expect({pinned: labels(pinned), overflowCount: overflow.length}).toStrictEqual({
 			pinned: [],
-			overflowCount: 14,
+			overflowCount: 13,
 		});
 	});
 });
@@ -71,11 +70,10 @@ describe("migrateLegacyNavFlags", () => {
 		expect(migrateLegacyNavFlags({})).toStrictEqual(["artifacts", "plans", "memories", "customize"]);
 	});
 
-	it("keeps Herdr and Tmux pinned when the old flags showed them", () => {
+	it("pins Terminals once when the old Herdr and Tmux flags showed them", () => {
 		expect(migrateLegacyNavFlags({showHerdrSection: true, showTmuxSection: true})).toStrictEqual([
 			"artifacts",
 			"herdr",
-			"tmux",
 			"plans",
 			"memories",
 			"customize",

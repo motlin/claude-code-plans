@@ -42,8 +42,14 @@ function TerminalsEmptyState() {
 	return (
 		<div className="mx-auto mt-8 max-w-lg rounded-md border border-border p-6 text-sm text-t6">
 			<p className="text-primary">No terminal placements are linked to Claude sessions yet.</p>
-			<p className="mt-3">Run Claude Code inside tmux or herdr, then:</p>
+			<p className="mt-3">To enable it:</p>
 			<ul className="mt-2 list-disc space-y-1 pl-5">
+				<li>
+					Run Claude Code inside tmux so{" "}
+					<code className="rounded bg-surface-0/60 px-1 py-0.5 text-xs">TMUX</code> and{" "}
+					<code className="rounded bg-surface-0/60 px-1 py-0.5 text-xs">TMUX_PANE</code> are set, or inside
+					herdr.
+				</li>
 				<li>
 					Re-install the hooks from{" "}
 					<Link to="/setup" className="text-accent-100 hover:underline">

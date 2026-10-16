@@ -19,6 +19,7 @@ import {sessionQueryKeys} from "../src/lib/api/sessions";
 import {terminalPlacementsQueryOptions} from "../src/lib/api/terminal-placements";
 import {updateSessionViewedState} from "../src/lib/api/viewed-state";
 import {redirectLegacyHerdr} from "../src/routes/herdr";
+import {redirectLegacyTmux} from "../src/routes/tmux";
 import {Route as HerdrLayoutRoute} from "../src/routes/terminals";
 import {Route as HerdrRoute} from "../src/routes/terminals.index";
 import {Route as HerdrTerminalRoute} from "../src/routes/terminals.terminal.$sessionId";
@@ -860,9 +861,67 @@ describe("Terminals page tmux rows", () => {
 			herdrHost: herdrRow?.children[0]?.textContent,
 		}).toStrictEqual({tmuxHost: "tmux", tmuxReview: "Needs review · 2 new", herdrHost: "herdr"});
 	});
+
+	it("shows everything the retired Tmux Windows page did: window index, window name and project", async () => {
+		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the page renders both providers; the helper is typed for herdr rows
+		await renderHerdrPage([tmuxPlacementFixture() as unknown as ReturnType<typeof placement>]);
+
+		const tmuxRow = screen.getByRole("link", {name: /claude-window/u});
+		expect({
+			href: tmuxRow.getAttribute("href"),
+			windowIndex: tmuxRow.children[3]?.textContent,
+			windowName: tmuxRow.children[4]?.textContent,
+			projectName: tmuxRow.children[5]?.textContent,
+		}).toStrictEqual({
+			href: "/session/session-test-900",
+			windowIndex: "#3",
+			windowName: "claude-window",
+			projectName: "alice-project",
+		});
+	});
 });
 
-describe("legacy /herdr redirects", () => {
+function tmuxPlacementFixture() {
+	return {
+		provider: "tmux" as const,
+		sessionId: "session-test-900",
+		displayName: "claude-window",
+		active: true,
+		paneHandle: "%9",
+		scopeHandle: "/private/tmp/tmux-501/default",
+		capabilities: {supportsWrite: true, supportsEvents: true, supportsObserve: false},
+		tmuxWindow: {
+			sessionId: "session-test-900",
+			projectName: "alice-project",
+			windowIndex: 3,
+			windowName: "claude-window",
+			windowActive: true,
+			tmuxPane: "%9",
+			socket: "/private/tmp/tmux-501/default",
+		},
+		viewedState: {
+			currentMessageIndex: 4,
+			lastViewedMessageIndex: 4,
+			reviewTargetMessageIndex: 4,
+			newMessageCount: 0,
+			viewedInCcp: true,
+			viewedInHerdr: false,
+			viewedAnywhere: true,
+		},
+	};
+}
+
+describe("Terminals page empty state", () => {
+	it("carries over the retired Tmux Windows page's TMUX and TMUX_PANE setup hint", async () => {
+		await renderHerdrPage([]);
+
+		expect(screen.getByText(/TMUX_PANE/u).closest("li")?.textContent).toBe(
+			"Run Claude Code inside tmux so TMUX and TMUX_PANE are set, or inside herdr.",
+		);
+	});
+});
+
+describe("legacy /herdr and /tmux redirects", () => {
 	async function landingHref(path: string): Promise<string> {
 		const rootRoute = createRootRoute({component: Outlet});
 		const legacyRoute = createRoute({
@@ -871,6 +930,12 @@ describe("legacy /herdr redirects", () => {
 			beforeLoad: redirectLegacyHerdr,
 		});
 		const legacySplatRoute = createRoute({getParentRoute: () => legacyRoute, path: "$"});
+		const legacyTmuxRoute = createRoute({
+			getParentRoute: () => rootRoute,
+			path: "/tmux",
+			beforeLoad: redirectLegacyTmux,
+		});
+		const legacyTmuxSplatRoute = createRoute({getParentRoute: () => legacyTmuxRoute, path: "$"});
 		const terminalsRoute = createRoute({getParentRoute: () => rootRoute, path: "/terminals", component: Outlet});
 		const terminalsIndexRoute = createRoute({
 			getParentRoute: () => terminalsRoute,
@@ -885,6 +950,7 @@ describe("legacy /herdr redirects", () => {
 		const router = createRouter({
 			routeTree: rootRoute.addChildren([
 				legacyRoute.addChildren([legacySplatRoute]),
+				legacyTmuxRoute.addChildren([legacyTmuxSplatRoute]),
 				terminalsRoute.addChildren([terminalsIndexRoute, terminalRoute]),
 			]),
 			history: createMemoryHistory({initialEntries: [path]}),
@@ -898,6 +964,10 @@ describe("legacy /herdr redirects", () => {
 		["/herdr/", "/terminals"],
 		["/herdr/terminal/session-test-100", "/terminals/terminal/session-test-100"],
 		["/herdr/terminal/session-test-100?tab=shell#bottom", "/terminals/terminal/session-test-100?tab=shell#bottom"],
+		["/tmux", "/terminals"],
+		["/tmux/", "/terminals"],
+		["/tmux?filter=alice#top", "/terminals?filter=alice#top"],
+		["/tmux/terminal/session-test-100?tab=shell#bottom", "/terminals/terminal/session-test-100?tab=shell#bottom"],
 	])("sends %s to %s", async (from, to) => {
 		await expect(landingHref(from)).resolves.toBe(to);
 	});

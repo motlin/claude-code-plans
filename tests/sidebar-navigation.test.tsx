@@ -74,7 +74,7 @@ function seedQueryClient(): QueryClient {
 		terminalWritesEnabled: false,
 		terminalHost: "auto",
 		shellPaneEnabled: true,
-		visibleNavSections: NAV_SECTIONS.filter((section) => section !== "herdr" && section !== "tmux"),
+		visibleNavSections: NAV_SECTIONS.filter((section) => section !== "herdr"),
 		ignoredDirs: ["node_modules"],
 	});
 	return queryClient;
@@ -183,7 +183,6 @@ describe("sidebar navigation", () => {
 			{label: "Background jobs", to: "/jobs"},
 			{label: "Active", to: "/active"},
 			{label: "Terminals", to: "/terminals"},
-			{label: "Tmux Windows", to: "/tmux"},
 			{label: "Approvals", to: "/approvals"},
 			{label: "Notifications", to: "/notifications"},
 			{label: "Tasks", to: "/tasks"},
@@ -277,10 +276,10 @@ describe("sidebar navigation", () => {
 		]);
 	});
 
-	it("activates the tmux section on the tmux route", () => {
+	it("activates the Terminals section on the legacy tmux route while it redirects", () => {
 		const matches = [{fullPath: "/tmux", params: {}}] as unknown as Parameters<typeof activeSectionFor>[0];
 
-		expect(activeSectionFor(matches)).toStrictEqual({section: "tmux", activeItemId: null});
+		expect(activeSectionFor(matches)).toStrictEqual({section: "herdr", activeItemId: null});
 	});
 
 	it("activates the Terminals section and terminal on a live terminal route", () => {

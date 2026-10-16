@@ -31,7 +31,7 @@ function seedQueryClient(): QueryClient {
 		terminalWritesEnabled: false,
 		terminalHost: "auto",
 		shellPaneEnabled: true,
-		visibleNavSections: NAV_SECTIONS.filter((section) => section !== "herdr" && section !== "tmux"),
+		visibleNavSections: NAV_SECTIONS.filter((section) => section !== "herdr"),
 		ignoredDirs: ["node_modules"],
 	});
 	return queryClient;

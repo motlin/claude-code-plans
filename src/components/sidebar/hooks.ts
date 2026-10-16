@@ -27,11 +27,8 @@ export function activeSectionFor(matches: readonly ActiveMatch[]): {
 	if (path.startsWith("/active")) {
 		return {section: "active", activeItemId: null};
 	}
-	if (path.startsWith("/terminals")) {
+	if (path.startsWith("/terminals") || path.startsWith("/tmux")) {
 		return {section: "herdr", activeItemId: params?.["sessionId"] ?? null};
-	}
-	if (path.startsWith("/tmux")) {
-		return {section: "tmux", activeItemId: null};
 	}
 	if (path.startsWith("/approvals")) {
 		return {section: "approvals", activeItemId: null};

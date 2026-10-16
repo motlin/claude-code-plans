@@ -88,17 +88,42 @@ describe("persisted application settings", () => {
 		}
 	});
 
-	it("migrates the retired Herdr and Tmux flags into the pinned nav sections", async () => {
+	it("migrates the retired Herdr and Tmux flags (Tmux now Terminals) into the pinned nav sections", async () => {
 		await writeFile(configPath, JSON.stringify({show_herdr_section: true, show_tmux_section: true}));
 
 		expect(readApplicationSettings(configPath).visibleNavSections).toStrictEqual([
 			"artifacts",
 			"herdr",
-			"tmux",
 			"plans",
 			"memories",
 			"customize",
 		]);
+	});
+
+	it("pins Terminals for the retired Tmux flag, since the Tmux Windows page folded into it", async () => {
+		await writeFile(configPath, JSON.stringify({show_tmux_section: true}));
+
+		expect(readApplicationSettings(configPath).visibleNavSections).toStrictEqual([
+			"artifacts",
+			"herdr",
+			"plans",
+			"memories",
+			"customize",
+		]);
+	});
+
+	it("carries a saved Tmux Windows pin over to Terminals without duplicating it", async () => {
+		await writeFile(
+			configPath,
+			JSON.stringify({visible_nav_sections: ["tmux", "plans"], show_herdr_section: false}),
+		);
+		const single = readApplicationSettings(configPath).visibleNavSections;
+		await writeFile(configPath, JSON.stringify({visible_nav_sections: ["herdr", "tmux", "plans"]}));
+
+		expect({single, both: readApplicationSettings(configPath).visibleNavSections}).toStrictEqual({
+			single: ["herdr", "plans"],
+			both: ["herdr", "plans"],
+		});
 	});
 
 	it("renames a saved Plugins nav section to Customize", async () => {
@@ -166,7 +191,7 @@ describe("persisted application settings", () => {
 				terminalWritesEnabled: true,
 				terminalHost: "auto",
 				shellPaneEnabled: false,
-				visibleNavSections: ["tmux", "plans"],
+				visibleNavSections: ["herdr", "plans"],
 				ignoredDirs: ["vendor", "output"],
 			},
 			configPath,
@@ -181,7 +206,7 @@ describe("persisted application settings", () => {
 				terminalWritesEnabled: true,
 				terminalHost: "auto",
 				shellPaneEnabled: false,
-				visibleNavSections: ["tmux", "plans"],
+				visibleNavSections: ["herdr", "plans"],
 				ignoredDirs: ["output", "vendor"],
 			},
 			file: {
@@ -191,7 +216,7 @@ describe("persisted application settings", () => {
 				terminal_writes_enabled: true,
 				terminal_host: "auto",
 				shell_pane_enabled: false,
-				visible_nav_sections: ["tmux", "plans"],
+				visible_nav_sections: ["herdr", "plans"],
 			},
 			temporaryFiles: ["config.json"],
 		});
@@ -225,7 +250,7 @@ describe("persisted application settings", () => {
 				terminalWritesEnabled: true,
 				terminalHost: "auto",
 				shellPaneEnabled: true,
-				visibleNavSections: ["tmux", "plans"],
+				visibleNavSections: ["herdr", "plans"],
 				ignoredDirs: ["node_modules", "build"],
 			}),
 		});
@@ -245,7 +270,7 @@ describe("persisted application settings", () => {
 				terminalWritesEnabled: true,
 				terminalHost: "auto",
 				shellPaneEnabled: true,
-				visibleNavSections: ["tmux", "plans"],
+				visibleNavSections: ["herdr", "plans"],
 				ignoredDirs: ["build", "node_modules"],
 			},
 			readStatus: 200,
@@ -253,7 +278,7 @@ describe("persisted application settings", () => {
 				terminalWritesEnabled: true,
 				terminalHost: "auto",
 				shellPaneEnabled: true,
-				visibleNavSections: ["tmux", "plans"],
+				visibleNavSections: ["herdr", "plans"],
 				ignoredDirs: ["build", "node_modules"],
 			},
 			persisted: {
@@ -262,7 +287,7 @@ describe("persisted application settings", () => {
 				terminal_writes_enabled: true,
 				terminal_host: "auto",
 				shell_pane_enabled: true,
-				visible_nav_sections: ["tmux", "plans"],
+				visible_nav_sections: ["herdr", "plans"],
 			},
 		});
 	});

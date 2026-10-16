@@ -850,7 +850,6 @@ const navSectionLabels = {
 	jobs: "Background jobs",
 	active: "Active",
 	herdr: "Herdr",
-	tmux: "Tmux Windows",
 	approvals: "Approvals",
 	notifications: "Notifications",
 	tasks: "Tasks",

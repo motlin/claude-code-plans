@@ -53,7 +53,6 @@ function renderProvider(children: ReactNode = <div />): {
 } {
 	const client = new QueryClient({defaultOptions: {queries: {retry: false}}});
 	client.setQueryData(["terminal", "placements"], []);
-	client.setQueryData(["tmux", "windows"], []);
 	client.setQueryData(["herdr", "panes"], []);
 	client.setQueryData(["herdr", "workspaces"], []);
 
@@ -73,7 +72,6 @@ function invalidationState(client: QueryClient) {
 		herdrPanes: client.getQueryState(["herdr", "panes"])?.isInvalidated,
 		herdrWorkspaces: client.getQueryState(["herdr", "workspaces"])?.isInvalidated,
 		terminalPlacements: client.getQueryState(["terminal", "placements"])?.isInvalidated,
-		tmuxWindows: client.getQueryState(["tmux", "windows"])?.isInvalidated,
 	};
 }
 
@@ -89,7 +87,7 @@ describe("ClaudeEventsProvider terminal placement invalidation", () => {
 		vi.unstubAllGlobals();
 	});
 
-	it("invalidates terminal placements and the legacy tmux query when a prompt is submitted", () => {
+	it("invalidates terminal placements when a prompt is submitted", () => {
 		const {client, eventSource} = renderProvider();
 
 		act(() => {
@@ -102,11 +100,10 @@ describe("ClaudeEventsProvider terminal placement invalidation", () => {
 			herdrPanes: false,
 			herdrWorkspaces: false,
 			terminalPlacements: true,
-			tmuxWindows: true,
 		});
 	});
 
-	it("invalidates terminal placements and the legacy tmux query on session lifecycle events", () => {
+	it("invalidates terminal placements on session lifecycle events", () => {
 		const {client, eventSource} = renderProvider();
 
 		act(() => {
@@ -119,7 +116,6 @@ describe("ClaudeEventsProvider terminal placement invalidation", () => {
 			herdrPanes: false,
 			herdrWorkspaces: false,
 			terminalPlacements: true,
-			tmuxWindows: true,
 		});
 	});
 
@@ -134,7 +130,6 @@ describe("ClaudeEventsProvider terminal placement invalidation", () => {
 			herdrPanes: true,
 			herdrWorkspaces: true,
 			terminalPlacements: true,
-			tmuxWindows: false,
 		});
 	});
 
