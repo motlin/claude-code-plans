@@ -18,12 +18,13 @@ function setScrollMetrics(
 	}
 }
 
-function DockInScroller() {
+function DockInScroller({needsInput = false}: {needsInput?: boolean}) {
 	const anchorRef = useRef<HTMLDivElement>(null);
 	return (
 		<div data-testid="scroller" style={{overflowY: "auto"}}>
+			<div data-approval-presentation="card" data-testid="question-card" />
 			<div ref={anchorRef}>
-				<SessionDock anchorRef={anchorRef}>
+				<SessionDock anchorRef={anchorRef} needsInput={needsInput}>
 					<textarea aria-label="Fabricated composer" />
 				</SessionDock>
 			</div>
@@ -100,6 +101,38 @@ describe("SessionDock scroll-to-bottom pill", () => {
 			],
 			fades: true,
 			composerInColumn: true,
+		});
+	});
+});
+
+describe("SessionDock needs-input pill", () => {
+	it("turns into upstream's Needs your input pill while a question waits, scrolling to the card", () => {
+		render(<DockInScroller needsInput />);
+		const scroller = screen.getByTestId("scroller");
+		const scrollIntoView = vi.fn<(options?: ScrollIntoViewOptions) => void>();
+		Object.defineProperty(screen.getByTestId("question-card"), "scrollIntoView", {
+			configurable: true,
+			value: scrollIntoView,
+		});
+		setScrollMetrics(scroller, {scrollTop: 1_000, scrollHeight: 5_000, clientHeight: 1_000});
+		act(() => {
+			fireEvent.scroll(scroller);
+		});
+		const pill = screen.getByRole("button", {name: "Needs your input. Scroll to the request"});
+		fireEvent.click(pill);
+
+		expect({
+			text: pill.textContent,
+			dot: pill.querySelector("span.rounded-full")?.className,
+			shape: ["h-6", "rounded", "-top-8", "absolute", "left-1/2", "-translate-x-1/2"].every((name) =>
+				pill.classList.contains(name),
+			),
+			scrolled: scrollIntoView.mock.calls,
+		}).toStrictEqual({
+			text: "Needs your input",
+			dot: "size-[6px] shrink-0 rounded-full bg-fill-accent",
+			shape: true,
+			scrolled: [[{behavior: "smooth", block: "center"}]],
 		});
 	});
 });

@@ -1,4 +1,4 @@
-import {ArrowDown} from "lucide-react";
+import {ArrowDown, ChevronDown} from "lucide-react";
 import {useCallback, useEffect, useRef, useState, type MouseEvent, type ReactNode, type RefObject} from "react";
 import {findScrollContainer} from "./scroll-container";
 
@@ -38,18 +38,63 @@ function useScrollToBottom(anchorRef: RefObject<HTMLElement | null>) {
 		scroller.scrollTo({top: scroller.scrollHeight, behavior: "smooth"});
 	}, []);
 
-	return {awayFromBottom, scrollToBottom};
+	/** Upstream's needs-input pill scrolls to the waiting question card rather than the end. */
+	const scrollToRequest = useCallback(
+		(event: MouseEvent<HTMLButtonElement>) => {
+			const card = scrollerRef.current?.querySelector('[data-approval-presentation="card"]');
+			if (card === null || card === undefined) scrollToBottom(event);
+			else card.scrollIntoView({behavior: "smooth", block: "center"});
+		},
+		[scrollToBottom],
+	);
+
+	return {awayFromBottom, scrollToBottom, scrollToRequest};
 }
+
+const FADE = "transition-opacity duration-150";
 
 /**
  * The bottom of the chat tile, modelled on claude.ai/code's composer dock: one
  * column on the transcript's measure holding the scroll-to-bottom pill and the
  * composer. The circular 36px pill has no tooltip and
  * sits 20px above the dock, centered, and fades in once the reader is away from
- * the end of the transcript.
+ * the end of the transcript. While a question waits it is upstream's 24px
+ * "Needs your input" pill instead, which scrolls to the question's card.
  */
-export function SessionDock({anchorRef, children}: {anchorRef: RefObject<HTMLElement | null>; children?: ReactNode}) {
-	const {awayFromBottom, scrollToBottom} = useScrollToBottom(anchorRef);
+export function SessionDock({
+	anchorRef,
+	needsInput = false,
+	children,
+}: {
+	anchorRef: RefObject<HTMLElement | null>;
+	/** A question card waits for the reader's answer. */
+	needsInput?: boolean;
+	children?: ReactNode;
+}) {
+	const {awayFromBottom, scrollToBottom, scrollToRequest} = useScrollToBottom(anchorRef);
+
+	if (needsInput) {
+		return (
+			<div className="chat-dock-column relative flex flex-col gap-1.5">
+				<button
+					type="button"
+					aria-label="Needs your input. Scroll to the request"
+					aria-hidden={awayFromBottom ? undefined : true}
+					inert={!awayFromBottom}
+					tabIndex={awayFromBottom ? 0 : -1}
+					onClick={scrollToRequest}
+					className={`absolute -top-8 left-1/2 z-[1] inline-flex h-6 -translate-x-1/2 cursor-pointer items-center gap-1.5 rounded bg-surface-3 px-1.5 text-secondary shadow-[inset_0_0_0_1px_var(--color-border),0_1px_2px_rgb(0_0_0/0.05)] ${FADE} ${
+						awayFromBottom ? "opacity-100" : "pointer-events-none opacity-0"
+					}`}
+				>
+					<span aria-hidden="true" className="size-[6px] shrink-0 rounded-full bg-fill-accent" />
+					<span className="text-footnote">Needs your input</span>
+					<ChevronDown aria-hidden="true" className="size-3" />
+				</button>
+				{children}
+			</div>
+		);
+	}
 
 	return (
 		<div className="chat-dock-column relative flex flex-col gap-1.5">

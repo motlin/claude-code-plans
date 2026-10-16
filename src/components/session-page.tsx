@@ -806,7 +806,15 @@ function SessionView({
 								className="sticky bottom-0 z-10 shrink-0 pb-[var(--session-dock-bottom,max(env(safe-area-inset-bottom),9px))] bg-page before:pointer-events-none before:absolute before:inset-x-0 before:bottom-full before:h-8 before:bg-linear-to-b before:from-transparent before:to-page"
 							>
 								<div className={!chromeHidden && sessionDirectory ? "pt-2" : ""}>
-									<SessionDock anchorRef={scrollAnchorRef}>
+									<SessionDock
+										anchorRef={scrollAnchorRef}
+										needsInput={
+											pendingQuestion !== null ||
+											(sessionSummaryState === "waiting" &&
+												hookQuestion !== undefined &&
+												hookQuestion !== null)
+										}
+									>
 										{!chromeHidden &&
 											sessionDirectory &&
 											(data.pr !== undefined || data.prStatus !== undefined) && (
