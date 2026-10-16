@@ -5,6 +5,7 @@ import type {ToolRendererProps} from "./types";
 import {useAskUserQuestionContext} from "../ask-user-question-context";
 import {MarkdownArticle} from "../markdown-article";
 import {defined} from "../../lib/defined";
+import {FORK_ANSWER_LABEL, READ_ONLY_ANSWER_HINT} from "../../lib/question-answer-route";
 import {
 	answerForQuestion,
 	answersFromResultMeta,
@@ -132,9 +133,12 @@ function StatusLine({status}: {status: AskUserQuestionStatus}) {
  */
 function AnswerForm({
 	questions,
+	submitLabel,
 	onSubmit,
 }: {
 	questions: QuestionLike[];
+	/** "Submit", or the fork route's explicit "Answer in a new fork". */
+	submitLabel: string;
 	onSubmit: (answers: Array<{question: string; answer: string}>) => Promise<void>;
 }) {
 	const [drafts, setDrafts] = useState<QuestionDraft[]>(() => questions.map(() => makeInitialDraft()));
@@ -339,7 +343,7 @@ function AnswerForm({
 					className="inline-flex items-center gap-g3 rounded-r4 bg-accent-100 px-p7 py-p5 text-footnote font-medium text-white hover:bg-accent-100/80 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
 				>
 					{submitting ? <Loader2 size={12} className="animate-spin" /> : null}
-					{submitting ? "Submitting..." : "Submit"}
+					{submitting ? "Submitting..." : submitLabel}
 				</button>
 			</div>
 		</div>
@@ -353,7 +357,7 @@ function AnswerForm({
  * the assistant text inset. The
  * options live only in the card docked above the composer.
  */
-function PendingAsking({questions}: {questions: QuestionLike[]}) {
+function PendingAsking({questions, hint}: {questions: QuestionLike[]; hint?: string | undefined}) {
 	const [expanded, setExpanded] = useState(true);
 	const header = questions[0]?.header ?? "a question";
 	return (
@@ -383,6 +387,11 @@ function PendingAsking({questions}: {questions: QuestionLike[]}) {
 							{question.question}
 						</div>
 					))}
+					{hint !== undefined && (
+						<div data-pending-question-hint="" className="text-footnote text-secondary">
+							{hint}
+						</div>
+					)}
 				</div>
 			)}
 		</div>
@@ -398,18 +407,21 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps) {
 	if (isPending && questions !== null && ctx?.dockedToolUseId === toolCall.id) {
 		return <PendingAsking questions={questions} />;
 	}
-	const canAnswer = ctx?.isSessionActive === true && isPending && questions !== null;
+	const route = ctx?.answerRoute ?? null;
 
-	if (canAnswer) {
+	if (ctx !== null && route !== "read-only" && isPending && questions !== null) {
 		return (
 			<AnswerForm
 				questions={questions}
-				onSubmit={async (answers) => ctx.submitAnswer({toolUseId: toolCall.id, answers})}
+				submitLabel={route === "fork" ? FORK_ANSWER_LABEL : "Submit"}
+				onSubmit={async (answers) => ctx.submitAnswer({toolUseId: toolCall.id, questions, answers})}
 			/>
 		);
 	}
 
-	if (isPending && questions !== null) return <PendingAsking questions={questions} />;
+	if (isPending && questions !== null) {
+		return <PendingAsking questions={questions} hint={route === "read-only" ? READ_ONLY_ANSWER_HINT : undefined} />;
+	}
 
 	const status = describeAskUserQuestionResult(result);
 

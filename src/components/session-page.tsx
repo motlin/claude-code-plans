@@ -22,7 +22,11 @@ import {SessionTitlebar} from "./session-titlebar";
 import {SessionAiTitleLine} from "./session-ai-title-line";
 import {SESSION_STICKY_HEADER_CLASS} from "./titlebar-classes";
 import {syncUnseenFromSummaries} from "../lib/unread-store";
-import {AskUserQuestionProvider, type AskUserQuestionContextValue} from "./ask-user-question-context";
+import {
+	AskUserQuestionProvider,
+	type AnswerSubmission,
+	type AskUserQuestionContextValue,
+} from "./ask-user-question-context";
 import {SessionFileRefs} from "./file-refs";
 import type {JumpTargetWindow} from "./jump-target-context";
 import {LegacyMessageLinkNotice} from "./legacy-message-link-notice";
@@ -97,7 +101,6 @@ import {
 import {useSessionViewedState} from "../hooks/use-session-viewed-state";
 import {usePendingMessageJump} from "../hooks/use-pending-message-jump";
 import {useMainScrollRestoration, type MainScrollRestorationSnapshot} from "../hooks/use-main-scroll-restoration";
-import {postAnswerQuestion} from "../lib/api/answer-question";
 import {findLastPendingToolUse, findPendingAskUserQuestion} from "../lib/approval-dock";
 import {applicationSettingsQueryOptions} from "../lib/api/application-settings";
 import {
@@ -129,6 +132,7 @@ import {backgroundTasksFacts, extractBackgroundTasks} from "../lib/background-ta
 import {createSessionCommands} from "../lib/session-commands";
 import {useIdlePrefetch} from "../hooks/use-idle-prefetch";
 import {getSessionPromptBehavior} from "./session-prompt-behavior";
+import {sessionAnswerRoute} from "../hooks/use-question-answer-route";
 import {useLiveHerdrPrompt} from "./use-live-herdr-prompt";
 
 /** The Files and Links renderers, warmed once the session page goes idle so their first show skips the loading row. */
@@ -471,11 +475,13 @@ function SessionView({
 		setChromeHidden(!chromeHidden);
 	}, [chromeHidden, setChromeHidden]);
 
+	const answerRoute = sessionAnswerRoute({sessionId, hookActive: isActive, summary: sessionSummary, herdr});
 	const submitAnswer = useCallback(
-		async ({toolUseId, answers}: {toolUseId: string; answers: Array<{question: string; answer: string}>}) => {
-			await postAnswerQuestion({sessionId, toolUseId, answers});
+		async ({toolUseId, questions, answers}: AnswerSubmission) => {
+			const {submitQuestionAnswer} = await import("../lib/question-answer-submit");
+			await submitQuestionAnswer(answerRoute, {sessionId, toolUseId, questions, answers});
 		},
-		[sessionId],
+		[answerRoute, sessionId],
 	);
 	const pendingQuestion = useMemo(() => findPendingAskUserQuestion(transcript.records), [transcript.records]);
 	const [dismissedToolUseId, setDismissedToolUseId] = useState<string | null>(null);
@@ -490,8 +496,8 @@ function SessionView({
 			: null;
 	const dockedToolUseId = dockedQuestion?.toolUseId ?? null;
 	const askUserQuestionCtx: AskUserQuestionContextValue = useMemo(
-		() => ({isSessionActive: isActive, submitAnswer, dockedToolUseId}),
-		[isActive, submitAnswer, dockedToolUseId],
+		() => ({answerRoute, submitAnswer, dockedToolUseId}),
+		[answerRoute, submitAnswer, dockedToolUseId],
 	);
 	const chatStream = useChatStream();
 	const toast = useToast();
@@ -831,7 +837,7 @@ function SessionView({
 												key={dockedQuestion.toolUseId}
 												toolUseId={dockedQuestion.toolUseId}
 												questions={dockedQuestion.questions}
-												onSubmit={submitAnswer}
+												onSubmit={answerRoute === "read-only" ? undefined : submitAnswer}
 												onDismiss={() => {
 													setDismissedToolUseId(dockedQuestion.toolUseId);
 												}}
@@ -860,7 +866,9 @@ function SessionView({
 												<PendingQuestionCard
 													key={hookQuestion.toolUseId}
 													questions={hookQuestion.questions}
-													onSubmit={promptBehavior.usesHerdr ? answerHookQuestion : undefined}
+													onSubmit={
+														answerRoute === "live-pane" ? answerHookQuestion : undefined
+													}
 												/>
 											) : (
 												<WaitingForInputNotice />

@@ -1,20 +1,23 @@
 import {createContext, useContext} from "react";
 
-interface AnswerSubmission {
+import type {QuestionLike} from "../lib/ask-user-question";
+import type {QuestionAnswerRoute} from "../lib/question-answer-route";
+
+export interface AnswerSubmission {
 	toolUseId: string;
+	questions: readonly QuestionLike[];
 	answers: Array<{question: string; answer: string}>;
 }
 
 export interface AskUserQuestionContextValue {
 	/**
-	 * True when the session is currently active (CLI process likely running).
-	 * Used to decide whether to render the answer form on a pending question.
+	 * Where an answer to the session's pending question goes: its live pane, a
+	 * new fork (only once the session stopped running), or nowhere (read-only).
 	 */
-	isSessionActive: boolean;
+	answerRoute: QuestionAnswerRoute;
 	/**
-	 * Submit an answer to a pending AskUserQuestion. Returns when the spawned
-	 * resume process has accepted the answer (or rejects with an error). The
-	 * caller is responsible for any UI feedback while awaiting.
+	 * Submit an answer to a pending AskUserQuestion along `answerRoute`. Rejects
+	 * with an error the caller shows; the caller owns any feedback while awaiting.
 	 */
 	submitAnswer: (submission: AnswerSubmission) => Promise<void>;
 	/**

@@ -3,8 +3,11 @@ import {useMutation, useQuery} from "@tanstack/react-query";
 import {ArrowUp} from "lucide-react";
 import {useState, type ReactElement, type ReactNode} from "react";
 
-import {postAnswerQuestion} from "../lib/api/answer-question";
+import {useQuestionAnswerRoute} from "../hooks/use-question-answer-route";
 import {approvalsQueryOptions, type PendingApprovalItem} from "../lib/api/approvals";
+import {pendingQuestionQueryOptions} from "../lib/api/pending-question";
+import type {QuestionLike} from "../lib/ask-user-question";
+import {FORK_ANSWER_LABEL, READ_ONLY_ANSWER_HINT} from "../lib/question-answer-route";
 
 /** claude.ai/code's attention hover card: blocked rows open sooner, wider, with reply controls. */
 const SESSION_HOVER_CARD = {
@@ -165,20 +168,49 @@ function OpenSessionButton({onClick}: {onClick: () => void}) {
 	);
 }
 
+/**
+ * The questions a quick reply answers: the hook-reported set when it is this
+ * call, so a live pane gets one answer per question, else the approval's first.
+ */
+function quickReplyQuestions(
+	approval: PendingApprovalItem & {questionPreview: string},
+	hookQuestion: {toolUseId: string; questions: QuestionLike[]} | null | undefined,
+): QuestionLike[] {
+	if (hookQuestion?.toolUseId === approval.toolUseId && hookQuestion.questions.length > 0) {
+		return hookQuestion.questions;
+	}
+	return [{question: approval.questionPreview, options: approval.questionOptions.map((label) => ({label}))}];
+}
+
 function QuickReply({approval}: {approval: PendingApprovalItem & {questionPreview: string}}) {
 	const [draft, setDraft] = useState("");
+	const route = useQuestionAnswerRoute(approval.sessionId);
+	const hookQuestion = useQuery({
+		...pendingQuestionQueryOptions(approval.sessionId),
+		enabled: route === "live-pane",
+		select: (data) => data.pendingQuestion,
+	}).data;
 	const answer = useMutation({
-		mutationFn: async (text: string) =>
-			postAnswerQuestion({
+		mutationFn: async (text: string) => {
+			const questions = quickReplyQuestions(approval, route === "live-pane" ? hookQuestion : null);
+			const {submitQuestionAnswer} = await import("../lib/question-answer-submit");
+			// The reply answers the first question; a live pane skips the rest.
+			return submitQuestionAnswer(route, {
 				sessionId: approval.sessionId,
 				toolUseId: approval.toolUseId,
-				answers: [{question: approval.questionPreview, answer: text}],
-			}),
+				questions,
+				answers: questions.map((question, index) => ({
+					question: question.question,
+					answer: index === 0 ? text : "",
+				})),
+			});
+		},
 	});
+	const readOnly = route === "read-only";
 
 	const send = (text: string) => {
 		const trimmed = text.trim();
-		if (!trimmed || answer.isPending || answer.isSuccess) return;
+		if (!trimmed || readOnly || answer.isPending || answer.isSuccess) return;
 		answer.mutate(trimmed);
 	};
 
@@ -194,8 +226,17 @@ function QuickReply({approval}: {approval: PendingApprovalItem & {questionPrevie
 				<p data-card-sent role="status" className="text-[12px] text-ink-muted">
 					Reply sent
 				</p>
+			) : readOnly ? (
+				<p data-card-read-only className="text-[12px] text-ink-muted">
+					{READ_ONLY_ANSWER_HINT}
+				</p>
 			) : (
 				<>
+					{route === "fork" && (
+						<p data-card-fork className="text-[12px] text-ink-muted">
+							Session stopped: replies answer in a new fork
+						</p>
+					)}
 					{approval.questionOptions.length > 0 && (
 						<div className="flex flex-wrap gap-1.5">
 							{approval.questionOptions.map((option) => (
@@ -233,7 +274,7 @@ function QuickReply({approval}: {approval: PendingApprovalItem & {questionPrevie
 						/>
 						<button
 							type="button"
-							aria-label="Send reply"
+							aria-label={route === "fork" ? FORK_ANSWER_LABEL : "Send reply"}
 							disabled={answer.isPending || draft.trim() === ""}
 							onClick={() => {
 								send(draft);

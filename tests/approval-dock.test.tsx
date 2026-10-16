@@ -181,7 +181,7 @@ describe("approvalDockReducer", () => {
 	});
 });
 
-function renderDock(onSubmit = vi.fn<ComponentProps<typeof ApprovalDock>["onSubmit"]>(async () => {})) {
+function renderDock(onSubmit = vi.fn<NonNullable<ComponentProps<typeof ApprovalDock>["onSubmit"]>>(async () => {})) {
 	const utils = render(
 		<div>
 			<div data-focus-region="composer">
@@ -257,6 +257,7 @@ describe("ApprovalDock", () => {
 			[
 				{
 					toolUseId: "t2",
+					questions: QUESTIONS,
 					answers: [
 						{question: "Which test runner?", answer: "Jest"},
 						{question: "Which features?", answer: "Snapshots"},
@@ -277,6 +278,7 @@ describe("ApprovalDock", () => {
 			[
 				{
 					toolUseId: "t2",
+					questions: QUESTIONS,
 					answers: [
 						{question: "Which test runner?", answer: "Vitest"},
 						{question: "Which features?", answer: ""},
@@ -310,7 +312,7 @@ describe("AskUserQuestionRenderer while docked", () => {
 
 	function renderInline(dockedToolUseId: string | null) {
 		return render(
-			<AskUserQuestionProvider value={{isSessionActive: true, submitAnswer: async () => {}, dockedToolUseId}}>
+			<AskUserQuestionProvider value={{answerRoute: "live-pane", submitAnswer: async () => {}, dockedToolUseId}}>
 				<AskUserQuestionRenderer toolCall={call} />
 			</AskUserQuestionProvider>,
 		);
@@ -335,5 +337,69 @@ describe("AskUserQuestionRenderer while docked", () => {
 	it("keeps the inline form when another question is docked", () => {
 		renderInline("other");
 		expect(screen.getByRole("button", {name: "Submit"})).toBeTruthy();
+	});
+});
+
+describe("question cards by answer route", () => {
+	const call: ClientToolCall = {
+		id: "t2",
+		name: "AskUserQuestion",
+		param: "",
+		sourceUuid: "uuid-1",
+		input: {questions: QUESTIONS},
+	};
+
+	function renderRoute(answerRoute: "live-pane" | "read-only" | "fork") {
+		const submitAnswer = vi.fn<(submission: unknown) => Promise<void>>(async () => {});
+		const utils = render(
+			<AskUserQuestionProvider value={{answerRoute, submitAnswer, dockedToolUseId: null}}>
+				<AskUserQuestionRenderer toolCall={call} />
+			</AskUserQuestionProvider>,
+		);
+		return {...utils, submitAnswer};
+	}
+
+	it("submits a live-pane answer with its questions", async () => {
+		const {submitAnswer} = renderRoute("live-pane");
+		fireEvent.click(screen.getByRole("button", {name: "Skip"}));
+		await act(async () => {});
+		expect(submitAnswer.mock.calls).toStrictEqual([
+			[
+				{
+					toolUseId: "t2",
+					questions: QUESTIONS,
+					answers: [
+						{question: "Which test runner?", answer: ""},
+						{question: "Which features?", answer: ""},
+					],
+				},
+			],
+		]);
+	});
+
+	it("labels the fork route's submit button explicitly", () => {
+		renderRoute("fork");
+		expect({
+			fork: screen.queryByRole("button", {name: "Answer in a new fork"}) !== null,
+			submit: screen.queryByRole("button", {name: "Submit"}),
+		}).toStrictEqual({fork: true, submit: null});
+	});
+
+	it("shows a read-only route as the Asking row pointing at the terminal", () => {
+		const {container} = renderRoute("read-only");
+		expect({
+			form: screen.queryByRole("button", {name: "Submit"}),
+			hint: container.querySelector("[data-pending-question-hint]")?.textContent,
+		}).toStrictEqual({form: null, hint: "Answer in the terminal"});
+	});
+
+	it("disables the docked card's answers without onSubmit and points at the terminal", () => {
+		const {container} = render(<ApprovalDock toolUseId="t2" questions={QUESTIONS} />);
+		fireEvent.click(optionButton("Jest"));
+		expect({
+			skip: screen.getByRole("button", {name: "Skip"}).hasAttribute("disabled"),
+			next: screen.getByRole("button", {name: "Next"}).hasAttribute("disabled"),
+			hint: container.querySelector("[data-approval-read-only]")?.textContent,
+		}).toStrictEqual({skip: true, next: true, hint: "Answer in the terminal"});
 	});
 });

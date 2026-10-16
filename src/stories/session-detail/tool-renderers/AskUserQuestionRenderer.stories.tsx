@@ -3,14 +3,14 @@ import {AskUserQuestionRenderer} from "../../../components/tool-renderers/ask-us
 import {AskUserQuestionProvider} from "../../../components/ask-user-question-context";
 import type {ClientToolCall} from "../../../components/tool-renderers/types";
 
-const withInactiveSession: Decorator = (Story) => (
-	<AskUserQuestionProvider value={{isSessionActive: false, submitAnswer: async () => {}}}>
+const withReadOnlySession: Decorator = (Story) => (
+	<AskUserQuestionProvider value={{answerRoute: "read-only", submitAnswer: async () => {}}}>
 		<Story />
 	</AskUserQuestionProvider>
 );
 
-const withActiveSession: Decorator = (Story) => (
-	<AskUserQuestionProvider value={{isSessionActive: true, submitAnswer: async () => {}}}>
+const withLiveSession: Decorator = (Story) => (
+	<AskUserQuestionProvider value={{answerRoute: "live-pane", submitAnswer: async () => {}}}>
 		<Story />
 	</AskUserQuestionProvider>
 );
@@ -28,7 +28,7 @@ function makeToolCall(overrides: Partial<ClientToolCall> & {input: ClientToolCal
 const meta = {
 	title: "Session Detail/Tool Renderers/AskUserQuestionRenderer",
 	component: AskUserQuestionRenderer,
-	decorators: [withInactiveSession],
+	decorators: [withReadOnlySession],
 } satisfies Meta<typeof AskUserQuestionRenderer>;
 
 export default meta;
@@ -76,7 +76,7 @@ export const Error: Story = {
 };
 
 export const ActiveSession: Story = {
-	decorators: [withActiveSession],
+	decorators: [withLiveSession],
 	args: {
 		toolCall: makeToolCall({
 			input: {

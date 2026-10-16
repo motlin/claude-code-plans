@@ -12,11 +12,13 @@ import {
 import type {QuestionLike} from "../lib/ask-user-question";
 import {defined} from "../lib/defined";
 import {dockKeyAllowed} from "../lib/dock-keys";
+import {READ_ONLY_ANSWER_HINT} from "../lib/question-answer-route";
 import {APPROVAL_CARD_TITLE, ApprovalActionButton, ApprovalCardShell} from "./approval-card";
 import {Shortcut} from "./ui/shortcut";
 
 export interface ApprovalDockSubmission {
 	toolUseId: string;
+	questions: readonly QuestionLike[];
 	answers: Array<{question: string; answer: string}>;
 }
 
@@ -36,7 +38,8 @@ export function ApprovalDock({
 }: {
 	toolUseId: string;
 	questions: QuestionLike[];
-	onSubmit: (submission: ApprovalDockSubmission) => Promise<void>;
+	/** Omitted when the session's answer route is read-only: the card points at the terminal. */
+	onSubmit?: ((submission: ApprovalDockSubmission) => Promise<void>) | undefined;
 	/** Called after Dismiss, so the page can hand the question back to the inline form. */
 	onDismiss?: () => void;
 }) {
@@ -54,13 +57,15 @@ export function ApprovalDock({
 	const isLast = state.index === questions.length - 1;
 	const answered = currentAnswered(questions, state);
 	const open = !state.collapsed && !state.dismissed;
+	const readOnly = onSubmit === undefined;
 
 	const submit = useCallback(
 		async (finalState: ApprovalDockState) => {
+			if (onSubmit === undefined) return;
 			setError(null);
 			setSubmitting(true);
 			try {
-				await onSubmit({toolUseId, answers: approvalDockAnswers(questions, finalState)});
+				await onSubmit({toolUseId, questions, answers: approvalDockAnswers(questions, finalState)});
 			} catch (err) {
 				setError(err instanceof Error ? err.message : "Failed to submit answer");
 				setSubmitting(false);
@@ -211,15 +216,24 @@ export function ApprovalDock({
 					{question.multiSelect && !state.collapsed && (
 						<p className="text-footnote text-secondary">Select one or more options.</p>
 					)}
+					{readOnly && (
+						<p data-approval-read-only className="text-footnote text-secondary">
+							{READ_ONLY_ANSWER_HINT}
+						</p>
+					)}
 					{error && <p className="text-footnote text-extended-pink">{error}</p>}
 				</>
 			}
 			actions={
 				<>
-					<ApprovalActionButton variant="secondary" onClick={handleSkip} disabled={submitting}>
+					<ApprovalActionButton variant="secondary" onClick={handleSkip} disabled={readOnly || submitting}>
 						Skip
 					</ApprovalActionButton>
-					<ApprovalActionButton variant="primary" onClick={handleNext} disabled={!answered || submitting}>
+					<ApprovalActionButton
+						variant="primary"
+						onClick={handleNext}
+						disabled={readOnly || !answered || submitting}
+					>
 						{submitting && <Loader2 aria-hidden="true" className="size-3 animate-spin" />}
 						{isLast ? "Submit" : "Next"}
 					</ApprovalActionButton>

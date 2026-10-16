@@ -47,11 +47,11 @@
 		"tolerance": 0
 	},
 	"bundle.home.gzip": {
-		"ceiling": 372145,
+		"ceiling": 376291,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Waves 86-87 add upstream chrome to the always-loaded sidebar and home: the Group and sort menu with its Show submenu, New section dialog and New session button, the collapsible Customize search, and the sidebar row's trailing status decoration with its Laptop glyph (W86-01, +483 B on its parent, 371662). Home cold JS measures 372145 gzip; the 1% tolerance and the raw ceiling are unchanged.",
-		"raisedAt": "2026-10-14"
+		"reason": "Routing every question answer through one router puts the answer-route decision and its pane/liveness hook in the always-loaded sidebar hover card (the submit path itself loads on demand); earlier waves had already used the 1% headroom over 372145 (base 375269). Home cold JS measures 376291 gzip; the 1% tolerance and the raw ceiling are unchanged.",
+		"raisedAt": "2026-10-16"
 	},
 	"bundle.home.raw": {
 		"ceiling": 1147492,
@@ -68,11 +68,11 @@
 		"raisedAt": "2026-10-16"
 	},
 	"bundle.session.raw": {
-		"ceiling": 1679372,
+		"ceiling": 1697565,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Wave 88 parity work in the always-loaded shell and chrome: the palette's fixed settled-height centring and Recents reservation, versioned session-list prefs, the shared compact page header, the Scheduled tasks naming and More row, and the shell fallback's own /artifacts skeleton (+665 B raw on its parent, 1678707). Session cold JS measures 1679372 raw; the 1% tolerance and the gzip ceiling are unchanged.",
-		"raisedAt": "2026-10-14"
+		"reason": "Routing every question answer through one router adds the answer-route decision, the read-only and fork variants of the inline, docked and hover question cards, and the on-demand submit chunk; earlier waves had already used the 1% headroom over 1679372 (base 1695023). Session cold JS measures 1697565 raw; the 1% tolerance and the gzip ceiling are unchanged.",
+		"raisedAt": "2026-10-16"
 	},
 	"client.coldHome.default.commitsToRows": {
 		"ceiling": 11,
