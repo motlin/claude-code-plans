@@ -135,7 +135,6 @@ function AttentionRow<Row extends HomeAttentionRow>({
 			title={title}
 			summary={session.summary}
 			blocked={kind === "blocked"}
-			onOpen={onOpen}
 			side="bottom"
 			align="end"
 			render={

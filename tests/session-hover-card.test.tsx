@@ -5,75 +5,107 @@ import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {SessionHoverCard} from "../src/components/session-hover-card";
-import {approvalsQueryOptions} from "../src/lib/api/approvals";
-import {herdrPanesQueryOptions} from "../src/lib/api/herdr";
+import {ToastProvider} from "../src/components/toast";
+import {approvalsQueryOptions, type PendingApprovalItem} from "../src/lib/api/approvals";
+import {herdrPanesQueryOptions, type HerdrPaneIndexData} from "../src/lib/api/herdr";
+import {notificationsQueryOptions} from "../src/lib/api/notifications";
 import {pendingQuestionQueryOptions} from "../src/lib/api/pending-question";
 import {recentSessionsInfiniteQueryOptions} from "../src/lib/api/sessions";
+import {clearQuickReplyDraft, quickReplyDraftKey} from "../src/lib/awaiting-gate";
+import type {PendingQuestion} from "../src/lib/hook-events";
 
-const QUESTION_APPROVAL = {
-	sessionId: "blocked-1",
-	projectId: "-projects-alpha",
-	projectName: "alpha",
-	toolName: "AskUserQuestion" as const,
+const SESSION_ID = "blocked-1";
+
+const QUESTION: PendingQuestion = {
 	toolUseId: "toolu_ask",
-	blockedSince: "2026-09-29T11:00:00.000Z",
-	planFilename: null,
-	questionPreview: "Which database should we use?",
-	questionOptions: ["Postgres", "SQLite"],
+	questions: [
+		{
+			question: "Which database should we use?",
+			options: [{label: "**Postgres**"}, {label: "SQLite", description: "Embedded"}],
+		},
+	],
 };
 
-const BLOCKED_PANE = {
-	paneId: "w1:p1",
-	terminalId: "terminal-1",
+const PANE: HerdrPaneIndexData["panes"][number] = {
+	paneId: "p1",
+	terminalId: "t1",
 	workspaceId: "w1",
-	tabId: "w1:t1",
+	tabId: "tab1",
 	focused: false,
-	cwd: "/projects/alpha",
-	foregroundCwd: "/projects/alpha",
+	cwd: "/Users/alice/projects/alpha",
+	foregroundCwd: null,
 	agentStatus: "blocked",
 	agent: "claude",
-	terminalTitle: null,
-	agentSessionId: "blocked-1",
+	terminalTitle: "claude",
+	agentSessionId: SESSION_ID,
 	revision: 1,
-	sessionId: "blocked-1",
-	via: "agent-session" as const,
-	viewedState: null,
+	sessionId: SESSION_ID,
+	via: "env",
+	viewedState: {
+		currentMessageIndex: 3,
+		lastViewedMessageIndex: 3,
+		reviewTargetMessageIndex: 3,
+		newMessageCount: 0,
+		viewedInCcp: true,
+		viewedInHerdr: false,
+		viewedAnywhere: true,
+	},
 };
 
-/** The blocked session's state in the session list and its herdr panes. */
-interface SessionEnvironment {
-	state: "waiting" | "ended";
-	panes: (typeof BLOCKED_PANE)[];
+interface Seed {
+	pendingQuestion?: PendingQuestion | null;
+	approvals?: PendingApprovalItem[];
+	writable?: boolean;
+	permission?: string;
+	/** The session's state in the session list; an ended session without a pane answers in a fork. */
+	state?: "waiting" | "ended";
 }
 
-const LIVE_IN_PANE: SessionEnvironment = {state: "waiting", panes: [BLOCKED_PANE]};
-
 function renderCard(
-	props: {sessionId: string; title: string; summary: string | null; blocked: boolean; aiTitle?: string | null},
-	approvals: (typeof QUESTION_APPROVAL)[] = [],
-	environment: SessionEnvironment = LIVE_IN_PANE,
+	props: {sessionId?: string; title: string; summary: string | null; blocked: boolean; aiTitle?: string | null},
+	seed: Seed = {},
 ) {
+	const sessionId = props.sessionId ?? SESSION_ID;
 	const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
-	queryClient.setQueryData(approvalsQueryOptions().queryKey, {approvals});
-	queryClient.setQueryData(herdrPanesQueryOptions.queryKey, {panes: environment.panes, writesEnabled: true} as never);
-	queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
-		pages: [{sessions: [{id: props.sessionId, state: environment.state}], nextCursor: null}],
-		pageParams: [null],
-	} as never);
-	queryClient.setQueryData(pendingQuestionQueryOptions(props.sessionId).queryKey, {
-		pendingQuestion: {
-			toolUseId: "toolu_ask",
-			questions: [
-				{question: "Which database should we use?", options: [{label: "Postgres"}, {label: "SQLite"}]},
-				{question: "Add an ORM?", options: [{label: "Yes"}, {label: "No"}]},
-			],
-		},
+	queryClient.setQueryData(approvalsQueryOptions().queryKey, {approvals: seed.approvals ?? []});
+	queryClient.setQueryData(pendingQuestionQueryOptions(sessionId).queryKey, {
+		pendingQuestion: seed.pendingQuestion ?? null,
+	});
+	if (seed.state !== undefined) {
+		queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
+			pages: [{sessions: [{id: sessionId, state: seed.state}], nextCursor: null}],
+			pageParams: [null],
+		} as never);
+	}
+	queryClient.setQueryData(herdrPanesQueryOptions.queryKey, {
+		panes: seed.writable === true ? [PANE] : [],
+		writesEnabled: seed.writable === true,
+	});
+	queryClient.setQueryData(notificationsQueryOptions().queryKey, {
+		notifications:
+			seed.permission === undefined
+				? []
+				: [
+						{
+							id: "n1",
+							sessionId,
+							projectId: "-projects-alpha",
+							projectName: "alpha",
+							message: seed.permission,
+							notificationType: "permission_prompt",
+							createdAt: 1,
+							createdAtIso: "2026-10-16T00:00:00.000Z",
+							unread: true,
+						},
+					],
 	});
 	return render(
 		<QueryClientProvider client={queryClient}>
-			<SessionHoverCard {...props} onOpen={() => undefined} render={<div data-testid="row" />}>
-				{props.title}
-			</SessionHoverCard>
+			<ToastProvider>
+				<SessionHoverCard {...props} sessionId={sessionId} render={<div data-testid="row" />}>
+					{props.title}
+				</SessionHoverCard>
+			</ToastProvider>
 		</QueryClientProvider>,
 	);
 }
@@ -87,6 +119,14 @@ function hover() {
 	});
 }
 
+function leave() {
+	const row = screen.getByTestId("row");
+	act(() => {
+		fireEvent.pointerLeave(row, {pointerType: "mouse"});
+		fireEvent.mouseLeave(row);
+	});
+}
+
 async function advance(ms: number) {
 	await act(async () => {
 		await vi.advanceTimersByTimeAsync(ms);
@@ -97,13 +137,38 @@ function card(): HTMLElement | null {
 	return document.querySelector("[data-session-hover-card]");
 }
 
+function text(selector: string): string | null {
+	return card()?.querySelector(selector)?.textContent ?? null;
+}
+
+function replyBox(): HTMLTextAreaElement {
+	const box = screen.getByRole("textbox", {name: "Reply to Claude"});
+	if (!(box instanceof HTMLTextAreaElement)) throw new Error("no reply box");
+	return box;
+}
+
+/** The writes a card sent; seeded reads may still refetch in the background. */
+function posts(fetchMock: ReturnType<typeof okFetch>) {
+	return fetchMock.mock.calls.filter(([, init]) => init?.method === "POST");
+}
+
+function okFetch() {
+	const fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(async () =>
+		Promise.resolve(new Response(JSON.stringify({ok: true}), {status: 200})),
+	);
+	vi.stubGlobal("fetch", fetchMock);
+	return fetchMock;
+}
+
 beforeAll(async () => {
-	// Quick replies load the submit module on demand; warm it so a reply posts within one tick.
+	// The awaiting body is a lazy chunk and answers load their submit module; warm both so fake timers only wait on the open delay.
+	await import("../src/components/session-awaiting-body");
 	await import("../src/lib/question-answer-submit");
 });
 
 beforeEach(() => {
 	vi.useFakeTimers();
+	clearQuickReplyDraft(quickReplyDraftKey(SESSION_ID, "Which database should we use?"));
 });
 
 afterEach(() => {
@@ -112,40 +177,63 @@ afterEach(() => {
 	vi.unstubAllGlobals();
 });
 
-describe("SessionHoverCard", () => {
-	it("opens a 440px card for blocked rows after 400ms", async () => {
-		renderCard({sessionId: "blocked-1", title: "Pick a DB", summary: null, blocked: true}, [QUESTION_APPROVAL]);
+describe("SessionHoverCard timing and shell", () => {
+	it("opens a fixed 440px awaiting card for a Needs input row after 400ms, labelled by its title", async () => {
+		renderCard({title: "Pick a DB", summary: null, blocked: true}, {pendingQuestion: QUESTION, writable: true});
 		hover();
 		await advance(399);
-		expect(card()).toBeNull();
+		const early = card();
 		await advance(1);
+		const root = card();
+		const titleId = root?.getAttribute("aria-labelledby") ?? "";
+
 		expect({
-			kind: card()?.getAttribute("data-kind"),
-			width: card()?.style.width,
-		}).toStrictEqual({kind: "blocked", width: "440px"});
+			early,
+			kind: root?.getAttribute("data-kind"),
+			role: root?.getAttribute("role"),
+			title: document.getElementById(titleId)?.textContent,
+			width: root?.className.split(" ").filter((c) => c.startsWith("[--preview-card")),
+		}).toStrictEqual({
+			early: null,
+			kind: "blocked",
+			role: "group",
+			title: "Pick a DB",
+			width: ["[--preview-card-min-w:440px]", "[--preview-card-max-w:440px]"],
+		});
 	});
 
-	it("opens a 340px card for other rows after 500ms", async () => {
+	it("opens a 340px summary card for other rows after 500ms, and closes 200ms after leaving", async () => {
 		renderCard({
 			sessionId: "done-1",
 			title: "Refactor parser",
-			summary: "Split the tokenizer out of the parser.",
+			summary: "Split the tokenizer out.",
 			blocked: false,
 		});
 		hover();
 		await advance(499);
-		expect(card()).toBeNull();
+		const early = card();
 		await advance(1);
-		expect({
+		const opened = {
 			kind: card()?.getAttribute("data-kind"),
-			width: card()?.style.width,
-			title: card()?.querySelector("[data-card-title]")?.textContent,
-			summary: card()?.querySelector("[data-card-summary]")?.textContent,
-		}).toStrictEqual({
-			kind: "other",
-			width: "340px",
-			title: "Refactor parser",
-			summary: "Split the tokenizer out of the parser.",
+			width: card()
+				?.className.split(" ")
+				.filter((c) => c.startsWith("[--preview-card")),
+			title: text("[data-card-title]"),
+			summary: text("[data-card-summary]"),
+		};
+		leave();
+		await advance(150);
+		const stillOpen = card() !== null;
+
+		expect({early, opened, stillOpen}).toStrictEqual({
+			early: null,
+			opened: {
+				kind: "other",
+				width: ["[--preview-card-min-w:340px]", "[--preview-card-max-w:340px]"],
+				title: "Refactor parser",
+				summary: "Split the tokenizer out.",
+			},
+			stillOpen: true,
 		});
 	});
 
@@ -159,166 +247,213 @@ describe("SessionHoverCard", () => {
 		});
 		hover();
 		await advance(500);
-		expect({
-			title: card()?.querySelector("[data-card-title]")?.textContent,
-			aiTitle: card()?.querySelector("[data-card-ai-title]")?.textContent,
-		}).toStrictEqual({title: "claude.ai", aiTitle: "Parallel do-task workstreams"});
-	});
 
-	it("omits the AI title line without an AI title", async () => {
-		renderCard({sessionId: "done-1", title: "Refactor parser", summary: null, blocked: false});
-		hover();
-		await advance(500);
-		expect(card()?.querySelector("[data-card-ai-title]")).toBeNull();
-	});
-
-	it("shows the pending question with its options and a quick reply box", async () => {
-		renderCard({sessionId: "blocked-1", title: "Pick a DB", summary: null, blocked: true}, [QUESTION_APPROVAL]);
-		hover();
-		await advance(400);
-		const root = card()!;
-		expect({
-			title: root.querySelector("[data-card-title]")?.textContent,
-			question: root.querySelector("[data-card-question]")?.textContent,
-			options: Array.from(root.querySelectorAll("[data-card-option]"), (b) => b.textContent),
-			reply: root.querySelector("textarea")?.getAttribute("aria-label"),
-			note: root.querySelector("[data-card-note]")?.textContent,
-		}).toStrictEqual({
-			title: "Pick a DB",
-			question: "Which database should we use?",
-			options: ["Postgres", "SQLite"],
-			reply: "Quick reply",
-			note: "Quick reply and approval controls available",
+		expect({title: text("[data-card-title]"), aiTitle: text("[data-card-ai-title]")}).toStrictEqual({
+			title: "claude.ai",
+			aiTitle: "Parallel do-task workstreams",
 		});
 	});
 
-	function stubFetch() {
-		const fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(async (url: string) =>
-			Promise.resolve(
-				url === "/api/herdr/question" ? Response.json({ok: true}) : new Response("", {status: 200}),
-			),
-		);
-		vi.stubGlobal("fetch", fetchMock);
-		// The card's herdr pane query refetches on mount; only the answer POSTs matter here.
-		return () => fetchMock.mock.calls.filter(([, init]) => init?.method === "POST");
-	}
+	it("shows no card for a row with nothing to summarise, as upstream's plain Completed rows", async () => {
+		renderCard({sessionId: "done-1", title: "Refactor parser", summary: null, blocked: false});
+		hover();
+		await advance(600);
 
-	it("types an option into the live session's pane, skipping its other questions", async () => {
-		const posts = stubFetch();
-		renderCard({sessionId: "blocked-1", title: "Pick a DB", summary: null, blocked: true}, [QUESTION_APPROVAL]);
+		expect(card()).toBeNull();
+	});
+});
+
+describe("SessionHoverCard question gate", () => {
+	it("offers the options as chips and a reply box when the live pane is writable", async () => {
+		renderCard({title: "Pick a DB", summary: null, blocked: true}, {pendingQuestion: QUESTION, writable: true});
+		hover();
+		await advance(400);
+		const reply = replyBox();
+		const send = screen.getByRole("button", {name: "Send reply"});
+
+		expect({
+			interactive: card()?.hasAttribute("data-interactive"),
+			pointer: card()?.className.includes("pointer-events-none"),
+			asked: text("[data-card-question]"),
+			chips: [...(card()?.querySelectorAll("[data-card-option]") ?? [])].map((chip) => chip.textContent),
+			placeholder: reply.getAttribute("placeholder"),
+			describedBy: document.getElementById(reply.getAttribute("aria-describedby") ?? "")?.textContent,
+			sendDisabled: send.hasAttribute("disabled"),
+			keys: send.getAttribute("aria-keyshortcuts"),
+		}).toStrictEqual({
+			interactive: true,
+			pointer: false,
+			asked: "Claude asked · Which database should we use?",
+			chips: ["Postgres", "SQLite"],
+			placeholder: "Reply to Claude…",
+			describedBy: "Which database should we use?",
+			sendDisabled: true,
+			keys: "Enter",
+		});
+	});
+
+	it("answers with a chip through the herdr question endpoint", async () => {
+		const fetchMock = okFetch();
+		renderCard({title: "Pick a DB", summary: null, blocked: true}, {pendingQuestion: QUESTION, writable: true});
 		hover();
 		await advance(400);
 		act(() => {
 			fireEvent.click(screen.getByRole("button", {name: "SQLite"}));
 		});
 		await advance(0);
-		expect(posts().map(([url, init]) => [url, init?.method, init?.body])).toStrictEqual([
+
+		expect(posts(fetchMock).map(([url, init]) => [url, init?.method, init?.body])).toStrictEqual([
 			[
 				"/api/herdr/question",
 				"POST",
-				JSON.stringify({sessionId: "blocked-1", toolUseId: "toolu_ask", answers: [{selected: [1]}, null]}),
+				JSON.stringify({sessionId: SESSION_ID, toolUseId: "toolu_ask", answers: [{selected: [1]}]}),
 			],
 		]);
-		expect(card()?.querySelector("[data-card-sent]")?.textContent).toBe("Reply sent");
 	});
 
-	it("types a quick reply into the live pane as Other text on Enter", async () => {
-		const posts = stubFetch();
-		renderCard({sessionId: "blocked-1", title: "Pick a DB", summary: null, blocked: true}, [QUESTION_APPROVAL]);
+	it("sends typed text as the Other answer on Enter, and Shift+Enter keeps typing", async () => {
+		const fetchMock = okFetch();
+		renderCard({title: "Pick a DB", summary: null, blocked: true}, {pendingQuestion: QUESTION, writable: true});
 		hover();
 		await advance(400);
-		const reply = screen.getByRole("textbox", {name: "Quick reply"});
+		const reply = replyBox();
 		act(() => {
 			fireEvent.change(reply, {target: {value: "  Use DuckDB  "}});
+			fireEvent.keyDown(reply, {key: "Enter", shiftKey: true});
+		});
+		const afterShift = posts(fetchMock).length;
+		act(() => {
 			fireEvent.keyDown(reply, {key: "Enter"});
 		});
 		await advance(0);
-		expect(posts().map(([url, init]) => [url, init?.body])).toStrictEqual([
-			[
-				"/api/herdr/question",
+
+		expect({afterShift, bodies: posts(fetchMock).map(([, init]) => init?.body)}).toStrictEqual({
+			afterShift: 0,
+			bodies: [
 				JSON.stringify({
-					sessionId: "blocked-1",
+					sessionId: SESSION_ID,
 					toolUseId: "toolu_ask",
-					answers: [{selected: [], other: "Use DuckDB"}, null],
+					answers: [{selected: [], other: "Use DuckDB"}],
 				}),
 			],
-		]);
+		});
 	});
 
-	it("is read-only for a live session without a pane, posting nothing", async () => {
-		const posts = stubFetch();
-		renderCard({sessionId: "blocked-1", title: "Pick a DB", summary: null, blocked: true}, [QUESTION_APPROVAL], {
-			state: "waiting",
-			panes: [],
-		});
+	it("keeps an unsent reply when the card closes and reopens", async () => {
+		renderCard({title: "Pick a DB", summary: null, blocked: true}, {pendingQuestion: QUESTION, writable: true});
 		hover();
 		await advance(400);
-		const root = card()!;
+		act(() => {
+			fireEvent.change(replyBox(), {target: {value: "half a thought"}});
+		});
+		leave();
+		await advance(1000);
+		const closed = card();
+		hover();
+		await advance(400);
+
+		expect({closed, restored: replyBox().value}).toStrictEqual({closed: null, restored: "half a thought"});
+	});
+
+	it("restores the reply and toasts when sending fails", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn<() => Promise<Response>>(async () =>
+				Promise.resolve(new Response(JSON.stringify({error: "pane moved on"}), {status: 409})),
+			),
+		);
+		renderCard({title: "Pick a DB", summary: null, blocked: true}, {pendingQuestion: QUESTION, writable: true});
+		hover();
+		await advance(400);
+		act(() => {
+			fireEvent.change(replyBox(), {target: {value: "Use DuckDB"}});
+			fireEvent.keyDown(replyBox(), {key: "Enter"});
+		});
+		await advance(0);
+
 		expect({
-			hint: root.querySelector("[data-card-read-only]")?.textContent,
-			options: root.querySelectorAll("[data-card-option]").length,
-			reply: root.querySelector("textarea"),
-			posts: posts(),
-		}).toStrictEqual({hint: "Answer in the terminal", options: 0, reply: null, posts: []});
+			value: replyBox().value,
+			toast: screen.getByText("Response couldn’t be sent. You can try again.").tagName,
+		}).toStrictEqual({value: "Use DuckDB", toast: "P"});
+	});
+
+	it("points at the session without a writable pane, and keeps the pointer out", async () => {
+		renderCard({title: "Pick a DB", summary: null, blocked: true}, {pendingQuestion: QUESTION, writable: false});
+		hover();
+		await advance(400);
+
+		expect({
+			interactive: card()?.hasAttribute("data-interactive"),
+			pointer: card()?.className.includes("pointer-events-none"),
+			asked: text("[data-card-question]"),
+			footer: text("[data-card-footer]"),
+			chips: card()?.querySelectorAll("[data-card-option]").length,
+			reply: card()?.querySelector("textarea") ?? null,
+		}).toStrictEqual({
+			interactive: false,
+			pointer: true,
+			asked: "Claude asked · Which database should we use?",
+			footer: "Open the session to respond",
+			chips: 0,
+			reply: null,
+		});
 	});
 
 	it("answers a stopped session in a fork, saying so on the card", async () => {
-		const posts = stubFetch();
-		renderCard({sessionId: "blocked-1", title: "Pick a DB", summary: null, blocked: true}, [QUESTION_APPROVAL], {
-			state: "ended",
-			panes: [],
-		});
+		const fetchMock = okFetch();
+		renderCard(
+			{title: "Pick a DB", summary: null, blocked: true},
+			{pendingQuestion: QUESTION, writable: false, state: "ended"},
+		);
 		hover();
 		await advance(400);
-		expect({
-			note: card()?.querySelector("[data-card-fork]")?.textContent,
+		const fork = {
+			interactive: card()?.hasAttribute("data-interactive"),
+			note: text("[data-card-fork]"),
 			send: screen.queryByRole("button", {name: "Answer in a new fork"}) !== null,
-		}).toStrictEqual({note: "Session stopped: replies answer in a new fork", send: true});
+		};
 		act(() => {
 			fireEvent.click(screen.getByRole("button", {name: "SQLite"}));
 		});
 		await advance(0);
-		expect(posts().map(([url, init]) => [url, init?.body])).toStrictEqual([
-			[
-				"/api/answer-question",
-				JSON.stringify({
-					sessionId: "blocked-1",
-					toolUseId: "toolu_ask",
-					answers: [{question: "Which database should we use?", answer: "SQLite"}],
-				}),
+
+		expect({fork, posts: posts(fetchMock).map(([url, init]) => [url, init?.body])}).toStrictEqual({
+			fork: {interactive: true, note: "Session stopped: replies answer in a new fork", send: true},
+			posts: [
+				[
+					"/api/answer-question",
+					JSON.stringify({
+						sessionId: SESSION_ID,
+						toolUseId: "toolu_ask",
+						answers: [{question: "Which database should we use?", answer: "SQLite"}],
+					}),
+				],
 			],
-		]);
+		});
 	});
 
-	it.each([
-		{name: "with a writable pane", environment: LIVE_IN_PANE},
-		{name: "without a pane", environment: {state: "waiting" as const, panes: []}},
-	])("never posts /api/answer-question for a live session $name", async ({environment}) => {
-		const posts = stubFetch();
+	it("counts several questions with upstream's open-to-answer footer", async () => {
+		const first = QUESTION.questions[0]!;
 		renderCard(
-			{sessionId: "blocked-1", title: "Pick a DB", summary: null, blocked: true},
-			[QUESTION_APPROVAL],
-			environment,
+			{title: "Pick a DB", summary: null, blocked: true},
+			{
+				pendingQuestion: {toolUseId: "toolu_ask", questions: [first, {...first, question: "And the cache?"}]},
+				writable: true,
+			},
 		);
 		hover();
 		await advance(400);
-		for (const button of card()?.querySelectorAll("[data-card-option]") ?? []) {
-			act(() => {
-				fireEvent.click(button);
-			});
-		}
-		await advance(0);
-		expect(posts().filter(([url]) => url === "/api/answer-question")).toStrictEqual([]);
-	});
 
-	it("points blocked rows without an answerable question at the session", async () => {
-		renderCard({sessionId: "blocked-2", title: "Needs a look", summary: null, blocked: true});
-		hover();
-		await advance(400);
-		const root = card()!;
 		expect({
-			reply: root.querySelector("textarea"),
-			open: screen.getByRole("button", {name: "Open session"}).textContent,
-		}).toStrictEqual({reply: null, open: "Open session"});
+			asked: text("[data-card-question]"),
+			footer: text("[data-card-footer]"),
+			reply: card()?.querySelector("textarea") ?? null,
+			interactive: card()?.hasAttribute("data-interactive"),
+		}).toStrictEqual({
+			asked: "Claude asked · Which database should we use?\nAnd the cache?",
+			footer: "2 questions — open to answer",
+			reply: null,
+			interactive: false,
+		});
 	});
 });

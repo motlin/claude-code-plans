@@ -1,4 +1,4 @@
-import {Link, useNavigate} from "@tanstack/react-router";
+import {Link} from "@tanstack/react-router";
 import {useQueryClient} from "@tanstack/react-query";
 import {ChevronRight} from "lucide-react";
 import {Fragment, useEffect, useLayoutEffect, useRef, useState, type ReactNode} from "react";
@@ -475,7 +475,6 @@ function SessionRowLink({
 	/** Screen-reader note on a nested row, e.g. "Forked from {title}". */
 	lineage?: string;
 }) {
-	const navigate = useNavigate();
 	const queryClient = useQueryClient();
 	const selection = useSidebarSelection();
 	const multiSelected = selection?.selectedIds.includes(row.sessionId) === true;
@@ -488,7 +487,6 @@ function SessionRowLink({
 			aiTitle={aiTitle}
 			summary={row.session.summary ?? null}
 			blocked={row.bucket === "blocked"}
-			onOpen={(id) => void navigate({to: "/session/$id", params: {id}})}
 			render={<div />}
 		>
 			<SessionActionsMenu

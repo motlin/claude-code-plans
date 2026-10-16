@@ -142,6 +142,8 @@
 	--radius-r6: 8px;
 	--radius-r7: 10px;
 	--radius-card: 12px;
+	/* Upstream claude.ai/code — size sm Button (hover card option chips) */
+	--radius-control-sm: 7px;
 	/* Upstream claude.ai/code — Customize Discover card */
 	--radius-discover-card: 11px;
 	/* Upstream claude.ai/code — composer field (--cds-radius-composer) */

@@ -7,7 +7,7 @@ import {DOMAIN_EVENTS} from "./hook-events";
 import type {NotificationEntryPayload} from "./hook-events";
 import {broadcastTyped} from "./sse-broadcast";
 import {hmrPersist, hmrDispose} from "./hmr-persist";
-import {PERMISSION_PROMPT_NOTIFICATION} from "./permission-card";
+import {PERMISSION_PROMPT_NOTIFICATION} from "./permission-prompt";
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
 

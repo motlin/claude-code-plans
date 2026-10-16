@@ -91,6 +91,8 @@ describe("sidebar session row AI title tooltip", () => {
 			id: "r1",
 			title: RENAMED,
 			aiTitle: AI_TITLE,
+			// A summary keeps the card open with Show AI titles off; a row with nothing to show gets no card.
+			summary: "Split the tokenizer out of the parser.",
 			mtime,
 			created: mtime,
 			project: "-projects-alpha",

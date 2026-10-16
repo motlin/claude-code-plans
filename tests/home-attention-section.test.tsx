@@ -17,6 +17,9 @@ import {
 import {AttentionSection} from "../src/components/home/attention-section";
 import {HomeLanding} from "../src/components/home/home-landing";
 import {approvalsQueryOptions} from "../src/lib/api/approvals";
+import {herdrPanesQueryOptions} from "../src/lib/api/herdr";
+import {notificationsQueryOptions} from "../src/lib/api/notifications";
+import {pendingQuestionQueryOptions} from "../src/lib/api/pending-question";
 import {homeDismissalsQueryOptions} from "../src/lib/api/home-dismissals";
 import {localAccountQueryOptions} from "../src/lib/api/local-account";
 import {recentSessionsInfiniteQueryOptions, type SessionListItem} from "../src/lib/api/sessions";
@@ -490,6 +493,9 @@ describe("AttentionSection hover cards", () => {
 	it("previews a row with the blocked or summary card", async () => {
 		const queryClient = new QueryClient();
 		queryClient.setQueryData(approvalsQueryOptions().queryKey, {approvals: []});
+		queryClient.setQueryData(pendingQuestionQueryOptions("blocked").queryKey, {pendingQuestion: null});
+		queryClient.setQueryData(notificationsQueryOptions().queryKey, {notifications: []});
+		queryClient.setQueryData(herdrPanesQueryOptions.queryKey, {panes: [], writesEnabled: false});
 		render(
 			<QueryClientProvider client={queryClient}>
 				<AttentionSection
@@ -504,7 +510,7 @@ describe("AttentionSection hover cards", () => {
 				/>
 			</QueryClientProvider>,
 		);
-		const cards: Array<{kind: string | null; summary: string | null | undefined}> = [];
+		const cards: Array<{kind: string | null; body: string | null | undefined}> = [];
 		for (const name of ["Open session Blocked row", "Open session Review row"]) {
 			const li = screen.getByRole("button", {name}).closest("li")!;
 			fireEvent.pointerEnter(li, {pointerType: "mouse"});
@@ -513,11 +519,12 @@ describe("AttentionSection hover cards", () => {
 			const card = await waitFor(() => {
 				const found = document.querySelector("[data-session-hover-card]");
 				if (!(found instanceof HTMLElement)) throw new Error("no card");
+				if (found.querySelector("[data-card-summary], [data-card-footer]") === null) throw new Error("loading");
 				return found;
 			});
 			cards.push({
 				kind: card.getAttribute("data-kind"),
-				summary: card.querySelector("[data-card-summary]")?.textContent,
+				body: card.querySelector("[data-card-summary], [data-card-footer]")?.textContent,
 			});
 			fireEvent.pointerLeave(li, {pointerType: "mouse"});
 			fireEvent.mouseLeave(li);
@@ -526,8 +533,8 @@ describe("AttentionSection hover cards", () => {
 			});
 		}
 		expect(cards).toStrictEqual([
-			{kind: "blocked", summary: "Waiting for your input."},
-			{kind: "other", summary: "Parser split."},
+			{kind: "blocked", body: "Open the session to respond"},
+			{kind: "other", body: "Parser split."},
 		]);
 	});
 });

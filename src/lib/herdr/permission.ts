@@ -1,7 +1,8 @@
 import {z} from "zod";
 
 import {clearNotificationsForSession, getNotifications} from "../notifications-store";
-import {PERMISSION_DECISION_KEYS, PERMISSION_PROMPT_NOTIFICATION} from "../permission-card";
+import {PERMISSION_DECISION_KEYS} from "../permission-card";
+import {PERMISSION_PROMPT_NOTIFICATION} from "../permission-prompt";
 import {rejectCrossSite} from "../same-origin-guard";
 import {herdrRequest, type HerdrResult} from "./client";
 import type {HerdrRequester} from "./panes";

@@ -1,8 +1,6 @@
 import {findLastPendingToolUse, type PendingToolUse} from "./approval-dock";
+import {PERMISSION_PROMPT_NOTIFICATION} from "./permission-prompt";
 import {markerEventsFromRecords} from "./working-marker";
-
-/** The Notification hook's `notification_type` for a CLI tool-permission prompt. */
-export const PERMISSION_PROMPT_NOTIFICATION = "permission_prompt";
 
 export type PermissionDecision = "allow" | "deny";
 
