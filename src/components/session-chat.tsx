@@ -13,7 +13,7 @@ import React, {
 	type Context,
 } from "react";
 import {flushSync} from "react-dom";
-import {AlertTriangle, Bot, FileWarning, GitBranch, Lock, Palette, Plug, Zap} from "lucide-react";
+import {AlertTriangle, Bot, FileWarning, Gauge, GitBranch, Lock, Palette, Plug, Zap} from "lucide-react";
 import {assertNever} from "../lib/assert-never";
 import {isWithdrawnQuestion, type AskedCall} from "../lib/ask-user-question";
 import {ProseMarkdown} from "./file-refs";
@@ -73,7 +73,7 @@ import type {BackgroundCompletionLike, SummarySegment} from "../lib/session-util
 import {pastTense} from "../lib/past-tense";
 import {runningToolLabel, runningToolLabelText, toolLabel} from "../lib/tool-labels";
 import {formatElapsed} from "../lib/working-marker";
-import {describeUsageLimit, type UsageLimit} from "../lib/usage-limit-notice";
+import {usageLimitCard, type UsageLimitCard} from "../lib/usage-limit-notice";
 import {useElapsedSeconds} from "../hooks/use-elapsed-seconds";
 import {InlinePathImages, SESSION_IMAGE_CLASS_NAME} from "./inline-path-images";
 import {isEditableTarget} from "../lib/shortcuts/match";
@@ -4000,16 +4000,26 @@ function AssistantEntry({
 		);
 	}
 
+	// Upstream draws a usage-limit error as its card alone; the raw limit text is not shown.
+	const limitCard =
+		line.isApiErrorMessage === true
+			? usageLimitCard(
+					line.usageLimit,
+					content.flatMap((block) => (block.type === "text" ? [block.text] : [])).join("\n"),
+					Date.now(),
+				)
+			: null;
+
 	// Mixed content: render each block in original order
 	return (
 		<div className="flex flex-col gap-[var(--chat-item-gap)] min-w-0 select-text">
 			{attributionRow}
-			{line.usageLimit === undefined ? (
+			{limitCard === null ? (
 				line.isApiErrorMessage === true && <ApiErrorCallout line={line} />
 			) : (
-				<UsageLimitCallout limit={line.usageLimit} />
+				<UsageLimitCardView card={limitCard} />
 			)}
-			{content.map((block, i) => (
+			{(limitCard === null ? content : content.filter((block) => block.type !== "text")).map((block, i) => (
 				<ContentBlock
 					key={i}
 					block={block}
@@ -4060,28 +4070,26 @@ function AttributionRow({line, verbose}: {line: MessageSessionLine; verbose: boo
 	);
 }
 
-/** Notice for a synthetic usage-limit turn: which window ran out, when it resets, and extra-usage state. */
-function UsageLimitCallout({limit}: {limit: UsageLimit}) {
-	const notice = describeUsageLimit(limit, Date.now());
+/**
+ * Upstream's usage-limit error card: a danger gauge and the limit's headline on
+ * a tinted band, then its hint. Both rows contain their inline size, so the
+ * card holds its 480px minimum and the hint wraps inside it. Upstream's Try
+ * again and Open usage settings are left out: a resend is not safe from here
+ * and the settings fix is billing.
+ */
+function UsageLimitCardView({card}: {card: UsageLimitCard}) {
 	return (
 		<div
-			data-testid="usage-limit-notice"
-			className="border-l-2 border-danger-000 bg-danger-000/10 rounded-r px-3 py-2 text-xs"
+			data-usage-limit-card=""
+			className="card-ring flex w-fit min-w-[min(480px,100%)] max-w-full flex-col overflow-clip rounded-r7"
 		>
-			<div className="flex items-center gap-1.5 text-danger-000">
-				<AlertTriangle className="h-3.5 w-3.5" />
-				<span data-usage-limit-title="">Usage limit reached</span>
+			<div className="flex items-center gap-2 bg-alpha-1 px-3 py-2 contain-inline-size">
+				<Gauge aria-hidden="true" className="size-4 shrink-0 text-danger-000" />
+				<span className="text-body text-primary">{card.headline}</span>
 			</div>
-			<div className="mt-1 flex flex-wrap gap-x-2 text-secondary">
-				<span data-usage-limit-window="">{notice.limitLabel}</span>
-				<span aria-hidden="true">·</span>
-				<span data-usage-limit-reset="">{notice.resetLabel}</span>
+			<div className="flex flex-col gap-2 px-3 pt-3 pb-2 last:pb-3 empty:hidden contain-inline-size">
+				<p className="text-body text-secondary whitespace-pre-line break-words">{card.hint}</p>
 			</div>
-			{notice.overageLabel !== undefined && (
-				<div data-usage-limit-overage="" className="mt-0.5 text-secondary">
-					{notice.overageLabel}
-				</div>
-			)}
 		</div>
 	);
 }

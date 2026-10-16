@@ -106,6 +106,22 @@ export function weeklyAheadOfPace(usage: UsageSummary, nowMs: number): boolean {
 }
 
 /**
+ * The window the statusline reports exhausted before its reset, as upstream's composer names a
+ * reached limit: the weekly window first, then the session's. Null while neither is spent.
+ */
+export function limitReached(usage: UsageSummary, nowMs: number): {headline: string; resetsAt: number} | null {
+	const spent = (window: UsageWindow | null) =>
+		window !== null && window.usedPct >= 100 && window.resetsAt * 1000 > nowMs;
+	if (usage.sevenDay !== null && spent(usage.sevenDay)) {
+		return {headline: "Weekly limit reached", resetsAt: usage.sevenDay.resetsAt};
+	}
+	if (usage.fiveHour !== null && spent(usage.fiveHour)) {
+		return {headline: "Session limit reached", resetsAt: usage.fiveHour.resetsAt};
+	}
+	return null;
+}
+
+/**
  * The composer's pace banner shows while the weekly window is ahead of pace, unless it was
  * dismissed for a reset (epoch seconds) that has not happened yet.
  */

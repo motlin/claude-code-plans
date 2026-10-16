@@ -3,8 +3,14 @@
 import {cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
-import {UsagePaceBand} from "../src/components/usage-pace-banner";
-import {formatPaceBannerReset, shouldShowPaceBanner, weeklyAheadOfPace, type UsageSummary} from "../src/lib/usage";
+import {UsageLimitBand, UsagePaceBand} from "../src/components/usage-pace-banner";
+import {
+	formatPaceBannerReset,
+	limitReached,
+	shouldShowPaceBanner,
+	weeklyAheadOfPace,
+	type UsageSummary,
+} from "../src/lib/usage";
 import {readPaceBannerDismissedUntil, writePaceBannerDismissedUntil} from "../src/lib/usage-pace-dismissal";
 
 afterEach(cleanup);
@@ -102,5 +108,34 @@ describe("UsagePaceBand", () => {
 
 		fireEvent.click(screen.getByRole("button", {name: "Dismiss"}));
 		expect(onDismiss).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe("usage limit reached", () => {
+	it("names the exhausted window still before its reset, weekly first, as upstream's composer banner", () => {
+		expect([
+			limitReached(summary([100, 6 * DAY]), NOW_MS),
+			limitReached(summary([40, 6 * DAY], [100, HOUR]), NOW_MS),
+			limitReached(summary([100, -HOUR]), NOW_MS),
+			limitReached(summary([99, 6 * DAY]), NOW_MS),
+		]).toStrictEqual([
+			{headline: "Weekly limit reached", resetsAt: NOW_SECONDS + 6 * DAY},
+			{headline: "Session limit reached", resetsAt: NOW_SECONDS + HOUR},
+			null,
+			null,
+		]);
+	});
+
+	it("draws the band as 'Weekly limit reached · Get more usage to keep working · Resets …' with no dismiss", () => {
+		render(<UsageLimitBand headline="Weekly limit reached" resetText="Resets Tue, Oct 20, 4:00 AM" />);
+		const band = screen.getByRole("status");
+
+		expect({
+			text: band.textContent,
+			dismiss: screen.queryByRole("button", {name: "Dismiss"}),
+		}).toStrictEqual({
+			text: "Weekly limit reached · Get more usage to keep working · Resets Tue, Oct 20, 4:00 AM",
+			dismiss: null,
+		});
 	});
 });

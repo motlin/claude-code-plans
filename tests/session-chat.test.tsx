@@ -2266,28 +2266,35 @@ describe("SessionChat smart quotes", () => {
 	});
 });
 
-describe("SessionChat usage-limit notice", () => {
+describe("SessionChat usage-limit card", () => {
 	const usageLimitRecord = (extra: Record<string, unknown>) => ({
 		type: "assistant",
 		message: {
 			role: "assistant",
 			model: "<synthetic>",
-			content: [{type: "text", text: "You've hit your weekly limit"}],
+			content: [{type: "text", text: "You've hit your weekly limit · resets Oct 20 at 4am (America/New_York)"}],
 		},
 		isApiErrorMessage: true,
 		apiErrorStatus: 429,
 		...extra,
 	});
 	const defaults = {showCompactSummaries: true, showTranscriptOnly: true};
+	const card = (html: string) =>
+		new DOMParser().parseFromString(html, "text/html").querySelector("[data-usage-limit-card]");
+	/** Whether the raw limit text is drawn as prose (the screen-reader turn heading may still quote it). */
+	const showsRawText = (html: string) =>
+		[...new DOMParser().parseFromString(html, "text/html").querySelectorAll("p, article")].some((element) =>
+			element.textContent.includes("You've hit your weekly limit"),
+		);
 
-	it("renders a seven_day usage-limit record as a notice naming the window, reset, and overage state", () => {
+	it("draws the kalshi specimen as upstream's card, hiding the raw text: danger gauge headline and hint, no actions", () => {
 		const html = renderRecord(
 			usageLimitRecord({
 				apiError: "usage_limit_reached",
 				apiErrorParams: {
 					rate_limit_info: {
 						status: "rejected",
-						resetsAt: 1,
+						resetsAt: 4_102_444_800,
 						rateLimitType: "seven_day",
 						overageStatus: "rejected",
 						overageDisabledReason: "org_level_disabled",
@@ -2298,30 +2305,50 @@ describe("SessionChat usage-limit notice", () => {
 			{},
 			defaults,
 		);
-		const notice = new DOMParser()
-			.parseFromString(html, "text/html")
-			.querySelector('[data-testid="usage-limit-notice"]');
+		const found = card(html);
+
 		expect({
-			title: notice?.querySelector("[data-usage-limit-title]")?.textContent ?? null,
-			window: notice?.querySelector("[data-usage-limit-window]")?.textContent ?? null,
-			reset: notice?.querySelector("[data-usage-limit-reset]")?.textContent.startsWith("Reset ") ?? null,
-			overage: notice?.querySelector("[data-usage-limit-overage]")?.textContent ?? null,
+			shell: found?.className,
+			header: found?.firstElementChild?.className,
+			body: found?.lastElementChild?.className,
+			icon: found?.querySelector("svg")?.getAttribute("class"),
+			headline: found?.firstElementChild?.textContent,
+			hint: found
+				?.querySelector("p")
+				?.textContent.startsWith(
+					"Turn on usage credits to keep working past your plan limit. Your weekly limit resets",
+				),
+			settings: found?.querySelector("a") ?? null,
+			tryAgain: html.includes("Try again"),
+			rawText: showsRawText(html),
 			apiErrorHeader: html.includes("API Error"),
 		}).toStrictEqual({
-			title: "Usage limit reached",
-			window: "Weekly · all models",
-			reset: true,
-			overage: "Extra usage unavailable: org level disabled",
+			shell: "card-ring flex w-fit min-w-[min(480px,100%)] max-w-full flex-col overflow-clip rounded-r7",
+			header: "flex items-center gap-2 bg-alpha-1 px-3 py-2 contain-inline-size",
+			body: "flex flex-col gap-2 px-3 pt-3 pb-2 last:pb-3 empty:hidden contain-inline-size",
+			icon: "lucide lucide-gauge size-4 shrink-0 text-danger-000",
+			headline: "Weekly limit reached",
+			hint: true,
+			settings: null,
+			tryAgain: false,
+			rawText: false,
 			apiErrorHeader: false,
 		});
 	});
 
-	it("falls back to the plain API error callout and text when the record has no limit fields", () => {
+	it("names the limit from the message text when the record has no limit fields", () => {
 		const html = renderRecord(usageLimitRecord({}), {}, defaults);
+
 		expect({
-			notice: html.includes('data-testid="usage-limit-notice"'),
-			apiErrorHeader: html.includes("API Error 429"),
-			text: html.includes("You&#x27;ve hit your weekly limit"),
-		}).toStrictEqual({notice: false, apiErrorHeader: true, text: true});
+			headline: card(html)?.firstElementChild?.textContent,
+			hint: card(html)?.querySelector("p")?.textContent,
+			settings: card(html)?.querySelector("a"),
+			rawText: showsRawText(html),
+		}).toStrictEqual({
+			headline: "Weekly limit reached",
+			hint: "Send a message after your weekly limit resets.",
+			settings: null,
+			rawText: false,
+		});
 	});
 });
