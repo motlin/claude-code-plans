@@ -440,6 +440,31 @@ describe("SessionHoverCard question gate", () => {
 		});
 	});
 
+	it.each([
+		{name: "with a writable pane", seed: {writable: true, state: "waiting" as const}},
+		{name: "without a pane", seed: {writable: false, state: "waiting" as const}},
+	])("never posts /api/answer-question for a live session $name", async ({seed}) => {
+		const fetchMock = okFetch();
+		renderCard({title: "Pick a DB", summary: null, blocked: true}, {pendingQuestion: QUESTION, ...seed});
+		hover();
+		await advance(400);
+		for (const chip of card()?.querySelectorAll("[data-card-option]") ?? []) {
+			act(() => {
+				fireEvent.click(chip);
+			});
+		}
+		const reply = card()?.querySelector("textarea");
+		if (reply instanceof HTMLTextAreaElement) {
+			act(() => {
+				fireEvent.change(reply, {target: {value: "Use DuckDB"}});
+				fireEvent.keyDown(reply, {key: "Enter"});
+			});
+		}
+		await advance(0);
+
+		expect(posts(fetchMock).filter(([url]) => url === "/api/answer-question")).toStrictEqual([]);
+	});
+
 	it("counts several questions with upstream's open-to-answer footer", async () => {
 		const first = QUESTION.questions[0]!;
 		renderCard(
