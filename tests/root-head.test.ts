@@ -10,4 +10,13 @@ describe("root route head", () => {
 			{name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover"},
 		]);
 	});
+
+	it("uses the purple ten-ray spark favicon on a transparent background", () => {
+		const head = Route.options.head as () => {links: Array<Record<string, string>>};
+		const icon = head().links.find((link) => link["rel"] === "icon");
+		const svg = decodeURIComponent(icon?.["href"]?.replace("data:image/svg+xml,", "") ?? "");
+		expect(svg.match(/<rect /g)).toHaveLength(10);
+		expect(svg).toContain("fill='#8B5CF6'");
+		expect(svg).not.toContain("width='32' height='32'");
+	});
 });

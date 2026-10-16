@@ -78,7 +78,7 @@ export const Route = createRootRouteWithContext<{queryClient: QueryClient}>()({
 			{
 				rel: "icon",
 				type: "image/svg+xml",
-				href: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23C87B3A'/%3E%3Cpath d='M16 5L17.5 13.5L26 16L17.5 18.5L16 27L14.5 18.5L6 16L14.5 13.5Z' fill='white' opacity='0.95'/%3E%3C/svg%3E",
+				href: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='14.10' y='1.00' width='3.8' height='15.00' rx='1.9' fill='%238B5CF6' transform='rotate(0.0 16 16)'/%3E%3Crect x='14.10' y='3.40' width='3.8' height='12.60' rx='1.9' fill='%238B5CF6' transform='rotate(36.0 16 16)'/%3E%3Crect x='14.10' y='1.60' width='3.8' height='14.40' rx='1.9' fill='%238B5CF6' transform='rotate(72.0 16 16)'/%3E%3Crect x='14.10' y='4.00' width='3.8' height='12.00' rx='1.9' fill='%238B5CF6' transform='rotate(108.0 16 16)'/%3E%3Crect x='14.10' y='2.20' width='3.8' height='13.80' rx='1.9' fill='%238B5CF6' transform='rotate(144.0 16 16)'/%3E%3Crect x='14.10' y='1.00' width='3.8' height='15.00' rx='1.9' fill='%238B5CF6' transform='rotate(180.0 16 16)'/%3E%3Crect x='14.10' y='3.10' width='3.8' height='12.90' rx='1.9' fill='%238B5CF6' transform='rotate(216.0 16 16)'/%3E%3Crect x='14.10' y='1.90' width='3.8' height='14.10' rx='1.9' fill='%238B5CF6' transform='rotate(252.0 16 16)'/%3E%3Crect x='14.10' y='3.70' width='3.8' height='12.30' rx='1.9' fill='%238B5CF6' transform='rotate(288.0 16 16)'/%3E%3Crect x='14.10' y='2.50' width='3.8' height='13.50' rx='1.9' fill='%238B5CF6' transform='rotate(324.0 16 16)'/%3E%3C/svg%3E",
 			},
 			{rel: "preconnect", href: "https://fonts.googleapis.com"},
 			{
