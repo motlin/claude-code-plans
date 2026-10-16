@@ -47,7 +47,7 @@ async function renderRail(workspaces: HerdrWorkspaceData[], selectedSessionId: s
 	});
 	const router = createRouter({
 		routeTree: rootRoute,
-		history: createMemoryHistory({initialEntries: ["/herdr"]}),
+		history: createMemoryHistory({initialEntries: ["/terminals"]}),
 	});
 	await router.load();
 	render(<RouterProvider router={router} />);
@@ -83,7 +83,7 @@ describe("HerdrWorkspaceRail", () => {
 		}).toStrictEqual({
 			links: [
 				{
-					href: "/herdr/terminal/session-test-100",
+					href: "/terminals/terminal/session-test-100",
 					label: "Open live terminal for ✓ kalshi in workspace kalshi",
 				},
 			],
@@ -171,8 +171,8 @@ describe("HerdrWorkspaceRail", () => {
 				current: link.getAttribute("aria-current"),
 			})),
 		).toStrictEqual([
-			{href: "/herdr/terminal/session-test-100", current: "page"},
-			{href: "/herdr/terminal/session-test-200", current: null},
+			{href: "/terminals/terminal/session-test-100", current: "page"},
+			{href: "/terminals/terminal/session-test-200", current: null},
 		]);
 	});
 

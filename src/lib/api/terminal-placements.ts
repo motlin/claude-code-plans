@@ -3,6 +3,7 @@ import {z} from "zod";
 import {apiFetch} from "./client";
 import {HerdrPaneSchema} from "./herdr";
 import {TmuxWindowSchema} from "./tmux";
+import {SessionViewedStateSchema} from "./viewed-state";
 
 const TerminalPlacementCapabilitiesSchema = z
 	.object({
@@ -26,6 +27,7 @@ const TmuxTerminalPlacementSchema = z
 		provider: z.literal("tmux"),
 		...TerminalPlacementFields,
 		tmuxWindow: TmuxWindowSchema,
+		viewedState: SessionViewedStateSchema,
 	})
 	.strict();
 

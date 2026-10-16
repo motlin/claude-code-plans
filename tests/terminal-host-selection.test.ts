@@ -1,6 +1,6 @@
 import {describe, expect, it} from "vite-plus/test";
 import {TerminalHostSettingSchema} from "../src/lib/terminal-host-setting";
-import {createTmuxTerminalHost, resolveTerminalHost} from "../src/lib/terminal-host";
+import {createTmuxTerminalHost, resolveTerminalHost, startTerminalHostEvents} from "../src/lib/terminal-host";
 import {detectTmux, selectTerminalHost, type TerminalHostProbes} from "../src/lib/terminal-host/selection";
 
 function probes(herdr: boolean, tmux: boolean, calls: string[] = []): TerminalHostProbes {
@@ -107,5 +107,36 @@ describe("resolveTerminalHost", () => {
 			workspaces: [],
 			placementProvider: "tmux",
 		});
+	});
+});
+
+describe("startTerminalHostEvents", () => {
+	function starters(started: string[]) {
+		return {
+			herdr: () => {
+				started.push("herdr");
+				return () => {
+					started.push("stop herdr");
+				};
+			},
+			tmux: () => {
+				started.push("tmux");
+				return () => {
+					started.push("stop tmux");
+				};
+			},
+		};
+	}
+
+	it.each([
+		["auto", ["herdr", "tmux", "stop herdr", "stop tmux"]],
+		["herdr", ["herdr", "stop herdr"]],
+		["tmux", ["tmux", "stop tmux"]],
+	] as const)("for %s starts and stops the event sources of each host it can pick", (setting, expected) => {
+		const started: string[] = [];
+		const stop = startTerminalHostEvents(setting, starters(started));
+		stop();
+
+		expect(started).toStrictEqual(expected);
 	});
 });

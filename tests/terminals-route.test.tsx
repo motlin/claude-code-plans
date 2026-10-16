@@ -18,9 +18,10 @@ import {herdrWorkspacesQueryOptions} from "../src/lib/api/herdr-workspaces";
 import {sessionQueryKeys} from "../src/lib/api/sessions";
 import {terminalPlacementsQueryOptions} from "../src/lib/api/terminal-placements";
 import {updateSessionViewedState} from "../src/lib/api/viewed-state";
-import {Route as HerdrLayoutRoute} from "../src/routes/herdr";
-import {Route as HerdrRoute} from "../src/routes/herdr.index";
-import {Route as HerdrTerminalRoute} from "../src/routes/herdr.terminal.$sessionId";
+import {redirectLegacyHerdr} from "../src/routes/herdr";
+import {Route as HerdrLayoutRoute} from "../src/routes/terminals";
+import {Route as HerdrRoute} from "../src/routes/terminals.index";
+import {Route as HerdrTerminalRoute} from "../src/routes/terminals.terminal.$sessionId";
 
 vi.mock("../src/components/herdr-terminal", () => ({
 	HerdrTerminal: ({sessionId, interactive}: {sessionId: string; interactive?: boolean}) => (
@@ -53,7 +54,7 @@ afterEach(() => {
 });
 
 const HERDR_ROW_COLUMNS =
-	"grid grid-cols-[minmax(0,1fr)_5rem_8.5rem_2rem_9rem] items-center rounded-md border border-border";
+	"grid grid-cols-[2.75rem_minmax(0,1fr)_5rem_8.5rem_2rem_9rem] items-center rounded-md border border-border";
 const HERDR_TERMINAL_COLUMNS =
 	"grid grid-cols-[1.25rem_minmax(0,1fr)] items-center gap-1.5 rounded-md p-3 no-underline transition-colors hover:bg-surface-0/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100";
 const HERDR_TRANSCRIPT_CELL =
@@ -130,7 +131,7 @@ async function renderHerdrPage(placements: ReturnType<typeof placement>[]) {
 	});
 	const router = createRouter({
 		routeTree: rootRoute,
-		history: createMemoryHistory({initialEntries: ["/herdr"]}),
+		history: createMemoryHistory({initialEntries: ["/terminals"]}),
 	});
 	await router.load();
 	render(<RouterProvider router={router} />);
@@ -175,7 +176,7 @@ async function renderTerminalPage({
 	});
 	const router = createRouter({
 		routeTree: rootRoute,
-		history: createMemoryHistory({initialEntries: ["/herdr/terminal/session-test-100"]}),
+		history: createMemoryHistory({initialEntries: ["/terminals/terminal/session-test-100"]}),
 	});
 	await router.load();
 	render(<RouterProvider router={router} />);
@@ -277,9 +278,10 @@ describe("HerdrPage", () => {
 
 		expect(
 			rows.map((row) => {
-				const [terminal, status, review, transcript, action] = Array.from(row.children);
+				const [host, terminal, status, review, transcript, action] = Array.from(row.children);
 				const [, glyph, title] = Array.from(terminal?.children ?? []);
 				return {
+					host: host?.textContent,
 					rowColumns: row.className,
 					cells: row.children.length,
 					terminalColumns: terminal?.className,
@@ -293,8 +295,9 @@ describe("HerdrPage", () => {
 			}),
 		).toStrictEqual([
 			{
+				host: "herdr",
 				rowColumns: HERDR_ROW_COLUMNS,
-				cells: 5,
+				cells: 6,
 				terminalColumns: HERDR_TERMINAL_COLUMNS,
 				glyph: "✳",
 				title: "Teammate availability notification",
@@ -304,8 +307,9 @@ describe("HerdrPage", () => {
 				actionCell: HERDR_ACTION_CELL,
 			},
 			{
+				host: "herdr",
 				rowColumns: HERDR_ROW_COLUMNS,
-				cells: 5,
+				cells: 6,
 				terminalColumns: HERDR_TERMINAL_COLUMNS,
 				glyph: "✓",
 				title: "kalshi",
@@ -315,8 +319,9 @@ describe("HerdrPage", () => {
 				actionCell: HERDR_ACTION_CELL,
 			},
 			{
+				host: "herdr",
 				rowColumns: HERDR_ROW_COLUMNS,
-				cells: 5,
+				cells: 6,
 				terminalColumns: HERDR_TERMINAL_COLUMNS,
 				glyph: "",
 				title: "claude-code-plans",
@@ -438,7 +443,7 @@ describe("HerdrPage", () => {
 		});
 		const router = createRouter({
 			routeTree: rootRoute,
-			history: createMemoryHistory({initialEntries: ["/herdr"]}),
+			history: createMemoryHistory({initialEntries: ["/terminals"]}),
 		});
 		await router.load();
 
@@ -481,14 +486,14 @@ describe("HerdrPage", () => {
 		});
 		const router = createRouter({
 			routeTree: rootRoute,
-			history: createMemoryHistory({initialEntries: ["/herdr"]}),
+			history: createMemoryHistory({initialEntries: ["/terminals"]}),
 		});
 		await router.load();
 
 		render(<RouterProvider router={router} />);
 
 		const scopeExplanation =
-			"This page lists Herdr panes linked to indexed Claude transcripts. It intentionally excludes Codex sessions and shell panes that are not linked to a Claude transcript.";
+			"This page lists herdr and tmux panes linked to indexed Claude transcripts. It intentionally excludes Codex sessions and shell panes that are not linked to a Claude transcript.";
 		expect({
 			heading: screen.getByRole("heading", {level: 1}).textContent,
 			count: screen.getByText("2 tracked Claude sessions").textContent,
@@ -496,11 +501,11 @@ describe("HerdrPage", () => {
 			routeMeta: routeMeta(HerdrRoute),
 			terminalRouteMeta: routeMeta(HerdrTerminalRoute),
 		}).toStrictEqual({
-			heading: "Herdr",
+			heading: "Terminals",
 			count: "2 tracked Claude sessions",
 			scopeExplanation,
-			routeMeta: [{title: "Herdr"}],
-			terminalRouteMeta: [{title: "Live Herdr terminal"}],
+			routeMeta: [{title: "Terminals"}],
+			terminalRouteMeta: [{title: "Live terminal"}],
 		});
 		expect(document.body.textContent.includes("Terminal Fleet")).toBe(false);
 	});
@@ -520,7 +525,7 @@ describe("HerdrPage", () => {
 		});
 		const router = createRouter({
 			routeTree: rootRoute,
-			history: createMemoryHistory({initialEntries: ["/herdr"]}),
+			history: createMemoryHistory({initialEntries: ["/terminals"]}),
 		});
 		await router.load();
 
@@ -562,13 +567,13 @@ describe("HerdrPage", () => {
 				className: HERDR_TRANSCRIPT_CELL,
 			},
 			terminal: {
-				href: "/herdr/terminal/session-test-100",
+				href: "/terminals/terminal/session-test-100",
 				title: `Open live read-only terminal for ${displayName}. Workspace workspace-test-100 · Pane pane-test-100 · Terminal terminal-test-100 · Capabilities: write, events, observe`,
 				className: HERDR_TERMINAL_COLUMNS,
 			},
 			displayName: ["Herdr pane focused", "*", "✓ $ Alice terminal"],
 			visibleTechnicalMetadata: {
-				provider: false,
+				provider: true,
 				workspaceId: false,
 				host: "herdr" as const,
 				paneId: false,
@@ -581,7 +586,7 @@ describe("HerdrPage", () => {
 	it("uses Herdr for the live terminal breadcrumb and route metadata", async () => {
 		await renderTerminalPage();
 
-		const breadcrumb = screen.getByRole("link", {name: "Herdr"});
+		const breadcrumb = screen.getByRole("link", {name: "Terminals"});
 		expect({
 			breadcrumb: breadcrumb.textContent,
 			breadcrumbHref: breadcrumb.getAttribute("href"),
@@ -589,10 +594,10 @@ describe("HerdrPage", () => {
 			routeMeta: routeMeta(HerdrTerminalRoute),
 			terminal: screen.getByRole("region", {name: "Live read-only terminal"}).textContent,
 		}).toStrictEqual({
-			breadcrumb: "Herdr",
-			breadcrumbHref: "/herdr",
+			breadcrumb: "Terminals",
+			breadcrumbHref: "/terminals",
 			heading: "Live terminal",
-			routeMeta: [{title: "Live Herdr terminal"}],
+			routeMeta: [{title: "Live terminal"}],
 			terminal: "session-test-100",
 		});
 		expect(document.body.textContent.includes("Terminal Fleet")).toBe(false);
@@ -724,7 +729,7 @@ describe("Herdr master-detail layout", () => {
 		});
 		const layoutRoute = createRoute({
 			getParentRoute: () => rootRoute,
-			path: "/herdr",
+			path: "/terminals",
 			component: HerdrLayout,
 		});
 		const indexRoute = createRoute({
@@ -745,7 +750,7 @@ describe("Herdr master-detail layout", () => {
 	}
 
 	it("shows the flat list beside the rail at the index", async () => {
-		const {router} = renderLayoutAt("/herdr");
+		const {router} = renderLayoutAt("/terminals");
 		await router.load();
 		render(<RouterProvider router={router} />);
 
@@ -753,7 +758,7 @@ describe("Herdr master-detail layout", () => {
 			rail: screen.getByRole("navigation", {name: "Herdr workspaces"}).textContent,
 			list: screen.getByRole("heading", {level: 1}).textContent,
 			terminal: screen.queryByRole("region", {name: "Live read-only terminal"}),
-		}).toStrictEqual({rail: "1kalshiidleTerminal 100idle", list: "Herdr", terminal: null});
+		}).toStrictEqual({rail: "1kalshiidleTerminal 100idle", list: "Terminals", terminal: null});
 	});
 
 	/**
@@ -762,14 +767,14 @@ describe("Herdr master-detail layout", () => {
 	 * rail opened the live terminal while the list row opened the transcript.
 	 */
 	it("sends the rail and the flat list to the same view for one pane", async () => {
-		const {router} = renderLayoutAt("/herdr");
+		const {router} = renderLayoutAt("/terminals");
 		await router.load();
 		render(<RouterProvider router={router} />);
 
 		const transcriptLink = screen.getByRole("link", {
 			name: "Open session transcript for Terminal 100",
 		});
-		const [rowPrimary] = Array.from(transcriptLink.parentElement?.children ?? []);
+		const [, rowPrimary] = Array.from(transcriptLink.parentElement?.children ?? []);
 		expect({
 			rail: screen
 				.getByRole("link", {name: "Open live terminal for Terminal 100 in workspace kalshi"})
@@ -778,15 +783,15 @@ describe("Herdr master-detail layout", () => {
 			rowPrimaryLabel: rowPrimary?.getAttribute("aria-label"),
 			rowSecondary: transcriptLink.getAttribute("href"),
 		}).toStrictEqual({
-			rail: "/herdr/terminal/session-test-100",
-			rowPrimary: "/herdr/terminal/session-test-100",
+			rail: "/terminals/terminal/session-test-100",
+			rowPrimary: "/terminals/terminal/session-test-100",
 			rowPrimaryLabel: "Open live read-only terminal for Terminal 100",
 			rowSecondary: "/session/session-test-100",
 		});
 	});
 
 	it("renders the pane detail through the outlet on a deep link, keeping the rail", async () => {
-		const {router} = renderLayoutAt("/herdr/terminal/session-test-100");
+		const {router} = renderLayoutAt("/terminals/terminal/session-test-100");
 		await router.load();
 		render(<RouterProvider router={router} />);
 
@@ -809,5 +814,91 @@ describe("Herdr master-detail layout", () => {
 			terminal: "session-test-100",
 			flatList: null,
 		});
+	});
+});
+
+describe("Terminals page tmux rows", () => {
+	it("labels each row with its host and shows a tmux session's unread mark", async () => {
+		const tmuxPlacement = {
+			provider: "tmux" as const,
+			sessionId: "session-test-900",
+			displayName: "claude",
+			active: false,
+			paneHandle: "%9",
+			scopeHandle: "/private/tmp/tmux-501/default",
+			capabilities: {supportsWrite: false, supportsEvents: true, supportsObserve: false},
+			tmuxWindow: {
+				sessionId: "session-test-900",
+				projectName: "alice-project",
+				windowIndex: 3,
+				windowName: "claude",
+				windowActive: false,
+				tmuxPane: "%9",
+				socket: "/private/tmp/tmux-501/default",
+			},
+			viewedState: {
+				currentMessageIndex: 4,
+				lastViewedMessageIndex: 2,
+				reviewTargetMessageIndex: 4,
+				newMessageCount: 2,
+				viewedInCcp: false,
+				viewedInHerdr: false,
+				viewedAnywhere: false,
+			},
+		};
+		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the page renders both providers; the helper is typed for herdr rows
+		await renderHerdrPage([
+			tmuxPlacement as unknown as ReturnType<typeof placement>,
+			placement({active: false, agentStatus: "idle", number: 100}),
+		]);
+
+		const tmuxRow = screen.getByRole("link", {name: /claude/u});
+		const herdrRow = screen.getByRole("link", {name: "Open session transcript for Terminal 100"}).parentElement;
+		expect({
+			tmuxHost: tmuxRow.children[2]?.textContent,
+			tmuxReview: tmuxRow.children[6]?.textContent,
+			herdrHost: herdrRow?.children[0]?.textContent,
+		}).toStrictEqual({tmuxHost: "tmux", tmuxReview: "Needs review · 2 new", herdrHost: "herdr"});
+	});
+});
+
+describe("legacy /herdr redirects", () => {
+	async function landingHref(path: string): Promise<string> {
+		const rootRoute = createRootRoute({component: Outlet});
+		const legacyRoute = createRoute({
+			getParentRoute: () => rootRoute,
+			path: "/herdr",
+			beforeLoad: redirectLegacyHerdr,
+		});
+		const legacySplatRoute = createRoute({getParentRoute: () => legacyRoute, path: "$"});
+		const terminalsRoute = createRoute({getParentRoute: () => rootRoute, path: "/terminals", component: Outlet});
+		const terminalsIndexRoute = createRoute({
+			getParentRoute: () => terminalsRoute,
+			path: "/",
+			component: () => null,
+		});
+		const terminalRoute = createRoute({
+			getParentRoute: () => terminalsRoute,
+			path: "/terminal/$sessionId",
+			component: () => null,
+		});
+		const router = createRouter({
+			routeTree: rootRoute.addChildren([
+				legacyRoute.addChildren([legacySplatRoute]),
+				terminalsRoute.addChildren([terminalsIndexRoute, terminalRoute]),
+			]),
+			history: createMemoryHistory({initialEntries: [path]}),
+		});
+		await router.load();
+		return router.state.location.href;
+	}
+
+	it.each([
+		["/herdr", "/terminals"],
+		["/herdr/", "/terminals"],
+		["/herdr/terminal/session-test-100", "/terminals/terminal/session-test-100"],
+		["/herdr/terminal/session-test-100?tab=shell#bottom", "/terminals/terminal/session-test-100?tab=shell#bottom"],
+	])("sends %s to %s", async (from, to) => {
+		await expect(landingHref(from)).resolves.toBe(to);
 	});
 });

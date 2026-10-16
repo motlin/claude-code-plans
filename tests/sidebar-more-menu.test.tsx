@@ -182,7 +182,7 @@ describe("sidebar More menu", () => {
 				"Scheduled",
 				"Background jobs",
 				"Active",
-				"Herdr",
+				"Terminals",
 				"Tmux Windows",
 				"Approvals",
 				"Notifications",
@@ -223,7 +223,7 @@ describe("Edit sidebar dialog", () => {
 			{label: "Scheduled", checked: "false"},
 			{label: "Background jobs", checked: "false"},
 			{label: "Active", checked: "false"},
-			{label: "Herdr", checked: "false"},
+			{label: "Terminals", checked: "false"},
 			{label: "Tmux Windows", checked: "false"},
 			{label: "Approvals", checked: "false"},
 			{label: "Notifications", checked: "false"},
@@ -240,9 +240,9 @@ describe("Edit sidebar dialog", () => {
 		await renderSidebar();
 		const dialog = await openEditSidebar();
 
-		fireEvent.click(within(dialog).getByRole("checkbox", {name: "Herdr"}));
+		fireEvent.click(within(dialog).getByRole("checkbox", {name: "Terminals"}));
 		await waitFor(() => {
-			expect(sidebarNavLabels()).toContain("Herdr");
+			expect(sidebarNavLabels()).toContain("Terminals");
 		});
 		fireEvent.click(within(dialog).getByRole("checkbox", {name: "Memories"}));
 		await waitFor(() => {
@@ -257,7 +257,7 @@ describe("Edit sidebar dialog", () => {
 				},
 				{...BASE_SETTINGS, visibleNavSections: ["artifacts", "herdr", "plans", "customize"]},
 			],
-			sidebar: ["Artifacts", "Herdr", "Plans", "Customize"],
+			sidebar: ["Artifacts", "Terminals", "Plans", "Customize"],
 		});
 	});
 

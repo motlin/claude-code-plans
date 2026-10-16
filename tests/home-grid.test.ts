@@ -70,12 +70,12 @@ describe("home page", () => {
 				.getAllByRole("link")
 				.map((link) => link.getAttribute("href"));
 			expect({
-				sidebarHasHerdr: sidebarLinks.includes("/herdr"),
+				sidebarHasTerminals: sidebarLinks.includes("/terminals"),
 				homeSectionsRegion: screen.queryByRole("region", {name: "Home sections"}),
 				homeLinks: within(homeBody)
 					.queryAllByRole("link")
 					.map((link) => link.getAttribute("href")),
-			}).toStrictEqual({sidebarHasHerdr: true, homeSectionsRegion: null, homeLinks: []});
+			}).toStrictEqual({sidebarHasTerminals: true, homeSectionsRegion: null, homeLinks: []});
 		} finally {
 			view.unmount();
 			queryClient.clear();
@@ -105,9 +105,9 @@ describe("home page", () => {
 		}
 	});
 
-	it("uses the Herdr name for the terminal fleet nav item", () => {
-		expect(navItems.filter((item) => item.to === "/herdr").map(({label, to}) => ({label, to}))).toStrictEqual([
-			{label: "Herdr", to: "/herdr"},
+	it("uses the Terminals name for the terminal fleet nav item", () => {
+		expect(navItems.filter((item) => item.to === "/terminals").map(({label, to}) => ({label, to}))).toStrictEqual([
+			{label: "Terminals", to: "/terminals"},
 		]);
 	});
 });

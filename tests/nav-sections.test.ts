@@ -21,7 +21,7 @@ describe("getVisibleNavItems", () => {
 				"Scheduled",
 				"Background jobs",
 				"Active",
-				"Herdr",
+				"Terminals",
 				"Tmux Windows",
 				"Approvals",
 				"Notifications",

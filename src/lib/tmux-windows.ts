@@ -22,9 +22,10 @@ export interface TmuxTerminalPlacement extends TerminalPlacementBase {
 	tmuxWindow: TmuxWindow;
 }
 
+/** Events come from the 2 s `list-panes` poll in `tmux/pane-events.ts`. */
 const TMUX_CAPABILITIES = {
 	supportsWrite: false,
-	supportsEvents: false,
+	supportsEvents: true,
 	supportsObserve: false,
 };
 

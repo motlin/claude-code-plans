@@ -9,17 +9,17 @@ import {terminalPlacementsQueryOptions} from "../lib/api/terminal-placements";
 import {updateSessionViewedState} from "../lib/api/viewed-state";
 import {splitTerminalTitleGlyph} from "../lib/herdr/terminal-title";
 
-export const Route = createFileRoute("/herdr/")({
-	component: HerdrPage,
+export const Route = createFileRoute("/terminals/")({
+	component: TerminalsPage,
 	loader: async ({context: {queryClient}}) =>
 		queryClient.query({...terminalPlacementsQueryOptions, staleTime: "static"}),
 	head: () => ({
-		meta: [{title: "Herdr"}],
+		meta: [{title: "Terminals"}],
 	}),
 });
 
 const TRACKED_CLAUDE_SCOPE =
-	"This page lists Herdr panes linked to indexed Claude transcripts. It intentionally excludes Codex sessions and shell panes that are not linked to a Claude transcript.";
+	"This page lists herdr and tmux panes linked to indexed Claude transcripts. It intentionally excludes Codex sessions and shell panes that are not linked to a Claude transcript.";
 
 /**
  * Every column but the title is fixed-width, and the trailing review-action
@@ -31,12 +31,14 @@ const TRACKED_CLAUDE_SCOPE =
  * affordance in the trailing icon cell.
  */
 const HERDR_ROW_COLUMNS =
-	"grid grid-cols-[minmax(0,1fr)_5rem_8.5rem_2rem_9rem] items-center rounded-md border border-border";
+	"grid grid-cols-[2.75rem_minmax(0,1fr)_5rem_8.5rem_2rem_9rem] items-center rounded-md border border-border";
 
 const TMUX_ROW_COLUMNS =
-	"grid grid-cols-[0.625rem_2.75rem_2.5rem_minmax(0,1fr)_minmax(0,8rem)_auto] items-center gap-2 rounded-md border border-border p-3 no-underline transition-colors hover:bg-surface-0/50";
+	"grid grid-cols-[0.625rem_2.75rem_2.5rem_minmax(0,1fr)_minmax(0,8rem)_8.5rem_auto] items-center gap-2 rounded-md border border-border p-3 no-underline transition-colors hover:bg-surface-0/50";
 
-function HerdrEmptyState() {
+const HOST_BADGE = "rounded bg-surface-0/60 px-1.5 py-0.5 text-center text-[10px] text-t6";
+
+function TerminalsEmptyState() {
 	return (
 		<div className="mx-auto mt-8 max-w-lg rounded-md border border-border p-6 text-sm text-t6">
 			<p className="text-primary">No terminal placements are linked to Claude sessions yet.</p>
@@ -92,7 +94,7 @@ function CapabilityBadges({
 	);
 }
 
-function HerdrPage() {
+function TerminalsPage() {
 	const {data} = useSuspenseQuery(terminalPlacementsQueryOptions);
 	const queryClient = useQueryClient();
 	const placements = data.placements;
@@ -103,14 +105,12 @@ function HerdrPage() {
 			if (!previous) return previous;
 			return {
 				...previous,
-				placements: previous.placements.map((placement) =>
-					placement.provider === "herdr" && placement.sessionId === sessionId
-						? {
-								...placement,
-								herdrPane: {...placement.herdrPane, viewedState},
-							}
-						: placement,
-				),
+				placements: previous.placements.map((placement) => {
+					if (placement.sessionId !== sessionId) return placement;
+					return placement.provider === "herdr"
+						? {...placement, herdrPane: {...placement.herdrPane, viewedState}}
+						: {...placement, viewedState};
+				}),
 			};
 		});
 		await Promise.all([
@@ -122,7 +122,7 @@ function HerdrPage() {
 	return (
 		<div>
 			<div className="flex items-center gap-3">
-				<h1 className="text-lg font-semibold">Herdr</h1>
+				<h1 className="text-lg font-semibold">Terminals</h1>
 				<span className="text-sm text-t6">{placements.length} tracked Claude sessions</span>
 				<span role="img" aria-label={TRACKED_CLAUDE_SCOPE} title={TRACKED_CLAUDE_SCOPE} className="text-t6">
 					<Info aria-hidden="true" className="h-3.5 w-3.5" />
@@ -131,7 +131,7 @@ function HerdrPage() {
 			</div>
 
 			{placements.length === 0 ? (
-				<HerdrEmptyState />
+				<TerminalsEmptyState />
 			) : (
 				<div className="mt-4 space-y-1">
 					{placements.map((placement) => {
@@ -147,9 +147,7 @@ function HerdrPage() {
 									<span className="sr-only">
 										{placement.active ? "Tmux window active" : "Tmux window not active"}
 									</span>
-									<span className="rounded bg-surface-0/60 px-1.5 py-0.5 text-center text-[10px] text-t6">
-										tmux
-									</span>
+									<span className={HOST_BADGE}>tmux</span>
 									<span className="tabular-nums text-sm text-t6">
 										#{placement.tmuxWindow.windowIndex}
 									</span>
@@ -157,6 +155,10 @@ function HerdrPage() {
 										{placement.displayName}
 									</span>
 									<span className="truncate text-xs text-t6">{placement.tmuxWindow.projectName}</span>
+									<NeedsReviewMarker
+										needsReview={!placement.viewedState.viewedAnywhere}
+										newMessageCount={placement.viewedState.newMessageCount}
+									/>
 									<CapabilityBadges
 										capabilities={placement.capabilities}
 										writesEnabled={data.writesEnabled}
@@ -182,8 +184,9 @@ function HerdrPage() {
 								key={`herdr:${placement.scopeHandle}:${placement.paneHandle}:${placement.sessionId}`}
 								className={HERDR_ROW_COLUMNS}
 							>
+								<span className={`${HOST_BADGE} ml-3`}>herdr</span>
 								<Link
-									to="/herdr/terminal/$sessionId"
+									to="/terminals/terminal/$sessionId"
 									params={{sessionId: placement.sessionId}}
 									aria-label={`Open live read-only terminal for ${placement.displayName}`}
 									title={`Open live read-only terminal for ${placement.displayName}. ${technicalDetails}`}

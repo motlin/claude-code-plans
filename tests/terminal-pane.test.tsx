@@ -608,7 +608,7 @@ describe("Shell tabs", () => {
 });
 
 describe("Terminal pane header menu", () => {
-	it("pops the terminal out to its /herdr page with Open in new window", async () => {
+	it("pops the terminal out to its /terminals page with Open in new window", async () => {
 		const open = vi.spyOn(window, "open").mockReturnValue(null);
 		renderSession(true);
 		act(() => {
@@ -625,7 +625,7 @@ describe("Terminal pane header menu", () => {
 			opened: open.mock.calls,
 		}).toStrictEqual({
 			items: ["Open in new window"],
-			opened: [[`/herdr/terminal/${SESSION_ID}`, "_blank", "noopener"]],
+			opened: [[`/terminals/terminal/${SESSION_ID}`, "_blank", "noopener"]],
 		});
 	});
 });

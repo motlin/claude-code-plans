@@ -9,6 +9,7 @@ import {defaultTmuxSessionPaneSources, getTmuxSessionPanes, type TmuxSessionPane
 import {TERMINAL_HOST_CAPABILITIES} from "../terminal-host-capabilities";
 import {defaultTmuxLaunchIo, launchClaudeInTmux, type TmuxLaunchIo} from "../tmux/launch";
 import {defaultTmuxWriteIo, tmuxWriteDependencies, type TmuxWriteIo} from "../tmux/writes";
+import {startTmuxPaneEvents} from "../tmux/pane-events";
 import {defaultHerdrInterruptDependencies, handleHerdrInterrupt} from "../herdr/interrupt";
 import {defaultHerdrLaunchDependencies, handleHerdrLaunch} from "../herdr/launch";
 import {defaultHerdrLiveOptionDependencies, handleHerdrLiveOption} from "../herdr/live-option";
@@ -146,8 +147,9 @@ const noTerminalHost: TerminalHost = {
  * tmux: panes and session-to-pane mapping (hook `TMUX_PANE`, else the session
  * pid's process tree), and writes through `tmux send-keys` behind herdr's
  * handlers, gated by the hook-reported state (see `tmux/writes.ts`), and
- * launches into new detached windows (see `tmux/launch.ts`). Pane events and
- * live terminals are refused until later slices wire them up.
+ * launches into new detached windows (see `tmux/launch.ts`), and pane events
+ * from a 2 s `list-panes` poll (see `tmux/pane-events.ts`). Live terminals are
+ * refused until a later slice wires them up.
  */
 export function createTmuxTerminalHost(
 	sources: TmuxSessionPaneSources = defaultTmuxSessionPaneSources,
@@ -160,6 +162,7 @@ export function createTmuxTerminalHost(
 		id: "tmux",
 		...TERMINAL_HOST_CAPABILITIES.tmux,
 		listPanes: async () => (await getTmuxSessionPanes(sources)).map(toTmuxPaneLink),
+		startPaneEvents: startTmuxPaneEvents,
 		placementProvider: () => createTmuxPlacementProvider(sources),
 		prompt: async (request) =>
 			handleHerdrPrompt(request, {
@@ -216,13 +219,33 @@ export async function getTerminalHost(): Promise<TerminalHost> {
 	return resolveTerminalHost(terminalHostSetting());
 }
 
+interface PaneEventStarters {
+	herdr: () => () => void;
+	tmux: () => () => void;
+}
+
+const defaultPaneEventStarters: PaneEventStarters = {
+	herdr: herdrTerminalHost.startPaneEvents,
+	tmux: tmuxTerminalHost.startPaneEvents,
+};
+
 /**
- * Start pane events at server startup. Unless the user chose tmux, herdr's
- * bridge runs: it reconnects on its own, so herdr starting after ccp (with
- * `auto` briefly resolving elsewhere) still gets events.
+ * Start pane events at server startup for every host the setting can pick:
+ * `auto` runs both, since the Terminals view lists herdr and tmux panes
+ * together. herdr's bridge reconnects on its own, so herdr starting after ccp
+ * still gets events.
  */
-export function startTerminalHostEvents(): () => void {
-	return terminalHostSetting() === "tmux" ? noTerminalHost.startPaneEvents() : herdrTerminalHost.startPaneEvents();
+export function startTerminalHostEvents(
+	setting: TerminalHostSetting = terminalHostSetting(),
+	starters: PaneEventStarters = defaultPaneEventStarters,
+): () => void {
+	const stops = [
+		...(setting === "tmux" ? [] : [starters.herdr()]),
+		...(setting === "herdr" ? [] : [starters.tmux()]),
+	];
+	return () => {
+		for (const stop of stops) stop();
+	};
 }
 
 /** Server shutdown: stop the live terminal streams of every host that can open one. */

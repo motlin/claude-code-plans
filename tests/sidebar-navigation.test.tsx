@@ -182,7 +182,7 @@ describe("sidebar navigation", () => {
 			{label: "Scheduled", to: "/routines"},
 			{label: "Background jobs", to: "/jobs"},
 			{label: "Active", to: "/active"},
-			{label: "Herdr", to: "/herdr"},
+			{label: "Terminals", to: "/terminals"},
 			{label: "Tmux Windows", to: "/tmux"},
 			{label: "Approvals", to: "/approvals"},
 			{label: "Notifications", to: "/notifications"},
@@ -283,9 +283,9 @@ describe("sidebar navigation", () => {
 		expect(activeSectionFor(matches)).toStrictEqual({section: "tmux", activeItemId: null});
 	});
 
-	it("activates the Herdr section and terminal on a live terminal route", () => {
+	it("activates the Terminals section and terminal on a live terminal route", () => {
 		const matches = [
-			{fullPath: "/herdr/terminal/$sessionId", params: {sessionId: "session-test-100"}},
+			{fullPath: "/terminals/terminal/$sessionId", params: {sessionId: "session-test-100"}},
 		] as unknown as Parameters<typeof activeSectionFor>[0];
 
 		expect(activeSectionFor(matches)).toStrictEqual({

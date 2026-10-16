@@ -107,7 +107,7 @@ describe("terminal placement providers", () => {
 				scopeHandle: "/tmp/test/tmux.sock",
 				capabilities: {
 					supportsWrite: false,
-					supportsEvents: false,
+					supportsEvents: true,
 					supportsObserve: false,
 				},
 				tmuxWindow: {
@@ -232,7 +232,7 @@ describe("terminal placement providers", () => {
 					id: "tmux",
 					capabilities: {
 						supportsWrite: false,
-						supportsEvents: false,
+						supportsEvents: true,
 						supportsObserve: false,
 					},
 				},
@@ -250,7 +250,7 @@ describe("terminal placement providers", () => {
 					provider: "tmux",
 					capabilities: {
 						supportsWrite: false,
-						supportsEvents: false,
+						supportsEvents: true,
 						supportsObserve: false,
 					},
 				},

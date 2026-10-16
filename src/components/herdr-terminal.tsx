@@ -22,7 +22,7 @@ function streamUrl(interactive: boolean, sessionId: string, columns: number, row
 }
 
 /**
- * `page` is the standalone `/herdr/terminal` view with its prose header and a
+ * `page` is the standalone `/terminals/terminal` view with its prose header and a
  * fixed-height box; `pane` fills its tile and reports status to the host, which
  * shows it as a compact chip.
  *

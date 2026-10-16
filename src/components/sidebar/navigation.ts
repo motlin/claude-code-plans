@@ -56,8 +56,8 @@ const navEntries = {
 		icon: Radio,
 	},
 	herdr: {
-		to: "/herdr",
-		label: "Herdr",
+		to: "/terminals",
+		label: "Terminals",
 		icon: SquareTerminal,
 	},
 	tmux: {
