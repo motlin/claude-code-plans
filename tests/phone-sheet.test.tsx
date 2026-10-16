@@ -22,6 +22,7 @@ import {activeSessionsQueryOptions} from "../src/lib/api/sessions";
 import {NAV_SECTIONS} from "../src/lib/nav-sections";
 import {readSidebarState, SIDEBAR_STORAGE_KEY, useSidebarState, writeSidebarState} from "../src/lib/sidebar-store";
 import {NARROW_VIEWPORT_QUERY, PHONE_SHEET_QUERY} from "../src/lib/use-phone-sheet";
+import {readFileSync} from "node:fs";
 import {installLocalStorage} from "./fake-storage";
 
 function seedQueryClient(): QueryClient {
@@ -227,6 +228,21 @@ describe("phone sheet sidebar", () => {
 		expect(mainElement(container).hasAttribute("inert")).toBe(false);
 	});
 
+	it("draws Close sidebar as upstream's 20px X", async () => {
+		mockViewport(390);
+		await renderFrame();
+		await openSheet();
+
+		expect(
+			screen
+				.getByRole("button", {name: "Close sidebar"})
+				.querySelector("svg")
+				?.getAttribute("class")
+				?.split(" ")
+				.filter((name) => name.startsWith("lucide-") || name === "size-5"),
+		).toStrictEqual(["lucide-x", "size-5"]);
+	});
+
 	it("closes when the route changes", async () => {
 		mockViewport(390);
 		const {router} = await renderFrame();
@@ -343,5 +359,23 @@ describe("narrow viewport forced collapse", () => {
 		const {container} = await renderFrame();
 
 		expect(mainElement(container).getAttribute("data-perf-region")).toBe("main");
+	});
+});
+
+describe("phone sheet CSS", () => {
+	const styles = readFileSync("src/styles/globals.css", "utf8");
+	const rule = (selector: string) => {
+		const start = styles.indexOf(`${selector} {`);
+		return styles.slice(start, styles.indexOf("}", start));
+	};
+
+	it("insets the sheet only for safe areas, so its rows sit 8px in as upstream's px-2 body", () => {
+		expect(/padding:[^;]*max\(8px/.test(rule("\n.phone-sheet"))).toBe(false);
+	});
+
+	it("reveals row options on the sheet only for touch pointers, not every phone-width mouse", () => {
+		const reveal = styles.indexOf(".phone-sheet .df-touch-reveal {");
+		const before = styles.slice(Math.max(0, reveal - 200), reveal);
+		expect(/@media \(hover: none\), \(pointer: coarse\) \{\s*$/.test(before)).toBe(true);
 	});
 });

@@ -653,8 +653,9 @@
 	display: flex;
 	flex-direction: column;
 	max-height: 100dvh;
-	padding: env(safe-area-inset-top) max(8px, env(safe-area-inset-right)) max(env(safe-area-inset-bottom), 0.5rem)
-		max(8px, env(safe-area-inset-left));
+	/* Only the safe areas: the body's own px-2 sets rows 8px in, as upstream's .dframe-sidebar-body. */
+	padding: env(safe-area-inset-top) env(safe-area-inset-right) max(env(safe-area-inset-bottom), 0.5rem)
+		env(safe-area-inset-left);
 	background: var(--sb-bg);
 	visibility: hidden;
 	overscroll-behavior: contain;
@@ -682,9 +683,12 @@
 	transition: none;
 }
 
-.phone-sheet .df-touch-reveal {
-	opacity: 1;
-	pointer-events: auto;
+/* Row options show without hover only on touch; a mouse at phone width still reveals them on hover. */
+@media (hover: none), (pointer: coarse) {
+	.phone-sheet .df-touch-reveal {
+		opacity: 1;
+		pointer-events: auto;
+	}
 }
 
 @media (prefers-reduced-motion: reduce) {

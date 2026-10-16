@@ -9,7 +9,7 @@ import {NavScroll} from "./nav-scroll";
 import {NewSessionRow} from "./new-session-row";
 import {SidebarFooter} from "./sidebar-footer";
 import {SidebarToggleButton} from "./sidebar-toggle";
-import {SidebarToggleIcon} from "./primitives";
+import {X} from "lucide-react";
 import {SidebarSessionGroups} from "./session-filter-menu";
 import {approvalsQueryOptions} from "../../lib/api/approvals";
 import {notificationsQueryOptions, useMarkNotificationsRead} from "../../lib/api/notifications";
@@ -137,9 +137,9 @@ export function Sidebar({
 						aria-label="Close sidebar"
 						data-phone-sheet-close=""
 						onClick={onPhoneSheetClose}
-						className="flex h-8 w-8 items-center justify-center rounded-r5 text-primary transition-colors hover:bg-fill-ghost-hover [&_svg]:h-5 [&_svg]:w-5"
+						className="flex h-8 w-8 items-center justify-center rounded-r5 text-primary transition-colors hover:bg-fill-ghost-hover"
 					>
-						<SidebarToggleIcon />
+						<X aria-hidden="true" className="size-5" />
 					</button>
 					<SidebarWordmark className="ml-2" />
 				</div>
