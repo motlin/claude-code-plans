@@ -47,6 +47,7 @@ import type {
 	SessionRegistryStatusSchema,
 	SkillOverrideValueSchema,
 	TaskStatusSchema,
+	ToolAdditionToolSchema,
 	TurnOriginSchema,
 	UserRecordSchema,
 	WriteToolUseResultTypeSchema,
@@ -592,6 +593,12 @@ const apiRequestBlobContentBlockVariants = {
 	tool_addition: true,
 } satisfies Record<z.infer<typeof ApiRequestBlobContentBlockSchema>["type"], true>;
 
+/** Not consumed yet — the API request log is only validated. */
+const toolAdditionToolVariants = {
+	tool_definition: true,
+	tool_reference: true,
+} satisfies Record<z.infer<typeof ToolAdditionToolSchema>["type"], true>;
+
 const apiRequestBlobRoleLabels = {
 	user: "User",
 	assistant: "Assistant",
@@ -1131,6 +1138,7 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
 	"UserRecordSchema.permissionDecision.reasonType": permissionDecisionReasonTypeLabels,
 	JsonlRecordSchema: jsonlRecordVariants,
 	"JsonlRecordSchema.<api-request-blob>.message.content|1[]": apiRequestBlobContentBlockVariants,
+	"JsonlRecordSchema.<api-request-blob>.message.content|1[].<tool_addition>.tool": toolAdditionToolVariants,
 	"JsonlRecordSchema.<api-request-blob>.message.role": apiRequestBlobRoleLabels,
 	"FileEditToolUseResultSchema|0.type": writeToolUseResultTypeLabels,
 	"GitOperationSchema.commit.kind": gitCommitKindLabels,

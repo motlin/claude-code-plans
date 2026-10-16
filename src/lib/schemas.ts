@@ -1649,15 +1649,27 @@ export const ApiRequestShapeRecordSchema = z
 	})
 	.strict();
 
+// A tool added mid-conversation: either its full definition, or just its name
+// when the definition was already sent.
+export const ToolAdditionToolSchema = z.discriminatedUnion("type", [
+	z
+		.object({
+			type: z.literal("tool_definition"),
+			definition: ToolDefinitionSchema,
+		})
+		.strict(),
+	z
+		.object({
+			type: z.literal("tool_reference"),
+			name: z.string(),
+		})
+		.strict(),
+]);
+
 const ToolAdditionBlockSchema = z
 	.object({
 		type: z.literal("tool_addition"),
-		tool: z
-			.object({
-				type: z.literal("tool_definition"),
-				definition: ToolDefinitionSchema,
-			})
-			.strict(),
+		tool: ToolAdditionToolSchema,
 	})
 	.strict();
 

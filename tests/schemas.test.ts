@@ -1931,6 +1931,24 @@ describe("JsonlRecordSchema observed 2026-09 transcript fields", () => {
 		expect(records.map((record) => JsonlRecordSchema.parse(record))).toStrictEqual(records);
 	});
 
+	it("parses api-request-blob tool_addition blocks that reference a tool by name", () => {
+		const record = {
+			type: "api-request-blob",
+			sessionId: "sess-123",
+			hash: "a61841f4",
+			message: {
+				role: "system",
+				content: [
+					{type: "text", text: "Called the Read tool with the following input"},
+					{type: "tool_addition", tool: {type: "tool_reference", name: "ReadNotifications"}},
+					{type: "tool_addition", tool: {type: "tool_reference", name: "mcp__claude_ai_Claude_Docs__batch"}},
+				],
+			},
+		};
+
+		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
+	});
+
 	it("parses a synthetic usage-limit assistant record with apiError, apiErrorParams, and quotaLimits", () => {
 		const rateLimitInfo = {
 			status: "rejected",
