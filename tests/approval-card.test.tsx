@@ -51,7 +51,7 @@ describe("shared approval card chrome", () => {
 		expect(sharedChrome(dock)).toStrictEqual(sharedChrome(permission));
 	});
 
-	it("stacks only the permission card's actions full width below 500px, keeping a question's Skip and Submit compact and right-aligned as upstream does", () => {
+	it("makes each card its own container and stacks every card's actions full width at upstream's 420px, measured on the question card's full width", () => {
 		const {permission, dock} = chrome();
 		render(
 			<PendingQuestionCard
@@ -59,28 +59,29 @@ describe("shared approval card chrome", () => {
 			/>,
 		);
 		const pending = screen.getByRole("group", {name: "Waiting for your input"});
-		const narrow = (value: string | null | undefined) =>
-			(value ?? "").split(/\s+/).filter((name) => name.startsWith("@max-[500px]/approval-dock:"));
-		const card = (actions: string | null | undefined, buttons: (string | null | undefined)[]) => ({
-			actions: narrow(actions),
-			buttons: buttons.flatMap(narrow),
-		});
+		const queries = (value: string | null | undefined) =>
+			(value ?? "").split(/\s+/).filter((name) => name.startsWith("@max-["));
+		const roots = [...document.querySelectorAll("[data-approval-card-root]")].map((root) =>
+			root.className.split(/\s+/).includes("@container"),
+		);
+		const stack = (width: number) => [
+			`@max-[${width}px]:flex-col`,
+			`@max-[${width}px]:items-stretch`,
+			`@max-[${width}px]:[&>span]:ms-0`,
+			`@max-[${width}px]:[&>span]:flex-col`,
+			`@max-[${width}px]:[&>span]:items-stretch`,
+		];
+
 		expect({
-			permission: card(permission.actions, [permission.secondary, permission.primary]),
-			dock: card(dock.actions, [dock.secondary, dock.primary]),
-			pending: card(
-				pending.querySelector("[data-approval-card-actions]")?.getAttribute("class"),
-				[...pending.querySelectorAll("[data-approval-card-actions] button")].map((b) =>
-					b.getAttribute("class"),
-				),
-			),
+			roots,
+			permission: queries(permission.actions),
+			dock: queries(dock.actions),
+			pending: queries(pending.querySelector("[data-approval-card-actions]")?.getAttribute("class")),
 		}).toStrictEqual({
-			permission: {
-				actions: ["@max-[500px]/approval-dock:flex-col", "@max-[500px]/approval-dock:*:w-full"],
-				buttons: [],
-			},
-			dock: {actions: ["@max-[500px]/approval-dock:justify-end"], buttons: []},
-			pending: {actions: ["@max-[500px]/approval-dock:justify-end"], buttons: []},
+			roots: [true, true, true],
+			permission: stack(420),
+			dock: stack(396),
+			pending: stack(396),
 		});
 	});
 

@@ -107,7 +107,7 @@ export function ApprovalDock({
 
 	return (
 		<ApprovalCardShell
-			stackActions={false}
+			question
 			body={
 				<>
 					<div className="flex items-start gap-2">

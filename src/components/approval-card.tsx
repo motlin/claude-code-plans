@@ -36,18 +36,25 @@ export function ApprovalActionButton({
 
 export const APPROVAL_CARD_TITLE = "flex min-h-6 items-center text-[13px]/[19px] font-[580]";
 
+/** Upstream's `@container (width <= 420px)` stack: the action row and its button group, full width. */
+const STACK_ACTIONS =
+	"@max-[420px]:flex-col @max-[420px]:items-stretch @max-[420px]:[&>span]:ms-0 @max-[420px]:[&>span]:flex-col @max-[420px]:[&>span]:items-stretch";
+const STACK_QUESTION_ACTIONS =
+	"@max-[396px]:flex-col @max-[396px]:items-stretch @max-[396px]:[&>span]:ms-0 @max-[396px]:[&>span]:flex-col @max-[396px]:[&>span]:items-stretch";
+
 /**
  * The card docked above the composer for every pending approval, copied from
  * claude.ai/code: one shell (upstream shadow, 10px radius, 12px padding) with a
- * scrolling body and an action row. Below 500px a permission card stacks its
- * actions full width, while a question card keeps them compact at the right.
+ * scrolling body and an action row. Each card is its own inline-size container,
+ * and at upstream's 420px its actions stack full width. Upstream's question card
+ * drops the shell padding, so its 420px is the whole card: 396px of our content box.
  */
 export function ApprovalCardShell({
 	label,
 	digits,
 	body,
 	actions,
-	stackActions = true,
+	question = false,
 	footer,
 }: {
 	/** The card's accessible group label; omitted cards are a plain focusable box. */
@@ -56,8 +63,8 @@ export function ApprovalCardShell({
 	digits?: number;
 	body: ReactNode;
 	actions: ReactNode;
-	/** Whether the actions stack full width below 500px; question cards keep upstream's compact row. */
-	stackActions?: boolean;
+	/** A question card, whose actions stack at a 420px card rather than a 420px content box. */
+	question?: boolean;
 	/** A line under the actions, such as the tool-approval notify tip. */
 	footer?: ReactNode;
 }) {
@@ -69,7 +76,7 @@ export function ApprovalCardShell({
 				role={label === undefined ? undefined : "group"}
 				aria-label={label}
 				tabIndex={0}
-				className="relative isolate flex max-h-[60vh] flex-col gap-3 rounded-r7 bg-surface-popover p-3 text-[13px]/[19px] text-primary shadow-[var(--approval-card-shadow)]"
+				className="@container relative isolate flex max-h-[60vh] flex-col gap-3 rounded-r7 bg-surface-popover p-3 text-[13px]/[19px] text-primary shadow-[var(--approval-card-shadow)]"
 			>
 				<div
 					data-approval-card-body
@@ -79,7 +86,7 @@ export function ApprovalCardShell({
 				</div>
 				<div
 					data-approval-card-actions
-					className={`flex flex-wrap items-start justify-between gap-x-3 gap-y-2 ${stackActions ? "@max-[500px]/approval-dock:flex-col @max-[500px]/approval-dock:*:w-full" : "@max-[500px]/approval-dock:justify-end"}`}
+					className={`flex flex-wrap items-start justify-between gap-x-3 gap-y-2 ${question ? STACK_QUESTION_ACTIONS : STACK_ACTIONS}`}
 				>
 					{actions}
 				</div>
@@ -285,7 +292,7 @@ export function PendingQuestionCard({
 	const multiSelect = question.multiSelect === true;
 	return (
 		<ApprovalCardShell
-			stackActions={false}
+			question
 			label="Waiting for your input"
 			body={
 				<>
