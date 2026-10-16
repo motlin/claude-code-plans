@@ -810,6 +810,7 @@ function SessionView({
 										anchorRef={scrollAnchorRef}
 										needsInput={
 											pendingQuestion !== null ||
+											pendingPermission !== null ||
 											(sessionSummaryState === "waiting" &&
 												hookQuestion !== undefined &&
 												hookQuestion !== null)
@@ -835,20 +836,6 @@ function SessionView({
 													statusline={statusline}
 												/>
 											)}
-										{pendingPermission && (
-											<PermissionCard
-												key={pendingPermission.notificationId}
-												title={pendingPermission.title}
-												command={pendingPermission.command}
-												canAnswer={promptBehavior.hasLivePane && herdr.writesEnabled}
-												onDecision={answerPermission}
-												footer={
-													<Suspense fallback={null}>
-														<ToolApprovalNotifyTip sessionId={sessionId} />
-													</Suspense>
-												}
-											/>
-										)}
 										{/* With no question to draw inline, a waiting session says it needs input above the composer */}
 										{showsWaitingForInputNotice({
 											state: sessionSummaryState,
@@ -968,6 +955,23 @@ function SessionView({
 							</SessionFileRefs>
 						</AskUserQuestionProvider>
 
+						{/* Upstream draws every pending approval inline; a permission prompt is not on disk, so it follows the transcript */}
+						{pendingPermission && (
+							<div data-inline-permission="" className={`${CHAT_COLUMN_CLASS} pb-4`}>
+								<PermissionCard
+									key={pendingPermission.notificationId}
+									title={pendingPermission.title}
+									command={pendingPermission.command}
+									canAnswer={promptBehavior.hasLivePane && herdr.writesEnabled}
+									onDecision={answerPermission}
+									footer={
+										<Suspense fallback={null}>
+											<ToolApprovalNotifyTip sessionId={sessionId} />
+										</Suspense>
+									}
+								/>
+							</div>
+						)}
 						{/* The CLI writes a question to the JSONL only once answered, so its hook copy is drawn inline at the transcript's end */}
 						{sessionSummaryState === "waiting" &&
 							hookQuestion &&

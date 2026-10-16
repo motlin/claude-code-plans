@@ -29,10 +29,11 @@ const STACK_ACTIONS =
 	"@max-[420px]:flex-col @max-[420px]:items-stretch @max-[420px]:[&>span]:ms-0 @max-[420px]:[&>span]:flex-col @max-[420px]:[&>span]:items-stretch";
 
 /**
- * The card docked above the composer for a pending permission, copied from
- * claude.ai/code: one shell (upstream shadow, 10px radius, 12px padding) with a
- * scrolling body and an action row. Each card is its own inline-size container,
- * and at upstream's 420px its actions stack full width.
+ * Upstream's approval card shell for a pending permission: a scrolling body
+ * and an action row, 10px radius and 12px padding. Each card is its own
+ * inline-size container, and at upstream's 420px its actions stack full width.
+ * Inline in the transcript ("card") it is outlined and transparent; docked above
+ * the composer it takes the popover fill and shadow.
  */
 export function ApprovalCardShell({
 	label,
@@ -40,6 +41,7 @@ export function ApprovalCardShell({
 	body,
 	actions,
 	footer,
+	presentation = "dock",
 }: {
 	/** The card's accessible group label; omitted cards are a plain focusable box. */
 	label?: string;
@@ -49,16 +51,20 @@ export function ApprovalCardShell({
 	actions: ReactNode;
 	/** A line under the actions, such as the tool-approval notify tip. */
 	footer?: ReactNode;
+	/** Upstream's inline "card" in the transcript, or the composer "dock". */
+	presentation?: "card" | "dock";
 }) {
+	const look = presentation === "card" ? "card-ring" : "bg-surface-popover shadow-[var(--approval-card-shadow)]";
 	return (
 		<div className="@container/approval-dock [--approval-dock-floor:144px] @max-[500px]/approval-dock:[--approval-dock-floor:208px]">
 			<div
 				data-approval-card-root
 				data-approval-card-digits={digits}
+				data-approval-presentation={presentation}
 				role={label === undefined ? undefined : "group"}
 				aria-label={label}
 				tabIndex={0}
-				className="@container relative isolate flex max-h-[60vh] flex-col gap-3 rounded-r7 bg-surface-popover p-3 text-[13px]/[19px] text-primary shadow-[var(--approval-card-shadow)]"
+				className={`@container relative isolate flex max-h-[60vh] flex-col gap-3 rounded-r7 p-3 text-[13px]/[19px] text-primary ${look}`}
 			>
 				<div
 					data-approval-card-body

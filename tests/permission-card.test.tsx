@@ -226,7 +226,7 @@ function renderCard({canAnswer = true}: {canAnswer?: boolean} = {}) {
 }
 
 describe("PermissionCard", () => {
-	it("renders the title, command block, and Deny / Allow once with keycaps", () => {
+	it("renders the title, command block, and upstream's Deny (Esc) / Allow once (⌘⏎)", () => {
 		const {container} = renderCard();
 		const card = container.querySelector("[data-approval-card-root]")!;
 		const deny = screen.getByRole("button", {name: /^Deny/});
@@ -241,12 +241,12 @@ describe("PermissionCard", () => {
 			label: "Permission request: run",
 			title: "Allow Claude to run Remove the build output?",
 			command: "rm -rf dist",
-			denyKeys: ["1", "Esc"],
-			allowKeys: ["2", "Ctrl", "⏎Enter"],
+			denyKeys: ["Esc"],
+			allowKeys: ["Ctrl", "⏎Enter"],
 		});
 	});
 
-	it("uses upstream's compact card, title, command block and button measurements", () => {
+	it("draws upstream's inline card presentation: outlined, transparent, unshadowed, its own container", () => {
 		const {container} = renderCard();
 		const card = container.querySelector<HTMLElement>("[data-approval-card-root]")!;
 		const missing = (element: Element | null, expected: string[]) => {
@@ -254,8 +254,11 @@ describe("PermissionCard", () => {
 			return expected.filter((name) => !actual.has(name));
 		};
 		expect({
-			digits: card.dataset["approvalCardDigits"],
-			card: missing(card, ["rounded-r7", "gap-3", "shadow-[var(--approval-card-shadow)]"]),
+			presentation: card.dataset["approvalPresentation"],
+			card: missing(card, ["card-ring", "@container", "rounded-r7", "gap-3", "p-3"]),
+			dockLook: ["shadow-[var(--approval-card-shadow)]", "bg-surface-popover"].filter((name) =>
+				card.classList.contains(name),
+			),
 			title: missing(card.querySelector("[data-permission-title]"), ["text-[13px]/[19px]", "font-[580]"]),
 			value: missing(card.querySelector("[data-approval-value]"), [
 				"font-mono",
@@ -282,7 +285,7 @@ describe("PermissionCard", () => {
 				"bg-primary",
 				"text-surface-1",
 			]),
-		}).toStrictEqual({digits: "2", card: [], title: [], value: [], deny: [], allow: []});
+		}).toStrictEqual({presentation: "card", card: [], dockLook: [], title: [], value: [], deny: [], allow: []});
 	});
 
 	it("buttons send their decisions", () => {

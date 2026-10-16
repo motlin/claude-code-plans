@@ -410,7 +410,7 @@ describe("SessionPage dock composition", () => {
 			expect(dockContents()).toStrictEqual(order);
 		},
 	);
-	it("docks the permission card below the PR chip and above the usage chip, which sits directly on the composer", async () => {
+	it("draws the permission card inline after the transcript, as upstream's inline approvals, leaving the dock to the PR chip, usage chip and composer", async () => {
 		await renderSessionPage(
 			{...detail, pr},
 			[],
@@ -443,7 +443,12 @@ describe("SessionPage dock composition", () => {
 				},
 			],
 		);
-		expect(dockContents()).toStrictEqual(["pr", "permission", "usage", "composer"]);
+		const card = screen.getByRole("group", {name: "Permission request: run"});
+		expect({
+			dock: dockContents(),
+			inline: card.closest("[data-inline-permission]") !== null,
+			presentation: card.getAttribute("data-approval-presentation"),
+		}).toStrictEqual({dock: ["pr", "usage", "composer"], inline: true, presentation: "card"});
 	});
 	it("draws the stored question once, inline in the transcript, not a permission card, when the registry's permission wait is really a question", async () => {
 		await renderSessionPage(

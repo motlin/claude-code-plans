@@ -46,7 +46,7 @@ describe("approval card chrome", () => {
 		const missing = (value: string | null, expected: string[]) =>
 			expected.filter((name) => !classes(value).has(name));
 		expect({
-			card: missing(chrome.card, ["rounded-r7", "p-3", "shadow-[var(--approval-card-shadow)]"]),
+			card: missing(chrome.card, ["rounded-r7", "p-3", "card-ring"]),
 			secondary: missing(chrome.secondary, [
 				"h-6",
 				"rounded-r5",

@@ -7,10 +7,9 @@ import {APPROVAL_CARD_TITLE, ApprovalActionButton, ApprovalCardShell} from "./ap
 import {Shortcut} from "./ui/shortcut";
 
 /**
- * The tool-permission card docked above the composer, copied from
- * claude.ai/code: "Allow Claude to run …?", the command block, and
- * [Deny 1 Esc] … [Allow once 2 ⌘⏎]. Keys act while the card is focused,
- * nothing is focused, or the composer is empty.
+ * The tool-permission card, drawn inline as claude.ai/code's approvals:
+ * "Allow Claude to run …?", the command block, and [Deny Esc] … [Allow once ⌘⏎].
+ * Keys act while the card is focused, nothing is focused, or the composer is empty.
  */
 export function PermissionCard({
 	title,
@@ -65,7 +64,7 @@ export function PermissionCard({
 		<ApprovalCardShell
 			label="Permission request: run"
 			footer={footer}
-			digits={2}
+			presentation="card"
 			body={
 				<>
 					<span data-permission-title data-approval-card-title className={APPROVAL_CARD_TITLE}>
@@ -87,13 +86,11 @@ export function PermissionCard({
 				<>
 					<ApprovalActionButton variant="secondary" disabled={!enabled} onClick={() => void decide("deny")}>
 						Deny
-						<Shortcut keys="1" className="pointer-coarse:hidden" />
 						<Shortcut keys="esc" className="pointer-coarse:hidden" />
 					</ApprovalActionButton>
 					<ApprovalActionButton variant="primary" disabled={!enabled} onClick={() => void decide("allow")}>
 						{submitting && <Loader2 aria-hidden="true" className="size-3 animate-spin" />}
 						Allow once
-						<Shortcut keys="2" className="pointer-coarse:hidden" />
 						<Shortcut keys="cmd+enter" className="pointer-coarse:hidden" />
 					</ApprovalActionButton>
 				</>
