@@ -5,6 +5,7 @@ import {setSessionRailShown} from "../../lib/session-rail-store";
 import {usePhoneSheet} from "../../lib/use-phone-sheet";
 import {useOptionalPaneHost} from "../panes/pane-host-context";
 import {TITLEBAR_ICON_BUTTON_CLASS} from "../titlebar-classes";
+import {MenuItem} from "../ui/menu";
 import {Tooltip} from "../ui/tooltip";
 import {useSessionRailDocked} from "./use-session-rail-docked";
 
@@ -38,6 +39,17 @@ export function SessionRailToggle() {
 				<PanelRight aria-hidden="true" />
 			</button>
 		</Tooltip>
+	);
+}
+
+/** The toggle folded into View options while the titlebar is compact. */
+export function SessionRailMenuItem() {
+	const {label, toggle} = useSessionRailToggle();
+	if (usePhoneSheet()) return null;
+	return (
+		<MenuItem icon={<PanelRight aria-hidden="true" />} onSelect={toggle}>
+			{label}
+		</MenuItem>
 	);
 }
 

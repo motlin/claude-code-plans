@@ -30,6 +30,7 @@ import {useRenameAfterMenuClose} from "./use-rename-after-menu-close";
 import {useSessionMenuRunner} from "./use-session-menu-runner";
 import {SessionTitleButton} from "./session-title-heading";
 import {useSessionTitleShortcuts} from "./use-session-title-shortcuts";
+import {TitlebarCompactContext} from "./titlebar-compact-context";
 import {useToast} from "./toast-context";
 import {
 	ContextMenu,
@@ -85,7 +86,7 @@ function downloadUrl(href: string): void {
 	anchor.click();
 }
 
-/** The titlebar's width, which collapses the origin pills. */
+/** The titlebar's width, which collapses the origin pills and folds the rail toggle into View options. */
 function useTitlebarMeasure() {
 	const ref = useRef<HTMLDivElement>(null);
 	const [width, setWidth] = useState<number | null>(null);
@@ -490,8 +491,10 @@ export function SessionTitlebar({
 				data-titlebar-trail=""
 				className="relative ml-auto flex shrink-0 items-center gap-1 pl-6 text-secondary"
 			>
-				{paneToggles !== undefined && <div className="flex items-center gap-1">{paneToggles}</div>}
-				{viewOptions}
+				<TitlebarCompactContext.Provider value={compact}>
+					{paneToggles !== undefined && <div className="flex items-center gap-1">{paneToggles}</div>}
+					{viewOptions}
+				</TitlebarCompactContext.Provider>
 			</div>
 		</div>
 	);

@@ -6,7 +6,8 @@ import {bindingsFor} from "../lib/shortcuts/match";
 import {bindingToKeys, type ShortcutId} from "../lib/shortcuts/registry";
 import {usePaneDefinitions} from "./panes/pane-registry";
 import {usePaneHost} from "./panes/pane-host-context";
-import {SessionRailToggle} from "./session-rail/session-rail-slot";
+import {SessionRailMenuItem, SessionRailToggle} from "./session-rail/session-rail-slot";
+import {useTitlebarCompact} from "./titlebar-compact-context";
 import {TITLEBAR_ICON_BUTTON_CLASS} from "./titlebar-classes";
 import {Menu, MenuCheckboxItem, MenuContent, MenuItem, MenuSeparator, MenuTrigger} from "./ui/menu";
 import {Tooltip} from "./ui/tooltip";
@@ -45,9 +46,12 @@ function MainPaneToggle({entry}: {entry: MainPaneEntry}) {
 }
 
 function ViewOptionsMenu({
+	railFolded,
 	entries,
 	onExpandChat,
 }: {
+	/** The Show/Hide session rail toggle, folded in from the trail. */
+	railFolded: boolean;
 	entries: readonly ViewOptionsItem[];
 	onExpandChat: (() => void) | undefined;
 }) {
@@ -62,6 +66,7 @@ function ViewOptionsMenu({
 				</MenuTrigger>
 			</Tooltip>
 			<MenuContent align="end">
+				{railFolded && <SessionRailMenuItem />}
 				{entries.map((entry) => {
 					const binding = entry.shortcut === undefined ? undefined : bindingsFor(entry.shortcut, isMac)[0];
 					const Icon = entry.icon;
@@ -91,7 +96,7 @@ function ViewOptionsMenu({
 				})}
 				{onExpandChat !== undefined && (
 					<>
-						{entries.length > 0 && <MenuSeparator />}
+						{(railFolded || entries.length > 0) && <MenuSeparator />}
 						<MenuItem onSelect={onExpandChat} shortcut={expandKeys.keys}>
 							Expand chat
 						</MenuItem>
@@ -105,8 +110,9 @@ function ViewOptionsMenu({
 /**
  * The titlebar trail's pane controls, upstream's set: the session rail toggle,
  * then the Changes and Files toggles, which stay icons at every width, then
- * View options ⋮ holding the other panes and Expand chat. The trigger shows
- * only when the menu has items.
+ * View options ⋮ holding the other panes and Expand chat. A compact titlebar
+ * folds the rail toggle into the top of the menu. The trigger shows only when
+ * the menu has items.
  */
 export function SessionPaneControls({
 	facts,
@@ -121,17 +127,19 @@ export function SessionPaneControls({
 }) {
 	const host = usePaneHost();
 	const definitions = usePaneDefinitions();
+	const compact = useTitlebarCompact();
 	const registered = new Set(definitions.keys());
 	const shown = MAIN_PANE_TOGGLES.filter((entry) => registered.has(entry.kind));
 	const menuEntries = viewOptionsItems({registered, isOpen: host.isOpen, facts});
+	const railFolded = railAvailable && compact;
 	return (
 		<>
-			{railAvailable && <SessionRailToggle />}
+			{railAvailable && !railFolded && <SessionRailToggle />}
 			{shown.map((entry) => (
 				<MainPaneToggle key={entry.kind} entry={entry} />
 			))}
-			{(menuEntries.length > 0 || onExpandChat !== undefined) && (
-				<ViewOptionsMenu entries={menuEntries} onExpandChat={onExpandChat} />
+			{(railFolded || menuEntries.length > 0 || onExpandChat !== undefined) && (
+				<ViewOptionsMenu railFolded={railFolded} entries={menuEntries} onExpandChat={onExpandChat} />
 			)}
 		</>
 	);

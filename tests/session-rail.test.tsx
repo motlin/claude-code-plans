@@ -9,6 +9,7 @@ import {SessionRail, type RailCard} from "../src/components/session-rail/session
 import {SessionRailSlot} from "../src/components/session-rail/session-rail-slot";
 import {useSessionRailDocked} from "../src/components/session-rail/use-session-rail-docked";
 import {SettingsProvider} from "../src/components/settings-provider";
+import {TitlebarCompactContext} from "../src/components/titlebar-compact-context";
 import {SessionPaneControls} from "../src/components/view-options-menu";
 import type {PaneKind} from "../src/lib/pane-layout";
 import {readRailSectionsState, readSessionRailShown, setSessionRailShown} from "../src/lib/session-rail-store";
@@ -117,6 +118,34 @@ describe("session rail toggle", () => {
 		}).toStrictEqual({
 			shown: {trail: [["Hide session rail", "true"]], stored: true, docked: "true", rail: "P"},
 			hidden: {trail: [["Show session rail", "false"]], stored: false, docked: "false", rail: null},
+		});
+	});
+
+	it("folds into the top of View options when the titlebar is compact, as upstream", async () => {
+		registerKinds("changes");
+		render(
+			<SettingsProvider>
+				<TileHost sessionId="rail-session">
+					<TitlebarCompactContext.Provider value>
+						<SessionPaneControls facts={{}} railAvailable />
+					</TitlebarCompactContext.Provider>
+				</TileHost>
+			</SettingsProvider>,
+		);
+		const before = trail();
+		fireEvent.click(screen.getByRole("button", {name: "View options"}));
+		await settle();
+		const rows = [...screen.getByRole("menu").querySelectorAll<HTMLElement>("[role^=menuitem]")].map((item) => [
+			item.getAttribute("role"),
+			item.textContent,
+		]);
+		fireEvent.click(screen.getByRole("menuitem", {name: "Show session rail"}));
+		await settle();
+
+		expect({before, rows, stored: readSessionRailShown()}).toStrictEqual({
+			before: [["Changes", "false"]],
+			rows: [["menuitem", "Show session rail"]],
+			stored: true,
 		});
 	});
 
