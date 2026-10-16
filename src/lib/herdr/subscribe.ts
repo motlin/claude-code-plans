@@ -15,7 +15,8 @@ import {
 import {isSessionVisible} from "../session-visibility";
 import {probeHerdr, type HerdrAvailability} from "./availability";
 import {herdrRequest} from "./client";
-import {createHerdrPaneDiffer, extractPaneRevision, type PaneRevision} from "./pane-differ";
+import {createHerdrPaneDiffer, extractPaneRevision} from "./pane-differ";
+import {herdrPaneTable, type HerdrPaneState, type HerdrPaneTable} from "./pane-table";
 import {getHerdrPanes, type HerdrPaneLink} from "./panes";
 import {HerdrSessionSnapshotResultSchema} from "./schema";
 import {createHerdrViewedStateTracker, type HerdrViewedStateTrackerDependencies} from "./viewed-state";
@@ -63,8 +64,11 @@ interface BridgeDependencies {
 	probe: () => Promise<HerdrAvailability>;
 	connect: (socketPath: string) => Socket;
 	createLineReader: (socket: Socket) => ReadlineInterface;
-	getPaneSnapshot: () => Promise<PaneRevision[]>;
+	/** Ask herdr itself for a snapshot, bypassing the pane table. */
+	getSnapshot: () => Promise<HerdrPaneState | null>;
+	/** Read the joined pane links, which come from `paneTable` while it is current. */
 	getPanes: () => Promise<HerdrPaneLink[]>;
+	paneTable: HerdrPaneTable;
 	broadcast: (type: string, data: Record<string, unknown>) => void;
 	schedule: (callback: () => void, delayMs: number) => Timer;
 	cancel: (timer: Timer) => void;
@@ -111,21 +115,18 @@ const defaultDependencies: BridgeDependencies = {
 	probe: probeHerdr,
 	connect: createConnection,
 	createLineReader: (socket) => createInterface({input: socket}),
-	getPaneSnapshot: async () => {
+	getSnapshot: async () => {
 		const response = await herdrRequest({
 			id: "ccp:sub-snap",
 			method: "session.snapshot",
 			params: {},
 		});
-		if (!response.ok) return [];
+		if (!response.ok) return null;
 		const parsed = HerdrSessionSnapshotResultSchema.safeParse(response.value);
-		if (!parsed.success) return [];
-		return parsed.data.snapshot.panes.map((pane) => ({
-			paneId: pane.pane_id,
-			revision: pane.revision,
-		}));
+		return parsed.success ? parsed.data.snapshot : null;
 	},
 	getPanes: async () => getHerdrPanes(),
+	paneTable: herdrPaneTable,
 	broadcast: broadcastTyped,
 	schedule: setTimeout,
 	cancel: clearTimeout,
@@ -171,8 +172,24 @@ function createBridge(dependencies: BridgeDependencies): () => void {
 	// the bridge must remember what it has already announced across reconnects
 	// or each replay triggers a reconnect that triggers the next replay.
 	const paneDiffer = createHerdrPaneDiffer();
+	const {paneTable} = dependencies;
 
-	const runResync = async (): Promise<void> => {
+	/**
+	 * Seed the pane table from herdr. Returns the snapshot, or null after
+	 * invalidating the table so readers stop trusting state herdr could not confirm.
+	 */
+	const reseedPaneTable = async (): Promise<HerdrPaneState | null> => {
+		const snapshot = await dependencies.getSnapshot();
+		if (isStopped()) return null;
+		if (snapshot === null) paneTable.invalidate();
+		else paneTable.seed(snapshot);
+		return snapshot;
+	};
+
+	// A hint resync also reconciles the table with a fresh snapshot: herdr
+	// replays old status and move events on resubscribe, which carry no
+	// revision to reject them by, so pushed state alone can drift.
+	const runResync = async (reconcile: boolean): Promise<void> => {
 		if (stopped || resyncRunning) {
 			if (!stopped) resyncAgain = true;
 			return;
@@ -180,6 +197,8 @@ function createBridge(dependencies: BridgeDependencies): () => void {
 
 		resyncRunning = true;
 		try {
+			if (reconcile) await reseedPaneTable();
+			if (isStopped()) return;
 			const panes = await dependencies.getPanes();
 			if (!isStopped()) {
 				try {
@@ -212,7 +231,7 @@ function createBridge(dependencies: BridgeDependencies): () => void {
 		if (resyncTimer) return;
 		resyncTimer = dependencies.schedule(() => {
 			resyncTimer = null;
-			void runResync();
+			void runResync(true);
 		}, CHANGE_HINT_RESYNC_DELAY_MS);
 	};
 
@@ -228,6 +247,11 @@ function createBridge(dependencies: BridgeDependencies): () => void {
 		const scheduleReconnect = (): void => {
 			if (stopped || reconnectPending || socket !== nextSocket) return;
 			reconnectPending = true;
+			// The resubscribe reseeds and resyncs, so a pending hint resync is redundant.
+			if (resyncTimer) {
+				dependencies.cancel(resyncTimer);
+				resyncTimer = null;
+			}
 			nextLineReader.close();
 			nextSocket.destroy();
 			socket = null;
@@ -247,8 +271,14 @@ function createBridge(dependencies: BridgeDependencies): () => void {
 		// Keep the error listener for the socket's whole life: herdr hanging up can surface as several errors
 		// (ECONNRESET, then EPIPE from a pending write), and an error with no listener crashes the process.
 		// Every socket error is an ordinary disconnect; scheduleReconnect ignores all but the first.
-		nextSocket.on("error", scheduleReconnect);
-		nextSocket.once("close", scheduleReconnect);
+		// Losing herdr (unlike a deliberate resubscribe) means pushes stop, so the table is no longer current.
+		const handleDisconnect = (): void => {
+			if (stopped || reconnectPending || socket !== nextSocket) return;
+			paneTable.invalidate();
+			scheduleReconnect();
+		};
+		nextSocket.on("error", handleDisconnect);
+		nextSocket.once("close", handleDisconnect);
 
 		nextLineReader.on("line", (line) => {
 			if (stopped || line.trim() === "") return;
@@ -278,6 +308,7 @@ function createBridge(dependencies: BridgeDependencies): () => void {
 							? paneDiffer.recordCreated(pane)
 							: paneDiffer.recordClosed(pane.paneId);
 					if (!changed) return;
+					paneTable.apply(pushedEvent, data);
 					dependencies.broadcast(sseEvent, data);
 					// Reconnect to rebuild the pane-scoped agent-status subscriptions.
 					scheduleReconnect();
@@ -285,6 +316,7 @@ function createBridge(dependencies: BridgeDependencies): () => void {
 				}
 				// Without a pane id the subscription list cannot change; a resync is
 				// enough and, unlike a reconnect, cannot fuel a replay loop.
+				paneTable.apply(pushedEvent, data);
 				dependencies.broadcast(sseEvent, data);
 				scheduleHintResync();
 				return;
@@ -295,6 +327,7 @@ function createBridge(dependencies: BridgeDependencies): () => void {
 				if (pane && !paneDiffer.recordUpdated(pane)) return;
 			}
 
+			paneTable.apply(pushedEvent, data);
 			dependencies.broadcast(sseEvent, data);
 			scheduleHintResync();
 		});
@@ -302,13 +335,16 @@ function createBridge(dependencies: BridgeDependencies): () => void {
 
 	const openSubscription = async (): Promise<void> => {
 		if (stopped) return;
+		// One snapshot per (re)subscribe seeds the pane table, the replay
+		// differ, and the pane-scoped status subscriptions.
+		const snapshot = await reseedPaneTable();
+		if (isStopped()) return;
+		const panes = (snapshot?.panes ?? []).map((pane) => ({paneId: pane.pane_id, revision: pane.revision}));
+		paneDiffer.seedKnownPanes(panes);
 		// Seed terminalId-keyed transition state before subscribing. Otherwise a
 		// fast done→idle push could arrive before its paneId→terminalId mapping.
-		await runResync();
+		await runResync(false);
 		if (isStopped()) return;
-		const panes = await dependencies.getPaneSnapshot();
-		if (isStopped()) return;
-		paneDiffer.seedKnownPanes(panes);
 		connect(panes.map((pane) => pane.paneId));
 	};
 
@@ -338,6 +374,7 @@ function createBridge(dependencies: BridgeDependencies): () => void {
 		if (resyncTimer) dependencies.cancel(resyncTimer);
 		lineReader?.close();
 		socket?.destroy();
+		paneTable.invalidate();
 		probeRetryTimer = null;
 		reconnectTimer = null;
 		resyncTimer = null;

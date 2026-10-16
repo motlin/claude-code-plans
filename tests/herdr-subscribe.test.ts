@@ -3,6 +3,8 @@ import type {Interface as ReadlineInterface} from "node:readline";
 import type {Socket} from "node:net";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {HERDR_EVENTS} from "../src/lib/hook-events";
+import {createHerdrPaneTable, type HerdrPaneState} from "../src/lib/herdr/pane-table";
+import type {PaneRevision} from "../src/lib/herdr/pane-differ";
 import {__testing} from "../src/lib/herdr/subscribe";
 
 class FakeSocket extends EventEmitter {
@@ -54,11 +56,29 @@ async function unavailable() {
 	});
 }
 
+function wirePane(paneId: string, revision: number, agentStatus = "idle"): HerdrPaneState["panes"][number] {
+	const workspaceId = paneId.split(":")[0] ?? paneId;
+	return {
+		pane_id: paneId,
+		terminal_id: `terminal-${paneId}`,
+		workspace_id: workspaceId,
+		tab_id: `${workspaceId}:t1`,
+		focused: false,
+		agent: "claude",
+		agent_status: agentStatus,
+		revision,
+	};
+}
+
+function paneState(panes: PaneRevision[]): HerdrPaneState {
+	return {workspaces: [], panes: panes.map(({paneId, revision}) => wirePane(paneId, revision ?? 0))};
+}
+
 type BridgeDependencies = Parameters<typeof __testing.createBridge>[0];
 type Tracker = BridgeDependencies["viewedStateTracker"];
 
 async function flushPromises(): Promise<void> {
-	for (let index = 0; index < 10; index += 1) await Promise.resolve();
+	for (let index = 0; index < 20; index += 1) await Promise.resolve();
 }
 
 function viewedStateTracker() {
@@ -102,8 +122,9 @@ describe("herdr event bridge", () => {
 				lineReaders.push(lineReader);
 				return lineReader as unknown as ReadlineInterface;
 			},
-			getPaneSnapshot: async () => Promise.resolve([{paneId: "workspace-100:pane-100", revision: 0}]),
+			getSnapshot: async () => Promise.resolve(paneState([{paneId: "workspace-100:pane-100", revision: 0}])),
 			getPanes,
+			paneTable: createHerdrPaneTable(),
 			broadcast: (type, data) => broadcasts.push({type, data}),
 			schedule: (callback, delayMs) => {
 				scheduledDelays.push(delayMs);
@@ -143,8 +164,9 @@ describe("herdr event bridge", () => {
 			probe,
 			connect: () => new FakeSocket() as unknown as Socket,
 			createLineReader: () => new FakeLineReader() as unknown as ReadlineInterface,
-			getPaneSnapshot: async () => Promise.resolve([{paneId: "workspace-100:pane-100", revision: 0}]),
+			getSnapshot: async () => Promise.resolve(paneState([{paneId: "workspace-100:pane-100", revision: 0}])),
 			getPanes: async () => Promise.resolve([]),
+			paneTable: createHerdrPaneTable(),
 			broadcast: () => {},
 			schedule: (callback, delayMs) => {
 				scheduledDelays.push(delayMs);
@@ -183,8 +205,9 @@ describe("herdr event bridge", () => {
 				lineReaders.push(lineReader);
 				return lineReader as unknown as ReadlineInterface;
 			},
-			getPaneSnapshot: async () => Promise.resolve([{paneId: "workspace-100:pane-100", revision: 0}]),
+			getSnapshot: async () => Promise.resolve(paneState([{paneId: "workspace-100:pane-100", revision: 0}])),
 			getPanes,
+			paneTable: createHerdrPaneTable(),
 			broadcast: (type, data) => broadcasts.push({type, data}),
 			schedule: setTimeout,
 			cancel: clearTimeout,
@@ -278,8 +301,9 @@ describe("herdr event bridge", () => {
 				lineReaders.push(lineReader);
 				return lineReader as unknown as ReadlineInterface;
 			},
-			getPaneSnapshot: async () => Promise.resolve([{paneId: "workspace-100:pane-100", revision: 0}]),
+			getSnapshot: async () => Promise.resolve(paneState([{paneId: "workspace-100:pane-100", revision: 0}])),
 			getPanes: async () => Promise.resolve([]),
+			paneTable: createHerdrPaneTable(),
 			broadcast: () => {},
 			schedule: (callback, delayMs) => {
 				scheduledDelays.push(delayMs);
@@ -327,8 +351,9 @@ describe("herdr event bridge", () => {
 				return socket as unknown as Socket;
 			},
 			createLineReader: () => new FakeLineReader() as unknown as ReadlineInterface,
-			getPaneSnapshot: async () => Promise.resolve([{paneId: "workspace-100:pane-100", revision: 0}]),
+			getSnapshot: async () => Promise.resolve(paneState([{paneId: "workspace-100:pane-100", revision: 0}])),
 			getPanes: async () => Promise.resolve([]),
+			paneTable: createHerdrPaneTable(),
 			broadcast: () => {},
 			schedule: (callback, delayMs) => {
 				scheduledDelays.push(delayMs);
@@ -378,8 +403,9 @@ describe("herdr event bridge", () => {
 				lineReaders.push(lineReader);
 				return lineReader as unknown as ReadlineInterface;
 			},
-			getPaneSnapshot: async () => Promise.resolve([{paneId: "workspace-100:pane-100", revision: 0}]),
+			getSnapshot: async () => Promise.resolve(paneState([{paneId: "workspace-100:pane-100", revision: 0}])),
 			getPanes,
+			paneTable: createHerdrPaneTable(),
 			broadcast: () => {},
 			schedule: setTimeout,
 			cancel: clearTimeout,
@@ -424,11 +450,12 @@ describe("herdr event bridge", () => {
 				lineReaders.push(lineReader);
 				return lineReader as unknown as ReadlineInterface;
 			},
-			getPaneSnapshot: async () => {
+			getSnapshot: async () => {
 				snapshotCalls += 1;
-				return Promise.resolve(snapshotCalls === 1 ? [] : [{paneId: "wE:p17", revision: 0}]);
+				return Promise.resolve(paneState(snapshotCalls === 1 ? [] : [{paneId: "wE:p17", revision: 0}]));
 			},
 			getPanes: async () => Promise.resolve([]),
+			paneTable: createHerdrPaneTable(),
 			broadcast: (type, data) => broadcasts.push({type, data}),
 			schedule: setTimeout,
 			cancel: clearTimeout,
@@ -480,8 +507,9 @@ describe("herdr event bridge", () => {
 				lineReaders.push(lineReader);
 				return lineReader as unknown as ReadlineInterface;
 			},
-			getPaneSnapshot: async () => Promise.resolve([{paneId: "w19:p9", revision: 228}]),
+			getSnapshot: async () => Promise.resolve(paneState([{paneId: "w19:p9", revision: 228}])),
 			getPanes: async () => Promise.resolve([]),
+			paneTable: createHerdrPaneTable(),
 			broadcast: (type, data) => broadcasts.push({type, data}),
 			schedule: setTimeout,
 			cancel: clearTimeout,
@@ -536,8 +564,9 @@ describe("herdr event bridge", () => {
 				lineReaders.push(lineReader);
 				return lineReader as unknown as ReadlineInterface;
 			},
-			getPaneSnapshot: async () => Promise.resolve([{paneId: "w1:p1", revision: 1}]),
+			getSnapshot: async () => Promise.resolve(paneState([{paneId: "w1:p1", revision: 1}])),
 			getPanes,
+			paneTable: createHerdrPaneTable(),
 			broadcast: () => {},
 			schedule: setTimeout,
 			cancel: clearTimeout,
@@ -567,5 +596,88 @@ describe("herdr event bridge", () => {
 		});
 		consoleError.mockRestore();
 		stop();
+	});
+
+	it("keeps the pane table current from pushed events and reseeds it after herdr reconnects", async () => {
+		const sockets: FakeSocket[] = [];
+		const lineReaders: FakeLineReader[] = [];
+		const paneTable = createHerdrPaneTable();
+		const snapshots: Array<HerdrPaneState | null> = [
+			{workspaces: [], panes: [wirePane("w1:p1", 1)]},
+			{workspaces: [], panes: [wirePane("w1:p1", 2, "working")]},
+			null,
+			{workspaces: [], panes: [wirePane("w1:p1", 3, "done")]},
+		];
+		const getSnapshot = vi.fn<BridgeDependencies["getSnapshot"]>(async () =>
+			Promise.resolve(snapshots.shift() ?? null),
+		);
+		const stop = __testing.createBridge({
+			probe: available,
+			connect: () => {
+				const socket = new FakeSocket();
+				sockets.push(socket);
+				return socket as unknown as Socket;
+			},
+			createLineReader: () => {
+				const lineReader = new FakeLineReader();
+				lineReaders.push(lineReader);
+				return lineReader as unknown as ReadlineInterface;
+			},
+			getSnapshot,
+			getPanes: async () => Promise.resolve([]),
+			paneTable,
+			broadcast: () => {},
+			schedule: setTimeout,
+			cancel: clearTimeout,
+			viewedStateTracker: viewedStateTracker(),
+		});
+		await flushPromises();
+		const seeded = paneTable.current();
+		sockets[0]!.emit("connect");
+		await flushPromises();
+
+		lineReaders[0]!.send({event: "pane_created", data: {pane: wirePane("w1:p2", 0)}});
+		await flushPromises();
+		const afterCreate = paneTable.current();
+		// The create forces a resubscribe that reseeds from the next snapshot.
+		await vi.advanceTimersByTimeAsync(250);
+		sockets[1]!.emit("connect");
+		await flushPromises();
+		lineReaders[1]!.send({
+			event: "pane_agent_status_changed",
+			data: {pane_id: "w1:p1", workspace_id: "w1", agent_status: "blocked"},
+		});
+		await flushPromises();
+		const afterStatus = paneTable.current();
+
+		sockets[1]!.emit("error", new Error("herdr went away"));
+		const afterHangUp = paneTable.current();
+		// The first retry finds herdr still down; the second reseeds.
+		await vi.advanceTimersByTimeAsync(250);
+		const whileDown = paneTable.current();
+		sockets[2]!.emit("error", new Error("herdr still down"));
+		await vi.advanceTimersByTimeAsync(500);
+		const recovered = paneTable.current();
+		stop();
+
+		expect({
+			seeded,
+			afterCreate,
+			afterStatus,
+			afterHangUp,
+			whileDown,
+			recovered,
+			snapshotCalls: getSnapshot.mock.calls.length,
+			afterStop: paneTable.current(),
+		}).toStrictEqual({
+			seeded: {workspaces: [], panes: [wirePane("w1:p1", 1)]},
+			afterCreate: {workspaces: [], panes: [wirePane("w1:p1", 1), wirePane("w1:p2", 0)]},
+			afterStatus: {workspaces: [], panes: [wirePane("w1:p1", 2, "blocked")]},
+			afterHangUp: null,
+			whileDown: null,
+			recovered: {workspaces: [], panes: [wirePane("w1:p1", 3, "done")]},
+			snapshotCalls: 4,
+			afterStop: null,
+		});
 	});
 });

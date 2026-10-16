@@ -3,12 +3,12 @@ import {getActiveSessionEntries, type ActiveSessionEntry} from "../active-sessio
 import {getDb} from "../db";
 import {getIndexedSessionIds} from "../db/queries";
 import {herdrRequest, type HerdrResult} from "./client";
+import {herdrPaneTable, type HerdrPaneState, type HerdrPaneTable} from "./pane-table";
 import {HerdrPaneInfoSchema, HerdrSessionSnapshotResultSchema} from "./schema";
 import type {TerminalPlacementBase, TerminalPlacementProvider} from "../terminal-placements";
 
 export type HerdrAgentStatus = z.infer<typeof HerdrPaneInfoSchema>["agent_status"];
 export type HerdrWirePane = z.infer<typeof HerdrPaneInfoSchema>;
-type HerdrSnapshot = z.infer<typeof HerdrSessionSnapshotResultSchema>["snapshot"];
 
 export interface HerdrPane {
 	paneId: string;
@@ -56,13 +56,19 @@ const SNAPSHOT_REQUEST = {
 };
 
 /**
- * Fetch and decode herdr's live session snapshot for every read model above it.
+ * Read herdr's live pane state for every read model above it.
  *
- * Transport and protocol failures are normal when herdr is absent or has
- * changed release, so both collapse to `null` and each caller degrades to an
- * empty result instead of failing.
+ * While the event bridge keeps the pane table current, this is a memory read.
+ * Otherwise it asks herdr for a snapshot. Transport and protocol failures are
+ * normal when herdr is absent or has changed release, so both collapse to
+ * `null` and each caller degrades to an empty result instead of failing.
  */
-export async function readHerdrSnapshot(request: HerdrRequester): Promise<HerdrSnapshot | null> {
+export async function readHerdrSnapshot(
+	request: HerdrRequester,
+	table: HerdrPaneTable = herdrPaneTable,
+): Promise<HerdrPaneState | null> {
+	const current = table.current();
+	if (current !== null) return current;
 	const response = await request(SNAPSHOT_REQUEST);
 	if (!response.ok) return null;
 	const parsed = HerdrSessionSnapshotResultSchema.safeParse(response.value);
@@ -110,8 +116,9 @@ export async function getHerdrPanes(
 	entries: ActiveSessionEntry[] = getActiveSessionEntries(),
 	request: HerdrRequester = herdrRequest,
 	indexedSessionFilter: IndexedSessionFilter = filterIndexedSessions,
+	table: HerdrPaneTable = herdrPaneTable,
 ): Promise<HerdrPaneLink[]> {
-	const snapshot = await readHerdrSnapshot(request);
+	const snapshot = await readHerdrSnapshot(request, table);
 	if (snapshot === null) return [];
 
 	const entriesByPaneId = new Map<string, ActiveSessionEntry[]>();

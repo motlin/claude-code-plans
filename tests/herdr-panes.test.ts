@@ -1,5 +1,6 @@
 import {describe, expect, it, vi} from "vite-plus/test";
 import type {ActiveSessionEntry} from "../src/lib/active-session-store";
+import {createHerdrPaneTable} from "../src/lib/herdr/pane-table";
 import {getHerdrPanes, type HerdrRequester, type IndexedSessionFilter} from "../src/lib/herdr/panes";
 
 vi.mock("../src/lib/db", () => ({
@@ -314,5 +315,55 @@ describe("getHerdrPanes", () => {
 			});
 
 		await expect(getHerdrPanes([], request)).resolves.toStrictEqual([]);
+	});
+
+	it("serves panes from a current pane table without a socket round trip", async () => {
+		const requests: object[] = [];
+		const request: HerdrRequester = async (requestValue) => {
+			requests.push(requestValue);
+			return Promise.resolve({ok: false, code: "connect-failed", message: "socket must not be used"});
+		};
+		const table = createHerdrPaneTable();
+		table.seed({
+			workspaces: [],
+			panes: [
+				{
+					pane_id: "w100:p100",
+					terminal_id: "terminal-test-100",
+					workspace_id: "w100",
+					tab_id: "w100:t100",
+					focused: true,
+					agent_status: "working",
+					agent: "claude",
+					agent_session: {source: "test-source", agent: "claude", kind: "id", value: "session-test-100"},
+					revision: 100,
+				},
+			],
+		});
+		table.apply("pane_agent_status_changed", {pane_id: "w100:p100", workspace_id: "w100", agent_status: "done"});
+
+		const panes = await getHerdrPanes([entry({herdrPane: "w100:p100"})], request, () => new Set(), table);
+
+		expect({panes, requests}).toStrictEqual({
+			panes: [
+				{
+					paneId: "w100:p100",
+					terminalId: "terminal-test-100",
+					workspaceId: "w100",
+					tabId: "w100:t100",
+					focused: true,
+					cwd: null,
+					foregroundCwd: null,
+					agentStatus: "done",
+					agent: "claude",
+					terminalTitle: null,
+					agentSessionId: "session-test-100",
+					revision: 100,
+					sessionId: "session-test-100",
+					via: "both",
+				},
+			],
+			requests: [],
+		});
 	});
 });

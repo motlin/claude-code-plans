@@ -1,5 +1,7 @@
 import {describe, expect, it, vi} from "vite-plus/test";
 import type {HerdrRequester, IndexedSessionFilter} from "../src/lib/herdr/panes";
+import {createHerdrPaneTable} from "../src/lib/herdr/pane-table";
+import {HerdrPaneInfoSchema} from "../src/lib/herdr/schema";
 import {getHerdrWorkspaces} from "../src/lib/herdr/workspaces";
 
 vi.mock("../src/lib/db", () => ({
@@ -282,6 +284,45 @@ describe("getHerdrWorkspaces", () => {
 		expect({unreachable: unreachable_, drifted: drifted_}).toStrictEqual({
 			unreachable: [],
 			drifted: [],
+		});
+	});
+
+	it("serves workspaces from a current pane table without a socket round trip", async () => {
+		const requests: object[] = [];
+		const table = createHerdrPaneTable();
+		table.seed({
+			workspaces: [wireWorkspace({workspaceId: "w1", number: 1, label: "alpha", agentStatus: "idle"})],
+			panes: [
+				HerdrPaneInfoSchema.parse(
+					wirePane({paneId: "w1:p1", workspaceId: "w1", agent: "claude", agentStatus: "idle"}),
+				),
+			],
+		});
+		table.apply("pane_agent_status_changed", {pane_id: "w1:p1", workspace_id: "w1", agent_status: "blocked"});
+
+		const workspaces = await getHerdrWorkspaces(snapshotRequester({}, requests), indexEverything, table);
+
+		expect({workspaces, requests}).toStrictEqual({
+			workspaces: [
+				{
+					workspaceId: "w1",
+					number: 1,
+					label: "alpha",
+					agentStatus: "blocked",
+					worktreeName: null,
+					agentPanes: [
+						{
+							paneId: "w1:p1",
+							title: "Terminal w1:p1",
+							agent: "claude",
+							agentStatus: "blocked",
+							sessionId: null,
+						},
+					],
+					shellPanes: [],
+				},
+			],
+			requests: [],
 		});
 	});
 });

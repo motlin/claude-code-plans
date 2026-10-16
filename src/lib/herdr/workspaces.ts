@@ -1,4 +1,5 @@
 import {herdrRequest} from "./client";
+import {herdrPaneTable, type HerdrPaneTable} from "./pane-table";
 import {
 	claudeSessionId,
 	filterIndexedSessions,
@@ -63,8 +64,9 @@ function comparePanes(left: HerdrWorkspacePane, right: HerdrWorkspacePane): numb
 export async function getHerdrWorkspaces(
 	request: HerdrRequester = herdrRequest,
 	indexedSessionFilter: IndexedSessionFilter = filterIndexedSessions,
+	table: HerdrPaneTable = herdrPaneTable,
 ): Promise<HerdrWorkspace[]> {
-	const snapshot = await readHerdrSnapshot(request);
+	const snapshot = await readHerdrSnapshot(request, table);
 	if (snapshot === null) return [];
 
 	const panes = snapshot.panes.map((wirePane) => {

@@ -10,6 +10,7 @@ import {
 	resolveHerdrPromptTarget,
 	type HerdrPromptDependencies,
 } from "../src/lib/herdr/prompt";
+import {createHerdrPaneTable, type HerdrPaneState} from "../src/lib/herdr/pane-table";
 import type {HerdrRequester} from "../src/lib/herdr/panes";
 import {rejectCrossSite} from "../src/lib/same-origin-guard";
 
@@ -214,6 +215,31 @@ describe("herdr prompt write handler", () => {
 				{id: "ccp:prompt-snap", method: "session.snapshot", params: {}},
 				{id: "ccp:prompt-snap", method: "session.snapshot", params: {}},
 			],
+		});
+	});
+
+	it("resolves the target from a current pane table without a socket round trip", async () => {
+		const requests: object[] = [];
+		const requester: HerdrRequester = async (requestValue) => {
+			requests.push(requestValue);
+			return Promise.resolve({ok: false, code: "connect-failed", message: "socket must not be used"});
+		};
+		const table = createHerdrPaneTable();
+		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the fabricated snapshot matches the wire shape
+		const {snapshot: state} = snapshot("w100:p100") as {snapshot: HerdrPaneState};
+		table.seed(state);
+		table.apply("pane_moved", {
+			previous_pane_id: "w100:p100",
+			previous_workspace_id: "w100",
+			previous_tab_id: "w100:t100",
+			pane: {...state.panes[0], pane_id: "w300:p300", workspace_id: "w300", tab_id: "w300:t300", revision: 101},
+		});
+
+		const target = await resolveHerdrPromptTarget("session-test-100", [entry()], requester, table);
+
+		expect({target, requests}).toStrictEqual({
+			target: {ok: true, value: {terminalId: "terminal-test-100", paneId: "w300:p300"}},
+			requests: [],
 		});
 	});
 
