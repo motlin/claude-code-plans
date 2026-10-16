@@ -8,6 +8,7 @@ import type {NotificationEntryPayload} from "./hook-events";
 import {broadcastTyped} from "./sse-broadcast";
 import {hmrPersist, hmrDispose} from "./hmr-persist";
 import {PERMISSION_PROMPT_NOTIFICATION} from "./permission-prompt";
+import type {PersistentAllowKind} from "./permission-suggestions";
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
 
@@ -26,6 +27,8 @@ export interface NotificationEntry {
 	message: string;
 	title?: string;
 	notificationType: string;
+	/** A permission prompt's persistent allow option, from the session's PermissionRequest hook. */
+	persistentAllow?: PersistentAllowKind;
 	createdAt: number;
 	createdAtIso: string;
 }
@@ -89,6 +92,7 @@ function toPayload(entry: NotificationEntry): NotificationEntryPayload {
 		notificationType: entry.notificationType,
 		createdAt: entry.createdAt,
 		createdAtIso: entry.createdAtIso,
+		...(entry.persistentAllow === undefined ? {} : {persistentAllow: entry.persistentAllow}),
 	};
 }
 
@@ -150,6 +154,7 @@ export function addNotification(
 		message: string;
 		title?: string;
 		notificationType: string;
+		persistentAllow?: PersistentAllowKind;
 	},
 ): NotificationEntry {
 	const {projectId, projectName} = resolveProject(db, input.sessionId, input.cwd);
@@ -165,6 +170,7 @@ export function addNotification(
 		createdAtIso: new Date(createdAt).toISOString(),
 	};
 	if (input.title !== undefined) entry.title = input.title;
+	if (input.persistentAllow !== undefined) entry.persistentAllow = input.persistentAllow;
 
 	// Supersede rather than append: a session's newest state notification
 	// replaces its previous one, so repeated "waiting for your input" /

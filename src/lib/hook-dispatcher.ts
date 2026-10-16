@@ -3,7 +3,9 @@ import {assertNever} from "./assert-never";
 import {eq, or} from "drizzle-orm";
 import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
 import * as schema from "./db/schema";
-import type {ActiveSessionEntry} from "./active-session-store";
+import type {ActiveSessionEntry, PendingPermissionRequest} from "./active-session-store";
+import {PERMISSION_PROMPT_NOTIFICATION} from "./permission-prompt";
+import {persistentAllowKind, type PersistentAllowKind} from "./permission-suggestions";
 import {
 	DOMAIN_EVENTS,
 	SSE_EVENTS,
@@ -78,6 +80,7 @@ interface ActiveSessionStore {
 	touchSubagentActivity(sessionId: string, agentId: string): void;
 	setBackgroundTasks(sessionId: string, backgroundTasks: HookBackgroundTaskPayload[]): void;
 	setSessionCrons(sessionId: string, sessionCrons: HookSessionCronPayload[]): void;
+	setPendingPermissionRequest(sessionId: string, request: PendingPermissionRequest | null): void;
 	getActiveSessionEntry(sessionId: string): ActiveSessionEntry | null;
 }
 
@@ -435,8 +438,11 @@ export async function dispatchHookEvent({
 		// session has no persisted notifications.
 		if (nextState === "working") clearNotificationsForSession(event.session_id);
 		// A turn that ended (Stop / SessionEnd) is no longer blocked on a tool permission prompt.
-		if (event.hook_event_name === "Stop" || event.hook_event_name === "SessionEnd") {
-			clearPermissionPromptsForSession(event.session_id);
+		const turnEnded = event.hook_event_name === "Stop" || event.hook_event_name === "SessionEnd";
+		if (turnEnded) clearPermissionPromptsForSession(event.session_id);
+		// Either way the permission dialog the PermissionRequest hook described is gone.
+		if ((nextState === "working" || turnEnded) && entryBeforeDispatch?.pendingPermissionRequest) {
+			store.setPendingPermissionRequest(event.session_id, null);
 		}
 		trackPendingQuestion(event, broadcast);
 	}
@@ -730,6 +736,7 @@ export async function dispatchHookEvent({
 				message: string;
 				title?: string;
 				notificationType: string;
+				persistentAllow?: PersistentAllowKind;
 			} = {
 				sessionId: event.session_id,
 				cwd: event.cwd,
@@ -739,7 +746,25 @@ export async function dispatchHookEvent({
 			if (event.title !== undefined) {
 				notificationInput.title = event.title;
 			}
+			if (notificationInput.notificationType === PERMISSION_PROMPT_NOTIFICATION) {
+				const persistentAllow = persistentAllowKind(
+					store.getActiveSessionEntry(event.session_id)?.pendingPermissionRequest?.suggestions,
+				);
+				if (persistentAllow !== null) notificationInput.persistentAllow = persistentAllow;
+			}
 			addNotification(db, notificationInput);
+			break;
+		}
+
+		case "PermissionRequest": {
+			// The CLI is about to show its permission dialog. Remember which
+			// persistent option it offers so the inline card can show it and the
+			// answer handler knows "2" is that option rather than "No".
+			store.touchSession(event.session_id);
+			store.setPendingPermissionRequest(event.session_id, {
+				toolName: event.tool_name,
+				suggestions: event.permission_suggestions ?? [],
+			});
 			break;
 		}
 

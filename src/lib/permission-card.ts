@@ -1,26 +1,24 @@
 import {findLastPendingToolUse, type PendingToolUse} from "./approval-dock";
 import {PERMISSION_PROMPT_NOTIFICATION} from "./permission-prompt";
+import type {PermissionDialogDecision, PersistentAllowKind} from "./permission-suggestions";
 import {markerEventsFromRecords} from "./working-marker";
 
-export type PermissionDecision = "allow" | "deny";
-
-/** Keys sent into the live pane: "1" picks the CLI's "Yes", Esc declines. */
-export const PERMISSION_DECISION_KEYS = {
-	allow: "1",
-	deny: "esc",
-} as const satisfies Record<PermissionDecision, string>;
+export type PermissionDecision = PermissionDialogDecision;
 
 export interface PermissionNotification {
 	id: string;
 	sessionId: string;
 	notificationType: string;
 	message: string;
+	/** The dialog's persistent allow option, from the PermissionRequest hook; absent when it has none. */
+	persistentAllow?: PersistentAllowKind | undefined;
 }
 
 export interface PendingPermission {
 	notificationId: string;
 	title: string;
 	command: string | null;
+	persistentAllow?: PersistentAllowKind;
 }
 
 /** Tools with their own docked card, which never show the permission card. */
@@ -111,10 +109,21 @@ export function findPendingPermission({
 	}
 	const toolUse = isActive ? findLastPendingToolUse(records) : findWaitingToolUse(records);
 	if (toolUse === null) {
-		return isActive ? {notificationId: notification.id, title: notification.message, command: null} : null;
+		return isActive
+			? withPersistentAllow(
+					{notificationId: notification.id, title: notification.message, command: null},
+					notification,
+				)
+			: null;
 	}
 	if (OWN_CARD_TOOLS.has(toolUse.name)) return null;
-	return permissionFor(notification.id, toolUse);
+	return withPersistentAllow(permissionFor(notification.id, toolUse), notification);
+}
+
+function withPersistentAllow(permission: PendingPermission, notification: PermissionNotification): PendingPermission {
+	return notification.persistentAllow === undefined
+		? permission
+		: {...permission, persistentAllow: notification.persistentAllow};
 }
 
 /** "Allow Claude to run <description>?" over the command for Bash, the tool name and its main input otherwise. */

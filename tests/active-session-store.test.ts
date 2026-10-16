@@ -10,6 +10,7 @@ import {
 	hasAnyActiveSessions,
 	setBackgroundTasks,
 	setSessionCrons,
+	setPendingPermissionRequest,
 	liveSessionRoutines,
 	touchSubagentActivity,
 } from "../src/lib/active-session-store";
@@ -259,5 +260,29 @@ describe("active-session-store", () => {
 		const entry = getActiveSessionEntries()[0]!;
 		expect(entry.tmuxPane).toBe("%7");
 		expect(entry.tmuxServerSocket).toBe("/tmp/tmux-501/default");
+	});
+
+	it("stores the pending PermissionRequest beside the session and clears it", () => {
+		const request = {
+			toolName: "Bash",
+			suggestions: [
+				{
+					type: "addRules" as const,
+					rules: [{toolName: "Bash", ruleContent: "rm -rf dist"}],
+					behavior: "allow" as const,
+					destination: "localSettings" as const,
+				},
+			],
+		};
+		markSessionActive("session-test-200", {cwd: "/projects/foo"});
+		setPendingPermissionRequest("session-test-200", request);
+		setPendingPermissionRequest("session-test-unknown", request);
+		const stored = getActiveSessionEntry("session-test-200")?.pendingPermissionRequest;
+		setPendingPermissionRequest("session-test-200", null);
+		expect({
+			stored,
+			cleared: getActiveSessionEntry("session-test-200")?.pendingPermissionRequest,
+			unknown: getActiveSessionEntry("session-test-unknown"),
+		}).toStrictEqual({stored: request, cleared: undefined, unknown: null});
 	});
 });

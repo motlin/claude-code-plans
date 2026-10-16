@@ -1,8 +1,14 @@
 import {hmrPersist, hmrDispose} from "./hmr-persist";
 import type {ActivityState} from "./session-state";
-import type {HookBackgroundTaskPayload, HookSessionCronPayload} from "./hook-events";
+import type {HookBackgroundTaskPayload, HookSessionCronPayload, PermissionUpdate} from "./hook-events";
 import type {LiveSessionRoutines} from "./routines";
 import {touchStoredLiveSubagent} from "./live-subagent-store";
+
+/** The CLI's latest PermissionRequest hook: the tool asking and the dialog's persistent-option updates. */
+export interface PendingPermissionRequest {
+	toolName: string;
+	suggestions: PermissionUpdate[];
+}
 
 export interface ActiveSessionEntry {
 	sessionId: string;
@@ -51,6 +57,11 @@ export interface ActiveSessionEntry {
 	lastSubagentActivityAt: number | null;
 	/** Background work the session's last `Stop` reported (empty before any Stop). */
 	backgroundTasks: HookBackgroundTaskPayload[];
+	/**
+	 * The permission dialog the session is showing, from its PermissionRequest
+	 * hook; absent before one and once the session resumes working or its turn ends.
+	 */
+	pendingPermissionRequest?: PendingPermissionRequest;
 	/** Scheduled prompts the session's latest `Stop` reported, and when (absent before any). */
 	sessionCrons?: {crons: HookSessionCronPayload[]; reportedAt: number};
 }
@@ -194,6 +205,13 @@ export function touchSubagentActivity(sessionId: string, agentId: string): void 
 export function setBackgroundTasks(sessionId: string, backgroundTasks: HookBackgroundTaskPayload[]): void {
 	const entry = findSession(sessionId);
 	if (entry) entry.backgroundTasks = backgroundTasks;
+}
+
+export function setPendingPermissionRequest(sessionId: string, request: PendingPermissionRequest | null): void {
+	const entry = findSession(sessionId);
+	if (!entry) return;
+	if (request === null) delete entry.pendingPermissionRequest;
+	else entry.pendingPermissionRequest = request;
 }
 
 export function setSessionCrons(sessionId: string, crons: HookSessionCronPayload[]): void {

@@ -21,7 +21,8 @@ import type {SessionSummaryStateSchema} from "./api/sessions";
 import type {SourceFileResponse} from "./api/source";
 import type {GroupColorSchema, GroupIconSchema} from "./group-appearance";
 import type {EffortLevel, LaunchPermissionMode, LiveOptionChange} from "./launch-options";
-import type {HookEvent, ToolUseUnion} from "./hook-events";
+import type {HookEvent, PermissionUpdate, ToolUseUnion} from "./hook-events";
+import {PERSISTENT_ALLOW_KIND_BY_DESTINATION} from "./permission-suggestions";
 import type {HomeAttentionKindSchema} from "./home-attention";
 import type {JobChildKindSchema, JobFanKindSchema, JobNameSourceSchema, JobState, JobTempoSchema} from "./jobs";
 import type {NavSection} from "./nav-sections";
@@ -627,6 +628,7 @@ const hookEventNames = {
 	PreToolUse: true,
 	PostToolUse: true,
 	PostToolUseFailure: true,
+	PermissionRequest: true,
 	TaskCreated: true,
 	TaskCompleted: true,
 	WorktreeCreate: true,
@@ -1085,6 +1087,16 @@ const pendingApprovalToolNameLabels = {
 	AskUserQuestion: "Question",
 } satisfies Record<z.infer<typeof PendingApprovalToolNameSchema>, string>;
 
+/** Exhaustive handler: offersPersistentOption switch in src/lib/permission-suggestions.ts. */
+const permissionUpdateVariants = {
+	addRules: true,
+	replaceRules: true,
+	removeRules: true,
+	setMode: true,
+	addDirectories: true,
+	removeDirectories: true,
+} satisfies Record<PermissionUpdate["type"], true>;
+
 const toolNamesWithMcp = {...toolNames, "mcp__*": true} as const;
 
 /** Maps walker path keys (see tests/schema-choices.test.ts) to choice maps. */
@@ -1143,6 +1155,12 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
 	"HookEventEnvelope.<PreToolUse>": toolNamesWithMcp,
 	"HookEventEnvelope.<PostToolUse>": toolNamesWithMcp,
 	"HookEventEnvelope.<PostToolUseFailure>": toolNamesWithMcp,
+	"HookEventEnvelope.<PermissionRequest>": toolNamesWithMcp,
+	"HookEventEnvelope.<PermissionRequest>.<Bash>.permission_suggestions[]": permissionUpdateVariants,
+	"HookEventEnvelope.<PermissionRequest>.<Bash>.permission_suggestions[].<addRules>.behavior":
+		permissionBehaviorLabels,
+	"HookEventEnvelope.<PermissionRequest>.<Bash>.permission_suggestions[].<addRules>.destination":
+		PERSISTENT_ALLOW_KIND_BY_DESTINATION,
 	"SourceFileResponse.language": sourceLanguageLabels,
 	"PluginFileSchema.type": pluginFileTypeLabels,
 	"PluginListResponse[].versionKind": pluginVersionKindLabels,

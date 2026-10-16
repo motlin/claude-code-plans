@@ -1,6 +1,7 @@
 import {z} from "zod";
 import {queryOptions, useMutation, useQueryClient} from "@tanstack/react-query";
 import type {QueryClient} from "@tanstack/react-query";
+import {PersistentAllowKindSchema} from "../permission-suggestions";
 import {apiFetch} from "./client";
 
 /**
@@ -20,6 +21,7 @@ const NotificationSchema = z.object({
 	message: z.string(),
 	title: z.string().optional(),
 	notificationType: z.string(),
+	persistentAllow: PersistentAllowKindSchema.optional(),
 	createdAt: z.number(),
 	createdAtIso: z.string(),
 	unread: z.boolean(),

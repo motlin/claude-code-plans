@@ -1,8 +1,9 @@
 import {z} from "zod";
 
+import {getActiveSessionEntry, setPendingPermissionRequest} from "../active-session-store";
 import {clearNotificationsForSession, getNotifications} from "../notifications-store";
-import {PERMISSION_DECISION_KEYS} from "../permission-card";
 import {PERMISSION_PROMPT_NOTIFICATION} from "../permission-prompt";
+import {permissionDialogKey, persistentAllowKind, type PersistentAllowKind} from "../permission-suggestions";
 import {rejectCrossSite} from "../same-origin-guard";
 import {herdrRequest, type HerdrResult} from "./client";
 import type {HerdrRequester} from "./panes";
@@ -11,7 +12,7 @@ import {herdrWritesEnabled, resolveHerdrPromptTarget, type HerdrPromptTarget} fr
 const HerdrPermissionSchema = z
 	.object({
 		sessionId: z.string().min(1),
-		decision: z.enum(["allow", "deny"]),
+		decision: z.enum(["allow", "always", "deny"]),
 	})
 	.strict();
 
@@ -19,6 +20,8 @@ export interface HerdrPermissionDependencies {
 	rejectRequest: (request: Request) => Response | null;
 	writesEnabled: () => boolean;
 	hasPendingPermission: (sessionId: string) => boolean;
+	/** The persistent option the session's PermissionRequest hook says its dialog offers. */
+	persistentAllow: (sessionId: string) => PersistentAllowKind | null;
 	clearPendingPermission: (sessionId: string) => void;
 	resolveTarget: (sessionId: string) => Promise<HerdrResult<HerdrPromptTarget>>;
 	request: HerdrRequester;
@@ -43,7 +46,12 @@ const defaultDependencies: HerdrPermissionDependencies = {
 		getNotifications().some(
 			(entry) => entry.sessionId === sessionId && entry.notificationType === PERMISSION_PROMPT_NOTIFICATION,
 		),
-	clearPendingPermission: clearNotificationsForSession,
+	persistentAllow: (sessionId) =>
+		persistentAllowKind(getActiveSessionEntry(sessionId)?.pendingPermissionRequest?.suggestions),
+	clearPendingPermission: (sessionId) => {
+		clearNotificationsForSession(sessionId);
+		setPendingPermissionRequest(sessionId, null);
+	},
 	resolveTarget: async (sessionId) => resolveHerdrPromptTarget(sessionId),
 	request: herdrRequest,
 	createRequestId: () => `ccp:permission:${crypto.randomUUID()}`,
@@ -52,7 +60,8 @@ const defaultDependencies: HerdrPermissionDependencies = {
 /**
  * Answer the CLI's tool permission prompt in the session's live herdr pane.
  * Keys are only sent while the hook state still shows the prompt, so a stale
- * card can never type "1" into the composer of a pane that moved on.
+ * card can never type "1" into the composer of a pane that moved on, and the
+ * persistent "2" only when the PermissionRequest hook said the dialog offers it.
  */
 export async function handleHerdrPermission(
 	request: Request,
@@ -67,12 +76,20 @@ export async function handleHerdrPermission(
 
 	const parsed = HerdrPermissionSchema.safeParse(await request.json());
 	if (!parsed.success) {
-		return Response.json({error: 'sessionId is required and decision must be "allow" or "deny"'}, {status: 400});
+		return Response.json(
+			{error: 'sessionId is required and decision must be "allow", "always", or "deny"'},
+			{status: 400},
+		);
 	}
 	const {sessionId, decision} = parsed.data;
 
 	if (!dependencies.hasPendingPermission(sessionId)) {
 		return Response.json({error: "No permission request is pending"}, {status: 409});
+	}
+
+	const key = permissionDialogKey(decision, dependencies.persistentAllow(sessionId));
+	if (key === null) {
+		return Response.json({error: "This permission request has no persistent allow option"}, {status: 409});
 	}
 
 	const target = await dependencies.resolveTarget(sessionId);
@@ -83,7 +100,7 @@ export async function handleHerdrPermission(
 	const response = await dependencies.request({
 		id: dependencies.createRequestId(),
 		method: "agent.send_keys",
-		params: {target: target.value.paneId, keys: [PERMISSION_DECISION_KEYS[decision]]},
+		params: {target: target.value.paneId, keys: [key]},
 	});
 	if (!response.ok) {
 		return Response.json({error: response.message}, {status: errorStatus(response.code)});

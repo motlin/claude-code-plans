@@ -22,6 +22,7 @@ function dependencies(overrides: Partial<HerdrPermissionDependencies> = {}): Her
 		rejectRequest: rejectCrossSite,
 		writesEnabled: () => true,
 		hasPendingPermission: () => true,
+		persistentAllow: () => null,
 		clearPendingPermission: () => {},
 		resolveTarget: async () =>
 			Promise.resolve({
@@ -64,7 +65,7 @@ describe("herdr permission decision handler", () => {
 	it.each([
 		{body: {sessionId: "session-test-100"}, name: "missing decision"},
 		{body: {sessionId: "", decision: "allow"}, name: "empty session id"},
-		{body: {sessionId: "session-test-100", decision: "always"}, name: "unknown decision"},
+		{body: {sessionId: "session-test-100", decision: "forever"}, name: "unknown decision"},
 		{
 			body: {sessionId: "session-test-100", decision: "allow", keys: ["ctrl+c"]},
 			name: "caller-supplied keys",
@@ -77,7 +78,7 @@ describe("herdr permission decision handler", () => {
 			sendRequestCalls: sendRequest.mock.calls,
 		}).toStrictEqual({
 			response: {
-				body: {error: 'sessionId is required and decision must be "allow" or "deny"'},
+				body: {error: 'sessionId is required and decision must be "allow", "always", or "deny"'},
 				status: 400,
 			},
 			sendRequestCalls: [],
@@ -99,34 +100,57 @@ describe("herdr permission decision handler", () => {
 		});
 	});
 
-	it.each([
-		{decision: "allow", keys: ["1"]},
-		{decision: "deny", keys: ["esc"]},
-	])("sends $keys for $decision and clears the pending prompt", async ({decision, keys}) => {
-		const requests: object[] = [];
-		const cleared: string[] = [];
+	it("refuses the persistent option when the CLI's dialog does not offer it, since 2 would mean No", async () => {
+		const sendRequest = vi.fn<HerdrRequester>();
 		const response = await handleHerdrPermission(
-			request({sessionId: "session-test-100", decision}),
-			dependencies({
-				request: async (value) => {
-					requests.push(value);
-					return Promise.resolve({ok: true, value: {type: "ok"}});
-				},
-				clearPendingPermission: (sessionId) => cleared.push(sessionId),
-			}),
+			request({sessionId: "session-test-100", decision: "always"}),
+			dependencies({persistentAllow: () => null, request: sendRequest}),
 		);
-		expect({response: await describeResponse(response), requests, cleared}).toStrictEqual({
-			response: {body: {ok: true}, status: 200},
-			requests: [
-				{
-					id: "ccp:permission:test-100",
-					method: "agent.send_keys",
-					params: {target: "w100:p100", keys},
-				},
-			],
-			cleared: ["session-test-100"],
+		expect({
+			response: await describeResponse(response),
+			sendRequestCalls: sendRequest.mock.calls,
+		}).toStrictEqual({
+			response: {body: {error: "This permission request has no persistent allow option"}, status: 409},
+			sendRequestCalls: [],
 		});
 	});
+
+	it.each([
+		{decision: "allow", persistent: null, keys: ["1"]},
+		{decision: "deny", persistent: null, keys: ["esc"]},
+		{decision: "allow", persistent: "always", keys: ["1"]},
+		{decision: "always", persistent: "always", keys: ["2"]},
+		{decision: "always", persistent: "perChat", keys: ["2"]},
+		{decision: "deny", persistent: "perChat", keys: ["esc"]},
+	] as const)(
+		"sends $keys for $decision on a dialog whose persistent option is $persistent and clears the pending prompt",
+		async ({decision, persistent, keys}) => {
+			const requests: object[] = [];
+			const cleared: string[] = [];
+			const response = await handleHerdrPermission(
+				request({sessionId: "session-test-100", decision}),
+				dependencies({
+					persistentAllow: () => persistent,
+					request: async (value) => {
+						requests.push(value);
+						return Promise.resolve({ok: true, value: {type: "ok"}});
+					},
+					clearPendingPermission: (sessionId) => cleared.push(sessionId),
+				}),
+			);
+			expect({response: await describeResponse(response), requests, cleared}).toStrictEqual({
+				response: {body: {ok: true}, status: 200},
+				requests: [
+					{
+						id: "ccp:permission:test-100",
+						method: "agent.send_keys",
+						params: {target: "w100:p100", keys},
+					},
+				],
+				cleared: ["session-test-100"],
+			});
+		},
+	);
 
 	it("keeps the prompt pending when herdr rejects the keys", async () => {
 		const cleared: string[] = [];

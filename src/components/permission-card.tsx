@@ -3,18 +3,22 @@ import {useCallback, useEffect, useState, type ReactNode} from "react";
 
 import {dockKeyAllowed} from "../lib/dock-keys";
 import {permissionDecisionForKey, type PermissionDecision} from "../lib/permission-card";
+import {PERSISTENT_ALLOW_LABELS, type PersistentAllowKind} from "../lib/permission-suggestions";
 import {APPROVAL_CARD_TITLE, ApprovalActionButton, ApprovalCardShell} from "./approval-card";
 import {Shortcut} from "./ui/shortcut";
 
 /**
  * The tool-permission card, drawn inline as claude.ai/code's approvals:
- * "Allow Claude to run …?", the command block, and [Deny Esc] … [Allow once ⌘⏎].
+ * "Allow Claude to run …?", the command block, and [Deny Esc] … [Allow once ⌘⏎],
+ * then the persistent option ("Always allow" / "Allow for this session") when
+ * the CLI's dialog offers one.
  * Keys act while the card is focused, nothing is focused, or the composer is empty.
  */
 export function PermissionCard({
 	title,
 	command,
 	canAnswer,
+	persistentAllow = null,
 	onDecision,
 	footer,
 }: {
@@ -22,6 +26,8 @@ export function PermissionCard({
 	command: string | null;
 	/** False without a live herdr pane that accepts writes. */
 	canAnswer: boolean;
+	/** The dialog's persistent allow option, from the PermissionRequest hook; null hides it. */
+	persistentAllow?: PersistentAllowKind | null;
 	onDecision: (decision: PermissionDecision) => Promise<void>;
 	/** Rendered under the actions; the session page passes the notify tip. */
 	footer?: ReactNode;
@@ -93,6 +99,15 @@ export function PermissionCard({
 						Allow once
 						<Shortcut keys="cmd+enter" className="pointer-coarse:hidden" />
 					</ApprovalActionButton>
+					{persistentAllow !== null && (
+						<ApprovalActionButton
+							variant="secondary"
+							disabled={!enabled}
+							onClick={() => void decide("always")}
+						>
+							{PERSISTENT_ALLOW_LABELS[persistentAllow]}
+						</ApprovalActionButton>
+					)}
 				</>
 			}
 		/>

@@ -7,6 +7,7 @@ import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {PermissionCard} from "../src/components/permission-card";
 import {findPendingPermission, permissionDecisionForKey, type PermissionNotification} from "../src/lib/permission-card";
+import type {PersistentAllowKind} from "../src/lib/permission-suggestions";
 
 afterEach(cleanup);
 
@@ -57,6 +58,22 @@ describe("findPendingPermission", () => {
 			notificationId: "notification-test-100",
 			title: "Allow Claude to run Remove the build output?",
 			command: "rm -rf dist",
+		});
+	});
+
+	it("carries the persistent allow option the PermissionRequest hook reported for the prompt", () => {
+		expect(
+			findPendingPermission({
+				sessionId: "session-test-100",
+				isActive: true,
+				notifications: [permissionNotification({persistentAllow: "always"})],
+				records: BASH_RECORDS,
+			}),
+		).toStrictEqual({
+			notificationId: "notification-test-100",
+			title: "Allow Claude to run Remove the build output?",
+			command: "rm -rf dist",
+			persistentAllow: "always",
 		});
 	});
 
@@ -207,7 +224,10 @@ describe("permissionDecisionForKey", () => {
 	});
 });
 
-function renderCard({canAnswer = true}: {canAnswer?: boolean} = {}) {
+function renderCard({
+	canAnswer = true,
+	persistentAllow = null,
+}: {canAnswer?: boolean; persistentAllow?: PersistentAllowKind | null} = {}) {
 	const onDecision = vi.fn<ComponentProps<typeof PermissionCard>["onDecision"]>(async () => {});
 	const utils = render(
 		<div>
@@ -218,6 +238,7 @@ function renderCard({canAnswer = true}: {canAnswer?: boolean} = {}) {
 				title="Allow Claude to run Remove the build output?"
 				command="rm -rf dist"
 				canAnswer={canAnswer}
+				persistentAllow={persistentAllow}
 				onDecision={onDecision}
 			/>
 		</div>,
@@ -286,6 +307,27 @@ describe("PermissionCard", () => {
 				"text-surface-1",
 			]),
 		}).toStrictEqual({presentation: "card", card: [], dockLook: [], title: [], value: [], deny: [], allow: []});
+	});
+
+	it("hides the persistent option when the dialog has none", () => {
+		renderCard();
+		expect(screen.getAllByRole("button").map((button) => button.textContent)).toStrictEqual([
+			"DenyEsc",
+			"Allow onceCtrl⏎Enter",
+		]);
+	});
+
+	it.each([
+		{persistentAllow: "always", label: "Always allow"},
+		{persistentAllow: "perChat", label: "Allow for this session"},
+	] as const)("shows upstream's $label last and sends the persistent decision", ({persistentAllow, label}) => {
+		const {onDecision} = renderCard({persistentAllow});
+		const labels = screen.getAllByRole("button").map((button) => button.textContent);
+		fireEvent.click(screen.getByRole("button", {name: label}));
+		expect({labels, calls: onDecision.mock.calls}).toStrictEqual({
+			labels: ["DenyEsc", "Allow onceCtrl⏎Enter", label],
+			calls: [["always"]],
+		});
 	});
 
 	it("buttons send their decisions", () => {

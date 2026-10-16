@@ -1,3 +1,4 @@
+import type {PersistentAllowKind} from "./permission-suggestions";
 import {z} from "zod";
 import type {SessionBucket, SessionSummaryState} from "./session-state";
 import {toolInputSchemas} from "./tool-input-schemas";
@@ -354,6 +355,8 @@ export interface NotificationEntryPayload {
 	message: string;
 	title: string | undefined;
 	notificationType: string;
+	/** A permission prompt's persistent allow option; absent when the dialog offers none. */
+	persistentAllow?: PersistentAllowKind | undefined;
 	createdAt: number;
 	createdAtIso: string;
 }
@@ -1190,6 +1193,107 @@ function buildPostToolUseFailureEvent() {
 
 const PostToolUseFailureHookEvent = buildPostToolUseFailureEvent();
 
+/**
+ * Where a permission update would be saved, mirroring Claude Code's
+ * `PermissionUpdateDestination`. `session` lasts until the CLI exits; the
+ * settings files persist across sessions.
+ */
+const PermissionUpdateDestinationSchema = z.enum([
+	"userSettings",
+	"projectSettings",
+	"localSettings",
+	"session",
+	"cliArg",
+]);
+
+const PermissionRuleBehaviorSchema = z.enum(["allow", "deny", "ask"]);
+
+const PermissionRuleValueSchema = z.strictObject({
+	toolName: z.string(),
+	ruleContent: z.string().optional(),
+});
+
+/**
+ * One of the CLI's `permission_suggestions`: the update its permission dialog
+ * applies when the user picks a "Yes, and don't ask again" style option.
+ * Mirrors Claude Code's `PermissionUpdate` union (hooks reference, 2.1.301).
+ */
+const PermissionUpdateSchema = z.discriminatedUnion("type", [
+	z.strictObject({
+		type: z.literal("addRules"),
+		rules: z.array(PermissionRuleValueSchema),
+		behavior: PermissionRuleBehaviorSchema,
+		destination: PermissionUpdateDestinationSchema,
+	}),
+	z.strictObject({
+		type: z.literal("replaceRules"),
+		rules: z.array(PermissionRuleValueSchema),
+		behavior: PermissionRuleBehaviorSchema,
+		destination: PermissionUpdateDestinationSchema,
+	}),
+	z.strictObject({
+		type: z.literal("removeRules"),
+		rules: z.array(PermissionRuleValueSchema),
+		behavior: PermissionRuleBehaviorSchema,
+		destination: PermissionUpdateDestinationSchema,
+	}),
+	z.strictObject({
+		type: z.literal("setMode"),
+		// Freeform for the same reason as `permission_mode`: a new mode must not
+		// reject the whole PermissionRequest envelope.
+		mode: z.string(),
+		destination: PermissionUpdateDestinationSchema,
+	}),
+	z.strictObject({
+		type: z.literal("addDirectories"),
+		directories: z.array(z.string()),
+		destination: PermissionUpdateDestinationSchema,
+	}),
+	z.strictObject({
+		type: z.literal("removeDirectories"),
+		directories: z.array(z.string()),
+		destination: PermissionUpdateDestinationSchema,
+	}),
+]);
+
+export type PermissionUpdate = z.infer<typeof PermissionUpdateSchema>;
+
+/** The MCP server that owns a tool, sent beside MCP tool calls. `source` is an open set. */
+const HookMcpServerSchema = z.strictObject({
+	name: z.string(),
+	source: z.string(),
+});
+
+/**
+ * Build the `PermissionRequest` per-tool union. Fires when the CLI is about to
+ * show its tool permission dialog; `permission_suggestions` lists the updates
+ * behind the dialog's persistent "don't ask again" option, absent or empty
+ * when the dialog offers none.
+ */
+function buildPermissionRequestEvent() {
+	const variants = ToolUseUnion.options.map((toolVariant) =>
+		z.strictObject({
+			...BaseHookFields,
+			hook_event_name: z.literal("PermissionRequest"),
+			tool_name: toolVariant.shape.tool_name,
+			tool_input: toolVariant.shape.tool_input,
+			permission_suggestions: z.array(PermissionUpdateSchema).optional(),
+		}),
+	);
+	// MCP inputs belong to their server-defined protocol; see `isMcpTool`.
+	const mcpVariant = z.strictObject({
+		...BaseHookFields,
+		hook_event_name: z.literal("PermissionRequest"),
+		tool_name: z.string().startsWith("mcp__"),
+		tool_input: JsonValueSchema,
+		permission_suggestions: z.array(PermissionUpdateSchema).optional(),
+		mcp_server: HookMcpServerSchema.optional(),
+	});
+	return z.union([...variants, mcpVariant]);
+}
+
+const PermissionRequestHookEvent = buildPermissionRequestEvent();
+
 const TaskCompletedHookEvent = z.strictObject({
 	...BaseHookFields,
 	hook_event_name: z.literal("TaskCompleted"),
@@ -1337,6 +1441,7 @@ export const HookEventEnvelope = z.union([
 	PreToolUseHookEvent,
 	PostToolUseHookEvent,
 	PostToolUseFailureHookEvent,
+	PermissionRequestHookEvent,
 	TaskCreatedHookEvent,
 	TaskCompletedHookEvent,
 	WorktreeCreateHookEvent,
@@ -1385,6 +1490,7 @@ export const KNOWN_HOOK_EVENTS: readonly HookEventName[] = [
 	"PreToolUse",
 	"PostToolUse",
 	"PostToolUseFailure",
+	"PermissionRequest",
 	"TaskCreated",
 	"TaskCompleted",
 	"WorktreeCreate",

@@ -2,6 +2,7 @@ import {queryOptions} from "@tanstack/react-query";
 import {z} from "zod";
 import type {QuestionAnswer} from "../hook-events";
 import type {LiveOptionChange} from "../launch-options";
+import type {PermissionDialogDecision} from "../permission-suggestions";
 import {apiFetch} from "./client";
 import {SessionViewedStateSchema} from "./viewed-state";
 
@@ -117,7 +118,7 @@ export async function launchHerdrSession(
 /** Answer the CLI's pending tool permission prompt in the session's live herdr pane. */
 export async function sendHerdrPermissionDecision(
 	sessionId: string,
-	decision: "allow" | "deny",
+	decision: PermissionDialogDecision,
 	fetcher: typeof fetch = fetch,
 ): Promise<void> {
 	const response = await fetcher("/api/herdr/permission", {

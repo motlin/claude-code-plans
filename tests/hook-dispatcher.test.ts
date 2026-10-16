@@ -11,7 +11,7 @@ import {getNotifications, clearAllNotifications} from "../src/lib/notifications-
 import {clearLiveSubagents} from "../src/lib/live-subagent-store";
 import * as schema from "../src/lib/db/schema";
 import {getSessionViewedState} from "../src/lib/db/viewed-state";
-import type {ActiveSessionEntry} from "../src/lib/active-session-store";
+import type {ActiveSessionEntry, PendingPermissionRequest} from "../src/lib/active-session-store";
 import type {ActivityState} from "../src/lib/session-state";
 import {getPendingApprovals, initPendingApprovalsCache} from "../src/lib/db/pending-approvals-cache";
 
@@ -55,7 +55,13 @@ function makeStore() {
 		backgroundTasks: HookBackgroundTaskPayload[];
 	}> = [];
 	const sessionCronCalls: Array<{sessionId: string; sessionCrons: HookSessionCronPayload[]}> = [];
+	const pendingPermissionCalls: Array<{sessionId: string; request: PendingPermissionRequest | null}> = [];
+	const pendingPermissionEntry = (sessionId: string) => {
+		const request = pendingPermissionCalls.findLast((pendingCall) => pendingCall.sessionId === sessionId)?.request;
+		return request ? {pendingPermissionRequest: request} : {};
+	};
 	return {
+		pendingPermissionCalls,
 		activeCalls,
 		endedCalls,
 		stateCalls,
@@ -65,6 +71,9 @@ function makeStore() {
 		backgroundTaskCalls,
 		sessionCronCalls,
 		store: {
+			setPendingPermissionRequest: (sessionId: string, request: PendingPermissionRequest | null) => {
+				pendingPermissionCalls.push({sessionId, request});
+			},
 			setSessionCrons: (sessionId: string, sessionCrons: HookSessionCronPayload[]) => {
 				sessionCronCalls.push({sessionId, sessionCrons});
 			},
@@ -105,6 +114,7 @@ function makeStore() {
 					herdrSocketPath: call.meta.claudeEnv?.["HERDR_SOCKET_PATH"] ?? "",
 					lastSubagentActivityAt: null,
 					backgroundTasks: [],
+					...pendingPermissionEntry(sessionId),
 				};
 			},
 		},
@@ -810,6 +820,7 @@ describe("dispatchHookEvent", () => {
 				touchSubagentActivity: () => {},
 				setBackgroundTasks: () => {},
 				setSessionCrons: () => {},
+				setPendingPermissionRequest: () => {},
 				getActiveSessionEntry: () => currentEntry,
 			},
 			broadcast: () => {},
@@ -1068,6 +1079,82 @@ describe("dispatchHookEvent", () => {
 			clearAllNotifications();
 		},
 	);
+
+	it("PermissionRequest stores its suggestions, the permission prompt carries the persistent option, and resuming work clears it", async () => {
+		clearAllNotifications();
+		const {store, pendingPermissionCalls} = makeStore();
+		const base = {
+			session_id: "session-test-200",
+			transcript_path: "/tmp/session-test-200.jsonl",
+			cwd: "/tmp/my-project",
+		};
+		const suggestion = {
+			type: "addRules" as const,
+			rules: [{toolName: "Bash", ruleContent: "rm -rf dist"}],
+			behavior: "allow" as const,
+			destination: "localSettings" as const,
+		};
+		const events: HookEvent[] = [
+			{...base, hook_event_name: "SessionStart", source: "startup"},
+			{
+				...base,
+				hook_event_name: "PermissionRequest",
+				tool_name: "Bash",
+				tool_input: {command: "rm -rf dist"},
+				permission_suggestions: [suggestion],
+			},
+			{
+				...base,
+				hook_event_name: "Notification",
+				message: "Claude needs your permission to use Bash",
+				notification_type: "permission_prompt",
+			},
+		];
+		for (const event of events) {
+			await dispatchHookEvent({event, db: db.index, store, broadcast: () => {}, reportHerdrState: () => {}});
+		}
+		const prompted = getNotifications().map(({notificationType, persistentAllow}) => ({
+			notificationType,
+			persistentAllow,
+		}));
+		await dispatchHookEvent({
+			event: {...base, hook_event_name: "PostToolUse", tool_name: "Bash", tool_input: {command: "rm -rf dist"}},
+			db: db.index,
+			store,
+			broadcast: () => {},
+			reportHerdrState: () => {},
+		});
+
+		expect({prompted, pendingPermissionCalls}).toStrictEqual({
+			prompted: [{notificationType: "permission_prompt", persistentAllow: "always"}],
+			pendingPermissionCalls: [
+				{sessionId: "session-test-200", request: {toolName: "Bash", suggestions: [suggestion]}},
+				{sessionId: "session-test-200", request: null},
+			],
+		});
+		clearAllNotifications();
+	});
+
+	it("a permission prompt without a PermissionRequest carries no persistent option", async () => {
+		clearAllNotifications();
+		const {store} = makeStore();
+		await dispatchHookEvent({
+			event: {
+				session_id: "session-test-201",
+				transcript_path: "/tmp/session-test-201.jsonl",
+				cwd: "/tmp/my-project",
+				hook_event_name: "Notification",
+				message: "Claude needs your permission to use Bash",
+				notification_type: "permission_prompt",
+			},
+			db: db.index,
+			store,
+			broadcast: () => {},
+			reportHerdrState: () => {},
+		});
+		expect(getNotifications().map(({persistentAllow}) => persistentAllow ?? null)).toStrictEqual([null]);
+		clearAllNotifications();
+	});
 
 	it("PreCompact broadcasts SESSION_COMPACTING with optional trigger", async () => {
 		const broadcasts: Broadcast[] = [];

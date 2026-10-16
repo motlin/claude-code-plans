@@ -203,6 +203,7 @@ describe("auto-unarchive", () => {
 			touchSubagentActivity: () => {},
 			setBackgroundTasks: () => {},
 			setSessionCrons: () => {},
+			setPendingPermissionRequest: () => {},
 			getActiveSessionEntry: (): ActiveSessionEntry | null => null,
 		};
 	}

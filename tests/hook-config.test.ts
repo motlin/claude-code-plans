@@ -17,6 +17,7 @@ describe("HOOK_EVENT_NAMES", () => {
 				"PreToolUse",
 				"PostToolUse",
 				"PostToolUseFailure",
+				"PermissionRequest",
 				"TaskCreated",
 				"TaskCompleted",
 				"WorktreeCreate",

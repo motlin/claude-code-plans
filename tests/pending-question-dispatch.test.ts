@@ -22,6 +22,7 @@ const store = {
 	touchSubagentActivity: () => {},
 	setBackgroundTasks: () => {},
 	setSessionCrons: () => {},
+	setPendingPermissionRequest: () => {},
 	getActiveSessionEntry: () => null,
 };
 

@@ -963,6 +963,7 @@ function SessionView({
 									title={pendingPermission.title}
 									command={pendingPermission.command}
 									canAnswer={promptBehavior.hasLivePane && herdr.writesEnabled}
+									persistentAllow={pendingPermission.persistentAllow ?? null}
 									onDecision={answerPermission}
 									footer={
 										<Suspense fallback={null}>

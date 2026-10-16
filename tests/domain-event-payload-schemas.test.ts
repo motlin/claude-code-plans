@@ -79,6 +79,7 @@ function makeDirs(): HookDispatchDirs {
 function makeStore() {
 	return {
 		setSessionCrons: () => {},
+		setPendingPermissionRequest: () => {},
 		touchSubagentActivity: () => {},
 		setBackgroundTasks: () => {},
 		markSessionActive: () => {},

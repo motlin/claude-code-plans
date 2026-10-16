@@ -70,6 +70,16 @@ const STATE_CASES = [
 		expected: null,
 	},
 	{
+		name: "PermissionRequest carries no state",
+		event: {
+			...BASE_EVENT,
+			hook_event_name: "PermissionRequest",
+			tool_name: "Bash",
+			tool_input: {command: "rm -rf dist"},
+		},
+		expected: null,
+	},
+	{
 		name: "manual PreCompact is working",
 		event: {...BASE_EVENT, hook_event_name: "PreCompact", trigger: "manual"},
 		expected: "working",
