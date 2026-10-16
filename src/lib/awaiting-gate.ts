@@ -128,3 +128,17 @@ export function stripInlineMarkdown(label: string): string {
 		.replace(/(^|[^\w*])([*_])(?!\s)(.+?)(?<!\s)\2(?!\w)/g, "$1$3")
 		.trim();
 }
+
+/**
+ * A plan's text under its headline, for the Plan ready card: the leading `#`
+ * title goes, and heading, list and inline markers are dropped line by line.
+ */
+export function planDetail(markdown: string): string {
+	const lines = markdown.split("\n");
+	const titleIndex = lines.findIndex((line) => line.trim() !== "");
+	if (titleIndex !== -1 && /^#\s/.test(lines[titleIndex]?.trim() ?? "")) lines.splice(titleIndex, 1);
+	return lines
+		.map((line) => stripInlineMarkdown(line.trim().replace(/^(#{1,6}\s+|[-*+]\s+|\d+[.)]\s+|>\s?)/, "")))
+		.filter((line) => line !== "")
+		.join("\n");
+}

@@ -4,6 +4,7 @@ import {
 	clearQuickReplyDraft,
 	isQuickReplyQuestion,
 	openToAnswerLabel,
+	planDetail,
 	QUICK_REPLY_DRAFT_TTL_MS,
 	questionsText,
 	readQuickReplyDraft,
@@ -57,6 +58,14 @@ describe("chip labels", () => {
 				stripInlineMarkdown,
 			),
 		).toStrictEqual(["Fix the network", "Use uv via IPv4", "Docs first", "old new"]);
+	});
+});
+
+describe("planDetail", () => {
+	it("drops the title heading and markdown markers, keeping the plan's lines", () => {
+		expect(planDetail("# Ship the rail\n\n## Steps\n\n- Build the **cards** first.\n1. Then `reorder`.\n")).toBe(
+			"Steps\nBuild the cards first.\nThen reorder.",
+		);
 	});
 });
 

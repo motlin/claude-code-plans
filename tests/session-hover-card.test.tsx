@@ -10,6 +10,7 @@ import {approvalsQueryOptions, type PendingApprovalItem} from "../src/lib/api/ap
 import {herdrPanesQueryOptions, type HerdrPaneIndexData} from "../src/lib/api/herdr";
 import {notificationsQueryOptions} from "../src/lib/api/notifications";
 import {pendingQuestionQueryOptions} from "../src/lib/api/pending-question";
+import {planQueryOptions, type PlanDetail} from "../src/lib/api/plans";
 import {recentSessionsInfiniteQueryOptions} from "../src/lib/api/sessions";
 import {clearQuickReplyDraft, quickReplyDraftKey} from "../src/lib/awaiting-gate";
 import type {PendingQuestion} from "../src/lib/hook-events";
@@ -52,6 +53,12 @@ const PANE: HerdrPaneIndexData["panes"][number] = {
 	},
 };
 
+const PLAN: PlanDetail = {
+	markdown: "# Ship the rail\n\nBuild the **cards** first.\n",
+	mtime: "2026-10-16T00:00:00.000Z",
+	title: "Ship the rail",
+};
+
 interface Seed {
 	pendingQuestion?: PendingQuestion | null;
 	approvals?: PendingApprovalItem[];
@@ -81,6 +88,7 @@ function renderCard(
 		panes: seed.writable === true ? [PANE] : [],
 		writesEnabled: seed.writable === true,
 	});
+	queryClient.setQueryData(planQueryOptions("brave-plan").queryKey, PLAN);
 	queryClient.setQueryData(notificationsQueryOptions().queryKey, {
 		notifications:
 			seed.permission === undefined
@@ -455,5 +463,113 @@ describe("SessionHoverCard question gate", () => {
 			reply: null,
 			interactive: false,
 		});
+	});
+});
+
+const PLAN_APPROVAL: PendingApprovalItem = {
+	sessionId: SESSION_ID,
+	projectId: "-projects-alpha",
+	projectName: "alpha",
+	toolName: "ExitPlanMode",
+	toolUseId: "toolu_plan",
+	blockedSince: "2026-10-16T00:00:00.000Z",
+	planFilename: "brave-plan.md",
+	questionPreview: null,
+	questionOptions: [],
+};
+
+describe("SessionHoverCard plan, permission and no-gate cards", () => {
+	it("shows a ready plan's headline and detail, pointing at the session to approve", async () => {
+		renderCard({title: "Rail plan", summary: null, blocked: true}, {approvals: [PLAN_APPROVAL], writable: true});
+		hover();
+		await advance(400);
+
+		expect({
+			eyebrow: text("[data-card-question]"),
+			detail: text("[data-card-detail]"),
+			footer: text("[data-card-footer]"),
+			interactive: card()?.hasAttribute("data-interactive"),
+		}).toStrictEqual({
+			eyebrow: "Plan ready · Ship the rail",
+			detail: "Build the cards first.",
+			footer: "Open the session to approve",
+			interactive: false,
+		});
+	});
+
+	it("allows a tool permission prompt in the live pane", async () => {
+		const fetchMock = okFetch();
+		renderCard(
+			{title: "Run tests", summary: null, blocked: true},
+			{permission: "Claude needs your permission to use Bash", writable: true},
+		);
+		hover();
+		await advance(400);
+		const buttons = [...(card()?.querySelectorAll("button") ?? [])].map((button) => button.textContent);
+		act(() => {
+			fireEvent.click(screen.getByRole("button", {name: "Allow once"}));
+		});
+		await advance(0);
+
+		expect({
+			asked: text("[data-card-question]"),
+			buttons,
+			interactive: card()?.hasAttribute("data-interactive"),
+			posts: posts(fetchMock).map(([url, init]) => [url, init?.body]),
+		}).toStrictEqual({
+			asked: "Claude asked · Claude needs your permission to use Bash",
+			buttons: ["Deny", "Allow once"],
+			interactive: true,
+			posts: [["/api/herdr/permission", JSON.stringify({sessionId: SESSION_ID, decision: "allow"})]],
+		});
+	});
+
+	it("leaves a permission prompt to the session without a writable pane", async () => {
+		renderCard(
+			{title: "Run tests", summary: null, blocked: true},
+			{permission: "Claude needs your permission to use Bash", writable: false},
+		);
+		hover();
+		await advance(400);
+
+		expect({
+			footer: text("[data-card-footer]"),
+			buttons: card()?.querySelectorAll("button").length,
+			interactive: card()?.hasAttribute("data-interactive"),
+		}).toStrictEqual({footer: "Open the session to respond", buttons: 0, interactive: false});
+	});
+
+	it("replies to a session waiting without a gate with a normal prompt", async () => {
+		const fetchMock = okFetch();
+		renderCard(
+			{title: "Next step", summary: "Which branch should I rebase onto?", blocked: true},
+			{writable: true},
+		);
+		hover();
+		await advance(400);
+		act(() => {
+			fireEvent.change(replyBox(), {target: {value: "main"}});
+			fireEvent.keyDown(replyBox(), {key: "Enter"});
+		});
+		await advance(0);
+
+		expect({
+			asked: text("[data-card-question]"),
+			posts: posts(fetchMock).map(([url, init]) => [url, init?.body]),
+		}).toStrictEqual({
+			asked: "Claude asked · Which branch should I rebase onto?",
+			posts: [["/api/herdr/prompt", JSON.stringify({sessionId: SESSION_ID, prompt: "main"})]],
+		});
+	});
+
+	it("falls back to Awaiting input without a gate or a writable pane", async () => {
+		renderCard({title: "Next step", summary: null, blocked: true}, {writable: false});
+		hover();
+		await advance(400);
+
+		expect({
+			body: card()?.querySelector("[data-card-fallback]")?.textContent,
+			reply: card()?.querySelector("textarea") ?? null,
+		}).toStrictEqual({body: "Awaiting inputOpen the session to respond", reply: null});
 	});
 });

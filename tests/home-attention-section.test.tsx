@@ -15,6 +15,7 @@ import {
 } from "@tanstack/react-router";
 
 import {AttentionSection} from "../src/components/home/attention-section";
+import {ToastProvider} from "../src/components/toast";
 import {HomeLanding} from "../src/components/home/home-landing";
 import {approvalsQueryOptions} from "../src/lib/api/approvals";
 import {herdrPanesQueryOptions} from "../src/lib/api/herdr";
@@ -498,16 +499,18 @@ describe("AttentionSection hover cards", () => {
 		queryClient.setQueryData(herdrPanesQueryOptions.queryKey, {panes: [], writesEnabled: false});
 		render(
 			<QueryClientProvider client={queryClient}>
-				<AttentionSection
-					items={items([
-						row("blocked", {title: "Blocked row"}),
-						row("review", {bucket: "review", title: "Review row", summary: "Parser split."}),
-					])}
-					rowLimit={5}
-					now={NOW}
-					onOpen={() => undefined}
-					onDismiss={() => undefined}
-				/>
+				<ToastProvider>
+					<AttentionSection
+						items={items([
+							row("blocked", {title: "Blocked row"}),
+							row("review", {bucket: "review", title: "Review row", summary: "Parser split."}),
+						])}
+						rowLimit={5}
+						now={NOW}
+						onOpen={() => undefined}
+						onDismiss={() => undefined}
+					/>
+				</ToastProvider>
 			</QueryClientProvider>,
 		);
 		const cards: Array<{kind: string | null; body: string | null | undefined}> = [];

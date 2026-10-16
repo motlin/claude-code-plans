@@ -1,11 +1,14 @@
-import {useMutation} from "@tanstack/react-query";
+import {useMutation, useQuery} from "@tanstack/react-query";
 import {CornerDownLeft} from "lucide-react";
 import {useId, useState, type ComponentType, type KeyboardEvent, type ReactNode} from "react";
 
+import {sendHerdrPermissionDecision, sendHerdrPrompt} from "../lib/api/herdr";
+import {planQueryOptions} from "../lib/api/plans";
 import {
 	AWAITING_TEXT_CAP,
 	isQuickReplyQuestion,
 	openToAnswerLabel,
+	planDetail,
 	questionCount,
 	questionsText,
 	quickReplyDraftKey,
@@ -15,6 +18,9 @@ import {
 	writeQuickReplyDraft,
 	type AwaitingGate,
 } from "../lib/awaiting-gate";
+import {assertNever} from "../lib/assert-never";
+import {toMdSlug} from "../lib/md-slug";
+import type {PermissionDecision} from "../lib/permission-card";
 import {FORK_ANSWER_LABEL, type QuestionAnswerRoute} from "../lib/question-answer-route";
 import {AwaitingBodySkeleton, AwaitingTitle} from "./session-awaiting-skeleton";
 import {questionAnswerable, useAwaitingGate} from "./use-awaiting-gate";
@@ -28,10 +34,18 @@ const CHIP_CLASS =
 const FOOTER_CLASS = "text-[12px]/[15px] text-ink-muted";
 
 /** `Claude asked · {body}`, the card's eyebrow line, three lines at most. */
-function AskedLine({bodyId, children}: {bodyId: string; children: ReactNode}) {
+function AskedLine({
+	bodyId,
+	eyebrow = "Claude asked",
+	children,
+}: {
+	bodyId: string;
+	eyebrow?: string;
+	children: ReactNode;
+}) {
 	return (
 		<div data-card-question className="line-clamp-3 min-w-0 text-primary [overflow-wrap:anywhere]">
-			<span className="text-ink-muted">Claude asked</span>
+			<span className="text-ink-muted">{eyebrow}</span>
 			<span aria-hidden className="text-ink-muted">
 				{" · "}
 			</span>
@@ -45,7 +59,7 @@ function AskedLine({bodyId, children}: {bodyId: string; children: ReactNode}) {
 /** Upstream's "Awaiting input / Open the session to respond" body. */
 function AwaitingFallback() {
 	return (
-		<div className="flex flex-col gap-0.5 px-4 py-2.5">
+		<div data-card-fallback className="flex flex-col gap-0.5 px-4 py-2.5">
 			<span className="font-medium text-secondary">Awaiting input</span>
 			<span data-card-footer className="text-ink-muted">
 				Open the session to respond
@@ -241,11 +255,158 @@ function QuestionBody({
 	);
 }
 
+/** Upstream's Plan ready card: the plan's headline and opening text, approved in the session. */
+function PlanBody({planFilename}: {planFilename: string | null}) {
+	const bodyId = useId();
+	const plan = useQuery({...planQueryOptions(toMdSlug(planFilename ?? "")), enabled: planFilename !== null}).data;
+	const headline = plan?.title ?? planFilename ?? "";
+	const detail = plan === undefined || plan === null ? "" : planDetail(plan.markdown);
+	return (
+		<div className="flex flex-col gap-1.25 px-4 pt-1 pb-2.5">
+			<AskedLine bodyId={bodyId} eyebrow="Plan ready">
+				{headline}
+			</AskedLine>
+			{detail !== "" && (
+				<div data-card-detail className="max-h-24 overflow-y-auto whitespace-pre-wrap text-secondary">
+					{truncateCodePoints(detail, AWAITING_TEXT_CAP)}
+				</div>
+			)}
+			<span data-card-footer className={FOOTER_CLASS}>
+				Open the session to approve
+			</span>
+		</div>
+	);
+}
+
+const PERMISSION_BUTTON_CLASS =
+	"h-7 rounded-control-sm px-2 text-[13px]/[19px] transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100";
+
+/** A tool permission prompt, allowed or denied in the live pane like the docked permission card. */
+function PermissionBody({sessionId, message, writable}: {sessionId: string; message: string; writable: boolean}) {
+	const bodyId = useId();
+	const toast = useToast();
+	const decide = useMutation({
+		mutationFn: async (decision: PermissionDecision) => sendHerdrPermissionDecision(sessionId, decision),
+		onError: () => {
+			toast({kind: "error", message: SEND_FAILED});
+		},
+	});
+	const send = (decision: PermissionDecision) => {
+		if (!decide.isPending) decide.mutate(decision);
+	};
+	return (
+		<div className="flex flex-col gap-1.25 px-4 pt-1 pb-2.5">
+			<AskedLine bodyId={bodyId}>{truncateCodePoints(message, AWAITING_TEXT_CAP)}</AskedLine>
+			{writable ? (
+				decide.isSuccess ? (
+					<p role="status" data-card-sent className={FOOTER_CLASS}>
+						Response sent
+					</p>
+				) : (
+					<div className="flex justify-end gap-0.75">
+						<button
+							type="button"
+							disabled={decide.isPending}
+							onClick={() => {
+								send("deny");
+							}}
+							className={`${PERMISSION_BUTTON_CLASS} bg-alpha-2 text-primary hover:bg-alpha-3`}
+						>
+							Deny
+						</button>
+						<button
+							type="button"
+							disabled={decide.isPending}
+							onClick={() => {
+								send("allow");
+							}}
+							className={`${PERMISSION_BUTTON_CLASS} bg-fill-primary text-on-primary hover:bg-fill-primary-hover`}
+						>
+							Allow once
+						</button>
+					</div>
+				)
+			) : (
+				<span data-card-footer className={FOOTER_CLASS}>
+					Open the session to respond
+				</span>
+			)}
+		</div>
+	);
+}
+
+/** A session waiting without a structured gate: its summary, and a reply sent as a normal prompt. */
+function NoGateBody({sessionId, summary, writable}: {sessionId: string; summary: string | null; writable: boolean}) {
+	const bodyId = useId();
+	const toast = useToast();
+	const prompt = useMutation({mutationFn: async (text: string) => sendHerdrPrompt(sessionId, text)});
+	if (!writable) return <AwaitingFallback />;
+	const summaryText = summary ?? "";
+	return (
+		<div className="flex flex-col gap-1.25 px-4 pt-1 pb-2.5">
+			{summaryText === "" ? (
+				<span id={bodyId} className="font-medium text-secondary">
+					Awaiting input
+				</span>
+			) : (
+				<AskedLine bodyId={bodyId}>{truncateCodePoints(summaryText, AWAITING_TEXT_CAP)}</AskedLine>
+			)}
+			{prompt.isSuccess ? (
+				<p role="status" data-card-sent className={FOOTER_CLASS}>
+					Reply sent
+				</p>
+			) : (
+				<ReplyBox
+					draftKey={quickReplyDraftKey(sessionId, summaryText)}
+					describedBy={bodyId}
+					pending={prompt.isPending}
+					onSend={(text, restore) => {
+						prompt.mutate(text, {
+							onError: () => {
+								restore();
+								toast({kind: "error", message: SEND_FAILED});
+							},
+						});
+					}}
+				/>
+			)}
+		</div>
+	);
+}
+
 /** The lazy body of a Needs input row's hover card, by what the session waits on. */
+function GateBody({
+	sessionId,
+	summary,
+	gate,
+	route,
+}: {
+	sessionId: string;
+	summary: string | null;
+	gate: AwaitingGate;
+	route: QuestionAnswerRoute;
+}) {
+	// Only a live pane takes a permission decision or a prompt; a fork answers questions alone.
+	const writable = route === "live-pane";
+	switch (gate.kind) {
+		case "question":
+			return <QuestionBody sessionId={sessionId} gate={gate} route={route} />;
+		case "plan":
+			return <PlanBody planFilename={gate.planFilename} />;
+		case "permission":
+			return <PermissionBody sessionId={sessionId} message={gate.message} writable={writable} />;
+		case "none":
+			return <NoGateBody sessionId={sessionId} summary={summary} writable={writable} />;
+		default:
+			return assertNever(gate);
+	}
+}
+
 function AwaitingBody({
 	sessionId,
 	title,
 	titleId,
+	summary,
 	gate,
 	route,
 }: {
@@ -259,11 +420,7 @@ function AwaitingBody({
 	return (
 		<>
 			<AwaitingTitle title={title} titleId={titleId} />
-			{gate.kind === "question" ? (
-				<QuestionBody sessionId={sessionId} gate={gate} route={route} />
-			) : (
-				<AwaitingFallback />
-			)}
+			<GateBody sessionId={sessionId} summary={summary} gate={gate} route={route} />
 		</>
 	);
 }
