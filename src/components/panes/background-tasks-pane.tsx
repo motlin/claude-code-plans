@@ -1,7 +1,9 @@
+import {useQuery} from "@tanstack/react-query";
 import {Link} from "@tanstack/react-router";
 import {ChevronRight, Trash2} from "lucide-react";
 import {useId, useState} from "react";
 
+import {taskOutputQueryOptions} from "../../lib/api/task-output";
 import {type BackgroundTask, type BackgroundTaskGroups, backgroundTaskMeta} from "../../lib/background-tasks";
 import {HighlightedCommand} from "../tool-renderers/bash-renderer";
 import {AnsiText} from "../tool-renderers/shared";
@@ -15,9 +17,58 @@ const SECTION_HEADING = "text-caption font-medium text-secondary";
 const ICON_BUTTON =
 	"flex size-5 cursor-pointer items-center justify-center rounded-r4 text-ink-muted transition-colors hover:bg-fill-ghost-hover hover:text-primary";
 const REGION_CAP = "max-h-[200px] overflow-auto";
+const OUTPUT_REGION = `${REGION_CAP} whitespace-pre-wrap break-all rounded-r6 bg-fill-control px-2 py-[5px] font-mono text-[12px]/[17px] text-secondary`;
+const NOTE = "text-caption text-ink-muted";
+const MISSING_COPY = "Output no longer available";
 
 function taskTitle(task: BackgroundTask): string {
 	return nonEmpty(task.description) ?? nonEmpty(task.command) ?? task.id;
+}
+
+function OutputRegion({title, output}: {title: string; output: string}) {
+	return (
+		<pre role="region" aria-label={`Output for ${title}`} className={OUTPUT_REGION}>
+			<AnsiText content={output} />
+		</pre>
+	);
+}
+
+/** Output the transcript itself carries: TaskOutput reads, Monitor events, or an agent's result. */
+function InlineOutput({task, title}: {task: BackgroundTask; title: string}) {
+	if (task.output === null) return <p className={NOTE}>{task.summary ?? "No output recorded."}</p>;
+	return <OutputRegion title={title} output={task.output} />;
+}
+
+/**
+ * The tail of the CLI's output file, fetched only while the card is open and
+ * re-read while the task runs.
+ */
+function OutputFile({
+	sessionId,
+	file,
+	task,
+	title,
+}: {
+	sessionId: string;
+	file: string;
+	task: BackgroundTask;
+	title: string;
+}) {
+	const {data, isError} = useQuery(taskOutputQueryOptions(sessionId, file, task.status === "running"));
+	if (data === undefined) return isError ? <InlineOutput task={task} title={title} /> : null;
+	if (data.status === "missing") {
+		return task.output === null ? (
+			<p className={NOTE}>{MISSING_COPY}</p>
+		) : (
+			<InlineOutput task={task} title={title} />
+		);
+	}
+	return (
+		<>
+			{data.truncated && <p className={NOTE}>Showing the last 64 KB of output.</p>}
+			<OutputRegion title={title} output={data.output} />
+		</>
+	);
 }
 
 /**
@@ -25,7 +76,7 @@ function taskTitle(task: BackgroundTask): string {
  * with the chevron right after it, and the kind/status meta beneath. Expanding
  * reveals labelled, height-capped "Command for" and "Output for" regions.
  */
-function BackgroundTaskCard({task}: {task: BackgroundTask}) {
+function BackgroundTaskCard({task, sessionId}: {task: BackgroundTask; sessionId: string | undefined}) {
 	const [expanded, setExpanded] = useState(false);
 	const detailsId = useId();
 	const title = taskTitle(task);
@@ -62,16 +113,10 @@ function BackgroundTaskCard({task}: {task: BackgroundTask}) {
 							<HighlightedCommand command={task.command} />
 						</div>
 					)}
-					{task.output === null ? (
-						<p className="text-caption text-ink-muted">{task.summary ?? "No output recorded."}</p>
+					{sessionId !== undefined && task.outputFile !== null && task.kind !== "agent" ? (
+						<OutputFile sessionId={sessionId} file={task.outputFile} task={task} title={title} />
 					) : (
-						<pre
-							role="region"
-							aria-label={`Output for ${title}`}
-							className={`${REGION_CAP} whitespace-pre-wrap break-all rounded-r6 bg-fill-control px-2 py-[5px] font-mono text-[12px]/[17px] text-secondary`}
-						>
-							<AnsiText content={task.output} />
-						</pre>
+						<InlineOutput task={task} title={title} />
 					)}
 				</div>
 			)}
@@ -79,11 +124,11 @@ function BackgroundTaskCard({task}: {task: BackgroundTask}) {
 	);
 }
 
-function TaskCards({tasks}: {tasks: readonly BackgroundTask[]}) {
+function TaskCards({tasks, sessionId}: {tasks: readonly BackgroundTask[]; sessionId: string | undefined}) {
 	return (
 		<ul className="flex flex-col gap-1.5">
 			{tasks.map((task) => (
-				<BackgroundTaskCard key={task.id} task={task} />
+				<BackgroundTaskCard key={task.id} task={task} sessionId={sessionId} />
 			))}
 		</ul>
 	);
@@ -97,8 +142,11 @@ function TaskCards({tasks}: {tasks: readonly BackgroundTask[]}) {
 export function BackgroundTasksList({
 	groups,
 	subagents,
+	sessionId,
 }: {
 	groups: BackgroundTaskGroups;
+	/** The session whose task output files the cards may read. */
+	sessionId?: string;
 	/** The session's subagents, linked to their tree/Gantt page. */
 	subagents?: {sessionId: string; count: number};
 }) {
@@ -115,7 +163,7 @@ export function BackgroundTasksList({
 			{groups.running.length > 0 && (
 				<section className="flex flex-col gap-1.5">
 					<h3 className={SECTION_HEADING}>{groups.running.length} running</h3>
-					<TaskCards tasks={groups.running} />
+					<TaskCards tasks={groups.running} sessionId={sessionId} />
 				</section>
 			)}
 			{finished.length > 0 && (
@@ -150,7 +198,7 @@ export function BackgroundTasksList({
 							</button>
 						</Tooltip>
 					</div>
-					{finishedOpen && <TaskCards tasks={finished} />}
+					{finishedOpen && <TaskCards tasks={finished} sessionId={sessionId} />}
 				</section>
 			)}
 			{subagents !== undefined && subagentCount > 0 && (

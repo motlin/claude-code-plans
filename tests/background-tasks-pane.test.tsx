@@ -1,12 +1,17 @@
 // @vitest-environment jsdom
 
+import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {cleanup, fireEvent, render, screen} from "@testing-library/react";
-import {afterEach, describe, expect, it} from "vite-plus/test";
+import type {ReactNode} from "react";
+import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {BackgroundTasksList} from "../src/components/panes/background-tasks-pane";
 import type {BackgroundTask, BackgroundTaskGroups} from "../src/lib/background-tasks";
 
-afterEach(cleanup);
+afterEach(() => {
+	cleanup();
+	vi.unstubAllGlobals();
+});
 
 function task(overrides: Partial<BackgroundTask> & Pick<BackgroundTask, "id">): BackgroundTask {
 	return {
@@ -17,6 +22,7 @@ function task(overrides: Partial<BackgroundTask> & Pick<BackgroundTask, "id">): 
 		status: "running",
 		output: null,
 		summary: null,
+		outputFile: null,
 		...overrides,
 	};
 }
@@ -148,5 +154,95 @@ describe("BackgroundTasksList", () => {
 		render(<BackgroundTasksList groups={{running: [], finished: []}} />);
 
 		expect(screen.getByText("No background tasks in this session.").tagName).toBe("P");
+	});
+});
+
+const SESSION_ID = "5e5510a0-0000-4000-8000-00000000fab1";
+const OUTPUT_FILE = "/private/tmp/claude-501/-Users-fab/dc5296db-0000-4000-8000-00000000fab1/tasks/bfab1lint.output";
+
+function withQueryClient(node: ReactNode) {
+	const client = new QueryClient({defaultOptions: {queries: {retry: false}}});
+	return <QueryClientProvider client={client}>{node}</QueryClientProvider>;
+}
+
+function stubFetch(body: unknown) {
+	const fetchMock = vi.fn<typeof fetch>(async () => Promise.resolve(Response.json(body)));
+	vi.stubGlobal("fetch", fetchMock);
+	return fetchMock;
+}
+
+function fetchedUrls(fetchMock: ReturnType<typeof stubFetch>): string[] {
+	return fetchMock.mock.calls.map(([input]) => (input instanceof Request ? input.url : String(input)));
+}
+
+const LINT_GROUPS: BackgroundTaskGroups = {
+	running: [
+		task({
+			id: "bfab1lint",
+			description: "Lint the fabricated app",
+			command: "pnpm lint",
+			summary: "Background command still running",
+			outputFile: OUTPUT_FILE,
+		}),
+	],
+	finished: [],
+};
+
+describe("BackgroundTasksList output file", () => {
+	it("fetches a task's output file only once its card expands, and shows it in the Output region", async () => {
+		const fetchMock = stubFetch({status: "ok", output: "\u001b[32m0 problems\u001b[0m\n", truncated: false});
+		render(withQueryClient(<BackgroundTasksList groups={LINT_GROUPS} sessionId={SESSION_ID} />));
+
+		const beforeExpand = fetchedUrls(fetchMock);
+		fireEvent.click(screen.getByRole("button", {name: "Background task: Lint the fabricated app"}));
+		const region = await screen.findByRole("region", {name: "Output for Lint the fabricated app"});
+
+		expect({beforeExpand, urls: fetchedUrls(fetchMock), text: region.textContent}).toStrictEqual({
+			beforeExpand: [],
+			urls: [`/api/sessions/${SESSION_ID}/task-output?file=${encodeURIComponent(OUTPUT_FILE)}`],
+			text: "0 problems\n",
+		});
+	});
+
+	it("notes when the output was truncated to its tail", async () => {
+		stubFetch({status: "ok", output: "last line\n", truncated: true});
+		render(withQueryClient(<BackgroundTasksList groups={LINT_GROUPS} sessionId={SESSION_ID} />));
+
+		fireEvent.click(screen.getByRole("button", {name: "Background task: Lint the fabricated app"}));
+
+		expect((await screen.findByText("Showing the last 64 KB of output.")).tagName).toBe("P");
+	});
+
+	it("says the output is no longer available when the file was cleaned up", async () => {
+		stubFetch({status: "missing"});
+		render(withQueryClient(<BackgroundTasksList groups={LINT_GROUPS} sessionId={SESSION_ID} />));
+
+		fireEvent.click(screen.getByRole("button", {name: "Background task: Lint the fabricated app"}));
+
+		expect((await screen.findByText("Output no longer available")).tagName).toBe("P");
+	});
+
+	it("shows an agent task's result and never fetches its output file", () => {
+		const fetchMock = stubFetch({status: "ok", output: '{"type":"user"}', truncated: false});
+		const groups: BackgroundTaskGroups = {
+			running: [
+				task({
+					id: "afab1review",
+					kind: "agent",
+					description: "Review the fabricated diff",
+					output: "The fabricated diff looks good.",
+					outputFile: OUTPUT_FILE,
+				}),
+			],
+			finished: [],
+		};
+		render(withQueryClient(<BackgroundTasksList groups={groups} sessionId={SESSION_ID} />));
+
+		fireEvent.click(screen.getByRole("button", {name: "Background task: Review the fabricated diff"}));
+
+		expect({
+			urls: fetchedUrls(fetchMock),
+			text: screen.getByRole("region", {name: "Output for Review the fabricated diff"}).textContent,
+		}).toStrictEqual({urls: [], text: "The fabricated diff looks good."});
 	});
 });

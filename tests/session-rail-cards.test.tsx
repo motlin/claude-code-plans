@@ -101,6 +101,7 @@ const FULL: SessionRailInputs = {
 				status: "running",
 				output: null,
 				summary: null,
+				outputFile: null,
 			},
 		],
 		finished: [
@@ -113,6 +114,7 @@ const FULL: SessionRailInputs = {
 				status: "completed",
 				output: null,
 				summary: null,
+				outputFile: null,
 			},
 		],
 	},

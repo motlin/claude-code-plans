@@ -19,6 +19,11 @@ export interface BackgroundTask {
 	output: string | null;
 	/** The latest task-notification summary line. */
 	summary: string | null;
+	/**
+	 * The CLI's `tasks/<id>.output` file the command writes to, from its launch
+	 * result or notification. Never set for agents, whose file is their JSONL transcript.
+	 */
+	outputFile: string | null;
 }
 
 export interface BackgroundTaskGroups {
@@ -215,6 +220,8 @@ const LAUNCH_ID_PATTERNS = [
 	/agentId:\s*(\S+)/,
 ];
 
+const LAUNCH_OUTPUT_FILE = /Output is being written to: (\S+?)\.?(?:\s|$)/;
+
 function launchedTaskId(result: Readonly<Record<string, unknown>> | undefined, text: string): string | null {
 	for (const key of ["backgroundTaskId", "taskId", "agentId"]) {
 		const id = asString(result?.[key]);
@@ -283,6 +290,8 @@ export function extractBackgroundTasks(
 				const tracked = find(taskId, toolUseId);
 				if (tracked === undefined) continue;
 				if (summary !== null) tracked.task.summary = summary;
+				const outputFile = tag(content, "output-file");
+				if (outputFile !== null && tracked.task.kind !== "agent") tracked.task.outputFile = outputFile;
 				const event = tag(content, "event");
 				if (event !== null) {
 					tracked.task.output = tracked.task.output === null ? event : `${tracked.task.output}\n${event}`;
@@ -333,6 +342,7 @@ export function extractBackgroundTasks(
 						status: "running",
 						output: null,
 						summary: null,
+						outputFile: null,
 					});
 				} else if (name === "Monitor") {
 					track({
@@ -344,6 +354,7 @@ export function extractBackgroundTasks(
 						status: "running",
 						output: null,
 						summary: null,
+						outputFile: null,
 					});
 				} else if (name === "Agent") {
 					pendingAgents.set(id, {description: description ?? ""});
@@ -380,6 +391,7 @@ export function extractBackgroundTasks(
 					status: "running",
 					output: null,
 					summary: null,
+					outputFile: null,
 				});
 				if (agentId !== null) byTaskId.set(agentId, tracked);
 				// TaskStop names a teammate by its name as often as by its id.
@@ -400,6 +412,7 @@ export function extractBackgroundTasks(
 						status: "running",
 						output: null,
 						summary: null,
+						outputFile: null,
 					});
 					if (taskId !== null) byTaskId.set(taskId, tracked);
 				}
@@ -418,6 +431,8 @@ export function extractBackgroundTasks(
 					launched.task.id = taskId;
 					byTaskId.set(taskId, launched);
 				}
+				const outputFile = LAUNCH_OUTPUT_FILE.exec(text)?.[1];
+				if (outputFile !== undefined) launched.task.outputFile = outputFile;
 				continue;
 			}
 
@@ -456,6 +471,7 @@ export function extractBackgroundTasks(
 			status: "running",
 			output: null,
 			summary: null,
+			outputFile: null,
 		});
 	}
 	for (const teammate of live.teammates ?? []) {
@@ -477,6 +493,7 @@ export function extractBackgroundTasks(
 			status: "running",
 			output: null,
 			summary: null,
+			outputFile: null,
 		});
 	}
 	// A running teammate's in-flight foreground command is a task of its own upstream.
@@ -495,6 +512,7 @@ export function extractBackgroundTasks(
 			status: "running",
 			output: null,
 			summary: null,
+			outputFile: null,
 		});
 	}
 	for (const hookTask of live.hookTasks ?? []) {
@@ -510,6 +528,7 @@ export function extractBackgroundTasks(
 			status: "running",
 			output: null,
 			summary: null,
+			outputFile: null,
 		});
 	}
 

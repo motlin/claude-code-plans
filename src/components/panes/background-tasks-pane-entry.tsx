@@ -18,6 +18,7 @@ export function useRegisterBackgroundTasksPane(
 					<BackgroundTasksList
 						key={sessionId}
 						groups={groups}
+						sessionId={sessionId}
 						subagents={{sessionId, count: subagentCount}}
 					/>
 				),

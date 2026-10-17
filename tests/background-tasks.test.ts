@@ -132,6 +132,7 @@ function task(overrides: Partial<BackgroundTask> & Pick<BackgroundTask, "id">): 
 		status: "running",
 		output: null,
 		summary: null,
+		outputFile: null,
 		...overrides,
 	};
 }
@@ -144,6 +145,7 @@ const BUILD_TASK = task({
 	status: "completed",
 	output: "vite v8 building for production...\nbuilt in 1.2s",
 	summary: 'Background command "Build the fabricated app" completed (exit code 0)',
+	outputFile: "/tmp/fab/bfab1build.output",
 });
 
 const WATCH_TASK = task({
@@ -260,6 +262,63 @@ describe("extractBackgroundTasks", () => {
 			finished: [
 				{...REVIEW_TASK, status: "stopped"},
 				{...WATCH_TASK, status: "stopped"},
+			],
+		});
+	});
+
+	it("records the output file a background command's launch result names while it runs", () => {
+		expect(extractBackgroundTasks(BASH_RECORDS.slice(0, 2), {sessionActive: true})).toStrictEqual({
+			running: [
+				task({
+					id: "bfab1build",
+					toolUseId: "toolu_bash_build",
+					description: "Build the fabricated app",
+					command: "pnpm build",
+					outputFile: "/tmp/fab/bfab1build.output",
+				}),
+			],
+			finished: [],
+		});
+	});
+
+	it("records the notification's output file for a command whose launch result named none", () => {
+		const records = [
+			BASH_RECORDS[0]!,
+			toolResult(
+				"toolu_bash_build",
+				"Command running in background with ID: bfab1build.",
+				{backgroundTaskId: "bfab1build"},
+				"2026-09-28T10:00:01.000Z",
+			),
+			BASH_RECORDS[4]!,
+		];
+		expect(extractBackgroundTasks(records, {sessionActive: true})).toStrictEqual({
+			running: [],
+			finished: [{...BUILD_TASK, output: null}],
+		});
+	});
+
+	it("never records an agent's output file, whose .output is its JSONL transcript, and keeps its result", () => {
+		const done = notification(
+			[
+				"<task-id>afab1review</task-id>",
+				"<tool-use-id>toolu_agent_review</tool-use-id>",
+				"<output-file>/tmp/fab/afab1review.output</output-file>",
+				"<status>completed</status>",
+				'<summary>Agent "Review the fabricated diff" finished</summary>',
+				"<result>The fabricated diff looks good.</result>",
+			].join("\n"),
+			"2026-09-28T10:05:00.000Z",
+		);
+		expect(extractBackgroundTasks([...AGENT_RECORDS, done], {sessionActive: true})).toStrictEqual({
+			running: [],
+			finished: [
+				{
+					...REVIEW_TASK,
+					status: "completed",
+					output: "The fabricated diff looks good.",
+					summary: 'Agent "Review the fabricated diff" finished',
+				},
 			],
 		});
 	});
