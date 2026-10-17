@@ -27,6 +27,7 @@ import {
 	type AnswerSubmission,
 	type AskUserQuestionContextValue,
 } from "./ask-user-question-context";
+import {PlanApprovalProvider, type PlanApprovalContextValue} from "./plan-approval-context";
 import {SessionFileRefs} from "./file-refs";
 import type {JumpTargetWindow} from "./jump-target-context";
 import {LegacyMessageLinkNotice} from "./legacy-message-link-notice";
@@ -110,6 +111,8 @@ import {
 	launchHerdrSession,
 	sendHerdrInterrupt,
 	sendHerdrPermissionDecision,
+	sendHerdrPlanDecision,
+	fetchHerdrPlanDialog,
 	sendHerdrQuestionAnswer,
 } from "../lib/api/herdr";
 import {notificationsQueryOptions} from "../lib/api/notifications";
@@ -569,6 +572,14 @@ function SessionView({
 		() => ({answerRoute, submitAnswer}),
 		[answerRoute, submitAnswer],
 	);
+	const planApprovalCtx: PlanApprovalContextValue = useMemo(
+		() => ({
+			answerRoute,
+			loadDialog: async () => fetchHerdrPlanDialog(sessionId),
+			decide: async (decision) => sendHerdrPlanDecision(sessionId, decision),
+		}),
+		[answerRoute, sessionId],
+	);
 	const answerPermission = useCallback(
 		async (decision: PermissionDecision) => sendHerdrPermissionDecision(sessionId, decision),
 		[sessionId],
@@ -934,55 +945,57 @@ function SessionView({
 						<TranscriptTopFade />
 						{/* Chat messages */}
 						<AskUserQuestionProvider value={askUserQuestionCtx}>
-							<TranscriptHistoryLoader sessionId={sessionId} startIndex={transcript.startIndex} />
-							<SessionFileRefs
-								sessionId={sessionId}
-								cwd={sessionDirectory ?? undefined}
-								sessionFiles={resources?.files ?? windowFiles}
-							>
-								<SessionSubagentOpener sessionId={sessionId}>
-									<SessionBackgroundTasksOpener running={runningBackgroundLaunches}>
-										<TranscriptActionsProvider
-											sessionId={sessionId}
-											lines={processed.lines}
-											fork={forkFromMessage}
-										>
-											<SessionChat
+							<PlanApprovalProvider value={planApprovalCtx}>
+								<TranscriptHistoryLoader sessionId={sessionId} startIndex={transcript.startIndex} />
+								<SessionFileRefs
+									sessionId={sessionId}
+									cwd={sessionDirectory ?? undefined}
+									sessionFiles={resources?.files ?? windowFiles}
+								>
+									<SessionSubagentOpener sessionId={sessionId}>
+										<SessionBackgroundTasksOpener running={runningBackgroundLaunches}>
+											<TranscriptActionsProvider
 												sessionId={sessionId}
 												lines={processed.lines}
-												measurementSource={transcript.records}
-												measurementLayout={JSON.stringify([
-													settings.showDebug,
-													settings.interfaceFont,
-													settings.transcriptTextSize,
-													settings.codeFont,
-													settings.transcriptWidth,
-												])}
-												toolResultMap={processed.toolResultMap}
-												allowedImageRoots={data.imageRoots}
-												subagents={subagents}
-												showThinking={transcriptFlags.showThinking}
-												showTools={transcriptFlags.showTools}
-												showPassedHooks={transcriptFlags.showPassedHooks}
-												showHookWarnings={transcriptFlags.showHookWarnings}
-												showHookErrors={transcriptFlags.showHookErrors}
-												showSystemBanners={transcriptFlags.showSystemBanners}
-												showCompactSummaries={transcriptFlags.showCompactSummaries}
-												showTranscriptOnly={transcriptFlags.showTranscriptOnly}
-												transcriptMode={transcriptMode}
-												permissionWaitToolUseId={permissionWaitId}
-												initialScrollKey={initialScrollKey}
-												scrollContentRef={scrollAnchorRef}
-												shouldScrollToEnd={
-													restoredScrollPosition === undefined && locationHash === ""
-												}
-												summary={aiSummary}
-												{...(slashCommands === undefined ? {} : {slashCommands})}
-											/>
-										</TranscriptActionsProvider>
-									</SessionBackgroundTasksOpener>
-								</SessionSubagentOpener>
-							</SessionFileRefs>
+												fork={forkFromMessage}
+											>
+												<SessionChat
+													sessionId={sessionId}
+													lines={processed.lines}
+													measurementSource={transcript.records}
+													measurementLayout={JSON.stringify([
+														settings.showDebug,
+														settings.interfaceFont,
+														settings.transcriptTextSize,
+														settings.codeFont,
+														settings.transcriptWidth,
+													])}
+													toolResultMap={processed.toolResultMap}
+													allowedImageRoots={data.imageRoots}
+													subagents={subagents}
+													showThinking={transcriptFlags.showThinking}
+													showTools={transcriptFlags.showTools}
+													showPassedHooks={transcriptFlags.showPassedHooks}
+													showHookWarnings={transcriptFlags.showHookWarnings}
+													showHookErrors={transcriptFlags.showHookErrors}
+													showSystemBanners={transcriptFlags.showSystemBanners}
+													showCompactSummaries={transcriptFlags.showCompactSummaries}
+													showTranscriptOnly={transcriptFlags.showTranscriptOnly}
+													transcriptMode={transcriptMode}
+													permissionWaitToolUseId={permissionWaitId}
+													initialScrollKey={initialScrollKey}
+													scrollContentRef={scrollAnchorRef}
+													shouldScrollToEnd={
+														restoredScrollPosition === undefined && locationHash === ""
+													}
+													summary={aiSummary}
+													{...(slashCommands === undefined ? {} : {slashCommands})}
+												/>
+											</TranscriptActionsProvider>
+										</SessionBackgroundTasksOpener>
+									</SessionSubagentOpener>
+								</SessionFileRefs>
+							</PlanApprovalProvider>
 						</AskUserQuestionProvider>
 
 						{/* Upstream draws every pending approval inline; a permission prompt is not on disk, so it follows the transcript */}

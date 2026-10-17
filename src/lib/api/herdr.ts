@@ -3,6 +3,7 @@ import {z} from "zod";
 import type {QuestionAnswer} from "../hook-events";
 import type {LiveOptionChange} from "../launch-options";
 import type {PermissionDialogDecision} from "../permission-suggestions";
+import {PlanDialogSchema, type PlanDecision, type PlanDialog} from "../plan-approval";
 import {apiFetch} from "./client";
 import {SessionViewedStateSchema} from "./viewed-state";
 
@@ -166,6 +167,35 @@ export async function sendHerdrQuestionAnswer(
 		throw new Error(HerdrPromptErrorResponse.parse(json).error);
 	}
 
+	HerdrPromptSuccessResponse.parse(json);
+}
+
+const HerdrPlanDialogResponse = z.strictObject({dialog: PlanDialogSchema});
+
+/** What the session's open ExitPlanMode dialog offers; rejects when the pane is not showing it. */
+export async function fetchHerdrPlanDialog(sessionId: string, fetcher: typeof fetch = fetch): Promise<PlanDialog> {
+	const response = await fetcher(`/api/herdr/plan?sessionId=${encodeURIComponent(sessionId)}`, {
+		credentials: "same-origin",
+	});
+	const json: unknown = await response.json();
+	if (!response.ok) throw new Error(HerdrPromptErrorResponse.parse(json).error);
+	return HerdrPlanDialogResponse.parse(json).dialog;
+}
+
+/** Answer the session's pending ExitPlanMode by typing the choice, and any feedback, into its live pane's dialog. */
+export async function sendHerdrPlanDecision(
+	sessionId: string,
+	decision: PlanDecision,
+	fetcher: typeof fetch = fetch,
+): Promise<void> {
+	const response = await fetcher("/api/herdr/plan", {
+		method: "POST",
+		credentials: "same-origin",
+		headers: {"Content-Type": "application/json"},
+		body: JSON.stringify({sessionId, decision}),
+	});
+	const json: unknown = await response.json();
+	if (!response.ok) throw new Error(HerdrPromptErrorResponse.parse(json).error);
 	HerdrPromptSuccessResponse.parse(json);
 }
 

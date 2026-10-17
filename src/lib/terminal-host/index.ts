@@ -12,7 +12,7 @@ import {
 } from "../tmux/session-panes";
 import {TERMINAL_HOST_CAPABILITIES} from "../terminal-host-capabilities";
 import {defaultTmuxLaunchIo, launchClaudeInTmux, type TmuxLaunchIo} from "../tmux/launch";
-import {defaultTmuxWriteIo, tmuxWriteDependencies, type TmuxWriteIo} from "../tmux/writes";
+import {defaultTmuxWriteIo, readTmuxScreen, tmuxWriteDependencies, type TmuxWriteIo} from "../tmux/writes";
 import {startTmuxPaneEvents} from "../tmux/pane-events";
 import {
 	defaultTmuxTerminalStreamIo,
@@ -25,6 +25,7 @@ import {defaultHerdrLaunchDependencies, handleHerdrLaunch} from "../herdr/launch
 import {defaultHerdrLiveOptionDependencies, handleHerdrLiveOption} from "../herdr/live-option";
 import {createHerdrPlacementProvider, getHerdrPanes, type HerdrPaneLink} from "../herdr/panes";
 import {defaultHerdrPermissionDependencies, handleHerdrPermission} from "../herdr/permission";
+import {defaultHerdrPlanDependencies, handleHerdrPlan, handleHerdrPlanDialog} from "../herdr/plan";
 import {defaultHerdrPromptDependencies, handleHerdrPrompt, midTurnPromptReady} from "../herdr/prompt";
 import {getPendingQuestion} from "../pending-question-store";
 import {defaultHerdrQuestionDependencies, handleHerdrQuestion} from "../herdr/question";
@@ -77,6 +78,10 @@ export interface TerminalHost {
 	answerQuestion: (request: Request) => Promise<Response>;
 	/** Send the keys that answer a permission prompt. */
 	answerPermission: (request: Request) => Promise<Response>;
+	/** Read the session's open plan approval dialog: what it offers to accept into. */
+	readPlanDialog: (request: Request) => Promise<Response>;
+	/** Send the keys and feedback text that answer a plan approval dialog. */
+	answerPlan: (request: Request) => Promise<Response>;
 	/** Send the keys that change model, effort or mode in the live session. */
 	applyLiveOption: (request: Request) => Promise<Response>;
 	/** Launch: open a new pane running `claude`. */
@@ -113,6 +118,8 @@ const herdrTerminalHost: TerminalHost = {
 	interrupt: async (request) => handleHerdrInterrupt(request),
 	answerQuestion: async (request) => handleHerdrQuestion(request),
 	answerPermission: async (request) => handleHerdrPermission(request),
+	readPlanDialog: async (request) => handleHerdrPlanDialog(request),
+	answerPlan: async (request) => handleHerdrPlan(request),
 	applyLiveOption: async (request) => handleHerdrLiveOption(request),
 	launch: async (request) => handleHerdrLaunch(request),
 	reportHookState: (event, entry) => {
@@ -146,6 +153,8 @@ const noTerminalHost: TerminalHost = {
 	interrupt: noHostWrite,
 	answerQuestion: noHostWrite,
 	answerPermission: noHostWrite,
+	readPlanDialog: noHostWrite,
+	answerPlan: noHostWrite,
 	applyLiveOption: noHostWrite,
 	launch: noHostWrite,
 	reportHookState: () => undefined,
@@ -171,6 +180,16 @@ export function createTmuxTerminalHost(
 	streamIo: TmuxTerminalStreamIo = defaultTmuxTerminalStreamIo,
 ): TerminalHost {
 	const writes = {writesEnabled: io.writesEnabled};
+	const planDependencies = () => ({
+		...defaultHerdrPlanDependencies,
+		...writes,
+		pause: io.pause,
+		hasPendingPlan: (sessionId: string) =>
+			sources.entries().find((entry) => entry.sessionId === sessionId)?.pendingPermissionRequest?.toolName ===
+			"ExitPlanMode",
+		readScreen: async (sessionId: string, paneId: string) => readTmuxScreen(sessionId, paneId, sources),
+		...tmuxWriteDependencies("plan", sources, io),
+	});
 	const stream = async (
 		sessionId: string,
 		columns: number,
@@ -224,6 +243,8 @@ export function createTmuxTerminalHost(
 				...writes,
 				...tmuxWriteDependencies("permission", sources, io),
 			}),
+		readPlanDialog: async (request) => handleHerdrPlanDialog(request, planDependencies()),
+		answerPlan: async (request) => handleHerdrPlan(request, planDependencies()),
 		applyLiveOption: async (request) =>
 			handleHerdrLiveOption(request, {
 				...defaultHerdrLiveOptionDependencies,

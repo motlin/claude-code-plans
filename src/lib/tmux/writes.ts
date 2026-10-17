@@ -31,14 +31,21 @@ export interface TmuxWriteIo {
  * Which operation is typing. tmux types into anything, so each one may only
  * type in the hook-reported states where the CLI is showing what it expects.
  */
-export type TmuxWriteKind = "prompt" | "mid-turn-prompt" | "interrupt" | "question" | "permission" | "live-option";
+export type TmuxWriteKind =
+	| "prompt"
+	| "mid-turn-prompt"
+	| "interrupt"
+	| "question"
+	| "permission"
+	| "plan"
+	| "live-option";
 
 /**
  * Prompts and live option changes go into an idle composer; a mid-turn prompt
  * (sent right after a skipped question) goes into a working one with no
  * permission dialog open; an interrupt needs a turn to stop; a question dialog
  * shows while waiting. A permission dialog opens after PreToolUse already said
- * working, so it takes either.
+ * working, so it takes either, as does the plan approval dialog.
  */
 const READY_STATES = {
 	prompt: ["idle"],
@@ -46,6 +53,7 @@ const READY_STATES = {
 	interrupt: ["working", "waiting"],
 	question: ["waiting"],
 	permission: ["working", "waiting"],
+	plan: ["working", "waiting"],
 	"live-option": ["idle"],
 } as const satisfies Record<TmuxWriteKind, readonly ActivityState[]>;
 
@@ -235,6 +243,35 @@ export function tmuxWriteDependencies(
 }
 
 const TMUX_WRITE_TIMEOUT_MS = 2000;
+
+/** Runs `tmux <args>` and resolves with its stdout. */
+export type TmuxCapture = (args: readonly string[]) => Promise<string>;
+
+const defaultTmuxCapture: TmuxCapture = async (args) =>
+	new Promise((resolve, reject) => {
+		execFile("tmux", [...args], {timeout: TMUX_WRITE_TIMEOUT_MS}, (error: Error | null, stdout: string) => {
+			if (error) reject(error);
+			else resolve(stdout);
+		});
+	});
+
+/** The session's tmux pane's visible screen, refused when the pane moved on from `paneId`. */
+export async function readTmuxScreen(
+	sessionId: string,
+	paneId: string,
+	sources: TmuxSessionPaneSources,
+	capture: TmuxCapture = defaultTmuxCapture,
+): Promise<HerdrResult<string>> {
+	const now = await currentPane(sessionId, sources);
+	if (!now.ok) return now;
+	if (now.value.paneId !== paneId) return failure("pane-moved", `The session's tmux pane moved on from ${paneId}`);
+	const socket = now.value.socketPath === "" ? [] : ["-S", now.value.socketPath];
+	try {
+		return {ok: true, value: await capture([...socket, "capture-pane", "-p", "-t", paneId])};
+	} catch (error) {
+		return failure("tmux-failed", errorMessage(error));
+	}
+}
 const KEY_PAUSE_MS = 80;
 
 export const defaultTmuxWriteIo: TmuxWriteIo = {

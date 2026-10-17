@@ -4,6 +4,8 @@ import {CircleCheck} from "lucide-react";
 import type {ToolRendererProps} from "./types";
 import {APPROVAL_CARD_TITLE} from "../approval-card";
 import {useOptionalPaneHost} from "../panes/pane-host-context";
+import {PlanApprovalCard} from "../plan-approval-card";
+import {usePlanApprovalContext} from "../plan-approval-context";
 import {toMdSlug} from "../../lib/md-slug";
 import {
 	describeExitPlanModeResult,
@@ -35,7 +37,8 @@ const TONE_CLASS: Record<ExitPlanModeStatusTone, string> = {
  * Upstream's ExitPlanMode body: while it runs or awaits approval, the plan in a
  * left-bordered block; once done, "Plan approved" above that block (omitted on
  * an error). A pending plan leads with upstream's approval card title, "Claude
- * proposed a plan", trailed by its footnote "Open plan" that opens the Plan pane.
+ * proposed a plan", trailed by its footnote "Open plan" that opens the Plan pane,
+ * and inside a session view ends on upstream's approve / revise actions.
  * A local "Open plan file" link to the saved plan trails the title or the state row. The allowed
  * prompts and a rejection or error status show only in Verbose.
  */
@@ -49,6 +52,7 @@ export function ExitPlanModeRenderer({toolCall, verbose}: ToolRendererProps) {
 	const state = exitPlanModeState(result, toolCall.isError);
 	const done = state === "approved";
 	const host = useOptionalPaneHost();
+	const planApproval = usePlanApprovalContext();
 	const planFileAction = planFile !== undefined && (
 		<Link to="/plan/$filename" params={{filename: toMdSlug(planFile)}} className={PLAN_FILE_ACTION_CLASS}>
 			{PLAN_FILE_ACTION_LABEL}
@@ -104,6 +108,9 @@ export function ExitPlanModeRenderer({toolCall, verbose}: ToolRendererProps) {
 						<div data-plan-block="" className={`${PLAN_BLOCK_CLASS} py-1.5`}>
 							{plan}
 						</div>
+					)}
+					{state === "ready" && planApproval !== null && (
+						<PlanApprovalCard toolUseId={toolCall.id} plan={planApproval} />
 					)}
 				</>
 			)}

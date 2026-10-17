@@ -5,7 +5,7 @@ import {clearAllPendingQuestions, setPendingQuestion} from "../src/lib/pending-q
 import {createTmuxTerminalHost, resolveTerminalHost} from "../src/lib/terminal-host";
 import {createTmuxPaneTable} from "../src/lib/tmux/pane-table";
 import type {TmuxSessionPaneSources} from "../src/lib/tmux/session-panes";
-import {tmuxKeyName, type TmuxWriteIo} from "../src/lib/tmux/writes";
+import {readTmuxScreen, tmuxKeyName, type TmuxWriteIo} from "../src/lib/tmux/writes";
 import type {HerdrPaneIndexData} from "../src/lib/api/herdr";
 
 const SOCKET = "/private/tmp/tmux-501/default";
@@ -534,5 +534,39 @@ describe("answer routing for tmux sessions", () => {
 				}),
 			),
 		).toStrictEqual(["live-pane", "read-only"]);
+	});
+});
+
+describe("tmux plan approval", () => {
+	it("reads the pane's visible screen with capture-pane, refusing a pane that moved on", async () => {
+		const {sources} = liveSources(entry({state: "waiting"}));
+		const captures: string[][] = [];
+		const capture = async (args: readonly string[]) => {
+			captures.push([...args]);
+			return Promise.resolve("screen text");
+		};
+		expect({
+			current: await readTmuxScreen(SESSION_ID, "%7", sources, capture),
+			moved: await readTmuxScreen(SESSION_ID, "%8", sources, capture),
+			captures,
+		}).toStrictEqual({
+			current: {ok: true, value: "screen text"},
+			moved: {ok: false, code: "pane-moved", message: "The session's tmux pane moved on from %8"},
+			captures: [["-S", SOCKET, "capture-pane", "-p", "-t", "%7"]],
+		});
+	});
+
+	it("refuses to answer when the session's hook state has no pending ExitPlanMode", async () => {
+		const {sources} = liveSources(
+			entry({state: "waiting", pendingPermissionRequest: {toolName: "Bash", suggestions: []}}),
+		);
+		const {io, calls} = recordingIo();
+		const response = await createTmuxTerminalHost(sources, io).answerPlan(
+			post("/api/herdr/plan", {sessionId: SESSION_ID, decision: {kind: "accept", mode: "auto"}}),
+		);
+		expect({response: await describeResponse(response), calls}).toStrictEqual({
+			response: {status: 409, body: {error: "No plan approval is pending"}},
+			calls: [],
+		});
 	});
 });

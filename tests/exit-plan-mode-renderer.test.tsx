@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 
 import {createMemoryHistory, createRootRoute, createRouter, RouterProvider} from "@tanstack/react-router";
-import {cleanup, fireEvent, render, screen} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {APPROVAL_CARD_TITLE} from "../src/components/approval-card";
 import {PaneHostContext, type PaneHostApi} from "../src/components/panes/pane-host-context";
+import {PlanApprovalProvider, type PlanApprovalContextValue} from "../src/components/plan-approval-context";
 import {defaultPaneLayout} from "../src/lib/pane-layout";
 import {ExitPlanModeRenderer} from "../src/components/tool-renderers/exit-plan-mode-renderer";
 import type {ClientToolCall} from "../src/components/tool-renderers/types";
@@ -227,5 +228,41 @@ describe("ExitPlanModeRenderer", () => {
 		const verbose = (await renderRenderer(call, true)).container.textContent.includes(error);
 
 		expect({normal, verbose}).toStrictEqual({normal: false, verbose: true});
+	});
+});
+
+describe("ExitPlanModeRenderer plan approval", () => {
+	async function renderWithApproval(toolCall: ClientToolCall) {
+		const value: PlanApprovalContextValue = {
+			answerRoute: "live-pane",
+			loadDialog: async () => Promise.resolve({forwardMode: "auto", manual: true}),
+			decide: async () => Promise.resolve(),
+		};
+		const rootRoute = createRootRoute({
+			component: () => (
+				<PlanApprovalProvider value={value}>
+					<ExitPlanModeRenderer toolCall={toolCall} />
+				</PlanApprovalProvider>
+			),
+		});
+		const router = createRouter({routeTree: rootRoute, history: createMemoryHistory({initialEntries: ["/"]})});
+		await router.load();
+		const view = render(<RouterProvider router={router} />);
+		await act(async () => Promise.resolve());
+		return view;
+	}
+
+	it("ends a pending plan on upstream's approval actions inside a session view", async () => {
+		const view = await renderWithApproval(makeToolCall({input: {plan: "Do it."}}));
+		expect(
+			[...(view.container.querySelector("[data-plan-approval]")?.querySelectorAll("button") ?? [])].map(
+				(button) => button.textContent,
+			),
+		).toStrictEqual(["Reject", "Revise…Esc", "AcceptCtrlShift⏎Enter", "Accept and auto modeCtrl⏎Enter"]);
+	});
+
+	it("offers no approval actions once the plan is answered", async () => {
+		const view = await renderWithApproval(makeToolCall({input: {plan: "Do it."}, result: APPROVED_RESULT}));
+		expect(view.container.querySelector("[data-plan-approval]")).toStrictEqual(null);
 	});
 });
