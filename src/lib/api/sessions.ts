@@ -36,6 +36,8 @@ const SessionListItemSchema = z.object({
 	archived: z.boolean(),
 	/** Bridged to claude.ai/code by Remote Control. */
 	remoteControl: z.literal(true).optional(),
+	/** The terminal host the session runs in (`herdr`, `herdr · <session>`, `tmux · <session>`); absent for Local. */
+	terminalHost: z.string().optional(),
 	state: SessionSummaryStateSchema,
 	/** Blocked on a tool permission prompt; the session page docks the permission card from it. */
 	awaitingPermission: z.literal(true).optional(),

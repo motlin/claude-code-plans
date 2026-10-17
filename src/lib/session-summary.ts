@@ -5,6 +5,7 @@ import * as schema from "./db/schema";
 import {getActiveSessionEntry, type ActiveSessionEntry} from "./active-session-store";
 import {getPendingApprovalsForProject} from "./db/pending-approvals-cache";
 import {sessionRemoteControlColumn} from "./db/bridge-session-index";
+import {getSessionTerminalHosts} from "./session-terminal-hosts";
 import {getSessionPrLink, isSessionArchived} from "./db/queries";
 import {isSessionUnseen} from "./db/viewed-state";
 import type {ActiveSessionPayload, SessionSummaryPayload} from "./hook-events";
@@ -47,6 +48,8 @@ interface SessionSummaryOptions {
 	registrySession?: RegistrySessionState | null;
 	/** PR state for the row; defaults to the in-memory PR status service. */
 	prStatus?: PrStatus | null;
+	/** The row's terminal host label, null for Local; defaults to the in-memory pane tables. List callers pass one lookup for every row. */
+	terminalHost?: string | null;
 	now?: number;
 }
 
@@ -65,6 +68,7 @@ export function toSessionSummaryPayload(
 		activeSession = getActiveSessionEntry(entry.id),
 		registrySession = getRegistrySessionState(entry.id),
 		prStatus = lookupSessionPrStatus(entry),
+		terminalHost = getSessionTerminalHosts().get(entry.id) ?? null,
 		now = Date.now(),
 	} = options;
 	const pendingApproval = getPendingApprovalsForProject(entry.project).find(
@@ -119,6 +123,7 @@ export function toSessionSummaryPayload(
 		...(entry.forkedFromSessionId === undefined ? {} : {forkedFromSessionId: entry.forkedFromSessionId}),
 		archived,
 		...(entry.remoteControl === true ? {remoteControl: true} : {}),
+		...(terminalHost === null ? {} : {terminalHost}),
 		state: pendingInput || awaitingPermission ? "waiting" : main.state,
 		...(awaitingPermission ? {awaitingPermission: true} : {}),
 		...(registrySession === null ? {} : {processStartedAt: registrySession.startedAt}),

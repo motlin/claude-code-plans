@@ -166,8 +166,15 @@ export async function getHerdrPanes(
 	servers: HerdrServerLister = knownHerdrServers,
 ): Promise<HerdrPaneLink[]> {
 	const snapshot = await readHerdrSnapshot(request, table, servers);
-	if (snapshot === null) return [];
+	return snapshot === null ? [] : linkHerdrPanes(snapshot, entries, indexedSessionFilter);
+}
 
+/** Join a herdr pane snapshot to active ccp sessions and indexed transcripts, without asking herdr. */
+export function linkHerdrPanes(
+	snapshot: HerdrPaneState,
+	entries: ActiveSessionEntry[],
+	indexedSessionFilter: IndexedSessionFilter,
+): HerdrPaneLink[] {
 	const entriesByPaneId = new Map<string, ActiveSessionEntry[]>();
 	const entriesBySessionId = new Map(entries.map((entry) => [entry.sessionId, entry]));
 	for (const entry of entries) {

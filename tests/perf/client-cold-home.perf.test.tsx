@@ -325,6 +325,8 @@ describe("client lab: cold launch of the home page", () => {
 			});
 
 			expect(sidebarRecentsRows()).toBeGreaterThan(0);
+			// Each row's terminal host rides on the session list rows, so the sidebar reads no herdr panes.
+			expect(measurement.fetches.urls.filter((url) => url.includes("/api/herdr-panes"))).toStrictEqual([]);
 			expect(homeMainRows()).toBeGreaterThan(0);
 			const commitsToRows = launcher.commitsToRows();
 			if (commitsToRows === undefined) throw new Error("no commit showed both the sidebar recents and home rows");

@@ -43,6 +43,7 @@ type IndexDb = BetterSQLite3Database<typeof dbSchema>;
 /** Callback signature for broadcasting events. */
 type BroadcastFn = (type: string, data: Record<string, unknown>) => void;
 import {toSessionSummaryPayload} from "./session-summary";
+import {getSessionTerminalHosts} from "./session-terminal-hosts";
 import {hmrPersist, hmrDispose} from "./hmr-persist";
 import {DEFAULT_IGNORED_DIR_NAMES, getConfigPath, readConfig} from "./config";
 import {broadcastTyped, broadcast, addClient, removeClient} from "./sse-broadcast";
@@ -182,6 +183,7 @@ function sessionSummariesEqual(a: SessionSummaryPayload, b: SessionSummaryPayloa
 		a.projectName === b.projectName &&
 		a.archived === b.archived &&
 		a.remoteControl === b.remoteControl &&
+		a.terminalHost === b.terminalHost &&
 		a.state === b.state &&
 		a.unseen === b.unseen &&
 		a.blockedSince === b.blockedSince
@@ -224,6 +226,7 @@ function diffAndBroadcastSessions(index: IndexDb, projectId: string, broadcast: 
 	const rows = listSessionsForProjectFromDb(index, projectId, {status: "all"});
 	const unseenIds = getUnseenSessionIds(index);
 	const archivedIds = getArchivedSessionIds(index);
+	const terminalHosts = getSessionTerminalHosts();
 	const next = new Map<string, SessionSummaryPayload>();
 	for (const row of rows) {
 		next.set(
@@ -231,6 +234,7 @@ function diffAndBroadcastSessions(index: IndexDb, projectId: string, broadcast: 
 			toSessionSummaryPayload(row, {
 				unseen: unseenIds.has(row.id),
 				archived: archivedIds.has(row.id),
+				terminalHost: terminalHosts.get(row.id) ?? null,
 			}),
 		);
 	}

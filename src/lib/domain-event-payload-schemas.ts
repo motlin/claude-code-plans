@@ -36,6 +36,7 @@ export const SessionSummaryPayloadSchema: z.ZodType<SessionSummaryPayload> = z
 		forkedFromSessionId: z.string().exactOptional(),
 		archived: z.boolean(),
 		remoteControl: z.literal(true).exactOptional(),
+		terminalHost: z.string().exactOptional(),
 		state: SessionSummaryStateSchema,
 		awaitingPermission: z.literal(true).exactOptional(),
 		processStartedAt: z.number().exactOptional(),

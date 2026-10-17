@@ -135,6 +135,8 @@ export interface SessionSummaryPayload {
 	archived: boolean;
 	/** Bridged to claude.ai/code by Remote Control; absent otherwise. */
 	remoteControl?: true;
+	/** The terminal host the session runs in (`herdr`, `herdr · <session>`, `tmux · <session>`); absent for Local. */
+	terminalHost?: string;
 	state: SessionSummaryState;
 	/** Blocked on a tool permission prompt (a hook notification or the registry's `waitingFor`); absent otherwise. */
 	awaitingPermission?: true;

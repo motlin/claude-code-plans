@@ -20,25 +20,26 @@ export interface SessionEnvironment {
  * A local session's Environment, shared by the rail's Environment card and the
  * sidebar row's sr-only text so they can't disagree. Upstream labels a bridged
  * session "Remote Control"; here the session is a local process, so the
- * primary label is its terminal host and Remote Control is a secondary detail.
+ * primary label is its terminal host (from `terminalHostLabel`, null for
+ * Local) and Remote Control is a secondary detail.
  */
 export function sessionEnvironment({
-	pane,
+	terminalHost,
 	bridged,
 	live,
 }: {
-	pane: EnvironmentPane | null;
+	terminalHost: string | null;
 	bridged: boolean;
 	live: boolean;
 }): SessionEnvironment {
 	return {
-		label: hostLabel(pane),
+		label: terminalHost ?? "Local",
 		remoteControl: bridged ? `Remote Control · ${live ? "Connected" : "Offline"}` : null,
 	};
 }
 
-function hostLabel(pane: EnvironmentPane | null): string {
-	if (pane === null) return "Local";
+/** Where a pane runs: `herdr`, `herdr · <named session>`, or `tmux · <session>`. */
+export function terminalHostLabel(pane: EnvironmentPane): string {
 	if (pane.host === "tmux") return `tmux · ${pane.workspaceId}`;
 	const {session} = splitHerdrId(pane.paneId);
 	return session === null ? "herdr" : `herdr · ${session}`;

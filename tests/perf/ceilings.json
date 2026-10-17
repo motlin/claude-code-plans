@@ -54,10 +54,10 @@
 		"raisedAt": "2026-10-16"
 	},
 	"bundle.home.raw": {
-		"ceiling": 1159375,
+		"ceiling": 1159314,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "The sidebar row's sr-only environment text names the session's terminal host (herdr, a herdr named session, tmux or Local) with Remote Control as a secondary detail, so the always-loaded row decoration reads the shared herdr panes query through one session-environment helper. Home cold JS measures 1159375 raw, +813 B on main b453ca2e (1158562), which already sat at the edge of the 1% tolerance. The 1% tolerance and the gzip ceiling are unchanged.",
+		"reason": "The sidebar row's sr-only environment text names the session's terminal host (herdr, a herdr named session, tmux or Local) with Remote Control as a secondary detail through one session-environment helper shared with the rail, which the always-loaded row decoration imports; the label itself rides on the session list rows. Home cold JS measures 1159314 raw, +752 B on main b453ca2e (1158562), which already sat at the edge of the 1% tolerance: the helper and the herdr-id module it imports land as two small shared chunks. The 1% tolerance and the gzip ceiling are unchanged.",
 		"raisedAt": "2026-10-17"
 	},
 	"bundle.session.gzip": {
@@ -80,18 +80,18 @@
 		"tolerance": 0
 	},
 	"client.coldHome.default.fetches": {
-		"ceiling": 21,
+		"ceiling": 20,
 		"unit": "count",
 		"tolerance": 0,
-		"reason": "The sidebar row's sr-only environment text names the session's terminal host (herdr, a herdr named session, tmux or Local) instead of upstream's Remote Control label, so cold home reads the shared herdr panes query once (/api/herdr-panes, one request).",
-		"raisedAt": "2026-10-17"
+		"reason": "The home composer now shows the weekly usage pace banner between the repository chip and the composer, as upstream's home does (W84-03), so cold home fetches /api/usage once (one request, ~50 bytes).",
+		"raisedAt": "2026-10-14"
 	},
 	"client.coldHome.default.responseBytes": {
-		"ceiling": 4909,
+		"ceiling": 4875,
 		"unit": "bytes",
 		"tolerance": 0,
-		"reason": "Cold home reads the shared herdr panes query once (/api/herdr-panes, ~34 bytes in the lab) so the sidebar row's sr-only environment text can name the session's terminal host (herdr, a herdr named session, tmux or Local) instead of upstream's Remote Control label.",
-		"raisedAt": "2026-10-17"
+		"reason": "Application settings now carry the Terminal host setting and the Live terminal input key (tmux slice 1), so the cold home /api/application-settings response grows by 25 bytes.",
+		"raisedAt": "2026-10-16"
 	},
 	"client.coldHome.localSections.commitsToRows": {
 		"ceiling": 5,
@@ -99,18 +99,18 @@
 		"tolerance": 0
 	},
 	"client.coldHome.localSections.fetches": {
-		"ceiling": 22,
+		"ceiling": 21,
 		"unit": "count",
 		"tolerance": 0,
-		"reason": "The sidebar row's sr-only environment text names the session's terminal host (herdr, a herdr named session, tmux or Local) instead of upstream's Remote Control label, so cold home reads the shared herdr panes query once (/api/herdr-panes, one request).",
-		"raisedAt": "2026-10-17"
+		"reason": "The home composer now shows the weekly usage pace banner between the repository chip and the composer, as upstream's home does (W84-03), so cold home fetches /api/usage once (one request, ~50 bytes).",
+		"raisedAt": "2026-10-14"
 	},
 	"client.coldHome.localSections.responseBytes": {
-		"ceiling": 5093,
+		"ceiling": 5059,
 		"unit": "bytes",
 		"tolerance": 0,
-		"reason": "Cold home reads the shared herdr panes query once (/api/herdr-panes, ~34 bytes in the lab) so the sidebar row's sr-only environment text can name the session's terminal host (herdr, a herdr named session, tmux or Local) instead of upstream's Remote Control label.",
-		"raisedAt": "2026-10-17"
+		"reason": "Application settings now carry the Terminal host setting and the Live terminal input key (tmux slice 1), so the cold home /api/application-settings response grows by 25 bytes.",
+		"raisedAt": "2026-10-16"
 	},
 	"client.composer.home.slashMenu.claudeEventsConsumers": {
 		"ceiling": 1,

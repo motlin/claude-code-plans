@@ -26,6 +26,7 @@ export const Route = createFileRoute("/api/sessions/recent")({
 				const {getDb} = await import("../../lib/db");
 				const {listRecentSessionsFromDb, getArchivedSessionIds} = await import("../../lib/db/queries");
 				const {toSessionSummaryPayload} = await import("../../lib/session-summary");
+				const {getSessionTerminalHosts} = await import("../../lib/session-terminal-hosts");
 				const {getUnseenSessionIds} = await import("../../lib/db/viewed-state");
 				const {getRegistrySessionStates} = await import("../../lib/session-registry-store");
 
@@ -47,10 +48,12 @@ export const Route = createFileRoute("/api/sessions/recent")({
 				);
 				const unseenIds = getUnseenSessionIds(index);
 				const archivedIds = getArchivedSessionIds(index);
+				const terminalHosts = getSessionTerminalHosts();
 				const sessions = page.sessions.map((s) =>
 					toSessionSummaryPayload(s, {
 						unseen: unseenIds.has(s.id),
 						archived: archivedIds.has(s.id),
+						terminalHost: terminalHosts.get(s.id) ?? null,
 					}),
 				);
 				const nextCursor = page.nextCursor ? `${page.nextCursor.mtimeMs}:${page.nextCursor.id}` : null;

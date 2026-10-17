@@ -19,15 +19,18 @@ export const Route = createFileRoute("/api/sessions/lookup")({
 				const {getDb} = await import("../../lib/db");
 				const {getSessionsByIds, getArchivedSessionIds} = await import("../../lib/db/queries");
 				const {toSessionSummaryPayload} = await import("../../lib/session-summary");
+				const {getSessionTerminalHosts} = await import("../../lib/session-terminal-hosts");
 				const {getUnseenSessionIds} = await import("../../lib/db/viewed-state");
 
 				const {index} = getDb();
 				const unseenIds = getUnseenSessionIds(index);
 				const archivedIds = getArchivedSessionIds(index);
+				const terminalHosts = getSessionTerminalHosts();
 				const sessions = getSessionsByIds(index, ids, {status}).map((s) =>
 					toSessionSummaryPayload(s, {
 						unseen: unseenIds.has(s.id),
 						archived: archivedIds.has(s.id),
+						terminalHost: terminalHosts.get(s.id) ?? null,
 					}),
 				);
 

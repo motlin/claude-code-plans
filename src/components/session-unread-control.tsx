@@ -1,6 +1,4 @@
-import {useQuery} from "@tanstack/react-query";
 import {Laptop} from "lucide-react";
-import {herdrPanesQueryOptions, type HerdrPaneIndexData} from "../lib/api/herdr";
 import type {SessionListItem} from "../lib/api/sessions";
 import {prGlyph} from "../lib/pr-status";
 import {sessionEnvironment, sessionEnvironmentText} from "../lib/session-environment";
@@ -72,9 +70,9 @@ const SR_ROW_STATUS_LABELS = {
  * Upstream's sr-only environment text: where the session runs (its terminal
  * host, or Local), its Remote Control status when bridged, then the PR state.
  */
-function rowEnvironmentText(session: SessionListItem, pane: HerdrPaneIndexData["panes"][number] | null): string {
+function rowEnvironmentText(session: SessionListItem): string {
 	const environment = sessionEnvironment({
-		pane,
+		terminalHost: session.terminalHost ?? null,
 		bridged: session.remoteControl === true,
 		live: isLiveSessionState(session.state),
 	});
@@ -93,8 +91,6 @@ function rowEnvironmentText(session: SessionListItem, pane: HerdrPaneIndexData["
 export function SidebarRowDecoration({session}: {session: SessionListItem}) {
 	const unseen = useHasUnseenWork(session.id);
 	const {settings} = useSettings();
-	const {data: herdr} = useQuery(herdrPanesQueryOptions);
-	const pane = herdr?.panes.find((candidate) => candidate.sessionId === session.id) ?? null;
 	const kind = sessionRowIconKind({
 		bucket: session.bucket,
 		unseen,
@@ -129,7 +125,7 @@ export function SidebarRowDecoration({session}: {session: SessionListItem}) {
 			<span role="status" className={srClass}>
 				{SR_ROW_STATUS_LABELS[sessionMenuReadState(session.bucket, unseen)]}
 			</span>
-			<span className={srClass}>{rowEnvironmentText(session, pane)}</span>
+			<span className={srClass}>{rowEnvironmentText(session)}</span>
 		</>
 	);
 }

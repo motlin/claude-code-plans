@@ -36,7 +36,7 @@ import {toConnectorSlug} from "../../lib/customize/mcp-tool-permissions";
 import {formatContextSummary, FIVE_HOUR_LABEL, WEEKLY_LABEL, type ComposerUsage} from "../../lib/composer-state";
 import type {PrStatus} from "../../lib/pr-status";
 import {formatCount} from "../../lib/pluralize";
-import {sessionEnvironment} from "../../lib/session-environment";
+import {sessionEnvironment, terminalHostLabel} from "../../lib/session-environment";
 import {claudeAiSessionUrl} from "../../lib/session-open-in";
 import type {PlanTodo} from "../../lib/session-plan-model";
 import {usePaneHost} from "../panes/pane-host-context";
@@ -95,7 +95,11 @@ function EnvironmentBody({inputs}: {inputs: SessionRailInputs}) {
 	const toast = useToast();
 	const {cwd, gitBranch, model, herdrPane} = inputs;
 	const bridgeSessionId = useQuery(sessionOpenInQueryOptions(inputs.sessionId)).data?.bridgeSessionId ?? null;
-	const environment = sessionEnvironment({pane: herdrPane, bridged: bridgeSessionId !== null, live: inputs.live});
+	const environment = sessionEnvironment({
+		terminalHost: herdrPane === null ? null : terminalHostLabel(herdrPane),
+		bridged: bridgeSessionId !== null,
+		live: inputs.live,
+	});
 	return (
 		<Rows>
 			{cwd !== null && (

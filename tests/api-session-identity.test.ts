@@ -12,10 +12,13 @@ import {currentPerfCounters, withPerfScope} from "../src/lib/perf/server-scope";
 import {Route as IdentityRoute} from "../src/routes/api/sessions.$id.identity";
 import {Route as DetailRoute} from "../src/routes/api/sessions.$id";
 import {Route as RecentRoute} from "../src/routes/api/sessions.recent";
+import {herdrPaneTables} from "../src/lib/herdr/pane-table";
+import {tmuxPaneTable} from "../src/lib/tmux/pane-table";
 
 const PROJECT = "-example-project";
 const ALICE = "session-alice";
 const BOB = "session-bob";
+const CAROL = "session-carol";
 let db: AppDb;
 let directory: string;
 let projectsDirectory: string;
@@ -147,6 +150,66 @@ describe("recent sessions API Remote Control flag", () => {
 		expect(sessions.map(({id, remoteControl}) => ({id, remoteControl}))).toStrictEqual([
 			{id: BOB, remoteControl: undefined},
 			{id: ALICE, remoteControl: true},
+		]);
+	});
+});
+
+describe("recent sessions API terminal host", () => {
+	afterEach(() => {
+		herdrPaneTables.remove("/tmp/herdr-test.sock");
+		tmuxPaneTable.invalidate();
+	});
+
+	it("labels each row by the herdr or tmux pane it runs in, read from the pane tables, and omits it for Local", async () => {
+		await indexSession(ALICE, []);
+		await indexSession(BOB, []);
+		await indexSession(CAROL, []);
+		herdrPaneTables.forServer("/tmp/herdr-test.sock").seed({
+			workspaces: [],
+			panes: [
+				{
+					pane_id: "wM:p1@later",
+					terminal_id: "terminal-alice",
+					workspace_id: "wM@later",
+					tab_id: "wM:t1@later",
+					focused: false,
+					agent_status: "idle",
+					revision: 1,
+					agent_session: {source: "test", agent: "claude", kind: "id", value: ALICE},
+				},
+			],
+		});
+		tmuxPaneTable.hold([
+			{
+				sessionId: BOB,
+				cwd: "/repo",
+				via: "env",
+				pane: {
+					paneId: "%7",
+					panePid: 700,
+					socketPath: "/tmp/tmux-test/default",
+					sessionName: "work",
+					windowIndex: 0,
+					windowName: "claude",
+					windowActive: true,
+					paneActive: true,
+					currentPath: "/repo",
+				},
+			},
+		]);
+		const {handlers} = (
+			RecentRoute as unknown as {
+				options: {server: {handlers: Record<string, (context: {request: Request}) => Promise<Response>>}};
+			}
+		).options.server;
+
+		const response = await handlers["GET"]!({request: new Request("http://localhost/api/sessions/recent")});
+		const {sessions} = (await response.json()) as {sessions: Array<{id: string; terminalHost?: string}>};
+
+		expect(sessions.map(({id, terminalHost}) => ({id, terminalHost}))).toStrictEqual([
+			{id: CAROL, terminalHost: undefined},
+			{id: BOB, terminalHost: "tmux · work"},
+			{id: ALICE, terminalHost: "herdr · later"},
 		]);
 	});
 });
