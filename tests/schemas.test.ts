@@ -1467,6 +1467,25 @@ describe("JsonlRecordSchema observed 2026-09 transcript fields", () => {
 		expect(records.map((record) => JsonlRecordSchema.parse(record))).toStrictEqual(records);
 	});
 
+	it("parses a model attachment whose identity is unknown for an unrecognized --model", () => {
+		const record = {
+			...attachmentRecord({
+				type: "model",
+				identity: {modelId: "claude-nonexistent-model-9", marketingName: null, knowledgeCutoff: null},
+				text: "You are powered by the model claude-nonexistent-model-9.",
+			}),
+			rendered: [
+				{
+					content:
+						"<system-reminder>\nYou are powered by the model claude-nonexistent-model-9.\n</system-reminder>",
+				},
+			],
+			renderedRole: "system",
+		};
+
+		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
+	});
+
 	it("parses prompt snapshot and deferred tool record attachments", () => {
 		const records = [
 			attachmentRecord({

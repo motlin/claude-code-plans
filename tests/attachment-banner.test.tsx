@@ -254,6 +254,21 @@ describe("AttachmentBanner", () => {
 		});
 	});
 
+	describe("model", () => {
+		it("labels the banner with the marketing name, falling back to the model id when it is unknown", () => {
+			expect({
+				known: renderBanner({
+					type: "model",
+					identity: {modelId: "claude-opus-5-5", marketingName: "Opus 5.5", knowledgeCutoff: "June 2026"},
+				}).includes("Model: Opus 5.5"),
+				unknown: renderBanner({
+					type: "model",
+					identity: {modelId: "claude-nonexistent-model-9", marketingName: null, knowledgeCutoff: null},
+				}).includes("Model: claude-nonexistent-model-9"),
+			}).toStrictEqual({known: true, unknown: true});
+		});
+	});
+
 	describe("deferred_tools_delta", () => {
 		it("appends a pluralized pending MCP server count to the banner label", () => {
 			const html = renderBanner({
@@ -415,6 +430,19 @@ describe("AttachmentBanner", () => {
 			).toStrictEqual([
 				["Model identity", "Model ID: claude-opus-5-5\nName: Opus 5.5\nKnowledge cutoff: June 2026"],
 				["Model text", "You are powered by Opus 5.5."],
+			]);
+		});
+
+		it("omits an unknown name and knowledge cutoff from the model identity", () => {
+			expect(
+				detailSections({
+					type: "model",
+					identity: {modelId: "claude-nonexistent-model-9", marketingName: null, knowledgeCutoff: null},
+					text: "You are powered by the model claude-nonexistent-model-9.",
+				}),
+			).toStrictEqual([
+				["Model identity", "Model ID: claude-nonexistent-model-9"],
+				["Model text", "You are powered by the model claude-nonexistent-model-9."],
 			]);
 		});
 

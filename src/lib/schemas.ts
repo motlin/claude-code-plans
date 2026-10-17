@@ -1125,8 +1125,9 @@ const ModelAttachmentPayload = z
 		identity: z
 			.object({
 				modelId: z.string().optional(),
-				marketingName: z.string().optional(),
-				knowledgeCutoff: z.string().optional(),
+				// Null when the CLI does not recognize the --model id.
+				marketingName: z.string().nullable().optional(),
+				knowledgeCutoff: z.string().nullable().optional(),
 			})
 			.strict()
 			.optional(),

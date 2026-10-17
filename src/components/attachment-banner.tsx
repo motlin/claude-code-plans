@@ -202,8 +202,8 @@ function attachmentDetailSections(
 		return [
 			...linesSection("Model identity", [
 				labeled("Model ID", id?.modelId),
-				labeled("Name", id?.marketingName),
-				labeled("Knowledge cutoff", id?.knowledgeCutoff),
+				labeled("Name", id?.marketingName ?? undefined),
+				labeled("Knowledge cutoff", id?.knowledgeCutoff ?? undefined),
 			]),
 			...textSection("Model text", attachment.text),
 		];
@@ -730,14 +730,16 @@ function AttachmentContent({
 					{...shared}
 				/>
 			);
-		case "model":
+		case "model": {
+			const modelName = attachment.identity?.marketingName ?? attachment.identity?.modelId;
 			return (
 				<Banner
 					icon={<Bot className="h-3.5 w-3.5" />}
-					label={`Model${attachment.identity?.marketingName ? `: ${attachment.identity.marketingName}` : ""}`}
+					label={`Model${modelName ? `: ${modelName}` : ""}`}
 					{...shared}
 				/>
 			);
+		}
 		case "output_style":
 		case "output_style_instructions": {
 			const style = typeof attachment.style === "string" ? attachment.style : attachment.style?.name;
