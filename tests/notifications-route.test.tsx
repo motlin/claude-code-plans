@@ -7,7 +7,7 @@ import {createElement} from "react";
 import {afterEach, describe, expect, it} from "vite-plus/test";
 import {hookStatusQueryOptions} from "../src/lib/api/hooks";
 import {notificationsQueryOptions} from "../src/lib/api/notifications";
-import {HOOK_EVENT_NAMES} from "../src/lib/hook-config";
+import {HOOK_EVENT_NAMES, hookInstallStatus} from "../src/lib/hook-config";
 import {Route as NotificationsRoute} from "../src/routes/notifications";
 
 afterEach(() => {
@@ -31,6 +31,7 @@ async function renderEmptyNotifications(missingEvents: string[], outdatedEvents:
 	const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
 	queryClient.setQueryData(notificationsQueryOptions().queryKey, {notifications: []});
 	queryClient.setQueryData(hookStatusQueryOptions.queryKey, {
+		...hookInstallStatus(undefined),
 		installed: missingEvents.length === 0 && outdatedEvents.length === 0,
 		partial: missingEvents.length > 0 && missingEvents.length < HOOK_EVENT_NAMES.length,
 		installedCount: HOOK_EVENT_NAMES.length - missingEvents.length,

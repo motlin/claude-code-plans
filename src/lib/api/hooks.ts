@@ -10,6 +10,9 @@ import type {PersistedCapabilities} from "../capabilities";
  * `outdatedEvents` names the events whose hook still posts to this server but
  * with a command written by an older build; they count toward
  * `installedCount`, while `installed` means every event is current.
+ * `strayEvents` names never-installed events (WorktreeCreate/WorktreeRemove)
+ * still carrying our forwarder; `events` details each installed event, and
+ * `features` says which app features the install leaves on, partial, or off.
  */
 export const HookStatusResponse = z.object({
 	installed: z.boolean(),
@@ -18,6 +21,24 @@ export const HookStatusResponse = z.object({
 	totalCount: z.number(),
 	missingEvents: z.array(z.string()),
 	outdatedEvents: z.array(z.string()),
+	strayEvents: z.array(z.string()),
+	events: z.array(
+		z.strictObject({
+			event: z.string(),
+			state: z.enum(["current", "outdated", "missing"]),
+			reasons: z.array(z.string()),
+			foreignCommands: z.array(z.string()),
+		}),
+	),
+	features: z.array(
+		z.strictObject({
+			id: z.string(),
+			label: z.string(),
+			state: z.enum(["on", "partial", "off"]),
+			missingRequired: z.array(z.string()),
+			missingOptional: z.array(z.string()),
+		}),
+	),
 	settingsPath: z.string(),
 });
 
@@ -31,6 +52,8 @@ export const hookStatusQueryOptions = queryOptions({
 export const HookMutationResponse = z.object({
 	ok: z.boolean(),
 	settingsPath: z.string(),
+	/** Where the file's previous contents were copied, when there was a file. */
+	backupPath: z.string().optional(),
 });
 
 export const useInstallHooks = () => {

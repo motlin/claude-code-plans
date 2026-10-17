@@ -3,9 +3,54 @@ import {
 	generateHooksConfig,
 	hookInstallStatus,
 	missingHookEvents,
+	removeManagedHooks,
 	DEFAULT_HOOK_PORT,
 	HOOK_EVENT_NAMES,
+	HOOK_FEATURES,
+	NEVER_INSTALLED_HOOK_EVENTS,
 } from "../src/lib/hook-config";
+import {KNOWN_HOOK_EVENTS} from "../src/lib/hook-events";
+
+/**
+ * Every hook event the Claude Code hooks reference lists (code.claude.com/docs/en/hooks,
+ * checked 2026-10-17). Events here that the server does not consume yet are
+ * tracked as follow-up work, not installed.
+ */
+const CLI_HOOK_EVENTS: ReadonlySet<string> = new Set([
+	"SessionStart",
+	"Setup",
+	"UserPromptSubmit",
+	"UserPromptExpansion",
+	"PreToolUse",
+	"PermissionRequest",
+	"PermissionDenied",
+	"PostToolUse",
+	"PostToolUseFailure",
+	"PostToolBatch",
+	"Notification",
+	"MessageDisplay",
+	"SubagentStart",
+	"SubagentStop",
+	"TaskCreated",
+	"TaskCompleted",
+	"Stop",
+	"StopFailure",
+	"TeammateIdle",
+	"InstructionsLoaded",
+	"ConfigChange",
+	"CwdChanged",
+	"DirectoryAdded",
+	"FileChanged",
+	"WorktreeCreate",
+	"WorktreeRemove",
+	"PreCompact",
+	"PostCompact",
+	"PreModelSwitch",
+	"PostModelSwitch",
+	"Elicitation",
+	"ElicitationResult",
+	"SessionEnd",
+]);
 
 describe("HOOK_EVENT_NAMES", () => {
 	it("contains all expected Claude hook event names", () => {
@@ -26,8 +71,6 @@ describe("HOOK_EVENT_NAMES", () => {
 				"PermissionRequest",
 				"TaskCreated",
 				"TaskCompleted",
-				"WorktreeCreate",
-				"WorktreeRemove",
 				"CwdChanged",
 				"InstructionsLoaded",
 				"ConfigChange",
@@ -36,9 +79,19 @@ describe("HOOK_EVENT_NAMES", () => {
 		);
 	});
 
-	it("is re-exported from the hook-events module", async () => {
-		const {KNOWN_HOOK_EVENTS} = await import("../src/lib/hook-events");
-		expect(HOOK_EVENT_NAMES).toStrictEqual(KNOWN_HOOK_EVENTS);
+	it("is every event the server consumes except the ones that must never be installed", () => {
+		expect({
+			installed: [...HOOK_EVENT_NAMES, ...NEVER_INSTALLED_HOOK_EVENTS].toSorted(),
+			overlap: HOOK_EVENT_NAMES.filter((name) => NEVER_INSTALLED_HOOK_EVENTS.includes(name)),
+		}).toStrictEqual({installed: [...KNOWN_HOOK_EVENTS].toSorted(), overlap: []});
+	});
+
+	it("never installs WorktreeCreate or WorktreeRemove, whose hooks replace git's own worktree handling", () => {
+		expect([...NEVER_INSTALLED_HOOK_EVENTS]).toStrictEqual(["WorktreeCreate", "WorktreeRemove"]);
+	});
+
+	it("only consumes events the Claude Code CLI documents", () => {
+		expect(KNOWN_HOOK_EVENTS.filter((name) => !CLI_HOOK_EVENTS.has(name))).toStrictEqual([]);
 	});
 });
 
@@ -183,9 +236,9 @@ describe("missingHookEvents", () => {
 		expect(missingHookEvents(foreign).includes("Notification")).toBe(true);
 	});
 
-	it("treats hooks installed on a different port as missing", () => {
+	it("treats hooks installed on a different port as outdated, not missing", () => {
 		const otherPort = generateHooksConfig({port: 9000}).hooks;
-		expect(missingHookEvents(otherPort)).toStrictEqual([...HOOK_EVENT_NAMES]);
+		expect(missingHookEvents(otherPort)).toStrictEqual([]);
 	});
 });
 
@@ -201,24 +254,28 @@ describe("hookInstallStatus", () => {
 	});
 
 	it("reports a full current install as installed", () => {
-		expect(hookInstallStatus(generateHooksConfig().hooks)).toStrictEqual({
+		const {events: _events, features: _features, ...summary} = hookInstallStatus(generateHooksConfig().hooks);
+		expect(summary).toStrictEqual({
 			installed: true,
 			partial: false,
 			installedCount: HOOK_EVENT_NAMES.length,
 			totalCount: HOOK_EVENT_NAMES.length,
 			missingEvents: [],
 			outdatedEvents: [],
+			strayEvents: [],
 		});
 	});
 
 	it("reports hooks posting to this server with an older command as outdated, not missing", () => {
-		expect(hookInstallStatus(olderCommandInstall())).toStrictEqual({
+		const {events: _events, features: _features, ...summary} = hookInstallStatus(olderCommandInstall());
+		expect(summary).toStrictEqual({
 			installed: false,
 			partial: false,
 			installedCount: HOOK_EVENT_NAMES.length,
 			totalCount: HOOK_EVENT_NAMES.length,
 			missingEvents: [],
 			outdatedEvents: [...HOOK_EVENT_NAMES],
+			strayEvents: [],
 		});
 	});
 
@@ -229,30 +286,209 @@ describe("hookInstallStatus", () => {
 			SessionStart: hooks["SessionStart"],
 			Notification: older["Notification"],
 		};
-		expect(hookInstallStatus(mixed)).toStrictEqual({
+		const {events: _events, features: _features, ...summary} = hookInstallStatus(mixed);
+		expect(summary).toStrictEqual({
 			installed: false,
 			partial: true,
 			installedCount: 2,
 			totalCount: HOOK_EVENT_NAMES.length,
 			missingEvents: HOOK_EVENT_NAMES.filter((name) => name !== "SessionStart" && name !== "Notification"),
 			outdatedEvents: ["Notification"],
+			strayEvents: [],
 		});
 	});
 
-	it("does not count the context-brief hook or another port as an outdated install", () => {
-		const otherPort = generateHooksConfig({port: 9000}).hooks;
+	it("does not count the context-brief hook as an outdated install", () => {
 		const brief: Record<string, unknown> = {
 			SessionStart: [
 				{hooks: [{type: "command", command: "curl -s http://localhost:7526/api/context-brief || true"}]},
 			],
 		};
-		expect([hookInstallStatus(otherPort).outdatedEvents, hookInstallStatus(brief).outdatedEvents]).toStrictEqual([
-			[],
-			[],
-		]);
+		expect(hookInstallStatus(brief).outdatedEvents).toStrictEqual([]);
 	});
 
 	it("leaves outdated events out of missingHookEvents", () => {
 		expect(missingHookEvents(olderCommandInstall())).toStrictEqual([]);
+	});
+});
+
+const CURRENT_COMMAND = generateHooksConfig().hooks["Stop"]![0]!.hooks[0]!.command;
+const HERDR_SCRIPT = "bash '/Users/test/.claude/hooks/herdr-agent-state.sh' session";
+
+function commandHook(command: string) {
+	return {hooks: [{type: "command", command}]};
+}
+
+/**
+ * The layout found in a real settings.json on 2026-10-17: SessionStart runs only
+ * herdr's own script, and seven events run a forwarder from before
+ * `HERDR_SESSION` joined the forwarded env.
+ */
+function herdrPlusOlderSeven(): Record<string, unknown> {
+	const older = CURRENT_COMMAND.replace(' or . == "HERDR_SESSION"', "");
+	const events = [
+		"PreToolUse",
+		"PostToolUse",
+		"PostToolUseFailure",
+		"Stop",
+		"SessionEnd",
+		"PermissionRequest",
+		"Notification",
+	];
+	return {
+		SessionStart: [commandHook(HERDR_SCRIPT)],
+		...Object.fromEntries(events.map((name) => [name, [commandHook(older)]])),
+	};
+}
+
+describe("HOOK_FEATURES", () => {
+	it("gives every installed event to at least one feature", () => {
+		const covered = new Set(HOOK_FEATURES.flatMap((feature) => [...feature.required, ...feature.optional]));
+		expect(HOOK_EVENT_NAMES.filter((name) => !covered.has(name))).toStrictEqual([]);
+	});
+
+	it("only names installed events, each once per feature", () => {
+		expect(
+			HOOK_FEATURES.flatMap((feature) => {
+				const names = [...feature.required, ...feature.optional];
+				const problems = names.filter((name) => !HOOK_EVENT_NAMES.includes(name));
+				return new Set(names).size === names.length ? problems : [...problems, `${feature.id}: duplicate`];
+			}),
+		).toStrictEqual([]);
+	});
+});
+
+describe("hookInstallStatus per-event detail", () => {
+	it("explains why each outdated event is outdated and keeps other tools' hooks visible as foreign", () => {
+		const status = hookInstallStatus(herdrPlusOlderSeven());
+		expect(status.events.filter((event) => event.event === "SessionStart" || event.event === "Stop")).toStrictEqual(
+			[
+				{event: "SessionStart", state: "missing", reasons: [], foreignCommands: [HERDR_SCRIPT]},
+				{event: "Stop", state: "outdated", reasons: ["does not forward HERDR_SESSION"], foreignCommands: []},
+			],
+		);
+	});
+
+	it("flags a forwarder on another port with the port it posts to", () => {
+		const otherPort = generateHooksConfig({port: 9000}).hooks;
+		expect(hookInstallStatus(otherPort).events.find((event) => event.event === "Stop")).toStrictEqual({
+			event: "Stop",
+			state: "outdated",
+			reasons: ["posts to port 9000, not 7526"],
+			foreignCommands: [],
+		});
+	});
+
+	it("flags tmux forwarding dropped from an older command", () => {
+		const noTmux = CURRENT_COMMAND.replace(' or . == "TMUX" or . == "TMUX_PANE"', "");
+		expect(
+			hookInstallStatus({Stop: [commandHook(noTmux)]}).events.find((e) => e.event === "Stop")?.reasons,
+		).toStrictEqual(["does not forward TMUX, TMUX_PANE"]);
+	});
+
+	it("reports a forwarder installed under a never-installed event as stray", () => {
+		const status = hookInstallStatus({
+			...generateHooksConfig().hooks,
+			WorktreeCreate: [commandHook(CURRENT_COMMAND)],
+		});
+		expect({installed: status.installed, strayEvents: status.strayEvents}).toStrictEqual({
+			installed: false,
+			strayEvents: ["WorktreeCreate"],
+		});
+	});
+
+	it("ignores another tool's WorktreeCreate hook", () => {
+		expect(
+			hookInstallStatus({WorktreeCreate: [commandHook("bash ~/bin/make-worktree.sh")]}).strayEvents,
+		).toStrictEqual([]);
+	});
+});
+
+describe("hookInstallStatus per-feature state", () => {
+	it("turns every feature off with no hooks installed", () => {
+		expect(new Set(hookInstallStatus(undefined).features.map((feature) => feature.state))).toStrictEqual(
+			new Set(["off"]),
+		);
+	});
+
+	it("turns every feature on for a full current install", () => {
+		expect(
+			hookInstallStatus(generateHooksConfig().hooks).features.map((feature) => [feature.id, feature.state]),
+		).toStrictEqual(HOOK_FEATURES.map((feature) => [feature.id, "on"]));
+	});
+
+	it("classifies the herdr-plus-older-seven layout feature by feature", () => {
+		expect(
+			hookInstallStatus(herdrPlusOlderSeven()).features.map(({id, state, missingRequired, missingOptional}) => ({
+				id,
+				state,
+				missingRequired,
+				missingOptional,
+			})),
+		).toStrictEqual([
+			{
+				id: "liveSessions",
+				state: "off",
+				missingRequired: ["SessionStart", "UserPromptSubmit"],
+				missingOptional: ["CwdChanged", "InstructionsLoaded", "ConfigChange"],
+			},
+			{id: "toolActivity", state: "on", missingRequired: [], missingOptional: []},
+			{id: "questionsAndPermissions", state: "on", missingRequired: [], missingOptional: []},
+			{id: "notifications", state: "on", missingRequired: [], missingOptional: []},
+			{
+				id: "terminalPanes",
+				state: "off",
+				missingRequired: ["SessionStart", "UserPromptSubmit"],
+				missingOptional: [],
+			},
+			{id: "subagents", state: "off", missingRequired: ["SubagentStart", "SubagentStop"], missingOptional: []},
+			{id: "compaction", state: "off", missingRequired: ["PreCompact", "PostCompact"], missingOptional: []},
+			{id: "tasks", state: "off", missingRequired: ["TaskCreated", "TaskCompleted"], missingOptional: []},
+			{id: "streamingText", state: "off", missingRequired: ["MessageDisplay"], missingOptional: []},
+		]);
+	});
+
+	it("calls a feature partial when only optional events are missing", () => {
+		const {hooks} = generateHooksConfig();
+		const {CwdChanged: _cwd, ...withoutCwd} = hooks;
+		expect(hookInstallStatus(withoutCwd).features.find((feature) => feature.id === "liveSessions")).toStrictEqual({
+			id: "liveSessions",
+			label: HOOK_FEATURES.find((feature) => feature.id === "liveSessions")?.label,
+			state: "partial",
+			missingRequired: [],
+			missingOptional: ["CwdChanged"],
+		});
+	});
+
+	it("does not count hooks posting to another port toward any feature", () => {
+		expect(
+			new Set(
+				hookInstallStatus(generateHooksConfig({port: 9000}).hooks).features.map((feature) => feature.state),
+			),
+		).toStrictEqual(new Set(["off"]));
+	});
+});
+
+describe("removeManagedHooks", () => {
+	it("removes only this server's commands, keeping a foreign hook that shares the matcher", () => {
+		expect(
+			removeManagedHooks([
+				{
+					hooks: [
+						{type: "command", command: CURRENT_COMMAND},
+						{type: "command", command: HERDR_SCRIPT},
+					],
+				},
+				commandHook("curl -s http://localhost:7526/api/context-brief || true"),
+				{matcher: "Bash", hooks: [{type: "command", command: "echo mine"}]},
+			]),
+		).toStrictEqual([
+			{hooks: [{type: "command", command: HERDR_SCRIPT}]},
+			{matcher: "Bash", hooks: [{type: "command", command: "echo mine"}]},
+		]);
+	});
+
+	it("passes through entries it does not understand", () => {
+		expect(removeManagedHooks(["odd", {matcher: "x"}])).toStrictEqual(["odd", {matcher: "x"}]);
 	});
 });
