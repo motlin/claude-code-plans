@@ -212,8 +212,8 @@ describe("herdr prompt write handler", () => {
 				},
 			],
 			requests: [
-				{id: "ccp:prompt-snap", method: "session.snapshot", params: {}},
-				{id: "ccp:prompt-snap", method: "session.snapshot", params: {}},
+				{id: "ccp:snap", method: "session.snapshot", params: {}},
+				{id: "ccp:snap", method: "session.snapshot", params: {}},
 			],
 		});
 	});

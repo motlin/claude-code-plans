@@ -87,6 +87,58 @@ describe("herdrRequest", () => {
 		});
 	});
 
+	it("routes a request for a named-server pane to that server's socket with the raw pane id", async () => {
+		const otherSocketPath = join(directory, "other.sock");
+		const received: Record<string, unknown[]> = {default: [], other: []};
+		const answer = (bucket: unknown[]) => (socket: Socket) => {
+			socket.once("data", (chunk) => {
+				bucket.push(JSON.parse(chunk.toString()));
+				socket.end(`${JSON.stringify({id: "response-100", result: {type: "ok"}})}\n`);
+			});
+		};
+		await listen(answer(received["default"] ?? []));
+		const other = createServer(answer(received["other"] ?? []));
+		await new Promise<void>((resolve) => {
+			other.listen(otherSocketPath, resolve);
+		});
+
+		try {
+			const results = [
+				await herdrRequest({
+					id: "request-100",
+					method: "pane.send_text",
+					params: {pane_id: `wM:p1@${otherSocketPath}`, text: "hi"},
+				}),
+				await herdrRequest({
+					id: "request-200",
+					method: "pane.send_text",
+					params: {pane_id: "w1:p1", text: "hi"},
+				}),
+				await herdrRequest({id: "request-300", method: "ping", params: {}}, 5000, otherSocketPath),
+			];
+			expect({received, results}).toStrictEqual({
+				received: {
+					default: [{id: "request-200", method: "pane.send_text", params: {pane_id: "w1:p1", text: "hi"}}],
+					other: [
+						{id: "request-100", method: "pane.send_text", params: {pane_id: "wM:p1", text: "hi"}},
+						{id: "request-300", method: "ping", params: {}},
+					],
+				},
+				results: [
+					{ok: true, value: {type: "ok"}},
+					{ok: true, value: {type: "ok"}},
+					{ok: true, value: {type: "ok"}},
+				],
+			});
+		} finally {
+			await new Promise<void>((resolve) => {
+				other.close(() => {
+					resolve();
+				});
+			});
+		}
+	});
+
 	it("returns the server error even when its response id is empty", async () => {
 		await listen((socket) => {
 			socket.once("data", () => {

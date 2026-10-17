@@ -7,6 +7,7 @@ import {StatusDot} from "../components/sidebar/primitives/StatusDot";
 import {sessionQueryKeys} from "../lib/api/sessions";
 import {terminalPlacementsQueryOptions} from "../lib/api/terminal-placements";
 import {updateSessionViewedState} from "../lib/api/viewed-state";
+import {splitHerdrId} from "../lib/herdr/herdr-id";
 import {splitTerminalTitleGlyph} from "../lib/herdr/terminal-title";
 
 export const Route = createFileRoute("/terminals/")({
@@ -185,6 +186,7 @@ function TerminalsPage() {
 						].filter((label): label is string => label !== null);
 						const technicalDetails = `Workspace ${pane.workspaceId} · Pane ${pane.paneId} · Terminal ${pane.terminalId} · Capabilities: ${capabilityLabels.length === 0 ? "placement only" : capabilityLabels.join(", ")}`;
 						const {glyph, title} = splitTerminalTitleGlyph(placement.displayName);
+						const herdrSession = splitHerdrId(pane.paneId).session;
 						return (
 							<div
 								key={`herdr:${placement.scopeHandle}:${placement.paneHandle}:${placement.sessionId}`}
@@ -204,7 +206,14 @@ function TerminalsPage() {
 									<span aria-hidden="true" className="truncate text-sm text-t6">
 										{glyph}
 									</span>
-									<span className="truncate text-sm font-medium text-primary">{title}</span>
+									<span className="truncate text-sm font-medium text-primary">
+										{title}
+										{herdrSession !== null && (
+											<span className="ml-2 text-xs font-normal text-t6">
+												herdr session {herdrSession}
+											</span>
+										)}
+									</span>
 								</Link>
 								<HerdrStatusIndicator status={pane.agentStatus} />
 								<NeedsReviewMarker

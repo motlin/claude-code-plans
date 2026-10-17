@@ -2,6 +2,7 @@ import {describe, expect, it, vi} from "vite-plus/test";
 import type {ActiveSessionEntry} from "../src/lib/active-session-store";
 import {createHerdrPaneTable} from "../src/lib/herdr/pane-table";
 import {getHerdrPanes, type HerdrRequester, type IndexedSessionFilter} from "../src/lib/herdr/panes";
+import {herdrNamedSessionSocketPath, resolveHerdrSocketPath} from "../src/lib/herdr/socket-path";
 
 vi.mock("../src/lib/db", () => ({
 	getDb: () => {
@@ -369,6 +370,104 @@ describe("getHerdrPanes", () => {
 				},
 			],
 			requests: [],
+		});
+	});
+
+	describe("named herdr sessions", () => {
+		const laterSocketPath = herdrNamedSessionSocketPath("later");
+		const laterWirePane = {
+			pane_id: "wM:p1",
+			terminal_id: "terminal-test-700",
+			workspace_id: "wM",
+			tab_id: "wM:t1",
+			focused: false,
+			agent_status: "blocked",
+			agent: "claude",
+			revision: 7,
+		};
+		const laterLink = {
+			host: "herdr",
+			paneId: "wM:p1@later",
+			terminalId: "terminal-test-700",
+			workspaceId: "wM@later",
+			tabId: "wM:t1@later",
+			focused: false,
+			cwd: null,
+			foregroundCwd: null,
+			agentStatus: "blocked",
+			agent: "claude",
+			terminalTitle: null,
+			agentSessionId: null,
+			revision: 7,
+			sessionId: "session-test-700",
+			via: "env",
+		};
+		const laterEntry = entry({sessionId: "session-test-700", herdrPane: "wM:p1", herdrSocketPath: laterSocketPath});
+
+		it("matches a session to its pane in a named session by the hook's pane id and socket", async () => {
+			const table = createHerdrPaneTable();
+			table.seed({
+				workspaces: [],
+				panes: [{...laterWirePane, pane_id: "wM:p1@later", workspace_id: "wM@later", tab_id: "wM:t1@later"}],
+			});
+			const request: HerdrRequester = async () =>
+				Promise.resolve({ok: false, code: "connect-failed", message: "socket must not be used"});
+
+			// A default-server pane with the same raw id must not claim the session.
+			const defaultEntry = entry({sessionId: "session-test-800", herdrPane: "wM:p1"});
+			await expect(
+				getHerdrPanes([laterEntry, defaultEntry], request, () => new Set(), table),
+			).resolves.toStrictEqual([laterLink]);
+		});
+
+		it("reads every known server's snapshot while the pane table is not current", async () => {
+			const sockets: (string | undefined)[] = [];
+			const request: HerdrRequester = async (_request, _timeoutMs, socketPath) => {
+				sockets.push(socketPath);
+				if (socketPath === "/tmp/test/gone.sock") {
+					return Promise.resolve({ok: false, code: "connect-failed", message: "no server"});
+				}
+				const panes =
+					socketPath === laterSocketPath
+						? [laterWirePane]
+						: [{...laterWirePane, terminal_id: "terminal-test-100", agent_status: "idle"}];
+				return Promise.resolve({
+					ok: true,
+					value: {
+						type: "session_snapshot",
+						snapshot: {version: "1", protocol: 1, workspaces: [], tabs: [], layouts: [], agents: [], panes},
+					},
+				});
+			};
+			const servers = () => [
+				{session: null, socketPath: resolveHerdrSocketPath()},
+				{session: "later", socketPath: laterSocketPath},
+				{session: "gone", socketPath: "/tmp/test/gone.sock"},
+			];
+
+			const panes = await getHerdrPanes(
+				[laterEntry, entry({sessionId: "session-test-100", herdrPane: "wM:p1"})],
+				request,
+				() => new Set(),
+				createHerdrPaneTable(),
+				servers,
+			);
+
+			expect({panes, sockets}).toStrictEqual({
+				panes: [
+					{
+						...laterLink,
+						paneId: "wM:p1",
+						terminalId: "terminal-test-100",
+						workspaceId: "wM",
+						tabId: "wM:t1",
+						agentStatus: "idle",
+						sessionId: "session-test-100",
+					},
+					laterLink,
+				],
+				sockets: [resolveHerdrSocketPath(), laterSocketPath, "/tmp/test/gone.sock"],
+			});
 		});
 	});
 });

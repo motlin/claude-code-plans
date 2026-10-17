@@ -1,5 +1,6 @@
 import {herdrRequest} from "./client";
-import {herdrPaneTable, type HerdrPaneTable} from "./pane-table";
+import {splitHerdrId} from "./herdr-id";
+import {herdrPaneTable, type HerdrPaneReader} from "./pane-table";
 import {
 	claudeSessionId,
 	filterIndexedSessions,
@@ -49,6 +50,12 @@ function placeholderWorkspace(workspaceId: string): HerdrWorkspace {
 	};
 }
 
+/** A named herdr session's workspaces carry the session name, since its labels can repeat the default server's. */
+function workspaceLabel(workspaceId: string, label: string): string {
+	const {session} = splitHerdrId(workspaceId);
+	return session === null ? label : `${label} (${session})`;
+}
+
 function comparePanes(left: HerdrWorkspacePane, right: HerdrWorkspacePane): number {
 	return compareHerdrAttention(left, right) || left.title.localeCompare(right.title);
 }
@@ -64,7 +71,7 @@ function comparePanes(left: HerdrWorkspacePane, right: HerdrWorkspacePane): numb
 export async function getHerdrWorkspaces(
 	request: HerdrRequester = herdrRequest,
 	indexedSessionFilter: IndexedSessionFilter = filterIndexedSessions,
-	table: HerdrPaneTable = herdrPaneTable,
+	table: HerdrPaneReader = herdrPaneTable,
 ): Promise<HerdrWorkspace[]> {
 	const snapshot = await readHerdrSnapshot(request, table);
 	if (snapshot === null) return [];
@@ -90,7 +97,7 @@ export async function getHerdrWorkspaces(
 			{
 				workspaceId: workspace.workspace_id,
 				number: workspace.number,
-				label: workspace.label,
+				label: workspaceLabel(workspace.workspace_id, workspace.label),
 				agentStatus: workspace.agent_status,
 				worktreeName: workspace.worktree?.repo_name ?? null,
 				agentPanes: [],

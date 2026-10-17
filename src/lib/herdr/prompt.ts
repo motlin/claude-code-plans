@@ -1,9 +1,9 @@
 import {getActiveSessionEntries, type ActiveSessionEntry} from "../active-session-store";
 import {rejectCrossSite} from "../same-origin-guard";
 import {herdrRequest, type HerdrResult} from "./client";
-import {herdrPaneTable, type HerdrPaneState, type HerdrPaneTable} from "./pane-table";
-import type {HerdrRequester} from "./panes";
-import {HerdrSessionSnapshotResultSchema} from "./schema";
+import {herdrPaneTable, type HerdrPaneReader} from "./pane-table";
+import {readHerdrPaneState, type HerdrRequester} from "./panes";
+import {qualifiedEntryHerdrPane} from "./servers";
 import {z} from "zod";
 import {terminalWritesEnabled} from "../config";
 
@@ -31,27 +31,6 @@ function failure(code: string, message: string): HerdrResult<never> {
 	return {ok: false, code, message};
 }
 
-async function readTargetPanes(
-	request: HerdrRequester,
-	table: HerdrPaneTable,
-): Promise<HerdrResult<HerdrPaneState["panes"]>> {
-	const current = table.current();
-	if (current !== null) return {ok: true, value: current.panes};
-
-	const response = await request({
-		id: "ccp:prompt-snap",
-		method: "session.snapshot",
-		params: {},
-	});
-	if (!response.ok) return response;
-
-	const parsed = HerdrSessionSnapshotResultSchema.safeParse(response.value);
-	if (!parsed.success) {
-		return failure("bad-response", "herdr returned an invalid session snapshot");
-	}
-	return {ok: true, value: parsed.data.snapshot.panes};
-}
-
 /**
  * Resolve the session to its terminal's current pane on every write so moved panes cannot leave a stale target.
  * The event-maintained pane table is that current state; herdr is asked directly only while the table is not tracking.
@@ -60,16 +39,17 @@ export async function resolveHerdrPromptTarget(
 	sessionId: string,
 	entries: ActiveSessionEntry[] = getActiveSessionEntries(),
 	request: HerdrRequester = herdrRequest,
-	table: HerdrPaneTable = herdrPaneTable,
+	table: HerdrPaneReader = herdrPaneTable,
 ): Promise<HerdrResult<HerdrPromptTarget>> {
-	const panesResult = await readTargetPanes(request, table);
-	if (!panesResult.ok) return panesResult;
+	const state = await readHerdrPaneState(request, table);
+	if (!state.ok) return state;
 
-	const panes = panesResult.value;
-	const capturedPaneId = entries.find((entry) => entry.sessionId === sessionId)?.herdrPane;
+	const {panes} = state.value;
+	const capturedEntry = entries.find((entry) => entry.sessionId === sessionId);
+	const capturedPaneId = capturedEntry === undefined ? "" : qualifiedEntryHerdrPane(capturedEntry);
 	const sessionPane =
 		panes.find((pane) => pane.agent_session?.value === sessionId) ??
-		panes.find((pane) => capturedPaneId !== undefined && pane.pane_id === capturedPaneId);
+		panes.find((pane) => capturedPaneId !== "" && pane.pane_id === capturedPaneId);
 	if (!sessionPane) {
 		return failure("session-not-found", "session is not attached to a live herdr terminal");
 	}

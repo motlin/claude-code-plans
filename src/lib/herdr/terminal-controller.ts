@@ -5,6 +5,7 @@ import {terminalWritesEnabled} from "../config";
 import {rejectCrossSite} from "../same-origin-guard";
 import {
 	bridgeTerminalStream,
+	herdrTerminalSpawnTarget,
 	parseViewport,
 	resolveSessionTerminal,
 	sessionStreamArguments,
@@ -29,7 +30,7 @@ type ControllerChild = ChildProcessByStdio<Writable, Readable, Readable>;
 type SpawnController = (
 	command: string,
 	arguments_: readonly string[],
-	options: {stdio: ["pipe", "pipe", "pipe"]},
+	options: {stdio: ["pipe", "pipe", "pipe"]; env?: NodeJS.ProcessEnv},
 ) => ControllerChild;
 
 export interface TerminalController extends TerminalObserver {
@@ -62,8 +63,10 @@ export function startTerminalController(
 	spawnController: SpawnController = spawn,
 ): TerminalController {
 	const viewport = parseViewport(options.columns, options.rows);
-	const child = spawnController("herdr", sessionStreamArguments("control", {target: options.target, ...viewport}), {
+	const {target, env} = herdrTerminalSpawnTarget(options.target);
+	const child = spawnController("herdr", sessionStreamArguments("control", {target, ...viewport}), {
 		stdio: ["pipe", "pipe", "pipe"],
+		...(env ? {env} : {}),
 	});
 	const stream = bridgeTerminalStream(child, socket);
 	let stopped = false;

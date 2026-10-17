@@ -44,7 +44,7 @@ function resolvedSocketPath(): string {
 async function runProbe(socketPath: string): Promise<HerdrAvailability> {
 	if (!socketPath || !existsSync(socketPath)) return unavailable(socketPath, "no-socket");
 
-	const response = await herdrRequest({id: "ccp:ping", method: "ping", params: {}}, PROBE_TIMEOUT_MS);
+	const response = await herdrRequest({id: "ccp:ping", method: "ping", params: {}}, PROBE_TIMEOUT_MS, socketPath);
 	if (!response.ok) {
 		if (response.code === "connect-failed") return unavailable(socketPath, "connect-failed");
 		if (response.code === "timeout") return unavailable(socketPath, "timeout");
@@ -69,6 +69,11 @@ async function runProbe(socketPath: string): Promise<HerdrAvailability> {
 		version: result["version"],
 		protocol: result["protocol"],
 	};
+}
+
+/** Probe one herdr server's API socket, uncached. */
+export async function probeHerdrSocket(socketPath: string): Promise<HerdrAvailability> {
+	return runProbe(socketPath).catch(() => unavailable(socketPath, "connect-failed"));
 }
 
 /** Probe the local herdr API, caching availability for thirty seconds. */

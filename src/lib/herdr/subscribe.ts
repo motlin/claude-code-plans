@@ -13,12 +13,21 @@ import {
 	setHerdrTerminalViewed,
 } from "../db/viewed-state";
 import {isSessionVisible} from "../session-visibility";
-import {probeHerdr, type HerdrAvailability} from "./availability";
+import {getActiveSessionEntries} from "../active-session-store";
+import {probeHerdrSocket, type HerdrAvailability} from "./availability";
 import {herdrRequest} from "./client";
+import {splitHerdrId} from "./herdr-id";
 import {createHerdrPaneDiffer, extractPaneRevision} from "./pane-differ";
-import {herdrPaneTable, type HerdrPaneState, type HerdrPaneTable} from "./pane-table";
+import {herdrPaneTables, type HerdrPaneState, type HerdrPaneTable} from "./pane-table";
 import {getHerdrPanes, type HerdrPaneLink} from "./panes";
 import {HerdrSessionSnapshotResultSchema} from "./schema";
+import {
+	discoverLiveHerdrServers,
+	qualifyHerdrEventData,
+	qualifyHerdrPaneState,
+	setKnownHerdrServers,
+	type HerdrServer,
+} from "./servers";
 import {createHerdrViewedStateTracker, type HerdrViewedStateTrackerDependencies} from "./viewed-state";
 
 const UNPARAMETERIZED_SUBSCRIPTIONS = [
@@ -61,10 +70,12 @@ const CHANGE_HINT_RESYNC_DELAY_MS = 250;
 type Timer = ReturnType<typeof setTimeout>;
 
 interface BridgeDependencies {
+	/** The named herdr session this bridge serves, whose pushed ids it qualifies; absent or null for the default server. */
+	session?: string | null;
 	probe: () => Promise<HerdrAvailability>;
 	connect: (socketPath: string) => Socket;
 	createLineReader: (socket: Socket) => ReadlineInterface;
-	/** Ask herdr itself for a snapshot, bypassing the pane table. */
+	/** Ask herdr itself for a snapshot, bypassing the pane table, with ids already qualified. */
 	getSnapshot: () => Promise<HerdrPaneState | null>;
 	/** Read the joined pane links, which come from `paneTable` while it is current. */
 	getPanes: () => Promise<HerdrPaneLink[]>;
@@ -111,29 +122,37 @@ export function createHerdrViewedStateDbDependencies(
 	};
 }
 
-const defaultDependencies: BridgeDependencies = {
-	probe: probeHerdr,
-	connect: createConnection,
-	createLineReader: (socket) => createInterface({input: socket}),
-	getSnapshot: async () => {
-		const response = await herdrRequest({
-			id: "ccp:sub-snap",
-			method: "session.snapshot",
-			params: {},
-		});
-		if (!response.ok) return null;
-		const parsed = HerdrSessionSnapshotResultSchema.safeParse(response.value);
-		return parsed.success ? parsed.data.snapshot : null;
-	},
-	getPanes: async () => getHerdrPanes(),
-	paneTable: herdrPaneTable,
-	broadcast: broadcastTyped,
-	schedule: setTimeout,
-	cancel: clearTimeout,
-	viewedStateTracker: createHerdrViewedStateTracker(
-		createHerdrViewedStateDbDependencies(() => getDb().index, isSessionVisible),
-	),
-};
+const sharedViewedStateTracker = createHerdrViewedStateTracker(
+	createHerdrViewedStateDbDependencies(() => getDb().index, isSessionVisible),
+);
+
+function bridgeDependenciesFor(server: HerdrServer): BridgeDependencies {
+	return {
+		session: server.session,
+		probe: async () => probeHerdrSocket(server.socketPath),
+		connect: createConnection,
+		createLineReader: (socket) => createInterface({input: socket}),
+		getSnapshot: async () => {
+			const response = await herdrRequest(
+				{id: "ccp:sub-snap", method: "session.snapshot", params: {}},
+				undefined,
+				server.socketPath,
+			);
+			if (!response.ok) return null;
+			const parsed = HerdrSessionSnapshotResultSchema.safeParse(response.value);
+			if (!parsed.success) return null;
+			const {workspaces, panes} = parsed.data.snapshot;
+			return qualifyHerdrPaneState({workspaces, panes}, server.session);
+		},
+		getPanes: async () => getHerdrPanes(),
+		paneTable: herdrPaneTables.forServer(server.socketPath),
+		broadcast: broadcastTyped,
+		schedule: setTimeout,
+		cancel: clearTimeout,
+		// One tracker for every server: each resync hands it the panes of all of them.
+		viewedStateTracker: sharedViewedStateTracker,
+	};
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -173,6 +192,7 @@ function createBridge(dependencies: BridgeDependencies): () => void {
 	// or each replay triggers a reconnect that triggers the next replay.
 	const paneDiffer = createHerdrPaneDiffer();
 	const {paneTable} = dependencies;
+	const session = dependencies.session ?? null;
 
 	/**
 	 * Seed the pane table from herdr. Returns the snapshot, or null after
@@ -286,8 +306,9 @@ function createBridge(dependencies: BridgeDependencies): () => void {
 			if (!message || isSubscriptionStarted(message)) return;
 
 			const pushedEvent = message["event"];
-			const data = message["data"];
-			if (typeof pushedEvent !== "string" || !isRecord(data)) return;
+			const rawData = message["data"];
+			if (typeof pushedEvent !== "string" || !isRecord(rawData)) return;
+			const data = qualifyHerdrEventData(rawData, session);
 
 			const sseEvent = PUSH_EVENT_TO_SSE_EVENT[pushedEvent];
 			if (!sseEvent) return;
@@ -345,7 +366,8 @@ function createBridge(dependencies: BridgeDependencies): () => void {
 		// fast done→idle push could arrive before its paneId→terminalId mapping.
 		await runResync(false);
 		if (isStopped()) return;
-		connect(panes.map((pane) => pane.paneId));
+		// herdr subscribes by its own pane ids, not ccp's qualified ones.
+		connect(panes.map((pane) => splitHerdrId(pane.paneId).id));
 	};
 
 	const probeAndOpenSubscription = async (): Promise<void> => {
@@ -383,19 +405,107 @@ function createBridge(dependencies: BridgeDependencies): () => void {
 	};
 }
 
+const DISCOVERY_INTERVAL_MS = 5000;
+
+interface BridgeManagerDependencies {
+	discover: () => readonly HerdrServer[];
+	isLive: (server: HerdrServer) => Promise<boolean>;
+	/** Start one server's bridge; the returned stop also drops that server's pane table. */
+	startBridge: (server: HerdrServer) => () => void;
+	/** Publish the live servers for fresh reads and write routing; null means none was found. */
+	setKnownServers: (servers: readonly HerdrServer[] | null) => void;
+	schedule: (callback: () => void, delayMs: number) => Timer;
+	cancel: (timer: Timer) => void;
+	intervalMs: number;
+}
+
+/**
+ * Keep one event bridge per live herdr server: the default one plus every
+ * named session (`herdr --session <name>`), rediscovered on an interval so a
+ * session started or stopped later is picked up or dropped. Only live servers
+ * get a bridge, so a stopped session's leftover socket never holds the merged
+ * pane table out of date.
+ */
+function createBridgeManager(dependencies: BridgeManagerDependencies): () => void {
+	let stopped = false;
+	const isStopped = (): boolean => stopped;
+	let timer: Timer | null = null;
+	const bridges = new Map<string, () => void>();
+
+	const reconcile = async (): Promise<void> => {
+		const servers = dependencies.discover();
+		const liveness = await Promise.all(servers.map(async (server) => dependencies.isLive(server)));
+		if (isStopped()) return;
+		const live = servers.filter((_server, index) => liveness[index]);
+		const liveSockets = new Set(live.map((server) => server.socketPath));
+		for (const [socketPath, stopBridge] of bridges) {
+			if (liveSockets.has(socketPath)) continue;
+			bridges.delete(socketPath);
+			stopBridge();
+		}
+		for (const server of live) {
+			if (!bridges.has(server.socketPath)) bridges.set(server.socketPath, dependencies.startBridge(server));
+		}
+		dependencies.setKnownServers(live.length === 0 ? null : live);
+	};
+
+	const tick = async (): Promise<void> => {
+		try {
+			await reconcile();
+		} catch (error) {
+			console.error("herdr server discovery failed", error);
+		}
+		if (isStopped()) return;
+		timer = dependencies.schedule(() => {
+			timer = null;
+			void tick();
+		}, dependencies.intervalMs);
+	};
+
+	void tick();
+
+	return () => {
+		if (stopped) return;
+		stopped = true;
+		if (timer) dependencies.cancel(timer);
+		timer = null;
+		for (const stopBridge of bridges.values()) stopBridge();
+		bridges.clear();
+		dependencies.setKnownServers(null);
+	};
+}
+
+const defaultManagerDependencies: BridgeManagerDependencies = {
+	discover: () => discoverLiveHerdrServers(getActiveSessionEntries().map((entry) => entry.herdrSocketPath)),
+	isLive: async (server) => (await probeHerdrSocket(server.socketPath)).available,
+	startBridge: (server) => {
+		const stopBridge = createBridge(bridgeDependenciesFor(server));
+		return () => {
+			stopBridge();
+			herdrPaneTables.remove(server.socketPath);
+		};
+	},
+	setKnownServers: (servers) => {
+		setKnownHerdrServers(servers === null ? null : [...servers]);
+	},
+	schedule: setTimeout,
+	cancel: clearTimeout,
+	intervalMs: DISCOVERY_INTERVAL_MS,
+};
+
 interface BridgeState {
 	stop: (() => void) | null;
 }
 
 const bridgeState = hmrPersist<BridgeState>("herdrEventBridge", () => ({stop: null}));
 
-/** Start the single process-wide herdr-to-SSE event bridge. */
+/** Start the process-wide herdr-to-SSE event bridges, one per live herdr server. */
 export function startHerdrEventBridge(): () => void {
 	if (bridgeState.stop) return bridgeState.stop;
 
-	const stopBridge = createBridge(defaultDependencies);
+	const stopManager = createBridgeManager(defaultManagerDependencies);
 	const stop = () => {
-		stopBridge();
+		stopManager();
 		if (bridgeState.stop === stop) bridgeState.stop = null;
 	};
 	bridgeState.stop = stop;
@@ -408,5 +518,6 @@ hmrDispose(() => {
 
 export const __testing = {
 	createBridge,
+	createBridgeManager,
 	subscriptionRequest,
 };

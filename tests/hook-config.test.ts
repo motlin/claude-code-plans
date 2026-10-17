@@ -97,7 +97,7 @@ describe("generateHooksConfig", () => {
 					{
 						type: "command",
 						command:
-							'jq -c \'. + {claude_env: ($ENV | with_entries(select(.key | startswith("CLAUDE") or . == "TMUX" or . == "TMUX_PANE" or . == "HERDR_PANE_ID" or . == "HERDR_WORKSPACE_ID" or . == "HERDR_TAB_ID" or . == "HERDR_SOCKET_PATH" or . == "HERDR_ENV")))}\' | curl -sX POST --connect-timeout 0.1 http://localhost:7526/api/hook -H \'Content-Type: application/json\' --data-binary @- >/dev/null 2>&1 || true',
+							'jq -c \'. + {claude_env: ($ENV | with_entries(select(.key | startswith("CLAUDE") or . == "TMUX" or . == "TMUX_PANE" or . == "HERDR_PANE_ID" or . == "HERDR_WORKSPACE_ID" or . == "HERDR_TAB_ID" or . == "HERDR_SOCKET_PATH" or . == "HERDR_SESSION" or . == "HERDR_ENV")))}\' | curl -sX POST --connect-timeout 0.1 http://localhost:7526/api/hook -H \'Content-Type: application/json\' --data-binary @- >/dev/null 2>&1 || true',
 					},
 				],
 			},

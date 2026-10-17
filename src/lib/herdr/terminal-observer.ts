@@ -2,7 +2,9 @@ import {spawn, type ChildProcessByStdio} from "node:child_process";
 import type {Readable} from "node:stream";
 import {z} from "zod";
 import {hmrDispose} from "../hmr-persist";
+import {qualifyHerdrId, splitHerdrId} from "./herdr-id";
 import {getHerdrPanes} from "./panes";
+import {herdrSocketPathForServer} from "./servers";
 import {HerdrTerminalRecordSchema, type HerdrTerminalRecord} from "./terminal-protocol";
 
 const MAXIMUM_LINE_BYTES = 5 * 1024 * 1024;
@@ -12,7 +14,7 @@ type ObserverChild = ChildProcessByStdio<null, Readable, Readable>;
 type SpawnObserver = (
 	command: string,
 	arguments_: readonly string[],
-	options: {stdio: ["ignore", "pipe", "pipe"]},
+	options: {stdio: ["ignore", "pipe", "pipe"]; env?: NodeJS.ProcessEnv},
 ) => ObserverChild;
 
 export interface TerminalObserverSocket {
@@ -213,22 +215,35 @@ export function bridgeTerminalStream(child: TerminalStreamChild, socket: Termina
 	return observer;
 }
 
+/**
+ * Split a session-qualified terminal target (`term_x@later`) into herdr's own
+ * terminal id and the environment that points the herdr CLI at that session's socket.
+ */
+export function herdrTerminalSpawnTarget(qualifiedTarget: string): {target: string; env?: NodeJS.ProcessEnv} {
+	const {id, session} = splitHerdrId(qualifiedTarget);
+	if (session === null) return {target: id};
+	return {target: id, env: {...process.env, HERDR_SOCKET_PATH: herdrSocketPathForServer(session)}};
+}
+
 export function startTerminalObserver(
 	options: ObserverOptions,
 	socket: TerminalObserverSocket,
 	spawnObserver: SpawnObserver = spawn,
 ): TerminalObserver {
 	const viewport = parseViewport(options.columns, options.rows);
-	const child = spawnObserver("herdr", sessionStreamArguments("observe", {target: options.target, ...viewport}), {
+	const {target, env} = herdrTerminalSpawnTarget(options.target);
+	const child = spawnObserver("herdr", sessionStreamArguments("observe", {target, ...viewport}), {
 		stdio: ["ignore", "pipe", "pipe"],
+		...(env ? {env} : {}),
 	});
 	return bridgeTerminalStream(child, socket);
 }
 
+/** The session's terminal id, qualified by its herdr session so the stream opens on the right server. */
 export async function resolveSessionTerminal(sessionId: string): Promise<string> {
 	const pane = (await getHerdrPanes()).find((candidate) => candidate.sessionId === sessionId);
 	if (!pane) throw new Error("No live herdr pane is linked to this session");
-	return pane.terminalId;
+	return qualifyHerdrId(pane.terminalId, splitHerdrId(pane.paneId).session);
 }
 
 const defaultDependencies: TerminalObserverDependencies = {

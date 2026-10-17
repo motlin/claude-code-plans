@@ -3,8 +3,9 @@ import {getActiveSessionEntries, type ActiveSessionEntry} from "../active-sessio
 import {getDb} from "../db";
 import {getIndexedSessionIds} from "../db/queries";
 import {herdrRequest, type HerdrResult} from "./client";
-import {herdrPaneTable, type HerdrPaneState, type HerdrPaneTable} from "./pane-table";
+import {herdrPaneTable, type HerdrPaneReader, type HerdrPaneState} from "./pane-table";
 import {HerdrPaneInfoSchema, HerdrSessionSnapshotResultSchema} from "./schema";
+import {knownHerdrServers, qualifiedEntryHerdrPane, qualifyHerdrPaneState, type HerdrServer} from "./servers";
 import type {TerminalPlacementBase, TerminalPlacementProvider} from "../terminal-placements";
 
 export type HerdrAgentStatus = z.infer<typeof HerdrPaneInfoSchema>["agent_status"];
@@ -47,7 +48,13 @@ const HERDR_CAPABILITIES = {
 	supportsObserve: true,
 };
 
-export type HerdrRequester = (request: object, timeoutMs?: number) => Promise<HerdrResult<unknown>>;
+/** `socketPath` pins the server; without it the request is routed by the qualified ids in its params. */
+export type HerdrRequester = (
+	request: object,
+	timeoutMs?: number,
+	socketPath?: string,
+) => Promise<HerdrResult<unknown>>;
+export type HerdrServerLister = () => readonly HerdrServer[];
 export type IndexedSessionFilter = (sessionIds: string[]) => Set<string>;
 
 export const filterIndexedSessions: IndexedSessionFilter = (sessionIds) => {
@@ -62,23 +69,56 @@ const SNAPSHOT_REQUEST = {
 };
 
 /**
- * Read herdr's live pane state for every read model above it.
+ * Read herdr's live pane state, across every known herdr server, for every read model above it.
  *
- * While the event bridge keeps the pane table current, this is a memory read.
- * Otherwise it asks herdr for a snapshot. Transport and protocol failures are
- * normal when herdr is absent or has changed release, so both collapse to
- * `null` and each caller degrades to an empty result instead of failing.
+ * While the event bridges keep the pane tables current, this is a memory read.
+ * Otherwise it asks each server for a snapshot and merges them with
+ * qualified ids. A server that fails contributes nothing; only when every
+ * server fails is the first failure returned.
  */
+export async function readHerdrPaneState(
+	request: HerdrRequester,
+	table: HerdrPaneReader = herdrPaneTable,
+	servers: HerdrServerLister = knownHerdrServers,
+): Promise<HerdrResult<HerdrPaneState>> {
+	const current = table.current();
+	if (current !== null) return {ok: true, value: current};
+	const states: HerdrPaneState[] = [];
+	let firstFailure: Extract<HerdrResult<unknown>, {ok: false}> | null = null;
+	for (const server of servers()) {
+		const response = await request(SNAPSHOT_REQUEST, undefined, server.socketPath);
+		if (!response.ok) {
+			firstFailure ??= response;
+			continue;
+		}
+		const parsed = HerdrSessionSnapshotResultSchema.safeParse(response.value);
+		if (!parsed.success) {
+			firstFailure ??= {ok: false, code: "bad-response", message: "herdr returned an invalid session snapshot"};
+			continue;
+		}
+		const {workspaces, panes} = parsed.data.snapshot;
+		states.push(qualifyHerdrPaneState({workspaces, panes}, server.session));
+	}
+	if (states.length === 0) {
+		return firstFailure ?? {ok: false, code: "no-server", message: "no herdr server is known"};
+	}
+	return {
+		ok: true,
+		value: {
+			workspaces: states.flatMap((state) => state.workspaces),
+			panes: states.flatMap((state) => state.panes),
+		},
+	};
+}
+
+/** `readHerdrPaneState`, with every failure collapsed to `null` so callers degrade to an empty result. */
 export async function readHerdrSnapshot(
 	request: HerdrRequester,
-	table: HerdrPaneTable = herdrPaneTable,
+	table: HerdrPaneReader = herdrPaneTable,
+	servers: HerdrServerLister = knownHerdrServers,
 ): Promise<HerdrPaneState | null> {
-	const current = table.current();
-	if (current !== null) return current;
-	const response = await request(SNAPSHOT_REQUEST);
-	if (!response.ok) return null;
-	const parsed = HerdrSessionSnapshotResultSchema.safeParse(response.value);
-	return parsed.success ? parsed.data.snapshot : null;
+	const result = await readHerdrPaneState(request, table, servers);
+	return result.ok ? result.value : null;
 }
 
 /** The Claude transcript id herdr resolved for a pane, if the pane runs Claude at all. */
@@ -122,18 +162,20 @@ export async function getHerdrPanes(
 	entries: ActiveSessionEntry[] = getActiveSessionEntries(),
 	request: HerdrRequester = herdrRequest,
 	indexedSessionFilter: IndexedSessionFilter = filterIndexedSessions,
-	table: HerdrPaneTable = herdrPaneTable,
+	table: HerdrPaneReader = herdrPaneTable,
+	servers: HerdrServerLister = knownHerdrServers,
 ): Promise<HerdrPaneLink[]> {
-	const snapshot = await readHerdrSnapshot(request, table);
+	const snapshot = await readHerdrSnapshot(request, table, servers);
 	if (snapshot === null) return [];
 
 	const entriesByPaneId = new Map<string, ActiveSessionEntry[]>();
 	const entriesBySessionId = new Map(entries.map((entry) => [entry.sessionId, entry]));
 	for (const entry of entries) {
-		if (!entry.herdrPane) continue;
-		const paneEntries = entriesByPaneId.get(entry.herdrPane);
+		const paneId = qualifiedEntryHerdrPane(entry);
+		if (!paneId) continue;
+		const paneEntries = entriesByPaneId.get(paneId);
 		if (paneEntries) paneEntries.push(entry);
-		else entriesByPaneId.set(entry.herdrPane, [entry]);
+		else entriesByPaneId.set(paneId, [entry]);
 	}
 
 	const indexedSessionCandidates = snapshot.panes.flatMap((pane) => {

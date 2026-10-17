@@ -325,4 +325,20 @@ describe("getHerdrWorkspaces", () => {
 			requests: [],
 		});
 	});
+
+	it("names a named herdr session's workspaces after that session", async () => {
+		const table = createHerdrPaneTable();
+		table.seed({
+			workspaces: [
+				wireWorkspace({workspaceId: "wM@later", number: 1, label: "eclipse-collections", agentStatus: "idle"}),
+			],
+			panes: [],
+		});
+
+		const workspaces = await getHerdrWorkspaces(snapshotRequester({}), indexEverything, table);
+
+		expect(workspaces.map(({workspaceId, label}) => ({workspaceId, label}))).toStrictEqual([
+			{workspaceId: "wM@later", label: "eclipse-collections (later)"},
+		]);
+	});
 });

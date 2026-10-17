@@ -511,6 +511,18 @@ describe("HerdrPage", () => {
 		expect(document.body.textContent.includes("Terminal Fleet")).toBe(false);
 	});
 
+	it("labels a pane from a named herdr session with that session", async () => {
+		const named = placement({active: false, agentStatus: "blocked", number: 100});
+		await renderHerdrPage([
+			{...named, herdrPane: {...named.herdrPane, paneId: "pane-test-100@later"}},
+			placement({active: false, agentStatus: "idle", number: 200}),
+		]);
+
+		expect(screen.getAllByText(/^herdr session/u).map((label) => label.textContent)).toStrictEqual([
+			"herdr session later",
+		]);
+	});
+
 	it("makes transcript and live terminal navigation distinct without visible technical metadata", async () => {
 		const HerdrPage = HerdrRoute.options.component;
 		if (!HerdrPage) throw new Error("Expected the Herdr route component");

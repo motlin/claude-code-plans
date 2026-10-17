@@ -141,5 +141,63 @@ export function createHerdrPaneTable(): HerdrPaneTable {
 	};
 }
 
-/** The table the event bridge maintains and every herdr read model consults. */
-export const herdrPaneTable: HerdrPaneTable = hmrPersist("herdrPaneTable", createHerdrPaneTable);
+/** What read models need from pane state: the current state or `null`. */
+export type HerdrPaneReader = Pick<HerdrPaneTable, "current">;
+
+/**
+ * One pane table per herdr server (keyed by socket), each kept current by
+ * that server's event bridge and holding already-qualified ids. Its merged
+ * state is current only while every registered table is, so a reader never
+ * mistakes one server's reconnect window for that server having no panes.
+ */
+export interface HerdrPaneTableSet extends HerdrPaneReader {
+	forServer(socketPath: string): HerdrPaneTable;
+	remove(socketPath: string): void;
+}
+
+export function createHerdrPaneTableSet(): HerdrPaneTableSet {
+	const tables = new Map<string, HerdrPaneTable>();
+	let memo: {parts: HerdrPaneState[]; merged: HerdrPaneState} | null = null;
+
+	return {
+		forServer(socketPath) {
+			let table = tables.get(socketPath);
+			if (!table) {
+				table = createHerdrPaneTable();
+				tables.set(socketPath, table);
+			}
+			return table;
+		},
+		remove(socketPath) {
+			tables.get(socketPath)?.invalidate();
+			tables.delete(socketPath);
+		},
+		current() {
+			if (tables.size === 0) return null;
+			const parts: HerdrPaneState[] = [];
+			for (const table of tables.values()) {
+				const state = table.current();
+				if (state === null) return null;
+				parts.push(state);
+			}
+			const [only] = parts;
+			if (parts.length === 1 && only) return only;
+			// Tables copy on write, so unchanged part identities mean an unchanged merge.
+			if (memo?.parts.length === parts.length && memo.parts.every((part, index) => part === parts[index])) {
+				return memo.merged;
+			}
+			const merged: HerdrPaneState = {
+				workspaces: parts.flatMap((part) => part.workspaces),
+				panes: parts.flatMap((part) => part.panes),
+			};
+			memo = {parts, merged};
+			return merged;
+		},
+	};
+}
+
+/** Every herdr server's table; the event bridges maintain it and read models consult it. */
+export const herdrPaneTables: HerdrPaneTableSet = hmrPersist("herdrPaneTables", createHerdrPaneTableSet);
+
+/** The merged pane state of every herdr server ccp tracks. */
+export const herdrPaneTable: HerdrPaneReader = herdrPaneTables;

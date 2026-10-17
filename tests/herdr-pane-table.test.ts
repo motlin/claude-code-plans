@@ -1,5 +1,5 @@
 import {describe, expect, it} from "vite-plus/test";
-import {createHerdrPaneTable, type HerdrPaneState} from "../src/lib/herdr/pane-table";
+import {createHerdrPaneTable, createHerdrPaneTableSet, type HerdrPaneState} from "../src/lib/herdr/pane-table";
 
 type WirePane = HerdrPaneState["panes"][number];
 type WireWorkspace = HerdrPaneState["workspaces"][number];
@@ -131,6 +131,44 @@ describe("herdr pane table", () => {
 		expect({unseeded, seeded: table.current()}).toStrictEqual({
 			unseeded: null,
 			seeded: {workspaces: [], panes: []},
+		});
+	});
+});
+
+describe("herdr pane table set", () => {
+	it("merges every server's table, and is current only while all of them are", () => {
+		const tables = createHerdrPaneTableSet();
+		const empty = tables.current();
+		const defaultTable = tables.forServer("/tmp/test/default.sock");
+		const laterTable = tables.forServer("/tmp/test/later.sock");
+		defaultTable.seed({workspaces: [wireWorkspace("w1", "idle")], panes: [wirePane("w1:p1")]});
+		const partlySeeded = tables.current();
+		laterTable.seed({workspaces: [wireWorkspace("wM@later", "blocked")], panes: [wirePane("wM:p1@later")]});
+		const merged = tables.current();
+		const mergedAgain = tables.current();
+		laterTable.invalidate();
+		const oneInvalid = tables.current();
+		tables.remove("/tmp/test/later.sock");
+
+		expect({
+			empty,
+			partlySeeded,
+			merged,
+			stable: merged === mergedAgain,
+			sameTable: tables.forServer("/tmp/test/default.sock") === defaultTable,
+			oneInvalid,
+			afterRemove: tables.current(),
+		}).toStrictEqual({
+			empty: null,
+			partlySeeded: null,
+			merged: {
+				workspaces: [wireWorkspace("w1", "idle"), wireWorkspace("wM@later", "blocked")],
+				panes: [wirePane("w1:p1"), wirePane("wM:p1@later")],
+			},
+			stable: true,
+			sameTable: true,
+			oneInvalid: null,
+			afterRemove: {workspaces: [wireWorkspace("w1", "idle")], panes: [wirePane("w1:p1")]},
 		});
 	});
 });

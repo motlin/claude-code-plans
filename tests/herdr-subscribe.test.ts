@@ -680,4 +680,110 @@ describe("herdr event bridge", () => {
 			afterStop: null,
 		});
 	});
+
+	it("qualifies a named session's pushed ids and subscribes with the raw ones", async () => {
+		const sockets: FakeSocket[] = [];
+		const lineReaders: FakeLineReader[] = [];
+		const broadcasts: Broadcast[] = [];
+		const tracker = viewedStateTracker();
+		const paneTable = createHerdrPaneTable();
+		const qualified = {
+			...wirePane("wM:p1", 1),
+			pane_id: "wM:p1@later",
+			workspace_id: "wM@later",
+			tab_id: "wM:t1@later",
+		};
+		const stop = __testing.createBridge({
+			session: "later",
+			probe: available,
+			connect: () => {
+				const socket = new FakeSocket();
+				sockets.push(socket);
+				return socket as unknown as Socket;
+			},
+			createLineReader: () => {
+				const lineReader = new FakeLineReader();
+				lineReaders.push(lineReader);
+				return lineReader as unknown as ReadlineInterface;
+			},
+			getSnapshot: async () => Promise.resolve({workspaces: [], panes: [qualified]}),
+			getPanes: async () => Promise.resolve([]),
+			paneTable,
+			broadcast: (type, data) => broadcasts.push({type, data}),
+			schedule: setTimeout,
+			cancel: clearTimeout,
+			viewedStateTracker: tracker,
+		});
+		await flushPromises();
+		sockets[0]!.emit("connect");
+		lineReaders[0]!.send({
+			event: "pane_agent_status_changed",
+			data: {pane_id: "wM:p1", workspace_id: "wM", agent_status: "blocked"},
+		});
+		await flushPromises();
+		stop();
+
+		const qualifiedStatus = {pane_id: "wM:p1@later", workspace_id: "wM@later", agent_status: "blocked"};
+		expect({
+			written: sockets[0]!.writes,
+			statusEvents: tracker.handleStatusEvent.mock.calls,
+			broadcasts: broadcasts.filter((broadcast) => broadcast.type !== HERDR_EVENTS.PANES_SNAPSHOT),
+		}).toStrictEqual({
+			written: [__testing.subscriptionRequest(["wM:p1"])],
+			statusEvents: [[qualifiedStatus]],
+			broadcasts: [{type: HERDR_EVENTS.PANE_AGENT_STATUS_CHANGED, data: qualifiedStatus}],
+		});
+	});
+});
+
+describe("herdr bridge manager", () => {
+	beforeEach(() => {
+		vi.useFakeTimers();
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it("runs one bridge per live herdr server and stops a bridge when its server goes away", async () => {
+		const defaultServer = {session: null, socketPath: "/test/herdr.sock"};
+		const laterServer = {session: "later", socketPath: "/test/sessions/later/herdr.sock"};
+		let discovered = [defaultServer, laterServer];
+		const live = new Set([defaultServer.socketPath, laterServer.socketPath]);
+		const events: string[] = [];
+		const known: (readonly {session: string | null; socketPath: string}[] | null)[] = [];
+
+		const stop = __testing.createBridgeManager({
+			discover: () => discovered,
+			isLive: async (server) => Promise.resolve(live.has(server.socketPath)),
+			startBridge: (server) => {
+				events.push(`start ${server.socketPath}`);
+				return () => events.push(`stop ${server.socketPath}`);
+			},
+			setKnownServers: (servers) => known.push(servers),
+			schedule: setTimeout,
+			cancel: clearTimeout,
+			intervalMs: 5000,
+		});
+		await flushPromises();
+		// An unchanged rediscovery starts nothing new.
+		await vi.advanceTimersByTimeAsync(5000);
+		live.delete(laterServer.socketPath);
+		await vi.advanceTimersByTimeAsync(5000);
+		discovered = [defaultServer];
+		live.clear();
+		await vi.advanceTimersByTimeAsync(5000);
+		stop();
+		await vi.advanceTimersByTimeAsync(20_000);
+
+		expect({events, known}).toStrictEqual({
+			events: [
+				"start /test/herdr.sock",
+				"start /test/sessions/later/herdr.sock",
+				"stop /test/sessions/later/herdr.sock",
+				"stop /test/herdr.sock",
+			],
+			known: [[defaultServer, laterServer], [defaultServer, laterServer], [defaultServer], null, null],
+		});
+	});
 });

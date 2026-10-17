@@ -49,6 +49,7 @@ const HOOK_ENV: Record<string, string> = {
 	HERDR_WORKSPACE_ID: "workspace-100",
 	HERDR_TAB_ID: "tab-100",
 	HERDR_SOCKET_PATH: "/tmp/test/herdr.sock",
+	HERDR_SESSION: "later",
 	HERDR_ENV: "1",
 	// A non-CLAUDE-prefixed, non-terminal key — must NOT leak through the filter.
 	HOME: "/Users/u",
@@ -241,6 +242,7 @@ describe("hook stdin -> jq filter -> HookEventEnvelope round-trip", () => {
 			CLAUDE_PROJECT_DIR: "/Users/u/projects/app",
 			HERDR_ENV: "1",
 			HERDR_PANE_ID: "pane-100",
+			HERDR_SESSION: "later",
 			HERDR_SOCKET_PATH: "/tmp/test/herdr.sock",
 			HERDR_TAB_ID: "tab-100",
 			HERDR_WORKSPACE_ID: "workspace-100",

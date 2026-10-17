@@ -1,6 +1,6 @@
 import {createConnection, type Socket} from "node:net";
 import {asRecord, errorMessage} from "../narrow";
-import {resolveHerdrSocketPath} from "./socket-path";
+import {routeHerdrRequest} from "./servers";
 
 export type HerdrResult<T> = {ok: true; value: T} | {ok: false; code: string; message: string};
 
@@ -71,9 +71,24 @@ function parseResponse(line: string): HerdrResult<unknown> {
  * The server closes ordinary connections after one response. Its response id
  * may also be empty after a deserialization error, so the connection itself is
  * the correlation boundary.
+ *
+ * Without an explicit `socketPath`, the request goes to the server that owns
+ * the qualified pane, tab or workspace id in its params (see `servers.ts`).
  */
-export async function herdrRequest(request: object, timeoutMs = 5000): Promise<HerdrResult<unknown>> {
-	const serializedRequest = serializeRequest(request);
+export async function herdrRequest(
+	request: object,
+	timeoutMs = 5000,
+	socketPath?: string,
+): Promise<HerdrResult<unknown>> {
+	let target = socketPath;
+	let routedRequest = request;
+	if (target === undefined) {
+		const route = routeHerdrRequest(request);
+		if (!route.ok) return route;
+		target = route.value.socketPath;
+		routedRequest = route.value.request;
+	}
+	const serializedRequest = serializeRequest(routedRequest);
 	if (!serializedRequest.ok) return Promise.resolve(serializedRequest);
 
 	return new Promise((resolve) => {
@@ -113,7 +128,7 @@ export async function herdrRequest(request: object, timeoutMs = 5000): Promise<H
 		};
 
 		try {
-			socket = createConnection(resolveHerdrSocketPath());
+			socket = createConnection(target);
 			socket.setEncoding("utf8");
 			socket.on("connect", onConnect);
 			socket.on("data", onData);

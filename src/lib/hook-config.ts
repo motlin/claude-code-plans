@@ -52,7 +52,7 @@ interface HooksConfig {
  * `HookEventEnvelope`.
  */
 export const HOOK_PAYLOAD_JQ_FILTER =
-	'. + {claude_env: ($ENV | with_entries(select(.key | startswith("CLAUDE") or . == "TMUX" or . == "TMUX_PANE" or . == "HERDR_PANE_ID" or . == "HERDR_WORKSPACE_ID" or . == "HERDR_TAB_ID" or . == "HERDR_SOCKET_PATH" or . == "HERDR_ENV")))}';
+	'. + {claude_env: ($ENV | with_entries(select(.key | startswith("CLAUDE") or . == "TMUX" or . == "TMUX_PANE" or . == "HERDR_PANE_ID" or . == "HERDR_WORKSPACE_ID" or . == "HERDR_TAB_ID" or . == "HERDR_SOCKET_PATH" or . == "HERDR_SESSION" or . == "HERDR_ENV")))}';
 
 function curlPost(port: number): string {
 	// --connect-timeout 0.1 + `|| true` guarantee the hook never blocks Claude:

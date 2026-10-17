@@ -9,6 +9,7 @@ import {
 	stopAllTerminalObservers,
 	type TerminalObserverDependencies,
 } from "../src/lib/herdr/terminal-observer";
+import {herdrNamedSessionSocketPath} from "../src/lib/herdr/socket-path";
 import type {HerdrTerminalRecord} from "../src/lib/herdr/terminal-protocol";
 
 function frame(sequence: number, full: boolean): HerdrTerminalRecord {
@@ -94,6 +95,29 @@ describe("herdr terminal observer NDJSON bridge", () => {
 		parser.push("not-json\n");
 
 		expect({records, errors}).toStrictEqual({records: [], errors: ["SyntaxError"]});
+	});
+
+	it("observes a named herdr session's terminal through that session's socket", () => {
+		const child = createFakeChild();
+		const spawnObserver = vi.fn<() => FakeChild>(() => child);
+
+		startTerminalObserver(
+			{target: "terminal-test-100@later", columns: 120, rows: 40},
+			createSocket(),
+			spawnObserver as unknown as TerminalObserverDependencies["spawnObserver"],
+		);
+		child.stdout.write(`${JSON.stringify({type: "terminal.closed"})}\n`);
+
+		expect(spawnObserver.mock.calls).toStrictEqual([
+			[
+				"herdr",
+				["terminal", "session", "observe", "terminal-test-100", "--cols", "120", "--rows", "40"],
+				{
+					stdio: ["ignore", "pipe", "pipe"],
+					env: {...process.env, HERDR_SOCKET_PATH: herdrNamedSessionSocketPath("later")},
+				},
+			],
+		]);
 	});
 
 	it("spawns only observe, forwards a monotonic stream, and cleans up on terminal.closed", () => {
