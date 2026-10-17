@@ -23,6 +23,7 @@ import {
 	type SessionDetailData,
 } from "../src/lib/api/sessions";
 import {usageQueryOptions} from "../src/lib/api/usage";
+import type {PaneKind} from "../src/lib/pane-layout";
 import type {Subagent} from "../src/lib/subagents";
 import {__unreadStoreTesting} from "../src/lib/unread-store";
 import {installLocalStorage} from "./fake-storage";
@@ -148,6 +149,7 @@ async function renderSessionPage(
 	subagents: Subagent[],
 	seed: (queryClient: QueryClient) => void = () => {},
 	extraRecords: Record<string, unknown>[] = [],
+	requestedPane?: PaneKind,
 ) {
 	const queryClient = newQueryClient();
 	seed(queryClient);
@@ -168,7 +170,7 @@ async function renderSessionPage(
 		precedingMessageCount: 0,
 	});
 	queryClient.setQueryData(sessionSubagentsQueryOptions(SESSION_ID).queryKey, subagents);
-	await renderInRouter(queryClient, <SessionPage sessionId={SESSION_ID} />);
+	await renderInRouter(queryClient, <SessionPage sessionId={SESSION_ID} requestedPane={requestedPane} />);
 }
 
 beforeEach(() => {
@@ -312,13 +314,13 @@ describe("plan pane", () => {
 
 		expect({
 			plan: within(pane).getByText("Rebase onto upstream first.").tagName,
-			todos: within(within(pane).getByRole("list", {name: "Todos"}))
+			todos: within(pane)
 				.getAllByRole("listitem")
 				.map((item) => [item.textContent, item.getAttribute("data-todo-status")]),
-		}).toStrictEqual({plan: "P", todos: [["Rebasing", "in_progress"]]});
+		}).toStrictEqual({plan: "P", todos: [["in progressRebase", "in_progress"]]});
 	});
 
-	it("renders the linked plan beside the transcript with a link to the plan page", async () => {
+	it("renders the linked plan's markdown verbatim beside the transcript, as upstream renders plan content", async () => {
 		const plan: PlanDetail = {
 			markdown: "# Fabricated sync plan\n\nRebase the fabricated fork onto upstream.",
 			mtime: "2026-09-28T10:00:00.000Z",
@@ -333,13 +335,43 @@ describe("plan pane", () => {
 		const pane = screen.getByTestId("session-plan-pane");
 
 		expect({
-			heading: within(pane).getByRole("heading").textContent,
+			headings: within(pane)
+				.getAllByRole("heading")
+				.map((heading) => [heading.tagName, heading.textContent]),
 			body: within(pane).getByText("Rebase the fabricated fork onto upstream.").tagName,
-			link: within(pane).getByRole("link", {name: "Open plan"}).getAttribute("href"),
+			links: within(pane).queryAllByRole("link"),
 		}).toStrictEqual({
-			heading: "Fabricated sync plan",
+			headings: [["H1", "Fabricated sync plan"]],
 			body: "P",
-			link: "/plan/fabricated-sync-plan",
+			links: [],
+		});
+	});
+
+	it("opens the requested Plan pane on a planless session with upstream's header and empty state", async () => {
+		await renderSessionPage(detail, [], () => {}, [], "plan");
+		const pane = screen.getByRole("region", {name: "Plan"});
+		const before = {
+			title: pane.querySelector("[data-pane-title]")?.textContent,
+			buttons: within(pane)
+				.getAllByRole("button")
+				.map((button) => button.getAttribute("aria-label")),
+			empty: within(pane)
+				.getAllByRole("paragraph")
+				.map((p) => p.textContent),
+		};
+		fireEvent.click(within(pane).getByRole("button", {name: "Expand"}));
+		await flush();
+		const expanded = within(screen.getByRole("region", {name: "Plan"}))
+			.getAllByRole("button")
+			.map((button) => button.getAttribute("aria-label"));
+
+		expect({before, expanded}).toStrictEqual({
+			before: {
+				title: "Plan",
+				buttons: ["Move", "Expand", "Close"],
+				empty: ["No plan yet", "Claude writes the plan here as it explores. Keep chatting."],
+			},
+			expanded: ["Collapse", "Close"],
 		});
 	});
 });

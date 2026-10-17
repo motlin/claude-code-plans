@@ -1,11 +1,11 @@
 import {Check, CircleDashed} from "lucide-react";
 import {useMemo} from "react";
 
-import {type ChecklistItem, taskChecklist} from "../../lib/task-checklist";
+import {taskChecklist} from "../../lib/task-checklist";
 import {MarkdownInline} from "../markdown-view";
 import type {ToolRendererProps} from "./types";
 
-function StatusIcon({status}: {status: ChecklistItem["status"]}) {
+function StatusIcon({status}: {status: string}) {
 	if (status === "completed") {
 		return (
 			<>
@@ -25,14 +25,19 @@ function StatusIcon({status}: {status: ChecklistItem["status"]}) {
 	return <CircleDashed aria-hidden="true" className="size-4 text-ink-muted" />;
 }
 
+/** One checklist row: a status (`pending`, `in_progress` or `completed`; anything else reads as pending) and its markdown. */
+export interface TodoChecklistItem {
+	id: string;
+	content: string;
+	status: string;
+}
+
 /**
- * Upstream's checklist body for every task tool (TodoWrite and the Task*
- * family), listing the call's own todos: a 16px status slot, then the item as
- * inline markdown, struck through once done. An in-progress item always spins.
+ * Upstream's todo list (shared by the task tool bodies and the Plan pane): a
+ * 16px status slot, then the item as inline markdown, struck through once
+ * done. An in-progress item always spins.
  */
-export function TaskChecklistRenderer({toolCall}: ToolRendererProps) {
-	const items = useMemo(() => taskChecklist(toolCall.name, toolCall.input), [toolCall.name, toolCall.input]);
-	if (items.length === 0) return null;
+export function TodoChecklist({items}: {items: readonly TodoChecklistItem[]}) {
 	return (
 		<ul className="m-0 flex list-none flex-col gap-1.5 p-0 py-1 text-body select-text">
 			{items.map((item) => (
@@ -51,4 +56,11 @@ export function TaskChecklistRenderer({toolCall}: ToolRendererProps) {
 			))}
 		</ul>
 	);
+}
+
+/** Upstream's checklist body for every task tool (TodoWrite and the Task* family), listing the call's own todos. */
+export function TaskChecklistRenderer({toolCall}: ToolRendererProps) {
+	const items = useMemo(() => taskChecklist(toolCall.name, toolCall.input), [toolCall.name, toolCall.input]);
+	if (items.length === 0) return null;
+	return <TodoChecklist items={items} />;
 }

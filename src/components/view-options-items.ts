@@ -1,6 +1,6 @@
 import type {LucideIcon} from "lucide-react";
 import type {ShortcutId} from "../lib/shortcuts/registry";
-import {AppWindow, GitFork, Info, Link2, ListChecks, ListTodo, SquareTerminal} from "lucide-react";
+import {AppWindow, GitFork, Info, Link2, ListChecks, SquareTerminal} from "lucide-react";
 import type {PaneKind} from "../lib/pane-layout";
 
 /**
@@ -24,7 +24,7 @@ export function viewOptionsItems({
 /** What the session offers, deciding which View options items apply. */
 export interface ViewOptionsFacts {
 	artifactCount?: number;
-	/** The session is linked to a plan file through `plan_sessions`. */
+	/** The session has a plan for the Plan pane: a linked plan file, plan text, a plan-file edit or todos. */
 	hasPlan?: boolean;
 	backgroundTasks?: {total: number; running: number};
 	subagentCount?: number;
@@ -53,7 +53,7 @@ function candidates(facts: ViewOptionsFacts): ViewOptionsCandidate[] {
 			applies: (facts.backgroundTasks?.total ?? 0) > 0,
 			...(running > 0 ? {badge: running} : {}),
 		},
-		{kind: "plan", label: "Plan", icon: ListTodo, applies: facts.hasPlan === true},
+		{kind: "plan", label: "Plan", icon: ListChecks, applies: facts.hasPlan === true},
 		{
 			kind: "subagents",
 			label: "Subagents",

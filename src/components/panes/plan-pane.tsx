@@ -1,82 +1,91 @@
 import {useQuery} from "@tanstack/react-query";
-import {Link} from "@tanstack/react-router";
-import {Circle, CircleCheck, CircleDot, ExternalLink} from "lucide-react";
+import {ListChecks, Loader2} from "lucide-react";
+import type {ReactNode} from "react";
 
 import {planQueryOptions} from "../../lib/api/plans";
-import {stripLeadingTitleHeading} from "../../lib/markdown-utils";
 import {toMdSlug} from "../../lib/md-slug";
 import type {PlanTodo, SessionPlanModel} from "../../lib/session-plan-model";
 import {MarkdownView} from "../markdown-view";
+import {TodoChecklist} from "../tool-renderers/task-checklist-renderer";
 
 /**
- * Upstream's Plan pane: the session's plan (its linked plan file, else its latest ExitPlanMode
- * plan text), then its checklist from TodoWrite or TaskCreate / TaskUpdate.
+ * Upstream's Plan pane: the session's plan (its linked plan file, else its latest ExitPlanMode or
+ * plan-file Write text) as prose, then its checklist from TodoWrite or TaskCreate / TaskUpdate under
+ * "Tasks"; with neither, upstream's "No plan yet" empty state.
  */
 export function SessionPlanPane({planFilename, model}: {planFilename: string | undefined; model: SessionPlanModel}) {
+	return planFilename === undefined ? (
+		<PlanBody content={model.content} todos={model.todos} />
+	) : (
+		<LinkedPlanBody planFilename={planFilename} model={model} />
+	);
+}
+
+/** The linked plan file's markdown, falling back to the transcript's plan text when the file is gone. */
+function LinkedPlanBody({planFilename, model}: {planFilename: string; model: SessionPlanModel}) {
+	const {data: plan, isPending} = useQuery(planQueryOptions(toMdSlug(planFilename)));
+	if (isPending) {
+		return (
+			<div role="status" className="h-full">
+				<PlanEmptyState
+					icon={<Loader2 aria-hidden="true" className="size-5 animate-spin text-ink-muted" />}
+					title="Loading…"
+				/>
+			</div>
+		);
+	}
+	return <PlanBody content={plan?.markdown ?? model.content} todos={model.todos} />;
+}
+
+function PlanBody({content, todos}: {content: string | null; todos: readonly PlanTodo[]}) {
+	if (content === null && todos.length === 0) {
+		return (
+			<PlanEmptyState
+				icon={<ListChecks aria-hidden="true" className="size-7 text-ink-muted" />}
+				title="No plan yet"
+				body="Claude writes the plan here as it explores. Keep chatting."
+			/>
+		);
+	}
 	return (
-		<div data-testid="session-plan-pane" className="flex flex-col gap-3 px-4 py-3">
-			{planFilename === undefined ? (
-				model.content === null ? null : (
-					<MarkdownView markdown={model.content} />
-				)
-			) : (
-				<LinkedPlan planFilename={planFilename} />
-			)}
-			{model.todos.length > 0 && <PlanTodos todos={model.todos} />}
+		<div
+			data-testid="session-plan-pane"
+			className="h-full select-text overflow-y-auto [contain:strict] [scrollbar-gutter:stable_both-edges] p-4"
+		>
+			<div className="mx-auto max-w-[68ch]">
+				{content !== null && <MarkdownView markdown={content} />}
+				{todos.length > 0 && <PlanTasks todos={todos} />}
+			</div>
 		</div>
 	);
 }
 
-const TODO_ICONS = {completed: CircleCheck, in_progress: CircleDot} as const;
-
-function PlanTodos({todos}: {todos: readonly PlanTodo[]}) {
+/** Upstream's "Tasks" section under the plan: a caption heading over the shared todo list (content, never activeForm). */
+function PlanTasks({todos}: {todos: readonly PlanTodo[]}) {
 	return (
-		<ul aria-label="Todos" className="m-0 flex list-none flex-col gap-1.5 p-0">
-			{todos.map((todo, index) => {
-				const Icon =
-					todo.status === "completed" || todo.status === "in_progress" ? TODO_ICONS[todo.status] : Circle;
-				return (
-					<li
-						key={`${index}-${todo.content}`}
-						data-todo-status={todo.status}
-						className={`flex items-start gap-2 text-body ${todo.status === "completed" ? "text-ink-muted line-through" : "text-primary"}`}
-					>
-						<Icon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-secondary" />
-						<span className="min-w-0">
-							{todo.status === "in_progress" ? (todo.activeForm ?? todo.content) : todo.content}
-						</span>
-					</li>
-				);
-			})}
-		</ul>
+		<section className="mt-4">
+			<h2 className="mb-1.25 text-caption font-medium uppercase tracking-wide text-ink-muted">Tasks</h2>
+			<TodoChecklist
+				items={todos.map((todo, index) => ({id: `${index}`, content: todo.content, status: todo.status}))}
+			/>
+		</section>
 	);
 }
 
-/** The session's linked plan file, rendered as markdown with a link out to its plan page. */
-function LinkedPlan({planFilename}: {planFilename: string}) {
-	const slug = toMdSlug(planFilename);
-	const {data: plan, isPending} = useQuery(planQueryOptions(slug));
-
+/** Upstream's centred pane empty state: a glyph, a title, and an optional secondary body. */
+function PlanEmptyState({icon, title, body}: {icon: ReactNode; title: string; body?: string}) {
 	return (
-		<>
-			<div className="flex items-baseline justify-between gap-3">
-				<h2 className="min-w-0 truncate text-body font-semibold text-primary">{plan?.title ?? planFilename}</h2>
-				<Link
-					to="/plan/$filename"
-					params={{filename: slug}}
-					className="flex shrink-0 items-center gap-1 text-caption text-secondary underline-offset-2 hover:text-primary hover:underline"
-				>
-					Open plan
-					<ExternalLink aria-hidden className="size-3" />
-				</Link>
+		<div
+			data-testid="session-plan-pane"
+			className="flex h-full flex-col items-center justify-center gap-3 px-4 py-4 text-center"
+		>
+			{icon}
+			<div className="flex flex-col items-center gap-1">
+				<p className="max-w-[36ch] text-pretty break-words text-body text-primary">{title}</p>
+				{body !== undefined && (
+					<p className="max-w-[36ch] text-pretty break-words text-footnote text-ink-muted">{body}</p>
+				)}
 			</div>
-			{plan ? (
-				<MarkdownView markdown={stripLeadingTitleHeading(plan.markdown)} />
-			) : (
-				<p className="py-6 text-center text-body text-muted">
-					{isPending ? "Loading plan…" : "This plan could not be found."}
-				</p>
-			)}
-		</>
+		</div>
 	);
 }

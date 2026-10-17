@@ -9,14 +9,18 @@ export function hasSessionPlan(planFilename: string | undefined, model: SessionP
 	return planFilename !== undefined || model.content !== null || model.editsPlanFile || model.todos.length > 0;
 }
 
-/** Registers the `plan` pane kind while the session has a linked plan, ExitPlanMode plan text or todos. */
+/**
+ * Registers the `plan` pane kind for every session, as upstream does: View options lists Plan only
+ * when the session has one (or the pane is already open), and an open pane without a plan shows
+ * "No plan yet".
+ */
 export function useRegisterPlanPane(planFilename: string | undefined, model: SessionPlanModel): void {
-	const available = hasSessionPlan(planFilename, model);
-	useEffect(() => {
-		if (!available) return undefined;
-		return registerPane("plan", {
-			title: "Plan",
-			render: () => <SessionPlanPane key={planFilename ?? ""} planFilename={planFilename} model={model} />,
-		});
-	}, [available, planFilename, model]);
+	useEffect(
+		() =>
+			registerPane("plan", {
+				title: "Plan",
+				render: () => <SessionPlanPane key={planFilename ?? ""} planFilename={planFilename} model={model} />,
+			}),
+		[planFilename, model],
+	);
 }
