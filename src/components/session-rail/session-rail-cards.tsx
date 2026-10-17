@@ -42,7 +42,8 @@ import type {PlanTodo} from "../../lib/session-plan-model";
 import {usePaneHost} from "../panes/pane-host-context";
 import {useToast} from "../toast-context";
 import {UsageLimitRow, UsageMeter} from "../usage-limit-row";
-import {RAIL_ROW_ACTION_CLASS, RailRow, RailRowContent, SessionRail, type RailCard} from "./session-rail";
+import {RAIL_ROW_ACTION_CLASS, RailRow, RailRowContent} from "./rail-row";
+import {SessionRail, type RailCard} from "./session-rail";
 
 /** What the session page knows that the rail's cards show. */
 export interface SessionRailInputs {

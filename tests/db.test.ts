@@ -1761,16 +1761,26 @@ describe("queries", () => {
 		expect(sessions.map((s) => s.id)).toStrictEqual(["sess-1", "sess-2"]);
 	});
 
-	it("getPlanLinksFromDb returns links for a plan with session titles", () => {
-		const links = getPlanLinksFromDb(db.index, "plan-a.md");
-		expect(
-			links.map((l) => ({
-				projectName: l.projectName,
-				sessionTitle: l.sessionTitle,
-			})),
-		).toStrictEqual([
-			{projectName: "Alpha", sessionTitle: "Fix login"},
-			{projectName: "Alpha", sessionTitle: "Add tests"},
+	it("getPlanLinksFromDb returns links for a plan with session titles, project paths and session mtimes", () => {
+		expect(getPlanLinksFromDb(db.index, "plan-a.md")).toStrictEqual([
+			{
+				planFilename: "plan-a.md",
+				sessionId: "sess-1",
+				projectId: "proj-a",
+				projectName: "Alpha",
+				projectPath: "/projects/alpha",
+				sessionTitle: "Fix login",
+				sessionMtimeMs: 3000,
+			},
+			{
+				planFilename: "plan-a.md",
+				sessionId: "sess-2",
+				projectId: "proj-a",
+				projectName: "Alpha",
+				projectPath: "/projects/alpha",
+				sessionTitle: "Add tests",
+				sessionMtimeMs: 2000,
+			},
 		]);
 	});
 

@@ -3,12 +3,12 @@ import {useSuspenseQuery} from "@tanstack/react-query";
 import {MarkdownView} from "../components/markdown-view";
 import {planQueryOptions, planLinksQueryOptions} from "../lib/api/plans";
 import {fromMdSlug} from "../lib/md-slug";
-import {stripLeadingTitleHeading} from "../lib/markdown-utils";
-import {ArrowLeft, Pencil, FolderOpen, MessageSquare, Clock} from "lucide-react";
+import {formatNarrowRelativeTime} from "../lib/relative-time";
+import {ArrowLeft, Pencil} from "lucide-react";
 import {DetailTopBar} from "../components/detail-top-bar";
 import {pillStyles} from "../components/pill-styles";
 import {DebugLink} from "../components/debug-link";
-import {nonEmpty} from "../lib/non-empty";
+import {PlanContextHeader} from "../components/plan-context-header";
 
 function formatDate(iso: string): string {
 	return new Date(iso).toLocaleDateString("en-US", {
@@ -54,8 +54,6 @@ function PlanPage() {
 		);
 	}
 
-	const body = stripLeadingTitleHeading(plan.markdown);
-
 	return (
 		<div>
 			<DetailTopBar>
@@ -69,65 +67,21 @@ function PlanPage() {
 				</Link>
 				<DebugLink kind="plan" relativePath={filename} />
 			</DetailTopBar>
-			{plan.mtime && (
-				<div className="mt-3 flex items-center gap-1.5 text-xs text-t6">
-					<Clock className="h-3 w-3" />
-					Last modified {formatDate(plan.mtime)}
-				</div>
-			)}
-			<h1 className="text-lg font-semibold">{plan.title}</h1>
-			<p className="text-xs text-t6">{filename}</p>
-			<div className="mt-4">
-				<MarkdownView markdown={body} />
+			<div data-testid="plan-page" className="mx-auto mt-4 flex max-w-[68ch] flex-col gap-4">
+				<PlanContextHeader links={links} now={Date.now()} />
+				<p className="text-footnote text-ink-muted">
+					<span>{filename}</span>
+					{plan.mtime && (
+						<>
+							{" · "}
+							<time dateTime={plan.mtime} title={formatDate(plan.mtime)}>
+								Modified {formatNarrowRelativeTime(Date.parse(plan.mtime), Date.now())}
+							</time>
+						</>
+					)}
+				</p>
+				<MarkdownView markdown={plan.markdown} />
 			</div>
-
-			{links.length > 0 && (
-				<section className="mt-8 border-t border-border pt-6">
-					<h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-t6">Related Sessions</h2>
-					{(() => {
-						const byProject = new Map<string, {projectName: string; sessions: typeof links}>();
-						for (const link of links) {
-							const key = link.project;
-							let group = byProject.get(key);
-							if (group === undefined) {
-								group = {projectName: link.projectName, sessions: []};
-								byProject.set(key, group);
-							}
-							group.sessions.push(link);
-						}
-						return [...byProject.entries()].map(([projectId, group]) => (
-							<div key={projectId} className="mt-3">
-								<Link
-									to="/project/$id"
-									params={{id: projectId}}
-									className="mb-1 flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium text-secondary no-underline transition-colors hover:bg-surface-0/50"
-								>
-									<FolderOpen className="h-3.5 w-3.5 shrink-0 text-t6" />
-									{group.projectName}
-									<span className="ml-auto text-[10px] text-t6">
-										{group.sessions.length} {group.sessions.length === 1 ? "session" : "sessions"}
-									</span>
-								</Link>
-								<div className="space-y-px pl-4">
-									{group.sessions.map((link) => (
-										<Link
-											key={link.sessionId}
-											to="/session/$id"
-											params={{id: link.sessionId}}
-											className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs text-secondary no-underline transition-colors hover:bg-surface-0/50 hover:text-primary"
-										>
-											<MessageSquare className="h-3 w-3 shrink-0 text-t6" />
-											<span className="truncate">
-												{nonEmpty(link.sessionTitle) ?? "Untitled session"}
-											</span>
-										</Link>
-									))}
-								</div>
-							</div>
-						));
-					})()}
-				</section>
-			)}
 		</div>
 	);
 }

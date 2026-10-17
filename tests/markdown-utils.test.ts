@@ -1,4 +1,4 @@
-import {humanizeFilename, extractTitleFromContent, stripLeadingTitleHeading} from "../src/lib/markdown-utils.js";
+import {humanizeFilename, extractTitleFromContent} from "../src/lib/markdown-utils.js";
 
 describe("humanizeFilename", () => {
 	it("converts dashes and underscores to title case", () => {
@@ -21,31 +21,5 @@ describe("extractTitleFromContent", () => {
 
 	it("falls back for empty content", () => {
 		expect(extractTitleFromContent("", "fallback.md")).toBe("Fallback");
-	});
-});
-
-describe("stripLeadingTitleHeading", () => {
-	it("strips H1 line and a single trailing blank line", () => {
-		expect(stripLeadingTitleHeading("# Title\n\nBody")).toBe("Body");
-	});
-
-	it("strips H1 line when no trailing blank line follows", () => {
-		expect(stripLeadingTitleHeading("# Title\nBody")).toBe("Body");
-	});
-
-	it("returns empty string when input is only an H1", () => {
-		expect(stripLeadingTitleHeading("# Title")).toBe("");
-	});
-
-	it("does not strip level-2 headings", () => {
-		expect(stripLeadingTitleHeading("## Sub")).toBe("## Sub");
-	});
-
-	it("passes through content with no H1", () => {
-		expect(stripLeadingTitleHeading("No heading")).toBe("No heading");
-	});
-
-	it("passes through empty input", () => {
-		expect(stripLeadingTitleHeading("")).toBe("");
 	});
 });

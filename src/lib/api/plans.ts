@@ -6,8 +6,13 @@ const PlanLinkSchema = z.object({
 	sessionId: z.string(),
 	project: z.string(),
 	projectName: z.string(),
+	/** The project directory, `~`-relative under home; null when the project has no recorded path. */
+	projectDir: z.string().nullable(),
 	sessionTitle: z.string().nullable(),
+	/** The session's last-modified time (ISO); null when the session is no longer indexed. */
+	sessionModified: z.string().nullable(),
 });
+export type PlanLink = z.infer<typeof PlanLinkSchema>;
 export const PlanLinksResponse = z.array(PlanLinkSchema);
 
 export const PlanDetailResponse = z.object({

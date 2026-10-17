@@ -518,28 +518,47 @@ export function getPlanFilenameForSession(db: IndexDb, sessionId: string): strin
 	return row?.planFilename ?? null;
 }
 
-export function getPlanLinksFromDb(db: IndexDb, planFilename?: string): DbPlanSessionLink[] {
-	const projectNames = getProjectNameMap(db);
+/** A plan link plus where its project lives and when its session last changed, for the plan page's context header. */
+interface DbPlanContextLink extends DbPlanSessionLink {
+	projectPath: string | null;
+	sessionMtimeMs: number | null;
+}
 
-	let rows;
-	if (planFilename) {
-		rows = db.select().from(schema.planSessions).where(eq(schema.planSessions.planFilename, planFilename)).all();
-	} else {
-		rows = db.select().from(schema.planSessions).all();
-	}
+export function getPlanLinksFromDb(db: IndexDb, planFilename?: string): DbPlanContextLink[] {
+	const projectRows = db
+		.select({id: schema.projects.id, name: schema.projects.name, projectPath: schema.projects.projectPath})
+		.from(schema.projects)
+		.all();
+	const projects = new Map(projectRows.map((r) => [r.id, r]));
 
-	const sessionTitles = batchFetchSessionTitles(
-		db,
-		rows.map((r) => r.sessionId),
-	);
+	const rows = planFilename
+		? db.select().from(schema.planSessions).where(eq(schema.planSessions.planFilename, planFilename)).all()
+		: db.select().from(schema.planSessions).all();
 
-	return rows.map((row) => ({
-		planFilename: row.planFilename,
-		sessionId: row.sessionId,
-		projectId: row.projectId,
-		projectName: projectNames.get(row.projectId) ?? row.projectId,
-		sessionTitle: sessionTitles.get(row.sessionId) ?? null,
-	}));
+	const sessionIds = rows.map((r) => r.sessionId);
+	const sessionRows =
+		sessionIds.length === 0
+			? []
+			: db
+					.select({id: schema.sessions.id, title: schema.sessions.title, mtimeMs: schema.sessions.mtimeMs})
+					.from(schema.sessions)
+					.where(inArray(schema.sessions.id, sessionIds))
+					.all();
+	const sessions = new Map(sessionRows.map((r) => [r.id, r]));
+
+	return rows.map((row) => {
+		const project = projects.get(row.projectId);
+		const session = sessions.get(row.sessionId);
+		return {
+			planFilename: row.planFilename,
+			sessionId: row.sessionId,
+			projectId: row.projectId,
+			projectName: project?.name ?? row.projectId,
+			projectPath: project?.projectPath ?? null,
+			sessionTitle: session?.title ?? null,
+			sessionMtimeMs: session?.mtimeMs ?? null,
+		};
+	});
 }
 
 interface DbProjectDetail {
