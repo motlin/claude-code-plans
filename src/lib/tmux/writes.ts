@@ -2,7 +2,7 @@ import {execFile} from "node:child_process";
 import {terminalWritesEnabled} from "../config";
 import type {HerdrResult} from "../herdr/client";
 import type {HerdrRequester} from "../herdr/panes";
-import type {HerdrPromptTarget} from "../herdr/prompt";
+import {BRACKETED_PASTE_END, BRACKETED_PASTE_START, type HerdrPromptTarget} from "../herdr/prompt";
 import type {ActiveSessionEntry} from "../active-session-store";
 import {asRecord, errorMessage} from "../narrow";
 import type {ActivityState} from "../session-state";
@@ -119,6 +119,20 @@ function steps(...commands: string[][]): TmuxStep[] {
 	return commands.map((args) => ({args, pauseBefore: false}));
 }
 
+/**
+ * The text inside herdr-style bracketed-paste markers, or null when it is not
+ * wrapped. tmux may not pass those bytes through as a paste, so wrapped text
+ * goes through a paste buffer, whose `-p` brackets it only when the pane asked.
+ */
+function bracketedPasteBody(text: string): string | null {
+	if (!text.startsWith(BRACKETED_PASTE_START) || !text.endsWith(BRACKETED_PASTE_END)) return null;
+	return text.slice(BRACKETED_PASTE_START.length, text.length - BRACKETED_PASTE_END.length);
+}
+
+function pasteSteps(text: string, pane: string[], buffer: string): TmuxStep[] {
+	return steps(["set-buffer", "-b", buffer, "--", text], ["paste-buffer", "-p", "-d", "-b", buffer, ...pane]);
+}
+
 /** The tmux commands for one herdr-style write call, or a failure for keys or methods tmux cannot send. */
 function tmuxSteps(
 	method: unknown,
@@ -134,25 +148,25 @@ function tmuxSteps(
 			if (names.some((name) => name === null)) return failure("invalid_key", "tmux has no name for that key");
 			return {ok: true, value: steps(["send-keys", ...pane, ...names.filter((name) => name !== null)])};
 		}
-		case "pane.send_text":
-			return {ok: true, value: steps(["send-keys", ...pane, "-l", "--", stringParam(params, "text") ?? ""])};
+		case "pane.send_text": {
+			const text = stringParam(params, "text") ?? "";
+			const pasted = bracketedPasteBody(text);
+			return {
+				ok: true,
+				value:
+					pasted === null
+						? steps(["send-keys", ...pane, "-l", "--", text])
+						: pasteSteps(pasted, pane, createBufferName()),
+			};
+		}
 		case "agent.prompt": {
 			const text = stringParam(params, "text") ?? "";
 			if (text.trim() === "") return failure("empty_agent_prompt", "The prompt is empty");
 			const enter = {args: ["send-keys", ...pane, "Enter"], pauseBefore: true};
-			if (!text.includes("\n"))
-				return {ok: true, value: [...steps(["send-keys", ...pane, "-l", "--", text]), enter]};
-			const buffer = createBufferName();
-			return {
-				ok: true,
-				value: [
-					...steps(
-						["set-buffer", "-b", buffer, "--", text],
-						["paste-buffer", "-p", "-d", "-b", buffer, ...pane],
-					),
-					enter,
-				],
-			};
+			const typed = text.includes("\n")
+				? pasteSteps(text, pane, createBufferName())
+				: steps(["send-keys", ...pane, "-l", "--", text]);
+			return {ok: true, value: [...typed, enter]};
 		}
 		default:
 			return failure("unsupported", "tmux cannot run that terminal request");

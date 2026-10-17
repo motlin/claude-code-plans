@@ -56,8 +56,9 @@ export function midTurnPromptReady(
 	return entry?.state === "working" && entry.pendingPermissionRequest === undefined && pendingQuestion === null;
 }
 
-const BRACKETED_PASTE_START = "\u001b[200~";
-const BRACKETED_PASTE_END = "\u001b[201~";
+/** Wraps multi-line text so the TUI reads it as one paste; tmux unwraps it into a paste buffer. */
+export const BRACKETED_PASTE_START = "\u001b[200~";
+export const BRACKETED_PASTE_END = "\u001b[201~";
 
 function failure(code: string, message: string): HerdrResult<never> {
 	return {ok: false, code, message};

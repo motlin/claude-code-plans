@@ -174,6 +174,36 @@ describe("tmux host writes", () => {
 		});
 	});
 
+	it("pastes a multi-line mid-turn prompt through a tmux paste buffer, re-checking readiness before the paste and before Enter", async () => {
+		const {sources} = liveSources(entry({state: "working"}));
+		const listings: string[] = [];
+		const {io, calls} = recordingIo();
+		const host = createTmuxTerminalHost(
+			{
+				...sources,
+				listPanes: async (socket) => {
+					listings.push(`list-panes after ${calls.length} commands`);
+					return sources.listPanes(socket);
+				},
+			},
+			io,
+		);
+
+		const response = await host.prompt(
+			post("/api/herdr/prompt", {sessionId: SESSION_ID, prompt: "one\ntwo", midTurn: true}),
+		);
+
+		expect({response: await describeResponse(response), calls, listings}).toStrictEqual({
+			response: {status: 200, body: {ok: true}},
+			calls: [
+				["-S", SOCKET, "set-buffer", "-b", "ccp-test-buffer", "--", "one\ntwo"],
+				["-S", SOCKET, "paste-buffer", "-p", "-d", "-b", "ccp-test-buffer", "-t", "%7"],
+				["-S", SOCKET, "send-keys", "-t", "%7", "Enter"],
+			],
+			listings: ["list-panes after 0 commands", "list-panes after 0 commands", "list-panes after 2 commands"],
+		});
+	});
+
 	it("refuses a mid-turn prompt while a question or permission waits or the state is not working, typing nothing", async () => {
 		const cases = [
 			{name: "question", entry: entry({state: "working"}), question: true},
