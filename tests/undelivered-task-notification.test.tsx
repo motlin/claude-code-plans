@@ -153,6 +153,32 @@ describe("undelivered background-task notifications", () => {
 		}).toStrictEqual({rows: ["2 background commands completed"], metaShown: false});
 	});
 
+	it("places an undelivered notification after assistant text flushed later but timestamped before its enqueue", () => {
+		const container = renderRecords([
+			{
+				type: "queue-operation",
+				operation: "enqueue",
+				timestamp: "2026-10-11T14:47:39.000Z",
+				sessionId: "test-session",
+				content: notification(
+					"toolu_elsewhere1",
+					"completed",
+					'Background command "Run git test on every branch commit" completed (exit code 0)',
+				),
+			},
+			reply,
+		]);
+
+		const text = container.textContent;
+		const order = ["Waiting on the teammate.", "Background command completed"].toSorted(
+			(first, second) => text.indexOf(first) - text.indexOf(second),
+		);
+		expect({rows: taskEventRows(container), order}).toStrictEqual({
+			rows: ["Background command completed · Run git test on every branch commit"],
+			order: ["Waiting on the teammate.", "Background command completed"],
+		});
+	});
+
 	it("draws no status row for a notification the queue delivered", () => {
 		const content = notification(
 			"toolu_elsewhere1",

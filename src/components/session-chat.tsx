@@ -1870,6 +1870,36 @@ function withLocalCommandProse(lines: SessionLine[]): SessionLine[] {
 }
 
 /**
+ * The CLI writes a queued `<task-notification>`'s enqueue line before an assistant record it
+ * flushes later, so file order would draw the notification above text that came first. Upstream
+ * places it by its enqueue time: after the last line timestamped at or before it. Walking from the
+ * end keeps a run of notifications in order, since none moves past the next one.
+ */
+function withNotificationsAtEnqueueTime(lines: SessionLine[]): SessionLine[] {
+	let result: SessionLine[] | null = null;
+	for (let index = lines.length - 1; index >= 0; index--) {
+		const line = defined(lines[index], "session line index is in range");
+		if (line.type !== "queued-task-notification" || line.timestamp === undefined) continue;
+		const enqueuedAt = Date.parse(line.timestamp);
+		const current: SessionLine[] = result ?? lines;
+		let target = index;
+		for (let next = index + 1; next < current.length; next++) {
+			const later = defined(current[next], "session line index is in range");
+			if (later.type === "queued-task-notification") break;
+			const laterAt = lineTimestamp(later);
+			if (laterAt === undefined) continue;
+			if (Date.parse(laterAt) > enqueuedAt) break;
+			target = next;
+		}
+		if (target === index) continue;
+		result ??= [...lines];
+		result.splice(index, 1);
+		result.splice(target, 0, line);
+	}
+	return result ?? lines;
+}
+
+/**
  * Upstream Normal folds background-task completions into the tool group beside
  * them ("Ran a command, finished a background command") rather than drawing a
  * user turn per `<task-notification>`; Verbose keeps the raw notification turns.
@@ -1880,7 +1910,9 @@ function buildSessionListEntries(
 	verbose: boolean,
 	held: HeldAssistantFooter | null,
 ): SessionListEntry[] {
-	const lines = verbose ? recordLines : withLocalCommandProse(withQueuedPrompts(recordLines));
+	const lines = verbose
+		? recordLines
+		: withLocalCommandProse(withQueuedPrompts(withNotificationsAtEnqueueTime(recordLines)));
 	const lineAt = (index: number): SessionLine => defined(lines[index], "session line index is in range");
 	const foldNotifications = !verbose;
 	const noticeOf = (index: number): FoldedNotice | null => {
