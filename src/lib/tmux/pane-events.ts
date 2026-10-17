@@ -165,6 +165,8 @@ const defaultDependencies: TmuxPaneEventPollerDependencies = {
 };
 
 const pollerState = hmrPersist<{stop: (() => void) | null}>("tmuxPaneEventPoller", () => ({stop: null}));
+/** The poller this module instance started; other dev instances share `pollerState` but must not stop it. */
+let startedHere: (() => void) | null = null;
 
 /** Start the single process-wide tmux pane-event poller. */
 export function startTmuxPaneEvents(): () => void {
@@ -175,9 +177,10 @@ export function startTmuxPaneEvents(): () => void {
 		if (pollerState.stop === stop) pollerState.stop = null;
 	};
 	pollerState.stop = stop;
+	startedHere = stop;
 	return stop;
 }
 
 hmrDispose(() => {
-	pollerState.stop?.();
+	startedHere?.();
 });

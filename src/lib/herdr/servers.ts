@@ -249,6 +249,17 @@ export function knownHerdrServers(): HerdrServer[] {
 	return knownServers.servers ?? [{session: null, socketPath: defaultSocketPath(process.env)}];
 }
 
+/**
+ * `knownHerdrServers`, except that before the bridge manager has looked it
+ * discovers the servers on disk, so a live terminal opened in the first
+ * seconds after startup still finds panes in named sessions.
+ */
+export function knownOrDiscoveredHerdrServers(
+	discover: () => HerdrServer[] = () => discoverLiveHerdrServers([]),
+): HerdrServer[] {
+	return knownServers.servers ?? discover();
+}
+
 export function setKnownHerdrServers(servers: HerdrServer[] | null): void {
 	knownServers.servers = servers;
 }

@@ -43,6 +43,31 @@ describe("hmrPersist", () => {
 	});
 });
 
+describe("hmrStoreFor", () => {
+	// In dev one worker thread can evaluate a module twice: the nitro WebSocket routes and the TanStack Start
+	// entry run in separate module runners, each with its own import.meta.hot.data. State the event bridge
+	// writes in one instance must be visible to the other.
+	it("shares one store between dev module instances with separate hot data", async () => {
+		const {hmrStoreFor} = await import("../src/lib/hmr-persist");
+		const scope = {};
+		const bridgeInstance = hmrStoreFor({data: {}}, scope);
+		const webSocketInstance = hmrStoreFor({data: {}}, scope);
+		bridgeInstance["herdrKnownServers"] = {servers: ["later"]};
+		expect(webSocketInstance).toBe(bridgeInstance);
+		expect(webSocketInstance["herdrKnownServers"]).toStrictEqual({servers: ["later"]});
+	});
+
+	it("keeps a module-private store outside dev, so vi.resetModules starts fresh", async () => {
+		const first = await import("../src/lib/hmr-persist");
+		const scope = {};
+		first.hmrStoreFor(undefined, scope)["key"] = 1;
+		vi.resetModules();
+		const second = await import("../src/lib/hmr-persist");
+		expect(second.hmrStoreFor(undefined, scope)).toStrictEqual({});
+		expect(scope).toStrictEqual({});
+	});
+});
+
 describe("hmrDispose", () => {
 	it("does not throw when import.meta.hot is undefined", async () => {
 		const {hmrDispose} = await import("../src/lib/hmr-persist");

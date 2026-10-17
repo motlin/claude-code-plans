@@ -5,10 +5,12 @@ import {
 	__testing,
 	createTerminalRecordParser,
 	observeHerdrSession,
+	resolveSessionTerminal,
 	startTerminalObserver,
 	stopAllTerminalObservers,
 	type TerminalObserverDependencies,
 } from "../src/lib/herdr/terminal-observer";
+import type {HerdrPaneLink, HerdrServerLister} from "../src/lib/herdr/panes";
 import {herdrNamedSessionSocketPath} from "../src/lib/herdr/socket-path";
 import type {HerdrTerminalRecord} from "../src/lib/herdr/terminal-protocol";
 
@@ -275,5 +277,47 @@ describe("herdr terminal observer NDJSON bridge", () => {
 			childKilled: [["SIGTERM"]],
 			activeObservers: 0,
 		});
+	});
+});
+
+describe("resolveSessionTerminal", () => {
+	const laterPane: HerdrPaneLink = {
+		host: "herdr",
+		paneId: "wM:p2@later",
+		terminalId: "term_alice_later",
+		workspaceId: "wM@later",
+		tabId: "wM:t1@later",
+		focused: false,
+		cwd: "/Users/alice/project",
+		foregroundCwd: "/Users/alice/project",
+		agentStatus: "working",
+		agent: "claude",
+		terminalTitle: "Alice later",
+		agentSessionId: "alice-session",
+		revision: 3,
+		sessionId: "alice-session",
+		via: "agent-session",
+	};
+
+	// The panes a reader finds depend on which herdr servers it is told to read.
+	async function panesOn(servers: HerdrServerLister): Promise<HerdrPaneLink[]> {
+		return Promise.resolve(servers().some((server) => server.session === "later") ? [laterPane] : []);
+	}
+
+	it("reads every server the lister names, so a named-session pane resolves to its qualified terminal", async () => {
+		const servers: HerdrServerLister = () => [
+			{session: null, socketPath: "/tmp/test/home/.config/herdr/herdr.sock"},
+			{session: "later", socketPath: herdrNamedSessionSocketPath("later", {HOME: "/tmp/test/home"})},
+		];
+		await expect(resolveSessionTerminal("alice-session", panesOn, servers)).resolves.toBe("term_alice_later@later");
+	});
+
+	it("reports no linked pane when no server has the session", async () => {
+		const servers: HerdrServerLister = () => [
+			{session: null, socketPath: "/tmp/test/home/.config/herdr/herdr.sock"},
+		];
+		await expect(resolveSessionTerminal("alice-session", panesOn, servers)).rejects.toThrow(
+			"No live herdr pane is linked to this session",
+		);
 	});
 });

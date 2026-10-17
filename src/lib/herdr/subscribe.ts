@@ -498,6 +498,8 @@ interface BridgeState {
 }
 
 const bridgeState = hmrPersist<BridgeState>("herdrEventBridge", () => ({stop: null}));
+/** The bridge this module instance started; other dev instances share `bridgeState` but must not stop it. */
+let startedHere: (() => void) | null = null;
 
 /** Start the process-wide herdr-to-SSE event bridges, one per live herdr server. */
 export function startHerdrEventBridge(): () => void {
@@ -509,11 +511,12 @@ export function startHerdrEventBridge(): () => void {
 		if (bridgeState.stop === stop) bridgeState.stop = null;
 	};
 	bridgeState.stop = stop;
+	startedHere = stop;
 	return stop;
 }
 
 hmrDispose(() => {
-	bridgeState.stop?.();
+	startedHere?.();
 });
 
 export const __testing = {

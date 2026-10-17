@@ -5,9 +5,11 @@ import {
 	discoverHerdrServers,
 	herdrServerForSocketPath,
 	herdrSocketPathForServer,
+	knownOrDiscoveredHerdrServers,
 	qualifyHerdrEventData,
 	qualifyHerdrPaneState,
 	routeHerdrRequest,
+	setKnownHerdrServers,
 } from "../src/lib/herdr/servers";
 
 const ENV = {HOME: "/tmp/test/home"};
@@ -220,5 +222,31 @@ describe("chooseHerdrLaunchServer", () => {
 			{session: null, socketPath: DEFAULT_SOCKET},
 			{session: null, socketPath: DEFAULT_SOCKET},
 		]);
+	});
+});
+
+describe("knownOrDiscoveredHerdrServers", () => {
+	const discovered = [
+		{session: null, socketPath: DEFAULT_SOCKET},
+		{session: "later", socketPath: LATER_SOCKET},
+	];
+
+	it("discovers named sessions on disk before the event bridge has registered any server", () => {
+		setKnownHerdrServers(null);
+		expect(knownOrDiscoveredHerdrServers(() => discovered)).toStrictEqual(discovered);
+	});
+
+	it("uses the bridge's registry once it has one, without touching the disk", () => {
+		const registered = [{session: "pane-order-demo", socketPath: "/tmp/test/demo/herdr.sock"}];
+		setKnownHerdrServers(registered);
+		try {
+			expect(
+				knownOrDiscoveredHerdrServers(() => {
+					throw new Error("discovery should not run");
+				}),
+			).toStrictEqual(registered);
+		} finally {
+			setKnownHerdrServers(null);
+		}
 	});
 });

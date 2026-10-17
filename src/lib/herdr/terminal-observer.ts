@@ -3,8 +3,8 @@ import type {Readable} from "node:stream";
 import {z} from "zod";
 import {hmrDispose} from "../hmr-persist";
 import {qualifyHerdrId, splitHerdrId} from "./herdr-id";
-import {getHerdrPanes} from "./panes";
-import {herdrSocketPathForServer} from "./servers";
+import {getHerdrPanes, type HerdrPaneLink, type HerdrServerLister} from "./panes";
+import {herdrSocketPathForServer, knownOrDiscoveredHerdrServers} from "./servers";
 import {HerdrTerminalRecordSchema, type HerdrTerminalRecord} from "./terminal-protocol";
 
 const MAXIMUM_LINE_BYTES = 5 * 1024 * 1024;
@@ -239,9 +239,17 @@ export function startTerminalObserver(
 	return bridgeTerminalStream(child, socket);
 }
 
+async function livePanesOn(servers: HerdrServerLister): Promise<HerdrPaneLink[]> {
+	return getHerdrPanes(undefined, undefined, undefined, undefined, servers);
+}
+
 /** The session's terminal id, qualified by its herdr session so the stream opens on the right server. */
-export async function resolveSessionTerminal(sessionId: string): Promise<string> {
-	const pane = (await getHerdrPanes()).find((candidate) => candidate.sessionId === sessionId);
+export async function resolveSessionTerminal(
+	sessionId: string,
+	listPanes: (servers: HerdrServerLister) => Promise<HerdrPaneLink[]> = livePanesOn,
+	servers: HerdrServerLister = knownOrDiscoveredHerdrServers,
+): Promise<string> {
+	const pane = (await listPanes(servers)).find((candidate) => candidate.sessionId === sessionId);
 	if (!pane) throw new Error("No live herdr pane is linked to this session");
 	return qualifyHerdrId(pane.terminalId, splitHerdrId(pane.paneId).session);
 }
