@@ -170,12 +170,13 @@ describe("SessionChat integration", () => {
 		});
 	});
 
-	it("opens a tile in upstream's full-screen viewer, steps through the images, and closes", async () => {
+	it("opens a tile in upstream's carousel viewer, steps through the message's images, and closes", async () => {
 		const container = chatWith([{type: "text", text: "Review /tmp/test/images/alice.png"}, pasted]);
 		fireEvent.click(container.querySelectorAll("[data-attachment-tile] [role=button]")[0]!);
-		const viewer = await screen.findByRole("dialog", {name: "Image viewer"});
+		const viewer = await screen.findByRole("dialog", {name: "Image preview"});
 		const shown = () => ({
-			image: viewer.querySelector("img")?.getAttribute("alt"),
+			image: viewer.querySelector("[data-viewer-slide]:not([aria-hidden=true]) img")?.getAttribute("alt"),
+			slides: viewer.querySelectorAll("[data-viewer-slide]").length,
 			count: viewer.textContent.match(/\d+ of \d+/)?.[0],
 		});
 		const first = shown();
@@ -184,11 +185,11 @@ describe("SessionChat integration", () => {
 		fireEvent.click(screen.getByRole("button", {name: "Close"}));
 
 		await waitFor(() => {
-			expect(screen.queryByRole("dialog", {name: "Image viewer"})).toBeNull();
+			expect(screen.queryByRole("dialog", {name: "Image preview"})).toBeNull();
 		});
 		expect({first, second}).toStrictEqual({
-			first: {image: "Attached image", count: "1 of 2"},
-			second: {image: `Referenced file ${ALLOWED_ROOT}/alice.png`, count: "2 of 2"},
+			first: {image: "Attached image", slides: 2, count: "1 of 2"},
+			second: {image: `Referenced file ${ALLOWED_ROOT}/alice.png`, slides: 2, count: "2 of 2"},
 		});
 	});
 });
