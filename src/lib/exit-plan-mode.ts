@@ -37,6 +37,10 @@ export const EXIT_PLAN_MODE_STATE_LABEL: Record<ExitPlanModeState, string> = {
 	"not-approved": "Plan not approved",
 };
 
+/** Upstream's title on the pending plan's approval card, and its action that opens the Plan pane. */
+export const PLAN_PROPOSED_TITLE = "Claude proposed a plan";
+export const OPEN_PLAN_ACTION_LABEL = "Open plan";
+
 /** The local link to a plan's saved `~/.claude/plans` file, on the tool body and the Plan pane header. */
 export const PLAN_FILE_ACTION_LABEL = "Open plan file";
 

@@ -1,8 +1,11 @@
 // @vitest-environment jsdom
 
 import {createMemoryHistory, createRootRoute, createRouter, RouterProvider} from "@tanstack/react-router";
-import {cleanup, render, screen} from "@testing-library/react";
-import {afterEach, describe, expect, it} from "vite-plus/test";
+import {cleanup, fireEvent, render, screen} from "@testing-library/react";
+import {afterEach, describe, expect, it, vi} from "vite-plus/test";
+import {APPROVAL_CARD_TITLE} from "../src/components/approval-card";
+import {PaneHostContext, type PaneHostApi} from "../src/components/panes/pane-host-context";
+import {defaultPaneLayout} from "../src/lib/pane-layout";
 import {ExitPlanModeRenderer} from "../src/components/tool-renderers/exit-plan-mode-renderer";
 import type {ClientToolCall} from "../src/components/tool-renderers/types";
 
@@ -25,9 +28,24 @@ function makeToolCall(overrides: Partial<ClientToolCall>): ClientToolCall {
 	};
 }
 
-async function renderRenderer(toolCall: ClientToolCall, verbose = false) {
+function paneHost(openPane: PaneHostApi["openPane"]): PaneHostApi {
+	return {
+		layout: defaultPaneLayout(),
+		openKinds: [],
+		isOpen: () => false,
+		openPane,
+		closePane: () => {},
+		togglePane: () => {},
+	};
+}
+
+async function renderRenderer(toolCall: ClientToolCall, verbose = false, host: PaneHostApi | null = null) {
 	const rootRoute = createRootRoute({
-		component: () => <ExitPlanModeRenderer toolCall={toolCall} verbose={verbose} />,
+		component: () => (
+			<PaneHostContext.Provider value={host}>
+				<ExitPlanModeRenderer toolCall={toolCall} verbose={verbose} />
+			</PaneHostContext.Provider>
+		),
 	});
 	const router = createRouter({
 		routeTree: rootRoute,
@@ -143,21 +161,57 @@ describe("ExitPlanModeRenderer", () => {
 		});
 	});
 
-	it("puts the plan-file action alone above the block while the plan awaits approval", async () => {
+	it("titles a pending plan 'Claude proposed a plan', upstream's approval card title, above the block", async () => {
 		const view = await renderRenderer(
 			makeToolCall({input: {plan: "Do it.", planFilePath: "/Users/craig/.claude/plans/switch-git-pager.md"}}),
 		);
 		const root = view.container.firstElementChild;
+		const titleRow = root?.firstElementChild;
 
 		expect({
 			children: [...(root?.children ?? [])].map((child) => child.textContent),
-			actionRow: root?.firstElementChild?.className,
+			titleRow: titleRow?.className,
+			title: titleRow?.querySelector("[data-plan-ready-title]")?.className,
 			href: screen.getByRole("link").getAttribute("href"),
+			openPlan: screen.queryByRole("button", {name: "Open plan"}),
 		}).toStrictEqual({
-			children: ["Open plan file", "Do it."],
-			actionRow: "flex items-center justify-end gap-2",
+			children: ["Claude proposed a planOpen plan file", "Do it."],
+			titleRow: "flex items-center justify-between gap-2",
+			title: APPROVAL_CARD_TITLE,
 			href: "/plan/switch-git-pager",
+			openPlan: null,
 		});
+	});
+
+	it("trails the pending plan's title with upstream's footnote 'Open plan', which opens the Plan pane", async () => {
+		const openPane = vi.fn<PaneHostApi["openPane"]>();
+		const view = await renderRenderer(makeToolCall({input: {plan: "Do it."}}), false, paneHost(openPane));
+		const button = screen.getByRole("button", {name: "Open plan"});
+		fireEvent.click(button);
+
+		expect({
+			row: [...(view.container.firstElementChild?.firstElementChild?.children ?? [])].map(
+				(child) => child.textContent,
+			),
+			className: button.className,
+			calls: openPane.mock.calls,
+		}).toStrictEqual({
+			row: ["Claude proposed a plan", "Open plan"],
+			className: PLAN_FILE_ACTION,
+			calls: [["plan"]],
+		});
+	});
+
+	it("shows no proposed-plan title once the plan is answered", async () => {
+		const view = await renderRenderer(
+			makeToolCall({input: {plan: "Do it."}, result: "User has approved your plan."}),
+			false,
+			paneHost(() => {}),
+		);
+		expect({
+			title: view.container.textContent.includes("Claude proposed a plan"),
+			openPlan: screen.queryByRole("button", {name: "Open plan"}),
+		}).toStrictEqual({title: false, openPlan: null});
 	});
 
 	it("shows no plan-file action without a saved plan file", async () => {

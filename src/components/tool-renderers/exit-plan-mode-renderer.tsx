@@ -2,13 +2,17 @@ import {inputString} from "../../lib/tool-utils";
 import {Link} from "@tanstack/react-router";
 import {CircleCheck} from "lucide-react";
 import type {ToolRendererProps} from "./types";
+import {APPROVAL_CARD_TITLE} from "../approval-card";
+import {useOptionalPaneHost} from "../panes/pane-host-context";
 import {toMdSlug} from "../../lib/md-slug";
 import {
 	describeExitPlanModeResult,
 	EXIT_PLAN_MODE_STATE_LABEL,
 	exitPlanModeState,
+	OPEN_PLAN_ACTION_LABEL,
 	parseAllowedPrompts,
 	PLAN_FILE_ACTION_LABEL,
+	PLAN_PROPOSED_TITLE,
 	type ExitPlanModeStatusTone,
 } from "../../lib/exit-plan-mode";
 
@@ -30,8 +34,9 @@ const TONE_CLASS: Record<ExitPlanModeStatusTone, string> = {
 /**
  * Upstream's ExitPlanMode body: while it runs or awaits approval, the plan in a
  * left-bordered block; once done, "Plan approved" above that block (omitted on
- * an error). A local "Open plan file" link to the saved plan sits where upstream's
- * plan card puts its "Open plan" action, trailing the state row. The allowed
+ * an error). A pending plan leads with upstream's approval card title, "Claude
+ * proposed a plan", trailed by its footnote "Open plan" that opens the Plan pane.
+ * A local "Open plan file" link to the saved plan trails the title or the state row. The allowed
  * prompts and a rejection or error status show only in Verbose.
  */
 export function ExitPlanModeRenderer({toolCall, verbose}: ToolRendererProps) {
@@ -41,7 +46,9 @@ export function ExitPlanModeRenderer({toolCall, verbose}: ToolRendererProps) {
 	const plan = typeof toolCall.input["plan"] === "string" ? toolCall.input["plan"] : "";
 	const allowedPrompts = verbose === true ? parseAllowedPrompts(toolCall.input["allowedPrompts"]) : [];
 	const status = describeExitPlanModeResult(result, toolCall.isError);
-	const done = exitPlanModeState(result, toolCall.isError) === "approved";
+	const state = exitPlanModeState(result, toolCall.isError);
+	const done = state === "approved";
+	const host = useOptionalPaneHost();
 	const planFileAction = planFile !== undefined && (
 		<Link to="/plan/$filename" params={{filename: toMdSlug(planFile)}} className={PLAN_FILE_ACTION_CLASS}>
 			{PLAN_FILE_ACTION_LABEL}
@@ -68,7 +75,31 @@ export function ExitPlanModeRenderer({toolCall, verbose}: ToolRendererProps) {
 				</div>
 			) : (
 				<>
-					{planFileAction && <div className="flex items-center justify-end gap-2">{planFileAction}</div>}
+					{state === "ready" ? (
+						<div className="flex items-center justify-between gap-2">
+							<span data-plan-ready-title="" className={APPROVAL_CARD_TITLE}>
+								{PLAN_PROPOSED_TITLE}
+							</span>
+							{(planFileAction || host) && (
+								<span className="flex items-center gap-2">
+									{planFileAction}
+									{host && (
+										<button
+											type="button"
+											className={PLAN_FILE_ACTION_CLASS}
+											onClick={() => {
+												host.openPane("plan");
+											}}
+										>
+											{OPEN_PLAN_ACTION_LABEL}
+										</button>
+									)}
+								</span>
+							)}
+						</div>
+					) : (
+						planFileAction && <div className="flex items-center justify-end gap-2">{planFileAction}</div>
+					)}
 					{plan && (
 						<div data-plan-block="" className={`${PLAN_BLOCK_CLASS} py-1.5`}>
 							{plan}
