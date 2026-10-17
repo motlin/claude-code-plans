@@ -58,6 +58,7 @@ export const DOMAIN_EVENTS = {
 	SESSION_TOOL_PENDING: "session:tool-pending",
 	SESSION_TOOL_FAILED: "session:tool-failed",
 	SESSION_PENDING_QUESTION_CHANGED: "session:pending-question-changed",
+	SESSION_PENDING_PLAN_CHANGED: "session:pending-plan-changed",
 	SESSION_COMPACTING: "session:compacting",
 	SESSION_COMPACTED: "session:compacted",
 	SUBAGENT_STARTED: "subagent:started",
@@ -317,6 +318,25 @@ export type QuestionAnswer = z.infer<typeof QuestionAnswerSchema>;
 export interface SessionPendingQuestionChangedPayload {
 	sessionId: string;
 	pendingQuestion: PendingQuestion | null;
+}
+
+/**
+ * The ExitPlanMode call a session waits on, taken from its `PreToolUse` or
+ * `PermissionRequest` hook: the CLI writes the call to the JSONL only once the
+ * plan is answered. `toolUseId` is "" when only the PermissionRequest, which
+ * carries none, has been seen.
+ */
+export const PendingPlanSchema = z.strictObject({
+	toolUseId: z.string(),
+	plan: z.string(),
+	planFilePath: z.string().optional(),
+});
+export type PendingPlan = z.infer<typeof PendingPlanSchema>;
+
+/** Payload broadcast when a session's pending ExitPlanMode appears or resolves. */
+export interface SessionPendingPlanChangedPayload {
+	sessionId: string;
+	pendingPlan: PendingPlan | null;
 }
 
 /**

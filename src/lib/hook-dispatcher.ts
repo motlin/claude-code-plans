@@ -20,7 +20,9 @@ import {
 	type SessionPromptSubmittedPayload,
 	type SessionLinesAppendedPayload,
 	type SessionHookContextPayload,
+	type PendingPlan,
 	type PendingQuestion,
+	type SessionPendingPlanChangedPayload,
 	type SessionPendingQuestionChangedPayload,
 	type SessionToolPendingPayload,
 	type SessionToolFailedPayload,
@@ -51,6 +53,7 @@ import {nonEmpty} from "./non-empty";
 import {defined} from "./defined";
 import {asRecord} from "./narrow";
 import {clearPendingQuestion, pendingQuestionFromToolInput, setPendingQuestion} from "./pending-question-store";
+import {clearPendingPlan, getPendingPlan, pendingPlanFromToolInput, setPendingPlan} from "./pending-plan-store";
 import {forgetHookContext, recordHookContext} from "./hook-context-store";
 import {z} from "zod";
 
@@ -409,6 +412,51 @@ async function appendTranscriptLines(
 	}
 }
 
+/** Hooks after which the session no longer waits on its ExitPlanMode approval. */
+function resolvesPendingPlan(event: HookEvent): boolean {
+	switch (event.hook_event_name) {
+		case "PostToolUse":
+		case "PostToolUseFailure":
+		case "PermissionDenied":
+			return event.tool_name === "ExitPlanMode";
+		case "Stop":
+		case "StopFailure":
+		case "SessionEnd":
+		case "SessionStart":
+		case "UserPromptSubmit":
+			return true;
+		default:
+			return false;
+	}
+}
+
+/**
+ * Keep the main thread's pending ExitPlanMode from its `PreToolUse` or
+ * `PermissionRequest` hook until the call resolves, so the dock can show the
+ * plan approval the JSONL lacks. The PermissionRequest carries no tool_use_id,
+ * so it keeps the one an earlier PreToolUse gave.
+ */
+function trackPendingPlan(event: HookEvent, broadcast: (type: string, data: Record<string, unknown>) => void): void {
+	let pendingPlan: PendingPlan | null = null;
+	if (
+		(event.hook_event_name === "PreToolUse" || event.hook_event_name === "PermissionRequest") &&
+		event.tool_name === "ExitPlanMode"
+	) {
+		const known = getPendingPlan(event.session_id);
+		const toolUseId = event.hook_event_name === "PreToolUse" ? (event.tool_use_id ?? "") : (known?.toolUseId ?? "");
+		pendingPlan = pendingPlanFromToolInput(toolUseId, event.tool_input);
+		if (pendingPlan === null) return;
+		if (known !== null && JSON.stringify(known) === JSON.stringify(pendingPlan)) return;
+		setPendingPlan(event.session_id, pendingPlan);
+	} else if (!resolvesPendingPlan(event) || !clearPendingPlan(event.session_id)) {
+		return;
+	}
+	broadcast(DOMAIN_EVENTS.SESSION_PENDING_PLAN_CHANGED, {
+		sessionId: event.session_id,
+		pendingPlan,
+	} satisfies SessionPendingPlanChangedPayload);
+}
+
 /**
  * Route a single parsed hook event to the active-session store and SSE
  * broadcaster. Each case emits enriched domain-level deltas that the client
@@ -455,6 +503,7 @@ export async function dispatchHookEvent({
 			store.setPendingPermissionRequest(event.session_id, null);
 		}
 		trackPendingQuestion(event, broadcast);
+		trackPendingPlan(event, broadcast);
 	}
 
 	switch (event.hook_event_name) {

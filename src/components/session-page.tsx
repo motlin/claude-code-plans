@@ -117,6 +117,9 @@ import {
 } from "../lib/api/herdr";
 import {notificationsQueryOptions} from "../lib/api/notifications";
 import {pendingQuestionQueryOptions} from "../lib/api/pending-question";
+import {pendingPlanQueryOptions} from "../lib/api/pending-plan";
+import {DockedPlanApproval} from "./docked-plan-approval";
+import {dockedHookPlan} from "../lib/docked-plan";
 import {findPendingPermission, permissionWaitToolUseId, type PermissionDecision} from "../lib/permission-card";
 import type {HerdrPaneIndexData} from "../lib/api/herdr";
 import type {PaneKind} from "../lib/pane-layout";
@@ -397,6 +400,17 @@ function SessionView({
 		enabled: sessionSummaryState === "waiting",
 		select: (data) => data.pendingQuestion,
 	}).data;
+	const hookPlan = useQuery({
+		...pendingPlanQueryOptions(sessionId),
+		// Only a waiting session can have one; SSE patches the cache either way.
+		enabled: sessionSummaryState === "waiting",
+		select: (data) => data.pendingPlan,
+	}).data;
+	// The CLI writes a pending ExitPlanMode to the JSONL only once answered, so its hook copy docks until then.
+	const dockedPlan = useMemo(
+		() => dockedHookPlan({hookPlan, state: sessionSummaryState, records: transcript.records}),
+		[hookPlan, sessionSummaryState, transcript.records],
+	);
 	const workingMarkerState = useWorkingMarkerState({
 		records: transcript.records,
 		sessionState: sessionSummaryState,
@@ -852,6 +866,7 @@ function SessionView({
 										needsInput={
 											pendingQuestion !== null ||
 											pendingPermission !== null ||
+											dockedPlan !== null ||
 											(sessionSummaryState === "waiting" &&
 												hookQuestion !== undefined &&
 												hookQuestion !== null)
@@ -880,9 +895,20 @@ function SessionView({
 										{/* With no question to draw inline, a waiting session says it needs input above the composer */}
 										{showsWaitingForInputNotice({
 											state: sessionSummaryState,
-											hasDockedCard: inlineQuestion !== null || pendingPermission !== null,
+											hasDockedCard:
+												inlineQuestion !== null ||
+												pendingPermission !== null ||
+												dockedPlan !== null,
 										}) &&
 											!hookQuestion && <WaitingForInputNotice />}
+										{/* Upstream docks a pending plan's approval above the composer; the hooks carry it before the JSONL does */}
+										{dockedPlan !== null && (
+											<DockedPlanApproval
+												key={dockedPlan.toolUseId}
+												pendingPlan={dockedPlan}
+												plan={planApprovalCtx}
+											/>
+										)}
 										{/* Upstream sets the usage chip between the docked card and the composer */}
 										{!chromeHidden && sessionDirectory && <UsagePaceBanner />}
 										{!chromeHidden && sessionDirectory && <NotifyMePrompt sessionId={sessionId} />}
