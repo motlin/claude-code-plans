@@ -43,7 +43,6 @@ import {
 	ContextMenuTrigger,
 	Menu,
 	MenuContent,
-	MenuHotkey,
 	MenuItem,
 	MenuRadioGroup,
 	MenuRadioItem,
@@ -206,17 +205,6 @@ export function MenuEntries({entries, run}: {entries: SessionMenuEntry[]; run: S
 function MenuEntryList({entries, run}: {entries: SessionMenuEntry[]; run: SessionMenuRun}) {
 	return entries.map((entry, index) => {
 		if (entry.kind === "separator") return <MenuSeparator key={`separator-${index}`} />;
-		if (entry.kind === "hotkey") {
-			return (
-				<MenuHotkey
-					key={`hotkey-${entry.id}`}
-					accelerator={entry.accelerator}
-					onSelect={() => {
-						run(entry.id);
-					}}
-				/>
-			);
-		}
 		if (entry.submenu !== undefined) {
 			return (
 				<MenuSub key={entry.id}>
@@ -247,7 +235,6 @@ function MenuEntryList({entries, run}: {entries: SessionMenuEntry[]; run: Sessio
 				key={entry.id}
 				{...testIdProps(entry.id)}
 				{...(entry.accelerator === undefined ? {} : {accelerator: entry.accelerator})}
-				{...(entry.hiddenAccelerator ? {hideAccelerator: true} : {})}
 				{...(entry.disabled ? {disabled: true} : {})}
 				{...(entry.disabledReason === undefined ? {} : {title: entry.disabledReason})}
 				onSelect={() => {

@@ -8,7 +8,7 @@ export const GIT_PR_STATE_LABELS = {
 	draft: "Draft",
 	merged: "Merged",
 	closed: "Closed",
-	conflicting: "Conflicting",
+	conflicting: "Merge conflicts",
 	queued: "Queued",
 } satisfies Record<GitPrState, string>;
 

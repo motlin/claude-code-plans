@@ -161,9 +161,7 @@ function menuShape(menu: HTMLElement): string[] {
 function modelShape(entries: SessionMenuEntry[]): string[] {
 	return entries.flatMap((entry) => {
 		if (entry.kind === "separator") return ["---"];
-		if (entry.kind === "hotkey") return [];
-		const keycap =
-			entry.accelerator === undefined || entry.hiddenAccelerator === true ? "" : entry.accelerator.toUpperCase();
+		const keycap = entry.accelerator === undefined ? "" : entry.accelerator.toUpperCase();
 		return [`${entry.label}${keycap}`];
 	});
 }

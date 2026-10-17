@@ -210,7 +210,7 @@ function NotFoundContent({detail}: Readonly<{detail?: string}>) {
 		>
 			<span
 				aria-hidden="true"
-				className="mb-6 flex items-center gap-2 font-voice text-[20px] leading-none font-medium whitespace-nowrap text-primary"
+				className="mb-6 flex items-center gap-1.5 font-voice text-[20px] leading-none font-medium whitespace-nowrap text-primary"
 			>
 				<Spark size={24} />
 				Claude Code Browser

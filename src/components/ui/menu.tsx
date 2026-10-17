@@ -1,7 +1,7 @@
 import {ContextMenu as BaseContextMenu} from "@base-ui/react/context-menu";
 import {Menu as BaseMenu} from "@base-ui/react/menu";
 import {Check, ChevronRight} from "lucide-react";
-import {type ComponentProps, createContext, type KeyboardEvent, type ReactNode, useContext, useRef} from "react";
+import {type ComponentProps, createContext, type KeyboardEvent, type ReactNode, useContext} from "react";
 
 import {useIsMac} from "../../hooks/use-is-mac";
 import {toAriaKeyShortcuts} from "../../lib/shortcuts/format";
@@ -30,6 +30,7 @@ const DENSITY_CLASSES = {
 		separator: "mx-2",
 		shortcut: "[&>kbd]:leading-[15px]",
 		shortcutPadding: "pl-[14px]",
+		icon: "[&_svg]:size-4",
 	},
 	comfortable: {
 		popup: "rounded-card",
@@ -40,19 +41,10 @@ const DENSITY_CLASSES = {
 		separator: "mx-2.5",
 		shortcut: "[&>kbd]:text-[13px] [&>kbd]:inline-flex [&>kbd]:items-baseline [&>kbd]:gap-[0.3em]",
 		shortcutPadding: "pl-5",
+		/* Upstream's size:"auto" icons follow --cds-icon: 16px compact, 20px comfortable. */
+		icon: "[&_svg]:size-5",
 	},
 } as const;
-
-type MenuActionsRef = NonNullable<ComponentProps<typeof BaseMenu.Root>["actionsRef"]>;
-
-/** Closes the enclosing menu; hidden hotkeys need it since they are not Base UI items. */
-const MenuCloseContext = createContext<() => void>(() => {});
-
-function useMenuActions(actionsRef: MenuActionsRef | undefined) {
-	const ownRef: MenuActionsRef = useRef(null);
-	const ref = actionsRef ?? ownRef;
-	return {ref, close: () => ref.current?.close()};
-}
 
 const POSITIONER_CLASS = "z-[130] outline-none";
 
@@ -79,12 +71,13 @@ const CHECK_SLOT_CLASS = "-mr-1 flex size-5 shrink-0 items-center justify-center
 const CHECK_ICON_CLASS = "size-4 text-fill-accent";
 /** Hover dwell before a submenu opens. */
 const SUBMENU_HOVER_DELAY_MS = 100;
-const ICON_SLOT_CLASS = "mr-1 flex size-5 shrink-0 items-center justify-center [&_svg]:size-4 [&_svg]:shrink-0";
+const ICON_SLOT_CLASS = "mr-1 flex size-5 shrink-0 items-center justify-center [&_svg]:shrink-0";
 
 function ItemIcon({icon}: {icon: ReactNode}) {
+	const glyph = DENSITY_CLASSES[useContext(MenuDensityContext)].icon;
 	if (icon === undefined) return null;
 	return (
-		<span aria-hidden="true" className={ICON_SLOT_CLASS}>
+		<span aria-hidden="true" className={`${ICON_SLOT_CLASS} ${glyph}`}>
 			{icon}
 		</span>
 	);
@@ -128,26 +121,20 @@ function acceleratorProps(accelerator: string | undefined) {
 	return {"aria-keyshortcuts": key, "data-accelerator": key};
 }
 
-export function Menu({actionsRef, ...props}: ComponentProps<typeof BaseMenu.Root>) {
-	const actions = useMenuActions(actionsRef);
+export function Menu(props: ComponentProps<typeof BaseMenu.Root>) {
 	return (
 		<MenuKindContext.Provider value="Menu">
-			<MenuCloseContext.Provider value={actions.close}>
-				<BaseMenu.Root {...props} actionsRef={actions.ref} />
-			</MenuCloseContext.Provider>
+			<BaseMenu.Root {...props} />
 		</MenuKindContext.Provider>
 	);
 }
 
 export const MenuTrigger = BaseMenu.Trigger;
 
-export function ContextMenu({actionsRef, ...props}: ComponentProps<typeof BaseContextMenu.Root>) {
-	const actions = useMenuActions(actionsRef);
+export function ContextMenu(props: ComponentProps<typeof BaseContextMenu.Root>) {
 	return (
 		<MenuKindContext.Provider value="ContextMenu">
-			<MenuCloseContext.Provider value={actions.close}>
-				<BaseContextMenu.Root {...props} actionsRef={actions.ref} />
-			</MenuCloseContext.Provider>
+			<BaseContextMenu.Root {...props} />
 		</MenuKindContext.Provider>
 	);
 }
@@ -238,8 +225,6 @@ export interface MenuItemProps extends Omit<
 	description?: ReactNode;
 	/** Single key that fires this item while the menu is open. */
 	accelerator?: string;
-	/** Keep the accelerator working but draw no keycap hint. */
-	hideAccelerator?: boolean;
 	/** Global shortcut hint shown instead of the accelerator, e.g. "alt+cmd+r". */
 	shortcut?: string;
 	variant?: MenuItemVariant;
@@ -251,7 +236,6 @@ export function MenuItem({
 	icon,
 	description,
 	accelerator,
-	hideAccelerator = false,
 	shortcut,
 	variant = "default",
 	onSelect,
@@ -284,29 +268,10 @@ export function MenuItem({
 				</span>
 			)}
 			<ItemTrailing
-				{...(accelerator === undefined || hideAccelerator ? {} : {accelerator})}
+				{...(accelerator === undefined ? {} : {accelerator})}
 				{...(shortcut === undefined ? {} : {shortcut})}
 			/>
 		</BaseMenu.Item>
-	);
-}
-
-/**
- * A single-key action with no visible item: the accelerator handler clicks
- * this hidden node, which runs `onSelect` and closes the menu.
- */
-export function MenuHotkey({accelerator, onSelect}: {accelerator: string; onSelect: () => void}) {
-	const close = useContext(MenuCloseContext);
-	return (
-		// oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- a hidden node the menu accelerator handler clicks; it never receives input itself
-		<span
-			hidden
-			data-accelerator={accelerator.toLowerCase()}
-			onClick={() => {
-				onSelect();
-				close();
-			}}
-		/>
 	);
 }
 

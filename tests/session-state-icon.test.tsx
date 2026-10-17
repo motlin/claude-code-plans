@@ -97,6 +97,16 @@ describe("SessionStateIcon", () => {
 		]);
 	});
 
+	it("names the conflicting and queued glyphs with upstream's hj words", () => {
+		const labels = (["conflicting", "queued"] as const).map((state) => {
+			const {container} = render(<SessionStateIcon kind="pr" pr={{number: 3, state}} />);
+			const label = container.firstElementChild?.getAttribute("aria-label");
+			cleanup();
+			return label;
+		});
+		expect(labels).toStrictEqual(["#3 · Merge conflicts", "#3 · Queued"]);
+	});
+
 	it("lets the caller override the accessible label", () => {
 		expect(markup(<SessionStateIcon kind="running" label="Working" />)).toBe(
 			`<span role="status" aria-label="Working" class="${DOT_WRAPPER}"><span class="status-dot" data-kind="running"></span></span>`,

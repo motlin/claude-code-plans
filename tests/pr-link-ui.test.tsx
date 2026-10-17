@@ -131,10 +131,10 @@ afterEach(() => {
 });
 
 describe("Open PR in the session row menu", () => {
-	it("offers Open PR with the hidden accelerator g when the session has a PR", async () => {
+	it("offers Open PR with upstream's visible G keycap when the session has a PR", async () => {
 		const menu = await openRowMenu(listItem({pr: PR}));
 
-		expect(menuItems(menu)[0]).toBe("Open PR [g]");
+		expect(menuItems(menu)[0]).toBe("Open PRG [g]");
 	});
 
 	it("hides Open PR when the session has no PR", async () => {
@@ -153,10 +153,10 @@ describe("Open PR in the session row menu", () => {
 		expect(screen.queryByRole("menu")).toBeNull();
 	});
 
-	it("keeps g as a hidden hotkey when Open in replaces the Open PR item", async () => {
+	it("lists Open PR above Open in, and g still opens the PR", async () => {
 		const menu = await openRowMenu(listItem({pr: PR}), "/projects/alpha");
 
-		expect(menuItems(menu).filter((item) => item.startsWith("Open"))).toEqual(["Open in []"]);
+		expect(menuItems(menu).filter((item) => item.startsWith("Open"))).toEqual(["Open PRG [g]", "Open in []"]);
 
 		fireEvent.keyDown(menu, {key: "g"});
 		await flush();

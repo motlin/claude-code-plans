@@ -175,6 +175,28 @@ describe("Menu", () => {
 		});
 	});
 
+	it("sizes leading icons like upstream's size:auto glyphs: 20px in comfortable menus, 16px in compact", async () => {
+		const glyphSize = async (density: "compact" | "comfortable") => {
+			render(
+				<Menu>
+					<MenuTrigger aria-label="More options">...</MenuTrigger>
+					<MenuContent density={density}>
+						<MenuItem icon={<svg data-testid="glyph" />}>Routines</MenuItem>
+					</MenuContent>
+				</Menu>,
+			);
+			await openDropdown();
+			const slot = screen.getByTestId("glyph").parentElement;
+			const sizes = slot?.className.split(" ").filter((value) => value.startsWith("[&_svg]:size-"));
+			cleanup();
+			return sizes;
+		};
+		expect({compact: await glyphSize("compact"), comfortable: await glyphSize("comfortable")}).toStrictEqual({
+			compact: ["[&_svg]:size-4"],
+			comfortable: ["[&_svg]:size-5"],
+		});
+	});
+
 	it("sets aria-keyshortcuts from the accelerator letter", async () => {
 		renderDropdown();
 		await openDropdown();

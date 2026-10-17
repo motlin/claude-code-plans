@@ -114,20 +114,21 @@ describe("Open PR in the session menu model", () => {
 		};
 	}
 
-	it("shows Open PR with a hidden g accelerator when there is no Open in submenu", () => {
+	it("shows Open PR with upstream's visible g shortcut when there is no Open in submenu", () => {
 		expect(getSessionMenuItems(menuSession(), capabilities, {surface: "row"})).toEqual([
-			{kind: "item", id: "open-pr", label: "Open PR", accelerator: "g", hiddenAccelerator: true},
+			{kind: "item", id: "open-pr", label: "Open PR", accelerator: "g"},
 			{kind: "separator"},
 			{kind: "item", id: "pin", label: "Pin", accelerator: "p"},
 		]);
 	});
 
-	it("keeps g as a hotkey-only entry when Open in takes the navigation slot", () => {
+	it("lists Open PR before the Open in submenu, as upstream's open group does", () => {
 		expect(
 			getSessionMenuItems(menuSession({cwd: "/Users/alice/projects/repository"}), capabilities, {
 				surface: "row",
 			}),
 		).toEqual([
+			{kind: "item", id: "open-pr", label: "Open PR", accelerator: "g"},
 			{
 				kind: "item",
 				id: "open-in",
@@ -136,7 +137,6 @@ describe("Open PR in the session menu model", () => {
 			},
 			{kind: "separator"},
 			{kind: "item", id: "pin", label: "Pin", accelerator: "p"},
-			{kind: "hotkey", id: "open-pr", accelerator: "g"},
 		]);
 	});
 

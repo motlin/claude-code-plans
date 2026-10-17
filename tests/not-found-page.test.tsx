@@ -60,10 +60,15 @@ describe("404 page", () => {
 					? `${node.tagName.toLowerCase()}[${node.getAttribute("data-cds")}]`
 					: node.textContent,
 			),
-			row: wordmark?.className.split(" ").filter((name) => ["flex", "items-center", "gap-2"].includes(name)),
+			spark: wordmark?.querySelector("svg")?.getAttribute("width"),
+			// Upstream's 24px lockup draws the 24-unit spark, then the wordmark from x=30: a 6px gap.
+			row: wordmark?.className
+				.split(" ")
+				.filter((name) => ["flex", "items-center"].includes(name) || name.startsWith("gap-")),
 		}).toStrictEqual({
 			children: ["svg[Spark]", "Claude Code Browser"],
-			row: ["flex", "items-center", "gap-2"],
+			spark: "24",
+			row: ["flex", "items-center", "gap-1.5"],
 		});
 	});
 });

@@ -100,7 +100,7 @@ describe("getSessionMenuItems", () => {
 				surface: "row",
 			}).slice(0, 3),
 		).toEqual([
-			{kind: "item", id: "open-pr", label: "Open PR", accelerator: "g", hiddenAccelerator: true},
+			{kind: "item", id: "open-pr", label: "Open PR", accelerator: "g"},
 			SEPARATOR,
 			{kind: "item", id: "pin", label: "Pin", accelerator: "p"},
 		]);
