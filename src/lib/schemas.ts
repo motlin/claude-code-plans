@@ -1624,6 +1624,8 @@ export const ApiRequestShapeRecordSchema = z
 	.object({
 		type: z.literal("api-request-shape"),
 		sessionId: z.string(),
+		// Set on records in a subagent transcript: that subagent's id.
+		agentId: z.string().optional(),
 		timestamp: z.string(),
 		version: z.string(),
 		shapeHash: z.string(),
@@ -1687,6 +1689,8 @@ const ApiRequestBlobRecordSchema = z
 	.object({
 		type: z.literal("api-request-blob"),
 		sessionId: z.string(),
+		// Set on records in a subagent transcript: that subagent's id.
+		agentId: z.string().optional(),
 		hash: z.string(),
 		message: z
 			.object({
@@ -1802,6 +1806,8 @@ export const ApiRequestRecordSchema = z
 	.object({
 		type: z.literal("api-request"),
 		sessionId: z.string(),
+		// Set on records in a subagent transcript: that subagent's id.
+		agentId: z.string().optional(),
 		id: z.string(),
 		timestamp: z.string(),
 		version: z.string(),
@@ -1840,7 +1846,11 @@ export const ApiRequestRecordSchema = z
 					// JSON path into the request body, e.g. ["messages", 31, "content", 0].
 					path: z.array(z.union([z.string(), z.number()])),
 					value: z
-						.object({type: z.literal("ephemeral"), ttl: z.string(), scope: z.string().optional()})
+						.object({
+							type: z.literal("ephemeral"),
+							ttl: z.string().optional(),
+							scope: z.string().optional(),
+						})
 						.strict(),
 				})
 				.strict(),

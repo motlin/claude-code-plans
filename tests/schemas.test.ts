@@ -1949,6 +1949,28 @@ describe("JsonlRecordSchema observed 2026-09 transcript fields", () => {
 		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
 	});
 
+	it("parses subagent api-request, api-request-blob, and api-request-shape records carrying agentId", () => {
+		const records = [
+			{...jsonlRecordFixtures["api-request-shape"], agentId: "a37df3f20484177f0"},
+			{...jsonlRecordFixtures["api-request-blob"], agentId: "a37df3f20484177f0"},
+			{...jsonlRecordFixtures["api-request"], agentId: "a37df3f20484177f0"},
+		];
+
+		expect(records.map((record) => JsonlRecordSchema.parse(record))).toStrictEqual(records);
+	});
+
+	it("parses api-request cacheControl breakpoints without a ttl", () => {
+		const record = {
+			...jsonlRecordFixtures["api-request"],
+			cacheControl: [
+				{path: ["system", 0], value: {type: "ephemeral"}},
+				{path: ["messages", 1, "content", 0], value: {type: "ephemeral", ttl: "1h"}},
+			],
+		};
+
+		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
+	});
+
 	it("parses a synthetic usage-limit assistant record with apiError, apiErrorParams, and quotaLimits", () => {
 		const rateLimitInfo = {
 			status: "rejected",
