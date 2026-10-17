@@ -2,6 +2,7 @@ import {z} from "zod";
 import {queryOptions, infiniteQueryOptions, useMutation, useQueryClient, type QueryClient} from "@tanstack/react-query";
 import {apiFetch} from "./client";
 import {JsonValueSchema} from "../schemas";
+import {SlowCommandSchema} from "../slow-commands";
 import {SessionViewedStateSchema} from "./viewed-state";
 import {SessionBucketSchema} from "../session-state";
 import {PrStatusSchema} from "../pr-status";
@@ -549,7 +550,7 @@ const SessionSubagentSchema = z.object({
 	model: z.string().nullable(),
 	startedAt: z.string().nullable(),
 	finishedAt: z.string().nullable(),
-	slowCommandEnds: z.array(z.string()).optional(),
+	slowCommands: z.array(SlowCommandSchema).optional(),
 	taskKind: z.string().nullish(),
 	name: z.string().nullish(),
 	stopped: z.literal(true).optional(),

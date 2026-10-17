@@ -12511,7 +12511,7 @@
 				"model": null,
 				"startedAt": null,
 				"finishedAt": null,
-				"slowCommandEnds": ["2026-10-02T13:07:20.034Z"]
+				"slowCommands": [{"finishedAt": "2026-10-02T13:07:20.034Z", "description": ""}]
 			}
 		]
 	},
@@ -12972,7 +12972,7 @@
 				"model": null,
 				"startedAt": null,
 				"finishedAt": null,
-				"slowCommandEnds": ["2026-10-02T12:58:29.147Z"]
+				"slowCommands": [{"finishedAt": "2026-10-02T12:58:29.147Z", "description": ""}]
 			}
 		]
 	},
@@ -13413,7 +13413,7 @@
 				"model": null,
 				"startedAt": null,
 				"finishedAt": null,
-				"slowCommandEnds": []
+				"slowCommands": []
 			}
 		]
 	},
@@ -13818,12 +13818,12 @@
 				"model": null,
 				"startedAt": null,
 				"finishedAt": null,
-				"slowCommandEnds": [
-					"2026-09-27T03:00:33.334Z",
-					"2026-09-27T03:00:40.050Z",
-					"2026-09-27T03:00:47.091Z",
-					"2026-09-27T03:03:46.893Z",
-					"2026-09-27T03:04:15.635Z"
+				"slowCommands": [
+					{"finishedAt": "2026-09-27T03:00:33.334Z", "description": ""},
+					{"finishedAt": "2026-09-27T03:00:40.050Z", "description": ""},
+					{"finishedAt": "2026-09-27T03:00:47.091Z", "description": ""},
+					{"finishedAt": "2026-09-27T03:03:46.893Z", "description": ""},
+					{"finishedAt": "2026-09-27T03:04:15.635Z", "description": ""}
 				]
 			}
 		]

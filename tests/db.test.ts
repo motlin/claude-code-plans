@@ -2137,14 +2137,19 @@ describe("subagents", () => {
 		expect(agent.finishedAt).toBe("1999-12-31T00:29:12.217Z");
 	});
 
-	it("indexSubagentFile records when each slow foreground command finished, as upstream tracks it as a task", async () => {
+	it("indexSubagentFile records each slow foreground command, timed from the end of its message, as upstream tracks it as a task", async () => {
 		const projectDir = join(testDir, "-Users-craig-projects-app");
 		const sessionDir = join(projectDir, "sess-1", "subagents");
 		mkdirSync(sessionDir, {recursive: true});
-		const bash = (id: string, at: string, input: Record<string, unknown>) => ({
+		const bash = (id: string, at: string, input: Record<string, unknown>, messageId = `msg_${id}`) => ({
 			type: "assistant",
 			timestamp: at,
-			message: {role: "assistant", content: [{type: "tool_use", id, name: "Bash", input}]},
+			message: {id: messageId, role: "assistant", content: [{type: "tool_use", id, name: "Bash", input}]},
+		});
+		const edit = (id: string, at: string, messageId: string) => ({
+			type: "assistant",
+			timestamp: at,
+			message: {id: messageId, role: "assistant", content: [{type: "tool_use", id, name: "Edit", input: {}}]},
 		});
 		const result = (id: string, at: string) => ({
 			type: "user",
@@ -2158,10 +2163,15 @@ describe("subagents", () => {
 			jsonl(
 				bash("toolu_quick", "1999-12-31T00:00:00.000Z", {command: "git status"}),
 				result("toolu_quick", "1999-12-31T00:00:03.492Z"),
-				bash("toolu_gate", "1999-12-31T00:00:10.000Z", {command: "j tb"}),
+				bash("toolu_gate", "1999-12-31T00:00:10.000Z", {command: "j tb", description: "Run the gate"}),
 				result("toolu_gate", "1999-12-31T00:00:13.979Z"),
 				bash("toolu_bg", "1999-12-31T00:00:20.000Z", {command: "just dev", run_in_background: true}),
 				result("toolu_bg", "1999-12-31T00:00:30.000Z"),
+				// The commit waits for the rest of its message to stream, so it ran about 2s.
+				bash("toolu_commit", "1999-12-31T00:00:40.000Z", {command: "git commit"}, "msg_batch"),
+				edit("toolu_edit", "1999-12-31T00:00:45.500Z", "msg_batch"),
+				result("toolu_commit", "1999-12-31T00:00:47.500Z"),
+				result("toolu_edit", "1999-12-31T00:00:47.600Z"),
 			),
 		);
 
@@ -2169,7 +2179,9 @@ describe("subagents", () => {
 		await indexSubagentFile(db.index, agentPath, "sess-1", "proj-app");
 
 		const agent = db.index.select().from(schema.subagents).where(eq(schema.subagents.id, "agent-slow1")).get();
-		expect(agent?.slowCommandEndsJson).toBe('["1999-12-31T00:00:13.979Z"]');
+		expect(agent?.slowCommandsJson).toBe(
+			'[{"finishedAt":"1999-12-31T00:00:13.979Z","description":"Run the gate"}]',
+		);
 	});
 
 	it("indexSubagentFile preserves transcript attribution beside sibling metadata", async () => {

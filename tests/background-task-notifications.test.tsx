@@ -5,6 +5,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat} from "../src/components/session-chat";
 import {parseTaskNotification} from "../src/lib/background-tasks";
 import {summarizeToolCallStats} from "../src/lib/session-utils";
+import type {Subagent} from "../src/lib/subagents";
 import type {TranscriptMode} from "../src/lib/transcript-mode";
 import {processTranscript} from "../src/lib/transcript";
 
@@ -161,7 +162,11 @@ function laterRecords(notificationText: string, launchTurnTail: unknown[] = []):
 	];
 }
 
-function renderLines(input: unknown[], transcriptMode: TranscriptMode = "normal"): HTMLElement {
+function renderLines(
+	input: unknown[],
+	transcriptMode: TranscriptMode = "normal",
+	subagents: Subagent[] = [],
+): HTMLElement {
 	const {lines, toolResultMap} = processTranscript(input);
 	return render(
 		<SessionChat
@@ -170,6 +175,7 @@ function renderLines(input: unknown[], transcriptMode: TranscriptMode = "normal"
 			toolResultMap={toolResultMap}
 			shouldScrollToEnd={false}
 			transcriptMode={transcriptMode}
+			subagents={subagents}
 		/>,
 	).container;
 }
@@ -508,5 +514,133 @@ describe("background launch row status", () => {
 				"Ran a command, finished a background command",
 			),
 		).toStrictEqual([{text: "Ran the test suite", className: MUTED_PHRASE}, CHEVRON]);
+	});
+});
+
+/** A teammate that finished one slow foreground command at each `finishedAt`. */
+function teammate(finishedAt: string[]): Subagent {
+	return {
+		id: "agent-ateammate",
+		sessionId: "test-session",
+		projectId: "proj",
+		parentAgentId: null,
+		agentType: "general-purpose",
+		attributionAgent: null,
+		slug: null,
+		description: "Address review",
+		model: null,
+		startedAt: "1999-12-31T00:00:00.000Z",
+		finishedAt: "1999-12-31T01:00:00.000Z",
+		slowCommands: finishedAt.map((at, index) => ({finishedAt: at, description: `Run tests ${index + 1}`})),
+	};
+}
+
+/**
+ * 6473581f: the parent ends a turn, a teammate runs slow foreground commands
+ * while it idles, then a task notification opens a turn with two commands.
+ */
+function idleThenNotifiedRecords(): unknown[] {
+	const at = (seconds: number) => new Date(Date.UTC(1999, 11, 31, 0, 0, seconds)).toISOString();
+	const bash = (uuid: string, id: string, seconds: number, description: string) => [
+		{
+			type: "assistant",
+			uuid,
+			timestamp: at(seconds),
+			message: {
+				role: "assistant",
+				content: [{type: "tool_use", id, name: "Bash", input: {command: "ls", description}}],
+			},
+		},
+		{
+			type: "user",
+			uuid: `${uuid}-r`,
+			timestamp: at(seconds + 1),
+			message: {role: "user", content: [{type: "tool_result", tool_use_id: id, content: "ok"}]},
+		},
+	];
+	const [prompt, launch, launchResult] = records(COMPLETED) as [unknown, unknown, unknown];
+	return [
+		prompt,
+		launch,
+		launchResult,
+		{
+			type: "assistant",
+			uuid: "a-idle",
+			timestamp: at(10),
+			message: {role: "assistant", content: [{type: "text", text: "Waiting on the teammate."}]},
+		},
+		{
+			type: "user",
+			uuid: "n-1",
+			timestamp: at(500),
+			promptSource: "system",
+			turnOrigin: "task_notification",
+			message: {role: "user", content: COMPLETED},
+		},
+		...bash("a-2", "toolu_one", 501, "Check one"),
+		...bash("a-3", "toolu_two", 503, "Check two"),
+		{
+			type: "assistant",
+			uuid: "a-4",
+			timestamp: at(510),
+			message: {role: "assistant", content: [{type: "text", text: "The stack fails at commit 8."}]},
+		},
+		...bash("a-5", "toolu_three", 520, "Check three"),
+		{
+			type: "assistant",
+			uuid: "a-6",
+			timestamp: at(530),
+			message: {role: "assistant", content: [{type: "text", text: "Done."}]},
+		},
+	];
+}
+
+describe("subagent-owned slow commands in the transcript", () => {
+	beforeEach(() => {
+		// A tall viewport, so the virtualized list mounts every row.
+		vi.stubGlobal("innerHeight", 10_000);
+	});
+
+	const at = (seconds: number) => new Date(Date.UTC(1999, 11, 31, 0, 0, seconds)).toISOString();
+
+	it("counts the teammate commands that finished while the parent idled in the run a notification opens", () => {
+		const idle = [30, 60, 90, 120, 200, 300, 450].map(at);
+		const container = renderLines(idleThenNotifiedRecords(), "normal", [teammate(idle)]);
+		const labels = [...container.querySelectorAll("button[aria-expanded]")].map((button) => button.textContent);
+		expect(labels).toStrictEqual(["Ran 2 commands, finished 8 background commands"]);
+	});
+
+	it("counts a command that finished inside a run in that run", () => {
+		const container = renderLines(idleThenNotifiedRecords(), "normal", [teammate([at(521)])]);
+		const labels = [...container.querySelectorAll("button[aria-expanded]")].map((button) => button.textContent);
+		expect(labels).toStrictEqual([
+			"Ran 2 commands, finished a background command",
+			"Ran a command, finished a background command",
+		]);
+	});
+
+	it("draws nothing for a command that finished while the parent talked, before a run its tool opens", () => {
+		const container = renderLines(idleThenNotifiedRecords(), "normal", [teammate([at(515)])]);
+		const labels = [...container.querySelectorAll("button[aria-expanded]")].map((button) => button.textContent);
+		expect({labels, rows: container.querySelectorAll("[data-background-notice]").length}).toStrictEqual({
+			labels: ["Ran 2 commands, finished a background command"],
+			rows: 0,
+		});
+	});
+
+	it("lists each absorbed command as a background-command sub-row after the calls", () => {
+		const container = renderLines(idleThenNotifiedRecords(), "normal", [teammate([at(30)])]);
+		fireEvent.click(summaryButton(container, "Ran 2 commands, finished 2 background commands"));
+		expect(groupRowTexts(container)).toStrictEqual([
+			"Checked one",
+			"Checked two",
+			"Background commandRun the test suite",
+			"Background commandRun tests 1",
+		]);
+	});
+
+	it("leaves the counts alone in Verbose", () => {
+		const container = renderLines(idleThenNotifiedRecords(), "verbose", [teammate([at(30)])]);
+		expect(container.textContent.includes("background commands")).toBe(false);
 	});
 });

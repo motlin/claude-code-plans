@@ -1,3 +1,4 @@
+import {z} from "zod";
 import {isRecord} from "./narrow";
 
 /**
@@ -9,10 +10,26 @@ import {isRecord} from "./narrow";
  */
 const SLOW_COMMAND_MS = 3750;
 
-/** The finish time of every slow foreground Bash call, fed one transcript record at a time. */
+/** A slow foreground command a subagent ran, which upstream tracks as a task of its own. */
+export const SlowCommandSchema = z.strictObject({
+	finishedAt: z.string(),
+	/** The Bash call's description, or its command when it has none. */
+	description: z.string(),
+});
+export type SlowCommand = z.infer<typeof SlowCommandSchema>;
+
+interface StartedCommand {
+	messageId: string | null;
+	at: number;
+	description: string;
+}
+
+/** Every slow foreground Bash call, fed one transcript record at a time. */
 export class SlowCommandCollector {
-	private readonly started = new Map<string, number>();
-	private readonly finished: string[] = [];
+	private readonly started = new Map<string, StartedCommand>();
+	/** The latest record of each assistant message: its tools run only once the whole message has streamed. */
+	private readonly messageEnds = new Map<string, number>();
+	private readonly finished: SlowCommand[] = [];
 
 	add(transcriptRecord: unknown): void {
 		if (!isRecord(transcriptRecord)) return;
@@ -20,20 +37,36 @@ export class SlowCommandCollector {
 		const content = isRecord(message) ? message["content"] : undefined;
 		if (typeof timestamp !== "string" || !Array.isArray(content)) return;
 		const at = Date.parse(timestamp);
+		const messageId = isRecord(message) && typeof message["id"] === "string" ? message["id"] : null;
+		if (recordType === "assistant" && messageId !== null) this.messageEnds.set(messageId, at);
 		for (const block of content) {
 			if (!isRecord(block)) continue;
 			const {type, id, name, input, tool_use_id: resultFor} = block;
 			if (recordType === "assistant" && type === "tool_use" && name === "Bash" && typeof id === "string") {
-				const background = isRecord(input) && input["run_in_background"] === true;
-				if (!background) this.started.set(id, at);
+				if (isRecord(input) && input["run_in_background"] === true) continue;
+				this.started.set(id, {messageId, at, description: commandDescription(input)});
 			} else if (recordType === "user" && type === "tool_result" && typeof resultFor === "string") {
-				const start = this.started.get(resultFor);
-				if (start !== undefined && at - start >= SLOW_COMMAND_MS) this.finished.push(timestamp);
+				const command = this.started.get(resultFor);
+				if (command === undefined) continue;
+				const start = Math.max(
+					command.at,
+					command.messageId === null ? command.at : (this.messageEnds.get(command.messageId) ?? command.at),
+				);
+				if (at - start >= SLOW_COMMAND_MS) {
+					this.finished.push({finishedAt: timestamp, description: command.description});
+				}
 			}
 		}
 	}
 
-	ends(): string[] {
+	commands(): SlowCommand[] {
 		return this.finished;
 	}
+}
+
+function commandDescription(input: unknown): string {
+	if (!isRecord(input)) return "";
+	const {description, command} = input;
+	if (typeof description === "string" && description !== "") return description;
+	return typeof command === "string" ? command : "";
 }

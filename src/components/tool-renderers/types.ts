@@ -5,6 +5,7 @@ import {isArtifactCardCall, type ParsedArtifact} from "../../lib/artifact-output
 import type {ArtifactListEntry} from "../../lib/artifact-schemas";
 import type {PermissionDecision} from "../../lib/permission-decision";
 import type {Subagent} from "../../lib/subagents";
+import type {SlowCommand} from "../../lib/slow-commands";
 import {getAgentTypeOrNull, getTaskCreateDisplaySubject, inputString} from "../../lib/tool-utils";
 import {buildSubagentTree} from "../../lib/subagent-tree";
 import type {ParallelSubagentGroup, SubagentTreeEntry, SubagentTreeNode} from "../../lib/subagent-tree";
@@ -29,8 +30,8 @@ export interface SubagentInlineInfo {
 	status: "running" | "done" | "error";
 	parallelGroupKey?: string | undefined;
 	parallelGroupSize?: number | undefined;
-	/** When each slow foreground command the agent ran finished; see `SLOW_COMMAND_MS`. */
-	slowCommandEnds?: readonly string[] | undefined;
+	/** The slow foreground commands the agent ran, which upstream tracks as tasks; see `SLOW_COMMAND_MS`. */
+	slowCommands?: readonly SlowCommand[] | undefined;
 }
 
 /**
@@ -134,7 +135,7 @@ export function buildSubagentLookup(agents: Subagent[]): SubagentLookup {
 			finishedAt: node.agent.finishedAt,
 			status: statusForAgent(node.agent),
 		};
-		if (node.agent.slowCommandEnds !== undefined) entry.slowCommandEnds = node.agent.slowCommandEnds;
+		if (node.agent.slowCommands !== undefined) entry.slowCommands = node.agent.slowCommands;
 		if (parallelKey !== undefined) entry.parallelGroupKey = parallelKey;
 		if (parallelSize !== undefined) entry.parallelGroupSize = parallelSize;
 		byBareId.set(bareId, entry);

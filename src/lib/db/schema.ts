@@ -239,8 +239,8 @@ export const subagents = sqliteTable(
 		model: text("model"),
 		startedAt: text("started_at"),
 		finishedAt: text("finished_at"),
-		/** JSON array of the timestamps at which the agent's slow foreground commands finished. */
-		slowCommandEndsJson: text("slow_command_ends").notNull().default("[]"),
+		/** JSON array of the agent's slow foreground commands, each `{finishedAt, description}`. */
+		slowCommandsJson: text("slow_commands").notNull().default("[]"),
 		/** The meta.json `taskKind`, e.g. `in_process_teammate`. */
 		taskKind: text("task_kind"),
 		/** The meta.json `name` a teammate is addressed (and stopped) by. */

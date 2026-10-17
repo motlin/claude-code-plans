@@ -34,6 +34,7 @@ import {buildClientToolCall, buildSubagentLookup, getToolDescription, isArtifact
 import type {ClientToolCall} from "./tool-renderers";
 import type {LiveToolFailure, SubagentLookup} from "./tool-renderers/types";
 import type {Subagent} from "../lib/subagents";
+import type {SlowCommand} from "../lib/slow-commands";
 import {useSubagentOpener} from "./subagent-opener-context";
 import {useBackgroundTasksOpener} from "./background-tasks-opener-context";
 import {useClaudeEvents} from "../hooks/use-claude-events";
@@ -1011,7 +1012,7 @@ function heldBySlowCommand(
 	sender: string,
 	subagentLookup: SubagentLookup,
 ): boolean {
-	const ends = subagentLookup.byBareId.get(sender)?.slowCommandEnds;
+	const ends = subagentLookup.byBareId.get(sender)?.slowCommands;
 	const arrived = lineTimestamp(defined(lines[index], "heldBySlowCommand index is in range"));
 	if (ends === undefined || arrived === undefined) return false;
 	let previous = index - 1;
@@ -1020,8 +1021,8 @@ function heldBySlowCommand(
 	const parentSpoke = parent === undefined ? undefined : lineTimestamp(parent);
 	const after = parentSpoke === undefined ? -Infinity : Date.parse(parentSpoke);
 	const until = Date.parse(arrived);
-	return ends.some((end) => {
-		const at = Date.parse(end);
+	return ends.some(({finishedAt}) => {
+		const at = Date.parse(finishedAt);
 		return at > after && at <= until;
 	});
 }
@@ -1900,6 +1901,61 @@ function withNotificationsAtEnqueueTime(lines: SessionLine[]): SessionLine[] {
 }
 
 /**
+ * Upstream tracks a subagent's slow foreground command as a task of its own
+ * and folds its completion into the tool run open when it finishes, or into
+ * the next one when the parent is idle or talking: 6473581f reads "Ran 2
+ * commands, finished 8 background commands" for a notification plus the seven
+ * slow commands a teammate ran while the parent waited.
+ */
+class SlowCommandAbsorber {
+	private readonly commands: SlowCommand[];
+	private next = 0;
+
+	constructor(subagentLookup: SubagentLookup) {
+		this.commands = [...subagentLookup.byBareId.values()]
+			.flatMap((agent) => agent.slowCommands ?? [])
+			.toSorted((a, b) => Date.parse(a.finishedAt) - Date.parse(b.finishedAt));
+	}
+
+	/**
+	 * The completions of the commands that finished after `since` and by the
+	 * group's last record. Any finished earlier stood alone upstream, which
+	 * draws nothing for them.
+	 */
+	absorbInto(groupLines: readonly SessionLine[], since: number): BackgroundNotice[] {
+		const last = groupLines.at(-1);
+		const end = Math.max(
+			...groupLines.flatMap((line) => {
+				const at = lineTimestamp(line);
+				return at === undefined ? [] : [Date.parse(at)];
+			}),
+		);
+		if (last === undefined || !Number.isFinite(end)) return [];
+		const notices: BackgroundNotice[] = [];
+		for (let command = this.commands[this.next]; command !== undefined; command = this.commands[this.next]) {
+			const finishedAt = Date.parse(command.finishedAt);
+			if (finishedAt > end) break;
+			this.next++;
+			if (!(finishedAt > since)) continue;
+			notices.push({
+				kind: "task",
+				lineIndex: last.lineIndex,
+				notification: {
+					taskId: null,
+					toolUseId: null,
+					status: "completed",
+					command: true,
+					agent: false,
+					description: command.description,
+					durationMs: null,
+				},
+			});
+		}
+		return notices;
+	}
+}
+
+/**
  * Upstream Normal folds background-task completions into the tool group beside
  * them ("Ran a command, finished a background command") rather than drawing a
  * user turn per `<task-notification>`; Verbose keeps the raw notification turns.
@@ -2012,6 +2068,9 @@ function buildSessionListEntries(
 
 	/** Notifications waiting for the tool group that follows them. */
 	let leadingNotices: FoldedNotice[] = [];
+	/** The index of the first of `leadingNotices`. */
+	let leadingNoticesIndex = 0;
+	const slowCommands = new SlowCommandAbsorber(renderProps.subagentLookup);
 
 	while (i < lines.length) {
 		const line = lineAt(i);
@@ -2061,6 +2120,7 @@ function buildSessionListEntries(
 				!crossesHeldEntry(line.lineIndex, following.lineIndex)
 			) {
 				leadingNotices = notices;
+				leadingNoticesIndex = i;
 			} else {
 				prevVisibleType = "assistant";
 				entries.push({
@@ -2112,6 +2172,27 @@ function buildSessionListEntries(
 				} else {
 					break;
 				}
+			}
+
+			if (!verbose) {
+				const openerIndex = notices.length > 0 ? leadingNoticesIndex : groupStart;
+				// A task notification opening the run gathers the slow commands since the last row before it.
+				let since = Date.parse(lineTimestamp(lineAt(openerIndex)) ?? "");
+				if (notices[0]?.kind === "task") {
+					since = Number.NEGATIVE_INFINITY;
+					for (let previous = openerIndex - 1; previous >= 0; previous--) {
+						const at = lineTimestamp(lineAt(previous));
+						if (
+							skipSet.has(previous) ||
+							!isLineVisible(lineAt(previous), renderProps, verbose) ||
+							at === undefined
+						)
+							continue;
+						since = Date.parse(at);
+						break;
+					}
+				}
+				notices.push(...slowCommands.absorbInto(lines.slice(groupStart, j), since));
 			}
 
 			prevVisibleType = "assistant";
@@ -4836,8 +4917,8 @@ function ToolCallSummary({
                   between rows floating on a tinted panel. */}
 							<div className="flex flex-col card-outline rounded-r7 overflow-clip mt-p6 divide-y [&>*]:px-2 [&>*]:py-1.5">
 								{/* Upstream lists failed completions first, as the group label leads with them. */}
-								{failedNotices.map((notice) => (
-									<BackgroundNoticeRow key={`notice-${notice.lineIndex}`} notice={notice} />
+								{failedNotices.map((notice, index) => (
+									<BackgroundNoticeRow key={`notice-${notice.lineIndex}-${index}`} notice={notice} />
 								))}
 								{hooks.map((notice) => (
 									<StopHookMarker key={`notice-${notice.lineIndex}`} line={notice.line} />
@@ -4851,8 +4932,8 @@ function ToolCallSummary({
 								{trailingPeers.map((notice) => (
 									<AgentMessageRow key={`notice-${notice.lineIndex}`} message={notice.message} />
 								))}
-								{settledNotices.map((notice) => (
-									<BackgroundNoticeRow key={`notice-${notice.lineIndex}`} notice={notice} />
+								{settledNotices.map((notice, index) => (
+									<BackgroundNoticeRow key={`notice-${notice.lineIndex}-${index}`} notice={notice} />
 								))}
 							</div>
 						</div>

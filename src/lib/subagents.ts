@@ -2,6 +2,7 @@ import {z} from "zod";
 import type {DbSubagent} from "./db/queries";
 import {getAgentTypeOrNull} from "./tool-utils";
 import {asRecord, isRecord} from "./narrow";
+import {SlowCommandSchema, type SlowCommand} from "./slow-commands";
 
 /**
  * Subagent record extracted from transcript JSONL records.
@@ -29,8 +30,8 @@ export interface Subagent {
 	model: string | null;
 	startedAt: string | null;
 	finishedAt: string | null;
-	/** When each slow foreground command the agent ran finished; see `SLOW_COMMAND_MS`. */
-	slowCommandEnds?: string[] | undefined;
+	/** The slow foreground commands the agent ran, which upstream tracks as tasks; see `SLOW_COMMAND_MS`. */
+	slowCommands?: SlowCommand[] | undefined;
 	/** The meta.json `taskKind`, e.g. `in_process_teammate`. */
 	taskKind?: string | null | undefined;
 	/** The name a teammate is addressed and stopped by. */
@@ -66,9 +67,9 @@ export function getSubagentLifecycleKey(sessionId: string, agentId: string, agen
  * individual transcripts.
  */
 export function toClientSubagent(row: DbSubagent): Subagent {
-	const slowCommandEnds = SlowCommandEndsSchema.safeParse(JSON.parse(row.slowCommandEndsJson ?? "[]"));
+	const slowCommands = SlowCommandsSchema.safeParse(JSON.parse(row.slowCommandsJson ?? "[]"));
 	return {
-		...(slowCommandEnds.success && slowCommandEnds.data.length > 0 ? {slowCommandEnds: slowCommandEnds.data} : {}),
+		...(slowCommands.success && slowCommands.data.length > 0 ? {slowCommands: slowCommands.data} : {}),
 		id: row.id,
 		sessionId: row.sessionId,
 		projectId: row.projectId,
@@ -86,7 +87,7 @@ export function toClientSubagent(row: DbSubagent): Subagent {
 	};
 }
 
-const SlowCommandEndsSchema = z.array(z.string());
+const SlowCommandsSchema = z.array(SlowCommandSchema);
 
 const AGENT_ID_RE = /agentId:\s*(\S+)/;
 

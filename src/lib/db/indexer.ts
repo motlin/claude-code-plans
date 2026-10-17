@@ -1148,7 +1148,7 @@ export async function indexSubagentFile(
 	} finally {
 		await rl.close();
 	}
-	const slowCommandEndsJson = JSON.stringify(slowCommands.ends());
+	const slowCommandsJson = JSON.stringify(slowCommands.commands());
 	const pendingCommand = pendingCommands.latest();
 	const previous = db
 		.select({pendingCommand: schema.subagents.pendingCommand})
@@ -1168,7 +1168,7 @@ export async function indexSubagentFile(
 			model: resolvedModel ?? requestedModel,
 			startedAt,
 			finishedAt,
-			slowCommandEndsJson,
+			slowCommandsJson,
 			taskKind,
 			name: teammateName,
 			pendingCommand,
@@ -1189,7 +1189,7 @@ export async function indexSubagentFile(
 				model: resolvedModel ?? requestedModel,
 				startedAt,
 				finishedAt,
-				slowCommandEndsJson,
+				slowCommandsJson,
 				filePath,
 				mtimeMs: fileStat.mtimeMs,
 			},
