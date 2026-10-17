@@ -7,6 +7,9 @@ import type {PersistedCapabilities} from "../capabilities";
  * Install state of the ccp hook block in ~/.claude/settings.json.
  * `missingEvents` names the events that are absent, so a page fed by one
  * specific event can explain its own emptiness without re-reading settings.
+ * `outdatedEvents` names the events whose hook still posts to this server but
+ * with a command written by an older build; they count toward
+ * `installedCount`, while `installed` means every event is current.
  */
 export const HookStatusResponse = z.object({
 	installed: z.boolean(),
@@ -14,6 +17,7 @@ export const HookStatusResponse = z.object({
 	installedCount: z.number(),
 	totalCount: z.number(),
 	missingEvents: z.array(z.string()),
+	outdatedEvents: z.array(z.string()),
 	settingsPath: z.string(),
 });
 

@@ -42,6 +42,7 @@ function TypeIcon({notificationType}: {notificationType: string}) {
 function EmptyNotifications() {
 	const {data: hookStatus} = useQuery(hookStatusQueryOptions);
 	const notificationHookMissing = hookStatus?.missingEvents.includes("Notification") === true;
+	const notificationHookOutdated = hookStatus?.outdatedEvents.includes("Notification") === true;
 
 	return (
 		<section aria-label="Why there are no notifications" className="mt-8 space-y-3 text-sm text-t6">
@@ -54,6 +55,14 @@ function EmptyNotifications() {
 					That hook is not installed in Claude Code&rsquo;s settings, so no notification can reach this page.{" "}
 					<Link to="/setup" className="text-accent-100 hover:underline">
 						Install hooks
+					</Link>
+				</p>
+			) : notificationHookOutdated ? (
+				<p>
+					That hook is installed in Claude Code&rsquo;s settings, but with an older command than this server
+					now generates.{" "}
+					<Link to="/setup" className="text-accent-100 hover:underline">
+						Update hooks
 					</Link>
 				</p>
 			) : null}

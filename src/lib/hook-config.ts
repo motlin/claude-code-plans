@@ -109,13 +109,48 @@ export function generateHooksConfig(options?: GenerateOptions): HooksConfig {
 	return {hooks};
 }
 
-/** A hook matcher as it appears in an already-written settings.json. */
+type InstallState = "current" | "outdated" | "missing";
+
+/** The `command` strings of every hook under one event of a written settings.json. */
+function installedCommands(entries: unknown): string[] {
+	if (!Array.isArray(entries)) return [];
+	return entries.flatMap((entry: unknown) => {
+		const hooks = asRecord(entry)?.["hooks"];
+		if (!Array.isArray(hooks)) return [];
+		return hooks.flatMap((hook: unknown) => {
+			const command = asRecord(hook)?.["command"];
+			return typeof command === "string" ? [command] : [];
+		});
+	});
+}
+
 /**
- * Which hook events are absent from an existing settings.json `hooks` block —
- * an event counts as installed only when one of its matchers carries the exact
- * command we would generate, so hooks pointed at another port (or another
- * tool's script) read as missing. Pass `undefined` for a settings file that has
- * no `hooks` key at all; every event is then missing.
+ * How one event stands in an existing settings.json `hooks` block: `current`
+ * when a matcher carries the exact command we would generate, `outdated` when a
+ * command still POSTs to this server's `/api/hook` but was written by an older
+ * build (a since-changed jq filter, say), and `missing` otherwise — hooks
+ * pointed at another port, or another tool's script, are not ours.
+ */
+function eventInstallStates(
+	installed: Record<string, unknown> | undefined,
+	options?: GenerateOptions,
+): [HookEventName, InstallState][] {
+	const desired = generateHooksConfig(options);
+	const hookUrl = new RegExp(`http://localhost:${options?.port ?? DEFAULT_HOOK_PORT}/api/hook(?![\\w/-])`);
+	return HOOK_EVENT_NAMES.map((eventName) => {
+		const desiredCommand = desired.hooks[eventName]?.[0]?.hooks[0]?.command;
+		const commands = installedCommands(installed?.[eventName]);
+		if (commands.includes(desiredCommand ?? "")) return [eventName, "current"];
+		if (commands.some((command) => hookUrl.test(command))) return [eventName, "outdated"];
+		return [eventName, "missing"];
+	});
+}
+
+/**
+ * Which hook events are absent from an existing settings.json `hooks` block.
+ * Events installed by an older build still post here, so they are outdated
+ * rather than missing. Pass `undefined` for a settings file that has no
+ * `hooks` key at all; every event is then missing.
  *
  * Drives both the aggregate `/api/hooks/status` counts and the per-event copy
  * on pages fed by one specific event — `/notifications` is empty forever
@@ -125,18 +160,43 @@ export function missingHookEvents(
 	installed: Record<string, unknown> | undefined,
 	options?: GenerateOptions,
 ): HookEventName[] {
-	const desired = generateHooksConfig(options);
-	return HOOK_EVENT_NAMES.filter((eventName) => {
-		const entries = installed?.[eventName];
-		if (!Array.isArray(entries)) return true;
-		const desiredCommand = desired.hooks[eventName]?.[0]?.hooks[0]?.command;
-		return !entries.some((entry: unknown) => {
-			const hooks = asRecord(entry)?.["hooks"];
-			return (
-				Array.isArray(hooks) && hooks.some((hook: unknown) => asRecord(hook)?.["command"] === desiredCommand)
-			);
-		});
-	});
+	return eventInstallStates(installed, options)
+		.filter(([, state]) => state === "missing")
+		.map(([eventName]) => eventName);
+}
+
+export interface HookInstallStatus {
+	/** Every event carries the exact command this build generates. */
+	installed: boolean;
+	/** Some events are absent while others are present (current or outdated). */
+	partial: boolean;
+	/** Events present in any form, current or outdated. */
+	installedCount: number;
+	totalCount: number;
+	missingEvents: HookEventName[];
+	/** Events that post to this server with a command from an older build. */
+	outdatedEvents: HookEventName[];
+}
+
+/** The install summary behind `/api/hooks/status`, minus the settings path. */
+export function hookInstallStatus(
+	installed: Record<string, unknown> | undefined,
+	options?: GenerateOptions,
+): HookInstallStatus {
+	const states = eventInstallStates(installed, options);
+	const namesIn = (wanted: InstallState) =>
+		states.filter(([, state]) => state === wanted).map(([eventName]) => eventName);
+	const missingEvents = namesIn("missing");
+	const outdatedEvents = namesIn("outdated");
+	const installedCount = HOOK_EVENT_NAMES.length - missingEvents.length;
+	return {
+		installed: missingEvents.length === 0 && outdatedEvents.length === 0,
+		partial: installedCount > 0 && missingEvents.length > 0,
+		installedCount,
+		totalCount: HOOK_EVENT_NAMES.length,
+		missingEvents,
+		outdatedEvents,
+	};
 }
 
 /**

@@ -21,19 +21,23 @@ const LIFETIME_SENTENCE =
 const MISSING_HOOK_SENTENCE =
 	"That hook is not installed in Claude Code’s settings, so no notification can reach this page.";
 
-async function renderEmptyNotifications(missingEvents: string[]) {
+const OUTDATED_HOOK_SENTENCE =
+	"That hook is installed in Claude Code’s settings, but with an older command than this server now generates.";
+
+async function renderEmptyNotifications(missingEvents: string[], outdatedEvents: string[] = []) {
 	const NotificationsPage = NotificationsRoute.options.component;
 	if (!NotificationsPage) throw new Error("Expected the notifications route component");
 
 	const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
 	queryClient.setQueryData(notificationsQueryOptions().queryKey, {notifications: []});
 	queryClient.setQueryData(hookStatusQueryOptions.queryKey, {
-		installed: missingEvents.length === 0,
+		installed: missingEvents.length === 0 && outdatedEvents.length === 0,
 		partial: missingEvents.length > 0 && missingEvents.length < HOOK_EVENT_NAMES.length,
 		installedCount: HOOK_EVENT_NAMES.length - missingEvents.length,
 		totalCount: HOOK_EVENT_NAMES.length,
 		settingsPath: "/Users/test/.claude/settings.json",
 		missingEvents,
+		outdatedEvents,
 	});
 
 	const rootRoute = createRootRoute({
@@ -87,6 +91,18 @@ describe("notifications route empty state", () => {
 		}).toStrictEqual({
 			sentences: [ORIGIN_SENTENCE, LIFETIME_SENTENCE],
 			setupLink: null,
+		});
+	});
+
+	it("calls an outdated Notification hook outdated rather than not installed", async () => {
+		await renderEmptyNotifications([], ["Notification"]);
+
+		expect({
+			sentences: emptyStateSentences(),
+			setupHref: screen.getByRole("link", {name: "Update hooks"}).getAttribute("href"),
+		}).toStrictEqual({
+			sentences: [ORIGIN_SENTENCE, `${OUTDATED_HOOK_SENTENCE} Update hooks`, LIFETIME_SENTENCE],
+			setupHref: "/setup",
 		});
 	});
 });

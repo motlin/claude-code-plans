@@ -79,7 +79,7 @@ export function HookSetup() {
 					className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm ${
 						status.installed
 							? "border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950/30 dark:text-green-300"
-							: status.partial
+							: status.partial || status.outdatedEvents.length > 0
 								? "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300"
 								: "border-border bg-surface-0 text-secondary"
 					}`}
@@ -89,10 +89,17 @@ export function HookSetup() {
 							<Check className="h-4 w-4" />
 							All {status.totalCount} hooks installed
 						</>
+					) : status.missingEvents.length === 0 ? (
+						<>
+							<AlertCircle className="h-4 w-4" />
+							{status.outdatedEvents.length}/{status.totalCount} hooks installed but outdated — Update
+							hooks
+						</>
 					) : status.partial ? (
 						<>
 							<AlertCircle className="h-4 w-4" />
 							{status.installedCount}/{status.totalCount} hooks installed
+							{status.outdatedEvents.length > 0 ? `, ${status.outdatedEvents.length} outdated` : ""}
 						</>
 					) : (
 						<>
@@ -141,7 +148,11 @@ export function HookSetup() {
 						className="flex items-center gap-1.5 rounded-md bg-accent-100 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-accent-100/80 disabled:opacity-50"
 					>
 						<Download className="h-3.5 w-3.5" />
-						{installing ? "Installing..." : "Install Hooks"}
+						{installing
+							? "Installing..."
+							: status && status.outdatedEvents.length > 0 && status.missingEvents.length === 0
+								? "Update Hooks"
+								: "Install Hooks"}
 					</button>
 				)}
 				<button

@@ -1,5 +1,11 @@
 import {describe, expect, it} from "vite-plus/test";
-import {generateHooksConfig, missingHookEvents, DEFAULT_HOOK_PORT, HOOK_EVENT_NAMES} from "../src/lib/hook-config";
+import {
+	generateHooksConfig,
+	hookInstallStatus,
+	missingHookEvents,
+	DEFAULT_HOOK_PORT,
+	HOOK_EVENT_NAMES,
+} from "../src/lib/hook-config";
 
 describe("HOOK_EVENT_NAMES", () => {
 	it("contains all expected Claude hook event names", () => {
@@ -180,5 +186,73 @@ describe("missingHookEvents", () => {
 	it("treats hooks installed on a different port as missing", () => {
 		const otherPort = generateHooksConfig({port: 9000}).hooks;
 		expect(missingHookEvents(otherPort)).toStrictEqual([...HOOK_EVENT_NAMES]);
+	});
+});
+
+/** A full install written by an older build, before `HERDR_SESSION` joined the forwarded env. */
+function olderCommandInstall(): Record<string, unknown> {
+	const {hooks} = generateHooksConfig();
+	return JSON.parse(JSON.stringify(hooks).replaceAll(' or . == \\"HERDR_SESSION\\"', "")) as Record<string, unknown>;
+}
+
+describe("hookInstallStatus", () => {
+	it("fixture: the older install really differs from the current command", () => {
+		expect(JSON.stringify(olderCommandInstall()) === JSON.stringify(generateHooksConfig().hooks)).toBe(false);
+	});
+
+	it("reports a full current install as installed", () => {
+		expect(hookInstallStatus(generateHooksConfig().hooks)).toStrictEqual({
+			installed: true,
+			partial: false,
+			installedCount: HOOK_EVENT_NAMES.length,
+			totalCount: HOOK_EVENT_NAMES.length,
+			missingEvents: [],
+			outdatedEvents: [],
+		});
+	});
+
+	it("reports hooks posting to this server with an older command as outdated, not missing", () => {
+		expect(hookInstallStatus(olderCommandInstall())).toStrictEqual({
+			installed: false,
+			partial: false,
+			installedCount: HOOK_EVENT_NAMES.length,
+			totalCount: HOOK_EVENT_NAMES.length,
+			missingEvents: [],
+			outdatedEvents: [...HOOK_EVENT_NAMES],
+		});
+	});
+
+	it("separates outdated events from missing ones in a mixed install", () => {
+		const older = olderCommandInstall();
+		const {hooks} = generateHooksConfig();
+		const mixed: Record<string, unknown> = {
+			SessionStart: hooks["SessionStart"],
+			Notification: older["Notification"],
+		};
+		expect(hookInstallStatus(mixed)).toStrictEqual({
+			installed: false,
+			partial: true,
+			installedCount: 2,
+			totalCount: HOOK_EVENT_NAMES.length,
+			missingEvents: HOOK_EVENT_NAMES.filter((name) => name !== "SessionStart" && name !== "Notification"),
+			outdatedEvents: ["Notification"],
+		});
+	});
+
+	it("does not count the context-brief hook or another port as an outdated install", () => {
+		const otherPort = generateHooksConfig({port: 9000}).hooks;
+		const brief: Record<string, unknown> = {
+			SessionStart: [
+				{hooks: [{type: "command", command: "curl -s http://localhost:7526/api/context-brief || true"}]},
+			],
+		};
+		expect([hookInstallStatus(otherPort).outdatedEvents, hookInstallStatus(brief).outdatedEvents]).toStrictEqual([
+			[],
+			[],
+		]);
+	});
+
+	it("leaves outdated events out of missingHookEvents", () => {
+		expect(missingHookEvents(olderCommandInstall())).toStrictEqual([]);
 	});
 });
