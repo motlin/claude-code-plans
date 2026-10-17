@@ -25,6 +25,26 @@ export const DEFAULT_HOOK_PORT = 7526;
 export const NEVER_INSTALLED_HOOK_EVENTS: readonly HookEventName[] = ["WorktreeCreate", "WorktreeRemove"];
 
 /**
+ * Events the CLI documents that the server deliberately does not consume, and
+ * why. Together with `KNOWN_HOOK_EVENTS` this accounts for every event in the
+ * hooks reference, so a new CLI event shows up as an unaccounted test failure.
+ */
+export const DECLINED_HOOK_EVENTS = {
+	Setup: "Fires only for `claude --init` / `--maintenance` runs, before there is a session to show.",
+	UserPromptExpansion:
+		"UserPromptSubmit already carries the prompt a slash command or MCP prompt expanded to; no view needs the unexpanded command.",
+	PostToolBatch:
+		"Fires after every tool batch with the serialized results of every call in it; PostToolUse already covers each call, so forwarding it would double the per-turn payload for nothing.",
+	TeammateIdle:
+		"Agent-team teammates are tracked from their subagent transcripts; no view shows a teammate's idle edge.",
+	DirectoryAdded: "No view lists a session's additional working directories.",
+	FileChanged:
+		"Fires only for files a matcher or `watchPaths` names, so a matcher-less forwarder would watch nothing; the server's own file watcher covers ~/.claude.",
+	PreModelSwitch:
+		"A switch can still be cancelled at this point; PostModelSwitch reports the switch that actually happened.",
+} as const satisfies Record<string, string>;
+
+/**
  * The hook events the install helper writes to settings.json: every event the
  * receiver's `HookEventEnvelope` union handles, minus
  * {@link NEVER_INSTALLED_HOOK_EVENTS}.
@@ -51,7 +71,7 @@ export const HOOK_FEATURES: readonly HookFeature[] = [
 		id: "liveSessions",
 		label: "Live session status (active, working, waiting)",
 		required: ["SessionStart", "SessionEnd", "Stop", "UserPromptSubmit"],
-		optional: ["CwdChanged", "InstructionsLoaded", "ConfigChange"],
+		optional: ["CwdChanged", "InstructionsLoaded", "ConfigChange", "StopFailure"],
 	},
 	{
 		id: "toolActivity",
@@ -63,7 +83,7 @@ export const HOOK_FEATURES: readonly HookFeature[] = [
 		id: "questionsAndPermissions",
 		label: "Answering questions and permission prompts from the browser",
 		required: ["PreToolUse", "PostToolUse", "PermissionRequest"],
-		optional: [],
+		optional: ["PermissionDenied"],
 	},
 	{id: "notifications", label: "Notifications", required: ["Notification"], optional: []},
 	{
@@ -76,6 +96,13 @@ export const HOOK_FEATURES: readonly HookFeature[] = [
 	{id: "compaction", label: "Compaction indicator", required: ["PreCompact", "PostCompact"], optional: []},
 	{id: "tasks", label: "Instant task updates", required: ["TaskCreated", "TaskCompleted"], optional: []},
 	{id: "streamingText", label: "Streaming assistant text", required: ["MessageDisplay"], optional: []},
+	{id: "modelSwitches", label: "Live model after a mid-session switch", required: ["PostModelSwitch"], optional: []},
+	{
+		id: "mcpElicitations",
+		label: "MCP server input requests",
+		required: ["Elicitation"],
+		optional: ["ElicitationResult"],
+	},
 ];
 
 interface HookEntry {

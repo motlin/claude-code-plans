@@ -6,6 +6,7 @@ import {
 	removeManagedHooks,
 	DEFAULT_HOOK_PORT,
 	HOOK_EVENT_NAMES,
+	DECLINED_HOOK_EVENTS,
 	HOOK_FEATURES,
 	NEVER_INSTALLED_HOOK_EVENTS,
 } from "../src/lib/hook-config";
@@ -13,8 +14,8 @@ import {KNOWN_HOOK_EVENTS} from "../src/lib/hook-events";
 
 /**
  * Every hook event the Claude Code hooks reference lists (code.claude.com/docs/en/hooks,
- * checked 2026-10-17). Events here that the server does not consume yet are
- * tracked as follow-up work, not installed.
+ * checked 2026-10-17). Each one is either consumed (`KNOWN_HOOK_EVENTS`) or
+ * declined with a reason (`DECLINED_HOOK_EVENTS`).
  */
 const CLI_HOOK_EVENTS: ReadonlySet<string> = new Set([
 	"SessionStart",
@@ -75,6 +76,11 @@ describe("HOOK_EVENT_NAMES", () => {
 				"InstructionsLoaded",
 				"ConfigChange",
 				"MessageDisplay",
+				"StopFailure",
+				"PermissionDenied",
+				"PostModelSwitch",
+				"Elicitation",
+				"ElicitationResult",
 			].toSorted(),
 		);
 	});
@@ -92,6 +98,17 @@ describe("HOOK_EVENT_NAMES", () => {
 
 	it("only consumes events the Claude Code CLI documents", () => {
 		expect(KNOWN_HOOK_EVENTS.filter((name) => !CLI_HOOK_EVENTS.has(name))).toStrictEqual([]);
+	});
+
+	it("consumes or declines, with a reason, every event the CLI documents", () => {
+		const declined = Object.keys(DECLINED_HOOK_EVENTS);
+		expect({
+			accounted: [...KNOWN_HOOK_EVENTS, ...declined].toSorted(),
+			overlap: declined.filter((name) => (KNOWN_HOOK_EVENTS as readonly string[]).includes(name)),
+			unexplained: Object.entries(DECLINED_HOOK_EVENTS)
+				.filter(([, reason]) => reason.length === 0)
+				.map(([name]) => name),
+		}).toStrictEqual({accounted: [...CLI_HOOK_EVENTS].toSorted(), overlap: [], unexplained: []});
 	});
 });
 
@@ -430,10 +447,15 @@ describe("hookInstallStatus per-feature state", () => {
 				id: "liveSessions",
 				state: "off",
 				missingRequired: ["SessionStart", "UserPromptSubmit"],
-				missingOptional: ["CwdChanged", "InstructionsLoaded", "ConfigChange"],
+				missingOptional: ["CwdChanged", "InstructionsLoaded", "ConfigChange", "StopFailure"],
 			},
 			{id: "toolActivity", state: "on", missingRequired: [], missingOptional: []},
-			{id: "questionsAndPermissions", state: "on", missingRequired: [], missingOptional: []},
+			{
+				id: "questionsAndPermissions",
+				state: "partial",
+				missingRequired: [],
+				missingOptional: ["PermissionDenied"],
+			},
 			{id: "notifications", state: "on", missingRequired: [], missingOptional: []},
 			{
 				id: "terminalPanes",
@@ -445,6 +467,13 @@ describe("hookInstallStatus per-feature state", () => {
 			{id: "compaction", state: "off", missingRequired: ["PreCompact", "PostCompact"], missingOptional: []},
 			{id: "tasks", state: "off", missingRequired: ["TaskCreated", "TaskCompleted"], missingOptional: []},
 			{id: "streamingText", state: "off", missingRequired: ["MessageDisplay"], missingOptional: []},
+			{id: "modelSwitches", state: "off", missingRequired: ["PostModelSwitch"], missingOptional: []},
+			{
+				id: "mcpElicitations",
+				state: "off",
+				missingRequired: ["Elicitation"],
+				missingOptional: ["ElicitationResult"],
+			},
 		]);
 	});
 

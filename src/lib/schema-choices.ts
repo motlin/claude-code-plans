@@ -409,6 +409,36 @@ const configChangeSourceLabels = {
 	skills: "Skills",
 } satisfies Record<HookEventOf<"ConfigChange">["config_source"], string>;
 
+const modelSwitchSourceLabels = {
+	command: "Command",
+	picker: "Model picker",
+	sdk: "SDK",
+	auto: "Automatic",
+	resume: "Resume",
+} satisfies Record<HookEventOf<"PostModelSwitch">["source"], string>;
+
+const promptCacheTtlLabels = {
+	"5m": "5 minutes",
+	"1h": "1 hour",
+} satisfies Record<HookEventOf<"PostModelSwitch">["cache_ttl"], string>;
+
+const modelSwitchPricingLabels = {
+	configured: "Configured rates",
+	catalog: "List price",
+	default: "Default rate",
+} satisfies Record<HookEventOf<"PostModelSwitch">["pricing"], string>;
+
+const elicitationModeLabels = {
+	form: "Form",
+	url: "URL",
+} satisfies Record<NonNullable<HookEventOf<"Elicitation">["mode"]>, string>;
+
+const elicitationActionLabels = {
+	accept: "Accepted",
+	decline: "Declined",
+	cancel: "Cancelled",
+} satisfies Record<HookEventOf<"ElicitationResult">["action"], string>;
+
 const sourceLanguageLabels = {
 	markdown: "Markdown",
 	json: "JSON",
@@ -645,6 +675,11 @@ const hookEventNames = {
 	InstructionsLoaded: true,
 	ConfigChange: true,
 	MessageDisplay: true,
+	StopFailure: true,
+	PermissionDenied: true,
+	PostModelSwitch: true,
+	Elicitation: true,
+	ElicitationResult: true,
 } satisfies Record<HookEvent["hook_event_name"], true>;
 
 /** Per-tool strict input/response variants; see buildToolUseUnion in hook-events.ts. */
@@ -1171,6 +1206,12 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
 	"HookEventEnvelope.<PostToolUse>": toolNamesWithMcp,
 	"HookEventEnvelope.<PostToolUseFailure>": toolNamesWithMcp,
 	"HookEventEnvelope.<PermissionRequest>": toolNamesWithMcp,
+	"HookEventEnvelope.<PermissionDenied>": toolNamesWithMcp,
+	"HookEventEnvelope.<PostModelSwitch>.source": modelSwitchSourceLabels,
+	"HookEventEnvelope.<PostModelSwitch>.cache_ttl": promptCacheTtlLabels,
+	"HookEventEnvelope.<PostModelSwitch>.pricing": modelSwitchPricingLabels,
+	"HookEventEnvelope.<Elicitation>.mode": elicitationModeLabels,
+	"HookEventEnvelope.<ElicitationResult>.action": elicitationActionLabels,
 	"HookEventEnvelope.<PermissionRequest>.<Bash>.permission_suggestions[]": permissionUpdateVariants,
 	"HookEventEnvelope.<PermissionRequest>.<Bash>.permission_suggestions[].<addRules>.behavior":
 		permissionBehaviorLabels,

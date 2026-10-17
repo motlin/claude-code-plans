@@ -66,12 +66,16 @@ export function stateForEvent(event: HookEvent): ActivityState | null {
 		case "PostToolUse":
 		case "PostToolUseFailure":
 		case "MessageDisplay":
+		case "ElicitationResult":
 			return "working";
+		case "Elicitation":
+			return "waiting";
 		case "PreCompact":
 			return event.trigger === "manual" ? "working" : null;
 		case "PostCompact":
 			return event.reason === "manual" ? "idle" : null;
 		case "Stop":
+		case "StopFailure":
 		case "SessionEnd":
 			return "idle";
 		default:

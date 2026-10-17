@@ -301,6 +301,7 @@ export function claudeEventsReducer(state: ClaudeEventsState, action: ClaudeEven
 			if (typeof action.data["effortLevel"] === "string") {
 				next.effortLevel = action.data["effortLevel"];
 			}
+			if (typeof action.data["model"] === "string") next.model = action.data["model"];
 			const backgroundTasks = z.array(HookBackgroundTaskPayloadSchema).safeParse(action.data["backgroundTasks"]);
 			if (backgroundTasks.success) next.backgroundTasks = backgroundTasks.data;
 			const sessionCrons = z.array(HookSessionCronPayloadSchema).safeParse(action.data["sessionCrons"]);

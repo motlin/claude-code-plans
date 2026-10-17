@@ -49,7 +49,7 @@ describe("HookSetup", () => {
 			changes: screen.queryByRole("list", {name: "Changes Install will make"}),
 			button: screen.getByRole("button", {name: "Uninstall Hooks"}).textContent,
 		}).toStrictEqual({
-			banner: "All 19 hooks installed",
+			banner: "All 24 hooks installed",
 			features: new Set([true]),
 			changes: null,
 			button: "Uninstall Hooks",
@@ -82,11 +82,11 @@ describe("HookSetup", () => {
 			changeCount: changes.length,
 			button: screen.getByRole("button", {name: "Install Hooks"}).textContent,
 		}).toStrictEqual({
-			banner: "7/19 hooks installed, 7 outdated",
+			banner: "7/24 hooks installed, 7 outdated",
 			features: [
 				"Live session status (active, working, waiting) Off — needs SessionStart, UserPromptSubmit",
 				"Live tool activity and instant transcript updates On",
-				"Answering questions and permission prompts from the browser On",
+				"Answering questions and permission prompts from the browser Partial — missing optional PermissionDenied",
 				"Notifications On",
 			],
 			firstChanges: [
@@ -97,7 +97,7 @@ describe("HookSetup", () => {
 			updateStop: "Update Stop: does not forward HERDR_SESSION",
 			removeStray:
 				"Remove WorktreeCreate: a WorktreeCreate or WorktreeRemove hook replaces git’s own worktree handling",
-			changeCount: 19 + 1,
+			changeCount: 24 + 1,
 			button: "Install Hooks",
 		});
 	});
@@ -111,7 +111,7 @@ describe("HookSetup", () => {
 			banner: screen.getByRole("status").textContent,
 			button: screen.getByRole("button", {name: "Update Hooks"}).textContent,
 		}).toStrictEqual({
-			banner: "19/19 hooks installed but outdated — Update hooks",
+			banner: "24/24 hooks installed but outdated — Update hooks",
 			button: "Update Hooks",
 		});
 	});

@@ -27,6 +27,10 @@ import {
 	preToolUseWithScratchpadFixture,
 	stopWithScratchpadFixture,
 } from "./fixtures/scratchpad-dir-events";
+import {elicitationFormFixture, elicitationResultFixture, elicitationUrlFixture} from "./fixtures/elicitation";
+import {permissionDeniedFixture} from "./fixtures/permission-denied";
+import {postModelSwitchAutoFixture, postModelSwitchFixture} from "./fixtures/post-model-switch";
+import {stopFailureFixture, stopFailureRateLimitFixture} from "./fixtures/stop-failure";
 import {subagentStartFixture} from "./fixtures/subagent-start";
 import {taskCreatedFixture} from "./fixtures/task-created";
 import {worktreeRemoveFixture} from "./fixtures/worktree-remove";
@@ -210,6 +214,14 @@ const cases: Case[] = [
 	{name: "PreToolUse", payload: preToolUseWithScratchpadFixture},
 	{name: "PostToolUse", payload: postToolUseWithScratchpadFixture},
 	{name: "Stop", payload: stopWithScratchpadFixture},
+	{name: "StopFailure", payload: stopFailureFixture},
+	{name: "StopFailure", payload: stopFailureRateLimitFixture},
+	{name: "PermissionDenied", payload: permissionDeniedFixture},
+	{name: "PostModelSwitch", payload: postModelSwitchFixture},
+	{name: "PostModelSwitch", payload: postModelSwitchAutoFixture},
+	{name: "Elicitation", payload: elicitationFormFixture},
+	{name: "Elicitation", payload: elicitationUrlFixture},
+	{name: "ElicitationResult", payload: elicitationResultFixture},
 ];
 
 describe("hook stdin -> jq filter -> HookEventEnvelope round-trip", () => {

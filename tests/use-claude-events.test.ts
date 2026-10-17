@@ -140,6 +140,30 @@ describe("claudeEventsReducer", () => {
 		);
 	});
 
+	it("keeps the model a mid-session switch reported beside the turn context", () => {
+		const switched = claudeEventsReducer(makeInitialState(), {
+			type: "SSE_EVENT",
+			eventType: DOMAIN_EVENTS.SESSION_HOOK_CONTEXT_CHANGED,
+			data: {sessionId: "session-test-100", model: "claude-haiku-5-5"},
+			timestamp: 1_000,
+		});
+		const nextTurn = claudeEventsReducer(switched, {
+			type: "SSE_EVENT",
+			eventType: DOMAIN_EVENTS.SESSION_HOOK_CONTEXT_CHANGED,
+			data: {sessionId: "session-test-100", permissionMode: "auto"},
+			timestamp: 2_000,
+		});
+
+		expect(nextTurn.hookContexts).toStrictEqual(
+			new Map([
+				[
+					"session-test-100",
+					{sessionId: "session-test-100", model: "claude-haiku-5-5", permissionMode: "auto"},
+				],
+			]),
+		);
+	});
+
 	it("hydrates running and recently-ended nodes from the SSE snapshot", () => {
 		const runningNode: LiveSubagentNode = {
 			sessionId: "session-test",

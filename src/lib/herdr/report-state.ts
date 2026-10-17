@@ -76,6 +76,12 @@ export function stateForHerdrHookEvent(event: HookEvent): HerdrHookState | null 
 			return event.reason === "manual" ? {state: "idle", message: "manual compaction complete"} : null;
 		case "Stop":
 			return {state: "idle", message: "ready"};
+		case "StopFailure":
+			return {state: "idle", message: `turn failed: ${event.error}`};
+		case "Elicitation":
+			return {state: "blocked", message: `waiting for ${event.mcp_server_name} input`};
+		case "ElicitationResult":
+			return {state: "working", message: `answered ${event.mcp_server_name} input`};
 		default:
 			return null;
 	}

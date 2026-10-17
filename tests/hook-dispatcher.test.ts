@@ -7,13 +7,17 @@ import {indexFile, indexSessionsIndex} from "../src/lib/db/indexer";
 import {dispatchHookEvent} from "../src/lib/hook-dispatcher";
 import {DOMAIN_EVENTS, SSE_EVENTS} from "../src/lib/hook-events";
 import type {HookBackgroundTaskPayload, HookEvent, HookSessionCronPayload} from "../src/lib/hook-events";
-import {getNotifications, clearAllNotifications} from "../src/lib/notifications-store";
+import {addNotification, getNotifications, clearAllNotifications} from "../src/lib/notifications-store";
 import {clearLiveSubagents} from "../src/lib/live-subagent-store";
 import * as schema from "../src/lib/db/schema";
 import {getSessionViewedState} from "../src/lib/db/viewed-state";
 import type {ActiveSessionEntry, PendingPermissionRequest} from "../src/lib/active-session-store";
 import type {ActivityState} from "../src/lib/session-state";
 import {getPendingApprovals, initPendingApprovalsCache} from "../src/lib/db/pending-approvals-cache";
+import {elicitationFormFixture, elicitationResultFixture} from "./fixtures/elicitation";
+import {permissionDeniedFixture} from "./fixtures/permission-denied";
+import {postModelSwitchFixture} from "./fixtures/post-model-switch";
+import {stopFailureFixture, stopFailureRateLimitFixture} from "./fixtures/stop-failure";
 
 // The production herdr reporter reads the real config and talks to the real
 // herdr socket on a detached promise that can log after the test ends. Tests
@@ -2258,6 +2262,136 @@ describe("dispatchHookEvent", () => {
 
 			const taskChanged = broadcasts.filter((b) => b.type === DOMAIN_EVENTS.TASK_CHANGED);
 			expect(taskChanged.length).toBe(1);
+		});
+	});
+});
+
+describe("dispatchHookEvent for the turn-failure, denial, model-switch and elicitation events", () => {
+	async function dispatch(event: HookEvent, harness = makeStore()) {
+		const broadcasts: Broadcast[] = [];
+		await dispatchHookEvent({
+			event,
+			db: db.index,
+			store: harness.store,
+			broadcast: (type, data) => broadcasts.push({type, data}),
+			reportHerdrState: () => {},
+		});
+		return {broadcasts, ...harness};
+	}
+
+	function storedNotifications() {
+		return getNotifications().map(({sessionId, message, title, notificationType}) => ({
+			sessionId,
+			message,
+			title,
+			notificationType,
+		}));
+	}
+
+	it("StopFailure ends the turn idle and persists a turn-failed notification with the error text", async () => {
+		clearAllNotifications();
+		const {stateCalls, touchedCalls} = await dispatch(stopFailureFixture);
+		expect({stateCalls, touchedCalls, notifications: storedNotifications()}).toStrictEqual({
+			stateCalls: [{sessionId: "abc-123", state: "idle"}],
+			touchedCalls: ["abc-123"],
+			notifications: [
+				{
+					sessionId: "abc-123",
+					message: stopFailureFixture.last_assistant_message,
+					title: "Turn failed: model_not_found",
+					notificationType: "turn_failed",
+				},
+			],
+		});
+	});
+
+	it("StopFailure clears a standing permission prompt, since the turn that asked has ended", async () => {
+		clearAllNotifications();
+		addNotification(db.index, {
+			sessionId: "abc-123",
+			cwd: "/Users/u/projects/app",
+			message: "Claude needs your permission to use Bash",
+			notificationType: "permission_prompt",
+		});
+		await dispatch(stopFailureRateLimitFixture);
+		expect(storedNotifications()).toStrictEqual([
+			{
+				sessionId: "abc-123",
+				message: "API Error: Rate limit reached",
+				title: "Turn failed: rate_limit",
+				notificationType: "turn_failed",
+			},
+		]);
+	});
+
+	it("PermissionDenied drops the pending permission request and the permission-prompt notification", async () => {
+		clearAllNotifications();
+		const harness = makeStore();
+		harness.store.markSessionActive("abc-123", {cwd: "/Users/u/projects/app"});
+		harness.store.setPendingPermissionRequest("abc-123", {toolName: "Bash", suggestions: []});
+		addNotification(db.index, {
+			sessionId: "abc-123",
+			cwd: "/Users/u/projects/app",
+			message: "Claude needs your permission to use Bash",
+			notificationType: "permission_prompt",
+		});
+		const {pendingPermissionCalls, touchedCalls, broadcasts} = await dispatch(permissionDeniedFixture, harness);
+		expect({
+			pendingPermissionCalls,
+			touchedCalls,
+			notifications: storedNotifications(),
+			broadcastTypes: broadcasts.map((b) => b.type),
+		}).toStrictEqual({
+			pendingPermissionCalls: [
+				{sessionId: "abc-123", request: {toolName: "Bash", suggestions: []}},
+				{sessionId: "abc-123", request: null},
+			],
+			touchedCalls: ["abc-123"],
+			notifications: [],
+			broadcastTypes: [],
+		});
+	});
+
+	it("PostModelSwitch broadcasts the new model as hook context", async () => {
+		const {broadcasts, touchedCalls} = await dispatch(postModelSwitchFixture);
+		expect({broadcasts, touchedCalls}).toStrictEqual({
+			broadcasts: [
+				{
+					type: DOMAIN_EVENTS.SESSION_HOOK_CONTEXT_CHANGED,
+					data: {sessionId: "abc-123", model: "claude-haiku-5-5"},
+				},
+			],
+			touchedCalls: ["abc-123"],
+		});
+	});
+
+	it("Elicitation marks the session waiting and persists an input-request notification", async () => {
+		clearAllNotifications();
+		const {stateCalls} = await dispatch(elicitationFormFixture);
+		expect({stateCalls, notifications: storedNotifications()}).toStrictEqual({
+			stateCalls: [{sessionId: "abc-123", state: "waiting"}],
+			notifications: [
+				{
+					sessionId: "abc-123",
+					message: "Please provide your credentials",
+					title: "my-mcp-server needs input",
+					notificationType: "mcp_elicitation",
+				},
+			],
+		});
+	});
+
+	it("ElicitationResult resumes working and clears the input-request notification", async () => {
+		clearAllNotifications();
+		const harness = makeStore();
+		await dispatch(elicitationFormFixture, harness);
+		const {stateCalls} = await dispatch(elicitationResultFixture, harness);
+		expect({stateCalls, notifications: storedNotifications()}).toStrictEqual({
+			stateCalls: [
+				{sessionId: "abc-123", state: "waiting"},
+				{sessionId: "abc-123", state: "working"},
+			],
+			notifications: [],
 		});
 	});
 });

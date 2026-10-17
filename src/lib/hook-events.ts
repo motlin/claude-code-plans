@@ -270,6 +270,8 @@ export interface SessionHookContextPayload {
 	promptId?: string;
 	permissionMode?: string;
 	effortLevel?: string;
+	/** The model a mid-session switch moved to, from `PostModelSwitch`. */
+	model?: string;
 	backgroundTasks?: HookBackgroundTaskPayload[];
 	sessionCrons?: HookSessionCronPayload[];
 }
@@ -1421,6 +1423,108 @@ const MessageDisplayHookEvent = z.strictObject({
 });
 
 /**
+ * Fires instead of `Stop` when the turn ends on an API error. The viewer ends
+ * the turn (idle) and persists a "turn failed" notification. `error` is the
+ * error type the matcher filters on; it stays `z.string()` for the same reason
+ * as `Notification.notification_type`: the CLI has already grown the set
+ * (`oauth_org_not_allowed`, `account_on_hold`), and an unknown value must not
+ * drop the event. `last_assistant_message` is the API error text the
+ * conversation shows, not Claude's output.
+ */
+const StopFailureHookEvent = z.strictObject({
+	...BaseHookFields,
+	hook_event_name: z.literal("StopFailure"),
+	error: z.string(),
+	error_details: z.string().optional(),
+	last_assistant_message: z.string().optional(),
+});
+
+/**
+ * Build the `PermissionDenied` per-tool union. Fires when the auto-mode
+ * classifier denies a tool call; `reason` names the matched rule (such as
+ * `[Data Exfiltration]`) or explains a no-verdict denial.
+ */
+function buildPermissionDeniedEvent() {
+	const variants = ToolUseUnion.options.map((toolVariant) =>
+		z.strictObject({
+			...BaseHookFields,
+			hook_event_name: z.literal("PermissionDenied"),
+			tool_name: toolVariant.shape.tool_name,
+			tool_input: toolVariant.shape.tool_input,
+			tool_use_id: z.string().optional(),
+			reason: z.string(),
+		}),
+	);
+	// MCP inputs belong to their server-defined protocol; see `isMcpTool`.
+	const mcpVariant = z.strictObject({
+		...BaseHookFields,
+		hook_event_name: z.literal("PermissionDenied"),
+		tool_name: z.string().startsWith("mcp__"),
+		tool_input: JsonValueSchema,
+		tool_use_id: z.string().optional(),
+		reason: z.string(),
+		mcp_server: HookMcpServerSchema.optional(),
+	});
+	return z.union([...variants, mcpVariant]);
+}
+
+const PermissionDeniedHookEvent = buildPermissionDeniedEvent();
+
+/**
+ * Fires after the session's model changed: `/model`, a model picker, an SDK
+ * `set_model`, an automatic fallback, or the model restored on resume. The
+ * viewer forwards `to_model` as hook context for the session's model pill.
+ * The cost fields describe re-sending the conversation to the new model.
+ * `PreModelSwitch` carries the same fields but can still be cancelled, so the
+ * viewer does not consume it.
+ */
+const PostModelSwitchHookEvent = z.strictObject({
+	...BaseHookFields,
+	hook_event_name: z.literal("PostModelSwitch"),
+	from_model: z.string(),
+	to_model: z.string(),
+	/** The alias or ID the request named; null for the default model or an automatic switch. */
+	requested_model: z.string().nullable(),
+	source: z.enum(["command", "picker", "sdk", "auto", "resume"]),
+	context_tokens: z.number(),
+	prompt_cache_warm: z.boolean(),
+	cache_ttl: z.enum(["5m", "1h"]),
+	estimated_cache_write_usd: z.number(),
+	pricing: z.enum(["configured", "catalog", "default"]),
+});
+
+/**
+ * Fires when an MCP server asks the user for input mid-tool-call: a form
+ * (`requested_schema`) or a URL to open (`url`). The forwarder exits 0 silently,
+ * which leaves the dialog to the user; the viewer marks the session waiting
+ * and persists a notification. `requested_schema` is the server's JSON Schema,
+ * so it belongs to the MCP protocol, not to Claude Code.
+ */
+const ElicitationModeSchema = z.enum(["form", "url"]);
+
+const ElicitationHookEvent = z.strictObject({
+	...BaseHookFields,
+	hook_event_name: z.literal("Elicitation"),
+	mcp_server_name: z.string(),
+	message: z.string(),
+	mode: ElicitationModeSchema.optional(),
+	url: z.string().optional(),
+	elicitation_id: z.string().optional(),
+	requested_schema: JsonValueSchema.optional(),
+});
+
+/** Fires once the user answers an MCP elicitation; the session is working again. */
+const ElicitationResultHookEvent = z.strictObject({
+	...BaseHookFields,
+	hook_event_name: z.literal("ElicitationResult"),
+	mcp_server_name: z.string(),
+	action: z.enum(["accept", "decline", "cancel"]),
+	mode: ElicitationModeSchema.optional(),
+	elicitation_id: z.string().optional(),
+	content: JsonValueSchema.optional(),
+});
+
+/**
  * Union over every hook event Claude Code can send. Each variant is a strict
  * object — unknown fields fail parsing and trigger the schema-drift recovery
  * path in `src/routes/api/hook.ts`. `PreToolUse` and `PostToolUse` are
@@ -1454,6 +1558,11 @@ export const HookEventEnvelope = z.union([
 	InstructionsLoadedHookEvent,
 	ConfigChangeHookEvent,
 	MessageDisplayHookEvent,
+	StopFailureHookEvent,
+	PermissionDeniedHookEvent,
+	PostModelSwitchHookEvent,
+	ElicitationHookEvent,
+	ElicitationResultHookEvent,
 ]);
 
 export type HookEvent = z.infer<typeof HookEventEnvelope>;
@@ -1503,4 +1612,9 @@ export const KNOWN_HOOK_EVENTS: readonly HookEventName[] = [
 	"InstructionsLoaded",
 	"ConfigChange",
 	"MessageDisplay",
+	"StopFailure",
+	"PermissionDenied",
+	"PostModelSwitch",
+	"Elicitation",
+	"ElicitationResult",
 ];

@@ -56,6 +56,11 @@ import {z} from "zod";
 
 const StringArraySchema = z.array(z.string());
 
+/** `notificationType` of the notification a `StopFailure` persists. */
+const TURN_FAILED_NOTIFICATION = "turn_failed";
+/** `notificationType` of the notification an MCP `Elicitation` persists. */
+const MCP_ELICITATION_NOTIFICATION = "mcp_elicitation";
+
 /**
  * TTL covering the gap between the hook fast-path broadcast and the chokidar
  * trailing broadcast. With `awaitWriteFinish: {stabilityThreshold: 300}` on
@@ -437,11 +442,16 @@ export async function dispatchHookEvent({
 		// sessions that still want attention. No-op (no broadcast) when the
 		// session has no persisted notifications.
 		if (nextState === "working") clearNotificationsForSession(event.session_id);
-		// A turn that ended (Stop / SessionEnd) is no longer blocked on a tool permission prompt.
-		const turnEnded = event.hook_event_name === "Stop" || event.hook_event_name === "SessionEnd";
-		if (turnEnded) clearPermissionPromptsForSession(event.session_id);
+		// A turn that ended (Stop / StopFailure / SessionEnd) is no longer blocked
+		// on a tool permission prompt, and neither is a call the classifier denied.
+		const permissionPromptGone =
+			event.hook_event_name === "Stop" ||
+			event.hook_event_name === "StopFailure" ||
+			event.hook_event_name === "SessionEnd" ||
+			event.hook_event_name === "PermissionDenied";
+		if (permissionPromptGone) clearPermissionPromptsForSession(event.session_id);
 		// Either way the permission dialog the PermissionRequest hook described is gone.
-		if ((nextState === "working" || turnEnded) && entryBeforeDispatch?.pendingPermissionRequest) {
+		if ((nextState === "working" || permissionPromptGone) && entryBeforeDispatch?.pendingPermissionRequest) {
 			store.setPendingPermissionRequest(event.session_id, null);
 		}
 		trackPendingQuestion(event, broadcast);
@@ -883,6 +893,57 @@ export async function dispatchHookEvent({
 				message: event.message ?? event.delta,
 				messageId: event.message_id,
 			} satisfies MessageDisplayedPayload);
+			break;
+		}
+
+		case "StopFailure": {
+			// The turn ended on an API error instead of a Stop. The state change
+			// and permission-prompt cleanup above already ran; persist the error
+			// so a rate limit or auth failure is visible after the fact.
+			expirePendingApprovalForSession(event.session_id);
+			store.touchSession(event.session_id);
+			addNotification(db, {
+				sessionId: event.session_id,
+				cwd: event.cwd,
+				message: nonEmpty(event.last_assistant_message) ?? nonEmpty(event.error_details) ?? event.error,
+				title: `Turn failed: ${event.error}`,
+				notificationType: TURN_FAILED_NOTIFICATION,
+			});
+			break;
+		}
+
+		case "PermissionDenied": {
+			// The auto-mode classifier denied the call; the pending permission
+			// request and prompt notification were dropped above.
+			store.touchSession(event.session_id);
+			break;
+		}
+
+		case "PostModelSwitch": {
+			store.touchSession(event.session_id);
+			const context: SessionHookContextPayload = {sessionId: event.session_id, model: event.to_model};
+			recordHookContext(context);
+			broadcast(DOMAIN_EVENTS.SESSION_HOOK_CONTEXT_CHANGED, {...context});
+			break;
+		}
+
+		case "Elicitation": {
+			// An MCP server waits on the user. The waiting state was set above;
+			// the notification is cleared by the next working-state event, which
+			// ElicitationResult is.
+			store.touchSession(event.session_id);
+			addNotification(db, {
+				sessionId: event.session_id,
+				cwd: event.cwd,
+				message: event.message,
+				title: `${event.mcp_server_name} needs input`,
+				notificationType: MCP_ELICITATION_NOTIFICATION,
+			});
+			break;
+		}
+
+		case "ElicitationResult": {
+			store.touchSession(event.session_id);
 			break;
 		}
 

@@ -20,13 +20,18 @@ export function SessionHookContext({context, verbose}: {context: SessionHookCont
 	if (!verbose) return null;
 	const backgroundTasks = context.backgroundTasks ?? [];
 	const sessionCrons = context.sessionCrons ?? [];
-	const hasTurnContext = Boolean(context.promptId) || Boolean(context.permissionMode) || Boolean(context.effortLevel);
+	const hasTurnContext =
+		Boolean(context.promptId) ||
+		Boolean(context.permissionMode) ||
+		Boolean(context.effortLevel) ||
+		Boolean(context.model);
 	if (!hasTurnContext && backgroundTasks.length === 0 && sessionCrons.length === 0) return null;
 
 	return (
 		<section aria-label="Live hook context" className="mt-2 space-y-1.5">
 			{hasTurnContext && (
 				<div className="flex flex-wrap items-center gap-1.5">
+					{context.model && <ContextPill label="Model" value={context.model} />}
 					{context.permissionMode && <ContextPill label="Permission" value={context.permissionMode} />}
 					{context.effortLevel && (
 						<span className="inline-flex items-center gap-1">

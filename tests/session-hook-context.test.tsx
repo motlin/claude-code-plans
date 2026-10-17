@@ -39,6 +39,14 @@ describe("SessionHookContext", () => {
 		);
 	});
 
+	it("shows the model a mid-session switch moved to", () => {
+		const {getByRole} = render(
+			<SessionHookContext verbose context={{sessionId: "session-test-100", model: "claude-haiku-5-5"}} />,
+		);
+
+		expect(getByRole("region", {name: "Live hook context"}).textContent).toBe("Modelclaude-haiku-5-5");
+	});
+
 	it("renders nothing outside Verbose, as upstream's header shows only the title", () => {
 		const {container} = render(
 			<SessionHookContext

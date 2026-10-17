@@ -151,6 +151,20 @@ describe("herdr hook-state reporting", () => {
 		expect(events.map(stateForHerdrHookEvent)).toStrictEqual([null, null, null]);
 	});
 
+	it("maps turn failures and MCP elicitations to herdr states", () => {
+		const events: HookEvent[] = [
+			{...baseEvent, hook_event_name: "StopFailure", error: "rate_limit"},
+			{...baseEvent, hook_event_name: "Elicitation", mcp_server_name: "server-test", message: "Sign in"},
+			{...baseEvent, hook_event_name: "ElicitationResult", mcp_server_name: "server-test", action: "accept"},
+		];
+
+		expect(events.map(stateForHerdrHookEvent)).toStrictEqual([
+			{state: "idle", message: "turn failed: rate_limit"},
+			{state: "blocked", message: "waiting for server-test input"},
+			{state: "working", message: "answered server-test input"},
+		]);
+	});
+
 	it("keeps source sequence numbers increasing within a millisecond and across clock rewind", () => {
 		const timestamps = [946_684_800_000, 946_684_800_000, 946_684_799_000, 946_684_801_000];
 		const nextSequence = createHerdrSequence(() => {

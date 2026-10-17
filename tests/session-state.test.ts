@@ -213,6 +213,49 @@ const STATE_CASES = [
 		event: {...BASE_EVENT, hook_event_name: "MessageDisplay", message: "Test response"},
 		expected: "working",
 	},
+	{
+		name: "StopFailure ends the turn idle",
+		event: {...BASE_EVENT, hook_event_name: "StopFailure", error: "rate_limit"},
+		expected: "idle",
+	},
+	{
+		name: "PermissionDenied carries no state",
+		event: {
+			...BASE_EVENT,
+			hook_event_name: "PermissionDenied",
+			tool_name: "Bash",
+			tool_input: {command: "rm -rf /tmp/test/build"},
+			reason: "[Irreversible Local Destruction]",
+		},
+		expected: null,
+	},
+	{
+		name: "PostModelSwitch carries no state",
+		event: {
+			...BASE_EVENT,
+			hook_event_name: "PostModelSwitch",
+			from_model: "claude-sonnet-5-5",
+			to_model: "claude-haiku-5-5",
+			requested_model: "haiku",
+			source: "command",
+			context_tokens: 0,
+			prompt_cache_warm: false,
+			cache_ttl: "5m",
+			estimated_cache_write_usd: 0,
+			pricing: "catalog",
+		},
+		expected: null,
+	},
+	{
+		name: "Elicitation is waiting",
+		event: {...BASE_EVENT, hook_event_name: "Elicitation", mcp_server_name: "server-test", message: "Sign in"},
+		expected: "waiting",
+	},
+	{
+		name: "ElicitationResult is working",
+		event: {...BASE_EVENT, hook_event_name: "ElicitationResult", mcp_server_name: "server-test", action: "accept"},
+		expected: "working",
+	},
 ] satisfies StateCase[];
 
 describe("stateForEvent", () => {
