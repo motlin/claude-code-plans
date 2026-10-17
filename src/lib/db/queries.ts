@@ -334,6 +334,17 @@ export function getSessionTitlesByIds(db: IndexDb, ids: string[]): Record<string
 	return out;
 }
 
+/** Indexed display names for the given project ids; ids without a projects row are absent. */
+export function getProjectNamesByIds(db: IndexDb, ids: string[]): Map<string, string> {
+	if (ids.length === 0) return new Map();
+	const rows = db
+		.select({id: schema.projects.id, name: schema.projects.name})
+		.from(schema.projects)
+		.where(inArray(schema.projects.id, ids))
+		.all();
+	return new Map(rows.map((row) => [row.id, row.name]));
+}
+
 /** Subset of `ids` that exist in the sessions table. */
 export function getIndexedSessionIds(db: IndexDb, ids: string[]): Set<string> {
 	if (ids.length === 0) return new Set();

@@ -7,7 +7,7 @@ import {getRegistrySessionStates} from "./session-registry-store";
 import {ACTIVE_SESSION_WINDOW_MS} from "./active-session-window";
 import {getPendingApprovals, revalidatePendingApprovals} from "./db/pending-approvals-cache";
 import {getDb} from "./db";
-import {getSessionTitlesByIds} from "./db/queries";
+import {getProjectNamesByIds, getSessionTitlesByIds} from "./db/queries";
 import {getUnseenSessionIds} from "./db/viewed-state";
 import {isLiveSessionState, resolveMainState, type ActivityState} from "./session-state";
 
@@ -106,8 +106,14 @@ export async function scanActiveSessions(activeTimeoutMs = ACTIVE_SESSION_WINDOW
 	const candidateIds = candidates.map((candidate) => candidate.sessionId);
 	const titles = getSessionTitlesByIds(getDb().index, candidateIds);
 	const unseenIds = getUnseenSessionIds(getDb().index, candidateIds);
+	// The indexed name is the one /api/projects and the sidebar show (e.g. "repo/worktree");
+	// the filesystem decode is only a fallback for projects not yet indexed.
+	const projectNames = getProjectNamesByIds(getDb().index, [
+		...new Set(candidates.map((candidate) => candidate.projectDir)),
+	]);
 	return candidates.map((candidate) => ({
 		...candidate,
+		projectName: projectNames.get(candidate.projectDir) ?? candidate.projectName,
 		title: titles[candidate.sessionId] ?? candidate.sessionId,
 		unseen: unseenIds.has(candidate.sessionId),
 	}));

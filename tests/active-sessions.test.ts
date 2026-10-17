@@ -286,6 +286,32 @@ describe("scanActiveSessions", () => {
 		);
 	});
 
+	it("labels a session with its indexed project display name, matching /api/projects", async () => {
+		const cwd = "/Users/test/repo/.claude/worktrees/next-line";
+		const file = writeSessionFile(cwd, "worktree-session", new Date(Date.now() - 30_000));
+		const {scanMod, db} = await loadModules();
+		db.index
+			.insert(schema.projects)
+			.values({id: encode(cwd), name: "repo/next-line", projectPath: cwd, updatedAt: 0})
+			.run();
+
+		const result = await scanMod.scanActiveSessions();
+
+		expect(result).toStrictEqual([
+			{
+				sessionId: "worktree-session",
+				projectDir: encode(cwd),
+				projectName: "repo/next-line",
+				title: "worktree-session",
+				createdAt: statSync(file).birthtimeMs,
+				lastModified: statSync(file).mtimeMs,
+				state: "unknown",
+				unseen: false,
+				blockedSince: null,
+			},
+		]);
+	});
+
 	it("orders sessions by lastModified descending", async () => {
 		const now = Date.now();
 		writeSessionFile("/Users/test/alpha", "middle", new Date(now - 20_000));

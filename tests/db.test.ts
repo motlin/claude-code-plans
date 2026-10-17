@@ -162,6 +162,40 @@ describe("indexer", () => {
 		expect(abc.messageCount).toBe(0);
 	});
 
+	it("takes the project path from the entry whose cwd encodes to the project id, not a subdirectory session listed first", async () => {
+		const projectDir = join(testDir, "-Users-craig-projects");
+		mkdirSync(projectDir, {recursive: true});
+		writeFileSync(
+			join(projectDir, "sessions-index.json"),
+			makeSessionsIndex([
+				{
+					sessionId: "sub-1",
+					fullPath: join(projectDir, "sub-1.jsonl"),
+					fileMtime: Date.now(),
+					firstPrompt: "Work inside a child repo",
+					projectPath: "/Users/craig/projects/workflowy",
+				},
+				{
+					sessionId: "root-1",
+					fullPath: join(projectDir, "root-1.jsonl"),
+					fileMtime: Date.now(),
+					firstPrompt: "Work in the projects root",
+					projectPath: "/Users/craig/projects",
+				},
+			]),
+		);
+
+		await indexSessionsIndex(db.index, projectDir, "-Users-craig-projects");
+
+		const projects = db.index
+			.select({id: schema.projects.id, name: schema.projects.name, projectPath: schema.projects.projectPath})
+			.from(schema.projects)
+			.all();
+		expect(projects).toStrictEqual([
+			{id: "-Users-craig-projects", name: "projects", projectPath: "/Users/craig/projects"},
+		]);
+	});
+
 	it("skips unchanged files based on mtime", async () => {
 		const projectDir = join(testDir, "-Users-craig-projects-app");
 		mkdirSync(projectDir, {recursive: true});

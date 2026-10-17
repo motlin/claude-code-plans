@@ -428,8 +428,10 @@ export async function indexSessionsIndex(db: IndexDb, projectDir: string, projec
 	const result = SessionsIndexSchema.safeParse(parsed);
 	if (!result.success) return;
 
-	const firstEntry = result.data.entries[0];
-	const projectPath = firstEntry?.projectPath ?? null;
+	// A session started in a subdirectory can be listed first; prefer the cwd that encodes to this project's id.
+	const entryPaths = result.data.entries.flatMap((entry) => (entry.projectPath ? [entry.projectPath] : []));
+	const projectPath =
+		entryPaths.find((entryPath) => encodeProjectPath(entryPath) === project) ?? entryPaths[0] ?? null;
 
 	persistProject(db, project, projectPath, fileStat.mtimeMs);
 
