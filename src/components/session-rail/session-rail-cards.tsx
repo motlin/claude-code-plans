@@ -36,6 +36,8 @@ import {toConnectorSlug} from "../../lib/customize/mcp-tool-permissions";
 import {formatContextSummary, FIVE_HOUR_LABEL, WEEKLY_LABEL, type ComposerUsage} from "../../lib/composer-state";
 import type {PrStatus} from "../../lib/pr-status";
 import {formatCount} from "../../lib/pluralize";
+import {sessionEnvironment} from "../../lib/session-environment";
+import {claudeAiSessionUrl} from "../../lib/session-open-in";
 import type {PlanTodo} from "../../lib/session-plan-model";
 import {usePaneHost} from "../panes/pane-host-context";
 import {useToast} from "../toast-context";
@@ -51,6 +53,8 @@ export interface SessionRailInputs {
 	/** The composer chin's model label. */
 	model: string | null;
 	herdrPane: HerdrPaneIndexData["panes"][number] | null;
+	/** The session's CLI process is running: a bridged session's Remote Control is connected. */
+	live: boolean;
 	/** The composer chin's permission mode and effort labels. */
 	mode: string | null;
 	effort: string | null;
@@ -83,13 +87,15 @@ function Icon({icon: IconComponent}: {icon: LucideIcon}) {
 }
 
 /**
- * Upstream's Environment card: where the session runs, hinting "Not connected"
- * without Remote Control. Locally, its folder, branch, model and herdr pane.
+ * Upstream's Environment card: where the session runs. Locally, its folder
+ * hinted with its terminal host (herdr, tmux or Local), a Remote Control line
+ * linking to claude.ai when bridged, then its branch, model and herdr pane.
  */
 function EnvironmentBody({inputs}: {inputs: SessionRailInputs}) {
 	const toast = useToast();
 	const {cwd, gitBranch, model, herdrPane} = inputs;
-	const bridged = (useQuery(sessionOpenInQueryOptions(inputs.sessionId)).data?.bridgeSessionId ?? null) !== null;
+	const bridgeSessionId = useQuery(sessionOpenInQueryOptions(inputs.sessionId)).data?.bridgeSessionId ?? null;
+	const environment = sessionEnvironment({pane: herdrPane, bridged: bridgeSessionId !== null, live: inputs.live});
 	return (
 		<Rows>
 			{cwd !== null && (
@@ -107,9 +113,23 @@ function EnvironmentBody({inputs}: {inputs: SessionRailInputs}) {
 					<RailRowContent
 						icon={<Icon icon={Laptop} />}
 						label={homeRelative(cwd, inputs.homeRoot)}
-						hint={bridged ? "Remote Control" : "Not connected"}
+						hint={environment.label}
 					/>
 				</button>
+			)}
+			{cwd !== null && bridgeSessionId !== null && environment.remoteControl !== null && (
+				<a
+					href={claudeAiSessionUrl(bridgeSessionId)}
+					target="_blank"
+					rel="noopener noreferrer"
+					title="Open in claude.ai"
+					className={RAIL_ROW_ACTION_CLASS}
+				>
+					<span aria-hidden className="size-5 shrink-0" />
+					<span data-rail-row-label="" className="min-w-0 flex-1 truncate text-[13px] text-secondary">
+						{environment.remoteControl}
+					</span>
+				</a>
 			)}
 			{gitBranch !== null && (
 				<button

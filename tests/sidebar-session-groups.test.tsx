@@ -14,6 +14,7 @@ import {ToastProvider} from "../src/components/toast";
 import type {ReactNode} from "react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionGroups} from "../src/components/sidebar/session-groups";
+import {herdrPanesQueryOptions, type HerdrPaneIndexData} from "../src/lib/api/herdr";
 import {RecentSessionsResponse, recentSessionsInfiniteQueryOptions} from "../src/lib/api/sessions";
 import type {SessionBucket} from "../src/lib/session-state";
 import {readSidebarState} from "../src/lib/sidebar-store";
@@ -50,7 +51,42 @@ const FIXTURE = [
 	session("d2", "Completed older", "done", 30),
 ];
 
-function seedQueryClient(sessions: unknown[], nextCursor: string | null = null): QueryClient {
+type PaneHost = Pick<HerdrPaneIndexData["panes"][number], "host" | "paneId" | "workspaceId">;
+
+function pane(sessionId: string, {host, paneId, workspaceId}: PaneHost): HerdrPaneIndexData["panes"][number] {
+	return {
+		host,
+		paneId,
+		terminalId: `t-${sessionId}`,
+		workspaceId,
+		tabId: "tab1",
+		focused: false,
+		cwd: null,
+		foregroundCwd: null,
+		agentStatus: "idle",
+		agent: "claude",
+		terminalTitle: null,
+		agentSessionId: sessionId,
+		revision: 1,
+		sessionId,
+		via: "env",
+		viewedState: {
+			currentMessageIndex: 0,
+			lastViewedMessageIndex: 0,
+			reviewTargetMessageIndex: 0,
+			newMessageCount: 0,
+			viewedInCcp: true,
+			viewedInHerdr: false,
+			viewedAnywhere: true,
+		},
+	};
+}
+
+function seedQueryClient(
+	sessions: unknown[],
+	nextCursor: string | null = null,
+	panes: HerdrPaneIndexData["panes"] = [],
+): QueryClient {
 	const queryClient = new QueryClient({
 		defaultOptions: {
 			queries: {retry: false, staleTime: Infinity, gcTime: Infinity, refetchOnMount: false},
@@ -60,17 +96,23 @@ function seedQueryClient(sessions: unknown[], nextCursor: string | null = null):
 		pages: [RecentSessionsResponse.parse({sessions, nextCursor})],
 		pageParams: [null],
 	});
+	queryClient.setQueryData(herdrPanesQueryOptions.queryKey, {panes, writesEnabled: true});
 	return queryClient;
 }
 
 async function renderGroups(
 	sessions: unknown[],
-	options: {nextCursor?: string | null; filterSlot?: ReactNode; unseeded?: boolean} = {},
+	options: {
+		nextCursor?: string | null;
+		filterSlot?: ReactNode;
+		unseeded?: boolean;
+		panes?: HerdrPaneIndexData["panes"];
+	} = {},
 ) {
 	const queryClient =
 		options.unseeded === true
 			? new QueryClient({defaultOptions: {queries: {retry: false}}})
-			: seedQueryClient(sessions, options.nextCursor ?? null);
+			: seedQueryClient(sessions, options.nextCursor ?? null, options.panes);
 	const rootRoute = createRootRoute({
 		component: () => (
 			<QueryClientProvider client={queryClient}>
@@ -322,7 +364,6 @@ describe("sidebar SessionGroups", () => {
 	});
 
 	it("announces each row's status and environment in upstream's two sr-only siblings", async () => {
-		await renderGroups(FIXTURE.map((row) => (row.id === "b1" ? {...row, remoteControl: true} : row)));
 		const srOnlyOf = (name: RegExp) => {
 			const row = screen.getByRole("link", {name}).closest<HTMLElement>("[data-session-actions]");
 			if (row === null) throw new Error(`no row ${String(name)}`);
@@ -331,19 +372,52 @@ describe("sidebar SessionGroups", () => {
 				node.textContent,
 			]);
 		};
+		const environments = () =>
+			Object.fromEntries(FIXTURE.map((row) => [row.id, srOnlyOf(new RegExp(`^${row.title}$`))[1]?.[1] ?? null]));
+		const herdr = {host: "herdr", paneId: "wE:p2", workspaceId: "wE"} as const;
+		const named = {host: "herdr", paneId: "wM:p1@later", workspaceId: "wM@later"} as const;
+		const tmux = {host: "tmux", paneId: "%7", workspaceId: "work"} as const;
+		const bridged = new Set(["b1", "r1", "d1"]);
+		await renderGroups(
+			FIXTURE.map((row) => ({
+				...row,
+				...(bridged.has(row.id) ? {remoteControl: true} : {}),
+				...(row.id === "d1" ? {state: "ended"} : {}),
+			})),
+			{panes: [pane("b1", herdr), pane("w1", named), pane("r1", tmux)]},
+		);
+		const first = {awaiting: srOnlyOf(/^Blocked one$/), idle: srOnlyOf(/^Completed older$/), env: environments()};
+		cleanup();
+		await renderGroups(
+			FIXTURE.map((row) => (row.id === "w1" ? {...row, remoteControl: true} : row)),
+			{panes: [pane("b1", herdr), pane("w1", named), pane("r1", tmux)]},
+		);
 
-		expect({
-			awaitingConnected: srOnlyOf(/^Blocked one$/),
-			idleLocal: srOnlyOf(/^Completed older$/),
-		}).toStrictEqual({
-			awaitingConnected: [
-				["status", "Awaiting input"],
-				[null, " Remote Control · Connected"],
-			],
-			idleLocal: [
-				["status", ""],
-				[null, " Local"],
-			],
+		expect({first, second: environments()}).toStrictEqual({
+			first: {
+				awaiting: [
+					["status", "Awaiting input"],
+					[null, " herdr · Remote Control · Connected"],
+				],
+				idle: [
+					["status", ""],
+					[null, " Local"],
+				],
+				env: {
+					d1: " Local · Remote Control · Offline",
+					w1: " herdr · later",
+					r1: " tmux · work · Remote Control · Connected",
+					b1: " herdr · Remote Control · Connected",
+					d2: " Local",
+				},
+			},
+			second: {
+				d1: " Local",
+				w1: " herdr · later · Remote Control · Connected",
+				r1: " tmux · work",
+				b1: " herdr",
+				d2: " Local",
+			},
 		});
 	});
 

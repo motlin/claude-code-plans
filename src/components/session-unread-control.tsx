@@ -1,6 +1,9 @@
+import {useQuery} from "@tanstack/react-query";
 import {Laptop} from "lucide-react";
+import {herdrPanesQueryOptions, type HerdrPaneIndexData} from "../lib/api/herdr";
 import type {SessionListItem} from "../lib/api/sessions";
 import {prGlyph} from "../lib/pr-status";
+import {sessionEnvironment, sessionEnvironmentText} from "../lib/session-environment";
 import {sessionMenuReadState, type SessionMenuReadState} from "../lib/session-menu-items";
 import {isLiveSessionState, sessionRowIconKind} from "../lib/session-state";
 import {toggleUnseen} from "../lib/unread-store";
@@ -66,15 +69,16 @@ const SR_ROW_STATUS_LABELS = {
 } satisfies Record<SessionMenuReadState, string>;
 
 /**
- * Upstream's sr-only environment text: a Remote Control session reads as connected while its
- * CLI process lives, any other session as its environment kind, then the PR state.
+ * Upstream's sr-only environment text: where the session runs (its terminal
+ * host, or Local), its Remote Control status when bridged, then the PR state.
  */
-function rowEnvironmentText(session: SessionListItem): string {
-	const env =
-		session.remoteControl === true
-			? `Remote Control · ${isLiveSessionState(session.state) ? "Connected" : "Offline"}`
-			: "Local";
-	const parts = [env];
+function rowEnvironmentText(session: SessionListItem, pane: HerdrPaneIndexData["panes"][number] | null): string {
+	const environment = sessionEnvironment({
+		pane,
+		bridged: session.remoteControl === true,
+		live: isLiveSessionState(session.state),
+	});
+	const parts = [sessionEnvironmentText(environment)];
 	if (session.prStatus !== undefined) parts.push(GIT_PR_STATE_LABELS[prGlyph(session.prStatus).state]);
 	return ` ${parts.join(" · ")}`;
 }
@@ -89,6 +93,8 @@ function rowEnvironmentText(session: SessionListItem): string {
 export function SidebarRowDecoration({session}: {session: SessionListItem}) {
 	const unseen = useHasUnseenWork(session.id);
 	const {settings} = useSettings();
+	const {data: herdr} = useQuery(herdrPanesQueryOptions);
+	const pane = herdr?.panes.find((candidate) => candidate.sessionId === session.id) ?? null;
 	const kind = sessionRowIconKind({
 		bucket: session.bucket,
 		unseen,
@@ -123,7 +129,7 @@ export function SidebarRowDecoration({session}: {session: SessionListItem}) {
 			<span role="status" className={srClass}>
 				{SR_ROW_STATUS_LABELS[sessionMenuReadState(session.bucket, unseen)]}
 			</span>
-			<span className={srClass}>{rowEnvironmentText(session)}</span>
+			<span className={srClass}>{rowEnvironmentText(session, pane)}</span>
 		</>
 	);
 }

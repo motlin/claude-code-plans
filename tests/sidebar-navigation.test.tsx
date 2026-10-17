@@ -31,6 +31,7 @@ import {NAV_SECTIONS} from "../src/lib/nav-sections";
 import {redirectLegacyPlugins} from "../src/routes/plugins";
 import {ToastProvider} from "../src/components/toast";
 import {onHomeComposerFocusRequest} from "../src/lib/home-composer-focus";
+import {herdrPanesQueryOptions} from "../src/lib/api/herdr";
 import {plansQueryOptions} from "../src/lib/api/plans";
 
 function seedQueryClient(): QueryClient {
@@ -55,6 +56,7 @@ function seedQueryClient(): QueryClient {
 		],
 	});
 	queryClient.setQueryData(notificationsQueryOptions().queryKey, {notifications: []});
+	queryClient.setQueryData(herdrPanesQueryOptions.queryKey, {panes: [], writesEnabled: true});
 	queryClient.setQueryData(plansQueryOptions().queryKey, [
 		{
 			filename: "plan-test-alpha.md",

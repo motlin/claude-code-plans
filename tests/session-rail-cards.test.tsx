@@ -53,6 +53,7 @@ const BASE: SessionRailInputs = {
 	gitBranch: "alice/sync-upstream",
 	model: "Opus 4.7",
 	herdrPane: null,
+	live: true,
 	mode: null,
 	effort: null,
 	usage: null,
@@ -232,53 +233,140 @@ function rows(section: string): Array<[string, string | null]> {
 }
 
 describe("Environment card", () => {
-	it("lists the working directory with its Remote Control status, branch, model and a missing herdr pane", async () => {
+	function bridge(client: QueryClient) {
+		client.setQueryData(sessionOpenInQueryOptions(SESSION_ID).queryKey, {
+			cwd: BASE.cwd,
+			bridgeSessionId: "cse_bridge",
+		});
+	}
+
+	function remoteControlLinks() {
+		const card = screen.getByRole("region", {name: /^Environment/});
+		return within(card)
+			.queryAllByRole("link", {name: /Remote Control/})
+			.map((link) => [
+				link.textContent,
+				link.getAttribute("href"),
+				link.getAttribute("target"),
+				link.getAttribute("title"),
+			]);
+	}
+
+	it("labels a session no terminal host owns Local, with its branch, model and a missing herdr pane", async () => {
 		await renderCards(BASE);
 
-		expect(rows("Environment")).toStrictEqual([
-			["~/projects/avalonlogs", "Not connected"],
-			["alice/sync-upstream", null],
-			["Opus 4.7", null],
-			["herdr", "No pane"],
-		]);
+		expect({rows: rows("Environment"), remoteControl: remoteControlLinks()}).toStrictEqual({
+			rows: [
+				["~/projects/avalonlogs", "Local"],
+				["alice/sync-upstream", null],
+				["Opus 4.7", null],
+				["herdr", "No pane"],
+			],
+			remoteControl: [],
+		});
 	});
 
-	it("shows a Remote Control connection and a live herdr pane's agent status, linking to its terminal", async () => {
-		await renderCards({...BASE, gitBranch: null, model: null, herdrPane: PANE}, (client) => {
-			client.setQueryData(sessionOpenInQueryOptions(SESSION_ID).queryKey, {
-				cwd: BASE.cwd,
-				bridgeSessionId: "session_bridge",
-			});
+	it("adds an offline Remote Control line linking to claude.ai under a bridged Local session", async () => {
+		await renderCards({...BASE, gitBranch: null, model: null, live: false}, bridge);
+
+		expect({rows: rows("Environment"), remoteControl: remoteControlLinks()}).toStrictEqual({
+			rows: [
+				["~/projects/avalonlogs", "Local"],
+				["Remote Control · Offline", null],
+				["herdr", "No pane"],
+			],
+			remoteControl: [
+				["Remote Control · Offline", "https://claude.ai/code/session_bridge", "_blank", "Open in claude.ai"],
+			],
 		});
+	});
+
+	it("labels a herdr session herdr and links its live pane's agent status to its terminal", async () => {
+		await renderCards({...BASE, gitBranch: null, model: null, herdrPane: PANE});
 		const card = screen.getByRole("region", {name: /^Environment/});
 
 		expect({
 			rows: rows("Environment"),
 			href: within(card).getByRole("link", {name: /herdr/}).getAttribute("href"),
+			remoteControl: remoteControlLinks(),
 		}).toStrictEqual({
 			rows: [
-				["~/projects/avalonlogs", "Remote Control"],
+				["~/projects/avalonlogs", "herdr"],
 				["herdr", "working"],
 			],
 			href: `/terminals/terminal/${SESSION_ID}`,
+			remoteControl: [],
 		});
 	});
 
-	it("shows a tmux pane by its pane id, without a terminal link until tmux streams", async () => {
-		await renderCards({
+	it("shows Remote Control as a connected secondary line under a bridged herdr session", async () => {
+		await renderCards({...BASE, gitBranch: null, model: null, herdrPane: PANE}, bridge);
+
+		expect({rows: rows("Environment"), remoteControl: remoteControlLinks()}).toStrictEqual({
+			rows: [
+				["~/projects/avalonlogs", "herdr"],
+				["Remote Control · Connected", null],
+				["herdr", "working"],
+			],
+			remoteControl: [
+				["Remote Control · Connected", "https://claude.ai/code/session_bridge", "_blank", "Open in claude.ai"],
+			],
+		});
+	});
+
+	it("names a herdr named session beside herdr, bridged or not", async () => {
+		const named = {...PANE, paneId: "wM:p1@later", workspaceId: "wM@later"};
+		await renderCards({...BASE, gitBranch: null, model: null, herdrPane: named});
+		const plain = rows("Environment");
+		cleanup();
+		await renderCards({...BASE, gitBranch: null, model: null, herdrPane: named}, bridge);
+
+		expect({plain, bridged: rows("Environment")}).toStrictEqual({
+			plain: [
+				["~/projects/avalonlogs", "herdr · later"],
+				["herdr", "working"],
+			],
+			bridged: [
+				["~/projects/avalonlogs", "herdr · later"],
+				["Remote Control · Connected", null],
+				["herdr", "working"],
+			],
+		});
+	});
+
+	it("labels a tmux session by its tmux session and shows its pane id, without a terminal link", async () => {
+		const tmux: SessionRailInputs = {
 			...BASE,
 			gitBranch: null,
 			model: null,
-			herdrPane: {...PANE, host: "tmux", paneId: "%7", agentStatus: "unknown", via: "process"},
-		});
+			herdrPane: {
+				...PANE,
+				host: "tmux",
+				paneId: "%7",
+				workspaceId: "work",
+				agentStatus: "unknown",
+				via: "process",
+			},
+		};
+		await renderCards(tmux);
 		const card = screen.getByRole("region", {name: /^Environment/});
+		const plain = {rows: rows("Environment"), links: within(card).queryAllByRole("link")};
+		cleanup();
+		await renderCards(tmux, bridge);
 
-		expect({rows: rows("Environment"), links: within(card).queryAllByRole("link")}).toStrictEqual({
-			rows: [
-				["~/projects/avalonlogs", "Not connected"],
+		expect({plain, bridged: rows("Environment")}).toStrictEqual({
+			plain: {
+				rows: [
+					["~/projects/avalonlogs", "tmux · work"],
+					["tmux", "%7"],
+				],
+				links: [],
+			},
+			bridged: [
+				["~/projects/avalonlogs", "tmux · work"],
+				["Remote Control · Connected", null],
 				["tmux", "%7"],
 			],
-			links: [],
 		});
 	});
 });
