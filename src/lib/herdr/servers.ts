@@ -114,6 +114,28 @@ function herdrSessionForEntry(
 	return session && session !== "default" ? session : null;
 }
 
+/**
+ * The server a new herdr launch goes to. tmux launches follow the most
+ * recently active client, but herdr's API exposes no per-client activity, so
+ * this uses the closest signal ccp has: the live server whose hook-reported
+ * Claude session was active most recently. With none, the default server.
+ */
+export function chooseHerdrLaunchServer(
+	entries: readonly Pick<ActiveSessionEntry, "herdrPane" | "herdrSocketPath" | "claudeEnv" | "lastActivity">[],
+	liveServers: readonly HerdrServer[],
+	env: NodeJS.ProcessEnv = process.env,
+): HerdrServer {
+	let best: {lastActivity: number; server: HerdrServer} | null = null;
+	for (const entry of entries) {
+		if (entry.herdrPane === "") continue;
+		const session = herdrSessionForEntry(entry, env);
+		const server = liveServers.find((candidate) => candidate.session === session);
+		if (server === undefined) continue;
+		if (best === null || entry.lastActivity > best.lastActivity) best = {lastActivity: entry.lastActivity, server};
+	}
+	return best?.server ?? {session: null, socketPath: defaultSocketPath(env)};
+}
+
 /** The entry's `HERDR_PANE_ID`, qualified by the server it came from. Empty when outside herdr. */
 export function qualifiedEntryHerdrPane(
 	entry: Pick<ActiveSessionEntry, "herdrPane" | "herdrSocketPath" | "claudeEnv">,

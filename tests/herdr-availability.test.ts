@@ -3,7 +3,7 @@ import {createServer, type Server, type Socket} from "node:net";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
-import {__testing, probeHerdr} from "../src/lib/herdr/availability";
+import {__testing, probeAnyHerdr, probeHerdr} from "../src/lib/herdr/availability";
 
 describe("probeHerdr", () => {
 	const originalSocketPath = process.env["HERDR_SOCKET_PATH"];
@@ -110,5 +110,30 @@ describe("probeHerdr", () => {
 			socketPath,
 			reason: "bad-response",
 		});
+	});
+});
+
+describe("probeAnyHerdr", () => {
+	const probe = (live: readonly string[], calls: string[]) => async (socketPath: string) => {
+		calls.push(socketPath);
+		return Promise.resolve(
+			live.includes(socketPath)
+				? {available: true, socketPath, version: "1", protocol: 22}
+				: {available: false, socketPath, reason: "no-socket" as const},
+		);
+	};
+
+	it("reports herdr available when only a named session answers", async () => {
+		const calls: string[] = [];
+		await expect(
+			probeAnyHerdr(["/tmp/test/default.sock", "/tmp/test/later.sock"], probe(["/tmp/test/later.sock"], calls)),
+		).resolves.toBe(true);
+		expect(calls).toStrictEqual(["/tmp/test/default.sock", "/tmp/test/later.sock"]);
+	});
+
+	it("reports herdr unavailable when no server answers", async () => {
+		await expect(probeAnyHerdr(["/tmp/test/default.sock", "/tmp/test/later.sock"], probe([], []))).resolves.toBe(
+			false,
+		);
 	});
 });

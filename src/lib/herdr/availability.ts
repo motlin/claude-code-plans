@@ -12,22 +12,17 @@ export interface HerdrAvailability {
 	reason?: "no-socket" | "connect-failed" | "timeout" | "bad-response";
 }
 
-interface AvailabilityCache {
+interface AvailabilityCacheEntry {
 	expiresAt: number;
 	pending: Promise<HerdrAvailability> | null;
-	pendingSocketPath: string;
 	result: HerdrAvailability | null;
 }
 
 const CACHE_TTL_MS = 30_000;
 const PROBE_TIMEOUT_MS = 1500;
 
-const cache = hmrPersist<AvailabilityCache>("herdrAvailability", () => ({
-	expiresAt: 0,
-	pending: null,
-	pendingSocketPath: "",
-	result: null,
-}));
+/** One entry per probed socket path. */
+const cache = hmrPersist<Map<string, AvailabilityCacheEntry>>("herdrAvailabilityBySocket", () => new Map());
 
 function unavailable(socketPath: string, reason: NonNullable<HerdrAvailability["reason"]>): HerdrAvailability {
 	return {available: false, socketPath, reason};
@@ -76,36 +71,37 @@ export async function probeHerdrSocket(socketPath: string): Promise<HerdrAvailab
 	return runProbe(socketPath).catch(() => unavailable(socketPath, "connect-failed"));
 }
 
-/** Probe the local herdr API, caching availability for thirty seconds. */
-export async function probeHerdr(): Promise<HerdrAvailability> {
-	const socketPath = resolvedSocketPath();
-	const now = Date.now();
-	if (cache.result?.socketPath === socketPath && now < cache.expiresAt) {
-		return Promise.resolve(cache.result);
-	}
-	if (cache.pending && cache.pendingSocketPath === socketPath) return cache.pending;
+/** Probe a herdr API socket (the default one when omitted), caching availability for thirty seconds. */
+export async function probeHerdr(socketPath: string = resolvedSocketPath()): Promise<HerdrAvailability> {
+	const entry = cache.get(socketPath) ?? {expiresAt: 0, pending: null, result: null};
+	cache.set(socketPath, entry);
+	if (entry.result !== null && Date.now() < entry.expiresAt) return Promise.resolve(entry.result);
+	if (entry.pending) return entry.pending;
 
-	const pending = runProbe(socketPath)
-		.catch(() => unavailable(socketPath, "connect-failed"))
-		.then((result) => {
-			cache.result = result;
-			cache.expiresAt = Date.now() + CACHE_TTL_MS;
-			if (cache.pending === pending) {
-				cache.pending = null;
-				cache.pendingSocketPath = "";
-			}
-			return result;
-		});
-	cache.pending = pending;
-	cache.pendingSocketPath = socketPath;
+	const pending = probeHerdrSocket(socketPath).then((result) => {
+		entry.result = result;
+		entry.expiresAt = Date.now() + CACHE_TTL_MS;
+		if (entry.pending === pending) entry.pending = null;
+		return result;
+	});
+	entry.pending = pending;
 	return pending;
+}
+
+/**
+ * Whether any herdr server answers: the default one or a named session, so a
+ * herdr running only as `herdr --session <name>` still counts as available.
+ */
+export async function probeAnyHerdr(
+	socketPaths: readonly string[],
+	probe: (socketPath: string) => Promise<HerdrAvailability> = probeHerdr,
+): Promise<boolean> {
+	const results = await Promise.all(socketPaths.map(probe));
+	return results.some((result) => result.available);
 }
 
 export const __testing = {
 	clearCache: (): void => {
-		cache.expiresAt = 0;
-		cache.pending = null;
-		cache.pendingSocketPath = "";
-		cache.result = null;
+		cache.clear();
 	},
 };

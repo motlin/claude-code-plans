@@ -93,6 +93,7 @@ function dependencies(overrides: Partial<HerdrLaunchDependencies> = {}): HerdrLa
 		createLaunchId: () => "test100",
 		wait: async () => {},
 		homeDir: () => "/Users/alice",
+		launchServer: () => ({session: null, socketPath: "/tmp/test/default/herdr.sock"}),
 		...overrides,
 	};
 }
@@ -380,6 +381,54 @@ describe("herdr launch write handler", () => {
 		}).toStrictEqual({
 			response: {body: {error: "herdr returned an invalid tab.create result"}, status: 502},
 			requestCount: 1,
+		});
+	});
+
+	it("launches into the chosen named herdr server and answers with that server's qualified ids", async () => {
+		const requests: {method: string; params: unknown; socketPath: string | undefined}[] = [];
+		const responses: Record<string, HerdrResult<unknown>> = {
+			"tab.create": {ok: true, value: tabCreated},
+			"agent.start": {ok: true, value: agentStarted(["claude"])},
+			"agent.prompt": {ok: true, value: {type: "ok"}},
+		};
+		const requester: HerdrRequester = async (requestValue, _timeoutMs, socketPath) => {
+			const {method, params} = requestValue as {method: string; params: unknown};
+			requests.push({method, params, socketPath});
+			return Promise.resolve(responses[method] ?? {ok: false, code: "unexpected", message: method});
+		};
+
+		const response = await handleHerdrLaunch(
+			request({cwd: "/Users/alice/project", prompt: "hello"}),
+			dependencies({
+				request: requester,
+				launchServer: () => ({session: "later", socketPath: "/tmp/test/later/herdr.sock"}),
+			}),
+		);
+
+		expect({response: await describeResponse(response), requests}).toStrictEqual({
+			response: {
+				body: {ok: true, tabId: "w100:t100@later", paneId: "w100:p100@later", sessionId: "session-test-200"},
+				status: 200,
+			},
+			requests: [
+				{
+					method: "tab.create",
+					params: {cwd: "/Users/alice/project", focus: false},
+					socketPath: "/tmp/test/later/herdr.sock",
+				},
+				{
+					method: "agent.start",
+					params: {
+						name: "ccp-test100",
+						kind: "claude",
+						pane_id: "w100:p100@later",
+						args: [],
+						timeout_ms: 30000,
+					},
+					socketPath: undefined,
+				},
+				{method: "agent.prompt", params: {target: "w100:p100@later", text: "hello"}, socketPath: undefined},
+			],
 		});
 	});
 });

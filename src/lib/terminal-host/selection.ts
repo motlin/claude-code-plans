@@ -1,5 +1,7 @@
 import {execFile} from "node:child_process";
-import {probeHerdr} from "../herdr/availability";
+import {getActiveSessionEntries} from "../active-session-store";
+import {probeAnyHerdr} from "../herdr/availability";
+import {discoverLiveHerdrServers} from "../herdr/servers";
 import {hmrPersist} from "../hmr-persist";
 import {nonEmpty} from "../non-empty";
 import type {TerminalHostSetting} from "../terminal-host-setting";
@@ -8,7 +10,7 @@ import type {TerminalHostSetting} from "../terminal-host-setting";
 export type TerminalHostId = "herdr" | "tmux";
 
 export interface TerminalHostProbes {
-	/** Whether herdr's API socket answers a ping. */
+	/** Whether any herdr server's API socket (default or a named session) answers a ping. */
 	herdrAvailable: () => Promise<boolean>;
 	/** Whether this process runs inside tmux or a tmux server is up. */
 	tmuxAvailable: () => Promise<boolean>;
@@ -62,6 +64,11 @@ async function tmuxServerRunning(): Promise<boolean> {
 }
 
 export const defaultTerminalHostProbes: TerminalHostProbes = {
-	herdrAvailable: async () => (await probeHerdr()).available,
+	herdrAvailable: async () =>
+		probeAnyHerdr(
+			discoverLiveHerdrServers(getActiveSessionEntries().map((entry) => entry.herdrSocketPath)).map(
+				(server) => server.socketPath,
+			),
+		),
 	tmuxAvailable: async () => detectTmux(),
 };

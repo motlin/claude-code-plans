@@ -3,8 +3,11 @@ import {z} from "zod";
 import {validateClaudeLaunchArgs} from "../claude-launch-command";
 import {terminalWritesEnabled} from "../config";
 import {rejectCrossSite} from "../same-origin-guard";
+import {getActiveSessionEntries} from "../active-session-store";
 import {herdrRequest, type HerdrResult} from "./client";
+import {qualifyHerdrId} from "./herdr-id";
 import type {HerdrRequester} from "./panes";
+import {chooseHerdrLaunchServer, knownHerdrServers, type HerdrServer} from "./servers";
 import {HerdrAgentStartedResultSchema, HerdrTabCreatedResultSchema} from "./schema";
 
 const AGENT_START_TIMEOUT_MS = 30_000;
@@ -50,10 +53,12 @@ export interface HerdrLaunchDependencies {
 	createLaunchId: () => string;
 	wait: (ms: number) => Promise<void>;
 	homeDir: () => string;
+	/** The herdr server the new tab opens on (see `chooseHerdrLaunchServer`). */
+	launchServer: () => HerdrServer;
 	/** Opens the new pane running `claude`; herdr's tab and agent when absent. */
 	launchClaude?: (
 		launch: LaunchClaudeRequest,
-		dependencies: Pick<HerdrLaunchDependencies, "request" | "createLaunchId" | "wait">,
+		dependencies: Pick<HerdrLaunchDependencies, "request" | "createLaunchId" | "wait" | "launchServer">,
 	) => Promise<HerdrResult<HerdrLaunchResult>>;
 }
 
@@ -67,6 +72,7 @@ export const defaultHerdrLaunchDependencies: HerdrLaunchDependencies = {
 			setTimeout(resolve, ms);
 		}),
 	homeDir: homedir,
+	launchServer: () => chooseHerdrLaunchServer(getActiveSessionEntries(), knownHerdrServers()),
 };
 
 function failure(code: string, message: string): HerdrResult<never> {
@@ -80,20 +86,32 @@ function failure(code: string, message: string): HerdrResult<never> {
  */
 async function launchClaudeInHerdr(
 	{cwd, prompt, args = []}: LaunchClaudeRequest,
-	{request, createLaunchId, wait}: Pick<HerdrLaunchDependencies, "request" | "createLaunchId" | "wait">,
+	{
+		request,
+		createLaunchId,
+		wait,
+		launchServer,
+	}: Pick<HerdrLaunchDependencies, "request" | "createLaunchId" | "wait" | "launchServer">,
 ): Promise<HerdrResult<HerdrLaunchResult>> {
 	const launchId = createLaunchId();
 	const requestId = (method: string) => `ccp:launch:${launchId}:${method}`;
 
-	const tabResponse = await request({
-		id: requestId("tab.create"),
-		method: "tab.create",
-		params: {cwd, focus: false},
-	});
+	const server = launchServer();
+	// The new tab's ids come back raw from its server; qualifying them routes every later request there too.
+	const qualify = (id: string) => qualifyHerdrId(id, server.session);
+	const tabResponse = await request(
+		{
+			id: requestId("tab.create"),
+			method: "tab.create",
+			params: {cwd, focus: false},
+		},
+		undefined,
+		server.socketPath,
+	);
 	if (!tabResponse.ok) return tabResponse;
 	const tab = HerdrTabCreatedResultSchema.safeParse(tabResponse.value);
 	if (!tab.success) return failure("bad-response", "herdr returned an invalid tab.create result");
-	const tabId = tab.data.tab.tab_id;
+	const tabId = qualify(tab.data.tab.tab_id);
 
 	const startResponse = await request(
 		{
@@ -102,7 +120,7 @@ async function launchClaudeInHerdr(
 			params: {
 				name: `ccp-${launchId}`,
 				kind: "claude",
-				pane_id: tab.data.root_pane.pane_id,
+				pane_id: qualify(tab.data.root_pane.pane_id),
 				args,
 				timeout_ms: AGENT_START_TIMEOUT_MS,
 			},
@@ -117,12 +135,12 @@ async function launchClaudeInHerdr(
 			: startResponse;
 	}
 
-	const {agent} = started.data;
+	const paneId = qualify(started.data.agent.pane_id);
 	if (prompt !== undefined) {
 		const promptRequest = {
 			id: requestId("agent.prompt"),
 			method: "agent.prompt",
-			params: {target: agent.pane_id, text: prompt},
+			params: {target: paneId, text: prompt},
 		};
 		let promptResponse = await request(promptRequest);
 		for (
@@ -140,8 +158,8 @@ async function launchClaudeInHerdr(
 		ok: true,
 		value: {
 			tabId,
-			paneId: agent.pane_id,
-			sessionId: agent.agent_session?.value ?? null,
+			paneId,
+			sessionId: started.data.agent.agent_session?.value ?? null,
 		},
 	};
 }

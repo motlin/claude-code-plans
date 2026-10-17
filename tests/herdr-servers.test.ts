@@ -1,6 +1,7 @@
 import {describe, expect, it} from "vite-plus/test";
 import {qualifyHerdrId, splitHerdrId} from "../src/lib/herdr/herdr-id";
 import {
+	chooseHerdrLaunchServer,
 	discoverHerdrServers,
 	herdrServerForSocketPath,
 	herdrSocketPathForServer,
@@ -173,6 +174,51 @@ describe("qualifying named-server state", () => {
 				previous_pane_id: "wM:p1@later",
 				pane: {...pane, pane_id: "wM:p1@later", workspace_id: "wM@later", tab_id: "wM:t1@later"},
 			},
+		]);
+	});
+});
+
+describe("chooseHerdrLaunchServer", () => {
+	const LIVE = [
+		{session: null, socketPath: DEFAULT_SOCKET},
+		{session: "later", socketPath: LATER_SOCKET},
+	];
+	const entry = (lastActivity: number, herdrSocketPath: string, herdrPane = "w1:p1") => ({
+		lastActivity,
+		herdrPane,
+		herdrSocketPath,
+		claudeEnv: {},
+	});
+
+	it("picks the live server of the most recently active herdr session", () => {
+		expect(
+			chooseHerdrLaunchServer(
+				[entry(100, DEFAULT_SOCKET), entry(300, LATER_SOCKET), entry(500, DEFAULT_SOCKET, "")],
+				LIVE,
+				ENV,
+			),
+		).toStrictEqual({session: "later", socketPath: LATER_SOCKET});
+	});
+
+	it("names the server from HERDR_SESSION when the hook reported no socket", () => {
+		expect(
+			chooseHerdrLaunchServer(
+				[{lastActivity: 1, herdrPane: "w1:p1", herdrSocketPath: "", claudeEnv: {HERDR_SESSION: "later"}}],
+				LIVE,
+				ENV,
+			),
+		).toStrictEqual({session: "later", socketPath: LATER_SOCKET});
+	});
+
+	it("skips sessions on servers that are no longer live and falls back to the default server", () => {
+		expect([
+			chooseHerdrLaunchServer([entry(900, "/tmp/test/gone/herdr.sock"), entry(100, DEFAULT_SOCKET)], LIVE, ENV),
+			chooseHerdrLaunchServer([entry(900, "/tmp/test/gone/herdr.sock")], LIVE, ENV),
+			chooseHerdrLaunchServer([], [], ENV),
+		]).toStrictEqual([
+			{session: null, socketPath: DEFAULT_SOCKET},
+			{session: null, socketPath: DEFAULT_SOCKET},
+			{session: null, socketPath: DEFAULT_SOCKET},
 		]);
 	});
 });
