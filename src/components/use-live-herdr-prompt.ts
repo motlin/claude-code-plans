@@ -5,7 +5,7 @@ import {isAgentNotReady, sendHerdrPrompt} from "../lib/api/herdr";
 export function useLiveHerdrPrompt(
 	sessionId: string,
 	transcriptRecordCount: number,
-	postPrompt: (sessionId: string, prompt: string) => Promise<void> = sendHerdrPrompt,
+	postPrompt: (sessionId: string, prompt: string, options: {midTurn?: true}) => Promise<void> = sendHerdrPrompt,
 ) {
 	const [state, setState] = useState<LiveHerdrPromptState>(EMPTY_LIVE_HERDR_PROMPT_STATE);
 	const pendingRecordCountRef = useRef<number | null>(null);
@@ -23,11 +23,11 @@ export function useLiveHerdrPrompt(
 	}, [transcriptRecordCount]);
 
 	const send = useCallback(
-		async (prompt: string): Promise<DeliveryResult> => {
+		async (prompt: string, options: {midTurn?: true} = {}): Promise<DeliveryResult> => {
 			pendingRecordCountRef.current = transcriptRecordCount;
 			setState({error: "", isPending: true, prompt});
 			try {
-				await postPrompt(sessionId, prompt);
+				await postPrompt(sessionId, prompt, options);
 				return "sent";
 			} catch (error) {
 				pendingRecordCountRef.current = null;

@@ -10,6 +10,8 @@ import {assertNever} from "./assert-never";
 export interface QueuedPrompt {
 	id: string;
 	text: string;
+	/** Sent over a skipped question: delivered as soon as no dialog is open, even mid-turn. */
+	midTurn?: true;
 }
 
 export type ComposerQueueAction =
@@ -41,9 +43,18 @@ export function composerQueueReducer(
 	}
 }
 
-/** The prompt to send next: the head of the queue, once the session is idle. */
-export function nextQueuedPrompt(queue: readonly QueuedPrompt[], busy: boolean): QueuedPrompt | null {
-	return busy ? null : (queue[0] ?? null);
+/**
+ * The prompt to send next: the head of the queue, once the session is idle, or
+ * a mid-turn head as soon as the pane shows no dialog.
+ */
+export function nextQueuedPrompt(
+	queue: readonly QueuedPrompt[],
+	busy: boolean,
+	dialogOpen = false,
+): QueuedPrompt | null {
+	const head = queue[0] ?? null;
+	if (head === null) return null;
+	return (head.midTurn === true ? dialogOpen : busy) ? null : head;
 }
 
 export function queuedStatusText(count: number): string {
@@ -56,8 +67,10 @@ let queues = new Map<string, readonly QueuedPrompt[]>();
 const listeners = new Set<() => void>();
 let nextId = 1;
 
-export function newQueuedPrompt(text: string): QueuedPrompt {
-	return {id: `queued-${nextId++}`, text};
+export function newQueuedPrompt(text: string, {midTurn = false}: {midTurn?: boolean} = {}): QueuedPrompt {
+	const item: QueuedPrompt = {id: `queued-${nextId++}`, text};
+	if (midTurn) item.midTurn = true;
+	return item;
 }
 
 function getComposerQueue(sessionId: string): readonly QueuedPrompt[] {

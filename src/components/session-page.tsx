@@ -594,6 +594,7 @@ function SessionView({
 	const composerQueue = useComposerQueue({
 		sessionId,
 		busy: queueBusy,
+		dialogOpen: gateHoldsQueue(composerGate),
 		deliver: liveHerdrPrompt.send,
 		interrupt: interruptForSendNow,
 	});
@@ -603,8 +604,9 @@ function SessionView({
 		async (prompt: string) => {
 			switch (composerSend.kind) {
 				case "dismiss-question-then-queue":
-					// Upstream: a message sent under a question answers it as skipped, then goes as the next turn.
-					enqueuePrompt(prompt);
+					// Upstream: a message sent under a question answers it as skipped, then goes in right away;
+					// the queue types it mid-turn as soon as the hooks show the dialog closed.
+					enqueuePrompt(prompt, {midTurn: true});
 					try {
 						await sendHerdrQuestionAnswer(sessionId, composerSend.toolUseId, composerSend.answers);
 					} catch (error) {

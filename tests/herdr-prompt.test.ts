@@ -7,7 +7,9 @@ import type {HerdrResult} from "../src/lib/herdr/client";
 import {
 	handleHerdrPrompt,
 	herdrWritesEnabled,
+	midTurnPromptReady,
 	resolveHerdrPromptTarget,
+	type HerdrMidTurnDependencies,
 	type HerdrPromptDependencies,
 } from "../src/lib/herdr/prompt";
 import {createHerdrPaneTable, type HerdrPaneState} from "../src/lib/herdr/pane-table";
@@ -102,6 +104,22 @@ function dependencies(overrides: Partial<HerdrPromptDependencies> = {}): HerdrPr
 			}),
 		request: async () => Promise.resolve({ok: true, value: {type: "agent_prompted"}}),
 		createRequestId: () => "ccp:prompt:test-100",
+		midTurn: midTurnDependencies(),
+		...overrides,
+	};
+}
+
+function midTurnDependencies(overrides: Partial<HerdrMidTurnDependencies> = {}): HerdrMidTurnDependencies {
+	return {
+		ready: () => false,
+		resolveTarget: async () =>
+			Promise.resolve({
+				ok: true,
+				value: {terminalId: "terminal-test-100", paneId: "w100:p200"},
+			}),
+		request: async () => Promise.resolve({ok: true, value: {}}),
+		createRequestId: () => "ccp:mid-turn:test-100",
+		pause: async () => Promise.resolve(),
 		...overrides,
 	};
 }
@@ -290,6 +308,173 @@ describe("herdr prompt write handler", () => {
 		expect(await describeResponse(response)).toStrictEqual({
 			body: {error: `Fabricated ${code} reason`, code},
 			status,
+		});
+	});
+
+	it("types a mid-turn prompt as text then Enter into the freshly resolved pane while working with no dialog", async () => {
+		const calls: unknown[] = [];
+		const record: HerdrRequester = async (requestValue) => {
+			calls.push(requestValue);
+			return Promise.resolve({ok: true, value: {}});
+		};
+
+		const responses = [];
+		for (const prompt of ["Alice's follow-up", "First line\nSecond line"]) {
+			responses.push(
+				await describeResponse(
+					await handleHerdrPrompt(
+						request({sessionId: "session-test-100", prompt, midTurn: true}),
+						dependencies({
+							request: async () => Promise.reject(new Error("agent.prompt must not be used")),
+							midTurn: midTurnDependencies({
+								ready: (sessionId) => {
+									calls.push(`ready ${sessionId}`);
+									return true;
+								},
+								request: record,
+								pause: async () => {
+									calls.push("pause");
+									return Promise.resolve();
+								},
+							}),
+						}),
+					),
+				),
+			);
+		}
+
+		expect({responses, calls}).toStrictEqual({
+			responses: [
+				{body: {ok: true}, status: 200},
+				{body: {ok: true}, status: 200},
+			],
+			calls: [
+				"ready session-test-100",
+				"ready session-test-100",
+				{
+					id: "ccp:mid-turn:test-100",
+					method: "pane.send_text",
+					params: {pane_id: "w100:p200", text: "Alice's follow-up"},
+				},
+				"pause",
+				"ready session-test-100",
+				{
+					id: "ccp:mid-turn:test-100",
+					method: "agent.send_keys",
+					params: {target: "w100:p200", keys: ["enter"]},
+				},
+				"ready session-test-100",
+				"ready session-test-100",
+				{
+					id: "ccp:mid-turn:test-100",
+					method: "pane.send_text",
+					params: {pane_id: "w100:p200", text: "\u001b[200~First line\nSecond line\u001b[201~"},
+				},
+				"pause",
+				"ready session-test-100",
+				{
+					id: "ccp:mid-turn:test-100",
+					method: "agent.send_keys",
+					params: {target: "w100:p200", keys: ["enter"]},
+				},
+			],
+		});
+	});
+
+	it("sends a mid-turn prompt through the ready-checked agent.prompt when a dialog is pending or the state is not working", async () => {
+		const requests: unknown[] = [];
+		const midTurnRequests: unknown[] = [];
+
+		const response = await handleHerdrPrompt(
+			request({sessionId: "session-test-100", prompt: "Alice's follow-up", midTurn: true}),
+			dependencies({
+				request: async (requestValue) => {
+					requests.push(requestValue);
+					return Promise.resolve({
+						ok: false,
+						code: "agent_not_ready",
+						message: "Fabricated agent is working",
+					});
+				},
+				midTurn: midTurnDependencies({
+					ready: () => false,
+					request: async (requestValue) => {
+						midTurnRequests.push(requestValue);
+						return Promise.resolve({ok: true, value: {}});
+					},
+				}),
+			}),
+		);
+
+		expect({response: await describeResponse(response), requests, midTurnRequests}).toStrictEqual({
+			response: {body: {error: "Fabricated agent is working", code: "agent_not_ready"}, status: 409},
+			requests: [
+				{
+					id: "ccp:prompt:test-100",
+					method: "agent.prompt",
+					params: {target: "w100:p100", text: "Alice's follow-up"},
+				},
+			],
+			midTurnRequests: [],
+		});
+	});
+
+	it("stops typing a mid-turn prompt with agent_not_ready once a dialog opens before Enter", async () => {
+		const readiness = [true, true, false];
+		const calls: unknown[] = [];
+
+		const response = await handleHerdrPrompt(
+			request({sessionId: "session-test-100", prompt: "Alice's follow-up", midTurn: true}),
+			dependencies({
+				midTurn: midTurnDependencies({
+					ready: () => readiness.shift() ?? false,
+					request: async (requestValue) => {
+						calls.push(requestValue);
+						return Promise.resolve({ok: true, value: {}});
+					},
+				}),
+			}),
+		);
+
+		expect({response: await describeResponse(response), calls}).toStrictEqual({
+			response: {
+				body: {error: "The session opened a dialog or stopped working", code: "agent_not_ready"},
+				status: 409,
+			},
+			calls: [
+				{
+					id: "ccp:mid-turn:test-100",
+					method: "pane.send_text",
+					params: {pane_id: "w100:p200", text: "Alice's follow-up"},
+				},
+			],
+		});
+	});
+});
+
+describe("midTurnPromptReady", () => {
+	const question = {toolUseId: "toolu_test_1", questions: [{question: "Pick one", options: [{label: "A"}]}]};
+
+	it("allows typing mid-turn only while the hook says working and no question or permission waits", () => {
+		expect({
+			working: midTurnPromptReady(entry({state: "working"}), null),
+			idle: midTurnPromptReady(entry({state: "idle"}), null),
+			waiting: midTurnPromptReady(entry({state: "waiting"}), null),
+			unknown: midTurnPromptReady(entry({state: "unknown"}), null),
+			noEntry: midTurnPromptReady(undefined, null),
+			question: midTurnPromptReady(entry({state: "working"}), question),
+			permission: midTurnPromptReady(
+				entry({state: "working", pendingPermissionRequest: {toolName: "Bash", suggestions: []}}),
+				null,
+			),
+		}).toStrictEqual({
+			working: true,
+			idle: false,
+			waiting: false,
+			unknown: false,
+			noEntry: false,
+			question: false,
+			permission: false,
 		});
 	});
 });

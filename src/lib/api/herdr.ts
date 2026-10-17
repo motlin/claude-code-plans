@@ -68,12 +68,22 @@ export const herdrPanesQueryOptions = queryOptions({
 	queryFn: async () => apiFetch("/api/herdr-panes", HerdrPaneIndexResponse),
 });
 
-export async function sendHerdrPrompt(sessionId: string, prompt: string, fetcher: typeof fetch = fetch): Promise<void> {
+export interface SendHerdrPromptOptions {
+	/** Sent right after a skipped question: the server may type it while the turn works on. */
+	midTurn?: boolean;
+	fetcher?: typeof fetch;
+}
+
+export async function sendHerdrPrompt(
+	sessionId: string,
+	prompt: string,
+	{midTurn = false, fetcher = fetch}: SendHerdrPromptOptions = {},
+): Promise<void> {
 	const response = await fetcher("/api/herdr/prompt", {
 		method: "POST",
 		credentials: "same-origin",
 		headers: {"Content-Type": "application/json"},
-		body: JSON.stringify({sessionId, prompt}),
+		body: JSON.stringify(midTurn ? {sessionId, prompt, midTurn} : {sessionId, prompt}),
 	});
 	const json: unknown = await response.json();
 

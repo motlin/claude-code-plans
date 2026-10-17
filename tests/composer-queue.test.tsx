@@ -74,6 +74,16 @@ describe("composerQueueReducer", () => {
 		}).toStrictEqual({busy: null, idle: ALICE, empty: null});
 	});
 
+	it("offers a mid-turn head while the session works, once no dialog is open", () => {
+		const midTurn: QueuedPrompt = {id: "q4", text: "Dave's answer instead", midTurn: true};
+		expect({
+			dialogOpen: nextQueuedPrompt([midTurn, ALICE], true, true),
+			working: nextQueuedPrompt([midTurn, ALICE], true, false),
+			idle: nextQueuedPrompt([midTurn, ALICE], false, false),
+			plainHeadWorking: nextQueuedPrompt([ALICE, midTurn], true, false),
+		}).toStrictEqual({dialogOpen: null, working: midTurn, idle: midTurn, plainHeadWorking: null});
+	});
+
 	it("words the sr-only status with the upstream plural", () => {
 		expect([queuedStatusText(1), queuedStatusText(3)]).toStrictEqual([
 			"1 message queued. Will send after the current response.",
@@ -88,11 +98,9 @@ describe("409 agent_not_ready → queued", () => {
 	}
 
 	it("throws a HerdrRequestError carrying the status and herdr code", async () => {
-		const error: unknown = await sendHerdrPrompt(
-			"session-alice",
-			"Alice's prompt",
-			fetcherReturning(409, {error: "agent is working", code: "agent_not_ready"}),
-		).catch((caught: unknown) => caught);
+		const error: unknown = await sendHerdrPrompt("session-alice", "Alice's prompt", {
+			fetcher: fetcherReturning(409, {error: "agent is working", code: "agent_not_ready"}),
+		}).catch((caught: unknown) => caught);
 
 		expect({
 			isRequestError: error instanceof HerdrRequestError,
@@ -110,11 +118,9 @@ describe("409 agent_not_ready → queued", () => {
 	});
 
 	it("does not treat a stalled prompt or other errors as not-ready", async () => {
-		const stalled: unknown = await sendHerdrPrompt(
-			"session-alice",
-			"Alice's prompt",
-			fetcherReturning(409, {error: "stalled", code: "agent_prompt_stalled"}),
-		).catch((caught: unknown) => caught);
+		const stalled: unknown = await sendHerdrPrompt("session-alice", "Alice's prompt", {
+			fetcher: fetcherReturning(409, {error: "stalled", code: "agent_prompt_stalled"}),
+		}).catch((caught: unknown) => caught);
 		expect([
 			isAgentNotReady(stalled),
 			isAgentNotReady(new Error("agent_not_ready")),
@@ -139,6 +145,25 @@ describe("409 agent_not_ready → queued", () => {
 		});
 	});
 
+	it("useLiveHerdrPrompt posts a mid-turn prompt with its flag", async () => {
+		const postPrompt = vi
+			.fn<(sessionId: string, prompt: string, options: {midTurn?: boolean}) => Promise<void>>()
+			.mockResolvedValue(undefined);
+		const {result} = renderHook(() => useLiveHerdrPrompt("session-alice", 100, postPrompt));
+
+		await act(async () => {
+			await result.current.send("Alice's prompt");
+		});
+		await act(async () => {
+			await result.current.send("Alice's answer instead", {midTurn: true});
+		});
+
+		expect(postPrompt.mock.calls).toStrictEqual([
+			["session-alice", "Alice's prompt", {}],
+			["session-alice", "Alice's answer instead", {midTurn: true}],
+		]);
+	});
+
 	it("useLiveHerdrPrompt reports sent and failed deliveries", async () => {
 		const postPrompt = vi
 			.fn<(sessionId: string, prompt: string) => Promise<void>>()
@@ -158,7 +183,7 @@ describe("409 agent_not_ready → queued", () => {
 	});
 });
 
-type Deliver = (text: string) => Promise<DeliveryResult>;
+type Deliver = (text: string, options?: {midTurn: true}) => Promise<DeliveryResult>;
 
 /** The session turns busy as soon as a prompt is delivered, like the live pane's pending send. */
 function renderQueue({
@@ -166,26 +191,30 @@ function renderQueue({
 	deliver,
 	interrupt = vi.fn<() => void>(),
 	sessionId = "session-alice",
+	dialogOpen = false,
 }: {
 	busy: boolean;
 	deliver: Deliver;
 	interrupt?: () => void;
 	sessionId?: string;
+	dialogOpen?: boolean;
 }) {
 	const hook = renderHook(() => {
 		const [isBusy, setBusy] = useState(busy);
+		const [isDialogOpen, setDialogOpen] = useState(dialogOpen);
 		const queue = useComposerQueue({
 			sessionId,
 			busy: isBusy,
-			deliver: async (text) => {
-				const result = await deliver(text);
+			dialogOpen: isDialogOpen,
+			deliver: async (...args) => {
+				const result = await deliver(...args);
 				if (result === "sent") setBusy(true);
 				return result;
 			},
 			interrupt,
 			retryMs: 20,
 		});
-		return {queue, setBusy};
+		return {queue, setBusy, setDialogOpen};
 	});
 	return {
 		result: {
@@ -196,6 +225,11 @@ function renderQueue({
 		setBusy: (next: boolean) => {
 			act(() => {
 				hook.result.current.setBusy(next);
+			});
+		},
+		setDialogOpen: (next: boolean) => {
+			act(() => {
+				hook.result.current.setDialogOpen(next);
 			});
 		},
 	};
@@ -262,6 +296,35 @@ describe("useComposerQueue", () => {
 		}).toStrictEqual({
 			delivered: [["Alice's first follow-up"], ["Alice's first follow-up"]],
 			texts: ["Bob's second follow-up"],
+		});
+	});
+
+	it("delivers a mid-turn prompt ahead of the queue as soon as the dialog closes, while still working", async () => {
+		const deliver = vi.fn<Deliver>(async () => Promise.resolve("sent"));
+		const {result, setDialogOpen} = renderQueue({busy: true, dialogOpen: true, deliver});
+		act(() => {
+			result.current.enqueue("Alice's first follow-up");
+			result.current.enqueue("Bob's answer instead", {midTurn: true});
+		});
+		expect({
+			texts: result.current.items.map((item) => item.text),
+			delivered: deliver.mock.calls,
+		}).toStrictEqual({
+			texts: ["Bob's answer instead", "Alice's first follow-up"],
+			delivered: [],
+		});
+
+		setDialogOpen(false);
+		await waitFor(() => {
+			expect(deliver.mock.calls.length).toBe(1);
+		});
+
+		expect({
+			texts: result.current.items.map((item) => item.text),
+			delivered: deliver.mock.calls,
+		}).toStrictEqual({
+			texts: ["Alice's first follow-up"],
+			delivered: [["Bob's answer instead", {midTurn: true}]],
 		});
 	});
 

@@ -3,6 +3,7 @@ import {terminalWritesEnabled} from "../config";
 import type {HerdrResult} from "../herdr/client";
 import type {HerdrRequester} from "../herdr/panes";
 import type {HerdrPromptTarget} from "../herdr/prompt";
+import type {ActiveSessionEntry} from "../active-session-store";
 import {asRecord, errorMessage} from "../narrow";
 import type {ActivityState} from "../session-state";
 import {
@@ -30,15 +31,18 @@ export interface TmuxWriteIo {
  * Which operation is typing. tmux types into anything, so each one may only
  * type in the hook-reported states where the CLI is showing what it expects.
  */
-export type TmuxWriteKind = "prompt" | "interrupt" | "question" | "permission" | "live-option";
+export type TmuxWriteKind = "prompt" | "mid-turn-prompt" | "interrupt" | "question" | "permission" | "live-option";
 
 /**
- * Prompts and live option changes go into an idle composer; an interrupt needs
- * a turn to stop; a question dialog shows while waiting. A permission dialog
- * opens after PreToolUse already said working, so it takes either.
+ * Prompts and live option changes go into an idle composer; a mid-turn prompt
+ * (sent right after a skipped question) goes into a working one with no
+ * permission dialog open; an interrupt needs a turn to stop; a question dialog
+ * shows while waiting. A permission dialog opens after PreToolUse already said
+ * working, so it takes either.
  */
 const READY_STATES = {
 	prompt: ["idle"],
+	"mid-turn-prompt": ["working"],
 	interrupt: ["working", "waiting"],
 	question: ["waiting"],
 	permission: ["working", "waiting"],
@@ -81,7 +85,11 @@ async function currentPane(sessionId: string, sources: TmuxSessionPaneSources): 
 	return sessionPane(sessionId, await getTmuxSessionPanes(sources));
 }
 
-function readyCheck(kind: TmuxWriteKind, state: ActivityState | undefined): HerdrResult<null> {
+function readyCheck(
+	kind: TmuxWriteKind,
+	entry: Pick<ActiveSessionEntry, "state" | "pendingPermissionRequest"> | undefined,
+): HerdrResult<null> {
+	const state = entry?.state;
 	if (state === undefined) {
 		return failure(
 			"agent_not_ready",
@@ -89,6 +97,9 @@ function readyCheck(kind: TmuxWriteKind, state: ActivityState | undefined): Herd
 		);
 	}
 	const ready: readonly ActivityState[] = READY_STATES[kind];
+	if (kind === "mid-turn-prompt" && entry?.pendingPermissionRequest !== undefined) {
+		return failure("agent_not_ready", "A permission dialog is open; tmux input will not type into it");
+	}
 	if (ready.includes(state)) return {ok: true, value: null};
 	return failure("agent_not_ready", `The session is ${state}; tmux input needs it ${ready.join(" or ")}`);
 }
@@ -186,8 +197,10 @@ export function tmuxWriteDependencies(
 			if (now.value.paneId !== target || now.value.socketPath !== resolved.pane.socketPath) {
 				return failure("pane-moved", `The session's tmux pane moved on from ${target}`);
 			}
-			const state = sources.entries().find((entry) => entry.sessionId === resolved?.sessionId)?.state;
-			const ready = readyCheck(kind, state);
+			const ready = readyCheck(
+				kind,
+				sources.entries().find((entry) => entry.sessionId === resolved?.sessionId),
+			);
 			if (!ready.ok) return ready;
 
 			const socket = now.value.socketPath === "" ? [] : ["-S", now.value.socketPath];

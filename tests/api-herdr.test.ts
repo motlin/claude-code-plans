@@ -57,7 +57,7 @@ describe("herdr panes API contract", () => {
 		const fetcher = vi.fn<typeof fetch>();
 		fetcher.mockResolvedValue(Response.json({ok: true}));
 
-		await sendHerdrPrompt("session-test-100", "Ask Alice to inspect the test", fetcher);
+		await sendHerdrPrompt("session-test-100", "Ask Alice to inspect the test", {fetcher});
 
 		expect(fetcher.mock.calls).toStrictEqual([
 			[
@@ -75,11 +75,34 @@ describe("herdr panes API contract", () => {
 		]);
 	});
 
+	it("flags a mid-turn prompt in the request body", async () => {
+		const fetcher = vi.fn<typeof fetch>();
+		fetcher.mockResolvedValue(Response.json({ok: true}));
+
+		await sendHerdrPrompt("session-test-100", "Alice's answer instead", {midTurn: true, fetcher});
+
+		expect(fetcher.mock.calls).toStrictEqual([
+			[
+				"/api/herdr/prompt",
+				{
+					method: "POST",
+					credentials: "same-origin",
+					headers: {"Content-Type": "application/json"},
+					body: JSON.stringify({
+						sessionId: "session-test-100",
+						prompt: "Alice's answer instead",
+						midTurn: true,
+					}),
+				},
+			],
+		]);
+	});
+
 	it("surfaces the prompt endpoint's error without treating it as success", async () => {
 		const fetcher = vi.fn<typeof fetch>();
 		fetcher.mockResolvedValue(Response.json({error: "Fabricated agent is not ready"}, {status: 409}));
 
-		await expect(sendHerdrPrompt("session-test-100", "Ask Alice to inspect the test", fetcher)).rejects.toThrow(
+		await expect(sendHerdrPrompt("session-test-100", "Ask Alice to inspect the test", {fetcher})).rejects.toThrow(
 			"Fabricated agent is not ready",
 		);
 	});

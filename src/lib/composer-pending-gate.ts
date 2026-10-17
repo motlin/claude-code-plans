@@ -58,7 +58,8 @@ export function gateHoldsQueue(gate: ComposerPendingGate): boolean {
  * question or permission waits. Sending under a question dismisses it with
  * {@link QUESTION_DISMISSED_BY_MESSAGE} and then sends the message; under a
  * permission the message waits for the turn. A pane showing a dialog is never
- * typed into, so the message queues until the pane is idle.
+ * typed into, so the skip's message queues mid-turn, typed in as soon as the
+ * hooks show the dialog closed, and any other message queues until idle.
  */
 export function composerSendPlan(
 	gate: ComposerPendingGate,

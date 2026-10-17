@@ -25,7 +25,8 @@ import {defaultHerdrLaunchDependencies, handleHerdrLaunch} from "../herdr/launch
 import {defaultHerdrLiveOptionDependencies, handleHerdrLiveOption} from "../herdr/live-option";
 import {createHerdrPlacementProvider, getHerdrPanes, type HerdrPaneLink} from "../herdr/panes";
 import {defaultHerdrPermissionDependencies, handleHerdrPermission} from "../herdr/permission";
-import {defaultHerdrPromptDependencies, handleHerdrPrompt} from "../herdr/prompt";
+import {defaultHerdrPromptDependencies, handleHerdrPrompt, midTurnPromptReady} from "../herdr/prompt";
+import {getPendingQuestion} from "../pending-question-store";
 import {defaultHerdrQuestionDependencies, handleHerdrQuestion} from "../herdr/question";
 import {reportHookStateToHerdr} from "../herdr/report-state";
 import {startHerdrEventBridge} from "../herdr/subscribe";
@@ -194,6 +195,15 @@ export function createTmuxTerminalHost(
 				...defaultHerdrPromptDependencies,
 				...writes,
 				...tmuxWriteDependencies("prompt", sources, io),
+				midTurn: {
+					ready: (sessionId) =>
+						midTurnPromptReady(
+							sources.entries().find((entry) => entry.sessionId === sessionId),
+							getPendingQuestion(sessionId),
+						),
+					pause: io.pause,
+					...tmuxWriteDependencies("mid-turn-prompt", sources, io),
+				},
 			}),
 		interrupt: async (request) =>
 			handleHerdrInterrupt(request, {

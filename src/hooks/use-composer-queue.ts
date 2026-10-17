@@ -18,7 +18,10 @@ export interface ComposerQueueOptions {
 	sessionId: string;
 	/** The live pane is working or a sent prompt has not reached the transcript yet. */
 	busy: boolean;
-	deliver: (text: string) => Promise<DeliveryResult>;
+	/** The pane shows a question or permission dialog, which holds even a mid-turn prompt. */
+	dialogOpen?: boolean;
+	/** Delivers a queued prompt; a mid-turn one (sent over a skipped question) says so. */
+	deliver: (text: string, options?: {midTurn: true}) => Promise<DeliveryResult>;
 	/** Interrupt the current response (Esc) so a "Send now" prompt goes next. */
 	interrupt: () => void;
 	retryMs?: number;
@@ -26,7 +29,8 @@ export interface ComposerQueueOptions {
 
 export interface ComposerQueue {
 	items: readonly QueuedPrompt[];
-	enqueue: (text: string) => void;
+	/** Queue at the back, or a mid-turn prompt at the head to go as soon as no dialog is open. */
+	enqueue: (text: string, options?: {midTurn: true}) => void;
 	remove: (id: string) => void;
 	/** Move a queued prompt to the head and interrupt the response so it sends next. */
 	sendNow: (id: string) => void;
@@ -42,6 +46,7 @@ export interface ComposerQueue {
 export function useComposerQueue({
 	sessionId,
 	busy,
+	dialogOpen = false,
 	deliver,
 	interrupt,
 	retryMs = QUEUE_RETRY_MS,
@@ -62,21 +67,27 @@ export function useComposerQueue({
 
 	useEffect(() => {
 		if (flushing || waiting) return;
-		const next = nextQueuedPrompt(items, busy);
+		const next = nextQueuedPrompt(items, busy, dialogOpen);
 		if (next === null) return;
 		setFlushing(true);
 		dispatchComposerQueue(sessionId, {type: "remove", id: next.id});
-		void deliver(next.text).then((result) => {
+		const delivery = next.midTurn === true ? deliver(next.text, {midTurn: true}) : deliver(next.text);
+		void delivery.then((result) => {
 			setFlushing(false);
 			if (result !== "not-ready") return;
 			dispatchComposerQueue(sessionId, {type: "enqueue", item: next, position: "front"});
 			setWaiting(true);
 		});
-	}, [busy, deliver, flushing, items, sessionId, waiting]);
+	}, [busy, deliver, dialogOpen, flushing, items, sessionId, waiting]);
 
 	const enqueue = useCallback(
-		(text: string) => {
-			dispatchComposerQueue(sessionId, {type: "enqueue", item: newQueuedPrompt(text)});
+		(text: string, options?: {midTurn: true}) => {
+			dispatchComposerQueue(
+				sessionId,
+				options?.midTurn === true
+					? {type: "enqueue", item: newQueuedPrompt(text, {midTurn: true}), position: "front"}
+					: {type: "enqueue", item: newQueuedPrompt(text)},
+			);
 		},
 		[sessionId],
 	);

@@ -157,6 +157,74 @@ describe("tmux host writes", () => {
 		);
 	});
 
+	it("types a mid-turn prompt right after a skipped question while the hook says working with no dialog", async () => {
+		const {sources} = liveSources(entry({state: "working"}));
+		const {io, calls} = recordingIo();
+
+		const response = await createTmuxTerminalHost(sources, io).prompt(
+			post("/api/herdr/prompt", {sessionId: SESSION_ID, prompt: "use the second plan", midTurn: true}),
+		);
+
+		expect({response: await describeResponse(response), calls}).toStrictEqual({
+			response: {status: 200, body: {ok: true}},
+			calls: [
+				["-S", SOCKET, "send-keys", "-t", "%7", "-l", "--", "use the second plan"],
+				["-S", SOCKET, "send-keys", "-t", "%7", "Enter"],
+			],
+		});
+	});
+
+	it("refuses a mid-turn prompt while a question or permission waits or the state is not working, typing nothing", async () => {
+		const cases = [
+			{name: "question", entry: entry({state: "working"}), question: true},
+			{name: "waiting", entry: entry({state: "waiting"}), question: false},
+			{
+				name: "permission",
+				entry: entry({state: "working", pendingPermissionRequest: {toolName: "Bash", suggestions: []}}),
+				question: false,
+			},
+			{name: "unknown", entry: entry({state: "unknown"}), question: false},
+		];
+		const results: unknown[] = [];
+		for (const testCase of cases) {
+			clearAllPendingQuestions();
+			if (testCase.question) {
+				setPendingQuestion(SESSION_ID, {
+					toolUseId: "toolu_test_1",
+					questions: [{question: "Which plan?", options: [{label: "First"}]}],
+				});
+			}
+			const {sources} = liveSources(testCase.entry);
+			const {io, calls} = recordingIo();
+			const response = await createTmuxTerminalHost(sources, io).prompt(
+				post("/api/herdr/prompt", {sessionId: SESSION_ID, prompt: "hi", midTurn: true}),
+			);
+			results.push({name: testCase.name, status: response.status, calls});
+		}
+
+		expect(results).toStrictEqual(
+			["question", "waiting", "permission", "unknown"].map((name) => ({name, status: 409, calls: []})),
+		);
+	});
+
+	it("types a mid-turn prompt the usual way once the session is idle", async () => {
+		const {sources} = liveSources(entry({state: "idle"}));
+		const {io, calls} = recordingIo();
+
+		const response = await createTmuxTerminalHost(sources, io).prompt(
+			post("/api/herdr/prompt", {sessionId: SESSION_ID, prompt: "one\ntwo", midTurn: true}),
+		);
+
+		expect({status: response.status, calls}).toStrictEqual({
+			status: 200,
+			calls: [
+				["-S", SOCKET, "set-buffer", "-b", "ccp-test-buffer", "--", "one\ntwo"],
+				["-S", SOCKET, "paste-buffer", "-p", "-d", "-b", "ccp-test-buffer", "-t", "%7"],
+				["-S", SOCKET, "send-keys", "-t", "%7", "Enter"],
+			],
+		});
+	});
+
 	it("refuses a write when no hook has reported the session's state", async () => {
 		const {sources, set} = liveSources(entry());
 		const host = createTmuxTerminalHost(
