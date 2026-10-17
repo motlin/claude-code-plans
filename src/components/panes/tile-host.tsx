@@ -578,7 +578,10 @@ function PaneSurface({kind, definition, host}: {kind: PaneKind; definition: Pane
 							{definition.title}
 						</span>
 						{moveHandle}
-						<div className="relative flex shrink-0 items-center gap-0.5">{controls}</div>
+						<div className="relative flex shrink-0 items-center gap-0.5">
+							{definition.headerActions}
+							{controls}
+						</div>
 					</div>
 					<div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-b-[inherit]">
 						<div className="h-full overflow-y-auto [scrollbar-gutter:stable_both-edges]">

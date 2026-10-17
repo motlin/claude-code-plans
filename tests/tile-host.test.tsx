@@ -151,6 +151,28 @@ describe("TileHost", () => {
 		});
 	});
 
+	it("puts a pane's header actions after Move, before Expand and Close", () => {
+		unregister();
+		unregister = registerPane("plan", {
+			title: "Test pane",
+			headerActions: (
+				<button type="button" aria-label="Pane action">
+					A
+				</button>
+			),
+			render: () => <p>Test pane body</p>,
+		});
+		renderHost("session-a");
+		openTestPane();
+
+		const root = screen.getByText("Test pane body").closest("[data-pane-root]");
+		expect(
+			[...(root?.querySelector("[data-pane-title]")?.parentElement?.querySelectorAll("button") ?? [])].map(
+				(button) => button.getAttribute("aria-label"),
+			),
+		).toStrictEqual(["Move", "Pane action", "Expand", "Close"]);
+	});
+
 	it("renders an opened pane with its surface header", () => {
 		renderHost("session-a");
 		expect(screen.queryByText("Test pane body")).toBeNull();

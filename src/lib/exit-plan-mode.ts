@@ -26,6 +26,29 @@ export interface ExitPlanModeStatus {
 
 const APPROVAL_PREFIX = "User has approved";
 
+/** Upstream's plan states for an `ExitPlanMode` call: awaiting approval, approved, rejected, or failed. */
+export type ExitPlanModeState = "ready" | "approved" | "rejected" | "not-approved";
+
+/** Upstream's words for each plan state ("Plan ready" card eyebrow, tool body, and tool summary). */
+export const EXIT_PLAN_MODE_STATE_LABEL: Record<ExitPlanModeState, string> = {
+	ready: "Plan ready",
+	approved: "Plan approved",
+	rejected: "Plan rejected",
+	"not-approved": "Plan not approved",
+};
+
+/** The local link to a plan's saved `~/.claude/plans` file, on the tool body and the Plan pane header. */
+export const PLAN_FILE_ACTION_LABEL = "Open plan file";
+
+/** The plan state an `ExitPlanMode` result records; no result yet means it awaits approval. */
+export function exitPlanModeState(result: string | undefined, isError: boolean | undefined): ExitPlanModeState {
+	const trimmed = result?.trim();
+	if (!trimmed) return "ready";
+	if (trimmed.startsWith(APPROVAL_PREFIX)) return "approved";
+	if (parseToolRejection(trimmed)) return "rejected";
+	return isError === true ? "not-approved" : "approved";
+}
+
 /**
  * Collapse an `ExitPlanMode` tool result to a status line.
  *
@@ -43,12 +66,12 @@ export function describeExitPlanModeResult(
 	if (!trimmed) return null;
 
 	if (trimmed.startsWith(APPROVAL_PREFIX)) {
-		return {tone: "approved", text: "Plan approved"};
+		return {tone: "approved", text: EXIT_PLAN_MODE_STATE_LABEL.approved};
 	}
 
 	const rejection = parseToolRejection(trimmed);
 	if (rejection) {
-		const status: ExitPlanModeStatus = {tone: "rejected", text: "Plan rejected"};
+		const status: ExitPlanModeStatus = {tone: "rejected", text: EXIT_PLAN_MODE_STATE_LABEL.rejected};
 		if (rejection.feedback) status.detail = rejection.feedback;
 		return status;
 	}

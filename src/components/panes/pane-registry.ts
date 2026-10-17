@@ -19,6 +19,8 @@ export interface PaneDefinition {
 	 * controls around Move, Expand and Close).
 	 */
 	header?: "custom";
+	/** Extra icon buttons for the host's default header, before Expand/Collapse and Close. */
+	headerActions?: ReactNode;
 	render: (chrome: PaneChrome) => ReactNode;
 }
 

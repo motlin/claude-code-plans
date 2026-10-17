@@ -1,5 +1,10 @@
 import {describe, expect, it} from "vite-plus/test";
-import {describeExitPlanModeResult, parseAllowedPrompts} from "../src/lib/exit-plan-mode";
+import {
+	describeExitPlanModeResult,
+	EXIT_PLAN_MODE_STATE_LABEL,
+	exitPlanModeState,
+	parseAllowedPrompts,
+} from "../src/lib/exit-plan-mode";
 
 describe("parseAllowedPrompts", () => {
 	it("keeps tool/prompt pairs in order", () => {
@@ -81,6 +86,45 @@ describe("describeExitPlanModeResult", () => {
 		expect(describeExitPlanModeResult("Plan saved.", undefined)).toStrictEqual({
 			tone: "info",
 			text: "Plan saved.",
+		});
+	});
+});
+
+describe("exitPlanModeState", () => {
+	const REJECTED =
+		"The user doesn't want to proceed with this tool use. The tool use was rejected (eg. if it was a file edit, the new_string was NOT written to the file). To tell you how to proceed, the user said:\nnot yet";
+
+	it("maps each result to upstream's plan state and label", () => {
+		const states = {
+			awaiting: exitPlanModeState(undefined, undefined),
+			approved: exitPlanModeState("User has approved your plan. You can now start coding.", undefined),
+			savedWithoutError: exitPlanModeState("Plan saved.", undefined),
+			rejected: exitPlanModeState(REJECTED, true),
+			rejectedWithoutErrorFlag: exitPlanModeState(REJECTED, undefined),
+			error: exitPlanModeState("You are not in plan mode.", true),
+		};
+		expect({
+			states,
+			labels: Object.fromEntries(
+				Object.entries(states).map(([key, state]) => [key, EXIT_PLAN_MODE_STATE_LABEL[state]]),
+			),
+		}).toStrictEqual({
+			states: {
+				awaiting: "ready",
+				approved: "approved",
+				savedWithoutError: "approved",
+				rejected: "rejected",
+				rejectedWithoutErrorFlag: "rejected",
+				error: "not-approved",
+			},
+			labels: {
+				awaiting: "Plan ready",
+				approved: "Plan approved",
+				savedWithoutError: "Plan approved",
+				rejected: "Plan rejected",
+				rejectedWithoutErrorFlag: "Plan rejected",
+				error: "Plan not approved",
+			},
 		});
 	});
 });

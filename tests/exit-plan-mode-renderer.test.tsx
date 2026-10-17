@@ -38,6 +38,7 @@ async function renderRenderer(toolCall: ClientToolCall, verbose = false) {
 }
 
 const PLAN_BLOCK = "text-body text-secondary whitespace-pre-wrap break-words ps-2 border-s-2";
+const PLAN_FILE_ACTION = "shrink-0 text-footnote text-secondary hover:text-primary hover:underline";
 
 describe("ExitPlanModeRenderer", () => {
 	it("draws a pending plan as upstream's left-bordered secondary block, its text verbatim", async () => {
@@ -58,7 +59,9 @@ describe("ExitPlanModeRenderer", () => {
 	});
 
 	it("leads an approved plan with upstream's 'Plan approved' and a check circle, above the block", async () => {
-		const view = await renderRenderer(makeToolCall({input: {plan: "Do it."}, result: APPROVED_RESULT}));
+		const view = await renderRenderer(
+			makeToolCall({input: {plan: "Do it."}, result: "User has approved your plan. You can now start coding."}),
+		);
 		const done = view.container.querySelector("[data-plan-done]");
 
 		expect({
@@ -72,7 +75,7 @@ describe("ExitPlanModeRenderer", () => {
 		}).toStrictEqual({
 			className: "flex flex-col gap-1 py-1.5",
 			children: [
-				{className: "flex items-center gap-1 text-body text-success-000", text: "Plan approved"},
+				{className: "flex items-center justify-between gap-2", text: "Plan approved"},
 				{className: PLAN_BLOCK, text: "Do it."},
 			],
 			icon: true,
@@ -115,7 +118,7 @@ describe("ExitPlanModeRenderer", () => {
 		});
 	});
 
-	it("links to the saved plan file after upstream's content", async () => {
+	it("puts 'Open plan file' as the trailing action on the 'Plan approved' row, never 'created'", async () => {
 		const view = await renderRenderer(
 			makeToolCall({
 				input: {plan: "Do it.", planFilePath: "/Users/craig/.claude/plans/switch-git-pager.md"},
@@ -123,11 +126,43 @@ describe("ExitPlanModeRenderer", () => {
 			}),
 		);
 		const link = screen.getByRole("link");
+		const row = view.container.querySelector("[data-plan-done]")?.firstElementChild;
 
 		expect({
 			href: link.getAttribute("href"),
-			last: view.container.firstElementChild?.lastElementChild === link,
-		}).toStrictEqual({href: "/plan/switch-git-pager", last: true});
+			text: link.textContent,
+			className: link.className,
+			row: [...(row?.children ?? [])].map((child) => child.textContent),
+			created: view.container.textContent.includes("created"),
+		}).toStrictEqual({
+			href: "/plan/switch-git-pager",
+			text: "Open plan file",
+			className: PLAN_FILE_ACTION,
+			row: ["Plan approved", "Open plan file"],
+			created: false,
+		});
+	});
+
+	it("puts the plan-file action alone above the block while the plan awaits approval", async () => {
+		const view = await renderRenderer(
+			makeToolCall({input: {plan: "Do it.", planFilePath: "/Users/craig/.claude/plans/switch-git-pager.md"}}),
+		);
+		const root = view.container.firstElementChild;
+
+		expect({
+			children: [...(root?.children ?? [])].map((child) => child.textContent),
+			actionRow: root?.firstElementChild?.className,
+			href: screen.getByRole("link").getAttribute("href"),
+		}).toStrictEqual({
+			children: ["Open plan file", "Do it."],
+			actionRow: "flex items-center justify-end gap-2",
+			href: "/plan/switch-git-pager",
+		});
+	});
+
+	it("shows no plan-file action without a saved plan file", async () => {
+		await renderRenderer(makeToolCall({input: {plan: "Do it."}, result: "User has approved your plan."}));
+		expect(screen.queryByRole("link")).toStrictEqual(null);
 	});
 
 	it("shows a genuine tool error's text only in Verbose", async () => {
