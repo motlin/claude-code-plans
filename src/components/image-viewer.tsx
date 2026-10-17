@@ -2,6 +2,7 @@ import {Dialog} from "@base-ui/react/dialog";
 import {ChevronLeft, ChevronRight, X} from "lucide-react";
 import {
 	useEffect,
+	useLayoutEffect,
 	useRef,
 	useState,
 	type DragEvent,
@@ -9,6 +10,7 @@ import {
 	type MouseEvent,
 	type PointerEvent,
 } from "react";
+import {flushSync} from "react-dom";
 
 import {
 	clampPan,
@@ -21,6 +23,7 @@ import {
 	zoomTransform,
 	type ZoomState,
 } from "../lib/image-zoom";
+import {morph, setMorphName} from "../lib/image-viewer-morph";
 import type {AttachedImage} from "./user-attachments";
 
 /** Clicks this close to the Close button never select the neighbour slide underneath it. */
@@ -75,6 +78,12 @@ function slideClass(active: boolean, zoomed: boolean): string {
 	return `${SLIDE} group/zoomslide${zoomed ? " z-10" : ""}`;
 }
 
+function focusedElement(): HTMLElement | null {
+	return typeof document !== "undefined" && document.activeElement instanceof HTMLElement
+		? document.activeElement
+		: null;
+}
+
 function pagerButtonClass(disabled: boolean): string {
 	return `p-2 rounded-lg ${disabled ? "text-white/30 cursor-default" : "text-white hover:bg-white/10"}`;
 }
@@ -85,17 +94,21 @@ function pagerButtonClass(disabled: boolean): string {
  * opacity (click one to select it), Close at the top right, and a
  * non-wrapping Previous / "N of M" / Next pager. The active slide is a zoom
  * toggle (click, Enter/Space, ctrl+wheel pinch) and a zoomed image pans by
- * drag or wheel. Decoded in
+ * drag or wheel. Opening morphs from the `origin` thumbnail (hidden while
+ * open) and closing morphs back, then refocuses what had focus. Decoded in
  * .llm/upstream-sync/dumps/image-viewer-bundle.txt.
  */
 export function ImageViewer({
 	images,
 	index,
+	origin = null,
 	onIndexChange,
 	onClose,
 }: {
 	images: readonly AttachedImage[];
 	index: number;
+	/** The thumbnail that opened the viewer: the open/close morph's other end. */
+	origin?: HTMLElement | null;
 	onIndexChange: (index: number) => void;
 	onClose: () => void;
 }) {
@@ -103,6 +116,11 @@ export function ImageViewer({
 	const toolbarRef = useRef<HTMLDivElement>(null);
 	const stageRef = useRef<HTMLDivElement>(null);
 	const activeImgRef = useRef<HTMLImageElement>(null);
+	const activeSlideRef = useRef<HTMLDivElement>(null);
+	const [returnFocus] = useState(focusedElement);
+	const [openIndex] = useState(index);
+	const openedRef = useRef(false);
+	const focusedIndexRef = useRef(index);
 	const panRef = useRef<Pan | null>(null);
 	const draggedRef = useRef(false);
 	const [popup, setPopup] = useState<HTMLDivElement | null>(null);
@@ -117,6 +135,56 @@ export function ImageViewer({
 		zoomRef.current = zoom;
 	}, [zoom]);
 	const zoomed = zoom !== null;
+	useLayoutEffect(() => {
+		if (popup === null || openedRef.current) return;
+		openedRef.current = true;
+		const img = origin === null ? null : activeImgRef.current;
+		setMorphName(origin, true);
+		// Transparent rather than hidden, so the dialog's initial focus still lands while the snapshot is taken.
+		popup.style.opacity = "0";
+		morph(
+			() => {
+				setMorphName(origin, false);
+				if (origin !== null) origin.style.visibility = "hidden";
+				popup.style.opacity = "";
+				setMorphName(img, true);
+			},
+			() => {
+				setMorphName(img, false);
+			},
+		);
+	}, [popup, origin]);
+	useEffect(
+		() => () => {
+			if (origin !== null) origin.style.visibility = "";
+		},
+		[origin],
+	);
+	useEffect(() => {
+		if (focusedIndexRef.current === index) return;
+		focusedIndexRef.current = index;
+		const focused = document.activeElement;
+		const inStage = focused !== null && stageRef.current?.contains(focused) === true;
+		if (focused === null || focused === document.body || (inStage && focused.closest("a, button") === null))
+			activeSlideRef.current?.focus({preventScroll: true});
+	}, [index]);
+	const requestClose = () => {
+		const morphBack = origin !== null && index === openIndex;
+		setMorphName(activeImgRef.current, morphBack);
+		morph(
+			() => {
+				flushSync(onClose);
+				if (origin !== null) {
+					origin.style.visibility = "";
+					setMorphName(origin, morphBack);
+				}
+				returnFocus?.focus({preventScroll: true});
+			},
+			() => {
+				setMorphName(origin, false);
+			},
+		);
+	};
 	useEffect(() => {
 		if (!zoomed) return undefined;
 		const unzoom = () => {
@@ -244,19 +312,20 @@ export function ImageViewer({
 		<Dialog.Root
 			open
 			onOpenChange={(open) => {
-				if (!open) onClose();
+				if (!open) requestClose();
 			}}
 		>
 			<Dialog.Portal>
 				<Dialog.Popup
 					ref={setPopup}
+					finalFocus={false}
 					onKeyDown={onKeyDown}
 					onClickCapture={(event) => {
 						if (draggedRef.current) event.stopPropagation();
 					}}
 					onClick={() => {
 						if (zoomed) setZoom(null);
-						else onClose();
+						else requestClose();
 					}}
 					className="fixed inset-0 z-50 flex flex-col overflow-hidden bg-black/80 outline-none"
 				>
@@ -272,7 +341,7 @@ export function ImageViewer({
 							aria-label="Close"
 							onClick={(event) => {
 								event.stopPropagation();
-								onClose();
+								requestClose();
 							}}
 							className="pointer-events-auto flex size-8 items-center justify-center rounded-full text-white/70 hover:bg-white/10 hover:text-white"
 						>
@@ -295,6 +364,7 @@ export function ImageViewer({
 									// oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- a neighbour is a pointer shortcut (the arrow, Home and End keys and the pager are its keyboard controls); the active slide is a role=button with Enter/Space
 									<div
 										key={image.key}
+										ref={active ? activeSlideRef : undefined}
 										data-viewer-slide=""
 										aria-hidden={!active}
 										role={active ? "button" : undefined}

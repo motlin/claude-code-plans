@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {cleanup, fireEvent, render, screen} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {useState} from "react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {ImageViewer} from "../src/components/image-viewer";
@@ -418,5 +418,160 @@ describe("ImageViewer", () => {
 			next: screen.queryByRole("button", {name: "Next image"}),
 			count: viewer.querySelector("[aria-live]"),
 		}).toStrictEqual({previous: null, next: null, count: null});
+	});
+});
+
+const MORPH = "image-viewer-morph";
+
+function OriginHarness({origin, onClose}: {origin: HTMLElement; onClose: () => void}) {
+	const [shown, setShown] = useState(true);
+	const [index, setIndex] = useState(0);
+	if (!shown) return null;
+	return (
+		<ImageViewer
+			images={IMAGES}
+			index={index}
+			origin={origin}
+			onIndexChange={setIndex}
+			onClose={() => {
+				onClose();
+				setShown(false);
+			}}
+		/>
+	);
+}
+
+const origins: HTMLElement[] = [];
+
+function makeOrigin(): HTMLElement {
+	const origin = document.createElement("span");
+	origins.push(origin);
+	origin.tabIndex = 0;
+	document.body.append(origin);
+	return origin;
+}
+
+function stubMotion(reduce: boolean) {
+	vi.stubGlobal("matchMedia", (query: string) => ({
+		matches: reduce && query === "(prefers-reduced-motion: reduce)",
+		media: query,
+		addEventListener: () => undefined,
+		removeEventListener: () => undefined,
+	}));
+	const updates: (() => void)[] = [];
+	const start = vi.fn<
+		(update: () => void) => {finished: Promise<void>; ready: Promise<void>; updateCallbackDone: Promise<void>}
+	>((update) => {
+		updates.push(update);
+		return {finished: Promise.resolve(), ready: Promise.resolve(), updateCallbackDone: Promise.resolve()};
+	});
+	Object.defineProperty(document, "startViewTransition", {configurable: true, value: start});
+	return {start, updates};
+}
+
+describe("ImageViewer focus and morph", () => {
+	afterEach(() => {
+		vi.unstubAllGlobals();
+		Reflect.deleteProperty(document, "startViewTransition");
+		for (const origin of origins.splice(0)) origin.remove();
+	});
+
+	it("focuses the active slide after ArrowRight when focus was on body", () => {
+		const {viewer} = open(0);
+		(document.activeElement as HTMLElement | null)?.blur();
+		fireEvent.keyDown(viewer, {key: "ArrowRight"});
+		expect(document.activeElement).toBe(slides(viewer)[1]);
+	});
+
+	it("leaves focus on the pager button that changed the index", () => {
+		open(0);
+		const next = screen.getByRole("button", {name: "Next image"});
+		next.focus();
+		fireEvent.click(next);
+		expect(document.activeElement).toBe(next);
+	});
+
+	it("hides the origin tile while open and restores it and its focus on close", () => {
+		const origin = makeOrigin();
+		origin.focus();
+		const onClose = vi.fn<() => void>();
+		render(<OriginHarness origin={origin} onClose={onClose} />);
+		const whileOpen = origin.style.visibility;
+		fireEvent.click(screen.getByRole("button", {name: "Close"}));
+		expect({
+			whileOpen,
+			afterClose: origin.style.visibility,
+			closed: onClose.mock.calls.length,
+			focused: document.activeElement === origin,
+		}).toStrictEqual({whileOpen: "hidden", afterClose: "", closed: 1, focused: true});
+	});
+
+	it("starts no view transition under prefers-reduced-motion", () => {
+		const {start} = stubMotion(true);
+		const origin = makeOrigin();
+		render(<OriginHarness origin={origin} onClose={() => undefined} />);
+		const whileOpen = origin.style.visibility;
+		fireEvent.click(screen.getByRole("button", {name: "Close"}));
+		expect({calls: start.mock.calls.length, whileOpen, afterClose: origin.style.visibility}).toStrictEqual({
+			calls: 0,
+			whileOpen: "hidden",
+			afterClose: "",
+		});
+	});
+
+	it("morphs from the origin to the active image on open and back on close", () => {
+		const {start, updates} = stubMotion(false);
+		const origin = makeOrigin();
+		const onClose = vi.fn<() => void>();
+		render(<OriginHarness origin={origin} onClose={onClose} />);
+		const viewer = screen.getByRole("dialog", {name: "Image preview"});
+		const img = slides(viewer)[0]!.querySelector("img")!;
+		const beforeOpen = {origin: origin.style.viewTransitionName, visibility: origin.style.visibility};
+		act(() => {
+			updates[0]!();
+		});
+		const afterOpen = {
+			origin: origin.style.viewTransitionName,
+			visibility: origin.style.visibility,
+			img: img.style.viewTransitionName,
+		};
+		fireEvent.click(screen.getByRole("button", {name: "Close"}));
+		const beforeClose = {img: img.style.viewTransitionName, closed: onClose.mock.calls.length};
+		act(() => {
+			updates[1]!();
+		});
+		expect({
+			calls: start.mock.calls.length,
+			beforeOpen,
+			afterOpen,
+			beforeClose,
+			afterClose: {
+				origin: origin.style.viewTransitionName,
+				visibility: origin.style.visibility,
+				closed: onClose.mock.calls.length,
+			},
+		}).toStrictEqual({
+			calls: 2,
+			beforeOpen: {origin: MORPH, visibility: ""},
+			afterOpen: {origin: "", visibility: "hidden", img: MORPH},
+			beforeClose: {img: MORPH, closed: 0},
+			afterClose: {origin: MORPH, visibility: "", closed: 1},
+		});
+	});
+
+	it("crossfades without naming anything when there is no origin", () => {
+		const {start, updates} = stubMotion(false);
+		render(<Harness images={IMAGES} initial={0} onClose={() => undefined} />);
+		const viewer = screen.getByRole("dialog", {name: "Image preview"});
+		const opacityBeforeUpdate = viewer.style.opacity;
+		act(() => {
+			updates[0]!();
+		});
+		expect({
+			opacityBeforeUpdate,
+			opacityAfterUpdate: viewer.style.opacity,
+			calls: start.mock.calls.length,
+			img: slides(viewer)[0]!.querySelector("img")!.style.viewTransitionName,
+		}).toStrictEqual({opacityBeforeUpdate: "0", opacityAfterUpdate: "", calls: 1, img: ""});
 	});
 });

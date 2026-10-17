@@ -19,15 +19,17 @@ function hideFailedTile(event: SyntheticEvent<HTMLImageElement>): void {
 /**
  * Upstream's attachments strip above a user bubble: natural-size image tiles,
  * right-aligned and wrapping, two or more halving to 240px wide. A tile opens
- * the image viewer.
+ * the image viewer, morphing out of (and back into) that tile.
  */
 export function UserAttachments({images}: {images: readonly AttachedImage[]}) {
 	const [viewing, setViewing] = useState<number | null>(null);
+	const [origin, setOrigin] = useState<HTMLElement | null>(null);
 	if (images.length === 0) return null;
 	return (
 		<div data-attachments="" className="attachment-strip">
 			{images.map((image, index) => {
-				const open = () => {
+				const open = (event: SyntheticEvent<HTMLElement>) => {
+					setOrigin(event.currentTarget);
 					setViewing(index);
 				};
 				return (
@@ -40,7 +42,7 @@ export function UserAttachments({images}: {images: readonly AttachedImage[]}) {
 							onKeyDown={(event) => {
 								if (event.key === "Enter" || event.key === " ") {
 									event.preventDefault();
-									open();
+									open(event);
 								}
 							}}
 							className="attachment-media cursor-zoom-in"
@@ -55,6 +57,7 @@ export function UserAttachments({images}: {images: readonly AttachedImage[]}) {
 					<ImageViewer
 						images={images}
 						index={viewing}
+						origin={origin}
 						onIndexChange={setViewing}
 						onClose={() => {
 							setViewing(null);
