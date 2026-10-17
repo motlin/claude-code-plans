@@ -16,6 +16,7 @@ import {SettingsProvider} from "../components/settings-provider";
 import {ToastProvider} from "../components/toast";
 import {DevOverlays} from "../components/dev-overlays";
 import {AppFrame} from "../components/app-frame";
+import {Spark} from "../components/spark";
 import {AppShellFallback} from "../components/app-shell-fallback";
 import {ChunkPrefetch} from "../components/chunk-prefetch";
 import {DeferredCommandPalette} from "../components/command-palette-entry";
@@ -199,7 +200,7 @@ function NotFound() {
 	return <NotFoundContent />;
 }
 
-/** Upstream's 404, centred in the app shell: the wordmark, "Page not found", its line and Go back home. */
+/** Upstream's 404, centred in the app shell: the spark and wordmark, "Page not found", its line and Go back home. */
 function NotFoundContent({detail}: Readonly<{detail?: string}>) {
 	return (
 		<div
@@ -208,8 +209,9 @@ function NotFoundContent({detail}: Readonly<{detail?: string}>) {
 		>
 			<span
 				aria-hidden="true"
-				className="mb-6 font-voice text-[20px] leading-none font-medium whitespace-nowrap text-primary"
+				className="mb-6 flex items-center gap-2 font-voice text-[20px] leading-none font-medium whitespace-nowrap text-primary"
 			>
+				<Spark size={24} />
 				Claude Code Browser
 			</span>
 			<div className="flex flex-col items-center gap-1">

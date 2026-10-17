@@ -43,4 +43,27 @@ describe("404 page", () => {
 			centred: ["items-center", "justify-center", "text-center"],
 		});
 	});
+
+	it("puts upstream's orange Claude spark before the wordmark in one row", async () => {
+		const NotFound = RootRoute.options.notFoundComponent;
+		if (NotFound === undefined) throw new Error("no notFoundComponent");
+		const root = createRootRoute({component: () => <Outlet />, notFoundComponent: NotFound});
+		const router = createRouter({routeTree: root, history: createMemoryHistory({initialEntries: ["/nowhere"]})});
+		await router.load();
+		render(<RouterProvider router={router} />);
+
+		await screen.findByRole("heading", {level: 1});
+		const wordmark = document.querySelector("[data-not-found]")?.firstElementChild;
+		expect({
+			children: Array.from(wordmark?.childNodes ?? [], (node) =>
+				node instanceof Element
+					? `${node.tagName.toLowerCase()}[${node.getAttribute("data-cds")}]`
+					: node.textContent,
+			),
+			row: wordmark?.className.split(" ").filter((name) => ["flex", "items-center", "gap-2"].includes(name)),
+		}).toStrictEqual({
+			children: ["svg[Spark]", "Claude Code Browser"],
+			row: ["flex", "items-center", "gap-2"],
+		});
+	});
 });
