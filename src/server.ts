@@ -1,4 +1,5 @@
 import handler, {createServerEntry} from "@tanstack/react-start/server-entry";
+import {readFile} from "node:fs/promises";
 import {homedir} from "node:os";
 import {join} from "node:path";
 import {withHeadBodyCancel} from "./lib/head-request";
@@ -29,6 +30,7 @@ import {initPrStatusService} from "./lib/pr-status-service";
 import {takeOverServerShutdown} from "./lib/server-shutdown";
 import {announceThisDevEnvReady} from "./lib/dev-env-ready-gate";
 import {defined} from "./lib/defined";
+import {withShellChinLabels} from "./lib/shell-chin-labels";
 
 const PLANS_DIR = join(homedir(), ".claude", "plans");
 const PROJECTS_DIR = join(homedir(), ".claude", "projects");
@@ -37,6 +39,11 @@ const PLUGINS_DIR = join(homedir(), ".claude", "plugins", "cache");
 const TASKS_DIR = join(homedir(), ".claude", "tasks");
 const JOBS_DIR = join(homedir(), ".claude", "jobs");
 const STATUSLINE_DIR = join(getCacheDir(), "statusline");
+const SETTINGS_FILE = join(homedir(), ".claude", "settings.json");
+
+async function readClaudeSettings(): Promise<unknown> {
+	return JSON.parse(await readFile(SETTINGS_FILE, "utf-8")) as unknown;
+}
 
 let stopHerdrEventBridge: (() => void) | null = null;
 
@@ -157,7 +164,14 @@ void (async () => {
 
 export default createServerEntry({
 	fetch: withHeadBodyCancel(
-		withServerTiming(withActivityTracking((request): Response | Promise<Response> => handler.fetch(request))),
+		withServerTiming(
+			withActivityTracking(
+				withShellChinLabels(
+					(request): Response | Promise<Response> => handler.fetch(request),
+					readClaudeSettings,
+				),
+			),
+		),
 	),
 });
 

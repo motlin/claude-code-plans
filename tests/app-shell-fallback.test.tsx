@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
-import {createElement, type ReactElement, type ReactNode} from "react";
+import {act, createElement, type ReactElement, type ReactNode, useLayoutEffect} from "react";
+import {hydrateRoot} from "react-dom/client";
 import {renderToStaticMarkup} from "react-dom/server";
 import {render} from "@testing-library/react";
 import {describe, expect, it, vi} from "vite-plus/test";
@@ -8,6 +9,23 @@ import {AppShellFallback} from "../src/components/app-shell-fallback";
 import {getVisibleNavItems, navItems} from "../src/components/sidebar/navigation";
 import {DEFAULT_VISIBLE_NAV_SECTIONS} from "../src/lib/nav-sections";
 import {Route} from "../src/routes/__root";
+import {resolveShellChinLabels} from "../src/lib/shell-chin-labels";
+import {getShellChinLabels, setShellChinLabels} from "../src/lib/shell-chin-store";
+
+/** Hydrates the client's fallback, which has no labels, and reports its chin before the fallback removes itself. */
+function ProbeFallback({onHydrated}: {onHydrated: (chin: Element) => void}) {
+	useLayoutEffect(() => {
+		onHydrated(document.querySelector('[data-cds="ChatComposerChin"]')!);
+	});
+	return <AppShellFallback />;
+}
+
+/** The chin's readouts in order: "+" for the add icon, then each label's text. */
+function chinReadouts(chin: Element): string[] {
+	return Array.from(chin.querySelectorAll("[data-fallback-chin-readout]"), (node) =>
+		node.tagName.toLowerCase() === "svg" ? "+" : node.textContent,
+	);
+}
 
 vi.mock("@tanstack/react-router", async (importOriginal) => {
 	const actual = await importOriginal<typeof import("@tanstack/react-router")>();
@@ -153,6 +171,82 @@ describe("AppShellFallback", () => {
 			box: "relative flex flex-col rounded-card bg-surface-3 p-2 shadow-[var(--composer-shadow-idle)]",
 			oldEmptyBox: null,
 			chin: true,
+		});
+	});
+
+	it("fills the loading chin with the settings defaults the live chin shows: +, the mode, then model and effort beside the usage ring", () => {
+		const host = document.createElement("div");
+		const chin = resolveShellChinLabels({
+			model: "opus",
+			effortLevel: "high",
+			defaultMode: "auto",
+			bypassPermissionsAllowed: false,
+		});
+		host.innerHTML = renderToStaticMarkup(<AppShellFallback chin={chin} />);
+		const chinRow = host.querySelector('[data-cds="ChatComposerChin"]')!;
+
+		expect({
+			readouts: chinReadouts(chinRow),
+			ring: chinRow.querySelectorAll("[data-fallback-chin-end] svg circle").length,
+		}).toStrictEqual({readouts: ["+", "Auto", "Opus 5.5 High"], ring: 1});
+	});
+
+	it("labels the loading chin as the live chin does when settings.json is missing", () => {
+		const host = document.createElement("div");
+		host.innerHTML = renderToStaticMarkup(<AppShellFallback chin={resolveShellChinLabels(null)} />);
+
+		expect(chinReadouts(host.querySelector('[data-cds="ChatComposerChin"]')!)).toStrictEqual([
+			"+",
+			"Manual",
+			"Opus 5.5 High",
+		]);
+	});
+
+	it("paints the server's chin labels from the shell, and the client keeps them through hydration", async () => {
+		setShellChinLabels(
+			resolveShellChinLabels({
+				model: "opus",
+				effortLevel: "max",
+				defaultMode: "plan",
+				bypassPermissionsAllowed: false,
+			}),
+		);
+		const markup = renderToStaticMarkup(<AppShellFallback chin={getShellChinLabels()} />);
+		const shell = renderServerShell();
+		setShellChinLabels(null);
+		const container = document.createElement("div");
+		container.innerHTML = markup;
+		document.body.append(container);
+		const onRecoverableError = vi.fn<(error: unknown) => void>();
+		const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+		let hydratedReadouts: string[] = [];
+		let root: ReturnType<typeof hydrateRoot> | undefined;
+		await act(async () => {
+			root = hydrateRoot(
+				container,
+				<ProbeFallback onHydrated={(chin) => (hydratedReadouts = chinReadouts(chin))} />,
+				{
+					onRecoverableError,
+				},
+			);
+			await Promise.resolve();
+		});
+		act(() => {
+			root?.unmount();
+		});
+		container.remove();
+		errors.mockRestore();
+
+		expect({
+			shell: shell.includes(">Plan<") && shell.includes(">Opus 5.5 Max<"),
+			hydratedReadouts,
+			recoverableErrors: onRecoverableError.mock.calls.length,
+			consoleErrors: errors.mock.calls.length,
+		}).toStrictEqual({
+			shell: true,
+			hydratedReadouts: ["+", "Plan", "Opus 5.5 Max"],
+			recoverableErrors: 0,
+			consoleErrors: 0,
 		});
 	});
 

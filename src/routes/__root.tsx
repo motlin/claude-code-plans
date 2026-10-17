@@ -18,6 +18,7 @@ import {DevOverlays} from "../components/dev-overlays";
 import {AppFrame} from "../components/app-frame";
 import {Spark} from "../components/spark";
 import {AppShellFallback} from "../components/app-shell-fallback";
+import {getShellChinLabels} from "../lib/shell-chin-store";
 import {ChunkPrefetch} from "../components/chunk-prefetch";
 import {DeferredCommandPalette} from "../components/command-palette-entry";
 import {DeferredSettingsDialog} from "../components/settings/settings-dialog-entry";
@@ -287,7 +288,7 @@ function RootDocument({children}: Readonly<{children: ReactNode}>) {
 				<script dangerouslySetInnerHTML={{__html: THEME_INIT_SCRIPT}} />
 			</head>
 			<body>
-				<AppShellFallback pathname={pathname} />
+				<AppShellFallback pathname={pathname} chin={getShellChinLabels()} />
 				{children}
 				<Scripts />
 			</body>

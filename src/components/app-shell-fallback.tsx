@@ -8,6 +8,7 @@ import {ROW_CLASS as SESSION_ROW_CLASS} from "./sidebar/session-group-section";
 import {SessionSkeleton} from "./session-skeleton";
 import {HomeGreeting} from "./home/greeting";
 import {HOME_COLUMN} from "./home/home-column";
+import type {ShellChinLabels} from "../lib/shell-chin-store";
 
 const NAV_ROW_CLASS = "df-nav-row h-[var(--sb-row-h)] rounded-[var(--sb-radius)] flex-1";
 const BAR_CLASS = "animate-pulse rounded bg-fill-ghost-hover";
@@ -26,8 +27,15 @@ const SESSION_ROW_WIDTHS = ["w-3/4", "w-2/3", "w-5/6", "w-1/2", "w-3/5", "w-4/5"
  * mounted underneath it.
  */
 
-/** Upstream draws its composer while loading: the 40px box with the placeholder, over the chin. */
-function FallbackComposer({placeholder}: {placeholder: string}) {
+/** The live chin's trigger type: 20px rows, 6px side padding, 17px leading. */
+const CHIN_LABEL_CLASS = "flex h-5 min-w-0 items-center truncate px-1.5 leading-[17px]";
+
+/**
+ * Upstream draws its composer while loading: the 40px box with the placeholder, over the chin's
+ * +, mode, model and effort, and usage ring. The server fills in the labels from settings.json
+ * and records them on the chin, where the hydrating client reads them back.
+ */
+function FallbackComposer({placeholder, chin}: {placeholder: string; chin: ShellChinLabels | null}) {
 	return (
 		<div data-cds="ChatComposer" className="flex w-full min-w-0 flex-col font-sans">
 			<div
@@ -38,9 +46,25 @@ function FallbackComposer({placeholder}: {placeholder: string}) {
 			</div>
 			<div
 				data-cds="ChatComposerChin"
-				className="mt-1.5 flex min-h-5 items-center ps-[7px] pe-2.5 text-[12px]/[15px] text-secondary"
+				data-fallback-chin={chin === null ? undefined : JSON.stringify(chin)}
+				className="mt-1.5 flex min-h-5 items-center justify-between ps-[7px] pe-2.5 text-[12px]/[15px] text-secondary"
 			>
-				<Plus aria-hidden="true" className="size-4" />
+				<span className="flex min-w-0 items-center">
+					<Plus data-fallback-chin-readout="" aria-hidden="true" className="size-4" />
+					<span data-fallback-chin-readout="" className={CHIN_LABEL_CLASS}>
+						{chin?.mode}
+					</span>
+				</span>
+				<span data-fallback-chin-end="" className="ms-auto flex min-w-0 items-center gap-1 ps-2">
+					<span data-fallback-chin-readout="" className={`${CHIN_LABEL_CLASS} text-primary`}>
+						{chin && `${chin.model} ${chin.effort}`}
+					</span>
+					<span className="flex aspect-square h-5 items-center justify-center">
+						<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+							<circle cx="6" cy="6" r="5" fill="none" strokeWidth="2" stroke="var(--color-alpha-2)" />
+						</svg>
+					</span>
+				</span>
 			</div>
 		</div>
 	);
@@ -90,7 +114,7 @@ function ArtifactsSkeleton() {
 }
 
 /** The home page while it loads, in its own layout: greeting, Sessions rows and the home composer. */
-function HomeSkeleton() {
+function HomeSkeleton({chin}: {chin: ShellChinLabels | null}) {
 	return (
 		<div data-testid="home-skeleton" className="flex h-full min-h-0 flex-col">
 			<header className={`flex items-center gap-1.5 pt-3 pb-6 ${HOME_COLUMN}`}>
@@ -115,16 +139,45 @@ function HomeSkeleton() {
 				</section>
 			</div>
 			<div className={`shrink-0 pb-4 ${HOME_COLUMN}`}>
-				<FallbackComposer placeholder="Describe a task or ask a question" />
+				<FallbackComposer placeholder="Describe a task or ask a question" chin={chin} />
 			</div>
 		</div>
 	);
 }
 
+/** The labels the server painted, so hydration renders the same chin; null outside a hydrating page. */
+function readPaintedChin(): ShellChinLabels | null {
+	if (typeof document === "undefined") return null;
+	const painted = document
+		.querySelector("#app-shell-fallback [data-fallback-chin]")
+		?.getAttribute("data-fallback-chin");
+	if (!painted) return null;
+	try {
+		const parsed: unknown = JSON.parse(painted);
+		return isShellChinLabels(parsed) ? parsed : null;
+	} catch {
+		return null;
+	}
+}
+
+function isShellChinLabels(value: unknown): value is ShellChinLabels {
+	if (typeof value !== "object" || value === null) return false;
+	const {mode, model, effort} = value as Partial<Record<keyof ShellChinLabels, unknown>>;
+	return typeof mode === "string" && typeof model === "string" && typeof effort === "string";
+}
+
 const HOME_ROW_WIDTHS = ["w-1/2", "w-2/5", "w-3/5", "w-1/3", "w-5/12"];
 
-export function AppShellFallback({pathname = ""}: {pathname?: string}) {
+export function AppShellFallback({
+	pathname = "",
+	chin = null,
+}: {
+	pathname?: string;
+	/** The chin's labels, which only the server knows; null paints the chin's icons alone. */
+	chin?: ShellChinLabels | null;
+}) {
 	const [hydrated, setHydrated] = useState(false);
+	const [labels] = useState(() => chin ?? readPaintedChin());
 
 	useEffect(() => {
 		setHydrated(true);
@@ -217,7 +270,7 @@ export function AppShellFallback({pathname = ""}: {pathname?: string}) {
 					<div data-route-tile-shell="home">
 						<div aria-hidden className="h-9 shrink-0 sm:h-8" />
 						<div className="min-h-0 flex-1">
-							<HomeSkeleton />
+							<HomeSkeleton chin={labels} />
 						</div>
 					</div>
 				) : (
@@ -227,7 +280,7 @@ export function AppShellFallback({pathname = ""}: {pathname?: string}) {
 							<SessionSkeleton />
 						</div>
 						<div className="chat-column shrink-0 pb-4">
-							<FallbackComposer placeholder="Type / for commands" />
+							<FallbackComposer placeholder="Type / for commands" chin={labels} />
 						</div>
 					</>
 				)}
