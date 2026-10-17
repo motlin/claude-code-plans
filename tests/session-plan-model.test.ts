@@ -1,6 +1,6 @@
 import {describe, expect, it} from "vite-plus/test";
 
-import {sessionPlanModel} from "../src/lib/session-plan-model";
+import {sessionPlanModel, withPendingPlan} from "../src/lib/session-plan-model";
 import {processTranscript} from "../src/lib/transcript";
 
 function assistant(uuid: string, toolUses: Array<{id: string; name: string; input: Record<string, unknown>}>) {
@@ -114,5 +114,29 @@ describe("sessionPlanModel", () => {
 			{content: "# Written plan", todos: [], editsPlanFile: true},
 			{content: null, todos: [], editsPlanFile: true},
 		]);
+	});
+});
+
+describe("withPendingPlan", () => {
+	const PENDING = {toolUseId: "", plan: "# Say hello\n\n1. Print hello"};
+	const TODOS = [{content: "Print hello", status: "pending"}];
+
+	it("shows the hook-stored plan when the transcript has none, keeping the checklist", () => {
+		expect(withPendingPlan({content: null, todos: TODOS, editsPlanFile: false}, PENDING)).toStrictEqual({
+			content: "# Say hello\n\n1. Print hello",
+			todos: TODOS,
+			editsPlanFile: false,
+		});
+	});
+
+	it("prefers the pending plan over an older transcript plan, since the CLI writes it last", () => {
+		expect(withPendingPlan({content: "Old plan", todos: [], editsPlanFile: true}, PENDING).content).toBe(
+			"# Say hello\n\n1. Print hello",
+		);
+	});
+
+	it("returns the transcript model unchanged without a pending plan", () => {
+		const transcript = {content: "Old plan", todos: [], editsPlanFile: false};
+		expect(withPendingPlan(transcript, null)).toBe(transcript);
 	});
 });

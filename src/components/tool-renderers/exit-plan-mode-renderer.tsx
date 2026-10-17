@@ -13,15 +13,13 @@ import {
 	exitPlanModeState,
 	OPEN_PLAN_ACTION_LABEL,
 	parseAllowedPrompts,
+	PLAN_BLOCK_CLASS,
 	PLAN_FILE_ACTION_LABEL,
 	PLAN_PROPOSED_TITLE,
 	type ExitPlanModeStatusTone,
 } from "../../lib/exit-plan-mode";
 
 const PLAN_FILE_RE = /\.claude\/plans\/([^/\s]+\.md)/;
-
-/** Upstream's plan block: the plan text as typed, set off by a 2px start border. */
-const PLAN_BLOCK_CLASS = "text-body text-secondary whitespace-pre-wrap break-words ps-2 border-s-2";
 
 /** Upstream's quiet footnote-sized secondary action, like the plan card's "Open plan". */
 const PLAN_FILE_ACTION_CLASS = "shrink-0 text-footnote text-secondary hover:text-primary hover:underline";

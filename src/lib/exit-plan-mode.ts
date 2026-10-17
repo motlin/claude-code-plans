@@ -82,3 +82,6 @@ export function describeExitPlanModeResult(
 
 	return {tone: isError ? "error" : "info", text: trimmed};
 }
+
+/** Upstream's plan block: the plan text as typed, set off by a 2px start border. */
+export const PLAN_BLOCK_CLASS = "text-body text-secondary whitespace-pre-wrap break-words ps-2 border-s-2";

@@ -39,7 +39,7 @@ import {useRegisterSessionDetailsPane} from "./panes/session-details-pane-entry"
 import {useRegisterSubagentPane} from "./panes/subagent-pane-entry";
 import {SessionBackgroundTasksOpener, SessionSubagentOpener} from "./subagent-opener";
 import {hasSessionPlan, useRegisterPlanPane} from "./panes/plan-pane-entry";
-import {sessionPlanModel} from "../lib/session-plan-model";
+import {sessionPlanModel, withPendingPlan} from "../lib/session-plan-model";
 import {useRegisterChangesPane} from "./changes/changes-pane-entry";
 import {ChangesPaneShortcut} from "./changes/changes-pane-shortcut";
 import {preloadFilesPane, useRegisterFilesPane} from "./panes/files-pane-entry";
@@ -352,8 +352,6 @@ function SessionView({
 	});
 	const sessionArtifacts = useSessionArtifacts(sessionId);
 	useRegisterArtifactsPane(sessionArtifacts);
-	const planModel = useMemo(() => sessionPlanModel(processed.lines), [processed.lines]);
-	useRegisterPlanPane(data.planFilename, planModel);
 	useRegisterLinksPane({
 		sessionId,
 		lines: processed.lines,
@@ -411,6 +409,12 @@ function SessionView({
 		() => dockedHookPlan({hookPlan, state: sessionSummaryState, records: transcript.records}),
 		[hookPlan, sessionSummaryState, transcript.records],
 	);
+	// Until the record lands on disk, the Plan pane shows the plan the dock is asking about.
+	const planModel = useMemo(
+		() => withPendingPlan(sessionPlanModel(processed.lines), dockedPlan),
+		[processed.lines, dockedPlan],
+	);
+	useRegisterPlanPane(data.planFilename, planModel);
 	const workingMarkerState = useWorkingMarkerState({
 		records: transcript.records,
 		sessionState: sessionSummaryState,

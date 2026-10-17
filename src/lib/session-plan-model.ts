@@ -1,3 +1,4 @@
+import type {PendingPlan} from "./hook-events";
 import {isRecord} from "./narrow";
 import type {SessionLine} from "./transcript";
 
@@ -81,4 +82,12 @@ export function sessionPlanModel(lines: readonly SessionLine[]): SessionPlanMode
 		}
 	}
 	return {content, todos, editsPlanFile};
+}
+
+/**
+ * The Plan pane's model while the session waits on an ExitPlanMode the CLI has not written to the
+ * JSONL yet: the hook-stored plan is newer than any transcript plan, so it shows in their place.
+ */
+export function withPendingPlan(model: SessionPlanModel, pendingPlan: PendingPlan | null): SessionPlanModel {
+	return pendingPlan === null ? model : {...model, content: pendingPlan.plan};
 }

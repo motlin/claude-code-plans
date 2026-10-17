@@ -16,6 +16,7 @@ import {getDb, getShutdownSignal, initDb, runInitialScan, shutdownDb} from "./li
 import {startSweep, stopSweep} from "./lib/active-session-store";
 import {SESSION_REGISTRY_DIR} from "./lib/session-registry";
 import {startSessionRegistryMonitor, stopSessionRegistryMonitor} from "./lib/session-registry-store";
+import {persistPendingPlansTo} from "./lib/pending-plan-store";
 import {persistPendingQuestionsTo} from "./lib/pending-question-store";
 import {startNotificationsSweep, stopNotificationsSweep} from "./lib/notifications-store";
 import {startLiveSubagentSweep, stopLiveSubagentSweep} from "./lib/live-subagent-store";
@@ -90,8 +91,9 @@ void (async () => {
 		},
 	});
 
-	// Questions sessions asked before this server started still dock.
+	// Questions and plans sessions proposed before this server started still dock.
 	persistPendingQuestionsTo(join(getCacheDir(), "pending-questions.json"));
+	persistPendingPlansTo(join(getCacheDir(), "pending-plans.json"));
 
 	try {
 		await trackActivity("startup pending-approvals scan", async () =>
