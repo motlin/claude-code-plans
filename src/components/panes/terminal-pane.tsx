@@ -128,9 +128,9 @@ function SessionEnded({sessionId}: {sessionId: string}) {
 	);
 }
 
-/** The `/terminals/terminal/$sessionId` pop-out of a session's Terminal pane. */
+/** The `/terminals/$sessionId` pop-out of a session's Terminal pane. */
 function terminalPopOutHref(sessionId: string): string {
-	return `/terminals/terminal/${encodeURIComponent(sessionId)}`;
+	return `/terminals/${encodeURIComponent(sessionId)}`;
 }
 
 /** Upstream's pane header menu; locally only "Open in new window" applies. */
@@ -156,7 +156,7 @@ function PaneHeaderMenu({sessionId}: {sessionId: string}) {
  * closes that pane the tab stays behind as "Session ended".
  *
  * `standalone` places it outside the tile host, as the full-bleed
- * `/terminals/terminal/$sessionId` pop-out: no Move, Expand, Close or header menu.
+ * `/terminals/$sessionId` pop-out: no Move, Expand, Close or header menu.
  */
 export function TerminalPane({
 	sessionId,

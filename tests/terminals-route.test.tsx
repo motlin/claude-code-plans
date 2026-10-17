@@ -18,11 +18,12 @@ import {herdrWorkspacesQueryOptions} from "../src/lib/api/herdr-workspaces";
 import {sessionQueryKeys} from "../src/lib/api/sessions";
 import {terminalPlacementsQueryOptions} from "../src/lib/api/terminal-placements";
 import {updateSessionViewedState} from "../src/lib/api/viewed-state";
+import {legacyTerminalPageRedirect} from "../src/lib/legacy-terminals-redirect";
 import {redirectLegacyHerdr} from "../src/routes/herdr";
 import {redirectLegacyTmux} from "../src/routes/tmux";
 import {Route as HerdrLayoutRoute} from "../src/routes/terminals";
 import {Route as HerdrRoute} from "../src/routes/terminals.index";
-import {Route as HerdrTerminalRoute} from "../src/routes/terminals.terminal.$sessionId";
+import {Route as HerdrTerminalRoute} from "../src/routes/terminals.$sessionId";
 
 vi.mock("../src/components/herdr-terminal", () => ({
 	HerdrTerminal: ({sessionId, interactive}: {sessionId: string; interactive?: boolean}) => (
@@ -161,7 +162,16 @@ function seedTerminalQueries(
 async function renderTerminalPage({
 	livePane = true,
 	writesEnabled = false,
-}: {livePane?: boolean; writesEnabled?: boolean} = {}) {
+	paneId,
+	host,
+	workspaceId,
+}: {
+	livePane?: boolean;
+	writesEnabled?: boolean;
+	paneId?: string;
+	host?: "herdr" | "tmux";
+	workspaceId?: string;
+} = {}) {
 	const HerdrTerminalPage = HerdrTerminalRoute.options.component;
 	if (!HerdrTerminalPage) throw new Error("Expected the Herdr terminal route component");
 	vi.spyOn(HerdrTerminalRoute, "useParams").mockReturnValue({
@@ -170,6 +180,20 @@ async function renderTerminalPage({
 
 	const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
 	seedTerminalQueries(queryClient, {livePane, writesEnabled});
+	if (paneId !== undefined || host !== undefined || workspaceId !== undefined) {
+		const pane = placement({active: true, agentStatus: "idle", number: 100}).herdrPane;
+		queryClient.setQueryData(herdrPanesQueryOptions.queryKey, {
+			panes: [
+				{
+					...pane,
+					paneId: paneId ?? pane.paneId,
+					host: host ?? pane.host,
+					workspaceId: workspaceId ?? pane.workspaceId,
+				},
+			],
+			writesEnabled,
+		});
+	}
 	const rootRoute = createRootRoute({
 		component: () => (
 			<QueryClientProvider client={queryClient}>{createElement(HerdrTerminalPage)}</QueryClientProvider>
@@ -177,7 +201,7 @@ async function renderTerminalPage({
 	});
 	const router = createRouter({
 		routeTree: rootRoute,
-		history: createMemoryHistory({initialEntries: ["/terminals/terminal/session-test-100"]}),
+		history: createMemoryHistory({initialEntries: ["/terminals/session-test-100"]}),
 	});
 	await router.load();
 	render(<RouterProvider router={router} />);
@@ -580,7 +604,7 @@ describe("HerdrPage", () => {
 				className: HERDR_TRANSCRIPT_CELL,
 			},
 			terminal: {
-				href: "/terminals/terminal/session-test-100",
+				href: "/terminals/session-test-100",
 				title: `Open live read-only terminal for ${displayName}. Workspace workspace-test-100 · Pane pane-test-100 · Terminal terminal-test-100 · Capabilities: write, events, observe`,
 				className: HERDR_TERMINAL_COLUMNS,
 			},
@@ -614,6 +638,24 @@ describe("HerdrPage", () => {
 			terminal: "session-test-100",
 		});
 		expect(document.body.textContent.includes("Terminal Fleet")).toBe(false);
+	});
+
+	it("names the host the session's pane runs in beside the heading", async () => {
+		const labels: Array<string | null> = [];
+		for (const pane of [
+			{paneId: "pane-test-100@later", host: "herdr" as const},
+			{paneId: "pane-test-100", host: "herdr" as const},
+			{paneId: "%9", host: "tmux" as const, workspaceId: "alice-tmux"},
+		]) {
+			await renderTerminalPage(pane);
+			labels.push(screen.getByTestId("terminal-host-label").textContent);
+			cleanup();
+		}
+		await renderTerminalPage({livePane: false});
+		expect({labels, ended: screen.queryByTestId("terminal-host-label")}).toStrictEqual({
+			labels: ["herdr · later", "herdr", "tmux · alice-tmux"],
+			ended: null,
+		});
 	});
 });
 
@@ -752,7 +794,7 @@ describe("Herdr master-detail layout", () => {
 		});
 		const terminalRoute = createRoute({
 			getParentRoute: () => layoutRoute,
-			path: "/terminal/$sessionId",
+			path: "/$sessionId",
 			component: HerdrTerminal,
 		});
 		const router = createRouter({
@@ -796,15 +838,15 @@ describe("Herdr master-detail layout", () => {
 			rowPrimaryLabel: rowPrimary?.getAttribute("aria-label"),
 			rowSecondary: transcriptLink.getAttribute("href"),
 		}).toStrictEqual({
-			rail: "/terminals/terminal/session-test-100",
-			rowPrimary: "/terminals/terminal/session-test-100",
+			rail: "/terminals/session-test-100",
+			rowPrimary: "/terminals/session-test-100",
 			rowPrimaryLabel: "Open live read-only terminal for Terminal 100",
 			rowSecondary: "/session/session-test-100",
 		});
 	});
 
 	it("renders the pane detail through the outlet on a deep link, keeping the rail", async () => {
-		const {router} = renderLayoutAt("/terminals/terminal/session-test-100");
+		const {router} = renderLayoutAt("/terminals/session-test-100");
 		await router.load();
 		render(<RouterProvider router={router} />);
 
@@ -954,16 +996,21 @@ describe("legacy /herdr and /tmux redirects", () => {
 			path: "/",
 			component: () => null,
 		});
-		const terminalRoute = createRoute({
+		const legacyTerminalRoute = createRoute({
 			getParentRoute: () => terminalsRoute,
 			path: "/terminal/$sessionId",
+			beforeLoad: legacyTerminalPageRedirect,
+		});
+		const terminalRoute = createRoute({
+			getParentRoute: () => terminalsRoute,
+			path: "/$sessionId",
 			component: () => null,
 		});
 		const router = createRouter({
 			routeTree: rootRoute.addChildren([
 				legacyRoute.addChildren([legacySplatRoute]),
 				legacyTmuxRoute.addChildren([legacyTmuxSplatRoute]),
-				terminalsRoute.addChildren([terminalsIndexRoute, terminalRoute]),
+				terminalsRoute.addChildren([terminalsIndexRoute, legacyTerminalRoute, terminalRoute]),
 			]),
 			history: createMemoryHistory({initialEntries: [path]}),
 		});
@@ -974,12 +1021,14 @@ describe("legacy /herdr and /tmux redirects", () => {
 	it.each([
 		["/herdr", "/terminals"],
 		["/herdr/", "/terminals"],
-		["/herdr/terminal/session-test-100", "/terminals/terminal/session-test-100"],
-		["/herdr/terminal/session-test-100?tab=shell#bottom", "/terminals/terminal/session-test-100?tab=shell#bottom"],
+		["/herdr/terminal/session-test-100", "/terminals/session-test-100"],
+		["/herdr/terminal/session-test-100?tab=shell#bottom", "/terminals/session-test-100?tab=shell#bottom"],
+		["/terminals/terminal/session-test-100", "/terminals/session-test-100"],
+		["/terminals/terminal/session-test-100?tab=shell#bottom", "/terminals/session-test-100?tab=shell#bottom"],
 		["/tmux", "/terminals"],
 		["/tmux/", "/terminals"],
 		["/tmux?filter=alice#top", "/terminals?filter=alice#top"],
-		["/tmux/terminal/session-test-100?tab=shell#bottom", "/terminals/terminal/session-test-100?tab=shell#bottom"],
+		["/tmux/terminal/session-test-100?tab=shell#bottom", "/terminals/session-test-100?tab=shell#bottom"],
 	])("sends %s to %s", async (from, to) => {
 		await expect(landingHref(from)).resolves.toBe(to);
 	});

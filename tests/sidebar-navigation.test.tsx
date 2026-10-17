@@ -284,7 +284,7 @@ describe("sidebar navigation", () => {
 
 	it("activates the Terminals section and terminal on a live terminal route", () => {
 		const matches = [
-			{fullPath: "/terminals/terminal/$sessionId", params: {sessionId: "session-test-100"}},
+			{fullPath: "/terminals/$sessionId", params: {sessionId: "session-test-100"}},
 		] as unknown as Parameters<typeof activeSectionFor>[0];
 
 		expect(activeSectionFor(matches)).toStrictEqual({

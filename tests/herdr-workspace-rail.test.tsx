@@ -83,7 +83,7 @@ describe("HerdrWorkspaceRail", () => {
 		}).toStrictEqual({
 			links: [
 				{
-					href: "/terminals/terminal/session-test-100",
+					href: "/terminals/session-test-100",
 					label: "Open live terminal for ✓ kalshi in workspace kalshi",
 				},
 			],
@@ -171,8 +171,8 @@ describe("HerdrWorkspaceRail", () => {
 				current: link.getAttribute("aria-current"),
 			})),
 		).toStrictEqual([
-			{href: "/terminals/terminal/session-test-100", current: "page"},
-			{href: "/terminals/terminal/session-test-200", current: null},
+			{href: "/terminals/session-test-100", current: "page"},
+			{href: "/terminals/session-test-200", current: null},
 		]);
 	});
 

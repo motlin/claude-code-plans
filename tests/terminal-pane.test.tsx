@@ -625,7 +625,7 @@ describe("Terminal pane header menu", () => {
 			opened: open.mock.calls,
 		}).toStrictEqual({
 			items: ["Open in new window"],
-			opened: [[`/terminals/terminal/${SESSION_ID}`, "_blank", "noopener"]],
+			opened: [[`/terminals/${SESSION_ID}`, "_blank", "noopener"]],
 		});
 	});
 });

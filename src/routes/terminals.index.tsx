@@ -194,7 +194,7 @@ function TerminalsPage() {
 							>
 								<span className={`${HOST_BADGE} ml-3`}>herdr</span>
 								<Link
-									to="/terminals/terminal/$sessionId"
+									to="/terminals/$sessionId"
 									params={{sessionId: placement.sessionId}}
 									aria-label={`Open live read-only terminal for ${placement.displayName}`}
 									title={`Open live read-only terminal for ${placement.displayName}. ${technicalDetails}`}

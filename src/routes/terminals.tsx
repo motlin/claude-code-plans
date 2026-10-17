@@ -12,7 +12,7 @@ export const Route = createFileRoute("/terminals")({
  * Master-detail shell for every `/terminals` view.
  *
  * Flat file routing makes this the parent of `terminals.index` and
- * `terminals.terminal.$sessionId`, so it MUST render `<Outlet />`: a parent with a
+ * `terminals.$sessionId`, so it MUST render `<Outlet />`: a parent with a
  * component but no outlet silently swallows its children, leaving the URL and
  * title updated while the child never mounts. `tests/route-parents-render-outlet.test.ts`
  * guards that invariant.

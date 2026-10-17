@@ -160,7 +160,7 @@ function EnvironmentBody({inputs}: {inputs: SessionRailInputs}) {
 				<RailRow icon={<Icon icon={SquareTerminal} />} label="tmux" hint={herdrPane.paneId} />
 			) : (
 				<Link
-					to="/terminals/terminal/$sessionId"
+					to="/terminals/$sessionId"
 					params={{sessionId: inputs.sessionId}}
 					className={RAIL_ROW_ACTION_CLASS}
 				>

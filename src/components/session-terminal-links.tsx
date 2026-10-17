@@ -2,7 +2,7 @@ import {Link} from "@tanstack/react-router";
 import {MessagesSquare} from "lucide-react";
 
 /**
- * `/terminals/terminal/$sessionId` and `/session/$id` are two views of the same
+ * `/terminals/$sessionId` and `/session/$id` are two views of the same
  * Claude session under two different param names; this link crosses from the
  * terminal back to the transcript.
  */

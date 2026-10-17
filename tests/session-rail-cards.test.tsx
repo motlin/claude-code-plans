@@ -294,7 +294,7 @@ describe("Environment card", () => {
 				["~/projects/avalonlogs", "herdr"],
 				["herdr", "working"],
 			],
-			href: `/terminals/terminal/${SESSION_ID}`,
+			href: `/terminals/${SESSION_ID}`,
 			remoteControl: [],
 		});
 	});

@@ -67,7 +67,7 @@ function PaneRow({
 
 	return (
 		<Link
-			to="/terminals/terminal/$sessionId"
+			to="/terminals/$sessionId"
 			params={{sessionId: pane.sessionId}}
 			aria-label={`Open live terminal for ${pane.title} in workspace ${workspaceLabel}`}
 			{...(selected ? {"aria-current": "page" as const} : {})}
