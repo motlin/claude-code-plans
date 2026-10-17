@@ -1178,6 +1178,22 @@ describe("JsonlRecordSchema observed 2026-09 transcript fields", () => {
 		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
 	});
 
+	it("parses subagent task-notification user records carrying joinedNotice arrays", () => {
+		const record = {
+			type: "user",
+			...baseFields,
+			agentId: "a80e3eb285d303168",
+			message: {role: "user", content: "[SYSTEM NOTIFICATION - NOT USER INPUT]\nA background task finished."},
+			isMeta: true,
+			origin: {kind: "task-notification", producer: "session-task"},
+			joinedNoticeLengths: [3837],
+			joinedNoticeOwn: [true],
+			joinedNoticeRunIds: ["0mvcr2ryk-c34fc2a3"],
+		};
+
+		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
+	});
+
 	it("parses user records carrying turn origin, scheduled-task, and classifier context fields", () => {
 		const record = {
 			type: "user",

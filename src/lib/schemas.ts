@@ -415,6 +415,10 @@ export const UserRecordSchema = z
 		turnCompanion: z.boolean().optional(),
 		queueSkipAttachments: z.boolean().optional(),
 		queueSkipSlashCommands: z.boolean().optional(),
+		// Parallel arrays, one entry per background-task notice joined into this message.
+		joinedNoticeLengths: z.array(z.number()).optional(),
+		joinedNoticeOwn: z.array(z.boolean()).optional(),
+		joinedNoticeRunIds: z.array(z.string()).optional(),
 		queueTranscriptOnly: z.boolean().optional(),
 		scheduledTaskId: z.string().optional(),
 		scheduledFireId: z.string().optional(),
