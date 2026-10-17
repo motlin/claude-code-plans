@@ -81,6 +81,8 @@ import {
 	forkSubmitLabel,
 	launchPromptFork,
 } from "../lib/composer-fork-routing";
+import {composerPendingGate, composerSendPlan, gateHoldsQueue} from "../lib/composer-pending-gate";
+import {assertNever} from "../lib/assert-never";
 import {canApplyLive, type LaunchOptions, modeMenuItems} from "../lib/launch-options";
 import {setPendingFork} from "../lib/session-fork";
 import {
@@ -578,7 +580,13 @@ function SessionView({
 		onInterrupt,
 		onError: onInterruptError,
 	});
-	const queueBusy = workingMarkerState.status !== "idle" || liveHerdrPrompt.state.isPending;
+	const composerGate = composerPendingGate({
+		hookQuestion,
+		transcriptQuestion: inlineQuestion !== null,
+		awaitingPermission,
+	});
+	const paneBusy = workingMarkerState.status !== "idle" || liveHerdrPrompt.state.isPending;
+	const queueBusy = paneBusy || gateHoldsQueue(composerGate);
 	const interruptForSendNow = useCallback(() => {
 		onInterrupt(Date.now());
 		sendHerdrInterrupt(sessionId, false).catch(onInterruptError);
@@ -590,16 +598,35 @@ function SessionView({
 		interrupt: interruptForSendNow,
 	});
 	const {enqueue: enqueuePrompt, items: queuedPrompts} = composerQueue;
+	const {send: composerSend} = composerSendPlan(composerGate, {busy: paneBusy, queued: queuedPrompts.length});
 	const sendLivePrompt = useCallback(
 		async (prompt: string) => {
-			// Enter while working queues; the queue flushes on the next idle.
-			if (queueBusy || queuedPrompts.length > 0) {
-				enqueuePrompt(prompt);
-				return;
+			switch (composerSend.kind) {
+				case "dismiss-question-then-queue":
+					// Upstream: a message sent under a question answers it as skipped, then goes as the next turn.
+					enqueuePrompt(prompt);
+					try {
+						await sendHerdrQuestionAnswer(sessionId, composerSend.toolUseId, composerSend.answers);
+					} catch (error) {
+						toast({
+							kind: "error",
+							message: "Couldn't skip the question",
+							description: error instanceof Error ? error.message : String(error),
+						});
+					}
+					return;
+				case "queue":
+					// Enter while working, or while the pane shows a dialog, queues; the queue flushes on the next idle.
+					enqueuePrompt(prompt);
+					return;
+				case "send":
+					if ((await liveHerdrPrompt.send(prompt)) === "not-ready") enqueuePrompt(prompt);
+					return;
+				default:
+					assertNever(composerSend);
 			}
-			if ((await liveHerdrPrompt.send(prompt)) === "not-ready") enqueuePrompt(prompt);
 		},
-		[enqueuePrompt, liveHerdrPrompt, queueBusy, queuedPrompts.length],
+		[composerSend, enqueuePrompt, liveHerdrPrompt, sessionId, toast],
 	);
 	const paneState: ComposerPaneState = promptBehavior.hasLivePane
 		? workingMarkerState.status === "idle"

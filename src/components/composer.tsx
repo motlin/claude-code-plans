@@ -35,11 +35,12 @@ import {slashCommandOptionId} from "./slash-command-option-id";
 import {Menu, MenuContent, MenuItem, MenuTrigger} from "./ui/menu";
 import {Tooltip} from "./ui/tooltip";
 import {startComposerKeystrokeJourney, startComposerSubmitJourneys} from "../lib/perf/field-journeys";
+import {SESSION_COMPOSER_PLACEHOLDER} from "../lib/composer-pending-gate";
 
 type ComposerVariant = "session" | "home";
 
 const PLACEHOLDER: Record<ComposerVariant, string> = {
-	session: "Type / for commands",
+	session: SESSION_COMPOSER_PLACEHOLDER,
 	home: "Describe a task or ask a question",
 };
 
