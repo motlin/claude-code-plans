@@ -17,6 +17,13 @@ export function sessionBridgeMetadataKey(sessionId: string): string {
 	return `${LOCAL_PREFIX}${sessionId}`;
 }
 
+/** 1 when the session's transcript bridged it to claude.ai/code (Remote Control), as a column of a sessions query. */
+export const sessionRemoteControlColumn = sql<number>`EXISTS (
+	SELECT 1 FROM ${schema.metadata} AS remote_control
+	WHERE remote_control.key = ${LOCAL_PREFIX} || ${schema.sessions.id}
+	AND json_extract(remote_control.value, '$.canonical') IS NOT NULL
+)`;
+
 /** Two surviving owners suffice to distinguish missing, unique and ambiguous indexed aliases. */
 export function getSessionBridgeOwners(db: IndexDb, routeId: string): string[] {
 	return db

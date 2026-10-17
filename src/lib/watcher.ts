@@ -181,6 +181,7 @@ function sessionSummariesEqual(a: SessionSummaryPayload, b: SessionSummaryPayloa
 		samePrStatus(a.prStatus, b.prStatus) &&
 		a.projectName === b.projectName &&
 		a.archived === b.archived &&
+		a.remoteControl === b.remoteControl &&
 		a.state === b.state &&
 		a.unseen === b.unseen &&
 		a.blockedSince === b.blockedSince

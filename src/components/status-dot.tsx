@@ -3,7 +3,7 @@ import {sessionStateKindLabels} from "../lib/schema-choices";
 import type {GitPrState} from "../lib/pr-status";
 import type {SessionStateKind} from "../lib/session-state";
 
-const GIT_PR_STATE_LABELS = {
+export const GIT_PR_STATE_LABELS = {
 	opened: "Open",
 	draft: "Draft",
 	merged: "Merged",

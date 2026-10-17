@@ -34,6 +34,8 @@ const SessionListItemSchema = z.object({
 	prStatus: PrStatusSchema.optional(),
 	forkedFromSessionId: z.string().optional(),
 	archived: z.boolean(),
+	/** Bridged to claude.ai/code by Remote Control. */
+	remoteControl: z.literal(true).optional(),
 	state: SessionSummaryStateSchema,
 	/** Blocked on a tool permission prompt; the session page docks the permission card from it. */
 	awaitingPermission: z.literal(true).optional(),

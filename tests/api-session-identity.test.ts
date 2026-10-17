@@ -11,6 +11,7 @@ import * as sessionFiles from "../src/lib/sessions";
 import {currentPerfCounters, withPerfScope} from "../src/lib/perf/server-scope";
 import {Route as IdentityRoute} from "../src/routes/api/sessions.$id.identity";
 import {Route as DetailRoute} from "../src/routes/api/sessions.$id";
+import {Route as RecentRoute} from "../src/routes/api/sessions.recent";
 
 const PROJECT = "-example-project";
 const ALICE = "session-alice";
@@ -127,6 +128,26 @@ describe("session detail API titles", () => {
 			title: "claude.ai",
 			aiTitle: "Parallel do-task workstreams",
 		});
+	});
+});
+
+describe("recent sessions API Remote Control flag", () => {
+	it("marks only a session bridged to claude.ai as Remote Control", async () => {
+		await indexSession(ALICE, ["cse_alice_100"]);
+		await indexSession(BOB, []);
+		const {handlers} = (
+			RecentRoute as unknown as {
+				options: {server: {handlers: Record<string, (context: {request: Request}) => Promise<Response>>}};
+			}
+		).options.server;
+
+		const response = await handlers["GET"]!({request: new Request("http://localhost/api/sessions/recent")});
+		const {sessions} = (await response.json()) as {sessions: Array<{id: string; remoteControl?: true}>};
+
+		expect(sessions.map(({id, remoteControl}) => ({id, remoteControl}))).toStrictEqual([
+			{id: BOB, remoteControl: undefined},
+			{id: ALICE, remoteControl: true},
+		]);
 	});
 });
 

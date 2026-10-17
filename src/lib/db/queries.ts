@@ -1,8 +1,9 @@
-import {eq, desc, asc, sql, and, inArray, isNotNull, like, type SQL} from "drizzle-orm";
+import {eq, desc, asc, sql, and, inArray, isNotNull, like, getTableColumns, type SQL} from "drizzle-orm";
 import {randomUUID} from "node:crypto";
 import {basename, dirname, relative, sep} from "node:path";
 import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
 import * as schema from "./schema";
+import {sessionRemoteControlColumn} from "./bridge-session-index";
 import type {SessionEntry, SessionPrLink} from "../sessions";
 import type {SessionStatusFilter} from "../session-groups";
 import {ORPHANED_TASKS_PROJECT_ID, ORPHANED_TASKS_PROJECT_NAME} from "../task-groups";
@@ -52,6 +53,14 @@ function getProjectNameMap(db: IndexDb): Map<string, string> {
 
 type SessionRow = typeof schema.sessions.$inferSelect;
 
+/** A sessions row plus its Remote Control flag, for rows that become `SessionEntry`s. */
+const SESSION_ENTRY_COLUMNS = {...getTableColumns(schema.sessions), remoteControl: sessionRemoteControlColumn};
+type SessionEntryRow = SessionRow & {remoteControl: number};
+
+function remoteControlField(remoteControl: number): {remoteControl?: true} {
+	return remoteControl === 1 ? {remoteControl: true} : {};
+}
+
 function sessionPrLink(row: Pick<SessionRow, "prNumber" | "prUrl" | "prRepository">): SessionPrLink | undefined {
 	if (row.prNumber === null || row.prUrl === null || row.prRepository === null) return undefined;
 	return {number: row.prNumber, url: row.prUrl, repository: row.prRepository};
@@ -70,7 +79,7 @@ export function getSessionPrLink(db: IndexDb, sessionId: string): SessionPrLink 
 	return row === undefined ? null : (sessionPrLink(row) ?? null);
 }
 
-function rowToSessionEntry(row: SessionRow, projectNames: Map<string, string>): SessionEntry {
+function rowToSessionEntry(row: SessionEntryRow, projectNames: Map<string, string>): SessionEntry {
 	return {
 		id: row.id,
 		title: row.title,
@@ -89,6 +98,7 @@ function rowToSessionEntry(row: SessionRow, projectNames: Map<string, string>): 
 		forkedFromSessionId: row.forkedFromSessionId ?? undefined,
 		pr: sessionPrLink(row),
 		turnEndedAt: row.turnEndedAt ?? undefined,
+		...remoteControlField(row.remoteControl),
 	};
 }
 
@@ -111,8 +121,12 @@ function batchFetchSessionTitles(db: IndexDb, sessionIds: string[]): Map<string,
 }
 
 function batchFetchSessions(db: IndexDb, sessionIds: string[]) {
-	if (sessionIds.length === 0) return new Map<string, typeof schema.sessions.$inferSelect>();
-	const rows = db.select().from(schema.sessions).where(inArray(schema.sessions.id, sessionIds)).all();
+	if (sessionIds.length === 0) return new Map<string, SessionEntryRow>();
+	const rows = db
+		.select(SESSION_ENTRY_COLUMNS)
+		.from(schema.sessions)
+		.where(inArray(schema.sessions.id, sessionIds))
+		.all();
 	return new Map(rows.map((r) => [r.id, r]));
 }
 
@@ -199,7 +213,7 @@ export function listRecentSessionsFromDb(
 	);
 
 	const rows = db
-		.select()
+		.select(SESSION_ENTRY_COLUMNS)
 		.from(schema.sessions)
 		.where(condition)
 		.orderBy(desc(schema.sessions.mtimeMs), desc(schema.sessions.id))
@@ -215,7 +229,7 @@ export function listRecentSessionsFromDb(
 		unreachedLiveIds.length === 0
 			? []
 			: db
-					.select()
+					.select(SESSION_ENTRY_COLUMNS)
 					.from(schema.sessions)
 					.where(
 						and(
@@ -340,7 +354,7 @@ export function listSessionsForProjectFromDb(
 	const projectName = projectRow?.name ?? projectId;
 
 	const rows = db
-		.select()
+		.select(SESSION_ENTRY_COLUMNS)
 		.from(schema.sessions)
 		.where(
 			and(
@@ -368,6 +382,7 @@ export function listSessionsForProjectFromDb(
 		cwd: row.cwd ?? undefined,
 		isSidechain: false,
 		pr: sessionPrLink(row),
+		...remoteControlField(row.remoteControl),
 	}));
 }
 
@@ -1013,7 +1028,7 @@ export function getSessionsByIds(
 	const projectNames = getProjectNameMap(db);
 
 	const rows = db
-		.select({session: schema.sessions})
+		.select({session: schema.sessions, remoteControl: sessionRemoteControlColumn})
 		.from(schema.sessions)
 		.where(and(inArray(schema.sessions.id, [...ids]), archiveCondition(opts.status)))
 		.orderBy(desc(schema.sessions.mtimeMs), asc(schema.sessions.id))
@@ -1034,6 +1049,7 @@ export function getSessionsByIds(
 		cwd: row.session.cwd ?? undefined,
 		isSidechain: row.session.isSidechain === 1,
 		pr: sessionPrLink(row.session),
+		...remoteControlField(row.remoteControl),
 	}));
 }
 

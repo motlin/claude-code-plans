@@ -175,12 +175,8 @@ describe("sidebar SessionGroups", () => {
 		const blocked = screen.getByRole("link", {name: "Blocked one"});
 		expect({
 			href: blocked.getAttribute("href"),
-			blocked: within(rowOf(/^Blocked one$/))
-				.getByRole("status")
-				.getAttribute("aria-label"),
-			working: within(rowOf(/^Working one$/))
-				.getByRole("status")
-				.getAttribute("aria-label"),
+			blocked: within(rowOf(/^Blocked one$/)).getByRole("status").textContent,
+			working: within(rowOf(/^Working one$/)).getByRole("status").textContent,
 			settled: {
 				mark: within(rowOf(/^Completed older$/)).queryByRole("img"),
 				env: rowOf(/^Completed older$/)
@@ -322,6 +318,32 @@ describe("sidebar SessionGroups", () => {
 				flushRight: true,
 			},
 			done: {leading: false, mark: null, env: "local", hidesOnHover: true, flushRight: true},
+		});
+	});
+
+	it("announces each row's status and environment in upstream's two sr-only siblings", async () => {
+		await renderGroups(FIXTURE.map((row) => (row.id === "b1" ? {...row, remoteControl: true} : row)));
+		const srOnlyOf = (name: RegExp) => {
+			const row = screen.getByRole("link", {name}).closest<HTMLElement>("[data-session-actions]");
+			if (row === null) throw new Error(`no row ${String(name)}`);
+			return [...row.querySelectorAll(".sr-only:not([data-row-main-button] *)")].map((node) => [
+				node.getAttribute("role"),
+				node.textContent,
+			]);
+		};
+
+		expect({
+			awaitingConnected: srOnlyOf(/^Blocked one$/),
+			idleLocal: srOnlyOf(/^Completed older$/),
+		}).toStrictEqual({
+			awaitingConnected: [
+				["status", "Awaiting input"],
+				[null, " Remote Control · Connected"],
+			],
+			idleLocal: [
+				["status", ""],
+				[null, " Local"],
+			],
 		});
 	});
 

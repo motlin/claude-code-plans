@@ -51,6 +51,8 @@ export interface SessionEntry {
 	pr?: SessionPrLink | undefined;
 	/** Epoch ms of the transcript's newest turn-ending record, from the index. */
 	turnEndedAt?: number | undefined;
+	/** Bridged to claude.ai/code by Remote Control, from the index. */
+	remoteControl?: true | undefined;
 }
 
 export interface SessionProjectGroup {

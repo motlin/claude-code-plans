@@ -133,6 +133,8 @@ export interface SessionSummaryPayload {
 	forkedFromSessionId?: string;
 	/** App-side archive flag (`archived_sessions`); the JSONL is never touched. */
 	archived: boolean;
+	/** Bridged to claude.ai/code by Remote Control; absent otherwise. */
+	remoteControl?: true;
 	state: SessionSummaryState;
 	/** Blocked on a tool permission prompt (a hook notification or the registry's `waitingFor`); absent otherwise. */
 	awaitingPermission?: true;

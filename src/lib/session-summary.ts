@@ -1,9 +1,10 @@
 import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
 import {secondaryAiTitle} from "./ai-title";
-import {eq} from "drizzle-orm";
+import {eq, getTableColumns} from "drizzle-orm";
 import * as schema from "./db/schema";
 import {getActiveSessionEntry, type ActiveSessionEntry} from "./active-session-store";
 import {getPendingApprovalsForProject} from "./db/pending-approvals-cache";
+import {sessionRemoteControlColumn} from "./db/bridge-session-index";
 import {getSessionPrLink, isSessionArchived} from "./db/queries";
 import {isSessionUnseen} from "./db/viewed-state";
 import type {ActiveSessionPayload, SessionSummaryPayload} from "./hook-events";
@@ -117,6 +118,7 @@ export function toSessionSummaryPayload(
 		...(prStatus === null ? {} : {prStatus}),
 		...(entry.forkedFromSessionId === undefined ? {} : {forkedFromSessionId: entry.forkedFromSessionId}),
 		archived,
+		...(entry.remoteControl === true ? {remoteControl: true} : {}),
 		state: pendingInput || awaitingPermission ? "waiting" : main.state,
 		...(awaitingPermission ? {awaitingPermission: true} : {}),
 		...(registrySession === null ? {} : {processStartedAt: registrySession.startedAt}),
@@ -159,7 +161,11 @@ export function buildSessionSummaryPayloadFromDb(
 	sessionId: string,
 	activeSessionLookup: (sessionId: string) => ActiveSessionEntry | null = getActiveSessionEntry,
 ): SessionSummaryPayload | null {
-	const row = db.select().from(schema.sessions).where(eq(schema.sessions.id, sessionId)).get();
+	const row = db
+		.select({...getTableColumns(schema.sessions), remoteControl: sessionRemoteControlColumn})
+		.from(schema.sessions)
+		.where(eq(schema.sessions.id, sessionId))
+		.get();
 	if (!row) return null;
 
 	const projectRow = db.select().from(schema.projects).where(eq(schema.projects.id, row.projectId)).get();
@@ -184,6 +190,7 @@ export function buildSessionSummaryPayloadFromDb(
 			forkedFromSessionId: row.forkedFromSessionId ?? undefined,
 			pr: getSessionPrLink(db, sessionId) ?? undefined,
 			turnEndedAt: row.turnEndedAt ?? undefined,
+			...(row.remoteControl === 1 ? {remoteControl: true} : {}),
 		},
 		{
 			unseen: isSessionUnseen(db, sessionId),
