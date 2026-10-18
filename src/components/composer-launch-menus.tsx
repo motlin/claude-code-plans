@@ -17,6 +17,7 @@ import {
 } from "../lib/launch-options";
 import {effortLevelShortLabels} from "../lib/schema-choices";
 import {ConfirmDialog} from "./confirm-dialog";
+import {CHIN_PRIMARY_TRIGGER_CLASS, CHIN_TRIGGER_CLASS, EFFORT_LABEL_CLASS} from "./composer-tokens";
 import {
 	Menu,
 	MenuContent,
@@ -35,14 +36,6 @@ import {Tooltip} from "./ui/tooltip";
  * The claude.ai/code chin menus (⌥⌘M mode, ⇧⌘I model, ⇧⌘E effort). A choice
  * applies to the next fork or launch as a `claude` CLI flag.
  */
-
-export const CHIN_BUTTON_CLASS =
-	"flex h-6 min-w-0 items-center justify-center rounded-r4 leading-[20px] text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary focus-visible:shadow-[0_0_0_2px_var(--accent-100)] focus-visible:outline-none";
-
-const CHIN_TRIGGER_CLASS = `${CHIN_BUTTON_CLASS} truncate px-1.5`;
-
-/** Upstream reads the model and effort in primary ink; +, mode and usage stay secondary. */
-const CHIN_PRIMARY_TRIGGER_CLASS = CHIN_TRIGGER_CLASS.replace("text-secondary", "text-primary");
 
 const EFFORT_HELP = "Higher effort means more thorough responses, but takes longer and uses your limits faster.";
 
@@ -168,8 +161,7 @@ export function ModelMenu({
 				className={CHIN_PRIMARY_TRIGGER_CLASS}
 			>
 				<span className="truncate">{currentLabel}</span>
-				{/* Upstream mutes the effort and drops it when the chin is under 280px. */}
-				<span className="shrink-0 whitespace-pre text-ink-muted @max-[280px]:hidden"> {effortLabel}</span>
+				<span className={EFFORT_LABEL_CLASS}> {effortLabel}</span>
 			</MenuTrigger>
 			<MenuContent side="top" align="end">
 				<MenuRadioGroup

@@ -28,6 +28,7 @@ import {type ChinLaunchControls, ComposerAddMenu, ComposerChin} from "./composer
 import {AttachedContextChips} from "./attached-context-chips";
 import {ConfirmDialog} from "./confirm-dialog";
 import type {ChinMenu} from "./composer-launch-menus";
+import {COMPOSER_CARD_CLASS, COMPOSER_CHIN_CLASS} from "./composer-tokens";
 import {FileMentionMenu} from "./file-mention-menu";
 import {fileMentionOptionId} from "./file-mention-option-id";
 import {SlashCommandMenu} from "./slash-command-menu";
@@ -43,9 +44,6 @@ const PLACEHOLDER: Record<ComposerVariant, string> = {
 	session: SESSION_COMPOSER_PLACEHOLDER,
 	home: "Describe a task or ask a question",
 };
-
-const CARD_CLASS =
-	"relative z-[1] flex cursor-text flex-col gap-y-1.5 rounded-composer bg-surface-3 p-2 shadow-[var(--composer-shadow-idle)] transition-shadow focus-within:shadow-[var(--composer-shadow-focus)]";
 
 const EDITOR_CLASS =
 	"block w-full resize-none overflow-y-auto bg-transparent py-1 pl-1 font-sans text-[14px]/[20px] text-primary [field-sizing:content] placeholder:text-[rgb(137,135,129)] focus:outline-none disabled:opacity-50 pointer-coarse:text-[16px]";
@@ -626,7 +624,7 @@ export function Composer({
 			{/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- a pointer shortcut that focuses the textarea, which is keyboard-reachable itself */}
 			<div
 				data-composer-card
-				className={CARD_CLASS}
+				className={COMPOSER_CARD_CLASS}
 				onClick={() => textareaRef.current?.focus()}
 				onDragOver={(e) => {
 					if (disabled || !hasFiles(e)) return;
@@ -734,10 +732,7 @@ export function Composer({
 				</div>
 			</div>
 			{environment === undefined ? (
-				<div
-					data-cds="ChatComposerChin"
-					className="@container mt-1.5 flex min-h-6 items-center justify-between ps-[7px] pe-2.5 text-[13px]/[20px] text-secondary"
-				>
+				<div data-cds="ChatComposerChin" className={COMPOSER_CHIN_CLASS}>
 					{chin && (
 						<ComposerChin
 							state={chin}

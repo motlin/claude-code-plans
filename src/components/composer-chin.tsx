@@ -24,7 +24,8 @@ import {
 } from "../lib/launch-options";
 import {useShortcutKeys} from "../hooks/use-shortcut";
 import {effortLevelLabels} from "../lib/schema-choices";
-import {CHIN_BUTTON_CLASS, type ChinMenu, ModeMenu, ModelMenu} from "./composer-launch-menus";
+import {type ChinMenu, ModeMenu, ModelMenu} from "./composer-launch-menus";
+import {ADD_BUTTON_CLASS, USAGE_RING_CLASS} from "./composer-tokens";
 import {settingsHash} from "../lib/settings-hash";
 import {ConfirmDialog} from "./confirm-dialog";
 import {Menu, MenuContent, MenuItem, MenuTrigger} from "./ui/menu";
@@ -112,10 +113,7 @@ function UsageRing({usage, onShowBreakdown}: {usage: ComposerUsage | null; onSho
 	return (
 		<Popover.Root open={open} onOpenChange={setOpen}>
 			<Tooltip content={formatUsageTooltipRows(usage, now).join("\n")} multiline>
-				<Popover.Trigger
-					aria-label={formatUsageAriaLabel(usage, now)}
-					className={`${CHIN_BUTTON_CLASS} aspect-square`}
-				>
+				<Popover.Trigger aria-label={formatUsageAriaLabel(usage, now)} className={USAGE_RING_CLASS}>
 					<svg width="14" height="14" viewBox="0 0 12 12" className="-rotate-90" aria-hidden="true">
 						<circle cx="6" cy="6" r="5" fill="none" strokeWidth="2" stroke="var(--color-alpha-2)" />
 						<circle
@@ -172,7 +170,7 @@ export const ComposerAddMenu = memo(function ComposerAddMenu({
 	return (
 		<Menu>
 			<Tooltip content="Add" side="top">
-				<MenuTrigger aria-label="Add" className={CHIN_BUTTON_CLASS.replace("h-6", "size-7")}>
+				<MenuTrigger aria-label="Add" className={ADD_BUTTON_CLASS}>
 					<Plus className="size-[18px]" aria-hidden="true" />
 				</MenuTrigger>
 			</Tooltip>

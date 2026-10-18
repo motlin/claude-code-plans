@@ -11,6 +11,15 @@ import {DEFAULT_VISIBLE_NAV_SECTIONS} from "../src/lib/nav-sections";
 import {Route} from "../src/routes/__root";
 import {resolveShellChinLabels} from "../src/lib/shell-chin-labels";
 import {getShellChinLabels, setShellChinLabels} from "../src/lib/shell-chin-store";
+import {
+	ADD_BUTTON_CLASS,
+	CHIN_PRIMARY_TRIGGER_CLASS,
+	CHIN_TRIGGER_CLASS,
+	COMPOSER_CARD_CLASS,
+	COMPOSER_CHIN_CLASS,
+	EFFORT_LABEL_CLASS,
+	USAGE_RING_CLASS,
+} from "../src/components/composer-tokens";
 
 /** Hydrates the client's fallback, which has no labels, and reports its chin before the fallback removes itself. */
 function ProbeFallback({onHydrated}: {onHydrated: (chin: Element) => void}) {
@@ -20,9 +29,10 @@ function ProbeFallback({onHydrated}: {onHydrated: (chin: Element) => void}) {
 	return <AppShellFallback />;
 }
 
-/** The chin's readouts in order: "+" for the add icon, then each label's text. */
+/** The composer's readouts in order: "+" for the card's add icon, then each chin label's text. */
 function chinReadouts(chin: Element): string[] {
-	return Array.from(chin.querySelectorAll("[data-fallback-chin-readout]"), (node) =>
+	const composer = chin.closest('[data-cds="ChatComposer"]')!;
+	return Array.from(composer.querySelectorAll("[data-fallback-chin-readout]"), (node) =>
 		node.tagName.toLowerCase() === "svg" ? "+" : node.textContent,
 	);
 }
@@ -177,7 +187,7 @@ describe("AppShellFallback", () => {
 			chin: composer?.querySelector('[data-cds="ChatComposerChin"] svg') !== null,
 		}).toStrictEqual({
 			placeholder: "Type / for commands",
-			box: "relative flex flex-col rounded-card bg-surface-3 p-2 shadow-[var(--composer-shadow-idle)]",
+			box: COMPOSER_CARD_CLASS,
 			oldEmptyBox: null,
 			chin: true,
 		});
@@ -247,7 +257,7 @@ describe("AppShellFallback", () => {
 		errors.mockRestore();
 
 		expect({
-			shell: shell.includes(">Plan<") && shell.includes(">Opus 5.5 Max<"),
+			shell: shell.includes(">Plan<") && shell.includes(">Opus 5.5<") && shell.includes("> Max<"),
 			hydratedReadouts,
 			recoverableErrors: onRecoverableError.mock.calls.length,
 			consoleErrors: errors.mock.calls.length,
@@ -312,6 +322,54 @@ describe("AppShellFallback", () => {
 			shell: true,
 			homeFirst: true,
 			titlebar: "flex h-8 shrink-0 items-center ps-[var(--tile-title-start,0px)] pe-12",
+		});
+	});
+
+	it("paints the live composer's tokens so hydration does not jump: the card, a 28px line beside the 28px Add, the 13/20 chin, its 24px triggers with the effort in a muted span, and the 14px ring", () => {
+		const host = document.createElement("div");
+		host.innerHTML = renderToStaticMarkup(
+			<AppShellFallback
+				chin={resolveShellChinLabels({
+					model: "opus",
+					effortLevel: "high",
+					defaultMode: "auto",
+					bypassPermissionsAllowed: false,
+				})}
+			/>,
+		);
+		const card = host.querySelector("[data-fallback-composer]")!;
+		const chin = host.querySelector('[data-cds="ChatComposerChin"]')!;
+		const [mode, model] = Array.from(chin.querySelectorAll("[data-fallback-chin-readout]"));
+		const ring = chin.querySelector("[data-fallback-chin-end] > span:last-child");
+
+		expect({
+			card: card.className,
+			line: card.querySelector("[data-fallback-placeholder]")?.className,
+			add: card.querySelector("[data-fallback-add]")?.className,
+			addIcon: card.querySelector("[data-fallback-add] svg")?.getAttribute("class"),
+			chin: chin.className,
+			mode: mode?.className,
+			model: model?.className,
+			modelSpans: Array.from(model?.children ?? [], (span) => [span.className, span.textContent]),
+			ring: ring?.className,
+			ringSize: [
+				ring?.querySelector("svg")?.getAttribute("width"),
+				ring?.querySelector("svg")?.getAttribute("height"),
+			],
+		}).toStrictEqual({
+			card: COMPOSER_CARD_CLASS,
+			line: "block py-1 pl-1 text-[14px]/[20px] text-[rgb(137,135,129)]",
+			add: ADD_BUTTON_CLASS,
+			addIcon: "lucide lucide-plus size-[18px]",
+			chin: COMPOSER_CHIN_CLASS,
+			mode: CHIN_TRIGGER_CLASS,
+			model: CHIN_PRIMARY_TRIGGER_CLASS,
+			modelSpans: [
+				["truncate", "Opus 5.5"],
+				[EFFORT_LABEL_CLASS, " High"],
+			],
+			ring: USAGE_RING_CLASS,
+			ringSize: ["14", "14"],
 		});
 	});
 });

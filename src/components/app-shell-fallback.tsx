@@ -9,6 +9,15 @@ import {SessionSkeleton} from "./session-skeleton";
 import {HOME_COLUMN} from "./home/home-column";
 import {HomeTitlebar} from "./home/home-page";
 import type {ShellChinLabels} from "../lib/shell-chin-store";
+import {
+	ADD_BUTTON_CLASS,
+	CHIN_PRIMARY_TRIGGER_CLASS,
+	CHIN_TRIGGER_CLASS,
+	COMPOSER_CARD_CLASS,
+	COMPOSER_CHIN_CLASS,
+	EFFORT_LABEL_CLASS,
+	USAGE_RING_CLASS,
+} from "./composer-tokens";
 
 const NAV_ROW_CLASS = "df-nav-row h-[var(--sb-row-h)] rounded-[var(--sb-radius)] flex-1";
 const BAR_CLASS = "animate-pulse rounded bg-fill-ghost-hover";
@@ -27,40 +36,51 @@ const SESSION_ROW_WIDTHS = ["w-3/4", "w-2/3", "w-5/6", "w-1/2", "w-3/5", "w-4/5"
  * mounted underneath it.
  */
 
-/** The live chin's trigger type: 20px rows, 6px side padding, 17px leading. */
-const CHIN_LABEL_CLASS = "flex h-5 min-w-0 items-center truncate px-1.5 leading-[17px]";
-
 /**
- * Upstream draws its composer while loading: the 40px box with the placeholder, over the chin's
- * +, mode, model and effort, and usage ring. The server fills in the labels from settings.json
- * and records them on the chin, where the hydrating client reads them back.
+ * Upstream draws its composer while loading: the card with the + and the placeholder, over the
+ * chin's mode, model and effort, and usage ring. It reuses the live composer's classes so
+ * hydration does not move anything. The server fills in the labels from settings.json and records
+ * them on the chin, where the hydrating client reads them back.
  */
 function FallbackComposer({placeholder, chin}: {placeholder: string; chin: ShellChinLabels | null}) {
 	return (
 		<div data-cds="ChatComposer" className="flex w-full min-w-0 flex-col font-sans">
-			<div
-				data-fallback-composer=""
-				className="relative flex flex-col rounded-card bg-surface-3 p-2 shadow-[var(--composer-shadow-idle)]"
-			>
-				<span className="block py-0.5 pl-1 text-[14px]/[20px] text-[rgb(137,135,129)]">{placeholder}</span>
+			<div data-fallback-composer="" className={COMPOSER_CARD_CLASS}>
+				<div className="relative pr-[30px] pl-[30px]">
+					<div className="absolute left-0 bottom-0 flex min-h-7 items-center">
+						<span data-fallback-add="" className={ADD_BUTTON_CLASS}>
+							<Plus data-fallback-chin-readout="" aria-hidden="true" className="size-[18px]" />
+						</span>
+					</div>
+					<span
+						data-fallback-placeholder=""
+						className="block py-1 pl-1 text-[14px]/[20px] text-[rgb(137,135,129)]"
+					>
+						{placeholder}
+					</span>
+				</div>
 			</div>
 			<div
 				data-cds="ChatComposerChin"
 				data-fallback-chin={chin === null ? undefined : JSON.stringify(chin)}
-				className="mt-1.5 flex min-h-5 items-center justify-between ps-[7px] pe-2.5 text-[12px]/[15px] text-secondary"
+				className={COMPOSER_CHIN_CLASS}
 			>
-				<span className="flex min-w-0 items-center">
-					<Plus data-fallback-chin-readout="" aria-hidden="true" className="size-4" />
-					<span data-fallback-chin-readout="" className={CHIN_LABEL_CLASS}>
+				<span className="flex min-w-0 items-center self-start">
+					<span data-fallback-chin-readout="" className={CHIN_TRIGGER_CLASS}>
 						{chin?.mode}
 					</span>
 				</span>
 				<span data-fallback-chin-end="" className="ms-auto flex min-w-0 items-center gap-1 ps-2">
-					<span data-fallback-chin-readout="" className={`${CHIN_LABEL_CLASS} text-primary`}>
-						{chin && `${chin.model} ${chin.effort}`}
+					<span data-fallback-chin-readout="" className={CHIN_PRIMARY_TRIGGER_CLASS}>
+						{chin && (
+							<>
+								<span className="truncate">{chin.model}</span>
+								<span className={EFFORT_LABEL_CLASS}>{` ${chin.effort}`}</span>
+							</>
+						)}
 					</span>
-					<span className="flex aspect-square h-5 items-center justify-center">
-						<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+					<span className={USAGE_RING_CLASS}>
+						<svg width="14" height="14" viewBox="0 0 12 12" aria-hidden="true">
 							<circle cx="6" cy="6" r="5" fill="none" strokeWidth="2" stroke="var(--color-alpha-2)" />
 						</svg>
 					</span>
