@@ -365,8 +365,8 @@ export function SessionTitlebar({
 				{...(compact ? {"data-pills-compact": ""} : {})}
 				className="flex min-w-0 items-center"
 			>
-				{/* Upstream's phone lead spacer, max(0px, 1rem - tiles-padding - tiles-border): 7px, so the title text lands at x=48. */}
-				<span aria-hidden className="w-[7px] shrink-0 sm:hidden" />
+				{/* Upstream's lead spacer at every width, max(0px, 1rem - tiles-padding - tiles-border): 7px, so the title text clears the chat card edge (x=48 at 390). */}
+				<span aria-hidden className="w-[7px] shrink-0" />
 				<div className="flex min-w-0 items-center gap-1.5">
 					{data.parentSessionId !== undefined && (
 						<Link

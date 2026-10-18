@@ -302,7 +302,7 @@ describe("SessionTitlebar title and chevron", () => {
 		}).toStrictEqual({title: true, chevron: true});
 	});
 
-	it("leads with upstream's 7px phone spacer so the title button sits at x=44 and its text at x=48 at 390", async () => {
+	it("leads with upstream's 7px spacer at every width so the title text clears the chat card edge, landing at x=48 at 390", async () => {
 		const titlebar = await renderTitlebar(baseDetail);
 		const lead = titlebar.querySelector("[data-titlebar-lead]");
 		const spacer = lead?.firstElementChild;
@@ -322,7 +322,7 @@ describe("SessionTitlebar title and chevron", () => {
 			buttonX,
 			textX: buttonX + (title.classList.contains("px-1") ? 4 : 0),
 		}).toStrictEqual({
-			spacer: {tag: "SPAN", hidden: "true", className: "w-[7px] shrink-0 sm:hidden"},
+			spacer: {tag: "SPAN", hidden: "true", className: "w-[7px] shrink-0"},
 			rowStart: 41,
 			buttonX: 44,
 			textX: 48,
