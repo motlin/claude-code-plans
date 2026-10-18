@@ -9,9 +9,10 @@ import {
 	Outlet,
 	RouterProvider,
 } from "@tanstack/react-router";
-import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {AppFrame} from "../src/components/app-frame";
+import {useCommandPalette} from "../src/hooks/use-command-palette";
 import {SettingsProvider} from "../src/components/settings-provider";
 import {DEFAULTS} from "../src/components/settings-context";
 import {ToastProvider} from "../src/components/toast";
@@ -60,6 +61,15 @@ function mockViewport(width: number) {
 	);
 }
 
+function PaletteProbe() {
+	const palette = useCommandPalette();
+	return (
+		<div data-testid="palette-probe">
+			{palette.open ? "open" : "closed"}:{palette.entrypoint}
+		</div>
+	);
+}
+
 function PersistedFrame() {
 	const {collapsed} = useSidebarState();
 	return (
@@ -77,6 +87,7 @@ async function renderFrame() {
 				<ToastProvider>
 					<SettingsProvider>
 						<PersistedFrame />
+						<PaletteProbe />
 					</SettingsProvider>
 				</ToastProvider>
 			</QueryClientProvider>
@@ -253,6 +264,63 @@ describe("phone sheet sidebar", () => {
 				?.split(" ")
 				.filter((name) => name.startsWith("lucide-") || name === "size-5"),
 		).toStrictEqual(["lucide-x", "size-5"]);
+	});
+
+	it("puts upstream's full-width Search button under Close and opens the palette in search mode", async () => {
+		mockViewport(390);
+		await renderFrame();
+		await openSheet();
+
+		const header = within(screen.getByTestId("phone-sheet-header"));
+		const search = header.getByRole("button", {name: "Search"});
+		expect({
+			buttons: header
+				.getAllByRole("button")
+				.map((button) => button.getAttribute("aria-label") ?? button.textContent),
+			headerLayout: screen
+				.getByTestId("phone-sheet-header")
+				.className.split(" ")
+				.filter((name) => ["flex-col", "gap-2"].includes(name)),
+			closeRadius: header
+				.getByRole("button", {name: "Close sidebar"})
+				.className.split(" ")
+				.filter((name) => name.startsWith("rounded")),
+			searchBox: search.className
+				.split(" ")
+				.filter((name) => ["w-full", "h-10", "rounded-r7", "bg-fill-control", "px-4"].includes(name)),
+			icon: search
+				.querySelector("svg")
+				?.getAttribute("class")
+				?.split(" ")
+				.filter((name) => name === "lucide-search" || name === "size-5" || name === "-ms-1"),
+		}).toStrictEqual({
+			buttons: ["Close sidebar", "Search"],
+			headerLayout: ["flex-col", "gap-2"],
+			closeRadius: ["rounded-r6"],
+			searchBox: ["h-10", "w-full", "rounded-r7", "bg-fill-control", "px-4"],
+			icon: ["lucide-search", "-ms-1", "size-5"],
+		});
+
+		fireEvent.click(search);
+
+		await waitFor(() => {
+			expect(screen.getByTestId("palette-probe").textContent).toBe("open:search");
+		});
+	});
+
+	it("drops the Search icon from the sheet footer", async () => {
+		mockViewport(390);
+		await renderFrame();
+		await openSheet();
+
+		const footer = within(sheet()).getByTestId("sidebar-footer");
+		expect({
+			search: within(footer).queryByRole("button", {name: "Search"}),
+			accountWidth: within(footer)
+				.getByTestId("user-menu-button")
+				.className.split(" ")
+				.filter((name) => name === "w-full"),
+		}).toStrictEqual({search: null, accountWidth: ["w-full"]});
 	});
 
 	it("closes when the route changes", async () => {

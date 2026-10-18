@@ -15,7 +15,8 @@ export function SidebarFooter({search = true}: {search?: boolean}) {
 			data-testid="sidebar-footer"
 			className="flex h-12 shrink-0 items-center justify-between gap-2 border-t-[0.5px] border-border p-2"
 		>
-			<AccountMenu />
+			{/* Upstream widens the account button when the aux slot is empty. */}
+			<AccountMenu fullWidth={!search} />
 			{search && (
 				<div className="flex shrink-0 items-center">
 					<SearchButton />

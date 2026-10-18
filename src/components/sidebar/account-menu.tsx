@@ -62,7 +62,7 @@ const CLAUDE_CODE_LINKS = [
  * above itself. Cloud-only items (Language, View all plans, Get apps, Log out, Your privacy choices) are
  * omitted; Claude Config and Setup are local additions.
  */
-export function AccountMenu() {
+export function AccountMenu({fullWidth = false}: {fullWidth?: boolean}) {
 	const {data} = useQuery(localAccountQueryOptions);
 	const navigate = useNavigate();
 	const openSettings = useOpenSettings();
@@ -78,7 +78,7 @@ export function AccountMenu() {
 			<MenuTrigger
 				data-testid="user-menu-button"
 				data-prefetch="settings"
-				className="flex h-8 max-w-full min-w-0 items-center gap-2 rounded-r6 pr-2 pl-0.5 text-left outline-none hover:bg-[var(--sb-hover)] focus-visible:bg-[var(--sb-hover)] data-[popup-open]:bg-[var(--sb-hover)]"
+				className={`${fullWidth ? "w-full " : ""}flex h-8 max-w-full min-w-0 items-center gap-2 rounded-r6 pr-2 pl-0.5 text-left outline-none hover:bg-[var(--sb-hover)] focus-visible:bg-[var(--sb-hover)] data-[popup-open]:bg-[var(--sb-hover)]`}
 			>
 				<span className="flex h-7 w-7 shrink-0 items-center justify-center">
 					<span
@@ -101,7 +101,10 @@ export function AccountMenu() {
 						</>
 					)}
 				</span>
-				<ChevronDown aria-hidden="true" className="size-3 shrink-0 text-ink-muted" />
+				<ChevronDown
+					aria-hidden="true"
+					className={`${fullWidth ? "ms-auto " : ""}size-3 shrink-0 text-ink-muted`}
+				/>
 			</MenuTrigger>
 			<MenuContent density="comfortable" side="top" align="start" className="w-[17rem]">
 				{data?.email !== undefined && (

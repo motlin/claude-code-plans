@@ -9,7 +9,8 @@ import {NavScroll} from "./nav-scroll";
 import {NewSessionRow} from "./new-session-row";
 import {SidebarFooter} from "./sidebar-footer";
 import {SidebarToggleButton} from "./sidebar-toggle";
-import {X} from "lucide-react";
+import {Search, X} from "lucide-react";
+import {openCommandPalette} from "../../hooks/use-command-palette";
 import {SidebarSessionGroups} from "./session-filter-menu";
 import {approvalsQueryOptions} from "../../lib/api/approvals";
 import {notificationsQueryOptions, useMarkNotificationsRead} from "../../lib/api/notifications";
@@ -119,8 +120,8 @@ export function Sidebar({
 					/>
 				</NavScroll>
 			</div>
-			{/* Upstream's peek footer has no Search icon. */}
-			<SidebarFooter search={!collapsed || onPhoneSheetClose !== undefined} />
+			{/* Upstream's peek footer has no Search icon, and the phone sheet moves it to the header. */}
+			<SidebarFooter search={!collapsed && onPhoneSheetClose === undefined} />
 		</>
 	);
 
@@ -131,17 +132,31 @@ export function Sidebar({
 				data-focus-region="navigation"
 				className="group/sidebar flex h-full min-h-0 flex-col"
 			>
-				<div data-testid="phone-sheet-header" className="flex h-11 shrink-0 items-center gap-2 px-2">
+				<div data-testid="phone-sheet-header" className="flex shrink-0 flex-col gap-2 px-2">
+					<div className="flex h-11 items-center gap-2">
+						<button
+							type="button"
+							aria-label="Close sidebar"
+							data-phone-sheet-close=""
+							onClick={onPhoneSheetClose}
+							className="flex h-8 w-8 items-center justify-center rounded-r6 text-primary transition-colors hover:bg-fill-ghost-hover"
+						>
+							<X aria-hidden="true" className="size-5" />
+						</button>
+						<SidebarWordmark className="ml-2" />
+					</div>
+					{/* Upstream's CDS lg button: the ⌘K palette opens in search mode over the open sheet. */}
 					<button
 						type="button"
-						aria-label="Close sidebar"
-						data-phone-sheet-close=""
-						onClick={onPhoneSheetClose}
-						className="flex h-8 w-8 items-center justify-center rounded-r5 text-primary transition-colors hover:bg-fill-ghost-hover"
+						data-prefetch="palette"
+						onClick={() => {
+							openCommandPalette("search");
+						}}
+						className="flex h-10 w-full items-center gap-1 rounded-r7 bg-fill-control px-4 text-[15px]/[22px] text-primary transition-colors"
 					>
-						<X aria-hidden="true" className="size-5" />
+						<Search aria-hidden="true" className="-ms-1 size-5" />
+						Search
 					</button>
-					<SidebarWordmark className="ml-2" />
 				</div>
 				{body}
 			</nav>
