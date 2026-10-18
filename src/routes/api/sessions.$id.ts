@@ -121,7 +121,7 @@ export const Route = createFileRoute("/api/sessions/$id")({
 				const summary = getSummary(summaries, id);
 
 				const detail: NonNullable<ReturnType<typeof SessionDetailResponse.parse>> = {
-					title: sessionRow.customTitle ?? sessionRow.title,
+					title: sessionRow.title,
 					projectName: sessionMeta?.projectName ?? sessionRow.projectId,
 					projectId: sessionRow.projectId,
 					homeRoot,

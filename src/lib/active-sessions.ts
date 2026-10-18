@@ -15,7 +15,7 @@ export interface ActiveSession {
 	sessionId: string;
 	projectDir: string;
 	projectName: string;
-	/** Indexed session title (customTitle > aiTitle > summary > firstPrompt), else the session id. */
+	/** Indexed session title (resolveSessionTitle: customTitle > aiTitle > summary > firstPrompt, ai-title first when bridged), else the session id. */
 	title: string;
 	createdAt: number;
 	lastModified: number;

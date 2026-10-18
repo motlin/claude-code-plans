@@ -732,6 +732,20 @@ describe("indexer", () => {
 			});
 		});
 
+		it("titles a session bridged to claude.ai/code by its ai-title over a custom title", async () => {
+			expect(
+				await indexTitle([
+					{type: "bridge-session", sessionId, bridgeSessionId: "cse_015KtMUgd6XyrAVv87Zaks48"},
+					{type: "custom-title", customTitle: "claude.ai", sessionId},
+					{type: "ai-title", aiTitle: "Parallel do-task workstreams", sessionId},
+				]),
+			).toStrictEqual({
+				customTitle: "claude.ai",
+				aiTitle: "Parallel do-task workstreams",
+				title: "Parallel do-task workstreams",
+			});
+		});
+
 		it("takes the last ai-title", async () => {
 			expect(
 				await indexTitle([

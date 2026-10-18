@@ -387,18 +387,21 @@ export async function resolveFirstPrompt(
 /**
  * Title precedence matches the `claude --resume` picker: a user-set custom
  * title, then the CLI's generated ai-title, then the sessions-index summary,
- * then the first prompt. The `title` column in the index mirrors this order
- * (see indexSessionsIndex's coalesce).
+ * then the first prompt. A session bridged to claude.ai/code (Remote Control)
+ * instead puts the ai-title first, because claude.ai/code titles it by the
+ * generated title and never sees a local custom title. The `title` column in
+ * the index mirrors this order (see indexSessionsIndex's coalesce).
  */
 export function resolveSessionTitle(entry: {
 	customTitle?: string | undefined;
 	aiTitle?: string | undefined;
+	bridged?: boolean | undefined;
 	summary?: string | undefined;
 	firstPrompt?: FirstUserPrompt | undefined;
 	sessionId: string;
 }): string {
-	if (entry.customTitle) return entry.customTitle;
-	if (entry.aiTitle) return entry.aiTitle;
+	const named = namedSessionTitle(entry);
+	if (named) return named;
 	if (entry.summary) return entry.summary;
 	if (entry.firstPrompt) {
 		return extractSessionTitle(entry.firstPrompt.text, entry.sessionId, {
@@ -408,21 +411,46 @@ export function resolveSessionTitle(entry: {
 	return entry.sessionId;
 }
 
+/** The custom or ai title a session is named by, in resolveSessionTitle's order, or undefined when it has neither. */
+export function namedSessionTitle(sources: {
+	customTitle?: string | undefined;
+	aiTitle?: string | undefined;
+	bridged?: boolean | undefined;
+}): string | undefined {
+	const [first, second] = sources.bridged
+		? [sources.aiTitle, sources.customTitle]
+		: [sources.customTitle, sources.aiTitle];
+	return first ?? second;
+}
+
 export interface SessionTitleSources {
 	customTitle: string | undefined;
 	aiTitle: string | undefined;
+	/** The transcript carries a `bridge-session` record, so claude.ai/code shows this session too. */
+	bridged: boolean;
+}
+
+/** Whether a raw transcript line can hold a record TitleRecordCollector reads. */
+export function isTitleSourceLine(line: string): boolean {
+	return line.includes('"custom-title"') || line.includes('"ai-title"') || line.includes('"bridge-session"');
 }
 
 /**
- * Accumulates custom-title and ai-title records while a caller streams a
- * transcript. Both are last-wins; an empty custom-title clears the name.
+ * Accumulates custom-title, ai-title and bridge-session records while a caller
+ * streams a transcript. Titles are last-wins; an empty custom-title clears the name.
  */
 export class TitleRecordCollector {
 	private customTitle: string | undefined;
 	private sawCustomTitle = false;
 	private aiTitle: string | undefined;
+	private bridged = false;
 
 	add(record: unknown): void {
+		const bridge = BridgeSessionRecordSchema.safeParse(record);
+		if (bridge.success) {
+			if (bridge.data.bridgeSessionId) this.bridged = true;
+			return;
+		}
 		const custom = CustomTitleRecordSchema.safeParse(record);
 		if (custom.success) {
 			this.sawCustomTitle = true;
@@ -438,7 +466,7 @@ export class TitleRecordCollector {
 	/** The sidecar is consulted only when the transcript never named the session. */
 	async finish(transcriptPath: string): Promise<SessionTitleSources> {
 		const customTitle = this.sawCustomTitle ? this.customTitle : await readCustomTitleSidecar(transcriptPath);
-		return {customTitle, aiTitle: this.aiTitle};
+		return {customTitle, aiTitle: this.aiTitle, bridged: this.bridged};
 	}
 }
 
@@ -463,7 +491,7 @@ export async function readSessionTitleSources(filePath: string): Promise<Session
 	const rl = createLineReader(createReadStream(filePath, {encoding: "utf-8"}));
 	try {
 		for await (const line of rl) {
-			if (!line.includes('"custom-title"') && !line.includes('"ai-title"')) continue;
+			if (!isTitleSourceLine(line)) continue;
 			try {
 				collector.add(JSON.parse(line));
 			} catch {
@@ -860,7 +888,7 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 				}
 			}
 
-			if (obj["type"] === "custom-title" || obj["type"] === "ai-title") {
+			if (obj["type"] === "custom-title" || obj["type"] === "ai-title" || obj["type"] === "bridge-session") {
 				titleRecords.add(obj);
 				continue;
 			}
@@ -1055,8 +1083,7 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 		await rl.close();
 	}
 
-	const {customTitle, aiTitle} = await titleRecords.finish(filePath);
-	title = customTitle ?? aiTitle ?? title;
+	title = namedSessionTitle(await titleRecords.finish(filePath)) ?? title;
 
 	const detail: SessionDetail = {
 		id: sessionId,

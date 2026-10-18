@@ -17,7 +17,13 @@ import {isCountableMessageRecord} from "../message-count";
 import {deriveProjectDisplayName, lastEncodedSegment} from "../project-display-name";
 import {normalizeGitBranch} from "../git-branch";
 import {SYNTHETIC_MODEL} from "../model-name";
-import {FirstUserMessageCollector, resolveFirstPrompt, resolveSessionTitle, TitleRecordCollector} from "../sessions";
+import {
+	FirstUserMessageCollector,
+	isTitleSourceLine,
+	resolveFirstPrompt,
+	resolveSessionTitle,
+	TitleRecordCollector,
+} from "../sessions";
 import {currentJsonlState, foldJsonl, IncrementalJsonlCache} from "../incremental-jsonl";
 import {extractTitleFromContent} from "../markdown-utils.server";
 import {listTrackedFiles} from "../git-tracked";
@@ -37,6 +43,7 @@ import {
 	deleteSessionBridgeAliases,
 	replaceSessionBridgeAliases,
 	sessionBridgeMetadataKey,
+	sessionRemoteControlColumn,
 } from "./bridge-session-index";
 import {defined} from "../defined";
 import {nonEmpty} from "../non-empty";
@@ -475,7 +482,10 @@ export async function indexSessionsIndex(db: IndexDb, projectDir: string, projec
 			.onConflictDoUpdate({
 				target: schema.sessions.id,
 				set: {
-					title: sql<string>`coalesce(${schema.sessions.customTitle}, ${schema.sessions.aiTitle}, ${title})`,
+					// Mirrors resolveSessionTitle, with the transcript's indexed bridge record standing in for `bridged`.
+					title: sql<string>`CASE WHEN ${sessionRemoteControlColumn}
+						THEN coalesce(${schema.sessions.aiTitle}, ${schema.sessions.customTitle}, ${title})
+						ELSE coalesce(${schema.sessions.customTitle}, ${schema.sessions.aiTitle}, ${title}) END`,
 					firstPrompt: fp?.text ?? null,
 					summary: summ ?? null,
 					gitBranch: branch,
@@ -715,7 +725,7 @@ class SessionIndexState {
 			}
 		}
 
-		if (line.includes('"custom-title"') || line.includes('"ai-title"')) {
+		if (isTitleSourceLine(line)) {
 			try {
 				this.titleRecords.add(JSON.parse(line));
 			} catch {
@@ -886,7 +896,7 @@ async function persistSessionIndexState(
 	state: SessionIndexState,
 ): Promise<void> {
 	const {sessionId} = state;
-	const {customTitle, aiTitle} = await state.titleRecords.finish(filePath);
+	const {customTitle, aiTitle, bridged} = await state.titleRecords.finish(filePath);
 	const sessionCwd = state.anchoredSessionCwd ?? state.lastSessionCwd;
 	const {latestPrLink, forkedFromSessionId, sessionGitBranch, messageCount} = state;
 	// sessions.mtime_ms is the activity time every list sorts and stamps by.
@@ -926,6 +936,7 @@ async function persistSessionIndexState(
 		updates["title"] = resolveSessionTitle({
 			customTitle,
 			aiTitle,
+			bridged,
 			summary: existingSession.summary ?? undefined,
 			firstPrompt: firstPrompt ?? undefined,
 			sessionId,
@@ -941,6 +952,7 @@ async function persistSessionIndexState(
 		const title = resolveSessionTitle({
 			customTitle,
 			aiTitle,
+			bridged,
 			firstPrompt: firstPrompt ?? undefined,
 			sessionId,
 		});

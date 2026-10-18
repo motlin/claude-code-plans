@@ -14,6 +14,7 @@ import {
 	readSessionTitleSources,
 	resolveSessionTitle,
 } from "../src/lib/sessions";
+import {secondaryAiTitle} from "../src/lib/ai-title";
 import {isInformativePrompt} from "../src/lib/session-utils";
 
 const testDir = join(tmpdir(), "claude-sessions-test-" + process.pid);
@@ -937,6 +938,19 @@ describe("resolveSessionTitle", () => {
 		).toBe("AI");
 	});
 
+	it("prefers the aiTitle over the customTitle for a session bridged to claude.ai/code", () => {
+		const bridged = {customTitle: "claude.ai", aiTitle: "Parallel do-task workstreams", bridged: true};
+		const title = resolveSessionTitle({...bridged, summary: "Summary", firstPrompt, sessionId: "session-test-1"});
+		expect({title, secondLine: secondaryAiTitle(title, bridged.aiTitle)}).toStrictEqual({
+			title: "Parallel do-task workstreams",
+			secondLine: null,
+		});
+	});
+
+	it("keeps the customTitle for a bridged session without an aiTitle", () => {
+		expect(resolveSessionTitle({customTitle: "Custom", bridged: true, sessionId: "session-test-1"})).toBe("Custom");
+	});
+
 	it("falls back to summary, then first prompt, then session id", () => {
 		expect(resolveSessionTitle({summary: "Summary", firstPrompt, sessionId: "session-test-1"})).toBe("Summary");
 		expect(resolveSessionTitle({firstPrompt, sessionId: "session-test-1"})).toBe("Fix the login bug");
@@ -963,6 +977,7 @@ describe("readSessionTitleSources", () => {
 		expect(await readSessionTitleSources(filePath)).toStrictEqual({
 			customTitle: undefined,
 			aiTitle: "Fix login",
+			bridged: false,
 		});
 	});
 
@@ -974,6 +989,7 @@ describe("readSessionTitleSources", () => {
 		expect(await readSessionTitleSources(filePath)).toStrictEqual({
 			customTitle: "Alice's title",
 			aiTitle: "Fix login",
+			bridged: false,
 		});
 	});
 
@@ -985,6 +1001,7 @@ describe("readSessionTitleSources", () => {
 		expect(await readSessionTitleSources(filePath)).toStrictEqual({
 			customTitle: undefined,
 			aiTitle: "Second guess",
+			bridged: false,
 		});
 	});
 
@@ -994,6 +1011,7 @@ describe("readSessionTitleSources", () => {
 		expect(await readSessionTitleSources(filePath)).toStrictEqual({
 			customTitle: "From sidecar",
 			aiTitle: undefined,
+			bridged: false,
 		});
 	});
 
@@ -1003,6 +1021,7 @@ describe("readSessionTitleSources", () => {
 		expect(await readSessionTitleSources(filePath)).toStrictEqual({
 			customTitle: "From JSONL",
 			aiTitle: undefined,
+			bridged: false,
 		});
 	});
 
@@ -1015,6 +1034,19 @@ describe("readSessionTitleSources", () => {
 		expect(await readSessionTitleSources(filePath)).toStrictEqual({
 			customTitle: undefined,
 			aiTitle: "Fix login",
+			bridged: false,
+		});
+	});
+
+	it("flags a transcript bridged to claude.ai/code", async () => {
+		const filePath = writeSession(
+			{type: "bridge-session", sessionId, bridgeSessionId: "cse_015KtMUgd6XyrAVv87Zaks48"},
+			{type: "custom-title", customTitle: "claude.ai", sessionId},
+		);
+		expect(await readSessionTitleSources(filePath)).toStrictEqual({
+			customTitle: "claude.ai",
+			aiTitle: undefined,
+			bridged: true,
 		});
 	});
 });
@@ -1034,6 +1066,23 @@ describe("readSession", () => {
 
 		const detail = await readSession(testDir, "ai-titled");
 		expect(detail?.title).toBe("Greeting");
+	});
+
+	it("titles a bridged session by its ai-title over its custom title", async () => {
+		const projDir = join(testDir, "-Users-craig-projects-app");
+		mkdirSync(projDir, {recursive: true});
+		writeFileSync(
+			join(projDir, "bridged.jsonl"),
+			jsonl(
+				{type: "bridge-session", sessionId: "bridged", bridgeSessionId: "cse_015KtMUgd6XyrAVv87Zaks48"},
+				userMessage("Hello"),
+				{type: "custom-title", customTitle: "claude.ai", sessionId: "bridged"},
+				{type: "ai-title", aiTitle: "Parallel do-task workstreams", sessionId: "bridged"},
+			),
+		);
+
+		const detail = await readSession(testDir, "bridged");
+		expect(detail?.title).toBe("Parallel do-task workstreams");
 	});
 
 	it("returns messages with text and tool calls", async () => {
