@@ -71,10 +71,11 @@ export function SessionRow({
 								<span className="shrink-0">{formatCount(session.messageCount, "msg")}</span>
 							</>
 						)}
+						{/* At phone width the chip squeezes to a 20px "m…" stub, so it drops out instead. */}
 						{session.gitBranch && (
 							<>
-								<span className="shrink-0">&middot;</span>
-								<span className="max-w-32 shrink truncate rounded bg-surface-0 px-1.5 py-0.5 font-mono text-[10px]">
+								<span className="shrink-0 max-sm:hidden">&middot;</span>
+								<span className="max-w-32 shrink truncate max-sm:hidden rounded bg-surface-0 px-1.5 py-0.5 font-mono text-[10px]">
 									{session.gitBranch}
 								</span>
 							</>
