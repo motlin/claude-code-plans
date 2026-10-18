@@ -1,6 +1,7 @@
 import {useSyncExternalStore} from "react";
 import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
 import {workingMarkerText, type WorkingMarkerState} from "../lib/working-marker";
+import {RunningTasksControl} from "./running-tasks-control";
 import {Spark} from "./spark";
 
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
@@ -26,8 +27,9 @@ function usePrefersReducedMotion(): boolean {
  * Upstream claude.ai/code's last transcript row: a Claude spark that spins
  * while working and a footnote status line. The `role=status` region stays
  * mounted so assistive tech announces each change; it is empty when idle.
+ * The running background task count rides in the line only while it shows.
  */
-export function WorkingMarker({state}: Readonly<{state: WorkingMarkerState}>) {
+export function WorkingMarker({state, runningTasks = 0}: Readonly<{state: WorkingMarkerState; runningTasks?: number}>) {
 	const reduceMotion = usePrefersReducedMotion();
 	const text = workingMarkerText(state);
 	// Upstream draws no spark while the turn waits on the user.
@@ -50,6 +52,7 @@ export function WorkingMarker({state}: Readonly<{state: WorkingMarkerState}>) {
 						>
 							{text}
 						</span>
+						<RunningTasksControl count={runningTasks} />
 					</>
 				)}
 			</div>

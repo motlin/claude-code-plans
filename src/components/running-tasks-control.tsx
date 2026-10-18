@@ -1,22 +1,21 @@
-import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
+import {useOptionalPaneHost} from "./panes/pane-host-context";
 
 /**
- * Upstream's transcript-tail status control, "N running tasks" in muted 14/20
- * ink at the transcript's text inset, shown while background tasks run.
+ * Upstream's "N running tasks" ghost button in muted 14/20 ink, drawn inside
+ * the working line while a turn runs; it opens the Background tasks pane.
  */
 export function RunningTasksControl({count}: {count: number}) {
+	const host = useOptionalPaneHost();
 	if (count === 0) return null;
 	return (
-		// Clears the dock's 32px fade, which would otherwise wash out the transcript's last line.
-		<div className={`${CHAT_COLUMN_CLASS} pb-8`}>
-			<span className="epitaxy-status-control inline-flex items-center">
-				<button
-					type="button"
-					className="inline-flex h-5 items-center gap-1 rounded-r4 px-1.5 text-body text-ink-muted"
-				>
-					{count === 1 ? "1 running task" : `${count} running tasks`}
-				</button>
-			</span>
-		</div>
+		<span className="epitaxy-status-control inline-flex items-center">
+			<button
+				type="button"
+				onClick={() => host?.openPane("background-tasks")}
+				className="inline-flex h-5 items-center gap-1 rounded-r4 px-1.5 text-body text-ink-muted"
+			>
+				{count === 1 ? "1 running task" : `${count} running tasks`}
+			</button>
+		</span>
 	);
 }

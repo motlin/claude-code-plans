@@ -53,7 +53,6 @@ import {TranscriptHistoryLoader, TranscriptTopFade} from "./transcript-history-l
 import {Tooltip} from "./ui/tooltip";
 import {SessionPaneControls} from "./view-options-menu";
 import {SessionDock} from "./session-dock";
-import {RunningTasksControl} from "./running-tasks-control";
 import {sessionProcessLive} from "../lib/session-state";
 import {tailMarkerState} from "../lib/working-marker";
 import {WaitingForInputNotice} from "./approval-card";
@@ -1086,9 +1085,10 @@ function SessionView({
 							</Suspense>
 						)}
 
-						<WorkingMarker state={tailMarkerState(workingMarkerState, inFlightRow)} />
-
-						{!inFlightRow && <RunningTasksControl count={backgroundTasks.running.length} />}
+						<WorkingMarker
+							state={tailMarkerState(workingMarkerState, inFlightRow)}
+							runningTasks={backgroundTasks.running.length}
+						/>
 
 						<SideChat sessionId={sessionId} messageCount={data.messageCount} />
 					</div>

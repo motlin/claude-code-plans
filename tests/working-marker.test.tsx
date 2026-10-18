@@ -344,6 +344,30 @@ describe("WorkingMarker", () => {
 		}).toStrictEqual({text: "Reading app.ts · 7s", animated: "true"});
 	});
 
+	it("shows the running background task count inside the working line", () => {
+		stubReducedMotion(false);
+		const {getByRole} = render(
+			<WorkingMarker
+				state={{status: "working", label: "Working…", turnStartedAt: at(0), elapsedSeconds: 3}}
+				runningTasks={4}
+			/>,
+		);
+		const status = getByRole("status");
+		expect({
+			text: status.textContent,
+			button: status.querySelector("button")?.textContent,
+		}).toStrictEqual({text: "Working… · 3s4 running tasks", button: "4 running tasks"});
+	});
+
+	it("draws no running task count while the turn is idle, as upstream's idle tail is empty", () => {
+		stubReducedMotion(false);
+		const {getByRole} = render(<WorkingMarker state={{status: "idle"}} runningTasks={16} />);
+		expect({
+			text: getByRole("status").textContent,
+			button: getByRole("status").querySelector("button"),
+		}).toStrictEqual({text: "", button: null});
+	});
+
 	it("does not animate the spark once the turn is stopping", () => {
 		stubReducedMotion(false);
 		const {getByRole, container} = render(<WorkingMarker state={{status: "stopping"}} />);
