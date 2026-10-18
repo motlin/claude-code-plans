@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/react";
+import type {ReactNode} from "react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {AskUserQuestionProvider} from "../src/components/ask-user-question-context";
@@ -201,7 +202,9 @@ describe("QuestionCard", () => {
 
 	it("walks Next to the last question, which waits until answered or skipped, then submits one answer each", async () => {
 		const onSubmit = vi.fn<(answers: unknown[]) => Promise<void>>(async () => {});
+		const now = vi.spyOn(performance, "now").mockReturnValue(1000);
 		render(<QuestionCard questions={QUESTIONS} onSubmit={onSubmit} />);
+		now.mockReturnValue(1400);
 		fireEvent.click(screen.getByRole("button", {name: /^Next/}));
 		const submit = screen.getByRole("button", {name: /^Submit/});
 		const waiting = submit.hasAttribute("disabled");
@@ -215,6 +218,97 @@ describe("QuestionCard", () => {
 		expect({waiting, answers: onSubmit.mock.calls[0]?.[0]}).toStrictEqual({
 			waiting: true,
 			answers: [{selected: [0]}, {selected: [1, 2]}],
+		});
+	});
+
+	describe("Cmd/Ctrl+Enter as upstream's approval hotkey", () => {
+		afterEach(() => {
+			vi.restoreAllMocks();
+		});
+
+		function renderArmed(onSubmit: (answers: unknown[]) => Promise<void>, extra?: ReactNode) {
+			const now = vi.spyOn(performance, "now").mockReturnValue(1000);
+			const view = render(
+				<>
+					<QuestionCard questions={[QUESTIONS[0]!]} onSubmit={onSubmit} />
+					{extra}
+				</>,
+			);
+			now.mockReturnValue(1400);
+			return view;
+		}
+
+		it("submits from the page body and from the session composer", () => {
+			const fromBody = vi.fn<(answers: unknown[]) => Promise<void>>(async () => {});
+			renderArmed(fromBody);
+			document.body.focus();
+			fireEvent.keyDown(document.body, {key: "Enter", metaKey: true});
+			cleanup();
+			const fromComposer = vi.fn<(answers: unknown[]) => Promise<void>>(async () => {});
+			renderArmed(
+				fromComposer,
+				<div data-composer-card="">
+					<textarea aria-label="Prompt" />
+				</div>,
+			);
+			const composer = screen.getByRole("textbox", {name: "Prompt"});
+			composer.focus();
+			const composerEvent = new KeyboardEvent("keydown", {
+				key: "Enter",
+				ctrlKey: true,
+				bubbles: true,
+				cancelable: true,
+			});
+			composer.dispatchEvent(composerEvent);
+
+			expect({
+				body: fromBody.mock.calls,
+				composer: fromComposer.mock.calls,
+				prevented: composerEvent.defaultPrevented,
+			}).toStrictEqual({
+				body: [[[{selected: [0]}]]],
+				composer: [[[{selected: [0]}]]],
+				prevented: true,
+			});
+		});
+
+		it("ignores the hotkey within 400ms of mount, on repeat, during IME composition, or with a composer popup open", () => {
+			const onSubmit = vi.fn<(answers: unknown[]) => Promise<void>>(async () => {});
+			const now = vi.spyOn(performance, "now").mockReturnValue(1000);
+			render(
+				<>
+					<QuestionCard questions={[QUESTIONS[0]!]} onSubmit={onSubmit} />
+					<div data-composer-card="">
+						<textarea aria-label="Prompt" aria-controls="slash-menu" />
+					</div>
+				</>,
+			);
+			now.mockReturnValue(1399);
+			fireEvent.keyDown(document.body, {key: "Enter", metaKey: true});
+			now.mockReturnValue(1400);
+			fireEvent.keyDown(document.body, {key: "Enter", metaKey: true, repeat: true});
+			fireEvent.keyDown(document.body, {key: "Enter", metaKey: true, isComposing: true});
+			const composer = screen.getByRole("textbox", {name: "Prompt"});
+			composer.focus();
+			fireEvent.keyDown(composer, {key: "Enter", metaKey: true});
+
+			expect(onSubmit.mock.calls.length).toBe(0);
+		});
+
+		it("ignores the hotkey while the card is scrolled off-screen, or with focus in another field", () => {
+			const onSubmit = vi.fn<(answers: unknown[]) => Promise<void>>(async () => {});
+			renderArmed(onSubmit, <input aria-label="Elsewhere" />);
+			const elsewhere = screen.getByRole("textbox", {name: "Elsewhere"});
+			elsewhere.focus();
+			fireEvent.keyDown(elsewhere, {key: "Enter", metaKey: true});
+			elsewhere.blur();
+			const card = screen.getByRole("group", {name: "Which test runner?"});
+			vi.spyOn(card, "getBoundingClientRect").mockReturnValue(
+				DOMRect.fromRect({x: 0, y: window.innerHeight + 200, width: 480, height: 300}),
+			);
+			fireEvent.keyDown(document.body, {key: "Enter", metaKey: true});
+
+			expect(onSubmit.mock.calls.length).toBe(0);
 		});
 	});
 

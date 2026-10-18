@@ -1,5 +1,5 @@
 import {Check, ChevronLeft, ChevronRight} from "lucide-react";
-import {useRef, useState, type KeyboardEvent} from "react";
+import {type RefObject, useEffect, useRef, useState} from "react";
 import {flushSync} from "react-dom";
 
 import type {QuestionAnswer} from "../lib/hook-events";
@@ -53,6 +53,53 @@ function Mark({checked, multi}: {checked: boolean; multi: boolean}) {
 	);
 }
 
+/** Upstream's armGraceMs: a ⌘⏎ this soon after the card mounts is ignored. */
+const ARM_GRACE_MS = 400;
+
+/** Whether focus is where upstream's approval hotkey listens: the card, the page body, or the session composer with no popup open. */
+function hotkeyFocusAllowed(card: HTMLElement): boolean {
+	const active = document.activeElement;
+	if (active === null || active === document.body || card.contains(active)) return true;
+	return (
+		active instanceof HTMLTextAreaElement &&
+		active.closest("[data-composer-card]") !== null &&
+		!active.hasAttribute("aria-controls")
+	);
+}
+
+function onScreen(card: HTMLElement): boolean {
+	const rect = card.getBoundingClientRect();
+	return rect.bottom >= 0 && rect.top <= window.innerHeight;
+}
+
+/**
+ * Upstream's shared approval hotkey: a window capture-phase ⌘⏎ / Ctrl+⏎ that
+ * runs `hotkeyRef.current` with focus in the card, on the body, or in the
+ * session composer, and yields while the card is off-screen, during the arm
+ * grace, on key repeat, during IME composition, or with a composer popup open.
+ */
+function useApprovalHotkey(cardRootRef: RefObject<HTMLDivElement | null>, hotkeyRef: RefObject<(() => void) | null>) {
+	useEffect(() => {
+		const armedAt = performance.now();
+		const onKeyDown = (event: KeyboardEvent) => {
+			if (event.key !== "Enter" || !(event.metaKey || event.ctrlKey)) return;
+			if (event.repeat || event.isComposing) return;
+			const card = cardRootRef.current;
+			const run = hotkeyRef.current;
+			if (card === null || run === null) return;
+			if (performance.now() - armedAt < ARM_GRACE_MS) return;
+			if (!hotkeyFocusAllowed(card) || !onScreen(card)) return;
+			event.preventDefault();
+			event.stopPropagation();
+			run();
+		};
+		window.addEventListener("keydown", onKeyDown, true);
+		return () => {
+			window.removeEventListener("keydown", onKeyDown, true);
+		};
+	}, [cardRootRef, hotkeyRef]);
+}
+
 /**
  * Upstream's pending AskUserQuestion card, drawn inline at most 480px wide: the
  * question in a grey header with an "N of M" pager, radio (or checkbox) rows of
@@ -77,6 +124,9 @@ export function QuestionCard({
 	const [sending, setSending] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const otherRef = useRef<HTMLTextAreaElement>(null);
+	const cardRootRef = useRef<HTMLDivElement>(null);
+	const hotkeyRef = useRef<(() => void) | null>(null);
+	useApprovalHotkey(cardRootRef, hotkeyRef);
 	const index = Math.min(page, questions.length - 1);
 	const question = questions[index];
 	const draft = drafts[index];
@@ -133,21 +183,15 @@ export function QuestionCard({
 		else setPage(remaining);
 	};
 
-	const onKeyDown = (event: KeyboardEvent) => {
-		if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
-			event.preventDefault();
-			advance();
-		}
-	};
+	hotkeyRef.current = editable ? advance : null;
 
 	return (
-		// oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- ⌘⏎ from any control in the card advances it, as upstream's panel shortcut
 		<div
+			ref={cardRootRef}
 			role="group"
 			aria-label={question.question}
 			data-approval-card-root=""
 			data-approval-presentation="card"
-			onKeyDown={onKeyDown}
 			className="card-ring @container relative isolate flex max-w-[480px] flex-col overflow-clip rounded-r7 outline-none"
 		>
 			<div className="flex items-center gap-3 bg-alpha-1 px-3 py-2">
