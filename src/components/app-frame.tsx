@@ -1,8 +1,8 @@
-import {useCallback, useState, type ReactNode} from "react";
+import {useCallback, useRef, useState, type ReactNode} from "react";
 import {topLeftClearanceStyle} from "../lib/top-left-clearance";
 import {useNarrowViewport, usePhoneSheet} from "../lib/use-phone-sheet";
 import {Sidebar} from "./sidebar/index";
-import {PhoneSheet, PhoneSheetTrigger} from "./sidebar/phone-sheet";
+import {PHONE_SHEET_TRANSITION_MS, PhoneSheet, PhoneSheetTrigger} from "./sidebar/phone-sheet";
 
 /**
  * The app's sidebar + main split. Below 640px it follows claude.ai/code's phone layout: the
@@ -25,6 +25,11 @@ export function AppFrame({
 	const closeSheet = useCallback(() => {
 		setSheetOpen(false);
 	}, []);
+	const triggerRef = useRef<HTMLButtonElement>(null);
+	const dismissSheet = useCallback(() => {
+		setSheetOpen(false);
+		window.setTimeout(() => triggerRef.current?.focus(), PHONE_SHEET_TRANSITION_MS);
+	}, []);
 	const mainInert = phoneSheet && sheetOpen;
 	const sidebarLayout = phoneSheet ? "phone" : collapsed || narrowViewport ? "collapsed" : "docked";
 
@@ -36,8 +41,8 @@ export function AppFrame({
 		>
 			{phoneSheet ? (
 				<>
-					<PhoneSheetTrigger open={sheetOpen} onOpen={openSheet} />
-					<PhoneSheet open={sheetOpen} onClose={closeSheet} />
+					<PhoneSheetTrigger ref={triggerRef} open={sheetOpen} onOpen={openSheet} />
+					<PhoneSheet open={sheetOpen} onClose={closeSheet} onDismiss={dismissSheet} />
 				</>
 			) : (
 				<Sidebar collapsed={collapsed || narrowViewport} narrowViewport={narrowViewport} />

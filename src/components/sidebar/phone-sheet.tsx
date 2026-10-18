@@ -1,5 +1,5 @@
 import {useRouter} from "@tanstack/react-router";
-import {useEffect, useRef, useState, type PointerEvent} from "react";
+import {useEffect, useRef, useState, type PointerEvent, type Ref} from "react";
 import {shouldClose, swipeIntent} from "../../lib/sheet-swipe";
 import {PHONE_SIDEBAR_TOGGLE} from "../../lib/top-left-clearance";
 import {Sidebar} from "./Sidebar";
@@ -7,10 +7,22 @@ import {SidebarToggleIcon} from "./primitives";
 
 const PHONE_SHEET_ID = "sidebar-sheet";
 
+/** The sheet's slide transition (`.phone-sheet[data-open]` in globals.css), after which a dismissal refocuses the trigger. */
+export const PHONE_SHEET_TRANSITION_MS = 300;
+
 /** claude.ai/code's phone "Show sidebar" trigger: a 32px target, in the titlebar's lead slot (see `topLeftClearance`). */
-export function PhoneSheetTrigger({open, onOpen}: {open: boolean; onOpen: () => void}) {
+export function PhoneSheetTrigger({
+	open,
+	onOpen,
+	ref,
+}: {
+	open: boolean;
+	onOpen: () => void;
+	ref?: Ref<HTMLButtonElement>;
+}) {
 	return (
 		<button
+			ref={ref}
 			type="button"
 			aria-label="Show sidebar"
 			aria-expanded={open}
@@ -40,8 +52,10 @@ interface SwipeStart {
 /**
  * The phone sidebar sheet: a full-screen modal dialog that slides in from the left, closes on
  * Escape, navigation, browser Back and a leftward swipe, and moves focus to its Close button.
+ * The user's own dismissals (Close, Escape, swipe) call `onDismiss`, so focus can return to the
+ * trigger; navigation closes call `onClose` and leave focus to the router.
  */
-export function PhoneSheet({open, onClose}: {open: boolean; onClose: () => void}) {
+export function PhoneSheet({open, onClose, onDismiss}: {open: boolean; onClose: () => void; onDismiss: () => void}) {
 	const router = useRouter();
 	const sheetRef = useRef<HTMLDivElement>(null);
 	const swipe = useRef<SwipeStart | null>(null);
@@ -51,7 +65,7 @@ export function PhoneSheet({open, onClose}: {open: boolean; onClose: () => void}
 		if (!open) return undefined;
 		sheetRef.current?.querySelector<HTMLElement>("[data-phone-sheet-close]")?.focus();
 		const onKeyDown = (event: KeyboardEvent) => {
-			if (event.key === "Escape") onClose();
+			if (event.key === "Escape") onDismiss();
 		};
 		const unsubscribe = router.subscribe("onBeforeNavigate", onClose);
 		document.addEventListener("keydown", onKeyDown);
@@ -63,7 +77,7 @@ export function PhoneSheet({open, onClose}: {open: boolean; onClose: () => void}
 			window.removeEventListener("popstate", onClose);
 			window.removeEventListener("pagehide", onClose);
 		};
-	}, [open, onClose, router]);
+	}, [open, onClose, onDismiss, router]);
 
 	const resetSwipe = () => {
 		swipe.current = null;
@@ -106,7 +120,7 @@ export function PhoneSheet({open, onClose}: {open: boolean; onClose: () => void}
 			const distance = Math.max(0, start.x - event.clientX);
 			const elapsed = Math.max(1, event.timeStamp - start.time);
 			const width = sheetRef.current?.getBoundingClientRect().width ?? window.innerWidth;
-			if (shouldClose(distance, width, distance / elapsed)) onClose();
+			if (shouldClose(distance, width, distance / elapsed)) onDismiss();
 		}
 		resetSwipe();
 	};
@@ -131,7 +145,7 @@ export function PhoneSheet({open, onClose}: {open: boolean; onClose: () => void}
 			onPointerCancel={resetSwipe}
 			className="phone-sheet"
 		>
-			<Sidebar collapsed={false} onPhoneSheetClose={onClose} />
+			<Sidebar collapsed={false} onPhoneSheetClose={onDismiss} />
 		</div>
 	);
 }

@@ -225,7 +225,7 @@ describe("phone sheet sidebar", () => {
 		});
 	});
 
-	it("closes on Escape", async () => {
+	it("closes on Escape and returns focus to the trigger", async () => {
 		mockViewport(390);
 		const {container} = await renderFrame();
 		await openSheet();
@@ -233,12 +233,15 @@ describe("phone sheet sidebar", () => {
 		fireEvent.keyDown(document, {key: "Escape"});
 
 		await waitFor(() => {
-			expect(sheet().hasAttribute("data-open")).toBe(false);
+			expect(document.activeElement).toBe(screen.getByRole("button", {name: "Show sidebar"}));
 		});
-		expect(mainElement(container).hasAttribute("inert")).toBe(false);
+		expect({
+			open: sheet().hasAttribute("data-open"),
+			mainInert: mainElement(container).hasAttribute("inert"),
+		}).toStrictEqual({open: false, mainInert: false});
 	});
 
-	it("closes from the Close button", async () => {
+	it("closes from the Close button and returns focus to the trigger", async () => {
 		mockViewport(390);
 		const {container} = await renderFrame();
 		await openSheet();
@@ -246,9 +249,12 @@ describe("phone sheet sidebar", () => {
 		fireEvent.click(screen.getByRole("button", {name: "Close sidebar"}));
 
 		await waitFor(() => {
-			expect(sheet().hasAttribute("data-open")).toBe(false);
+			expect(document.activeElement).toBe(screen.getByRole("button", {name: "Show sidebar"}));
 		});
-		expect(mainElement(container).hasAttribute("inert")).toBe(false);
+		expect({
+			open: sheet().hasAttribute("data-open"),
+			mainInert: mainElement(container).hasAttribute("inert"),
+		}).toStrictEqual({open: false, mainInert: false});
 	});
 
 	it("draws Close sidebar as upstream's 20px X", async () => {
