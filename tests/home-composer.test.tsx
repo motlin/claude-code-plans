@@ -193,7 +193,7 @@ describe("HomeComposer", () => {
 		const textarea = await screen.findByRole("textbox", {name: "Prompt"});
 		expect({
 			placeholder: textarea.getAttribute("placeholder"),
-			picker: screen.getByRole("combobox", {name: "Select project"}).textContent,
+			picker: screen.getByRole("combobox", {name: /^Folder: /}).textContent,
 			model: screen.getByLabelText("Model: Opus 4.8, Effort: Medium").textContent,
 			mode: document.querySelector("[data-chin-mode]")?.textContent,
 		}).toStrictEqual({
@@ -204,7 +204,7 @@ describe("HomeComposer", () => {
 		});
 	});
 
-	it("sets the usage pace banner between the project chip and the composer when ahead of pace, as upstream's home does", async () => {
+	it("sets the usage pace banner above the composer and the folder picker in the environment bar below it when ahead of pace", async () => {
 		const now = Date.now();
 		await renderApp("/", "claude-opus-4-8[1m]", (queryClient) => {
 			queryClient.setQueryData(
@@ -221,7 +221,7 @@ describe("HomeComposer", () => {
 		const home = document.querySelector("[data-home-composer]");
 		const order = [
 			...(home?.querySelectorAll(
-				"[role=combobox][aria-label='Select project'], [role=status], [data-composer-card]",
+				"[role=combobox][aria-label^='Folder: '], [role=status], [data-composer-card]",
 			) ?? []),
 		].map((element) =>
 			element.getAttribute("role") === "combobox"
@@ -232,7 +232,31 @@ describe("HomeComposer", () => {
 						? "usage"
 						: "other",
 		);
-		expect(order).toStrictEqual(["project", "usage", "composer"]);
+		expect(order).toStrictEqual(["usage", "composer", "project"]);
+	});
+
+	it("renders the folder picker in upstream's wrapping environment bar under the composer card", async () => {
+		await renderApp();
+		await screen.findByRole("textbox", {name: "Prompt"});
+		const bar = document.querySelector("[data-home-composer] [data-testid=epitaxy-environment-bar]");
+		const row = bar?.querySelector("[data-testid=environment-bar-row]");
+		const place = row?.firstElementChild;
+		expect({
+			barClass: bar?.className,
+			afterCard: bar?.previousElementSibling?.hasAttribute("data-composer-card"),
+			rowClass: row?.className,
+			placeClass: place?.className,
+			placeButton: place?.querySelector("[role=combobox]")?.getAttribute("aria-label"),
+			rowItems: [...(row?.children ?? [])].map((child) => child.textContent),
+		}).toStrictEqual({
+			barClass: "@container pt-1",
+			afterCard: true,
+			rowClass:
+				"flex min-h-6 items-center gap-x-1 gap-y-1.5 @max-[28.75rem]:flex-wrap px-2.5 text-[13px]/[20px] text-secondary [--cds-h-control:1.5rem]",
+			placeClass: "flex min-w-0 items-center @max-[28.75rem]:basis-full",
+			placeButton: "Folder: it's",
+			rowItems: ["it's", "Plan", "Opus 4.8 Medium"],
+		});
 	});
 
 	it("peeks the Clawd mascot over the composer as an unfocusable decorative button that hops on click", async () => {
@@ -344,10 +368,10 @@ describe("HomeComposer", () => {
 
 	it("launches in the project chosen from the picker", async () => {
 		await renderApp();
-		fireEvent.click(screen.getByRole("combobox", {name: "Select project"}));
+		fireEvent.click(screen.getByRole("combobox", {name: /^Folder: /}));
 		fireEvent.click(await screen.findByRole("option", {name: "newest"}));
 		await waitFor(() => {
-			expect(screen.getByRole("combobox", {name: "Select project"}).textContent).toBe("newest");
+			expect(screen.getByRole("combobox", {name: /^Folder: /}).textContent).toBe("newest");
 		});
 		await typePrompt("hello");
 
@@ -361,7 +385,7 @@ describe("HomeComposer", () => {
 
 	it("opens a searchable repository picker from the project chip", async () => {
 		await renderApp();
-		const chip = screen.getByRole("combobox", {name: "Select project"});
+		const chip = screen.getByRole("combobox", {name: /^Folder: /});
 		expect({
 			haspopup: chip.getAttribute("aria-haspopup"),
 			expanded: chip.getAttribute("aria-expanded"),
@@ -506,7 +530,7 @@ describe("HomeComposer", () => {
 	it("focuses the composer on ⇧⌘O while already home", async () => {
 		await renderApp();
 		const textarea = await screen.findByRole("textbox", {name: "Prompt"});
-		const picker = screen.getByRole("combobox", {name: "Select project"});
+		const picker = screen.getByRole("combobox", {name: /^Folder: /});
 		picker.focus();
 		expect(document.activeElement).toBe(picker);
 

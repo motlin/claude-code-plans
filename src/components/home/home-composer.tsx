@@ -23,8 +23,8 @@ import {ProjectPicker} from "./project-picker";
 export {HOME_RECENT_LIMIT} from "./launch-folder";
 
 /**
- * The docked claude.ai/code home composer: a project chip row above the prompt
- * card. Sending starts `claude` in a new herdr tab in the chosen project and
+ * The docked claude.ai/code home composer: the prompt card over an environment
+ * bar that leads with the project folder picker. Sending starts `claude` in a new herdr tab in the chosen project and
  * opens the session once its SessionStart arrives; without herdr it copies the
  * equivalent shell command instead.
  */
@@ -110,10 +110,7 @@ export function HomeComposer() {
 
 	return (
 		<div ref={rootRef} data-home-composer className="pb-[var(--home-dock-bottom,24px)]">
-			<div className="flex flex-wrap gap-1 pr-24 pb-1">
-				<ProjectPicker projects={startProjects} selected={project} onSelect={setChosenProjectId} />
-			</div>
-			{/* Upstream's home sets the weekly pace banner between the repository chip and the composer */}
+			{/* Upstream's home sets the weekly pace banner above the composer */}
 			<div className="pb-1.5 empty:hidden">
 				<UsagePaceBanner />
 			</div>
@@ -126,6 +123,9 @@ export function HomeComposer() {
 				disabled={launching}
 				deliveryHint={pendingLaunch === null ? undefined : `Starting session in ${pendingLaunch.cwd}…`}
 				chin={chin}
+				environment={
+					<ProjectPicker projects={startProjects} selected={project} onSelect={setChosenProjectId} />
+				}
 				slashCommands={slashCommands}
 				promptHistory={promptHistory}
 				bypassPermissionsAllowed={defaults?.bypassPermissionsAllowed ?? false}

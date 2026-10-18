@@ -5,16 +5,17 @@ import {type KeyboardEvent, useId, useRef, useState} from "react";
 import type {StartProject} from "../../lib/palette-start-session";
 
 /*
- * The home composer's project chip, copied from claude.ai/code's repository
- * picker: a 24px combobox chip that opens a 320x360 popover above it with an
- * autofocused search field over a listbox of 24px options. Typing filters by
+ * The home composer's folder picker, copied from claude.ai/code's repository
+ * picker: the environment bar's 24px place button opens a 320x360 popover above
+ * it with an autofocused search field over a listbox of 24px options. Typing filters by
  * name or path, arrows move the active option, Enter or a click selects it.
  * The cloud-only "Troubleshoot GitHub connection" and "Refresh list" rows have
  * no local equivalent and are omitted.
  */
 
+/** Upstream's environment-bar place button: a 24px ghost control with a 16px icon. */
 const CHIP_CLASS =
-	"flex h-6 max-w-[240px] min-w-0 items-center gap-1.5 rounded-r6 bg-surface-3 px-1.5 text-[13px] text-secondary shadow-[inset_0_0_0_1px_var(--color-alpha-1),0_1px_2px_rgba(0,0,0,0.05)] transition-colors hover:text-primary focus-visible:shadow-[0_0_0_2px_var(--accent-100)] focus-visible:outline-none";
+	"flex h-6 max-w-[240px] min-w-0 items-center gap-1 rounded-r6 px-1.5 text-[13px]/[20px] text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary focus-visible:shadow-[0_0_0_2px_var(--accent-100)] focus-visible:outline-none";
 
 const POPUP_CLASS =
 	"flex h-[360px] max-h-[var(--available-height)] w-[320px] max-w-[calc(100vw-32px)] flex-col rounded-r7 bg-[var(--menu-bg)] p-1 text-[13px]/[19px] text-primary shadow-[var(--menu-shadow)] outline-none";
@@ -113,14 +114,13 @@ export function ProjectPicker({projects, selected, onSelect, variant = "chip"}: 
 				<Popover.Trigger
 					// oxlint-disable-next-line jsx-a11y/role-has-required-aria-props -- Base UI's Popover.Trigger sets aria-controls to the popup it opens
 					role="combobox"
-					aria-label="Select project"
+					aria-label={selected === undefined ? "Select project" : `Folder: ${selected.name}`}
 					aria-haspopup="dialog"
 					aria-expanded={open}
 					className={CHIP_CLASS}
 				>
-					<Folder aria-hidden="true" className="size-3.5 shrink-0" />
-					<span className="truncate">{selected?.name ?? "+ Select project…"}</span>
-					<ChevronDown aria-hidden="true" className="size-3 shrink-0" />
+					<Folder aria-hidden="true" className="-ms-1 size-4 shrink-0" />
+					<span className="truncate">{selected?.name ?? "Select project…"}</span>
 				</Popover.Trigger>
 			)}
 			<Popover.Portal>

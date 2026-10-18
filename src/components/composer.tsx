@@ -1,4 +1,4 @@
-import {memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState} from "react";
+import {memo, type ReactNode, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState} from "react";
 import {CornerDownLeft, Ellipsis, Square} from "lucide-react";
 
 import {useComposerDraft} from "../hooks/use-composer-draft";
@@ -147,6 +147,11 @@ interface ComposerProps {
 	deliveryHint?: string | undefined;
 	/** Mode / model / effort / usage readouts; the chin stays empty without them. */
 	chin?: ComposerState | undefined;
+	/**
+	 * Home only: the place controls that lead upstream's environment bar, which
+	 * replaces the chin row and wraps them onto their own row below 460px.
+	 */
+	environment?: ReactNode;
 	/** Entries for the "/" autocomplete popup (`GET /api/commands`). */
 	slashCommands?: readonly SlashCommand[] | undefined;
 	/** Settings allow launching in Bypass permissions mode. */
@@ -269,6 +274,7 @@ export function Composer({
 	disabled = false,
 	deliveryHint,
 	chin,
+	environment,
 	slashCommands = NO_COMMANDS,
 	bypassPermissionsAllowed = false,
 	live,
@@ -727,18 +733,30 @@ export function Composer({
 					/>
 				</div>
 			</div>
-			<div
-				data-cds="ChatComposerChin"
-				className="@container mt-1.5 flex min-h-6 items-center justify-between ps-[7px] pe-2.5 text-[13px]/[20px] text-secondary"
-			>
-				{chin && (
-					<ComposerChin
-						state={chin}
-						launch={launchControls}
-						onShowUsageBreakdown={variant === "session" ? onShowUsageBreakdown : undefined}
-					/>
-				)}
-			</div>
+			{environment === undefined ? (
+				<div
+					data-cds="ChatComposerChin"
+					className="@container mt-1.5 flex min-h-6 items-center justify-between ps-[7px] pe-2.5 text-[13px]/[20px] text-secondary"
+				>
+					{chin && (
+						<ComposerChin
+							state={chin}
+							launch={launchControls}
+							onShowUsageBreakdown={variant === "session" ? onShowUsageBreakdown : undefined}
+						/>
+					)}
+				</div>
+			) : (
+				<div data-testid="epitaxy-environment-bar" className="@container pt-1">
+					<div
+						data-testid="environment-bar-row"
+						className="flex min-h-6 items-center gap-x-1 gap-y-1.5 @max-[28.75rem]:flex-wrap px-2.5 text-[13px]/[20px] text-secondary [--cds-h-control:1.5rem]"
+					>
+						<div className="flex min-w-0 items-center @max-[28.75rem]:basis-full">{environment}</div>
+						{chin && <ComposerChin state={chin} launch={launchControls} />}
+					</div>
+				</div>
+			)}
 		</div>
 	);
 }
