@@ -443,6 +443,35 @@ describe("QuestionCard", () => {
 		expect(onSubmit.mock.calls[0]?.[0]).toStrictEqual([{selected: [0]}, null]);
 	});
 
+	it("paints the header question like user message text, but keeps option labels plain", () => {
+		render(
+			<QuestionCard
+				questions={[
+					{
+						question: "Use the docs at https://example.com/guide? See `vitest.config.ts`.",
+						header: "Docs",
+						options: [{label: "Yes, https://example.com/yes", description: "Read https://example.com/d"}],
+					},
+				]}
+				onSubmit={async () => {}}
+			/>,
+		);
+		const card = screen.getByRole("group", {name: /^Use the docs/});
+		const header = card.firstElementChild!.firstElementChild!;
+
+		expect({
+			headerLinks: [...header.querySelectorAll("a")].map((a) => [a.getAttribute("href"), a.textContent]),
+			headerCode: [...header.querySelectorAll("code")].map((code) => code.textContent),
+			links: within(card)
+				.getAllByRole("link")
+				.map((a) => a.getAttribute("href")),
+		}).toStrictEqual({
+			headerLinks: [["https://example.com/guide", "https://example.com/guide"]],
+			headerCode: ["vitest.config.ts"],
+			links: ["https://example.com/guide"],
+		});
+	});
+
 	it("explains a disabled Next or Submit in a tooltip, as upstream's disabled reasons", () => {
 		vi.useFakeTimers();
 		render(<QuestionCard questions={QUESTIONS} onSubmit={async () => {}} />);

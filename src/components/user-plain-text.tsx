@@ -46,6 +46,11 @@ function linkify(text: string, keyPrefix: number): ReactNode[] {
 	return nodes;
 }
 
+/** A user message's inline paint (code spans and linked URLs) without its block layout, as upstream's question card header. */
+export function UserInlineText({text}: {text: string}) {
+	return <>{renderInline(text)}</>;
+}
+
 function renderInline(text: string): ReactNode[] {
 	const nodes: ReactNode[] = [];
 	let cursor = 0;

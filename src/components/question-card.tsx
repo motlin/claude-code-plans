@@ -10,6 +10,7 @@ import {chooseOther, pickOption, type QuestionCardDraft, typeOther} from "../lib
 import {ApprovalActionButton} from "./approval-card";
 import {Shortcut} from "./ui/shortcut";
 import {Tooltip} from "./ui/tooltip";
+import {UserInlineText} from "./user-plain-text";
 
 /** Upstream sends an Other picked with nothing typed as this. */
 const EMPTY_OTHER = "Something else";
@@ -267,7 +268,7 @@ export function QuestionCard({
 		>
 			<div className="flex items-center gap-3 bg-alpha-1 px-3 py-2">
 				<div className="min-w-0 flex-1 text-body text-primary select-text break-words [unicode-bidi:plaintext]">
-					{question.question}
+					<UserInlineText text={question.question} />
 				</div>
 				{questions.length > 1 && (
 					<span className="-my-1.5 -me-2 flex shrink-0 items-center gap-1.5 text-caption text-ink-muted">
