@@ -701,6 +701,8 @@ export interface DbSubagent {
 	name?: string | null;
 	/** The description of the agent's foreground Bash call still waiting on its result. */
 	pendingCommand?: string | null;
+	/** The agent's last turn ended and nothing has woken it since. */
+	idle?: boolean;
 	filePath: string;
 	mtimeMs: number;
 }

@@ -587,4 +587,44 @@ describe("extractBackgroundTasks running count, from 01d132c8's real record shap
 			["bash", "Run alternating corpus compile benchmarks"],
 		]);
 	});
+
+	it("counts only teammates still mid-turn: one whose last turn ended idle is not a running task, as upstream reads 16 not 30", () => {
+		const teammates = [
+			{
+				id: "agent-atemplate-drift-4240",
+				name: "template-drift",
+				description: "Fix shared include drift in templates",
+				startedAt: "2026-10-13T21:36:42.778Z",
+				taskKind: "in_process_teammate",
+				idle: true as const,
+			},
+			{
+				id: "agent-adrop-audit-script-9ba3",
+				name: "drop-audit-script",
+				description: "Remove audit script from 4 repos",
+				startedAt: "2026-10-13T21:36:42.401Z",
+				taskKind: "in_process_teammate",
+				idle: true as const,
+				pendingCommand: "Never counted",
+			},
+			{
+				id: "agent-agrammar-fix-5",
+				name: "grammar-fix",
+				description: "Grammar fix: primitives not identifiers",
+				startedAt: "2026-10-14T00:04:57.000Z",
+				taskKind: "in_process_teammate",
+			},
+		];
+
+		expect(
+			extractBackgroundTasks(records, {
+				sessionActive: true,
+				processStartedAt: Date.parse("2026-10-11T14:56:48.013Z"),
+				teammates,
+			}).running.map((task) => [task.kind, task.id, task.description]),
+		).toStrictEqual([
+			["agent", "apr845-rework-c818", "Rework #845 with array and test"],
+			["agent", "agrammar-fix-5", "Grammar fix: primitives not identifiers"],
+		]);
+	});
 });

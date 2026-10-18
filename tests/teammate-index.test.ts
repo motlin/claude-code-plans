@@ -188,4 +188,61 @@ describe("teammate indexing", () => {
 			broadcasts: [sessionId, sessionId],
 		});
 	});
+	it("marks a teammate idle once its last turn ends, and mid-turn again when a message wakes it, telling tabs each time it changes", async () => {
+		const path = writeTeammate("auta-a-1", "uta-a", "Upstream task A", "2026-10-13T09:00:00.000Z");
+		const handback = {
+			type: "assistant",
+			uuid: "t-a1",
+			isSidechain: true,
+			agentId: "auta-a-1",
+			sessionId,
+			timestamp: "2026-10-13T09:58:05.000Z",
+			message: {role: "assistant", stop_reason: "end_turn", content: [{type: "text", text: "Done."}]},
+		};
+		const reminder = {
+			type: "attachment",
+			uuid: "t-at2",
+			isSidechain: true,
+			agentId: "auta-a-1",
+			sessionId,
+			timestamp: "2026-10-13T09:58:06.000Z",
+			attachment: {type: "todo_reminder", content: [], itemCount: 0},
+		};
+		const wake = {
+			type: "user",
+			uuid: "t-u3",
+			isSidechain: true,
+			agentId: "auta-a-1",
+			sessionId,
+			timestamp: "2026-10-13T10:10:00.000Z",
+			message: {role: "user", content: "Another Claude session sent a message while you were working:"},
+		};
+		const offsets = new Map<string, number>();
+		const broadcasts: string[] = [];
+		const append = async (records: unknown[]) => {
+			writeFileSync(
+				path,
+				jsonl([...[JSON.parse(readFileSync(path, "utf8").split("\n")[0]!) as unknown], ...records]),
+			);
+			await processJsonlAppend(
+				db.index,
+				path,
+				offsets,
+				(type, data) => {
+					if (type === DOMAIN_EVENTS.SUBAGENTS_CHANGED) broadcasts.push(String(data["sessionId"]));
+				},
+				{projectsDir: testDir, plansDir: ""},
+			);
+			return sessionSubagentsWithStops(db.index, sessionId)[0]?.idle;
+		};
+
+		const idle = await append([handback, reminder]);
+		const woken = await append([handback, reminder, wake]);
+
+		expect({idle, woken, broadcasts}).toStrictEqual({
+			idle: true,
+			woken: undefined,
+			broadcasts: [sessionId, sessionId],
+		});
+	});
 });

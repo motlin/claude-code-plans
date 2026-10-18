@@ -559,6 +559,7 @@ const SessionSubagentSchema = z.object({
 	name: z.string().nullish(),
 	stopped: z.literal(true).optional(),
 	pendingCommand: z.string().nullish(),
+	idle: z.boolean().optional(),
 });
 export const SessionSubagentsResponse = z.array(SessionSubagentSchema);
 export type SessionSubagentsData = z.infer<typeof SessionSubagentsResponse>;

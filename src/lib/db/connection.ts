@@ -179,6 +179,7 @@ CREATE TABLE IF NOT EXISTS subagents (
   task_kind TEXT,
   name TEXT,
   pending_command TEXT,
+  idle INTEGER NOT NULL DEFAULT 0,
   file_path TEXT NOT NULL,
   mtime_ms INTEGER NOT NULL
 );

@@ -247,6 +247,8 @@ export const subagents = sqliteTable(
 		name: text("name"),
 		/** The description of the agent's foreground Bash call still waiting on its result, if any. */
 		pendingCommand: text("pending_command"),
+		/** The agent's last turn ended (its final message is an end_turn) and nothing has woken it since. */
+		idle: integer("idle", {mode: "boolean"}).notNull().default(false),
 		filePath: text("file_path").notNull(),
 		mtimeMs: integer("mtime_ms").notNull(),
 	},

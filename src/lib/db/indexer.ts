@@ -1088,7 +1088,22 @@ class PendingCommandCollector {
 	}
 }
 
-/** Index one subagent transcript; true when its pending command changed, which the running-tasks count reads. */
+/** Whether an agent's transcript ends idle: its last message is an end_turn reply that no later user record woke. */
+class IdleCollector {
+	private last: {type: string; stopReason: string | null} | null = null;
+
+	add(obj: unknown): void {
+		const type = stringField(obj, "type");
+		if (type !== "user" && type !== "assistant") return;
+		this.last = {type, stopReason: stringField(asRecord(obj)?.["message"], "stop_reason")};
+	}
+
+	idle(): boolean {
+		return this.last?.type === "assistant" && this.last.stopReason === "end_turn";
+	}
+}
+
+/** Index one subagent transcript; true when its pending command or idleness changed, which the running-tasks count reads. */
 export async function indexSubagentFile(
 	db: IndexDb,
 	filePath: string,
@@ -1131,6 +1146,7 @@ export async function indexSubagentFile(
 	const artifactEvents = new ArtifactEventCollector();
 	const slowCommands = new SlowCommandCollector();
 	const pendingCommands = new PendingCommandCollector();
+	const idleness = new IdleCollector();
 	const rl = createLineReader(createReadStream(filePath, {encoding: "utf-8"}));
 	try {
 		for await (const line of rl) {
@@ -1155,6 +1171,7 @@ export async function indexSubagentFile(
 				artifactEvents.add(obj);
 				slowCommands.add(obj);
 				pendingCommands.add(obj);
+				idleness.add(obj);
 			} catch {
 				// skip
 			}
@@ -1164,8 +1181,9 @@ export async function indexSubagentFile(
 	}
 	const slowCommandsJson = JSON.stringify(slowCommands.commands());
 	const pendingCommand = pendingCommands.latest();
+	const idle = idleness.idle();
 	const previous = db
-		.select({pendingCommand: schema.subagents.pendingCommand})
+		.select({pendingCommand: schema.subagents.pendingCommand, idle: schema.subagents.idle})
 		.from(schema.subagents)
 		.where(eq(schema.subagents.id, agentFilename))
 		.get();
@@ -1186,6 +1204,7 @@ export async function indexSubagentFile(
 			taskKind,
 			name: teammateName,
 			pendingCommand,
+			idle,
 			filePath,
 			mtimeMs: fileStat.mtimeMs,
 		})
@@ -1195,6 +1214,7 @@ export async function indexSubagentFile(
 				taskKind,
 				name: teammateName,
 				pendingCommand,
+				idle,
 				projectId: project,
 				agentType: agentType ?? attributionAgent,
 				attributionAgent,
@@ -1228,7 +1248,7 @@ export async function indexSubagentFile(
 			},
 		})
 		.run();
-	return (previous?.pendingCommand ?? null) !== pendingCommand;
+	return (previous?.pendingCommand ?? null) !== pendingCommand || (previous?.idle ?? false) !== idle;
 }
 
 const AGENT_ID_RE = /agentId:\s*(\S+)/;

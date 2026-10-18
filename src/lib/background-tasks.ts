@@ -54,6 +54,8 @@ export interface TeammateCandidate {
 	stopped?: true | undefined;
 	/** The description of the teammate's foreground Bash call still waiting on its result. */
 	pendingCommand?: string | null | undefined;
+	/** The teammate's last turn ended and nothing has woken it since, so it is not a running task. */
+	idle?: boolean | undefined;
 }
 
 const IN_PROCESS_TEAMMATE = "in_process_teammate";
@@ -480,6 +482,10 @@ export function extractBackgroundTasks(
 		const known = byTaskId.get(agentId);
 		if (teammate.stopped === true) {
 			if (known?.task.status === "running") settle(known, "stopped");
+			continue;
+		}
+		if (teammate.idle === true) {
+			if (known?.task.status === "running") settle(known, "completed");
 			continue;
 		}
 		if (!live.sessionActive || known !== undefined || !spawnedSince(teammate.startedAt, live.processStartedAt))

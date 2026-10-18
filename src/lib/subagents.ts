@@ -40,6 +40,8 @@ export interface Subagent {
 	stopped?: true | undefined;
 	/** The description of the agent's foreground Bash call still waiting on its result. */
 	pendingCommand?: string | null | undefined;
+	/** The agent's last turn ended and nothing has woken it since; an idle teammate is not a running task upstream. */
+	idle?: boolean | undefined;
 }
 
 export interface ActiveSubagent {
@@ -84,6 +86,7 @@ export function toClientSubagent(row: DbSubagent): Subagent {
 		...(row.taskKind == null ? {} : {taskKind: row.taskKind}),
 		...(row.name == null ? {} : {name: row.name}),
 		...(row.pendingCommand == null ? {} : {pendingCommand: row.pendingCommand}),
+		...(row.idle === true ? {idle: true as const} : {}),
 	};
 }
 
