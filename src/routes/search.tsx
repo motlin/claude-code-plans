@@ -2,6 +2,7 @@ import {createFileRoute, useNavigate} from "@tanstack/react-router";
 import {useQuery} from "@tanstack/react-query";
 import {Brain, CornerDownLeft, File, FileText, MessageSquare} from "lucide-react";
 import {useEffect, useRef, useState, type KeyboardEvent, type ReactNode} from "react";
+import {CodePageHeader} from "../components/code-page-header";
 import {FileSearchResults} from "../components/file-search-results";
 import {fileSearchViewerNavigation} from "../components/file-search-viewer-target";
 import {HighlightRuns} from "../components/highlight-runs";
@@ -110,7 +111,7 @@ export function SearchView({q, type}: {q: string; type: UnifiedSearchType}) {
 
 	return (
 		<div>
-			<h1 className="text-lg font-semibold">Search</h1>
+			<CodePageHeader title="Search" />
 			<TypeTabs
 				value={type}
 				onChange={(next) => {

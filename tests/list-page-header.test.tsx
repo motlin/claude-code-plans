@@ -2,17 +2,30 @@ import {renderToStaticMarkup} from "react-dom/server";
 import {describe, expect, it} from "vite-plus/test";
 import {ListPageHeader} from "../src/components/list-page-header";
 
+const TITLE_CLASS = "min-w-0 font-voice text-[24px]/[32px] font-medium text-primary";
+
 describe("ListPageHeader", () => {
-	it("renders counts with consistent singular and plural labels", () => {
+	it("sets upstream's 24/32 serif PageHeader title over a 13px muted count caption", () => {
 		const markup = [0, 1, 100].map((count) =>
 			renderToStaticMarkup(<ListPageHeader title="Items" count={count} itemLabel="item" />),
 		);
 
-		expect(markup).toStrictEqual([
-			'<header class="flex items-start justify-between gap-4"><div><h1 class="text-lg font-semibold">Items</h1><p class="mt-1 text-sm text-t6">0 items</p></div></header>',
-			'<header class="flex items-start justify-between gap-4"><div><h1 class="text-lg font-semibold">Items</h1><p class="mt-1 text-sm text-t6">1 item</p></div></header>',
-			'<header class="flex items-start justify-between gap-4"><div><h1 class="text-lg font-semibold">Items</h1><p class="mt-1 text-sm text-t6">100 items</p></div></header>',
-		]);
+		expect(markup).toStrictEqual(
+			["0 items", "1 item", "100 items"].map(
+				(caption) =>
+					`<header class="flex flex-col pb-4 sm:-mt-1"><h1 class="${TITLE_CLASS}">Items</h1><p class="mt-1 text-[13px] text-t6">${caption}</p></header>`,
+			),
+		);
+	});
+
+	it("puts the actions on the toolbar row, right-aligned", () => {
+		const markup = renderToStaticMarkup(
+			<ListPageHeader title="Tasks" count={2} itemLabel="task" actions={<button type="button">List</button>} />,
+		);
+
+		expect(markup).toBe(
+			`<header class="flex flex-col pb-4 sm:-mt-1"><h1 class="${TITLE_CLASS}">Tasks</h1><p class="mt-1 text-[13px] text-t6">2 tasks</p><div class="mt-5 flex min-h-8 flex-wrap items-center gap-x-4 gap-y-2"><div class="ms-auto flex max-w-full shrink-0 flex-wrap items-center justify-end gap-2"><button type="button">List</button></div></div></header>`,
+		);
 	});
 
 	it("pluralizes consonant-y labels with -ies", () => {

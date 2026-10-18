@@ -111,6 +111,13 @@ function jobRows(): HTMLElement[] {
 }
 
 describe("jobs route", () => {
+	it("titles the page with upstream's 24/32 serif PageHeader", async () => {
+		await renderJobsPage(JOBS);
+		expect(screen.getByRole("heading", {level: 1, name: "Background jobs"}).className).toBe(
+			"min-w-0 font-voice text-[24px]/[32px] font-medium text-primary",
+		);
+	});
+
 	it("lists each job with its state pill, detail, result, time and session link", async () => {
 		await renderJobsPage(JOBS);
 

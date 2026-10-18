@@ -1,5 +1,6 @@
 import {createFileRoute, Link} from "@tanstack/react-router";
 import {useSuspenseQuery} from "@tanstack/react-query";
+import {CodePageHeader} from "../components/code-page-header";
 import {jobsQueryOptions} from "../lib/api/jobs";
 import type {Job, JobState} from "../lib/jobs";
 import {formatNarrowRelativeTime} from "../lib/relative-time";
@@ -32,9 +33,7 @@ function JobsPage() {
 
 	return (
 		<div className="mx-auto flex w-full max-w-5xl flex-col">
-			<header className="flex min-h-12 items-center pb-6 md:min-h-16 md:items-end">
-				<h1 className="min-w-0 font-voice text-[28px]/[36px] font-medium text-primary">Background jobs</h1>
-			</header>
+			<CodePageHeader title="Background jobs" />
 
 			<div className="flex flex-col pb-12 pt-1">
 				{jobs.length > 0 ? (

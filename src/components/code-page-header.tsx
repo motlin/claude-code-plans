@@ -6,11 +6,14 @@ import type {ReactNode} from "react";
  */
 export function CodePageHeader({
 	title,
+	subtitle,
 	tabs,
 	toolbar,
 	children,
 }: {
 	title: string;
+	/** A 13px muted caption under the title, such as a list's item count. */
+	subtitle?: ReactNode;
 	tabs?: ReactNode;
 	toolbar?: ReactNode;
 	/** Extras under the header, such as a live status line. */
@@ -19,6 +22,7 @@ export function CodePageHeader({
 	return (
 		<header className="flex flex-col pb-4 sm:-mt-1">
 			<h1 className="min-w-0 font-voice text-[24px]/[32px] font-medium text-primary">{title}</h1>
+			{subtitle !== undefined && <p className="mt-1 text-[13px] text-t6">{subtitle}</p>}
 			{(tabs !== undefined || toolbar !== undefined) && (
 				<div className="mt-5 flex min-h-8 flex-wrap items-center gap-x-4 gap-y-2">
 					{tabs}

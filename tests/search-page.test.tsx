@@ -109,6 +109,13 @@ describe("/search page", () => {
 		vi.unstubAllGlobals();
 	});
 
+	it("titles the page with upstream's 24/32 serif PageHeader", async () => {
+		await renderPage("/search?q=auth");
+		expect((await screen.findByRole("heading", {level: 1, name: "Search"})).className).toBe(
+			"min-w-0 font-voice text-[24px]/[32px] font-medium text-primary",
+		);
+	});
+
 	it("renders unified search rows as highlight runs, not <mark>", async () => {
 		await renderPage("/search?q=auth");
 

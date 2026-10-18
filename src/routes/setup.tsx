@@ -1,4 +1,5 @@
 import {createFileRoute} from "@tanstack/react-router";
+import {CodePageHeader} from "../components/code-page-header";
 import {HookSetup} from "../components/hook-setup";
 
 export const Route = createFileRoute("/setup")({
@@ -11,11 +12,11 @@ export const Route = createFileRoute("/setup")({
 function SetupPage() {
 	return (
 		<div className="max-w-3xl">
-			<h1 className="text-lg font-semibold">Setup</h1>
-			<p className="mt-1 text-sm text-t6">
-				Configure Claude Code to send hook events to this server for live updates.
-			</p>
-			<div className="mt-6">
+			<CodePageHeader
+				title="Setup"
+				subtitle="Configure Claude Code to send hook events to this server for live updates."
+			/>
+			<div className="mt-2">
 				<HookSetup />
 			</div>
 		</div>
