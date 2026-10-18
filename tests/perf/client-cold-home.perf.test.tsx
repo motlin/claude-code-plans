@@ -18,7 +18,6 @@ import {afterAll, afterEach, beforeAll, describe, expect, it, vi} from "vite-plu
 import {AppFrame} from "../../src/components/app-frame";
 import {ESTIMATED_TURN_HEIGHT_PIXELS} from "../../src/components/session-chat";
 import {SettingsProvider} from "../../src/components/settings-provider";
-import {settingStorageKey} from "../../src/components/settings-context";
 import {ThemeProvider} from "../../src/components/theme-provider";
 import {ToastProvider} from "../../src/components/toast";
 import {ClaudeEventsProvider} from "../../src/components/claude-events-provider";
@@ -37,7 +36,6 @@ import {ratchet} from "./ratchet";
  * cached when the measurement starts; the interaction mounts the root layout's frame with the real root loader and the
  * real `/` route, against responses the real API handlers produced. It ratchets every fetch the launch makes, their
  * response bytes, and the React commits it takes before the sidebar recents and the home main region both show rows.
- * The `localSections` case turns on the home's local sections, whose per-project memory queries add to the fan-out.
  */
 
 vi.mock(import("../../src/lib/hmr-persist"), async (importOriginal) => {
@@ -58,7 +56,7 @@ vi.mock(import("node:os"), async (importOriginal) => {
 	return {...os, userInfo, default: {...os.default, userInfo}};
 });
 
-const CASES = ["default", "localSections"] as const;
+const CASES = ["default"] as const;
 
 const PROJECT = "-repo";
 /** The cwd every generated transcript record carries. */
@@ -245,11 +243,10 @@ function sidebarRecentsRows(): number {
 }
 
 /**
- * Rows in the home main region: the action center's session, pull request and local-section rows, or, once nothing
- * needs attention, the usage stats card's heatmap days in their place.
+ * Rows in the home main region: the start card's Recent environments and Next steps rows.
  */
 function homeMainRows(): number {
-	return document.querySelectorAll("[data-home-action-center] li, [data-home-action-center] [data-date]").length;
+	return document.querySelectorAll("[data-home-action-center] li").length;
 }
 
 /**
@@ -314,9 +311,6 @@ describe("client lab: cold launch of the home page", () => {
 			installBrowserStubs();
 			vi.useFakeTimers();
 			vi.setSystemTime(FIXED_NOW);
-			if (name === "localSections") {
-				localStorage.setItem(settingStorageKey("homeShowLocalSections"), "true");
-			}
 			const queryClient = new QueryClient({defaultOptions: {queries: {refetchOnWindowFocus: false}}});
 			const launcher = createLauncher(queryClient);
 			const measurement = await measureInteraction(() => <launcher.Launcher />, launcher.launch, {

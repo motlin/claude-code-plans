@@ -25,7 +25,6 @@ import {
 import {ChangedFileKindSchema} from "../src/lib/changed-file-kind";
 import {CodeThemeDarkSchema, CodeThemeLightSchema} from "../src/lib/code-themes";
 import {GroupColorSchema, GroupIconSchema} from "../src/lib/group-appearance";
-import {HomeAttentionKindSchema} from "../src/lib/home-attention";
 import {EffortLevelSchema, LaunchPermissionModeSchema, LiveOptionChangeSchema} from "../src/lib/launch-options";
 import {
 	JobChildKindSchema,
@@ -122,7 +121,6 @@ const ROOTS: ReadonlyArray<readonly [string, unknown]> = [
 	["GhPrStateSchema", GhPrStateSchema],
 	["GhPrStatusCacheStateSchema", GhPrStatusCacheStateSchema],
 	["GhPrReviewDecisionSchema", GhPrReviewDecisionSchema],
-	["HomeAttentionKindSchema", HomeAttentionKindSchema],
 	["SessionListPrefsSchema", SessionListPrefsSchema],
 	["GroupIconSchema", GroupIconSchema],
 	["GroupColorSchema", GroupColorSchema],

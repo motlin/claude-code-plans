@@ -9,14 +9,8 @@ import {asRecord} from "./narrow";
  * Isomorphic: no Node-specific imports.
  */
 
-export const HOME_STATS_RANGES = ["all", "30d", "7d"] as const;
+const HOME_STATS_RANGES = ["all", "30d", "7d"] as const;
 export type HomeStatsRange = (typeof HOME_STATS_RANGES)[number];
-
-export const HOME_STATS_RANGE_LABELS = {
-	all: "All",
-	"30d": "30d",
-	"7d": "7d",
-} as const satisfies Record<HomeStatsRange, string>;
 
 const RANGE_DAYS = {"30d": 30, "7d": 7} as const satisfies Record<Exclude<HomeStatsRange, "all">, number>;
 

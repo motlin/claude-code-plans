@@ -24,7 +24,6 @@ import type {GroupColorSchema, GroupIconSchema} from "./group-appearance";
 import type {EffortLevel, LaunchPermissionMode, LiveOptionChange} from "./launch-options";
 import type {HookEvent, PermissionUpdate, ToolUseUnion} from "./hook-events";
 import {PERSISTENT_ALLOW_KIND_BY_DESTINATION} from "./permission-suggestions";
-import type {HomeAttentionKindSchema} from "./home-attention";
 import type {JobChildKindSchema, JobFanKindSchema, JobNameSourceSchema, JobState, JobTempoSchema} from "./jobs";
 import type {NavSection} from "./nav-sections";
 import type {PinDropOutcome} from "./pinned-sessions";
@@ -197,12 +196,6 @@ export const sessionBucketLabels = {
 	working: "Working",
 	done: "Completed",
 } satisfies Record<z.infer<typeof SessionBucketSchema>, string>;
-
-/** Home "Sessions" action-center pills (src/lib/home-attention.ts). */
-export const homeAttentionKindLabels = {
-	blocked: "Needs input",
-	review: "Ready for review",
-} satisfies Record<z.infer<typeof HomeAttentionKindSchema>, string>;
 
 /** Filter & group menu options (src/lib/session-groups.ts); local "Project" is upstream "Folder". */
 export const sessionGroupByLabels = {
@@ -1166,7 +1159,6 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
 	GhPrStateSchema: ghPrStateChoices,
 	GhPrStatusCacheStateSchema: ghPrStatusCacheStateChoices,
 	GhPrReviewDecisionSchema: ghPrReviewDecisionChoices,
-	HomeAttentionKindSchema: homeAttentionKindLabels,
 	"SessionListPrefsSchema.groupBy": sessionGroupByLabels,
 	"SessionListPrefsSchema.sortBy": sessionSortByLabels,
 	"SessionListPrefsSchema.sortDirection": sessionSortDirectionLabels,

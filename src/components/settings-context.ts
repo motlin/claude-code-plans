@@ -67,8 +67,6 @@ export interface Settings {
 	interfaceFont: InterfaceFont;
 	/** Transcript body text size, set as `--transcript-text-size` on <html>. */
 	transcriptTextSize: TranscriptTextSize;
-	/** Local-only "Recent plans" and "Memories updated" home sections; off matches claude.ai/code. */
-	homeShowLocalSections: boolean;
 	/** Show the CLI's ai-title under a differing /rename title in the header and sidebar hover card. */
 	showAiTitles: boolean;
 	/** The composer's project · branch +N −M strip; off matches claude.ai/code, which shows none without a PR. */
@@ -152,7 +150,6 @@ export const DEFAULTS: Settings = {
 	transcriptWidth: "narrow",
 	interfaceFont: "sans",
 	transcriptTextSize: "md",
-	homeShowLocalSections: false,
 	showAiTitles: true,
 	showChangesStrip: false,
 	offerWorkingCopyReview: false,
@@ -213,7 +210,6 @@ export const STORAGE_KEYS: Record<keyof Settings, string> = {
 	transcriptWidth: "ccp-transcript-width",
 	interfaceFont: "ccp-interface-font",
 	transcriptTextSize: "ccp-transcript-text-size",
-	homeShowLocalSections: "ccp-home-show-local-sections",
 	showAiTitles: "ccp-show-ai-titles",
 	showChangesStrip: "ccp-show-changes-strip",
 	offerWorkingCopyReview: "ccp-offer-working-copy-review",
@@ -385,7 +381,6 @@ const STORED_VALUE_READERS: {[K in keyof Settings]: StoredValueReader<Settings[K
 	transcriptWidth: readSchema(TranscriptWidthSchema),
 	interfaceFont: readSchema(InterfaceFontSchema),
 	transcriptTextSize: readSchema(TranscriptTextSizeSchema),
-	homeShowLocalSections: readBoolean,
 	showAiTitles: readBoolean,
 	showChangesStrip: readBoolean,
 	offerWorkingCopyReview: readBoolean,

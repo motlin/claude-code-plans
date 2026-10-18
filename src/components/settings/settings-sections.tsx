@@ -753,13 +753,6 @@ export function GeneralSettings() {
 					settingKey="chromeHidden"
 				/>
 			</SettingsSection>
-			<SettingsSection title="Home">
-				<ToggleRow
-					label="Recent plans and memories"
-					description="Show local Recent plans and Memories updated sections on the home page"
-					settingKey="homeShowLocalSections"
-				/>
-			</SettingsSection>
 			<NotificationsSection />
 			<ResetAllSettings />
 		</>
