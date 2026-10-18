@@ -190,6 +190,16 @@ describe("SessionActionsMenu", () => {
 		).toBe("menu");
 	});
 
+	it("draws the hover kebab as upstream's horizontal ellipsis", async () => {
+		await renderRow(listItem("done"));
+
+		const trigger = screen.getByRole("button", {name: "More options for Fix the flaky test"});
+		expect({
+			horizontal: trigger.querySelectorAll("svg.lucide-ellipsis").length,
+			vertical: trigger.querySelectorAll(".lucide-ellipsis-vertical").length,
+		}).toStrictEqual({horizontal: 1, vertical: 0});
+	});
+
 	it("opens the menu on right-click with accelerators in aria-keyshortcuts", async () => {
 		await renderRow(listItem("done"));
 

@@ -1,5 +1,5 @@
 import {useQuery} from "@tanstack/react-query";
-import {EllipsisVertical} from "lucide-react";
+import {Ellipsis} from "lucide-react";
 import {
 	createContext,
 	type ReactNode,
@@ -452,7 +452,7 @@ export function SessionActionsMenu({
 						{...(kebabTabIndex === undefined ? {} : {tabIndex: kebabTabIndex})}
 						className={KEBAB_CLASS}
 					>
-						<EllipsisVertical aria-hidden="true" className="size-4" />
+						<Ellipsis aria-hidden="true" className="size-4" />
 					</MenuTrigger>
 					<MenuContent density="comfortable" align="end" finalFocus={finalFocus}>
 						{menuBody}
