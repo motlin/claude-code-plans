@@ -17,8 +17,7 @@ import {
 import {useQuery} from "@tanstack/react-query";
 import {useMemo} from "react";
 import {applicationSettingsQueryOptions} from "../../lib/api/application-settings";
-import {DEFAULT_VISIBLE_NAV_SECTIONS, type NavSection} from "../../lib/nav-sections";
-import {objectKeys} from "../../lib/narrow";
+import {DEFAULT_VISIBLE_NAV_SECTIONS, NAV_SECTIONS, type NavSection} from "../../lib/nav-sections";
 import type {Section} from "./types";
 
 interface NavEntry {
@@ -102,7 +101,8 @@ const navEntries = {
 	},
 } satisfies Record<Section, NavEntry>;
 
-export const navItems = objectKeys(navEntries).map((section) => ({
+/** In `NAV_SECTIONS` order. */
+export const navItems = NAV_SECTIONS.map((section) => ({
 	section,
 	...navEntries[section],
 }));

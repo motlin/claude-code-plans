@@ -179,6 +179,7 @@ describe("sidebar More menu", () => {
 			separators: within(menu).getAllByRole("separator").length,
 		}).toStrictEqual({
 			items: [
+				"Projects",
 				"Scheduled",
 				"Background jobs",
 				"Active",
@@ -186,7 +187,6 @@ describe("sidebar More menu", () => {
 				"Approvals",
 				"Notifications",
 				"Tasks",
-				"Projects",
 				"Sessions",
 				"Edit sidebar…",
 			],
@@ -218,6 +218,7 @@ describe("Edit sidebar dialog", () => {
 					checked: checkbox.getAttribute("aria-checked"),
 				})),
 		).toStrictEqual([
+			{label: "Projects", checked: "false"},
 			{label: "Artifacts", checked: "true"},
 			{label: "Scheduled", checked: "false"},
 			{label: "Background jobs", checked: "false"},
@@ -226,7 +227,6 @@ describe("Edit sidebar dialog", () => {
 			{label: "Approvals", checked: "false"},
 			{label: "Notifications", checked: "false"},
 			{label: "Tasks", checked: "false"},
-			{label: "Projects", checked: "false"},
 			{label: "Plans", checked: "true"},
 			{label: "Memories", checked: "true"},
 			{label: "Sessions", checked: "false"},

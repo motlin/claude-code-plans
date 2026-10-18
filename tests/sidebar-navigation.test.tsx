@@ -27,7 +27,7 @@ import {
 import {invalidateSessionIdentities} from "../src/lib/api/session-identity";
 import {localAccountQueryOptions} from "../src/lib/api/local-account";
 import {installLocalStorage} from "./fake-storage";
-import {NAV_SECTIONS} from "../src/lib/nav-sections";
+import {DEFAULT_VISIBLE_NAV_SECTIONS, NAV_SECTIONS} from "../src/lib/nav-sections";
 import {redirectLegacyPlugins} from "../src/routes/plugins";
 import {ToastProvider} from "../src/components/toast";
 import {onHomeComposerFocusRequest} from "../src/lib/home-composer-focus";
@@ -178,6 +178,7 @@ describe("sidebar navigation", () => {
 	});
 	it("links to each top-level section", () => {
 		expect(navItems.map(({label, to}) => ({label, to}))).toStrictEqual([
+			{label: "Projects", to: "/projects"},
 			{label: "Artifacts", to: "/artifacts"},
 			{label: "Scheduled", to: "/routines"},
 			{label: "Background jobs", to: "/jobs"},
@@ -186,7 +187,6 @@ describe("sidebar navigation", () => {
 			{label: "Approvals", to: "/approvals"},
 			{label: "Notifications", to: "/notifications"},
 			{label: "Tasks", to: "/tasks"},
-			{label: "Projects", to: "/projects"},
 			{label: "Plans", to: "/plans"},
 			{label: "Memories", to: "/memories"},
 			{label: "Sessions", to: "/sessions"},
@@ -467,6 +467,26 @@ describe("sidebar New row", () => {
 			moreScrolls: true,
 			newBeforeScroller: true,
 		});
+	});
+
+	it("pins Projects first by default, then Artifacts, Plans, Memories and Customize", async () => {
+		const queryClient = seedQueryClient();
+		queryClient.setQueryData(applicationSettingsQueryOptions.queryKey, {
+			terminalWritesEnabled: false,
+			terminalHost: "auto",
+			shellPaneEnabled: true,
+			visibleNavSections: [...DEFAULT_VISIBLE_NAV_SECTIONS],
+			ignoredDirs: ["node_modules"],
+		});
+		await renderSidebarAt("/tasks", queryClient);
+		await waitFor(() => screen.getByRole("link", {name: "Customize"}));
+
+		const sectionHrefs = new Set(navItems.map((item) => item.to));
+		expect(
+			navLinks()
+				.filter((link) => sectionHrefs.has(link.getAttribute("href") ?? ""))
+				.map((link) => link.textContent),
+		).toStrictEqual(["Projects", "Artifacts", "Plans", "Memories", "Customize"]);
 	});
 
 	it("spaces the first session-group header 29px below More, as upstream does", async () => {

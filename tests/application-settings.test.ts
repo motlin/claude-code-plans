@@ -76,7 +76,7 @@ describe("persisted application settings", () => {
 					terminalWritesEnabled: false,
 					terminalHost: "auto",
 					shellPaneEnabled: true,
-					visibleNavSections: ["artifacts", "plans", "memories", "customize"],
+					visibleNavSections: ["projects", "artifacts", "plans", "memories", "customize"],
 					ignoredDirs: [...DEFAULT_IGNORED_DIR_NAMES],
 				},
 				terminalWritesEnabled: false,
@@ -92,6 +92,7 @@ describe("persisted application settings", () => {
 		await writeFile(configPath, JSON.stringify({show_herdr_section: true, show_tmux_section: true}));
 
 		expect(readApplicationSettings(configPath).visibleNavSections).toStrictEqual([
+			"projects",
 			"artifacts",
 			"herdr",
 			"plans",
@@ -104,6 +105,7 @@ describe("persisted application settings", () => {
 		await writeFile(configPath, JSON.stringify({show_tmux_section: true}));
 
 		expect(readApplicationSettings(configPath).visibleNavSections).toStrictEqual([
+			"projects",
 			"artifacts",
 			"herdr",
 			"plans",
@@ -324,7 +326,7 @@ describe("persisted application settings", () => {
 				terminalWritesEnabled: true,
 				terminalHost: "auto",
 				shellPaneEnabled: true,
-				visibleNavSections: ["artifacts", "plans", "memories", "customize"],
+				visibleNavSections: ["projects", "artifacts", "plans", "memories", "customize"],
 				ignoredDirs: [...DEFAULT_IGNORED_DIR_NAMES],
 			},
 			terminalWritesEnabled: true,
@@ -347,7 +349,7 @@ describe("persisted application settings", () => {
 			terminal_host: "herdr",
 			shell_pane_enabled: true,
 			ignored_dirs: [...DEFAULT_IGNORED_DIR_NAMES],
-			visible_nav_sections: ["artifacts", "plans", "memories", "customize"],
+			visible_nav_sections: ["projects", "artifacts", "plans", "memories", "customize"],
 		});
 	});
 });

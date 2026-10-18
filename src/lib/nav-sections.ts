@@ -2,6 +2,7 @@ import {z} from "zod";
 
 /** Sidebar sections the user can pin or move under More ▸, in nav order. */
 export const NAV_SECTIONS = [
+	"projects",
 	"artifacts",
 	"routines",
 	"jobs",
@@ -10,7 +11,6 @@ export const NAV_SECTIONS = [
 	"approvals",
 	"notifications",
 	"tasks",
-	"projects",
 	"plans",
 	"memories",
 	"sessions",
@@ -51,8 +51,14 @@ export function renameLegacyNavSections(value: unknown): unknown {
 	return result;
 }
 
-/** Upstream pins New, Artifacts and Customize; Plans and Memories stay local. */
-export const DEFAULT_VISIBLE_NAV_SECTIONS: readonly NavSection[] = ["artifacts", "plans", "memories", "customize"];
+/** Upstream pins New, Projects, Artifacts and Customize; Plans and Memories stay local. */
+export const DEFAULT_VISIBLE_NAV_SECTIONS: readonly NavSection[] = [
+	"projects",
+	"artifacts",
+	"plans",
+	"memories",
+	"customize",
+];
 
 function inNavOrder(sections: ReadonlySet<NavSection>): NavSection[] {
 	return NAV_SECTIONS.filter((section) => sections.has(section));

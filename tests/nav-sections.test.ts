@@ -12,11 +12,11 @@ function labels(items: ReadonlyArray<{label: string}>): string[] {
 }
 
 describe("getVisibleNavItems", () => {
-	it("pins Artifacts, Plans, Memories and Customize by default and overflows the rest, Sessions included", () => {
+	it("pins Projects, Artifacts, Plans, Memories and Customize by default and overflows the rest, Sessions included", () => {
 		const {pinned, overflow} = getVisibleNavItems(navItems, DEFAULT_VISIBLE_NAV_SECTIONS);
 
 		expect({pinned: labels(pinned), overflow: labels(overflow)}).toStrictEqual({
-			pinned: ["Artifacts", "Plans", "Memories", "Customize"],
+			pinned: ["Projects", "Artifacts", "Plans", "Memories", "Customize"],
 			overflow: [
 				"Scheduled",
 				"Background jobs",
@@ -25,7 +25,6 @@ describe("getVisibleNavItems", () => {
 				"Approvals",
 				"Notifications",
 				"Tasks",
-				"Projects",
 				"Sessions",
 			],
 		});
@@ -67,11 +66,12 @@ describe("visibleNavSections schema", () => {
 
 describe("migrateLegacyNavFlags", () => {
 	it("uses the defaults when neither legacy flag was set", () => {
-		expect(migrateLegacyNavFlags({})).toStrictEqual(["artifacts", "plans", "memories", "customize"]);
+		expect(migrateLegacyNavFlags({})).toStrictEqual(["projects", "artifacts", "plans", "memories", "customize"]);
 	});
 
 	it("pins Terminals once when the old Herdr and Tmux flags showed them", () => {
 		expect(migrateLegacyNavFlags({showHerdrSection: true, showTmuxSection: true})).toStrictEqual([
+			"projects",
 			"artifacts",
 			"herdr",
 			"plans",
@@ -82,6 +82,7 @@ describe("migrateLegacyNavFlags", () => {
 
 	it("moves sections the old flags hid under More", () => {
 		expect(migrateLegacyNavFlags({showHerdrSection: false, showTmuxSection: false})).toStrictEqual([
+			"projects",
 			"artifacts",
 			"plans",
 			"memories",
