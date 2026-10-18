@@ -5,6 +5,7 @@ import {tmpdir} from "node:os";
 import {openTestDb, type AppDb} from "../src/lib/db/connection";
 import {resetBridgePushedTitles, setBridgePushedTitle} from "../src/lib/bridge-pushed-title-store";
 import {
+	BRIDGED_TITLE_REINDEX_KEY,
 	fullScan,
 	indexFile,
 	indexJsonlFile,
@@ -1158,6 +1159,65 @@ describe("indexer", () => {
 		const projectNames = listProjectsFromDb(db.index).map((row) => row.name);
 		expect(projectNames).toStrictEqual(["rule"]);
 		expect(projectNames.every((name) => !name.startsWith("/Users/"))).toBe(true);
+	});
+
+	it("re-indexes once a bridged session whose stored title predates the bridged-title rule", async () => {
+		const project = "-Users-alice-projects-bridged";
+		const projectDir = join(testDir, project);
+		mkdirSync(projectDir, {recursive: true});
+		writeFileSync(
+			join(projectDir, "session-bridged.jsonl"),
+			jsonl(
+				{type: "user", message: {role: "user", content: "Fix the login bug"}},
+				{type: "bridge-session", sessionId: "session-bridged", bridgeSessionId: "cse_015KtMUgd6XyrAVv87Zaks48"},
+				{type: "custom-title", customTitle: "claude.ai", sessionId: "session-bridged"},
+				{type: "ai-title", aiTitle: "Parallel do-task workstreams", sessionId: "session-bridged"},
+			),
+		);
+		writeFileSync(
+			join(projectDir, "session-local.jsonl"),
+			jsonl(
+				{type: "user", message: {role: "user", content: "Fix the logout bug"}},
+				{type: "custom-title", customTitle: "Alice's title", sessionId: "session-local"},
+			),
+		);
+		await fullScan(db.index, db.summaries, testDir);
+
+		// An index written before the rule: the bridged title is its custom title, and no re-index marker.
+		const staleTitles = () => {
+			db.index
+				.update(schema.sessions)
+				.set({title: "claude.ai"})
+				.where(eq(schema.sessions.id, "session-bridged"))
+				.run();
+			db.index
+				.update(schema.sessions)
+				.set({title: "Stale local"})
+				.where(eq(schema.sessions.id, "session-local"))
+				.run();
+		};
+		const titles = () =>
+			db.index
+				.select({id: schema.sessions.id, title: schema.sessions.title})
+				.from(schema.sessions)
+				.orderBy(schema.sessions.id)
+				.all();
+		staleTitles();
+		db.index.delete(schema.metadata).where(eq(schema.metadata.key, BRIDGED_TITLE_REINDEX_KEY)).run();
+
+		await fullScan(db.index, db.summaries, testDir);
+		expect(titles()).toStrictEqual([
+			{id: "session-bridged", title: "Parallel do-task workstreams"},
+			{id: "session-local", title: "Stale local"},
+		]);
+
+		// Stamped: later scans skip the unchanged transcripts again.
+		staleTitles();
+		await fullScan(db.index, db.summaries, testDir);
+		expect(titles()).toStrictEqual([
+			{id: "session-bridged", title: "claude.ai"},
+			{id: "session-local", title: "Stale local"},
+		]);
 	});
 
 	it("derives parent/worktree display names for worktree and nested checkout projects", async () => {

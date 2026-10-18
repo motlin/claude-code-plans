@@ -1796,6 +1796,36 @@ function pruneDeletedSessions(
 	}
 }
 
+/**
+ * Stamped once bridged sessions are re-indexed under the bridged-title rule (ai-title over a local custom title).
+ * Bumping SCHEMA_VERSION would also wipe the user-state tables, so this index-only marker rebuilds just those rows.
+ */
+export const BRIDGED_TITLE_REINDEX_KEY = "bridged_title_reindex";
+const BRIDGED_TITLE_REINDEX_VERSION = "1";
+
+/** Forget the indexed mtimes of bridged transcripts once, so the scan re-indexes them and recomputes their titles. */
+function invalidateBridgedTitlesOnce(db: IndexDb): void {
+	db.transaction(() => {
+		const marker = db
+			.select({value: schema.metadata.value})
+			.from(schema.metadata)
+			.where(eq(schema.metadata.key, BRIDGED_TITLE_REINDEX_KEY))
+			.get();
+		if (marker?.value === BRIDGED_TITLE_REINDEX_VERSION) return;
+		db.delete(schema.indexedFiles)
+			.where(
+				sql`${schema.indexedFiles.path} IN (
+					SELECT ${schema.sessions.filePath} FROM ${schema.sessions} WHERE ${sessionRemoteControlColumn}
+				)`,
+			)
+			.run();
+		db.insert(schema.metadata)
+			.values({key: BRIDGED_TITLE_REINDEX_KEY, value: BRIDGED_TITLE_REINDEX_VERSION})
+			.onConflictDoUpdate({target: schema.metadata.key, set: {value: BRIDGED_TITLE_REINDEX_VERSION}})
+			.run();
+	});
+}
+
 type ReadDirectory = (path: string) => Promise<string[]>;
 
 export async function fullScan(
@@ -1817,6 +1847,9 @@ export async function fullScan(
 	try {
 		await step("project names", () => {
 			repairProjectDisplayNames(indexDb);
+		});
+		await step("bridged titles", () => {
+			invalidateBridgedTitlesOnce(indexDb);
 		});
 
 		let projectDirs: string[];
