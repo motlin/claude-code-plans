@@ -385,6 +385,17 @@ describe("phone sheet CSS", () => {
 		expect(/padding:[^;]*max\(8px/.test(rule("\n.phone-sheet"))).toBe(false);
 	});
 
+	it("keeps an expanded sidebar group's caret visible on touch, as upstream's [data-group-caret] touch rule", () => {
+		const caret = styles.indexOf("\t[data-group-caret] {");
+		const media = styles.lastIndexOf("\n@media ", caret);
+		expect({
+			touchMedia:
+				styles.startsWith("\n@media (pointer: coarse), (hover: none) {", media) &&
+				!styles.slice(media, caret).includes("\n}"),
+			rule: rule("\t[data-group-caret]").trim(),
+		}).toStrictEqual({touchMedia: true, rule: "[data-group-caret] {\n\t\topacity: 1;"});
+	});
+
 	it("reveals the touch kebab only on the data-touch-menu row, for touch pointers, not every phone-width mouse", () => {
 		const reveal = styles.indexOf("[data-touch-menu] .df-touch-reveal {");
 		const before = styles.slice(Math.max(0, reveal - 200), reveal);

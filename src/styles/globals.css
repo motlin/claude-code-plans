@@ -769,6 +769,10 @@
 	[data-touch-menu] [data-row-main-button] [data-row-label] {
 		padding-inline-end: calc(var(--sb-row-ctl) + 4px);
 	}
+	/* An expanded group's caret otherwise shows only on hover or focus, which touch never has. */
+	[data-group-caret] {
+		opacity: 1;
+	}
 }
 
 @media (prefers-reduced-motion: reduce) {
