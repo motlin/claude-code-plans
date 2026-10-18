@@ -11,6 +11,7 @@ import {
 import {hookStatusQueryOptions} from "../lib/api/hooks";
 import {sessionTitlesQueryOptions} from "../lib/api/sessions";
 import {formatRelativeTimeFromIso} from "../lib/relative-time";
+import {TOUCH_REVEAL} from "../lib/touch-reveal";
 import {ListPageHeader} from "../components/list-page-header";
 
 export const Route = createFileRoute("/notifications")({
@@ -139,7 +140,7 @@ function NotificationsPage() {
 									onClick={() => {
 										dismiss.mutate(notification.id);
 									}}
-									className="absolute right-2 top-2 rounded p-1 text-t6 opacity-0 transition-opacity hover:bg-fill-ghost-hover hover:text-primary group-hover:opacity-100"
+									className={`absolute right-2 top-2 rounded p-1 text-t6 opacity-0 transition-opacity hover:bg-fill-ghost-hover hover:text-primary group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 ${TOUCH_REVEAL}`}
 								>
 									<X className="size-4" />
 								</button>

@@ -4,6 +4,7 @@ import {useId, useLayoutEffect, useRef, useState} from "react";
 import type {HomeAttentionItem, HomeAttentionKind, HomeAttentionRow} from "../../lib/home-attention";
 import {formatNarrowRelativeTime} from "../../lib/relative-time";
 import {homeAttentionKindLabels} from "../../lib/schema-choices";
+import {TOUCH_REVEAL} from "../../lib/touch-reveal";
 import {SessionHoverCard} from "../session-hover-card";
 import {Tooltip} from "../ui/tooltip";
 
@@ -199,7 +200,7 @@ function AttentionRow<Row extends HomeAttentionRow>({
 					data-row-dismiss
 					aria-label="Dismiss session"
 					onClick={onDismiss}
-					className="flex size-6 shrink-0 items-center justify-center rounded-md text-ink-muted opacity-0 hover:bg-fill-ghost-hover hover:text-primary group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100"
+					className={`flex size-6 shrink-0 items-center justify-center rounded-md text-ink-muted opacity-0 hover:bg-fill-ghost-hover hover:text-primary group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100 ${TOUCH_REVEAL}`}
 				>
 					<X aria-hidden="true" className="size-4" />
 				</button>

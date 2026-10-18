@@ -15,6 +15,7 @@ import {
 } from "@tanstack/react-router";
 
 import {AttentionSection} from "../src/components/home/attention-section";
+import {TOUCH_REVEAL} from "../src/lib/touch-reveal";
 import {ToastProvider} from "../src/components/toast";
 import {HomeLanding} from "../src/components/home/home-landing";
 import {approvalsQueryOptions} from "../src/lib/api/approvals";
@@ -174,6 +175,38 @@ describe("AttentionSection", () => {
 		fireEvent.click(screen.getByRole("button", {name: "Open session Untitled session"}));
 
 		expect(onOpen.mock.calls).toStrictEqual([["s1"]]);
+	});
+
+	it("reveals the dismiss button on hover, keyboard focus and touch devices", () => {
+		render(
+			<AttentionSection
+				items={items([row("s1")])}
+				rowLimit={5}
+				now={NOW}
+				onOpen={() => undefined}
+				onDismiss={() => undefined}
+			/>,
+		);
+
+		expect(screen.getByRole("button", {name: "Dismiss session"}).className.split(" ")).toStrictEqual([
+			"flex",
+			"size-6",
+			"shrink-0",
+			"items-center",
+			"justify-center",
+			"rounded-md",
+			"text-ink-muted",
+			"opacity-0",
+			"hover:bg-fill-ghost-hover",
+			"hover:text-primary",
+			"group-hover:opacity-100",
+			"group-focus-within:opacity-100",
+			"focus-visible:opacity-100",
+			"focus-visible:outline-none",
+			"focus-visible:ring-1",
+			"focus-visible:ring-accent-100",
+			...TOUCH_REVEAL.split(" "),
+		]);
 	});
 
 	it("has no native row tooltips and shows the shared Dismiss tooltip on the dismiss button", async () => {

@@ -6,8 +6,9 @@ import {cleanup, render, screen} from "@testing-library/react";
 import {createElement} from "react";
 import {afterEach, describe, expect, it} from "vite-plus/test";
 import {hookStatusQueryOptions} from "../src/lib/api/hooks";
-import {notificationsQueryOptions} from "../src/lib/api/notifications";
+import {notificationsQueryOptions, type Notification} from "../src/lib/api/notifications";
 import {HOOK_EVENT_NAMES, hookInstallStatus} from "../src/lib/hook-config";
+import {TOUCH_REVEAL} from "../src/lib/touch-reveal";
 import {Route as NotificationsRoute} from "../src/routes/notifications";
 
 afterEach(() => {
@@ -24,12 +25,16 @@ const MISSING_HOOK_SENTENCE =
 const OUTDATED_HOOK_SENTENCE =
 	"That hook is installed in Claude Code’s settings, but with an older command than this server now generates.";
 
-async function renderEmptyNotifications(missingEvents: string[], outdatedEvents: string[] = []) {
+async function renderNotifications(
+	notifications: Notification[],
+	missingEvents: string[],
+	outdatedEvents: string[] = [],
+) {
 	const NotificationsPage = NotificationsRoute.options.component;
 	if (!NotificationsPage) throw new Error("Expected the notifications route component");
 
 	const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
-	queryClient.setQueryData(notificationsQueryOptions().queryKey, {notifications: []});
+	queryClient.setQueryData(notificationsQueryOptions().queryKey, {notifications});
 	queryClient.setQueryData(hookStatusQueryOptions.queryKey, {
 		...hookInstallStatus(undefined),
 		installed: missingEvents.length === 0 && outdatedEvents.length === 0,
@@ -53,6 +58,10 @@ async function renderEmptyNotifications(missingEvents: string[], outdatedEvents:
 	await router.load();
 
 	render(<RouterProvider router={router} />);
+}
+
+async function renderEmptyNotifications(missingEvents: string[], outdatedEvents: string[] = []) {
+	await renderNotifications([], missingEvents, outdatedEvents);
 }
 
 function emptyStateSentences(): string[] {
@@ -105,5 +114,43 @@ describe("notifications route empty state", () => {
 			sentences: [ORIGIN_SENTENCE, `${OUTDATED_HOOK_SENTENCE} Update hooks`, LIFETIME_SENTENCE],
 			setupHref: "/setup",
 		});
+	});
+});
+
+describe("notifications route dismiss button", () => {
+	it("reveals on hover, keyboard focus and touch devices", async () => {
+		await renderNotifications(
+			[
+				{
+					id: "n1",
+					sessionId: "s1",
+					projectId: "p1",
+					projectName: "proj",
+					message: "Waiting for input",
+					notificationType: "agent_needs_input",
+					createdAt: 0,
+					createdAtIso: "2026-10-18T00:00:00.000Z",
+					unread: true,
+				},
+			],
+			[],
+		);
+
+		expect(screen.getByRole("button", {name: "Dismiss notification"}).className.split(" ")).toStrictEqual([
+			"absolute",
+			"right-2",
+			"top-2",
+			"rounded",
+			"p-1",
+			"text-t6",
+			"opacity-0",
+			"transition-opacity",
+			"hover:bg-fill-ghost-hover",
+			"hover:text-primary",
+			"group-hover:opacity-100",
+			"group-focus-within:opacity-100",
+			"focus-visible:opacity-100",
+			...TOUCH_REVEAL.split(" "),
+		]);
 	});
 });
