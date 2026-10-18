@@ -142,14 +142,14 @@ export function GroupSection({
 		<div
 			ref={sectionRef}
 			data-group-key={group.key}
-			className="group/section relative isolate flex flex-col gap-px pb-[var(--sb-group-pb)]"
+			className="group/section relative isolate flex flex-col gap-[var(--sb-row-stack-gap)] pb-[var(--sb-group-pb)]"
 		>
 			<div
 				{...headerDragProps}
 				ref={headerRef}
 				data-sidebar-group-label
 				data-drop-hot={dropHot ? "" : undefined}
-				className="group/labelrow df-label-inset rounded-[var(--sb-radius)] data-[drop-hot]:bg-[var(--sb-hover)] flex min-h-[calc(var(--sb-group-pt)+var(--sb-row-h)-4px)] w-full items-center gap-[var(--sb-row-gap)] pt-[var(--sb-group-pt)] pr-[var(--sb-row-ctl-inset)] pb-1 text-[length:var(--sb-group-font)] leading-4 text-ink-muted"
+				className="group/labelrow df-label-inset rounded-[var(--sb-radius)] data-[drop-hot]:bg-[var(--sb-hover)] flex mt-[var(--sb-group-band-mt)] min-h-[var(--sb-group-band-h)] w-full items-center gap-[var(--sb-row-gap)] pt-[var(--sb-group-pt)] pr-[var(--sb-row-ctl-inset)] pb-[var(--sb-group-label-pb)] text-[length:var(--sb-group-font)] leading-4 text-ink-muted"
 			>
 				{customGroupId === null ? (
 					isProject ? (
@@ -172,7 +172,7 @@ export function GroupSection({
 				<HeaderControls filterSlot={filterSlot} leadsList={leadsList} />
 			</div>
 			{expanded && (
-				<div ref={rowsRef} data-group-rows className="flex flex-col gap-px">
+				<div ref={rowsRef} data-group-rows className="flex flex-col gap-[var(--sb-row-stack-gap)]">
 					{group.rows.map((row) => {
 						const nested = group.nested.get(row.sessionId);
 						return (
@@ -280,11 +280,11 @@ export function EmptyGroupSection({
 	return (
 		<div
 			data-group-key="empty"
-			className="group/section relative isolate flex flex-col gap-px pb-[var(--sb-group-pb)]"
+			className="group/section relative isolate flex flex-col gap-[var(--sb-row-stack-gap)] pb-[var(--sb-group-pb)]"
 		>
 			<div
 				data-sidebar-group-label
-				className="group/labelrow df-label-inset flex min-h-[calc(var(--sb-group-pt)+var(--sb-row-h)-4px)] w-full items-center gap-[var(--sb-row-gap)] pt-[var(--sb-group-pt)] pr-[var(--sb-row-ctl-inset)] pb-1 text-[length:var(--sb-group-font)] leading-4 text-ink-muted"
+				className="group/labelrow df-label-inset flex mt-[var(--sb-group-band-mt)] min-h-[var(--sb-group-band-h)] w-full items-center gap-[var(--sb-row-gap)] pt-[var(--sb-group-pt)] pr-[var(--sb-row-ctl-inset)] pb-[var(--sb-group-label-pb)] text-[length:var(--sb-group-font)] leading-4 text-ink-muted"
 			>
 				<span className="min-w-0 flex-1 truncate">{label}</span>
 				<HeaderControls filterSlot={filterSlot} leadsList />

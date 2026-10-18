@@ -339,6 +339,11 @@
 	--sb-group-pt: 16px;
 	/* Upstream's group wrapper (padding 16px 4px 4px 6px) leaves ~30px from a group's last row to the next label */
 	--sb-group-pb: 10px;
+	/* Desktop label band: 16px top pad + a row-height label (less the 4px bottom pad) and 1px row stack */
+	--sb-group-band-mt: 0px;
+	--sb-group-band-h: calc(var(--sb-group-pt) + var(--sb-row-h) - 4px);
+	--sb-group-label-pb: 4px;
+	--sb-row-stack-gap: 1px;
 	--sb-icon: 20px;
 	--sb-leading-slot: 28px;
 	--sb-row-ctl: 24px;
@@ -737,6 +742,13 @@
 	--sb-row-h: 44px;
 	--sb-row-ctl: 36px;
 	--sb-row-ctl-inset: 4px;
+	/* Upstream .df-session-list: an 8px + row-height label band, a 2px row stack, sections back to back */
+	--sb-row-stack-gap: 2px;
+	--sb-group-band-mt: calc(10px - var(--sb-row-stack-gap));
+	--sb-group-band-h: var(--sb-row-h);
+	--sb-group-pt: 0px;
+	--sb-group-label-pb: 0px;
+	--sb-group-pb: 0px;
 	transform: translate(-100%);
 	transition:
 		transform 0.3s cubic-bezier(0.165, 0.84, 0.44, 1),
