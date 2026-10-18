@@ -216,6 +216,18 @@ export function QuestionCard({
 	};
 
 	hotkeyRef.current = editable ? advance : null;
+	const primary = (
+		<ApprovalActionButton
+			variant="primary"
+			busy={sending}
+			disabled={!editable || !canAdvance}
+			onMouseDown={keepFocus}
+			onClick={advance}
+		>
+			{isLast ? submitLabel : "Next"}
+			<Shortcut keys="cmd+enter" className="pointer-coarse:hidden" />
+		</ApprovalActionButton>
+	);
 
 	return (
 		<div
@@ -342,28 +354,10 @@ export function QuestionCard({
 					Skip
 				</ApprovalActionButton>
 				{disabledReason === null ? (
-					<ApprovalActionButton
-						variant="primary"
-						disabled={!editable || !canAdvance}
-						onMouseDown={keepFocus}
-						onClick={advance}
-					>
-						{isLast ? submitLabel : "Next"}
-						<Shortcut keys="cmd+enter" className="pointer-coarse:hidden" />
-					</ApprovalActionButton>
+					primary
 				) : (
 					<Tooltip content={disabledReason}>
-						<span className="flex">
-							<ApprovalActionButton
-								variant="primary"
-								disabled={!editable || !canAdvance}
-								onMouseDown={keepFocus}
-								onClick={advance}
-							>
-								{isLast ? submitLabel : "Next"}
-								<Shortcut keys="cmd+enter" className="pointer-coarse:hidden" />
-							</ApprovalActionButton>
-						</span>
+						<span className="flex">{primary}</span>
 					</Tooltip>
 				)}
 			</div>

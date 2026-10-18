@@ -159,6 +159,33 @@ describe("QuestionCard", () => {
 		});
 	});
 
+	it("marks Submit busy with a spinner and no tooltip reason while the answer is sending, as upstream's busy primary", async () => {
+		const onSubmit = vi.fn<(answers: unknown[]) => Promise<void>>(async () => new Promise<void>(() => {}));
+		render(<QuestionCard questions={[QUESTIONS[0]!]} onSubmit={onSubmit} />);
+		const idle = screen.getByRole("button", {name: /^Submit/});
+		const before = {busy: idle.getAttribute("aria-busy"), spinner: idle.querySelector(".animate-spin") !== null};
+		fireEvent.click(screen.getByRole("button", {name: /^Vitest/}));
+		fireEvent.click(screen.getByRole("button", {name: /^Submit/}));
+		await vi.waitFor(() => {
+			expect(onSubmit).toHaveBeenCalledTimes(1);
+		});
+		const submit = screen.getByRole("button", {name: /^Submit/});
+
+		expect({
+			before,
+			busy: submit.getAttribute("aria-busy"),
+			disabled: submit.hasAttribute("disabled"),
+			spinner: submit.querySelector("svg.animate-spin")?.getAttribute("aria-hidden"),
+			tooltipWrapper: submit.parentElement?.tagName === "SPAN",
+		}).toStrictEqual({
+			before: {busy: null, spinner: false},
+			busy: "true",
+			disabled: true,
+			spinner: "true",
+			tooltipWrapper: false,
+		});
+	});
+
 	it("focuses the Other box as Other is chosen, single- or multi-select, as upstream's flushSync-then-focus", () => {
 		render(<QuestionCard questions={QUESTIONS} onSubmit={async () => {}} />);
 		fireEvent.click(screen.getByRole("button", {name: "Other"}));

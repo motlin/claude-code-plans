@@ -1,4 +1,3 @@
-import {Loader2} from "lucide-react";
 import {useCallback, useEffect, useRef, useState} from "react";
 
 import {dockKeyAllowed} from "../lib/dock-keys";
@@ -110,8 +109,12 @@ function PlanApprovalActions({
 						<ApprovalActionButton variant="secondary" disabled={submitting} onClick={closeFeedback}>
 							{PLAN_BACK_LABEL}
 						</ApprovalActionButton>
-						<ApprovalActionButton variant="primary" disabled={submitting} onClick={reviseWithFeedback}>
-							{submitting && <Loader2 aria-hidden="true" className="size-3 animate-spin" />}
+						<ApprovalActionButton
+							variant="primary"
+							busy={submitting}
+							disabled={submitting}
+							onClick={reviseWithFeedback}
+						>
 							{PLAN_REVISE_LABEL}
 						</ApprovalActionButton>
 					</>
@@ -150,10 +153,10 @@ function PlanApprovalActions({
 							{primary !== null && (
 								<ApprovalActionButton
 									variant="primary"
+									busy={submitting}
 									disabled={submitting}
 									onClick={() => void send({kind: "accept", mode: primary})}
 								>
-									{submitting && <Loader2 aria-hidden="true" className="size-3 animate-spin" />}
 									{PLAN_ACCEPT_LABEL[primary]}
 									<Shortcut keys="cmd+enter" className="pointer-coarse:hidden" />
 								</ApprovalActionButton>

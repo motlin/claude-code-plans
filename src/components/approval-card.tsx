@@ -1,3 +1,4 @@
+import {Loader2} from "lucide-react";
 import type {ButtonHTMLAttributes, ReactNode} from "react";
 
 const ACTION_BUTTON =
@@ -15,11 +16,22 @@ function approvalActionClass(variant: ApprovalActionVariant): string {
 	return `${ACTION_BUTTON} ${ACTION_VARIANTS[variant]}`;
 }
 
+/** An approval card action; `busy` marks it aria-busy and leads it with upstream's spinner. */
 export function ApprovalActionButton({
 	variant,
+	busy = false,
+	children,
 	...props
-}: {variant: ApprovalActionVariant} & Omit<ButtonHTMLAttributes<HTMLButtonElement>, "className" | "type">) {
-	return <button type="button" {...props} className={approvalActionClass(variant)} />;
+}: {variant: ApprovalActionVariant; busy?: boolean} & Omit<
+	ButtonHTMLAttributes<HTMLButtonElement>,
+	"className" | "type" | "aria-busy"
+>) {
+	return (
+		<button type="button" {...props} aria-busy={busy || undefined} className={approvalActionClass(variant)}>
+			{busy && <Loader2 aria-hidden="true" className="size-3 animate-spin" />}
+			{children}
+		</button>
+	);
 }
 
 export const APPROVAL_CARD_TITLE = "flex min-h-6 items-center text-[13px]/[19px] font-[580]";
