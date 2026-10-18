@@ -1,6 +1,6 @@
 import {createFileRoute, Link, useNavigate} from "@tanstack/react-router";
 import {useSuspenseQuery} from "@tanstack/react-query";
-import {MarkdownView} from "../components/markdown-view";
+import {MemoryDocument} from "../components/memory-document";
 import {memoryDetailQueryOptions, useRemoveMemory} from "../lib/api/memories";
 import {fromMdSlug} from "../lib/md-slug";
 import {ArrowLeft, Pencil, Trash2} from "lucide-react";
@@ -109,7 +109,7 @@ function MemoryPage() {
 				)}
 			</DetailTopBar>
 			<div className="mt-4">
-				<MarkdownView markdown={data.markdown} mdLinkBase={`/memory/${encodeURIComponent(project)}`} />
+				<MemoryDocument markdown={data.markdown} mdLinkBase={`/memory/${encodeURIComponent(project)}`} />
 			</div>
 		</div>
 	);
