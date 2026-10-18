@@ -277,11 +277,24 @@ describe("customize shell", () => {
 			),
 			addLabelAfterPlus: add.firstElementChild?.tagName.toLowerCase(),
 		}).toStrictEqual({
-			column: ["px-4", "pt-3", "md:px-8"],
+			column: ["px-4", "pt-12", "md:px-8"],
 			pane: ["px-4", "md:px-8"],
 			placeholder: "Search",
 			addIcons: ["lucide-plus", "lucide-chevron-down"],
 			addLabelAfterPlus: "svg",
+		});
+	});
+
+	it("pins the crumb band and header above the scrolling list, as upstream's sticky customize-crumb-bar and PageHeader do", async () => {
+		await renderCustomize("/customize/skills");
+		const header = screen.getByTestId("customize-page").firstElementChild;
+		const controls = header?.querySelector("[data-customize-controls]");
+		expect({
+			header: header?.className.split(" ").filter((name) => /^(sm:)?(sticky|top-|z-|-?mt-|pt-|bg-)/.test(name)),
+			controlsGap: controls?.className.split(" ").filter((name) => name.startsWith("gap-")),
+		}).toStrictEqual({
+			header: ["sticky", "top-0", "z-10", "-mt-12", "bg-surface-1", "pt-12", "sm:-mt-9"],
+			controlsGap: ["gap-2"],
 		});
 	});
 

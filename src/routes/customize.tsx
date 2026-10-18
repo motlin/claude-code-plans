@@ -16,7 +16,7 @@ export const Route = createFileRoute("/customize")({
 
 /**
  * Shell for every `/customize/<section>` page: the shared header (tabs,
- * Yours | Discover, search, Filter, Sort) above the section body. It renders
+ * Yours | Discover, search, Filter, Sort), pinned while the list scrolls, above the section body. It renders
  * `<Outlet />` for the section routes nested under it.
  */
 function CustomizeLayout() {
@@ -34,7 +34,9 @@ function CustomizeLayout() {
 
 	return (
 		<div data-testid="customize-page" className="flex w-full flex-col bg-surface-1 text-body text-primary">
-			<div className="mx-auto w-full max-w-5xl px-4 pt-3 pb-6 md:px-8">
+			{/* Upstream's sticky `customize-crumb-bar` and PageHeader: the negative margin pulls the
+			    header over the root's empty top row so the band behind the sidebar trigger pins with it. */}
+			<div className="sticky top-0 z-10 mx-auto -mt-12 w-full max-w-5xl bg-surface-1 px-4 pt-12 pb-6 sm:-mt-9 md:px-8">
 				<CustomizeHeader section={section} search={search} onSearchChange={updateSearch} />
 			</div>
 			<div

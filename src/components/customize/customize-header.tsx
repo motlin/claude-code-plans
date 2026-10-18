@@ -100,7 +100,7 @@ export function CustomizeHeader({
 			</div>
 			<div
 				data-customize-controls=""
-				className="flex min-w-min flex-1 basis-0 flex-nowrap items-center justify-end gap-1"
+				className="flex min-w-min flex-1 basis-0 flex-nowrap items-center justify-end gap-2"
 			>
 				<SearchField
 					placeholder={section.searchPlaceholder}
