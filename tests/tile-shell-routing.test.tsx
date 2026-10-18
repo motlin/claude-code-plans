@@ -15,6 +15,7 @@ import {Route as HomeRoute} from "../src/routes/index";
 import {Route as SessionRoute} from "../src/routes/session.$id";
 import {Route as SourceRoute} from "../src/routes/session.$id_.source.$uuid";
 import {Route as SubagentsRoute} from "../src/routes/session.$id_.subagents";
+import {Route as ArtifactsRoute} from "../src/routes/artifacts";
 import {Route as CustomizeRoute} from "../src/routes/customize";
 import {HomePage} from "../src/components/home/home-page";
 import {SessionTileFrame, type SessionTileScrollPosition} from "../src/components/session-tile-frame";
@@ -153,7 +154,7 @@ it("actual root selects home/chat shells while source, subagents, and ordinary r
 	]);
 });
 
-it("gives Customize upstream's 8px page gutter, so its 32px-padded column starts 40px from the sidebar, while other pages keep 32px", async () => {
+it("gives Customize upstream's 8px page gutter, so its 32px-padded column starts 40px from the sidebar, Artifacts 8px on phones only, while other pages keep 32px", async () => {
 	vi.stubGlobal("scrollTo", () => {});
 	const client = new QueryClient({defaultOptions: {queries: {retry: false}}});
 	clients.push(client);
@@ -164,9 +165,15 @@ it("gives Customize upstream's 8px page gutter, so its 32px-padded column starts
 		staticData: CustomizeRoute.options.staticData ?? {},
 		component: () => <p>Fabricated customize</p>,
 	});
+	const artifacts = createRoute({
+		getParentRoute: () => root,
+		path: "/artifacts",
+		staticData: ArtifactsRoute.options.staticData ?? {},
+		component: () => <p>Fabricated artifacts</p>,
+	});
 	const plans = createRoute({getParentRoute: () => root, path: "/plans", component: () => <p>Fabricated plans</p>});
 	const router = createRouter({
-		routeTree: root.addChildren([customize, plans]),
+		routeTree: root.addChildren([customize, artifacts, plans]),
 		history: createMemoryHistory({initialEntries: ["/customize"]}),
 		context: {queryClient: client},
 	});
@@ -175,9 +182,12 @@ it("gives Customize upstream's 8px page gutter, so its 32px-padded column starts
 	const gutter = (text: string) =>
 		(screen.getByText(text).parentElement?.className.split(" ") ?? []).filter((name) => /^(sm:)?px-/.test(name));
 	const customizeGutter = gutter("Fabricated customize");
+	await act(async () => router.navigate({to: "/artifacts"}));
+	const artifactsGutter = gutter("Fabricated artifacts");
 	await act(async () => router.navigate({to: "/plans"}));
-	expect({customize: customizeGutter, plans: gutter("Fabricated plans")}).toStrictEqual({
+	expect({customize: customizeGutter, artifacts: artifactsGutter, plans: gutter("Fabricated plans")}).toStrictEqual({
 		customize: ["px-2"],
+		artifacts: ["px-2", "sm:px-8"],
 		plans: ["px-4", "sm:px-8"],
 	});
 });

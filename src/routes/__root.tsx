@@ -8,7 +8,7 @@ import {
 	useRouter,
 	useRouterState,
 } from "@tanstack/react-router";
-import type {ErrorComponentProps} from "@tanstack/react-router";
+import type {ErrorComponentProps, StaticDataRouteOption} from "@tanstack/react-router";
 import {noop, QueryClientProvider, type QueryClient} from "@tanstack/react-query";
 import {useEffect, type ReactNode} from "react";
 import {ThemeProvider} from "../components/theme-provider";
@@ -134,6 +134,12 @@ function RootApplication({children}: Readonly<{children: ReactNode}>) {
 	);
 }
 
+const PAGE_GUTTER_CLASS = {
+	default: "px-4 sm:px-8",
+	tight: "px-2",
+	"phone-tight": "px-2 sm:px-8",
+} as const satisfies Record<NonNullable<StaticDataRouteOption["pageGutter"]> | "default", string>;
+
 function RootLayout({children}: Readonly<{children: ReactNode}>) {
 	const {collapsed: sidebarCollapsed} = useSidebarState();
 	useSidebarToggleShortcut();
@@ -144,8 +150,9 @@ function RootLayout({children}: Readonly<{children: ReactNode}>) {
 	const fullBleed = useMatches({
 		select: (matches) => matches.some((match) => match.staticData.fullBleed === true),
 	});
-	const tightGutter = useMatches({
-		select: (matches) => matches.some((match) => match.staticData.pageGutter === "tight"),
+	const pageGutter = useMatches({
+		select: (matches) =>
+			matches.findLast((match) => match.staticData.pageGutter !== undefined)?.staticData.pageGutter,
 	});
 	const tileShell = useMatches({
 		select: (matches) =>
@@ -180,7 +187,7 @@ function RootLayout({children}: Readonly<{children: ReactNode}>) {
 						{fullBleed ? (
 							<div className="min-h-0 flex-1">{children}</div>
 						) : (
-							<div className={tightGutter ? "px-2 pb-24 sm:pb-8" : "px-4 pb-24 sm:px-8 sm:pb-8"}>
+							<div className={`${PAGE_GUTTER_CLASS[pageGutter ?? "default"]} pb-24 sm:pb-8`}>
 								{children}
 							</div>
 						)}

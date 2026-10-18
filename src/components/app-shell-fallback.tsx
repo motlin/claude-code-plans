@@ -98,7 +98,7 @@ function ArtifactsSkeleton() {
 	return (
 		<div data-testid="artifacts-skeleton" className="min-h-0 flex-1 overflow-hidden">
 			<div className="min-h-9 max-sm:h-12" />
-			<div className="px-4 sm:px-8">
+			<div className="px-2 sm:px-8">
 				<div className="mx-auto flex sm:-mt-1 w-full max-w-5xl flex-col">
 					<span className={`h-8 w-36 ${BAR_CLASS}`} />
 					<div className="mt-5 flex h-8 items-center gap-2">

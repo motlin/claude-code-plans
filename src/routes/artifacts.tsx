@@ -48,6 +48,7 @@ import {Tooltip} from "../components/ui/tooltip";
 
 export const Route = createFileRoute("/artifacts")({
 	component: ArtifactsPage,
+	staticData: {pageGutter: "phone-tight"},
 	validateSearch: (search: Record<string, unknown>): {search?: string; view?: Exclude<ArtifactView, "all">} => {
 		const query = search["search"];
 		const view = search["view"];
