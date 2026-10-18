@@ -385,36 +385,67 @@ function ArtifactMenuItems({artifact, pinned}: {artifact: ArtifactSummary; pinne
 	);
 }
 
-/** The hover Pin button and the "More options" ⋮ menu at the end of an artifact row or card. */
-function ArtifactRowActions({artifact, pinned}: {artifact: ArtifactSummary; pinned: boolean}) {
+function ArtifactPinButton({
+	artifact,
+	pinned,
+	className = "",
+}: {
+	artifact: ArtifactSummary;
+	pinned: boolean;
+	className?: string;
+}) {
 	const pinLabel = pinned ? "Unpin" : "Pin";
 	return (
+		<Tooltip content={pinLabel}>
+			<button
+				type="button"
+				aria-label={`${pinLabel} ${artifact.title}`}
+				aria-pressed={pinned}
+				className={`${ROW_ACTION_CLASS} ${className}`}
+				onClick={() => {
+					togglePin(artifact, pinned);
+				}}
+			>
+				{pinned ? (
+					<PinOff aria-hidden="true" className="size-4" />
+				) : (
+					<Pin aria-hidden="true" className="size-4" />
+				)}
+			</button>
+		</Tooltip>
+	);
+}
+
+function ArtifactMoreMenu({
+	artifact,
+	pinned,
+	className = "",
+}: {
+	artifact: ArtifactSummary;
+	pinned: boolean;
+	className?: string;
+}) {
+	return (
+		<Menu>
+			<MenuTrigger
+				aria-label={`More options for ${artifact.title}`}
+				className={`${ROW_ACTION_CLASS} ${className}`}
+			>
+				<EllipsisVertical aria-hidden="true" className="size-4" />
+			</MenuTrigger>
+			<MenuContent align="end">
+				<ArtifactMenuItems artifact={artifact} pinned={pinned} />
+			</MenuContent>
+		</Menu>
+	);
+}
+
+/** The hover Pin button and the "More options" ⋮ menu at the end of an artifact row. */
+function ArtifactRowActions({artifact, pinned}: {artifact: ArtifactSummary; pinned: boolean}) {
+	return (
 		<span className="flex shrink-0 items-center gap-0.5">
-			<Tooltip content={pinLabel}>
-				<button
-					type="button"
-					aria-label={`${pinLabel} ${artifact.title}`}
-					aria-pressed={pinned}
-					className={ROW_ACTION_CLASS}
-					onClick={() => {
-						togglePin(artifact, pinned);
-					}}
-				>
-					{pinned ? (
-						<PinOff aria-hidden="true" className="size-4" />
-					) : (
-						<Pin aria-hidden="true" className="size-4" />
-					)}
-				</button>
-			</Tooltip>
-			<Menu>
-				<MenuTrigger aria-label={`More options for ${artifact.title}`} className={ROW_ACTION_CLASS}>
-					<EllipsisVertical aria-hidden="true" className="size-4" />
-				</MenuTrigger>
-				<MenuContent align="end">
-					<ArtifactMenuItems artifact={artifact} pinned={pinned} />
-				</MenuContent>
-			</Menu>
+			<ArtifactPinButton artifact={artifact} pinned={pinned} />
+			<ArtifactMoreMenu artifact={artifact} pinned={pinned} />
 		</span>
 	);
 }
@@ -500,49 +531,53 @@ function ArtifactGrid({
 	return (
 		<ul role="list" className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3">
 			{artifacts.map((artifact) => (
-				<li key={artifact.url} data-gallery-card="" className="group group/cdsrow relative h-full">
-					<ArtifactContextMenu artifact={artifact} pinned={isPinned(artifact.url)}>
-						<PrimaryLink artifact={artifact} className="rounded-r7" />
-						<div
-							data-card-frame=""
-							className="pointer-events-none relative flex h-full min-h-[252px] flex-col overflow-hidden rounded-r7 border border-border bg-surface-2 group-hover:bg-surface-1"
-						>
-							<div
-								data-card-preview=""
-								className="relative h-[160px] shrink-0 select-none overflow-hidden"
-							>
-								<TypeTile kind={artifact.kind} size="card" />
-							</div>
-							<div className="mx-px border-t border-alpha-1" />
-							{/* Upstream's 28px type tile straddles the divider, 12px in from the card's edge */}
-							<div
-								data-card-badge=""
-								className="absolute left-3 top-[142px] size-7 rounded-r6 bg-surface-2 p-0.5"
-							>
-								<TypeTile kind={artifact.kind} size="badge" />
-							</div>
-							<div data-card-body="" className="relative flex flex-1 flex-col p-3.5">
-								<div
-									aria-hidden="true"
-									data-card-title=""
-									className="line-clamp-2 min-w-0 text-left text-[13px]/[20px] font-medium text-primary"
-								>
-									{artifact.title}
-								</div>
-								<div
-									data-card-meta=""
-									className="mt-auto flex flex-wrap items-center gap-1 text-[11px]/[17px] text-ink-muted"
-								>
-									<PrivacyAndDate artifact={artifact} now={now} lockClass="size-4" />
-								</div>
-								<span className="pointer-events-auto absolute right-2.5 bottom-2">
-									<ArtifactRowActions artifact={artifact} pinned={isPinned(artifact.url)} />
-								</span>
-							</div>
-						</div>
-					</ArtifactContextMenu>
-				</li>
+				<ArtifactCard key={artifact.url} artifact={artifact} now={now} pinned={isPinned(artifact.url)} />
 			))}
 		</ul>
+	);
+}
+
+function ArtifactCard({artifact, now, pinned}: {artifact: ArtifactSummary; now: Date; pinned: boolean}) {
+	return (
+		<li data-gallery-card="" className="group group/cdsrow relative h-full">
+			<ArtifactContextMenu artifact={artifact} pinned={pinned}>
+				<PrimaryLink artifact={artifact} className="rounded-r7" />
+				<div
+					data-card-frame=""
+					className="pointer-events-none relative flex h-full flex-col overflow-hidden rounded-r7 bg-surface-2 after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:border after:border-border group-hover:bg-surface-1"
+				>
+					<div data-card-preview="" className="relative h-[160px] shrink-0 select-none overflow-hidden">
+						<TypeTile kind={artifact.kind} size="card" />
+					</div>
+					<div className="mx-px border-t border-alpha-1" />
+					<div data-card-body="" className="relative flex flex-1 flex-col gap-1.5 p-3.5">
+						{/* Upstream's 28px type tile straddles the divider, 12px in from the card's edge */}
+						<div
+							data-card-badge=""
+							className="absolute start-3 top-0 size-7 -translate-y-2/3 rounded-r6 bg-surface-2 p-0.5"
+						>
+							<TypeTile kind={artifact.kind} size="badge" />
+						</div>
+						<div
+							aria-hidden="true"
+							data-card-title=""
+							className="line-clamp-2 min-w-0 text-left text-[13px]/[20px] font-medium text-primary"
+						>
+							{artifact.title}
+						</div>
+						<div
+							data-card-meta=""
+							className="mt-auto flex items-center gap-1 text-[11px]/[17px] text-ink-muted"
+						>
+							<PrivacyAndDate artifact={artifact} now={now} lockClass="size-4" />
+							<ArtifactPinButton artifact={artifact} pinned={pinned} className="-my-1 p-1" />
+						</div>
+					</div>
+				</div>
+				<div data-card-more="" className="absolute end-3 top-3 z-10">
+					<ArtifactMoreMenu artifact={artifact} pinned={pinned} className="bg-page" />
+				</div>
+			</ArtifactContextMenu>
+		</li>
 	);
 }

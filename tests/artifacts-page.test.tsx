@@ -327,14 +327,74 @@ describe("artifacts route", () => {
 		const classes = (selector: string) => card.querySelector(selector)?.className.split(" ") ?? [];
 		const has = (selector: string, names: string[]) => names.filter((name) => !classes(selector).includes(name));
 		expect({
-			frame: has("[data-card-frame]", ["rounded-r7", "min-h-[252px]"]),
+			frame: has("[data-card-frame]", [
+				"rounded-r7",
+				"h-full",
+				"after:absolute",
+				"after:inset-0",
+				"after:border",
+			]),
 			preview: has("[data-card-preview]", ["h-[160px]"]),
-			badge: has("[data-card-badge]", ["absolute", "left-3", "top-[142px]", "size-7", "rounded-r6", "p-0.5"]),
+			badge: has("[data-card-badge]", [
+				"absolute",
+				"start-3",
+				"top-0",
+				"-translate-y-2/3",
+				"size-7",
+				"rounded-r6",
+				"p-0.5",
+			]),
 			body: has("[data-card-body]", ["p-3.5"]),
 			title: has("[data-card-title]", ["text-[13px]/[20px]", "font-medium"]),
 			meta: has("[data-card-meta]", ["text-[11px]/[17px]", "mt-auto"]),
 			pills: within(card).queryAllByRole("link", {name: /^(Session|Preview)$/}).length,
 		}).toStrictEqual({frame: [], preview: [], badge: [], body: [], title: [], meta: [], pills: 0});
+	});
+
+	it("rings grid cards instead of bordering them and lets them size to their content, as upstream", async () => {
+		storage.removeItem(ARTIFACTS_LAYOUT_STORAGE_KEY);
+		await renderArtifactsPage("/artifacts", true);
+		const frame = document.querySelector<HTMLElement>("[data-gallery-card] [data-card-frame]");
+		if (frame === null) throw new Error("no card frame");
+		const names = frame.className.split(" ");
+
+		expect({
+			minHeight: names.some((name) => name.startsWith("min-h-")),
+			border: names.includes("border"),
+		}).toStrictEqual({minHeight: false, border: false});
+	});
+
+	it("puts the card's Pin after the time in the meta row and its More options top-right over the preview, as upstream", async () => {
+		storage.removeItem(ARTIFACTS_LAYOUT_STORAGE_KEY);
+		await renderArtifactsPage("/artifacts", true);
+		const card = screen.getByRole("link", {name: "Quarterly plan"}).closest<HTMLElement>("[data-gallery-card]");
+		if (card === null) throw new Error("no card");
+		const meta = card.querySelector("[data-card-meta]");
+		const pin = within(card).getByRole("button", {name: "Pin Quarterly plan"});
+		const more = within(card).getByRole("button", {name: "More options for Quarterly plan"});
+		const moreWrapper = more.closest<HTMLElement>("[data-card-more]");
+
+		expect({
+			metaChildren: [...(meta?.children ?? [])]
+				.slice(-2)
+				.map((child) =>
+					child.contains(pin) ? "pin" : child.hasAttribute("data-artifact-meta") ? "time" : "other",
+				),
+			pinInMeta: meta?.contains(pin),
+			pinClasses: ["size-6", "p-1", "-my-1"].filter((name) => !pin.classList.contains(name)),
+			moreInMeta: meta?.contains(more),
+			moreWrapper: ["absolute", "z-10", "end-3", "top-3"].filter(
+				(name) => !moreWrapper?.classList.contains(name),
+			),
+			moreBg: more.classList.contains("bg-page"),
+		}).toStrictEqual({
+			metaChildren: ["time", "pin"],
+			pinInMeta: true,
+			pinClasses: [],
+			moreInMeta: false,
+			moreWrapper: [],
+			moreBg: true,
+		});
 	});
 
 	it("keeps every card's straddling type tile neutral and draws the card's private lock at 16px, as upstream", async () => {
