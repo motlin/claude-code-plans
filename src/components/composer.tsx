@@ -173,13 +173,15 @@ interface ComposerProps {
 
 /**
  * The card's trailing Send / Stop button. Memoized on stable props, so a keystroke re-renders it only when
- * `canSend` flips.
+ * `hasContent` or `canSend` flips. Like upstream's `code-prompt-send-cell`, an empty composer holds only an
+ * invisible, inert spacer the size of the button, so Send appears with the first text without reflowing the box.
  */
 const SendSlot = memo(function SendSlot({
 	isStreaming,
 	onStop,
 	onCancel,
 	onSubmit,
+	hasContent,
 	canSend,
 	deliveryHint,
 	hintId,
@@ -191,6 +193,8 @@ const SendSlot = memo(function SendSlot({
 	onCancel: (() => void) | undefined;
 	/** Receives the Send click, so the send journey is timed from it. */
 	onSubmit: (event: React.MouseEvent) => void;
+	/** Whether there is anything to send; Send is hidden behind a spacer until there is. */
+	hasContent: boolean;
 	canSend: boolean;
 	deliveryHint: string | undefined;
 	hintId: string;
@@ -220,7 +224,7 @@ const SendSlot = memo(function SendSlot({
 						<Square className="size-3.5" fill="currentColor" aria-hidden="true" />
 					</button>
 				</Tooltip>
-			) : (
+			) : hasContent ? (
 				<Tooltip content="Send" shortcut="enter" secondary={secondary}>
 					<button
 						type="button"
@@ -233,6 +237,10 @@ const SendSlot = memo(function SendSlot({
 						<CornerDownLeft className="size-4" aria-hidden="true" />
 					</button>
 				</Tooltip>
+			) : (
+				<div data-send-spacer aria-hidden="true" inert className="invisible flex">
+					<span className="size-6" />
+				</div>
 			)}
 			{deliveryHint && (
 				<span id={hintId} className="sr-only">
@@ -282,8 +290,8 @@ export function Composer({
 	const pendingCaretRef = useRef<number | null>(null);
 	const {queued: queuedComments} = useDiffComments(draftKey);
 	const contextChips = useContextChips(draftKey);
-	const canSend =
-		(prompt.trim() !== "" || queuedComments.length > 0 || contextChips.length > 0) && !isStreaming && !disabled;
+	const hasContent = prompt.trim() !== "" || queuedComments.length > 0 || contextChips.length > 0;
+	const canSend = hasContent && !isStreaming && !disabled;
 	const [launch, setLaunch] = useState<{draftKey: string; options: LaunchOptions}>({
 		draftKey,
 		options: {},
@@ -710,6 +718,7 @@ export function Composer({
 						onStop={onStop}
 						onCancel={onCancel}
 						onSubmit={submit}
+						hasContent={hasContent}
 						canSend={canSend}
 						deliveryHint={deliveryHint}
 						hintId={hintId}

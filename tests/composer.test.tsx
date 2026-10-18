@@ -55,23 +55,26 @@ describe("Composer", () => {
 		});
 	});
 
-	it("disables Send while the prompt is blank and enables it once text is typed", () => {
-		render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} />);
-		const send = screen.getByRole<HTMLButtonElement>("button", {name: "Send"});
-		const before = send.disabled;
+	it("hides Send behind an aria-hidden spacer while the prompt is blank and shows it once text is typed", () => {
+		const {container} = render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} />);
+		const slot = () => ({
+			send: screen.queryByRole<HTMLButtonElement>("button", {name: "Send"})?.disabled ?? null,
+			spacer: container.querySelectorAll("[data-send-spacer][aria-hidden=true][inert]").length,
+		});
+		const before = slot();
 
 		fireEvent.change(screen.getByRole("textbox", {name: "Prompt"}), {
 			target: {value: "   "},
 		});
-		const whitespace = send.disabled;
+		const whitespace = slot();
 		fireEvent.change(screen.getByRole("textbox", {name: "Prompt"}), {
 			target: {value: "Continue Alice's test"},
 		});
 
-		expect({before, whitespace, after: send.disabled}).toStrictEqual({
-			before: true,
-			whitespace: true,
-			after: false,
+		expect({before, whitespace, after: slot()}).toStrictEqual({
+			before: {send: null, spacer: 1},
+			whitespace: {send: null, spacer: 1},
+			after: {send: false, spacer: 0},
 		});
 	});
 
@@ -129,6 +132,7 @@ describe("Composer", () => {
 				deliveryHint="Sends to the live terminal"
 			/>,
 		);
+		fireEvent.change(screen.getByRole("textbox", {name: "Prompt"}), {target: {value: "Continue Alice's test"}});
 		const send = screen.getByRole("button", {name: "Send"});
 		const describedBy = send.getAttribute("aria-describedby") ?? "";
 
@@ -150,6 +154,7 @@ describe("Composer", () => {
 				deliveryHint="Starts a forked session"
 			/>,
 		);
+		fireEvent.change(screen.getByRole("textbox", {name: "Prompt"}), {target: {value: "Continue Alice's test"}});
 		const send = screen.getByRole("button", {name: "Send"});
 
 		fireEvent.pointerEnter(send);

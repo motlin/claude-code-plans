@@ -85,6 +85,7 @@ describe("Composer stop slot", () => {
 
 	it("keeps Send without onStop", () => {
 		render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} />);
+		fireEvent.change(screen.getByRole("textbox", {name: "Prompt"}), {target: {value: "Continue Alice's test"}});
 		expect({
 			send: screen.queryByRole("button", {name: "Send"}) !== null,
 			stop: screen.queryByRole("button", {name: "Stop response"}),

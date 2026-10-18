@@ -273,16 +273,17 @@ describe("HomeComposer", () => {
 		}).toStrictEqual({prompt: "TEXTAREA", mascot: null});
 	});
 
-	it("disables Send until the prompt has text", async () => {
+	it("hides Send until the prompt has text", async () => {
 		await renderApp();
-		const send = await screen.findByRole("button", {name: "Send"});
-		expect(send).toHaveProperty("disabled", true);
+		const send = () => screen.queryByRole<HTMLButtonElement>("button", {name: "Send"})?.disabled ?? null;
+		await screen.findByRole("textbox", {name: "Prompt"});
+		const before = send();
 
 		await typePrompt("   ");
-		expect(send).toHaveProperty("disabled", true);
+		const whitespace = send();
 
 		await typePrompt("fix the flaky test");
-		expect(send).toHaveProperty("disabled", false);
+		expect({before, whitespace, after: send()}).toStrictEqual({before: null, whitespace: null, after: false});
 	});
 
 	it("posts the prompt and the selected project to the herdr launch API", async () => {

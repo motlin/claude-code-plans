@@ -86,7 +86,8 @@ describe("Fork with this prompt", () => {
 
 	it("stacks the fork shortcut on its own row under Send in the tooltip", () => {
 		vi.useFakeTimers();
-		renderComposer({onFork: () => {}, forkLabel: "Fork with this prompt"});
+		const {textarea} = renderComposer({onFork: () => {}, forkLabel: "Fork with this prompt"});
+		fireEvent.change(textarea, {target: {value: "Continue Alice's test"}});
 
 		fireEvent.pointerEnter(screen.getByRole("button", {name: "Send"}));
 		act(() => {
@@ -102,7 +103,8 @@ describe("Fork with this prompt", () => {
 
 	it("labels the headless fork as Send in a forked session", () => {
 		vi.useFakeTimers();
-		renderComposer({onFork: () => {}, forkLabel: "Send in a forked session"});
+		const {textarea} = renderComposer({onFork: () => {}, forkLabel: "Send in a forked session"});
+		fireEvent.change(textarea, {target: {value: "Continue Alice's test"}});
 
 		fireEvent.pointerEnter(screen.getByRole("button", {name: "Send"}));
 		act(() => {

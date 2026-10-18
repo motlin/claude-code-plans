@@ -60,13 +60,13 @@ describe("session live input", () => {
 			/>,
 		);
 
+		fireEvent.change(screen.getByRole("textbox", {name: "Prompt"}), {
+			target: {value: "Continue Alice's test"},
+		});
 		const send = screen.getByRole("button", {name: "Send"});
 		expect(document.getElementById(send.getAttribute("aria-describedby") ?? "")?.textContent).toBe(
 			"Sends to the live terminal",
 		);
-		fireEvent.change(screen.getByRole("textbox", {name: "Prompt"}), {
-			target: {value: "Continue Alice's test"},
-		});
 		fireEvent.click(send);
 		expect(onSend.mock.calls).toStrictEqual([["Continue Alice's test", {}]]);
 	});
