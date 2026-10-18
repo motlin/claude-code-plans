@@ -4,6 +4,7 @@ import {prGlyph} from "../lib/pr-status";
 import {sessionEnvironment, sessionEnvironmentText} from "../lib/session-environment";
 import {sessionMenuReadState, type SessionMenuReadState} from "../lib/session-menu-items";
 import {isLiveSessionState, sessionRowIconKind} from "../lib/session-state";
+import {TOUCH_HIT} from "../lib/touch-reveal";
 import {toggleUnseen} from "../lib/unread-store";
 import {useSettings} from "./settings-context";
 import {GIT_PR_STATE_LABELS, SessionStateIcon} from "./status-dot";
@@ -46,7 +47,7 @@ export function SessionRowStatusDot({session, tabIndex}: {session: SessionListIt
 				type="button"
 				{...(tabIndex === undefined ? {} : {tabIndex})}
 				aria-label={label}
-				className="flex cursor-pointer items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100"
+				className={`flex cursor-pointer items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100 ${TOUCH_HIT}`}
 				onClick={(event) => {
 					event.preventDefault();
 					event.stopPropagation();

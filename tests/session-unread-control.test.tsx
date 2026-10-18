@@ -6,6 +6,7 @@ import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
 import {SessionRowStatusDot} from "../src/components/session-unread-control";
 import type {SessionListItem} from "../src/lib/api/sessions";
 import type {SessionBucket} from "../src/lib/session-state";
+import {TOUCH_HIT} from "../src/lib/touch-reveal";
 import {__unreadStoreTesting as __testing, syncUnseenFromSummaries, toggleUnseen} from "../src/lib/unread-store";
 
 type PersistCall = {sessionId: string; action: "reviewed" | "unreviewed"};
@@ -104,5 +105,16 @@ describe("SessionRowStatusDot", () => {
 			dot: {toggle: null, kind},
 			calls: [],
 		});
+	});
+
+	it("gives the 14px mark-as-read toggle a 44px touch hit area", () => {
+		render(<SessionRowStatusDot session={listItem("done")} />);
+		act(() => {
+			toggleUnseen("session-test-100");
+		});
+
+		expect(screen.getByRole("button", {name: "Click to mark as read"}).className).toBe(
+			`flex cursor-pointer items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100 ${TOUCH_HIT}`,
+		);
 	});
 });

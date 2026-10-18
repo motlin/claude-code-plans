@@ -10,6 +10,7 @@ import {TaskMetadata} from "../components/task-metadata";
 import {TaskOwner} from "../components/task-owner";
 import {ListPageHeader} from "../components/list-page-header";
 import {filterTasks} from "../lib/task-search";
+import {TOUCH_HIT} from "../lib/touch-reveal";
 import {ORPHANED_TASKS_DESCRIPTION, ORPHANED_TASKS_PROJECT_ID} from "../lib/task-groups";
 
 export const Route = createFileRoute("/tasks")({
@@ -156,7 +157,7 @@ function TasksPage() {
 													onClick={() => {
 														toggleGroup(group.projectDir);
 													}}
-													className="cursor-pointer"
+													className={`cursor-pointer ${TOUCH_HIT}`}
 												>
 													<ChevronRight
 														className="h-3 w-3 text-t6 transition-transform duration-200"
