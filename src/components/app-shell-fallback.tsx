@@ -186,7 +186,12 @@ export function AppShellFallback({
 	if (hydrated) return null;
 
 	return (
-		<div id="app-shell-fallback" data-testid="app-shell-fallback" aria-hidden="true" className="flex h-screen">
+		<div
+			id="app-shell-fallback"
+			data-testid="app-shell-fallback"
+			aria-hidden="true"
+			className="flex h-[var(--app-visual-viewport-height,100dvh)]"
+		>
 			<div
 				aria-label="Sidebar"
 				style={{"--sidebar-width": `${DEFAULT_SIDEBAR_STATE.width}px`}}

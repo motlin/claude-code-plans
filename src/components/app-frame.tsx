@@ -29,7 +29,11 @@ export function AppFrame({
 	const sidebarLayout = phoneSheet ? "phone" : collapsed || narrowViewport ? "collapsed" : "docked";
 
 	return (
-		<div data-testid="app-frame" data-phone-sheet={phoneSheet ? "left" : undefined} className="flex h-screen">
+		<div
+			data-testid="app-frame"
+			data-phone-sheet={phoneSheet ? "left" : undefined}
+			className="flex h-[var(--app-visual-viewport-height,100dvh)]"
+		>
 			{phoneSheet ? (
 				<>
 					<PhoneSheetTrigger open={sheetOpen} onOpen={openSheet} />

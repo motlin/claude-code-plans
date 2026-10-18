@@ -107,6 +107,15 @@ describe("AppShellFallback", () => {
 		expect(renderToStaticMarkup(<AppShellFallback />)).toContain('data-testid="app-shell-fallback"');
 	});
 
+	it("sizes the frame to the dynamic viewport rather than 100vh", () => {
+		const html = renderToStaticMarkup(<AppShellFallback />);
+		const root = new DOMParser().parseFromString(html, "text/html").getElementById("app-shell-fallback");
+
+		expect(root?.className.split(" ").filter((name) => name.startsWith("h-"))).toStrictEqual([
+			"h-[var(--app-visual-viewport-height,100dvh)]",
+		]);
+	});
+
 	it("removes itself once the client hydrates", () => {
 		const {container} = render(<AppShellFallback />);
 

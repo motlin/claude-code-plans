@@ -146,6 +146,17 @@ beforeEach(() => {
 });
 
 describe("phone sheet sidebar", () => {
+	it("sizes the frame to the dynamic viewport rather than 100vh, so iOS never scrolls the titlebar away", async () => {
+		mockViewport(390);
+		const {container} = await renderFrame();
+
+		expect(
+			frameRoot(container)
+				.className.split(" ")
+				.filter((name) => name.startsWith("h-")),
+		).toStrictEqual(["h-[var(--app-visual-viewport-height,100dvh)]"]);
+	});
+
 	it("marks the root and renders a closed modal sheet under 640px", async () => {
 		mockViewport(390);
 		const {container} = await renderFrame();
