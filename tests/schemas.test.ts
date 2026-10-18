@@ -2250,6 +2250,34 @@ describe("TaskFileSchema against disk", () => {
 	});
 });
 
+describe("SessionRegistryFileSchema", () => {
+	it("parses a registry file whose bridge session was cleared to null", () => {
+		const entry = {
+			pid: 64835,
+			sessionId: "s1",
+			cwd: "/tmp/project",
+			startedAt: 1790602944268,
+			procStart: "Sat Oct 17 12:00:00 2026",
+			version: "2.1.300",
+			peerProtocol: 1,
+			peerFeatures: ["messaging"],
+			kind: "interactive",
+			entrypoint: "cli",
+			pidDomain: "host",
+			messagingSocketPath: "/tmp/claude.sock",
+			name: "session",
+			nameSource: "auto",
+			nameSince: 1790602944268,
+			status: "idle",
+			updatedAt: 1790602944268,
+			statusUpdatedAt: 1790602944268,
+			bridgeSessionId: null,
+		};
+
+		expect(SessionRegistryFileSchema.parse(entry)).toStrictEqual(entry);
+	});
+});
+
 describe("SessionRegistryFileSchema against disk", () => {
 	const sessionsDir = join(homedir(), ".claude", "sessions");
 

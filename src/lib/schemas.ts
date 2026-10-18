@@ -2009,7 +2009,8 @@ export const SessionRegistryFileSchema = z
 		waitingFor: z.string().optional(),
 		updatedAt: z.number(),
 		statusUpdatedAt: z.number(),
-		bridgeSessionId: z.string().optional(),
+		/** `null` once the Remote Control bridge is torn down. */
+		bridgeSessionId: z.string().nullable().optional(),
 	})
 	.strict();
 
