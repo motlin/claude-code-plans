@@ -9,7 +9,7 @@ import {
 	useParams,
 } from "@tanstack/react-router";
 import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/react";
-import {afterEach, expect, it, vi} from "vite-plus/test";
+import {afterEach, expect, it as vitestIt, vi} from "vite-plus/test";
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {StrictMode, useRef} from "react";
 import {SessionDock} from "../src/components/session-dock";
@@ -123,6 +123,45 @@ class ControlledResizeObserver {
 	}
 }
 
+// The shell's frames run on jsdom's timer queue. flushFrame waits on that queue directly rather than on the
+// global requestAnimationFrame, which afterEach restores to jsdom's own: that one never fires, so a frame
+// requested after teardown would hold its act() scope open forever and queue every later test's renders
+// where nothing flushes them.
+function requestShellFrame(callback: FrameRequestCallback): number {
+	return window.setTimeout(() => {
+		callback(performance.now());
+	}, 0);
+}
+
+// Vitest stops awaiting a test that overruns its timeout but does not stop the test. Under heavy load one
+// overrun kept running after afterEach had unmounted its shell and restored the stubs, then wrote shared
+// geometry and requested frames under the next test, failing every test after it in this file. Every test
+// here registers its body so afterEach waits for an overrun to finish before tearing down.
+const runningBodies = new Set<Promise<void>>();
+function owned<Args extends unknown[]>(body: (...args: Args) => Promise<void>) {
+	return async (...args: Args) => {
+		const run = body(...args);
+		runningBodies.add(run);
+		try {
+			await run;
+		} finally {
+			runningBodies.delete(run);
+		}
+	};
+}
+const it = Object.assign(
+	(name: string, body: () => Promise<void>) => {
+		vitestIt(name, owned(body));
+	},
+	{
+		each:
+			<Case,>(cases: readonly Case[]) =>
+			(name: string, body: (testCase: Case) => Promise<void>) => {
+				vitestIt.each(cases)(name, owned(body));
+			},
+	},
+);
+
 function installGeometry() {
 	footerExtent = 0;
 	widthDependentRows = false;
@@ -214,7 +253,8 @@ function settleMeasurements(main: HTMLElement) {
 	throw new Error("Transcript measurement did not settle within 20 observer batches.");
 }
 
-afterEach(() => {
+afterEach(async () => {
+	await Promise.allSettled(runningBodies);
 	cleanup();
 	for (const client of clients.splice(0)) client.clear();
 	Object.defineProperty(Element.prototype, "scrollTop", nativeScrollTop);
@@ -338,11 +378,7 @@ async function renderShell(strict: boolean, routeId = LOCAL_ID, fresh = false, r
 	vi.spyOn(Element.prototype, "scrollHeight", "get").mockImplementation(function (this: Element) {
 		return contentHeight(this);
 	});
-	vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) =>
-		window.setTimeout(() => {
-			callback(performance.now());
-		}, 0),
-	);
+	vi.stubGlobal("requestAnimationFrame", requestShellFrame);
 	vi.stubGlobal("cancelAnimationFrame", window.clearTimeout.bind(window));
 	unregister = registerPane("plan", {title: "Fabricated pane", render: () => <p>Alice pane</p>});
 	const root = createRootRoute({component: Outlet});
@@ -734,7 +770,7 @@ it("waits for invalid-width geometry to commit before restoring Back", async () 
 async function flushFrame() {
 	await act(async () => {
 		await new Promise<void>((resolve) => {
-			requestAnimationFrame(() => {
+			requestShellFrame(() => {
 				resolve();
 			});
 		});
