@@ -56,6 +56,27 @@ describe("NextStepsList", () => {
 		).toStrictEqual([true, true, true]);
 	});
 
+	it("shows a failing PR row without the Blocked status", () => {
+		const rows = selectNextSteps({
+			candidates: [
+				...blocked(1),
+				{
+					id: "pr-ci-failed",
+					subject: "p1",
+					stamp: 100,
+					title: "Fix the failing checks",
+					detail: "2 failing checks",
+				},
+			],
+			dismissed: {},
+		});
+		render(<NextStepsList rows={rows} onOpen={() => {}} onDismiss={() => {}} />);
+
+		expect(
+			screen.getAllByRole("listitem").map((item) => item.querySelector("[data-next-step-open]")?.textContent),
+		).toStrictEqual(["Blocked Task 1Asked a question", "Fix the failing checks2 failing checks"]);
+	});
+
 	it("opens the session on press", () => {
 		const onOpen = vi.fn<(sessionId: string) => void>();
 		render(<NextStepsList rows={rowsOf(2)} onOpen={onOpen} onDismiss={() => {}} />);

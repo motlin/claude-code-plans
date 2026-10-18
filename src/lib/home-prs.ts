@@ -69,6 +69,8 @@ export interface HomePrRow {
 	repo: string | null;
 	lastActivityAt: number;
 	pill: HomePrPill;
+	/** Failing CI checks, 0 when the cache has no checks. */
+	failedChecks: number;
 }
 
 function repoSlug(url: string): string | null {
@@ -99,6 +101,7 @@ export function selectHomePrs(sources: readonly HomePrSource[]): HomePrRow[] {
 			repo: repoSlug(pr.url),
 			lastActivityAt,
 			pill: prPill(homePrState(pr), pr.checks ?? null),
+			failedChecks: pr.checks?.failed ?? 0,
 		});
 	}
 	return [...byUrl.values()].toSorted((a, b) => CATEGORY_RANK[a.pill.category] - CATEGORY_RANK[b.pill.category]);

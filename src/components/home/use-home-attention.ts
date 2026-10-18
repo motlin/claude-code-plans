@@ -6,7 +6,7 @@ import {approvalsQueryOptions} from "../../lib/api/approvals";
 import {homeDismissalsQueryOptions, postHomeDismissal, type HomeDismissals} from "../../lib/api/home-dismissals";
 import {recentSessionsInfiniteQueryOptions, type SessionListItem} from "../../lib/api/sessions";
 import {selectHomeAttention, type HomeAttentionItem, type HomeAttentionRow} from "../../lib/home-attention";
-import {nextStepKey, selectNextSteps, type NextStepCandidate} from "../../lib/home-next-steps";
+import {nextStepKey, prNextStepCandidates, selectNextSteps, type NextStepCandidate} from "../../lib/home-next-steps";
 import {selectHomePrs, type HomePrRow} from "../../lib/home-prs";
 import {usePins} from "../../lib/pin-store";
 import {toGroupRow} from "../sidebar/sidebar-session-row";
@@ -109,7 +109,10 @@ export function useHomeAttention(): HomeAttention | undefined {
 		items,
 		prs,
 		nextSteps: {
-			rows: selectNextSteps({candidates: waitingSessionCandidates(rows), dismissed: dismissals.dismissals}),
+			rows: selectNextSteps({
+				candidates: [...waitingSessionCandidates(rows), ...prNextStepCandidates(prs)],
+				dismissed: dismissals.dismissals,
+			}),
 			onOpen,
 			onDismiss: (candidates) => {
 				for (const candidate of candidates) dismiss.mutate(nextStepKey(candidate));

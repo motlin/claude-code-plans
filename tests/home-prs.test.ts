@@ -151,5 +151,6 @@ describe("selectHomePrs", () => {
 				label: "Ready for review",
 			},
 		]);
+		expect(rows.map((row) => row.failedChecks)).toStrictEqual([1, 0, 0, 0]);
 	});
 });

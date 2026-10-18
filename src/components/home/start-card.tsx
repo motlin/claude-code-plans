@@ -3,7 +3,7 @@ import {Check, Folder, X} from "lucide-react";
 import {useRef} from "react";
 
 import {requestHomeComposerFocus} from "../../lib/home-composer-focus";
-import type {NextStepCandidate, NextStepRow} from "../../lib/home-next-steps";
+import type {NextStepCandidate, NextStepId, NextStepRow} from "../../lib/home-next-steps";
 import {TOUCH_REVEAL} from "../../lib/touch-reveal";
 import {Tooltip} from "../ui/tooltip";
 import type {StartProject} from "../../lib/palette-start-session";
@@ -41,7 +41,7 @@ interface StartCardProps {
  * Upstream's /code start card "Recent environments" list, adapted to recent local folders: the
  * current folder is a static checked row, the others pick the launch folder and focus the composer,
  * and "Choose environment" opens the composer's project picker, over the "Next steps" list of blocked
- * sessions. Upstream's cloud environments have no local equivalent.
+ * sessions and failing PRs. Upstream's cloud environments have no local equivalent.
  */
 export function StartCard({projects, selected, onSelect, nextSteps}: StartCardProps) {
 	const hasNextSteps = nextSteps !== undefined && nextSteps.rows.length > 0;
@@ -126,11 +126,19 @@ export interface NextStepsListProps {
 const STEP_BUTTON_CLASS =
 	"flex h-8 w-full min-w-0 items-center rounded-lg px-2 text-start text-[13px]/5 text-primary transition-colors hover:bg-fill-ghost-hover focus-visible:shadow-[0_0_0_2px_var(--accent-100)] focus-visible:outline-none";
 
+/** Rows that carry upstream's "Blocked" status before their title. */
+const BLOCKED_IDS: ReadonlySet<NextStepId> = new Set(["waiting-session", "resume-session"]);
+
 function StepLine({candidate}: Readonly<{candidate: NextStepCandidate}>) {
 	return (
 		<span className="flex h-5 min-w-0 flex-1 flex-wrap gap-x-1.5 overflow-hidden">
 			<span className="min-w-0 truncate">
-				<span className="text-upstream-warning">Blocked</span> {candidate.title}
+				{BLOCKED_IDS.has(candidate.id) && (
+					<>
+						<span className="text-upstream-warning">Blocked</span>{" "}
+					</>
+				)}
+				{candidate.title}
 			</span>
 			{candidate.detail !== null && <span className="shrink-0 text-ink-muted">{candidate.detail}</span>}
 		</span>
@@ -138,7 +146,7 @@ function StepLine({candidate}: Readonly<{candidate: NextStepCandidate}>) {
 }
 
 /**
- * Upstream's start-card "Next steps" list: up to three seats of Blocked session rows, a family past its
+ * Upstream's start-card "Next steps" list: up to three seats of Blocked session and failing-PR rows, a family past its
  * seats folded into a "Claude is blocked in N more sessions" row whose popup lists the rest. Each row's
  * dismiss shows on hover, keyboard focus, or always on touch; after a dismiss, focus moves to the
  * previous row, else the composer.

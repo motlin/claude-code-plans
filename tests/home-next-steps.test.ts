@@ -4,6 +4,8 @@ import {
 	blockedDismissLabel,
 	blockedRestTitle,
 	nextStepKey,
+	prNextStepCandidates,
+	reviewCommentsTitle,
 	selectNextSteps,
 	type NextStepCandidate,
 	type NextStepId,
@@ -104,5 +106,41 @@ describe("selectNextSteps", () => {
 
 	it("keys dismissals by row and subject", () => {
 		expect(nextStepKey(candidate("waiting-session", "abc"))).toBe("next-step:waiting-session:abc");
+	});
+});
+
+describe("PR next steps", () => {
+	function pr(sessionId: string, failedChecks: number) {
+		return {sessionId, lastActivityAt: 500, failedChecks};
+	}
+
+	it("ranks a failing PR after a blocked session", () => {
+		const rows = selectNextSteps({
+			candidates: [...prNextStepCandidates([pr("p1", 2)]), ...blocked(1)],
+			dismissed: {},
+		});
+		expect(
+			rows.map((row) => (row.type === "row" ? [row.candidate.id, row.candidate.title] : row.title)),
+		).toStrictEqual([
+			["waiting-session", "s1"],
+			["pr-ci-failed", "Fix the failing checks"],
+		]);
+	});
+
+	it("turns each PR with failing checks into a 'Fix the failing checks' candidate", () => {
+		expect(prNextStepCandidates([pr("p1", 1), pr("p2", 0), pr("p3", 3)])).toStrictEqual([
+			{id: "pr-ci-failed", subject: "p1", stamp: 500, title: "Fix the failing checks", detail: "1 failing check"},
+			{
+				id: "pr-ci-failed",
+				subject: "p3",
+				stamp: 500,
+				title: "Fix the failing checks",
+				detail: "3 failing checks",
+			},
+		]);
+	});
+
+	it("titles review comments in the singular and plural", () => {
+		expect([1, 4].map(reviewCommentsTitle)).toStrictEqual(["Answer 1 review comment", "Answer 4 review comments"]);
 	});
 });
