@@ -826,3 +826,121 @@ describe("idle-period background command failures", () => {
 		]);
 	});
 });
+
+/**
+ * do-all 23301293:5726-5792: the parent asks an AskUserQuestion and waits an hour and a
+ * half for the answer while the flaky-test worker runs its slow commands, then runs three
+ * commands. Upstream draws "16 background commands completed" right after the answer and
+ * before "Ran 3 commands", the wait for an answer being an idle gap like one between turns.
+ */
+function doAllAnsweredQuestionRecords(): unknown[] {
+	const bash = (uuid: string, timestamp: string, id: string, description: string) => ({
+		type: "assistant",
+		uuid,
+		timestamp,
+		message: {
+			role: "assistant",
+			content: [{type: "tool_use", id, name: "Bash", input: {command: "git status", description}}],
+		},
+	});
+	const result = (uuid: string, timestamp: string, id: string, content: string) => ({
+		type: "user",
+		uuid,
+		timestamp,
+		message: {role: "user", content: [{type: "tool_result", tool_use_id: id, content}]},
+	});
+	return [
+		{type: "user", uuid: "u-1", timestamp: "2026-10-18T12:50:00.000Z", message: {role: "user", content: "do all"}},
+		{
+			type: "assistant",
+			uuid: "a-1",
+			timestamp: "2026-10-18T12:57:32.000Z",
+			message: {role: "assistant", content: [{type: "text", text: "The flaky-test fix is running."}]},
+		},
+		{
+			type: "assistant",
+			uuid: "a-2",
+			timestamp: "2026-10-18T12:57:40.000Z",
+			message: {
+				role: "assistant",
+				content: [
+					{
+						type: "tool_use",
+						id: "toolu_ask",
+						name: "AskUserQuestion",
+						input: {
+							questions: [
+								{
+									question: "Push them?",
+									header: "Push",
+									multiSelect: false,
+									options: [
+										{label: "Not yet", description: "Keep them local"},
+										{label: "Push now", description: "Push to origin"},
+									],
+								},
+							],
+						},
+					},
+				],
+			},
+		},
+		result("u-answer", "2026-10-18T14:24:54.989Z", "toolu_ask", 'The user answered: "Push them?"="Not yet".'),
+		bash("a-3", "2026-10-18T14:25:02.000Z", "toolu_b1", "Verify the flake fix"),
+		result("u-3", "2026-10-18T14:26:47.000Z", "toolu_b1", "ok"),
+		bash("a-4", "2026-10-18T14:26:51.000Z", "toolu_b2", "Inspect the login item"),
+		result("u-4", "2026-10-18T14:30:04.000Z", "toolu_b2", "ok"),
+		bash("a-5", "2026-10-18T14:30:09.000Z", "toolu_b3", "Add the login refs"),
+		result("u-5", "2026-10-18T14:30:10.000Z", "toolu_b3", "ok"),
+		{
+			type: "assistant",
+			uuid: "a-6",
+			timestamp: "2026-10-18T14:30:17.000Z",
+			message: {role: "assistant", content: [{type: "text", text: "Found the login item."}]},
+		},
+	];
+}
+
+describe("subagent slow commands while the parent waits for an answer", () => {
+	beforeEach(() => {
+		vi.stubGlobal("innerHeight", 10_000);
+	});
+
+	/** The sixteen slow commands upstream tracked for the worker during the wait. */
+	const worker = doAllWorker(
+		"af8969df565542bf7",
+		"Fix flaky tests",
+		[
+			"12:57:59",
+			"13:00:17",
+			"13:01:22",
+			"13:01:37",
+			"13:01:53",
+			"13:05:32",
+			"13:09:28",
+			"13:11:21",
+			"13:12:11",
+			"13:13:00",
+			"13:15:18",
+			"13:18:34",
+			"13:19:45",
+			"13:22:13",
+			"13:26:00",
+			"13:26:32",
+		].map((time, index) => [`2026-10-18T${time}.000Z`, `Stress step ${index + 1}`]),
+	);
+
+	it('draws "16 background commands completed" after the answer and before the run that follows it', () => {
+		const container = renderLines(doAllAnsweredQuestionRecords(), "normal", [worker]);
+		const text = container.textContent;
+		expect({
+			rows: [...container.querySelectorAll("[data-task-event-row]")].map((row) => row.textContent),
+			order: /Not yet.*16 background commands completed.*Ran 3 commands/s.test(text),
+		}).toStrictEqual({rows: ["16 background commands completed"], order: true});
+	});
+
+	it("draws no idle row for the wait in Verbose", () => {
+		const container = renderLines(doAllAnsweredQuestionRecords(), "verbose", [worker]);
+		expect(container.querySelectorAll("[data-task-event-row]").length).toBe(0);
+	});
+});

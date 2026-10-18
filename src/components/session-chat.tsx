@@ -1990,6 +1990,30 @@ function opensTurn(line: SessionLine): boolean {
 	return (line.type === "user" && !isToolResultOnlyUserLine(line)) || line.type === "queued-task-notification";
 }
 
+/**
+ * Whether the line is the tool result answering an AskUserQuestion: the parent
+ * idled while it waited for the answer, as it does between turns.
+ */
+function answersQuestion(lines: readonly SessionLine[], index: number): boolean {
+	const line = defined(lines[index], "session line index is in range");
+	if (line.type !== "user" || !isToolResultOnlyUserLine(line)) return false;
+	const content = line.message?.content;
+	const answered = new Set(
+		Array.isArray(content)
+			? content.flatMap((block) => (block.type === "tool_result" ? [block.tool_use_id] : []))
+			: [],
+	);
+	for (let previous = index - 1; previous >= 0; previous--) {
+		const asked = defined(lines[previous], "session line index is in range");
+		const blocks = asked.type === "assistant" ? asked.message?.content : undefined;
+		if (!Array.isArray(blocks) || !blocks.some((block) => block.type === "tool_use")) continue;
+		return blocks.some(
+			(block) => block.type === "tool_use" && block.name === "AskUserQuestion" && answered.has(block.id),
+		);
+	}
+	return false;
+}
+
 /** Whether an assistant line calls a tool, so the parent is still mid-turn after it. */
 function callsTool(line: SessionLine): boolean {
 	const content = line.type === "assistant" ? line.message?.content : undefined;
@@ -2144,6 +2168,12 @@ function buildSessionListEntries(
 
 	while (i < lines.length) {
 		const line = lineAt(i);
+
+		// The answer to a question draws the slow commands that finished while the parent waited for it.
+		const answeredAt = verbose || !answersQuestion(lines, i) ? undefined : lineTimestamp(line);
+		if (answeredAt !== undefined) {
+			pushIdleRow(slowCommands.take(lastParentRecordAt(lines, i), Date.parse(answeredAt)), line.lineIndex - 0.75);
+		}
 
 		if (skipSet.has(i) || !isLineVisible(line, renderProps, verbose)) {
 			i++;
