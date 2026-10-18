@@ -50,13 +50,8 @@ const RESIZE_STEP_PX = 16;
 const RESIZE_STEP_LARGE_PX = 64;
 /** A Move grip press becomes a drag once the pointer travels this far. */
 const DRAG_THRESHOLD_PX = 4;
-/** Below 640px a root stack holding the chat covers the viewport, as does an expanded pane. */
+/** Below 640px a side pane covers the viewport instead of squeezing beside the chat. */
 const PHONE_SLOT_CLASSES = "fixed inset-0 z-40 w-full h-dvh";
-/**
- * Below 640px upstream floats a side pane as a 265px tile 9px in from the end,
- * top and bottom, over the chat card, which keeps its full width underneath.
- */
-const PHONE_TILE_CLASSES = "fixed top-[9px] right-[9px] bottom-[9px] z-40 w-[265px] max-w-[calc(100%-18px)]";
 /** Upstream's expanded pane: maximised over the sidebar and titlebar, 9px in from the window edge. */
 const EXPANDED_SLOT_CLASSES = "fixed inset-[9px] z-40";
 
@@ -685,8 +680,7 @@ function NodeView({
 }) {
 	const style = {flex: `${node.flex} 1 0`};
 	const phone = isRootChild && host.phone;
-	const phoneClass = tileIdsOf(node).includes("chat") ? PHONE_SLOT_CLASSES : PHONE_TILE_CLASSES;
-	const slotClass = `min-h-0 min-w-0 ${phone ? phoneClass : "relative"}`;
+	const slotClass = `min-h-0 min-w-0 ${phone ? PHONE_SLOT_CLASSES : "relative"}`;
 	if (node.kind === "stack") {
 		return (
 			<div

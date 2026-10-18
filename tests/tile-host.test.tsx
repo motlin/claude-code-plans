@@ -547,23 +547,19 @@ describe("TileHost on a phone", () => {
 		return {
 			phone: slot.hasAttribute("data-pane-phone"),
 			fullWidth: ["fixed", "inset-0", "w-full"].every((name) => slot.classList.contains(name)),
-			endTile: ["fixed", "top-[9px]", "right-[9px]", "bottom-[9px]", "w-[265px]"].every((name) =>
-				slot.classList.contains(name),
-			),
 			sticky: slot.classList.contains("sticky"),
 			separators: screen.queryAllByRole("separator").length,
 		};
 	}
 
-	it("floats the pane as a 265px tile at the end over the chat and hides the resize handle below 640px", () => {
+	it("covers the viewport with the pane and hides the resize handle below 640px", () => {
 		mockViewport(390);
 		renderHost("session-phone");
 		openTestPane();
 
 		expect(paneSlotState()).toStrictEqual({
 			phone: true,
-			fullWidth: false,
-			endTile: true,
+			fullWidth: true,
 			sticky: false,
 			separators: 0,
 		});
@@ -620,13 +616,7 @@ describe("TileHost on a phone", () => {
 			{fixed: true, hidden: true},
 		]);
 		expect(screen.getByRole("region", {name: "Test pane"})).toBe(pane);
-		expect(paneSlotState()).toStrictEqual({
-			phone: true,
-			fullWidth: true,
-			endTile: false,
-			sticky: false,
-			separators: 0,
-		});
+		expect(paneSlotState()).toStrictEqual({phone: true, fullWidth: true, sticky: false, separators: 0});
 		fireEvent.click(within(pane).getByRole("button", {name: "Collapse"}));
 		expect(wrappers.map((wrapper) => wrapper.hidden)).toStrictEqual([false, false]);
 		unregisterFiles();
@@ -641,7 +631,6 @@ describe("TileHost on a phone", () => {
 		expect(paneSlotState()).toStrictEqual({
 			phone: false,
 			fullWidth: false,
-			endTile: false,
 			sticky: false,
 			separators: 1,
 		});
