@@ -5,6 +5,7 @@ import {projectMemoriesQueryOptions, type MemoryListItem} from "../lib/api/memor
 import {toMdSlug} from "../lib/md-slug";
 import {DebugLink} from "../components/debug-link";
 import {ListPageHeader} from "../components/list-page-header";
+import {ListItemDate} from "../components/list-item-date";
 
 export const Route = createFileRoute("/memories")({
 	component: MemoriesPage,
@@ -13,17 +14,6 @@ export const Route = createFileRoute("/memories")({
 		meta: [{title: "Claude Memories"}],
 	}),
 });
-
-function formatDate(iso: string): string {
-	return new Date(iso).toLocaleDateString("en-US", {
-		month: "short",
-		day: "numeric",
-		year: "numeric",
-		hour: "2-digit",
-		minute: "2-digit",
-		timeZone: "UTC",
-	});
-}
 
 interface MemoryGroup {
 	project: string;
@@ -74,7 +64,7 @@ function MemoriesPage() {
 										className="flex items-center justify-between rounded-md border border-border px-4 py-3 transition-colors hover:bg-surface-0/50"
 									>
 										<span className="text-sm font-medium">{mem.title}</span>
-										<span className="ml-4 shrink-0 text-xs text-t6">{formatDate(mem.mtime)}</span>
+										<ListItemDate iso={mem.mtime} />
 									</Link>
 									<DebugLink
 										kind="memory"

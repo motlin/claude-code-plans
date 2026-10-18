@@ -4,6 +4,7 @@ import {plansQueryOptions} from "../lib/api/plans";
 import {toMdSlug} from "../lib/md-slug";
 import {DebugLink} from "../components/debug-link";
 import {ListPageHeader} from "../components/list-page-header";
+import {ListItemDate} from "../components/list-item-date";
 
 export const Route = createFileRoute("/plans")({
 	component: PlansPage,
@@ -12,17 +13,6 @@ export const Route = createFileRoute("/plans")({
 		meta: [{title: "Claude Plans"}],
 	}),
 });
-
-function formatDate(iso: string): string {
-	return new Date(iso).toLocaleDateString("en-US", {
-		month: "short",
-		day: "numeric",
-		year: "numeric",
-		hour: "2-digit",
-		minute: "2-digit",
-		timeZone: "UTC",
-	});
-}
 
 function PlansPage() {
 	const {data: plans} = useSuspenseQuery(plansQueryOptions());
@@ -55,7 +45,7 @@ function PlansPage() {
 											</span>
 										)}
 									</span>
-									<span className="ml-4 shrink-0 text-xs text-t6">{formatDate(plan.mtime)}</span>
+									<ListItemDate iso={plan.mtime} nowMs={now} />
 								</Link>
 								<DebugLink
 									kind="plan"

@@ -71,3 +71,31 @@ export function formatMessageTime(timestamp?: string, nowMs: number = Date.now()
 		...zone,
 	});
 }
+
+/** The plans and memories lists' full UTC date and time: "Oct 17, 2026, 09:34 PM". */
+export function formatListDate(iso: string): string {
+	return new Date(iso).toLocaleDateString("en-US", {
+		month: "short",
+		day: "numeric",
+		year: "numeric",
+		hour: "2-digit",
+		minute: "2-digit",
+		timeZone: "UTC",
+	});
+}
+
+/**
+ * The narrow UTC date phone-width lists show: "Oct 17", with the year when it is not the current
+ * one. Returns null for unparseable input.
+ */
+export function formatShortDate(iso: string, nowMs: number = Date.now()): string | null {
+	const date = parseTimestamp(iso);
+	if (!date) return null;
+	const sameYear = date.getUTCFullYear() === new Date(nowMs).getUTCFullYear();
+	return date.toLocaleDateString("en-US", {
+		month: "short",
+		day: "numeric",
+		...(sameYear ? {} : {year: "numeric"}),
+		timeZone: "UTC",
+	});
+}
