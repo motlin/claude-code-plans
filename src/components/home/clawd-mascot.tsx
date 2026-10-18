@@ -26,9 +26,17 @@ export function ClawdMascot() {
 				onAnimationEnd={() => {
 					setHopping(false);
 				}}
-				className="clawd-mascot pointer-events-none absolute right-[-16px] bottom-[-13px] h-[80px] w-[80px] -scale-x-100 cursor-default border-0 bg-transparent p-0 outline-none [&_path]:pointer-events-auto"
+				className="clawd-mascot pointer-events-none absolute right-[-13px] bottom-[calc(var(--cds-ring-outer,0px)-144px/11)] h-[80px] w-[80px] -scale-x-100 cursor-default border-0 bg-transparent p-0 outline-none [&_path]:pointer-events-auto"
 			>
-				<svg viewBox="0 0 2750 1850" width="100%" height="100%" shapeRendering="crispEdges">
+				{/* Upstream's art is 49x33 inside the 80px hit box: insets top 34, bottom 13 and (before the
+				    mirror) left 22, right 9, so it rests on the composer's top edge 9px in from its right. */}
+				<svg
+					viewBox="0 0 2750 1850"
+					width="49"
+					height="33"
+					shapeRendering="crispEdges"
+					className="absolute top-[34px] left-[22px]"
+				>
 					<path d={BODY} fill="#d97757" />
 					<path d={EYES} fill="#141413" />
 				</svg>
