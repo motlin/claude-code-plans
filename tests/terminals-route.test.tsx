@@ -845,6 +845,22 @@ describe("Herdr master-detail layout", () => {
 		});
 	});
 
+	/**
+	 * `<main>` is the scroll container but is not positioned, so an absolutely positioned
+	 * descendant with no positioned ancestor (each row's `sr-only` status label) takes the
+	 * initial containing block and escapes main's overflow: at 390px the document grew to
+	 * 1716px and scrolled, which lets iOS slide the titlebar away. The layout wrapper is the
+	 * containing block that keeps those labels inside main's scroller.
+	 */
+	it("contains its absolutely positioned descendants so only main scrolls", async () => {
+		const {router} = renderLayoutAt("/terminals");
+		await router.load();
+		render(<RouterProvider router={router} />);
+
+		const rail = screen.getByRole("navigation", {name: "Herdr workspaces"});
+		expect(rail.parentElement?.className).toBe("relative -mx-4 flex sm:-mx-8");
+	});
+
 	it("renders the pane detail through the outlet on a deep link, keeping the rail", async () => {
 		const {router} = renderLayoutAt("/terminals/session-test-100");
 		await router.load();

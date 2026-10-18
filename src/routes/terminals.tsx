@@ -22,7 +22,7 @@ function TerminalsLayout() {
 	const selectedSessionId = params.sessionId ?? null;
 
 	return (
-		<div className="-mx-4 flex sm:-mx-8">
+		<div className="relative -mx-4 flex sm:-mx-8">
 			<HerdrWorkspaceRail selectedSessionId={selectedSessionId} />
 			<div className="min-w-0 flex-1 px-4 sm:px-8">
 				<Outlet />
