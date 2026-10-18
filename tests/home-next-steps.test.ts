@@ -6,6 +6,7 @@ import {
 	nextStepKey,
 	prNextStepCandidates,
 	reviewCommentsTitle,
+	type PrNextStepSource,
 	selectNextSteps,
 	type NextStepCandidate,
 	type NextStepId,
@@ -110,8 +111,17 @@ describe("selectNextSteps", () => {
 });
 
 describe("PR next steps", () => {
-	function pr(sessionId: string, failedChecks: number) {
-		return {sessionId, lastActivityAt: 500, failedChecks};
+	function pr(sessionId: string, failedChecks: number, overrides: Partial<PrNextStepSource> = {}): PrNextStepSource {
+		return {
+			sessionId,
+			lastActivityAt: 500,
+			title: `PR ${sessionId}`,
+			failedChecks,
+			failingChecks: [],
+			unresolvedReviewThreads: 0,
+			headBranch: null,
+			...overrides,
+		};
 	}
 
 	it("ranks a failing PR after a blocked session", () => {
@@ -137,6 +147,54 @@ describe("PR next steps", () => {
 				title: "Fix the failing checks",
 				detail: "3 failing checks",
 			},
+		]);
+	});
+
+	it("ranks an 'Answer 2 review comments' row after 'Fix the failing checks'", () => {
+		const rows = selectNextSteps({
+			candidates: prNextStepCandidates([pr("p1", 0, {unresolvedReviewThreads: 2}), pr("p2", 1)]),
+			dismissed: {},
+		});
+		expect(rows).toStrictEqual([
+			{
+				type: "row",
+				candidate: {
+					id: "pr-ci-failed",
+					subject: "p2",
+					stamp: 500,
+					title: "Fix the failing checks",
+					detail: "1 failing check",
+				},
+			},
+			{
+				type: "row",
+				candidate: {
+					id: "pr-review-comments",
+					subject: "p1",
+					stamp: 500,
+					title: "Answer 2 review comments",
+					detail: "PR p1",
+				},
+			},
+		]);
+	});
+
+	it("names the failing check in the detail and says where it fails in the tooltip", () => {
+		expect(
+			prNextStepCandidates([
+				pr("p1", 2, {failingChecks: ["test", "lint"], headBranch: "feature"}),
+				pr("p2", 1, {failingChecks: ["build"]}),
+			]),
+		).toStrictEqual([
+			{
+				id: "pr-ci-failed",
+				subject: "p1",
+				stamp: 500,
+				title: "Fix the failing checks",
+				detail: "test",
+				tooltip: "test is failing on feature.",
+			},
+			{id: "pr-ci-failed", subject: "p2", stamp: 500, title: "Fix the failing checks", detail: "build"},
 		]);
 	});
 

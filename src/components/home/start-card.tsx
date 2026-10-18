@@ -175,7 +175,7 @@ export function NextStepsList({rows, onOpen, onDismiss}: Readonly<NextStepsListP
 						{row.type === "row" ? (
 							<Tooltip
 								content={row.candidate.title}
-								detail={row.candidate.detail ?? undefined}
+								detail={row.candidate.tooltip ?? row.candidate.detail ?? undefined}
 								className="w-full"
 							>
 								<button

@@ -98,6 +98,9 @@ describe("selectHomePrs", () => {
 					state: "open",
 					url: "https://github.com/bob/gadgets/pull/6",
 					checks: {passed: 1, failed: 1, pending: 0},
+					headBranch: "fix-gadgets",
+					failingChecks: ["test"],
+					unresolvedReviewThreads: 3,
 				},
 			}),
 			source("ready", {
@@ -151,6 +154,18 @@ describe("selectHomePrs", () => {
 				label: "Ready for review",
 			},
 		]);
-		expect(rows.map((row) => row.failedChecks)).toStrictEqual([1, 0, 0, 0]);
+		expect(
+			rows.map(({failedChecks, failingChecks, unresolvedReviewThreads, headBranch}) => ({
+				failedChecks,
+				failingChecks,
+				unresolvedReviewThreads,
+				headBranch,
+			})),
+		).toStrictEqual([
+			{failedChecks: 1, failingChecks: ["test"], unresolvedReviewThreads: 3, headBranch: "fix-gadgets"},
+			{failedChecks: 0, failingChecks: [], unresolvedReviewThreads: 0, headBranch: null},
+			{failedChecks: 0, failingChecks: [], unresolvedReviewThreads: 0, headBranch: null},
+			{failedChecks: 0, failingChecks: [], unresolvedReviewThreads: 0, headBranch: null},
+		]);
 	});
 });

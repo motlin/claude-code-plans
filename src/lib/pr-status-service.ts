@@ -3,6 +3,7 @@ import {readFile} from "node:fs/promises";
 import {homedir} from "node:os";
 import {join} from "node:path";
 
+import {ghPrDetailsLookup, parseGhPrDetails, type PrDetails} from "./pr-details";
 import {
 	ghPrLookup,
 	parseGhPrList,
@@ -41,18 +42,28 @@ const OPEN_TTL_MS = 5 * MINUTE;
 const FINAL_TTL_MS = 6 * HOUR;
 const MAX_BACKOFF_MS = HOUR;
 
-interface GhEntry {
-	value: PrStatus | null;
+interface GhEntry<T = PrStatus | null> {
+	value: T;
 	retryAt: number;
 	failures: number;
 	pending: boolean;
 	projects: Set<string>;
 }
 
+function sameDetails(a: PrDetails | null, b: PrDetails) {
+	return (
+		a !== null &&
+		a.headBranch === b.headBranch &&
+		a.unresolvedReviewThreads === b.unresolvedReviewThreads &&
+		a.failingChecks.join("\u0000") === b.failingChecks.join("\u0000")
+	);
+}
+
 /**
  * In-memory PR state for session rows. Sources, in order: the indexed `pr-link` record, the
  * statusline's gh-pr-status-cache.json, then `gh` (serialized, cached with a TTL, exponential
- * backoff on failure). Lookups answer from memory and queue refreshes in the background;
+ * backoff on failure). An open or draft PR with a GitHub url also gets its head branch, failing
+ * check names and unresolved review threads from `gh api graphql`, on the same schedule. Lookups answer from memory and queue refreshes in the background;
  * `onChange` fires with the project id of every session whose answer changed.
  */
 export function createPrStatusService({
@@ -75,6 +86,7 @@ export function createPrStatusService({
 	let cacheFileLoad: Promise<void> | null = null;
 	const projectsByUrl = new Map<string, Set<string>>();
 	const ghEntries = new Map<string, GhEntry>();
+	const detailEntries = new Map<string, GhEntry<PrDetails | null>>();
 	let queue: Promise<void> = Promise.resolve();
 	let ghMissing = false;
 
@@ -125,12 +137,51 @@ export function createPrStatusService({
 				for (const projectId of entry.projects) onChange(projectId);
 			}
 		} catch (error) {
-			if (errnoCode(error) === "ENOENT") ghMissing = true;
-			entry.failures += 1;
-			entry.retryAt = now() + Math.min(MINUTE * 2 ** (entry.failures - 1), MAX_BACKOFF_MS);
+			backOff(entry, error);
 		} finally {
 			entry.pending = false;
 		}
+	}
+
+	function backOff(entry: GhEntry<unknown>, error: unknown) {
+		if (errnoCode(error) === "ENOENT") ghMissing = true;
+		entry.failures += 1;
+		entry.retryAt = now() + Math.min(MINUTE * 2 ** (entry.failures - 1), MAX_BACKOFF_MS);
+	}
+
+	async function refreshDetails(entry: GhEntry<PrDetails | null>, args: string[]) {
+		try {
+			const value = parseGhPrDetails(await runGh(args, undefined));
+			entry.failures = 0;
+			entry.retryAt = now() + OPEN_TTL_MS;
+			if (!sameDetails(entry.value, value)) {
+				entry.value = value;
+				for (const projectId of entry.projects) onChange(projectId);
+			}
+		} catch (error) {
+			backOff(entry, error);
+		} finally {
+			entry.pending = false;
+		}
+	}
+
+	/** Merge known review details over an open or draft PR, queueing their refresh when due. */
+	function withDetails(status: PrStatus | null, target: PrStatusTarget): PrStatus | null {
+		if (status?.url === undefined || (status.state !== "open" && status.state !== "draft")) return status;
+		const request = ghPrDetailsLookup(status.url);
+		if (request === null) return status;
+		let entry = detailEntries.get(request.key);
+		if (entry === undefined) {
+			entry = {value: null, retryAt: 0, failures: 0, pending: false, projects: new Set()};
+			detailEntries.set(request.key, entry);
+		}
+		entry.projects.add(target.projectId);
+		if (!ghMissing && !entry.pending && now() >= entry.retryAt && now() - target.mtimeMs < lookupWindowMs) {
+			entry.pending = true;
+			const queued = entry;
+			queue = queue.then(async () => refreshDetails(queued, request.args));
+		}
+		return entry.value === null ? status : {...status, ...entry.value};
 	}
 
 	function lookup(target: PrStatusTarget): PrStatus | null {
@@ -163,7 +214,7 @@ export function createPrStatusService({
 				queue = queue.then(async () => refresh(queued, target, request.args, request.cwd, request.kind));
 			}
 		}
-		return resolvePrStatus({prLink, cacheFile, gh: entry?.value ?? null});
+		return withDetails(resolvePrStatus({prLink, cacheFile, gh: entry?.value ?? null}), target);
 	}
 
 	async function idle(): Promise<void> {

@@ -1,6 +1,7 @@
 import {describe, expect, it, vi} from "vite-plus/test";
 
 import type {ActiveSessionEntry} from "../src/lib/active-session-store";
+import {ghPrDetailsLookup, parseGhPrDetails} from "../src/lib/pr-details";
 import {
 	ghPrLookup,
 	parseGhPrList,
@@ -123,6 +124,88 @@ describe("parseGhPrStatusCache", () => {
 
 	it("treats unparseable JSON as an empty cache", () => {
 		expect(parseGhPrStatusCache("{")).toStrictEqual(new Map());
+	});
+});
+
+describe("parseGhPrDetails", () => {
+	it("reads the head branch, failing check names and unresolved review threads from the graphql reply", () => {
+		const reply = {
+			data: {
+				repository: {
+					pullRequest: {
+						headRefName: "feature",
+						reviewThreads: {nodes: [{isResolved: false}, {isResolved: true}, {isResolved: false}]},
+						commits: {
+							nodes: [
+								{
+									commit: {
+										statusCheckRollup: {
+											contexts: {
+												nodes: [
+													{__typename: "CheckRun", name: "lint", conclusion: "SUCCESS"},
+													{__typename: "CheckRun", name: "test", conclusion: "FAILURE"},
+													{__typename: "CheckRun", name: "build", conclusion: null},
+													{__typename: "CheckRun", name: "e2e", conclusion: "TIMED_OUT"},
+													{__typename: "StatusContext", context: "ci/legacy", state: "ERROR"},
+													{__typename: "StatusContext", context: "ci/ok", state: "SUCCESS"},
+												],
+											},
+										},
+									},
+								},
+							],
+						},
+					},
+				},
+			},
+		};
+		expect(parseGhPrDetails(JSON.stringify(reply))).toStrictEqual({
+			headBranch: "feature",
+			failingChecks: ["test", "e2e", "ci/legacy"],
+			unresolvedReviewThreads: 2,
+		});
+	});
+
+	it("treats a commit without a check rollup as no failing checks", () => {
+		const reply = {
+			data: {
+				repository: {
+					pullRequest: {
+						headRefName: "feature",
+						reviewThreads: {nodes: []},
+						commits: {nodes: [{commit: {statusCheckRollup: null}}]},
+					},
+				},
+			},
+		};
+		expect(parseGhPrDetails(JSON.stringify(reply))).toStrictEqual({
+			headBranch: "feature",
+			failingChecks: [],
+			unresolvedReviewThreads: 0,
+		});
+	});
+
+	it("rejects a reply that does not match the strict schema", () => {
+		expect(() => parseGhPrDetails(JSON.stringify({data: {repository: null}}))).toThrow(
+			"Invalid input: expected object, received null",
+		);
+	});
+});
+
+describe("ghPrDetailsLookup", () => {
+	it("builds a gh api graphql argv from a GitHub PR url, and nothing for other urls", () => {
+		const lookup = ghPrDetailsLookup(PR_LINK.url);
+		expect({
+			key: lookup?.key,
+			head: lookup?.args.slice(0, 8),
+			query: lookup?.args[9]?.startsWith("query=query("),
+			other: ghPrDetailsLookup("https://example.com/not-a-pr"),
+		}).toStrictEqual({
+			key: `details:${PR_LINK.url}`,
+			head: ["api", "graphql", "-f", "owner=alice", "-f", "repo=widgets", "-F", "number=42"],
+			query: true,
+			other: null,
+		});
 	});
 });
 
@@ -292,8 +375,40 @@ describe("createPrStatusService", () => {
 		expect(runGh).toHaveBeenCalledTimes(2);
 	});
 
-	it("prefers the cache file for pr-link sessions and never runs gh for them", async () => {
-		const runGh = vi.fn<GhRunner>(async () => Promise.resolve("{}"));
+	it("prefers the cache file for pr-link sessions and asks gh only for review details", async () => {
+		const runGh = vi.fn<GhRunner>(async () =>
+			Promise.resolve(
+				JSON.stringify({
+					data: {
+						repository: {
+							pullRequest: {
+								headRefName: "widgets",
+								reviewThreads: {nodes: [{isResolved: false}, {isResolved: false}]},
+								commits: {
+									nodes: [
+										{
+											commit: {
+												statusCheckRollup: {
+													contexts: {
+														nodes: [
+															{
+																__typename: "CheckRun",
+																name: "test",
+																conclusion: "FAILURE",
+															},
+														],
+													},
+												},
+											},
+										},
+									],
+								},
+							},
+						},
+					},
+				}),
+			),
+		);
 		const cacheText = JSON.stringify({
 			[PR_LINK.url]: {
 				number: 42,
@@ -310,8 +425,13 @@ describe("createPrStatusService", () => {
 
 		service.lookup(linked);
 		await service.idle();
+		service.lookup(linked);
+		await service.idle();
 
-		expect({status: service.lookup(linked), calls: runGh.mock.calls.length}).toStrictEqual({
+		expect({
+			status: service.lookup(linked),
+			calls: runGh.mock.calls.map(([args]) => args.slice(0, 2)),
+		}).toStrictEqual({
 			status: {
 				number: 42,
 				state: "open",
@@ -319,8 +439,11 @@ describe("createPrStatusService", () => {
 				title: "Add widgets",
 				checks: {passed: 0, failed: 0, pending: 0},
 				review: null,
+				headBranch: "widgets",
+				failingChecks: ["test"],
+				unresolvedReviewThreads: 2,
 			},
-			calls: 0,
+			calls: [["api", "graphql"]],
 		});
 	});
 

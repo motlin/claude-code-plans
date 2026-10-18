@@ -33,6 +33,8 @@ export interface NextStepCandidate {
 	stamp: number;
 	title: string;
 	detail: string | null;
+	/** The hover tooltip's detail line, when it says more than `detail`. */
+	tooltip?: string;
 }
 
 export type NextStepRow<C extends NextStepCandidate> =
@@ -105,7 +107,11 @@ export function selectNextSteps<C extends NextStepCandidate>({
 export interface PrNextStepSource {
 	sessionId: string;
 	lastActivityAt: number;
+	title: string;
 	failedChecks: number;
+	failingChecks: readonly string[];
+	unresolvedReviewThreads: number;
+	headBranch: string | null;
 }
 
 function plural(count: number, one: string, other: string): string {
@@ -117,18 +123,37 @@ export function reviewCommentsTitle(count: number): string {
 	return `Answer ${plural(count, "review comment", "review comments")}`;
 }
 
+function ciFailedCandidate(pr: PrNextStepSource): NextStepCandidate {
+	const candidate: NextStepCandidate = {
+		id: "pr-ci-failed",
+		subject: pr.sessionId,
+		stamp: pr.lastActivityAt,
+		title: "Fix the failing checks",
+		detail: pr.failingChecks[0] ?? plural(pr.failedChecks, "failing check", "failing checks"),
+	};
+	const [check] = pr.failingChecks;
+	if (check !== undefined && pr.headBranch !== null) candidate.tooltip = `${check} is failing on ${pr.headBranch}.`;
+	return candidate;
+}
+
 /**
- * Upstream's `pr-ci-failed` rows: "Fix the failing checks" for each PR with a failing check, opening its
- * session. The PR cache counts checks without naming them, so the detail is the failing count.
+ * Upstream's PR rows, each opening the PR's session: "Fix the failing checks" for a PR with a failing
+ * check, detailed by the first failing check's name (its count until the review details fetch names
+ * it), and "Answer N review comments" for a PR with unresolved review threads, detailed by its title.
  */
 export function prNextStepCandidates(prs: readonly PrNextStepSource[]): NextStepCandidate[] {
-	return prs
-		.filter((pr) => pr.failedChecks > 0)
-		.map((pr) => ({
-			id: "pr-ci-failed",
-			subject: pr.sessionId,
-			stamp: pr.lastActivityAt,
-			title: "Fix the failing checks",
-			detail: plural(pr.failedChecks, "failing check", "failing checks"),
-		}));
+	return prs.flatMap((pr): NextStepCandidate[] => [
+		...(pr.failedChecks > 0 || pr.failingChecks.length > 0 ? [ciFailedCandidate(pr)] : []),
+		...(pr.unresolvedReviewThreads > 0
+			? [
+					{
+						id: "pr-review-comments",
+						subject: pr.sessionId,
+						stamp: pr.lastActivityAt,
+						title: reviewCommentsTitle(pr.unresolvedReviewThreads),
+						detail: pr.title,
+					} satisfies NextStepCandidate,
+				]
+			: []),
+	]);
 }

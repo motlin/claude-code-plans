@@ -41,6 +41,7 @@ import {PaneLayoutStateSchema} from "../src/lib/pane-layout";
 import {PinDropOutcomeSchema} from "../src/lib/pinned-sessions";
 import {ContextAttachmentKindSchema} from "../src/lib/context-attach";
 import {PendingApprovalToolNameSchema} from "../src/lib/domain-event-payload-schemas";
+import {GhCheckRunConclusionSchema, GhStatusContextStateSchema} from "../src/lib/pr-details";
 import {GhPrReviewDecisionSchema, GhPrStateSchema, GhPrStatusCacheStateSchema} from "../src/lib/pr-status";
 import {RecentsHistorySchema} from "../src/lib/recents-history";
 import {
@@ -121,6 +122,8 @@ const ROOTS: ReadonlyArray<readonly [string, unknown]> = [
 	["GhPrStateSchema", GhPrStateSchema],
 	["GhPrStatusCacheStateSchema", GhPrStatusCacheStateSchema],
 	["GhPrReviewDecisionSchema", GhPrReviewDecisionSchema],
+	["GhCheckRunConclusionSchema", GhCheckRunConclusionSchema],
+	["GhStatusContextStateSchema", GhStatusContextStateSchema],
 	["SessionListPrefsSchema", SessionListPrefsSchema],
 	["GroupIconSchema", GroupIconSchema],
 	["GroupColorSchema", GroupColorSchema],

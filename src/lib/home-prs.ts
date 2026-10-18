@@ -71,6 +71,12 @@ export interface HomePrRow {
 	pill: HomePrPill;
 	/** Failing CI checks, 0 when the cache has no checks. */
 	failedChecks: number;
+	/** Failing check names from the review details fetch, empty until it answers. */
+	failingChecks: readonly string[];
+	/** Unresolved review threads, 0 until the review details fetch answers. */
+	unresolvedReviewThreads: number;
+	/** The PR's head branch, or null until the review details fetch answers. */
+	headBranch: string | null;
 }
 
 function repoSlug(url: string): string | null {
@@ -102,6 +108,9 @@ export function selectHomePrs(sources: readonly HomePrSource[]): HomePrRow[] {
 			lastActivityAt,
 			pill: prPill(homePrState(pr), pr.checks ?? null),
 			failedChecks: pr.checks?.failed ?? 0,
+			failingChecks: pr.failingChecks ?? [],
+			unresolvedReviewThreads: pr.unresolvedReviewThreads ?? 0,
+			headBranch: pr.headBranch ?? null,
 		});
 	}
 	return [...byUrl.values()].toSorted((a, b) => CATEGORY_RANK[a.pill.category] - CATEGORY_RANK[b.pill.category]);

@@ -23,6 +23,12 @@ export const PrStatusSchema = z
 		title: z.string().optional(),
 		checks: PrChecksSchema.optional(),
 		review: GhPrReviewDecisionSchema.nullable().optional(),
+		/** The PR's head branch, from the `gh api graphql` details fetch. */
+		headBranch: z.string().optional(),
+		/** Names of the head commit's failing checks, from the details fetch. */
+		failingChecks: z.array(z.string()).optional(),
+		/** Unresolved review threads, from the details fetch. */
+		unresolvedReviewThreads: z.number().int().nonnegative().optional(),
 	})
 	.strict();
 export type PrStatus = z.infer<typeof PrStatusSchema>;
@@ -38,7 +44,10 @@ export function samePrStatus(a: PrStatus | null | undefined, b: PrStatus | null 
 		a.review === b.review &&
 		a.checks?.passed === b.checks?.passed &&
 		a.checks?.failed === b.checks?.failed &&
-		a.checks?.pending === b.checks?.pending
+		a.checks?.pending === b.checks?.pending &&
+		a.headBranch === b.headBranch &&
+		a.unresolvedReviewThreads === b.unresolvedReviewThreads &&
+		a.failingChecks?.join("\u0000") === b.failingChecks?.join("\u0000")
 	);
 }
 

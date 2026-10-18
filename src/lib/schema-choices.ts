@@ -59,6 +59,7 @@ import type {
 	SessionSortDirectionSchema,
 	SessionStatusFilterSchema,
 } from "./session-groups";
+import type {GhCheckRunConclusionSchema, GhStatusContextStateSchema} from "./pr-details";
 import type {GhPrReviewDecisionSchema, GhPrStateSchema, GhPrStatusCacheStateSchema} from "./pr-status";
 import type {
 	PullRequestStateSchema,
@@ -322,6 +323,28 @@ const ghPrReviewDecisionChoices = {
 	CHANGES_REQUESTED: true,
 	REVIEW_REQUIRED: true,
 } satisfies Record<z.infer<typeof GhPrReviewDecisionSchema>, true>;
+
+/** `conclusion` of a CheckRun in the `gh api graphql` PR details reply. */
+const ghCheckRunConclusionChoices = {
+	ACTION_REQUIRED: true,
+	CANCELLED: true,
+	FAILURE: true,
+	NEUTRAL: true,
+	SKIPPED: true,
+	STALE: true,
+	STARTUP_FAILURE: true,
+	SUCCESS: true,
+	TIMED_OUT: true,
+} satisfies Record<z.infer<typeof GhCheckRunConclusionSchema>, true>;
+
+/** `state` of a StatusContext in the `gh api graphql` PR details reply. */
+const ghStatusContextStateChoices = {
+	ERROR: true,
+	EXPECTED: true,
+	FAILURE: true,
+	PENDING: true,
+	SUCCESS: true,
+} satisfies Record<z.infer<typeof GhStatusContextStateSchema>, true>;
 
 export const unifiedSearchTypeLabels = {
 	all: "All",
@@ -1159,6 +1182,8 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
 	GhPrStateSchema: ghPrStateChoices,
 	GhPrStatusCacheStateSchema: ghPrStatusCacheStateChoices,
 	GhPrReviewDecisionSchema: ghPrReviewDecisionChoices,
+	GhCheckRunConclusionSchema: ghCheckRunConclusionChoices,
+	GhStatusContextStateSchema: ghStatusContextStateChoices,
 	"SessionListPrefsSchema.groupBy": sessionGroupByLabels,
 	"SessionListPrefsSchema.sortBy": sessionSortByLabels,
 	"SessionListPrefsSchema.sortDirection": sessionSortDirectionLabels,
