@@ -272,6 +272,14 @@ describe("phone sheet sidebar", () => {
 		).toStrictEqual(["lucide-x", "size-5"]);
 	});
 
+	it("ends the nav block 11px below More, as upstream's phone sheet does", async () => {
+		mockViewport(390);
+		await renderFrame();
+		await openSheet();
+
+		expect(sheet().querySelector("[data-nav-groups-gap]")?.className).toBe("h-[11px] shrink-0");
+	});
+
 	it("puts upstream's full-width Search button under Close and opens the palette in search mode", async () => {
 		mockViewport(390);
 		await renderFrame();

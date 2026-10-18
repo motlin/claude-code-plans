@@ -113,7 +113,11 @@ export function Sidebar({
 							badgeFor={badgeFor}
 							activeSection={activeSection}
 						/>
-						<div data-nav-groups-gap="" className="h-[13px] shrink-0" />
+						{/* Upstream's phone sheet ends the nav block 11px below More; desktop's ends 13px below. */}
+						<div
+							data-nav-groups-gap=""
+							className={onPhoneSheetClose ? "h-[11px] shrink-0" : "h-[13px] shrink-0"}
+						/>
 					</div>
 					<SidebarSessionGroups
 						activeItemId={activeSection === "sessions" ? activeSessionId : activeItemId}
