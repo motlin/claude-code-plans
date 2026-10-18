@@ -261,6 +261,36 @@ describe("Menu", () => {
 		}).toEqual({side: "2", align: "0"});
 	});
 
+	it("lets side-opening popups fall back to the end of the cross axis so they stay on screen", async () => {
+		render(
+			<>
+				<Menu>
+					<MenuTrigger aria-label="Right menu">R</MenuTrigger>
+					<MenuContent side="right">
+						<MenuItem>Right item</MenuItem>
+					</MenuContent>
+				</Menu>
+				<Menu>
+					<MenuTrigger aria-label="Bottom menu">B</MenuTrigger>
+					<MenuContent side="bottom">
+						<MenuItem>Bottom item</MenuItem>
+					</MenuContent>
+				</Menu>
+			</>,
+		);
+		fireEvent.click(screen.getByRole("button", {name: "Right menu"}));
+		await flush();
+		const right = screen.getByRole("menuitem", {name: "Right item"}).closest("[data-side-offset]");
+		fireEvent.click(screen.getByRole("button", {name: "Bottom menu"}));
+		await flush();
+		const bottom = screen.getByRole("menuitem", {name: "Bottom item"}).closest("[data-side-offset]");
+
+		expect({
+			right: right?.getAttribute("data-collision-fallback"),
+			bottom: bottom?.getAttribute("data-collision-fallback"),
+		}).toEqual({right: "end", bottom: null});
+	});
+
 	it("draws radio and checkbox checks in upstream fill-accent ink at stroke-width 3", async () => {
 		renderDropdown();
 		await openDropdown();

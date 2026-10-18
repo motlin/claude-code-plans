@@ -141,6 +141,15 @@ export function ContextMenu(props: ComponentProps<typeof BaseContextMenu.Root>) 
 
 export const ContextMenuTrigger = BaseContextMenu.Trigger;
 
+type CollisionAvoidance = NonNullable<ComponentProps<typeof BaseMenu.Positioner>["collisionAvoidance"]>;
+
+/*
+ * A left/right popup that fits neither side (e.g. the phone sidebar's More menu)
+ * falls back below its trigger instead of flipping off-screen, matching
+ * upstream's Base UI submenu default.
+ */
+const SIDE_COLLISION_AVOIDANCE = {fallbackAxisSide: "end"} as const satisfies CollisionAvoidance;
+
 export interface MenuContentProps {
 	/** Navigation menus use larger rows; nested popups inherit their parent density. */
 	density?: MenuDensity;
@@ -149,6 +158,8 @@ export interface MenuContentProps {
 	align?: ComponentProps<typeof BaseMenu.Positioner>["align"];
 	sideOffset?: number;
 	alignOffset?: number;
+	/** Defaults to falling back along the cross axis for side-opening popups, as Base UI submenus do. */
+	collisionAvoidance?: CollisionAvoidance;
 	className?: string;
 	/** Where focus goes when the menu closes; `false` leaves it where an action put it. */
 	finalFocus?: ComponentProps<typeof BaseMenu.Popup>["finalFocus"];
@@ -162,9 +173,16 @@ export function MenuContent({
 	align = "start",
 	sideOffset = 4,
 	alignOffset = 0,
+	collisionAvoidance,
 	className,
 	finalFocus,
 }: MenuContentProps) {
+	const resolvedCollisionAvoidance =
+		collisionAvoidance ?? (side === "left" || side === "right" ? SIDE_COLLISION_AVOIDANCE : undefined);
+	const collisionFallback =
+		resolvedCollisionAvoidance !== undefined && "fallbackAxisSide" in resolvedCollisionAvoidance
+			? resolvedCollisionAvoidance.fallbackAxisSide
+			: undefined;
 	const kind = useContext(MenuKindContext);
 	const inheritedDensity = useContext(MenuDensityContext);
 	const resolvedDensity = density ?? inheritedDensity;
@@ -181,6 +199,10 @@ export function MenuContent({
 					alignOffset={alignOffset}
 					data-side-offset={sideOffset}
 					data-align-offset={alignOffset}
+					{...(resolvedCollisionAvoidance === undefined
+						? {}
+						: {collisionAvoidance: resolvedCollisionAvoidance})}
+					{...(collisionFallback === undefined ? {} : {"data-collision-fallback": collisionFallback})}
 				>
 					<BaseMenu.Popup
 						data-cds={kind}
