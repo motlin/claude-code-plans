@@ -62,4 +62,25 @@ describe("app chrome design tokens", () => {
 			dark: "var(--warning-000)",
 		});
 	});
+
+	it("fills the unselected New circle with upstream's web neutral-150 in dark, clearing it only when selected", () => {
+		const styles = readFileSync("src/styles/globals.css", "utf8");
+		const light = styles.slice(styles.indexOf(":root {"), styles.indexOf(".dark {"));
+		const dark = styles.slice(styles.indexOf(".dark {"));
+		const token = (block: string, name: string) => block.match(new RegExp(`${name}:\\s*([^;]+);`))?.[1] ?? null;
+		const transparentCircleSelectors = [
+			...styles.matchAll(/([^{}]*\.df-new-icon-circle[^{}]*)\{\s*background-color:\s*transparent;/g),
+		].map(([, selectors]) => selectors?.trim());
+
+		expect({
+			light: token(light, "--sb-new-circle"),
+			dark: token(dark, "--sb-new-circle"),
+			transparentCircleSelectors,
+		}).toStrictEqual({
+			light: "#eae9e4",
+			// Measured on claude.ai/code: [data-mode=dark] --cds-neutral-150 -> --cds-gray-750.
+			dark: "#2c2c2a",
+			transparentCircleSelectors: ['.df-nav-row[data-selected="focused"] .df-new-icon-circle'],
+		});
+	});
 });

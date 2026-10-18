@@ -352,6 +352,8 @@
 	--sb-radius: 8px;
 	--sb-hover: #f0efec;
 	--sb-selected: #edece8;
+	/* Unselected New circle: upstream's web --cds-neutral-70 */
+	--sb-new-circle: #eae9e4;
 	/* Session rows: upstream selects them lighter than nav rows in dark. */
 	--sb-session-selected: var(--sb-selected);
 	--sb-bg: color-mix(in srgb, var(--upstream-surface-0) 50%, var(--upstream-surface-1));
@@ -361,6 +363,8 @@
 	/* Sidebar rows: upstream [data-mode="dark"] .dframe-sidebar overrides */
 	--sb-hover: hsl(0 0% 100% / 0.075);
 	--sb-selected: hsl(0 0% 100% / 0.15);
+	/* Upstream's web dark --cds-neutral-150 (--cds-gray-750) */
+	--sb-new-circle: #2c2c2a;
 	--sb-session-selected: hsl(0 0% 100% / 0.075);
 	--sb-bg: #111;
 
@@ -1168,7 +1172,7 @@ html[data-motion="reduced"] .terminal-caret {
 		align-items: center;
 		justify-content: center;
 		border-radius: calc(infinity * 1px);
-		background-color: #eae9e4;
+		background-color: var(--sb-new-circle);
 	}
 
 	@media (hover: hover) {
@@ -1177,8 +1181,7 @@ html[data-motion="reduced"] .terminal-caret {
 		}
 	}
 
-	.df-nav-row[data-selected="focused"] .df-new-icon-circle,
-	.dark .df-nav-row .df-new-icon-circle {
+	.df-nav-row[data-selected="focused"] .df-new-icon-circle {
 		background-color: transparent;
 	}
 }
