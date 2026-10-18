@@ -60,9 +60,9 @@ function items(rows: HomeAttentionRow[]): HomeAttentionItem<HomeAttentionRow>[] 
 }
 
 function rowTitles(): string[] {
-	return screen
-		.queryAllByRole("listitem")
-		.map((li) => li.querySelector("[data-row-main-button]")?.getAttribute("aria-label") ?? "");
+	return [...document.querySelectorAll("li[data-session-id]")].map(
+		(li) => li.querySelector("[data-row-main-button]")?.getAttribute("aria-label") ?? "",
+	);
 }
 
 afterEach(() => {
@@ -501,7 +501,8 @@ describe("HomeLanding sessions", () => {
 		await screen.findByRole("region", {name: "Sessions"});
 		const before = {
 			rows: rowTitles(),
-			status: screen.getAllByRole("listitem")[0]?.querySelector("[data-row-status]")?.textContent ?? null,
+			status:
+				document.querySelector("li[data-session-id]")?.querySelector("[data-row-status]")?.textContent ?? null,
 		};
 		const [firstDismiss] = screen.getAllByRole("button", {name: "Dismiss session"});
 		if (!firstDismiss) throw new Error("expected a dismiss button");

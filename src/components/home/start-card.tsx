@@ -1,12 +1,20 @@
-import {Check, Folder} from "lucide-react";
+import {Popover} from "@base-ui/react/popover";
+import {Check, Folder, X} from "lucide-react";
+import {useRef} from "react";
 
 import {requestHomeComposerFocus} from "../../lib/home-composer-focus";
+import type {NextStepCandidate, NextStepRow} from "../../lib/home-next-steps";
+import {TOUCH_REVEAL} from "../../lib/touch-reveal";
+import {Tooltip} from "../ui/tooltip";
 import type {StartProject} from "../../lib/palette-start-session";
 import {useHomeLaunchFolder} from "./launch-folder";
 import {ProjectPicker} from "./project-picker";
 
 /** Upstream shows at most three recent environments. */
 const ROW_LIMIT = 3;
+
+/** Upstream's start-card list: a 320px ringed surface-1 card. */
+const CARD_CLASS = "card-ring flex w-80 max-w-full shrink-0 flex-col rounded-xl bg-surface-1";
 
 const ROW_CLASS = "flex h-8 w-full items-center gap-2 rounded-lg px-2 text-[13px]/5 text-secondary";
 
@@ -26,16 +34,18 @@ interface StartCardProps {
 	projects: readonly StartProject[];
 	selected: StartProject | undefined;
 	onSelect: (projectId: string) => void;
+	nextSteps?: NextStepsListProps | undefined;
 }
 
 /**
  * Upstream's /code start card "Recent environments" list, adapted to recent local folders: the
  * current folder is a static checked row, the others pick the launch folder and focus the composer,
- * and "Choose environment" opens the composer's project picker. Upstream's cloud environments and
- * "Next steps" list have no local equivalent.
+ * and "Choose environment" opens the composer's project picker, over the "Next steps" list of blocked
+ * sessions. Upstream's cloud environments have no local equivalent.
  */
-export function StartCard({projects, selected, onSelect}: StartCardProps) {
-	if (projects.length === 0) return null;
+export function StartCard({projects, selected, onSelect, nextSteps}: StartCardProps) {
+	const hasNextSteps = nextSteps !== undefined && nextSteps.rows.length > 0;
+	if (projects.length === 0 && !hasNextSteps) return null;
 
 	const choose = (projectId: string) => {
 		onSelect(projectId);
@@ -44,66 +54,190 @@ export function StartCard({projects, selected, onSelect}: StartCardProps) {
 
 	return (
 		<div data-start-card className="flex w-full min-w-0 flex-col items-center gap-3 p-px">
-			<ul
-				role="list"
-				aria-label="Recent environments"
-				className="card-ring flex w-80 max-w-full shrink-0 flex-col rounded-xl bg-surface-1"
-			>
-				{visibleRows(projects, selected).map((project) => {
-					const current = project.id === selected?.id;
-					const content = (
-						<>
-							<Folder aria-hidden="true" className="size-4 shrink-0" />
-							<span
-								className="min-w-0 flex-1 truncate text-start"
-								title={shortenCwd(project.projectPath)}
-							>
-								{project.name}
-							</span>
-						</>
-					);
-					return (
-						<li
-							key={project.id}
-							aria-current={current ? true : undefined}
-							className="px-1 pt-0.5 first:pt-1"
-						>
-							{current ? (
-								<div className={ROW_CLASS}>
-									{content}
-									<Check
-										data-start-card-check
-										aria-hidden="true"
-										className="size-4 shrink-0 text-primary"
-									/>
-								</div>
-							) : (
-								<button
-									type="button"
-									onClick={() => {
-										choose(project.id);
-									}}
-									className={`${ROW_CLASS} transition-colors hover:bg-fill-ghost-hover focus-visible:shadow-[0_0_0_2px_var(--accent-100)] focus-visible:outline-none`}
-								>
-									{content}
-								</button>
-							)}
-						</li>
-					);
-				})}
-				<li className="pt-1">
-					<div aria-hidden="true" className="border-t border-[var(--card-outline)]" />
-					<div className="p-1">
-						<ProjectPicker variant="choose" projects={projects} selected={selected} onSelect={choose} />
-					</div>
-				</li>
-			</ul>
+			{projects.length > 0 && <RecentEnvironments projects={projects} selected={selected} choose={choose} />}
+			{hasNextSteps && <NextStepsList {...nextSteps} />}
 		</div>
 	);
 }
 
+function RecentEnvironments({
+	projects,
+	selected,
+	choose,
+}: {
+	projects: readonly StartProject[];
+	selected: StartProject | undefined;
+	choose: (projectId: string) => void;
+}) {
+	return (
+		<ul role="list" aria-label="Recent environments" className={CARD_CLASS}>
+			{visibleRows(projects, selected).map((project) => {
+				const current = project.id === selected?.id;
+				const content = (
+					<>
+						<Folder aria-hidden="true" className="size-4 shrink-0" />
+						<span className="min-w-0 flex-1 truncate text-start" title={shortenCwd(project.projectPath)}>
+							{project.name}
+						</span>
+					</>
+				);
+				return (
+					<li key={project.id} aria-current={current ? true : undefined} className="px-1 pt-0.5 first:pt-1">
+						{current ? (
+							<div className={ROW_CLASS}>
+								{content}
+								<Check
+									data-start-card-check
+									aria-hidden="true"
+									className="size-4 shrink-0 text-primary"
+								/>
+							</div>
+						) : (
+							<button
+								type="button"
+								onClick={() => {
+									choose(project.id);
+								}}
+								className={`${ROW_CLASS} transition-colors hover:bg-fill-ghost-hover focus-visible:shadow-[0_0_0_2px_var(--accent-100)] focus-visible:outline-none`}
+							>
+								{content}
+							</button>
+						)}
+					</li>
+				);
+			})}
+			<li className="pt-1">
+				<div aria-hidden="true" className="border-t border-[var(--card-outline)]" />
+				<div className="p-1">
+					<ProjectPicker variant="choose" projects={projects} selected={selected} onSelect={choose} />
+				</div>
+			</li>
+		</ul>
+	);
+}
+
+export interface NextStepsListProps {
+	rows: readonly NextStepRow<NextStepCandidate>[];
+	/** Opens the row's session (its subject). */
+	onOpen: (subject: string) => void;
+	onDismiss: (candidates: NextStepCandidate[]) => void;
+}
+
+const STEP_BUTTON_CLASS =
+	"flex h-8 w-full min-w-0 items-center rounded-lg px-2 text-start text-[13px]/5 text-primary transition-colors hover:bg-fill-ghost-hover focus-visible:shadow-[0_0_0_2px_var(--accent-100)] focus-visible:outline-none";
+
+function StepLine({candidate}: Readonly<{candidate: NextStepCandidate}>) {
+	return (
+		<span className="flex h-5 min-w-0 flex-1 flex-wrap gap-x-1.5 overflow-hidden">
+			<span className="min-w-0 truncate">
+				<span className="text-upstream-warning">Blocked</span> {candidate.title}
+			</span>
+			{candidate.detail !== null && <span className="shrink-0 text-ink-muted">{candidate.detail}</span>}
+		</span>
+	);
+}
+
+/**
+ * Upstream's start-card "Next steps" list: up to three seats of Blocked session rows, a family past its
+ * seats folded into a "Claude is blocked in N more sessions" row whose popup lists the rest. Each row's
+ * dismiss shows on hover, keyboard focus, or always on touch; after a dismiss, focus moves to the
+ * previous row, else the composer.
+ */
+export function NextStepsList({rows, onOpen, onDismiss}: Readonly<NextStepsListProps>) {
+	const listRef = useRef<HTMLUListElement>(null);
+	if (rows.length === 0) return null;
+
+	const dismiss = (index: number, candidates: NextStepCandidate[]) => {
+		const previous = listRef.current?.querySelectorAll<HTMLButtonElement>("[data-next-step-open]")[index - 1];
+		onDismiss(candidates);
+		if (previous) previous.focus();
+		else requestHomeComposerFocus();
+	};
+
+	return (
+		<ul ref={listRef} role="list" aria-label="Next steps" className={`${CARD_CLASS} gap-0.5 p-1`}>
+			{rows.map((row, index) => {
+				const candidates = row.type === "row" ? [row.candidate] : row.rest;
+				const dismissLabel = row.type === "row" ? `Dismiss “${row.candidate.title}”` : row.dismissLabel;
+				return (
+					<li
+						key={row.type === "row" ? `${row.candidate.id}:${row.candidate.subject}` : "rest"}
+						className="group/row relative"
+					>
+						{row.type === "row" ? (
+							<Tooltip
+								content={row.candidate.title}
+								detail={row.candidate.detail ?? undefined}
+								className="w-full"
+							>
+								<button
+									type="button"
+									data-next-step-open
+									onClick={() => {
+										onOpen(row.candidate.subject);
+									}}
+									className={`${STEP_BUTTON_CLASS} pe-8`}
+								>
+									<StepLine candidate={row.candidate} />
+								</button>
+							</Tooltip>
+						) : (
+							<RestRow title={row.title} rest={row.rest} onOpen={onOpen} />
+						)}
+						<span className="absolute inset-y-0 end-1 flex items-center">
+							<button
+								type="button"
+								data-next-step-dismiss
+								aria-label={dismissLabel}
+								onClick={() => {
+									dismiss(index, candidates);
+								}}
+								className={`flex size-6 items-center justify-center rounded-md text-ink-muted opacity-0 hover:bg-fill-ghost-hover hover:text-primary group-hover/row:opacity-100 group-has-[:focus-visible]/row:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100 ${TOUCH_REVEAL}`}
+							>
+								<X aria-hidden="true" className="size-4" />
+							</button>
+						</span>
+					</li>
+				);
+			})}
+		</ul>
+	);
+}
+
+function RestRow({
+	title,
+	rest,
+	onOpen,
+}: Readonly<{title: string; rest: readonly NextStepCandidate[]; onOpen: (subject: string) => void}>) {
+	return (
+		<Popover.Root>
+			<Popover.Trigger data-next-step-open className={`${STEP_BUTTON_CLASS} pe-8`}>
+				<span className="min-w-0 truncate">{title}</span>
+			</Popover.Trigger>
+			<Popover.Portal>
+				<Popover.Positioner side="bottom" align="center" sideOffset={6} className="z-[130] outline-none">
+					<Popover.Popup className="flex max-h-[var(--available-height)] w-max max-w-[min(26rem,90vw)] flex-col gap-0.5 overflow-y-auto rounded-r7 bg-[var(--menu-bg)] p-1 shadow-[var(--menu-shadow)] outline-none">
+						{rest.map((candidate) => (
+							<button
+								key={candidate.subject}
+								type="button"
+								onClick={() => {
+									onOpen(candidate.subject);
+								}}
+								className={STEP_BUTTON_CLASS}
+							>
+								<StepLine candidate={candidate} />
+							</button>
+						))}
+					</Popover.Popup>
+				</Popover.Positioner>
+			</Popover.Portal>
+		</Popover.Root>
+	);
+}
+
 /** The start card bound to the shared home launch folder. */
-export function HomeStartCard() {
+export function HomeStartCard({nextSteps}: Readonly<{nextSteps?: NextStepsListProps | undefined}>) {
 	const {projects, selected, select} = useHomeLaunchFolder();
-	return <StartCard projects={projects} selected={selected} onSelect={select} />;
+	return <StartCard projects={projects} selected={selected} onSelect={select} nextSteps={nextSteps} />;
 }

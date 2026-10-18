@@ -5,6 +5,7 @@ import {apiFetch} from "./client";
 export const HomeDismissalsResponse = z.object({dismissals: z.record(z.string(), z.number())}).strict();
 export type HomeDismissals = z.infer<typeof HomeDismissalsResponse>;
 
+/** `sessionId` is a session id for the Sessions section, or a `nextStepKey()` for a start-card Next steps row. */
 export const HomeDismissBodySchema = z.object({sessionId: z.string().min(1)}).strict();
 
 export const homeDismissalsQueryOptions = queryOptions({

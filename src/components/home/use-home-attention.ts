@@ -6,9 +6,11 @@ import {approvalsQueryOptions} from "../../lib/api/approvals";
 import {homeDismissalsQueryOptions, postHomeDismissal, type HomeDismissals} from "../../lib/api/home-dismissals";
 import {recentSessionsInfiniteQueryOptions, type SessionListItem} from "../../lib/api/sessions";
 import {selectHomeAttention, type HomeAttentionItem, type HomeAttentionRow} from "../../lib/home-attention";
+import {nextStepKey, selectNextSteps, type NextStepCandidate} from "../../lib/home-next-steps";
 import {selectHomePrs, type HomePrRow} from "../../lib/home-prs";
 import {usePins} from "../../lib/pin-store";
 import {toGroupRow} from "../sidebar/sidebar-session-row";
+import type {NextStepsListProps} from "./start-card";
 
 function toAttentionRow(session: SessionListItem, approvalTools: ReadonlyMap<string, string>): HomeAttentionRow {
 	const toolName = approvalTools.get(session.id);
@@ -21,10 +23,31 @@ function toAttentionRow(session: SessionListItem, approvalTools: ReadonlyMap<str
 	};
 }
 
+/**
+ * Upstream's waiting-session candidates: every titled, unarchived session awaiting input, asking a
+ * question unless a non-AskUserQuestion permission prompt is pending.
+ */
+function waitingSessionCandidates(rows: readonly HomeAttentionRow[]): NextStepCandidate[] {
+	return rows
+		.filter((row) => row.bucket === "blocked" && !row.archived && row.title.trim() !== "")
+		.map((row) => ({
+			id: "waiting-session",
+			subject: row.sessionId,
+			stamp: row.lastActivityAt,
+			title: row.title.trim(),
+			detail:
+				row.pendingApproval !== null && row.pendingApproval.toolName !== "AskUserQuestion"
+					? "Needs permission"
+					: "Asked a question",
+		}));
+}
+
 export interface HomeAttention {
 	items: HomeAttentionItem<HomeAttentionRow>[];
 	/** Active PRs from the same sessions, for the Pull requests section. */
 	prs: HomePrRow[];
+	/** The start card's Next steps list. */
+	nextSteps: NextStepsListProps;
 	rowLimit: number;
 	now: number;
 	onOpen: (sessionId: string) => void;
@@ -61,8 +84,9 @@ export function useHomeAttention(): HomeAttention | undefined {
 	const approvalTools = new Map(
 		(approvals?.approvals ?? []).map((approval) => [approval.sessionId, approval.toolName]),
 	);
+	const rows = sessions.map((session) => toAttentionRow(session, approvalTools));
 	const items = selectHomeAttention({
-		rows: sessions.map((session) => toAttentionRow(session, approvalTools)),
+		rows,
 		pinnedIds: new Set(pinnedIds),
 		dismissed: dismissals.dismissals,
 		now,
@@ -79,12 +103,21 @@ export function useHomeAttention(): HomeAttention | undefined {
 			})),
 	);
 
+	const onOpen = (id: string) => void navigate({to: "/session/$id", params: {id}});
+
 	return {
 		items,
 		prs,
+		nextSteps: {
+			rows: selectNextSteps({candidates: waitingSessionCandidates(rows), dismissed: dismissals.dismissals}),
+			onOpen,
+			onDismiss: (candidates) => {
+				for (const candidate of candidates) dismiss.mutate(nextStepKey(candidate));
+			},
+		},
 		rowLimit,
 		now,
-		onOpen: (id) => void navigate({to: "/session/$id", params: {id}}),
+		onOpen,
 		onDismiss: (item) => {
 			dismiss.mutate(item.session.sessionId);
 		},

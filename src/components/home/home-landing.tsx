@@ -26,7 +26,7 @@ export function HomeLanding({dock}: Readonly<{dock?: ReactNode}>) {
 					data-perf-ready={attention === undefined ? undefined : ""}
 					className="flex flex-col gap-10 pt-6 pb-14"
 				>
-					<HomeStartCard />
+					<HomeStartCard nextSteps={attention?.nextSteps} />
 					{attention === undefined ? null : clear ? (
 						<HomeStatsSection />
 					) : (
