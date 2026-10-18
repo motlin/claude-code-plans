@@ -25,14 +25,27 @@ const SEARCH_CLASS =
 const OPTION_CLASS =
 	"flex h-6 shrink-0 cursor-default items-center gap-1 rounded-r5 px-2 select-none data-[highlighted]:bg-fill-ghost-hover";
 
+/** The start card's "Choose environment" row, which opens the same picker below it. */
+const CHOOSE_CLASS =
+	"group/choose flex h-8 w-full items-center gap-2 rounded-lg px-2 text-[13px]/5 text-secondary transition-colors hover:bg-fill-ghost-hover focus-visible:shadow-[0_0_0_2px_var(--accent-100)] focus-visible:outline-none";
+
 interface ProjectPickerProps {
 	projects: readonly StartProject[];
 	selected: StartProject | undefined;
 	onSelect: (projectId: string) => void;
+	/** `chip` is the composer's combobox chip; `choose` is the start card's "Choose environment" row. */
+	variant?: "chip" | "choose";
 }
 
-export function ProjectPicker({projects, selected, onSelect}: ProjectPickerProps) {
+/** Restore focus to the trigger on close unless the selection handler already moved it elsewhere. */
+function keepFocusInPopup(popup: HTMLElement | null): boolean {
+	const active = document.activeElement;
+	return active === null || active === document.body || popup?.contains(active) === true;
+}
+
+export function ProjectPicker({projects, selected, onSelect, variant = "chip"}: ProjectPickerProps) {
 	const baseId = useId();
+	const popupRef = useRef<HTMLDivElement>(null);
 	const listboxId = `${baseId}-listbox`;
 	const searchRef = useRef<HTMLInputElement>(null);
 	const [open, setOpen] = useState(false);
@@ -88,21 +101,41 @@ export function ProjectPicker({projects, selected, onSelect}: ProjectPickerProps
 
 	return (
 		<Popover.Root open={open} onOpenChange={handleOpenChange}>
-			<Popover.Trigger
-				// oxlint-disable-next-line jsx-a11y/role-has-required-aria-props -- Base UI's Popover.Trigger sets aria-controls to the popup it opens
-				role="combobox"
-				aria-label="Select project"
-				aria-haspopup="dialog"
-				aria-expanded={open}
-				className={CHIP_CLASS}
-			>
-				<Folder aria-hidden="true" className="size-3.5 shrink-0" />
-				<span className="truncate">{selected?.name ?? "+ Select project…"}</span>
-				<ChevronDown aria-hidden="true" className="size-3 shrink-0" />
-			</Popover.Trigger>
+			{variant === "choose" ? (
+				<Popover.Trigger aria-haspopup="dialog" aria-expanded={open} className={CHOOSE_CLASS}>
+					<span className="truncate">Choose environment</span>
+					<ChevronDown
+						aria-hidden="true"
+						className="size-3 shrink-0 text-ink-muted transition-colors group-hover/choose:text-secondary"
+					/>
+				</Popover.Trigger>
+			) : (
+				<Popover.Trigger
+					// oxlint-disable-next-line jsx-a11y/role-has-required-aria-props -- Base UI's Popover.Trigger sets aria-controls to the popup it opens
+					role="combobox"
+					aria-label="Select project"
+					aria-haspopup="dialog"
+					aria-expanded={open}
+					className={CHIP_CLASS}
+				>
+					<Folder aria-hidden="true" className="size-3.5 shrink-0" />
+					<span className="truncate">{selected?.name ?? "+ Select project…"}</span>
+					<ChevronDown aria-hidden="true" className="size-3 shrink-0" />
+				</Popover.Trigger>
+			)}
 			<Popover.Portal>
-				<Popover.Positioner side="top" align="start" sideOffset={6} className="z-[130] outline-none">
-					<Popover.Popup initialFocus={searchRef} className={POPUP_CLASS}>
+				<Popover.Positioner
+					side={variant === "choose" ? "bottom" : "top"}
+					align={variant === "choose" ? "center" : "start"}
+					sideOffset={6}
+					className="z-[130] outline-none"
+				>
+					<Popover.Popup
+						ref={popupRef}
+						initialFocus={searchRef}
+						finalFocus={() => keepFocusInPopup(popupRef.current)}
+						className={POPUP_CLASS}
+					>
 						<input
 							ref={searchRef}
 							type="text"

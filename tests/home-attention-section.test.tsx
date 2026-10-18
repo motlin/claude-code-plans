@@ -24,7 +24,13 @@ import {notificationsQueryOptions} from "../src/lib/api/notifications";
 import {pendingQuestionQueryOptions} from "../src/lib/api/pending-question";
 import {homeDismissalsQueryOptions} from "../src/lib/api/home-dismissals";
 import {localAccountQueryOptions} from "../src/lib/api/local-account";
-import {recentSessionsInfiniteQueryOptions, type SessionListItem} from "../src/lib/api/sessions";
+import {
+	recentSessionsInfiniteQueryOptions,
+	recentSessionsQueryOptions,
+	type SessionListItem,
+} from "../src/lib/api/sessions";
+import {projectsQueryOptions} from "../src/lib/api/projects";
+import {HOME_RECENT_LIMIT} from "../src/components/home/launch-folder";
 import {useViewportRowLimit} from "../src/hooks/use-viewport-row-limit";
 import type {HomeAttentionItem, HomeAttentionRow} from "../src/lib/home-attention";
 import {selectHomeAttention} from "../src/lib/home-attention";
@@ -462,6 +468,12 @@ describe("HomeLanding sessions", () => {
 			],
 		});
 		queryClient.setQueryData(homeDismissalsQueryOptions.queryKey, {dismissals: dismissedAt});
+		// The start card's folder queries, seeded empty so only the dismissal hits the network.
+		queryClient.setQueryData(projectsQueryOptions().queryKey, []);
+		queryClient.setQueryData(recentSessionsQueryOptions(HOME_RECENT_LIMIT).queryKey, {
+			sessions: [],
+			nextCursor: null,
+		});
 		queryClient.setQueryData(localAccountQueryOptions.queryKey, {
 			name: "Craig Motlin",
 			firstName: "Craig",

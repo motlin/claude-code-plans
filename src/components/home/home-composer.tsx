@@ -7,22 +7,20 @@ import {slashCommandsQueryOptions} from "../../lib/api/commands";
 import {promptHistoryQueryOptions} from "../../lib/api/prompt-history";
 import {composerDefaultsQueryOptions} from "../../lib/api/composer-defaults";
 import {launchHerdrSession} from "../../lib/api/herdr";
-import {projectsQueryOptions} from "../../lib/api/projects";
-import {recentSessionsQueryOptions} from "../../lib/api/sessions";
 import {buildClaudeCopyCommand} from "../../lib/claude-launch-command";
 import {writeClipboardText} from "../../lib/clipboard";
 import {resolveComposerState} from "../../lib/composer-state";
 import {buildLaunchFlags, type LaunchOptions} from "../../lib/launch-options";
 import {onHomeComposerFocusRequest} from "../../lib/home-composer-focus";
-import {findLaunchedSession, startSessionProjects, type PendingLaunch} from "../../lib/palette-start-session";
+import {findLaunchedSession, type PendingLaunch} from "../../lib/palette-start-session";
 import {Composer} from "../composer";
 import {useToast} from "../toast-context";
 import {ClawdMascot} from "./clawd-mascot";
 import {UsagePaceBanner} from "../usage-pace-banner";
+import {useHomeLaunchFolder} from "./launch-folder";
 import {ProjectPicker} from "./project-picker";
 
-/** Same recents page the ⌘K palette reads, so both share one cached query. */
-export const HOME_RECENT_LIMIT = 25;
+export {HOME_RECENT_LIMIT} from "./launch-folder";
 
 /**
  * The docked claude.ai/code home composer: a project chip row above the prompt
@@ -34,24 +32,12 @@ export function HomeComposer() {
 	const navigate = useNavigate();
 	const toast = useToast();
 	const activeSessions = useActiveSessionsIfAvailable();
-	const {data: projects} = useQuery(projectsQueryOptions());
-	const {data: recents} = useQuery(recentSessionsQueryOptions(HOME_RECENT_LIMIT));
 	const {data: defaults} = useQuery(composerDefaultsQueryOptions);
-	const [chosenProjectId, setChosenProjectId] = useState<string | null>(null);
 	const [launching, setLaunching] = useState(false);
 	const [pendingLaunch, setPendingLaunch] = useState<PendingLaunch | null>(null);
 	const rootRef = useRef<HTMLDivElement>(null);
 
-	const startProjects = useMemo(
-		() =>
-			startSessionProjects(
-				projects ?? [],
-				(recents?.sessions ?? []).map((session) => session.project),
-				undefined,
-			),
-		[projects, recents],
-	);
-	const project = startProjects.find((p) => p.id === chosenProjectId) ?? startProjects[0];
+	const {projects: startProjects, selected: project, select: setChosenProjectId} = useHomeLaunchFolder();
 	const {data: slashCommands} = useQuery(slashCommandsQueryOptions(project?.projectPath ?? undefined));
 	const {data: promptHistory} = useQuery(promptHistoryQueryOptions(undefined));
 
