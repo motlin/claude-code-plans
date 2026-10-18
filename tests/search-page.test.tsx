@@ -188,6 +188,19 @@ describe("/search page", () => {
 		});
 		expect(screen.getByRole("tab", {name: "Plans"}).getAttribute("aria-selected")).toBe("true");
 	});
+
+	it("hides the ↵ hint on coarse pointers", async () => {
+		await renderPage("/search?q=auth");
+		await waitFor(() => {
+			expect(optionTitles()).toHaveLength(3);
+		});
+		const hints = within(listbox())
+			.getAllByRole("option")
+			.map((option) =>
+				option.querySelector("[data-search-enter-hint]")?.classList.contains("pointer-coarse:hidden"),
+			);
+		expect(hints).toStrictEqual([true, true, true]);
+	});
 });
 
 describe("validateSearchParameters", () => {

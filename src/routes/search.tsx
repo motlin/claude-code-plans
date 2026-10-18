@@ -34,25 +34,40 @@ const KIND_ICONS = {
 export function SearchResultCard({item, now}: {item: UnifiedSearchItem; now: number}) {
 	const bucket = relativeBucket(Date.parse(item.mtime), now);
 	return (
-		<span data-item-type={item.kind} className="flex min-w-0 flex-1 items-center gap-2">
+		<span data-item-type={item.kind} className="flex min-w-0 flex-1 items-center gap-2 max-sm:items-start">
 			<span className="flex size-5 shrink-0 items-center justify-center [&_svg]:size-[18px]">
 				{KIND_ICONS[item.kind]}
 			</span>
-			<span className="flex min-w-0 flex-1 items-baseline gap-2">
-				<span data-search-label="" className="truncate">
+			{/* Below 640px the body wraps: icon, title and time on line 1; snippet and project muted on line 2. */}
+			<span
+				data-search-body=""
+				className="flex min-w-0 flex-1 items-baseline gap-2 max-sm:flex-wrap max-sm:gap-y-0.5"
+			>
+				<span data-search-label="" className="min-w-0 truncate max-sm:order-1 max-sm:flex-1">
 					<HighlightRuns text={item.title} matches={item.titleMatches} />
 				</span>
 				{item.snippet !== undefined && item.snippet.text !== "" && (
 					<span
 						data-search-snippet=""
-						className="max-w-[60%] shrink-0 overflow-hidden text-xs whitespace-nowrap text-ink-muted"
+						className="max-w-[60%] shrink-0 overflow-hidden text-xs whitespace-nowrap text-ink-muted max-sm:order-4 max-sm:max-w-none max-sm:min-w-0 max-sm:flex-1 max-sm:basis-0 max-sm:truncate"
 					>
 						“<HighlightRuns text={item.snippet.text} matches={item.snippet.matches} />”
 					</span>
 				)}
-			</span>
-			<span data-search-meta="" className="shrink-0 text-xs text-ink-muted">
-				{bucket === null ? item.projectName : `${item.projectName} · ${bucket}`}
+				<span aria-hidden="true" className="hidden max-sm:order-3 max-sm:block max-sm:basis-full" />
+				<span data-search-meta="" className="ml-auto shrink-0 text-xs text-ink-muted max-sm:contents">
+					<span data-search-project="" className="min-w-0 truncate max-sm:order-5 max-sm:max-w-1/2">
+						{item.projectName}
+					</span>
+					{bucket !== null && (
+						<>
+							<span className="max-sm:hidden"> · </span>
+							<span data-search-time="" className="shrink-0 max-sm:order-2">
+								{bucket}
+							</span>
+						</>
+					)}
+				</span>
 			</span>
 		</span>
 	);
@@ -283,7 +298,10 @@ function UnifiedResults({q, type}: {q: string; type: Exclude<UnifiedSearchType, 
 						className="group flex w-full cursor-pointer items-center justify-between gap-3 truncate rounded-lg px-3 py-2 text-sm leading-5 text-secondary select-none aria-selected:bg-fill-ghost-hover aria-selected:text-primary"
 					>
 						<SearchResultCard item={item} now={now} />
-						<span className="hidden shrink-0 text-xs text-ink-muted group-aria-selected:inline-flex">
+						<span
+							data-search-enter-hint=""
+							className="hidden shrink-0 text-xs text-ink-muted group-aria-selected:inline-flex pointer-coarse:hidden"
+						>
 							<CornerDownLeft aria-hidden="true" className="size-4" />
 						</span>
 					</li>

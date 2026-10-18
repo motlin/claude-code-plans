@@ -71,4 +71,39 @@ describe("SearchResultCard", () => {
 		const view = render(<SearchResultCard item={makeItem({kind: "plan"})} now={NOW} />);
 		expect(view.container.querySelector("[data-item-type]")?.getAttribute("data-item-type")).toBe("plan");
 	});
+	it("wraps to two lines below 640px: title and time on line 1, snippet and project on line 2", () => {
+		const item = makeItem({snippet: {text: "adjusted the login redirect", matches: []}});
+		const view = render(<SearchResultCard item={item} now={NOW} />);
+		const classes = (name: string) =>
+			view.container
+				.querySelector(`[data-search-${name}]`)
+				?.className.split(" ")
+				.filter((c) => c.startsWith("max-sm:")) ?? null;
+		expect({
+			body: classes("body"),
+			label: classes("label"),
+			time: classes("time"),
+			snippet: classes("snippet"),
+			project: classes("project"),
+			meta: classes("meta"),
+			timeText: part(view.container, "time"),
+			projectText: part(view.container, "project"),
+		}).toStrictEqual({
+			body: ["max-sm:flex-wrap", "max-sm:gap-y-0.5"],
+			label: ["max-sm:order-1", "max-sm:flex-1"],
+			time: ["max-sm:order-2"],
+			snippet: [
+				"max-sm:order-4",
+				"max-sm:max-w-none",
+				"max-sm:min-w-0",
+				"max-sm:flex-1",
+				"max-sm:basis-0",
+				"max-sm:truncate",
+			],
+			project: ["max-sm:order-5", "max-sm:max-w-1/2"],
+			meta: ["max-sm:contents"],
+			timeText: "Past week",
+			projectText: "Alpha",
+		});
+	});
 });
