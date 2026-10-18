@@ -2,7 +2,9 @@ import {mkdir, open, rm, writeFile} from "node:fs/promises";
 import {basename, dirname, join} from "node:path";
 import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
 import type * as schema from "./db/schema";
+import {isSessionBridged} from "./db/bridge-session-index";
 import {indexFile} from "./db/indexer";
+import {bridgePushedTitle, setBridgePushedTitle} from "./bridge-pushed-title-store";
 import {DOMAIN_EVENTS} from "./hook-events";
 import {buildSessionSummaryPayloadFromDb} from "./session-summary";
 import {resolveSessionFilePath} from "./sessions";
@@ -15,6 +17,64 @@ interface RenameSessionArgs {
 	sessionId: string;
 	title: string;
 	broadcast: (type: string, data: Record<string, unknown>) => void;
+}
+
+/** Where a rename goes: a bridged session's live CLI pushes it to claude.ai/code; any other session saves it locally. */
+export type SessionRenamePath = "bridge" | "local";
+
+export function sessionRenamePath(bridged: boolean): SessionRenamePath {
+	return bridged ? "bridge" : "local";
+}
+
+/** The one-line `/rename` the live CLI runs, or null for a blank title (which /rename would replace with a generated one). */
+export function bridgeRenameCommand(title: string): {title: string; command: string} | null {
+	const line = title.replace(/\s+/g, " ").trim();
+	return line === "" ? null : {title: line, command: `/rename ${line}`};
+}
+
+const RENAME_RESPONSE_HEADERS = {"Cache-Control": "private, max-age=0, must-revalidate"};
+
+interface RenameSessionTitleArgs extends RenameSessionArgs {
+	/** Type a prompt into the session's live CLI pane, answering as the terminal host's prompt endpoint does. */
+	promptLiveSession: (sessionId: string, prompt: string) => Promise<Response>;
+}
+
+/**
+ * Rename a session the way its title is shown. claude.ai/code titles a bridged
+ * (Remote Control) session itself and never sees a local custom title, so the
+ * session's live CLI runs `/rename`, which pushes the name to claude.ai/code
+ * and records it in the transcript; the pushed name is remembered so it, not
+ * the ai-title, titles the session here too. Any other session gets a local
+ * custom title.
+ */
+export async function renameSessionTitle(args: RenameSessionTitleArgs): Promise<Response> {
+	const {db, claudeDir, sessionId, title, broadcast, promptLiveSession} = args;
+	if (sessionRenamePath(isSessionBridged(db, sessionId)) === "local") {
+		const renamed = await renameSession(args);
+		if (!renamed) return Response.json({error: "Session not found"}, {status: 404});
+		return Response.json(renamed, {headers: RENAME_RESPONSE_HEADERS});
+	}
+
+	const rename = bridgeRenameCommand(title);
+	if (!rename) return Response.json({error: "A bridged session needs a name"}, {status: 400});
+
+	// Remembered before the CLI can record the rename, so the reindex it triggers already titles by it.
+	const previous = bridgePushedTitle(sessionId);
+	setBridgePushedTitle(sessionId, rename.title);
+	const pushed = await promptLiveSession(sessionId, rename.command);
+	if (!pushed.ok) {
+		setBridgePushedTitle(sessionId, previous);
+		return pushed;
+	}
+
+	const projectsDir = join(claudeDir, "projects");
+	const resolved = await resolveSessionFilePath(projectsDir, sessionId);
+	if (resolved) await indexFile(db, resolved.filePath, projectsDir, join(claudeDir, "plans"));
+	const summary = buildSessionSummaryPayloadFromDb(db, sessionId);
+	if (summary) broadcast(DOMAIN_EVENTS.SESSION_UPDATED, {session: summary});
+
+	// The CLI records the rename moments later; until then the client keeps showing the new name.
+	return Response.json({customTitle: rename.title, title: rename.title}, {headers: RENAME_RESPONSE_HEADERS});
 }
 
 /**

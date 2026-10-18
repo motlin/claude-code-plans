@@ -9,6 +9,7 @@ import * as schema from "../src/lib/db/schema";
 import {indexFile} from "../src/lib/db/indexer";
 import {readSession} from "../src/lib/sessions";
 import {renameSession} from "../src/lib/session-rename";
+import {bridgePushedTitle, resetBridgePushedTitles} from "../src/lib/bridge-pushed-title-store";
 
 type ApiHandler = (context: {params: {id: string}; request: Request}) => Response | Promise<Response>;
 
@@ -21,6 +22,8 @@ let sessionPath: string;
 const state = vi.hoisted(() => ({
 	db: undefined as unknown,
 	broadcasts: [] as Array<{type: string; data: Record<string, unknown>}>,
+	prompts: [] as unknown[],
+	promptResponse: () => Response.json({ok: true}),
 }));
 
 vi.mock("../src/lib/db", () => ({getDb: () => state.db}));
@@ -31,6 +34,16 @@ vi.mock("../src/lib/sse-broadcast", () => ({
 	broadcast: () => {
 		state.broadcasts.push({type: "content:updated", data: {}});
 	},
+}));
+
+vi.mock("../src/lib/terminal-host", () => ({
+	getTerminalHost: async () =>
+		Promise.resolve({
+			prompt: async (request: Request) => {
+				state.prompts.push(await request.json());
+				return state.promptResponse();
+			},
+		}),
 }));
 
 let db: AppDb;
@@ -65,9 +78,12 @@ beforeEach(async () => {
 	state.db = db;
 	await indexFile(db.index, sessionPath, projectsDir);
 	state.broadcasts.length = 0;
+	state.prompts.length = 0;
+	state.promptResponse = () => Response.json({ok: true});
 });
 
 afterEach(() => {
+	resetBridgePushedTitles();
 	db.close();
 	rmSync(home, {recursive: true, force: true});
 	vi.unstubAllEnvs();
@@ -229,5 +245,86 @@ describe("PUT /api/sessions/$id/title", () => {
 		expect((await putTitle(SESSION_ID, {title: "x", extra: 1})).status).toBe(400);
 		expect((await putTitle(SESSION_ID, {title: 5})).status).toBe(400);
 		expect(await readFile(sessionPath, "utf-8")).toBe(before);
+	});
+});
+
+describe("PUT /api/sessions/$id/title for a session bridged to claude.ai/code", () => {
+	const bridgeRecord = {
+		type: "bridge-session",
+		sessionId: SESSION_ID,
+		bridgeSessionId: "cse_015KtMUgd6XyrAVv87Zaks48",
+	};
+	const aiTitleRecord = {type: "ai-title", aiTitle: "Parallel do-task workstreams", sessionId: SESSION_ID};
+
+	beforeEach(async () => {
+		await appendFile(sessionPath, [bridgeRecord, aiTitleRecord].map((r) => JSON.stringify(r)).join("\n") + "\n");
+		await indexFile(db.index, sessionPath, projectsDir);
+		state.broadcasts.length = 0;
+	});
+
+	it("has the live CLI run /rename, which pushes the title to claude.ai, instead of writing a custom title", async () => {
+		const before = await readLines();
+
+		const response = await putTitle(SESSION_ID, {title: "  Build\n fixer  "});
+
+		expect({
+			status: response.status,
+			body: await response.json(),
+			prompts: state.prompts,
+			lines: await readLines(),
+			pushed: bridgePushedTitle(SESSION_ID),
+			sidecar: existsSync(sidecarPath()),
+		}).toStrictEqual({
+			status: 200,
+			body: {customTitle: "Build fixer", title: "Build fixer"},
+			prompts: [{sessionId: SESSION_ID, prompt: "/rename Build fixer"}],
+			lines: before,
+			pushed: "Build fixer",
+			sidecar: false,
+		});
+	});
+
+	it("titles the session by the pushed name once the CLI records the rename", async () => {
+		await putTitle(SESSION_ID, {title: "Build fixer"});
+		await appendFile(
+			sessionPath,
+			JSON.stringify({type: "custom-title", customTitle: "Build fixer", sessionId: SESSION_ID}) + "\n",
+		);
+		await indexFile(db.index, sessionPath, projectsDir);
+
+		expect({
+			indexed: indexedTitles(),
+			detail: (await readSession(projectsDir, SESSION_ID))?.title,
+		}).toStrictEqual({
+			indexed: {title: "Build fixer", customTitle: "Build fixer"},
+			detail: "Build fixer",
+		});
+	});
+
+	it("passes the terminal host's refusal through and forgets the push", async () => {
+		state.promptResponse = () => Response.json({error: "agent is busy", code: "agent_not_ready"}, {status: 409});
+		const before = await readLines();
+
+		const response = await putTitle(SESSION_ID, {title: "Build fixer"});
+
+		expect({
+			status: response.status,
+			body: await response.json(),
+			lines: await readLines(),
+			pushed: bridgePushedTitle(SESSION_ID),
+			indexed: indexedTitles(),
+		}).toStrictEqual({
+			status: 409,
+			body: {error: "agent is busy", code: "agent_not_ready"},
+			lines: before,
+			pushed: null,
+			indexed: {title: "Parallel do-task workstreams", customTitle: null},
+		});
+	});
+
+	it("rejects a blank title, which /rename would replace with a generated one", async () => {
+		const response = await putTitle(SESSION_ID, {title: "   "});
+
+		expect({status: response.status, prompts: state.prompts}).toStrictEqual({status: 400, prompts: []});
 	});
 });

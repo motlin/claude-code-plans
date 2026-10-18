@@ -589,7 +589,7 @@ export async function requestSessionArchived(qc: QueryClient, sessionId: string,
 	}
 }
 export const RenameSessionBody = z.object({title: z.string()}).strict();
-export const RenameSessionResponse = z.object({customTitle: z.string().nullable(), title: z.string()}).strict();
+const RenameSessionResponse = z.object({customTitle: z.string().nullable(), title: z.string()}).strict();
 export const useRenameSessionMutation = (sessionId: string) => {
 	const qc = useQueryClient();
 	return useMutation({

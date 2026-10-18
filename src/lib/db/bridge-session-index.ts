@@ -24,6 +24,16 @@ export const sessionRemoteControlColumn = sql<number>`EXISTS (
 	AND json_extract(remote_control.value, '$.canonical') IS NOT NULL
 )`;
 
+/** Whether the indexed transcript bridged the session to claude.ai/code (Remote Control). */
+export function isSessionBridged(db: IndexDb, sessionId: string): boolean {
+	const row = db
+		.select({bridged: sessionRemoteControlColumn})
+		.from(schema.sessions)
+		.where(eq(schema.sessions.id, sessionId))
+		.get();
+	return row?.bridged === 1;
+}
+
 /** Two surviving owners suffice to distinguish missing, unique and ambiguous indexed aliases. */
 export function getSessionBridgeOwners(db: IndexDb, routeId: string): string[] {
 	return db

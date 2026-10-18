@@ -25,6 +25,7 @@ import {
 	TitleRecordCollector,
 } from "../sessions";
 import {currentJsonlState, foldJsonl, IncrementalJsonlCache} from "../incremental-jsonl";
+import {bridgePushedTitle} from "../bridge-pushed-title-store";
 import {extractTitleFromContent} from "../markdown-utils.server";
 import {listTrackedFiles} from "../git-tracked";
 import {trackActivity} from "../perf/event-loop-stalls";
@@ -482,8 +483,10 @@ export async function indexSessionsIndex(db: IndexDb, projectDir: string, projec
 			.onConflictDoUpdate({
 				target: schema.sessions.id,
 				set: {
-					// Mirrors resolveSessionTitle, with the transcript's indexed bridge record standing in for `bridged`.
+					// Mirrors resolveSessionTitle, with the transcript's indexed bridge record standing in for `bridged`
+					// and a custom title pushed to claude.ai/code lifting it, as in TitleRecordCollector.finish.
 					title: sql<string>`CASE WHEN ${sessionRemoteControlColumn}
+						AND ${schema.sessions.customTitle} IS NOT ${bridgePushedTitle(entry.sessionId)}
 						THEN coalesce(${schema.sessions.aiTitle}, ${schema.sessions.customTitle}, ${title})
 						ELSE coalesce(${schema.sessions.customTitle}, ${schema.sessions.aiTitle}, ${title}) END`,
 					firstPrompt: fp?.text ?? null,

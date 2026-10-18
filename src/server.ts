@@ -16,6 +16,7 @@ import {getDb, getShutdownSignal, initDb, runInitialScan, shutdownDb} from "./li
 import {startSweep, stopSweep} from "./lib/active-session-store";
 import {SESSION_REGISTRY_DIR} from "./lib/session-registry";
 import {startSessionRegistryMonitor, stopSessionRegistryMonitor} from "./lib/session-registry-store";
+import {persistBridgePushedTitlesTo} from "./lib/bridge-pushed-title-store";
 import {persistPendingPlansTo} from "./lib/pending-plan-store";
 import {persistPendingQuestionsTo} from "./lib/pending-question-store";
 import {startNotificationsSweep, stopNotificationsSweep} from "./lib/notifications-store";
@@ -94,6 +95,8 @@ void (async () => {
 	// Questions and plans sessions proposed before this server started still dock.
 	persistPendingQuestionsTo(join(getCacheDir(), "pending-questions.json"));
 	persistPendingPlansTo(join(getCacheDir(), "pending-plans.json"));
+	// Titles pushed to claude.ai/code before a restart still title their bridged sessions.
+	persistBridgePushedTitlesTo(join(getCacheDir(), "bridge-pushed-titles.json"));
 
 	try {
 		await trackActivity("startup pending-approvals scan", async () =>

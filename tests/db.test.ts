@@ -3,6 +3,7 @@ import {readdir} from "node:fs/promises";
 import {join} from "node:path";
 import {tmpdir} from "node:os";
 import {openTestDb, type AppDb} from "../src/lib/db/connection";
+import {resetBridgePushedTitles, setBridgePushedTitle} from "../src/lib/bridge-pushed-title-store";
 import {
 	fullScan,
 	indexFile,
@@ -76,6 +77,7 @@ beforeEach(() => {
 afterEach(() => {
 	db.close();
 	rmSync(testDir, {recursive: true, force: true});
+	resetBridgePushedTitles();
 });
 
 describe("connection", () => {
@@ -743,6 +745,21 @@ describe("indexer", () => {
 				customTitle: "claude.ai",
 				aiTitle: "Parallel do-task workstreams",
 				title: "Parallel do-task workstreams",
+			});
+		});
+
+		it("titles a bridged session by the custom title this app pushed to claude.ai/code", async () => {
+			setBridgePushedTitle(sessionId, "Pushed name");
+			expect(
+				await indexTitle([
+					{type: "bridge-session", sessionId, bridgeSessionId: "cse_015KtMUgd6XyrAVv87Zaks48"},
+					{type: "custom-title", customTitle: "Pushed name", sessionId},
+					{type: "ai-title", aiTitle: "Parallel do-task workstreams", sessionId},
+				]),
+			).toStrictEqual({
+				customTitle: "Pushed name",
+				aiTitle: "Parallel do-task workstreams",
+				title: "Pushed name",
 			});
 		});
 

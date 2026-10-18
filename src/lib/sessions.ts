@@ -2,6 +2,7 @@ import {createReadStream} from "node:fs";
 import {trackedCreateReadStream} from "./perf/tracked-fs";
 import {readdir, readFile, stat} from "node:fs/promises";
 import {basename, dirname, join} from "node:path";
+import {bridgePushedTitle} from "./bridge-pushed-title-store";
 import {createLineReader} from "./line-reader";
 import {decodeProjectDir, resolveProjectName} from "./memory";
 import {TypedJsonValueSchema, type JsonValue} from "./hook-events";
@@ -426,7 +427,10 @@ export function namedSessionTitle(sources: {
 export interface SessionTitleSources {
 	customTitle: string | undefined;
 	aiTitle: string | undefined;
-	/** The transcript carries a `bridge-session` record, so claude.ai/code shows this session too. */
+	/**
+	 * The transcript carries a `bridge-session` record, so claude.ai/code shows this session too and titles it by
+	 * its ai-title — unless the custom title is the one this app pushed to claude.ai/code, which it shows as well.
+	 */
 	bridged: boolean;
 }
 
@@ -466,7 +470,9 @@ export class TitleRecordCollector {
 	/** The sidecar is consulted only when the transcript never named the session. */
 	async finish(transcriptPath: string): Promise<SessionTitleSources> {
 		const customTitle = this.sawCustomTitle ? this.customTitle : await readCustomTitleSidecar(transcriptPath);
-		return {customTitle, aiTitle: this.aiTitle, bridged: this.bridged};
+		const pushed =
+			customTitle !== undefined && bridgePushedTitle(basename(transcriptPath, ".jsonl")) === customTitle;
+		return {customTitle, aiTitle: this.aiTitle, bridged: this.bridged && !pushed};
 	}
 }
 

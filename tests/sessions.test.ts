@@ -15,6 +15,7 @@ import {
 	resolveSessionTitle,
 } from "../src/lib/sessions";
 import {secondaryAiTitle} from "../src/lib/ai-title";
+import {resetBridgePushedTitles, setBridgePushedTitle} from "../src/lib/bridge-pushed-title-store";
 import {isInformativePrompt} from "../src/lib/session-utils";
 
 const testDir = join(tmpdir(), "claude-sessions-test-" + process.pid);
@@ -25,6 +26,7 @@ beforeEach(() => {
 
 afterEach(() => {
 	rmSync(testDir, {recursive: true, force: true});
+	resetBridgePushedTitles();
 });
 
 function jsonl(...lines: Record<string, unknown>[]): string {
@@ -1046,6 +1048,35 @@ describe("readSessionTitleSources", () => {
 		expect(await readSessionTitleSources(filePath)).toStrictEqual({
 			customTitle: "claude.ai",
 			aiTitle: undefined,
+			bridged: true,
+		});
+	});
+
+	it("titles a bridged session by the custom title this app pushed to claude.ai/code", async () => {
+		setBridgePushedTitle(sessionId, "Pushed name");
+		const filePath = writeSession(
+			{type: "bridge-session", sessionId, bridgeSessionId: "cse_015KtMUgd6XyrAVv87Zaks48"},
+			{type: "custom-title", customTitle: "Pushed name", sessionId},
+			{type: "ai-title", aiTitle: "Parallel do-task workstreams", sessionId},
+		);
+		const sources = await readSessionTitleSources(filePath);
+		expect({sources, title: resolveSessionTitle({...sources, sessionId})}).toStrictEqual({
+			sources: {customTitle: "Pushed name", aiTitle: "Parallel do-task workstreams", bridged: false},
+			title: "Pushed name",
+		});
+	});
+
+	it("keeps the ai-title of a bridged session once its custom title moves off the pushed one", async () => {
+		setBridgePushedTitle(sessionId, "Pushed name");
+		const filePath = writeSession(
+			{type: "bridge-session", sessionId, bridgeSessionId: "cse_015KtMUgd6XyrAVv87Zaks48"},
+			{type: "custom-title", customTitle: "Pushed name", sessionId},
+			{type: "custom-title", customTitle: "Local only", sessionId},
+			{type: "ai-title", aiTitle: "Parallel do-task workstreams", sessionId},
+		);
+		expect(await readSessionTitleSources(filePath)).toStrictEqual({
+			customTitle: "Local only",
+			aiTitle: "Parallel do-task workstreams",
 			bridged: true,
 		});
 	});

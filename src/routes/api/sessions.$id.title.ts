@@ -1,6 +1,6 @@
 import {createFileRoute} from "@tanstack/react-router";
 import {withMethodNotAllowed} from "../../lib/api/method-not-allowed";
-import {RenameSessionBody, RenameSessionResponse} from "../../lib/api/sessions";
+import {RenameSessionBody} from "../../lib/api/sessions";
 import {rejectCrossSite} from "../../lib/same-origin-guard";
 
 export const Route = createFileRoute("/api/sessions/$id/title")({
@@ -21,24 +21,30 @@ export const Route = createFileRoute("/api/sessions/$id/title")({
 					return Response.json({error: body.error.message}, {status: 400});
 				}
 
-				const [{homedir}, {join}, {getDb}, {renameSession}, {broadcastTyped}] = await Promise.all([
-					import("node:os"),
-					import("node:path"),
-					import("../../lib/db"),
-					import("../../lib/session-rename"),
-					import("../../lib/sse-broadcast"),
-				]);
-				const renamed = await renameSession({
+				const [{homedir}, {join}, {getDb}, {renameSessionTitle}, {broadcastTyped}, {getTerminalHost}] =
+					await Promise.all([
+						import("node:os"),
+						import("node:path"),
+						import("../../lib/db"),
+						import("../../lib/session-rename"),
+						import("../../lib/sse-broadcast"),
+						import("../../lib/terminal-host"),
+					]);
+				return renameSessionTitle({
 					db: getDb().index,
 					claudeDir: join(homedir(), ".claude"),
 					sessionId: params.id,
 					title: body.data.title,
 					broadcast: broadcastTyped,
-				});
-				if (!renamed) return Response.json({error: "Session not found"}, {status: 404});
-
-				return Response.json(RenameSessionResponse.parse(renamed), {
-					headers: {"Cache-Control": "private, max-age=0, must-revalidate"},
+					// The prompt endpoint's own checks (same origin, Live terminal input, a ready agent) still apply.
+					promptLiveSession: async (sessionId, prompt) => {
+						const headers = new Headers(request.headers);
+						headers.delete("Content-Length");
+						const body = JSON.stringify({sessionId, prompt});
+						return (await getTerminalHost()).prompt(
+							new Request(request.url, {method: "POST", headers, body}),
+						);
+					},
 				});
 			},
 		}),
