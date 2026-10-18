@@ -360,6 +360,50 @@ describe("QuestionCard", () => {
 		});
 	});
 
+	describe("ignoring a click that ends a drag-select inside its own row, as upstream", () => {
+		afterEach(() => {
+			window.getSelection()?.removeAllRanges();
+		});
+
+		function select(node: Node) {
+			const range = document.createRange();
+			range.selectNodeContents(node);
+			const selection = window.getSelection();
+			selection?.removeAllRanges();
+			selection?.addRange(range);
+		}
+
+		it("still picks an option while a selection sits outside the card", () => {
+			render(
+				<>
+					<p>Transcript paragraph</p>
+					<QuestionCard questions={[QUESTIONS[0]!]} onSubmit={async () => {}} />
+				</>,
+			);
+			select(screen.getByText("Transcript paragraph"));
+			const jest = screen.getByRole("button", {name: /^Jest/});
+			fireEvent.click(jest);
+
+			expect(jest.getAttribute("aria-pressed")).toBe("true");
+		});
+
+		it("ignores an option or Other click when the selection is inside that row", () => {
+			render(<QuestionCard questions={[QUESTIONS[0]!]} onSubmit={async () => {}} />);
+			const jest = screen.getByRole("button", {name: /^Jest/});
+			select(jest);
+			fireEvent.click(jest);
+			const other = screen.getByRole("button", {name: "Other"});
+			select(other.parentElement!);
+			fireEvent.click(other);
+
+			expect({
+				jest: jest.getAttribute("aria-pressed"),
+				other: other.getAttribute("aria-pressed"),
+				box: screen.queryByRole("textbox", {name: "Other option"}),
+			}).toStrictEqual({jest: "false", other: "false", box: null});
+		});
+	});
+
 	it("Skip on the last open question submits it as null", async () => {
 		const onSubmit = vi.fn<(answers: unknown[]) => Promise<void>>(async () => {});
 		render(<QuestionCard questions={QUESTIONS} onSubmit={onSubmit} />);

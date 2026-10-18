@@ -58,6 +58,17 @@ function keepFocus(event: MouseEvent) {
 	event.preventDefault();
 }
 
+/** Upstream's gt(): a click that ends a drag-select within its own row is a selection, not a pick. */
+function selectionInside(event: MouseEvent<HTMLElement>): boolean {
+	const selection = event.currentTarget.ownerDocument.getSelection();
+	return (
+		selection !== null &&
+		!selection.isCollapsed &&
+		selection.rangeCount > 0 &&
+		selection.getRangeAt(0).intersectsNode(event.currentTarget)
+	);
+}
+
 /** Upstream's armGraceMs: a ⌘⏎ this soon after the card mounts is ignored. */
 const ARM_GRACE_MS = 400;
 
@@ -265,8 +276,8 @@ export function QuestionCard({
 							type="button"
 							aria-pressed={checked}
 							disabled={!editable}
-							onClick={() => {
-								if (window.getSelection()?.isCollapsed === false) return;
+							onClick={(event) => {
+								if (selectionInside(event)) return;
 								update(pickOption(question, draft, optionIndex));
 							}}
 							className="epitaxy-answer-option flex w-full cursor-pointer items-start gap-3 px-3 py-3 text-start outline-none hide-focus-ring focus-visible:ring-focus disabled:cursor-default"
@@ -287,7 +298,8 @@ export function QuestionCard({
 						aria-label="Other"
 						aria-pressed={draft.otherChosen}
 						disabled={!editable}
-						onClick={() => {
+						onClick={(event) => {
+							if (selectionInside(event)) return;
 							// Upstream commits the pick synchronously so the revealed box exists to focus.
 							flushSync(() => {
 								update(chooseOther(question, draft));
