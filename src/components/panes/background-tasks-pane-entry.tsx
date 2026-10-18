@@ -1,8 +1,15 @@
 import {useEffect} from "react";
 
 import type {BackgroundTaskGroups} from "../../lib/background-tasks";
-import {BackgroundTasksList} from "./background-tasks-pane";
+import {deferredPane} from "./deferred-pane";
 import {registerPane} from "./pane-registry";
+
+const DeferredBackgroundTasksList = deferredPane("Background tasks", async () =>
+	import("./background-tasks-pane").then((module) => module.BackgroundTasksList),
+);
+
+/** Downloads the Background tasks pane renderer ahead of its first show. */
+export const preloadBackgroundTasksPane = DeferredBackgroundTasksList.preload;
 
 /** Registers the `background-tasks` pane kind for this session while mounted. */
 export function useRegisterBackgroundTasksPane(
@@ -15,11 +22,10 @@ export function useRegisterBackgroundTasksPane(
 			registerPane("background-tasks", {
 				title: "Background tasks",
 				render: () => (
-					<BackgroundTasksList
+					<DeferredBackgroundTasksList
 						key={sessionId}
-						groups={groups}
-						sessionId={sessionId}
-						subagents={{sessionId, count: subagentCount}}
+						resetKey={sessionId}
+						props={{groups, sessionId, subagents: {sessionId, count: subagentCount}}}
 					/>
 				),
 			}),

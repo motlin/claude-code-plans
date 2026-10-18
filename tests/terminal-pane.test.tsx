@@ -3,12 +3,12 @@
 import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
 import {useEffect} from "react";
 import {z} from "zod";
-import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
+import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {usePaneHost} from "../src/components/panes/pane-host-context";
 import {TileHost} from "../src/components/panes/tile-host";
-import {TerminalPaneShortcut} from "../src/components/panes/terminal-pane";
-import {useRegisterTerminalPane} from "../src/components/panes/terminal-pane-entry";
+import {TerminalPaneShortcut} from "../src/components/panes/terminal-pane-shortcut";
+import {preloadTerminalPane, useRegisterTerminalPane} from "../src/components/panes/terminal-pane-entry";
 import {terminalShortcutAction} from "../src/components/panes/terminal-shortcut-action";
 import {SettingsProvider} from "../src/components/settings-provider";
 import {clearShellTabs} from "../src/lib/shell-tabs";
@@ -127,6 +127,11 @@ function pressOn(target: Element, init: KeyboardEventInit): KeyboardEvent {
 }
 
 let storage: ReturnType<typeof installLocalStorage>;
+
+// The pane renderer is deferred off the cold load; settle its download first so it renders in the first pass.
+beforeAll(async () => {
+	await preloadTerminalPane();
+});
 
 beforeEach(() => {
 	storage = installLocalStorage();

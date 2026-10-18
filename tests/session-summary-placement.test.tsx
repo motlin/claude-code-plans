@@ -252,7 +252,7 @@ describe("subagents placement", () => {
 		await flush();
 		fireEvent.click(screen.getByRole("menuitemcheckbox", {name: "Background tasks"}));
 		await flush();
-		const link = screen.getByRole("link", {name: "2 subagents"});
+		const link = await screen.findByRole("link", {name: "2 subagents"});
 
 		expect({
 			pill,

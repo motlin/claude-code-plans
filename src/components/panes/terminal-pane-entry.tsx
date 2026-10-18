@@ -1,7 +1,15 @@
 import {useEffect, useState} from "react";
 
+import {deferredPane} from "./deferred-pane";
 import {registerPane} from "./pane-registry";
-import {TerminalPane, type TerminalPaneAvailability} from "./terminal-pane";
+import type {TerminalPaneAvailability} from "./terminal-pane";
+
+const DeferredTerminalPane = deferredPane("Terminal", async () =>
+	import("./terminal-pane").then((module) => module.TerminalPane),
+);
+
+/** Downloads the Terminal pane renderer ahead of its first show. */
+export const preloadTerminalPane = DeferredTerminalPane.preload;
 
 /**
  * Registers the `terminal` pane kind while it has something to show: a live
@@ -26,11 +34,10 @@ export function useRegisterTerminalPane(
 			title: "Terminal",
 			header: "custom",
 			render: (chrome) => (
-				<TerminalPane
-					sessionId={sessionId}
-					availability={{livePane, interactive, shells}}
-					claudeEnded={claudeEnded}
+				<DeferredTerminalPane
+					resetKey={sessionId}
 					chrome={chrome}
+					props={{sessionId, availability: {livePane, interactive, shells}, claudeEnded, chrome}}
 				/>
 			),
 		});

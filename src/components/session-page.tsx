@@ -34,7 +34,7 @@ import type {JumpTargetWindow} from "./jump-target-context";
 import {LegacyMessageLinkNotice} from "./legacy-message-link-notice";
 import {TileHost} from "./panes/tile-host";
 import {useRegisterArtifactsPane, useSessionArtifacts} from "./panes/artifacts-pane-entry";
-import {useRegisterBackgroundTasksPane} from "./panes/background-tasks-pane-entry";
+import {preloadBackgroundTasksPane, useRegisterBackgroundTasksPane} from "./panes/background-tasks-pane-entry";
 import {preloadLinksPane, useRegisterLinksPane} from "./panes/links-pane-entry";
 import {useRegisterSessionDetailsPane} from "./panes/session-details-pane-entry";
 import {useRegisterSubagentPane} from "./panes/subagent-pane-entry";
@@ -46,8 +46,8 @@ import {ChangesPaneShortcut} from "./changes/changes-pane-shortcut";
 import {preloadFilesPane, useRegisterFilesPane} from "./panes/files-pane-entry";
 import {FilesPaneShortcut} from "./panes/files-pane-shortcut";
 import {useExtractedSessionFiles} from "./panes/session-file-sources";
-import {TerminalPaneShortcut} from "./panes/terminal-pane";
-import {useRegisterTerminalPane} from "./panes/terminal-pane-entry";
+import {TerminalPaneShortcut} from "./panes/terminal-pane-shortcut";
+import {preloadTerminalPane, useRegisterTerminalPane} from "./panes/terminal-pane-entry";
 import {PermissionCard} from "./permission-card";
 import {BranchStrip} from "./branch-strip";
 import {TranscriptHistoryLoader, TranscriptTopFade} from "./transcript-history-loader";
@@ -143,8 +143,8 @@ import {getSessionPromptBehavior} from "./session-prompt-behavior";
 import {sessionAnswerRoute} from "../hooks/use-question-answer-route";
 import {useLiveHerdrPrompt} from "./use-live-herdr-prompt";
 
-/** The Files and Links renderers, warmed once the session page goes idle so their first show skips the loading row. */
-const SESSION_PANE_CHUNKS = [preloadFilesPane, preloadLinksPane];
+/** The deferred pane renderers, warmed once the session page goes idle so their first show skips the loading row. */
+const SESSION_PANE_CHUNKS = [preloadFilesPane, preloadLinksPane, preloadTerminalPane, preloadBackgroundTasksPane];
 
 function SessionChrome({children}: {children: React.ReactNode}) {
 	return <div className="h-full overflow-auto">{children}</div>;

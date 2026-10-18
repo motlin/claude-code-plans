@@ -47,28 +47,28 @@
 		"tolerance": 0
 	},
 	"bundle.home.gzip": {
-		"ceiling": 374276,
+		"ceiling": 378081,
 		"unit": "bytes",
-		"tolerance": 0.01
+		"tolerance": 0.01,
+		"reason": "The Terminal and Background tasks panes left the session cold load for deferred chunks, and rolldown's regrouping split TanStack router-core's invariant and redirect modules out of the useStore and useParams chunks into chunks of their own that home also loads: +165 B gzip and +544 B raw over main 017f177e (377916 gzip, 1160506 raw), which already sat at the edge of the 1% tolerance over 374276 and 1149535. Ceilings re-based on the measurement; the 1% tolerance is unchanged.",
+		"raisedAt": "2026-10-18"
 	},
 	"bundle.home.raw": {
-		"ceiling": 1149535,
+		"ceiling": 1161050,
+		"unit": "bytes",
+		"tolerance": 0.01,
+		"reason": "The Terminal and Background tasks panes left the session cold load for deferred chunks, and rolldown's regrouping split TanStack router-core's invariant and redirect modules out of the useStore and useParams chunks into chunks of their own that home also loads: +165 B gzip and +544 B raw over main 017f177e (377916 gzip, 1160506 raw), which already sat at the edge of the 1% tolerance over 374276 and 1149535. Ceilings re-based on the measurement; the 1% tolerance is unchanged.",
+		"raisedAt": "2026-10-18"
+	},
+	"bundle.session.gzip": {
+		"ceiling": 553464,
 		"unit": "bytes",
 		"tolerance": 0.01
 	},
-	"bundle.session.gzip": {
-		"ceiling": 563720,
-		"unit": "bytes",
-		"tolerance": 0.01,
-		"reason": "The root route installs the soft-keyboard tracker that writes --app-visual-viewport-height from visualViewport on touch devices (upstream's app-keyboard-fit). Session cold JS measures 563720 gzip, +185 B on main 060e41c9 (563535), which already sat at the edge of the 1% tolerance over 557974. The 1% tolerance and the raw ceiling are unchanged.",
-		"raisedAt": "2026-10-18"
-	},
 	"bundle.session.raw": {
-		"ceiling": 1714591,
+		"ceiling": 1678248,
 		"unit": "bytes",
-		"tolerance": 0.01,
-		"reason": "Idle background-command rows carry each command's status, so a failed one reads ', 1 failed' in danger ink or 'Background command failed' (+142 B). Main a57b5dca already measured 1714449 raw, at the edge of the 1% tolerance over 1697565. Session cold JS measures 1714591 raw; the 1% tolerance and the gzip ceiling are unchanged.",
-		"raisedAt": "2026-10-18"
+		"tolerance": 0.01
 	},
 	"client.coldHome.default.commitsToRows": {
 		"ceiling": 9,

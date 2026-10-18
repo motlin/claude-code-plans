@@ -2,7 +2,6 @@ import {Ellipsis, Plus} from "lucide-react";
 import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {z} from "zod";
 
-import {useShortcut} from "../../hooks/use-shortcut";
 import {dispatchTerminalTabs, useShellTabs} from "../../lib/shell-tabs";
 import {CLAUDE_TAB_ID, type CloseGuard, closeGuard} from "../../lib/terminal-tabs";
 import {ConfirmDialog} from "../confirm-dialog";
@@ -10,23 +9,9 @@ import {type ConnectionStatus, HerdrTerminal} from "../herdr-terminal";
 import {ShellTerminal} from "../shell-terminal";
 import {Menu, MenuContent, MenuItem, MenuTrigger} from "../ui/menu";
 import type {PaneChrome} from "./pane-registry";
-import {terminalShortcutAction} from "./terminal-shortcut-action";
+import {consumePendingTerminalFocus} from "./terminal-pane-shortcut";
 import {GHOST_ICON_BUTTON, type TerminalTabActions, TerminalTabStrip} from "./terminal-tab-strip";
-import {useOptionalPaneHost, usePaneHost} from "./pane-host-context";
-import {assertNever} from "../../lib/assert-never";
-
-const TERMINAL_FOCUS_SELECTOR = '[data-pane-kind="terminal"] [data-terminal-focus]';
-
-/** Set by ⌃` when it opens the pane, consumed on mount so the new pane takes focus. */
-let pendingTerminalFocus = false;
-
-function focusTerminal(): void {
-	document.querySelector<HTMLElement>(TERMINAL_FOCUS_SELECTOR)?.focus();
-}
-
-function isFocusInTerminal(): boolean {
-	return document.activeElement?.closest('[data-pane-kind="terminal"]') != null;
-}
+import {useOptionalPaneHost} from "./pane-host-context";
 
 const STATUS_LABELS: Readonly<Record<ConnectionStatus, string>> = {
 	connecting: "Connecting",
@@ -199,9 +184,7 @@ export function TerminalPane({
 	}, [sessionId]);
 
 	useEffect(() => {
-		if (!pendingTerminalFocus) return;
-		pendingTerminalFocus = false;
-		focusRef.current?.focus();
+		if (consumePendingTerminalFocus()) focusRef.current?.focus();
 	}, []);
 
 	useEffect(() => {
@@ -398,34 +381,3 @@ export function TerminalPane({
 function noop(): void {}
 
 async function resolved(): Promise<void> {}
-
-/** Binds ⌃` to the Terminal pane state machine. */
-export function TerminalPaneShortcut({available}: {available: boolean}) {
-	const host = usePaneHost();
-	useShortcut("toggle_terminal", () => {
-		const action = terminalShortcutAction({
-			available,
-			open: host.isOpen("terminal"),
-			focusedTile: host.layout.focused,
-			focusInTerminal: isFocusInTerminal(),
-		});
-		switch (action) {
-			case "noop":
-				return false;
-			case "open":
-				pendingTerminalFocus = true;
-				host.openPane("terminal");
-				return true;
-			case "close":
-				host.closePane("terminal");
-				return true;
-			case "focus":
-			case "caret":
-				focusTerminal();
-				return true;
-			default:
-				return assertNever(action);
-		}
-	});
-	return null;
-}
