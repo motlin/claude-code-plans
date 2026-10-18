@@ -122,6 +122,10 @@ describe("QuestionCard", () => {
 				screen.getByRole("button", {name: "Skip"}).textContent,
 				screen.getByRole("button", {name: /^Next/}).hasAttribute("disabled"),
 			],
+			actionsGap: screen
+				.getByRole("button", {name: "Skip"})
+				.parentElement?.className.split(" ")
+				.filter((name) => name.startsWith("gap-")),
 		}).toStrictEqual({
 			card: ["card-ring", "@container", "max-w-[480px]", "rounded-r7"],
 			header: "Which test runner?1 of 2",
@@ -134,6 +138,7 @@ describe("QuestionCard", () => {
 			],
 			otherBox: null,
 			actions: ["Skip", false],
+			actionsGap: ["gap-2"],
 		});
 	});
 

@@ -257,7 +257,7 @@ export function QuestionCard({
 				</p>
 			)}
 			<div
-				className={`epitaxy-approval-actions flex items-center justify-end gap-1 px-3 pt-2 pb-3 ${STACK_ACTIONS}`}
+				className={`epitaxy-approval-actions flex items-center justify-end gap-2 px-3 pt-2 pb-3 ${STACK_ACTIONS}`}
 			>
 				<ApprovalActionButton variant="secondary" disabled={!editable} onClick={skip}>
 					Skip
