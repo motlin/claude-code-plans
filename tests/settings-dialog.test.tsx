@@ -23,13 +23,14 @@ import {
 	type SkillDetail,
 	type SkillSummary,
 } from "../src/lib/api/customize";
+import {PHONE_SHEET_QUERY} from "../src/lib/use-phone-sheet";
 import {redirectToSettingsDialog} from "../src/routes/settings";
 import {installLocalStorage} from "./fake-storage";
 
-function stubBrowser() {
+function stubBrowser(phone = false) {
 	installLocalStorage();
 	vi.stubGlobal("matchMedia", (query: string) => ({
-		matches: false,
+		matches: phone && query === PHONE_SHEET_QUERY,
 		media: query,
 		onchange: null,
 		addEventListener: () => {},
@@ -236,6 +237,83 @@ describe("SettingsDialog", () => {
 			location: {pathname: "/", hash: "settings/general"},
 			current: ["General"],
 		});
+	});
+});
+
+describe("SettingsDialog at phone width", () => {
+	beforeEach(() => {
+		stubBrowser(true);
+	});
+
+	afterEach(() => {
+		cleanup();
+		vi.unstubAllGlobals();
+	});
+
+	it("renders a horizontal tab strip under a Settings heading instead of the side nav", async () => {
+		await renderAt("/#settings/transcript");
+		const dialog = await screen.findByRole("dialog", {name: "Settings"});
+		const tablist = within(dialog).getByRole("tablist", {name: "Settings"});
+
+		expect({
+			sideNav: within(dialog).queryByRole("navigation"),
+			w48: dialog.querySelector(".w-48"),
+			heading: within(dialog).getByRole("heading", {level: 2}).textContent,
+			orientation: tablist.getAttribute("aria-orientation"),
+			stripClasses: ["overflow-x-auto", "overscroll-x-contain"].filter((name) =>
+				tablist.classList.contains(name),
+			),
+			tabs: within(tablist)
+				.getAllByRole("tab")
+				.map((tab) => ({label: tab.textContent, selected: tab.getAttribute("aria-selected")})),
+			search: within(dialog).getAllByRole("combobox", {name: "Search settings"}).length,
+			scrollForward: within(dialog).getAllByRole("button", {name: "Scroll forward"}).length,
+		}).toStrictEqual({
+			sideNav: null,
+			w48: null,
+			heading: "Settings",
+			orientation: "horizontal",
+			stripClasses: ["overflow-x-auto", "overscroll-x-contain"],
+			tabs: [
+				{label: "General", selected: "false"},
+				{label: "Usage", selected: "false"},
+				{label: "Claude Code", selected: "false"},
+				{label: "Skills", selected: "false"},
+				{label: "Connectors", selected: "false"},
+				{label: "Plugins", selected: "false"},
+				{label: "Transcript", selected: "true"},
+				{label: "Sessions", selected: "false"},
+				{label: "Application", selected: "false"},
+				{label: "AI features", selected: "false"},
+				{label: "Claude Config", selected: "false"},
+				{label: "Setup", selected: "false"},
+			],
+			search: 1,
+			scrollForward: 1,
+		});
+	});
+
+	it("switches tabs from the strip through the hash", async () => {
+		const router = await renderAt("/#settings/general");
+		const dialog = await screen.findByRole("dialog", {name: "Settings"});
+
+		fireEvent.click(within(dialog).getByRole("tab", {name: "Sessions"}));
+
+		await waitFor(() => {
+			expect(location(router)).toStrictEqual({pathname: "/", hash: "settings/sessions"});
+		});
+		expect(within(dialog).getByRole("tab", {name: "Sessions"}).getAttribute("aria-selected")).toBe("true");
+	});
+
+	it("keeps every settings row's control column from shrinking", async () => {
+		await renderAt("/#settings/general");
+		const dialog = await screen.findByRole("dialog", {name: "Settings"});
+		const controls = [...dialog.querySelectorAll("[data-settings-control]")];
+
+		expect({
+			any: controls.length > 0,
+			unshrinkable: controls.every((control) => control.classList.contains("shrink-0")),
+		}).toStrictEqual({any: true, unshrinkable: true});
 	});
 });
 
