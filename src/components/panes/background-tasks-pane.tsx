@@ -80,6 +80,8 @@ function BackgroundTaskCard({task, sessionId}: {task: BackgroundTask; sessionId:
 	const [expanded, setExpanded] = useState(false);
 	const detailsId = useId();
 	const title = taskTitle(task);
+	// Upstream renders a failed or stopped task's summary inline on touch, where there is no tooltip.
+	const inlineSummary = task.status === "failed" || task.status === "stopped" ? nonEmpty(task.summary) : undefined;
 	return (
 		<li className="flex flex-col gap-g5 rounded-r6 bg-fill-ghost-hover p-2">
 			<button
@@ -101,6 +103,14 @@ function BackgroundTaskCard({task, sessionId}: {task: BackgroundTask; sessionId:
 					/>
 				</span>
 				<span className="block text-caption/[15px] text-ink-muted">{backgroundTaskMeta(task)}</span>
+				{inlineSummary !== undefined && (
+					<span
+						data-background-task-summary=""
+						className="hidden [@media(pointer:coarse)]:block text-body text-secondary truncate min-w-0"
+					>
+						{inlineSummary}
+					</span>
+				)}
 			</button>
 			{expanded && (
 				<div id={detailsId} className="flex flex-col gap-g5">

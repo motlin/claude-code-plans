@@ -188,6 +188,47 @@ const LINT_GROUPS: BackgroundTaskGroups = {
 	finished: [],
 };
 
+describe("BackgroundTasksList touch summary", () => {
+	it("shows a failed or stopped task's summary inline on coarse pointers only, and not for completed tasks", () => {
+		const groups: BackgroundTaskGroups = {
+			running: [],
+			finished: [
+				task({
+					id: "bfab1lint",
+					description: "Lint the fabricated app",
+					status: "failed",
+					summary: "Background command failed with exit code 1",
+				}),
+				task({id: "bfab1tail", description: "Tail the logs", status: "stopped", summary: "Stopped by user"}),
+				task({
+					id: "bfab1done",
+					description: "Build",
+					status: "completed",
+					summary: "Background command completed",
+				}),
+			],
+		};
+		render(<BackgroundTasksList groups={groups} />);
+		fireEvent.click(screen.getByRole("button", {name: "Finished 3"}));
+
+		expect(
+			[...document.querySelectorAll("[data-background-task-summary]")].map((span) => ({
+				text: span.textContent,
+				className: span.className,
+			})),
+		).toStrictEqual([
+			{
+				text: "Background command failed with exit code 1",
+				className: "hidden [@media(pointer:coarse)]:block text-body text-secondary truncate min-w-0",
+			},
+			{
+				text: "Stopped by user",
+				className: "hidden [@media(pointer:coarse)]:block text-body text-secondary truncate min-w-0",
+			},
+		]);
+	});
+});
+
 describe("BackgroundTasksList output file", () => {
 	it("fetches a task's output file only once its card expands, and shows it in the Output region", async () => {
 		const fetchMock = stubFetch({status: "ok", output: "\u001b[32m0 problems\u001b[0m\n", truncated: false});
