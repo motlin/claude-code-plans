@@ -312,6 +312,54 @@ describe("QuestionCard", () => {
 		});
 	});
 
+	describe("keeping focus inside the card, as upstream's tabIndex -1 root", () => {
+		it("refocuses the card root after paging with focus inside, so ⌘⏎ keeps reaching it", () => {
+			render(<QuestionCard questions={QUESTIONS} onSubmit={async () => {}} />);
+			const card = screen.getByRole("group", {name: "Which test runner?"});
+			screen.getByRole("button", {name: /^Next/}).focus();
+			fireEvent.click(screen.getByRole("button", {name: /^Next/}));
+			const afterNext = document.activeElement === screen.getByRole("group", {name: "Which features?"});
+			fireEvent.click(screen.getByRole("button", {name: "Show previous question"}));
+			const afterPrevious = document.activeElement === card;
+
+			expect({tabIndex: card.tabIndex, afterNext, afterPrevious}).toStrictEqual({
+				tabIndex: -1,
+				afterNext: true,
+				afterPrevious: true,
+			});
+		});
+
+		it("leaves focus alone when paging with focus outside the card", () => {
+			render(<QuestionCard questions={QUESTIONS} onSubmit={async () => {}} />);
+			fireEvent.click(screen.getByRole("button", {name: /^Next/}));
+
+			expect(document.activeElement).toBe(document.body);
+		});
+
+		it("keeps mousedown on Skip, Next and Submit from moving focus", () => {
+			render(<QuestionCard questions={QUESTIONS} onSubmit={async () => {}} />);
+			const skip = fireEvent.mouseDown(screen.getByRole("button", {name: "Skip"}));
+			const next = fireEvent.mouseDown(screen.getByRole("button", {name: /^Next/}));
+			fireEvent.click(screen.getByRole("button", {name: /^Next/}));
+			fireEvent.click(screen.getByRole("button", {name: /^Coverage/}));
+			const submit = fireEvent.mouseDown(screen.getByRole("button", {name: /^Submit/}));
+
+			expect({skip, next, submit}).toStrictEqual({skip: false, next: false, submit: false});
+		});
+
+		it("moves focus from the Other box to the card root when Skip submits the last page", async () => {
+			const onSubmit = vi.fn<(answers: unknown[]) => Promise<void>>(async () => {});
+			render(<QuestionCard questions={[QUESTIONS[1]!]} onSubmit={onSubmit} />);
+			fireEvent.click(screen.getByRole("button", {name: "Other"}));
+			fireEvent.click(screen.getByRole("button", {name: "Skip"}));
+			await vi.waitFor(() => {
+				expect(onSubmit).toHaveBeenCalledTimes(1);
+			});
+
+			expect(document.activeElement).toBe(screen.getByRole("group", {name: "Which features?"}));
+		});
+	});
+
 	it("Skip on the last open question submits it as null", async () => {
 		const onSubmit = vi.fn<(answers: unknown[]) => Promise<void>>(async () => {});
 		render(<QuestionCard questions={QUESTIONS} onSubmit={onSubmit} />);

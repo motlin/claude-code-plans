@@ -1,5 +1,5 @@
 import {Check, ChevronLeft, ChevronRight} from "lucide-react";
-import {type RefObject, useEffect, useRef, useState} from "react";
+import {type MouseEvent, type RefObject, useEffect, useRef, useState} from "react";
 import {flushSync} from "react-dom";
 
 import type {QuestionAnswer} from "../lib/hook-events";
@@ -51,6 +51,11 @@ function Mark({checked, multi}: {checked: boolean; multi: boolean}) {
 				))}
 		</span>
 	);
+}
+
+/** Upstream's onMouseDown preventDefault: clicking a card button never moves focus. */
+function keepFocus(event: MouseEvent) {
+	event.preventDefault();
 }
 
 /** Upstream's armGraceMs: a ⌘⏎ this soon after the card mounts is ignored. */
@@ -126,8 +131,15 @@ export function QuestionCard({
 	const otherRef = useRef<HTMLTextAreaElement>(null);
 	const cardRootRef = useRef<HTMLDivElement>(null);
 	const hotkeyRef = useRef<(() => void) | null>(null);
+	const refocusRef = useRef(false);
 	useApprovalHotkey(cardRootRef, hotkeyRef);
 	const index = Math.min(page, questions.length - 1);
+	// Upstream refocuses the card root after a page change that started with focus inside it.
+	useEffect(() => {
+		if (!refocusRef.current) return;
+		refocusRef.current = false;
+		cardRootRef.current?.focus({preventScroll: true});
+	}, [index]);
 	const question = questions[index];
 	const draft = drafts[index];
 	if (question === undefined || draft === undefined) return null;
@@ -144,6 +156,11 @@ export function QuestionCard({
 			: isLast
 				? `Question ${unanswered + 1} is unanswered`
 				: "Choose an option or skip this question";
+
+	const goTo = (next: number) => {
+		refocusRef.current = cardRootRef.current?.contains(document.activeElement) === true;
+		setPage(next);
+	};
 
 	const update = (next: QuestionCardDraft) => {
 		setDrafts((current) => current.map((entry, at) => (at === index ? next : entry)));
@@ -165,7 +182,7 @@ export function QuestionCard({
 	const advance = () => {
 		if (!editable || !canAdvance) return;
 		if (isLast) void submit(drafts, skipped);
-		else setPage(index + 1);
+		else goTo(index + 1);
 	};
 
 	const skip = () => {
@@ -179,8 +196,12 @@ export function QuestionCard({
 		const remaining = questions.findIndex(
 			(_, at) => nextSkipped[at] !== true && !isAnswered(nextDrafts[at] ?? initialDraft(question)),
 		);
-		if (remaining === -1) void submit(nextDrafts, nextSkipped);
-		else setPage(remaining);
+		if (remaining === -1) {
+			if (otherRef.current !== null && document.activeElement === otherRef.current) {
+				cardRootRef.current?.focus({preventScroll: true});
+			}
+			void submit(nextDrafts, nextSkipped);
+		} else goTo(remaining);
 	};
 
 	hotkeyRef.current = editable ? advance : null;
@@ -189,6 +210,7 @@ export function QuestionCard({
 		<div
 			ref={cardRootRef}
 			role="group"
+			tabIndex={-1}
 			aria-label={question.question}
 			data-approval-card-root=""
 			data-approval-presentation="card"
@@ -208,7 +230,7 @@ export function QuestionCard({
 								event.preventDefault();
 							}}
 							onClick={() => {
-								setPage(index - 1);
+								goTo(index - 1);
 							}}
 							className="flex size-6 cursor-pointer items-center justify-center rounded-r5 hover:bg-fill-ghost-hover disabled:cursor-default disabled:opacity-50"
 						>
@@ -225,7 +247,7 @@ export function QuestionCard({
 								event.preventDefault();
 							}}
 							onClick={() => {
-								setPage(index + 1);
+								goTo(index + 1);
 							}}
 							className="flex size-6 cursor-pointer items-center justify-center rounded-r5 hover:bg-fill-ghost-hover disabled:cursor-default disabled:opacity-50"
 						>
@@ -304,11 +326,16 @@ export function QuestionCard({
 			<div
 				className={`epitaxy-approval-actions flex items-center justify-end gap-2 px-3 pt-2 pb-3 ${STACK_ACTIONS}`}
 			>
-				<ApprovalActionButton variant="secondary" disabled={!editable} onClick={skip}>
+				<ApprovalActionButton variant="secondary" disabled={!editable} onMouseDown={keepFocus} onClick={skip}>
 					Skip
 				</ApprovalActionButton>
 				{disabledReason === null ? (
-					<ApprovalActionButton variant="primary" disabled={!editable || !canAdvance} onClick={advance}>
+					<ApprovalActionButton
+						variant="primary"
+						disabled={!editable || !canAdvance}
+						onMouseDown={keepFocus}
+						onClick={advance}
+					>
 						{isLast ? submitLabel : "Next"}
 						<Shortcut keys="cmd+enter" className="pointer-coarse:hidden" />
 					</ApprovalActionButton>
@@ -318,6 +345,7 @@ export function QuestionCard({
 							<ApprovalActionButton
 								variant="primary"
 								disabled={!editable || !canAdvance}
+								onMouseDown={keepFocus}
 								onClick={advance}
 							>
 								{isLast ? submitLabel : "Next"}
