@@ -644,3 +644,102 @@ describe("subagent-owned slow commands in the transcript", () => {
 		expect(container.textContent.includes("background commands")).toBe(false);
 	});
 });
+
+/** A do-all subagent that ran a slow foreground command at each `finishedAt`. */
+function doAllWorker(bareId: string, description: string, commands: [string, string][]): Subagent {
+	return {
+		...teammate([]),
+		id: `agent-${bareId}`,
+		description,
+		slowCommands: commands.map(([finishedAt, command]) => ({finishedAt, description: command})),
+	};
+}
+
+/**
+ * do-all 23301293:2534-2587: the parent ends its turn, the M1-41 worker runs six slow
+ * commands while it idles, then hands back; the M1-42 worker's first slow command
+ * finishes after the parent's last turn.
+ */
+function doAllIdleRecords(): unknown[] {
+	const text = (uuid: string, timestamp: string, body: string) => ({
+		type: "assistant",
+		uuid,
+		timestamp,
+		message: {role: "assistant", content: [{type: "text", text: body}]},
+	});
+	return [
+		{type: "user", uuid: "u-1", timestamp: "2026-10-18T01:00:00.000Z", message: {role: "user", content: "do all"}},
+		text("a-1", "2026-10-18T01:40:28.000Z", "M1-40 is done. Nothing is pushed."),
+		{
+			type: "user",
+			uuid: "u-handback",
+			timestamp: "2026-10-18T01:57:47.547Z",
+			isMeta: true,
+			promptSource: "system",
+			turnOrigin: "peer",
+			message: {
+				role: "user",
+				content:
+					'Another Claude session sent a message:\n<agent-message from="a3bc840d29ae2ae76">\n[Subagent hand-back] M1-41 is done.\n</agent-message>',
+			},
+		},
+		{
+			type: "assistant",
+			uuid: "a-2",
+			timestamp: "2026-10-18T01:57:56.000Z",
+			message: {
+				role: "assistant",
+				content: [
+					{
+						type: "tool_use",
+						id: "toolu_verify",
+						name: "Bash",
+						input: {command: "git log", description: "Verify M1-41, gate, next task"},
+					},
+				],
+			},
+		},
+		{
+			type: "user",
+			uuid: "u-2",
+			timestamp: "2026-10-18T01:57:56.500Z",
+			message: {role: "user", content: [{type: "tool_result", tool_use_id: "toolu_verify", content: "ok"}]},
+		},
+		text("a-3", "2026-10-18T01:58:04.000Z", "M1-42 is running now."),
+	];
+}
+
+describe("idle-period subagent slow commands", () => {
+	beforeEach(() => {
+		vi.stubGlobal("innerHeight", 10_000);
+	});
+
+	const workers = [
+		doAllWorker("a3bc840d29ae2ae76", "Do task M1-41", [
+			["2026-10-18T01:45:20.789Z", "Update story primitives and run checks"],
+			["2026-10-18T01:45:32.810Z", "Fix type error and recheck"],
+			["2026-10-18T01:46:08.319Z", "List warning locations and run full tests"],
+			["2026-10-18T01:47:35.331Z", "Recheck and retest after CSS fix"],
+			["2026-10-18T01:56:27.445Z", "Run precommit on committed HEAD"],
+			["2026-10-18T01:57:31.579Z", "Rebase onto configured upstream"],
+		]),
+		doAllWorker("a7bf00a8bdb7bdc65", "Do task M1-42", [["2026-10-18T02:01:27.582Z", "Fix formatting and recheck"]]),
+	];
+
+	it('draws "6 background commands completed" before the hand-back and the lone trailing command after the last turn', () => {
+		const container = renderLines(doAllIdleRecords(), "normal", workers);
+		const text = container.textContent;
+		expect({
+			rows: [...container.querySelectorAll("[data-task-event-row]")].map((row) => row.textContent),
+			beforeHandBack: /6 background commands completed.*Message from/s.test(text),
+		}).toStrictEqual({
+			rows: ["6 background commands completed", "Background command completed · Fix formatting and recheck"],
+			beforeHandBack: true,
+		});
+	});
+
+	it("draws no idle rows in Verbose", () => {
+		const container = renderLines(doAllIdleRecords(), "verbose", workers);
+		expect(container.querySelectorAll("[data-task-event-row]").length).toBe(0);
+	});
+});

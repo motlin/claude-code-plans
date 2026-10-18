@@ -1931,28 +1931,79 @@ class SlowCommandAbsorber {
 			}),
 		);
 		if (last === undefined || !Number.isFinite(end)) return [];
-		const notices: BackgroundNotice[] = [];
+		return this.take(since, end).map((command) => ({
+			kind: "task",
+			lineIndex: last.lineIndex,
+			notification: slowCommandCompletion(command),
+		}));
+	}
+
+	/**
+	 * The commands that finished after `since` and by `until`, consuming every
+	 * one finished by `until`: those before `since` finished while the parent
+	 * talked, which upstream draws nothing for.
+	 */
+	take(since: number, until: number): SlowCommand[] {
+		const taken: SlowCommand[] = [];
 		for (let command = this.commands[this.next]; command !== undefined; command = this.commands[this.next]) {
 			const finishedAt = Date.parse(command.finishedAt);
-			if (finishedAt > end) break;
+			if (finishedAt > until) break;
 			this.next++;
-			if (!(finishedAt > since)) continue;
-			notices.push({
-				kind: "task",
-				lineIndex: last.lineIndex,
-				notification: {
-					taskId: null,
-					toolUseId: null,
-					status: "completed",
-					command: true,
-					agent: false,
-					description: command.description,
-					durationMs: null,
-				},
-			});
+			if (finishedAt > since) taken.push(command);
 		}
-		return notices;
+		return taken;
 	}
+}
+
+function slowCommandCompletion(command: SlowCommand): TaskNotification {
+	return {
+		taskId: null,
+		toolUseId: null,
+		status: "completed",
+		command: true,
+		agent: false,
+		description: command.description,
+		durationMs: null,
+	};
+}
+
+/**
+ * The row upstream draws for the slow commands a subagent finished while the
+ * parent idled between turns: "Background command completed · <description>"
+ * for one, "N background commands completed" for several.
+ */
+function IdleCommandsRow({commands}: {commands: readonly SlowCommand[]}) {
+	const [first] = commands;
+	return commands.length === 1 && first !== undefined ? (
+		<TaskEventStatusRow label="Background command completed" detail={first.description} footer={null} />
+	) : (
+		<TaskEventStatusRow
+			label={<NoticeSummary entries={commands.map(() => ({status: "completed", kind: "shell"}))} />}
+			detail={null}
+			footer={null}
+		/>
+	);
+}
+
+/** A line that opens a parent turn: a prompt, hand-back or notification rather than a tool result. */
+function opensTurn(line: SessionLine): boolean {
+	return (line.type === "user" && !isToolResultOnlyUserLine(line)) || line.type === "queued-task-notification";
+}
+
+/** Whether an assistant line calls a tool, so the parent is still mid-turn after it. */
+function callsTool(line: SessionLine): boolean {
+	const content = line.type === "assistant" ? line.message?.content : undefined;
+	return Array.isArray(content) && content.some((block) => block.type === "tool_use");
+}
+
+/** The time of the parent's last record before `index`, when it last spoke or ran a tool. */
+function lastParentRecordAt(lines: readonly SessionLine[], index: number): number {
+	for (let previous = index - 1; previous >= 0; previous--) {
+		const line = defined(lines[previous], "session line index is in range");
+		const at = lineTimestamp(line);
+		if ((line.type === "assistant" || line.type === "user") && at !== undefined) return Date.parse(at);
+	}
+	return Number.NEGATIVE_INFINITY;
 }
 
 /**
@@ -2071,6 +2122,25 @@ function buildSessionListEntries(
 	/** The index of the first of `leadingNotices`. */
 	let leadingNoticesIndex = 0;
 	const slowCommands = new SlowCommandAbsorber(renderProps.subagentLookup);
+	const pushIdleRow = (commands: readonly SlowCommand[], startRecordIndex: number) => {
+		if (commands.length === 0) return;
+		prevVisibleType = "assistant";
+		entries.push({
+			key: `idle-commands-${startRecordIndex}`,
+			startRecordIndex,
+			isPrompt: false,
+			kind: "assistant_tool",
+			opensWithStatus: "marker",
+			element: <IdleCommandsRow commands={commands} />,
+		});
+	};
+	/** Draws the slow commands that finished while the parent idled before the turn line `index` opens. */
+	const pushIdleCommands = (index: number) => {
+		const line = lineAt(index);
+		const at = lineTimestamp(line);
+		if (verbose || !opensTurn(line) || at === undefined) return;
+		pushIdleRow(slowCommands.take(lastParentRecordAt(lines, index), Date.parse(at)), line.lineIndex - 0.75);
+	};
 
 	while (i < lines.length) {
 		const line = lineAt(i);
@@ -2111,14 +2181,16 @@ function buildSessionListEntries(
 				j++;
 			}
 			const following = lines[j];
-			if (
+			const leadsRun =
 				following !== undefined &&
 				isGroupableToolOnlyAssistantLine(following) &&
 				renderProps.showTools &&
 				// Stop-hook feedback belongs to no assistant span; it leads whichever run it re-prompted.
 				(notice.kind === "hook" || sameSpan(line, following)) &&
-				!crossesHeldEntry(line.lineIndex, following.lineIndex)
-			) {
+				!crossesHeldEntry(line.lineIndex, following.lineIndex);
+			// A task notification opening a run gathers the idle slow commands into it instead.
+			if (!(leadsRun && notice.kind === "task")) pushIdleCommands(i);
+			if (leadsRun) {
 				leadingNotices = notices;
 				leadingNoticesIndex = i;
 			} else {
@@ -2135,6 +2207,8 @@ function buildSessionListEntries(
 			i = j;
 			continue;
 		}
+
+		pushIdleCommands(i);
 
 		// Group consecutive tool-only assistant lines
 		if (isGroupableToolOnlyAssistantLine(line) && renderProps.showTools) {
@@ -2357,6 +2431,13 @@ function buildSessionListEntries(
 			element: renderLine(false),
 		});
 		i++;
+	}
+
+	// Commands that finished since the parent ended its last turn, which it still idles in.
+	const lastSpoken = lines.findLast((line) => line.type === "assistant" || line.type === "user");
+	const lastSpokenAt = lastSpoken === undefined ? undefined : lineTimestamp(lastSpoken);
+	if (!verbose && lastSpoken?.type === "assistant" && lastSpokenAt !== undefined && !callsTool(lastSpoken)) {
+		pushIdleRow(slowCommands.take(Date.parse(lastSpokenAt), Number.POSITIVE_INFINITY), lastSpoken.lineIndex + 0.5);
 	}
 
 	// Decided on the final rendered sequence, so the boundary never depends on which rows are mounted.

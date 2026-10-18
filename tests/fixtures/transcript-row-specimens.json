@@ -12012,7 +12012,12 @@
 	{
 		"session": "54e53f89",
 		"line": 1126,
-		"upstream": ["prose", "message from subagent", "status: Verified task commit, gate HEAD, get next task"],
+		"upstream": [
+			"prose",
+			"status: Background command completed · Commit and run git test on HEAD",
+			"message from subagent",
+			"status: Verified task commit, gate HEAD, get next task"
+		],
 		"records": [
 			{
 				"parentUuid": "f87dae08-e168-4b17-892d-2e05d1d8ec86",
@@ -12511,14 +12516,21 @@
 				"model": null,
 				"startedAt": null,
 				"finishedAt": null,
-				"slowCommands": [{"finishedAt": "2026-10-02T13:07:20.034Z", "description": ""}]
+				"slowCommands": [
+					{"finishedAt": "2026-10-02T13:07:20.034Z", "description": "Commit and run git test on HEAD"}
+				]
 			}
 		]
 	},
 	{
 		"session": "54e53f89",
 		"line": 933,
-		"upstream": ["prose", "message from subagent", "status: Verified task commit, gate HEAD, get next task"],
+		"upstream": [
+			"prose",
+			"status: Background command completed · Commit change and run git-test on HEAD",
+			"message from subagent",
+			"status: Verified task commit, gate HEAD, get next task"
+		],
 		"records": [
 			{
 				"parentUuid": "eb357176-ecf0-4a68-8835-c759c8927778",
@@ -12972,7 +12984,9 @@
 				"model": null,
 				"startedAt": null,
 				"finishedAt": null,
-				"slowCommands": [{"finishedAt": "2026-10-02T12:58:29.147Z", "description": ""}]
+				"slowCommands": [
+					{"finishedAt": "2026-10-02T12:58:29.147Z", "description": "Commit change and run git-test on HEAD"}
+				]
 			}
 		]
 	},
@@ -13420,7 +13434,12 @@
 	{
 		"session": "1eb4c73e",
 		"line": 1159,
-		"upstream": ["prose", "message from subagent", "status: Verified branch, gate, next task"],
+		"upstream": [
+			"prose",
+			"status: 3 background commands completed",
+			"message from subagent",
+			"status: Verified branch, gate, next task"
+		],
 		"records": [
 			{
 				"parentUuid": "5a9e5252-d66a-4fb0-a85a-ac4edbf8759c",
@@ -13819,11 +13838,12 @@
 				"startedAt": null,
 				"finishedAt": null,
 				"slowCommands": [
-					{"finishedAt": "2026-09-27T03:00:33.334Z", "description": ""},
-					{"finishedAt": "2026-09-27T03:00:40.050Z", "description": ""},
-					{"finishedAt": "2026-09-27T03:00:47.091Z", "description": ""},
-					{"finishedAt": "2026-09-27T03:03:46.893Z", "description": ""},
-					{"finishedAt": "2026-09-27T03:04:15.635Z", "description": ""}
+					{
+						"finishedAt": "2026-09-27T03:00:33.334Z",
+						"description": "Base worktree on local main and install deps"
+					},
+					{"finishedAt": "2026-09-27T03:03:46.893Z", "description": "Run precommit gate on HEAD"},
+					{"finishedAt": "2026-09-27T03:04:15.635Z", "description": "Fix toReversed and rerun gate"}
 				]
 			}
 		]
