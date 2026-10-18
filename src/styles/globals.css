@@ -23,6 +23,7 @@
    Code font / Interface font can override them on <html>. */
 @theme {
 	--animate-notify-tip-in: notify-tip-in 150ms ease-out;
+	--animate-approval-inline-enter: approval-inline-enter 160ms ease-out;
 	/* System monospace fallback stack. The features below keep a custom
 	   Settings ▸ Code font from merging "==" or "->" into ligatures. */
 	--font-mono: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
@@ -686,6 +687,16 @@
 	}
 }
 
+/* A fresh question card fades in (upstream's epitaxy-approval-inline-enter); a restored one skips it. */
+@keyframes approval-inline-enter {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
 /* Toast entrance, applied via `motion-safe:` so reduced-motion users get none. */
 @keyframes toast-in {
 	from {
@@ -1040,6 +1051,7 @@ html[data-motion="reduced"] *::after {
 
 html[data-motion="reduced"] .animate-pulse,
 html[data-motion="reduced"] .animate-ping,
+html[data-motion="reduced"] .animate-approval-inline-enter,
 html[data-motion="reduced"] .status-dot[data-kind="running"],
 html[data-motion="reduced"] .terminal-caret {
 	animation: none !important;

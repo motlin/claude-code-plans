@@ -561,6 +561,29 @@ describe("QuestionCard", () => {
 		});
 	});
 
+	describe("fading in on first appearance, as upstream's epitaxy-approval-inline-enter", () => {
+		const enterClasses = () =>
+			screen
+				.getByRole("group")
+				.className.split(" ")
+				.filter((name) => name.includes("animate-"));
+
+		it("fades a fresh card in, without motion under reduced motion", () => {
+			render(<QuestionCard questions={QUESTIONS} onSubmit={async () => {}} />);
+
+			expect(enterClasses()).toStrictEqual(["animate-approval-inline-enter", "motion-reduce:animate-none"]);
+		});
+
+		it("skips the fade for a card restored from a saved draft", () => {
+			const first = render(<QuestionCard draftKey="enter-1" questions={QUESTIONS} onSubmit={async () => {}} />);
+			fireEvent.click(screen.getByRole("button", {name: /^Jest/}));
+			first.unmount();
+			render(<QuestionCard draftKey="enter-1" questions={QUESTIONS} onSubmit={async () => {}} />);
+
+			expect(enterClasses()).toStrictEqual([]);
+		});
+	});
+
 	it("disables every control without onSubmit", () => {
 		render(<QuestionCard questions={QUESTIONS} />);
 

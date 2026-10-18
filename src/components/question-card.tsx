@@ -261,7 +261,9 @@ export function QuestionCard({
 			data-approval-card-root=""
 			data-approval-presentation="card"
 			{...(restored === null ? {} : {"data-skip-approval-enter": ""})}
-			className="card-ring @container relative isolate flex max-w-[480px] flex-col overflow-clip rounded-r7 outline-none"
+			className={`card-ring @container relative isolate flex max-w-[480px] flex-col overflow-clip rounded-r7 outline-none${
+				restored === null ? " animate-approval-inline-enter motion-reduce:animate-none" : ""
+			}`}
 		>
 			<div className="flex items-center gap-3 bg-alpha-1 px-3 py-2">
 				<div className="min-w-0 flex-1 text-body text-primary select-text break-words [unicode-bidi:plaintext]">
