@@ -1,4 +1,4 @@
-import {Ellipsis, Plus, Search} from "lucide-react";
+import {Ellipsis, Folder, Plus, Search} from "lucide-react";
 import {useEffect, useState} from "react";
 import {DEFAULT_VISIBLE_NAV_SECTIONS} from "../lib/nav-sections";
 import {DEFAULT_SIDEBAR_STATE} from "../lib/sidebar-store";
@@ -16,8 +16,13 @@ import {
 	COMPOSER_CARD_CLASS,
 	COMPOSER_CHIN_CLASS,
 	EFFORT_LABEL_CLASS,
+	ENVIRONMENT_BAR_CLASS,
+	ENVIRONMENT_BAR_ROW_CLASS,
+	ENVIRONMENT_PLACE_CLASS,
+	PLACE_CHIP_CLASS,
 	USAGE_RING_CLASS,
 } from "./composer-tokens";
+import {HOME_DOCK_CLASS, SESSION_DOCK_COLUMN_CLASS, SESSION_FOOTER_CLASS, SESSION_TILE_CLASS} from "./dock-tokens";
 
 const NAV_ROW_CLASS = "df-nav-row h-[var(--sb-row-h)] rounded-[var(--sb-radius)] flex-1";
 const BAR_CLASS = "animate-pulse rounded bg-fill-ghost-hover";
@@ -40,9 +45,19 @@ const SESSION_ROW_WIDTHS = ["w-3/4", "w-2/3", "w-5/6", "w-1/2", "w-3/5", "w-4/5"
  * Upstream draws its composer while loading: the card with the + and the placeholder, over the
  * chin's mode, model and effort, and usage ring. It reuses the live composer's classes so
  * hydration does not move anything. The server fills in the labels from settings.json and records
- * them on the chin, where the hydrating client reads them back.
+ * them on the chin, where the hydrating client reads them back. On home the chin's controls sit in
+ * the environment bar after a placeholder for the project picker, as the live home composer's do.
  */
-function FallbackComposer({placeholder, chin}: {placeholder: string; chin: ShellChinLabels | null}) {
+function FallbackComposer({
+	placeholder,
+	chin,
+	environment = false,
+}: {
+	placeholder: string;
+	chin: ShellChinLabels | null;
+	environment?: boolean;
+}) {
+	const painted = chin === null ? undefined : JSON.stringify(chin);
 	return (
 		<div data-cds="ChatComposer" className="flex w-full min-w-0 flex-col font-sans">
 			<div data-fallback-composer="" className={COMPOSER_CARD_CLASS}>
@@ -60,33 +75,52 @@ function FallbackComposer({placeholder, chin}: {placeholder: string; chin: Shell
 					</span>
 				</div>
 			</div>
-			<div
-				data-cds="ChatComposerChin"
-				data-fallback-chin={chin === null ? undefined : JSON.stringify(chin)}
-				className={COMPOSER_CHIN_CLASS}
-			>
-				<span className="flex min-w-0 items-center self-start">
-					<span data-fallback-chin-readout="" className={CHIN_TRIGGER_CLASS}>
-						{chin?.mode}
-					</span>
-				</span>
-				<span data-fallback-chin-end="" className="ms-auto flex min-w-0 items-center gap-1 ps-2">
-					<span data-fallback-chin-readout="" className={CHIN_PRIMARY_TRIGGER_CLASS}>
-						{chin && (
-							<>
-								<span className="truncate">{chin.model}</span>
-								<span className={EFFORT_LABEL_CLASS}>{` ${chin.effort}`}</span>
-							</>
-						)}
-					</span>
-					<span className={USAGE_RING_CLASS}>
-						<svg width="14" height="14" viewBox="0 0 12 12" aria-hidden="true">
-							<circle cx="6" cy="6" r="5" fill="none" strokeWidth="2" stroke="var(--color-alpha-2)" />
-						</svg>
-					</span>
-				</span>
-			</div>
+			{environment ? (
+				<div data-fallback-environment-bar="" data-fallback-chin={painted} className={ENVIRONMENT_BAR_CLASS}>
+					<div className={ENVIRONMENT_BAR_ROW_CLASS}>
+						<div className={ENVIRONMENT_PLACE_CLASS}>
+							<span className={PLACE_CHIP_CLASS}>
+								<Folder aria-hidden="true" className="-ms-1 size-4 shrink-0" />
+								<span className={`h-3 w-16 ${BAR_CLASS}`} />
+							</span>
+						</div>
+						<FallbackChinControls chin={chin} />
+					</div>
+				</div>
+			) : (
+				<div data-cds="ChatComposerChin" data-fallback-chin={painted} className={COMPOSER_CHIN_CLASS}>
+					<FallbackChinControls chin={chin} />
+				</div>
+			)}
 		</div>
+	);
+}
+
+/** The chin's mode, then its model and effort beside the usage ring, as the live ComposerChin lays them out. */
+function FallbackChinControls({chin}: {chin: ShellChinLabels | null}) {
+	return (
+		<>
+			<span className="flex min-w-0 items-center self-start">
+				<span data-fallback-chin-readout="" className={CHIN_TRIGGER_CLASS}>
+					{chin?.mode}
+				</span>
+			</span>
+			<span data-fallback-chin-end="" className="ms-auto flex min-w-0 items-center gap-1 ps-2">
+				<span data-fallback-chin-readout="" className={CHIN_PRIMARY_TRIGGER_CLASS}>
+					{chin && (
+						<>
+							<span className="truncate">{chin.model}</span>
+							<span className={EFFORT_LABEL_CLASS}>{` ${chin.effort}`}</span>
+						</>
+					)}
+				</span>
+				<span className={USAGE_RING_CLASS}>
+					<svg width="14" height="14" viewBox="0 0 12 12" aria-hidden="true">
+						<circle cx="6" cy="6" r="5" fill="none" strokeWidth="2" stroke="var(--color-alpha-2)" />
+					</svg>
+				</span>
+			</span>
+		</>
 	);
 }
 
@@ -156,8 +190,10 @@ function HomeSkeleton({chin}: {chin: ShellChinLabels | null}) {
 					</ul>
 				</section>
 			</div>
-			<div className={`shrink-0 pb-4 ${HOME_COLUMN}`}>
-				<FallbackComposer placeholder="Describe a task or ask a question" chin={chin} />
+			<div className={`shrink-0 ${HOME_COLUMN}`}>
+				<div className={HOME_DOCK_CLASS}>
+					<FallbackComposer placeholder="Describe a task or ask a question" chin={chin} environment />
+				</div>
 			</div>
 		</div>
 	);
@@ -296,15 +332,23 @@ export function AppShellFallback({
 						</div>
 					</div>
 				) : (
-					<>
-						{/* The in-app session skeleton, in the tile shell it paints in, so both loads look alike. */}
-						<div data-route-tile-shell="" className="overflow-hidden">
-							<SessionSkeleton />
+					// The loaded session's tile shell, chat tile and footer, so the composer lands where it hydrates.
+					<div data-route-tile-shell="session">
+						<div className="min-h-0 flex-1">
+							<div className={SESSION_TILE_CLASS}>
+								<div className="min-h-0 flex-1 overflow-hidden">
+									<SessionSkeleton />
+								</div>
+								<div className={SESSION_FOOTER_CLASS}>
+									<div className="pt-2">
+										<div className={SESSION_DOCK_COLUMN_CLASS}>
+											<FallbackComposer placeholder="Type / for commands" chin={labels} />
+										</div>
+									</div>
+								</div>
+							</div>
 						</div>
-						<div className="chat-column shrink-0 pb-4">
-							<FallbackComposer placeholder="Type / for commands" chin={labels} />
-						</div>
-					</>
+					</div>
 				)}
 			</div>
 		</div>

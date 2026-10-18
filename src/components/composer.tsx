@@ -28,7 +28,13 @@ import {type ChinLaunchControls, ComposerAddMenu, ComposerChin} from "./composer
 import {AttachedContextChips} from "./attached-context-chips";
 import {ConfirmDialog} from "./confirm-dialog";
 import type {ChinMenu} from "./composer-launch-menus";
-import {COMPOSER_CARD_CLASS, COMPOSER_CHIN_CLASS} from "./composer-tokens";
+import {
+	COMPOSER_CARD_CLASS,
+	COMPOSER_CHIN_CLASS,
+	ENVIRONMENT_BAR_CLASS,
+	ENVIRONMENT_BAR_ROW_CLASS,
+	ENVIRONMENT_PLACE_CLASS,
+} from "./composer-tokens";
 import {FileMentionMenu} from "./file-mention-menu";
 import {fileMentionOptionId} from "./file-mention-option-id";
 import {SlashCommandMenu} from "./slash-command-menu";
@@ -742,12 +748,9 @@ export function Composer({
 					)}
 				</div>
 			) : (
-				<div data-testid="epitaxy-environment-bar" className="@container pt-1">
-					<div
-						data-testid="environment-bar-row"
-						className="flex min-h-6 items-center gap-x-1 gap-y-1.5 @max-[28.75rem]:flex-wrap px-2.5 text-[13px]/[20px] text-secondary [--cds-h-control:1.5rem]"
-					>
-						<div className="flex min-w-0 items-center @max-[28.75rem]:basis-full">{environment}</div>
+				<div data-testid="epitaxy-environment-bar" className={ENVIRONMENT_BAR_CLASS}>
+					<div data-testid="environment-bar-row" className={ENVIRONMENT_BAR_ROW_CLASS}>
+						<div className={ENVIRONMENT_PLACE_CLASS}>{environment}</div>
 						{chin && <ComposerChin state={chin} launch={launchControls} />}
 					</div>
 				</div>

@@ -3,6 +3,7 @@ import {Check, ChevronDown, Folder} from "lucide-react";
 import {type KeyboardEvent, useId, useRef, useState} from "react";
 
 import type {StartProject} from "../../lib/palette-start-session";
+import {PLACE_CHIP_CLASS} from "../composer-tokens";
 
 /*
  * The home composer's folder picker, copied from claude.ai/code's repository
@@ -12,10 +13,6 @@ import type {StartProject} from "../../lib/palette-start-session";
  * The cloud-only "Troubleshoot GitHub connection" and "Refresh list" rows have
  * no local equivalent and are omitted.
  */
-
-/** Upstream's environment-bar place button: a 24px ghost control with a 16px icon. */
-const CHIP_CLASS =
-	"flex h-6 max-w-[240px] min-w-0 items-center gap-1 rounded-r6 px-1.5 text-[13px]/[20px] text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary focus-visible:shadow-[0_0_0_2px_var(--accent-100)] focus-visible:outline-none";
 
 const POPUP_CLASS =
 	"flex h-[360px] max-h-[var(--available-height)] w-[320px] max-w-[calc(100vw-32px)] flex-col rounded-r7 bg-[var(--menu-bg)] p-1 text-[13px]/[19px] text-primary shadow-[var(--menu-shadow)] outline-none";
@@ -117,7 +114,7 @@ export function ProjectPicker({projects, selected, onSelect, variant = "chip"}: 
 					aria-label={selected === undefined ? "Select project" : `Folder: ${selected.name}`}
 					aria-haspopup="dialog"
 					aria-expanded={open}
-					className={CHIP_CLASS}
+					className={PLACE_CHIP_CLASS}
 				>
 					<Folder aria-hidden="true" className="-ms-1 size-4 shrink-0" />
 					<span className="truncate">{selected?.name ?? "Select project…"}</span>

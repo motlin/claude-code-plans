@@ -2,6 +2,7 @@ import {useRouter} from "@tanstack/react-router";
 import {sessionScrollKey} from "../lib/session-route-location";
 import {SessionTileGeometryReadyContext} from "./session-tile-geometry-context";
 import {useScrollGutterVar} from "../hooks/use-scroll-gutter-var";
+import {SESSION_TILE_CLASS} from "./dock-tokens";
 import {useCallback, useLayoutEffect, useRef, type ReactNode, type Ref, type RefObject} from "react";
 
 /** The one live chat tile's offset while a pane move reparents it; never a cross-route cache. */
@@ -114,10 +115,7 @@ export function SessionTileFrame({
 	};
 
 	return (
-		<div
-			className="@container flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-r7 bg-surface-2 shadow-panel-sm"
-			{...(railDocked ? {"data-session-rail-docked": ""} : {})}
-		>
+		<div className={SESSION_TILE_CLASS} {...(railDocked ? {"data-session-rail-docked": ""} : {})}>
 			<div className="shrink-0">{header}</div>
 			<div className="relative flex min-h-0 flex-1 flex-col">
 				<div

@@ -18,8 +18,18 @@ import {
 	COMPOSER_CARD_CLASS,
 	COMPOSER_CHIN_CLASS,
 	EFFORT_LABEL_CLASS,
+	ENVIRONMENT_BAR_CLASS,
+	ENVIRONMENT_BAR_ROW_CLASS,
+	ENVIRONMENT_PLACE_CLASS,
+	PLACE_CHIP_CLASS,
 	USAGE_RING_CLASS,
 } from "../src/components/composer-tokens";
+import {
+	HOME_DOCK_CLASS,
+	SESSION_DOCK_COLUMN_CLASS,
+	SESSION_FOOTER_CLASS,
+	SESSION_TILE_CLASS,
+} from "../src/components/dock-tokens";
 
 /** Hydrates the client's fallback, which has no labels, and reports its chin before the fallback removes itself. */
 function ProbeFallback({onHydrated}: {onHydrated: (chin: Element) => void}) {
@@ -378,6 +388,77 @@ describe("AppShellFallback", () => {
 			],
 			ring: USAGE_RING_CLASS,
 			ringSize: ["14", "14"],
+		});
+	});
+});
+
+describe("AppShellFallback dock frame", () => {
+	it("docks the session composer where the hydrated one lands: the session tile shell, the chat tile, the footer, its pt-2 and the dock column", () => {
+		const host = document.createElement("div");
+		host.innerHTML = renderToStaticMarkup(<AppShellFallback pathname="/session/example-alice" />);
+		const composer = host.querySelector('[data-cds="ChatComposer"]')!;
+		const dock = composer.parentElement;
+		const gap = dock?.parentElement;
+		const footer = gap?.parentElement;
+		const tile = footer?.parentElement;
+
+		expect({
+			dock: dock?.className,
+			gap: gap?.className,
+			footer: footer?.className,
+			tile: tile?.className,
+			shell: tile?.parentElement?.parentElement?.getAttribute("data-route-tile-shell"),
+			skeletonInTile: tile?.querySelector('[data-testid="session-skeleton"]') !== null,
+			oldColumn: host.querySelector(".chat-column.pb-4"),
+		}).toStrictEqual({
+			dock: SESSION_DOCK_COLUMN_CLASS,
+			gap: "pt-2",
+			footer: SESSION_FOOTER_CLASS,
+			tile: SESSION_TILE_CLASS,
+			shell: "session",
+			skeletonInTile: true,
+			oldColumn: null,
+		});
+	});
+
+	it("docks the home composer as the hydrated home does: the home dock's bottom inset, and the environment bar with a place chip before the mode instead of the chin", () => {
+		const host = document.createElement("div");
+		host.innerHTML = renderToStaticMarkup(
+			<AppShellFallback
+				pathname="/"
+				chin={resolveShellChinLabels({
+					model: "opus",
+					effortLevel: "high",
+					defaultMode: "auto",
+					bypassPermissionsAllowed: false,
+				})}
+			/>,
+		);
+		const composer = host.querySelector('[data-cds="ChatComposer"]')!;
+		const bar = composer.querySelector("[data-fallback-environment-bar]");
+		const row = bar?.firstElementChild;
+		const [place, mode, end] = Array.from(row?.children ?? []);
+
+		expect({
+			dock: composer.parentElement?.className,
+			chin: composer.querySelector('[data-cds="ChatComposerChin"]'),
+			bar: bar?.className,
+			row: row?.className,
+			place: place?.className,
+			chip: place?.firstElementChild?.className,
+			mode: mode?.textContent,
+			end: end?.textContent,
+			readouts: chinReadouts(bar!),
+		}).toStrictEqual({
+			dock: HOME_DOCK_CLASS,
+			chin: null,
+			bar: ENVIRONMENT_BAR_CLASS,
+			row: ENVIRONMENT_BAR_ROW_CLASS,
+			place: ENVIRONMENT_PLACE_CLASS,
+			chip: PLACE_CHIP_CLASS,
+			mode: "Auto",
+			end: "Opus 5.5 High",
+			readouts: ["+", "Auto", "Opus 5.5 High"],
 		});
 	});
 });

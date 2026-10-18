@@ -27,3 +27,17 @@ export const USAGE_RING_CLASS = `${CHIN_BUTTON_CLASS} aspect-square`;
 
 /** The card's 28px + button. */
 export const ADD_BUTTON_CLASS = CHIN_BUTTON_CLASS.replace("h-6", "size-7");
+
+/** The home composer's environment bar, which takes the chin's place under the card. */
+export const ENVIRONMENT_BAR_CLASS = "@container pt-1";
+
+/** The environment bar's row: the place controls, then the chin's mode, model and ring. */
+export const ENVIRONMENT_BAR_ROW_CLASS =
+	"flex min-h-6 items-center gap-x-1 gap-y-1.5 @max-[28.75rem]:flex-wrap px-2.5 text-[13px]/[20px] text-secondary [--cds-h-control:1.5rem]";
+
+/** The place controls' slot, a line of its own when the bar is narrow. */
+export const ENVIRONMENT_PLACE_CLASS = "flex min-w-0 items-center @max-[28.75rem]:basis-full";
+
+/** Upstream's environment-bar place button: a 24px ghost control with a 16px icon. */
+export const PLACE_CHIP_CLASS =
+	"flex h-6 max-w-[240px] min-w-0 items-center gap-1 rounded-r6 px-1.5 text-[13px]/[20px] text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary focus-visible:shadow-[0_0_0_2px_var(--accent-100)] focus-visible:outline-none";

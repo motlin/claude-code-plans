@@ -1,6 +1,7 @@
 import {ArrowDown, ChevronDown} from "lucide-react";
 import {useCallback, useEffect, useRef, useState, type MouseEvent, type ReactNode, type RefObject} from "react";
 import {findScrollContainer} from "./scroll-container";
+import {SESSION_DOCK_COLUMN_CLASS} from "./dock-tokens";
 
 /** How far above the end the reader must be before the pill appears. */
 const AWAY_FROM_BOTTOM_PIXELS = 100;
@@ -76,7 +77,7 @@ export function SessionDock({
 
 	if (needsInput) {
 		return (
-			<div className="chat-dock-column relative flex flex-col gap-1.5">
+			<div className={SESSION_DOCK_COLUMN_CLASS}>
 				<button
 					type="button"
 					aria-label="Needs your input. Scroll to the request"
@@ -98,7 +99,7 @@ export function SessionDock({
 	}
 
 	return (
-		<div className="chat-dock-column relative flex flex-col gap-1.5">
+		<div className={SESSION_DOCK_COLUMN_CLASS}>
 			<button
 				type="button"
 				aria-label="Scroll to bottom"

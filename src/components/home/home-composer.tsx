@@ -1,6 +1,7 @@
 import {useQuery} from "@tanstack/react-query";
 import {useNavigate} from "@tanstack/react-router";
 import {useEffect, useMemo, useRef, useState} from "react";
+import {HOME_DOCK_CLASS} from "../dock-tokens";
 
 import {useActiveSessionsIfAvailable} from "../../hooks/use-claude-events";
 import {slashCommandsQueryOptions} from "../../lib/api/commands";
@@ -109,7 +110,7 @@ export function HomeComposer() {
 	}
 
 	return (
-		<div ref={rootRef} data-home-composer className="pb-[var(--home-dock-bottom,24px)]">
+		<div ref={rootRef} data-home-composer className={HOME_DOCK_CLASS}>
 			{/* Upstream's home sets the weekly pace banner above the composer */}
 			<div className="pb-1.5 empty:hidden">
 				<UsagePaceBanner />
