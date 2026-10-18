@@ -7,6 +7,7 @@ import {ClaudeInChromeRenderer} from "../src/components/tool-renderers/claude-in
 import {GithubRenderer} from "../src/components/tool-renderers/github-renderer";
 import {PlaywrightRenderer} from "../src/components/tool-renderers/playwright-renderer";
 import type {ClientToolCall} from "../src/components/tool-renderers/types";
+import {TOUCH_REVEAL} from "../src/lib/touch-reveal";
 
 function toolCall(name: string, input: Record<string, unknown>, result: string, isError?: boolean): ClientToolCall {
 	const call: ClientToolCall = {
@@ -21,8 +22,7 @@ function toolCall(name: string, input: Record<string, unknown>, result: string, 
 	return call;
 }
 
-const HOVER_REVEAL_CLASS =
-	"opacity-0 group-hover/body:opacity-100 focus-within:opacity-100 [transition:opacity_150ms_cubic-bezier(0.215,0.61,0.355,1)] motion-reduce:transition-none";
+const HOVER_REVEAL_CLASS = `opacity-0 group-hover/body:opacity-100 focus-within:opacity-100 [transition:opacity_150ms_cubic-bezier(0.215,0.61,0.355,1)] motion-reduce:transition-none ${TOUCH_REVEAL}`;
 
 const CASES = [
 	{

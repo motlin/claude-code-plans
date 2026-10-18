@@ -4,6 +4,7 @@ import {useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, typ
 import {writeClipboardText} from "../../lib/clipboard";
 import {resourceCoverageNote} from "../../lib/session-resources";
 import {getFileSourceKey, type FileEntry, type SessionFiles} from "../../lib/session-files";
+import {TOUCH_REVEAL} from "../../lib/touch-reveal";
 import {JumpChips} from "../jump-chips";
 import {type FileSourceSelection, sessionFileLabel} from "./session-file-sources";
 
@@ -41,7 +42,7 @@ function FileRow({file, label, open, copied, onOpen, onCopy}: FileRowProps) {
 					aria-label={`Copy ${file.absolutePath}`}
 					title={copied ? "Copied" : "Copy absolute path"}
 					onClick={() => void onCopy(file.absolutePath)}
-					className="flex size-5 shrink-0 items-center justify-center rounded text-t6 opacity-0 transition-colors group-hover/file:opacity-100 group-focus-within/file:opacity-100 hover:bg-fill-control hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100"
+					className={`flex size-5 shrink-0 items-center justify-center rounded text-t6 opacity-0 transition-colors group-hover/file:opacity-100 group-focus-within/file:opacity-100 hover:bg-fill-control hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100 ${TOUCH_REVEAL}`}
 				>
 					<Copy className="size-3" aria-hidden="true" />
 				</button>

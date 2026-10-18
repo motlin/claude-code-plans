@@ -18,6 +18,7 @@ import {ToastProvider} from "../src/components/toast";
 import {decodeFilePath} from "../src/lib/api/file";
 import type {SessionFilesResponse} from "../src/lib/api/session-files";
 import {writeClipboardText} from "../src/lib/clipboard";
+import {TOUCH_REVEAL} from "../src/lib/touch-reveal";
 import type {SessionFiles} from "../src/lib/session-files";
 import {installLocalStorage} from "./fake-storage";
 
@@ -374,6 +375,14 @@ describe("Session mode rows", () => {
 		expect(within(pane).getByRole("note").textContent).toBe(
 			"Counted from the loaded messages only — 3200 earlier records have not been scanned. Load earlier messages to include them.",
 		);
+	});
+
+	it("reveals the hover-only copy button on touch", async () => {
+		const pane = await openPane();
+		await switchMode(pane, "Session");
+		const copyButton = within(pane).getByRole("button", {name: "Copy /home/alice/example/agent.ts"});
+
+		expect(copyButton.className.includes(TOUCH_REVEAL)).toBe(true);
 	});
 
 	it("copies the absolute path and confirms only a successful write", async () => {

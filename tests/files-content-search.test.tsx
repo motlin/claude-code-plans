@@ -17,6 +17,7 @@ import {
 	windowSnippet,
 } from "../src/lib/files-content-search";
 import {installLocalStorage} from "./fake-storage";
+import {TOUCH_REVEAL} from "../src/lib/touch-reveal";
 
 class FakeObserver {
 	observe() {}
@@ -281,6 +282,18 @@ describe("FilesTree content search", () => {
 			placeholder: "Search files…",
 			hint: "Results update as you type. Start with ? to search file contents. Press Down Arrow to go to results, and Up Arrow on the first result to return here.",
 		});
+	});
+
+	it("reveals each match's hover-only Ask about this button on touch", async () => {
+		renderTree();
+		fireEvent.change(filterInput(), {target: {value: "?needle"}});
+		await screen.findByText("a.ts");
+
+		expect(
+			screen
+				.getAllByRole("button", {name: "Ask about this"})
+				.every((button) => button.className.includes(TOUCH_REVEAL)),
+		).toBe(true);
 	});
 
 	it("prompts for a query after a bare ?", async () => {

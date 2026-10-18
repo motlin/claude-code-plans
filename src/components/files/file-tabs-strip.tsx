@@ -3,6 +3,7 @@ import {type KeyboardEvent, useId} from "react";
 
 import type {AttachContextHandler} from "../../lib/context-attach";
 import type {FileTabsAction, FileTabsState} from "../../lib/file-tabs";
+import {TOUCH_REVEAL} from "../../lib/touch-reveal";
 import {getFileIcon} from "../file-icon";
 import {ContextMenu, ContextMenuTrigger, MenuContent} from "../ui/menu";
 import {Tooltip} from "../ui/tooltip";
@@ -99,7 +100,7 @@ export function FileTabsStrip({state, dispatch, cwd, onAttachContext, onRevealIn
 								onClick={() => {
 									dispatch({type: "close", path: tab.path});
 								}}
-								className={`absolute right-0 flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-r3 transition-opacity group-hover/tab:opacity-100 hover:bg-fill-ghost-hover hover:text-primary ${active ? "text-primary opacity-100" : "text-t6 opacity-0"}`}
+								className={`absolute right-0 flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-r3 transition-opacity group-hover/tab:opacity-100 hover:bg-fill-ghost-hover hover:text-primary ${active ? "text-primary opacity-100" : `text-t6 opacity-0 ${TOUCH_REVEAL}`}`}
 							>
 								<X aria-hidden="true" className="size-3" />
 							</button>

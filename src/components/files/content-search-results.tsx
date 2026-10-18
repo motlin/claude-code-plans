@@ -4,6 +4,7 @@ import {type KeyboardEvent, type RefObject, useEffect, useRef} from "react";
 
 import {useDebouncedValue} from "../../hooks/use-debounced-value";
 import {fileSearchQueryOptions} from "../../lib/api/search";
+import {TOUCH_REVEAL} from "../../lib/touch-reveal";
 import {
 	askAboutPrompt,
 	type ContentSearchMatch,
@@ -193,7 +194,7 @@ export function ContentSearchResults({
 												event.stopPropagation();
 												onAsk(askAboutPrompt(group.relPath, match.line, match.text));
 											}}
-											className="flex size-5 shrink-0 cursor-pointer items-center justify-center self-center rounded-r3 text-t6 opacity-0 group-hover/match:opacity-100 group-focus-visible/match:opacity-100 hover:text-primary"
+											className={`flex size-5 shrink-0 cursor-pointer items-center justify-center self-center rounded-r3 text-t6 opacity-0 group-hover/match:opacity-100 group-focus-visible/match:opacity-100 hover:text-primary ${TOUCH_REVEAL}`}
 										>
 											<MessageSquare aria-hidden="true" className="size-3" />
 										</button>

@@ -9,6 +9,7 @@ import {CopyButton, KeyValueCard, TerminalOutput} from "../src/components/tool-r
 import {WriteRenderer} from "../src/components/tool-renderers/write-renderer";
 import type {ClientToolCall} from "../src/components/tool-renderers/types";
 import {processTranscript} from "../src/lib/transcript";
+import {TOUCH_REVEAL} from "../src/lib/touch-reveal";
 
 vi.mock("../src/components/settings-context", () => ({
 	useSettings: () => ({settings: {showDebug: false}}),
@@ -191,6 +192,12 @@ describe("CopyButton", () => {
 		});
 
 		expect(screen.getByRole("tooltip").textContent).toBe("Copy");
+	});
+
+	it("reveals its hover-only wrapper on touch", () => {
+		const {container} = render(<CopyButton text="alice" />);
+
+		expect(container.firstElementChild?.className.includes(TOUCH_REVEAL)).toBe(true);
 	});
 
 	it("sizes the default button 24x24 with a 16px icon", () => {

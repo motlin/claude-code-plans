@@ -17,6 +17,7 @@ import {Route as StarredRoute} from "../src/routes/starred";
 import type {SessionListItem} from "../src/lib/api/sessions";
 import {movePin, pin, readPinState} from "../src/lib/pin-store";
 import {installLocalStorage} from "./fake-storage";
+import {TOUCH_REVEAL} from "../src/lib/touch-reveal";
 
 function session(id: string, title: string, mtime: string): SessionListItem {
 	return {
@@ -111,6 +112,14 @@ describe("PinnedSessionsPage", () => {
 		await waitFor(() => {
 			expect(titles()).toStrictEqual(["Carol session", "Alice session", "Bob session"]);
 		});
+	});
+
+	it("reveals the hover-only unpin button on touch", async () => {
+		pin("session-alice");
+		await renderPage();
+		const unpin = await screen.findByRole("button", {name: "Unpin"});
+
+		expect(unpin.className.includes(TOUCH_REVEAL)).toBe(true);
 	});
 
 	it("unpins from the hover button and follows other tabs", async () => {

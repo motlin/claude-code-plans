@@ -5,6 +5,7 @@ import {useMemo} from "react";
 import {type SessionListItem, sessionsByIdsQueryOptions} from "../lib/api/sessions";
 import {orderedPins, unpin, usePins} from "../lib/pin-store";
 import {formatCount} from "../lib/pluralize";
+import {TOUCH_REVEAL} from "../lib/touch-reveal";
 import {ListPageHeader} from "./list-page-header";
 import {SessionRowStatusDot} from "./session-unread-control";
 
@@ -80,7 +81,7 @@ export function PinnedSessionsPage() {
 									e.preventDefault();
 									unpin(session.id);
 								}}
-								className="absolute right-2 top-3 cursor-pointer text-secondary opacity-0 transition-opacity hover:text-primary group-hover:opacity-100"
+								className={`absolute right-2 top-3 cursor-pointer text-secondary opacity-0 transition-opacity hover:text-primary group-hover:opacity-100 ${TOUCH_REVEAL}`}
 								title="Unpin"
 								aria-label="Unpin"
 							>

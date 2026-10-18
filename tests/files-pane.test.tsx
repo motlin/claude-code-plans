@@ -12,6 +12,7 @@ import {TileHost} from "../src/components/panes/tile-host";
 import {SettingsProvider} from "../src/components/settings-provider";
 import {writeClipboardText} from "../src/lib/clipboard";
 import type {SessionFiles} from "../src/lib/session-files";
+import {TOUCH_REVEAL} from "../src/lib/touch-reveal";
 import {installLocalStorage} from "./fake-storage";
 
 vi.mock("../src/lib/clipboard", () => ({
@@ -476,6 +477,23 @@ describe("Files pane tabs", () => {
 			closeRadius: true,
 		});
 	});
+	it("reveals an inactive tab's hover-only close button on touch", () => {
+		render(
+			<FileTabsStrip
+				state={{
+					tabs: [
+						{path: "/w/a.ts", preview: false},
+						{path: "/w/b.ts", preview: false},
+					],
+					active: "/w/a.ts",
+				}}
+				dispatch={() => {}}
+			/>,
+		);
+
+		expect(screen.getByRole("button", {name: "Close b.ts"}).className.includes(TOUCH_REVEAL)).toBe(true);
+	});
+
 	it("shows the name and its folder in a tooltip and describes the close and move keys, without a native title", async () => {
 		render(
 			<FileTabsStrip

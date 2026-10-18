@@ -12,6 +12,7 @@ import {fileViewerPath} from "../src/lib/api/file";
 import {CHANGES_SCOPE_REQUEST_EVENT} from "../src/lib/changes-scope-request";
 import {loadChangesScope} from "../src/lib/pane-layout";
 import {processTranscript} from "../src/lib/transcript";
+import {TOUCH_REVEAL} from "../src/lib/touch-reveal";
 import {aggregateTurnEdits, collectTurnChanges, type TurnChanges} from "../src/lib/turn-changes";
 import {installLocalStorage} from "./fake-storage";
 
@@ -321,6 +322,16 @@ describe("TurnChangesCard", () => {
 		} finally {
 			vi.useRealTimers();
 		}
+	});
+
+	it("reveals each row's hover-only chevron on touch", () => {
+		render(<TurnChangesCard sessionId="test-session" changes={changesWith(2)} />);
+		const chevrons = screen.getAllByRole("link").map((link) => link.querySelector("svg:last-of-type"));
+
+		expect(chevrons.map((chevron) => chevron?.getAttribute("class")?.includes(TOUCH_REVEAL))).toStrictEqual([
+			true,
+			true,
+		]);
 	});
 
 	it("keeps the multi-file header and its 8px top margin", () => {

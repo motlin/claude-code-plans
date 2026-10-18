@@ -3,6 +3,7 @@ import {useState} from "react";
 
 import {fileViewerPath} from "../lib/api/file";
 import {requestChangesScope} from "../lib/changes-scope-request";
+import {TOUCH_REVEAL} from "../lib/touch-reveal";
 import type {TurnChanges} from "../lib/turn-changes";
 import {useOptionalPaneHost} from "./panes/pane-host-context";
 import {ChevronIcon} from "./tool-renderers/shared";
@@ -48,7 +49,7 @@ function FileRowContent({path, added, removed}: {path: string; added: number; re
 			<Stats added={added} removed={removed} className={STAT_TEXT} />
 			<ChevronRight
 				aria-hidden="true"
-				className="ml-auto size-3.5 shrink-0 text-ink-muted opacity-0 group-hover/row:opacity-100"
+				className={`ml-auto size-3.5 shrink-0 text-ink-muted opacity-0 group-hover/row:opacity-100 ${TOUCH_REVEAL}`}
 			/>
 		</>
 	);

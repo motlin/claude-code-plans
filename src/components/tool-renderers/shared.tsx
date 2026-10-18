@@ -6,6 +6,7 @@ import {parseAnsiCodes} from "../../lib/ansi-codes";
 import {handleCodeCopyClick} from "../../lib/code-copy";
 import {formatDuration} from "../../lib/format-duration";
 import {CHECK_ICON_PATH, COPY_ICON_PATH} from "../../lib/icon-paths";
+import {TOUCH_REVEAL} from "../../lib/touch-reveal";
 import {FileRefTarget} from "../file-refs";
 import markdownStyles from "../markdown-article.module.css";
 import {Tooltip} from "../ui/tooltip";
@@ -306,7 +307,9 @@ export function CopyButton({text, label = "Copy", size}: {text: string; label?: 
 	const iconSize = size === "xs" ? 12 : 16;
 
 	return (
-		<div className="opacity-0 group-hover/body:opacity-100 focus-within:opacity-100 [transition:opacity_150ms_cubic-bezier(0.215,0.61,0.355,1)] motion-reduce:transition-none">
+		<div
+			className={`opacity-0 group-hover/body:opacity-100 focus-within:opacity-100 [transition:opacity_150ms_cubic-bezier(0.215,0.61,0.355,1)] motion-reduce:transition-none ${TOUCH_REVEAL}`}
+		>
 			<Tooltip content={label}>
 				<button
 					type="button"
