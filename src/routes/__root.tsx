@@ -51,6 +51,7 @@ import {
 import appCss from "../styles/globals.css?url";
 import {THEME_INIT_SCRIPT} from "../lib/theme-init";
 import {startLaunchJourneys} from "../lib/perf/field-journeys";
+import {installVisualViewportHeight} from "../lib/visual-viewport-height";
 
 export const Route = createRootRouteWithContext<{queryClient: QueryClient}>()({
 	ssr: false,
@@ -154,6 +155,8 @@ function RootLayout({children}: Readonly<{children: ReactNode}>) {
 	useEffect(() => {
 		startLaunchJourneys(window.location.pathname);
 	}, []);
+	// Fit the app frame above the soft keyboard on touch devices.
+	useEffect(() => installVisualViewportHeight(), []);
 
 	return (
 		<>
