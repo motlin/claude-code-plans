@@ -45,13 +45,13 @@ const PLACEHOLDER: Record<ComposerVariant, string> = {
 };
 
 const CARD_CLASS =
-	"relative z-[1] flex cursor-text flex-col gap-y-1.5 rounded-card bg-surface-3 p-2.5 shadow-[var(--composer-shadow-idle)] transition-shadow focus-within:shadow-[var(--composer-shadow-focus)]";
+	"relative z-[1] flex cursor-text flex-col gap-y-1.5 rounded-composer bg-surface-3 p-2 shadow-[var(--composer-shadow-idle)] transition-shadow focus-within:shadow-[var(--composer-shadow-focus)]";
 
 const EDITOR_CLASS =
-	"block w-full resize-none overflow-y-auto bg-transparent py-0.5 pl-1 font-sans text-[14px]/[20px] text-primary [field-sizing:content] placeholder:text-[rgb(137,135,129)] focus:outline-none disabled:opacity-50 pointer-coarse:text-[16px]";
+	"block w-full resize-none overflow-y-auto bg-transparent py-1 pl-1 font-sans text-[14px]/[20px] text-primary [field-sizing:content] placeholder:text-[rgb(137,135,129)] focus:outline-none disabled:opacity-50 pointer-coarse:text-[16px]";
 
 const ICON_BUTTON_CLASS =
-	"flex aspect-square size-6 items-center justify-center rounded-r5 text-primary transition-colors hover:bg-fill-ghost-hover focus-visible:shadow-[0_0_0_2px_var(--accent-100)] focus-visible:outline-none disabled:pointer-events-none disabled:opacity-40";
+	"flex aspect-square size-7 items-center justify-center rounded-r5 text-primary transition-colors hover:bg-fill-ghost-hover focus-visible:shadow-[0_0_0_2px_var(--accent-100)] focus-visible:outline-none disabled:pointer-events-none disabled:opacity-40";
 
 /** Prompts waiting for the live session to go idle, with their chip actions. */
 export interface ComposerQueueView {
@@ -212,7 +212,7 @@ const SendSlot = memo(function SendSlot({
 				: undefined
 			: {content: forkLabel, shortcut: forkKeys};
 	return (
-		<div className="absolute right-0 bottom-0 flex min-h-6 items-center pl-1.5">
+		<div className="absolute right-0 bottom-0 flex min-h-7 items-center pl-1.5">
 			{isStreaming || onStop !== undefined ? (
 				<Tooltip content="Stop response" {...(isStreaming ? {} : {shortcut: "escape"})}>
 					<button
@@ -239,7 +239,7 @@ const SendSlot = memo(function SendSlot({
 				</Tooltip>
 			) : (
 				<div data-send-spacer aria-hidden="true" inert className="invisible flex">
-					<span className="size-6" />
+					<span className="size-7" />
 				</div>
 			)}
 			{deliveryHint && (
@@ -639,13 +639,13 @@ export function Composer({
 				}}
 			>
 				{dragging && (
-					<div className="pointer-events-none absolute inset-0 z-[2] flex items-center justify-center rounded-card border border-dashed border-accent-100 bg-surface-3/90 text-footnote text-secondary">
+					<div className="pointer-events-none absolute inset-0 z-[2] flex items-center justify-center rounded-composer border border-dashed border-accent-100 bg-surface-3/90 text-footnote text-secondary">
 						Drop files here
 					</div>
 				)}
 				<div className={`relative pr-[30px] ${chin ? "pl-[30px]" : ""}`}>
 					{chin && (
-						<div data-composer-add="" className="absolute left-0 bottom-0 flex min-h-6 items-center">
+						<div data-composer-add="" className="absolute left-0 bottom-0 flex min-h-7 items-center">
 							<ComposerAddMenu onInsertSlash={insertSlash} onAddFiles={openFilePicker} />
 						</div>
 					)}
@@ -675,7 +675,7 @@ export function Composer({
 					{argumentHint !== null && (
 						<div
 							aria-hidden="true"
-							className={`pointer-events-none absolute inset-y-0 right-[30px] overflow-hidden py-0.5 pl-1 font-sans text-[14px]/[20px] break-words whitespace-pre-wrap pointer-coarse:text-[16px] ${chin ? "left-[30px]" : "left-0"}`}
+							className={`pointer-events-none absolute inset-y-0 right-[30px] overflow-hidden py-1 pl-1 font-sans text-[14px]/[20px] break-words whitespace-pre-wrap pointer-coarse:text-[16px] ${chin ? "left-[30px]" : "left-0"}`}
 						>
 							<span className="invisible">{prompt}</span>
 							<span data-testid="slash-argument-hint" className="text-[rgb(137,135,129)]">
@@ -711,7 +711,7 @@ export function Composer({
 						rows={1}
 						enterKeyHint="enter"
 						className={EDITOR_CLASS}
-						style={{minHeight: "24px", maxHeight: "min(24rem, 40svh)"}}
+						style={{minHeight: "28px", maxHeight: "min(24rem, 40svh)"}}
 					/>
 					<SendSlot
 						isStreaming={isStreaming}
@@ -729,7 +729,7 @@ export function Composer({
 			</div>
 			<div
 				data-cds="ChatComposerChin"
-				className="mt-1.5 flex min-h-5 items-center justify-between ps-[7px] pe-2.5 text-[12px]/[15px] text-secondary"
+				className="@container mt-1.5 flex min-h-6 items-center justify-between ps-[7px] pe-2.5 text-[13px]/[20px] text-secondary"
 			>
 				{chin && (
 					<ComposerChin

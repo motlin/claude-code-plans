@@ -116,7 +116,7 @@ function UsageRing({usage, onShowBreakdown}: {usage: ComposerUsage | null; onSho
 					aria-label={formatUsageAriaLabel(usage, now)}
 					className={`${CHIN_BUTTON_CLASS} aspect-square`}
 				>
-					<svg width="12" height="12" viewBox="0 0 12 12" className="-rotate-90" aria-hidden="true">
+					<svg width="14" height="14" viewBox="0 0 12 12" className="-rotate-90" aria-hidden="true">
 						<circle cx="6" cy="6" r="5" fill="none" strokeWidth="2" stroke="var(--color-alpha-2)" />
 						<circle
 							data-usage-ring-arc
@@ -172,8 +172,8 @@ export const ComposerAddMenu = memo(function ComposerAddMenu({
 	return (
 		<Menu>
 			<Tooltip content="Add" side="top">
-				<MenuTrigger aria-label="Add" className={`${CHIN_BUTTON_CLASS.replace("h-5", "h-6")} w-6`}>
-					<Plus className="size-4" aria-hidden="true" />
+				<MenuTrigger aria-label="Add" className={CHIN_BUTTON_CLASS.replace("h-6", "size-7")}>
+					<Plus className="size-[18px]" aria-hidden="true" />
 				</MenuTrigger>
 			</Tooltip>
 			<MenuContent side="top">
@@ -208,7 +208,7 @@ function effortText(effort: string): string {
 
 /**
  * The claude.ai/code composer chin: the permission mode on the left; the model +
- * effort picker and the 12px context-usage ring on the right. Mode, model and
+ * effort picker and the 14px context-usage ring on the right. Mode, model and
  * effort open menus whose choices apply to the live pane or the next fork or launch.
  */
 export const ComposerChin = memo(function ComposerChin({

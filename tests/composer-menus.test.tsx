@@ -473,7 +473,7 @@ describe("Composer chin tooltips and contrast", () => {
 		}
 	});
 
-	it("reads the model and effort in primary ink, the rest in secondary, with r4 corners and a 16px +", () => {
+	it("reads the model in primary ink, the rest in secondary, with r4 corners and an 18px +", () => {
 		renderComposer();
 		const classes = (element: Element | null) => element?.getAttribute("class")?.split(" ") ?? [];
 		const add = screen.getByRole("button", {name: "Add"});
@@ -492,10 +492,10 @@ describe("Composer chin tooltips and contrast", () => {
 			mode: pick(document.querySelector("[data-chin-mode]")),
 			model: pick(screen.getByRole("button", {name: "Model: Opus 5.5, Effort: High"})),
 		}).toStrictEqual({
-			add: {ink: ["text-secondary"], radius: ["rounded-r4"], lineHeight: ["leading-[17px]"]},
-			plusIcon: ["size-4"],
-			mode: {ink: ["text-secondary"], radius: ["rounded-r4"], lineHeight: ["leading-[17px]"]},
-			model: {ink: ["text-primary"], radius: ["rounded-r4"], lineHeight: ["leading-[17px]"]},
+			add: {ink: ["text-secondary"], radius: ["rounded-r4"], lineHeight: ["leading-[20px]"]},
+			plusIcon: ["size-[18px]"],
+			mode: {ink: ["text-secondary"], radius: ["rounded-r4"], lineHeight: ["leading-[20px]"]},
+			model: {ink: ["text-primary"], radius: ["rounded-r4"], lineHeight: ["leading-[20px]"]},
 		});
 	});
 

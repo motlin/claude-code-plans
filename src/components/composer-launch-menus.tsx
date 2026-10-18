@@ -37,7 +37,7 @@ import {Tooltip} from "./ui/tooltip";
  */
 
 export const CHIN_BUTTON_CLASS =
-	"flex h-5 min-w-0 items-center justify-center rounded-r4 leading-[17px] text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary focus-visible:shadow-[0_0_0_2px_var(--accent-100)] focus-visible:outline-none";
+	"flex h-6 min-w-0 items-center justify-center rounded-r4 leading-[20px] text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary focus-visible:shadow-[0_0_0_2px_var(--accent-100)] focus-visible:outline-none";
 
 const CHIN_TRIGGER_CLASS = `${CHIN_BUTTON_CLASS} truncate px-1.5`;
 
@@ -167,7 +167,9 @@ export function ModelMenu({
 				aria-label={`Model: ${currentLabel}, Effort: ${effortLabel}`}
 				className={CHIN_PRIMARY_TRIGGER_CLASS}
 			>
-				{currentLabel} {effortLabel}
+				<span className="truncate">{currentLabel}</span>
+				{/* Upstream mutes the effort and drops it when the chin is under 280px. */}
+				<span className="shrink-0 whitespace-pre text-ink-muted @max-[280px]:hidden"> {effortLabel}</span>
 			</MenuTrigger>
 			<MenuContent side="top" align="end">
 				<MenuRadioGroup

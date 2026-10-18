@@ -118,7 +118,7 @@ describe("Composer", () => {
 			rows: textarea.getAttribute("rows"),
 		}).toStrictEqual({
 			maxHeight: "min(24rem, 40svh)",
-			minHeight: "24px",
+			minHeight: "28px",
 			rows: "1",
 		});
 	});
@@ -240,8 +240,64 @@ describe("Composer", () => {
 					.closest("[data-composer-add]")
 					?.className.split(" ")
 					.filter((name) => ["absolute", "left-0"].includes(name)),
-				padding: card?.className.split(" ").includes("p-2.5"),
+				padding: card?.className.split(" ").includes("p-2"),
 			}).toStrictEqual({inCard: true, inChin: false, slot: ["absolute", "left-0"], padding: true});
+		});
+
+		it("uses upstream's card and chin tokens: r14 p8 card, 28px Add and Send, 24px 13/20 chin controls", () => {
+			render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} chin={CHIN} />);
+			const classes = (element: Element | null | undefined) => element?.getAttribute("class")?.split(" ") ?? [];
+			const pick = (element: Element | null | undefined, tokens: readonly string[]) =>
+				tokens.filter((name) => classes(element).includes(name));
+			const card = document.querySelector("[data-composer-card]");
+			const add = screen.getByRole("button", {name: "Add"});
+			const textarea = screen.getByRole("textbox", {name: "Prompt"});
+			const chin = document.querySelector('[data-cds="ChatComposerChin"]');
+			const model = screen.getByRole("button", {name: /^Model:/});
+			const ring = screen.getByRole("button", {name: /^Usage:/});
+			const ringSvg = ring.querySelector("svg");
+
+			expect({
+				card: pick(card, ["rounded-composer", "p-2", "rounded-card", "p-2.5"]),
+				add: pick(add, ["size-7", "h-6", "w-6"]),
+				addIcon: pick(add.querySelector("svg"), ["size-[18px]", "size-4"]),
+				addSlot: pick(add.closest("[data-composer-add]"), ["min-h-7"]),
+				spacer: pick(document.querySelector("[data-send-spacer] > span"), ["size-7"]),
+				editor: {
+					padding: pick(textarea, ["py-1", "pl-1", "pointer-coarse:text-[16px]"]),
+					minHeight: textarea.style.minHeight,
+				},
+				chin: pick(chin, ["mt-1.5", "min-h-6", "text-[13px]/[20px]", "text-secondary"]),
+				mode: pick(document.querySelector("[data-chin-mode]"), ["h-6", "px-1.5", "text-secondary"]),
+				model: {
+					height: pick(model, ["h-6"]),
+					parts: Array.from(model.children, (part) => ({text: part.textContent, classes: classes(part)})),
+				},
+				ring: {
+					height: pick(ring, ["h-6", "aspect-square"]),
+					svg: [ringSvg?.getAttribute("width"), ringSvg?.getAttribute("height")],
+				},
+			}).toStrictEqual({
+				card: ["rounded-composer", "p-2"],
+				add: ["size-7"],
+				addIcon: ["size-[18px]"],
+				addSlot: ["min-h-7"],
+				spacer: ["size-7"],
+				editor: {padding: ["py-1", "pl-1", "pointer-coarse:text-[16px]"], minHeight: "28px"},
+				chin: ["mt-1.5", "min-h-6", "text-[13px]/[20px]", "text-secondary"],
+				mode: ["h-6", "px-1.5", "text-secondary"],
+				model: {
+					height: ["h-6"],
+					parts: [
+						{text: "Opus 5.5", classes: ["truncate"]},
+						{
+							text: " Extra",
+							classes: ["shrink-0", "whitespace-pre", "text-ink-muted", "@max-[280px]:hidden"],
+						},
+					],
+				},
+				ring: {height: ["h-6", "aspect-square"], svg: ["14", "14"]},
+			});
 		});
 
 		it("draws the ring arc from the context percentage", () => {
