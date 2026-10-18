@@ -136,6 +136,7 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps) {
 				: undefined;
 		return (
 			<QuestionCard
+				draftKey={toolCall.id}
 				questions={questions}
 				onSubmit={submit}
 				{...(route === "fork" ? {submitLabel: FORK_ANSWER_LABEL} : {})}

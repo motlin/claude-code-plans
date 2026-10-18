@@ -5,6 +5,7 @@ import {flushSync} from "react-dom";
 import type {QuestionAnswer} from "../lib/hook-events";
 import type {QuestionLike} from "../lib/ask-user-question";
 import {READ_ONLY_ANSWER_HINT} from "../lib/question-answer-route";
+import {clearQuestionCardState, readQuestionCardState, writeQuestionCardState} from "../lib/question-card-store";
 import {chooseOther, pickOption, type QuestionCardDraft, typeOther} from "../lib/question-card-draft";
 import {ApprovalActionButton} from "./approval-card";
 import {Shortcut} from "./ui/shortcut";
@@ -122,21 +123,28 @@ function useApprovalHotkey(cardRootRef: RefObject<HTMLDivElement | null>, hotkey
  * label and description split by hairlines, an Other row that reveals its text
  * box once chosen, and Skip beside Next / Submit (⌘⏎). With `onSubmit` it
  * answers one answer per question, null for a skipped one; without it every
- * control is disabled.
+ * control is disabled. With `draftKey` (upstream's `tool.draftKey ?? tool.id`) the
+ * picks, skips and page survive a remount until the card submits.
  */
 export function QuestionCard({
 	questions,
 	onSubmit,
 	submitLabel = "Submit",
+	draftKey,
 }: {
 	questions: readonly QuestionLike[];
 	onSubmit?: ((answers: Array<QuestionAnswer | null>) => Promise<void>) | undefined;
 	/** The last page's primary label: "Submit", or the fork route's explicit one. */
 	submitLabel?: string;
+	/** Where the in-progress answer is kept across remounts; the tool use id. */
+	draftKey?: string | undefined;
 }) {
-	const [page, setPage] = useState(0);
-	const [drafts, setDrafts] = useState<QuestionCardDraft[]>(() => questions.map(initialDraft));
-	const [skipped, setSkipped] = useState<boolean[]>(() => questions.map(() => false));
+	const [restored] = useState(() =>
+		draftKey === undefined ? null : readQuestionCardState(draftKey, questions.length),
+	);
+	const [page, setPage] = useState(restored?.page ?? 0);
+	const [drafts, setDrafts] = useState<QuestionCardDraft[]>(() => restored?.drafts ?? questions.map(initialDraft));
+	const [skipped, setSkipped] = useState<boolean[]>(() => restored?.skipped ?? questions.map(() => false));
 	const [sending, setSending] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const otherRef = useRef<HTMLTextAreaElement>(null);
@@ -144,6 +152,16 @@ export function QuestionCard({
 	const hotkeyRef = useRef<(() => void) | null>(null);
 	const refocusRef = useRef(false);
 	useApprovalHotkey(cardRootRef, hotkeyRef);
+	// Upstream saves the draft on every change and stops once the card has submitted.
+	const savedRef = useRef<{mounted: boolean; submitted: boolean}>({mounted: false, submitted: false});
+	useEffect(() => {
+		if (!savedRef.current.mounted) {
+			savedRef.current.mounted = true;
+			return;
+		}
+		if (draftKey === undefined || savedRef.current.submitted) return;
+		writeQuestionCardState(draftKey, {page, drafts, skipped});
+	}, [draftKey, page, drafts, skipped]);
 	const index = Math.min(page, questions.length - 1);
 	// Upstream refocuses the card root after a page change that started with focus inside it.
 	useEffect(() => {
@@ -182,9 +200,14 @@ export function QuestionCard({
 		if (onSubmit === undefined) return;
 		setError(null);
 		setSending(true);
+		savedRef.current.submitted = true;
+		if (draftKey !== undefined) clearQuestionCardState(draftKey);
 		try {
 			await onSubmit(finalDrafts.map((entry, at) => (finalSkipped[at] === true ? null : answerOf(entry))));
 		} catch (err) {
+			savedRef.current.submitted = false;
+			if (draftKey !== undefined)
+				writeQuestionCardState(draftKey, {page, drafts: finalDrafts, skipped: finalSkipped});
 			setError(err instanceof Error ? err.message : "Failed to send the answer");
 			setSending(false);
 		}
@@ -237,6 +260,7 @@ export function QuestionCard({
 			aria-label={question.question}
 			data-approval-card-root=""
 			data-approval-presentation="card"
+			{...(restored === null ? {} : {"data-skip-approval-enter": ""})}
 			className="card-ring @container relative isolate flex max-w-[480px] flex-col overflow-clip rounded-r7 outline-none"
 		>
 			<div className="flex items-center gap-3 bg-alpha-1 px-3 py-2">

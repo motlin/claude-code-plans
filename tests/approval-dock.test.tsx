@@ -465,6 +465,102 @@ describe("QuestionCard", () => {
 		expect({unanswered, answered}).toStrictEqual({unanswered: "Question 2 is unanswered", answered: null});
 	});
 
+	describe("keeping drafts and page across remounts, as upstream's per-tool draft store", () => {
+		const pickAndType = () => {
+			fireEvent.click(screen.getByRole("button", {name: /^Jest/}));
+			fireEvent.click(screen.getByRole("button", {name: /^Next/}));
+			fireEvent.click(screen.getByRole("button", {name: "Other"}));
+			fireEvent.change(screen.getByRole("textbox", {name: "Other option"}), {target: {value: "Mutation"}});
+		};
+		const snapshot = () => {
+			const card = screen.getByRole("group");
+			const onPage = {
+				question: card.getAttribute("aria-label"),
+				other: screen.queryByRole<HTMLTextAreaElement>("textbox", {name: "Other option"})?.value ?? null,
+				skipEnter: card.hasAttribute("data-skip-approval-enter"),
+			};
+			fireEvent.click(screen.getByRole("button", {name: "Show previous question"}));
+			return {
+				...onPage,
+				firstPage: within(screen.getByRole("group"))
+					.getAllByRole("button")
+					.filter((button) => button.hasAttribute("aria-pressed"))
+					.map((button) => button.getAttribute("aria-pressed")),
+			};
+		};
+
+		const snapshotFresh = () => {
+			const card = screen.getByRole("group");
+			return {
+				question: card.getAttribute("aria-label"),
+				skipEnter: card.hasAttribute("data-skip-approval-enter"),
+			};
+		};
+
+		it("restores picks, Other text and page when a card with the same key remounts", () => {
+			const first = render(<QuestionCard draftKey="remount-1" questions={QUESTIONS} onSubmit={async () => {}} />);
+			pickAndType();
+			first.unmount();
+			render(<QuestionCard draftKey="remount-1" questions={QUESTIONS} onSubmit={async () => {}} />);
+
+			expect(snapshot()).toStrictEqual({
+				question: "Which features?",
+				other: "Mutation",
+				skipEnter: true,
+				firstPage: ["false", "true", "false"],
+			});
+		});
+
+		it("restores from session storage when the in-memory store has no entry", () => {
+			window.sessionStorage.setItem(
+				"question-card-draft:stored-1",
+				JSON.stringify({
+					page: 1,
+					drafts: [
+						{selected: [1], other: "", otherChosen: false},
+						{selected: [], other: "Mutation", otherChosen: true},
+					],
+					skipped: [false, false],
+				}),
+			);
+			render(<QuestionCard draftKey="stored-1" questions={QUESTIONS} onSubmit={async () => {}} />);
+
+			expect(snapshot()).toStrictEqual({
+				question: "Which features?",
+				other: "Mutation",
+				skipEnter: true,
+				firstPage: ["false", "true", "false"],
+			});
+		});
+
+		it("starts fresh after submit", async () => {
+			const onSubmit = vi.fn<(answers: unknown[]) => Promise<void>>(async () => {});
+			const first = render(<QuestionCard draftKey="remount-2" questions={QUESTIONS} onSubmit={onSubmit} />);
+			pickAndType();
+			fireEvent.click(screen.getByRole("button", {name: /^Submit/}));
+			await vi.waitFor(() => {
+				expect(onSubmit).toHaveBeenCalledTimes(1);
+			});
+			first.unmount();
+			render(<QuestionCard draftKey="remount-2" questions={QUESTIONS} onSubmit={async () => {}} />);
+
+			expect({
+				...snapshotFresh(),
+				stored: window.sessionStorage.getItem("question-card-draft:remount-2"),
+			}).toStrictEqual({question: "Which test runner?", skipEnter: false, stored: null});
+		});
+
+		it("ignores a stored draft whose question count no longer matches", () => {
+			window.sessionStorage.setItem(
+				"question-card-draft:stale-1",
+				JSON.stringify({page: 0, drafts: [{selected: [1], other: "", otherChosen: false}], skipped: [false]}),
+			);
+			render(<QuestionCard draftKey="stale-1" questions={QUESTIONS} onSubmit={async () => {}} />);
+
+			expect(snapshotFresh()).toStrictEqual({question: "Which test runner?", skipEnter: false});
+		});
+	});
+
 	it("disables every control without onSubmit", () => {
 		render(<QuestionCard questions={QUESTIONS} />);
 

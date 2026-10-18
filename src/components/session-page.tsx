@@ -1050,6 +1050,7 @@ function SessionView({
 								<div data-hook-question="" className={`${CHAT_COLUMN_CLASS} pb-4`}>
 									<QuestionCard
 										key={hookQuestion.toolUseId}
+										draftKey={hookQuestion.toolUseId}
 										questions={hookQuestion.questions}
 										onSubmit={answerRoute === "live-pane" ? answerHookQuestion : undefined}
 									/>
