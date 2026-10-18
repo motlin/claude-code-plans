@@ -9,6 +9,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionTitlebar} from "../src/components/session-titlebar";
 import {ToastProvider} from "../src/components/toast";
 import {SESSION_STICKY_HEADER_CLASS} from "../src/components/titlebar-classes";
+import {useTitlebarFolded} from "../src/components/titlebar-folded-context";
 import {herdrPanesQueryOptions} from "../src/lib/api/herdr";
 import {sessionOpenInQueryOptions, type SessionDetailData} from "../src/lib/api/sessions";
 import {__unreadStoreTesting} from "../src/lib/unread-store";
@@ -91,7 +92,7 @@ async function flush() {
 	});
 }
 
-async function renderTitlebar(data: SessionDetailData, slots: {withSlots?: boolean} = {}) {
+async function renderTitlebar(data: SessionDetailData, slots: {withSlots?: boolean; viewOptions?: ReactNode} = {}) {
 	const queryClient = new QueryClient({
 		defaultOptions: {
 			queries: {retry: false, staleTime: Infinity, gcTime: Infinity, refetchOnMount: false},
@@ -122,6 +123,7 @@ async function renderTitlebar(data: SessionDetailData, slots: {withSlots?: boole
 						),
 					}
 				: {})}
+			{...(slots.viewOptions === undefined ? {} : {viewOptions: slots.viewOptions})}
 		/>
 	);
 	const rootRoute = createRootRoute({
@@ -362,6 +364,24 @@ describe("SessionTitlebar pill collapse", () => {
 			at560: {compact: false, srOnlyLabels: [false]},
 			at559: {compact: true, srOnlyLabels: [true]},
 		});
+	});
+});
+
+function FoldedProbe() {
+	return <output data-testid="folded">{String(useTitlebarFolded())}</output>;
+}
+
+describe("SessionTitlebar trail fold", () => {
+	it("keeps the trail toggles out of View options at 400px and folds them once the tile is 320px or narrower", async () => {
+		await renderTitlebar(baseDetail, {viewOptions: <FoldedProbe />});
+		resizeTitlebar(400);
+		const at400 = screen.getByTestId("folded").textContent;
+		resizeTitlebar(321);
+		const at321 = screen.getByTestId("folded").textContent;
+		resizeTitlebar(320);
+		const at320 = screen.getByTestId("folded").textContent;
+
+		expect({at400, at321, at320}).toStrictEqual({at400: "false", at321: "false", at320: "true"});
 	});
 });
 

@@ -151,6 +151,8 @@
 
 	/* Upstream claude.ai/code — side pane surface (shadow-panel-sm) */
 	--shadow-panel-sm: var(--pane-shadow);
+	/* Upstream claude.ai/code — floating phone session rail (shadow-panel-md); unmeasured, so it borrows the dialog shadow */
+	--shadow-panel-md: var(--panel-lg-shadow);
 	/* Upstream claude.ai/code — dialog surface (shadow-panel-lg) */
 	--shadow-panel-lg: var(--panel-lg-shadow);
 	/* Upstream claude.ai/code — collapsed sidebar peek popover (--df-shadow-pop) */

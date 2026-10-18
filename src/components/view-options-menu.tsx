@@ -7,8 +7,8 @@ import {bindingToKeys, type ShortcutId} from "../lib/shortcuts/registry";
 import {usePaneDefinitions} from "./panes/pane-registry";
 import {usePaneHost} from "./panes/pane-host-context";
 import {SessionRailMenuItem, SessionRailToggle} from "./session-rail/session-rail-slot";
-import {useTitlebarCompact} from "./titlebar-compact-context";
 import {TITLEBAR_ICON_BUTTON_CLASS} from "./titlebar-classes";
+import {useTitlebarFolded} from "./titlebar-folded-context";
 import {Menu, MenuCheckboxItem, MenuContent, MenuItem, MenuSeparator, MenuTrigger} from "./ui/menu";
 import {Tooltip} from "./ui/tooltip";
 import {viewOptionsItems} from "./view-options-items";
@@ -108,11 +108,11 @@ function ViewOptionsMenu({
 }
 
 /**
- * The titlebar trail's pane controls, upstream's set: the session rail toggle,
- * then the Changes and Files toggles, which stay icons at every width, then
- * View options ⋮ holding the other panes and Expand chat. A compact titlebar
- * folds the rail toggle into the top of the menu. The trigger shows only when
- * the menu has items.
+ * The titlebar trail's pane controls, upstream's set: the session rail toggle
+ * and a 1x16 separator, then the Changes and Files toggles, then View options ⋮
+ * holding the other panes and Expand chat. Only a chat tile squeezed to 320px
+ * or narrower folds the rail, Changes and Files into the top of the menu. The
+ * trigger shows only when the menu has items.
  */
 export function SessionPaneControls({
 	facts,
@@ -127,17 +127,21 @@ export function SessionPaneControls({
 }) {
 	const host = usePaneHost();
 	const definitions = usePaneDefinitions();
-	const compact = useTitlebarCompact();
+	const folded = useTitlebarFolded();
 	const registered = new Set(definitions.keys());
 	const shown = MAIN_PANE_TOGGLES.filter((entry) => registered.has(entry.kind));
-	const menuEntries = viewOptionsItems({registered, isOpen: host.isOpen, facts});
-	const railFolded = railAvailable && compact;
+	const otherEntries = viewOptionsItems({registered, isOpen: host.isOpen, facts});
+	const menuEntries = folded ? [...shown, ...otherEntries] : otherEntries;
+	const railFolded = railAvailable && folded;
 	return (
 		<>
-			{railAvailable && !railFolded && <SessionRailToggle />}
-			{shown.map((entry) => (
-				<MainPaneToggle key={entry.kind} entry={entry} />
-			))}
+			{railAvailable && !folded && (
+				<>
+					<SessionRailToggle />
+					<div role="separator" aria-orientation="vertical" className="mx-0.5 h-4 w-px shrink-0 bg-border" />
+				</>
+			)}
+			{!folded && shown.map((entry) => <MainPaneToggle key={entry.kind} entry={entry} />)}
 			{(railFolded || menuEntries.length > 0 || onExpandChat !== undefined) && (
 				<ViewOptionsMenu railFolded={railFolded} entries={menuEntries} onExpandChat={onExpandChat} />
 			)}

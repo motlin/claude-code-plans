@@ -9,9 +9,10 @@ import {SessionRail, type RailCard} from "../src/components/session-rail/session
 import {SessionRailSlot} from "../src/components/session-rail/session-rail-slot";
 import {useSessionRailDocked} from "../src/components/session-rail/use-session-rail-docked";
 import {SettingsProvider} from "../src/components/settings-provider";
-import {TitlebarCompactContext} from "../src/components/titlebar-compact-context";
+import {TitlebarFoldedContext} from "../src/components/titlebar-folded-context";
 import {SessionPaneControls} from "../src/components/view-options-menu";
 import type {PaneKind} from "../src/lib/pane-layout";
+import {PHONE_SHEET_QUERY} from "../src/lib/use-phone-sheet";
 import {
 	RAIL_SECTIONS_STORAGE_KEY,
 	readRailSectionsState,
@@ -126,14 +127,28 @@ describe("session rail toggle", () => {
 		});
 	});
 
-	it("folds into the top of View options when the titlebar is compact, as upstream", async () => {
-		registerKinds("changes");
+	it("sets a 1x16 separator between the rail toggle and Changes, as upstream", () => {
+		registerKinds("changes", "files");
+		renderSession();
+		const order = [...document.querySelectorAll("button[aria-pressed], [role=separator]")].map(
+			(element) => element.getAttribute("aria-label") ?? element.getAttribute("role"),
+		);
+		const separator = screen.getByRole("separator");
+
+		expect({order, classes: separator.className}).toStrictEqual({
+			order: ["Show session rail", "separator", "Changes", "Files"],
+			classes: "mx-0.5 h-4 w-px shrink-0 bg-border",
+		});
+	});
+
+	it("folds the rail, Changes and Files into View options when the chat tile is squeezed, as upstream", async () => {
+		registerKinds("changes", "files");
 		render(
 			<SettingsProvider>
 				<TileHost sessionId="rail-session">
-					<TitlebarCompactContext.Provider value>
+					<TitlebarFoldedContext.Provider value>
 						<SessionPaneControls facts={{}} railAvailable />
-					</TitlebarCompactContext.Provider>
+					</TitlebarFoldedContext.Provider>
 				</TileHost>
 			</SettingsProvider>,
 		);
@@ -147,9 +162,19 @@ describe("session rail toggle", () => {
 		fireEvent.click(screen.getByRole("menuitem", {name: "Show session rail"}));
 		await settle();
 
-		expect({before, rows, stored: readSessionRailShown()}).toStrictEqual({
-			before: [["Changes", "false"]],
-			rows: [["menuitem", "Show session rail"]],
+		expect({
+			before,
+			rows,
+			separators: screen.queryAllByRole("separator").length,
+			stored: readSessionRailShown(),
+		}).toStrictEqual({
+			before: [],
+			rows: [
+				["menuitem", "Show session rail"],
+				["menuitemcheckbox", "Changes⌃Control⇧ShiftD"],
+				["menuitemcheckbox", "Files⇧Shift⌘CommandF"],
+			],
+			separators: 0,
 			stored: true,
 		});
 	});
@@ -164,6 +189,62 @@ describe("session rail toggle", () => {
 		);
 
 		expect(screen.queryByRole("button", {name: /session rail/})).toBeNull();
+	});
+});
+
+describe("session rail on a phone", () => {
+	beforeEach(() => {
+		vi.stubGlobal(
+			"matchMedia",
+			vi.fn((query: string) => ({
+				matches: query === PHONE_SHEET_QUERY,
+				media: query,
+				onchange: null,
+				addEventListener: () => undefined,
+				removeEventListener: () => undefined,
+				addListener: () => undefined,
+				removeListener: () => undefined,
+				dispatchEvent: () => false,
+			})),
+		);
+	});
+
+	it("keeps the toggle in the trail and opens the rail as an overlay card over the transcript", async () => {
+		registerKinds("changes", "files");
+		renderSession();
+		const before = trail();
+		fireEvent.click(screen.getByRole("button", {name: "Show session rail"}));
+		await settle();
+		const overlay = await screen.findByRole("group", {name: "Session details"});
+		const shown = {
+			trail: trail(),
+			docked: screen.getByTestId("docked").textContent,
+			body: within(overlay).getByText("rail body").tagName,
+			overlay: overlay.hasAttribute("data-session-rail-overlay"),
+			card: overlay.firstElementChild?.className,
+		};
+		fireEvent.click(screen.getByRole("button", {name: "Hide session rail"}));
+		await settle();
+
+		expect({before, shown, closed: screen.queryByRole("group", {name: "Session details"})}).toStrictEqual({
+			before: [
+				["Show session rail", "false"],
+				["Changes", "false"],
+				["Files", "false"],
+			],
+			shown: {
+				trail: [
+					["Hide session rail", "true"],
+					["Changes", "false"],
+					["Files", "false"],
+				],
+				docked: "false",
+				body: "P",
+				overlay: true,
+				card: "flex min-h-0 flex-1 flex-col overflow-hidden rounded-card border border-border bg-surface-1 p-2 shadow-panel-md [--session-rail-w:100%]",
+			},
+			closed: null,
+		});
 	});
 });
 
