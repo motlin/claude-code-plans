@@ -65,7 +65,7 @@ function seedQueryClient(sessions: unknown[], nextCursor: string | null = null):
 
 async function renderGroups(
 	sessions: unknown[],
-	options: {nextCursor?: string | null; filterSlot?: ReactNode; unseeded?: boolean} = {},
+	options: {nextCursor?: string | null; filterSlot?: ReactNode; unseeded?: boolean; activeItemId?: string} = {},
 ) {
 	const queryClient =
 		options.unseeded === true
@@ -75,7 +75,7 @@ async function renderGroups(
 		component: () => (
 			<QueryClientProvider client={queryClient}>
 				<ToastProvider>
-					<SessionGroups activeItemId={null} filterSlot={options.filterSlot} />
+					<SessionGroups activeItemId={options.activeItemId ?? null} filterSlot={options.filterSlot} />
 					<Outlet />
 				</ToastProvider>
 			</QueryClientProvider>
@@ -319,6 +319,23 @@ describe("sidebar SessionGroups", () => {
 			},
 			done: {leading: false, mark: null, env: "local", hidesOnHover: true, flushRight: true},
 		});
+	});
+
+	it("keeps the touch kebab only on the current session's row and the status mark on every other row, as upstream's data-touch-menu", async () => {
+		const {container} = await renderGroups(FIXTURE, {activeItemId: "w1"});
+		const rows = [...container.querySelectorAll<HTMLElement>("[data-session-actions]")];
+		const decoration = rows[0]?.querySelector("[data-row-decoration]");
+
+		expect({
+			touchMenu: rows
+				.filter((row) => row.hasAttribute("data-touch-menu"))
+				.map((row) => row.querySelector("a[data-row-main-button]")?.textContent),
+			decorationHiddenOnTouch: decoration?.className.split(" ").includes("pointer-coarse:opacity-0"),
+			kebabShownOnTouch: rows[0]
+				?.querySelector("[data-row-action]")
+				?.className.split(" ")
+				.includes("pointer-coarse:opacity-100"),
+		}).toStrictEqual({touchMenu: ["Working one"], decorationHiddenOnTouch: false, kebabShownOnTouch: false});
 	});
 
 	it("announces each row's status and environment in upstream's two sr-only siblings", async () => {

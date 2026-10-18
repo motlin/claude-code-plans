@@ -347,7 +347,7 @@ function RowMenuBody({
 }
 
 const KEBAB_CLASS =
-	"df-touch-reveal absolute top-1/2 right-[var(--sb-row-ctl-inset)] flex size-[var(--sb-row-ctl,24px)] -translate-y-1/2 items-center justify-center rounded-r5 text-primary opacity-0 transition-opacity focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100 group-hover/session-row:opacity-100 group-has-[:focus-visible]/session-row:opacity-100 data-[popup-open]:opacity-100 data-[popup-open]:bg-fill-ghost-hover pointer-coarse:opacity-100";
+	"df-touch-reveal absolute top-1/2 right-[var(--sb-row-ctl-inset)] flex size-[var(--sb-row-ctl,24px)] -translate-y-1/2 items-center justify-center rounded-r5 text-primary opacity-0 transition-opacity focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100 group-hover/session-row:opacity-100 group-has-[:focus-visible]/session-row:opacity-100 data-[popup-open]:opacity-100 data-[popup-open]:bg-fill-ghost-hover";
 
 /**
  * claude.ai/code's session row actions: a 24px hover kebab ("More options for
@@ -360,12 +360,15 @@ export function SessionActionsMenu({
 	children,
 	className,
 	kebabTabIndex,
+	touchMenu = false,
 }: {
 	session: SessionListItem;
 	/** The sidebar Pinned section's display order, when this row is rendered inside it. */
 	pinnedIds?: readonly string[];
 	/** -1 inside a roving-focus list, whose Menu key and Shift+F10 open the kebab instead. */
 	kebabTabIndex?: number;
+	/** Keep the kebab visible at rest on touch, as upstream does only on the current session's row. */
+	touchMenu?: boolean;
 	children: ReactNode;
 	className?: string;
 }) {
@@ -430,7 +433,12 @@ export function SessionActionsMenu({
 	const menuBody = <RowMenuBody session={session} pinnedRow={pinnedRow} requestBulkNewGroup={requestBulkNewGroup} />;
 	return (
 		<RowRenameContext.Provider value={rowRename}>
-			<div ref={rowRef} data-session-actions="" className={`group/session-row relative ${className ?? ""}`}>
+			<div
+				ref={rowRef}
+				data-session-actions=""
+				data-touch-menu={touchMenu ? "" : undefined}
+				className={`group/session-row relative ${className ?? ""}`}
+			>
 				<ContextMenu onOpenChangeComplete={onOpenChangeComplete}>
 					<ContextMenuTrigger>{children}</ContextMenuTrigger>
 					<MenuContent density="comfortable" finalFocus={finalFocus}>

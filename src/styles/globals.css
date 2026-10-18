@@ -756,11 +756,18 @@
 	transition: none;
 }
 
-/* Row options show without hover only on touch; a mouse at phone width still reveals them on hover. */
-@media (hover: none), (pointer: coarse) {
-	.phone-sheet .df-touch-reveal {
+/* On touch only the current session's row keeps its kebab at rest, in place of its status mark; every
+   other row shows its mark. A mouse, at any width, still reveals the kebab on hover. */
+@media (pointer: coarse), (hover: none) {
+	[data-touch-menu] .df-touch-reveal {
 		opacity: 1;
 		pointer-events: auto;
+	}
+	[data-touch-menu] [data-row-decoration] {
+		opacity: 0;
+	}
+	[data-touch-menu] [data-row-main-button] [data-row-label] {
+		padding-inline-end: calc(var(--sb-row-ctl) + 4px);
 	}
 }
 

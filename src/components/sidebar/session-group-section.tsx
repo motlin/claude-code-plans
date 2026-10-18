@@ -492,6 +492,7 @@ function SessionRowLink({
 			<SessionActionsMenu
 				session={row.session}
 				kebabTabIndex={-1}
+				touchMenu={selected}
 				{...(pinnedIds === undefined ? {} : {pinnedIds})}
 			>
 				<Link

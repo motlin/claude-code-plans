@@ -33,7 +33,8 @@ export function SessionRow({
 	const queryClient = useQueryClient();
 	return (
 		<li>
-			<SessionActionsMenu session={session}>
+			{/* A full-page row has no trailing status mark to trade for, so it keeps its kebab at rest on touch. */}
+			<SessionActionsMenu session={session} touchMenu>
 				<Link
 					to="/session/$id"
 					params={{id: session.id}}

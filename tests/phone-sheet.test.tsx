@@ -385,9 +385,16 @@ describe("phone sheet CSS", () => {
 		expect(/padding:[^;]*max\(8px/.test(rule("\n.phone-sheet"))).toBe(false);
 	});
 
-	it("reveals row options on the sheet only for touch pointers, not every phone-width mouse", () => {
-		const reveal = styles.indexOf(".phone-sheet .df-touch-reveal {");
+	it("reveals the touch kebab only on the data-touch-menu row, for touch pointers, not every phone-width mouse", () => {
+		const reveal = styles.indexOf("[data-touch-menu] .df-touch-reveal {");
 		const before = styles.slice(Math.max(0, reveal - 200), reveal);
-		expect(/@media \(hover: none\), \(pointer: coarse\) \{\s*$/.test(before)).toBe(true);
+		expect({
+			touchMedia: /@media \(pointer: coarse\), \(hover: none\) \{\s*$/.test(before),
+			sheetWide: styles.includes(".phone-sheet .df-touch-reveal"),
+			hidesDecoration: rule("\t[data-touch-menu] [data-row-decoration]").includes("opacity: 0"),
+			clearsLabel: rule("\t[data-touch-menu] [data-row-main-button] [data-row-label]").includes(
+				"padding-inline-end: calc(var(--sb-row-ctl) + 4px)",
+			),
+		}).toStrictEqual({touchMedia: true, sheetWide: false, hidesDecoration: true, clearsLabel: true});
 	});
 });
