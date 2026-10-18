@@ -169,6 +169,36 @@ describe("QuestionCard", () => {
 		expect({single, multi}).toStrictEqual({single: true, multi: true});
 	});
 
+	it("styles the Other box as upstream's cds TextArea field: field fill and ring, 6/8 padding, hover ring, focus-visible ring", () => {
+		render(<QuestionCard questions={[QUESTIONS[0]!]} onSubmit={async () => {}} />);
+		fireEvent.click(screen.getByRole("button", {name: "Other"}));
+		const box = screen.getByRole("textbox", {name: "Other option"});
+
+		expect({
+			dir: box.getAttribute("dir"),
+			classes: box.className
+				.split(" ")
+				.filter((name) =>
+					/^(rounded-|bg-|px-|py-|shadow-|hover:shadow-|focus-visible:shadow-|max-h-|font-|text-)/.test(name),
+				),
+		}).toStrictEqual({
+			dir: "auto",
+			classes: [
+				"max-h-[calc(4lh+0.75rem)]",
+				"rounded-r5",
+				"bg-fill-field",
+				"px-2",
+				"py-1.5",
+				"font-sans",
+				"text-body",
+				"text-primary",
+				"shadow-field-ring",
+				"hover:shadow-field-hover",
+				"focus-visible:shadow-focus",
+			],
+		});
+	});
+
 	it("walks Next to the last question, which waits until answered or skipped, then submits one answer each", async () => {
 		const onSubmit = vi.fn<(answers: unknown[]) => Promise<void>>(async () => {});
 		render(<QuestionCard questions={QUESTIONS} onSubmit={onSubmit} />);

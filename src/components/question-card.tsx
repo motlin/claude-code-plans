@@ -238,6 +238,7 @@ export function QuestionCard({
 						<textarea
 							ref={otherRef}
 							aria-label="Other option"
+							dir="auto"
 							placeholder="Type your own answer here"
 							rows={1}
 							value={draft.other}
@@ -245,7 +246,7 @@ export function QuestionCard({
 							onChange={(event) => {
 								update(typeOther(question, draft, event.target.value));
 							}}
-							className="relative z-[1] col-start-2 row-start-2 max-h-[calc(4lh+0.5rem)] w-full resize-none rounded-r5 bg-transparent px-1 py-1 text-body text-primary outline-none [field-sizing:content] placeholder:text-ink-muted shadow-[inset_0_0_0_1px_var(--card-outline)]"
+							className="relative z-[1] col-start-2 row-start-2 max-h-[calc(4lh+0.75rem)] w-full resize-none rounded-r5 bg-fill-field px-2 py-1.5 font-sans text-body text-primary outline-none [field-sizing:content] placeholder:text-ink-muted shadow-field-ring transition-shadow hover:shadow-field-hover focus-visible:shadow-focus"
 						/>
 					)}
 				</div>
