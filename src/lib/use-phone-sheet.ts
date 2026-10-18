@@ -11,7 +11,8 @@ function mediaQuery(query: string): MediaQueryList | null {
 	return window.matchMedia(query);
 }
 
-function useMediaQuery(query: string): boolean {
+/** Subscribe to a CSS media query; false during SSR and where matchMedia is unavailable. */
+export function useMediaQuery(query: string): boolean {
 	return useSyncExternalStore(
 		(onChange) => {
 			const list = mediaQuery(query);

@@ -5,6 +5,7 @@ import {useChapters} from "../lib/chapter-store";
 import {writeClipboardText} from "../lib/clipboard";
 import {messageHeading} from "../lib/transcript-action-targets";
 import {type ReadAloudStatus, useReadAloud} from "../hooks/use-read-aloud";
+import {TOUCH_REVEAL, useTouchDevice} from "../lib/touch-reveal";
 import {formatMessageTime, formatRelativeTimestamp, formatTimestamp} from "../lib/timestamp-format";
 import {type TranscriptMessageRef, TranscriptActionsContext} from "./transcript-actions-context";
 import {Tooltip} from "./ui/tooltip";
@@ -44,6 +45,9 @@ const BAR_CLASS = [
 	"data-revealed:opacity-100 data-revealed:scale-100 data-revealed:pointer-events-auto",
 	"data-hovered:opacity-100 data-hovered:scale-100 data-hovered:pointer-events-auto",
 	"motion-safe:transition-[opacity,scale] motion-safe:duration-[120ms] motion-safe:delay-100 motion-safe:ease-[cubic-bezier(.32,.72,0,1)]",
+	// Touch devices never hover, so the bar is always shown there, as upstream's data-reveal rule does.
+	TOUCH_REVEAL,
+	"pointer-coarse:scale-100 [@media(hover:none)]:scale-100 motion-safe:pointer-coarse:transition-none",
 ].join(" ");
 
 const BUTTON_CLASS =
@@ -53,7 +57,7 @@ const ICON_CLASS = "size-4";
 
 const COPIED_MS = 1500;
 
-/** Whether the bar's controls are in the tab order: only once "Show message actions" revealed it. */
+/** Whether the bar's controls are in the tab order: once "Show message actions" revealed it, or always on touch devices. */
 const RevealedContext = createContext(false);
 
 function useTabIndex(): number {
@@ -255,6 +259,7 @@ function ActionBar({
 	hovered?: boolean | undefined;
 }) {
 	const [revealed, setRevealed] = useState(false);
+	const touch = useTouchDevice();
 	const barRef = useRef<HTMLDivElement>(null);
 	const focusPending = useRef(false);
 
@@ -291,7 +296,7 @@ function ActionBar({
 				className={className}
 				onBlur={hideWhenFocusLeaves}
 			>
-				<RevealedContext.Provider value={revealed}>{children}</RevealedContext.Provider>
+				<RevealedContext.Provider value={revealed || touch}>{children}</RevealedContext.Provider>
 			</div>
 		</>
 	);

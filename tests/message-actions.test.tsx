@@ -563,6 +563,45 @@ describe("message action toolbar sizing and reveal", () => {
 		});
 	});
 
+	it("always shows the toolbar on coarse-pointer or hover-less devices, without the fade transition", () => {
+		const {container} = render(
+			<AssistantMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} />,
+		);
+		const classes = bar(container).className.split(" ");
+
+		expect(
+			[
+				"pointer-coarse:opacity-100",
+				"pointer-coarse:scale-100",
+				"pointer-coarse:pointer-events-auto",
+				"[@media(hover:none)]:opacity-100",
+				"[@media(hover:none)]:scale-100",
+				"[@media(hover:none)]:pointer-events-auto",
+				"motion-safe:pointer-coarse:transition-none",
+			].filter((c) => !classes.includes(c)),
+		).toStrictEqual([]);
+	});
+
+	it("keeps toolbar controls in the tab order on touch devices", () => {
+		vi.stubGlobal("matchMedia", (query: string) => ({
+			matches: query === "(pointer: coarse), (hover: none)",
+			media: query,
+			onchange: null,
+			addEventListener: () => undefined,
+			removeEventListener: () => undefined,
+			addListener: () => undefined,
+			removeListener: () => undefined,
+			dispatchEvent: () => false,
+		}));
+		const {container} = render(
+			<AssistantMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} />,
+		);
+
+		expect(
+			Array.from(bar(container).querySelectorAll<HTMLElement>("button, time")).map((element) => element.tabIndex),
+		).toStrictEqual([0, 0, 0, 0, 0]);
+	});
+
 	it("hides the toolbar again once focus leaves it", () => {
 		const {container} = render(
 			<AssistantMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} />,
