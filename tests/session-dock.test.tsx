@@ -138,7 +138,7 @@ describe("SessionDock needs-input pill", () => {
 });
 
 describe("SessionDock scroll-to-bottom pill style", () => {
-	it("draws a 36px circular pill with a 20px downward arrow", () => {
+	it("draws upstream's 36px translucent blurred pill with a 20px luminosity-blended arrow", () => {
 		render(<DockInScroller />);
 		const pill = screen.getByLabelText("Scroll to bottom", {selector: "button"});
 		const shape = [
@@ -150,6 +150,10 @@ describe("SessionDock scroll-to-bottom pill style", () => {
 			"rounded-r5",
 			"bg-surface-3",
 			"shadow-[inset_0_0_0_1px_var(--color-border),0_1px_2px_rgb(0_0_0/0.05)]",
+			"bg-[oklab(0.243_0_0/0.8)]",
+			"border-[0.5px]",
+			"border-white/10",
+			"backdrop-blur-[8px]",
 			"text-secondary",
 			"size-6",
 			"rounded-full",
@@ -171,8 +175,12 @@ describe("SessionDock scroll-to-bottom pill style", () => {
 				["w-5", false],
 				["px-1", false],
 				["rounded-r5", false],
-				["bg-surface-3", true],
-				["shadow-[inset_0_0_0_1px_var(--color-border),0_1px_2px_rgb(0_0_0/0.05)]", true],
+				["bg-surface-3", false],
+				["shadow-[inset_0_0_0_1px_var(--color-border),0_1px_2px_rgb(0_0_0/0.05)]", false],
+				["bg-[oklab(0.243_0_0/0.8)]", true],
+				["border-[0.5px]", true],
+				["border-white/10", true],
+				["backdrop-blur-[8px]", true],
 				["text-secondary", true],
 				["size-6", false],
 				["rounded-full", true],
@@ -180,7 +188,7 @@ describe("SessionDock scroll-to-bottom pill style", () => {
 				["shadow-panel-sm", false],
 				["hover:text-primary", false],
 			],
-			iconClassName: "lucide lucide-arrow-down size-5",
+			iconClassName: "lucide lucide-arrow-down size-5 mix-blend-luminosity",
 			title: null,
 		});
 	});
