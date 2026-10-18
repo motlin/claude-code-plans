@@ -17,6 +17,6 @@ describe("DetailTopBar", () => {
 		);
 
 		const bar = screen.getByRole("link", {name: "All Projects"}).parentElement;
-		expect(bar?.className).toBe("-mt-9 mb-4 flex min-h-9 items-center gap-2 max-sm:ps-8");
+		expect(bar?.className).toBe("-mt-9 mb-4 flex min-h-9 items-center gap-2 max-sm:-mt-12 max-sm:ps-8");
 	});
 });

@@ -31,4 +31,11 @@ describe("CodePageHeader", () => {
 			toolbarRight: true,
 		});
 	});
+
+	it("pulls the title up only from sm, so at phone width it starts at the 48px band below the sidebar trigger", () => {
+		render(<CodePageHeader title="Projects" />);
+		expect(screen.getByRole("heading", {level: 1, name: "Projects"}).parentElement?.className).toBe(
+			"flex flex-col pb-4 sm:-mt-1",
+		);
+	});
 });

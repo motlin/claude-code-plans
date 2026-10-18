@@ -77,9 +77,9 @@ function FallbackComposer({placeholder, chin}: {placeholder: string; chin: Shell
 function ArtifactsSkeleton() {
 	return (
 		<div data-testid="artifacts-skeleton" className="min-h-0 flex-1 overflow-hidden">
-			<div className="min-h-9" />
+			<div className="min-h-9 max-sm:h-12" />
 			<div className="px-4 sm:px-8">
-				<div className="mx-auto -mt-1 flex w-full max-w-5xl flex-col">
+				<div className="mx-auto flex sm:-mt-1 w-full max-w-5xl flex-col">
 					<span className={`h-8 w-36 ${BAR_CLASS}`} />
 					<div className="mt-5 flex h-8 items-center gap-2">
 						<span className={`h-6 w-10 ${BAR_CLASS}`} />

@@ -176,7 +176,7 @@ function RootLayout({children}: Readonly<{children: ReactNode}>) {
 				<AttentionBadgeBridge />
 				{tileShell === undefined ? (
 					<>
-						<div className="min-h-9 px-4 pt-3 sm:px-8" />
+						<RootTopRow />
 						{fullBleed ? (
 							<div className="min-h-0 flex-1">{children}</div>
 						) : (
@@ -201,6 +201,14 @@ function RootLayout({children}: Readonly<{children: ReactNode}>) {
 			<ChunkPrefetch />
 		</>
 	);
+}
+
+/**
+ * The empty row above every non-tile page. Below sm it is 48px tall, like upstream's sticky crumb
+ * band, so page titles start past the fixed Show-sidebar trigger (8..40) instead of under it.
+ */
+export function RootTopRow() {
+	return <div className="min-h-9 px-4 pt-3 max-sm:h-12 sm:px-8" />;
 }
 
 function NotFound() {
