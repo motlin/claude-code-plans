@@ -151,8 +151,8 @@
 
 	/* Upstream claude.ai/code — side pane surface (shadow-panel-sm) */
 	--shadow-panel-sm: var(--pane-shadow);
-	/* Upstream claude.ai/code — floating phone session rail (shadow-panel-md); unmeasured, so it borrows the dialog shadow */
-	--shadow-panel-md: var(--panel-lg-shadow);
+	/* Upstream claude.ai/code — floating phone session rail (shadow-panel-md) */
+	--shadow-panel-md: var(--panel-md-shadow);
 	/* Upstream claude.ai/code — dialog surface (shadow-panel-lg) */
 	--shadow-panel-lg: var(--panel-lg-shadow);
 	/* Upstream claude.ai/code — collapsed sidebar peek popover (--df-shadow-pop) */
@@ -325,6 +325,9 @@
 
 	/* Upstream claude.ai/code — side pane surface (light: shadow-panel-sm) */
 	--pane-shadow: 0 0 0 1px rgb(11 11 11 / 0.06), 0 1px 3px rgba(0, 0, 0, 0.06);
+	/* Upstream claude.ai/code — floating phone session rail (light: shadow-panel-md = ring + --cds-shadow-md) */
+	--panel-md-shadow:
+		0 0 0 1px rgb(11 11 11 / 0.1), 0 2px 4px 0 rgb(11 11 11 / 0.07), 0 6px 16px 0 rgb(11 11 11 / 0.08);
 	/* Upstream claude.ai/code — approval card (.epitaxy-approval-card surface) */
 	--approval-card-shadow: 0 0 0 1px rgb(11 11 11 / 0.1), 0 1px 2px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.08);
 	--menu-danger-fill: #d03b3b;
@@ -474,6 +477,9 @@
 
 	/* Upstream claude.ai/code — chat card and side pane surface (dark: shadow-panel-sm) */
 	--pane-shadow: 0 1px 2px rgba(11, 11, 11, 0.06), 0 2px 8px rgba(0, 0, 0, 0.24);
+	/* Upstream claude.ai/code — floating phone session rail (dark: shadow-panel-md = inset ring + --cds-shadow-md) */
+	--panel-md-shadow:
+		inset 0 0 0 1px rgb(255 255 255 / 0.1), 0 2px 4px 0 rgb(11 11 11 / 0.07), 0 6px 16px 0 rgb(0 0 0 / 0.24);
 	/* Upstream claude.ai/code — approval card (dark) */
 	--approval-card-shadow: 0 0 0 1px hsl(0 0% 100% / 0.1), 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.3);
 }

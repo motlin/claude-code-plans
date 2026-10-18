@@ -45,6 +45,23 @@ describe("app chrome design tokens", () => {
 		);
 	});
 
+	it("floats the phone session-rail card on upstream's measured shadow-panel-md", () => {
+		const styles = readFileSync("src/styles/globals.css", "utf8");
+		const light = styles.slice(styles.indexOf(":root {"), styles.indexOf(".dark {"));
+		const dark = styles.slice(styles.indexOf(".dark {"));
+		const token = (block: string, name: string) => block.match(new RegExp(`${name}:\\s*([^;]+);`))?.[1] ?? null;
+
+		expect({
+			utility: token(styles, "--shadow-panel-md"),
+			light: token(light, "--panel-md-shadow"),
+			dark: token(dark, "--panel-md-shadow"),
+		}).toStrictEqual({
+			utility: "var(--panel-md-shadow)",
+			light: "0 0 0 1px rgb(11 11 11 / 0.1), 0 2px 4px 0 rgb(11 11 11 / 0.07), 0 6px 16px 0 rgb(11 11 11 / 0.08)",
+			dark: "inset 0 0 0 1px rgb(255 255 255 / 0.1), 0 2px 4px 0 rgb(11 11 11 / 0.07), 0 6px 16px 0 rgb(0 0 0 / 0.24)",
+		});
+	});
+
 	it("inks the home Needs input pill in upstream's text-warning", () => {
 		const styles = readFileSync("src/styles/globals.css", "utf8");
 		const light = styles.slice(styles.indexOf(":root {"), styles.indexOf(".dark {"));
