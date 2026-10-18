@@ -21,9 +21,8 @@ describe("HomePage gutters", () => {
 			(element?.className.split(" ") ?? []).filter((name) => /^(max-sm:)?p[lr]-/.test(name));
 		const phone = ["pr-10", "pl-8", "max-sm:pr-[25px]", "max-sm:pl-[25px]"];
 		expect({
-			header: gutters(container.querySelector("header")),
 			body: gutters(container.querySelector("[data-home-body]")?.parentElement),
 			dock: gutters(container.querySelector("[data-test-dock]")?.parentElement),
-		}).toStrictEqual({header: phone, body: phone, dock: phone});
+		}).toStrictEqual({body: phone, dock: phone});
 	});
 });

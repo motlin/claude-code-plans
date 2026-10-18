@@ -9,14 +9,14 @@ import {PullRequestsSection} from "./pull-requests-section";
 
 /**
  * The home page body: the Sessions and Pull requests action center, or, once nothing needs attention,
- * upstream's "What’s up next?" greeting with the usage stats card in its place.
+ * the usage stats card in its place.
  */
 export function HomeLanding({dock}: Readonly<{dock?: ReactNode}>) {
 	const attention = useHomeAttention();
 	const clear = attention?.items.length === 0 && attention.prs.length === 0;
 
 	return (
-		<HomePage clear={clear} dock={dock}>
+		<HomePage dock={dock}>
 			<div
 				data-home-action-center
 				data-perf-ready={attention === undefined ? undefined : ""}

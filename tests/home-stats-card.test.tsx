@@ -124,7 +124,7 @@ describe("HomeStatsCard", () => {
 });
 
 describe("HomeLanding empty state", () => {
-	it("greets with What’s up next and shows the stats card when nothing needs attention", async () => {
+	it("keeps the New session title and shows the stats card when nothing needs attention", async () => {
 		vi.stubGlobal(
 			"fetch",
 			vi.fn(async () => Promise.resolve(new Response("{}", {status: 404}))),
@@ -171,7 +171,7 @@ describe("HomeLanding empty state", () => {
 			sessions: screen.queryByRole("region", {name: "Sessions"}),
 			sessionsTile: tiles()["Sessions"],
 		}).toStrictEqual({
-			heading: "What’s up next, Craig?",
+			heading: "New session",
 			sessions: null,
 			sessionsTile: "6",
 		});

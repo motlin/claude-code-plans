@@ -83,20 +83,24 @@ describe("home page", () => {
 		}
 	});
 
-	it("renders the upstream shell: greeting in an 840px column, full-bleed route", async () => {
+	it('renders upstream\'s "New session" titlebar in place of a greeting, full-bleed route', async () => {
 		const {queryClient, view} = await renderNavigation();
 		try {
 			const heading = screen.getByRole("heading", {level: 1});
-			const column = heading.closest("header");
 			expect({
 				fullBleed: HomeRoute.options.staticData?.fullBleed,
 				heading: heading.textContent,
-				columnClass: column?.className,
+				headingClass: heading.className,
+				titlebarClass: heading.closest("header")?.className,
+				welcome: screen.queryByText(/Welcome back/),
+				spark: document.querySelector("main svg[data-cds='Spark']"),
 			}).toStrictEqual({
 				fullBleed: true,
-				heading: "Welcome back, Ada",
-				columnClass:
-					"flex items-center gap-1.5 pt-3 pb-6 mx-auto w-full max-w-[840px] pr-10 pl-8 max-sm:pr-[25px] max-sm:pl-[25px]",
+				heading: "New session",
+				headingClass: "truncate ps-2.5 text-[13px]/[19px] font-medium text-ink-muted",
+				titlebarClass: "flex h-8 shrink-0 items-center ps-[var(--tile-title-start,0px)] pe-12",
+				welcome: null,
+				spark: null,
 			});
 		} finally {
 			view.unmount();

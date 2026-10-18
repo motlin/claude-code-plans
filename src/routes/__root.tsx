@@ -187,7 +187,6 @@ function RootLayout({children}: Readonly<{children: ReactNode}>) {
 					</>
 				) : (
 					<div data-route-tile-shell={tileShell}>
-						{tileShell === "home" && <div aria-hidden className="h-9 shrink-0 sm:h-8" />}
 						<div className="min-h-0 flex-1">{children}</div>
 					</div>
 				)}

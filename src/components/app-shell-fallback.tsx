@@ -6,8 +6,8 @@ import {getVisibleNavItems, navItems} from "./sidebar/navigation";
 import {SidebarToggleIcon} from "./sidebar/primitives";
 import {ROW_CLASS as SESSION_ROW_CLASS} from "./sidebar/session-group-section";
 import {SessionSkeleton} from "./session-skeleton";
-import {HomeGreeting} from "./home/greeting";
 import {HOME_COLUMN} from "./home/home-column";
+import {HomeTitlebar} from "./home/home-page";
 import type {ShellChinLabels} from "../lib/shell-chin-store";
 
 const NAV_ROW_CLASS = "df-nav-row h-[var(--sb-row-h)] rounded-[var(--sb-radius)] flex-1";
@@ -113,13 +113,11 @@ function ArtifactsSkeleton() {
 	);
 }
 
-/** The home page while it loads, in its own layout: greeting, Sessions rows and the home composer. */
+/** The home page while it loads, in its own layout: "New session" titlebar, Sessions rows and the home composer. */
 function HomeSkeleton({chin}: {chin: ShellChinLabels | null}) {
 	return (
 		<div data-testid="home-skeleton" className="flex h-full min-h-0 flex-col">
-			<header className={`flex items-center gap-1.5 pt-3 pb-6 ${HOME_COLUMN}`}>
-				<HomeGreeting name={undefined} clear={false} />
-			</header>
+			<HomeTitlebar />
 			<div className={`min-h-0 flex-1 overflow-hidden ${HOME_COLUMN}`}>
 				<section className="flex flex-col gap-2 pt-6">
 					<header className="flex items-center gap-1">
@@ -271,9 +269,8 @@ export function AppShellFallback({
 				{pathname === "/artifacts" ? (
 					<ArtifactsSkeleton />
 				) : pathname === "/" ? (
-					// The loaded home page's tile shell and title-bar spacer, so the greeting does not jump on hydration.
+					// The loaded home page's tile shell, so the titlebar does not jump on hydration.
 					<div data-route-tile-shell="home">
-						<div aria-hidden className="h-9 shrink-0 sm:h-8" />
 						<div className="min-h-0 flex-1">
 							<HomeSkeleton chin={labels} />
 						</div>

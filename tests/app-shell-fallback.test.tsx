@@ -259,21 +259,21 @@ describe("AppShellFallback", () => {
 		});
 	});
 
-	it("paints the home layout on the home route: greeting, Sessions rows and the home composer, with no session skeleton", () => {
+	it("paints the home layout on the home route: the New session titlebar, Sessions rows and the home composer, with no session skeleton", () => {
 		const host = document.createElement("div");
 		host.innerHTML = renderToStaticMarkup(<AppShellFallback pathname="/" />);
 		const home = host.querySelector('[data-testid="home-skeleton"]');
 
 		expect({
 			home: home !== null,
-			greeting: home?.querySelector("h1")?.textContent,
+			title: home?.querySelector("h1")?.textContent,
 			sessions: home?.querySelector("h2")?.textContent,
 			rows: home?.querySelectorAll("[data-home-skeleton-row]").length,
 			composer: host.querySelector("[data-fallback-composer]")?.textContent,
 			sessionSkeleton: host.querySelector('[data-testid="session-skeleton"]'),
 		}).toStrictEqual({
 			home: true,
-			greeting: "Welcome back",
+			title: "New session",
 			sessions: "Sessions",
 			rows: 5,
 			composer: "Describe a task or ask a question",
@@ -298,7 +298,7 @@ describe("AppShellFallback", () => {
 		}).toStrictEqual({skeleton: true, cards: 6, grid: true, composer: null, sessionSkeleton: null});
 	});
 
-	it("lays the home skeleton in the same tile shell and title-bar spacer as the loaded home page, so the greeting does not jump", () => {
+	it("lays the home skeleton in the same tile shell as the loaded home page, titlebar first, so it does not jump", () => {
 		const host = document.createElement("div");
 		host.innerHTML = renderToStaticMarkup(<AppShellFallback pathname="/" />);
 		const home = host.querySelector('[data-testid="home-skeleton"]');
@@ -306,8 +306,12 @@ describe("AppShellFallback", () => {
 
 		expect({
 			shell: shell?.hasAttribute("data-route-tile-shell"),
-			spacer: shell?.firstElementChild?.className,
-			homeAfterSpacer: shell?.firstElementChild?.nextElementSibling?.firstElementChild === home,
-		}).toStrictEqual({shell: true, spacer: "h-9 shrink-0 sm:h-8", homeAfterSpacer: true});
+			homeFirst: shell?.firstElementChild?.firstElementChild === home,
+			titlebar: home?.firstElementChild?.className,
+		}).toStrictEqual({
+			shell: true,
+			homeFirst: true,
+			titlebar: "flex h-8 shrink-0 items-center ps-[var(--tile-title-start,0px)] pe-12",
+		});
 	});
 });

@@ -1,25 +1,26 @@
-import {useQuery} from "@tanstack/react-query";
 import type {ReactNode} from "react";
-import {localAccountQueryOptions} from "../../lib/api/local-account";
-import {HomeGreeting} from "./greeting";
 import {HOME_COLUMN} from "./home-column";
 
 /**
- * Upstream's /code landing shell: a greeting header, a scrolling body, and a bottom dock, all in
- * an 840px centered column with 32px/40px gutters (25px on a phone).
+ * Upstream's /code chat-card titlebar: a 32px row whose muted 13px "New session" h1 starts after
+ * the sidebar toggle's clearance on a phone or collapsed desktop.
  */
-export function HomePage({
-	children,
-	dock,
-	clear = false,
-}: Readonly<{children?: ReactNode; dock?: ReactNode; clear?: boolean}>) {
-	const {data: account} = useQuery(localAccountQueryOptions);
+export function HomeTitlebar() {
+	return (
+		<header className="flex h-8 shrink-0 items-center ps-[var(--tile-title-start,0px)] pe-12">
+			<h1 className="truncate ps-2.5 text-[13px]/[19px] font-medium text-ink-muted">New session</h1>
+		</header>
+	);
+}
 
+/**
+ * Upstream's /code landing shell: the "New session" titlebar, then a scrolling body and a bottom
+ * dock in an 840px centered column with 32px/40px gutters (25px on a phone).
+ */
+export function HomePage({children, dock}: Readonly<{children?: ReactNode; dock?: ReactNode}>) {
 	return (
 		<div className="flex h-full min-h-0 flex-col">
-			<header className={`flex items-center gap-1.5 pt-3 pb-6 ${HOME_COLUMN}`}>
-				<HomeGreeting name={account?.firstName} clear={clear} />
-			</header>
+			<HomeTitlebar />
 			<div className={`flex min-h-0 flex-1 flex-col ${HOME_COLUMN}`}>
 				<div
 					data-home-body
