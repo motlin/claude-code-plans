@@ -155,7 +155,7 @@ export function QuestionCard({
 					{question.question}
 				</div>
 				{questions.length > 1 && (
-					<span className="-my-1.5 -me-1 flex shrink-0 items-center gap-1.5 text-caption text-ink-muted">
+					<span className="-my-1.5 -me-2 flex shrink-0 items-center gap-1.5 text-caption text-ink-muted">
 						<button
 							type="button"
 							aria-label="Show previous question"
