@@ -446,6 +446,13 @@ describe("narrow viewport forced collapse", () => {
 
 		expect(mainElement(container).getAttribute("data-perf-region")).toBe("main");
 	});
+
+	it("makes the main column a containing block so absolute descendants cannot stretch the document", async () => {
+		mockViewport(390);
+		const {container} = await renderFrame();
+
+		expect(mainElement(container).classList.contains("relative")).toBe(true);
+	});
 });
 
 describe("phone sheet CSS", () => {

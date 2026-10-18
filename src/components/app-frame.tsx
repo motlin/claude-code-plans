@@ -53,7 +53,7 @@ export function AppFrame({
 				data-perf-region="main"
 				inert={mainInert}
 				style={topLeftClearanceStyle(sidebarLayout)}
-				className={`flex-1 bg-page ${tileShell ? "flex min-h-0 min-w-0 flex-col overflow-hidden" : "overflow-y-auto"} ${className ?? ""}`}
+				className={`relative flex-1 bg-page ${tileShell ? "flex min-h-0 min-w-0 flex-col overflow-hidden" : "overflow-y-auto"} ${className ?? ""}`}
 			>
 				{children}
 			</main>
