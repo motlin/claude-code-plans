@@ -1,5 +1,6 @@
 import {Check, ChevronLeft, ChevronRight} from "lucide-react";
-import {useState, type KeyboardEvent} from "react";
+import {useRef, useState, type KeyboardEvent} from "react";
+import {flushSync} from "react-dom";
 
 import type {QuestionAnswer} from "../lib/hook-events";
 import type {QuestionLike} from "../lib/ask-user-question";
@@ -75,6 +76,7 @@ export function QuestionCard({
 	const [skipped, setSkipped] = useState<boolean[]>(() => questions.map(() => false));
 	const [sending, setSending] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const otherRef = useRef<HTMLTextAreaElement>(null);
 	const index = Math.min(page, questions.length - 1);
 	const question = questions[index];
 	const draft = drafts[index];
@@ -220,7 +222,11 @@ export function QuestionCard({
 						aria-pressed={draft.otherChosen}
 						disabled={!editable}
 						onClick={() => {
-							update(chooseOther(question, draft));
+							// Upstream commits the pick synchronously so the revealed box exists to focus.
+							flushSync(() => {
+								update(chooseOther(question, draft));
+							});
+							otherRef.current?.focus();
 						}}
 						className="absolute inset-0 cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus disabled:cursor-default"
 					/>
@@ -230,6 +236,7 @@ export function QuestionCard({
 					</span>
 					{draft.otherChosen && (
 						<textarea
+							ref={otherRef}
 							aria-label="Other option"
 							placeholder="Type your own answer here"
 							rows={1}

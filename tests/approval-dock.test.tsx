@@ -148,6 +148,17 @@ describe("QuestionCard", () => {
 		});
 	});
 
+	it("focuses the Other box as Other is chosen, single- or multi-select, as upstream's flushSync-then-focus", () => {
+		render(<QuestionCard questions={QUESTIONS} onSubmit={async () => {}} />);
+		fireEvent.click(screen.getByRole("button", {name: "Other"}));
+		const single = document.activeElement === screen.getByRole("textbox", {name: "Other option"});
+		fireEvent.click(screen.getByRole("button", {name: /^Next/}));
+		fireEvent.click(screen.getByRole("button", {name: "Other"}));
+		const multi = document.activeElement === screen.getByRole("textbox", {name: "Other option"});
+
+		expect({single, multi}).toStrictEqual({single: true, multi: true});
+	});
+
 	it("walks Next to the last question, which waits until answered or skipped, then submits one answer each", async () => {
 		const onSubmit = vi.fn<(answers: unknown[]) => Promise<void>>(async () => {});
 		render(<QuestionCard questions={QUESTIONS} onSubmit={onSubmit} />);
