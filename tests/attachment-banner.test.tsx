@@ -123,6 +123,7 @@ const MINIMAL_BY_TYPE: Record<string, AttachmentPayload> = {
 	thinking_drop: {type: "thinking_drop"},
 	thinking_stripped: {type: "thinking_stripped"},
 	skill_mention: {type: "skill_mention"},
+	inlined_image_paths: {type: "inlined_image_paths", paths: ["/tmp/uploads/a-image.png"]},
 };
 
 describe("AttachmentBanner", () => {
@@ -204,6 +205,18 @@ describe("AttachmentBanner", () => {
 		expect(html).toStrictEqual(
 			'<div class="flex flex-wrap items-center gap-2 py-1.5 px-3 text-xs text-t6 bg-surface-1 rounded-md border border-subtle"><span class="shrink-0"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-triangle-alert h-3.5 w-3.5" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg></span><span>Read output truncated</span><pre class="w-full mt-1 text-[10px] leading-tight text-t6 bg-surface-0 rounded px-2 py-1 whitespace-pre-wrap break-all">[Truncated: showing lines 1-100 of 200 total.]</pre></div>',
 		);
+	});
+
+	it("labels inlined image paths with a pluralized count", () => {
+		expect([
+			renderBanner({type: "inlined_image_paths", paths: ["/tmp/uploads/a-image.png"]}).match(
+				/<span>([^<]*)<\/span>/,
+			)?.[1],
+			renderBanner({
+				type: "inlined_image_paths",
+				paths: ["/tmp/uploads/a-image.png", "/tmp/uploads/b-image.png"],
+			}).match(/<span>([^<]*)<\/span>/)?.[1],
+		]).toStrictEqual(["Inlined 1 image", "Inlined 2 images"]);
 	});
 
 	it("renders total token reminders", () => {

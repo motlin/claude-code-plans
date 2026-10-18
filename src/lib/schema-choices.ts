@@ -570,6 +570,7 @@ const attachmentVariants = {
 	thinking_drop: true,
 	thinking_stripped: true,
 	skill_mention: true,
+	inlined_image_paths: true,
 } satisfies Record<z.infer<typeof AttachmentPayloadSchema>["type"], true>;
 
 /** Consumed selectively (text extraction etc.) — no single exhaustive handler. */

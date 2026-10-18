@@ -1203,6 +1203,13 @@ const SkillMentionAttachmentPayload = z
 	})
 	.strict();
 
+const InlinedImagePathsAttachmentPayload = z
+	.object({
+		type: z.literal("inlined_image_paths"),
+		paths: z.array(z.string()),
+	})
+	.strict();
+
 const SilentTurnReminderAttachmentPayload = z
 	.object({
 		type: z.literal("silent_turn_reminder"),
@@ -1304,6 +1311,7 @@ export const AttachmentPayloadSchema = z.discriminatedUnion("type", [
 	EnvironmentAttachmentPayload,
 	ForkBriefingAttachmentPayload,
 	HookPermissionDecisionAttachmentPayload,
+	InlinedImagePathsAttachmentPayload,
 	InstructionsAttachmentPayload,
 	ModelAttachmentPayload,
 	OutputStyleAttachmentPayload,

@@ -1575,6 +1575,10 @@ describe("JsonlRecordSchema observed 2026-09 transcript fields", () => {
 				context: {userEmail: "test@example.com", gitStatus: "Current branch: main\n\nStatus:\n(clean)"},
 			}),
 			attachmentRecord({type: "skill_mention", skillName: "build:test-branch"}),
+			attachmentRecord({
+				type: "inlined_image_paths",
+				paths: ["/Users/test/.claude/uploads/sess-123/56ef1955-image.png"],
+			}),
 			{type: "dev-mods", folder: "/tmp/dev-mods/sess-123", sessionId: "sess-123"},
 		];
 

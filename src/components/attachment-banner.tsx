@@ -801,6 +801,14 @@ function AttachmentContent({
 					{...shared}
 				/>
 			);
+		case "inlined_image_paths":
+			return (
+				<Banner
+					icon={<Paperclip className="h-3.5 w-3.5" />}
+					label={`Inlined ${attachment.paths.length} image${attachment.paths.length === 1 ? "" : "s"}`}
+					{...shared}
+				/>
+			);
 		case "thinking_drop":
 		case "thinking_stripped":
 			return (

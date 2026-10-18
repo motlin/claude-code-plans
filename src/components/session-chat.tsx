@@ -3057,6 +3057,7 @@ const SYSTEM_BANNER_SUBTYPES = new Set([
 	"thinking_drop",
 	"thinking_stripped",
 	"skill_mention",
+	"inlined_image_paths",
 ]);
 
 interface AttachmentHead {
