@@ -56,12 +56,12 @@ afterEach(() => {
 });
 
 const HERDR_ROW_COLUMNS =
-	"grid grid-cols-[2.75rem_minmax(0,1fr)_5rem_8.5rem_2rem_9rem] items-center rounded-md border border-border";
+	"grid grid-cols-[2.75rem_minmax(0,1fr)_5rem_8.5rem_2rem_9rem] items-center rounded-md border border-border max-sm:flex max-sm:flex-wrap max-sm:gap-x-2 max-sm:pb-2";
 const HERDR_TERMINAL_COLUMNS =
-	"grid grid-cols-[1.25rem_minmax(0,1fr)] items-center gap-1.5 rounded-md p-3 no-underline transition-colors hover:bg-surface-0/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100";
+	"grid grid-cols-[1.25rem_minmax(0,1fr)] items-center gap-1.5 rounded-md p-3 no-underline transition-colors hover:bg-surface-0/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100 max-sm:order-first max-sm:basis-full max-sm:pb-1";
 const HERDR_TRANSCRIPT_CELL =
 	"flex size-8 items-center justify-center justify-self-center rounded-md text-t6 transition-colors hover:bg-surface-0/50 hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100";
-const HERDR_ACTION_CELL = "justify-self-end";
+const HERDR_ACTION_CELL = "justify-self-end max-sm:ms-auto";
 
 function placement({
 	active,
@@ -926,10 +926,19 @@ describe("Terminals page tmux rows", () => {
 		const tmuxRow = screen.getByRole("link", {name: /claude/u});
 		const herdrRow = screen.getByRole("link", {name: "Open session transcript for Terminal 100"}).parentElement;
 		expect({
+			tmuxRowColumns: tmuxRow.className,
+			tmuxTitleCell: tmuxRow.children[4]?.className,
 			tmuxHost: tmuxRow.children[2]?.textContent,
 			tmuxReview: tmuxRow.children[6]?.textContent,
 			herdrHost: herdrRow?.children[0]?.textContent,
-		}).toStrictEqual({tmuxHost: "tmux", tmuxReview: "Needs review · 2 new", herdrHost: "herdr"});
+		}).toStrictEqual({
+			tmuxRowColumns:
+				"grid grid-cols-[0.625rem_2.75rem_2.5rem_minmax(0,1fr)_minmax(0,8rem)_8.5rem_auto] items-center gap-2 rounded-md border border-border p-3 no-underline transition-colors hover:bg-surface-0/50 max-sm:flex max-sm:flex-wrap",
+			tmuxTitleCell: "truncate text-sm font-medium text-primary max-sm:order-first max-sm:basis-full",
+			tmuxHost: "tmux",
+			tmuxReview: "Needs review · 2 new",
+			herdrHost: "herdr",
+		});
 	});
 
 	it("shows everything the retired Tmux Windows page did: window index, window name and project", async () => {

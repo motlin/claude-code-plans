@@ -30,12 +30,19 @@ const TRACKED_CLAUDE_SCOPE =
  * Clicking the wide title cell opens the pane's live terminal, matching where
  * the workspace rail sends the same pane; the transcript is the secondary
  * affordance in the trailing icon cell.
+ *
+ * Below 640px the fixed tracks (27.25rem) overflow a phone-width card, so the
+ * row turns into a wrapping flex: the title takes the whole first line and the
+ * host badge, status, review mark, and transcript icon share a muted second
+ * line, with "Mark reviewed" pushed to its trailing edge inside the card.
  */
 const HERDR_ROW_COLUMNS =
-	"grid grid-cols-[2.75rem_minmax(0,1fr)_5rem_8.5rem_2rem_9rem] items-center rounded-md border border-border";
+	"grid grid-cols-[2.75rem_minmax(0,1fr)_5rem_8.5rem_2rem_9rem] items-center rounded-md border border-border max-sm:flex max-sm:flex-wrap max-sm:gap-x-2 max-sm:pb-2";
+
+const HERDR_ROW_ACTION_CELL = "justify-self-end max-sm:ms-auto";
 
 const TMUX_ROW_COLUMNS =
-	"grid grid-cols-[0.625rem_2.75rem_2.5rem_minmax(0,1fr)_minmax(0,8rem)_8.5rem_auto] items-center gap-2 rounded-md border border-border p-3 no-underline transition-colors hover:bg-surface-0/50";
+	"grid grid-cols-[0.625rem_2.75rem_2.5rem_minmax(0,1fr)_minmax(0,8rem)_8.5rem_auto] items-center gap-2 rounded-md border border-border p-3 no-underline transition-colors hover:bg-surface-0/50 max-sm:flex max-sm:flex-wrap";
 
 const HOST_BADGE = "rounded bg-surface-0/60 px-1.5 py-0.5 text-center text-[10px] text-t6";
 
@@ -158,7 +165,7 @@ function TerminalsPage() {
 									<span className="tabular-nums text-sm text-t6">
 										#{placement.tmuxWindow.windowIndex}
 									</span>
-									<span className="truncate text-sm font-medium text-primary">
+									<span className="truncate text-sm font-medium text-primary max-sm:order-first max-sm:basis-full">
 										{placement.displayName}
 									</span>
 									<span className="truncate text-xs text-t6">{placement.tmuxWindow.projectName}</span>
@@ -198,7 +205,7 @@ function TerminalsPage() {
 									params={{sessionId: placement.sessionId}}
 									aria-label={`Open live read-only terminal for ${placement.displayName}`}
 									title={`Open live read-only terminal for ${placement.displayName}. ${technicalDetails}`}
-									className="grid grid-cols-[1.25rem_minmax(0,1fr)] items-center gap-1.5 rounded-md p-3 no-underline transition-colors hover:bg-surface-0/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100"
+									className="grid grid-cols-[1.25rem_minmax(0,1fr)] items-center gap-1.5 rounded-md p-3 no-underline transition-colors hover:bg-surface-0/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100 max-sm:order-first max-sm:basis-full max-sm:pb-1"
 								>
 									<span className="sr-only">
 										{placement.active ? "Herdr pane focused" : "Herdr pane not focused"}
@@ -229,7 +236,7 @@ function TerminalsPage() {
 								>
 									<MessagesSquare aria-hidden="true" className="h-4 w-4" />
 								</Link>
-								<div className="justify-self-end">
+								<div className={HERDR_ROW_ACTION_CELL}>
 									{!pane.viewedState.viewedAnywhere && (
 										<SessionReviewAction
 											onReview={async () =>

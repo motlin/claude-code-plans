@@ -37,12 +37,16 @@ function formatRelativeTime(lastModified: number): string {
  * the whole list. The columns themselves are session-scoped — /active is fed by
  * `/api/sessions/active` alone and stays readable with no terminal multiplexer
  * running at all.
+ *
+ * Below 640px the fixed tracks (30.5rem) overflow a phone-width card, so the
+ * row wraps as flex instead: title and project fill the first line, and status,
+ * review mark, and timestamp share a second line with "Mark reviewed" trailing.
  */
 const ACTIVE_ROW_COLUMNS =
-	"grid grid-cols-[minmax(0,1fr)_5rem_8.5rem_7rem_9rem] items-center rounded-md border border-border";
+	"grid grid-cols-[minmax(0,1fr)_5rem_8.5rem_7rem_9rem] items-center rounded-md border border-border max-sm:flex max-sm:flex-wrap max-sm:gap-x-2 max-sm:ps-3 max-sm:pb-2";
 
 const ACTIVE_TRANSCRIPT_COLUMNS =
-	"grid grid-cols-[minmax(0,1fr)_minmax(0,8rem)] items-center gap-1.5 rounded-md p-3 no-underline transition-colors hover:bg-surface-0/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100";
+	"grid grid-cols-[minmax(0,1fr)_minmax(0,8rem)] items-center gap-1.5 rounded-md p-3 no-underline transition-colors hover:bg-surface-0/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100 max-sm:basis-full max-sm:ps-0 max-sm:pb-1";
 
 function labelFromCwd(cwd: string): string {
 	const trimmed = cwd.replace(/\/+$/, "");
@@ -133,7 +137,7 @@ function ActivePage() {
 							<span className="truncate text-xs tabular-nums text-t6">
 								{formatRelativeTime(session.lastModified)}
 							</span>
-							<div className="justify-self-end">
+							<div className="justify-self-end max-sm:ms-auto">
 								{session.displayState === "review" && (
 									<SessionReviewAction
 										onReview={async () => {

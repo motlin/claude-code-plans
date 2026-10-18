@@ -33,10 +33,10 @@ afterEach(() => {
 });
 
 const ACTIVE_ROW_COLUMNS =
-	"grid grid-cols-[minmax(0,1fr)_5rem_8.5rem_7rem_9rem] items-center rounded-md border border-border";
+	"grid grid-cols-[minmax(0,1fr)_5rem_8.5rem_7rem_9rem] items-center rounded-md border border-border max-sm:flex max-sm:flex-wrap max-sm:gap-x-2 max-sm:ps-3 max-sm:pb-2";
 const ACTIVE_TRANSCRIPT_COLUMNS =
-	"grid grid-cols-[minmax(0,1fr)_minmax(0,8rem)] items-center gap-1.5 rounded-md p-3 no-underline transition-colors hover:bg-surface-0/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100";
-const ACTIVE_ACTION_CELL = "justify-self-end";
+	"grid grid-cols-[minmax(0,1fr)_minmax(0,8rem)] items-center gap-1.5 rounded-md p-3 no-underline transition-colors hover:bg-surface-0/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100 max-sm:basis-full max-sm:ps-0 max-sm:pb-1";
+const ACTIVE_ACTION_CELL = "justify-self-end max-sm:ms-auto";
 
 const MINUTE_MS = 60_000;
 
