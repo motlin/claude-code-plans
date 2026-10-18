@@ -4547,7 +4547,13 @@ function ToolCallRow({
 			: call;
 	const toolRowLabel = toolLabel(labelCall);
 	const permissionWaitId = useContext(PermissionWaitContext);
-	const running = pending ? runningToolLabel(withPermissionWait(labelCall, permissionWaitId)) : null;
+	// Upstream offers a running background command's live output; locally that is the Background tasks pane.
+	const backgroundTasks = useBackgroundTasksOpener();
+	// A background Agent's launch result arrives at once, but upstream keeps its row
+	// busy, in the present tense, until the task's completion notification lands.
+	const busyAgent = isAgent && (pending || backgroundTasks?.running.has(call.id) === true);
+	const busy = pending || busyAgent;
+	const running = busy ? runningToolLabel(withPermissionWait(labelCall, permissionWaitId)) : null;
 	const isFileParam = FILE_PARAM_TOOLS.has(call.name);
 	const diffStats = useEditDiffStats(call);
 	const isCardStyle = CARD_STYLE_TOOLS.has(call.name) && !nested;
@@ -4583,8 +4589,8 @@ function ToolCallRow({
 				: backgroundOutcome === "failed"
 					? "Failed"
 					: null;
-	const labelClass = call.isError ? ink : pending ? RUNNING_LABEL_CLASS : isSkill ? "text-secondary" : ink;
-	const isCompletedPaneAgent = paneAgentId !== undefined && !call.isError && !pending;
+	const labelClass = call.isError ? ink : busy ? RUNNING_LABEL_CLASS : isSkill ? "text-secondary" : ink;
+	const isCompletedPaneAgent = paneAgentId !== undefined && !call.isError && !busy;
 	// Expandable rows reach the disclosure below; Agent navigation and nested rows are not statuses.
 	// Upstream draws every standalone status row in one 24px padded layout, whether it
 	// completed, failed, or is still running.
@@ -4601,7 +4607,7 @@ function ToolCallRow({
 	const failedDescription = status === null ? null : getToolDescription(call.name, call.input);
 	const phrase =
 		failedDescription ??
-		(isAgent && (nested || !pending)
+		(isAgent && (nested || !busy)
 			? null
 			: running === null
 				? (toolRowLabel.doneLabel ?? null)
@@ -4625,8 +4631,6 @@ function ToolCallRow({
 
 	// Upstream leads a standalone in-flight row with its running spinner and follows the label with the elapsed time.
 	const runningRow = pending && isTurnStatus;
-	// Upstream offers a running background command's live output; locally that is the Background tasks pane.
-	const backgroundTasks = useBackgroundTasksOpener();
 	const liveOutput =
 		backgroundTasks !== null && call.name === "Bash" && backgroundTasks.running.has(call.id)
 			? backgroundTasks.open
@@ -4691,6 +4695,7 @@ function ToolCallRow({
 			)}
 			{rangeLabel && <span className={`text-body ${labelClass} truncate min-w-0`}>{rangeLabel}</span>}
 			{runningRow && <RunningElapsed startedAt={call.startedAt} />}
+			{busyAgent && <span className="sr-only">running</span>}
 			{liveOutput !== null && (
 				<button
 					type="button"
@@ -4755,6 +4760,7 @@ function ToolCallRow({
 				<div
 					role="button"
 					tabIndex={0}
+					data-state={busyAgent ? "busy" : undefined}
 					data-transcript-keeps-pin=""
 					onClick={open}
 					onKeyDown={(e) => {
@@ -4774,7 +4780,10 @@ function ToolCallRow({
 	if (!expandable) {
 		return (
 			<div data-tool-row="" className="flex flex-col w-full">
-				<div className="relative group/tool flex self-start max-w-full items-center py-0 gap-g5 text-left">
+				<div
+					data-state={busyAgent ? "busy" : undefined}
+					className="relative group/tool flex self-start max-w-full items-center py-0 gap-g5 text-left"
+				>
 					{rowLabel}
 				</div>
 				{body}
@@ -4794,6 +4803,7 @@ function ToolCallRow({
 				tabIndex={0}
 				aria-expanded={expanded}
 				aria-controls={bodyId}
+				data-state={busyAgent ? "busy" : undefined}
 				onClick={toggleExpanded}
 				onKeyDown={(e) => {
 					if (e.key === "Enter" || e.key === " ") {

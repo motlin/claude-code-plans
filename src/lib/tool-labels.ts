@@ -8,7 +8,7 @@ import {
 	remoteTriggerActionLabels,
 } from "./schema-choices";
 import {isRecord} from "./narrow";
-import {pastTense} from "./past-tense";
+import {pastTense, startsWithKnownVerb} from "./past-tense";
 import {AskUserQuestionResultSchema, ExitWorktreeActionSchema, RemoteTriggerActionSchema} from "./tool-input-schemas";
 
 /**
@@ -508,9 +508,11 @@ export function runningToolLabel(call: ToolLabelCall): RunningToolLabel {
 	const running: RunningToolLabel = {verb};
 	if (done.doneLabel !== undefined) {
 		const description = stringInput(call.input, "description");
-		// A running subagent, and a call held at its permission prompt, show the description as written.
+		// A call held at its permission prompt shows the description as written, and so
+		// does a running subagent whose description opens with no verb to inflect
+		// ("Mobile audit: session page"); upstream reads "Do task" as "Doing task".
 		const isAgent = call.name === "Agent" || call.name === "Task";
-		const verbatim = isAgent || call.awaitingPermission === true;
+		const verbatim = call.awaitingPermission === true || (isAgent && !startsWithKnownVerb(description ?? ""));
 		running.label = description === null ? done.doneLabel : verbatim ? description : progressive(description);
 		return running;
 	}

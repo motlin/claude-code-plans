@@ -412,6 +412,12 @@ function pastOfPrefixed(word: string): string | null {
 	return `${prefix}-${matchCapital(base, pastBase)}`;
 }
 
+/** Whether a description opens with a base-form verb ("Do task" yes, "Mobile audit" no). */
+export function startsWithKnownVerb(description: string): boolean {
+	const [, word] = /^\s*([A-Za-z]+)(?![-\w])/.exec(description) ?? [];
+	return word !== undefined && KNOWN_VERBS.has(word.toLowerCase());
+}
+
 export function pastTense(description: string): string {
 	const trimmed = description.trimStart();
 	const indent = description.slice(0, description.length - trimmed.length);
