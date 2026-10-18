@@ -10,6 +10,7 @@ import {SessionTitlebar} from "../src/components/session-titlebar";
 import {ToastProvider} from "../src/components/toast";
 import {SESSION_STICKY_HEADER_CLASS} from "../src/components/titlebar-classes";
 import {useTitlebarFolded} from "../src/components/titlebar-folded-context";
+import {topLeftClearance} from "../src/lib/top-left-clearance";
 import {herdrPanesQueryOptions} from "../src/lib/api/herdr";
 import {sessionOpenInQueryOptions, type SessionDetailData} from "../src/lib/api/sessions";
 import {__unreadStoreTesting} from "../src/lib/unread-store";
@@ -299,6 +300,33 @@ describe("SessionTitlebar title and chevron", () => {
 			title: ["h-6", "px-1", "rounded-r5"].every((name) => title.classList.contains(name)),
 			chevron: ["size-6", "rounded-r6"].every((name) => chevron.classList.contains(name)),
 		}).toStrictEqual({title: true, chevron: true});
+	});
+
+	it("leads with upstream's 7px phone spacer so the title button sits at x=44 and its text at x=48 at 390", async () => {
+		const titlebar = await renderTitlebar(baseDetail);
+		const lead = titlebar.querySelector("[data-titlebar-lead]");
+		const spacer = lead?.firstElementChild;
+		if (!(spacer instanceof HTMLElement)) throw new Error("titlebar lead spacer missing");
+		const title = screen.getByRole("button", {name: `${TITLE}, rename session`});
+		const clearance = topLeftClearance("phone")?.start ?? 0;
+		const cardInset = 9;
+		const rowStart = cardInset + (clearance - cardInset);
+		const spacerWidth = Number(
+			/^w-\[(\d+)px\]$/.exec([...spacer.classList].find((name) => name.startsWith("w-")) ?? "")?.[1],
+		);
+		const buttonX = rowStart + spacerWidth + (title.classList.contains("-mx-1") ? -4 : 0);
+
+		expect({
+			spacer: {tag: spacer.tagName, hidden: spacer.getAttribute("aria-hidden"), className: spacer.className},
+			rowStart,
+			buttonX,
+			textX: buttonX + (title.classList.contains("px-1") ? 4 : 0),
+		}).toStrictEqual({
+			spacer: {tag: "SPAN", hidden: "true", className: "w-[7px] shrink-0 sm:hidden"},
+			rowStart: 41,
+			buttonX: 44,
+			textX: 48,
+		});
 	});
 
 	it("shows a styled Rename tooltip on the title instead of a native title attribute", async () => {

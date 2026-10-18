@@ -21,7 +21,7 @@ describe("top-left clearance", () => {
 		expect(topLeftClearanceStyle("docked")).toBe(undefined);
 	});
 
-	it("sets the phone toggle 8px down at x=8 and the titlebar row 9px down, as upstream's phone header", () => {
+	it("sets the phone toggle 8px down at x=8 and the titlebar row at x=41, 9px down, as upstream's phone header", () => {
 		expect({
 			toggle: PHONE_SIDEBAR_TOGGLE,
 			clearance: topLeftClearance("phone"),
@@ -29,8 +29,8 @@ describe("top-left clearance", () => {
 			barHeight: TITLEBAR_HEIGHT_PX,
 		}).toStrictEqual({
 			toggle: {left: 8, top: 8, size: 32},
-			clearance: {start: 44, top: 9},
-			style: {"--top-left-clearance-start": "44px", "--top-left-clearance-top": "9px"},
+			clearance: {start: 41, top: 9},
+			style: {"--top-left-clearance-start": "41px", "--top-left-clearance-top": "9px"},
 			barHeight: 32,
 		});
 	});

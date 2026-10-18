@@ -188,7 +188,7 @@ describe("phone sheet sidebar", () => {
 			clearance: clearanceVars(container),
 		}).toStrictEqual({
 			inert: false,
-			clearance: {start: "44px", top: "9px"},
+			clearance: {start: "41px", top: "9px"},
 		});
 	});
 
