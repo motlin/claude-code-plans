@@ -251,7 +251,7 @@ describe("TranscriptTopFade", () => {
 
 		expect({ariaHidden: fade.getAttribute("aria-hidden"), className: fade.className}).toStrictEqual({
 			ariaHidden: "true",
-			className: "pointer-events-none sticky top-0 z-[1] -mb-6 h-6 bg-linear-to-b from-page to-transparent",
+			className: "pointer-events-none sticky top-0 z-[1] -mb-6 h-6 bg-linear-to-b from-surface-2 to-transparent",
 		});
 	});
 });

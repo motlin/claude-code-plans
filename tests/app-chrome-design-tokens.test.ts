@@ -36,6 +36,15 @@ describe("app chrome design tokens", () => {
 		});
 	});
 
+	it("shadows the dark chat card and side panes with upstream's measured shadow-panel-sm", () => {
+		const styles = readFileSync("src/styles/globals.css", "utf8");
+		const dark = styles.slice(styles.indexOf(".dark {"));
+
+		expect(dark.match(/--pane-shadow:\s*([^;]+);/)?.[1]).toBe(
+			"0 1px 2px rgba(11, 11, 11, 0.06), 0 2px 8px rgba(0, 0, 0, 0.24)",
+		);
+	});
+
 	it("inks the home Needs input pill in upstream's text-warning", () => {
 		const styles = readFileSync("src/styles/globals.css", "utf8");
 		const light = styles.slice(styles.indexOf(":root {"), styles.indexOf(".dark {"));

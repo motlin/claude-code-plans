@@ -461,8 +461,8 @@
 	--settings-segmented-thumb: hsl(60 2% 24%);
 	--settings-field-bg: hsl(0 0% 100% / 0.04);
 
-	/* Upstream claude.ai/code — side pane surface (dark: shadow-sm + outline-alpha-2) */
-	--pane-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 0 0 1px hsl(0 0% 100% / 0.08);
+	/* Upstream claude.ai/code — chat card and side pane surface (dark: shadow-panel-sm) */
+	--pane-shadow: 0 1px 2px rgba(11, 11, 11, 0.06), 0 2px 8px rgba(0, 0, 0, 0.24);
 	/* Upstream claude.ai/code — approval card (dark) */
 	--approval-card-shadow: 0 0 0 1px hsl(0 0% 100% / 0.1), 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.3);
 }
@@ -1007,10 +1007,19 @@ html[data-motion="reduced"] .terminal-caret {
 		/* Phone: upstream's titlebar row sits 9px down, below the toggle at y=8. */
 		padding-top: var(--top-left-clearance-top, 0px);
 		--tile-title-start: var(--top-left-clearance-start, 0px);
-		/* Phone: upstream's prose sits 36px in at 390px wide. */
-		--chat-column-extra: 50px;
-		--chat-column-start: 25px;
-		--chat-column-end: 25px;
+		/* Phone: upstream's prose sits 24px inside the chat card (x=33 at 390px wide). */
+		--chat-column-extra: 48px;
+		--chat-column-start: 24px;
+		--chat-column-end: 24px;
+	}
+
+	@media (width < 40rem) {
+		[data-route-tile-shell="session"] {
+			/* Upstream's chat card sits at 9,9 and stops 1px short of the viewport's end, like the desktop tile. */
+			padding: 9px 1px 9px 9px;
+			--tile-title-start: max(0px, calc(var(--top-left-clearance-start, 0px) - 9px));
+			--session-dock-bottom: max(0px, calc(env(safe-area-inset-bottom) - 9px));
+		}
 	}
 
 	.chat-column {

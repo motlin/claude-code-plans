@@ -224,17 +224,33 @@ describe("transcript width setting", () => {
 		});
 	});
 
-	it("insets the phone tile's chat column 25px a side so prose starts 36px in at 390px, as upstream does", () => {
+	it("insets the phone tile's chat column 24px a side inside the 9px card so prose starts at x=33 at 390px, as upstream does", () => {
 		const styles = readFileSync("src/styles/globals.css", "utf8");
 		const shell = styles.match(/\[data-route-tile-shell\] \{([^}]+)\}/)?.[1] ?? "";
 		const gutters = Object.fromEntries(
 			[...shell.matchAll(/(--chat-column-[a-z]+):\s*([^;]+);/g)].map(([, name, value]) => [name, value]),
 		);
 		expect(gutters).toStrictEqual({
-			"--chat-column-extra": "50px",
-			"--chat-column-start": "25px",
-			"--chat-column-end": "25px",
+			"--chat-column-extra": "48px",
+			"--chat-column-start": "24px",
+			"--chat-column-end": "24px",
 		});
+	});
+
+	it("insets the phone session tile 9px top, bottom and start and 1px at the end, as upstream's chat card sits at 9,9 380x716 at 390x734", () => {
+		const styles = readFileSync("src/styles/globals.css", "utf8");
+		const phone =
+			styles.match(/@media \(width < 40rem\) \{\s*\[data-route-tile-shell="session"\] \{([^}]+)\}/)?.[1] ?? "";
+		expect(
+			phone
+				.split("\n")
+				.map((line) => line.trim())
+				.filter((line) => line !== "" && !line.startsWith("/*")),
+		).toStrictEqual([
+			"padding: 9px 1px 9px 9px;",
+			"--tile-title-start: max(0px, calc(var(--top-left-clearance-start, 0px) - 9px));",
+			"--session-dock-bottom: max(0px, calc(env(safe-area-inset-bottom) - 9px));",
+		]);
 	});
 
 	it("defaults to narrow, reads a stored width, and ignores an unknown stored value", () => {

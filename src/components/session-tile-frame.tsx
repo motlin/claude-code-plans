@@ -10,7 +10,7 @@ export interface SessionTileScrollPosition {
 	top: number;
 }
 
-/** Chat chrome stays outside the single scroll/restoration owner. */
+/** Upstream's rounded chat card; its chrome stays outside the single scroll/restoration owner. */
 export function SessionTileFrame({
 	sessionId,
 	header,
@@ -115,7 +115,7 @@ export function SessionTileFrame({
 
 	return (
 		<div
-			className="@container flex h-full min-h-0 min-w-0 flex-col"
+			className="@container flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-r7 bg-surface-2 shadow-panel-sm"
 			{...(railDocked ? {"data-session-rail-docked": ""} : {})}
 		>
 			<div className="shrink-0">{header}</div>

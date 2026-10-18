@@ -15,7 +15,7 @@ afterEach(cleanup);
 const source = (path: string) => readFileSync(path, "utf8");
 
 describe("upstream's measured dark surfaces and inks (wave 90)", () => {
-	it("paints the main content, titlebar, dock and history fade with the #151515 page in dark, not surface-2", () => {
+	it("paints the titlebar, dock and history fade in one surface for both themes, with no dark-only surface-2 override", () => {
 		expect({
 			titlebar: SESSION_STICKY_HEADER_CLASS.includes("dark:"),
 			frame: source("src/components/app-frame.tsx").includes("dark:bg-surface-2"),
