@@ -12517,7 +12517,11 @@
 				"startedAt": null,
 				"finishedAt": null,
 				"slowCommands": [
-					{"finishedAt": "2026-10-02T13:07:20.034Z", "description": "Commit and run git test on HEAD"}
+					{
+						"finishedAt": "2026-10-02T13:07:20.034Z",
+						"description": "Commit and run git test on HEAD",
+						"status": "completed"
+					}
 				]
 			}
 		]
@@ -12985,7 +12989,11 @@
 				"startedAt": null,
 				"finishedAt": null,
 				"slowCommands": [
-					{"finishedAt": "2026-10-02T12:58:29.147Z", "description": "Commit change and run git-test on HEAD"}
+					{
+						"finishedAt": "2026-10-02T12:58:29.147Z",
+						"description": "Commit change and run git-test on HEAD",
+						"status": "completed"
+					}
 				]
 			}
 		]
@@ -13840,10 +13848,19 @@
 				"slowCommands": [
 					{
 						"finishedAt": "2026-09-27T03:00:33.334Z",
-						"description": "Base worktree on local main and install deps"
+						"description": "Base worktree on local main and install deps",
+						"status": "completed"
 					},
-					{"finishedAt": "2026-09-27T03:03:46.893Z", "description": "Run precommit gate on HEAD"},
-					{"finishedAt": "2026-09-27T03:04:15.635Z", "description": "Fix toReversed and rerun gate"}
+					{
+						"finishedAt": "2026-09-27T03:03:46.893Z",
+						"description": "Run precommit gate on HEAD",
+						"status": "completed"
+					},
+					{
+						"finishedAt": "2026-09-27T03:04:15.635Z",
+						"description": "Fix toReversed and rerun gate",
+						"status": "completed"
+					}
 				]
 			}
 		]

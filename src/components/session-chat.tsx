@@ -1959,7 +1959,7 @@ function slowCommandCompletion(command: SlowCommand): TaskNotification {
 	return {
 		taskId: null,
 		toolUseId: null,
-		status: "completed",
+		status: command.status,
 		command: true,
 		agent: false,
 		description: command.description,
@@ -1970,15 +1970,15 @@ function slowCommandCompletion(command: SlowCommand): TaskNotification {
 /**
  * The row upstream draws for the slow commands a subagent finished while the
  * parent idled between turns: "Background command completed · <description>"
- * for one, "N background commands completed" for several.
+ * for one, "N background commands completed, 1 failed" for several.
  */
 function IdleCommandsRow({commands}: {commands: readonly SlowCommand[]}) {
 	const [first] = commands;
 	return commands.length === 1 && first !== undefined ? (
-		<TaskEventStatusRow label="Background command completed" detail={first.description} footer={null} />
+		<TaskEventStatusRow label={`Background command ${first.status}`} detail={first.description} footer={null} />
 	) : (
 		<TaskEventStatusRow
-			label={<NoticeSummary entries={commands.map(() => ({status: "completed", kind: "shell"}))} />}
+			label={<NoticeSummary entries={commands.map(({status}) => ({status, kind: "shell"}))} />}
 			detail={null}
 			footer={null}
 		/>

@@ -175,7 +175,7 @@ CREATE TABLE IF NOT EXISTS subagents (
   model TEXT,
   started_at TEXT,
   finished_at TEXT,
-  slow_commands TEXT NOT NULL DEFAULT '[]',
+  background_commands TEXT NOT NULL DEFAULT '[]',
   task_kind TEXT,
   name TEXT,
   pending_command TEXT,

@@ -356,7 +356,8 @@ describe("DB-backed subagents", () => {
 					...row,
 					id: "agent-slow",
 					filePath: "/tmp/a.jsonl",
-					slowCommandsJson: '[{"finishedAt":"1999-12-31T00:00:09.000Z","description":"Run tests"}]',
+					slowCommandsJson:
+						'[{"finishedAt":"1999-12-31T00:00:09.000Z","description":"Run tests","status":"completed"}]',
 				},
 				{...row, id: "agent-quick", filePath: "/tmp/b.jsonl"},
 			])
@@ -364,7 +365,10 @@ describe("DB-backed subagents", () => {
 
 		const agents = getSubagentsForSession(db.index, "session-test").map(toClientSubagent);
 		expect(agents.map(({id, slowCommands}) => ({id, slowCommands}))).toStrictEqual([
-			{id: "agent-slow", slowCommands: [{finishedAt: "1999-12-31T00:00:09.000Z", description: "Run tests"}]},
+			{
+				id: "agent-slow",
+				slowCommands: [{finishedAt: "1999-12-31T00:00:09.000Z", description: "Run tests", status: "completed"}],
+			},
 			{id: "agent-quick", slowCommands: undefined},
 		]);
 		expect(Object.hasOwn(agents[1]!, "slowCommands")).toBe(false);

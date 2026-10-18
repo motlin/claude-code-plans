@@ -2238,8 +2238,63 @@ describe("subagents", () => {
 
 		const agent = db.index.select().from(schema.subagents).where(eq(schema.subagents.id, "agent-slow1")).get();
 		expect(agent?.slowCommandsJson).toBe(
-			'[{"finishedAt":"1999-12-31T00:00:13.979Z","description":"Run the gate"}]',
+			'[{"finishedAt":"1999-12-31T00:00:13.979Z","description":"Run the gate","status":"completed"}]',
 		);
+	});
+
+	it("indexSubagentFile marks an errored slow command failed and counts background-command notifications", async () => {
+		const projectDir = join(testDir, "-Users-craig-projects-app");
+		const sessionDir = join(projectDir, "sess-1", "subagents");
+		mkdirSync(sessionDir, {recursive: true});
+		const bash = (id: string, at: string, input: Record<string, unknown>) => ({
+			type: "assistant",
+			timestamp: at,
+			message: {id: `msg_${id}`, role: "assistant", content: [{type: "tool_use", id, name: "Bash", input}]},
+		});
+		const result = (id: string, at: string, isError = false) => ({
+			type: "user",
+			timestamp: at,
+			message: {
+				role: "user",
+				content: [{type: "tool_result", tool_use_id: id, content: "ok", is_error: isError}],
+			},
+		});
+		const notification = (id: string, at: string, status: string, command: string) => ({
+			type: "attachment",
+			timestamp: at,
+			attachment: {
+				type: "queued_command",
+				commandMode: "task-notification",
+				prompt: `<task-notification>\n<task-id>b-${id}</task-id>\n<tool-use-id>${id}</tool-use-id>\n<status>${status}</status>\n<summary>Background command "${command}" ${status} (exit code 0)</summary>\n</task-notification>`,
+			},
+		});
+
+		const agentPath = join(sessionDir, "agent-slow2.jsonl");
+		writeFileSync(
+			agentPath,
+			jsonl(
+				// The 2-minute timeout moves the suite to the background; its notification follows.
+				bash("toolu_suite", "1999-12-31T00:00:00.000Z", {command: "vp test", description: "Run the suite"}),
+				result("toolu_suite", "1999-12-31T00:02:00.000Z"),
+				notification("toolu_suite", "1999-12-31T00:02:30.000Z", "completed", "vp test"),
+				bash("toolu_fetch", "1999-12-31T00:03:00.000Z", {command: "git fetch"}),
+				result("toolu_fetch", "1999-12-31T00:03:05.000Z", true),
+				bash("toolu_dev", "1999-12-31T00:04:00.000Z", {command: "just dev", run_in_background: true}),
+				result("toolu_dev", "1999-12-31T00:04:00.100Z"),
+				notification("toolu_dev", "1999-12-31T00:05:00.000Z", "failed", "just dev"),
+			),
+		);
+
+		db.index.insert(schema.projects).values({id: "proj-app", name: "App", updatedAt: 1000}).run();
+		await indexSubagentFile(db.index, agentPath, "sess-1", "proj-app");
+
+		const agent = db.index.select().from(schema.subagents).where(eq(schema.subagents.id, "agent-slow2")).get();
+		expect(JSON.parse(agent?.slowCommandsJson ?? "null")).toStrictEqual([
+			{finishedAt: "1999-12-31T00:02:00.000Z", description: "Run the suite", status: "completed"},
+			{finishedAt: "1999-12-31T00:02:30.000Z", description: "Run the suite", status: "completed"},
+			{finishedAt: "1999-12-31T00:03:05.000Z", description: "git fetch", status: "failed"},
+			{finishedAt: "1999-12-31T00:05:00.000Z", description: "just dev", status: "failed"},
+		]);
 	});
 
 	it("indexSubagentFile preserves transcript attribution beside sibling metadata", async () => {

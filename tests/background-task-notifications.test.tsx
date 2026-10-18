@@ -531,7 +531,11 @@ function teammate(finishedAt: string[]): Subagent {
 		model: null,
 		startedAt: "1999-12-31T00:00:00.000Z",
 		finishedAt: "1999-12-31T01:00:00.000Z",
-		slowCommands: finishedAt.map((at, index) => ({finishedAt: at, description: `Run tests ${index + 1}`})),
+		slowCommands: finishedAt.map((at, index) => ({
+			finishedAt: at,
+			description: `Run tests ${index + 1}`,
+			status: "completed",
+		})),
 	};
 }
 
@@ -646,12 +650,20 @@ describe("subagent-owned slow commands in the transcript", () => {
 });
 
 /** A do-all subagent that ran a slow foreground command at each `finishedAt`. */
-function doAllWorker(bareId: string, description: string, commands: [string, string][]): Subagent {
+function doAllWorker(
+	bareId: string,
+	description: string,
+	commands: [string, string, ("completed" | "failed")?][],
+): Subagent {
 	return {
 		...teammate([]),
 		id: `agent-${bareId}`,
 		description,
-		slowCommands: commands.map(([finishedAt, command]) => ({finishedAt, description: command})),
+		slowCommands: commands.map(([finishedAt, command, status = "completed"]) => ({
+			finishedAt,
+			description: command,
+			status,
+		})),
 	};
 }
 
@@ -741,5 +753,76 @@ describe("idle-period subagent slow commands", () => {
 	it("draws no idle rows in Verbose", () => {
 		const container = renderLines(doAllIdleRecords(), "verbose", workers);
 		expect(container.querySelectorAll("[data-task-event-row]").length).toBe(0);
+	});
+});
+
+/**
+ * do-all 23301293:5652-5657: the parent ends its M2-44 turn, the M2-47 worker runs six
+ * slow commands while it idles (the 2-minute timeout backgrounds one, whose notification
+ * also arrives, and the last, `git fetch`, errors), then hands back.
+ */
+function doAllFailedIdleRecords(): unknown[] {
+	return [
+		{type: "user", uuid: "u-1", timestamp: "2026-10-18T10:00:00.000Z", message: {role: "user", content: "do all"}},
+		{
+			type: "assistant",
+			uuid: "a-1",
+			timestamp: "2026-10-18T10:25:30.000Z",
+			message: {role: "assistant", content: [{type: "text", text: "M2-44 is done."}]},
+		},
+		{
+			type: "user",
+			uuid: "u-handback",
+			timestamp: "2026-10-18T10:37:46.104Z",
+			isMeta: true,
+			promptSource: "system",
+			turnOrigin: "peer",
+			message: {
+				role: "user",
+				content:
+					'Another Claude session sent a message:\n<agent-message from="a7da25778818cc058">\n[Subagent hand-back] M2-47 is done.\n</agent-message>',
+			},
+		},
+		{
+			type: "assistant",
+			uuid: "a-2",
+			timestamp: "2026-10-18T10:37:50.000Z",
+			message: {role: "assistant", content: [{type: "text", text: "M2-47 is done."}]},
+		},
+	];
+}
+
+describe("idle-period background command failures", () => {
+	beforeEach(() => {
+		vi.stubGlobal("innerHeight", 10_000);
+	});
+
+	const worker = doAllWorker("a7da25778818cc058", "Do task M2-47", [
+		["2026-10-18T10:26:33.369Z", "Patch editable-text and run checks"],
+		["2026-10-18T10:27:08.576Z", "vp test 2>&1 | tail -5; git status --short"],
+		["2026-10-18T10:29:32.968Z", 'vp test 2>&1 | grep -E "Test Files|Tests |FAIL" | head'],
+		["2026-10-18T10:29:34.449Z", 'vp test 2>&1 | grep -E "Test Files|Tests |FAIL" | head'],
+		["2026-10-18T10:32:24.514Z", "git test run HEAD --retest"],
+		["2026-10-18T10:36:25.710Z", "git test run HEAD --retest | grep FAIL"],
+		["2026-10-18T10:37:33.830Z", "git fetch -q origin && git rev-list --count HEAD..origin/main", "failed"],
+	]);
+
+	it('draws "6 background commands completed, 1 failed" with the failed part in danger ink', () => {
+		const container = renderLines(doAllFailedIdleRecords(), "normal", [worker]);
+		const row = container.querySelector("[data-task-event-row]");
+		expect({
+			text: row?.textContent,
+			danger: [...(row?.querySelectorAll(".text-danger-ink") ?? [])].map((part) => part.textContent),
+		}).toStrictEqual({text: "6 background commands completed, 1 failed", danger: ["1 failed"]});
+	});
+
+	it("labels a lone failed command as failed", () => {
+		const lone = doAllWorker("a7da25778818cc058", "Do task M2-47", [
+			["2026-10-18T10:37:33.830Z", "git fetch -q origin", "failed"],
+		]);
+		const container = renderLines(doAllFailedIdleRecords(), "normal", [lone]);
+		expect([...container.querySelectorAll("[data-task-event-row]")].map((row) => row.textContent)).toStrictEqual([
+			"Background command failed · git fetch -q origin",
+		]);
 	});
 });
