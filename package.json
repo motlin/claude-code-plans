@@ -55,7 +55,7 @@
 		"zod": "^4.4.3"
 	},
 	"devDependencies": {
-		"@chromatic-com/storybook": "^5.5.0",
+		"@chromatic-com/storybook": "^5.5.1",
 		"@storybook/addon-a11y": "^10.6.1",
 		"@storybook/addon-docs": "^10.6.1",
 		"@storybook/react-vite": "^10.6.1",
