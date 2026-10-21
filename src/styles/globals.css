@@ -382,6 +382,14 @@
 	/* Session rows: upstream selects them lighter than nav rows in dark. */
 	--sb-session-selected: var(--sb-selected);
 	--sb-bg: color-mix(in srgb, var(--upstream-surface-0) 50%, var(--upstream-surface-1));
+	/* Upstream --cds-chart-* (light: reference gray-400, muted gray-200; categorical blue-450/orange-350/aqua-350/yellow-250) */
+	--chart-reference: #898781;
+	--chart-muted: #c3c2b7;
+	--chart-reference-tint: hsl(from var(--chart-reference) h s l / 15%);
+	--chart-categorical-1: #2a78d6;
+	--chart-categorical-2: #eb6834;
+	--chart-categorical-3: #1baf7a;
+	--chart-categorical-4: #eda100;
 }
 
 .dark {
@@ -512,6 +520,14 @@
 		inset 0 0 0 1px rgb(255 255 255 / 0.1), 0 2px 4px 0 rgb(11 11 11 / 0.07), 0 6px 16px 0 rgb(0 0 0 / 0.24);
 	/* Upstream claude.ai/code — approval card (dark) */
 	--approval-card-shadow: 0 0 0 1px hsl(0 0% 100% / 0.1), 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.3);
+	/* Upstream --cds-chart-* (dark: reference gray-350, muted gray-550; categorical blue-400/orange-400/aqua-400/yellow-350) */
+	--chart-reference: #97958d;
+	--chart-muted: #5f5e5a;
+	--chart-reference-tint: hsl(from var(--chart-reference) h s l / 15%);
+	--chart-categorical-1: #3987e5;
+	--chart-categorical-2: #d95926;
+	--chart-categorical-3: #199e70;
+	--chart-categorical-4: #c98500;
 }
 
 @layer utilities {
