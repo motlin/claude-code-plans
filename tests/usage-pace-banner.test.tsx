@@ -7,6 +7,7 @@ import {UsageLimitBand, UsagePaceBand} from "../src/components/usage-pace-banner
 import {
 	formatPaceBannerReset,
 	limitReached,
+	paceState,
 	shouldShowPaceBanner,
 	weeklyAheadOfPace,
 	type UsageSummary,
@@ -33,8 +34,54 @@ describe("weeklyAheadOfPace", () => {
 		{name: "only the session window is ahead", usage: summary([10, 3.5 * DAY], [90, HOUR]), expected: false},
 		{name: "the weekly limit is already hit", usage: summary([100, 6 * DAY]), expected: false},
 		{name: "no weekly window", usage: summary(null, [90, HOUR]), expected: false},
+		{name: "5% used 7.5h into the week (fresh)", usage: summary([5, 7 * DAY - 7.5 * HOUR]), expected: false},
+		{
+			name: "9% used 3 days in, running out before the reset (fresh)",
+			usage: summary([9, 4 * DAY]),
+			expected: false,
+		},
+		{name: "20% used 6h into the week (early)", usage: summary([20, 7 * DAY - 6 * HOUR]), expected: false},
+		{name: "40% used 2 days into the week (heads up)", usage: summary([40, 5 * DAY]), expected: true},
+		{name: "75% used 3 days in is past the 70% ceiling", usage: summary([75, 4 * DAY]), expected: false},
 	])("$name", ({usage, expected}) => {
 		expect(weeklyAheadOfPace(usage, NOW_MS)).toBe(expected);
+	});
+});
+
+describe("paceState", () => {
+	const window = (usedPct: number, resetsInSeconds: number) => ({usedPct, resetsAt: NOW_SECONDS + resetsInSeconds});
+	const resetsAtMs = NOW_MS + 4 * DAY * 1000;
+
+	it.each([
+		{name: "limit_hit at 100%", usedPct: 100.4, expected: {state: "limit_hit", percent: 100, resetsAtMs}},
+		{name: "zero at 0%", usedPct: 0.2, expected: {state: "zero", percent: 0, resetsAtMs}},
+		{name: "zero when negative", usedPct: -3, expected: {state: "zero", percent: 0, resetsAtMs}},
+		{name: "fresh below 10%", usedPct: 9.4, expected: {state: "fresh", percent: 9, resetsAtMs}},
+		{
+			name: "on_track when the run-out is after the reset",
+			usedPct: 20,
+			expected: {state: "on_track", percent: 20, resetsAtMs},
+		},
+		{
+			name: "heads_up when the run-out lands before the reset",
+			usedPct: 60,
+			expected: {state: "heads_up", percent: 60, runsOutAtMs: NOW_MS + 2 * DAY * 1000, resetsAtMs},
+		},
+	])("$name", ({usedPct, expected}) => {
+		expect(paceState(window(usedPct, 4 * DAY), NOW_MS)).toStrictEqual(expected);
+	});
+
+	it("is early before 12h into the window", () => {
+		const resetsIn = 7 * DAY - 11 * HOUR;
+		expect(paceState(window(50, resetsIn), NOW_MS)).toStrictEqual({
+			state: "early",
+			percent: 50,
+			resetsAtMs: NOW_MS + resetsIn * 1000,
+		});
+	});
+
+	it("is early when the reset has already passed", () => {
+		expect(paceState(window(50, -HOUR), NOW_MS)).toStrictEqual({state: "early", percent: 50, resetsAtMs: null});
 	});
 });
 

@@ -98,11 +98,46 @@ function isAheadOfPace(paced: PacedWindow, nowMs: number): boolean {
 	return paced.window.usedPct / 100 > elapsedFraction(paced, nowMs);
 }
 
-/** The weekly window is burning faster than the week elapses, but is not yet exhausted. */
+export type PaceState = "zero" | "fresh" | "early" | "on_track" | "heads_up" | "limit_hit";
+
+export interface Pace {
+	state: PaceState;
+	/** Whole-number percent used, floored at 0. */
+	percent: number;
+	/** The reset rounded to the minute, or null when it is unknown or already past. */
+	resetsAtMs: number | null;
+	/** The straight-line run-out time, only for `heads_up`. */
+	runsOutAtMs?: number;
+}
+
+/** Upstream's `FR`: below this percent the week reads as fresh. */
+const FRESH_PERCENT = 10;
+/** Upstream's `432e5`: the projection waits until 12h into the window. */
+const EARLY_MS = 12 * 3_600_000;
+/** Upstream's `re`: above this utilization the server's threshold band replaces the on-pace one. */
+const ON_PACE_CEILING_PCT = 70;
+
+/** Upstream's weekly pace projection (shared-3 `Xi`). */
+export function paceState(sevenDay: UsageWindow, nowMs: number): Pace {
+	const resetMs = sevenDay.resetsAt * 1000;
+	const resetsAtMs = Number.isFinite(resetMs) && resetMs > nowMs ? Math.round(resetMs / 60_000) * 60_000 : null;
+	const percent = Number.isFinite(sevenDay.usedPct) ? Math.round(Math.max(0, sevenDay.usedPct)) : 0;
+	if (percent >= 100) return {state: "limit_hit", percent, resetsAtMs};
+	if (percent === 0) return {state: "zero", percent, resetsAtMs};
+	if (percent < FRESH_PERCENT) return {state: "fresh", percent, resetsAtMs};
+	const elapsed = resetsAtMs === null ? null : nowMs - (resetsAtMs - SEVEN_DAY_MS);
+	if (resetsAtMs === null || elapsed === null || elapsed < EARLY_MS) return {state: "early", percent, resetsAtMs};
+	const runsOutAtMs = nowMs + ((100 - percent) * elapsed) / percent;
+	return runsOutAtMs < resetsAtMs
+		? {state: "heads_up", percent, runsOutAtMs, resetsAtMs}
+		: {state: "on_track", percent, resetsAtMs};
+}
+
+/** Upstream's on-pace gate: the weekly projection runs out before the reset while still under 70%. */
 export function weeklyAheadOfPace(usage: UsageSummary, nowMs: number): boolean {
 	const {sevenDay} = usage;
-	if (sevenDay === null || sevenDay.usedPct >= 100) return false;
-	return isAheadOfPace({window: sevenDay, lengthMs: SEVEN_DAY_MS}, nowMs);
+	if (sevenDay === null || sevenDay.usedPct >= ON_PACE_CEILING_PCT) return false;
+	return paceState(sevenDay, nowMs).state === "heads_up";
 }
 
 /**
