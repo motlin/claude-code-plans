@@ -433,6 +433,36 @@ describe("SettingsDialog local tabs", () => {
 		});
 	});
 
+	it("clears a non-empty Customize search on Escape without closing the dialog, and closes it on a second Escape, as upstream does", async () => {
+		const router = await renderAt("/#customize/skills/yours");
+		fireEvent.click(await screen.findByRole("button", {name: "Search"}));
+		const input = screen.getByTestId<HTMLInputElement>("customize-header-search");
+		fireEvent.change(input, {target: {value: "gh"}});
+
+		fireEvent.keyDown(input, {key: "Escape", code: "Escape"});
+		const afterFirst = {
+			dialog: screen.queryByRole("dialog") !== null,
+			value: input.value,
+			focused: document.activeElement === input,
+			location: location(router),
+		};
+
+		fireEvent.keyDown(input, {key: "Escape", code: "Escape"});
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog")).toBeNull();
+		});
+
+		expect({afterFirst, afterSecond: location(router)}).toStrictEqual({
+			afterFirst: {
+				dialog: true,
+				value: "",
+				focused: true,
+				location: {pathname: "/", hash: "customize/skills/yours"},
+			},
+			afterSecond: {pathname: "/", hash: ""},
+		});
+	});
+
 	it("switches a customize section to Discover through the hash", async () => {
 		const router = await renderAt("/#customize/plugins/yours");
 		const views = await screen.findByRole("radiogroup", {name: "Plugins"});

@@ -189,7 +189,7 @@ function isEditableTarget(target: EventTarget | null): boolean {
 
 /**
  * Upstream's collapsible Customize search: a magnifier button while empty, expanding inline to a
- * 256px field on click or "/". Escape clears the text first, then collapses; Clear search and
+ * 256px field on click or "/". Escape clears the text first (without closing the Settings dialog), then collapses; Clear search and
  * blurring an empty field collapse it too, handing focus back to the magnifier.
  */
 function SearchField({placeholder, value, onChange}: SearchFieldProps) {
@@ -269,9 +269,15 @@ function SearchField({placeholder, value, onChange}: SearchFieldProps) {
 				}}
 				onKeyDown={(event) => {
 					if (event.key !== "Escape") return;
+					// An empty field lets Escape reach the Settings dialog, which closes. With text, Escape only
+					// clears it: stopping propagation keeps Base UI's dismiss from closing the dialog too.
+					if (draft === "") {
+						collapse();
+						return;
+					}
 					event.preventDefault();
-					if (draft === "") collapse();
-					else change("");
+					event.stopPropagation();
+					change("");
 				}}
 				onBlur={() => {
 					if (draft === "") setExpanded(false);
