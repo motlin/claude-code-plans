@@ -315,6 +315,52 @@ describe("Menu", () => {
 		]);
 	});
 
+	it("puts a radio row's check slot before its digit, both in one first-line trailing wrapper", async () => {
+		render(
+			<Menu defaultOpen>
+				<MenuTrigger aria-label="Mode">Mode</MenuTrigger>
+				<MenuContent>
+					<MenuRadioGroup value="auto">
+						<MenuRadioItem value="auto" accelerator="1">
+							Auto
+						</MenuRadioItem>
+						<MenuRadioItem value="plan" accelerator="2">
+							Plan
+						</MenuRadioItem>
+					</MenuRadioGroup>
+				</MenuContent>
+			</Menu>,
+		);
+		await flush();
+
+		const rows = screen.getAllByRole("menuitemradio").map((item) => {
+			const trailing = item.querySelector("[data-menu-item-trailing]");
+			return {
+				trailing: trailing?.className,
+				children: Array.from(trailing?.children ?? []).map((child) => ({
+					cds: child.getAttribute("data-cds"),
+					className: child.getAttribute("class"),
+					checked: child.querySelector("svg") !== null,
+					text: child.textContent,
+				})),
+			};
+		});
+
+		const trailing = "flex shrink-0 items-center gap-1 ms-3 h-[1lh] self-start";
+		const checkSlot = "flex size-4 shrink-0 items-center justify-center pointer-coarse:-me-1";
+		const digit = (text: string) => ({
+			cds: "Shortcut",
+			className:
+				"inline-flex shrink-0 items-baseline gap-[0.3em] text-caption [&>kbd]:leading-[15px] pointer-coarse:hidden",
+			checked: false,
+			text,
+		});
+		expect(rows).toStrictEqual([
+			{trailing, children: [{cds: null, className: checkSlot, checked: true, text: ""}, digit("1")]},
+			{trailing, children: [{cds: null, className: checkSlot, checked: false, text: ""}, digit("2")]},
+		]);
+	});
+
 	it("opens a submenu with ArrowRight and shows radio items", async () => {
 		renderDropdown();
 		await openDropdown();

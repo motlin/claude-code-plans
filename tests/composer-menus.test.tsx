@@ -148,7 +148,7 @@ describe("Composer mode menu", () => {
 			singleLine: false,
 			paddedBottom: true,
 			description: "break-words text-[12px]/[15px] text-[var(--menu-muted)]",
-			trailing: "ml-auto flex shrink-0 items-center gap-1 h-[1lh] self-start",
+			trailing: "flex shrink-0 items-center gap-1 ms-3 h-[1lh] self-start",
 		};
 		expect({rows, fixedWidth: popup?.classList.contains("w-[280px]")}).toStrictEqual({
 			rows: [row, row, row, row],

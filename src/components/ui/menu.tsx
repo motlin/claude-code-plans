@@ -71,6 +71,9 @@ const TRAILING_CLASS = "ml-auto flex shrink-0 items-center gap-1";
 const RADIO_DESCRIPTION_CLASS = "break-words text-[12px]/[15px] text-[var(--menu-muted)]";
 /** Pins a two-line row's keycap and check to its first line. */
 const FIRST_LINE_TRAILING_CLASS = `${TRAILING_CLASS} h-[1lh] self-start`;
+/** A digit row's trailing group: check slot then keycap, as upstream's mode rows. */
+const DIGIT_TRAILING_CLASS = "flex shrink-0 items-center gap-1 ms-3 h-[1lh] self-start";
+const DIGIT_CHECK_SLOT_CLASS = "flex size-4 shrink-0 items-center justify-center pointer-coarse:-me-1";
 const CHECK_SLOT_CLASS = "-mr-1 flex size-5 shrink-0 items-center justify-center";
 /** Upstream's checked tick: 16px, bold, in fill-accent ink. */
 const CHECK_ICON_CLASS = "size-4 text-fill-accent";
@@ -334,6 +337,39 @@ export function MenuCheckboxItem({children, accelerator, shortcut, ...props}: Me
 
 export const MenuRadioGroup = BaseMenu.RadioGroup;
 
+function RadioItemText({children, description}: {children: ReactNode; description: ReactNode}) {
+	if (description === undefined) return <span className={LABEL_CLASS}>{children}</span>;
+	return (
+		<span className="flex min-w-0 flex-1 flex-col">
+			<span data-menu-item-title="" className="truncate">
+				{children}
+			</span>
+			<span data-menu-item-description="" className={RADIO_DESCRIPTION_CLASS}>
+				{description}
+			</span>
+		</span>
+	);
+}
+
+/** Upstream's digit row trailing: the check slot first, then the keycap, pinned to the first line. */
+function DigitTrailing({accelerator}: {accelerator: string}) {
+	const sizing = DENSITY_CLASSES[useContext(MenuDensityContext)];
+	return (
+		<span data-menu-item-trailing="" className={DIGIT_TRAILING_CLASS}>
+			<BaseMenu.RadioItemIndicator
+				keepMounted
+				className={DIGIT_CHECK_SLOT_CLASS}
+				render={(slotProps, {checked}) => (
+					<span {...slotProps}>
+						{checked && <Check aria-hidden="true" strokeWidth={3} className={CHECK_ICON_CLASS} />}
+					</span>
+				)}
+			/>
+			<Shortcut keys={accelerator} variant="text" className={`${sizing.shortcut} pointer-coarse:hidden`} />
+		</span>
+	);
+}
+
 export interface MenuRadioItemProps extends Omit<ComponentProps<typeof BaseMenu.RadioItem>, "className" | "children"> {
 	children: ReactNode;
 	/** Muted wrapping second line, making the item upstream's 41px two-line row. */
@@ -343,14 +379,20 @@ export interface MenuRadioItemProps extends Omit<ComponentProps<typeof BaseMenu.
 
 export function MenuRadioItem({children, description, accelerator, ...props}: MenuRadioItemProps) {
 	const itemClass = useItemClass(description !== undefined);
-	const trailing = (
-		<>
-			{accelerator !== undefined && <ItemTrailing accelerator={accelerator} />}
-			<BaseMenu.RadioItemIndicator className={CHECK_SLOT_CLASS}>
-				<Check aria-hidden="true" strokeWidth={3} className={CHECK_ICON_CLASS} />
-			</BaseMenu.RadioItemIndicator>
-		</>
+	const check = (
+		<BaseMenu.RadioItemIndicator className={CHECK_SLOT_CLASS}>
+			<Check aria-hidden="true" strokeWidth={3} className={CHECK_ICON_CLASS} />
+		</BaseMenu.RadioItemIndicator>
 	);
+	let trailing: ReactNode = check;
+	if (accelerator !== undefined) trailing = <DigitTrailing accelerator={accelerator} />;
+	else if (description !== undefined) {
+		trailing = (
+			<span data-menu-item-trailing="" className={FIRST_LINE_TRAILING_CLASS}>
+				{check}
+			</span>
+		);
+	}
 	return (
 		<BaseMenu.RadioItem
 			closeOnClick={false}
@@ -358,26 +400,8 @@ export function MenuRadioItem({children, description, accelerator, ...props}: Me
 			{...acceleratorProps(accelerator)}
 			className={`${itemClass} ${ITEM_VARIANT_CLASS.default}`}
 		>
-			{description === undefined ? (
-				<>
-					<span className={LABEL_CLASS}>{children}</span>
-					{trailing}
-				</>
-			) : (
-				<>
-					<span className="flex min-w-0 flex-1 flex-col">
-						<span data-menu-item-title="" className="truncate">
-							{children}
-						</span>
-						<span data-menu-item-description="" className={RADIO_DESCRIPTION_CLASS}>
-							{description}
-						</span>
-					</span>
-					<span data-menu-item-trailing="" className={FIRST_LINE_TRAILING_CLASS}>
-						{trailing}
-					</span>
-				</>
-			)}
+			<RadioItemText description={description}>{children}</RadioItemText>
+			{trailing}
 		</BaseMenu.RadioItem>
 	);
 }
