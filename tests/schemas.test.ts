@@ -2048,6 +2048,141 @@ describe("JsonlRecordSchema observed 2026-09 transcript fields", () => {
 	});
 });
 
+describe("JsonlRecordSchema observed 2026-10-21 transcript fields", () => {
+	const rendered = [{content: "<system-reminder>\nToday's date is 2026-10-21.\n</system-reminder>"}];
+
+	function attachmentRecord(attachment: Record<string, unknown>) {
+		return {type: "attachment", ...baseFields, attachment, rendered};
+	}
+
+	it("parses agent and skill listings carrying plugin built-ins and skill digests", () => {
+		const records = [
+			attachmentRecord({
+				type: "agent_listing_delta",
+				addedTypes: ["claude"],
+				addedLines: ["- claude: Catch-all agent"],
+				builtInTypes: ["claude", "Explore"],
+				builtInPluginTypes: ["code-simplifier:code-simplifier"],
+				removedTypes: [],
+				isInitial: true,
+				showConcurrencyNote: true,
+			}),
+			attachmentRecord({
+				type: "skill_listing",
+				content: "- goal-sloc",
+				skillCount: 1,
+				isInitial: true,
+				names: ["goal-sloc"],
+				digests: ["4b64b81bd286b154"],
+			}),
+		];
+
+		expect(records.map((record) => JsonlRecordSchema.parse(record))).toStrictEqual(records);
+	});
+
+	it("parses session_cron_carry attachments listing the carried-over cron tasks", () => {
+		const record = attachmentRecord({
+			type: "session_cron_carry",
+			tasks: [
+				{
+					id: "9672e493",
+					cron: "7 13 19 10 *",
+					prompt: "Restore the .envrc references",
+					createdAt: 1792343284261,
+					recurring: false,
+				},
+			],
+		});
+
+		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
+	});
+
+	it("parses images inside api-request-blob messages", () => {
+		const record = {
+			type: "api-request-blob",
+			sessionId: "sess-123",
+			hash: "4982b2e37b59919472b275f6e7477afe1d938ad6409609cbfd9c7eed24ad54ab",
+			message: {
+				role: "user",
+				content: [
+					{type: "text", text: "I got [Image #1]"},
+					{type: "image", source: {type: "base64", media_type: "image/png", data: "iVBORw0KGgo="}},
+				],
+			},
+		};
+
+		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
+	});
+
+	it("parses safety-classifier refusal records", () => {
+		const records = [
+			{
+				type: "user",
+				...baseFields,
+				message: {role: "user", content: "Your response above was stopped by a safety classifier."},
+				isMeta: true,
+				turnCompanion: true,
+				refusedMessageId: "msg_011CgFad5GTxt69LeKVCXRBB",
+			},
+			{
+				type: "assistant",
+				...baseFields,
+				message: {role: "assistant", model: "<synthetic>", content: [{type: "text", text: "API Error"}]},
+				requestId: "req_011CgFaXu4vBJjAD4zM5mZ3W",
+				error: "invalid_request",
+				isApiErrorMessage: true,
+				refusedMessageId: "msg_011CgFaXuKJXxjEoQpSSFwXn",
+			},
+			{
+				type: "system",
+				...baseFields,
+				subtype: "model_refusal_no_fallback",
+				content: "",
+				level: "warning",
+				originalModel: "claude-sonnet-5-5",
+				requestId: "req_011CgFaXu4vBJjAD4zM5mZ3W",
+				apiRefusalCategory: "cyber",
+				apiRefusalExplanation: "This request triggered restrictions on violative cyber content.",
+				refusedUserMessageUuid: "06ac5d00-1f7a-4e96-a16b-462c368c8aeb",
+				isMeta: false,
+			},
+		];
+
+		expect(records.map((record) => JsonlRecordSchema.parse(record))).toStrictEqual(records);
+	});
+
+	it("parses joined background-task notices whose run id is null", () => {
+		const record = {
+			type: "user",
+			...baseFields,
+			message: {role: "user", content: "[SYSTEM NOTIFICATION - NOT USER INPUT]"},
+			isMeta: true,
+			origin: {kind: "task-notification", producer: "session-task"},
+			joinedNoticeLengths: [283, 120],
+			joinedNoticeOwn: [true, false],
+			joinedNoticeRunIds: [null, "0mv136l2s-e0862bf6"],
+		};
+
+		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
+	});
+
+	it("parses assistant records whose thinking display is omitted", () => {
+		const record = {
+			type: "assistant",
+			...baseFields,
+			message: {
+				role: "assistant",
+				model: "claude-opus-5-5",
+				content: [{type: "thinking", thinking: "", signature: "CAQSrwQK"}],
+			},
+			thinkingDisplay: "omitted",
+			thinkingDurationMs: 871,
+		};
+
+		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
+	});
+});
+
 describe("parseJsonlRecord", () => {
 	it("parses valid JSON and returns typed record", () => {
 		const line = JSON.stringify({

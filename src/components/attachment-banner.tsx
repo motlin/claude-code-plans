@@ -809,6 +809,14 @@ function AttachmentContent({
 					{...shared}
 				/>
 			);
+		case "session_cron_carry":
+			return (
+				<Banner
+					icon={<Hourglass className="h-3.5 w-3.5" />}
+					label={`Carried over ${attachment.tasks.length} scheduled task${attachment.tasks.length === 1 ? "" : "s"}`}
+					{...shared}
+				/>
+			);
 		case "thinking_drop":
 		case "thinking_stripped":
 			return (

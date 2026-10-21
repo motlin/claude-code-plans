@@ -418,13 +418,15 @@ export const UserRecordSchema = z
 		// Parallel arrays, one entry per background-task notice joined into this message.
 		joinedNoticeLengths: z.array(z.number()).optional(),
 		joinedNoticeOwn: z.array(z.boolean()).optional(),
-		joinedNoticeRunIds: z.array(z.string()).optional(),
+		joinedNoticeRunIds: z.array(z.union([z.string(), z.null()])).optional(),
 		queueTranscriptOnly: z.boolean().optional(),
 		scheduledTaskId: z.string().optional(),
 		scheduledFireId: z.string().optional(),
 		classifierMetaLines: z.string().optional(),
 		serverClassifierContext: ServerClassifierContextSchema.optional(),
 		permissionDecision: PermissionDecisionSchema.optional(),
+		// Safety-classifier stop notice: the id of the assistant message that was withheld.
+		refusedMessageId: z.string().optional(),
 	})
 	.strict();
 
@@ -439,6 +441,9 @@ const RateLimitInfoSchema = z
 		isUsingOverage: z.boolean(),
 	})
 	.strict();
+
+// How the assistant's thinking was surfaced: streamed as `updates`, or `omitted` (empty thinking text).
+export const ThinkingDisplaySchema = z.enum(["updates", "omitted"]);
 
 export const AssistantRecordSchema = z
 	.object({
@@ -521,7 +526,9 @@ export const AssistantRecordSchema = z
 		apiBlockIndex: z.number().optional(),
 		perTurnEffort: z.union([z.string(), z.null()]).optional(),
 		serverClassifierRequest: z.string().optional(),
-		thinkingDisplay: z.literal("updates").optional(),
+		thinkingDisplay: ThinkingDisplaySchema.optional(),
+		// Safety-classifier stop: the id of the withheld assistant message.
+		refusedMessageId: z.string().optional(),
 		thinkingDurationMs: z.number().optional(),
 		truncatedAfterOutput: z.boolean().optional(),
 		// Keyed by tool_use id: the working directory each tool call ran in.
@@ -736,6 +743,7 @@ const AgentListingDeltaAttachmentPayload = z
 		addedLines: z.array(z.string()).optional(),
 		removedTypes: z.array(z.string()).optional(),
 		builtInTypes: z.array(z.string()).optional(),
+		builtInPluginTypes: z.array(z.string()).optional(),
 		isInitial: z.boolean().optional(),
 		showConcurrencyNote: z.boolean().optional(),
 	})
@@ -757,6 +765,8 @@ const SkillListingAttachmentPayload = z
 		skillCount: z.number().optional(),
 		isInitial: z.boolean().optional(),
 		names: z.array(z.string()).optional(),
+		// Parallel to `names`: a content digest per listed skill.
+		digests: z.array(z.string()).optional(),
 	})
 	.strict();
 
@@ -1203,6 +1213,24 @@ const SkillMentionAttachmentPayload = z
 	})
 	.strict();
 
+// Session-scoped cron tasks carried over into a resumed session.
+const SessionCronCarryAttachmentPayload = z
+	.object({
+		type: z.literal("session_cron_carry"),
+		tasks: z.array(
+			z
+				.object({
+					id: z.string(),
+					cron: z.string(),
+					prompt: z.string(),
+					createdAt: z.number(),
+					recurring: z.boolean(),
+				})
+				.strict(),
+		),
+	})
+	.strict();
+
 const InlinedImagePathsAttachmentPayload = z
 	.object({
 		type: z.literal("inlined_image_paths"),
@@ -1313,6 +1341,7 @@ export const AttachmentPayloadSchema = z.discriminatedUnion("type", [
 	HookPermissionDecisionAttachmentPayload,
 	InlinedImagePathsAttachmentPayload,
 	InstructionsAttachmentPayload,
+	SessionCronCarryAttachmentPayload,
 	ModelAttachmentPayload,
 	OutputStyleAttachmentPayload,
 	OutputStyleInstructionsAttachmentPayload,
@@ -1428,6 +1457,12 @@ export const SystemRecordSchema = z
 		noOpStreak: z.number().optional(),
 		streakStartedAt: z.string().optional(),
 		foldedUuids: z.array(z.string()).optional(),
+		// `model_refusal_no_fallback`: the API refused the request and no fallback model ran.
+		originalModel: z.string().optional(),
+		requestId: z.string().optional(),
+		apiRefusalCategory: z.string().optional(),
+		apiRefusalExplanation: z.string().optional(),
+		refusedUserMessageUuid: z.string().optional(),
 	})
 	.strict();
 
@@ -1695,6 +1730,7 @@ export const ApiRequestBlobContentBlockSchema = z.discriminatedUnion("type", [
 	ThinkingBlockSchema,
 	ToolUseBlockSchema,
 	ToolResultBlockSchema,
+	ImageBlockSchema,
 	ToolAdditionBlockSchema,
 ]);
 
@@ -2176,6 +2212,7 @@ export const ClaudeSettingsSchema = z
 		attribution: z.object({sessionUrl: z.boolean().optional()}).strict().optional(),
 		remoteControlAtStartup: z.boolean().optional(),
 		agentPushNotifEnabled: z.boolean().optional(),
+		switchModelsOnFlag: z.boolean().optional(),
 		autoMode: z
 			.object({environment: z.array(z.string()).optional()})
 			.strict()

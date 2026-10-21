@@ -47,6 +47,7 @@ import type {
 	SessionRegistryStatusSchema,
 	SkillOverrideValueSchema,
 	TaskStatusSchema,
+	ThinkingDisplaySchema,
 	ToolAdditionToolSchema,
 	TurnOriginSchema,
 	UserRecordSchema,
@@ -295,6 +296,12 @@ const pullRequestStateLabels = {
 	merged: "Merged",
 	closed: "Closed",
 } satisfies Record<z.infer<typeof PullRequestStateSchema>, string>;
+
+/** Not consumed yet — `thinkingDisplay` on assistant JSONL records is only validated. */
+const thinkingDisplayChoices = {
+	updates: true,
+	omitted: true,
+} satisfies Record<z.infer<typeof ThinkingDisplaySchema>, true>;
 
 /** `renderedRole` on attachment JSONL records. */
 const renderedRoleChoices = {
@@ -587,6 +594,7 @@ const attachmentVariants = {
 	thinking_stripped: true,
 	skill_mention: true,
 	inlined_image_paths: true,
+	session_cron_carry: true,
 } satisfies Record<z.infer<typeof AttachmentPayloadSchema>["type"], true>;
 
 /** Consumed selectively (text extraction etc.) — no single exhaustive handler. */
@@ -638,6 +646,7 @@ const apiRequestBlobContentBlockVariants = {
 	thinking: true,
 	tool_use: true,
 	tool_result: true,
+	image: true,
 	tool_addition: true,
 } satisfies Record<z.infer<typeof ApiRequestBlobContentBlockSchema>["type"], true>;
 
@@ -1209,6 +1218,7 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
 	"RenderedLineSchema.<system>.subtype": systemSubtypeLabels,
 	"JsonlRecordSchema.<system>.compactMetadata.trigger": compactTriggerLabels,
 	"JsonlRecordSchema.<attachment>.renderedRole": renderedRoleChoices,
+	"JsonlRecordSchema.<assistant>.thinkingDisplay": thinkingDisplayChoices,
 	"ClaudeSettingsSchema.hooks{}[].hooks[]": claudeHookVariants,
 	"ClaudeSettingsSchema.hooks{}[].hooks[].<command>.shell": claudeHookShellLabels,
 	"ClaudeSettingsSchema.skillOverrides{}": skillOverrideLabels,

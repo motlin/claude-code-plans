@@ -124,6 +124,7 @@ const MINIMAL_BY_TYPE: Record<string, AttachmentPayload> = {
 	thinking_stripped: {type: "thinking_stripped"},
 	skill_mention: {type: "skill_mention"},
 	inlined_image_paths: {type: "inlined_image_paths", paths: ["/tmp/uploads/a-image.png"]},
+	session_cron_carry: {type: "session_cron_carry", tasks: []},
 };
 
 describe("AttachmentBanner", () => {
@@ -205,6 +206,22 @@ describe("AttachmentBanner", () => {
 		expect(html).toStrictEqual(
 			'<div class="flex flex-wrap items-center gap-2 py-1.5 px-3 text-xs text-t6 bg-surface-1 rounded-md border border-subtle"><span class="shrink-0"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-triangle-alert h-3.5 w-3.5" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg></span><span>Read output truncated</span><pre class="w-full mt-1 text-[10px] leading-tight text-t6 bg-surface-0 rounded px-2 py-1 whitespace-pre-wrap break-all">[Truncated: showing lines 1-100 of 200 total.]</pre></div>',
 		);
+	});
+
+	it("labels carried-over session crons with a pluralized count", () => {
+		const task = {
+			id: "9672e493",
+			cron: "7 13 19 10 *",
+			prompt: "Restore",
+			createdAt: 1792343284261,
+			recurring: false,
+		};
+		expect([
+			renderBanner({type: "session_cron_carry", tasks: [task]}).match(/<span>([^<]*)<\/span>/)?.[1],
+			renderBanner({type: "session_cron_carry", tasks: [task, {...task, id: "1a2b3c4d"}]}).match(
+				/<span>([^<]*)<\/span>/,
+			)?.[1],
+		]).toStrictEqual(["Carried over 1 scheduled task", "Carried over 2 scheduled tasks"]);
 	});
 
 	it("labels inlined image paths with a pluralized count", () => {

@@ -186,6 +186,13 @@ export const FIELD_DEFINITIONS: FieldDefinition[] = [
 		type: "boolean",
 		section: "Advanced",
 	},
+	{
+		key: "switchModelsOnFlag",
+		label: "Switch models on flag",
+		description: "Switch to another model when a safety classifier flags a request",
+		type: "boolean",
+		section: "Advanced",
+	},
 ];
 
 export const SECTIONS_ORDER = ["General", "Data", "Updates", "MCP", "Permissions", "Advanced"];

@@ -246,6 +246,12 @@ describe("ClaudeSettingsSchema", () => {
 		expect(ClaudeSettingsSchema.parse(settings)).toStrictEqual(settings);
 	});
 
+	it("parses settings with switchModelsOnFlag", () => {
+		const settings = {switchModelsOnFlag: false};
+
+		expect(ClaudeSettingsSchema.parse(settings)).toStrictEqual(settings);
+	});
+
 	it("rejects unknown top-level fields", () => {
 		const result = ClaudeSettingsSchema.safeParse({
 			unknownField: "value",

@@ -3169,6 +3169,7 @@ const SYSTEM_BANNER_SUBTYPES = new Set([
 	"thinking_stripped",
 	"skill_mention",
 	"inlined_image_paths",
+	"session_cron_carry",
 ]);
 
 interface AttachmentHead {
