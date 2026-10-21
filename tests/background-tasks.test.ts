@@ -133,6 +133,7 @@ function task(overrides: Partial<BackgroundTask> & Pick<BackgroundTask, "id">): 
 		output: null,
 		summary: null,
 		outputFile: null,
+		startedAt: null,
 		...overrides,
 	};
 }
@@ -146,6 +147,7 @@ const BUILD_TASK = task({
 	output: "vite v8 building for production...\nbuilt in 1.2s",
 	summary: 'Background command "Build the fabricated app" completed (exit code 0)',
 	outputFile: "/tmp/fab/bfab1build.output",
+	startedAt: "2026-09-28T10:00:00.000Z",
 });
 
 const WATCH_TASK = task({
@@ -156,6 +158,7 @@ const WATCH_TASK = task({
 	command: "gh pr checks 42 --watch",
 	output: "lint pass",
 	summary: 'Monitor event: "Fabricated PR #42 CI checks"',
+	startedAt: "2026-09-28T10:01:00.000Z",
 });
 
 const REVIEW_TASK = task({
@@ -163,6 +166,7 @@ const REVIEW_TASK = task({
 	toolUseId: "toolu_agent_review",
 	kind: "agent",
 	description: "Review the fabricated diff",
+	startedAt: "2026-09-28T10:02:00.000Z",
 });
 
 describe("extractBackgroundTasks", () => {
@@ -275,6 +279,7 @@ describe("extractBackgroundTasks", () => {
 					description: "Build the fabricated app",
 					command: "pnpm build",
 					outputFile: "/tmp/fab/bfab1build.output",
+					startedAt: "2026-09-28T10:00:00.000Z",
 				}),
 			],
 			finished: [],

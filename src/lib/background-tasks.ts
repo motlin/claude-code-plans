@@ -24,6 +24,8 @@ export interface BackgroundTask {
 	 * result or notification. Never set for agents, whose file is their JSONL transcript.
 	 */
 	outputFile: string | null;
+	/** When the launching tool_use was written, for the rail's elapsed time; null when unknown. */
+	startedAt: string | null;
 }
 
 export interface BackgroundTaskGroups {
@@ -260,7 +262,7 @@ export function extractBackgroundTasks(
 	const byToolUseId = new Map<string, Tracked>();
 	const byTaskId = new Map<string, Tracked>();
 	/** Launch calls awaiting the result that says whether (and as what) they backgrounded. */
-	const pendingAgents = new Map<string, {description: string}>();
+	const pendingAgents = new Map<string, {description: string; startedAt: string | null}>();
 	const readers = new Map<string, string>();
 	const stoppers = new Map<string, string>();
 	let clock = 0;
@@ -308,6 +310,7 @@ export function extractBackgroundTasks(
 	};
 
 	for (const record of records) {
+		const timestamp = asString(record["timestamp"]);
 		const message = asRecord(record["message"]);
 		const content = message?.["content"];
 
@@ -345,6 +348,7 @@ export function extractBackgroundTasks(
 						output: null,
 						summary: null,
 						outputFile: null,
+						startedAt: timestamp,
 					});
 				} else if (name === "Monitor") {
 					track({
@@ -357,9 +361,10 @@ export function extractBackgroundTasks(
 						output: null,
 						summary: null,
 						outputFile: null,
+						startedAt: timestamp,
 					});
 				} else if (name === "Agent") {
-					pendingAgents.set(id, {description: description ?? ""});
+					pendingAgents.set(id, {description: description ?? "", startedAt: timestamp});
 				} else if (name === "TaskOutput" || name === "BashOutput") {
 					const taskId = asString(input["task_id"]) ?? asString(input["bash_id"]);
 					if (taskId !== null) readers.set(id, taskId);
@@ -381,7 +386,7 @@ export function extractBackgroundTasks(
 			if (agent !== undefined && result?.["status"] === "teammate_spawned") {
 				// An in-process teammate lives as long as the process that spawned it; upstream counts it as a task.
 				pendingAgents.delete(toolUseId);
-				if (!spawnedSince(asString(record["timestamp"]), live.processStartedAt)) continue;
+				if (!spawnedSince(timestamp, live.processStartedAt)) continue;
 				const agentId =
 					asString(result["agent_id"]) ?? asString(result["agentId"]) ?? launchedTaskId(result, text);
 				const tracked = track({
@@ -394,6 +399,7 @@ export function extractBackgroundTasks(
 					output: null,
 					summary: null,
 					outputFile: null,
+					startedAt: agent.startedAt,
 				});
 				if (agentId !== null) byTaskId.set(agentId, tracked);
 				// TaskStop names a teammate by its name as often as by its id.
@@ -415,6 +421,7 @@ export function extractBackgroundTasks(
 						output: null,
 						summary: null,
 						outputFile: null,
+						startedAt: agent.startedAt,
 					});
 					if (taskId !== null) byTaskId.set(taskId, tracked);
 				}
@@ -474,6 +481,7 @@ export function extractBackgroundTasks(
 			output: null,
 			summary: null,
 			outputFile: null,
+			startedAt: null,
 		});
 	}
 	for (const teammate of live.teammates ?? []) {
@@ -500,6 +508,7 @@ export function extractBackgroundTasks(
 			output: null,
 			summary: null,
 			outputFile: null,
+			startedAt: teammate.startedAt,
 		});
 	}
 	// A running teammate's in-flight foreground command is a task of its own upstream.
@@ -519,6 +528,7 @@ export function extractBackgroundTasks(
 			output: null,
 			summary: null,
 			outputFile: null,
+			startedAt: null,
 		});
 	}
 	for (const hookTask of live.hookTasks ?? []) {
@@ -535,6 +545,7 @@ export function extractBackgroundTasks(
 			output: null,
 			summary: null,
 			outputFile: null,
+			startedAt: null,
 		});
 	}
 

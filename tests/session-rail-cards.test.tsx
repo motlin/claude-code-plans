@@ -13,6 +13,7 @@ import {customizeMcpServersQueryOptions} from "../src/lib/api/customize";
 import type {HerdrPaneIndexData} from "../src/lib/api/herdr";
 import {sessionDiffQueryOptions} from "../src/lib/api/session-diff";
 import {sessionDevServersQueryOptions, sessionOpenInQueryOptions} from "../src/lib/api/sessions";
+import type {BackgroundTask} from "../src/lib/background-tasks";
 import type {ContextBreakdown} from "../src/lib/context-breakdown";
 import {DEFAULT_RAIL_SECTIONS_STATE, RAIL_SECTIONS_STORAGE_KEY} from "../src/lib/session-rail-store";
 import {installLocalStorage} from "./fake-storage";
@@ -97,6 +98,7 @@ const FULL: SessionRailInputs = {
 				output: null,
 				summary: null,
 				outputFile: null,
+				startedAt: null,
 			},
 		],
 		finished: [
@@ -110,6 +112,7 @@ const FULL: SessionRailInputs = {
 				output: null,
 				summary: null,
 				outputFile: null,
+				startedAt: null,
 			},
 		],
 	},
@@ -443,7 +446,7 @@ describe("cards from local data", () => {
 			registerPane("background-tasks", {title: "Background tasks", render: () => <p>tasks pane body</p>}),
 		);
 		await renderCards(FULL, seed);
-		fireEvent.click(screen.getByRole("button", {name: /^Run the dev server/}));
+		fireEvent.click(screen.getByRole("button", {name: "Open Run the dev server in Background tasks"}));
 		await act(async () => {
 			await new Promise((resolve) => {
 				setTimeout(resolve, 0);
@@ -456,6 +459,115 @@ describe("cards from local data", () => {
 				.flatMap((region) => within(region).queryAllByText("tasks pane body"))
 				.map((body) => body.tagName),
 		).toStrictEqual(["P"]);
+	});
+});
+
+describe("Background tasks card", () => {
+	function runningTask(index: number, startedAt: string | null = null): BackgroundTask {
+		return {
+			id: `b${index}`,
+			toolUseId: `toolu_${index}`,
+			kind: "bash",
+			description: `Task ${index}`,
+			command: null,
+			status: "running",
+			output: null,
+			summary: null,
+			outputFile: null,
+			startedAt,
+		};
+	}
+
+	function finishedTask(): BackgroundTask {
+		return {...runningTask(99), description: "Done", status: "completed"};
+	}
+
+	function withTasks(running: BackgroundTask[], finished: BackgroundTask[] = []): SessionRailInputs {
+		return {...BASE, backgroundTasks: {running, finished}};
+	}
+
+	const SIX = [1, 2, 3, 4, 5, 6].map((index) => runningTask(index));
+
+	it("lists four running tasks, then a collapsed Show more", async () => {
+		await renderCards(withTasks(SIX));
+
+		expect({
+			rows: rows("Background tasks"),
+			expanded: screen.getByRole("button", {name: "Show more"}).getAttribute("aria-expanded"),
+		}).toStrictEqual({
+			rows: [
+				["Task 1", null],
+				["Task 2", null],
+				["Task 3", null],
+				["Task 4", null],
+				["Show more", null],
+			],
+			expanded: "false",
+		});
+	});
+
+	it("expands in place to every running task with Show less, and collapses back", async () => {
+		await renderCards(withTasks(SIX));
+		fireEvent.click(screen.getByRole("button", {name: "Show more"}));
+		const expanded = {
+			rows: rows("Background tasks"),
+			expanded: screen.getByRole("button", {name: "Show less"}).getAttribute("aria-expanded"),
+		};
+		fireEvent.click(screen.getByRole("button", {name: "Show less"}));
+
+		expect({expanded, collapsed: rows("Background tasks").length}).toStrictEqual({
+			expanded: {
+				rows: [
+					["Task 1", null],
+					["Task 2", null],
+					["Task 3", null],
+					["Task 4", null],
+					["Task 5", null],
+					["Task 6", null],
+					["Show less", null],
+				],
+				expanded: "true",
+			},
+			collapsed: 5,
+		});
+	});
+
+	it("focuses the first newly shown row when Show more is pressed from the keyboard", async () => {
+		await renderCards(withTasks(SIX));
+		const toggle = screen.getByRole("button", {name: "Show more"});
+		toggle.focus();
+		fireEvent.click(toggle, {detail: 0});
+
+		expect(document.activeElement?.getAttribute("aria-label")).toBe("Open Task 5 in Background tasks");
+	});
+
+	it("labels each row as opening it in Background tasks", async () => {
+		await renderCards(withTasks([runningTask(1)]));
+
+		expect(
+			within(screen.getByRole("region", {name: /^Background tasks/}))
+				.getAllByRole("button", {name: /^Open /})
+				.map((row) => row.getAttribute("aria-label")),
+		).toStrictEqual(["Open Task 1 in Background tasks"]);
+	});
+
+	it("shows how long a running task has run", async () => {
+		await renderCards(withTasks([runningTask(1, new Date(Date.now() - 2 * 3_600_000).toISOString())]));
+
+		expect(rows("Background tasks")).toStrictEqual([["Task 1", "2h 0m"]]);
+	});
+
+	it("gives the finished row the agents icon", async () => {
+		await renderCards(withTasks([runningTask(1)], [finishedTask()]));
+		const finished = screen.getByRole("button", {name: "1 finished"});
+
+		expect(finished.querySelector("svg")?.getAttribute("class")).toContain("lucide-bot");
+	});
+
+	it("leaves the rail when only finished tasks remain", async () => {
+		await renderCards(withTasks([], [finishedTask()]));
+
+		expect(document.querySelector('[data-rail-section="backgroundTasks"]')).toBe(null);
 	});
 });
 

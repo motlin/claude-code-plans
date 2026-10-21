@@ -1,5 +1,6 @@
 import {useQuery} from "@tanstack/react-query";
 import {Link} from "@tanstack/react-router";
+import {useEffect, useRef, useState} from "react";
 import {
 	AppWindow,
 	Bot,
@@ -424,46 +425,106 @@ const TASK_ICONS: Record<BackgroundTask["kind"], LucideIcon> = {
 	task: ListChecks,
 };
 
-/** Upstream's Background tasks card: running tasks, then a finished count; each row opens the Background tasks pane. */
+/** Upstream's running-task clock: whole minutes, hours past the first. */
+function formatTaskElapsed(ms: number): string {
+	const minutes = Math.max(0, Math.floor(ms / 60_000));
+	return minutes < 60 ? `${minutes}m` : `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
+}
+
+const MINUTE_MS = 60_000;
+
+/** The current time, re-read each minute while `ticking`. */
+function useMinuteClock(ticking: boolean): number {
+	const [now, setNow] = useState(() => Date.now());
+	useEffect(() => {
+		if (!ticking) return undefined;
+		setNow(Date.now());
+		const timer = setInterval(() => {
+			setNow(Date.now());
+		}, MINUTE_MS);
+		return () => {
+			clearInterval(timer);
+		};
+	}, [ticking]);
+	return now;
+}
+
+const SHOW_MORE_CLASS =
+	"flex min-h-6.5 w-full min-w-0 cursor-pointer items-center rounded px-1 text-start text-[13px]/[19px] text-ink-muted hover:text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100";
+
+/**
+ * Upstream's Background tasks card: four running tasks with their elapsed
+ * time, an in-place Show more, then a finished count; each row opens the
+ * Background tasks pane.
+ */
 function BackgroundTasksBody({tasks}: {tasks: BackgroundTaskGroups}) {
 	const host = usePaneHost();
+	const [expanded, setExpanded] = useState(false);
+	const firstNewRow = useRef<HTMLButtonElement | null>(null);
+	const focusFirstNew = useRef(false);
+	const now = useMinuteClock(tasks.running.some((task) => task.startedAt !== null));
+	useEffect(() => {
+		if (!focusFirstNew.current) return;
+		focusFirstNew.current = false;
+		firstNewRow.current?.focus();
+	}, [expanded]);
 	const open = () => {
 		host.openPane("background-tasks");
 	};
-	const shown = tasks.running.slice(0, BACKGROUND_TASKS_SHOWN);
-	const more = tasks.running.length - shown.length;
+	const overflows = tasks.running.length > BACKGROUND_TASKS_SHOWN;
+	const shown = expanded ? tasks.running : tasks.running.slice(0, BACKGROUND_TASKS_SHOWN);
 	return (
 		<Rows>
-			{shown.map((task) => (
+			{shown.map((task, index) => (
 				<button
 					key={task.id}
+					ref={index === BACKGROUND_TASKS_SHOWN ? firstNewRow : undefined}
 					type="button"
 					title={task.command ?? task.description}
+					aria-label={`Open ${task.description} in Background tasks`}
 					className={RAIL_ROW_ACTION_CLASS}
 					onClick={open}
 				>
-					<RailRowContent icon={<Icon icon={TASK_ICONS[task.kind]} />} label={task.description} />
+					<RailRowContent
+						icon={<Icon icon={TASK_ICONS[task.kind]} />}
+						label={task.description}
+						{...(task.startedAt === null
+							? {}
+							: {hint: formatTaskElapsed(now - Date.parse(task.startedAt))})}
+					/>
 				</button>
 			))}
-			{more > 0 && (
-				<button type="button" className={RAIL_ROW_ACTION_CLASS} onClick={open}>
-					<RailRowContent icon={null} label="Show more" />
+			{overflows && (
+				<button
+					type="button"
+					aria-expanded={expanded}
+					className={SHOW_MORE_CLASS}
+					onClick={(event) => {
+						// A keyboard press (detail 0) moves focus to the first row it reveals.
+						focusFirstNew.current = !expanded && event.detail === 0;
+						setExpanded(!expanded);
+					}}
+				>
+					<span data-rail-row-label="" className="min-w-0 truncate">
+						{expanded ? "Show less" : "Show more"}
+					</span>
 				</button>
 			)}
 			{tasks.finished.length > 0 && (
 				<button type="button" className={RAIL_ROW_ACTION_CLASS} onClick={open}>
-					<RailRowContent icon={null} label={`${tasks.finished.length} finished`} />
+					<RailRowContent icon={<Icon icon={Bot} />} label={`${tasks.finished.length} finished`} />
 				</button>
 			)}
 		</Rows>
 	);
 }
 
+/** Upstream's card leaves once nothing runs, however many tasks finished. */
 function backgroundTasksCard(tasks: BackgroundTaskGroups): RailCard | null {
-	if (tasks.running.length === 0 && tasks.finished.length === 0) return null;
+	if (tasks.running.length === 0) return null;
 	return {
 		id: "backgroundTasks",
-		...(tasks.running.length > 0 ? {summary: `${tasks.running.length} running`} : {}),
+		summary: `${tasks.running.length} running`,
 		body: <BackgroundTasksBody tasks={tasks} />,
 	};
 }
