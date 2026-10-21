@@ -23,7 +23,7 @@ import {notificationsQueryOptions} from "../src/lib/api/notifications";
 import {activeSessionsQueryOptions} from "../src/lib/api/sessions";
 import {NAV_SECTIONS} from "../src/lib/nav-sections";
 import {readSidebarState, SIDEBAR_STORAGE_KEY, useSidebarState, writeSidebarState} from "../src/lib/sidebar-store";
-import {NARROW_VIEWPORT_QUERY, PHONE_SHEET_QUERY} from "../src/lib/use-phone-sheet";
+import {COARSE_POINTER_QUERY, NARROW_VIEWPORT_QUERY, PHONE_SHEET_QUERY} from "../src/lib/use-phone-sheet";
 import {readFileSync} from "node:fs";
 import {installLocalStorage} from "./fake-storage";
 
@@ -46,11 +46,16 @@ function seedQueryClient(): QueryClient {
 	return queryClient;
 }
 
-function mockViewport(width: number) {
+function mockViewport(width: number, {coarse = false}: {coarse?: boolean} = {}) {
 	vi.stubGlobal(
 		"matchMedia",
 		vi.fn((query: string) => ({
-			matches: query === PHONE_SHEET_QUERY ? width < 640 : query === NARROW_VIEWPORT_QUERY ? width < 768 : false,
+			matches:
+				query === PHONE_SHEET_QUERY
+					? width < 640
+					: query === NARROW_VIEWPORT_QUERY
+						? width < 768
+						: query === COARSE_POINTER_QUERY && coarse,
 			media: query,
 			onchange: null,
 			addEventListener: () => undefined,
@@ -186,6 +191,16 @@ describe("density scopes", () => {
 		await renderFrame();
 
 		expect(screen.getByTestId("density-probe").textContent).toBe("compact");
+	});
+
+	it("turns <main> comfortable on a coarse pointer at desktop width, as upstream's si overrides fv's compact prop", async () => {
+		mockViewport(900, {coarse: true});
+		const {container} = await renderFrame();
+
+		expect({
+			main: mainElement(container).getAttribute("data-density"),
+			children: screen.getByTestId("density-probe").textContent,
+		}).toStrictEqual({main: "comfortable", children: "comfortable"});
 	});
 });
 

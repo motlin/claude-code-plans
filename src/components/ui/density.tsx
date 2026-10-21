@@ -1,5 +1,7 @@
 import {createContext, type ReactNode, useContext} from "react";
 
+import {useCoarsePointer} from "../../lib/use-phone-sheet";
+
 export type Density = "compact" | "comfortable";
 
 /*
@@ -10,18 +12,39 @@ export type Density = "compact" | "comfortable";
  */
 const DensityContext = createContext<Density>("comfortable");
 
+/* Upstream's `He` context / `experimental.densityOverride`: wins over the coarse-pointer swap. */
+const DensityOverrideContext = createContext<Density | undefined>(undefined);
+
 export function useDensity(): Density {
 	return useContext(DensityContext);
 }
 
-export function DensityScope({density, children}: {density: Density; children: ReactNode}) {
+/**
+ * Resolves a scope's density in upstream `si`'s order: an ancestor override, then
+ * comfortable on a coarse pointer (live, `false` on the server), then the scope's own
+ * density, then the inherited one.
+ */
+export function useScopeDensity(density?: Density): Density {
+	const override = useContext(DensityOverrideContext);
+	const coarse = useCoarsePointer();
+	const inherited = useContext(DensityContext);
+	return override ?? (coarse ? "comfortable" : (density ?? inherited));
+}
+
+export function DensityScope({density, children}: {density?: Density; children: ReactNode}) {
+	const resolved = useScopeDensity(density);
 	return (
-		<DensityContext.Provider value={density}>
-			<div data-density={density} className="contents">
+		<DensityContext.Provider value={resolved}>
+			<div data-density={resolved} className="contents">
 				{children}
 			</div>
 		</DensityContext.Provider>
 	);
+}
+
+/** Forces every density scope below it, ahead of the coarse-pointer swap. */
+export function DensityOverride({density, children}: {density: Density; children: ReactNode}) {
+	return <DensityOverrideContext.Provider value={density}>{children}</DensityOverrideContext.Provider>;
 }
 
 /** Provides a density without a wrapper, for scopes whose element already carries `data-density`. */
