@@ -9,6 +9,7 @@ import {
 	useState,
 } from "react";
 
+import {ViewportPortal} from "../viewport-portal";
 import {Shortcut} from "./shortcut";
 import {placeTooltip, type TooltipPlacement} from "./tooltip-placement";
 
@@ -62,6 +63,7 @@ export function Tooltip({
 	openWhen,
 	side = "top",
 	multiline = false,
+	portal = false,
 	className,
 	children,
 }: {
@@ -78,6 +80,11 @@ export function Tooltip({
 	side?: keyof typeof SIDE_CLASS;
 	/** Wrap long content and break it at its newlines, e.g. a timestamp followed by per-turn details. */
 	multiline?: boolean;
+	/**
+	 * Render the tip in `document.body` over a fixed box matching the anchor, for anchors inside a clipping
+	 * scroller such as a menu row (upstream's Max effort row tooltip, side right).
+	 */
+	portal?: boolean;
 	className?: string;
 	children: ReactElement<{"aria-describedby"?: string}>;
 }) {
@@ -87,6 +94,7 @@ export function Tooltip({
 	const anchorRef = useRef<HTMLSpanElement>(null);
 	const tipRef = useRef<HTMLSpanElement>(null);
 	const [placement, setPlacement] = useState<TooltipPlacement | undefined>(undefined);
+	const [anchorBox, setAnchorBox] = useState<CSSProperties | undefined>(undefined);
 
 	useEffect(
 		() => () => {
@@ -109,7 +117,10 @@ export function Tooltip({
 			placeTooltip(
 				anchor.getBoundingClientRect(),
 				size,
-				{width: document.documentElement.clientWidth, height: document.documentElement.clientHeight},
+				{
+					width: document.documentElement.clientWidth,
+					height: document.documentElement.clientHeight,
+				},
 				side,
 			),
 		);
@@ -122,6 +133,10 @@ export function Tooltip({
 		const anchor = anchorRef.current;
 		if (openWhen !== undefined && (anchor === null || !openWhen(anchor))) return;
 		timer.current = setTimeout(() => {
+			if (portal && anchor !== null) {
+				const {left, top, width, height} = anchor.getBoundingClientRect();
+				setAnchorBox({left, top, width, height});
+			}
 			setOpen(true);
 		}, OPEN_DELAY_MS);
 	}
@@ -154,6 +169,34 @@ export function Tooltip({
 				: ACTION_ROWS_TOOLTIP_CLASS
 			: STACKED_TOOLTIP_CLASS;
 
+	const tipElement = (
+		<span
+			ref={tipRef}
+			role="tooltip"
+			id={id}
+			data-side={placedSide}
+			className={`${tooltipClass} ${SIDE_CLASS[placedSide]}`}
+			style={shiftStyle(placement)}
+		>
+			{description === undefined && secondary === undefined ? (
+				label
+			) : (
+				<>
+					<span className={TOOLTIP_ROW_CLASS}>{label}</span>
+					{secondary !== undefined && (
+						<span className={TOOLTIP_ROW_CLASS}>
+							{secondary.content}
+							<TooltipShortcut keys={secondary.shortcut} />
+						</span>
+					)}
+					{description !== undefined && (
+						<span className="text-[11px]/[14px] text-[var(--tooltip-description-ink)]">{description}</span>
+					)}
+				</>
+			)}
+		</span>
+	);
+
 	return (
 		// oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- closes the tooltip on click; focus and blur already open and close it from the keyboard
 		<span
@@ -170,34 +213,16 @@ export function Tooltip({
 						"aria-describedby": [children.props["aria-describedby"], id].filter(Boolean).join(" "),
 					})
 				: children}
-			{open && (
-				<span
-					ref={tipRef}
-					role="tooltip"
-					id={id}
-					className={`${tooltipClass} ${SIDE_CLASS[placedSide]}`}
-					style={shiftStyle(placement)}
-				>
-					{description === undefined && secondary === undefined ? (
-						label
-					) : (
-						<>
-							<span className={TOOLTIP_ROW_CLASS}>{label}</span>
-							{secondary !== undefined && (
-								<span className={TOOLTIP_ROW_CLASS}>
-									{secondary.content}
-									<TooltipShortcut keys={secondary.shortcut} />
-								</span>
-							)}
-							{description !== undefined && (
-								<span className="text-[11px]/[14px] text-[var(--tooltip-description-ink)]">
-									{description}
-								</span>
-							)}
-						</>
-					)}
-				</span>
-			)}
+			{open &&
+				(portal ? (
+					<ViewportPortal>
+						<span className="pointer-events-none fixed z-[140]" style={anchorBox}>
+							{tipElement}
+						</span>
+					</ViewportPortal>
+				) : (
+					tipElement
+				))}
 		</span>
 	);
 }

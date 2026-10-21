@@ -1,5 +1,6 @@
 import {describe, expect, it} from "vite-plus/test";
 import {
+	buildLaunchFlags,
 	CLI_DEFAULT_MODEL,
 	modelMenuValue,
 	moreModelsMenuValue,
@@ -49,5 +50,11 @@ describe("resolveLaunchModel", () => {
 
 	it("defaults to Opus 5.5 like the CLI", () => {
 		expect(CLI_DEFAULT_MODEL).toBe("claude-opus-5-5");
+	});
+});
+
+describe("buildLaunchFlags effort", () => {
+	it("launches Ultracode with the CLI's --effort ultracode", () => {
+		expect(buildLaunchFlags({effort: "ultracode"})).toStrictEqual(["--effort", "ultracode"]);
 	});
 });

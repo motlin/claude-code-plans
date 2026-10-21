@@ -226,6 +226,9 @@
 	--success-900: hsl(86 45.1% 90%);
 	--warning-000: hsl(45 91.8% 19%);
 	--warning-100: hsl(39 88.8% 28%);
+	/* Upstream --cds-bg-tint-yellow (warning Badge chip) and --cds-text-pro (Ultracode). */
+	--warning-tint: #fbb31529;
+	--text-pro: #5437b8;
 	--accent-000: hsl(210 73.7% 40.2%);
 	/* Upstream claude.ai/code accent ink: transcript links, file refs, PR chips,
 	   and pressed toggles. */
@@ -417,6 +420,8 @@
 	--success-900: hsl(127 100% 13.9%);
 	--warning-000: hsl(40 71% 50%);
 	--warning-100: hsl(39 93.4% 35.9%);
+	--warning-tint: #fbb31514;
+	--text-pro: #a89af0;
 	--accent-000: hsl(210 65.5% 67.1%);
 	--upstream-accent: #6da7ec;
 	--upstream-fill-accent: #2a78d6;

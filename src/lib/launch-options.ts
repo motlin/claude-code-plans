@@ -12,7 +12,7 @@ import {launchPermissionModeLabels} from "./schema-choices";
 export const LaunchPermissionModeSchema = z.enum(["auto", "default", "acceptEdits", "plan", "bypassPermissions"]);
 export type LaunchPermissionMode = z.infer<typeof LaunchPermissionModeSchema>;
 
-export const EffortLevelSchema = z.enum(["low", "medium", "high", "xhigh", "max"]);
+export const EffortLevelSchema = z.enum(["low", "medium", "high", "xhigh", "max", "ultracode"]);
 export type EffortLevel = z.infer<typeof EffortLevelSchema>;
 
 export const EFFORT_LEVELS = EffortLevelSchema.options;

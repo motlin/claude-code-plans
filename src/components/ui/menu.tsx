@@ -157,6 +157,8 @@ type CollisionAvoidance = NonNullable<ComponentProps<typeof BaseMenu.Positioner>
  * upstream's Base UI submenu default.
  */
 const SIDE_COLLISION_AVOIDANCE = {fallbackAxisSide: "end"} as const satisfies CollisionAvoidance;
+type MenuSide = NonNullable<ComponentProps<typeof BaseMenu.Positioner>["side"]>;
+const INLINE_SIDES: ReadonlySet<MenuSide> = new Set(["left", "right", "inline-start", "inline-end"]);
 
 export interface MenuContentProps {
 	/** Navigation menus use larger rows; nested popups inherit their parent density. */
@@ -186,7 +188,7 @@ export function MenuContent({
 	finalFocus,
 }: MenuContentProps) {
 	const resolvedCollisionAvoidance =
-		collisionAvoidance ?? (side === "left" || side === "right" ? SIDE_COLLISION_AVOIDANCE : undefined);
+		collisionAvoidance ?? (INLINE_SIDES.has(side) ? SIDE_COLLISION_AVOIDANCE : undefined);
 	const collisionFallback =
 		resolvedCollisionAvoidance !== undefined && "fallbackAxisSide" in resolvedCollisionAvoidance
 			? resolvedCollisionAvoidance.fallbackAxisSide
@@ -457,16 +459,21 @@ export function MenuSubTrigger({children, icon, value, valueAccent, ...props}: M
 export function MenuSubContent({
 	children,
 	className,
+	side = "right",
+	align = "start",
 	sideOffset = 2,
 }: {
 	children: ReactNode;
 	className?: string;
+	/** Upstream's composer model submenus open to `inline-start` (left in LTR). */
+	side?: MenuContentProps["side"];
+	align?: MenuContentProps["align"];
 	sideOffset?: number;
 }) {
 	return (
 		<MenuContent
-			side="right"
-			align="start"
+			side={side}
+			align={align}
 			sideOffset={sideOffset}
 			alignOffset={0}
 			{...(className === undefined ? {} : {className})}

@@ -56,6 +56,7 @@ describe("validateClaudeLaunchArgs", () => {
 		{args: [], expected: null},
 		{args: ["--resume", "session-test-100", "--fork-session"], expected: null},
 		{args: ["--model", "claude-opus-5-5", "--effort", "max"], expected: null},
+		{args: ["--effort", "ultracode"], expected: null},
 		{args: ["--permission-mode", "acceptEdits"], expected: null},
 		{args: ["--dangerously-skip-permissions"], expected: "unsupported claude argument"},
 		{args: ["--model"], expected: "--model requires a value"},

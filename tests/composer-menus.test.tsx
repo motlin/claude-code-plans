@@ -304,7 +304,7 @@ describe("Composer effort submenu", () => {
 		return submenu;
 	}
 
-	it("opens the model menu on ⇧⌘E at upstream's Effort submenu: its hint, then Low … Max with Recommended and Max's warning", async () => {
+	it("opens the model menu on ⇧⌘E at upstream's Effort submenu: its hint, then Low … Max and Ultracode with the Recommended and Max chips", async () => {
 		renderComposer();
 		const submenu = await openEffortMenu();
 		const main = screen.getAllByRole("menu")[0];
@@ -314,26 +314,92 @@ describe("Composer effort submenu", () => {
 				.getAllByRole("menuitem")
 				.map((item) => item.textContent),
 			hint: submenu.querySelector("[data-menu-label]")?.textContent,
-			width: submenu.className.includes("w-[320px]"),
-			rows: radioRows(submenu).map(({label, checked}) => ({label, checked})),
-			recommended: submenu
-				.querySelector("[data-effort-recommended]")
-				?.closest("[role=menuitemradio]")
-				?.querySelector("[data-menu-item-label]")?.textContent,
-			warning: submenu.querySelector("[data-effort-warning]")?.textContent,
+			side: submenu.getAttribute("data-side"),
+			align: submenu.getAttribute("data-align"),
+			rows: within(submenu)
+				.getAllByRole("menuitemradio")
+				.map((item) => ({
+					id: item.getAttribute("data-effort-id"),
+					label: item.querySelector("[data-menu-item-label]")?.textContent,
+					labelClass: item.querySelector("[data-menu-item-label]")?.className,
+					checked: item.getAttribute("aria-checked"),
+				})),
+			recommended: submenu.querySelector("[data-effort-recommended]")?.className,
+			warning: {
+				className: submenu.querySelector("[data-effort-warning]")?.className,
+				text: submenu.querySelector("[data-effort-warning]")?.textContent,
+				icon: submenu.querySelector("[data-effort-warning] svg")?.getAttribute("class"),
+			},
 		}).toStrictEqual({
 			main: ["EffortHigh", "More models"],
 			hint: "Higher effort means more thorough responses, but takes longer and uses your limits faster.",
-			width: true,
+			side: "inline-start",
+			align: "end",
 			rows: [
-				{label: "Low", checked: "false"},
-				{label: "Medium", checked: "false"},
-				{label: "High", checked: "true"},
-				{label: "Extra", checked: "false"},
-				{label: "Max", checked: "false"},
+				{id: "low", label: "Low", labelClass: "truncate", checked: "false"},
+				{id: "medium", label: "Medium", labelClass: "truncate", checked: "false"},
+				{id: "high", label: "High", labelClass: "truncate", checked: "true"},
+				{id: "xhigh", label: "Extra", labelClass: "truncate", checked: "false"},
+				{id: "max", label: "Max", labelClass: "truncate", checked: "false"},
+				{
+					id: "ultracode",
+					label: "Ultracode",
+					labelClass: "truncate font-medium text-[var(--text-pro)]",
+					checked: "false",
+				},
 			],
-			recommended: "Medium",
-			warning: "3.5× or more usage",
+			recommended:
+				"inline-flex items-center gap-1 h-5 whitespace-nowrap rounded-full px-1.5 text-[11px] font-medium bg-alpha-1 text-secondary",
+			warning: {
+				className:
+					"inline-flex items-center gap-1 h-5 whitespace-nowrap rounded-full px-1.5 text-[11px] font-medium min-w-0 shrink bg-[var(--warning-tint)] text-warning-000",
+				text: "3.5× or more usage",
+				icon: "lucide lucide-triangle-alert size-3 shrink-0",
+			},
+		});
+	});
+
+	it("opens More models to the inline start as well", async () => {
+		renderComposer();
+		openModelMenu();
+		const main = await screen.findByRole("menu");
+		fireEvent.click(within(main).getByRole("menuitem", {name: "More models"}));
+		await waitFor(() => {
+			expect(screen.getAllByRole("menu")).toHaveLength(2);
+		});
+
+		expect(screen.getAllByRole("menu")[1]?.getAttribute("data-side")).toBe("inline-start");
+	});
+
+	it("shows upstream's Max usage tooltip on the right when hovering the Max row", async () => {
+		renderComposer();
+		const submenu = await openEffortMenu();
+		const anchor = within(submenu).getByRole("menuitemradio", {name: /^Max/}).parentElement;
+		if (anchor === null) throw new Error("Max row has no tooltip anchor");
+		fireEvent.pointerEnter(anchor);
+		const tooltip = await screen.findByRole("tooltip");
+
+		expect({text: tooltip.textContent, side: tooltip.getAttribute("data-side")}).toStrictEqual({
+			text: "Claude thinks longer with Max effort and can consume 3.5× or more usage than Medium.",
+			side: "right",
+		});
+	});
+
+	it("picks Ultracode and sends it as the effort", async () => {
+		const onSend = renderComposer();
+		const submenu = await openEffortMenu();
+		fireEvent.click(within(submenu).getByRole("menuitemradio", {name: "Ultracode"}));
+		await waitFor(() => {
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
+		sendPrompt("Continue Erin's test");
+
+		expect({
+			name: screen.getByRole("button", {name: /^Model:/}).getAttribute("aria-label"),
+			calls: onSend.mock.calls,
+		}).toStrictEqual({
+			name: "Model: Opus 5.5, Effort: Ultracode",
+			calls: [["Continue Erin's test", {effort: "ultracode"}]],
 		});
 	});
 

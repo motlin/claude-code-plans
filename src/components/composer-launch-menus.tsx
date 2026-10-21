@@ -118,10 +118,45 @@ export function ModeMenu({
 
 /** Upstream's Effort list badges Medium as Recommended. */
 const RECOMMENDED_EFFORT: EffortLevel = "medium";
+const MAX_EFFORT_TOOLTIP = "Claude thinks longer with Max effort and can consume 3.5× or more usage than Medium.";
+/** Upstream's cds Badge chip, sized for the compact menu. */
+const EFFORT_BADGE_CLASS =
+	"inline-flex items-center gap-1 h-5 whitespace-nowrap rounded-full px-1.5 text-[11px] font-medium";
+
+/**
+ * An Effort row's label line, as upstream's: the label and its chip share one non-wrapping flex line, so the
+ * Recommended and Max chips never push the row onto a second line. Ultracode's label is pro ink.
+ */
+function EffortRowLabel({effort}: {effort: EffortLevel}) {
+	return (
+		<span className="flex min-w-0 items-center gap-1">
+			<span
+				data-menu-item-label=""
+				className={effort === "ultracode" ? "truncate font-medium text-[var(--text-pro)]" : "truncate"}
+			>
+				{effortLevelShortLabels[effort]}
+			</span>
+			{effort === RECOMMENDED_EFFORT && (
+				<span data-effort-recommended="" className={`${EFFORT_BADGE_CLASS} bg-alpha-1 text-secondary`}>
+					Recommended
+				</span>
+			)}
+			{effort === "max" && (
+				<span
+					data-effort-warning=""
+					className={`${EFFORT_BADGE_CLASS} min-w-0 shrink bg-[var(--warning-tint)] text-warning-000`}
+				>
+					<TriangleAlert aria-hidden="true" className="size-3 shrink-0" />
+					3.5× or more usage
+				</span>
+			)}
+		</span>
+	);
+}
 
 /**
  * claude.ai/code's single model + effort picker: the trigger reads "Opus 5.5 High", and its menu lists
- * the primary models with digit keys, an Effort submenu (upstream's hint, then Low … Max with the
+ * the primary models with digit keys, an Effort submenu (upstream's hint, then Low … Max and Ultracode with the
  * Recommended badge and Max's usage warning) and More models. ⇧⌘E opens it with Effort open.
  */
 export function ModelMenu({
@@ -177,7 +212,7 @@ export function ModelMenu({
 				<MenuSeparator />
 				<MenuSub defaultOpen={effortOpen}>
 					<MenuSubTrigger value={effortLabel}>Effort</MenuSubTrigger>
-					<MenuSubContent className="w-[320px]">
+					<MenuSubContent side="inline-start" align="end" className="w-[320px]">
 						<MenuLabel className="px-2 pt-1.5 pb-1 text-[12px]/[16px] text-[var(--menu-muted)]">
 							{EFFORT_HELP}
 						</MenuLabel>
@@ -190,35 +225,33 @@ export function ModelMenu({
 								onOpenChange(false);
 							}}
 						>
-							{EFFORT_LEVELS.map((effort) => (
-								<MenuRadioItem key={effort} value={effort} closeOnClick>
-									<span data-menu-item-label="">{effortLevelShortLabels[effort]}</span>
-									{effort === RECOMMENDED_EFFORT && (
-										<span
-											data-effort-recommended=""
-											className="ms-1.5 rounded-r3 bg-alpha-2 px-1 text-[11px]/[15px] text-secondary"
-										>
-											Recommended
-										</span>
-									)}
-									{effort === "max" && (
-										<span
-											data-effort-warning=""
-											className="ms-1.5 flex items-center gap-1 text-[12px]/[15px] text-warning-000"
-										>
-											<TriangleAlert aria-hidden="true" className="size-3.5" />
-											3.5× or more usage
-										</span>
-									)}
-								</MenuRadioItem>
-							))}
+							{EFFORT_LEVELS.map((effort) => {
+								const row = (
+									<MenuRadioItem key={effort} value={effort} data-effort-id={effort} closeOnClick>
+										<EffortRowLabel effort={effort} />
+									</MenuRadioItem>
+								);
+								return effort === "max" ? (
+									<Tooltip
+										key={effort}
+										content={MAX_EFFORT_TOOLTIP}
+										side="right"
+										portal
+										className="flex w-full"
+									>
+										{row}
+									</Tooltip>
+								) : (
+									row
+								);
+							})}
 						</MenuRadioGroup>
 					</MenuSubContent>
 				</MenuSub>
 				<MenuSeparator />
 				<MenuSub>
 					<MenuSubTrigger>More models</MenuSubTrigger>
-					<MenuSubContent>
+					<MenuSubContent side="inline-start">
 						<MenuRadioGroup
 							value={moreModelsMenuValue(current)}
 							onValueChange={(value: string) => {

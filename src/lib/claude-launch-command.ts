@@ -1,4 +1,4 @@
-const EFFORT_LEVELS = new Set(["low", "medium", "high", "xhigh", "max"]);
+const EFFORT_LEVELS = new Set(["low", "medium", "high", "xhigh", "max", "ultracode"]);
 const PERMISSION_MODES = new Set(["acceptEdits", "auto", "bypassPermissions", "default", "manual", "dontAsk", "plan"]);
 
 const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9-]*$/;
