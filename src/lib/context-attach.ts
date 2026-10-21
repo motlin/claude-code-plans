@@ -81,40 +81,28 @@ export function appendAttachment(prompt: string, snippet: string): string {
 
 /**
  * What the composer's chip strip holds: ⇧⌘L / "Attach as context" files,
- * folders, selections and terminal output, plus uploaded images and long
- * pastes (⌘U, drop, paste), and transcript messages attached from their
+ * folders, selections and terminal output, plus uploaded images (⌘U, drop,
+ * paste), and transcript messages attached from their
  * context menu, which send as a fenced excerpt like terminal output.
  */
-export const ContextAttachmentKindSchema = z.enum(["file", "selection", "terminal", "image", "pasted-text", "message"]);
+export const ContextAttachmentKindSchema = z.enum(["file", "selection", "terminal", "image", "message"]);
 export type ContextAttachmentKind = z.infer<typeof ContextAttachmentKindSchema>;
 
 export interface ContextAttachment {
 	kind: ContextAttachmentKind;
 	/**
 	 * File or folder mention path; folders end in "/". An image's saved absolute
-	 * path. Absent for terminal output and pasted text.
+	 * path. Absent for terminal output.
 	 */
 	path?: string | undefined;
 	range?: LineRange | undefined;
-	/** The excerpt, fenced on send; pasted text, inlined as is. */
+	/** The excerpt, fenced on send. */
 	text?: string | undefined;
 	language?: string | null | undefined;
 	/** Display name of an uploaded file, whose saved path is a uuid. */
 	name?: string | undefined;
 	/** Thumbnail source for an image chip. */
 	previewUrl?: string | undefined;
-}
-
-const LONG_PASTE_CHARS = 2000;
-const LONG_PASTE_LINES = 40;
-
-function lineCount(text: string): number {
-	return text.split("\n").length;
-}
-
-/** Pastes this long become a "Pasted text · N lines" chip instead of prompt text. */
-export function isLongPaste(text: string): boolean {
-	return text.length > LONG_PASTE_CHARS || lineCount(text) > LONG_PASTE_LINES;
 }
 
 export type AttachContextHandler = (attachment: ContextAttachment) => void;
@@ -126,20 +114,15 @@ export interface ContextChip extends ContextAttachment {
 
 /**
  * `@path#La-b` plus a fenced excerpt; terminal output is just the fenced text.
- * An image is its saved path, which the CLI attaches, and pasted text is inlined.
+ * An image is its saved path, which the CLI attaches.
  */
 export function formatContextAttachment({kind, path, range, text, language}: ContextAttachment): string {
-	if (kind === "pasted-text") return text ?? "";
 	if (kind === "image" && path !== undefined) return path;
 	if (kind === "terminal" || path === undefined) return formatFencedExcerpt(text ?? "");
 	return formatAttachContext({path, range, text, language});
 }
 
-export function contextChipLabel({kind, path, range, text, name: displayName}: ContextAttachment): string {
-	if (kind === "pasted-text") {
-		const lines = lineCount(text ?? "");
-		return `Pasted text · ${lines} ${lines === 1 ? "line" : "lines"}`;
-	}
+export function contextChipLabel({kind, path, range, name: displayName}: ContextAttachment): string {
 	if (displayName !== undefined) return displayName;
 	if (kind === "message") return "Message";
 	if (kind === "terminal" || path === undefined) return "Terminal output";

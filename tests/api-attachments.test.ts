@@ -3,7 +3,7 @@ import {tmpdir} from "node:os";
 import {dirname, join} from "node:path";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
-import {composePrompt, contextChipLabel, isLongPaste, type ContextAttachment} from "../src/lib/context-attach";
+import {composePrompt, contextChipLabel, type ContextAttachment} from "../src/lib/context-attach";
 import {MAX_ATTACHMENT_BYTES} from "../src/lib/api/attachments";
 
 type ApiHandler = (context: {request: Request}) => Response | Promise<Response>;
@@ -142,45 +142,24 @@ describe("POST /api/attachments", () => {
 });
 
 describe("attachment chips", () => {
-	it("treats pastes over 2k characters or 40 lines as long", () => {
-		expect({
-			short: isLongPaste("hello\nworld"),
-			chars2000: isLongPaste("x".repeat(2000)),
-			chars2001: isLongPaste("x".repeat(2001)),
-			lines40: isLongPaste(Array.from({length: 40}, () => "a").join("\n")),
-			lines41: isLongPaste(Array.from({length: 41}, () => "a").join("\n")),
-		}).toStrictEqual({
-			short: false,
-			chars2000: false,
-			chars2001: true,
-			lines40: false,
-			lines41: true,
-		});
-	});
-
-	it("labels images by name and pasted text by line count", () => {
-		expect([
+	it("labels images by name", () => {
+		expect(
 			contextChipLabel({
 				kind: "image",
 				path: "/cache/claude-code-plans/attachments/0b1c.png",
 				name: "screenshot.png",
 			}),
-			contextChipLabel({kind: "pasted-text", text: "one\ntwo\nthree"}),
-			contextChipLabel({kind: "pasted-text", text: "one"}),
-		]).toStrictEqual(["screenshot.png", "Pasted text · 3 lines", "Pasted text · 1 line"]);
+		).toBe("screenshot.png");
 	});
 
-	it("serializes image paths and inlined pasted text ahead of the prompt, in attach order", () => {
+	it("serializes image and file paths ahead of the prompt, in attach order", () => {
 		const context: ContextAttachment[] = [
 			{kind: "image", path: "/cache/attachments/a.png", name: "a.png"},
-			{kind: "pasted-text", text: "line one\nline two"},
 			{kind: "file", path: "/cache/attachments/b.md", name: "notes.md"},
 		];
 
 		expect(composePrompt("What is wrong here?", context, [])).toBe(
-			["/cache/attachments/a.png", "line one\nline two", "@/cache/attachments/b.md", "What is wrong here?"].join(
-				"\n\n",
-			),
+			["/cache/attachments/a.png", "@/cache/attachments/b.md", "What is wrong here?"].join("\n\n"),
 		);
 	});
 });

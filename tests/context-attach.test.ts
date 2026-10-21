@@ -189,13 +189,12 @@ describe("attachContext", () => {
 			options: ContextAttachmentKindSchema.options,
 			registry: schemaChoiceRegistry["ContextAttachmentKindSchema"],
 		}).toStrictEqual({
-			options: ["file", "selection", "terminal", "image", "pasted-text", "message"],
+			options: ["file", "selection", "terminal", "image", "message"],
 			registry: {
 				file: "File",
 				selection: "Selection",
 				terminal: "Terminal output",
 				image: "Image",
-				"pasted-text": "Pasted text",
 				message: "Message",
 			},
 		});

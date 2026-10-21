@@ -1,5 +1,4 @@
 import {
-	ClipboardPaste,
 	FileText,
 	Image as ImageIcon,
 	MessageSquare,
@@ -28,7 +27,6 @@ const CONTEXT_CHIP_ICON = {
 	selection: TextQuote,
 	terminal: SquareTerminal,
 	image: ImageIcon,
-	"pasted-text": ClipboardPaste,
 	message: MessageSquareText,
 } satisfies Record<ContextChip["kind"], unknown>;
 

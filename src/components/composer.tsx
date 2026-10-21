@@ -11,10 +11,8 @@ import {type QueuedPrompt, queuedStatusText} from "../lib/composer-queue";
 import {type HistoryNavigator, historyKeyApplies, historyNavigator} from "../lib/prompt-history";
 import {
 	appendAttachment,
-	attachContext,
 	attachUploadedFiles,
 	composePrompt,
-	isLongPaste,
 	registerComposer,
 	takeContextChips,
 	useContextChips,
@@ -519,11 +517,6 @@ export function Composer({
 			e.preventDefault();
 			attachFiles(files);
 			return;
-		}
-		const text = e.clipboardData.getData("text/plain");
-		if (isLongPaste(text)) {
-			e.preventDefault();
-			attachContext(draftKey, {kind: "pasted-text", text});
 		}
 	}
 

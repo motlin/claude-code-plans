@@ -98,29 +98,16 @@ afterEach(() => {
 });
 
 describe("Composer attachments", () => {
-	it("turns a long paste into a Pasted text chip that is inlined ahead of the prompt on send", () => {
-		const onSend = renderComposer();
-		const long = Array.from({length: 41}, (_, i) => `line ${i + 1}`).join("\n");
+	it("keeps a long paste inline in the prompt with no attachment chip, as upstream does", () => {
+		renderComposer();
 
-		const notPrevented = paste({text: long});
-		const chips = chipNames();
-		const textAfterPaste = prompt().value;
-		fireEvent.change(prompt(), {target: {value: "Summarize this"}});
-		fireEvent.keyDown(prompt(), {key: "Enter"});
+		const notPrevented = paste({text: "x".repeat(3000)});
 
 		expect({
 			notPrevented,
-			chips,
-			textAfterPaste,
-			sent: onSend.mock.calls,
-			chipsAfterSend: chipNames(),
-		}).toStrictEqual({
-			notPrevented: false,
-			chips: ["Pasted text · 41 lines"],
-			textAfterPaste: "",
-			sent: [[`${long}\n\nSummarize this`, {}]],
-			chipsAfterSend: [],
-		});
+			chips: chipNames(),
+			attachedList: document.querySelector('[aria-label="Attached context"]'),
+		}).toStrictEqual({notPrevented: true, chips: [], attachedList: null});
 	});
 
 	it("lets a short paste go into the prompt as usual", () => {
