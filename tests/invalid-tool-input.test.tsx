@@ -184,6 +184,30 @@ describe("a schema-invalid tool input in the transcript", () => {
 	});
 });
 
+describe("a Workflow call with an args object", () => {
+	it("is not flagged as an invalid input", () => {
+		const record = assistantWithMalformedRead();
+		const message = record["message"] as {content: unknown[]};
+		message.content = [
+			{
+				type: "tool_use",
+				id: "toolu_01K9McttAeyyjhG4N5C27hVJ",
+				name: "Workflow",
+				input: {scriptPath: "/x/wf.js", args: {max: 60}},
+				caller: {type: "direct"},
+			},
+		];
+		const [line] = processTranscript([record]).lines;
+		expect({
+			type: line?.type,
+			invalidToolInputIds: line?.type === "assistant" ? line.invalidToolInputIds : null,
+		}).toStrictEqual({
+			type: "assistant",
+			invalidToolInputIds: undefined,
+		});
+	});
+});
+
 describe("an invalid-input tool call", () => {
 	const block = {
 		type: "tool_use" as const,
