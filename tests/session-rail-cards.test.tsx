@@ -417,7 +417,7 @@ describe("cards from local data", () => {
 			servers: rows("Servers"),
 			backgroundTasks: rows("Background tasks"),
 			context: screen.getByRole("progressbar", {name: "Context window"}).getAttribute("aria-valuenow"),
-			usage: screen.getByRole("progressbar", {name: "5-hour limit"}).getAttribute("aria-valuenow"),
+			usage: screen.getByRole("progressbar", {name: "Session limit"}).getAttribute("aria-valuenow"),
 		}).toStrictEqual({
 			settings: [
 				["Permission mode", "Auto"],

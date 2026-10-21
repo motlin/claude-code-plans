@@ -165,11 +165,6 @@ interface RequestedPaneProps {
 	onRequestedPaneHandled?: (() => void) | undefined;
 }
 
-// The usage breakdown card only loads once "See detailed breakdown" is clicked.
-const SessionUsageCard = lazy(async () =>
-	import("./session-usage-card").then((module) => ({default: module.SessionUsageCard})),
-);
-
 // The session rail's cards load on its first show.
 const SessionRailCards = lazy(async () =>
 	import("./session-rail/session-rail-cards").then((module) => ({default: module.SessionRailCards})),
@@ -507,11 +502,6 @@ function SessionView({
 		[answerRoute, sessionId],
 	);
 	const pendingQuestion = useMemo(() => findPendingAskUserQuestion(transcript.records), [transcript.records]);
-	// The ephemeral Usage card, keyed to the session it was opened in.
-	const [usageCardSessionId, setUsageCardSessionId] = useState<string | null>(null);
-	const showUsageBreakdown = useCallback(() => {
-		setUsageCardSessionId(sessionId);
-	}, [sessionId]);
 	// Upstream draws a pending question inline as its card; one in the transcript answers there while the session runs.
 	const inlineQuestion = isActive ? pendingQuestion : null;
 	const chatStream = useChatStream();
@@ -951,7 +941,6 @@ function SessionView({
 												}
 												deliveryHint={promptBehavior.deliveryHint}
 												chin={composerChin}
-												onShowUsageBreakdown={showUsageBreakdown}
 												slashCommands={slashCommands}
 												bypassPermissionsAllowed={bypassPermissionsAllowed}
 												live={liveLaunchAvailable ? liveLaunch : undefined}
@@ -1074,14 +1063,6 @@ function SessionView({
 								sentPrompt={liveHerdrPrompt.state.prompt}
 								pendingLabel="Sent to live session — waiting for transcript..."
 							/>
-						)}
-
-						{usageCardSessionId === sessionId && (
-							<Suspense fallback={null}>
-								<div ref={(node) => node?.scrollIntoView({block: "nearest"})}>
-									<SessionUsageCard records={transcript.records} limits={composerChin.usage} />
-								</div>
-							</Suspense>
 						)}
 
 						<WorkingMarker

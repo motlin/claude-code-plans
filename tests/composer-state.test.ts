@@ -402,7 +402,7 @@ describe("usage ring", () => {
 			contextOnly: formatUsageAriaLabel(contextOnly, NOW_MS),
 			empty: formatUsageAriaLabel(null, NOW_MS),
 		}).toStrictEqual({
-			fiveHour: "Usage: 5-hour limit: 7%, Resets in 30 min",
+			fiveHour: "Usage: Session limit: 7%, Resets in 30 min",
 			contextOnly: "Usage",
 			empty: "Usage",
 		});
@@ -434,7 +434,7 @@ describe("formatUsageTooltipRows", () => {
 			empty: formatUsageTooltipRows(null, NOW_MS),
 		}).toStrictEqual({
 			weekly: ["Weekly · all models: 73%", "Resets Thu 3:00 PM"],
-			fiveHour: ["5-hour limit: 7%", "Resets in 30 min"],
+			fiveHour: ["Session limit: 7%", "Resets in 30 min"],
 			contextOnly: ["Usage"],
 			empty: ["Usage"],
 		});

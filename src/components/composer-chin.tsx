@@ -1,13 +1,12 @@
 import {Popover} from "@base-ui/react/popover";
-import {ArrowRight, Paperclip, Plus, SquareSlash} from "lucide-react";
+import {useQuery} from "@tanstack/react-query";
+import {Gauge, Paperclip, Plus, SquareSlash} from "lucide-react";
 import {lazy, memo, Suspense, useState} from "react";
 
 import {
 	type ComposerState,
 	type ComposerUsage,
 	FIVE_HOUR_LABEL,
-	formatContextSummary,
-	formatUpdatedAgo,
 	formatUsageAriaLabel,
 	formatUsageTooltipRows,
 	USAGE_RING_CIRCUMFERENCE,
@@ -29,83 +28,59 @@ import {useShortcutKeys} from "../hooks/use-shortcut";
 import {effortLevelLabels} from "../lib/schema-choices";
 import {type ChinMenu, ModeMenu, ModelMenu} from "./composer-launch-menus";
 import {ADD_BUTTON_CLASS, USAGE_RING_CLASS} from "./composer-tokens";
+import {localAccountQueryOptions} from "../lib/api/local-account";
 import {settingsHash} from "../lib/settings-hash";
 import {ConfirmDialog} from "./confirm-dialog";
 import {Menu, MenuContent, MenuItem, MenuTrigger} from "./ui/menu";
 import {Tooltip} from "./ui/tooltip";
-import {UsageLimitRow, UsageMeter} from "./usage-limit-row";
+import {UsagePopoverLimitRow} from "./usage-limit-row";
 
 // Keeps the Customize API schemas and router hooks out of the composer's cold load.
 const loadConnectorsMenu = async () =>
 	import("./composer-connectors-menu").then((module) => ({default: module.ComposerConnectorsMenu}));
 const ComposerConnectorsMenu = lazy(loadConnectorsMenu);
 
-/** Upstream's usage popover: r10, and up to 640px tall before its own scroll. */
+/** Upstream's 2026-10-20 usage popover: r10, and up to 640px (or the room left) tall before its own scroll. */
 const POPUP_CLASS =
-	"flex max-h-[640px] w-[360px] max-w-[calc(100vw-16px)] flex-col gap-3 overflow-y-auto rounded-r7 bg-[var(--menu-bg)] p-3 text-[12px]/[16px] text-primary shadow-[var(--menu-shadow)] outline-none";
+	"w-[360px] max-w-[calc(100vw-2rem)] max-h-[min(var(--available-height),640px)] overflow-y-auto rounded-r7 bg-[var(--menu-bg)] p-0 text-[13px]/[19px] text-primary shadow-[var(--menu-shadow)] outline-none";
 
-function UsagePopoverBody({
-	usage,
-	onNavigate,
-	onShowBreakdown,
-}: {
-	usage: ComposerUsage | null;
-	onNavigate: () => void;
-	/** Session composers only: upstream hides the button on new-session. */
-	onShowBreakdown: (() => void) | undefined;
-}) {
+function UsagePopoverBody({usage, onNavigate}: {usage: ComposerUsage | null; onNavigate: () => void}) {
+	const {data: account} = useQuery(localAccountQueryOptions);
 	const limits = [
 		usage?.fiveHour ? {label: FIVE_HOUR_LABEL, window: usage.fiveHour} : null,
 		usage?.weekly ? {label: WEEKLY_LABEL, window: usage.weekly} : null,
 	].filter((limit) => limit !== null);
+	const planDetail = account?.planDetail;
 	return (
 		<>
 			<Popover.Title className="sr-only">Usage</Popover.Title>
-			<div className="flex flex-col gap-1.5">
-				<div data-usage-context className="flex items-baseline justify-between gap-2">
-					<span className="font-medium">Context window</span>
-					<span className="tabular-nums text-secondary">{formatContextSummary(usage)}</span>
-				</div>
-				<UsageMeter percent={usage?.contextPercent ?? 0} label="Context window" />
-				{usage?.updatedAt && (
-					<p data-usage-updated className="text-t6">
-						Last updated {formatUpdatedAgo(usage.updatedAt, Date.now())}. Send a message to refresh.
-					</p>
-				)}
-			</div>
-			{limits.length > 0 && (
-				<>
-					<div className="h-px bg-alpha-2" />
-					<div className="flex flex-col gap-2">
-						<div className="flex items-center justify-between gap-2">
-							<span className="font-medium">Plan usage limits</span>
-							<a
-								href={`#${settingsHash("usage")}`}
-								aria-label="View usage in Settings"
-								onClick={onNavigate}
-								className="flex size-5 items-center justify-center rounded-r4 p-1 text-t6 outline-none hover:bg-alpha-1 hover:text-primary focus-visible:bg-alpha-1"
-							>
-								<ArrowRight aria-hidden="true" className="size-3" />
-							</a>
-						</div>
-						{limits.map((limit) => (
-							<UsageLimitRow key={limit.label} label={limit.label} window={limit.window} />
-						))}
-					</div>
-				</>
-			)}
-			{onShowBreakdown && (
-				<>
-					<div className="h-px bg-alpha-2" />
-					<button
-						type="button"
-						onClick={onShowBreakdown}
-						className="-mx-1 -my-1 flex h-6 items-center rounded-r4 px-1 text-start text-secondary outline-none hover:bg-alpha-1 hover:text-primary focus-visible:bg-alpha-1"
+			<div className="flex flex-col py-1.5">
+				<div className="flex flex-col gap-1.5">
+					<div
+						data-usage-popover-header
+						className="flex min-h-5 items-center justify-between gap-2 px-3 py-1"
 					>
-						See detailed breakdown
-					</button>
-				</>
-			)}
+						<span className="text-[12px]/[15px] text-ink-muted">
+							{planDetail === undefined ? "Plan usage limits" : `Plan usage limits · ${planDetail}`}
+						</span>
+						<a
+							href={`#${settingsHash("usage")}`}
+							aria-label="View usage in Settings"
+							onClick={onNavigate}
+							className="-me-1 flex size-5 items-center justify-center rounded-r4 text-ink-muted outline-none hover:bg-alpha-1 hover:text-primary focus-visible:bg-alpha-1"
+						>
+							<Gauge aria-hidden="true" className="size-3.5" />
+						</a>
+					</div>
+					{limits.length > 0 && (
+						<div role="group" aria-label="Usage limits" className="flex flex-col gap-2 px-3 pb-1">
+							{limits.map((limit) => (
+								<UsagePopoverLimitRow key={limit.label} label={limit.label} window={limit.window} />
+							))}
+						</div>
+					)}
+				</div>
+			</div>
 		</>
 	);
 }
@@ -117,7 +92,7 @@ const USAGE_RING_STROKES: Record<UsageRingSeverity, string> = {
 	critical: "var(--color-usage-danger)",
 };
 
-function UsageRing({usage, onShowBreakdown}: {usage: ComposerUsage | null; onShowBreakdown: (() => void) | undefined}) {
+function UsageRing({usage}: {usage: ComposerUsage | null}) {
 	const [open, setOpen] = useState(false);
 	const now = Date.now();
 	const percent = usageRingPercent(usage);
@@ -151,13 +126,6 @@ function UsageRing({usage, onShowBreakdown}: {usage: ComposerUsage | null; onSho
 							onNavigate={() => {
 								setOpen(false);
 							}}
-							onShowBreakdown={
-								onShowBreakdown &&
-								(() => {
-									setOpen(false);
-									onShowBreakdown();
-								})
-							}
 						/>
 					</Popover.Popup>
 				</Popover.Positioner>
@@ -224,12 +192,9 @@ function effortText(effort: string): string {
 export const ComposerChin = memo(function ComposerChin({
 	state,
 	launch,
-	onShowUsageBreakdown,
 }: {
 	state: ComposerState;
 	launch: ChinLaunchControls;
-	/** "See detailed breakdown": insert the Usage card into the transcript. */
-	onShowUsageBreakdown?: (() => void) | undefined;
 }) {
 	const {launchOptions, onLaunchOptionsChange, openMenu, onOpenMenuChange} = launch;
 	// Keeps the picked level while the confirm fades out, so its copy doesn't flicker.
@@ -286,7 +251,7 @@ export const ComposerChin = memo(function ComposerChin({
 					}}
 					onSelectEffort={selectEffort}
 				/>
-				<UsageRing usage={state.usage} onShowBreakdown={onShowUsageBreakdown} />
+				<UsageRing usage={state.usage} />
 			</div>
 			<ConfirmDialog
 				open={effortConfirm.open}

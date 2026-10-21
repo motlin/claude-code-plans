@@ -280,7 +280,7 @@ export function formatContextSummary(usage: ComposerUsage | null): string {
 	return `${formatTokenCount(usage.contextTokens)} / ${formatTokenCount(usage.contextWindowSize)} (${Math.round(percent)}%)`;
 }
 
-export const FIVE_HOUR_LABEL = "5-hour limit";
+export const FIVE_HOUR_LABEL = "Session limit";
 export const WEEKLY_LABEL = "Weekly · all models";
 
 interface UsageLimits {

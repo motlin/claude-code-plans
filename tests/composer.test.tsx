@@ -6,6 +6,7 @@ import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {Composer} from "../src/components/composer";
 import {customizeMcpServersQueryOptions} from "../src/lib/api/customize";
+import {localAccountQueryOptions} from "../src/lib/api/local-account";
 import type {ComposerState} from "../src/lib/composer-state";
 
 afterEach(() => {
@@ -338,32 +339,94 @@ describe("Composer", () => {
 			expect(document.querySelector("[data-usage-ring-arc]")?.getAttribute("stroke")).toBe(stroke);
 		});
 
-		it("opens the usage popover with context, limits and the last update", async () => {
+		const renderWithAccount = (planDetail?: string) => {
+			const queryClient = new QueryClient();
+			queryClient.setQueryData(localAccountQueryOptions.queryKey, {
+				name: "Craig",
+				firstName: "Craig",
+				initial: "C",
+				...(planDetail === undefined ? {} : {planDetail}),
+			});
+			render(
+				<QueryClientProvider client={queryClient}>
+					<Composer variant="session" draftKey="session-alice" onSend={() => {}} chin={CHIN} />
+				</QueryClientProvider>,
+			);
+		};
+
+		it("opens upstream's 2026-10-20 usage popover: plan header, Session limit and weekly meters, no context window", async () => {
 			vi.useFakeTimers({now: NOW_MS, toFake: ["Date"]});
-			render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} chin={CHIN} />);
+			renderWithAccount("Max (20x)");
 
 			fireEvent.click(screen.getByRole("button", {name: /^Usage:/}));
 			const dialog = await screen.findByRole("dialog");
-			const rows = Array.from(dialog.querySelectorAll("[data-usage-row]")).map((row) =>
-				Array.from(row.children, (cell) => cell.textContent).join(" | "),
-			);
+			const group = within(dialog).getByRole("group", {name: "Usage limits"});
+			const meters = within(group).getAllByRole("meter");
 
 			expect({
-				context: dialog.querySelector("[data-usage-context]")?.textContent,
-				updated: dialog.querySelector("[data-usage-updated]")?.textContent,
-				rows,
-				bars: Array.from(dialog.querySelectorAll('[role="progressbar"]')).map((bar) =>
-					bar.getAttribute("aria-valuenow"),
+				title: dialog.querySelector("h2.sr-only")?.textContent,
+				header: dialog.querySelector("[data-usage-popover-header] > span")?.textContent,
+				context: dialog.textContent.includes("Context window"),
+				updated: dialog.textContent.includes("Last updated"),
+				breakdown: within(dialog).queryByRole("button", {name: "See detailed breakdown"}),
+				rows: Array.from(group.querySelectorAll("[data-usage-row]"), (row) =>
+					[row.children[0], ...Array.from(row.children[1]?.children ?? [])]
+						.map((cell) => cell?.textContent)
+						.join(" | "),
 				),
+				percentsHidden: Array.from(
+					group.querySelectorAll("[data-usage-row] [aria-hidden=true]"),
+					(cell) => cell.textContent,
+				),
+				meters: meters.map((meter) => ({
+					now: meter.getAttribute("aria-valuenow"),
+					text: meter.getAttribute("aria-valuetext"),
+					label: document.getElementById(meter.getAttribute("aria-labelledby") ?? "")?.textContent,
+					description: document.getElementById(meter.getAttribute("aria-describedby") ?? "")?.textContent,
+					track: meter.classList.contains("bg-alpha-2"),
+					fill: (meter.firstElementChild as HTMLElement | null)?.style.transform,
+				})),
+				popup: [...dialog.classList].filter((name) => /^(?:w-|p-|text-\[)/.test(name)),
 			}).toStrictEqual({
-				context: "Context window190.2k / 1M (19%)",
-				updated: "Last updated 3 hours ago. Send a message to refresh.",
+				title: "Usage",
+				header: "Plan usage limits · Max (20x)",
+				context: false,
+				updated: false,
+				breakdown: null,
 				rows: [
-					"5-hour limit | Resets in 4 hr 11 min | 10%",
+					"Session limit | Resets in 4 hr 11 min | 10%",
 					"Weekly · all models | Resets in 14 hr 31 min | 65%",
 				],
-				bars: ["19", "10", "65"],
+				percentsHidden: ["10%", "65%"],
+				meters: [
+					{
+						now: "10",
+						text: "10% used",
+						label: "Session limit",
+						description: "Resets in 4 hr 11 min",
+						track: true,
+						fill: "translateX(calc(var(--_meter-dir,-1) * (100% - min(100%, max(10%, 4px)))))",
+					},
+					{
+						now: "65",
+						text: "65% used",
+						label: "Weekly · all models",
+						description: "Resets in 14 hr 31 min",
+						track: true,
+						fill: "translateX(calc(var(--_meter-dir,-1) * (100% - min(100%, max(65%, 4px)))))",
+					},
+				],
+				popup: ["w-[360px]", "p-0", "text-[13px]/[19px]"],
 			});
+		});
+
+		it("drops the plan from the usage popover header when the plan is unknown", async () => {
+			renderWithAccount();
+
+			fireEvent.click(screen.getByRole("button", {name: /^Usage:/}));
+			const dialog = await screen.findByRole("dialog");
+
+			expect(dialog.querySelector("[data-usage-popover-header] > span")?.textContent).toBe("Plan usage limits");
 		});
 
 		it("previews the most-used limit and its reset in a two-row tooltip on the ring", () => {
@@ -383,8 +446,8 @@ describe("Composer", () => {
 			]);
 		});
 
-		it("links the usage popover's plan limits to Settings › Usage", async () => {
-			render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} chin={CHIN} />);
+		it("links the usage popover header's gauge to Settings › Usage", async () => {
+			renderWithAccount("Max (20x)");
 
 			fireEvent.click(screen.getByRole("button", {name: /^Usage:/}));
 			const dialog = await screen.findByRole("dialog");
@@ -392,10 +455,14 @@ describe("Composer", () => {
 
 			expect({
 				href: link.getAttribute("href"),
+				link: link.className.match(/\bsize-5\b|\brounded-r4\b|-me-1\b/g),
+				icon: link.querySelector("svg")?.classList.contains("lucide-gauge"),
 				className: dialog.className.match(/rounded-\S+|max-h-\S+|overflow-\S+/g),
 			}).toStrictEqual({
 				href: "#settings/usage",
-				className: ["max-h-[640px]", "overflow-y-auto", "rounded-r7"],
+				link: ["-me-1", "size-5", "rounded-r4"],
+				icon: true,
+				className: ["max-h-[min(var(--available-height),640px)]", "overflow-y-auto", "rounded-r7"],
 			});
 
 			fireEvent.click(link);
