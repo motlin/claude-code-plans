@@ -228,7 +228,7 @@ describe("Composer model menu", () => {
 
 		expect({rows, more, trigger, calls: onSend.mock.calls}).toStrictEqual({
 			rows: [
-				{label: "Opus 5.5", key: null, checked: "true"},
+				{label: "Opus 5.5", key: "1", checked: "true"},
 				{label: "Fable 5.1", key: "2", checked: "false"},
 				{label: "Sonnet 5.5", key: "3", checked: "false"},
 				{label: "Haiku 5.5", key: "4", checked: "false"},
@@ -257,12 +257,78 @@ describe("Composer model menu", () => {
 		expect({rows, text, calls: onSend.mock.calls}).toStrictEqual({
 			rows: [
 				{label: "Opus 5.5", key: "1"},
-				{label: "Fable 5.1", key: null},
+				{label: "Fable 5.1", key: "2"},
 				{label: "Sonnet 5.5", key: "3"},
 				{label: "Haiku 5.5", key: "4"},
 			],
 			text: ["Opus 5.51", "Fable 5.1", "Sonnet 5.53", "Haiku 5.54"],
 			calls: [["Continue Erin's test", {model: "sonnet"}]],
+		});
+	});
+
+	it("keeps the checked row's digit live: pressing 1 on the checked Opus row closes the menu", async () => {
+		renderComposer();
+
+		openModelMenu();
+		const menu = await screen.findByRole("menu");
+		const opus = within(menu).getByRole("menuitemradio", {name: /^Opus/});
+		const attrs = {key: opus.getAttribute("aria-keyshortcuts"), number: opus.getAttribute("data-accelerator")};
+		fireEvent.keyDown(menu, {key: "1", code: "Digit1"});
+		await waitFor(() => {
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
+
+		expect(attrs).toStrictEqual({key: "1", number: "1"});
+	});
+
+	it("matches the digit by e.code, so a Numpad 3 picks Sonnet", async () => {
+		const onSend = renderComposer();
+
+		openModelMenu();
+		const menu = await screen.findByRole("menu");
+		fireEvent.keyDown(menu, {key: "3", code: "Numpad3"});
+		await waitFor(() => {
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
+		sendPrompt("Continue Grace's test");
+
+		expect(onSend.mock.calls).toStrictEqual([["Continue Grace's test", {model: "sonnet"}]]);
+	});
+
+	it("ignores a repeating digit key", async () => {
+		const onSend = renderComposer();
+
+		openModelMenu();
+		const menu = await screen.findByRole("menu");
+		fireEvent.keyDown(menu, {key: "2", code: "Digit2", repeat: true});
+		const stillOpen = screen.queryByRole("menu") !== null;
+		const checked = radioRows(menu).find((row) => row.checked === "true")?.label;
+		fireEvent.keyDown(menu, {key: "Escape"});
+		await waitFor(() => {
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
+		sendPrompt("Continue Heidi's test");
+
+		expect({stillOpen, checked, calls: onSend.mock.calls}).toStrictEqual({
+			stillOpen: true,
+			checked: "Opus 5.5",
+			calls: [["Continue Heidi's test", {}]],
+		});
+	});
+
+	it("shows upstream's Fable tooltip on the left when hovering the Fable row", async () => {
+		renderComposer();
+
+		openModelMenu();
+		const menu = await screen.findByRole("menu");
+		const anchor = within(menu).getByRole("menuitemradio", {name: /^Fable/}).parentElement;
+		if (anchor === null) throw new Error("Fable row has no tooltip anchor");
+		fireEvent.pointerEnter(anchor);
+		const tooltip = await screen.findByRole("tooltip");
+
+		expect({text: tooltip.textContent, side: tooltip.getAttribute("data-side")}).toStrictEqual({
+			text: "Fable is the most capable model and draws down usage much faster than Opus",
+			side: "left",
 		});
 	});
 

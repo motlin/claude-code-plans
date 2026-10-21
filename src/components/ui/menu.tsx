@@ -93,24 +93,24 @@ function ItemIcon({icon}: {icon: ReactNode}) {
 
 export type MenuItemVariant = keyof typeof ITEM_VARIANT_CLASS;
 
-function isAcceleratorEvent(event: KeyboardEvent<HTMLElement>): boolean {
-	return (
-		!event.defaultPrevented &&
-		!event.metaKey &&
-		!event.ctrlKey &&
-		!event.altKey &&
-		event.key.length === 1 &&
-		event.key !== " "
-	);
+/** Upstream's digit rows match the physical key, so Numpad digits and non-QWERTY layouts work. */
+const DIGIT_CODE = /^(?:Digit|Numpad)([1-9])$/;
+
+function acceleratorKey(event: KeyboardEvent<HTMLElement>): string | undefined {
+	if (event.defaultPrevented || event.repeat || event.metaKey || event.ctrlKey || event.altKey) return undefined;
+	const digit = DIGIT_CODE.exec(event.code)?.[1];
+	if (digit !== undefined) return digit;
+	if (event.key.length !== 1 || event.key === " ") return undefined;
+	return event.key.toLowerCase();
 }
 
 function handleAcceleratorKey(event: KeyboardEvent<HTMLElement>): void {
-	if (!isAcceleratorEvent(event)) return;
+	const key = acceleratorKey(event);
+	if (key === undefined) return;
 	const popup = event.currentTarget;
 	if (!(event.target instanceof Element) || event.target.closest('[role="menu"]') !== popup) {
 		return;
 	}
-	const key = event.key.toLowerCase();
 	const item = Array.from(popup.querySelectorAll<HTMLElement>("[data-accelerator]")).find(
 		(candidate) =>
 			candidate.dataset["accelerator"] === key &&
@@ -354,7 +354,7 @@ function RadioItemText({children, description}: {children: ReactNode; descriptio
 }
 
 /** Upstream's digit row trailing: the check slot first, then the keycap, pinned to the first line. */
-function DigitTrailing({accelerator}: {accelerator: string}) {
+function DigitTrailing({accelerator, hideAccelerator}: {accelerator: string; hideAccelerator: boolean}) {
 	const sizing = DENSITY_CLASSES[useContext(MenuDensityContext)];
 	return (
 		<span data-menu-item-trailing="" className={DIGIT_TRAILING_CLASS}>
@@ -367,7 +367,9 @@ function DigitTrailing({accelerator}: {accelerator: string}) {
 					</span>
 				)}
 			/>
-			<Shortcut keys={accelerator} variant="text" className={`${sizing.shortcut} pointer-coarse:hidden`} />
+			{!hideAccelerator && (
+				<Shortcut keys={accelerator} variant="text" className={`${sizing.shortcut} pointer-coarse:hidden`} />
+			)}
 		</span>
 	);
 }
@@ -377,9 +379,17 @@ export interface MenuRadioItemProps extends Omit<ComponentProps<typeof BaseMenu.
 	/** Muted wrapping second line, making the item upstream's 41px two-line row. */
 	description?: ReactNode;
 	accelerator?: string;
+	/** Upstream's checked model row: its ✓ replaces the visible digit, which still fires. */
+	hideAccelerator?: boolean;
 }
 
-export function MenuRadioItem({children, description, accelerator, ...props}: MenuRadioItemProps) {
+export function MenuRadioItem({
+	children,
+	description,
+	accelerator,
+	hideAccelerator = false,
+	...props
+}: MenuRadioItemProps) {
 	const itemClass = useItemClass(description !== undefined);
 	const check = (
 		<BaseMenu.RadioItemIndicator className={CHECK_SLOT_CLASS}>
@@ -387,7 +397,8 @@ export function MenuRadioItem({children, description, accelerator, ...props}: Me
 		</BaseMenu.RadioItemIndicator>
 	);
 	let trailing: ReactNode = check;
-	if (accelerator !== undefined) trailing = <DigitTrailing accelerator={accelerator} />;
+	if (accelerator !== undefined)
+		trailing = <DigitTrailing accelerator={accelerator} hideAccelerator={hideAccelerator} />;
 	else if (description !== undefined) {
 		trailing = (
 			<span data-menu-item-trailing="" className={FIRST_LINE_TRAILING_CLASS}>

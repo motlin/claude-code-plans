@@ -118,6 +118,7 @@ export function ModeMenu({
 
 /** Upstream's Effort list badges Medium as Recommended. */
 const RECOMMENDED_EFFORT: EffortLevel = "medium";
+const FABLE_TOOLTIP = "Fable is the most capable model and draws down usage much faster than Opus";
 const MAX_EFFORT_TOOLTIP = "Claude thinks longer with Max effort and can consume 3.5× or more usage than Medium.";
 /** Upstream's cds Badge chip, sized for the compact menu. */
 const EFFORT_BADGE_CLASS =
@@ -198,16 +199,26 @@ export function ModelMenu({
 						onSelect(value);
 					}}
 				>
-					{PRIMARY_MODELS.map((model, index) => (
-						<MenuRadioItem
-							key={model.id}
-							value={model.id}
-							{...(model.id === primary ? {} : {accelerator: String(index + 1)})}
-							closeOnClick
-						>
-							<span data-menu-item-label="">{model.label}</span>
-						</MenuRadioItem>
-					))}
+					{PRIMARY_MODELS.map((model, index) => {
+						const row = (
+							<MenuRadioItem
+								key={model.id}
+								value={model.id}
+								accelerator={String(index + 1)}
+								hideAccelerator={model.id === primary}
+								closeOnClick
+							>
+								<span data-menu-item-label="">{model.label}</span>
+							</MenuRadioItem>
+						);
+						return model.id === "fable" ? (
+							<Tooltip key={model.id} content={FABLE_TOOLTIP} side="left" portal className="flex w-full">
+								{row}
+							</Tooltip>
+						) : (
+							row
+						);
+					})}
 				</MenuRadioGroup>
 				<MenuSeparator />
 				<MenuSub defaultOpen={effortOpen}>

@@ -361,6 +361,67 @@ describe("Menu", () => {
 		]);
 	});
 
+	it("hides a checked row's digit with hideAccelerator but keeps its accelerator attributes", async () => {
+		render(
+			<Menu defaultOpen>
+				<MenuTrigger aria-label="Model">Model</MenuTrigger>
+				<MenuContent>
+					<MenuRadioGroup value="opus">
+						<MenuRadioItem value="opus" accelerator="1" hideAccelerator>
+							Opus
+						</MenuRadioItem>
+						<MenuRadioItem value="fable" accelerator="2">
+							Fable
+						</MenuRadioItem>
+					</MenuRadioGroup>
+				</MenuContent>
+			</Menu>,
+		);
+		await flush();
+
+		const rows = screen.getAllByRole("menuitemradio").map((item) => ({
+			text: item.textContent,
+			key: item.getAttribute("aria-keyshortcuts"),
+			accelerator: item.getAttribute("data-accelerator"),
+			check: item.querySelector("svg") !== null,
+		}));
+
+		expect(rows).toStrictEqual([
+			{text: "Opus", key: "1", accelerator: "1", check: true},
+			{text: "Fable2", key: "2", accelerator: "2", check: false},
+		]);
+	});
+
+	it("matches a digit accelerator by e.code (AZERTY Digit2 types é) and ignores key repeat", async () => {
+		const onValueChange = vi.fn<(value: string) => void>();
+		render(
+			<Menu defaultOpen>
+				<MenuTrigger aria-label="Model">Model</MenuTrigger>
+				<MenuContent>
+					<MenuRadioGroup value="opus" onValueChange={onValueChange}>
+						<MenuRadioItem value="opus" accelerator="1">
+							Opus
+						</MenuRadioItem>
+						<MenuRadioItem value="fable" accelerator="2">
+							Fable
+						</MenuRadioItem>
+						<MenuRadioItem value="sonnet" accelerator="3">
+							Sonnet
+						</MenuRadioItem>
+					</MenuRadioGroup>
+				</MenuContent>
+			</Menu>,
+		);
+		await flush();
+		const menu = screen.getByRole("menu");
+
+		fireEvent.keyDown(menu, {key: "3", code: "Digit3", repeat: true});
+		fireEvent.keyDown(menu, {key: "é", code: "Digit2"});
+		await flush();
+
+		expect(onValueChange.mock.calls.map(([value]) => value)).toStrictEqual(["fable"]);
+	});
+
 	it("opens a submenu with ArrowRight and shows radio items", async () => {
 		renderDropdown();
 		await openDropdown();
