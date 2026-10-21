@@ -30,8 +30,8 @@ const EFFORT_LABELS: Record<string, string> = {
 
 const DEFAULT_EFFORT = "high";
 
-/** 2πr for the upstream ring's r=5 circle, rounded exactly as upstream writes it. */
-export const USAGE_RING_CIRCUMFERENCE = 31.4159;
+/** 2πr for the upstream ring's r=6 circle, rounded exactly as upstream writes it. */
+export const USAGE_RING_CIRCUMFERENCE = 37.699;
 
 export interface ComposerStateSources {
 	/** `permission_mode` from the latest hook event; `""` means the turn context was cleared. */
@@ -283,29 +283,49 @@ export function formatContextSummary(usage: ComposerUsage | null): string {
 export const FIVE_HOUR_LABEL = "5-hour limit";
 export const WEEKLY_LABEL = "Weekly · all models";
 
-/** The one limit the ring summarises: weekly when present, else the five-hour window. */
-function primaryLimit(usage: ComposerUsage | null): {label: string; window: RateLimitWindow} | null {
-	if (usage?.weekly) return {label: WEEKLY_LABEL, window: usage.weekly};
-	if (usage?.fiveHour) return {label: FIVE_HOUR_LABEL, window: usage.fiveHour};
+interface UsageLimits {
+	fiveHour?: Pick<RateLimitWindow, "usedPercentage"> | null;
+	weekly?: Pick<RateLimitWindow, "usedPercentage"> | null;
+}
+
+/** The one limit the ring summarises: the most used one, weekly on a tie, as upstream does. */
+function topLimit(usage: ComposerUsage | null): {label: string; window: RateLimitWindow} | null {
+	const {weekly, fiveHour} = usage ?? {};
+	if (weekly && (!fiveHour || weekly.usedPercentage >= fiveHour.usedPercentage)) {
+		return {label: WEEKLY_LABEL, window: weekly};
+	}
+	if (fiveHour) return {label: FIVE_HOUR_LABEL, window: fiveHour};
 	return null;
 }
 
-/** "Usage: Context 190.2k / 1M (19%), Weekly · all models: 65%, Resets in 14 hr 31 min". */
-export function formatUsageAriaLabel(usage: ComposerUsage | null, nowMs: number, timeZone?: string): string {
-	const context = `Usage: Context ${formatContextSummary(usage)}`;
-	const limit = primaryLimit(usage);
-	if (!limit) return context;
-	return `${context}, ${limit.label}: ${Math.round(limit.window.usedPercentage)}%, ${formatResetLabel(limit.window.resetsAt, nowMs, timeZone)}`;
+/** The ring's fill: the highest plan-limit utilisation, or null with no limits. */
+export function usageRingPercent(usage: UsageLimits | null): number | null {
+	const percents = [usage?.fiveHour, usage?.weekly].flatMap((window) => (window ? [window.usedPercentage] : []));
+	return percents.length > 0 ? Math.max(...percents) : null;
 }
 
-/** The ring tooltip's rows: "Context 604.7k / 1M (60%)", then "Weekly · all models: 38% · Resets Tue 4:00 AM". */
+export type UsageRingSeverity = "normal" | "warning" | "critical";
+
+/** Upstream's arc colour thresholds: ≥75 warning, ≥90 danger. */
+export function usageRingSeverity(percent: number | null): UsageRingSeverity {
+	if (percent === null || percent < 75) return "normal";
+	return percent >= 90 ? "critical" : "warning";
+}
+
+/** "Usage: Weekly · all models: 73%, Resets Tue 4:00 AM", or "Usage" with no limits. */
+export function formatUsageAriaLabel(usage: ComposerUsage | null, nowMs: number, timeZone?: string): string {
+	const limit = topLimit(usage);
+	if (!limit) return "Usage";
+	return `Usage: ${limit.label}: ${Math.round(limit.window.usedPercentage)}%, ${formatResetLabel(limit.window.resetsAt, nowMs, timeZone)}`;
+}
+
+/** The ring tooltip's rows: "Weekly · all models: 73%", then "Resets Tue 4:00 AM". */
 export function formatUsageTooltipRows(usage: ComposerUsage | null, nowMs: number, timeZone?: string): string[] {
-	const context = `Context ${formatContextSummary(usage)}`;
-	const limit = primaryLimit(usage);
-	if (!limit) return [context];
+	const limit = topLimit(usage);
+	if (!limit) return ["Usage"];
 	return [
-		context,
-		`${limit.label}: ${Math.round(limit.window.usedPercentage)}% · ${formatResetLabel(limit.window.resetsAt, nowMs, timeZone)}`,
+		`${limit.label}: ${Math.round(limit.window.usedPercentage)}%`,
+		formatResetLabel(limit.window.resetsAt, nowMs, timeZone),
 	];
 }
 

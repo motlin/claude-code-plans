@@ -225,7 +225,7 @@ describe("Composer", () => {
 			expect(labels).toStrictEqual([
 				"Accept edits",
 				"Model: Opus 5.5, Effort: Extra",
-				"Usage: Context 190.2k / 1M (19%), Weekly · all models: 65%, Resets in 14 hr 31 min",
+				"Usage: Weekly · all models: 65%, Resets in 14 hr 31 min",
 			]);
 		});
 
@@ -300,14 +300,42 @@ describe("Composer", () => {
 			});
 		});
 
-		it("draws the ring arc from the context percentage", () => {
+		it("draws the ring arc from the most-used plan limit on upstream's 14/r6 geometry", () => {
 			render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} chin={CHIN} />);
-			const arc = document.querySelector("[data-usage-ring-arc]");
+			const svg = screen.getByRole("button", {name: /^Usage:/}).querySelector("svg");
+			const [track, arc] = Array.from(svg?.querySelectorAll("circle") ?? []);
 
 			expect({
-				dasharray: arc?.getAttribute("stroke-dasharray"),
-				dashoffset: Number(arc?.getAttribute("stroke-dashoffset")).toFixed(4),
-			}).toStrictEqual({dasharray: "31.4159", dashoffset: (0.81 * 31.4159).toFixed(4)});
+				viewBox: svg?.getAttribute("viewBox"),
+				track: [track?.getAttribute("r"), track?.getAttribute("stroke")],
+				arc: {
+					r: arc?.getAttribute("r"),
+					stroke: arc?.getAttribute("stroke"),
+					dasharray: arc?.getAttribute("stroke-dasharray"),
+					dashoffset: Number(arc?.getAttribute("stroke-dashoffset")).toFixed(4),
+					transition: arc?.getAttribute("class"),
+				},
+			}).toStrictEqual({
+				viewBox: "0 0 14 14",
+				track: ["6", "var(--color-alpha-4)"],
+				arc: {
+					r: "6",
+					stroke: "var(--color-fill-accent)",
+					dasharray: "37.699",
+					dashoffset: (0.35 * 37.699).toFixed(4),
+					transition: "transition-[stroke-dashoffset] duration-300",
+				},
+			});
+		});
+
+		it.each([
+			{weekly: 74, stroke: "var(--color-fill-accent)"},
+			{weekly: 75, stroke: "var(--color-usage-warning)"},
+			{weekly: 90, stroke: "var(--color-usage-danger)"},
+		])("colours the arc $stroke at $weekly%", ({weekly, stroke}) => {
+			const usage = CHIN.usage && {...CHIN.usage, weekly: {...CHIN.usage.weekly!, usedPercentage: weekly}};
+			render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} chin={{...CHIN, usage}} />);
+			expect(document.querySelector("[data-usage-ring-arc]")?.getAttribute("stroke")).toBe(stroke);
 		});
 
 		it("opens the usage popover with context, limits and the last update", async () => {
@@ -338,7 +366,7 @@ describe("Composer", () => {
 			});
 		});
 
-		it("previews context and the weekly limit in a two-row tooltip on the ring", () => {
+		it("previews the most-used limit and its reset in a two-row tooltip on the ring", () => {
 			vi.useFakeTimers({now: NOW_MS});
 			render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} chin={CHIN} />);
 			const anchor = screen.getByRole("button", {name: /^Usage:/}).parentElement;
@@ -350,8 +378,8 @@ describe("Composer", () => {
 			});
 
 			expect(screen.getByRole("tooltip").textContent.split("\n")).toStrictEqual([
-				"Context 190.2k / 1M (19%)",
-				"Weekly · all models: 65% · Resets in 14 hr 31 min",
+				"Weekly · all models: 65%",
+				"Resets in 14 hr 31 min",
 			]);
 		});
 

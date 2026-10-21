@@ -35,7 +35,7 @@ describe("See detailed breakdown", () => {
 			/>,
 		);
 
-		fireEvent.click(screen.getByRole("button", {name: /^Usage:/}));
+		fireEvent.click(screen.getByRole("button", {name: "Usage"}));
 		fireEvent.click(await screen.findByRole("button", {name: "See detailed breakdown"}));
 
 		await waitFor(() => {
@@ -47,7 +47,7 @@ describe("See detailed breakdown", () => {
 	it("is absent without a session to break down", async () => {
 		render(<Composer variant="home" draftKey="home" onSend={() => {}} chin={CHIN} />);
 
-		fireEvent.click(screen.getByRole("button", {name: /^Usage:/}));
+		fireEvent.click(screen.getByRole("button", {name: "Usage"}));
 		await screen.findByRole("dialog");
 
 		expect(screen.queryByRole("button", {name: "See detailed breakdown"})).toBeNull();

@@ -46,6 +46,9 @@
 	--color-alpha-1: var(--upstream-alpha-1);
 	--color-alpha-2: var(--upstream-alpha-2);
 	--color-alpha-3: var(--upstream-alpha-3);
+	--color-alpha-4: var(--upstream-alpha-4);
+	--color-usage-warning: var(--upstream-fill-warning);
+	--color-usage-danger: var(--upstream-fill-danger);
 	--color-backdrop: var(--upstream-backdrop);
 	--color-fill-control: var(--upstream-fill-control);
 	--color-fill-ghost-hover: var(--upstream-fill-ghost-hover);
@@ -200,6 +203,11 @@
 	--upstream-alpha-1: rgb(11 11 11 / 0.05);
 	--upstream-alpha-2: rgb(11 11 11 / 0.08);
 	--upstream-alpha-3: rgb(11 11 11 / 0.12);
+	/* Upstream --cds-alpha-4: neutral-900 at 35% (the usage ring track). */
+	--upstream-alpha-4: rgb(11 11 11 / 0.35);
+	/* Upstream --cds-fill-warning / --cds-fill-danger (usage ring arc at ≥75% / ≥90%). */
+	--upstream-fill-warning: #fbb315;
+	--upstream-fill-danger: #dc3c3d;
 	--upstream-backdrop: rgb(0 0 0 / 0.4);
 	--panel-lg-shadow:
 		0 0 0 1px rgb(11 11 11 / 0.1), 0 4px 8px 0 rgb(11 11 11 / 0.08), 0 12px 28px -2px rgb(11 11 11 / 0.08);
@@ -398,6 +406,7 @@
 	--upstream-alpha-1: rgb(255 255 255 / 0.05);
 	--upstream-alpha-2: rgb(255 255 255 / 0.08);
 	--upstream-alpha-3: rgb(255 255 255 / 0.12);
+	--upstream-alpha-4: rgb(255 255 255 / 0.35);
 	--upstream-backdrop: rgb(0 0 0 / 0.5);
 	--upstream-fill-control: hsl(0 0% 100% / 0.1);
 	--upstream-fill-ghost-hover: hsl(0 0% 100% / 0.075);

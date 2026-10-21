@@ -12,6 +12,9 @@ import {
 	formatUsageTooltipRows,
 	USAGE_RING_CIRCUMFERENCE,
 	usageRingDashoffset,
+	usageRingPercent,
+	type UsageRingSeverity,
+	usageRingSeverity,
 	WEEKLY_LABEL,
 } from "../lib/composer-state";
 import {
@@ -107,26 +110,35 @@ function UsagePopoverBody({
 	);
 }
 
+/** Upstream's arc: --cds-fill-accent, then fill-warning at ≥75% and fill-danger at ≥90%. */
+const USAGE_RING_STROKES: Record<UsageRingSeverity, string> = {
+	normal: "var(--color-fill-accent)",
+	warning: "var(--color-usage-warning)",
+	critical: "var(--color-usage-danger)",
+};
+
 function UsageRing({usage, onShowBreakdown}: {usage: ComposerUsage | null; onShowBreakdown: (() => void) | undefined}) {
 	const [open, setOpen] = useState(false);
 	const now = Date.now();
+	const percent = usageRingPercent(usage);
 	return (
 		<Popover.Root open={open} onOpenChange={setOpen}>
 			<Tooltip content={formatUsageTooltipRows(usage, now).join("\n")} multiline>
 				<Popover.Trigger aria-label={formatUsageAriaLabel(usage, now)} className={USAGE_RING_CLASS}>
-					<svg width="14" height="14" viewBox="0 0 12 12" className="-rotate-90" aria-hidden="true">
-						<circle cx="6" cy="6" r="5" fill="none" strokeWidth="2" stroke="var(--color-alpha-2)" />
+					<svg width="14" height="14" viewBox="0 0 14 14" className="-rotate-90" aria-hidden="true">
+						<circle cx="7" cy="7" r="6" fill="none" strokeWidth="2" stroke="var(--color-alpha-4)" />
 						<circle
 							data-usage-ring-arc
-							cx="6"
-							cy="6"
-							r="5"
+							cx="7"
+							cy="7"
+							r="6"
 							fill="none"
 							strokeWidth="2"
 							strokeLinecap="round"
-							stroke="var(--accent-100)"
+							stroke={USAGE_RING_STROKES[usageRingSeverity(percent)]}
 							strokeDasharray={USAGE_RING_CIRCUMFERENCE}
-							strokeDashoffset={usageRingDashoffset(usage?.contextPercent ?? null)}
+							strokeDashoffset={usageRingDashoffset(percent)}
+							className="transition-[stroke-dashoffset] duration-300"
 						/>
 					</svg>
 				</Popover.Trigger>

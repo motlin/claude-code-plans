@@ -258,11 +258,11 @@
 		"tolerance": 0
 	},
 	"client.liveEvent.appendOpen.mutations": {
-		"ceiling": 12,
+		"ceiling": 10,
 		"unit": "count",
 		"tolerance": 0,
-		"reason": "The perf fixtures' cwd /repo encodes to their project id, so indexing now resolves the project path from the session's recorded cwd and the session composer mounts as it does on every real session: its slash-command, prompt-history and usage fetches, its chin and its re-renders on live events now count, and the home composer fetches slash commands for the latest project.",
-		"raisedAt": "2026-10-11"
+		"reason": "The usage ring tracks the plan limits rather than the context window, so a fixture with no rate limits keeps one static arc: no stroke-dashoffset churn as context grows or the session changes.",
+		"raisedAt": "2026-10-21"
 	},
 	"client.liveEvent.appendOther.commits": {
 		"ceiling": 1,
@@ -485,11 +485,11 @@
 		"tolerance": 0
 	},
 	"client.sessionSwitch.small.mutations": {
-		"ceiling": 50,
+		"ceiling": 48,
 		"unit": "count",
 		"tolerance": 0,
-		"reason": "The current session's sidebar row carries upstream's data-touch-menu, so a switch moves one attribute: removed from the old row, set on the new one.",
-		"raisedAt": "2026-10-18"
+		"reason": "The usage ring tracks the plan limits rather than the context window, so a fixture with no rate limits keeps one static arc: no stroke-dashoffset churn as context grows or the session changes.",
+		"raisedAt": "2026-10-21"
 	},
 	"client.sessionSwitch.typical.commits": {
 		"ceiling": 10,
@@ -524,11 +524,11 @@
 		"tolerance": 0
 	},
 	"client.sessionSwitch.typical.mutations": {
-		"ceiling": 50,
+		"ceiling": 48,
 		"unit": "count",
 		"tolerance": 0,
-		"reason": "The current session's sidebar row carries upstream's data-touch-menu, so a switch moves one attribute: removed from the old row, set on the new one.",
-		"raisedAt": "2026-10-18"
+		"reason": "The usage ring tracks the plan limits rather than the context window, so a fixture with no rate limits keeps one static arc: no stroke-dashoffset churn as context grows or the session changes.",
+		"raisedAt": "2026-10-21"
 	},
 	"hot.claudeEventsReducer.replay-200.calls": {
 		"ceiling": 300,

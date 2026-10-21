@@ -14,6 +14,8 @@ import {
 	resolveComposerState,
 	USAGE_RING_CIRCUMFERENCE,
 	usageRingDashoffset,
+	usageRingPercent,
+	usageRingSeverity,
 } from "../src/lib/composer-state";
 import {handleComposerStateRequest} from "../src/routes/api/sessions.$id.composer-state";
 
@@ -338,70 +340,103 @@ describe("usage ring", () => {
 		expect(usageRingDashoffset(percent)).toBeCloseTo(expected, 6);
 	});
 
-	it("uses the upstream circumference for an r=5 circle", () => {
-		expect(USAGE_RING_CIRCUMFERENCE).toBe(31.4159);
+	it("uses the upstream circumference for an r=6 circle", () => {
+		expect(USAGE_RING_CIRCUMFERENCE).toBe(37.699);
 	});
 
-	it("builds the upstream aria-label from context and the weekly limit", () => {
-		const usage = resolveComposerState({...EMPTY_SOURCES, statusline: ALICE_STATUSLINE}).usage;
-		expect(formatUsageAriaLabel(usage, NOW_MS)).toBe(
-			"Usage: Context 190.2k / 1M (19%), Weekly · all models: 65%, Resets in 14 hr 31 min",
-		);
-	});
-
-	it("falls back to the five-hour limit, then to a bare context label", () => {
-		const fiveHourOnly = StatuslineSchema.parse({
-			context_window: {context_window_size: 200_000, used_percentage: 2},
-			rate_limits: {five_hour: {used_percentage: 7.4, resets_at: NOW_SEC + 30 * 60}},
-		});
-		const usage = resolveComposerState({...EMPTY_SOURCES, statusline: fiveHourOnly}).usage;
+	it("shows the most-used plan limit, not the context window", () => {
 		expect({
-			fiveHour: formatUsageAriaLabel(usage, NOW_MS),
-			empty: formatUsageAriaLabel(null, NOW_MS),
+			both: usageRingPercent({fiveHour: {usedPercentage: 22}, weekly: {usedPercentage: 73}}),
+			sessionHigher: usageRingPercent({fiveHour: {usedPercentage: 81}, weekly: {usedPercentage: 40}}),
+			weeklyOnly: usageRingPercent({fiveHour: null, weekly: {usedPercentage: 12}}),
+			none: usageRingPercent({fiveHour: null, weekly: null}),
+			empty: usageRingPercent(null),
+		}).toStrictEqual({both: 73, sessionHigher: 81, weeklyOnly: 12, none: null, empty: null});
+	});
+
+	it.each([
+		{percent: null, expected: "normal"},
+		{percent: 74, expected: "normal"},
+		{percent: 75, expected: "warning"},
+		{percent: 89, expected: "warning"},
+		{percent: 90, expected: "critical"},
+		{percent: 100, expected: "critical"},
+	] as const)("severity for $percent% is $expected", ({percent, expected}) => {
+		expect(usageRingSeverity(percent)).toBe(expected);
+	});
+
+	it("builds the upstream aria-label from the most-used limit", () => {
+		const usage = resolveComposerState({...EMPTY_SOURCES, statusline: ALICE_STATUSLINE}).usage;
+		expect({
+			alice: formatUsageAriaLabel(usage, NOW_MS),
 			days: formatUsageAriaLabel(
 				{
 					contextTokens: 4_000,
 					contextWindowSize: 200_000,
 					contextPercent: 2,
-					fiveHour: null,
-					weekly: {usedPercentage: 11, resetsAt: NOW_SEC + 2 * 86_400 + 3 * 3600},
+					fiveHour: {usedPercentage: 22, resetsAt: NOW_SEC + 3600},
+					weekly: {usedPercentage: 73, resetsAt: NOW_SEC + 2 * 86_400 + 3 * 3600},
 					updatedAt: null,
 				},
 				NOW_MS,
 				"UTC",
 			),
 		}).toStrictEqual({
-			fiveHour: "Usage: Context 4k / 200k (2%), 5-hour limit: 7%, Resets in 30 min",
-			empty: "Usage: Context 0",
-			days: "Usage: Context 4k / 200k (2%), Weekly · all models: 11%, Resets Thu 3:00 PM",
+			alice: "Usage: Weekly · all models: 65%, Resets in 14 hr 31 min",
+			days: "Usage: Weekly · all models: 73%, Resets Thu 3:00 PM",
+		});
+	});
+
+	it("labels the five-hour limit when it is the most used, and reads bare Usage with no limits", () => {
+		const fiveHourOnly = StatuslineSchema.parse({
+			context_window: {context_window_size: 200_000, used_percentage: 2},
+			rate_limits: {five_hour: {used_percentage: 7.4, resets_at: NOW_SEC + 30 * 60}},
+		});
+		const usage = resolveComposerState({...EMPTY_SOURCES, statusline: fiveHourOnly}).usage;
+		const contextOnly = resolveComposerState({
+			...EMPTY_SOURCES,
+			statusline: StatuslineSchema.parse({context_window: {context_window_size: 200_000, used_percentage: 2}}),
+		}).usage;
+		expect({
+			fiveHour: formatUsageAriaLabel(usage, NOW_MS),
+			contextOnly: formatUsageAriaLabel(contextOnly, NOW_MS),
+			empty: formatUsageAriaLabel(null, NOW_MS),
+		}).toStrictEqual({
+			fiveHour: "Usage: 5-hour limit: 7%, Resets in 30 min",
+			contextOnly: "Usage",
+			empty: "Usage",
 		});
 	});
 });
 
 describe("formatUsageTooltipRows", () => {
-	it("pairs the context summary with the weekly limit, else the five-hour limit, else context alone", () => {
+	it("puts the most-used limit on one row and its reset on the next, else a bare Usage row", () => {
 		const base = {contextTokens: 604_700, contextWindowSize: 1_000_000, contextPercent: 60, updatedAt: null};
 		expect({
 			weekly: formatUsageTooltipRows(
 				{
 					...base,
-					fiveHour: {usedPercentage: 10, resetsAt: NOW_SEC + 3600},
-					weekly: {usedPercentage: 38.2, resetsAt: NOW_SEC + 2 * 86_400 + 3 * 3600},
+					fiveHour: {usedPercentage: 22, resetsAt: NOW_SEC + 3600},
+					weekly: {usedPercentage: 73, resetsAt: NOW_SEC + 2 * 86_400 + 3 * 3600},
 				},
 				NOW_MS,
 				"UTC",
 			),
 			fiveHour: formatUsageTooltipRows(
-				{...base, fiveHour: {usedPercentage: 7.4, resetsAt: NOW_SEC + 30 * 60}, weekly: null},
+				{
+					...base,
+					fiveHour: {usedPercentage: 7.4, resetsAt: NOW_SEC + 30 * 60},
+					weekly: {usedPercentage: 3, resetsAt: NOW_SEC + 2 * 86_400},
+				},
 				NOW_MS,
 			),
 			contextOnly: formatUsageTooltipRows({...base, fiveHour: null, weekly: null}, NOW_MS),
 			empty: formatUsageTooltipRows(null, NOW_MS),
 		}).toStrictEqual({
-			weekly: ["Context 604.7k / 1M (60%)", "Weekly · all models: 38% · Resets Thu 3:00 PM"],
-			fiveHour: ["Context 604.7k / 1M (60%)", "5-hour limit: 7% · Resets in 30 min"],
-			contextOnly: ["Context 604.7k / 1M (60%)"],
-			empty: ["Context 0"],
+			weekly: ["Weekly · all models: 73%", "Resets Thu 3:00 PM"],
+			fiveHour: ["5-hour limit: 7%", "Resets in 30 min"],
+			contextOnly: ["Usage"],
+			empty: ["Usage"],
 		});
 	});
 });
