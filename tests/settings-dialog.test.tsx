@@ -17,6 +17,7 @@ import {loadSettingsDialog} from "../src/components/settings/settings-dialog-loa
 import {SettingsProvider} from "../src/components/settings-provider";
 import {ThemeProvider} from "../src/components/theme-provider";
 import {ToastProvider} from "../src/components/toast";
+import {DensityScope} from "../src/components/ui/density";
 import {
 	customizeSkillDetailQueryOptions,
 	customizeSkillsQueryOptions,
@@ -114,6 +115,19 @@ describe("SettingsDialog", () => {
 		await screen.findByRole("button", {name: "Page trigger"});
 
 		expect(screen.queryByRole("dialog")).toBeNull();
+	});
+
+	it("forces comfortable density on the modal even when opened from a compact scope, as upstream's shared-19", async () => {
+		const router = buildRouter("/#settings/general");
+		await router.load();
+		render(
+			<DensityScope density="compact">
+				<RouterProvider router={router} />
+			</DensityScope>,
+		);
+
+		const dialog = await screen.findByRole("dialog", {name: "Settings"});
+		expect(dialog.parentElement?.closest("[data-density]")?.getAttribute("data-density")).toBe("comfortable");
 	});
 
 	it("opens on the hash's tab with that tab marked current", async () => {

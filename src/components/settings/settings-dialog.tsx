@@ -29,6 +29,7 @@ import {SettingsSearch} from "./settings-search";
 import {CUSTOMIZE_SECTION_ICONS, SETTINGS_TAB_ICONS} from "./settings-tab-icons";
 import {UsageSettings} from "./usage-settings";
 import {usePhoneSheet} from "../../lib/use-phone-sheet";
+import {DensityScope} from "../ui/density";
 
 const TAB_PANELS = {
 	general: GeneralSettings,
@@ -289,91 +290,93 @@ export function SettingsDialog() {
 			}}
 		>
 			<Dialog.Portal>
-				<Dialog.Backdrop className="fixed inset-0 z-50 bg-black/40" />
-				<Dialog.Popup
-					aria-label="Settings"
-					finalFocus={finalFocus}
-					data-perf-overlay="settings_modal"
-					data-perf-screen={customize === null ? tab : `customize-${customize.section}`}
-					className={`fixed inset-4 z-50 m-auto flex max-h-[50rem] max-w-[1024px] overflow-hidden rounded-card bg-[var(--menu-bg)] dark:bg-surface-2 text-body text-primary dark:shadow-[inset_0_0_0_1px_rgb(255_255_255/0.1),0_1px_2px_rgb(11_11_11/0.06),0_2px_8px_rgba(0,0,0,0.24)] not-dark:shadow-[0_0_0_1px_rgb(11_11_11/0.1),0_1px_2px_rgb(11_11_11/0.06),0_2px_8px_rgb(11_11_11/0.08)] outline-none ${phone ? "flex-col" : ""}`}
-				>
-					{phone ? (
-						// Upstream at phone width: one scroll container (p-24) holding the header, the tab strip and a single column.
-						<div className="isolate flex min-h-0 flex-1 flex-col overflow-y-auto p-6">
-							<div className="flex shrink-0 items-center justify-between gap-3 pb-3">
-								<h2 className="text-[22px]/[28px] font-[580] text-primary">Settings</h2>
-								{closeButton}
-							</div>
-							<div className="shrink-0 pb-3">
-								<SettingsSearch onSelect={selectTab} />
-							</div>
-							<PhoneTabStrip isSelected={isSelected} onSelect={selectItem} />
-							<div className="min-w-0 space-y-6 pt-2">{content}</div>
-						</div>
-					) : (
-						<>
-							<nav
-								aria-label="Settings"
-								className="flex w-48 shrink-0 flex-col gap-3 border-r border-subtle bg-surface-1"
-							>
-								<div className="shrink-0 px-3 pt-3">
+				<DensityScope density="comfortable">
+					<Dialog.Backdrop className="fixed inset-0 z-50 bg-black/40" />
+					<Dialog.Popup
+						aria-label="Settings"
+						finalFocus={finalFocus}
+						data-perf-overlay="settings_modal"
+						data-perf-screen={customize === null ? tab : `customize-${customize.section}`}
+						className={`fixed inset-4 z-50 m-auto flex max-h-[50rem] max-w-[1024px] overflow-hidden rounded-card bg-[var(--menu-bg)] dark:bg-surface-2 text-body text-primary dark:shadow-[inset_0_0_0_1px_rgb(255_255_255/0.1),0_1px_2px_rgb(11_11_11/0.06),0_2px_8px_rgba(0,0,0,0.24)] not-dark:shadow-[0_0_0_1px_rgb(11_11_11/0.1),0_1px_2px_rgb(11_11_11/0.06),0_2px_8px_rgb(11_11_11/0.08)] outline-none ${phone ? "flex-col" : ""}`}
+					>
+						{phone ? (
+							// Upstream at phone width: one scroll container (p-24) holding the header, the tab strip and a single column.
+							<div className="isolate flex min-h-0 flex-1 flex-col overflow-y-auto p-6">
+								<div className="flex shrink-0 items-center justify-between gap-3 pb-3">
+									<h2 className="text-[22px]/[28px] font-[580] text-primary">Settings</h2>
+									{closeButton}
+								</div>
+								<div className="shrink-0 pb-3">
 									<SettingsSearch onSelect={selectTab} />
 								</div>
-								<div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-3 pb-3">
-									{NAV_GROUPS.map((group) => (
-										<div
-											key={group.label}
-											role="group"
-											aria-label={group.label}
-											className="flex shrink-0 flex-col gap-3"
-										>
-											<div className="px-2 pt-3 text-[12px]/[17px] text-ink-muted">
-												{group.label}
-											</div>
-											<div className="flex flex-col gap-px">
-												{group.items.map((item) => {
-													const selected = isSelected(item);
-													const Icon =
-														item.kind === "settings"
-															? SETTINGS_TAB_ICONS[item.tab]
-															: CUSTOMIZE_SECTION_ICONS[item.section];
-													return (
-														<button
-															key={navItemKey(item)}
-															type="button"
-															aria-current={selected ? "page" : undefined}
-															{...navItemWarmers(item)}
-															onClick={() => {
-																selectItem(item);
-															}}
-															className={`flex h-8 shrink-0 items-center gap-3 rounded-r6 px-2 text-left text-body transition-colors ${
-																selected
-																	? "bg-fill-control font-medium text-primary"
-																	: "font-normal text-secondary hover:bg-fill-ghost-hover"
-															}`}
-														>
-															<Icon
-																aria-hidden="true"
-																className="size-5 shrink-0 text-secondary"
-															/>
-															{navItemLabel(item)}
-														</button>
-													);
-												})}
-											</div>
-										</div>
-									))}
-								</div>
-							</nav>
-							<div className="flex min-w-0 flex-1 flex-col">
-								<div className="flex shrink-0 justify-end px-3 pt-3 pb-2">{closeButton}</div>
-								<div className="flex-1 space-y-6 overflow-y-auto px-6 pt-2 pb-4 [scrollbar-gutter:stable]">
-									{content}
-								</div>
+								<PhoneTabStrip isSelected={isSelected} onSelect={selectItem} />
+								<div className="min-w-0 space-y-6 pt-2">{content}</div>
 							</div>
-						</>
-					)}
-				</Dialog.Popup>
+						) : (
+							<>
+								<nav
+									aria-label="Settings"
+									className="flex w-48 shrink-0 flex-col gap-3 border-r border-subtle bg-surface-1"
+								>
+									<div className="shrink-0 px-3 pt-3">
+										<SettingsSearch onSelect={selectTab} />
+									</div>
+									<div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-3 pb-3">
+										{NAV_GROUPS.map((group) => (
+											<div
+												key={group.label}
+												role="group"
+												aria-label={group.label}
+												className="flex shrink-0 flex-col gap-3"
+											>
+												<div className="px-2 pt-3 text-[12px]/[17px] text-ink-muted">
+													{group.label}
+												</div>
+												<div className="flex flex-col gap-px">
+													{group.items.map((item) => {
+														const selected = isSelected(item);
+														const Icon =
+															item.kind === "settings"
+																? SETTINGS_TAB_ICONS[item.tab]
+																: CUSTOMIZE_SECTION_ICONS[item.section];
+														return (
+															<button
+																key={navItemKey(item)}
+																type="button"
+																aria-current={selected ? "page" : undefined}
+																{...navItemWarmers(item)}
+																onClick={() => {
+																	selectItem(item);
+																}}
+																className={`flex h-8 shrink-0 items-center gap-3 rounded-r6 px-2 text-left text-body transition-colors ${
+																	selected
+																		? "bg-fill-control font-medium text-primary"
+																		: "font-normal text-secondary hover:bg-fill-ghost-hover"
+																}`}
+															>
+																<Icon
+																	aria-hidden="true"
+																	className="size-5 shrink-0 text-secondary"
+																/>
+																{navItemLabel(item)}
+															</button>
+														);
+													})}
+												</div>
+											</div>
+										))}
+									</div>
+								</nav>
+								<div className="flex min-w-0 flex-1 flex-col">
+									<div className="flex shrink-0 justify-end px-3 pt-3 pb-2">{closeButton}</div>
+									<div className="flex-1 space-y-6 overflow-y-auto px-6 pt-2 pb-4 [scrollbar-gutter:stable]">
+										{content}
+									</div>
+								</div>
+							</>
+						)}
+					</Dialog.Popup>
+				</DensityScope>
 			</Dialog.Portal>
 		</Dialog.Root>
 	);
