@@ -156,6 +156,22 @@ beforeEach(() => {
 	installLocalStorage();
 });
 
+describe("density scopes", () => {
+	it("marks <main> compact with upstream's epitaxy-root base text classes and leaves the frame to inherit <html>", async () => {
+		mockViewport(1440);
+		const {container} = await renderFrame();
+		const main = mainElement(container);
+
+		expect({
+			frame: frameRoot(container).getAttribute("data-density"),
+			main: main.getAttribute("data-density"),
+			text: main.className
+				.split(" ")
+				.filter((name) => ["text-body", "text-primary", "break-words", "select-none"].includes(name)),
+		}).toStrictEqual({frame: null, main: "compact", text: ["text-body", "text-primary", "break-words"]});
+	});
+});
+
 describe("phone sheet sidebar", () => {
 	it("sizes the frame to the dynamic viewport rather than 100vh, so iOS never scrolls the titlebar away", async () => {
 		mockViewport(390);

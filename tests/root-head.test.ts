@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import {describe, expect, it} from "vite-plus/test";
+import {readFileSync} from "node:fs";
 import {Route} from "../src/routes/__root";
 
 describe("root route head", () => {
@@ -21,5 +22,12 @@ describe("root route head", () => {
 		expect(svg.match(/<rect /g)).toHaveLength(10);
 		expect(svg).toContain("fill='#8B5CF6'");
 		expect(svg).not.toContain("width='32' height='32'");
+	});
+
+	it("marks the document comfortable, upstream's web shell density", () => {
+		const source = readFileSync("src/routes/__root.tsx", "utf8");
+		expect(source.match(/<html [^>]*>/g)).toStrictEqual([
+			'<html lang="en" data-density="comfortable" suppressHydrationWarning>',
+		]);
 	});
 });

@@ -300,7 +300,7 @@ function RootDocument({children}: Readonly<{children: ReactNode}>) {
 		// before React loads, which is by definition an attribute the server markup
 		// did not carry; suppressHydrationWarning keeps that expected difference from
 		// logging a hydration error.
-		<html lang="en" suppressHydrationWarning>
+		<html lang="en" data-density="comfortable" suppressHydrationWarning>
 			<head>
 				<HeadContent />
 				{/* Static constant, no interpolation: this is the only way to run the
