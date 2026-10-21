@@ -69,7 +69,7 @@ export function ModeMenu({
 						{currentLabel}
 					</MenuTrigger>
 				</Tooltip>
-				<MenuContent side="top" className="w-[280px]">
+				<MenuContent side="top">
 					<MenuLabel className="px-2 py-1 text-[12px]/[15px] font-medium text-[var(--menu-muted)]">
 						Mode
 					</MenuLabel>
@@ -88,20 +88,13 @@ export function ModeMenu({
 								accelerator={String(index + 1)}
 								closeOnClick
 								data-variant={item.warning ? "warning" : "default"}
+								description={item.description}
 							>
-								<span className="flex min-w-0 flex-col">
-									<span
-										data-menu-item-label=""
-										className={item.warning ? "truncate text-warning-100" : "truncate"}
-									>
-										{item.label}
-									</span>
-									<span
-										data-menu-item-description=""
-										className="truncate text-[12px]/[15px] text-[var(--menu-muted)]"
-									>
-										{item.description}
-									</span>
+								<span
+									data-menu-item-label=""
+									{...(item.warning ? {className: "text-warning-100"} : {})}
+								>
+									{item.label}
 								</span>
 							</MenuRadioItem>
 						))}

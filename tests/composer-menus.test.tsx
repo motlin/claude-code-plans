@@ -124,6 +124,38 @@ describe("Composer mode menu", () => {
 		]);
 	});
 
+	it("renders upstream's two-line rows: label over a wrapping description, trailing pinned to the first line", async () => {
+		renderComposer();
+
+		openModeMenu();
+		const menu = await screen.findByRole("menu");
+		const popup = menu.closest("[data-cds]");
+		const rows = within(menu)
+			.getAllByRole("menuitemradio")
+			.map((item) => {
+				const classes = item.className.split(" ");
+				return {
+					twoLine: classes.includes("min-h-[41px]") && classes.includes("items-start"),
+					singleLine: classes.includes("h-6"),
+					paddedBottom: classes.includes("pb-1"),
+					description: item.querySelector("[data-menu-item-description]")?.className,
+					trailing: item.querySelector("[data-menu-item-trailing]")?.className,
+				};
+			});
+
+		const row = {
+			twoLine: true,
+			singleLine: false,
+			paddedBottom: true,
+			description: "break-words text-[12px]/[15px] text-[var(--menu-muted)]",
+			trailing: "ml-auto flex shrink-0 items-center gap-1 h-[1lh] self-start",
+		};
+		expect({rows, fixedWidth: popup?.classList.contains("w-[280px]")}).toStrictEqual({
+			rows: [row, row, row, row],
+			fixedWidth: false,
+		});
+	});
+
 	it("picks an item with its digit, closes the menu, and sends it as a launch option", async () => {
 		const onSend = renderComposer();
 

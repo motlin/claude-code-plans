@@ -26,7 +26,8 @@ const DENSITY_CLASSES = {
 		text: "text-[13px]/[19px]",
 		item: "rounded-r5 px-2 py-[2.5px]",
 		singleLine: "h-6 items-center",
-		twoLine: "min-h-[41px] items-start",
+		/* Upstream pads compact two-line rows 2.5px 8px 4px. */
+		twoLine: "min-h-[41px] items-start pb-1",
 		separator: "mx-2",
 		shortcut: "[&>kbd]:leading-[15px]",
 		shortcutPadding: "pl-[14px]",
@@ -66,6 +67,10 @@ const ITEM_VARIANT_CLASS = {
 const LABEL_CLASS = "min-w-0 flex-1 truncate";
 const DESCRIPTION_CLASS = "truncate pt-[2px] text-[12px]/[15px] text-[var(--menu-muted)]";
 const TRAILING_CLASS = "ml-auto flex shrink-0 items-center gap-1";
+/** Radio descriptions wrap rather than truncate, as upstream's mode rows. */
+const RADIO_DESCRIPTION_CLASS = "break-words text-[12px]/[15px] text-[var(--menu-muted)]";
+/** Pins a two-line row's keycap and check to its first line. */
+const FIRST_LINE_TRAILING_CLASS = `${TRAILING_CLASS} h-[1lh] self-start`;
 const CHECK_SLOT_CLASS = "-mr-1 flex size-5 shrink-0 items-center justify-center";
 /** Upstream's checked tick: 16px, bold, in fill-accent ink. */
 const CHECK_ICON_CLASS = "size-4 text-fill-accent";
@@ -331,11 +336,21 @@ export const MenuRadioGroup = BaseMenu.RadioGroup;
 
 export interface MenuRadioItemProps extends Omit<ComponentProps<typeof BaseMenu.RadioItem>, "className" | "children"> {
 	children: ReactNode;
+	/** Muted wrapping second line, making the item upstream's 41px two-line row. */
+	description?: ReactNode;
 	accelerator?: string;
 }
 
-export function MenuRadioItem({children, accelerator, ...props}: MenuRadioItemProps) {
-	const itemClass = useItemClass();
+export function MenuRadioItem({children, description, accelerator, ...props}: MenuRadioItemProps) {
+	const itemClass = useItemClass(description !== undefined);
+	const trailing = (
+		<>
+			{accelerator !== undefined && <ItemTrailing accelerator={accelerator} />}
+			<BaseMenu.RadioItemIndicator className={CHECK_SLOT_CLASS}>
+				<Check aria-hidden="true" strokeWidth={3} className={CHECK_ICON_CLASS} />
+			</BaseMenu.RadioItemIndicator>
+		</>
+	);
 	return (
 		<BaseMenu.RadioItem
 			closeOnClick={false}
@@ -343,11 +358,26 @@ export function MenuRadioItem({children, accelerator, ...props}: MenuRadioItemPr
 			{...acceleratorProps(accelerator)}
 			className={`${itemClass} ${ITEM_VARIANT_CLASS.default}`}
 		>
-			<span className={LABEL_CLASS}>{children}</span>
-			{accelerator !== undefined && <ItemTrailing accelerator={accelerator} />}
-			<BaseMenu.RadioItemIndicator className={CHECK_SLOT_CLASS}>
-				<Check aria-hidden="true" strokeWidth={3} className={CHECK_ICON_CLASS} />
-			</BaseMenu.RadioItemIndicator>
+			{description === undefined ? (
+				<>
+					<span className={LABEL_CLASS}>{children}</span>
+					{trailing}
+				</>
+			) : (
+				<>
+					<span className="flex min-w-0 flex-1 flex-col">
+						<span data-menu-item-title="" className="truncate">
+							{children}
+						</span>
+						<span data-menu-item-description="" className={RADIO_DESCRIPTION_CLASS}>
+							{description}
+						</span>
+					</span>
+					<span data-menu-item-trailing="" className={FIRST_LINE_TRAILING_CLASS}>
+						{trailing}
+					</span>
+				</>
+			)}
 		</BaseMenu.RadioItem>
 	);
 }
