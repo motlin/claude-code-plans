@@ -739,4 +739,65 @@ describe("Context card breakdown", () => {
 			expanded: "false",
 		});
 	});
+
+	describe("footer", () => {
+		const SIXTEEN_HOURS_LATER = new Date(Date.parse(BREAKDOWN.fetchedAt) + 16 * 3_600_000);
+
+		beforeEach(() => {
+			vi.useFakeTimers({toFake: ["Date"]});
+			vi.setSystemTime(SIXTEEN_HOURS_LATER);
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		async function footer(source: ContextBreakdown["source"], working: boolean) {
+			await renderCards({...INPUTS, working, breakdown: {...BREAKDOWN, source}});
+			const found = body().querySelector("[data-rail-context-updated]");
+			return {
+				text: found?.textContent,
+				dateTime: found?.querySelector("time")?.getAttribute("datetime"),
+				className: found?.className,
+			};
+		}
+
+		const className = "mt-1 px-1 pb-1 text-[12px]/[15px] text-secondary";
+
+		it("dates a /context breakdown by its run and says a new run refreshes it", async () => {
+			const results = [await footer("context-command", false)];
+			cleanup();
+			results.push(await footer("context-command", true));
+			expect(results).toStrictEqual([
+				{
+					text: "Last updated 16 hours ago. Run /context to refresh.",
+					dateTime: BREAKDOWN.fetchedAt,
+					className,
+				},
+				{
+					text: "Last updated 16 hours ago. Run /context to refresh.",
+					dateTime: BREAKDOWN.fetchedAt,
+					className,
+				},
+			]);
+		});
+
+		it("says a message refreshes a mod breakdown, or the turn's end while working", async () => {
+			const results = [await footer("mod", false)];
+			cleanup();
+			results.push(await footer("mod", true));
+			expect(results).toStrictEqual([
+				{
+					text: "Last updated 16 hours ago. Send a message to refresh.",
+					dateTime: BREAKDOWN.fetchedAt,
+					className,
+				},
+				{
+					text: "Last updated 16 hours ago. Refreshes when this turn ends.",
+					dateTime: BREAKDOWN.fetchedAt,
+					className,
+				},
+			]);
+		});
+	});
 });

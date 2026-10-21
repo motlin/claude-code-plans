@@ -167,11 +167,25 @@ function EnvironmentBody({inputs}: {inputs: SessionRailInputs}) {
 	);
 }
 
-function ContextUpdated({updatedAt, working}: {updatedAt: string; working: boolean}) {
+/** How the Context card's data refreshes: upstream's turn-driven wording, or a `/context`-run breakdown's local one. */
+function refreshHint(working: boolean, source: ContextBreakdown["source"] | null): string {
+	if (source === "context-command") return "Run /context to refresh.";
+	return working ? "Refreshes when this turn ends." : "Send a message to refresh.";
+}
+
+function ContextUpdated({
+	updatedAt,
+	working,
+	source = null,
+}: {
+	updatedAt: string;
+	working: boolean;
+	source?: ContextBreakdown["source"] | null;
+}) {
 	return (
 		<div data-rail-context-updated="" className="mt-1 px-1 pb-1 text-[12px]/[15px] text-secondary">
 			Last updated <time dateTime={updatedAt}>{formatUpdatedAgo(updatedAt, Date.now())}</time>.{" "}
-			{working ? "Refreshes when this turn ends." : "Send a message to refresh."}
+			{refreshHint(working, source)}
 		</div>
 	);
 }
@@ -187,7 +201,7 @@ function contextCard(inputs: SessionRailInputs): RailCard {
 			body: (
 				<div className="flex flex-col">
 					<ContextBreakdownBody breakdown={breakdown} liveTokens={liveTokens} homeRoot={inputs.homeRoot} />
-					{usage?.updatedAt != null && <ContextUpdated updatedAt={usage.updatedAt} working={working} />}
+					<ContextUpdated updatedAt={breakdown.fetchedAt} working={working} source={breakdown.source} />
 				</div>
 			),
 		};
