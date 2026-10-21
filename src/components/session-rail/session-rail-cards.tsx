@@ -15,7 +15,6 @@ import {
 	ListChecks,
 	Plug,
 	Server,
-	ShieldCheck,
 	SquareTerminal,
 	type LucideIcon,
 } from "lucide-react";
@@ -56,9 +55,6 @@ export interface SessionRailInputs {
 	herdrPane: HerdrPaneIndexData["panes"][number] | null;
 	/** The session's CLI process is running: a bridged session's Remote Control is connected. */
 	live: boolean;
-	/** The composer chin's permission mode and effort labels. */
-	mode: string | null;
-	effort: string | null;
 	usage: ComposerUsage | null;
 	/** The session's checklist, as the Plan pane shows it. */
 	todos: readonly PlanTodo[];
@@ -170,20 +166,6 @@ function EnvironmentBody({inputs}: {inputs: SessionRailInputs}) {
 			)}
 		</Rows>
 	);
-}
-
-function settingsCard(mode: string | null, effort: string | null): RailCard | null {
-	if (mode === null && effort === null) return null;
-	return {
-		id: "settings",
-		summary: [mode, effort].filter((value) => value !== null).join(" · "),
-		body: (
-			<Rows>
-				{mode !== null && <RailRow icon={<Icon icon={ShieldCheck} />} label="Permission mode" hint={mode} />}
-				{effort !== null && <RailRow icon={<Icon icon={Gauge} />} label="Effort" hint={effort} />}
-			</Rows>
-		),
-	};
 }
 
 /** Upstream's Context card, with its placeholder until the session has usage. */
@@ -491,7 +473,6 @@ export function SessionRailCards({inputs}: {inputs: SessionRailInputs}) {
 	}).data?.stats;
 	const cards = [
 		{id: "environment", body: <EnvironmentBody inputs={inputs} />} satisfies RailCard,
-		settingsCard(inputs.mode, inputs.effort),
 		contextCard(inputs.usage),
 		usageCard(inputs.usage),
 		connectorsCard(sessionConnectors(mcpServers ?? [], inputs.cwd)),

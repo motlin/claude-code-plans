@@ -759,8 +759,6 @@ function SessionView({
 						model: composerChin.model,
 						herdrPane: herdr.panes.find((pane) => pane.sessionId === sessionId) ?? null,
 						live: sessionProcessLive({hookActive: isActive, summaryState: sessionSummaryState}),
-						mode: composerChin.mode?.label ?? null,
-						effort: composerChin.effort.label,
 						usage: composerChin.usage,
 						todos: planModel.todos,
 						artifacts: sessionArtifacts,

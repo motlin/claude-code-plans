@@ -54,8 +54,6 @@ const BASE: SessionRailInputs = {
 	model: "Opus 4.7",
 	herdrPane: null,
 	live: true,
-	mode: null,
-	effort: null,
 	usage: null,
 	todos: [],
 	artifacts: [],
@@ -66,8 +64,6 @@ const BASE: SessionRailInputs = {
 
 const FULL: SessionRailInputs = {
 	...BASE,
-	mode: "Auto",
-	effort: "High",
 	usage: {
 		contextTokens: 190_200,
 		contextWindowSize: 1_000_000,
@@ -392,7 +388,6 @@ describe("cards from local data", () => {
 
 		expect(cards()).toStrictEqual([
 			["environment", null],
-			["settings", "Auto · High"],
 			["context", "19%"],
 			["usage", "42%"],
 			["connectors", "1 to reconnect"],
@@ -409,7 +404,6 @@ describe("cards from local data", () => {
 		fireEvent.click(screen.getByRole("button", {name: /^Progress/}), {altKey: true});
 
 		expect({
-			settings: rows("Settings"),
 			connectors: rows("Connectors"),
 			progress: rows("Progress"),
 			outputs: rows("Outputs"),
@@ -419,10 +413,6 @@ describe("cards from local data", () => {
 			context: screen.getByRole("progressbar", {name: "Context window"}).getAttribute("aria-valuenow"),
 			usage: screen.getByRole("progressbar", {name: "Session limit"}).getAttribute("aria-valuenow"),
 		}).toStrictEqual({
-			settings: [
-				["Permission mode", "Auto"],
-				["Effort", "High"],
-			],
 			connectors: [
 				["github", null],
 				["linear", "Reconnect"],
