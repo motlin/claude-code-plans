@@ -57,6 +57,13 @@
 	--color-fill-grip: var(--upstream-fill-grip);
 	--color-fill-primary: var(--upstream-fill-primary);
 	--color-fill-primary-hover: var(--upstream-fill-primary-hover);
+	/* Upstream claude.ai/code — cds SplitDropdownButton secondary/danger fills */
+	--color-fill-secondary: var(--upstream-fill-secondary);
+	--color-fill-secondary-hover: var(--upstream-fill-secondary-hover);
+	--color-fill-secondary-ring: var(--upstream-fill-secondary-ring);
+	--color-fill-danger: var(--upstream-fill-danger);
+	--color-fill-danger-hover: var(--upstream-fill-danger-hover);
+	--color-on-danger: #fff;
 
 	/* Upstream claude.ai/code semantic text and borders */
 	--color-primary: var(--upstream-text-primary);
@@ -167,6 +174,8 @@
 	--shadow-field-ring: var(--field-ring-shadow);
 	--shadow-field-hover: var(--field-hover-shadow);
 	--shadow-focus: var(--focus-shadow);
+	/* Upstream claude.ai/code — joined secondary split button (shadow-field-drop) */
+	--shadow-field-drop: 0 1px 2px rgb(0 0 0 / 0.05);
 
 	--radius-sm: calc(var(--radius) - 4px);
 	--radius-md: calc(var(--radius) - 2px);
@@ -206,9 +215,10 @@
 	--upstream-alpha-3: rgb(11 11 11 / 0.12);
 	/* Upstream --cds-alpha-4: neutral-900 at 35% (the usage ring track). */
 	--upstream-alpha-4: rgb(11 11 11 / 0.35);
-	/* Upstream --cds-fill-warning / --cds-fill-danger (usage ring arc at ≥75% / ≥90%). */
+	/* Upstream --cds-fill-warning / --cds-fill-danger(-hover) (usage ring arc at ≥75% / ≥90%; danger split button). */
 	--upstream-fill-warning: #fbb315;
-	--upstream-fill-danger: #dc3c3d;
+	--upstream-fill-danger: #d03b3b;
+	--upstream-fill-danger-hover: #e34948;
 	--upstream-backdrop: rgb(0 0 0 / 0.4);
 	--panel-lg-shadow:
 		0 0 0 1px rgb(11 11 11 / 0.1), 0 4px 8px 0 rgb(11 11 11 / 0.08), 0 12px 28px -2px rgb(11 11 11 / 0.08);
@@ -218,6 +228,9 @@
 	--upstream-fill-grip: hsl(0 0% 4% / 0.2);
 	--upstream-fill-primary: hsl(0 0% 4%);
 	--upstream-fill-primary-hover: hsl(60 2% 17%);
+	--upstream-fill-secondary: #ffffff1a;
+	--upstream-fill-secondary-hover: hsl(0 0% 4% / 0.05);
+	--upstream-fill-secondary-ring: hsl(0 0% 4% / 0.1);
 	--upstream-text-primary: rgb(11 11 11);
 	--upstream-text-secondary: rgb(82 81 78);
 	--upstream-on-primary: hsl(0 0% 100%);
@@ -421,6 +434,11 @@
 	--upstream-backdrop: rgb(0 0 0 / 0.5);
 	--upstream-fill-control: hsl(0 0% 100% / 0.1);
 	--upstream-fill-ghost-hover: hsl(0 0% 100% / 0.075);
+	--upstream-fill-secondary: hsl(0 0% 100% / 0.1);
+	--upstream-fill-secondary-hover: hsl(0 0% 100% / 0.14);
+	--upstream-fill-secondary-ring: transparent;
+	--upstream-fill-danger: #d03b3b;
+	--upstream-fill-danger-hover: #e34948;
 	--upstream-fill-grip: hsl(0 0% 100% / 0.2);
 	--upstream-fill-primary: #fff;
 	--upstream-fill-primary-hover: #e1e0d9;
