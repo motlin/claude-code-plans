@@ -1,4 +1,4 @@
-import {readFileSync} from "node:fs";
+import {readdirSync, readFileSync} from "node:fs";
 import {resolve} from "node:path";
 
 const globalsCss = readFileSync(resolve(__dirname, "..", "src", "styles", "globals.css"), "utf8");
@@ -62,5 +62,60 @@ describe("global text-entry floor on coarse pointers", () => {
 
 	it("keys the floor on (pointer: coarse) only, not (hover: none)", () => {
 		expect(coarseBodies.filter((body) => body.includes("(hover: none)"))).toStrictEqual([]);
+	});
+});
+
+/** Every `<input`, `<textarea` and `<select` JSX opening tag in `source`, up to its closing `>` at brace depth 0. */
+function fieldTags(source: string): string[] {
+	const tags: string[] = [];
+	for (const match of source.matchAll(/<(input|textarea|select)\b/g)) {
+		let depth = 0;
+		let quote: string | undefined;
+		let i = match.index + match[0].length;
+		for (; i < source.length; i++) {
+			const ch = source[i];
+			if (quote) {
+				if (ch === "\\") i++;
+				else if (ch === quote) quote = undefined;
+			} else if (ch === '"' || ch === "'" || ch === "`") quote = ch;
+			else if (ch === "{") depth++;
+			else if (ch === "}") depth--;
+			else if (ch === ">" && depth === 0) break;
+		}
+		tags.push(source.slice(match.index, i + 1));
+	}
+	return tags;
+}
+
+/** Fields whose size could beat the unlayered floor: an `!text-` utility or an inline `fontSize`. */
+function floorOffenders(file: string, source: string): string[] {
+	return fieldTags(source)
+		.filter((tag) => /!text-|\bfontSize\b|font-size/.test(tag))
+		.map((tag) => `${file}: ${normalize(tag)}`);
+}
+
+describe("text-entry floor audit", () => {
+	it("flags an !text- utility or an inline fontSize on a field", () => {
+		const source = [
+			'<input className="!text-xs" />',
+			"<textarea\n\tonChange={(e) => set(e.target.value)}\n\tstyle={{fontSize: 13}}\n/>",
+			'<select className="text-xs">',
+			'<input type="checkbox" className="text-sm" />',
+		].join("\n");
+		expect(floorOffenders("x.tsx", source)).toStrictEqual([
+			'x.tsx: <input className="!text-xs" />',
+			"x.tsx: <textarea onChange={(e) => set(e.target.value)} style={{fontSize: 13}} />",
+		]);
+	});
+
+	it("has no field in src that a utility or inline style could hide from the floor", () => {
+		const srcRoot = resolve(__dirname, "..", "src");
+		const files = readdirSync(srcRoot, {recursive: true, encoding: "utf8"})
+			.filter((file) => file.endsWith(".tsx") && !file.endsWith(".test.tsx"))
+			.toSorted();
+		expect(files.length).toBeGreaterThan(0);
+		expect(
+			files.flatMap((file) => floorOffenders(file, readFileSync(resolve(srcRoot, file), "utf8"))),
+		).toStrictEqual([]);
 	});
 });
