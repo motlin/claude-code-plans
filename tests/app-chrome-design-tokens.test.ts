@@ -71,12 +71,12 @@ describe("app chrome design tokens", () => {
 		expect({
 			utility: token(styles, "--color-upstream-warning"),
 			light: token(light, "--upstream-warning"),
-			// No upstream dark sample yet, so dark keeps the warning ink it already had.
 			dark: token(dark, "--upstream-warning"),
 		}).toStrictEqual({
 			utility: "var(--upstream-warning)",
 			light: "rgb(115 69 0)",
-			dark: "var(--warning-000)",
+			// Measured on claude.ai/code: dark text-warning computes to rgb(219, 147, 0).
+			dark: "rgb(219 147 0)",
 		});
 	});
 

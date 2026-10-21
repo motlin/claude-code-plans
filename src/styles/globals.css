@@ -445,7 +445,7 @@
 	--accent-000: hsl(210 65.5% 67.1%);
 	--upstream-accent: #6da7ec;
 	--upstream-fill-accent: #2a78d6;
-	--upstream-warning: var(--warning-000);
+	--upstream-warning: rgb(219 147 0);
 	--upstream-accent-pressed: #032042;
 	--upstream-accent-muted: rgb(42 120 214 / 0.2);
 	--accent-100: hsl(210 70.9% 51.6%);
