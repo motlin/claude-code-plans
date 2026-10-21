@@ -494,6 +494,8 @@ const WorkflowInputSchema = z
 	})
 	.strict();
 
+export type WorkflowInput = z.infer<typeof WorkflowInputSchema>;
+
 export const LSInputSchema = z
 	.object({
 		path: z.string(),
