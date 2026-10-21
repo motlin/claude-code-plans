@@ -49,6 +49,14 @@ const ACTION_ROWS_TOOLTIP_CLASS = TOOLTIP_CLASS.replace(
 const TOOLTIP_ROW_CLASS = "inline-flex items-center gap-2";
 
 /**
+ * Whether the anchored trigger's menu or popover is open (`aria-expanded="true"`). Base UI puts focus guards
+ * beside an open popup's trigger, so this looks for the expanded child rather than the first one.
+ */
+function popupOpen(anchor: HTMLElement): boolean {
+	return anchor.querySelector(':scope > [aria-expanded="true"]') !== null;
+}
+
+/**
  * Minimal claude.ai/code tooltip: always dark, side top (titlebar controls use
  * bottom, sidebar family handles right), offset 4, 300ms open delay, with an optional text-variant shortcut
  * after the label. Once open it is measured and, when it would leave the viewport, flipped to the opposite side
@@ -126,13 +134,28 @@ export function Tooltip({
 		);
 	}, [open, side, content, description, secondary?.content, secondary?.shortcut]);
 
+	// Upstream suppresses a trigger's tooltip while its popup is open, so it never draws beside the open menu.
+	useEffect(() => {
+		const anchor = anchorRef.current;
+		if (!open || anchor === null) return undefined;
+		const observer = new MutationObserver(() => {
+			if (popupOpen(anchor)) hide();
+		});
+		observer.observe(anchor, {attributes: true, attributeFilter: ["aria-expanded"], subtree: true});
+		return () => {
+			observer.disconnect();
+		};
+	}, [open]);
+
 	const placedSide = placement?.side ?? side;
 
 	function show() {
 		clearTimeout(timer.current);
 		const anchor = anchorRef.current;
+		if (anchor !== null && popupOpen(anchor)) return;
 		if (openWhen !== undefined && (anchor === null || !openWhen(anchor))) return;
 		timer.current = setTimeout(() => {
+			if (anchor !== null && popupOpen(anchor)) return;
 			if (portal && anchor !== null) {
 				const {left, top, width, height} = anchor.getBoundingClientRect();
 				setAnchorBox({left, top, width, height});

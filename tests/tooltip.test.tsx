@@ -98,3 +98,44 @@ describe("<Tooltip> box", () => {
 		});
 	});
 });
+
+describe("<Tooltip> over a popup trigger", () => {
+	it("stays closed on hover and focus while its trigger's popup is open", () => {
+		vi.useFakeTimers();
+		render(
+			<Tooltip content="Usage">
+				<button type="button" aria-expanded="true">
+					Ring
+				</button>
+			</Tooltip>,
+		);
+		const button = screen.getByRole("button");
+
+		fireEvent.pointerEnter(button);
+		fireEvent.focus(button);
+		act(() => {
+			vi.advanceTimersByTime(300);
+		});
+
+		expect(screen.queryByRole("tooltip")).toBeNull();
+	});
+
+	it("closes when its trigger's popup opens while it is showing", async () => {
+		vi.useFakeTimers();
+		render(
+			<Tooltip content="Usage">
+				<button type="button" aria-expanded="false">
+					Ring
+				</button>
+			</Tooltip>,
+		);
+		openTooltip();
+
+		await act(async () => {
+			screen.getByRole("button").setAttribute("aria-expanded", "true");
+			await Promise.resolve();
+		});
+
+		expect(screen.queryByRole("tooltip")).toBeNull();
+	});
+});

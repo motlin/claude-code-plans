@@ -446,6 +446,29 @@ describe("Composer", () => {
 			]);
 		});
 
+		it("hides the ring's tooltip while the usage popover is open", () => {
+			vi.useFakeTimers({now: NOW_MS});
+			renderWithAccount();
+			const ring = screen.getByRole("button", {name: /^Usage:/});
+			const anchor = ring.parentElement;
+			if (anchor === null) throw new Error("ring has no tooltip anchor");
+
+			fireEvent.click(ring);
+			fireEvent.pointerEnter(anchor);
+			fireEvent.focus(ring);
+			act(() => {
+				vi.advanceTimersByTime(400);
+			});
+
+			expect({
+				expanded: ring.getAttribute("aria-expanded"),
+				tooltip: screen.queryByRole("tooltip"),
+			}).toStrictEqual({
+				expanded: "true",
+				tooltip: null,
+			});
+		});
+
 		it("links the usage popover header's gauge to Settings › Usage", async () => {
 			renderWithAccount("Max (20x)");
 
