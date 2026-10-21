@@ -78,3 +78,15 @@ describe("alpha-3 token (upstream --cds-alpha-3, neutral-900 at 20%)", () => {
 		});
 	});
 });
+
+describe("alpha-1 and alpha-2 tokens (upstream --cds-alpha-1/2, neutral-900 at 5% and 10%)", () => {
+	it("defines the light and dark values", () => {
+		expect({
+			light: tokens(block(":root"), ["--upstream-alpha-1", "--upstream-alpha-2"]),
+			dark: tokens(block(".dark"), ["--upstream-alpha-1", "--upstream-alpha-2"]),
+		}).toStrictEqual({
+			light: {"--upstream-alpha-1": "rgb(11 11 11 / 0.05)", "--upstream-alpha-2": "rgb(11 11 11 / 0.1)"},
+			dark: {"--upstream-alpha-1": "rgb(255 255 255 / 0.05)", "--upstream-alpha-2": "rgb(255 255 255 / 0.1)"},
+		});
+	});
+});
