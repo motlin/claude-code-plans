@@ -276,8 +276,7 @@ export function formatResetLabel(resetsAtSec: number, nowMs: number, timeZone?: 
 /** `190.2k / 1M (19%)`, or `0` when the statusline has no context usage yet. */
 export function formatContextSummary(usage: ComposerUsage | null): string {
 	if (!usage || usage.contextTokens === null || usage.contextWindowSize === null) return "0";
-	const percent = usage.contextPercent ?? (usage.contextTokens / usage.contextWindowSize) * 100;
-	return `${formatTokenCount(usage.contextTokens)} / ${formatTokenCount(usage.contextWindowSize)} (${Math.round(percent)}%)`;
+	return `${formatTokenCount(usage.contextTokens)} / ${formatTokenCount(usage.contextWindowSize)}`;
 }
 
 export const FIVE_HOUR_LABEL = "Session limit";

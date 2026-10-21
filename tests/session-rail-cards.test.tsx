@@ -54,6 +54,7 @@ const BASE: SessionRailInputs = {
 	model: "Opus 4.7",
 	herdrPane: null,
 	live: true,
+	working: false,
 	usage: null,
 	artifacts: [],
 	backgroundTasks: {running: [], finished: []},
@@ -441,5 +442,69 @@ describe("cards from local data", () => {
 		expect(
 			within(screen.getByRole("region", {name: "Background tasks"})).getByText("tasks pane body").tagName,
 		).toBe("P");
+	});
+});
+
+describe("Context card", () => {
+	const SIXTEEN_HOURS_AGO = () => new Date(Date.now() - 16 * 3_600_000).toISOString();
+
+	function contextInputs(updatedAt: string | null, working = false): SessionRailInputs {
+		return {
+			...BASE,
+			working,
+			usage: {
+				contextTokens: 178_500,
+				contextWindowSize: 1_000_000,
+				contextPercent: 18,
+				fiveHour: null,
+				weekly: null,
+				updatedAt,
+			},
+		};
+	}
+
+	function contextBody() {
+		const body = screen.getByRole("region", {name: /^Context/}).querySelector("[data-rail-body]");
+		if (!body) throw new Error("no Context body");
+		return body;
+	}
+
+	it("headlines the percent used over the token summary and a 4px meter, like upstream", async () => {
+		await renderCards(contextInputs(null));
+
+		const body = contextBody();
+		const summary = body.querySelector("[data-rail-context-summary]");
+		const bar = within(body as HTMLElement).getByRole("progressbar", {name: "Context window"});
+		expect({
+			text: body.textContent,
+			summary: summary?.textContent,
+			pct: summary?.getAttribute("data-rail-context-pct"),
+			bar: bar.className,
+			track: bar.style.backgroundColor,
+			fill: bar.firstElementChild?.className,
+		}).toStrictEqual({
+			text: "18% used178.5k / 1M",
+			summary: "178.5k / 1M",
+			pct: "18",
+			bar: "h-[4px] rounded-full overflow-hidden",
+			track: "var(--chart-reference-tint)",
+			fill: "h-full bg-accent-100 transition-[width]",
+		});
+	});
+
+	it("says when usage was last updated and that a message refreshes it", async () => {
+		await renderCards(contextInputs(SIXTEEN_HOURS_AGO()));
+
+		expect(contextBody().querySelector("[data-rail-context-updated]")?.textContent).toBe(
+			"Last updated 16 hours ago. Send a message to refresh.",
+		);
+	});
+
+	it("says the turn's end refreshes it while the session is working", async () => {
+		await renderCards(contextInputs(SIXTEEN_HOURS_AGO(), true));
+
+		expect(contextBody().querySelector("[data-rail-context-updated]")?.textContent).toBe(
+			"Last updated 16 hours ago. Refreshes when this turn ends.",
+		);
 	});
 });

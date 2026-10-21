@@ -29,14 +29,13 @@ import {
 import type {BackgroundTask, BackgroundTaskGroups} from "../../lib/background-tasks";
 import {writeClipboardText} from "../../lib/clipboard";
 import {toConnectorSlug} from "../../lib/customize/mcp-tool-permissions";
-import {formatContextSummary, type ComposerUsage} from "../../lib/composer-state";
+import {formatContextSummary, formatUpdatedAgo, type ComposerUsage} from "../../lib/composer-state";
 import type {PrStatus} from "../../lib/pr-status";
 import {formatCount} from "../../lib/pluralize";
 import {sessionEnvironment, terminalHostLabel} from "../../lib/session-environment";
 import {claudeAiSessionUrl} from "../../lib/session-open-in";
 import {usePaneHost} from "../panes/pane-host-context";
 import {useToast} from "../toast-context";
-import {UsageMeter} from "../usage-limit-row";
 import {RAIL_ROW_ACTION_CLASS, RailRow, RailRowContent} from "./rail-row";
 import {SessionRail, type RailCard} from "./session-rail";
 
@@ -51,6 +50,8 @@ export interface SessionRailInputs {
 	herdrPane: HerdrPaneIndexData["panes"][number] | null;
 	/** The session's CLI process is running: a bridged session's Remote Control is connected. */
 	live: boolean;
+	/** A turn is running: the Context card's usage refreshes when it ends. */
+	working: boolean;
 	usage: ComposerUsage | null;
 	artifacts: readonly SessionArtifact[];
 	backgroundTasks: BackgroundTaskGroups;
@@ -162,22 +163,54 @@ function EnvironmentBody({inputs}: {inputs: SessionRailInputs}) {
 	);
 }
 
-/** Upstream's Context card, with its placeholder until the session has usage. */
-function contextCard(usage: ComposerUsage | null): RailCard {
+/** Upstream's rail Context card: "N% used" over the token summary, a 4px meter, and when the usage was last updated. */
+function contextCard(usage: ComposerUsage | null, working: boolean): RailCard {
 	if (usage?.contextTokens == null || usage.contextWindowSize === null) {
 		return {
 			id: "context",
 			body: <p className="px-1 pb-1 text-[12px]/[15px] text-secondary">Send a message to see context usage.</p>,
 		};
 	}
-	const percent = usage.contextPercent ?? (usage.contextTokens / usage.contextWindowSize) * 100;
+	const percent = Math.min(
+		100,
+		Math.max(0, usage.contextPercent ?? (usage.contextTokens / usage.contextWindowSize) * 100),
+	);
+	const rounded = Math.round(percent);
 	return {
 		id: "context",
-		summary: `${Math.round(percent)}%`,
+		summary: `${rounded}%`,
 		body: (
-			<div className="flex flex-col gap-1.5 px-1 pt-1 pb-1 text-[12px]/[15px]">
-				<span className="tabular-nums text-secondary">{formatContextSummary(usage)}</span>
-				<UsageMeter percent={percent} label="Context window" />
+			<div className="flex flex-col">
+				<div className="flex flex-col gap-1 px-1 pt-1 pb-1.5">
+					<div className="flex min-w-0 items-baseline justify-between gap-2 text-[13px]/[19px]">
+						<span className="shrink-0 text-primary tabular-nums">{rounded}% used</span>
+						<span
+							data-rail-context-summary=""
+							data-rail-context-pct={rounded}
+							className="min-w-0 truncate text-[12px]/[15px] text-ink-muted tabular-nums"
+						>
+							{formatContextSummary(usage)}
+						</span>
+					</div>
+					<div
+						className="h-[4px] rounded-full overflow-hidden"
+						style={{backgroundColor: "var(--chart-reference-tint)"}}
+						role="progressbar"
+						aria-label="Context window"
+						aria-valuenow={rounded}
+						aria-valuemin={0}
+						aria-valuemax={100}
+					>
+						<div className="h-full bg-accent-100 transition-[width]" style={{width: `${percent}%`}} />
+					</div>
+				</div>
+				{usage.updatedAt !== null && (
+					<div data-rail-context-updated="" className="mt-1 px-1 pb-1 text-[12px]/[15px] text-secondary">
+						Last updated{" "}
+						<time dateTime={usage.updatedAt}>{formatUpdatedAgo(usage.updatedAt, Date.now())}</time>.{" "}
+						{working ? "Refreshes when this turn ends." : "Send a message to refresh."}
+					</div>
+				)}
 			</div>
 		),
 	};
@@ -414,7 +447,7 @@ export function SessionRailCards({inputs}: {inputs: SessionRailInputs}) {
 	}).data?.stats;
 	const cards = [
 		{id: "environment", body: <EnvironmentBody inputs={inputs} />} satisfies RailCard,
-		contextCard(inputs.usage),
+		contextCard(inputs.usage, inputs.working),
 		connectorsCard(sessionConnectors(mcpServers ?? [], inputs.cwd)),
 		outputsCard(inputs.artifacts),
 		changesCard(inputs, diff ?? null),
