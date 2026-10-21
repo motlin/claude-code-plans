@@ -5,7 +5,7 @@ import {type ComponentProps, createContext, type KeyboardEvent, type ReactNode, 
 
 import {useIsMac} from "../../hooks/use-is-mac";
 import {toAriaKeyShortcuts} from "../../lib/shortcuts/format";
-import {type Density, DensityProvider, useDensity} from "./density";
+import {type Density, DensityProvider, useDensity, useScopeDensity} from "./density";
 import {Shortcut} from "./shortcut";
 
 /*
@@ -193,8 +193,8 @@ export function MenuContent({
 			? resolvedCollisionAvoidance.fallbackAxisSide
 			: undefined;
 	const kind = useContext(MenuKindContext);
-	const inheritedDensity = useDensity();
-	const resolvedDensity = density ?? inheritedDensity;
+	/* Upstream's si order: an override, then comfortable on (pointer: coarse), then the prop or opener's density. */
+	const resolvedDensity = useScopeDensity(density);
 	const sizing = DENSITY_CLASSES[resolvedDensity];
 	const popupClass = `${POPUP_CLASS} ${sizing.popup} p-1 ${sizing.text}`;
 	return (

@@ -505,3 +505,109 @@ describe("ContextMenu", () => {
 		expect(screen.queryByRole("menu")).toBeNull();
 	});
 });
+
+describe("MenuContent on a coarse pointer", () => {
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	function stubPointer(coarse: boolean) {
+		vi.stubGlobal(
+			"matchMedia",
+			vi.fn((query: string) => ({
+				matches: query === "(pointer: coarse)" ? coarse : false,
+				media: query,
+				onchange: null,
+				addEventListener: () => undefined,
+				removeEventListener: () => undefined,
+				addListener: () => undefined,
+				removeListener: () => undefined,
+				dispatchEvent: () => false,
+			})),
+		);
+	}
+
+	const DENSITY_TOKENS = new Set([
+		"h-6",
+		"h-8",
+		"items-center",
+		"rounded-r5",
+		"rounded-r6",
+		"px-2",
+		"px-2.5",
+		"py-[2.5px]",
+		"py-1.5",
+		"text-[13px]/[19px]",
+		"text-[14px]/[20px]",
+		"rounded-r7",
+		"rounded-card",
+		"[&_svg]:size-4",
+		"[&_svg]:size-5",
+	]);
+
+	function tokens(element: Element | null | undefined): string[] {
+		return (element?.getAttribute("class") ?? "").split(" ").filter((value) => DENSITY_TOKENS.has(value));
+	}
+
+	async function openCompactMenu() {
+		render(
+			<Menu>
+				<MenuTrigger aria-label="More options">...</MenuTrigger>
+				<MenuContent density="compact">
+					<MenuItem icon={<svg data-testid="glyph" />}>Routines</MenuItem>
+					<MenuSub>
+						<MenuSubTrigger>Status</MenuSubTrigger>
+						<MenuSubContent>
+							<MenuItem>Active</MenuItem>
+						</MenuSubContent>
+					</MenuSub>
+				</MenuContent>
+			</Menu>,
+		);
+		await openDropdown();
+		const trigger = screen.getByRole("menuitem", {name: /Status/});
+		act(() => {
+			trigger.focus();
+		});
+		fireEvent.keyDown(trigger, {key: "ArrowRight"});
+		await flush();
+		const [popup, subPopup] = screen.getAllByRole("menu");
+		return {
+			popup: tokens(popup),
+			popupDensity: popup?.parentElement?.getAttribute("data-density"),
+			item: tokens(screen.getByRole("menuitem", {name: "Routines"})),
+			icon: tokens(screen.getByTestId("glyph").parentElement),
+			subPopup: tokens(subPopup),
+			subPopupDensity: subPopup?.parentElement?.getAttribute("data-density"),
+			subItem: tokens(screen.getByRole("menuitem", {name: "Active"})),
+		};
+	}
+
+	it("forces an explicitly compact menu and its submenu comfortable, as upstream's si does under (pointer: coarse)", async () => {
+		stubPointer(true);
+		const comfortableItem = ["h-8", "items-center", "rounded-r6", "px-2.5", "py-1.5", "text-[14px]/[20px]"];
+		expect(await openCompactMenu()).toStrictEqual({
+			popup: ["rounded-card", "text-[14px]/[20px]"],
+			popupDensity: "comfortable",
+			item: comfortableItem,
+			icon: ["items-center", "[&_svg]:size-5"],
+			subPopup: ["rounded-card", "text-[14px]/[20px]"],
+			subPopupDensity: "comfortable",
+			subItem: comfortableItem,
+		});
+	});
+
+	it("keeps the compact menu on a fine pointer", async () => {
+		stubPointer(false);
+		const compactItem = ["h-6", "items-center", "rounded-r5", "px-2", "py-[2.5px]", "text-[13px]/[19px]"];
+		expect(await openCompactMenu()).toStrictEqual({
+			popup: ["rounded-r7", "text-[13px]/[19px]"],
+			popupDensity: "compact",
+			item: compactItem,
+			icon: ["items-center", "[&_svg]:size-4"],
+			subPopup: ["rounded-r7", "text-[13px]/[19px]"],
+			subPopupDensity: "compact",
+			subItem: compactItem,
+		});
+	});
+});
