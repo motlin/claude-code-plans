@@ -2,6 +2,7 @@ import {describe, expect, it} from "vite-plus/test";
 import {
 	buildLaunchFlags,
 	CLI_DEFAULT_MODEL,
+	MORE_MODELS,
 	modelMenuValue,
 	moreModelsMenuValue,
 	primaryModelMenuValue,
@@ -12,7 +13,8 @@ describe("modelMenuValue", () => {
 	it.each([
 		{id: "claude-fable-5-1", expected: "fable"},
 		{id: "claude-opus-4-8[1m]", expected: "claude-opus-4-8"},
-		{id: "claude-haiku-4-5-20251001", expected: "haiku"},
+		{id: "claude-haiku-4-5-20251001", expected: "claude-haiku-4-5-20251001"},
+		{id: "claude-haiku-4-2", expected: "haiku"},
 		{id: "sonnet", expected: "sonnet"},
 		{id: "claude-opus-4-6", expected: "claude-opus-4-6"},
 		{id: "claude-sonnet-3-7-20250219", expected: "sonnet"},
@@ -20,6 +22,12 @@ describe("modelMenuValue", () => {
 		{id: null, expected: null},
 	])("$id -> $expected", ({id, expected}) => {
 		expect(modelMenuValue(id)).toStrictEqual(expected);
+	});
+});
+
+describe("MORE_MODELS", () => {
+	it("starts with Haiku 4.5, as upstream's More models does", () => {
+		expect(MORE_MODELS[0]).toStrictEqual({id: "claude-haiku-4-5-20251001", label: "Haiku 4.5"});
 	});
 });
 

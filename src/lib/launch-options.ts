@@ -101,6 +101,7 @@ export const PRIMARY_MODELS: readonly ModelChoice[] = Object.entries(ALIAS_LATES
 
 /** Upstream's "More models" submenu: older full ids the primary aliases no longer launch, in its order. */
 export const MORE_MODELS: readonly ModelChoice[] = [
+	"claude-haiku-4-5-20251001",
 	"claude-sonnet-5",
 	"claude-opus-5",
 	"claude-fable-5",

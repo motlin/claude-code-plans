@@ -353,7 +353,7 @@ describe("Composer model menu", () => {
 		sendPrompt("Continue Dave's test");
 
 		expect({labels, calls: onSend.mock.calls}).toStrictEqual({
-			labels: ["Sonnet 5", "Opus 5", "Fable 5", "Opus 4.8", "Opus 4.7", "Opus 4.6", "Sonnet 4.6"],
+			labels: ["Haiku 4.5", "Sonnet 5", "Opus 5", "Fable 5", "Opus 4.8", "Opus 4.7", "Opus 4.6", "Sonnet 4.6"],
 			calls: [["Continue Dave's test", {model: "claude-opus-4-6"}]],
 		});
 	});
