@@ -70,6 +70,31 @@ const STATE_CASES = [
 		expected: null,
 	},
 	{
+		name: "Notification for a CLI elicitation form dialog is waiting",
+		event: {
+			...BASE_EVENT,
+			hook_event_name: "Notification",
+			message: "An MCP server needs your input",
+			notification_type: "elicitation_dialog",
+		},
+		expected: "waiting",
+	},
+	{
+		name: "Notification for a CLI elicitation URL dialog is waiting",
+		event: {
+			...BASE_EVENT,
+			hook_event_name: "Notification",
+			message: "An MCP server needs your input",
+			notification_type: "elicitation_url_dialog",
+		},
+		expected: "waiting",
+	},
+	{
+		name: "Notification for an idle prompt carries no state",
+		event: {...BASE_EVENT, hook_event_name: "Notification", message: "Waiting", notification_type: "idle_prompt"},
+		expected: null,
+	},
+	{
 		name: "PermissionRequest carries no state",
 		event: {
 			...BASE_EVENT,

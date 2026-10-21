@@ -51,7 +51,11 @@ import {
 	RoutineStatusFilterSchema,
 	RoutineStatusSchema,
 } from "../src/lib/routines";
-import {schemaChoiceRegistry} from "../src/lib/schema-choices";
+import {
+	notificationTypePresentation,
+	notificationTypePresentations,
+	schemaChoiceRegistry,
+} from "../src/lib/schema-choices";
 import {
 	PullRequestStateSchema,
 	SessionBucketReasonSchema,
@@ -409,5 +413,39 @@ describe("schema choice registry", () => {
 	it("has no stale registry entries for removed choice nodes", () => {
 		const stale = Object.keys(schemaChoiceRegistry).filter((path) => !found.has(path));
 		expect(stale, `Registry paths no longer found in any schema: ${stale.join(", ")}`).toEqual([]);
+	});
+});
+
+describe("notification type presentations", () => {
+	it("classifies every notification_type the CLI 2.1.307 emits, plus the local ones", () => {
+		expect(notificationTypePresentations).toStrictEqual({
+			permission_prompt: "permission",
+			idle_prompt: "needs_input",
+			auth_success: "info",
+			elicitation_dialog: "elicitation",
+			agent_needs_input: "needs_input",
+			agent_completed: "completed",
+			elicitation_url_dialog: "elicitation",
+			worker_permission_prompt: "permission",
+			push_notification: "info",
+			computer_use_enter: "info",
+			computer_use_exit: "info",
+			quota_auto_resume_fired: "info",
+			quota_auto_resume_stale: "info",
+			quota_auto_resume_disabled: "info",
+			model_refusal_fallback: "info",
+			auth_storage_failure: "info",
+			plugin_notification: "info",
+			mcp_elicitation: "elicitation",
+			turn_failed: "info",
+		});
+	});
+
+	it("maps the CLI elicitation dialogs to the elicitation presentation and unknown types to info", () => {
+		expect(
+			["elicitation_dialog", "elicitation_url_dialog", "mcp_elicitation", "some_future_type", ""].map(
+				notificationTypePresentation,
+			),
+		).toStrictEqual(["elicitation", "elicitation", "elicitation", "info", "info"]);
 	});
 });

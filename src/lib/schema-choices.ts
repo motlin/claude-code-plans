@@ -478,6 +478,48 @@ const elicitationActionLabels = {
 	cancel: "Cancelled",
 } satisfies Record<HookEventOf<"ElicitationResult">["action"], string>;
 
+/** How the viewer presents a `Notification` hook's `notification_type`. */
+export type NotificationTypePresentation = "permission" | "elicitation" | "needs_input" | "completed" | "info";
+
+/**
+ * Known `Notification.notification_type` values. The hook schema keeps the
+ * field freeform (an unknown value must not drop the event), so the known kinds
+ * are classified here instead. The CLI 2.1.307 list is copied in its own order,
+ * followed by the types the viewer persists itself (src/lib/hook-dispatcher.ts).
+ * The CLI raises `elicitation_dialog` / `elicitation_url_dialog` while an MCP
+ * elicitation dialog waits on the user.
+ */
+export const notificationTypePresentations = {
+	permission_prompt: "permission",
+	idle_prompt: "needs_input",
+	auth_success: "info",
+	elicitation_dialog: "elicitation",
+	agent_needs_input: "needs_input",
+	agent_completed: "completed",
+	elicitation_url_dialog: "elicitation",
+	worker_permission_prompt: "permission",
+	push_notification: "info",
+	computer_use_enter: "info",
+	computer_use_exit: "info",
+	quota_auto_resume_fired: "info",
+	quota_auto_resume_stale: "info",
+	quota_auto_resume_disabled: "info",
+	model_refusal_fallback: "info",
+	auth_storage_failure: "info",
+	plugin_notification: "info",
+	mcp_elicitation: "elicitation",
+	turn_failed: "info",
+} as const satisfies Record<string, NotificationTypePresentation>;
+
+const notificationTypePresentationsByType: ReadonlyMap<string, NotificationTypePresentation> = new Map(
+	Object.entries(notificationTypePresentations),
+);
+
+/** The presentation for a `notification_type`; unknown and future types read as info. */
+export function notificationTypePresentation(notificationType: string): NotificationTypePresentation {
+	return notificationTypePresentationsByType.get(notificationType) ?? "info";
+}
+
 const sourceLanguageLabels = {
 	markdown: "Markdown",
 	json: "JSON",

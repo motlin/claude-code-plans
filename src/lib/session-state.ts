@@ -1,6 +1,7 @@
 import {z} from "zod";
 import type {HookEvent} from "./hook-events";
 import type {SessionRegistryStatusSchema} from "./schemas";
+import {notificationTypePresentation} from "./schema-choices";
 
 export type ActivityState = "idle" | "working" | "waiting" | "unknown";
 
@@ -70,6 +71,10 @@ export function stateForEvent(event: HookEvent): ActivityState | null {
 			return "working";
 		case "Elicitation":
 			return "waiting";
+		case "Notification":
+			// The CLI's elicitation dialog Notification is the only signal when the
+			// Elicitation hook is not installed, so it waits just like Elicitation.
+			return notificationTypePresentation(event.notification_type ?? "") === "elicitation" ? "waiting" : null;
 		case "PreCompact":
 			return event.trigger === "manual" ? "working" : null;
 		case "PostCompact":
