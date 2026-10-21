@@ -5,6 +5,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {registerPane} from "../src/components/panes/pane-registry";
 import {TileHost} from "../src/components/panes/tile-host";
+import {RAIL_ROW_ACTION_CLASS} from "../src/components/session-rail/rail-row";
 import {SessionRail, type RailCard} from "../src/components/session-rail/session-rail";
 import {SessionRailSlot} from "../src/components/session-rail/session-rail-slot";
 import {useSessionRailDocked} from "../src/components/session-rail/use-session-rail-docked";
@@ -520,6 +521,17 @@ describe("session rail reorder", () => {
 			tabIndex: 0,
 			hoverOnly: ["opacity-0", "group-hover/railtop:opacity-100", "focus-visible:opacity-100"],
 			grips: ["Reorder Environment", "Reorder Context", "Reorder Progress"],
+		});
+	});
+
+	it("uses upstream's gap-sm 8px between row slots and gap-xs 6px across the header row", () => {
+		render(<SessionRail sessionId="s1" cards={CARDS} />);
+		const railtop = screen.getByRole("button", {name: "Reorder Progress"}).closest(".group\\/railtop");
+		const gaps = (className: string | undefined) => className?.split(" ").filter((c) => c.startsWith("gap-"));
+
+		expect({row: gaps(RAIL_ROW_ACTION_CLASS), railtop: gaps(railtop?.className)}).toStrictEqual({
+			row: ["gap-2"],
+			railtop: ["gap-1.5"],
 		});
 	});
 });

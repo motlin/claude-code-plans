@@ -151,7 +151,7 @@ function RailSection({
 				aria-labelledby={headingId}
 				className={RAIL_CARD_CLASS}
 			>
-				<ContextMenuTrigger className="group/railtop relative flex min-h-6.5 min-w-0 items-center gap-1 px-2">
+				<ContextMenuTrigger className="group/railtop relative flex min-h-6.5 min-w-0 items-center gap-1.5 px-2">
 					<h3
 						id={headingId}
 						className="flex min-w-0 flex-1 rounded group-data-[popup-open]/railtop:bg-alpha-1"
