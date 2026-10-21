@@ -389,7 +389,6 @@ describe("cards from local data", () => {
 		expect(cards()).toStrictEqual([
 			["environment", null],
 			["context", "19%"],
-			["usage", "42%"],
 			["connectors", "1 to reconnect"],
 			["progress", "1 of 3"],
 			["outputs", null],
@@ -411,7 +410,7 @@ describe("cards from local data", () => {
 			servers: rows("Servers"),
 			backgroundTasks: rows("Background tasks"),
 			context: screen.getByRole("progressbar", {name: "Context window"}).getAttribute("aria-valuenow"),
-			usage: screen.getByRole("progressbar", {name: "Session limit"}).getAttribute("aria-valuenow"),
+			usage: screen.queryByRole("progressbar", {name: "Session limit"}),
 		}).toStrictEqual({
 			connectors: [
 				["github", null],
@@ -433,7 +432,7 @@ describe("cards from local data", () => {
 				["1 finished", null],
 			],
 			context: "19",
-			usage: "42",
+			usage: null,
 		});
 	});
 

@@ -18,21 +18,6 @@ export function UsageMeter({percent, label}: {percent: number; label: string}) {
 	);
 }
 
-/** A plan limit: label, reset time and percent, over its bar. */
-export function UsageLimitRow({label, window}: {label: string; window: RateLimitWindow}) {
-	const percent = Math.round(window.usedPercentage);
-	return (
-		<div className="flex flex-col gap-1">
-			<div data-usage-row className="flex items-baseline gap-2">
-				<span className="text-primary">{label}</span>
-				<span className="text-t6">{formatResetLabel(window.resetsAt, Date.now())}</span>
-				<span className="ms-auto tabular-nums text-secondary">{percent}%</span>
-			</div>
-			<UsageMeter percent={window.usedPercentage} label={label} />
-		</div>
-	);
-}
-
 /** cds Meter's fill: slid in from the inline start, never thinner than 4px. */
 function meterFillTransform(percent: number): string {
 	return `translateX(calc(var(--_meter-dir,-1) * (100% - min(100%, max(${percent}%, 4px)))))`;

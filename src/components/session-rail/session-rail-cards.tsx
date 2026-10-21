@@ -32,7 +32,7 @@ import {
 import type {BackgroundTask, BackgroundTaskGroups} from "../../lib/background-tasks";
 import {writeClipboardText} from "../../lib/clipboard";
 import {toConnectorSlug} from "../../lib/customize/mcp-tool-permissions";
-import {formatContextSummary, FIVE_HOUR_LABEL, WEEKLY_LABEL, type ComposerUsage} from "../../lib/composer-state";
+import {formatContextSummary, type ComposerUsage} from "../../lib/composer-state";
 import type {PrStatus} from "../../lib/pr-status";
 import {formatCount} from "../../lib/pluralize";
 import {sessionEnvironment, terminalHostLabel} from "../../lib/session-environment";
@@ -40,7 +40,7 @@ import {claudeAiSessionUrl} from "../../lib/session-open-in";
 import type {PlanTodo} from "../../lib/session-plan-model";
 import {usePaneHost} from "../panes/pane-host-context";
 import {useToast} from "../toast-context";
-import {UsageLimitRow, UsageMeter} from "../usage-limit-row";
+import {UsageMeter} from "../usage-limit-row";
 import {RAIL_ROW_ACTION_CLASS, RailRow, RailRowContent} from "./rail-row";
 import {SessionRail, type RailCard} from "./session-rail";
 
@@ -184,27 +184,6 @@ function contextCard(usage: ComposerUsage | null): RailCard {
 			<div className="flex flex-col gap-1.5 px-1 pt-1 pb-1 text-[12px]/[15px]">
 				<span className="tabular-nums text-secondary">{formatContextSummary(usage)}</span>
 				<UsageMeter percent={percent} label="Context window" />
-			</div>
-		),
-	};
-}
-
-/** Upstream's usage meters card: the plan limits the statusline reports. */
-function usageCard(usage: ComposerUsage | null): RailCard | null {
-	const limits = [
-		usage?.fiveHour ? {label: FIVE_HOUR_LABEL, window: usage.fiveHour} : null,
-		usage?.weekly ? {label: WEEKLY_LABEL, window: usage.weekly} : null,
-	].filter((limit) => limit !== null);
-	const highest = limits.reduce((max, limit) => Math.max(max, limit.window.usedPercentage), 0);
-	if (limits.length === 0) return null;
-	return {
-		id: "usage",
-		summary: `${Math.round(highest)}%`,
-		body: (
-			<div className="flex flex-col gap-2.5 px-1 pt-1 pb-1 text-[12px]/[15px]">
-				{limits.map((limit) => (
-					<UsageLimitRow key={limit.label} label={limit.label} window={limit.window} />
-				))}
 			</div>
 		),
 	};
@@ -474,7 +453,6 @@ export function SessionRailCards({inputs}: {inputs: SessionRailInputs}) {
 	const cards = [
 		{id: "environment", body: <EnvironmentBody inputs={inputs} />} satisfies RailCard,
 		contextCard(inputs.usage),
-		usageCard(inputs.usage),
 		connectorsCard(sessionConnectors(mcpServers ?? [], inputs.cwd)),
 		progressCard(inputs.todos),
 		outputsCard(inputs.artifacts),
