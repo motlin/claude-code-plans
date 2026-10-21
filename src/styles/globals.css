@@ -856,6 +856,43 @@
 	}
 }
 
+/*
+ * Upstream claude.ai/code text-entry floor (c6a992d55, unlayered): on a coarse pointer every text field
+ * is at least 16px, which prevents iOS focus zoom. Unlayered so it beats any `@layer utilities` size.
+ */
+@media (pointer: coarse) {
+	:root {
+		--text-entry-floor: 16px;
+	}
+}
+
+@media (pointer: coarse) {
+	:root
+		input:where(
+			:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="button"]):not(
+					[type="submit"]
+				):not([type="reset"]):not([type="color"]):not([type="file"])
+		),
+	:root textarea,
+	:root select,
+	:root .text-entry-floored {
+		font-size: max(var(--text-entry-floor, 0px), var(--upstream-text-body));
+	}
+}
+
+@media (pointer: coarse) {
+	:root textarea,
+	:root .text-entry-floored {
+		line-height: var(--cmp-leading, max(1.375em, var(--upstream-leading-body)));
+	}
+}
+
+@media (pointer: coarse) {
+	:root [contenteditable]:where(:not([contenteditable="false"])) {
+		font-size: max(var(--text-entry-floor, 0px), 1em);
+	}
+}
+
 @media (prefers-reduced-motion: reduce) {
 	.phone-sheet,
 	.phone-sheet[data-open] {
