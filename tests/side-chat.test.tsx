@@ -140,6 +140,17 @@ describe("SideChat", () => {
 		});
 	});
 
+	it("relies on the global text-entry floor on coarse pointers", () => {
+		renderSideChat();
+
+		expect(
+			screen
+				.getByRole("textbox", {name: "Side chat question", hidden: true})
+				.className.split(" ")
+				.filter((token) => token.startsWith("pointer-coarse:")),
+		).toStrictEqual([]);
+	});
+
 	it("opens, closes with the X button, and closes on Escape", () => {
 		renderSideChat();
 		expect(aside().hasAttribute("data-open")).toBe(false);

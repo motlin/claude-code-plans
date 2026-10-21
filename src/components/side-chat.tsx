@@ -326,7 +326,7 @@ function SideChatPanel({
 							send();
 						}
 					}}
-					className="block max-h-40 min-h-6 w-full resize-none bg-transparent px-1 py-0.5 text-body text-primary [field-sizing:content] placeholder:text-t6 focus:outline-none pointer-coarse:text-[16px]"
+					className="block max-h-40 min-h-6 w-full resize-none bg-transparent px-1 py-0.5 text-body text-primary [field-sizing:content] placeholder:text-t6 focus:outline-none"
 				/>
 				{pending ? (
 					<Tooltip content="Stop">

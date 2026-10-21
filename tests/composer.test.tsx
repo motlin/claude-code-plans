@@ -173,7 +173,7 @@ describe("Composer", () => {
 		}).toStrictEqual({tooltip: "Send⏎", descriptionCount: 2, hintKept: true});
 	});
 
-	it("uses a 16px font on coarse pointers to avoid iOS zoom", () => {
+	it("relies on the global text-entry floor on coarse pointers", () => {
 		render(<Composer variant="home" draftKey="home" onSend={() => {}} />);
 
 		expect(
@@ -181,7 +181,7 @@ describe("Composer", () => {
 				.getByRole("textbox", {name: "Prompt"})
 				.className.split(" ")
 				.filter((token) => token.startsWith("pointer-coarse:")),
-		).toStrictEqual(["pointer-coarse:text-[16px]"]);
+		).toStrictEqual([]);
 	});
 
 	it("swaps Send for Stop response while streaming", () => {
@@ -265,7 +265,7 @@ describe("Composer", () => {
 				addSlot: pick(add.closest("[data-composer-add]"), ["min-h-7"]),
 				spacer: pick(document.querySelector("[data-send-spacer] > span"), ["size-7"]),
 				editor: {
-					padding: pick(textarea, ["py-1", "pl-1", "pointer-coarse:text-[16px]"]),
+					padding: pick(textarea, ["py-1", "pl-1"]),
 					minHeight: textarea.style.minHeight,
 				},
 				chin: pick(chin, ["mt-1.5", "min-h-6", "text-[13px]/[20px]", "text-secondary"]),
@@ -284,7 +284,7 @@ describe("Composer", () => {
 				addIcon: ["size-[18px]"],
 				addSlot: ["min-h-7"],
 				spacer: ["size-7"],
-				editor: {padding: ["py-1", "pl-1", "pointer-coarse:text-[16px]"], minHeight: "28px"},
+				editor: {padding: ["py-1", "pl-1"], minHeight: "28px"},
 				chin: ["mt-1.5", "min-h-6", "text-[13px]/[20px]", "text-secondary"],
 				mode: ["h-6", "px-1.5", "text-secondary"],
 				model: {

@@ -126,6 +126,18 @@ describe("Composer slash commands", () => {
 		}).toStrictEqual({value: "/model ", menu: null, hint: "[model]", sent: []});
 	});
 
+	it("floors the argument-hint overlay like the textarea it lines up with on coarse pointers", () => {
+		const {textarea} = setup();
+		fireEvent.change(textarea, {target: {value: "/mo"}});
+		fireEvent.keyDown(textarea, {key: "Enter"});
+
+		const tokens = screen.getByTestId("slash-argument-hint").parentElement?.className.split(" ") ?? [];
+		expect({
+			floored: tokens.includes("text-entry-floored"),
+			coarse: tokens.filter((token) => token.startsWith("pointer-coarse:")),
+		}).toStrictEqual({floored: true, coarse: []});
+	});
+
 	it("accepts the highlighted row with Tab and hides the hint once arguments are typed", () => {
 		const {textarea} = setup();
 		fireEvent.change(textarea, {target: {value: "/"}});
