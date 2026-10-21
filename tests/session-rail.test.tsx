@@ -368,6 +368,63 @@ describe("session rail cards", () => {
 	});
 });
 
+describe("session rail card summary", () => {
+	function summaryOf(name: RegExp) {
+		const summary = screen.getByRole("button", {name}).querySelector<HTMLElement>("[data-rail-summary]");
+		return {invisible: summary?.classList.contains("invisible"), ariaHidden: summary?.getAttribute("aria-hidden")};
+	}
+
+	it("hides an open card's summary like upstream, and shows a collapsed one's", () => {
+		render(<SessionRail sessionId="s1" cards={CARDS} />);
+
+		expect({open: summaryOf(/^Progress/), collapsed: summaryOf(/^Context/)}).toStrictEqual({
+			open: {invisible: true, ariaHidden: "true"},
+			collapsed: {invisible: false, ariaHidden: null},
+		});
+	});
+
+	it("renders a rollup percentage with upstream's 24x10 mini meter, filled by severity", () => {
+		render(
+			<SessionRail
+				sessionId="s1"
+				cards={[
+					{id: "context", rollupPct: 18, body: <p>context body</p>},
+					{id: "environment", rollupPct: 80, body: <p>env body</p>},
+				]}
+			/>,
+		);
+		const meter = (name: RegExp) => {
+			const summary = screen.getByRole("button", {name}).querySelector<HTMLElement>("[data-rail-summary]");
+			const track = summary?.querySelector<HTMLElement>(".h-2\\.5.w-6");
+			const fill = track?.firstElementChild as HTMLElement | null | undefined;
+			return {
+				text: summary?.textContent,
+				track: track?.className,
+				trackHidden: track?.getAttribute("aria-hidden"),
+				fill: fill?.className,
+				width: fill?.style.width,
+			};
+		};
+
+		expect({context: meter(/^Context/), environment: meter(/^Environment/)}).toStrictEqual({
+			context: {
+				text: "18%",
+				track: "flex h-2.5 w-6 shrink-0 rounded-full bg-alpha-2 p-0.5",
+				trackHidden: "true",
+				fill: "h-full min-w-1.5 rounded-full bg-fill-accent",
+				width: "18%",
+			},
+			environment: {
+				text: "80%",
+				track: "flex h-2.5 w-6 shrink-0 rounded-full bg-alpha-2 p-0.5",
+				trackHidden: "true",
+				fill: "h-full min-w-1.5 rounded-full bg-usage-warning",
+				width: "80%",
+			},
+		});
+	});
+});
+
 describe("session rail header menu", () => {
 	function menuRows(): Array<[string | null, string, string | null]> {
 		const menu = screen.getByRole("menu");

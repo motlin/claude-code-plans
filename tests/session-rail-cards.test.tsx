@@ -383,7 +383,7 @@ describe("cards from local data", () => {
 			context: screen.getByRole("region", {name: /^Context/}).querySelector("[data-rail-body]")?.textContent,
 		}).toStrictEqual({
 			cards: [
-				["environment", null],
+				["environment", "alice/sync-upstream"],
 				["context", null],
 			],
 			context: "Send a message to see context usage.",
@@ -394,7 +394,7 @@ describe("cards from local data", () => {
 		await renderCards(FULL, seed);
 
 		expect(cards()).toStrictEqual([
-			["environment", null],
+			["environment", "alice/sync-upstream"],
 			["context", "19%"],
 			["connectors", "1 to reconnect"],
 			["outputs", null],
@@ -451,8 +451,11 @@ describe("cards from local data", () => {
 		});
 
 		expect(
-			within(screen.getByRole("region", {name: "Background tasks"})).getByText("tasks pane body").tagName,
-		).toBe("P");
+			screen
+				.getAllByRole("region", {name: "Background tasks"})
+				.flatMap((region) => within(region).queryAllByText("tasks pane body"))
+				.map((body) => body.tagName),
+		).toStrictEqual(["P"]);
 	});
 });
 

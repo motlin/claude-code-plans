@@ -35,6 +35,7 @@ import {
 	type RailSectionId,
 	type RailSectionsState,
 } from "../../lib/session-rail-store";
+import {usageRingSeverity, type UsageRingSeverity} from "../../lib/composer-state";
 import {
 	ContextMenu,
 	ContextMenuTrigger,
@@ -50,6 +51,8 @@ export interface RailCard {
 	id: RailSectionId;
 	/** Right-aligned header text, e.g. `1 of 3`. */
 	summary?: string | undefined;
+	/** Upstream's percentage rollup: `N%` plus a 24x10 mini meter, in place of `summary`. */
+	rollupPct?: number | undefined;
 	body: ReactNode;
 }
 
@@ -82,6 +85,29 @@ function RailHeaderMenu({sessionId, sections}: {sessionId: string; sections: Rai
 				Reset to defaults
 			</MenuItem>
 		</MenuContent>
+	);
+}
+
+/** Upstream's rollup meter fill: accent, then warning at the composer ring's 75% and danger at 90%. */
+const ROLLUP_FILLS: Record<UsageRingSeverity, string> = {
+	normal: "bg-fill-accent",
+	warning: "bg-usage-warning",
+	critical: "bg-usage-danger",
+};
+
+/** Upstream's header rollup: the rounded percent beside a 24x10 pill meter. */
+function RollupSummary({pct}: {pct: number}) {
+	const clamped = Math.max(0, Math.min(100, pct));
+	return (
+		<span className="flex items-center justify-end gap-1.5">
+			<span className="tabular-nums">{clamped}%</span>
+			<span aria-hidden className="flex h-2.5 w-6 shrink-0 rounded-full bg-alpha-2 p-0.5">
+				<span
+					className={`h-full min-w-1.5 rounded-full ${ROLLUP_FILLS[usageRingSeverity(clamped)]}`}
+					style={{width: `${clamped}%`}}
+				/>
+			</span>
+		</span>
 	);
 }
 
@@ -136,12 +162,17 @@ function RailSection({
 								aria-hidden
 								className={`size-3 shrink-0 text-ink-muted transition-transform ${open ? "rotate-90" : ""}`}
 							/>
-							{card.summary !== undefined && (
+							{(card.summary !== undefined || card.rollupPct !== undefined) && (
 								<span
 									data-rail-summary=""
-									className="ms-auto truncate ps-1.5 text-[12px]/[15px] font-normal text-ink-muted group-hover/railtop:opacity-0 group-has-[[data-rail-grip]:focus-visible]/railtop:opacity-0"
+									{...(open ? {"aria-hidden": true} : {})}
+									className={`ms-auto min-w-0 truncate ps-1.5 text-[12px]/[15px] font-normal text-ink-muted group-hover/railtop:opacity-0 group-has-[[data-rail-grip]:focus-visible]/railtop:opacity-0 ${open ? "invisible" : ""}`}
 								>
-									{card.summary}
+									{card.rollupPct === undefined ? (
+										card.summary
+									) : (
+										<RollupSummary pct={card.rollupPct} />
+									)}
 								</span>
 							)}
 						</button>

@@ -197,7 +197,7 @@ function contextCard(inputs: SessionRailInputs): RailCard {
 		const liveTokens = usage?.contextTokens ?? null;
 		return {
 			id: "context",
-			summary: `${Math.min(100, Math.round(buildContextLegend(breakdown, liveTokens).usedPct))}%`,
+			rollupPct: Math.min(100, Math.round(buildContextLegend(breakdown, liveTokens).usedPct)),
 			body: (
 				<div className="flex flex-col">
 					<ContextBreakdownBody breakdown={breakdown} liveTokens={liveTokens} homeRoot={inputs.homeRoot} />
@@ -219,7 +219,7 @@ function contextCard(inputs: SessionRailInputs): RailCard {
 	const rounded = Math.round(percent);
 	return {
 		id: "context",
-		summary: `${rounded}%`,
+		rollupPct: rounded,
 		body: (
 			<div className="flex flex-col">
 				<div className="flex flex-col gap-1 px-1 pt-1 pb-1.5">
@@ -481,7 +481,11 @@ export function SessionRailCards({inputs}: {inputs: SessionRailInputs}) {
 		enabled: inputs.cwd !== null,
 	}).data?.stats;
 	const cards = [
-		{id: "environment", body: <EnvironmentBody inputs={inputs} />} satisfies RailCard,
+		{
+			id: "environment",
+			...(inputs.gitBranch === null ? {} : {summary: inputs.gitBranch}),
+			body: <EnvironmentBody inputs={inputs} />,
+		} satisfies RailCard,
 		contextCard(inputs),
 		connectorsCard(sessionConnectors(mcpServers ?? [], inputs.cwd)),
 		outputsCard(inputs.artifacts),
