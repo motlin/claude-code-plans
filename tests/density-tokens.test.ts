@@ -66,3 +66,33 @@ describe("density type tokens", () => {
 		});
 	});
 });
+
+describe("density sidebar geometry", () => {
+	// Upstream `Us()` defaults the web sidebar to comfortable; the 26px compact rows are the desktop app's default only.
+	it("locks the web sidebar geometry tokens on :root at upstream's comfortable values", () => {
+		const root = block(":root");
+		const names = [
+			"--sb-row-h",
+			"--sb-row-font",
+			"--sb-group-font",
+			"--sb-icon",
+			"--sb-leading-slot",
+			"--sb-row-ctl",
+			"--sb-row-gap",
+			"--sb-group-pt",
+			"--sb-radius",
+		];
+
+		expect(Object.fromEntries(names.map((name) => [name, token(root, name)]))).toStrictEqual({
+			"--sb-row-h": "32px",
+			"--sb-row-font": "14px",
+			"--sb-group-font": "13px",
+			"--sb-icon": "20px",
+			"--sb-leading-slot": "28px",
+			"--sb-row-ctl": "24px",
+			"--sb-row-gap": "8px",
+			"--sb-group-pt": "16px",
+			"--sb-radius": "8px",
+		});
+	});
+});
