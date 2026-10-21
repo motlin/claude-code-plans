@@ -187,10 +187,16 @@ describe("misc tool input schemas", () => {
 				message: "PR is green",
 				status: "proactive",
 			}).success,
-			workflowScript: toolInputSchemas.Workflow.safeParse({
+			workflowArgsObject: toolInputSchemas.Workflow.safeParse({scriptPath: "/x/wf.js", args: {max: 60}}).success,
+			workflowScriptArgs: toolInputSchemas.Workflow.safeParse({
 				script: "export const meta = {}",
-				args: [{name: "repo", path: "/x/repo"}],
+				args: {dir: "/d", upstreamUrl: "https://claude.ai/code"},
 			}).success,
+			workflowArgsString: toolInputSchemas.Workflow.safeParse({scriptPath: "/x", args: "question"}).success,
+			workflowArgsArray: toolInputSchemas.Workflow.safeParse({scriptPath: "/x", args: ["a"]}).success,
+			workflowNamed: toolInputSchemas.Workflow.safeParse({name: "deep-research", args: "q"}).success,
+			workflowIgnored: toolInputSchemas.Workflow.safeParse({scriptPath: "/x", description: "d", title: "t"})
+				.success,
 			workflowResume: toolInputSchemas.Workflow.safeParse({
 				scriptPath: "/x/wf.js",
 				resumeFromRunId: "wf_1",
@@ -206,7 +212,12 @@ describe("misc tool input schemas", () => {
 			remoteTrigger: true,
 			sendUserFile: true,
 			push: true,
-			workflowScript: true,
+			workflowArgsObject: true,
+			workflowScriptArgs: true,
+			workflowArgsString: true,
+			workflowArgsArray: true,
+			workflowNamed: true,
+			workflowIgnored: true,
 			workflowResume: true,
 		});
 	});
@@ -219,6 +230,7 @@ describe("misc tool input schemas", () => {
 			sendUserFile: toolInputSchemas.SendUserFile.safeParse({...SEND_USER_FILE_INPUT, extra: 1}).success,
 			push: toolInputSchemas.PushNotification.safeParse({message: "x", extra: 1}).success,
 			workflow: toolInputSchemas.Workflow.safeParse({scriptPath: "/x", extra: 1}).success,
+			workflowArgsUndefinedFn: toolInputSchemas.Workflow.safeParse({scriptPath: "/x", args: () => 1}).success,
 		}).toStrictEqual({
 			exitAction: false,
 			wakeup: false,
@@ -226,6 +238,7 @@ describe("misc tool input schemas", () => {
 			sendUserFile: false,
 			push: false,
 			workflow: false,
+			workflowArgsUndefinedFn: false,
 		});
 	});
 });

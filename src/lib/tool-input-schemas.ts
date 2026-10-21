@@ -485,8 +485,11 @@ const PushNotificationInputSchema = z
 const WorkflowInputSchema = z
 	.object({
 		script: z.string().optional(),
+		name: z.string().optional(),
+		description: z.string().optional(),
+		title: z.string().optional(),
+		args: JsonInputValueSchema.optional(),
 		scriptPath: z.string().optional(),
-		args: z.array(JsonInputValueSchema).optional(),
 		resumeFromRunId: z.string().optional(),
 	})
 	.strict();
