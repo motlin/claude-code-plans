@@ -49,41 +49,80 @@ describe("session rail shown state", () => {
 });
 
 describe("rail section folds", () => {
-	it("opens Environment and Context by default, and the rest start collapsed", () => {
+	it("opens every card by default except upstream's Connectors, Context and Usage", () => {
 		const state = DEFAULT_RAIL_SECTIONS_STATE;
 
 		expect({
-			environment: isRailSectionOpen(state, "s1", "environment"),
-			context: isRailSectionOpen(state, "s1", "context"),
-			progress: isRailSectionOpen(state, "s1", "progress"),
-		}).toStrictEqual({environment: true, context: true, progress: false});
-	});
-
-	it("records a fold per session, and folding back to the default drops the entry", () => {
-		toggleRailSection("s1", "environment");
-		const collapsed = readRailSectionsState();
-		toggleRailSection("s1", "progress");
-		const both = readRailSectionsState();
-		toggleRailSection("s1", "environment");
-
-		expect({
-			collapsed: collapsed.foldsBySession,
-			both: both.foldsBySession,
-			otherSession: isRailSectionOpen(both, "s2", "environment"),
-			restored: readRailSectionsState().foldsBySession,
+			environment: isRailSectionOpen(state, "s", "environment"),
+			backgroundTasks: isRailSectionOpen(state, "s", "backgroundTasks"),
+			progress: isRailSectionOpen(state, "s", "progress"),
+			connectors: isRailSectionOpen(state, "s", "connectors"),
+			context: isRailSectionOpen(state, "s", "context"),
+			usage: isRailSectionOpen(state, "s", "usage"),
 		}).toStrictEqual({
-			collapsed: {s1: {collapsed: ["environment"], expanded: []}},
-			both: {s1: {collapsed: ["environment"], expanded: ["progress"]}},
-			otherSession: true,
-			restored: {s1: {collapsed: [], expanded: ["progress"]}},
+			environment: true,
+			backgroundTasks: true,
+			progress: true,
+			connectors: false,
+			context: false,
+			usage: false,
 		});
 	});
 
-	it("sets several cards at once for Alt-click", () => {
+	it("records a hand toggle as this session's fold and the new default for unfolded sessions", () => {
+		toggleRailSection("s1", "context");
+		const opened = readRailSectionsState();
+		toggleRailSection("s2", "context");
+
+		expect({
+			opened,
+			s2BeforeToggle: isRailSectionOpen(opened, "s2", "context"),
+			after: readRailSectionsState(),
+			s1: isRailSectionOpen(readRailSectionsState(), "s1", "context"),
+			s3: isRailSectionOpen(readRailSectionsState(), "s3", "context"),
+		}).toStrictEqual({
+			opened: {
+				foldsBySession: {s1: {collapsed: [], expanded: ["context"]}},
+				startsOpen: {context: true},
+				hidden: [],
+				order: [],
+			},
+			s2BeforeToggle: true,
+			after: {
+				foldsBySession: {
+					s1: {collapsed: [], expanded: ["context"]},
+					s2: {collapsed: ["context"], expanded: []},
+				},
+				startsOpen: {context: false},
+				hidden: [],
+				order: [],
+			},
+			s1: true,
+			s3: false,
+		});
+	});
+
+	it("sets several cards at once for Alt-click without changing the defaults", () => {
 		setRailSectionsOpen("s1", ["environment", "context", "progress"], false);
 
-		expect(readRailSectionsState().foldsBySession).toStrictEqual({
-			s1: {collapsed: ["environment", "context"], expanded: []},
+		expect(readRailSectionsState()).toStrictEqual({
+			foldsBySession: {s1: {collapsed: ["environment", "context", "progress"], expanded: []}},
+			startsOpen: {},
+			hidden: [],
+			order: [],
+		});
+	});
+
+	it("keeps the folds of the newest 100 sessions", () => {
+		for (let index = 0; index <= 100; index++) setRailSectionsOpen(`s${index}`, ["progress"], false);
+		toggleRailSection("s1", "goal");
+
+		const keys = Object.keys(readRailSectionsState().foldsBySession);
+		expect({count: keys.length, first: keys[0], last: keys.at(-1), dropped: keys.includes("s0")}).toStrictEqual({
+			count: 100,
+			first: "s2",
+			last: "s1",
+			dropped: false,
 		});
 	});
 
@@ -91,8 +130,8 @@ describe("rail section folds", () => {
 		toggleRailSection("s1", "progress");
 
 		const expected: RailSectionsState = {
-			foldsBySession: {s1: {collapsed: [], expanded: ["progress"]}},
-			startsOpen: {environment: true, context: true},
+			foldsBySession: {s1: {collapsed: ["progress"], expanded: []}},
+			startsOpen: {progress: false},
 			hidden: [],
 			order: [],
 		};
@@ -116,35 +155,58 @@ describe("rail section folds", () => {
 });
 
 describe("rail section visibility and reset", () => {
-	it("hides and shows a section, and Reset to defaults clears hidden sections and folds", () => {
-		const pristine = isRailSectionsPristine(readRailSectionsState());
+	it("hides and shows a section, and Reset to defaults clears hidden, order, defaults and this session's folds", () => {
+		const pristine = isRailSectionsPristine(readRailSectionsState(), "s1");
 		toggleRailSectionHidden("servers");
 		toggleRailSectionHidden("context");
 		toggleRailSectionHidden("servers");
+		reorderRailSections(["environment", "context"], "context", "environment");
 		toggleRailSection("s1", "progress");
+		setRailSectionsOpen("s2", ["goal"], false);
 		const changed = readRailSectionsState();
-		resetRailSections();
+		resetRailSections("s1");
 
 		expect({
 			pristine,
 			hidden: changed.hidden,
-			changedPristine: isRailSectionsPristine(changed),
+			changedPristine: isRailSectionsPristine(changed, "s1"),
 			reset: readRailSectionsState(),
-			resetPristine: isRailSectionsPristine(readRailSectionsState()),
+			resetPristine: isRailSectionsPristine(readRailSectionsState(), "s1"),
+			otherSessionPristine: isRailSectionsPristine(readRailSectionsState(), "s2"),
 		}).toStrictEqual({
 			pristine: true,
 			hidden: ["context"],
 			changedPristine: false,
-			reset: DEFAULT_RAIL_SECTIONS_STATE,
+			reset: {
+				foldsBySession: {s2: {collapsed: ["goal"], expanded: []}},
+				startsOpen: {},
+				hidden: [],
+				order: [],
+			},
 			resetPristine: true,
+			otherSessionPristine: false,
 		});
 	});
 
-	it("counts a session whose folds all returned to their defaults as pristine", () => {
+	it("counts folds and defaults that all match upstream's defaults as pristine", () => {
 		toggleRailSection("s1", "progress");
 		toggleRailSection("s1", "progress");
+		const state = readRailSectionsState();
 
-		expect(isRailSectionsPristine(readRailSectionsState())).toBe(true);
+		expect({
+			state,
+			pristine: isRailSectionsPristine(state, "s1"),
+			changedDefault: isRailSectionsPristine({...state, startsOpen: {context: true}}, "s2"),
+		}).toStrictEqual({
+			state: {
+				foldsBySession: {s1: {collapsed: [], expanded: ["progress"]}},
+				startsOpen: {progress: true},
+				hidden: [],
+				order: [],
+			},
+			pristine: true,
+			changedDefault: false,
+		});
 	});
 });
 

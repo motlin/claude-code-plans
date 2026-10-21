@@ -57,7 +57,7 @@ const HEAD_CLASS =
 	"group/railhead flex min-h-6.5 w-full min-w-0 cursor-pointer items-center gap-1 rounded-r5 px-1 text-left text-[12px]/[15px] font-medium text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100";
 
 /** Upstream's header menu: a Show checkbox per hideable section, then Reset to defaults. */
-function RailHeaderMenu({sections}: {sections: RailSectionsState}) {
+function RailHeaderMenu({sessionId, sections}: {sessionId: string; sections: RailSectionsState}) {
 	return (
 		<MenuContent density="compact" className="w-[152px]">
 			<MenuLabel>Show</MenuLabel>
@@ -73,7 +73,12 @@ function RailHeaderMenu({sections}: {sections: RailSectionsState}) {
 				</MenuCheckboxItem>
 			))}
 			<MenuSeparator />
-			<MenuItem disabled={isRailSectionsPristine(sections)} onSelect={resetRailSections}>
+			<MenuItem
+				disabled={isRailSectionsPristine(sections, sessionId)}
+				onSelect={() => {
+					resetRailSections(sessionId);
+				}}
+			>
 				Reset to defaults
 			</MenuItem>
 		</MenuContent>
@@ -92,11 +97,13 @@ function GripDots() {
 }
 
 function RailSection({
+	sessionId,
 	card,
 	open,
 	sections,
 	onToggle,
 }: {
+	sessionId: string;
 	card: RailCard;
 	open: boolean;
 	sections: RailSectionsState;
@@ -156,7 +163,7 @@ function RailSection({
 					</div>
 				)}
 			</section>
-			<RailHeaderMenu sections={sections} />
+			<RailHeaderMenu sessionId={sessionId} sections={sections} />
 		</ContextMenu>
 	);
 }
@@ -198,6 +205,7 @@ export function SessionRail({sessionId, cards}: {sessionId: string; cards: reado
 							return (
 								<RailSection
 									key={card.id}
+									sessionId={sessionId}
 									card={card}
 									open={open}
 									sections={sections}

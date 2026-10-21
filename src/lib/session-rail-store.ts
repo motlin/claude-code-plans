@@ -66,10 +66,20 @@ export type RailSectionsState = z.infer<typeof RailSectionsStateSchema>;
 
 export const DEFAULT_RAIL_SECTIONS_STATE: RailSectionsState = {
 	foldsBySession: {},
-	startsOpen: {environment: true, context: true},
+	startsOpen: {},
 	hidden: [],
 	order: [],
 };
+
+/** Upstream's `ri`: the cards that start collapsed until a hand toggle changes their default. */
+const CLOSED_BY_DEFAULT: ReadonlySet<RailSectionId> = new Set(["connectors", "context", "usage"]);
+
+/** Upstream's `ci`: folds are kept for this many sessions, newest last. */
+const MAX_FOLDED_SESSIONS = 100;
+
+function defaultOpen(id: RailSectionId): boolean {
+	return !CLOSED_BY_DEFAULT.has(id);
+}
 
 /** A tiny localStorage-backed store: corrupt, foreign or unreadable storage yields the fallback. */
 function createStore<T>(key: string, parse: (value: unknown) => T | null, fallback: T, wrap: (state: T) => unknown) {
@@ -147,7 +157,7 @@ export const readRailSectionsState = sectionsStore.read;
 export const useRailSectionsState = sectionsStore.useValue;
 
 function startsOpen(state: RailSectionsState, id: RailSectionId): boolean {
-	return state.startsOpen[id] ?? false;
+	return state.startsOpen[id] ?? defaultOpen(id);
 }
 
 export function isRailSectionOpen(state: RailSectionsState, sessionId: string, id: RailSectionId): boolean {
@@ -157,32 +167,50 @@ export function isRailSectionOpen(state: RailSectionsState, sessionId: string, i
 	return startsOpen(state, id);
 }
 
-/** Folds `ids` to `open` in one session; a card back at its default leaves both lists. */
+type RailFolds = RailSectionsState["foldsBySession"][string];
+
+/** Upstream's `fi`: the session moves to the newest slot, empty folds leave, and only the newest 100 sessions stay. */
+function withSessionFolds(
+	foldsBySession: RailSectionsState["foldsBySession"],
+	sessionId: string,
+	folds: RailFolds | undefined,
+): RailSectionsState["foldsBySession"] {
+	const {[sessionId]: _replaced, ...rest} = foldsBySession;
+	if (folds === undefined || (folds.collapsed.length === 0 && folds.expanded.length === 0)) return rest;
+	const entries = Object.entries({...rest, [sessionId]: folds});
+	return Object.fromEntries(entries.slice(Math.max(0, entries.length - MAX_FOLDED_SESSIONS)));
+}
+
+/** Upstream's `pi`: each of `ids` is recorded as explicitly open or collapsed in one session. */
 function withOpen(
 	state: RailSectionsState,
 	sessionId: string,
 	ids: readonly RailSectionId[],
 	open: boolean,
-): RailSectionsState {
+): RailSectionsState["foldsBySession"] {
 	const folds = state.foldsBySession[sessionId] ?? {collapsed: [], expanded: []};
 	const touched = new Set(ids);
 	const collapsed = folds.collapsed.filter((id) => !touched.has(id));
 	const expanded = folds.expanded.filter((id) => !touched.has(id));
-	for (const id of ids) {
-		if (open === startsOpen(state, id)) continue;
-		(open ? expanded : collapsed).push(id);
-	}
-	return {...state, foldsBySession: {...state.foldsBySession, [sessionId]: {collapsed, expanded}}};
+	(open ? expanded : collapsed).push(...ids);
+	return withSessionFolds(state.foldsBySession, sessionId, {collapsed, expanded});
 }
 
+/** Upstream's `setOpenByHand`: the session's fold, which also becomes the card's default for unfolded sessions. */
 export function toggleRailSection(sessionId: string, id: RailSectionId): void {
 	const state = readRailSectionsState();
-	sectionsStore.write(withOpen(state, sessionId, [id], !isRailSectionOpen(state, sessionId, id)));
+	const open = !isRailSectionOpen(state, sessionId, id);
+	sectionsStore.write({
+		...state,
+		foldsBySession: withOpen(state, sessionId, [id], open),
+		startsOpen: {...state.startsOpen, [id]: open},
+	});
 }
 
 /** Upstream's Alt-click on a card header: every card takes that card's new state. */
 export function setRailSectionsOpen(sessionId: string, ids: readonly RailSectionId[], open: boolean): void {
-	sectionsStore.write(withOpen(readRailSectionsState(), sessionId, ids, open));
+	const state = readRailSectionsState();
+	sectionsStore.write({...state, foldsBySession: withOpen(state, sessionId, ids, open)});
 }
 
 /** The sections upstream's header menu lists under Show; Environment always shows; the session rail never builds Settings (the composer chin has mode and effort), Usage (the composer ring popover and usage band have the limits) or Progress (the Plan pane has the checklist). */
@@ -202,20 +230,26 @@ export function toggleRailSectionHidden(id: RailSectionId): void {
 	sectionsStore.write({...state, hidden});
 }
 
-/** Whether Reset to defaults has anything to undo: hidden sections, a custom order or a changed fold. */
-export function isRailSectionsPristine(state: RailSectionsState): boolean {
+/** Upstream's `Di`: whether Reset to defaults has nothing to undo in this session. */
+export function isRailSectionsPristine(state: RailSectionsState, sessionId: string): boolean {
 	return (
 		state.hidden.length === 0 &&
-		state.order.length === 0 &&
-		Object.values(state.foldsBySession).every(
-			(folds) => folds.collapsed.length === 0 && folds.expanded.length === 0,
+		orderRailSections(RAIL_SECTION_IDS, state.order).every((id, index) => RAIL_SECTION_IDS[index] === id) &&
+		RAIL_SECTION_IDS.every(
+			(id) =>
+				state.startsOpen[id] !== !defaultOpen(id) &&
+				isRailSectionOpen(state, sessionId, id) === defaultOpen(id),
 		)
 	);
 }
 
-/** Upstream's Reset to defaults: order, hidden sections and every session's folds. */
-export function resetRailSections(): void {
-	sectionsStore.write(DEFAULT_RAIL_SECTIONS_STATE);
+/** Upstream's `resetSections`: hidden sections, order, defaults and this session's folds. */
+export function resetRailSections(sessionId: string): void {
+	const state = readRailSectionsState();
+	sectionsStore.write({
+		...DEFAULT_RAIL_SECTIONS_STATE,
+		foldsBySession: withSessionFolds(state.foldsBySession, sessionId, undefined),
+	});
 }
 
 /** `ids` in the saved order; cards it does not name keep their default order after the named ones. */

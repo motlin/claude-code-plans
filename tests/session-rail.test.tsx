@@ -321,34 +321,44 @@ function cardStates(): Array<[string, string | null, boolean]> {
 }
 
 describe("session rail cards", () => {
-	it("renders upstream's titled cards, Environment and Context open by default", () => {
+	it("renders upstream's titled cards, every one open by default except Context", () => {
 		render(<SessionRail sessionId="s1" cards={CARDS} />);
 
 		expect(cardStates()).toStrictEqual([
 			["Environment", "true", true],
-			["Context12%", "true", true],
-			["Progress1 of 3", "false", false],
+			["Context12%", "false", false],
+			["Progress1 of 3", "true", true],
 		]);
 	});
 
-	it("toggles one card from its header and remembers it for the session", () => {
-		render(<SessionRail sessionId="s1" cards={CARDS} />);
-		fireEvent.click(screen.getByRole("button", {name: /^Progress/}));
+	it("toggles one card from its header, and the toggle becomes the default for other sessions", () => {
+		const {unmount} = render(<SessionRail sessionId="s1" cards={CARDS} />);
+		fireEvent.click(screen.getByRole("button", {name: /^Context/}));
 		fireEvent.click(screen.getByRole("button", {name: /^Environment/}));
+		const s1 = {cards: cardStates(), folds: readRailSectionsState().foldsBySession};
+		unmount();
+		render(<SessionRail sessionId="s2" cards={CARDS} />);
 
-		expect({cards: cardStates(), folds: readRailSectionsState().foldsBySession}).toStrictEqual({
-			cards: [
+		expect({s1, s2: cardStates()}).toStrictEqual({
+			s1: {
+				cards: [
+					["Environment", "false", false],
+					["Context12%", "true", true],
+					["Progress1 of 3", "true", true],
+				],
+				folds: {s1: {collapsed: ["environment"], expanded: ["context"]}},
+			},
+			s2: [
 				["Environment", "false", false],
 				["Context12%", "true", true],
 				["Progress1 of 3", "true", true],
 			],
-			folds: {s1: {collapsed: ["environment"], expanded: ["progress"]}},
 		});
 	});
 
 	it("Alt-click sets every card to the clicked card's new state", () => {
 		render(<SessionRail sessionId="s1" cards={CARDS} />);
-		fireEvent.click(screen.getByRole("button", {name: /^Progress/}), {altKey: true});
+		fireEvent.click(screen.getByRole("button", {name: /^Context/}), {altKey: true});
 
 		expect(cardStates()).toStrictEqual([
 			["Environment", "true", true],

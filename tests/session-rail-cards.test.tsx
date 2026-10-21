@@ -14,6 +14,7 @@ import type {HerdrPaneIndexData} from "../src/lib/api/herdr";
 import {sessionDiffQueryOptions} from "../src/lib/api/session-diff";
 import {sessionDevServersQueryOptions, sessionOpenInQueryOptions} from "../src/lib/api/sessions";
 import type {ContextBreakdown} from "../src/lib/context-breakdown";
+import {DEFAULT_RAIL_SECTIONS_STATE, RAIL_SECTIONS_STORAGE_KEY} from "../src/lib/session-rail-store";
 import {installLocalStorage} from "./fake-storage";
 
 const SESSION_ID = "8f0c2c7e-1111-4222-8333-944445555666";
@@ -210,6 +211,14 @@ async function renderCards(inputs: SessionRailInputs, prepare: (client: QueryCli
 	});
 }
 
+/** Context starts collapsed upstream; a hand toggle in another session makes it start open. */
+function openContextByDefault() {
+	localStorage.setItem(
+		RAIL_SECTIONS_STORAGE_KEY,
+		JSON.stringify({state: {...DEFAULT_RAIL_SECTIONS_STATE, startsOpen: {context: true}}, version: 0}),
+	);
+}
+
 function cards(): Array<[string, string | null]> {
 	return [...document.querySelectorAll<HTMLElement>("[data-rail-section]")].map((section) => [
 		section.dataset["railSection"] ?? "",
@@ -366,6 +375,7 @@ describe("Environment card", () => {
 
 describe("cards from local data", () => {
 	it("shows only Environment and Context's placeholder when the session has nothing else", async () => {
+		openContextByDefault();
 		await renderCards(BASE);
 
 		expect({
@@ -433,7 +443,6 @@ describe("cards from local data", () => {
 			registerPane("background-tasks", {title: "Background tasks", render: () => <p>tasks pane body</p>}),
 		);
 		await renderCards(FULL, seed);
-		fireEvent.click(screen.getByRole("button", {name: /^Background tasks/}));
 		fireEvent.click(screen.getByRole("button", {name: /^Run the dev server/}));
 		await act(async () => {
 			await new Promise((resolve) => {
@@ -448,6 +457,8 @@ describe("cards from local data", () => {
 });
 
 describe("Context card", () => {
+	beforeEach(openContextByDefault);
+
 	const SIXTEEN_HOURS_AGO = () => new Date(Date.now() - 16 * 3_600_000).toISOString();
 
 	function contextInputs(updatedAt: string | null, working = false): SessionRailInputs {
@@ -512,6 +523,8 @@ describe("Context card", () => {
 });
 
 describe("Context card breakdown", () => {
+	beforeEach(openContextByDefault);
+
 	const MCP_TOOLS = Array.from({length: 13}, (_, i) => ({
 		name: `mcp__github__tool_${i}`,
 		serverName: "github",
