@@ -59,7 +59,7 @@ describe("DEFAULT_SESSION_LIST_PREFS", () => {
 });
 
 describe("buildGroups state mode", () => {
-	it("orders Needs input, Working, Ready for review, Completed, as upstream does", () => {
+	it("orders Needs input, Ready for review, Working, Completed, as upstream does", () => {
 		const rows = [
 			row("done-1", {bucket: "done", lastActivityAt: NOW - 3 * HOUR}),
 			row("review-1", {bucket: "review"}),
@@ -69,8 +69,8 @@ describe("buildGroups state mode", () => {
 
 		expect(summarize(buildGroups(rows, prefs(), NOW)).map((group) => group.label)).toStrictEqual([
 			"Needs input",
-			"Working",
 			"Ready for review",
+			"Working",
 			"Completed",
 		]);
 	});

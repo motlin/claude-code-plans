@@ -105,8 +105,8 @@ const GROUP_ROW_CAP = 20;
 const DAY_MS = 24 * 60 * 60 * 1000;
 /** Date mode gives each of the last few days its own "Sep 26" group; anything earlier is Older. */
 const DATED_DAY_COUNT = 7;
-/** Upstream claude.ai/code group order: Needs input, Working, Ready for review, Completed. */
-const STATE_ORDER: readonly SessionBucket[] = ["blocked", "working", "review", "done"];
+/** Upstream claude.ai/code group order (`zM`): Needs input, Ready for review, Working, Completed. */
+const STATE_ORDER: readonly SessionBucket[] = ["blocked", "review", "working", "done"];
 const ACTIVITY_WINDOW_DAYS = {
 	"1d": 1,
 	"3d": 3,
