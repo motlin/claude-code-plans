@@ -179,8 +179,8 @@
 	--text-code--line-height: var(--upstream-leading-code);
 	--text-footnote: var(--upstream-text-footnote);
 	--text-footnote--line-height: var(--upstream-leading-footnote);
-	--text-caption: 12px;
-	--text-caption--line-height: 17px;
+	--text-caption: var(--upstream-text-caption);
+	--text-caption--line-height: var(--upstream-leading-caption);
 	/* Side pane chrome: titles, the Files tree, tabs and breadcrumb (upstream 13px/19px). */
 	--text-pane: 13px;
 	--text-pane--line-height: 19px;
@@ -286,10 +286,12 @@
 	--upstream-text-body: 14px;
 	--upstream-leading-body: 20px;
 	--upstream-text-code: 13px;
-	--upstream-leading-code: 20px;
+	--upstream-leading-code: 19px;
 	/* Secondary label size (upstream --cds-font-size-footnote). */
 	--upstream-text-footnote: 13px;
-	--upstream-leading-footnote: 18px;
+	--upstream-leading-footnote: 17px;
+	--upstream-text-caption: 12px;
+	--upstream-leading-caption: 17px;
 
 	/* Upstream claude.ai/code — transcript rhythm. Gap between turns, and
      between the content blocks inside one turn (half the body line box). */
@@ -1002,6 +1004,20 @@
 	to {
 		rotate: 360deg;
 	}
+}
+
+/* Upstream claude.ai/code — compact type scale. :root carries the comfortable
+   scale (upstream .cds-root[data-density=comfortable], the web shell); the Claude
+   Code main column is marked compact, which is upstream's base .cds-root block. */
+[data-density="compact"] {
+	--upstream-text-body: 13px;
+	--upstream-leading-body: 19px;
+	--upstream-text-footnote: 12px;
+	--upstream-leading-footnote: 15px;
+	--upstream-text-code: 12px;
+	--upstream-leading-code: 17px;
+	--upstream-text-caption: 11px;
+	--upstream-leading-caption: 17px;
 }
 
 /* Settings ▸ Claude Code ▸ Transcript text size. The settings provider sets the

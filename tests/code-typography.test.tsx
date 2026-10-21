@@ -37,7 +37,7 @@ function customProperty(styles: string, name: string): string {
 afterEach(cleanup);
 
 describe("code typography", () => {
-	it("pins the upstream code font size and line height tokens", () => {
+	it("pins the upstream comfortable code font size and line height tokens (compact lives in density-tokens.test.ts)", () => {
 		const styles = readFileSync("src/styles/globals.css", "utf8");
 
 		expect({
@@ -45,7 +45,7 @@ describe("code typography", () => {
 			lineHeight: customProperty(styles, "--upstream-leading-code"),
 		}).toStrictEqual({
 			fontSize: "13px",
-			lineHeight: "20px",
+			lineHeight: "19px",
 		});
 	});
 
