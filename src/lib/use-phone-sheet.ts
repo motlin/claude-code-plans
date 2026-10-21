@@ -32,6 +32,20 @@ export function usePhoneSheet(): boolean {
 	return useMediaQuery(PHONE_SHEET_QUERY);
 }
 
+/**
+ * Upstream's density/split-send gate (shared-frame `DN`): exactly `(pointer: coarse)`.
+ * Unlike `TOUCH_QUERY` in touch-reveal.ts, `(hover: none)` alone does not count.
+ */
+export const COARSE_POINTER_QUERY = "(pointer: coarse)";
+
+/**
+ * True while the primary pointer is coarse. Mirrors upstream cds root `si`'s
+ * `useSyncExternalStore(zE, $H, u4)`: live on pointer changes, false on the server.
+ */
+export function useCoarsePointer(): boolean {
+	return useMediaQuery(COARSE_POINTER_QUERY);
+}
+
 /** True below 768px, where the sidebar renders collapsed with hover peek (upstream `isNarrowViewport`). */
 export function useNarrowViewport(): boolean {
 	return useMediaQuery(NARROW_VIEWPORT_QUERY);
