@@ -3,9 +3,6 @@ import {Link} from "@tanstack/react-router";
 import {
 	AppWindow,
 	Bot,
-	Circle,
-	CircleCheck,
-	CircleDot,
 	Cpu,
 	FileDiff,
 	Gauge,
@@ -37,7 +34,6 @@ import type {PrStatus} from "../../lib/pr-status";
 import {formatCount} from "../../lib/pluralize";
 import {sessionEnvironment, terminalHostLabel} from "../../lib/session-environment";
 import {claudeAiSessionUrl} from "../../lib/session-open-in";
-import type {PlanTodo} from "../../lib/session-plan-model";
 import {usePaneHost} from "../panes/pane-host-context";
 import {useToast} from "../toast-context";
 import {UsageMeter} from "../usage-limit-row";
@@ -56,8 +52,6 @@ export interface SessionRailInputs {
 	/** The session's CLI process is running: a bridged session's Remote Control is connected. */
 	live: boolean;
 	usage: ComposerUsage | null;
-	/** The session's checklist, as the Plan pane shows it. */
-	todos: readonly PlanTodo[];
 	artifacts: readonly SessionArtifact[];
 	backgroundTasks: BackgroundTaskGroups;
 	pr: SessionDetailData["pr"] | null;
@@ -228,38 +222,6 @@ function connectorsCard(servers: readonly McpServerSummary[]): RailCard | null {
 					Manage connectors
 				</Link>
 			</>
-		),
-	};
-}
-
-const TODO_ICONS = {completed: CircleCheck, in_progress: CircleDot} as const;
-
-function progressCard(todos: readonly PlanTodo[]): RailCard | null {
-	if (todos.length === 0) return null;
-	const done = todos.filter((todo) => todo.status === "completed").length;
-	return {
-		id: "progress",
-		summary: `${done} of ${todos.length}`,
-		body: (
-			<Rows>
-				{todos.map((todo, index) => (
-					<RailRow
-						// Todos carry no id; the checklist is replaced wholesale on each TodoWrite.
-						// oxlint-disable-next-line react/no-array-index-key
-						key={index}
-						icon={
-							<Icon
-								icon={
-									todo.status === "completed" || todo.status === "in_progress"
-										? TODO_ICONS[todo.status]
-										: Circle
-								}
-							/>
-						}
-						label={todo.status === "in_progress" ? (todo.activeForm ?? todo.content) : todo.content}
-					/>
-				))}
-			</Rows>
 		),
 	};
 }
@@ -454,7 +416,6 @@ export function SessionRailCards({inputs}: {inputs: SessionRailInputs}) {
 		{id: "environment", body: <EnvironmentBody inputs={inputs} />} satisfies RailCard,
 		contextCard(inputs.usage),
 		connectorsCard(sessionConnectors(mcpServers ?? [], inputs.cwd)),
-		progressCard(inputs.todos),
 		outputsCard(inputs.artifacts),
 		changesCard(inputs, diff ?? null),
 		serversCard(devServers ?? []),

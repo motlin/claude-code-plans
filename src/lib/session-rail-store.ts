@@ -185,7 +185,7 @@ export function setRailSectionsOpen(sessionId: string, ids: readonly RailSection
 	sectionsStore.write(withOpen(readRailSectionsState(), sessionId, ids, open));
 }
 
-/** The sections upstream's header menu lists under Show; Environment and Progress always show; the session rail never builds Settings (the composer chin has mode and effort) or Usage (the composer ring popover and usage band have the limits). */
+/** The sections upstream's header menu lists under Show; Environment always shows; the session rail never builds Settings (the composer chin has mode and effort), Usage (the composer ring popover and usage band have the limits) or Progress (the Plan pane has the checklist). */
 export const HIDEABLE_RAIL_SECTIONS = [
 	"goal",
 	"context",

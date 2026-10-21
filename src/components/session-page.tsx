@@ -760,7 +760,6 @@ function SessionView({
 						herdrPane: herdr.panes.find((pane) => pane.sessionId === sessionId) ?? null,
 						live: sessionProcessLive({hookActive: isActive, summaryState: sessionSummaryState}),
 						usage: composerChin.usage,
-						todos: planModel.todos,
 						artifacts: sessionArtifacts,
 						backgroundTasks,
 						pr: data.pr ?? null,

@@ -55,7 +55,6 @@ const BASE: SessionRailInputs = {
 	herdrPane: null,
 	live: true,
 	usage: null,
-	todos: [],
 	artifacts: [],
 	backgroundTasks: {running: [], finished: []},
 	pr: null,
@@ -72,11 +71,6 @@ const FULL: SessionRailInputs = {
 		weekly: null,
 		updatedAt: null,
 	},
-	todos: [
-		{content: "Write the failing test", status: "completed"},
-		{content: "Make it pass", status: "in_progress"},
-		{content: "Refactor", status: "pending"},
-	],
 	artifacts: [
 		{
 			url: "https://claude.ai/artifact/abc",
@@ -390,7 +384,6 @@ describe("cards from local data", () => {
 			["environment", null],
 			["context", "19%"],
 			["connectors", "1 to reconnect"],
-			["progress", "1 of 3"],
 			["outputs", null],
 			["pullRequests", "1 pull request"],
 			["servers", null],
@@ -400,11 +393,11 @@ describe("cards from local data", () => {
 
 	it("lists each card's rows once expanded", async () => {
 		await renderCards(FULL, seed);
-		fireEvent.click(screen.getByRole("button", {name: /^Progress/}), {altKey: true});
+		fireEvent.click(screen.getByRole("button", {name: /^Connectors/}), {altKey: true});
 
 		expect({
 			connectors: rows("Connectors"),
-			progress: rows("Progress"),
+			progress: screen.queryByRole("region", {name: /^Progress/}),
 			outputs: rows("Outputs"),
 			changes: rows("Changes"),
 			servers: rows("Servers"),
@@ -416,11 +409,7 @@ describe("cards from local data", () => {
 				["github", null],
 				["linear", "Reconnect"],
 			],
-			progress: [
-				["Write the failing test", null],
-				["Make it pass", null],
-				["Refactor", null],
-			],
+			progress: null,
 			outputs: [["Rail report", null]],
 			changes: [
 				["#42 Sync fork with upstream", "Open"],
