@@ -254,7 +254,7 @@ function trimDecimal(value: number): string {
 }
 
 /** `190200` → `190.2k`, `1000000` → `1M`, as upstream prints token counts. */
-function formatTokenCount(count: number): string {
+export function formatTokenCount(count: number): string {
 	if (count >= 1_000_000) return `${trimDecimal(count / 1_000_000)}M`;
 	if (count >= 1_000) return `${trimDecimal(count / 1_000)}k`;
 	return String(count);

@@ -29,13 +29,14 @@ import {
 import type {BackgroundTask, BackgroundTaskGroups} from "../../lib/background-tasks";
 import {writeClipboardText} from "../../lib/clipboard";
 import {toConnectorSlug} from "../../lib/customize/mcp-tool-permissions";
-import type {ContextBreakdown} from "../../lib/context-breakdown";
+import {buildContextLegend, type ContextBreakdown} from "../../lib/context-breakdown";
 import {formatContextSummary, formatUpdatedAgo, type ComposerUsage} from "../../lib/composer-state";
 import type {PrStatus} from "../../lib/pr-status";
 import {formatCount} from "../../lib/pluralize";
 import {sessionEnvironment, terminalHostLabel} from "../../lib/session-environment";
 import {claudeAiSessionUrl} from "../../lib/session-open-in";
 import {usePaneHost} from "../panes/pane-host-context";
+import {ContextBreakdownBody} from "./context-breakdown";
 import {useToast} from "../toast-context";
 import {RAIL_ROW_ACTION_CLASS, RailRow, RailRowContent} from "./rail-row";
 import {SessionRail, type RailCard} from "./session-rail";
@@ -166,8 +167,31 @@ function EnvironmentBody({inputs}: {inputs: SessionRailInputs}) {
 	);
 }
 
+function ContextUpdated({updatedAt, working}: {updatedAt: string; working: boolean}) {
+	return (
+		<div data-rail-context-updated="" className="mt-1 px-1 pb-1 text-[12px]/[15px] text-secondary">
+			Last updated <time dateTime={updatedAt}>{formatUpdatedAgo(updatedAt, Date.now())}</time>.{" "}
+			{working ? "Refreshes when this turn ends." : "Send a message to refresh."}
+		</div>
+	);
+}
+
 /** Upstream's rail Context card: "N% used" over the token summary, a 4px meter, and when the usage was last updated. */
-function contextCard(usage: ComposerUsage | null, working: boolean): RailCard {
+function contextCard(inputs: SessionRailInputs): RailCard {
+	const {usage, working, breakdown} = inputs;
+	if (breakdown !== null) {
+		const liveTokens = usage?.contextTokens ?? null;
+		return {
+			id: "context",
+			summary: `${Math.min(100, Math.round(buildContextLegend(breakdown, liveTokens).usedPct))}%`,
+			body: (
+				<div className="flex flex-col">
+					<ContextBreakdownBody breakdown={breakdown} liveTokens={liveTokens} homeRoot={inputs.homeRoot} />
+					{usage?.updatedAt != null && <ContextUpdated updatedAt={usage.updatedAt} working={working} />}
+				</div>
+			),
+		};
+	}
 	if (usage?.contextTokens == null || usage.contextWindowSize === null) {
 		return {
 			id: "context",
@@ -207,13 +231,7 @@ function contextCard(usage: ComposerUsage | null, working: boolean): RailCard {
 						<div className="h-full bg-accent-100 transition-[width]" style={{width: `${percent}%`}} />
 					</div>
 				</div>
-				{usage.updatedAt !== null && (
-					<div data-rail-context-updated="" className="mt-1 px-1 pb-1 text-[12px]/[15px] text-secondary">
-						Last updated{" "}
-						<time dateTime={usage.updatedAt}>{formatUpdatedAgo(usage.updatedAt, Date.now())}</time>.{" "}
-						{working ? "Refreshes when this turn ends." : "Send a message to refresh."}
-					</div>
-				)}
+				{usage.updatedAt !== null && <ContextUpdated updatedAt={usage.updatedAt} working={working} />}
 			</div>
 		),
 	};
@@ -450,7 +468,7 @@ export function SessionRailCards({inputs}: {inputs: SessionRailInputs}) {
 	}).data?.stats;
 	const cards = [
 		{id: "environment", body: <EnvironmentBody inputs={inputs} />} satisfies RailCard,
-		contextCard(inputs.usage, inputs.working),
+		contextCard(inputs),
 		connectorsCard(sessionConnectors(mcpServers ?? [], inputs.cwd)),
 		outputsCard(inputs.artifacts),
 		changesCard(inputs, diff ?? null),

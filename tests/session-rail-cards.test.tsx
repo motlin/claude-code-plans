@@ -13,6 +13,7 @@ import {customizeMcpServersQueryOptions} from "../src/lib/api/customize";
 import type {HerdrPaneIndexData} from "../src/lib/api/herdr";
 import {sessionDiffQueryOptions} from "../src/lib/api/session-diff";
 import {sessionDevServersQueryOptions, sessionOpenInQueryOptions} from "../src/lib/api/sessions";
+import type {ContextBreakdown} from "../src/lib/context-breakdown";
 import {installLocalStorage} from "./fake-storage";
 
 const SESSION_ID = "8f0c2c7e-1111-4222-8333-944445555666";
@@ -507,5 +508,235 @@ describe("Context card", () => {
 		expect(contextBody().querySelector("[data-rail-context-updated]")?.textContent).toBe(
 			"Last updated 16 hours ago. Refreshes when this turn ends.",
 		);
+	});
+});
+
+describe("Context card breakdown", () => {
+	const MCP_TOOLS = Array.from({length: 13}, (_, i) => ({
+		name: `mcp__github__tool_${i}`,
+		serverName: "github",
+		tokens: 100 + i,
+	}));
+
+	const BREAKDOWN: ContextBreakdown = {
+		categories: [
+			{name: "System prompt", tokens: 3_100, kind: "used"},
+			{name: "System tools", tokens: 14_500, kind: "used"},
+			{name: "MCP server instructions", tokens: 1_500, kind: "used"},
+			{name: "MCP tools (deferred)", tokens: 94_200, kind: "deferred"},
+			{name: "System tools (deferred)", tokens: 26_700, kind: "deferred"},
+			{name: "Custom agents", tokens: 1_200, kind: "used"},
+			{name: "Memory files", tokens: 6_300, kind: "used"},
+			{name: "Skills", tokens: 9_900, kind: "used"},
+			{name: "Messages", tokens: 143_500, kind: "used"},
+			{name: "Autocompact buffer", tokens: 33_000, kind: "buffer"},
+			{name: "Free space", tokens: 787_000, kind: "free"},
+		],
+		totalTokens: 180_000,
+		rawMaxTokens: 1_000_000,
+		percentage: 18,
+		mcpTools: MCP_TOOLS,
+		memoryFiles: [
+			{path: "/Users/alice/.claude/CLAUDE.md", type: "User", tokens: 1_200},
+			{
+				path: "/Users/alice/.claude/projects/-Users-alice-projects-avalonlogs/memory/MEMORY.md",
+				type: "AutoMem",
+				tokens: 900,
+			},
+		],
+		agents: [{agentType: "Explore", source: "built-in", tokens: 340}],
+		fetchedAt: "2026-10-20T13:50:04.000Z",
+		source: "context-command",
+	};
+
+	const INPUTS: SessionRailInputs = {
+		...BASE,
+		usage: {
+			contextTokens: 180_000,
+			contextWindowSize: 1_000_000,
+			contextPercent: 18,
+			fiveHour: null,
+			weekly: null,
+			updatedAt: null,
+		},
+		breakdown: BREAKDOWN,
+	};
+
+	function body(): HTMLElement {
+		const found = screen.getByRole("region", {name: /^Context/}).querySelector<HTMLElement>("[data-rail-body]");
+		if (!found) throw new Error("no Context body");
+		return found;
+	}
+
+	function legendRows(): string[][] {
+		return [...body().querySelectorAll("[data-rail-context-row]")].map((row) =>
+			[...row.children].map((cell) => cell.textContent),
+		);
+	}
+
+	function toggle(label: string): HTMLElement {
+		return within(body()).getByRole("button", {name: new RegExp(`^${label}\\d+$`)});
+	}
+
+	it("headlines the breakdown's used tokens over a stacked meter", async () => {
+		await renderCards(INPUTS);
+
+		const meter = within(body()).getByRole("img", {name: /^Context window/});
+		expect({
+			headline: body().querySelector("[data-rail-context-summary]")?.parentElement?.textContent,
+			label: meter.getAttribute("aria-label"),
+			tabIndex: meter.tabIndex,
+			className: meter.className,
+			height: meter.style.height,
+			track: meter.style.backgroundColor,
+			segments: [...meter.children].map((segment) => (segment as HTMLElement).style.backgroundColor),
+		}).toStrictEqual({
+			headline: "18% used180k / 1M",
+			label: "Context window: Messages: 143.5k, 14%; System tools: 14.5k, 1.5%; Skills: 9.9k, 0.99%; Memory files: 6.3k, 0.63%; Other: 5.8k, 0.58%; Autocompact buffer: 33k, 3.3%",
+			tabIndex: 0,
+			className:
+				"relative w-full overflow-hidden rounded-full outline-none focus-visible:outline-hidden focus-visible:shadow-focus shrink-0",
+			height: "4px",
+			track: "var(--chart-reference-tint)",
+			segments: [
+				"var(--chart-categorical-1)",
+				"var(--chart-categorical-2)",
+				"var(--chart-categorical-3)",
+				"var(--chart-categorical-4)",
+				"var(--chart-reference)",
+				"var(--chart-muted)",
+			],
+		});
+	});
+
+	it("lists used rows, buffer and free space, then deferred rows, in upstream's legend order", async () => {
+		await renderCards(INPUTS);
+
+		expect(legendRows()).toStrictEqual([
+			["", "Messages", "143.5k", "14.4%"],
+			["", "System tools", "14.5k", "1.5%"],
+			["", "Skills", "9.9k", "1.0%", "Manage skills"],
+			["", "Memory files", "6.3k", "0.6%", "Edit memory files"],
+			["", "System prompt", "3.1k", "0.3%"],
+			["", "MCP server instructions", "1.5k", "0.2%"],
+			["", "Custom agents", "1.2k", "0.1%", "View custom agents"],
+			["", "Autocompact buffer", "33k", "3.3%"],
+			["", "Free space", "787k", "78.7%"],
+			["", "MCP tools (deferred)", "94.2k", "—"],
+			["", "System tools (deferred)", "26.7k", "—"],
+		]);
+	});
+
+	it("draws each row's swatch in its meter series color, folded rows in the reference color", async () => {
+		await renderCards(INPUTS);
+
+		expect(
+			[...body().querySelectorAll("[data-rail-context-row]")].map(
+				(row) => row.querySelector<HTMLElement>("[data-rail-context-swatch]")?.style.background,
+			),
+		).toStrictEqual([
+			"var(--chart-categorical-1)",
+			"var(--chart-categorical-2)",
+			"var(--chart-categorical-3)",
+			"var(--chart-categorical-4)",
+			"var(--chart-reference)",
+			"var(--chart-reference)",
+			"var(--chart-reference)",
+			"var(--chart-muted)",
+			"var(--chart-reference-tint)",
+			"var(--chart-muted)",
+			"var(--chart-muted)",
+		]);
+	});
+
+	it("mutes deferred rows' names and percents", async () => {
+		await renderCards(INPUTS);
+
+		const deferred = [...body().querySelectorAll("[data-rail-context-row]")].at(-1);
+		expect([...(deferred?.children ?? [])].map((cell) => cell.className)).toStrictEqual([
+			"flex w-3 shrink-0 items-center justify-center",
+			"min-w-0 flex-1 truncate text-ink-muted",
+			"shrink-0 tabular-nums text-ink-muted",
+			"w-11 shrink-0 text-end tabular-nums text-ink-muted",
+		]);
+	});
+
+	it("links the Skills row to the skills page", async () => {
+		await renderCards(INPUTS);
+
+		expect(
+			within(body())
+				.getByRole("link", {name: /^Skills/})
+				.getAttribute("href"),
+		).toBe("/customize/skills");
+	});
+
+	it("opens the MCP tools expander, scrolling a list of more than 12 rows", async () => {
+		await renderCards(INPUTS);
+
+		const mcp = toggle("MCP tools");
+		expect(mcp.getAttribute("aria-expanded")).toBe("false");
+		fireEvent.click(mcp);
+
+		const list = mcp.nextElementSibling?.firstElementChild;
+		expect({
+			expanded: mcp.getAttribute("aria-expanded"),
+			count: mcp.textContent,
+			list: list?.className,
+			first: list?.firstElementChild?.textContent,
+		}).toStrictEqual({
+			expanded: "true",
+			count: "MCP tools13",
+			list: "flex flex-col max-h-60 overflow-y-auto overscroll-contain",
+			first: "github · tool_0100",
+		});
+	});
+
+	it("reveals and focuses the Custom agents expander from its action row", async () => {
+		await renderCards(INPUTS);
+
+		fireEvent.click(within(body()).getByRole("button", {name: /^Custom agents.*View custom agents/}));
+
+		const agents = toggle("Custom agents");
+		expect({
+			expanded: agents.getAttribute("aria-expanded"),
+			focused: document.activeElement === agents,
+		}).toStrictEqual({expanded: "true", focused: true});
+	});
+
+	it("links auto-memory files from the Memory files expander", async () => {
+		await renderCards(INPUTS);
+
+		fireEvent.click(within(body()).getByRole("button", {name: /^Memory files.*Edit memory files/}));
+
+		const memory = toggle("Memory files");
+		const list = memory.nextElementSibling?.firstElementChild;
+		expect({
+			focused: document.activeElement === memory,
+			rows: [...(list?.children ?? [])].map((row) => [
+				row.textContent,
+				row.querySelector("a")?.getAttribute("href") ?? null,
+			]),
+		}).toStrictEqual({
+			focused: true,
+			rows: [
+				["/Users/alice/.claude/CLAUDE.md1.2k", null],
+				[
+					"/Users/alice/.claude/projects/-Users-alice-projects-avalonlogs/memory/MEMORY.md900",
+					"/memory/-Users-alice-projects-avalonlogs/MEMORY",
+				],
+			],
+		});
+	});
+
+	it("ignores a held Enter's auto-repeat on an expander toggle", async () => {
+		await renderCards(INPUTS);
+
+		const mcp = toggle("MCP tools");
+		const notPrevented = fireEvent.keyDown(mcp, {key: "Enter", repeat: true});
+		expect({notPrevented, expanded: mcp.getAttribute("aria-expanded")}).toStrictEqual({
+			notPrevented: false,
+			expanded: "false",
+		});
 	});
 });
