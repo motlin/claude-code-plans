@@ -49,9 +49,9 @@ const TRANSITIONS: BucketCase[] = [
 		expected: {bucket: "working", reason: "main-working"},
 	},
 	{
-		name: "4: working + main Stop, nothing running, unseen -> review",
+		name: "4: working + main Stop, nothing running, unseen -> done, as upstream keeps unread rows in Completed",
 		signals: {mainState: "idle", unseen: true},
-		expected: {bucket: "review", reason: "unseen"},
+		expected: {bucket: "done", reason: "unseen"},
 	},
 	{
 		name: "4: review after markSeen -> done",
@@ -73,7 +73,7 @@ const TRANSITIONS: BucketCase[] = [
 		expected: {bucket: "working", reason: "live-agents"},
 	},
 	{
-		name: "6: last SubagentStop with no live agents -> review",
+		name: "6: last SubagentStop with no live agents -> done",
 		signals: {
 			mainState: "idle",
 			unseen: true,
@@ -81,7 +81,7 @@ const TRANSITIONS: BucketCase[] = [
 			backgroundTasks: [{status: "completed"}, {status: "failed"}, {status: "killed"}],
 			lastSubagentActivityAt: NOW - 2 * MINUTE,
 		},
-		expected: {bucket: "review", reason: "unseen"},
+		expected: {bucket: "done", reason: "unseen"},
 	},
 	{
 		name: "7: recent subagent PreToolUse refreshes subagentActivity only",
@@ -144,6 +144,11 @@ const PRECEDENCE: BucketCase[] = [
 	{
 		name: "open pull request is review even when seen",
 		signals: {mainState: "idle", prState: "open"},
+		expected: {bucket: "review", reason: "pull-request"},
+	},
+	{
+		name: "unseen session with an open pull request is review",
+		signals: {mainState: "idle", prState: "open", unseen: true},
 		expected: {bucket: "review", reason: "pull-request"},
 	},
 	{

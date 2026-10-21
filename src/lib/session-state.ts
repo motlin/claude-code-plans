@@ -250,7 +250,8 @@ export function resolveSessionBucket(signals: SessionBucketSignals): SessionBuck
 	if (signals.prState === "open" || signals.prState === "draft") {
 		return {bucket: "review", reason: "pull-request"};
 	}
-	if (signals.unseen) return {bucket: "review", reason: "unseen"};
+	// Upstream `HV`: review means an open PR; an unread finished session stays in Completed.
+	if (signals.unseen) return {bucket: "done", reason: "unseen"};
 	return {bucket: "done", reason: "idle"};
 }
 
@@ -266,8 +267,8 @@ export interface SessionRowIconInput {
 
 /**
  * Upstream claude.ai/code `rowStatus`: live states win, then a merged/closed PR, then the
- * unread ready dot, then any PR glyph, else the idle ring. A review row the server did not flag
- * unseen (an open PR) stays ready when the PR glyph is hidden.
+ * unread ready dot, then any PR glyph, else the idle ring. A review row (an open PR) the server
+ * did not flag unseen stays ready when the PR glyph is hidden.
  */
 export function sessionRowIconKind({
 	bucket,

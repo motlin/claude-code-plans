@@ -198,9 +198,9 @@ describe("durable session viewed state", () => {
 
 			expect({initial, afterCompletion, afterDwell, afterMarkUnseen}).toStrictEqual({
 				initial: {unseen: false, bucket: "done"},
-				afterCompletion: {unseen: true, bucket: "review"},
+				afterCompletion: {unseen: true, bucket: "done"},
 				afterDwell: {unseen: false, bucket: "done"},
-				afterMarkUnseen: {unseen: true, bucket: "review"},
+				afterMarkUnseen: {unseen: true, bucket: "done"},
 			});
 		} finally {
 			db.close();
@@ -260,7 +260,7 @@ describe("durable session viewed state", () => {
 				unreviewed: {currentMessageIndex: 3, viewedAnywhere: false},
 				reviewed: {currentMessageIndex: 3, viewedAnywhere: true},
 				broadcasts: [
-					{type: DOMAIN_EVENTS.SESSION_UPDATED, unseen: true, bucket: "review"},
+					{type: DOMAIN_EVENTS.SESSION_UPDATED, unseen: true, bucket: "done"},
 					{type: DOMAIN_EVENTS.SESSION_UPDATED, unseen: false, bucket: "done"},
 				],
 			});

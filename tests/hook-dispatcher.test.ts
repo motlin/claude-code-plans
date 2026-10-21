@@ -422,7 +422,7 @@ describe("dispatchHookEvent", () => {
 		{
 			visible: false,
 			sessionId: "session-test-150",
-			expected: {unseen: true, bucket: "review", viewedAnywhere: false},
+			expected: {unseen: true, bucket: "done", viewedAnywhere: false},
 		},
 		{
 			visible: true,
