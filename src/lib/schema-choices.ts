@@ -35,6 +35,8 @@ import type {
 	AttachmentPayloadSchema,
 	ClaudeSettingsSchema,
 	ContentBlockSchema,
+	ContextUsageCategoryKindSchema,
+	ContextUsageOverLimitKindSchema,
 	GitBranchActionSchema,
 	GitCommitKindSchema,
 	GitPrActionSchema,
@@ -302,6 +304,20 @@ const thinkingDisplayChoices = {
 	updates: true,
 	omitted: true,
 } satisfies Record<z.infer<typeof ThinkingDisplaySchema>, true>;
+
+/** Not consumed yet — `/context` twin category kinds on `system/local_command` records. */
+const contextUsageCategoryKindChoices = {
+	used: true,
+	free: true,
+	buffer: true,
+	deferred: true,
+} satisfies Record<z.infer<typeof ContextUsageCategoryKindSchema>, true>;
+
+/** Not consumed yet — `/context` twin `over_limit.kind` on `system/local_command` records. */
+const contextUsageOverLimitKindChoices = {
+	hard_limit: true,
+	compaction_window: true,
+} satisfies Record<z.infer<typeof ContextUsageOverLimitKindSchema>, true>;
 
 /** `renderedRole` on attachment JSONL records. */
 const renderedRoleChoices = {
@@ -1221,6 +1237,8 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
 	"JsonlRecordSchema.<system>.compactMetadata.trigger": compactTriggerLabels,
 	"JsonlRecordSchema.<attachment>.renderedRole": renderedRoleChoices,
 	"JsonlRecordSchema.<assistant>.thinkingDisplay": thinkingDisplayChoices,
+	"JsonlRecordSchema.<system>.contextUsage.over_limit.kind": contextUsageOverLimitKindChoices,
+	"JsonlRecordSchema.<system>.contextUsage.categories[].kind": contextUsageCategoryKindChoices,
 	"ClaudeSettingsSchema.hooks{}[].hooks[]": claudeHookVariants,
 	"ClaudeSettingsSchema.hooks{}[].hooks[].<command>.shell": claudeHookShellLabels,
 	"ClaudeSettingsSchema.skillOverrides{}": skillOverrideLabels,

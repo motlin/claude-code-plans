@@ -1305,6 +1305,52 @@ describe("JsonlRecordSchema observed 2026-09 transcript fields", () => {
 		expect(records.map((record) => JsonlRecordSchema.parse(record))).toStrictEqual(records);
 	});
 
+	describe("/context structured twin on system/local_command", () => {
+		const contextRecord = {
+			type: "system",
+			...baseFields,
+			subtype: "local_command",
+			content: "<local-command-stdout>## Context Usage\n\n**Model:** claude-opus-5-5</local-command-stdout>",
+			commandRun: {command: "context", args: ""},
+			contextUsage: {
+				model: "claude-opus-5-5",
+				total_tokens: 180_200,
+				raw_max_tokens: 1_000_000,
+				percentage: 18,
+				over_limit: {tokens_over: 0, kind: "compaction_window"},
+				categories: [
+					{name: "System prompt", tokens: 3_100, kind: "used"},
+					{name: "MCP tools", tokens: 41_000, kind: "deferred"},
+					{name: "Messages", tokens: 143_500, kind: "used"},
+					{name: "Autocompact buffer", tokens: 33_000, kind: "buffer"},
+					{name: "Free space", tokens: 786_800, kind: "free"},
+				],
+				mcp_tools: [{name: "mcp__github__get_me", server_name: "github", tokens: 210}],
+				memory_files: [{path: "/Users/me/.claude/CLAUDE.md", type: "User", tokens: 1_200}],
+				agents: [{agent_type: "Explore", source: "built-in", tokens: 340}],
+				skills: [
+					{name: "commit", source: "plugin", plugin_name: "git", tokens: 90},
+					{name: "deploy", source: "projectSettings", tokens: 40},
+				],
+			},
+		};
+
+		it("parses a full twin", () => {
+			expect(JsonlRecordSchema.parse(contextRecord)).toStrictEqual(contextRecord);
+		});
+
+		it("rejects an unknown key inside a category", () => {
+			const bad = {
+				...contextRecord,
+				contextUsage: {
+					...contextRecord.contextUsage,
+					categories: [{name: "Messages", tokens: 1, kind: "used", color: "promptBorder"}],
+				},
+			};
+			expect(JsonlRecordSchema.safeParse(bad).success).toBe(false);
+		});
+	});
+
 	it("parses queue removals that record why the prompt left the queue", () => {
 		const record = {
 			type: "queue-operation",

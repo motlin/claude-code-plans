@@ -1415,6 +1415,41 @@ export const CompactMetadataSchema = z
 	})
 	.strict();
 
+export const ContextUsageCategoryKindSchema = z.enum(["used", "free", "buffer", "deferred"]);
+export const ContextUsageOverLimitKindSchema = z.enum(["hard_limit", "compaction_window"]);
+
+/** Snake_case twin of the CLI's context usage that a `/context` run persists on its `system/local_command` entry. */
+const ContextUsageTwinSchema = z
+	.object({
+		model: z.string(),
+		total_tokens: z.number().int(),
+		raw_max_tokens: z.number().int(),
+		percentage: z.number(),
+		over_limit: z
+			.object({tokens_over: z.number().int(), kind: ContextUsageOverLimitKindSchema})
+			.strict()
+			.optional(),
+		categories: z.array(
+			z.object({name: z.string(), tokens: z.number(), kind: ContextUsageCategoryKindSchema}).strict(),
+		),
+		mcp_tools: z.array(z.object({name: z.string(), server_name: z.string(), tokens: z.number()}).strict()),
+		memory_files: z.array(z.object({path: z.string(), type: z.string(), tokens: z.number()}).strict()),
+		agents: z.array(z.object({agent_type: z.string(), source: z.string(), tokens: z.number()}).strict()),
+		skills: z
+			.array(
+				z
+					.object({
+						name: z.string(),
+						source: z.string(),
+						plugin_name: z.string().optional(),
+						tokens: z.number(),
+					})
+					.strict(),
+			)
+			.optional(),
+	})
+	.strict();
+
 export const SystemRecordSchema = z
 	.object({
 		type: z.literal("system"),
@@ -1448,6 +1483,7 @@ export const SystemRecordSchema = z
 		maxRetries: z.number().optional(),
 		source: z.string().optional(),
 		commandRun: z.object({command: z.string(), args: z.string().optional()}).strict().optional(),
+		contextUsage: ContextUsageTwinSchema.optional(),
 		url: z.string().optional(),
 		taskId: z.string().optional(),
 		cron: z.string().optional(),
