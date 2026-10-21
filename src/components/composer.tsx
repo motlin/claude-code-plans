@@ -531,6 +531,9 @@ export function Composer({
 
 	const insertSlash = useCallback(() => {
 		const current = promptRef.current;
+		// Upstream prepends "/" and leaves the caret right after it.
+		pendingCaretRef.current = 1;
+		setCaret(1);
 		setPrompt(current.startsWith("/") ? current : `/${current}`);
 		textareaRef.current?.focus();
 	}, [setPrompt]);

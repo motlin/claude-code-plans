@@ -34,6 +34,7 @@ import {ConfirmDialog} from "./confirm-dialog";
 import {Menu, MenuContent, MenuItem, MenuTrigger} from "./ui/menu";
 import {Tooltip} from "./ui/tooltip";
 import {UsagePopoverLimitRow} from "./usage-limit-row";
+import {useRenameAfterMenuClose} from "./use-rename-after-menu-close";
 
 // Keeps the Customize API schemas and router hooks out of the composer's cold load.
 const loadConnectorsMenu = async () =>
@@ -147,18 +148,20 @@ export const ComposerAddMenu = memo(function ComposerAddMenu({
 	onAddFiles: () => void;
 }) {
 	const addFilesKeys = useShortcutKeys("add_files").keys;
+	// The closing menu would hand focus back to Add, so the "/" goes in once it has closed.
+	const slashAfterClose = useRenameAfterMenuClose(onInsertSlash);
 	return (
-		<Menu>
+		<Menu onOpenChangeComplete={slashAfterClose.onOpenChangeComplete}>
 			<Tooltip content="Add" side="top">
 				<MenuTrigger aria-label="Add" className={ADD_BUTTON_CLASS}>
 					<Plus className="size-[18px]" aria-hidden="true" />
 				</MenuTrigger>
 			</Tooltip>
-			<MenuContent side="top">
+			<MenuContent side="top" finalFocus={slashAfterClose.finalFocus}>
 				<MenuItem icon={<Paperclip />} onSelect={onAddFiles} shortcut={addFilesKeys}>
 					Add files or photos
 				</MenuItem>
-				<MenuItem icon={<SquareSlash />} onSelect={onInsertSlash}>
+				<MenuItem icon={<SquareSlash />} onSelect={slashAfterClose.requestRename}>
 					Slash commands
 				</MenuItem>
 				<Suspense fallback={null}>

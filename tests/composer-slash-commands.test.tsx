@@ -1,8 +1,11 @@
 // @vitest-environment jsdom
 
-import {cleanup, fireEvent, render, screen, within} from "@testing-library/react";
+import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
+import {cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {Composer} from "../src/components/composer";
+import {customizeMcpServersQueryOptions} from "../src/lib/api/customize";
+import type {ComposerState} from "../src/lib/composer-state";
 import type {SlashCommand} from "../src/lib/slash-commands";
 
 afterEach(() => {
@@ -166,6 +169,75 @@ describe("Composer slash commands", () => {
 			afterEscape: null,
 			sent: [["/mo", {}]],
 			reopened: [{name: "plan", highlighted: true}],
+		});
+	});
+
+	describe("Add > Slash commands", () => {
+		const CHIN: ComposerState = {
+			mode: {id: "default", label: "Manual"},
+			model: "Opus 5.5",
+			modelId: "claude-opus-5-5",
+			effort: {id: "high", label: "High"},
+			usage: null,
+		};
+
+		function setupWithChin() {
+			const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
+			queryClient.setQueryData(customizeMcpServersQueryOptions.queryKey, []);
+			render(
+				<QueryClientProvider client={queryClient}>
+					<Composer
+						variant="session"
+						draftKey="session-alice"
+						onSend={() => {}}
+						slashCommands={COMMANDS}
+						chin={CHIN}
+					/>
+				</QueryClientProvider>,
+			);
+			return screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
+		}
+
+		async function pickSlashCommands() {
+			fireEvent.click(screen.getByRole("button", {name: "Add"}));
+			const menu = await screen.findByRole("menu");
+			fireEvent.click(within(menu).getByRole("menuitem", {name: "Slash commands"}));
+			await waitFor(() => {
+				expect(screen.queryByRole("menuitem", {name: "Slash commands"})).toBeNull();
+			});
+		}
+
+		it("prepends / to existing text and leaves the caret right after it", async () => {
+			const textarea = setupWithChin();
+			fireEvent.change(textarea, {target: {value: "hello world"}});
+			textarea.setSelectionRange(11, 11);
+
+			await pickSlashCommands();
+
+			expect({
+				value: textarea.value,
+				selection: [textarea.selectionStart, textarea.selectionEnd],
+				focused: document.activeElement === textarea,
+			}).toStrictEqual({value: "/hello world", selection: [1, 1], focused: true});
+		});
+
+		it("inserts / into an empty prompt and opens the slash menu", async () => {
+			const textarea = setupWithChin();
+
+			await pickSlashCommands();
+
+			expect({
+				value: textarea.value,
+				selection: [textarea.selectionStart, textarea.selectionEnd],
+				rows: rows(),
+			}).toStrictEqual({
+				value: "/",
+				selection: [1, 1],
+				rows: [
+					{name: "model", highlighted: true},
+					{name: "plan", highlighted: false},
+				],
+			});
 		});
 	});
 });
