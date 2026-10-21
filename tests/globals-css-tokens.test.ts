@@ -66,3 +66,15 @@ describe("split-button colour tokens (upstream cds SplitDropdownButton)", () => 
 		});
 	});
 });
+
+describe("alpha-3 token (upstream --cds-alpha-3, neutral-900 at 20%)", () => {
+	it("defines the light and dark values", () => {
+		expect({
+			light: tokens(block(":root"), ["--upstream-alpha-3"]),
+			dark: tokens(block(".dark"), ["--upstream-alpha-3"]),
+		}).toStrictEqual({
+			light: {"--upstream-alpha-3": "rgb(11 11 11 / 0.2)"},
+			dark: {"--upstream-alpha-3": "rgb(255 255 255 / 0.2)"},
+		});
+	});
+});

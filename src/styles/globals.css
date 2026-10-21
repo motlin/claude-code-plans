@@ -212,7 +212,8 @@
 	--composer-shadow-focus: 0 4px 20px rgb(0 0 0 / 0.075), 0 0 0 1px rgb(11 11 11 / 0.2);
 	--upstream-alpha-1: rgb(11 11 11 / 0.05);
 	--upstream-alpha-2: rgb(11 11 11 / 0.08);
-	--upstream-alpha-3: rgb(11 11 11 / 0.12);
+	/* Upstream --cds-alpha-3: neutral-900 at 20% (measured outside the compact scope). */
+	--upstream-alpha-3: rgb(11 11 11 / 0.2);
 	/* Upstream --cds-alpha-4: neutral-900 at 35% (the usage ring track). */
 	--upstream-alpha-4: rgb(11 11 11 / 0.35);
 	/* Upstream --cds-fill-warning / --cds-fill-danger(-hover) (usage ring arc at ≥75% / ≥90%; danger split button). */
@@ -429,7 +430,7 @@
 	--composer-shadow-focus: 0 4px 20px rgb(0 0 0 / 0.3), 0 0 0 1px rgb(255 255 255 / 0.2);
 	--upstream-alpha-1: rgb(255 255 255 / 0.05);
 	--upstream-alpha-2: rgb(255 255 255 / 0.08);
-	--upstream-alpha-3: rgb(255 255 255 / 0.12);
+	--upstream-alpha-3: rgb(255 255 255 / 0.2);
 	--upstream-alpha-4: rgb(255 255 255 / 0.35);
 	--upstream-backdrop: rgb(0 0 0 / 0.5);
 	--upstream-fill-control: hsl(0 0% 100% / 0.1);
