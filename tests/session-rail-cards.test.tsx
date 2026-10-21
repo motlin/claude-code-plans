@@ -56,6 +56,7 @@ const BASE: SessionRailInputs = {
 	live: true,
 	working: false,
 	usage: null,
+	breakdown: null,
 	artifacts: [],
 	backgroundTasks: {running: [], finished: []},
 	pr: null,

@@ -29,6 +29,7 @@ import {
 import type {BackgroundTask, BackgroundTaskGroups} from "../../lib/background-tasks";
 import {writeClipboardText} from "../../lib/clipboard";
 import {toConnectorSlug} from "../../lib/customize/mcp-tool-permissions";
+import type {ContextBreakdown} from "../../lib/context-breakdown";
 import {formatContextSummary, formatUpdatedAgo, type ComposerUsage} from "../../lib/composer-state";
 import type {PrStatus} from "../../lib/pr-status";
 import {formatCount} from "../../lib/pluralize";
@@ -53,6 +54,8 @@ export interface SessionRailInputs {
 	/** A turn is running: the Context card's usage refreshes when it ends. */
 	working: boolean;
 	usage: ComposerUsage | null;
+	/** The newest `/context` run's per-category breakdown, null when none or stale. */
+	breakdown: ContextBreakdown | null;
 	artifacts: readonly SessionArtifact[];
 	backgroundTasks: BackgroundTaskGroups;
 	pr: SessionDetailData["pr"] | null;

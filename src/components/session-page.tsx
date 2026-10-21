@@ -6,6 +6,7 @@ import {useQuery, useQueryClient} from "@tanstack/react-query";
 import {lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ComponentProps} from "react";
 import {Minimize2} from "lucide-react";
 import {SessionTileFrame, type SessionTileScrollPosition} from "./session-tile-frame";
+import {latestBreakdown} from "../lib/context-breakdown";
 import {SessionRailSlot} from "./session-rail/session-rail-slot";
 import {useSessionRailDocked} from "./session-rail/use-session-rail-docked";
 import type {SessionRailInputs} from "./session-rail/session-rail-cards";
@@ -453,6 +454,7 @@ function SessionView({
 	const statusline = useStatusline(sessionId);
 	useRegisterSessionDetailsPane(statusline, data.messageCount);
 	const composerServerState = useComposerServerState(sessionId);
+	const contextBreakdown = useMemo(() => latestBreakdown(transcript.records), [transcript.records]);
 	const composerChin = useMemo(
 		() =>
 			resolveComposerState({
@@ -761,6 +763,7 @@ function SessionView({
 						live: sessionProcessLive({hookActive: isActive, summaryState: sessionSummaryState}),
 						working: workingMarkerState.status !== "idle",
 						usage: composerChin.usage,
+						breakdown: contextBreakdown,
 						artifacts: sessionArtifacts,
 						backgroundTasks,
 						pr: data.pr ?? null,

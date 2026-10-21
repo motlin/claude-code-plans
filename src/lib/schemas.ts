@@ -1419,7 +1419,7 @@ export const ContextUsageCategoryKindSchema = z.enum(["used", "free", "buffer", 
 export const ContextUsageOverLimitKindSchema = z.enum(["hard_limit", "compaction_window"]);
 
 /** Snake_case twin of the CLI's context usage that a `/context` run persists on its `system/local_command` entry. */
-const ContextUsageTwinSchema = z
+export const ContextUsageTwinSchema = z
 	.object({
 		model: z.string(),
 		total_tokens: z.number().int(),
@@ -1449,6 +1449,8 @@ const ContextUsageTwinSchema = z
 			.optional(),
 	})
 	.strict();
+
+export type ContextUsageTwin = z.infer<typeof ContextUsageTwinSchema>;
 
 export const SystemRecordSchema = z
 	.object({
