@@ -17,6 +17,7 @@ import {
 	SESSION_HOVER_CARD,
 	type HoverCardKind,
 } from "./session-hover-card-classes";
+import {useDensity} from "./ui/density";
 import {AwaitingBodySkeleton} from "./session-awaiting-skeleton";
 
 type PositionerProps = ComponentProps<typeof PreviewCard.Positioner>;
@@ -62,6 +63,7 @@ export function SessionHoverCard({
 	const kind: HoverCardKind = blocked ? "blocked" : "other";
 	const {delay, width} = SESSION_HOVER_CARD[kind];
 	const showsCard = blocked || summary !== null || aiTitle !== null;
+	const density = useDensity();
 	return (
 		<PreviewCard.Root>
 			<PreviewCard.Trigger render={render} data-hover-card-trigger="" delay={delay} closeDelay={CLOSE_DELAY_MS}>
@@ -73,6 +75,7 @@ export function SessionHoverCard({
 						side={side}
 						align={align}
 						collisionPadding={COLLISION_PADDING}
+						data-density={density}
 						className="z-[100]"
 					>
 						{blocked ? (

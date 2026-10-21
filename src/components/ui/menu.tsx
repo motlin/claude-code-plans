@@ -5,6 +5,7 @@ import {type ComponentProps, createContext, type KeyboardEvent, type ReactNode, 
 
 import {useIsMac} from "../../hooks/use-is-mac";
 import {toAriaKeyShortcuts} from "../../lib/shortcuts/format";
+import {type Density, DensityProvider, useDensity} from "./density";
 import {Shortcut} from "./shortcut";
 
 /*
@@ -18,8 +19,6 @@ import {Shortcut} from "./shortcut";
 type MenuKind = "Menu" | "ContextMenu";
 
 const MenuKindContext = createContext<MenuKind>("Menu");
-type MenuDensity = "compact" | "comfortable";
-const MenuDensityContext = createContext<MenuDensity>("compact");
 const DENSITY_CLASSES = {
 	compact: {
 		popup: "rounded-r7",
@@ -55,7 +54,7 @@ const POPUP_CLASS =
 const SCROLLER_CLASS = "min-h-0 overflow-y-auto";
 
 function useItemClass(twoLine = false): string {
-	const sizing = DENSITY_CLASSES[useContext(MenuDensityContext)];
+	const sizing = DENSITY_CLASSES[useDensity()];
 	return `flex w-full cursor-default ${twoLine ? sizing.twoLine : sizing.singleLine} gap-1 ${sizing.item} ${sizing.text} font-normal outline-none select-none [--shortcut-cap-ink:var(--menu-muted)] data-[disabled]:pointer-events-none data-[disabled]:opacity-50`;
 }
 
@@ -82,7 +81,7 @@ const SUBMENU_HOVER_DELAY_MS = 100;
 const ICON_SLOT_CLASS = "mr-1 flex size-5 shrink-0 items-center justify-center [&_svg]:shrink-0";
 
 function ItemIcon({icon}: {icon: ReactNode}) {
-	const glyph = DENSITY_CLASSES[useContext(MenuDensityContext)].icon;
+	const glyph = DENSITY_CLASSES[useDensity()].icon;
 	if (icon === undefined) return null;
 	return (
 		<span aria-hidden="true" className={`${ICON_SLOT_CLASS} ${glyph}`}>
@@ -161,8 +160,8 @@ type MenuSide = NonNullable<ComponentProps<typeof BaseMenu.Positioner>["side"]>;
 const INLINE_SIDES: ReadonlySet<MenuSide> = new Set(["left", "right", "inline-start", "inline-end"]);
 
 export interface MenuContentProps {
-	/** Navigation menus use larger rows; nested popups inherit their parent density. */
-	density?: MenuDensity;
+	/** Overrides the opener's density; nested popups inherit their parent's. */
+	density?: Density;
 	children: ReactNode;
 	side?: ComponentProps<typeof BaseMenu.Positioner>["side"];
 	align?: ComponentProps<typeof BaseMenu.Positioner>["align"];
@@ -194,15 +193,16 @@ export function MenuContent({
 			? resolvedCollisionAvoidance.fallbackAxisSide
 			: undefined;
 	const kind = useContext(MenuKindContext);
-	const inheritedDensity = useContext(MenuDensityContext);
+	const inheritedDensity = useDensity();
 	const resolvedDensity = density ?? inheritedDensity;
 	const sizing = DENSITY_CLASSES[resolvedDensity];
 	const popupClass = `${POPUP_CLASS} ${sizing.popup} p-1 ${sizing.text}`;
 	return (
-		<MenuDensityContext.Provider value={resolvedDensity}>
+		<DensityProvider density={resolvedDensity}>
 			<BaseMenu.Portal>
 				<BaseMenu.Positioner
 					className={POSITIONER_CLASS}
+					data-density={resolvedDensity}
 					side={side}
 					align={align}
 					sideOffset={sideOffset}
@@ -224,12 +224,12 @@ export function MenuContent({
 					</BaseMenu.Popup>
 				</BaseMenu.Positioner>
 			</BaseMenu.Portal>
-		</MenuDensityContext.Provider>
+		</DensityProvider>
 	);
 }
 
 function ItemTrailing({accelerator, shortcut}: {accelerator?: string; shortcut?: string}) {
-	const sizing = DENSITY_CLASSES[useContext(MenuDensityContext)];
+	const sizing = DENSITY_CLASSES[useDensity()];
 	const keys = shortcut ?? accelerator;
 	if (keys === undefined) return null;
 	return (
@@ -355,7 +355,7 @@ function RadioItemText({children, description}: {children: ReactNode; descriptio
 
 /** Upstream's digit row trailing: the check slot first, then the keycap, pinned to the first line. */
 function DigitTrailing({accelerator, hideAccelerator}: {accelerator: string; hideAccelerator: boolean}) {
-	const sizing = DENSITY_CLASSES[useContext(MenuDensityContext)];
+	const sizing = DENSITY_CLASSES[useDensity()];
 	return (
 		<span data-menu-item-trailing="" className={DIGIT_TRAILING_CLASS}>
 			<BaseMenu.RadioItemIndicator
@@ -495,7 +495,7 @@ export function MenuSubContent({
 }
 
 export function MenuSeparator() {
-	const sizing = DENSITY_CLASSES[useContext(MenuDensityContext)];
+	const sizing = DENSITY_CLASSES[useDensity()];
 	return <BaseMenu.Separator className={`${sizing.separator} my-1 h-px bg-border`} />;
 }
 

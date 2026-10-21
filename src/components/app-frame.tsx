@@ -1,6 +1,7 @@
 import {useCallback, useRef, useState, type ReactNode} from "react";
 import {topLeftClearanceStyle} from "../lib/top-left-clearance";
 import {useNarrowViewport, usePhoneSheet} from "../lib/use-phone-sheet";
+import {DensityProvider} from "./ui/density";
 import {Sidebar} from "./sidebar/index";
 import {PHONE_SHEET_TRANSITION_MS, PhoneSheet, PhoneSheetTrigger} from "./sidebar/phone-sheet";
 
@@ -56,7 +57,7 @@ export function AppFrame({
 				data-density="compact"
 				className={`relative flex-1 bg-page text-body text-primary break-words ${tileShell ? "flex min-h-0 min-w-0 flex-col overflow-hidden" : "overflow-y-auto"} ${className ?? ""}`}
 			>
-				{children}
+				<DensityProvider density="compact">{children}</DensityProvider>
 			</main>
 		</div>
 	);

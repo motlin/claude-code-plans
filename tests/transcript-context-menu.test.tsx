@@ -5,6 +5,7 @@ import type {ReactNode} from "react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {SessionChat} from "../src/components/session-chat";
+import {DensityScope} from "../src/components/ui/density";
 import {type TranscriptActions, TranscriptActionsContext} from "../src/components/transcript-actions-context";
 import {writeClipboardText} from "../src/lib/clipboard";
 import {type ComposerHandle, getContextChips, registerComposer, takeContextChips} from "../src/lib/context-attach";
@@ -91,7 +92,8 @@ function renderChat(wrapper?: (children: ReactNode) => ReactNode): HTMLElement {
 			transcriptMode="normal"
 		/>
 	);
-	return render(<>{wrapper ? wrapper(chat) : chat}</>).container;
+	// The transcript sits in the compact main column.
+	return render(<DensityScope density="compact">{wrapper ? wrapper(chat) : chat}</DensityScope>).container;
 }
 
 function openMenuOn(element: Element): HTMLElement {

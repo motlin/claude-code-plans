@@ -1,6 +1,8 @@
 import {useSyncExternalStore, type ReactNode} from "react";
 import {createPortal} from "react-dom";
 
+import {DensityScope, useDensity} from "./ui/density";
+
 function subscribeNever(): () => void {
 	return () => {};
 }
@@ -11,7 +13,9 @@ function subscribeNever(): () => void {
  * descendants, so anything fixed rendered inside it scrolls away with the
  * transcript instead of staying pinned to the viewport.
  *
- * Renders nothing during SSR and hydration, then portals on the client.
+ * Renders nothing during SSR and hydration, then portals on the client, inside
+ * a `display: contents` wrapper carrying the opener's density, as upstream's
+ * `data-cds-portal` copies `data-density`.
  */
 export function ViewportPortal({children}: {children: ReactNode}) {
 	const isClient = useSyncExternalStore(
@@ -19,6 +23,7 @@ export function ViewportPortal({children}: {children: ReactNode}) {
 		() => true,
 		() => false,
 	);
+	const density = useDensity();
 	if (!isClient) return null;
-	return createPortal(children, document.body);
+	return createPortal(<DensityScope density={density}>{children}</DensityScope>, document.body);
 }

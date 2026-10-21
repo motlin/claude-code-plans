@@ -12,6 +12,7 @@ import {
 import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {AppFrame} from "../src/components/app-frame";
+import {useDensity} from "../src/components/ui/density";
 import {useCommandPalette} from "../src/hooks/use-command-palette";
 import {SettingsProvider} from "../src/components/settings-provider";
 import {DEFAULTS} from "../src/components/settings-context";
@@ -70,6 +71,10 @@ function PaletteProbe() {
 	);
 }
 
+function DensityProbe() {
+	return <span data-testid="density-probe">{useDensity()}</span>;
+}
+
 function PersistedFrame() {
 	const {collapsed} = useSidebarState();
 	return (
@@ -96,7 +101,12 @@ async function renderFrame() {
 	const homeRoute = createRoute({
 		getParentRoute: () => rootRoute,
 		path: "/",
-		component: () => <p>Home page</p>,
+		component: () => (
+			<>
+				<p>Home page</p>
+				<DensityProbe />
+			</>
+		),
 	});
 	const otherRoute = createRoute({
 		getParentRoute: () => rootRoute,
@@ -169,6 +179,13 @@ describe("density scopes", () => {
 				.split(" ")
 				.filter((name) => ["text-body", "text-primary", "break-words", "select-none"].includes(name)),
 		}).toStrictEqual({frame: null, main: "compact", text: ["text-body", "text-primary", "break-words"]});
+	});
+
+	it("provides the compact density to <main>'s children, so their menus and portals open compact", async () => {
+		mockViewport(1440);
+		await renderFrame();
+
+		expect(screen.getByTestId("density-probe").textContent).toBe("compact");
 	});
 });
 

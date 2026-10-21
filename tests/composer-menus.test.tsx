@@ -5,6 +5,7 @@ import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing
 import type {useNavigate} from "@tanstack/react-router";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {Composer} from "../src/components/composer";
+import {DensityScope} from "../src/components/ui/density";
 import {customizeMcpServersQueryOptions, type McpServerSummary} from "../src/lib/api/customize";
 import {toConnectorSlug} from "../src/lib/customize/mcp-tool-permissions";
 import type {ComposerState} from "../src/lib/composer-state";
@@ -34,7 +35,12 @@ function renderComposer(
 	extra: {bypassPermissionsAllowed?: boolean; live?: LiveLaunchControls; chin?: ComposerState} = {},
 ) {
 	const onSend = vi.fn<OnSend>();
-	render(<Composer variant="session" draftKey="session-alice" onSend={onSend} chin={CHIN} {...extra} />);
+	// The composer sits in the compact main column.
+	render(
+		<DensityScope density="compact">
+			<Composer variant="session" draftKey="session-alice" onSend={onSend} chin={CHIN} {...extra} />
+		</DensityScope>,
+	);
 	return onSend;
 }
 

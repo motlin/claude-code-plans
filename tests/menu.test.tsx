@@ -20,6 +20,7 @@ import {
 	MenuSubTrigger,
 	MenuTrigger,
 } from "../src/components/ui/menu";
+import {DensityScope} from "../src/components/ui/density";
 
 afterEach(() => {
 	cleanup();
@@ -64,12 +65,14 @@ function RowMenuBody({onCopy, onDelete}: {onCopy: () => void; onDelete: () => vo
 
 function renderDropdown(handlers = {onCopy: vi.fn<() => void>(), onDelete: vi.fn<() => void>()}) {
 	render(
-		<Menu>
-			<MenuTrigger aria-label="More options">...</MenuTrigger>
-			<MenuContent>
-				<RowMenuBody {...handlers} />
-			</MenuContent>
-		</Menu>,
+		<DensityScope density="compact">
+			<Menu>
+				<MenuTrigger aria-label="More options">...</MenuTrigger>
+				<MenuContent>
+					<RowMenuBody {...handlers} />
+				</MenuContent>
+			</Menu>
+		</DensityScope>,
 	);
 	return handlers;
 }
@@ -319,7 +322,7 @@ describe("Menu", () => {
 		render(
 			<Menu defaultOpen>
 				<MenuTrigger aria-label="Mode">Mode</MenuTrigger>
-				<MenuContent>
+				<MenuContent density="compact">
 					<MenuRadioGroup value="auto">
 						<MenuRadioItem value="auto" accelerator="1">
 							Auto
