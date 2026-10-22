@@ -40,6 +40,8 @@ export function permissionDecisionLabel(permission: PermissionDecision): string 
 			return permission.decision === "accept" ? "Approved once" : "Rejected once";
 		case "user_permanent":
 			return permission.decision === "accept" ? "Approved always" : "Rejected always";
+		case "classifier":
+			return permission.decision === "accept" ? "Allowed by classifier" : "Blocked by classifier";
 		case "hook":
 		case "config": {
 			const agent = permission.source === "hook" ? "hook" : REASON_AGENTS[permission.reasonType ?? "other"];

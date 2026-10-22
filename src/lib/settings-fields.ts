@@ -1,3 +1,5 @@
+import {askUserQuestionTimeoutLabels} from "./schema-choices";
+
 export type FieldType = "boolean" | "string" | "number" | "enum" | "object";
 
 export interface FieldDefinition {
@@ -129,6 +131,14 @@ export const FIELD_DEFINITIONS: FieldDefinition[] = [
 			{value: "in-process", label: "In-process"},
 			{value: "detached", label: "Detached"},
 		],
+	},
+	{
+		key: "askUserQuestionTimeout",
+		label: "Question timeout",
+		description: "How long an AskUserQuestion prompt waits for an answer",
+		type: "enum",
+		section: "Advanced",
+		options: Object.entries(askUserQuestionTimeoutLabels).map(([value, label]) => ({value, label})),
 	},
 	{
 		key: "preferredNotifChannel",

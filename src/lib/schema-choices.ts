@@ -33,6 +33,7 @@ import type {
 	ApiRequestBlobContentBlockSchema,
 	ApiRequestBlobRoleSchema,
 	AttachmentPayloadSchema,
+	AskUserQuestionTimeoutSchema,
 	ClaudeSettingsSchema,
 	ContentBlockSchema,
 	ContextUsageCategoryKindSchema,
@@ -41,6 +42,8 @@ import type {
 	GitCommitKindSchema,
 	GitPrActionSchema,
 	JsonlRecordSchema,
+	ModelRefusalFallbackDirectionSchema,
+	ModelRefusalFallbackScopeSchema,
 	PermissionDecisionCircuitBreakerSchema,
 	PermissionDecisionClassifierCategorySchema,
 	PermissionDecisionDecisionSchema,
@@ -132,6 +135,7 @@ export const permissionDecisionDecisionLabels = {
 } satisfies Record<z.infer<typeof PermissionDecisionDecisionSchema>, string>;
 
 export const permissionDecisionSourceLabels = {
+	classifier: "Classifier",
 	config: "Configuration",
 	hook: "Hook",
 	user_abort: "User (aborted)",
@@ -139,6 +143,27 @@ export const permissionDecisionSourceLabels = {
 	user_reject: "User (rejected)",
 	user_temporary: "User (once)",
 } satisfies Record<z.infer<typeof PermissionDecisionSourceSchema>, string>;
+
+/** `model_refusal_fallback` system record `direction`; validated only, not rendered yet. */
+const modelRefusalFallbackDirectionLabels = {
+	retry: "Retried on the fallback model",
+	revert: "Reverted to the original model",
+	sticky: "Stayed on the fallback model",
+} satisfies Record<z.infer<typeof ModelRefusalFallbackDirectionSchema>, string>;
+
+/** `model_refusal_fallback` system record `scope`; validated only, not rendered yet. */
+const modelRefusalFallbackScopeLabels = {
+	session: "Whole session",
+	local: "This turn",
+} satisfies Record<z.infer<typeof ModelRefusalFallbackScopeSchema>, string>;
+
+/** Settings `askUserQuestionTimeout` options (src/lib/settings-fields.ts). */
+export const askUserQuestionTimeoutLabels = {
+	"60s": "60 seconds",
+	"5m": "5 minutes",
+	"10m": "10 minutes",
+	never: "Never",
+} satisfies Record<z.infer<typeof AskUserQuestionTimeoutSchema>, string>;
 
 export const permissionDecisionReasonTypeLabels = {
 	asyncAgent: "No approval prompt",
@@ -774,6 +799,7 @@ const attachmentVariants = {
 	skill_mention: true,
 	inlined_image_paths: true,
 	session_cron_carry: true,
+	token_usage: true,
 } satisfies Record<z.infer<typeof AttachmentPayloadSchema>["type"], true>;
 
 /** Consumed selectively (text extraction etc.) — no single exhaustive handler. */
@@ -792,6 +818,7 @@ const jsonlRecordVariants = {
 	assistant: true,
 	"custom-title": true,
 	"file-history-snapshot": true,
+	"file-history-delta": true,
 	"fork-context-ref": true,
 	attachment: true,
 	progress: true,
@@ -1410,6 +1437,9 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
 	"ClaudeSettingsSchema.hooks{}[].hooks[]": claudeHookVariants,
 	"ClaudeSettingsSchema.hooks{}[].hooks[].<command>.shell": claudeHookShellLabels,
 	"ClaudeSettingsSchema.skillOverrides{}": skillOverrideLabels,
+	"ClaudeSettingsSchema.askUserQuestionTimeout": askUserQuestionTimeoutLabels,
+	"JsonlRecordSchema.<system>.direction": modelRefusalFallbackDirectionLabels,
+	"JsonlRecordSchema.<system>.scope": modelRefusalFallbackScopeLabels,
 	ToolUseUnion: toolNames,
 	HookEventEnvelope: hookEventNames,
 	"HookEventEnvelope.<SessionStart>.source": sessionStartSourceLabels,

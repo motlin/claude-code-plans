@@ -19,6 +19,9 @@ import {collectJsonlFiles, partitionIssues, selectFilesForScan, type JsonlFile} 
  */
 
 const DEFAULT_FILE_LIMIT = 300;
+const FULL_SCAN = process.env["FULL_JSONL_SCAN"] === "1";
+// A full scan reads every transcript on disk, which takes well past two minutes on a large corpus.
+const SCAN_TIMEOUT_MS = FULL_SCAN ? 60 * 60_000 : 120_000;
 
 async function validateFile(file: JsonlFile): Promise<{
 	failures: string[];
@@ -67,53 +70,56 @@ async function validateFile(file: JsonlFile): Promise<{
 describe("JsonlRecordSchema against disk", () => {
 	const projectsDirectory = join(homedir(), ".claude", "projects");
 
-	it("validates the selected JSONL corpus with bounded memory", async () => {
-		const fullScan = process.env["FULL_JSONL_SCAN"] === "1";
-		const collected = await collectJsonlFiles(projectsDirectory);
-		const selection = selectFilesForScan(collected.files, fullScan, Date.now(), DEFAULT_FILE_LIMIT);
-		const failures: string[] = [];
-		let toolInputMismatches = 0;
-		let parsedLines = 0;
-		let skippedUnparseableLines = 0;
-		let skippedUnavailableFiles = 0;
+	it(
+		"validates the selected JSONL corpus with bounded memory",
+		async () => {
+			const collected = await collectJsonlFiles(projectsDirectory);
+			const selection = selectFilesForScan(collected.files, FULL_SCAN, Date.now(), DEFAULT_FILE_LIMIT);
+			const failures: string[] = [];
+			let toolInputMismatches = 0;
+			let parsedLines = 0;
+			let skippedUnparseableLines = 0;
+			let skippedUnavailableFiles = 0;
 
-		for (const file of selection.files) {
-			try {
-				const validation = await validateFile(file);
-				failures.push(...validation.failures);
-				toolInputMismatches += validation.toolInputMismatches;
-				parsedLines += validation.parsedLines;
-				skippedUnparseableLines += validation.skippedUnparseableLines;
-			} catch {
-				skippedUnavailableFiles++;
-			}
-		}
-
-		const summary = [
-			`Scanned ${selection.files.length - skippedUnavailableFiles} files and ${parsedLines} lines`,
-			`skipped ${selection.skippedForAge} stale files`,
-			`${selection.skippedForLimit} files over the cap`,
-			`${collected.skippedUnavailablePaths + skippedUnavailableFiles} unavailable paths`,
-			`${skippedUnparseableLines} unparseable lines`,
-			`and ${toolInputMismatches} malformed tool inputs`,
-			`mode=${fullScan ? "full" : "recent"}`,
-		].join("; ");
-		// The counts only matter when a full scan was asked for or something failed; a passing verify stays quiet.
-		if (fullScan || failures.length > 0) process.stderr.write(`${summary}\n`);
-
-		if (failures.length > 0) {
-			const uniquePatterns = new Map<string, string>();
-			for (const failure of failures) {
-				const issueLines = failure.split("\n").slice(1).join("\n");
-				if (!uniquePatterns.has(issueLines)) {
-					uniquePatterns.set(issueLines, failure);
+			for (const file of selection.files) {
+				try {
+					const validation = await validateFile(file);
+					failures.push(...validation.failures);
+					toolInputMismatches += validation.toolInputMismatches;
+					parsedLines += validation.parsedLines;
+					skippedUnparseableLines += validation.skippedUnparseableLines;
+				} catch {
+					skippedUnavailableFiles++;
 				}
 			}
 
-			const sample = [...uniquePatterns.values()].slice(0, 50);
-			throw new Error(
-				`${failures.length} lines failed validation (${uniquePatterns.size} unique patterns):\n\n${sample.join("\n\n")}`,
-			);
-		}
-	}, 120000);
+			const summary = [
+				`Scanned ${selection.files.length - skippedUnavailableFiles} files and ${parsedLines} lines`,
+				`skipped ${selection.skippedForAge} stale files`,
+				`${selection.skippedForLimit} files over the cap`,
+				`${collected.skippedUnavailablePaths + skippedUnavailableFiles} unavailable paths`,
+				`${skippedUnparseableLines} unparseable lines`,
+				`and ${toolInputMismatches} malformed tool inputs`,
+				`mode=${FULL_SCAN ? "full" : "recent"}`,
+			].join("; ");
+			// The counts only matter when a full scan was asked for or something failed; a passing verify stays quiet.
+			if (FULL_SCAN || failures.length > 0) process.stderr.write(`${summary}\n`);
+
+			if (failures.length > 0) {
+				const uniquePatterns = new Map<string, string>();
+				for (const failure of failures) {
+					const issueLines = failure.split("\n").slice(1).join("\n");
+					if (!uniquePatterns.has(issueLines)) {
+						uniquePatterns.set(issueLines, failure);
+					}
+				}
+
+				const sample = [...uniquePatterns.values()].slice(0, 50);
+				throw new Error(
+					`${failures.length} lines failed validation (${uniquePatterns.size} unique patterns):\n\n${sample.join("\n\n")}`,
+				);
+			}
+		},
+		SCAN_TIMEOUT_MS,
+	);
 });

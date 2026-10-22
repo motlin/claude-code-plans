@@ -119,6 +119,15 @@ describe("ClaudeSettingsSchema", () => {
 		expect(result.success).toBe(true);
 	});
 
+	it("parses askUserQuestionTimeout and rejects an unknown duration", () => {
+		expect({
+			known: ["60s", "5m", "10m", "never"].map(
+				(askUserQuestionTimeout) => ClaudeSettingsSchema.safeParse({askUserQuestionTimeout}).success,
+			),
+			unknown: ClaudeSettingsSchema.safeParse({askUserQuestionTimeout: "1h"}).success,
+		}).toStrictEqual({known: [true, true, true, true], unknown: false});
+	});
+
 	it("parses settings with env key/value pairs", () => {
 		const result = ClaudeSettingsSchema.safeParse({
 			env: {

@@ -2580,6 +2580,155 @@ describe("TaskFileSchema against disk", () => {
 	});
 });
 
+describe("JsonlRecordSchema observed on the work machine 2026-10-22", () => {
+	const rendered = [{content: "<system-reminder>\nToday's date is 2026-10-22.\n</system-reminder>"}];
+
+	function attachmentRecord(attachment: Record<string, unknown>) {
+		return {type: "attachment", ...baseFields, attachment, rendered};
+	}
+
+	it("parses an api-request whose auto_mode carries hard_deny rules", () => {
+		const fixture = jsonlRecordFixtures["api-request"];
+		const [safeguard] = fixture.params.safeguards;
+		const classifierContext = safeguard!.classifier_context;
+		const record = {
+			...fixture,
+			params: {
+				...fixture.params,
+				safeguards: [
+					{
+						...safeguard!,
+						classifier_context: {
+							...classifierContext,
+							auto_mode: {
+								...classifierContext.auto_mode,
+								hard_deny: ["$defaults", "Bash(git push --force:*)"],
+							},
+						},
+					},
+				],
+			},
+		};
+
+		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
+	});
+
+	it("parses summarized-turn and superseded uuids on user and assistant records", () => {
+		const records = [
+			{...jsonlRecordFixtures.user, summarizedTurnPromptUuids: ["prompt-alice-1", "prompt-alice-2"]},
+			{...jsonlRecordFixtures.assistant, supersedesUuids: ["message-alice-99"]},
+		];
+
+		expect(records.map((record) => JsonlRecordSchema.parse(record))).toStrictEqual(records);
+	});
+
+	it("parses model_refusal_fallback system records, with and without a request id", () => {
+		const records = [
+			{
+				type: "system",
+				...baseFields,
+				subtype: "model_refusal_fallback",
+				content: "",
+				level: "info",
+				originalModel: "claude-opus-5-5",
+				fallbackModel: "claude-sonnet-5-5",
+				trigger: "refusal",
+				direction: "retry",
+				scope: "session",
+				requestId: "req_011CgFaXu4vBJjAD4zM5mZ3W",
+				apiRefusalCategory: "cyber",
+				apiRefusalExplanation: "This request triggered restrictions on violative cyber content.",
+				refusedUserMessageUuid: "06ac5d00-1f7a-4e96-a16b-462c368c8aeb",
+				retractedMessageUuids: ["message-alice-101"],
+				isMeta: false,
+			},
+			{
+				type: "system",
+				...baseFields,
+				subtype: "model_refusal_fallback",
+				content: "",
+				level: "info",
+				fallbackModel: "claude-opus-5-5",
+				direction: "revert",
+				scope: "local",
+				requestId: null,
+				apiRefusalCategory: null,
+				apiRefusalExplanation: null,
+				refusedUserMessageUuid: null,
+				isMeta: false,
+			},
+			{
+				type: "system",
+				...baseFields,
+				subtype: "model_refusal_fallback",
+				content: "",
+				level: "info",
+				direction: "sticky",
+				isMeta: false,
+			},
+		];
+
+		expect(records.map((record) => JsonlRecordSchema.parse(record))).toStrictEqual(records);
+	});
+
+	it("rejects an unknown model_refusal_fallback direction", () => {
+		const record = {type: "system", ...baseFields, subtype: "model_refusal_fallback", direction: "sideways"};
+
+		expect(JsonlRecordSchema.safeParse(record).success).toBe(false);
+	});
+
+	it("parses api-request-blob clear_at and deferred_tools_delta loadedNames", () => {
+		const records = [
+			{
+				...jsonlRecordFixtures["api-request-blob"],
+				message: {...jsonlRecordFixtures["api-request-blob"].message, clear_at: "next_user_message"},
+			},
+			attachmentRecord({type: "deferred_tools_delta", loadedNames: ["mcp__docs__guide"]}),
+		];
+
+		expect(records.map((record) => JsonlRecordSchema.parse(record))).toStrictEqual(records);
+	});
+
+	it("parses classifier-sourced permission decisions", () => {
+		const record = {
+			type: "user",
+			...baseFields,
+			message: {role: "user", content: [{type: "tool_result", tool_use_id: "toolu_1", content: "ok"}]},
+			permissionDecision: {decision: "accept", source: "classifier", reasonType: "classifier"},
+		};
+
+		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
+	});
+
+	it("parses token_usage attachments and rejects fractional counts", () => {
+		const record = attachmentRecord({type: "token_usage", used: 120000, total: 1000000, remaining: 880000});
+
+		expect({
+			parsed: JsonlRecordSchema.parse(record),
+			fractional: JsonlRecordSchema.safeParse(
+				attachmentRecord({type: "token_usage", used: 1.5, total: 1000000, remaining: 880000}),
+			).success,
+		}).toStrictEqual({parsed: record, fractional: false});
+	});
+
+	it("parses file-history-delta records, including a backup of a file that did not exist yet", () => {
+		const records = [
+			jsonlRecordFixtures["file-history-delta"],
+			{
+				...jsonlRecordFixtures["file-history-delta"],
+				backup: {
+					backupFileName: null,
+					version: 1,
+					backupTime: "2000-01-01T00:00:00.000Z",
+					realParentDir: "/tmp/test/alice-project/src",
+				},
+			},
+		];
+
+		expect(records.map((record) => JsonlRecordSchema.parse(record))).toStrictEqual(records);
+	});
+});
+
 describe("SessionRegistryFileSchema", () => {
 	it("parses a registry file whose bridge session was cleared to null", () => {
 		const entry = {
@@ -2602,6 +2751,27 @@ describe("SessionRegistryFileSchema", () => {
 			updatedAt: 1790602944268,
 			statusUpdatedAt: 1790602944268,
 			bridgeSessionId: null,
+		};
+
+		expect(SessionRegistryFileSchema.parse(entry)).toStrictEqual(entry);
+	});
+
+	it("parses a registry file without pidDomain carrying a job id and former names", () => {
+		const entry = {
+			pid: 64836,
+			sessionId: "s2",
+			cwd: "/tmp/project",
+			startedAt: 1790602944268,
+			procStart: "Sat Oct 17 12:00:00 2026",
+			version: "2.1.310",
+			kind: "bg",
+			entrypoint: "cli",
+			jobId: "221f2efe",
+			name: "renamed-session",
+			formerNames: [{name: "first-name", until: 1790602999999}],
+			status: "busy",
+			updatedAt: 1790602944268,
+			statusUpdatedAt: 1790602944268,
 		};
 
 		expect(SessionRegistryFileSchema.parse(entry)).toStrictEqual(entry);

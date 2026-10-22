@@ -49,6 +49,19 @@ export const jsonlRecordFixtures = {
 			trackedFileBackups: {},
 		},
 	},
+	"file-history-delta": {
+		type: "file-history-delta",
+		messageId: "message-alice-100",
+		snapshotMessageId: "message-alice-100",
+		trackingPath: "/tmp/test/alice-project/src/example.ts",
+		timestamp: "2000-01-01T00:00:00.000Z",
+		backup: {
+			backupFileName: "backup-alice-100@v2",
+			version: 2,
+			backupTime: "2000-01-01T00:00:00.000Z",
+			realParentDir: "/tmp/test/alice-project/src",
+		},
+	},
 	"fork-context-ref": {
 		type: "fork-context-ref",
 		agentId: "agent-alice-100",

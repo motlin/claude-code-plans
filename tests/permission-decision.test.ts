@@ -71,6 +71,17 @@ describe("permissionDecisionLabel", () => {
 	});
 });
 
+describe("permissionDecisionLabel classifier source", () => {
+	it("names the classifier when it allowed or blocked the call", () => {
+		expect(
+			labels([
+				{decision: "accept", source: "classifier", reasonType: "classifier"},
+				{decision: "reject", source: "classifier"},
+			]),
+		).toStrictEqual(["Allowed by classifier", "Blocked by classifier"]);
+	});
+});
+
 describe("permissionDecisionTitle", () => {
 	it("spells out the raw decision, source and reason", () => {
 		expect([

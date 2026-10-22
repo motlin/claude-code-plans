@@ -282,6 +282,7 @@ export const TurnOriginSchema = z.enum(["human", "peer", "task_notification", "s
 
 export const PermissionDecisionDecisionSchema = z.enum(["accept", "reject"]);
 export const PermissionDecisionSourceSchema = z.enum([
+	"classifier",
 	"config",
 	"hook",
 	"user_abort",
@@ -558,6 +559,8 @@ export const UserRecordSchema = z
 		sandboxed: z.boolean().optional(),
 		// Safety-classifier stop notice: the id of the assistant message that was withheld.
 		refusedMessageId: z.string().optional(),
+		// Prompt uuids of the earlier turns this record summarizes.
+		summarizedTurnPromptUuids: z.array(z.string()).optional(),
 	})
 	.strict();
 
@@ -660,6 +663,8 @@ export const AssistantRecordSchema = z
 		thinkingDisplay: ThinkingDisplaySchema.optional(),
 		// Safety-classifier stop: the id of the withheld assistant message.
 		refusedMessageId: z.string().optional(),
+		// Uuids of the earlier assistant messages this one replaces.
+		supersedesUuids: z.array(z.string()).optional(),
 		thinkingDurationMs: z.number().optional(),
 		truncatedAfterOutput: z.boolean().optional(),
 		// Keyed by tool_use id: the working directory each tool call ran in.
@@ -695,6 +700,26 @@ export const FileHistorySnapshotSchema = z
 				messageId: z.string().optional(),
 				timestamp: z.string().optional(),
 				trackedFileBackups: z.record(z.string(), JsonValueSchema),
+			})
+			.strict(),
+	})
+	.strict();
+
+/** One tracked file's backup, written incrementally instead of a whole file-history-snapshot. */
+export const FileHistoryDeltaRecordSchema = z
+	.object({
+		type: z.literal("file-history-delta"),
+		messageId: z.string(),
+		snapshotMessageId: z.string(),
+		trackingPath: z.string(),
+		timestamp: z.string(),
+		backup: z
+			.object({
+				// Null when the file did not exist yet at backup time.
+				backupFileName: z.string().nullable(),
+				version: z.number().int(),
+				backupTime: z.string(),
+				realParentDir: z.string(),
 			})
 			.strict(),
 	})
@@ -852,6 +877,7 @@ const DeferredToolsDeltaAttachmentPayload = z
 		removedByBlock: z.array(z.string()).optional(),
 		surfacedDefinitions: z.array(SurfacedToolDefinitionSchema).optional(),
 		restoredNames: z.array(z.string()).optional(),
+		loadedNames: z.array(z.string()).optional(),
 		retractedTools: z.array(z.object({name: z.string(), cause: z.string().optional()}).strict()).optional(),
 		failedMcpServers: z
 			.array(
@@ -945,6 +971,16 @@ const TotalTokensReminderAttachmentPayload = z
 	.object({
 		type: z.literal("total_tokens_reminder"),
 		text: z.string(),
+	})
+	.strict();
+
+/** The context window's token budget: `used` of `total`, with `remaining` left. */
+const TokenUsageAttachmentPayload = z
+	.object({
+		type: z.literal("token_usage"),
+		used: z.number().int(),
+		total: z.number().int(),
+		remaining: z.number().int(),
 	})
 	.strict();
 
@@ -1445,6 +1481,7 @@ export const AttachmentPayloadSchema = z.discriminatedUnion("type", [
 	TaskStatusAttachmentPayload,
 	TodoReminderAttachmentPayload,
 	TotalTokensReminderAttachmentPayload,
+	TokenUsageAttachmentPayload,
 	EditedTextFileAttachmentPayload,
 	FileAttachmentPayload,
 	AlreadyReadFileAttachmentPayload,
@@ -1584,6 +1621,11 @@ export const ContextUsageTwinSchema = z
 
 export type ContextUsageTwin = z.infer<typeof ContextUsageTwinSchema>;
 
+/** `model_refusal_fallback`: whether the fallback retried the refused turn, reverted to the original model, or stuck. */
+export const ModelRefusalFallbackDirectionSchema = z.enum(["retry", "revert", "sticky"]);
+/** `model_refusal_fallback`: whether the model switch holds for the session or only the refused turn. */
+export const ModelRefusalFallbackScopeSchema = z.enum(["session", "local"]);
+
 export const SystemRecordSchema = z
 	.object({
 		type: z.literal("system"),
@@ -1628,11 +1670,18 @@ export const SystemRecordSchema = z
 		streakStartedAt: z.string().optional(),
 		foldedUuids: z.array(z.string()).optional(),
 		// `model_refusal_no_fallback`: the API refused the request and no fallback model ran.
+		// `model_refusal_fallback`: a refusal moved the session to `fallbackModel`; the refusal
+		// fields are null when the switch was a revert rather than a fresh refusal.
 		originalModel: z.string().optional(),
-		requestId: z.string().optional(),
-		apiRefusalCategory: z.string().optional(),
-		apiRefusalExplanation: z.string().optional(),
-		refusedUserMessageUuid: z.string().optional(),
+		requestId: z.string().nullable().optional(),
+		apiRefusalCategory: z.string().nullable().optional(),
+		apiRefusalExplanation: z.string().nullable().optional(),
+		refusedUserMessageUuid: z.string().nullable().optional(),
+		trigger: z.literal("refusal").optional(),
+		direction: ModelRefusalFallbackDirectionSchema.optional(),
+		scope: ModelRefusalFallbackScopeSchema.optional(),
+		fallbackModel: z.string().optional(),
+		retractedMessageUuids: z.array(z.string()).optional(),
 	})
 	.strict();
 
@@ -1916,6 +1965,7 @@ const ApiRequestBlobRecordSchema = z
 				role: ApiRequestBlobRoleSchema,
 				content: z.union([z.string(), z.array(ApiRequestBlobContentBlockSchema)]),
 				output_config: z.object({effort: z.string()}).strict().optional(),
+				clear_at: z.literal("next_user_message").optional(),
 			})
 			.strict(),
 	})
@@ -1961,7 +2011,7 @@ const DangerousToolUseClassifierContextSchema = z
 				// Permission-rule strings; "$defaults" stands in for the built-in list.
 				allow: z.array(z.string()),
 				soft_deny: z.array(z.string()),
-				hard_deny: z.array(z.never()),
+				hard_deny: z.array(z.string()),
 				environment: z.array(z.string()),
 			})
 			.strict(),
@@ -2134,6 +2184,7 @@ export const JsonlRecordSchema = z.discriminatedUnion("type", [
 	AssistantRecordSchema,
 	CustomTitleRecordSchema,
 	FileHistorySnapshotSchema,
+	FileHistoryDeltaRecordSchema,
 	ForkContextRefRecordSchema,
 	AttachmentRecordSchema,
 	ProgressRecordSchema,
@@ -2206,11 +2257,15 @@ export const SessionRegistryFileSchema = z
 		peerFeatures: z.array(z.string()).optional(),
 		kind: z.string(),
 		entrypoint: z.string(),
-		pidDomain: z.string(),
+		pidDomain: z.string().optional(),
+		/** Set when the session runs as a background job: that job's id. */
+		jobId: z.string().optional(),
 		messagingSocketPath: z.string().optional(),
 		name: z.string().optional(),
 		nameSource: z.string().optional(),
 		nameSince: z.number().optional(),
+		/** Earlier names, each with `until`, the epoch ms it was replaced. */
+		formerNames: z.array(z.object({name: z.string(), until: z.number()}).strict()).optional(),
 		status: SessionRegistryStatusSchema,
 		/** Why a `waiting` session waits, e.g. "input needed". */
 		waitingFor: z.string().optional(),
@@ -2338,6 +2393,9 @@ const WorktreeSettingsSchema = z
  */
 export const SkillOverrideValueSchema = z.enum(["on", "name-only", "user-invocable-only", "off"]);
 
+/** How long an AskUserQuestion prompt waits for an answer. */
+export const AskUserQuestionTimeoutSchema = z.enum(["60s", "5m", "10m", "never"]);
+
 export const ClaudeSettingsSchema = z
 	.object({
 		$schema: z.string().optional(),
@@ -2358,6 +2416,7 @@ export const ClaudeSettingsSchema = z
 		skipDangerousModePermissionPrompt: z.boolean().optional(),
 		skipWorkflowUsageWarning: z.boolean().optional(),
 		teammateMode: z.string().optional(),
+		askUserQuestionTimeout: AskUserQuestionTimeoutSchema.optional(),
 		preferredNotifChannel: z.string().optional(),
 		outputStyle: z.string().optional(),
 		spinnerTipsEnabled: z.boolean().optional(),

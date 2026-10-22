@@ -156,6 +156,18 @@ describe("JobStateFileSchema", () => {
 		).toStrictEqual([true, true, true]);
 	});
 
+	it("parses a job state file started in a worktree", () => {
+		const state = {
+			...DONE_STATE,
+			originCwd: "/Users/alice/projects/app",
+			worktreePath: "/Users/alice/projects/app-worktrees/expenses-treemap",
+			worktreeBranch: "expenses-treemap",
+			worktreeHookBased: false,
+		};
+
+		expect(JobStateFileSchema.parse(state)).toStrictEqual(state);
+	});
+
 	it("rejects unknown keys and unknown states", () => {
 		expect({
 			extraKey: JobStateFileSchema.safeParse({...DONE_STATE, surprise: 1}).success,

@@ -651,6 +651,14 @@ function AttachmentContent({
 					<Pre>{attachment.text}</Pre>
 				</Banner>
 			);
+		case "token_usage":
+			return (
+				<Banner
+					icon={<Hourglass className="h-3.5 w-3.5" />}
+					label={`Token usage: ${attachment.used.toLocaleString("en-US")} / ${attachment.total.toLocaleString("en-US")} (${attachment.remaining.toLocaleString("en-US")} left)`}
+					{...shared}
+				/>
+			);
 		case "task_status": {
 			const completed = attachment.status === "completed";
 			return (

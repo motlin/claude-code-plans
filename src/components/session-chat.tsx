@@ -3164,6 +3164,7 @@ const VERBOSE_ONLY_SUBTYPES = new Set([
 	"skill_listing",
 	"batching_reminder_sent",
 	"total_tokens_reminder",
+	"token_usage",
 	"queued_command",
 	"auto_mode",
 	"auto_mode_exit",
