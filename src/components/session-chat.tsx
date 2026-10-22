@@ -1817,49 +1817,34 @@ function scrollerViewport(scroller: Element): {top: number; height: number} {
 	return {top: rect.top, height: scroller.clientHeight || rect.height || window.innerHeight};
 }
 
-/** The prompt of a queued_command the user typed while a turn ran, or null for any other line. */
-function queuedHumanPromptOf(line: SessionLine): string | null {
-	if (line.type !== "attachment") return null;
-	try {
-		const parsed = asRecord(JSON.parse(line.attachmentJson));
-		const prompt = parsed?.["prompt"];
-		return parsed?.["type"] === "queued_command" &&
-			parsed["commandMode"] === "prompt" &&
-			asRecord(parsed["origin"])?.["kind"] === "human" &&
-			typeof prompt === "string"
-			? prompt
-			: null;
-	} catch {
-		return null;
-	}
-}
-
 /**
  * Upstream draws a prompt the user queued mid-turn exactly like a typed one, at
- * the point the turn took it in, so it ends the assistant turn there. A prompt
- * the CLI later also wrote as a user record keeps only that record.
+ * the point the turn took it in, so it ends the assistant turn there, stamped
+ * with the time it was typed. A prompt the CLI later also wrote as a user record
+ * keeps only that record.
  */
 function withQueuedPrompts(lines: SessionLine[]): SessionLine[] {
 	let result: SessionLine[] | null = null;
 	let laterPrompts: Map<string, number> | null = null;
 	for (const [index, line] of lines.entries()) {
-		const prompt = queuedHumanPromptOf(line);
-		if (prompt === null || line.type !== "attachment") continue;
+		if (line.type !== "attachment" || line.humanPrompt === undefined) continue;
+		const {content, timestamp = line.timestamp} = line.humanPrompt;
+		const prompt: MessageSessionLine = {
+			type: "user",
+			message: {role: "user", content},
+			lineIndex: line.lineIndex,
+			...(line.uuid === undefined ? {} : {uuid: line.uuid}),
+			...(timestamp === undefined ? {} : {timestamp}),
+			...(line.sessionId === undefined ? {} : {sessionId: line.sessionId}),
+		};
 		laterPrompts ??= new Map(
 			lines.flatMap((other, otherIndex) =>
 				other.type === "user" ? [[getUserContentText(other), otherIndex] as const] : [],
 			),
 		);
-		if ((laterPrompts.get(prompt) ?? -1) > index) continue;
+		if ((laterPrompts.get(getUserContentText(prompt)) ?? -1) > index) continue;
 		result ??= [...lines];
-		result[index] = {
-			type: "user",
-			message: {role: "user", content: prompt},
-			lineIndex: line.lineIndex,
-			...(line.uuid === undefined ? {} : {uuid: line.uuid}),
-			...(line.timestamp === undefined ? {} : {timestamp: line.timestamp}),
-			...(line.sessionId === undefined ? {} : {sessionId: line.sessionId}),
-		};
+		result[index] = prompt;
 	}
 	return result ?? lines;
 }

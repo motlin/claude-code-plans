@@ -318,6 +318,135 @@ describe("Queued human prompts", () => {
 	});
 });
 
+function assistantText(uuid: string, text: string) {
+	return {
+		type: "assistant",
+		uuid,
+		timestamp: "2026-09-30T08:02:00.000Z",
+		message: {role: "assistant", content: [{type: "text", text}]},
+	};
+}
+
+function absorbedRemove(content: string, ids: {commandUuid?: string; deliveryId?: string} = {}) {
+	return {
+		type: "queue-operation",
+		operation: "remove",
+		timestamp: "2026-09-30T08:01:02.000Z",
+		sessionId: "test-session",
+		content,
+		...(ids.commandUuid === undefined ? {} : {reason: "absorbed_mid_turn", ...ids}),
+	};
+}
+
+const ENQUEUED_AT = "2026-09-30T08:00:45.123Z";
+
+function observeAbsorbed(records: unknown[]) {
+	const container = renderRecords(records, "normal");
+	const bubble = container.querySelector(".user-message-bubble");
+	const order = ["A", "B"].map((text) =>
+		Array.from(container.querySelectorAll("p")).find((p) => p.textContent === text),
+	);
+	return {
+		bubbles: Array.from(container.querySelectorAll(".user-message-bubble"), (node) => node.textContent),
+		images: container.querySelectorAll("img").length,
+		splitsTurn:
+			bubble !== null &&
+			order.every((node) => node !== undefined) &&
+			(order[0]!.compareDocumentPosition(bubble) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0 &&
+			(bubble.compareDocumentPosition(order[1]!) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+		enqueueTime: Array.from(container.querySelectorAll("time"), (time) => time.dateTime).includes(ENQUEUED_AT),
+		sentMidTurn:
+			container.textContent.includes("Sent mid-turn") || container.textContent.includes("Queued command"),
+	};
+}
+
+describe("Absorbed human queued commands", () => {
+	it("draws the prompt as a user row between the two halves of the turn, at its enqueue time", () => {
+		const records = [
+			assistantText("a-A", "A"),
+			...bashCall("first"),
+			absorbedRemove("fix it", {commandUuid: "cmd-1", deliveryId: "dlv-1"}),
+			attachment("att-q", {
+				type: "queued_command",
+				prompt: "fix it",
+				commandMode: "prompt",
+				origin: {kind: "human"},
+				source_uuid: "cmd-1",
+				delivery_id: "dlv-1",
+				timestamp: ENQUEUED_AT,
+			}),
+			assistantText("a-B", "B"),
+		];
+		expect(observeAbsorbed(records)).toStrictEqual({
+			bubbles: ["fix it"],
+			images: 0,
+			splitsTurn: true,
+			enqueueTime: true,
+			sentMidTurn: false,
+		});
+	});
+
+	it("draws a legacy absorbed prompt with no origin or delivery id the same way", () => {
+		const records = [
+			assistantText("a-A", "A"),
+			...bashCall("first"),
+			absorbedRemove("fix it"),
+			attachment("att-q", {
+				type: "queued_command",
+				prompt: "fix it",
+				commandMode: "prompt",
+				timestamp: ENQUEUED_AT,
+			}),
+			assistantText("a-B", "B"),
+		];
+		expect(observeAbsorbed(records)).toStrictEqual({
+			bubbles: ["fix it"],
+			images: 0,
+			splitsTurn: true,
+			enqueueTime: true,
+			sentMidTurn: false,
+		});
+	});
+
+	it("draws a block-list prompt's text and one image per image block", () => {
+		const image = {type: "image", source: {type: "base64", media_type: "image/png", data: "iVBORw0KGgo="}};
+		const records = [
+			assistantText("a-A", "A"),
+			attachment("att-q", {
+				type: "queued_command",
+				prompt: [{type: "text", text: "[Image #8] look"}, image, image],
+				commandMode: "prompt",
+				origin: {kind: "human"},
+				imagePasteIds: [8, 9],
+				timestamp: ENQUEUED_AT,
+			}),
+			assistantText("a-B", "B"),
+		];
+		expect(observeAbsorbed(records)).toStrictEqual({
+			bubbles: ["[Image #8] look"],
+			images: 2,
+			splitsTurn: true,
+			enqueueTime: true,
+			sentMidTurn: false,
+		});
+	});
+
+	it("keeps a meta queued command out of the transcript", () => {
+		const records = [
+			assistantText("a-A", "A"),
+			attachment("att-q", {type: "queued_command", prompt: "tick", commandMode: "prompt", isMeta: true}),
+			assistantText("a-B", "B"),
+		];
+		expect(observeAbsorbed(records)).toStrictEqual({
+			bubbles: [],
+			images: 0,
+			splitsTurn: false,
+			enqueueTime: false,
+			sentMidTurn: false,
+		});
+	});
+});
+
 function agentMessageText(from: string): string {
 	return `Another Claude session sent a message:\n<agent-message from="${from}">\nDone with ${from}.\n</agent-message>`;
 }

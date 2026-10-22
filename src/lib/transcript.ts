@@ -16,6 +16,7 @@ import {isRecord} from "./narrow";
 import {UsageLimitSchema} from "./usage-limit-notice";
 import {normalizeArtifactUrl, parseArtifactOutput} from "./artifact-output";
 import {ArtifactToolResultSchema} from "./artifact-schemas";
+import {parseAgentMessage} from "./agent-message";
 import {
 	CompactMetadataSchema,
 	ContentBlockSchema,
@@ -173,6 +174,14 @@ const AttachmentLineSchema = z.object({
 	// a `queue-operation` removal's commandUuid matching the attachment's source_uuid,
 	// or its deliveryId matching the attachment's delivery_id.
 	absorbedMidTurn: z.literal(true).optional(),
+	// A queued_command holding a prompt a person typed while the turn ran: its
+	// content and the time it was enqueued, for drawing as an ordinary user row.
+	humanPrompt: z
+		.object({
+			content: z.union([z.string(), z.array(ContentBlockSchema)]),
+			timestamp: z.string().optional(),
+		})
+		.optional(),
 	// Descriptions of deferred tools a deferred_tools_delta surfaced only by a
 	// `sameAs` pointer, resolved from the earlier record that carried the definition.
 	sameAsDescriptions: z.record(z.string(), z.string()).optional(),
@@ -621,6 +630,41 @@ export function isHumanQueuedContent(content: string | undefined): boolean {
 	return !SYSTEM_QUEUED_PATTERNS.some((pattern) => pattern.test(content));
 }
 
+const QueuedPromptBlocksSchema = z.array(ContentBlockSchema);
+
+type QueuedCommandAttachment = Extract<
+	Extract<z.infer<typeof JsonlRecordSchema>, {type: "attachment"}>["attachment"],
+	{type: "queued_command"}
+>;
+
+/**
+ * The prompt of a queued_command a person typed while a turn ran: a prompt-mode,
+ * non-meta command from a human (or, from older CLIs, no) origin whose text is not
+ * a notification, agent message or CLI notice. Null for any other queued command.
+ */
+function humanQueuedPrompt(
+	attachment: QueuedCommandAttachment,
+): z.infer<typeof AttachmentLineSchema>["humanPrompt"] | null {
+	if (attachment.commandMode !== "prompt" || attachment.isMeta === true) return null;
+	const {origin, prompt} = attachment;
+	if (origin !== undefined && (typeof origin === "string" || origin["kind"] !== "human")) return null;
+	let content: string | z.infer<typeof QueuedPromptBlocksSchema>;
+	if (typeof prompt === "string") {
+		content = prompt;
+	} else {
+		const blocks = QueuedPromptBlocksSchema.safeParse(prompt);
+		if (!blocks.success) return null;
+		content = blocks.data;
+	}
+	const text =
+		typeof content === "string"
+			? content
+			: content.flatMap((block) => (block.type === "text" ? [block.text] : [])).join("\n");
+	// The harness frames agent messages with a lead-in line, so the envelope can sit past the start.
+	if (!isHumanQueuedContent(text) || parseAgentMessage(text) !== null) return null;
+	return attachment.timestamp === undefined ? {content} : {content, timestamp: attachment.timestamp};
+}
+
 /**
  * Replays one queue operation: an enqueue joins the back (a task notification
  * or a human prompt also draws a line), a dequeue takes the first entry of the highest priority
@@ -919,6 +963,8 @@ function processRecordBatch(
 				const keys = queuePairingKeys(record.attachment.source_uuid, record.attachment.delivery_id);
 				if (keys.some((key) => absorbedQueueKeys.has(key))) attachmentLine.absorbedMidTurn = true;
 				else for (const key of keys) queuedCommandLines.set(key, attachmentLine);
+				const humanPrompt = humanQueuedPrompt(record.attachment);
+				if (humanPrompt !== null) attachmentLine.humanPrompt = humanPrompt;
 			}
 			if (record.attachment.type === "deferred_tools_delta" && record.attachment.surfacedDefinitions) {
 				const descriptions = new Map<string, string | undefined>();
