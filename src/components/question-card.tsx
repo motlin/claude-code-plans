@@ -4,10 +4,10 @@ import {flushSync} from "react-dom";
 
 import type {QuestionAnswer} from "../lib/hook-events";
 import type {QuestionLike} from "../lib/ask-user-question";
-import {READ_ONLY_ANSWER_HINT} from "../lib/question-answer-route";
 import {clearQuestionCardState, readQuestionCardState, writeQuestionCardState} from "../lib/question-card-store";
 import {chooseOther, pickOption, type QuestionCardDraft, typeOther} from "../lib/question-card-draft";
 import {ApprovalActionButton} from "./approval-card";
+import {ReadOnlyAnswerHint} from "./terminal-writes-tip";
 import {Shortcut} from "./ui/shortcut";
 import {Tooltip} from "./ui/tooltip";
 import {UserInlineText} from "./user-plain-text";
@@ -369,11 +369,7 @@ export function QuestionCard({
 				</div>
 			</div>
 			{error !== null && <p className="px-3 pt-2 text-footnote text-danger-ink">{error}</p>}
-			{onSubmit === undefined && (
-				<p data-approval-read-only="" className="px-3 pt-2 text-footnote text-secondary">
-					{READ_ONLY_ANSWER_HINT}
-				</p>
-			)}
+			{onSubmit === undefined && <ReadOnlyAnswerHint className="px-3 pt-2 text-footnote text-secondary" />}
 			<div
 				className={`epitaxy-approval-actions flex items-center justify-end gap-2 px-3 pt-2 pb-3 ${STACK_ACTIONS}`}
 			>

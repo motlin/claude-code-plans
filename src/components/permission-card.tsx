@@ -5,6 +5,7 @@ import {dockKeyAllowed} from "../lib/dock-keys";
 import {permissionDecisionForKey, type PermissionDecision} from "../lib/permission-card";
 import {PERSISTENT_ALLOW_LABELS, type PersistentAllowKind} from "../lib/permission-suggestions";
 import {APPROVAL_CARD_TITLE, ApprovalActionButton, ApprovalCardShell} from "./approval-card";
+import {ReadOnlyAnswerHint} from "./terminal-writes-tip";
 import {Shortcut} from "./ui/shortcut";
 
 /**
@@ -84,7 +85,7 @@ export function PermissionCard({
 							{command}
 						</div>
 					)}
-					{!canAnswer && <p className="text-footnote text-secondary">Answer in the terminal</p>}
+					{!canAnswer && <ReadOnlyAnswerHint className="text-footnote text-secondary" />}
 					{error && <p className="text-footnote text-extended-pink">{error}</p>}
 				</>
 			}

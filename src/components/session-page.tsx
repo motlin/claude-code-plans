@@ -106,7 +106,7 @@ import {useSessionViewedState} from "../hooks/use-session-viewed-state";
 import {usePendingMessageJump} from "../hooks/use-pending-message-jump";
 import {useMainScrollRestoration, type MainScrollRestorationSnapshot} from "../hooks/use-main-scroll-restoration";
 import {findLastPendingToolUse, findPendingAskUserQuestion} from "../lib/approval-dock";
-import {applicationSettingsQueryOptions} from "../lib/api/application-settings";
+import {applicationSettingsQueryOptions, useSaveApplicationSettings} from "../lib/api/application-settings";
 import {
 	herdrPanesQueryOptions,
 	launchHerdrSession,
@@ -143,6 +143,7 @@ import {useIdlePrefetch} from "../hooks/use-idle-prefetch";
 import {getSessionPromptBehavior} from "./session-prompt-behavior";
 import {sessionAnswerRoute} from "../hooks/use-question-answer-route";
 import {useLiveHerdrPrompt} from "./use-live-herdr-prompt";
+import {TerminalWritesTipProvider} from "./terminal-writes-tip";
 
 /** The deferred pane renderers, warmed once the session page goes idle so their first show skips the loading row. */
 const SESSION_PANE_CHUNKS = [preloadFilesPane, preloadLinksPane, preloadTerminalPane, preloadBackgroundTasksPane];
@@ -679,11 +680,15 @@ function SessionView({
 					}),
 			},
 		);
-	const shellsEnabled =
-		useQuery({
-			...applicationSettingsQueryOptions,
-			select: (settings) => settings.shellPaneEnabled,
-		}).data ?? false;
+	const applicationSettings = useQuery(applicationSettingsQueryOptions).data;
+	const shellsEnabled = applicationSettings?.shellPaneEnabled ?? false;
+	const {mutateAsync: saveApplicationSettings} = useSaveApplicationSettings();
+	const enableTerminalWrites = useMemo(() => {
+		if (!promptBehavior.hasLivePane || herdr.writesEnabled || applicationSettings === undefined) return null;
+		return async () => {
+			await saveApplicationSettings({...applicationSettings, terminalWritesEnabled: true});
+		};
+	}, [promptBehavior.hasLivePane, herdr.writesEnabled, applicationSettings, saveApplicationSettings]);
 	useRegisterTerminalPane(sessionId, {
 		livePane: promptBehavior.hasLivePane,
 		interactive: promptBehavior.hasLivePane && herdr.writesEnabled,
@@ -737,348 +742,354 @@ function SessionView({
 	}
 
 	return (
-		<div
-			className="h-full min-h-0"
-			data-perf-session={sessionId}
-			data-perf-session-route={routeId === sessionId ? undefined : routeId}
-			style={transcriptWidthStyle(settings.transcriptWidth)}
-		>
-			<TileHost
-				sessionId={sessionId}
-				onExpandWithoutPane={toggleChromeHidden}
-				requestedPane={requestedPane}
-				onRequestedPaneHandled={onRequestedPaneHandled}
+		<TerminalWritesTipProvider enableWrites={enableTerminalWrites}>
+			<div
+				className="h-full min-h-0"
+				data-perf-session={sessionId}
+				data-perf-session-route={routeId === sessionId ? undefined : routeId}
+				style={transcriptWidthStyle(settings.transcriptWidth)}
 			>
-				<TerminalPaneShortcut available={promptBehavior.hasLivePane || shellsEnabled} />
-				<FilesPaneShortcut />
-				<ChangesPaneShortcut />
-				<RailTileFrame
-					railInputs={{
-						sessionId,
-						homeRoot: data.homeRoot,
-						cwd: sessionDirectory,
-						gitBranch: data.gitBranch,
-						model: composerChin.model,
-						herdrPane: herdr.panes.find((pane) => pane.sessionId === sessionId) ?? null,
-						live: sessionProcessLive({hookActive: isActive, summaryState: sessionSummaryState}),
-						working: workingMarkerState.status !== "idle",
-						usage: composerChin.usage,
-						breakdown: contextBreakdown,
-						artifacts: sessionArtifacts,
-						backgroundTasks,
-						pr: data.pr ?? null,
-						prStatus: data.prStatus ?? null,
-					}}
+				<TileHost
 					sessionId={sessionId}
-					anchorRef={sessionViewRef}
-					visitKey={initialScrollKey}
-					positionRef={tileScrollPosition}
-					restoredScrollY={restoredScrollPosition?.scrollY}
-					header={
-						<>
-							{/* Sticky header: titlebar + hook context */}
-							{!chromeHidden && (
-								<div data-transcript-sticky-header className={SESSION_STICKY_HEADER_CLASS}>
-									<SessionTitlebar
-										sessionId={sessionId}
-										data={data}
-										isActive={isActive}
-										local={{
-											resumeCommand: sessionCommands.resume,
-											forkCommand: sessionCommands.fork,
-											onGenerateSummary:
-												aiSummary === null && settings.showSummaryButton
-													? () => void handleGenerateSummary()
-													: undefined,
-											generatingSummary: generating,
-										}}
-										summary={aiSummary}
-										transcriptView={transcriptView}
-										paneToggles={
-											<SessionPaneControls
-												railAvailable
-												facts={{
-													artifactCount: sessionArtifacts.length,
-													hasPlan: hasSessionPlan(data.planFilename, planModel),
-													backgroundTasks: backgroundTasksFacts(
-														backgroundTasks,
-														subagents.length,
-													),
-													subagentCount: subagents.length,
-												}}
-												onExpandChat={() => {
-													setChromeHidden(true);
-												}}
-											/>
-										}
-									/>
-									<SessionAiTitleLine title={data.title} aiTitle={data.aiTitle} />
-
-									{hookContext && (
-										<SessionHookContext
-											context={hookContext}
-											verbose={transcriptMode === "verbose"}
-										/>
-									)}
-									<ChapterChips sessionId={sessionId} onJump={requestMessageJump} />
-								</div>
-							)}
-
-							{/* Floating restore button when chrome is hidden */}
-							{chromeHidden && (
-								<div className="sticky top-0 z-10 flex justify-end py-1">
-									<Tooltip
-										content="Show header and footer"
-										shortcut={chromeShortcut.keys}
-										side="bottom"
-									>
-										<button
-											type="button"
-											onClick={() => {
-												setChromeHidden(false);
-											}}
-											className="rounded-md bg-surface-0 border border-border px-2 py-1 text-xs text-t6 hover:text-primary hover:bg-fill-control transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm"
-											aria-keyshortcuts={chromeShortcut.ariaKeyShortcuts}
-										>
-											<Minimize2 className="h-3 w-3" />
-											Show chrome
-										</button>
-									</Tooltip>
-								</div>
-							)}
-						</>
-					}
-					footer={
-						<>
-							{/* Sticky footer: the composer dock, opaque to the viewport bottom with a fade over the transcript */}
-							<div data-session-footer className={SESSION_FOOTER_CLASS}>
-								<div className={!chromeHidden && sessionDirectory ? "pt-2" : ""}>
-									<SessionDock
-										anchorRef={scrollAnchorRef}
-										needsInput={
-											pendingQuestion !== null ||
-											pendingPermission !== null ||
-											dockedPlan !== null ||
-											(sessionSummaryState === "waiting" &&
-												hookQuestion !== undefined &&
-												hookQuestion !== null)
-										}
-									>
-										{!chromeHidden &&
-											sessionDirectory &&
-											(data.pr !== undefined || data.prStatus !== undefined) && (
-												<BranchStrip
-													sessionId={sessionId}
-													session={data}
-													statusline={statusline}
-												/>
-											)}
-										{!chromeHidden &&
-											sessionDirectory &&
-											settings.showChangesStrip &&
-											data.pr === undefined &&
-											data.prStatus === undefined && (
-												<BranchStrip
-													sessionId={sessionId}
-													session={data}
-													statusline={statusline}
-												/>
-											)}
-										{/* With no question to draw inline, a waiting session says it needs input above the composer */}
-										{showsWaitingForInputNotice({
-											state: sessionSummaryState,
-											hasDockedCard:
-												inlineQuestion !== null ||
-												pendingPermission !== null ||
-												dockedPlan !== null,
-										}) &&
-											!hookQuestion && <WaitingForInputNotice />}
-										{/* Upstream docks a pending plan's approval above the composer; the hooks carry it before the JSONL does */}
-										{dockedPlan !== null && (
-											<DockedPlanApproval
-												key={dockedPlan.toolUseId}
-												pendingPlan={dockedPlan}
-												plan={planApprovalCtx}
-											/>
-										)}
-										{/* Upstream sets the usage chip between the docked card and the composer */}
-										{!chromeHidden && sessionDirectory && <UsagePaceBanner />}
-										{!chromeHidden && sessionDirectory && <NotifyMePrompt sessionId={sessionId} />}
-										{!chromeHidden && sessionDirectory && (
-											<Composer
-												variant="session"
-												draftKey={sessionId}
-												onSend={(prompt, launchOptions) => {
-													if (
-														handleBtwPrompt(prompt, {
-															sessionId,
-															messageCount: data.messageCount,
-															toast,
-														})
-													) {
-														return;
-													}
-													submitComposer("send", prompt, launchOptions);
-												}}
-												onFork={(prompt, launchOptions) =>
-													submitComposer("fork", prompt, launchOptions)
-												}
-												forkLabel={forkSubmitLabel({
-													pane: paneState,
-													writesEnabled: herdr.writesEnabled,
-												})}
-												onCancel={() => {
-													void chatStream.cancel();
-												}}
-												isStreaming={!promptBehavior.usesHerdr && chatStream.state.isStreaming}
-												onStop={stopAvailable ? stopResponse : undefined}
-												disabled={
-													promptBehavior.disabled ||
-													(!promptBehavior.usesHerdr && liveHerdrPrompt.state.isPending)
-												}
-												queue={promptBehavior.usesHerdr ? composerQueue : undefined}
-												onSendNow={
-													promptBehavior.usesHerdr ? composerQueue.sendNowText : undefined
-												}
-												deliveryHint={promptBehavior.deliveryHint}
-												chin={composerChin}
-												slashCommands={slashCommands}
-												bypassPermissionsAllowed={bypassPermissionsAllowed}
-												live={liveLaunchAvailable ? liveLaunch : undefined}
-												mentionSessionId={sessionId}
-												promptHistory={promptHistory}
-											/>
-										)}
-									</SessionDock>
-								</div>
-							</div>
-						</>
-					}
+					onExpandWithoutPane={toggleChromeHidden}
+					requestedPane={requestedPane}
+					onRequestedPaneHandled={onRequestedPaneHandled}
 				>
-					<LegacyMessageLinkNotice hash={locationHash} />
+					<TerminalPaneShortcut available={promptBehavior.hasLivePane || shellsEnabled} />
+					<FilesPaneShortcut />
+					<ChangesPaneShortcut />
+					<RailTileFrame
+						railInputs={{
+							sessionId,
+							homeRoot: data.homeRoot,
+							cwd: sessionDirectory,
+							gitBranch: data.gitBranch,
+							model: composerChin.model,
+							herdrPane: herdr.panes.find((pane) => pane.sessionId === sessionId) ?? null,
+							live: sessionProcessLive({hookActive: isActive, summaryState: sessionSummaryState}),
+							working: workingMarkerState.status !== "idle",
+							usage: composerChin.usage,
+							breakdown: contextBreakdown,
+							artifacts: sessionArtifacts,
+							backgroundTasks,
+							pr: data.pr ?? null,
+							prStatus: data.prStatus ?? null,
+						}}
+						sessionId={sessionId}
+						anchorRef={sessionViewRef}
+						visitKey={initialScrollKey}
+						positionRef={tileScrollPosition}
+						restoredScrollY={restoredScrollPosition?.scrollY}
+						header={
+							<>
+								{/* Sticky header: titlebar + hook context */}
+								{!chromeHidden && (
+									<div data-transcript-sticky-header className={SESSION_STICKY_HEADER_CLASS}>
+										<SessionTitlebar
+											sessionId={sessionId}
+											data={data}
+											isActive={isActive}
+											local={{
+												resumeCommand: sessionCommands.resume,
+												forkCommand: sessionCommands.fork,
+												onGenerateSummary:
+													aiSummary === null && settings.showSummaryButton
+														? () => void handleGenerateSummary()
+														: undefined,
+												generatingSummary: generating,
+											}}
+											summary={aiSummary}
+											transcriptView={transcriptView}
+											paneToggles={
+												<SessionPaneControls
+													railAvailable
+													facts={{
+														artifactCount: sessionArtifacts.length,
+														hasPlan: hasSessionPlan(data.planFilename, planModel),
+														backgroundTasks: backgroundTasksFacts(
+															backgroundTasks,
+															subagents.length,
+														),
+														subagentCount: subagents.length,
+													}}
+													onExpandChat={() => {
+														setChromeHidden(true);
+													}}
+												/>
+											}
+										/>
+										<SessionAiTitleLine title={data.title} aiTitle={data.aiTitle} />
 
-					{/* The transcript spans the page padding; the chat column's own gutters inset it, as on upstream */}
-					<div className="flex-1">
-						<TranscriptTopFade />
-						{/* Chat messages */}
-						<AskUserQuestionProvider value={askUserQuestionCtx}>
-							<PlanApprovalProvider value={planApprovalCtx}>
-								<TranscriptHistoryLoader sessionId={sessionId} startIndex={transcript.startIndex} />
-								<SessionFileRefs
-									sessionId={sessionId}
-									cwd={sessionDirectory ?? undefined}
-									sessionFiles={resources?.files ?? windowFiles}
-								>
-									<SessionSubagentOpener sessionId={sessionId}>
-										<SessionBackgroundTasksOpener running={runningBackgroundLaunches}>
-											<TranscriptActionsProvider
-												sessionId={sessionId}
-												lines={processed.lines}
-												fork={forkFromMessage}
+										{hookContext && (
+											<SessionHookContext
+												context={hookContext}
+												verbose={transcriptMode === "verbose"}
+											/>
+										)}
+										<ChapterChips sessionId={sessionId} onJump={requestMessageJump} />
+									</div>
+								)}
+
+								{/* Floating restore button when chrome is hidden */}
+								{chromeHidden && (
+									<div className="sticky top-0 z-10 flex justify-end py-1">
+										<Tooltip
+											content="Show header and footer"
+											shortcut={chromeShortcut.keys}
+											side="bottom"
+										>
+											<button
+												type="button"
+												onClick={() => {
+													setChromeHidden(false);
+												}}
+												className="rounded-md bg-surface-0 border border-border px-2 py-1 text-xs text-t6 hover:text-primary hover:bg-fill-control transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm"
+												aria-keyshortcuts={chromeShortcut.ariaKeyShortcuts}
 											>
-												<SessionChat
+												<Minimize2 className="h-3 w-3" />
+												Show chrome
+											</button>
+										</Tooltip>
+									</div>
+								)}
+							</>
+						}
+						footer={
+							<>
+								{/* Sticky footer: the composer dock, opaque to the viewport bottom with a fade over the transcript */}
+								<div data-session-footer className={SESSION_FOOTER_CLASS}>
+									<div className={!chromeHidden && sessionDirectory ? "pt-2" : ""}>
+										<SessionDock
+											anchorRef={scrollAnchorRef}
+											needsInput={
+												pendingQuestion !== null ||
+												pendingPermission !== null ||
+												dockedPlan !== null ||
+												(sessionSummaryState === "waiting" &&
+													hookQuestion !== undefined &&
+													hookQuestion !== null)
+											}
+										>
+											{!chromeHidden &&
+												sessionDirectory &&
+												(data.pr !== undefined || data.prStatus !== undefined) && (
+													<BranchStrip
+														sessionId={sessionId}
+														session={data}
+														statusline={statusline}
+													/>
+												)}
+											{!chromeHidden &&
+												sessionDirectory &&
+												settings.showChangesStrip &&
+												data.pr === undefined &&
+												data.prStatus === undefined && (
+													<BranchStrip
+														sessionId={sessionId}
+														session={data}
+														statusline={statusline}
+													/>
+												)}
+											{/* With no question to draw inline, a waiting session says it needs input above the composer */}
+											{showsWaitingForInputNotice({
+												state: sessionSummaryState,
+												hasDockedCard:
+													inlineQuestion !== null ||
+													pendingPermission !== null ||
+													dockedPlan !== null,
+											}) &&
+												!hookQuestion && <WaitingForInputNotice />}
+											{/* Upstream docks a pending plan's approval above the composer; the hooks carry it before the JSONL does */}
+											{dockedPlan !== null && (
+												<DockedPlanApproval
+													key={dockedPlan.toolUseId}
+													pendingPlan={dockedPlan}
+													plan={planApprovalCtx}
+												/>
+											)}
+											{/* Upstream sets the usage chip between the docked card and the composer */}
+											{!chromeHidden && sessionDirectory && <UsagePaceBanner />}
+											{!chromeHidden && sessionDirectory && (
+												<NotifyMePrompt sessionId={sessionId} />
+											)}
+											{!chromeHidden && sessionDirectory && (
+												<Composer
+													variant="session"
+													draftKey={sessionId}
+													onSend={(prompt, launchOptions) => {
+														if (
+															handleBtwPrompt(prompt, {
+																sessionId,
+																messageCount: data.messageCount,
+																toast,
+															})
+														) {
+															return;
+														}
+														submitComposer("send", prompt, launchOptions);
+													}}
+													onFork={(prompt, launchOptions) =>
+														submitComposer("fork", prompt, launchOptions)
+													}
+													forkLabel={forkSubmitLabel({
+														pane: paneState,
+														writesEnabled: herdr.writesEnabled,
+													})}
+													onCancel={() => {
+														void chatStream.cancel();
+													}}
+													isStreaming={
+														!promptBehavior.usesHerdr && chatStream.state.isStreaming
+													}
+													onStop={stopAvailable ? stopResponse : undefined}
+													disabled={
+														promptBehavior.disabled ||
+														(!promptBehavior.usesHerdr && liveHerdrPrompt.state.isPending)
+													}
+													queue={promptBehavior.usesHerdr ? composerQueue : undefined}
+													onSendNow={
+														promptBehavior.usesHerdr ? composerQueue.sendNowText : undefined
+													}
+													deliveryHint={promptBehavior.deliveryHint}
+													chin={composerChin}
+													slashCommands={slashCommands}
+													bypassPermissionsAllowed={bypassPermissionsAllowed}
+													live={liveLaunchAvailable ? liveLaunch : undefined}
+													mentionSessionId={sessionId}
+													promptHistory={promptHistory}
+												/>
+											)}
+										</SessionDock>
+									</div>
+								</div>
+							</>
+						}
+					>
+						<LegacyMessageLinkNotice hash={locationHash} />
+
+						{/* The transcript spans the page padding; the chat column's own gutters inset it, as on upstream */}
+						<div className="flex-1">
+							<TranscriptTopFade />
+							{/* Chat messages */}
+							<AskUserQuestionProvider value={askUserQuestionCtx}>
+								<PlanApprovalProvider value={planApprovalCtx}>
+									<TranscriptHistoryLoader sessionId={sessionId} startIndex={transcript.startIndex} />
+									<SessionFileRefs
+										sessionId={sessionId}
+										cwd={sessionDirectory ?? undefined}
+										sessionFiles={resources?.files ?? windowFiles}
+									>
+										<SessionSubagentOpener sessionId={sessionId}>
+											<SessionBackgroundTasksOpener running={runningBackgroundLaunches}>
+												<TranscriptActionsProvider
 													sessionId={sessionId}
 													lines={processed.lines}
-													measurementSource={transcript.records}
-													measurementLayout={JSON.stringify([
-														settings.showDebug,
-														settings.interfaceFont,
-														settings.transcriptTextSize,
-														settings.codeFont,
-														settings.transcriptWidth,
-													])}
-													toolResultMap={processed.toolResultMap}
-													allowedImageRoots={data.imageRoots}
-													subagents={subagents}
-													showThinking={transcriptFlags.showThinking}
-													showTools={transcriptFlags.showTools}
-													showPassedHooks={transcriptFlags.showPassedHooks}
-													showHookWarnings={transcriptFlags.showHookWarnings}
-													showHookErrors={transcriptFlags.showHookErrors}
-													showSystemBanners={transcriptFlags.showSystemBanners}
-													showCompactSummaries={transcriptFlags.showCompactSummaries}
-													showTranscriptOnly={transcriptFlags.showTranscriptOnly}
-													transcriptMode={transcriptMode}
-													sessionLive={sessionProcessLive({
-														hookActive: isActive,
-														summaryState: sessionSummaryState,
-													})}
-													permissionWaitToolUseId={permissionWaitId}
-													initialScrollKey={initialScrollKey}
-													scrollContentRef={scrollAnchorRef}
-													shouldScrollToEnd={
-														restoredScrollPosition === undefined && locationHash === ""
-													}
-													summary={aiSummary}
-													{...(slashCommands === undefined ? {} : {slashCommands})}
-												/>
-											</TranscriptActionsProvider>
-										</SessionBackgroundTasksOpener>
-									</SessionSubagentOpener>
-								</SessionFileRefs>
-							</PlanApprovalProvider>
-						</AskUserQuestionProvider>
+													fork={forkFromMessage}
+												>
+													<SessionChat
+														sessionId={sessionId}
+														lines={processed.lines}
+														measurementSource={transcript.records}
+														measurementLayout={JSON.stringify([
+															settings.showDebug,
+															settings.interfaceFont,
+															settings.transcriptTextSize,
+															settings.codeFont,
+															settings.transcriptWidth,
+														])}
+														toolResultMap={processed.toolResultMap}
+														allowedImageRoots={data.imageRoots}
+														subagents={subagents}
+														showThinking={transcriptFlags.showThinking}
+														showTools={transcriptFlags.showTools}
+														showPassedHooks={transcriptFlags.showPassedHooks}
+														showHookWarnings={transcriptFlags.showHookWarnings}
+														showHookErrors={transcriptFlags.showHookErrors}
+														showSystemBanners={transcriptFlags.showSystemBanners}
+														showCompactSummaries={transcriptFlags.showCompactSummaries}
+														showTranscriptOnly={transcriptFlags.showTranscriptOnly}
+														transcriptMode={transcriptMode}
+														sessionLive={sessionProcessLive({
+															hookActive: isActive,
+															summaryState: sessionSummaryState,
+														})}
+														permissionWaitToolUseId={permissionWaitId}
+														initialScrollKey={initialScrollKey}
+														scrollContentRef={scrollAnchorRef}
+														shouldScrollToEnd={
+															restoredScrollPosition === undefined && locationHash === ""
+														}
+														summary={aiSummary}
+														{...(slashCommands === undefined ? {} : {slashCommands})}
+													/>
+												</TranscriptActionsProvider>
+											</SessionBackgroundTasksOpener>
+										</SessionSubagentOpener>
+									</SessionFileRefs>
+								</PlanApprovalProvider>
+							</AskUserQuestionProvider>
 
-						{/* Upstream draws every pending approval inline; a permission prompt is not on disk, so it follows the transcript */}
-						{pendingPermission && (
-							<div data-inline-permission="" className={`${CHAT_COLUMN_CLASS} pb-4`}>
-								<PermissionCard
-									key={pendingPermission.notificationId}
-									title={pendingPermission.title}
-									command={pendingPermission.command}
-									canAnswer={promptBehavior.hasLivePane && herdr.writesEnabled}
-									persistentAllow={pendingPermission.persistentAllow ?? null}
-									onDecision={answerPermission}
-									footer={
-										<Suspense fallback={null}>
-											<ToolApprovalNotifyTip sessionId={sessionId} />
-										</Suspense>
-									}
-								/>
-							</div>
-						)}
-						{/* The CLI writes a question to the JSONL only once answered, so its hook copy is drawn inline at the transcript's end */}
-						{sessionSummaryState === "waiting" &&
-							hookQuestion &&
-							pendingQuestion?.toolUseId !== hookQuestion.toolUseId && (
-								<div data-hook-question="" className={`${CHAT_COLUMN_CLASS} pb-4`}>
-									<QuestionCard
-										key={hookQuestion.toolUseId}
-										draftKey={hookQuestion.toolUseId}
-										questions={hookQuestion.questions}
-										onSubmit={answerRoute === "live-pane" ? answerHookQuestion : undefined}
+							{/* Upstream draws every pending approval inline; a permission prompt is not on disk, so it follows the transcript */}
+							{pendingPermission && (
+								<div data-inline-permission="" className={`${CHAT_COLUMN_CLASS} pb-4`}>
+									<PermissionCard
+										key={pendingPermission.notificationId}
+										title={pendingPermission.title}
+										command={pendingPermission.command}
+										canAnswer={promptBehavior.hasLivePane && herdr.writesEnabled}
+										persistentAllow={pendingPermission.persistentAllow ?? null}
+										onDecision={answerPermission}
+										footer={
+											<Suspense fallback={null}>
+												<ToolApprovalNotifyTip sessionId={sessionId} />
+											</Suspense>
+										}
 									/>
 								</div>
 							)}
-						{(chatStream.state.isStreaming || chatStream.state.isComplete) && (
-							<StreamingMessage
-								text={chatStream.state.text}
-								isComplete={chatStream.state.isComplete}
-								error={chatStream.state.error}
-								forkedSessionId={chatStream.state.forkedSessionId}
-								sentPrompt={chatStream.state.sentPrompt}
+							{/* The CLI writes a question to the JSONL only once answered, so its hook copy is drawn inline at the transcript's end */}
+							{sessionSummaryState === "waiting" &&
+								hookQuestion &&
+								pendingQuestion?.toolUseId !== hookQuestion.toolUseId && (
+									<div data-hook-question="" className={`${CHAT_COLUMN_CLASS} pb-4`}>
+										<QuestionCard
+											key={hookQuestion.toolUseId}
+											draftKey={hookQuestion.toolUseId}
+											questions={hookQuestion.questions}
+											onSubmit={answerRoute === "live-pane" ? answerHookQuestion : undefined}
+										/>
+									</div>
+								)}
+							{(chatStream.state.isStreaming || chatStream.state.isComplete) && (
+								<StreamingMessage
+									text={chatStream.state.text}
+									isComplete={chatStream.state.isComplete}
+									error={chatStream.state.error}
+									forkedSessionId={chatStream.state.forkedSessionId}
+									sentPrompt={chatStream.state.sentPrompt}
+								/>
+							)}
+
+							{liveHerdrPrompt.state.prompt !== "" && (
+								<StreamingMessage
+									text=""
+									isComplete={!liveHerdrPrompt.state.isPending}
+									error={liveHerdrPrompt.state.error || undefined}
+									sentPrompt={liveHerdrPrompt.state.prompt}
+									pendingLabel="Sent to live session — waiting for transcript..."
+								/>
+							)}
+
+							<WorkingMarker
+								state={tailMarkerState(workingMarkerState, inFlightRow)}
+								runningTasks={backgroundTasks.running.length}
 							/>
-						)}
 
-						{liveHerdrPrompt.state.prompt !== "" && (
-							<StreamingMessage
-								text=""
-								isComplete={!liveHerdrPrompt.state.isPending}
-								error={liveHerdrPrompt.state.error || undefined}
-								sentPrompt={liveHerdrPrompt.state.prompt}
-								pendingLabel="Sent to live session — waiting for transcript..."
-							/>
-						)}
-
-						<WorkingMarker
-							state={tailMarkerState(workingMarkerState, inFlightRow)}
-							runningTasks={backgroundTasks.running.length}
-						/>
-
-						<SideChat sessionId={sessionId} messageCount={data.messageCount} />
-					</div>
-				</RailTileFrame>
-			</TileHost>
-		</div>
+							<SideChat sessionId={sessionId} messageCount={data.messageCount} />
+						</div>
+					</RailTileFrame>
+				</TileHost>
+			</div>
+		</TerminalWritesTipProvider>
 	);
 }

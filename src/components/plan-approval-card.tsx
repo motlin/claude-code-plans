@@ -14,9 +14,9 @@ import {
 	type PlanDecision,
 	type PlanDialog,
 } from "../lib/plan-approval";
-import {READ_ONLY_ANSWER_HINT} from "../lib/question-answer-route";
 import {ApprovalActionButton} from "./approval-card";
 import type {PlanApprovalContextValue} from "./plan-approval-context";
+import {ReadOnlyAnswerHint} from "./terminal-writes-tip";
 import {Shortcut} from "./ui/shortcut";
 
 const HINT_CLASS = "text-footnote text-secondary";
@@ -203,7 +203,7 @@ export function PlanApprovalCard({toolUseId, plan}: {toolUseId: string; plan: Pl
 		};
 	}, [live, loadDialog, toolUseId]);
 
-	if (!live || state.kind === "unavailable") return <p className={HINT_CLASS}>{READ_ONLY_ANSWER_HINT}</p>;
+	if (!live || state.kind === "unavailable") return <ReadOnlyAnswerHint className={HINT_CLASS} />;
 	if (state.kind === "loading") return null;
 	return <PlanApprovalActions dialog={state.dialog} decide={decide} />;
 }
