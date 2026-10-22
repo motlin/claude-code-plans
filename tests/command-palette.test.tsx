@@ -339,6 +339,17 @@ describe("CommandPalette shell", () => {
 		await within(dialog).findByRole("combobox", {name: "Search"});
 	});
 
+	it("paints the Compose field with the upstream fill-field and cds shadow-panel-sm", async () => {
+		const dialog = await openPalette();
+		fireEvent.keyDown(within(dialog).getByRole("combobox"), {key: "Tab", code: "Tab"});
+		const composer = await within(dialog).findByRole("combobox", {name: "Write a message…"});
+		const field = composer.parentElement?.querySelector(":scope > [aria-hidden='true'].absolute");
+
+		expect(field?.className).toBe(
+			"pointer-events-none absolute inset-1.5 rounded-composer bg-fill-field shadow-panel-sm-cds",
+		);
+	});
+
 	it("forces Search mode on ⇧⌘K", async () => {
 		const dialog = await openPalette();
 		fireEvent.keyDown(within(dialog).getByRole("combobox"), {key: "Tab", code: "Tab"});

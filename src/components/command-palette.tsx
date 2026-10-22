@@ -1228,7 +1228,7 @@ function PalettePopup({
 						{compose && (
 							<div
 								aria-hidden="true"
-								className="pointer-events-none absolute inset-1.5 rounded-composer bg-alpha-1 shadow-panel-sm"
+								className="pointer-events-none absolute inset-1.5 rounded-composer bg-fill-field shadow-panel-sm-cds"
 							/>
 						)}
 						<Command.Input asChild value={query} onValueChange={setQuery}>

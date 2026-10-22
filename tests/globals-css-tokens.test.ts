@@ -11,7 +11,10 @@ function block(selector: string): string {
 
 function tokens(source: string, names: readonly string[]): Record<string, string | null> {
 	return Object.fromEntries(
-		names.map((name) => [name, source.match(new RegExp(`${name}:\\s*([^;]+);`))?.[1] ?? null]),
+		names.map((name) => [
+			name,
+			source.match(new RegExp(`${name}:\\s*([^;]+);`))?.[1]?.replaceAll(/\s+/g, " ") ?? null,
+		]),
 	);
 }
 
@@ -112,6 +115,33 @@ describe("brand accent tokens (upstream --brand-100 / --oncolor-100)", () => {
 		expect(tokens(block(".dark"), UPSTREAM_BRAND_TOKENS)).toStrictEqual({
 			"--upstream-brand-100": "rgb(217 119 87)",
 			"--upstream-oncolor-100": "rgb(255 255 255)",
+		});
+	});
+});
+
+describe("compose field paint tokens (upstream --cds-fill-field / shadow-panel-sm)", () => {
+	const UPSTREAM_FIELD_TOKENS = ["--upstream-fill-field", "--upstream-shadow-panel-sm"] as const;
+
+	it("maps the theme utilities onto the upstream variables", () => {
+		expect(tokens(block("@theme inline"), ["--color-fill-field", "--shadow-panel-sm-cds"])).toStrictEqual({
+			"--color-fill-field": "var(--upstream-fill-field)",
+			"--shadow-panel-sm-cds": "var(--upstream-shadow-panel-sm)",
+		});
+	});
+
+	it("defines the light values (ring-outer 1px of --cds-border, --cds-shadow-sm with 8% shadow colour)", () => {
+		expect(tokens(block(":root"), UPSTREAM_FIELD_TOKENS)).toStrictEqual({
+			"--upstream-fill-field": "rgb(255 255 255 / 0.5)",
+			"--upstream-shadow-panel-sm":
+				"inset 0 0 0 0 rgb(11 11 11 / 0.1), 0 0 0 1px rgb(11 11 11 / 0.1), 0 1px 2px rgb(11 11 11 / 0.06), 0 2px 8px rgb(11 11 11 / 0.08)",
+		});
+	});
+
+	it("defines the dark values (ring-inner 1px of --cds-alpha-2, shadow colour #0000003d)", () => {
+		expect(tokens(block(".dark"), UPSTREAM_FIELD_TOKENS)).toStrictEqual({
+			"--upstream-fill-field": "var(--upstream-alpha-1)",
+			"--upstream-shadow-panel-sm":
+				"inset 0 0 0 1px rgb(255 255 255 / 0.1), 0 0 0 0 rgb(255 255 255 / 0.1), 0 1px 2px rgb(11 11 11 / 0.06), 0 2px 8px rgb(0 0 0 / 0.24)",
 		});
 	});
 });
