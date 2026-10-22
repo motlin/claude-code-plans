@@ -3,6 +3,9 @@ const PERMISSION_MODES = new Set(["acceptEdits", "auto", "bypassPermissions", "d
 
 const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9-]*$/;
 
+/** `--worktree` takes an optional name; only the bare form is accepted. */
+const VALUELESS_FLAGS = new Set(["--fork-session", "--worktree"]);
+
 const VALUE_FLAGS: Record<string, (value: string) => boolean> = {
 	"--resume": (value) => ID_PATTERN.test(value),
 	"--resume-session-at": (value) => ID_PATTERN.test(value),
@@ -19,7 +22,7 @@ export function validateClaudeLaunchArgs(args: readonly string[]): string | null
 		if (seen.has(flag)) return "duplicate claude argument";
 		seen.add(flag);
 
-		if (flag === "--fork-session") continue;
+		if (VALUELESS_FLAGS.has(flag)) continue;
 
 		const isValid = VALUE_FLAGS[flag];
 		if (!isValid) return "unsupported claude argument";
@@ -32,6 +35,7 @@ export function validateClaudeLaunchArgs(args: readonly string[]): string | null
 	for (const flag of ["--fork-session", "--resume-session-at"]) {
 		if (seen.has(flag) && !seen.has("--resume")) return `${flag} requires --resume`;
 	}
+	if (seen.has("--worktree") && seen.has("--resume")) return "--worktree cannot be used with --resume";
 	return null;
 }
 

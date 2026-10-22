@@ -46,6 +46,11 @@ describe("buildClaudeCopyCommand", () => {
 			expected:
 				"cd '/Users/alice/project' && claude --resume 11111111-2222-3333-4444-555555555555 --fork-session --model 'opus[1m]' --effort high --permission-mode plan 'continue'",
 		},
+		{
+			name: "worktree launch",
+			input: {cwd: "/p", args: ["--worktree"], prompt: "hi"},
+			expected: "cd '/p' && claude --worktree 'hi'",
+		},
 	])("builds the $name command", ({input, expected}) => {
 		expect(buildClaudeCopyCommand(input)).toBe(expected);
 	});
@@ -72,6 +77,10 @@ describe("validateClaudeLaunchArgs", () => {
 		},
 		{args: ["--resume-session-at", "message-test-7"], expected: "--resume-session-at requires --resume"},
 		{args: ["--effort", "low", "--effort", "high"], expected: "duplicate claude argument"},
+		{args: ["--worktree"], expected: null},
+		{args: ["--model", "opus", "--worktree"], expected: null},
+		{args: ["--worktree", "--worktree"], expected: "duplicate claude argument"},
+		{args: ["--resume", "abc", "--worktree"], expected: "--worktree cannot be used with --resume"},
 	])("returns $expected for $args", ({args, expected}) => {
 		expect(validateClaudeLaunchArgs(args)).toBe(expected);
 	});

@@ -4,8 +4,8 @@ import {formatModelName} from "./model-name";
 import {launchPermissionModeLabels} from "./schema-choices";
 
 /**
- * The composer's mode / model / effort choices for the next fork or launch,
- * passed to the `claude` CLI as `--permission-mode`, `--model` and `--effort`.
+ * The composer's mode / model / effort / worktree choices for the next fork or launch,
+ * passed to the `claude` CLI as `--permission-mode`, `--model`, `--effort` and `--worktree`.
  */
 
 /** Upstream mode registry order for a local CLI session; `default` is the CLI's name for Manual. */
@@ -25,15 +25,19 @@ export const LaunchOptionsSchema = z.strictObject({
 	permissionMode: LaunchPermissionModeSchema.optional(),
 	model: ModelIdSchema.optional(),
 	effort: EffortLevelSchema.optional(),
+	/** The CLI's `-w, --worktree [name]`: start in a new git worktree with a generated name. */
+	worktree: z.literal(true).optional(),
 });
 export type LaunchOptions = z.infer<typeof LaunchOptionsSchema>;
 
 /** CLI flags for the chosen options, one argv entry per word; never joined into a shell string. */
-export function buildLaunchFlags({permissionMode, model, effort}: LaunchOptions): string[] {
+export function buildLaunchFlags({permissionMode, model, effort, worktree}: LaunchOptions): string[] {
 	const flags: string[] = [];
 	if (permissionMode !== undefined) flags.push("--permission-mode", permissionMode);
 	if (model !== undefined) flags.push("--model", model);
 	if (effort !== undefined) flags.push("--effort", effort);
+	// Last, so the flag's optional name can never take the next flag's value.
+	if (worktree === true) flags.push("--worktree");
 	return flags;
 }
 

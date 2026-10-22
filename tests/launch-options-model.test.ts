@@ -66,3 +66,15 @@ describe("buildLaunchFlags effort", () => {
 		expect(buildLaunchFlags({effort: "ultracode"})).toStrictEqual(["--effort", "ultracode"]);
 	});
 });
+
+describe("buildLaunchFlags worktree", () => {
+	it("passes a valueless --worktree", () => {
+		expect(buildLaunchFlags({worktree: true})).toStrictEqual(["--worktree"]);
+	});
+
+	it("puts --worktree last so its optional name never swallows another flag's value", () => {
+		expect(buildLaunchFlags({worktree: true, permissionMode: "plan", model: "opus", effort: "high"})).toStrictEqual(
+			["--permission-mode", "plan", "--model", "opus", "--effort", "high", "--worktree"],
+		);
+	});
+});

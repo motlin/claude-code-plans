@@ -235,6 +235,23 @@ describe("herdr launch write handler", () => {
 		});
 	});
 
+	it("starts claude with a valueless --worktree", async () => {
+		const herdr = fakeHerdr({
+			"tab.create": {ok: true, value: tabCreated},
+			"agent.start": {ok: true, value: agentStarted(["claude", "--model", "opus", "--worktree"])},
+		});
+
+		const response = await handleHerdrLaunch(
+			request({cwd: "/Users/alice/project", args: ["--model", "opus", "--worktree"]}),
+			dependencies({request: herdr.requester}),
+		);
+
+		expect({
+			status: response.status,
+			startArgs: (herdr.requests[1]!.request as {params: {args: string[]}}).params.args,
+		}).toStrictEqual({status: 200, startArgs: ["--model", "opus", "--worktree"]});
+	});
+
 	it("does not send a prompt when none was given", async () => {
 		const herdr = fakeHerdr({
 			"tab.create": {ok: true, value: tabCreated},
