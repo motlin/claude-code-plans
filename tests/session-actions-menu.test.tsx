@@ -338,7 +338,14 @@ describe("SessionActionsMenu", () => {
 		expect({
 			disabled: fork?.getAttribute("aria-disabled"),
 			title: fork?.getAttribute("title"),
-		}).toEqual({disabled: "true", title: "Session file is still being written"});
+			parentRole: fork?.parentElement?.getAttribute("role"),
+			description: document.getElementById(fork?.getAttribute("aria-describedby") ?? "")?.textContent,
+		}).toEqual({
+			disabled: "true",
+			title: null,
+			parentRole: "none",
+			description: "Session file is still being written",
+		});
 	});
 
 	it("launches the fork in herdr when f is pressed", async () => {

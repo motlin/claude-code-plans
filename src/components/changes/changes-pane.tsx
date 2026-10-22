@@ -320,9 +320,9 @@ function SettingsMenu({
 						<MenuSeparator />
 						<MenuItem onSelect={onCollapseAll}>Collapse all files</MenuItem>
 						{large ? (
-							<Tooltip content={TOO_LARGE_TO_EXPAND} className="w-full">
-								<MenuItem disabled>Expand all files</MenuItem>
-							</Tooltip>
+							<MenuItem disabled disabledReason={TOO_LARGE_TO_EXPAND}>
+								Expand all files
+							</MenuItem>
 						) : (
 							<MenuItem onSelect={onExpandAll}>Expand all files</MenuItem>
 						)}

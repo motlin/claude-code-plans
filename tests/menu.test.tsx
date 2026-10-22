@@ -479,6 +479,117 @@ describe("Menu", () => {
 	});
 });
 
+describe("MenuItem with a disabled reason", () => {
+	const REASON = "Session file is still being written";
+
+	function renderReasonMenu() {
+		render(
+			<DensityScope density="compact">
+				<Menu>
+					<MenuTrigger aria-label="More options">...</MenuTrigger>
+					<MenuContent>
+						<MenuItem onSelect={() => {}}>Copy link</MenuItem>
+						<MenuItem disabled disabledReason={REASON}>
+							Fork
+						</MenuItem>
+						<MenuItem onSelect={() => {}}>Archive</MenuItem>
+					</MenuContent>
+				</Menu>
+			</DensityScope>,
+		);
+	}
+
+	it("describes the disabled item by a hidden reason inside a role=none row, as upstream's UV", async () => {
+		renderReasonMenu();
+		await openDropdown();
+		const fork = screen.getByRole("menuitem", {name: "Fork"});
+		const reasonId = fork.getAttribute("aria-describedby") ?? "";
+		const hiddenReason = document.getElementById(reasonId);
+
+		expect({
+			disabled: fork.getAttribute("aria-disabled"),
+			title: fork.getAttribute("title"),
+			parentRole: fork.parentElement?.getAttribute("role"),
+			hiddenReason: hiddenReason?.outerHTML,
+			reasonSibling: hiddenReason?.parentElement === fork.parentElement,
+		}).toStrictEqual({
+			disabled: "true",
+			title: null,
+			parentRole: "none",
+			hiddenReason: `<span id="${reasonId}" hidden="" data-cds-disabled-reason="">${REASON}</span>`,
+			reasonSibling: true,
+		});
+		expect(document.getElementById(fork.getAttribute("aria-describedby") ?? "")?.textContent).toBe(REASON);
+	});
+
+	it("paints disabled items at upstream's opacity-disabled (.4) with the focus ring kept", async () => {
+		renderReasonMenu();
+		await openDropdown();
+		const classes = screen.getByRole("menuitem", {name: "Fork"}).className.split(" ");
+
+		expect(classes.filter((c) => c.startsWith("data-[disabled]:"))).toStrictEqual([
+			"data-[disabled]:pointer-events-none",
+			"data-[disabled]:opacity-40",
+			"data-[disabled]:focus-visible:shadow-focus",
+		]);
+	});
+
+	it("shows the reason on side right when the row is hovered, and keeps it open on click", async () => {
+		renderReasonMenu();
+		await openDropdown();
+		const row = screen.getByRole("menuitem", {name: "Fork"}).parentElement!;
+
+		vi.useFakeTimers();
+		try {
+			fireEvent.pointerEnter(row);
+			act(() => {
+				vi.advanceTimersByTime(300);
+			});
+			fireEvent.click(row);
+			const tip = screen.getByRole("tooltip");
+			expect({side: tip.getAttribute("data-side"), text: tip.textContent}).toStrictEqual({
+				side: "right",
+				text: REASON,
+			});
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it("reaches the disabled item with ArrowDown and opens its reason at once on highlight", async () => {
+		renderReasonMenu();
+		await openDropdown();
+		screen.getByRole("menuitem", {name: "Copy link"}).focus();
+
+		fireEvent.keyDown(document.activeElement as HTMLElement, {key: "ArrowDown"});
+		await flush();
+
+		expect({
+			active: document.activeElement?.textContent,
+			highlighted: document.activeElement?.getAttribute("data-highlighted"),
+			tooltip: screen.queryByRole("tooltip")?.textContent,
+		}).toStrictEqual({active: "Fork", highlighted: "", tooltip: REASON});
+	});
+
+	it("leaves an enabled item with a reason prop unwrapped and undescribed", async () => {
+		render(
+			<Menu>
+				<MenuTrigger aria-label="More options">...</MenuTrigger>
+				<MenuContent>
+					<MenuItem disabledReason={REASON}>Fork</MenuItem>
+				</MenuContent>
+			</Menu>,
+		);
+		await openDropdown();
+		const fork = screen.getByRole("menuitem", {name: "Fork"});
+
+		expect({
+			describedBy: fork.getAttribute("aria-describedby"),
+			parentRole: fork.parentElement?.getAttribute("role"),
+		}).toStrictEqual({describedBy: null, parentRole: null});
+	});
+});
+
 describe("ContextMenu", () => {
 	it("opens the same content on right-click", async () => {
 		const onCopy = vi.fn<() => void>();

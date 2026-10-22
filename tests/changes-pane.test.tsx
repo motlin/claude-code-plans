@@ -278,9 +278,16 @@ describe("ChangesPaneView", () => {
 		await openSettings();
 		const expandAll = screen.getByRole("menuitem", {name: "Expand all files"});
 		expect({
+			parentRole: expandAll.parentElement?.getAttribute("role"),
+			description: document.getElementById(expandAll.getAttribute("aria-describedby") ?? "")?.textContent,
 			disabled: expandAll.getAttribute("aria-disabled"),
 			collapseDisabled: screen.getByRole("menuitem", {name: "Collapse all files"}).getAttribute("aria-disabled"),
-		}).toEqual({disabled: "true", collapseDisabled: null});
+		}).toEqual({
+			parentRole: "none",
+			description: "This diff is too large to expand at once. Select a file to expand it.",
+			disabled: "true",
+			collapseDisabled: null,
+		});
 
 		vi.useFakeTimers();
 		fireEvent.pointerEnter(expandAll.parentElement ?? expandAll);

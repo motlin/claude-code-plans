@@ -236,7 +236,7 @@ function MenuEntryList({entries, run}: {entries: SessionMenuEntry[]; run: Sessio
 				{...testIdProps(entry.id)}
 				{...(entry.accelerator === undefined ? {} : {accelerator: entry.accelerator})}
 				{...(entry.disabled ? {disabled: true} : {})}
-				{...(entry.disabledReason === undefined ? {} : {title: entry.disabledReason})}
+				{...(entry.disabledReason === undefined ? {} : {disabledReason: entry.disabledReason})}
 				onSelect={() => {
 					run(entry.id);
 				}}

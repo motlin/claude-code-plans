@@ -1,12 +1,13 @@
 import {ContextMenu as BaseContextMenu} from "@base-ui/react/context-menu";
 import {Menu as BaseMenu} from "@base-ui/react/menu";
 import {Check, ChevronRight} from "lucide-react";
-import {type ComponentProps, createContext, type KeyboardEvent, type ReactNode, useContext} from "react";
+import {type ComponentProps, createContext, type KeyboardEvent, type ReactNode, useContext, useId} from "react";
 
 import {useIsMac} from "../../hooks/use-is-mac";
 import {toAriaKeyShortcuts} from "../../lib/shortcuts/format";
 import {type Density, DensityProvider, useDensity, useScopeDensity} from "./density";
 import {Shortcut} from "./shortcut";
+import {Tooltip} from "./tooltip";
 
 /*
  * One menu primitive copied from claude.ai/code (Base UI Menu / ContextMenu):
@@ -55,7 +56,7 @@ const SCROLLER_CLASS = "min-h-0 overflow-y-auto";
 
 function useItemClass(twoLine = false): string {
 	const sizing = DENSITY_CLASSES[useDensity()];
-	return `flex w-full cursor-default ${twoLine ? sizing.twoLine : sizing.singleLine} gap-1 ${sizing.item} ${sizing.text} font-normal outline-none select-none [--shortcut-cap-ink:var(--menu-muted)] data-[disabled]:pointer-events-none data-[disabled]:opacity-50`;
+	return `flex w-full cursor-default ${twoLine ? sizing.twoLine : sizing.singleLine} gap-1 ${sizing.item} ${sizing.text} font-normal outline-none select-none [--shortcut-cap-ink:var(--menu-muted)] data-[disabled]:pointer-events-none data-[disabled]:opacity-40 data-[disabled]:focus-visible:shadow-focus`;
 }
 
 const ITEM_VARIANT_CLASS = {
@@ -260,6 +261,11 @@ export interface MenuItemProps extends Omit<
 	/** Global shortcut hint shown instead of the accelerator, e.g. "alt+cmd+r". */
 	shortcut?: string;
 	variant?: MenuItemVariant;
+	/**
+	 * Why a disabled item is unavailable: it describes the item and shows in a reason tooltip on side right when
+	 * the row is hovered or highlighted (upstream's cds MenuItem `disabledReason`).
+	 */
+	disabledReason?: string | undefined;
 	onSelect?: () => void;
 }
 
@@ -270,14 +276,19 @@ export function MenuItem({
 	accelerator,
 	shortcut,
 	variant = "default",
+	disabledReason,
 	onSelect,
 	...props
 }: MenuItemProps) {
 	const itemClass = useItemClass(description !== undefined);
 	const ariaKeyShortcuts = useAriaKeyShortcuts(accelerator, shortcut);
-	return (
+	const reasonId = useId();
+	const reason =
+		props.disabled === true && disabledReason !== undefined && disabledReason !== "" ? disabledReason : undefined;
+	const item = (
 		<BaseMenu.Item
 			{...props}
+			{...(reason === undefined ? {} : {"aria-describedby": reasonId})}
 			{...(onSelect ? {onClick: onSelect} : {})}
 			{...(ariaKeyShortcuts ? {"aria-keyshortcuts": ariaKeyShortcuts} : {})}
 			{...(accelerator ? {"data-accelerator": accelerator.toLowerCase()} : {})}
@@ -304,6 +315,18 @@ export function MenuItem({
 				{...(shortcut === undefined ? {} : {shortcut})}
 			/>
 		</BaseMenu.Item>
+	);
+	if (reason === undefined) return item;
+	/* Upstream's UV: no tab stop; the pointer lands on the role=none row, so hovering a disabled item still opens it. */
+	return (
+		<Tooltip content={reason} variant="reason" side="right" closeOnClick={false} portal className="w-full">
+			<div role="none" className="w-full">
+				{item}
+				<span id={reasonId} hidden data-cds-disabled-reason="">
+					{reason}
+				</span>
+			</div>
+		</Tooltip>
 	);
 }
 
