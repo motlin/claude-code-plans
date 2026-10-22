@@ -275,6 +275,17 @@ const SendSlot = memo(function SendSlot({
 		stopClickAtRef.current = Date.now();
 		onStop?.();
 	};
+	/* Upstream leaves focus on the body after a menu Stop, so the soft keyboard stays down; other closes refocus the editor. */
+	const stopFromMenuRef = useRef(false);
+	const menuStop = () => {
+		stopFromMenuRef.current = true;
+		stop();
+	};
+	const splitFinalFocus = useCallback(() => {
+		if (!stopFromMenuRef.current) return editorRef.current;
+		stopFromMenuRef.current = false;
+		return false;
+	}, [editorRef]);
 	/*
 	 * Upstream's touch split (`ue = showStop && !R && isCoarsePointer`): working with a draft on a coarse
 	 * pointer, the cell is a ghost split whose primary steers and whose menu queues or stops.
@@ -288,9 +299,9 @@ const SendSlot = memo(function SendSlot({
 						onTouchSubmit("later");
 					},
 				},
-				{label: "Stop", separatorBefore: true, onSelect: stop},
+				{label: "Stop", separatorBefore: true, onSelect: menuStop},
 			]
-		: [{label: "Stop", onSelect: stop}];
+		: [{label: "Stop", onSelect: menuStop}];
 	const face = touchSplit ? (
 		<SplitDropdownButton
 			variant="ghost"
@@ -302,7 +313,7 @@ const SendSlot = memo(function SendSlot({
 			side="top"
 			align="end"
 			items={splitItems}
-			finalFocus={editorRef}
+			finalFocus={splitFinalFocus}
 			{...(canSend ? {} : {"aria-disabled": true})}
 			onPrimaryClick={() => {
 				if (!canSend || Date.now() - stopClickAtRef.current < STOP_TAP_GUARD_MS) return;

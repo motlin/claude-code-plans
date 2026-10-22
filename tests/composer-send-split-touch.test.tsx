@@ -129,16 +129,17 @@ describe("Composer touch split Send while working", () => {
 		}).toStrictEqual({queued: [["Alice's note"]], sent: [], draft: "", focused: true});
 	});
 
-	it("stops from the menu without clearing the draft", async () => {
+	it("stops from the menu without clearing the draft, leaving focus on the body", async () => {
 		const {handlers, textarea} = renderWorking(true);
 		await openMenu();
 		fireEvent.click(screen.getByRole("menuitem", {name: "Stop"}));
 		await flush();
 
-		expect({stops: handlers.onStop.mock.calls.length, draft: textarea.value}).toStrictEqual({
-			stops: 1,
-			draft: "Alice's note",
-		});
+		expect({
+			stops: handlers.onStop.mock.calls.length,
+			draft: textarea.value,
+			focused: document.activeElement === document.body,
+		}).toStrictEqual({stops: 1, draft: "Alice's note", focused: true});
 	});
 
 	it("ignores a primary tap within 500ms of a menu Stop", async () => {
