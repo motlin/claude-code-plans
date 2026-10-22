@@ -32,6 +32,8 @@ export interface ComposerQueue {
 	/** Queue at the back, or a mid-turn prompt at the head to go as soon as no dialog is open. */
 	enqueue: (text: string, options?: {midTurn: true}) => void;
 	remove: (id: string) => void;
+	/** Upstream's "Clear all": drop every queued prompt at once. */
+	clear: () => void;
 	/** Move a queued prompt to the head and interrupt the response so it sends next. */
 	sendNow: (id: string) => void;
 }
@@ -95,6 +97,9 @@ export function useComposerQueue({
 		},
 		[sessionId],
 	);
+	const clear = useCallback(() => {
+		dispatchComposerQueue(sessionId, {type: "clear"});
+	}, [sessionId]);
 	const sendNow = useCallback(
 		(id: string) => {
 			dispatchComposerQueue(sessionId, {type: "reorder", id, toIndex: 0});
@@ -102,5 +107,5 @@ export function useComposerQueue({
 		},
 		[busy, interrupt, sessionId],
 	);
-	return {items, enqueue, remove, sendNow};
+	return {items, enqueue, remove, clear, sendNow};
 }

@@ -34,6 +34,7 @@ function renderComposer(
 							items: props.queueItems,
 							sendNow: () => {},
 							remove: props.onEditRemove ?? (() => {}),
+							clear: () => {},
 						}
 			}
 		/>,

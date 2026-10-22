@@ -4,6 +4,7 @@ import {act, cleanup, fireEvent, render, renderHook, screen, waitFor, within} fr
 import {useState} from "react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {Composer, type ComposerQueueView} from "../src/components/composer";
+import {ToastContext, type ToastOptions} from "../src/components/toast-context";
 import {useLiveHerdrPrompt} from "../src/components/use-live-herdr-prompt";
 import {type DeliveryResult, useComposerQueue} from "../src/hooks/use-composer-queue";
 import {useStopResponse} from "../src/hooks/use-stop-response";
@@ -48,6 +49,10 @@ describe("composerQueueReducer", () => {
 			ALICE,
 			{id: "q2", text: "Bob, edited"},
 		]);
+	});
+
+	it("clears the whole queue", () => {
+		expect(composerQueueReducer([ALICE, BOB, CAROL], {type: "clear"})).toStrictEqual([]);
 	});
 
 	it("removes a queued prompt", () => {
@@ -278,6 +283,18 @@ describe("useComposerQueue", () => {
 		});
 	});
 
+	it("clears every queued prompt at once", () => {
+		const {result} = renderQueue({busy: true, deliver: vi.fn<Deliver>()});
+		act(() => {
+			result.current.enqueue("Alice's first follow-up");
+			result.current.enqueue("Bob's second follow-up");
+		});
+		act(() => {
+			result.current.clear();
+		});
+		expect(result.current.items).toStrictEqual([]);
+	});
+
 	it("puts a not-ready prompt back at the head and retries", async () => {
 		const deliver = vi.fn<Deliver>().mockResolvedValueOnce("not-ready").mockResolvedValueOnce("sent");
 		const {result, setBusy} = renderQueue({busy: true, deliver});
@@ -376,7 +393,9 @@ function renderComposer({
 	onQueueForLater,
 	onStop,
 	slashCommands,
+	toast = vi.fn<(options: ToastOptions) => void>(),
 }: {
+	toast?: (options: ToastOptions) => void;
 	queue?: ComposerQueueView;
 	onSend?: (prompt: string) => void;
 	onQueueForLater?: (prompt: string) => void;
@@ -384,17 +403,19 @@ function renderComposer({
 	slashCommands?: readonly SlashCommand[];
 }) {
 	render(
-		<Composer
-			variant="session"
-			draftKey="session-alice"
-			onSend={(prompt) => {
-				onSend(prompt);
-			}}
-			onStop={onStop}
-			queue={queue}
-			onQueueForLater={onQueueForLater}
-			slashCommands={slashCommands}
-		/>,
+		<ToastContext.Provider value={toast}>
+			<Composer
+				variant="session"
+				draftKey="session-alice"
+				onSend={(prompt) => {
+					onSend(prompt);
+				}}
+				onStop={onStop}
+				queue={queue}
+				onQueueForLater={onQueueForLater}
+				slashCommands={slashCommands}
+			/>
+		</ToastContext.Provider>,
 	);
 	return screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
 }
@@ -404,6 +425,7 @@ function queueView(items: readonly QueuedPrompt[]) {
 		items,
 		sendNow: vi.fn<(id: string) => void>(),
 		remove: vi.fn<(id: string) => void>(),
+		clear: vi.fn<() => void>(),
 	};
 }
 
@@ -454,31 +476,53 @@ describe("Composer queued message bar", () => {
 		expect(queue.sendNow.mock.calls).toStrictEqual([["q2"]]);
 	});
 
-	it("Clear all removes every queued prompt", () => {
+	it("Clear all empties the queue in one action", () => {
 		const queue = queueView([ALICE, BOB]);
 		renderComposer({queue});
 		fireEvent.click(screen.getByRole("button", {name: /2 messages queued/}));
 		fireEvent.click(screen.getByRole("button", {name: "Clear all"}));
-		expect(queue.remove.mock.calls).toStrictEqual([["q1"], ["q2"]]);
+		expect({cleared: queue.clear.mock.calls, removed: queue.remove.mock.calls}).toStrictEqual({
+			cleared: [[]],
+			removed: [],
+		});
 	});
 
-	it("Remove from queue asks to discard first", async () => {
+	it("Remove from queue removes at once, without a confirm", () => {
 		const queue = queueView([ALICE]);
 		renderComposer({queue});
 		fireEvent.click(screen.getByRole("button", {name: "Remove from queue"}));
-		const dialog = await screen.findByRole("alertdialog");
-		const beforeConfirm = queue.remove.mock.calls.length;
-		fireEvent.click(within(dialog).getByRole("button", {name: "Discard"}));
+		expect({removed: queue.remove.mock.calls, dialog: screen.queryByRole("alertdialog")}).toStrictEqual({
+			removed: [["q1"]],
+			dialog: null,
+		});
+	});
+
+	it("Edit in composer over a draft toasts a warning and keeps the entry", () => {
+		const queue = queueView([ALICE]);
+		const toast = vi.fn<(options: ToastOptions) => void>();
+		const textarea = renderComposer({queue, toast});
+		fireEvent.change(textarea, {target: {value: "Bob's draft"}});
+		fireEvent.click(screen.getByRole("button", {name: "Edit in composer"}));
+
+		expect({value: textarea.value, removed: queue.remove.mock.calls, toasts: toast.mock.calls}).toStrictEqual({
+			value: "Bob's draft",
+			removed: [],
+			toasts: [
+				[{kind: "warning", message: "The input already has a draft. Clear it to pull this message back in."}],
+			],
+		});
+	});
+
+	it("Edit in composer with an empty draft fills and focuses the composer", () => {
+		const queue = queueView([ALICE]);
+		const textarea = renderComposer({queue});
+		fireEvent.click(screen.getByRole("button", {name: "Edit in composer"}));
 
 		expect({
-			title: within(dialog).getByRole("heading").textContent,
-			beforeConfirm,
+			value: textarea.value,
+			focused: document.activeElement === textarea,
 			removed: queue.remove.mock.calls,
-		}).toStrictEqual({
-			title: "Discard queued message?",
-			beforeConfirm: 0,
-			removed: [["q1"]],
-		});
+		}).toStrictEqual({value: "Alice's first follow-up", focused: true, removed: [["q1"]]});
 	});
 });
 
@@ -578,7 +622,7 @@ describe("Esc modal guard", () => {
 		);
 	}
 
-	it("stops on Esc from the editor when nothing is open", () => {
+	it("stops on Esc from the editor when nothing is open (no steer recall: a steer already typed into the CLI can't be taken back)", () => {
 		const onInterrupt = vi.fn<() => void>();
 		render(<Stopper onInterrupt={onInterrupt} />);
 		const textarea = screen.getByRole("textbox", {name: "Prompt"});
@@ -607,14 +651,13 @@ describe("Esc modal guard", () => {
 		});
 	});
 
-	it("does not stop while the discard dialog is open", async () => {
+	it("does not stop while a queued row's menu is open", async () => {
 		const onInterrupt = vi.fn<() => void>();
-		render(<Stopper onInterrupt={onInterrupt} queue={queueView([ALICE])} />);
-		fireEvent.click(screen.getByRole("button", {name: "Remove from queue"}));
-		const dialog = await screen.findByRole("alertdialog");
-		const cancel = within(dialog).getByRole("button", {name: "Cancel"});
-		cancel.focus();
-		fireEvent.keyDown(cancel, {key: "Escape", code: "Escape"});
+		render(<Stopper onInterrupt={onInterrupt} queue={queueView([ALICE, BOB])} />);
+		const menu = await openRowMenu(0);
+		const item = within(menu).getByRole("menuitem", {name: "Remove from queue"});
+		item.focus();
+		fireEvent.keyDown(item, {key: "Escape", code: "Escape"});
 
 		expect(onInterrupt.mock.calls.length).toBe(0);
 	});

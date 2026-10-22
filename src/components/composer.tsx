@@ -1,4 +1,15 @@
-import {memo, type ReactNode, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState} from "react";
+import {
+	memo,
+	type ReactNode,
+	useCallback,
+	useContext,
+	useEffect,
+	useId,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import {CircleStop, CornerDownLeft} from "lucide-react";
 
 import {useBandEnter} from "../hooks/use-band-enter";
@@ -25,7 +36,6 @@ import type {LaunchOptions} from "../lib/launch-options";
 import {filterSlashCommands, type SlashCommand, slashArgumentHint, slashQuery} from "../lib/slash-commands";
 import {type ChinLaunchControls, ComposerAddMenu, ComposerChin} from "./composer-chin";
 import {AttachedContextChips} from "./attached-context-chips";
-import {ConfirmDialog} from "./confirm-dialog";
 import type {ChinMenu} from "./composer-launch-menus";
 import {
 	COMPOSER_CARD_CLASS,
@@ -36,6 +46,7 @@ import {
 } from "./composer-tokens";
 import {FileMentionMenu} from "./file-mention-menu";
 import {QueuedMessageBar} from "./queued-message-bar";
+import {ToastContext} from "./toast-context";
 import {fileMentionOptionId} from "./file-mention-option-id";
 import {SlashCommandMenu} from "./slash-command-menu";
 import {slashCommandOptionId} from "./slash-command-option-id";
@@ -66,6 +77,7 @@ export interface ComposerQueueView {
 	items: readonly QueuedPrompt[];
 	sendNow: (id: string) => void;
 	remove: (id: string) => void;
+	clear: () => void;
 }
 
 interface ComposerProps {
@@ -308,6 +320,8 @@ export function Composer({
 }: ComposerProps) {
 	const {text: prompt, setText: setPrompt, clear: clearDraft} = useComposerDraft(draftKey);
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
+	// Optional: composers rendered outside the app shell (tests, previews) have no toaster.
+	const toast = useContext(ToastContext);
 	const hintId = useId();
 	const isMac = useIsMac();
 	const slashMenuId = useId();
@@ -494,7 +508,6 @@ export function Composer({
 		handleSubmitRef.current(undefined, event.nativeEvent);
 	}, []);
 
-	const [discardId, setDiscardId] = useState<string | null>(null);
 	const [historyWalk, setHistoryWalk] = useState<{
 		draftKey: string;
 		nav: HistoryNavigator;
@@ -534,11 +547,18 @@ export function Composer({
 	}
 
 	function editQueuedPrompt(item: QueuedPrompt) {
+		// Upstream refuses to pull a queued message back over a draft rather than merging them.
+		if (prompt.trim() !== "") {
+			toast?.({
+				kind: "warning",
+				message: "The input already has a draft. Clear it to pull this message back in.",
+			});
+			return;
+		}
 		queue?.remove(item.id);
-		const next = prompt.trim() === "" ? item.text : `${item.text}\n\n${prompt}`;
 		pendingCaretRef.current = item.text.length;
 		setCaret(item.text.length);
-		setPrompt(next);
+		setPrompt(item.text);
 		textareaRef.current?.focus();
 	}
 
@@ -568,16 +588,6 @@ export function Composer({
 	}, [setPrompt]);
 
 	const queueBandSlot = useBandEnter<HTMLDivElement>();
-	const clearQueue = useCallback(() => {
-		for (const item of queue?.items ?? []) queue?.remove(item.id);
-	}, [queue]);
-
-	const closeDiscard = useCallback((open: boolean) => {
-		if (!open) setDiscardId(null);
-	}, []);
-	const confirmDiscard = useCallback(() => {
-		if (discardId !== null) queue?.remove(discardId);
-	}, [discardId, queue]);
 
 	const launchControls = useMemo<ChinLaunchControls>(
 		() => ({
@@ -640,21 +650,12 @@ export function Composer({
 							items={queue.items}
 							onEdit={editQueuedPrompt}
 							onSendNow={queue.sendNow}
-							onRemove={setDiscardId}
-							onClearAll={clearQueue}
+							onRemove={queue.remove}
+							onClearAll={queue.clear}
 						/>
 					</div>
 				</>
 			)}
-			<ConfirmDialog
-				open={discardId !== null}
-				onOpenChange={closeDiscard}
-				title="Discard queued message?"
-				body="This message will be removed from the queue and won’t be sent."
-				confirmLabel="Discard"
-				variant="danger"
-				onConfirm={confirmDiscard}
-			/>
 			{attachError !== null && (
 				<p role="alert" className="mb-1.5 ps-1 text-footnote text-danger-000">
 					{attachError}

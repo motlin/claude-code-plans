@@ -18,6 +18,7 @@ export type ComposerQueueAction =
 	| {type: "enqueue"; item: QueuedPrompt; position?: "back" | "front"}
 	| {type: "edit"; id: string; text: string}
 	| {type: "remove"; id: string}
+	| {type: "clear"}
 	| {type: "reorder"; id: string; toIndex: number};
 
 export function composerQueueReducer(
@@ -31,6 +32,8 @@ export function composerQueueReducer(
 			return queue.map((item) => (item.id === action.id ? {...item, text: action.text} : item));
 		case "remove":
 			return queue.filter((item) => item.id !== action.id);
+		case "clear":
+			return [];
 		case "reorder": {
 			const item = queue.find((candidate) => candidate.id === action.id);
 			if (item === undefined) return queue;
