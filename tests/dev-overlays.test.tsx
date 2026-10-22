@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {act, cleanup, render, screen} from "@testing-library/react";
+import {act, cleanup, render, screen, waitFor} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {DevOverlays} from "../src/components/dev-overlays";
@@ -52,9 +52,20 @@ describe("DevOverlays", () => {
 
 	it("passes the endpoint to the toolbar once the Agentation server answers", async () => {
 		stubViewport(1280);
-		vi.stubGlobal("fetch", async () => Promise.resolve(new Response("ok", {status: 200})));
+		// Answer after a macrotask, as a real server does, so the toolbar renders before the probe settles.
+		vi.stubGlobal(
+			"fetch",
+			async () =>
+				new Promise<Response>((resolve) => {
+					setTimeout(() => {
+						resolve(new Response("ok", {status: 200}));
+					}, 20);
+				}),
+		);
 		render(<DevOverlays />);
-		expect(await screen.findByTestId("agentation")).toHaveProperty("dataset.endpoint", "http://localhost:4747");
+		await waitFor(() => {
+			expect(screen.getByTestId("agentation").dataset["endpoint"]).toBe("http://localhost:4747");
+		});
 	});
 
 	it("keeps both floating dev buttons off a phone, where they would cover the composer's + and send", () => {
