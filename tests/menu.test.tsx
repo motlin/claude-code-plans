@@ -1198,4 +1198,119 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 		await flush();
 		expect(presentation()).toStrictEqual({presentation: "sheet", scrim: true});
 	});
+
+	async function drillIntoStatus() {
+		stubCoarseAtWidth(639);
+		renderDropdown();
+		const root = await openDropdown();
+		fireEvent.click(screen.getByRole("menuitem", {name: /Status/}));
+		await flush();
+		const child = Array.from(document.querySelectorAll<HTMLElement>("[role=menu]")).find((menu) => menu !== root);
+		return {root, child};
+	}
+
+	function levelState(root: HTMLElement) {
+		return {
+			drilled: root.hasAttribute("data-cds-sheet-drilled"),
+			ariaHidden: root.getAttribute("aria-hidden"),
+			menus: document.querySelectorAll("[role=menu]").length,
+		};
+	}
+
+	it("drills a submenu into the sheet with a Back header titled by the trigger, as upstream's Bt", async () => {
+		const {root, child} = await drillIntoStatus();
+		const positioner = child?.parentElement;
+		const header = child?.querySelector("[data-cds-sheet-scroll]")?.nextElementSibling;
+		const back = header?.querySelector("[aria-label=Back]");
+		const title = header?.lastElementChild;
+		expect({
+			parent: levelState(root),
+			firstHighlighted: child
+				?.querySelector("[data-cds-sheet-scroll] [role^=menuitem]")
+				?.hasAttribute("data-highlighted"),
+			positioner: {
+				className: positioner?.className,
+				position: positioner?.style.position,
+				inset: positioner?.style.inset,
+				zIndex: positioner?.style.zIndex,
+			},
+			child: {
+				presentation: child?.getAttribute("data-presentation"),
+				nested: child?.hasAttribute("data-nested"),
+				sameTree: child?.getAttribute("data-sheet-tree") === root.getAttribute("data-sheet-tree"),
+				depth: child?.getAttribute("data-cds-sheet-depth"),
+				size: child?.getAttribute("data-size"),
+				classes: [
+					"bg-transparent",
+					"shadow-none",
+					"[&[data-ending-style]:not([data-cds-sheet-tree-closing])]:translate-x-full",
+					"[&[data-ending-style][data-cds-sheet-tree-closing]]:translate-y-[calc(100%+1.5rem)]",
+				].filter((name) => child?.classList.contains(name) === true).length,
+				pill: child?.querySelector("[data-cds-sheet-handle]")?.firstElementChild?.className,
+				closeRow: child?.querySelector("[aria-label=Close]") ?? null,
+			},
+			header: {
+				className: header?.className,
+				backRole: back?.getAttribute("role"),
+				backWrapper: back?.parentElement?.className,
+				titleText: title?.textContent,
+				titleHidden: title?.getAttribute("aria-hidden"),
+				titleClass: title?.className,
+			},
+		}).toStrictEqual({
+			parent: {drilled: true, ariaHidden: "true", menus: 2},
+			firstHighlighted: true,
+			positioner: {
+				className: "[clip-path:inset(0_0_-200vh_0)]",
+				position: "fixed",
+				inset: "auto 0 0",
+				zIndex: "220",
+			},
+			child: {
+				presentation: "sheet",
+				nested: true,
+				sameTree: true,
+				depth: "0",
+				size: "lg",
+				classes: 4,
+				pill: "h-1 w-9 rounded-full bg-border opacity-0",
+				closeRow: null,
+			},
+			header: {
+				className: "order-first flex min-h-10 shrink-0 touch-none items-center gap-1.5 px-1 pb-1 select-none",
+				backRole: "menuitem",
+				backWrapper: "-me-2.5 shrink-0",
+				titleText: "Status",
+				titleHidden: "true",
+				titleClass: "min-w-0 flex-1 truncate text-start text-[15px]/[20px] font-semibold text-primary",
+			},
+		});
+	});
+
+	it("closes the drilled level on Back and restores the parent", async () => {
+		const {root} = await drillIntoStatus();
+		fireEvent.click(screen.getByRole("menuitem", {name: "Back"}));
+		await flush();
+		expect(levelState(root)).toStrictEqual({drilled: false, ariaHidden: null, menus: 1});
+	});
+
+	it("does not open a sheet submenu on hover", async () => {
+		stubCoarseAtWidth(639);
+		renderDropdown();
+		await openDropdown();
+		const trigger = screen.getByRole("menuitem", {name: /Status/});
+		fireEvent.pointerEnter(trigger, {pointerType: "mouse"});
+		fireEvent.mouseEnter(trigger);
+		fireEvent.pointerMove(trigger, {pointerType: "mouse"});
+		fireEvent.mouseMove(trigger);
+		await act(async () => {
+			await new Promise((resolve) => {
+				setTimeout(resolve, 250);
+			});
+		});
+		expect({
+			menus: document.querySelectorAll("[role=menu]").length,
+			expanded: trigger.getAttribute("aria-expanded"),
+		}).toStrictEqual({menus: 1, expanded: "false"});
+	});
 });

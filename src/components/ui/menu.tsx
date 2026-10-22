@@ -1,6 +1,6 @@
 import {ContextMenu as BaseContextMenu} from "@base-ui/react/context-menu";
 import {Menu as BaseMenu} from "@base-ui/react/menu";
-import {Check, ChevronRight, X} from "lucide-react";
+import {ArrowLeft, Check, ChevronRight, X} from "lucide-react";
 import {
 	type ComponentProps,
 	createContext,
@@ -10,6 +10,7 @@ import {
 	useContext,
 	useEffect,
 	useId,
+	useLayoutEffect,
 	useMemo,
 	useRef,
 	useState,
@@ -114,8 +115,30 @@ const SHEET_POSITIONER_STYLE = {
 /** Upstream's X1: no flipping or shifting, and no tracking of the trigger. */
 const SHEET_COLLISION_AVOIDANCE = {side: "none", align: "none"} as const satisfies CollisionAvoidance;
 
-/** Upstream's Hc plus the slide-up enter and exit. */
-const SHEET_POPUP_CLASS = `group/sheet relative flex w-full min-w-0 max-w-none flex-col overflow-hidden bg-[var(--menu-bg)] font-normal text-primary shadow-[var(--menu-shadow)] outline-none select-none rounded-t-[14px] rounded-b-none pb-[max(env(safe-area-inset-bottom),0.5rem)] pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)] transition-[translate,height,scale] ${SHEET_MOTION} data-[starting-style]:translate-y-[calc(100%+1.5rem)] data-[ending-style]:translate-y-[calc(100%+1.5rem)]`;
+/** Upstream's Hc, shared by every level of a sheet tree. */
+const SHEET_LEVEL_CLASS = `group/sheet relative flex w-full min-w-0 max-w-none flex-col overflow-hidden font-normal text-primary outline-none select-none rounded-t-[14px] rounded-b-none pb-[max(env(safe-area-inset-bottom),0.5rem)] pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)] transition-[translate,height,scale] ${SHEET_MOTION}`;
+
+/** The root level: the sheet surface, sliding up on enter and down on exit. */
+const SHEET_POPUP_CLASS = `${SHEET_LEVEL_CLASS} bg-[var(--menu-bg)] shadow-[var(--menu-shadow)] data-[starting-style]:translate-y-[calc(100%+1.5rem)] data-[ending-style]:translate-y-[calc(100%+1.5rem)]`;
+
+/**
+ * A drilled level: transparent over the root's surface, sliding out sideways on its own close
+ * (or when peeled), and down with the root when the whole tree closes.
+ */
+const SHEET_NESTED_POPUP_CLASS = `${SHEET_LEVEL_CLASS} bg-transparent shadow-none [&[data-ending-style]:not([data-cds-sheet-tree-closing])]:translate-x-full rtl:[&[data-ending-style]:not([data-cds-sheet-tree-closing])]:-translate-x-full [&[data-ending-style][data-cds-sheet-peeling]]:translate-x-full rtl:[&[data-ending-style][data-cds-sheet-peeling]]:-translate-x-full [&[data-ending-style][data-cds-sheet-tree-closing]]:translate-y-[calc(100%+1.5rem)]`;
+
+/** Upstream's tl: a drilled level's positioner, clipped at the sheet's top edge and stacked over the root. */
+const SHEET_NESTED_POSITIONER_CLASS = "[clip-path:inset(0_0_-200vh_0)]";
+
+const SHEET_NESTED_POSITIONER_STYLE = {...SHEET_POSITIONER_STYLE, zIndex: 220} as const;
+
+/** Upstream's Bt/q: a drilled level's title bar, painted above its rows. */
+const SHEET_HEADER_CLASS = "order-first flex min-h-10 shrink-0 touch-none items-center gap-1.5 px-1 pb-1 select-none";
+
+const SHEET_BACK_CLASS =
+	"flex min-h-10 w-auto cursor-default items-center gap-1 rounded-r7 px-2.5 py-0 text-[15px]/[22px] text-primary outline-none select-none data-[highlighted]:bg-fill-ghost-hover";
+
+const SHEET_TITLE_CLASS = "min-w-0 flex-1 truncate text-start text-[15px]/[20px] font-semibold text-primary";
 
 /** Upstream's Gf (.9) resting cap and the .95 drag ceiling, both below the top safe area. */
 const SHEET_POPUP_STYLE = {
@@ -128,17 +151,93 @@ const SHEET_CONTENT_CLASS = `flex min-h-0 flex-1 flex-col transition-[translate]
 
 const SHEET_SCROLL_CLASS = "relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain p-1";
 
-/** Upstream's dt: the drag handle pill at the top of the sheet. */
-function SheetHandle() {
+/** Upstream's dt: the drag handle pill at the top of the sheet, hidden on a drilled level. */
+function SheetHandle({nested = false}: {nested?: boolean}) {
 	return (
 		<div
 			aria-hidden="true"
 			data-cds-sheet-handle=""
 			className="flex min-h-8 shrink-0 touch-none items-center justify-center select-none"
 		>
-			<div className="h-1 w-9 rounded-full bg-border" />
+			<div className={nested ? "h-1 w-9 rounded-full bg-border opacity-0" : "h-1 w-9 rounded-full bg-border"} />
 		</div>
 	);
+}
+
+/** One sheet level's link to its tree: the shared tree id, and how a submenu marks this level drilled. */
+interface SheetLevel {
+	treeId: string;
+	setDrilled: (drilled: boolean) => void;
+}
+
+const SheetLevelContext = createContext<SheetLevel | null>(null);
+
+/** A level that a submenu has drilled past: hidden from assistive tech while its content slides off. */
+function useSheetLevel(treeId: string) {
+	const [drilled, setDrilled] = useState(false);
+	const level = useMemo(() => ({treeId, setDrilled}), [treeId]);
+	const attributes = drilled ? {"aria-hidden": true, "data-cds-sheet-drilled": ""} : {};
+	return {level, attributes};
+}
+
+/** The submenu a drilled level belongs to: its trigger, for the title, and how Back closes it. */
+interface SubmenuControl {
+	triggerRef: RefObject<HTMLElement | null>;
+	close: () => void;
+}
+
+const SubmenuControlContext = createContext<SubmenuControl | null>(null);
+
+/** Upstream's Bt: Back and the trigger's label, in a bar that also drags the sheet. */
+function SheetLevelHeader() {
+	const control = useContext(SubmenuControlContext);
+	const [title, setTitle] = useState("");
+	useLayoutEffect(() => {
+		setTitle(control?.triggerRef.current?.querySelector("[data-menu-sub-label]")?.textContent ?? "");
+	}, [control]);
+	return (
+		<div className={SHEET_HEADER_CLASS}>
+			<span className="-me-2.5 shrink-0">
+				<BaseMenu.Item
+					closeOnClick={false}
+					aria-label="Back"
+					className={SHEET_BACK_CLASS}
+					onClick={() => {
+						control?.close();
+					}}
+				>
+					<span aria-hidden="true" className="flex size-5 shrink-0 items-center justify-center">
+						<ArrowLeft className="size-5" />
+					</span>
+				</BaseMenu.Item>
+			</span>
+			<span aria-hidden="true" className={SHEET_TITLE_CLASS}>
+				{title}
+			</span>
+		</div>
+	);
+}
+
+/**
+ * A drilled level enters from the inline end (`translate: 100% 0`, then cleared), and takes the
+ * taller of its own and its parent's height so the sheet never shrinks under the finger.
+ */
+function useDrilledLevelLayout(popup: HTMLDivElement | null) {
+	useLayoutEffect(() => {
+		if (popup === null) return undefined;
+		const parent = popup.ownerDocument.querySelector<HTMLElement>(
+			`[data-sheet-tree="${CSS.escape(popup.dataset["sheetTree"] ?? "")}"][data-cds-sheet-drilled]`,
+		);
+		const height = Math.max(parent?.getBoundingClientRect().height ?? 0, popup.scrollHeight);
+		if (height > 0) popup.style.height = `${height}px`;
+		popup.style.translate = "100% 0";
+		const frame = requestAnimationFrame(() => {
+			popup.style.translate = "";
+		});
+		return () => {
+			cancelAnimationFrame(frame);
+		};
+	}, [popup]);
 }
 
 function useItemClass(twoLine = false, gap = "gap-1"): string {
@@ -285,10 +384,13 @@ interface MenuRootProps {
  * Upstream's yt/Ik: track the root's open state (controlled or not) and run the sheet gate with
  * `closable = open === undefined || onOpenChange !== undefined`, latched from open through the exit.
  */
-function useMenuRootSheet<P extends MenuRootProps>(props: P): {sheet: boolean; rootProps: P} {
+function useMenuRootSheet<P extends MenuRootProps>(
+	props: P,
+): {sheet: boolean; open: boolean; rootProps: P & {onOpenChange: (open: boolean, ...rest: never[]) => void}} {
 	const {open, defaultOpen, onOpenChange, onOpenChangeComplete} = props;
 	const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen ?? false);
-	const {sheet, onOpenChangeComplete: releaseLatch} = useSheetPresentation(open ?? uncontrolledOpen, {
+	const resolvedOpen = open ?? uncontrolledOpen;
+	const {sheet, onOpenChangeComplete: releaseLatch} = useSheetPresentation(resolvedOpen, {
 		closable: open === undefined || onOpenChange !== undefined,
 	});
 	const rootProps = {
@@ -302,7 +404,7 @@ function useMenuRootSheet<P extends MenuRootProps>(props: P): {sheet: boolean; r
 			onOpenChangeComplete?.(completedOpen);
 		},
 	};
-	return {sheet, rootProps};
+	return {sheet, open: resolvedOpen, rootProps};
 }
 
 export function Menu(props: ComponentProps<typeof BaseMenu.Root>) {
@@ -364,7 +466,7 @@ export interface MenuContentProps {
 }
 
 interface MenuContentInternalProps extends MenuContentProps {
-	/** A submenu level, which keeps its own layout until drill-in sheets land. */
+	/** A submenu level: anchored beside its trigger, or drilled into the parent's sheet. */
 	nested?: boolean;
 }
 
@@ -391,11 +493,18 @@ export function MenuContent({
 			: undefined;
 	const kind = useContext(MenuKindContext);
 	const sheet = useContext(MenuSheetContext) && !structurallyAnchored;
-	const sheetTreeId = useId();
+	const parentLevel = useContext(SheetLevelContext);
+	const ownTreeId = useId();
+	const sheetTreeId = nested && parentLevel !== null ? parentLevel.treeId : ownTreeId;
+	const {level, attributes: levelAttributes} = useSheetLevel(sheetTreeId);
 	/* A callback ref, so the press markers attach when the portal mounts the popup on open. */
 	const [sheetPopup, setSheetPopup] = useState<HTMLDivElement | null>(null);
+	const [nestedPopup, setNestedPopup] = useState<HTMLDivElement | null>(null);
 	const rootSheet = sheet && !nested;
+	/* A submenu drills in only inside a sheet tree; an anchored parent keeps its fly-out. */
+	const nestedSheet = sheet && nested && parentLevel !== null;
 	useSheetPressMarkers(sheetPopup);
+	useDrilledLevelLayout(nestedPopup);
 	/* Upstream's si order: an override, then comfortable on (pointer: coarse), then the prop or opener's density. */
 	const scopeDensity = useScopeDensity(density);
 	/* A sheet's portal forces comfortable (`density: MG`) at every account density. */
@@ -426,6 +535,7 @@ export function MenuContent({
 								data-sheet-tree={sheetTreeId}
 								data-cds-sheet-depth="0"
 								data-size="lg"
+								{...levelAttributes}
 								className={`${SHEET_POPUP_CLASS} ${sizing.text}${className ? ` ${className}` : ""}`}
 								style={SHEET_POPUP_STYLE}
 								onKeyDown={handleAcceleratorKey}
@@ -434,9 +544,53 @@ export function MenuContent({
 								<SheetHandle />
 								<div className={SHEET_CONTENT_CLASS}>
 									<div data-cds-sheet-scroll="" className={SHEET_SCROLL_CLASS}>
-										{children}
+										<SheetLevelContext.Provider value={level}>
+											{children}
+										</SheetLevelContext.Provider>
 										<SheetCloseRow />
 									</div>
+								</div>
+							</BaseMenu.Popup>
+						</BaseMenu.Positioner>
+					</BaseMenu.Portal>
+				</MenuLgContext.Provider>
+			</DensityProvider>
+		);
+	}
+	if (nestedSheet) {
+		return (
+			<DensityProvider density={resolvedDensity}>
+				<MenuLgContext.Provider value>
+					<BaseMenu.Portal>
+						<BaseMenu.Positioner
+							className={SHEET_NESTED_POSITIONER_CLASS}
+							style={SHEET_NESTED_POSITIONER_STYLE}
+							data-density={resolvedDensity}
+							collisionAvoidance={SHEET_COLLISION_AVOIDANCE}
+							disableAnchorTracking
+						>
+							<BaseMenu.Popup
+								ref={setNestedPopup}
+								data-cds={kind}
+								data-presentation="sheet"
+								data-nested=""
+								data-sheet-tree={sheetTreeId}
+								data-cds-sheet-depth="0"
+								data-size="lg"
+								{...levelAttributes}
+								className={`${SHEET_NESTED_POPUP_CLASS} ${sizing.text}${className ? ` ${className}` : ""}`}
+								style={SHEET_POPUP_STYLE}
+								onKeyDown={handleAcceleratorKey}
+								{...(finalFocus === undefined ? {} : {finalFocus})}
+							>
+								<SheetHandle nested />
+								<div className={SHEET_CONTENT_CLASS}>
+									<div data-cds-sheet-scroll="" className={SHEET_SCROLL_CLASS}>
+										<SheetLevelContext.Provider value={level}>
+											{children}
+										</SheetLevelContext.Provider>
+									</div>
+									<SheetLevelHeader />
 								</div>
 							</BaseMenu.Popup>
 						</BaseMenu.Positioner>
@@ -742,15 +896,40 @@ export function MenuRadioItem({
 
 const SubmenuTriggerContext = createContext<RefObject<HTMLElement | null> | null>(null);
 
-/** Upstream's ss: a submenu re-runs the sheet gate at its own open rather than inheriting the root's. */
+/**
+ * Upstream's ss: a submenu re-runs the sheet gate at its own open rather than inheriting the root's.
+ * Inside a sheet it drills in: open, it marks the parent level drilled, and its Back row closes it.
+ */
 export function MenuSub(props: ComponentProps<typeof BaseMenu.SubmenuRoot>) {
 	const triggerRef = useRef<HTMLElement | null>(null);
-	const {sheet, rootProps} = useMenuRootSheet(props);
+	const {sheet, open, rootProps} = useMenuRootSheet(props);
+	const parentLevel = useContext(SheetLevelContext);
+	const drills = sheet && parentLevel !== null;
+	const {defaultOpen: _defaultOpen, ...controlledProps} = rootProps;
+	const {onOpenChange} = rootProps;
+	const control = useMemo(
+		() => ({
+			triggerRef,
+			close: () => {
+				onOpenChange(false);
+			},
+		}),
+		[onOpenChange],
+	);
+	useEffect(() => {
+		if (parentLevel === null) return undefined;
+		parentLevel.setDrilled(drills && open);
+		return () => {
+			parentLevel.setDrilled(false);
+		};
+	}, [parentLevel, drills, open]);
 	return (
 		<SubmenuTriggerContext.Provider value={triggerRef}>
-			<MenuSheetContext.Provider value={sheet}>
-				<BaseMenu.SubmenuRoot {...rootProps} />
-			</MenuSheetContext.Provider>
+			<SubmenuControlContext.Provider value={control}>
+				<MenuSheetContext.Provider value={sheet}>
+					<BaseMenu.SubmenuRoot {...controlledProps} open={open} />
+				</MenuSheetContext.Provider>
+			</SubmenuControlContext.Provider>
 		</SubmenuTriggerContext.Provider>
 	);
 }
@@ -799,16 +978,22 @@ export interface MenuSubTriggerProps extends Omit<
 export function MenuSubTrigger({children, icon, value, valueAccent, ...props}: MenuSubTriggerProps) {
 	const itemClass = useItemClass();
 	const triggerRef = useContext(SubmenuTriggerContext);
+	/* A sheet drills in on a press only; hover would yank the level sideways under the finger. */
+	const sheet = useContext(MenuSheetContext);
+	const parentLevel = useContext(SheetLevelContext);
+	const drills = sheet && parentLevel !== null;
 	return (
 		<BaseMenu.SubmenuTrigger
 			ref={triggerRef}
-			openOnHover
+			openOnHover={!drills}
 			delay={SUBMENU_HOVER_DELAY_MS}
 			{...props}
 			className={`${itemClass} ${ITEM_VARIANT_CLASS.default} justify-between data-[popup-open]:bg-fill-ghost-hover`}
 		>
 			<ItemIcon icon={icon} />
-			<span className={LABEL_CLASS}>{children}</span>
+			<span data-menu-sub-label="" className={LABEL_CLASS}>
+				{children}
+			</span>
 			<span className={`${TRAILING_CLASS} pl-3`}>
 				{value !== undefined && (
 					<span
@@ -847,6 +1032,7 @@ export function MenuSubContent({
 	const anchor = useMemo(() => (triggerRef === null ? undefined : submenuAnchor(triggerRef)), [triggerRef]);
 	return (
 		<MenuContent
+			nested
 			side={side ?? inlineEndSide()}
 			align={align}
 			sideOffset={sideOffset}
