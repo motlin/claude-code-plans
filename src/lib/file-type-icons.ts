@@ -32,7 +32,7 @@ const ICON_ATTRIBUTES = [
 
 type FileTypeIconAttribute = (typeof ICON_ATTRIBUTES)[number];
 
-type FileTypeIconNode =
+export type FileTypeIconNode =
 	| readonly [(typeof ICON_ELEMENTS)[number], Partial<Record<FileTypeIconAttribute, string>>]
 	| readonly [
 			(typeof ICON_ELEMENTS)[number],

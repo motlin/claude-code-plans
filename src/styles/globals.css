@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "./file-type-icons.css";
 
 @font-face {
 	font-family: "MesloLGS NF Web";
