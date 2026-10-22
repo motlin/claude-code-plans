@@ -1,4 +1,4 @@
-import {Check, CheckCheck, Copy, Loader2, Pause, Pin, RotateCcw, Split, Volume2} from "lucide-react";
+import {Check, CheckCheck, Copy, Loader2, Pause, Pin, RotateCcw, Split, Volume2, X} from "lucide-react";
 import {createContext, type FocusEvent, type ReactNode, useContext, useEffect, useRef, useState} from "react";
 
 import {useChapters} from "../lib/chapter-store";
@@ -9,6 +9,7 @@ import {TOUCH_REVEAL, useTouchDevice} from "../lib/touch-reveal";
 import {formatMessageTime, formatRelativeTimestamp, formatTimestamp} from "../lib/timestamp-format";
 import {type TranscriptMessageRef, TranscriptActionsContext} from "./transcript-actions-context";
 import {InfoTip} from "./ui/info-tip";
+import {Spinner} from "./ui/spinner";
 import {Tooltip} from "./ui/tooltip";
 
 /*
@@ -367,17 +368,61 @@ const REVEAL_ON_HOVER_CLASS = [
 ].join(" ");
 
 /**
+ * Upstream's X on a waiting row the browser still holds: busy ("Removing…") until the take-back
+ * settles. The mouse-down keeps focus where it is, so the composer can take it.
+ */
+function CancelEditAction({onCancel}: {onCancel: () => Promise<void> | void}) {
+	const [removing, setRemoving] = useState(false);
+	return (
+		<span className="epitaxy-hint-fade-in flex items-center gap-[3px]">
+			<Tooltip content="Cancel and edit message">
+				<button
+					type="button"
+					aria-label="Cancel and edit message"
+					aria-busy={removing ? true : undefined}
+					aria-disabled={removing ? true : undefined}
+					tabIndex={useTabIndex()}
+					className={`relative ${BUTTON_CLASS}`}
+					onMouseDown={(event) => {
+						event.preventDefault();
+					}}
+					onClick={() => {
+						if (removing) return;
+						setRemoving(true);
+						void Promise.resolve(onCancel()).finally(() => {
+							setRemoving(false);
+						});
+					}}
+				>
+					{removing ? (
+						<>
+							<Spinner size="sm" />
+							<span className="sr-only">Removing…</span>
+						</>
+					) : (
+						<X aria-hidden="true" className={ICON_CLASS} />
+					)}
+				</button>
+			</Tooltip>
+		</span>
+	);
+}
+
+/**
  * Upstream's always-visible toolbar under a waiting user row. Copy and a disabled Rewind fade in on
  * hover; `children` (Send now on the head row) sit outside that group, so they show at rest.
  */
 export function WaitingMessageActions({
 	text,
 	unread = false,
+	onCancel,
 	children,
 }: {
 	text: string;
 	/** A stacked (not head) waiting row leads with upstream's at-rest "Unread" receipt. */
 	unread?: boolean;
+	/** Takes a browser-held steer back into the composer; absent once the CLI owns the text. */
+	onCancel?: (() => Promise<void> | void) | undefined;
 	children?: ReactNode;
 }) {
 	return (
@@ -407,6 +452,7 @@ export function WaitingMessageActions({
 				<div data-reveal-on-hover className={REVEAL_ON_HOVER_CLASS}>
 					<CopyAction text={text} />
 					<RewindAction message={undefined} />
+					{onCancel !== undefined && <CancelEditAction onCancel={onCancel} />}
 				</div>
 				{children}
 			</RevealedContext.Provider>

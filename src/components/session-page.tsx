@@ -7,7 +7,7 @@ import {lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type 
 import {Minimize2} from "lucide-react";
 import {SessionTileFrame, type SessionTileScrollPosition} from "./session-tile-frame";
 import {latestBreakdown} from "../lib/context-breakdown";
-import {focusComposer} from "../lib/context-attach";
+import {focusComposer, requestComposerTakeBack} from "../lib/context-attach";
 import {SessionRailSlot} from "./session-rail/session-rail-slot";
 import {useSessionRailDocked} from "./session-rail/use-session-rail-docked";
 import type {SessionRailInputs} from "./session-rail/session-rail-cards";
@@ -58,7 +58,7 @@ import {Tooltip} from "./ui/tooltip";
 import {SessionPaneControls} from "./view-options-menu";
 import {SessionDock} from "./session-dock";
 import {sessionProcessLive} from "../lib/session-state";
-import {steeredPrompts} from "../lib/composer-queue";
+import {type QueuedPrompt, steeredPrompts} from "../lib/composer-queue";
 import {tailMarkerState} from "../lib/working-marker";
 import {WaitingForInputNotice} from "./approval-card";
 import {QuestionCard} from "./question-card";
@@ -626,7 +626,13 @@ function SessionView({
 		deliver: liveHerdrPrompt.send,
 		interrupt: requestSendNowInterrupt,
 	});
-	const {enqueue: enqueuePrompt, items: queuedPrompts} = composerQueue;
+	const {enqueue: enqueuePrompt, items: queuedPrompts, remove: removeQueuedPrompt} = composerQueue;
+	const cancelHeldSteer = useCallback(
+		(item: QueuedPrompt) => {
+			if (requestComposerTakeBack(sessionId, item.text)) removeQueuedPrompt(item.id);
+		},
+		[removeQueuedPrompt, sessionId],
+	);
 	const {send: composerSend} = composerSendPlan(composerGate, {busy: paneBusy, queued: queuedPrompts.length});
 	const sendLivePrompt = useCallback(
 		async (prompt: string) => {
@@ -1106,6 +1112,7 @@ function SessionView({
 										)
 									}
 									onSendNow={composerQueue.sendNow}
+									onCancel={cancelHeldSteer}
 									onFocusComposer={focusSessionComposer}
 								/>
 							)}

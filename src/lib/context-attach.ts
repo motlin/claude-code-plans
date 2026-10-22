@@ -148,6 +148,8 @@ export function composePrompt(
 export interface ComposerHandle {
 	insertText: (text: string) => void;
 	focus: () => void;
+	/** Puts a cancelled steer back, ahead of any draft, and focuses; absent where steers can't be sent. */
+	takeBack?: (text: string) => void;
 }
 
 const composers = new Map<string, Set<ComposerHandle>>();
@@ -214,6 +216,18 @@ export function useContextChips(sessionId: string): readonly ContextChip[] {
 export function requestComposerInsert(sessionId: string, text: string): boolean {
 	const handles = mounted(sessionId);
 	for (const handle of handles) handle.insertText(text);
+	return handles.length > 0;
+}
+
+/** Upstream's local take-back join: the cancelled message, a blank line, then the draft. */
+export function mergeTakeBack(text: string, draft: string): string {
+	return draft.trim() === "" ? text : `${text}\n\n${draft}`;
+}
+
+/** Puts a cancelled steer back into the session's composer; false when none can take it. */
+export function requestComposerTakeBack(sessionId: string, text: string): boolean {
+	const handles = mounted(sessionId).filter((handle) => handle.takeBack !== undefined);
+	for (const handle of handles) handle.takeBack?.(text);
 	return handles.length > 0;
 }
 

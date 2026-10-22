@@ -8,6 +8,7 @@ import {Composer} from "../src/components/composer";
 import {customizeMcpServersQueryOptions} from "../src/lib/api/customize";
 import {localAccountQueryOptions} from "../src/lib/api/local-account";
 import type {ComposerState} from "../src/lib/composer-state";
+import {requestComposerTakeBack} from "../src/lib/context-attach";
 
 afterEach(() => {
 	cleanup();
@@ -512,6 +513,33 @@ describe("Composer", () => {
 		it("renders an empty chin without chin state", () => {
 			render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} />);
 			expect(document.querySelector('[data-cds="ChatComposerChin"]')?.childElementCount).toBe(0);
+		});
+	});
+
+	describe("taking a cancelled steer back", () => {
+		it("puts the text in an empty composer and focuses it", () => {
+			render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} />);
+			const textarea = screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
+			let delivered = false;
+			act(() => {
+				delivered = requestComposerTakeBack("session-alice", "Alice's steer");
+			});
+			expect({
+				delivered,
+				other: requestComposerTakeBack("session-bob", "Bob's steer"),
+				value: textarea.value,
+				focused: document.activeElement === textarea,
+			}).toStrictEqual({delivered: true, other: false, value: "Alice's steer", focused: true});
+		});
+
+		it("merges the steer ahead of a draft, as upstream's local take-back does", () => {
+			render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} />);
+			const textarea = screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
+			fireEvent.change(textarea, {target: {value: "Carol's draft"}});
+			act(() => {
+				requestComposerTakeBack("session-alice", "Alice's steer");
+			});
+			expect(textarea.value).toBe("Alice's steer\n\nCarol's draft");
 		});
 	});
 });

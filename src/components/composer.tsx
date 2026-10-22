@@ -25,6 +25,7 @@ import {
 	appendAttachment,
 	attachUploadedFiles,
 	composePrompt,
+	mergeTakeBack,
 	registerComposer,
 	takeContextChips,
 	useContextChips,
@@ -383,6 +384,14 @@ export function Composer({
 					textareaRef.current?.focus();
 				},
 				focus: () => textareaRef.current?.focus(),
+				takeBack: (text) => {
+					const next = mergeTakeBack(text, promptRef.current);
+					promptRef.current = next;
+					pendingCaretRef.current = text.length;
+					setCaret(text.length);
+					setPrompt(next);
+					textareaRef.current?.focus();
+				},
 			}),
 		[draftKey, setPrompt],
 	);

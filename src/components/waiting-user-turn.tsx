@@ -129,6 +129,7 @@ export function WaitingUserTurn({
 	delivered = false,
 	onSendNow,
 	onFocusComposer,
+	onCancel,
 	...rest
 }: {
 	entryId: string;
@@ -140,6 +141,8 @@ export function WaitingUserTurn({
 	onSendNow?: (() => Promise<void> | void) | undefined;
 	/** Focuses the session composer, where a mouse click on Send now leaves focus. */
 	onFocusComposer?: (() => void) | undefined;
+	/** Upstream's "Cancel and edit message": only while the browser holds the text, never once the CLI does. */
+	onCancel?: (() => Promise<void> | void) | undefined;
 	"data-perf-pending-prompt"?: string;
 }) {
 	const reading = useReadAnnouncement(delivered);
@@ -155,7 +158,7 @@ export function WaitingUserTurn({
 						{text}
 					</p>
 				</div>
-				<WaitingMessageActions text={text} unread={!head}>
+				<WaitingMessageActions text={text} unread={!head} onCancel={onCancel}>
 					{head && <SendNowButton onSendNow={onSendNow} onFocusComposer={onFocusComposer} />}
 				</WaitingMessageActions>
 			</div>
@@ -231,12 +234,15 @@ export function HeldSteerTurns({
 	items,
 	head,
 	onSendNow,
+	onCancel,
 	onFocusComposer,
 }: {
 	items: readonly QueuedPrompt[];
 	head: boolean;
 	/** Sends this steer next, interrupting the running turn; settles with the interrupt. */
 	onSendNow: (id: string) => Promise<void>;
+	/** Takes this steer out of the queue and back into the composer. */
+	onCancel: (item: QueuedPrompt) => void;
 	onFocusComposer?: (() => void) | undefined;
 }) {
 	if (items.length === 0) return null;
@@ -250,6 +256,9 @@ export function HeldSteerTurns({
 					head={head && index === 0}
 					onSendNow={async () => {
 						await onSendNow(item.id);
+					}}
+					onCancel={() => {
+						onCancel(item);
 					}}
 					onFocusComposer={onFocusComposer}
 				/>

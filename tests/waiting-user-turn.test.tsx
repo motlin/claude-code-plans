@@ -183,7 +183,9 @@ describe("HeldSteerTurns", () => {
 	];
 
 	it("draws browser-held steers as waiting rows, Send now on the head only", () => {
-		const {container} = render(<HeldSteerTurns items={STEERS} head onSendNow={async () => {}} />);
+		const {container} = render(
+			<HeldSteerTurns items={STEERS} head onSendNow={async () => {}} onCancel={() => {}} />,
+		);
 		expect(
 			[...container.querySelectorAll("[data-take-back-entry]")].map((row) => ({
 				entry: row.getAttribute("data-take-back-entry"),
@@ -199,7 +201,9 @@ describe("HeldSteerTurns", () => {
 	});
 
 	it("stacks every held steer behind an earlier waiting row", () => {
-		const {container} = render(<HeldSteerTurns items={STEERS} head={false} onSendNow={async () => {}} />);
+		const {container} = render(
+			<HeldSteerTurns items={STEERS} head={false} onSendNow={async () => {}} onCancel={() => {}} />,
+		);
 		expect({
 			sendNow: container.querySelectorAll("[data-testid=awaiting-turn-send-now]").length,
 			unread: container.querySelectorAll('[aria-label="Unread"]').length,
@@ -208,14 +212,24 @@ describe("HeldSteerTurns", () => {
 
 	it("Send now forwards the head steer's id", () => {
 		const onSendNow = vi.fn<(id: string) => Promise<void>>(async () => {});
-		const {container} = render(<HeldSteerTurns items={STEERS} head onSendNow={onSendNow} />);
+		const {container} = render(<HeldSteerTurns items={STEERS} head onSendNow={onSendNow} onCancel={() => {}} />);
 		const sendNow = container.querySelector("[data-testid=awaiting-turn-send-now]");
 		if (sendNow !== null) fireEvent.click(sendNow);
 		expect(onSendNow.mock.calls).toStrictEqual([["q4"]]);
 	});
 
+	it("Cancel and edit forwards the steer it was clicked on", () => {
+		const onCancel = vi.fn<(item: {id: string; text: string}) => void>();
+		const {getAllByRole} = render(
+			<HeldSteerTurns items={STEERS} head onSendNow={async () => {}} onCancel={onCancel} />,
+		);
+		const [, second] = getAllByRole("button", {name: "Cancel and edit message"});
+		if (second !== undefined) fireEvent.click(second);
+		expect(onCancel.mock.calls).toStrictEqual([[{id: "q5", text: "and Erin's too", midTurn: true}]]);
+	});
+
 	it("renders nothing without held steers", () => {
-		const {container} = render(<HeldSteerTurns items={[]} head onSendNow={async () => {}} />);
+		const {container} = render(<HeldSteerTurns items={[]} head onSendNow={async () => {}} onCancel={() => {}} />);
 		expect(container.innerHTML).toBe("");
 	});
 });
@@ -387,5 +401,74 @@ describe("Send now on the head waiting row", () => {
 		} finally {
 			vi.useRealTimers();
 		}
+	});
+});
+
+describe("Cancel and edit on a browser-held waiting row", () => {
+	it("puts upstream's X in the hover group after Rewind, before Send now", () => {
+		const {container} = render(
+			<WaitingUserTurn entryId="q1" text="hi" head onSendNow={() => {}} onCancel={() => {}} />,
+		);
+		const row = container.querySelector("[data-take-back-entry]");
+		const cancel = container.querySelector('[aria-label="Cancel and edit message"]');
+		expect({
+			toolbar: row === null ? null : toolbarControls(row),
+			wrapper: cancel?.closest(".epitaxy-hint-fade-in")?.className,
+			button: cancel?.className.split(" ").filter((name) => ["size-6", "rounded-r5"].includes(name)),
+			icon: cancel?.querySelector("svg") !== null,
+		}).toStrictEqual({
+			toolbar: {
+				label: "Message actions",
+				alwaysVisible: true,
+				buttons: [
+					{name: "Copy", disabled: false, testId: null, inRevealGroup: true},
+					{name: "Rewind to here", disabled: true, testId: null, inRevealGroup: true},
+					{name: "Cancel and edit message", disabled: false, testId: null, inRevealGroup: true},
+					{name: "Send now", disabled: false, testId: "awaiting-turn-send-now", inRevealGroup: false},
+				],
+			},
+			wrapper: "epitaxy-hint-fade-in flex items-center gap-[3px]",
+			button: ["size-6", "rounded-r5"],
+			icon: true,
+		});
+	});
+
+	it("calls the cancel handler and shows upstream's Removing… busy state until it settles", async () => {
+		let settle = () => {};
+		const onCancel = vi.fn<() => Promise<void>>(
+			async () =>
+				new Promise<void>((resolve) => {
+					settle = resolve;
+				}),
+		);
+		const {getByRole} = render(<WaitingUserTurn entryId="q1" text="hi" head={false} onCancel={onCancel} />);
+		const cancel = getByRole("button", {name: "Cancel and edit message"});
+		fireEvent.click(cancel);
+		fireEvent.click(cancel);
+		const busy = {
+			calls: onCancel.mock.calls.length,
+			ariaBusy: cancel.getAttribute("aria-busy"),
+			busyLabel: cancel.querySelector(".sr-only")?.textContent,
+			spinner: cancel.querySelector("[data-spinner]") !== null,
+		};
+		await act(async () => {
+			settle();
+			await Promise.resolve();
+		});
+		expect({
+			busy,
+			after: {
+				ariaBusy: cancel.getAttribute("aria-busy"),
+				spinner: cancel.querySelector("[data-spinner]") !== null,
+			},
+		}).toStrictEqual({
+			busy: {calls: 1, ariaBusy: "true", busyLabel: "Removing…", spinner: true},
+			after: {ariaBusy: null, spinner: false},
+		});
+	});
+
+	it("JSONL-backed waiting row has no cancel: the CLI owns that queue", () => {
+		const {container} = render(<WaitingUserTurn entryId="line-12" text="hi" head onSendNow={() => {}} />);
+		expect(container.querySelectorAll('[aria-label="Cancel and edit message"]').length).toBe(0);
 	});
 });
