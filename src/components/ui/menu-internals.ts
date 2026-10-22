@@ -49,6 +49,15 @@ export const SHEET_SIZING = {
 	shortcutPadding: "pl-5",
 };
 
+/**
+ * A sheet's row size: upstream's `ta("lg")` by default, or the base comfortable rows its ModelSelector
+ * keeps (no `data-size`).
+ */
+export type SheetSize = "lg" | "base";
+
+/** The size a root sheet chose, which its drilled levels inherit. */
+export const SheetSizeContext = createContext<SheetSize>("lg");
+
 /** Whether the enclosing popup is a sheet, whose rows take the lg size whatever the consumer's density. */
 export const MenuLgContext = createContext(false);
 

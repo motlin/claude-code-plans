@@ -914,3 +914,52 @@ describe("Composer text-entry menus at a coarse pointer below 640px", () => {
 		});
 	});
 });
+
+describe("Composer model menu on a coarse pointer under 640px", () => {
+	function stubCoarsePhone() {
+		vi.stubGlobal(
+			"matchMedia",
+			vi.fn((query: string) => ({
+				matches: query === "(pointer: coarse)" || query === "(pointer: coarse) and (max-width: 639.98px)",
+				media: query,
+				onchange: null,
+				addEventListener: () => undefined,
+				removeEventListener: () => undefined,
+				addListener: () => undefined,
+				removeListener: () => undefined,
+				dispatchEvent: () => false,
+			})),
+		);
+	}
+
+	it("presents a ModelSelector sheet without data-size, keeping upstream's 32px 14/20 rows and 12px top radius", async () => {
+		stubCoarsePhone();
+		renderComposer();
+		fireEvent.click(screen.getByRole("button", {name: /^Model:/}));
+		// The sheet presentation is its own lazily loaded chunk.
+		const menu = await screen.findByRole("menu");
+		const radioClasses = within(menu)
+			.getAllByRole("menuitemradio")
+			.map((item) => item.className.split(" "));
+		const popupClasses = menu.className.split(" ");
+
+		expect({
+			presentation: menu.getAttribute("data-presentation"),
+			size: menu.hasAttribute("data-size"),
+			handle: menu.firstElementChild?.hasAttribute("data-cds-sheet-handle"),
+			radius: popupClasses.filter((name) => name.startsWith("rounded-t-")),
+			popupText: popupClasses.filter((name) => name.startsWith("text-[")),
+			rows: radioClasses.map((names) => ({
+				text: names.filter((name) => name.startsWith("text-[")),
+				height: names.includes("h-8"),
+			})),
+		}).toStrictEqual({
+			presentation: "sheet",
+			size: false,
+			handle: true,
+			radius: ["rounded-t-card"],
+			popupText: ["text-[14px]/[20px]"],
+			rows: Array.from({length: radioClasses.length}, () => ({text: ["text-[14px]/[20px]"], height: true})),
+		});
+	});
+});

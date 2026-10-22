@@ -192,7 +192,7 @@ export function ModelMenu({
 				<span className="truncate">{currentLabel}</span>
 				<span className={EFFORT_LABEL_CLASS}> {effortLabel}</span>
 			</MenuTrigger>
-			<MenuContent side="top" align="end">
+			<MenuContent side="top" align="end" sheetSize="base">
 				<MenuRadioGroup
 					value={primary}
 					onValueChange={(value: string) => {

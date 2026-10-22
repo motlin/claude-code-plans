@@ -28,6 +28,7 @@ import {
 	MenuLgContext,
 	POSITIONER_CLASS,
 	SHEET_SIZING,
+	type SheetSize,
 	SheetDismissContext,
 	SheetLevelContext,
 	SheetTreeIdContext,
@@ -270,6 +271,11 @@ export interface MenuContentProps {
 	 * anchored even where the root would otherwise present a bottom sheet.
 	 */
 	structurallyAnchored?: boolean;
+	/**
+	 * A root sheet's row size: upstream's lg rows (`data-size="lg"`), or `"base"` to keep the comfortable 32px rows
+	 * as upstream's ModelSelector does. Drilled levels follow their root.
+	 */
+	sheetSize?: SheetSize;
 }
 
 interface MenuContentInternalProps extends MenuContentProps {
@@ -290,6 +296,7 @@ export function MenuContent({
 	finalFocus,
 	anchor,
 	structurallyAnchored = false,
+	sheetSize = "lg",
 	nested = false,
 }: MenuContentInternalProps) {
 	const resolvedCollisionAvoidance =
@@ -304,7 +311,7 @@ export function MenuContent({
 	/* Upstream's si order: an override, then comfortable on (pointer: coarse), then the prop or opener's density. */
 	const scopeDensity = useScopeDensity(density);
 	const sheetProps = {children, className, finalFocus};
-	if (sheet && !nested) return <RootSheet {...sheetProps} />;
+	if (sheet && !nested) return <RootSheet {...sheetProps} size={sheetSize} />;
 	/* A submenu drills in only inside a sheet tree; an anchored parent keeps its fly-out. */
 	if (sheet && parentLevel !== null) return <NestedSheet {...sheetProps} treeId={parentLevel.treeId} />;
 	/* A sheet's portal forces comfortable (`density: MG`) at every account density. */
