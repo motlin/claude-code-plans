@@ -273,3 +273,49 @@ describe("transcript context menus", () => {
 		expect(disabled).toStrictEqual(["Rewind to here", "Fork from here"]);
 	});
 });
+
+describe("transcript context menu on a coarse pointer under 640px", () => {
+	function stubCoarsePhone() {
+		vi.stubGlobal(
+			"matchMedia",
+			vi.fn((query: string) => ({
+				matches: query === "(pointer: coarse)" || query === "(pointer: coarse) and (max-width: 639.98px)",
+				media: query,
+				onchange: null,
+				addEventListener: () => undefined,
+				removeEventListener: () => undefined,
+				addListener: () => undefined,
+				removeListener: () => undefined,
+				dispatchEvent: () => false,
+			})),
+		);
+	}
+
+	it("presents the row menu as a ContextMenu bottom sheet with a handle and Close row, ignoring the pointer point", async () => {
+		stubCoarsePhone();
+		const container = renderChat();
+		fireEvent.contextMenu(find(container, "strong", "details"), {clientX: 10, clientY: 10});
+		// The sheet presentation is its own lazily loaded chunk.
+		const menu = (await screen.findAllByRole("menu")).at(-1);
+		const rows = menu?.querySelectorAll("[role=menuitem]");
+		const positioner = menu?.parentElement;
+
+		expect({
+			cds: menu?.getAttribute("data-cds"),
+			presentation: menu?.getAttribute("data-presentation"),
+			size: menu?.getAttribute("data-size"),
+			handle: menu?.firstElementChild?.hasAttribute("data-cds-sheet-handle"),
+			lastRow: rows?.item(rows.length - 1).getAttribute("aria-label"),
+			scrim: document.querySelector("[data-sheet-scrim]") !== null,
+			positioner: {position: positioner?.style.position, inset: positioner?.style.inset},
+		}).toStrictEqual({
+			cds: "ContextMenu",
+			presentation: "sheet",
+			size: "lg",
+			handle: true,
+			lastRow: "Close",
+			scrim: true,
+			positioner: {position: "fixed", inset: "auto 0 0"},
+		});
+	});
+});
