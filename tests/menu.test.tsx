@@ -1517,4 +1517,52 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 			scrim: "0.75",
 		});
 	});
+	it("swallows Tab and Shift+Tab inside a sheet, as upstream's Pt, and keeps it open", async () => {
+		stubCoarseAtWidth(639);
+		renderDropdown();
+		const menu = await openDropdown();
+		const tab = fireEvent.keyDown(menu, {key: "Tab"});
+		const shiftTab = fireEvent.keyDown(menu, {key: "Tab", shiftKey: true});
+		await flush();
+		expect({
+			tabPrevented: !tab,
+			shiftTabPrevented: !shiftTab,
+			open: screen.queryByRole("menu") !== null,
+		}).toStrictEqual({tabPrevented: true, shiftTabPrevented: true, open: true});
+	});
+
+	it("leaves Tab to Base UI in an anchored menu", async () => {
+		stubCoarseAtWidth(1024);
+		renderDropdown();
+		const menu = await openDropdown();
+		expect(fireEvent.keyDown(menu, {key: "Tab"})).toBe(true);
+	});
+
+	it("still closes a sheet on Escape", async () => {
+		stubCoarseAtWidth(639);
+		const onOpenChange = renderControlledSheet();
+		const menu = await openDropdown();
+		fireEvent.keyDown(menu, {key: "Escape"});
+		await flush();
+		expect(onOpenChange.mock.calls.map(([open]) => open)).toStrictEqual([true, false]);
+	});
+
+	it("highlights the Close row on ArrowDown past the last real item", async () => {
+		stubCoarseAtWidth(639);
+		renderDropdown();
+		await openDropdown();
+		const items = screen.getAllByRole("menuitem");
+		const last = items.at(-2);
+		const close = items.at(-1);
+		if (last === undefined || close === undefined) throw new Error("no items");
+		act(() => {
+			last.focus();
+		});
+		fireEvent.keyDown(last, {key: "ArrowDown"});
+		await flush();
+		expect({
+			highlighted: close.hasAttribute("data-highlighted"),
+			srOnly: close.matches(":not(:focus-visible):not([data-highlighted]):not([data-cds-sheet-control-held])"),
+		}).toStrictEqual({highlighted: true, srOnly: false});
+	});
 });

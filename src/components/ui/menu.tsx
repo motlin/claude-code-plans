@@ -1,5 +1,6 @@
 import {ContextMenu as BaseContextMenu} from "@base-ui/react/context-menu";
 import {Menu as BaseMenu} from "@base-ui/react/menu";
+import type {BaseUIEvent} from "@base-ui/react/types";
 import {ArrowLeft, Check, ChevronRight, X} from "lucide-react";
 import {
 	type ComponentProps,
@@ -351,6 +352,19 @@ function acceleratorKey(event: KeyboardEvent<HTMLElement>): string | undefined {
 	return event.key.toLowerCase();
 }
 
+/**
+ * Upstream's Pt: a sheet swallows Tab and Shift+Tab so focus stays inside, and skips Base UI's
+ * Shift+Tab close; Escape still closes.
+ */
+function handleSheetKey(event: BaseUIEvent<KeyboardEvent<HTMLElement>>): void {
+	if (event.key === "Tab") {
+		event.preventDefault();
+		event.preventBaseUIHandler();
+		return;
+	}
+	handleAcceleratorKey(event);
+}
+
 function handleAcceleratorKey(event: KeyboardEvent<HTMLElement>): void {
 	const key = acceleratorKey(event);
 	if (key === undefined) return;
@@ -606,7 +620,7 @@ export function MenuContent({
 									className={`${SHEET_POPUP_CLASS} ${sizing.text}${className ? ` ${className}` : ""}`}
 									data-cds-sheet-detent={detent}
 									style={sheetPopupStyle}
-									onKeyDown={handleAcceleratorKey}
+									onKeyDown={handleSheetKey}
 									{...(finalFocus === undefined ? {} : {finalFocus})}
 								>
 									<SheetHandle />
@@ -650,7 +664,7 @@ export function MenuContent({
 								className={`${SHEET_NESTED_POPUP_CLASS} ${sizing.text}${className ? ` ${className}` : ""}`}
 								data-cds-sheet-detent={detent}
 								style={sheetPopupStyle}
-								onKeyDown={handleAcceleratorKey}
+								onKeyDown={handleSheetKey}
 								{...(finalFocus === undefined ? {} : {finalFocus})}
 							>
 								<SheetHandle nested />
