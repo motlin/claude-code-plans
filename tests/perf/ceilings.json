@@ -47,18 +47,18 @@
 		"tolerance": 0
 	},
 	"bundle.home.gzip": {
-		"ceiling": 378081,
+		"ceiling": 381312,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "The Terminal and Background tasks panes left the session cold load for deferred chunks, and rolldown's regrouping split TanStack router-core's invariant and redirect modules out of the useStore and useParams chunks into chunks of their own that home also loads: +165 B gzip and +544 B raw over main 017f177e (377916 gzip, 1160506 raw), which already sat at the edge of the 1% tolerance over 374276 and 1149535. Ceilings re-based on the measurement; the 1% tolerance is unchanged.",
-		"raisedAt": "2026-10-18"
+		"reason": "Home cold JS drifted to the edge of the 1% tolerance over 017f177e's 377916 gzip / 1160506 raw across later home start-card, composer and launch-option commits; the home-composer prefill bus (requestHomeComposerPrefill plus the Composer's subscribePrefill hook) tipped raw over at 381312 gzip, 1172744 raw. Ceilings re-based on the measurement; the 1% tolerance is unchanged.",
+		"raisedAt": "2026-10-22"
 	},
 	"bundle.home.raw": {
-		"ceiling": 1161050,
+		"ceiling": 1172744,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "The Terminal and Background tasks panes left the session cold load for deferred chunks, and rolldown's regrouping split TanStack router-core's invariant and redirect modules out of the useStore and useParams chunks into chunks of their own that home also loads: +165 B gzip and +544 B raw over main 017f177e (377916 gzip, 1160506 raw), which already sat at the edge of the 1% tolerance over 374276 and 1149535. Ceilings re-based on the measurement; the 1% tolerance is unchanged.",
-		"raisedAt": "2026-10-18"
+		"reason": "Home cold JS drifted to the edge of the 1% tolerance over 017f177e's 377916 gzip / 1160506 raw across later home start-card, composer and launch-option commits; the home-composer prefill bus (requestHomeComposerPrefill plus the Composer's subscribePrefill hook) tipped raw over at 381312 gzip, 1172744 raw. Ceilings re-based on the measurement; the 1% tolerance is unchanged.",
+		"raisedAt": "2026-10-22"
 	},
 	"bundle.session.gzip": {
 		"ceiling": 558865,

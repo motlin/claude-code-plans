@@ -21,6 +21,7 @@ import {usageQueryOptions} from "../src/lib/api/usage";
 import {projectsQueryOptions} from "../src/lib/api/projects";
 import {recentSessionsQueryOptions} from "../src/lib/api/sessions";
 import {getComposerDefaults} from "../src/lib/composer-state";
+import {requestHomeComposerPrefill} from "../src/lib/home-composer-focus";
 import {SSE_EVENTS} from "../src/lib/hook-events";
 import {installLocalStorage} from "./fake-storage";
 
@@ -548,6 +549,29 @@ describe("HomeComposer", () => {
 		await waitFor(() => {
 			expect(document.activeElement).toBe(textarea);
 		});
+	});
+
+	it("replaces the home draft with a prefill request, focuses it and puts the caret at the end", async () => {
+		await renderApp();
+		const textarea = await typePrompt("hello");
+		const picker = screen.getByRole("combobox", {name: /^Folder: /});
+		picker.focus();
+		const prefill =
+			"Continue the work in progress on feat/x: look at the uncommitted changes, tell me what state they’re in, and finish what’s started.";
+
+		act(() => {
+			requestHomeComposerPrefill(prefill);
+		});
+
+		await waitFor(() => {
+			expect(document.activeElement).toBe(textarea);
+		});
+		const field = screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
+		expect({
+			value: field.value,
+			selectionStart: field.selectionStart,
+			selectionEnd: field.selectionEnd,
+		}).toStrictEqual({value: prefill, selectionStart: prefill.length, selectionEnd: prefill.length});
 	});
 
 	it("navigates home and focuses the composer on ⇧⌘O from another page", async () => {

@@ -12,7 +12,7 @@ import {buildClaudeCopyCommand} from "../../lib/claude-launch-command";
 import {writeClipboardText} from "../../lib/clipboard";
 import {resolveComposerState} from "../../lib/composer-state";
 import {buildLaunchFlags, type LaunchOptions} from "../../lib/launch-options";
-import {onHomeComposerFocusRequest} from "../../lib/home-composer-focus";
+import {onHomeComposerFocusRequest, onHomeComposerPrefillRequest} from "../../lib/home-composer-focus";
 import {findLaunchedSession, type PendingLaunch} from "../../lib/palette-start-session";
 import {Composer} from "../composer";
 import {useToast} from "../toast-context";
@@ -129,6 +129,7 @@ export function HomeComposer() {
 				}
 				slashCommands={slashCommands}
 				promptHistory={promptHistory}
+				subscribePrefill={onHomeComposerPrefillRequest}
 				bypassPermissionsAllowed={defaults?.bypassPermissionsAllowed ?? false}
 			/>
 		</div>

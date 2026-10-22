@@ -174,6 +174,8 @@ interface ComposerProps {
 	forkLabel?: string | undefined;
 	/** Prior prompts, newest first, that ↑/↓ walk like a shell history. */
 	promptHistory?: readonly string[] | undefined;
+	/** Subscribes to requests that replace the draft, focus it and put the caret at the end. */
+	subscribePrefill?: ((listener: (text: string) => void) => () => void) | undefined;
 }
 
 /**
@@ -285,6 +287,7 @@ export function Composer({
 	onSendAndStay,
 	forkLabel = "Fork with this prompt",
 	promptHistory = NO_HISTORY,
+	subscribePrefill,
 }: ComposerProps) {
 	const {text: prompt, setText: setPrompt, clear: clearDraft} = useComposerDraft(draftKey);
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -350,6 +353,21 @@ export function Composer({
 				focus: () => textareaRef.current?.focus(),
 			}),
 		[draftKey, setPrompt],
+	);
+
+	useEffect(
+		() =>
+			subscribePrefill?.((text) => {
+				const textarea = textareaRef.current;
+				textarea?.focus();
+				// An unchanged prompt skips the caret layout effect, so place the caret now.
+				if (promptRef.current === text) textarea?.setSelectionRange(text.length, text.length);
+				else pendingCaretRef.current = text.length;
+				promptRef.current = text;
+				setCaret(text.length);
+				setPrompt(text);
+			}),
+		[subscribePrefill, setPrompt],
 	);
 
 	const query = slashQuery(prompt);
