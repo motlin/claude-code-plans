@@ -148,6 +148,10 @@ function recordingActions(calls: string[]): TranscriptActions {
 	};
 }
 
+function workingPaneActions(calls: string[]): TranscriptActions {
+	return {...recordingActions(calls), rewindDisabledReason: "Rewind is unavailable while Claude is working"};
+}
+
 describe("transcript context menus", () => {
 	it("opens the assistant prose menu at upstream's width", () => {
 		const container = renderChat();
@@ -271,6 +275,36 @@ describe("transcript context menus", () => {
 		);
 
 		expect(disabled).toStrictEqual(["Rewind to here", "Fork from here"]);
+	});
+
+	it("disables Rewind with upstream's reason while the pane works, leaving Fork enabled", () => {
+		const calls: string[] = [];
+		const actions = workingPaneActions(calls);
+		const container = renderChat((chat) => (
+			<TranscriptActionsContext.Provider value={actions}>{chat}</TranscriptActionsContext.Provider>
+		));
+		const menu = openMenuOn(find(container, ".user-message-bubble p"));
+		const rows = [...menu.querySelectorAll('[role="menuitem"]')].map((row) => ({
+			title: row.querySelector("[data-menu-item-title]")?.textContent,
+			disabled: row.hasAttribute("data-disabled"),
+			reason:
+				row.getAttribute("aria-describedby") === null
+					? null
+					: menu.ownerDocument.getElementById(row.getAttribute("aria-describedby") ?? "")?.textContent,
+		}));
+		clickItem(menu, "Rewind to here");
+
+		expect({rows: rows.slice(-2), calls}).toStrictEqual({
+			rows: [
+				{
+					title: "Rewind to here",
+					disabled: true,
+					reason: "Rewind is unavailable while Claude is working",
+				},
+				{title: "Fork from here", disabled: false, reason: null},
+			],
+			calls: [],
+		});
 	});
 });
 
