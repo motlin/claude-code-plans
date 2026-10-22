@@ -38,12 +38,11 @@ export interface SplitDropdownButtonProps {
 	className?: string;
 }
 
-const ROOT_CLASS = "relative inline-flex w-fit shrink-0 items-stretch rounded-r5 group/split";
+const ROOT_CLASS = "relative inline-flex w-fit shrink-0 items-stretch";
+const ROOT_GROUP_CLASS = "group/split";
 const BUTTON_CLASS = "relative outline-none focus-visible:shadow-focus disabled:opacity-40";
 const PAINT_TRANSITION =
 	"transition-[background-color,box-shadow,color] duration-[60ms] ease-[cubic-bezier(.165,.84,.44,1)]";
-const JOINED_PRIMARY_CLASS = "h-6 px-2 text-[13px]/[19px] rounded-r5 rounded-e-none min-w-0 shrink";
-const JOINED_CARET_CLASS = "h-6 w-auto px-1 rounded-r5 rounded-s-none";
 const SEAM_BASE_CLASS = "w-px shrink-0 self-stretch";
 /* The seam line fades while either neighbour segment is hovered or holds the open menu. */
 const SEAM_FADE_CLASS =
@@ -84,25 +83,52 @@ const GHOST_ROOT_CLASS =
 	"shadow-[inset_0_0_0_1px_var(--split-ring,transparent)] transition-[box-shadow] duration-[60ms] ease-[cubic-bezier(.165,.84,.44,1)] [&:not([data-disabled])]:hover:[--split-ring:var(--color-border)] data-[popup-open]:[--split-ring:var(--color-border)] [&:not([data-disabled])]:has-[[aria-pressed=true]]:[--split-ring:var(--color-border)]";
 const GHOST_LABELED_ROOT_CLASS =
 	"[&>[data-cds-segment]:first-child_[data-part=paint]]:pe-0 [&>[data-cds-segment]:last-child_[data-part=paint]]:ps-0";
-const GHOST_BUTTON_CLASS = "group/btn isolate inline-flex items-center rounded-r5";
+const GHOST_BUTTON_CLASS = "group/btn isolate inline-flex items-center";
 const GHOST_PAINT_CLASS = `absolute inset-0 -z-[1] rounded-[inherit] p-[var(--split-inset)] bg-clip-content group-hover/btn:bg-fill-ghost-hover group-aria-expanded/btn:bg-fill-ghost-hover group-aria-pressed/btn:bg-accent-100/15 ${PAINT_TRANSITION}`;
 const GHOST_ICON_PRIMARY_CLASS =
 	"justify-center aria-pressed:text-accent-100 size-[var(--split-h)] group-data-[popup-open]/split:pointer-events-none";
 const GHOST_ICON_CARET_CLASS =
 	"justify-center h-[var(--split-h)] w-auto px-1 -ms-[var(--split-tuck)] pointer-events-none after:absolute after:inset-y-0 after:content-[''] after:pointer-events-auto after:start-[calc(var(--split-tuck)-1px)] after:-end-[calc(3px+var(--split-tuck))]";
-const GHOST_LABELED_PRIMARY_CLASS =
-	"aria-pressed:text-accent-100 h-[var(--split-h)] min-w-0 shrink text-[13px]/[19px] ps-2 pe-[5px]";
+const GHOST_LABELED_PRIMARY_CLASS = "aria-pressed:text-accent-100 h-[var(--split-h)] min-w-0 shrink";
+const GHOST_LABELED_PRIMARY_PAD_CLASS = "ps-2 pe-[5px]";
 const GHOST_LABELED_CARET_CLASS =
 	"justify-center h-[var(--split-h)] w-auto ps-0 pe-1 after:absolute after:inset-y-0 after:start-0 after:-end-2 after:content-['']";
-const SPLIT_HEIGHT: Record<NonNullable<SplitDropdownButtonProps["size"]>, string> = {
-	default: "24px",
-	sm: "20px",
-	touch: "28px",
-};
+type SplitSize = NonNullable<SplitDropdownButtonProps["size"]>;
 
-function ghostStyle(size: NonNullable<SplitDropdownButtonProps["size"]>): CSSProperties {
+/* Upstream's control scale: compact 24px, sm 20px, and the coarse-pointer comfortable 28px. */
+const SIZES: Record<SplitSize, {h: string; height: string; text: string; padX: string; radius: string; icon: string}> =
+	{
+		default: {
+			h: "24px",
+			height: "h-6",
+			text: "text-[13px]/[19px]",
+			padX: "px-2",
+			radius: "rounded-r5",
+			icon: "size-4",
+		},
+		sm: {
+			h: "20px",
+			height: "h-5",
+			text: "text-[12px]/[17px]",
+			padX: "px-1.5",
+			radius: "rounded-r4",
+			icon: "size-3",
+		},
+		touch: {
+			h: "28px",
+			height: "h-7",
+			text: "text-[13px]/[19px]",
+			padX: "px-2",
+			radius: "rounded-r6",
+			icon: "size-4",
+		},
+	};
+
+function rootStyle(size: SplitSize, ghost: boolean): CSSProperties {
+	const height: CSSProperties = {"--split-h": SIZES[size].h};
+	if (!ghost) return height;
 	return {
-		"--split-h": SPLIT_HEIGHT[size],
+		...height,
 		"--split-tuck": "calc((var(--split-h) - 20px) / 2)",
 		"--split-inset": "min(calc(var(--split-tuck) / 2), 3px)",
 	};
@@ -181,28 +207,46 @@ export function SplitDropdownButton({
 	const name = groupLabel ?? (typeof label === "string" ? label : (ariaLabel ?? menuLabel));
 	const joined = variant === "ghost" ? undefined : JOINED_LOOKS[variant];
 	const iconOnly = label === undefined;
+	const scale = SIZES[size];
+	const rootBase = joinClasses(ROOT_CLASS, scale.radius, ROOT_GROUP_CLASS);
 	const rootClass = joined
-		? joinClasses(ROOT_CLASS, joined.root, className)
-		: joinClasses(ROOT_CLASS, GHOST_ROOT_CLASS, !iconOnly && GHOST_LABELED_ROOT_CLASS, className);
+		? joinClasses(rootBase, joined.root, className)
+		: joinClasses(rootBase, GHOST_ROOT_CLASS, !iconOnly && GHOST_LABELED_ROOT_CLASS, className);
+	const ghostButtonClass = joinClasses(GHOST_BUTTON_CLASS, scale.radius);
 	const primaryClass = joined
-		? joinClasses(BUTTON_CLASS, "inline-flex items-center", JOINED_PRIMARY_CLASS, joined.fill, PAINT_TRANSITION)
+		? joinClasses(
+				BUTTON_CLASS,
+				"inline-flex items-center",
+				scale.height,
+				scale.padX,
+				scale.text,
+				scale.radius,
+				"rounded-e-none min-w-0 shrink",
+				joined.fill,
+				PAINT_TRANSITION,
+			)
 		: joinClasses(
 				BUTTON_CLASS,
-				GHOST_BUTTON_CLASS,
-				iconOnly ? GHOST_ICON_PRIMARY_CLASS : GHOST_LABELED_PRIMARY_CLASS,
+				ghostButtonClass,
+				iconOnly
+					? GHOST_ICON_PRIMARY_CLASS
+					: joinClasses(GHOST_LABELED_PRIMARY_CLASS, scale.text, GHOST_LABELED_PRIMARY_PAD_CLASS),
 			);
 	const caretClass = joined
 		? joinClasses(
 				BUTTON_CLASS,
 				"inline-flex items-center justify-center",
-				JOINED_CARET_CLASS,
+				scale.height,
+				"w-auto px-1",
+				scale.radius,
+				"rounded-s-none",
 				joined.fill,
 				PAINT_TRANSITION,
 			)
-		: joinClasses(BUTTON_CLASS, GHOST_BUTTON_CLASS, iconOnly ? GHOST_ICON_CARET_CLASS : GHOST_LABELED_CARET_CLASS);
+		: joinClasses(BUTTON_CLASS, ghostButtonClass, iconOnly ? GHOST_ICON_CARET_CLASS : GHOST_LABELED_CARET_CLASS);
 	/* Upstream mutes the caret icon only on the enabled secondary/ghost looks. */
 	const caretIconClass = joinClasses(
-		size === "sm" ? "size-3" : "size-4",
+		scale.icon,
 		(variant === "secondary" || variant === "ghost") && !disabled && "text-ink-muted",
 	);
 	const labelSpan =
@@ -216,7 +260,7 @@ export function SplitDropdownButton({
 			role="group"
 			aria-label={name}
 			className={rootClass}
-			{...(joined ? {} : {style: ghostStyle(size)})}
+			style={rootStyle(size, !joined)}
 			{...(open ? {"data-popup-open": ""} : {})}
 			{...(disabled ? {"data-disabled": ""} : {})}
 		>

@@ -566,4 +566,74 @@ describe("SplitDropdownButton", () => {
 			expect(group().querySelectorAll("[data-part=paint]").length).toBe(0);
 		});
 	});
+
+	describe("size scale", () => {
+		function sizeLooks() {
+			return {
+				h: group().style.getPropertyValue("--split-h"),
+				root: [...group().classList].filter((name) => name.startsWith("rounded")),
+				primary: [...primary().classList].filter((name) => /^(h-|px-|text-\[|rounded-r)/.test(name)),
+				caret: [...caret().classList].filter((name) => /^(h-|rounded-r)/.test(name)),
+				caretIcon: [...(caret().querySelector("svg")?.classList ?? [])].filter((name) =>
+					name.startsWith("size-"),
+				),
+			};
+		}
+
+		it("sizes the default split to 24px controls with 13/19 text and a 6px radius", () => {
+			renderSplit({variant: "primary"});
+
+			expect(sizeLooks()).toStrictEqual({
+				h: "24px",
+				root: ["rounded-r5"],
+				primary: ["h-6", "px-2", "text-[13px]/[19px]", "rounded-r5"],
+				caret: ["h-6", "rounded-r5"],
+				caretIcon: ["size-4"],
+			});
+		});
+
+		it("sizes the sm split to 20px controls with 12/17 text, a 5px radius and a 12px caret icon", () => {
+			renderSplit({variant: "primary", size: "sm"});
+
+			expect(sizeLooks()).toStrictEqual({
+				h: "20px",
+				root: ["rounded-r4"],
+				primary: ["h-5", "px-1.5", "text-[12px]/[17px]", "rounded-r4"],
+				caret: ["h-5", "rounded-r4"],
+				caretIcon: ["size-3"],
+			});
+		});
+
+		it("sizes the touch split to 28px controls with an 8px radius", () => {
+			renderSplit({variant: "secondary", size: "touch"});
+
+			expect(sizeLooks()).toStrictEqual({
+				h: "28px",
+				root: ["rounded-r6"],
+				primary: ["h-7", "px-2", "text-[13px]/[19px]", "rounded-r6"],
+				caret: ["h-7", "rounded-r6"],
+				caretIcon: ["size-4"],
+			});
+		});
+
+		it("gives the sm ghost its 5px radius and 12/17 label text", () => {
+			renderSplit({variant: "ghost", size: "sm"});
+
+			expect({
+				h: group().style.getPropertyValue("--split-h"),
+				root: [...group().classList].filter((name) => name.startsWith("rounded")),
+				primary: [...primary().classList].filter((name) => /^(text-\[|rounded-r)/.test(name)),
+				caret: [...caret().classList].filter((name) => name.startsWith("rounded-r")),
+				caretIcon: [...(caret().querySelector("svg")?.classList ?? [])].filter((name) =>
+					name.startsWith("size-"),
+				),
+			}).toStrictEqual({
+				h: "20px",
+				root: ["rounded-r4"],
+				primary: ["rounded-r4", "text-[12px]/[17px]"],
+				caret: ["rounded-r4"],
+				caretIcon: ["size-3"],
+			});
+		});
+	});
 });
