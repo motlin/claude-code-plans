@@ -19,7 +19,7 @@ function renderComposer({
 	forkLabel?: string;
 }) {
 	const onSend = vi.fn<(prompt: string) => void>();
-	const onSendNow = vi.fn<(prompt: string) => void>();
+	const onQueueForLater = vi.fn<(prompt: string) => void>();
 	render(
 		<Composer
 			variant="session"
@@ -27,19 +27,19 @@ function renderComposer({
 			onSend={(prompt) => {
 				onSend(prompt);
 			}}
-			onSendNow={onSendNow}
+			onQueueForLater={onQueueForLater}
 			onFork={onFork}
 			forkLabel={forkLabel}
 		/>,
 	);
 	const textarea = screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
-	return {textarea, onSend, onSendNow};
+	return {textarea, onSend, onQueueForLater};
 }
 
 describe("Fork with this prompt", () => {
-	it("forks on ⌥⌘⏎ and Ctrl+Alt+⏎ without touching Send or Send now", () => {
+	it("forks on ⌥⌘⏎ and Ctrl+Alt+⏎ without touching Send or Queue for later", () => {
 		const onFork = vi.fn<(prompt: string, launchOptions: LaunchOptions) => void>();
-		const {textarea, onSend, onSendNow} = renderComposer({onFork});
+		const {textarea, onSend, onQueueForLater} = renderComposer({onFork});
 
 		fireEvent.change(textarea, {target: {value: "Try Alice's idea"}});
 		fireEvent.keyDown(textarea, {key: "Enter", code: "Enter", metaKey: true, altKey: true});
@@ -49,7 +49,7 @@ describe("Fork with this prompt", () => {
 		expect({
 			fork: onFork.mock.calls,
 			send: onSend.mock.calls,
-			now: onSendNow.mock.calls,
+			later: onQueueForLater.mock.calls,
 			cleared: textarea.value,
 		}).toStrictEqual({
 			fork: [
@@ -57,21 +57,21 @@ describe("Fork with this prompt", () => {
 				["Try Bob's idea", {}],
 			],
 			send: [],
-			now: [],
+			later: [],
 			cleared: "",
 		});
 	});
 
-	it("keeps ⌘⏎ as Send now when forking is available", () => {
+	it("keeps ⌘⏎ as Queue for later when forking is available", () => {
 		const onFork = vi.fn<(prompt: string, launchOptions: LaunchOptions) => void>();
-		const {textarea, onSendNow} = renderComposer({onFork});
+		const {textarea, onQueueForLater} = renderComposer({onFork});
 
 		fireEvent.change(textarea, {target: {value: "Alice's urgent prompt"}});
 		fireEvent.keyDown(textarea, {key: "Enter", code: "Enter", metaKey: true});
 
-		expect({fork: onFork.mock.calls, now: onSendNow.mock.calls}).toStrictEqual({
+		expect({fork: onFork.mock.calls, later: onQueueForLater.mock.calls}).toStrictEqual({
 			fork: [],
-			now: [["Alice's urgent prompt"]],
+			later: [["Alice's urgent prompt"]],
 		});
 	});
 

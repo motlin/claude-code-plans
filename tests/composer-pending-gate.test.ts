@@ -132,10 +132,21 @@ describe("composerSendPlan", () => {
 		});
 	});
 
-	it("queues behind a working pane or earlier queued prompts with nothing waiting", () => {
+	it("steers a working pane with nothing waiting, as upstream's Enter sends with priority next", () => {
 		expect({
 			working: composerSendPlan({kind: "none"}, {busy: true, queued: 0}).send,
-			behindQueue: composerSendPlan({kind: "none"}, {busy: false, queued: 2}).send,
-		}).toStrictEqual({working: {kind: "queue"}, behindQueue: {kind: "queue"}});
+			workingBehindQueue: composerSendPlan({kind: "none"}, {busy: true, queued: 2}).send,
+		}).toStrictEqual({working: {kind: "steer"}, workingBehindQueue: {kind: "steer"}});
+	});
+
+	it("queues behind earlier queued prompts on an idle pane", () => {
+		expect(composerSendPlan({kind: "none"}, {busy: false, queued: 2}).send).toStrictEqual({kind: "queue"});
+	});
+
+	it("falls back to queue for later on Enter while a dialog is open on a working pane", () => {
+		expect({
+			heldQuestion: composerSendPlan({kind: "held-question"}, {busy: true, queued: 0}).send,
+			permission: composerSendPlan({kind: "permission"}, {busy: true, queued: 0}).send,
+		}).toStrictEqual({heldQuestion: {kind: "queue"}, permission: {kind: "queue"}});
 	});
 });

@@ -164,8 +164,8 @@ interface ComposerProps {
 	mentionSessionId?: string | undefined;
 	/** Prompts queued while the live session works, shown as chips above the card. */
 	queue?: ComposerQueueView | undefined;
-	/** ⌘⏎ "Send now": interrupt the current response and send this prompt next. */
-	onSendNow?: ((prompt: string) => void) | undefined;
+	/** ⌘⏎ "Queue for later": hold this prompt until the current turn ends instead of steering it. */
+	onQueueForLater?: ((prompt: string) => void) | undefined;
 	/** ⌥⌘⏎ "Fork with this prompt": send it to a new forked session instead of this one. */
 	onFork?: ((prompt: string, launchOptions: LaunchOptions) => void) | undefined;
 	/** ⌘⏎ "Send and stay here" on the home composer: launch the session without opening it. */
@@ -282,7 +282,7 @@ export function Composer({
 	live,
 	mentionSessionId,
 	queue,
-	onSendNow,
+	onQueueForLater,
 	onFork,
 	onSendAndStay,
 	forkLabel = "Fork with this prompt",
@@ -581,13 +581,18 @@ export function Composer({
 		if (e.key === "Enter" && !e.shiftKey) {
 			e.preventDefault();
 			const commandChord = e.metaKey || e.ctrlKey;
+			// Upstream swallows ⌘⏎ key repeat so a held chord never sends twice.
+			if (commandChord && e.repeat) {
+				e.stopPropagation();
+				return;
+			}
 			const trigger = e.nativeEvent;
 			if (commandChord && e.altKey && onFork !== undefined) {
 				handleSubmit((text) => {
 					onFork(text, chinLaunchOptions);
 				}, trigger);
-			} else if (commandChord && !e.altKey && onSendNow !== undefined) {
-				handleSubmit(onSendNow, trigger);
+			} else if (commandChord && !e.altKey && onQueueForLater !== undefined) {
+				handleSubmit(onQueueForLater, trigger);
 			} else if (commandChord && !e.altKey && onSendAndStay !== undefined) {
 				handleSubmit((text) => {
 					onSendAndStay(text, chinLaunchOptions);

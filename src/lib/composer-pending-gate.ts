@@ -39,6 +39,9 @@ export function composerPendingGate({
 
 export type ComposerSend =
 	| {kind: "send"}
+	/** Upstream's Enter while working ("next" priority): typed into the pane mid-turn for Claude's next step. */
+	| {kind: "steer"}
+	/** Upstream's "later" priority: held in the browser queue until the turn ends. */
 	| {kind: "queue"}
 	| {kind: "dismiss-question-then-queue"; toolUseId: string; answers: QuestionAnswer[]};
 
@@ -80,7 +83,7 @@ export function composerSendPlan(
 		case "permission":
 			return {...plan, send: {kind: "queue"}};
 		case "none":
-			return {...plan, send: busy || queued > 0 ? {kind: "queue"} : {kind: "send"}};
+			return {...plan, send: busy ? {kind: "steer"} : queued > 0 ? {kind: "queue"} : {kind: "send"}};
 		default:
 			return assertNever(gate);
 	}

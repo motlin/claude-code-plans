@@ -640,8 +640,12 @@ function SessionView({
 						});
 					}
 					return;
+				case "steer":
+					// Upstream's Enter while working: typed into the pane mid-turn, read at Claude's next step.
+					enqueuePrompt(prompt, {midTurn: true});
+					return;
 				case "queue":
-					// Enter while working, or while the pane shows a dialog, queues; the queue flushes on the next idle.
+					// Enter while the pane shows a dialog, or behind earlier queued prompts, waits for the next idle.
 					enqueuePrompt(prompt);
 					return;
 				case "send":
@@ -948,8 +952,8 @@ function SessionView({
 														(!promptBehavior.usesHerdr && liveHerdrPrompt.state.isPending)
 													}
 													queue={promptBehavior.usesHerdr ? composerQueue : undefined}
-													onSendNow={
-														promptBehavior.usesHerdr ? composerQueue.sendNowText : undefined
+													onQueueForLater={
+														promptBehavior.usesHerdr ? enqueuePrompt : undefined
 													}
 													deliveryHint={promptBehavior.deliveryHint}
 													chin={composerChin}

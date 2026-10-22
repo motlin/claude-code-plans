@@ -34,8 +34,6 @@ export interface ComposerQueue {
 	remove: (id: string) => void;
 	/** Move a queued prompt to the head and interrupt the response so it sends next. */
 	sendNow: (id: string) => void;
-	/** Queue a new prompt at the head and interrupt the response so it sends next. */
-	sendNowText: (text: string) => void;
 }
 
 /**
@@ -104,17 +102,5 @@ export function useComposerQueue({
 		},
 		[busy, interrupt, sessionId],
 	);
-	const sendNowText = useCallback(
-		(text: string) => {
-			dispatchComposerQueue(sessionId, {
-				type: "enqueue",
-				item: newQueuedPrompt(text),
-				position: "front",
-			});
-			if (busy) interrupt();
-		},
-		[busy, interrupt, sessionId],
-	);
-
-	return {items, enqueue, remove, sendNow, sendNowText};
+	return {items, enqueue, remove, sendNow};
 }

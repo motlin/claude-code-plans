@@ -342,17 +342,14 @@ describe("useComposerQueue", () => {
 		act(() => {
 			result.current.sendNow(bob.id);
 		});
-		act(() => {
-			result.current.sendNowText("Carol's urgent prompt");
-		});
 
 		expect({
 			texts: result.current.items.map((item) => item.text),
 			interrupts: interrupt.mock.calls.length,
 			delivered: deliver.mock.calls,
 		}).toStrictEqual({
-			texts: ["Carol's urgent prompt", "Bob's second follow-up", "Alice's first follow-up"],
-			interrupts: 2,
+			texts: ["Bob's second follow-up", "Alice's first follow-up"],
+			interrupts: 1,
 			delivered: [],
 		});
 	});
@@ -375,13 +372,13 @@ describe("useComposerQueue", () => {
 function renderComposer({
 	queue,
 	onSend = vi.fn<(prompt: string) => void>(),
-	onSendNow,
+	onQueueForLater,
 	onStop,
 	slashCommands,
 }: {
 	queue?: ComposerQueueView;
 	onSend?: (prompt: string) => void;
-	onSendNow?: (prompt: string) => void;
+	onQueueForLater?: (prompt: string) => void;
 	onStop?: () => void;
 	slashCommands?: readonly SlashCommand[];
 }) {
@@ -394,7 +391,7 @@ function renderComposer({
 			}}
 			onStop={onStop}
 			queue={queue}
-			onSendNow={onSendNow}
+			onQueueForLater={onQueueForLater}
 			slashCommands={slashCommands}
 		/>,
 	);
@@ -503,19 +500,36 @@ describe("Composer while working", () => {
 		}).toStrictEqual({disabled: false, sent: [["Alice's follow-up"]], cleared: ""});
 	});
 
-	it("sends now on ⌘⏎ and Ctrl+⏎", () => {
+	it("queues for later on ⌘⏎ and Ctrl+⏎ without sending or stopping", () => {
 		const onSend = vi.fn<(prompt: string) => void>();
-		const onSendNow = vi.fn<(prompt: string) => void>();
-		const textarea = renderComposer({onSend, onSendNow, onStop: () => {}});
-		fireEvent.change(textarea, {target: {value: "Alice's urgent prompt"}});
+		const onQueueForLater = vi.fn<(prompt: string) => void>();
+		const onStop = vi.fn<() => void>();
+		const textarea = renderComposer({onSend, onQueueForLater, onStop});
+		fireEvent.change(textarea, {target: {value: "Alice's later prompt"}});
 		fireEvent.keyDown(textarea, {key: "Enter", metaKey: true});
-		fireEvent.change(textarea, {target: {value: "Bob's urgent prompt"}});
+		fireEvent.change(textarea, {target: {value: "Bob's later prompt"}});
 		fireEvent.keyDown(textarea, {key: "Enter", ctrlKey: true});
 
-		expect({sent: onSend.mock.calls, now: onSendNow.mock.calls}).toStrictEqual({
+		expect({sent: onSend.mock.calls, later: onQueueForLater.mock.calls, stops: onStop.mock.calls}).toStrictEqual({
 			sent: [],
-			now: [["Alice's urgent prompt"], ["Bob's urgent prompt"]],
+			later: [["Alice's later prompt"], ["Bob's later prompt"]],
+			stops: [],
 		});
+	});
+
+	it("swallows a repeated ⌘⏎ keydown", () => {
+		const onSend = vi.fn<(prompt: string) => void>();
+		const onQueueForLater = vi.fn<(prompt: string) => void>();
+		const textarea = renderComposer({onSend, onQueueForLater, onStop: () => {}});
+		fireEvent.change(textarea, {target: {value: "Alice's held-down prompt"}});
+		const notCancelled = fireEvent.keyDown(textarea, {key: "Enter", metaKey: true, repeat: true});
+
+		expect({
+			notCancelled,
+			sent: onSend.mock.calls,
+			later: onQueueForLater.mock.calls,
+			draft: textarea.value,
+		}).toStrictEqual({notCancelled: false, sent: [], later: [], draft: "Alice's held-down prompt"});
 	});
 });
 
