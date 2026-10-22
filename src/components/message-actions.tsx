@@ -331,3 +331,34 @@ export function UserMessageActions({message, text, contextText = text, timestamp
 		</ActionBar>
 	);
 }
+
+const REVEAL_ON_HOVER_CLASS = [
+	"flex items-center",
+	"opacity-0 group-hover/msg:opacity-100 focus-within:opacity-100",
+	"pointer-coarse:opacity-100 [@media(hover:none)]:opacity-100",
+	"motion-safe:transition-opacity motion-safe:duration-[120ms] motion-safe:delay-100 motion-safe:ease-[cubic-bezier(.32,.72,0,1)]",
+].join(" ");
+
+/**
+ * Upstream's always-visible toolbar under a waiting user row. Copy and a disabled Rewind fade in on
+ * hover; `children` (Send now on the head row) sit outside that group, so they show at rest.
+ */
+export function WaitingMessageActions({text, children}: {text: string; children?: ReactNode}) {
+	return (
+		<div
+			data-message-actions
+			data-always-visible
+			role="toolbar"
+			aria-label="Message actions"
+			className="flex items-center select-none"
+		>
+			<RevealedContext.Provider value>
+				<div data-reveal-on-hover className={REVEAL_ON_HOVER_CLASS}>
+					<CopyAction text={text} />
+					<RewindAction message={undefined} />
+				</div>
+				{children}
+			</RevealedContext.Provider>
+		</div>
+	);
+}

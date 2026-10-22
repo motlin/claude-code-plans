@@ -13,17 +13,9 @@ interface StreamingMessageProps {
 	error?: string | undefined;
 	forkedSessionId?: string | undefined;
 	sentPrompt?: string | undefined;
-	pendingLabel?: string | undefined;
 }
 
-export function StreamingMessage({
-	text,
-	isComplete,
-	error,
-	forkedSessionId,
-	sentPrompt,
-	pendingLabel = "Thinking...",
-}: StreamingMessageProps) {
+export function StreamingMessage({text, isComplete, error, forkedSessionId, sentPrompt}: StreamingMessageProps) {
 	const endRef = useRef<HTMLDivElement>(null);
 
 	// Scroll the streaming widget into view once per submission, so the user
@@ -62,7 +54,7 @@ export function StreamingMessage({
 					{!text && !isComplete ? (
 						<div className="flex items-center gap-2 text-sm text-t6">
 							<span className="inline-block h-2 w-2 animate-pulse rounded-full bg-accent-100" />
-							{pendingLabel}
+							Thinking...
 						</div>
 					) : (
 						<div className="min-w-0 text-body text-primary">

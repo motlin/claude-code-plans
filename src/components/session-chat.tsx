@@ -134,9 +134,17 @@ export interface SessionChatProps {
 	permissionWaitToolUseId?: string | null;
 	/** Whether the CLI is still running, so the prompts waiting in its queue can still be read. */
 	sessionLive?: boolean;
+	/** Interrupts Claude so it reads the head waiting prompt next: the head row's Send now. */
+	onSendNow?: (() => void) | undefined;
 }
 
 const TranscriptModeContext = createContext<TranscriptMode>("normal");
+const SendNowContext = createContext<(() => void) | undefined>(undefined);
+
+/** A prompt waiting in the CLI's queue, whose head row's Send now interrupts the running turn. */
+function QueuedWaitingTurn({entryId, text, head}: {entryId: string; text: string; head: boolean}) {
+	return <WaitingUserTurn entryId={entryId} text={text} head={head} onSendNow={useContext(SendNowContext)} />;
+}
 
 interface ExpansionToggle {
 	mode: TranscriptMode;
@@ -439,6 +447,7 @@ export const SessionChat = React.memo(function SessionChat({
 	slashCommands = EMPTY_SLASH_COMMANDS,
 	permissionWaitToolUseId = null,
 	sessionLive = false,
+	onSendNow,
 }: SessionChatProps) {
 	const measurementKey = JSON.stringify([
 		sessionId,
@@ -602,50 +611,52 @@ export const SessionChat = React.memo(function SessionChat({
 
 	return (
 		<TranscriptModeContext.Provider value={transcriptMode}>
-			<SlashCommandsContext.Provider value={slashCommands}>
-				<PermissionWaitContext.Provider value={permissionWaitToolUseId}>
-					<AgentNameContext.Provider value={resolveAgentName}>
-						<BackgroundOutcomeContext.Provider value={backgroundOutcomes}>
-							<CompactBoundaryContext.Provider value={compactBoundaries}>
-								<div
-									ref={containerRef}
-									className={`${CHAT_COLUMN_CLASS} pt-4 pb-4 text-body transcript-text`}
-								>
-									{summary !== null && summary !== "" && (
-										<p
-											data-testid="session-summary-row"
-											title={summary}
-											className="mb-4 truncate text-sm text-t6"
-										>
-											{summary}
-										</p>
-									)}
-									<SessionLineList
-										key={sessionId}
-										lines={listedLines}
-										sessionId={sessionId}
-										toolResultMap={toolResultMap}
-										allowedImageRoots={allowedImageRoots}
-										subagentLookup={subagentLookup}
-										isSubagentSession={isSubagentSession}
-										showThinking={showThinking}
-										showTools={showTools}
-										showPassedHooks={showPassedHooks}
-										showHookWarnings={showHookWarnings}
-										showHookErrors={showHookErrors}
-										showSystemBanners={showSystemBanners}
-										showCompactSummaries={showCompactSummaries}
-										showTranscriptOnly={showTranscriptOnly}
-										shouldScrollToEnd={shouldScrollToEnd}
-										measurementKey={measurementKey}
-										measurementSource={measurementSource}
-									/>
-								</div>
-							</CompactBoundaryContext.Provider>
-						</BackgroundOutcomeContext.Provider>
-					</AgentNameContext.Provider>
-				</PermissionWaitContext.Provider>
-			</SlashCommandsContext.Provider>
+			<SendNowContext.Provider value={onSendNow}>
+				<SlashCommandsContext.Provider value={slashCommands}>
+					<PermissionWaitContext.Provider value={permissionWaitToolUseId}>
+						<AgentNameContext.Provider value={resolveAgentName}>
+							<BackgroundOutcomeContext.Provider value={backgroundOutcomes}>
+								<CompactBoundaryContext.Provider value={compactBoundaries}>
+									<div
+										ref={containerRef}
+										className={`${CHAT_COLUMN_CLASS} pt-4 pb-4 text-body transcript-text`}
+									>
+										{summary !== null && summary !== "" && (
+											<p
+												data-testid="session-summary-row"
+												title={summary}
+												className="mb-4 truncate text-sm text-t6"
+											>
+												{summary}
+											</p>
+										)}
+										<SessionLineList
+											key={sessionId}
+											lines={listedLines}
+											sessionId={sessionId}
+											toolResultMap={toolResultMap}
+											allowedImageRoots={allowedImageRoots}
+											subagentLookup={subagentLookup}
+											isSubagentSession={isSubagentSession}
+											showThinking={showThinking}
+											showTools={showTools}
+											showPassedHooks={showPassedHooks}
+											showHookWarnings={showHookWarnings}
+											showHookErrors={showHookErrors}
+											showSystemBanners={showSystemBanners}
+											showCompactSummaries={showCompactSummaries}
+											showTranscriptOnly={showTranscriptOnly}
+											shouldScrollToEnd={shouldScrollToEnd}
+											measurementKey={measurementKey}
+											measurementSource={measurementSource}
+										/>
+									</div>
+								</CompactBoundaryContext.Provider>
+							</BackgroundOutcomeContext.Provider>
+						</AgentNameContext.Provider>
+					</PermissionWaitContext.Provider>
+				</SlashCommandsContext.Provider>
+			</SendNowContext.Provider>
 		</TranscriptModeContext.Provider>
 	);
 });
@@ -2501,7 +2512,9 @@ function buildSessionListEntries(
 			startRecordIndex: lastRecordIndex + (position + 1) / (waitingPrompts.length + 1),
 			isPrompt: false,
 			kind: "human",
-			element: <WaitingUserTurn entryId={`queued-${line.lineIndex}`} text={line.content} />,
+			element: (
+				<QueuedWaitingTurn entryId={`queued-${line.lineIndex}`} text={line.content} head={position === 0} />
+			),
 		});
 	}
 

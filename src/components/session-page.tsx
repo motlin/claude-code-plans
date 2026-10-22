@@ -16,6 +16,7 @@ import {TranscriptActionsProvider} from "./transcript-actions-provider";
 import {useSessionFork} from "../hooks/use-session-fork";
 import {Composer} from "./composer";
 import {StreamingMessage} from "./streaming-message";
+import {OptimisticWaitingTurn} from "./waiting-user-turn";
 import {SessionHookContext} from "./session-hook-context";
 import {useSettings} from "./settings-context";
 import {useTranscriptModeShortcut} from "../hooks/use-session-transcript-mode";
@@ -1014,6 +1015,7 @@ function SessionView({
 															summaryState: sessionSummaryState,
 														})}
 														permissionWaitToolUseId={permissionWaitId}
+														onSendNow={interruptForSendNow}
 														initialScrollKey={initialScrollKey}
 														scrollContentRef={scrollAnchorRef}
 														shouldScrollToEnd={
@@ -1071,12 +1073,10 @@ function SessionView({
 							)}
 
 							{liveHerdrPrompt.state.prompt !== "" && (
-								<StreamingMessage
-									text=""
-									isComplete={!liveHerdrPrompt.state.isPending}
-									error={liveHerdrPrompt.state.error || undefined}
-									sentPrompt={liveHerdrPrompt.state.prompt}
-									pendingLabel="Sent to live session — waiting for transcript..."
+								<OptimisticWaitingTurn
+									prompt={liveHerdrPrompt.state.prompt}
+									error={liveHerdrPrompt.state.error}
+									onSendNow={workingMarkerState.status === "idle" ? undefined : interruptForSendNow}
 								/>
 							)}
 

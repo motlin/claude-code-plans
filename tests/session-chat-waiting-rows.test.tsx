@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {cleanup, render} from "@testing-library/react";
+import {cleanup, fireEvent, render} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat} from "../src/components/session-chat";
 import {processTranscript} from "../src/lib/transcript";
@@ -59,7 +59,7 @@ const enqueue = (timestamp: string, content: string) => ({
 	content,
 });
 
-function renderRecords(records: unknown[], sessionLive: boolean): HTMLElement {
+function renderRecords(records: unknown[], sessionLive: boolean, onSendNow?: () => void): HTMLElement {
 	const {lines, toolResultMap} = processTranscript(records);
 	return render(
 		<SessionChat
@@ -69,6 +69,7 @@ function renderRecords(records: unknown[], sessionLive: boolean): HTMLElement {
 			shouldScrollToEnd={false}
 			transcriptMode="normal"
 			sessionLive={sessionLive}
+			onSendNow={onSendNow}
 		/>,
 	).container;
 }
@@ -119,5 +120,26 @@ describe("JSONL waiting rows at the transcript tail", () => {
 			{entry: "queued-1", text: "one"},
 			{entry: "queued-2", text: "two"},
 		]);
+	});
+
+	it("puts Send now on the head waiting row only, wired to the interrupt", () => {
+		const onSendNow = vi.fn<() => void>();
+		const container = renderRecords(
+			[
+				assistant("a-1", "1999-12-31T00:00:01Z", "first reply"),
+				enqueue("1999-12-31T00:00:02Z", "one"),
+				enqueue("1999-12-31T00:00:03Z", "two"),
+			],
+			true,
+			onSendNow,
+		);
+		expect(
+			[...container.querySelectorAll("[data-take-back-entry]")].map(
+				(row) => row.querySelectorAll("[data-testid=awaiting-turn-send-now]").length,
+			),
+		).toStrictEqual([1, 0]);
+		const sendNow = container.querySelector("[data-testid=awaiting-turn-send-now]");
+		if (sendNow !== null) fireEvent.click(sendNow);
+		expect(onSendNow.mock.calls).toStrictEqual([[]]);
 	});
 });
