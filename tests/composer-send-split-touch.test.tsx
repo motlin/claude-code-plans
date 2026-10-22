@@ -152,6 +152,42 @@ describe("Composer touch split Send while working", () => {
 		expect(handlers.onSend.mock.calls).toStrictEqual([]);
 	});
 
+	it("holds the primary while sending is disabled, keeping the menu usable", async () => {
+		const {handlers, view, textarea} = renderWorking(true);
+		view.rerender(
+			<Composer
+				variant="session"
+				draftKey="session-alice"
+				disabled
+				onSend={handlers.onSend}
+				onStop={handlers.onStop}
+				onQueueForLater={handlers.onQueueForLater}
+			/>,
+		);
+		const primary = screen.getByRole("button", {name: "Send"});
+		fireEvent.click(primary);
+		const menu = await openMenu();
+		const entries = menuEntries(menu);
+		fireEvent.click(screen.getByRole("menuitem", {name: "Stop"}));
+		await flush();
+
+		expect({
+			ariaDisabled: primary.getAttribute("aria-disabled"),
+			icon: primary.querySelector("svg")?.getAttribute("class")?.includes("opacity-40"),
+			sent: handlers.onSend.mock.calls,
+			entries,
+			stops: handlers.onStop.mock.calls.length,
+			draft: textarea.value,
+		}).toStrictEqual({
+			ariaDisabled: "true",
+			icon: true,
+			sent: [],
+			entries: ["Queue for later", "---", "Stop"],
+			stops: 1,
+			draft: "Alice's note",
+		});
+	});
+
 	it("offers only Stop when the session has no queue-for-later lane", async () => {
 		renderWorking(true, false);
 		const menu = await openMenu();
