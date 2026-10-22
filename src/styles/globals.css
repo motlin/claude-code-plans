@@ -64,6 +64,9 @@
 	--color-fill-danger: var(--upstream-fill-danger);
 	--color-fill-danger-hover: var(--upstream-fill-danger-hover);
 	--color-on-danger: #fff;
+	/* Upstream claude.ai/code brand accent (palette enter cap) */
+	--color-brand-100: var(--upstream-brand-100);
+	--color-oncolor-100: var(--upstream-oncolor-100);
 
 	/* Upstream claude.ai/code semantic text and borders */
 	--color-primary: var(--upstream-text-primary);
@@ -221,6 +224,9 @@
 	--upstream-fill-warning: #fbb315;
 	--upstream-fill-danger: #d03b3b;
 	--upstream-fill-danger-hover: #e34948;
+	/* Upstream --brand-100 (hsl 15 54.2% 51.2%) / --oncolor-100, [data-theme=claude][data-mode=light]. */
+	--upstream-brand-100: rgb(198 97 63);
+	--upstream-oncolor-100: rgb(255 255 255);
 	--upstream-backdrop: rgb(0 0 0 / 0.4);
 	--panel-lg-shadow:
 		0 0 0 1px rgb(11 11 11 / 0.1), 0 4px 8px 0 rgb(11 11 11 / 0.08), 0 12px 28px -2px rgb(11 11 11 / 0.08);
@@ -441,6 +447,9 @@
 	--upstream-fill-secondary-ring: transparent;
 	--upstream-fill-danger: #d03b3b;
 	--upstream-fill-danger-hover: #e34948;
+	/* Upstream --brand-100 (hsl 15 63.1% 59.6%, measured rgb(217,119,87)) / --oncolor-100, [data-mode=dark]. */
+	--upstream-brand-100: rgb(217 119 87);
+	--upstream-oncolor-100: rgb(255 255 255);
 	--upstream-fill-grip: hsl(0 0% 100% / 0.2);
 	--upstream-fill-primary: #fff;
 	--upstream-fill-primary-hover: #e1e0d9;

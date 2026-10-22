@@ -90,3 +90,28 @@ describe("alpha-1 and alpha-2 tokens (upstream --cds-alpha-1/2, neutral-900 at 5
 		});
 	});
 });
+
+describe("brand accent tokens (upstream --brand-100 / --oncolor-100)", () => {
+	const UPSTREAM_BRAND_TOKENS = ["--upstream-brand-100", "--upstream-oncolor-100"] as const;
+
+	it("maps the theme utilities onto the upstream variables", () => {
+		expect(tokens(block("@theme inline"), ["--color-brand-100", "--color-oncolor-100"])).toStrictEqual({
+			"--color-brand-100": "var(--upstream-brand-100)",
+			"--color-oncolor-100": "var(--upstream-oncolor-100)",
+		});
+	});
+
+	it("defines the light values (hsl 15 54.2% 51.2%)", () => {
+		expect(tokens(block(":root"), UPSTREAM_BRAND_TOKENS)).toStrictEqual({
+			"--upstream-brand-100": "rgb(198 97 63)",
+			"--upstream-oncolor-100": "rgb(255 255 255)",
+		});
+	});
+
+	it("defines the dark values (hsl 15 63.1% 59.6%)", () => {
+		expect(tokens(block(".dark"), UPSTREAM_BRAND_TOKENS)).toStrictEqual({
+			"--upstream-brand-100": "rgb(217 119 87)",
+			"--upstream-oncolor-100": "rgb(255 255 255)",
+		});
+	});
+});
