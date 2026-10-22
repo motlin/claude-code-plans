@@ -234,4 +234,156 @@ describe("SplitDropdownButton", () => {
 
 		expect(screen.queryByRole("menu")).toBeNull();
 	});
+	describe("joined looks", () => {
+		const TRANSITION = [
+			"transition-[background-color,box-shadow,color]",
+			"duration-[60ms]",
+			"ease-[cubic-bezier(.165,.84,.44,1)]",
+		];
+		const BASE = ["relative", "outline-none", "focus-visible:shadow-focus", "disabled:opacity-40"];
+		const PRIMARY_SEGMENT = [
+			"inline-flex",
+			"items-center",
+			"h-6",
+			"px-2",
+			"text-[13px]/[19px]",
+			"rounded-r5",
+			"rounded-e-none",
+			"min-w-0",
+			"shrink",
+		];
+		const CARET_SEGMENT = [
+			"inline-flex",
+			"items-center",
+			"justify-center",
+			"h-6",
+			"w-auto",
+			"px-1",
+			"rounded-r5",
+			"rounded-s-none",
+		];
+		const SEAM_FADE = [
+			"[[data-cds-segment]:hover+&>[data-seam-line]]:opacity-0",
+			"[&:has(+[data-cds-segment]:hover)>[data-seam-line]]:opacity-0",
+			"[[data-cds-segment]:has([aria-expanded=true])+&>[data-seam-line]]:opacity-0",
+			"[&:has(+[data-cds-segment]_[aria-expanded=true])>[data-seam-line]]:opacity-0",
+		];
+		const SOLID_SEAM_DISABLED =
+			"[[data-cds-segment]:has(:disabled)+&:has(+[data-cds-segment]_:disabled)]:opacity-40";
+		const ROOT = ["relative", "inline-flex", "w-fit", "shrink-0", "items-stretch", "rounded-r5", "group/split"];
+
+		function seam() {
+			const element = group().children[1];
+			if (!(element instanceof HTMLElement)) throw new Error("seam missing");
+			return element;
+		}
+
+		function looks() {
+			const line = seam().querySelector("[data-seam-line]");
+			return {
+				root: [...group().classList],
+				primary: [...primary().classList],
+				caret: [...caret().classList],
+				caretIcon: [...(caret().querySelector("svg")?.classList ?? [])],
+				seamHidden: seam().getAttribute("aria-hidden"),
+				seam: [...seam().classList],
+				line: line === null ? null : [...line.classList],
+			};
+		}
+
+		it("renders the primary variant as a solid joined pair with a faint on-primary seam line", () => {
+			renderSplit({variant: "primary"});
+
+			const fill = [
+				"bg-fill-primary",
+				"text-on-primary",
+				"font-medium",
+				"hover:bg-fill-primary-hover",
+				"aria-expanded:bg-fill-primary-hover",
+			];
+			expect(looks()).toStrictEqual({
+				root: ROOT,
+				primary: [...BASE, ...PRIMARY_SEGMENT, ...fill, ...TRANSITION],
+				caret: [...BASE, ...CARET_SEGMENT, ...fill, ...TRANSITION],
+				caretIcon: ["lucide", "lucide-chevron-down", "size-4"],
+				seamHidden: "true",
+				seam: [
+					"relative",
+					"w-px",
+					"shrink-0",
+					"self-stretch",
+					"bg-fill-primary",
+					...SEAM_FADE,
+					SOLID_SEAM_DISABLED,
+				],
+				line: ["absolute", "inset-x-0", "inset-y-1/4", "bg-on-primary", "opacity-25"],
+			});
+		});
+
+		it("renders the secondary variant with the field-drop shadow, inset ring and a border seam line", () => {
+			renderSplit({variant: "secondary"});
+
+			const fill = [
+				"bg-fill-secondary",
+				"text-primary",
+				"hover:bg-fill-secondary-hover",
+				"aria-expanded:bg-fill-secondary-hover",
+			];
+			expect(looks()).toStrictEqual({
+				root: [
+					...ROOT,
+					"shadow-field-drop",
+					"after:pointer-events-none",
+					"after:absolute",
+					"after:inset-0",
+					"after:rounded-[inherit]",
+					"after:shadow-[inset_0_0_0_1px_var(--color-fill-secondary-ring)]",
+				],
+				primary: [...BASE, ...PRIMARY_SEGMENT, ...fill, ...TRANSITION],
+				caret: [...BASE, ...CARET_SEGMENT, ...fill, ...TRANSITION],
+				caretIcon: ["lucide", "lucide-chevron-down", "size-4", "text-ink-muted"],
+				seamHidden: "true",
+				seam: ["relative", "w-px", "shrink-0", "self-stretch", "bg-fill-secondary", ...SEAM_FADE],
+				line: ["absolute", "inset-x-0", "inset-y-1/4", "bg-border"],
+			});
+		});
+
+		it("defaults to the secondary look and drops the muted caret icon when disabled", () => {
+			renderSplit({disabled: true});
+
+			expect({
+				shadow: group().classList.contains("shadow-field-drop"),
+				caretIcon: [...(caret().querySelector("svg")?.classList ?? [])],
+			}).toStrictEqual({shadow: true, caretIcon: ["lucide", "lucide-chevron-down", "size-4"]});
+		});
+
+		it("renders the danger variant with the danger fill and an on-danger seam line", () => {
+			renderSplit({variant: "danger"});
+
+			const fill = [
+				"bg-fill-danger",
+				"text-on-danger",
+				"font-medium",
+				"hover:bg-fill-danger-hover",
+				"aria-expanded:bg-fill-danger-hover",
+			];
+			expect(looks()).toStrictEqual({
+				root: ROOT,
+				primary: [...BASE, ...PRIMARY_SEGMENT, ...fill, ...TRANSITION],
+				caret: [...BASE, ...CARET_SEGMENT, ...fill, ...TRANSITION],
+				caretIcon: ["lucide", "lucide-chevron-down", "size-4"],
+				seamHidden: "true",
+				seam: [
+					"relative",
+					"w-px",
+					"shrink-0",
+					"self-stretch",
+					"bg-fill-danger",
+					...SEAM_FADE,
+					SOLID_SEAM_DISABLED,
+				],
+				line: ["absolute", "inset-x-0", "inset-y-1/4", "bg-on-danger", "opacity-25"],
+			});
+		});
+	});
 });

@@ -40,6 +40,44 @@ export interface SplitDropdownButtonProps {
 
 const ROOT_CLASS = "relative inline-flex w-fit shrink-0 items-stretch rounded-r5 group/split";
 const BUTTON_CLASS = "relative outline-none focus-visible:shadow-focus disabled:opacity-40";
+const PAINT_TRANSITION =
+	"transition-[background-color,box-shadow,color] duration-[60ms] ease-[cubic-bezier(.165,.84,.44,1)]";
+const JOINED_PRIMARY_CLASS = "h-6 px-2 text-[13px]/[19px] rounded-r5 rounded-e-none min-w-0 shrink";
+const JOINED_CARET_CLASS = "h-6 w-auto px-1 rounded-r5 rounded-s-none";
+const SEAM_BASE_CLASS = "w-px shrink-0 self-stretch";
+/* The seam line fades while either neighbour segment is hovered or holds the open menu. */
+const SEAM_FADE_CLASS =
+	"[[data-cds-segment]:hover+&>[data-seam-line]]:opacity-0 [&:has(+[data-cds-segment]:hover)>[data-seam-line]]:opacity-0 [[data-cds-segment]:has([aria-expanded=true])+&>[data-seam-line]]:opacity-0 [&:has(+[data-cds-segment]_[aria-expanded=true])>[data-seam-line]]:opacity-0";
+/* Solid seams dim with their segments when both neighbours are disabled. */
+const SOLID_SEAM_DISABLED_CLASS = "[[data-cds-segment]:has(:disabled)+&:has(+[data-cds-segment]_:disabled)]:opacity-40";
+
+type JoinedVariant = "primary" | "secondary" | "danger";
+
+/* Upstream's `ho` seam: a 1px strip in the segment fill with a half-height line. */
+const JOINED_LOOKS: Record<JoinedVariant, {root: string; fill: string; seam: string; line: string}> = {
+	primary: {
+		root: "",
+		fill: "bg-fill-primary text-on-primary font-medium hover:bg-fill-primary-hover aria-expanded:bg-fill-primary-hover",
+		seam: `relative ${SEAM_BASE_CLASS} bg-fill-primary ${SEAM_FADE_CLASS} ${SOLID_SEAM_DISABLED_CLASS}`,
+		line: "absolute inset-x-0 inset-y-1/4 bg-on-primary opacity-25",
+	},
+	secondary: {
+		root: "shadow-field-drop after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:shadow-[inset_0_0_0_1px_var(--color-fill-secondary-ring)]",
+		fill: "bg-fill-secondary text-primary hover:bg-fill-secondary-hover aria-expanded:bg-fill-secondary-hover",
+		seam: `relative ${SEAM_BASE_CLASS} bg-fill-secondary ${SEAM_FADE_CLASS}`,
+		line: "absolute inset-x-0 inset-y-1/4 bg-border",
+	},
+	danger: {
+		root: "",
+		fill: "bg-fill-danger text-on-danger font-medium hover:bg-fill-danger-hover aria-expanded:bg-fill-danger-hover",
+		seam: `relative ${SEAM_BASE_CLASS} bg-fill-danger ${SEAM_FADE_CLASS} ${SOLID_SEAM_DISABLED_CLASS}`,
+		line: "absolute inset-x-0 inset-y-1/4 bg-on-danger opacity-25",
+	},
+};
+
+function joinClasses(...classes: (string | undefined | false)[]): string {
+	return classes.filter((value) => typeof value === "string" && value !== "").join(" ");
+}
 
 function MenuItems({items}: {items: SplitItem[]}) {
 	return items.map((item, index) => {
@@ -61,6 +99,7 @@ function MenuItems({items}: {items: SplitItem[]}) {
 }
 
 export function SplitDropdownButton({
+	variant = "secondary",
 	size = "default",
 	label,
 	icon,
@@ -103,7 +142,25 @@ export function SplitDropdownButton({
 	};
 
 	const name = groupLabel ?? (typeof label === "string" ? label : (ariaLabel ?? menuLabel));
-	const rootClass = className ? `${ROOT_CLASS} ${className}` : ROOT_CLASS;
+	const joined = variant === "ghost" ? undefined : JOINED_LOOKS[variant];
+	const rootClass = joinClasses(ROOT_CLASS, joined?.root, className);
+	const primaryClass = joined
+		? joinClasses(BUTTON_CLASS, "inline-flex items-center", JOINED_PRIMARY_CLASS, joined.fill, PAINT_TRANSITION)
+		: `${BUTTON_CLASS} inline-flex min-w-0 shrink items-center`;
+	const caretClass = joined
+		? joinClasses(
+				BUTTON_CLASS,
+				"inline-flex items-center justify-center",
+				JOINED_CARET_CLASS,
+				joined.fill,
+				PAINT_TRANSITION,
+			)
+		: `${BUTTON_CLASS} inline-flex items-center justify-center`;
+	/* Upstream mutes the caret icon only on the enabled secondary/ghost looks. */
+	const caretIconClass = joinClasses(
+		size === "sm" ? "size-3" : "size-4",
+		(variant === "secondary" || variant === "ghost") && !disabled && "text-ink-muted",
+	);
 	const labelSpan =
 		label === undefined ? null : (
 			<span className={`min-w-0 truncate [unicode-bidi:plaintext]${busy ? " opacity-0" : ""}`}>{label}</span>
@@ -123,7 +180,7 @@ export function SplitDropdownButton({
 					<button
 						type="button"
 						data-cds="Button"
-						className={`${BUTTON_CLASS} inline-flex min-w-0 shrink items-center`}
+						className={primaryClass}
 						disabled={disabled}
 						onPointerDown={() => {
 							openAtPointerDown.current = open;
@@ -150,7 +207,9 @@ export function SplitDropdownButton({
 					</button>
 				</div>
 			</div>
-			<span aria-hidden="true" />
+			<span aria-hidden="true" className={joined ? joined.seam : SEAM_BASE_CLASS}>
+				{joined && <span data-seam-line="" className={joined.line} />}
+			</span>
 			<div data-cds-segment="" className="contents">
 				<Menu open={open} onOpenChange={setOpen}>
 					<MenuTrigger
@@ -159,9 +218,9 @@ export function SplitDropdownButton({
 						data-cds-icon-only=""
 						aria-label={menuLabel}
 						disabled={disabled}
-						className={`${BUTTON_CLASS} inline-flex items-center justify-center`}
+						className={caretClass}
 					>
-						<ChevronDown aria-hidden="true" className={size === "sm" ? "size-3" : "size-4"} />
+						<ChevronDown aria-hidden="true" className={caretIconClass} />
 					</MenuTrigger>
 					<MenuContent side={side} align={align} sideOffset={6}>
 						<MenuItems items={items} />
