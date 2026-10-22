@@ -1279,8 +1279,13 @@ html[data-motion="reduced"] .animate-pulse,
 html[data-motion="reduced"] .animate-ping,
 html[data-motion="reduced"] .animate-approval-inline-enter,
 html[data-motion="reduced"] .status-dot[data-kind="running"],
-html[data-motion="reduced"] .terminal-caret {
+html[data-motion="reduced"] .terminal-caret,
+html[data-motion="reduced"] [data-spinner] * {
 	animation: none !important;
+}
+
+html[data-motion="reduced"] [data-cds-shimmer-clone] {
+	display: none;
 }
 
 /* Bounded home/chat tiles and the message/dock column share responsive gutters. */
