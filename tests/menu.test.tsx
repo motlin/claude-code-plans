@@ -864,6 +864,20 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 		expect(presentation()).toStrictEqual({presentation: null, scrim: null});
 	});
 
+	it("keeps a structurally anchored menu anchored at 639px", async () => {
+		stubCoarseAtWidth(639);
+		render(
+			<Menu>
+				<MenuTrigger aria-label="More options">...</MenuTrigger>
+				<MenuContent structurallyAnchored>
+					<MenuItem>Copy link</MenuItem>
+				</MenuContent>
+			</Menu>,
+		);
+		await openDropdown();
+		expect(presentation()).toStrictEqual({presentation: null, scrim: null});
+	});
+
 	it("keeps a coarse-pointer ContextMenu anchored at 1024px", async () => {
 		stubCoarseAtWidth(1024);
 		render(

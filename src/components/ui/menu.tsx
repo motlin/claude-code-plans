@@ -232,6 +232,11 @@ export interface MenuContentProps {
 	/** Where focus goes when the menu closes; `false` leaves it where an action put it. */
 	finalFocus?: ComponentProps<typeof BaseMenu.Popup>["finalFocus"];
 	anchor?: ComponentProps<typeof BaseMenu.Positioner>["anchor"];
+	/**
+	 * Upstream's `structurallyAnchored`: the trigger keeps focus in an editor or input, so the popup stays
+	 * anchored even where the root would otherwise present a bottom sheet.
+	 */
+	structurallyAnchored?: boolean;
 }
 
 /** The popup surface. Inside a ContextMenu it opens at the pointer. */
@@ -246,6 +251,7 @@ export function MenuContent({
 	className,
 	finalFocus,
 	anchor,
+	structurallyAnchored = false,
 }: MenuContentProps) {
 	const resolvedCollisionAvoidance =
 		collisionAvoidance ?? (INLINE_SIDES.has(side) ? SIDE_COLLISION_AVOIDANCE : undefined);
@@ -254,7 +260,7 @@ export function MenuContent({
 			? resolvedCollisionAvoidance.fallbackAxisSide
 			: undefined;
 	const kind = useContext(MenuKindContext);
-	const sheet = useContext(MenuSheetContext);
+	const sheet = useContext(MenuSheetContext) && !structurallyAnchored;
 	/* Upstream's si order: an override, then comfortable on (pointer: coarse), then the prop or opener's density. */
 	const resolvedDensity = useScopeDensity(density);
 	const sizing = DENSITY_CLASSES[resolvedDensity];

@@ -6,6 +6,7 @@ import type {useNavigate} from "@tanstack/react-router";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {Composer} from "../src/components/composer";
 import {DensityScope} from "../src/components/ui/density";
+import {FileMentionMenu} from "../src/components/file-mention-menu";
 import {customizeMcpServersQueryOptions, type McpServerSummary} from "../src/lib/api/customize";
 import {toConnectorSlug} from "../src/lib/customize/mcp-tool-permissions";
 import type {ComposerState} from "../src/lib/composer-state";
@@ -848,5 +849,68 @@ describe("Composer + menu Connectors submenu", () => {
 		const trigger = await within(await screen.findByRole("menu")).findByRole("menuitem", {name: /^Connectors/});
 
 		expect(trigger.querySelector("[data-menu-value]")).toBeNull();
+	});
+});
+
+describe("Composer text-entry menus at a coarse pointer below 640px", () => {
+	beforeEach(() => {
+		vi.stubGlobal(
+			"matchMedia",
+			vi.fn((query: string) => ({
+				matches: query === "(pointer: coarse)" || query === "(pointer: coarse) and (max-width: 639.98px)",
+				media: query,
+				onchange: null,
+				addEventListener: () => undefined,
+				removeEventListener: () => undefined,
+				addListener: () => undefined,
+				removeListener: () => undefined,
+				dispatchEvent: () => false,
+			})),
+		);
+	});
+
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	function presentation(popup: HTMLElement) {
+		return {
+			presentation: popup.getAttribute("data-presentation"),
+			scrim: document.querySelector("[data-sheet-scrim]"),
+		};
+	}
+
+	it("keeps the slash command menu anchored above the composer", () => {
+		render(
+			<Composer
+				variant="session"
+				draftKey="session-alice"
+				onSend={vi.fn<OnSend>()}
+				slashCommands={[{name: "plan", description: "Switch to plan mode", source: "builtin"}]}
+			/>,
+		);
+		fireEvent.change(screen.getByRole("textbox", {name: "Prompt"}), {target: {value: "/"}});
+
+		expect(presentation(screen.getByRole("menu", {name: "Slash commands"}))).toStrictEqual({
+			presentation: null,
+			scrim: null,
+		});
+	});
+
+	it("keeps the @-mention list anchored above the composer", () => {
+		render(
+			<FileMentionMenu
+				id="mentions"
+				entries={[{name: "src", relPath: "src", isDirectory: true}]}
+				highlighted={0}
+				onHighlight={() => undefined}
+				onAccept={() => undefined}
+			/>,
+		);
+
+		expect(presentation(screen.getByRole("listbox", {name: "Mention suggestions"}))).toStrictEqual({
+			presentation: null,
+			scrim: null,
+		});
 	});
 });
