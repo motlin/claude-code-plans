@@ -21,7 +21,7 @@ import {
 	MenuTrigger,
 	submenuAnchor,
 } from "../src/components/ui/menu";
-import {DensityScope} from "../src/components/ui/density";
+import {type Density, DensityOverride, DensityScope} from "../src/components/ui/density";
 
 afterEach(() => {
 	cleanup();
@@ -968,6 +968,76 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 			).length,
 			roundedTop: menu.className.includes("rounded-t-[14px]"),
 		}).toStrictEqual({presentation: null, size: null, sheetMarkers: 0, roundedTop: false});
+	});
+
+	async function openCompactSheet(override?: Density) {
+		const menu = (
+			<Menu>
+				<MenuTrigger aria-label="More options">...</MenuTrigger>
+				<MenuContent density="compact">
+					<MenuItem icon={<svg data-testid="glyph" />} shortcut="⌘C">
+						Copy link
+					</MenuItem>
+					<MenuSeparator />
+					<MenuItem>Delete</MenuItem>
+				</MenuContent>
+			</Menu>
+		);
+		render(override === undefined ? menu : <DensityOverride density={override}>{menu}</DensityOverride>);
+		const popup = await openDropdown();
+		const glyphSlot = screen.getByTestId("glyph").parentElement;
+		const shortcut = screen.getByRole("menuitem", {name: /Copy link/}).lastElementChild;
+		return {
+			density: popup.parentElement?.getAttribute("data-density"),
+			popupText: popup.classList.contains("text-[15px]/[22px]"),
+			item: screen
+				.getByRole("menuitem", {name: "Delete"})
+				.className.split(" ")
+				.filter((name) => SHEET_ITEM_TOKENS.has(name)),
+			icon: glyphSlot?.classList.contains("[&_svg]:size-5"),
+			shortcutPadding: shortcut?.classList.contains("pl-5"),
+			separator: document
+				.querySelector("[role=separator]")
+				?.className.split(" ")
+				.filter((name) => name.startsWith("mx-")),
+		};
+	}
+
+	const SHEET_ITEM_TOKENS = new Set([
+		"h-6",
+		"h-8",
+		"min-h-10",
+		"items-center",
+		"rounded-r5",
+		"rounded-r6",
+		"rounded-r7",
+		"px-2",
+		"px-2.5",
+		"py-[2.5px]",
+		"py-1.5",
+		"py-[9px]",
+		"text-[13px]/[19px]",
+		"text-[14px]/[20px]",
+		"text-[15px]/[22px]",
+	]);
+
+	const LG_SHEET = {
+		density: "comfortable",
+		popupText: true,
+		item: ["min-h-10", "items-center", "rounded-r7", "px-2.5", "py-[9px]", "text-[15px]/[22px]"],
+		icon: true,
+		shortcutPadding: true,
+		separator: ["mx-2.5"],
+	};
+
+	it("renders a compact menu's sheet with lg rows at forced comfortable density, as upstream's ta(\"lg\")", async () => {
+		stubCoarseAtWidth(639);
+		expect(await openCompactSheet()).toStrictEqual(LG_SHEET);
+	});
+
+	it("lets the sheet's lg comfortable sizing win over a compact density override", async () => {
+		stubCoarseAtWidth(639);
+		expect(await openCompactSheet("compact")).toStrictEqual(LG_SHEET);
 	});
 
 	it("keeps a controlled menu without onOpenChange anchored at 639px", async () => {

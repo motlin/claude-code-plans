@@ -65,6 +65,25 @@ const DENSITY_CLASSES = {
 	},
 } as const;
 
+/** Upstream's `ta("lg")` rows, which a sheet lays over its forced comfortable density. */
+const SHEET_SIZING = {
+	...DENSITY_CLASSES.comfortable,
+	text: "text-[15px]/[22px]",
+	item: "rounded-r7 px-2.5 py-[9px]",
+	singleLine: "min-h-10 items-center",
+	separator: "mx-2.5",
+	icon: "[&_svg]:size-5",
+	shortcutPadding: "pl-5",
+};
+
+/** Whether the enclosing popup is a sheet, whose rows take the lg size whatever the consumer's density. */
+const MenuLgContext = createContext(false);
+
+function useMenuSizing() {
+	const density = useDensity();
+	return useContext(MenuLgContext) ? SHEET_SIZING : DENSITY_CLASSES[density];
+}
+
 const POSITIONER_CLASS = "z-[130] outline-none";
 
 const POPUP_CLASS =
@@ -122,7 +141,7 @@ function SheetHandle() {
 }
 
 function useItemClass(twoLine = false, gap = "gap-1"): string {
-	const sizing = DENSITY_CLASSES[useDensity()];
+	const sizing = useMenuSizing();
 	return `flex w-full cursor-default ${twoLine ? sizing.twoLine : sizing.singleLine} ${gap} ${sizing.item} ${sizing.text} font-normal outline-none select-none [--shortcut-cap-ink:var(--menu-muted)] data-[disabled]:pointer-events-none data-[disabled]:opacity-40 data-[disabled]:focus-visible:shadow-focus`;
 }
 
@@ -149,7 +168,7 @@ const SUBMENU_HOVER_DELAY_MS = 100;
 const ICON_SLOT_CLASS = "mr-1 flex size-5 shrink-0 items-center justify-center [&_svg]:shrink-0";
 
 function ItemIcon({icon}: {icon: ReactNode}) {
-	const glyph = DENSITY_CLASSES[useDensity()].icon;
+	const glyph = useMenuSizing().icon;
 	if (icon === undefined) return null;
 	return (
 		<span aria-hidden="true" className={`${ICON_SLOT_CLASS} ${glyph}`}>
@@ -318,83 +337,89 @@ export function MenuContent({
 	const sheet = useContext(MenuSheetContext) && !structurallyAnchored;
 	const sheetTreeId = useId();
 	/* Upstream's si order: an override, then comfortable on (pointer: coarse), then the prop or opener's density. */
-	const resolvedDensity = useScopeDensity(density);
-	const sizing = DENSITY_CLASSES[resolvedDensity];
+	const scopeDensity = useScopeDensity(density);
+	/* A sheet's portal forces comfortable (`density: MG`) at every account density. */
+	const resolvedDensity = sheet ? "comfortable" : scopeDensity;
+	const sizing = sheet ? SHEET_SIZING : DENSITY_CLASSES[resolvedDensity];
 	const popupClass = `${POPUP_CLASS} ${sizing.popup} p-1 ${sizing.text}`;
 	if (sheet && !nested) {
 		return (
 			<DensityProvider density={resolvedDensity}>
-				<BaseMenu.Portal>
-					<BaseMenu.Backdrop
-						data-presentation="sheet"
-						data-sheet-scrim={sheetTreeId}
-						className={SHEET_SCRIM_CLASS}
-					/>
-					<BaseMenu.Positioner
-						className={SHEET_POSITIONER_CLASS}
-						style={SHEET_POSITIONER_STYLE}
-						data-density={resolvedDensity}
-						collisionAvoidance={SHEET_COLLISION_AVOIDANCE}
-						disableAnchorTracking
-					>
-						<BaseMenu.Popup
-							data-cds={kind}
+				<MenuLgContext.Provider value>
+					<BaseMenu.Portal>
+						<BaseMenu.Backdrop
 							data-presentation="sheet"
-							data-sheet-tree={sheetTreeId}
-							data-cds-sheet-depth="0"
-							data-size="lg"
-							className={`${SHEET_POPUP_CLASS} ${sizing.text}${className ? ` ${className}` : ""}`}
-							style={SHEET_POPUP_STYLE}
-							onKeyDown={handleAcceleratorKey}
-							{...(finalFocus === undefined ? {} : {finalFocus})}
+							data-sheet-scrim={sheetTreeId}
+							className={SHEET_SCRIM_CLASS}
+						/>
+						<BaseMenu.Positioner
+							className={SHEET_POSITIONER_CLASS}
+							style={SHEET_POSITIONER_STYLE}
+							data-density={resolvedDensity}
+							collisionAvoidance={SHEET_COLLISION_AVOIDANCE}
+							disableAnchorTracking
 						>
-							<SheetHandle />
-							<div className={SHEET_CONTENT_CLASS}>
-								<div data-cds-sheet-scroll="" className={SHEET_SCROLL_CLASS}>
-									{children}
+							<BaseMenu.Popup
+								data-cds={kind}
+								data-presentation="sheet"
+								data-sheet-tree={sheetTreeId}
+								data-cds-sheet-depth="0"
+								data-size="lg"
+								className={`${SHEET_POPUP_CLASS} ${sizing.text}${className ? ` ${className}` : ""}`}
+								style={SHEET_POPUP_STYLE}
+								onKeyDown={handleAcceleratorKey}
+								{...(finalFocus === undefined ? {} : {finalFocus})}
+							>
+								<SheetHandle />
+								<div className={SHEET_CONTENT_CLASS}>
+									<div data-cds-sheet-scroll="" className={SHEET_SCROLL_CLASS}>
+										{children}
+									</div>
 								</div>
-							</div>
-						</BaseMenu.Popup>
-					</BaseMenu.Positioner>
-				</BaseMenu.Portal>
+							</BaseMenu.Popup>
+						</BaseMenu.Positioner>
+					</BaseMenu.Portal>
+				</MenuLgContext.Provider>
 			</DensityProvider>
 		);
 	}
 	return (
 		<DensityProvider density={resolvedDensity}>
-			<BaseMenu.Portal>
-				<BaseMenu.Positioner
-					className={POSITIONER_CLASS}
-					data-density={resolvedDensity}
-					side={side}
-					align={align}
-					sideOffset={sideOffset}
-					alignOffset={alignOffset}
-					data-side-offset={sideOffset}
-					data-align-offset={alignOffset}
-					{...(anchor === undefined ? {} : {anchor})}
-					{...(resolvedCollisionAvoidance === undefined
-						? {}
-						: {collisionAvoidance: resolvedCollisionAvoidance})}
-					{...(collisionFallback === undefined ? {} : {"data-collision-fallback": collisionFallback})}
-				>
-					<BaseMenu.Popup
-						data-cds={kind}
-						{...(sheet ? {"data-presentation": "sheet"} : {})}
-						className={className ? `${popupClass} ${className}` : popupClass}
-						onKeyDown={handleAcceleratorKey}
-						{...(finalFocus === undefined ? {} : {finalFocus})}
+			<MenuLgContext.Provider value={sheet}>
+				<BaseMenu.Portal>
+					<BaseMenu.Positioner
+						className={POSITIONER_CLASS}
+						data-density={resolvedDensity}
+						side={side}
+						align={align}
+						sideOffset={sideOffset}
+						alignOffset={alignOffset}
+						data-side-offset={sideOffset}
+						data-align-offset={alignOffset}
+						{...(anchor === undefined ? {} : {anchor})}
+						{...(resolvedCollisionAvoidance === undefined
+							? {}
+							: {collisionAvoidance: resolvedCollisionAvoidance})}
+						{...(collisionFallback === undefined ? {} : {"data-collision-fallback": collisionFallback})}
 					>
-						<div className={SCROLLER_CLASS}>{children}</div>
-					</BaseMenu.Popup>
-				</BaseMenu.Positioner>
-			</BaseMenu.Portal>
+						<BaseMenu.Popup
+							data-cds={kind}
+							{...(sheet ? {"data-presentation": "sheet"} : {})}
+							className={className ? `${popupClass} ${className}` : popupClass}
+							onKeyDown={handleAcceleratorKey}
+							{...(finalFocus === undefined ? {} : {finalFocus})}
+						>
+							<div className={SCROLLER_CLASS}>{children}</div>
+						</BaseMenu.Popup>
+					</BaseMenu.Positioner>
+				</BaseMenu.Portal>
+			</MenuLgContext.Provider>
 		</DensityProvider>
 	);
 }
 
 function ItemTrailing({accelerator, shortcut}: {accelerator?: string; shortcut?: string}) {
-	const sizing = DENSITY_CLASSES[useDensity()];
+	const sizing = useMenuSizing();
 	const keys = shortcut ?? accelerator;
 	if (keys === undefined) return null;
 	return (
@@ -547,7 +572,7 @@ export interface MenuSwitchItemProps extends Omit<
  * whose trailing xs switch carries the state. Click, Enter and Space toggle it and the menu stays open.
  */
 export function MenuSwitchItem({children, checked, onCheckedChange, ...props}: MenuSwitchItemProps) {
-	const sizing = DENSITY_CLASSES[useDensity()];
+	const sizing = useMenuSizing();
 	const itemClass = useItemClass(false, sizing.switchGap);
 	return (
 		<BaseMenu.Item
@@ -589,7 +614,7 @@ function RadioItemText({children, description}: {children: ReactNode; descriptio
 
 /** Upstream's digit row trailing: the check slot first, then the keycap, pinned to the first line. */
 function DigitTrailing({accelerator, hideAccelerator}: {accelerator: string; hideAccelerator: boolean}) {
-	const sizing = DENSITY_CLASSES[useDensity()];
+	const sizing = useMenuSizing();
 	return (
 		<span data-menu-item-trailing="" className={DIGIT_TRAILING_CLASS}>
 			<BaseMenu.RadioItemIndicator
@@ -773,7 +798,7 @@ export function MenuSubContent({
 }
 
 export function MenuSeparator() {
-	const sizing = DENSITY_CLASSES[useDensity()];
+	const sizing = useMenuSizing();
 	return <BaseMenu.Separator className={`${sizing.separator} my-1 h-px bg-border`} />;
 }
 
