@@ -209,6 +209,29 @@ describe("appendAttachment", () => {
 });
 
 describe("tree row context menu", () => {
+	it("opens Copy ▸ like upstream's Xu: inline-end with sideOffset -4 from the parent popup", async () => {
+		render(
+			wrap(
+				<FilesTreeColumn>
+					<FilesTree sessionId="alice" cwd={CWD} onAttachContext={vi.fn<AttachContextHandler>()} />
+				</FilesTreeColumn>,
+			),
+		);
+		fireEvent.contextMenu(await screen.findByText("README.md"), {clientX: 10, clientY: 10});
+		await waitFor(() => menuRows());
+		openSubmenu("Copy");
+		const positioner = await waitFor(() => {
+			const found = screen.getByRole("menuitem", {name: "Filename"}).closest("[data-side-offset]");
+			if (found === null) throw new Error("no Copy positioner");
+			return found;
+		});
+
+		expect({
+			side: positioner.getAttribute("data-side"),
+			sideOffset: positioner.getAttribute("data-side-offset"),
+		}).toStrictEqual({side: "right", sideOffset: "-4"});
+	});
+
 	it("offers Attach as context and Copy ▸ {Absolute path, Relative path, Filename}", async () => {
 		const onAttachContext = vi.fn<AttachContextHandler>();
 		render(

@@ -69,7 +69,8 @@ function SharedItems({path, cwd, attachment, onAttachContext, attachShortcut, ab
 			)}
 			<MenuSub>
 				<MenuSubTrigger>Copy</MenuSubTrigger>
-				<MenuSubContent>
+				{/* Upstream's Xu passes sideOffset -4: the popup's edge sits on the Copy row's edge. */}
+				<MenuSubContent sideOffset={-4}>
 					{absolutePath && (
 						<MenuItem
 							onSelect={() => {

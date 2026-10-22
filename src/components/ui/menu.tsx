@@ -1,7 +1,17 @@
 import {ContextMenu as BaseContextMenu} from "@base-ui/react/context-menu";
 import {Menu as BaseMenu} from "@base-ui/react/menu";
 import {Check, ChevronRight} from "lucide-react";
-import {type ComponentProps, createContext, type KeyboardEvent, type ReactNode, useContext, useId} from "react";
+import {
+	type ComponentProps,
+	createContext,
+	type KeyboardEvent,
+	type ReactNode,
+	type RefObject,
+	useContext,
+	useId,
+	useMemo,
+	useRef,
+} from "react";
 
 import {useIsMac} from "../../hooks/use-is-mac";
 import {toAriaKeyShortcuts} from "../../lib/shortcuts/format";
@@ -179,6 +189,7 @@ export interface MenuContentProps {
 	className?: string;
 	/** Where focus goes when the menu closes; `false` leaves it where an action put it. */
 	finalFocus?: ComponentProps<typeof BaseMenu.Popup>["finalFocus"];
+	anchor?: ComponentProps<typeof BaseMenu.Positioner>["anchor"];
 }
 
 /** The popup surface. Inside a ContextMenu it opens at the pointer. */
@@ -192,6 +203,7 @@ export function MenuContent({
 	collisionAvoidance,
 	className,
 	finalFocus,
+	anchor,
 }: MenuContentProps) {
 	const resolvedCollisionAvoidance =
 		collisionAvoidance ?? (INLINE_SIDES.has(side) ? SIDE_COLLISION_AVOIDANCE : undefined);
@@ -216,6 +228,7 @@ export function MenuContent({
 					alignOffset={alignOffset}
 					data-side-offset={sideOffset}
 					data-align-offset={alignOffset}
+					{...(anchor === undefined ? {} : {anchor})}
 					{...(resolvedCollisionAvoidance === undefined
 						? {}
 						: {collisionAvoidance: resolvedCollisionAvoidance})}
@@ -482,8 +495,42 @@ export function MenuRadioItem({
 	);
 }
 
+const SubmenuTriggerContext = createContext<RefObject<HTMLElement | null> | null>(null);
+
 export function MenuSub(props: ComponentProps<typeof BaseMenu.SubmenuRoot>) {
-	return <BaseMenu.SubmenuRoot {...props} />;
+	const triggerRef = useRef<HTMLElement | null>(null);
+	return (
+		<SubmenuTriggerContext.Provider value={triggerRef}>
+			<BaseMenu.SubmenuRoot {...props} />
+		</SubmenuTriggerContext.Provider>
+	);
+}
+
+/**
+ * cds' `ua()`: a submenu anchors to the parent popup's horizontal span at the
+ * trigger row's height, so `sideOffset` measures from the popup edge, not the
+ * row (the default 2 lands 6px past the row; Copy ▸'s -4 sits on the row edge).
+ */
+export function submenuAnchor(triggerRef: RefObject<HTMLElement | null>) {
+	return {
+		get contextElement() {
+			return triggerRef.current ?? undefined;
+		},
+		getBoundingClientRect: () => {
+			const trigger = triggerRef.current?.getBoundingClientRect();
+			const popup = triggerRef.current?.closest('[role="menu"]')?.getBoundingClientRect();
+			const x = popup?.x ?? trigger?.x ?? 0;
+			const y = trigger?.y ?? 0;
+			const width = popup?.width ?? trigger?.width ?? 0;
+			const height = trigger?.height ?? 0;
+			return {x, y, width, height, top: y, left: x, right: x + width, bottom: y + height};
+		},
+	};
+}
+
+/** cds resolves a submenu's logical inline-end side against the document direction. */
+function inlineEndSide(): "left" | "right" {
+	return document.documentElement.dir === "rtl" ? "left" : "right";
 }
 
 export interface MenuSubTriggerProps extends Omit<
@@ -502,8 +549,10 @@ export interface MenuSubTriggerProps extends Omit<
 /** Submenu trigger: opens on hover, click, Enter or ArrowRight. */
 export function MenuSubTrigger({children, icon, value, valueAccent, ...props}: MenuSubTriggerProps) {
 	const itemClass = useItemClass();
+	const triggerRef = useContext(SubmenuTriggerContext);
 	return (
 		<BaseMenu.SubmenuTrigger
+			ref={triggerRef}
 			openOnHover
 			delay={SUBMENU_HOVER_DELAY_MS}
 			{...props}
@@ -533,23 +582,27 @@ export function MenuSubTrigger({children, icon, value, valueAccent, ...props}: M
 export function MenuSubContent({
 	children,
 	className,
-	side = "right",
+	side,
 	align = "start",
 	sideOffset = 2,
 }: {
 	children: ReactNode;
 	className?: string;
-	/** Upstream's composer model submenus open to `inline-start` (left in LTR). */
+	/** Defaults to inline-end; upstream's composer model submenus open to `inline-start` (left in LTR). */
 	side?: MenuContentProps["side"];
 	align?: MenuContentProps["align"];
+	/** From the parent popup's edge (cds' default 2); upstream's Copy ▸ passes -4. */
 	sideOffset?: number;
 }) {
+	const triggerRef = useContext(SubmenuTriggerContext);
+	const anchor = useMemo(() => (triggerRef === null ? undefined : submenuAnchor(triggerRef)), [triggerRef]);
 	return (
 		<MenuContent
-			side={side}
+			side={side ?? inlineEndSide()}
 			align={align}
 			sideOffset={sideOffset}
 			alignOffset={0}
+			{...(anchor === undefined ? {} : {anchor})}
 			{...(className === undefined ? {} : {className})}
 		>
 			{children}

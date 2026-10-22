@@ -161,7 +161,7 @@ export function AccountMenu({fullWidth = false}: {fullWidth?: boolean}) {
 					<MenuSubTrigger data-testid="user-menu-learn-more" icon={<Info />}>
 						Learn more
 					</MenuSubTrigger>
-					<MenuSubContent className="w-[208px]" sideOffset={6}>
+					<MenuSubContent className="w-[208px]">
 						{UPSTREAM_PRODUCT_LINKS.map((link) => (
 							<ExternalLinkItem key={link.href} href={link.href}>
 								{link.label}

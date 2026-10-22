@@ -19,6 +19,7 @@ import {
 	MenuSubContent,
 	MenuSubTrigger,
 	MenuTrigger,
+	submenuAnchor,
 } from "../src/components/ui/menu";
 import {DensityScope} from "../src/components/ui/density";
 
@@ -246,22 +247,59 @@ describe("Menu", () => {
 		expect(menu.className.split(" ").filter((c) => c.startsWith("min-w-"))).toEqual(["min-w-[128px]"]);
 	});
 
-	it("places a submenu level with its trigger and 2px right of the parent", async () => {
-		renderDropdown();
+	async function openStatusSub() {
 		await openDropdown();
 		const trigger = screen.getByRole("menuitem", {name: /Status/});
-
 		act(() => {
 			trigger.focus();
 		});
 		fireEvent.keyDown(trigger, {key: "ArrowRight"});
 		await flush();
-		const positioner = screen.getAllByRole("menu")[1]?.parentElement;
+		return {trigger, positioner: screen.getAllByRole("menu")[1]?.parentElement};
+	}
+
+	it("opens a submenu like cds: inline-end, 2px past the parent popup, aligned to the trigger's top", async () => {
+		renderDropdown();
+		const {positioner} = await openStatusSub();
 
 		expect({
-			side: positioner?.getAttribute("data-side-offset"),
-			align: positioner?.getAttribute("data-align-offset"),
-		}).toEqual({side: "2", align: "0"});
+			side: positioner?.getAttribute("data-side"),
+			sideOffset: positioner?.getAttribute("data-side-offset"),
+			alignOffset: positioner?.getAttribute("data-align-offset"),
+		}).toStrictEqual({side: "right", sideOffset: "2", alignOffset: "0"});
+	});
+
+	it("opens a submenu to the left under dir=rtl, as cds resolves inline-end", async () => {
+		document.documentElement.dir = "rtl";
+		try {
+			renderDropdown();
+			const {positioner} = await openStatusSub();
+
+			expect(positioner?.getAttribute("data-side")).toBe("left");
+		} finally {
+			document.documentElement.dir = "";
+		}
+	});
+
+	it("anchors a submenu to the parent popup's horizontal span at the trigger's height, as cds ua() does", () => {
+		const popup = document.createElement("div");
+		popup.setAttribute("role", "menu");
+		const trigger = document.createElement("div");
+		popup.append(trigger);
+		document.body.append(popup);
+		const rect = (x: number, y: number, width: number, height: number) =>
+			({x, y, width, height, top: y, left: x, right: x + width, bottom: y + height}) as DOMRect;
+		popup.getBoundingClientRect = () => rect(353.4, 43, 128, 120);
+		trigger.getBoundingClientRect = () => rect(357.4, 47, 120, 24);
+
+		const anchor = submenuAnchor({current: trigger});
+		const actual = {contextElement: anchor.contextElement === trigger, rect: anchor.getBoundingClientRect()};
+		popup.remove();
+
+		expect(actual).toStrictEqual({
+			contextElement: true,
+			rect: {x: 353.4, y: 47, width: 128, height: 24, top: 47, left: 353.4, right: 481.4, bottom: 71},
+		});
 	});
 
 	it("lets side-opening popups fall back to the end of the cross axis so they stay on screen", async () => {
