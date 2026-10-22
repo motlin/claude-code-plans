@@ -106,6 +106,7 @@ export function Tooltip({
 	variant,
 	closeOnClick = true,
 	trackCursor,
+	suppressAfterPopup = false,
 	portal = false,
 	className,
 	children,
@@ -141,6 +142,12 @@ export function Tooltip({
 	 */
 	trackCursor?: "y" | undefined;
 	/**
+	 * Keep the tip closed from the moment the anchored trigger's menu opens until the next `pointerleave` or
+	 * `blur` after it has closed, so focus returning from the menu doesn't reopen it (upstream's Add and Mode
+	 * triggers).
+	 */
+	suppressAfterPopup?: boolean;
+	/**
 	 * Render the tip in `document.body` over a fixed box matching the anchor, for anchors inside a clipping
 	 * scroller such as a menu row (upstream's Max effort row tooltip, side right).
 	 */
@@ -157,6 +164,7 @@ export function Tooltip({
 	const [anchorBox, setAnchorBox] = useState<CSSProperties | undefined>(undefined);
 	const [cursorY, setCursorY] = useState<number | undefined>(undefined);
 	const [trackedTop, setTrackedTop] = useState<number | undefined>(undefined);
+	const suppressed = useRef(false);
 
 	useEffect(
 		() => () => {
@@ -207,15 +215,17 @@ export function Tooltip({
 	// Upstream suppresses a trigger's tooltip while its popup is open, so it never draws beside the open menu.
 	useEffect(() => {
 		const anchor = anchorRef.current;
-		if (!open || anchor === null) return undefined;
+		if ((!open && !suppressAfterPopup) || anchor === null) return undefined;
 		const observer = new MutationObserver(() => {
-			if (popupOpen(anchor)) hide();
+			if (!popupOpen(anchor)) return;
+			if (suppressAfterPopup) suppressed.current = true;
+			hide();
 		});
 		observer.observe(anchor, {attributes: true, attributeFilter: ["aria-expanded"], subtree: true});
 		return () => {
 			observer.disconnect();
 		};
-	}, [open]);
+	}, [open, suppressAfterPopup]);
 
 	const placedSide = placement?.side ?? side;
 	const sideClass = (align === "start" || trackedTop !== undefined ? START_SIDE_CLASS : SIDE_CLASS)[placedSide];
@@ -223,6 +233,7 @@ export function Tooltip({
 	function show(delay = OPEN_DELAY_MS) {
 		clearTimeout(timer.current);
 		const anchor = anchorRef.current;
+		if (suppressed.current) return;
 		if (anchor !== null && popupOpen(anchor)) return;
 		if (openWhen !== undefined && (anchor === null || !openWhen(anchor))) return;
 		const reveal = () => {
@@ -244,6 +255,13 @@ export function Tooltip({
 	function hide() {
 		clearTimeout(timer.current);
 		setOpen(false);
+	}
+
+	/** Leaving the anchor lifts the suppression, unless the popup is still open. */
+	function leave() {
+		const anchor = anchorRef.current;
+		suppressed.current = suppressAfterPopup && anchor !== null && popupOpen(anchor);
+		hide();
 	}
 
 	const label = (
@@ -322,11 +340,11 @@ export function Tooltip({
 				show();
 			}}
 			onPointerMove={trackCursor === "y" ? trackPointer : undefined}
-			onPointerLeave={hide}
+			onPointerLeave={leave}
 			onFocus={() => {
 				show(variant === "reason" ? 0 : OPEN_DELAY_MS);
 			}}
-			onBlur={hide}
+			onBlur={leave}
 			onClick={closeOnClick ? hide : undefined}
 		>
 			{open && variant !== "reason"

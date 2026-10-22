@@ -643,6 +643,47 @@ describe("Composer chin tooltips and contrast", () => {
 		}
 	});
 
+	it.each([
+		{name: "Add", trigger: () => screen.getByRole("button", {name: "Add"}), tooltip: "Add"},
+		{
+			name: "Mode",
+			trigger: () => document.querySelector<HTMLElement>("[data-chin-mode]") ?? document.body,
+			tooltip: "Mode⌥Option⌘CommandM",
+		},
+	])("keeps the $name tooltip closed when focus returns from its closed menu", async ({trigger, tooltip}) => {
+		renderComposer();
+		const button = trigger();
+		const anchor = button.parentElement;
+		if (anchor === null) throw new Error("trigger has no parent");
+		fireEvent.pointerEnter(anchor);
+		fireEvent.click(button);
+		const menu = await screen.findByRole("menu");
+		fireEvent.keyDown(menu, {key: "Escape"});
+		await waitFor(() => {
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
+
+		vi.useFakeTimers();
+		try {
+			fireEvent.pointerEnter(anchor);
+			fireEvent.focus(button);
+			act(() => {
+				vi.advanceTimersByTime(400);
+			});
+			const afterClose = screen.queryByRole("tooltip")?.textContent ?? null;
+			fireEvent.pointerLeave(anchor);
+			fireEvent.pointerEnter(anchor);
+			act(() => {
+				vi.advanceTimersByTime(400);
+			});
+			const afterReentry = screen.queryByRole("tooltip")?.textContent ?? null;
+
+			expect({afterClose, afterReentry}).toStrictEqual({afterClose: null, afterReentry: tooltip});
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it("reads the model in primary ink, the rest in secondary, with r4 corners and an 18px +", () => {
 		renderComposer();
 		const classes = (element: Element | null) => element?.getAttribute("class")?.split(" ") ?? [];

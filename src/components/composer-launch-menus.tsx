@@ -64,7 +64,7 @@ export function ModeMenu({
 	return (
 		<>
 			<Menu open={open} onOpenChange={onOpenChange}>
-				<Tooltip content="Mode" shortcut={modeKeys} side="top">
+				<Tooltip content="Mode" shortcut={modeKeys} side="top" suppressAfterPopup>
 					<MenuTrigger data-chin-mode="" className={CHIN_TRIGGER_CLASS}>
 						{currentLabel}
 					</MenuTrigger>

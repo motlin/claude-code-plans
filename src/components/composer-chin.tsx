@@ -152,7 +152,7 @@ export const ComposerAddMenu = memo(function ComposerAddMenu({
 	const slashAfterClose = useRenameAfterMenuClose(onInsertSlash);
 	return (
 		<Menu onOpenChangeComplete={slashAfterClose.onOpenChangeComplete}>
-			<Tooltip content="Add" side="top">
+			<Tooltip content="Add" side="top" suppressAfterPopup>
 				<MenuTrigger aria-label="Add" className={ADD_BUTTON_CLASS}>
 					<Plus className="size-[18px]" aria-hidden="true" />
 				</MenuTrigger>
