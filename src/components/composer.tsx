@@ -640,9 +640,9 @@ export function Composer({
 		<div data-cds="ChatComposer" data-focus-region="composer" className="flex w-full min-w-0 flex-col font-sans">
 			{queue !== undefined && (
 				<>
-					<span role="status" className="sr-only">
+					<p aria-live="polite" aria-atomic="true" data-testid="coach-queued-status" className="sr-only">
 						{queue.items.length > 0 ? queuedStatusText(queue.items.length) : ""}
-					</span>
+					</p>
 					{/* Upstream's QueuedMessageBar band sits in the dock, 6px above the composer card */}
 					<div ref={queueBandSlot} className="mb-1.5 empty:hidden">
 						<QueuedMessageBar

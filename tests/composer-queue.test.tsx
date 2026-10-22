@@ -470,13 +470,28 @@ describe("Composer queued message bar", () => {
 	it("shows the queued band above the composer with an sr-only status", () => {
 		renderComposer({queue: queueView([ALICE, BOB])});
 		const bar = screen.getByRole("button", {name: /2 messages queued/});
+		const status = screen.getByTestId("coach-queued-status");
 
 		expect({
 			bar: bar.textContent,
-			status: screen.getByRole("status").textContent,
+			status: {
+				tag: status.tagName,
+				className: status.className,
+				role: status.getAttribute("role"),
+				live: status.getAttribute("aria-live"),
+				atomic: status.getAttribute("aria-atomic"),
+				text: status.textContent,
+			},
 		}).toStrictEqual({
 			bar: "2 messages queuedNext: Alice's first follow-up",
-			status: "2 messages queued. Will send after the current response.",
+			status: {
+				tag: "P",
+				className: "sr-only",
+				role: null,
+				live: "polite",
+				atomic: "true",
+				text: "2 messages queued. Will send after the current response.",
+			},
 		});
 	});
 
