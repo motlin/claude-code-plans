@@ -9,7 +9,11 @@ import {ClaudeEventsProvider} from "../src/components/claude-events-provider";
 import {SESSION_MENU_CAPABILITIES} from "../src/components/session-actions-menu";
 import {SessionPage} from "../src/components/session-page";
 import {SettingsProvider} from "../src/components/settings-provider";
-import {SessionTitlebar, type SessionHeaderLocalActions} from "../src/components/session-titlebar";
+import {
+	SessionTitlebar,
+	type SessionHeaderLocalActions,
+	type SessionHeaderTranscriptView,
+} from "../src/components/session-titlebar";
 import {ToastProvider} from "../src/components/toast";
 import {herdrPanesQueryOptions, type HerdrPaneIndexData} from "../src/lib/api/herdr";
 import {
@@ -115,30 +119,53 @@ function localActions(overrides: Partial<SessionHeaderLocalActions> = {}): Sessi
 
 async function renderTitlebar(
 	local: SessionHeaderLocalActions,
-	{live = true, data = detail}: {live?: boolean; data?: SessionDetailData} = {},
+	{
+		live = true,
+		data = detail,
+		bridgeSessionId = null,
+		transcriptView,
+	}: {
+		live?: boolean;
+		data?: SessionDetailData;
+		bridgeSessionId?: string | null;
+		transcriptView?: SessionHeaderTranscriptView;
+	} = {},
 ) {
 	const queryClient = new QueryClient({
 		defaultOptions: {
-			queries: {retry: false, staleTime: Infinity, gcTime: Infinity, refetchOnMount: false},
+			queries: {
+				retry: false,
+				staleTime: Infinity,
+				gcTime: Infinity,
+				refetchOnMount: false,
+			},
 		},
 	});
 	queryClient.setQueryData(herdrPanesQueryOptions.queryKey, live ? livePanes() : {panes: [], writesEnabled: false});
 	queryClient.setQueryData(sessionOpenInQueryOptions(SESSION_ID).queryKey, {
 		cwd: PROJECT_PATH,
-		bridgeSessionId: null,
+		bridgeSessionId,
 	});
 	const rootRoute = createRootRoute({
 		component: () => (
 			<QueryClientProvider client={queryClient}>
 				<ToastProvider>
-					<SessionTitlebar sessionId={SESSION_ID} data={data} isActive={false} local={local} />
+					<SessionTitlebar
+						sessionId={SESSION_ID}
+						data={data}
+						isActive={false}
+						local={local}
+						{...(transcriptView === undefined ? {} : {transcriptView})}
+					/>
 				</ToastProvider>
 			</QueryClientProvider>
 		),
 	});
 	const router = createRouter({
 		routeTree: rootRoute,
-		history: createMemoryHistory({initialEntries: [`/session/${SESSION_ID}`]}),
+		history: createMemoryHistory({
+			initialEntries: [`/session/${SESSION_ID}`],
+		}),
 	});
 	await router.load();
 	render(<RouterProvider router={router} />);
@@ -182,7 +209,10 @@ beforeEach(() => {
 	writeText.mockReset();
 	writeText.mockResolvedValue(undefined);
 	onGenerateSummary.mockReset();
-	Object.defineProperty(navigator, "clipboard", {value: {writeText}, configurable: true});
+	Object.defineProperty(navigator, "clipboard", {
+		value: {writeText},
+		configurable: true,
+	});
 	__unreadStoreTesting.reset();
 	__unreadStoreTesting.setPersist(async () => Promise.resolve());
 });
@@ -227,8 +257,59 @@ describe("session header menu", () => {
 		]);
 	});
 
+	it("wraps each section in a role=group with separators between the groups, like upstream", async () => {
+		await renderTitlebar(localActions(), {
+			bridgeSessionId: "cse_01ABC",
+			transcriptView: {
+				mode: "normal",
+				defaultMode: "normal",
+				hasThinking: true,
+				setMode: () => {},
+				makeDefault: () => {},
+			},
+		});
+		const menu = await openHeaderMenu();
+		const groups = [...menu.querySelectorAll('[role="group"]')];
+
+		expect(
+			groups.map((group) =>
+				[...group.querySelectorAll('[role="menuitem"]')].map((item) => item.firstChild?.textContent),
+			),
+		).toStrictEqual([
+			["Open in"],
+			["Rename", "Fork"],
+			["Copy link"],
+			["Transcript view"],
+			["Archive"],
+			[
+				"Project",
+				"Copy session ID",
+				"Copy resume command",
+				"Copy fork command",
+				"Download raw JSONL",
+				"Generate AI summary",
+			],
+		]);
+		const content = groups[0]?.parentElement;
+		expect([...(content?.children ?? [])].map((child) => child.getAttribute("role"))).toStrictEqual([
+			"group",
+			"separator",
+			"group",
+			"separator",
+			"group",
+			"separator",
+			"group",
+			"separator",
+			"group",
+			"separator",
+			"group",
+		]);
+	});
+
 	it("drops Generate AI summary when there is nothing to generate", async () => {
-		await renderTitlebar(localActions({onGenerateSummary: undefined}), {live: false});
+		await renderTitlebar(localActions({onGenerateSummary: undefined}), {
+			live: false,
+		});
 		const menu = await openHeaderMenu();
 		const shape = menuShape(menu);
 
@@ -247,7 +328,11 @@ describe("session header menu", () => {
 		await renderTitlebar(localActions(), {
 			data: {
 				...detail,
-				pr: {number: 7, url: "https://github.com/alice/avalonlogs/pull/7", repository: "alice/avalonlogs"},
+				pr: {
+					number: 7,
+					url: "https://github.com/alice/avalonlogs/pull/7",
+					repository: "alice/avalonlogs",
+				},
 			},
 		});
 		await openHeaderMenu();
@@ -275,7 +360,10 @@ describe("session header menu", () => {
 	it("wires each local item to its handler", async () => {
 		const clicks: Array<{href: string; download: string}> = [];
 		vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) {
-			clicks.push({href: this.getAttribute("href") ?? "", download: this.download});
+			clicks.push({
+				href: this.getAttribute("href") ?? "",
+				download: this.download,
+			});
 		});
 		await renderTitlebar(localActions());
 
@@ -309,7 +397,10 @@ describe("session header menu", () => {
 		await flush();
 		const menu = screen.getByRole("menu");
 
-		expect({kind: menu.getAttribute("data-cds"), shape: menuShape(menu)}).toStrictEqual({
+		expect({
+			kind: menu.getAttribute("data-cds"),
+			shape: menuShape(menu),
+		}).toStrictEqual({
 			kind: "ContextMenu",
 			shape: chevronShape,
 		});
@@ -349,7 +440,9 @@ class TestIntersectionObserver {
 }
 
 async function renderSessionPage() {
-	const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
+	const queryClient = new QueryClient({
+		defaultOptions: {queries: {retry: false}},
+	});
 	queryClient.setQueryData(sessionDetailQueryOptions(SESSION_ID).queryKey, detail);
 	queryClient.setQueryData(transcriptQueryOptions(SESSION_ID).queryKey, {
 		records: [],
@@ -378,7 +471,9 @@ async function renderSessionPage() {
 	});
 	const router = createRouter({
 		routeTree: rootRoute,
-		history: createMemoryHistory({initialEntries: [`/session/${SESSION_ID}`]}),
+		history: createMemoryHistory({
+			initialEntries: [`/session/${SESSION_ID}`],
+		}),
 	});
 	await router.load();
 	render(<RouterProvider router={router} />);
@@ -406,7 +501,9 @@ describe("session page header", () => {
 			"Mark unreviewed",
 			`Open live read-only terminal for ${TITLE}`,
 		].filter((name) => screen.queryByTitle(name) !== null);
-		const summaryButton = screen.queryByRole("button", {name: "Generate AI summary"});
+		const summaryButton = screen.queryByRole("button", {
+			name: "Generate AI summary",
+		});
 		const menu = await openHeaderMenu();
 		const shape = menuShape(menu);
 

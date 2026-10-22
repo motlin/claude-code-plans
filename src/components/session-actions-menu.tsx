@@ -2,6 +2,7 @@ import {useQuery} from "@tanstack/react-query";
 import {Ellipsis} from "lucide-react";
 import {
 	createContext,
+	Fragment,
 	type ReactNode,
 	useCallback,
 	useContext,
@@ -43,6 +44,7 @@ import {
 	ContextMenuTrigger,
 	Menu,
 	MenuContent,
+	MenuGroup,
 	MenuItem,
 	MenuRadioGroup,
 	MenuRadioItem,
@@ -199,7 +201,24 @@ export function MenuEntries({entries, run}: {entries: SessionMenuEntry[]; run: S
 			</MenuRadioGroup>
 		);
 	}
-	return <MenuEntryList entries={entries} run={run} />;
+	return splitSections(entries).map((section, index) => (
+		<Fragment key={`section-${index}`}>
+			{index > 0 && <MenuSeparator />}
+			<MenuGroup>
+				<MenuEntryList entries={section} run={run} />
+			</MenuGroup>
+		</Fragment>
+	));
+}
+
+/** The runs of entries between separators, with empty runs dropped. */
+function splitSections(entries: SessionMenuEntry[]): SessionMenuEntry[][] {
+	const sections: SessionMenuEntry[][] = [[]];
+	for (const entry of entries) {
+		if (entry.kind === "separator") sections.push([]);
+		else sections.at(-1)?.push(entry);
+	}
+	return sections.filter((section) => section.length > 0);
 }
 
 function MenuEntryList({entries, run}: {entries: SessionMenuEntry[]; run: SessionMenuRun}) {

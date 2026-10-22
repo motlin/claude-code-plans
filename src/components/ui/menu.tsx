@@ -415,6 +415,11 @@ export function MenuSwitchItem({children, checked, onCheckedChange, ...props}: M
 
 export const MenuRadioGroup = BaseMenu.RadioGroup;
 
+/** One menu section, `role="group"`, as upstream wraps each run between separators. */
+export function MenuGroup(props: ComponentProps<typeof BaseMenu.Group>) {
+	return <BaseMenu.Group {...props} />;
+}
+
 function RadioItemText({children, description}: {children: ReactNode; description: ReactNode}) {
 	if (description === undefined) return <span className={LABEL_CLASS}>{children}</span>;
 	return (

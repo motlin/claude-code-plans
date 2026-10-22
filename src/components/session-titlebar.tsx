@@ -39,6 +39,7 @@ import {
 	Menu,
 	MenuContent,
 	MenuItem,
+	MenuGroup,
 	MenuSeparator,
 	MenuSub,
 	MenuSubContent,
@@ -79,7 +80,10 @@ async function copyWithToast(toast: Toast, text: string, what: string): Promise<
 	toast(
 		copied
 			? {kind: "success", message: `${what} copied to clipboard.`}
-			: {kind: "error", message: `Couldn’t copy the ${what.toLowerCase()}. Try again.`},
+			: {
+					kind: "error",
+					message: `Couldn’t copy the ${what.toLowerCase()}. Try again.`,
+				},
 	);
 }
 
@@ -113,7 +117,10 @@ function useTitlebarMeasure() {
 	};
 }
 
-type PillIcon = React.ComponentType<{className?: string; "aria-hidden"?: boolean}>;
+type PillIcon = React.ComponentType<{
+	className?: string;
+	"aria-hidden"?: boolean;
+}>;
 
 /** Icon + label; the label turns sr-only when the titlebar is narrow. */
 function PillContent({icon: Icon, label, compact}: {icon: PillIcon; label: string; compact: boolean}) {
@@ -168,7 +175,10 @@ export function ProjectMenuItems({sessionId, session}: {sessionId: string; sessi
 				<MenuItem
 					onSelect={() => {
 						openSessionInFinder(sessionId).catch(() => {
-							toast({kind: "error", message: "Couldn’t open the folder in Finder."});
+							toast({
+								kind: "error",
+								message: "Couldn’t open the folder in Finder.",
+							});
 						});
 					}}
 				>
@@ -208,32 +218,34 @@ function HeaderLocalSection({
 	return (
 		<>
 			<MenuSeparator />
-			<MenuSub>
-				<MenuSubTrigger>Project</MenuSubTrigger>
-				<MenuSubContent>
-					<ProjectMenuItems sessionId={sessionId} session={project} />
-				</MenuSubContent>
-			</MenuSub>
-			<MenuItem onSelect={() => void copyWithToast(toast, sessionId, "Session ID")}>Copy session ID</MenuItem>
-			<MenuItem onSelect={() => void copyWithToast(toast, local.resumeCommand, "Resume command")}>
-				Copy resume command
-			</MenuItem>
-			<MenuItem onSelect={() => void copyWithToast(toast, local.forkCommand, "Fork command")}>
-				Copy fork command
-			</MenuItem>
-			<MenuItem
-				onSelect={() => {
-					downloadUrl(`/api/raw?sessionId=${sessionId}`);
-				}}
-			>
-				Download raw JSONL
-			</MenuItem>
-			{local.onGenerateSummary !== undefined &&
-				(local.generatingSummary === true ? (
-					<MenuItem disabled>Generating summary…</MenuItem>
-				) : (
-					<MenuItem onSelect={local.onGenerateSummary}>Generate AI summary</MenuItem>
-				))}
+			<MenuGroup>
+				<MenuSub>
+					<MenuSubTrigger>Project</MenuSubTrigger>
+					<MenuSubContent>
+						<ProjectMenuItems sessionId={sessionId} session={project} />
+					</MenuSubContent>
+				</MenuSub>
+				<MenuItem onSelect={() => void copyWithToast(toast, sessionId, "Session ID")}>Copy session ID</MenuItem>
+				<MenuItem onSelect={() => void copyWithToast(toast, local.resumeCommand, "Resume command")}>
+					Copy resume command
+				</MenuItem>
+				<MenuItem onSelect={() => void copyWithToast(toast, local.forkCommand, "Fork command")}>
+					Copy fork command
+				</MenuItem>
+				<MenuItem
+					onSelect={() => {
+						downloadUrl(`/api/raw?sessionId=${sessionId}`);
+					}}
+				>
+					Download raw JSONL
+				</MenuItem>
+				{local.onGenerateSummary !== undefined &&
+					(local.generatingSummary === true ? (
+						<MenuItem disabled>Generating summary…</MenuItem>
+					) : (
+						<MenuItem onSelect={local.onGenerateSummary}>Generate AI summary</MenuItem>
+					))}
+			</MenuGroup>
 		</>
 	);
 }
@@ -293,7 +305,9 @@ function HeaderMenuBody({
 	return (
 		<>
 			<MenuEntries
-				entries={getSessionMenuItems(menuSession, SESSION_MENU_CAPABILITIES, {surface: "header"})}
+				entries={getSessionMenuItems(menuSession, SESSION_MENU_CAPABILITIES, {
+					surface: "header",
+				})}
 				run={run}
 			/>
 			{local !== undefined && <HeaderLocalSection sessionId={sessionId} project={data} local={local} />}
