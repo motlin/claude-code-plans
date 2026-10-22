@@ -14,23 +14,27 @@ type ReasonType = z.infer<typeof PermissionDecisionReasonTypeSchema>;
 
 /** What a settings-sourced decision rested on, as the tail of "Allowed by …" / "Blocked by …". */
 const REASON_AGENTS = {
+	asyncAgent: "no approval prompt",
 	classifier: "auto mode",
 	hook: "hook",
 	mode: "permission mode",
 	other: "settings",
 	rule: "rule",
 	safetyCheck: "safety check",
+	sandboxOverride: "sandbox override",
 	subcommandResults: "rules",
+	workingDir: "working directories",
 } satisfies Record<ReasonType, string>;
 
 /**
  * A short phrase for what allowed or blocked a tool call, e.g. "Allowed by auto
- * mode" or "Approved once". Null when the user rejected the call, which the
+ * mode" or "Approved once". Null when the user rejected or aborted the call, which the
  * row's "Denied"/"Stopped" status already says.
  */
 export function permissionDecisionLabel(permission: PermissionDecision): string | null {
 	switch (permission.source) {
 		case "user_reject":
+		case "user_abort":
 			return null;
 		case "user_temporary":
 			return permission.decision === "accept" ? "Approved once" : "Rejected once";

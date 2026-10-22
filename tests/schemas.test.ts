@@ -2324,6 +2324,60 @@ describe("JsonlRecordSchema observed 2026-10-21 transcript fields", () => {
 	});
 });
 
+describe("JsonlRecordSchema observed 2026-10-22 permission decisions", () => {
+	function toolResultRecord(permissionDecision: Record<string, unknown>) {
+		return {
+			type: "user",
+			...baseFields,
+			message: {role: "user", content: [{type: "tool_result", tool_use_id: "toolu_1", content: "denied"}]},
+			permissionDecision,
+		};
+	}
+
+	it("parses permission decisions carrying a classifier category, circuit breaker, abort source and new reason types", () => {
+		const records = [
+			toolResultRecord({
+				decision: "reject",
+				source: "config",
+				reasonType: "classifier",
+				reasonCode: "classifier:auto-mode",
+				classifierCategory: "third_party_attack",
+			}),
+			toolResultRecord({
+				decision: "reject",
+				source: "config",
+				reasonType: "classifier",
+				classifierCategory: "cowork_folder_access",
+			}),
+			toolResultRecord({
+				decision: "reject",
+				source: "config",
+				reasonType: "safetyCheck",
+				reasonCode: "unknown",
+				circuitBreaker: "dangerousRemoval",
+			}),
+			toolResultRecord({decision: "reject", source: "user_abort"}),
+			toolResultRecord({decision: "reject", source: "config", reasonType: "asyncAgent"}),
+			toolResultRecord({decision: "accept", source: "config", reasonType: "sandboxOverride"}),
+			toolResultRecord({decision: "reject", source: "config", reasonType: "workingDir"}),
+		];
+
+		expect(records.map((record) => JsonlRecordSchema.parse(record))).toStrictEqual(records);
+	});
+
+	it("rejects an unknown classifier category", () => {
+		const record = toolResultRecord({decision: "reject", source: "config", classifierCategory: "made_up"});
+
+		expect(JsonlRecordSchema.safeParse(record).success).toBe(false);
+	});
+
+	it("rejects an unknown circuit breaker", () => {
+		const record = toolResultRecord({decision: "reject", source: "config", circuitBreaker: "madeUp"});
+
+		expect(JsonlRecordSchema.safeParse(record).success).toBe(false);
+	});
+});
+
 describe("parseJsonlRecord", () => {
 	it("parses valid JSON and returns typed record", () => {
 		const line = JSON.stringify({

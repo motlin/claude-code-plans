@@ -284,18 +284,22 @@ export const PermissionDecisionDecisionSchema = z.enum(["accept", "reject"]);
 export const PermissionDecisionSourceSchema = z.enum([
 	"config",
 	"hook",
+	"user_abort",
 	"user_permanent",
 	"user_reject",
 	"user_temporary",
 ]);
 export const PermissionDecisionReasonTypeSchema = z.enum([
+	"asyncAgent",
 	"classifier",
 	"hook",
 	"mode",
 	"other",
 	"rule",
 	"safetyCheck",
+	"sandboxOverride",
 	"subcommandResults",
+	"workingDir",
 ]);
 /** Which rule source decided a `reasonType: "rule"` call; same keys as the classifier context's `rule_roots`. */
 export const PermissionDecisionRuleSourceSchema = z.enum([
@@ -318,6 +322,105 @@ export const PermissionDecisionRuleSourceSchema = z.enum([
  */
 export const PermissionDecisionGrantScopeSchema = z.enum(["once", "session"]);
 
+/**
+ * The safety-check circuit breaker that forced a prompt or denial (`reasonType: "safetyCheck"`),
+ * e.g. a dangerous `rm`, a `&` background operator, or a write to Claude's own settings.
+ */
+export const PermissionDecisionCircuitBreakerSchema = z.enum([
+	"dangerousRemoval",
+	"backgroundOperator",
+	"suspiciousWindowsPath",
+	"isolatePeerMachines",
+	"restrictedMode",
+	"outsideReadsBlocked",
+	"claudeSettingsFile",
+	"internalHardDeny",
+	"unfinishedCheck",
+]);
+
+/** The auto-mode classifier's block category for a `reasonType: "classifier"` decision (CLI 2.1.307+). */
+export const PermissionDecisionClassifierCategorySchema = z.enum([
+	"account_standing_rule_changes",
+	"auto_mode_bypass",
+	"blind_apply",
+	"browser_file_upload_exfil",
+	"browser_input_exfil",
+	"browser_js_exfil",
+	"browser_navigate_exfil",
+	"browser_shortcut_execution",
+	"chatops_trigger_comments",
+	"ci_bypass",
+	"cloud_storage_mass_delete",
+	"cluster_wide_workload_creation",
+	"code_from_external",
+	"code_that_leaks_when_run",
+	"command_network_lists",
+	"containment_escape",
+	"create_public_surface",
+	"create_rce_surface",
+	"create_unsafe_agents",
+	"credential_exploration",
+	"credential_leakage",
+	"credential_materialization",
+	"data_exfiltration",
+	"dns_domain_cert_changes",
+	"excess_sensitive_detail",
+	"exfil_scouting",
+	"expose_local_services",
+	"external_ingress_tunnel",
+	"external_system_writes",
+	"feature_flag_writes",
+	"git_destructive",
+	"instruction_poisoning",
+	"interfere_with_workloads",
+	"irreversible_deletion_general",
+	"irreversible_local_destruction",
+	"live_shared_artifact_sensitive_delta",
+	"logging_audit_tampering",
+	"merge_without_review",
+	"modify_shared_resources",
+	"node_lifecycle_operations",
+	"out_of_place_publication",
+	"package_registry_bypass",
+	"permission_grant",
+	"pii_data_handling",
+	"production_deploy",
+	"production_reads",
+	"protected_scope_iac_apply",
+	"public_data_sharing_upload",
+	"real_world_transactions",
+	"remote_repoint",
+	"remote_shell_writes",
+	"safety_bypass_flag",
+	"sandbox_network_callback",
+	"secret_store_writes",
+	"security_test_removal",
+	"security_weaken",
+	"self_approval",
+	"self_modification",
+	"sensitive_remote_exec",
+	"sensitive_source_provenance",
+	"session_transcript_tampering",
+	"shared_cluster_mutation",
+	"shared_scratch_sweep",
+	"third_party_attack",
+	"tls_auth_weaken",
+	"tmux_self_drive",
+	"traffic_redirection",
+	"unauthorized_persistence",
+	"unrequested_artifact_publish",
+	"unrequested_commit_in_a_connected_app",
+	"untrusted_code_integration",
+	"unverifiable_deletion_scope",
+	"unverifiable_deletion_target",
+	"cowork_delete_grant",
+	"cowork_folder_access",
+	"cowork_run_routine_now",
+	"cowork_scheduled_task_delete",
+	"cowork_scheduled_task_write",
+	"cowork_skill_persistence",
+]);
+
 // How the tool call answered by this tool_result was permitted or denied.
 const PermissionDecisionSchema = z
 	.object({
@@ -328,6 +431,8 @@ const PermissionDecisionSchema = z
 		grantScope: PermissionDecisionGrantScopeSchema.optional(),
 		// What decided the call, composed by the CLI: "unknown", "rule:<source>", "mode:<mode>", "hook:<event>", "bashMiss:<kind>", …
 		reasonCode: z.string().min(1).optional(),
+		circuitBreaker: PermissionDecisionCircuitBreakerSchema.optional(),
+		classifierCategory: PermissionDecisionClassifierCategorySchema.optional(),
 	})
 	.strict();
 

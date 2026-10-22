@@ -47,8 +47,27 @@ describe("permissionDecisionLabel", () => {
 		).toStrictEqual(["Blocked by hook", "Blocked by auto mode", "Blocked by safety check", "Blocked by rule"]);
 	});
 
-	it("says nothing when the user rejected the call, which the row already reports", () => {
-		expect(permissionDecisionLabel({decision: "reject", source: "user_reject"})).toBeNull();
+	it("says nothing when the user rejected or aborted the call, which the row already reports", () => {
+		expect(
+			labels([
+				{decision: "reject", source: "user_reject"},
+				{decision: "reject", source: "user_abort"},
+			]),
+		).toStrictEqual([null, null]);
+	});
+
+	it("names the background-agent, sandbox and working-directory reasons", () => {
+		expect(
+			labels([
+				{decision: "reject", source: "config", reasonType: "asyncAgent"},
+				{decision: "accept", source: "config", reasonType: "sandboxOverride"},
+				{decision: "reject", source: "config", reasonType: "workingDir"},
+			]),
+		).toStrictEqual([
+			"Blocked by no approval prompt",
+			"Allowed by sandbox override",
+			"Blocked by working directories",
+		]);
 	});
 });
 
@@ -57,6 +76,11 @@ describe("permissionDecisionTitle", () => {
 		expect([
 			permissionDecisionTitle({decision: "accept", source: "config", reasonType: "classifier"}),
 			permissionDecisionTitle({decision: "accept", source: "user_temporary"}),
-		]).toStrictEqual(["Permission: Accepted · Configuration · Classifier", "Permission: Accepted · User (once)"]);
+			permissionDecisionTitle({decision: "reject", source: "user_abort"}),
+		]).toStrictEqual([
+			"Permission: Accepted · Configuration · Classifier",
+			"Permission: Accepted · User (once)",
+			"Permission: Rejected · User (aborted)",
+		]);
 	});
 });
