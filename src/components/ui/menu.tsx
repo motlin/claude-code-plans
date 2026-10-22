@@ -357,15 +357,23 @@ export interface MenuCheckboxItemProps extends Omit<
 	accelerator?: string;
 	/** Global shortcut hint shown before the check, e.g. "ctrl+shift+y". */
 	shortcut?: string;
+	/** Close the menu on pick, as upstream's View options rows do. Defaults to keeping it open. */
+	closeOnClick?: boolean;
 }
 
-export function MenuCheckboxItem({children, accelerator, shortcut, ...props}: MenuCheckboxItemProps) {
+export function MenuCheckboxItem({
+	children,
+	accelerator,
+	shortcut,
+	closeOnClick = false,
+	...props
+}: MenuCheckboxItemProps) {
 	const itemClass = useItemClass();
 	const ariaKeyShortcuts = useAriaKeyShortcuts(accelerator, shortcut);
 	return (
 		<BaseMenu.CheckboxItem
-			closeOnClick={false}
 			{...props}
+			closeOnClick={closeOnClick}
 			{...acceleratorProps(accelerator)}
 			{...(ariaKeyShortcuts ? {"aria-keyshortcuts": ariaKeyShortcuts} : {})}
 			className={`${itemClass} ${ITEM_VARIANT_CLASS.default}`}

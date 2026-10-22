@@ -517,6 +517,51 @@ describe("Menu", () => {
 	});
 });
 
+describe("MenuCheckboxItem closeOnClick", () => {
+	function renderCheckboxMenu(closeOnClick?: boolean) {
+		const onCheckedChange = vi.fn<(checked: boolean) => void>();
+		render(
+			<Menu>
+				<MenuTrigger aria-label="View options">...</MenuTrigger>
+				<MenuContent>
+					<MenuCheckboxItem
+						checked={false}
+						onCheckedChange={onCheckedChange}
+						{...(closeOnClick === undefined ? {} : {closeOnClick})}
+					>
+						Background tasks
+					</MenuCheckboxItem>
+				</MenuContent>
+			</Menu>,
+		);
+		return onCheckedChange;
+	}
+
+	async function clickRow() {
+		fireEvent.click(screen.getByRole("button", {name: "View options"}));
+		await flush();
+		fireEvent.click(screen.getByRole("menuitemcheckbox", {name: "Background tasks"}));
+		await flush();
+	}
+
+	it("keeps the menu open on pick by default", async () => {
+		const onCheckedChange = renderCheckboxMenu();
+		await clickRow();
+
+		expect(onCheckedChange.mock.calls.map(([checked]) => checked)).toEqual([true]);
+		expect(screen.getByRole("menu").getAttribute("data-cds")).toBe("Menu");
+	});
+
+	it("closes the menu on pick and returns focus to the trigger with closeOnClick", async () => {
+		const onCheckedChange = renderCheckboxMenu(true);
+		await clickRow();
+
+		expect(onCheckedChange.mock.calls.map(([checked]) => checked)).toEqual([true]);
+		expect(screen.queryByRole("menu")).toBeNull();
+		expect(document.activeElement).toBe(screen.getByRole("button", {name: "View options"}));
+	});
+});
+
 describe("MenuItem with a disabled reason", () => {
 	const REASON = "Session file is still being written";
 
