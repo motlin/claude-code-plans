@@ -47,17 +47,17 @@
 		"tolerance": 0
 	},
 	"bundle.home.gzip": {
-		"ceiling": 387479,
+		"ceiling": 392398,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Lazy-loading the menu sheet presentation (src/components/ui/menu-sheet.tsx: sheet DOM, menu-sheet-drag pointer hook, src/lib/sheet-drag.ts geometry and drill-in, preloaded only where the coarse <640px gate would open a sheet) took home cold JS from 388098 gzip / 1194142 raw at b194ff01 to 387479 gzip / 1185312 raw. The rest of the growth over 215bb7f0's 381312 gzip / 1172744 raw is the eager sheet gate (useSheetPresentation, submenu drill wiring) and the lenient runtime schema twins. Ceilings lowered to the measurement; the 1% tolerance is unchanged.",
+		"reason": "Composer queue/steer parity since caa02127 (Enter steers and ⌘⏎ queues, the working placeholder, the Stop/Send cross-fade with its Queue for later tooltip, and upstream's QueuedMessageBar band in src/components/queued-message-bar.tsx replacing the queued chips) took home cold JS from 387479 gzip / 1185312 raw to 392398 gzip / 1199269 raw at the QueuedMessageBar commit. Ceilings set to the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-10-22"
 	},
 	"bundle.home.raw": {
-		"ceiling": 1185312,
+		"ceiling": 1199269,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Lazy-loading the menu sheet presentation (src/components/ui/menu-sheet.tsx: sheet DOM, menu-sheet-drag pointer hook, src/lib/sheet-drag.ts geometry and drill-in, preloaded only where the coarse <640px gate would open a sheet) took home cold JS from 388098 gzip / 1194142 raw at b194ff01 to 387479 gzip / 1185312 raw. The rest of the growth over 215bb7f0's 381312 gzip / 1172744 raw is the eager sheet gate (useSheetPresentation, submenu drill wiring) and the lenient runtime schema twins. Ceilings lowered to the measurement; the 1% tolerance is unchanged.",
+		"reason": "Composer queue/steer parity since caa02127 (Enter steers and ⌘⏎ queues, the working placeholder, the Stop/Send cross-fade with its Queue for later tooltip, and upstream's QueuedMessageBar band in src/components/queued-message-bar.tsx replacing the queued chips) took home cold JS from 387479 gzip / 1185312 raw to 392398 gzip / 1199269 raw at the QueuedMessageBar commit. Ceilings set to the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-10-22"
 	},
 	"bundle.session.gzip": {

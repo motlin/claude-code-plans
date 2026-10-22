@@ -407,49 +407,38 @@ function queueView(items: readonly QueuedPrompt[]) {
 	};
 }
 
-async function openChipMenu(index: number) {
+async function openRowMenu(index: number) {
+	fireEvent.click(screen.getByRole("button", {name: /messages queued/}));
 	const triggers = screen.getAllByRole("button", {name: "Queued message actions"});
 	const trigger = triggers[index];
-	if (trigger === undefined) throw new Error(`Expected chip ${index}`);
+	if (trigger === undefined) throw new Error(`Expected row ${index}`);
 	fireEvent.click(trigger);
 	return await screen.findByRole("menu");
 }
 
-describe("Composer queued chips", () => {
-	it("lists queued prompts above the composer with an sr-only status", () => {
+describe("Composer queued message bar", () => {
+	it("shows the queued band above the composer with an sr-only status", () => {
 		renderComposer({queue: queueView([ALICE, BOB])});
+		const bar = screen.getByRole("button", {name: /2 messages queued/});
 
-		const list = screen.getByRole("list", {name: "Queued messages"});
 		expect({
-			chips: within(list)
-				.getAllByRole("listitem")
-				.map((item) => item.getAttribute("data-queued-text")),
+			bar: bar.textContent,
 			status: screen.getByRole("status").textContent,
 		}).toStrictEqual({
-			chips: ["Alice's first follow-up", "Bob's second follow-up"],
+			bar: "2 messages queuedNext: Alice's first follow-up",
 			status: "2 messages queued. Will send after the current response.",
 		});
 	});
 
 	it("renders nothing without queued prompts", () => {
 		renderComposer({queue: queueView([])});
-		expect(screen.queryByRole("list", {name: "Queued messages"})).toBeNull();
-	});
-
-	it("offers Edit in composer / Send now / Remove from queue", async () => {
-		renderComposer({queue: queueView([ALICE])});
-		const menu = await openChipMenu(0);
-		expect(
-			within(menu)
-				.getAllByRole("menuitem")
-				.map((item) => item.textContent),
-		).toStrictEqual(["Edit in composer", "Send now", "Remove from queue"]);
+		expect(document.querySelector("[data-take-back-entry]")).toBeNull();
 	});
 
 	it("Edit in composer moves the prompt back into the editor", async () => {
 		const queue = queueView([ALICE, BOB]);
 		const textarea = renderComposer({queue});
-		const menu = await openChipMenu(1);
+		const menu = await openRowMenu(1);
 		fireEvent.click(within(menu).getByRole("menuitem", {name: "Edit in composer"}));
 
 		expect({value: textarea.value, removed: queue.remove.mock.calls}).toStrictEqual({
@@ -458,19 +447,25 @@ describe("Composer queued chips", () => {
 		});
 	});
 
-	it("Send now forwards the chip id", async () => {
+	it("Send now forwards the entry id", () => {
+		const queue = queueView([BOB]);
+		renderComposer({queue});
+		fireEvent.click(screen.getByRole("button", {name: "Send now"}));
+		expect(queue.sendNow.mock.calls).toStrictEqual([["q2"]]);
+	});
+
+	it("Clear all removes every queued prompt", () => {
 		const queue = queueView([ALICE, BOB]);
 		renderComposer({queue});
-		const menu = await openChipMenu(1);
-		fireEvent.click(within(menu).getByRole("menuitem", {name: "Send now"}));
-		expect(queue.sendNow.mock.calls).toStrictEqual([["q2"]]);
+		fireEvent.click(screen.getByRole("button", {name: /2 messages queued/}));
+		fireEvent.click(screen.getByRole("button", {name: "Clear all"}));
+		expect(queue.remove.mock.calls).toStrictEqual([["q1"], ["q2"]]);
 	});
 
 	it("Remove from queue asks to discard first", async () => {
 		const queue = queueView([ALICE]);
 		renderComposer({queue});
-		const menu = await openChipMenu(0);
-		fireEvent.click(within(menu).getByRole("menuitem", {name: "Remove from queue"}));
+		fireEvent.click(screen.getByRole("button", {name: "Remove from queue"}));
 		const dialog = await screen.findByRole("alertdialog");
 		const beforeConfirm = queue.remove.mock.calls.length;
 		fireEvent.click(within(dialog).getByRole("button", {name: "Discard"}));
@@ -615,8 +610,7 @@ describe("Esc modal guard", () => {
 	it("does not stop while the discard dialog is open", async () => {
 		const onInterrupt = vi.fn<() => void>();
 		render(<Stopper onInterrupt={onInterrupt} queue={queueView([ALICE])} />);
-		const menu = await openChipMenu(0);
-		fireEvent.click(within(menu).getByRole("menuitem", {name: "Remove from queue"}));
+		fireEvent.click(screen.getByRole("button", {name: "Remove from queue"}));
 		const dialog = await screen.findByRole("alertdialog");
 		const cancel = within(dialog).getByRole("button", {name: "Cancel"});
 		cancel.focus();

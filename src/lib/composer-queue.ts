@@ -61,6 +61,12 @@ export function queuedStatusText(count: number): string {
 	return `${count} ${count === 1 ? "message" : "messages"} queued. Will send after the current response.`;
 }
 
+/** Upstream's flattened one-line preview: whitespace collapsed, "…" when nothing is left. */
+export function queuedPreview(text: string): string {
+	const flat = text.replace(/\s+/g, " ").trim();
+	return flat === "" ? "…" : flat;
+}
+
 const EMPTY: readonly QueuedPrompt[] = [];
 
 let queues = new Map<string, readonly QueuedPrompt[]>();
@@ -85,8 +91,21 @@ export function dispatchComposerQueue(sessionId: string, action: ComposerQueueAc
 	for (const listener of listeners) listener();
 }
 
+/** Sessions whose queued-message band the reader expanded; survives the band unmounting. */
+const expandedBands = new Set<string>();
+
+export function queueBandExpanded(sessionId: string): boolean {
+	return expandedBands.has(sessionId);
+}
+
+export function setQueueBandExpanded(sessionId: string, expanded: boolean): void {
+	if (expanded) expandedBands.add(sessionId);
+	else expandedBands.delete(sessionId);
+}
+
 export function clearComposerQueues(): void {
 	queues = new Map();
+	expandedBands.clear();
 	for (const listener of listeners) listener();
 }
 

@@ -1,6 +1,7 @@
 import {memo, type ReactNode, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState} from "react";
-import {CircleStop, CornerDownLeft, Ellipsis} from "lucide-react";
+import {CircleStop, CornerDownLeft} from "lucide-react";
 
+import {useBandEnter} from "../hooks/use-band-enter";
 import {useComposerDraft} from "../hooks/use-composer-draft";
 import {useFileMentionSuggestions} from "../hooks/use-file-mention-suggestions";
 import type {LiveLaunchControls} from "../hooks/use-live-launch-options";
@@ -34,10 +35,10 @@ import {
 	ENVIRONMENT_PLACE_CLASS,
 } from "./composer-tokens";
 import {FileMentionMenu} from "./file-mention-menu";
+import {QueuedMessageBar} from "./queued-message-bar";
 import {fileMentionOptionId} from "./file-mention-option-id";
 import {SlashCommandMenu} from "./slash-command-menu";
 import {slashCommandOptionId} from "./slash-command-option-id";
-import {Menu, MenuContent, MenuItem, MenuTrigger} from "./ui/menu";
 import {Tooltip} from "./ui/tooltip";
 import {startComposerKeystrokeJourney, startComposerSubmitJourneys} from "../lib/perf/field-journeys";
 import {SESSION_COMPOSER_PLACEHOLDER} from "../lib/composer-pending-gate";
@@ -65,79 +66,6 @@ export interface ComposerQueueView {
 	items: readonly QueuedPrompt[];
 	sendNow: (id: string) => void;
 	remove: (id: string) => void;
-}
-
-/**
- * claude.ai/code's queued message chips: right-aligned bubbles above the card,
- * each with an actions menu, and an sr-only count for screen readers.
- */
-function QueuedPromptChips({
-	items,
-	onEdit,
-	onSendNow,
-	onRemove,
-}: {
-	items: readonly QueuedPrompt[];
-	onEdit: (item: QueuedPrompt) => void;
-	onSendNow: (id: string) => void;
-	onRemove: (id: string) => void;
-}) {
-	return (
-		<>
-			<span role="status" className="sr-only">
-				{items.length > 0 ? queuedStatusText(items.length) : ""}
-			</span>
-			{items.length > 0 && (
-				<ul
-					aria-label="Queued messages"
-					className="mx-0 mb-1.5 flex max-h-[min(40vh,22rem)] list-none flex-col items-end gap-1 overflow-y-auto"
-				>
-					{items.map((item) => (
-						<li
-							key={item.id}
-							data-queued-text={item.text}
-							data-perf-pending-prompt=""
-							className="flex max-w-[85%] min-w-0 items-start gap-1 rounded-r7 bg-user-msg-bg py-1.5 ps-3 pe-1 text-body text-user-msg-text opacity-80"
-						>
-							<span className="line-clamp-2 min-w-0 break-words whitespace-pre-wrap">{item.text}</span>
-							<Menu>
-								<MenuTrigger
-									aria-label="Queued message actions"
-									className="flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-r5 text-secondary hover:bg-fill-ghost-hover hover:text-primary"
-								>
-									<Ellipsis aria-hidden="true" className="size-3.5" />
-								</MenuTrigger>
-								<MenuContent align="end">
-									<MenuItem
-										onSelect={() => {
-											onEdit(item);
-										}}
-									>
-										Edit in composer
-									</MenuItem>
-									<MenuItem
-										onSelect={() => {
-											onSendNow(item.id);
-										}}
-									>
-										Send now
-									</MenuItem>
-									<MenuItem
-										variant="danger"
-										onSelect={() => {
-											onRemove(item.id);
-										}}
-									>
-										Remove from queue
-									</MenuItem>
-								</MenuContent>
-							</Menu>
-						</li>
-					))}
-				</ul>
-			)}
-		</>
-	);
 }
 
 interface ComposerProps {
@@ -639,6 +567,11 @@ export function Composer({
 		textareaRef.current?.focus();
 	}, [setPrompt]);
 
+	const queueBandSlot = useBandEnter<HTMLDivElement>();
+	const clearQueue = useCallback(() => {
+		for (const item of queue?.items ?? []) queue?.remove(item.id);
+	}, [queue]);
+
 	const closeDiscard = useCallback((open: boolean) => {
 		if (!open) setDiscardId(null);
 	}, []);
@@ -696,12 +629,22 @@ export function Composer({
 	return (
 		<div data-cds="ChatComposer" data-focus-region="composer" className="flex w-full min-w-0 flex-col font-sans">
 			{queue !== undefined && (
-				<QueuedPromptChips
-					items={queue.items}
-					onEdit={editQueuedPrompt}
-					onSendNow={queue.sendNow}
-					onRemove={setDiscardId}
-				/>
+				<>
+					<span role="status" className="sr-only">
+						{queue.items.length > 0 ? queuedStatusText(queue.items.length) : ""}
+					</span>
+					{/* Upstream's QueuedMessageBar band sits in the dock, 6px above the composer card */}
+					<div ref={queueBandSlot} className="mb-1.5 empty:hidden">
+						<QueuedMessageBar
+							sessionId={draftKey}
+							items={queue.items}
+							onEdit={editQueuedPrompt}
+							onSendNow={queue.sendNow}
+							onRemove={setDiscardId}
+							onClearAll={clearQueue}
+						/>
+					</div>
+				</>
 			)}
 			<ConfirmDialog
 				open={discardId !== null}
