@@ -4,7 +4,7 @@ import {basename, join} from "node:path";
 import {z} from "zod";
 import type {SkillDetail, SkillSource, SkillSummary} from "../api/customize";
 import {scanPluginTree} from "../plugins";
-import {ClaudeSettingsSchema} from "../schemas";
+import {ClaudeSettingsSchema} from "../runtime-schemas";
 
 type FrontmatterValue = string | string[] | Record<string, string>;
 

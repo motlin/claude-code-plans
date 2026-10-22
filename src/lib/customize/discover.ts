@@ -3,7 +3,7 @@ import {homedir} from "node:os";
 import {basename, join} from "node:path";
 import {z} from "zod";
 import type {DiscoverCatalog, DiscoverPlugin} from "../api/customize";
-import {PluginCatalogCacheSchema} from "../schemas";
+import {PluginCatalogCacheSchema} from "../runtime-schemas";
 import {readInstalledPlugins, readJson} from "./skills";
 
 /**

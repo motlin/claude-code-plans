@@ -146,7 +146,7 @@ describe("indexed Remote Control aliases", () => {
 			bridge(ALICE, "session_alice_200"),
 			bridge(ALICE, "cse_alice_100"),
 			bridge(BOB, "cse_bob_100"),
-			{...bridge(ALICE, "cse_alice_300"), unexpected: true},
+			{...bridge(ALICE, "cse_alice_300"), lastSequenceNum: "300"},
 			bridge(ALICE, "cse_alice/400"),
 			bridge(ALICE, "unknown_alice_500"),
 			{type: "bridge-session", sessionId: ALICE},

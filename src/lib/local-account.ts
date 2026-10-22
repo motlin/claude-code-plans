@@ -3,7 +3,7 @@ import {homedir, userInfo} from "node:os";
 import {join} from "node:path";
 import {createServerFn} from "@tanstack/react-start";
 import type {z} from "zod";
-import {ClaudeJsonOauthAccountSchema} from "./schemas";
+import {ClaudeJsonOauthAccountSchema} from "./runtime-schemas";
 import {nonEmpty} from "./non-empty";
 
 type OauthAccount = z.infer<typeof ClaudeJsonOauthAccountSchema>;

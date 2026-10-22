@@ -9,7 +9,8 @@ import {
 	SettingsToggleStateSchema,
 } from "../api/customize";
 import {rejectCrossSite} from "../same-origin-guard";
-import {ClaudeSettingsSchema} from "../schemas";
+import {ClaudeSettingsSchema} from "../runtime-schemas";
+import {SkillOverrideValueSchema} from "../schemas";
 import {errnoCode} from "../narrow";
 
 const SETTINGS_FILENAME = "settings.json";
@@ -64,7 +65,12 @@ function toState(loaded: LoadedSettings): SettingsToggleState {
 	}
 	return SettingsToggleStateSchema.parse({
 		mtimeMs: loaded.mtimeMs,
-		skillOverrides: loaded.settings.skillOverrides ?? {},
+		// A value from a newer Claude Code passes the lenient read; show it as no override.
+		skillOverrides: Object.fromEntries(
+			Object.entries(loaded.settings.skillOverrides ?? {}).filter(([, value]) =>
+				SkillOverrideValueSchema.options.includes(value),
+			),
+		),
 		enabledPlugins: loaded.settings.enabledPlugins ?? {},
 	});
 }

@@ -1,6 +1,6 @@
 import {z} from "zod";
 
-import {ApiRequestRecordSchema, ApiRequestShapeRecordSchema} from "./schemas";
+import {ApiRequestRecordSchema, ApiRequestShapeRecordSchema} from "./runtime-schemas";
 
 /*
  * The CLI (2.1.300+) logs every Messages API call as an `api-request` record,

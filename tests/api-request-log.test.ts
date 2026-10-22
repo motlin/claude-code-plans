@@ -71,8 +71,14 @@ describe("buildApiRequestLog", () => {
 		expect(log.requests["r3"]?.toolChanges).toStrictEqual({added: ["Write"], removed: ["Bash"]});
 	});
 
-	it("skips records the strict schema rejects", () => {
-		const log = buildApiRequestLog([{...request("bad", "s1"), unexpected: true}]);
+	it("keeps a record carrying keys newer than the schema", () => {
+		const log = buildApiRequestLog([{...request("newer", "s1"), unexpected: true}]);
+		expect(log).toStrictEqual(buildApiRequestLog([request("newer", "s1")]));
+		expect(Object.keys(log.requests)).toStrictEqual(["newer"]);
+	});
+
+	it("skips records the schema rejects", () => {
+		const log = buildApiRequestLog([{...request("bad", "s1"), shapeHash: 5}]);
 		expect(log).toStrictEqual({requests: {}, shapes: {}});
 	});
 });

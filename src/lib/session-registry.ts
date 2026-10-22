@@ -3,7 +3,8 @@ import {readdir, readFile} from "node:fs/promises";
 import {homedir} from "node:os";
 import {join} from "node:path";
 import type {z} from "zod";
-import {SessionRegistryFileSchema} from "./schemas";
+import {SessionRegistryFileSchema} from "./runtime-schemas";
+import {SessionRegistryFileSchema as StrictSessionRegistryFileSchema} from "./schemas";
 import {errnoCode} from "./narrow";
 
 /**
@@ -56,13 +57,15 @@ export async function readSessionRegistry(
 			} catch {
 				return null;
 			}
-			const result = SessionRegistryFileSchema.safeParse(raw);
+			// The strict parse reports drift; the lenient twin still keeps the entry.
+			const result = StrictSessionRegistryFileSchema.safeParse(raw);
 			if (result.success) return result.data;
 			reportDrift(
 				name,
 				result.error.issues.map((issue) => `${issue.path.join(".")} ${issue.message}`).join("; "),
 			);
-			return null;
+			const lenient = SessionRegistryFileSchema.safeParse(raw);
+			return lenient.success ? lenient.data : null;
 		}),
 	);
 	return entries.filter((entry) => entry !== null);

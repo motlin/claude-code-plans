@@ -20,12 +20,12 @@ import {
 	CompactMetadataSchema,
 	ContentBlockSchema,
 	JsonValueSchema,
-	JsonlRecordSchema,
 	type JsonlRecord,
 	PromptSourceSchema,
 	RenderedRoleSchema,
 	TurnOriginSchema,
 } from "./schemas";
+import {JsonlRecordSchema} from "./runtime-schemas";
 import {
 	extractSessionTitle,
 	extractToolResultContent,

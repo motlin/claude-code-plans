@@ -222,8 +222,31 @@ describe("applySettingsToggle", () => {
 		expect(readSettings()).toBe(ORIGINAL);
 	});
 
-	it("refuses to rewrite a settings.json that fails strict validation", async () => {
-		const invalid = '{\n  "skillOverrides": {\n    "legacy": "sometimes"\n  }\n}\n';
+	it("toggles a settings.json carrying keys and values newer than the schema, editing only its key", async () => {
+		const newer = '{\n  "futureKey": true,\n  "skillOverrides": {\n    "legacy": "sometimes"\n  }\n}\n';
+		const mtimeMs = writeSettings(newer);
+
+		const result = await applySettingsToggle({
+			claudeDir,
+			expectedMtimeMs: mtimeMs,
+			toggle: {kind: "skill", name: "deploy", enabled: false},
+		});
+
+		expect(readSettings()).toBe(
+			'{\n  "futureKey": true,\n  "skillOverrides": {\n    "legacy": "sometimes",\n    "deploy": "off"\n  }\n}\n',
+		);
+		expect(result).toStrictEqual({
+			ok: true,
+			state: {
+				mtimeMs: statSync(settingsPath).mtimeMs,
+				skillOverrides: {deploy: "off"},
+				enabledPlugins: {},
+			},
+		});
+	});
+
+	it("refuses to rewrite a settings.json that fails validation", async () => {
+		const invalid = '{\n  "skillOverrides": {\n    "legacy": 5\n  }\n}\n';
 		const mtimeMs = writeSettings(invalid);
 
 		const result = await applySettingsToggle({
@@ -367,7 +390,7 @@ describe("HTTP handlers", () => {
 		);
 		expect(bad.status).toBe(400);
 
-		const mtimeMs = writeSettings('{ "unknownKey": true }');
+		const mtimeMs = writeSettings('{ "skillOverrides": 5 }');
 		const invalid = await handleSettingsTogglePost(
 			post({expectedMtimeMs: mtimeMs, toggle: {kind: "skill", name: "x", enabled: false}}),
 			claudeDir,

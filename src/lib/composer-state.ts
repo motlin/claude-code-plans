@@ -2,7 +2,7 @@ import {z} from "zod";
 import {type Statusline, SESSION_ID_PATTERN, StatuslineSchema} from "./api/statusline";
 import {isBypassPermissionsAllowed, resolveLaunchModel} from "./launch-options";
 import {formatModelName, SYNTHETIC_MODEL} from "./model-name";
-import {ClaudeSettingsSchema} from "./schemas";
+import {ClaudeSettingsSchema} from "./runtime-schemas";
 import {formatWeeklyReset} from "./usage";
 import {nonEmpty} from "./non-empty";
 

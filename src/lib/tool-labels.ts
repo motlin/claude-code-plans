@@ -1,5 +1,6 @@
 import type {z} from "zod";
-import {FileEditToolUseResultSchema, GitOperationSchema, type GitOperation} from "./schemas";
+import {type GitOperation} from "./schemas";
+import {FileEditToolUseResultSchema, GitOperationSchema} from "./runtime-schemas";
 import {
 	exitWorktreeActionLabels,
 	gitBranchActionLabels,

@@ -1723,12 +1723,12 @@ describe("schema-rejected records", () => {
 	});
 
 	it("reports why the record was rejected", () => {
-		const result = processTranscript([
-			{type: "assistant", message: {role: "assistant", content: []}, unknownKey: 1},
-		]);
+		const result = processTranscript([{type: "assistant", message: {role: "assistant", content: []}, uuid: 1}]);
 		const line = result.lines[0];
 
-		expect(line?.type === "unparsed" ? line.issues : []).toStrictEqual(['Unrecognized key: "unknownKey"']);
+		expect(line?.type === "unparsed" ? line.issues : []).toStrictEqual([
+			"uuid: Invalid input: expected string, received number",
+		]);
 	});
 
 	it("keeps records whose type is not rendered out of the transcript", () => {

@@ -144,8 +144,14 @@ describe("readBridgeSessionId", () => {
 		expect(await readBridgeSessionId(filePath)).toBeNull();
 	});
 
-	it("ignores bridge-session records that fail the strict schema", async () => {
+	it("reads bridge-session records carrying keys newer than the schema", async () => {
 		const filePath = await transcript([{...bridgeRecord("cse_alice_100", 1), extra: true}]);
+
+		expect(await readBridgeSessionId(filePath)).toBe("cse_alice_100");
+	});
+
+	it("ignores bridge-session records that fail the schema", async () => {
+		const filePath = await transcript([{...bridgeRecord("cse_alice_100", 1), lastSequenceNum: "one"}]);
 
 		expect(await readBridgeSessionId(filePath)).toBeNull();
 	});

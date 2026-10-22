@@ -1,6 +1,7 @@
 import type {z} from "zod";
 import {buildFilePatch, buildPatchFromHunks} from "./diff-utils";
-import {FileEditToolUseResultSchema, type JsonlRecord, type StructuredPatchHunkSchema} from "./schemas";
+import {type JsonlRecord, type StructuredPatchHunkSchema} from "./schemas";
+import {FileEditToolUseResultSchema} from "./runtime-schemas";
 
 type StructuredPatchHunk = z.infer<typeof StructuredPatchHunkSchema>;
 

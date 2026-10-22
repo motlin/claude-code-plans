@@ -3,7 +3,7 @@ import {join} from "node:path";
 import {z} from "zod";
 import type {PluginDetail, PluginHookRow} from "../api/customize";
 import {type PluginInfo, scanPluginTree} from "../plugins";
-import {PluginHooksFileSchema} from "../schemas";
+import {PluginHooksFileSchema} from "../runtime-schemas";
 import {listPluginMcpServers} from "./mcp";
 import {readJson} from "./skills";
 

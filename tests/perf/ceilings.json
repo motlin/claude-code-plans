@@ -61,18 +61,18 @@
 		"raisedAt": "2026-10-22"
 	},
 	"bundle.session.gzip": {
-		"ceiling": 564464,
+		"ceiling": 564719,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Session cold JS sat at the edge of the 1% tolerance on 4072d690 (563438 gzip, 1711750 raw); the strict permissionDecision schema's classifierCategory enum (79 auto-mode block categories), circuitBreaker enum and their schema-choice registry entries add +1026 B gzip and +2362 B raw (564464, 1714112), tipping both over. Ceilings re-based on the measurement; the 1% tolerance is unchanged.",
-		"raisedAt": "2026-10-22"
+		"reason": "Session cold JS sat at the edge of the 1% tolerance over 983dd5f3's 558865 gzip / 1695618 raw (4072d690 measured 563438 gzip, 1711750 raw); the lenient runtime schema twins (src/lib/lenient-schema.ts toLenient plus src/lib/runtime-schemas.ts) that the client's attachment, tool-label, edit-diff and context parsers now use add +1281 B gzip and +3737 B raw (564719, 1715487), tipping both over. Ceilings re-based on the measurement; the 1% tolerance is unchanged.",
+		"raisedAt": "2026-10-21"
 	},
 	"bundle.session.raw": {
-		"ceiling": 1714112,
+		"ceiling": 1715487,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Session cold JS sat at the edge of the 1% tolerance on 4072d690 (563438 gzip, 1711750 raw); the strict permissionDecision schema's classifierCategory enum (79 auto-mode block categories), circuitBreaker enum and their schema-choice registry entries add +1026 B gzip and +2362 B raw (564464, 1714112), tipping both over. Ceilings re-based on the measurement; the 1% tolerance is unchanged.",
-		"raisedAt": "2026-10-22"
+		"reason": "Session cold JS sat at the edge of the 1% tolerance over 983dd5f3's 558865 gzip / 1695618 raw (4072d690 measured 563438 gzip, 1711750 raw); the lenient runtime schema twins (src/lib/lenient-schema.ts toLenient plus src/lib/runtime-schemas.ts) that the client's attachment, tool-label, edit-diff and context parsers now use add +1281 B gzip and +3737 B raw (564719, 1715487), tipping both over. Ceilings re-based on the measurement; the 1% tolerance is unchanged.",
+		"raisedAt": "2026-10-21"
 	},
 	"client.coldHome.default.commitsToRows": {
 		"ceiling": 9,

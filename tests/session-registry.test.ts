@@ -78,10 +78,10 @@ describe("readSessionRegistry", () => {
 		rmSync(dir, {recursive: true, force: true});
 	});
 
-	it("parses <pid>.json files, skipping key files, invalid JSON and schema drift", async () => {
+	it("parses <pid>.json files, skipping key files, invalid JSON and invalid entries", async () => {
 		writeFileSync(join(dir, "4242.json"), JSON.stringify(registryFixture()));
 		writeFileSync(join(dir, "4343.json"), "{not json");
-		writeFileSync(join(dir, "4444.json"), JSON.stringify({...registryFixture({pid: 4444}), surprise: 1}));
+		writeFileSync(join(dir, "4444.json"), JSON.stringify({...registryFixture({pid: 4444}), status: 1}));
 		const keyPath = join(dir, "4242.deadbeef.key");
 		writeFileSync(keyPath, "secret");
 		// Unreadable: any attempt to read it would fail, so a clean result proves it was never opened.
@@ -90,18 +90,20 @@ describe("readSessionRegistry", () => {
 		expect(await readSessionRegistry(dir)).toStrictEqual([registryFixture()]);
 	});
 
-	it("reports schema drift, such as a status this schema does not know, instead of dropping it silently", async () => {
+	it("reports schema drift, such as a new key or a status this schema does not know, and keeps the entry", async () => {
 		writeFileSync(
 			join(dir, "4545.json"),
-			JSON.stringify(registryFixture({pid: 4545, status: "sleeping" as "idle"})),
+			JSON.stringify({...registryFixture({pid: 4545, status: "sleeping" as "idle"}), surprise: 1}),
 		);
 		const drift: string[] = [];
 
 		const entries = await readSessionRegistry(dir, (name, message) => drift.push(`${name}: ${message}`));
 
 		expect({entries, drift}).toStrictEqual({
-			entries: [],
-			drift: ['4545.json: status Invalid option: expected one of "idle"|"busy"|"waiting"|"shell"'],
+			entries: [registryFixture({pid: 4545, status: "sleeping" as "idle"})],
+			drift: [
+				'4545.json: status Invalid option: expected one of "idle"|"busy"|"waiting"|"shell";  Unrecognized key: "surprise"',
+			],
 		});
 	});
 

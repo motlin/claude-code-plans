@@ -1,7 +1,7 @@
 import {eq, sql} from "drizzle-orm";
 import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
 import {z} from "zod";
-import {BridgeSessionRecordSchema} from "../schemas";
+import {BridgeSessionRecordSchema} from "../runtime-schemas";
 import {foldJsonl} from "../incremental-jsonl";
 import * as schema from "./schema";
 

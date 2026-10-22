@@ -15,7 +15,7 @@ import {
 	CustomTitleRecordSchema,
 	CustomTitleSidecarSchema,
 	SessionsIndexSchema,
-} from "./schemas";
+} from "./runtime-schemas";
 import {isCountableMessageRecord} from "./message-count";
 import {costStateFromRecord, type SessionCostState} from "./session-cost";
 import {narrationProse} from "./thinking-narration";

@@ -5,7 +5,8 @@ import {homedir} from "node:os";
 import {join} from "node:path";
 import {sql} from "drizzle-orm";
 import type {core, ZodError} from "zod";
-import {DOMAIN_EVENTS, HookEventEnvelope} from "../../lib/hook-events";
+import {DOMAIN_EVENTS, HookEventEnvelope, type HookEvent} from "../../lib/hook-events";
+import {toLenient} from "../../lib/lenient-schema";
 import {broadcastTyped} from "../../lib/watcher";
 import {dispatchHookEvent, type HookDispatchDirs, type HookDispatchState} from "../../lib/hook-dispatcher";
 import {getTerminalHost} from "../../lib/terminal-host";
@@ -197,6 +198,35 @@ function persistDrift(
 	return result.count;
 }
 
+/** The lenient twin (see `toLenient`): dispatches events whose only drift is new keys or enum values. */
+export const RuntimeHookEventEnvelope = toLenient(HookEventEnvelope);
+
+async function dispatch(event: HookEvent): Promise<void> {
+	await dispatchHookEvent({
+		event,
+		db: getDb().index,
+		store: {
+			markSessionActive,
+			markSessionEnded,
+			setSessionState,
+			touchSession,
+			touchSubagentActivity,
+			setBackgroundTasks,
+			setSessionCrons,
+			setPendingPermissionRequest,
+			getActiveSessionEntry,
+		},
+		broadcast: broadcastTyped,
+		dirs: HOOK_DIRS,
+		state: dispatcherState,
+		reportHerdrState: (reportedEvent, entry) => {
+			void getTerminalHost().then((host) => {
+				host.reportHookState(reportedEvent, entry);
+			});
+		},
+	});
+}
+
 export const Route = createFileRoute("/api/hook")({
 	server: {
 		handlers: withMethodNotAllowed({
@@ -212,7 +242,10 @@ export const Route = createFileRoute("/api/hook")({
 					return Response.json({error: "Invalid JSON"}, {status: 400});
 				}
 
+				// Strict parse reports drift; the lenient twin still dispatches the
+				// event when the drift is only new keys or enum values.
 				const result = HookEventEnvelope.safeParse(body);
+				const lenient = result.success ? result : RuntimeHookEventEnvelope.safeParse(body);
 
 				if (!result.success) {
 					const {index} = getDb();
@@ -235,6 +268,11 @@ export const Route = createFileRoute("/api/hook")({
 						count,
 					});
 
+					if (lenient.success) {
+						await dispatch(lenient.data);
+						return Response.json({ok: true, drift: true, count});
+					}
+
 					// Watcher-style fallback: if this looks like a PostToolUse on a file
 					// we'd otherwise pick up via chokidar, index it directly so the
 					// client still sees the update. Anything else is left for chokidar.
@@ -254,32 +292,7 @@ export const Route = createFileRoute("/api/hook")({
 					return Response.json({ok: false, drift: true, count}, {status: 202});
 				}
 
-				const {index} = getDb();
-
-				await dispatchHookEvent({
-					event: result.data,
-					db: index,
-					store: {
-						markSessionActive,
-						markSessionEnded,
-						setSessionState,
-						touchSession,
-						touchSubagentActivity,
-						setBackgroundTasks,
-						setSessionCrons,
-						setPendingPermissionRequest,
-						getActiveSessionEntry,
-					},
-					broadcast: broadcastTyped,
-					dirs: HOOK_DIRS,
-					state: dispatcherState,
-					reportHerdrState: (event, entry) => {
-						void getTerminalHost().then((host) => {
-							host.reportHookState(event, entry);
-						});
-					},
-				});
-
+				await dispatch(result.data);
 				return Response.json({ok: true});
 			},
 		}),

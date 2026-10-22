@@ -153,7 +153,7 @@ describe("a schema-invalid tool input in the transcript", () => {
 	});
 
 	it("still rejects the whole record when anything besides a tool input is invalid", () => {
-		const record = {...assistantWithMalformedRead(), unknownKey: 1};
+		const record = {...assistantWithMalformedRead(), uuid: 1};
 		expect(processTranscript([record]).lines.map((line) => line.type)).toStrictEqual(["unparsed"]);
 	});
 

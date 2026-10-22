@@ -107,9 +107,9 @@ beforeEach(() => {
 
 	write(join(loose, ".claude-plugin", "plugin.json"), {name: "loose", version: "0.1.0"});
 	write(join(loose, "hooks", "hooks.json"), {
-		hooks: {Stop: [{hooks: [{type: "command", command: "x", bogus: true}]}]},
+		hooks: {Stop: [{hooks: [{type: "command", command: 5}]}]},
 	});
-	write(join(loose, ".mcp.json"), {mcpServers: {a: {command: "x", surprise: true}}});
+	write(join(loose, ".mcp.json"), {mcpServers: {a: {command: 5}}});
 });
 
 afterEach(() => {
@@ -156,7 +156,7 @@ describe("readPluginDetail", () => {
 		});
 	});
 
-	it("rejects hooks.json and .mcp.json with unknown keys (strict schemas)", async () => {
+	it("rejects hooks.json and .mcp.json that fail the schemas", async () => {
 		const detail = await detailFor("loose@market");
 		expect({
 			hooks: detail.hooks,

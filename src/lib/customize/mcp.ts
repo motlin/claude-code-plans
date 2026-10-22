@@ -9,7 +9,7 @@ import {
 	McpConfigSchema,
 	McpNeedsAuthCacheSchema,
 	McpServersSchema,
-} from "../schemas";
+} from "../runtime-schemas";
 import {
 	claudeAiConnectors,
 	isReadOnlyToolName,
@@ -101,8 +101,12 @@ function summarize(
 /** A plugin's .mcp.json is either `{ mcpServers: {...} }` or the bare server map. */
 async function readPluginServers(installPath: string): Promise<McpServers> {
 	const raw = await readJson(join(installPath, ".mcp.json"));
-	const wrapped = McpConfigSchema.safeParse(raw);
-	if (wrapped.success) return wrapped.data.mcpServers;
+	// Decide the shape by key: the lenient bare-map schema would also accept the
+	// wrapped form, reading `mcpServers` itself as a server.
+	if (isRecord(raw) && "mcpServers" in raw) {
+		const wrapped = McpConfigSchema.safeParse(raw);
+		return wrapped.success ? wrapped.data.mcpServers : {};
+	}
 	const bare = McpServersSchema.safeParse(raw);
 	return bare.success ? bare.data : {};
 }

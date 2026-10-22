@@ -11,7 +11,7 @@ import {
 	PrLinkRecordSchema,
 	ForkedFromSchema,
 	TaskFileSchema,
-} from "../schemas";
+} from "../runtime-schemas";
 import {encodeProjectPath, resolveProjectPath} from "../memory";
 import {isCountableMessageRecord} from "../message-count";
 import {deriveProjectDisplayName, lastEncodedSegment} from "../project-display-name";
