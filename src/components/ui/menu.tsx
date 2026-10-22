@@ -1,6 +1,6 @@
 import {ContextMenu as BaseContextMenu} from "@base-ui/react/context-menu";
 import {Menu as BaseMenu} from "@base-ui/react/menu";
-import {Check, ChevronRight} from "lucide-react";
+import {Check, ChevronRight, X} from "lucide-react";
 import {
 	type ComponentProps,
 	createContext,
@@ -8,6 +8,7 @@ import {
 	type ReactNode,
 	type RefObject,
 	useContext,
+	useEffect,
 	useId,
 	useMemo,
 	useRef,
@@ -143,6 +144,61 @@ function SheetHandle() {
 function useItemClass(twoLine = false, gap = "gap-1"): string {
 	const sizing = useMenuSizing();
 	return `flex w-full cursor-default ${twoLine ? sizing.twoLine : sizing.singleLine} ${gap} ${sizing.item} ${sizing.text} font-normal outline-none select-none [--shortcut-cap-ink:var(--menu-muted)] data-[disabled]:pointer-events-none data-[disabled]:opacity-40 data-[disabled]:focus-visible:shadow-focus`;
+}
+
+/** Upstream's Vt: hidden until keyboard-highlighted or held, so screen readers and arrow keys reach it. */
+const SHEET_CLOSE_ROW_CLASS =
+	"group/sheet-close block w-full rounded outline-none select-none focus-visible:outline-hidden [&:not(:focus-visible):not([data-highlighted]):not([data-cds-sheet-control-held])]:sr-only";
+
+/** The last row of a root sheet: an item-styled X and "Close" that dismisses the sheet. */
+function SheetCloseRow() {
+	const itemClass = useItemClass();
+	return (
+		<BaseMenu.Item closeOnClick aria-label="Close" data-cds-sheet-control="" className={SHEET_CLOSE_ROW_CLASS}>
+			<span className={`${itemClass} text-primary group-data-[highlighted]/sheet-close:bg-fill-ghost-hover`}>
+				<span aria-hidden="true" className="flex size-5 shrink-0 items-center justify-center">
+					<X />
+				</span>
+				<span className={LABEL_CLASS}>Close</span>
+			</span>
+		</BaseMenu.Item>
+	);
+}
+
+/**
+ * Upstream's _t: a press marks the sheet pressed, and holds the Close row visible when it was highlighted,
+ * until the next click, pointercancel or keydown.
+ */
+function useSheetPressMarkers(popup: HTMLDivElement | null) {
+	useEffect(() => {
+		if (popup === null) return undefined;
+		const doc = popup.ownerDocument;
+		let held: Element | null = null;
+		const release = () => {
+			popup.removeAttribute("data-cds-sheet-pressed");
+			held?.removeAttribute("data-cds-sheet-control-held");
+			held = null;
+			doc.removeEventListener("click", release, true);
+			doc.removeEventListener("pointercancel", release, true);
+			doc.removeEventListener("keydown", release, true);
+		};
+		const press = () => {
+			doc.addEventListener("click", release, true);
+			doc.addEventListener("pointercancel", release, true);
+			doc.addEventListener("keydown", release, true);
+			popup.setAttribute("data-cds-sheet-pressed", "");
+			const control = popup.querySelector("[data-cds-sheet-control]");
+			if (control?.matches(":focus-visible, [data-highlighted]")) {
+				held = control;
+				control.setAttribute("data-cds-sheet-control-held", "");
+			}
+		};
+		popup.addEventListener("pointerdown", press, true);
+		return () => {
+			popup.removeEventListener("pointerdown", press, true);
+			release();
+		};
+	}, [popup]);
 }
 
 const ITEM_VARIANT_CLASS = {
@@ -336,13 +392,17 @@ export function MenuContent({
 	const kind = useContext(MenuKindContext);
 	const sheet = useContext(MenuSheetContext) && !structurallyAnchored;
 	const sheetTreeId = useId();
+	/* A callback ref, so the press markers attach when the portal mounts the popup on open. */
+	const [sheetPopup, setSheetPopup] = useState<HTMLDivElement | null>(null);
+	const rootSheet = sheet && !nested;
+	useSheetPressMarkers(sheetPopup);
 	/* Upstream's si order: an override, then comfortable on (pointer: coarse), then the prop or opener's density. */
 	const scopeDensity = useScopeDensity(density);
 	/* A sheet's portal forces comfortable (`density: MG`) at every account density. */
 	const resolvedDensity = sheet ? "comfortable" : scopeDensity;
 	const sizing = sheet ? SHEET_SIZING : DENSITY_CLASSES[resolvedDensity];
 	const popupClass = `${POPUP_CLASS} ${sizing.popup} p-1 ${sizing.text}`;
-	if (sheet && !nested) {
+	if (rootSheet) {
 		return (
 			<DensityProvider density={resolvedDensity}>
 				<MenuLgContext.Provider value>
@@ -360,6 +420,7 @@ export function MenuContent({
 							disableAnchorTracking
 						>
 							<BaseMenu.Popup
+								ref={setSheetPopup}
 								data-cds={kind}
 								data-presentation="sheet"
 								data-sheet-tree={sheetTreeId}
@@ -374,6 +435,7 @@ export function MenuContent({
 								<div className={SHEET_CONTENT_CLASS}>
 									<div data-cds-sheet-scroll="" className={SHEET_SCROLL_CLASS}>
 										{children}
+										<SheetCloseRow />
 									</div>
 								</div>
 							</BaseMenu.Popup>

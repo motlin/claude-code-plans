@@ -939,9 +939,106 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 			scroll: {
 				marker: true,
 				className: "relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain p-1",
-				items: 3,
+				items: 4,
 			},
 		});
+	});
+
+	const CLOSE_ROW_CLASS =
+		"group/sheet-close block w-full rounded outline-none select-none focus-visible:outline-hidden [&:not(:focus-visible):not([data-highlighted]):not([data-cds-sheet-control-held])]:sr-only";
+
+	function renderControlledSheet() {
+		const onOpenChange = vi.fn<(open: boolean) => void>();
+		function Harness() {
+			const [open, setOpen] = useState(false);
+			return (
+				<Menu
+					open={open}
+					onOpenChange={(next) => {
+						onOpenChange(next);
+						setOpen(next);
+					}}
+				>
+					<MenuTrigger aria-label="More options">...</MenuTrigger>
+					<MenuContent>
+						<MenuItem>Copy link</MenuItem>
+					</MenuContent>
+				</Menu>
+			);
+		}
+		render(<Harness />);
+		return onOpenChange;
+	}
+
+	it("ends the root sheet with an sr-only Close row, as upstream's Vt", async () => {
+		stubCoarseAtWidth(639);
+		renderDropdown();
+		await openDropdown();
+		const items = screen.getAllByRole("menuitem");
+		const close = items.at(-1);
+		const box = close?.firstElementChild;
+		expect({
+			last: close?.getAttribute("aria-label"),
+			control: close?.hasAttribute("data-cds-sheet-control"),
+			className: close?.className,
+			inScroll: close?.parentElement?.hasAttribute("data-cds-sheet-scroll"),
+			box: {
+				highlightFill: box?.classList.contains("group-data-[highlighted]/sheet-close:bg-fill-ghost-hover"),
+				lgRow: box?.classList.contains("min-h-10"),
+				icon: box?.firstElementChild?.className,
+				label: box?.lastElementChild?.className,
+				text: box?.textContent,
+			},
+		}).toStrictEqual({
+			last: "Close",
+			control: true,
+			className: CLOSE_ROW_CLASS,
+			inScroll: true,
+			box: {
+				highlightFill: true,
+				lgRow: true,
+				icon: "flex size-5 shrink-0 items-center justify-center",
+				label: "min-w-0 flex-1 truncate",
+				text: "Close",
+			},
+		});
+	});
+
+	it("closes the sheet when the Close row is pressed", async () => {
+		stubCoarseAtWidth(639);
+		const onOpenChange = renderControlledSheet();
+		await openDropdown();
+		fireEvent.click(screen.getByRole("menuitem", {name: "Close"}));
+		await flush();
+		expect(onOpenChange.mock.calls.map(([open]) => open)).toStrictEqual([true, false]);
+	});
+
+	it("marks the popup pressed and a highlighted Close row held until the next click", async () => {
+		stubCoarseAtWidth(639);
+		renderDropdown();
+		const menu = await openDropdown();
+		const close = screen.getByRole("menuitem", {name: "Close"});
+		close.setAttribute("data-highlighted", "");
+		fireEvent.pointerDown(menu);
+		const held = {
+			pressed: menu.hasAttribute("data-cds-sheet-pressed"),
+			held: close.hasAttribute("data-cds-sheet-control-held"),
+		};
+		fireEvent.keyDown(document, {key: "Shift"});
+		expect({
+			held,
+			released: {
+				pressed: menu.hasAttribute("data-cds-sheet-pressed"),
+				held: close.hasAttribute("data-cds-sheet-control-held"),
+			},
+		}).toStrictEqual({held: {pressed: true, held: true}, released: {pressed: false, held: false}});
+	});
+
+	it("adds no Close row to an anchored menu", async () => {
+		stubCoarseAtWidth(1024);
+		renderDropdown();
+		await openDropdown();
+		expect(screen.queryByRole("menuitem", {name: "Close"})).toBeNull();
 	});
 
 	it("renders none of the sheet anatomy on a fine pointer at 639px", async () => {
