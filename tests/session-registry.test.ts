@@ -8,6 +8,7 @@ import {
 	isRegistryFileName,
 	liveRegistryEntries,
 	parsePsStartTimes,
+	parseStatStartTicks,
 	readSessionRegistry,
 	type SessionRegistryEntry,
 } from "../src/lib/session-registry";
@@ -179,5 +180,47 @@ describe("liveRegistryEntries", () => {
 		});
 
 		expect(result).toStrictEqual([alive]);
+	});
+
+	it("compares a clock-tick procStart with the /proc stat start ticks", async () => {
+		const current = registryFixture({pid: 400, sessionId: "tick-session", procStart: "830769470"});
+		const recycled = registryFixture({pid: 500, sessionId: "tick-reused", procStart: "830769470"});
+		const result = await liveRegistryEntries([current, recycled], {
+			isAlive: () => true,
+			readStartTimes: async () =>
+				Promise.resolve(
+					new Map([
+						[400, "Fri Oct 9 12:03:29 2026"],
+						[500, "Fri Oct 9 12:03:29 2026"],
+					]),
+				),
+			readStatStartTicks: (pid) => (pid === 400 ? "830769470" : "999"),
+		});
+
+		expect(result).toStrictEqual([current]);
+	});
+
+	it("keeps a live clock-tick procStart when stat ticks cannot be read", async () => {
+		const current = registryFixture({pid: 400, sessionId: "tick-session", procStart: "830769470"});
+		const result = await liveRegistryEntries([current], {
+			isAlive: () => true,
+			readStartTimes: async () => Promise.resolve(new Map([[400, "Fri Oct 9 12:03:29 2026"]])),
+			readStatStartTicks: () => null,
+		});
+
+		expect(result).toStrictEqual([current]);
+	});
+});
+
+describe("parseStatStartTicks", () => {
+	it("takes field 22 counting from after the last closing parenthesis", () => {
+		const stat =
+			"4242 (my (odd) name) S 1 4242 4242 0 -1 4194560 100 0 0 0 5 3 0 0 20 0 12 0 830769470 123456 789 18446744073709551615";
+
+		expect(parseStatStartTicks(stat)).toBe("830769470");
+	});
+
+	it("returns null for content without a comm field", () => {
+		expect(parseStatStartTicks("garbage")).toBeNull();
 	});
 });

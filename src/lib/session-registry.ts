@@ -1,4 +1,5 @@
 import {execFile} from "node:child_process";
+import {readFileSync} from "node:fs";
 import {readdir, readFile} from "node:fs/promises";
 import {homedir} from "node:os";
 import {join} from "node:path";
@@ -121,21 +122,51 @@ async function readProcessStartTimes(pids: readonly number[]): Promise<Map<numbe
 	});
 }
 
+/**
+ * Start time in clock ticks, field 22 of `/proc/<pid>/stat`. The comm field
+ * (2) can hold spaces and parentheses, so fields are counted after the last ")".
+ */
+export function parseStatStartTicks(stat: string): string | null {
+	const commEnd = stat.lastIndexOf(")");
+	if (commEnd === -1) return null;
+	const fields = stat
+		.slice(commEnd + 1)
+		.trim()
+		.split(/\s+/);
+	return fields[19] ?? null;
+}
+
+/** Null when `/proc` is unavailable (macOS) or the pid is gone. */
+function readStatStartTicks(pid: number): string | null {
+	try {
+		return parseStatStartTicks(readFileSync(`/proc/${pid}/stat`, "utf8"));
+	} catch {
+		return null;
+	}
+}
+
 export interface LivenessProbe {
 	isAlive: (pid: number) => boolean;
 	readStartTimes: (pids: readonly number[]) => Promise<Map<number, string> | null>;
+	readStatStartTicks?: (pid: number) => string | null;
 }
 
 const defaultProbe: LivenessProbe = {
 	isAlive: (pid) => isPidAlive(pid),
 	readStartTimes: readProcessStartTimes,
+	readStatStartTicks,
 };
+
+/** Newer Linux CLIs write `procStart` as `/proc/<pid>/stat` start ticks rather than `ps` text. */
+const CLOCK_TICK_PROC_START = /^\d+$/;
 
 /**
  * The entries whose process is still the one that wrote them. A crashed CLI
  * leaves its file behind, so a pid must answer signal 0, and to guard against
  * pid reuse its current start time (`ps -o lstart`, UTC) must equal the file's
- * `procStart`. When `ps` cannot run the signal-0 check alone decides.
+ * `procStart`. When `ps` cannot run the signal-0 check alone decides. A
+ * clock-tick `procStart` is compared with `/proc/<pid>/stat` instead, and
+ * kept when the ticks cannot be read.
  */
 export async function liveRegistryEntries(
 	entries: readonly SessionRegistryEntry[],
@@ -143,6 +174,11 @@ export async function liveRegistryEntries(
 ): Promise<SessionRegistryEntry[]> {
 	const running = entries.filter((entry) => probe.isAlive(entry.pid));
 	const startTimes = await probe.readStartTimes(running.map((entry) => entry.pid));
-	if (startTimes === null) return running;
-	return running.filter((entry) => startTimes.get(entry.pid) === normalizeStartTime(entry.procStart));
+	return running.filter((entry) => {
+		if (CLOCK_TICK_PROC_START.test(entry.procStart)) {
+			const ticks = probe.readStatStartTicks?.(entry.pid) ?? null;
+			return ticks === null || ticks === entry.procStart;
+		}
+		return startTimes === null || startTimes.get(entry.pid) === normalizeStartTime(entry.procStart);
+	});
 }
