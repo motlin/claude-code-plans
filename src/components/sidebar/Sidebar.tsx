@@ -235,6 +235,7 @@ function SidebarResizeHandle({width, onHide}: {width: number; onHide: () => void
 			shortcut={keys}
 			description="Drag to resize"
 			side="right"
+			trackCursor="y"
 			className="absolute! inset-y-0 end-[-6px] z-10 w-3"
 		>
 			<div

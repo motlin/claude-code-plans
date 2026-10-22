@@ -151,7 +151,7 @@ describe("<Tooltip>", () => {
 			lines: [...tooltip.children].map((line) => ({className: line.className, text: line.textContent})),
 		}).toStrictEqual({
 			className:
-				"pointer-events-none absolute z-50 flex w-max max-w-[170px] flex-col items-start gap-0.5 whitespace-normal rounded-r5 bg-[var(--tooltip-bg)] px-2 py-1.5 text-[13px]/[18px] text-[var(--tooltip-fg)] shadow-[0_1px_2px_rgb(11_11_11/0.06)] left-full top-1/2 ml-1 -translate-y-1/2",
+				"pointer-events-none absolute z-50 flex w-max max-w-[240px] flex-col items-start gap-0.5 whitespace-normal rounded-r5 bg-[var(--tooltip-bg)] px-2 py-1.5 text-[13px]/[18px] text-[var(--tooltip-fg)] shadow-[0_1px_2px_rgb(11_11_11/0.06)] left-full top-1/2 ml-1 -translate-y-1/2",
 			lines: [
 				{className: "inline-flex items-center gap-2", text: "Hide sidebar⌘CommandB"},
 				{className: "text-[11px]/[14px] text-[var(--tooltip-description-ink)]", text: "Drag to resize"},

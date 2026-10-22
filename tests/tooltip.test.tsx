@@ -272,3 +272,76 @@ describe('<Tooltip align="start" stacked>', () => {
 		expect(openTooltip().className.endsWith(" top-full left-0 mt-1")).toBe(true);
 	});
 });
+
+describe('<Tooltip trackCursor="y">', () => {
+	function renderEdge(trackCursor?: "y") {
+		vi.useFakeTimers();
+		render(
+			<Tooltip
+				content="Show sidebar"
+				description="Drag to resize"
+				side="right"
+				{...(trackCursor === undefined ? {} : {trackCursor})}
+			>
+				<button type="button">Edge</button>
+			</Tooltip>,
+		);
+	}
+
+	function tipStyle(): {top: string; className: string} {
+		const tooltip = openTooltip();
+		return {top: tooltip.style.top, className: tooltip.className};
+	}
+
+	it("wraps the stacked description box within upstream's 240px", () => {
+		renderEdge();
+
+		expect(
+			tipStyle()
+				.className.split(" ")
+				.filter((name) => name.startsWith("max-w-")),
+		).toStrictEqual(["max-w-[240px]"]);
+	});
+
+	it("centres the popup on the pointer's Y, flush with the anchor's top instead of its middle", () => {
+		vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(46);
+		renderEdge("y");
+
+		const {className} = tipStyle();
+		fireEvent.pointerMove(screen.getByRole("button"), {clientY: 400});
+		const {top} = screen.getByRole("tooltip").style;
+		fireEvent.pointerMove(screen.getByRole("button"), {clientY: 500});
+
+		expect({
+			top,
+			side: className.endsWith(" left-full top-0 ml-1"),
+			moved: screen.getByRole("tooltip").style.top,
+		}).toStrictEqual({top: "377px", side: true, moved: "477px"});
+	});
+
+	it("keeps the popup 8px inside the viewport's top and bottom", () => {
+		vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(46);
+		renderEdge("y");
+
+		openTooltip();
+		fireEvent.pointerMove(screen.getByRole("button"), {clientY: 10});
+		const nearTop = screen.getByRole("tooltip").style.top;
+		fireEvent.pointerMove(screen.getByRole("button"), {clientY: window.innerHeight - 2});
+
+		expect({nearTop, nearBottom: screen.getByRole("tooltip").style.top}).toStrictEqual({
+			nearTop: "8px",
+			nearBottom: `${window.innerHeight - 46 - 8}px`,
+		});
+	});
+
+	it("leaves the popup centred on the anchor without tracking", () => {
+		renderEdge();
+
+		fireEvent.pointerMove(screen.getByRole("button"), {clientY: 400});
+
+		expect(tipStyle()).toStrictEqual({
+			top: "",
+			className: expect.stringMatching(/ left-full top-1\/2 ml-1 -translate-y-1\/2$/),
+		});
+	});
+});

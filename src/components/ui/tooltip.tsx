@@ -1,6 +1,7 @@
 import {
 	cloneElement,
 	type CSSProperties,
+	type PointerEvent,
 	type ReactElement,
 	useEffect,
 	useId,
@@ -38,11 +39,11 @@ const MULTILINE_TOOLTIP_CLASS = TOOLTIP_CLASS.replace("max-w-[240px]", "max-w-[3
 
 /**
  * Upstream's rich two-line tooltip (the sidebar resize edge, Rewind, Fork): the 13px/18px label row on top,
- * an 11px/14px muted description below, wrapping within 170px.
+ * an 11px/14px muted description below, wrapping within 240px.
  */
 const STACKED_TOOLTIP_CLASS = TOOLTIP_CLASS.replace(
 	"inline-flex min-h-6 w-max max-w-[240px] items-center gap-2",
-	"flex w-max max-w-[170px] flex-col items-start gap-0.5 whitespace-normal",
+	"flex w-max max-w-[240px] flex-col items-start gap-0.5 whitespace-normal",
 ).replace("py-[3px]", "py-1.5");
 
 /**
@@ -71,6 +72,9 @@ const STACKED_DETAIL_TOOLTIP_CLASS = TOOLTIP_CLASS.replace(
 	"inline-flex min-h-6 w-max max-w-[240px] items-center gap-2",
 	"flex w-max max-w-[min(480px,calc(100vw-16px))] flex-col gap-0.5 whitespace-normal text-balance",
 ).replace("py-[3px]", "py-1.5");
+
+/** How far inside the viewport's top and bottom a cursor-tracking tooltip stays. */
+const TRACK_CURSOR_INSET_PX = 8;
 
 const TOOLTIP_ROW_CLASS = "inline-flex items-center gap-2";
 
@@ -101,6 +105,7 @@ export function Tooltip({
 	multiline = false,
 	variant,
 	closeOnClick = true,
+	trackCursor,
 	portal = false,
 	className,
 	children,
@@ -131,6 +136,11 @@ export function Tooltip({
 	/** Upstream keeps a disabled reason open when its control is clicked (`closeOnClick: false`). */
 	closeOnClick?: boolean;
 	/**
+	 * `y`: follow the pointer's Y along the anchor, centring the tip on it 8px inside the viewport (upstream's
+	 * sidebar resize edge, `trackCursorAxis="y"`). Until the pointer moves it sits at the side's default.
+	 */
+	trackCursor?: "y" | undefined;
+	/**
 	 * Render the tip in `document.body` over a fixed box matching the anchor, for anchors inside a clipping
 	 * scroller such as a menu row (upstream's Max effort row tooltip, side right).
 	 */
@@ -145,6 +155,8 @@ export function Tooltip({
 	const tipRef = useRef<HTMLSpanElement>(null);
 	const [placement, setPlacement] = useState<TooltipPlacement | undefined>(undefined);
 	const [anchorBox, setAnchorBox] = useState<CSSProperties | undefined>(undefined);
+	const [cursorY, setCursorY] = useState<number | undefined>(undefined);
+	const [trackedTop, setTrackedTop] = useState<number | undefined>(undefined);
 
 	useEffect(
 		() => () => {
@@ -177,6 +189,21 @@ export function Tooltip({
 		);
 	}, [open, side, align, content, description, secondary?.content, secondary?.shortcut]);
 
+	useLayoutEffect(() => {
+		const anchor = anchorRef.current;
+		const tip = tipRef.current;
+		if (!open || cursorY === undefined || anchor === null || tip === null) {
+			setTrackedTop(undefined);
+			return;
+		}
+		const height = tip.offsetHeight;
+		const viewportTop = Math.max(
+			TRACK_CURSOR_INSET_PX,
+			Math.min(cursorY - height / 2, window.innerHeight - height - TRACK_CURSOR_INSET_PX),
+		);
+		setTrackedTop(viewportTop - anchor.getBoundingClientRect().top);
+	}, [open, cursorY]);
+
 	// Upstream suppresses a trigger's tooltip while its popup is open, so it never draws beside the open menu.
 	useEffect(() => {
 		const anchor = anchorRef.current;
@@ -191,6 +218,7 @@ export function Tooltip({
 	}, [open]);
 
 	const placedSide = placement?.side ?? side;
+	const sideClass = (align === "start" || trackedTop !== undefined ? START_SIDE_CLASS : SIDE_CLASS)[placedSide];
 
 	function show(delay = OPEN_DELAY_MS) {
 		clearTimeout(timer.current);
@@ -207,6 +235,10 @@ export function Tooltip({
 		};
 		if (delay === 0) reveal();
 		else timer.current = setTimeout(reveal, delay);
+	}
+
+	function trackPointer(event: PointerEvent<HTMLSpanElement>) {
+		setCursorY(event.clientY);
 	}
 
 	function hide() {
@@ -249,8 +281,8 @@ export function Tooltip({
 			id={id}
 			data-side={placedSide}
 			data-align={align}
-			className={`${tooltipClass} ${(align === "start" ? START_SIDE_CLASS : SIDE_CLASS)[placedSide]}`}
-			style={shiftStyle(placement)}
+			className={`${tooltipClass} ${sideClass}`}
+			style={trackedTop === undefined ? shiftStyle(placement) : trackedStyle(trackedTop, placement)}
 		>
 			{stackedDetail ? (
 				<>
@@ -285,9 +317,11 @@ export function Tooltip({
 		<span
 			ref={anchorRef}
 			className={className ? `relative inline-flex ${className}` : "relative inline-flex"}
-			onPointerEnter={() => {
+			onPointerEnter={(event) => {
+				if (trackCursor === "y") trackPointer(event);
 				show();
 			}}
+			onPointerMove={trackCursor === "y" ? trackPointer : undefined}
 			onPointerLeave={hide}
 			onFocus={() => {
 				show(variant === "reason" ? 0 : OPEN_DELAY_MS);
@@ -321,6 +355,12 @@ export function Tooltip({
 function shiftStyle(placement: TooltipPlacement | undefined): CSSProperties | undefined {
 	if (placement === undefined || (placement.shiftX === 0 && placement.shiftY === 0)) return undefined;
 	return {transform: `translate(${placement.shiftX}px, ${placement.shiftY}px)`};
+}
+
+/** A cursor-tracking tip's top, keeping only the horizontal placement shift since the pointer sets its Y. */
+function trackedStyle(top: number, placement: TooltipPlacement | undefined): CSSProperties {
+	const shiftX = placement?.shiftX ?? 0;
+	return shiftX === 0 ? {top: `${top}px`} : {top: `${top}px`, transform: `translateX(${shiftX}px)`};
 }
 
 function TooltipShortcut({keys}: {keys: string}) {
