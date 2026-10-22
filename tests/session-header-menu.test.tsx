@@ -425,6 +425,100 @@ describe("session header menu", () => {
 	});
 });
 
+describe("session header menu on a coarse pointer under 640px", () => {
+	function stubCoarsePointer() {
+		vi.stubGlobal(
+			"matchMedia",
+			vi.fn((query: string) => ({
+				matches: query === "(pointer: coarse)" || query === "(pointer: coarse) and (max-width: 639.98px)",
+				media: query,
+				onchange: null,
+				addEventListener: () => undefined,
+				removeEventListener: () => undefined,
+				addListener: () => undefined,
+				removeListener: () => undefined,
+				dispatchEvent: () => false,
+			})),
+		);
+	}
+
+	const transcriptView: SessionHeaderTranscriptView = {
+		mode: "normal",
+		defaultMode: "normal",
+		hasThinking: true,
+		setMode: () => {},
+		makeDefault: () => {},
+	};
+
+	async function openSheet(): Promise<HTMLElement> {
+		stubCoarsePointer();
+		await renderTitlebar(localActions(), {bridgeSessionId: "cse_01ABC", transcriptView});
+		fireEvent.click(screen.getByRole("button", {name: `More options for ${TITLE}`}));
+		// The sheet presentation is its own lazily loaded chunk.
+		const menu = (await screen.findAllByRole("menu")).at(-1);
+		if (menu === undefined) throw new Error("no menu");
+		return menu;
+	}
+
+	async function drill(root: HTMLElement, trigger: string) {
+		fireEvent.click(screen.getByRole("menuitem", {name: trigger}));
+		await flush();
+		const child = [...document.querySelectorAll<HTMLElement>("[role=menu]")].find((menu) => menu !== root);
+		const header = child?.querySelector("[data-cds-sheet-scroll]")?.nextElementSibling;
+		return {
+			presentation: child?.getAttribute("data-presentation"),
+			drilled: root.hasAttribute("data-cds-sheet-drilled"),
+			back: header?.querySelector("[aria-label=Back]")?.getAttribute("role"),
+			title: header?.lastElementChild?.textContent,
+		};
+	}
+
+	it("presents the header menu as a bottom sheet with a handle and a Close row", async () => {
+		const menu = await openSheet();
+		const rows = menu.querySelectorAll("[role=menuitem]");
+
+		expect({
+			presentation: menu.getAttribute("data-presentation"),
+			size: menu.getAttribute("data-size"),
+			density: menu.parentElement?.getAttribute("data-density"),
+			row: ["min-h-10", "text-[15px]/[22px]"].filter((name) => rows.item(0).classList.contains(name)),
+			handle: menu.firstElementChild?.hasAttribute("data-cds-sheet-handle"),
+			lastRow: rows.item(rows.length - 1).getAttribute("aria-label"),
+			scrim: document.querySelector("[data-sheet-scrim]") !== null,
+		}).toStrictEqual({
+			presentation: "sheet",
+			size: "lg",
+			density: "comfortable",
+			row: ["min-h-10", "text-[15px]/[22px]"],
+			handle: true,
+			lastRow: "Close",
+			scrim: true,
+		});
+	});
+
+	it("drills Open in into the sheet behind a Back header titled Open in", async () => {
+		const root = await openSheet();
+
+		expect(await drill(root, "Open in")).toStrictEqual({
+			presentation: "sheet",
+			drilled: true,
+			back: "menuitem",
+			title: "Open in",
+		});
+	});
+
+	it("drills Transcript view into the sheet behind a Back header titled Transcript view", async () => {
+		const root = await openSheet();
+
+		expect(await drill(root, "Transcript view")).toStrictEqual({
+			presentation: "sheet",
+			drilled: true,
+			back: "menuitem",
+			title: "Transcript view",
+		});
+	});
+});
+
 class TestEventSource extends EventTarget {
 	readonly close = vi.fn<() => void>();
 	onerror: ((event: Event) => void) | null = null;
