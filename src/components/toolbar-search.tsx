@@ -6,7 +6,7 @@ import {Tooltip} from "./ui/tooltip";
 
 /** Upstream's 24x24 r6 page-toolbar icon button with an ink icon (the Artifacts and Routines toolbars). */
 export const TOOLBAR_ICON_BUTTON =
-	"flex size-6 shrink-0 items-center justify-center rounded-r5 text-primary transition-colors hover:bg-fill-ghost-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-100 aria-pressed:text-accent-100 [&_svg]:size-4";
+	"flex size-6 shrink-0 items-center justify-center rounded-r5 text-primary transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus aria-pressed:text-accent-100 [&_svg]:size-4";
 
 /**
  * A page toolbar's inline search: an icon button with a "<label> ⌘F" tooltip that expands into a search box,

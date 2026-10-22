@@ -258,7 +258,7 @@ function NumberRow({label, description, settingKey, min, max}: NumberRowProps) {
 						setSetting(settingKey, parsed);
 					}
 				}}
-				className="h-8 w-24 rounded-r6 border border-border bg-[var(--settings-field-bg)] px-3 text-body text-primary outline-none focus-visible:ring-2 focus-visible:ring-accent-100/40"
+				className="h-8 w-24 rounded-r6 border border-border bg-[var(--settings-field-bg)] px-3 text-body text-primary outline-none hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
 			/>
 		</SettingsRow>
 	);
@@ -828,7 +828,7 @@ function CodeAppearanceSection() {
 					onChange={(event) => {
 						setSetting("codeFont", event.target.value);
 					}}
-					className="h-8 w-[220px] rounded-r6 border border-border bg-[var(--settings-field-bg)] px-3 text-body text-primary outline-none placeholder:text-[var(--settings-muted)] focus-visible:ring-2 focus-visible:ring-accent-100/40"
+					className="h-8 w-[220px] rounded-r6 border border-border bg-[var(--settings-field-bg)] px-3 text-body text-primary outline-none placeholder:text-[var(--settings-muted)] hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
 				/>
 			</SettingsRow>
 		</SettingsSection>

@@ -87,7 +87,7 @@ export function KeyboardShortcutsDialog() {
 								<div className="flex-1" />
 								<Dialog.Close
 									aria-label="Close"
-									className="flex aspect-square h-8 w-8 shrink-0 items-center justify-center rounded-r6 text-primary transition-colors hover:bg-fill-ghost-hover focus-visible:shadow-[0_0_0_2px_var(--accent-100)] focus-visible:outline-none"
+									className="flex aspect-square h-8 w-8 shrink-0 items-center justify-center rounded-r6 text-primary transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
 								>
 									<X aria-hidden="true" className="h-5 w-5" />
 								</Dialog.Close>
@@ -97,7 +97,7 @@ export function KeyboardShortcutsDialog() {
 								aria-label="Keyboard shortcuts"
 								// oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a scrollable region needs focus for keyboard scrolling
 								tabIndex={0}
-								className="-mx-6 -mb-6 min-h-0 flex-1 overflow-y-auto rounded-b-[inherit] px-6 pb-6 focus-visible:ring-2 focus-visible:ring-[var(--accent-100)] focus-visible:outline-none focus-visible:ring-inset"
+								className="-mx-6 -mb-6 min-h-0 flex-1 overflow-y-auto rounded-b-[inherit] px-6 pb-6 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),inset_0_0_6px_1px_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)]"
 							>
 								{sections.map((section) => (
 									<div key={section.title}>

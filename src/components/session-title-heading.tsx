@@ -58,7 +58,7 @@ export function SessionTitleHeading({
 		<h1 className="flex min-w-0 items-center gap-2 text-lg font-semibold">
 			<SessionTitleButton
 				rename={rename}
-				className="min-w-0 cursor-text truncate rounded-r6 text-left hover:bg-fill-ghost-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100"
+				className="min-w-0 cursor-text truncate rounded-r6 text-left hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
 			/>
 			{archived && <ArchivedBadge />}
 		</h1>

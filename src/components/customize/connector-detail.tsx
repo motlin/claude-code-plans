@@ -98,7 +98,7 @@ export function ConnectorDetailHeader({detail}: {detail: McpServerDetail}) {
 }
 
 const RADIO_CLASS =
-	"relative inline-flex h-full items-center justify-center rounded-r4 px-2.5 text-t6 outline-none enabled:hover:text-primary focus-visible:outline-2 focus-visible:outline-accent-100 disabled:cursor-default aria-checked:bg-surface-0 aria-checked:text-primary aria-checked:shadow-[inset_0_0_0_1px_var(--color-border),0_1px_2px_0_rgb(0_0_0/0.05)]";
+	"relative inline-flex h-full items-center justify-center rounded-r4 px-2.5 text-t6 outline-none enabled:hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus disabled:cursor-default aria-checked:bg-surface-0 aria-checked:text-primary aria-checked:shadow-[inset_0_0_0_1px_var(--color-border),0_1px_2px_0_rgb(0_0_0/0.05)]";
 
 interface PermissionControlProps {
 	tool: string;

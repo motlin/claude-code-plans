@@ -8,7 +8,7 @@ import {Menu, MenuContent, MenuItem, MenuTrigger} from "../ui/menu";
 import type {CustomizeSectionId} from "./sections";
 
 const ADD_BUTTON_CLASS =
-	"inline-flex h-8 shrink-0 items-center gap-1 rounded-r6 bg-fill-primary pr-2.5 pl-3 text-body font-medium text-on-primary transition-colors hover:bg-fill-primary-hover focus-visible:shadow-[0_0_0_2px_var(--accent-100)] focus-visible:outline-none";
+	"inline-flex h-8 shrink-0 items-center gap-1 rounded-r6 bg-fill-primary pr-2.5 pl-3 text-body font-medium text-on-primary transition-colors hover:bg-fill-primary-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 
 const SKILL_CREATOR = "skill-creator";
 const PLUGIN_CREATOR_PROMPT = "Create a new Claude Code plugin";

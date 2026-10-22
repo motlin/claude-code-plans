@@ -29,7 +29,7 @@ import {useToast} from "./toast-context";
 const SEND_FAILED = "Response couldn’t be sent. You can try again.";
 
 const CHIP_CLASS =
-	"h-7 max-w-full truncate rounded-control-sm bg-alpha-2 px-2 text-[14px]/[19px] text-primary transition-colors hover:bg-alpha-3 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100";
+	"h-7 max-w-full truncate rounded-control-sm bg-alpha-2 px-2 text-[14px]/[19px] text-primary transition-colors hover:bg-alpha-3 disabled:opacity-50 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 
 const FOOTER_CLASS = "text-[12px]/[15px] text-ink-muted";
 
@@ -128,7 +128,7 @@ function ReplyBox({
 					aria-keyshortcuts="Enter"
 					disabled={text.trim() === "" || pending}
 					onClick={send}
-					className="pointer-events-auto flex size-6 items-center justify-center rounded-r5 text-secondary hover:bg-fill-ghost-hover disabled:opacity-40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100"
+					className="pointer-events-auto flex size-6 items-center justify-center rounded-r5 text-secondary hover:bg-fill-ghost-hover disabled:opacity-40 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
 				>
 					<CornerDownLeft aria-hidden className="size-4" />
 				</button>
@@ -279,7 +279,7 @@ function PlanBody({planFilename}: {planFilename: string | null}) {
 }
 
 const PERMISSION_BUTTON_CLASS =
-	"h-7 rounded-control-sm px-2 text-[13px]/[19px] transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100";
+	"h-7 rounded-control-sm px-2 text-[13px]/[19px] transition-colors disabled:opacity-50 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 
 /** A tool permission prompt, allowed or denied in the live pane like the docked permission card. */
 function PermissionBody({sessionId, message, writable}: {sessionId: string; message: string; writable: boolean}) {

@@ -146,7 +146,7 @@ export function SegmentedControl<T extends string>({
 						onKeyDown={(event) => {
 							handleKeyDown(event, index);
 						}}
-						className={`relative z-[1] inline-flex h-full cursor-pointer items-center justify-center gap-1.5 rounded-r5 text-body font-normal outline-none select-none transition-shadow hover:text-primary focus-visible:ring-2 focus-visible:ring-accent-100/40 data-[checked]:text-primary text-[var(--settings-segmented-ink)] ${
+						className={`relative z-[1] inline-flex h-full cursor-pointer items-center justify-center gap-1.5 rounded-r5 text-body font-normal outline-none select-none transition-shadow duration-[60ms] hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus data-[checked]:text-primary text-[var(--settings-segmented-ink)] ${
 							iconOnly ? "w-[30px] [&_svg]:size-4" : "px-3"
 						}`}
 					>

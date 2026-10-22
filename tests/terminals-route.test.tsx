@@ -58,9 +58,9 @@ afterEach(() => {
 const HERDR_ROW_COLUMNS =
 	"grid grid-cols-[2.75rem_minmax(0,1fr)_5rem_8.5rem_2rem_9rem] items-center rounded-md border border-border max-sm:flex max-sm:flex-wrap max-sm:gap-x-2 max-sm:pb-2";
 const HERDR_TERMINAL_COLUMNS =
-	"grid grid-cols-[1.25rem_minmax(0,1fr)] items-center gap-1.5 rounded-md p-3 no-underline transition-colors hover:bg-surface-0/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100 max-sm:order-first max-sm:basis-full max-sm:pb-1";
+	"grid grid-cols-[1.25rem_minmax(0,1fr)] items-center gap-1.5 rounded-md p-3 no-underline transition-colors hover:bg-surface-0/50 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus max-sm:order-first max-sm:basis-full max-sm:pb-1";
 const HERDR_TRANSCRIPT_CELL =
-	"flex size-8 items-center justify-center justify-self-center rounded-md text-t6 transition-colors hover:bg-surface-0/50 hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100";
+	"flex size-8 items-center justify-center justify-self-center rounded-md text-t6 transition-colors hover:bg-surface-0/50 hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 const HERDR_ACTION_CELL = "justify-self-end max-sm:ms-auto";
 
 function placement({

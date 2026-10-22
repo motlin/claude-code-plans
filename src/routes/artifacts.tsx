@@ -79,7 +79,7 @@ const VIEW_TABS: ReadonlyArray<{view: ArtifactView; label: string}> = [
 ];
 
 const VIEW_TAB_CLASS =
-	"inline-flex h-6 shrink-0 items-center rounded-md px-2 text-[13px] font-medium whitespace-nowrap text-ink-muted transition-colors hover:text-primary aria-selected:bg-fill-ghost-hover aria-selected:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-100";
+	"inline-flex h-6 shrink-0 items-center rounded-md px-2 text-[13px] font-medium whitespace-nowrap text-ink-muted transition-colors hover:text-primary aria-selected:bg-fill-ghost-hover aria-selected:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 
 function isTypeFilter(value: unknown): value is ArtifactTypeFilter {
 	return TYPE_FILTERS.some((filter) => filter === value);
@@ -341,13 +341,13 @@ function PrimaryLink({artifact, className}: {artifact: ArtifactSummary; classNam
 			rel="noopener noreferrer"
 			data-primary="true"
 			aria-label={artifact.title}
-			className={`absolute inset-0 outline-none focus-visible:ring-2 focus-visible:ring-accent-100 ${className}`}
+			className={`absolute inset-0 outline-none hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus ${className}`}
 		/>
 	);
 }
 
 const ROW_ACTION_CLASS =
-	"pointer-events-auto flex size-6 shrink-0 items-center justify-center rounded-r6 text-ink-muted opacity-0 transition-opacity hover:bg-fill-ghost-hover hover:text-primary focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100 group-hover/cdsrow:opacity-100 data-[popup-open]:opacity-100 data-[popup-open]:bg-fill-ghost-hover pointer-coarse:opacity-100";
+	"pointer-events-auto flex size-6 shrink-0 items-center justify-center rounded-r6 text-ink-muted opacity-0 transition-opacity hover:bg-fill-ghost-hover hover:text-primary focus-visible:opacity-100 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus group-hover/cdsrow:opacity-100 data-[popup-open]:opacity-100 data-[popup-open]:bg-fill-ghost-hover pointer-coarse:opacity-100";
 
 function useCopyArtifactLink() {
 	const toast = useToast();

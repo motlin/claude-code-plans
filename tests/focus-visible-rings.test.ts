@@ -19,9 +19,77 @@ describe("focus rings", () => {
 		expect({
 			offenders,
 			fileResult: readFileSync("src/components/file-search-results.tsx", "utf8").includes(
-				"hover:bg-surface-0/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100",
+				"hover:bg-surface-0/50 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus",
 			),
 		}).toStrictEqual({offenders: [], fileResult: true});
+	});
+});
+
+const SHADOW_FOCUS = "hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
+const INSET_FOCUS =
+	"hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),inset_0_0_6px_1px_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)]";
+const ROW_FOCUS =
+	"hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)]";
+
+describe("hand-rolled focus rings", () => {
+	it("draws every keyboard ring with upstream's shadow-focus instead of hand-rolled outlines and rings", () => {
+		const banned =
+			/focus-visible:(?:shadow-\[0_0_0_2px_var\(--(?:color-)?accent-100\)\]|ring-[12](?![\w/[-])|ring-accent-100|ring-\[var\(--accent-100\)\]|outline-2|outline-offset-2|outline-accent-100|ring-inset)/;
+		const offenders = sources("src").filter((path) => banned.test(readFileSync(path, "utf8")));
+		expect(offenders).toStrictEqual([]);
+	});
+
+	it("gives the overlapping feature controls upstream's ring recipes", () => {
+		const has = (path: string, needle: string) => readFileSync(path, "utf8").includes(needle);
+		expect({
+			titlebar: has(
+				"src/components/session-titlebar.tsx",
+				`text-primary select-none hover:bg-fill-ghost-hover ${SHADOW_FOCUS}`,
+			),
+			chevron: has(
+				"src/components/session-titlebar.tsx",
+				`text-secondary transition-colors hover:bg-fill-ghost-hover ${SHADOW_FOCUS} data-[popup-open]`,
+			),
+			segmented: has(
+				"src/components/settings/segmented-control.tsx",
+				`transition-shadow duration-[60ms] hover:text-primary ${SHADOW_FOCUS}`,
+			),
+			switch: has("src/components/settings/switch.tsx", `data-[disabled]:opacity-50 ${SHADOW_FOCUS}`),
+			messageActions: has(
+				"src/components/message-actions.tsx",
+				`text-ink-muted outline-none ${SHADOW_FOCUS} transition-colors`,
+			),
+			customizeView: has(
+				"src/components/customize/list-row.tsx",
+				`absolute inset-0 rounded-card ${SHADOW_FOCUS}`,
+			),
+			skillKebab: has(
+				"src/components/customize/skill-row-actions.tsx",
+				`aria-expanded:text-primary ${SHADOW_FOCUS}`,
+			),
+			pluginKebab: has(
+				"src/components/customize/plugin-row-actions.tsx",
+				`aria-expanded:text-primary ${SHADOW_FOCUS}`,
+			),
+			shortcutsScroller: has("src/components/keyboard-shortcuts-dialog.tsx", `px-6 pb-6 ${INSET_FOCUS}`),
+			terminalPane: has(
+				"src/components/panes/terminal-pane.tsx",
+				`rounded-b-[inherit] outline-none ${INSET_FOCUS}`,
+			),
+			groupLabel: has("src/components/sidebar/session-group-section.tsx", `hover:text-secondary ${ROW_FOCUS}`),
+		}).toStrictEqual({
+			titlebar: true,
+			chevron: true,
+			segmented: true,
+			switch: true,
+			messageActions: true,
+			customizeView: true,
+			skillKebab: true,
+			pluginKebab: true,
+			shortcutsScroller: true,
+			terminalPane: true,
+			groupLabel: true,
+		});
 	});
 });
 

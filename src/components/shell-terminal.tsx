@@ -33,7 +33,7 @@ function shellSocketUrl(ptyKey: string): string {
 }
 
 const OVERLAY_BUTTON_CLASS =
-	"h-7 cursor-pointer rounded-r6 border border-strong px-2.5 text-body text-primary transition-colors hover:bg-fill-ghost-hover focus-visible:shadow-[0_0_0_2px_var(--accent-100)] focus-visible:outline-none disabled:cursor-default disabled:opacity-50";
+	"h-7 cursor-pointer rounded-r6 border border-strong px-2.5 text-body text-primary transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus disabled:cursor-default disabled:opacity-50";
 
 /**
  * One Shell tab: a login `$SHELL` PTY on the server, attached over

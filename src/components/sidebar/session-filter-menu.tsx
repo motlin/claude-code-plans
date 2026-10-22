@@ -144,7 +144,7 @@ function SessionFilterMenu({
 					<MenuTrigger
 						aria-label="Group and sort"
 						data-row-action=""
-						className="relative flex size-6 shrink-0 items-center justify-center rounded-r5 text-secondary hover:bg-[var(--sb-hover)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100 data-[popup-open]:bg-[var(--sb-hover)]"
+						className="relative flex size-6 shrink-0 items-center justify-center rounded-r5 text-secondary hover:bg-[var(--sb-hover)] hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus data-[popup-open]:bg-[var(--sb-hover)]"
 					>
 						<SlidersVertical aria-hidden="true" className="size-4" />
 					</MenuTrigger>

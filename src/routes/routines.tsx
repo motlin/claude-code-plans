@@ -115,7 +115,8 @@ function routineMeta(routine: Routine, now: number): string {
 
 function RoutineRow({routine, now}: {routine: Routine; now: number}) {
 	const title = routineTitle(routine);
-	const primaryClass = "absolute inset-0 rounded outline-none focus-visible:ring-2 focus-visible:ring-accent-100";
+	const primaryClass =
+		"absolute inset-0 rounded outline-none hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 	return (
 		<li className="group/cdsrow relative">
 			{routine.recordUuid === null ? (

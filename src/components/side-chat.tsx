@@ -38,7 +38,7 @@ const ASIDE_CLASS =
 	"fixed right-4 bottom-4 z-40 flex w-[400px] max-w-[calc(100vw-2rem)] max-h-[min(560px,calc(100vh-2rem))] invisible pointer-events-none origin-bottom-right scale-95 flex-col overflow-hidden rounded-card border-[0.5px] border-strong bg-surface-3 opacity-0 shadow-[0_24px_60px_color-mix(in_srgb,black_18%,transparent),0_4px_16px_color-mix(in_srgb,black_8%,transparent)] transition-[opacity,transform,visibility] duration-200 ease-out data-[open]:visible data-[open]:pointer-events-auto data-[open]:scale-100 data-[open]:opacity-100";
 
 const ICON_BUTTON_CLASS =
-	"flex size-6 shrink-0 items-center justify-center rounded-r5 text-t6 transition-colors hover:bg-fill-ghost-hover hover:text-primary focus-visible:shadow-[0_0_0_2px_var(--accent-100)] focus-visible:outline-none disabled:pointer-events-none disabled:opacity-40";
+	"flex size-6 shrink-0 items-center justify-center rounded-r5 text-t6 transition-colors hover:bg-fill-ghost-hover hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus disabled:pointer-events-none disabled:opacity-40";
 
 const ANSWER_ACTION_CLASS =
 	"flex items-center gap-1 rounded-r5 px-1.5 py-0.5 text-caption text-t6 transition-colors hover:bg-fill-ghost-hover hover:text-primary disabled:pointer-events-none disabled:opacity-40";

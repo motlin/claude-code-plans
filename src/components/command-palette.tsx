@@ -1616,7 +1616,7 @@ function PalettePopup({
 												onClick={() => {
 													setQuery(tokens.text);
 												}}
-												className="h-7 rounded-r6 px-2.5 text-sm text-primary shadow-[inset_0_0_0_1px_var(--color-border)] transition-colors hover:bg-fill-ghost-hover focus-visible:shadow-[0_0_0_2px_var(--accent-100)] focus-visible:outline-none"
+												className="h-7 rounded-r6 px-2.5 text-sm text-primary shadow-[inset_0_0_0_1px_var(--color-border)] transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
 											>
 												Clear filters
 											</button>
@@ -1631,7 +1631,7 @@ function PalettePopup({
 										<button
 											type="button"
 											onClick={searchAll}
-											className="h-7 rounded-r7 px-2.5 text-sm text-primary transition-colors hover:bg-fill-ghost-hover focus-visible:shadow-[0_0_0_2px_var(--accent-100)] focus-visible:outline-none"
+											className="h-7 rounded-r7 px-2.5 text-sm text-primary transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
 										>
 											Search all
 										</button>
@@ -1709,7 +1709,7 @@ function PalettePopup({
 }
 
 const ICON_BUTTON_BASE_CLASS =
-	"relative flex aspect-square shrink-0 items-center justify-center transition-colors focus-visible:shadow-[0_0_0_2px_var(--accent-100)] focus-visible:outline-none disabled:pointer-events-none disabled:opacity-40";
+	"relative flex aspect-square shrink-0 items-center justify-center transition-colors hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus disabled:pointer-events-none disabled:opacity-40";
 const ICON_BUTTON_CLASS = `${ICON_BUTTON_BASE_CLASS} h-7 w-7`;
 
 /** Upstream's keyboard-hint footer: "Close Esc · Change type ←→ · Filters / · Actions ⌥⏎", or "Send ⏎" in Compose. */

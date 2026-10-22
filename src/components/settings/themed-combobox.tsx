@@ -119,7 +119,7 @@ export function ThemedCombobox<T extends string>({
 						openPopup();
 					}
 				}}
-				className="flex h-8 w-full items-center justify-between gap-2 rounded-r6 border border-border bg-[var(--settings-field-bg)] pr-2 pl-3 text-left text-body text-primary outline-none hover:bg-fill-ghost-hover focus-visible:ring-2 focus-visible:ring-accent-100/40"
+				className="flex h-8 w-full items-center justify-between gap-2 rounded-r6 border border-border bg-[var(--settings-field-bg)] pr-2 pl-3 text-left text-body text-primary outline-none hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
 			>
 				<span className="min-w-0 truncate">{current?.label ?? value}</span>
 				<ChevronDown aria-hidden="true" className="size-4 shrink-0 text-[var(--settings-muted)]" />

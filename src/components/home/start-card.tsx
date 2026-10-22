@@ -98,7 +98,7 @@ function RecentEnvironments({
 								onClick={() => {
 									choose(project.id);
 								}}
-								className={`${ROW_CLASS} transition-colors hover:bg-fill-ghost-hover focus-visible:shadow-[0_0_0_2px_var(--accent-100)] focus-visible:outline-none`}
+								className={`${ROW_CLASS} transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus`}
 							>
 								{content}
 							</button>
@@ -124,7 +124,7 @@ export interface NextStepsListProps {
 }
 
 const STEP_BUTTON_CLASS =
-	"flex h-8 w-full min-w-0 items-center rounded-lg px-2 text-start text-[13px]/5 text-primary transition-colors hover:bg-fill-ghost-hover focus-visible:shadow-[0_0_0_2px_var(--accent-100)] focus-visible:outline-none";
+	"flex h-8 w-full min-w-0 items-center rounded-lg px-2 text-start text-[13px]/5 text-primary transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 
 /** Rows that carry upstream's "Blocked" status before their title. */
 const BLOCKED_IDS: ReadonlySet<NextStepId> = new Set(["waiting-session", "resume-session"]);
@@ -200,7 +200,7 @@ export function NextStepsList({rows, onOpen, onDismiss}: Readonly<NextStepsListP
 								onClick={() => {
 									dismiss(index, candidates);
 								}}
-								className={`flex size-6 items-center justify-center rounded-md text-ink-muted opacity-0 hover:bg-fill-ghost-hover hover:text-primary group-hover/row:opacity-100 group-has-[:focus-visible]/row:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100 ${TOUCH_REVEAL}`}
+								className={`flex size-6 items-center justify-center rounded-md text-ink-muted opacity-0 hover:bg-fill-ghost-hover hover:text-primary group-hover/row:opacity-100 group-has-[:focus-visible]/row:opacity-100 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus ${TOUCH_REVEAL}`}
 							>
 								<X aria-hidden="true" className="size-4" />
 							</button>

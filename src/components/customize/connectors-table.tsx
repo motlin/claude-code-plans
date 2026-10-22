@@ -37,7 +37,7 @@ function Row({label, onView, children}: RowProps) {
 			aria-label={label}
 			onClick={onView}
 			onKeyDown={onKeyDown}
-			className="group/row relative cursor-pointer outline-none focus-visible:shadow-[0_0_0_2px_var(--color-accent-100)]"
+			className="group/row relative cursor-pointer outline-none hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
 		>
 			{children}
 		</tr>

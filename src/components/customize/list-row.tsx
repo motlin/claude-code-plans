@@ -32,7 +32,7 @@ export function ListRow({icon, title, source, subtitle, meta, actions, onView}: 
 					type="button"
 					aria-label={`View ${title}`}
 					onClick={onView}
-					className="absolute inset-0 rounded-card focus-visible:outline-2 focus-visible:outline-accent-100"
+					className="absolute inset-0 rounded-card hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
 				/>
 			)}
 			<div className="pointer-events-none relative flex min-w-0 flex-1 items-center gap-3 [&_button]:pointer-events-auto">

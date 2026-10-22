@@ -51,7 +51,7 @@ const BAR_CLASS = [
 ].join(" ");
 
 const BUTTON_CLASS =
-	"flex size-6 cursor-pointer items-center justify-center rounded-r5 text-ink-muted outline-none focus-visible:bg-fill-ghost-hover transition-colors hover:bg-fill-ghost-hover hover:text-primary disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-ink-muted";
+	"flex size-6 cursor-pointer items-center justify-center rounded-r5 text-ink-muted outline-none hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus transition-colors hover:bg-fill-ghost-hover hover:text-primary disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-ink-muted";
 
 const ICON_CLASS = "size-4";
 

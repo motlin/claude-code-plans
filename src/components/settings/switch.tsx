@@ -49,7 +49,7 @@ export function Switch({
 			data-disabled={disabled ? "" : undefined}
 			onClick={toggle}
 			onKeyDown={handleKeyDown}
-			className="relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full p-[2px] outline-none transition-colors bg-[var(--settings-switch-track)] hover:bg-[var(--settings-switch-track-hover)] data-[checked]:bg-accent-100 data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50 focus-visible:ring-2 focus-visible:ring-accent-100/40"
+			className="relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full p-[2px] outline-none transition-colors bg-[var(--settings-switch-track)] hover:bg-[var(--settings-switch-track-hover)] data-[checked]:bg-accent-100 data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
 		>
 			<span
 				aria-hidden="true"

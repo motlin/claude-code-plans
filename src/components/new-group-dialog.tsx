@@ -3,7 +3,7 @@ import {type SubmitEvent, useRef, useState} from "react";
 import {DensityScope} from "./ui/density";
 
 const BUTTON_BASE_CLASS =
-	"h-8 rounded-r6 px-3 text-body font-medium transition-colors focus-visible:shadow-[0_0_0_2px_var(--accent-100)] focus-visible:outline-none";
+	"h-8 rounded-r6 px-3 text-body font-medium transition-colors hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 
 /**
  * claude.ai/code's small "New group" dialog: no close X, one "Group name"

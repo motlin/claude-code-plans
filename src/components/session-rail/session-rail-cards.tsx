@@ -286,7 +286,7 @@ function connectorsCard(servers: readonly McpServerSummary[]): RailCard | null {
 				</Rows>
 				<Link
 					to="/customize/connectors"
-					className="flex min-h-6.5 items-center px-1 text-[12px]/[15px] text-ink-muted hover:text-secondary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100"
+					className="flex min-h-6.5 items-center px-1 text-[12px]/[15px] text-ink-muted hover:text-secondary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
 				>
 					Manage connectors
 				</Link>
@@ -450,7 +450,7 @@ function useMinuteClock(ticking: boolean): number {
 }
 
 const SHOW_MORE_CLASS =
-	"flex min-h-6.5 w-full min-w-0 cursor-pointer items-center rounded px-1 text-start text-[13px]/[19px] text-ink-muted hover:text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100";
+	"flex min-h-6.5 w-full min-w-0 cursor-pointer items-center rounded px-1 text-start text-[13px]/[19px] text-ink-muted hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 
 /**
  * Upstream's Background tasks card: four running tasks with their elapsed

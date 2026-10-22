@@ -27,7 +27,7 @@ const BRANCH_MAX_CHARS = 32;
 const DISMISS_KEY_PREFIX = "branch-strip-dismissed:";
 
 const GHOST_BUTTON =
-	"inline-flex h-6 min-w-0 shrink-0 cursor-pointer items-center gap-1 rounded-r5 px-1.5 text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100 data-[popup-open]:bg-fill-ghost-hover";
+	"inline-flex h-6 min-w-0 shrink-0 cursor-pointer items-center gap-1 rounded-r5 px-1.5 text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus data-[popup-open]:bg-fill-ghost-hover";
 
 function numberAt(data: Record<string, unknown> | null, group: string, key: string) {
 	const value = data?.[group];
@@ -136,7 +136,7 @@ function pullRequestSummary(session: BranchStripSession) {
 }
 
 const PR_REPOSITORY_BUTTON =
-	"inline-flex h-6 min-w-0 max-w-[160px] shrink cursor-pointer items-center rounded-r5 px-[5px] text-[13px] leading-[19px] opacity-60 transition-colors hover:bg-fill-ghost-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100 data-[popup-open]:bg-fill-ghost-hover";
+	"inline-flex h-6 min-w-0 max-w-[160px] shrink cursor-pointer items-center rounded-r5 px-[5px] text-[13px] leading-[19px] opacity-60 transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus data-[popup-open]:bg-fill-ghost-hover";
 
 const PR_STATE_ICONS = {
 	open: GitPullRequest,
@@ -173,7 +173,7 @@ function PullRequestStripContent({
 						href={pr.url}
 						target="_blank"
 						rel="noopener noreferrer"
-						className="shrink-0 rounded-r5 px-[5px] tabular-nums hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100"
+						className="shrink-0 rounded-r5 px-[5px] tabular-nums hover:underline hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
 						style={{color}}
 					>
 						{label}
@@ -281,7 +281,7 @@ export function BranchStrip({
 						className={
 							pr === null
 								? `${GHOST_BUTTON} ml-auto`
-								: "inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-r5 p-0 text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100"
+								: "inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-r5 p-0 text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
 						}
 						style={{color: prColor}}
 						onClick={dismiss}

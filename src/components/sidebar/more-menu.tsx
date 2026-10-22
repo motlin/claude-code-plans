@@ -126,7 +126,7 @@ function EditSidebarDialog({
 							</div>
 							<Dialog.Close
 								aria-label="Close"
-								className="-me-2 -mt-2 flex aspect-square h-8 w-8 shrink-0 items-center justify-center rounded-r6 text-primary transition-colors hover:bg-fill-ghost-hover focus-visible:shadow-[0_0_0_2px_var(--accent-100)] focus-visible:outline-none"
+								className="-me-2 -mt-2 flex aspect-square h-8 w-8 shrink-0 items-center justify-center rounded-r6 text-primary transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
 							>
 								<X aria-hidden="true" className="h-5 w-5" />
 							</Dialog.Close>
@@ -141,7 +141,7 @@ function EditSidebarDialog({
 										onCheckedChange={(checked) => {
 											setPinned(item.section, checked);
 										}}
-										className="group/cb -mx-2 inline-flex w-auto items-start gap-2 rounded-r6 px-2 py-1 text-left text-body text-primary outline-none hover:bg-fill-ghost-hover focus-visible:shadow-[0_0_0_2px_var(--accent-100)]"
+										className="group/cb -mx-2 inline-flex w-auto items-start gap-2 rounded-r6 px-2 py-1 text-left text-body text-primary outline-none hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
 									>
 										<span className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-r4 border border-strong group-data-[checked]/cb:border-transparent group-data-[checked]/cb:bg-accent-100">
 											<Checkbox.Indicator>
@@ -157,7 +157,7 @@ function EditSidebarDialog({
 							})}
 						</div>
 						<div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-							<Dialog.Close className="h-8 rounded-r6 bg-fill-primary px-3 text-body font-medium text-on-primary transition-colors hover:bg-fill-primary-hover focus-visible:shadow-[0_0_0_2px_var(--accent-100)] focus-visible:outline-none">
+							<Dialog.Close className="h-8 rounded-r6 bg-fill-primary px-3 text-body font-medium text-on-primary transition-colors hover:bg-fill-primary-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus">
 								Done
 							</Dialog.Close>
 						</div>

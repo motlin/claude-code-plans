@@ -205,7 +205,7 @@ function TerminalsPage() {
 									params={{sessionId: placement.sessionId}}
 									aria-label={`Open live read-only terminal for ${placement.displayName}`}
 									title={`Open live read-only terminal for ${placement.displayName}. ${technicalDetails}`}
-									className="grid grid-cols-[1.25rem_minmax(0,1fr)] items-center gap-1.5 rounded-md p-3 no-underline transition-colors hover:bg-surface-0/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100 max-sm:order-first max-sm:basis-full max-sm:pb-1"
+									className="grid grid-cols-[1.25rem_minmax(0,1fr)] items-center gap-1.5 rounded-md p-3 no-underline transition-colors hover:bg-surface-0/50 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus max-sm:order-first max-sm:basis-full max-sm:pb-1"
 								>
 									<span className="sr-only">
 										{placement.active ? "Herdr pane focused" : "Herdr pane not focused"}
@@ -230,7 +230,7 @@ function TerminalsPage() {
 								<Link
 									to="/session/$id"
 									params={{id: placement.sessionId}}
-									className="flex size-8 items-center justify-center justify-self-center rounded-md text-t6 transition-colors hover:bg-surface-0/50 hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100"
+									className="flex size-8 items-center justify-center justify-self-center rounded-md text-t6 transition-colors hover:bg-surface-0/50 hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
 									title={`Open session transcript for ${placement.displayName}`}
 									aria-label={`Open session transcript for ${placement.displayName}`}
 								>

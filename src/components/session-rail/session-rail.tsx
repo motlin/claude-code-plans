@@ -57,7 +57,7 @@ export interface RailCard {
 }
 
 const HEAD_CLASS =
-	"group/railhead flex min-h-6.5 w-full min-w-0 cursor-pointer items-center gap-1 rounded-r5 px-1 text-left text-[12px]/[15px] font-medium text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100";
+	"group/railhead flex min-h-6.5 w-full min-w-0 cursor-pointer items-center gap-1 rounded-r5 px-1 text-left text-[12px]/[15px] font-medium text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 
 /** Upstream's header menu: a Show checkbox per hideable section, then Reset to defaults. */
 function RailHeaderMenu({sessionId, sections}: {sessionId: string; sections: RailSectionsState}) {

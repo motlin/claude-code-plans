@@ -73,7 +73,7 @@ function JobRow({job, now}: {job: Job; now: number}) {
 					params={{id: job.sessionId}}
 					data-primary="true"
 					aria-label={job.name}
-					className="absolute inset-0 rounded outline-none focus-visible:ring-2 focus-visible:ring-accent-100"
+					className="absolute inset-0 rounded outline-none hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
 				/>
 			)}
 			<div className="pointer-events-none grid grid-cols-[minmax(0,1fr)_max-content] items-start gap-x-3 rounded px-3 py-2 group-hover/cdsrow:bg-fill-ghost-hover group-has-[:focus-visible]/cdsrow:bg-fill-ghost-hover">

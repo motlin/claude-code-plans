@@ -6,7 +6,7 @@ import {InlineRenameInput} from "../inline-rename-input";
 import {ContextMenu, ContextMenuTrigger, Menu, MenuContent, MenuItem, MenuTrigger} from "../ui/menu";
 
 const TAB_CLASS =
-	"flex h-6 shrink-0 cursor-pointer items-center rounded-r5 px-1.5 text-body whitespace-nowrap outline-none focus-visible:ring-1 focus-visible:ring-accent-100 aria-selected:bg-fill-control aria-selected:text-primary text-secondary hover:text-primary";
+	"flex h-6 shrink-0 cursor-pointer items-center rounded-r5 px-1.5 text-body whitespace-nowrap outline-none hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus aria-selected:bg-fill-control aria-selected:text-primary text-secondary hover:text-primary";
 
 export const GHOST_ICON_BUTTON =
 	"flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-r5 text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary disabled:cursor-default disabled:opacity-50";

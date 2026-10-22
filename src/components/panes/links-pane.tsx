@@ -37,7 +37,7 @@ function LinkRow({entry, copied, onCopy}: LinkRowProps) {
 					rel="noopener noreferrer"
 					aria-label={`Open ${entry.label} in a new tab`}
 					title="Open in a new tab"
-					className="flex size-7 shrink-0 items-center justify-center rounded text-t6 transition-colors hover:bg-fill-control hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100"
+					className="flex size-7 shrink-0 items-center justify-center rounded text-t6 transition-colors hover:bg-fill-control hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
 				>
 					<ExternalLink className="size-3.5" aria-hidden="true" />
 				</a>
@@ -46,7 +46,7 @@ function LinkRow({entry, copied, onCopy}: LinkRowProps) {
 					aria-label={`Copy ${entry.label}`}
 					title={copied ? "Copied" : "Copy URL"}
 					onClick={() => void onCopy(entry.url)}
-					className="flex size-7 shrink-0 items-center justify-center rounded text-t6 transition-colors hover:bg-fill-control hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100"
+					className="flex size-7 shrink-0 items-center justify-center rounded text-t6 transition-colors hover:bg-fill-control hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
 				>
 					<Copy className="size-3.5" aria-hidden="true" />
 				</button>
@@ -97,7 +97,7 @@ function DevServersSection({servers}: {servers: readonly DevServerLink[]}) {
 								target="_blank"
 								rel="noopener noreferrer"
 								aria-label={`Open dev server ${host} in a new tab`}
-								className="flex shrink-0 items-center gap-1 rounded px-2 py-1 text-xs text-t6 transition-colors hover:bg-fill-control hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-100"
+								className="flex shrink-0 items-center gap-1 rounded px-2 py-1 text-xs text-t6 transition-colors hover:bg-fill-control hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
 							>
 								Open dev server
 								<ExternalLink className="size-3.5" aria-hidden="true" />

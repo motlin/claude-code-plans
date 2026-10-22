@@ -86,7 +86,7 @@ export function FileTabsStrip({state, dispatch, cwd, onAttachContext, onRevealIn
 									onKeyDown={(event) => {
 										handleKeyDown(event, tab.path);
 									}}
-									className={`flex h-5 min-w-0 flex-1 cursor-pointer items-center gap-1 rounded-r5 pr-[22px] pl-1.5 text-left text-pane outline-none transition-colors focus-visible:ring-1 focus-visible:ring-accent-100 ${active ? "bg-fill-control" : "bg-transparent hover:bg-fill-ghost-hover"} ${tab.preview ? "italic" : ""}`}
+									className={`flex h-5 min-w-0 flex-1 cursor-pointer items-center gap-1 rounded-r5 pr-[22px] pl-1.5 text-left text-pane outline-none transition-colors hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus ${active ? "bg-fill-control" : "bg-transparent hover:bg-fill-ghost-hover"} ${tab.preview ? "italic" : ""}`}
 								>
 									<Icon aria-hidden="true" className="size-3 shrink-0 text-ink-muted" />
 									<span className="max-w-[140px] truncate">{name}</span>

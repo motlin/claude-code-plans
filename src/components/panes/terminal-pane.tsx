@@ -89,7 +89,7 @@ interface PendingClose {
 }
 
 const PANEL_CLASS =
-	"flex min-h-0 flex-1 flex-col overflow-hidden rounded-b-[inherit] outline-none focus-visible:ring-1 focus-visible:ring-accent-100 focus-visible:ring-inset";
+	"flex min-h-0 flex-1 flex-col overflow-hidden rounded-b-[inherit] outline-none hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),inset_0_0_6px_1px_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)]";
 
 /** The Claude tab once herdr closes the session's pane: the TUI is gone, the transcript stays. */
 function SessionEnded({sessionId}: {sessionId: string}) {

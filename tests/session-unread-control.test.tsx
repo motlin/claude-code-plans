@@ -114,7 +114,7 @@ describe("SessionRowStatusDot", () => {
 		});
 
 		expect(screen.getByRole("button", {name: "Click to mark as read"}).className).toBe(
-			`flex cursor-pointer items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-100 ${TOUCH_HIT}`,
+			`flex cursor-pointer items-center justify-center rounded-full hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus ${TOUCH_HIT}`,
 		);
 	});
 });

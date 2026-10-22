@@ -25,7 +25,7 @@ const OPTION_CLASS =
 
 /** The start card's "Choose environment" row, which opens the same picker below it. */
 const CHOOSE_CLASS =
-	"group/choose flex h-8 w-full items-center gap-2 rounded-lg px-2 text-[13px]/5 text-secondary transition-colors hover:bg-fill-ghost-hover focus-visible:shadow-[0_0_0_2px_var(--accent-100)] focus-visible:outline-none";
+	"group/choose flex h-8 w-full items-center gap-2 rounded-lg px-2 text-[13px]/5 text-secondary transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 
 interface ProjectPickerProps {
 	projects: readonly StartProject[];
