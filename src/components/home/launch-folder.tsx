@@ -19,22 +19,31 @@ import {startSessionProjects, type StartProject} from "../../lib/palette-start-s
 export const HOME_RECENT_LIMIT = 25;
 
 type ChosenFolder = [string | null, Dispatch<SetStateAction<string | null>>];
+type Launching = [boolean, Dispatch<SetStateAction<boolean>>];
 
-const LaunchFolderContext = createContext<ChosenFolder | null>(null);
+interface SharedLaunchFolder {
+	chosen: ChosenFolder;
+	launching: Launching;
+}
+
+const LaunchFolderContext = createContext<SharedLaunchFolder | null>(null);
 
 /**
- * Shares the home launch folder between the start card and the docked composer, starting from a
- * folder requested before home mounted and following later requests.
+ * Shares the home launch folder, and whether the composer is launching a session in it, between the
+ * start card and the docked composer. The folder starts from one requested before home mounted and
+ * follows later requests.
  */
 export function HomeLaunchFolderProvider({children}: Readonly<{children: ReactNode}>) {
 	const chosen = useState<string | null>(null);
+	const launching = useState(false);
 	const [, setChosenId] = chosen;
 	useEffect(() => {
 		const pending = takePendingHomeLaunchFolder();
 		if (pending !== null) setChosenId(pending);
 		return onHomeLaunchFolderRequest(setChosenId);
 	}, [setChosenId]);
-	return <LaunchFolderContext.Provider value={chosen}>{children}</LaunchFolderContext.Provider>;
+	const shared = useMemo(() => ({chosen, launching}), [chosen, launching]);
+	return <LaunchFolderContext.Provider value={shared}>{children}</LaunchFolderContext.Provider>;
 }
 
 export interface HomeLaunchFolder {
@@ -42,13 +51,18 @@ export interface HomeLaunchFolder {
 	projects: StartProject[];
 	selected: StartProject | undefined;
 	select: (projectId: string) => void;
+	/** True while the composer is starting a session (upstream's `starting`); folder rows drop out. */
+	launching: boolean;
+	setLaunching: (launching: boolean) => void;
 }
 
-/** The home launch folder: the chosen one, or the most recent; local state outside a provider. */
+/** The home launch folder (the chosen one, or the most recent) and its launching flag; local state outside a provider. */
 export function useHomeLaunchFolder(): HomeLaunchFolder {
 	const shared = useContext(LaunchFolderContext);
-	const local = useState<string | null>(null);
-	const [chosenId, setChosenId] = shared ?? local;
+	const localChosen = useState<string | null>(null);
+	const localLaunching = useState(false);
+	const [chosenId, setChosenId] = shared?.chosen ?? localChosen;
+	const [launching, setLaunching] = shared?.launching ?? localLaunching;
 	const {data: projects} = useQuery(projectsQueryOptions());
 	const {data: recents} = useQuery(recentSessionsQueryOptions(HOME_RECENT_LIMIT));
 
@@ -65,5 +79,7 @@ export function useHomeLaunchFolder(): HomeLaunchFolder {
 		projects: startProjects,
 		selected: startProjects.find((p) => p.id === chosenId) ?? startProjects[0],
 		select: setChosenId,
+		launching,
+		setLaunching,
 	};
 }

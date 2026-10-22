@@ -34,11 +34,16 @@ export function HomeComposer() {
 	const toast = useToast();
 	const activeSessions = useActiveSessionsIfAvailable();
 	const {data: defaults} = useQuery(composerDefaultsQueryOptions);
-	const [launching, setLaunching] = useState(false);
 	const [pendingLaunch, setPendingLaunch] = useState<PendingLaunch | null>(null);
 	const rootRef = useRef<HTMLDivElement>(null);
 
-	const {projects: startProjects, selected: project, select: setChosenProjectId} = useHomeLaunchFolder();
+	const {
+		projects: startProjects,
+		selected: project,
+		select: setChosenProjectId,
+		launching,
+		setLaunching,
+	} = useHomeLaunchFolder();
 	const {data: slashCommands} = useQuery(slashCommandsQueryOptions(project?.projectPath ?? undefined));
 	const {data: promptHistory} = useQuery(promptHistoryQueryOptions(undefined));
 
