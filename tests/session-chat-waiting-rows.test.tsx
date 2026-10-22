@@ -143,3 +143,52 @@ describe("JSONL waiting rows at the transcript tail", () => {
 		expect(onSendNow.mock.calls).toStrictEqual([[]]);
 	});
 });
+
+describe("pickup announcement", () => {
+	const user = (uuid: string, timestamp: string, text: string) => ({
+		type: "user",
+		uuid,
+		timestamp,
+		sessionId: "s-1",
+		message: {role: "user", content: text},
+	});
+	const dequeue = (timestamp: string) => ({
+		type: "queue-operation",
+		operation: "dequeue",
+		timestamp,
+		sessionId: "s-1",
+	});
+
+	function chat(records: unknown[]) {
+		const {lines, toolResultMap} = processTranscript(records);
+		return (
+			<SessionChat
+				sessionId="s-1"
+				lines={lines}
+				toolResultMap={toolResultMap}
+				shouldScrollToEnd={false}
+				transcriptMode="normal"
+				sessionLive
+			/>
+		);
+	}
+
+	it("announces read once the live session takes a waiting prompt into the transcript", () => {
+		const waiting = [assistant("a-1", "2026-01-01T00:00:00Z", "working"), enqueue("2026-01-01T00:00:01Z", "hi")];
+		const {container, rerender} = render(chat(waiting));
+		const statuses = () =>
+			[...container.querySelectorAll("[data-take-back-entry] > [role=status], [data-waiting-pickup-status]")].map(
+				(node) => node.textContent,
+			);
+		const before = statuses();
+
+		rerender(chat([...waiting, dequeue("2026-01-01T00:00:02Z"), user("u-1", "2026-01-01T00:00:02Z", "hi")]));
+
+		expect({before, after: statuses()}).toStrictEqual({before: ["unread", ""], after: ["read"]});
+	});
+
+	it("mounts no pickup live region once the session is no longer live", () => {
+		const container = renderRecords([enqueue("2026-01-01T00:00:01Z", "hi")], false);
+		expect(container.querySelectorAll("[data-waiting-pickup-status]").length).toBe(0);
+	});
+});

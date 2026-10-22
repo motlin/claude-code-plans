@@ -53,7 +53,7 @@ import {AssistantMessageActions, UserMessageActions} from "./message-actions";
 import {defined} from "../lib/defined";
 import {narrationProse} from "../lib/thinking-narration";
 import {messageHeading, messageText} from "../lib/transcript-action-targets";
-import {WaitingUserTurn} from "./waiting-user-turn";
+import {WaitingPickupStatus, WaitingUserTurn} from "./waiting-user-turn";
 import {assistantTurnDetails, userTurnDetails} from "../lib/turn-metadata";
 import {TurnChangesCard} from "./turn-changes-card";
 import {collectTurnChanges, type TurnChanges} from "../lib/turn-changes";
@@ -478,6 +478,7 @@ export const SessionChat = React.memo(function SessionChat({
 	const backgroundOutcomes = useMemo(() => backgroundLaunchOutcomes(lines, toolResultMap), [lines, toolResultMap]);
 	const compactBoundaries = useMemo(() => compactBoundariesBySummary(lines), [lines]);
 	const listedLines = useMemo(() => withQueuedPromptsAtTail(lines, sessionLive), [lines, sessionLive]);
+	const waitingIds = useMemo(() => queuedEntryIds(listedLines), [listedLines]);
 
 	useEffect(() => {
 		const container = containerRef.current;
@@ -654,6 +655,9 @@ export const SessionChat = React.memo(function SessionChat({
 											measurementKey={measurementKey}
 											measurementSource={measurementSource}
 										/>
+										{sessionLive && (
+											<WaitingPickupStatus key={`pickup-${sessionId}`} waitingIds={waitingIds} />
+										)}
 									</div>
 								</CompactBoundaryContext.Provider>
 							</BackgroundOutcomeContext.Provider>
@@ -1878,6 +1882,13 @@ function withLocalCommandProse(lines: SessionLine[]): SessionLine[] {
 	return result ?? lines;
 }
 
+/** The row id of each prompt waiting in the CLI's queue, as the transcript tail draws it. */
+function queuedEntryIds(lines: SessionLine[]): string[] {
+	return lines.flatMap((line) => (line.type === "queued-prompt" ? [queuedEntryId(line.lineIndex)] : []));
+}
+
+const queuedEntryId = (lineIndex: number): string => `queued-${lineIndex}`;
+
 /**
  * A prompt waiting in the CLI's queue is read after everything already written, so it sits after
  * the last other line, in enqueue order. Once the CLI is gone nothing will read it, so it is dropped.
@@ -2497,12 +2508,12 @@ function buildSessionListEntries(
 	const lastRecordIndex = lines.at(-1)?.lineIndex ?? 0;
 	for (const [position, line] of waitingPrompts.entries()) {
 		entries.push({
-			key: `queued-${line.lineIndex}`,
+			key: queuedEntryId(line.lineIndex),
 			startRecordIndex: lastRecordIndex + (position + 1) / (waitingPrompts.length + 1),
 			isPrompt: false,
 			kind: "human",
 			element: (
-				<QueuedWaitingTurn entryId={`queued-${line.lineIndex}`} text={line.content} head={position === 0} />
+				<QueuedWaitingTurn entryId={queuedEntryId(line.lineIndex)} text={line.content} head={position === 0} />
 			),
 		});
 	}

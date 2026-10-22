@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 
-import {cleanup, fireEvent, render} from "@testing-library/react";
+import {act, cleanup, fireEvent, render} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
-import {OptimisticWaitingTurn, WaitingUserTurn} from "../src/components/waiting-user-turn";
+import {OptimisticWaitingTurn, WaitingPickupStatus, WaitingUserTurn} from "../src/components/waiting-user-turn";
 
 afterEach(() => {
 	cleanup();
@@ -168,5 +168,53 @@ describe("OptimisticWaitingTurn", () => {
 			sendNow: container.querySelectorAll("[data-testid=awaiting-turn-send-now]").length,
 			alert: container.querySelector("[role=alert]")?.textContent,
 		}).toStrictEqual({sendNow: 0, alert: "pane gone"});
+	});
+});
+
+describe("waiting-row sr announcements", () => {
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it("announces unread while waiting, then read for 1400ms after pickup, then nothing", () => {
+		vi.useFakeTimers();
+		const {container, rerender} = render(<WaitingUserTurn entryId="queued-1" text="hi" head={false} />);
+		const status = () => container.querySelector("[role=status]")?.textContent;
+		const waiting = status();
+		rerender(<WaitingUserTurn entryId="queued-1" text="hi" head={false} delivered />);
+		const picked = status();
+		act(() => {
+			vi.advanceTimersByTime(1399);
+		});
+		const before = status();
+		act(() => {
+			vi.advanceTimersByTime(1);
+		});
+		expect({waiting, picked, before, after: status()}).toStrictEqual({
+			waiting: "unread",
+			picked: "read",
+			before: "read",
+			after: "",
+		});
+	});
+
+	it("announces read for 1400ms when a waiting prompt leaves the live session's queue", () => {
+		vi.useFakeTimers();
+		const {container, rerender} = render(<WaitingPickupStatus waitingIds={["queued-1", "queued-2"]} />);
+		const status = () => {
+			const node = container.querySelector("[role=status]");
+			return node === null ? null : {className: node.className, text: node.textContent};
+		};
+		const waiting = status();
+		rerender(<WaitingPickupStatus waitingIds={["queued-2"]} />);
+		const picked = status();
+		act(() => {
+			vi.advanceTimersByTime(1400);
+		});
+		expect({waiting, picked, after: status()}).toStrictEqual({
+			waiting: {className: "sr-only", text: ""},
+			picked: {className: "sr-only", text: "read"},
+			after: {className: "sr-only", text: ""},
+		});
 	});
 });

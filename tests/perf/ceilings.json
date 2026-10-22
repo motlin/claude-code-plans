@@ -61,17 +61,17 @@
 		"raisedAt": "2026-10-22"
 	},
 	"bundle.session.gzip": {
-		"ceiling": 565342,
+		"ceiling": 571208,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Lazy-loading the menu sheet presentation (src/components/ui/menu-sheet.tsx with the drag and drill-in code) took session cold JS from 565745 gzip / 1717849 raw at b194ff01 to 565342 gzip / 1709603 raw. The earlier 564719 / 1715487 figures for the lenient runtime schema twins (src/lib/lenient-schema.ts, src/lib/runtime-schemas.ts) were measured before that commit's final form. Ceilings set to the measurement; the 1% tolerance is unchanged.",
+		"reason": "Waiting-row features since 0364780c (waiting user turns, Send now, Unread and Read by Claude receipts, the read-pickup sr announcement in src/components/waiting-user-turn.tsx) took session cold JS from 565342 gzip / 1709603 raw to 571208 gzip / 1726510 raw at the pickup-announcement commit. Ceilings set to the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-10-22"
 	},
 	"bundle.session.raw": {
-		"ceiling": 1709603,
+		"ceiling": 1726510,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Lazy-loading the menu sheet presentation (src/components/ui/menu-sheet.tsx with the drag and drill-in code) took session cold JS from 565745 gzip / 1717849 raw at b194ff01 to 565342 gzip / 1709603 raw. The earlier 564719 / 1715487 figures for the lenient runtime schema twins (src/lib/lenient-schema.ts, src/lib/runtime-schemas.ts) were measured before that commit's final form. Ceilings set to the measurement; the 1% tolerance is unchanged.",
+		"reason": "Waiting-row features since 0364780c (waiting user turns, Send now, Unread and Read by Claude receipts, the read-pickup sr announcement in src/components/waiting-user-turn.tsx) took session cold JS from 565342 gzip / 1709603 raw to 571208 gzip / 1726510 raw at the pickup-announcement commit. Ceilings set to the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-10-22"
 	},
 	"client.coldHome.default.commitsToRows": {
