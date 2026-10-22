@@ -480,6 +480,51 @@ describe("processTranscript", () => {
 		});
 	});
 
+	describe("priority-aware queue replay", () => {
+		const queueOp = (operation: string, timestamp: string, content?: string) => ({
+			type: "queue-operation",
+			operation,
+			timestamp,
+			sessionId: "s-1",
+			...(content === undefined ? {} : {content}),
+		});
+		const notificationA = "<task-notification>A</task-notification>";
+		const notificationB = "<task-notification>B</task-notification>";
+
+		it("dequeues a waiting prompt before an earlier task notification", () => {
+			const records = [
+				queueOp("enqueue", "1999-12-31T00:00:01Z", notificationA),
+				queueOp("enqueue", "1999-12-31T00:00:02Z", "hi"),
+				queueOp("dequeue", "1999-12-31T00:00:03Z"),
+			];
+			expect(processTranscript(records).lines).toStrictEqual([
+				{
+					type: "queued-task-notification",
+					content: notificationA,
+					timestamp: "1999-12-31T00:00:01Z",
+					lineIndex: 0,
+				},
+			]);
+		});
+
+		it("dequeues task notifications of equal priority in order", () => {
+			const records = [
+				queueOp("enqueue", "1999-12-31T00:00:01Z", notificationA),
+				queueOp("enqueue", "1999-12-31T00:00:02Z", notificationB),
+				queueOp("dequeue", "1999-12-31T00:00:03Z"),
+			];
+			expect(processTranscript(records).lines).toStrictEqual([
+				{
+					type: "queued-task-notification",
+					content: notificationB,
+					timestamp: "1999-12-31T00:00:02Z",
+					lineIndex: 1,
+				},
+			]);
+			expect(processTranscript([...records, queueOp("dequeue", "1999-12-31T00:00:04Z")]).lines).toStrictEqual([]);
+		});
+	});
+
 	describe("queued commands absorbed mid-turn", () => {
 		const absorbedRemove = {
 			type: "queue-operation",

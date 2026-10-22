@@ -581,16 +581,27 @@ function artifactWatchEntries(
 
 type QueueOperationRecord = Extract<z.infer<typeof JsonlRecordSchema>, {type: "queue-operation"}>;
 
+/** The CLI's dequeue ranks: the first entry with the lowest rank goes next. */
+const QUEUE_PRIORITY_RANK = {now: 0, next: 1, later: 2} as const;
+
+/** A waiting queue entry, with its priority and the line its task notification would draw. */
+type QueuedEntry = {
+	content: string | undefined;
+	priority: keyof typeof QUEUE_PRIORITY_RANK;
+	line: z.infer<typeof QueuedTaskNotificationLineSchema> | null;
+};
+
 /**
  * Replays one queue operation: an enqueue joins the back (a task notification
- * also draws a line), a dequeue takes the front, a removal takes the first
+ * also draws a line), a dequeue takes the first entry of the highest priority
+ * (task notifications wait behind typed prompts), a removal takes the first
  * entry with its content, and popAll empties the queue. A taken entry's line
  * goes into `delivered`, for the caller to drop.
  */
 function trackQueue(
 	record: QueueOperationRecord,
 	lineIndex: number,
-	queued: {content: string | undefined; line: z.infer<typeof QueuedTaskNotificationLineSchema> | null}[],
+	queued: QueuedEntry[],
 	delivered: Set<ProcessedLine>,
 	sessionLines: ProcessedLine[],
 ): void {
@@ -602,17 +613,21 @@ function trackQueue(
 		case "enqueue": {
 			const {content} = record;
 			let line: z.infer<typeof QueuedTaskNotificationLineSchema> | null = null;
-			if (content?.startsWith("<task-notification>") === true) {
+			const isTaskNotification = content?.startsWith("<task-notification>") === true;
+			if (isTaskNotification) {
 				line = {type: "queued-task-notification", content, lineIndex};
 				if (record.timestamp !== undefined) line.timestamp = record.timestamp;
 				sessionLines.push(line);
 			}
-			queued.push({content, line});
+			queued.push({content, priority: isTaskNotification ? "later" : "next", line});
 			return;
 		}
-		case "dequeue":
-			take(0);
+		case "dequeue": {
+			const rank = Math.min(...queued.map((entry) => QUEUE_PRIORITY_RANK[entry.priority]));
+			const index = queued.findIndex((entry) => QUEUE_PRIORITY_RANK[entry.priority] === rank);
+			if (index !== -1) take(index);
 			return;
+		}
 		case "remove": {
 			const index = queued.findIndex((entry) => entry.content === record.content);
 			if (index !== -1) take(index);
@@ -652,8 +667,8 @@ function processRecordBatch(
 	// and pair on either the command uuid or the delivery id.
 	const absorbedQueueKeys = new Set<string>();
 	const queuedCommandLines = new Map<string, z.infer<typeof AttachmentLineSchema>>();
-	// The queue in order, each entry with the line its task notification would draw.
-	const queued: {content: string | undefined; line: z.infer<typeof QueuedTaskNotificationLineSchema> | null}[] = [];
+	// The queue in enqueue order.
+	const queued: QueuedEntry[] = [];
 	const delivered = new Set<ProcessedLine>();
 	// Per deferred_tools_delta uuid, the description each surfaced tool resolved to.
 	const surfacedDescriptions = new Map<string, Map<string, string | undefined>>();
