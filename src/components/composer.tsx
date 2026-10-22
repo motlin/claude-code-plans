@@ -49,6 +49,11 @@ const PLACEHOLDER: Record<ComposerVariant, string> = {
 	home: "Describe a task or ask a question",
 };
 
+/** Upstream's placeholder while Claude works: `{sendKey} to send, {queueKey} to queue for later`. */
+function workingPlaceholder(isMac: boolean): string {
+	return `⏎ to send, ${isMac ? "⌘⏎" : "Ctrl⏎"} to queue for later`;
+}
+
 const EDITOR_CLASS =
 	"block w-full resize-none overflow-y-auto bg-transparent py-1 pl-1 font-sans text-[14px]/[20px] text-primary [field-sizing:content] placeholder:text-[rgb(137,135,129)] focus:outline-none disabled:opacity-50";
 
@@ -292,6 +297,7 @@ export function Composer({
 	const {text: prompt, setText: setPrompt, clear: clearDraft} = useComposerDraft(draftKey);
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 	const hintId = useId();
+	const isMac = useIsMac();
 	const slashMenuId = useId();
 	const mentionMenuId = useId();
 	const [caret, setCaret] = useState(0);
@@ -732,7 +738,11 @@ export function Composer({
 									? fileMentionOptionId(mentionMenuId, mentionHighlighted)
 									: undefined
 						}
-						placeholder={PLACEHOLDER[variant]}
+						placeholder={
+							onStop !== undefined && onQueueForLater !== undefined
+								? workingPlaceholder(isMac)
+								: PLACEHOLDER[variant]
+						}
 						disabled={isStreaming || disabled}
 						rows={1}
 						enterKeyHint="enter"

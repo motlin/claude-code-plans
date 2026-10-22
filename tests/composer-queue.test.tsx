@@ -26,6 +26,7 @@ afterEach(() => {
 	localStorage.clear();
 	clearComposerQueues();
 	vi.useRealTimers();
+	vi.restoreAllMocks();
 });
 
 const ALICE: QueuedPrompt = {id: "q1", text: "Alice's first follow-up"};
@@ -515,6 +516,26 @@ describe("Composer while working", () => {
 			later: [["Alice's later prompt"], ["Bob's later prompt"]],
 			stops: [],
 		});
+	});
+
+	it("shows upstream's working placeholder with ⌘⏎ on Mac", () => {
+		vi.spyOn(navigator, "userAgent", "get").mockReturnValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)");
+		const textarea = renderComposer({onQueueForLater: () => {}, onStop: () => {}});
+
+		expect(textarea.placeholder).toBe("⏎ to send, ⌘⏎ to queue for later");
+	});
+
+	it("shows the working placeholder with Ctrl⏎ off Mac", () => {
+		vi.spyOn(navigator, "userAgent", "get").mockReturnValue("Mozilla/5.0 (X11; Linux x86_64)");
+		const textarea = renderComposer({onQueueForLater: () => {}, onStop: () => {}});
+
+		expect(textarea.placeholder).toBe("⏎ to send, Ctrl⏎ to queue for later");
+	});
+
+	it("keeps the idle placeholder when the live pane is not working", () => {
+		const textarea = renderComposer({onQueueForLater: () => {}});
+
+		expect(textarea.placeholder).toBe("Type / for commands");
 	});
 
 	it("swallows a repeated ⌘⏎ keydown", () => {
