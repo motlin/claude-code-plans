@@ -386,4 +386,184 @@ describe("SplitDropdownButton", () => {
 			});
 		});
 	});
+
+	describe("ghost look", () => {
+		const BASE = ["relative", "outline-none", "focus-visible:shadow-focus", "disabled:opacity-40"];
+		const GHOST_BUTTON = ["group/btn", "isolate", "inline-flex", "items-center", "rounded-r5"];
+		const RING = [
+			"shadow-[inset_0_0_0_1px_var(--split-ring,transparent)]",
+			"transition-[box-shadow]",
+			"duration-[60ms]",
+			"ease-[cubic-bezier(.165,.84,.44,1)]",
+			"[&:not([data-disabled])]:hover:[--split-ring:var(--color-border)]",
+			"data-[popup-open]:[--split-ring:var(--color-border)]",
+			"[&:not([data-disabled])]:has-[[aria-pressed=true]]:[--split-ring:var(--color-border)]",
+		];
+		const ROOT = ["relative", "inline-flex", "w-fit", "shrink-0", "items-stretch", "rounded-r5", "group/split"];
+		const PAINT = [
+			"absolute",
+			"inset-0",
+			"-z-[1]",
+			"rounded-[inherit]",
+			"p-[var(--split-inset)]",
+			"bg-clip-content",
+			"group-hover/btn:bg-fill-ghost-hover",
+			"group-aria-expanded/btn:bg-fill-ghost-hover",
+			"group-aria-pressed/btn:bg-accent-100/15",
+			"transition-[background-color,box-shadow,color]",
+			"duration-[60ms]",
+			"ease-[cubic-bezier(.165,.84,.44,1)]",
+		];
+		const STYLE = {
+			h: "24px",
+			tuck: "calc((var(--split-h) - 20px) / 2)",
+			inset: "min(calc(var(--split-tuck) / 2), 3px)",
+		};
+
+		function paintOf(button: HTMLElement) {
+			const paint = button.querySelector("[data-part=paint]");
+			return paint === null ? null : {hidden: paint.getAttribute("aria-hidden"), classes: [...paint.classList]};
+		}
+
+		function ghostLooks(root: HTMLElement, primaryButton: HTMLElement, caretButton: HTMLElement) {
+			const seamElement = root.children[1];
+			if (!(seamElement instanceof HTMLElement)) throw new Error("seam missing");
+			return {
+				root: [...root.classList],
+				style: {
+					h: root.style.getPropertyValue("--split-h"),
+					tuck: root.style.getPropertyValue("--split-tuck"),
+					inset: root.style.getPropertyValue("--split-inset"),
+				},
+				primary: [...primaryButton.classList],
+				primaryPaint: paintOf(primaryButton),
+				caret: [...caretButton.classList],
+				caretPaint: paintOf(caretButton),
+				seam: [...seamElement.classList],
+				seamChildren: seamElement.children.length,
+			};
+		}
+
+		it("renders the icon-only ghost with the ring, inset paint, caret tuck and widened caret hit area", () => {
+			render(
+				<SplitDropdownButton
+					variant="ghost"
+					icon={<svg data-testid="send-icon" />}
+					aria-label="Send"
+					menuLabel="More send options"
+					items={[{label: "Send later", onSelect: () => {}}]}
+					onPrimaryClick={() => {}}
+				/>,
+			);
+
+			expect(
+				ghostLooks(
+					screen.getByRole("group", {name: "Send"}),
+					screen.getByRole("button", {name: "Send"}),
+					screen.getByRole("button", {name: "More send options"}),
+				),
+			).toStrictEqual({
+				root: [...ROOT, ...RING],
+				style: STYLE,
+				primary: [
+					...BASE,
+					...GHOST_BUTTON,
+					"justify-center",
+					"aria-pressed:text-accent-100",
+					"size-[var(--split-h)]",
+					"group-data-[popup-open]/split:pointer-events-none",
+				],
+				primaryPaint: {hidden: "true", classes: PAINT},
+				caret: [
+					...BASE,
+					...GHOST_BUTTON,
+					"justify-center",
+					"h-[var(--split-h)]",
+					"w-auto",
+					"px-1",
+					"-ms-[var(--split-tuck)]",
+					"pointer-events-none",
+					"after:absolute",
+					"after:inset-y-0",
+					"after:content-['']",
+					"after:pointer-events-auto",
+					"after:start-[calc(var(--split-tuck)-1px)]",
+					"after:-end-[calc(3px+var(--split-tuck))]",
+				],
+				caretPaint: {hidden: "true", classes: PAINT},
+				seam: ["w-px", "shrink-0", "self-stretch"],
+				seamChildren: 0,
+			});
+		});
+
+		it("renders the labeled ghost with flush inner paints and a caret hit area past its end", () => {
+			renderSplit({variant: "ghost"});
+
+			expect(ghostLooks(group(), primary(), caret())).toStrictEqual({
+				root: [
+					...ROOT,
+					...RING,
+					"[&>[data-cds-segment]:first-child_[data-part=paint]]:pe-0",
+					"[&>[data-cds-segment]:last-child_[data-part=paint]]:ps-0",
+				],
+				style: STYLE,
+				primary: [
+					...BASE,
+					...GHOST_BUTTON,
+					"aria-pressed:text-accent-100",
+					"h-[var(--split-h)]",
+					"min-w-0",
+					"shrink",
+					"text-[13px]/[19px]",
+					"ps-2",
+					"pe-[5px]",
+				],
+				primaryPaint: {hidden: "true", classes: PAINT},
+				caret: [
+					...BASE,
+					...GHOST_BUTTON,
+					"justify-center",
+					"h-[var(--split-h)]",
+					"w-auto",
+					"ps-0",
+					"pe-1",
+					"after:absolute",
+					"after:inset-y-0",
+					"after:start-0",
+					"after:-end-2",
+					"after:content-['']",
+				],
+				caretPaint: {hidden: "true", classes: PAINT},
+				seam: ["w-px", "shrink-0", "self-stretch"],
+				seamChildren: 0,
+			});
+		});
+
+		it("uses a 28px control height for the touch ghost", () => {
+			renderSplit({variant: "ghost", size: "touch"});
+
+			expect(group().style.getPropertyValue("--split-h")).toBe("28px");
+		});
+
+		it("marks the root data-popup-open while the ghost menu is open", async () => {
+			renderSplit({variant: "ghost"});
+
+			const before = group().hasAttribute("data-popup-open");
+			await openByClick();
+
+			expect({before, open: group().getAttribute("data-popup-open")}).toStrictEqual({before: false, open: ""});
+		});
+
+		it("sets aria-pressed on a pressed ghost primary", () => {
+			renderSplit({variant: "ghost", pressed: true});
+
+			expect(primary().getAttribute("aria-pressed")).toBe("true");
+		});
+
+		it("adds no paint layer to the joined variants", () => {
+			renderSplit({variant: "primary"});
+
+			expect(group().querySelectorAll("[data-part=paint]").length).toBe(0);
+		});
+	});
 });

@@ -1,5 +1,5 @@
 import {ChevronDown, Loader2} from "lucide-react";
-import {Fragment, type ReactNode, useRef, useState} from "react";
+import {type CSSProperties, Fragment, type ReactNode, useRef, useState} from "react";
 
 import {Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger} from "./menu";
 import {Shortcut} from "./shortcut";
@@ -75,6 +75,43 @@ const JOINED_LOOKS: Record<JoinedVariant, {root: string; fill: string; seam: str
 	},
 };
 
+/*
+ * Upstream's ghost split: a transparent pair whose group ring lights on hover, while open or while pressed.
+ * Each segment paints through an inset content-box layer, and the icon-only caret tucks under the primary
+ * with a pointer target that reaches past its end.
+ */
+const GHOST_ROOT_CLASS =
+	"shadow-[inset_0_0_0_1px_var(--split-ring,transparent)] transition-[box-shadow] duration-[60ms] ease-[cubic-bezier(.165,.84,.44,1)] [&:not([data-disabled])]:hover:[--split-ring:var(--color-border)] data-[popup-open]:[--split-ring:var(--color-border)] [&:not([data-disabled])]:has-[[aria-pressed=true]]:[--split-ring:var(--color-border)]";
+const GHOST_LABELED_ROOT_CLASS =
+	"[&>[data-cds-segment]:first-child_[data-part=paint]]:pe-0 [&>[data-cds-segment]:last-child_[data-part=paint]]:ps-0";
+const GHOST_BUTTON_CLASS = "group/btn isolate inline-flex items-center rounded-r5";
+const GHOST_PAINT_CLASS = `absolute inset-0 -z-[1] rounded-[inherit] p-[var(--split-inset)] bg-clip-content group-hover/btn:bg-fill-ghost-hover group-aria-expanded/btn:bg-fill-ghost-hover group-aria-pressed/btn:bg-accent-100/15 ${PAINT_TRANSITION}`;
+const GHOST_ICON_PRIMARY_CLASS =
+	"justify-center aria-pressed:text-accent-100 size-[var(--split-h)] group-data-[popup-open]/split:pointer-events-none";
+const GHOST_ICON_CARET_CLASS =
+	"justify-center h-[var(--split-h)] w-auto px-1 -ms-[var(--split-tuck)] pointer-events-none after:absolute after:inset-y-0 after:content-[''] after:pointer-events-auto after:start-[calc(var(--split-tuck)-1px)] after:-end-[calc(3px+var(--split-tuck))]";
+const GHOST_LABELED_PRIMARY_CLASS =
+	"aria-pressed:text-accent-100 h-[var(--split-h)] min-w-0 shrink text-[13px]/[19px] ps-2 pe-[5px]";
+const GHOST_LABELED_CARET_CLASS =
+	"justify-center h-[var(--split-h)] w-auto ps-0 pe-1 after:absolute after:inset-y-0 after:start-0 after:-end-2 after:content-['']";
+const SPLIT_HEIGHT: Record<NonNullable<SplitDropdownButtonProps["size"]>, string> = {
+	default: "24px",
+	sm: "20px",
+	touch: "28px",
+};
+
+function ghostStyle(size: NonNullable<SplitDropdownButtonProps["size"]>): CSSProperties {
+	return {
+		"--split-h": SPLIT_HEIGHT[size],
+		"--split-tuck": "calc((var(--split-h) - 20px) / 2)",
+		"--split-inset": "min(calc(var(--split-tuck) / 2), 3px)",
+	};
+}
+
+function GhostPaint() {
+	return <span aria-hidden="true" data-part="paint" className={GHOST_PAINT_CLASS} />;
+}
+
 function joinClasses(...classes: (string | undefined | false)[]): string {
 	return classes.filter((value) => typeof value === "string" && value !== "").join(" ");
 }
@@ -143,10 +180,17 @@ export function SplitDropdownButton({
 
 	const name = groupLabel ?? (typeof label === "string" ? label : (ariaLabel ?? menuLabel));
 	const joined = variant === "ghost" ? undefined : JOINED_LOOKS[variant];
-	const rootClass = joinClasses(ROOT_CLASS, joined?.root, className);
+	const iconOnly = label === undefined;
+	const rootClass = joined
+		? joinClasses(ROOT_CLASS, joined.root, className)
+		: joinClasses(ROOT_CLASS, GHOST_ROOT_CLASS, !iconOnly && GHOST_LABELED_ROOT_CLASS, className);
 	const primaryClass = joined
 		? joinClasses(BUTTON_CLASS, "inline-flex items-center", JOINED_PRIMARY_CLASS, joined.fill, PAINT_TRANSITION)
-		: `${BUTTON_CLASS} inline-flex min-w-0 shrink items-center`;
+		: joinClasses(
+				BUTTON_CLASS,
+				GHOST_BUTTON_CLASS,
+				iconOnly ? GHOST_ICON_PRIMARY_CLASS : GHOST_LABELED_PRIMARY_CLASS,
+			);
 	const caretClass = joined
 		? joinClasses(
 				BUTTON_CLASS,
@@ -155,7 +199,7 @@ export function SplitDropdownButton({
 				joined.fill,
 				PAINT_TRANSITION,
 			)
-		: `${BUTTON_CLASS} inline-flex items-center justify-center`;
+		: joinClasses(BUTTON_CLASS, GHOST_BUTTON_CLASS, iconOnly ? GHOST_ICON_CARET_CLASS : GHOST_LABELED_CARET_CLASS);
 	/* Upstream mutes the caret icon only on the enabled secondary/ghost looks. */
 	const caretIconClass = joinClasses(
 		size === "sm" ? "size-3" : "size-4",
@@ -172,6 +216,7 @@ export function SplitDropdownButton({
 			role="group"
 			aria-label={name}
 			className={rootClass}
+			{...(joined ? {} : {style: ghostStyle(size)})}
 			{...(open ? {"data-popup-open": ""} : {})}
 			{...(disabled ? {"data-disabled": ""} : {})}
 		>
@@ -192,6 +237,7 @@ export function SplitDropdownButton({
 						{...(!busy && ariaDisabled !== undefined ? {"aria-disabled": ariaDisabled} : {})}
 						{...(pressed === undefined ? {} : {"aria-pressed": pressed})}
 					>
+						{!joined && <GhostPaint />}
 						{icon !== undefined && <span className={busy ? "opacity-0" : undefined}>{icon}</span>}
 						{labelSpan}
 						{shortcut !== undefined && label !== undefined && (
@@ -220,6 +266,7 @@ export function SplitDropdownButton({
 						disabled={disabled}
 						className={caretClass}
 					>
+						{!joined && <GhostPaint />}
 						<ChevronDown aria-hidden="true" className={caretIconClass} />
 					</MenuTrigger>
 					<MenuContent side={side} align={align} sideOffset={6}>
