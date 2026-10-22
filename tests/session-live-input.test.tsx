@@ -6,6 +6,7 @@ import {Composer} from "../src/components/composer";
 import {useChatStream} from "../src/hooks/use-chat-stream";
 import {useLiveHerdrPrompt} from "../src/components/use-live-herdr-prompt";
 import {getSessionPromptBehavior} from "../src/components/session-prompt-behavior";
+import {type SessionLine, processTranscript} from "../src/lib/transcript";
 
 vi.mock("../src/components/session-chat", () => ({
 	SessionChat: () => null,
@@ -160,8 +161,8 @@ describe("session live input", () => {
 				}),
 		);
 		const {result, rerender} = renderHook(
-			({recordCount}) => useLiveHerdrPrompt("session-test-100", recordCount, postPrompt),
-			{initialProps: {recordCount: 100}},
+			({recordCount, lines}) => useLiveHerdrPrompt("session-test-100", recordCount, lines, postPrompt),
+			{initialProps: {recordCount: 100, lines: [] as SessionLine[]}},
 		);
 
 		act(() => {
@@ -183,7 +184,20 @@ describe("session live input", () => {
 			prompt: "Continue Alice's test",
 		});
 
-		rerender({recordCount: 101});
+		rerender({
+			recordCount: 101,
+			lines: processTranscript(
+				[
+					{
+						type: "user",
+						uuid: "u-1",
+						sessionId: "s-1",
+						message: {role: "user", content: "Continue Alice's test"},
+					},
+				],
+				100,
+			).lines,
+		});
 		await waitFor(() => {
 			expect(result.current.state).toStrictEqual({error: "", isPending: false, prompt: ""});
 		});
@@ -193,7 +207,7 @@ describe("session live input", () => {
 		const postPrompt = vi
 			.fn<(sessionId: string, prompt: string) => Promise<void>>()
 			.mockRejectedValue(new Error("Fabricated live prompt failure"));
-		const {result} = renderHook(() => useLiveHerdrPrompt("session-test-100", 100, postPrompt));
+		const {result} = renderHook(() => useLiveHerdrPrompt("session-test-100", 100, [], postPrompt));
 
 		await act(async () => {
 			await result.current.send("Continue Alice's test");

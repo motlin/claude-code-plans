@@ -132,7 +132,7 @@ describe("409 agent_not_ready → queued", () => {
 		const postPrompt = vi
 			.fn<(sessionId: string, prompt: string) => Promise<void>>()
 			.mockRejectedValue(new HerdrRequestError("agent is working", 409, "agent_not_ready"));
-		const {result} = renderHook(() => useLiveHerdrPrompt("session-alice", 100, postPrompt));
+		const {result} = renderHook(() => useLiveHerdrPrompt("session-alice", 100, [], postPrompt));
 
 		let delivery: DeliveryResult | undefined;
 		await act(async () => {
@@ -149,7 +149,7 @@ describe("409 agent_not_ready → queued", () => {
 		const postPrompt = vi
 			.fn<(sessionId: string, prompt: string, options: {midTurn?: boolean}) => Promise<void>>()
 			.mockResolvedValue(undefined);
-		const {result} = renderHook(() => useLiveHerdrPrompt("session-alice", 100, postPrompt));
+		const {result} = renderHook(() => useLiveHerdrPrompt("session-alice", 100, [], postPrompt));
 
 		await act(async () => {
 			await result.current.send("Alice's prompt");
@@ -169,7 +169,7 @@ describe("409 agent_not_ready → queued", () => {
 			.fn<(sessionId: string, prompt: string) => Promise<void>>()
 			.mockResolvedValueOnce(undefined)
 			.mockRejectedValueOnce(new Error("Fabricated failure"));
-		const {result} = renderHook(() => useLiveHerdrPrompt("session-alice", 100, postPrompt));
+		const {result} = renderHook(() => useLiveHerdrPrompt("session-alice", 100, [], postPrompt));
 
 		const deliveries: DeliveryResult[] = [];
 		await act(async () => {

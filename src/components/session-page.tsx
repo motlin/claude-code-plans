@@ -518,7 +518,7 @@ function SessionView({
 			: (target: {sessionId: string; atMessage: string}) => {
 					forkSession({...target, cwd: forkCwd});
 				};
-	const liveHerdrPrompt = useLiveHerdrPrompt(sessionId, endIndex);
+	const liveHerdrPrompt = useLiveHerdrPrompt(sessionId, endIndex, processed.lines);
 	const promptBehavior = getSessionPromptBehavior(sessionId, isActive, herdr);
 	const stopAvailable = canStopResponse({
 		hasLivePane: promptBehavior.hasLivePane,
