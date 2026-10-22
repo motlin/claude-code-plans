@@ -1598,7 +1598,7 @@ describe("SessionChat Agent row opening the Subagent pane", () => {
 		{
 			state: "pending",
 			records: toolCallRecords([AGENT_CALL]).slice(0, 1),
-			expectedClasses: ["truncate min-w-0 text-body text-primary tool-shimmer"],
+			expectedClasses: ["relative truncate min-w-0 text-body"],
 		},
 		{
 			state: "failed",

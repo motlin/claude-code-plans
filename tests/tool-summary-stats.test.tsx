@@ -379,17 +379,17 @@ describe("in-flight tool rows", () => {
 		input: {command: "gh pr view 1954", description: "Poll PR #1954 for new activity from Don or Moh"},
 	};
 
-	it("shimmers a pending single row with its progressive label in primary ink", () => {
+	it("shimmers a pending single row with its progressive label in ShimmerText", () => {
 		const html = renderRun([{...poll, pending: true}]);
 		expect(html).toContain(
-			'<span class="truncate min-w-0 text-body text-primary tool-shimmer">Polling PR #1954 for new activity from Don or Moh</span>',
+			'<span data-cds="ShimmerText" data-shimmering="true" dir="auto" class="relative truncate min-w-0 text-body">Polling PR #1954 for new activity from Don or Moh<span data-cds-shimmer-clone="" aria-hidden="true" inert="">Polling PR #1954 for new activity from Don or Moh</span></span>',
 		);
 	});
 
 	it("switches a resolved row back to the muted done label", () => {
 		const html = renderRun([poll]);
 		expect({
-			shimmer: html.includes("tool-shimmer"),
+			shimmer: html.includes("ShimmerText"),
 			done: html.includes(">Polled PR #1954 for new activity from Don or Moh<"),
 		}).toStrictEqual({
 			shimmer: false,
@@ -404,7 +404,7 @@ describe("in-flight tool rows", () => {
 		]);
 		const button = summaryButton(html);
 		expect(button).toContain(
-			'<span class="text-body truncate min-w-0 text-primary tool-shimmer">Polling PR #1954 for new activity from Don or Moh</span>',
+			'<span data-cds="ShimmerText" data-shimmering="true" dir="auto" class="relative text-body truncate min-w-0">Polling PR #1954 for new activity from Don or Moh<span data-cds-shimmer-clone="" aria-hidden="true" inert="">Polling PR #1954 for new activity from Don or Moh</span></span>',
 		);
 	});
 });

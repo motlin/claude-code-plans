@@ -215,7 +215,8 @@ describe("an in-flight call's row", () => {
 		return {
 			text: row?.textContent,
 			state: row?.getAttribute("data-state") ?? null,
-			shimmer: row?.querySelector(".tool-shimmer")?.textContent ?? null,
+			shimmer: row?.querySelector("[data-cds=ShimmerText]")?.firstChild?.textContent ?? null,
+			clone: row?.querySelector("[data-cds-shimmer-clone][aria-hidden=true][inert]")?.textContent ?? null,
 			srOnly: row?.querySelector(".sr-only")?.textContent ?? null,
 		};
 	}
@@ -226,15 +227,17 @@ describe("an in-flight call's row", () => {
 			bare: agentRowFacts(renderBackgroundAgent("Mobile audit: session page", new Set(["toolu_agent"]))),
 		}).toStrictEqual({
 			inflected: {
-				text: "Doing task M1-42running",
+				text: "Doing task M1-42Doing task M1-42running",
 				state: "busy",
 				shimmer: "Doing task M1-42",
+				clone: "Doing task M1-42",
 				srOnly: "running",
 			},
 			bare: {
-				text: "Mobile audit: session pagerunning",
+				text: "Mobile audit: session pageMobile audit: session pagerunning",
 				state: "busy",
 				shimmer: "Mobile audit: session page",
+				clone: "Mobile audit: session page",
 				srOnly: "running",
 			},
 		});
@@ -245,6 +248,7 @@ describe("an in-flight call's row", () => {
 			text: "Ran agentDo task M1-42",
 			state: null,
 			shimmer: null,
+			clone: null,
 			srOnly: null,
 		});
 	});

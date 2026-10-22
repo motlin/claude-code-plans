@@ -1082,32 +1082,80 @@
 	.working-marker-shimmer {
 		animation: dot-blink 1.2s ease-in-out infinite;
 	}
+}
 
-	/* Upstream's ShimmerText on an in-flight tool row: a lighter band sweeps across the
-	   label's ink through a background-clipped gradient. */
-	.tool-shimmer {
-		background-image: linear-gradient(
-			90deg,
-			currentColor 0%,
-			currentColor 40%,
-			color-mix(in srgb, currentColor 35%, transparent) 50%,
-			currentColor 60%,
-			currentColor 100%
-		);
-		background-size: 200% 100%;
-		-webkit-background-clip: text;
-		background-clip: text;
-		-webkit-text-fill-color: transparent;
-		animation: tool-shimmer 2s linear infinite;
+/* Upstream's ShimmerText (claude.ai/code cds): the text in secondary ink (dark: muted)
+   with an aria-hidden clone masked to the glyphs, whose :after band sweeps a 30%-white
+   peak across them on a 3s held loop. Reduced motion hides the clone. */
+[data-cds="ShimmerText"] {
+	--shimmer-fill: var(--upstream-text-secondary);
+	--shimmer-peak: color-mix(in srgb, var(--shimmer-fill) 30%, white);
+	-webkit-text-fill-color: var(--shimmer-fill);
+}
+
+.dark [data-cds="ShimmerText"] {
+	--shimmer-fill: var(--upstream-text-muted);
+}
+
+[data-cds-shimmer-clone] {
+	box-sizing: border-box;
+	padding: inherit;
+	white-space: inherit;
+	text-overflow: inherit;
+	pointer-events: none;
+	user-select: none;
+	-webkit-text-fill-color: transparent;
+	mask-image: linear-gradient(#000 0 0);
+	-webkit-mask-clip: text;
+	mask-clip: text;
+	display: block;
+	position: absolute;
+	inset: 0;
+	overflow: clip;
+}
+
+[data-cds-shimmer-clone]::after {
+	content: "";
+	background-image: linear-gradient(120deg, transparent 37.5%, var(--shimmer-peak) 50%, transparent 62.5%);
+	animation: 3s linear infinite cds-shimmer-text-band;
+	position: absolute;
+	inset: 0 -300% 0 0;
+	translate: -62.5%;
+}
+
+[data-cds-shimmer-clone]:dir(rtl)::after {
+	background-image: linear-gradient(240deg, transparent 37.5%, var(--shimmer-peak) 50%, transparent 62.5%);
+	animation-name: cds-shimmer-text-band-rtl;
+	translate: -12.5%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	[data-cds-shimmer-clone] {
+		display: none;
 	}
 }
 
-@keyframes tool-shimmer {
-	from {
-		background-position: 100% 0;
+@keyframes cds-shimmer-text-band {
+	0%,
+	15% {
+		animation-timing-function: cubic-bezier(0.714, 0.121, 0.211, 0.888);
+		translate: -62.5%;
 	}
+	85%,
 	to {
-		background-position: -100% 0;
+		translate: -12.5%;
+	}
+}
+
+@keyframes cds-shimmer-text-band-rtl {
+	0%,
+	15% {
+		animation-timing-function: cubic-bezier(0.714, 0.121, 0.211, 0.888);
+		translate: -12.5%;
+	}
+	85%,
+	to {
+		translate: -62.5%;
 	}
 }
 

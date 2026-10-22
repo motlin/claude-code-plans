@@ -11,12 +11,14 @@ import React, {
 	useRef,
 	useState,
 	type Context,
+	type ReactNode,
 } from "react";
 import {flushSync} from "react-dom";
 import {AlertTriangle, Bot, FileWarning, GitBranch, Lock, Palette, Plug, Zap} from "lucide-react";
 import {assertNever} from "../lib/assert-never";
 import {isWithdrawnQuestion, type AskedCall} from "../lib/ask-user-question";
 import {ErrorCardShell} from "./error-card-shell";
+import {ShimmerText} from "./shimmer-text";
 import {ProseMarkdown} from "./file-refs";
 import {MarkdownArticle} from "./markdown-article";
 import {TruncatedContent} from "./truncated-content";
@@ -4594,8 +4596,14 @@ function RunningElapsed({startedAt}: {startedAt: string | undefined}) {
 	);
 }
 
-/** Upstream draws an in-flight tool label in primary ink with a shimmer sweep. */
-const RUNNING_LABEL_CLASS = "text-primary tool-shimmer";
+/**
+ * A row label span in `ink`, or upstream's ShimmerText when the ink is null (the
+ * label of an in-flight call).
+ */
+function InkedLabel({className, ink, children}: {className: string; ink: string | null; children: ReactNode}) {
+	if (ink === null) return <ShimmerText {...(className === "" ? {} : {className})}>{children}</ShimmerText>;
+	return <span className={className === "" ? ink : `${className} ${ink}`}>{children}</span>;
+}
 
 /**
  * Upstream wraps each status disclosure in a TurnStatus with a static -4px
@@ -4690,7 +4698,8 @@ function ToolCallRow({
 				: backgroundOutcome === "failed"
 					? "Failed"
 					: null;
-	const labelClass = call.isError ? ink : busy ? RUNNING_LABEL_CLASS : isSkill ? "text-secondary" : ink;
+	// A null ink marks an in-flight label, which upstream draws as ShimmerText.
+	const labelClass = call.isError ? ink : busy ? null : isSkill ? "text-secondary" : ink;
 	const isCompletedPaneAgent = paneAgentId !== undefined && !call.isError && !busy;
 	// Expandable rows reach the disclosure below; Agent navigation and nested rows are not statuses.
 	// Upstream draws every standalone status row in one 24px padded layout, whether it
@@ -4772,29 +4781,39 @@ function ToolCallRow({
 			{joinedLabel ? (
 				// Upstream's grouped row: label and parameter in one <bdi>, joined by a plain space.
 				<bdi className="truncate min-w-0 text-body">
-					<span className={labelClass}>{label}</span> <span className={paramInk}>{paramContent}</span>
+					<InkedLabel className="" ink={labelClass}>
+						{label}
+					</InkedLabel>{" "}
+					<InkedLabel className="" ink={paramInk}>
+						{paramContent}
+					</InkedLabel>
 				</bdi>
 			) : (
 				<>
 					{label && (
-						<span className={`${isPhraseLabel ? "truncate min-w-0" : "shrink-0"} text-body ${labelClass}`}>
-							{label}
-						</span>
-					)}
-					{displayParam && (
-						<span
-							className={
-								isFileParam
-									? "text-body text-primary truncate min-w-0"
-									: `truncate min-w-0 text-body ${paramInk}`
-							}
+						<InkedLabel
+							className={`${isPhraseLabel ? "truncate min-w-0" : "shrink-0"} text-body`}
+							ink={labelClass}
 						>
-							{paramContent}
-						</span>
+							{label}
+						</InkedLabel>
 					)}
+					{displayParam &&
+						(isFileParam ? (
+							<span className="text-body text-primary truncate min-w-0">{paramContent}</span>
+						) : (
+							<InkedLabel className="truncate min-w-0 text-body" ink={paramInk}>
+								{paramContent}
+							</InkedLabel>
+						))}
 				</>
 			)}
-			{rangeLabel && <span className={`text-body ${labelClass} truncate min-w-0`}>{rangeLabel}</span>}
+			{rangeLabel &&
+				(labelClass === null ? (
+					<ShimmerText className="text-body truncate min-w-0">{rangeLabel}</ShimmerText>
+				) : (
+					<span className={`text-body ${labelClass} truncate min-w-0`}>{rangeLabel}</span>
+				))}
 			{runningRow && <RunningElapsed startedAt={call.startedAt} />}
 			{busyAgent && <span className="sr-only">running</span>}
 			{liveOutput !== null && (
@@ -5012,9 +5031,7 @@ function ToolCallSummary({
 									<SummarySpans segments={summary.segments} />
 								</span>
 							) : (
-								<span className={`text-body truncate min-w-0 ${RUNNING_LABEL_CLASS}`}>
-									{runningText}
-								</span>
+								<ShimmerText className="text-body truncate min-w-0">{runningText}</ShimmerText>
 							)}
 						</span>
 						{hasDiffStats(summary) && <DiffStatPill added={summary.added} removed={summary.removed} />}
