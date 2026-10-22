@@ -13,9 +13,10 @@ import React, {
 	type Context,
 } from "react";
 import {flushSync} from "react-dom";
-import {AlertTriangle, Bot, FileWarning, Gauge, GitBranch, Lock, Palette, Plug, Zap} from "lucide-react";
+import {AlertTriangle, Bot, FileWarning, GitBranch, Lock, Palette, Plug, Zap} from "lucide-react";
 import {assertNever} from "../lib/assert-never";
 import {isWithdrawnQuestion, type AskedCall} from "../lib/ask-user-question";
+import {ErrorCardShell} from "./error-card-shell";
 import {ProseMarkdown} from "./file-refs";
 import {MarkdownArticle} from "./markdown-article";
 import {TruncatedContent} from "./truncated-content";
@@ -4296,26 +4297,14 @@ function AttributionRow({line, verbose}: {line: MessageSessionLine; verbose: boo
 }
 
 /**
- * Upstream's usage-limit error card: a danger gauge and the limit's headline on
- * a tinted band, then its hint. Both rows contain their inline size, so the
- * card holds its 480px minimum and the hint wraps inside it. Upstream's Try
+ * Upstream's usage-limit error card: the shared error card shell with a danger
+ * gauge, the limit's headline and its hint. Upstream's Try
  * again and Open usage settings are left out: a resend is not safe from here
  * and the settings fix is billing.
  */
 function UsageLimitCardView({card}: {card: UsageLimitCard}) {
 	return (
-		<div
-			data-usage-limit-card=""
-			className="card-outline-layer flex w-fit min-w-[min(480px,100%)] max-w-full flex-col overflow-clip rounded-r7"
-		>
-			<div className="flex items-center gap-3 bg-alpha-1 px-3 py-2 contain-inline-size">
-				<Gauge aria-hidden="true" className="size-4 shrink-0 text-danger-000" />
-				<span className="text-body text-primary">{card.headline}</span>
-			</div>
-			<div className="flex flex-col gap-2 px-3 pt-3 pb-2 last:pb-3 empty:hidden contain-inline-size">
-				<p className="text-body text-secondary whitespace-pre-line break-words">{card.hint}</p>
-			</div>
-		</div>
+		<ErrorCardShell data={{"data-usage-limit-card": ""}} headline={card.headline} hint={card.hint} icon="gauge" />
 	);
 }
 

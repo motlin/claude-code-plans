@@ -2312,7 +2312,7 @@ describe("SessionChat usage-limit card", () => {
 			icon: found?.querySelector("svg")?.getAttribute("class"),
 			headline: found?.firstElementChild?.textContent,
 			hint: found
-				?.querySelector("p")
+				?.querySelector("span.text-secondary")
 				?.textContent.startsWith(
 					"Turn on usage credits to keep working past your plan limit. Your weekly limit resets",
 				),
@@ -2321,9 +2321,9 @@ describe("SessionChat usage-limit card", () => {
 			rawText: showsRawText(html),
 			apiErrorHeader: html.includes("API Error"),
 		}).toStrictEqual({
-			shell: "card-outline-layer flex w-fit min-w-[min(480px,100%)] max-w-full flex-col overflow-clip rounded-r7",
+			shell: "card-outline-layer flex w-fit min-w-[min(480px,100%)] max-w-full flex-col overflow-clip rounded-r7 select-text",
 			header: "flex items-center gap-3 bg-alpha-1 px-3 py-2 contain-inline-size",
-			body: "flex flex-col gap-2 px-3 pt-3 pb-2 last:pb-3 empty:hidden contain-inline-size",
+			body: "flex flex-col gap-3 px-3 pt-3 pb-2 last:pb-3 empty:hidden contain-inline-size",
 			icon: "lucide lucide-gauge size-4 shrink-0 text-danger-000",
 			headline: "Weekly limit reached",
 			hint: true,
@@ -2339,7 +2339,7 @@ describe("SessionChat usage-limit card", () => {
 
 		expect({
 			headline: card(html)?.firstElementChild?.textContent,
-			hint: card(html)?.querySelector("p")?.textContent,
+			hint: card(html)?.querySelector("span.text-secondary")?.textContent,
 			settings: card(html)?.querySelector("a"),
 			rawText: showsRawText(html),
 		}).toStrictEqual({
