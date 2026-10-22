@@ -1,8 +1,18 @@
 import {useQuery} from "@tanstack/react-query";
-import {createContext, type Dispatch, type ReactNode, type SetStateAction, useContext, useMemo, useState} from "react";
+import {
+	createContext,
+	type Dispatch,
+	type ReactNode,
+	type SetStateAction,
+	useContext,
+	useEffect,
+	useMemo,
+	useState,
+} from "react";
 
 import {projectsQueryOptions} from "../../lib/api/projects";
 import {recentSessionsQueryOptions} from "../../lib/api/sessions";
+import {onHomeLaunchFolderRequest, takePendingHomeLaunchFolder} from "../../lib/home-composer-focus";
 import {startSessionProjects, type StartProject} from "../../lib/palette-start-session";
 
 /** Same recents page the ⌘K palette reads, so both share one cached query. */
@@ -12,9 +22,18 @@ type ChosenFolder = [string | null, Dispatch<SetStateAction<string | null>>];
 
 const LaunchFolderContext = createContext<ChosenFolder | null>(null);
 
-/** Shares the home launch folder between the start card and the docked composer. */
+/**
+ * Shares the home launch folder between the start card and the docked composer, starting from a
+ * folder requested before home mounted and following later requests.
+ */
 export function HomeLaunchFolderProvider({children}: Readonly<{children: ReactNode}>) {
 	const chosen = useState<string | null>(null);
+	const [, setChosenId] = chosen;
+	useEffect(() => {
+		const pending = takePendingHomeLaunchFolder();
+		if (pending !== null) setChosenId(pending);
+		return onHomeLaunchFolderRequest(setChosenId);
+	}, [setChosenId]);
 	return <LaunchFolderContext.Provider value={chosen}>{children}</LaunchFolderContext.Provider>;
 }
 

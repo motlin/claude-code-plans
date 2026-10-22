@@ -1,11 +1,15 @@
 // @vitest-environment jsdom
 
-import {cleanup, fireEvent, render, screen, within} from "@testing-library/react";
+import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
+import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/react";
 import {useEffect, useRef} from "react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
-import {StartCard} from "../src/components/home/start-card";
-import {onHomeComposerFocusRequest} from "../src/lib/home-composer-focus";
+import {HOME_RECENT_LIMIT, HomeLaunchFolderProvider} from "../src/components/home/launch-folder";
+import {HomeStartCard, StartCard} from "../src/components/home/start-card";
+import {projectsQueryOptions} from "../src/lib/api/projects";
+import {recentSessionsQueryOptions} from "../src/lib/api/sessions";
+import {onHomeComposerFocusRequest, requestHomeLaunchFolder} from "../src/lib/home-composer-focus";
 import type {StartProject} from "../src/lib/palette-start-session";
 
 const PROJECTS: StartProject[] = [1, 2, 3, 4, 5].map((n) => ({
@@ -107,5 +111,61 @@ describe("StartCard", () => {
 			calls: onSelect.mock.calls,
 			focused: document.activeElement?.getAttribute("aria-label"),
 		}).toStrictEqual({calls: [["-users-dev-p4"]], focused: "Prompt"});
+	});
+});
+
+/** The home start card under its launch-folder provider, with p1 the most recently active project. */
+function renderHomeStartCard() {
+	const queryClient = new QueryClient({defaultOptions: {queries: {retry: false, staleTime: Infinity}}});
+	queryClient.setQueryData(
+		projectsQueryOptions().queryKey,
+		[1, 2].map((n) => ({
+			id: `-users-dev-p${n}`,
+			name: `p${n}`,
+			projectPath: `/Users/dev/projects/p${n}`,
+			sessionCount: 1,
+			memoryCount: 0,
+			planCount: 0,
+			taskCount: 0,
+			activeCount: 0,
+			lastActivity: new Date(Date.UTC(2026, 9, 3 - n)).toISOString(),
+		})),
+	);
+	queryClient.setQueryData(recentSessionsQueryOptions(HOME_RECENT_LIMIT).queryKey, {
+		sessions: [],
+		nextCursor: null,
+	});
+	return render(
+		<QueryClientProvider client={queryClient}>
+			<HomeLaunchFolderProvider>
+				<HomeStartCard />
+			</HomeLaunchFolderProvider>
+		</QueryClientProvider>,
+	);
+}
+
+function currentFolder() {
+	return rows().find((row) => row.current !== null)?.text ?? null;
+}
+
+describe("home launch-folder request", () => {
+	it("selects a folder requested before home mounts, once", () => {
+		requestHomeLaunchFolder("-users-dev-p2");
+		const first = renderHomeStartCard();
+		const requested = currentFolder();
+		first.unmount();
+		renderHomeStartCard();
+
+		expect({requested, next: currentFolder()}).toStrictEqual({requested: "p2", next: "p1"});
+	});
+
+	it("selects a folder requested while home is mounted", () => {
+		renderHomeStartCard();
+		const before = currentFolder();
+		act(() => {
+			requestHomeLaunchFolder("-users-dev-p2");
+		});
+
+		expect({before, after: currentFolder()}).toStrictEqual({before: "p1", after: "p2"});
 	});
 });
