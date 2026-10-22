@@ -72,6 +72,55 @@ const POPUP_CLASS =
 
 const SCROLLER_CLASS = "min-h-0 overflow-y-auto";
 
+/* Upstream's gM: `duration-sheet ease-out`, which compute to 0.3s and the phone-sheet curve. */
+const SHEET_MOTION = "duration-[300ms] ease-[cubic-bezier(0.165,0.84,0.44,1)] motion-reduce:transition-none";
+
+/** Upstream's WK: the root sheet scrim, fading with the popup's enter and exit. */
+const SHEET_SCRIM_CLASS = `draggable-none fixed inset-0 bg-backdrop transition-opacity ${SHEET_MOTION} data-[starting-style]:opacity-0 data-[ending-style]:opacity-0`;
+
+/** Upstream's Xd: paints the sheet surface below the positioner so overscroll never shows the page. */
+const SHEET_POSITIONER_CLASS = `${POSITIONER_CLASS} after:pointer-events-none after:absolute after:inset-x-0 after:top-full after:h-[100dvh] after:bg-surface-3`;
+
+/** Upstream's zA: pinned full-width to the bottom edge, ignoring the trigger. */
+const SHEET_POSITIONER_STYLE = {
+	position: "fixed",
+	inset: "auto 0 0",
+	width: "auto",
+	minWidth: 0,
+	maxWidth: "none",
+	transform: "none",
+} as const;
+
+/** Upstream's X1: no flipping or shifting, and no tracking of the trigger. */
+const SHEET_COLLISION_AVOIDANCE = {side: "none", align: "none"} as const satisfies CollisionAvoidance;
+
+/** Upstream's Hc plus the slide-up enter and exit. */
+const SHEET_POPUP_CLASS = `group/sheet relative flex w-full min-w-0 max-w-none flex-col overflow-hidden bg-[var(--menu-bg)] font-normal text-primary shadow-[var(--menu-shadow)] outline-none select-none rounded-t-[14px] rounded-b-none pb-[max(env(safe-area-inset-bottom),0.5rem)] pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)] transition-[translate,height,scale] ${SHEET_MOTION} data-[starting-style]:translate-y-[calc(100%+1.5rem)] data-[ending-style]:translate-y-[calc(100%+1.5rem)]`;
+
+/** Upstream's Gf (.9) resting cap and the .95 drag ceiling, both below the top safe area. */
+const SHEET_POPUP_STYLE = {
+	maxHeight: "calc((100dvh - env(safe-area-inset-top,0px)) * .95)",
+	"--available-height": "calc((100dvh - env(safe-area-inset-top,0px)) * .9)",
+} as const;
+
+/** Upstream's tP: the level's content, which slides off when a submenu drills in. */
+const SHEET_CONTENT_CLASS = `flex min-h-0 flex-1 flex-col transition-[translate] ${SHEET_MOTION} group-data-[cds-sheet-drilled]/sheet:-translate-x-[calc(100%+env(safe-area-inset-left,0px))] rtl:group-data-[cds-sheet-drilled]/sheet:translate-x-[calc(100%+env(safe-area-inset-right,0px))]`;
+
+const SHEET_SCROLL_CLASS = "relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain p-1";
+
+/** Upstream's dt: the drag handle pill at the top of the sheet. */
+function SheetHandle() {
+	return (
+		<div
+			aria-hidden="true"
+			data-cds-sheet-handle=""
+			className="flex min-h-8 shrink-0 touch-none items-center justify-center select-none"
+		>
+			<div className="h-1 w-9 rounded-full bg-border" />
+		</div>
+	);
+}
+
 function useItemClass(twoLine = false, gap = "gap-1"): string {
 	const sizing = DENSITY_CLASSES[useDensity()];
 	return `flex w-full cursor-default ${twoLine ? sizing.twoLine : sizing.singleLine} ${gap} ${sizing.item} ${sizing.text} font-normal outline-none select-none [--shortcut-cap-ink:var(--menu-muted)] data-[disabled]:pointer-events-none data-[disabled]:opacity-40 data-[disabled]:focus-visible:shadow-focus`;
@@ -239,7 +288,12 @@ export interface MenuContentProps {
 	structurallyAnchored?: boolean;
 }
 
-/** The popup surface. Inside a ContextMenu it opens at the pointer. */
+interface MenuContentInternalProps extends MenuContentProps {
+	/** A submenu level, which keeps its own layout until drill-in sheets land. */
+	nested?: boolean;
+}
+
+/** The popup surface. Inside a ContextMenu it opens at the pointer; in a root sheet it pins to the bottom edge. */
 export function MenuContent({
 	children,
 	density,
@@ -252,7 +306,8 @@ export function MenuContent({
 	finalFocus,
 	anchor,
 	structurallyAnchored = false,
-}: MenuContentProps) {
+	nested = false,
+}: MenuContentInternalProps) {
 	const resolvedCollisionAvoidance =
 		collisionAvoidance ?? (INLINE_SIDES.has(side) ? SIDE_COLLISION_AVOIDANCE : undefined);
 	const collisionFallback =
@@ -261,10 +316,50 @@ export function MenuContent({
 			: undefined;
 	const kind = useContext(MenuKindContext);
 	const sheet = useContext(MenuSheetContext) && !structurallyAnchored;
+	const sheetTreeId = useId();
 	/* Upstream's si order: an override, then comfortable on (pointer: coarse), then the prop or opener's density. */
 	const resolvedDensity = useScopeDensity(density);
 	const sizing = DENSITY_CLASSES[resolvedDensity];
 	const popupClass = `${POPUP_CLASS} ${sizing.popup} p-1 ${sizing.text}`;
+	if (sheet && !nested) {
+		return (
+			<DensityProvider density={resolvedDensity}>
+				<BaseMenu.Portal>
+					<BaseMenu.Backdrop
+						data-presentation="sheet"
+						data-sheet-scrim={sheetTreeId}
+						className={SHEET_SCRIM_CLASS}
+					/>
+					<BaseMenu.Positioner
+						className={SHEET_POSITIONER_CLASS}
+						style={SHEET_POSITIONER_STYLE}
+						data-density={resolvedDensity}
+						collisionAvoidance={SHEET_COLLISION_AVOIDANCE}
+						disableAnchorTracking
+					>
+						<BaseMenu.Popup
+							data-cds={kind}
+							data-presentation="sheet"
+							data-sheet-tree={sheetTreeId}
+							data-cds-sheet-depth="0"
+							data-size="lg"
+							className={`${SHEET_POPUP_CLASS} ${sizing.text}${className ? ` ${className}` : ""}`}
+							style={SHEET_POPUP_STYLE}
+							onKeyDown={handleAcceleratorKey}
+							{...(finalFocus === undefined ? {} : {finalFocus})}
+						>
+							<SheetHandle />
+							<div className={SHEET_CONTENT_CLASS}>
+								<div data-cds-sheet-scroll="" className={SHEET_SCROLL_CLASS}>
+									{children}
+								</div>
+							</div>
+						</BaseMenu.Popup>
+					</BaseMenu.Positioner>
+				</BaseMenu.Portal>
+			</DensityProvider>
+		);
+	}
 	return (
 		<DensityProvider density={resolvedDensity}>
 			<BaseMenu.Portal>

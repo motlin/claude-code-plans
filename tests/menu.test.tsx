@@ -832,7 +832,7 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 	function presentation() {
 		return {
 			presentation: screen.getByRole("menu").getAttribute("data-presentation"),
-			scrim: document.querySelector("[data-sheet-scrim]"),
+			scrim: document.querySelector("[data-sheet-scrim]") !== null,
 		};
 	}
 
@@ -840,14 +840,134 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 		stubCoarseAtWidth(1024);
 		renderDropdown();
 		await openDropdown();
-		expect(presentation()).toStrictEqual({presentation: null, scrim: null});
+		expect(presentation()).toStrictEqual({presentation: null, scrim: false});
 	});
 
 	it("presents a coarse-pointer menu as a sheet at 639px", async () => {
 		stubCoarseAtWidth(639);
 		renderDropdown();
 		await openDropdown();
-		expect(presentation()).toStrictEqual({presentation: "sheet", scrim: null});
+		expect(presentation()).toStrictEqual({presentation: "sheet", scrim: true});
+	});
+
+	function sheetAnatomy() {
+		const menu = screen.getByRole("menu");
+		const treeId = menu.getAttribute("data-sheet-tree");
+		const scrim = document.querySelector<HTMLElement>("[data-sheet-scrim]");
+		const positioner = menu.parentElement;
+		const handle = menu.firstElementChild;
+		const wrapper = handle?.nextElementSibling;
+		const scroll = wrapper?.firstElementChild;
+		return {
+			popup: {
+				presentation: menu.getAttribute("data-presentation"),
+				size: menu.getAttribute("data-size"),
+				depth: menu.getAttribute("data-cds-sheet-depth"),
+				hasTreeId: treeId !== null && treeId !== "",
+				classes: [
+					"rounded-t-[14px]",
+					"rounded-b-none",
+					"pb-[max(env(safe-area-inset-bottom),0.5rem)]",
+					"pl-[env(safe-area-inset-left,0px)]",
+					"pr-[env(safe-area-inset-right,0px)]",
+					"data-[starting-style]:translate-y-[calc(100%+1.5rem)]",
+					"data-[ending-style]:translate-y-[calc(100%+1.5rem)]",
+					"motion-reduce:transition-none",
+				].filter((name) => menu.classList.contains(name)).length,
+				maxHeight: menu.style.maxHeight,
+				availableHeight: menu.style.getPropertyValue("--available-height"),
+			},
+			scrim: {
+				role: scrim?.getAttribute("role"),
+				presentation: scrim?.getAttribute("data-presentation"),
+				matchesTree: scrim?.getAttribute("data-sheet-scrim") === treeId,
+				className: scrim?.className,
+			},
+			positioner: {
+				position: positioner?.style.position,
+				inset: positioner?.style.inset,
+				width: positioner?.style.width,
+				transform: positioner?.style.transform,
+				afterFill: positioner?.classList.contains("after:bg-surface-3"),
+			},
+			handle: {
+				marker: handle?.hasAttribute("data-cds-sheet-handle"),
+				ariaHidden: handle?.getAttribute("aria-hidden"),
+				className: handle?.className,
+				pill: handle?.firstElementChild?.className,
+			},
+			wrapper: wrapper?.className,
+			scroll: {
+				marker: scroll?.hasAttribute("data-cds-sheet-scroll"),
+				className: scroll?.className,
+				items: scroll?.querySelectorAll("[role=menuitem]").length,
+			},
+		};
+	}
+
+	it("renders the root sheet anatomy at coarse 639px, as upstream's MenuSheetPopup", async () => {
+		stubCoarseAtWidth(639);
+		renderDropdown();
+		await openDropdown();
+		expect(sheetAnatomy()).toStrictEqual({
+			popup: {
+				presentation: "sheet",
+				size: "lg",
+				depth: "0",
+				hasTreeId: true,
+				classes: 8,
+				/* jsdom serializes the .95 product in canonical order. */
+				maxHeight: "calc(0.95 * (100dvh - env(safe-area-inset-top, 0px)))",
+				availableHeight: "calc((100dvh - env(safe-area-inset-top,0px)) * .9)",
+			},
+			scrim: {
+				role: "presentation",
+				presentation: "sheet",
+				matchesTree: true,
+				className:
+					"draggable-none fixed inset-0 bg-backdrop transition-opacity duration-[300ms] ease-[cubic-bezier(0.165,0.84,0.44,1)] motion-reduce:transition-none data-[starting-style]:opacity-0 data-[ending-style]:opacity-0",
+			},
+			positioner: {position: "fixed", inset: "auto 0 0", width: "auto", transform: "none", afterFill: true},
+			handle: {
+				marker: true,
+				ariaHidden: "true",
+				className: "flex min-h-8 shrink-0 touch-none items-center justify-center select-none",
+				pill: "h-1 w-9 rounded-full bg-border",
+			},
+			wrapper:
+				"flex min-h-0 flex-1 flex-col transition-[translate] duration-[300ms] ease-[cubic-bezier(0.165,0.84,0.44,1)] motion-reduce:transition-none group-data-[cds-sheet-drilled]/sheet:-translate-x-[calc(100%+env(safe-area-inset-left,0px))] rtl:group-data-[cds-sheet-drilled]/sheet:translate-x-[calc(100%+env(safe-area-inset-right,0px))]",
+			scroll: {
+				marker: true,
+				className: "relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain p-1",
+				items: 3,
+			},
+		});
+	});
+
+	it("renders none of the sheet anatomy on a fine pointer at 639px", async () => {
+		vi.stubGlobal(
+			"matchMedia",
+			vi.fn((query: string) => ({
+				matches: false,
+				media: query,
+				onchange: null,
+				addEventListener: () => undefined,
+				removeEventListener: () => undefined,
+				addListener: () => undefined,
+				removeListener: () => undefined,
+				dispatchEvent: () => false,
+			})),
+		);
+		renderDropdown();
+		const menu = await openDropdown();
+		expect({
+			presentation: menu.getAttribute("data-presentation"),
+			size: menu.getAttribute("data-size"),
+			sheetMarkers: document.querySelectorAll(
+				"[data-sheet-scrim], [data-sheet-tree], [data-cds-sheet-handle], [data-cds-sheet-scroll]",
+			).length,
+			roundedTop: menu.className.includes("rounded-t-[14px]"),
+		}).toStrictEqual({presentation: null, size: null, sheetMarkers: 0, roundedTop: false});
 	});
 
 	it("keeps a controlled menu without onOpenChange anchored at 639px", async () => {
@@ -861,7 +981,7 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 			</Menu>,
 		);
 		await flush();
-		expect(presentation()).toStrictEqual({presentation: null, scrim: null});
+		expect(presentation()).toStrictEqual({presentation: null, scrim: false});
 	});
 
 	it("keeps a structurally anchored menu anchored at 639px", async () => {
@@ -875,7 +995,7 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 			</Menu>,
 		);
 		await openDropdown();
-		expect(presentation()).toStrictEqual({presentation: null, scrim: null});
+		expect(presentation()).toStrictEqual({presentation: null, scrim: false});
 	});
 
 	it("keeps a coarse-pointer ContextMenu anchored at 1024px", async () => {
@@ -892,7 +1012,7 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 		);
 		fireEvent.contextMenu(screen.getByText("Row title"), {clientX: 40, clientY: 50});
 		await flush();
-		expect(presentation()).toStrictEqual({presentation: null, scrim: null});
+		expect(presentation()).toStrictEqual({presentation: null, scrim: false});
 	});
 
 	it("presents a coarse-pointer ContextMenu as a sheet at 639px", async () => {
@@ -909,6 +1029,6 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 		);
 		fireEvent.contextMenu(screen.getByText("Row title"), {clientX: 40, clientY: 50});
 		await flush();
-		expect(presentation()).toStrictEqual({presentation: "sheet", scrim: null});
+		expect(presentation()).toStrictEqual({presentation: "sheet", scrim: true});
 	});
 });
