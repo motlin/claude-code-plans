@@ -340,6 +340,8 @@
 	--field-ring-shadow: inset 0 0 0 1px rgb(11 11 11 / 0.1);
 	--field-hover-shadow: inset 0 0 0 1px rgb(11 11 11 / 0.2);
 	--focus-shadow: inset 0 0 0 1px #fcfcfb, 0 0 0 1px #2a78d6, 0 0 6px 1px #cde2fb;
+	/* Upstream --accent-100 = --_blue-500 (light). */
+	--focus-outline-color: hsl(213.117 67.5439% 44.7059%);
 
 	/* Upstream claude.ai/code — <Shortcut> keycaps and the always-dark <Tooltip> */
 	--shortcut-cap-ink: #6d6b67;
@@ -530,6 +532,8 @@
 	--field-ring-shadow: inset 0 0 0 1px hsl(0 0% 100% / 0.1);
 	--field-hover-shadow: inset 0 0 0 1px hsl(0 0% 100% / 0.2);
 	--focus-shadow: 0 0 0 1px var(--accent-100), 0 0 6px 1px hsl(210 70.9% 51.6% / 0.4);
+	/* Upstream --accent-100 = --_blue-350 (dark). */
+	--focus-outline-color: hsl(212.466 75.2577% 61.9608%);
 
 	/* Upstream claude.ai/code — <Shortcut> keycaps */
 	--shortcut-cap-ink: #a5a49a;
@@ -674,22 +678,12 @@
 	}
 }
 
-/* Upstream claude.ai/code focus ring utilities. Rows carry the trio
-   `outline-none hide-focus-ring focus-visible:ring-focus`: `hide-focus-ring` reserves a
-   transparent 2px outline, `focus-visible:ring-focus` colours it in on keyboard focus only.
-   The colour travels through --focus-ring-color rather than a second
-   `outline-color` declaration, because the shorthand below would otherwise win
-   over any Tailwind-layered utility no matter the source order.
-   Tailwind v4 uses --tw-outline-style to control outline-style globally,
-   so we set that variable instead of fighting with the shorthand. */
-.hide-focus-ring {
-	--tw-outline-style: solid;
-	outline: 2px solid var(--focus-ring-color, transparent);
-	outline-offset: 2px;
-}
-
+/* Upstream claude.ai/code focus rings. `hide-focus-ring` has no rules of its own:
+   it only opts an element out of the base `:focus-visible` outline below, and the
+   element draws its own ring, usually `focus-visible:ring-focus` / `shadow-focus`. */
 @utility ring-focus {
-	--focus-ring-color: var(--color-accent-100);
+	box-shadow: var(--focus-shadow);
+	outline-style: none;
 }
 
 /* Upstream `prose-link`: a transcript file ref in link blue and the prose
@@ -728,6 +722,18 @@
 }
 
 @layer base {
+	/* Upstream base-layer ring: 2px solid hsl(var(--accent-100)), measured
+	   rgb(37, 106, 191) solid 2px, offset 2px, on anything that doesn't opt out. */
+	a:not([role="menuitem"]):not(.hide-focus-ring):focus-visible,
+	button:not([role="menuitem"]):not(.hide-focus-ring):focus-visible,
+	input:not(.hide-focus-ring):not(.cds-input):focus-visible,
+	textarea:not(.hide-focus-ring):not(.cds-input):focus-visible,
+	.can-focus:focus-visible,
+	.can-focus-within:focus-within {
+		outline: 2px solid var(--focus-outline-color);
+		outline-offset: 2px;
+		transition: outline 0.2s !important;
+	}
 	* {
 		@apply border-border;
 		scrollbar-width: thin;

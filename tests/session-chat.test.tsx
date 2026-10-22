@@ -2172,17 +2172,15 @@ describe("SessionChat disclosure focus treatment", () => {
 		});
 	});
 
-	it("reserves the outline on hide-focus-ring and colours it from ring-focus", () => {
+	it("opts out of the base outline with hide-focus-ring and rings with ring-focus's shadow", () => {
 		const styles = readFileSync(GLOBAL_STYLES_PATH, "utf8");
 
 		expect({
-			reservesOutline: styles.includes("outline: 2px solid var(--focus-ring-color, transparent)"),
-			definesRingFocus: /@utility ring-focus \{\s*--focus-ring-color: var\(--color-accent-100\);/.test(styles),
-			keepsFocusVisibleOverride: styles.includes(".hide-focus-ring:focus-visible"),
+			hideFocusRingHasRules: /\.hide-focus-ring\s*[{,:]/.test(styles),
+			definesRingFocus: /@utility ring-focus \{\s*box-shadow: var\(--focus-shadow\);/.test(styles),
 		}).toStrictEqual({
-			reservesOutline: true,
+			hideFocusRingHasRules: false,
 			definesRingFocus: true,
-			keepsFocusVisibleOverride: false,
 		});
 	});
 });

@@ -24,3 +24,45 @@ describe("focus rings", () => {
 		}).toStrictEqual({offenders: [], fileResult: true});
 	});
 });
+
+describe("upstream base focus ring", () => {
+	const css = readFileSync("src/styles/globals.css", "utf8");
+
+	it("keeps hide-focus-ring as a pure opt-out marker with no rules of its own", () => {
+		expect(/\.hide-focus-ring\s*[{,]/.test(css)).toBe(false);
+	});
+
+	it("rings bare links, buttons and fields on focus-visible unless they opt out", () => {
+		const base = css.slice(css.indexOf("@layer base {"));
+		const match = base.match(
+			/(a:not\(\[role="menuitem"\]\):not\(\.hide-focus-ring\):focus-visible,\s*button:not\(\[role="menuitem"\]\):not\(\.hide-focus-ring\):focus-visible,\s*input:not\(\.hide-focus-ring\):not\(\.cds-input\):focus-visible,\s*textarea:not\(\.hide-focus-ring\):not\(\.cds-input\):focus-visible,\s*\.can-focus:focus-visible,\s*\.can-focus-within:focus-within)\s*\{([^}]*)\}/,
+		);
+		expect(
+			match?.[2]
+				?.split(";")
+				.map((d) => d.trim())
+				.filter(Boolean),
+		).toStrictEqual([
+			"outline: 2px solid var(--focus-outline-color)",
+			"outline-offset: 2px",
+			"transition: outline 0.2s !important",
+		]);
+	});
+
+	it("colours the base ring with upstream --accent-100 in light and dark", () => {
+		expect([...css.matchAll(/--focus-outline-color:\s*([^;]+);/g)].map((m) => m[1])).toStrictEqual([
+			"hsl(213.117 67.5439% 44.7059%)",
+			"hsl(212.466 75.2577% 61.9608%)",
+		]);
+	});
+
+	it("draws ring-focus as upstream's shadow-focus box-shadow", () => {
+		const body = css.match(/@utility ring-focus\s*\{([^}]*)\}/)?.[1];
+		expect(
+			body
+				?.split(";")
+				.map((d) => d.trim())
+				.filter(Boolean),
+		).toStrictEqual(["box-shadow: var(--focus-shadow)", "outline-style: none"]);
+	});
+});
