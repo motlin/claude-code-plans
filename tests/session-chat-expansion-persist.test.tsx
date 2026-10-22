@@ -89,7 +89,10 @@ describe("SessionChat tool row expansion across remounts", () => {
 	});
 
 	it("keeps a grouped tool summary expanded after its row unmounts and remounts", () => {
-		expect(expandUnmountRemount(2, "button[aria-expanded]")).toStrictEqual({before: "true", after: "true"});
+		expect(expandUnmountRemount(2, "button[aria-expanded]:not([data-info-tip])")).toStrictEqual({
+			before: "true",
+			after: "true",
+		});
 	});
 
 	it("does not carry expansion into a different session", () => {

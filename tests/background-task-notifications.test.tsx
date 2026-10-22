@@ -610,13 +610,17 @@ describe("subagent-owned slow commands in the transcript", () => {
 	it("counts the teammate commands that finished while the parent idled in the run a notification opens", () => {
 		const idle = [30, 60, 90, 120, 200, 300, 450].map(at);
 		const container = renderLines(idleThenNotifiedRecords(), "normal", [teammate(idle)]);
-		const labels = [...container.querySelectorAll("button[aria-expanded]")].map((button) => button.textContent);
+		const labels = [...container.querySelectorAll("button[aria-expanded]:not([data-info-tip])")].map(
+			(button) => button.textContent,
+		);
 		expect(labels).toStrictEqual(["Ran 2 commands, finished 8 background commands"]);
 	});
 
 	it("counts a command that finished inside a run in that run", () => {
 		const container = renderLines(idleThenNotifiedRecords(), "normal", [teammate([at(521)])]);
-		const labels = [...container.querySelectorAll("button[aria-expanded]")].map((button) => button.textContent);
+		const labels = [...container.querySelectorAll("button[aria-expanded]:not([data-info-tip])")].map(
+			(button) => button.textContent,
+		);
 		expect(labels).toStrictEqual([
 			"Ran 2 commands, finished a background command",
 			"Ran a command, finished a background command",
@@ -625,7 +629,9 @@ describe("subagent-owned slow commands in the transcript", () => {
 
 	it("draws nothing for a command that finished while the parent talked, before a run its tool opens", () => {
 		const container = renderLines(idleThenNotifiedRecords(), "normal", [teammate([at(515)])]);
-		const labels = [...container.querySelectorAll("button[aria-expanded]")].map((button) => button.textContent);
+		const labels = [...container.querySelectorAll("button[aria-expanded]:not([data-info-tip])")].map(
+			(button) => button.textContent,
+		);
 		expect({labels, rows: container.querySelectorAll("[data-background-notice]").length}).toStrictEqual({
 			labels: ["Ran 2 commands, finished a background command"],
 			rows: 0,

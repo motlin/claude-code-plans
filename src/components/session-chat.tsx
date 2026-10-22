@@ -407,14 +407,18 @@ function UserTurnActions({
 	line,
 	sessionId,
 	contextText,
+	readByClaude = false,
 }: {
 	line: MessageSessionLine;
 	sessionId: string;
 	contextText?: string;
+	/** A human prompt in the JSONL was taken into a turn by the CLI, so it reads "Read by Claude". */
+	readByClaude?: boolean;
 }) {
 	return (
 		<UserMessageActions
 			{...(contextText === undefined ? {} : {contextText})}
+			readByClaude={readByClaude}
 			message={messageRef(line, sessionId)}
 			text={messageText(line)}
 			timestamp={line.timestamp}
@@ -3605,7 +3609,7 @@ function UserEntry({
 					</div>
 				)}
 				{mediaNodes}
-				<UserTurnActions line={line} sessionId={sessionId} />
+				<UserTurnActions line={line} sessionId={sessionId} readByClaude />
 			</TranscriptMessageMenu>
 		</UserTurn>
 	);
@@ -4055,6 +4059,7 @@ function CommandEntry({line, sessionId}: {line: MessageSessionLine; sessionId: s
 					line={line}
 					sessionId={sessionId}
 					contextText={cmdArgs ? `/${name} ${cmdArgs}` : `/${name}`}
+					readByClaude
 				/>
 			</div>
 		</UserTurn>

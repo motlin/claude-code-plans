@@ -1,4 +1,4 @@
-import {Check, Copy, Loader2, Pause, Pin, RotateCcw, Split, Volume2} from "lucide-react";
+import {Check, CheckCheck, Copy, Loader2, Pause, Pin, RotateCcw, Split, Volume2} from "lucide-react";
 import {createContext, type FocusEvent, type ReactNode, useContext, useEffect, useRef, useState} from "react";
 
 import {useChapters} from "../lib/chapter-store";
@@ -8,6 +8,7 @@ import {type ReadAloudStatus, useReadAloud} from "../hooks/use-read-aloud";
 import {TOUCH_REVEAL, useTouchDevice} from "../lib/touch-reveal";
 import {formatMessageTime, formatRelativeTimestamp, formatTimestamp} from "../lib/timestamp-format";
 import {type TranscriptMessageRef, TranscriptActionsContext} from "./transcript-actions-context";
+import {InfoTip} from "./ui/info-tip";
 import {Tooltip} from "./ui/tooltip";
 
 /*
@@ -35,6 +36,8 @@ export interface MessageActionsProps {
 	details: readonly string[];
 	/** Another mounted contribution in this assistant display span owns pointer/focus. */
 	hovered?: boolean | undefined;
+	/** The CLI took this prompt into a turn, so the user row shows upstream's "Read by Claude" receipt. */
+	readByClaude?: boolean;
 }
 
 const BAR_CLASS = [
@@ -44,6 +47,8 @@ const BAR_CLASS = [
 	"focus-within:opacity-100 focus-within:scale-100 focus-within:pointer-events-auto",
 	"data-revealed:opacity-100 data-revealed:scale-100 data-revealed:pointer-events-auto",
 	"data-hovered:opacity-100 data-hovered:scale-100 data-hovered:pointer-events-auto",
+	// An open popover inside the bar (the read receipt's) keeps it shown, as upstream's :has([data-popup-open]) rule does.
+	"has-[[data-popup-open]]:opacity-100 has-[[data-popup-open]]:scale-100 has-[[data-popup-open]]:pointer-events-auto",
 	"motion-safe:transition-[opacity,scale] motion-safe:duration-[120ms] motion-safe:delay-100 motion-safe:ease-[cubic-bezier(.32,.72,0,1)]",
 	// Touch devices never hover, so the bar is always shown there, as upstream's data-reveal rule does.
 	TOUCH_REVEAL,
@@ -318,13 +323,35 @@ export function AssistantMessageActions({message, text, timestamp, details, hove
 	);
 }
 
-export function UserMessageActions({message, text, contextText = text, timestamp, details}: MessageActionsProps) {
+/** Upstream's "Read by Claude" CheckDouble InfoTip; the toolbar's hover rule turns it primary. */
+function ReadByClaudeReceipt() {
+	return (
+		<InfoTip
+			aria-label="Read by Claude"
+			content="Read by Claude"
+			delay={0}
+			icon={<CheckCheck aria-hidden className={ICON_CLASS} />}
+			className="hover:text-primary"
+			tabIndex={useTabIndex()}
+		/>
+	);
+}
+
+export function UserMessageActions({
+	message,
+	text,
+	contextText = text,
+	timestamp,
+	details,
+	readByClaude = false,
+}: MessageActionsProps) {
 	return (
 		<ActionBar
 			className={`${BAR_CLASS} justify-end self-end`}
 			label={`Show message actions for ${messageHeading("user", contextText)}`}
 		>
 			<MessageTime timestamp={timestamp} details={details} inner="right" />
+			{readByClaude && <ReadByClaudeReceipt />}
 			<CopyAction text={text} />
 			<RewindAction message={message} />
 			<ForkAction message={message} />
@@ -343,7 +370,16 @@ const REVEAL_ON_HOVER_CLASS = [
  * Upstream's always-visible toolbar under a waiting user row. Copy and a disabled Rewind fade in on
  * hover; `children` (Send now on the head row) sit outside that group, so they show at rest.
  */
-export function WaitingMessageActions({text, children}: {text: string; children?: ReactNode}) {
+export function WaitingMessageActions({
+	text,
+	unread = false,
+	children,
+}: {
+	text: string;
+	/** A stacked (not head) waiting row leads with upstream's at-rest "Unread" receipt. */
+	unread?: boolean;
+	children?: ReactNode;
+}) {
 	return (
 		<div
 			data-message-actions
@@ -353,6 +389,21 @@ export function WaitingMessageActions({text, children}: {text: string; children?
 			className="flex items-center select-none"
 		>
 			<RevealedContext.Provider value>
+				{unread && (
+					<span
+						data-testid="epitaxy-receipt-at-rest"
+						className="text-body text-ink-muted tabular-nums flex min-h-6 items-center self-center ps-[5px] epitaxy-hint-fade-in"
+					>
+						<InfoTip
+							aria-label="Unread"
+							content="Unread"
+							delay={0}
+							icon={<Check aria-hidden className={ICON_CLASS} />}
+							className="opacity-50 hover:opacity-100 focus-visible:opacity-100 data-[popup-open]:opacity-100"
+							tabIndex={0}
+						/>
+					</span>
+				)}
 				<div data-reveal-on-hover className={REVEAL_ON_HOVER_CLASS}>
 					<CopyAction text={text} />
 					<RewindAction message={undefined} />

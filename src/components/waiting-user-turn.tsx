@@ -39,7 +39,7 @@ export function WaitingUserTurn({
 						{text}
 					</p>
 				</div>
-				<WaitingMessageActions text={text}>
+				<WaitingMessageActions text={text} unread={!head}>
 					{head && (
 						<>
 							<button

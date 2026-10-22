@@ -123,31 +123,39 @@ const COMPACT_SUMMARY = {
 
 describe("SessionChat turn headings", () => {
 	it.each([
-		{record: USER_TEXT, expectedHeading: "You said: Fabricated user message"},
-		{record: ASSISTANT_TEXT, expectedHeading: "Claude responded: Fabricated assistant response"},
-		{record: TOOL_CALL, expectedHeading: "Claude responded"},
-		{record: COMMAND_INVOCATION, expectedHeading: "You said: /fabricated --dry-run"},
-		{record: COMPACT_SUMMARY, expectedHeading: "You said: Compacted conversation"},
+		{record: USER_TEXT, expectedHeading: "You said: Fabricated user message", firstAction: "Read by Claude"},
+		{
+			record: ASSISTANT_TEXT,
+			expectedHeading: "Claude responded: Fabricated assistant response",
+			firstAction: "Copy",
+		},
+		{record: TOOL_CALL, expectedHeading: "Claude responded", firstAction: "Copy"},
+		{record: COMMAND_INVOCATION, expectedHeading: "You said: /fabricated --dry-run", firstAction: "Read by Claude"},
+		{record: COMPACT_SUMMARY, expectedHeading: "You said: Compacted conversation", firstAction: "Copy"},
 		{
 			record: {...USER_TEXT, message: {role: "user", content: `${"word ".repeat(10)}\n\n${"x".repeat(100)}`}},
 			expectedHeading: `You said: ${"word ".repeat(10)}${"x".repeat(30)}`,
+			firstAction: "Read by Claude",
 		},
-	])("names the action reveal for its heading and focuses Copy: $expectedHeading", ({record, expectedHeading}) => {
-		const container = renderRecords([record], false);
-		if (record === COMPACT_SUMMARY)
-			fireEvent.click(within(container).getByRole("button", {name: "Compacted conversation"}));
-		const reveal = within(container).getByRole("button", {name: `Show message actions for ${expectedHeading}`});
-		fireEvent.click(reveal);
-		expect({
-			heading: within(container).getByRole("heading", {level: 2}).textContent,
-			name: reveal.getAttribute("aria-label"),
-			focused: document.activeElement?.getAttribute("aria-label"),
-		}).toStrictEqual({
-			heading: expectedHeading,
-			name: `Show message actions for ${expectedHeading}`,
-			focused: "Copy",
-		});
-	});
+	])(
+		"names the action reveal for its heading and focuses $firstAction: $expectedHeading",
+		({record, expectedHeading, firstAction}) => {
+			const container = renderRecords([record], false);
+			if (record === COMPACT_SUMMARY)
+				fireEvent.click(within(container).getByRole("button", {name: "Compacted conversation"}));
+			const reveal = within(container).getByRole("button", {name: `Show message actions for ${expectedHeading}`});
+			fireEvent.click(reveal);
+			expect({
+				heading: within(container).getByRole("heading", {level: 2}).textContent,
+				name: reveal.getAttribute("aria-label"),
+				focused: document.activeElement?.getAttribute("aria-label"),
+			}).toStrictEqual({
+				heading: expectedHeading,
+				name: `Show message actions for ${expectedHeading}`,
+				focused: firstAction,
+			});
+		},
+	);
 
 	it("opens the user and assistant turns with upstream's screen-reader headings", () => {
 		expect(turnHeadings(renderRecords([USER_TEXT, ASSISTANT_TEXT]))).toStrictEqual([

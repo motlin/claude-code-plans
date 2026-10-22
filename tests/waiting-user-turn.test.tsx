@@ -78,6 +78,57 @@ describe("WaitingUserTurn", () => {
 		]);
 	});
 
+	it("leads a stacked row's toolbar with an at-rest Unread receipt, and gives the head row none", () => {
+		const {container} = render(
+			<>
+				<WaitingUserTurn entryId="queued-1" text="one" head />
+				<WaitingUserTurn entryId="queued-2" text="two" head={false} />
+			</>,
+		);
+		expect(
+			[...container.querySelectorAll("[data-take-back-entry]")].map((row) => {
+				const receipt = row.querySelector("[data-testid=epitaxy-receipt-at-rest]");
+				const tip = receipt?.querySelector("button");
+				return receipt === null
+					? {entry: row.getAttribute("data-take-back-entry"), receipt: null}
+					: {
+							entry: row.getAttribute("data-take-back-entry"),
+							receipt: {
+								leading: row.querySelector("[role=toolbar]")?.firstElementChild === receipt,
+								className: receipt.className,
+								label: tip?.getAttribute("aria-label"),
+								tabIndex: tip?.tabIndex,
+								icon: tip
+									?.querySelector("svg")
+									?.getAttribute("class")
+									?.split(" ")
+									.includes("lucide-check"),
+								dim: [
+									"opacity-50",
+									"hover:opacity-100",
+									"focus-visible:opacity-100",
+									"data-[popup-open]:opacity-100",
+								].every((c) => tip?.className.split(" ").includes(c)),
+							},
+						};
+			}),
+		).toStrictEqual([
+			{entry: "queued-1", receipt: null},
+			{
+				entry: "queued-2",
+				receipt: {
+					leading: true,
+					className:
+						"text-body text-ink-muted tabular-nums flex min-h-6 items-center self-center ps-[5px] epitaxy-hint-fade-in",
+					label: "Unread",
+					tabIndex: 0,
+					icon: true,
+					dim: true,
+				},
+			},
+		]);
+	});
+
 	it("calls the Send now handler from the head row", () => {
 		const onSendNow = vi.fn<() => void>();
 		const {getByTestId} = render(<WaitingUserTurn entryId="queued-1" text="hi" head onSendNow={onSendNow} />);
@@ -97,7 +148,15 @@ describe("OptimisticWaitingTurn", () => {
 			bubble: row?.querySelector(".user-message-bubble")?.textContent,
 			sendNow: row?.querySelectorAll("[data-testid=awaiting-turn-send-now]").length,
 			placeholder: container.textContent.includes("waiting for transcript"),
-		}).toStrictEqual({entry: "optimistic", perf: true, bubble: "ship it", sendNow: 1, placeholder: false});
+			readReceipt: container.querySelector('[aria-label="Read by Claude"]'),
+		}).toStrictEqual({
+			entry: "optimistic",
+			perf: true,
+			bubble: "ship it",
+			sendNow: 1,
+			placeholder: false,
+			readReceipt: null,
+		});
 		const sendNow = container.querySelector("[data-testid=awaiting-turn-send-now]");
 		if (sendNow !== null) fireEvent.click(sendNow);
 		expect(onSendNow.mock.calls).toStrictEqual([[]]);

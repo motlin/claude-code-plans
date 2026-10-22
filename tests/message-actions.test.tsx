@@ -419,6 +419,79 @@ describe("UserMessageActions", () => {
 		});
 	});
 
+	it("puts the Read by Claude receipt between the time and Copy only when the CLI read the prompt", () => {
+		const read = render(
+			<UserMessageActions message={MESSAGE} text="Hi" timestamp={TIMESTAMP} details={[]} readByClaude />,
+		).container;
+		const readOrder = controlOrder(read);
+		cleanup();
+		const unread = render(
+			<UserMessageActions message={MESSAGE} text="Hi" timestamp={TIMESTAMP} details={[]} />,
+		).container;
+
+		expect({read: readOrder, unread: controlOrder(unread)}).toStrictEqual({
+			read: ["time", "Read by Claude", "Copy", "Rewind to here", "Fork from here"],
+			unread: ["time", "Copy", "Rewind to here", "Fork from here"],
+		});
+	});
+
+	it("opens a Read by Claude dialog when the receipt is clicked", async () => {
+		const {container} = render(
+			<UserMessageActions message={MESSAGE} text="Hi" timestamp={TIMESTAMP} details={[]} readByClaude />,
+		);
+		await actAndSettle(() => {
+			fireEvent.click(button(container, "Read by Claude"));
+		});
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(50);
+		});
+		const dialog = document.querySelector('[role="dialog"]');
+		expect({label: dialog?.getAttribute("aria-label"), text: dialog?.textContent}).toStrictEqual({
+			label: "Read by Claude",
+			text: "Read by Claude",
+		});
+	});
+
+	it("draws the receipt as upstream's CheckDouble InfoTip that turns primary on hover", () => {
+		const {container} = render(
+			<UserMessageActions message={MESSAGE} text="Hi" timestamp={TIMESTAMP} details={[]} readByClaude />,
+		);
+		const receipt = button(container, "Read by Claude");
+		const classes = receipt.className.split(" ");
+		expect({
+			infoTip: receipt.hasAttribute("data-info-tip"),
+			icon: receipt.querySelector("svg")?.getAttribute("class")?.split(" ").includes("lucide-check-check"),
+			margin: ["p-1", "-m-1", "text-ink-muted", "hover:text-primary"].every((c) => classes.includes(c)),
+		}).toStrictEqual({infoTip: true, icon: true, margin: true});
+	});
+
+	it("keeps the bar shown while a popup inside it is open", () => {
+		const {container} = render(
+			<UserMessageActions message={MESSAGE} text="Hi" timestamp={TIMESTAMP} details={[]} readByClaude />,
+		);
+		const classes = bar(container).className.split(" ");
+		expect(
+			[
+				"has-[[data-popup-open]]:opacity-100",
+				"has-[[data-popup-open]]:scale-100",
+				"has-[[data-popup-open]]:pointer-events-auto",
+			].filter((c) => !classes.includes(c)),
+		).toStrictEqual([]);
+	});
+
+	it("focuses the receipt first after a keyboard reveal, as upstream's first tabbable item", () => {
+		const {container} = render(
+			<UserMessageActions message={MESSAGE} text="Hi" timestamp={TIMESTAMP} details={[]} readByClaude />,
+		);
+		const hidden = button(container, "Read by Claude").tabIndex;
+		fireEvent.click(showActions(container));
+		expect({
+			hidden,
+			revealed: button(container, "Read by Claude").tabIndex,
+			focused: document.activeElement?.getAttribute("aria-label") ?? null,
+		}).toStrictEqual({hidden: -1, revealed: 0, focused: "Read by Claude"});
+	});
+
 	it("moves the origin caption into the time tooltip", () => {
 		const {container} = render(
 			<UserMessageActions

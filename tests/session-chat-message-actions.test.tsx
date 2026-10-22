@@ -126,9 +126,22 @@ describe("SessionChat hover toolbars", () => {
 		);
 
 		expect(barControls(container)).toStrictEqual([
-			["time", "Copy", "Rewind to here", "Fork from here"],
+			["time", "Read by Claude", "Copy", "Rewind to here", "Fork from here"],
 			["Copy", "Fork from here", "Pin as chapter", "Read aloud", "time"],
 		]);
+	});
+
+	it("marks human prompts and slash commands Read by Claude, but not compact summaries", () => {
+		const receipts = (container: HTMLElement) =>
+			barControls(container).map((controls) => controls.includes("Read by Claude"));
+		const compactContainer = renderRecords([COMPACT_SUMMARY], false);
+		fireEvent.click(compactContainer.querySelector("button")!);
+
+		expect({
+			prompt: receipts(renderRecords([USER_TEXT], true)),
+			command: receipts(renderRecords([COMMAND_INVOCATION], true)),
+			compactSummary: receipts(compactContainer),
+		}).toStrictEqual({prompt: [true], command: [true], compactSummary: [false]});
 	});
 });
 

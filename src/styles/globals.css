@@ -781,6 +781,28 @@
 	}
 }
 
+/* Upstream's epitaxy-hint-fade-in: a waiting row's at-rest receipt rises into place. */
+@keyframes epitaxy-hint-fade-in {
+	0% {
+		opacity: 0.4;
+		transform: translateY(1px);
+	}
+	100% {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+.epitaxy-hint-fade-in {
+	animation: 0.4s cubic-bezier(0.215, 0.61, 0.355, 1) epitaxy-hint-fade-in;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.epitaxy-hint-fade-in {
+		animation: none;
+	}
+}
+
 /* A fresh question card fades in (upstream's epitaxy-approval-inline-enter); a restored one skips it. */
 @keyframes approval-inline-enter {
 	from {
