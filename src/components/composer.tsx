@@ -19,7 +19,7 @@ import type {LiveLaunchControls} from "../hooks/use-live-launch-options";
 import {useIsMac} from "../hooks/use-is-mac";
 import {useShortcut, useShortcutKeys} from "../hooks/use-shortcut";
 import type {ComposerState} from "../lib/composer-state";
-import {type QueuedPrompt, queuedStatusText} from "../lib/composer-queue";
+import {type QueuedPrompt, queuedForLater, queuedStatusText} from "../lib/composer-queue";
 import {type HistoryNavigator, historyKeyApplies, historyNavigator} from "../lib/prompt-history";
 import {
 	appendAttachment,
@@ -589,6 +589,9 @@ export function Composer({
 
 	const queueBandSlot = useBandEnter<HTMLDivElement>();
 
+	// Steers draw as waiting rows in the transcript; the band lists only prompts queued for later.
+	const queuedItems = queue?.items;
+	const laterItems = useMemo(() => queuedForLater(queuedItems ?? []), [queuedItems]);
 	const launchControls = useMemo<ChinLaunchControls>(
 		() => ({
 			launchOptions: chinLaunchOptions,
@@ -641,13 +644,13 @@ export function Composer({
 			{queue !== undefined && (
 				<>
 					<p aria-live="polite" aria-atomic="true" data-testid="coach-queued-status" className="sr-only">
-						{queue.items.length > 0 ? queuedStatusText(queue.items.length) : ""}
+						{laterItems.length > 0 ? queuedStatusText(laterItems.length) : ""}
 					</p>
 					{/* Upstream's QueuedMessageBar band sits in the dock, 6px above the composer card */}
 					<div ref={queueBandSlot} className="mb-1.5 empty:hidden">
 						<QueuedMessageBar
 							sessionId={draftKey}
-							items={queue.items}
+							items={laterItems}
 							onEdit={editQueuedPrompt}
 							onSendNow={queue.sendNow}
 							onRemove={queue.remove}

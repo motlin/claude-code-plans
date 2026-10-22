@@ -17,7 +17,7 @@ import {TranscriptActionsProvider} from "./transcript-actions-provider";
 import {useSessionFork} from "../hooks/use-session-fork";
 import {Composer} from "./composer";
 import {StreamingMessage} from "./streaming-message";
-import {OptimisticWaitingTurn} from "./waiting-user-turn";
+import {HeldSteerTurns, OptimisticWaitingTurn} from "./waiting-user-turn";
 import {SessionHookContext} from "./session-hook-context";
 import {useSettings} from "./settings-context";
 import {useTranscriptModeShortcut} from "../hooks/use-session-transcript-mode";
@@ -58,6 +58,7 @@ import {Tooltip} from "./ui/tooltip";
 import {SessionPaneControls} from "./view-options-menu";
 import {SessionDock} from "./session-dock";
 import {sessionProcessLive} from "../lib/session-state";
+import {steeredPrompts} from "../lib/composer-queue";
 import {tailMarkerState} from "../lib/working-marker";
 import {WaitingForInputNotice} from "./approval-card";
 import {QuestionCard} from "./question-card";
@@ -1088,6 +1089,23 @@ function SessionView({
 									onSendNow={
 										workingMarkerState.status === "idle" ? undefined : requestSendNowInterrupt
 									}
+									onFocusComposer={focusSessionComposer}
+								/>
+							)}
+
+							{promptBehavior.usesHerdr && (
+								<HeldSteerTurns
+									items={steeredPrompts(queuedPrompts)}
+									head={
+										!(liveHerdrPrompt.state.prompt !== "" && liveHerdrPrompt.state.error === "") &&
+										!(
+											sessionProcessLive({
+												hookActive: isActive,
+												summaryState: sessionSummaryState,
+											}) && processed.lines.some((line) => line.type === "queued-prompt")
+										)
+									}
+									onSendNow={composerQueue.sendNow}
 									onFocusComposer={focusSessionComposer}
 								/>
 							)}

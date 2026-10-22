@@ -1,5 +1,6 @@
 import {type MouseEvent, useCallback, useEffect, useId, useRef, useState} from "react";
 
+import type {QueuedPrompt} from "../lib/composer-queue";
 import {messageHeading} from "../lib/transcript-action-targets";
 import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
 import {WaitingMessageActions} from "./message-actions";
@@ -217,6 +218,42 @@ export function OptimisticWaitingTurn({
 					{error}
 				</div>
 			)}
+		</div>
+	);
+}
+
+/**
+ * Steers (Enter while working) the browser still holds, as when a pane dialog keeps them from being
+ * typed in: upstream draws steers as waiting rows in the transcript, never in the queue band.
+ * `head` is false when an earlier waiting row already carries Send now.
+ */
+export function HeldSteerTurns({
+	items,
+	head,
+	onSendNow,
+	onFocusComposer,
+}: {
+	items: readonly QueuedPrompt[];
+	head: boolean;
+	/** Sends this steer next, interrupting the running turn; settles with the interrupt. */
+	onSendNow: (id: string) => Promise<void>;
+	onFocusComposer?: (() => void) | undefined;
+}) {
+	if (items.length === 0) return null;
+	return (
+		<div className={`${CHAT_COLUMN_CLASS} flex flex-col gap-2 pb-[var(--chat-turn-gap)]`}>
+			{items.map((item, index) => (
+				<WaitingUserTurn
+					key={item.id}
+					entryId={item.id}
+					text={item.text}
+					head={head && index === 0}
+					onSendNow={async () => {
+						await onSendNow(item.id);
+					}}
+					onFocusComposer={onFocusComposer}
+				/>
+			))}
 		</div>
 	);
 }

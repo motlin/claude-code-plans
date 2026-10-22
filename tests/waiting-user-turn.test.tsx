@@ -3,7 +3,12 @@
 import {act, cleanup, fireEvent, render} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
-import {OptimisticWaitingTurn, WaitingPickupStatus, WaitingUserTurn} from "../src/components/waiting-user-turn";
+import {
+	HeldSteerTurns,
+	OptimisticWaitingTurn,
+	WaitingPickupStatus,
+	WaitingUserTurn,
+} from "../src/components/waiting-user-turn";
 
 afterEach(() => {
 	cleanup();
@@ -168,6 +173,50 @@ describe("OptimisticWaitingTurn", () => {
 			sendNow: container.querySelectorAll("[data-testid=awaiting-turn-send-now]").length,
 			alert: container.querySelector("[role=alert]")?.textContent,
 		}).toStrictEqual({sendNow: 0, alert: "pane gone"});
+	});
+});
+
+describe("HeldSteerTurns", () => {
+	const STEERS = [
+		{id: "q4", text: "Dave's answer instead", midTurn: true as const},
+		{id: "q5", text: "and Erin's too", midTurn: true as const},
+	];
+
+	it("draws browser-held steers as waiting rows, Send now on the head only", () => {
+		const {container} = render(<HeldSteerTurns items={STEERS} head onSendNow={async () => {}} />);
+		expect(
+			[...container.querySelectorAll("[data-take-back-entry]")].map((row) => ({
+				entry: row.getAttribute("data-take-back-entry"),
+				bubble: row.querySelector(".user-message-bubble")?.textContent,
+				status: row.querySelector("[role=status]")?.textContent,
+				sendNow: row.querySelectorAll("[data-testid=awaiting-turn-send-now]").length,
+				unread: row.querySelectorAll('[aria-label="Unread"]').length,
+			})),
+		).toStrictEqual([
+			{entry: "q4", bubble: "Dave's answer instead", status: "unread", sendNow: 1, unread: 0},
+			{entry: "q5", bubble: "and Erin's too", status: "unread", sendNow: 0, unread: 1},
+		]);
+	});
+
+	it("stacks every held steer behind an earlier waiting row", () => {
+		const {container} = render(<HeldSteerTurns items={STEERS} head={false} onSendNow={async () => {}} />);
+		expect({
+			sendNow: container.querySelectorAll("[data-testid=awaiting-turn-send-now]").length,
+			unread: container.querySelectorAll('[aria-label="Unread"]').length,
+		}).toStrictEqual({sendNow: 0, unread: 2});
+	});
+
+	it("Send now forwards the head steer's id", () => {
+		const onSendNow = vi.fn<(id: string) => Promise<void>>(async () => {});
+		const {container} = render(<HeldSteerTurns items={STEERS} head onSendNow={onSendNow} />);
+		const sendNow = container.querySelector("[data-testid=awaiting-turn-send-now]");
+		if (sendNow !== null) fireEvent.click(sendNow);
+		expect(onSendNow.mock.calls).toStrictEqual([["q4"]]);
+	});
+
+	it("renders nothing without held steers", () => {
+		const {container} = render(<HeldSteerTurns items={[]} head onSendNow={async () => {}} />);
+		expect(container.innerHTML).toBe("");
 	});
 });
 

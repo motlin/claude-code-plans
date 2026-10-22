@@ -14,6 +14,8 @@ export interface QueuedPrompt {
 	midTurn?: true;
 }
 
+const EMPTY: readonly QueuedPrompt[] = [];
+
 export type ComposerQueueAction =
 	| {type: "enqueue"; item: QueuedPrompt; position?: "back" | "front"}
 	| {type: "edit"; id: string; text: string}
@@ -60,6 +62,16 @@ export function nextQueuedPrompt(
 	return (head.midTurn === true ? dialogOpen : busy) ? null : head;
 }
 
+/** Steered prompts (Enter while working), which upstream draws as waiting rows in the transcript. */
+export function steeredPrompts(queue: readonly QueuedPrompt[]): readonly QueuedPrompt[] {
+	return queue.every((item) => item.midTurn !== true) ? EMPTY : queue.filter((item) => item.midTurn === true);
+}
+
+/** Prompts queued for after the turn, the only ones upstream's QueuedMessageBar band lists. */
+export function queuedForLater(queue: readonly QueuedPrompt[]): readonly QueuedPrompt[] {
+	return queue.every((item) => item.midTurn !== true) ? queue : queue.filter((item) => item.midTurn !== true);
+}
+
 export function queuedStatusText(count: number): string {
 	return `${count} ${count === 1 ? "message" : "messages"} queued. Will send after the current response.`;
 }
@@ -69,8 +81,6 @@ export function queuedPreview(text: string): string {
 	const flat = text.replace(/\s+/g, " ").trim();
 	return flat === "" ? "…" : flat;
 }
-
-const EMPTY: readonly QueuedPrompt[] = [];
 
 let queues = new Map<string, readonly QueuedPrompt[]>();
 const listeners = new Set<() => void>();

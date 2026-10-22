@@ -14,7 +14,9 @@ import {
 	composerQueueReducer,
 	nextQueuedPrompt,
 	type QueuedPrompt,
+	queuedForLater,
 	queuedStatusText,
+	steeredPrompts,
 } from "../src/lib/composer-queue";
 import type {SlashCommand} from "../src/lib/slash-commands";
 
@@ -88,6 +90,16 @@ describe("composerQueueReducer", () => {
 			idle: nextQueuedPrompt([midTurn, ALICE], false, false),
 			plainHeadWorking: nextQueuedPrompt([ALICE, midTurn], true, false),
 		}).toStrictEqual({dialogOpen: null, working: midTurn, idle: midTurn, plainHeadWorking: null});
+	});
+
+	it("splits steered (mid-turn) prompts from those queued for later, keeping order", () => {
+		const steer: QueuedPrompt = {id: "q4", text: "Dave's answer instead", midTurn: true};
+		const items = [steer, ALICE, BOB];
+		expect({
+			steered: steeredPrompts(items),
+			later: queuedForLater(items),
+			laterUnchanged: queuedForLater([ALICE, BOB]),
+		}).toStrictEqual({steered: [steer], later: [ALICE, BOB], laterUnchanged: [ALICE, BOB]});
 	});
 
 	it("words the sr-only status with the upstream plural", () => {
@@ -493,6 +505,28 @@ describe("Composer queued message bar", () => {
 				text: "2 messages queued. Will send after the current response.",
 			},
 		});
+	});
+
+	it("lists only prompts queued for later: a steer draws in the transcript instead", () => {
+		const steer: QueuedPrompt = {id: "q4", text: "Dave's answer instead", midTurn: true};
+		renderComposer({queue: queueView([steer, ALICE])});
+		expect({
+			band: document.querySelector("[data-take-back-entry]")?.textContent.includes("1 message queued"),
+			steerShown: document.body.textContent.includes("Dave's answer instead"),
+			status: screen.getByTestId("coach-queued-status").textContent,
+		}).toStrictEqual({
+			band: true,
+			steerShown: false,
+			status: "1 message queued. Will send after the current response.",
+		});
+	});
+
+	it("renders no band when only steers are held", () => {
+		renderComposer({queue: queueView([{id: "q4", text: "Dave's answer instead", midTurn: true}])});
+		expect({
+			band: document.querySelector("[data-take-back-entry]"),
+			status: screen.getByTestId("coach-queued-status").textContent,
+		}).toStrictEqual({band: null, status: ""});
 	});
 
 	it("renders nothing without queued prompts", () => {
