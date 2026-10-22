@@ -189,3 +189,71 @@ describe("Composer touch split Send while working", () => {
 		}).toStrictEqual({group: null, send: "code-prompt-send", caret: null});
 	});
 });
+
+describe("Composer touch send-cell spacer", () => {
+	function spacerShape(container: HTMLElement) {
+		const spacer = container.querySelector("[data-send-spacer]");
+		return {
+			inert: spacer?.hasAttribute("inert") ?? null,
+			hidden: spacer?.getAttribute("aria-hidden") ?? null,
+			classes: spacer?.className ?? null,
+			cds: spacer?.firstElementChild?.getAttribute("data-cds") ?? null,
+			slot: spacer?.parentElement?.className ?? null,
+		};
+	}
+	const coarseSpacer = {
+		inert: true,
+		hidden: "true",
+		classes: "invisible col-start-1 row-start-1 flex",
+		cds: "SplitDropdownButton",
+		slot: "absolute right-0 bottom-0 grid min-h-7 items-center justify-items-end pl-1.5",
+	};
+
+	it("reserves the split width with an inert split on an idle, empty coarse composer", () => {
+		stubPointer(true);
+		const {container} = render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} />);
+
+		expect({
+			spacer: spacerShape(container),
+			send: screen.queryByRole("button", {name: "Send"}),
+			group: screen.queryByRole("group", {name: "Send"}),
+			textarea: screen
+				.getByRole("textbox", {name: "Prompt"})
+				.parentElement?.className.includes("pointer-coarse:pr-[51px]"),
+		}).toStrictEqual({spacer: coarseSpacer, send: null, group: null, textarea: true});
+	});
+
+	it("keeps the split spacer under the visible Send on an idle coarse composer with a draft", () => {
+		stubPointer(true);
+		const {container} = render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} />);
+		fireEvent.change(screen.getByRole("textbox", {name: "Prompt"}), {target: {value: "Bob's note"}});
+		const send = screen.getByRole("button", {name: "Send"});
+
+		expect({
+			spacer: spacerShape(container),
+			sendTestId: send.dataset["testid"],
+			face: send.closest("[data-send-face-slot]")?.className ?? null,
+		}).toStrictEqual({
+			spacer: coarseSpacer,
+			sendTestId: "code-prompt-send",
+			face: "col-start-1 row-start-1 flex",
+		});
+	});
+
+	it("keeps the split spacer while working with a draft on a coarse pointer", () => {
+		const {view} = renderWorking(true);
+
+		expect(spacerShape(view.container)).toStrictEqual(coarseSpacer);
+	});
+
+	it("keeps the 28px spacer on a fine pointer", () => {
+		stubPointer(false);
+		const {container} = render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} />);
+		const spacer = container.querySelector("[data-send-spacer]");
+
+		expect({
+			children: [...(spacer?.children ?? [])].map((child) => child.outerHTML),
+			split: container.querySelector("[data-send-spacer] [data-cds=SplitDropdownButton]"),
+		}).toStrictEqual({children: ['<span class="size-7"></span>'], split: null});
+	});
+});

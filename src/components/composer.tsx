@@ -142,6 +142,12 @@ type SendFace = "stop" | "send";
 
 /** Upstream's `Ou`: a primary tap this soon after a Stop click is the same finger landing twice. */
 const STOP_TAP_GUARD_MS = 500;
+const noop = () => undefined;
+/* The coarse spacer's inert split never opens, but its menu holds the working items so it measures the same. */
+const SPACER_SPLIT_ITEMS: SplitItem[] = [
+	{label: "Queue for later", onSelect: noop},
+	{label: "Stop", separatorBefore: true, onSelect: noop},
+];
 
 /** Which lane a touch split submit goes to: Send (a steer while working) or the menu's Queue for later. */
 type TouchSubmitLane = "send" | "later";
@@ -285,59 +291,88 @@ const SendSlot = memo(function SendSlot({
 				{label: "Stop", separatorBefore: true, onSelect: stop},
 			]
 		: [{label: "Stop", onSelect: stop}];
+	const face = touchSplit ? (
+		<SplitDropdownButton
+			variant="ghost"
+			size="touch"
+			icon={<CornerDownLeft className={`size-4${canSend ? "" : " opacity-40"}`} aria-hidden="true" />}
+			aria-label="Send"
+			aria-keyshortcuts="Enter"
+			menuLabel="More send options"
+			side="top"
+			align="end"
+			items={splitItems}
+			finalFocus={editorRef}
+			{...(canSend ? {} : {"aria-disabled": true})}
+			onPrimaryClick={() => {
+				if (!canSend || Date.now() - stopClickAtRef.current < STOP_TAP_GUARD_MS) return;
+				onTouchSubmit("send");
+			}}
+		/>
+	) : working ? (
+		<SendCrossfade
+			showStop={isStreaming || !hasContent}
+			stop={
+				<Tooltip content="Stop" {...(isStreaming ? {} : {shortcut: "escape"})}>
+					<button
+						type="button"
+						aria-label="Stop"
+						aria-keyshortcuts={isStreaming ? undefined : "Escape"}
+						data-testid="code-prompt-stop"
+						onClick={isStreaming ? onCancel : stop}
+						className={ICON_BUTTON_CLASS}
+					>
+						<span className="flex scale-90">
+							<CircleStop className="size-5" aria-hidden="true" />
+						</span>
+					</button>
+				</Tooltip>
+			}
+			send={send}
+		/>
+	) : hasContent ? (
+		send
+	) : null;
+	const hint = deliveryHint && (
+		<span id={hintId} className="sr-only">
+			{deliveryHint}
+		</span>
+	);
+	/*
+	 * Upstream's coarse send cell (`ku`/`Au`): an invisible, inert copy of the split always reserves its width,
+	 * and the visible face overlays it end-aligned, so the box never reflows when the split appears.
+	 */
+	if (coarse) {
+		return (
+			<div className="absolute right-0 bottom-0 grid min-h-7 items-center justify-items-end pl-1.5">
+				<div data-send-spacer aria-hidden="true" inert className="invisible col-start-1 row-start-1 flex">
+					<SplitDropdownButton
+						variant="ghost"
+						size="touch"
+						icon={<CornerDownLeft className="size-4" aria-hidden="true" />}
+						aria-label="Send"
+						menuLabel="More send options"
+						items={SPACER_SPLIT_ITEMS}
+						onPrimaryClick={noop}
+					/>
+				</div>
+				{face !== null && (
+					<div data-send-face-slot className="col-start-1 row-start-1 flex">
+						{face}
+					</div>
+				)}
+				{hint}
+			</div>
+		);
+	}
 	return (
 		<div className="absolute right-0 bottom-0 flex min-h-7 items-center pl-1.5">
-			{touchSplit ? (
-				<SplitDropdownButton
-					variant="ghost"
-					size="touch"
-					icon={<CornerDownLeft className={`size-4${canSend ? "" : " opacity-40"}`} aria-hidden="true" />}
-					aria-label="Send"
-					aria-keyshortcuts="Enter"
-					menuLabel="More send options"
-					side="top"
-					align="end"
-					items={splitItems}
-					finalFocus={editorRef}
-					{...(canSend ? {} : {"aria-disabled": true})}
-					onPrimaryClick={() => {
-						if (!canSend || Date.now() - stopClickAtRef.current < STOP_TAP_GUARD_MS) return;
-						onTouchSubmit("send");
-					}}
-				/>
-			) : working ? (
-				<SendCrossfade
-					showStop={isStreaming || !hasContent}
-					stop={
-						<Tooltip content="Stop" {...(isStreaming ? {} : {shortcut: "escape"})}>
-							<button
-								type="button"
-								aria-label="Stop"
-								aria-keyshortcuts={isStreaming ? undefined : "Escape"}
-								data-testid="code-prompt-stop"
-								onClick={isStreaming ? onCancel : stop}
-								className={ICON_BUTTON_CLASS}
-							>
-								<span className="flex scale-90">
-									<CircleStop className="size-5" aria-hidden="true" />
-								</span>
-							</button>
-						</Tooltip>
-					}
-					send={send}
-				/>
-			) : hasContent ? (
-				send
-			) : (
+			{face ?? (
 				<div data-send-spacer aria-hidden="true" inert className="invisible flex">
 					<span className="size-7" />
 				</div>
 			)}
-			{deliveryHint && (
-				<span id={hintId} className="sr-only">
-					{deliveryHint}
-				</span>
-			)}
+			{hint}
 		</div>
 	);
 });
@@ -776,7 +811,7 @@ export function Composer({
 						Drop files here
 					</div>
 				)}
-				<div className={`relative pr-[30px] ${chin ? "pl-[30px]" : ""}`}>
+				<div className={`relative pr-[30px] pointer-coarse:pr-[51px] ${chin ? "pl-[30px]" : ""}`}>
 					{chin && (
 						<div data-composer-add="" className="absolute left-0 bottom-0 flex min-h-7 items-center">
 							<ComposerAddMenu onInsertSlash={insertSlash} onAddFiles={openFilePicker} />
