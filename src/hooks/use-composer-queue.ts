@@ -22,8 +22,8 @@ export interface ComposerQueueOptions {
 	dialogOpen?: boolean;
 	/** Delivers a queued prompt; a mid-turn one (sent over a skipped question) says so. */
 	deliver: (text: string, options?: {midTurn: true}) => Promise<DeliveryResult>;
-	/** Interrupt the current response (Esc) so a "Send now" prompt goes next. */
-	interrupt: () => void;
+	/** Interrupt the current response (Esc) so a "Send now" prompt goes next; settles with the request. */
+	interrupt: () => Promise<void>;
 	retryMs?: number;
 }
 
@@ -34,8 +34,8 @@ export interface ComposerQueue {
 	remove: (id: string) => void;
 	/** Upstream's "Clear all": drop every queued prompt at once. */
 	clear: () => void;
-	/** Move a queued prompt to the head and interrupt the response so it sends next. */
-	sendNow: (id: string) => void;
+	/** Move a queued prompt to the head and interrupt the response so it sends next; settles with the interrupt. */
+	sendNow: (id: string) => Promise<void>;
 }
 
 /**
@@ -101,9 +101,9 @@ export function useComposerQueue({
 		dispatchComposerQueue(sessionId, {type: "clear"});
 	}, [sessionId]);
 	const sendNow = useCallback(
-		(id: string) => {
+		async (id: string) => {
 			dispatchComposerQueue(sessionId, {type: "reorder", id, toIndex: 0});
-			if (busy) interrupt();
+			if (busy) await interrupt();
 		},
 		[busy, interrupt, sessionId],
 	);

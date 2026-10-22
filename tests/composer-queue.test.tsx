@@ -195,13 +195,13 @@ type Deliver = (text: string, options?: {midTurn: true}) => Promise<DeliveryResu
 function renderQueue({
 	busy,
 	deliver,
-	interrupt = vi.fn<() => void>(),
+	interrupt = vi.fn<() => Promise<void>>(async () => {}),
 	sessionId = "session-alice",
 	dialogOpen = false,
 }: {
 	busy: boolean;
 	deliver: Deliver;
-	interrupt?: () => void;
+	interrupt?: () => Promise<void>;
 	sessionId?: string;
 	dialogOpen?: boolean;
 }) {
@@ -348,7 +348,7 @@ describe("useComposerQueue", () => {
 
 	it("Send now moves a queued prompt to the head and interrupts a busy session", () => {
 		const deliver = vi.fn<Deliver>(async () => Promise.resolve("sent"));
-		const interrupt = vi.fn<() => void>();
+		const interrupt = vi.fn<() => Promise<void>>(async () => {});
 		const {result} = renderQueue({busy: true, deliver, interrupt});
 		act(() => {
 			result.current.enqueue("Alice's first follow-up");
@@ -358,7 +358,7 @@ describe("useComposerQueue", () => {
 		if (bob === undefined) throw new Error("Expected Bob's queued prompt");
 
 		act(() => {
-			result.current.sendNow(bob.id);
+			void result.current.sendNow(bob.id);
 		});
 
 		expect({
@@ -370,6 +370,34 @@ describe("useComposerQueue", () => {
 			interrupts: 1,
 			delivered: [],
 		});
+	});
+
+	it("Send now settles when the interrupt request settles", async () => {
+		let settle = () => {};
+		const pending = new Promise<void>((resolve) => {
+			settle = resolve;
+		});
+		const interrupt = vi.fn<() => Promise<void>>(async () => pending);
+		const {result} = renderQueue({busy: true, deliver: vi.fn<Deliver>(), interrupt});
+		act(() => {
+			result.current.enqueue("Alice's first follow-up");
+		});
+		const alice = result.current.items[0];
+		if (alice === undefined) throw new Error("Expected Alice's queued prompt");
+
+		let settled = false;
+		let sending: Promise<void> = Promise.resolve();
+		act(() => {
+			sending = result.current.sendNow(alice.id).then(() => {
+				settled = true;
+			});
+		});
+		await Promise.resolve();
+		const before = settled;
+		settle();
+		await sending;
+
+		expect({before, after: settled}).toStrictEqual({before: false, after: true});
 	});
 
 	it("keeps queues per session", () => {
@@ -423,7 +451,7 @@ function renderComposer({
 function queueView(items: readonly QueuedPrompt[]) {
 	return {
 		items,
-		sendNow: vi.fn<(id: string) => void>(),
+		sendNow: vi.fn<(id: string) => Promise<void>>(async () => {}),
 		remove: vi.fn<(id: string) => void>(),
 		clear: vi.fn<() => void>(),
 	};

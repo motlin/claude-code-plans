@@ -75,7 +75,7 @@ const ICON_BUTTON_CLASS =
 /** Prompts waiting for the live session to go idle, with their chip actions. */
 export interface ComposerQueueView {
 	items: readonly QueuedPrompt[];
-	sendNow: (id: string) => void;
+	sendNow: (id: string) => Promise<void>;
 	remove: (id: string) => void;
 	clear: () => void;
 }

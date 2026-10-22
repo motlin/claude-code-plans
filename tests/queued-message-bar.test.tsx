@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {cleanup, fireEvent, render, screen, within} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {QueuedMessageBar} from "../src/components/queued-message-bar";
 import {clearComposerQueues, type QueuedPrompt, queuedPreview} from "../src/lib/composer-queue";
@@ -16,7 +16,7 @@ const BOB: QueuedPrompt = {id: "q2", text: "Bob's second follow-up"};
 function renderBar(items: readonly QueuedPrompt[], sessionId = "session-alice") {
 	const handlers = {
 		onEdit: vi.fn<(item: QueuedPrompt) => void>(),
-		onSendNow: vi.fn<(id: string) => void>(),
+		onSendNow: vi.fn<(id: string) => Promise<void>>(async () => {}),
 		onRemove: vi.fn<(id: string) => void>(),
 		onClearAll: vi.fn<() => void>(),
 	};
@@ -77,6 +77,52 @@ describe("QueuedMessageBar", () => {
 			edit: onEdit.mock.calls,
 			remove: onRemove.mock.calls,
 		}).toStrictEqual({sendNow: [["q1"]], edit: [[ALICE]], remove: [["q1"]]});
+	});
+
+	it("shows Send now as busy with a 12px spinner and sr-only Sending… until the interrupt settles", async () => {
+		let settle = () => {};
+		const pending = new Promise<void>((resolve) => {
+			settle = resolve;
+		});
+		const {onSendNow} = renderBar([ALICE]);
+		onSendNow.mockReturnValueOnce(pending);
+		const sendNow = screen.getByRole("button", {name: "Send now"});
+		fireEvent.click(sendNow);
+		fireEvent.click(sendNow);
+		const status = await screen.findByText("Sending…");
+		const busy = {
+			ariaBusy: sendNow.getAttribute("aria-busy"),
+			ariaDisabled: sendNow.getAttribute("aria-disabled"),
+			iconClass: sendNow.querySelector("svg")?.getAttribute("class"),
+			overlayClass: sendNow.querySelector("[role=status]")?.parentElement?.className,
+			spinnerBox: sendNow.querySelector<HTMLElement>("[data-spinner]")?.style.width,
+			statusClass: status.className,
+			calls: onSendNow.mock.calls,
+		};
+		await act(async () => {
+			settle();
+			await pending;
+		});
+
+		expect({
+			busy,
+			after: {
+				ariaBusy: sendNow.getAttribute("aria-busy"),
+				ariaDisabled: sendNow.getAttribute("aria-disabled"),
+				spinner: sendNow.querySelector("[data-spinner]"),
+			},
+		}).toStrictEqual({
+			busy: {
+				ariaBusy: "true",
+				ariaDisabled: "true",
+				iconClass: "lucide lucide-corner-down-left size-4 opacity-0",
+				overlayClass: "absolute inset-0 grid place-items-center leading-[0]",
+				spinnerBox: "0.75rem",
+				statusClass: "sr-only",
+				calls: [["q1"]],
+			},
+			after: {ariaBusy: null, ariaDisabled: null, spinner: null},
+		});
 	});
 
 	it("collapses two entries into a bar with the count and the next preview", () => {

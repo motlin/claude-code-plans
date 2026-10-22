@@ -610,16 +610,19 @@ function SessionView({
 	});
 	const paneBusy = workingMarkerState.status !== "idle" || liveHerdrPrompt.state.isPending;
 	const queueBusy = paneBusy || gateHoldsQueue(composerGate);
-	const interruptForSendNow = useCallback(() => {
+	const requestSendNowInterrupt = useCallback(async () => {
 		onInterrupt(Date.now());
-		sendHerdrInterrupt(sessionId, false).catch(onInterruptError);
+		await sendHerdrInterrupt(sessionId, false).catch(onInterruptError);
 	}, [onInterrupt, onInterruptError, sessionId]);
+	const interruptForSendNow = useCallback(() => {
+		void requestSendNowInterrupt();
+	}, [requestSendNowInterrupt]);
 	const composerQueue = useComposerQueue({
 		sessionId,
 		busy: queueBusy,
 		dialogOpen: gateHoldsQueue(composerGate),
 		deliver: liveHerdrPrompt.send,
-		interrupt: interruptForSendNow,
+		interrupt: requestSendNowInterrupt,
 	});
 	const {enqueue: enqueuePrompt, items: queuedPrompts} = composerQueue;
 	const {send: composerSend} = composerSendPlan(composerGate, {busy: paneBusy, queued: queuedPrompts.length});

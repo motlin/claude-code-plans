@@ -2,6 +2,7 @@ import {type KeyboardEvent, type MouseEvent, useCallback, useId, useRef, useStat
 import {ChevronDown, ChevronUp, CornerDownLeft, EllipsisVertical, Pencil, X} from "lucide-react";
 
 import {type QueuedPrompt, queueBandExpanded, queuedPreview, setQueueBandExpanded} from "../lib/composer-queue";
+import {Spinner} from "./ui/spinner";
 import {Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger} from "./ui/menu";
 
 const SEND_NOW_DESCRIPTION = "Stops Claude’s current response.";
@@ -19,7 +20,8 @@ interface QueuedMessageBarProps {
 	sessionId: string;
 	items: readonly QueuedPrompt[];
 	onEdit: (item: QueuedPrompt) => void;
-	onSendNow: (id: string) => void;
+	/** Settles when the interrupt request does; Send now stays busy until then. */
+	onSendNow: (id: string) => Promise<void>;
 	onRemove: (id: string) => void;
 	onClearAll: () => void;
 }
@@ -60,6 +62,14 @@ export function QueuedMessageBar({sessionId, items, onEdit, onSendNow, onRemove,
 	}, []);
 
 	const sendNowDescriptionId = useId();
+	const [sending, setSending] = useState(false);
+	const sendFirstNow = (id: string) => {
+		if (sending) return;
+		setSending(true);
+		void onSendNow(id).finally(() => {
+			setSending(false);
+		});
+	};
 
 	if (shown.length === 0) return null;
 
@@ -80,13 +90,20 @@ export function QueuedMessageBar({sessionId, items, onEdit, onSendNow, onRemove,
 					type="button"
 					aria-label="Send now"
 					aria-describedby={sendNowDescriptionId}
-					className={BAND_BUTTON_CLASS}
+					aria-busy={sending ? true : undefined}
+					aria-disabled={sending ? true : undefined}
+					className={`relative ${BAND_BUTTON_CLASS}`}
 					onMouseDown={keepComposerFocus}
 					onClick={() => {
-						onSendNow(first.id);
+						sendFirstNow(first.id);
 					}}
 				>
-					<CornerDownLeft aria-hidden="true" className="size-4" />
+					<CornerDownLeft aria-hidden="true" className={sending ? "size-4 opacity-0" : "size-4"} />
+					{sending && (
+						<span className="absolute inset-0 grid place-items-center leading-[0]">
+							<Spinner size="sm" label="Sending…" />
+						</span>
+					)}
 				</button>
 				<span id={sendNowDescriptionId} hidden>
 					{SEND_NOW_DESCRIPTION}
@@ -213,7 +230,7 @@ function QueuedRow({
 	item: QueuedPrompt;
 	separated: boolean;
 	onEdit: (item: QueuedPrompt) => void;
-	onSendNow: (id: string) => void;
+	onSendNow: (id: string) => Promise<void>;
 	onRemove: (id: string) => void;
 }) {
 	return (
@@ -246,7 +263,7 @@ function QueuedRow({
 							</MenuItem>
 							<MenuItem
 								onSelect={() => {
-									onSendNow(item.id);
+									void onSendNow(item.id);
 								}}
 							>
 								Send now

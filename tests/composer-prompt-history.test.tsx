@@ -32,7 +32,7 @@ function renderComposer(
 					? undefined
 					: {
 							items: props.queueItems,
-							sendNow: () => {},
+							sendNow: async () => {},
 							remove: props.onEditRemove ?? (() => {}),
 							clear: () => {},
 						}

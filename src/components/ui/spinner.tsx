@@ -1,7 +1,7 @@
 import {useEffect, useState} from "react";
 
-/** Upstream cds Spinner box/stroke per size; md is the 16px ring the palette input row uses. */
-const SPINNER_SIZES = {md: {box: "1rem", stroke: "1.75px"}} as const;
+/** Upstream cds Spinner box/stroke per size; md is the 16px ring the palette input row uses, sm the 12px busy-button ring. */
+const SPINNER_SIZES = {sm: {box: "0.75rem", stroke: "1.5px"}, md: {box: "1rem", stroke: "1.75px"}} as const;
 
 /** Upstream mounts the sr-only label 100ms after the spinner shows, so a quick flash isn't announced. */
 const LABEL_DELAY_MS = 100;
