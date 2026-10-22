@@ -14,6 +14,10 @@ const SHEET_OFFSCREEN = "calc(100% + 1.5rem)";
 /** Never start a drag on a control: rows, links and fields keep their own press. */
 const NO_DRAG_TARGET = 'button, a, input, textarea, [role="menuitem"], [role="option"], [data-cds-sheet-control]';
 
+/** Upstream's td: the text-entry controls that floor a sheet at half height and summon the keyboard. */
+export const SHEET_TEXT_ENTRY =
+	'input:not([type=button],[type=checkbox],[type=radio],[type=range],[type=submit],[type=reset],[type=color],[type=file],[type=image],[type=hidden],[readonly]), textarea:not([readonly]), [contenteditable=""], [contenteditable="true"], [contenteditable="plaintext-only"]';
+
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 
 /** The root sheet's frame: its tree, how to close it, and the detent the drag can move it to. */
@@ -22,6 +26,8 @@ export interface SheetDragFrame {
 	dismiss: () => void;
 	detent: SheetDetent;
 	setDetent: (detent: SheetDetent) => void;
+	/** True while the on-screen keyboard lifts the sheet; upstream's drag never starts then. */
+	keyboard?: boolean;
 }
 
 export const SheetDragContext = createContext<SheetDragFrame | null>(null);
@@ -88,8 +94,9 @@ function prefersReducedMotion(view: Window | null): boolean {
 	return view?.matchMedia(REDUCED_MOTION_QUERY).matches === true;
 }
 
-/** Whether the level's rows overflow, so a drag up can open the tall detent (upstream's `grows`). */
+/** Upstream's Hi: a level holding a text field, or whose rows overflow, can open the tall detent. */
 function contentGrows(popup: HTMLElement): boolean {
+	if (popup.querySelector(SHEET_TEXT_ENTRY) !== null) return true;
 	return Array.from(popup.querySelectorAll("[data-cds-sheet-scroll]")).some(
 		(scroll) => scroll.scrollHeight > scroll.clientHeight + 1,
 	);
@@ -128,7 +135,7 @@ export function useSheetDrag() {
 		};
 		return {
 			onPointerDown: (event: PointerEvent<HTMLElement>) => {
-				if (event.button !== 0 || dragRef.current !== null) return;
+				if (event.button !== 0 || dragRef.current !== null || frame.keyboard === true) return;
 				if (event.target instanceof Element && event.target.closest(NO_DRAG_TARGET) !== null) return;
 				if (event.currentTarget.closest("[data-cds-sheet-covered]") !== null) return;
 				const popup = event.currentTarget.closest<HTMLElement>('[data-presentation="sheet"]');

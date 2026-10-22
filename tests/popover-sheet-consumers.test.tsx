@@ -3,13 +3,14 @@
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {cleanup, fireEvent, render, screen} from "@testing-library/react";
 import type {ReactNode} from "react";
-import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
+import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {UsageRing} from "../src/components/composer-chin";
 import {NextStepsList} from "../src/components/home/start-card";
 import {ProjectPicker} from "../src/components/home/project-picker";
 import {SessionCostPill} from "../src/components/session-cost-pill";
 import {SettingsSearch} from "../src/components/settings/settings-search";
+import {preloadPopoverSheet} from "../src/components/ui/popover";
 
 /** A coarse pointer at `width`: upstream's sheet gate `(pointer: coarse) and (max-width: 639.98px)`. */
 function stubCoarseAtWidth(width: number) {
@@ -41,6 +42,11 @@ function presentation() {
 		scrim: document.querySelector("[data-sheet-scrim]") !== null,
 	};
 }
+
+/* The sheet presentation is a lazy chunk; load it once so sheets render synchronously on open. */
+beforeAll(async () => {
+	await preloadPopoverSheet();
+});
 
 beforeEach(() => {
 	vi.stubGlobal("fetch", async () => new Promise(() => {}));

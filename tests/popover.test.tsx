@@ -1,9 +1,14 @@
 // @vitest-environment jsdom
 
 import {cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
-import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
+import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
-import {Popover, PopoverContent} from "../src/components/ui/popover";
+import {Popover, PopoverContent, preloadPopoverSheet} from "../src/components/ui/popover";
+
+/* The sheet presentation is a lazy chunk; load it once so sheets render synchronously on open. */
+beforeAll(async () => {
+	await preloadPopoverSheet();
+});
 
 beforeEach(() => {
 	vi.stubGlobal(
