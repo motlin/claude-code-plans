@@ -1,5 +1,14 @@
 import {Popover as BasePopover} from "@base-ui/react/popover";
-import {type ComponentProps, createContext, type ReactNode, useContext, useId, useMemo, useState} from "react";
+import {
+	type ComponentProps,
+	createContext,
+	type ReactNode,
+	useContext,
+	useEffect,
+	useId,
+	useMemo,
+	useState,
+} from "react";
 
 import {useSheetPresentation} from "./sheet-presentation";
 
@@ -55,6 +64,8 @@ export interface PopoverContentProps {
 	 * stays anchored even where the bottom-sheet gate would otherwise open a sheet.
 	 */
 	structurallyAnchored?: boolean;
+	/** The sheet's sr-only DismissButton text. */
+	closeLabel?: string;
 }
 
 /* Upstream's gM: `duration-sheet ease-out`, which compute to 0.3s and the phone-sheet curve. */
@@ -104,16 +115,57 @@ function sheetWrapperClass(className: string | undefined): string {
 	return `flex min-h-0 flex-auto flex-col ${consumer === "" ? "" : `${consumer} `}h-auto max-h-none min-h-0 w-full min-w-0 max-w-none flex-auto`;
 }
 
+/** Upstream's ft: hidden until keyboard-focused or held, so screen readers and Tab reach it. */
+const SHEET_DISMISS_CLASS =
+	"mx-1 mb-1 block min-h-10 shrink-0 rounded-r7 px-2 text-start text-[15px]/[22px] font-normal text-primary outline-none select-none focus-visible:bg-fill-ghost-hover [&:not(:focus-visible):not([data-cds-sheet-control-held])]:sr-only";
+
+/**
+ * Upstream's sheet press marker: a press on the popup holds a focus-visible DismissButton visible
+ * until the next click, pointercancel or keydown.
+ */
+function useDismissHold(popup: HTMLDivElement | null) {
+	useEffect(() => {
+		if (popup === null) return undefined;
+		const doc = popup.ownerDocument;
+		let held: Element | null = null;
+		const release = () => {
+			held?.removeAttribute("data-cds-sheet-control-held");
+			held = null;
+			doc.removeEventListener("click", release, true);
+			doc.removeEventListener("pointercancel", release, true);
+			doc.removeEventListener("keydown", release, true);
+		};
+		const press = () => {
+			const control = popup.querySelector("[data-cds-sheet-control]");
+			if (control?.matches(":focus-visible") !== true) return;
+			held = control;
+			control.setAttribute("data-cds-sheet-control-held", "");
+			doc.addEventListener("click", release, true);
+			doc.addEventListener("pointercancel", release, true);
+			doc.addEventListener("keydown", release, true);
+		};
+		popup.addEventListener("pointerdown", press, true);
+		return () => {
+			popup.removeEventListener("pointerdown", press, true);
+			release();
+		};
+	}, [popup]);
+}
+
 /** Upstream's PopoverSheetContent: scrim, bottom-pinned positioner, handle and the scrolling body. */
 function PopoverSheetContent({
 	children,
 	className,
+	closeLabel,
 	treeId,
 }: {
 	children: ReactNode;
 	className: string | undefined;
+	closeLabel: string;
 	treeId: string;
 }) {
+	const [popup, setPopup] = useState<HTMLDivElement | null>(null);
+	useDismissHold(popup);
 	return (
 		<BasePopover.Portal>
 			<BasePopover.Backdrop data-presentation="sheet" data-sheet-scrim={treeId} className={SHEET_SCRIM_CLASS} />
@@ -124,6 +176,7 @@ function PopoverSheetContent({
 				disableAnchorTracking
 			>
 				<BasePopover.Popup
+					ref={setPopup}
 					data-cds="Popover"
 					data-size="lg"
 					data-presentation="sheet"
@@ -149,6 +202,9 @@ function PopoverSheetContent({
 						>
 							{children}
 						</div>
+						<BasePopover.Close data-cds-sheet-control="" className={SHEET_DISMISS_CLASS}>
+							{closeLabel}
+						</BasePopover.Close>
 					</div>
 				</BasePopover.Popup>
 			</BasePopover.Positioner>
@@ -164,11 +220,12 @@ export function PopoverContent({
 	sideOffset = 6,
 	className,
 	structurallyAnchored = false,
+	closeLabel = "Close",
 }: PopoverContentProps) {
 	const {sheet, treeId} = useContext(PopoverSheetContext);
 	if (sheet && !structurallyAnchored) {
 		return (
-			<PopoverSheetContent className={className} treeId={treeId}>
+			<PopoverSheetContent className={className} closeLabel={closeLabel} treeId={treeId}>
 				{children}
 			</PopoverSheetContent>
 		);

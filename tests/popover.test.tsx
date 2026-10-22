@@ -48,6 +48,7 @@ describe("PopoverContent under a fine pointer", () => {
 			presentation: document.querySelector("[data-presentation]"),
 			scrim: document.querySelector("[data-sheet-scrim]"),
 			handle: document.querySelector("[data-cds-sheet-handle]"),
+			close: document.querySelector("[data-cds-sheet-control]"),
 		}).toStrictEqual({
 			popupClass: "w-[360px] rounded-r7 p-3",
 			body: "Body",
@@ -57,6 +58,7 @@ describe("PopoverContent under a fine pointer", () => {
 			presentation: null,
 			scrim: null,
 			handle: null,
+			close: null,
 		});
 	});
 
@@ -200,6 +202,76 @@ describe("PopoverContent under a coarse pointer", () => {
 				class: "min-h-0 min-w-0 flex-auto overflow-y-auto outline-none",
 				text: "Body",
 			},
+		});
+	});
+
+	it("ends the body wrapper with an sr-only Close button that closes the sheet", () => {
+		stubCoarseAtWidth(420);
+		const onOpenChange = vi.fn<(open: boolean) => void>();
+		render(
+			<Popover.Root onOpenChange={onOpenChange}>
+				<Popover.Trigger>Usage</Popover.Trigger>
+				<PopoverContent className="w-80">
+					<p>Body</p>
+				</PopoverContent>
+			</Popover.Root>,
+		);
+		fireEvent.click(screen.getByRole("button", {name: "Usage"}));
+		const close = screen.getByRole("button", {name: "Close"});
+		const wrapper = screen.getByRole("dialog").children[1];
+		const shape = {
+			type: close.getAttribute("type"),
+			control: close.hasAttribute("data-cds-sheet-control"),
+			lastChild: wrapper?.lastElementChild === close,
+			class: close.className,
+		};
+		fireEvent.click(close);
+		expect({shape, closes: onOpenChange.mock.calls.map(([open]) => open)}).toStrictEqual({
+			shape: {
+				type: "button",
+				control: true,
+				lastChild: true,
+				class: "mx-1 mb-1 block min-h-10 shrink-0 rounded-r7 px-2 text-start text-[15px]/[22px] font-normal text-primary outline-none select-none focus-visible:bg-fill-ghost-hover [&:not(:focus-visible):not([data-cds-sheet-control-held])]:sr-only",
+			},
+			closes: [true, false],
+		});
+	});
+
+	it("labels the Close button with closeLabel", () => {
+		stubCoarseAtWidth(420);
+		render(
+			<Popover.Root defaultOpen>
+				<Popover.Trigger>Usage</Popover.Trigger>
+				<PopoverContent closeLabel="Dismiss usage">
+					<p>Body</p>
+				</PopoverContent>
+			</Popover.Root>,
+		);
+		expect(screen.getByRole("button", {name: "Dismiss usage"}).hasAttribute("data-cds-sheet-control")).toBe(true);
+	});
+
+	it("holds a focus-visible Close button visible through a press until the next keydown", () => {
+		stubCoarseAtWidth(420);
+		render(
+			<Popover.Root defaultOpen>
+				<Popover.Trigger>Usage</Popover.Trigger>
+				<PopoverContent>
+					<p>Body</p>
+				</PopoverContent>
+			</Popover.Root>,
+		);
+		const popup = screen.getByRole("dialog");
+		const close = screen.getByRole("button", {name: "Close"});
+		fireEvent.pointerDown(popup);
+		const unfocused = close.hasAttribute("data-cds-sheet-control-held");
+		vi.spyOn(close, "matches").mockImplementation((selector) => selector === ":focus-visible");
+		fireEvent.pointerDown(popup);
+		const held = close.hasAttribute("data-cds-sheet-control-held");
+		fireEvent.keyDown(document, {key: "Shift"});
+		expect({unfocused, held, released: close.hasAttribute("data-cds-sheet-control-held")}).toStrictEqual({
+			unfocused: false,
+			held: true,
+			released: false,
 		});
 	});
 
