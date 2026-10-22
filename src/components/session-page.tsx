@@ -999,6 +999,10 @@ function SessionView({
 													showCompactSummaries={transcriptFlags.showCompactSummaries}
 													showTranscriptOnly={transcriptFlags.showTranscriptOnly}
 													transcriptMode={transcriptMode}
+													sessionLive={sessionProcessLive({
+														hookActive: isActive,
+														summaryState: sessionSummaryState,
+													})}
 													permissionWaitToolUseId={permissionWaitId}
 													initialScrollKey={initialScrollKey}
 													scrollContentRef={scrollAnchorRef}

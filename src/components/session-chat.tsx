@@ -53,6 +53,7 @@ import {AssistantMessageActions, UserMessageActions} from "./message-actions";
 import {defined} from "../lib/defined";
 import {narrationProse} from "../lib/thinking-narration";
 import {messageHeading, messageText} from "../lib/transcript-action-targets";
+import {WaitingUserTurn} from "./waiting-user-turn";
 import {assistantTurnDetails, userTurnDetails} from "../lib/turn-metadata";
 import {TurnChangesCard} from "./turn-changes-card";
 import {collectTurnChanges, type TurnChanges} from "../lib/turn-changes";
@@ -131,6 +132,8 @@ export interface SessionChatProps {
 	slashCommands?: readonly SlashCommand[];
 	/** The tool call the session's permission prompt waits on, whose row keeps its description as written. */
 	permissionWaitToolUseId?: string | null;
+	/** Whether the CLI is still running, so the prompts waiting in its queue can still be read. */
+	sessionLive?: boolean;
 }
 
 const TranscriptModeContext = createContext<TranscriptMode>("normal");
@@ -435,6 +438,7 @@ export const SessionChat = React.memo(function SessionChat({
 	summary = null,
 	slashCommands = EMPTY_SLASH_COMMANDS,
 	permissionWaitToolUseId = null,
+	sessionLive = false,
 }: SessionChatProps) {
 	const measurementKey = JSON.stringify([
 		sessionId,
@@ -460,6 +464,7 @@ export const SessionChat = React.memo(function SessionChat({
 	);
 	const backgroundOutcomes = useMemo(() => backgroundLaunchOutcomes(lines, toolResultMap), [lines, toolResultMap]);
 	const compactBoundaries = useMemo(() => compactBoundariesBySummary(lines), [lines]);
+	const listedLines = useMemo(() => withQueuedPromptsAtTail(lines, sessionLive), [lines, sessionLive]);
 
 	useEffect(() => {
 		const container = containerRef.current;
@@ -617,7 +622,7 @@ export const SessionChat = React.memo(function SessionChat({
 									)}
 									<SessionLineList
 										key={sessionId}
-										lines={lines}
+										lines={listedLines}
 										sessionId={sessionId}
 										toolResultMap={toolResultMap}
 										allowedImageRoots={allowedImageRoots}
@@ -1874,6 +1879,16 @@ function withLocalCommandProse(lines: SessionLine[]): SessionLine[] {
 }
 
 /**
+ * A prompt waiting in the CLI's queue is read after everything already written, so it sits after
+ * the last other line, in enqueue order. Once the CLI is gone nothing will read it, so it is dropped.
+ */
+function withQueuedPromptsAtTail(lines: SessionLine[], sessionLive: boolean): SessionLine[] {
+	if (!lines.some((line) => line.type === "queued-prompt")) return lines;
+	const others = lines.filter((line) => line.type !== "queued-prompt");
+	return sessionLive ? [...others, ...lines.filter((line) => line.type === "queued-prompt")] : others;
+}
+
+/**
  * The CLI writes a queued `<task-notification>`'s enqueue line before an assistant record it
  * flushes later, so file order would draw the notification above text that came first. Upstream
  * places it by its enqueue time: after the last line timestamped at or before it. Walking from the
@@ -2044,9 +2059,14 @@ function buildSessionListEntries(
 	verbose: boolean,
 	held: HeldAssistantFooter | null,
 ): SessionListEntry[] {
+	const waitingPrompts = recordLines.filter(
+		(line): line is Extract<SessionLine, {type: "queued-prompt"}> => line.type === "queued-prompt",
+	);
+	const transcriptLines =
+		waitingPrompts.length === 0 ? recordLines : recordLines.filter((line) => line.type !== "queued-prompt");
 	const lines = verbose
-		? recordLines
-		: withLocalCommandProse(withQueuedPrompts(withNotificationsAtEnqueueTime(recordLines)));
+		? transcriptLines
+		: withLocalCommandProse(withQueuedPrompts(withNotificationsAtEnqueueTime(transcriptLines)));
 	const lineAt = (index: number): SessionLine => defined(lines[index], "session line index is in range");
 	const foldNotifications = !verbose;
 	const noticeOf = (index: number): FoldedNotice | null => {
@@ -2471,6 +2491,18 @@ function buildSessionListEntries(
 	const lastSpokenAt = lastSpoken === undefined ? undefined : lineTimestamp(lastSpoken);
 	if (!verbose && lastSpoken?.type === "assistant" && lastSpokenAt !== undefined && !callsTool(lastSpoken)) {
 		pushIdleRow(slowCommands.take(Date.parse(lastSpokenAt), Number.POSITIVE_INFINITY), lastSpoken.lineIndex + 0.5);
+	}
+
+	// Prompts still waiting in the CLI's queue close the transcript, after every written record.
+	const lastRecordIndex = lines.at(-1)?.lineIndex ?? 0;
+	for (const [position, line] of waitingPrompts.entries()) {
+		entries.push({
+			key: `queued-${line.lineIndex}`,
+			startRecordIndex: lastRecordIndex + (position + 1) / (waitingPrompts.length + 1),
+			isPrompt: false,
+			kind: "human",
+			element: <WaitingUserTurn entryId={`queued-${line.lineIndex}`} text={line.content} />,
+		});
 	}
 
 	// Decided on the final rendered sequence, so the boundary never depends on which rows are mounted.
@@ -3349,7 +3381,7 @@ function renderSessionMessage({
 			// buildSessionListEntries draws the ones upstream shows as task-event rows.
 			return null;
 		case "queued-prompt":
-			// Waiting rows are drawn at the transcript tail, not in place.
+			// buildSessionListEntries draws waiting rows at the transcript tail.
 			return null;
 		case "attachment":
 			return (
