@@ -1,5 +1,5 @@
 import {describe, expect, it} from "vite-plus/test";
-import {placeTooltip} from "../src/components/ui/tooltip-placement";
+import {placeRowTooltip, placeTooltip} from "../src/components/ui/tooltip-placement";
 
 const viewport = {width: 390, height: 800};
 
@@ -80,5 +80,23 @@ describe("placeTooltip align start", () => {
 				"start",
 			),
 		).toEqual({side: "top", shiftX: -84, shiftY: 0});
+	});
+});
+
+describe("placeRowTooltip", () => {
+	it("anchors the tip 8px past the row's inline-end edge, level with the row, relative to the popup", () => {
+		// A 240px popup at (100, 300) with 4px padding: the row spans x 104-336 and sits 28px into the popup.
+		expect(
+			placeRowTooltip(
+				{left: 104, top: 328, width: 232, height: 24},
+				{left: 100, top: 300, width: 240, height: 200},
+			),
+		).toEqual({left: 244, top: 28, maxWidth: "max(9rem, calc(100vw - 344px - 1rem))"});
+	});
+
+	it("follows the row's scrolled viewport position, so a row scrolled up sits above the popup top", () => {
+		expect(
+			placeRowTooltip({left: 4, top: -20, width: 232, height: 24}, {left: 0, top: 0, width: 240, height: 200}),
+		).toEqual({left: 244, top: -20, maxWidth: "max(9rem, calc(100vw - 244px - 1rem))"});
 	});
 });

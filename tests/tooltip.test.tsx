@@ -6,7 +6,7 @@ import {resolve} from "node:path";
 import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
-import {Tooltip} from "../src/components/ui/tooltip";
+import {Tooltip, TOOLTIP_CLASS} from "../src/components/ui/tooltip";
 
 const globalsCss = readFileSync(resolve(__dirname, "..", "src", "styles", "globals.css"), "utf8");
 
@@ -343,5 +343,13 @@ describe('<Tooltip trackCursor="y">', () => {
 			top: "",
 			className: expect.stringMatching(/ left-full top-1\/2 ml-1 -translate-y-1\/2$/),
 		});
+	});
+});
+
+describe("TOOLTIP_CLASS", () => {
+	it("is upstream's 13px/18px single-line tooltip box, exported for row-anchored consumers", () => {
+		expect(TOOLTIP_CLASS).toBe(
+			"pointer-events-none absolute z-50 inline-flex min-h-6 w-max max-w-[240px] items-center gap-2 rounded-r5 bg-[var(--tooltip-bg)] px-2 py-[3px] text-[13px]/[18px] text-[var(--tooltip-fg)] shadow-[0_1px_2px_rgb(11_11_11/0.06)]",
+		);
 	});
 });

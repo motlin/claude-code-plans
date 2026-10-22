@@ -74,3 +74,29 @@ export function placeTooltip(
 	const top = align === "start" ? trigger.top : trigger.top + trigger.height / 2 - tip.height / 2;
 	return {side: placed, shiftX: 0, shiftY: clampShift(top, tip.height, viewport.height)};
 }
+
+/** The gap between a menu row and its side tooltip (upstream's `sideOffset: 8`). */
+const ROW_SIDE_OFFSET = 8;
+
+export interface RowTooltipPlacement {
+	/** Pixels from the popup's left edge. */
+	left: number;
+	/** Pixels from the popup's top edge, level with the row's top (`align: start`). */
+	top: number;
+	/** Upstream's `max(9rem, --available-width - 1rem)`: the room between the tip's start and the viewport edge. */
+	maxWidth: string;
+}
+
+/**
+ * Where a menu row's tooltip goes, as an absolute position inside the row's popup: upstream's `side: inline-end`,
+ * `align: start`, `sideOffset: 8`, anchored to the row element rather than the popup, with no side flip
+ * (`fallbackAxisSide: "none"`). Both rects are viewport rects, so a scrolled row carries its scroll offset.
+ */
+export function placeRowTooltip(row: TooltipRect, popup: TooltipRect): RowTooltipPlacement {
+	const viewportLeft = row.left + row.width + ROW_SIDE_OFFSET;
+	return {
+		left: viewportLeft - popup.left,
+		top: row.top - popup.top,
+		maxWidth: `max(9rem, calc(100vw - ${viewportLeft}px - 1rem))`,
+	};
+}

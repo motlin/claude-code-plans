@@ -31,7 +31,8 @@ const START_SIDE_CLASS = {
 	left: "right-full top-0 mr-1",
 } as const satisfies Record<keyof typeof SIDE_CLASS, string>;
 
-const TOOLTIP_CLASS =
+/** Upstream's 13px/18px tooltip box, shared with tooltips placed outside this component (the slash menu row tip). */
+export const TOOLTIP_CLASS =
 	"pointer-events-none absolute z-50 inline-flex min-h-6 w-max max-w-[240px] items-center gap-2 rounded-r5 bg-[var(--tooltip-bg)] px-2 py-[3px] text-[13px]/[18px] text-[var(--tooltip-fg)] shadow-[0_1px_2px_rgb(11_11_11/0.06)]";
 
 /** The wider, wrapping box that keeps the content's line breaks. */
