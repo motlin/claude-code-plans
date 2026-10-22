@@ -54,3 +54,31 @@ describe("placeTooltip", () => {
 		});
 	});
 });
+
+describe("placeTooltip align start", () => {
+	const viewport = {width: 1024, height: 768};
+
+	it("keeps a start-aligned tip at the trigger's left edge when it fits", () => {
+		expect(
+			placeTooltip(
+				{left: 100, top: 100, width: 300, height: 32},
+				{width: 104, height: 46},
+				viewport,
+				"top",
+				"start",
+			),
+		).toEqual({side: "top", shiftX: 0, shiftY: 0});
+	});
+
+	it("shifts a start-aligned tip back inside the right edge from the trigger's left edge", () => {
+		expect(
+			placeTooltip(
+				{left: 900, top: 100, width: 100, height: 32},
+				{width: 200, height: 46},
+				viewport,
+				"top",
+				"start",
+			),
+		).toEqual({side: "top", shiftX: -84, shiftY: 0});
+	});
+});

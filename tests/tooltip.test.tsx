@@ -210,3 +210,65 @@ describe('<Tooltip variant="reason">', () => {
 		expect(screen.queryByRole("tooltip")).toBeNull();
 	});
 });
+
+describe('<Tooltip align="start" stacked>', () => {
+	it("stacks upstream's row title over its 11px detail in the 480px balanced box, start-aligned above the anchor", () => {
+		vi.useFakeTimers();
+		render(
+			<Tooltip content="daily" detail="Asked a question" stacked align="start">
+				<button type="button">daily</button>
+			</Tooltip>,
+		);
+
+		const tooltip = openTooltip();
+
+		expect({
+			align: tooltip.dataset["align"],
+			className: tooltip.className,
+			children: [...tooltip.children].map((child) => ({className: child.className, text: child.textContent})),
+			title: tooltip.firstElementChild?.innerHTML,
+		}).toStrictEqual({
+			align: "start",
+			className:
+				"pointer-events-none absolute z-50 flex w-max max-w-[min(480px,calc(100vw-16px))] flex-col gap-0.5 whitespace-normal text-balance rounded-r5 bg-[var(--tooltip-bg)] px-2 py-1.5 text-[13px]/[18px] text-[var(--tooltip-fg)] shadow-[0_1px_2px_rgb(11_11_11/0.06)] bottom-full left-0 mb-1",
+			children: [
+				{className: "inline-flex min-w-0 items-center gap-2", text: "daily"},
+				{
+					className: "break-words text-[11px]/[14px] text-[var(--tooltip-description-ink)]",
+					text: "Asked a question",
+				},
+			],
+			title: '<span class="min-w-0 break-words">daily</span>',
+		});
+	});
+
+	it("keeps the centred default and data-align=center, e.g. upstream's Dismiss tooltip", () => {
+		vi.useFakeTimers();
+		render(
+			<Tooltip content="Dismiss">
+				<button type="button">X</button>
+			</Tooltip>,
+		);
+
+		const tooltip = openTooltip();
+
+		expect({
+			align: tooltip.dataset["align"],
+			className: tooltip.className.endsWith("bottom-full left-1/2 mb-1 -translate-x-1/2"),
+		}).toStrictEqual({
+			align: "center",
+			className: true,
+		});
+	});
+
+	it("aligns a bottom tip to the anchor's start edge", () => {
+		vi.useFakeTimers();
+		render(
+			<Tooltip content="daily" side="bottom" align="start">
+				<button type="button">daily</button>
+			</Tooltip>,
+		);
+
+		expect(openTooltip().className.endsWith(" top-full left-0 mt-1")).toBe(true);
+	});
+});

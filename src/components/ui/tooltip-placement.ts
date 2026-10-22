@@ -1,5 +1,7 @@
 import {assertNever} from "../../lib/assert-never";
 export type TooltipSide = "top" | "bottom" | "left" | "right";
+/** Where the tip sits along the trigger's cross axis: centred on it, or flush with its start edge. */
+export type TooltipAlign = "start" | "center";
 
 export interface TooltipRect {
 	left: number;
@@ -52,22 +54,23 @@ function clampShift(start: number, size: number, limit: number) {
 
 /**
  * Where a tooltip goes: on `side` when it fits, flipped to the opposite side when only that fits, and shifted along
- * the cross axis so it stays 8px inside the viewport.
+ * the cross axis (from its `align` spot) so it stays 8px inside the viewport.
  */
 export function placeTooltip(
 	trigger: TooltipRect,
 	tip: {width: number; height: number},
 	viewport: {width: number; height: number},
 	side: TooltipSide,
+	align: TooltipAlign = "center",
 ): TooltipPlacement {
 	const placed =
 		!fitsOnSide(trigger, tip, viewport, side) && fitsOnSide(trigger, tip, viewport, OPPOSITE[side])
 			? OPPOSITE[side]
 			: side;
 	if (placed === "top" || placed === "bottom") {
-		const left = trigger.left + trigger.width / 2 - tip.width / 2;
+		const left = align === "start" ? trigger.left : trigger.left + trigger.width / 2 - tip.width / 2;
 		return {side: placed, shiftX: clampShift(left, tip.width, viewport.width), shiftY: 0};
 	}
-	const top = trigger.top + trigger.height / 2 - tip.height / 2;
+	const top = align === "start" ? trigger.top : trigger.top + trigger.height / 2 - tip.height / 2;
 	return {side: placed, shiftX: 0, shiftY: clampShift(top, tip.height, viewport.height)};
 }

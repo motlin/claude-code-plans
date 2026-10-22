@@ -11,7 +11,7 @@ import {
 
 import {ViewportPortal} from "../viewport-portal";
 import {Shortcut} from "./shortcut";
-import {placeTooltip, type TooltipPlacement} from "./tooltip-placement";
+import {placeTooltip, type TooltipAlign, type TooltipPlacement} from "./tooltip-placement";
 
 const OPEN_DELAY_MS = 300;
 
@@ -21,6 +21,14 @@ const SIDE_CLASS = {
 	right: "left-full top-1/2 ml-1 -translate-y-1/2",
 	left: "right-full top-1/2 mr-1 -translate-y-1/2",
 } as const;
+
+/** The side classes for `align="start"`: flush with the anchor's start edge instead of centred on it. */
+const START_SIDE_CLASS = {
+	top: "bottom-full left-0 mb-1",
+	bottom: "top-full left-0 mt-1",
+	right: "left-full top-0 ml-1",
+	left: "right-full top-0 mr-1",
+} as const satisfies Record<keyof typeof SIDE_CLASS, string>;
 
 const TOOLTIP_CLASS =
 	"pointer-events-none absolute z-50 inline-flex min-h-6 w-max max-w-[240px] items-center gap-2 rounded-r5 bg-[var(--tooltip-bg)] px-2 py-[3px] text-[13px]/[18px] text-[var(--tooltip-fg)] shadow-[0_1px_2px_rgb(11_11_11/0.06)]";
@@ -55,6 +63,15 @@ const REASON_TOOLTIP_CLASS = TOOLTIP_CLASS.replace(
 	"flex w-max max-w-[240px] flex-col gap-0.5 whitespace-normal text-balance",
 ).replace("py-[3px]", "py-1.5");
 
+/**
+ * Upstream's Home next-step row tooltip (cds Tooltip with a detail): the title over its 11px/14px detail,
+ * balanced, wrapping within min(480px, the viewport less 8px each side).
+ */
+const STACKED_DETAIL_TOOLTIP_CLASS = TOOLTIP_CLASS.replace(
+	"inline-flex min-h-6 w-max max-w-[240px] items-center gap-2",
+	"flex w-max max-w-[min(480px,calc(100vw-16px))] flex-col gap-0.5 whitespace-normal text-balance",
+).replace("py-[3px]", "py-1.5");
+
 const TOOLTIP_ROW_CLASS = "inline-flex items-center gap-2";
 
 /**
@@ -79,6 +96,8 @@ export function Tooltip({
 	detail,
 	openWhen,
 	side = "top",
+	align = "center",
+	stacked = false,
 	multiline = false,
 	variant,
 	closeOnClick = true,
@@ -97,6 +116,10 @@ export function Tooltip({
 	/** Opens only when this holds for the anchor at hover time, e.g. only when a truncated name overflows. */
 	openWhen?: ((anchor: HTMLElement) => boolean) | undefined;
 	side?: keyof typeof SIDE_CLASS;
+	/** `start` lines the tip up with the anchor's start edge (upstream's Home next-step rows); default centred. */
+	align?: TooltipAlign;
+	/** Put `detail` on its own 11px line under the label, as upstream's Home next-step row tooltip does. */
+	stacked?: boolean;
 	/** Wrap long content and break it at its newlines, e.g. a timestamp followed by per-turn details. */
 	multiline?: boolean;
 	/**
@@ -149,9 +172,10 @@ export function Tooltip({
 					height: document.documentElement.clientHeight,
 				},
 				side,
+				align,
 			),
 		);
-	}, [open, side, content, description, secondary?.content, secondary?.shortcut]);
+	}, [open, side, align, content, description, secondary?.content, secondary?.shortcut]);
 
 	// Upstream suppresses a trigger's tooltip while its popup is open, so it never draws beside the open menu.
 	useEffect(() => {
@@ -204,16 +228,19 @@ export function Tooltip({
 			{shortcut !== undefined && <TooltipShortcut keys={shortcut} />}
 		</>
 	);
+	const stackedDetail = stacked && detail !== undefined;
 	const tooltipClass =
 		variant === "reason"
 			? REASON_TOOLTIP_CLASS
-			: description === undefined
-				? secondary === undefined
-					? multiline
-						? MULTILINE_TOOLTIP_CLASS
-						: TOOLTIP_CLASS
-					: ACTION_ROWS_TOOLTIP_CLASS
-				: STACKED_TOOLTIP_CLASS;
+			: stackedDetail
+				? STACKED_DETAIL_TOOLTIP_CLASS
+				: description === undefined
+					? secondary === undefined
+						? multiline
+							? MULTILINE_TOOLTIP_CLASS
+							: TOOLTIP_CLASS
+						: ACTION_ROWS_TOOLTIP_CLASS
+					: STACKED_TOOLTIP_CLASS;
 
 	const tipElement = (
 		<span
@@ -221,10 +248,20 @@ export function Tooltip({
 			role="tooltip"
 			id={id}
 			data-side={placedSide}
-			className={`${tooltipClass} ${SIDE_CLASS[placedSide]}`}
+			data-align={align}
+			className={`${tooltipClass} ${(align === "start" ? START_SIDE_CLASS : SIDE_CLASS)[placedSide]}`}
 			style={shiftStyle(placement)}
 		>
-			{description === undefined && secondary === undefined ? (
+			{stackedDetail ? (
+				<>
+					<span className="inline-flex min-w-0 items-center gap-2">
+						<span className="min-w-0 break-words">{content}</span>
+					</span>
+					<span className="break-words text-[11px]/[14px] text-[var(--tooltip-description-ink)]">
+						{detail}
+					</span>
+				</>
+			) : description === undefined && secondary === undefined ? (
 				label
 			) : (
 				<>
