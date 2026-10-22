@@ -43,6 +43,7 @@ import type {
 	JsonlRecordSchema,
 	PermissionDecisionDecisionSchema,
 	PermissionDecisionReasonTypeSchema,
+	PermissionDecisionRuleSourceSchema,
 	PermissionDecisionSourceSchema,
 	PluginCatalogSourceKindSchema,
 	RenderedRoleSchema,
@@ -144,6 +145,20 @@ export const permissionDecisionReasonTypeLabels = {
 	safetyCheck: "Safety check",
 	subcommandResults: "Subcommand results",
 } satisfies Record<z.infer<typeof PermissionDecisionReasonTypeSchema>, string>;
+
+const permissionDecisionRuleSourceLabels = {
+	userSettings: "User settings",
+	projectSettings: "Project settings",
+	localSettings: "Local settings",
+	flagSettings: "Flag settings",
+	policySettings: "Managed policy",
+	cliArg: "CLI argument",
+	command: "Command",
+	session: "Session",
+	toolsNarrowing: "Tool narrowing",
+	mcpServerPolicy: "MCP server policy",
+	hostCredential: "Host credential",
+} satisfies Record<z.infer<typeof PermissionDecisionRuleSourceSchema>, string>;
 
 const taskStatusLabels = {
 	pending: "Pending",
@@ -1264,6 +1279,7 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
 	"UserRecordSchema.permissionDecision.decision": permissionDecisionDecisionLabels,
 	"UserRecordSchema.permissionDecision.source": permissionDecisionSourceLabels,
 	"UserRecordSchema.permissionDecision.reasonType": permissionDecisionReasonTypeLabels,
+	"UserRecordSchema.permissionDecision.ruleSource": permissionDecisionRuleSourceLabels,
 	JsonlRecordSchema: jsonlRecordVariants,
 	"JsonlRecordSchema.<api-request-blob>.message.content|1[]": apiRequestBlobContentBlockVariants,
 	"JsonlRecordSchema.<api-request-blob>.message.content|1[].<tool_addition>.tool": toolAdditionToolVariants,

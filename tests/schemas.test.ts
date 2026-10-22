@@ -1901,7 +1901,12 @@ describe("JsonlRecordSchema observed 2026-09 transcript fields", () => {
 										},
 									],
 								},
-								auto_mode: {allow: [], soft_deny: [], hard_deny: [], environment: ["### Org-wide"]},
+								auto_mode: {
+									allow: ["$defaults", "Bash(vp test:*)"],
+									soft_deny: ["$defaults", "Bash(sqlite3 * -- DROP*)"],
+									hard_deny: [],
+									environment: ["### Org-wide"],
+								},
 								artifact_consent_holdback: true,
 								case_insensitive_paths: false,
 								restricted: false,
@@ -2195,6 +2200,56 @@ describe("JsonlRecordSchema observed 2026-10-21 transcript fields", () => {
 		];
 
 		expect(records.map((record) => JsonlRecordSchema.parse(record))).toStrictEqual(records);
+	});
+
+	it("parses permission rule sources, sandboxed tool results, and auto-mode finish-exposed-work flags", () => {
+		const records = [
+			{
+				type: "user",
+				...baseFields,
+				message: {role: "user", content: [{type: "tool_result", tool_use_id: "toolu_1", content: "ok"}]},
+				permissionDecision: {
+					decision: "accept",
+					source: "config",
+					reasonType: "rule",
+					ruleSource: "userSettings",
+				},
+			},
+			{
+				type: "user",
+				...baseFields,
+				message: {role: "user", content: [{type: "tool_result", tool_use_id: "toolu_2", content: "ok"}]},
+				sandboxed: false,
+				permissionDecision: {decision: "accept", source: "config", reasonType: "classifier"},
+			},
+			attachmentRecord({
+				type: "auto_mode",
+				autoModeConsentFlow: false,
+				finishExposedWork: false,
+				bashFirst: true,
+				bashFirstSteer: "relaxed",
+				steerOnly: true,
+				bypass: false,
+			}),
+		];
+
+		expect(records.map((record) => JsonlRecordSchema.parse(record))).toStrictEqual(records);
+	});
+
+	it("rejects an unknown permission rule source", () => {
+		const record = {
+			type: "user",
+			...baseFields,
+			message: {role: "user", content: [{type: "tool_result", tool_use_id: "toolu_1", content: "ok"}]},
+			permissionDecision: {
+				decision: "accept",
+				source: "config",
+				reasonType: "rule",
+				ruleSource: "madeUpSettings",
+			},
+		};
+
+		expect(JsonlRecordSchema.safeParse(record).success).toBe(false);
 	});
 
 	it("parses joined background-task notices whose run id is null", () => {

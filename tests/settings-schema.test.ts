@@ -246,6 +246,18 @@ describe("ClaudeSettingsSchema", () => {
 		expect(ClaudeSettingsSchema.parse(settings)).toStrictEqual(settings);
 	});
 
+	it("parses auto mode allow and soft_deny rule lists", () => {
+		const settings = {
+			autoMode: {
+				allow: ["$defaults", "Bash(vp test:*)"],
+				soft_deny: ["$defaults", "Bash(sqlite3 * -- DROP*)"],
+				environment: ["### Org-wide"],
+			},
+		};
+
+		expect(ClaudeSettingsSchema.parse(settings)).toStrictEqual(settings);
+	});
+
 	it("parses settings with switchModelsOnFlag", () => {
 		const settings = {switchModelsOnFlag: false};
 

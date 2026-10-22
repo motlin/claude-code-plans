@@ -294,7 +294,11 @@ export const OBJECT_EDITORS: ObjectEditorDef[] = [
 		label: "Auto mode",
 		description: "Auto mode classifier context",
 		section: "Permissions",
-		fields: [{key: "environment", label: "Environment", type: "stringList"}],
+		fields: [
+			{key: "allow", label: "Allow", type: "stringList"},
+			{key: "soft_deny", label: "Soft deny", type: "stringList"},
+			{key: "environment", label: "Environment", type: "stringList"},
+		],
 	},
 ];
 

@@ -297,6 +297,20 @@ export const PermissionDecisionReasonTypeSchema = z.enum([
 	"safetyCheck",
 	"subcommandResults",
 ]);
+/** Which rule source decided a `reasonType: "rule"` call; same keys as the classifier context's `rule_roots`. */
+export const PermissionDecisionRuleSourceSchema = z.enum([
+	"userSettings",
+	"projectSettings",
+	"localSettings",
+	"flagSettings",
+	"policySettings",
+	"cliArg",
+	"command",
+	"session",
+	"toolsNarrowing",
+	"mcpServerPolicy",
+	"hostCredential",
+]);
 
 // How the tool call answered by this tool_result was permitted or denied.
 const PermissionDecisionSchema = z
@@ -304,6 +318,7 @@ const PermissionDecisionSchema = z
 		decision: PermissionDecisionDecisionSchema,
 		source: PermissionDecisionSourceSchema,
 		reasonType: PermissionDecisionReasonTypeSchema.optional(),
+		ruleSource: PermissionDecisionRuleSourceSchema.optional(),
 	})
 	.strict();
 
@@ -425,6 +440,8 @@ export const UserRecordSchema = z
 		classifierMetaLines: z.string().optional(),
 		serverClassifierContext: ServerClassifierContextSchema.optional(),
 		permissionDecision: PermissionDecisionSchema.optional(),
+		// Whether the Bash call answered by this tool_result ran inside the sandbox.
+		sandboxed: z.boolean().optional(),
 		// Safety-classifier stop notice: the id of the assistant message that was withheld.
 		refusedMessageId: z.string().optional(),
 	})
@@ -972,6 +989,7 @@ const AutoModeAttachmentPayload = z
 		type: z.literal("auto_mode"),
 		reminderType: z.string().optional(),
 		autoModeConsentFlow: z.boolean().optional(),
+		finishExposedWork: z.boolean().optional(),
 		bashFirst: z.boolean().optional(),
 		steerOnly: z.boolean().optional(),
 		bypass: z.boolean().optional(),
@@ -1826,8 +1844,9 @@ const DangerousToolUseClassifierContextSchema = z
 			.strict(),
 		auto_mode: z
 			.object({
-				allow: z.array(z.never()),
-				soft_deny: z.array(z.never()),
+				// Permission-rule strings; "$defaults" stands in for the built-in list.
+				allow: z.array(z.string()),
+				soft_deny: z.array(z.string()),
 				hard_deny: z.array(z.never()),
 				environment: z.array(z.string()),
 			})
@@ -2252,7 +2271,12 @@ export const ClaudeSettingsSchema = z
 		agentPushNotifEnabled: z.boolean().optional(),
 		switchModelsOnFlag: z.boolean().optional(),
 		autoMode: z
-			.object({environment: z.array(z.string()).optional()})
+			.object({
+				// Permission-rule strings; "$defaults" stands in for the built-in list.
+				allow: z.array(z.string()).optional(),
+				soft_deny: z.array(z.string()).optional(),
+				environment: z.array(z.string()).optional(),
+			})
 			.strict()
 			.optional(),
 	})
