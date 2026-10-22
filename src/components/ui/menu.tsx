@@ -11,12 +11,14 @@ import {
 	useId,
 	useMemo,
 	useRef,
+	useState,
 } from "react";
 
 import {useIsMac} from "../../hooks/use-is-mac";
 import {toAriaKeyShortcuts} from "../../lib/shortcuts/format";
 import {type Density, DensityProvider, useDensity, useScopeDensity} from "./density";
 import {MenuSwitch} from "./menu-switch";
+import {useSheetPresentation} from "./sheet-presentation";
 import {Shortcut} from "./shortcut";
 import {Tooltip} from "./tooltip";
 
@@ -145,10 +147,47 @@ function acceleratorProps(accelerator: string | undefined) {
 	return {"aria-keyshortcuts": key, "data-accelerator": key};
 }
 
+/** Whether the enclosing menu root latched a bottom-sheet presentation at open. */
+const MenuSheetContext = createContext(false);
+
+interface MenuRootProps {
+	open?: boolean | undefined;
+	defaultOpen?: boolean | undefined;
+	onOpenChange?: ((open: boolean, ...rest: never[]) => void) | undefined;
+	onOpenChangeComplete?: ((open: boolean) => void) | undefined;
+}
+
+/**
+ * Upstream's yt/Ik: track the root's open state (controlled or not) and run the sheet gate with
+ * `closable = open === undefined || onOpenChange !== undefined`, latched from open through the exit.
+ */
+function useMenuRootSheet<P extends MenuRootProps>(props: P): {sheet: boolean; rootProps: P} {
+	const {open, defaultOpen, onOpenChange, onOpenChangeComplete} = props;
+	const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen ?? false);
+	const {sheet, onOpenChangeComplete: releaseLatch} = useSheetPresentation(open ?? uncontrolledOpen, {
+		closable: open === undefined || onOpenChange !== undefined,
+	});
+	const rootProps = {
+		...props,
+		onOpenChange: (nextOpen: boolean, ...rest: never[]) => {
+			setUncontrolledOpen(nextOpen);
+			onOpenChange?.(nextOpen, ...rest);
+		},
+		onOpenChangeComplete: (completedOpen: boolean) => {
+			releaseLatch(completedOpen);
+			onOpenChangeComplete?.(completedOpen);
+		},
+	};
+	return {sheet, rootProps};
+}
+
 export function Menu(props: ComponentProps<typeof BaseMenu.Root>) {
+	const {sheet, rootProps} = useMenuRootSheet(props);
 	return (
 		<MenuKindContext.Provider value="Menu">
-			<BaseMenu.Root {...props} />
+			<MenuSheetContext.Provider value={sheet}>
+				<BaseMenu.Root {...rootProps} />
+			</MenuSheetContext.Provider>
 		</MenuKindContext.Provider>
 	);
 }
@@ -156,9 +195,12 @@ export function Menu(props: ComponentProps<typeof BaseMenu.Root>) {
 export const MenuTrigger = BaseMenu.Trigger;
 
 export function ContextMenu(props: ComponentProps<typeof BaseContextMenu.Root>) {
+	const {sheet, rootProps} = useMenuRootSheet(props);
 	return (
 		<MenuKindContext.Provider value="ContextMenu">
-			<BaseContextMenu.Root {...props} />
+			<MenuSheetContext.Provider value={sheet}>
+				<BaseContextMenu.Root {...rootProps} />
+			</MenuSheetContext.Provider>
 		</MenuKindContext.Provider>
 	);
 }
@@ -212,6 +254,7 @@ export function MenuContent({
 			? resolvedCollisionAvoidance.fallbackAxisSide
 			: undefined;
 	const kind = useContext(MenuKindContext);
+	const sheet = useContext(MenuSheetContext);
 	/* Upstream's si order: an override, then comfortable on (pointer: coarse), then the prop or opener's density. */
 	const resolvedDensity = useScopeDensity(density);
 	const sizing = DENSITY_CLASSES[resolvedDensity];
@@ -236,6 +279,7 @@ export function MenuContent({
 				>
 					<BaseMenu.Popup
 						data-cds={kind}
+						{...(sheet ? {"data-presentation": "sheet"} : {})}
 						className={className ? `${popupClass} ${className}` : popupClass}
 						onKeyDown={handleAcceleratorKey}
 						{...(finalFocus === undefined ? {} : {finalFocus})}
@@ -510,11 +554,15 @@ export function MenuRadioItem({
 
 const SubmenuTriggerContext = createContext<RefObject<HTMLElement | null> | null>(null);
 
+/** Upstream's ss: a submenu re-runs the sheet gate at its own open rather than inheriting the root's. */
 export function MenuSub(props: ComponentProps<typeof BaseMenu.SubmenuRoot>) {
 	const triggerRef = useRef<HTMLElement | null>(null);
+	const {sheet, rootProps} = useMenuRootSheet(props);
 	return (
 		<SubmenuTriggerContext.Provider value={triggerRef}>
-			<BaseMenu.SubmenuRoot {...props} />
+			<MenuSheetContext.Provider value={sheet}>
+				<BaseMenu.SubmenuRoot {...rootProps} />
+			</MenuSheetContext.Provider>
 		</SubmenuTriggerContext.Provider>
 	);
 }

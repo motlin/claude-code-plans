@@ -805,3 +805,96 @@ describe("MenuContent on a coarse pointer", () => {
 		});
 	});
 });
+
+describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	function stubCoarseAtWidth(width: number) {
+		vi.stubGlobal(
+			"matchMedia",
+			vi.fn((query: string) => ({
+				matches:
+					query === "(pointer: coarse)" ||
+					(query === "(pointer: coarse) and (max-width: 639.98px)" && width < 640),
+				media: query,
+				onchange: null,
+				addEventListener: () => undefined,
+				removeEventListener: () => undefined,
+				addListener: () => undefined,
+				removeListener: () => undefined,
+				dispatchEvent: () => false,
+			})),
+		);
+	}
+
+	function presentation() {
+		return {
+			presentation: screen.getByRole("menu").getAttribute("data-presentation"),
+			scrim: document.querySelector("[data-sheet-scrim]"),
+		};
+	}
+
+	it("keeps a coarse-pointer menu anchored at 1024px", async () => {
+		stubCoarseAtWidth(1024);
+		renderDropdown();
+		await openDropdown();
+		expect(presentation()).toStrictEqual({presentation: null, scrim: null});
+	});
+
+	it("presents a coarse-pointer menu as a sheet at 639px", async () => {
+		stubCoarseAtWidth(639);
+		renderDropdown();
+		await openDropdown();
+		expect(presentation()).toStrictEqual({presentation: "sheet", scrim: null});
+	});
+
+	it("keeps a controlled menu without onOpenChange anchored at 639px", async () => {
+		stubCoarseAtWidth(639);
+		render(
+			<Menu open>
+				<MenuTrigger aria-label="More options">...</MenuTrigger>
+				<MenuContent>
+					<MenuItem>Copy link</MenuItem>
+				</MenuContent>
+			</Menu>,
+		);
+		await flush();
+		expect(presentation()).toStrictEqual({presentation: null, scrim: null});
+	});
+
+	it("keeps a coarse-pointer ContextMenu anchored at 1024px", async () => {
+		stubCoarseAtWidth(1024);
+		render(
+			<ContextMenu>
+				<ContextMenuTrigger>
+					<div>Row title</div>
+				</ContextMenuTrigger>
+				<MenuContent>
+					<MenuItem>Copy link</MenuItem>
+				</MenuContent>
+			</ContextMenu>,
+		);
+		fireEvent.contextMenu(screen.getByText("Row title"), {clientX: 40, clientY: 50});
+		await flush();
+		expect(presentation()).toStrictEqual({presentation: null, scrim: null});
+	});
+
+	it("presents a coarse-pointer ContextMenu as a sheet at 639px", async () => {
+		stubCoarseAtWidth(639);
+		render(
+			<ContextMenu>
+				<ContextMenuTrigger>
+					<div>Row title</div>
+				</ContextMenuTrigger>
+				<MenuContent>
+					<MenuItem>Copy link</MenuItem>
+				</MenuContent>
+			</ContextMenu>,
+		);
+		fireEvent.contextMenu(screen.getByText("Row title"), {clientX: 40, clientY: 50});
+		await flush();
+		expect(presentation()).toStrictEqual({presentation: "sheet", scrim: null});
+	});
+});
