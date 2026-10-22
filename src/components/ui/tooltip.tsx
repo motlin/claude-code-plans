@@ -46,6 +46,15 @@ const ACTION_ROWS_TOOLTIP_CLASS = TOOLTIP_CLASS.replace(
 	"flex w-max flex-col items-start gap-0.5",
 ).replace("py-[3px]", "py-1.5");
 
+/**
+ * Upstream's disabled-reason box (cds `DisabledReasonTooltip`, multiline): a balanced wrap within 240px with
+ * 6px 8px padding.
+ */
+const REASON_TOOLTIP_CLASS = TOOLTIP_CLASS.replace(
+	"inline-flex min-h-6 w-max max-w-[240px] items-center gap-2",
+	"flex w-max max-w-[240px] flex-col gap-0.5 whitespace-normal text-balance",
+).replace("py-[3px]", "py-1.5");
+
 const TOOLTIP_ROW_CLASS = "inline-flex items-center gap-2";
 
 /**
@@ -71,6 +80,8 @@ export function Tooltip({
 	openWhen,
 	side = "top",
 	multiline = false,
+	variant,
+	closeOnClick = true,
 	portal = false,
 	className,
 	children,
@@ -88,6 +99,14 @@ export function Tooltip({
 	side?: keyof typeof SIDE_CLASS;
 	/** Wrap long content and break it at its newlines, e.g. a timestamp followed by per-turn details. */
 	multiline?: boolean;
+	/**
+	 * `reason`: upstream's disabled-reason tooltip. The balanced 240px box, opened at once when focus arrives
+	 * (upstream `data-instant="focus"`), and the anchored child is left undescribed because the reason already
+	 * describes it.
+	 */
+	variant?: "reason" | undefined;
+	/** Upstream keeps a disabled reason open when its control is clicked (`closeOnClick: false`). */
+	closeOnClick?: boolean;
 	/**
 	 * Render the tip in `document.body` over a fixed box matching the anchor, for anchors inside a clipping
 	 * scroller such as a menu row (upstream's Max effort row tooltip, side right).
@@ -149,19 +168,21 @@ export function Tooltip({
 
 	const placedSide = placement?.side ?? side;
 
-	function show() {
+	function show(delay = OPEN_DELAY_MS) {
 		clearTimeout(timer.current);
 		const anchor = anchorRef.current;
 		if (anchor !== null && popupOpen(anchor)) return;
 		if (openWhen !== undefined && (anchor === null || !openWhen(anchor))) return;
-		timer.current = setTimeout(() => {
+		const reveal = () => {
 			if (anchor !== null && popupOpen(anchor)) return;
 			if (portal && anchor !== null) {
 				const {left, top, width, height} = anchor.getBoundingClientRect();
 				setAnchorBox({left, top, width, height});
 			}
 			setOpen(true);
-		}, OPEN_DELAY_MS);
+		};
+		if (delay === 0) reveal();
+		else timer.current = setTimeout(reveal, delay);
 	}
 
 	function hide() {
@@ -184,13 +205,15 @@ export function Tooltip({
 		</>
 	);
 	const tooltipClass =
-		description === undefined
-			? secondary === undefined
-				? multiline
-					? MULTILINE_TOOLTIP_CLASS
-					: TOOLTIP_CLASS
-				: ACTION_ROWS_TOOLTIP_CLASS
-			: STACKED_TOOLTIP_CLASS;
+		variant === "reason"
+			? REASON_TOOLTIP_CLASS
+			: description === undefined
+				? secondary === undefined
+					? multiline
+						? MULTILINE_TOOLTIP_CLASS
+						: TOOLTIP_CLASS
+					: ACTION_ROWS_TOOLTIP_CLASS
+				: STACKED_TOOLTIP_CLASS;
 
 	const tipElement = (
 		<span
@@ -225,13 +248,17 @@ export function Tooltip({
 		<span
 			ref={anchorRef}
 			className={className ? `relative inline-flex ${className}` : "relative inline-flex"}
-			onPointerEnter={show}
+			onPointerEnter={() => {
+				show();
+			}}
 			onPointerLeave={hide}
-			onFocus={show}
+			onFocus={() => {
+				show(variant === "reason" ? 0 : OPEN_DELAY_MS);
+			}}
 			onBlur={hide}
-			onClick={hide}
+			onClick={closeOnClick ? hide : undefined}
 		>
-			{open
+			{open && variant !== "reason"
 				? cloneElement(children, {
 						"aria-describedby": [children.props["aria-describedby"], id].filter(Boolean).join(" "),
 					})
