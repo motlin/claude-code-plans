@@ -312,6 +312,12 @@ export const PermissionDecisionRuleSourceSchema = z.enum([
 	"hostCredential",
 ]);
 
+/**
+ * How far a user's accept of a permission prompt reaches: just this call, or the
+ * rest of the session. A grant saved to settings ("always") is never recorded here.
+ */
+export const PermissionDecisionGrantScopeSchema = z.enum(["once", "session"]);
+
 // How the tool call answered by this tool_result was permitted or denied.
 const PermissionDecisionSchema = z
 	.object({
@@ -319,6 +325,9 @@ const PermissionDecisionSchema = z
 		source: PermissionDecisionSourceSchema,
 		reasonType: PermissionDecisionReasonTypeSchema.optional(),
 		ruleSource: PermissionDecisionRuleSourceSchema.optional(),
+		grantScope: PermissionDecisionGrantScopeSchema.optional(),
+		// What decided the call, composed by the CLI: "unknown", "rule:<source>", "mode:<mode>", "hook:<event>", "bashMiss:<kind>", …
+		reasonCode: z.string().min(1).optional(),
 	})
 	.strict();
 

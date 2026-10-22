@@ -2236,6 +2236,46 @@ describe("JsonlRecordSchema observed 2026-10-21 transcript fields", () => {
 		expect(records.map((record) => JsonlRecordSchema.parse(record))).toStrictEqual(records);
 	});
 
+	it("parses permission decisions carrying a grant scope and reason code", () => {
+		const records = [
+			{
+				type: "user",
+				...baseFields,
+				message: {role: "user", content: [{type: "tool_result", tool_use_id: "toolu_1", content: "ok"}]},
+				permissionDecision: {
+					decision: "accept",
+					source: "user_temporary",
+					grantScope: "once",
+					reasonCode: "unknown",
+				},
+			},
+			{
+				type: "user",
+				...baseFields,
+				message: {role: "user", content: [{type: "tool_result", tool_use_id: "toolu_2", content: "ok"}]},
+				permissionDecision: {
+					decision: "accept",
+					source: "user_temporary",
+					grantScope: "session",
+					reasonCode: "rule:userSettings",
+				},
+			},
+		];
+
+		expect(records.map((record) => JsonlRecordSchema.parse(record))).toStrictEqual(records);
+	});
+
+	it("rejects an unknown permission grant scope", () => {
+		const record = {
+			type: "user",
+			...baseFields,
+			message: {role: "user", content: [{type: "tool_result", tool_use_id: "toolu_1", content: "ok"}]},
+			permissionDecision: {decision: "accept", source: "user_permanent", grantScope: "forever"},
+		};
+
+		expect(JsonlRecordSchema.safeParse(record).success).toBe(false);
+	});
+
 	it("rejects an unknown permission rule source", () => {
 		const record = {
 			type: "user",

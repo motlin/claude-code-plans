@@ -42,6 +42,7 @@ import type {
 	GitPrActionSchema,
 	JsonlRecordSchema,
 	PermissionDecisionDecisionSchema,
+	PermissionDecisionGrantScopeSchema,
 	PermissionDecisionReasonTypeSchema,
 	PermissionDecisionRuleSourceSchema,
 	PermissionDecisionSourceSchema,
@@ -159,6 +160,11 @@ const permissionDecisionRuleSourceLabels = {
 	mcpServerPolicy: "MCP server policy",
 	hostCredential: "Host credential",
 } satisfies Record<z.infer<typeof PermissionDecisionRuleSourceSchema>, string>;
+
+const permissionDecisionGrantScopeLabels = {
+	once: "This call only",
+	session: "Rest of session",
+} satisfies Record<z.infer<typeof PermissionDecisionGrantScopeSchema>, string>;
 
 const taskStatusLabels = {
 	pending: "Pending",
@@ -1280,6 +1286,7 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
 	"UserRecordSchema.permissionDecision.source": permissionDecisionSourceLabels,
 	"UserRecordSchema.permissionDecision.reasonType": permissionDecisionReasonTypeLabels,
 	"UserRecordSchema.permissionDecision.ruleSource": permissionDecisionRuleSourceLabels,
+	"UserRecordSchema.permissionDecision.grantScope": permissionDecisionGrantScopeLabels,
 	JsonlRecordSchema: jsonlRecordVariants,
 	"JsonlRecordSchema.<api-request-blob>.message.content|1[]": apiRequestBlobContentBlockVariants,
 	"JsonlRecordSchema.<api-request-blob>.message.content|1[].<tool_addition>.tool": toolAdditionToolVariants,
