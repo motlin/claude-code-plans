@@ -36,9 +36,13 @@ export function ApprovalActionButton({
 
 export const APPROVAL_CARD_TITLE = "flex min-h-6 items-center text-[13px]/[19px] font-[580]";
 
-/** Upstream's `@container (width <= 420px)` stack: the action row and its button group, full width. */
+/**
+ * Upstream's `@container (width <= 420px)` stack: the action row and its button
+ * group, full width. A split button stretches too, its primary segment taking
+ * the spare width (`width:100%` and `flex:auto`).
+ */
 const STACK_ACTIONS =
-	"@max-[420px]:flex-col @max-[420px]:items-stretch @max-[420px]:[&>span]:ms-0 @max-[420px]:[&>span]:flex-col @max-[420px]:[&>span]:items-stretch";
+	"@max-[420px]:flex-col @max-[420px]:items-stretch @max-[420px]:[&>span]:ms-0 @max-[420px]:[&>span]:flex-col @max-[420px]:[&>span]:items-stretch @max-[420px]:[&_[data-cds=SplitDropdownButton]]:w-full @max-[420px]:[&_[data-cds=SplitDropdownButton]>[data-cds-segment]:first-child_button]:flex-auto";
 
 /**
  * Upstream's approval card shell for a pending permission: a scrolling body

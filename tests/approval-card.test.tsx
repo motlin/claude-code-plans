@@ -22,7 +22,7 @@ function permissionChrome() {
 }
 
 describe("approval card chrome", () => {
-	it("makes the permission card its own container and stacks its actions full width at upstream's 420px", () => {
+	it("makes the permission card its own container and stacks its actions and any split button full width at upstream's 420px", () => {
 		const {root, actions} = permissionChrome();
 
 		expect({
@@ -36,6 +36,8 @@ describe("approval card chrome", () => {
 				"@max-[420px]:[&>span]:ms-0",
 				"@max-[420px]:[&>span]:flex-col",
 				"@max-[420px]:[&>span]:items-stretch",
+				"@max-[420px]:[&_[data-cds=SplitDropdownButton]]:w-full",
+				"@max-[420px]:[&_[data-cds=SplitDropdownButton]>[data-cds-segment]:first-child_button]:flex-auto",
 			],
 		});
 	});
