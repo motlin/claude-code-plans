@@ -19,7 +19,7 @@
 }
 
 @custom-variant dark (&:is(.dark *));
-@custom-variant touch (@media (pointer: coarse));
+@custom-variant touch (@media (pointer: coarse), (hover: none));
 
 /* Not inline, so `font-mono` and `font-sans` read their variables and Settings ▸
    Code font / Interface font can override them on <html>. */
@@ -154,6 +154,7 @@
 	--spacing-p8: 12px;
 
 	/* Upstream claude.ai/code — border radii (rounded-r3, rounded-r6, etc.) */
+	--radius-r2: 3px;
 	--radius-r3: 4px;
 	--radius-r4: 5px;
 	--radius-r5: 6px;
