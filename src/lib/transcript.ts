@@ -246,6 +246,17 @@ const QueuedTaskNotificationLineSchema = z.object({
 });
 
 /**
+ * A typed-ahead human prompt the queue took in and has not handed over yet:
+ * no later dequeue, removal or popAll took it off.
+ */
+const QueuedPromptLineSchema = z.object({
+	type: z.literal("queued-prompt"),
+	content: z.string(),
+	timestamp: z.string().optional(),
+	lineIndex: z.number(),
+});
+
+/**
  * A record the schema rejected. Rendered as a visible gap so schema drift
  * surfaces in the transcript instead of silently deleting messages.
  */
@@ -270,6 +281,7 @@ export const RenderedLineSchema = z.discriminatedUnion("type", [
 	ArtifactLinkLineSchema,
 	ArtifactWatchLineSchema,
 	QueuedTaskNotificationLineSchema,
+	QueuedPromptLineSchema,
 	AttachmentLineSchema,
 	SystemLineSchema,
 	WorktreeLineSchema,
@@ -584,16 +596,34 @@ type QueueOperationRecord = Extract<z.infer<typeof JsonlRecordSchema>, {type: "q
 /** The CLI's dequeue ranks: the first entry with the lowest rank goes next. */
 const QUEUE_PRIORITY_RANK = {now: 0, next: 1, later: 2} as const;
 
-/** A waiting queue entry, with its priority and the line its task notification would draw. */
+/** A waiting queue entry, with its priority and the line it draws while it waits. */
 type QueuedEntry = {
 	content: string | undefined;
 	priority: keyof typeof QUEUE_PRIORITY_RANK;
-	line: z.infer<typeof QueuedTaskNotificationLineSchema> | null;
+	line: z.infer<typeof QueuedTaskNotificationLineSchema> | z.infer<typeof QueuedPromptLineSchema> | null;
 };
+
+const SYSTEM_QUEUED_PREFIXES = ["<task-notification>", "<agent-message", "<cross-session-message"];
+const SYSTEM_QUEUED_PATTERNS = [
+	/^Background agent ".*" was stopped/s,
+	/^\d+ background agents were stopped/,
+	/^\[Cross-session delivery notice\]/,
+	/^The person enabled mod hot-reload/,
+];
+
+/**
+ * Whether an enqueued plain-text content is something a person typed, not a
+ * notification, agent message or CLI notice the harness queued itself.
+ */
+export function isHumanQueuedContent(content: string | undefined): boolean {
+	if (content === undefined || content === "") return false;
+	if (SYSTEM_QUEUED_PREFIXES.some((prefix) => content.startsWith(prefix))) return false;
+	return !SYSTEM_QUEUED_PATTERNS.some((pattern) => pattern.test(content));
+}
 
 /**
  * Replays one queue operation: an enqueue joins the back (a task notification
- * also draws a line), a dequeue takes the first entry of the highest priority
+ * or a human prompt also draws a line), a dequeue takes the first entry of the highest priority
  * (task notifications wait behind typed prompts), a removal takes the first
  * entry with its content, and popAll empties the queue. A taken entry's line
  * goes into `delivered`, for the caller to drop.
@@ -612,10 +642,14 @@ function trackQueue(
 	switch (record.operation) {
 		case "enqueue": {
 			const {content} = record;
-			let line: z.infer<typeof QueuedTaskNotificationLineSchema> | null = null;
+			let line: QueuedEntry["line"] = null;
 			const isTaskNotification = content?.startsWith("<task-notification>") === true;
 			if (isTaskNotification) {
 				line = {type: "queued-task-notification", content, lineIndex};
+			} else if (content !== undefined && isHumanQueuedContent(content)) {
+				line = {type: "queued-prompt", content, lineIndex};
+			}
+			if (line) {
 				if (record.timestamp !== undefined) line.timestamp = record.timestamp;
 				sessionLines.push(line);
 			}

@@ -3348,6 +3348,9 @@ function renderSessionMessage({
 		case "queued-task-notification":
 			// buildSessionListEntries draws the ones upstream shows as task-event rows.
 			return null;
+		case "queued-prompt":
+			// Waiting rows are drawn at the transcript tail, not in place.
+			return null;
 		case "attachment":
 			return (
 				<AttachmentBanner
