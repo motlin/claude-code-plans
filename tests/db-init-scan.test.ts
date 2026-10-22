@@ -11,7 +11,7 @@ type ScanFileContentRoots = typeof scanFileContentRoots;
  *
  * The production boot order is:
  *   1. `initDb()` — opens the DB, runs schema migrations, returns.
- *   2. `createWatcher(...)` + `await watcher.once('ready')`
+ *   2. `createWatcher(...)` + `await watcher.whenReady()`
  *   3. `runInitialScan()` — runs `fullScan` (which now includes `scanPlansDir`).
  *   4. `startSweep()`
  *

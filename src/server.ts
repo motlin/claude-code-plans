@@ -137,15 +137,7 @@ void (async () => {
 		return;
 	}
 
-	await trackActivity(
-		"startup watcher ready",
-		async () =>
-			new Promise<void>((resolve) => {
-				watcher.once("ready", () => {
-					resolve();
-				});
-			}),
-	);
+	await trackActivity("startup watcher ready", async () => watcher.whenReady());
 
 	try {
 		await trackActivity("startup initial scan", async () => runInitialScan(fileContentRoots, ignoredDirNames));

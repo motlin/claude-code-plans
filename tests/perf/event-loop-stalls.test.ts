@@ -1,4 +1,8 @@
+import {mkdtemp, rm} from "node:fs/promises";
+import {tmpdir} from "node:os";
+import {join} from "node:path";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
+import {createRecursiveWatcher} from "../../src/lib/recursive-watch";
 import {
 	formatStall,
 	startStallMonitor,
@@ -78,6 +82,51 @@ describe("startStallMonitor", () => {
 		await sleep(120);
 
 		expect(stalls.map((stall) => stall.activities)).toStrictEqual([["scan jsonl /a.jsonl"]]);
+	});
+
+	it("restores the outer activity when a nested one ends and clears both once they end", async () => {
+		const stalls = monitor(200);
+		await sleep(60);
+
+		await trackActivity("index /a.jsonl", async () => {
+			await trackActivity("jsonl append /a.jsonl", async () => sleep(10));
+			await sleep(120);
+			blockFor(400);
+		});
+		await sleep(120);
+		trackActivitySync("GET /api/sessions/recent", () => {
+			blockFor(400);
+		});
+		await sleep(120);
+
+		expect(stalls.map((stall) => stall.activities)).toStrictEqual([
+			["index /a.jsonl"],
+			["GET /api/sessions/recent"],
+		]);
+	});
+
+	it("does not attribute a stall after startup to a watcher-ready wait whose watcher closed first", async () => {
+		const root = await mkdtemp(join(tmpdir(), "stall-watcher-"));
+		try {
+			const watcher = createRecursiveWatcher([root], () => false);
+			const waited = trackActivity("startup watcher ready", async () => watcher.whenReady());
+			await watcher.close();
+			const settled = await Promise.race([waited.then(() => "settled"), sleep(2000).then(() => "pending")]);
+
+			const stalls = monitor(200);
+			await sleep(60);
+			trackActivitySync("GET /api/sessions/recent", () => {
+				blockFor(400);
+			});
+			await sleep(120);
+
+			expect({settled, activities: stalls.map((stall) => stall.activities)}).toStrictEqual({
+				settled: "settled",
+				activities: [["GET /api/sessions/recent"]],
+			});
+		} finally {
+			await rm(root, {recursive: true, force: true});
+		}
 	});
 
 	it("ignores delays under the threshold", async () => {

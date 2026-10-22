@@ -1057,6 +1057,7 @@ describe("session registry events", () => {
 		const recursiveWatcher = {
 			once: vi.fn<() => RecursiveWatcher>(() => recursiveWatcher),
 			on: vi.fn<() => RecursiveWatcher>(() => recursiveWatcher),
+			whenReady: vi.fn<RecursiveWatcher["whenReady"]>(async () => Promise.resolve(undefined)),
 			close: vi.fn<RecursiveWatcher["close"]>(async () => Promise.resolve(undefined)),
 		} as unknown as RecursiveWatcher;
 		vi.spyOn(recursiveWatch, "createRecursiveWatcher").mockReturnValue(recursiveWatcher);
@@ -1123,6 +1124,7 @@ describe("createWatcher integration", () => {
 		recursiveWatcher = {
 			once,
 			on,
+			whenReady: vi.fn<RecursiveWatcher["whenReady"]>(async () => Promise.resolve(undefined)),
 			close: vi.fn<RecursiveWatcher["close"]>(async () => Promise.resolve(undefined)),
 		};
 		const createRecursiveWatcher = vi
@@ -1167,6 +1169,7 @@ describe("createWatcher integration", () => {
 		recursiveWatcher = {
 			once,
 			on,
+			whenReady: vi.fn<RecursiveWatcher["whenReady"]>(async () => Promise.resolve(undefined)),
 			close: vi.fn<RecursiveWatcher["close"]>(async () => Promise.resolve(undefined)),
 		};
 		const createRecursiveWatcher = vi

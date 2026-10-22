@@ -14,6 +14,11 @@ const PROBE_TIMEOUT_MS = 1000;
 
 export interface RecursiveWatcher {
 	once(event: "ready", listener: () => void): this;
+	/**
+	 * Settles once the watcher is delivering events, or once it closes first: a wait on a watcher that a restarted
+	 * dev server closed mid-startup must still end, or its tracked activity names every later event-loop stall.
+	 */
+	whenReady(): Promise<void>;
 	on(event: "add" | "change" | "unlink", listener: (path: string) => void): this;
 	close(): Promise<void>;
 }
@@ -42,6 +47,10 @@ class RecursiveWatcherImpl extends EventEmitter implements RecursiveWatcher {
 	private readonly probeObservers = new Map<string, () => void>();
 	private readonly probeTimers = new Set<ReturnType<typeof setTimeout>>();
 	private closed = false;
+	private settleReady: () => void = () => {};
+	private readonly ready = new Promise<void>((resolve) => {
+		this.settleReady = resolve;
+	});
 
 	constructor(
 		roots: readonly string[],
@@ -59,6 +68,10 @@ class RecursiveWatcherImpl extends EventEmitter implements RecursiveWatcher {
 		return super.on(event, listener);
 	}
 
+	async whenReady(): Promise<void> {
+		return this.ready;
+	}
+
 	async close(): Promise<void> {
 		if (this.closed) return Promise.resolve();
 		this.closed = true;
@@ -74,6 +87,7 @@ class RecursiveWatcherImpl extends EventEmitter implements RecursiveWatcher {
 		this.nativeWatchers.clear();
 
 		this.removeAllListeners();
+		this.settleReady();
 		return Promise.resolve();
 	}
 
@@ -100,6 +114,7 @@ class RecursiveWatcherImpl extends EventEmitter implements RecursiveWatcher {
 		await Promise.all(attachedRoots.map(async (root) => this.waitUntilArmed(root)));
 		// oxlint-disable-next-line typescript/no-unnecessary-condition -- close() can run while the roots arm
 		if (!this.closed) this.emit("ready");
+		this.settleReady();
 	}
 
 	/**
