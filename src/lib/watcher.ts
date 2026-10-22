@@ -16,6 +16,7 @@ import {
 	isPathInsideFileContentRoots,
 	resolveProjectsDirectory,
 	liveJsonlIndexCache,
+	liveSubagentIndexCache,
 } from "./db/indexer";
 import {
 	listSessionsForProjectFromDb,
@@ -524,7 +525,10 @@ async function indexSilently(
 		const index = db ?? getDb().index;
 		return await trackActivity(`index ${path}`, async () =>
 			retryWhileBusy(async () =>
-				indexFile(index, path, projectsDir, plansDirectory || undefined, {jsonlCache: liveJsonlIndexCache}),
+				indexFile(index, path, projectsDir, plansDirectory || undefined, {
+					jsonlCache: liveJsonlIndexCache,
+					subagentCache: liveSubagentIndexCache,
+				}),
 			),
 		);
 	} catch {
@@ -799,6 +803,7 @@ async function handleFileUnlink(path: string): Promise<void> {
 	} else if (ext === ".jsonl") {
 		jsonlOffsets.delete(path);
 		liveJsonlIndexCache.delete(path);
+		liveSubagentIndexCache.delete(path);
 		const throttleState = jsonlThrottleByPath.get(path);
 		if (throttleState?.timer !== undefined) clearTimeout(throttleState.timer);
 		jsonlThrottleByPath.delete(path);

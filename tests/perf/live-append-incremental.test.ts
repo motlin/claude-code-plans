@@ -4,7 +4,7 @@ import {join} from "node:path";
 import {sql} from "drizzle-orm";
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
 import {openTestDb, type AppDb} from "../../src/lib/db/connection";
-import {createJsonlIndexCache, indexFile, indexJsonlFile} from "../../src/lib/db/indexer";
+import {createJsonlIndexCache, createSubagentIndexCache, indexFile, indexJsonlFile} from "../../src/lib/db/indexer";
 import {searchMessageContentDb} from "../../src/lib/db/queries";
 import {startStallMonitor, type EventLoopStall} from "../../src/lib/perf/event-loop-stalls";
 import {currentPerfCounters, withPerfScope} from "../../src/lib/perf/server-scope";
@@ -186,6 +186,28 @@ describe(`live append to a ${SHAPE.name} transcript`, () => {
 			indexFile(live.index, file, projectsDir, undefined, {jsonlCache: cache}),
 		);
 		expect(counters).toStrictEqual({bytesRead: appended + SIGNATURE_BYTES, fullScans: 0});
+	}, 600_000);
+
+	it("indexFile re-indexes and links an appended subagent transcript from the cached parse", async () => {
+		const agentFile = join(projectsDir, PROJECT, SESSION_ID, "subagents", "agent-live.jsonl");
+		mkdirSync(join(projectsDir, PROJECT, SESSION_ID, "subagents"), {recursive: true});
+		copyFileSync(file, agentFile);
+		const live = openDb();
+		const subagentCache = createSubagentIndexCache();
+		await indexFile(live.index, agentFile, projectsDir, undefined, {subagentCache});
+		const text = appendedText(1);
+		appendFileSync(agentFile, text);
+		const counters = await jsonlCounters(async () =>
+			indexFile(live.index, agentFile, projectsDir, undefined, {subagentCache}),
+		);
+
+		const fresh = openDb();
+		await indexFile(fresh.index, agentFile, projectsDir);
+		const subagentRows = (db: AppDb) => db.index.all(sql`SELECT * FROM subagents ORDER BY id`);
+		expect({counters, subagents: subagentRows(live)}).toStrictEqual({
+			counters: {bytesRead: Buffer.byteLength(text) + SIGNATURE_BYTES, fullScans: 0},
+			subagents: subagentRows(fresh),
+		});
 	}, 600_000);
 
 	it("rescans for a pending approval from the last offset with the same result as a full scan", async () => {

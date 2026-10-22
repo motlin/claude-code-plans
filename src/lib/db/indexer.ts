@@ -1106,23 +1106,116 @@ class IdleCollector {
 	}
 }
 
+/** Everything indexSubagentFile derives from a subagent transcript, folded one line at a time. */
+class SubagentIndexState {
+	slug: string | null = null;
+	attributionAgent: string | null = null;
+	resolvedModel: string | null = null;
+	startedAt: string | null = null;
+	finishedAt: string | null = null;
+	readonly artifactEvents = new ArtifactEventCollector();
+	readonly slowCommands = new SlowCommandCollector();
+	readonly pendingCommands = new PendingCommandCollector();
+	readonly idleness = new IdleCollector();
+	readonly subagentLinks = new SubagentLinkCollector();
+
+	add(line: string): void {
+		let obj: unknown;
+		try {
+			obj = JSON.parse(line);
+		} catch {
+			return;
+		}
+		const recordAttributionAgent = stringField(obj, "attributionAgent");
+		if (recordAttributionAgent && !this.attributionAgent) this.attributionAgent = recordAttributionAgent;
+		const recordSlug = stringField(obj, "slug");
+		if (recordSlug && !this.slug) this.slug = recordSlug;
+		const recordModel = stringField(asRecord(obj)?.["message"], "model");
+		if (recordModel && recordModel !== SYNTHETIC_MODEL && !this.resolvedModel) this.resolvedModel = recordModel;
+		const timestamp = stringField(obj, "timestamp");
+		if (timestamp) {
+			this.startedAt ??= timestamp;
+			this.finishedAt = timestamp;
+		}
+		this.artifactEvents.add(obj);
+		this.slowCommands.add(obj);
+		this.pendingCommands.add(obj);
+		this.idleness.add(obj);
+		this.subagentLinks.add(obj);
+	}
+}
+
+/** Per-file parse state the watcher keeps for live subagent transcripts, so an append re-reads only the new lines. */
+export type SubagentIndexCache = IncrementalJsonlCache<SubagentIndexState>;
+
+/** Subagent states are small next to a session's message rows, and a busy session runs many subagents at once. */
+const SUBAGENT_INDEX_CACHE_ENTRIES = 32;
+
+export function createSubagentIndexCache(): SubagentIndexCache {
+	return new IncrementalJsonlCache(SUBAGENT_INDEX_CACHE_ENTRIES);
+}
+
+/** The cache the watcher keeps for the subagent transcripts being written right now. */
+export const liveSubagentIndexCache = createSubagentIndexCache();
+
 /** Index one subagent transcript; true when its pending command or idleness changed, which the running-tasks count reads. */
 export async function indexSubagentFile(
 	db: IndexDb,
 	filePath: string,
 	sessionId: string,
 	project: string,
+	cache?: SubagentIndexCache,
 ): Promise<boolean> {
+	return (await indexSubagentFileWithLinks(db, filePath, sessionId, project, cache)).changed;
+}
+
+/** indexSubagentFile, plus the transcript's own subagent links when they are known without another read. */
+async function indexSubagentFileWithLinks(
+	db: IndexDb,
+	filePath: string,
+	sessionId: string,
+	project: string,
+	cache: SubagentIndexCache | undefined,
+): Promise<{changed: boolean; subagentLinks?: readonly SubagentLink[]}> {
 	let fileStat: Awaited<ReturnType<typeof stat>>;
 	try {
 		fileStat = await stat(filePath);
 	} catch {
-		return false;
+		return {changed: false};
 	}
 
 	const existing = db.select().from(schema.indexedFiles).where(eq(schema.indexedFiles.path, filePath)).get();
-	if (existing && existing.mtimeMs === fileStat.mtimeMs) return false;
+	if (existing && existing.mtimeMs === fileStat.mtimeMs) {
+		const current =
+			cache === undefined ? undefined : await currentJsonlState(cache, filePath).catch(() => undefined);
+		return current === undefined ? {changed: false} : {changed: false, subagentLinks: current.subagentLinks.links};
+	}
 
+	const parseAndPersist = async () => {
+		const state = await foldJsonl(
+			filePath,
+			{
+				create: () => new SubagentIndexState(),
+				add: (folded, line) => {
+					folded.add(line);
+				},
+			},
+			cache,
+		);
+		const changed = await persistSubagentIndexState(db, filePath, sessionId, project, fileStat, state);
+		return {changed, subagentLinks: state.subagentLinks.links};
+	};
+	return cache === undefined ? parseAndPersist() : cache.exclusive(filePath, parseAndPersist);
+}
+
+async function persistSubagentIndexState(
+	db: IndexDb,
+	filePath: string,
+	sessionId: string,
+	project: string,
+	fileStat: Stats,
+	state: SubagentIndexState,
+): Promise<boolean> {
 	const agentFilename = basename(filePath, ".jsonl");
 	const metaPath = filePath.replace(/\.jsonl$/, ".meta.json");
 	let agentType: string | null = null;
@@ -1141,50 +1234,11 @@ export async function indexSubagentFile(
 		// no meta file
 	}
 
-	let slug: string | null = null;
-	let attributionAgent: string | null = null;
-	let resolvedModel: string | null = null;
-	let startedAt: string | null = null;
-	let finishedAt: string | null = null;
-	const artifactEvents = new ArtifactEventCollector();
-	const slowCommands = new SlowCommandCollector();
-	const pendingCommands = new PendingCommandCollector();
-	const idleness = new IdleCollector();
-	const rl = createLineReader(createReadStream(filePath, {encoding: "utf-8"}));
-	try {
-		for await (const line of rl) {
-			if (!line.trim()) continue;
-			try {
-				const obj: unknown = JSON.parse(line);
-				const recordAttributionAgent = stringField(obj, "attributionAgent");
-				if (recordAttributionAgent && !attributionAgent) {
-					attributionAgent = recordAttributionAgent;
-				}
-				const recordSlug = stringField(obj, "slug");
-				if (recordSlug && !slug) slug = recordSlug;
-				const recordModel = stringField(asRecord(obj)?.["message"], "model");
-				if (recordModel && recordModel !== SYNTHETIC_MODEL && !resolvedModel) {
-					resolvedModel = recordModel;
-				}
-				const timestamp = stringField(obj, "timestamp");
-				if (timestamp) {
-					startedAt ??= timestamp;
-					finishedAt = timestamp;
-				}
-				artifactEvents.add(obj);
-				slowCommands.add(obj);
-				pendingCommands.add(obj);
-				idleness.add(obj);
-			} catch {
-				// skip
-			}
-		}
-	} finally {
-		await rl.close();
-	}
+	const {slug, attributionAgent, resolvedModel, startedAt, finishedAt} = state;
+	const slowCommands: SlowCommandCollector = state.slowCommands;
 	const slowCommandsJson = JSON.stringify(slowCommands.commands());
-	const pendingCommand = pendingCommands.latest();
-	const idle = idleness.idle();
+	const pendingCommand = state.pendingCommands.latest();
+	const idle = state.idleness.idle();
 	const previous = db
 		.select({pendingCommand: schema.subagents.pendingCommand, idle: schema.subagents.idle})
 		.from(schema.subagents)
@@ -1233,6 +1287,7 @@ export async function indexSubagentFile(
 		})
 		.run();
 
+	const artifactEvents: ArtifactEventCollector = state.artifactEvents;
 	replaceArtifactEvents(db, {filePath, sessionId, projectId: project, isSubagent: true}, artifactEvents.events());
 
 	db.insert(schema.indexedFiles)
@@ -2011,7 +2066,7 @@ export async function indexFile(
 	filePath: string,
 	projectsDir: string,
 	plansDir?: string,
-	options: {jsonlCache?: JsonlIndexCache} = {},
+	options: {jsonlCache?: JsonlIndexCache; subagentCache?: SubagentIndexCache} = {},
 ): Promise<{linkedPlans: string[]; subagentsChangedFor?: string}> {
 	// Task file: ~/.claude/tasks/{projectDir}/{id}.json
 	if (filePath.includes("/tasks/") && filePath.endsWith(".json")) {
@@ -2058,10 +2113,17 @@ export async function indexFile(
 					normalizedProjectFile.relativeParts[subagentsIdx - 1],
 					"A subagents directory at index >= 2 has a session directory before it",
 				);
-				const commandChanged = await indexSubagentFile(db, filePath, sessionId, normalizedProjectFile.project);
+				const {changed: commandChanged, subagentLinks} = await indexSubagentFileWithLinks(
+					db,
+					filePath,
+					sessionId,
+					normalizedProjectFile.project,
+					options.subagentCache,
+				);
 				// Link nested parent-child relationships from this subagent's JSONL
 				const agentFilename = basename(filePath, ".jsonl");
-				await linkSubagentParents(db, filePath, agentFilename);
+				if (subagentLinks === undefined) await linkSubagentParents(db, filePath, agentFilename);
+				else applySubagentLinks(db, subagentLinks, agentFilename);
 				if (commandChanged) return {linkedPlans: [], subagentsChangedFor: sessionId};
 			}
 			return {linkedPlans: []};
