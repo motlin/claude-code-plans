@@ -6,6 +6,7 @@ import {type ComponentProps, createContext, type KeyboardEvent, type ReactNode, 
 import {useIsMac} from "../../hooks/use-is-mac";
 import {toAriaKeyShortcuts} from "../../lib/shortcuts/format";
 import {type Density, DensityProvider, useDensity, useScopeDensity} from "./density";
+import {MenuSwitch} from "./menu-switch";
 import {Shortcut} from "./shortcut";
 import {Tooltip} from "./tooltip";
 
@@ -32,6 +33,9 @@ const DENSITY_CLASSES = {
 		shortcut: "[&>kbd]:leading-[15px]",
 		shortcutPadding: "pl-[14px]",
 		icon: "[&_svg]:size-4",
+		/* Upstream's gap-xs and the switch row's ms-md trailing group. */
+		switchGap: "gap-1.5",
+		switchTrailing: "ms-3 flex shrink-0 items-center gap-1.5",
 	},
 	comfortable: {
 		popup: "rounded-card",
@@ -44,6 +48,8 @@ const DENSITY_CLASSES = {
 		shortcutPadding: "pl-5",
 		/* Upstream's size:"auto" icons follow --cds-icon: 16px compact, 20px comfortable. */
 		icon: "[&_svg]:size-5",
+		switchGap: "gap-2",
+		switchTrailing: "ms-4 flex shrink-0 items-center gap-2",
 	},
 } as const;
 
@@ -54,9 +60,9 @@ const POPUP_CLASS =
 
 const SCROLLER_CLASS = "min-h-0 overflow-y-auto";
 
-function useItemClass(twoLine = false): string {
+function useItemClass(twoLine = false, gap = "gap-1"): string {
 	const sizing = DENSITY_CLASSES[useDensity()];
-	return `flex w-full cursor-default ${twoLine ? sizing.twoLine : sizing.singleLine} gap-1 ${sizing.item} ${sizing.text} font-normal outline-none select-none [--shortcut-cap-ink:var(--menu-muted)] data-[disabled]:pointer-events-none data-[disabled]:opacity-40 data-[disabled]:focus-visible:shadow-focus`;
+	return `flex w-full cursor-default ${twoLine ? sizing.twoLine : sizing.singleLine} ${gap} ${sizing.item} ${sizing.text} font-normal outline-none select-none [--shortcut-cap-ink:var(--menu-muted)] data-[disabled]:pointer-events-none data-[disabled]:opacity-40 data-[disabled]:focus-visible:shadow-focus`;
 }
 
 const ITEM_VARIANT_CLASS = {
@@ -357,6 +363,40 @@ export function MenuCheckboxItem({children, accelerator, shortcut, ...props}: Me
 				<Check aria-hidden="true" strokeWidth={3} className={CHECK_ICON_CLASS} />
 			</BaseMenu.CheckboxItemIndicator>
 		</BaseMenu.CheckboxItem>
+	);
+}
+
+export interface MenuSwitchItemProps extends Omit<
+	ComponentProps<typeof BaseMenu.Item>,
+	"className" | "children" | "onClick" | "closeOnClick"
+> {
+	/** The row label, which also names the switch. */
+	children: string;
+	checked: boolean;
+	onCheckedChange: (checked: boolean) => void;
+}
+
+/**
+ * Upstream's keepOpen switch row (the folder menu's Worktree item): a plain menuitem, with no aria-checked,
+ * whose trailing xs switch carries the state. Click, Enter and Space toggle it and the menu stays open.
+ */
+export function MenuSwitchItem({children, checked, onCheckedChange, ...props}: MenuSwitchItemProps) {
+	const sizing = DENSITY_CLASSES[useDensity()];
+	const itemClass = useItemClass(false, sizing.switchGap);
+	return (
+		<BaseMenu.Item
+			closeOnClick={false}
+			{...props}
+			onClick={() => {
+				onCheckedChange(!checked);
+			}}
+			className={`${itemClass} ${ITEM_VARIANT_CLASS.default}`}
+		>
+			<span className={LABEL_CLASS}>{children}</span>
+			<span className={sizing.switchTrailing}>
+				<MenuSwitch checked={checked} disabled={props.disabled} aria-label={children} />
+			</span>
+		</BaseMenu.Item>
 	);
 }
 

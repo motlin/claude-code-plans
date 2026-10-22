@@ -4,6 +4,7 @@ import {Blocks, BriefcaseBusiness, CloudOff, LibraryBig} from "lucide-react";
 
 import {customizeMcpServersQueryOptions, type McpServerSummary} from "../lib/api/customize";
 import {toConnectorSlug} from "../lib/customize/mcp-tool-permissions";
+import {MenuSwitch} from "./ui/menu-switch";
 import {MenuItem, MenuSeparator, MenuSub, MenuSubContent, MenuSubTrigger} from "./ui/menu";
 
 /*
@@ -12,25 +13,6 @@ import {MenuItem, MenuSeparator, MenuSub, MenuSubContent, MenuSubTrigger} from "
  * opens its detail page. A running CLI cannot toggle servers live, so the
  * switches only show whether each server is enabled.
  */
-
-/** Upstream's 25x14 menu switch, display-only. */
-function ReadOnlySwitch({checked, name}: {checked: boolean; name: string}) {
-	return (
-		<span
-			role="switch"
-			aria-checked={checked}
-			aria-readonly="true"
-			aria-label={`${name} enabled`}
-			data-checked={checked ? "" : undefined}
-			className="relative ml-auto inline-flex h-[14px] w-[25px] shrink-0 rounded-full bg-[var(--settings-switch-track)] p-[2px] data-[checked]:bg-accent-100"
-		>
-			<span
-				aria-hidden="true"
-				className={`block size-[10px] rounded-full bg-white shadow-sm ${checked ? "translate-x-[11px]" : "translate-x-0"}`}
-			/>
-		</span>
-	);
-}
 
 function reconnectionNote(servers: readonly McpServerSummary[]): string | undefined {
 	const count = servers.filter((server) => server.needsAuth).length;
@@ -81,7 +63,7 @@ export function ComposerConnectorsMenu() {
 						>
 							<span className="flex items-center gap-3">
 								<span className="min-w-0 flex-1 truncate">{server.name}</span>
-								<ReadOnlySwitch checked={server.enabled} name={server.name} />
+								<MenuSwitch checked={server.enabled} readOnly aria-label={`${server.name} enabled`} />
 							</span>
 						</MenuItem>
 					),

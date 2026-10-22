@@ -787,9 +787,11 @@ describe("Composer + menu Connectors submenu", () => {
 				.map((item) => item.querySelector("[data-menu-item-title]")?.textContent ?? item.textContent),
 			note: trigger.querySelector("[data-menu-value]")?.textContent,
 			submenu: entries(submenu),
-			readOnly: Array.from(submenu.querySelectorAll('[role="switch"]')).map((element) =>
+			switches: Array.from(submenu.querySelectorAll('[role="switch"]')).map((element) => [
+				element.getAttribute("aria-label"),
 				element.getAttribute("aria-readonly"),
-			),
+				element.getAttribute("data-size"),
+			]),
 		}).toStrictEqual({
 			addMenu: ["Add files or photos", "Slash commands", "Connectors1 needs reconnection"],
 			note: "1 needs reconnection",
@@ -802,7 +804,11 @@ describe("Composer + menu Connectors submenu", () => {
 				{title: "Docs", description: null, switch: "false"},
 				{title: "Sentry", description: "Reconnect", switch: null},
 			],
-			readOnly: ["true", "true", "true"],
+			switches: [
+				["Gmail enabled", "true", "xs"],
+				["Calendar enabled", "true", "xs"],
+				["Docs enabled", "true", "xs"],
+			],
 		});
 	});
 
