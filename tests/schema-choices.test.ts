@@ -72,6 +72,8 @@ import {
 } from "../src/lib/settings-hash";
 import {
 	AttachmentPayloadSchema,
+	ClassifierArtifactShareModeSchema,
+	ClassifierArtifactShareRoleSchema,
 	ClaudeSettingsSchema,
 	ContentBlockSchema,
 	FileEditToolUseResultSchema,
@@ -131,6 +133,10 @@ const ROOTS: ReadonlyArray<readonly [string, unknown]> = [
 	["SessionListPrefsSchema", SessionListPrefsSchema],
 	["GroupIconSchema", GroupIconSchema],
 	["GroupColorSchema", GroupColorSchema],
+	["ArtifactAccessLevelSchema", ArtifactAccessLevelSchema],
+	["ArtifactUserScopeSchema", ArtifactUserScopeSchema],
+	["ClassifierArtifactShareModeSchema", ClassifierArtifactShareModeSchema],
+	["ClassifierArtifactShareRoleSchema", ClassifierArtifactShareRoleSchema],
 	["ContentBlockSchema", ContentBlockSchema],
 	["AttachmentPayloadSchema", AttachmentPayloadSchema],
 	["UserRecordSchema", UserRecordSchema],
@@ -151,8 +157,6 @@ const ROOTS: ReadonlyArray<readonly [string, unknown]> = [
 	["ArtifactAutoOpenSchema", ArtifactAutoOpenSchema],
 	["ArtifactDbOpSchema", ArtifactDbOpSchema],
 	["ArtifactLiveSubscriptionSchema", ArtifactLiveSubscriptionSchema],
-	["ArtifactAccessLevelSchema", ArtifactAccessLevelSchema],
-	["ArtifactUserScopeSchema", ArtifactUserScopeSchema],
 	["ArtifactToolResultSchema", ArtifactToolResultSchema],
 	["ReportFindingsVerdictSchema", ReportFindingsVerdictSchema],
 	["RemoteTriggerActionSchema", RemoteTriggerActionSchema],

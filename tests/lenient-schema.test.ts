@@ -5,6 +5,7 @@ import {toLenient} from "../src/lib/lenient-schema";
 import {JsonlRecordSchema as RuntimeJsonlRecordSchema} from "../src/lib/runtime-schemas";
 import {RuntimeHookEventEnvelope} from "../src/routes/api/hook";
 import {JsonlRecordSchema} from "../src/lib/schemas";
+import {jsonlRecordFixtures} from "./fixtures/jsonl-records";
 
 const driftedUserRecord = {
 	type: "user",
@@ -38,6 +39,41 @@ describe("runtime vs strict JSONL schema", () => {
 		expect(result.error).toBeUndefined();
 		const {futureRecordKey: _extra, message: _message, ...rest} = driftedUserRecord;
 		expect(result.data).toEqual({...rest, message: {role: "user", content: "hello"}});
+	});
+
+	it("runtime form keeps id-keyed classifier artifacts, stripping unknown share keys and opening share enums", () => {
+		const fixture = jsonlRecordFixtures["api-request"];
+		const [safeguard] = fixture.params.safeguards;
+		const classifierContext = safeguard!.classifier_context;
+		const share = {
+			mode: "owner",
+			is_shared_live: false,
+			role: "owner",
+			probed: true,
+			probe_current_account: true,
+			type_lock: false,
+			live_paths: [],
+			capabilities: {db: {}},
+			grant_observed: true,
+		};
+		const withShare = (value: Record<string, unknown>) => ({
+			...fixture,
+			params: {
+				...fixture.params,
+				safeguards: [
+					{
+						...safeguard!,
+						classifier_context: {
+							...classifierContext,
+							artifacts: {...classifierContext.artifacts, by_slug: {"artifact-alice": {share: value}}},
+						},
+					},
+				],
+			},
+		});
+		const result = RuntimeJsonlRecordSchema.safeParse(withShare({...share, role: "writer", futureShareKey: 1}));
+		expect(result.error).toBeUndefined();
+		expect(result.data).toEqual(withShare({...share, role: "writer"}));
 	});
 
 	it("runtime form still rejects an unknown record type", () => {

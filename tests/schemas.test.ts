@@ -2613,6 +2613,46 @@ describe("JsonlRecordSchema observed on the work machine 2026-10-22", () => {
 		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
 	});
 
+	it("parses an api-request whose classifier artifacts.by_slug is keyed by artifact id", () => {
+		const fixture = jsonlRecordFixtures["api-request"];
+		const [safeguard] = fixture.params.safeguards;
+		const classifierContext = safeguard!.classifier_context;
+		const record = {
+			...fixture,
+			params: {
+				...fixture.params,
+				safeguards: [
+					{
+						...safeguard!,
+						classifier_context: {
+							...classifierContext,
+							artifacts: {
+								...classifierContext.artifacts,
+								by_slug: {
+									"5bafe76e-893d-4863-98b2-cb9ad1c3bded": {
+										share: {
+											mode: "owner",
+											is_shared_live: false,
+											role: "owner",
+											probed: true,
+											probe_current_account: true,
+											type_lock: false,
+											live_paths: [],
+											capabilities: {db: {}},
+											grant_observed: true,
+										},
+									},
+								},
+							},
+						},
+					},
+				],
+			},
+		};
+
+		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
+	});
+
 	it("parses summarized-turn and superseded uuids on user and assistant records", () => {
 		const records = [
 			{...jsonlRecordFixtures.user, summarizedTurnPromptUuids: ["prompt-alice-1", "prompt-alice-2"]},

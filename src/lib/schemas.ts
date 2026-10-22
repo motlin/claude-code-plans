@@ -1,4 +1,5 @@
 import {z} from "zod";
+import {ArtifactCapabilitiesSchema} from "./artifact-schemas";
 import {isMcpTool, toolInputSchemaByName} from "./tool-input-schemas";
 
 // ---------------------------------------------------------------------------
@@ -1971,6 +1972,36 @@ const ApiRequestBlobRecordSchema = z
 	})
 	.strict();
 
+/** How the current account holds an artifact the session touched; only the owner's view is observed so far. */
+export const ClassifierArtifactShareModeSchema = z.enum(["owner"]);
+/** The current account's role on that artifact. */
+export const ClassifierArtifactShareRoleSchema = z.enum(["owner"]);
+
+/** The classifier's cached share/permission probe for one artifact, keyed by artifact id in `artifacts.by_slug`. */
+const ClassifierArtifactSchema = z
+	.object({
+		share: z
+			.object({
+				mode: ClassifierArtifactShareModeSchema,
+				// Whether the artifact is currently shared live with other viewers.
+				is_shared_live: z.boolean(),
+				role: ClassifierArtifactShareRoleSchema,
+				// Whether the share state was actually fetched, and against the current account.
+				probed: z.boolean(),
+				probe_current_account: z.boolean(),
+				// Whether the artifact is locked to its Artifact type.
+				type_lock: z.boolean(),
+				// Published paths open for live editing.
+				live_paths: z.array(z.string()),
+				// Runtime capabilities the page declares.
+				capabilities: ArtifactCapabilitiesSchema,
+				// Whether a capability grant was seen for this artifact in the session.
+				grant_observed: z.boolean(),
+			})
+			.strict(),
+	})
+	.strict();
+
 const ClassifierRuleSchema = z
 	.object({
 		rule: z.string(),
@@ -2025,7 +2056,7 @@ const DangerousToolUseClassifierContextSchema = z
 		git_state: ClassifierGitStateSchema,
 		artifacts: z
 			.object({
-				by_slug: z.object({}).strict(),
+				by_slug: z.record(z.string(), ClassifierArtifactSchema),
 				by_path: z.object({}).strict(),
 				live_docs: z.array(z.never()),
 				room_armed: z.array(z.never()),

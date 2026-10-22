@@ -33,6 +33,8 @@ import type {
 	ApiRequestBlobContentBlockSchema,
 	ApiRequestBlobRoleSchema,
 	AttachmentPayloadSchema,
+	ClassifierArtifactShareModeSchema,
+	ClassifierArtifactShareRoleSchema,
 	AskUserQuestionTimeoutSchema,
 	ClaudeSettingsSchema,
 	ContentBlockSchema,
@@ -1319,6 +1321,16 @@ const artifactUserScopeLabels = {
 	email: "Email",
 } satisfies Record<z.infer<typeof ArtifactUserScopeSchema>, string>;
 
+/** Classifier context `artifacts.by_slug{}.share.mode` (src/lib/schemas.ts). */
+const classifierArtifactShareModeLabels = {
+	owner: "Owner",
+} satisfies Record<z.infer<typeof ClassifierArtifactShareModeSchema>, string>;
+
+/** Classifier context `artifacts.by_slug{}.share.role` (src/lib/schemas.ts). */
+const classifierArtifactShareRoleLabels = {
+	owner: "Owner",
+} satisfies Record<z.infer<typeof ClassifierArtifactShareRoleSchema>, string>;
+
 /** WebSearch `mode` (src/lib/tool-input-schemas.ts). */
 const webSearchModeLabels = {
 	standard: "Standard",
@@ -1512,6 +1524,8 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
 	ArtifactLiveSubscriptionSchema: artifactLiveSubscriptionLabels,
 	ArtifactAccessLevelSchema: artifactAccessLevelLabels,
 	ArtifactUserScopeSchema: artifactUserScopeLabels,
+	ClassifierArtifactShareModeSchema: classifierArtifactShareModeLabels,
+	ClassifierArtifactShareRoleSchema: classifierArtifactShareRoleLabels,
 	ReportFindingsVerdictSchema: reportFindingsVerdictLabels,
 	RemoteTriggerActionSchema: remoteTriggerActionLabels,
 	ExitWorktreeActionSchema: exitWorktreeActionLabels,
