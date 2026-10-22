@@ -7,6 +7,7 @@ import {
 	type KeyboardEvent,
 	type ReactNode,
 	type RefObject,
+	useCallback,
 	useContext,
 	useEffect,
 	useId,
@@ -17,8 +18,10 @@ import {
 } from "react";
 
 import {useIsMac} from "../../hooks/use-is-mac";
+import type {SheetDetent} from "../../lib/sheet-drag";
 import {toAriaKeyShortcuts} from "../../lib/shortcuts/format";
 import {type Density, DensityProvider, useDensity, useScopeDensity} from "./density";
+import {SHEET_TALL_HEIGHT, SheetDragContext, useSheetDrag} from "./menu-sheet-drag";
 import {MenuSwitch} from "./menu-switch";
 import {useSheetPresentation} from "./sheet-presentation";
 import {Shortcut} from "./shortcut";
@@ -153,10 +156,12 @@ const SHEET_SCROLL_CLASS = "relative min-h-0 flex-1 overflow-y-auto overflow-x-h
 
 /** Upstream's dt: the drag handle pill at the top of the sheet, hidden on a drilled level. */
 function SheetHandle({nested = false}: {nested?: boolean}) {
+	const drag = useSheetDrag();
 	return (
 		<div
 			aria-hidden="true"
 			data-cds-sheet-handle=""
+			{...drag}
 			className="flex min-h-8 shrink-0 touch-none items-center justify-center select-none"
 		>
 			<div className={nested ? "h-1 w-9 rounded-full bg-border opacity-0" : "h-1 w-9 rounded-full bg-border"} />
@@ -191,12 +196,13 @@ const SubmenuControlContext = createContext<SubmenuControl | null>(null);
 /** Upstream's Bt: Back and the trigger's label, in a bar that also drags the sheet. */
 function SheetLevelHeader() {
 	const control = useContext(SubmenuControlContext);
+	const drag = useSheetDrag();
 	const [title, setTitle] = useState("");
 	useLayoutEffect(() => {
 		setTitle(control?.triggerRef.current?.querySelector("[data-menu-sub-label]")?.textContent ?? "");
 	}, [control]);
 	return (
-		<div className={SHEET_HEADER_CLASS}>
+		<div className={SHEET_HEADER_CLASS} {...drag}>
 			<span className="-me-2.5 shrink-0">
 				<BaseMenu.Item
 					closeOnClick={false}
@@ -376,6 +382,21 @@ const MenuSheetContext = createContext(false);
 /** The id the menu root gives its sheet tree, so closing the root can reach every open level. */
 const SheetTreeIdContext = createContext<string | null>(null);
 
+/** Closes the root menu, so a drag on any level of its sheet can dismiss the whole tree. */
+const SheetDismissContext = createContext<() => void>(() => undefined);
+
+type MenuActions = NonNullable<ComponentProps<typeof BaseMenu.Root>["actionsRef"]>;
+
+/** The root's imperative close, wired through Base UI's `actionsRef`. */
+function useRootDismiss(actionsRef: MenuActions | undefined) {
+	const ownRef = useRef<MenuActions extends RefObject<infer T> ? T : never>(null);
+	const ref = actionsRef ?? ownRef;
+	const dismiss = useCallback(() => {
+		ref.current?.close();
+	}, [ref]);
+	return {ref, dismiss};
+}
+
 /**
  * Upstream's tree close: the root marks every open level `data-cds-sheet-tree-closing` before Base UI
  * starts the exit, so drilled levels slide down with the root instead of sideways.
@@ -429,11 +450,14 @@ function useMenuRootSheet<P extends MenuRootProps>(
 
 export function Menu(props: ComponentProps<typeof BaseMenu.Root>) {
 	const {sheet, treeId, rootProps} = useMenuRootSheet(props);
+	const {ref, dismiss} = useRootDismiss(props.actionsRef);
 	return (
 		<MenuKindContext.Provider value="Menu">
 			<MenuSheetContext.Provider value={sheet}>
 				<SheetTreeIdContext.Provider value={treeId}>
-					<BaseMenu.Root {...rootProps} />
+					<SheetDismissContext.Provider value={dismiss}>
+						<BaseMenu.Root {...rootProps} actionsRef={ref} />
+					</SheetDismissContext.Provider>
 				</SheetTreeIdContext.Provider>
 			</MenuSheetContext.Provider>
 		</MenuKindContext.Provider>
@@ -444,11 +468,14 @@ export const MenuTrigger = BaseMenu.Trigger;
 
 export function ContextMenu(props: ComponentProps<typeof BaseContextMenu.Root>) {
 	const {sheet, treeId, rootProps} = useMenuRootSheet(props);
+	const {ref, dismiss} = useRootDismiss(props.actionsRef);
 	return (
 		<MenuKindContext.Provider value="ContextMenu">
 			<MenuSheetContext.Provider value={sheet}>
 				<SheetTreeIdContext.Provider value={treeId}>
-					<BaseContextMenu.Root {...rootProps} />
+					<SheetDismissContext.Provider value={dismiss}>
+						<BaseContextMenu.Root {...rootProps} actionsRef={ref} />
+					</SheetDismissContext.Provider>
 				</SheetTreeIdContext.Provider>
 			</MenuSheetContext.Provider>
 		</MenuKindContext.Provider>
@@ -523,8 +550,22 @@ export function MenuContent({
 	const sheetTreeId = nested && parentLevel !== null ? parentLevel.treeId : (rootTreeId ?? ownTreeId);
 	const {level, attributes: levelAttributes} = useSheetLevel(sheetTreeId);
 	/* A callback ref, so the press markers attach when the portal mounts the popup on open. */
-	const [sheetPopup, setSheetPopup] = useState<HTMLDivElement | null>(null);
+	const [sheetPopup, setSheetPopupState] = useState<HTMLDivElement | null>(null);
 	const [nestedPopup, setNestedPopup] = useState<HTMLDivElement | null>(null);
+	const dismiss = useContext(SheetDismissContext);
+	const parentDrag = useContext(SheetDragContext);
+	const [rootDetent, setDetent] = useState<SheetDetent>("default");
+	/* A closed sheet reopens at its default detent. */
+	const setSheetPopup = useCallback((popup: HTMLDivElement | null) => {
+		setSheetPopupState(popup);
+		if (popup === null) setDetent("default");
+	}, []);
+	const dragFrame = useMemo(
+		() => ({treeId: sheetTreeId, dismiss, detent: rootDetent, setDetent}),
+		[sheetTreeId, dismiss, rootDetent],
+	);
+	const detent = nested ? (parentDrag?.detent ?? "default") : rootDetent;
+	const sheetPopupStyle = detent === "tall" ? {...SHEET_POPUP_STYLE, height: SHEET_TALL_HEIGHT} : SHEET_POPUP_STYLE;
 	const rootSheet = sheet && !nested;
 	/* A submenu drills in only inside a sheet tree; an anchored parent keeps its fly-out. */
 	const nestedSheet = sheet && nested && parentLevel !== null;
@@ -540,44 +581,47 @@ export function MenuContent({
 		return (
 			<DensityProvider density={resolvedDensity}>
 				<MenuLgContext.Provider value>
-					<BaseMenu.Portal>
-						<BaseMenu.Backdrop
-							data-presentation="sheet"
-							data-sheet-scrim={sheetTreeId}
-							className={SHEET_SCRIM_CLASS}
-						/>
-						<BaseMenu.Positioner
-							className={SHEET_POSITIONER_CLASS}
-							style={SHEET_POSITIONER_STYLE}
-							data-density={resolvedDensity}
-							collisionAvoidance={SHEET_COLLISION_AVOIDANCE}
-							disableAnchorTracking
-						>
-							<BaseMenu.Popup
-								ref={setSheetPopup}
-								data-cds={kind}
+					<SheetDragContext.Provider value={dragFrame}>
+						<BaseMenu.Portal>
+							<BaseMenu.Backdrop
 								data-presentation="sheet"
-								data-sheet-tree={sheetTreeId}
-								data-cds-sheet-depth="0"
-								data-size="lg"
-								{...levelAttributes}
-								className={`${SHEET_POPUP_CLASS} ${sizing.text}${className ? ` ${className}` : ""}`}
-								style={SHEET_POPUP_STYLE}
-								onKeyDown={handleAcceleratorKey}
-								{...(finalFocus === undefined ? {} : {finalFocus})}
+								data-sheet-scrim={sheetTreeId}
+								className={SHEET_SCRIM_CLASS}
+							/>
+							<BaseMenu.Positioner
+								className={SHEET_POSITIONER_CLASS}
+								style={SHEET_POSITIONER_STYLE}
+								data-density={resolvedDensity}
+								collisionAvoidance={SHEET_COLLISION_AVOIDANCE}
+								disableAnchorTracking
 							>
-								<SheetHandle />
-								<div className={SHEET_CONTENT_CLASS}>
-									<div data-cds-sheet-scroll="" className={SHEET_SCROLL_CLASS}>
-										<SheetLevelContext.Provider value={level}>
-											{children}
-										</SheetLevelContext.Provider>
-										<SheetCloseRow />
+								<BaseMenu.Popup
+									ref={setSheetPopup}
+									data-cds={kind}
+									data-presentation="sheet"
+									data-sheet-tree={sheetTreeId}
+									data-cds-sheet-depth="0"
+									data-size="lg"
+									{...levelAttributes}
+									className={`${SHEET_POPUP_CLASS} ${sizing.text}${className ? ` ${className}` : ""}`}
+									data-cds-sheet-detent={detent}
+									style={sheetPopupStyle}
+									onKeyDown={handleAcceleratorKey}
+									{...(finalFocus === undefined ? {} : {finalFocus})}
+								>
+									<SheetHandle />
+									<div className={SHEET_CONTENT_CLASS}>
+										<div data-cds-sheet-scroll="" className={SHEET_SCROLL_CLASS}>
+											<SheetLevelContext.Provider value={level}>
+												{children}
+											</SheetLevelContext.Provider>
+											<SheetCloseRow />
+										</div>
 									</div>
-								</div>
-							</BaseMenu.Popup>
-						</BaseMenu.Positioner>
-					</BaseMenu.Portal>
+								</BaseMenu.Popup>
+							</BaseMenu.Positioner>
+						</BaseMenu.Portal>
+					</SheetDragContext.Provider>
 				</MenuLgContext.Provider>
 			</DensityProvider>
 		);
@@ -604,7 +648,8 @@ export function MenuContent({
 								data-size="lg"
 								{...levelAttributes}
 								className={`${SHEET_NESTED_POPUP_CLASS} ${sizing.text}${className ? ` ${className}` : ""}`}
-								style={SHEET_POPUP_STYLE}
+								data-cds-sheet-detent={detent}
+								style={sheetPopupStyle}
 								onKeyDown={handleAcceleratorKey}
 								{...(finalFocus === undefined ? {} : {finalFocus})}
 							>

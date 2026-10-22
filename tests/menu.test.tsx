@@ -809,6 +809,7 @@ describe("MenuContent on a coarse pointer", () => {
 describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 	afterEach(() => {
 		vi.unstubAllGlobals();
+		vi.restoreAllMocks();
 	});
 
 	function stubCoarseAtWidth(width: number) {
@@ -1368,5 +1369,152 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 			menus: document.querySelectorAll("[role=menu]").length,
 			expanded: trigger.getAttribute("aria-expanded"),
 		}).toStrictEqual({menus: 1, expanded: "false"});
+	});
+
+	/** A pointer event at `clientY` with a fixed timeStamp, so velocity is deterministic. */
+	function pointer(target: Element, type: string, clientY: number, timeStamp: number) {
+		const event = new MouseEvent(type, {bubbles: true, cancelable: true, button: 0, clientY});
+		Object.defineProperty(event, "pointerId", {value: 1});
+		Object.defineProperty(event, "timeStamp", {value: timeStamp});
+		fireEvent(target, event);
+	}
+
+	/** jsdom has no pointer capture; the drag captures on the handle and releases on pointerup. */
+	function stubPointerCapture() {
+		const captured = new Set<number>();
+		HTMLElement.prototype.setPointerCapture = (pointerId) => {
+			captured.add(pointerId);
+		};
+		HTMLElement.prototype.hasPointerCapture = (pointerId) => captured.has(pointerId);
+		HTMLElement.prototype.releasePointerCapture = (pointerId) => {
+			captured.delete(pointerId);
+		};
+	}
+
+	/** Every sheet level is 400px tall, resting on the viewport bottom at 800. */
+	function stubSheetRects() {
+		stubPointerCapture();
+		vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue(
+			DOMRect.fromRect({x: 0, y: 400, width: 639, height: 400}),
+		);
+	}
+
+	function dragStyles(levels: HTMLElement[]) {
+		return {
+			levels: levels.map((level) => ({translate: level.style.translate, height: level.style.height})),
+			scrim: document.querySelector<HTMLElement>("[data-sheet-scrim]")?.style.opacity,
+		};
+	}
+
+	it("follows a handle drag down and dismisses past a quarter of the rest height, as upstream's ct", async () => {
+		stubCoarseAtWidth(639);
+		stubSheetRects();
+		renderDropdown();
+		const menu = await openDropdown();
+		const handle = menu.querySelector("[data-cds-sheet-handle]");
+		if (handle === null) throw new Error("no handle");
+		pointer(handle, "pointerdown", 400, 0);
+		pointer(handle, "pointermove", 600, 1000);
+		const during = dragStyles([menu]);
+		const scrim = document.querySelector<HTMLElement>("[data-sheet-scrim]");
+		pointer(handle, "pointerup", 600, 1000);
+		const released = {
+			levels: [{translate: menu.style.translate, height: menu.style.height}],
+			scrim: scrim?.style.opacity,
+		};
+		await flush();
+		expect({during, released, open: screen.queryByRole("menu") !== null}).toStrictEqual({
+			during: {levels: [{translate: "0 200px", height: "400px"}], scrim: "0.5"},
+			released: {levels: [{translate: "0 calc(100% + 1.5rem)", height: "400px"}], scrim: ""},
+			open: false,
+		});
+	});
+
+	it("springs back from a short, slow handle drag", async () => {
+		stubCoarseAtWidth(639);
+		stubSheetRects();
+		renderDropdown();
+		const menu = await openDropdown();
+		const handle = menu.querySelector("[data-cds-sheet-handle]");
+		if (handle === null) throw new Error("no handle");
+		pointer(handle, "pointerdown", 400, 0);
+		pointer(handle, "pointermove", 450, 1000);
+		pointer(handle, "pointerup", 450, 1000);
+		await flush();
+		expect({styles: dragStyles([menu]), open: screen.queryByRole("menu") !== null}).toStrictEqual({
+			styles: {levels: [{translate: "", height: ""}], scrim: ""},
+			open: true,
+		});
+	});
+
+	it("dismisses on a fast flick, but not when the finger rested before release", async () => {
+		stubCoarseAtWidth(639);
+		stubSheetRects();
+		renderDropdown();
+		const menu = await openDropdown();
+		const handle = menu.querySelector("[data-cds-sheet-handle]");
+		if (handle === null) throw new Error("no handle");
+		pointer(handle, "pointerdown", 400, 0);
+		pointer(handle, "pointermove", 420, 10);
+		pointer(handle, "pointerup", 420, 160);
+		await flush();
+		const restedOpen = screen.queryByRole("menu") !== null;
+		pointer(handle, "pointerdown", 400, 200);
+		pointer(handle, "pointermove", 420, 210);
+		pointer(handle, "pointerup", 420, 220);
+		await flush();
+		expect({restedOpen, flickedOpen: screen.queryByRole("menu") !== null}).toStrictEqual({
+			restedOpen: true,
+			flickedOpen: false,
+		});
+	});
+
+	it("opens the tall detent when an overflowing sheet is dragged up past 40px", async () => {
+		stubCoarseAtWidth(639);
+		stubSheetRects();
+		renderDropdown();
+		const menu = await openDropdown();
+		const scroll = menu.querySelector("[data-cds-sheet-scroll]");
+		const handle = menu.querySelector("[data-cds-sheet-handle]");
+		if (scroll === null || handle === null) throw new Error("no sheet chrome");
+		Object.defineProperty(scroll, "scrollHeight", {configurable: true, value: 900});
+		const before = menu.getAttribute("data-cds-sheet-detent");
+		pointer(handle, "pointerdown", 400, 0);
+		pointer(handle, "pointermove", 340, 1000);
+		pointer(handle, "pointerup", 340, 1000);
+		await flush();
+		expect({before, after: menu.getAttribute("data-cds-sheet-detent"), height: menu.style.height}).toStrictEqual({
+			before: "default",
+			after: "tall",
+			height: "calc(0.9 * (100dvh - env(safe-area-inset-top, 0px)))",
+		});
+	});
+
+	it("never starts a drag from a menu item", async () => {
+		stubCoarseAtWidth(639);
+		stubSheetRects();
+		renderDropdown();
+		const menu = await openDropdown();
+		const item = screen.getByRole("menuitem", {name: /Copy link/});
+		pointer(item, "pointerdown", 400, 0);
+		pointer(item, "pointermove", 600, 1000);
+		expect(dragStyles([menu])).toStrictEqual({levels: [{translate: "", height: ""}], scrim: ""});
+	});
+
+	it("drags every level of the tree from a drilled level's header", async () => {
+		stubSheetRects();
+		const {root, child} = await drillIntoStatus();
+		if (child === undefined) throw new Error("no drilled level");
+		const header = child.querySelector("[data-cds-sheet-scroll]")?.nextElementSibling;
+		if (header === null || header === undefined) throw new Error("no header");
+		pointer(header, "pointerdown", 400, 0);
+		pointer(header, "pointermove", 500, 1000);
+		expect(dragStyles([root, child])).toStrictEqual({
+			levels: [
+				{translate: "0 100px", height: "400px"},
+				{translate: "0 100px", height: "400px"},
+			],
+			scrim: "0.75",
+		});
 	});
 });

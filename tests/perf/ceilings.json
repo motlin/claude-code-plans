@@ -47,17 +47,17 @@
 		"tolerance": 0
 	},
 	"bundle.home.gzip": {
-		"ceiling": 381312,
+		"ceiling": 385845,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Home cold JS drifted to the edge of the 1% tolerance over 017f177e's 377916 gzip / 1160506 raw across later home start-card, composer and launch-option commits; the home-composer prefill bus (requestHomeComposerPrefill plus the Composer's subscribePrefill hook) tipped raw over at 381312 gzip, 1172744 raw. Ceilings re-based on the measurement; the 1% tolerance is unchanged.",
+		"reason": "Home cold JS drifted to the edge of the 1% tolerance over 215bb7f0's 381312 gzip / 1172744 raw across the menu-touch-sheet commits (sheet gate, root sheet anatomy, Close row, drill-in submenus, tree-closing); the sheet drag (src/lib/sheet-drag.ts geometry plus the menu-sheet-drag pointer hook) tipped it over at 385845 gzip, 1188288 raw. Ceilings re-based on the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-10-22"
 	},
 	"bundle.home.raw": {
-		"ceiling": 1172744,
+		"ceiling": 1188288,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Home cold JS drifted to the edge of the 1% tolerance over 017f177e's 377916 gzip / 1160506 raw across later home start-card, composer and launch-option commits; the home-composer prefill bus (requestHomeComposerPrefill plus the Composer's subscribePrefill hook) tipped raw over at 381312 gzip, 1172744 raw. Ceilings re-based on the measurement; the 1% tolerance is unchanged.",
+		"reason": "Home cold JS drifted to the edge of the 1% tolerance over 215bb7f0's 381312 gzip / 1172744 raw across the menu-touch-sheet commits (sheet gate, root sheet anatomy, Close row, drill-in submenus, tree-closing); the sheet drag (src/lib/sheet-drag.ts geometry plus the menu-sheet-drag pointer hook) tipped it over at 385845 gzip, 1188288 raw. Ceilings re-based on the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-10-22"
 	},
 	"bundle.session.gzip": {
