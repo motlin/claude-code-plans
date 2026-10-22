@@ -5,8 +5,8 @@ import {writeClipboardText} from "../../lib/clipboard";
 import type {AttachContextHandler, ContextAttachment} from "../../lib/context-attach";
 import type {FileTabsAction} from "../../lib/file-tabs";
 import {requestFindInFile} from "../../lib/find-in-file-request";
-import {vscodeFolderUrl} from "../../lib/session-open-in";
 import {useToast} from "../toast-context";
+import {vscodeFileUrl} from "./file-actions-menu";
 import {MenuItem, MenuSeparator, MenuSub, MenuSubContent, MenuSubTrigger} from "../ui/menu";
 import {mentionPath, relativeToCwd} from "./mention-path";
 
@@ -15,11 +15,6 @@ import {mentionPath, relativeToCwd} from "./mention-path";
  * open-file tabs and the viewer share "Attach as context" and Copy ▸, and each
  * surface adds its own actions below them.
  */
-
-/** `vscode://file/<abs>:<line>`, which opens the file at that line in VS Code. */
-function vscodeFileUrl(path: string, line: number): string {
-	return `${vscodeFolderUrl(path)}:${line}`;
-}
 
 function baseName(path: string): string {
 	return path.slice(path.lastIndexOf("/") + 1) || path;
