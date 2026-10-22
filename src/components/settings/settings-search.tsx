@@ -110,7 +110,7 @@ export function SettingsSearch({onSelect}: {onSelect: (tab: SettingsTab, row: st
 													onClick={() => {
 														choose(result);
 													}}
-													className="flex w-full items-center gap-2 rounded-r6 px-1 py-1.5 text-left text-body text-primary transition-colors hover:bg-fill-ghost-hover focus-visible:bg-fill-ghost-hover focus-visible:outline-none"
+													className="flex w-full items-center gap-2 rounded-r6 px-1 py-1.5 text-left text-body text-primary transition-colors hover:bg-fill-ghost-hover focus-visible:bg-fill-ghost-hover focus-visible:outline-hidden"
 												>
 													<Icon aria-hidden="true" className="size-5 shrink-0 p-0.5" />
 													<span className="min-w-0 truncate">

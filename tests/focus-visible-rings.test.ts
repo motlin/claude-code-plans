@@ -39,6 +39,13 @@ describe("hand-rolled focus rings", () => {
 		expect(offenders).toStrictEqual([]);
 	});
 
+	it("hides focus outlines with outline-hidden so forced-colors mode keeps a transparent ring", () => {
+		const offenders = sources("src").filter((path) =>
+			readFileSync(path, "utf8").includes("focus-visible:outline-none"),
+		);
+		expect(offenders).toStrictEqual([]);
+	});
+
 	it("gives the overlapping feature controls upstream's ring recipes", () => {
 		const has = (path: string, needle: string) => readFileSync(path, "utf8").includes(needle);
 		expect({

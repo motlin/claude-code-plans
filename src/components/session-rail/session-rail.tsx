@@ -183,7 +183,7 @@ function RailSection({
 						{...attributes}
 						{...listeners}
 						aria-label={`Reorder ${title}`}
-						className="group/railgrip absolute inset-y-0 end-0 flex w-20 cursor-grab touch-none items-center justify-end pe-2.5 text-ink-muted opacity-0 group-hover/railtop:opacity-100 focus-visible:opacity-100 focus-visible:outline-none active:cursor-grabbing"
+						className="group/railgrip absolute inset-y-0 end-0 flex w-20 cursor-grab touch-none items-center justify-end pe-2.5 text-ink-muted opacity-0 group-hover/railtop:opacity-100 focus-visible:opacity-100 focus-visible:outline-hidden active:cursor-grabbing"
 					>
 						<GripDots />
 					</div>

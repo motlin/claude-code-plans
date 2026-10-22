@@ -239,7 +239,7 @@ function SidebarResizeHandle({width, onHide}: {width: number; onHide: () => void
 		>
 			<div
 				{...handleProps}
-				className="group/resize flex size-full cursor-col-resize touch-none items-center justify-center [clip-path:inset(0_0_0_37.5%)] focus-visible:outline-none focus-visible:[clip-path:none]"
+				className="group/resize flex size-full cursor-col-resize touch-none items-center justify-center [clip-path:inset(0_0_0_37.5%)] focus-visible:outline-hidden focus-visible:[clip-path:none]"
 			>
 				<span
 					aria-hidden="true"
