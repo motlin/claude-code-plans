@@ -184,13 +184,13 @@ describe("Composer", () => {
 		).toStrictEqual([]);
 	});
 
-	it("swaps Send for Stop response while streaming", () => {
+	it("swaps Send for Stop while streaming", () => {
 		const onCancel = vi.fn<() => void>();
 		render(
 			<Composer variant="session" draftKey="session-alice" onSend={() => {}} onCancel={onCancel} isStreaming />,
 		);
 
-		fireEvent.click(screen.getByRole("button", {name: "Stop response"}));
+		fireEvent.click(screen.getByRole("button", {name: "Stop"}));
 
 		expect({
 			cancels: onCancel.mock.calls.length,

@@ -70,11 +70,11 @@ describe("canStopResponse", () => {
 });
 
 describe("Composer stop slot", () => {
-	it("turns the send slot into Stop response when onStop is given, and clicking it stops", () => {
+	it("turns the send slot into Stop when onStop is given, and clicking it stops", () => {
 		const onStop = vi.fn<() => void>();
 		render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} onStop={onStop} />);
 		const before = screen.queryByRole("button", {name: "Send"});
-		fireEvent.click(screen.getByRole("button", {name: "Stop response"}));
+		fireEvent.click(screen.getByRole("button", {name: "Stop"}));
 
 		expect({
 			before,
@@ -88,8 +88,104 @@ describe("Composer stop slot", () => {
 		fireEvent.change(screen.getByRole("textbox", {name: "Prompt"}), {target: {value: "Continue Alice's test"}});
 		expect({
 			send: screen.queryByRole("button", {name: "Send"}) !== null,
-			stop: screen.queryByRole("button", {name: "Stop response"}),
+			stop: screen.queryByRole("button", {name: "Stop", hidden: true}),
 		}).toStrictEqual({send: true, stop: null});
+	});
+});
+
+describe("Composer send slot while working", () => {
+	function renderWorking(onStop: () => void = noop) {
+		render(
+			<Composer
+				variant="session"
+				draftKey="session-alice"
+				onSend={noop}
+				onStop={onStop}
+				onQueueForLater={noop}
+			/>,
+		);
+		return screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
+	}
+
+	it("shows upstream's Stop with an empty draft: Escape keyshortcut, code-prompt-stop, CircleStop 20px in a scale-90 span", () => {
+		renderWorking();
+		const stop = screen.getByRole("button", {name: "Stop"});
+		const icon = stop.querySelector("svg");
+
+		expect({
+			keys: stop.getAttribute("aria-keyshortcuts"),
+			testId: stop.dataset["testid"],
+			wrapper: icon?.parentElement?.className,
+			icon: icon?.getAttribute("class"),
+			face: stop.closest("[data-send-face]")?.className,
+			cell: stop.closest("[data-send-face]")?.parentElement?.className,
+			send: screen.queryByRole("button", {name: "Send", hidden: true}),
+		}).toStrictEqual({
+			keys: "Escape",
+			testId: "code-prompt-stop",
+			wrapper: "flex scale-90",
+			icon: "lucide lucide-circle-stop size-5",
+			face: "col-start-1 row-start-1 flex cursor-default items-center justify-end",
+			cell: "grid items-center justify-items-end",
+			send: null,
+		});
+	});
+
+	it("shows Stop with the Esc keycap in its tooltip", async () => {
+		renderWorking();
+		fireEvent.pointerEnter(screen.getByRole("button", {name: "Stop"}));
+		const tooltip = await screen.findByRole("tooltip");
+
+		expect(tooltip.textContent).toBe("StopEsc");
+	});
+
+	it("cross-fades Stop to Send once a draft exists, leaving the Stop face inert until its visibility transition ends", () => {
+		const onStop = vi.fn<() => void>();
+		const textarea = renderWorking(onStop);
+		fireEvent.change(textarea, {target: {value: "Alice's steer"}});
+		const send = screen.getByRole("button", {name: "Send"});
+		const stop = screen.getByRole("button", {name: "Stop", hidden: true});
+		const stopFace = stop.closest<HTMLElement>("[data-send-face]");
+		const before = {
+			sendTestId: send.dataset["testid"],
+			sendFace: send.closest("[data-send-face]")?.className,
+			stopFace: stopFace?.className,
+			inert: stopFace?.hasAttribute("inert"),
+			ariaHidden: stopFace?.getAttribute("aria-hidden"),
+		};
+		if (stopFace === null) throw new Error("no stop face");
+		const opacityEnd = new Event("transitionend", {bubbles: true});
+		Object.assign(opacityEnd, {propertyName: "opacity"});
+		fireEvent(stopFace, opacityEnd);
+		const afterOpacity = screen.queryByRole("button", {name: "Stop", hidden: true}) !== null;
+		const visibilityEnd = new Event("transitionend", {bubbles: true});
+		Object.assign(visibilityEnd, {propertyName: "visibility"});
+		fireEvent(stopFace, visibilityEnd);
+
+		expect({
+			...before,
+			afterOpacity,
+			afterVisibility: screen.queryByRole("button", {name: "Stop", hidden: true}),
+		}).toStrictEqual({
+			sendTestId: "code-prompt-send",
+			sendFace:
+				"col-start-1 row-start-1 flex cursor-default items-center justify-end motion-safe:animate-[cds-fade-in_0.12s_ease-out_0.08s_backwards]",
+			stopFace:
+				"col-start-1 row-start-1 flex cursor-default items-center justify-end pointer-events-none invisible opacity-0 [transition:visibility_0s_linear_80ms] motion-safe:[transition:opacity_80ms_ease-out,visibility_0s_linear_80ms]",
+			inert: true,
+			ariaHidden: "true",
+			afterOpacity: true,
+			afterVisibility: null,
+		});
+	});
+
+	it("lists Send ⏎ and Queue for later (Ctrl⏎ off Mac) in the Send tooltip while working", async () => {
+		const textarea = renderWorking();
+		fireEvent.change(textarea, {target: {value: "Alice's steer"}});
+		fireEvent.pointerEnter(screen.getByRole("button", {name: "Send"}));
+		const tooltip = await screen.findByRole("tooltip");
+
+		expect([...tooltip.children].map((row) => row.textContent)).toStrictEqual(["Send⏎", "Queue for laterCtrl+⏎"]);
 	});
 });
 

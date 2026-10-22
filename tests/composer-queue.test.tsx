@@ -488,7 +488,7 @@ describe("Composer queued chips", () => {
 });
 
 describe("Composer while working", () => {
-	it("keeps the editor enabled and sends on Enter while the slot is Stop response", () => {
+	it("keeps the editor enabled and sends on Enter while the slot is Stop", () => {
 		const onSend = vi.fn<(prompt: string) => void>();
 		const textarea = renderComposer({onSend, onStop: () => {}});
 		fireEvent.change(textarea, {target: {value: "Alice's follow-up"}});

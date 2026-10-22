@@ -1,5 +1,5 @@
 import {memo, type ReactNode, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState} from "react";
-import {CornerDownLeft, Ellipsis, Square} from "lucide-react";
+import {CircleStop, CornerDownLeft, Ellipsis} from "lucide-react";
 
 import {useComposerDraft} from "../hooks/use-composer-draft";
 import {useFileMentionSuggestions} from "../hooks/use-file-mention-suggestions";
@@ -188,6 +188,71 @@ interface ComposerProps {
  * `hasContent` or `canSend` flips. Like upstream's `code-prompt-send-cell`, an empty composer holds only an
  * invisible, inert spacer the size of the button, so Send appears with the first text without reflowing the box.
  */
+const SEND_FACE_CLASS = "col-start-1 row-start-1 flex cursor-default items-center justify-end";
+/** Upstream's incoming send-cell face (`Kd`): fades in after the outgoing one has started to leave. */
+const SEND_FACE_ENTER_CLASS = "motion-safe:animate-[cds-fade-in_0.12s_ease-out_0.08s_backwards]";
+/** Upstream's outgoing send-cell face (`qd`): fades out over 80ms, then turns invisible and unmounts. */
+const SEND_FACE_EXIT_CLASS =
+	"pointer-events-none invisible opacity-0 [transition:visibility_0s_linear_80ms] motion-safe:[transition:opacity_80ms_ease-out,visibility_0s_linear_80ms]";
+
+type SendFace = "stop" | "send";
+
+/**
+ * Upstream's send-cell crossfade (`Jd`): Stop and Send share one grid cell. When the face flips, the new one
+ * fades in while the old one stays mounted, `inert` and hidden, until its `visibility` transition ends.
+ */
+function SendCrossfade({showStop, stop, send}: {showStop: boolean; stop: ReactNode; send: ReactNode}) {
+	const face: SendFace = showStop ? "stop" : "send";
+	const [current, setCurrent] = useState<SendFace>(face);
+	const [leaving, setLeaving] = useState<SendFace | null>(null);
+	const [flipped, setFlipped] = useState(false);
+	if (current !== face) {
+		setCurrent(face);
+		setLeaving(current);
+		setFlipped(true);
+	}
+	function renderFace(name: SendFace, children: ReactNode) {
+		if (name === face) {
+			return (
+				<div
+					key={name}
+					data-send-face
+					className={flipped ? `${SEND_FACE_CLASS} ${SEND_FACE_ENTER_CLASS}` : SEND_FACE_CLASS}
+				>
+					{children}
+				</div>
+			);
+		}
+		if (name !== leaving) return null;
+		return (
+			<div
+				key={name}
+				data-send-face
+				inert
+				aria-hidden="true"
+				className={`${SEND_FACE_CLASS} ${SEND_FACE_EXIT_CLASS}`}
+				onTransitionEnd={(event) => {
+					if (event.target === event.currentTarget && event.propertyName === "visibility") setLeaving(null);
+				}}
+			>
+				{children}
+			</div>
+		);
+	}
+	return (
+		<div className="grid items-center justify-items-end">
+			{renderFace("stop", stop)}
+			{renderFace("send", send)}
+		</div>
+	);
+}
+
+/**
+ * The card's trailing Send / Stop button. Memoized on stable props, so a keystroke re-renders it only when
+ * `hasContent` or `canSend` flips. Like upstream's `code-prompt-send-cell`, an empty idle composer holds only an
+ * invisible, inert spacer the size of the button, so Send appears with the first text without reflowing the box.
+ * While the session works, Stop holds the cell until there is a draft, then cross-fades to Send.
+ */
 const SendSlot = memo(function SendSlot({
 	isStreaming,
 	onStop,
@@ -199,6 +264,7 @@ const SendSlot = memo(function SendSlot({
 	hintId,
 	forkLabel,
 	sendAndStay,
+	queueForLater,
 }: {
 	isStreaming: boolean;
 	onStop: (() => void) | undefined;
@@ -214,41 +280,59 @@ const SendSlot = memo(function SendSlot({
 	forkLabel: string | undefined;
 	/** The Send tooltip's "Send and stay here" row, when the composer offers it. */
 	sendAndStay: boolean;
+	/** The working Send tooltip's "Queue for later" row, when ⌘⏎ queues. */
+	queueForLater: boolean;
 }) {
 	const forkKeys = useShortcutKeys("fork_with_prompt").keys;
-	const sendAndStayKeys = useIsMac() ? "cmd+enter" : "ctrl+enter";
-	const secondary =
-		forkLabel === undefined
-			? sendAndStay
-				? {content: "Send and stay here", shortcut: sendAndStayKeys}
-				: undefined
-			: {content: forkLabel, shortcut: forkKeys};
+	const cmdEnterKeys = useIsMac() ? "cmd+enter" : "ctrl+enter";
+	const working = isStreaming || onStop !== undefined;
+	const forkRow = forkLabel === undefined ? undefined : {content: forkLabel, shortcut: forkKeys};
+	const secondary = working
+		? [
+				...(queueForLater ? [{content: "Queue for later", shortcut: cmdEnterKeys}] : []),
+				...(forkRow === undefined ? [] : [forkRow]),
+			]
+		: (forkRow ?? (sendAndStay ? {content: "Send and stay here", shortcut: cmdEnterKeys} : undefined));
+	const send = (
+		<Tooltip content="Send" shortcut="enter" secondary={secondary}>
+			<button
+				type="button"
+				aria-label="Send"
+				aria-describedby={deliveryHint ? hintId : undefined}
+				data-testid="code-prompt-send"
+				onClick={onSubmit}
+				disabled={!canSend}
+				className={ICON_BUTTON_CLASS}
+			>
+				<CornerDownLeft className="size-4" aria-hidden="true" />
+			</button>
+		</Tooltip>
+	);
 	return (
 		<div className="absolute right-0 bottom-0 flex min-h-7 items-center pl-1.5">
-			{isStreaming || onStop !== undefined ? (
-				<Tooltip content="Stop response" {...(isStreaming ? {} : {shortcut: "escape"})}>
-					<button
-						type="button"
-						aria-label="Stop response"
-						onClick={isStreaming ? onCancel : onStop}
-						className={ICON_BUTTON_CLASS}
-					>
-						<Square className="size-3.5" fill="currentColor" aria-hidden="true" />
-					</button>
-				</Tooltip>
+			{working ? (
+				<SendCrossfade
+					showStop={isStreaming || !hasContent}
+					stop={
+						<Tooltip content="Stop" {...(isStreaming ? {} : {shortcut: "escape"})}>
+							<button
+								type="button"
+								aria-label="Stop"
+								aria-keyshortcuts={isStreaming ? undefined : "Escape"}
+								data-testid="code-prompt-stop"
+								onClick={isStreaming ? onCancel : onStop}
+								className={ICON_BUTTON_CLASS}
+							>
+								<span className="flex scale-90">
+									<CircleStop className="size-5" aria-hidden="true" />
+								</span>
+							</button>
+						</Tooltip>
+					}
+					send={send}
+				/>
 			) : hasContent ? (
-				<Tooltip content="Send" shortcut="enter" secondary={secondary}>
-					<button
-						type="button"
-						aria-label="Send"
-						aria-describedby={deliveryHint ? hintId : undefined}
-						onClick={onSubmit}
-						disabled={!canSend}
-						className={ICON_BUTTON_CLASS}
-					>
-						<CornerDownLeft className="size-4" aria-hidden="true" />
-					</button>
-				</Tooltip>
+				send
 			) : (
 				<div data-send-spacer aria-hidden="true" inert className="invisible flex">
 					<span className="size-7" />
@@ -760,6 +844,7 @@ export function Composer({
 						hintId={hintId}
 						forkLabel={onFork === undefined ? undefined : forkLabel}
 						sendAndStay={onSendAndStay !== undefined}
+						queueForLater={onQueueForLater !== undefined}
 					/>
 				</div>
 			</div>

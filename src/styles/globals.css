@@ -781,6 +781,13 @@
 	}
 }
 
+/* Upstream's cds-fade-in: a face or popup fades up from transparent (e.g. the send cell's Stop/Send crossfade). */
+@keyframes cds-fade-in {
+	from {
+		opacity: 0;
+	}
+}
+
 /* Upstream's epitaxy-hint-fade-in: a waiting row's at-rest receipt rises into place. */
 @keyframes epitaxy-hint-fade-in {
 	0% {

@@ -79,6 +79,12 @@ const TRACK_CURSOR_INSET_PX = 8;
 
 const TOOLTIP_ROW_CLASS = "inline-flex items-center gap-2";
 
+/** One action row of a multi-action tooltip: its label and keyboard shortcut. */
+interface TooltipRow {
+	content: string;
+	shortcut: string;
+}
+
 /**
  * Whether the anchored trigger's menu or popover is open (`aria-expanded="true"`). Base UI puts focus guards
  * beside an open popup's trigger, so this looks for the expanded child rather than the first one.
@@ -114,8 +120,11 @@ export function Tooltip({
 }: {
 	content: string;
 	shortcut?: string;
-	/** A second action on the same control, stacked on its own row, e.g. Send ⏎ over Fork with this prompt ⌥⌘⏎. */
-	secondary?: {content: string; shortcut: string} | undefined;
+	/**
+	 * More actions on the same control, each stacked on its own row, e.g. Send ⏎ over Queue for later ⌘⏎ and
+	 * Fork with this prompt ⌥⌘⏎.
+	 */
+	secondary?: TooltipRow | readonly TooltipRow[] | undefined;
 	/** A muted second line under the label row, e.g. Hide sidebar ⌘B / Drag to resize. */
 	description?: string | undefined;
 	/** Muted text after the label on the same row, e.g. a tab's folder after its file name. */
@@ -156,6 +165,9 @@ export function Tooltip({
 	className?: string;
 	children: ReactElement<{"aria-describedby"?: string}>;
 }) {
+	const secondaryRows: readonly TooltipRow[] =
+		secondary === undefined ? [] : "content" in secondary ? [secondary] : secondary;
+	const secondaryKey = secondaryRows.map((row) => `${row.content}\u0000${row.shortcut}`).join("\u0001");
 	const id = useId();
 	const [open, setOpen] = useState(false);
 	const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -196,7 +208,7 @@ export function Tooltip({
 				align,
 			),
 		);
-	}, [open, side, align, content, description, secondary?.content, secondary?.shortcut]);
+	}, [open, side, align, content, description, secondaryKey]);
 
 	useLayoutEffect(() => {
 		const anchor = anchorRef.current;
@@ -286,7 +298,7 @@ export function Tooltip({
 			: stackedDetail
 				? STACKED_DETAIL_TOOLTIP_CLASS
 				: description === undefined
-					? secondary === undefined
+					? secondaryRows.length === 0
 						? multiline
 							? MULTILINE_TOOLTIP_CLASS
 							: TOOLTIP_CLASS
@@ -312,17 +324,17 @@ export function Tooltip({
 						{detail}
 					</span>
 				</>
-			) : description === undefined && secondary === undefined ? (
+			) : description === undefined && secondaryRows.length === 0 ? (
 				label
 			) : (
 				<>
 					<span className={TOOLTIP_ROW_CLASS}>{label}</span>
-					{secondary !== undefined && (
-						<span className={TOOLTIP_ROW_CLASS}>
-							{secondary.content}
-							<TooltipShortcut keys={secondary.shortcut} />
+					{secondaryRows.map((row) => (
+						<span key={row.content} className={TOOLTIP_ROW_CLASS}>
+							{row.content}
+							<TooltipShortcut keys={row.shortcut} />
 						</span>
-					)}
+					))}
 					{description !== undefined && (
 						<span className="text-[11px]/[14px] text-[var(--tooltip-description-ink)]">{description}</span>
 					)}
