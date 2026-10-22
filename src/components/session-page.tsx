@@ -1001,6 +1001,7 @@ function SessionView({
 													sessionId={sessionId}
 													lines={processed.lines}
 													fork={forkFromMessage}
+													working={paneBusy}
 												>
 													<SessionChat
 														sessionId={sessionId}

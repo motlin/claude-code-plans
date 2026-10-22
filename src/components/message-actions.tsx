@@ -8,6 +8,7 @@ import {type ReadAloudStatus, useReadAloud} from "../hooks/use-read-aloud";
 import {TOUCH_REVEAL, useTouchDevice} from "../lib/touch-reveal";
 import {formatMessageTime, formatRelativeTimestamp, formatTimestamp} from "../lib/timestamp-format";
 import {type TranscriptMessageRef, TranscriptActionsContext} from "./transcript-actions-context";
+import {DisabledReason} from "./ui/disabled-reason";
 import {InfoTip} from "./ui/info-tip";
 import {Spinner} from "./ui/spinner";
 import {Tooltip} from "./ui/tooltip";
@@ -76,9 +77,15 @@ function ActionButton({
 	onClick,
 	pressed,
 	readAloud,
+	disabledReason,
 	children,
 }: {
 	label: string;
+	/**
+	 * Mounts upstream's disabled-reason span around the control; while it holds a reason the control is disabled
+	 * and the span, focusable and described by the reason, shows it in place of the label's tooltip.
+	 */
+	disabledReason?: string | null;
 	/** A muted second line under the label in the tooltip, as upstream's toolbar shows for Rewind and Fork. */
 	description?: string;
 	onClick: (() => void) | undefined;
@@ -87,21 +94,29 @@ function ActionButton({
 	readAloud?: boolean;
 	children: ReactNode;
 }) {
-	return (
-		<Tooltip content={label} description={description}>
+	const tabIndex = useTabIndex();
+	const blocked = disabledReason !== undefined && disabledReason !== null;
+	const control = (
+		<Tooltip content={label} description={description} openWhen={() => !blocked}>
 			<button
 				type="button"
 				aria-label={label}
 				{...(pressed === undefined ? {} : {"aria-pressed": pressed})}
 				{...(readAloud ? {"data-read-aloud": ""} : {})}
-				tabIndex={useTabIndex()}
-				disabled={onClick === undefined}
-				onClick={onClick}
+				tabIndex={tabIndex}
+				disabled={onClick === undefined || blocked}
+				onClick={blocked ? undefined : onClick}
 				className={BUTTON_CLASS}
 			>
 				{children}
 			</button>
 		</Tooltip>
+	);
+	if (disabledReason === undefined) return control;
+	return (
+		<DisabledReason reason={disabledReason} tabIndex={tabIndex}>
+			{control}
+		</DisabledReason>
 	);
 }
 
@@ -180,11 +195,12 @@ function PinAction({message}: {message: TranscriptMessageRef | undefined}) {
 }
 
 function RewindAction({message}: {message: TranscriptMessageRef | undefined}) {
-	const {rewindTo} = useContext(TranscriptActionsContext);
+	const {rewindTo, rewindDisabledReason} = useContext(TranscriptActionsContext);
 	return (
 		<ActionButton
 			label="Rewind to here"
 			description="Removes this message and what follows"
+			disabledReason={rewindDisabledReason ?? null}
 			onClick={bound(rewindTo, message)}
 		>
 			<RotateCcw aria-hidden="true" className={ICON_CLASS} />

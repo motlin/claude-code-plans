@@ -10,6 +10,8 @@ export interface TranscriptActions {
 	pinChapter?: (message: TranscriptMessageRef) => void;
 	forkFrom?: (message: TranscriptMessageRef) => void;
 	rewindTo?: (message: TranscriptMessageRef) => void;
+	/** Why Rewind is unavailable right now (upstream: "Rewind is unavailable while Claude is working"). */
+	rewindDisabledReason?: string;
 }
 
 export const TranscriptActionsContext = createContext<TranscriptActions>({});

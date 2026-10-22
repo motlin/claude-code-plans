@@ -17,10 +17,13 @@ const WRAPPER_CLASS =
 export function DisabledReason({
 	reason,
 	wrapperClassName,
+	tabIndex = 0,
 	children,
 }: {
 	reason: string | null | undefined;
 	wrapperClassName?: string | undefined;
+	/** The wrapper's tab index while it has a reason; a roving toolbar passes -1 for its hidden items. */
+	tabIndex?: number;
 	children: ReactElement;
 }) {
 	const id = useId();
@@ -47,7 +50,7 @@ export function DisabledReason({
 				ref={wrapperRef}
 				data-cds-disabled-reason-wrapper=""
 				// oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- upstream's wrapper is the tab stop that reaches a disabled control's reason
-				tabIndex={hasReason ? 0 : -1}
+				tabIndex={hasReason ? tabIndex : -1}
 				aria-describedby={hasReason ? id : undefined}
 				onFocus={() => {
 					focusWasInside.current = true;

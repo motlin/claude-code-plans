@@ -62,10 +62,13 @@ afterEach(() => {
 	vi.restoreAllMocks();
 });
 
-function renderTranscript(fork: ((target: {sessionId: string; atMessage: string}) => void) | undefined) {
+function renderTranscript(
+	fork: ((target: {sessionId: string; atMessage: string}) => void) | undefined,
+	working = false,
+) {
 	return render(
 		<ToastProvider>
-			<TranscriptActionsProvider sessionId={SESSION_ID} lines={lines} fork={fork}>
+			<TranscriptActionsProvider sessionId={SESSION_ID} lines={lines} fork={fork} working={working}>
 				<ChapterChips sessionId={SESSION_ID} onJump={() => {}} />
 				<div data-turn="reply-1">
 					<AssistantMessageActions
@@ -108,6 +111,20 @@ describe("TranscriptActionsProvider", () => {
 		const container = renderTranscript(undefined);
 
 		expect(turnButton(container, "reply-1", "Fork from here").disabled).toBe(true);
+	});
+
+	it("disables Rewind with upstream's reason while Claude is working", () => {
+		const container = renderTranscript(undefined, true);
+		const rewind = turnButton(container, "prompt-2", "Rewind to here");
+		const describedBy = rewind.closest("[data-cds-disabled-reason-wrapper]")?.getAttribute("aria-describedby");
+
+		expect({
+			disabled: rewind.disabled,
+			reason:
+				describedBy === undefined || describedBy === null
+					? null
+					: document.getElementById(describedBy)?.textContent,
+		}).toStrictEqual({disabled: true, reason: "Rewind is unavailable while Claude is working"});
 	});
 
 	it("pins a turn as a chapter that the chapter chips list, and unpins it on a second press", () => {

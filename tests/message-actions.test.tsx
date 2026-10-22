@@ -555,6 +555,62 @@ describe("UserMessageActions", () => {
 	});
 });
 
+describe("Rewind while Claude is working", () => {
+	const REASON = "Rewind is unavailable while Claude is working";
+
+	function rewindState(container: HTMLElement) {
+		const rewind = button(container, "Rewind to here");
+		const wrapper = rewind.closest<HTMLElement>("[data-cds-disabled-reason-wrapper]");
+		const describedBy = wrapper?.getAttribute("aria-describedby") ?? null;
+		return {
+			disabled: rewind.disabled,
+			wrapperTabIndex: wrapper?.tabIndex ?? null,
+			description: describedBy === null ? null : (document.getElementById(describedBy)?.textContent ?? null),
+		};
+	}
+
+	it("disables Rewind to here inside upstream's disabled-reason wrapper, described by the working reason", () => {
+		const rewindTo = vi.fn<NonNullable<TranscriptActions["rewindTo"]>>();
+		const {container} = render(
+			withActions(
+				{rewindTo, rewindDisabledReason: REASON},
+				<UserMessageActions message={MESSAGE} text="Hi" timestamp={TIMESTAMP} details={[]} />,
+			),
+		);
+		fireEvent.click(button(container, "Rewind to here"));
+
+		expect({...rewindState(container), calls: rewindTo.mock.calls}).toStrictEqual({
+			disabled: true,
+			wrapperTabIndex: -1,
+			description: REASON,
+			calls: [],
+		});
+	});
+
+	it("puts the reason wrapper in the tab order once Show message actions reveals the bar", () => {
+		const {container} = render(
+			withActions(
+				{rewindTo: vi.fn<NonNullable<TranscriptActions["rewindTo"]>>(), rewindDisabledReason: REASON},
+				<UserMessageActions message={MESSAGE} text="Hi" timestamp={TIMESTAMP} details={[]} />,
+			),
+		);
+		fireEvent.click(showActions(container));
+
+		expect(rewindState(container).wrapperTabIndex).toBe(0);
+	});
+
+	it("leaves Rewind enabled and undescribed while the pane is idle", () => {
+		const {container} = render(
+			withActions(
+				{rewindTo: vi.fn<NonNullable<TranscriptActions["rewindTo"]>>()},
+				<UserMessageActions message={MESSAGE} text="Hi" timestamp={TIMESTAMP} details={[]} />,
+			),
+		);
+
+		expect(rewindState(container)).toStrictEqual({disabled: false, wrapperTabIndex: -1, description: null});
+	});
+});
+
 describe("message action toolbar sizing and reveal", () => {
 	it("wraps Copy in a Copy tooltip instead of a native title", () => {
 		const {container} = render(
