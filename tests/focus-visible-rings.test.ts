@@ -84,6 +84,14 @@ describe("hand-rolled focus rings", () => {
 				`rounded-b-[inherit] outline-none ${INSET_FOCUS}`,
 			),
 			groupLabel: has("src/components/sidebar/session-group-section.tsx", `hover:text-secondary ${ROW_FOCUS}`),
+			sessionRow: has(
+				"src/components/sidebar/session-group-section.tsx",
+				`\${ROW_CLASS} text-secondary ${ROW_FOCUS} hover:bg-[var(--sb-hover)]`,
+			),
+			overflowRow: has(
+				"src/components/sidebar/session-group-section.tsx",
+				`\${ROW_CLASS} text-ink-muted ${ROW_FOCUS} hover:bg-[var(--sb-hover)]`,
+			),
 		}).toStrictEqual({
 			titlebar: true,
 			chevron: true,
@@ -96,6 +104,8 @@ describe("hand-rolled focus rings", () => {
 			shortcutsScroller: true,
 			terminalPane: true,
 			groupLabel: true,
+			sessionRow: true,
+			overflowRow: true,
 		});
 	});
 });

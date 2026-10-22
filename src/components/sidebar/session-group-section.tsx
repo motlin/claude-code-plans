@@ -303,7 +303,7 @@ function OverflowRow({ariaLabel, onClick, children}: {ariaLabel: string; onClick
 			data-row
 			aria-label={ariaLabel}
 			onClick={onClick}
-			className={`${ROW_CLASS} text-ink-muted hover:bg-[var(--sb-hover)] hover:text-secondary`}
+			className={`${ROW_CLASS} text-ink-muted hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)] hover:bg-[var(--sb-hover)] hover:text-secondary`}
 		>
 			<span className="df-leading-slot" />
 			{children}
@@ -508,7 +508,7 @@ function SessionRowLink({
 					onClick={(event) => {
 						if (selection?.onRowClick(row.sessionId, event) === true) event.preventDefault();
 					}}
-					className={`${ROW_CLASS} text-secondary hover:bg-[var(--sb-hover)] focus-visible:bg-[var(--sb-hover)] data-[selected=focused]:bg-[var(--sb-session-selected)] data-[selected=focused]:text-primary data-[multi-selected]:bg-[var(--sb-session-selected)] data-[multi-selected]:text-primary`}
+					className={`${ROW_CLASS} text-secondary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)] hover:bg-[var(--sb-hover)] focus-visible:bg-[var(--sb-hover)] data-[selected=focused]:bg-[var(--sb-session-selected)] data-[selected=focused]:text-primary data-[multi-selected]:bg-[var(--sb-session-selected)] data-[multi-selected]:text-primary`}
 				>
 					{/* Upstream starts the title 10px into the row and keeps it clear of the trailing 24px slot */}
 					<span data-row-label className="min-w-0 flex-1 ps-2 pe-7">
