@@ -2,7 +2,7 @@
 
 import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {useState} from "react";
-import {afterEach, describe, expect, it, vi} from "vite-plus/test";
+import {afterEach, beforeAll, describe, expect, it, vi} from "vite-plus/test";
 
 import {
 	ContextMenu,
@@ -19,9 +19,15 @@ import {
 	MenuSubContent,
 	MenuSubTrigger,
 	MenuTrigger,
+	preloadMenuSheet,
 	submenuAnchor,
 } from "../src/components/ui/menu";
 import {type Density, DensityOverride, DensityScope} from "../src/components/ui/density";
+
+/* The sheet presentation is a lazy chunk; load it up front so sheet tests render synchronously, as on a phone. */
+beforeAll(async () => {
+	await preloadMenuSheet();
+});
 
 afterEach(() => {
 	cleanup();

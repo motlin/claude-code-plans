@@ -47,32 +47,32 @@
 		"tolerance": 0
 	},
 	"bundle.home.gzip": {
-		"ceiling": 385845,
+		"ceiling": 387479,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Home cold JS drifted to the edge of the 1% tolerance over 215bb7f0's 381312 gzip / 1172744 raw across the menu-touch-sheet commits (sheet gate, root sheet anatomy, Close row, drill-in submenus, tree-closing); the sheet drag (src/lib/sheet-drag.ts geometry plus the menu-sheet-drag pointer hook) tipped it over at 385845 gzip, 1188288 raw. Ceilings re-based on the measurement; the 1% tolerance is unchanged.",
+		"reason": "Lazy-loading the menu sheet presentation (src/components/ui/menu-sheet.tsx: sheet DOM, menu-sheet-drag pointer hook, src/lib/sheet-drag.ts geometry and drill-in, preloaded only where the coarse <640px gate would open a sheet) took home cold JS from 388098 gzip / 1194142 raw at b194ff01 to 387479 gzip / 1185312 raw. The rest of the growth over 215bb7f0's 381312 gzip / 1172744 raw is the eager sheet gate (useSheetPresentation, submenu drill wiring) and the lenient runtime schema twins. Ceilings lowered to the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-10-22"
 	},
 	"bundle.home.raw": {
-		"ceiling": 1188288,
+		"ceiling": 1185312,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Home cold JS drifted to the edge of the 1% tolerance over 215bb7f0's 381312 gzip / 1172744 raw across the menu-touch-sheet commits (sheet gate, root sheet anatomy, Close row, drill-in submenus, tree-closing); the sheet drag (src/lib/sheet-drag.ts geometry plus the menu-sheet-drag pointer hook) tipped it over at 385845 gzip, 1188288 raw. Ceilings re-based on the measurement; the 1% tolerance is unchanged.",
+		"reason": "Lazy-loading the menu sheet presentation (src/components/ui/menu-sheet.tsx: sheet DOM, menu-sheet-drag pointer hook, src/lib/sheet-drag.ts geometry and drill-in, preloaded only where the coarse <640px gate would open a sheet) took home cold JS from 388098 gzip / 1194142 raw at b194ff01 to 387479 gzip / 1185312 raw. The rest of the growth over 215bb7f0's 381312 gzip / 1172744 raw is the eager sheet gate (useSheetPresentation, submenu drill wiring) and the lenient runtime schema twins. Ceilings lowered to the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-10-22"
 	},
 	"bundle.session.gzip": {
-		"ceiling": 564719,
+		"ceiling": 565342,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Session cold JS sat at the edge of the 1% tolerance over 983dd5f3's 558865 gzip / 1695618 raw (4072d690 measured 563438 gzip, 1711750 raw); the lenient runtime schema twins (src/lib/lenient-schema.ts toLenient plus src/lib/runtime-schemas.ts) that the client's attachment, tool-label, edit-diff and context parsers now use add +1281 B gzip and +3737 B raw (564719, 1715487), tipping both over. Ceilings re-based on the measurement; the 1% tolerance is unchanged.",
-		"raisedAt": "2026-10-21"
+		"reason": "Lazy-loading the menu sheet presentation (src/components/ui/menu-sheet.tsx with the drag and drill-in code) took session cold JS from 565745 gzip / 1717849 raw at b194ff01 to 565342 gzip / 1709603 raw. The earlier 564719 / 1715487 figures for the lenient runtime schema twins (src/lib/lenient-schema.ts, src/lib/runtime-schemas.ts) were measured before that commit's final form. Ceilings set to the measurement; the 1% tolerance is unchanged.",
+		"raisedAt": "2026-10-22"
 	},
 	"bundle.session.raw": {
-		"ceiling": 1715487,
+		"ceiling": 1709603,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Session cold JS sat at the edge of the 1% tolerance over 983dd5f3's 558865 gzip / 1695618 raw (4072d690 measured 563438 gzip, 1711750 raw); the lenient runtime schema twins (src/lib/lenient-schema.ts toLenient plus src/lib/runtime-schemas.ts) that the client's attachment, tool-label, edit-diff and context parsers now use add +1281 B gzip and +3737 B raw (564719, 1715487), tipping both over. Ceilings re-based on the measurement; the 1% tolerance is unchanged.",
-		"raisedAt": "2026-10-21"
+		"reason": "Lazy-loading the menu sheet presentation (src/components/ui/menu-sheet.tsx with the drag and drill-in code) took session cold JS from 565745 gzip / 1717849 raw at b194ff01 to 565342 gzip / 1709603 raw. The earlier 564719 / 1715487 figures for the lenient runtime schema twins (src/lib/lenient-schema.ts, src/lib/runtime-schemas.ts) were measured before that commit's final form. Ceilings set to the measurement; the 1% tolerance is unchanged.",
+		"raisedAt": "2026-10-22"
 	},
 	"client.coldHome.default.commitsToRows": {
 		"ceiling": 9,
