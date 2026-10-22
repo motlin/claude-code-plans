@@ -187,7 +187,7 @@ describe("CommentEditor", () => {
 
 	it("puts the caret at the end on autoFocus", () => {
 		render(<Controlled isEditing autoFocus initial="abc" />);
-		const textarea = screen.getByRole("textbox") as HTMLTextAreaElement;
+		const textarea = screen.getByRole<HTMLTextAreaElement>("textbox");
 		expect({focused: document.activeElement === textarea, caret: textarea.selectionStart}).toEqual({
 			focused: true,
 			caret: 3,
