@@ -317,6 +317,9 @@ const SendMessageInputSchema = z
 	})
 	.strict();
 
+/** A subagent's final report to the agent that spawned it. */
+const SubagentHandbackInputSchema = z.object({message: z.string()}).strict();
+
 const TaskStopInputSchema = z
 	.object({
 		task_id: z.string().optional(),
@@ -580,6 +583,7 @@ export const toolInputSchemas = {
 	TodoWrite: TodoWriteInputSchema,
 	WebSearch: WebSearchInputSchema,
 	SendMessage: SendMessageInputSchema,
+	SubagentHandback: SubagentHandbackInputSchema,
 	TaskStop: TaskStopInputSchema,
 	TaskOutput: TaskOutputInputSchema,
 	Monitor: MonitorInputSchema,

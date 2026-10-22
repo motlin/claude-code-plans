@@ -185,6 +185,8 @@ const FIXED_LABELS: Record<string, {verb: string}> = {
 		verb: "Reported review findings",
 	},
 	TaskOutput: {verb: "Read task output"},
+	// A subagent's final report to the agent that spawned it.
+	SubagentHandback: {verb: "Reported back"},
 	Monitor: {
 		verb: "Started watching background command",
 	},

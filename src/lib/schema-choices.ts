@@ -911,6 +911,7 @@ const toolNames = {
 	TodoWrite: true,
 	WebSearch: true,
 	SendMessage: true,
+	SubagentHandback: true,
 	TaskStop: true,
 	TaskOutput: true,
 	Monitor: true,

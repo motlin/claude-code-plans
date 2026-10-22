@@ -59,6 +59,7 @@ describe("toolLabel", () => {
 			enterPlanMode: toolLabel(call("EnterPlanMode")),
 			exitPlanMode: toolLabel(call("ExitPlanMode", {plan: "## Plan"})),
 			toolSearch: toolLabel(call("ToolSearch", {query: "select:Read"})),
+			subagentHandback: toolLabel(call("SubagentHandback", {message: "Done."})),
 		}).toStrictEqual({
 			read: {verb: "Read"},
 			writeCreate: {verb: "Created"},
@@ -84,6 +85,7 @@ describe("toolLabel", () => {
 			enterPlanMode: {verb: "Started planning"},
 			exitPlanMode: {verb: "Proposed plan"},
 			toolSearch: {verb: "Loaded tools"},
+			subagentHandback: {verb: "Reported back"},
 		});
 	});
 

@@ -982,6 +982,10 @@ const TOOL_VARIANTS = {
 	TodoWrite: {input: toolInputSchemas.TodoWrite, response: TodoWriteToolResponseSchema},
 	WebSearch: {input: toolInputSchemas.WebSearch, response: WebSearchToolResponseSchema},
 	SendMessage: {input: toolInputSchemas.SendMessage, response: SendMessageToolResponseSchema},
+	SubagentHandback: {
+		input: toolInputSchemas.SubagentHandback,
+		response: z.object({success: z.boolean(), message: z.string()}).strict(),
+	},
 	TaskStop: {input: toolInputSchemas.TaskStop, response: TaskStopToolResponseSchema},
 	TaskOutput: {input: toolInputSchemas.TaskOutput, response: TaskOutputToolResponseSchema},
 	Monitor: {input: toolInputSchemas.Monitor, response: JsonValueSchema}, // no hook samples observed yet
@@ -1093,6 +1097,7 @@ const UserPromptSubmitHookEvent = z.strictObject({
 	prompt: z.string(),
 	/** What drove the turn; absent for ordinary typed prompts. */
 	source: z.enum(["user", "sdk", "system", "loop_wakeup", "schedule_wakeup"]).optional(),
+	session_title: z.string().optional(),
 });
 
 const NotificationHookEvent = z.strictObject({

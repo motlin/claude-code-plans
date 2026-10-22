@@ -137,6 +137,11 @@ describe("HookEventEnvelope", () => {
 
 	it.each([
 		{
+			tool_name: "SubagentHandback",
+			tool_input: {message: "Implemented the example and committed it."},
+			tool_response: {success: true, message: "Report delivered to your caller."},
+		},
+		{
 			tool_name: "Agent",
 			tool_input: {
 				description: "Inspect the example project",
@@ -535,6 +540,16 @@ describe("HookEventEnvelope", () => {
 			...baseEnvelope,
 			hook_event_name: "UserPromptSubmit",
 			prompt: "fix the login bug",
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it("parses UserPromptSubmit event with session_title", () => {
+		const result = HookEventEnvelope.safeParse({
+			...baseEnvelope,
+			hook_event_name: "UserPromptSubmit",
+			prompt: "fix the login bug",
+			session_title: "Fix the login bug",
 		});
 		expect(result.success).toBe(true);
 	});
