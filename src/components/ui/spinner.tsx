@@ -1,0 +1,72 @@
+import {useEffect, useState} from "react";
+
+/** Upstream cds Spinner box/stroke per size; md is the 16px ring the palette input row uses. */
+const SPINNER_SIZES = {md: {box: "1rem", stroke: "1.75px"}} as const;
+
+/** Upstream mounts the sr-only label 100ms after the spinner shows, so a quick flash isn't announced. */
+const LABEL_DELAY_MS = 100;
+
+/**
+ * Upstream's cds Spinner (shared-frame-B `Jz`): a muted conic arc spinning over a border-coloured track.
+ * It renders nothing until `delay` ms have passed; with a `label` it sits in a `role=status` span whose
+ * sr-only label mounts 100ms after the ring appears.
+ */
+export function Spinner({
+	size = "md",
+	delay = 0,
+	label,
+}: {
+	size?: keyof typeof SPINNER_SIZES;
+	delay?: number;
+	label?: string;
+}) {
+	const [elapsed, setElapsed] = useState(delay <= 0);
+	useEffect(() => {
+		if (delay <= 0) return undefined;
+		const timer = window.setTimeout(() => {
+			setElapsed(true);
+		}, delay);
+		return () => {
+			window.clearTimeout(timer);
+		};
+	}, [delay]);
+	const show = delay <= 0 || elapsed;
+
+	const {box, stroke} = SPINNER_SIZES[size];
+	const mask = `radial-gradient(farthest-side, transparent calc(100% - ${stroke}), #000 calc(100% - ${stroke} + 0.5px))`;
+	const ring = show ? (
+		<span
+			data-spinner=""
+			aria-hidden="true"
+			className="relative inline-block shrink-0 align-middle"
+			style={{width: box, height: box}}
+		>
+			<span className="absolute inset-0 rounded-full" style={{border: `${stroke} solid var(--color-border)`}} />
+			<span
+				className="absolute inset-0 rounded-full animate-[spin_1s_linear_infinite] motion-reduce:animate-none"
+				style={{background: "conic-gradient(transparent 40%, var(--color-ink-muted))", mask}}
+			/>
+		</span>
+	) : null;
+
+	if (label === undefined) return ring;
+	return (
+		<span role="status" className="leading-[0]">
+			{ring}
+			{show && <SpinnerLabel>{label}</SpinnerLabel>}
+		</span>
+	);
+}
+
+function SpinnerLabel({children}: {children: string}) {
+	const [visible, setVisible] = useState(false);
+	useEffect(() => {
+		const timer = window.setTimeout(() => {
+			setVisible(true);
+		}, LABEL_DELAY_MS);
+		return () => {
+			window.clearTimeout(timer);
+		};
+	}, []);
+	return visible ? <span className="sr-only">{children}</span> : null;
+}

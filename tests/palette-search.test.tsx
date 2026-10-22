@@ -311,19 +311,29 @@ describe("⌘K palette live search", () => {
 	it("shows the deeper-search spinner and skeletons only while fetching", async () => {
 		const {dialog} = await openPalette();
 
+		const slot = () => dialog.querySelector("[data-palette-spinner-slot]");
+		const idleSlot = slot()?.className;
+
 		type(dialog, "auth");
 		const request = await awaitRequest();
 
 		expect({
-			spinner: within(dialog).queryByLabelText("Searching deeper...") !== null,
+			idleSlot,
 			skeletons: dialog.querySelectorAll("[data-palette-skeleton]").length > 0,
 			busy: resultsGroup(dialog).getAttribute("aria-busy"),
-		}).toStrictEqual({spinner: true, skeletons: true, busy: "true"});
+		}).toStrictEqual({
+			idleSlot: "flex size-4 shrink-0 items-center justify-center",
+			skeletons: true,
+			busy: "true",
+		});
+		await waitFor(() => {
+			expect(within(slot() as HTMLElement).getByRole("status").textContent).toBe("Searching deeper...");
+		});
 
 		request.resolve([serverSession("sess-2", "Auth token refresh")]);
 
 		await waitFor(() => {
-			expect(within(dialog).queryByLabelText("Searching deeper...")).toBeNull();
+			expect(slot()?.childElementCount).toBe(0);
 		});
 		expect({
 			skeletons: dialog.querySelectorAll("[data-palette-skeleton]").length,

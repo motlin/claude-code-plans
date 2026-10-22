@@ -119,6 +119,7 @@ import {type PaletteCardSession, PaletteRowActionsButton, PaletteRowActionsCard}
 import {AttachedContextChips} from "./attached-context-chips";
 import {useToast} from "./toast-context";
 import {Shortcut} from "./ui/shortcut";
+import {Spinner} from "./ui/spinner";
 import {ArchivedBadge} from "./archived-badge";
 import {Tooltip} from "./ui/tooltip";
 import {useOpenSettings} from "./settings/open-settings";
@@ -1243,13 +1244,12 @@ function PalettePopup({
 								}`}
 							/>
 						</Command.Input>
-						{!compose && searching && (
+						{!compose && (
 							<span
-								role="img"
-								aria-label="Searching deeper..."
-								className="relative flex size-4 shrink-0 items-center justify-center text-ink-muted"
+								data-palette-spinner-slot=""
+								className="flex size-4 shrink-0 items-center justify-center"
 							>
-								<LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
+								{searching && <Spinner size="md" delay={150} label="Searching deeper..." />}
 							</span>
 						)}
 						{!compose && (
