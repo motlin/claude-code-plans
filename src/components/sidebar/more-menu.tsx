@@ -15,7 +15,7 @@ export interface NavBadge {
 }
 
 const NAV_ROW_CLASS =
-	"group df-nav-row h-[var(--sb-row-h)] rounded-[var(--sb-radius)] flex-1 outline-none data-[popup-open]:bg-[var(--sb-hover)]";
+	"group df-nav-row h-[var(--sb-row-h)] rounded-[var(--sb-radius)] flex-1 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)] data-[popup-open]:bg-[var(--sb-hover)]";
 
 /**
  * Upstream's sidebar "More" row: a right-side popover listing the nav items that are not pinned,

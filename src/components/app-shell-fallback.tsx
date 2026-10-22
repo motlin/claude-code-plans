@@ -24,7 +24,8 @@ import {
 } from "./composer-tokens";
 import {HOME_DOCK_CLASS, SESSION_DOCK_COLUMN_CLASS, SESSION_FOOTER_CLASS, SESSION_TILE_CLASS} from "./dock-tokens";
 
-const NAV_ROW_CLASS = "df-nav-row h-[var(--sb-row-h)] rounded-[var(--sb-radius)] flex-1";
+const NAV_ROW_CLASS =
+	"df-nav-row h-[var(--sb-row-h)] rounded-[var(--sb-radius)] flex-1 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)]";
 const BAR_CLASS = "animate-pulse rounded bg-fill-ghost-hover";
 const SESSION_ROW_WIDTHS = ["w-3/4", "w-2/3", "w-5/6", "w-1/2", "w-3/5", "w-4/5", "w-2/3", "w-1/2"];
 

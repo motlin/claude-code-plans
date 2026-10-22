@@ -78,7 +78,7 @@ export function AccountMenu({fullWidth = false}: {fullWidth?: boolean}) {
 			<MenuTrigger
 				data-testid="user-menu-button"
 				data-prefetch="settings"
-				className={`${fullWidth ? "w-full " : ""}flex h-8 max-w-full min-w-0 items-center gap-2 rounded-r6 pr-2 pl-0.5 text-left outline-none hover:bg-[var(--sb-hover)] focus-visible:bg-[var(--sb-hover)] data-[popup-open]:bg-[var(--sb-hover)]`}
+				className={`${fullWidth ? "w-full " : ""}flex h-8 max-w-full min-w-0 items-center gap-2 rounded-r6 pr-2 pl-0.5 text-left hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)] hover:bg-[var(--sb-hover)] data-[popup-open]:bg-[var(--sb-hover)]`}
 			>
 				<span className="flex h-7 w-7 shrink-0 items-center justify-center">
 					<span

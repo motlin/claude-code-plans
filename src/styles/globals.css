@@ -1322,10 +1322,6 @@ html[data-motion="reduced"] .terminal-caret {
 		}
 	}
 
-	.df-nav-row:focus-visible {
-		background-color: var(--sb-hover);
-	}
-
 	.df-nav-row[data-selected="focused"] {
 		background-color: var(--sb-selected);
 		color: var(--upstream-text-primary);

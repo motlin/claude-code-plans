@@ -100,6 +100,36 @@ describe("hand-rolled focus rings", () => {
 	});
 });
 
+describe("sidebar nav row focus ring", () => {
+	it("rings nav rows and the account trigger with upstream's inset row ring instead of a hover background", () => {
+		const css = readFileSync("src/styles/globals.css", "utf8");
+		const has = (path: string, needle: string) => readFileSync(path, "utf8").includes(needle);
+		expect({
+			cssBackgroundRule: /\.df-nav-row:focus-visible\s*\{/.test(css),
+			navLink: has("src/components/sidebar/Sidebar.tsx", `rounded-[var(--sb-radius)] ${ROW_FOCUS}"`),
+			newRow: has(
+				"src/components/sidebar/new-session-row.tsx",
+				`rounded-[var(--sb-radius)] flex-1 ${ROW_FOCUS} `,
+			),
+			moreRow: has("src/components/sidebar/more-menu.tsx", `rounded-[var(--sb-radius)] flex-1 ${ROW_FOCUS} `),
+			fallbackRow: has(
+				"src/components/app-shell-fallback.tsx",
+				`rounded-[var(--sb-radius)] flex-1 ${ROW_FOCUS}"`,
+			),
+			accountMenu: has("src/components/sidebar/account-menu.tsx", `pr-2 pl-0.5 text-left ${ROW_FOCUS} hover:`),
+			accountMenuBackground: has("src/components/sidebar/account-menu.tsx", "focus-visible:bg-"),
+		}).toStrictEqual({
+			cssBackgroundRule: false,
+			navLink: true,
+			newRow: true,
+			moreRow: true,
+			fallbackRow: true,
+			accountMenu: true,
+			accountMenuBackground: false,
+		});
+	});
+});
+
 describe("upstream base focus ring", () => {
 	const css = readFileSync("src/styles/globals.css", "utf8");
 
