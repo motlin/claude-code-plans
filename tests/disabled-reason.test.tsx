@@ -134,4 +134,63 @@ describe("<DisabledReason>", () => {
 
 		expect(screen.queryByRole("tooltip")).toBeNull();
 	});
+
+	it("hands focus to the wrapper and opens the reason when the focused control becomes disabled", () => {
+		const {container, rerender} = render(<DisabledReason reason={null}>{control(false)}</DisabledReason>);
+		act(() => {
+			screen.getByRole("button").focus();
+		});
+
+		rerender(<DisabledReason reason={REASON}>{control(true)}</DisabledReason>);
+
+		expect({
+			focusedWrapper: document.activeElement === wrapperOf(container),
+			tooltip: screen.getByRole("tooltip").textContent,
+		}).toStrictEqual({focusedWrapper: true, tooltip: REASON});
+	});
+
+	it("hands focus to the wrapper when the disabled control already dropped focus to the body", () => {
+		const {container, rerender} = render(<DisabledReason reason={null}>{control(false)}</DisabledReason>);
+		act(() => {
+			screen.getByRole("button").focus();
+		});
+		act(() => {
+			screen.getByRole("button").blur();
+		});
+
+		rerender(<DisabledReason reason={REASON}>{control(true)}</DisabledReason>);
+
+		expect({
+			focusedWrapper: document.activeElement === wrapperOf(container),
+			tooltip: screen.getByRole("tooltip").textContent,
+		}).toStrictEqual({focusedWrapper: true, tooltip: REASON});
+	});
+
+	it("leaves focus alone when it had moved elsewhere before the control became disabled", () => {
+		const {rerender} = render(
+			<>
+				<DisabledReason reason={null}>{control(false)}</DisabledReason>
+				<input aria-label="elsewhere" />
+			</>,
+		);
+		act(() => {
+			screen.getByRole("button").focus();
+		});
+		const elsewhere = screen.getByRole("textbox");
+		act(() => {
+			elsewhere.focus();
+		});
+
+		rerender(
+			<>
+				<DisabledReason reason={REASON}>{control(true)}</DisabledReason>
+				<input aria-label="elsewhere" />
+			</>,
+		);
+
+		expect({
+			focusedElsewhere: document.activeElement === elsewhere,
+			tooltip: screen.queryByRole("tooltip"),
+		}).toStrictEqual({focusedElsewhere: true, tooltip: null});
+	});
 });
