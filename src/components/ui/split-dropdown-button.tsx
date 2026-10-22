@@ -1,7 +1,7 @@
 import {ChevronDown, Loader2} from "lucide-react";
 import {type CSSProperties, Fragment, type ReactNode, useRef, useState} from "react";
 
-import {Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger} from "./menu";
+import {Menu, MenuContent, type MenuContentProps, MenuItem, MenuSeparator, MenuTrigger} from "./menu";
 import {Shortcut} from "./shortcut";
 
 /*
@@ -35,6 +35,8 @@ export interface SplitDropdownButtonProps {
 	align?: "start" | "end";
 	open?: boolean;
 	onOpenChange?: (open: boolean) => void;
+	/** Where focus lands when the menu closes; the caret by default. */
+	finalFocus?: MenuContentProps["finalFocus"];
 	className?: string;
 }
 
@@ -181,6 +183,7 @@ export function SplitDropdownButton({
 	align = "end",
 	open: controlledOpen,
 	onOpenChange,
+	finalFocus,
 	className,
 }: SplitDropdownButtonProps) {
 	const [internalOpen, setInternalOpen] = useState(false);
@@ -313,7 +316,12 @@ export function SplitDropdownButton({
 						{!joined && <GhostPaint />}
 						<ChevronDown aria-hidden="true" className={caretIconClass} />
 					</MenuTrigger>
-					<MenuContent side={side} align={align} sideOffset={6}>
+					<MenuContent
+						side={side}
+						align={align}
+						sideOffset={6}
+						{...(finalFocus === undefined ? {} : {finalFocus})}
+					>
 						<MenuItems items={items} />
 					</MenuContent>
 				</Menu>

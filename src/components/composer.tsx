@@ -54,6 +54,8 @@ import {slashCommandOptionId} from "./slash-command-option-id";
 import {Tooltip} from "./ui/tooltip";
 import {startComposerKeystrokeJourney, startComposerSubmitJourneys} from "../lib/perf/field-journeys";
 import {SESSION_COMPOSER_PLACEHOLDER} from "../lib/composer-pending-gate";
+import {useCoarsePointer} from "../lib/use-phone-sheet";
+import {type SplitItem, SplitDropdownButton} from "./ui/split-dropdown-button";
 
 type ComposerVariant = "session" | "home";
 
@@ -138,6 +140,12 @@ const SEND_FACE_EXIT_CLASS =
 
 type SendFace = "stop" | "send";
 
+/** Upstream's `Ou`: a primary tap this soon after a Stop click is the same finger landing twice. */
+const STOP_TAP_GUARD_MS = 500;
+
+/** Which lane a touch split submit goes to: Send (a steer while working) or the menu's Queue for later. */
+type TouchSubmitLane = "send" | "later";
+
 /**
  * Upstream's send-cell crossfade (`Jd`): Stop and Send share one grid cell. When the face flips, the new one
  * fades in while the old one stays mounted, `inert` and hidden, until its `visibility` transition ends.
@@ -206,6 +214,8 @@ const SendSlot = memo(function SendSlot({
 	forkLabel,
 	sendAndStay,
 	queueForLater,
+	onTouchSubmit,
+	editorRef,
 }: {
 	isStreaming: boolean;
 	onStop: (() => void) | undefined;
@@ -223,7 +233,13 @@ const SendSlot = memo(function SendSlot({
 	sendAndStay: boolean;
 	/** The working Send tooltip's "Queue for later" row, when ⌘⏎ queues. */
 	queueForLater: boolean;
+	/** The coarse-pointer split's primary Send and its "Queue for later" item. */
+	onTouchSubmit: (lane: TouchSubmitLane) => void;
+	/** The prompt editor, which takes focus back when the split's menu closes. */
+	editorRef: React.RefObject<HTMLTextAreaElement | null>;
 }) {
+	const coarse = useCoarsePointer();
+	const stopClickAtRef = useRef(Number.NEGATIVE_INFINITY);
 	const forkKeys = useShortcutKeys("fork_with_prompt").keys;
 	const cmdEnterKeys = useIsMac() ? "cmd+enter" : "ctrl+enter";
 	const working = isStreaming || onStop !== undefined;
@@ -249,9 +265,47 @@ const SendSlot = memo(function SendSlot({
 			</button>
 		</Tooltip>
 	);
+	const stop = () => {
+		stopClickAtRef.current = Date.now();
+		onStop?.();
+	};
+	/*
+	 * Upstream's touch split (`ue = showStop && !R && isCoarsePointer`): working with a draft on a coarse
+	 * pointer, the cell is a ghost split whose primary steers and whose menu queues or stops.
+	 */
+	const touchSplit = coarse && !isStreaming && onStop !== undefined && hasContent;
+	const splitItems: SplitItem[] = queueForLater
+		? [
+				{
+					label: "Queue for later",
+					onSelect: () => {
+						onTouchSubmit("later");
+					},
+				},
+				{label: "Stop", separatorBefore: true, onSelect: stop},
+			]
+		: [{label: "Stop", onSelect: stop}];
 	return (
 		<div className="absolute right-0 bottom-0 flex min-h-7 items-center pl-1.5">
-			{working ? (
+			{touchSplit ? (
+				<SplitDropdownButton
+					variant="ghost"
+					size="touch"
+					icon={<CornerDownLeft className={`size-4${canSend ? "" : " opacity-40"}`} aria-hidden="true" />}
+					aria-label="Send"
+					aria-keyshortcuts="Enter"
+					menuLabel="More send options"
+					side="top"
+					align="end"
+					items={splitItems}
+					finalFocus={editorRef}
+					{...(canSend ? {} : {"aria-disabled": true})}
+					onPrimaryClick={() => {
+						if (!canSend || Date.now() - stopClickAtRef.current < STOP_TAP_GUARD_MS) return;
+						onTouchSubmit("send");
+					}}
+				/>
+			) : working ? (
 				<SendCrossfade
 					showStop={isStreaming || !hasContent}
 					stop={
@@ -261,7 +315,7 @@ const SendSlot = memo(function SendSlot({
 								aria-label="Stop"
 								aria-keyshortcuts={isStreaming ? undefined : "Escape"}
 								data-testid="code-prompt-stop"
-								onClick={isStreaming ? onCancel : onStop}
+								onClick={isStreaming ? onCancel : stop}
 								className={ICON_BUTTON_CLASS}
 							>
 								<span className="flex scale-90">
@@ -515,6 +569,13 @@ export function Composer({
 	handleSubmitRef.current = handleSubmit;
 	const submit = useCallback((event: React.MouseEvent) => {
 		handleSubmitRef.current(undefined, event.nativeEvent);
+	}, []);
+	const onQueueForLaterRef = useRef(onQueueForLater);
+	onQueueForLaterRef.current = onQueueForLater;
+	const touchSubmit = useCallback((lane: TouchSubmitLane) => {
+		const later = onQueueForLaterRef.current;
+		if (lane === "later" && later !== undefined) handleSubmitRef.current(later);
+		else handleSubmitRef.current();
 	}, []);
 
 	const [historyWalk, setHistoryWalk] = useState<{
@@ -801,6 +862,8 @@ export function Composer({
 						forkLabel={onFork === undefined ? undefined : forkLabel}
 						sendAndStay={onSendAndStay !== undefined}
 						queueForLater={onQueueForLater !== undefined}
+						onTouchSubmit={touchSubmit}
+						editorRef={textareaRef}
 					/>
 				</div>
 			</div>
