@@ -22,7 +22,6 @@ vi.mock("node:fs/promises", async (importOriginal) => {
 
 import {createRecursiveWatcher, type RecursiveWatcher} from "../src/lib/recursive-watch";
 
-const EVENT_TIMEOUT_MS = 5000;
 const PROBE_TIMEOUT_MS = 1000;
 const PROBE_PREFIX = ".claude-code-browser-watch-probe-";
 
@@ -53,21 +52,41 @@ function createDeafNativeWatcher(): FSWatcher {
 	return Object.assign(emitter, {close: () => {}}) as unknown as FSWatcher;
 }
 
+/** Resolves on the watcher's own event for `expectedPath`; the test timeout bounds the wait. */
 async function waitForPath(
 	watcher: RecursiveWatcher,
 	event: "change" | "unlink",
 	expectedPath: string,
 ): Promise<string> {
-	return new Promise((resolve, reject) => {
-		const timeout = setTimeout(() => {
-			reject(new Error(`Timed out waiting for ${event}: ${expectedPath}`));
-		}, EVENT_TIMEOUT_MS);
+	return new Promise((resolve) => {
 		watcher.on(event, (path) => {
-			if (path !== expectedPath) return;
-			clearTimeout(timeout);
-			resolve(path);
+			if (path === expectedPath) resolve(path);
 		});
 	});
+}
+
+/** Longer than the watcher's debounce, so each rewrite of the sentinel is reported on its own. */
+const SENTINEL_REWRITE_MS = 250;
+
+/**
+ * Under heavy load the watcher's readiness probe can time out and announce `ready` before FSEvents is armed, which
+ * drops a write issued right after it. Rewrite a sentinel until the watcher reports it back, then drain its unlink, so
+ * a test's own writes only start once event delivery is proven.
+ */
+async function waitUntilDelivering(watcher: RecursiveWatcher, directory: string): Promise<void> {
+	await waitForReady(watcher);
+	const sentinelPath = join(directory, "delivery-sentinel.txt");
+	let delivered = false;
+	const observed = waitForPath(watcher, "change", sentinelPath).then(() => {
+		delivered = true;
+	});
+	while (!delivered) {
+		await writeFile(sentinelPath, `${Date.now()}\n`, "utf8");
+		await Promise.race([observed, delay(SENTINEL_REWRITE_MS)]);
+	}
+	const removed = waitForPath(watcher, "unlink", sentinelPath);
+	await unlink(sentinelPath);
+	await removed;
 }
 
 describe("createRecursiveWatcher", () => {
@@ -91,7 +110,7 @@ describe("createRecursiveWatcher", () => {
 	it("emits change for created and modified files, then unlink when deleted", async () => {
 		const filePath = join(fixtureDirectory, "alice.md");
 		watcher = createRecursiveWatcher([fixtureDirectory], () => false);
-		await waitForReady(watcher);
+		await waitUntilDelivering(watcher, fixtureDirectory);
 
 		const created = waitForPath(watcher, "change", filePath);
 		await writeFile(filePath, "first\n", "utf8");
@@ -110,7 +129,7 @@ describe("createRecursiveWatcher", () => {
 		const nestedDirectory = join(fixtureDirectory, "nested");
 		const filePath = join(nestedDirectory, "bob.json");
 		watcher = createRecursiveWatcher([fixtureDirectory], () => false);
-		await waitForReady(watcher);
+		await waitUntilDelivering(watcher, fixtureDirectory);
 
 		const changed = waitForPath(watcher, "change", filePath);
 		await mkdir(nestedDirectory);
@@ -131,7 +150,7 @@ describe("createRecursiveWatcher", () => {
 		watcher.on("unlink", (path) => {
 			if (path === ignoredPath) events.push(path);
 		});
-		await waitForReady(watcher);
+		await waitUntilDelivering(watcher, fixtureDirectory);
 
 		await mkdir(ignoredDirectory);
 		await writeFile(ignoredPath, "ignored\n", "utf8");
@@ -148,7 +167,7 @@ describe("createRecursiveWatcher", () => {
 		await mkdir(nestedDirectory);
 
 		watcher = createRecursiveWatcher([fixtureDirectory, nestedDirectory], () => false);
-		await waitForReady(watcher);
+		await waitUntilDelivering(watcher, fixtureDirectory);
 
 		expect(watchMock.mock.calls.map(([root, options]) => ({root, options}))).toStrictEqual([
 			{
