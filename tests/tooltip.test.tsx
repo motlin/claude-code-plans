@@ -139,3 +139,74 @@ describe("<Tooltip> over a popup trigger", () => {
 		expect(screen.queryByRole("tooltip")).toBeNull();
 	});
 });
+
+describe("<Tooltip> click behaviour", () => {
+	it("closes on click by default", () => {
+		vi.useFakeTimers();
+		render(
+			<Tooltip content="Copy">
+				<button type="button">Copy</button>
+			</Tooltip>,
+		);
+		openTooltip();
+
+		fireEvent.click(screen.getByRole("button"));
+
+		expect(screen.queryByRole("tooltip")).toBeNull();
+	});
+
+	it("stays open on click with closeOnClick={false}, as upstream keeps a disabled reason open", () => {
+		vi.useFakeTimers();
+		render(
+			<Tooltip content="Choose an option or skip this question" closeOnClick={false}>
+				<button type="button">Next</button>
+			</Tooltip>,
+		);
+		openTooltip();
+
+		fireEvent.click(screen.getByRole("button"));
+
+		expect(screen.getByRole("tooltip").textContent).toBe("Choose an option or skip this question");
+	});
+});
+
+describe('<Tooltip variant="reason">', () => {
+	it("draws upstream's balanced 240px reason box with 6px 8px padding", () => {
+		vi.useFakeTimers();
+		render(
+			<Tooltip content="Choose an option or skip this question" variant="reason">
+				<button type="button">Next</button>
+			</Tooltip>,
+		);
+
+		expect(openTooltip().className).toBe(
+			"pointer-events-none absolute z-50 flex w-max max-w-[240px] flex-col gap-0.5 whitespace-normal text-balance rounded-r5 bg-[var(--tooltip-bg)] px-2 py-1.5 text-[13px]/[18px] text-[var(--tooltip-fg)] shadow-[0_1px_2px_rgb(11_11_11/0.06)] bottom-full left-1/2 mb-1 -translate-x-1/2",
+		);
+	});
+
+	it("opens synchronously when focus arrives (upstream data-instant=focus)", () => {
+		vi.useFakeTimers();
+		render(
+			<Tooltip content="Choose an option or skip this question" variant="reason">
+				<button type="button">Next</button>
+			</Tooltip>,
+		);
+
+		fireEvent.focus(screen.getByRole("button"));
+
+		expect(screen.getByRole("tooltip").textContent).toBe("Choose an option or skip this question");
+	});
+
+	it("still waits 300ms on focus for the default variant", () => {
+		vi.useFakeTimers();
+		render(
+			<Tooltip content="Copy">
+				<button type="button">Copy</button>
+			</Tooltip>,
+		);
+
+		fireEvent.focus(screen.getByRole("button"));
+
+		expect(screen.queryByRole("tooltip")).toBeNull();
+	});
+});
