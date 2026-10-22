@@ -1,4 +1,3 @@
-import {Popover} from "@base-ui/react/popover";
 import {useQuery} from "@tanstack/react-query";
 import {Gauge, Paperclip, Plus, SquareSlash} from "lucide-react";
 import {lazy, memo, Suspense, useState} from "react";
@@ -32,6 +31,7 @@ import {localAccountQueryOptions} from "../lib/api/local-account";
 import {settingsHash} from "../lib/settings-hash";
 import {ConfirmDialog} from "./confirm-dialog";
 import {Menu, MenuContent, MenuItem, MenuTrigger} from "./ui/menu";
+import {Popover, PopoverContent} from "./ui/popover";
 import {Tooltip} from "./ui/tooltip";
 import {UsagePopoverLimitRow} from "./usage-limit-row";
 import {useRenameAfterMenuClose} from "./use-rename-after-menu-close";
@@ -93,7 +93,7 @@ const USAGE_RING_STROKES: Record<UsageRingSeverity, string> = {
 	critical: "var(--color-usage-danger)",
 };
 
-function UsageRing({usage}: {usage: ComposerUsage | null}) {
+export function UsageRing({usage}: {usage: ComposerUsage | null}) {
 	const [open, setOpen] = useState(false);
 	const now = Date.now();
 	const percent = usageRingPercent(usage);
@@ -119,18 +119,14 @@ function UsageRing({usage}: {usage: ComposerUsage | null}) {
 					</svg>
 				</Popover.Trigger>
 			</Tooltip>
-			<Popover.Portal>
-				<Popover.Positioner side="top" align="end" sideOffset={6} className="z-[130]">
-					<Popover.Popup className={POPUP_CLASS}>
-						<UsagePopoverBody
-							usage={usage}
-							onNavigate={() => {
-								setOpen(false);
-							}}
-						/>
-					</Popover.Popup>
-				</Popover.Positioner>
-			</Popover.Portal>
+			<PopoverContent side="top" align="end" sideOffset={6} className={POPUP_CLASS}>
+				<UsagePopoverBody
+					usage={usage}
+					onNavigate={() => {
+						setOpen(false);
+					}}
+				/>
+			</PopoverContent>
 		</Popover.Root>
 	);
 }

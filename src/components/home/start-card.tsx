@@ -1,10 +1,10 @@
-import {Popover} from "@base-ui/react/popover";
 import {Check, Folder, X} from "lucide-react";
 import {useRef} from "react";
 
 import {requestHomeComposerFocus} from "../../lib/home-composer-focus";
 import type {NextStepCandidate, NextStepId, NextStepRow} from "../../lib/home-next-steps";
 import {TOUCH_REVEAL} from "../../lib/touch-reveal";
+import {Popover, PopoverContent} from "../ui/popover";
 import {Tooltip} from "../ui/tooltip";
 import type {StartProject} from "../../lib/palette-start-session";
 import {useHomeLaunchFolder} from "./launch-folder";
@@ -222,24 +222,25 @@ function RestRow({
 			<Popover.Trigger data-next-step-open className={`${STEP_BUTTON_CLASS} pe-8`}>
 				<span className="min-w-0 truncate">{title}</span>
 			</Popover.Trigger>
-			<Popover.Portal>
-				<Popover.Positioner side="bottom" align="center" sideOffset={6} className="z-[130] outline-none">
-					<Popover.Popup className="flex max-h-[var(--available-height)] w-max max-w-[min(26rem,90vw)] flex-col gap-0.5 overflow-y-auto rounded-r7 bg-[var(--menu-bg)] p-1 shadow-[var(--menu-shadow)] outline-none">
-						{rest.map((candidate) => (
-							<button
-								key={candidate.subject}
-								type="button"
-								onClick={() => {
-									onOpen(candidate.subject);
-								}}
-								className={STEP_BUTTON_CLASS}
-							>
-								<StepLine candidate={candidate} />
-							</button>
-						))}
-					</Popover.Popup>
-				</Popover.Positioner>
-			</Popover.Portal>
+			<PopoverContent
+				side="bottom"
+				align="center"
+				sideOffset={6}
+				className="flex max-h-[var(--available-height)] w-max max-w-[min(26rem,90vw)] flex-col gap-0.5 overflow-y-auto rounded-r7 bg-[var(--menu-bg)] p-1 shadow-[var(--menu-shadow)] outline-none"
+			>
+				{rest.map((candidate) => (
+					<button
+						key={candidate.subject}
+						type="button"
+						onClick={() => {
+							onOpen(candidate.subject);
+						}}
+						className={STEP_BUTTON_CLASS}
+					>
+						<StepLine candidate={candidate} />
+					</button>
+				))}
+			</PopoverContent>
 		</Popover.Root>
 	);
 }

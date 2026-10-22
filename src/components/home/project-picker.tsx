@@ -1,3 +1,4 @@
+// Base UI Popover, not ui/popover: combobox picker, anchored like Add repository.
 import {Popover} from "@base-ui/react/popover";
 import {Check, ChevronDown, Folder} from "lucide-react";
 import {type KeyboardEvent, useId, useRef, useState} from "react";

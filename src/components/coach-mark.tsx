@@ -1,3 +1,4 @@
+// Base UI Popover, not ui/popover: anchored upstream: CoachMark.
 import {Popover} from "@base-ui/react/popover";
 import {Hand, X} from "lucide-react";
 import type {ReactNode} from "react";

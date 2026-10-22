@@ -1,10 +1,10 @@
-import {Popover} from "@base-ui/react/popover";
 import type {ReactNode} from "react";
 
 import {formatTokenCount} from "../lib/home-stats";
 import {formatModelName} from "../lib/model-name";
 import {formatUsd, type SessionCostState} from "../lib/session-cost";
 import {formatDuration} from "../lib/format-duration";
+import {Popover, PopoverContent} from "./ui/popover";
 
 const POPUP_CLASS =
 	"flex w-[320px] max-w-[calc(100vw-16px)] flex-col gap-2 rounded-card bg-[var(--menu-bg)] p-3 text-[12px]/[16px] text-primary shadow-[var(--menu-shadow)] outline-none";
@@ -93,13 +93,9 @@ export function SessionCostPill({
 			>
 				{children}
 			</Popover.Trigger>
-			<Popover.Portal>
-				<Popover.Positioner side="bottom" align="start" sideOffset={6} className="z-[130]">
-					<Popover.Popup className={POPUP_CLASS}>
-						<CostBreakdown cost={cost} />
-					</Popover.Popup>
-				</Popover.Positioner>
-			</Popover.Portal>
+			<PopoverContent side="bottom" align="start" sideOffset={6} className={POPUP_CLASS}>
+				<CostBreakdown cost={cost} />
+			</PopoverContent>
 		</Popover.Root>
 	);
 }

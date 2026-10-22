@@ -52,8 +52,8 @@ function PopoverRoot(props: ComponentProps<typeof BasePopover.Root>) {
 	);
 }
 
-/** Upstream's cds `Ql`: the gated root and the Base UI trigger, with `PopoverContent` as the surface. */
-export const Popover = {Root: PopoverRoot, Trigger: BasePopover.Trigger};
+/** Upstream's cds `Ql`: the gated root and the Base UI trigger and title, with `PopoverContent` as the surface. */
+export const Popover = {Root: PopoverRoot, Trigger: BasePopover.Trigger, Title: BasePopover.Title};
 
 export interface PopoverContentProps {
 	children: ReactNode;

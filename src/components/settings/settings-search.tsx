@@ -1,3 +1,4 @@
+// Base UI Popover, not ui/popover: structurally anchored to its input.
 import {Popover} from "@base-ui/react/popover";
 import {Search} from "lucide-react";
 import {useId, useMemo, useRef, useState} from "react";
