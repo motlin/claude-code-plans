@@ -10,6 +10,7 @@ import {
 	useState,
 } from "react";
 
+import {DensityProvider} from "./density";
 import {useSheetPresentation} from "./sheet-presentation";
 
 interface PopoverSheet {
@@ -36,6 +37,8 @@ function PopoverRoot(props: ComponentProps<typeof BasePopover.Root>) {
 		<PopoverSheetContext.Provider value={context}>
 			<BasePopover.Root
 				{...props}
+				/* Upstream's uK returns `modal: true` for a sheet: body scroll locks and the page behind goes inert. */
+				modal={sheet || props.modal}
 				onOpenChange={(nextOpen, details) => {
 					setUncontrolledOpen(nextOpen);
 					onOpenChange?.(nextOpen, details);
@@ -92,8 +95,11 @@ const SHEET_POSITIONER_STYLE = {
 /** Upstream's X1: no flipping or shifting. */
 const SHEET_COLLISION_AVOIDANCE = {side: "none", align: "none"} as const;
 
-/** Upstream's Hc + kX: the sheet surface, sliding up on enter and down on exit. */
-const SHEET_POPUP_CLASS = `group/sheet relative flex w-full min-w-0 max-w-none flex-col overflow-hidden bg-[var(--menu-bg)] text-primary shadow-[var(--menu-shadow)] outline-none rounded-t-[14px] rounded-b-none pb-[max(env(safe-area-inset-bottom),0.5rem)] pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)] transition-[translate,height,scale] ${SHEET_MOTION} [&_[data-cds-sheet-scroll]]:overscroll-contain data-[starting-style]:translate-y-[calc(100%+1.5rem)] data-[ending-style]:translate-y-[calc(100%+1.5rem)]`;
+/**
+ * Upstream's Hc + kX: the sheet surface, sliding up on enter and down on exit. Its `data-size="lg"`
+ * body reads 15/22 over the forced comfortable density.
+ */
+const SHEET_POPUP_CLASS = `group/sheet relative flex w-full min-w-0 max-w-none flex-col overflow-hidden bg-[var(--menu-bg)] text-primary shadow-[var(--menu-shadow)] outline-none rounded-t-[14px] rounded-b-none pb-[max(env(safe-area-inset-bottom),0.5rem)] pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)] transition-[translate,height,scale] ${SHEET_MOTION} [--upstream-text-body:15px] [--upstream-leading-body:22px] [&_[data-cds-sheet-scroll]]:overscroll-contain data-[starting-style]:translate-y-[calc(100%+1.5rem)] data-[ending-style]:translate-y-[calc(100%+1.5rem)]`;
 
 /** Upstream's Gf (.9) resting cap and the .95 ceiling, both below the top safe area. */
 const SHEET_POPUP_STYLE = {
@@ -166,49 +172,56 @@ function PopoverSheetContent({
 }) {
 	const [popup, setPopup] = useState<HTMLDivElement | null>(null);
 	useDismissHold(popup);
+	/* Upstream's portal forces comfortable (`density: MG`) in sheet mode at every account density. */
 	return (
-		<BasePopover.Portal>
-			<BasePopover.Backdrop data-presentation="sheet" data-sheet-scrim={treeId} className={SHEET_SCRIM_CLASS} />
-			<BasePopover.Positioner
-				className={SHEET_POSITIONER_CLASS}
-				style={SHEET_POSITIONER_STYLE}
-				collisionAvoidance={SHEET_COLLISION_AVOIDANCE}
-				disableAnchorTracking
-			>
-				<BasePopover.Popup
-					ref={setPopup}
-					data-cds="Popover"
-					data-size="lg"
+		<DensityProvider density="comfortable">
+			<BasePopover.Portal data-density="comfortable">
+				<BasePopover.Backdrop
 					data-presentation="sheet"
-					data-sheet-tree={treeId}
-					data-cds-sheet-depth="0"
-					data-cds-sheet-detent="default"
-					className={SHEET_POPUP_CLASS}
-					style={SHEET_POPUP_STYLE}
+					data-sheet-scrim={treeId}
+					className={SHEET_SCRIM_CLASS}
+				/>
+				<BasePopover.Positioner
+					className={SHEET_POSITIONER_CLASS}
+					style={SHEET_POSITIONER_STYLE}
+					collisionAvoidance={SHEET_COLLISION_AVOIDANCE}
+					disableAnchorTracking
 				>
-					<div
-						aria-hidden="true"
-						data-cds-sheet-handle=""
-						className="flex min-h-8 shrink-0 touch-none items-center justify-center select-none"
+					<BasePopover.Popup
+						ref={setPopup}
+						data-cds="Popover"
+						data-size="lg"
+						data-presentation="sheet"
+						data-sheet-tree={treeId}
+						data-cds-sheet-depth="0"
+						data-cds-sheet-detent="default"
+						className={SHEET_POPUP_CLASS}
+						style={SHEET_POPUP_STYLE}
 					>
-						<div className="h-1 w-9 rounded-full bg-border" />
-					</div>
-					<div className={sheetWrapperClass(className)}>
 						<div
-							tabIndex={-1}
-							data-cds-popover-body=""
-							data-cds-sheet-scroll=""
-							className={SHEET_BODY_CLASS}
+							aria-hidden="true"
+							data-cds-sheet-handle=""
+							className="flex min-h-8 shrink-0 touch-none items-center justify-center select-none"
 						>
-							{children}
+							<div className="h-1 w-9 rounded-full bg-border" />
 						</div>
-						<BasePopover.Close data-cds-sheet-control="" className={SHEET_DISMISS_CLASS}>
-							{closeLabel}
-						</BasePopover.Close>
-					</div>
-				</BasePopover.Popup>
-			</BasePopover.Positioner>
-		</BasePopover.Portal>
+						<div className={sheetWrapperClass(className)}>
+							<div
+								tabIndex={-1}
+								data-cds-popover-body=""
+								data-cds-sheet-scroll=""
+								className={SHEET_BODY_CLASS}
+							>
+								{children}
+							</div>
+							<BasePopover.Close data-cds-sheet-control="" className={SHEET_DISMISS_CLASS}>
+								{closeLabel}
+							</BasePopover.Close>
+						</div>
+					</BasePopover.Popup>
+				</BasePopover.Positioner>
+			</BasePopover.Portal>
+		</DensityProvider>
 	);
 }
 

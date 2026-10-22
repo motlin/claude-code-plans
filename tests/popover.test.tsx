@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {cleanup, fireEvent, render, screen} from "@testing-library/react";
+import {cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {Popover, PopoverContent} from "../src/components/ui/popover";
@@ -60,6 +60,26 @@ describe("PopoverContent under a fine pointer", () => {
 			handle: null,
 			close: null,
 		});
+	});
+
+	it("leaves body scroll untouched and the portal unforced, as a non-modal anchored popover", async () => {
+		render(
+			<Popover.Root>
+				<Popover.Trigger>Usage</Popover.Trigger>
+				<PopoverContent>
+					<p>Body</p>
+				</PopoverContent>
+			</Popover.Root>,
+		);
+		fireEvent.click(screen.getByRole("button", {name: "Usage"}));
+		/* Base UI takes its scroll lock on a zero-delay timeout. */
+		await new Promise((resolve) => {
+			setTimeout(resolve, 10);
+		});
+		expect({
+			overflow: [document.body.style.overflowX, document.body.style.overflowY],
+			portalDensity: screen.getByRole("dialog").parentElement?.parentElement?.getAttribute("data-density"),
+		}).toStrictEqual({overflow: ["", ""], portalDensity: null});
 	});
 
 	it("stays anchored when structurallyAnchored", () => {
@@ -328,5 +348,31 @@ describe("PopoverContent under a coarse pointer", () => {
 			popupClass: screen.getByRole("dialog").className,
 			presentation: document.querySelector("[data-presentation]"),
 		}).toStrictEqual({popupClass: "w-80", presentation: null});
+	});
+	it("locks body scroll while the sheet is open and restores it on close, as upstream's modal sheet", async () => {
+		stubCoarseAtWidth(420);
+		renderUsage();
+		const bodyOverflow = () => ({x: document.body.style.overflowX, y: document.body.style.overflowY});
+		await waitFor(() => {
+			expect(bodyOverflow()).toStrictEqual({x: "hidden", y: "hidden"});
+		});
+		fireEvent.click(screen.getByRole("button", {name: "Close"}));
+		await waitFor(() => {
+			expect({dialog: screen.queryByRole("dialog"), overflow: bodyOverflow()}).toStrictEqual({
+				dialog: null,
+				overflow: {x: "", y: ""},
+			});
+		});
+	});
+
+	it("forces the sheet portal comfortable and its body text to upstream's lg 15/22", () => {
+		stubCoarseAtWidth(420);
+		const popup = renderUsage();
+		expect({
+			portalDensity: popup.parentElement?.parentElement?.getAttribute("data-density"),
+			bodyText: ["[--upstream-text-body:15px]", "[--upstream-leading-body:22px]"].every((token) =>
+				classes(popup).includes(token),
+			),
+		}).toStrictEqual({portalDensity: "comfortable", bodyText: true});
 	});
 });
