@@ -63,8 +63,15 @@ const SHEET_POSITIONER_STYLE = {
 /** Upstream's X1: no flipping or shifting, and no tracking of the trigger. */
 const SHEET_COLLISION_AVOIDANCE = {side: "none", align: "none"} as const satisfies CollisionAvoidance;
 
-/** Upstream's Hc, shared by every level of a sheet tree. */
-const SHEET_LEVEL_CLASS = `group/sheet relative flex w-full min-w-0 max-w-none flex-col overflow-hidden font-normal text-primary outline-none select-none rounded-b-none pb-[max(env(safe-area-inset-bottom),0.5rem)] pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)] transition-[translate,height,scale] ${SHEET_MOTION}`;
+/**
+ * Upstream's cD: a level covered by a sheet tree opened above it shrinks, lifts and dims under a
+ * backdrop overlay.
+ */
+const SHEET_COVERED_CLASS =
+	"origin-top [&[data-cds-sheet-covered]:not([data-starting-style]):not([data-ending-style])]:-translate-y-3 data-[cds-sheet-covered]:scale-[0.94] after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:bg-backdrop after:opacity-0 after:transition-opacity after:duration-[300ms] motion-reduce:after:transition-none data-[cds-sheet-covered]:after:opacity-100";
+
+/** Upstream's Hc plus cD, shared by every level of a sheet tree. */
+const SHEET_LEVEL_CLASS = `group/sheet relative flex w-full min-w-0 max-w-none flex-col overflow-hidden font-normal text-primary outline-none select-none rounded-b-none pb-[max(env(safe-area-inset-bottom),0.5rem)] pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)] transition-[translate,height,scale] ${SHEET_MOTION} ${SHEET_COVERED_CLASS}`;
 
 /** The root level: the sheet surface, sliding up on enter and down on exit. */
 const SHEET_POPUP_CLASS = `${SHEET_LEVEL_CLASS} bg-[var(--menu-bg)] shadow-[var(--menu-shadow)] data-[starting-style]:translate-y-[calc(100%+1.5rem)] data-[ending-style]:translate-y-[calc(100%+1.5rem)]`;

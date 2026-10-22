@@ -1224,6 +1224,33 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 		};
 	}
 
+	/* Upstream's cD, applied to every level of a sheet tree. */
+	const COVERED_CLASSES = [
+		"origin-top",
+		"[&[data-cds-sheet-covered]:not([data-starting-style]):not([data-ending-style])]:-translate-y-3",
+		"data-[cds-sheet-covered]:scale-[0.94]",
+		"after:pointer-events-none",
+		"after:absolute",
+		"after:inset-0",
+		"after:rounded-[inherit]",
+		"after:bg-backdrop",
+		"after:opacity-0",
+		"after:transition-opacity",
+		"after:duration-[300ms]",
+		"motion-reduce:after:transition-none",
+		"data-[cds-sheet-covered]:after:opacity-100",
+	];
+
+	it("gives every sheet level the covered-stack look and reduced-motion overrides, as upstream's cD", async () => {
+		const {root, child} = await drillIntoStatus();
+		const covered = (level: HTMLElement | undefined) =>
+			COVERED_CLASSES.concat("motion-reduce:transition-none").filter((name) => level?.classList.contains(name));
+		expect({root: covered(root), child: covered(child)}).toStrictEqual({
+			root: [...COVERED_CLASSES, "motion-reduce:transition-none"],
+			child: [...COVERED_CLASSES, "motion-reduce:transition-none"],
+		});
+	});
+
 	it("drills a submenu into the sheet with a Back header titled by the trigger, as upstream's Bt", async () => {
 		const {root, child} = await drillIntoStatus();
 		const positioner = child?.parentElement;
