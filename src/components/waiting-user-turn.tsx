@@ -1,8 +1,9 @@
-import {useEffect, useId, useRef, useState} from "react";
+import {type MouseEvent, useCallback, useEffect, useId, useRef, useState} from "react";
 
 import {messageHeading} from "../lib/transcript-action-targets";
 import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
 import {WaitingMessageActions} from "./message-actions";
+import {Spinner} from "./ui/spinner";
 
 /** How long upstream's row announces "read" after Claude picks it up (`eD`). */
 const READ_ANNOUNCEMENT_MS = 1400;
@@ -26,6 +27,95 @@ function useReadAnnouncement(pickup: boolean | number): boolean {
 const SEND_NOW_CLASS =
 	"relative inline-flex h-5 shrink-0 cursor-pointer items-center justify-center whitespace-nowrap rounded-r5 px-2 text-[12px]/[17px] text-ink-muted outline-none hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus transition-colors hover:bg-fill-ghost-hover hover:text-primary";
 
+const SEND_NOW_TEST_ID = "awaiting-turn-send-now";
+/** Upstream's `gI`: how long a keyboard-focused Send now that unmounted may hand focus to the next one. */
+const SEND_NOW_FOCUS_HANDOFF_MS = 1000;
+/** When a keyboard-focused Send now last unmounted (upstream's module-level `CO`). */
+let sendNowFocusLostAt = Number.NEGATIVE_INFINITY;
+
+/**
+ * Upstream's focus handoff: when a keyboard-focused Send now unmounts, the next one mounted within
+ * {@link SEND_NOW_FOCUS_HANDOFF_MS} takes focus, if it is the only one and focus fell to the body.
+ */
+function useSendNowFocusHandoff(): (button: HTMLButtonElement | null) => void {
+	const buttonRef = useRef<HTMLButtonElement | null>(null);
+	return useCallback((button: HTMLButtonElement | null) => {
+		const previous = buttonRef.current;
+		buttonRef.current = button;
+		if (button === null) {
+			if (previous?.matches(":focus-visible") === true) sendNowFocusLostAt = performance.now();
+			return;
+		}
+		if (performance.now() - sendNowFocusLostAt > SEND_NOW_FOCUS_HANDOFF_MS) return;
+		sendNowFocusLostAt = Number.NEGATIVE_INFINITY;
+		const document = button.ownerDocument;
+		const only = document.querySelectorAll(`[data-testid="${SEND_NOW_TEST_ID}"]`).length === 1;
+		const active = document.activeElement;
+		if (only && (active === null || active === document.body)) button.focus({preventScroll: true});
+	}, []);
+}
+
+/**
+ * Upstream's Send now (`Ab`): a ghost xs button, busy until the interrupt settles. A mouse click
+ * hands focus to the composer instead of leaving it on a button that is about to unmount.
+ */
+function SendNowButton({
+	onSendNow,
+	onFocusComposer,
+}: {
+	onSendNow: (() => Promise<void> | void) | undefined;
+	onFocusComposer: (() => void) | undefined;
+}) {
+	const descriptionId = useId();
+	const [sending, setSending] = useState(false);
+	const pointerTypeRef = useRef("");
+	const buttonRef = useSendNowFocusHandoff();
+	const onClick = (event: MouseEvent<HTMLButtonElement>) => {
+		const button = event.currentTarget;
+		const pointerType = pointerTypeRef.current;
+		pointerTypeRef.current = "";
+		if (sending) return;
+		if (pointerType === "mouse" && button.ownerDocument.activeElement === button) {
+			onFocusComposer?.();
+			button.blur();
+		}
+		if (onSendNow === undefined) return;
+		setSending(true);
+		void Promise.resolve(onSendNow()).finally(() => {
+			setSending(false);
+		});
+	};
+	return (
+		<>
+			<button
+				ref={buttonRef}
+				type="button"
+				data-testid={SEND_NOW_TEST_ID}
+				aria-describedby={descriptionId}
+				aria-busy={sending ? true : undefined}
+				aria-disabled={sending ? true : undefined}
+				className={SEND_NOW_CLASS}
+				onPointerDown={(event) => {
+					pointerTypeRef.current = event.pointerType;
+				}}
+				onClick={onClick}
+			>
+				<span data-send-now-label="" className={sending ? "opacity-0" : ""}>
+					Send now
+				</span>
+				{sending && (
+					<span className="absolute inset-0 grid place-items-center leading-[0]">
+						<Spinner size="sm" label="Sending…" />
+					</span>
+				)}
+			</button>
+			<span id={descriptionId} hidden>
+				Stops Claude’s current response.
+			</span>
+		</>
+	);
+}
+
 /**
  * A prompt waiting for Claude to read it, drawn like upstream's own-composer steer row: the user
  * bubble in a `data-take-back-entry` row with an sr-only heading and "unread" status, then an
@@ -37,6 +127,7 @@ export function WaitingUserTurn({
 	head,
 	delivered = false,
 	onSendNow,
+	onFocusComposer,
 	...rest
 }: {
 	entryId: string;
@@ -45,10 +136,11 @@ export function WaitingUserTurn({
 	/** Claude picked the prompt up, so the status reads "read" briefly and then goes quiet. */
 	delivered?: boolean;
 	/** Stops Claude's current response so it reads this message next; absent leaves Send now inert. */
-	onSendNow?: (() => void) | undefined;
+	onSendNow?: (() => Promise<void> | void) | undefined;
+	/** Focuses the session composer, where a mouse click on Send now leaves focus. */
+	onFocusComposer?: (() => void) | undefined;
 	"data-perf-pending-prompt"?: string;
 }) {
-	const descriptionId = useId();
 	const reading = useReadAnnouncement(delivered);
 	return (
 		<div className="group/msg flex w-full justify-start items-start gap-1" data-take-back-entry={entryId} {...rest}>
@@ -63,24 +155,7 @@ export function WaitingUserTurn({
 					</p>
 				</div>
 				<WaitingMessageActions text={text} unread={!head}>
-					{head && (
-						<>
-							<button
-								type="button"
-								data-testid="awaiting-turn-send-now"
-								aria-describedby={descriptionId}
-								className={SEND_NOW_CLASS}
-								onClick={() => {
-									onSendNow?.();
-								}}
-							>
-								Send now
-							</button>
-							<span id={descriptionId} hidden>
-								Stops Claude’s current response.
-							</span>
-						</>
-					)}
+					{head && <SendNowButton onSendNow={onSendNow} onFocusComposer={onFocusComposer} />}
 				</WaitingMessageActions>
 			</div>
 		</div>
@@ -117,10 +192,12 @@ export function OptimisticWaitingTurn({
 	prompt,
 	error,
 	onSendNow,
+	onFocusComposer,
 }: {
 	prompt: string;
 	error: string;
-	onSendNow: (() => void) | undefined;
+	onSendNow: (() => Promise<void> | void) | undefined;
+	onFocusComposer?: (() => void) | undefined;
 }) {
 	return (
 		<div className={`${CHAT_COLUMN_CLASS} flex flex-col gap-2 pb-[var(--chat-turn-gap)]`}>
@@ -129,6 +206,7 @@ export function OptimisticWaitingTurn({
 				text={prompt}
 				head={error === ""}
 				onSendNow={onSendNow}
+				onFocusComposer={onFocusComposer}
 				data-perf-pending-prompt=""
 			/>
 			{error !== "" && (

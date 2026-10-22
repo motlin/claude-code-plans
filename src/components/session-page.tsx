@@ -7,6 +7,7 @@ import {lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type 
 import {Minimize2} from "lucide-react";
 import {SessionTileFrame, type SessionTileScrollPosition} from "./session-tile-frame";
 import {latestBreakdown} from "../lib/context-breakdown";
+import {focusComposer} from "../lib/context-attach";
 import {SessionRailSlot} from "./session-rail/session-rail-slot";
 import {useSessionRailDocked} from "./session-rail/use-session-rail-docked";
 import type {SessionRailInputs} from "./session-rail/session-rail-cards";
@@ -614,9 +615,9 @@ function SessionView({
 		onInterrupt(Date.now());
 		await sendHerdrInterrupt(sessionId, false).catch(onInterruptError);
 	}, [onInterrupt, onInterruptError, sessionId]);
-	const interruptForSendNow = useCallback(() => {
-		void requestSendNowInterrupt();
-	}, [requestSendNowInterrupt]);
+	const focusSessionComposer = useCallback(() => {
+		focusComposer(sessionId);
+	}, [sessionId]);
 	const composerQueue = useComposerQueue({
 		sessionId,
 		busy: queueBusy,
@@ -1022,7 +1023,8 @@ function SessionView({
 															summaryState: sessionSummaryState,
 														})}
 														permissionWaitToolUseId={permissionWaitId}
-														onSendNow={interruptForSendNow}
+														onSendNow={requestSendNowInterrupt}
+														onFocusComposer={focusSessionComposer}
 														initialScrollKey={initialScrollKey}
 														scrollContentRef={scrollAnchorRef}
 														shouldScrollToEnd={
@@ -1083,7 +1085,10 @@ function SessionView({
 								<OptimisticWaitingTurn
 									prompt={liveHerdrPrompt.state.prompt}
 									error={liveHerdrPrompt.state.error}
-									onSendNow={workingMarkerState.status === "idle" ? undefined : interruptForSendNow}
+									onSendNow={
+										workingMarkerState.status === "idle" ? undefined : requestSendNowInterrupt
+									}
+									onFocusComposer={focusSessionComposer}
 								/>
 							)}
 

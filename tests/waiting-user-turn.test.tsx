@@ -218,3 +218,125 @@ describe("waiting-row sr announcements", () => {
 		});
 	});
 });
+
+describe("Send now on the head waiting row", () => {
+	function deferred() {
+		let settle = () => {};
+		const promise = new Promise<void>((resolve) => {
+			settle = resolve;
+		});
+		return {promise, settle};
+	}
+
+	it("stays busy with a 12px spinner overlay until the interrupt settles, ignoring clicks meanwhile", async () => {
+		const pending = deferred();
+		const onSendNow = vi.fn<() => Promise<void>>(async () => pending.promise);
+		const {getByTestId, findByText} = render(
+			<WaitingUserTurn entryId="queued-1" text="hi" head onSendNow={onSendNow} />,
+		);
+		const sendNow = getByTestId("awaiting-turn-send-now");
+		fireEvent.click(sendNow);
+		fireEvent.click(sendNow);
+		const status = await findByText("Sending…");
+		const busy = {
+			ariaBusy: sendNow.getAttribute("aria-busy"),
+			ariaDisabled: sendNow.getAttribute("aria-disabled"),
+			labelClass: sendNow.querySelector("[data-send-now-label]")?.className,
+			overlayClass: sendNow.querySelector("[role=status]")?.parentElement?.className,
+			statusClass: status.className,
+			spinnerBox: sendNow.querySelector<HTMLElement>("[data-spinner]")?.style.width,
+			description: document.getElementById(sendNow.getAttribute("aria-describedby") ?? "")?.textContent,
+			calls: onSendNow.mock.calls.length,
+		};
+		await act(async () => {
+			pending.settle();
+			await pending.promise;
+		});
+		expect({
+			busy,
+			after: {
+				ariaBusy: sendNow.getAttribute("aria-busy"),
+				ariaDisabled: sendNow.getAttribute("aria-disabled"),
+				labelClass: sendNow.querySelector("[data-send-now-label]")?.className,
+				spinner: sendNow.querySelector("[data-spinner]"),
+			},
+		}).toStrictEqual({
+			busy: {
+				ariaBusy: "true",
+				ariaDisabled: "true",
+				labelClass: "opacity-0",
+				overlayClass: "absolute inset-0 grid place-items-center leading-[0]",
+				spinnerBox: "0.75rem",
+				statusClass: "sr-only",
+				description: "Stops Claude’s current response.",
+				calls: 1,
+			},
+			after: {ariaBusy: null, ariaDisabled: null, labelClass: "", spinner: null},
+		});
+	});
+
+	it("hands a mouse click's focus to the composer, but keeps a keyboard press's focus", async () => {
+		const onFocusComposer = vi.fn<() => void>();
+		const {getByTestId} = render(
+			<WaitingUserTurn
+				entryId="queued-1"
+				text="hi"
+				head
+				onSendNow={async () => {}}
+				onFocusComposer={onFocusComposer}
+			/>,
+		);
+		const sendNow = getByTestId("awaiting-turn-send-now");
+		sendNow.focus();
+		fireEvent.click(sendNow, {detail: 0});
+		const keyboard = {
+			focusComposer: onFocusComposer.mock.calls.length,
+			focused: document.activeElement === sendNow,
+		};
+		await act(async () => {});
+		sendNow.focus();
+		fireEvent.pointerDown(sendNow, {pointerType: "mouse"});
+		fireEvent.click(sendNow, {detail: 1});
+		await act(async () => {});
+		expect({
+			keyboard,
+			mouse: {focusComposer: onFocusComposer.mock.calls.length, focused: document.activeElement === sendNow},
+		}).toStrictEqual({
+			keyboard: {focusComposer: 0, focused: true},
+			mouse: {focusComposer: 1, focused: false},
+		});
+	});
+
+	it("moves keyboard focus to the next Send now mounted within 1000ms of the focused one unmounting", () => {
+		const {getByTestId, rerender} = render(
+			<WaitingUserTurn key="queued-1" entryId="queued-1" text="one" head onSendNow={async () => {}} />,
+		);
+		// Keyboard modality, so the focused button matches :focus-visible.
+		fireEvent.keyDown(document.body, {key: "Tab"});
+		getByTestId("awaiting-turn-send-now").focus();
+		rerender(<div />);
+		const dropped = document.activeElement === document.body;
+		rerender(<WaitingUserTurn key="queued-2" entryId="queued-2" text="two" head onSendNow={async () => {}} />);
+		expect({dropped, handedOff: document.activeElement === getByTestId("awaiting-turn-send-now")}).toStrictEqual({
+			dropped: true,
+			handedOff: true,
+		});
+	});
+
+	it("leaves focus alone when the next Send now mounts after 1000ms", () => {
+		vi.useFakeTimers({toFake: ["performance"]});
+		try {
+			const {getByTestId, rerender} = render(
+				<WaitingUserTurn key="queued-1" entryId="queued-1" text="one" head onSendNow={async () => {}} />,
+			);
+			fireEvent.keyDown(document.body, {key: "Tab"});
+			getByTestId("awaiting-turn-send-now").focus();
+			rerender(<div />);
+			vi.advanceTimersByTime(1001);
+			rerender(<WaitingUserTurn key="queued-2" entryId="queued-2" text="two" head onSendNow={async () => {}} />);
+			expect(document.activeElement === document.body).toBe(true);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+});

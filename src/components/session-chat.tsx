@@ -134,16 +134,31 @@ export interface SessionChatProps {
 	permissionWaitToolUseId?: string | null;
 	/** Whether the CLI is still running, so the prompts waiting in its queue can still be read. */
 	sessionLive?: boolean;
-	/** Interrupts Claude so it reads the head waiting prompt next: the head row's Send now. */
-	onSendNow?: (() => void) | undefined;
+	/** Interrupts Claude so it reads the head waiting prompt next: the head row's Send now, busy until it settles. */
+	onSendNow?: (() => Promise<void> | void) | undefined;
+	/** Focuses the session composer, where a mouse click on Send now leaves focus. */
+	onFocusComposer?: (() => void) | undefined;
 }
 
 const TranscriptModeContext = createContext<TranscriptMode>("normal");
-const SendNowContext = createContext<(() => void) | undefined>(undefined);
+interface SendNowHandlers {
+	sendNow: (() => Promise<void> | void) | undefined;
+	focusComposer: (() => void) | undefined;
+}
+const SendNowContext = createContext<SendNowHandlers>({sendNow: undefined, focusComposer: undefined});
 
 /** A prompt waiting in the CLI's queue, whose head row's Send now interrupts the running turn. */
 function QueuedWaitingTurn({entryId, text, head}: {entryId: string; text: string; head: boolean}) {
-	return <WaitingUserTurn entryId={entryId} text={text} head={head} onSendNow={useContext(SendNowContext)} />;
+	const {sendNow, focusComposer} = useContext(SendNowContext);
+	return (
+		<WaitingUserTurn
+			entryId={entryId}
+			text={text}
+			head={head}
+			onSendNow={sendNow}
+			onFocusComposer={focusComposer}
+		/>
+	);
 }
 
 interface ExpansionToggle {
@@ -452,7 +467,12 @@ export const SessionChat = React.memo(function SessionChat({
 	permissionWaitToolUseId = null,
 	sessionLive = false,
 	onSendNow,
+	onFocusComposer,
 }: SessionChatProps) {
+	const sendNowHandlers = useMemo(
+		() => ({sendNow: onSendNow, focusComposer: onFocusComposer}),
+		[onSendNow, onFocusComposer],
+	);
 	const measurementKey = JSON.stringify([
 		sessionId,
 		initialScrollKey,
@@ -616,7 +636,7 @@ export const SessionChat = React.memo(function SessionChat({
 
 	return (
 		<TranscriptModeContext.Provider value={transcriptMode}>
-			<SendNowContext.Provider value={onSendNow}>
+			<SendNowContext.Provider value={sendNowHandlers}>
 				<SlashCommandsContext.Provider value={slashCommands}>
 					<PermissionWaitContext.Provider value={permissionWaitToolUseId}>
 						<AgentNameContext.Provider value={resolveAgentName}>

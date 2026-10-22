@@ -217,6 +217,13 @@ export function requestComposerInsert(sessionId: string, text: string): boolean 
 	return handles.length > 0;
 }
 
+/** Focuses the session's composer; false when no composer is mounted. */
+export function focusComposer(sessionId: string): boolean {
+	const handles = mounted(sessionId);
+	for (const handle of handles) handle.focus();
+	return handles.length > 0;
+}
+
 export function registerComposer(sessionId: string, handle: ComposerHandle): () => void {
 	const sessionComposers = composers.get(sessionId) ?? new Set();
 	sessionComposers.add(handle);

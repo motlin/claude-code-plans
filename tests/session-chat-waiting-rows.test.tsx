@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {cleanup, fireEvent, render} from "@testing-library/react";
+import {act, cleanup, fireEvent, render} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat} from "../src/components/session-chat";
 import {processTranscript} from "../src/lib/transcript";
@@ -190,5 +190,35 @@ describe("pickup announcement", () => {
 	it("mounts no pickup live region once the session is no longer live", () => {
 		const container = renderRecords([enqueue("2026-01-01T00:00:01Z", "hi")], false);
 		expect(container.querySelectorAll("[data-waiting-pickup-status]").length).toBe(0);
+	});
+});
+
+describe("head waiting row Send now focus", () => {
+	it("hands a mouse click's focus to the session composer", async () => {
+		const onFocusComposer = vi.fn<() => void>();
+		const {lines, toolResultMap} = processTranscript([
+			assistant("a-1", "1999-12-31T00:00:01Z", "first reply"),
+			enqueue("1999-12-31T00:00:02Z", "one"),
+		]);
+		const {container} = render(
+			<SessionChat
+				sessionId="s-1"
+				lines={lines}
+				toolResultMap={toolResultMap}
+				shouldScrollToEnd={false}
+				transcriptMode="normal"
+				sessionLive
+				onSendNow={async () => {}}
+				onFocusComposer={onFocusComposer}
+			/>,
+		);
+		const sendNow = container.querySelector<HTMLButtonElement>("[data-testid=awaiting-turn-send-now]");
+		sendNow?.focus();
+		if (sendNow !== null) {
+			fireEvent.pointerDown(sendNow, {pointerType: "mouse"});
+			fireEvent.click(sendNow);
+		}
+		await act(async () => {});
+		expect(onFocusComposer.mock.calls).toStrictEqual([[]]);
 	});
 });
