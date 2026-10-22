@@ -376,3 +376,96 @@ describe("PopoverContent under a coarse pointer", () => {
 		}).toStrictEqual({portalDensity: "comfortable", bodyText: true});
 	});
 });
+
+describe("PopoverContent sheet height pinning", () => {
+	const observers: {callback: ResizeObserverCallback; targets: Element[]}[] = [];
+
+	beforeEach(() => {
+		observers.length = 0;
+		vi.stubGlobal(
+			"matchMedia",
+			vi.fn((query: string) => ({
+				matches: query === "(pointer: coarse)" || query === "(pointer: coarse) and (max-width: 639.98px)",
+				media: query,
+				onchange: null,
+				addEventListener: () => undefined,
+				removeEventListener: () => undefined,
+				addListener: () => undefined,
+				removeListener: () => undefined,
+				dispatchEvent: () => false,
+			})),
+		);
+		vi.stubGlobal(
+			"ResizeObserver",
+			class {
+				readonly record: {callback: ResizeObserverCallback; targets: Element[]};
+				constructor(callback: ResizeObserverCallback) {
+					this.record = {callback, targets: []};
+					observers.push(this.record);
+				}
+				observe(target: Element) {
+					this.record.targets.push(target);
+				}
+				unobserve(target: Element) {
+					this.record.targets = this.record.targets.filter((observed) => observed !== target);
+				}
+				disconnect() {
+					this.record.targets = [];
+				}
+			},
+		);
+	});
+
+	function stubHeight(element: Element, height: number, top = 0) {
+		element.getBoundingClientRect = () => ({height, top, bottom: top + height}) as DOMRect;
+	}
+
+	function fireResize() {
+		for (const observer of observers) observer.callback([], observer as unknown as ResizeObserver);
+	}
+
+	it("pins the popup to its measured content height and re-pins when the DismissButton grows", () => {
+		render(
+			<Popover.Root>
+				<Popover.Trigger>Usage</Popover.Trigger>
+				<PopoverContent>
+					<p>Body</p>
+				</PopoverContent>
+			</Popover.Root>,
+		);
+		fireEvent.click(screen.getByRole("button", {name: "Usage"}));
+		const popup = screen.getByRole("dialog");
+		const body = popup.querySelector<HTMLElement>("[data-cds-popover-body]");
+		const close = popup.querySelector("[data-cds-sheet-control]");
+		if (body === null || close === null) throw new Error("sheet chrome missing");
+		stubHeight(popup, 252);
+		stubHeight(screen.getByText("Body"), 200, 40);
+		Object.defineProperty(body, "clientHeight", {configurable: true, value: 200});
+		fireResize();
+		const atRest = popup.style.height;
+		/* The DismissButton turning focus-visible takes 44px from the pinned body. */
+		Object.defineProperty(body, "clientHeight", {configurable: true, value: 156});
+		fireResize();
+		expect({
+			atRest,
+			focusVisible: popup.style.height,
+			observed: [popup, body, close].every((element) =>
+				observers.some((observer) => observer.targets.includes(element)),
+			),
+		}).toStrictEqual({atRest: "252px", focusVisible: "296px", observed: true});
+	});
+
+	it("leaves the height unpinned until the popup has laid out", () => {
+		render(
+			<Popover.Root>
+				<Popover.Trigger>Usage</Popover.Trigger>
+				<PopoverContent>
+					<p>Body</p>
+				</PopoverContent>
+			</Popover.Root>,
+		);
+		fireEvent.click(screen.getByRole("button", {name: "Usage"}));
+		fireResize();
+		expect(screen.getByRole("dialog").style.height).toBe("");
+	});
+});

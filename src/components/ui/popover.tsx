@@ -158,6 +158,53 @@ function useDismissHold(popup: HTMLDivElement | null) {
 	}, [popup]);
 }
 
+/** The body's laid-out content height: its first child's top to its last child's bottom, plus its padding. */
+function bodyContentHeight(body: HTMLElement): number {
+	const style = body.ownerDocument.defaultView?.getComputedStyle(body);
+	const padding =
+		(Number.parseFloat(style?.paddingTop ?? "") || 0) + (Number.parseFloat(style?.paddingBottom ?? "") || 0);
+	const first = body.firstElementChild;
+	const last = body.lastElementChild;
+	if (first === null || last === null) return padding;
+	return last.getBoundingClientRect().bottom - first.getBoundingClientRect().top + padding;
+}
+
+/**
+ * Upstream's pinHeight / repinHeight: pins the sheet to its content height (the chrome around the body plus
+ * the body's content), and re-pins when the popup, the body, its content or the DismissButton resizes.
+ * A focus-visible DismissButton takes its 44px from the pinned body, so the sheet grows by that much.
+ */
+function useSheetHeightPin(popup: HTMLDivElement | null) {
+	useEffect(() => {
+		if (popup === null || typeof ResizeObserver === "undefined") return undefined;
+		const body = popup.querySelector<HTMLElement>("[data-cds-popover-body]");
+		if (body === null) return undefined;
+		const pin = () => {
+			const height = popup.getBoundingClientRect().height;
+			if (height <= 0) return;
+			const pinned = `${Math.round(height - body.clientHeight + bodyContentHeight(body))}px`;
+			if (popup.style.height !== pinned) popup.style.height = pinned;
+		};
+		const resizes = new ResizeObserver(pin);
+		const observeContent = () => {
+			resizes.disconnect();
+			for (const target of [popup, body, ...Array.from(body.children)]) resizes.observe(target);
+			const control = popup.querySelector("[data-cds-sheet-control]");
+			if (control !== null) resizes.observe(control);
+		};
+		observeContent();
+		const mutations = new MutationObserver(() => {
+			observeContent();
+			pin();
+		});
+		mutations.observe(body, {childList: true});
+		return () => {
+			resizes.disconnect();
+			mutations.disconnect();
+		};
+	}, [popup]);
+}
+
 /** Upstream's PopoverSheetContent: scrim, bottom-pinned positioner, handle and the scrolling body. */
 function PopoverSheetContent({
 	children,
@@ -172,6 +219,7 @@ function PopoverSheetContent({
 }) {
 	const [popup, setPopup] = useState<HTMLDivElement | null>(null);
 	useDismissHold(popup);
+	useSheetHeightPin(popup);
 	/* Upstream's portal forces comfortable (`density: MG`) in sheet mode at every account density. */
 	return (
 		<DensityProvider density="comfortable">
