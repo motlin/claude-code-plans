@@ -1294,6 +1294,62 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 		expect(levelState(root)).toStrictEqual({drilled: false, ariaHidden: null, menus: 1});
 	});
 
+	/** Each level's tree-closing marker when Base UI starts its exit (`data-closed` with `data-ending-style`). */
+	function recordEndingStyles(levels: HTMLElement[]) {
+		const seen = new Map<HTMLElement, boolean>();
+		const observer = new MutationObserver((records) => {
+			for (const record of records) {
+				/* A level unmounted without an exit transition ends there. */
+				for (const level of levels) {
+					if (!level.isConnected && !seen.has(level))
+						seen.set(level, level.hasAttribute("data-cds-sheet-tree-closing"));
+				}
+				const level = record.target;
+				if (
+					level instanceof HTMLElement &&
+					(level.hasAttribute("data-closed") || level.hasAttribute("data-ending-style")) &&
+					!seen.has(level)
+				) {
+					seen.set(level, level.hasAttribute("data-cds-sheet-tree-closing"));
+				}
+			}
+		});
+		for (const level of levels) observer.observe(level, {attributes: true});
+		observer.observe(document.body, {childList: true, subtree: true});
+		return () => {
+			observer.disconnect();
+			return levels.map((level) => seen.get(level) ?? null);
+		};
+	}
+
+	function pressScrim() {
+		const scrim = document.querySelector<HTMLElement>("[data-sheet-scrim]");
+		if (scrim === null) throw new Error("no scrim");
+		fireEvent.pointerDown(scrim, {pointerType: "touch", button: 0});
+		fireEvent.mouseDown(scrim, {button: 0});
+		fireEvent.pointerUp(scrim, {pointerType: "touch", button: 0});
+		fireEvent.mouseUp(scrim, {button: 0});
+		fireEvent.click(scrim, {button: 0});
+	}
+
+	it("marks every open level tree-closing before its exit when the scrim closes the sheet", async () => {
+		const {root, child} = await drillIntoStatus();
+		if (child === undefined) throw new Error("no drilled level");
+		const stop = recordEndingStyles([root, child]);
+		pressScrim();
+		await flush();
+		expect(stop()).toStrictEqual([true, true]);
+	});
+
+	it("lets a drilled level close on Back without the tree-closing marker", async () => {
+		const {root, child} = await drillIntoStatus();
+		if (child === undefined) throw new Error("no drilled level");
+		const stop = recordEndingStyles([root, child]);
+		fireEvent.click(screen.getByRole("menuitem", {name: "Back"}));
+		await flush();
+		expect(stop()).toStrictEqual([null, false]);
+	});
+
 	it("does not open a sheet submenu on hover", async () => {
 		stubCoarseAtWidth(639);
 		renderDropdown();

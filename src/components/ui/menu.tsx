@@ -373,6 +373,19 @@ function acceleratorProps(accelerator: string | undefined) {
 /** Whether the enclosing menu root latched a bottom-sheet presentation at open. */
 const MenuSheetContext = createContext(false);
 
+/** The id the menu root gives its sheet tree, so closing the root can reach every open level. */
+const SheetTreeIdContext = createContext<string | null>(null);
+
+/**
+ * Upstream's tree close: the root marks every open level `data-cds-sheet-tree-closing` before Base UI
+ * starts the exit, so drilled levels slide down with the root instead of sideways.
+ */
+function markSheetTreeClosing(treeId: string, closing: boolean) {
+	for (const level of document.querySelectorAll(`[data-sheet-tree="${CSS.escape(treeId)}"]`)) {
+		level.toggleAttribute("data-cds-sheet-tree-closing", closing);
+	}
+}
+
 interface MenuRootProps {
 	open?: boolean | undefined;
 	defaultOpen?: boolean | undefined;
@@ -386,16 +399,23 @@ interface MenuRootProps {
  */
 function useMenuRootSheet<P extends MenuRootProps>(
 	props: P,
-): {sheet: boolean; open: boolean; rootProps: P & {onOpenChange: (open: boolean, ...rest: never[]) => void}} {
+): {
+	sheet: boolean;
+	open: boolean;
+	treeId: string;
+	rootProps: P & {onOpenChange: (open: boolean, ...rest: never[]) => void};
+} {
 	const {open, defaultOpen, onOpenChange, onOpenChangeComplete} = props;
 	const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen ?? false);
 	const resolvedOpen = open ?? uncontrolledOpen;
 	const {sheet, onOpenChangeComplete: releaseLatch} = useSheetPresentation(resolvedOpen, {
 		closable: open === undefined || onOpenChange !== undefined,
 	});
+	const treeId = useId();
 	const rootProps = {
 		...props,
 		onOpenChange: (nextOpen: boolean, ...rest: never[]) => {
+			if (sheet) markSheetTreeClosing(treeId, !nextOpen);
 			setUncontrolledOpen(nextOpen);
 			onOpenChange?.(nextOpen, ...rest);
 		},
@@ -404,15 +424,17 @@ function useMenuRootSheet<P extends MenuRootProps>(
 			onOpenChangeComplete?.(completedOpen);
 		},
 	};
-	return {sheet, open: resolvedOpen, rootProps};
+	return {sheet, open: resolvedOpen, treeId, rootProps};
 }
 
 export function Menu(props: ComponentProps<typeof BaseMenu.Root>) {
-	const {sheet, rootProps} = useMenuRootSheet(props);
+	const {sheet, treeId, rootProps} = useMenuRootSheet(props);
 	return (
 		<MenuKindContext.Provider value="Menu">
 			<MenuSheetContext.Provider value={sheet}>
-				<BaseMenu.Root {...rootProps} />
+				<SheetTreeIdContext.Provider value={treeId}>
+					<BaseMenu.Root {...rootProps} />
+				</SheetTreeIdContext.Provider>
 			</MenuSheetContext.Provider>
 		</MenuKindContext.Provider>
 	);
@@ -421,11 +443,13 @@ export function Menu(props: ComponentProps<typeof BaseMenu.Root>) {
 export const MenuTrigger = BaseMenu.Trigger;
 
 export function ContextMenu(props: ComponentProps<typeof BaseContextMenu.Root>) {
-	const {sheet, rootProps} = useMenuRootSheet(props);
+	const {sheet, treeId, rootProps} = useMenuRootSheet(props);
 	return (
 		<MenuKindContext.Provider value="ContextMenu">
 			<MenuSheetContext.Provider value={sheet}>
-				<BaseContextMenu.Root {...rootProps} />
+				<SheetTreeIdContext.Provider value={treeId}>
+					<BaseContextMenu.Root {...rootProps} />
+				</SheetTreeIdContext.Provider>
 			</MenuSheetContext.Provider>
 		</MenuKindContext.Provider>
 	);
@@ -494,8 +518,9 @@ export function MenuContent({
 	const kind = useContext(MenuKindContext);
 	const sheet = useContext(MenuSheetContext) && !structurallyAnchored;
 	const parentLevel = useContext(SheetLevelContext);
+	const rootTreeId = useContext(SheetTreeIdContext);
 	const ownTreeId = useId();
-	const sheetTreeId = nested && parentLevel !== null ? parentLevel.treeId : ownTreeId;
+	const sheetTreeId = nested && parentLevel !== null ? parentLevel.treeId : (rootTreeId ?? ownTreeId);
 	const {level, attributes: levelAttributes} = useSheetLevel(sheetTreeId);
 	/* A callback ref, so the press markers attach when the portal mounts the popup on open. */
 	const [sheetPopup, setSheetPopup] = useState<HTMLDivElement | null>(null);
