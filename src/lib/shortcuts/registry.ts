@@ -170,13 +170,6 @@ export const SHORTCUTS = {
 		ownerSlug: "session-row-actions",
 		enabled: true,
 	},
-	transcript_view: {
-		description: "Transcript view",
-		group: "general",
-		bindings: ctrlEverywhere("o", [], letterCode("o")),
-		ownerSlug: "transcript-view",
-		enabled: true,
-	},
 	jump_prev_prompt: {
 		description: "Jump to previous prompt",
 		group: "general",
@@ -189,6 +182,13 @@ export const SHORTCUTS = {
 		group: "general",
 		bindings: macAndNonMac("arrowdown", ["cmd", "alt"], ["alt"], "ArrowDown"),
 		ownerSlug: "prompt-jump",
+		enabled: true,
+	},
+	transcript_view: {
+		description: "Transcript view",
+		group: "general",
+		bindings: ctrlEverywhere("o", [], letterCode("o")),
+		ownerSlug: "transcript-view",
 		enabled: true,
 	},
 	focus_next_region: {
