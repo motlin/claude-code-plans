@@ -839,6 +839,7 @@ function SessionView({
 													facts={{
 														artifactCount: sessionArtifacts.length,
 														hasPlan: hasSessionPlan(data.planFilename, planModel),
+														hasUnloadedHistory: transcript.startIndex > 0,
 														backgroundTasks: backgroundTasksFacts(
 															backgroundTasks,
 															subagents.length,

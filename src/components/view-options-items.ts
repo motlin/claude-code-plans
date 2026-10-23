@@ -26,6 +26,8 @@ export interface ViewOptionsFacts {
 	artifactCount?: number;
 	/** The session has a plan for the Plan pane: a linked plan file, plan text, a plan-file edit or todos. */
 	hasPlan?: boolean;
+	/** Earlier transcript messages are still unloaded, so the plan might be in them. */
+	hasUnloadedHistory?: boolean;
 	backgroundTasks?: {total: number; running: number};
 	subagentCount?: number;
 }
@@ -53,7 +55,12 @@ function candidates(facts: ViewOptionsFacts): ViewOptionsCandidate[] {
 			applies: (facts.backgroundTasks?.total ?? 0) > 0,
 			...(running > 0 ? {badge: running} : {}),
 		},
-		{kind: "plan", label: "Plan", icon: ListChecks, applies: facts.hasPlan === true},
+		{
+			kind: "plan",
+			label: "Plan",
+			icon: ListChecks,
+			applies: facts.hasPlan === true || facts.hasUnloadedHistory === true,
+		},
 		{
 			kind: "subagents",
 			label: "Subagents",

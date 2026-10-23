@@ -107,6 +107,15 @@ describe("viewOptionsItems", () => {
 		]);
 	});
 
+	it("lists Plan while earlier transcript messages are still unloaded, as upstream does", () => {
+		expect(visible(ALL_KINDS, {hasPlan: false, hasUnloadedHistory: true})).toStrictEqual([
+			["terminal", null],
+			["links", null],
+			["plan", null],
+			["session-details", null],
+		]);
+	});
+
 	it("shows no badge when no background task is running", () => {
 		expect(
 			visible(new Set<PaneKind>(["background-tasks"]), {
