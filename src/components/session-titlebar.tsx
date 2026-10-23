@@ -64,6 +64,20 @@ const PILL_CLASS =
 	"inline-flex h-5 min-w-0 shrink-0 cursor-default items-center gap-[3px] rounded-r5 bg-primary/10 dark:bg-alpha-2 px-[5px] text-caption leading-[15px] text-secondary no-underline select-none transition-colors hover:bg-alpha-3 data-[popup-open]:bg-alpha-3 dark:hover:bg-alpha-3 dark:data-[popup-open]:bg-alpha-3";
 
 /** `https://github.com/owner/repo` from the session's `pr-link`, the one remote URL the index knows. */
+const MENU_TOOLTIP_MAX_GRAPHEMES = 80;
+const GRAPHEMES = new Intl.Segmenter(undefined, {granularity: "grapheme"});
+
+/** Upstream's chevron tooltip: titles over 80 graphemes are cut to 79 plus an ellipsis; an empty title gives "More options". */
+function menuTooltipLabel(title: string): string {
+	if (title.trim() === "") return "More options";
+	const graphemes = Array.from(GRAPHEMES.segment(title), ({segment}) => segment);
+	if (graphemes.length <= MENU_TOOLTIP_MAX_GRAPHEMES) return `More options for ${title}`;
+	return `More options for ${graphemes
+		.slice(0, MENU_TOOLTIP_MAX_GRAPHEMES - 1)
+		.join("")
+		.trimEnd()}…`;
+}
+
 function repositoryUrl(pr: SessionDetailData["pr"]): string | null {
 	if (pr === undefined) return null;
 	try {
@@ -413,7 +427,7 @@ export function SessionTitlebar({
 							</MenuContent>
 						</ContextMenu>
 						<Menu onOpenChangeComplete={menuRename.onOpenChangeComplete}>
-							<Tooltip content={`More options for ${rename.title}`} side="bottom">
+							<Tooltip content={menuTooltipLabel(rename.title)} side="bottom">
 								<MenuTrigger aria-label={`More options for ${rename.title}`} className={CHEVRON_CLASS}>
 									<ChevronDown aria-hidden className="size-4" />
 								</MenuTrigger>

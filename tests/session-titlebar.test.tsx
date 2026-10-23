@@ -345,6 +345,34 @@ describe("SessionTitlebar title and chevron", () => {
 
 		expect(await hoverTooltip(chevron)).toStrictEqual({text: `More options for ${TITLE}`, describedBy: true});
 	});
+
+	it("cuts a chevron tooltip title longer than 80 characters to 79 plus an ellipsis, keeping the full aria-label", async () => {
+		const longTitle = `${"a".repeat(78)} bc`;
+		await renderTitlebar({...baseDetail, title: longTitle});
+		const chevron = screen.getByRole("button", {name: `More options for ${longTitle}`});
+
+		expect({length: longTitle.length, tooltip: await hoverTooltip(chevron)}).toStrictEqual({
+			length: 81,
+			tooltip: {text: `More options for ${"a".repeat(78)}…`, describedBy: true},
+		});
+	});
+
+	it("counts graphemes, not code points, when cutting the chevron tooltip", async () => {
+		const family = "👨‍👩‍👧";
+		const title = family.repeat(80);
+		await renderTitlebar({...baseDetail, title});
+		const chevron = screen.getByRole("button", {name: `More options for ${title}`});
+
+		expect(await hoverTooltip(chevron)).toStrictEqual({text: `More options for ${title}`, describedBy: true});
+	});
+
+	it("keeps an 80-character title whole in the chevron tooltip", async () => {
+		const title = "b".repeat(80);
+		await renderTitlebar({...baseDetail, title});
+		const chevron = screen.getByRole("button", {name: `More options for ${title}`});
+
+		expect(await hoverTooltip(chevron)).toStrictEqual({text: `More options for ${title}`, describedBy: true});
+	});
 });
 
 describe("SessionTitlebar pill collapse", () => {
