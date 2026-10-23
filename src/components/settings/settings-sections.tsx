@@ -822,13 +822,13 @@ function CodeAppearanceSection() {
 			>
 				<input
 					type="text"
-					aria-label="Code font"
+					aria-label="Code font family"
 					placeholder="e.g. JetBrains Mono"
 					value={settings.codeFont}
 					onChange={(event) => {
 						setSetting("codeFont", event.target.value);
 					}}
-					className="h-8 w-[220px] rounded-r6 border border-border bg-[var(--settings-field-bg)] px-3 text-body text-primary outline-none placeholder:text-[var(--settings-muted)] hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
+					className="h-8 w-56 rounded-r6 bg-[var(--settings-field-bg)] px-3 text-body text-primary outline-none placeholder:text-[var(--settings-muted)] shadow-field-ring transition duration-150 enabled:[&:hover:not(:focus)]:shadow-field-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
 				/>
 			</SettingsRow>
 		</SettingsSection>

@@ -140,7 +140,7 @@ describe("Claude Code settings ▸ Code appearance", () => {
 
 	it("applies a custom code font to --font-mono and clears it when emptied", async () => {
 		await renderClaudeCode();
-		const input = screen.getByRole("textbox", {name: "Code font"});
+		const input = screen.getByRole("textbox", {name: "Code font family"});
 
 		fireEvent.change(input, {target: {value: "Fira Code"}});
 		const custom = document.documentElement.style.getPropertyValue("--font-mono");
@@ -149,11 +149,14 @@ describe("Claude Code settings ▸ Code appearance", () => {
 
 		expect({
 			placeholder: input.getAttribute("placeholder"),
+			className: input.className,
 			custom,
 			cleared,
 			stored: localStorage.getItem("ccp-code-font"),
 		}).toStrictEqual({
 			placeholder: "e.g. JetBrains Mono",
+			className:
+				"h-8 w-56 rounded-r6 bg-[var(--settings-field-bg)] px-3 text-body text-primary outline-none placeholder:text-[var(--settings-muted)] shadow-field-ring transition duration-150 enabled:[&:hover:not(:focus)]:shadow-field-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus",
 			custom: '"Fira Code", "SF Mono", ui-monospace, Menlo, Consolas, monospace',
 			cleared: "",
 			stored: "",
