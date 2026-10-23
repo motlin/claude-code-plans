@@ -34,7 +34,7 @@ export function slashCommandLabel(command: SlashCommand): string {
 
 /**
  * CLI built-ins that make sense against a local session, with claude.ai/code
- * tooltip wording where upstream has one. The empty-query list shows only these.
+ * tooltip wording where upstream has one.
  */
 export const BUILTIN_SLASH_COMMANDS: readonly SlashCommand[] = [
 	{
@@ -130,12 +130,12 @@ function slashRank(command: SlashCommand, needle: string): number | null {
 }
 
 /**
- * Empty query: the built-ins only. Otherwise every command whose name, alias or description
+ * Empty query: every command in list order, as upstream does. Otherwise every command whose name, alias or description
  * contains the query, ranked exact name > exact alias > name prefix > alias prefix >
  * name or alias contains > description contains, keeping list order within a rank.
  */
 export function filterSlashCommands(commands: readonly SlashCommand[], query: string): SlashCommand[] {
-	if (query === "") return commands.filter((command) => command.source === "builtin");
+	if (query === "") return [...commands];
 	if (query.length > MAX_SLASH_QUERY_LENGTH) return [];
 	const needle = query.toLowerCase();
 	const ranks: SlashCommand[][] = [[], [], [], [], [], []];

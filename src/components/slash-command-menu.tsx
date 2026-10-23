@@ -1,4 +1,4 @@
-import {useLayoutEffect, useRef} from "react";
+import {useLayoutEffect, useRef, useState} from "react";
 
 import {
 	highlightMatches,
@@ -24,6 +24,37 @@ const ROW_TOOLTIP_CLASS = `${TOOLTIP_CLASS.replace("z-50", "z-[130]")} text-bala
 
 /* Upstream's tooltip detail line under a plugin skill's description, in the dark tooltip's secondary ink. */
 const TOOLTIP_DETAIL_CLASS = "block break-words text-[11px]/[14px] text-[var(--tooltip-description-ink)]";
+
+/* Upstream switches the list to `@tanstack/virtual` at 30 items, overscanning 8 rows and keeping 28px of scroll padding around the highlighted row. */
+const VIRTUALIZE_AT = 30;
+const OVERSCAN = 8;
+const SCROLL_PADDING = 28;
+/* Compact rows are a fixed `h-6`; the scroller's `p-1` gutter sits above row 0. */
+const ROW_HEIGHT = 24;
+const GUTTER = 4;
+/* The popup's `max-h-96`, used until the scroller has a measured height. */
+const FALLBACK_VIEWPORT_HEIGHT = 384;
+
+interface RowWindow {
+	start: number;
+	end: number;
+}
+
+/* The rows intersecting the viewport plus the overscan on each side, as an exclusive range. */
+function rowWindow(count: number, scrollTop: number, viewportHeight: number): RowWindow {
+	const first = Math.floor(Math.max(0, scrollTop - GUTTER) / ROW_HEIGHT);
+	const last = Math.ceil(Math.max(0, scrollTop + viewportHeight - GUTTER) / ROW_HEIGHT);
+	return {start: Math.max(0, first - OVERSCAN), end: Math.min(count, last + OVERSCAN)};
+}
+
+/* `scrollToIndex(index, {align: "auto"})` with the scroll padding: only scrolls when the row is within the padding of an edge. */
+function scrollTopFor(index: number, scrollTop: number, viewportHeight: number): number {
+	const rowTop = GUTTER + index * ROW_HEIGHT;
+	const rowBottom = rowTop + ROW_HEIGHT;
+	if (rowBottom >= scrollTop + viewportHeight - SCROLL_PADDING) return rowBottom - viewportHeight + SCROLL_PADDING;
+	if (rowTop <= scrollTop + SCROLL_PADDING) return Math.max(0, rowTop - SCROLL_PADDING);
+	return scrollTop;
+}
 
 /* Labels bold in the row's ink; upstream's default highlight (the alias suffix) also lifts the match to primary. */
 function Highlighted({
@@ -71,6 +102,17 @@ export function SlashCommandMenu({
 	const tooltipRef = useRef<HTMLDivElement>(null);
 	const clampRef = useRef<HTMLSpanElement>(null);
 	const detailRef = useRef<HTMLSpanElement>(null);
+	const [scrollTop, setScrollTop] = useState(0);
+	/* Upstream scrolls the active row into view only on keyboard navigation, never under a hovering pointer. */
+	const hoverHighlightRef = useRef(false);
+	const virtualized = commands.length >= VIRTUALIZE_AT;
+	const viewportHeight = () => {
+		const height = scrollerRef.current?.clientHeight ?? 0;
+		return height > 0 ? height : FALLBACK_VIEWPORT_HEIGHT;
+	};
+	const range = virtualized
+		? rowWindow(commands.length, scrollTop, viewportHeight())
+		: {start: 0, end: commands.length};
 	const active = commands[highlighted];
 	const activeDetail = active?.pluginName === undefined ? undefined : `${active.pluginName} plugin`;
 
@@ -89,9 +131,21 @@ export function SlashCommandMenu({
 	};
 
 	useLayoutEffect(() => {
-		scrollerRef.current?.querySelector<HTMLElement>("[data-highlighted]")?.scrollIntoView({block: "nearest"});
+		const scroller = scrollerRef.current;
+		const hovered = hoverHighlightRef.current;
+		hoverHighlightRef.current = false;
+		if (!hovered && virtualized && scroller && highlighted >= 0) {
+			const next = scrollTopFor(highlighted, scroller.scrollTop, viewportHeight());
+			if (next !== scroller.scrollTop) scroller.scrollTop = next;
+			setScrollTop(scroller.scrollTop);
+		} else if (!hovered) {
+			scroller?.querySelector<HTMLElement>("[data-highlighted]")?.scrollIntoView({block: "nearest"});
+		}
 		placeTooltip();
-	}, [highlighted, commands]);
+	}, [highlighted, commands, virtualized]);
+
+	/* A row mounted by a scroll may be the highlighted one, so the tip follows each window change. */
+	useLayoutEffect(placeTooltip, [range.start, range.end]);
 
 	return (
 		// oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- cancels mousedown so the composer textarea keeps focus
@@ -108,9 +162,14 @@ export function SlashCommandMenu({
 				role="menu"
 				aria-label="Slash commands"
 				className="min-h-0 overflow-y-auto overflow-x-hidden rounded-[inherit] p-1"
-				onScroll={placeTooltip}
+				onScroll={(e) => {
+					if (virtualized) setScrollTop(e.currentTarget.scrollTop);
+					placeTooltip();
+				}}
 			>
-				{commands.map((command, index) => {
+				{virtualized && <div aria-hidden style={{height: range.start * ROW_HEIGHT}} className="shrink-0" />}
+				{commands.slice(range.start, range.end).map((command, offset) => {
+					const index = range.start + offset;
 					const alias = matchingAlias(command, query);
 					return (
 						<div
@@ -121,7 +180,9 @@ export function SlashCommandMenu({
 							data-highlighted={index === highlighted ? "" : undefined}
 							className={ROW_CLASS}
 							onMouseMove={() => {
-								if (index !== highlighted) onHighlight(index);
+								if (index === highlighted) return;
+								hoverHighlightRef.current = true;
+								onHighlight(index);
 							}}
 							onMouseDown={(e) => {
 								e.preventDefault();
@@ -151,6 +212,13 @@ export function SlashCommandMenu({
 						</div>
 					);
 				})}
+				{virtualized && (
+					<div
+						aria-hidden
+						style={{height: (commands.length - range.end) * ROW_HEIGHT}}
+						className="shrink-0"
+					/>
+				)}
 			</div>
 			{active !== undefined && (active.description !== "" || activeDetail !== undefined) && (
 				<div ref={tooltipRef} role="tooltip" className={ROW_TOOLTIP_CLASS}>

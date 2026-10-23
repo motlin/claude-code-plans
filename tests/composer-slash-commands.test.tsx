@@ -54,7 +54,7 @@ function rows(): {name: string; highlighted: boolean}[] {
 }
 
 describe("Composer slash commands", () => {
-	it("opens the built-in list with the first row highlighted when the text starts with /", () => {
+	it("opens every command with the first row highlighted when the text starts with /", () => {
 		const {textarea} = setup();
 		const closed = screen.queryByRole("menu", {name: "Slash commands"});
 
@@ -65,6 +65,7 @@ describe("Composer slash commands", () => {
 			rows: [
 				{name: "model", highlighted: true},
 				{name: "plan", highlighted: false},
+				{name: "standupCustom command", highlighted: false},
 			],
 		});
 	});
@@ -219,7 +220,11 @@ describe("Composer slash commands", () => {
 				className: "block break-words text-[11px]/[14px] text-[var(--tooltip-description-ink)]",
 			},
 			bare: {tooltip: "build plugin", detail: null},
-			emptyQueryRows: [{name: "model", highlighted: true}],
+			emptyQueryRows: [
+				{name: "model", highlighted: true},
+				{name: "dev-server", highlighted: false},
+				{name: "bare", highlighted: false},
+			],
 		});
 	});
 
@@ -232,6 +237,7 @@ describe("Composer slash commands", () => {
 		fireEvent.keyDown(textarea, {key: "ArrowDown"});
 		const down = rows();
 		fireEvent.keyDown(textarea, {key: "ArrowDown"});
+		fireEvent.keyDown(textarea, {key: "ArrowDown"});
 		const bottom = rows();
 		fireEvent.keyDown(textarea, {key: "ArrowUp"});
 
@@ -239,18 +245,22 @@ describe("Composer slash commands", () => {
 			top: [
 				{name: "model", highlighted: true},
 				{name: "plan", highlighted: false},
+				{name: "standupCustom command", highlighted: false},
 			],
 			down: [
 				{name: "model", highlighted: false},
 				{name: "plan", highlighted: true},
+				{name: "standupCustom command", highlighted: false},
 			],
 			bottom: [
 				{name: "model", highlighted: false},
-				{name: "plan", highlighted: true},
+				{name: "plan", highlighted: false},
+				{name: "standupCustom command", highlighted: true},
 			],
 			up: [
-				{name: "model", highlighted: true},
-				{name: "plan", highlighted: false},
+				{name: "model", highlighted: false},
+				{name: "plan", highlighted: true},
+				{name: "standupCustom command", highlighted: false},
 			],
 		});
 	});
@@ -366,6 +376,7 @@ describe("Composer slash commands", () => {
 			reopened: [
 				{name: "model", highlighted: true},
 				{name: "plan", highlighted: false},
+				{name: "standupCustom command", highlighted: false},
 			],
 		});
 	});
@@ -464,6 +475,40 @@ describe("Composer slash commands", () => {
 		expect(screen.queryByRole("menu", {name: "Slash commands"})).toBeNull();
 	});
 
+	it("virtualizes 30+ rows, mounting a window and scrolling the highlighted row into view", () => {
+		const many: SlashCommand[] = Array.from({length: 200}, (_, i) => ({
+			name: `cmd${String(i).padStart(3, "0")}`,
+			description: `Command ${i}`,
+			source: "personal-skill",
+		}));
+		const {textarea} = setup(undefined, many);
+		fireEvent.change(textarea, {target: {value: "/"}});
+		const scroller = screen.getByRole("menu", {name: "Slash commands"});
+		const initial = screen.getAllByRole("menuitem").map((row) => row.textContent);
+
+		for (let i = 0; i < 150; i++) fireEvent.keyDown(textarea, {key: "ArrowDown"});
+		const after = screen.getAllByRole("menuitem");
+		const active = scroller.querySelector("[data-highlighted]");
+
+		expect({
+			initialCount: initial.length,
+			initialFirst: initial[0],
+			afterWindowed: after.length <= 40,
+			active: active?.textContent,
+			activeIsDescendant: textarea.getAttribute("aria-activedescendant") === active?.id,
+			// Row 150 is 24px tall at 4px gutter + 3600px; "auto" alignment with upstream's 28px scroll padding puts its bottom 28px above a 384px viewport.
+			scrollTop: scroller.scrollTop,
+		}).toStrictEqual({
+			// 16 rows fill the 384px viewport, plus upstream's overscan of 8.
+			initialCount: 24,
+			initialFirst: "cmd000",
+			afterWindowed: true,
+			active: "cmd150",
+			activeIsDescendant: true,
+			scrollTop: 4 + 3600 + 24 - 384 + 28,
+		});
+	});
+
 	it("uses upstream's compact popup, scroller and row metrics", () => {
 		const {textarea} = setup();
 		fireEvent.change(textarea, {target: {value: "/"}});
@@ -494,7 +539,7 @@ describe("Composer slash commands", () => {
 				"z-[130]",
 			],
 			scroller: ["min-h-0", "overflow-x-hidden", "overflow-y-auto", "p-1", "rounded-[inherit]"],
-			rows: Array.from({length: 2}, () => [
+			rows: Array.from({length: 3}, () => [
 				"cursor-pointer",
 				"data-[highlighted]:bg-fill-ghost-hover",
 				"flex",
@@ -575,6 +620,7 @@ describe("Composer slash commands", () => {
 				rows: [
 					{name: "model", highlighted: true},
 					{name: "plan", highlighted: false},
+					{name: "standupCustom command", highlighted: false},
 				],
 			});
 		});

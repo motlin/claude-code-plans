@@ -158,8 +158,14 @@ const COMMANDS: SlashCommand[] = [
 ];
 
 describe("filterSlashCommands", () => {
-	it("lists only the built-ins for an empty query", () => {
-		expect(filterSlashCommands(COMMANDS, "").map((c) => c.name)).toStrictEqual(["model", "plan", "compact"]);
+	it("lists every command in list order for an empty query", () => {
+		expect(filterSlashCommands(COMMANDS, "").map((c) => c.name)).toStrictEqual([
+			"model",
+			"plan",
+			"compact",
+			"git:commit",
+			"autocompact",
+		]);
 	});
 
 	it("ranks name prefix over name contains over description matches, case-insensitively", () => {
