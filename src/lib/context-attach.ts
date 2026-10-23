@@ -2,7 +2,7 @@ import {useSyncExternalStore} from "react";
 import {z} from "zod";
 
 import type {ToastOptions} from "../components/toast-context";
-import {uploadAttachment} from "./api/attachments";
+import {MAX_ATTACHMENT_BYTES, uploadAttachment} from "./api/attachments";
 
 /**
  * "Attach as context" (⇧⌘L) as on claude.ai/code: a file, line range or
@@ -303,18 +303,56 @@ function fileUploadFailedMessage(name: string): string {
 	return `Failed to upload ${name}. It won’t be attached.`;
 }
 
+/** Upstream's image cap (`maxImages ?? 5` in epitaxy `Ie`). */
+const MAX_IMAGES = 5;
+
+const MAX_IMAGES_MESSAGE = `Maximum of ${MAX_IMAGES} images allowed.`;
+
+/** Upstream's oversize sentence (`Ie`) with the local server's limit in place of its 30 MB. */
+const IMAGES_TOO_LARGE_MESSAGE = `Some images were too large to attach. Maximum size is ${MAX_ATTACHMENT_BYTES / (1024 * 1024)} MB.`;
+
+function isImage(file: File): boolean {
+	return file.type.startsWith("image/");
+}
+
+/**
+ * Upstream's image pre-checks: drops images over the size limit, then any
+ * past the 5-image cap (staged and pending chips included), with one warning
+ * toast per check. Other files pass through uncounted.
+ */
+function withinImageCaps(
+	sessionId: string,
+	files: readonly File[],
+	notify: (options: ToastOptions) => void,
+): readonly File[] {
+	const sized = files.filter((file) => !isImage(file) || file.size <= MAX_ATTACHMENT_BYTES);
+	if (sized.length < files.length) notify({kind: "warning", message: IMAGES_TOO_LARGE_MESSAGE});
+	let room = MAX_IMAGES - getContextChips(sessionId).filter((chip) => chip.kind === "image").length;
+	const accepted: File[] = [];
+	for (const file of sized) {
+		if (!isImage(file)) accepted.push(file);
+		else if (room > 0) {
+			room--;
+			accepted.push(file);
+		}
+	}
+	if (accepted.length < sized.length) notify({kind: "warning", message: MAX_IMAGES_MESSAGE});
+	return accepted;
+}
+
 /**
  * Uploads files (⌘U, drop, paste) and adds each as an image or file chip in
  * the composer's strip; a failed upload removes its pending chip and raises
- * an error toast through `notify`.
+ * an error toast through `notify`. Oversize images and images past the cap
+ * are dropped with a warning toast first.
  */
 export function attachUploadedFiles(
 	sessionId: string,
 	files: readonly File[],
 	notify: (options: ToastOptions) => void,
 ): void {
-	for (const file of files) {
-		const image = file.type.startsWith("image/");
+	for (const file of withinImageCaps(sessionId, files, notify)) {
+		const image = isImage(file);
 		const previewUrl = image && typeof URL.createObjectURL === "function" ? URL.createObjectURL(file) : undefined;
 		const id = attachPendingUpload(sessionId, {
 			kind: image ? "image" : "file",

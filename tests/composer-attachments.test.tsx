@@ -442,4 +442,44 @@ describe("Composer attachments", () => {
 			alert: null,
 		});
 	});
+	it("caps a paste at 5 images, counting staged and pending ones, and warns once", () => {
+		deferUploads();
+		renderComposer();
+
+		paste({files: [png("a.png"), png("b.png")]});
+		paste({files: [png("c.png"), png("d.png"), png("e.png"), png("f.png")]});
+
+		expect({uploads, toasts: toasts.mock.calls, chips: chipNames()}).toStrictEqual({
+			uploads: ["a.png", "b.png", "c.png", "d.png", "e.png"],
+			toasts: [[{kind: "warning", message: "Maximum of 5 images allowed."}]],
+			chips: ["a.png", "b.png", "c.png", "d.png", "e.png"],
+		});
+	});
+
+	it("does not count files toward the 5-image cap", () => {
+		deferUploads();
+		renderComposer();
+
+		paste({files: ["a", "b", "c", "d", "e"].map((name) => png(`${name}.png`))});
+		paste({files: [new File(["# notes"], "notes.md", {type: "text/markdown"})]});
+
+		expect({uploads, toasts: toasts.mock.calls}).toStrictEqual({
+			uploads: ["a.png", "b.png", "c.png", "d.png", "e.png", "notes.md"],
+			toasts: [],
+		});
+	});
+
+	it("drops an image over the size limit without uploading it and warns with the local limit", () => {
+		deferUploads();
+		renderComposer();
+
+		const huge = new File([new Uint8Array(6 * 1024 * 1024)], "huge.png", {type: "image/png"});
+		paste({files: [huge, png("small.png")]});
+
+		expect({uploads, toasts: toasts.mock.calls, chips: chipNames()}).toStrictEqual({
+			uploads: ["small.png"],
+			toasts: [[{kind: "warning", message: "Some images were too large to attach. Maximum size is 5 MB."}]],
+			chips: ["small.png"],
+		});
+	});
 });
