@@ -4,6 +4,7 @@ import {
 	EXIT_PLAN_MODE_STATE_LABEL,
 	exitPlanModeState,
 	parseAllowedPrompts,
+	planBlockSegments,
 } from "../src/lib/exit-plan-mode";
 
 describe("parseAllowedPrompts", () => {
@@ -126,5 +127,29 @@ describe("exitPlanModeState", () => {
 				error: "Plan not approved",
 			},
 		});
+	});
+});
+
+describe("planBlockSegments", () => {
+	it("splits out each inline code run, per line, as upstream's plan block does", () => {
+		expect(planBlockSegments("Run `just test` then `pnpm i`\nnot `across\nlines` here")).toStrictEqual([
+			{code: false, text: "Run "},
+			{code: true, text: "`just test`"},
+			{code: false, text: " then "},
+			{code: true, text: "`pnpm i`"},
+			{code: false, text: "\nnot `across\nlines` here"},
+		]);
+	});
+
+	it("strips Bidi controls and tag characters before splitting", () => {
+		expect(planBlockSegments("a‮b⁦`c‏`\u{E0041}d")).toStrictEqual([
+			{code: false, text: "ab"},
+			{code: true, text: "`c`"},
+			{code: false, text: "d"},
+		]);
+	});
+
+	it("returns plain text as one segment", () => {
+		expect(planBlockSegments("# Plan\n\n- step")).toStrictEqual([{code: false, text: "# Plan\n\n- step"}]);
 	});
 });

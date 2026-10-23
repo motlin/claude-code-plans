@@ -84,4 +84,33 @@ export function describeExitPlanModeResult(
 }
 
 /** Upstream's plan block: the plan text as typed, set off by a 2px start border. */
-export const PLAN_BLOCK_CLASS = "text-body text-secondary whitespace-pre-wrap break-words ps-2 border-s-2";
+export const PLAN_BLOCK_CLASS =
+	"text-body text-secondary whitespace-pre-wrap break-words ps-2 border-s-2 [unicode-bidi:plaintext]";
+
+/** Bidi embedding/override/isolate controls and marks, plus Unicode tag characters. */
+const BIDI_CONTROL_RE = /[\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069\u{E0000}-\u{E007F}]/gu;
+
+/** A `` `code` `` run never crosses a line, as in upstream's plan block. */
+const INLINE_CODE_RE = /`[^`\n]+`/g;
+
+export interface PlanBlockSegment {
+	code: boolean;
+	text: string;
+}
+
+/**
+ * The plan block's text with Bidi controls stripped, split so each inline
+ * `` `code` `` run can sit in its own `dir="ltr"` span, as upstream's does.
+ */
+export function planBlockSegments(plan: string): PlanBlockSegment[] {
+	const text = plan.replace(BIDI_CONTROL_RE, "");
+	const segments: PlanBlockSegment[] = [];
+	let last = 0;
+	for (const match of text.matchAll(INLINE_CODE_RE)) {
+		if (match.index > last) segments.push({code: false, text: text.slice(last, match.index)});
+		segments.push({code: true, text: match[0]});
+		last = match.index + match[0].length;
+	}
+	if (last < text.length) segments.push({code: false, text: text.slice(last)});
+	return segments;
+}

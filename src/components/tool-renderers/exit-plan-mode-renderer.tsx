@@ -10,6 +10,7 @@ import {
 	parseAllowedPrompts,
 	PLAN_BLOCK_CLASS,
 	PLAN_FILE_ACTION_LABEL,
+	planBlockSegments,
 	type ExitPlanModeStatusTone,
 } from "../../lib/exit-plan-mode";
 
@@ -24,6 +25,23 @@ const TONE_CLASS: Record<ExitPlanModeStatusTone, string> = {
 	error: "text-danger-000",
 	info: "text-secondary",
 };
+
+/** The plan text verbatim, each inline `` `code` `` run held left-to-right. */
+function PlanBlock({plan, className}: {plan: string; className: string}) {
+	return (
+		<div data-plan-block="" className={className}>
+			{planBlockSegments(plan).map((segment, index) =>
+				segment.code ? (
+					<span key={index} dir="ltr">
+						{segment.text}
+					</span>
+				) : (
+					segment.text
+				),
+			)}
+		</div>
+	);
+}
 
 /**
  * Upstream's ExitPlanMode body: while it runs or awaits approval, the plan in a
@@ -52,7 +70,7 @@ export function ExitPlanModeRenderer({toolCall, verbose}: ToolRendererProps) {
 	return (
 		<div className="flex w-full flex-col gap-1">
 			{done ? (
-				<div data-plan-done="" className="flex flex-col gap-1 py-1.5">
+				<div data-plan-done="" className="flex flex-col gap-1 py-1">
 					<div className="flex items-center justify-between gap-2">
 						<div className="flex items-center gap-1 text-body text-success-000">
 							<CircleCheck aria-hidden="true" className="size-4 shrink-0" />
@@ -60,20 +78,12 @@ export function ExitPlanModeRenderer({toolCall, verbose}: ToolRendererProps) {
 						</div>
 						{planFileAction}
 					</div>
-					{plan && (
-						<div data-plan-block="" className={PLAN_BLOCK_CLASS}>
-							{plan}
-						</div>
-					)}
+					{plan && <PlanBlock plan={plan} className={PLAN_BLOCK_CLASS} />}
 				</div>
 			) : (
 				<>
 					{planFileAction && <div className="flex items-center justify-end gap-2">{planFileAction}</div>}
-					{plan && (
-						<div data-plan-block="" className={`${PLAN_BLOCK_CLASS} py-1.5`}>
-							{plan}
-						</div>
-					)}
+					{plan && <PlanBlock plan={plan} className={`${PLAN_BLOCK_CLASS} py-1`} />}
 				</>
 			)}
 			{allowedPrompts.length > 0 && (

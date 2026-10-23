@@ -54,7 +54,7 @@ async function renderRenderer(toolCall: ClientToolCall, verbose = false, host: P
 	return render(<RouterProvider router={router} />);
 }
 
-const PLAN_BLOCK = "text-body text-secondary whitespace-pre-wrap break-words ps-2 border-s-2";
+const PLAN_BLOCK = "text-body text-secondary whitespace-pre-wrap break-words ps-2 border-s-2 [unicode-bidi:plaintext]";
 const PLAN_FILE_ACTION = "shrink-0 text-footnote text-secondary hover:text-primary hover:underline";
 
 describe("ExitPlanModeRenderer", () => {
@@ -68,11 +68,24 @@ describe("ExitPlanModeRenderer", () => {
 			headings: view.container.querySelectorAll("h1, ul").length,
 			approved: view.container.textContent.includes("Plan approved"),
 		}).toStrictEqual({
-			className: `${PLAN_BLOCK} py-1.5`,
+			className: `${PLAN_BLOCK} py-1`,
 			text: "# Switch git pager\n\n- use hunk",
 			headings: 0,
 			approved: false,
 		});
+	});
+
+	it("wraps inline code in upstream's dir=ltr span inside the plaintext-bidi block", async () => {
+		const view = await renderRenderer(makeToolCall({input: {plan: "Run `a` now"}}));
+		const block = view.container.querySelector("[data-plan-block]");
+
+		expect({
+			text: block?.textContent,
+			spans: [...(block?.querySelectorAll("span") ?? [])].map((span) => ({
+				dir: span.getAttribute("dir"),
+				text: span.textContent,
+			})),
+		}).toStrictEqual({text: "Run `a` now", spans: [{dir: "ltr", text: "`a`"}]});
 	});
 
 	it("leads an approved plan with upstream's 'Plan approved' and a check circle, above the block", async () => {
@@ -90,7 +103,7 @@ describe("ExitPlanModeRenderer", () => {
 			icon: done?.querySelector("svg")?.getAttribute("class")?.includes("lucide-circle-check"),
 			showsBoilerplate: view.container.textContent.includes("You can now start coding"),
 		}).toStrictEqual({
-			className: "flex flex-col gap-1 py-1.5",
+			className: "flex flex-col gap-1 py-1",
 			children: [
 				{className: "flex items-center justify-between gap-2", text: "Plan approved"},
 				{className: PLAN_BLOCK, text: "Do it."},
