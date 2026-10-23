@@ -153,7 +153,7 @@ export const ComposerAddMenu = memo(function ComposerAddMenu({
 					<Plus className="size-[18px]" aria-hidden="true" />
 				</MenuTrigger>
 			</Tooltip>
-			<MenuContent side="top" finalFocus={slashAfterClose.finalFocus}>
+			<MenuContent side="top" sideOffset={6} finalFocus={slashAfterClose.finalFocus}>
 				<MenuItem icon={<Paperclip />} onSelect={onAddFiles} shortcut={addFilesKeys}>
 					Add files or photos
 				</MenuItem>

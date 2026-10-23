@@ -842,7 +842,7 @@ describe("Composer chin tooltips and contrast", () => {
 			mode: pick(document.querySelector("[data-chin-mode]")),
 			model: pick(screen.getByRole("button", {name: "Model: Opus 5.5 High"})),
 		}).toStrictEqual({
-			add: {ink: ["text-secondary"], radius: ["rounded-r4"], lineHeight: ["leading-[20px]"]},
+			add: {ink: ["text-secondary"], radius: ["rounded-r5"], lineHeight: ["leading-[20px]"]},
 			plusIcon: ["size-[18px]"],
 			mode: {ink: ["text-secondary"], radius: ["rounded-r4"], lineHeight: ["leading-[20px]"]},
 			model: {ink: ["text-secondary"], radius: ["rounded-r4"], lineHeight: ["leading-[20px]"]},
@@ -1024,6 +1024,26 @@ describe("Composer + menu Connectors submenu", () => {
 			},
 			{to: "/customize/connectors/id/$serverId", params: {serverId: toConnectorSlug("user:Sentry")}},
 		]);
+	});
+
+	it("opens the Add menu 6px above a 28px button with upstream's 6px radius", async () => {
+		const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
+		queryClient.setQueryData(customizeMcpServersQueryOptions.queryKey, SERVERS.slice(0, 2));
+		render(
+			<QueryClientProvider client={queryClient}>
+				<Composer variant="session" draftKey="session-alice" onSend={() => {}} chin={CHIN} />
+			</QueryClientProvider>,
+		);
+		const add = screen.getByRole("button", {name: "Add"});
+		fireEvent.click(add);
+		const menu = await screen.findByRole("menu");
+		const classes = add.className.split(" ");
+
+		expect({
+			sideOffset: menu.parentElement?.getAttribute("data-side-offset"),
+			radius: classes.filter((name) => name.startsWith("rounded-")),
+			size: classes.filter((name) => name.startsWith("size-") || name.startsWith("h-")),
+		}).toStrictEqual({sideOffset: "6", radius: ["rounded-r5"], size: ["size-7"]});
 	});
 
 	it("shows no reconnection note while every server is healthy", async () => {

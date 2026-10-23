@@ -95,7 +95,8 @@ function NestedSheet(props: SheetContentProps & {treeId: string}) {
 const POPUP_CLASS =
 	"relative flex max-h-[var(--available-height)] min-w-[128px] max-w-[320px] flex-col bg-[var(--menu-bg)] font-normal text-primary shadow-[var(--menu-shadow)] outline-none select-none";
 
-const SCROLLER_CLASS = "min-h-0 overflow-y-auto";
+/** Upstream's scroller carries a `border-b-[length:var(--cds-ring-inner)] border-transparent` 1px bottom border. */
+const SCROLLER_CLASS = "min-h-0 overflow-y-auto border-b border-transparent";
 
 const ITEM_VARIANT_CLASS = {
 	default: "text-primary data-[highlighted]:bg-fill-ghost-hover",

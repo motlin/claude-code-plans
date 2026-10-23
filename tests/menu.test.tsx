@@ -253,6 +253,14 @@ describe("Menu", () => {
 		expect(menu.className.split(" ").filter((c) => c.startsWith("min-w-"))).toEqual(["min-w-[128px]"]);
 	});
 
+	it("gives the scroller upstream's 1px transparent bottom border, so a two-row popup is 81px", async () => {
+		renderDropdown();
+		const menu = await openDropdown();
+		const scroller = menu.querySelector("[data-menu-scroller]");
+
+		expect(scroller?.className).toBe("min-h-0 overflow-y-auto border-b border-transparent");
+	});
+
 	async function openStatusSub() {
 		await openDropdown();
 		const trigger = screen.getByRole("menuitem", {name: /Status/});
