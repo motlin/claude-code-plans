@@ -73,21 +73,23 @@ export function PermissionCard({
 			footer={footer}
 			presentation="card"
 			body={
-				<>
+				<div className="flex flex-col gap-[10px]">
 					<span data-permission-title data-approval-card-title className={APPROVAL_CARD_TITLE}>
 						{title}
 					</span>
-					{command !== null && (
-						<div
-							data-approval-value
-							className="rounded-r4 bg-alpha-1 px-3 py-2 font-mono text-[12px]/[17px] break-words whitespace-pre-wrap text-secondary select-text [unicode-bidi:plaintext]"
-						>
-							{command}
-						</div>
-					)}
-					{!canAnswer && <ReadOnlyAnswerHint className="text-footnote text-secondary" />}
-					{error && <p className="text-footnote text-extended-pink">{error}</p>}
-				</>
+					<div className="flex flex-col gap-[12px] empty:hidden">
+						{command !== null && (
+							<div
+								data-approval-value
+								className="rounded-r4 bg-alpha-1 px-3 py-2 font-mono text-[12px]/[17px] break-words whitespace-pre-wrap text-secondary select-text [unicode-bidi:plaintext]"
+							>
+								{command}
+							</div>
+						)}
+						{!canAnswer && <ReadOnlyAnswerHint className="text-footnote text-secondary" />}
+						{error && <p className="text-footnote text-extended-pink">{error}</p>}
+					</div>
+				</div>
 			}
 			actions={
 				<>

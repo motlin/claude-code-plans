@@ -70,7 +70,12 @@ export function ApprovalCardShell({
 	/** Upstream's inline "card" in the transcript, or the composer "dock". */
 	presentation?: "card" | "dock";
 }) {
-	const look = presentation === "card" ? "card-ring" : "bg-surface-popover shadow-[var(--approval-card-shadow)]";
+	// Inline, upstream's card is at most 480px wide with 24px gaps; the dock keeps its 12px rhythm.
+	const look =
+		presentation === "card"
+			? "card-ring w-full max-w-[480px] gap-[24px]"
+			: "bg-surface-popover shadow-[var(--approval-card-shadow)] gap-3";
+	const bodyGap = presentation === "card" ? "gap-[24px]" : "gap-2.5";
 	return (
 		<div className="@container/approval-dock [--approval-dock-floor:144px] @max-[500px]/approval-dock:[--approval-dock-floor:208px]">
 			<div
@@ -80,11 +85,11 @@ export function ApprovalCardShell({
 				role={label === undefined ? undefined : "group"}
 				aria-label={label}
 				tabIndex={0}
-				className={`@container relative isolate flex max-h-[60vh] flex-col gap-3 rounded-r7 p-3 text-[13px]/[19px] text-primary ${look}`}
+				className={`@container relative isolate flex max-h-[60vh] flex-col rounded-r7 p-3 text-[13px]/[19px] text-primary ${look}`}
 			>
 				<div
 					data-approval-card-body
-					className="-mx-3 -mt-1 -mb-2 flex min-h-0 flex-col gap-2.5 overflow-y-auto px-3 pt-1 pb-2"
+					className={`-mx-3 -mt-1 -mb-2 flex min-h-0 flex-col overflow-y-auto px-3 pt-1 pb-2 ${bodyGap}`}
 				>
 					{body}
 				</div>

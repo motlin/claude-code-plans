@@ -276,7 +276,7 @@ describe("PermissionCard", () => {
 		};
 		expect({
 			presentation: card.dataset["approvalPresentation"],
-			card: missing(card, ["card-ring", "@container", "rounded-r7", "gap-3", "p-3"]),
+			card: missing(card, ["card-ring", "@container", "rounded-r7", "p-3"]),
 			dockLook: ["shadow-[var(--approval-card-shadow)]", "bg-surface-popover"].filter((name) =>
 				card.classList.contains(name),
 			),
@@ -307,6 +307,31 @@ describe("PermissionCard", () => {
 				"text-surface-1",
 			]),
 		}).toStrictEqual({presentation: "card", card: [], dockLook: [], title: [], value: [], deny: [], allow: []});
+	});
+
+	it("spaces the card as upstream's inline permission card: 480px wide, 24px gaps, a 10px title block and 12px details", () => {
+		const {container} = renderCard();
+		const card = container.querySelector<HTMLElement>("[data-approval-card-root]")!;
+		const body = card.querySelector<HTMLElement>("[data-approval-card-body]")!;
+		const title = card.querySelector<HTMLElement>("[data-permission-title]")!;
+		const value = card.querySelector<HTMLElement>("[data-approval-value]")!;
+		const classes = (element: Element | null) => new Set(element?.getAttribute("class")?.split(/\s+/));
+		const has = (element: Element | null, names: string[]) => names.filter((name) => classes(element).has(name));
+		expect({
+			card: has(card, ["gap-[24px]", "w-full", "max-w-[480px]", "gap-3"]),
+			body: has(body, ["gap-[24px]", "gap-2.5"]),
+			titleBlock: has(title.parentElement, ["flex", "flex-col", "gap-[10px]"]),
+			titleBlockParentIsBody: title.parentElement?.parentElement === body,
+			details: has(value.parentElement, ["flex", "flex-col", "gap-[12px]"]),
+			detailsFollowTitle: title.nextElementSibling === value.parentElement,
+		}).toStrictEqual({
+			card: ["gap-[24px]", "w-full", "max-w-[480px]"],
+			body: ["gap-[24px]"],
+			titleBlock: ["flex", "flex-col", "gap-[10px]"],
+			titleBlockParentIsBody: true,
+			details: ["flex", "flex-col", "gap-[12px]"],
+			detailsFollowTitle: true,
+		});
 	});
 
 	it("hides the persistent option when the dialog has none", () => {
