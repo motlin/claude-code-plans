@@ -96,6 +96,12 @@ function paste(init: {text?: string; files?: File[]}) {
 	});
 }
 
+function fileInput(): HTMLInputElement {
+	const input = document.querySelector<HTMLInputElement>('input[type="file"]');
+	if (input === null) throw new Error("no file input");
+	return input;
+}
+
 function chipNames(): string[] {
 	const strip = screen.queryByRole("list", {name: "Attached context"});
 	if (strip === null) return [];
@@ -200,7 +206,7 @@ describe("Composer attachments", () => {
 	it("opens the file picker from ⌘U and from + Add files or photos, and uploads the picks", async () => {
 		mockUploads(savedAs(`${ATTACHMENTS}/0004.png`));
 		renderComposer(CHIN);
-		const picker = screen.getByLabelText<HTMLInputElement>("Add files or photos");
+		const picker = fileInput();
 		const clicks = vi.spyOn(picker, "click").mockImplementation(() => {});
 
 		fireEvent.keyDown(prompt(), {key: "u", code: "KeyU", metaKey: true});
@@ -213,13 +219,59 @@ describe("Composer attachments", () => {
 			clicks: clicks.mock.calls.length,
 			uploads,
 			enabled: getShortcut("add_files").enabled,
-			accept: picker.accept,
 		}).toStrictEqual({
 			clicks: 2,
 			uploads: ["picked.png"],
 			enabled: true,
-			accept: "image/*,text/*",
 		});
+	});
+
+	it("gives the active composer's file input upstream's id, no accept filter, no aria-label, and multiple", () => {
+		renderComposer(CHIN);
+		const picker = fileInput();
+
+		expect({
+			id: picker.id,
+			accept: picker.getAttribute("accept"),
+			ariaLabel: picker.getAttribute("aria-label"),
+			multiple: picker.multiple,
+		}).toStrictEqual({id: "chat-input-file-upload-epitaxy", accept: null, ariaLabel: null, multiple: true});
+	});
+
+	it("leaves the id off an inactive composer's file input", () => {
+		render(
+			<QueryClientProvider client={new QueryClient()}>
+				<Composer variant="session" draftKey={SESSION} onSend={vi.fn<OnSend>()} active={false} />
+			</QueryClientProvider>,
+		);
+
+		expect(fileInput().getAttribute("id")).toBeNull();
+	});
+
+	it("drops a pick when the composer switched to another session while the picker was open", async () => {
+		mockUploads(savedAs(`${ATTACHMENTS}/0010.png`));
+		const queryClient = new QueryClient();
+		queryClient.setQueryData(customizeMcpServersQueryOptions.queryKey, []);
+		const view = (draftKey: string) => (
+			<QueryClientProvider client={queryClient}>
+				<Composer variant="session" draftKey={draftKey} onSend={vi.fn<OnSend>()} />
+			</QueryClientProvider>
+		);
+		const {rerender} = render(view(SESSION));
+		vi.spyOn(fileInput(), "click").mockImplementation(() => {});
+
+		fireEvent.keyDown(prompt(), {key: "u", code: "KeyU", metaKey: true});
+		rerender(view("session-bob"));
+		fireEvent.change(fileInput(), {target: {files: [png("stale.png")]}});
+		await new Promise((resolve) => {
+			setTimeout(resolve, 0);
+		});
+
+		expect({
+			uploads,
+			alice: getContextChips(SESSION).map((chip) => chip.name),
+			bob: getContextChips("session-bob").map((chip) => chip.name),
+		}).toStrictEqual({uploads: [], alice: [], bob: []});
 	});
 
 	it("shows a pending image tile while the upload runs, then swaps in the saved image", async () => {

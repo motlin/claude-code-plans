@@ -130,6 +130,8 @@ interface ComposerProps {
 	promptHistory?: readonly string[] | undefined;
 	/** Subscribes to requests that replace the draft, focus it and put the caret at the end. */
 	subscribePrefill?: ((listener: (text: string) => void) => () => void) | undefined;
+	/** Upstream's `isPanelActive`: only the active pane's composer gives its file input the upload id. */
+	active?: boolean | undefined;
 }
 
 /**
@@ -424,6 +426,7 @@ export function Composer({
 	forkLabel = "Fork with this prompt",
 	promptHistory = NO_HISTORY,
 	subscribePrefill,
+	active = true,
 }: ComposerProps) {
 	const {text: prompt, setText: setPrompt, clear: clearDraft} = useComposerDraft(draftKey);
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -468,7 +471,12 @@ export function Composer({
 		menuShortcutOptions,
 	);
 	const fileInputRef = useRef<HTMLInputElement>(null);
-	const openFilePicker = useCallback(() => fileInputRef.current?.click(), []);
+	// The draft the open picker belongs to; upstream (`Ld`) drops a pick when the scope changed while it was open.
+	const pickerDraftKeyRef = useRef<string | null>(null);
+	const openFilePicker = useCallback(() => {
+		pickerDraftKeyRef.current = draftKey;
+		fileInputRef.current?.click();
+	}, [draftKey]);
 	useShortcut("add_files", openFilePicker, {disabled});
 	const chinLaunchOptions = live?.options ?? launchOptions;
 
@@ -835,12 +843,13 @@ export function Composer({
 				ref={fileInputRef}
 				type="file"
 				multiple
-				accept="image/*,text/*"
-				aria-label="Add files or photos"
+				id={active ? "chat-input-file-upload-epitaxy" : undefined}
 				tabIndex={-1}
 				className="hidden"
 				onChange={(e) => {
-					attachFiles(Array.from(e.target.files ?? []));
+					const pickedFor = pickerDraftKeyRef.current;
+					pickerDraftKeyRef.current = null;
+					if (pickedFor === draftKey) attachFiles(Array.from(e.target.files ?? []));
 					e.target.value = "";
 				}}
 			/>
