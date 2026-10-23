@@ -215,17 +215,15 @@ export interface PermissionKeyEvent {
 	shiftKey: boolean;
 }
 
-/** Upstream's card keys: 1 or Esc deny, 2 or ⌘⏎ allow once. */
+/**
+ * Upstream's inline card keys: Esc denies, ⌘⏎ allows once and ⇧⌘⏎ grants the persistent option.
+ * Digits are dock-only upstream, so the inline card binds none, and ⌘⏎ yields to alt.
+ */
 export function permissionDecisionForKey(event: PermissionKeyEvent): PermissionDecision | null {
-	if (event.altKey || event.shiftKey) return null;
-	if (event.metaKey || event.ctrlKey) return event.key === "Enter" ? "allow" : null;
-	switch (event.key) {
-		case "1":
-		case "Escape":
-			return "deny";
-		case "2":
-			return "allow";
-		default:
-			return null;
+	if (event.altKey) return null;
+	if (event.metaKey || event.ctrlKey) {
+		if (event.key !== "Enter") return null;
+		return event.shiftKey ? "always" : "allow";
 	}
+	return event.key === "Escape" && !event.shiftKey ? "deny" : null;
 }

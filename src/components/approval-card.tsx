@@ -1,5 +1,5 @@
 import {Loader2} from "lucide-react";
-import type {ButtonHTMLAttributes, ReactNode} from "react";
+import type {ButtonHTMLAttributes, KeyboardEvent, ReactNode, Ref} from "react";
 
 const ACTION_BUTTON =
 	"inline-flex h-6 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-r5 px-2 text-[13px]/[19px] whitespace-nowrap select-none hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus disabled:cursor-not-allowed disabled:opacity-50 [&_kbd]:text-[11px]";
@@ -50,6 +50,55 @@ export const APPROVAL_CARD_TITLE = "flex min-h-6 items-center text-[13px]/[19px]
 const STACK_ACTIONS =
 	"@max-[420px]:flex-col @max-[420px]:items-stretch @max-[420px]:[&>div]:flex-col @max-[420px]:[&>div]:items-stretch @max-[420px]:[&_[data-cds=SplitDropdownButton]]:w-full @max-[420px]:[&_[data-cds=SplitDropdownButton]>[data-cds-segment]:first-child_button]:flex-auto";
 
+const ROAM_KEYS = new Set(["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"]);
+
+function enabledButtons(actions: HTMLElement | null): HTMLButtonElement[] {
+	return actions === null ? [] : [...actions.querySelectorAll<HTMLButtonElement>("button:not(:disabled)")];
+}
+
+function isPrimary(button: HTMLButtonElement): boolean {
+	return button.matches("[data-approval-primary]") || button.querySelector("[data-approval-primary]") !== null;
+}
+
+/**
+ * Upstream's card root keys (`Sq`): from the root or an action, the arrows roam the enabled
+ * action buttons, wrapping and mirrored in RTL. Enter on the root itself focuses the primary
+ * (else the last button), and a repeated Enter on an action is swallowed.
+ */
+function onApprovalRootKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+	const root = event.currentTarget;
+	const actions = root.querySelector<HTMLElement>("[data-approval-card-actions]");
+	const target = event.target instanceof Element ? event.target : null;
+	const fromActions = target !== null && actions?.contains(target) === true;
+	if (ROAM_KEYS.has(event.key)) {
+		if (target !== root && !fromActions) return;
+		const buttons = enabledButtons(actions);
+		if (buttons.length === 0) return;
+		event.preventDefault();
+		event.stopPropagation();
+		const rtl = getComputedStyle(root).direction === "rtl";
+		const back = event.key === "ArrowUp" || event.key === (rtl ? "ArrowRight" : "ArrowLeft");
+		const step = back ? -1 : 1;
+		const at = buttons.findIndex((button) => button === root.ownerDocument.activeElement);
+		const next = at === -1 ? (step === 1 ? 0 : buttons.length - 1) : (at + step + buttons.length) % buttons.length;
+		buttons[next]?.focus();
+		return;
+	}
+	if (event.key !== "Enter") return;
+	if (event.repeat && fromActions) {
+		event.preventDefault();
+		event.stopPropagation();
+		return;
+	}
+	if (target !== root || event.repeat || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
+	const buttons = enabledButtons(actions);
+	const primary = buttons.find(isPrimary) ?? buttons.at(-1);
+	if (primary === undefined) return;
+	event.preventDefault();
+	event.stopPropagation();
+	primary.focus();
+}
+
 /**
  * Upstream's approval card shell for a pending permission: a scrolling body
  * and an action row, 10px radius and 12px padding. Each card is its own
@@ -58,6 +107,7 @@ const STACK_ACTIONS =
  * the composer it takes the popover fill and shadow.
  */
 export function ApprovalCardShell({
+	rootRef,
 	label,
 	digits,
 	body,
@@ -65,6 +115,7 @@ export function ApprovalCardShell({
 	footer,
 	presentation = "dock",
 }: {
+	rootRef?: Ref<HTMLDivElement>;
 	/** The card's accessible group label; omitted cards are a plain focusable box. */
 	label?: string;
 	/** Widest keycap digit count, which upstream uses to size the keycap column. */
@@ -84,13 +135,19 @@ export function ApprovalCardShell({
 	const bodyGap = presentation === "card" ? "gap-[24px]" : "gap-2.5";
 	return (
 		<div className="@container/approval-dock [--approval-dock-floor:144px] @max-[500px]/approval-dock:[--approval-dock-floor:208px]">
+			{/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/no-noninteractive-element-interactions -- upstream's focusable card root: arrows roam its action buttons, Enter focuses the primary, and clicks stop short of the transcript */}
 			<div
+				ref={rootRef}
 				data-approval-card-root
 				data-approval-card-digits={digits}
 				data-approval-presentation={presentation}
 				role={label === undefined ? undefined : "group"}
 				aria-label={label}
 				tabIndex={0}
+				onKeyDown={onApprovalRootKeyDown}
+				onClick={(event) => {
+					event.stopPropagation();
+				}}
 				className={`@container relative isolate flex max-h-[60vh] flex-col rounded-r7 p-3 text-[13px]/[19px] text-primary focus-visible:outline-1 focus-visible:outline-fill-accent focus-visible:outline-offset-2 ${look}`}
 			>
 				<div

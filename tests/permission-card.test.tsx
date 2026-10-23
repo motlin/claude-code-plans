@@ -3,7 +3,7 @@
 import {cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {actAndSettle} from "./act-and-settle";
 import type {ComponentProps} from "react";
-import {afterEach, describe, expect, it, vi} from "vite-plus/test";
+import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {BackgroundTasksOpenerProvider} from "../src/components/background-tasks-opener-context";
 import {PermissionCard} from "../src/components/permission-card";
@@ -430,14 +430,14 @@ describe("permissionDecisionForKey", () => {
 	const plain = {metaKey: false, ctrlKey: false, altKey: false, shiftKey: false};
 
 	it.each([
-		{event: {...plain, key: "1"}, decision: "deny"},
 		{event: {...plain, key: "Escape"}, decision: "deny"},
-		{event: {...plain, key: "2"}, decision: "allow"},
 		{event: {...plain, key: "Enter", metaKey: true}, decision: "allow"},
 		{event: {...plain, key: "Enter", ctrlKey: true}, decision: "allow"},
+		{event: {...plain, key: "Enter", metaKey: true, shiftKey: true}, decision: "always"},
+		{event: {...plain, key: "Enter", metaKey: true, altKey: true}, decision: null},
 		{event: {...plain, key: "Enter"}, decision: null},
-		{event: {...plain, key: "3"}, decision: null},
-		{event: {...plain, key: "1", metaKey: true}, decision: null},
+		{event: {...plain, key: "1"}, decision: null},
+		{event: {...plain, key: "2"}, decision: null},
 		{event: {...plain, key: "Escape", shiftKey: true}, decision: null},
 	])("maps $event.key to $decision", ({event, decision}) => {
 		expect(permissionDecisionForKey(event)).toStrictEqual(decision);
@@ -452,7 +452,9 @@ function renderCard({
 	const utils = render(
 		<div>
 			<div data-focus-region="composer">
-				<textarea aria-label="Prompt" />
+				<div data-composer-card>
+					<textarea aria-label="Prompt" />
+				</div>
 			</div>
 			<PermissionCard
 				title={{action: "run", meta: "Remove the build output"}}
@@ -701,62 +703,221 @@ describe("PermissionCard", () => {
 		expect(onDecision.mock.calls).toStrictEqual([["allow"]]);
 	});
 
-	it.each([
-		{init: {key: "1"}, decision: "deny"},
-		{init: {key: "Escape"}, decision: "deny"},
-		{init: {key: "2"}, decision: "allow"},
-		{init: {key: "Enter", metaKey: true}, decision: "allow"},
-	])("$init.key answers while nothing is focused", ({init, decision}) => {
-		const {onDecision} = renderCard();
-		fireEvent.keyDown(document.body, init);
-		expect(onDecision.mock.calls).toStrictEqual([[decision]]);
-	});
-
-	it("answers from the empty composer and from the focused card", async () => {
-		const {container, onDecision} = renderCard();
-		const prompt = screen.getByRole("textbox", {name: "Prompt"});
-		prompt.focus();
-		await actAndSettle(() => {
-			fireEvent.keyDown(prompt, {key: "2"});
+	describe("keys", () => {
+		beforeEach(() => {
+			vi.useFakeTimers({toFake: ["performance"]});
 		});
-		const card = container.querySelector<HTMLElement>("[data-approval-card-root]")!;
-		card.focus();
-		await actAndSettle(() => {
-			fireEvent.keyDown(card, {key: "Escape"});
+		afterEach(() => {
+			vi.useRealTimers();
 		});
-		expect(onDecision.mock.calls).toStrictEqual([["allow"], ["deny"]]);
-	});
 
-	it("ignores Esc, digits and ⌘⏎ while the composer has text", () => {
-		const {onDecision} = renderCard();
-		const prompt = screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
-		fireEvent.change(prompt, {target: {value: "hello"}});
-		prompt.focus();
-		for (const init of [{key: "1"}, {key: "2"}, {key: "Escape"}, {key: "Enter", metaKey: true}]) {
-			fireEvent.keyDown(prompt, init);
+		/** Moves past upstream's 400ms arm grace after the card mounts. */
+		function arm() {
+			vi.advanceTimersByTime(400);
 		}
-		expect(onDecision.mock.calls).toStrictEqual([]);
+
+		it.each([
+			{init: {key: "Escape"}, decision: "deny"},
+			{init: {key: "Enter", metaKey: true}, decision: "allow"},
+		])("$init.key answers while nothing is focused", ({init, decision}) => {
+			const {onDecision} = renderCard();
+			arm();
+			fireEvent.keyDown(document.body, init);
+			expect(onDecision.mock.calls).toStrictEqual([[decision]]);
+		});
+
+		it("binds no digits on the inline card", () => {
+			const {onDecision} = renderCard({persistentAllow: "always"});
+			arm();
+			for (const key of ["1", "2", "3"]) fireEvent.keyDown(document.body, {key});
+			expect(onDecision.mock.calls).toStrictEqual([]);
+		});
+
+		it("listens on window in the capture phase and stops the key there", () => {
+			const {onDecision} = renderCard();
+			arm();
+			const bubbled = vi.fn<(event: Event) => void>();
+			document.addEventListener("keydown", bubbled);
+			fireEvent.keyDown(document.body, {key: "Escape"});
+			document.removeEventListener("keydown", bubbled);
+			expect({calls: onDecision.mock.calls, bubbled: bubbled.mock.calls.length}).toStrictEqual({
+				calls: [["deny"]],
+				bubbled: 0,
+			});
+		});
+
+		it("swallows Esc and ⌘⏎ within 400ms of mounting, then answers", () => {
+			const {onDecision} = renderCard();
+			const early = fireEvent.keyDown(document.body, {key: "Escape"});
+			fireEvent.keyDown(document.body, {key: "Enter", metaKey: true});
+			vi.advanceTimersByTime(399);
+			fireEvent.keyDown(document.body, {key: "Escape"});
+			const callsInGrace = [...onDecision.mock.calls];
+			vi.advanceTimersByTime(1);
+			fireEvent.keyDown(document.body, {key: "Escape"});
+			expect({early, callsInGrace, calls: onDecision.mock.calls}).toStrictEqual({
+				early: false,
+				callsInGrace: [],
+				calls: [["deny"]],
+			});
+		});
+
+		it("swallows repeated Esc and ⌘⏎", () => {
+			const {onDecision} = renderCard();
+			arm();
+			const results = [
+				fireEvent.keyDown(document.body, {key: "Escape", repeat: true}),
+				fireEvent.keyDown(document.body, {key: "Enter", metaKey: true, repeat: true}),
+			];
+			expect({results, calls: onDecision.mock.calls}).toStrictEqual({results: [false, false], calls: []});
+		});
+
+		it("yields Esc and ⌘⏎ to IME composition, and ⌘⏎ to alt", () => {
+			const {onDecision} = renderCard();
+			arm();
+			fireEvent.keyDown(document.body, {key: "Escape", isComposing: true});
+			fireEvent.keyDown(document.body, {key: "Enter", metaKey: true, isComposing: true});
+			fireEvent.keyDown(document.body, {key: "Enter", metaKey: true, altKey: true});
+			expect(onDecision.mock.calls).toStrictEqual([]);
+		});
+
+		it("answers from the empty composer and from the focused card", async () => {
+			const {container, onDecision} = renderCard();
+			arm();
+			const prompt = screen.getByRole("textbox", {name: "Prompt"});
+			prompt.focus();
+			await actAndSettle(() => {
+				fireEvent.keyDown(prompt, {key: "Enter", metaKey: true});
+			});
+			const card = container.querySelector<HTMLElement>("[data-approval-card-root]")!;
+			card.focus();
+			await actAndSettle(() => {
+				fireEvent.keyDown(card, {key: "Escape"});
+			});
+			expect(onDecision.mock.calls).toStrictEqual([["allow"], ["deny"]]);
+		});
+
+		it("leaves ⌘⏎ to a composer draft", () => {
+			const {onDecision} = renderCard();
+			arm();
+			const prompt = screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
+			fireEvent.change(prompt, {target: {value: "hello"}});
+			prompt.focus();
+			const result = fireEvent.keyDown(prompt, {key: "Enter", metaKey: true});
+			expect({result, calls: onDecision.mock.calls}).toStrictEqual({result: true, calls: []});
+		});
+
+		it("yields Esc to an open composer popup", () => {
+			const {onDecision} = renderCard();
+			arm();
+			const prompt = screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
+			prompt.setAttribute("aria-controls", "slash-menu");
+			prompt.focus();
+			fireEvent.keyDown(prompt, {key: "Escape"});
+			expect(onDecision.mock.calls).toStrictEqual([]);
+		});
+
+		it("ignores keys inside an open dialog", () => {
+			const {onDecision} = renderCard();
+			arm();
+			const dialog = document.createElement("div");
+			dialog.setAttribute("role", "dialog");
+			const button = document.createElement("button");
+			dialog.append(button);
+			document.body.append(dialog);
+			button.focus();
+			fireEvent.keyDown(button, {key: "Escape"});
+			fireEvent.keyDown(button, {key: "Enter", metaKey: true});
+			dialog.remove();
+			expect(onDecision.mock.calls).toStrictEqual([]);
+		});
+
+		it("sends the persistent grant on ⇧⌘⏎ only with focus in the card or the empty composer", async () => {
+			const {container, onDecision} = renderCard({persistentAllow: "always"});
+			arm();
+			const press = async (target: HTMLElement) => {
+				target.focus();
+				await actAndSettle(() => {
+					fireEvent.keyDown(target, {key: "Enter", metaKey: true, shiftKey: true});
+				});
+			};
+			await press(document.body);
+			const fromBody = [...onDecision.mock.calls];
+			await press(container.querySelector<HTMLElement>("[data-approval-card-root]")!);
+			await press(screen.getByRole("textbox", {name: "Prompt"}));
+			expect({fromBody, calls: onDecision.mock.calls}).toStrictEqual({
+				fromBody: [],
+				calls: [["always"], ["always"]],
+			});
+		});
+
+		it("ignores ⇧⌘⏎ without a persistent option", () => {
+			const {container, onDecision} = renderCard();
+			arm();
+			const card = container.querySelector<HTMLElement>("[data-approval-card-root]")!;
+			card.focus();
+			fireEvent.keyDown(card, {key: "Enter", metaKey: true, shiftKey: true});
+			expect(onDecision.mock.calls).toStrictEqual([]);
+		});
+
+		it("disables the buttons and keys without a writable live pane", () => {
+			const {onDecision} = renderCard({canAnswer: false});
+			arm();
+			fireEvent.keyDown(document.body, {key: "Escape"});
+			expect({
+				calls: onDecision.mock.calls,
+				allowDisabled: screen.getByRole<HTMLButtonElement>("button", {name: /^Allow once/}).disabled,
+				hint: screen.getByText("Answer in the terminal").textContent,
+			}).toStrictEqual({calls: [], allowDisabled: true, hint: "Answer in the terminal"});
+		});
 	});
 
-	it("ignores keys inside an open dialog", () => {
-		const {onDecision} = renderCard();
-		const dialog = document.createElement("div");
-		dialog.setAttribute("role", "dialog");
-		const button = document.createElement("button");
-		dialog.append(button);
-		document.body.append(dialog);
-		fireEvent.keyDown(button, {key: "Escape"});
-		dialog.remove();
-		expect(onDecision.mock.calls).toStrictEqual([]);
-	});
+	describe("card root", () => {
+		const focusedLabel = () =>
+			document.activeElement?.getAttribute("aria-label") ?? document.activeElement?.textContent;
 
-	it("disables the buttons and keys without a writable live pane", () => {
-		const {onDecision} = renderCard({canAnswer: false});
-		fireEvent.keyDown(document.body, {key: "2"});
-		expect({
-			calls: onDecision.mock.calls,
-			allowDisabled: screen.getByRole<HTMLButtonElement>("button", {name: /^Allow once/}).disabled,
-			hint: screen.getByText("Answer in the terminal").textContent,
-		}).toStrictEqual({calls: [], allowDisabled: true, hint: "Answer in the terminal"});
+		it("roams the buttons with the arrow keys, wrapping at both ends", () => {
+			const {container} = renderCard();
+			const card = container.querySelector<HTMLElement>("[data-approval-card-root]")!;
+			const deny = screen.getByRole("button", {name: "Deny"});
+			deny.focus();
+			const seen: Array<string | null | undefined> = [];
+			for (const key of ["ArrowRight", "ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp"]) {
+				fireEvent.keyDown(document.activeElement ?? card, {key});
+				seen.push(focusedLabel());
+			}
+			expect(seen).toStrictEqual([
+				"Allow onceCtrl⏎Enter",
+				"Deny",
+				"Allow onceCtrl⏎Enter",
+				"Deny",
+				"Allow onceCtrl⏎Enter",
+			]);
+		});
+
+		it("enters the card from its root: arrows start at an end, Enter focuses the primary", () => {
+			const {container} = renderCard({persistentAllow: "always"});
+			const card = container.querySelector<HTMLElement>("[data-approval-card-root]")!;
+			const seen: Array<string | null | undefined> = [];
+			card.focus();
+			fireEvent.keyDown(card, {key: "ArrowRight"});
+			seen.push(focusedLabel());
+			card.focus();
+			fireEvent.keyDown(card, {key: "ArrowLeft"});
+			seen.push(focusedLabel());
+			card.focus();
+			fireEvent.keyDown(card, {key: "Enter"});
+			seen.push(focusedLabel());
+			expect(seen).toStrictEqual(["Deny", "More allow options", "Always allow, Don’t ask again for this tool"]);
+		});
+
+		it("keeps clicks inside the card from reaching the transcript", () => {
+			const {container} = renderCard();
+			const outer = vi.fn<(event: Event) => void>();
+			document.addEventListener("click", outer);
+			fireEvent.click(container.querySelector("[data-permission-detail]")!);
+			document.removeEventListener("click", outer);
+			expect(outer.mock.calls.length).toStrictEqual(0);
+		});
 	});
 });

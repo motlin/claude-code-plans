@@ -2,6 +2,7 @@ import {Check, ChevronLeft, ChevronRight} from "lucide-react";
 import {type MouseEvent, type RefObject, useEffect, useRef, useState} from "react";
 import {flushSync} from "react-dom";
 
+import {APPROVAL_ARM_GRACE_MS, approvalHotkeyFocusAllowed, onScreen} from "../lib/dock-keys";
 import type {QuestionAnswer} from "../lib/hook-events";
 import type {QuestionLike} from "../lib/ask-user-question";
 import {clearQuestionCardState, readQuestionCardState, writeQuestionCardState} from "../lib/question-card-store";
@@ -71,25 +72,6 @@ function selectionInside(event: MouseEvent<HTMLElement>): boolean {
 	);
 }
 
-/** Upstream's armGraceMs: a ⌘⏎ this soon after the card mounts is ignored. */
-const ARM_GRACE_MS = 400;
-
-/** Whether focus is where upstream's approval hotkey listens: the card, the page body, or the session composer with no popup open. */
-function hotkeyFocusAllowed(card: HTMLElement): boolean {
-	const active = document.activeElement;
-	if (active === null || active === document.body || card.contains(active)) return true;
-	return (
-		active instanceof HTMLTextAreaElement &&
-		active.closest("[data-composer-card]") !== null &&
-		!active.hasAttribute("aria-controls")
-	);
-}
-
-function onScreen(card: HTMLElement): boolean {
-	const rect = card.getBoundingClientRect();
-	return rect.bottom >= 0 && rect.top <= window.innerHeight;
-}
-
 /**
  * Upstream's shared approval hotkey: a window capture-phase ⌘⏎ / Ctrl+⏎ that
  * runs `hotkeyRef.current` with focus in the card, on the body, or in the
@@ -105,8 +87,8 @@ function useApprovalHotkey(cardRootRef: RefObject<HTMLDivElement | null>, hotkey
 			const card = cardRootRef.current;
 			const run = hotkeyRef.current;
 			if (card === null || run === null) return;
-			if (performance.now() - armedAt < ARM_GRACE_MS) return;
-			if (!hotkeyFocusAllowed(card) || !onScreen(card)) return;
+			if (performance.now() - armedAt < APPROVAL_ARM_GRACE_MS) return;
+			if (!approvalHotkeyFocusAllowed(card) || !onScreen(card)) return;
 			event.preventDefault();
 			event.stopPropagation();
 			run();

@@ -1,8 +1,8 @@
 import {Loader2} from "lucide-react";
-import {useCallback, useEffect, useState, type ReactNode} from "react";
+import {useCallback, useEffect, useRef, useState, type ReactNode, type RefObject} from "react";
 
 import {useIsMac} from "../hooks/use-is-mac";
-import {dockKeyAllowed} from "../lib/dock-keys";
+import {APPROVAL_ARM_GRACE_MS, approvalHotkeyFocusAllowed, isIdleComposer, onScreen} from "../lib/dock-keys";
 import {permissionDecisionForKey, type PermissionDecision, type PermissionTitle} from "../lib/permission-card";
 import {toAriaKeyShortcuts} from "../lib/shortcuts/format";
 import {
@@ -21,7 +21,7 @@ import {SplitDropdownButton} from "./ui/split-dropdown-button";
  * "Allow Claude to <action> <meta>?", the detail block, and [Deny] then the allow
  * group [Allow once ⌘⏎]. When the CLI's dialog offers a persistent option, it leads instead as a
  * primary split button ("Always allow" / "Allow for this session") whose menu holds Allow once.
- * Keys act while the card is focused, nothing is focused, or the composer is empty.
+ * Upstream's keys (Esc deny, ⌘⏎ allow once, ⇧⌘⏎ the persistent option) and no digits, which are dock-only.
  */
 export function PermissionCard({
 	title,
@@ -70,23 +70,12 @@ export function PermissionCard({
 		[onDecision],
 	);
 
-	useEffect(() => {
-		if (!enabled) return undefined;
-		function onKeyDown(event: KeyboardEvent) {
-			if (event.defaultPrevented || !dockKeyAllowed(event.target)) return;
-			const decision = permissionDecisionForKey(event);
-			if (decision === null) return;
-			event.preventDefault();
-			void decide(decision);
-		}
-		document.addEventListener("keydown", onKeyDown);
-		return () => {
-			document.removeEventListener("keydown", onKeyDown);
-		};
-	}, [enabled, decide]);
+	const cardRootRef = useRef<HTMLDivElement>(null);
+	usePermissionHotkeys(cardRootRef, {enabled, persistent: persistentAllow !== null, decide});
 
 	return (
 		<ApprovalCardShell
+			rootRef={cardRootRef}
 			label={"action" in title ? `Permission request: ${title.action}` : "Permission request"}
 			footer={footer}
 			presentation="card"
@@ -159,6 +148,51 @@ export function PermissionCard({
 			}
 		/>
 	);
+}
+
+/**
+ * Upstream's approval hotkeys (`c5`) on window in the capture phase. They act with focus in the card,
+ * on the page body or in the idle composer, and yield to IME, popups and other fields, and while the card is
+ * off-screen. ⌘⏎ also yields to alt and a composer draft. A repeat, or a key within the 400ms arm grace,
+ * is swallowed with no action. ⇧⌘⏎ needs a persistent option and focus in the card or the composer.
+ */
+function usePermissionHotkeys(
+	cardRootRef: RefObject<HTMLDivElement | null>,
+	{
+		enabled,
+		persistent,
+		decide,
+	}: {enabled: boolean; persistent: boolean; decide: (decision: PermissionDecision) => unknown},
+) {
+	const armedAtRef = useRef<number | null>(null);
+	useEffect(() => {
+		armedAtRef.current = performance.now();
+	}, []);
+	useEffect(() => {
+		if (!enabled) return undefined;
+		const onKeyDown = (event: KeyboardEvent) => {
+			const card = cardRootRef.current;
+			const decision = permissionDecisionForKey(event);
+			if (card === null || decision === null) return;
+			if (event.isComposing) {
+				if (decision === "deny") event.stopPropagation();
+				return;
+			}
+			if (!approvalHotkeyFocusAllowed(card) || !onScreen(card)) return;
+			const active = document.activeElement;
+			if (decision === "allow" && isIdleComposer(active) && active.value !== "") return;
+			event.preventDefault();
+			event.stopPropagation();
+			const armedAt = armedAtRef.current ?? performance.now();
+			if (event.repeat || performance.now() - armedAt < APPROVAL_ARM_GRACE_MS) return;
+			if (decision === "always" && !(persistent && (card.contains(active) || isIdleComposer(active)))) return;
+			decide(decision);
+		};
+		window.addEventListener("keydown", onKeyDown, true);
+		return () => {
+			window.removeEventListener("keydown", onKeyDown, true);
+		};
+	}, [cardRootRef, enabled, persistent, decide]);
 }
 
 /** Upstream's body classes: the detail block (`Lg`), its footnote (`kg`) and the description line (`Dg`). */
