@@ -1,4 +1,4 @@
-import type {ButtonHTMLAttributes, KeyboardEvent, ReactNode, Ref} from "react";
+import type {ButtonHTMLAttributes, DragEvent, KeyboardEvent, ReactNode, Ref} from "react";
 
 import {Spinner} from "./ui/spinner";
 
@@ -114,6 +114,14 @@ function onApprovalRootKeyDown(event: KeyboardEvent<HTMLDivElement>) {
 	primary.focus();
 }
 
+/** Upstream swallows file drags on the card so a drop never reaches the composer's attach target. */
+function swallowFileDrag(event: DragEvent<HTMLDivElement>) {
+	if (!event.dataTransfer.types.includes("Files")) return;
+	event.preventDefault();
+	event.stopPropagation();
+	event.dataTransfer.dropEffect = "none";
+}
+
 /**
  * Upstream's approval card shell for a pending permission: a scrolling body
  * and an action row, 10px radius and 12px padding. Each card is its own
@@ -164,6 +172,10 @@ export function ApprovalCardShell({
 				aria-label={label}
 				tabIndex={0}
 				onKeyDown={onApprovalRootKeyDown}
+				onDragEnter={swallowFileDrag}
+				onDragOver={swallowFileDrag}
+				onDragLeave={swallowFileDrag}
+				onDrop={swallowFileDrag}
 				onClick={(event) => {
 					event.stopPropagation();
 				}}

@@ -79,3 +79,53 @@ describe("approval card chrome", () => {
 		}).toStrictEqual({card: [], secondary: [], secondaryBorder: [], primary: []});
 	});
 });
+
+function dragEvent(type: string, types: string[]) {
+	const event = new Event(type, {bubbles: true, cancelable: true});
+	const dataTransfer = {types, dropEffect: "copy"};
+	Object.defineProperty(event, "dataTransfer", {value: dataTransfer});
+	return {event, dataTransfer};
+}
+
+let listeners = new AbortController();
+afterEach(() => {
+	listeners.abort();
+	listeners = new AbortController();
+});
+
+describe("approval card file drops", () => {
+	it("swallows file drags on the card so they never reach a parent drop handler, as upstream does", () => {
+		const {root} = permissionChrome();
+		const reached: string[] = [];
+		for (const type of ["dragenter", "dragover", "dragleave", "drop"]) {
+			document.addEventListener(type, () => reached.push(type), {signal: listeners.signal});
+		}
+		const results = ["dragenter", "dragover", "dragleave", "drop"].map((type) => {
+			const {event, dataTransfer} = dragEvent(type, ["Files"]);
+			root?.dispatchEvent(event);
+			return {type, prevented: event.defaultPrevented, dropEffect: dataTransfer.dropEffect};
+		});
+		expect({results, reached}).toStrictEqual({
+			results: [
+				{type: "dragenter", prevented: true, dropEffect: "none"},
+				{type: "dragover", prevented: true, dropEffect: "none"},
+				{type: "dragleave", prevented: true, dropEffect: "none"},
+				{type: "drop", prevented: true, dropEffect: "none"},
+			],
+			reached: [],
+		});
+	});
+
+	it("lets non-file drags through", () => {
+		const {root} = permissionChrome();
+		const reached: string[] = [];
+		document.addEventListener("drop", () => reached.push("drop"), {signal: listeners.signal});
+		const {event, dataTransfer} = dragEvent("drop", ["text/plain"]);
+		root?.dispatchEvent(event);
+		expect({prevented: event.defaultPrevented, dropEffect: dataTransfer.dropEffect, reached}).toStrictEqual({
+			prevented: false,
+			dropEffect: "copy",
+			reached: ["drop"],
+		});
+	});
+});
