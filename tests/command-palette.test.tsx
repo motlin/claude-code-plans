@@ -245,6 +245,47 @@ describe("CommandPalette shell", () => {
 		}).toStrictEqual({afterRight: "Artifacts", afterWrap: "Files", card: null});
 	});
 
+	it("a held → stops at the last tab instead of wrapping", async () => {
+		const dialog = await openPalette();
+		await within(dialog).findByRole("option", {name: /Refactor auth module/});
+		const input = within(dialog).getByRole("combobox");
+		const selectedTab = () => within(dialog).getByRole("tab", {selected: true}).textContent;
+		for (let index = 0; index < 4; index++) fireEvent.keyDown(input, {key: "ArrowRight", code: "ArrowRight"});
+		const start = selectedTab();
+
+		for (let index = 0; index < 5; index++) {
+			fireEvent.keyDown(input, {key: "ArrowRight", code: "ArrowRight", repeat: true});
+		}
+		const afterFive = selectedTab();
+		for (let index = 0; index < 10; index++) {
+			fireEvent.keyDown(input, {key: "ArrowRight", code: "ArrowRight", repeat: true});
+		}
+
+		expect({start, afterFive, afterFifteen: selectedTab()}).toStrictEqual({
+			start: "Scheduled",
+			afterFive: "Files",
+			afterFifteen: "Files",
+		});
+	});
+
+	it("a held arrow with text, or an arrow during IME composition, never steps", async () => {
+		const dialog = await openPalette();
+		await within(dialog).findByRole("option", {name: /Refactor auth module/});
+		const input = within(dialog).getByRole<HTMLTextAreaElement>("combobox");
+		const selectedTab = () => within(dialog).getByRole("tab", {selected: true}).textContent;
+
+		fireEvent.keyDown(input, {key: "ArrowRight", code: "ArrowRight", keyCode: 229});
+		const afterComposing = selectedTab();
+		fireEvent.change(input, {target: {value: "do"}});
+		input.setSelectionRange(2, 2);
+		fireEvent.keyDown(input, {key: "ArrowRight", code: "ArrowRight", repeat: true});
+
+		expect({afterComposing, afterRepeat: selectedTab()}).toStrictEqual({
+			afterComposing: "All",
+			afterRepeat: "All",
+		});
+	});
+
 	it("draws upstream's ghost pill on the active and hovered tabs and roves tabindex to the active one", async () => {
 		const dialog = await openPalette();
 		const tabs = within(dialog).getAllByRole("tab");

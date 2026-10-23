@@ -7,6 +7,8 @@ import {
 	paletteValueSuggestions,
 	parsePaletteTokens,
 	resolvePaletteProject,
+	nextPaletteType,
+	paletteTypeStep,
 	scrollIntoStrip,
 	withoutTypeTokens,
 	type PaletteTokens,
@@ -256,5 +258,71 @@ describe("scrollIntoStrip", () => {
 			pastStart: run(300, 10, 60),
 			inside: run(50, 100, 200),
 		}).toStrictEqual({pastEnd: 284, pastStart: 286, inside: 50});
+	});
+});
+
+describe("paletteTypeStep", () => {
+	const key = (overrides: Partial<Parameters<typeof paletteTypeStep>[0]> = {}) => ({
+		key: "ArrowRight",
+		shiftKey: false,
+		altKey: false,
+		metaKey: false,
+		ctrlKey: false,
+		repeat: false,
+		composing: false,
+		...overrides,
+	});
+	const field = (text: string, selectionStart = text.length, selectionEnd = selectionStart) => ({
+		text,
+		selectionStart,
+		selectionEnd,
+	});
+
+	it.each([
+		["Shift held", key({shiftKey: true}), field(""), false, 0],
+		["Alt held", key({altKey: true}), field(""), false, 0],
+		["Meta held", key({metaKey: true}), field(""), false, 0],
+		["Ctrl held", key({ctrlKey: true}), field(""), false, 0],
+		["IME composition", key({composing: true}), field(""), false, 0],
+		["a key other than an arrow", key({key: "ArrowDown"}), field(""), false, 0],
+		["a non-collapsed selection", key(), field("do", 0, 2), false, 0],
+		["the caret mid-text", key(), field("do", 1), false, 0],
+		["a repeat with text", key({repeat: true}), field("do"), false, 0],
+		["a repeat with an empty query", key({repeat: true}), field(""), false, 1],
+		["→ with an empty query", key(), field(""), false, 1],
+		["← with an empty query", key({key: "ArrowLeft"}), field(""), false, -1],
+		["→ with the caret at the end", key(), field("do", 2), false, 1],
+		["← with the caret at the end", key({key: "ArrowLeft"}), field("do", 2), false, 0],
+		["← with the caret at the start", key({key: "ArrowLeft"}), field("do", 0), false, -1],
+		["→ in RTL", key(), field(""), true, -1],
+		["← in RTL", key({key: "ArrowLeft"}), field(""), true, 1],
+		["Hebrew text in an LTR UI", key(), field("שלום"), false, 0],
+		["Latin text in an RTL UI", key(), field("do", 0), true, 0],
+		["Hebrew text in an RTL UI", key(), field("שלום", 0), true, -1],
+		["digits and spaces in an LTR UI", key(), field("12 3"), false, 1],
+	] as const)("%s → %d", (_name, event, input, rtl, expected) => {
+		expect(paletteTypeStep(event, input, rtl)).toBe(expected);
+	});
+});
+
+describe("nextPaletteType", () => {
+	const types = PaletteTypeSchema.options;
+
+	it.each([
+		["Files + 1 with wrap", "files", 1, true, "all"],
+		["Files + 1 without wrap", "files", 1, false, undefined],
+		["All − 1 with wrap", "all", -1, true, "files"],
+		["All − 1 without wrap", "all", -1, false, undefined],
+		["Scheduled + 1 without wrap", "scheduled", 1, false, "plans"],
+		["Artifacts − 1 without wrap", "artifacts", -1, false, "all"],
+	] as const)("%s", (_name, current, dir, wrap, expected) => {
+		expect(nextPaletteType(types, current, dir, wrap)).toBe(expected);
+	});
+
+	it("starts from the first entry when the current one is missing, and gives undefined when that is a no-op", () => {
+		expect({
+			missing: nextPaletteType(["a", "b"], "z", 1, true),
+			single: nextPaletteType(["a"], "a", 1, true),
+		}).toStrictEqual({missing: "a", single: undefined});
 	});
 });

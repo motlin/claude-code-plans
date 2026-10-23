@@ -319,3 +319,59 @@ export function scrollIntoStrip(
 		strip.scrollLeft += tabRect.right - (stripRect.right - pad);
 	}
 }
+
+/** The key fields upstream's `yu` reads off a palette keydown. */
+export interface PaletteStepKey {
+	key: string;
+	shiftKey: boolean;
+	altKey: boolean;
+	metaKey: boolean;
+	ctrlKey: boolean;
+	repeat: boolean;
+	composing: boolean;
+}
+
+/** The textarea fields upstream's `yu` reads. */
+export interface PaletteStepField {
+	text: string;
+	selectionStart: number | null;
+	selectionEnd: number | null;
+}
+
+const LETTER = /\p{L}/u;
+const RTL_LETTER = /[֐-ࣿיִ-﷿ﹰ-﻿\u{10800}-\u{10FFF}\u{1E800}-\u{1EFFF}]/u;
+
+/** Upstream's `vu`: every letter in `text` reads in the UI's direction (the mixed-bidi guard). */
+function lettersMatchDirection(text: string, rtl: boolean): boolean {
+	for (const char of text) {
+		if (LETTER.test(char) && RTL_LETTER.test(char) !== rtl) return false;
+	}
+	return true;
+}
+
+/**
+ * Upstream's `yu`: whether ← / → steps the type tabs (−1 / +1, mirrored in RTL) or moves the caret (0).
+ * It steps only with the caret collapsed at the matching edge, never on a held key with text,
+ * and never when the query's script direction differs from the UI's.
+ */
+export function paletteTypeStep(key: PaletteStepKey, field: PaletteStepField, rtl: boolean): -1 | 0 | 1 {
+	if (key.key !== "ArrowLeft" && key.key !== "ArrowRight") return 0;
+	if (key.shiftKey || key.altKey || key.metaKey || key.ctrlKey || key.composing) return 0;
+	const atStart = field.selectionStart === 0;
+	const atEnd = field.selectionStart === field.text.length;
+	if (field.selectionStart !== field.selectionEnd || !(atStart || atEnd)) return 0;
+	if (key.repeat && field.text !== "") return 0;
+	const direction = (key.key === "ArrowRight") === rtl ? -1 : 1;
+	return (direction === 1 ? atEnd : atStart) && lettersMatchDirection(field.text, rtl) ? direction : 0;
+}
+
+/**
+ * Upstream's `bu`: the entry `direction` steps from `current`, wrapping both ways when `wrap`
+ * (a held key passes false and stops at the ends). Undefined when the step lands back on `current`.
+ */
+export function nextPaletteType<T>(list: readonly T[], current: T, direction: -1 | 1, wrap: boolean): T | undefined {
+	const index = list.indexOf(current);
+	const target = index === -1 ? 0 : index + direction;
+	const next = wrap ? list[(target + list.length) % list.length] : list[target];
+	return next === current ? undefined : next;
+}

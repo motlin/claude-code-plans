@@ -79,10 +79,12 @@ import {
 	PaletteTypeSchema,
 	isClientPaletteType,
 	paletteDateCutoff,
+	nextPaletteType,
 	paletteFilterHints,
 	paletteProjectMatches,
 	paletteSearchParams,
 	paletteValueSuggestions,
+	paletteTypeStep,
 	parsePaletteTokens,
 	scrollIntoStrip,
 	withoutTypeTokens,
@@ -1121,18 +1123,29 @@ function PalettePopup({
 		onModeChange(mode === "search" ? "compose" : "search");
 	}
 
-	// ← / → at the matching edge of the input (or with no query) step through the type tabs, wrapping.
+	// ← / → at the matching edge of the input (or with no query) step through the type tabs:
+	// upstream's `yu` decides, and `bu` wraps unless the key is held.
 	function stepTab(event: KeyboardEvent<HTMLDivElement>) {
 		const input = inputRef.current;
-		if (compose || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
-		if (input === null || event.target !== input) return;
-		const forward = event.key === "ArrowRight";
-		const edge = forward ? input.value.length : 0;
-		if (input.value !== "" && (input.selectionStart !== edge || input.selectionEnd !== edge)) return;
+		if (compose || input === null || event.target !== input) return;
+		const direction = paletteTypeStep(
+			{
+				key: event.key,
+				shiftKey: event.shiftKey,
+				altKey: event.altKey,
+				metaKey: event.metaKey,
+				ctrlKey: event.ctrlKey,
+				repeat: event.repeat,
+				// oxlint-disable-next-line typescript/no-deprecated -- Safari reports IME keydowns only as keyCode 229, as upstream checks
+				composing: event.nativeEvent.isComposing || event.keyCode === 229,
+			},
+			{text: input.value, selectionStart: input.selectionStart, selectionEnd: input.selectionEnd},
+			getComputedStyle(input).direction === "rtl",
+		);
+		if (direction === 0) return;
 		event.preventDefault();
-		const types = PaletteTypeSchema.options;
-		const index = types.indexOf(tab);
-		chooseTab(types[(index + (forward ? 1 : types.length - 1)) % types.length] ?? "all");
+		const next = nextPaletteType(PaletteTypeSchema.options, tab, direction, !event.repeat);
+		if (next !== undefined) chooseTab(next);
 	}
 
 	// ⌥⏎ opens the row-actions card for the selected session row.
