@@ -6,6 +6,7 @@ import {afterEach, describe, expect, it} from "vite-plus/test";
 
 import {SegmentedControl} from "../src/components/settings/segmented-control";
 import {SettingsRow, SettingsSection} from "../src/components/settings/settings-row";
+import {SettingsTabContext} from "../src/components/settings/settings-row-context";
 import {Switch} from "../src/components/settings/switch";
 import {ThemedCombobox} from "../src/components/settings/themed-combobox";
 
@@ -106,6 +107,82 @@ describe("SettingsSection and SettingsRow", () => {
 		});
 	});
 
+	it("renders upstream's section header and row hooks", () => {
+		render(
+			<SettingsTabContext.Provider value="general">
+				<SettingsSection id="notifications" title="Notifications" subtitle="How Claude gets your attention.">
+					<SettingsRow slug="response-completions" title="Response completions" />
+				</SettingsSection>
+			</SettingsTabContext.Provider>,
+		);
+
+		const section = document.querySelector("section");
+		const header = section?.firstElementChild;
+		const titles = header?.firstElementChild;
+		const heading = titles?.firstElementChild;
+		const subtitle = titles?.lastElementChild;
+		const row = screen.getByRole("group", {name: "Response completions"});
+		const classes = (element: Element | null | undefined) => element?.className.split(" ");
+
+		expect({
+			section: {id: section?.id, titled: section?.getAttribute("data-settings-section-titled")},
+			header: {hook: header?.getAttribute("data-settings-group-header"), classes: classes(header)},
+			titles: classes(titles),
+			heading: {
+				tag: heading?.tagName,
+				hook: heading?.getAttribute("data-settings-group-title"),
+				classes: classes(heading),
+			},
+			subtitle: {text: subtitle?.textContent, classes: classes(subtitle)},
+			row: {
+				id: row.id,
+				item: row.getAttribute("data-settings-item"),
+				slug: row.getAttribute("data-settings-row"),
+				groupSetting: row.classList.contains("group/setting"),
+			},
+		}).toStrictEqual({
+			section: {id: "notifications", titled: ""},
+			header: {hook: "", classes: ["mb-4", "flex", "items-start", "justify-between", "gap-7"]},
+			titles: ["flex", "min-w-0", "flex-col", "gap-1"],
+			heading: {
+				tag: "H3",
+				hook: "",
+				classes: [
+					"settings-row-title",
+					"self-start",
+					"text-[15px]",
+					"leading-[20px]",
+					"font-[580]",
+					"text-primary",
+					"outline-none",
+				],
+			},
+			subtitle: {
+				text: "How Claude gets your attention.",
+				classes: ["text-footnote", "text-secondary"],
+			},
+			row: {
+				id: "setting-general-response-completions",
+				item: "",
+				slug: "response-completions",
+				groupSetting: true,
+			},
+		});
+	});
+
+	it("omits the subtitle and row id outside a settings tab", () => {
+		render(
+			<SettingsSection id="notifications" title="Notifications">
+				<SettingsRow slug="response-completions" title="Response completions" />
+			</SettingsSection>,
+		);
+
+		expect({
+			titles: document.querySelector("[data-settings-group-header] > div")?.childElementCount,
+			rowId: screen.getByRole("group", {name: "Response completions"}).getAttribute("id"),
+		}).toStrictEqual({titles: 1, rowId: null});
+	});
+
 	// Locks today's comfortable spacing: the Settings dialog is comfortable for every web user
 	// (density-default-tokens), so upstream's mb-xl / gap-lg / py-md resolve to 40 / 28 / 12px.
 	it("keeps the comfortable section and row spacing", () => {
@@ -118,11 +195,11 @@ describe("SettingsSection and SettingsRow", () => {
 
 		expect({
 			section: pick(heading.closest("section"), ["mb-10", "last:mb-0"]),
-			heading: pick(heading, ["mb-4"]),
+			header: pick(heading.closest("[data-settings-group-header]"), ["mb-4"]),
 			row: pick(group, ["gap-7", "py-3"]),
 		}).toStrictEqual({
 			section: ["mb-10", "last:mb-0"],
-			heading: ["mb-4"],
+			header: ["mb-4"],
 			row: ["gap-7", "py-3"],
 		});
 	});

@@ -34,7 +34,7 @@ import {
 	TranscriptSettings,
 } from "./settings-sections";
 import {loadedCustomizeDialogPanel, preloadCustomizeDialogPanel} from "./customize-dialog-panel-loader";
-import {SettingsFlashContext, type SettingsFlash} from "./settings-row-context";
+import {SettingsFlashContext, type SettingsFlash, SettingsTabContext} from "./settings-row-context";
 import {SettingsSearch} from "./settings-search";
 import {CUSTOMIZE_SECTION_ICONS, SETTINGS_TAB_ICONS} from "./settings-tab-icons";
 import {UsageSettings} from "./usage-settings";
@@ -284,9 +284,11 @@ export function SettingsDialog() {
 
 	const content =
 		customize === null ? (
-			<SettingsFlashContext.Provider value={flash}>
-				<Panel />
-			</SettingsFlashContext.Provider>
+			<SettingsTabContext.Provider value={tab}>
+				<SettingsFlashContext.Provider value={flash}>
+					<Panel />
+				</SettingsFlashContext.Provider>
+			</SettingsTabContext.Provider>
 		) : (
 			<Suspense fallback={null}>
 				<CustomizeDialogPanel location={customize} onNavigate={navigateHash} />

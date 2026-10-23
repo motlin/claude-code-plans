@@ -44,6 +44,14 @@ afterEach(() => {
 });
 
 describe("Claude Code settings ▸ Code appearance", () => {
+	it("ids its sections code-appearance and appearance, like upstream's Claude Code tab", async () => {
+		await renderClaudeCode();
+
+		expect(
+			[...document.querySelectorAll("section[data-settings-section-titled]")].map((section) => section.id),
+		).toStrictEqual(["code-appearance", "appearance"]);
+	});
+
 	it("re-renders the dark preview with the chosen theme", async () => {
 		// Load the lazy preview chunk, the grammar and both themes up front, so the colours below
 		// depend on rendering alone and not on how fast a loaded machine finishes the async imports.

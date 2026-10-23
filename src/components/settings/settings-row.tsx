@@ -1,5 +1,5 @@
 import {type ReactNode, useContext, useEffect, useId, useMemo, useRef} from "react";
-import {SettingsFlashContext, SettingsRowContext} from "./settings-row-context";
+import {SettingsFlashContext, SettingsRowContext, SettingsTabContext} from "./settings-row-context";
 
 /*
  * Settings section and row anatomy copied from claude.ai/code: an h3 at
@@ -9,10 +9,39 @@ import {SettingsFlashContext, SettingsRowContext} from "./settings-row-context";
  * py-md (12px) with hairline dividers between rows.
  */
 
-export function SettingsSection({title, children}: {title: string; children: ReactNode}) {
+/** Upstream's section ids are the title in kebab case (`#code-appearance`). */
+function sectionId(title: string): string {
+	return title
+		.toLowerCase()
+		.replaceAll(/[^a-z0-9]+/g, "-")
+		.replaceAll(/^-|-$/g, "");
+}
+
+export function SettingsSection({
+	id,
+	title,
+	subtitle,
+	children,
+}: {
+	/** Defaults to the kebab-cased title. */
+	id?: string;
+	title: string;
+	subtitle?: ReactNode;
+	children: ReactNode;
+}) {
 	return (
-		<section className="mb-10 last:mb-0">
-			<h3 className="mb-4 text-[15px] leading-[20px] font-[580] text-primary">{title}</h3>
+		<section id={id ?? sectionId(title)} data-settings-section-titled="" className="mb-10 last:mb-0">
+			<div data-settings-group-header="" className="mb-4 flex items-start justify-between gap-7">
+				<div className="flex min-w-0 flex-col gap-1">
+					<h3
+						data-settings-group-title=""
+						className="settings-row-title self-start text-[15px] leading-[20px] font-[580] text-primary outline-none"
+					>
+						{title}
+					</h3>
+					{subtitle === undefined ? null : <div className="text-footnote text-secondary">{subtitle}</div>}
+				</div>
+			</div>
 			<div className="[&>:not([hidden])~:not([hidden])]:border-t [&>:not([hidden])~:not([hidden])]:border-subtle dark:[&>:not([hidden])~:not([hidden])]:border-white/5 not-dark:[&>:not([hidden])~:not([hidden])]:border-primary/5">
 				{children}
 			</div>
@@ -34,6 +63,7 @@ export function SettingsRow({slug, title, description, children, footnote, class
 	const baseId = useId();
 	const titleId = `${baseId}-title`;
 	const descriptionId = description === undefined ? undefined : `${baseId}-description`;
+	const tab = useContext(SettingsTabContext);
 	const flash = useContext(SettingsFlashContext);
 	const flashing = flash?.row === slug;
 	const rowRef = useRef<HTMLDivElement>(null);
@@ -50,9 +80,12 @@ export function SettingsRow({slug, title, description, children, footnote, class
 				aria-labelledby={titleId}
 				aria-describedby={descriptionId}
 				ref={rowRef}
+				id={tab === null ? undefined : `setting-${tab}-${slug}`}
+				// Upstream's data-settings-row is empty; here it holds the slug, which search and the deep-link flash key off.
 				data-settings-row={slug}
+				data-settings-item=""
 				data-settings-flash={flashing ? "" : undefined}
-				className={`flex items-center justify-between gap-7 py-3 ${className ?? ""}`}
+				className={`group/setting flex items-center justify-between gap-7 py-3 ${className ?? ""}`}
 			>
 				<div className="flex min-w-0 flex-1 flex-col justify-center gap-1">
 					<div id={titleId} className="text-body text-primary">

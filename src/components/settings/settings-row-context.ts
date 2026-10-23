@@ -1,5 +1,7 @@
 import {createContext, useContext} from "react";
 
+import type {SettingsTab} from "../../lib/settings-hash";
+
 export interface SettingsRowIds {
 	titleId: string;
 	descriptionId: string | undefined;
@@ -18,3 +20,6 @@ export interface SettingsFlash {
 }
 
 export const SettingsFlashContext = createContext<SettingsFlash | null>(null);
+
+/** The Settings tab rendering these rows, so each row can carry upstream's `setting-<tab>-<row>` id. */
+export const SettingsTabContext = createContext<SettingsTab | null>(null);

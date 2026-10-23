@@ -124,6 +124,24 @@ describe("settings search", () => {
 		});
 	});
 
+	it.each(SettingsTabSchema.options)("ids every %s row as setting-<tab>-<slug>", async (tab) => {
+		await renderAt(`/#settings/${tab}`);
+		const dialog = await screen.findByRole("dialog", {name: "Settings"});
+		const expected = SETTINGS_INDEX.filter((entry) => entry.tab === tab).map((entry) => ({
+			id: `setting-${tab}-${entry.rowSlug}`,
+			item: "",
+		}));
+
+		await waitFor(() => {
+			expect(
+				[...dialog.querySelectorAll<HTMLElement>("[data-settings-row][aria-labelledby]")].map((row) => ({
+					id: row.id,
+					item: row.getAttribute("data-settings-item"),
+				})),
+			).toStrictEqual(expected);
+		});
+	});
+
 	it("deep links scroll to and flash the row for 1.5s, then collapse the hash", async () => {
 		const router = buildRouter("/#settings/claude-code/code-font");
 		await router.load();
