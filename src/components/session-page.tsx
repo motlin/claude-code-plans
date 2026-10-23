@@ -37,6 +37,7 @@ import {SessionFileRefs} from "./file-refs";
 import type {JumpTargetWindow} from "./jump-target-context";
 import {LegacyMessageLinkNotice} from "./legacy-message-link-notice";
 import {TileHost} from "./panes/tile-host";
+import {PlanAutoOpen} from "./plan-auto-open";
 import {useRegisterArtifactsPane, useSessionArtifacts} from "./panes/artifacts-pane-entry";
 import {preloadBackgroundTasksPane, useRegisterBackgroundTasksPane} from "./panes/background-tasks-pane-entry";
 import {preloadLinksPane, useRegisterLinksPane} from "./panes/links-pane-entry";
@@ -274,6 +275,14 @@ interface SessionViewProps extends RequestedPaneProps {
 	transcript: TranscriptData;
 	subagents: SessionSubagentsData;
 	herdr: HerdrPaneIndexData;
+}
+
+/** The window's first record, by uuid where it has one, so a session switch reads as a new transcript. */
+function firstRecordKey(transcript: TranscriptData): string | undefined {
+	const first = transcript.records[0];
+	if (first === undefined) return undefined;
+	const uuid = first["uuid"];
+	return typeof uuid === "string" ? uuid : `#${transcript.startIndex}`;
 }
 
 function SessionView({
@@ -773,6 +782,12 @@ function SessionView({
 					requestedPane={requestedPane}
 					onRequestedPaneHandled={onRequestedPaneHandled}
 				>
+					<PlanAutoOpen
+						sessionId={sessionId}
+						firstRecordUuid={firstRecordKey(transcript)}
+						liveCount={endIndex}
+						hasTodos={planModel.todos.length > 0}
+					/>
 					<TerminalPaneShortcut available={promptBehavior.hasLivePane || shellsEnabled} />
 					<FilesPaneShortcut />
 					<ChangesPaneShortcut />
