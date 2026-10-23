@@ -516,9 +516,11 @@ export function Composer({
 	);
 
 	const query = slashQuery(prompt);
-	const [dismissedPrompt, setDismissedPrompt] = useState<string | null>(null);
+	// Esc dismisses the whole `/` trigger, as upstream does: typing more keeps it closed until the prompt stops starting with `/`.
+	const [slashDismissed, setSlashDismissed] = useState(false);
+	if (slashDismissed && !prompt.startsWith("/")) setSlashDismissed(false);
 	const [highlight, setHighlight] = useState({query: "", index: 0});
-	const matches = query === null || dismissedPrompt === prompt ? [] : filterSlashCommands(slashCommands, query);
+	const matches = query === null || slashDismissed ? [] : filterSlashCommands(slashCommands, query);
 	const slashOpen = query !== null && matches.length > 0;
 	const highlighted = highlight.query === query ? Math.min(highlight.index, matches.length - 1) : 0;
 	const argumentHint = slashArgumentHint(slashCommands, prompt);
@@ -588,7 +590,7 @@ export function Composer({
 			const command = matches[highlighted];
 			if (command !== undefined) acceptSlashCommand(command);
 		} else if (e.key === "Escape") {
-			setDismissedPrompt(prompt);
+			setSlashDismissed(true);
 			e.stopPropagation();
 		} else {
 			return false;

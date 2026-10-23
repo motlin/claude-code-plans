@@ -302,7 +302,28 @@ describe("Composer slash commands", () => {
 		expect(textarea.value).toBe("/plan ");
 	});
 
-	it("closes on Escape until the text changes, and Enter then sends", () => {
+	it("stays dismissed after Escape while typing, until the prompt is cleared and / retyped", () => {
+		const {textarea} = setup();
+		fireEvent.change(textarea, {target: {value: "/"}});
+
+		fireEvent.keyDown(textarea, {key: "Escape"});
+		const afterEscape = screen.queryByRole("menu", {name: "Slash commands"});
+		fireEvent.change(textarea, {target: {value: "/m"}});
+		const afterTyping = screen.queryByRole("menu", {name: "Slash commands"});
+		fireEvent.change(textarea, {target: {value: ""}});
+		fireEvent.change(textarea, {target: {value: "/"}});
+
+		expect({afterEscape, afterTyping, reopened: rows()}).toStrictEqual({
+			afterEscape: null,
+			afterTyping: null,
+			reopened: [
+				{name: "model", highlighted: true},
+				{name: "plan", highlighted: false},
+			],
+		});
+	});
+
+	it("closes on Escape, Enter then sends, and the next prompt reopens it", () => {
 		const {textarea, onSend} = setup();
 		fireEvent.change(textarea, {target: {value: "/mo"}});
 
