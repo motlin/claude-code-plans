@@ -2,7 +2,7 @@ import {isSessionRouteAlias} from "../lib/session-route-alias";
 import {Dialog} from "@base-ui/react/dialog";
 import {Command, defaultFilter} from "cmdk";
 import {useNavigate, useRouterState} from "@tanstack/react-router";
-import {type KeyboardEvent, type ReactNode, useEffect, useMemo, useRef, useState} from "react";
+import {type KeyboardEvent, type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState} from "react";
 import {useQueries, useQuery, useQueryClient} from "@tanstack/react-query";
 import {
 	FileText,
@@ -84,6 +84,7 @@ import {
 	paletteSearchParams,
 	paletteValueSuggestions,
 	parsePaletteTokens,
+	scrollIntoStrip,
 	withoutTypeTokens,
 	type PaletteFilter,
 	type PaletteProject,
@@ -1767,36 +1768,68 @@ function PaletteFooter({
 
 /** Upstream's 28px type tablist under the input; cloud-only tabs are replaced by local types. */
 function TypeTabs({value, onChange}: {value: PaletteType; onChange: (type: PaletteType) => void}) {
+	const scrollerRef = useRef<HTMLDivElement>(null);
+	useLayoutEffect(() => {
+		const scroller = scrollerRef.current;
+		const tab = scroller?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]');
+		if (scroller && tab) {
+			scrollIntoStrip(scroller, tab, getComputedStyle(scroller).paddingLeft);
+		}
+	}, [value]);
 	return (
 		<div
-			role="tablist"
-			aria-label="Type"
-			className="relative -mt-1.5 flex items-center overflow-x-auto px-6 pb-[0.9rem] [&>[role=tab]:first-child]:before:start-0 [&>[role=tab]:last-child]:before:end-0"
+			role="group"
+			aria-label="Filters"
+			data-palette-own-keys=""
+			className="relative -mt-1.5 flow-root px-6 pb-[0.9rem]"
 		>
-			{PaletteTypeSchema.options.map((type) => {
-				const selected = type === value;
-				return (
-					<button
-						key={type}
-						type="button"
-						role="tab"
-						aria-selected={selected}
-						data-active={selected ? "" : undefined}
-						tabIndex={selected ? 0 : -1}
-						onMouseDown={(event) => {
-							event.preventDefault();
-						}}
-						onClick={() => {
-							onChange(type);
-						}}
-						// Comfortable-density geometry (28px, 0 10px, 14px/20px, 7px pill) to match the rest of the
-						// palette; upstream's default density is 20px / 6px / 12px·17px / 5px (see density-default-tokens).
-						className="relative isolate inline-flex h-7 shrink-0 cursor-pointer items-center justify-center gap-1.5 px-2.5 text-sm font-medium whitespace-nowrap text-ink-muted outline-none select-none before:absolute before:inset-x-px before:inset-y-0 before:-z-[1] before:rounded-control-sm before:transition-shadow before:duration-[60ms] focus-visible:before:shadow-focus data-[active]:text-primary data-[active]:before:bg-fill-ghost-hover [&:not([data-active])]:hover:text-secondary [&:not([data-active])]:hover:before:bg-fill-ghost-hover"
-					>
-						{paletteTypeLabels[type]}
-					</button>
-				);
-			})}
+			<div
+				ref={scrollerRef}
+				role="presentation"
+				className="-mx-6 -my-2 min-w-0 scroll-px-6 overflow-x-auto overscroll-x-contain px-6 py-2 [scrollbar-width:none]"
+				onMouseDown={(event) => {
+					event.preventDefault();
+				}}
+				onWheel={(event) => {
+					// Upstream's `en`: a vertical-only wheel scrolls the strip sideways, mirrored in RTL.
+					if (event.deltaX === 0) {
+						const scroller = event.currentTarget;
+						const direction = getComputedStyle(scroller).direction === "rtl" ? -1 : 1;
+						scroller.scrollLeft += event.deltaY * direction;
+					}
+				}}
+			>
+				<div
+					role="tablist"
+					aria-label="Type"
+					className="flex min-w-max items-center [&>[role=tab]:first-child]:before:start-0 [&>[role=tab]:last-child]:before:end-0"
+				>
+					{PaletteTypeSchema.options.map((type) => {
+						const selected = type === value;
+						return (
+							<button
+								key={type}
+								type="button"
+								role="tab"
+								aria-selected={selected}
+								data-active={selected ? "" : undefined}
+								tabIndex={selected ? 0 : -1}
+								onMouseDown={(event) => {
+									event.preventDefault();
+								}}
+								onClick={() => {
+									onChange(type);
+								}}
+								// Comfortable-density geometry (28px, 0 10px, 14px/20px, 7px pill) to match the rest of the
+								// palette; upstream's default density is 20px / 6px / 12px·17px / 5px (see density-default-tokens).
+								className="relative isolate inline-flex h-7 shrink-0 cursor-pointer items-center justify-center gap-1.5 px-2.5 text-sm font-medium whitespace-nowrap text-ink-muted outline-none select-none before:absolute before:inset-x-px before:inset-y-0 before:-z-[1] before:rounded-control-sm before:transition-shadow before:duration-[60ms] focus-visible:before:shadow-focus data-[active]:text-primary data-[active]:before:bg-fill-ghost-hover [&:not([data-active])]:hover:text-secondary [&:not([data-active])]:hover:before:bg-fill-ghost-hover"
+							>
+								{paletteTypeLabels[type]}
+							</button>
+						);
+					})}
+				</div>
+			</div>
 		</div>
 	);
 }

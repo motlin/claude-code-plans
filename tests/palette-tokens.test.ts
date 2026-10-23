@@ -7,6 +7,7 @@ import {
 	paletteValueSuggestions,
 	parsePaletteTokens,
 	resolvePaletteProject,
+	scrollIntoStrip,
 	withoutTypeTokens,
 	type PaletteTokens,
 } from "../src/lib/palette-tokens";
@@ -231,5 +232,29 @@ describe("paletteDateCutoff", () => {
 		["month", now - 30 * 24 * 60 * 60_000],
 	] as const)("cuts %s off at the right instant", (date, expected) => {
 		expect(paletteDateCutoff(date, now)).toBe(expected);
+	});
+});
+
+describe("scrollIntoStrip", () => {
+	function strip(scrollLeft: number) {
+		return {
+			scrollLeft,
+			getBoundingClientRect: () => ({left: 0, right: 390}),
+			paddingLeft: "24px",
+		};
+	}
+	const tab = (left: number, right: number) => ({getBoundingClientRect: () => ({left, right})});
+	const run = (scrollLeft: number, left: number, right: number) => {
+		const element = strip(scrollLeft);
+		scrollIntoStrip(element, tab(left, right), element.paddingLeft);
+		return element.scrollLeft;
+	};
+
+	it("scrolls by the overflow past the padded edges, and not at all when the tab already fits", () => {
+		expect({
+			pastEnd: run(0, 600, 650),
+			pastStart: run(300, 10, 60),
+			inside: run(50, 100, 200),
+		}).toStrictEqual({pastEnd: 284, pastStart: 286, inside: 50});
 	});
 });

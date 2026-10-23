@@ -292,6 +292,95 @@ describe("CommandPalette shell", () => {
 		});
 	});
 
+	it("wraps the tablist in upstream's Filters group and hidden-scrollbar scroller", async () => {
+		const dialog = await openPalette();
+		const tablist = within(dialog).getByRole("tablist", {name: "Type"});
+		const scroller = tablist.parentElement;
+		const group = scroller?.parentElement;
+		const sorted = (element: Element | null | undefined) => element?.className.split(" ").toSorted() ?? [];
+
+		expect({
+			scroller: [scroller?.getAttribute("role"), sorted(scroller)],
+			group: [
+				group?.getAttribute("role"),
+				group?.getAttribute("aria-label"),
+				group?.getAttribute("data-palette-own-keys"),
+				sorted(group),
+			],
+			tablist: sorted(tablist).filter((name) => /^(-?m[tbxy]?|p[xytb]?)-|overflow/.test(name)),
+		}).toStrictEqual({
+			scroller: [
+				"presentation",
+				[
+					"-mx-6",
+					"-my-2",
+					"min-w-0",
+					"overflow-x-auto",
+					"overscroll-x-contain",
+					"px-6",
+					"py-2",
+					"scroll-px-6",
+					"[scrollbar-width:none]",
+				].toSorted(),
+			],
+			group: ["group", "Filters", "", ["flow-root", "pb-[0.9rem]", "relative", "-mt-1.5", "px-6"].toSorted()],
+			tablist: [],
+		});
+	});
+
+	it("scrolls the selected tab into the strip, keeping the scroller's padding as a margin", async () => {
+		const dialog = await openPalette();
+		const input = within(dialog).getByRole("combobox");
+		const scroller = within(dialog).getByRole("tablist", {name: "Type"}).parentElement!;
+		const files = within(dialog).getByRole("tab", {name: "Files"});
+		let scrollLeft = 0;
+		Object.defineProperty(scroller, "scrollLeft", {
+			configurable: true,
+			get: () => scrollLeft,
+			set: (next: number) => {
+				scrollLeft = next;
+			},
+		});
+		scroller.style.paddingLeft = "24px";
+		scroller.getBoundingClientRect = () => DOMRect.fromRect({x: 0, y: 0, width: 390, height: 44});
+		files.getBoundingClientRect = () => DOMRect.fromRect({x: 600, y: 8, width: 50, height: 28});
+
+		fireEvent.keyDown(input, {key: "ArrowLeft", code: "ArrowLeft"});
+
+		expect({selected: within(dialog).getByRole("tab", {selected: true}).textContent, scrollLeft}).toStrictEqual({
+			selected: "Files",
+			scrollLeft: 650 - (390 - 24),
+		});
+	});
+
+	it("maps a vertical wheel to horizontal strip scrolling, mirrored in RTL, and cancels mousedown on the strip", async () => {
+		const dialog = await openPalette();
+		const scroller = within(dialog).getByRole("tablist", {name: "Type"}).parentElement!;
+		let scrollLeft = 100;
+		Object.defineProperty(scroller, "scrollLeft", {
+			configurable: true,
+			get: () => scrollLeft,
+			set: (next: number) => {
+				scrollLeft = next;
+			},
+		});
+
+		fireEvent.wheel(scroller, {deltaX: 0, deltaY: 40});
+		const ltr = scrollLeft;
+		fireEvent.wheel(scroller, {deltaX: 5, deltaY: 40});
+		const horizontal = scrollLeft;
+		scroller.style.direction = "rtl";
+		fireEvent.wheel(scroller, {deltaX: 0, deltaY: 40});
+		const rtl = scrollLeft;
+
+		expect({ltr, horizontal, rtl, mouseDownAllowed: fireEvent.mouseDown(scroller)}).toStrictEqual({
+			ltr: 140,
+			horizontal: 140,
+			rtl: 100,
+			mouseDownAllowed: false,
+		});
+	});
+
 	it("leaves ← and → to the caret when it is inside the query", async () => {
 		const dialog = await openPalette();
 		const input = within(dialog).getByRole<HTMLTextAreaElement>("combobox");
@@ -612,12 +701,12 @@ describe("CommandPalette shell", () => {
 		const input = within(dialog).getByRole("combobox");
 		const classes = (element: Element | null | undefined) => element?.className.split(" ") ?? [];
 		const inputRow = classes(input.closest("div.relative.flex"));
-		const tabs = classes(within(dialog).getByRole("tablist", {name: "Type"}));
+		const tabs = classes(within(dialog).getByRole("group", {name: "Filters"}));
 		const list = classes(dialog.querySelector("[cmdk-list]"));
 
 		expect({
 			inputRow: inputRow.filter((name) => /^(pt|pb)-/.test(name)),
-			tabs: tabs.filter((name) => /^(-?mt|pb)-/.test(name)),
+			tabs: tabs.filter((name) => /^(-?mt|pb)-/.test(name)).toSorted(),
 			list: list.filter((name) => /^(h|max-h)-|cmdk-group\]\+/.test(name)),
 		}).toStrictEqual({
 			inputRow: ["pt-[1.1rem]", "pb-[0.9rem]"],

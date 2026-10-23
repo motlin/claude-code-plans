@@ -298,3 +298,24 @@ export function withoutTypeTokens(query: string): string {
 		.filter((word) => word !== "" && !/^type:/iu.test(word))
 		.join(" ");
 }
+
+type ScrollStrip = {scrollLeft: number; getBoundingClientRect: () => {left: number; right: number}};
+
+/**
+ * Upstream's `$t`: scroll the type-tab strip just far enough that `tab` sits inside it,
+ * keeping the strip's padding-left (`paddingLeft`, a CSS length) as the margin on both sides.
+ */
+export function scrollIntoStrip(
+	strip: ScrollStrip,
+	tab: {getBoundingClientRect: () => {left: number; right: number}},
+	paddingLeft: string,
+): void {
+	const pad = Number.parseFloat(paddingLeft) || 0;
+	const stripRect = strip.getBoundingClientRect();
+	const tabRect = tab.getBoundingClientRect();
+	if (tabRect.left < stripRect.left + pad) {
+		strip.scrollLeft -= stripRect.left + pad - tabRect.left;
+	} else if (tabRect.right > stripRect.right - pad) {
+		strip.scrollLeft += tabRect.right - (stripRect.right - pad);
+	}
+}

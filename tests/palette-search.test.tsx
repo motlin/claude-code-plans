@@ -401,9 +401,11 @@ describe("⌘K palette filters", () => {
 	}
 
 	function filterLabels(dialog: HTMLElement): string[] {
-		return [...within(dialog).getByRole("group", {name: "Filters"}).querySelectorAll("[cmdk-item]")].map(
-			(item) => item.querySelector("[data-palette-label]")?.textContent ?? "",
-		);
+		return [
+			...within(dialog.querySelector<HTMLElement>("[cmdk-list]")!)
+				.getByRole("group", {name: "Filters"})
+				.querySelectorAll("[cmdk-item]"),
+		].map((item) => item.querySelector("[data-palette-label]")?.textContent ?? "");
 	}
 
 	it("renders local type tabs with All selected", async () => {
@@ -449,9 +451,11 @@ describe("⌘K palette filters", () => {
 		const {dialog} = await openPalette();
 
 		type(dialog, "/re");
-		const repo = [...within(dialog).getByRole("group", {name: "Filters"}).querySelectorAll("[cmdk-item]")].find(
-			(item) => item.textContent.includes("Repo"),
-		);
+		const repo = [
+			...within(dialog.querySelector<HTMLElement>("[cmdk-list]")!)
+				.getByRole("group", {name: "Filters"})
+				.querySelectorAll("[cmdk-item]"),
+		].find((item) => item.textContent.includes("Repo"));
 		if (repo === undefined) throw new Error("no Repo hint");
 		fireEvent.click(repo);
 
