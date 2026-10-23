@@ -209,6 +209,30 @@ describe("sidebar SessionGroups", () => {
 		});
 	});
 
+	it("describes a Needs input row with upstream's sr-only quick-reply hint, and no other row", async () => {
+		await renderGroups(FIXTURE);
+
+		const hintOf = (name: RegExp) => {
+			const link = screen.getByRole("link", {name});
+			const id = link.getAttribute("aria-describedby");
+			if (id === null) return null;
+			const hint = document.getElementById(id);
+			return {
+				text: hint?.textContent,
+				className: hint?.className,
+				findOmitted: hint?.hasAttribute("data-find-omitted"),
+			};
+		};
+		expect({blocked: hintOf(/^Blocked one/), working: hintOf(/^Working one/)}).toStrictEqual({
+			blocked: {
+				text: "Quick reply and approval controls available — press Tab until focus enters the card, Escape to return.",
+				className: "sr-only select-none",
+				findOmitted: true,
+			},
+			working: null,
+		});
+	});
+
 	it("styles the row kebab like upstream: radius 6 (r5), text-secondary until hovered or expanded, instant reveal", async () => {
 		await renderGroups(FIXTURE);
 

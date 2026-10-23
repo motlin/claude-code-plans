@@ -1,7 +1,7 @@
 import {Link} from "@tanstack/react-router";
 import {useQueryClient} from "@tanstack/react-query";
 import {ChevronRight} from "lucide-react";
-import {Fragment, useEffect, useLayoutEffect, useRef, useState, type ReactNode} from "react";
+import {Fragment, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode} from "react";
 
 import {useSecondaryAiTitle} from "../../hooks/use-secondary-ai-title";
 import type {SidebarDragRowProps} from "../../hooks/use-sidebar-drag";
@@ -21,6 +21,7 @@ import {
 } from "../../lib/sidebar-store";
 import {SessionActionsMenu, SessionRowTitle} from "../session-actions-menu";
 import {SessionHoverCard} from "../session-hover-card";
+import {QUICK_REPLY_HINT} from "../session-hover-card-classes";
 import {SidebarRowDecoration, SidebarRowSrText} from "../session-unread-control";
 import {useSettings} from "../settings-context";
 import {PrTailGlyph} from "../status-dot";
@@ -493,6 +494,8 @@ function SessionRowLink({
 	const title = row.title.trim() || "Untitled session";
 	const aiTitle = useSecondaryAiTitle(title, row.session.aiTitle);
 	const {settings} = useSettings();
+	const blocked = row.bucket === "blocked";
+	const hintId = useId();
 	// Upstream draws no PR tail on pinned rows.
 	const prTail =
 		pinnedIds === undefined && settings.sessionListPrefs.showPrStatus && row.session.prStatus !== undefined
@@ -504,7 +507,7 @@ function SessionRowLink({
 			title={title}
 			aiTitle={aiTitle}
 			summary={row.session.summary ?? null}
-			blocked={row.bucket === "blocked"}
+			blocked={blocked}
 			render={<div />}
 		>
 			<SessionActionsMenu
@@ -521,6 +524,7 @@ function SessionRowLink({
 					params={{id: row.sessionId}}
 					{...ROVING_ITEM_PROPS}
 					data-row-main-button
+					aria-describedby={blocked ? hintId : undefined}
 					data-selected={selected ? "focused" : undefined}
 					data-multi-selected={multiSelected ? "" : undefined}
 					onPointerDown={(event) => {
@@ -553,6 +557,11 @@ function SessionRowLink({
 						{prTail !== undefined && <PrTailGlyph state={prTail} />}
 					</span>
 				</Link>
+				{blocked && (
+					<span id={hintId} data-find-omitted="" className="sr-only select-none">
+						{QUICK_REPLY_HINT}
+					</span>
+				)}
 				{/* Upstream's aria-hidden status mark sits beside the link; its sr text is inside the title */}
 				<SidebarRowDecoration session={row.session} envGlyph={envGlyph} />
 			</SessionActionsMenu>

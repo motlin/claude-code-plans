@@ -22,6 +22,7 @@ import {assertNever} from "../lib/assert-never";
 import {toMdSlug} from "../lib/md-slug";
 import type {PermissionDecision} from "../lib/permission-card";
 import {FORK_ANSWER_LABEL, type QuestionAnswerRoute} from "../lib/question-answer-route";
+import {QUICK_REPLY_HINT} from "./session-hover-card-classes";
 import {AwaitingBodySkeleton, AwaitingTitle} from "./session-awaiting-skeleton";
 import {questionAnswerable, useAwaitingGate} from "./use-awaiting-gate";
 import {useToast} from "./toast-context";
@@ -449,7 +450,7 @@ export function AwaitingPopup({
 	const awaiting = useAwaitingGate(sessionId);
 	return (
 		<Shell interactive={awaiting.interactive}>
-			{awaiting.interactive && <span className="sr-only">Quick reply and approval controls available</span>}
+			{awaiting.interactive && <span className="sr-only">{QUICK_REPLY_HINT}</span>}
 			{awaiting.gate === null ? (
 				<AwaitingBodySkeleton title={title} titleId={titleId} />
 			) : (
