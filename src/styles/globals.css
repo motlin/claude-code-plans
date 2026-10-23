@@ -717,7 +717,8 @@
 }
 
 /* Upstream `cds-text-link cds-text-link-underline`: an accent link underlined
-   3px below the text, with no hover change. `.markdown a` in
+   3px below the text at 40% ink, the line going full currentColor on hover and
+   keyboard focus, with the accent focus shadow as its ring. `.markdown a` in
    markdown-article.module.css draws prose links the same way. */
 .text-link {
 	color: var(--upstream-accent);
@@ -725,6 +726,14 @@
 	text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
 	text-underline-offset: 3px;
 	border-radius: 2px;
+}
+.text-link:is(:hover, :focus-visible) {
+	text-decoration-color: currentColor;
+}
+.text-link:focus-visible {
+	outline: 2px solid transparent;
+	outline-offset: 2px;
+	box-shadow: var(--focus-shadow);
 }
 
 [data-record-index] {

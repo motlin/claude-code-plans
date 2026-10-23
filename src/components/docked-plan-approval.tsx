@@ -1,13 +1,14 @@
 import {APPROVAL_CARD_TITLE} from "./approval-card";
+import {OpenPlanLink} from "./open-plan-link";
 import {useOptionalPaneHost} from "./panes/pane-host-context";
 import {PlanApprovalCard} from "./plan-approval-card";
 import type {PlanApprovalContextValue} from "./plan-approval-context";
-import {OPEN_PLAN_ACTION_LABEL, PLAN_PROPOSED_TITLE} from "../lib/exit-plan-mode";
+import {PLAN_PROPOSED_TITLE} from "../lib/exit-plan-mode";
 import type {PendingPlan} from "../lib/hook-events";
 
 /**
  * Upstream's docked plan approval for a pending ExitPlanMode whose tool_use is
- * not on disk yet: "Claude proposed a plan", its "Open plan" footnote action,
+ * not on disk yet: "Claude proposed a plan", its "Open plan" TextLink,
  * and the approve / revise actions, typed into the CLI's plan dialog. Like
  * upstream's card it omits the plan text; the Plan pane shows the hook plan
  * (`withPendingPlan`).
@@ -22,15 +23,13 @@ export function DockedPlanApproval({pendingPlan, plan}: {pendingPlan: PendingPla
 			<div className="flex items-center justify-between gap-2">
 				<span className={APPROVAL_CARD_TITLE}>{PLAN_PROPOSED_TITLE}</span>
 				{host && (
-					<button
-						type="button"
-						className="shrink-0 text-footnote text-secondary hover:text-primary hover:underline"
-						onClick={() => {
-							host.openPane("plan");
-						}}
-					>
-						{OPEN_PLAN_ACTION_LABEL}
-					</button>
+					<span className="shrink-0 self-center">
+						<OpenPlanLink
+							onOpen={() => {
+								host.openPane("plan");
+							}}
+						/>
+					</span>
 				)}
 			</div>
 			<PlanApprovalCard toolUseId={pendingPlan.toolUseId} plan={plan} />

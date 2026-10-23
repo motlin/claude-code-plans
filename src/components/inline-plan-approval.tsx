@@ -1,12 +1,10 @@
 import {ApprovalCardShell} from "./approval-card";
+import {OpenPlanLink} from "./open-plan-link";
 import {useOptionalPaneHost} from "./panes/pane-host-context";
 import {PlanApprovalCard} from "./plan-approval-card";
 import type {PlanApprovalContextValue} from "./plan-approval-context";
-import {OPEN_PLAN_ACTION_LABEL, PLAN_PROPOSED_TITLE} from "../lib/exit-plan-mode";
+import {PLAN_PROPOSED_TITLE} from "../lib/exit-plan-mode";
 import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
-
-/** Upstream's quiet footnote-sized "Open plan" action. */
-const OPEN_PLAN_CLASS = "shrink-0 text-footnote text-secondary hover:text-primary hover:underline";
 
 /**
  * Upstream's plan approval card for an on-disk ExitPlanMode the session waits on:
@@ -25,15 +23,11 @@ export function InlinePlanApproval({toolUseId, plan}: {toolUseId: string; plan: 
 						<span className="font-[580]">{PLAN_PROPOSED_TITLE}</span>
 						{host && (
 							<span className="shrink-0 self-center">
-								<button
-									type="button"
-									className={OPEN_PLAN_CLASS}
-									onClick={() => {
+								<OpenPlanLink
+									onOpen={() => {
 										host.openPane("plan");
 									}}
-								>
-									{OPEN_PLAN_ACTION_LABEL}
-								</button>
+								/>
 							</span>
 						)}
 					</div>
