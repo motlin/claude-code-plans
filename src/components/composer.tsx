@@ -820,9 +820,6 @@ export function Composer({
 					</div>
 				</>
 			)}
-			{(contextChips.length > 0 || queuedComments.length > 0) && (
-				<AttachedContextChips sessionId={draftKey} context={contextChips} comments={queuedComments} />
-			)}
 			<input
 				ref={fileInputRef}
 				type="file"
@@ -861,6 +858,9 @@ export function Composer({
 					<div className="pointer-events-none absolute inset-0 z-[2] flex items-center justify-center rounded-composer border border-dashed border-accent-100 bg-surface-3/90 text-footnote text-secondary">
 						Drop files here
 					</div>
+				)}
+				{(contextChips.length > 0 || queuedComments.length > 0) && (
+					<AttachedContextChips sessionId={draftKey} context={contextChips} comments={queuedComments} />
 				)}
 				<div className={`relative pr-[30px] pointer-coarse:pr-[51px] ${chin ? "pl-[30px]" : ""}`}>
 					{chin && (

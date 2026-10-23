@@ -1,4 +1,4 @@
-import {useState} from "react";
+import {type ReactNode, useState} from "react";
 import {
 	FileText,
 	Image as ImageIcon,
@@ -47,59 +47,171 @@ function pendingProps(chip: ContextChip) {
 	return chip.status === "pending" ? {"data-state": "pending", "aria-busy": true} : {};
 }
 
-function PendingOverlay({status}: {status: string}) {
+function PendingSkeleton() {
 	return (
-		<>
-			<span aria-hidden="true" className="contents">
-				<Skeleton className="pointer-events-none absolute inset-0 size-full rounded-card" />
-			</span>
-			<span role="status" className="sr-only">
-				{status}
-			</span>
-		</>
+		<span aria-hidden="true" className="contents">
+			<Skeleton className="pointer-events-none absolute inset-0 size-full rounded-card-xs" />
+		</span>
 	);
 }
 
-/** An attached image as a thumbnail tile with its remove button in the corner. */
-function ImageChip({sessionId, chip}: {sessionId: string; chip: ContextChip}) {
+/** Upstream's cds MessageAttachments tile root: 120px, revealing its remove button on hover or focus. */
+const TILE_CLASS =
+	"group/tile relative isolate size-[7.5rem] shrink-0 rounded-r7 outline-none focus-visible:shadow-focus";
+
+/** Upstream's xs Card: a hairline border-strong ring that turns into the focus ring for a focused CardLink. */
+const CARD_CLASS =
+	"group/card relative isolate flex flex-col rounded-card-xs after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:shadow-card-ring after:content-[''] has-[[data-cds=CardLink]:focus-visible]:after:shadow-focus size-full [--card-ring-color:var(--upstream-border-strong)]";
+
+const CARD_FILL_CLASS =
+	"cds-card-fill pointer-events-none absolute inset-0 -z-[1] m-0 rounded-[inherit] bg-surface-3 shadow-field-drop";
+
+const CARD_BODY_CLASS = "cds-card-body flex min-h-0 flex-1 flex-col self-stretch rounded-[inherit] p-p7";
+
+const TILE_REMOVE_CLASS =
+	"absolute -end-2 -top-2 z-[1] inline-flex size-5 cursor-pointer items-center justify-center rounded-full bg-surface-3 text-secondary shadow-card-ring hover:text-primary outline-none focus-visible:shadow-focus before:absolute before:-inset-0.5 before:content-[''] opacity-0 group-hover/tile:opacity-100 group-focus-visible/tile:opacity-100 group-has-[:focus-visible]/tile:opacity-100 touch:opacity-100";
+
+const BADGE_CLASS =
+	"inline-flex h-5 min-w-0 max-w-full shrink-0 items-center gap-1 self-start whitespace-nowrap rounded-full bg-fill-ghost-hover px-2 align-middle font-sans text-caption font-medium text-secondary";
+
+/** Upstream's tile shell: Card, fill, body, the corner remove button and the pending status. */
+function Tile({
+	sessionId,
+	chip,
+	kind,
+	status,
+	children,
+}: {
+	sessionId: string;
+	chip: ContextChip;
+	kind: "MessageAttachmentsImage" | "MessageAttachmentsFile";
+	status: string;
+	children: ReactNode;
+}) {
 	const label = contextChipLabel(chip);
 	const pending = chip.status === "pending";
-	const [loaded, setLoaded] = useState(false);
 	return (
 		<li
 			data-chip-label={label}
-			data-cds="MessageAttachmentsImage"
+			data-cds={kind}
+			data-cds-attachment=""
+			tabIndex={-1}
 			{...pendingProps(chip)}
-			title={chip.path}
-			className="relative size-12 shrink-0 overflow-hidden rounded-r6 border border-border bg-surface-3"
+			className={TILE_CLASS}
 		>
-			<img
-				src={chip.previewUrl}
-				alt={pending ? "" : label}
-				onLoad={() => {
-					setLoaded(true);
-				}}
-				className={`size-full object-cover transition-opacity motion-reduce:transition-none ${
-					pending ? (loaded ? "opacity-50" : "opacity-0") : "opacity-100"
-				}`}
-			/>
-			{pending ? <PendingOverlay status="Processing image" /> : null}
+			<div data-cds="Card" data-size="xs" className={CARD_CLASS}>
+				<span aria-hidden="true" className={CARD_FILL_CLASS} />
+				<div data-cds-card-body="" className={CARD_BODY_CLASS}>
+					{children}
+					{pending ? <PendingSkeleton /> : null}
+				</div>
+			</div>
 			<button
 				type="button"
+				data-cds-attachment-remove=""
 				aria-label={`Remove ${label}`}
 				onClick={() => {
 					removeChip(sessionId, chip);
 				}}
-				className="absolute end-0.5 top-0.5 z-[1] flex size-4 cursor-pointer items-center justify-center rounded-full bg-surface-3/90 text-secondary hover:text-primary"
+				className={TILE_REMOVE_CLASS}
 			>
-				<X aria-hidden="true" className="size-2.5" />
+				<X aria-hidden="true" className="size-3" />
 			</button>
+			{pending ? (
+				<span role="status" className="sr-only">
+					{status}
+				</span>
+			) : null}
 		</li>
 	);
 }
 
 /**
- * The strip above the card: ⇧⌘L context chips, uploaded images and long
+ * An attached image as upstream's cds image tile: the picture contained in a
+ * 120px card, a zoom CardLink once it's ready, and an Image glyph when the
+ * bytes don't decode.
+ */
+function ImageChip({sessionId, chip}: {sessionId: string; chip: ContextChip}) {
+	const label = contextChipLabel(chip);
+	const pending = chip.status === "pending";
+	const [loaded, setLoaded] = useState(false);
+	const [broken, setBroken] = useState(false);
+	const opacity = broken ? "opacity-0" : pending ? (loaded ? "opacity-50" : "opacity-0") : "opacity-100";
+	const img = (
+		<img
+			src={chip.previewUrl}
+			alt=""
+			onLoad={() => {
+				setLoaded(true);
+			}}
+			onError={() => {
+				setBroken(true);
+			}}
+			className={`absolute inset-0 block size-full rounded-card-xs object-contain transition-opacity duration-200 motion-reduce:transition-none ${opacity}`}
+		/>
+	);
+	return (
+		<Tile sessionId={sessionId} chip={chip} kind="MessageAttachmentsImage" status="Processing image">
+			{pending ? (
+				img
+			) : (
+				<span
+					data-cds="CardLink"
+					role="button"
+					tabIndex={0}
+					className="outline-none after:pointer-events-none after:absolute after:inset-0 after:rounded-card-xs after:content-[''] cursor-zoom-in"
+				>
+					{img}
+					<span className="sr-only">{label}</span>
+				</span>
+			)}
+			{broken ? (
+				<span
+					data-attachment-glyph=""
+					className={`pointer-events-none absolute inset-0 flex items-center justify-center text-ink-muted${pending ? " invisible" : ""}`}
+				>
+					<ImageIcon aria-hidden="true" className="size-5" />
+				</span>
+			) : null}
+		</Tile>
+	);
+}
+
+/** The upper-cased extension upstream's file tile shows in its Badge. */
+function extensionBadge(name: string): string | undefined {
+	const dot = name.lastIndexOf(".");
+	return dot > 0 && dot < name.length - 1 ? name.slice(dot + 1).toUpperCase() : undefined;
+}
+
+/** An uploaded file as upstream's cds file tile: its name clamped to four lines over an extension badge. */
+function FileChip({sessionId, chip}: {sessionId: string; chip: ContextChip}) {
+	const label = contextChipLabel(chip);
+	const badge = extensionBadge(label);
+	return (
+		<Tile sessionId={sessionId} chip={chip} kind="MessageAttachmentsFile" status="Uploading file">
+			<span className="sr-only">{label}</span>
+			<div className="flex min-h-0 min-w-0 flex-1 flex-col justify-between gap-g5">
+				<div className="flex min-w-0 flex-col">
+					<span
+						aria-hidden="true"
+						title={label}
+						className="text-footnote font-normal text-primary line-clamp-4 break-words [overflow-wrap:anywhere]"
+					>
+						<bdi>{label}</bdi>
+					</span>
+				</div>
+				{badge === undefined ? null : (
+					<span data-cds="Badge" className={BADGE_CLASS}>
+						{badge}
+					</span>
+				)}
+			</div>
+		</Tile>
+	);
+}
+
+/**
+ * Upstream's attachments tray at the top of the card: ⇧⌘L context chips, uploaded images and long
  * pastes in attach order, then Changes pane comments, all waiting for the
  * next prompt and each removable.
  */
@@ -113,60 +225,70 @@ export function AttachedContextChips({
 	comments: readonly QueuedDiffComment[];
 }) {
 	return (
-		<ul aria-label="Attached context" className="mb-1.5 flex flex-wrap items-end gap-1">
-			{context.map((chip) => {
-				if (chip.kind === "image" && chip.previewUrl !== undefined) {
-					return <ImageChip key={chip.id} sessionId={sessionId} chip={chip} />;
-				}
-				const label = contextChipLabel(chip);
-				const Icon = CONTEXT_CHIP_ICON[chip.kind];
-				return (
-					<li
-						key={chip.id}
-						data-chip-label={label}
-						{...(chip.kind === "file" && chip.name !== undefined
-							? {"data-cds": "MessageAttachmentsFile"}
-							: {})}
-						{...pendingProps(chip)}
-						title={chip.status === "pending" ? label : formatContextAttachment(chip)}
-						className={`relative overflow-hidden ${CHIP_CLASS}`}
-					>
-						{chip.status === "pending" ? <PendingOverlay status="Uploading file" /> : null}
-						<Icon aria-hidden="true" className="size-3 shrink-0" />
-						<span className="min-w-0 truncate text-primary">{label}</span>
-						<button
-							type="button"
-							aria-label={`Remove ${label}`}
-							onClick={() => {
-								removeChip(sessionId, chip);
-							}}
-							className={CHIP_REMOVE_CLASS}
-						>
-							<X aria-hidden="true" className="size-3" />
-						</button>
-					</li>
-				);
-			})}
-			{comments.map((comment) => {
-				const label = chipLabel(comment);
-				return (
-					<li key={comment.id} data-chip-label={label} title={comment.text} className={CHIP_CLASS}>
-						<MessageSquare aria-hidden="true" className="size-3 shrink-0" />
-						<span className="shrink-0 text-primary">{label}</span>
-						<span className="min-w-0 truncate">{comment.text}</span>
-						<button
-							type="button"
-							aria-label={`Remove comment on ${label}`}
-							onClick={() => {
-								removeQueuedDiffComment(sessionId, comment.id);
-							}}
-							className={CHIP_REMOVE_CLASS}
-						>
-							<X aria-hidden="true" className="size-3" />
-						</button>
-					</li>
-				);
-			})}
-		</ul>
+		<div
+			data-cds-composer-attachments-clip=""
+			className="-mx-2 grid grid-rows-[1fr] overflow-hidden px-2 -mt-2 pt-2"
+		>
+			<div data-cds-composer-attachments="" className="min-h-0 min-w-0 px-1 pt-1 pb-2.5">
+				<ul aria-label="Attached context" className="flex w-full flex-wrap gap-[6px] justify-start">
+					{context.map((chip) => {
+						if (chip.kind === "image" && chip.previewUrl !== undefined) {
+							return <ImageChip key={chip.id} sessionId={sessionId} chip={chip} />;
+						}
+						if (chip.kind === "file" && chip.name !== undefined) {
+							return <FileChip key={chip.id} sessionId={sessionId} chip={chip} />;
+						}
+						const label = contextChipLabel(chip);
+						const Icon = CONTEXT_CHIP_ICON[chip.kind];
+						return (
+							<li
+								key={chip.id}
+								data-chip-label={label}
+								title={formatContextAttachment(chip)}
+								className={`self-end ${CHIP_CLASS}`}
+							>
+								<Icon aria-hidden="true" className="size-3 shrink-0" />
+								<span className="min-w-0 truncate text-primary">{label}</span>
+								<button
+									type="button"
+									aria-label={`Remove ${label}`}
+									onClick={() => {
+										removeChip(sessionId, chip);
+									}}
+									className={CHIP_REMOVE_CLASS}
+								>
+									<X aria-hidden="true" className="size-3" />
+								</button>
+							</li>
+						);
+					})}
+					{comments.map((comment) => {
+						const label = chipLabel(comment);
+						return (
+							<li
+								key={comment.id}
+								data-chip-label={label}
+								title={comment.text}
+								className={`self-end ${CHIP_CLASS}`}
+							>
+								<MessageSquare aria-hidden="true" className="size-3 shrink-0" />
+								<span className="shrink-0 text-primary">{label}</span>
+								<span className="min-w-0 truncate">{comment.text}</span>
+								<button
+									type="button"
+									aria-label={`Remove comment on ${label}`}
+									onClick={() => {
+										removeQueuedDiffComment(sessionId, comment.id);
+									}}
+									className={CHIP_REMOVE_CLASS}
+								>
+									<X aria-hidden="true" className="size-3" />
+								</button>
+							</li>
+						);
+					})}
+				</ul>
+			</div>
+		</div>
 	);
 }

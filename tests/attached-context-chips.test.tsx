@@ -1,0 +1,244 @@
+// @vitest-environment jsdom
+
+import {cleanup, fireEvent, render} from "@testing-library/react";
+import {afterEach, describe, expect, it} from "vite-plus/test";
+import {AttachedContextChips} from "../src/components/attached-context-chips";
+import type {ContextChip} from "../src/lib/context-attach";
+
+const SESSION = "session-alice";
+
+const IMAGE: ContextChip = {
+	id: "chip-1",
+	kind: "image",
+	path: "/cache/attachments/1.png",
+	name: "shot.png",
+	previewUrl: "blob:shot",
+};
+
+const FILE: ContextChip = {
+	id: "chip-2",
+	kind: "file",
+	path: "/cache/attachments/2.md",
+	name: "notes.md",
+};
+
+function classes(element: Element | null): string[] {
+	return (element?.getAttribute("class") ?? "").split(/\s+/).filter(Boolean).toSorted();
+}
+
+function renderChips(context: readonly ContextChip[]) {
+	return render(<AttachedContextChips sessionId={SESSION} context={context} comments={[]} />);
+}
+
+afterEach(cleanup);
+
+describe("AttachedContextChips cds tiles", () => {
+	it("lays the tiles out in upstream's composer attachments tray", () => {
+		const {container} = renderChips([IMAGE]);
+		const tray = container.querySelector("[data-cds-composer-attachments]");
+		expect({
+			clip: classes(container.querySelector("[data-cds-composer-attachments-clip]")),
+			tray: classes(tray),
+			list: classes(tray?.querySelector('ul[aria-label="Attached context"]') ?? null),
+		}).toStrictEqual({
+			clip: ["-mt-2", "-mx-2", "grid", "grid-rows-[1fr]", "overflow-hidden", "pt-2", "px-2"],
+			tray: ["min-h-0", "min-w-0", "pb-2.5", "pt-1", "px-1"],
+			list: ["flex", "flex-wrap", "gap-[6px]", "justify-start", "w-full"],
+		});
+	});
+
+	it("renders an image chip as a 120px cds tile with a zoom CardLink and a hover-revealed remove button", () => {
+		const {container} = renderChips([IMAGE]);
+		const tile = container.querySelector("li[data-cds=MessageAttachmentsImage]");
+		const card = tile?.querySelector("[data-cds=Card]") ?? null;
+		const link = tile?.querySelector("[data-cds=CardLink]") ?? null;
+		const img = link?.querySelector("img") ?? null;
+		const remove = tile?.querySelector("button[data-cds-attachment-remove]") ?? null;
+		expect({
+			attachment: tile?.getAttribute("data-cds-attachment"),
+			tabIndex: tile?.getAttribute("tabindex"),
+			tile: classes(tile ?? null),
+			card: classes(card),
+			fill: classes(card?.querySelector(".cds-card-fill") ?? null),
+			link: {
+				role: link?.getAttribute("role"),
+				tabIndex: link?.getAttribute("tabindex"),
+				classes: classes(link),
+			},
+			img: {alt: img?.getAttribute("alt"), src: img?.getAttribute("src"), classes: classes(img)},
+			name: link?.querySelector("span.sr-only")?.textContent,
+			remove: {label: remove?.getAttribute("aria-label"), classes: classes(remove)},
+			glyph: tile?.querySelector("[data-attachment-glyph]") ?? null,
+		}).toStrictEqual({
+			attachment: "",
+			tabIndex: "-1",
+			tile: [
+				"focus-visible:shadow-focus",
+				"group/tile",
+				"isolate",
+				"outline-none",
+				"relative",
+				"rounded-r7",
+				"shrink-0",
+				"size-[7.5rem]",
+			],
+			card: [
+				"[--card-ring-color:var(--upstream-border-strong)]",
+				"after:absolute",
+				"after:content-['']",
+				"after:inset-0",
+				"after:pointer-events-none",
+				"after:rounded-[inherit]",
+				"after:shadow-card-ring",
+				"flex",
+				"flex-col",
+				"group/card",
+				"has-[[data-cds=CardLink]:focus-visible]:after:shadow-focus",
+				"isolate",
+				"relative",
+				"rounded-card-xs",
+				"size-full",
+			],
+			fill: [
+				"-z-[1]",
+				"absolute",
+				"bg-surface-3",
+				"cds-card-fill",
+				"inset-0",
+				"m-0",
+				"pointer-events-none",
+				"rounded-[inherit]",
+				"shadow-field-drop",
+			],
+			link: {
+				role: "button",
+				tabIndex: "0",
+				classes: [
+					"after:absolute",
+					"after:content-['']",
+					"after:inset-0",
+					"after:pointer-events-none",
+					"after:rounded-card-xs",
+					"cursor-zoom-in",
+					"outline-none",
+				],
+			},
+			img: {
+				alt: "",
+				src: "blob:shot",
+				classes: [
+					"absolute",
+					"block",
+					"duration-200",
+					"inset-0",
+					"motion-reduce:transition-none",
+					"object-contain",
+					"opacity-100",
+					"rounded-card-xs",
+					"size-full",
+					"transition-opacity",
+				],
+			},
+			name: "shot.png",
+			remove: {
+				label: "Remove shot.png",
+				classes: [
+					"-end-2",
+					"-top-2",
+					"absolute",
+					"before:-inset-0.5",
+					"before:absolute",
+					"before:content-['']",
+					"bg-surface-3",
+					"cursor-pointer",
+					"focus-visible:shadow-focus",
+					"group-focus-visible/tile:opacity-100",
+					"group-has-[:focus-visible]/tile:opacity-100",
+					"group-hover/tile:opacity-100",
+					"hover:text-primary",
+					"inline-flex",
+					"items-center",
+					"justify-center",
+					"opacity-0",
+					"outline-none",
+					"rounded-full",
+					"shadow-card-ring",
+					"size-5",
+					"text-secondary",
+					"touch:opacity-100",
+					"z-[1]",
+				],
+			},
+			glyph: null,
+		});
+	});
+
+	it("hides an undecodable image and shows a centred Image glyph instead", () => {
+		const {container} = renderChips([IMAGE]);
+		const img = container.querySelector("li[data-cds=MessageAttachmentsImage] img");
+		if (img === null) throw new Error("no img");
+		fireEvent.error(img);
+		const glyph = container.querySelector("[data-attachment-glyph]");
+		expect({
+			imgOpacity: classes(img).filter((name) => name.startsWith("opacity-")),
+			glyph: classes(glyph),
+			icon: glyph?.querySelector("svg") !== null,
+		}).toStrictEqual({
+			imgOpacity: ["opacity-0"],
+			glyph: [
+				"absolute",
+				"flex",
+				"inset-0",
+				"items-center",
+				"justify-center",
+				"pointer-events-none",
+				"text-ink-muted",
+			],
+			icon: true,
+		});
+	});
+
+	it("renders an uploaded file chip as a cds tile with its name and an extension badge", () => {
+		const {container} = renderChips([FILE]);
+		const tile = container.querySelector("li[data-cds=MessageAttachmentsFile]");
+		const name = tile?.querySelector("span[aria-hidden][title]") ?? null;
+		const badge = tile?.querySelector("[data-cds=Badge]") ?? null;
+		expect({
+			tile: classes(tile ?? null),
+			srName: tile?.querySelector("[data-cds-card-body] > span.sr-only")?.textContent,
+			name: {
+				title: name?.getAttribute("title"),
+				classes: classes(name),
+				bdi: name?.querySelector("bdi")?.textContent,
+			},
+			badge: badge?.textContent,
+			remove: tile?.querySelector("button[data-cds-attachment-remove]")?.getAttribute("aria-label"),
+		}).toStrictEqual({
+			tile: [
+				"focus-visible:shadow-focus",
+				"group/tile",
+				"isolate",
+				"outline-none",
+				"relative",
+				"rounded-r7",
+				"shrink-0",
+				"size-[7.5rem]",
+			],
+			srName: "notes.md",
+			name: {
+				title: "notes.md",
+				classes: [
+					"[overflow-wrap:anywhere]",
+					"break-words",
+					"font-normal",
+					"line-clamp-4",
+					"text-footnote",
+					"text-primary",
+				],
+				bdi: "notes.md",
+			},
+			badge: "MD",
+			remove: "Remove notes.md",
+		});
+	});
+});

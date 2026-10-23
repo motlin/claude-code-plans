@@ -171,6 +171,8 @@ html[data-interface-font="dyslexic"] {
 	--radius-r6: 8px;
 	--radius-r7: 10px;
 	--radius-card: 12px;
+	/* Upstream cds xs Card (the composer attachment tile): 9px inside the 10px tile */
+	--radius-card-xs: 9px;
 	/* Upstream claude.ai/code — size sm Button (hover card option chips) */
 	--radius-control-sm: 7px;
 	/* Upstream claude.ai/code — Customize Discover card */
@@ -195,6 +197,8 @@ html[data-interface-font="dyslexic"] {
 	--shadow-focus-danger: var(--focus-shadow-danger);
 	/* Upstream claude.ai/code — joined secondary split button (shadow-field-drop) */
 	--shadow-field-drop: 0 1px 2px rgb(0 0 0 / 0.05);
+	/* Upstream cds shadow-card-ring: a hairline inset ring; a Card sets --card-ring-color to border-strong. */
+	--shadow-card-ring: inset 0 0 0 1px var(--card-ring-color, var(--card-outline));
 
 	--radius-sm: calc(var(--radius) - 4px);
 	--radius-md: calc(var(--radius) - 2px);

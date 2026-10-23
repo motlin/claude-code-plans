@@ -148,7 +148,7 @@ describe("Composer attachments", () => {
 		const onSend = renderComposer();
 
 		paste({files: [png("screenshot.png")]});
-		const thumbnail = await screen.findByRole("img", {name: "screenshot.png"});
+		const thumbnail = (await screen.findByRole("button", {name: "screenshot.png"})).querySelector("img")!;
 		fireEvent.change(prompt(), {target: {value: "Why is this red?"}});
 		fireEvent.keyDown(prompt(), {key: "Enter"});
 
@@ -184,7 +184,7 @@ describe("Composer attachments", () => {
 		fireEvent.dragOver(card, {dataTransfer: {types: ["Files"], files: []}});
 		const overlay = screen.queryByText("Drop files here") !== null;
 		fireEvent.drop(card, {dataTransfer: {types: ["Files"], files: [png("dropped.png")]}});
-		await screen.findByRole("img", {name: "dropped.png"});
+		await screen.findByRole("button", {name: "dropped.png"});
 
 		expect({
 			overlay,
@@ -207,7 +207,7 @@ describe("Composer attachments", () => {
 		fireEvent.click(screen.getByRole("button", {name: "Add"}));
 		fireEvent.click(await screen.findByRole("menuitem", {name: /Add files or photos/}));
 		fireEvent.change(picker, {target: {files: [png("picked.png")]}});
-		await screen.findByRole("img", {name: "picked.png"});
+		await screen.findByRole("button", {name: "picked.png"});
 
 		expect({
 			clicks: clicks.mock.calls.length,
@@ -238,7 +238,7 @@ describe("Composer attachments", () => {
 				"absolute",
 				"inset-0",
 				"size-full",
-				"rounded-card",
+				"rounded-card-xs",
 				"overflow-hidden",
 				"bg-[var(--skeleton-base)]",
 				"motion-reduce:after:hidden",
@@ -253,7 +253,7 @@ describe("Composer attachments", () => {
 		fireEvent.load(img);
 		const loadedOpacity = [...img.classList].filter((name) => name.startsWith("opacity-"));
 		pending[0]!(savedAs(`${ATTACHMENTS}/0005.png`)(png("shot.png")));
-		const saved = await screen.findByRole("img", {name: "shot.png"});
+		const saved = await screen.findByRole("button", {name: "shot.png"});
 		const settled = saved.closest("li")!;
 
 		expect({
@@ -350,7 +350,7 @@ describe("Composer attachments", () => {
 		fireEvent.keyDown(prompt(), {key: "Enter"});
 		fireEvent.change(prompt(), {target: {value: "Why not?"}});
 		pending[0]!(savedAs(`${ATTACHMENTS}/0008.png`)(png("shot.png")));
-		await screen.findByRole("img", {name: "shot.png"});
+		await screen.findByRole("button", {name: "shot.png"});
 		await new Promise((resolve) => {
 			setTimeout(resolve, 0);
 		});
