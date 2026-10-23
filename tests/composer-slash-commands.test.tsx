@@ -193,6 +193,49 @@ describe("Composer slash commands", () => {
 		}).toStrictEqual({floored: true, coarse: []});
 	});
 
+	it("shows upstream's 'Type to filter' ghost 2px after a bare / and hides it once filtering or dismissed", () => {
+		const {textarea} = setup();
+		const ghost = (): {text: string; ariaHidden: string | null; className: string} | null => {
+			const element = screen.queryByTestId("slash-filter-placeholder");
+			return element === null
+				? null
+				: {
+						text: element.textContent,
+						ariaHidden: element.parentElement?.getAttribute("aria-hidden") ?? null,
+						className: element.className,
+					};
+		};
+
+		fireEvent.change(textarea, {target: {value: "/"}});
+		const bare = ghost();
+		const overlay = screen.getByTestId("slash-filter-placeholder").parentElement?.className.split(" ") ?? [];
+		fireEvent.change(textarea, {target: {value: "/m"}});
+		const filtering = ghost();
+		fireEvent.change(textarea, {target: {value: "hello /"}});
+		const midLine = ghost();
+		fireEvent.change(textarea, {target: {value: "/"}});
+		fireEvent.keyDown(textarea, {key: "Escape"});
+		const dismissed = ghost();
+
+		expect({
+			bare,
+			floored: overlay.includes("text-entry-floored") && overlay.includes("text-[14px]/[20px]"),
+			filtering,
+			midLine,
+			dismissed,
+		}).toStrictEqual({
+			bare: {
+				text: "Type to filter",
+				ariaHidden: "true",
+				className: "ml-0.5 text-ink-muted/75 select-none",
+			},
+			floored: true,
+			filtering: null,
+			midLine: null,
+			dismissed: null,
+		});
+	});
+
 	it("accepts the highlighted row with Tab and hides the hint once arguments are typed", () => {
 		const {textarea} = setup();
 		fireEvent.change(textarea, {target: {value: "/"}});

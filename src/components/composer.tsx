@@ -72,6 +72,10 @@ function workingPlaceholder(isMac: boolean): string {
 const EDITOR_CLASS =
 	"block w-full resize-none overflow-y-auto bg-transparent py-1 pl-1 font-sans text-[14px]/[20px] text-primary [field-sizing:content] placeholder:text-[rgb(137,135,129)] focus:outline-none disabled:opacity-50";
 
+/** Overlays ghost text after the prompt, lined up with the textarea's text (and its coarse-pointer floor). */
+const GHOST_OVERLAY_CLASS =
+	"pointer-events-none absolute inset-y-0 right-[30px] overflow-hidden py-1 pl-1 font-sans text-[14px]/[20px] break-words whitespace-pre-wrap text-entry-floored";
+
 const ICON_BUTTON_CLASS =
 	"flex aspect-square size-7 items-center justify-center rounded-r5 text-primary transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus disabled:pointer-events-none disabled:opacity-40";
 
@@ -852,13 +856,21 @@ export function Composer({
 						/>
 					)}
 					{argumentHint !== null && (
-						<div
-							aria-hidden="true"
-							className={`pointer-events-none absolute inset-y-0 right-[30px] overflow-hidden py-1 pl-1 font-sans text-[14px]/[20px] break-words whitespace-pre-wrap text-entry-floored ${chin ? "left-[30px]" : "left-0"}`}
-						>
+						<div aria-hidden="true" className={`${GHOST_OVERLAY_CLASS} ${chin ? "left-[30px]" : "left-0"}`}>
 							<span className="invisible">{prompt}</span>
 							<span data-testid="slash-argument-hint" className="text-[rgb(137,135,129)]">
 								{argumentHint}
+							</span>
+						</div>
+					)}
+					{slashOpen && query === "" && (
+						<div aria-hidden="true" className={`${GHOST_OVERLAY_CLASS} ${chin ? "left-[30px]" : "left-0"}`}>
+							<span className="invisible">{prompt}</span>
+							<span
+								data-testid="slash-filter-placeholder"
+								className="ml-0.5 text-ink-muted/75 select-none"
+							>
+								Type to filter
 							</span>
 						</div>
 					)}
