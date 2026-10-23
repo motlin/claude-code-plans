@@ -2145,6 +2145,15 @@ describe("dispatchHookEvent", () => {
 	});
 
 	describe("dedupe between hook fast-path and watcher trailing broadcast", () => {
+		// The dedupe window is 500ms of wall clock, and a cold import of the watcher under heavy load took longer,
+		// so the trailing call landed outside it. Freeze Date so the test checks the dedupe, not the machine's speed.
+		beforeEach(() => {
+			vi.useFakeTimers({toFake: ["Date"], now: new Date("2026-05-20T12:00:00Z")});
+		});
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
 		it("only broadcasts plan:changed once when PostToolUse fires then watcher trails", async () => {
 			const {__testing: dedupeTesting} = await import("../src/lib/update-dedupe");
 			dedupeTesting.clear();

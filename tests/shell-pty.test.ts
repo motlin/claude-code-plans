@@ -312,12 +312,18 @@ describe("shell pty registry", () => {
 			},
 			{timeout: 10_000},
 		);
-		connection?.input(JSON.stringify({type: "data", data: encodeTerminalText("\u0003")}));
+		// The terminal's foreground group flips to the job before the forked child resets the shell's SIGINT
+		// handler and execs `sleep`, so under load a single ^C could land in that window and be lost, leaving
+		// `sleep 30` running past the timeout. Interrupt again on every poll until the shell has the terminal back.
 		await vi.waitFor(
 			() => {
-				expect(registry.busy([created.ptyKey])).toStrictEqual([]);
+				const busyKeys = registry.busy([created.ptyKey]);
+				if (busyKeys.length > 0) {
+					connection?.input(JSON.stringify({type: "data", data: encodeTerminalText("\u0003")}));
+				}
+				expect(busyKeys).toStrictEqual([]);
 			},
-			{timeout: 10_000},
+			{timeout: 10_000, interval: 250},
 		);
 		expect(idleAtPrompt).toStrictEqual([]);
 		connection?.input(JSON.stringify({type: "data", data: encodeTerminalText("pwd; exit 7\n")}));

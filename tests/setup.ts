@@ -16,3 +16,11 @@ if (typeof window !== "undefined") Element.prototype.scrollIntoView = () => {};
 if (typeof navigator !== "undefined" && typeof navigator.sendBeacon !== "function") {
 	navigator.sendBeacon = () => true;
 }
+
+// findBy* and waitFor give up after Testing Library's default 1s, which a render on a machine at load average 100+
+// overran (session-summary-placement's "2 subagents" link), so a commit's git test failed and an unchanged retest passed.
+// A passing query still returns as soon as it matches; only a real failure waits the extra seconds.
+if (typeof window !== "undefined") {
+	const {configure} = await import("@testing-library/react");
+	configure({asyncUtilTimeout: 5000});
+}

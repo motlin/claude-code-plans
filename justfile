@@ -188,6 +188,7 @@ _build-bundle: build perf-bundle client-boundaries
 _verify-test quick:
     {{ if quick != "true" { "just _test" } else { "true" } }}
 
-# Deprecated alias for `verify`
+# `verify`, teeing its output to .git/verify-logs and ending a failure with what failed. `git test run` runs this
 [arg("quick", long, value="true", help="Skip tests")]
-precommit quick="": (verify quick)
+precommit quick="":
+    node scripts/verify-log.mjs just verify {{ if quick == "true" { "--quick" } else { "" } }}

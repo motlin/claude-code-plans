@@ -89,7 +89,9 @@ async function waitUntilDelivering(watcher: RecursiveWatcher, directory: string)
 	await removed;
 }
 
-describe("createRecursiveWatcher", () => {
+// FSEvents delivery waits on a busy machine: at load average 100+ with three verifies running at once, the
+// create/modify/unlink round trip overran the 15s default. A healthy run still finishes in well under a second.
+describe("createRecursiveWatcher", {timeout: 45_000}, () => {
 	let fixtureDirectory: string;
 	let watcher: RecursiveWatcher | undefined;
 

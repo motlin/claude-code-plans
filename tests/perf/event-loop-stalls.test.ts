@@ -129,7 +129,9 @@ describe("startStallMonitor", () => {
 		}
 	});
 
-	it("ignores delays under the threshold", async () => {
+	// Retried: a loaded machine can deschedule the thread for longer than the threshold during the 50ms block,
+	// which is a real stall the monitor must report (load average 100+ produced a 206ms one with 13ms of CPU).
+	it("ignores delays under the threshold", {retry: 2}, async () => {
 		const stalls = monitor(200);
 		await sleep(60);
 
