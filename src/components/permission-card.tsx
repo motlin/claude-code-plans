@@ -1,6 +1,7 @@
 import {useCallback, useEffect, useRef, useState, type ReactNode, type RefObject} from "react";
 
 import {useIsMac} from "../hooks/use-is-mac";
+import {approvalEnterSeen, markApprovalEnterSeen} from "../lib/approval-enter-seen";
 import {APPROVAL_ARM_GRACE_MS, approvalHotkeyFocusAllowed, isIdleComposer, onScreen} from "../lib/dock-keys";
 import {permissionDecisionForKey, type PermissionDecision, type PermissionTitle} from "../lib/permission-card";
 import {toAriaKeyShortcuts} from "../lib/shortcuts/format";
@@ -22,6 +23,7 @@ import {SplitDropdownButton} from "./ui/split-dropdown-button";
  * primary split button ("Always allow" / "Allow for this session") whose menu holds Allow once.
  * Upstream's keys (Esc deny, ⌘⏎ allow once, ⇧⌘⏎ the persistent option) and no digits, which are dock-only.
  * A decision hides the card at once, with no busy state; a failed answer brings it back with the error.
+ * A live arrival fades in over 160ms; a remount or reload of the same prompt (`enterKey`) does not.
  */
 export function PermissionCard({
 	title,
@@ -33,6 +35,7 @@ export function PermissionCard({
 	persistentAllow = null,
 	onDecision,
 	footer,
+	enterKey,
 }: {
 	title: PermissionTitle;
 	detail: string | null;
@@ -49,8 +52,14 @@ export function PermissionCard({
 	onDecision: (decision: PermissionDecision) => Promise<void>;
 	/** Rendered under the actions; the session page passes the notify tip. */
 	footer?: ReactNode;
+	/** The prompt's notification id: it fades in only the first time this tab draws it. */
+	enterKey?: string | undefined;
 }) {
 	const isMac = useIsMac();
+	const [enter] = useState(() => enterKey === undefined || !approvalEnterSeen(enterKey));
+	useEffect(() => {
+		if (enterKey !== undefined) markApprovalEnterSeen(enterKey);
+	}, [enterKey]);
 	const [decided, setDecided] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const enabled = canAnswer && !decided;
@@ -80,6 +89,7 @@ export function PermissionCard({
 			label={"action" in title ? `Permission request: ${title.action}` : "Permission request"}
 			footer={footer}
 			presentation="card"
+			enter={enter}
 			body={
 				<div className="flex flex-col gap-[10px]">
 					<span data-permission-title data-approval-card-title className={APPROVAL_CARD_TITLE}>

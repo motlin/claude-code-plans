@@ -1054,6 +1054,7 @@ function SessionView({
 									<SessionBackgroundTasksOpener running={runningBackgroundLaunches}>
 										<PermissionCard
 											key={pendingPermission.notificationId}
+											enterKey={pendingPermission.notificationId}
 											title={pendingPermission.title}
 											detail={pendingPermission.detail}
 											detailNote={pendingPermission.detailNote ?? null}

@@ -114,6 +114,7 @@ export function ApprovalCardShell({
 	actions,
 	footer,
 	presentation = "dock",
+	enter = false,
 }: {
 	rootRef?: Ref<HTMLDivElement>;
 	/** The card's accessible group label; omitted cards are a plain focusable box. */
@@ -126,6 +127,8 @@ export function ApprovalCardShell({
 	footer?: ReactNode;
 	/** Upstream's inline "card" in the transcript, or the composer "dock". */
 	presentation?: "card" | "dock";
+	/** Upstream's 160ms enter fade for a live arrival; false marks the card `data-skip-approval-enter`. */
+	enter?: boolean;
 }) {
 	// Inline, upstream's card is at most 480px wide with 24px gaps; the dock keeps its 12px rhythm.
 	const look =
@@ -141,6 +144,7 @@ export function ApprovalCardShell({
 				data-approval-card-root
 				data-approval-card-digits={digits}
 				data-approval-presentation={presentation}
+				{...(enter ? {} : {"data-skip-approval-enter": ""})}
 				role={label === undefined ? undefined : "group"}
 				aria-label={label}
 				tabIndex={0}
@@ -148,7 +152,7 @@ export function ApprovalCardShell({
 				onClick={(event) => {
 					event.stopPropagation();
 				}}
-				className={`@container relative isolate flex max-h-[60vh] flex-col rounded-r7 p-3 text-[13px]/[19px] text-primary focus-visible:outline-1 focus-visible:outline-fill-accent focus-visible:outline-offset-2 ${look}`}
+				className={`@container relative isolate flex max-h-[60vh] flex-col rounded-r7 p-3 text-[13px]/[19px] text-primary focus-visible:outline-1 focus-visible:outline-fill-accent focus-visible:outline-offset-2 ${look}${enter ? " animate-approval-inline-enter motion-reduce:animate-none" : ""}`}
 			>
 				<div
 					data-approval-card-body

@@ -987,3 +987,61 @@ describe("PermissionCard", () => {
 		});
 	});
 });
+
+describe("PermissionCard enter fade, as upstream's epitaxy-approval-inline-enter", () => {
+	const enterFacts = (container: HTMLElement) => {
+		const root = container.querySelector("[data-approval-card-root]");
+		return {
+			classes: (root?.className ?? "").split(" ").filter((name) => name.includes("animate-")),
+			skip: root?.hasAttribute("data-skip-approval-enter"),
+		};
+	};
+
+	it("fades a live arrival in, without motion under reduced motion", () => {
+		const {container} = render(
+			<PermissionCard
+				enterKey="enter-live-1"
+				title={{action: "run", meta: null}}
+				detail="ls"
+				canAnswer
+				onDecision={async () => {}}
+			/>,
+		);
+
+		expect(enterFacts(container)).toStrictEqual({
+			classes: ["animate-approval-inline-enter", "motion-reduce:animate-none"],
+			skip: false,
+		});
+	});
+
+	it("skips the fade when the same prompt remounts", () => {
+		const card = () => (
+			<PermissionCard
+				enterKey="enter-remount-1"
+				title={{action: "run", meta: null}}
+				detail="ls"
+				canAnswer
+				onDecision={async () => {}}
+			/>
+		);
+		render(card()).unmount();
+		const {container} = render(card());
+
+		expect(enterFacts(container)).toStrictEqual({classes: [], skip: true});
+	});
+
+	it("skips the fade after a reload that already showed the prompt", () => {
+		window.sessionStorage.setItem("approval-enter-seen:enter-reload-1", "1");
+		const {container} = render(
+			<PermissionCard
+				enterKey="enter-reload-1"
+				title={{action: "run", meta: null}}
+				detail="ls"
+				canAnswer
+				onDecision={async () => {}}
+			/>,
+		);
+
+		expect(enterFacts(container)).toStrictEqual({classes: [], skip: true});
+	});
+});
