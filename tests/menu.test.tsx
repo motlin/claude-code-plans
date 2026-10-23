@@ -398,7 +398,7 @@ describe("Menu", () => {
 		const digit = (text: string) => ({
 			cds: "Shortcut",
 			className:
-				"inline-flex shrink-0 items-baseline gap-[0.3em] text-caption [&>kbd]:leading-[15px] pointer-coarse:hidden",
+				"inline-flex shrink-0 items-baseline gap-[0.3em] text-caption [&:where(:root[dir=rtl]_:dir(rtl))]:flex-row-reverse [&>kbd]:leading-[15px] pointer-coarse:hidden",
 			checked: false,
 			text,
 		});

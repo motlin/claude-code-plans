@@ -1,6 +1,6 @@
 import {describe, expect, it} from "vite-plus/test";
 
-import {formatKeys, toAriaKeyShortcuts} from "../src/lib/shortcuts/format";
+import {formatKeySequence, formatKeys, toAriaKeyShortcuts} from "../src/lib/shortcuts/format";
 
 describe("formatKeys", () => {
 	it("renders mac glyphs with spoken labels in ctrl, alt, shift, cmd order", () => {
@@ -59,6 +59,25 @@ describe("formatKeys", () => {
 		expect(formatKeys("arrowup", true)).toEqual([{label: "↑", spoken: "Up"}]);
 		expect(formatKeys("space", false)).toEqual([{label: "Space"}]);
 		expect(formatKeys("space", true)).toEqual([{label: "␣", spoken: "Space"}]);
+	});
+});
+
+describe("formatKeySequence", () => {
+	it("splits a space-separated sequence into one chunk per step", () => {
+		expect(formatKeySequence("esc esc", true)).toEqual([[{label: "Esc"}], [{label: "Esc"}]]);
+	});
+
+	it("parses each step's modifiers independently", () => {
+		expect(formatKeySequence("cmd+k  shift+d", false)).toEqual([
+			[{label: "Ctrl"}, {label: "K"}],
+			[{label: "Shift"}, {label: "D"}],
+		]);
+	});
+
+	it("returns a single chunk for a plain chord", () => {
+		expect(formatKeySequence("cmd+alt+r", true)).toEqual([
+			[{label: "⌥", spoken: "Option"}, {label: "⌘", spoken: "Command"}, {label: "R"}],
+		]);
 	});
 });
 

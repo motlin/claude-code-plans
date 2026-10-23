@@ -13,8 +13,13 @@ const KEYCAP =
 	"inline-flex shrink-0 items-center justify-center h-[calc(1em+6px)] rounded-r3 [color:var(--shortcut-cap-ink)] bg-transparent border border-[color:var(--shortcut-cap-line)] [font-family:inherit] [font-variation-settings:inherit] [line-height:1]";
 const SQUARE = `${KEYCAP} w-[calc(1em+6px)] px-0`;
 const WIDE = `${KEYCAP} min-w-[calc(1em+6px)] px-[3px]`;
-const KEYCAP_WRAPPER = "inline-flex shrink-0 items-center gap-[2px] text-caption";
-const TEXT_WRAPPER = "inline-flex shrink-0 items-baseline gap-[0.3em] text-caption";
+// innerHTML serializes & in attribute values as &amp;.
+const RTL = "[&amp;:where(:root[dir=rtl]_:dir(rtl))]:flex-row-reverse";
+const KEYCAP_SEQUENCE_WRAPPER = "inline-flex shrink-0 items-center gap-[2px] text-caption";
+const TEXT_SEQUENCE_WRAPPER = "inline-flex shrink-0 items-baseline gap-[0.3em] text-caption";
+const KEYCAP_WRAPPER = `${KEYCAP_SEQUENCE_WRAPPER} ${RTL}`;
+const TEXT_WRAPPER = `${TEXT_SEQUENCE_WRAPPER} ${RTL}`;
+const THEN = `<span class="px-[2px] [color:var(--shortcut-cap-ink)]">then</span>`;
 
 function stubUserAgent(ua: string): void {
 	vi.spyOn(navigator, "userAgent", "get").mockReturnValue(ua);
@@ -47,6 +52,17 @@ describe("<Shortcut variant=keycap>", () => {
 		expect(container.innerHTML).toBe(
 			`<span data-cds="Shortcut" data-variant="keycap" class="${KEYCAP_WRAPPER}">` +
 				`<kbd class="${WIDE}">Esc</kbd>` +
+				`</span>`,
+		);
+	});
+
+	it("renders a space-separated sequence as caps joined by then, without the RTL reverse class", () => {
+		stubUserAgent(MAC_UA);
+		const {container} = render(<Shortcut keys="esc esc" />);
+
+		expect(container.innerHTML).toBe(
+			`<span data-cds="Shortcut" data-variant="keycap" class="${KEYCAP_SEQUENCE_WRAPPER}">` +
+				`<kbd class="${WIDE}">Esc</kbd>${THEN}<kbd class="${WIDE}">Esc</kbd>` +
 				`</span>`,
 		);
 	});
@@ -87,6 +103,19 @@ describe("<Shortcut variant=text>", () => {
 		expect(container.innerHTML).toBe(
 			`<span data-cds="Shortcut" data-variant="text" class="${TEXT_WRAPPER}">` +
 				`<kbd class="[font-family:inherit] [color:var(--shortcut-cap-ink)]">Ctrl+Shift+O</kbd>` +
+				`</span>`,
+		);
+	});
+});
+
+describe("<Shortcut variant=text> sequences", () => {
+	it("joins sequence steps with then and drops the RTL reverse class", () => {
+		stubUserAgent(WINDOWS_UA);
+		const {container} = render(<Shortcut keys="esc esc" variant="text" />);
+
+		expect(container.innerHTML).toBe(
+			`<span data-cds="Shortcut" data-variant="text" class="${TEXT_SEQUENCE_WRAPPER}">` +
+				`<kbd class="[font-family:inherit] [color:var(--shortcut-cap-ink)]">Esc then Esc</kbd>` +
 				`</span>`,
 		);
 	});

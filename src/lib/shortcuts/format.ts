@@ -128,6 +128,14 @@ export function formatKeys(keys: string, isMac: boolean): KeyLabel[] {
 	return [...modifiers.map((m) => ({...modifierLabels[m]})), {...keyLabelFor(key, isMac)}];
 }
 
+/** Keycap labels per step of a whitespace-separated sequence like "esc esc"; a plain chord is one step. */
+export function formatKeySequence(keys: string, isMac: boolean): KeyLabel[][] {
+	return keys
+		.trim()
+		.split(/\s+/)
+		.map((step) => formatKeys(step, isMac));
+}
+
 /** `aria-keyshortcuts` value, e.g. "cmd+shift+o" → "Shift+Meta+o" on mac. */
 export function toAriaKeyShortcuts(keys: string, isMac: boolean): string {
 	const {modifiers, key} = parseKeys(keys, isMac);
