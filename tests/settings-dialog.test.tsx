@@ -210,49 +210,92 @@ describe("SettingsDialog", () => {
 		).toStrictEqual(Array.from({length: 12}, () => "svg"));
 	});
 
-	it("groups every navigation item once under its named Settings or Customize section", async () => {
+	it("lists every navigation item once in a ul labelled by its Settings or Customize heading, as upstream", async () => {
 		await renderAt("/#settings/general");
 		await screen.findByRole("dialog", {name: "Settings"});
 		const nav = screen.getByRole("navigation", {name: "Settings"});
 		expect(
 			within(nav)
-				.getAllByRole("group")
-				.map((group) => ({
-					name: group.getAttribute("aria-label"),
-					caption: group.firstElementChild?.textContent,
-					items: within(group)
-						.getAllByRole("button")
-						.map((button) => ({
-							label: button.textContent,
-							selected: button.getAttribute("aria-current"),
-						})),
-				})),
+				.getAllByRole("list")
+				.map((list) => {
+					const labelId = list.getAttribute("aria-labelledby") ?? "";
+					const label = document.getElementById(labelId);
+					return {
+						name: within(nav).getByRole("list", {name: label?.textContent ?? ""}) === list,
+						label: {tag: label?.tagName.toLowerCase(), text: label?.textContent},
+						className: list.className,
+						items: within(list)
+							.getAllByRole("listitem")
+							.map((item) => ({
+								testId: item.getAttribute("data-testid"),
+								label: item.textContent,
+								selected: within(item).getByRole("button").getAttribute("aria-current"),
+							})),
+					};
+				}),
 		).toStrictEqual([
 			{
-				name: "Settings",
-				caption: "Settings",
+				name: true,
+				label: {tag: "div", text: "Settings"},
+				className: "flex flex-col gap-px",
 				items: [
-					{label: "General", selected: "page"},
-					{label: "Usage", selected: null},
-					{label: "Claude Code", selected: null},
-					{label: "Transcript", selected: null},
-					{label: "Sessions", selected: null},
-					{label: "Application", selected: null},
-					{label: "AI features", selected: null},
-					{label: "Claude Config", selected: null},
-					{label: "Setup", selected: null},
+					{testId: "general-settings", label: "General", selected: "page"},
+					{testId: "usage-settings", label: "Usage", selected: null},
+					{testId: "claude-code-settings", label: "Claude Code", selected: null},
+					{testId: "transcript-settings", label: "Transcript", selected: null},
+					{testId: "sessions-settings", label: "Sessions", selected: null},
+					{testId: "application-settings", label: "Application", selected: null},
+					{testId: "ai-features-settings", label: "AI features", selected: null},
+					{testId: "claude-config-settings", label: "Claude Config", selected: null},
+					{testId: "setup-settings", label: "Setup", selected: null},
 				],
 			},
 			{
-				name: "Customize",
-				caption: "Customize",
+				name: true,
+				label: {tag: "div", text: "Customize"},
+				className: "flex flex-col gap-px",
 				items: [
-					{label: "Skills", selected: null},
-					{label: "Connectors", selected: null},
-					{label: "Plugins", selected: null},
+					{testId: "customize-skills-settings", label: "Skills", selected: null},
+					{testId: "customize-connectors-settings", label: "Connectors", selected: null},
+					{testId: "customize-plugins-settings", label: "Plugins", selected: null},
 				],
 			},
 		]);
+	});
+
+	it("brightens nav item text on hover and draws upstream's shadow-focus ring on keyboard focus", async () => {
+		await renderAt("/#settings/general");
+		await screen.findByRole("dialog", {name: "Settings"});
+		const nav = screen.getByRole("navigation", {name: "Settings"});
+		const classes = (name: string) =>
+			within(nav)
+				.getByRole("button", {name})
+				.className.split(/\s+/)
+				.filter((token) => /hover:|focus-visible:/.test(token));
+		const expected = [
+			"focus-visible:outline-hidden",
+			"not-dark:focus-visible:shadow-[inset_0_0_0_1px_#fcfcfb,0_0_0_1px_#2a78d6,0_0_6px_1px_#cde2fb]",
+			"dark:focus-visible:shadow-[inset_0_0_0_1px_rgb(21_21_21),0_0_0_1px_rgb(42_120_214),0_0_6px_1px_rgb(24_79_149/0.6)]",
+		];
+		expect({selected: classes("General"), rest: classes("Usage")}).toStrictEqual({
+			selected: expected,
+			rest: [...expected, "hover:bg-fill-ghost-hover", "hover:text-primary"],
+		});
+	});
+
+	it("labels the dialog by an sr-only Settings h2 instead of aria-label, as upstream", async () => {
+		await renderAt("/#settings/general");
+		const dialog = await screen.findByRole("dialog", {name: "Settings"});
+		const heading = document.getElementById(dialog.getAttribute("aria-labelledby") ?? "");
+		expect({
+			ariaLabel: dialog.getAttribute("aria-label"),
+			heading: {tag: heading?.tagName.toLowerCase(), text: heading?.textContent, className: heading?.className},
+			inside: heading !== null && dialog.contains(heading),
+		}).toStrictEqual({
+			ariaLabel: null,
+			heading: {tag: "h2", text: "Settings", className: "sr-only"},
+			inside: true,
+		});
 	});
 
 	it("clears the hash on Escape", async () => {
@@ -623,7 +666,9 @@ describe("SettingsDialog local tabs", () => {
 		await renderAt("/#settings/setup");
 		await screen.findByRole("dialog", {name: "Settings"});
 
+		// "Settings" is the dialog's sr-only h2 label.
 		expect(screen.getAllByRole("heading").map((heading) => heading.textContent)).toStrictEqual([
+			"Settings",
 			"Hook Configuration",
 		]);
 	});

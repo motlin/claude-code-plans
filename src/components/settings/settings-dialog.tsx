@@ -1,7 +1,17 @@
 import {Dialog} from "@base-ui/react/dialog";
 import {useLocation, useNavigate} from "@tanstack/react-router";
 import {ChevronRight, X} from "lucide-react";
-import {type ComponentProps, Suspense, use, useCallback, useEffect, useRef, useState, type ComponentType} from "react";
+import {
+	type ComponentProps,
+	Suspense,
+	use,
+	useCallback,
+	useEffect,
+	useId,
+	useRef,
+	useState,
+	type ComponentType,
+} from "react";
 import {customizeSectionLabels, settingsTabLabels} from "../../lib/schema-choices";
 import {
 	type CustomizeSection,
@@ -170,6 +180,7 @@ const FLASH_MS = 1500;
  * hash and restores focus to whatever was focused when it opened.
  */
 export function SettingsDialog() {
+	const titleId = useId();
 	const hash = useLocation({select: (location) => location.hash});
 	const navigate = useNavigate();
 	const current = parseSettingsHash(hash);
@@ -293,7 +304,7 @@ export function SettingsDialog() {
 				<DensityScope density="comfortable">
 					<Dialog.Backdrop className="fixed inset-0 z-50 bg-black/40 dark:bg-black/50 transition-opacity duration-200 data-[starting-style]:opacity-0 data-[ending-style]:opacity-0 motion-reduce:transition-none" />
 					<Dialog.Popup
-						aria-label="Settings"
+						aria-labelledby={titleId}
 						finalFocus={finalFocus}
 						data-perf-overlay="settings_modal"
 						data-perf-screen={customize === null ? tab : `customize-${customize.section}`}
@@ -303,7 +314,9 @@ export function SettingsDialog() {
 							// Upstream at phone width: one scroll container (p-24) holding the header, the tab strip and a single column.
 							<div className="isolate flex min-h-0 flex-1 flex-col overflow-y-auto p-6">
 								<div className="flex shrink-0 items-center justify-between gap-3 pb-3">
-									<h2 className="text-[22px]/[28px] font-[580] text-primary">Settings</h2>
+									<h2 id={titleId} className="text-[22px]/[28px] font-[580] text-primary">
+										Settings
+									</h2>
 									{closeButton}
 								</div>
 								<div className="shrink-0 pb-3">
@@ -314,6 +327,9 @@ export function SettingsDialog() {
 							</div>
 						) : (
 							<>
+								<h2 id={titleId} className="sr-only">
+									Settings
+								</h2>
 								<nav
 									aria-label="Settings"
 									className="flex w-48 shrink-0 flex-col gap-3 border-r border-subtle bg-surface-1"
@@ -323,16 +339,17 @@ export function SettingsDialog() {
 									</div>
 									<div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-3 pb-3">
 										{NAV_GROUPS.map((group) => (
-											<div
-												key={group.label}
-												role="group"
-												aria-label={group.label}
-												className="flex shrink-0 flex-col gap-3"
-											>
-												<div className="px-2 pt-3 text-[12px]/[17px] text-ink-muted">
+											<div key={group.label} className="flex shrink-0 flex-col gap-3">
+												<div
+													id={`${titleId}-${group.label}`}
+													className="px-2 pt-3 text-[12px]/[17px] text-ink-muted"
+												>
 													{group.label}
 												</div>
-												<div className="flex flex-col gap-px">
+												<ul
+													aria-labelledby={`${titleId}-${group.label}`}
+													className="flex flex-col gap-px"
+												>
 													{group.items.map((item) => {
 														const selected = isSelected(item);
 														const Icon =
@@ -340,29 +357,33 @@ export function SettingsDialog() {
 																? SETTINGS_TAB_ICONS[item.tab]
 																: CUSTOMIZE_SECTION_ICONS[item.section];
 														return (
-															<button
+															<li
 																key={navItemKey(item)}
-																type="button"
-																aria-current={selected ? "page" : undefined}
-																{...navItemWarmers(item)}
-																onClick={() => {
-																	selectItem(item);
-																}}
-																className={`flex h-8 shrink-0 items-center gap-3 rounded-r6 px-2 text-left text-body transition-colors ${
-																	selected
-																		? "bg-fill-control font-medium text-primary"
-																		: "font-normal text-secondary hover:bg-fill-ghost-hover"
-																}`}
+																data-testid={`${navItemKey(item)}-settings`}
 															>
-																<Icon
-																	aria-hidden="true"
-																	className="size-5 shrink-0 text-secondary"
-																/>
-																{navItemLabel(item)}
-															</button>
+																<button
+																	type="button"
+																	aria-current={selected ? "page" : undefined}
+																	{...navItemWarmers(item)}
+																	onClick={() => {
+																		selectItem(item);
+																	}}
+																	className={`flex h-8 w-full shrink-0 items-center gap-3 rounded-r6 px-2 text-left text-body transition-colors focus-visible:outline-hidden not-dark:focus-visible:shadow-[inset_0_0_0_1px_#fcfcfb,0_0_0_1px_#2a78d6,0_0_6px_1px_#cde2fb] dark:focus-visible:shadow-[inset_0_0_0_1px_rgb(21_21_21),0_0_0_1px_rgb(42_120_214),0_0_6px_1px_rgb(24_79_149/0.6)] ${
+																		selected
+																			? "bg-fill-control font-medium text-primary"
+																			: "font-normal text-secondary hover:bg-fill-ghost-hover hover:text-primary"
+																	}`}
+																>
+																	<Icon
+																		aria-hidden="true"
+																		className="size-5 shrink-0 text-secondary"
+																	/>
+																	{navItemLabel(item)}
+																</button>
+															</li>
 														);
 													})}
-												</div>
+												</ul>
 											</div>
 										))}
 									</div>
