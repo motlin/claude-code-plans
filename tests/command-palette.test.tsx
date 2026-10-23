@@ -286,6 +286,64 @@ describe("CommandPalette shell", () => {
 		});
 	});
 
+	it("Backspace or Delete in an empty query returns a non-All tab to All", async () => {
+		const dialog = await openPalette();
+		await within(dialog).findByRole("option", {name: /Refactor auth module/});
+		const input = within(dialog).getByRole("combobox");
+		const selectedTab = () => within(dialog).getByRole("tab", {selected: true}).textContent;
+
+		fireEvent.keyDown(input, {key: "ArrowRight", code: "ArrowRight"});
+		const backspaceNotPrevented = fireEvent.keyDown(input, {key: "Backspace", code: "Backspace"});
+		const afterBackspace = selectedTab();
+		fireEvent.keyDown(input, {key: "ArrowRight", code: "ArrowRight"});
+		const deleteNotPrevented = fireEvent.keyDown(input, {key: "Delete", code: "Delete"});
+
+		expect({backspaceNotPrevented, afterBackspace, deleteNotPrevented, afterDelete: selectedTab()}).toStrictEqual({
+			backspaceNotPrevented: false,
+			afterBackspace: "All",
+			deleteNotPrevented: false,
+			afterDelete: "All",
+		});
+	});
+
+	it("Backspace keeps the tab when held, when the query has text, during IME composition, or in Compose", async () => {
+		const dialog = await openPalette();
+		await within(dialog).findByRole("option", {name: /Refactor auth module/});
+		const input = within(dialog).getByRole<HTMLTextAreaElement>("combobox");
+		const selectedTab = () => within(dialog).getByRole("tab", {selected: true}).textContent;
+		fireEvent.keyDown(input, {key: "ArrowRight", code: "ArrowRight"});
+
+		const repeatNotPrevented = fireEvent.keyDown(input, {key: "Backspace", code: "Backspace", repeat: true});
+		const afterRepeat = selectedTab();
+		fireEvent.keyDown(input, {key: "Backspace", code: "Backspace", keyCode: 229});
+		const afterComposing = selectedTab();
+		fireEvent.change(input, {target: {value: "a"}});
+		const textNotPrevented = fireEvent.keyDown(input, {key: "Backspace", code: "Backspace"});
+		const afterText = selectedTab();
+		fireEvent.change(input, {target: {value: ""}});
+		fireEvent.keyDown(input, {key: "Tab", code: "Tab"});
+		const composer = await within(dialog).findByRole("combobox", {name: "Write a message…"});
+		fireEvent.keyDown(composer, {key: "Backspace", code: "Backspace"});
+		fireEvent.keyDown(composer, {key: "Tab", code: "Tab"});
+		await within(dialog).findByRole("tab", {name: "Artifacts"});
+
+		expect({
+			repeatNotPrevented,
+			afterRepeat,
+			afterComposing,
+			textNotPrevented,
+			afterText,
+			afterCompose: selectedTab(),
+		}).toStrictEqual({
+			repeatNotPrevented: true,
+			afterRepeat: "Artifacts",
+			afterComposing: "Artifacts",
+			textNotPrevented: true,
+			afterText: "Artifacts",
+			afterCompose: "Artifacts",
+		});
+	});
+
 	it("draws upstream's ghost pill on the active and hovered tabs and roves tabindex to the active one", async () => {
 		const dialog = await openPalette();
 		const tabs = within(dialog).getAllByRole("tab");

@@ -1116,6 +1116,10 @@ function PalettePopup({
 			stepTab(event);
 			return;
 		}
+		if (event.key === "Backspace" || event.key === "Delete") {
+			popTypeFilter(event);
+			return;
+		}
 		if (event.key !== "Tab" || event.shiftKey || event.metaKey || event.ctrlKey || event.altKey) {
 			return;
 		}
@@ -1136,8 +1140,7 @@ function PalettePopup({
 				metaKey: event.metaKey,
 				ctrlKey: event.ctrlKey,
 				repeat: event.repeat,
-				// oxlint-disable-next-line typescript/no-deprecated -- Safari reports IME keydowns only as keyCode 229, as upstream checks
-				composing: event.nativeEvent.isComposing || event.keyCode === 229,
+				composing: isComposingKey(event),
 			},
 			{text: input.value, selectionStart: input.selectionStart, selectionEnd: input.selectionEnd},
 			getComputedStyle(input).direction === "rtl",
@@ -1146,6 +1149,21 @@ function PalettePopup({
 		event.preventDefault();
 		const next = nextPaletteType(PaletteTypeSchema.options, tab, direction, !event.repeat);
 		if (next !== undefined) chooseTab(next);
+	}
+
+	// Upstream's `A_` pops the last filter on Backspace/Delete in an empty query. Local filter tokens
+	// live in the query text, so the type tab is the only thing left to pop.
+	function popTypeFilter(event: KeyboardEvent<HTMLDivElement>) {
+		const input = inputRef.current;
+		if (compose || input === null || event.target !== input) return;
+		if (query !== "" || event.repeat || isComposingKey(event) || tab === "all") return;
+		event.preventDefault();
+		chooseTab("all");
+	}
+
+	function isComposingKey(event: KeyboardEvent<HTMLDivElement>) {
+		// oxlint-disable-next-line typescript/no-deprecated -- Safari reports IME keydowns only as keyCode 229, as upstream checks
+		return event.nativeEvent.isComposing || event.keyCode === 229;
 	}
 
 	// ⌥⏎ opens the row-actions card for the selected session row.
