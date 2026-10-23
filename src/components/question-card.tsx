@@ -8,10 +8,12 @@ import type {QuestionLike} from "../lib/ask-user-question";
 import {
 	clearQuestionCardState,
 	clearSentQuestionCard,
+	markQuestionCardSeen,
 	markQuestionCardSent,
 	readQuestionCardState,
 	readSentQuestionCard,
 	subscribeSentQuestionCard,
+	wasQuestionCardSeen,
 	writeQuestionCardState,
 } from "../lib/question-card-store";
 import {chooseOther, pickOption, type QuestionCardDraft, typeOther} from "../lib/question-card-draft";
@@ -112,6 +114,30 @@ function useApprovalHotkey(cardRootRef: RefObject<HTMLDivElement | null>, hotkey
 }
 
 /**
+ * Upstream's seen-map filler: records `draftKey` once the card intersects the
+ * viewport, or at once where IntersectionObserver is unavailable.
+ */
+function useMarkSeen(cardRootRef: RefObject<HTMLDivElement | null>, draftKey: string | undefined) {
+	useEffect(() => {
+		const card = cardRootRef.current;
+		if (draftKey === undefined || card === null) return undefined;
+		if (typeof IntersectionObserver === "undefined") {
+			markQuestionCardSeen(draftKey);
+			return undefined;
+		}
+		const observer = new IntersectionObserver((entries) => {
+			if (!entries.some((entry) => entry.isIntersecting)) return;
+			markQuestionCardSeen(draftKey);
+			observer.disconnect();
+		});
+		observer.observe(card);
+		return () => {
+			observer.disconnect();
+		};
+	}, [cardRootRef, draftKey]);
+}
+
+/**
  * Upstream's pending AskUserQuestion card, drawn inline at most 480px wide: the
  * question in a grey header with an "N of M" pager, radio (or checkbox) rows of
  * label and description split by hairlines, an Other row that reveals its text
@@ -140,6 +166,8 @@ export function QuestionCard({
 	const [restored] = useState(() =>
 		draftKey === undefined ? null : (wasSent ?? readQuestionCardState(draftKey, questions.length)),
 	);
+	// Upstream fades only a card never seen in this page and never restored.
+	const [skipEnter] = useState(() => restored !== null || (draftKey !== undefined && wasQuestionCardSeen(draftKey)));
 	const [page, setPage] = useState(restored?.page ?? 0);
 	const [drafts, setDrafts] = useState<QuestionCardDraft[]>(() => restored?.drafts ?? questions.map(initialDraft));
 	const [skipped, setSkipped] = useState<boolean[]>(() => restored?.skipped ?? questions.map(() => false));
@@ -150,6 +178,7 @@ export function QuestionCard({
 	const hotkeyRef = useRef<(() => void) | null>(null);
 	const refocusRef = useRef(false);
 	useApprovalHotkey(cardRootRef, hotkeyRef);
+	useMarkSeen(cardRootRef, draftKey);
 	// Upstream saves the draft on every change and stops once the card has submitted.
 	const savedRef = useRef<{mounted: boolean; submitted: boolean}>({mounted: false, submitted: wasSent !== null});
 	useEffect(() => {
@@ -282,9 +311,9 @@ export function QuestionCard({
 			aria-label={question.question}
 			data-approval-card-root=""
 			data-approval-presentation="card"
-			{...(restored === null ? {} : {"data-skip-approval-enter": ""})}
+			{...(skipEnter ? {"data-skip-approval-enter": ""} : {})}
 			className={`card-ring @container relative isolate flex max-w-[480px] flex-col overflow-clip rounded-r7 outline-none${
-				restored === null ? " animate-approval-inline-enter motion-reduce:animate-none" : ""
+				skipEnter ? "" : " animate-approval-inline-enter motion-reduce:animate-none"
 			}`}
 		>
 			<div className="flex items-center gap-3 bg-alpha-1 px-3 py-2">

@@ -763,7 +763,7 @@ describe("QuestionCard", () => {
 			expect({
 				...snapshotFresh(),
 				stored: window.sessionStorage.getItem("question-card-draft:remount-2"),
-			}).toStrictEqual({question: "Which test runner?", skipEnter: false, stored: null});
+			}).toStrictEqual({question: "Which test runner?", skipEnter: true, stored: null});
 		});
 
 		it("redraws the submitted answers and page, busy, when a card remounts while sending, as upstream's sent store", () => {
@@ -886,6 +886,96 @@ describe("QuestionCard", () => {
 			render(<QuestionCard draftKey="enter-1" questions={QUESTIONS} onSubmit={async () => {}} />);
 
 			expect(enterClasses()).toStrictEqual([]);
+		});
+
+		describe("remembering cards seen in this page, as upstream's IntersectionObserver-filled seen map", () => {
+			const observed: {
+				target: Element;
+				callback: IntersectionObserverCallback;
+				observer: IntersectionObserver;
+			}[] = [];
+
+			class TestIntersectionObserver {
+				readonly root = null;
+				readonly rootMargin = "";
+				readonly thresholds: readonly number[] = [];
+				constructor(private readonly callback: IntersectionObserverCallback) {}
+				observe(target: Element): void {
+					observed.push({
+						target,
+						callback: this.callback,
+						observer: this as unknown as IntersectionObserver,
+					});
+				}
+				unobserve(): void {}
+				disconnect(): void {}
+				takeRecords(): IntersectionObserverEntry[] {
+					return [];
+				}
+			}
+
+			const intersect = (isIntersecting: boolean) => {
+				act(() => {
+					for (const {target, callback, observer} of observed) {
+						callback([{target, isIntersecting} as unknown as IntersectionObserverEntry], observer);
+					}
+				});
+			};
+
+			afterEach(() => {
+				observed.length = 0;
+				vi.unstubAllGlobals();
+			});
+
+			const skipState = () => {
+				const card = screen.getByRole("group");
+				return {skipEnter: card.hasAttribute("data-skip-approval-enter"), animation: enterClasses()};
+			};
+
+			it("skips the fade when a card already seen in this page remounts without a draft", () => {
+				vi.stubGlobal("IntersectionObserver", TestIntersectionObserver);
+				const first = render(
+					<QuestionCard draftKey="seen-1" questions={QUESTIONS} onSubmit={async () => {}} />,
+				);
+				const firstMount = skipState();
+				intersect(true);
+				first.unmount();
+				render(<QuestionCard draftKey="seen-1" questions={QUESTIONS} onSubmit={async () => {}} />);
+
+				expect({firstMount, remount: skipState()}).toStrictEqual({
+					firstMount: {
+						skipEnter: false,
+						animation: ["animate-approval-inline-enter", "motion-reduce:animate-none"],
+					},
+					remount: {skipEnter: true, animation: []},
+				});
+			});
+
+			it("still fades a remounted card that never intersected", () => {
+				vi.stubGlobal("IntersectionObserver", TestIntersectionObserver);
+				const first = render(
+					<QuestionCard draftKey="seen-2" questions={QUESTIONS} onSubmit={async () => {}} />,
+				);
+				intersect(false);
+				first.unmount();
+				render(<QuestionCard draftKey="seen-2" questions={QUESTIONS} onSubmit={async () => {}} />);
+
+				expect(skipState()).toStrictEqual({
+					skipEnter: false,
+					animation: ["animate-approval-inline-enter", "motion-reduce:animate-none"],
+				});
+			});
+
+			it("marks the card seen at once where IntersectionObserver is unavailable", () => {
+				vi.stubGlobal("IntersectionObserver", undefined);
+				const first = render(
+					<QuestionCard draftKey="seen-3" questions={QUESTIONS} onSubmit={async () => {}} />,
+				);
+				first.unmount();
+				render(<QuestionCard draftKey="seen-3" questions={QUESTIONS} onSubmit={async () => {}} />);
+
+				expect(skipState()).toStrictEqual({skipEnter: true, animation: []});
+			});
 		});
 	});
 

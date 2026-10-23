@@ -109,3 +109,17 @@ export function clearSentQuestionCard(key: string, error: string | null = null):
 	if (!sent.delete(key)) return;
 	for (const listener of [...(sentListeners.get(key) ?? [])]) listener(error);
 }
+
+/**
+ * Upstream's in-memory seen map: draft keys of cards that have intersected the
+ * viewport in this page, so a card that remounts skips its enter fade.
+ */
+const seen = new Set<string>();
+
+export function markQuestionCardSeen(key: string): void {
+	seen.add(key);
+}
+
+export function wasQuestionCardSeen(key: string): boolean {
+	return seen.has(key);
+}
