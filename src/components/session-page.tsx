@@ -1050,7 +1050,7 @@ function SessionView({
 
 							{/* Upstream draws every pending approval inline; a permission prompt is not on disk, so it follows the transcript */}
 							{pendingPermission && (
-								<div data-inline-permission="" className={`${CHAT_COLUMN_CLASS} pb-4`}>
+								<div data-inline-permission="" className={`${CHAT_COLUMN_CLASS} pb-4 empty:hidden`}>
 									<SessionBackgroundTasksOpener running={runningBackgroundLaunches}>
 										<PermissionCard
 											key={pendingPermission.notificationId}

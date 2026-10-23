@@ -444,6 +444,19 @@ describe("permissionDecisionForKey", () => {
 	});
 });
 
+/** A pending answer the test settles by hand. */
+function deferredAnswer() {
+	let resolve!: () => void;
+	let reject!: (reason: Error) => void;
+	const promise = new Promise<undefined>((onResolve, onReject) => {
+		resolve = () => {
+			onResolve(undefined);
+		};
+		reject = onReject;
+	});
+	return {promise, resolve, reject};
+}
+
 function renderCard({
 	canAnswer = true,
 	persistentAllow = null,
@@ -697,6 +710,53 @@ describe("PermissionCard", () => {
 		});
 	});
 
+	it("hides the card at once on a decision, before the answer resolves", async () => {
+		const answer = deferredAnswer();
+		const onDecision = vi.fn<ComponentProps<typeof PermissionCard>["onDecision"]>(async () => answer.promise);
+		const {container} = render(
+			<PermissionCard title={{action: "run", meta: null}} detail="ls" canAnswer onDecision={onDecision} />,
+		);
+		fireEvent.click(screen.getByRole("button", {name: /^Allow once/}));
+		const hidden = container.querySelector("[data-approval-card-root]") === null;
+		await actAndSettle(() => {
+			answer.resolve();
+		});
+		expect({
+			hidden,
+			afterResolve: container.querySelector("[data-approval-card-root]") === null,
+			calls: onDecision.mock.calls,
+		}).toStrictEqual({hidden: true, afterResolve: true, calls: [["allow"]]});
+	});
+
+	it("brings the card back with the error when the answer fails", async () => {
+		const answer = deferredAnswer();
+		const onDecision = vi.fn<ComponentProps<typeof PermissionCard>["onDecision"]>(async () => answer.promise);
+		const {container} = render(
+			<PermissionCard title={{action: "run", meta: null}} detail="ls" canAnswer onDecision={onDecision} />,
+		);
+		fireEvent.click(screen.getByRole("button", {name: "Deny"}));
+		await actAndSettle(() => {
+			answer.reject(new Error("herdr pane is gone"));
+		});
+		const card = container.querySelector("[data-approval-card-root]");
+		expect({
+			shown: card !== null,
+			error: card?.querySelector(".text-extended-pink")?.textContent,
+			buttons: screen
+				.getAllByRole("button")
+				.map((button) => [button.textContent, button.hasAttribute("disabled")]),
+			spinners: container.querySelectorAll(".animate-spin").length,
+		}).toStrictEqual({
+			shown: true,
+			error: "herdr pane is gone",
+			buttons: [
+				["Deny", false],
+				["Allow onceCtrl⏎Enter", false],
+			],
+			spinners: 0,
+		});
+	});
+
 	it("buttons send their decisions", () => {
 		const {onDecision} = renderCard();
 		fireEvent.click(screen.getByRole("button", {name: /^Allow once/}));
@@ -781,20 +841,26 @@ describe("PermissionCard", () => {
 			expect(onDecision.mock.calls).toStrictEqual([]);
 		});
 
-		it("answers from the empty composer and from the focused card", async () => {
-			const {container, onDecision} = renderCard();
+		it("answers from the empty composer", async () => {
+			const {onDecision} = renderCard();
 			arm();
 			const prompt = screen.getByRole("textbox", {name: "Prompt"});
 			prompt.focus();
 			await actAndSettle(() => {
 				fireEvent.keyDown(prompt, {key: "Enter", metaKey: true});
 			});
+			expect(onDecision.mock.calls).toStrictEqual([["allow"]]);
+		});
+
+		it("answers from the focused card", async () => {
+			const {container, onDecision} = renderCard();
+			arm();
 			const card = container.querySelector<HTMLElement>("[data-approval-card-root]")!;
 			card.focus();
 			await actAndSettle(() => {
 				fireEvent.keyDown(card, {key: "Escape"});
 			});
-			expect(onDecision.mock.calls).toStrictEqual([["allow"], ["deny"]]);
+			expect(onDecision.mock.calls).toStrictEqual([["deny"]]);
 		});
 
 		it("leaves ⌘⏎ to a composer draft", () => {
@@ -832,23 +898,23 @@ describe("PermissionCard", () => {
 			expect(onDecision.mock.calls).toStrictEqual([]);
 		});
 
-		it("sends the persistent grant on ⇧⌘⏎ only with focus in the card or the empty composer", async () => {
+		it.each([
+			{focus: "body", calls: []},
+			{focus: "card", calls: [["always"]]},
+			{focus: "composer", calls: [["always"]]},
+		] as const)("sends the persistent grant on ⇧⌘⏎ with focus on the $focus: $calls", async ({focus, calls}) => {
 			const {container, onDecision} = renderCard({persistentAllow: "always"});
 			arm();
-			const press = async (target: HTMLElement) => {
-				target.focus();
-				await actAndSettle(() => {
-					fireEvent.keyDown(target, {key: "Enter", metaKey: true, shiftKey: true});
-				});
-			};
-			await press(document.body);
-			const fromBody = [...onDecision.mock.calls];
-			await press(container.querySelector<HTMLElement>("[data-approval-card-root]")!);
-			await press(screen.getByRole("textbox", {name: "Prompt"}));
-			expect({fromBody, calls: onDecision.mock.calls}).toStrictEqual({
-				fromBody: [],
-				calls: [["always"], ["always"]],
+			const target = {
+				body: document.body,
+				card: container.querySelector<HTMLElement>("[data-approval-card-root]")!,
+				composer: screen.getByRole("textbox", {name: "Prompt"}),
+			}[focus];
+			target.focus();
+			await actAndSettle(() => {
+				fireEvent.keyDown(target, {key: "Enter", metaKey: true, shiftKey: true});
 			});
+			expect(onDecision.mock.calls).toStrictEqual(calls);
 		});
 
 		it("ignores ⇧⌘⏎ without a persistent option", () => {
