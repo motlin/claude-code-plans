@@ -35,7 +35,13 @@ import {
 import {takeQueuedDiffComments, useDiffComments} from "../lib/diff-comments";
 import type {SessionFilesEntry} from "../lib/api/session-files";
 import {fileMentionTrigger, insertFileMention} from "../lib/file-mentions";
-import {type AcceptedMention, remapMentions} from "../lib/composer-mentions";
+import {
+	type AcceptedMention,
+	mentionAt,
+	mentionEndingAt,
+	mentionStartingAt,
+	remapMentions,
+} from "../lib/composer-mentions";
 import type {LaunchOptions} from "../lib/launch-options";
 import {filterSlashCommands, type SlashCommand, skillChipArgumentHint, slashTrigger} from "../lib/slash-commands";
 import {type ChinLaunchControls, ComposerAddMenu, ComposerChin} from "./composer-chin";
@@ -587,13 +593,20 @@ export function Composer({
 	const mentions =
 		mentionState?.draftKey === draftKey && mentionState.text === prompt ? mentionState.mentions : NO_MENTIONS;
 	const painted = chip !== null || mentions.length > 0;
+	// The textarea's selection end, so a selection spanning exactly one chip paints it selected.
+	const [selectionEnd, setSelectionEnd] = useState(0);
+	const selectedMention = mentions.find((m) => m.start === caret && m.end === selectionEnd);
 	const rest = prompt.slice(chipLength);
 	// The hint sits after the chip line's trailing whitespace, before any blank line below it.
 	const restLine = rest.split("\n", 1)[0] ?? "";
 	const paintedOverlayRef = useRef<HTMLDivElement>(null);
 	const argumentHintSrId = `skill-arg-hint-sr-${useId()}`;
 
-	const trigger = mentionSessionId === undefined || slashOpen ? null : fileMentionTrigger(prompt, caret);
+	// A caret right after an accepted chip isn't a query: upstream's atom never reopens the menu.
+	const trigger =
+		mentionSessionId === undefined || slashOpen || mentionEndingAt(mentions, caret) !== undefined
+			? null
+			: fileMentionTrigger(prompt, caret);
 	const mentionKey = trigger === null ? null : `${trigger.start}\0${prompt}`;
 	const [dismissedMention, setDismissedMention] = useState<string | null>(null);
 	const mention = mentionKey === dismissedMention ? null : trigger;
@@ -888,8 +901,65 @@ export function Composer({
 				textarea.setSelectionRange(start, end, textarea.selectionDirection);
 			}
 		}
+		// Same for accepted @ mentions: a caret inside one lands after it, or before it when stepping left from its end.
+		const inside = start === end ? mentionAt(mentions, start) : undefined;
+		if (inside === undefined) {
+			start = mentionAt(mentions, start)?.start ?? start;
+			end = mentionAt(mentions, end)?.end ?? end;
+		} else {
+			start = end = start === inside.end - 1 && caret >= inside.end ? inside.start : inside.end;
+		}
+		if (start !== textarea.selectionStart || end !== textarea.selectionEnd) {
+			textarea.setSelectionRange(start, end, textarea.selectionDirection);
+		}
 		setCaret(start);
+		setSelectionEnd(end);
 		setChipSelection(chip !== null && start === 0 && end === chipLength);
+	}
+
+	/**
+	 * Upstream's mention is a ProseMirror atom with no shortcuts of its own: Backspace after it (or Delete
+	 * before it) removes it in one step, and the arrows select it whole before stepping past it.
+	 */
+	function handleMentionChipKey(e: React.KeyboardEvent<HTMLTextAreaElement>): boolean {
+		if (mentions.length === 0 || e.altKey || e.metaKey || e.ctrlKey || e.shiftKey) return false;
+		const {selectionStart, selectionEnd: end} = e.currentTarget;
+		const selected = mentions.find((m) => m.start === selectionStart && m.end === end);
+		const collapsed = selectionStart === end;
+		const textarea = e.currentTarget;
+		const selectRange = (start: number, rangeEnd: number) => {
+			textarea.setSelectionRange(start, rangeEnd);
+			setCaret(start);
+			setSelectionEnd(rangeEnd);
+		};
+		// The chip a collapsed caret sits right after (stepping backward) or right before (forward).
+		const besideCaret = (backward: boolean) =>
+			collapsed ? (backward ? mentionEndingAt : mentionStartingAt)(mentions, selectionStart) : undefined;
+		if (e.key === "Backspace" || e.key === "Delete") {
+			const target = selected ?? besideCaret(e.key === "Backspace");
+			if (target === undefined) return false;
+			const next = prompt.slice(0, target.start) + prompt.slice(target.end);
+			setHistoryWalk(null);
+			setMentionState({draftKey, text: next, mentions: remapMentions(prompt, next, mentions)});
+			pendingCaretRef.current = target.start;
+			setCaret(target.start);
+			setSelectionEnd(target.start);
+			setPrompt(next);
+		} else if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+			const left = e.key === "ArrowLeft";
+			if (selected === undefined) {
+				const target = besideCaret(left);
+				if (target === undefined) return false;
+				selectRange(target.start, target.end);
+			} else {
+				const edge = left ? selected.start : selected.end;
+				selectRange(edge, edge);
+			}
+		} else {
+			return false;
+		}
+		e.preventDefault();
+		return true;
 	}
 
 	function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -897,6 +967,7 @@ export function Composer({
 		if (
 			e.nativeEvent.isComposing ||
 			handleChipKey(e) ||
+			handleMentionChipKey(e) ||
 			handleSlashKey(e) ||
 			handleMentionKey(e) ||
 			handleHistoryKey(e)
@@ -1021,12 +1092,12 @@ export function Composer({
 							)}
 							{argumentHint === null ? (
 								<span data-skill-chip-rest="" className="text-primary">
-									{paintMentions(rest, chipLength, mentions)}
+									{paintMentions(rest, chipLength, mentions, selectedMention)}
 								</span>
 							) : (
 								<>
 									<span data-skill-chip-rest="" className="text-primary">
-										{paintMentions(restLine, chipLength, mentions)}
+										{paintMentions(restLine, chipLength, mentions, selectedMention)}
 									</span>
 									<span
 										data-testid="slash-argument-hint"
@@ -1036,7 +1107,12 @@ export function Composer({
 									>
 										{argumentHint}
 									</span>
-									{paintMentions(rest.slice(restLine.length), chipLength + restLine.length, mentions)}
+									{paintMentions(
+										rest.slice(restLine.length),
+										chipLength + restLine.length,
+										mentions,
+										selectedMention,
+									)}
 								</>
 							)}
 						</div>
@@ -1074,6 +1150,7 @@ export function Composer({
 								pendingCaretRef.current = nextCaret;
 							}
 							setCaret(nextCaret);
+							setSelectionEnd(nextCaret);
 							setChipSelection(false);
 							if (mentions.length > 0) {
 								setMentionState({

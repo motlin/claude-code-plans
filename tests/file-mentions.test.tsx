@@ -378,3 +378,114 @@ describe("Composer accepted @ mention chips", () => {
 		});
 	});
 });
+
+describe("Composer accepted @ mention chips edit atomically", () => {
+	const SELECTED_HIGHLIGHT =
+		"pointer-events-none absolute -inset-y-0.5 -left-0.5 -right-1 rounded-r5 bg-upstream-accent-pressed";
+	const HOVER_HIGHLIGHT =
+		"pointer-events-none absolute -inset-y-0.5 -left-0.5 -right-1 rounded-r5 [@media(hover:hover)]:group-hover/mention:bg-fill-ghost-hover";
+
+	/** Accepts `src/lib/index.ts` at the start, then sets the text around the 17-char chip. */
+	async function chipThen(textarea: HTMLTextAreaElement, value: string, caret: number) {
+		responses.set(searchUrl("ind"), search("ind", ["src/lib/index.ts"]));
+		await type(textarea, "@ind");
+		fireEvent.keyDown(textarea, {key: "Enter"});
+		await type(textarea, value);
+		select(textarea, caret, caret);
+	}
+
+	function select(textarea: HTMLTextAreaElement, start: number, end: number) {
+		textarea.setSelectionRange(start, end);
+		fireEvent.select(textarea);
+	}
+
+	function state(textarea: HTMLTextAreaElement) {
+		return {
+			value: textarea.value,
+			selection: [textarea.selectionStart, textarea.selectionEnd],
+			highlights: screen
+				.queryAllByTestId("composer-mention-chip")
+				.map((chip) => chip.firstElementChild?.className),
+		};
+	}
+
+	it("deletes the whole chip with one Backspace right after it", async () => {
+		const {textarea} = setup();
+		await chipThen(textarea, "@src/lib/index.ts", 17);
+
+		const notPrevented = fireEvent.keyDown(textarea, {key: "Backspace"});
+
+		expect({notPrevented, ...state(textarea)}).toStrictEqual({
+			notPrevented: false,
+			value: "",
+			selection: [0, 0],
+			highlights: [],
+		});
+	});
+
+	it("deletes the whole chip with Delete right before it", async () => {
+		const {textarea} = setup();
+		await chipThen(textarea, "@src/lib/index.ts b", 0);
+
+		const notPrevented = fireEvent.keyDown(textarea, {key: "Delete"});
+
+		expect({notPrevented, ...state(textarea)}).toStrictEqual({
+			notPrevented: false,
+			value: " b",
+			selection: [0, 0],
+			highlights: [],
+		});
+	});
+
+	it("keeps the caret out of the chip, jumping to its start only when stepping left from its end", async () => {
+		const {textarea} = setup();
+		await chipThen(textarea, "@src/lib/index.ts ", 17);
+
+		select(textarea, 5, 5);
+		const fromInside = [textarea.selectionStart, textarea.selectionEnd];
+		select(textarea, 16, 16);
+		const steppedLeft = [textarea.selectionStart, textarea.selectionEnd];
+		select(textarea, 3, 18);
+		const expanded = [textarea.selectionStart, textarea.selectionEnd];
+
+		expect({fromInside, steppedLeft, expanded}).toStrictEqual({
+			fromInside: [17, 17],
+			steppedLeft: [0, 0],
+			expanded: [0, 18],
+		});
+	});
+
+	it("selects the chip with ArrowLeft, collapses after it with ArrowRight, and deletes it with Backspace when selected", async () => {
+		const {textarea} = setup();
+		await chipThen(textarea, "@src/lib/index.ts", 17);
+
+		const leftNotPrevented = fireEvent.keyDown(textarea, {key: "ArrowLeft"});
+		const selected = state(textarea);
+		const rightNotPrevented = fireEvent.keyDown(textarea, {key: "ArrowRight"});
+		const collapsed = state(textarea);
+		fireEvent.keyDown(textarea, {key: "ArrowLeft"});
+		fireEvent.keyDown(textarea, {key: "Backspace"});
+
+		expect({leftNotPrevented, selected, rightNotPrevented, collapsed, deleted: state(textarea)}).toStrictEqual({
+			leftNotPrevented: false,
+			selected: {value: "@src/lib/index.ts", selection: [0, 17], highlights: [SELECTED_HIGHLIGHT]},
+			rightNotPrevented: false,
+			collapsed: {value: "@src/lib/index.ts", selection: [17, 17], highlights: [HOVER_HIGHLIGHT]},
+			deleted: {value: "", selection: [0, 0], highlights: []},
+		});
+	});
+
+	it("leaves Backspace after the trailing space to the textarea", async () => {
+		const {textarea} = setup();
+		await chipThen(textarea, "@src/lib/index.ts ", 18);
+
+		const notPrevented = fireEvent.keyDown(textarea, {key: "Backspace"});
+
+		expect({notPrevented, ...state(textarea)}).toStrictEqual({
+			notPrevented: true,
+			value: "@src/lib/index.ts ",
+			selection: [18, 18],
+			highlights: [HOVER_HIGHLIGHT],
+		});
+	});
+});
