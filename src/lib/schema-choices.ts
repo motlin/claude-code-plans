@@ -34,6 +34,7 @@ import type {
 	ApiRequestBlobContentBlockSchema,
 	ApiRequestBlobRoleSchema,
 	AttachmentPayloadSchema,
+	ClassifierArtifactPublishEnvSchema,
 	ClassifierArtifactShareModeSchema,
 	ClassifierArtifactShareRoleSchema,
 	AskUserQuestionTimeoutSchema,
@@ -1378,6 +1379,11 @@ const classifierArtifactShareRoleLabels = {
 	owner: "Owner",
 } satisfies Record<z.infer<typeof ClassifierArtifactShareRoleSchema>, string>;
 
+/** Classifier context `artifacts.by_slug{}.published_env` and `artifacts.last_publish.env` (src/lib/schemas.ts). */
+const classifierArtifactPublishEnvLabels = {
+	prod: "Production",
+} satisfies Record<z.infer<typeof ClassifierArtifactPublishEnvSchema>, string>;
+
 /** WebSearch `mode` (src/lib/tool-input-schemas.ts). */
 const webSearchModeLabels = {
 	standard: "Standard",
@@ -1576,6 +1582,7 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
 	ArtifactLiveSubscriptionSchema: artifactLiveSubscriptionLabels,
 	ArtifactAccessLevelSchema: artifactAccessLevelLabels,
 	ArtifactUserScopeSchema: artifactUserScopeLabels,
+	ClassifierArtifactPublishEnvSchema: classifierArtifactPublishEnvLabels,
 	ClassifierArtifactShareModeSchema: classifierArtifactShareModeLabels,
 	ClassifierArtifactShareRoleSchema: classifierArtifactShareRoleLabels,
 	ReportFindingsVerdictSchema: reportFindingsVerdictLabels,

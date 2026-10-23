@@ -2707,6 +2707,64 @@ describe("JsonlRecordSchema observed on the work machine 2026-10-22", () => {
 		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
 	});
 
+	it("parses classifier artifacts with a failed share probe, an unprobed published share, by_path, and last_publish", () => {
+		const fixture = jsonlRecordFixtures["api-request"];
+		const [safeguard] = fixture.params.safeguards;
+		const classifierContext = safeguard!.classifier_context;
+		const record = {
+			...fixture,
+			params: {
+				...fixture.params,
+				safeguards: [
+					{
+						...safeguard!,
+						classifier_context: {
+							...classifierContext,
+							artifacts: {
+								...classifierContext.artifacts,
+								by_slug: {
+									"5bafe76e-893d-4863-98b2-cb9ad1c3bded": {
+										share: {
+											mode: "owner",
+											is_shared_live: false,
+											role: "owner",
+											probe_failed: true,
+											probed: true,
+											probe_current_account: true,
+											type_lock: false,
+											live_paths: [],
+											grant_observed: true,
+										},
+									},
+									"612a47bc-b61b-41d7-8401-6dd996c5af14": {
+										share: {
+											mode: "owner",
+											is_shared_live: false,
+											probed: false,
+											probe_current_account: true,
+											live_paths: [],
+											capabilities: {db: {}},
+											grant_observed: true,
+										},
+										published_env: "prod",
+									},
+								},
+								by_path: {
+									"/tmp/alice/scratchpad/gallery/review.html": {
+										slug: "612a47bc-b61b-41d7-8401-6dd996c5af14",
+									},
+								},
+								last_publish: {slug: "612a47bc-b61b-41d7-8401-6dd996c5af14", env: "prod"},
+							},
+						},
+					},
+				],
+			},
+		};
+
+		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
+	});
+
 	it("parses summarized-turn and superseded uuids on user and assistant records", () => {
 		const records = [
 			{...jsonlRecordFixtures.user, summarizedTurnPromptUuids: ["prompt-alice-1", "prompt-alice-2"]},

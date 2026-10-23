@@ -2038,6 +2038,8 @@ const ApiRequestBlobRecordSchema = z
 export const ClassifierArtifactShareModeSchema = z.enum(["owner"]);
 /** The current account's role on that artifact. */
 export const ClassifierArtifactShareRoleSchema = z.enum(["owner"]);
+/** The environment an artifact was published to. */
+export const ClassifierArtifactPublishEnvSchema = z.enum(["prod"]);
 
 /** The classifier's cached share/permission probe for one artifact, keyed by artifact id in `artifacts.by_slug`. */
 const ClassifierArtifactSchema = z
@@ -2047,20 +2049,26 @@ const ClassifierArtifactSchema = z
 				mode: ClassifierArtifactShareModeSchema,
 				// Whether the artifact is currently shared live with other viewers.
 				is_shared_live: z.boolean(),
-				role: ClassifierArtifactShareRoleSchema,
+				// Absent on a share recorded at publish time without a probe.
+				role: ClassifierArtifactShareRoleSchema.optional(),
+				// Set when the share probe was attempted but failed; only `true` is observed.
+				probe_failed: z.literal(true).optional(),
 				// Whether the share state was actually fetched, and against the current account.
 				probed: z.boolean(),
 				probe_current_account: z.boolean(),
 				// Whether the artifact is locked to its Artifact type.
-				type_lock: z.boolean(),
+				type_lock: z.boolean().optional(),
 				// Published paths open for live editing.
 				live_paths: z.array(z.string()),
 				// Runtime capabilities the page declares.
-				capabilities: ArtifactCapabilitiesSchema,
+				// Absent after a failed share probe.
+				capabilities: ArtifactCapabilitiesSchema.optional(),
 				// Whether a capability grant was seen for this artifact in the session.
 				grant_observed: z.boolean(),
 			})
 			.strict(),
+		// Set when the session published this artifact.
+		published_env: ClassifierArtifactPublishEnvSchema.optional(),
 	})
 	.strict();
 
@@ -2119,7 +2127,10 @@ const DangerousToolUseClassifierContextSchema = z
 		artifacts: z
 			.object({
 				by_slug: z.record(z.string(), ClassifierArtifactSchema),
-				by_path: z.object({}).strict(),
+				// Keyed by local file path; maps each published file to its artifact id.
+				by_path: z.record(z.string(), z.object({slug: z.string()}).strict()),
+				// The session's most recent publish.
+				last_publish: z.object({slug: z.string(), env: ClassifierArtifactPublishEnvSchema}).strict().optional(),
 				live_docs: z.array(z.never()),
 				room_armed: z.array(z.never()),
 				type_reads: z.object({}).strict(),
