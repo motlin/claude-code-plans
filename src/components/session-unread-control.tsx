@@ -56,9 +56,9 @@ export function SessionRowStatusDot({session, tabIndex}: {session: SessionListIt
 }
 
 const SR_ROW_STATUS_LABELS = {
-	working: "Running",
-	awaiting: "Awaiting input",
-	unread: "Unread response",
+	working: " Running",
+	awaiting: " Awaiting input",
+	unread: " Unread response",
 	read: "",
 } satisfies Record<SessionMenuReadState, string>;
 
@@ -95,45 +95,70 @@ function BridgeEnvGlyph({offline}: {offline: boolean}) {
 	);
 }
 
+function useRowIconKind(session: SessionListItem) {
+	const unseen = useHasUnseenWork(session.id);
+	const {settings} = useSettings();
+	return {
+		unseen,
+		kind: sessionRowIconKind({
+			bucket: session.bucket,
+			unseen,
+			serverUnseen: session.unseen,
+			prStatus: session.prStatus,
+			showPrStatus: settings.sessionListPrefs.showPrStatus,
+		}),
+	};
+}
+
 /**
  * claude.ai/code's trailing sidebar-row decoration: the status mark (amber Awaiting input, blinking
  * muted Running, accent Unread response) or, on a settled row, the muted environment glyph, here
- * upstream's bridge laptop (omitted on pinned rows and under project grouping). It fades out while the row is hovered, keyboard-focused or has
- * its menu open, when the row's More options button takes the same 24px slot. The glyph is
- * aria-hidden; screen readers get upstream's two sr-only siblings, a status and the environment.
+ * upstream's bridge laptop (omitted on pinned rows and under project grouping). It fades out while
+ * the row is hovered, keyboard-focused or has its menu open, when the row's More options button
+ * takes the same 24px slot. The mark is an aria-hidden `role=img`; screen readers get
+ * `SidebarRowSrText` inside the title instead.
  */
 export function SidebarRowDecoration({session, envGlyph}: {session: SessionListItem; envGlyph: boolean}) {
+	const {kind} = useRowIconKind(session);
+	return (
+		<span
+			data-row-decoration=""
+			aria-hidden="true"
+			className="pointer-events-none absolute top-1/2 right-[var(--sb-row-ctl-inset)] flex size-[var(--sb-row-ctl,24px)] -translate-y-1/2 items-center justify-center group-hover/session-row:opacity-0 group-has-[:focus-visible]/session-row:opacity-0 group-has-[[data-popup-open]]/session-row:opacity-0"
+		>
+			{kind === "idle" ? (
+				envGlyph && (
+					<BridgeEnvGlyph offline={session.remoteControl === true && !isLiveSessionState(session.state)} />
+				)
+			) : (
+				<span aria-hidden="true" className="flex items-center">
+					<SessionStateIcon
+						kind={kind}
+						live={false}
+						{...(kind === "ready" ? {label: "Unread response"} : {})}
+					/>
+				</span>
+			)}
+		</span>
+	);
+}
+
+/**
+ * Upstream's `L_` screen-reader text, rendered inside the row title so it joins the link's
+ * accessible name: a status region (" Awaiting input", " Running", " Unread response") and the
+ * environment (" herdr · Remote Control · Connected").
+ */
+export function SidebarRowSrText({session}: {session: SessionListItem}) {
 	const unseen = useHasUnseenWork(session.id);
-	const {settings} = useSettings();
-	const kind = sessionRowIconKind({
-		bucket: session.bucket,
-		unseen,
-		serverUnseen: session.unseen,
-		prStatus: session.prStatus,
-		showPrStatus: settings.sessionListPrefs.showPrStatus,
-	});
 	const srClass = "sr-only [[role=tooltip]_&]:hidden";
 	return (
 		<>
-			<span
-				data-row-decoration=""
-				aria-hidden="true"
-				className="pointer-events-none absolute top-1/2 right-[var(--sb-row-ctl-inset)] flex size-[var(--sb-row-ctl,24px)] -translate-y-1/2 items-center justify-center group-hover/session-row:opacity-0 group-has-[:focus-visible]/session-row:opacity-0 group-has-[[data-popup-open]]/session-row:opacity-0"
-			>
-				{kind === "idle" ? (
-					envGlyph && (
-						<BridgeEnvGlyph
-							offline={session.remoteControl === true && !isLiveSessionState(session.state)}
-						/>
-					)
-				) : (
-					<SessionStateIcon kind={kind} {...(kind === "ready" ? {label: "Unread response"} : {})} />
-				)}
-			</span>
-			<span role="status" className={srClass}>
+			<span role="status" className={srClass} data-find-omitted="">
 				{SR_ROW_STATUS_LABELS[sessionMenuReadState(session.bucket, unseen)]}
 			</span>
-			<span className={srClass}>{rowEnvironmentText(session)}</span>
+			<span className={srClass} data-find-omitted="">
+				{rowEnvironmentText(session)}
+			</span>
 		</>
 	);
 }

@@ -18,6 +18,7 @@ import {RecentSessionsResponse, recentSessionsInfiniteQueryOptions} from "../src
 import {PIN_STORAGE_KEY, readPinState} from "../src/lib/pin-store";
 import type {SessionBucket} from "../src/lib/session-state";
 import {installLocalStorage} from "./fake-storage";
+import {rowTitle} from "./sidebar-row-title";
 
 const MINUTE = 60 * 1000;
 
@@ -177,7 +178,7 @@ function pinnedSection(container: HTMLElement): HTMLElement {
 }
 
 function pinnedTitles(container: HTMLElement): string[] {
-	return [...pinnedSection(container).querySelectorAll("a[data-row-main-button]")].map((link) => link.textContent);
+	return [...pinnedSection(container).querySelectorAll("a[data-row-main-button]")].map((link) => rowTitle(link));
 }
 
 function dropRow(container: HTMLElement) {
@@ -185,7 +186,7 @@ function dropRow(container: HTMLElement) {
 	if (row === null) return null;
 	const icon = row.querySelector("svg");
 	return {
-		text: row.textContent,
+		text: rowTitle(row),
 		hot: row.hasAttribute("data-hot"),
 		iconTilted: icon?.classList.contains("rotate-6") === true && icon.classList.contains("scale-105"),
 	};

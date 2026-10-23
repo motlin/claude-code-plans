@@ -23,6 +23,7 @@ import {__unreadStoreTesting, syncUnseenFromSummaries} from "../src/lib/unread-s
 import {installLocalStorage} from "./fake-storage";
 import {PIN_STORAGE_KEY} from "../src/lib/pin-store";
 import {readFileSync} from "node:fs";
+import {rowTitle} from "./sidebar-row-title";
 
 const MINUTE = 60 * 1000;
 
@@ -127,7 +128,7 @@ function groupNames(container: HTMLElement): string[] {
 function rowTitlesIn(container: HTMLElement, groupKey: string): string[] {
 	const section = container.querySelector(`[data-group-key="${groupKey}"]`);
 	if (!(section instanceof HTMLElement)) return [];
-	return [...section.querySelectorAll("a[data-row-main-button]")].map((link) => link.textContent);
+	return [...section.querySelectorAll("a[data-row-main-button]")].map((link) => rowTitle(link));
 }
 
 afterEach(() => {
@@ -178,7 +179,7 @@ describe("sidebar SessionGroups", () => {
 		expect(groupNames(container)).toEqual(["Working", "Completed"]);
 	});
 
-	it("shows each row's session title with its trailing state mark beside the link", async () => {
+	it("shows each row's session title with its trailing state mark beside the link and its status text inside it", async () => {
 		await renderGroups(FIXTURE);
 
 		const rowOf = (name: RegExp) => {
@@ -186,23 +187,23 @@ describe("sidebar SessionGroups", () => {
 			if (row === null) throw new Error(`no row ${String(name)}`);
 			return row;
 		};
-		// The mark sits beside the link, as upstream's row decoration does, so the link reads as the title.
-		const blocked = screen.getByRole("link", {name: "Blocked one"});
+		// The mark sits beside the link, as upstream's row decoration does; its sr text is inside the title.
+		const blocked = screen.getByRole("link", {name: /^Blocked one/});
 		expect({
 			href: blocked.getAttribute("href"),
-			blocked: within(rowOf(/^Blocked one$/)).getByRole("status").textContent,
-			working: within(rowOf(/^Working one$/)).getByRole("status").textContent,
+			blocked: within(blocked).getByRole("status").textContent,
+			working: within(rowOf(/^Working one/)).getByRole("status").textContent,
 			settled: {
-				mark: within(rowOf(/^Completed older$/)).queryByRole("img"),
-				env: rowOf(/^Completed older$/)
+				mark: within(rowOf(/^Completed older/)).queryByRole("img"),
+				env: rowOf(/^Completed older/)
 					.querySelector("[data-env-glyph]")
 					?.getAttribute("aria-hidden"),
 			},
 			project: screen.queryByText("project-b1"),
 		}).toStrictEqual({
 			href: "/session/b1",
-			blocked: "Awaiting input",
-			working: "Running",
+			blocked: " Awaiting input",
+			working: " Running",
 			settled: {mark: null, env: "true"},
 			project: null,
 		});
@@ -240,7 +241,7 @@ describe("sidebar SessionGroups", () => {
 		fireEvent.click(remounted);
 
 		expect(remounted.getAttribute("aria-expanded")).toBe("true");
-		expect(screen.getByRole("link", {name: /Working one$/})).toBeTruthy();
+		expect(screen.getByRole("link", {name: /^Working one/})).toBeTruthy();
 		expect(readSidebarState().collapsedGroups).toEqual([]);
 	});
 
@@ -305,7 +306,12 @@ describe("sidebar SessionGroups", () => {
 				mark:
 					mark === null || mark === undefined
 						? null
-						: [mark.getAttribute("role"), mark.getAttribute("aria-label")],
+						: [
+								mark.getAttribute("role"),
+								mark.getAttribute("aria-label"),
+								mark.parentElement?.getAttribute("class") ?? null,
+								mark.parentElement?.getAttribute("aria-hidden") ?? null,
+							],
 				env: decoration?.querySelector("[data-env-glyph]")?.getAttribute("data-env-glyph") ?? null,
 				hidesOnHover: decoration?.className.split(" ").includes("group-hover/session-row:opacity-0") ?? false,
 				flushRight: decoration?.className.split(" ").includes("right-[var(--sb-row-ctl-inset)]") ?? false,
@@ -319,15 +325,21 @@ describe("sidebar SessionGroups", () => {
 		}).toStrictEqual({
 			blocked: {
 				leading: false,
-				mark: ["status", "Awaiting input"],
+				mark: ["img", "Awaiting input", "flex items-center", "true"],
 				env: null,
 				hidesOnHover: true,
 				flushRight: true,
 			},
-			working: {leading: false, mark: ["status", "Running"], env: null, hidesOnHover: true, flushRight: true},
+			working: {
+				leading: false,
+				mark: ["img", "Running", "flex items-center", "true"],
+				env: null,
+				hidesOnHover: true,
+				flushRight: true,
+			},
 			review: {
 				leading: false,
-				mark: ["status", "Unread response"],
+				mark: ["img", "Unread response", "flex items-center", "true"],
 				env: null,
 				hidesOnHover: true,
 				flushRight: true,
@@ -350,7 +362,7 @@ describe("sidebar SessionGroups", () => {
 						.closest("[data-session-actions]")
 						?.querySelector("[data-row-decoration] [data-env-glyph]");
 					return [
-						link.textContent,
+						rowTitle(link),
 						glyph === null || glyph === undefined
 							? null
 							: {
@@ -402,13 +414,14 @@ describe("sidebar SessionGroups", () => {
 				const decoration = link.closest("[data-session-actions]")?.querySelector("[data-row-decoration]");
 				const tail = link.lastElementChild;
 				return {
-					title: link.textContent,
+					title: rowTitle(link),
 					tail: link.querySelector("[data-pr-glyph]")?.getAttribute("data-pr-glyph") ?? null,
 					tailSlot: tail?.getAttribute("class") ?? null,
 					tailInSlot: tail?.querySelector("[data-pr-glyph]") !== null,
 					label: link.querySelector("[data-row-label]")?.getAttribute("class") ?? null,
-					mark: decoration?.querySelector("[role=status]")?.getAttribute("aria-label") ?? null,
+					mark: decoration?.querySelector("[role=img]")?.getAttribute("aria-label") ?? null,
 					env: decoration?.querySelector("[data-env-glyph]") !== null,
+					liveRegions: decoration?.querySelectorAll("[role=status]").length ?? null,
 				};
 			});
 		const slot =
@@ -436,6 +449,7 @@ describe("sidebar SessionGroups", () => {
 					label,
 					mark: null,
 					env: true,
+					liveRegions: 0,
 				},
 				{
 					title: "Unread with PR",
@@ -445,8 +459,18 @@ describe("sidebar SessionGroups", () => {
 					label,
 					mark: "Unread response",
 					env: false,
+					liveRegions: 0,
 				},
-				{title: "Completed older", tail: null, tailSlot: slot, tailInSlot: false, label, mark: null, env: true},
+				{
+					title: "Completed older",
+					tail: null,
+					tailSlot: slot,
+					tailInSlot: false,
+					label,
+					mark: null,
+					env: true,
+					liveRegions: 0,
+				},
 			],
 			hidden: [null, null, null],
 		});
@@ -460,7 +484,7 @@ describe("sidebar SessionGroups", () => {
 		expect({
 			touchMenu: rows
 				.filter((row) => row.hasAttribute("data-touch-menu"))
-				.map((row) => row.querySelector("a[data-row-main-button]")?.textContent),
+				.map((row) => rowTitle(row.querySelector("a[data-row-main-button]"))),
 			decorationHiddenOnTouch: decoration?.className.split(" ").includes("pointer-coarse:opacity-0"),
 			kebabShownOnTouch: rows[0]
 				?.querySelector("[data-row-action]")
@@ -469,17 +493,16 @@ describe("sidebar SessionGroups", () => {
 		}).toStrictEqual({touchMenu: ["Working one"], decorationHiddenOnTouch: false, kebabShownOnTouch: false});
 	});
 
-	it("announces each row's status and environment in upstream's two sr-only siblings", async () => {
-		const srOnlyOf = (name: RegExp) => {
-			const row = screen.getByRole("link", {name}).closest<HTMLElement>("[data-session-actions]");
-			if (row === null) throw new Error(`no row ${String(name)}`);
-			return [...row.querySelectorAll(".sr-only:not([data-row-main-button] *)")].map((node) => [
-				node.getAttribute("role"),
-				node.textContent,
-			]);
+	it("announces each row's status and environment in upstream's two sr-only spans inside the title", async () => {
+		const srOnlyOf = (title: string) => {
+			const link = screen.getAllByRole("link").find((node) => rowTitle(node) === title);
+			if (link === undefined) throw new Error(`no row ${title}`);
+			return [...link.querySelectorAll("[data-row-label] .relative > .sr-only[data-find-omitted]")].map(
+				(node) => [node.getAttribute("role"), node.textContent],
+			);
 		};
 		const environments = () =>
-			Object.fromEntries(FIXTURE.map((row) => [row.id, srOnlyOf(new RegExp(`^${row.title}$`))[1]?.[1] ?? null]));
+			Object.fromEntries(FIXTURE.map((row) => [row.id, srOnlyOf(row.title)[1]?.[1] ?? null]));
 		const terminalHosts: Record<string, string> = {b1: "herdr", w1: "herdr · later", r1: "tmux · work"};
 		const withHost = (row: (typeof FIXTURE)[number]) =>
 			row.id in terminalHosts ? {...row, terminalHost: terminalHosts[row.id]} : row;
@@ -491,7 +514,14 @@ describe("sidebar SessionGroups", () => {
 				...(row.id === "d1" ? {state: "ended"} : {}),
 			})),
 		);
-		const first = {awaiting: srOnlyOf(/^Blocked one$/), idle: srOnlyOf(/^Completed older$/), env: environments()};
+		const first = {
+			href: screen
+				.getByRole("link", {name: /^Blocked one\s*Awaiting input\s*herdr · Remote Control · Connected$/})
+				.getAttribute("href"),
+			awaiting: srOnlyOf("Blocked one"),
+			idle: srOnlyOf("Completed older"),
+			env: environments(),
+		};
 		cleanup();
 		await renderGroups(
 			FIXTURE.map((row) => (row.id === "w1" ? {...withHost(row), remoteControl: true} : withHost(row))),
@@ -499,8 +529,9 @@ describe("sidebar SessionGroups", () => {
 
 		expect({first, second: environments()}).toStrictEqual({
 			first: {
+				href: "/session/b1",
 				awaiting: [
-					["status", "Awaiting input"],
+					["status", " Awaiting input"],
 					[null, " herdr · Remote Control · Connected"],
 				],
 				idle: [
@@ -612,7 +643,7 @@ describe("sidebar SessionGroups", () => {
 describe("SessionGroups hover cards", () => {
 	async function hoverRow(container: HTMLElement, title: string) {
 		const link = [...container.querySelectorAll("a[data-row-main-button]")].find(
-			(node) => node.textContent === title,
+			(node) => rowTitle(node) === title,
 		);
 		const trigger = link?.closest("[data-hover-card-trigger]");
 		if (!(trigger instanceof HTMLElement)) throw new Error(`no row ${title}`);

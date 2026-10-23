@@ -19,6 +19,7 @@ import {PIN_STORAGE_KEY, readPinState} from "../src/lib/pin-store";
 import {SESSION_GROUP_STORAGE_KEY, readSessionGroupState} from "../src/lib/session-group-store";
 import {DEFAULT_SESSION_LIST_PREFS} from "../src/lib/session-groups";
 import {installLocalStorage} from "./fake-storage";
+import {rowTitle} from "./sidebar-row-title";
 
 const MINUTE = 60 * 1000;
 
@@ -186,7 +187,7 @@ function drag(element: HTMLElement, fromY: number, toY: number): void {
 function sections(container: HTMLElement): [string, string[]][] {
 	return [...container.querySelectorAll('[data-testid="sidebar-recents"] [data-group-key]')].map((section) => [
 		section.querySelector("[data-group-name]")?.textContent ?? "",
-		[...section.querySelectorAll("a[data-row-main-button]")].map((link) => link.textContent),
+		[...section.querySelectorAll("a[data-row-main-button]")].map((link) => rowTitle(link)),
 	]);
 }
 

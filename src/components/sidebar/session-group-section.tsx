@@ -22,7 +22,7 @@ import {
 import {ArchivedBadge} from "../archived-badge";
 import {SessionActionsMenu, SessionRowTitle} from "../session-actions-menu";
 import {SessionHoverCard} from "../session-hover-card";
-import {SidebarRowDecoration} from "../session-unread-control";
+import {SidebarRowDecoration, SidebarRowSrText} from "../session-unread-control";
 import {useSettings} from "../settings-context";
 import {PrTailGlyph} from "../status-dot";
 import {Tooltip} from "../ui/tooltip";
@@ -531,7 +531,13 @@ function SessionRowLink({
 				>
 					{/* Upstream starts the title 10px into the row; the trailing span below keeps it clear of the 24px slot */}
 					<span data-row-label className="min-w-0 flex-1 ps-2">
-						<SessionRowTitle render={(title) => <FadeLabel text={title} />} />
+						<SessionRowTitle
+							render={(title) => (
+								<FadeLabel text={title}>
+									<SidebarRowSrText session={row.session} />
+								</FadeLabel>
+							)}
+						/>
 					</span>
 					{lineage !== undefined && (
 						<span data-family-lineage className="sr-only">
@@ -544,7 +550,7 @@ function SessionRowLink({
 						{prTail !== undefined && <PrTailGlyph state={prTail} />}
 					</span>
 				</Link>
-				{/* Upstream's status sits beside the link, outside its accessible name */}
+				{/* Upstream's aria-hidden status mark sits beside the link; its sr text is inside the title */}
 				<SidebarRowDecoration session={row.session} envGlyph={envGlyph} />
 			</SessionActionsMenu>
 		</SessionHoverCard>
@@ -552,7 +558,7 @@ function SessionRowLink({
 }
 
 /** Marks itself `data-overflowing` when the title is clipped, so CSS fades its end. */
-function FadeLabel({text}: {text: string}) {
+function FadeLabel({text, children}: {text: string; children?: ReactNode}) {
 	const ref = useRef<HTMLSpanElement>(null);
 	const [overflowing, setOverflowing] = useState(false);
 
@@ -573,7 +579,10 @@ function FadeLabel({text}: {text: string}) {
 
 	return (
 		<span ref={ref} className="dframe-fade-label" data-overflowing={overflowing ? "" : undefined}>
-			<span className="inline-block align-top whitespace-nowrap">{text}</span>
+			<span className="relative inline-block align-top whitespace-nowrap">
+				{text}
+				{children}
+			</span>
 		</span>
 	);
 }

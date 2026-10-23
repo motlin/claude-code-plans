@@ -59,10 +59,13 @@ export function PrTailGlyph({state}: {state: GitPrState}) {
 export function SessionStateIcon({
 	kind,
 	label,
+	live = true,
 	"aria-describedby": describedBy,
 }: {
 	kind: SessionStateKind;
 	label?: string;
+	/** Upstream's `announce:false` mark is a plain `role=img`; a live one is a `role=status` region. */
+	live?: boolean;
 	/** Set by a wrapping Tooltip so the glyph is described by its tooltip. */
 	"aria-describedby"?: string;
 }) {
@@ -80,7 +83,7 @@ export function SessionStateIcon({
 	}
 
 	return (
-		<span role="status" aria-label={ariaLabel} className={DOT_WRAPPER} {...describedByProps}>
+		<span role={live ? "status" : "img"} aria-label={ariaLabel} className={DOT_WRAPPER} {...describedByProps}>
 			<span className="status-dot" data-kind={kind} />
 		</span>
 	);

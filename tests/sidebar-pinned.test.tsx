@@ -21,6 +21,7 @@ import {DEFAULT_SESSION_LIST_PREFS} from "../src/lib/session-groups";
 import type {SessionBucket} from "../src/lib/session-state";
 import {readSidebarState} from "../src/lib/sidebar-store";
 import {installLocalStorage} from "./fake-storage";
+import {rowTitle} from "./sidebar-row-title";
 
 const MINUTE = 60 * 1000;
 
@@ -107,7 +108,7 @@ function pinnedSection(container: HTMLElement): HTMLElement {
 
 function rowTitles(element: Element | null): string[] {
 	if (element === null) return [];
-	return [...element.querySelectorAll("a[data-row-main-button]")].map((link) => link.textContent);
+	return [...element.querySelectorAll("a[data-row-main-button]")].map((link) => rowTitle(link));
 }
 
 function visibleGroupNames(container: HTMLElement): string[] {
@@ -294,7 +295,7 @@ describe("sidebar Pinned section", () => {
 			expect(rowTitles(pinnedSection(container))).toEqual(["Working one", "Completed older", "Review one"]);
 		});
 		await waitFor(() => {
-			expect(document.activeElement?.textContent).toBe("Completed older");
+			expect(rowTitle(document.activeElement)).toBe("Completed older");
 		});
 		expect({
 			pins: readPinState(),

@@ -20,6 +20,7 @@ import {SESSION_GROUP_STORAGE_KEY, readSessionGroupState} from "../src/lib/sessi
 import {DEFAULT_SESSION_LIST_PREFS} from "../src/lib/session-groups";
 import {__unreadStoreTesting, hasUnseenWork} from "../src/lib/unread-store";
 import {installLocalStorage} from "./fake-storage";
+import {rowTitle} from "./sidebar-row-title";
 
 const MINUTE = 60 * 1000;
 
@@ -120,8 +121,8 @@ function rowLink(title: string): HTMLElement {
 
 /** Titles of the rows marked multi-selected, in display order. */
 function selectedTitles(container: HTMLElement): string[] {
-	return [...container.querySelectorAll("a[data-row-main-button][data-multi-selected]")].map(
-		(link) => link.textContent,
+	return [...container.querySelectorAll("a[data-row-main-button][data-multi-selected]")].map((link) =>
+		rowTitle(link),
 	);
 }
 

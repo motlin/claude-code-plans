@@ -18,6 +18,7 @@ import {RecentSessionsResponse, recentSessionsInfiniteQueryOptions} from "../src
 import type {SessionBucket} from "../src/lib/session-state";
 import {readSidebarState} from "../src/lib/sidebar-store";
 import {installLocalStorage} from "./fake-storage";
+import {rowTitle} from "./sidebar-row-title";
 
 const MINUTE = 60 * 1000;
 
@@ -110,7 +111,7 @@ function family(container: HTMLElement, headId: string): HTMLElement {
 }
 
 function rowTitles(element: Element): string[] {
-	return [...element.querySelectorAll("a[data-row-main-button] [data-row-label]")].map((label) => label.textContent);
+	return [...element.querySelectorAll("a[data-row-main-button] [data-row-label]")].map((label) => rowTitle(label));
 }
 
 function handle(container: HTMLElement, headId: string): HTMLElement {
@@ -213,7 +214,7 @@ describe("sidebar session families", () => {
 		fireEvent.click(stub);
 
 		expect(readSidebarState().collapsedFamilies).toStrictEqual([]);
-		const firstChild = screen.getByRole("link", {name: /Child one\s*Forked from Head one$/});
+		const firstChild = screen.getByRole("link", {name: /^Child one.*Forked from Head one$/});
 		await waitFor(() => {
 			expect(document.activeElement).toBe(firstChild);
 		});

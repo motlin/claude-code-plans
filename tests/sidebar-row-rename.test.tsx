@@ -19,6 +19,7 @@ import {RecentSessionsResponse, recentSessionsInfiniteQueryOptions} from "../src
 import {DEFAULT_SESSION_LIST_PREFS} from "../src/lib/session-groups";
 import {__unreadStoreTesting} from "../src/lib/unread-store";
 import {installLocalStorage} from "./fake-storage";
+import {rowTitle} from "./sidebar-row-title";
 
 const SESSION_ID = "r1";
 const OLD_TITLE = "Fix the flaky test";
@@ -191,7 +192,7 @@ describe("sidebar row rename", () => {
 		fireEvent.keyDown(input, {key: "Enter"});
 		await flush();
 
-		expect({calls: renameCalls(), row: rowLink().textContent}).toStrictEqual({
+		expect({calls: renameCalls(), row: rowTitle(rowLink())}).toStrictEqual({
 			calls: [{url: `/api/sessions/${SESSION_ID}/title`, method: "PUT", body: {title: "Renamed row"}}],
 			row: "Renamed row",
 		});
@@ -208,7 +209,7 @@ describe("sidebar row rename", () => {
 
 		expect({
 			calls: renameCalls(),
-			row: rowLink().textContent,
+			row: rowTitle(rowLink()),
 			input: screen.queryByRole("textbox", {name: "Rename"}),
 		}).toStrictEqual({calls: [], row: OLD_TITLE, input: null});
 	});
@@ -224,7 +225,7 @@ describe("sidebar row rename", () => {
 
 		expect({
 			calls: renameCalls(),
-			row: rowLink().textContent,
+			row: rowTitle(rowLink()),
 			input: screen.queryByRole("textbox", {name: "Rename"}),
 		}).toStrictEqual({calls: [], row: OLD_TITLE, input: null});
 	});

@@ -25,6 +25,7 @@ import {
 } from "../src/lib/api/sessions";
 import {DEFAULT_SESSION_LIST_PREFS, type SessionStatusFilter} from "../src/lib/session-groups";
 import {__unreadStoreTesting} from "../src/lib/unread-store";
+import {rowTitle} from "./sidebar-row-title";
 
 const MAC_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36";
 const SESSION_ID = "8f0c2c7e-1111-4222-8333-944445555666";
@@ -253,7 +254,7 @@ describe("Status ▸ Archived in the sidebar", () => {
 	}
 
 	function rows(container: HTMLElement): string[] {
-		return [...container.querySelectorAll("a[data-row-main-button]")].map((row) => row.textContent);
+		return [...container.querySelectorAll("a[data-row-main-button]")].map((row) => rowTitle(row));
 	}
 
 	it("shows archived rows with an Archived badge", async () => {
