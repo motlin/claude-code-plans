@@ -144,6 +144,74 @@ describe("QuestionCard", () => {
 		});
 	});
 
+	describe("small DOM parity with upstream's card", () => {
+		const DUPLICATES: QuestionLike = {
+			question: "Which ones?",
+			header: "Ones",
+			multiSelect: true,
+			options: [{label: "Same"}, {label: "Same"}],
+		};
+
+		it("renders two options with the same label and toggles them independently, keyed by index and label", () => {
+			const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+			render(<QuestionCard questions={[DUPLICATES]} onSubmit={async () => {}} />);
+			const [first, second] = screen.getAllByRole("button", {name: "Same"});
+			fireEvent.click(first!);
+			const keyWarnings = consoleError.mock.calls.filter((call) => String(call[0]).includes("same key"));
+			consoleError.mockRestore();
+
+			expect({
+				pressed: screen
+					.getAllByRole("button", {name: "Same"})
+					.map((button) => button.getAttribute("aria-pressed")),
+				second: second?.getAttribute("aria-pressed"),
+				keyWarnings,
+			}).toStrictEqual({pressed: ["true", "false"], second: "false", keyWarnings: []});
+		});
+
+		it("stops a click inside the card from reaching a parent onClick, as upstream's root stopPropagation", () => {
+			const parentClick = vi.fn<() => void>();
+			render(<QuestionCard questions={QUESTIONS} onSubmit={async () => {}} />);
+			document.body.addEventListener("click", parentClick);
+			fireEvent.click(screen.getByRole("button", {name: /^Jest/}));
+			document.body.removeEventListener("click", parentClick);
+
+			expect({
+				calls: parentClick.mock.calls.length,
+				pressed: screen.getByRole("button", {name: /^Jest/}).getAttribute("aria-pressed"),
+			}).toStrictEqual({calls: 0, pressed: "true"});
+		});
+
+		it("wraps the options in a data-approval-allow contents span, rings focus with a shadow, keeps label and description bidi-plaintext, and draws 20px pager buttons", () => {
+			render(<QuestionCard questions={QUESTIONS} onSubmit={async () => {}} />);
+			const option = screen.getByRole("button", {name: /^Vitest/});
+			const [label, description] = Array.from(option.querySelector(".select-text")?.children ?? []);
+			const wrapper = option.parentElement?.parentElement;
+			const previous = screen.getByRole("button", {name: "Show previous question"});
+
+			expect({
+				wrapper: [wrapper?.tagName, wrapper?.className, wrapper?.getAttribute("data-approval-allow")],
+				focus: option.className.split(" ").filter((name) => /focus|outline|ring/.test(name)),
+				label: label?.className,
+				description: description?.className,
+				pager: previous.className.split(" ").filter((name) => /^(size-|rounded-)/.test(name)),
+				caret: previous
+					.querySelector("svg")
+					?.getAttribute("class")
+					?.split(" ")
+					.filter((name) => name.startsWith("size-")),
+			}).toStrictEqual({
+				wrapper: ["SPAN", "contents", ""],
+				focus: ["focus-visible:outline-hidden", "hide-focus-ring", "focus-visible:shadow-focus"],
+				label: "text-body text-primary [unicode-bidi:plaintext] [text-align:-webkit-match-parent] supports-[text-align:match-parent]:[text-align:match-parent]",
+				description:
+					"text-body text-secondary [unicode-bidi:plaintext] [text-align:-webkit-match-parent] supports-[text-align:match-parent]:[text-align:match-parent]",
+				pager: ["size-5", "rounded-r5"],
+				caret: ["size-4"],
+			});
+		});
+	});
+
 	it("reveals the Other box only once Other is chosen, and sends an empty Other as Something else", async () => {
 		const onSubmit = vi.fn<(answers: unknown[]) => Promise<void>>(async () => {});
 		render(<QuestionCard questions={[QUESTIONS[0]!]} onSubmit={onSubmit} />);

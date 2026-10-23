@@ -304,6 +304,7 @@ export function QuestionCard({
 	);
 
 	return (
+		// oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- only keeps clicks inside the card from reaching transcript row handlers, as upstream
 		<div
 			ref={cardRootRef}
 			role="group"
@@ -311,6 +312,9 @@ export function QuestionCard({
 			aria-label={question.question}
 			data-approval-card-root=""
 			data-approval-presentation="card"
+			onClick={(event) => {
+				event.stopPropagation();
+			}}
 			{...(skipEnter ? {"data-skip-approval-enter": ""} : {})}
 			className={`card-ring @container relative isolate flex max-w-[480px] flex-col overflow-clip rounded-r7 outline-none${
 				skipEnter ? "" : " animate-approval-inline-enter motion-reduce:animate-none"
@@ -332,7 +336,7 @@ export function QuestionCard({
 							onClick={() => {
 								goTo(index - 1);
 							}}
-							className="flex size-6 cursor-pointer items-center justify-center rounded-r5 hover:bg-fill-ghost-hover disabled:cursor-default disabled:opacity-50"
+							className="flex size-5 cursor-pointer items-center justify-center rounded-r5 hover:bg-fill-ghost-hover disabled:cursor-default disabled:opacity-50"
 						>
 							<ChevronLeft aria-hidden="true" className="size-4" />
 						</button>
@@ -349,75 +353,81 @@ export function QuestionCard({
 							onClick={() => {
 								goTo(index + 1);
 							}}
-							className="flex size-6 cursor-pointer items-center justify-center rounded-r5 hover:bg-fill-ghost-hover disabled:cursor-default disabled:opacity-50"
+							className="flex size-5 cursor-pointer items-center justify-center rounded-r5 hover:bg-fill-ghost-hover disabled:cursor-default disabled:opacity-50"
 						>
 							<ChevronRight aria-hidden="true" className="size-4" />
 						</button>
 					</span>
 				)}
 			</div>
-			<div className="flex flex-col divide-y divide-[var(--card-outline)]">
-				{question.options.map((option, optionIndex) => {
-					const checked = draft.selected.includes(optionIndex);
-					return (
+			<span className="contents" data-approval-allow="">
+				<div className="flex flex-col divide-y divide-[var(--card-outline)]">
+					{question.options.map((option, optionIndex) => {
+						const checked = draft.selected.includes(optionIndex);
+						return (
+							<button
+								key={`${optionIndex}-${option.label}`}
+								type="button"
+								aria-pressed={checked}
+								disabled={!editable}
+								onClick={(event) => {
+									if (selectionInside(event)) return;
+									update(pickOption(question, draft, optionIndex));
+								}}
+								className="epitaxy-answer-option flex w-full cursor-pointer items-start gap-3 px-3 py-3 text-start focus-visible:outline-hidden hide-focus-ring focus-visible:shadow-focus disabled:cursor-default"
+							>
+								<Mark checked={checked} multi={multi} />
+								<div className="flex min-w-0 flex-1 flex-col gap-1.5 select-text">
+									<span className="text-body text-primary [unicode-bidi:plaintext] [text-align:-webkit-match-parent] supports-[text-align:match-parent]:[text-align:match-parent]">
+										{option.label}
+									</span>
+									{option.description !== undefined && option.description !== "" && (
+										<span className="text-body text-secondary [unicode-bidi:plaintext] [text-align:-webkit-match-parent] supports-[text-align:match-parent]:[text-align:match-parent]">
+											{option.description}
+										</span>
+									)}
+								</div>
+							</button>
+						);
+					})}
+					<div className="epitaxy-answer-option relative grid grid-cols-[auto_1fr] items-start gap-x-3 gap-y-2 px-3 py-3">
 						<button
-							key={option.label}
 							type="button"
-							aria-pressed={checked}
+							aria-label="Other"
+							aria-pressed={draft.otherChosen}
 							disabled={!editable}
 							onClick={(event) => {
 								if (selectionInside(event)) return;
-								update(pickOption(question, draft, optionIndex));
+								// Upstream commits the pick synchronously so the revealed box exists to focus.
+								flushSync(() => {
+									update(chooseOther(question, draft));
+								});
+								otherRef.current?.focus();
 							}}
-							className="epitaxy-answer-option flex w-full cursor-pointer items-start gap-3 px-3 py-3 text-start outline-none hide-focus-ring focus-visible:ring-focus disabled:cursor-default"
-						>
-							<Mark checked={checked} multi={multi} />
-							<div className="flex min-w-0 flex-1 flex-col gap-1.5 select-text">
-								<span className="text-body text-primary [unicode-bidi:plaintext]">{option.label}</span>
-								{option.description !== undefined && option.description !== "" && (
-									<span className="text-body text-secondary">{option.description}</span>
-								)}
-							</div>
-						</button>
-					);
-				})}
-				<div className="epitaxy-answer-option relative grid grid-cols-[auto_1fr] items-start gap-x-3 gap-y-2 px-3 py-3">
-					<button
-						type="button"
-						aria-label="Other"
-						aria-pressed={draft.otherChosen}
-						disabled={!editable}
-						onClick={(event) => {
-							if (selectionInside(event)) return;
-							// Upstream commits the pick synchronously so the revealed box exists to focus.
-							flushSync(() => {
-								update(chooseOther(question, draft));
-							});
-							otherRef.current?.focus();
-						}}
-						className="absolute inset-0 cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus disabled:cursor-default"
-					/>
-					<span aria-hidden="true" className="contents">
-						<Mark checked={draft.otherChosen} multi={multi} />
-						<span className="text-body text-primary">Other</span>
-					</span>
-					{draft.otherChosen && (
-						<textarea
-							ref={otherRef}
-							aria-label="Other option"
-							dir="auto"
-							placeholder="Type your own answer here"
-							rows={1}
-							value={draft.other}
-							disabled={!editable}
-							onChange={(event) => {
-								update(typeOther(question, draft, event.target.value));
-							}}
-							className="relative z-[1] col-start-2 row-start-2 min-h-[calc(1lh+0.75rem)] max-h-[calc(4lh+0.75rem)] w-full resize-none rounded-r5 bg-fill-field px-2 py-1.5 font-sans text-[13px]/[19px] text-primary outline-none [field-sizing:content] placeholder:text-ink-muted shadow-field-ring transition duration-150 hover:shadow-field-hover focus-visible:shadow-focus disabled:opacity-50"
+							className="absolute inset-0 cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus disabled:cursor-default"
 						/>
-					)}
+						<span aria-hidden="true" className="contents">
+							<Mark checked={draft.otherChosen} multi={multi} />
+							<span className="text-body text-primary">Other</span>
+						</span>
+						{draft.otherChosen && (
+							<textarea
+								ref={otherRef}
+								aria-label="Other option"
+								dir="auto"
+								placeholder="Type your own answer here"
+								rows={1}
+								value={draft.other}
+								disabled={!editable}
+								onChange={(event) => {
+									update(typeOther(question, draft, event.target.value));
+								}}
+								className="relative z-[1] col-start-2 row-start-2 min-h-[calc(1lh+0.75rem)] max-h-[calc(4lh+0.75rem)] w-full resize-none rounded-r5 bg-fill-field px-2 py-1.5 font-sans text-[13px]/[19px] text-primary outline-none [field-sizing:content] placeholder:text-ink-muted shadow-field-ring transition duration-150 hover:shadow-field-hover focus-visible:shadow-focus disabled:opacity-50"
+							/>
+						)}
+					</div>
 				</div>
-			</div>
+			</span>
 			{error !== null && <p className="px-3 pt-2 text-footnote text-danger-ink">{error}</p>}
 			{onSubmit === undefined && <ReadOnlyAnswerHint className="px-3 pt-2 text-footnote text-secondary" />}
 			<div
