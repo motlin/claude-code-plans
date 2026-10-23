@@ -34,6 +34,40 @@ const STOPPING_MORPH_CLASS = "motion-safe:animate-[cds-morph-in_0.18s_cubic-bezi
 
 const STAT_CLASS = "inline-flex h-[1lh] shrink-0 items-center text-ink-muted tabular-nums";
 
+const NEEDS_INPUT_LABEL = "Needs your input";
+
+/** Upstream's warning Badge (`fX variant="warning"`) in the blocked TurnStatus. */
+const WARNING_BADGE_CLASS =
+	"inline-flex h-5 min-w-0 max-w-full items-center gap-1 whitespace-nowrap rounded-full px-2 align-middle font-sans text-caption font-medium bg-[var(--warning-tint)] text-upstream-warning";
+
+function BlockedStatus() {
+	return (
+		<div
+			data-cds="TurnStatus"
+			data-state="blocked"
+			title={NEEDS_INPUT_LABEL}
+			className="group/status flex w-full min-w-0 flex-col"
+		>
+			<div className="flex min-w-0 items-center gap-1.5 px-1 py-0.5 text-body">
+				<span
+					data-cds-row-mark
+					aria-hidden
+					className="relative me-[6px] flex h-[1lh] w-[20px] shrink-0 items-center justify-center"
+				>
+					<Spark size={20} animated={false} />
+				</span>
+				<span className="inline-flex h-[1lh] min-w-0 items-center">
+					<span data-cds="Badge" className={WARNING_BADGE_CLASS}>
+						<span className="min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap pb-[0.05em]">
+							<bdi>{NEEDS_INPUT_LABEL}</bdi>
+						</span>
+					</span>
+				</span>
+			</div>
+		</div>
+	);
+}
+
 function StatDot() {
 	return (
 		<span aria-hidden className="shrink-0 select-none text-ink-muted tabular-nums">
@@ -47,16 +81,18 @@ function StatDot() {
  * row of the working mark and muted "·"-joined stats, with no visible
  * "Working…" label. It stays mounted at 24px whether busy, quiet (a tool row
  * is in flight) or done, so the transcript bottom never jumps; a polite
- * sr-only status announces "Working…" instead of the ticking clock.
+ * sr-only status announces "Working…" instead of the ticking clock. While a
+ * prompt waits on the user with no inline card, it says "Needs your input".
  */
 export function WorkingMarker({
 	state,
 	runningTasks = 0,
 	quiet = false,
-}: Readonly<{state: WorkingMarkerState; runningTasks?: number; quiet?: boolean}>) {
+	waitingOnUser = false,
+}: Readonly<{state: WorkingMarkerState; runningTasks?: number; quiet?: boolean; waitingOnUser?: boolean}>) {
 	const reduceMotion = usePrefersReducedMotion();
 	// Upstream draws no mark while the turn waits on the user.
-	const turnWorking = state.status !== "idle" && state.status !== "waiting";
+	const turnWorking = !waitingOnUser && state.status !== "idle" && state.status !== "waiting";
 	const busy = turnWorking && !quiet;
 	const {label, stats} = workingLineParts(state);
 	const tasks = runningTasks > 0;
@@ -68,6 +104,7 @@ export function WorkingMarker({
 				{...(quiet && turnWorking ? {"data-quiet": "true", "aria-hidden": true} : {})}
 				className={`${quiet && turnWorking ? "invisible " : ""}flex min-h-6 flex-col`}
 			>
+				{waitingOnUser && <BlockedStatus />}
 				{busy && (
 					<div data-cds="TurnStatus" data-state="busy" className="group/status flex w-full min-w-0 flex-col">
 						<div className="flex min-w-0 items-center gap-1.5 px-1 py-0.5 text-body">
@@ -103,7 +140,7 @@ export function WorkingMarker({
 					</div>
 				)}
 				<span role="status" aria-live="polite" className="sr-only">
-					{workingLineAnnouncement(state)}
+					{waitingOnUser ? NEEDS_INPUT_LABEL : workingLineAnnouncement(state)}
 				</span>
 			</div>
 		</div>

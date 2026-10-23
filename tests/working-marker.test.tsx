@@ -12,6 +12,7 @@ import {
 	tailMarkerQuiet,
 	toolActivityLabel,
 	workingLineAnnouncement,
+	workingLineWaitsOnUser,
 	workingMarkerState,
 	workingMarkerText,
 	type WorkingMarkerEvent,
@@ -684,21 +685,71 @@ describe("useWorkingMarkerState", () => {
 		]).toStrictEqual(["3s", "3s", "", "", "", "3s", ""]);
 	});
 
-	it("shows no spark for a session waiting on a permission prompt, as upstream does", () => {
+	it("shows no spark while an inline card holds the mark for a waiting prompt, as upstream does", () => {
 		stubReducedMotion(false);
-		const {container, getByRole} = render(
-			<Harness
-				records={OPEN_TURN}
-				sessionState="ended"
-				isActive={false}
-				pendingToolName={undefined}
-				awaitingPermission
-			/>,
-		);
+		const {container, getByRole} = render(<WorkingMarker state={{status: "waiting"}} waitingOnUser={false} />);
 		expect({
 			text: getByRole("status").textContent,
 			turnStatus: container.querySelector('[data-cds="TurnStatus"]'),
 			spark: container.querySelector('[data-cds="Spark"]'),
 		}).toStrictEqual({text: "", turnStatus: null, spark: null});
+	});
+
+	it("shows a blocked Needs your input status when no card holds the mark, as upstream does", () => {
+		stubReducedMotion(false);
+		const {container, getByRole} = render(
+			<WorkingMarker state={{status: "idle"}} waitingOnUser quiet runningTasks={0} />,
+		);
+		const line = container.querySelector('[data-testid="code-working-line"]');
+		const row = container.querySelector('[data-cds="TurnStatus"]');
+		const badge = row?.querySelector('[data-cds="Badge"]');
+		expect({
+			turnWorking: line?.getAttribute("data-turn-working"),
+			lineClass: line?.className,
+			state: row?.getAttribute("data-state"),
+			title: row?.getAttribute("title"),
+			spark: row?.querySelector('[data-cds="Spark"]')?.getAttribute("data-animated"),
+			badgeClass: badge?.className,
+			badgeHtml: badge?.innerHTML,
+			visible: visibleLineText(container),
+			announcer: getByRole("status").textContent,
+			announcerLive: getByRole("status").getAttribute("aria-live"),
+		}).toStrictEqual({
+			turnWorking: "false",
+			lineClass: "flex min-h-6 flex-col",
+			state: "blocked",
+			title: "Needs your input",
+			spark: "false",
+			badgeClass:
+				"inline-flex h-5 min-w-0 max-w-full items-center gap-1 whitespace-nowrap rounded-full px-2 align-middle font-sans text-caption font-medium bg-[var(--warning-tint)] text-upstream-warning",
+			badgeHtml:
+				'<span class="min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap pb-[0.05em]"><bdi>Needs your input</bdi></span>',
+			visible: "Needs your input",
+			announcer: "Needs your input",
+			announcerLive: "polite",
+		});
+	});
+});
+
+describe("workingLineWaitsOnUser", () => {
+	it("says the turn needs input only while a prompt waits with no card holding the mark", () => {
+		const cases: Parameters<typeof workingLineWaitsOnUser>[0][] = [
+			{awaitingPermission: true, sessionState: "working", cardShown: false},
+			{awaitingPermission: true, sessionState: "working", cardShown: true},
+			{awaitingPermission: false, sessionState: "waiting", cardShown: false},
+			{awaitingPermission: false, sessionState: "waiting", cardShown: true},
+			{awaitingPermission: false, sessionState: "working", cardShown: false},
+			{awaitingPermission: false, sessionState: "idle", cardShown: false},
+			{awaitingPermission: false, sessionState: null, cardShown: false},
+		];
+		expect(cases.map((signals) => workingLineWaitsOnUser(signals))).toStrictEqual([
+			true,
+			false,
+			true,
+			false,
+			false,
+			false,
+			false,
+		]);
 	});
 });

@@ -1,6 +1,7 @@
 import {z} from "zod";
 import {isRequestInterrupted} from "./session-utils";
 import {assertNever} from "./assert-never";
+import type {SessionSummaryState} from "./session-state";
 
 /**
  * One signal in a session's current turn, normalized from transcript records
@@ -146,6 +147,19 @@ function liveElapsedStats(elapsedSeconds: number): string[] {
  */
 export function tailMarkerQuiet(state: WorkingMarkerState, inFlightRow: boolean): boolean {
 	return inFlightRow && state.status === "working";
+}
+
+/**
+ * Whether the working line says "Needs your input": upstream's `sayWaiting`
+ * shows the blocked status only while a permission or question waits and no
+ * inline card holds the mark.
+ */
+export function workingLineWaitsOnUser({
+	awaitingPermission,
+	sessionState,
+	cardShown,
+}: Readonly<{awaitingPermission: boolean; sessionState: SessionSummaryState | null; cardShown: boolean}>): boolean {
+	return (awaitingPermission || sessionState === "waiting") && !cardShown;
 }
 
 /** The working line's visible pieces: an optional label, then "·"-joined stats. */

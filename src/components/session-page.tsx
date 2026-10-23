@@ -61,7 +61,7 @@ import {SessionPaneControls} from "./view-options-menu";
 import {SessionDock} from "./session-dock";
 import {sessionProcessLive} from "../lib/session-state";
 import {type QueuedPrompt, steeredPrompts} from "../lib/composer-queue";
-import {tailMarkerQuiet} from "../lib/working-marker";
+import {tailMarkerQuiet, workingLineWaitsOnUser} from "../lib/working-marker";
 import {WaitingForInputNotice} from "./approval-card";
 import {QuestionCard} from "./question-card";
 import {showsWaitingForInputNotice} from "./waiting-for-input-notice";
@@ -519,6 +519,12 @@ function SessionView({
 		[answerRoute, sessionId],
 	);
 	const pendingQuestion = useMemo(() => findPendingAskUserQuestion(transcript.records), [transcript.records]);
+	// The CLI writes a question to the JSONL only once answered, so its hook copy is drawn inline until then.
+	const hookQuestionCardShown =
+		sessionSummaryState === "waiting" &&
+		hookQuestion !== undefined &&
+		hookQuestion !== null &&
+		pendingQuestion?.toolUseId !== hookQuestion.toolUseId;
 	// Upstream draws a pending question inline as its card; one in the transcript answers there while the session runs.
 	const inlineQuestion = isActive ? pendingQuestion : null;
 	const chatStream = useChatStream();
@@ -1097,18 +1103,16 @@ function SessionView({
 								/>
 							)}
 							{/* The CLI writes a question to the JSONL only once answered, so its hook copy is drawn inline at the transcript's end */}
-							{sessionSummaryState === "waiting" &&
-								hookQuestion &&
-								pendingQuestion?.toolUseId !== hookQuestion.toolUseId && (
-									<div data-hook-question="" className={`${CHAT_COLUMN_CLASS} pb-4`}>
-										<QuestionCard
-											key={hookQuestion.toolUseId}
-											draftKey={hookQuestion.toolUseId}
-											questions={hookQuestion.questions}
-											onSubmit={answerRoute === "live-pane" ? answerHookQuestion : undefined}
-										/>
-									</div>
-								)}
+							{hookQuestionCardShown && (
+								<div data-hook-question="" className={`${CHAT_COLUMN_CLASS} pb-4`}>
+									<QuestionCard
+										key={hookQuestion.toolUseId}
+										draftKey={hookQuestion.toolUseId}
+										questions={hookQuestion.questions}
+										onSubmit={answerRoute === "live-pane" ? answerHookQuestion : undefined}
+									/>
+								</div>
+							)}
 							{(chatStream.state.isStreaming || chatStream.state.isComplete) && (
 								<StreamingMessage
 									text={chatStream.state.text}
@@ -1151,6 +1155,16 @@ function SessionView({
 							<WorkingMarker
 								state={workingMarkerState}
 								quiet={tailMarkerQuiet(workingMarkerState, inFlightRow)}
+								waitingOnUser={workingLineWaitsOnUser({
+									awaitingPermission,
+									sessionState: sessionSummaryState,
+									cardShown:
+										pendingPermission !== null ||
+										inlineQuestion !== null ||
+										hookQuestionCardShown ||
+										inlinePlanId !== null ||
+										dockedPlan !== null,
+								})}
 								runningTasks={backgroundTasks.running.length}
 							/>
 
