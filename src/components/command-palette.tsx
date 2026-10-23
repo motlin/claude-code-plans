@@ -1771,7 +1771,7 @@ function TypeTabs({value, onChange}: {value: PaletteType; onChange: (type: Palet
 		<div
 			role="tablist"
 			aria-label="Type"
-			className="relative -mt-1.5 flex items-center overflow-x-auto px-6 pb-[0.9rem]"
+			className="relative -mt-1.5 flex items-center overflow-x-auto px-6 pb-[0.9rem] [&>[role=tab]:first-child]:before:start-0 [&>[role=tab]:last-child]:before:end-0"
 		>
 			{PaletteTypeSchema.options.map((type) => {
 				const selected = type === value;
@@ -1781,16 +1781,17 @@ function TypeTabs({value, onChange}: {value: PaletteType; onChange: (type: Palet
 						type="button"
 						role="tab"
 						aria-selected={selected}
-						tabIndex={-1}
+						data-active={selected ? "" : undefined}
+						tabIndex={selected ? 0 : -1}
 						onMouseDown={(event) => {
 							event.preventDefault();
 						}}
 						onClick={() => {
 							onChange(type);
 						}}
-						className={`h-7 shrink-0 px-2.5 text-sm font-medium transition-colors hover:text-primary ${
-							selected ? "text-primary" : "text-ink-muted"
-						}`}
+						// Comfortable-density geometry (28px, 0 10px, 14px/20px, 7px pill) to match the rest of the
+						// palette; upstream's default density is 20px / 6px / 12px·17px / 5px (see density-default-tokens).
+						className="relative isolate inline-flex h-7 shrink-0 cursor-pointer items-center justify-center gap-1.5 px-2.5 text-sm font-medium whitespace-nowrap text-ink-muted outline-none select-none before:absolute before:inset-x-px before:inset-y-0 before:-z-[1] before:rounded-control-sm before:transition-shadow before:duration-[60ms] focus-visible:before:shadow-focus data-[active]:text-primary data-[active]:before:bg-fill-ghost-hover [&:not([data-active])]:hover:text-secondary [&:not([data-active])]:hover:before:bg-fill-ghost-hover"
 					>
 						{paletteTypeLabels[type]}
 					</button>

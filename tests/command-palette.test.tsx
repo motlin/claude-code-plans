@@ -245,6 +245,53 @@ describe("CommandPalette shell", () => {
 		}).toStrictEqual({afterRight: "Artifacts", afterWrap: "Files", card: null});
 	});
 
+	it("draws upstream's ghost pill on the active and hovered tabs and roves tabindex to the active one", async () => {
+		const dialog = await openPalette();
+		const tabs = within(dialog).getAllByRole("tab");
+		const pillClasses = [
+			"relative",
+			"isolate",
+			"cursor-pointer",
+			"before:absolute",
+			"before:inset-y-0",
+			"before:inset-x-px",
+			"before:rounded-control-sm",
+			"before:-z-[1]",
+			"before:transition-shadow",
+			"before:duration-[60ms]",
+			"data-[active]:text-primary",
+			"data-[active]:before:bg-fill-ghost-hover",
+			"[&:not([data-active])]:hover:text-secondary",
+			"[&:not([data-active])]:hover:before:bg-fill-ghost-hover",
+			"focus-visible:before:shadow-focus",
+		];
+		const tablist = within(dialog).getByRole("tablist", {name: "Type"}).className.split(" ");
+
+		expect({
+			roving: tabs.map((tab) => [tab.textContent, tab.getAttribute("data-active"), tab.tabIndex]),
+			missingPill: tabs.flatMap((tab) => pillClasses.filter((name) => !tab.className.split(" ").includes(name))),
+			hoverPrimary: tabs.filter((tab) => tab.className.split(" ").includes("hover:text-primary")).length,
+			edgePills: [
+				tablist.includes("[&>[role=tab]:first-child]:before:start-0"),
+				tablist.includes("[&>[role=tab]:last-child]:before:end-0"),
+			],
+		}).toStrictEqual({
+			roving: [
+				["All", "", 0],
+				["Artifacts", null, -1],
+				["Code", null, -1],
+				["Projects", null, -1],
+				["Scheduled", null, -1],
+				["Plans", null, -1],
+				["Memories", null, -1],
+				["Files", null, -1],
+			],
+			missingPill: [],
+			hoverPrimary: 0,
+			edgePills: [true, true],
+		});
+	});
+
 	it("leaves ← and → to the caret when it is inside the query", async () => {
 		const dialog = await openPalette();
 		const input = within(dialog).getByRole<HTMLTextAreaElement>("combobox");
@@ -981,7 +1028,7 @@ describe("CommandPalette Artifacts and Scheduled tabs", () => {
 		expect(within(dialog).getByRole("radio", {name: "Compose"}).textContent).toBe("Compose");
 	});
 
-	it("styles every type tab without a background pill, active in primary ink", async () => {
+	it("styles every type tab muted with no own background; the active ink and pill come from data-active", async () => {
 		const dialog = await openPalette();
 
 		expect(
@@ -991,9 +1038,7 @@ describe("CommandPalette Artifacts and Scheduled tabs", () => {
 					tab.textContent,
 					tab.className.split(/\s+/).some((name) => name.startsWith("bg-")),
 					tab.classList.contains("font-medium"),
-					tab.classList.contains(
-						tab.getAttribute("aria-selected") === "true" ? "text-primary" : "text-ink-muted",
-					),
+					tab.classList.contains("text-ink-muted"),
 				]),
 		).toStrictEqual(
 			["All", "Artifacts", "Code", "Projects", "Scheduled", "Plans", "Memories", "Files"].map((label) => [
