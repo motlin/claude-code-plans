@@ -19,7 +19,6 @@ import {
 	toggleSidebarGroup,
 	useSidebarState,
 } from "../../lib/sidebar-store";
-import {ArchivedBadge} from "../archived-badge";
 import {SessionActionsMenu, SessionRowTitle} from "../session-actions-menu";
 import {SessionHoverCard} from "../session-hover-card";
 import {SidebarRowDecoration, SidebarRowSrText} from "../session-unread-control";
@@ -537,6 +536,8 @@ function SessionRowLink({
 						<SessionRowTitle
 							render={(title) => (
 								<FadeLabel text={title}>
+									{/* Upstream's o_: archived rows get a sr-only " Archived" right after the title, no pill */}
+									{row.archived && <span className="sr-only"> Archived</span>}
 									<SidebarRowSrText session={row.session} />
 								</FadeLabel>
 							)}
@@ -547,7 +548,6 @@ function SessionRowLink({
 							{lineage}
 						</span>
 					)}
-					{row.archived && <ArchivedBadge />}
 					{/* Upstream's title tail: reserves the trailing slot and holds the PR glyph left of it */}
 					<span className="shrink-0 flex items-center gap-1.5 text-xs text-ink-muted me-[calc(var(--sb-row-ctl-inset)+var(--sb-row-ctl)-var(--sb-row-px))]">
 						{prTail !== undefined && <PrTailGlyph state={prTail} />}

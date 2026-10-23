@@ -400,6 +400,29 @@ describe("sidebar Group and sort menu", () => {
 		}).toStrictEqual({groups: ["Working", "Completed"], empty: null, stored: DEFAULT_SESSION_LIST_PREFS});
 	});
 
+	it("marks an archived row with sr-only Archived right after its title, not a visible pill, as upstream does", async () => {
+		storePrefs({statusFilter: "archived"});
+		const archived = {...session("a1", "Archived one", "done", "alpha"), archived: true};
+		const {container} = await renderSidebarGroups(FIXTURE, {archived: [archived]});
+
+		const link = container.querySelector<HTMLElement>('a[href="/session/a1"]');
+		const titleSpan = link?.querySelector(".relative");
+		expect({
+			badge: link?.querySelector("[data-archived-badge]") ?? null,
+			titleChildren: [...(titleSpan?.childNodes ?? [])].map((node) =>
+				node instanceof HTMLElement ? {className: node.className, text: node.textContent} : node.textContent,
+			),
+		}).toStrictEqual({
+			badge: null,
+			titleChildren: [
+				"Archived one",
+				{className: "sr-only", text: " Archived"},
+				{className: "sr-only [[role=tooltip]_&]:hidden", text: ""},
+				{className: "sr-only [[role=tooltip]_&]:hidden", text: " Local"},
+			],
+		});
+	});
+
 	it("offers Show all sessions when the filters empty the list, as upstream does", async () => {
 		storePrefs({statusFilter: "archived", activityDays: "1d"});
 		const {container} = await renderSidebarGroups(FIXTURE, {archived: [], all: FIXTURE});

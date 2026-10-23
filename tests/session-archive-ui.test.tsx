@@ -257,18 +257,18 @@ describe("Status ▸ Archived in the sidebar", () => {
 		return [...container.querySelectorAll("a[data-row-main-button]")].map((row) => rowTitle(row));
 	}
 
-	it("shows archived rows with an Archived badge", async () => {
+	it("marks archived rows with a sr-only Archived after the title", async () => {
 		const {container} = await renderSidebar("archived", [listItem({archived: true, title: "Old spike"})]);
 
-		expect(rows(container)).toEqual(["Old spikeArchived"]);
+		expect(rows(container)).toEqual(["Old spike Archived"]);
 	});
 
-	it("badges only the archived rows under All", async () => {
+	it("marks only the archived rows under All", async () => {
 		const {container} = await renderSidebar("all", [
 			listItem({id: "a1", title: "Still going"}),
 			listItem({id: "a2", archived: true, title: "Old spike"}),
 		]);
 
-		expect(rows(container)).toEqual(["Still going", "Old spikeArchived"]);
+		expect(rows(container)).toEqual(["Still going", "Old spike Archived"]);
 	});
 });
