@@ -218,6 +218,90 @@ describe("Composer mode menu", () => {
 	});
 });
 
+describe("Composer home bar permissions menu", () => {
+	function renderHomeComposer() {
+		render(
+			<DensityScope density="compact">
+				<Composer
+					variant="home"
+					draftKey="home-dana"
+					onSend={vi.fn<OnSend>()}
+					chin={CHIN}
+					environment={<span>Dana's project</span>}
+				/>
+			</DensityScope>,
+		);
+	}
+
+	function hoverTooltip(trigger: Element): string | null {
+		const anchor = trigger.parentElement;
+		if (anchor === null) throw new Error("trigger has no parent");
+		fireEvent.pointerEnter(anchor);
+		act(() => {
+			vi.advanceTimersByTime(400);
+		});
+		const text = screen.queryByRole("tooltip")?.textContent ?? null;
+		fireEvent.pointerLeave(anchor);
+		return text;
+	}
+
+	it("labels the home bar menu Permissions · this session with no digit keycaps", async () => {
+		renderHomeComposer();
+
+		openModeMenu();
+		const menu = await screen.findByRole("menu");
+
+		expect({
+			labelText: within(menu).queryByText("Permissions · this session")?.textContent ?? null,
+			accelerators: menu.querySelectorAll("[data-accelerator]").length,
+			rows: radioRows(menu),
+		}).toStrictEqual({
+			labelText: "Permissions · this session",
+			accelerators: 0,
+			rows: [
+				{label: "Auto", description: "Claude handles permission decisions", key: null, checked: "false"},
+				{label: "Manual", description: "Always ask before making changes", key: null, checked: "true"},
+				{
+					label: "Accept edits",
+					description: "Automatically accept all file edits",
+					key: null,
+					checked: "false",
+				},
+				{label: "Plan", description: "Create a plan before making changes", key: null, checked: "false"},
+			],
+		});
+	});
+
+	it("names the home bar trigger Permissions: {mode} with the Permissions ⌥⌘M tooltip", () => {
+		vi.useFakeTimers();
+		try {
+			renderHomeComposer();
+			const trigger = screen.getByRole("button", {name: "Permissions: Manual"});
+
+			expect({
+				text: trigger.textContent,
+				tooltip: hoverTooltip(trigger),
+			}).toStrictEqual({text: "Manual", tooltip: "Permissions⌥Option⌘CommandM"});
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it("keeps the session chin menu labelled Mode with digits and no aria-label", async () => {
+		renderComposer();
+
+		openModeMenu();
+		const menu = await screen.findByRole("menu");
+
+		expect({
+			mode: within(menu).queryByText("Mode")?.textContent ?? null,
+			permissions: within(menu).queryByText("Permissions · this session"),
+			accelerators: menu.querySelectorAll("[data-accelerator]").length,
+			ariaLabel: document.querySelector("[data-chin-mode]")?.getAttribute("aria-label") ?? null,
+		}).toStrictEqual({mode: "Mode", permissions: null, accelerators: 4, ariaLabel: null});
+	});
+});
+
 describe("Composer model menu", () => {
 	it("opens on ⇧⌘I with versioned labels, the checked row's ✓ in place of its digit, and a More models submenu", async () => {
 		const onSend = renderComposer();

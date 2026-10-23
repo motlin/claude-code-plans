@@ -9,7 +9,7 @@ import {
 	Outlet,
 	RouterProvider,
 } from "@tanstack/react-router";
-import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {Composer} from "../src/components/composer";
 import {HOME_RECENT_LIMIT, HomeComposer} from "../src/components/home/home-composer";
@@ -359,8 +359,8 @@ describe("HomeComposer", () => {
 		await waitFor(() => {
 			expect(screen.queryByRole("menu")).toBeNull();
 		});
-		fireEvent.click(document.querySelector<HTMLElement>("[data-chin-mode]")!);
-		fireEvent.keyDown(await screen.findByRole("menu"), {key: "3", code: "Digit3"});
+		fireEvent.click(screen.getByRole("button", {name: /^Permissions: /}));
+		fireEvent.click(within(await screen.findByRole("menu")).getByRole("menuitemradio", {name: /^Accept edits/}));
 		await waitFor(() => {
 			expect(screen.queryByRole("menu")).toBeNull();
 		});

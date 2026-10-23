@@ -915,13 +915,13 @@ export function Composer({
 			</div>
 			{environment === undefined ? (
 				<div data-cds="ChatComposerChin" className={COMPOSER_CHIN_CLASS}>
-					{chin && <ComposerChin state={chin} launch={launchControls} />}
+					{chin && <ComposerChin state={chin} launch={launchControls} surface="chin" />}
 				</div>
 			) : (
 				<div data-testid="epitaxy-environment-bar" className={ENVIRONMENT_BAR_CLASS}>
 					<div data-testid="environment-bar-row" className={ENVIRONMENT_BAR_ROW_CLASS}>
 						<div className={ENVIRONMENT_PLACE_CLASS}>{environment}</div>
-						{chin && <ComposerChin state={chin} launch={launchControls} />}
+						{chin && <ComposerChin state={chin} launch={launchControls} surface="bar" />}
 					</div>
 				</div>
 			)}

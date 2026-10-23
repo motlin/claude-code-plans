@@ -41,6 +41,9 @@ const EFFORT_HELP = "Higher effort means more thorough responses, but takes long
 
 export type ChinMenu = "mode" | "model" | "effort";
 
+/** Where the chin controls render: the home environment bar or a session composer chin. */
+export type ChinSurface = "bar" | "chin";
+
 interface ControlledMenuProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
@@ -53,7 +56,10 @@ export function ModeMenu({
 	currentLabel,
 	bypassPermissionsAllowed,
 	onSelect,
+	surface,
 }: ControlledMenuProps & {
+	/** Upstream's new-session bar reads "Permissions · this session" with no digit keycaps; chins read "Mode". */
+	surface: ChinSurface;
 	current: string;
 	currentLabel: string;
 	bypassPermissionsAllowed: boolean;
@@ -61,17 +67,22 @@ export function ModeMenu({
 }) {
 	const [confirmBypass, setConfirmBypass] = useState(false);
 	const modeKeys = useShortcutKeys("open_mode_menu").keys;
+	const bar = surface === "bar";
 	return (
 		<>
 			<Menu open={open} onOpenChange={onOpenChange}>
-				<Tooltip content="Mode" shortcut={modeKeys} side="top" suppressAfterPopup>
-					<MenuTrigger data-chin-mode="" className={CHIN_TRIGGER_CLASS}>
+				<Tooltip content={bar ? "Permissions" : "Mode"} shortcut={modeKeys} side="top" suppressAfterPopup>
+					<MenuTrigger
+						data-chin-mode=""
+						className={CHIN_TRIGGER_CLASS}
+						{...(bar ? {"aria-label": `Permissions: ${currentLabel}`} : {})}
+					>
 						{currentLabel}
 					</MenuTrigger>
 				</Tooltip>
 				<MenuContent side="top">
 					<MenuLabel className="px-2 py-1 text-[12px]/[15px] font-medium text-[var(--menu-muted)]">
-						Mode
+						{bar ? "Permissions · this session" : "Mode"}
 					</MenuLabel>
 					<MenuRadioGroup
 						value={current}
@@ -85,7 +96,7 @@ export function ModeMenu({
 							<MenuRadioItem
 								key={item.id}
 								value={item.id}
-								accelerator={String(index + 1)}
+								{...(bar ? {} : {accelerator: String(index + 1)})}
 								closeOnClick
 								data-variant={item.warning ? "warning" : "default"}
 								description={item.description}

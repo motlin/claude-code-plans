@@ -25,7 +25,7 @@ import {
 } from "../lib/launch-options";
 import {useShortcutKeys} from "../hooks/use-shortcut";
 import {effortLevelLabels} from "../lib/schema-choices";
-import {type ChinMenu, ModeMenu, ModelMenu} from "./composer-launch-menus";
+import {type ChinMenu, type ChinSurface, ModeMenu, ModelMenu} from "./composer-launch-menus";
 import {ADD_BUTTON_CLASS, USAGE_RING_CLASS} from "./composer-tokens";
 import {localAccountQueryOptions} from "../lib/api/local-account";
 import {settingsHash} from "../lib/settings-hash";
@@ -191,9 +191,11 @@ function effortText(effort: string): string {
 export const ComposerChin = memo(function ComposerChin({
 	state,
 	launch,
+	surface,
 }: {
 	state: ComposerState;
 	launch: ChinLaunchControls;
+	surface: ChinSurface;
 }) {
 	const {launchOptions, onLaunchOptionsChange, openMenu, onOpenMenuChange} = launch;
 	// Keeps the picked level while the confirm fades out, so its copy doesn't flicker.
@@ -226,6 +228,7 @@ export const ComposerChin = memo(function ComposerChin({
 			<div className="flex min-w-0 items-center self-start">
 				<ModeMenu
 					{...menuProps("mode")}
+					surface={surface}
 					current={launchOptions.permissionMode ?? state.mode?.id ?? "default"}
 					currentLabel={modeLabel}
 					bypassPermissionsAllowed={launch.bypassPermissionsAllowed}
