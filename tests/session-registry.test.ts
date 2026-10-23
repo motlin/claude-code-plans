@@ -108,6 +108,14 @@ describe("readSessionRegistry", () => {
 		});
 	});
 
+	it("recovers a file the CLI overwrote in place without truncating, leaving a stale tail", async () => {
+		writeFileSync(join(dir, "4242.json"), `${JSON.stringify(registryFixture())}}`);
+		writeFileSync(join(dir, "4343.json"), `${JSON.stringify(registryFixture({pid: 4343}))}{"pid":`);
+		writeFileSync(join(dir, "4444.json"), `{"pid": 4444, "sessionId": `);
+
+		expect(await readSessionRegistry(dir)).toStrictEqual([registryFixture(), registryFixture({pid: 4343})]);
+	});
+
 	it("returns nothing for a missing directory", async () => {
 		expect(await readSessionRegistry(join(dir, "missing"))).toStrictEqual([]);
 	});

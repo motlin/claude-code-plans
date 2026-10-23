@@ -2,6 +2,7 @@ import {readFileSync, readdirSync} from "node:fs";
 import {join} from "node:path";
 import {setTimeout as delay} from "node:timers/promises";
 import type {z} from "zod";
+import {parseIgnoringStaleTail} from "../src/lib/parse-leading-json";
 
 export interface RegistryScanIo {
 	readdir: () => string[];
@@ -17,26 +18,6 @@ export function diskRegistryIo(dir: string): RegistryScanIo {
 			await delay(100);
 		},
 	};
-}
-
-/**
- * The CLI sometimes rewrites a registry file in place without truncating it, so a shorter
- * document leaves the old one's last bytes behind (e.g. a stray `}`). That stale tail is not
- * schema drift, so parse the complete leading document and let the schema judge it.
- */
-function parseIgnoringStaleTail(text: string): unknown {
-	try {
-		return JSON.parse(text);
-	} catch (error) {
-		const end =
-			error instanceof SyntaxError
-				? /Unexpected non-whitespace character after JSON at position (\d+)/.exec(error.message)?.[1]
-				: undefined;
-		if (end === undefined) {
-			throw error;
-		}
-		return JSON.parse(text.slice(0, Number(end)));
-	}
 }
 
 type Attempt = {kind: "gone"} | {kind: "ok"} | {kind: "bad"; reason: string};

@@ -7,6 +7,7 @@ import type {z} from "zod";
 import {SessionRegistryFileSchema} from "./runtime-schemas";
 import {SessionRegistryFileSchema as StrictSessionRegistryFileSchema} from "./schemas";
 import {errnoCode} from "./narrow";
+import {parseIgnoringStaleTail} from "./parse-leading-json";
 
 /**
  * Reader for the CLI's live session registry, `~/.claude/sessions/<pid>.json`.
@@ -37,8 +38,8 @@ function warnDriftOnce(name: string, message: string): void {
 }
 
 /**
- * Every valid registry file in `dir`. Unreadable or torn files are skipped
- * quietly; one that parses but fails the strict schema is reported as drift.
+ * Every valid registry file in `dir`. A stale tail left by an in-place rewrite is ignored;
+ * unreadable or torn files are skipped quietly; one that parses but fails the strict schema is reported as drift.
  */
 export async function readSessionRegistry(
 	dir: string = SESSION_REGISTRY_DIR,
@@ -54,7 +55,7 @@ export async function readSessionRegistry(
 		names.filter(isRegistryFileName).map(async (name) => {
 			let raw: unknown;
 			try {
-				raw = JSON.parse(await readFile(join(dir, name), "utf8"));
+				raw = parseIgnoringStaleTail(await readFile(join(dir, name), "utf8"));
 			} catch {
 				return null;
 			}
