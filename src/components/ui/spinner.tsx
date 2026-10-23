@@ -3,6 +3,12 @@ import {useEffect, useState} from "react";
 /** Upstream cds Spinner box/stroke per size; md is the 16px ring the palette input row uses, sm the 12px busy-button ring. */
 const SPINNER_SIZES = {sm: {box: "0.75rem", stroke: "1.5px"}, md: {box: "1rem", stroke: "1.75px"}} as const;
 
+/** Track and arc colours: the muted ring on a surface, or upstream's busy-button ring drawn in the button's own ink. */
+const SPINNER_TONES = {
+	muted: {track: "var(--color-border)", arc: "var(--color-ink-muted)"},
+	current: {track: "color-mix(in srgb, currentColor 25%, transparent)", arc: "currentColor"},
+} as const;
+
 /** Upstream mounts the sr-only label 100ms after the spinner shows, so a quick flash isn't announced. */
 const LABEL_DELAY_MS = 100;
 
@@ -15,8 +21,10 @@ export function Spinner({
 	size = "md",
 	delay = 0,
 	label,
+	tone = "muted",
 }: {
 	size?: keyof typeof SPINNER_SIZES;
+	tone?: keyof typeof SPINNER_TONES;
 	delay?: number;
 	label?: string;
 }) {
@@ -33,6 +41,7 @@ export function Spinner({
 	const show = delay <= 0 || elapsed;
 
 	const {box, stroke} = SPINNER_SIZES[size];
+	const {track, arc} = SPINNER_TONES[tone];
 	const mask = `radial-gradient(farthest-side, transparent calc(100% - ${stroke}), #000 calc(100% - ${stroke} + 0.5px))`;
 	const ring = show ? (
 		<span
@@ -41,10 +50,10 @@ export function Spinner({
 			className="relative inline-block shrink-0 align-middle"
 			style={{width: box, height: box}}
 		>
-			<span className="absolute inset-0 rounded-full" style={{border: `${stroke} solid var(--color-border)`}} />
+			<span className="absolute inset-0 rounded-full" style={{border: `${stroke} solid ${track}`}} />
 			<span
 				className="absolute inset-0 rounded-full animate-[spin_1s_linear_infinite] motion-reduce:animate-none"
-				style={{background: "conic-gradient(transparent 40%, var(--color-ink-muted))", mask}}
+				style={{background: `conic-gradient(transparent 40%, ${arc})`, mask}}
 			/>
 		</span>
 	) : null;

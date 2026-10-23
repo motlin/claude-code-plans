@@ -1,8 +1,9 @@
-import {Loader2} from "lucide-react";
 import type {ButtonHTMLAttributes, KeyboardEvent, ReactNode, Ref} from "react";
 
+import {Spinner} from "./ui/spinner";
+
 const ACTION_BUTTON =
-	"inline-flex h-6 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-r5 px-2 text-[13px]/[19px] whitespace-nowrap select-none hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus disabled:cursor-not-allowed disabled:opacity-50 [&_kbd]:text-[11px]";
+	"relative inline-flex h-6 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-r5 px-2 text-[13px]/[19px] whitespace-nowrap select-none hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus disabled:cursor-not-allowed disabled:opacity-50 [&_kbd]:text-[11px]";
 
 const ACTION_VARIANTS = {
 	secondary: "bg-fill-secondary shadow-field-drop text-primary hover:bg-fill-secondary-hover",
@@ -16,26 +17,40 @@ function approvalActionClass(variant: ApprovalActionVariant): string {
 	return `${ACTION_BUTTON} ${ACTION_VARIANTS[variant]}`;
 }
 
-/** An approval card action; `busy` marks it aria-busy and leads it with upstream's spinner. */
+/**
+ * An approval card action. `busy` is upstream's busy cds Button: it stays focusable
+ * (`aria-busy` + `aria-disabled`, not `disabled`), ignores clicks, hides its label and
+ * centres a 12px spinner over it.
+ */
 export function ApprovalActionButton({
 	variant,
 	busy = false,
 	children,
+	onClick,
 	...props
 }: {variant: ApprovalActionVariant; busy?: boolean} & Omit<
 	ButtonHTMLAttributes<HTMLButtonElement>,
-	"className" | "type" | "aria-busy"
+	"className" | "type" | "aria-busy" | "aria-disabled"
 >) {
 	return (
 		<button
 			type="button"
 			{...props}
+			onClick={busy ? undefined : onClick}
 			data-approval-variant={variant}
-			aria-busy={busy || undefined}
+			{...(busy ? {"aria-busy": true, "aria-disabled": true} : {})}
 			className={approvalActionClass(variant)}
 		>
-			{busy && <Loader2 aria-hidden="true" className="size-3 animate-spin" />}
-			{children}
+			{busy ? (
+				<>
+					<span className="inline-flex min-w-0 items-center gap-1 opacity-0">{children}</span>
+					<span aria-hidden="true" className="absolute inset-0 grid place-items-center leading-[0]">
+						<Spinner size="sm" tone="current" />
+					</span>
+				</>
+			) : (
+				children
+			)}
 		</button>
 	);
 }

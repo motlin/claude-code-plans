@@ -159,29 +159,46 @@ describe("QuestionCard", () => {
 		});
 	});
 
-	it("marks Submit busy with a spinner and no tooltip reason while the answer is sending, as upstream's busy primary", async () => {
+	it("keeps busy Submit focusable with a hidden label and a centred spinner, as upstream's busy primary", async () => {
 		const onSubmit = vi.fn<(answers: unknown[]) => Promise<void>>(async () => new Promise<void>(() => {}));
 		render(<QuestionCard questions={[QUESTIONS[0]!]} onSubmit={onSubmit} />);
 		const idle = screen.getByRole("button", {name: /^Submit/});
-		const before = {busy: idle.getAttribute("aria-busy"), spinner: idle.querySelector(".animate-spin") !== null};
+		const before = {busy: idle.getAttribute("aria-busy"), spinner: idle.querySelector("[data-spinner]") !== null};
 		fireEvent.click(screen.getByRole("button", {name: /^Vitest/}));
-		fireEvent.click(screen.getByRole("button", {name: /^Submit/}));
+		idle.focus();
+		fireEvent.click(idle);
 		await vi.waitFor(() => {
 			expect(onSubmit).toHaveBeenCalledTimes(1);
 		});
 		const submit = screen.getByRole("button", {name: /^Submit/});
+		fireEvent.click(submit);
+		const overlay = submit.querySelector("[data-spinner]")?.parentElement;
 
 		expect({
 			before,
+			same: submit === idle,
 			busy: submit.getAttribute("aria-busy"),
+			ariaDisabled: submit.getAttribute("aria-disabled"),
 			disabled: submit.hasAttribute("disabled"),
-			spinner: submit.querySelector("svg.animate-spin")?.getAttribute("aria-hidden"),
+			focused: document.activeElement === submit,
+			relative: submit.classList.contains("relative"),
+			label: submit.firstElementChild?.className,
+			overlay: overlay?.className,
+			overlayHidden: overlay?.getAttribute("aria-hidden"),
+			calls: onSubmit.mock.calls.length,
 			tooltipWrapper: submit.parentElement?.tagName === "SPAN",
 		}).toStrictEqual({
 			before: {busy: null, spinner: false},
+			same: true,
 			busy: "true",
-			disabled: true,
-			spinner: "true",
+			ariaDisabled: "true",
+			disabled: false,
+			focused: true,
+			relative: true,
+			label: "inline-flex min-w-0 items-center gap-1 opacity-0",
+			overlay: "absolute inset-0 grid place-items-center leading-[0]",
+			overlayHidden: "true",
+			calls: 1,
 			tooltipWrapper: false,
 		});
 	});

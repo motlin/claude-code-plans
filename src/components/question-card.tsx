@@ -236,7 +236,7 @@ export function QuestionCard({
 		<ApprovalActionButton
 			variant="primary"
 			busy={sending}
-			disabled={!editable || !canAdvance}
+			disabled={!sending && (!editable || !canAdvance)}
 			onMouseDown={keepFocus}
 			onClick={advance}
 		>
