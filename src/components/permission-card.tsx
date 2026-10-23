@@ -2,7 +2,7 @@ import {Loader2} from "lucide-react";
 import {useCallback, useEffect, useState, type ReactNode} from "react";
 
 import {dockKeyAllowed} from "../lib/dock-keys";
-import {permissionDecisionForKey, type PermissionDecision} from "../lib/permission-card";
+import {permissionDecisionForKey, type PermissionDecision, type PermissionTitle} from "../lib/permission-card";
 import {PERSISTENT_ALLOW_LABELS, type PersistentAllowKind} from "../lib/permission-suggestions";
 import {APPROVAL_CARD_TITLE, ApprovalActionButton, ApprovalCardShell} from "./approval-card";
 import {ReadOnlyAnswerHint} from "./terminal-writes-tip";
@@ -10,21 +10,21 @@ import {Shortcut} from "./ui/shortcut";
 
 /**
  * The tool-permission card, drawn inline as claude.ai/code's approvals:
- * "Allow Claude to run …?", the command block, and [Deny Esc] … [Allow once ⌘⏎],
+ * "Allow Claude to <action> <meta>?", the detail block, and [Deny Esc] … [Allow once ⌘⏎],
  * then the persistent option ("Always allow" / "Allow for this session") when
  * the CLI's dialog offers one.
  * Keys act while the card is focused, nothing is focused, or the composer is empty.
  */
 export function PermissionCard({
 	title,
-	command,
+	detail,
 	canAnswer,
 	persistentAllow = null,
 	onDecision,
 	footer,
 }: {
-	title: string;
-	command: string | null;
+	title: PermissionTitle;
+	detail: string | null;
 	/** False without a live herdr pane that accepts writes. */
 	canAnswer: boolean;
 	/** The dialog's persistent allow option, from the PermissionRequest hook; null hides it. */
@@ -69,21 +69,22 @@ export function PermissionCard({
 
 	return (
 		<ApprovalCardShell
-			label="Permission request: run"
+			label={"action" in title ? `Permission request: ${title.action}` : "Permission request"}
 			footer={footer}
 			presentation="card"
 			body={
 				<div className="flex flex-col gap-[10px]">
 					<span data-permission-title data-approval-card-title className={APPROVAL_CARD_TITLE}>
-						{title}
+						<PermissionTitleText title={title} />
 					</span>
 					<div className="flex flex-col gap-[12px] empty:hidden">
-						{command !== null && (
+						{detail !== null && (
 							<div
+								data-permission-detail
 								data-approval-value
 								className="rounded-r4 bg-alpha-1 px-3 py-2 font-mono text-[12px]/[17px] break-words whitespace-pre-wrap text-secondary select-text [unicode-bidi:plaintext]"
 							>
-								{command}
+								{detail}
 							</div>
 						)}
 						{!canAnswer && <ReadOnlyAnswerHint className="text-footnote text-secondary" />}
@@ -114,5 +115,26 @@ export function PermissionCard({
 				</>
 			}
 		/>
+	);
+}
+
+const TITLE_PART = "text-primary [unicode-bidi:plaintext]";
+
+/** Upstream's title: the action and meta are their own bidi-isolated spans inside the approval value. */
+function PermissionTitleText({title}: {title: PermissionTitle}) {
+	if (!("action" in title)) return <span className={TITLE_PART}>{title.heading}</span>;
+	return (
+		<span className="min-w-0 break-words">
+			<span data-approval-value>
+				Allow Claude to <span className={TITLE_PART}>{title.action}</span>
+				{title.meta !== null && (
+					<>
+						{" "}
+						<span className={TITLE_PART}>{title.meta}</span>
+					</>
+				)}
+				?
+			</span>
+		</span>
 	);
 }

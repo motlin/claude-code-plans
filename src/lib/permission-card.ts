@@ -14,29 +14,26 @@ export interface PermissionNotification {
 	persistentAllow?: PersistentAllowKind | undefined;
 }
 
+/**
+ * Upstream's card title: "Allow Claude to <action> <meta>?" for a tool call, or
+ * the notification's own text when no call in the transcript describes it.
+ */
+export type PermissionTitle = {action: string; meta: string | null} | {heading: string};
+
 export interface PendingPermission {
 	notificationId: string;
-	title: string;
-	command: string | null;
+	title: PermissionTitle;
+	/** The block under the title: the command, the full path, the skill args, or the input as JSON. */
+	detail: string | null;
 	persistentAllow?: PersistentAllowKind;
 }
 
 /** Tools with their own docked card, which never show the permission card. */
 const OWN_CARD_TOOLS = new Set(["AskUserQuestion", "ExitPlanMode"]);
 
-const PRIMARY_INPUT_KEYS = ["command", "file_path", "notebook_path", "url", "pattern", "path"];
-
 function stringInput(input: Record<string, unknown>, key: string): string | null {
 	const value = input[key];
 	return typeof value === "string" && value.trim() !== "" ? value : null;
-}
-
-function primaryInput(input: Record<string, unknown>): string | null {
-	for (const key of PRIMARY_INPUT_KEYS) {
-		const value = stringInput(input, key);
-		if (value !== null) return value;
-	}
-	return null;
 }
 
 function findPermissionNotification(
@@ -111,7 +108,7 @@ export function findPendingPermission({
 	if (toolUse === null) {
 		return isActive
 			? withPersistentAllow(
-					{notificationId: notification.id, title: notification.message, command: null},
+					{notificationId: notification.id, title: {heading: notification.message}, detail: null},
 					notification,
 				)
 			: null;
@@ -126,21 +123,55 @@ function withPersistentAllow(permission: PendingPermission, notification: Permis
 		: {...permission, persistentAllow: notification.persistentAllow};
 }
 
-/** "Allow Claude to run <description>?" over the command for Bash, the tool name and its main input otherwise. */
 function permissionFor(notificationId: string, toolUse: PendingToolUse): PendingPermission {
-	if (toolUse.name === "Bash") {
-		const description = stringInput(toolUse.input, "description");
-		return {
-			notificationId,
-			title: `Allow Claude to run ${description ?? "this command"}?`,
-			command: stringInput(toolUse.input, "command"),
-		};
+	const {action, meta = null, detail = null} = permissionCopy(toolUse);
+	return {notificationId, title: {action, meta}, detail};
+}
+
+interface PermissionCopy {
+	action: string;
+	meta?: string | null;
+	detail?: string | null;
+}
+
+/** A file tool names the file in the title and shows its full path below. */
+function fileCopy(action: string, path: string | null): PermissionCopy {
+	return path === null ? {action} : {action, meta: path.replace(/^.*[\\/]/, ""), detail: path};
+}
+
+/** Upstream's per-tool action, meta and detail (claude.ai/code's permission copy builder). */
+function permissionCopy({name, input}: PendingToolUse): PermissionCopy {
+	const text = (key: string) => stringInput(input, key);
+	switch (name) {
+		case "Bash":
+		case "PowerShell":
+			return {action: "run", meta: text("description"), detail: text("command")};
+		case "Read":
+			return fileCopy("read", text("file_path"));
+		case "Write":
+			return fileCopy("write", text("file_path"));
+		case "Edit":
+		case "MultiEdit":
+			return fileCopy("edit", text("file_path"));
+		case "NotebookEdit":
+			return fileCopy("edit", text("notebook_path"));
+		case "Grep":
+		case "Glob":
+			return {action: "search", meta: text("pattern")};
+		case "WebSearch":
+			return {action: "search the web", meta: text("query")};
+		case "Skill": {
+			const skill = text("skill");
+			return {action: "run skill", meta: skill === null ? null : `/${skill}`, detail: text("args")};
+		}
+		case "Task":
+		case "Agent":
+			return {action: "run an agent", meta: text("description")};
+		case "Workflow":
+			return {action: "run a workflow", meta: text("name")};
+		default:
+			return {action: `use ${name}`, detail: JSON.stringify(input, null, 2)};
 	}
-	return {
-		notificationId,
-		title: `Allow Claude to use ${toolUse.name}?`,
-		command: primaryInput(toolUse.input),
-	};
 }
 
 export interface PermissionKeyEvent {

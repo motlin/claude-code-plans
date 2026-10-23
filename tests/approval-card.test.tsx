@@ -9,7 +9,7 @@ afterEach(cleanup);
 
 function permissionChrome() {
 	const container = render(
-		<PermissionCard title="Allow Claude to run ls?" command="ls" canAnswer onDecision={async () => {}} />,
+		<PermissionCard title={{action: "run", meta: null}} detail="ls" canAnswer onDecision={async () => {}} />,
 	).container;
 	const classOf = (element: Element | null) => element?.getAttribute("class") ?? null;
 	return {

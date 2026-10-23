@@ -56,8 +56,8 @@ describe("findPendingPermission", () => {
 			}),
 		).toStrictEqual({
 			notificationId: "notification-test-100",
-			title: "Allow Claude to run Remove the build output?",
-			command: "rm -rf dist",
+			title: {action: "run", meta: "Remove the build output"},
+			detail: "rm -rf dist",
 		});
 	});
 
@@ -71,13 +71,13 @@ describe("findPendingPermission", () => {
 			}),
 		).toStrictEqual({
 			notificationId: "notification-test-100",
-			title: "Allow Claude to run Remove the build output?",
-			command: "rm -rf dist",
+			title: {action: "run", meta: "Remove the build output"},
+			detail: "rm -rf dist",
 			persistentAllow: "always",
 		});
 	});
 
-	it("uses the tool name and its main input for other tools", () => {
+	it("names a file tool's file over its full path", () => {
 		expect(
 			findPendingPermission({
 				sessionId: "session-test-100",
@@ -87,8 +87,8 @@ describe("findPendingPermission", () => {
 			}),
 		).toStrictEqual({
 			notificationId: "notification-test-100",
-			title: "Allow Claude to use Write?",
-			command: "/repo/b.ts",
+			title: {action: "write", meta: "b.ts"},
+			detail: "/repo/b.ts",
 		});
 	});
 
@@ -102,8 +102,8 @@ describe("findPendingPermission", () => {
 			}),
 		).toStrictEqual({
 			notificationId: "notification-test-100",
-			title: "Claude needs your permission to use Bash",
-			command: null,
+			title: {heading: "Claude needs your permission to use Bash"},
+			detail: null,
 		});
 	});
 
@@ -154,8 +154,8 @@ describe("findPendingPermission", () => {
 		}).toStrictEqual({
 			permissionWait: {
 				notificationId: "t4",
-				title: "Allow Claude to run Open the oxfmt comment PR and check the other test?",
-				command: "gh pr create --fill",
+				title: {action: "run", meta: "Open the oxfmt comment PR and check the other test"},
+				detail: "gh pr create --fill",
 			},
 			inputWait: null,
 		});
@@ -171,8 +171,8 @@ describe("findPendingPermission", () => {
 			}),
 		).toStrictEqual({
 			notificationId: "notification-test-100",
-			title: "Allow Claude to run Remove the build output?",
-			command: "rm -rf dist",
+			title: {action: "run", meta: "Remove the build output"},
+			detail: "rm -rf dist",
 		});
 	});
 
@@ -206,6 +206,167 @@ describe("findPendingPermission", () => {
 	});
 });
 
+const PRIMARY = "text-primary [unicode-bidi:plaintext]";
+
+describe("permission title copy", () => {
+	it.each([
+		{
+			tool: "Bash",
+			input: {command: "rm -rf dist", description: "Remove the build output"},
+			title: "Allow Claude to run Remove the build output?",
+			parts: [
+				[PRIMARY, "run"],
+				[PRIMARY, "Remove the build output"],
+			],
+			label: "Permission request: run",
+			detail: "rm -rf dist",
+		},
+		{
+			tool: "Bash",
+			input: {command: "rm -rf dist"},
+			title: "Allow Claude to run?",
+			parts: [[PRIMARY, "run"]],
+			label: "Permission request: run",
+			detail: "rm -rf dist",
+		},
+		{
+			tool: "Read",
+			input: {file_path: "/repo/src/a.ts"},
+			title: "Allow Claude to read a.ts?",
+			parts: [
+				[PRIMARY, "read"],
+				[PRIMARY, "a.ts"],
+			],
+			label: "Permission request: read",
+			detail: "/repo/src/a.ts",
+		},
+		{
+			tool: "MultiEdit",
+			input: {file_path: "/repo/src/b.ts", edits: []},
+			title: "Allow Claude to edit b.ts?",
+			parts: [
+				[PRIMARY, "edit"],
+				[PRIMARY, "b.ts"],
+			],
+			label: "Permission request: edit",
+			detail: "/repo/src/b.ts",
+		},
+		{
+			tool: "NotebookEdit",
+			input: {notebook_path: "/repo/n.ipynb", new_source: "x"},
+			title: "Allow Claude to edit n.ipynb?",
+			parts: [
+				[PRIMARY, "edit"],
+				[PRIMARY, "n.ipynb"],
+			],
+			label: "Permission request: edit",
+			detail: "/repo/n.ipynb",
+		},
+		{
+			tool: "Grep",
+			input: {pattern: "TODO", path: "/repo"},
+			title: "Allow Claude to search TODO?",
+			parts: [
+				[PRIMARY, "search"],
+				[PRIMARY, "TODO"],
+			],
+			label: "Permission request: search",
+			detail: null,
+		},
+		{
+			tool: "WebSearch",
+			input: {query: "vitest jsdom"},
+			title: "Allow Claude to search the web vitest jsdom?",
+			parts: [
+				[PRIMARY, "search the web"],
+				[PRIMARY, "vitest jsdom"],
+			],
+			label: "Permission request: search the web",
+			detail: null,
+		},
+		{
+			tool: "Skill",
+			input: {skill: "commit", args: "--all"},
+			title: "Allow Claude to run skill /commit?",
+			parts: [
+				[PRIMARY, "run skill"],
+				[PRIMARY, "/commit"],
+			],
+			label: "Permission request: run skill",
+			detail: "--all",
+		},
+		{
+			tool: "Agent",
+			input: {description: "Find the bug", prompt: "look"},
+			title: "Allow Claude to run an agent Find the bug?",
+			parts: [
+				[PRIMARY, "run an agent"],
+				[PRIMARY, "Find the bug"],
+			],
+			label: "Permission request: run an agent",
+			detail: null,
+		},
+		{
+			tool: "Workflow",
+			input: {name: "upstream-sync-noop", description: "Does nothing"},
+			title: "Allow Claude to run a workflow upstream-sync-noop?",
+			parts: [
+				[PRIMARY, "run a workflow"],
+				[PRIMARY, "upstream-sync-noop"],
+			],
+			label: "Permission request: run a workflow",
+			detail: null,
+		},
+		{
+			tool: "mcp__github__create_issue",
+			input: {title: "Bug", labels: ["a"]},
+			title: "Allow Claude to use mcp__github__create_issue?",
+			parts: [[PRIMARY, "use mcp__github__create_issue"]],
+			label: "Permission request: use mcp__github__create_issue",
+			detail: '{\n  "title": "Bug",\n  "labels": [\n    "a"\n  ]\n}',
+		},
+	])("titles $tool $input as upstream does", ({tool, input, title, parts, label, detail}) => {
+		const pending = findPendingPermission({
+			sessionId: "session-test-100",
+			isActive: true,
+			notifications: [permissionNotification()],
+			records: [assistantToolUse("t9", tool, input)],
+		})!;
+		const {container} = render(
+			<PermissionCard title={pending.title} detail={pending.detail} canAnswer onDecision={async () => {}} />,
+		);
+		const card = container.querySelector("[data-approval-card-root]")!;
+		const value = card.querySelector("[data-permission-title] [data-approval-value]");
+		expect({
+			title: value?.textContent,
+			parts: [...(value?.children ?? [])].map((span) => [span.className, span.textContent]),
+			label: card.getAttribute("aria-label"),
+			detail: card.querySelector("[data-permission-detail]")?.textContent ?? null,
+		}).toStrictEqual({
+			title,
+			parts,
+			label,
+			detail,
+		});
+	});
+
+	it("draws the notification text as the heading when no tool call describes the prompt", () => {
+		const {container} = render(
+			<PermissionCard
+				title={{heading: "Claude needs your permission to use Bash"}}
+				detail={null}
+				canAnswer
+				onDecision={async () => {}}
+			/>,
+		);
+		const card = container.querySelector("[data-approval-card-root]")!;
+		expect({
+			title: card.querySelector("[data-permission-title]")?.textContent,
+			label: card.getAttribute("aria-label"),
+		}).toStrictEqual({title: "Claude needs your permission to use Bash", label: "Permission request"});
+	});
+});
+
 describe("permissionDecisionForKey", () => {
 	const plain = {metaKey: false, ctrlKey: false, altKey: false, shiftKey: false};
 
@@ -235,8 +396,8 @@ function renderCard({
 				<textarea aria-label="Prompt" />
 			</div>
 			<PermissionCard
-				title="Allow Claude to run Remove the build output?"
-				command="rm -rf dist"
+				title={{action: "run", meta: "Remove the build output"}}
+				detail="rm -rf dist"
 				canAnswer={canAnswer}
 				persistentAllow={persistentAllow}
 				onDecision={onDecision}
@@ -255,7 +416,7 @@ describe("PermissionCard", () => {
 		expect({
 			label: card.getAttribute("aria-label"),
 			title: card.querySelector("[data-permission-title]")?.textContent,
-			command: card.querySelector("[data-approval-value]")?.textContent,
+			command: card.querySelector("[data-permission-detail]")?.textContent,
 			denyKeys: [...deny.querySelectorAll("kbd")].map((kbd) => kbd.textContent),
 			allowKeys: [...allow.querySelectorAll("kbd")].map((kbd) => kbd.textContent),
 		}).toStrictEqual({
@@ -281,7 +442,7 @@ describe("PermissionCard", () => {
 				card.classList.contains(name),
 			),
 			title: missing(card.querySelector("[data-permission-title]"), ["text-[13px]/[19px]", "font-[580]"]),
-			value: missing(card.querySelector("[data-approval-value]"), [
+			value: missing(card.querySelector("[data-permission-detail]"), [
 				"font-mono",
 				"text-[12px]/[17px]",
 				"text-secondary",
@@ -314,7 +475,7 @@ describe("PermissionCard", () => {
 		const card = container.querySelector<HTMLElement>("[data-approval-card-root]")!;
 		const body = card.querySelector<HTMLElement>("[data-approval-card-body]")!;
 		const title = card.querySelector<HTMLElement>("[data-permission-title]")!;
-		const value = card.querySelector<HTMLElement>("[data-approval-value]")!;
+		const value = card.querySelector<HTMLElement>("[data-permission-detail]")!;
 		const classes = (element: Element | null) => new Set(element?.getAttribute("class")?.split(/\s+/));
 		const has = (element: Element | null, names: string[]) => names.filter((name) => classes(element).has(name));
 		expect({

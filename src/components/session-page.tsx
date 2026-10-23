@@ -1054,7 +1054,7 @@ function SessionView({
 									<PermissionCard
 										key={pendingPermission.notificationId}
 										title={pendingPermission.title}
-										command={pendingPermission.command}
+										detail={pendingPermission.detail}
 										canAnswer={promptBehavior.hasLivePane && herdr.writesEnabled}
 										persistentAllow={pendingPermission.persistentAllow ?? null}
 										onDecision={answerPermission}
