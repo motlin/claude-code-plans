@@ -26,7 +26,7 @@ function ShortcutRow({id, isMac, isWindows}: {id: ShortcutId; isMac: boolean; is
 				? undefined
 				: bindingToKeys(binding);
 	return (
-		<div className="flex min-h-[37px] items-center justify-between border-b-[0.5px] border-border py-2 last:border-0">
+		<div className="flex items-center justify-between border-b-[0.5px] border-border py-2 last:border-0">
 			<span className="flex items-center gap-2 text-sm text-secondary">{definition.description}</span>
 			<span className="flex items-center gap-2">{keys === undefined ? null : <Shortcut keys={keys} />}</span>
 		</div>
@@ -43,6 +43,7 @@ export function KeyboardShortcutsDialog() {
 	const isMac = useIsMac();
 	const isWindows = useIsWindows();
 	const returnFocusRef = useRef<HTMLElement | null>(null);
+	const popupRef = useRef<HTMLDivElement>(null);
 
 	if (isOpen && returnFocusRef.current === null) {
 		const active = document.activeElement;
@@ -74,20 +75,28 @@ export function KeyboardShortcutsDialog() {
 		<Dialog.Root open={isOpen} onOpenChange={setKeyboardShortcutsOpen}>
 			<Dialog.Portal>
 				<DensityScope density="comfortable">
-					<Dialog.Backdrop className="fixed inset-0 z-50 bg-backdrop backdrop-blur-[2px] transition-opacity duration-200 ease-out data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 motion-reduce:transition-none" />
+					<Dialog.Backdrop className="fixed inset-0 z-50 bg-backdrop transition-opacity duration-200 ease-out data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 motion-reduce:transition-none" />
 					<Dialog.Popup
+						ref={popupRef}
+						initialFocus={popupRef}
 						finalFocus={finalFocus}
-						className="fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-[520px] -translate-x-1/2 -translate-y-1/2 flex-col rounded-card bg-surface-3 text-body text-primary shadow-panel-lg outline-none transition-[opacity,scale] duration-200 ease-out data-[ending-style]:scale-[0.98] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.98] data-[starting-style]:opacity-0 motion-reduce:transition-none motion-reduce:data-[ending-style]:scale-100 motion-reduce:data-[starting-style]:scale-100"
+						tabIndex={-1}
+						data-cds="Dialog"
+						data-perf-overlay="keyboard_shortcuts_dialog"
+						className="fixed top-1/2 left-1/2 z-50 flex h-dvh max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-[520px] -translate-x-1/2 -translate-y-1/2 flex-col rounded-card bg-surface-3 text-body text-primary shadow-panel-lg outline-none transition-[opacity,scale] duration-200 ease-out data-[ending-style]:scale-[0.98] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.98] data-[starting-style]:opacity-0 motion-reduce:transition-none motion-reduce:data-[ending-style]:scale-100 motion-reduce:data-[starting-style]:scale-100"
 					>
 						<div className="isolate flex min-h-0 flex-1 flex-col overflow-y-auto rounded-[inherit] p-6">
-							<div className="-mx-6 -mt-6 mb-3 flex h-[47px] shrink-0 items-center gap-1 border-b-[0.5px] border-strong bg-alpha-1 px-2">
-								<Dialog.Title className="min-w-0 truncate px-1.5 text-[22px]/[28px] font-[580] text-primary">
-									Keyboard shortcuts
-								</Dialog.Title>
-								<div className="flex-1" />
+							{/* Upstream forces data-density="comfortable" on this dialog for every user, so
+								these fixed 24/12/8/32px values hold at the default density too. */}
+							<div className="mb-3 flex items-start gap-2">
+								<div className="-mt-1 flex min-w-0 flex-1 flex-col gap-1">
+									<Dialog.Title className="text-[22px]/[28px] font-[580] break-words text-primary">
+										Keyboard shortcuts
+									</Dialog.Title>
+								</div>
 								<Dialog.Close
 									aria-label="Close"
-									className="flex aspect-square h-8 w-8 shrink-0 items-center justify-center rounded-r6 text-primary transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
+									className="-me-2 -mt-2 flex aspect-square h-8 w-8 shrink-0 items-center justify-center rounded-r6 text-primary transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
 								>
 									<X aria-hidden="true" className="h-5 w-5" />
 								</Dialog.Close>

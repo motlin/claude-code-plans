@@ -182,7 +182,7 @@ describe("KeyboardShortcutsDialog", () => {
 		]);
 	});
 
-	it("sizes the dialog as upstream: 520px wide, a 22/28 title and 37px rows", async () => {
+	it("sizes the dialog as upstream: 520px wide, a 22/28 title and rows without a min height", async () => {
 		const composer = renderWithComposer();
 		pressShortcutsKey(composer);
 
@@ -194,8 +194,41 @@ describe("KeyboardShortcutsDialog", () => {
 			title: classes(within(dialog).getByRole("heading", {name: "Keyboard shortcuts"})).filter((name) =>
 				["text-[22px]/[28px]", "font-[580]"].includes(name),
 			),
-			row: classes(row).includes("min-h-[37px]"),
-		}).toStrictEqual({width: true, title: ["text-[22px]/[28px]", "font-[580]"], row: true});
+			rowMinHeight: classes(row).filter((name) => name.startsWith("min-h-")),
+		}).toStrictEqual({width: true, title: ["text-[22px]/[28px]", "font-[580]"], rowMinHeight: []});
+	});
+
+	it("uses the 2026-10 upstream chrome: no header strip, no blur, full height, focus on the popup", async () => {
+		const composer = renderWithComposer();
+		pressShortcutsKey(composer);
+
+		const dialog = await screen.findByRole("dialog", {name: "Keyboard shortcuts"});
+		const classes = (element: Element | null | undefined) => element?.className.split(" ") ?? [];
+		const column = within(dialog).getByRole("heading", {name: "Keyboard shortcuts"}).parentElement;
+		await waitFor(() => {
+			expect(document.activeElement).toBe(dialog);
+		});
+		expect({
+			column: classes(column),
+			header: classes(column?.parentElement),
+			close: classes(within(dialog).getByRole("button", {name: "Close"})).filter((name) =>
+				["-me-2", "-mt-2", "h-8", "w-8", "rounded-r6"].includes(name),
+			),
+			blurred: [...document.querySelectorAll("div")].filter((element) =>
+				classes(element).some((name) => name.startsWith("backdrop-blur")),
+			).length,
+			fullHeight: classes(dialog).includes("h-dvh"),
+			cds: dialog.dataset["cds"],
+			perfOverlay: dialog.dataset["perfOverlay"],
+		}).toStrictEqual({
+			column: ["-mt-1", "flex", "min-w-0", "flex-1", "flex-col", "gap-1"],
+			header: ["mb-3", "flex", "items-start", "gap-2"],
+			close: ["-me-2", "-mt-2", "h-8", "w-8", "rounded-r6"],
+			blurred: 0,
+			fullHeight: true,
+			cds: "Dialog",
+			perfOverlay: "keyboard_shortcuts_dialog",
+		});
 	});
 
 	it("lists Search with ⇧⌘K keycaps", async () => {
