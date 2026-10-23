@@ -3,7 +3,8 @@ import {useQuery} from "@tanstack/react-query";
 import {lazy, type ReactNode, Suspense, useState} from "react";
 import {ArrowDown, ArrowUp, Monitor, Moon, Plus, Sun, Trash2} from "lucide-react";
 import {matchedVerbosityPreset, useSettings, type Motion, type Settings, type Verbosity} from "../settings-context";
-import type {InterfaceFont, TranscriptTextSize} from "../../lib/appearance";
+import {InterfaceFontSchema} from "../../lib/appearance";
+import type {TranscriptTextSize} from "../../lib/appearance";
 import type {CapabilityId} from "../../lib/capabilities";
 import {
 	CodeThemeDarkSchema,
@@ -14,6 +15,7 @@ import {
 import {
 	codeThemeDarkLabels,
 	codeThemeLightLabels,
+	interfaceFontLabels,
 	terminalAppearanceLabels,
 	terminalHostSettingLabels,
 } from "../../lib/schema-choices";
@@ -270,10 +272,10 @@ const VERBOSITY_OPTIONS: Array<{value: Verbosity; label: string}> = [
 	{value: "verbose", label: "Verbose"},
 ];
 
-const INTERFACE_FONT_OPTIONS: Array<{value: InterfaceFont; label: string}> = [
-	{value: "sans", label: "Sans"},
-	{value: "system", label: "System"},
-];
+const INTERFACE_FONT_OPTIONS = InterfaceFontSchema.options.map((value) => ({
+	value,
+	label: interfaceFontLabels[value],
+}));
 
 const TRANSCRIPT_TEXT_SIZE_OPTIONS: Array<{value: TranscriptTextSize; label: string}> = [
 	{value: "sm", label: "Small"},
@@ -295,7 +297,20 @@ function AppearanceSection() {
 			<SettingsRow
 				slug="interface-font"
 				title="Interface font"
-				description="Font for the whole interface — menus, sidebars, and panels."
+				description={
+					<>
+						Font for the whole interface — menus, sidebars, and panels.{" "}
+						<a
+							data-cds="TextLink"
+							href="/third-party-notices.txt"
+							target="_blank"
+							rel="noopener"
+							className="text-link inline cursor-pointer"
+						>
+							Font licenses<span className="sr-only">(opens in new tab)</span>
+						</a>
+					</>
+				}
 			>
 				<SegmentedControl
 					value={settings.interfaceFont}
@@ -823,7 +838,9 @@ function CodeAppearanceSection() {
 				<input
 					type="text"
 					aria-label="Code font family"
-					placeholder="e.g. JetBrains Mono"
+					placeholder={
+						settings.interfaceFont === "dyslexic" ? "e.g. OpenDyslexic Mono" : "e.g. JetBrains Mono"
+					}
 					value={settings.codeFont}
 					onChange={(event) => {
 						setSetting("codeFont", event.target.value);

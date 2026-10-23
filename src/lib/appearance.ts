@@ -2,8 +2,8 @@ import {z} from "zod";
 
 import {TRANSCRIPT_WIDTH_PX, type TranscriptWidth} from "./transcript-width";
 
-/** Settings ▸ Claude Code ▸ Appearance ▸ Interface font: the bundled sans, or the OS UI font. */
-export const InterfaceFontSchema = z.enum(["sans", "system"]);
+/** Settings ▸ Claude Code ▸ Appearance ▸ Interface font: the bundled sans, the OS UI font, or OpenDyslexic. */
+export const InterfaceFontSchema = z.enum(["sans", "system", "dyslexic"]);
 export type InterfaceFont = z.infer<typeof InterfaceFontSchema>;
 
 /** Settings ▸ Claude Code ▸ Appearance ▸ Transcript text size: Small / Medium / Large. */

@@ -24,6 +24,7 @@ import {
 } from "../src/lib/artifact-schemas";
 import {ChangedFileKindSchema} from "../src/lib/changed-file-kind";
 import {CodeThemeDarkSchema, CodeThemeLightSchema} from "../src/lib/code-themes";
+import {InterfaceFontSchema} from "../src/lib/appearance";
 import {GroupColorSchema, GroupIconSchema} from "../src/lib/group-appearance";
 import {EffortLevelSchema, LaunchPermissionModeSchema, LiveOptionChangeSchema} from "../src/lib/launch-options";
 import {
@@ -180,6 +181,7 @@ const ROOTS: ReadonlyArray<readonly [string, unknown]> = [
 	["CodeThemeLightSchema", CodeThemeLightSchema],
 	["CodeThemeDarkSchema", CodeThemeDarkSchema],
 	["TerminalAppearanceSchema", TerminalAppearanceSchema],
+	["InterfaceFontSchema", InterfaceFontSchema],
 	["TerminalHostSettingSchema", TerminalHostSettingSchema],
 	["NavSectionSchema", NavSectionSchema],
 	["RoutineKindSchema", RoutineKindSchema],

@@ -55,6 +55,12 @@ export function SettingsProvider({children}: {children: React.ReactNode}) {
 	}, [settings.motion]);
 
 	useEffect(() => {
+		const root = document.documentElement;
+		if (settings.interfaceFont === "dyslexic") root.dataset["interfaceFont"] = "dyslexic";
+		else delete root.dataset["interfaceFont"];
+	}, [settings.interfaceFont]);
+
+	useEffect(() => {
 		const style = document.documentElement.style;
 		const family = codeFontFamily(settings.codeFont);
 		if (family === null) style.removeProperty("--font-mono");

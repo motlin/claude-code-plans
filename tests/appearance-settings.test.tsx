@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 
+import {readFileSync} from "node:fs";
+
 import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
@@ -58,12 +60,15 @@ afterEach(() => {
 	cleanup();
 	vi.unstubAllGlobals();
 	for (const name of HTML_VARS) document.documentElement.style.removeProperty(name);
+	delete document.documentElement.dataset["interfaceFont"];
 });
 
 describe("appearance setting schemas", () => {
 	it("accepts only the upstream interface fonts and transcript text sizes", () => {
 		expect({
-			fonts: ["sans", "system", "opendyslexic", ""].map((value) => InterfaceFontSchema.safeParse(value).success),
+			fonts: ["sans", "system", "dyslexic", "opendyslexic", ""].map(
+				(value) => InterfaceFontSchema.safeParse(value).success,
+			),
 			sizes: ["sm", "md", "lg", "xl", "medium"].map((value) => TranscriptTextSizeSchema.safeParse(value).success),
 			sizePx: TRANSCRIPT_TEXT_SIZES,
 			defaults: {
@@ -73,7 +78,7 @@ describe("appearance setting schemas", () => {
 				verbosity: DEFAULTS.verbosity,
 			},
 		}).toStrictEqual({
-			fonts: [true, true, false, false],
+			fonts: [true, true, true, false, false],
 			sizes: [true, true, true, false, false],
 			sizePx: {
 				sm: {fontSize: 13, lineHeight: 18},
@@ -133,6 +138,67 @@ describe("Claude Code settings ▸ Appearance", () => {
 				"--transcript-text-size": "13px",
 				"--transcript-leading": "18px",
 			},
+		});
+	});
+
+	it("offers OpenDyslexic, which marks <html>, swaps the Code font placeholder and links the font licenses", async () => {
+		await renderTab(<ClaudeCodeSettings />);
+		const options = within(screen.getByRole("radiogroup", {name: "Interface font"}))
+			.getAllByRole("radio")
+			.map((radio) => radio.textContent);
+		const placeholderBefore = screen.getByRole("textbox", {name: "Code font family"}).getAttribute("placeholder");
+
+		pick("Interface font", "OpenDyslexic");
+		const dyslexic = {
+			dataset: document.documentElement.dataset["interfaceFont"] ?? null,
+			fontSans: document.documentElement.style.getPropertyValue("--font-sans"),
+			stored: localStorage.getItem("ccp-interface-font"),
+			placeholder: screen.getByRole("textbox", {name: "Code font family"}).getAttribute("placeholder"),
+		};
+		pick("Interface font", "Sans");
+
+		const link = screen.getByRole("link", {name: /Font licenses/});
+		const row = screen.getByRole("group", {name: "Interface font"});
+		expect({
+			options,
+			placeholderBefore,
+			dyslexic,
+			reverted: document.documentElement.dataset["interfaceFont"] ?? null,
+			link: {
+				href: link.getAttribute("href"),
+				target: link.getAttribute("target"),
+				rel: link.getAttribute("rel"),
+				text: link.textContent,
+				srOnly: link.querySelector(".sr-only")?.textContent ?? null,
+			},
+			description: row.querySelector("[data-settings-desc]")?.textContent ?? null,
+		}).toStrictEqual({
+			options: ["Sans", "System", "OpenDyslexic"],
+			placeholderBefore: "e.g. JetBrains Mono",
+			dyslexic: {dataset: "dyslexic", fontSans: "", stored: "dyslexic", placeholder: "e.g. OpenDyslexic Mono"},
+			reverted: null,
+			link: {
+				href: "/third-party-notices.txt",
+				target: "_blank",
+				rel: "noopener",
+				text: "Font licenses(opens in new tab)",
+				srOnly: "(opens in new tab)",
+			},
+			description: "Font for the whole interface — menus, sidebars, and panels. Font licenses(opens in new tab)",
+		});
+	});
+
+	it("maps html[data-interface-font=dyslexic] to the self-hosted OpenDyslexic face", () => {
+		const css = readFileSync("src/styles/globals.css", "utf8");
+		const rule = /html\[data-interface-font="dyslexic"\]\s*\{([^}]*)\}/.exec(css)?.[1]?.trim() ?? null;
+		expect({
+			imports: css.includes('@import "@fontsource/opendyslexic/400.css";'),
+			rule,
+			notices: readFileSync("public/third-party-notices.txt", "utf8").includes("OpenDyslexic"),
+		}).toStrictEqual({
+			imports: true,
+			rule: '--font-sans: "OpenDyslexic", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;',
+			notices: true,
 		});
 	});
 

@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "./file-type-icons.css";
+@import "@fontsource/opendyslexic/400.css";
+@import "@fontsource/opendyslexic/700.css";
 
 @font-face {
 	font-family: "MesloLGS NF Web";
@@ -34,6 +36,11 @@
 	--font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 	/* Upstream's anthropic-sans has no contextual arrows; Inter's calt would draw "->" as "→". */
 	--font-sans--font-feature-settings: "calt" 0;
+}
+
+/* Settings ▸ Interface font ▸ OpenDyslexic, self-hosted from @fontsource/opendyslexic. */
+html[data-interface-font="dyslexic"] {
+	--font-sans: "OpenDyslexic", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
 @theme inline {

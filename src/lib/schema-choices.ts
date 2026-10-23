@@ -14,6 +14,7 @@ import type {CodeThemeDark, CodeThemeLight} from "./code-themes";
 import type {ContextAttachmentKindSchema} from "./context-attach";
 import type {PendingApprovalToolNameSchema} from "./domain-event-payload-schemas";
 import type {TerminalAppearance} from "./terminal-theme";
+import type {InterfaceFont} from "./appearance";
 import type {TerminalHostSetting} from "./terminal-host-setting";
 import type {McpScopeSchema, PermissionBehaviorSchema, SkillSourceSchema} from "./api/customize";
 import type {PluginFileSchema, PluginListResponse} from "./api/plugins";
@@ -1116,6 +1117,13 @@ export const terminalAppearanceLabels = {
 	ghostty: "Ghostty config",
 } satisfies Record<TerminalAppearance, string>;
 
+/** Settings ▸ Claude Code ▸ Appearance ▸ Interface font (src/lib/appearance.ts); "Sans" since local ships Inter, not Anthropic Sans. */
+export const interfaceFontLabels = {
+	sans: "Sans",
+	system: "System",
+	dyslexic: "OpenDyslexic",
+} satisfies Record<InterfaceFont, string>;
+
 /** Terminal host picker in Settings › Application (src/lib/terminal-host-setting.ts). */
 export const terminalHostSettingLabels = {
 	auto: "Auto",
@@ -1535,6 +1543,7 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
 	CodeThemeLightSchema: codeThemeLightLabels,
 	CodeThemeDarkSchema: codeThemeDarkLabels,
 	TerminalAppearanceSchema: terminalAppearanceLabels,
+	InterfaceFontSchema: interfaceFontLabels,
 	TerminalHostSettingSchema: terminalHostSettingLabels,
 	NavSectionSchema: navSectionLabels,
 	RoutineKindSchema: routineKindLabels,
