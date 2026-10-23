@@ -946,18 +946,19 @@
 	transition: none;
 }
 
-/* On touch only the current session's row keeps its kebab at rest, in place of its status mark; every
-   other row shows its mark. A mouse, at any width, still reveals the kebab on hover. */
+/* On touch only the current session's row keeps its kebab at rest; its status mark shifts beside the
+   kebab (upstream's touch:group-data-[touch-menu]:end-[calc(ctl-inset+ctl+4px)]) and the title clears
+   both. A mouse, at any width, still reveals the kebab on hover. */
 @media (pointer: coarse), (hover: none) {
 	[data-touch-menu] .df-touch-reveal {
 		opacity: 1;
 		pointer-events: auto;
 	}
 	[data-touch-menu] [data-row-decoration] {
-		opacity: 0;
+		right: calc(var(--sb-row-ctl-inset) + var(--sb-row-ctl) + 4px);
 	}
 	[data-touch-menu] [data-row-main-button] [data-row-label] {
-		padding-inline-end: calc(var(--sb-row-ctl) + 4px);
+		padding-inline-end: calc(var(--sb-row-ctl) * 2 + 4px);
 	}
 	/* An expanded group's caret otherwise shows only on hover or focus, which touch never has. */
 	[data-group-caret] {

@@ -560,16 +560,25 @@ describe("phone sheet CSS", () => {
 		}).toStrictEqual({stackGaps: 3, bandMargins: 2, labelPadding: 2, oldMinHeight: false});
 	});
 
-	it("reveals the touch kebab only on the data-touch-menu row, for touch pointers, not every phone-width mouse", () => {
+	it("reveals the touch kebab only on the data-touch-menu row and shifts its mark beside it, as upstream's touch: rules", () => {
 		const reveal = styles.indexOf("[data-touch-menu] .df-touch-reveal {");
 		const before = styles.slice(Math.max(0, reveal - 200), reveal);
+		const declarations = (selector: string) =>
+			rule(selector)
+				.slice(rule(selector).indexOf("{") + 1)
+				.split(";")
+				.map((declaration) => declaration.trim())
+				.filter((declaration) => declaration !== "");
 		expect({
 			touchMedia: /@media \(pointer: coarse\), \(hover: none\) \{\s*$/.test(before),
 			sheetWide: styles.includes(".phone-sheet .df-touch-reveal"),
-			hidesDecoration: rule("\t[data-touch-menu] [data-row-decoration]").includes("opacity: 0"),
-			clearsLabel: rule("\t[data-touch-menu] [data-row-main-button] [data-row-label]").includes(
-				"padding-inline-end: calc(var(--sb-row-ctl) + 4px)",
-			),
-		}).toStrictEqual({touchMedia: true, sheetWide: false, hidesDecoration: true, clearsLabel: true});
+			decoration: declarations("\t[data-touch-menu] [data-row-decoration]"),
+			label: declarations("\t[data-touch-menu] [data-row-main-button] [data-row-label]"),
+		}).toStrictEqual({
+			touchMedia: true,
+			sheetWide: false,
+			decoration: ["right: calc(var(--sb-row-ctl-inset) + var(--sb-row-ctl) + 4px)"],
+			label: ["padding-inline-end: calc(var(--sb-row-ctl) * 2 + 4px)"],
+		});
 	});
 });
