@@ -4,6 +4,7 @@ import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {Composer} from "../src/components/composer";
+import {ToastContext, type ToastOptions} from "../src/components/toast-context";
 import {customizeMcpServersQueryOptions} from "../src/lib/api/customize";
 import type {ComposerState} from "../src/lib/composer-state";
 import type {LaunchOptions} from "../src/lib/launch-options";
@@ -27,6 +28,7 @@ const CHIN: ComposerState = {
 type OnSend = (prompt: string, launchOptions: LaunchOptions) => void;
 
 const uploads: string[] = [];
+const toasts = vi.fn<(options: ToastOptions) => void>();
 
 function mockUploads(respond: (file: File) => Response) {
 	vi.stubGlobal(
@@ -65,7 +67,14 @@ function renderComposer(chin?: ComposerState) {
 	queryClient.setQueryData(customizeMcpServersQueryOptions.queryKey, []);
 	render(
 		<QueryClientProvider client={queryClient}>
-			<Composer variant="session" draftKey={SESSION} onSend={onSend} {...(chin === undefined ? {} : {chin})} />
+			<ToastContext.Provider value={toasts}>
+				<Composer
+					variant="session"
+					draftKey={SESSION}
+					onSend={onSend}
+					{...(chin === undefined ? {} : {chin})}
+				/>
+			</ToastContext.Provider>
 		</QueryClientProvider>,
 	);
 	return onSend;
@@ -106,6 +115,7 @@ afterEach(() => {
 	for (const chip of getContextChips(SESSION)) removeContextChip(SESSION, chip.id);
 	localStorage.clear();
 	uploads.length = 0;
+	toasts.mockReset();
 	vi.unstubAllGlobals();
 	vi.restoreAllMocks();
 	Reflect.deleteProperty(URL, "createObjectURL");
@@ -360,14 +370,13 @@ describe("Composer attachments", () => {
 		fireEvent.change(prompt(), {target: {value: "Why?"}});
 		fireEvent.keyDown(prompt(), {key: "Enter"});
 		pending[0]!(Response.json({error: "File is larger than 5 MB"}, {status: 413}));
-		const alert = await screen.findByRole("alert");
 		await waitFor(() => {
 			expect(onSend).toHaveBeenCalled();
 		});
 
-		expect({sent: onSend.mock.calls, alert: alert.textContent, chips: chipNames()}).toStrictEqual({
+		expect({sent: onSend.mock.calls, toasts: toasts.mock.calls, chips: chipNames()}).toStrictEqual({
 			sent: [["Why?", {}]],
-			alert: "Couldn’t attach huge.png: File is larger than 5 MB",
+			toasts: [[{kind: "error", message: "Failed to process image. You can try again."}]],
 			chips: [],
 		});
 	});
@@ -402,16 +411,35 @@ describe("Composer attachments", () => {
 		});
 	});
 
-	it("reports a rejected upload without adding a chip", async () => {
+	it("toasts upstream's image failure copy for a rejected image upload, removing its pending chip", async () => {
 		mockUploads(() => Response.json({error: "File is larger than 5 MB"}, {status: 413}));
 		renderComposer();
 
 		paste({files: [png("huge.png")]});
-		const alert = await screen.findByRole("alert");
+		await waitFor(() => {
+			expect(toasts).toHaveBeenCalled();
+		});
 
-		expect({message: alert.textContent, chips: chipNames()}).toStrictEqual({
-			message: "Couldn’t attach huge.png: File is larger than 5 MB",
+		expect({toasts: toasts.mock.calls, chips: chipNames(), alert: screen.queryByRole("alert")}).toStrictEqual({
+			toasts: [[{kind: "error", message: "Failed to process image. You can try again."}]],
 			chips: [],
+			alert: null,
+		});
+	});
+
+	it("toasts upstream's file failure copy for a rejected non-image upload", async () => {
+		mockUploads(() => Response.json({error: "Unsupported file type"}, {status: 415}));
+		renderComposer();
+
+		paste({files: [new File(["# notes"], "notes.md", {type: "text/markdown"})]});
+		await waitFor(() => {
+			expect(toasts).toHaveBeenCalled();
+		});
+
+		expect({toasts: toasts.mock.calls, chips: chipNames(), alert: screen.queryByRole("alert")}).toStrictEqual({
+			toasts: [[{kind: "error", message: "Failed to upload notes.md. It won’t be attached."}]],
+			chips: [],
+			alert: null,
 		});
 	});
 });

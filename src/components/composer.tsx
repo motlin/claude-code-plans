@@ -467,7 +467,6 @@ export function Composer({
 		menuShortcutOptions,
 	);
 	const fileInputRef = useRef<HTMLInputElement>(null);
-	const [attachError, setAttachError] = useState<string | null>(null);
 	const [dragging, setDragging] = useState(false);
 	const openFilePicker = useCallback(() => fileInputRef.current?.click(), []);
 	useShortcut("add_files", openFilePicker, {disabled});
@@ -726,8 +725,7 @@ export function Composer({
 	}
 
 	function attachFiles(files: readonly File[]) {
-		setAttachError(null);
-		attachUploadedFiles(draftKey, files, setAttachError);
+		attachUploadedFiles(draftKey, files, (options) => toast?.(options));
 	}
 
 	function handlePaste(e: React.ClipboardEvent) {
@@ -821,11 +819,6 @@ export function Composer({
 						/>
 					</div>
 				</>
-			)}
-			{attachError !== null && (
-				<p role="alert" className="mb-1.5 ps-1 text-footnote text-danger-000">
-					{attachError}
-				</p>
 			)}
 			{(contextChips.length > 0 || queuedComments.length > 0) && (
 				<AttachedContextChips sessionId={draftKey} context={contextChips} comments={queuedComments} />

@@ -718,7 +718,6 @@ function PalettePopup({
 	// Rename hands focus to the page title, so closing must not pull it back to the old element.
 	const restoreFocusRef = useRef(true);
 	const fileInputRef = useRef<HTMLInputElement>(null);
-	const [attachError, setAttachError] = useState<string | null>(null);
 	const composeChips = useContextChips(COMPOSE_DRAFT_KEY);
 
 	// Compose attachments land as chips here (⌘U, the paperclip); they are dropped when the palette closes.
@@ -1339,11 +1338,6 @@ function PalettePopup({
 						)}
 						{compose && (
 							<div className="relative flex w-full flex-col gap-1.5 pr-1.5">
-								{attachError !== null && (
-									<p role="alert" className="text-footnote text-danger-000">
-										{attachError}
-									</p>
-								)}
 								{composeChips.length > 0 && (
 									<AttachedContextChips
 										sessionId={COMPOSE_DRAFT_KEY}
@@ -1360,11 +1354,10 @@ function PalettePopup({
 									tabIndex={-1}
 									className="hidden"
 									onChange={(event) => {
-										setAttachError(null);
 										attachUploadedFiles(
 											COMPOSE_DRAFT_KEY,
 											Array.from(event.target.files ?? []),
-											setAttachError,
+											toast,
 										);
 										event.target.value = "";
 									}}

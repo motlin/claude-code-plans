@@ -1,6 +1,7 @@
 import {useSyncExternalStore} from "react";
 import {z} from "zod";
 
+import type {ToastOptions} from "../components/toast-context";
 import {uploadAttachment} from "./api/attachments";
 
 /**
@@ -294,14 +295,23 @@ export function registerComposer(sessionId: string, handle: ComposerHandle): () 
 	};
 }
 
+/** Upstream epitaxy's failed-image toast copy (`Ie`). */
+const IMAGE_UPLOAD_FAILED = "Failed to process image. You can try again.";
+
+/** Upstream's failed-file toast copy (CCR `Te`), the closest Claude Code string for a file. */
+function fileUploadFailedMessage(name: string): string {
+	return `Failed to upload ${name}. It won’t be attached.`;
+}
+
 /**
  * Uploads files (⌘U, drop, paste) and adds each as an image or file chip in
- * the composer's strip; `onError` gets a message for each failed upload.
+ * the composer's strip; a failed upload removes its pending chip and raises
+ * an error toast through `notify`.
  */
 export function attachUploadedFiles(
 	sessionId: string,
 	files: readonly File[],
-	onError: (message: string) => void,
+	notify: (options: ToastOptions) => void,
 ): void {
 	for (const file of files) {
 		const image = file.type.startsWith("image/");
@@ -332,11 +342,10 @@ export function attachUploadedFiles(
 				if (id === undefined) attachContext(sessionId, attachment);
 				else if (!resolvePendingUpload(sessionId, id, attachment)) revokePreview();
 			},
-			(error: unknown) => {
+			() => {
 				if (id !== undefined) dropPendingUpload(sessionId, id);
 				revokePreview();
-				const reason = error instanceof Error ? error.message : String(error);
-				onError(`Couldn’t attach ${file.name}: ${reason}`);
+				notify({kind: "error", message: image ? IMAGE_UPLOAD_FAILED : fileUploadFailedMessage(file.name)});
 			},
 		);
 	}
