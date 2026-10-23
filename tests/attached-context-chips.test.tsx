@@ -379,3 +379,94 @@ describe("AttachedContextChips cds tiles", () => {
 		});
 	});
 });
+
+describe("AttachedContextChips text preview", () => {
+	const MESSAGE: ContextChip = {id: "chip-m", kind: "message", text: "hello\nworld"};
+	const SELECTION: ContextChip = {
+		id: "chip-s",
+		kind: "selection",
+		path: "/w/src/a.ts",
+		range: {start: 1, end: 3},
+		text: "one\ntwo\nthree",
+		language: "ts",
+	};
+	const TERMINAL: ContextChip = {id: "chip-t", kind: "terminal", text: "$ ls\nREADME.md"};
+
+	function linkOf(container: HTMLElement, label: string): HTMLElement {
+		const link = container.querySelector<HTMLElement>(`li[data-chip-label="${label}"] [data-cds=CardLink]`);
+		if (link === null) throw new Error(`no CardLink for ${label}`);
+		return link;
+	}
+
+	async function openedPreview() {
+		const dialog = await screen.findByRole("dialog");
+		return {
+			title: dialog.querySelector("h2")?.textContent,
+			variant: dialog.querySelector("blockquote") === null ? "file" : "excerpt",
+			text: (dialog.querySelector("blockquote") ?? dialog.querySelector("div[dir=auto]"))?.textContent,
+		};
+	}
+
+	it("gives message, selection and terminal pills a keyboard-focusable CardLink with the default cursor", () => {
+		const {container} = renderChips([MESSAGE, SELECTION, TERMINAL]);
+		const links = ["Message", "a.ts:1-3", "Terminal output"].map((label) => {
+			const link = linkOf(container, label);
+			return {role: link.getAttribute("role"), tabIndex: link.getAttribute("tabindex"), classes: classes(link)};
+		});
+		const expected = {
+			role: "button",
+			tabIndex: "0",
+			classes: [
+				"flex",
+				"items-center",
+				"gap-1",
+				"min-w-0",
+				"outline-none",
+				"rounded-r5",
+				"focus-visible:shadow-focus",
+			].toSorted(),
+		};
+		expect(links).toStrictEqual([expected, expected, expected]);
+	});
+
+	it("opens a message as an Excerpt", async () => {
+		const {container} = renderChips([MESSAGE]);
+		fireEvent.click(linkOf(container, "Message"));
+		expect(await openedPreview()).toStrictEqual({title: "Excerpt", variant: "excerpt", text: "hello\nworld"});
+	});
+
+	it("opens a selection as a file titled by its label", async () => {
+		const {container} = renderChips([SELECTION]);
+		fireEvent.click(linkOf(container, "a.ts:1-3"));
+		expect(await openedPreview()).toStrictEqual({title: "a.ts:1-3", variant: "file", text: "one\ntwo\nthree"});
+	});
+
+	it.each(["Enter", " "])("opens terminal output on %j", async (key) => {
+		const {container} = renderChips([TERMINAL]);
+		const defaultAllowed = fireEvent.keyDown(linkOf(container, "Terminal output"), {key});
+		expect({defaultAllowed, preview: await openedPreview()}).toStrictEqual({
+			defaultAllowed: false,
+			preview: {title: "Terminal output", variant: "file", text: "$ ls\nREADME.md"},
+		});
+	});
+
+	it("closes on Escape, refocusing the pill's CardLink", async () => {
+		const {container} = renderChips([MESSAGE]);
+		const link = linkOf(container, "Message");
+		link.focus();
+		fireEvent.click(link);
+		const dialog = await screen.findByRole("dialog");
+		act(() => {
+			fireEvent.keyDown(dialog, {key: "Escape"});
+		});
+		await vi.waitFor(() => {
+			expect(screen.queryByRole("dialog")).toBeNull();
+		});
+		expect(document.activeElement === link).toBe(true);
+	});
+
+	it("gives a path chip with no text nothing to open", () => {
+		const {container} = renderChips([{id: "chip-p", kind: "file", path: "/w/src/a.ts"}]);
+		expect(container.querySelector("[data-cds=CardLink]")).toBeNull();
+	});
+});

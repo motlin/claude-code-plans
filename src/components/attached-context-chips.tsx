@@ -17,6 +17,9 @@ import {Skeleton} from "./ui/skeleton";
 const ImagePreviewModal = lazy(async () =>
 	import("./image-preview-modal").then((module) => ({default: module.ImagePreviewModal})),
 );
+const TextPreviewDialog = lazy(async () =>
+	import("./text-preview-dialog").then((module) => ({default: module.TextPreviewDialog})),
+);
 
 function chipLabel({path, line, endLine}: QueuedDiffComment): string {
 	const name = path.slice(path.lastIndexOf("/") + 1) || path;
@@ -283,6 +286,50 @@ function FileChip({sessionId, chip}: {sessionId: string; chip: ContextChip}) {
 	);
 }
 
+interface TextPreview {
+	title: string;
+	text: string;
+	variant: "excerpt" | "file";
+}
+
+/**
+ * What a pill opens, after upstream's tray `dn`: a message is an unlabeled
+ * snippet, so an "Excerpt"; a selection or terminal output is a labeled one,
+ * a file preview titled by its label.
+ */
+function textPreviewOf(chip: ContextChip): TextPreview | null {
+	if (chip.text === undefined) return null;
+	if (chip.kind === "message") return {title: "Excerpt", text: chip.text, variant: "excerpt"};
+	if (chip.kind === "selection" || chip.kind === "terminal") {
+		return {title: contextChipLabel(chip), text: chip.text, variant: "file"};
+	}
+	return null;
+}
+
+/** A pill's opener: upstream's CardLink, a focusable button with the default cursor. */
+function PillLink({onOpen, children}: {onOpen: (link: HTMLElement) => void; children: ReactNode}) {
+	return (
+		<span
+			data-cds="CardLink"
+			role="button"
+			tabIndex={0}
+			onClick={(event) => {
+				event.preventDefault();
+				onOpen(event.currentTarget);
+			}}
+			onKeyDown={(event) => {
+				if (event.key === "Enter" || event.key === " ") {
+					event.preventDefault();
+					onOpen(event.currentTarget);
+				}
+			}}
+			className="flex min-w-0 items-center gap-1 rounded-r5 outline-none focus-visible:shadow-focus"
+		>
+			{children}
+		</span>
+	);
+}
+
 /**
  * Upstream's attachments tray at the top of the card: ⇧⌘L context chips, uploaded images and long
  * pastes in attach order, then Changes pane comments, all waiting for the
@@ -304,6 +351,9 @@ export function AttachedContextChips({
 		setPreview({chipId: chip.id, origin});
 		setPreviewOpen(true);
 	};
+	const [textPreview, setTextPreview] = useState<{chipId: string; opener: HTMLElement} | null>(null);
+	const textPreviewChip = textPreview === null ? undefined : context.find((chip) => chip.id === textPreview.chipId);
+	const textPreviewContent = textPreviewChip === undefined ? null : textPreviewOf(textPreviewChip);
 	return (
 		<div
 			data-cds-composer-attachments-clip=""
@@ -320,6 +370,12 @@ export function AttachedContextChips({
 						}
 						const label = contextChipLabel(chip);
 						const Icon = CONTEXT_CHIP_ICON[chip.kind];
+						const content = (
+							<>
+								<Icon aria-hidden="true" className="size-3 shrink-0" />
+								<span className="min-w-0 truncate text-primary">{label}</span>
+							</>
+						);
 						return (
 							<li
 								key={chip.id}
@@ -327,8 +383,17 @@ export function AttachedContextChips({
 								title={formatContextAttachment(chip)}
 								className={`self-end ${CHIP_CLASS}`}
 							>
-								<Icon aria-hidden="true" className="size-3 shrink-0" />
-								<span className="min-w-0 truncate text-primary">{label}</span>
+								{textPreviewOf(chip) === null ? (
+									content
+								) : (
+									<PillLink
+										onOpen={(opener) => {
+											setTextPreview({chipId: chip.id, opener});
+										}}
+									>
+										{content}
+									</PillLink>
+								)}
 								<button
 									type="button"
 									aria-label={`Remove ${label}`}
@@ -382,6 +447,19 @@ export function AttachedContextChips({
 						onClose={() => {
 							setPreviewOpen(false);
 						}}
+					/>
+				</Suspense>
+			) : null}
+			{textPreview !== null && textPreviewContent !== null ? (
+				<Suspense fallback={null}>
+					<TextPreviewDialog
+						key={textPreview.chipId}
+						open
+						{...textPreviewContent}
+						onClose={() => {
+							setTextPreview(null);
+						}}
+						finalFocus={() => (textPreview.opener.isConnected ? textPreview.opener : true)}
 					/>
 				</Suspense>
 			) : null}
