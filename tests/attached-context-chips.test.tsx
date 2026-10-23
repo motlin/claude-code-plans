@@ -3,6 +3,7 @@
 import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {AttachedContextChips} from "../src/components/attached-context-chips";
+import {ToastProvider} from "../src/components/toast";
 import {
 	attachContext,
 	type ContextChip,
@@ -558,5 +559,80 @@ describe("AttachedContextChips text preview", () => {
 	it("gives a path chip with no text nothing to open", () => {
 		const {container} = renderChips([{id: "chip-p", kind: "file", path: "/w/src/a.ts"}]);
 		expect(container.querySelector("[data-cds=CardLink]")).toBeNull();
+	});
+});
+
+describe("AttachedContextChips path chip file actions", () => {
+	function renderWithCwd(context: readonly ContextChip[]) {
+		return render(
+			<ToastProvider>
+				<AttachedContextChips sessionId={SESSION} context={context} comments={[]} cwd="/w" />
+			</ToastProvider>,
+		);
+	}
+
+	function chipOf(container: HTMLElement, label: string): HTMLElement {
+		const chip = container.querySelector<HTMLElement>(`li[data-chip-label="${label}"]`);
+		if (chip === null) throw new Error(`no chip ${label}`);
+		return chip;
+	}
+
+	/** The newest open menu's rows, top to bottom: item labels, with "─" for separators. */
+	function menuRows(): string[] {
+		const menu = screen.getAllByRole("menu").at(-1);
+		if (menu === undefined) throw new Error("no menu open");
+		return [...menu.querySelectorAll('[role="menuitem"], [role="separator"]')].map((row) =>
+			row.getAttribute("role") === "separator" ? "─" : (row.firstElementChild?.textContent ?? row.textContent),
+		);
+	}
+
+	async function openSubmenu(label: string): Promise<string[]> {
+		const trigger = screen
+			.getAllByRole("menuitem")
+			.find((row) => (row.firstElementChild?.textContent ?? row.textContent) === label);
+		if (trigger === undefined) throw new Error(`no item ${label}`);
+		fireEvent.click(trigger);
+		return vi.waitFor(() => {
+			const rows = menuRows();
+			if (rows.includes(label)) throw new Error(`${label} ▸ not open`);
+			return rows;
+		});
+	}
+
+	it("a file chip's right-click lists Copy ▸ · ─ · Open in ▸ · Show in Finder, without Attach as context", async () => {
+		const {container} = renderWithCwd([{id: "chip-p", kind: "file", path: "src/a.ts"}]);
+		const notPrevented = fireEvent.contextMenu(chipOf(container, "a.ts"), {clientX: 10, clientY: 10});
+		const rows = await vi.waitFor(() => menuRows());
+		const copyRows = await openSubmenu("Copy");
+
+		expect({notPrevented, rows, copyRows}).toStrictEqual({
+			notPrevented: false,
+			rows: ["Copy", "─", "Open in", "Show in Finder"],
+			copyRows: ["Absolute path", "Relative path", "Filename"],
+		});
+	});
+
+	it("a folder chip has no Default app row", async () => {
+		const {container} = renderWithCwd([{id: "chip-d", kind: "file", path: "docs/"}]);
+		fireEvent.contextMenu(chipOf(container, "docs/"), {clientX: 10, clientY: 10});
+		await vi.waitFor(() => menuRows());
+
+		expect(await openSubmenu("Open in")).toStrictEqual(["VS Code"]);
+	});
+
+	it("a plain click on a path chip opens nothing", () => {
+		const {container} = renderWithCwd([{id: "chip-p", kind: "file", path: "src/a.ts"}]);
+		fireEvent.click(chipOf(container, "a.ts"));
+
+		expect(screen.queryAllByRole("menu")).toStrictEqual([]);
+	});
+
+	it("image and uploaded-file chips get no menu: their right-click isn't default-prevented", () => {
+		const {container} = renderWithCwd([IMAGE, FILE]);
+		const results = [IMAGE, FILE].map((chip) =>
+			fireEvent.contextMenu(chipOf(container, chip.name ?? ""), {clientX: 10, clientY: 10}),
+		);
+
+		expect({results, menus: screen.queryAllByRole("menu")}).toStrictEqual({results: [true, true], menus: []});
 	});
 });

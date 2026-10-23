@@ -3,6 +3,7 @@
 import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {Composer} from "../src/components/composer";
+import {ToastProvider} from "../src/components/toast";
 import type {SessionFilesResponse} from "../src/lib/api/session-files";
 import {FILE_MENTION_DEBOUNCE_MS, fileMentionTrigger, insertFileMention} from "../src/lib/file-mentions";
 
@@ -601,6 +602,69 @@ describe("Composer accepted @ mention chip context menu", () => {
 			highlight:
 				"pointer-events-none absolute -inset-y-0.5 -left-0.5 -right-1 rounded-r5 bg-upstream-accent-pressed",
 		});
+	});
+});
+
+describe("Composer accepted @ mention chip file actions", () => {
+	function setupWithCwd() {
+		render(
+			<ToastProvider>
+				<Composer
+					variant="session"
+					draftKey="session-alice"
+					onSend={vi.fn<(prompt: string) => void>()}
+					mentionSessionId="session-alice"
+					mentionCwd="/w"
+				/>
+			</ToastProvider>,
+		);
+		return screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
+	}
+
+	/** The newest open menu's rows, top to bottom: item labels, with "─" for separators. */
+	function menuRows(): string[] {
+		const menu = screen.getAllByRole("menu").at(-1);
+		if (menu === undefined) throw new Error("no menu open");
+		return [...menu.querySelectorAll('[role="menuitem"], [role="separator"]')].map((row) =>
+			row.getAttribute("role") === "separator" ? "─" : (row.firstElementChild?.textContent ?? row.textContent),
+		);
+	}
+
+	async function openSubmenu(label: string): Promise<string[]> {
+		const trigger = screen
+			.getAllByRole("menuitem")
+			.find((row) => (row.firstElementChild?.textContent ?? row.textContent) === label);
+		if (trigger === undefined) throw new Error(`no item ${label}`);
+		fireEvent.click(trigger);
+		await act(async () => {
+			await vi.runAllTimersAsync();
+		});
+		return menuRows();
+	}
+
+	it("a file chip lists Copy ▸ · ─ · Open in ▸ · Show in Finder · ─ · Delete, without Attach as context", async () => {
+		const textarea = setupWithCwd();
+		responses.set(searchUrl("ind"), search("ind", ["src/lib/index.ts"]));
+		await type(textarea, "see @ind");
+		fireEvent.keyDown(textarea, {key: "Enter"});
+		fireEvent.contextMenu(screen.getByTestId("composer-mention-chip"), {clientX: 10, clientY: 10});
+		const rows = menuRows();
+		const copyRows = await openSubmenu("Copy");
+
+		expect({rows, copyRows}).toStrictEqual({
+			rows: ["Copy", "─", "Open in", "Show in Finder", "─", "Delete"],
+			copyRows: ["Absolute path", "Relative path", "Filename"],
+		});
+	});
+
+	it("a directory chip opens in VS Code only, with no Default app row", async () => {
+		responses.set(TOP_URL, listing([{relPath: "src", isDirectory: true}]));
+		const textarea = setupWithCwd();
+		await type(textarea, "@");
+		fireEvent.keyDown(textarea, {key: "Enter"});
+		fireEvent.contextMenu(screen.getByTestId("composer-mention-chip"), {clientX: 10, clientY: 10});
+
+		expect(await openSubmenu("Open in")).toStrictEqual(["VS Code"]);
 	});
 });
 

@@ -1014,6 +1014,7 @@ function SessionView({
 													bypassPermissionsAllowed={bypassPermissionsAllowed}
 													live={liveLaunchAvailable ? liveLaunch : undefined}
 													mentionSessionId={sessionId}
+													mentionCwd={sessionDirectory}
 													promptHistory={promptHistory}
 												/>
 											)}

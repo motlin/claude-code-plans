@@ -13,6 +13,9 @@ import {type ContextChip, contextChipLabel, formatContextAttachment, removeConte
 import {type QueuedDiffComment, removeQueuedDiffComment} from "../lib/diff-comments";
 import {TEXT_PREVIEW_LIMIT} from "../lib/text-preview";
 import {isTextPreviewable} from "../lib/text-preview-extensions";
+import {FileActionsMenuItems} from "./files/file-actions-menu";
+import {absoluteMentionPath} from "./files/mention-path";
+import {ContextMenu, ContextMenuTrigger, MenuContent} from "./ui/menu";
 import {Skeleton} from "./ui/skeleton";
 
 // The preview loads only when a tile opens, keeping its dialog out of the composer chunk.
@@ -408,10 +411,13 @@ export function AttachedContextChips({
 	sessionId,
 	context,
 	comments,
+	cwd,
 }: {
 	sessionId: string;
 	context: readonly ContextChip[];
 	comments: readonly QueuedDiffComment[];
+	/** The session's working directory: a path chip's right-click opens the file-actions menu. */
+	cwd?: string | undefined;
 }) {
 	const [preview, setPreview] = useState<{chipId: string; origin: HTMLImageElement | null} | null>(null);
 	const [previewOpen, setPreviewOpen] = useState(false);
@@ -480,13 +486,8 @@ export function AttachedContextChips({
 								<span className="min-w-0 truncate text-primary">{label}</span>
 							</>
 						);
-						return (
-							<li
-								key={chip.id}
-								data-chip-label={label}
-								title={formatContextAttachment(chip)}
-								className={`self-end ${CHIP_CLASS}`}
-							>
+						const body = (
+							<>
 								{textPreviewOf(chip) === null ? (
 									content
 								) : (
@@ -512,7 +513,40 @@ export function AttachedContextChips({
 								>
 									<X aria-hidden="true" className="size-3" />
 								</button>
-							</li>
+							</>
+						);
+						const chipProps = {
+							"data-chip-label": label,
+							title: formatContextAttachment(chip),
+							className: `self-end ${CHIP_CLASS}`,
+						};
+						// Upstream `Kt surface="composer"` with attach off: only a path chip has a file to act on.
+						const filePath =
+							chip.kind === "file" && chip.path !== undefined
+								? absoluteMentionPath(chip.path, cwd)
+								: null;
+						if (cwd === undefined || filePath === null) {
+							return (
+								<li key={chip.id} {...chipProps}>
+									{body}
+								</li>
+							);
+						}
+						return (
+							<ContextMenu key={chip.id}>
+								<ContextMenuTrigger render={<li />} {...chipProps}>
+									{body}
+								</ContextMenuTrigger>
+								<MenuContent>
+									<FileActionsMenuItems
+										path={filePath}
+										cwd={cwd}
+										isDirectory={chip.path?.endsWith("/") === true}
+										surface="composer"
+										attach={false}
+									/>
+								</MenuContent>
+							</ContextMenu>
 						);
 					})}
 					{comments.map((comment) => {

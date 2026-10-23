@@ -150,6 +150,8 @@ interface ComposerProps {
 	live?: LiveLaunchControls | undefined;
 	/** The session whose working directory feeds the "@" file mention popup. */
 	mentionSessionId?: string | undefined;
+	/** That session's working directory: mention and path chips' file-actions menus resolve against it. */
+	mentionCwd?: string | undefined;
 	/** Prompts queued while the live session works, shown as chips above the card. */
 	queue?: ComposerQueueView | undefined;
 	/** ⌘⏎ "Queue for later": hold this prompt until the current turn ends instead of steering it. */
@@ -454,6 +456,7 @@ export function Composer({
 	bypassPermissionsAllowed = false,
 	live,
 	mentionSessionId,
+	mentionCwd,
 	queue,
 	onQueueForLater,
 	onFork,
@@ -969,6 +972,7 @@ export function Composer({
 
 	const mentionChipActions: MentionChipActions = {
 		editorRef: textareaRef,
+		cwd: mentionCwd,
 		onPress: (target) => {
 			const textarea = textareaRef.current;
 			if (textarea === null) return;
@@ -1063,7 +1067,12 @@ export function Composer({
 			>
 				{dropState !== "idle" && !disabled && <ComposerDropScrim />}
 				{(contextChips.length > 0 || queuedComments.length > 0) && (
-					<AttachedContextChips sessionId={draftKey} context={contextChips} comments={queuedComments} />
+					<AttachedContextChips
+						sessionId={draftKey}
+						context={contextChips}
+						comments={queuedComments}
+						cwd={mentionCwd}
+					/>
 				)}
 				<div className="relative pr-[30px] pl-[30px] pointer-coarse:pr-[51px]">
 					<div data-composer-add="" className="absolute left-0 bottom-0 flex min-h-7 items-center">

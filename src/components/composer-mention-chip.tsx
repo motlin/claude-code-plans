@@ -1,7 +1,9 @@
 import type {MouseEvent, ReactNode, RefObject} from "react";
 
 import type {AcceptedMention} from "../lib/composer-mentions";
-import {ContextMenu, ContextMenuTrigger, MenuContent, MenuItem} from "./ui/menu";
+import {FileActionsMenuItems} from "./files/file-actions-menu";
+import {absoluteMentionPath} from "./files/mention-path";
+import {ContextMenu, ContextMenuTrigger, MenuContent, MenuItem, MenuSeparator} from "./ui/menu";
 
 /** What a chip does with the pointer: a left press selects it, its menu's Delete removes it. */
 export interface MentionChipActions {
@@ -9,6 +11,8 @@ export interface MentionChipActions {
 	onDelete: (mention: AcceptedMention) => void;
 	/** Where focus returns when the chip's menu closes. */
 	editorRef: RefObject<HTMLTextAreaElement | null>;
+	/** The session's working directory; without it the menu holds only Delete. */
+	cwd: string | undefined;
 }
 
 /**
@@ -36,6 +40,7 @@ function ComposerMentionChip({
 	onPress,
 	onDelete,
 	editorRef,
+	cwd,
 	children,
 }: {
 	relPath: string;
@@ -44,10 +49,12 @@ function ComposerMentionChip({
 	onPress: () => void;
 	onDelete: () => void;
 	editorRef: RefObject<HTMLTextAreaElement | null>;
+	cwd: string | undefined;
 	children: ReactNode;
 }) {
+	const path = absoluteMentionPath(relPath, cwd);
 	return (
-		// Upstream `GZ`: a ContextMenu whose only item (in a session without a path context) is Delete.
+		// Upstream `GZ`: the file-actions block (`Sl`, attach off) over a danger Delete; Delete alone without a path context.
 		<ContextMenu>
 			<ContextMenuTrigger
 				render={<span />}
@@ -77,6 +84,18 @@ function ComposerMentionChip({
 				</span>
 			</ContextMenuTrigger>
 			<MenuContent density="compact" finalFocus={editorRef}>
+				{path !== null && (
+					<>
+						<FileActionsMenuItems
+							path={path}
+							cwd={cwd}
+							isDirectory={isDirectory}
+							surface="composer"
+							attach={false}
+						/>
+						<MenuSeparator />
+					</>
+				)}
 				<MenuItem variant="danger" onSelect={onDelete}>
 					Delete
 				</MenuItem>
@@ -117,6 +136,7 @@ export function paintMentions(
 					actions.onDelete(mention);
 				}}
 				editorRef={actions.editorRef}
+				cwd={actions.cwd}
 			>
 				{text.slice(mention.start - offset, mention.end - offset)}
 			</ComposerMentionChip>,
