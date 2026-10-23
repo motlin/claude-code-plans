@@ -250,6 +250,7 @@ function projectRows(projects: readonly PaletteProjectItem[], text: string): Sea
 			awaiting: false,
 			href: undefined,
 		});
+		if (rows.length === PALETTE_RECENT_LIMIT) break;
 	}
 	return rows;
 }

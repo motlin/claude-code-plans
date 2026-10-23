@@ -1401,6 +1401,29 @@ describe("CommandPalette Plans, Memories and Files tabs with an empty query", ()
 		]);
 	});
 
+	it("caps the Projects tab at PALETTE_RECENT_LIMIT rows, like every upstream tab", async () => {
+		const projects = Array.from({length: 30}, (_, index) => ({
+			id: `proj-${index}`,
+			name: `proj-${index}`,
+			projectPath: null,
+			sessionCount: 1,
+			memoryCount: 0,
+			planCount: 0,
+			taskCount: 0,
+			activeCount: 0,
+			lastActivity: ago(0),
+		}));
+		const dialog = await openPalette(undefined, "/", (queryClient) => {
+			queryClient.setQueryData(projectsQueryOptions().queryKey, projects);
+		});
+
+		fireEvent.click(within(dialog).getByRole("tab", {name: "Projects"}));
+
+		expect(resultRows(dialog).map((row) => row.label)).toStrictEqual(
+			projects.slice(0, PALETTE_RECENT_LIMIT).map((project) => project.name),
+		);
+	});
+
 	function selection(dialog: HTMLElement) {
 		const first = within(dialog).getByRole("group", {name: "Search results"}).querySelector("[cmdk-item]");
 		return {
