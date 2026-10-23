@@ -184,7 +184,7 @@ describe("collapsed sidebar peek", () => {
 		expect(root.hasAttribute("data-hovering")).toBe(false);
 	});
 
-	it("renders the peek as a full-height panel holding the wordmark and no Search button", async () => {
+	it("renders the peek as a full-height panel holding the wordmark and the Search field, but no footer Search icon", async () => {
 		await renderCollapsedSidebar();
 		const peek = screen.getByTestId("sidebar-peek");
 		const classes = [...peek.classList];
@@ -195,12 +195,19 @@ describe("collapsed sidebar peek", () => {
 			),
 			card: classes.filter((token) => token === "max-h-[70vh]" || token === "rounded-card"),
 			wordmark: within(peek).getByRole("link", {name: "Claude Code Browser", hidden: true}).getAttribute("href"),
-			search: within(peek).queryByRole("button", {name: "Search", hidden: true}),
+			footerSearch: within(within(peek).getByTestId("sidebar-footer")).queryByRole("button", {
+				name: "Search",
+				hidden: true,
+			}),
+			fields: within(peek)
+				.getAllByRole("button", {name: "Search", hidden: true})
+				.map((button) => button.classList.contains("df-search-field")),
 		}).toEqual({
 			fullHeight: ["fixed", "inset-y-0", "left-0", "h-dvh", "w-[288px]", "rounded-none", "pt-12"],
 			card: [],
 			wordmark: "/",
-			search: null,
+			footerSearch: null,
+			fields: [true],
 		});
 	});
 

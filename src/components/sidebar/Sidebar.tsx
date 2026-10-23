@@ -8,6 +8,7 @@ import {useVisibleNavItems} from "./navigation";
 import {NavScroll} from "./nav-scroll";
 import {NewSessionRow} from "./new-session-row";
 import {SidebarFooter} from "./sidebar-footer";
+import {SidebarSearchField} from "./sidebar-search-field";
 import {SidebarToggleButton} from "./sidebar-toggle";
 import {Search, X} from "lucide-react";
 import {openCommandPalette} from "../../hooks/use-command-palette";
@@ -76,6 +77,8 @@ export function Sidebar({
 		<>
 			<div className="flex min-h-0 flex-1 flex-col px-2">
 				<div className="shrink-0">
+					{/* Upstream's phone sheet swaps the field for its header Search button. */}
+					{onPhoneSheetClose === undefined && <SidebarSearchField />}
 					<NewSessionRow />
 				</div>
 				<NavScroll activeKey={activeSection === "sessions" ? activeSessionId : null}>

@@ -142,8 +142,8 @@ describe("sidebar footer", () => {
 	it("opens the palette in Search mode from the footer Search button", async () => {
 		const router = await renderSidebar();
 
-		const search = await waitFor(() => screen.getByRole("button", {name: "Search"}));
-		fireEvent.click(search);
+		const footer = await waitFor(() => screen.getByTestId("sidebar-footer"));
+		fireEvent.click(within(footer).getByRole("button", {name: "Search"}));
 
 		await waitFor(() => {
 			expect(screen.getByTestId("palette-probe").textContent).toBe("open:search");
