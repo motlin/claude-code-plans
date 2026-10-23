@@ -24,8 +24,24 @@ const COMMANDS: SlashCommand[] = [
 	{name: "standup", description: "Write my standup", source: "personal-command"},
 ];
 
-function setup(onSend = vi.fn<(prompt: string) => void>()) {
-	render(<Composer variant="session" draftKey="session-alice" onSend={onSend} slashCommands={COMMANDS} />);
+const ALIASED_COMMANDS: SlashCommand[] = [
+	...COMMANDS,
+	{
+		name: "config",
+		description: "Open Claude Code settings",
+		source: "personal-skill",
+		aliases: ["settings"],
+	},
+	{
+		name: "usage",
+		description: "Show plan usage",
+		source: "personal-skill",
+		aliases: ["stats", "cost"],
+	},
+];
+
+function setup(onSend = vi.fn<(prompt: string) => void>(), commands = COMMANDS) {
+	render(<Composer variant="session" draftKey="session-alice" onSend={onSend} slashCommands={commands} />);
 	const textarea = screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
 	return {textarea, onSend};
 }
@@ -63,6 +79,25 @@ describe("Composer slash commands", () => {
 		expect({rows: rows(), bold}).toStrictEqual({
 			rows: [{name: "standupCustom command", highlighted: true}],
 			bold: ["st"],
+		});
+	});
+
+	it("suffixes the first alias that starts with the query in muted ink, bolding the match", () => {
+		const {textarea} = setup(undefined, ALIASED_COMMANDS);
+
+		fireEvent.change(textarea, {target: {value: "/settings"}});
+		const config = screen.getAllByRole("menuitem")[0];
+		const settingsSuffix = config?.lastElementChild?.outerHTML;
+		fireEvent.change(textarea, {target: {value: "/s"}});
+		const sRows = rows().map((row) => row.name);
+		fireEvent.change(textarea, {target: {value: "/co"}});
+		const coRows = rows().map((row) => row.name);
+
+		expect({settingsSuffix, sRows, coRows}).toStrictEqual({
+			settingsSuffix:
+				'<span class="min-w-0 truncate text-ink-muted">(<span class="font-semibold text-primary">settings</span>)</span>',
+			sRows: ["standupCustom command", "config(settings)", "usage(stats)", "model", "plan"],
+			coRows: ["config", "usage(cost)"],
 		});
 	});
 

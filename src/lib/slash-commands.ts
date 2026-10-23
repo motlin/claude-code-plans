@@ -20,6 +20,8 @@ export interface SlashCommand {
 	description: string;
 	source: SlashCommandSource;
 	argumentHint?: string | undefined;
+	/** Other names the command answers to, ranked and shown as a muted `(alias)` suffix as upstream does. */
+	aliases?: readonly string[] | undefined;
 }
 
 /**
@@ -102,22 +104,44 @@ export function mergeSlashCommands(groups: readonly (readonly SlashCommand[])[])
 	return merged;
 }
 
+/* Upstream's slash matcher shows no items for a query longer than this. */
+const MAX_SLASH_QUERY_LENGTH = 50;
+
+/* Upstream's synchronous fallback tiers (`W$`), plus a description tier the local menu matches synchronously. */
+function slashRank(command: SlashCommand, needle: string): number | null {
+	const name = command.name.toLowerCase();
+	const aliases = (command.aliases ?? []).map((alias) => alias.toLowerCase());
+	if (name === needle) return 0;
+	if (aliases.includes(needle)) return 1;
+	if (name.startsWith(needle)) return 2;
+	if (aliases.some((alias) => alias.startsWith(needle))) return 3;
+	if ([name, ...aliases].some((label) => label.includes(needle))) return 4;
+	if (command.description.toLowerCase().includes(needle)) return 5;
+	return null;
+}
+
 /**
- * Empty query: the built-ins only. Otherwise every command whose name or
- * description contains the query, ranked name prefix > name contains >
- * description contains, keeping list order within a rank.
+ * Empty query: the built-ins only. Otherwise every command whose name, alias or description
+ * contains the query, ranked exact name > exact alias > name prefix > alias prefix >
+ * name or alias contains > description contains, keeping list order within a rank.
  */
 export function filterSlashCommands(commands: readonly SlashCommand[], query: string): SlashCommand[] {
 	if (query === "") return commands.filter((command) => command.source === "builtin");
+	if (query.length > MAX_SLASH_QUERY_LENGTH) return [];
 	const needle = query.toLowerCase();
-	const ranks: SlashCommand[][] = [[], [], []];
+	const ranks: SlashCommand[][] = [[], [], [], [], [], []];
 	for (const command of commands) {
-		const name = command.name.toLowerCase();
-		if (name.startsWith(needle)) ranks[0]?.push(command);
-		else if (name.includes(needle)) ranks[1]?.push(command);
-		else if (command.description.toLowerCase().includes(needle)) ranks[2]?.push(command);
+		const rank = slashRank(command, needle);
+		if (rank !== null) ranks[rank]?.push(command);
 	}
 	return ranks.flat();
+}
+
+/** The first alias that starts with the query, which upstream appends to the row as `(alias)`. */
+export function matchingAlias(command: SlashCommand, query: string): string | undefined {
+	if (query === "") return undefined;
+	const needle = query.toLowerCase();
+	return command.aliases?.find((alias) => alias.toLowerCase().startsWith(needle));
 }
 
 export interface HighlightSegment {

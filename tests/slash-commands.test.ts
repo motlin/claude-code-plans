@@ -172,6 +172,54 @@ describe("filterSlashCommands", () => {
 	it("returns nothing when no name or description matches", () => {
 		expect(filterSlashCommands(COMMANDS, "zzz")).toStrictEqual([]);
 	});
+
+	it("ranks upstream's tiers: exact name, exact alias, name prefix, alias prefix, contains, then description", () => {
+		const commands: SlashCommand[] = [
+			{name: "described", description: "Mentions set in prose", source: "builtin"},
+			{name: "reset", description: "", source: "builtin"},
+			{name: "theme", description: "", source: "builtin", aliases: ["colorset"]},
+			{name: "config", description: "", source: "builtin", aliases: ["settings"]},
+			{name: "setup", description: "", source: "builtin"},
+			{name: "permissions", description: "", source: "builtin", aliases: ["set"]},
+			{name: "set", description: "", source: "builtin"},
+		];
+
+		expect(filterSlashCommands(commands, "Set").map((c) => c.name)).toStrictEqual([
+			"set",
+			"permissions",
+			"setup",
+			"config",
+			"reset",
+			"theme",
+			"described",
+		]);
+	});
+
+	it("puts config first for its settings alias", () => {
+		const commands: SlashCommand[] = [
+			{name: "plugin-dev:plugin-settings", description: "", source: "plugin-skill"},
+			{
+				name: "config",
+				description: "Open Claude Code settings",
+				source: "builtin",
+				aliases: ["settings"],
+			},
+		];
+
+		expect(filterSlashCommands(commands, "settings").map((c) => c.name)).toStrictEqual([
+			"config",
+			"plugin-dev:plugin-settings",
+		]);
+	});
+
+	it("returns nothing for a query over 50 characters", () => {
+		const commands: SlashCommand[] = [{name: "a".repeat(51), description: "", source: "builtin"}];
+
+		expect({
+			fifty: filterSlashCommands(commands, "a".repeat(50)).length,
+			fiftyOne: filterSlashCommands(commands, "a".repeat(51)),
+		}).toStrictEqual({fifty: 1, fiftyOne: []});
+	});
 });
 
 describe("highlightMatches", () => {
