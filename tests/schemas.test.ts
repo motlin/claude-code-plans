@@ -1122,6 +1122,26 @@ describe("JsonlRecordSchema observed 2026-09 transcript fields", () => {
 		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
 	});
 
+	it("parses artifact-watch task-notification user records carrying queueOrigin", () => {
+		const record = {
+			type: "user",
+			...baseFields,
+			message: {role: "user", content: "<task-notification>watch ended</task-notification>"},
+			origin: {kind: "task-notification"},
+			promptSource: "system",
+			turnOrigin: "task_notification",
+			queueOrigin: {
+				kind: "task-notification",
+				source: "artifact-watch-lifecycle",
+				slug: "f305a5b4-dc1c-48bc-bcba-d1116eef516c",
+				displayName: '"Review Decisions Round 2"',
+				watchEnded: true,
+			},
+		};
+
+		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
+	});
+
 	it("parses peer-message user records carrying the queueSkipSlashCommands flag", () => {
 		const record = {
 			type: "user",
@@ -1388,7 +1408,16 @@ describe("JsonlRecordSchema observed 2026-09 transcript fields", () => {
 				lastSequenceNum: 87,
 				ownerAccountUuid: "acct-1",
 				ownerOrganizationUuid: "org-1",
+				noHistoryBackfill: true,
 			},
+			{
+				type: "history-suppression",
+				sessionId: "s1",
+				cause: "chokepoint_veto",
+				vetoedAgainstAccountUuid: "acct-1",
+				ts: "2026-10-23T00:27:52.126Z",
+			},
+			{type: "history-suppression", sessionId: "s1", cause: "migration", ts: "2026-10-23T00:27:52.126Z"},
 			{
 				type: "cost-state",
 				sessionId: "s1",

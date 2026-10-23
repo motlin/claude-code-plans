@@ -61,6 +61,9 @@ import type {
 	ThinkingDisplaySchema,
 	ToolAdditionToolSchema,
 	TurnOriginSchema,
+	QueueOriginKindSchema,
+	QueueOriginSourceSchema,
+	HistorySuppressionCauseSchema,
 	UserRecordSchema,
 	WriteToolUseResultTypeSchema,
 } from "./schemas";
@@ -130,6 +133,22 @@ export const turnOriginLabels = {
 	system: "System notice",
 	sdk: "From the SDK",
 } satisfies Record<z.infer<typeof TurnOriginSchema>, string>;
+
+/** Not consumed yet — `queueOrigin` is only validated. */
+const queueOriginKindLabels = {
+	"task-notification": "Task notification",
+} satisfies Record<z.infer<typeof QueueOriginKindSchema>, string>;
+
+/** Not consumed yet — `queueOrigin` is only validated. */
+const queueOriginSourceLabels = {
+	"artifact-watch-lifecycle": "Artifact watch",
+} satisfies Record<z.infer<typeof QueueOriginSourceSchema>, string>;
+
+/** Not consumed yet — `history-suppression` records are only validated. */
+const historySuppressionCauseLabels = {
+	chokepoint_veto: "Vetoed for another account",
+	migration: "Migration",
+} satisfies Record<z.infer<typeof HistorySuppressionCauseSchema>, string>;
 
 export const permissionDecisionDecisionLabels = {
 	accept: "Accepted",
@@ -838,6 +857,7 @@ const jsonlRecordVariants = {
 	mode: true,
 	"atis-latch": true,
 	"bridge-session": true,
+	"history-suppression": true,
 	"cost-state": true,
 	"frame-link": true,
 	"artifact-comment-monitor": true,
@@ -1423,6 +1443,9 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
 	AttachmentPayloadSchema: attachmentVariants,
 	"UserRecordSchema.promptSource": promptSourceLabels,
 	"UserRecordSchema.turnOrigin": turnOriginLabels,
+	"UserRecordSchema.queueOrigin.kind": queueOriginKindLabels,
+	"UserRecordSchema.queueOrigin.source": queueOriginSourceLabels,
+	"JsonlRecordSchema.<history-suppression>.cause": historySuppressionCauseLabels,
 	"UserRecordSchema.permissionDecision.decision": permissionDecisionDecisionLabels,
 	"UserRecordSchema.permissionDecision.source": permissionDecisionSourceLabels,
 	"UserRecordSchema.permissionDecision.reasonType": permissionDecisionReasonTypeLabels,

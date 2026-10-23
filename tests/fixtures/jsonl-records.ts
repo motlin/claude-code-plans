@@ -162,6 +162,12 @@ export const jsonlRecordFixtures = {
 		bridgeSessionId: "cse_alice_100",
 		lastSequenceNum: 100,
 	},
+	"history-suppression": {
+		type: "history-suppression",
+		sessionId: "session-alice-100",
+		cause: "migration",
+		ts: "2000-01-01T00:00:00.000Z",
+	},
 	"cost-state": {
 		type: "cost-state",
 		sessionId: "session-alice-100",

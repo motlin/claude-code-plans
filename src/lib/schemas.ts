@@ -280,6 +280,10 @@ export const PromptSourceSchema = z.enum(["typed", "system", "sdk", "queued", "s
 
 /** Who started a user turn; `human` is the ordinary typed-at-the-keyboard case. */
 export const TurnOriginSchema = z.enum(["human", "peer", "task_notification", "scheduled", "system", "sdk"]);
+/** `queueOrigin.kind` on user records: the queue that delivered the prompt. */
+export const QueueOriginKindSchema = z.enum(["task-notification"]);
+/** `queueOrigin.source` on user records: the background producer behind a queued notification. */
+export const QueueOriginSourceSchema = z.enum(["artifact-watch-lifecycle"]);
 
 export const PermissionDecisionDecisionSchema = z.enum(["accept", "reject"]);
 export const PermissionDecisionSourceSchema = z.enum([
@@ -539,6 +543,17 @@ export const UserRecordSchema = z
 		interruptedBySendNow: z.boolean().optional(),
 		userFeedback: z.string().optional(),
 		turnOrigin: TurnOriginSchema.optional(),
+		// Producer details for a queued notification, e.g. an Artifact watch that ended.
+		queueOrigin: z
+			.object({
+				kind: QueueOriginKindSchema,
+				source: QueueOriginSourceSchema,
+				slug: z.string(),
+				displayName: z.string(),
+				watchEnded: z.boolean().optional(),
+			})
+			.strict()
+			.optional(),
 		turnPosition: z
 			.object({promptIndex: z.number().optional(), turnIndex: z.number().optional()})
 			.strict()
@@ -1824,6 +1839,20 @@ export const BridgeSessionRecordSchema = z
 		lastSequenceNum: z.number().optional(),
 		ownerAccountUuid: z.string().optional(),
 		ownerOrganizationUuid: z.string().optional(),
+		noHistoryBackfill: z.boolean().optional(),
+	})
+	.strict();
+
+/** Why the CLI suppressed syncing this session's history to a remote bridge. */
+export const HistorySuppressionCauseSchema = z.enum(["chokepoint_veto", "migration"]);
+
+const HistorySuppressionRecordSchema = z
+	.object({
+		type: z.literal("history-suppression"),
+		sessionId: z.string(),
+		cause: HistorySuppressionCauseSchema,
+		vetoedAgainstAccountUuid: z.string().optional(),
+		ts: z.string(),
 	})
 	.strict();
 
@@ -2233,6 +2262,7 @@ export const JsonlRecordSchema = z.discriminatedUnion("type", [
 	ModeRecordSchema,
 	AtisLatchRecordSchema,
 	BridgeSessionRecordSchema,
+	HistorySuppressionRecordSchema,
 	CostStateRecordSchema,
 	FrameLinkRecordSchema,
 	ArtifactCommentMonitorRecordSchema,

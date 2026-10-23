@@ -76,6 +76,18 @@ describe("runtime vs strict JSONL schema", () => {
 		expect(result.data).toEqual(withShare({...share, role: "writer"}));
 	});
 
+	it("runtime form keeps history-suppression records with an unknown cause and strips unknown keys", () => {
+		const record = {
+			type: "history-suppression",
+			sessionId: "s1",
+			cause: "future_cause",
+			ts: "2026-10-23T00:27:52.126Z",
+		};
+		const result = RuntimeJsonlRecordSchema.safeParse({...record, futureKey: 1});
+		expect(result.error).toBeUndefined();
+		expect(result.data).toEqual(record);
+	});
+
 	it("runtime form still rejects an unknown record type", () => {
 		const result = RuntimeJsonlRecordSchema.safeParse({...driftedUserRecord, type: "brand-new-record"});
 		expect(result.success).toBe(false);
