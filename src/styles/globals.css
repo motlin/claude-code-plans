@@ -722,6 +722,11 @@ html[data-interface-font="dyslexic"] {
 /* Upstream claude.ai/code focus rings. `hide-focus-ring` has no rules of its own:
    it only opts an element out of the base `:focus-visible` outline below, and the
    element draws its own ring, usually `focus-visible:ring-focus` / `shadow-focus`. */
+/* Upstream `cursor-interactive`: the pointer cursor on chips and other clickable inline atoms. */
+@utility cursor-interactive {
+	cursor: pointer;
+}
+
 @utility ring-focus {
 	box-shadow: var(--focus-shadow);
 	outline-style: none;

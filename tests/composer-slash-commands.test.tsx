@@ -287,7 +287,7 @@ describe("Composer slash commands", () => {
 		const tokens = screen.getByTestId("slash-argument-hint").parentElement?.className.split(" ") ?? [];
 		expect({
 			floored: tokens.includes("text-entry-floored"),
-			coarse: tokens.filter((token) => token.startsWith("pointer-coarse:")),
+			coarse: tokens.filter((token) => token.startsWith("pointer-coarse:text-")),
 		}).toStrictEqual({floored: true, coarse: []});
 	});
 

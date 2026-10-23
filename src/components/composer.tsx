@@ -58,6 +58,7 @@ import {SESSION_COMPOSER_PLACEHOLDER} from "../lib/composer-pending-gate";
 import {useCoarsePointer} from "../lib/use-phone-sheet";
 import {type SplitItem, SplitDropdownButton} from "./ui/split-dropdown-button";
 import {ComposerDropScrim, useFileDropTarget} from "./composer-drop-scrim";
+import {ComposerSkillChip} from "./composer-skill-chip";
 
 type ComposerVariant = "session" | "home";
 
@@ -72,11 +73,20 @@ function workingPlaceholder(isMac: boolean): string {
 }
 
 const EDITOR_CLASS =
-	"block w-full resize-none overflow-y-auto bg-transparent py-1 pl-1 font-sans text-[14px]/[20px] text-primary [field-sizing:content] placeholder:text-[rgb(137,135,129)] focus:outline-none disabled:opacity-50";
+	"block w-full resize-none overflow-y-auto bg-transparent py-1 pl-1 font-sans text-[14px]/[20px] [field-sizing:content] placeholder:text-[rgb(137,135,129)] focus:outline-none disabled:opacity-50";
 
 /** Overlays ghost text after the prompt, lined up with the textarea's text (and its coarse-pointer floor). */
 const GHOST_OVERLAY_CLASS =
 	"pointer-events-none absolute inset-y-0 right-[30px] overflow-hidden py-1 pl-1 font-sans text-[14px]/[20px] break-words whitespace-pre-wrap text-entry-floored";
+
+/** Paints the whole prompt over a transparent textarea, so it also follows the coarse-pointer send gutter. */
+const PAINTED_OVERLAY_CLASS = `${GHOST_OVERLAY_CLASS} left-[30px] pointer-coarse:right-[51px]`;
+
+/** An accepted slash command, drawn as upstream's chip until the prompt stops starting with it. */
+interface AcceptedSkillChip {
+	draftKey: string;
+	name: string;
+}
 
 const ICON_BUTTON_CLASS =
 	"flex aspect-square size-7 items-center justify-center rounded-r5 text-primary transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus disabled:pointer-events-none disabled:opacity-40";
@@ -539,6 +549,12 @@ export function Composer({
 	const highlighted =
 		highlight.key === slashKey ? Math.min(highlight.index, matches.length - 1) : slash?.atStart === true ? 0 : -1;
 	const argumentHint = slashArgumentHint(slashCommands, prompt);
+	// In memory only: upstream doesn't restore the chip from a saved draft either.
+	const [acceptedChip, setAcceptedChip] = useState<AcceptedSkillChip | null>(null);
+	const chip =
+		acceptedChip?.draftKey === draftKey && prompt.startsWith(`/${acceptedChip.name}`) ? acceptedChip : null;
+	if (acceptedChip !== null && chip === null) setAcceptedChip(null);
+	const paintedOverlayRef = useRef<HTMLDivElement>(null);
 
 	const trigger = mentionSessionId === undefined || slashOpen ? null : fileMentionTrigger(prompt, caret);
 	const mentionKey = trigger === null ? null : `${trigger.start}\0${prompt}`;
@@ -598,6 +614,8 @@ export function Composer({
 		pendingCaretRef.current = next;
 		setCaret(next);
 		setPrompt(prompt.slice(0, slash.start) + inserted + prompt.slice(caret));
+		// The local menu can open mid-line, but only a leading command becomes a chip.
+		setAcceptedChip(slash.start === 0 ? {draftKey, name: command.name} : null);
 		textareaRef.current?.focus();
 	}
 
@@ -891,12 +909,26 @@ export function Composer({
 							onAccept={acceptFileMention}
 						/>
 					)}
-					{argumentHint !== null && (
-						<div aria-hidden="true" className={`${GHOST_OVERLAY_CLASS} left-[30px]`}>
-							<span className="invisible">{prompt}</span>
-							<span data-testid="slash-argument-hint" className="text-[rgb(137,135,129)]">
-								{argumentHint}
+					{chip === null ? (
+						argumentHint !== null && (
+							<div aria-hidden="true" className={`${GHOST_OVERLAY_CLASS} left-[30px]`}>
+								<span className="invisible">{prompt}</span>
+								<span data-testid="slash-argument-hint" className="text-[rgb(137,135,129)]">
+									{argumentHint}
+								</span>
+							</div>
+						)
+					) : (
+						<div ref={paintedOverlayRef} aria-hidden="true" className={PAINTED_OVERLAY_CLASS}>
+							<ComposerSkillChip name={chip.name} />
+							<span data-skill-chip-rest="" className="text-primary">
+								{prompt.slice(chip.name.length + 1)}
 							</span>
+							{argumentHint !== null && (
+								<span data-testid="slash-argument-hint" className="text-[rgb(137,135,129)]">
+									{argumentHint}
+								</span>
+							)}
 						</div>
 					)}
 					{slashOpen && query === "" && (
@@ -923,6 +955,12 @@ export function Composer({
 						onSelect={(e) => {
 							setCaret(e.currentTarget.selectionStart);
 						}}
+						onScroll={(e) => {
+							if (paintedOverlayRef.current !== null) {
+								paintedOverlayRef.current.scrollTop = e.currentTarget.scrollTop;
+							}
+						}}
+						data-chip-length={chip === null ? undefined : chip.name.length + 1}
 						onKeyDown={handleKeyDown}
 						onPaste={handlePaste}
 						aria-controls={slashOpen ? slashMenuId : mentionOpen ? mentionMenuId : undefined}
@@ -943,7 +981,7 @@ export function Composer({
 						disabled={isStreaming || disabled}
 						rows={1}
 						enterKeyHint="enter"
-						className={EDITOR_CLASS}
+						className={`${EDITOR_CLASS} ${chip === null ? "text-primary" : "text-transparent caret-primary"}`}
 						style={{minHeight: "28px", maxHeight: "min(24rem, 40svh)"}}
 					/>
 					<SendSlot
