@@ -15,13 +15,19 @@ import {
 	type PlanDialog,
 } from "../lib/plan-approval";
 import {usePhoneSheet} from "../lib/use-phone-sheet";
-import {ApprovalActionButton} from "./approval-card";
+import {ApprovalActionButton, STACK_ACTIONS} from "./approval-card";
 import {useOptionalPaneHost} from "./panes/pane-host-context";
 import type {PlanApprovalContextValue} from "./plan-approval-context";
 import {ReadOnlyAnswerHint} from "./terminal-writes-tip";
 import {Shortcut} from "./ui/shortcut";
 
 const HINT_CLASS = "text-footnote text-secondary";
+/**
+ * Upstream's plan `epitaxy-approval-actions` row (`[&>div]:grow` on its two groups). At `@container (width <= 420px)`
+ * the row and each group turn to columns and every button takes the full width.
+ */
+const PLAN_ACTIONS_CLASS = `flex flex-wrap justify-between gap-x-1 gap-y-2 [&>span]:grow ${STACK_ACTIONS} @max-[420px]:[&>span]:flex-col @max-[420px]:[&>span]:items-stretch @max-[420px]:[&_button]:w-full`;
+
 const FEEDBACK_CLASS =
 	"w-full resize-none rounded-r4 border border-strong bg-transparent px-2 py-1.5 text-body text-primary placeholder:text-tertiary focus:outline-none";
 
@@ -104,8 +110,9 @@ function PlanApprovalActions({
 					}}
 				/>
 			)}
-			{/* Upstream's `epitaxy-approval-actions`: the reject pair at the start, the accepts at the end. */}
-			<div className="flex flex-wrap justify-between gap-x-1 gap-y-2">
+			{/* Upstream's `epitaxy-approval-actions`: the reject pair at the start, the accepts at the end; in a
+			    ≤420px container both groups stack and every button goes full width. */}
+			<div data-plan-actions className={PLAN_ACTIONS_CLASS}>
 				{revising ? (
 					<>
 						<ApprovalActionButton variant="secondary" disabled={submitting} onClick={closeFeedback}>

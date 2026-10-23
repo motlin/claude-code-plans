@@ -62,7 +62,7 @@ export const APPROVAL_CARD_TITLE = "flex min-h-6 items-center text-[13px]/[19px]
  * group (`[data-approval-allow]`), full width. A split button stretches too, its primary segment taking
  * the spare width (`width:100%` and `flex:auto`).
  */
-const STACK_ACTIONS =
+export const STACK_ACTIONS =
 	"@max-[420px]:flex-col @max-[420px]:items-stretch @max-[420px]:[&>div]:flex-col @max-[420px]:[&>div]:items-stretch @max-[420px]:[&_[data-cds=SplitDropdownButton]]:w-full @max-[420px]:[&_[data-cds=SplitDropdownButton]>[data-cds-segment]:first-child_button]:flex-auto";
 
 const ROAM_KEYS = new Set(["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"]);

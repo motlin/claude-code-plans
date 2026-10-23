@@ -93,4 +93,17 @@ describe("DockedPlanApproval", () => {
 			text: document.querySelector("[data-docked-plan]")?.textContent.includes("Print hello"),
 		}).toStrictEqual({blocks: 0, text: false});
 	});
+
+	it("is a size container, so the actions stack at upstream's ≤420px card width", () => {
+		const plan: PlanApprovalContextValue = {
+			answerRoute: "read-only",
+			loadDialog: async () => Promise.reject(new Error("no pane")),
+			decide: async () => Promise.resolve(),
+		};
+		render(<DockedPlanApproval pendingPlan={HOOK_PLAN} plan={plan} />);
+
+		expect(document.querySelector("[data-docked-plan]")?.className.split(" ").includes("@container")).toStrictEqual(
+			true,
+		);
+	});
 });

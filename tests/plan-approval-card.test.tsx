@@ -2,6 +2,7 @@
 
 import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
+import {STACK_ACTIONS} from "../src/components/approval-card";
 import {PaneHostContext, type PaneHostApi} from "../src/components/panes/pane-host-context";
 import {PlanApprovalCard} from "../src/components/plan-approval-card";
 import type {PlanApprovalContextValue} from "../src/components/plan-approval-context";
@@ -140,6 +141,14 @@ describe("PlanApprovalCard", () => {
 		});
 		expect(view.container.querySelector("[data-plan-error]")?.textContent).toStrictEqual(
 			"No plan approval is pending",
+		);
+	});
+
+	it("stacks the actions full width in upstream's ≤420px container, both groups growing", async () => {
+		const {value} = context();
+		const view = await renderCard(value);
+		expect(view.container.querySelector("[data-plan-actions]")?.className).toStrictEqual(
+			`flex flex-wrap justify-between gap-x-1 gap-y-2 [&>span]:grow ${STACK_ACTIONS} @max-[420px]:[&>span]:flex-col @max-[420px]:[&>span]:items-stretch @max-[420px]:[&_button]:w-full`,
 		);
 	});
 });
