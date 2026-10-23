@@ -9,14 +9,15 @@ import {showsWaitingForInputNotice} from "../src/components/waiting-for-input-no
 afterEach(cleanup);
 
 describe("showsWaitingForInputNotice", () => {
-	it("shows only for a waiting session with no question or permission card to dock instead", () => {
+	it("shows only for a waiting session with no card to dock and no Needs your input on the working line", () => {
 		expect([
-			showsWaitingForInputNotice({state: "waiting", hasDockedCard: false}),
-			showsWaitingForInputNotice({state: "waiting", hasDockedCard: true}),
-			showsWaitingForInputNotice({state: "working", hasDockedCard: false}),
-			showsWaitingForInputNotice({state: "ended", hasDockedCard: false}),
-			showsWaitingForInputNotice({state: null, hasDockedCard: false}),
-		]).toStrictEqual([true, false, false, false, false]);
+			showsWaitingForInputNotice({state: "waiting", hasDockedCard: false, workingLineWaits: false}),
+			showsWaitingForInputNotice({state: "waiting", hasDockedCard: false, workingLineWaits: true}),
+			showsWaitingForInputNotice({state: "waiting", hasDockedCard: true, workingLineWaits: false}),
+			showsWaitingForInputNotice({state: "working", hasDockedCard: false, workingLineWaits: false}),
+			showsWaitingForInputNotice({state: "ended", hasDockedCard: false, workingLineWaits: false}),
+			showsWaitingForInputNotice({state: null, hasDockedCard: false, workingLineWaits: false}),
+		]).toStrictEqual([true, false, false, false, false, false]);
 	});
 });
 

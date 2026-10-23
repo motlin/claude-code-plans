@@ -427,10 +427,10 @@ describe("SessionPage dock composition", () => {
 		expect(dockContents()).toStrictEqual(["branch", "usage", "composer"]);
 	});
 	it.each([
-		{name: "linked PR", fields: {pr}, order: ["pr", "waiting", "usage", "composer"]},
-		{name: "no PR", fields: {}, order: ["waiting", "usage", "composer"]},
+		{name: "linked PR", fields: {pr}, order: ["pr", "usage", "composer"]},
+		{name: "no PR", fields: {}, order: ["usage", "composer"]},
 	])(
-		"docks the waiting notice below the $name chips, then the usage chip above the composer as upstream does",
+		"says a $name session needs input only on the working line, docking no waiting notice, as upstream does",
 		async ({fields, order}) => {
 			await renderSessionPage({...detail, ...fields}, [], (queryClient) => {
 				seedUsage(queryClient);
@@ -439,7 +439,12 @@ describe("SessionPage dock composition", () => {
 					pageParams: [null],
 				} as never);
 			});
-			expect(dockContents()).toStrictEqual(order);
+			expect({
+				dock: dockContents(),
+				turnStatus: document
+					.querySelector('[data-testid="code-working-line"] [data-cds="TurnStatus"]')
+					?.getAttribute("title"),
+			}).toStrictEqual({dock: order, turnStatus: "Needs your input"});
 		},
 	);
 	it("draws the permission card inline after the transcript, as upstream's inline approvals, leaving the dock to the PR chip, usage chip and composer", async () => {

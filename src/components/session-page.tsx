@@ -590,6 +590,17 @@ function SessionView({
 				: null,
 		[isActive, inlineQuestion, sessionId, notifications, transcript.records, sessionPermissionWait],
 	);
+	// The working line's "Needs your input" replaces the dock's waiting notice, as upstream shows only the former.
+	const workingLineWaits = workingLineWaitsOnUser({
+		awaitingPermission,
+		sessionState: sessionSummaryState,
+		cardShown:
+			pendingPermission !== null ||
+			inlineQuestion !== null ||
+			hookQuestionCardShown ||
+			inlinePlanId !== null ||
+			dockedPlan !== null,
+	});
 	const hookQuestionToolUseId = hookQuestion?.toolUseId;
 	const answerHookQuestion = useCallback(
 		async (answers: Array<QuestionAnswer | null>) => {
@@ -937,6 +948,7 @@ function SessionView({
 													inlineQuestion !== null ||
 													pendingPermission !== null ||
 													dockedPlan !== null,
+												workingLineWaits,
 											}) &&
 												!hookQuestion && <WaitingForInputNotice />}
 											{/* Upstream docks a pending plan's approval above the composer; the hooks carry it before the JSONL does */}
@@ -1155,16 +1167,7 @@ function SessionView({
 							<WorkingMarker
 								state={workingMarkerState}
 								quiet={tailMarkerQuiet(workingMarkerState, inFlightRow)}
-								waitingOnUser={workingLineWaitsOnUser({
-									awaitingPermission,
-									sessionState: sessionSummaryState,
-									cardShown:
-										pendingPermission !== null ||
-										inlineQuestion !== null ||
-										hookQuestionCardShown ||
-										inlinePlanId !== null ||
-										dockedPlan !== null,
-								})}
+								waitingOnUser={workingLineWaits}
 								runningTasks={backgroundTasks.running.length}
 							/>
 
