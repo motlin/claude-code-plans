@@ -10,8 +10,31 @@ const CHIP_CLASS =
 const HIGHLIGHT_CLASS =
 	"pointer-events-none absolute -inset-y-0.5 -left-0.5 -right-1 rounded-r5 bg-upstream-accent-muted opacity-0 group-hover:opacity-100";
 
-const CARD_CLASS =
+export const SLASH_COMMAND_CARD_CLASS =
 	"flex w-[280px] max-w-[calc(100vw-16px)] flex-col gap-1 rounded-r7 bg-[var(--menu-bg)] p-3 text-[13px]/[19px] text-primary shadow-[var(--menu-shadow)] outline-none";
+
+const CARD_DESCRIPTION_CLASS =
+	"max-h-[min(40vh,calc(var(--available-height,100vh)-3rem))] overflow-y-auto overscroll-contain break-words text-primary";
+
+/**
+ * Upstream's shared hover-card content (`ln`): a muted `/name` line, then the description when
+ * there is one. An unknown command (`description` undefined) gets a "No preview available" footnote.
+ */
+export function SlashCommandCardBody({name, description}: {name: string; description: string | undefined}) {
+	if (description === undefined) {
+		return <span className="text-[12px]/[16px] text-ink-muted">No preview available</span>;
+	}
+	return (
+		<>
+			<span data-slash-command-card-name="" className="truncate text-ink-muted">{`/${name}`}</span>
+			{description !== "" && (
+				<span data-slash-command-card-description="" className={CARD_DESCRIPTION_CLASS}>
+					{description}
+				</span>
+			)}
+		</>
+	);
+}
 
 /**
  * Upstream's accent `/name` button: a 50% "/" glyph in a fixed slot, then the name. Hovering or
@@ -19,7 +42,7 @@ const CARD_CLASS =
  */
 function SlashCommandChip({name}: {name: string}) {
 	const commands = useContext(SlashCommandsContext);
-	const description = commands.find((command) => command.name === name)?.description ?? "";
+	const description = commands.find((command) => command.name === name)?.description;
 
 	return (
 		<PreviewCard.Root>
@@ -38,9 +61,8 @@ function SlashCommandChip({name}: {name: string}) {
 			</PreviewCard.Trigger>
 			<PreviewCard.Portal>
 				<PreviewCard.Positioner side="top" align="start" sideOffset={6} className="z-[130]">
-					<PreviewCard.Popup data-slash-command-card="" className={CARD_CLASS}>
-						<div data-slash-command-card-name="" className="text-secondary">{`/${name}`}</div>
-						{description !== "" && <div data-slash-command-card-description="">{description}</div>}
+					<PreviewCard.Popup data-slash-command-card="" className={SLASH_COMMAND_CARD_CLASS}>
+						<SlashCommandCardBody name={name} description={description} />
 					</PreviewCard.Popup>
 				</PreviewCard.Positioner>
 			</PreviewCard.Portal>

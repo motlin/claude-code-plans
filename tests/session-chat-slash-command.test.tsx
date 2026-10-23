@@ -209,14 +209,11 @@ describe("SessionChat slash-command chip", () => {
 		});
 	});
 
-	it("opens the hover card with only /name when the command is unknown", async () => {
+	it("opens the hover card with No preview available when the command is unknown", async () => {
 		const container = renderRecords([LOOP_PROMPT]);
 
 		const card = await hoverChip(container);
-		expect({
-			name: card.querySelector("[data-slash-command-card-name]")?.textContent ?? null,
-			description: card.querySelector("[data-slash-command-card-description]")?.textContent ?? null,
-		}).toStrictEqual({name: "/loop", description: null});
+		expect(card.innerHTML).toBe('<span class="text-[12px]/[16px] text-ink-muted">No preview available</span>');
 	});
 
 	it("has no click-to-open trigger, so clicking the chip opens nothing", () => {

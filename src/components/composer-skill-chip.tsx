@@ -1,4 +1,10 @@
-import {useLayoutEffect, useRef, useState} from "react";
+import {PreviewCard} from "@base-ui/react/preview-card";
+import {type MouseEvent, useLayoutEffect, useRef, useState} from "react";
+
+import {SLASH_COMMAND_CARD_CLASS, SlashCommandCardBody} from "./slash-command-chip";
+
+/** Upstream `pn`'s trigger; the only part of the pointer-transparent overlay that takes the mouse. */
+const TRIGGER_CLASS = "inline-flex relative pointer-events-auto";
 
 const CHIP_CLASS = "group/chip inline-flex relative cursor-interactive text-upstream-accent";
 
@@ -16,9 +22,21 @@ const GLYPH_CLASS =
  * Upstream's composer `skillChip` node view (`Cq`), painted in the composer's mirror overlay over
  * the transparent textarea text `/name`. The chip's 8px "/" slot is wider than the textarea's "/"
  * glyph, so a start margin gives back the difference: the text after the chip stays under the caret,
- * and the space after the chip stays visible.
+ * and the space after the chip stays visible. Hovering it opens upstream's composer hover card
+ * (`pn`, 300ms); pressing it hands the caret back to the textarea, after the chip.
  */
-export function ComposerSkillChip({name, selected}: {name: string; selected: boolean}) {
+export function ComposerSkillChip({
+	name,
+	description,
+	selected,
+	onPress,
+}: {
+	name: string;
+	description: string | undefined;
+	selected: boolean;
+	onPress: (event: MouseEvent<HTMLSpanElement>) => void;
+}) {
+	const [cardOpen, setCardOpen] = useState(false);
 	const chipRef = useRef<HTMLSpanElement>(null);
 	const plainRef = useRef<HTMLSpanElement>(null);
 	const [offset, setOffset] = useState(0);
@@ -47,15 +65,27 @@ export function ComposerSkillChip({name, selected}: {name: string; selected: boo
 				data-skill-id={name}
 				dir="auto"
 				className={CHIP_CLASS}
+				data-card-open={cardOpen ? "true" : undefined}
 				style={offset === 0 ? undefined : {marginInlineStart: `${offset}px`}}
 			>
-				<span className={selected ? HIGHLIGHT_SELECTED_CLASS : HIGHLIGHT_CLASS} />
-				<span className="relative ps-2">
-					<span aria-hidden="true" className={GLYPH_CLASS}>
-						/
-					</span>
-					<span className="select-none">{name}</span>
-				</span>
+				<PreviewCard.Root onOpenChange={setCardOpen}>
+					<PreviewCard.Trigger render={<span />} delay={300} className={TRIGGER_CLASS} onMouseDown={onPress}>
+						<span className={selected ? HIGHLIGHT_SELECTED_CLASS : HIGHLIGHT_CLASS} />
+						<span className="relative ps-2">
+							<span aria-hidden="true" className={GLYPH_CLASS}>
+								/
+							</span>
+							<span className="select-none">{name}</span>
+						</span>
+					</PreviewCard.Trigger>
+					<PreviewCard.Portal>
+						<PreviewCard.Positioner side="top" align="start" sideOffset={6} className="z-[130]">
+							<PreviewCard.Popup data-slash-command-card="" className={SLASH_COMMAND_CARD_CLASS}>
+								<SlashCommandCardBody name={name} description={description} />
+							</PreviewCard.Popup>
+						</PreviewCard.Positioner>
+					</PreviewCard.Portal>
+				</PreviewCard.Root>
 			</span>
 			<span ref={plainRef} data-skill-chip-measure="" className="invisible absolute whitespace-pre">
 				{`/${name}`}

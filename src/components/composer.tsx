@@ -975,7 +975,19 @@ export function Composer({
 					)}
 					{chip !== null && (
 						<div ref={paintedOverlayRef} aria-hidden="true" className={PAINTED_OVERLAY_CLASS}>
-							<ComposerSkillChip name={chip.name} selected={chipSelected} />
+							<ComposerSkillChip
+								name={chip.name}
+								description={slashCommands.find((command) => command.name === chip.name)?.description}
+								selected={chipSelected}
+								onPress={(e) => {
+									// Upstream's atom can't hold the caret, so a press on the chip lands it after the chip.
+									e.preventDefault();
+									const textarea = textareaRef.current;
+									if (textarea === null) return;
+									textarea.focus();
+									textarea.setSelectionRange(chipLength, chipLength);
+								}}
+							/>
 							{argumentHint === null ? (
 								<span data-skill-chip-rest="" className="text-primary">
 									{rest}

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {cleanup, fireEvent, render, screen} from "@testing-library/react";
+import {cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {Composer} from "../src/components/composer";
 import type {SlashCommand} from "../src/lib/slash-commands";
@@ -72,27 +72,41 @@ describe("Composer skill chip", () => {
 				children: [
 					{
 						tag: "span",
-						className:
-							"absolute -inset-y-0.5 -start-0.5 -end-1 rounded-r5 pointer-events-none group-hover/chip:[@media(hover:hover)]:bg-upstream-accent-pressed group-data-[card-open]/chip:bg-upstream-accent-pressed",
-						ariaHidden: null,
-						text: "",
-						children: [],
-					},
-					{
-						tag: "span",
-						className: "relative ps-2",
+						className: "inline-flex relative pointer-events-auto",
 						ariaHidden: null,
 						text: null,
 						children: [
 							{
 								tag: "span",
 								className:
-									"absolute top-1/2 -translate-y-1/2 start-0 w-2 h-5 flex items-center justify-center text-[13px]/[19px] font-medium opacity-50 select-none",
-								ariaHidden: "true",
-								text: "/",
+									"absolute -inset-y-0.5 -start-0.5 -end-1 rounded-r5 pointer-events-none group-hover/chip:[@media(hover:hover)]:bg-upstream-accent-pressed group-data-[card-open]/chip:bg-upstream-accent-pressed",
+								ariaHidden: null,
+								text: "",
 								children: [],
 							},
-							{tag: "span", className: "select-none", ariaHidden: null, text: "model", children: []},
+							{
+								tag: "span",
+								className: "relative ps-2",
+								ariaHidden: null,
+								text: null,
+								children: [
+									{
+										tag: "span",
+										className:
+											"absolute top-1/2 -translate-y-1/2 start-0 w-2 h-5 flex items-center justify-center text-[13px]/[19px] font-medium opacity-50 select-none",
+										ariaHidden: "true",
+										text: "/",
+										children: [],
+									},
+									{
+										tag: "span",
+										className: "select-none",
+										ariaHidden: null,
+										text: "model",
+										children: [],
+									},
+								],
+							},
 						],
 					},
 				],
@@ -237,7 +251,8 @@ describe("Composer skill chip", () => {
 
 	describe("atom editing", () => {
 		const highlightClass = (): string | null =>
-			screen.getByTestId("composer-skill-chip").firstElementChild?.getAttribute("class") ?? null;
+			screen.getByTestId("composer-skill-chip").firstElementChild?.firstElementChild?.getAttribute("class") ??
+			null;
 		const unselected =
 			"absolute -inset-y-0.5 -start-0.5 -end-1 rounded-r5 pointer-events-none group-hover/chip:[@media(hover:hover)]:bg-upstream-accent-pressed group-data-[card-open]/chip:bg-upstream-accent-pressed";
 		const selected =
@@ -337,6 +352,106 @@ describe("Composer skill chip", () => {
 				selection: [textarea.selectionStart, textarea.selectionEnd],
 				chip: screen.getByTestId("composer-skill-chip").textContent,
 			}).toStrictEqual({value: "/model x", selection: [8, 8], chip: "/model"});
+		});
+	});
+
+	describe("hover card", () => {
+		async function hoverChip(): Promise<HTMLElement> {
+			const trigger = screen.getByTestId("composer-skill-chip").firstElementChild;
+			if (!(trigger instanceof HTMLElement)) throw new Error("no trigger");
+			fireEvent.pointerEnter(trigger, {pointerType: "mouse"});
+			fireEvent.mouseEnter(trigger);
+			fireEvent.mouseMove(trigger);
+			return waitFor(() => {
+				const card = document.querySelector("[data-slash-command-card]");
+				if (!(card instanceof HTMLElement)) throw new Error("no card");
+				return card;
+			});
+		}
+
+		function describeCard(card: HTMLElement): unknown {
+			return {
+				side: card.getAttribute("data-side"),
+				align: card.getAttribute("data-align"),
+				className: card.className,
+				children: [...card.children].map((child) => ({
+					tag: child.tagName.toLowerCase(),
+					className: child.getAttribute("class"),
+					text: child.textContent,
+				})),
+			};
+		}
+
+		it("opens upstream's card with the /name line and the description above the chip", async () => {
+			const textarea = setup();
+			accept(textarea, "/mo");
+
+			const card = await hoverChip();
+			expect({
+				card: describeCard(card),
+				cardOpen: screen.getByTestId("composer-skill-chip").getAttribute("data-card-open"),
+			}).toStrictEqual({
+				card: {
+					side: "top",
+					align: "start",
+					className:
+						"flex w-[280px] max-w-[calc(100vw-16px)] flex-col gap-1 rounded-r7 bg-[var(--menu-bg)] p-3 text-[13px]/[19px] text-primary shadow-[var(--menu-shadow)] outline-none",
+					children: [
+						{tag: "span", className: "truncate text-ink-muted", text: "/model"},
+						{
+							tag: "span",
+							className:
+								"max-h-[min(40vh,calc(var(--available-height,100vh)-3rem))] overflow-y-auto overscroll-contain break-words text-primary",
+							text: "Set the model for this session",
+						},
+					],
+				},
+				cardOpen: "true",
+			});
+		});
+
+		it("shows only the /name line for a command without a description", async () => {
+			render(
+				<Composer
+					variant="session"
+					draftKey="session-alice"
+					onSend={vi.fn<(prompt: string) => void>()}
+					slashCommands={[{name: "blank", description: "", source: "builtin"}]}
+				/>,
+			);
+			accept(screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"}), "/bl");
+
+			const card = await hoverChip();
+			expect(describeCard(card)).toStrictEqual({
+				side: "top",
+				align: "start",
+				className:
+					"flex w-[280px] max-w-[calc(100vw-16px)] flex-col gap-1 rounded-r7 bg-[var(--menu-bg)] p-3 text-[13px]/[19px] text-primary shadow-[var(--menu-shadow)] outline-none",
+				children: [{tag: "span", className: "truncate text-ink-muted", text: "/blank"}],
+			});
+		});
+
+		it("has no card-open flag while the card is closed", () => {
+			const textarea = setup();
+			accept(textarea, "/mo");
+
+			expect(screen.getByTestId("composer-skill-chip").getAttribute("data-card-open")).toBeNull();
+		});
+
+		it("lands the caret after the chip when the chip is pressed", () => {
+			const textarea = setup();
+			accept(textarea, "/mo");
+			fireEvent.change(textarea, {target: {value: "/model opus"}});
+			textarea.setSelectionRange(11, 11);
+
+			const trigger = screen.getByTestId("composer-skill-chip").firstElementChild!;
+			const notPrevented = fireEvent.mouseDown(trigger);
+
+			expect({
+				notPrevented,
+				focused: document.activeElement === textarea,
+				selection: [textarea.selectionStart, textarea.selectionEnd],
+			}).toStrictEqual({notPrevented: false, focused: true, selection: [6, 6]});
 		});
 	});
 });
