@@ -33,9 +33,12 @@ import {toConnectorSlug} from "../../lib/customize/mcp-tool-permissions";
 import {buildContextLegend, type ContextBreakdown} from "../../lib/context-breakdown";
 import {formatContextSummary, formatUpdatedAgo, type ComposerUsage} from "../../lib/composer-state";
 import type {PrStatus} from "../../lib/pr-status";
+import {requestFileOpen} from "../../lib/file-open-requests";
 import {formatCount} from "../../lib/pluralize";
+import type {OutputFile} from "../../lib/session-outputs";
 import {sessionEnvironment, terminalHostLabel} from "../../lib/session-environment";
 import {claudeAiSessionUrl} from "../../lib/session-open-in";
+import {FileTypeIcon} from "../file-type-icon";
 import {usePaneHost} from "../panes/pane-host-context";
 import {ContextBreakdownBody} from "./context-breakdown";
 import {useToast} from "../toast-context";
@@ -60,6 +63,8 @@ export interface SessionRailInputs {
 	/** The newest `/context` run's per-category breakdown, null when none or stale. */
 	breakdown: ContextBreakdown | null;
 	artifacts: readonly SessionArtifact[];
+	/** Files the transcript shows the session wrote or sent for the user. */
+	outputFiles: readonly OutputFile[];
 	backgroundTasks: BackgroundTaskGroups;
 	pr: SessionDetailData["pr"] | null;
 	prStatus: PrStatus | null;
@@ -361,25 +366,120 @@ function connectorsCard(servers: readonly McpServerSummary[]): RailCard | null {
 	};
 }
 
-/** Upstream's Outputs card; locally, the artifacts the session published or opened. */
-function outputsCard(artifacts: readonly SessionArtifact[]): RailCard | null {
-	if (artifacts.length === 0) return null;
+const SHOW_MORE_CLASS =
+	"flex min-h-6.5 w-full min-w-0 cursor-pointer items-center rounded px-1 text-start text-[13px]/[19px] text-ink-muted hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
+
+interface ShowMoreState {
+	expanded: boolean;
+	/** The first row the toggle reveals, which a keyboard press focuses. */
+	firstNewRow: (element: HTMLElement | null) => void;
+	toggle: (fromKeyboard: boolean) => void;
+}
+
+/** Upstream's in-place Show more: a keyboard expand focuses the first newly shown row. */
+function useShowMore(): ShowMoreState {
+	const [expanded, setExpanded] = useState(false);
+	const firstNewRow = useRef<HTMLElement | null>(null);
+	const focusFirstNew = useRef(false);
+	useEffect(() => {
+		if (!focusFirstNew.current) return;
+		focusFirstNew.current = false;
+		firstNewRow.current?.focus();
+	}, [expanded]);
+	return {
+		expanded,
+		firstNewRow: (element) => {
+			firstNewRow.current = element;
+		},
+		toggle: (fromKeyboard) => {
+			focusFirstNew.current = !expanded && fromKeyboard;
+			setExpanded(!expanded);
+		},
+	};
+}
+
+function ShowMoreButton({state}: {state: ShowMoreState}) {
+	return (
+		<button
+			type="button"
+			aria-expanded={state.expanded}
+			className={SHOW_MORE_CLASS}
+			onClick={(event) => {
+				// A keyboard press (detail 0) moves focus to the first row it reveals.
+				state.toggle(event.detail === 0);
+			}}
+		>
+			<span data-rail-row-label="" className="min-w-0 truncate">
+				{state.expanded ? "Show less" : "Show more"}
+			</span>
+		</button>
+	);
+}
+
+/** Upstream lists five outputs before its Show more row. */
+const OUTPUTS_SHOWN = 5;
+
+type Output = {kind: "artifact"; artifact: SessionArtifact; at: number} | {kind: "file"; file: OutputFile; at: number};
+
+function basename(path: string): string {
+	return path.slice(path.lastIndexOf("/") + 1);
+}
+
+function OutputsBody({outputs, sessionId}: {outputs: readonly Output[]; sessionId: string}) {
+	const host = usePaneHost();
+	const showMore = useShowMore();
+	const shown = showMore.expanded ? outputs : outputs.slice(0, OUTPUTS_SHOWN);
+	return (
+		<Rows>
+			{shown.map((output, index) => {
+				const ref = index === OUTPUTS_SHOWN ? showMore.firstNewRow : undefined;
+				if (output.kind === "artifact") {
+					return (
+						<Link
+							key={`artifact:${output.artifact.id}`}
+							ref={ref}
+							to="/artifact/$id"
+							params={{id: output.artifact.id}}
+							className={RAIL_ROW_ACTION_CLASS}
+						>
+							<RailRowContent icon={<Icon icon={AppWindow} />} label={output.artifact.title} />
+						</Link>
+					);
+				}
+				const name = basename(output.file.path);
+				return (
+					<button
+						key={`file:${output.file.path}`}
+						ref={ref}
+						type="button"
+						title={output.file.path}
+						aria-label={`Open ${name} in Files`}
+						className={RAIL_ROW_ACTION_CLASS}
+						onClick={() => {
+							requestFileOpen(sessionId, {path: output.file.path});
+							host.openPane("files");
+						}}
+					>
+						<RailRowContent icon={<FileTypeIcon fileName={name} size="sm" />} label={name} />
+					</button>
+				);
+			})}
+			{outputs.length > OUTPUTS_SHOWN && <ShowMoreButton state={showMore} />}
+		</Rows>
+	);
+}
+
+/** Upstream's Outputs card; locally, the artifacts the session published or opened and the files it wrote or sent, newest first. */
+function outputsCard(inputs: SessionRailInputs): RailCard | null {
+	const outputs: Output[] = [
+		...inputs.artifacts.map((artifact) => ({kind: "artifact" as const, artifact, at: artifact.lastEventAt})),
+		...inputs.outputFiles.map((file) => ({kind: "file" as const, file, at: file.at})),
+	].toSorted((left, right) => right.at - left.at);
+	if (outputs.length === 0) return null;
 	return {
 		id: "outputs",
-		body: (
-			<Rows>
-				{artifacts.map((artifact) => (
-					<Link
-						key={artifact.id}
-						to="/artifact/$id"
-						params={{id: artifact.id}}
-						className={RAIL_ROW_ACTION_CLASS}
-					>
-						<RailRowContent icon={<Icon icon={AppWindow} />} label={artifact.title} />
-					</Link>
-				))}
-			</Rows>
-		),
+		summary: String(outputs.length),
+		body: <OutputsBody outputs={outputs} sessionId={inputs.sessionId} />,
 	};
 }
 
@@ -515,9 +615,6 @@ function useMinuteClock(ticking: boolean): number {
 	return now;
 }
 
-const SHOW_MORE_CLASS =
-	"flex min-h-6.5 w-full min-w-0 cursor-pointer items-center rounded px-1 text-start text-[13px]/[19px] text-ink-muted hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
-
 /**
  * Upstream's Background tasks card: four running tasks with their elapsed
  * time, an in-place Show more, then a finished count; each row opens the
@@ -525,26 +622,18 @@ const SHOW_MORE_CLASS =
  */
 function BackgroundTasksBody({tasks}: {tasks: BackgroundTaskGroups}) {
 	const host = usePaneHost();
-	const [expanded, setExpanded] = useState(false);
-	const firstNewRow = useRef<HTMLButtonElement | null>(null);
-	const focusFirstNew = useRef(false);
+	const showMore = useShowMore();
 	const now = useMinuteClock(tasks.running.some((task) => task.startedAt !== null));
-	useEffect(() => {
-		if (!focusFirstNew.current) return;
-		focusFirstNew.current = false;
-		firstNewRow.current?.focus();
-	}, [expanded]);
 	const open = () => {
 		host.openPane("background-tasks");
 	};
-	const overflows = tasks.running.length > BACKGROUND_TASKS_SHOWN;
-	const shown = expanded ? tasks.running : tasks.running.slice(0, BACKGROUND_TASKS_SHOWN);
+	const shown = showMore.expanded ? tasks.running : tasks.running.slice(0, BACKGROUND_TASKS_SHOWN);
 	return (
 		<Rows>
 			{shown.map((task, index) => (
 				<button
 					key={task.id}
-					ref={index === BACKGROUND_TASKS_SHOWN ? firstNewRow : undefined}
+					ref={index === BACKGROUND_TASKS_SHOWN ? showMore.firstNewRow : undefined}
 					type="button"
 					title={task.command ?? task.description}
 					aria-label={`Open ${task.description} in Background tasks`}
@@ -560,22 +649,7 @@ function BackgroundTasksBody({tasks}: {tasks: BackgroundTaskGroups}) {
 					/>
 				</button>
 			))}
-			{overflows && (
-				<button
-					type="button"
-					aria-expanded={expanded}
-					className={SHOW_MORE_CLASS}
-					onClick={(event) => {
-						// A keyboard press (detail 0) moves focus to the first row it reveals.
-						focusFirstNew.current = !expanded && event.detail === 0;
-						setExpanded(!expanded);
-					}}
-				>
-					<span data-rail-row-label="" className="min-w-0 truncate">
-						{expanded ? "Show less" : "Show more"}
-					</span>
-				</button>
-			)}
+			{tasks.running.length > BACKGROUND_TASKS_SHOWN && <ShowMoreButton state={showMore} />}
 			{tasks.finished.length > 0 && (
 				<button type="button" className={RAIL_ROW_ACTION_CLASS} onClick={open}>
 					<RailRowContent icon={<Icon icon={Bot} />} label={`${tasks.finished.length} finished`} />
@@ -615,7 +689,7 @@ export function SessionRailCards({inputs}: {inputs: SessionRailInputs}) {
 		} satisfies RailCard,
 		contextCard(inputs),
 		connectorsCard(sessionConnectors(mcpServers ?? [], inputs.cwd)),
-		outputsCard(inputs.artifacts),
+		outputsCard(inputs),
 		changesCard(inputs, diff ?? null),
 		serversCard(devServers ?? []),
 		backgroundTasksCard(inputs.backgroundTasks),

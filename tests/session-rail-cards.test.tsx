@@ -61,6 +61,7 @@ const BASE: SessionRailInputs = {
 	usage: null,
 	breakdown: null,
 	artifacts: [],
+	outputFiles: [],
 	backgroundTasks: {running: [], finished: []},
 	pr: null,
 	prStatus: null,
@@ -464,7 +465,7 @@ describe("cards from local data", () => {
 			["environment", "alice/sync-upstream"],
 			["context", "19%"],
 			["connectors", "1 to reconnect"],
-			["outputs", null],
+			["outputs", "1"],
 			["pullRequests", "1 pull request"],
 			["servers", null],
 			["backgroundTasks", "1 running"],
@@ -990,6 +991,82 @@ describe("Context card breakdown", () => {
 					className,
 				},
 			]);
+		});
+	});
+});
+
+describe("Outputs card", () => {
+	function artifact(index: number): SessionRailInputs["artifacts"][number] {
+		return {
+			url: `https://claude.ai/artifact/a${index}`,
+			id: `a${index}`,
+			kind: "html",
+			title: `Artifact ${index}`,
+			previewable: false,
+			lastEventAt: index,
+		};
+	}
+
+	it("counts its outputs and lists five newest first, then Show more", async () => {
+		await renderCards({...BASE, artifacts: [1, 2, 3, 4, 5, 6, 7].map(artifact)});
+
+		expect({
+			summary: cards().find(([id]) => id === "outputs")?.[1],
+			rows: rows("Outputs"),
+		}).toStrictEqual({
+			summary: "7",
+			rows: [
+				["Artifact 7", null],
+				["Artifact 6", null],
+				["Artifact 5", null],
+				["Artifact 4", null],
+				["Artifact 3", null],
+				["Show more", null],
+			],
+		});
+	});
+
+	it("expands in place to every output", async () => {
+		await renderCards({...BASE, artifacts: [1, 2, 3, 4, 5, 6, 7].map(artifact)});
+		fireEvent.click(screen.getByRole("button", {name: "Show more"}));
+
+		expect(rows("Outputs").map(([label]) => label)).toStrictEqual([
+			"Artifact 7",
+			"Artifact 6",
+			"Artifact 5",
+			"Artifact 4",
+			"Artifact 3",
+			"Artifact 2",
+			"Artifact 1",
+			"Show less",
+		]);
+	});
+
+	it("lists a written file by its basename among the artifacts by time, opening it in the Files pane", async () => {
+		unregisters.push(registerPane("files", {title: "Files", render: () => <p>files pane body</p>}));
+		await renderCards({
+			...BASE,
+			artifacts: [artifact(1), artifact(3)],
+			outputFiles: [{path: "/tmp/report.md", at: 2}],
+		});
+		const labels = rows("Outputs");
+		fireEvent.click(screen.getByRole("button", {name: "Open report.md in Files"}));
+		await act(async () => {
+			await new Promise((resolve) => {
+				setTimeout(resolve, 0);
+			});
+		});
+
+		expect({
+			labels,
+			pane: screen.queryAllByText("files pane body").map((body) => body.tagName),
+		}).toStrictEqual({
+			labels: [
+				["Artifact 3", null],
+				["report.md", null],
+				["Artifact 1", null],
+			],
+			pane: ["P"],
 		});
 	});
 });

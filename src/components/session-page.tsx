@@ -143,6 +143,7 @@ import {countMessageRecords} from "../lib/message-count";
 import {getSubagentLifecycleKey, extractPendingSubagents, type ActiveSubagent} from "../lib/subagents";
 import {processTranscript} from "../lib/transcript";
 import {backgroundTasksFacts, extractBackgroundTasks} from "../lib/background-tasks";
+import {extractOutputFiles} from "../lib/session-outputs";
 import {createSessionCommands} from "../lib/session-commands";
 import {useIdlePrefetch} from "../hooks/use-idle-prefetch";
 import {getSessionPromptBehavior} from "./session-prompt-behavior";
@@ -361,6 +362,10 @@ function SessionView({
 		jumpTargetWindow,
 	});
 	const sessionArtifacts = useSessionArtifacts(sessionId);
+	const outputFiles = useMemo(
+		() => extractOutputFiles(transcript.records, sessionDirectory ?? null),
+		[transcript.records, sessionDirectory],
+	);
 	useRegisterArtifactsPane(sessionArtifacts);
 	useRegisterLinksPane({
 		sessionId,
@@ -821,6 +826,7 @@ function SessionView({
 							usage: composerChin.usage,
 							breakdown: contextBreakdown,
 							artifacts: sessionArtifacts,
+							outputFiles,
 							backgroundTasks,
 							pr: data.pr ?? null,
 							prStatus: data.prStatus ?? null,
