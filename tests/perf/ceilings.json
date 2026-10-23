@@ -47,17 +47,17 @@
 		"tolerance": 0
 	},
 	"bundle.home.gzip": {
-		"ceiling": 392398,
+		"ceiling": 396093,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Composer queue/steer parity since caa02127 (Enter steers and ⌘⏎ queues, the working placeholder, the Stop/Send cross-fade with its Queue for later tooltip, and upstream's QueuedMessageBar band in src/components/queued-message-bar.tsx replacing the queued chips) took home cold JS from 387479 gzip / 1185312 raw to 392398 gzip / 1199269 raw at the QueuedMessageBar commit. Ceilings set to the measurement; the 1% tolerance is unchanged.",
+		"reason": "Home cold JS drifted from 392398 gzip / 1199269 raw to 396093 gzip / 1211362 raw since the QueuedMessageBar ceiling, and the context refresh-reason enum (14 CLI refreshReason values on instructions and session_context attachments, ~230 bytes in the schemas chunk) tipped raw past the 1% band. Ceilings set to the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-10-22"
 	},
 	"bundle.home.raw": {
-		"ceiling": 1199269,
+		"ceiling": 1211362,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Composer queue/steer parity since caa02127 (Enter steers and ⌘⏎ queues, the working placeholder, the Stop/Send cross-fade with its Queue for later tooltip, and upstream's QueuedMessageBar band in src/components/queued-message-bar.tsx replacing the queued chips) took home cold JS from 387479 gzip / 1185312 raw to 392398 gzip / 1199269 raw at the QueuedMessageBar commit. Ceilings set to the measurement; the 1% tolerance is unchanged.",
+		"reason": "Home cold JS drifted from 392398 gzip / 1199269 raw to 396093 gzip / 1211362 raw since the QueuedMessageBar ceiling, and the context refresh-reason enum (14 CLI refreshReason values on instructions and session_context attachments, ~230 bytes in the schemas chunk) tipped raw past the 1% band. Ceilings set to the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-10-22"
 	},
 	"bundle.session.gzip": {

@@ -38,6 +38,7 @@ import type {
 	AskUserQuestionTimeoutSchema,
 	ClaudeSettingsSchema,
 	ContentBlockSchema,
+	ContextRefreshReasonSchema,
 	ContextUsageCategoryKindSchema,
 	ContextUsageOverLimitKindSchema,
 	GitBranchActionSchema,
@@ -606,6 +607,24 @@ const instructionsLoadReasonLabels = {
 	include: "Include",
 	compact: "Compact",
 } satisfies Record<NonNullable<HookEventOf<"InstructionsLoaded">["load_reason"]>, string>;
+
+/** Not consumed yet — `reason` on instructions / session_context attachments is only validated. */
+const contextRefreshReasonChoices = {
+	session_start: true,
+	compaction: true,
+	policy_refresh: true,
+	managed_folder_check: true,
+	directory_added: true,
+	settings_sync: true,
+	account_change: true,
+	hooks_invalidate: true,
+	policy_verdict: true,
+	project_reread: true,
+	memory_paused: true,
+	memory_resumed: true,
+	auto_memory_off: true,
+	auto_memory_back_on: true,
+} satisfies Record<z.infer<typeof ContextRefreshReasonSchema>, true>;
 
 const configChangeSourceLabels = {
 	user_settings: "User settings",
@@ -1466,6 +1485,7 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
 	"RenderedLineSchema.<assistant|user>.type": messageLineTypeLabels,
 	"RenderedLineSchema.<system>.subtype": systemSubtypeLabels,
 	"JsonlRecordSchema.<system>.compactMetadata.trigger": compactTriggerLabels,
+	"AttachmentPayloadSchema.<instructions>.reason": contextRefreshReasonChoices,
 	"JsonlRecordSchema.<attachment>.renderedRole": renderedRoleChoices,
 	"JsonlRecordSchema.<assistant>.thinkingDisplay": thinkingDisplayChoices,
 	"JsonlRecordSchema.<system>.contextUsage.over_limit.kind": contextUsageOverLimitKindChoices,

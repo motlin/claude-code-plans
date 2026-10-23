@@ -1542,6 +1542,26 @@ describe("JsonlRecordSchema observed 2026-09 transcript fields", () => {
 		expect(records.map((record) => JsonlRecordSchema.parse(record))).toStrictEqual(records);
 	});
 
+	it("parses a session_context refresh announcement carrying changed and reason", () => {
+		const record = attachmentRecord({
+			type: "session_context",
+			context: {userEmail: "The user's email is test@example.com."},
+			changed: true,
+			reason: "session_start",
+		});
+
+		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
+	});
+
+	it("rejects a context refresh reason outside the CLI's closed set", () => {
+		const records = [
+			attachmentRecord({type: "session_context", context: {}, changed: true, reason: "made_up_reason"}),
+			attachmentRecord({type: "instructions", files: [], changed: true, reason: "made_up_reason"}),
+		];
+
+		expect(records.map((record) => JsonlRecordSchema.safeParse(record).success)).toStrictEqual([false, false]);
+	});
+
 	it("parses a model attachment whose identity is unknown for an unrecognized --model", () => {
 		const record = {
 			...attachmentRecord({

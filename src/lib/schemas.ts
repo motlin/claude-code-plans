@@ -1293,6 +1293,27 @@ const HookPermissionDecisionAttachmentPayload = z
 	})
 	.strict();
 
+/**
+ * Why the CLI re-announced the instructions or session-context attachment
+ * (CLI 2.1.309 `refreshReason`); a closed set the CLI itself parses with an enum.
+ */
+export const ContextRefreshReasonSchema = z.enum([
+	"session_start",
+	"compaction",
+	"policy_refresh",
+	"managed_folder_check",
+	"directory_added",
+	"settings_sync",
+	"account_change",
+	"hooks_invalidate",
+	"policy_verdict",
+	"project_reread",
+	"memory_paused",
+	"memory_resumed",
+	"auto_memory_off",
+	"auto_memory_back_on",
+]);
+
 const InstructionsAttachmentPayload = z
 	.object({
 		type: z.literal("instructions"),
@@ -1308,7 +1329,7 @@ const InstructionsAttachmentPayload = z
 			)
 			.optional(),
 		changed: z.boolean().optional(),
-		reason: z.string().optional(),
+		reason: ContextRefreshReasonSchema.optional(),
 		removed: z.array(z.string()).optional(),
 	})
 	.strict();
@@ -1387,6 +1408,8 @@ const SessionContextAttachmentPayload = z
 	.object({
 		type: z.literal("session_context"),
 		context: z.object({userEmail: z.string().optional(), gitStatus: z.string().optional()}).strict().optional(),
+		changed: z.boolean().optional(),
+		reason: ContextRefreshReasonSchema.optional(),
 	})
 	.strict();
 
