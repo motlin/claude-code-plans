@@ -257,3 +257,124 @@ describe("Composer @ file mentions", () => {
 		});
 	});
 });
+
+function chips() {
+	return screen.queryAllByTestId("composer-mention-chip").map((chip) => ({
+		path: chip.dataset["path"],
+		directory: chip.dataset["directory"],
+		text: chip.textContent,
+		title: chip.lastElementChild?.getAttribute("title"),
+	}));
+}
+
+describe("Composer accepted @ mention chips", () => {
+	async function acceptIndex(textarea: HTMLTextAreaElement, value = "open @ind") {
+		responses.set(searchUrl("ind"), search("ind", ["src/lib/index.ts"]));
+		await type(textarea, value);
+		fireEvent.keyDown(textarea, {key: "Enter"});
+	}
+
+	it("paints an accepted file as an accent chip over the unchanged textarea text", async () => {
+		const {textarea} = setup();
+
+		await acceptIndex(textarea);
+
+		const chip = screen.getByTestId("composer-mention-chip");
+		const highlight = chip.firstElementChild;
+		const label = chip.lastElementChild;
+		expect({
+			value: textarea.value,
+			transparent: textarea.classList.contains("text-transparent"),
+			path: chip.dataset["path"],
+			directory: chip.dataset["directory"],
+			chipClass: chip.className,
+			text: chip.textContent,
+			childCount: chip.childElementCount,
+			highlight: {
+				tag: highlight?.tagName,
+				hidden: highlight?.getAttribute("aria-hidden"),
+				className: highlight?.className,
+			},
+			label: {title: label?.getAttribute("title"), className: label?.className},
+		}).toStrictEqual({
+			value: "open @src/lib/index.ts ",
+			transparent: true,
+			path: "src/lib/index.ts",
+			directory: undefined,
+			chipClass: "group/mention relative cursor-interactive pointer-events-auto text-upstream-accent",
+			text: "@src/lib/index.ts",
+			childCount: 2,
+			highlight: {
+				tag: "SPAN",
+				hidden: "true",
+				className:
+					"pointer-events-none absolute -inset-y-0.5 -left-0.5 -right-1 rounded-r5 [@media(hover:hover)]:group-hover/mention:bg-fill-ghost-hover",
+			},
+			label: {title: "src/lib/index.ts", className: "relative"},
+		});
+	});
+
+	it("titles a directory chip with its trailing slash", async () => {
+		responses.set(TOP_URL, listing([{relPath: "src", isDirectory: true}]));
+		const {textarea} = setup();
+
+		await type(textarea, "@");
+		fireEvent.keyDown(textarea, {key: "Enter"});
+
+		expect({value: textarea.value, chips: chips()}).toStrictEqual({
+			value: "@src ",
+			chips: [{path: "src", directory: "", text: "@src", title: "src/"}],
+		});
+	});
+
+	it("keeps one chip per accepted mention", async () => {
+		const {textarea} = setup();
+
+		await acceptIndex(textarea);
+		await acceptIndex(textarea, "open @src/lib/index.ts and @ind");
+
+		expect({value: textarea.value, chips: chips().map((chip) => chip.path)}).toStrictEqual({
+			value: "open @src/lib/index.ts and @src/lib/index.ts ",
+			chips: ["src/lib/index.ts", "src/lib/index.ts"],
+		});
+	});
+
+	it("drops a chip when its token is edited but keeps it when text follows it", async () => {
+		const {textarea} = setup();
+
+		await acceptIndex(textarea);
+		await type(textarea, "open @src/lib/index.ts x");
+		const afterTyping = chips().map((chip) => chip.path);
+		await type(textarea, "open @src/lib/inde.ts x");
+
+		expect({afterTyping, afterEditInside: chips()}).toStrictEqual({
+			afterTyping: ["src/lib/index.ts"],
+			afterEditInside: [],
+		});
+	});
+
+	it("clears every chip on send", async () => {
+		const {textarea, onSend} = setup();
+
+		await acceptIndex(textarea);
+		fireEvent.keyDown(textarea, {key: "Enter"});
+
+		expect({sent: onSend.mock.calls.map(([prompt]) => prompt), chips: chips()}).toStrictEqual({
+			sent: ["open @src/lib/index.ts"],
+			chips: [],
+		});
+	});
+
+	it("does not restore chips when the composer remounts with the saved draft", async () => {
+		const {textarea} = setup();
+		await acceptIndex(textarea);
+		cleanup();
+
+		const remounted = setup();
+
+		expect({value: remounted.textarea.value, chips: chips()}).toStrictEqual({
+			value: "open @src/lib/index.ts ",
+			chips: [],
+		});
+	});
+});

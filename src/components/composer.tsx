@@ -35,6 +35,7 @@ import {
 import {takeQueuedDiffComments, useDiffComments} from "../lib/diff-comments";
 import type {SessionFilesEntry} from "../lib/api/session-files";
 import {fileMentionTrigger, insertFileMention} from "../lib/file-mentions";
+import {type AcceptedMention, remapMentions} from "../lib/composer-mentions";
 import type {LaunchOptions} from "../lib/launch-options";
 import {filterSlashCommands, type SlashCommand, skillChipArgumentHint, slashTrigger} from "../lib/slash-commands";
 import {type ChinLaunchControls, ComposerAddMenu, ComposerChin} from "./composer-chin";
@@ -60,6 +61,7 @@ import {useCoarsePointer} from "../lib/use-phone-sheet";
 import {type SplitItem, SplitDropdownButton} from "./ui/split-dropdown-button";
 import {ComposerDropScrim, useFileDropTarget} from "./composer-drop-scrim";
 import {ComposerSkillChip} from "./composer-skill-chip";
+import {paintMentions} from "./composer-mention-chip";
 
 type ComposerVariant = "session" | "home";
 
@@ -424,6 +426,7 @@ const SendSlot = memo(function SendSlot({
 
 const NO_COMMANDS: readonly SlashCommand[] = [];
 const NO_HISTORY: readonly string[] = [];
+const NO_MENTIONS: readonly AcceptedMention[] = [];
 const NO_LAUNCH_OPTIONS: LaunchOptions = {};
 
 /**
@@ -574,7 +577,17 @@ export function Composer({
 	const [chipSelection, setChipSelection] = useState(false);
 	const chipSelected = chip !== null && chipSelection;
 	const argumentHint = chip === null ? null : skillChipArgumentHint(chip, prompt);
-	const rest = chip === null ? "" : prompt.slice(chip.name.length + 1);
+	// Accepted @ mentions, in memory only and tied to the exact prompt they were tracked against:
+	// any other prompt change (history, prefill, send, remount) drops them, as upstream's reload does.
+	const [mentionState, setMentionState] = useState<{
+		draftKey: string;
+		text: string;
+		mentions: readonly AcceptedMention[];
+	} | null>(null);
+	const mentions =
+		mentionState?.draftKey === draftKey && mentionState.text === prompt ? mentionState.mentions : NO_MENTIONS;
+	const painted = chip !== null || mentions.length > 0;
+	const rest = prompt.slice(chipLength);
 	// The hint sits after the chip line's trailing whitespace, before any blank line below it.
 	const restLine = rest.split("\n", 1)[0] ?? "";
 	const paintedOverlayRef = useRef<HTMLDivElement>(null);
@@ -604,6 +617,20 @@ export function Composer({
 	function acceptFileMention(entry: SessionFilesEntry) {
 		if (mention === null) return;
 		const next = insertFileMention(prompt, mention, caret, entry.relPath);
+		setMentionState({
+			draftKey,
+			text: next.text,
+			mentions: [
+				...remapMentions(prompt, next.text, mentions),
+				// The token runs up to the trailing space.
+				{
+					start: mention.start,
+					end: next.caret - 1,
+					relPath: entry.relPath,
+					isDirectory: entry.isDirectory,
+				},
+			],
+		});
 		pendingCaretRef.current = next.caret;
 		setCaret(next.caret);
 		setPrompt(next.text);
@@ -973,29 +1000,33 @@ export function Composer({
 							onAccept={acceptFileMention}
 						/>
 					)}
-					{chip !== null && (
+					{painted && (
 						<div ref={paintedOverlayRef} aria-hidden="true" className={PAINTED_OVERLAY_CLASS}>
-							<ComposerSkillChip
-								name={chip.name}
-								description={slashCommands.find((command) => command.name === chip.name)?.description}
-								selected={chipSelected}
-								onPress={(e) => {
-									// Upstream's atom can't hold the caret, so a press on the chip lands it after the chip.
-									e.preventDefault();
-									const textarea = textareaRef.current;
-									if (textarea === null) return;
-									textarea.focus();
-									textarea.setSelectionRange(chipLength, chipLength);
-								}}
-							/>
+							{chip !== null && (
+								<ComposerSkillChip
+									name={chip.name}
+									description={
+										slashCommands.find((command) => command.name === chip.name)?.description
+									}
+									selected={chipSelected}
+									onPress={(e) => {
+										// Upstream's atom can't hold the caret, so a press on the chip lands it after the chip.
+										e.preventDefault();
+										const textarea = textareaRef.current;
+										if (textarea === null) return;
+										textarea.focus();
+										textarea.setSelectionRange(chipLength, chipLength);
+									}}
+								/>
+							)}
 							{argumentHint === null ? (
 								<span data-skill-chip-rest="" className="text-primary">
-									{rest}
+									{paintMentions(rest, chipLength, mentions)}
 								</span>
 							) : (
 								<>
 									<span data-skill-chip-rest="" className="text-primary">
-										{restLine}
+										{paintMentions(restLine, chipLength, mentions)}
 									</span>
 									<span
 										data-testid="slash-argument-hint"
@@ -1005,7 +1036,7 @@ export function Composer({
 									>
 										{argumentHint}
 									</span>
-									{rest.slice(restLine.length)}
+									{paintMentions(rest.slice(restLine.length), chipLength + restLine.length, mentions)}
 								</>
 							)}
 						</div>
@@ -1044,6 +1075,13 @@ export function Composer({
 							}
 							setCaret(nextCaret);
 							setChipSelection(false);
+							if (mentions.length > 0) {
+								setMentionState({
+									draftKey,
+									text: next,
+									mentions: remapMentions(prompt, next, mentions),
+								});
+							}
 							setPrompt(next);
 						}}
 						onSelect={(e) => {
@@ -1076,7 +1114,7 @@ export function Composer({
 						disabled={isStreaming || disabled}
 						rows={1}
 						enterKeyHint="enter"
-						className={`${EDITOR_CLASS} ${chip === null ? "text-primary" : "text-transparent caret-primary"}`}
+						className={`${EDITOR_CLASS} ${painted ? "text-transparent caret-primary" : "text-primary"}`}
 						style={{minHeight: "28px", maxHeight: "min(24rem, 40svh)"}}
 					/>
 					{/* Upstream `Wn`: always mounted so the live region exists before the hint fills it. */}
