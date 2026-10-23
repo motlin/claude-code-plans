@@ -2,7 +2,7 @@
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {createMemoryHistory, createRootRoute, createRouter, RouterProvider} from "@tanstack/react-router";
-import {cleanup, render, screen} from "@testing-library/react";
+import {cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {CustomizeListRowsSkeleton, CustomizePanelSkeleton} from "../src/components/customize/customize-panel-skeleton";
 import {SkillsSection} from "../src/components/customize/section-views";
@@ -172,6 +172,31 @@ describe("Customize panel skeleton", () => {
 			status: '<span role="status" class="sr-only">Loading</span>',
 			rows: EXPECTED_ROWS,
 			loadingText: null,
+		});
+	});
+
+	it("keeps the previous panel dimmed instead of flashing the skeleton while switching to an unloaded section", async () => {
+		renderWithProviders(() => <SettingsDialog />, "/#settings/general");
+
+		const dialog = await screen.findByRole("dialog", {name: "Settings"});
+		const generalSection = dialog.querySelector("section[data-settings-section-titled]");
+		fireEvent.click(screen.getByRole("button", {name: "Skills"}));
+		await waitFor(() => {
+			expect(screen.getByRole("button", {name: "Skills"}).getAttribute("aria-current")).toBe("page");
+		});
+
+		const scroll = generalSection?.closest<HTMLElement>(".overflow-y-auto");
+		expect({
+			stillShown: generalSection?.isConnected,
+			busy: scroll?.getAttribute("aria-busy"),
+			className: scroll?.className,
+			skeleton: dialog.querySelector('[data-testid="settings-content-skeleton"]'),
+		}).toStrictEqual({
+			stillShown: true,
+			busy: "true",
+			className:
+				"flex-1 space-y-6 overflow-y-auto px-6 pt-2 pb-4 [scrollbar-gutter:stable] opacity-60 transition-opacity",
+			skeleton: null,
 		});
 	});
 });

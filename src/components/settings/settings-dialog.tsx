@@ -6,6 +6,7 @@ import {
 	Suspense,
 	use,
 	useCallback,
+	useDeferredValue,
 	useEffect,
 	useId,
 	useRef,
@@ -243,7 +244,19 @@ export function SettingsDialog() {
 	}, []);
 
 	const tab = current?.tab ?? "general";
-	const Panel = TAB_PANELS[tab];
+
+	// Upstream's warm switch: the nav moves at once, but the panel renders from a deferred hash, so a section
+	// that suspends keeps the previous panel on screen (dimmed below) under the stable Suspense boundary. A
+	// deferred hash that doesn't open the dialog falls back to the live one, so a cold open shows the skeleton.
+	const deferredHash = useDeferredValue(hash);
+	const deferredCurrent = parseSettingsHash(deferredHash);
+	const deferredCustomize = deferredCurrent === null ? parseCustomizeHash(deferredHash) : null;
+	const deferredOpen = deferredCurrent !== null || deferredCustomize !== null;
+	const shownCurrent = deferredOpen ? deferredCurrent : current;
+	const shownCustomize = deferredOpen ? deferredCustomize : customize;
+	const shownTab = shownCurrent?.tab ?? "general";
+	const switching = deferredOpen && deferredHash !== hash;
+	const Panel = TAB_PANELS[shownTab];
 
 	// A `#settings/<tab>/<row>` deep link flashes that row, then collapses to `#settings/<tab>`.
 	const [flash, setFlash] = useState<SettingsFlash | null>(null);
@@ -283,18 +296,27 @@ export function SettingsDialog() {
 		</Dialog.Close>
 	);
 
-	const content =
-		customize === null ? (
-			<SettingsTabContext.Provider value={tab}>
-				<SettingsFlashContext.Provider value={flash}>
-					<Panel />
-				</SettingsFlashContext.Provider>
-			</SettingsTabContext.Provider>
-		) : (
-			<Suspense fallback={<CustomizePanelSkeleton title={customizeSectionLabels[customize.section]} />}>
-				<CustomizeDialogPanel location={customize} onNavigate={navigateHash} />
-			</Suspense>
-		);
+	const content = (
+		<Suspense
+			fallback={
+				shownCustomize === null ? null : (
+					<CustomizePanelSkeleton title={customizeSectionLabels[shownCustomize.section]} />
+				)
+			}
+		>
+			{shownCustomize === null ? (
+				<SettingsTabContext.Provider value={shownTab}>
+					<SettingsFlashContext.Provider value={flash}>
+						<Panel />
+					</SettingsFlashContext.Provider>
+				</SettingsTabContext.Provider>
+			) : (
+				<CustomizeDialogPanel location={shownCustomize} onNavigate={navigateHash} />
+			)}
+		</Suspense>
+	);
+	// Upstream dims the old panel's scroll container while the next one is pending.
+	const pendingClass = switching ? " opacity-60 transition-opacity" : "";
 
 	return (
 		<Dialog.Root
@@ -326,7 +348,12 @@ export function SettingsDialog() {
 									<SettingsSearch onSelect={selectTab} />
 								</div>
 								<PhoneTabStrip isSelected={isSelected} onSelect={selectItem} />
-								<div className="min-w-0 space-y-6 pt-2">{content}</div>
+								<div
+									aria-busy={switching || undefined}
+									className={`min-w-0 space-y-6 pt-2${pendingClass}`}
+								>
+									{content}
+								</div>
 							</div>
 						) : (
 							<>
@@ -396,7 +423,10 @@ export function SettingsDialog() {
 										<div className="flex min-w-0 flex-1 items-center" />
 										{closeButton}
 									</div>
-									<div className="flex-1 space-y-6 overflow-y-auto px-6 pt-2 pb-4 [scrollbar-gutter:stable]">
+									<div
+										aria-busy={switching || undefined}
+										className={`flex-1 space-y-6 overflow-y-auto px-6 pt-2 pb-4 [scrollbar-gutter:stable]${pendingClass}`}
+									>
 										{/* Upstream's scroll-top fade; mb-0! cancels space-y so it adds no height. */}
 										<div
 											aria-hidden="true"
