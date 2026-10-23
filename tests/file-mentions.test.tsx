@@ -185,6 +185,53 @@ describe("Composer @ file mentions", () => {
 		}).toStrictEqual({count: 15, first: ["file-0.ts", "src/lib"]});
 	});
 
+	it("uses upstream's default-density popup and row metrics", async () => {
+		responses.set(searchUrl("ind"), search("ind", ["src/index.ts", "src/lib/index.ts"]));
+		const {textarea} = setup();
+
+		await type(textarea, "open @ind");
+
+		const popup = screen.getByRole("listbox", {name: "Mention suggestions"}).className.split(" ");
+		const popupWants = ["rounded-r7", "max-h-[min(24rem,calc(100svh-2rem))]", "p-1"];
+		const popupBans = ["rounded-card", "max-h-96"];
+		const rowWants = [
+			"h-6",
+			"gap-1.5",
+			"rounded-r5",
+			"px-2",
+			"py-[2.5px]",
+			"text-[13px]/[19px]",
+			"cursor-pointer",
+			"text-left",
+		];
+		const rowBans = ["px-2.5", "py-1.5", "cursor-default"];
+		expect({
+			popup: {
+				has: popupWants.filter((c) => popup.includes(c)),
+				banned: popupBans.filter((c) => popup.includes(c)),
+			},
+			rows: screen.getAllByRole("option").map((row) => {
+				const classes = row.className.split(" ");
+				return {
+					tag: row.tagName,
+					type: row.getAttribute("type"),
+					index: row.dataset["optionIndex"],
+					has: rowWants.filter((c) => classes.includes(c)),
+					banned: rowBans.filter((c) => classes.includes(c)),
+				};
+			}),
+		}).toStrictEqual({
+			popup: {has: popupWants, banned: []},
+			rows: [0, 1].map((index) => ({
+				tag: "BUTTON",
+				type: "button",
+				index: String(index),
+				has: rowWants,
+				banned: [],
+			})),
+		});
+	});
+
 	it("accepts the highlighted row with Enter, inserting @<path> without sending", async () => {
 		responses.set(searchUrl("ind"), search("ind", ["src/index.ts", "src/lib/index.ts"]));
 		const {textarea, onSend} = setup();
