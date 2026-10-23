@@ -2,7 +2,7 @@ import {useEffect, useState} from "react";
 
 import {apiFetch} from "../lib/api/client";
 import {fileMentionsUrl, type SessionFilesEntry, SessionFilesResponseSchema} from "../lib/api/session-files";
-import {FILE_MENTION_CAP, FILE_MENTION_DEBOUNCE_MS} from "../lib/file-mentions";
+import {FILE_MENTION_CAP, FILE_MENTION_DEBOUNCE_MS, HIDDEN_MENTION_NAMES} from "../lib/file-mentions";
 
 export interface FileMentionSuggestions {
 	/** The mention query these entries answer. */
@@ -12,7 +12,8 @@ export interface FileMentionSuggestions {
 
 /**
  * Debounced "@" suggestions for the session's working directory: the
- * top-level listing for an empty query, else a fuzzy search, capped at 15.
+ * top-level listing for an empty query, else a fuzzy search, minus VCS/OS
+ * junk entries, capped at 15.
  * The last answered query stays visible while the next one is in flight.
  */
 export function useFileMentionSuggestions(
@@ -35,7 +36,12 @@ export function useFileMentionSuggestions(
 							: response.kind === "search"
 								? response.results
 								: [];
-					setSuggestions({query, entries: entries.slice(0, FILE_MENTION_CAP)});
+					setSuggestions({
+						query,
+						entries: entries
+							.filter((entry) => !HIDDEN_MENTION_NAMES.has(entry.name))
+							.slice(0, FILE_MENTION_CAP),
+					});
 				},
 				() => {
 					if (!controller.signal.aborted) setSuggestions({query, entries: []});

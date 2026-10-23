@@ -171,6 +171,35 @@ describe("Composer @ file mentions", () => {
 		});
 	});
 
+	it("hides VCS and OS junk entries such as .git and .DS_Store", async () => {
+		responses.set(
+			TOP_URL,
+			listing([
+				{relPath: ".git", isDirectory: true, ignored: true},
+				{relPath: ".DS_Store", isDirectory: false, ignored: true},
+				{relPath: "src", isDirectory: true},
+			]),
+		);
+		const {textarea} = setup();
+
+		await type(textarea, "@");
+
+		expect(rows()).toStrictEqual([{text: "src", selected: true, muted: false}]);
+	});
+
+	it("drops junk search results before the 15-row cap", async () => {
+		const junk = [".svn", ".hg", "CVS", "__MACOSX", "Thumbs.db", "desktop.ini", "a/.git"];
+		const paths = Array.from({length: 15}, (_, i) => `src/file-${i}.ts`);
+		responses.set(searchUrl("f"), search("f", [...junk, ...paths]));
+		const {textarea} = setup();
+
+		await type(textarea, "@f");
+
+		expect(screen.getAllByRole("option").map((row) => row.querySelector("bdi")?.textContent)).toStrictEqual(
+			paths.map((path) => path.slice("src/".length)),
+		);
+	});
+
 	it("renders the label and dirname caption in bdi-wrapped spans like upstream", async () => {
 		responses.set(searchUrl("a"), search("a", ["src/lib/a.ts", "a.md"]));
 		const {textarea} = setup();

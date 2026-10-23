@@ -3,6 +3,18 @@
 export const FILE_MENTION_CAP = 15;
 export const FILE_MENTION_DEBOUNCE_MS = 150;
 
+/** VCS and OS junk basenames upstream drops from mention suggestions. */
+export const HIDDEN_MENTION_NAMES: ReadonlySet<string> = new Set([
+	".git",
+	".svn",
+	".hg",
+	"CVS",
+	".DS_Store",
+	"__MACOSX",
+	"Thumbs.db",
+	"desktop.ini",
+]);
+
 export interface FileMentionTrigger {
 	/** Index of the `@`. */
 	start: number;
