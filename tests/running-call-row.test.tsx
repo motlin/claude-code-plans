@@ -61,7 +61,7 @@ function renderRecords(records: unknown[]): HTMLElement {
 }
 
 describe("an in-flight call's row", () => {
-	it("leads with upstream's 20px running spinner and follows the label with the live elapsed time", () => {
+	it("leads with upstream's activity WorkingMark and follows the label with the live elapsed time", () => {
 		const records = [
 			{type: "user", uuid: "user-1", message: {role: "user", content: "Check the login"}},
 			{
@@ -89,15 +89,41 @@ describe("an in-flight call's row", () => {
 
 		expect({
 			rows: rows.length,
-			spinner: row?.querySelector("[data-running-spinner]")?.getAttribute("class"),
+			spinner: row?.querySelector(".running-spinner") ?? null,
+			mark: row?.querySelector('[data-cds="WorkingMark"]')?.getAttribute("data-activity"),
+			markClass: row?.querySelector('[data-cds="WorkingMark"]')?.getAttribute("class"),
 			elapsed: /^\d+s$/.test(row?.querySelector("[data-running-elapsed]")?.textContent ?? ""),
 			chevron: row?.querySelector("svg[width='12']") !== null,
 		}).toStrictEqual({
 			rows: 1,
-			spinner: "running-spinner me-1.5 inline-flex size-5 shrink-0",
+			spinner: null,
+			mark: "code",
+			markClass: "relative block shrink-0 select-none me-1.5",
 			elapsed: true,
 			chevron: true,
 		});
+	});
+
+	it("plays the read sprite for an in-flight Read row", () => {
+		const container = renderRecords([
+			{type: "user", uuid: "user-1", message: {role: "user", content: "Look at the app"}},
+			{
+				type: "assistant",
+				uuid: "assistant-1",
+				timestamp: new Date(Date.now() - 5000).toISOString(),
+				message: {
+					role: "assistant",
+					content: [
+						{type: "tool_use", id: "toolu_read", name: "Read", input: {file_path: "/repo/src/app.ts"}},
+					],
+				},
+			},
+		]);
+		expect(
+			[...container.querySelectorAll('[data-cds="WorkingMark"]')].map((mark) =>
+				mark.getAttribute("data-activity"),
+			),
+		).toStrictEqual(["read"]);
 	});
 
 	it("shows the row's elapsed time only from 2s, as upstream does", () => {

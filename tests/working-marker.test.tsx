@@ -461,7 +461,7 @@ describe("WorkingMarker", () => {
 			turnWorking: line?.getAttribute("data-turn-working"),
 			className: line?.className,
 			turnStatus: container.querySelector('[data-cds="TurnStatus"]'),
-			spark: container.querySelector('[data-cds="Spark"]'),
+			mark: container.querySelector('[data-cds="WorkingMark"]'),
 			oldAnnouncer: container.querySelector('[data-testid="response-status-announcer"]'),
 		}).toStrictEqual({
 			status: "",
@@ -469,7 +469,7 @@ describe("WorkingMarker", () => {
 			turnWorking: "false",
 			className: "flex min-h-6 flex-col",
 			turnStatus: null,
-			spark: null,
+			mark: null,
 			oldAnnouncer: null,
 		});
 	});
@@ -498,7 +498,8 @@ describe("WorkingMarker", () => {
 			rowClass: status?.firstElementChild?.className,
 			markClass: mark?.className,
 			markHidden: mark?.getAttribute("aria-hidden"),
-			animated: mark?.querySelector('[data-cds="Spark"]')?.getAttribute("data-animated"),
+			animated: mark?.querySelector('[data-cds="WorkingMark"]')?.getAttribute("data-animated"),
+			activity: mark?.querySelector('[data-cds="WorkingMark"]')?.getAttribute("data-activity"),
 			visible: visibleLineText(container),
 			stat: [...(status?.querySelectorAll(".tabular-nums") ?? [])].map((el) => [el.className, el.textContent]),
 			busy: status?.querySelector(".sr-only")?.textContent,
@@ -513,6 +514,7 @@ describe("WorkingMarker", () => {
 			markClass: "relative me-[6px] flex h-[1lh] w-[20px] shrink-0 items-center justify-center",
 			markHidden: "true",
 			animated: "true",
+			activity: "default",
 			visible: "7s",
 			stat: [["inline-flex h-[1lh] shrink-0 items-center text-ink-muted tabular-nums", "7s"]],
 			busy: "running",
@@ -575,7 +577,7 @@ describe("WorkingMarker", () => {
 		expect({
 			text: visibleLineText(container),
 			announcer: getByRole("status").textContent,
-			animated: container.querySelector('[data-cds="Spark"]')?.getAttribute("data-animated"),
+			animated: container.querySelector('[data-cds="WorkingMark"]')?.getAttribute("data-animated"),
 			shimmer: shimmer?.firstChild?.textContent,
 			morph: shimmer?.parentElement?.className,
 		}).toStrictEqual({
@@ -598,17 +600,20 @@ describe("WorkingMarker", () => {
 		expect({
 			text: visibleLineText(container),
 			stats: [...(status?.querySelectorAll(".tabular-nums") ?? [])].map((el) => el.textContent),
-		}).toStrictEqual({text: "9s·Thinking", stats: ["9s", "·", "Thinking"]});
+			activity: container.querySelector('[data-cds="WorkingMark"]')?.getAttribute("data-activity"),
+		}).toStrictEqual({text: "9s·Thinking", stats: ["9s", "·", "Thinking"], activity: "think"});
 	});
 
-	it("disables the spark animation under reduced motion", () => {
+	it("holds the working mark still under reduced motion", () => {
 		stubReducedMotion(true);
 		const {container} = render(
 			<WorkingMarker
 				state={{status: "working", label: "Working…", thinking: false, turnStartedAt: at(0), elapsedSeconds: 1}}
 			/>,
 		);
-		expect(container.querySelector('[data-cds="Spark"]')?.getAttribute("data-animated")).toStrictEqual("false");
+		expect(container.querySelector('[data-cds="WorkingMark"]')?.getAttribute("data-animated")).toStrictEqual(
+			"false",
+		);
 	});
 });
 
@@ -685,14 +690,14 @@ describe("useWorkingMarkerState", () => {
 		]).toStrictEqual(["3s", "3s", "", "", "", "3s", ""]);
 	});
 
-	it("shows no spark while an inline card holds the mark for a waiting prompt, as upstream does", () => {
+	it("shows no mark while an inline card holds the mark for a waiting prompt, as upstream does", () => {
 		stubReducedMotion(false);
 		const {container, getByRole} = render(<WorkingMarker state={{status: "waiting"}} waitingOnUser={false} />);
 		expect({
 			text: getByRole("status").textContent,
 			turnStatus: container.querySelector('[data-cds="TurnStatus"]'),
-			spark: container.querySelector('[data-cds="Spark"]'),
-		}).toStrictEqual({text: "", turnStatus: null, spark: null});
+			mark: container.querySelector('[data-cds="WorkingMark"]'),
+		}).toStrictEqual({text: "", turnStatus: null, mark: null});
 	});
 
 	it("shows a blocked Needs your input status when no card holds the mark, as upstream does", () => {
@@ -708,7 +713,7 @@ describe("useWorkingMarkerState", () => {
 			lineClass: line?.className,
 			state: row?.getAttribute("data-state"),
 			title: row?.getAttribute("title"),
-			spark: row?.querySelector('[data-cds="Spark"]')?.getAttribute("data-animated"),
+			mark: row?.querySelector('[data-cds="WorkingMark"]')?.getAttribute("data-activity"),
 			badgeClass: badge?.className,
 			badgeHtml: badge?.innerHTML,
 			visible: visibleLineText(container),
@@ -719,7 +724,7 @@ describe("useWorkingMarkerState", () => {
 			lineClass: "flex min-h-6 flex-col",
 			state: "blocked",
 			title: "Needs your input",
-			spark: "false",
+			mark: "blocked",
 			badgeClass:
 				"inline-flex h-5 min-w-0 max-w-full items-center gap-1 whitespace-nowrap rounded-full px-2 align-middle font-sans text-caption font-medium bg-[var(--warning-tint)] text-upstream-warning",
 			badgeHtml:

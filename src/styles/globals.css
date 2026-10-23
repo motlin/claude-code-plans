@@ -1111,11 +1111,17 @@
 	animation: band-exit 120ms cubic-bezier(0.165, 0.84, 0.44, 1) forwards;
 }
 
-/* Upstream claude.ai/code working marker: the spark turns while the session works,
-   stopping included. The component also drops data-animated under reduced motion. */
-@media (prefers-reduced-motion: no-preference) {
-	.spark[data-animated="true"] {
-		animation: spark-turn 2.4s linear infinite;
+/* Upstream claude.ai/code's WorkingMark: the component steps its sprite strip from frame 0
+   up to --working-mark-end; reduced motion holds frame 0. */
+@keyframes working-mark-strip {
+	to {
+		transform: translateY(var(--working-mark-end));
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	[data-working-mark-strip] {
+		animation: none !important;
 	}
 }
 
@@ -1220,12 +1226,6 @@
 	}
 	70% {
 		translate: 0 2px;
-	}
-}
-
-@keyframes spark-turn {
-	to {
-		rotate: 360deg;
 	}
 }
 

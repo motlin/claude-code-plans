@@ -6,12 +6,11 @@ const SPARK_POINTS = Array.from({length: SPARK_RAYS * 2}, (_, i) => {
 	return `${(50 + radius * Math.cos(angle)).toFixed(2)},${(50 + radius * Math.sin(angle)).toFixed(2)}`;
 }).join(" ");
 
-/** Upstream claude.ai/code's Claude spark; `animated` sets `data-animated` for the thinking spin. */
-export function Spark({size = 22, animated}: Readonly<{size?: number; animated?: boolean}>) {
+/** Upstream claude.ai/code's Claude spark. */
+export function Spark({size = 22}: Readonly<{size?: number}>) {
 	return (
 		<svg
 			data-cds="Spark"
-			{...(animated === undefined ? {} : {"data-animated": String(animated)})}
 			viewBox="0 0 100 100"
 			width={size}
 			height={size}

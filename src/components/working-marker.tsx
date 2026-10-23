@@ -8,7 +8,8 @@ import {
 } from "../lib/working-marker";
 import {RunningTasksControl} from "./running-tasks-control";
 import {ShimmerText} from "./shimmer-text";
-import {Spark} from "./spark";
+import {workingLineActivity} from "../lib/working-mark-activity";
+import {WorkingMark} from "./working-mark";
 
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 
@@ -40,7 +41,7 @@ const NEEDS_INPUT_LABEL = "Needs your input";
 const WARNING_BADGE_CLASS =
 	"inline-flex h-5 min-w-0 max-w-full items-center gap-1 whitespace-nowrap rounded-full px-2 align-middle font-sans text-caption font-medium bg-[var(--warning-tint)] text-upstream-warning";
 
-function BlockedStatus() {
+function BlockedStatus({reduceMotion}: Readonly<{reduceMotion: boolean}>) {
 	return (
 		<div
 			data-cds="TurnStatus"
@@ -54,7 +55,7 @@ function BlockedStatus() {
 					aria-hidden
 					className="relative me-[6px] flex h-[1lh] w-[20px] shrink-0 items-center justify-center"
 				>
-					<Spark size={20} animated={false} />
+					<WorkingMark activity="blocked" animated={!reduceMotion} />
 				</span>
 				<span className="inline-flex h-[1lh] min-w-0 items-center">
 					<span data-cds="Badge" className={WARNING_BADGE_CLASS}>
@@ -104,7 +105,7 @@ export function WorkingMarker({
 				{...(quiet && turnWorking ? {"data-quiet": "true", "aria-hidden": true} : {})}
 				className={`${quiet && turnWorking ? "invisible " : ""}flex min-h-6 flex-col`}
 			>
-				{waitingOnUser && <BlockedStatus />}
+				{waitingOnUser && <BlockedStatus reduceMotion={reduceMotion} />}
 				{busy && (
 					<div data-cds="TurnStatus" data-state="busy" className="group/status flex w-full min-w-0 flex-col">
 						<div className="flex min-w-0 items-center gap-1.5 px-1 py-0.5 text-body">
@@ -113,7 +114,10 @@ export function WorkingMarker({
 								aria-hidden
 								className="relative me-[6px] flex h-[1lh] w-[20px] shrink-0 items-center justify-center"
 							>
-								<Spark size={20} animated={!reduceMotion} />
+								<WorkingMark
+									activity={workingLineActivity(state.status === "working" && state.thinking)}
+									animated={!reduceMotion}
+								/>
 							</span>
 							<span className="inline-flex min-w-0 items-center text-secondary">
 								{label !== "" && (

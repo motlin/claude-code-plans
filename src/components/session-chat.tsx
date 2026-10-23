@@ -97,6 +97,8 @@ import {
 import {ApiRequestDisclosure} from "./api-request-disclosure";
 import {jumpToMessage, TRANSCRIPT_JUMP_REQUEST_EVENT} from "../lib/jump-to-message";
 import {asRecord, isKeyOf} from "../lib/narrow";
+import {toolMarkActivity} from "../lib/working-mark-activity";
+import {WorkingMark} from "./working-mark";
 
 function getSourceSessionId(line: SessionLine, fallbackSessionId: string): string {
 	return "sessionId" in line && line.sessionId !== undefined ? line.sessionId : fallbackSessionId;
@@ -4809,7 +4811,7 @@ function ToolCallRow({
 	// What allowed or blocked the call is a diagnostic upstream never shows, so only Verbose names it.
 	const permissionLabel = verbose && call.permission !== undefined ? permissionDecisionLabel(call.permission) : null;
 
-	// Upstream leads a standalone in-flight row with its running spinner and follows the label with the elapsed time.
+	// Upstream leads a standalone in-flight row with its activity WorkingMark and follows the label with the elapsed time.
 	const runningRow = pending && isTurnStatus;
 	const liveOutput =
 		backgroundTasks !== null && call.name === "Bash" && backgroundTasks.running.has(call.id)
@@ -4841,13 +4843,7 @@ function ToolCallRow({
 	const joinedLabel = nested && label !== "" && displayParam !== "";
 	const rowLabel = (
 		<>
-			{runningRow && (
-				<span
-					aria-hidden="true"
-					data-running-spinner=""
-					className="running-spinner me-1.5 inline-flex size-5 shrink-0"
-				/>
-			)}
+			{runningRow && <WorkingMark activity={toolMarkActivity(call.name, call.input)} className="me-1.5" />}
 			{joinedLabel ? (
 				// Upstream's grouped row: label and parameter in one <bdi>, joined by a plain space.
 				<bdi className="truncate min-w-0 text-body">
