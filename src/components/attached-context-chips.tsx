@@ -1,4 +1,4 @@
-import {lazy, type MouseEvent, type ReactNode, Suspense, useRef, useState} from "react";
+import {type KeyboardEvent, lazy, type MouseEvent, type ReactNode, Suspense, useRef, useState} from "react";
 import {
 	FileText,
 	Image as ImageIcon,
@@ -86,6 +86,19 @@ function removeHandler(remove: () => void) {
 		handOffFocus(event.currentTarget.closest("li"));
 		remove();
 	};
+}
+
+/**
+ * Upstream's `Fi`: Delete or Backspace on a focused CardLink removes its tile,
+ * handing focus off first; modifiers, key repeat and IME composition don't.
+ */
+function removeOnDeleteKey(event: KeyboardEvent<HTMLElement>, remove: () => void): void {
+	if (event.key !== "Delete" && event.key !== "Backspace") return;
+	if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
+	if (event.repeat || event.nativeEvent.isComposing) return;
+	event.preventDefault();
+	handOffFocus(event.currentTarget.closest("li"));
+	remove();
 }
 
 function removeChip(sessionId: string, chip: ContextChip): void {
@@ -236,6 +249,10 @@ function ImageChip({
 							event.preventDefault();
 							onOpen(chip, imgRef.current);
 						}
+
+						removeOnDeleteKey(event, () => {
+							removeChip(sessionId, chip);
+						});
 					}}
 					className="outline-none after:pointer-events-none after:absolute after:inset-0 after:rounded-card-xs after:content-[''] cursor-zoom-in"
 				>
@@ -297,6 +314,10 @@ function FileChip({
 							event.preventDefault();
 							onOpen(chip, event.currentTarget);
 						}
+
+						removeOnDeleteKey(event, () => {
+							removeChip(sessionId, chip);
+						});
 					}}
 					className="outline-none after:absolute after:inset-0 after:rounded-card-xs after:content-[''] cursor-pointer"
 				>
@@ -346,7 +367,15 @@ function textPreviewOf(chip: ContextChip): TextPreview | null {
 }
 
 /** A pill's opener: upstream's CardLink, a focusable button with the default cursor. */
-function PillLink({onOpen, children}: {onOpen: (link: HTMLElement) => void; children: ReactNode}) {
+function PillLink({
+	onOpen,
+	onRemove,
+	children,
+}: {
+	onOpen: (link: HTMLElement) => void;
+	onRemove: () => void;
+	children: ReactNode;
+}) {
 	return (
 		<span
 			data-cds="CardLink"
@@ -361,6 +390,7 @@ function PillLink({onOpen, children}: {onOpen: (link: HTMLElement) => void; chil
 					event.preventDefault();
 					onOpen(event.currentTarget);
 				}
+				removeOnDeleteKey(event, onRemove);
 			}}
 			className="flex min-w-0 items-center gap-1 rounded-r5 outline-none focus-visible:shadow-focus"
 		>
@@ -463,6 +493,9 @@ export function AttachedContextChips({
 									<PillLink
 										onOpen={(opener) => {
 											openTextPreview(chip, opener);
+										}}
+										onRemove={() => {
+											removeChip(sessionId, chip);
 										}}
 									>
 										{content}

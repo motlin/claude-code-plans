@@ -3,7 +3,13 @@
 import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {AttachedContextChips} from "../src/components/attached-context-chips";
-import type {ContextChip} from "../src/lib/context-attach";
+import {
+	attachContext,
+	type ContextChip,
+	registerComposer,
+	takeContextChips,
+	useContextChips,
+} from "../src/lib/context-attach";
 
 const SESSION = "session-alice";
 
@@ -290,6 +296,90 @@ describe("AttachedContextChips cds tiles", () => {
 				active: true,
 			});
 			editor.remove();
+		});
+	});
+
+	describe("Delete/Backspace on a focused tile", () => {
+		const SHOTS = ["shot-1.png", "shot-2.png", "shot-3.png"];
+		let stop: () => void = () => {};
+
+		function LiveChips() {
+			return <AttachedContextChips sessionId={SESSION} context={useContextChips(SESSION)} comments={[]} />;
+		}
+
+		beforeEach(() => {
+			stop = registerComposer(SESSION, {insertText: () => {}, focus: () => {}});
+			for (const name of SHOTS) {
+				attachContext(SESSION, {
+					kind: "image",
+					path: `/cache/attachments/${name}`,
+					name,
+					previewUrl: `blob:${name}`,
+				});
+			}
+		});
+
+		afterEach(() => {
+			cleanup();
+			takeContextChips(SESSION);
+			stop();
+		});
+
+		function link(container: HTMLElement, name: string): HTMLElement {
+			const found = container.querySelector<HTMLElement>(`li[data-chip-label="${name}"] [data-cds=CardLink]`);
+			if (found === null) throw new Error(`no CardLink for ${name}`);
+			return found;
+		}
+
+		function tileNames(container: HTMLElement): (string | null)[] {
+			return Array.from(container.querySelectorAll("li"), (li) => li.getAttribute("data-chip-label"));
+		}
+
+		it("removes the tile on Delete and focuses the next tile's CardLink", () => {
+			const {container} = render(<LiveChips />);
+			link(container, "shot-2.png").focus();
+			let defaultAllowed = true;
+			act(() => {
+				defaultAllowed = fireEvent.keyDown(link(container, "shot-2.png"), {key: "Delete"});
+			});
+			expect({
+				defaultAllowed,
+				tiles: tileNames(container),
+				focused: document.activeElement === link(container, "shot-3.png"),
+			}).toStrictEqual({defaultAllowed: false, tiles: ["shot-1.png", "shot-3.png"], focused: true});
+		});
+
+		it("removes the last tile on Backspace and focuses the previous tile's CardLink", () => {
+			const {container} = render(<LiveChips />);
+			link(container, "shot-3.png").focus();
+			act(() => {
+				fireEvent.keyDown(link(container, "shot-3.png"), {key: "Backspace"});
+			});
+			expect({
+				tiles: tileNames(container),
+				focused: document.activeElement === link(container, "shot-2.png"),
+			}).toStrictEqual({tiles: ["shot-1.png", "shot-2.png"], focused: true});
+		});
+
+		it.each([
+			{name: "⌘", init: {metaKey: true}},
+			{name: "Ctrl", init: {ctrlKey: true}},
+			{name: "Alt", init: {altKey: true}},
+			{name: "Shift", init: {shiftKey: true}},
+			{name: "a repeat", init: {repeat: true}},
+			{name: "an IME composition", init: {isComposing: true}},
+		])("removes nothing with $name", ({init}) => {
+			const {container} = render(<LiveChips />);
+			const target = link(container, "shot-2.png");
+			target.focus();
+			act(() => {
+				fireEvent.keyDown(target, {key: "Delete", ...init});
+				fireEvent.keyDown(target, {key: "Backspace", ...init});
+			});
+			expect({tiles: tileNames(container), focused: document.activeElement === target}).toStrictEqual({
+				tiles: SHOTS,
+				focused: true,
+			});
 		});
 	});
 
