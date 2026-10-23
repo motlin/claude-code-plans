@@ -6,6 +6,7 @@ import {
 	useSensor,
 	useSensors,
 	type DragEndEvent,
+	type DragStartEvent,
 } from "@dnd-kit/core";
 import {
 	SortableContext,
@@ -15,8 +16,9 @@ import {
 } from "@dnd-kit/sortable";
 import {CSS} from "@dnd-kit/utilities";
 import {ChevronRight} from "lucide-react";
-import {useId, type MouseEvent, type ReactNode} from "react";
+import {useId, useLayoutEffect, useRef, useState, type MouseEvent, type ReactNode} from "react";
 
+import {animateRailDrop, blurOnPointerDragStart, lockRailDragToVerticalAxis} from "./rail-drag-physics";
 import {RAIL_CARD_CLASS} from "./rail-row";
 import {railSectionAccessibility} from "./rail-section-accessibility";
 
@@ -56,6 +58,8 @@ export interface RailCard {
 	rollupPct?: number | undefined;
 	body: ReactNode;
 }
+
+const RAIL_DRAG_MODIFIERS = [lockRailDragToVerticalAxis];
 
 const HEAD_CLASS =
 	"group/railhead flex min-h-6.5 w-full min-w-0 cursor-pointer items-center gap-1 rounded-r5 px-1 text-left text-[12px]/[15px] font-medium text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
@@ -227,10 +231,23 @@ export function SessionRail({sessionId, cards}: {sessionId: string; cards: reado
 		useSensor(PointerSensor, {activationConstraint: {distance: 6}}),
 		useSensor(KeyboardSensor, {coordinateGetter: sortableKeyboardCoordinates}),
 	);
+	const listRef = useRef<HTMLDivElement>(null);
+	const [drop, setDrop] = useState<{id: RailSectionId; top: number} | null>(null);
+	useLayoutEffect(() => {
+		if (drop === null) return;
+		const element = listRef.current?.querySelector<HTMLElement>(`[data-rail-section="${drop.id}"]`);
+		if (element) animateRailDrop(element, drop.top);
+	}, [drop]);
+	const onDragStart = ({activatorEvent}: DragStartEvent) => {
+		blurOnPointerDragStart(activatorEvent);
+	};
 	const onDragEnd = ({active, over}: DragEndEvent) => {
 		const from = RailSectionIdSchema.safeParse(active.id);
 		const to = RailSectionIdSchema.safeParse(over?.id);
-		if (from.success && to.success) reorderRailSections(shownIds, from.data, to.data);
+		if (!from.success) return;
+		if (to.success) reorderRailSections(shownIds, from.data, to.data);
+		const dropTop = active.rect.current.translated?.top;
+		if (dropTop !== undefined) setDrop({id: from.data, top: dropTop});
 	};
 	return (
 		<aside
@@ -238,10 +255,16 @@ export function SessionRail({sessionId, cards}: {sessionId: string; cards: reado
 			tabIndex={-1}
 			className="flex h-full min-h-0 w-[var(--session-rail-w,17.5rem)] flex-col font-sans outline-none"
 		>
-			<div className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto overscroll-contain p-px [scrollbar-width:none]">
+			<div
+				ref={listRef}
+				className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto overscroll-contain p-px [scrollbar-width:none]"
+			>
 				<DndContext
 					sensors={sensors}
 					collisionDetection={closestCenter}
+					modifiers={RAIL_DRAG_MODIFIERS}
+					autoScroll={false}
+					onDragStart={onDragStart}
 					onDragEnd={onDragEnd}
 					accessibility={railSectionAccessibility(shownIds)}
 				>
