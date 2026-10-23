@@ -86,6 +86,61 @@ describe("Composer slash commands", () => {
 		});
 	});
 
+	it("anchors upstream's 13/18 tooltip box 8px past the highlighted row, clamped to the viewport", () => {
+		vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
+			const items = [...document.querySelectorAll("[role=menuitem]")];
+			const index = items.indexOf(this);
+			const rect =
+				index === -1
+					? {left: 100, top: 300, width: 240, height: 56}
+					: {left: 104, top: 304 + index * 24, width: 232, height: 24};
+			return {
+				...rect,
+				x: rect.left,
+				y: rect.top,
+				right: rect.left + rect.width,
+				bottom: rect.top + rect.height,
+				toJSON: () => rect,
+			};
+		});
+		const {textarea} = setup();
+
+		fireEvent.change(textarea, {target: {value: "/"}});
+		const first = screen.getByRole("tooltip");
+		const firstPlacement = {left: first.style.left, top: first.style.top};
+		fireEvent.keyDown(textarea, {key: "ArrowDown"});
+		const tooltip = screen.getByRole("tooltip");
+		const clamp = tooltip.querySelector<HTMLElement>(".line-clamp-\\[10\\]");
+
+		expect({
+			firstPlacement,
+			placement: {left: tooltip.style.left, top: tooltip.style.top},
+			classes: [
+				"text-[13px]/[18px]",
+				"py-[3px]",
+				"min-h-6",
+				"rounded-r5",
+				"text-balance",
+				"shadow-[0_1px_2px_rgb(11_11_11/0.06)]",
+				"z-[130]",
+				"transition-[opacity,scale]",
+				"duration-150",
+				"motion-reduce:transition-none",
+			].filter((cls) => !tooltip.classList.contains(cls)),
+			wrapper: clamp?.parentElement?.className,
+			maxWidth: clamp?.style.maxWidth,
+			text: tooltip.textContent,
+		}).toStrictEqual({
+			firstPlacement: {left: "244px", top: "4px"},
+			placement: {left: "244px", top: "28px"},
+			classes: [],
+			wrapper: "min-w-0 break-words",
+			// jsdom normalizes `max(9rem, calc(100vw - 344px - 1rem))` into this sum.
+			maxWidth: "max(9rem, -344px + 1rem + 100vw)",
+			text: "Switch to plan mode",
+		});
+	});
+
 	it("moves the highlight with arrow keys, wrapping at the ends", () => {
 		const {textarea} = setup();
 		fireEvent.change(textarea, {target: {value: "/"}});
