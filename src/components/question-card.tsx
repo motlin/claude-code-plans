@@ -5,7 +5,14 @@ import {flushSync} from "react-dom";
 import {APPROVAL_ARM_GRACE_MS, approvalHotkeyFocusAllowed, onScreen} from "../lib/dock-keys";
 import type {QuestionAnswer} from "../lib/hook-events";
 import type {QuestionLike} from "../lib/ask-user-question";
-import {clearQuestionCardState, readQuestionCardState, writeQuestionCardState} from "../lib/question-card-store";
+import {
+	clearQuestionCardState,
+	clearSentQuestionCard,
+	markQuestionCardSent,
+	readQuestionCardState,
+	readSentQuestionCard,
+	writeQuestionCardState,
+} from "../lib/question-card-store";
 import {chooseOther, pickOption, type QuestionCardDraft, typeOther} from "../lib/question-card-draft";
 import {ApprovalActionButton} from "./approval-card";
 import {ReadOnlyAnswerHint} from "./terminal-writes-tip";
@@ -110,7 +117,8 @@ function useApprovalHotkey(cardRootRef: RefObject<HTMLDivElement | null>, hotkey
  * box once chosen, and Skip beside Next / Submit (⌘⏎). With `onSubmit` it
  * answers one answer per question, null for a skipped one; without it every
  * control is disabled. With `draftKey` (upstream's `tool.draftKey ?? tool.id`) the
- * picks, skips and page survive a remount until the card submits.
+ * picks, skips and page survive a remount until the card submits, and a card
+ * remounting while its answer is sending redraws the submitted answers, busy.
  */
 export function QuestionCard({
 	questions,
@@ -125,13 +133,16 @@ export function QuestionCard({
 	/** Where the in-progress answer is kept across remounts; the tool use id. */
 	draftKey?: string | undefined;
 }) {
+	const [wasSent] = useState(() =>
+		draftKey === undefined ? null : readSentQuestionCard(draftKey, questions.length),
+	);
 	const [restored] = useState(() =>
-		draftKey === undefined ? null : readQuestionCardState(draftKey, questions.length),
+		draftKey === undefined ? null : (wasSent ?? readQuestionCardState(draftKey, questions.length)),
 	);
 	const [page, setPage] = useState(restored?.page ?? 0);
 	const [drafts, setDrafts] = useState<QuestionCardDraft[]>(() => restored?.drafts ?? questions.map(initialDraft));
 	const [skipped, setSkipped] = useState<boolean[]>(() => restored?.skipped ?? questions.map(() => false));
-	const [sending, setSending] = useState(false);
+	const [sending, setSending] = useState(wasSent !== null);
 	const [error, setError] = useState<string | null>(null);
 	const otherRef = useRef<HTMLTextAreaElement>(null);
 	const cardRootRef = useRef<HTMLDivElement>(null);
@@ -139,7 +150,7 @@ export function QuestionCard({
 	const refocusRef = useRef(false);
 	useApprovalHotkey(cardRootRef, hotkeyRef);
 	// Upstream saves the draft on every change and stops once the card has submitted.
-	const savedRef = useRef<{mounted: boolean; submitted: boolean}>({mounted: false, submitted: false});
+	const savedRef = useRef<{mounted: boolean; submitted: boolean}>({mounted: false, submitted: wasSent !== null});
 	useEffect(() => {
 		if (!savedRef.current.mounted) {
 			savedRef.current.mounted = true;
@@ -189,13 +200,18 @@ export function QuestionCard({
 		setError(null);
 		setSending(true);
 		savedRef.current.submitted = true;
-		if (draftKey !== undefined) clearQuestionCardState(draftKey);
+		if (draftKey !== undefined) {
+			clearQuestionCardState(draftKey);
+			markQuestionCardSent(draftKey, {page, drafts: finalDrafts, skipped: finalSkipped});
+		}
 		try {
 			await onSubmit(finalDrafts.map((entry, at) => (finalSkipped[at] === true ? null : answerOf(entry))));
 		} catch (err) {
 			savedRef.current.submitted = false;
-			if (draftKey !== undefined)
+			if (draftKey !== undefined) {
+				clearSentQuestionCard(draftKey);
 				writeQuestionCardState(draftKey, {page, drafts: finalDrafts, skipped: finalSkipped});
+			}
 			setError(err instanceof Error ? err.message : "Failed to send the answer");
 			setSending(false);
 		}

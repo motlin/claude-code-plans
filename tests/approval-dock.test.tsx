@@ -10,6 +10,7 @@ import {AskUserQuestionRenderer} from "../src/components/tool-renderers/ask-user
 import type {ClientToolCall} from "../src/components/tool-renderers/types";
 import {findPendingAskUserQuestion} from "../src/lib/approval-dock";
 import type {QuestionLike} from "../src/lib/ask-user-question";
+import {clearSentQuestionCard, readSentQuestionCard} from "../src/lib/question-card-store";
 
 afterEach(cleanup);
 
@@ -747,7 +748,7 @@ describe("QuestionCard", () => {
 			});
 		});
 
-		it("starts fresh after submit", async () => {
+		it("starts fresh once the sent answer's result lands", async () => {
 			const onSubmit = vi.fn<(answers: unknown[]) => Promise<void>>(async () => {});
 			const first = render(<QuestionCard draftKey="remount-2" questions={QUESTIONS} onSubmit={onSubmit} />);
 			pickAndType();
@@ -756,12 +757,72 @@ describe("QuestionCard", () => {
 				expect(onSubmit).toHaveBeenCalledTimes(1);
 			});
 			first.unmount();
+			clearSentQuestionCard("remount-2");
 			render(<QuestionCard draftKey="remount-2" questions={QUESTIONS} onSubmit={async () => {}} />);
 
 			expect({
 				...snapshotFresh(),
 				stored: window.sessionStorage.getItem("question-card-draft:remount-2"),
 			}).toStrictEqual({question: "Which test runner?", skipEnter: false, stored: null});
+		});
+
+		it("redraws the submitted answers and page, busy, when a card remounts while sending, as upstream's sent store", () => {
+			const first = render(
+				<QuestionCard
+					draftKey="sending-1"
+					questions={QUESTIONS}
+					onSubmit={async () => new Promise(() => {})}
+				/>,
+			);
+			pickAndType();
+			fireEvent.click(screen.getByRole("button", {name: /^Submit/}));
+			first.unmount();
+			render(<QuestionCard draftKey="sending-1" questions={QUESTIONS} onSubmit={async () => {}} />);
+			const card = screen.getByRole("group");
+			const submit = screen.getByRole("button", {name: /^Submit/});
+
+			expect({
+				question: card.getAttribute("aria-label"),
+				skipEnter: card.hasAttribute("data-skip-approval-enter"),
+				other: screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Other option"}).value,
+				busy: submit.getAttribute("aria-busy"),
+				ariaDisabled: submit.getAttribute("aria-disabled"),
+				rows: within(card)
+					.getAllByRole("button")
+					.filter((button) => button.hasAttribute("aria-pressed"))
+					.map((button) => [button.getAttribute("aria-pressed"), button.hasAttribute("disabled")]),
+			}).toStrictEqual({
+				question: "Which features?",
+				skipEnter: true,
+				other: "Mutation",
+				busy: "true",
+				ariaDisabled: "true",
+				rows: [
+					["false", true],
+					["false", true],
+					["false", true],
+					["true", true],
+				],
+			});
+		});
+
+		it("drops the sent entry and restores the draft when sending fails", async () => {
+			const onSubmit = vi.fn<(answers: unknown[]) => Promise<void>>(async () =>
+				Promise.reject(new Error("pane gone")),
+			);
+			const first = render(<QuestionCard draftKey="sending-2" questions={QUESTIONS} onSubmit={onSubmit} />);
+			pickAndType();
+			fireEvent.click(screen.getByRole("button", {name: /^Submit/}));
+			await screen.findByText("pane gone");
+			first.unmount();
+			render(<QuestionCard draftKey="sending-2" questions={QUESTIONS} onSubmit={async () => {}} />);
+			const submit = screen.getByRole("button", {name: /^Submit/});
+
+			expect({
+				sent: readSentQuestionCard("sending-2", QUESTIONS.length),
+				busy: submit.getAttribute("aria-busy"),
+				other: screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Other option"}).value,
+			}).toStrictEqual({sent: null, busy: null, other: "Mutation"});
 		});
 
 		it("ignores a stored draft whose question count no longer matches", () => {
@@ -850,6 +911,34 @@ describe("AskUserQuestionRenderer pending", () => {
 					{question: "Which features?", answer: "Coverage"},
 				],
 			},
+		});
+	});
+	it("clears the sent answer once the call's result lands, so the card stops redrawing busy", async () => {
+		const submitAnswer = vi.fn<(submission: unknown) => Promise<void>>(async () => {});
+		const tree = (toolCall: ClientToolCall) => (
+			<AskUserQuestionProvider value={{answerRoute: "live-pane", submitAnswer}}>
+				<AskUserQuestionRenderer toolCall={toolCall} />
+			</AskUserQuestionProvider>
+		);
+		const sentCall = {...call, id: "tool-q-sent"};
+		const view = render(tree(sentCall));
+		fireEvent.click(screen.getByRole("button", {name: /^Next/}));
+		fireEvent.click(screen.getByRole("button", {name: /^Coverage/}));
+		fireEvent.click(screen.getByRole("button", {name: /^Submit/}));
+		await vi.waitFor(() => {
+			expect(submitAnswer).toHaveBeenCalledTimes(1);
+		});
+		const whileSending = readSentQuestionCard("tool-q-sent", QUESTIONS.length) !== null;
+		view.rerender(
+			tree({
+				...sentCall,
+				result: 'User has answered your questions: "Which test runner?"="Vitest", "Which features?"="Coverage".',
+			}),
+		);
+
+		expect({whileSending, afterResult: readSentQuestionCard("tool-q-sent", QUESTIONS.length)}).toStrictEqual({
+			whileSending: true,
+			afterResult: null,
 		});
 	});
 });

@@ -68,3 +68,26 @@ export function clearQuestionCardState(key: string): void {
 		// Denied storage holds nothing to clear.
 	}
 }
+
+/**
+ * Upstream's in-memory sent store: the answers and page a card submitted, kept
+ * until the call's result lands (or the send fails) so a card that remounts
+ * while sending redraws them busy instead of as a fresh editable card.
+ */
+const sent = new Map<string, QuestionCardState>();
+
+export function markQuestionCardSent(key: string, state: QuestionCardState): void {
+	sent.set(key, state);
+}
+
+/** The submitted state for a card of `questionCount` questions, or null when none is sending. */
+export function readSentQuestionCard(key: string, questionCount: number): QuestionCardState | null {
+	const state = sent.get(key);
+	if (state === undefined || state.drafts.length !== questionCount || state.skipped.length !== questionCount)
+		return null;
+	return state;
+}
+
+export function clearSentQuestionCard(key: string): void {
+	sent.delete(key);
+}

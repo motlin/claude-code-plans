@@ -1,5 +1,5 @@
 import {inputString} from "../../lib/tool-utils";
-import type {ReactNode} from "react";
+import {type ReactNode, useEffect} from "react";
 import type {ToolRendererProps} from "./types";
 import {useAskUserQuestionContext} from "../ask-user-question-context";
 import {MarkdownArticle} from "../markdown-article";
@@ -7,6 +7,7 @@ import {QuestionCard} from "../question-card";
 import {FORK_ANSWER_LABEL} from "../../lib/question-answer-route";
 import type {QuestionAnswer} from "../../lib/hook-events";
 import {labelledAnswers} from "../../lib/question-card-draft";
+import {clearSentQuestionCard} from "../../lib/question-card-store";
 import {
 	answersFromResultMeta,
 	describeAskUserQuestionResult,
@@ -121,6 +122,10 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps) {
 	const questions = normalizeQuestions(toolCall.input);
 	const {result} = toolCall;
 	const isPending = result === undefined;
+	// Upstream's sent store holds the submitted answers only until the call's result lands.
+	useEffect(() => {
+		if (!isPending) clearSentQuestionCard(toolCall.id);
+	}, [isPending, toolCall.id]);
 
 	// Upstream draws a pending question as its card, inline where the call is; it answers along the session's route.
 	if (isPending && questions !== null) {
