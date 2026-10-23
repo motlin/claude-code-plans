@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import {act, cleanup, fireEvent, render} from "@testing-library/react";
+import {useRef} from "react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {ComposerDropScrim, useFileDropTarget} from "../src/components/composer-drop-scrim";
 
@@ -134,6 +135,80 @@ describe("page-wide drop scrim", () => {
 			disabledState: "idle",
 			scrim: null,
 			calls: [],
+		});
+	});
+});
+
+describe("several mounted drop targets", () => {
+	const first = vi.fn<(files: readonly File[]) => void>();
+	const second = vi.fn<(files: readonly File[]) => void>();
+
+	function Target({id, onDrop}: {id: string; onDrop: (files: readonly File[]) => void}) {
+		const ref = useRef<HTMLDivElement>(null);
+		const dropState = useFileDropTarget({onFileDrop: onDrop, targetRef: ref});
+		return (
+			<div ref={ref} data-testid={id}>
+				<textarea aria-label={id} />
+				<span data-testid={`${id}-state`}>{dropState}</span>
+				{dropState !== "idle" && <ComposerDropScrim />}
+			</div>
+		);
+	}
+
+	function states() {
+		return ["a", "b"].map((id) => document.querySelector(`[data-testid="${id}-state"]`)?.textContent ?? null);
+	}
+
+	function dragAndDrop() {
+		fireEvent.dragOver(document.body, files);
+		const during = {
+			states: states(),
+			scrims: document.body.querySelectorAll('[data-cds="ChatComposerDropScrim"]').length,
+		};
+		fireEvent.drop(document.body, files);
+		return during;
+	}
+
+	afterEach(() => {
+		first.mockReset();
+		second.mockReset();
+	});
+
+	it("routes a page-wide drop to the last-mounted target only, then to whichever target took focus", () => {
+		const {rerender} = render(
+			<>
+				<Target key="a" id="a" onDrop={first} />
+				<Target key="b" id="b" onDrop={second} />
+			</>,
+		);
+		const lastMounted = dragAndDrop();
+		const afterLastMounted = {first: first.mock.calls.length, second: second.mock.calls.length};
+
+		fireEvent.focusIn(document.querySelector('textarea[aria-label="a"]')!);
+		const focused = dragAndDrop();
+		const afterFocus = {first: first.mock.calls.length, second: second.mock.calls.length};
+
+		rerender(
+			<>
+				<Target key="b" id="b" onDrop={second} />
+			</>,
+		);
+		const remaining = dragAndDrop();
+
+		expect({
+			lastMounted,
+			afterLastMounted,
+			focused,
+			afterFocus,
+			remaining,
+			final: {first: first.mock.calls.length, second: second.mock.calls.length},
+		}).toStrictEqual({
+			lastMounted: {states: ["idle", "off-target"], scrims: 1},
+			afterLastMounted: {first: 0, second: 1},
+			focused: {states: ["off-target", "idle"], scrims: 1},
+			afterFocus: {first: 1, second: 1},
+			remaining: {states: [null, "off-target"], scrims: 1},
+			final: {first: 1, second: 2},
 		});
 	});
 });

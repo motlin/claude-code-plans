@@ -14,8 +14,22 @@ function inside(target: RefObject<HTMLElement | null> | undefined, node: EventTa
 }
 
 /**
+ * Page-wide drop targets in mount order; the last one owns drops. Pages mount one composer today, but a drop must still attach
+ * to exactly one if two ever mount at once. Focusing inside a
+ * target's `targetRef` moves it to the end.
+ */
+const owners: symbol[] = [];
+
+function claim(token: symbol) {
+	const index = owners.indexOf(token);
+	if (index !== -1) owners.splice(index, 1);
+	owners.push(token);
+}
+
+/**
  * Upstream's page-scoped file drop hook (shared-5 `f7`): capture listeners on the body track whether files are being
- * dragged over the page (`on-target` when over `targetRef`), and a drop anywhere on the page attaches.
+ * dragged over the page (`on-target` when over `targetRef`), and a drop anywhere on the page attaches. When several
+ * targets are mounted, only the owner (see `owners`) reacts.
  */
 export function useFileDropTarget({
 	onFileDrop,
@@ -34,11 +48,21 @@ export function useFileDropTarget({
 	useEffect(() => {
 		if (disabled) return undefined;
 		const body = targetRef?.current?.ownerDocument.body ?? document.body;
+		const token = Symbol("file-drop-target");
+		claim(token);
+		const owns = () => owners.at(-1) === token;
 		const reset = () => {
 			setState("idle");
 		};
+		const onFocusIn = (e: FocusEvent) => {
+			if (inside(targetRef, e.target)) claim(token);
+		};
 		const onDragOver = (e: DragEvent) => {
 			if (!hasFiles(e)) return;
+			if (!owns()) {
+				reset();
+				return;
+			}
 			e.preventDefault();
 			setState(inside(targetRef, e.target) ? "on-target" : "off-target");
 		};
@@ -48,8 +72,9 @@ export function useFileDropTarget({
 		};
 		const onDrop = (e: DragEvent) => {
 			if (!hasFiles(e)) return;
-			e.preventDefault();
 			reset();
+			if (!owns()) return;
+			e.preventDefault();
 			drop(Array.from(e.dataTransfer?.files ?? []));
 		};
 		body.addEventListener("dragover", onDragOver, true);
@@ -57,7 +82,10 @@ export function useFileDropTarget({
 		body.addEventListener("dragend", reset, true);
 		body.addEventListener("pointerdown", reset, true);
 		body.addEventListener("drop", onDrop);
+		body.addEventListener("focusin", onFocusIn, true);
 		return () => {
+			owners.splice(owners.indexOf(token), 1);
+			body.removeEventListener("focusin", onFocusIn, true);
 			body.removeEventListener("dragover", onDragOver, true);
 			body.removeEventListener("dragleave", onDragLeave, true);
 			body.removeEventListener("dragend", reset, true);

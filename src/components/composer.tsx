@@ -738,7 +738,8 @@ export function Composer({
 
 	// Upstream's page-scoped drop: a drop anywhere attaches. The hook stays on while launching so the drop
 	// toasts instead of opening the file, but the scrim only shows once files can attach.
-	const dropState = useFileDropTarget({onFileDrop: attachFiles});
+	const cardRef = useRef<HTMLDivElement>(null);
+	const dropState = useFileDropTarget({onFileDrop: attachFiles, targetRef: cardRef});
 
 	function handlePaste(e: React.ClipboardEvent) {
 		const files = Array.from(e.clipboardData.files);
@@ -844,7 +845,12 @@ export function Composer({
 				}}
 			/>
 			{/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- a pointer shortcut that focuses the textarea, which is keyboard-reachable itself */}
-			<div data-composer-card className={COMPOSER_CARD_CLASS} onClick={() => textareaRef.current?.focus()}>
+			<div
+				ref={cardRef}
+				data-composer-card
+				className={COMPOSER_CARD_CLASS}
+				onClick={() => textareaRef.current?.focus()}
+			>
 				{dropState !== "idle" && !disabled && <ComposerDropScrim />}
 				{(contextChips.length > 0 || queuedComments.length > 0) && (
 					<AttachedContextChips sessionId={draftKey} context={contextChips} comments={queuedComments} />
