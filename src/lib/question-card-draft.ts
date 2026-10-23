@@ -30,18 +30,21 @@ export function typeOther(question: QuestionShape, draft: QuestionCardDraft, oth
 	return {selected: question.multiSelect === true ? draft.selected : [], other, otherChosen: true};
 }
 
-/** The answers as `/api/answer-question` takes them: the picked labels and any Other text, blank when skipped. */
+/** Upstream's fork-route answer for a skipped question. */
+export const NO_PREFERENCE_ANSWER = "[No preference]";
+
+/** The answers as `/api/answer-question` takes them, as upstream builds them: any Other text first, then the picked labels. */
 export function labelledAnswers(
 	questions: readonly QuestionLike[],
 	answers: ReadonlyArray<QuestionAnswer | null>,
 ): Array<{question: string; answer: string}> {
 	return questions.map((question, index) => {
 		const answer = answers[index];
-		if (answer === null || answer === undefined) return {question: question.question, answer: ""};
+		if (answer === null || answer === undefined) return {question: question.question, answer: NO_PREFERENCE_ANSWER};
 		const labels = answer.selected.flatMap((option) => question.options[option]?.label ?? []);
 		return {
 			question: question.question,
-			answer: [...labels, ...(answer.other === undefined ? [] : [answer.other])].join(", "),
+			answer: [...(answer.other === undefined ? [] : [answer.other]), ...labels].join(", "),
 		};
 	});
 }

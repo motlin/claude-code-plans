@@ -3,6 +3,7 @@ import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import type {QuestionLike} from "../src/lib/ask-user-question";
 import {questionAnswerRoute} from "../src/lib/question-answer-route";
 import {labelAnswersToPaneAnswers, submitQuestionAnswer} from "../src/lib/question-answer-submit";
+import {labelledAnswers} from "../src/lib/question-card-draft";
 
 const QUESTIONS: QuestionLike[] = [
 	{question: "Which runner?", options: [{label: "Vitest"}, {label: "Jest"}]},
@@ -39,7 +40,37 @@ describe("questionAnswerRoute", () => {
 	});
 });
 
+describe("labelledAnswers", () => {
+	const TOOLS: QuestionLike[] = [
+		{question: "Which tool?", multiSelect: true, options: [{label: "Hammer"}, {label: "Saw"}]},
+		{question: "Which runner?", options: [{label: "Vitest"}, {label: "Jest"}]},
+	];
+
+	it("puts Other's text before the picked labels and answers a skip with [No preference]", () => {
+		expect(labelledAnswers(TOOLS, [{selected: [0], other: "x"}, null])).toStrictEqual([
+			{question: "Which tool?", answer: "x, Hammer"},
+			{question: "Which runner?", answer: "[No preference]"},
+		]);
+	});
+
+	it("joins multiple labels in option order", () => {
+		expect(labelledAnswers(TOOLS, [{selected: [0, 1]}, {selected: [1]}])).toStrictEqual([
+			{question: "Which tool?", answer: "Hammer, Saw"},
+			{question: "Which runner?", answer: "Jest"},
+		]);
+	});
+});
+
 describe("labelAnswersToPaneAnswers", () => {
+	it("maps [No preference] to a skip", () => {
+		expect(
+			labelAnswersToPaneAnswers(QUESTIONS, [
+				{question: "Which runner?", answer: "[No preference]"},
+				{question: "Which features?", answer: "[No preference]"},
+			]),
+		).toStrictEqual([null, null]);
+	});
+
 	it("maps option labels to indices, typed text to Other, and blanks to skips", () => {
 		expect(
 			labelAnswersToPaneAnswers(QUESTIONS, [

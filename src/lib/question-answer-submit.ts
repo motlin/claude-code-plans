@@ -2,6 +2,7 @@ import {postAnswerQuestion} from "./api/answer-question";
 import {sendHerdrQuestionAnswer} from "./api/herdr";
 import type {QuestionLike} from "./ask-user-question";
 import type {QuestionAnswer} from "./hook-events";
+import {NO_PREFERENCE_ANSWER} from "./question-card-draft";
 import {READ_ONLY_ANSWER_HINT, type QuestionAnswerRoute} from "./question-answer-route";
 
 // Loaded on submit, so the cards' entry chunks carry only the route.
@@ -16,7 +17,7 @@ function optionIndex(question: QuestionLike, label: string): number {
 }
 
 function paneAnswer(question: QuestionLike, answer: string): QuestionAnswer | null {
-	if (answer === "") return null;
+	if (answer === "" || answer === NO_PREFERENCE_ANSWER) return null;
 	const exact = optionIndex(question, answer);
 	if (exact >= 0) return {selected: [exact]};
 	if (question.multiSelect === true) {
