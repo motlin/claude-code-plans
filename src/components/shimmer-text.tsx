@@ -5,9 +5,10 @@ import type {ReactNode} from "react";
  * masked to the glyphs whose `:after` band sweeps a 30%-white peak across them
  * (`[data-cds=ShimmerText]` rules in globals.css).
  */
-export function ShimmerText({children, className}: {children: ReactNode; className?: string}) {
+export function ShimmerText({children, className, id}: {children: ReactNode; className?: string; id?: string}) {
 	return (
 		<span
+			id={id}
 			data-cds="ShimmerText"
 			data-shimmering="true"
 			dir="auto"

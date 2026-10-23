@@ -4672,9 +4672,28 @@ function RunningElapsed({startedAt}: {startedAt: string | undefined}) {
  * A row label span in `ink`, or upstream's ShimmerText when the ink is null (the
  * label of an in-flight call).
  */
-function InkedLabel({className, ink, children}: {className: string; ink: string | null; children: ReactNode}) {
-	if (ink === null) return <ShimmerText {...(className === "" ? {} : {className})}>{children}</ShimmerText>;
-	return <span className={className === "" ? ink : `${className} ${ink}`}>{children}</span>;
+function InkedLabel({
+	className,
+	ink,
+	id,
+	children,
+}: {
+	className: string;
+	ink: string | null;
+	id?: string;
+	children: ReactNode;
+}) {
+	if (ink === null)
+		return (
+			<ShimmerText {...(className === "" ? {} : {className})} {...(id === undefined ? {} : {id})}>
+				{children}
+			</ShimmerText>
+		);
+	return (
+		<span id={id} className={className === "" ? ink : `${className} ${ink}`}>
+			{children}
+		</span>
+	);
 }
 
 /**
@@ -4709,6 +4728,7 @@ function ToolCallRow({
 }) {
 	const [expanded, toggleExpanded] = useModeExpansion(`row:${call.id}`);
 	const bodyId = useId();
+	const statusId = useId();
 	const verbose = useContext(TranscriptModeContext) === "verbose";
 	const openSubagent = useSubagentOpener();
 	const isAgent = call.name === "Agent";
@@ -4841,12 +4861,27 @@ function ToolCallRow({
 		</>
 	);
 	const joinedLabel = nested && label !== "" && displayParam !== "";
+	// Upstream names a status toggle by its label, its outcome and an sr "running"
+	// while busy, and announces the label and outcome in a polite live region.
+	const labelledBy = [
+		...(joinedLabel || label !== "" ? [`${statusId}-label`] : []),
+		...(!joinedLabel && displayParam !== "" ? [`${statusId}-meta`] : []),
+		...(rangeLabel ? [`${statusId}-range`] : []),
+		...(status === null ? [] : [`${statusId}-outcome`]),
+		...(busy ? [`${statusId}-busy`] : []),
+	].join(" ");
+	const announcement = [label, displayParam, rangeLabel ?? "", status ?? ""].filter((part) => part !== "").join(" ");
+	const announcer = isTurnStatus ? (
+		<span className="sr-only" role="status" aria-live="polite">
+			{announcement}
+		</span>
+	) : null;
 	const rowLabel = (
 		<>
 			{runningRow && <WorkingMark activity={toolMarkActivity(call.name, call.input)} className="me-1.5" />}
 			{joinedLabel ? (
 				// Upstream's grouped row: label and parameter in one <bdi>, joined by a plain space.
-				<bdi className="truncate min-w-0 text-body">
+				<bdi id={`${statusId}-label`} className="truncate min-w-0 text-body">
 					<InkedLabel className="" ink={labelClass}>
 						{label}
 					</InkedLabel>{" "}
@@ -4858,6 +4893,7 @@ function ToolCallRow({
 				<>
 					{label && (
 						<InkedLabel
+							id={`${statusId}-label`}
 							className={`${isPhraseLabel ? "truncate min-w-0" : "shrink-0"} text-body`}
 							ink={labelClass}
 						>
@@ -4866,9 +4902,11 @@ function ToolCallRow({
 					)}
 					{displayParam &&
 						(isFileParam ? (
-							<span className="text-body text-primary truncate min-w-0">{paramContent}</span>
+							<span id={`${statusId}-meta`} className="text-body text-primary truncate min-w-0">
+								{paramContent}
+							</span>
 						) : (
-							<InkedLabel className="truncate min-w-0 text-body" ink={paramInk}>
+							<InkedLabel id={`${statusId}-meta`} className="truncate min-w-0 text-body" ink={paramInk}>
 								{paramContent}
 							</InkedLabel>
 						))}
@@ -4876,12 +4914,20 @@ function ToolCallRow({
 			)}
 			{rangeLabel &&
 				(labelClass === null ? (
-					<ShimmerText className="text-body truncate min-w-0">{rangeLabel}</ShimmerText>
+					<ShimmerText id={`${statusId}-range`} className="text-body truncate min-w-0">
+						{rangeLabel}
+					</ShimmerText>
 				) : (
-					<span className={`text-body ${labelClass} truncate min-w-0`}>{rangeLabel}</span>
+					<span id={`${statusId}-range`} className={`text-body ${labelClass} truncate min-w-0`}>
+						{rangeLabel}
+					</span>
 				))}
 			{runningRow && <RunningElapsed startedAt={call.startedAt} />}
-			{busyAgent && <span className="sr-only">running</span>}
+			{busy && (
+				<span id={`${statusId}-busy`} className="sr-only">
+					running
+				</span>
+			)}
 			{liveOutput !== null && (
 				<button
 					type="button"
@@ -4896,7 +4942,10 @@ function ToolCallRow({
 			)}
 			{diffStats && <DiffStatPill added={diffStats.added} removed={diffStats.removed} />}
 			{status !== null && (
-				<span className={`shrink-0 text-body ${status === "Failed" ? "text-danger-ink" : "text-secondary"}`}>
+				<span
+					id={`${statusId}-outcome`}
+					className={`shrink-0 text-body ${status === "Failed" ? "text-danger-ink" : "text-secondary"}`}
+				>
 					{status}
 				</span>
 			)}
@@ -4946,6 +4995,7 @@ function ToolCallRow({
 				<div
 					role="button"
 					tabIndex={0}
+					aria-labelledby={labelledBy}
 					data-state={busyAgent ? "busy" : undefined}
 					data-transcript-keeps-pin=""
 					onClick={open}
@@ -4973,6 +5023,7 @@ function ToolCallRow({
 					{rowLabel}
 				</div>
 				{body}
+				{announcer}
 			</div>
 		);
 	}
@@ -4989,6 +5040,7 @@ function ToolCallRow({
 				tabIndex={0}
 				aria-expanded={expanded}
 				aria-controls={bodyId}
+				aria-labelledby={labelledBy}
 				data-state={busyAgent ? "busy" : undefined}
 				onClick={toggleExpanded}
 				onKeyDown={(e) => {
@@ -5009,6 +5061,7 @@ function ToolCallRow({
 					{body}
 				</div>
 			)}
+			{announcer}
 		</div>
 	);
 	return isTurnStatus ? <TurnStatusFrame leading={leading}>{disclosure}</TurnStatusFrame> : disclosure;
@@ -5047,6 +5100,7 @@ function ToolCallSummary({
 }) {
 	const [expanded, toggleExpanded] = useModeExpansion(`group:${calls[0]?.id ?? `notice-${notices[0]?.lineIndex}`}`);
 	const bodyId = useId();
+	const statusId = useId();
 	const backgroundOutcomes = useContext(BackgroundOutcomeContext);
 	const {taskNotices, leadingPeers, trailingPeers, hooks} = useMemo(() => splitNotices(notices), [notices]);
 	const summary = useMemo(
@@ -5079,6 +5133,12 @@ function ToolCallSummary({
 	// Collapsed rows recede to muted ink and lift to secondary on hover; an open
 	// row stays secondary, as upstream does.
 	const ink = expanded ? "text-secondary" : "text-ink-muted group-hover/tool:text-secondary";
+	const busy = pendingCall !== undefined && runningText !== null;
+	const announcement = busy
+		? runningText
+		: summary.segments
+				.map((segment) => (segment.rest ? `${segment.verb} ${segment.rest}` : segment.verb))
+				.join(", ");
 
 	const status = (
 		<div data-tool-row="" data-turn-status="" className={TURN_STATUS_CLASS}>
@@ -5088,25 +5148,30 @@ function ToolCallSummary({
 						type="button"
 						aria-expanded={expanded}
 						aria-controls={bodyId}
+						aria-labelledby={busy ? `${statusId}-label ${statusId}-busy` : `${statusId}-label`}
 						onClick={toggleExpanded}
 						className={`relative group/tool flex max-w-full items-center ${summaryLayout} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3`}
 					>
 						<span className={`inline-flex items-center gap-g3 min-w-0 ${ink}`}>
-							{pendingCall === undefined || runningText === null ? (
-								<span className="text-body truncate min-w-0">
-									<SummarySpans segments={summary.segments} />
-								</span>
-							) : (
+							{busy ? (
 								// Upstream leads a busy group header like a busy row: the call's mark, its label, elapsed, sr "running".
 								<>
 									<WorkingMark
 										activity={toolMarkActivity(pendingCall.name, pendingCall.input)}
 										className="me-1.5"
 									/>
-									<ShimmerText className="text-body truncate min-w-0">{runningText}</ShimmerText>
+									<ShimmerText id={`${statusId}-label`} className="text-body truncate min-w-0">
+										{runningText}
+									</ShimmerText>
 									<RunningElapsed startedAt={pendingCall.startedAt} />
-									<span className="sr-only">running</span>
+									<span id={`${statusId}-busy`} className="sr-only">
+										running
+									</span>
 								</>
+							) : (
+								<span id={`${statusId}-label`} className="text-body truncate min-w-0">
+									<SummarySpans segments={summary.segments} />
+								</span>
 							)}
 						</span>
 						{hasDiffStats(summary) && <DiffStatPill added={summary.added} removed={summary.removed} />}
@@ -5142,6 +5207,9 @@ function ToolCallSummary({
 							</div>
 						</div>
 					)}
+					<span className="sr-only" role="status" aria-live="polite">
+						{announcement}
+					</span>
 				</>
 			)}
 		</div>

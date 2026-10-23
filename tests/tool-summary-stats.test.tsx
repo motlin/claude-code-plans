@@ -93,7 +93,9 @@ function summaryButton(html: string): string {
 }
 
 function summaryLabel(html: string): string {
-	const match = summaryButton(html).match(/<span class="text-body truncate min-w-0">([\s\S]*?)<\/span><\/span>/);
+	const match = summaryButton(html).match(
+		/<span (?:id="[^"]*" )?class="text-body truncate min-w-0">([\s\S]*?)<\/span><\/span>/,
+	);
 	return (match?.[1] ?? "").replaceAll(/<[^>]+>/g, "");
 }
 
@@ -223,7 +225,7 @@ describe("failed edits in diff stats", () => {
 		);
 		const row = container.querySelector<HTMLElement>("[data-tool-row]")!;
 		expect({
-			text: row.textContent,
+			text: row.querySelector(".group\\/tool")?.textContent,
 			stats: Array.from(row.querySelectorAll("[class*='text-diff-']"), (span) => span.textContent),
 		}).toStrictEqual({text: "Editeda.tsxFailed", stats: []});
 	});
@@ -240,10 +242,11 @@ describe("failed edits in diff stats", () => {
 			/>,
 		);
 		const row = container.querySelector<HTMLElement>("[data-tool-row]")!;
+		const text = row.querySelector(".group\\/tool")?.textContent ?? null;
 		const stats = Array.from(row.querySelectorAll("[class*='text-diff-']"), (span) => span.textContent);
 		return stats.length === 0
-			? {text: row.textContent, stats}
-			: {text: row.textContent, stats, pill: row.querySelector("[data-diff-stat-pill]") !== null};
+			? {text, stats}
+			: {text, stats, pill: row.querySelector("[data-diff-stat-pill]") !== null};
 	}
 
 	it("counts a lone Write row's created lines as a group does, in upstream's stat pill", () => {
@@ -380,7 +383,7 @@ describe("in-flight tool rows", () => {
 	};
 
 	it("shimmers a pending single row with its progressive label in ShimmerText", () => {
-		const html = renderRun([{...poll, pending: true}]);
+		const html = renderRun([{...poll, pending: true}]).replaceAll(/ id="[^"]*"/g, "");
 		expect(html).toContain(
 			'<span data-cds="ShimmerText" data-shimmering="true" dir="auto" class="relative truncate min-w-0 text-body">Polling PR #1954 for new activity from Don or Moh<span data-cds-shimmer-clone="" aria-hidden="true" inert="">Polling PR #1954 for new activity from Don or Moh</span></span>',
 		);
@@ -402,7 +405,7 @@ describe("in-flight tool rows", () => {
 			{id: "r", name: "Read", input: {file_path: "/a/x.ts"}},
 			{...poll, pending: true},
 		]);
-		const button = summaryButton(html);
+		const button = summaryButton(html).replaceAll(/ id="[^"]*"/g, "");
 		expect(button).toContain(
 			'<span data-cds="ShimmerText" data-shimmering="true" dir="auto" class="relative text-body truncate min-w-0">Polling PR #1954 for new activity from Don or Moh<span data-cds-shimmer-clone="" aria-hidden="true" inert="">Polling PR #1954 for new activity from Don or Moh</span></span>',
 		);

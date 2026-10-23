@@ -743,7 +743,7 @@ const ARGUMENT = "text-body text-primary truncate min-w-0";
 
 /** [class, text] of every label span in one tool row's markup. */
 function labelSpans(row: string): [string, string][] {
-	return [...row.matchAll(/<span class="([^"]+)">([^<]*)<\/span>/g)]
+	return [...row.matchAll(/<span (?:id="[^"]*" )?class="([^"]+)">([^<]*)<\/span>/g)]
 		.filter((match) => match[1]!.includes("text-body") || match[1]!.includes("text-code"))
 		.map((match): [string, string] => [match[1]!, match[2]!]);
 }
@@ -788,9 +788,9 @@ function batchedToolCallRecords(
 
 /** Text of every collapsed summary label (`Read 3 files`), in document order. */
 function summaryLabels(html: string): string[] {
-	return [...html.matchAll(/<span class="text-body truncate min-w-0">([\s\S]*?)<\/span><\/span>/g)].map((match) =>
-		(match[1] ?? "").replaceAll(/<[^>]+>/g, ""),
-	);
+	return [
+		...html.matchAll(/<span (?:id="[^"]*" )?class="text-body truncate min-w-0">([\s\S]*?)<\/span><\/span>/g),
+	].map((match) => (match[1] ?? "").replaceAll(/<[^>]+>/g, ""));
 }
 
 /** One tool-only assistant record and its result, with an optional source session id. */
@@ -1895,7 +1895,7 @@ function rowHeaderSpanClasses(html: string): string[] {
 	const end = html.indexOf(endTag, start);
 	expect(end, "no end tag for tool row header").toBeGreaterThan(-1);
 	const region = html.slice(start, end);
-	return [...region.matchAll(/<span(?: class="([^"]*)")?[ >]/g)].map((match) => match[1] ?? "");
+	return [...region.matchAll(/<span(?: id="[^"]*")?(?: class="([^"]*)")?[ >]/g)].map((match) => match[1] ?? "");
 }
 
 /** Two tool calls in one assistant turn, so the collapsed group summary renders. */

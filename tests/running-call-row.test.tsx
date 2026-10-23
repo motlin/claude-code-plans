@@ -424,3 +424,80 @@ describe("an in-flight call's row", () => {
 		});
 	});
 });
+
+describe("a status row's accessible name", () => {
+	// The text each aria-labelledby id names, skipping aria-hidden subtrees, joined as accname does.
+	const labelledByText = (toggle: Element) =>
+		(toggle.getAttribute("aria-labelledby") ?? "")
+			.split(" ")
+			.map((id) => {
+				const copy = document.getElementById(id)?.cloneNode(true);
+				if (!(copy instanceof Element)) return "";
+				for (const hidden of copy.querySelectorAll('[aria-hidden="true"]')) hidden.remove();
+				return copy.textContent;
+			})
+			.join(" ");
+	const toggleNames = (container: HTMLElement) =>
+		[...container.querySelectorAll("[aria-labelledby]")].map((toggle) => ({
+			name: labelledByText(toggle),
+			ids: (toggle.getAttribute("aria-labelledby") ?? "").split(" ").map((id) => id.replace(/^.*-/, "")),
+		}));
+
+	it("labels a failed row's toggle by its label then its outcome, and announces both, as upstream does", () => {
+		const container = renderRecords([
+			{type: "user", uuid: "user-1", message: {role: "user", content: "Fetch it"}},
+			{
+				type: "assistant",
+				uuid: "assistant-1",
+				message: {
+					role: "assistant",
+					content: [
+						{
+							type: "tool_use",
+							id: "toolu_fetch",
+							name: "WebFetch",
+							input: {url: "https://example.com", prompt: "x"},
+						},
+					],
+				},
+			},
+			{
+				type: "user",
+				uuid: "user-2",
+				message: {
+					role: "user",
+					content: [{type: "tool_result", tool_use_id: "toolu_fetch", content: "boom", is_error: true}],
+				},
+			},
+		]);
+		expect({
+			toggles: toggleNames(container),
+			announced: [...container.querySelectorAll('[role="status"][aria-live="polite"].sr-only')].map(
+				(status) => status.textContent,
+			),
+		}).toStrictEqual({
+			toggles: [{name: "Fetched https://example.com Failed", ids: ["label", "meta", "outcome"]}],
+			announced: ["Fetched https://example.com Failed"],
+		});
+	});
+
+	it("labels a busy Read row by its label then an sr 'running'", () => {
+		const container = renderRecords([
+			{type: "user", uuid: "user-1", message: {role: "user", content: "Look at the app"}},
+			{
+				type: "assistant",
+				uuid: "assistant-1",
+				timestamp: new Date(Date.now() - 5000).toISOString(),
+				message: {
+					role: "assistant",
+					content: [
+						{type: "tool_use", id: "toolu_read", name: "Read", input: {file_path: "/repo/src/app.ts"}},
+					],
+				},
+			},
+		]);
+		expect(toggleNames(container)).toStrictEqual([
+			{name: "Reading app.ts running", ids: ["label", "meta", "busy"]},
+		]);
+	});
+});
