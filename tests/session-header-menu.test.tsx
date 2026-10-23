@@ -123,11 +123,13 @@ async function renderTitlebar(
 		live = true,
 		data = detail,
 		bridgeSessionId = null,
+		githubUrl = null,
 		transcriptView,
 	}: {
 		live?: boolean;
 		data?: SessionDetailData;
 		bridgeSessionId?: string | null;
+		githubUrl?: string | null;
 		transcriptView?: SessionHeaderTranscriptView;
 	} = {},
 ) {
@@ -145,7 +147,7 @@ async function renderTitlebar(
 	queryClient.setQueryData(sessionOpenInQueryOptions(SESSION_ID).queryKey, {
 		cwd: PROJECT_PATH,
 		bridgeSessionId,
-		githubUrl: null,
+		githubUrl,
 	});
 	const rootRoute = createRootRoute({
 		component: () => (
@@ -347,6 +349,24 @@ describe("session header menu", () => {
 		expect({items, opened: openMock.mock.calls}).toStrictEqual({
 			items: ["Open in Finder", "Copy path", "Copy branch name", "Open repository on GitHub"],
 			opened: [["https://github.com/alice/avalonlogs", "_blank", "noopener,noreferrer"]],
+		});
+	});
+
+	it("opens the checkout's GitHub origin from the Project submenu when the session has no PR", async () => {
+		const openMock = vi.fn<typeof window.open>().mockReturnValue(null);
+		vi.stubGlobal("open", openMock);
+		await renderTitlebar(localActions(), {githubUrl: "https://github.com/alice/origin-repo"});
+		await openHeaderMenu();
+		fireEvent.click(screen.getByRole("menuitem", {name: "Project"}));
+		await flush();
+		const submenu = screen.getAllByRole("menu").at(-1);
+		const items = [...(submenu?.querySelectorAll('[role="menuitem"]') ?? [])].map((item) => item.textContent);
+		fireEvent.click(screen.getByRole("menuitem", {name: "Open repository on GitHub"}));
+		await flush();
+
+		expect({items, opened: openMock.mock.calls}).toStrictEqual({
+			items: ["Open in Finder", "Copy path", "Copy branch name", "Open repository on GitHub"],
+			opened: [["https://github.com/alice/origin-repo", "_blank", "noopener,noreferrer"]],
 		});
 	});
 

@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
 
+import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {act, cleanup, fireEvent, render, type RenderResult, screen} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {BranchStrip} from "../src/components/branch-strip";
 import {type BranchStripSession, branchStripVisible, middleTruncate} from "../src/components/branch-strip-model";
 import {ToastProvider} from "../src/components/toast";
+import {sessionOpenInQueryOptions} from "../src/lib/api/sessions";
 
 let stripWidth = 800;
 
@@ -42,10 +44,20 @@ function renderStrip(
 	sessionId = "session-1",
 	statusline: Record<string, unknown> | null = STATUSLINE,
 ): RenderResult {
+	const queryClient = new QueryClient({
+		defaultOptions: {queries: {retry: false, staleTime: Infinity, gcTime: Infinity, refetchOnMount: false}},
+	});
+	queryClient.setQueryData(sessionOpenInQueryOptions(sessionId).queryKey, {
+		cwd: session.cwd,
+		bridgeSessionId: null,
+		githubUrl: null,
+	});
 	return render(
-		<ToastProvider>
-			<BranchStrip sessionId={sessionId} session={session} statusline={statusline} />
-		</ToastProvider>,
+		<QueryClientProvider client={queryClient}>
+			<ToastProvider>
+				<BranchStrip sessionId={sessionId} session={session} statusline={statusline} />
+			</ToastProvider>
+		</QueryClientProvider>,
 	);
 }
 

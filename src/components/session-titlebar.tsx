@@ -178,7 +178,8 @@ export type ProjectMenuSession = Pick<SessionDetailData, "projectPath" | "cwd" |
 export function ProjectMenuItems({sessionId, session}: {sessionId: string; session: ProjectMenuSession}) {
 	const toast = useToast();
 	const path = session.projectPath ?? session.cwd;
-	const repository = repositoryUrl(session.pr);
+	const originUrl = useQuery(sessionOpenInQueryOptions(sessionId)).data?.githubUrl ?? null;
+	const repository = originUrl ?? repositoryUrl(session.pr);
 	const branch = session.gitBranch;
 
 	const copy = async (text: string, what: string) => copyWithToast(toast, text, what);
