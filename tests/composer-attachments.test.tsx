@@ -7,7 +7,7 @@ import {Composer} from "../src/components/composer";
 import {customizeMcpServersQueryOptions} from "../src/lib/api/customize";
 import type {ComposerState} from "../src/lib/composer-state";
 import type {LaunchOptions} from "../src/lib/launch-options";
-import {takeContextChips} from "../src/lib/context-attach";
+import {getContextChips, removeContextChip, takeContextChips} from "../src/lib/context-attach";
 import {getShortcut} from "../src/lib/shortcuts/registry";
 
 const MAC_UA =
@@ -37,6 +37,21 @@ function mockUploads(respond: (file: File) => Response) {
 			return Promise.resolve(respond(file));
 		}),
 	);
+}
+
+/** Holds each upload open until the test settles it. */
+function deferUploads() {
+	const pending: ((response: Response) => void)[] = [];
+	vi.stubGlobal(
+		"fetch",
+		vi.fn(async (_url: string, init: RequestInit) => {
+			uploads.push(((init.body as FormData).get("file") as File).name);
+			return new Promise<Response>((resolve) => {
+				pending.push(resolve);
+			});
+		}),
+	);
+	return pending;
 }
 
 function savedAs(path: string) {
@@ -88,7 +103,7 @@ beforeEach(() => {
 
 afterEach(() => {
 	cleanup();
-	takeContextChips(SESSION);
+	for (const chip of getContextChips(SESSION)) removeContextChip(SESSION, chip.id);
 	localStorage.clear();
 	uploads.length = 0;
 	vi.unstubAllGlobals();
@@ -144,7 +159,7 @@ describe("Composer attachments", () => {
 
 		paste({files: [new File(["# Notes"], "notes.md", {type: "text/markdown"})]});
 		await waitFor(() => {
-			expect(chipNames()).toStrictEqual(["notes.md"]);
+			expect(document.querySelector("[data-state=pending]")).toBeNull();
 		});
 		fireEvent.keyDown(prompt(), {key: "Enter"});
 
@@ -195,6 +210,104 @@ describe("Composer attachments", () => {
 			enabled: true,
 			accept: "image/*,text/*",
 		});
+	});
+
+	it("shows a pending image tile while the upload runs, then swaps in the saved image", async () => {
+		const pending = deferUploads();
+		renderComposer();
+
+		paste({files: [png("shot.png")]});
+		const tile = document.querySelector("li[data-cds=MessageAttachmentsImage]")!;
+		const skeleton = tile.querySelector("[data-cds=Skeleton]")!;
+		const img = tile.querySelector("img")!;
+		const before = {
+			state: tile.getAttribute("data-state"),
+			busy: tile.getAttribute("aria-busy"),
+			skeletonRole: skeleton.getAttribute("role"),
+			skeletonClasses: [
+				"absolute",
+				"inset-0",
+				"size-full",
+				"rounded-card",
+				"overflow-hidden",
+				"bg-[var(--skeleton-base)]",
+				"motion-reduce:after:hidden",
+			].filter((name) => !skeleton.classList.contains(name)),
+			skeletonRelative: skeleton.classList.contains("relative"),
+			src: img.getAttribute("src"),
+			alt: img.getAttribute("alt"),
+			opacity: [...img.classList].filter((name) => name.startsWith("opacity-")),
+			status: [...tile.querySelectorAll(":scope > [role=status].sr-only")].map((node) => node.textContent),
+			cardLink: tile.querySelector("[role=button]"),
+		};
+		fireEvent.load(img);
+		const loadedOpacity = [...img.classList].filter((name) => name.startsWith("opacity-"));
+		pending[0]!(savedAs(`${ATTACHMENTS}/0005.png`)(png("shot.png")));
+		const saved = await screen.findByRole("img", {name: "shot.png"});
+		const settled = saved.closest("li")!;
+
+		expect({
+			before,
+			loadedOpacity,
+			after: {
+				state: settled.getAttribute("data-state"),
+				busy: settled.getAttribute("aria-busy"),
+				skeleton: settled.querySelector("[data-cds=Skeleton]"),
+			},
+			chips: takeContextChips(SESSION).map(({id: _id, ...rest}) => rest),
+		}).toStrictEqual({
+			before: {
+				state: "pending",
+				busy: "true",
+				skeletonRole: "status",
+				skeletonClasses: [],
+				skeletonRelative: false,
+				src: "blob:preview",
+				alt: "",
+				opacity: ["opacity-0"],
+				status: ["Processing image"],
+				cardLink: null,
+			},
+			loadedOpacity: ["opacity-50"],
+			after: {state: null, busy: null, skeleton: null},
+			chips: [{kind: "image", path: `${ATTACHMENTS}/0005.png`, name: "shot.png", previewUrl: "blob:preview"}],
+		});
+	});
+
+	it("shows a pending file tile while a non-image upload runs", () => {
+		deferUploads();
+		renderComposer();
+
+		paste({files: [new File(["# Notes"], "notes.md", {type: "text/markdown"})]});
+		const tile = document.querySelector("li[data-cds=MessageAttachmentsFile]")!;
+
+		expect({
+			chips: chipNames(),
+			state: tile.getAttribute("data-state"),
+			busy: tile.getAttribute("aria-busy"),
+			skeleton: tile.querySelector("[data-cds=Skeleton]")?.getAttribute("role"),
+			status: [...tile.querySelectorAll(":scope > [role=status].sr-only")].map((node) => node.textContent),
+		}).toStrictEqual({
+			chips: ["notes.md"],
+			state: "pending",
+			busy: "true",
+			skeleton: "status",
+			status: ["Uploading file"],
+		});
+	});
+
+	it("adds nothing when a pending chip is removed before its upload resolves", async () => {
+		const pending = deferUploads();
+		renderComposer();
+
+		paste({files: [png("gone.png")]});
+		fireEvent.click(screen.getByRole("button", {name: "Remove gone.png"}));
+		pending[0]!(savedAs(`${ATTACHMENTS}/0006.png`)(png("gone.png")));
+		await new Promise((resolve) => {
+			setTimeout(resolve, 0);
+		});
+
+		expect(chipNames()).toStrictEqual([]);
 	});
 
 	it("reports a rejected upload without adding a chip", async () => {

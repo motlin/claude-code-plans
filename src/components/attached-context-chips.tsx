@@ -1,3 +1,4 @@
+import {useState} from "react";
 import {
 	FileText,
 	Image as ImageIcon,
@@ -10,6 +11,7 @@ import {
 
 import {type ContextChip, contextChipLabel, formatContextAttachment, removeContextChip} from "../lib/context-attach";
 import {type QueuedDiffComment, removeQueuedDiffComment} from "../lib/diff-comments";
+import {Skeleton} from "./ui/skeleton";
 
 function chipLabel({path, line, endLine}: QueuedDiffComment): string {
 	const name = path.slice(path.lastIndexOf("/") + 1) || path;
@@ -37,23 +39,58 @@ function removeChip(sessionId: string, chip: ContextChip): void {
 	removeContextChip(sessionId, chip.id);
 }
 
+/**
+ * Upstream's pending tile state: `data-state="pending"`, `aria-busy`, a
+ * Skeleton over the body, and an sr-only status beside it.
+ */
+function pendingProps(chip: ContextChip) {
+	return chip.status === "pending" ? {"data-state": "pending", "aria-busy": true} : {};
+}
+
+function PendingOverlay({status}: {status: string}) {
+	return (
+		<>
+			<span aria-hidden="true" className="contents">
+				<Skeleton className="pointer-events-none absolute inset-0 size-full rounded-card" />
+			</span>
+			<span role="status" className="sr-only">
+				{status}
+			</span>
+		</>
+	);
+}
+
 /** An attached image as a thumbnail tile with its remove button in the corner. */
 function ImageChip({sessionId, chip}: {sessionId: string; chip: ContextChip}) {
 	const label = contextChipLabel(chip);
+	const pending = chip.status === "pending";
+	const [loaded, setLoaded] = useState(false);
 	return (
 		<li
 			data-chip-label={label}
+			data-cds="MessageAttachmentsImage"
+			{...pendingProps(chip)}
 			title={chip.path}
 			className="relative size-12 shrink-0 overflow-hidden rounded-r6 border border-border bg-surface-3"
 		>
-			<img src={chip.previewUrl} alt={label} className="size-full object-cover" />
+			<img
+				src={chip.previewUrl}
+				alt={pending ? "" : label}
+				onLoad={() => {
+					setLoaded(true);
+				}}
+				className={`size-full object-cover transition-opacity motion-reduce:transition-none ${
+					pending ? (loaded ? "opacity-50" : "opacity-0") : "opacity-100"
+				}`}
+			/>
+			{pending ? <PendingOverlay status="Processing image" /> : null}
 			<button
 				type="button"
 				aria-label={`Remove ${label}`}
 				onClick={() => {
 					removeChip(sessionId, chip);
 				}}
-				className="absolute end-0.5 top-0.5 flex size-4 cursor-pointer items-center justify-center rounded-full bg-surface-3/90 text-secondary hover:text-primary"
+				className="absolute end-0.5 top-0.5 z-[1] flex size-4 cursor-pointer items-center justify-center rounded-full bg-surface-3/90 text-secondary hover:text-primary"
 			>
 				<X aria-hidden="true" className="size-2.5" />
 			</button>
@@ -87,9 +124,14 @@ export function AttachedContextChips({
 					<li
 						key={chip.id}
 						data-chip-label={label}
-						title={formatContextAttachment(chip)}
-						className={CHIP_CLASS}
+						{...(chip.kind === "file" && chip.name !== undefined
+							? {"data-cds": "MessageAttachmentsFile"}
+							: {})}
+						{...pendingProps(chip)}
+						title={chip.status === "pending" ? label : formatContextAttachment(chip)}
+						className={`relative overflow-hidden ${CHIP_CLASS}`}
 					>
+						{chip.status === "pending" ? <PendingOverlay status="Uploading file" /> : null}
 						<Icon aria-hidden="true" className="size-3 shrink-0" />
 						<span className="min-w-0 truncate text-primary">{label}</span>
 						<button

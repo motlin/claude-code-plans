@@ -1,6 +1,7 @@
 import {afterEach, describe, expect, it} from "vite-plus/test";
 import {
 	attachContext,
+	attachPendingUpload,
 	composePrompt,
 	ContextAttachmentKindSchema,
 	contextChipLabel,
@@ -9,6 +10,8 @@ import {
 	getContextChips,
 	registerComposer,
 	removeContextChip,
+	resolvePendingUpload,
+	dropPendingUpload,
 	takeContextChips,
 	formatReviewComment,
 	formatReviewComments,
@@ -135,7 +138,7 @@ describe("context attachments", () => {
 describe("attachContext", () => {
 	const SESSION = "carol-session";
 	afterEach(() => {
-		takeContextChips(SESSION);
+		for (const chip of getContextChips(SESSION)) removeContextChip(SESSION, chip.id);
 	});
 
 	it("adds nothing when no composer is mounted for the session", () => {
@@ -182,6 +185,64 @@ describe("attachContext", () => {
 			],
 			after: [],
 		});
+	});
+
+	it("swaps a pending upload chip in place, and leaves it out of a take", () => {
+		const stop = registerComposer(SESSION, {insertText: () => {}, focus: () => {}});
+		attachContext(SESSION, {kind: "file", path: "alice.ts"});
+		const id = attachPendingUpload(SESSION, {kind: "image", name: "shot.png", previewUrl: "blob:shot"});
+		attachContext(SESSION, {kind: "file", path: "carol.ts"});
+		if (id === undefined) throw new Error("no pending chip");
+		const pending = getContextChips(SESSION).map(({id: _id, ...rest}) => rest);
+		const resolved = resolvePendingUpload(SESSION, id, {
+			kind: "image",
+			path: "/cache/0001.png",
+			name: "shot.png",
+			previewUrl: "blob:shot",
+		});
+		const after = getContextChips(SESSION).map((chip) => ({...chip, id: chip.id === id ? "same" : "other"}));
+		stop();
+
+		expect({pending, resolved, after}).toStrictEqual({
+			pending: [
+				{kind: "file", path: "alice.ts"},
+				{kind: "image", name: "shot.png", previewUrl: "blob:shot", status: "pending"},
+				{kind: "file", path: "carol.ts"},
+			],
+			resolved: true,
+			after: [
+				{kind: "file", path: "alice.ts", id: "other"},
+				{kind: "image", path: "/cache/0001.png", name: "shot.png", previewUrl: "blob:shot", id: "same"},
+				{kind: "file", path: "carol.ts", id: "other"},
+			],
+		});
+	});
+
+	it("takes only settled chips, leaving pending uploads in the strip", () => {
+		const stop = registerComposer(SESSION, {insertText: () => {}, focus: () => {}});
+		const id = attachPendingUpload(SESSION, {kind: "file", name: "notes.md"});
+		attachContext(SESSION, {kind: "file", path: "alice.ts"});
+		const taken = takeContextChips(SESSION).map(({id: _id, ...rest}) => rest);
+		const left = getContextChips(SESSION).map((chip) => chip.id === id);
+		stop();
+
+		expect({taken, left}).toStrictEqual({taken: [{kind: "file", path: "alice.ts"}], left: [true]});
+	});
+
+	it("adds nothing when a removed or dropped pending upload resolves", () => {
+		const stop = registerComposer(SESSION, {insertText: () => {}, focus: () => {}});
+		const removed = attachPendingUpload(SESSION, {kind: "image", name: "a.png"});
+		const dropped = attachPendingUpload(SESSION, {kind: "image", name: "b.png"});
+		if (removed === undefined || dropped === undefined) throw new Error("no pending chip");
+		removeContextChip(SESSION, removed);
+		dropPendingUpload(SESSION, dropped);
+		const resolved = [
+			resolvePendingUpload(SESSION, removed, {kind: "image", path: "/cache/a.png", name: "a.png"}),
+			resolvePendingUpload(SESSION, dropped, {kind: "image", path: "/cache/b.png", name: "b.png"}),
+		];
+		stop();
+
+		expect({resolved, chips: getContextChips(SESSION)}).toStrictEqual({resolved: [false, false], chips: []});
 	});
 
 	it("registers every kind in the schema choice registry", () => {

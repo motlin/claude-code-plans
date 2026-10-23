@@ -103,6 +103,8 @@ export interface ContextAttachment {
 	name?: string | undefined;
 	/** Thumbnail source for an image chip. */
 	previewUrl?: string | undefined;
+	/** Still uploading: shown as a pending tile and left out of a send. */
+	status?: "pending" | undefined;
 }
 
 export type AttachContextHandler = (attachment: ContextAttachment) => void;
@@ -179,12 +181,37 @@ export function getContextChips(sessionId: string): readonly ContextChip[] {
  * nothing, when no composer is mounted for the session.
  */
 export function attachContext(sessionId: string, attachment: ContextAttachment): boolean {
+	return addChip(sessionId, attachment) !== undefined;
+}
+
+function addChip(sessionId: string, attachment: ContextAttachment): string | undefined {
 	const handles = mounted(sessionId);
-	if (handles.length === 0) return false;
+	if (handles.length === 0) return undefined;
 	const chip: ContextChip = {...attachment, id: `context-chip-${nextChipId++}`};
 	setChips(sessionId, [...getContextChips(sessionId), chip]);
 	for (const handle of handles) handle.focus();
+	return chip.id;
+}
+
+/** Adds a pending tile for an upload in flight; its id, or undefined when no composer is mounted. */
+export function attachPendingUpload(sessionId: string, attachment: ContextAttachment): string | undefined {
+	return addChip(sessionId, {...attachment, status: "pending"});
+}
+
+/** Swaps a pending tile for the saved attachment in place; false when it was removed meanwhile. */
+export function resolvePendingUpload(sessionId: string, id: string, attachment: ContextAttachment): boolean {
+	const current = getContextChips(sessionId);
+	if (!current.some((chip) => chip.id === id)) return false;
+	setChips(
+		sessionId,
+		current.map((chip) => (chip.id === id ? {...attachment, id} : chip)),
+	);
 	return true;
+}
+
+/** Removes a pending tile whose upload failed. */
+export function dropPendingUpload(sessionId: string, id: string): void {
+	removeContextChip(sessionId, id);
 }
 
 export function removeContextChip(sessionId: string, id: string): void {
@@ -194,10 +221,15 @@ export function removeContextChip(sessionId: string, id: string): void {
 	);
 }
 
-/** Returns the chips and empties the strip, as sending a prompt does. */
+/** Returns the settled chips and removes them from the strip, as sending a prompt does; pending uploads stay. */
 export function takeContextChips(sessionId: string): readonly ContextChip[] {
-	const taken = getContextChips(sessionId);
-	if (taken.length > 0) setChips(sessionId, []);
+	const current = getContextChips(sessionId);
+	const taken = current.filter((chip) => chip.status !== "pending");
+	if (taken.length > 0)
+		setChips(
+			sessionId,
+			current.filter((chip) => chip.status === "pending"),
+		);
 	return taken;
 }
 
@@ -258,19 +290,37 @@ export function attachUploadedFiles(
 	onError: (message: string) => void,
 ): void {
 	for (const file of files) {
+		const image = file.type.startsWith("image/");
+		const previewUrl = image && typeof URL.createObjectURL === "function" ? URL.createObjectURL(file) : undefined;
+		const id = attachPendingUpload(sessionId, {
+			kind: image ? "image" : "file",
+			name: file.name,
+			...(previewUrl === undefined ? {} : {previewUrl}),
+		});
+		const revokePreview = () => {
+			if (previewUrl !== undefined && typeof URL.revokeObjectURL === "function") URL.revokeObjectURL(previewUrl);
+		};
 		uploadAttachment(file).then(
 			(saved) => {
-				const image = saved.mediaType.startsWith("image/");
-				const previewUrl =
-					image && typeof URL.createObjectURL === "function" ? URL.createObjectURL(file) : undefined;
-				attachContext(sessionId, {
-					kind: image ? "image" : "file",
+				const savedImage = saved.mediaType.startsWith("image/");
+				const attachment: ContextAttachment = {
+					kind: savedImage ? "image" : "file",
 					path: saved.path,
 					name: saved.name,
-					...(previewUrl === undefined ? {} : {previewUrl}),
-				});
+				};
+				if (savedImage) {
+					const url =
+						previewUrl ??
+						(typeof URL.createObjectURL === "function" ? URL.createObjectURL(file) : undefined);
+					if (url !== undefined) attachment.previewUrl = url;
+				}
+				if (!savedImage) revokePreview();
+				if (id === undefined) attachContext(sessionId, attachment);
+				else if (!resolvePendingUpload(sessionId, id, attachment)) revokePreview();
 			},
 			(error: unknown) => {
+				if (id !== undefined) dropPendingUpload(sessionId, id);
+				revokePreview();
 				const reason = error instanceof Error ? error.message : String(error);
 				onError(`Couldn’t attach ${file.name}: ${reason}`);
 			},

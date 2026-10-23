@@ -47,31 +47,31 @@
 		"tolerance": 0
 	},
 	"bundle.home.gzip": {
-		"ceiling": 396093,
+		"ceiling": 400369,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Home cold JS drifted from 392398 gzip / 1199269 raw to 396093 gzip / 1211362 raw since the QueuedMessageBar ceiling, and the context refresh-reason enum (14 CLI refreshReason values on instructions and session_context attachments, ~230 bytes in the schemas chunk) tipped raw past the 1% band. Ceilings set to the measurement; the 1% tolerance is unchanged.",
-		"raisedAt": "2026-10-22"
+		"reason": "Cold JS drifted to the 1% band (home 399525 gzip / 1222483 raw, session 587918 / 1779273 at 89f2e8d1); the composer's pending upload tile (Skeleton overlay, aria-busy state, in-place swap of the saved attachment) tipped home to 400369 / 1224574 and session to 588786 / 1781410. Ceilings set to the measurement; the 1% tolerance is unchanged.",
+		"raisedAt": "2026-10-23"
 	},
 	"bundle.home.raw": {
-		"ceiling": 1211362,
+		"ceiling": 1224574,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Home cold JS drifted from 392398 gzip / 1199269 raw to 396093 gzip / 1211362 raw since the QueuedMessageBar ceiling, and the context refresh-reason enum (14 CLI refreshReason values on instructions and session_context attachments, ~230 bytes in the schemas chunk) tipped raw past the 1% band. Ceilings set to the measurement; the 1% tolerance is unchanged.",
-		"raisedAt": "2026-10-22"
+		"reason": "Cold JS drifted to the 1% band (home 399525 gzip / 1222483 raw, session 587918 / 1779273 at 89f2e8d1); the composer's pending upload tile (Skeleton overlay, aria-busy state, in-place swap of the saved attachment) tipped home to 400369 / 1224574 and session to 588786 / 1781410. Ceilings set to the measurement; the 1% tolerance is unchanged.",
+		"raisedAt": "2026-10-23"
 	},
 	"bundle.session.gzip": {
-		"ceiling": 582568,
+		"ceiling": 588786,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Session cold JS drifted from 576797 gzip at the touch split Send ceiling through the upstream TurnStatus working line (582352 gzip, raised then only for raw); Stopping parity (ShimmerText Stopping label with cds-morph-in, mark kept playing) tipped gzip past the 1% band at 582568. Ceiling set to the measurement; the 1% tolerance is unchanged.",
+		"reason": "Cold JS drifted to the 1% band (home 399525 gzip / 1222483 raw, session 587918 / 1779273 at 89f2e8d1); the composer's pending upload tile (Skeleton overlay, aria-busy state, in-place swap of the saved attachment) tipped home to 400369 / 1224574 and session to 588786 / 1781410. Ceilings set to the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-10-23"
 	},
 	"bundle.session.raw": {
-		"ceiling": 1763660,
+		"ceiling": 1781410,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Session parity commits since the touch split Send ceiling (1745664 raw) drifted session cold JS to the 1% tolerance; the upstream TurnStatus working line (code-working-line row with mark slot, muted dot-joined stats, sr-only running and polite Working… status) took it over, to 582352 gzip / 1763660 raw. Ceiling set to the measurement; the 1% tolerance is unchanged.",
+		"reason": "Cold JS drifted to the 1% band (home 399525 gzip / 1222483 raw, session 587918 / 1779273 at 89f2e8d1); the composer's pending upload tile (Skeleton overlay, aria-busy state, in-place swap of the saved attachment) tipped home to 400369 / 1224574 and session to 588786 / 1781410. Ceilings set to the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-10-23"
 	},
 	"client.coldHome.default.commitsToRows": {
