@@ -105,6 +105,27 @@ describe("SettingsSection and SettingsRow", () => {
 			control: true,
 		});
 	});
+
+	// Locks today's comfortable spacing: the Settings dialog is comfortable for every web user
+	// (density-default-tokens), so upstream's mb-xl / gap-lg / py-md resolve to 40 / 28 / 12px.
+	it("keeps the comfortable section and row spacing", () => {
+		render(<ControlledSwitchRow />);
+
+		const heading = screen.getByRole("heading", {level: 3});
+		const group = screen.getByRole("group", {name: "Response completions"});
+		const pick = (element: Element | null, names: string[]) =>
+			names.filter((name) => element?.classList.contains(name));
+
+		expect({
+			section: pick(heading.closest("section"), ["mb-10", "last:mb-0"]),
+			heading: pick(heading, ["mb-4"]),
+			row: pick(group, ["gap-7", "py-3"]),
+		}).toStrictEqual({
+			section: ["mb-10", "last:mb-0"],
+			heading: ["mb-4"],
+			row: ["gap-7", "py-3"],
+		});
+	});
 });
 
 describe("Switch", () => {

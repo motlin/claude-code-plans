@@ -165,6 +165,30 @@ describe("SettingsDialog", () => {
 		}).toStrictEqual({popup: popupExpected, backdrop: backdropExpected});
 	});
 
+	// Locks today's comfortable shell spacing: the Settings dialog is comfortable for every web user
+	// (density-default-tokens), so upstream's px-xl / pb-lg / pt-md resolve to 24 / 16 / 12px.
+	it("keeps the comfortable shell spacing", async () => {
+		await renderAt("/#settings/general");
+
+		const dialog = await screen.findByRole("dialog", {name: "Settings"});
+		const nav = within(dialog).getByRole("navigation", {name: "Settings"});
+		const close = within(dialog).getByRole("button", {name: "Close"});
+		const header = close.parentElement;
+		const scroll = header?.nextElementSibling ?? null;
+		const pick = (element: Element | null, names: string[]) =>
+			names.filter((name) => element?.classList.contains(name));
+
+		expect({
+			nav: pick(nav, ["w-48", "gap-3"]),
+			header: pick(header ?? null, ["px-3", "pt-3", "pb-2"]),
+			scroll: pick(scroll, ["px-6", "pt-2", "pb-4"]),
+		}).toStrictEqual({
+			nav: ["w-48", "gap-3"],
+			header: ["px-3", "pt-3", "pb-2"],
+			scroll: ["px-6", "pt-2", "pb-4"],
+		});
+	});
+
 	it("opens on the hash's tab with that tab marked current", async () => {
 		await renderAt("/#settings/sessions");
 
