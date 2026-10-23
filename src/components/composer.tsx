@@ -569,6 +569,10 @@ export function Composer({
 	const chip =
 		acceptedChip?.draftKey === draftKey && prompt.startsWith(`/${acceptedChip.name}`) ? acceptedChip : null;
 	if (acceptedChip !== null && chip === null) setAcceptedChip(null);
+	const chipLength = chip === null ? 0 : chip.name.length + 1;
+	// Upstream's NodeSelection on the atom: the textarea selects exactly the chip's text.
+	const [chipSelection, setChipSelection] = useState(false);
+	const chipSelected = chip !== null && chipSelection;
 	const argumentHint = chip === null ? null : skillChipArgumentHint(chip, prompt);
 	const rest = chip === null ? "" : prompt.slice(chip.name.length + 1);
 	// The hint sits after the chip line's trailing whitespace, before any blank line below it.
@@ -634,6 +638,7 @@ export function Composer({
 		pendingCaretRef.current = next;
 		setCaret(next);
 		setPrompt(prompt.slice(0, slash.start) + inserted + prompt.slice(caret));
+		setChipSelection(false);
 		// The local menu can open mid-line, but only a leading command becomes a chip.
 		setAcceptedChip(slash.start === 0 ? {draftKey, name: command.name, argumentHint: command.argumentHint} : null);
 		textareaRef.current?.focus();
@@ -827,9 +832,48 @@ export function Composer({
 		[chinLaunchOptions, live, draftKey, openMenu, bypassPermissionsAllowed],
 	);
 
+	/** Upstream `Cq` is an atom: Backspace after it (or Delete before it) selects it instead of eating a character. */
+	function handleChipKey(e: React.KeyboardEvent<HTMLTextAreaElement>): boolean {
+		if (chip === null) return false;
+		const {selectionStart, selectionEnd} = e.currentTarget;
+		if (selectionStart !== selectionEnd) return false;
+		const edge = e.key === "Backspace" ? chipLength : e.key === "Delete" ? 0 : -1;
+		if (selectionStart !== edge) return false;
+		e.preventDefault();
+		e.currentTarget.setSelectionRange(0, chipLength);
+		setCaret(0);
+		setChipSelection(true);
+		return true;
+	}
+
+	/** Keeps the caret and selection edges out of the chip, as they can't enter upstream's atom node. */
+	function clampChipSelection(textarea: HTMLTextAreaElement) {
+		let {selectionStart: start, selectionEnd: end} = textarea;
+		if (chip !== null) {
+			if (start === end && start > 0 && start < chipLength) {
+				// One step left from the chip's end jumps over it (ArrowLeft); anything else lands after it.
+				start = end = start === chipLength - 1 && caret >= chipLength ? 0 : chipLength;
+			} else {
+				if (start > 0 && start < chipLength) start = 0;
+				if (end > 0 && end < chipLength) end = chipLength;
+			}
+			if (start !== textarea.selectionStart || end !== textarea.selectionEnd) {
+				textarea.setSelectionRange(start, end, textarea.selectionDirection);
+			}
+		}
+		setCaret(start);
+		setChipSelection(chip !== null && start === 0 && end === chipLength);
+	}
+
 	function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
 		startComposerKeystrokeJourney(e.nativeEvent);
-		if (e.nativeEvent.isComposing || handleSlashKey(e) || handleMentionKey(e) || handleHistoryKey(e)) {
+		if (
+			e.nativeEvent.isComposing ||
+			handleChipKey(e) ||
+			handleSlashKey(e) ||
+			handleMentionKey(e) ||
+			handleHistoryKey(e)
+		) {
 			return;
 		}
 		if (e.key === "Enter" && !e.shiftKey) {
@@ -931,7 +975,7 @@ export function Composer({
 					)}
 					{chip !== null && (
 						<div ref={paintedOverlayRef} aria-hidden="true" className={PAINTED_OVERLAY_CLASS}>
-							<ComposerSkillChip name={chip.name} />
+							<ComposerSkillChip name={chip.name} selected={chipSelected} />
 							{argumentHint === null ? (
 								<span data-skill-chip-rest="" className="text-primary">
 									{rest}
@@ -972,11 +1016,26 @@ export function Composer({
 						value={prompt}
 						onChange={(e) => {
 							setHistoryWalk(null);
-							setCaret(e.target.selectionStart);
-							setPrompt(e.target.value);
+							let next = e.target.value;
+							let nextCaret = e.target.selectionStart;
+							// Upstream `Yg chipArgumentSeparator`: a character typed right after the chip gets a space before it.
+							const after = next.charAt(chipLength);
+							if (
+								chip !== null &&
+								next.startsWith(`/${chip.name}`) &&
+								after !== "" &&
+								!/\s/.test(after)
+							) {
+								next = `${next.slice(0, chipLength)} ${next.slice(chipLength)}`;
+								if (nextCaret >= chipLength) nextCaret += 1;
+								pendingCaretRef.current = nextCaret;
+							}
+							setCaret(nextCaret);
+							setChipSelection(false);
+							setPrompt(next);
 						}}
 						onSelect={(e) => {
-							setCaret(e.currentTarget.selectionStart);
+							clampChipSelection(e.currentTarget);
 						}}
 						onScroll={(e) => {
 							if (paintedOverlayRef.current !== null) {

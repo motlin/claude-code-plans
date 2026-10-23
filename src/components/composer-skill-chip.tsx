@@ -2,8 +2,12 @@ import {useLayoutEffect, useRef, useState} from "react";
 
 const CHIP_CLASS = "group/chip inline-flex relative cursor-interactive text-upstream-accent";
 
-const HIGHLIGHT_CLASS =
-	"absolute -inset-y-0.5 -start-0.5 -end-1 rounded-r5 pointer-events-none group-hover/chip:[@media(hover:hover)]:bg-upstream-accent-pressed group-data-[card-open]/chip:bg-upstream-accent-pressed";
+const HIGHLIGHT_BASE_CLASS = "absolute -inset-y-0.5 -start-0.5 -end-1 rounded-r5 pointer-events-none";
+
+const HIGHLIGHT_CLASS = `${HIGHLIGHT_BASE_CLASS} group-hover/chip:[@media(hover:hover)]:bg-upstream-accent-pressed group-data-[card-open]/chip:bg-upstream-accent-pressed`;
+
+/** Upstream `jr` swaps the highlight's classes to `bg-accent` while the atom is the NodeSelection. */
+const HIGHLIGHT_SELECTED_CLASS = `${HIGHLIGHT_BASE_CLASS} bg-upstream-accent-pressed`;
 
 const GLYPH_CLASS =
 	"absolute top-1/2 -translate-y-1/2 start-0 w-2 h-5 flex items-center justify-center text-[13px]/[19px] font-medium opacity-50 select-none";
@@ -14,7 +18,7 @@ const GLYPH_CLASS =
  * glyph, so a start margin gives back the difference: the text after the chip stays under the caret,
  * and the space after the chip stays visible.
  */
-export function ComposerSkillChip({name}: {name: string}) {
+export function ComposerSkillChip({name, selected}: {name: string; selected: boolean}) {
 	const chipRef = useRef<HTMLSpanElement>(null);
 	const plainRef = useRef<HTMLSpanElement>(null);
 	const [offset, setOffset] = useState(0);
@@ -45,7 +49,7 @@ export function ComposerSkillChip({name}: {name: string}) {
 				className={CHIP_CLASS}
 				style={offset === 0 ? undefined : {marginInlineStart: `${offset}px`}}
 			>
-				<span className={HIGHLIGHT_CLASS} />
+				<span className={selected ? HIGHLIGHT_SELECTED_CLASS : HIGHLIGHT_CLASS} />
 				<span className="relative ps-2">
 					<span aria-hidden="true" className={GLYPH_CLASS}>
 						/

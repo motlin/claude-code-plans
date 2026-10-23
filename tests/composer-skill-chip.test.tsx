@@ -234,4 +234,109 @@ describe("Composer skill chip", () => {
 			restored: shown,
 		});
 	});
+
+	describe("atom editing", () => {
+		const highlightClass = (): string | null =>
+			screen.getByTestId("composer-skill-chip").firstElementChild?.getAttribute("class") ?? null;
+		const unselected =
+			"absolute -inset-y-0.5 -start-0.5 -end-1 rounded-r5 pointer-events-none group-hover/chip:[@media(hover:hover)]:bg-upstream-accent-pressed group-data-[card-open]/chip:bg-upstream-accent-pressed";
+		const selected =
+			"absolute -inset-y-0.5 -start-0.5 -end-1 rounded-r5 pointer-events-none bg-upstream-accent-pressed";
+
+		function chipOnly(): HTMLTextAreaElement {
+			const textarea = setup();
+			accept(textarea, "/mo");
+			fireEvent.change(textarea, {target: {value: "/model"}});
+			textarea.focus();
+			textarea.setSelectionRange(6, 6);
+			fireEvent.select(textarea);
+			return textarea;
+		}
+
+		it("selects the chip on the first Backspace instead of deleting a character", () => {
+			const textarea = chipOnly();
+			const before = highlightClass();
+
+			const notPrevented = fireEvent.keyDown(textarea, {key: "Backspace"});
+
+			expect({
+				before,
+				notPrevented,
+				value: textarea.value,
+				selection: [textarea.selectionStart, textarea.selectionEnd],
+				highlight: highlightClass(),
+			}).toStrictEqual({
+				before: unselected,
+				notPrevented: false,
+				value: "/model",
+				selection: [0, 6],
+				highlight: selected,
+			});
+		});
+
+		it("removes the chip when the selected chip is deleted", () => {
+			const textarea = chipOnly();
+			fireEvent.keyDown(textarea, {key: "Backspace"});
+
+			const notPrevented = fireEvent.keyDown(textarea, {key: "Backspace"});
+			fireEvent.change(textarea, {target: {value: ""}});
+
+			expect({
+				notPrevented,
+				value: textarea.value,
+				chip: screen.queryByTestId("composer-skill-chip"),
+			}).toStrictEqual({notPrevented: true, value: "", chip: null});
+		});
+
+		it("selects the chip on Delete with the caret before it", () => {
+			const textarea = chipOnly();
+			textarea.setSelectionRange(0, 0);
+			fireEvent.select(textarea);
+
+			const notPrevented = fireEvent.keyDown(textarea, {key: "Delete"});
+
+			expect({
+				notPrevented,
+				selection: [textarea.selectionStart, textarea.selectionEnd],
+				highlight: highlightClass(),
+			}).toStrictEqual({notPrevented: false, selection: [0, 6], highlight: selected});
+		});
+
+		it("keeps the caret out of the chip", () => {
+			const textarea = chipOnly();
+
+			textarea.setSelectionRange(3, 3);
+			fireEvent.select(textarea);
+			const clicked = [textarea.selectionStart, textarea.selectionEnd];
+			textarea.setSelectionRange(5, 5);
+			fireEvent.select(textarea);
+			const arrowLeft = [textarea.selectionStart, textarea.selectionEnd];
+			textarea.setSelectionRange(1, 1);
+			fireEvent.select(textarea);
+			const arrowRight = [textarea.selectionStart, textarea.selectionEnd];
+			textarea.setSelectionRange(2, 6);
+			fireEvent.select(textarea);
+			const range = [textarea.selectionStart, textarea.selectionEnd];
+
+			expect({clicked, arrowLeft, arrowRight, range, highlight: highlightClass()}).toStrictEqual({
+				clicked: [6, 6],
+				arrowLeft: [0, 0],
+				arrowRight: [6, 6],
+				range: [0, 6],
+				highlight: selected,
+			});
+		});
+
+		it("inserts a space when a character is typed right after the chip", () => {
+			const textarea = chipOnly();
+
+			fireEvent.change(textarea, {target: {value: "/modelx", selectionStart: 7, selectionEnd: 7}});
+
+			expect({
+				value: textarea.value,
+				selection: [textarea.selectionStart, textarea.selectionEnd],
+				chip: screen.getByTestId("composer-skill-chip").textContent,
+			}).toStrictEqual({value: "/model x", selection: [8, 8], chip: "/model"});
+		});
+	});
 });
