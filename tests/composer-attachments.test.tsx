@@ -177,14 +177,13 @@ describe("Composer attachments", () => {
 		expect(onSend.mock.calls).toStrictEqual([[`@${ATTACHMENTS}/0002.md`, {}]]);
 	});
 
-	it("uploads files dropped on the card", async () => {
+	it("uploads files dropped anywhere on the page, behind the page-wide drop scrim", async () => {
 		mockUploads(savedAs(`${ATTACHMENTS}/0003.png`));
 		renderComposer();
-		const card = prompt().closest("[data-composer-card]")!;
 
-		fireEvent.dragOver(card, {dataTransfer: {types: ["Files"], files: []}});
-		const overlay = screen.queryByText("Drop files here") !== null;
-		fireEvent.drop(card, {dataTransfer: {types: ["Files"], files: [png("dropped.png")]}});
+		fireEvent.dragOver(document.body, {dataTransfer: {types: ["Files"], files: []}});
+		const overlay = document.querySelector('[data-cds="ChatComposerDropScrim"]')?.textContent === "Drop files here";
+		fireEvent.drop(document.body, {dataTransfer: {types: ["Files"], files: [png("dropped.png")]}});
 		await screen.findByRole("button", {name: "dropped.png"});
 
 		expect({

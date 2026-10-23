@@ -57,6 +57,7 @@ import {startComposerKeystrokeJourney, startComposerSubmitJourneys} from "../lib
 import {SESSION_COMPOSER_PLACEHOLDER} from "../lib/composer-pending-gate";
 import {useCoarsePointer} from "../lib/use-phone-sheet";
 import {type SplitItem, SplitDropdownButton} from "./ui/split-dropdown-button";
+import {ComposerDropScrim, useFileDropTarget} from "./composer-drop-scrim";
 
 type ComposerVariant = "session" | "home";
 
@@ -467,7 +468,6 @@ export function Composer({
 		menuShortcutOptions,
 	);
 	const fileInputRef = useRef<HTMLInputElement>(null);
-	const [dragging, setDragging] = useState(false);
 	const openFilePicker = useCallback(() => fileInputRef.current?.click(), []);
 	useShortcut("add_files", openFilePicker, {disabled});
 	const chinLaunchOptions = live?.options ?? launchOptions;
@@ -736,6 +736,10 @@ export function Composer({
 		attachUploadedFiles(draftKey, files, (options) => toast?.(options));
 	}
 
+	// Upstream's page-scoped drop: a drop anywhere attaches. The hook stays on while launching so the drop
+	// toasts instead of opening the file, but the scrim only shows once files can attach.
+	const dropState = useFileDropTarget({onFileDrop: attachFiles});
+
 	function handlePaste(e: React.ClipboardEvent) {
 		const files = Array.from(e.clipboardData.files);
 		if (files.length > 0) {
@@ -744,8 +748,6 @@ export function Composer({
 			return;
 		}
 	}
-
-	const hasFiles = (e: React.DragEvent) => Array.from(e.dataTransfer.types).includes("Files");
 
 	const insertSlash = useCallback(() => {
 		const current = promptRef.current;
@@ -842,32 +844,8 @@ export function Composer({
 				}}
 			/>
 			{/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- a pointer shortcut that focuses the textarea, which is keyboard-reachable itself */}
-			<div
-				data-composer-card
-				className={COMPOSER_CARD_CLASS}
-				onClick={() => textareaRef.current?.focus()}
-				onDragOver={(e) => {
-					if (!hasFiles(e)) return;
-					// Accept the drag even while launching so the drop lands here and toasts instead of opening the file.
-					e.preventDefault();
-					if (!disabled) setDragging(true);
-				}}
-				onDragLeave={(e) => {
-					if (!(e.relatedTarget instanceof Node && e.currentTarget.contains(e.relatedTarget)))
-						setDragging(false);
-				}}
-				onDrop={(e) => {
-					if (!hasFiles(e)) return;
-					e.preventDefault();
-					setDragging(false);
-					attachFiles(Array.from(e.dataTransfer.files));
-				}}
-			>
-				{dragging && (
-					<div className="pointer-events-none absolute inset-0 z-[2] flex items-center justify-center rounded-composer border border-dashed border-accent-100 bg-surface-3/90 text-footnote text-secondary">
-						Drop files here
-					</div>
-				)}
+			<div data-composer-card className={COMPOSER_CARD_CLASS} onClick={() => textareaRef.current?.focus()}>
+				{dropState !== "idle" && !disabled && <ComposerDropScrim />}
 				{(contextChips.length > 0 || queuedComments.length > 0) && (
 					<AttachedContextChips sessionId={draftKey} context={contextChips} comments={queuedComments} />
 				)}

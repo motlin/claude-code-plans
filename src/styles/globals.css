@@ -825,6 +825,22 @@ html[data-interface-font="dyslexic"] {
 	}
 }
 
+/* The drop scrim's frame (upstream cds-drop-ring-in): the accent ring settles in from a slightly larger frame. */
+@keyframes cds-drop-ring-in {
+	from {
+		opacity: 0;
+		transform: scale(1.02);
+	}
+}
+
+/* The drop scrim's icons (upstream cds-drop-icon-rise): each rises into place after its --rise-delay. */
+@keyframes cds-drop-icon-rise {
+	from {
+		opacity: 0;
+		transform: translateY(8px);
+	}
+}
+
 /* Upstream's epitaxy-hint-fade-in: a waiting row's at-rest receipt rises into place. */
 @keyframes epitaxy-hint-fade-in {
 	0% {
