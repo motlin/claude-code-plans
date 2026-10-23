@@ -39,7 +39,8 @@ import {claudeAiSessionUrl} from "../../lib/session-open-in";
 import {usePaneHost} from "../panes/pane-host-context";
 import {ContextBreakdownBody} from "./context-breakdown";
 import {useToast} from "../toast-context";
-import {RAIL_ROW_ACTION_CLASS, RailRow, RailRowContent} from "./rail-row";
+import {Menu, MenuContent, MenuItem, MenuTrigger} from "../ui/menu";
+import {ENVIRONMENT_MENU_BUTTON_CLASS, RAIL_ROW_ACTION_CLASS, RailRow, RailRowContent} from "./rail-row";
 import {SessionRail, type RailCard} from "./session-rail";
 
 /** What the session page knows that the rail's cards show. */
@@ -83,6 +84,49 @@ function Icon({icon: IconComponent}: {icon: LucideIcon}) {
 	return <IconComponent aria-hidden />;
 }
 
+/** A branch's page in its GitHub repo, each path segment encoded so a `user/topic` branch keeps its slashes. */
+function gitHubBranchUrl(repoUrl: string, branch: string): string {
+	return `${repoUrl}/tree/${branch.split("/").map(encodeURIComponent).join("/")}`;
+}
+
+/** Upstream's folder and branch rows: a ghost menu button padded past the icon, which overlays it without taking clicks. */
+function EnvironmentMenuRow({
+	icon,
+	label,
+	hint,
+	title,
+	children,
+}: {
+	icon: LucideIcon;
+	label: string;
+	hint?: string;
+	title: string;
+	children: React.ReactNode;
+}) {
+	return (
+		<div className="relative flex min-w-0 flex-1">
+			<Menu>
+				<MenuTrigger title={title} className={ENVIRONMENT_MENU_BUTTON_CLASS}>
+					<span data-rail-row-label="" className="min-w-0 flex-1 truncate text-primary">
+						{label}
+					</span>
+					{hint !== undefined && (
+						<span data-rail-row-hint="" className="shrink-0 text-[12px]/[15px] text-ink-muted tabular-nums">
+							{hint}
+						</span>
+					)}
+				</MenuTrigger>
+				<MenuContent>{children}</MenuContent>
+			</Menu>
+			<span className="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-1">
+				<span className="flex size-5 shrink-0 items-center justify-center text-secondary [&_svg]:size-4">
+					<Icon icon={icon} />
+				</span>
+			</span>
+		</div>
+	);
+}
+
 /**
  * Upstream's Environment card: where the session runs. Locally, its folder
  * hinted with its terminal host (herdr, tmux or Local), a Remote Control line
@@ -91,7 +135,9 @@ function Icon({icon: IconComponent}: {icon: LucideIcon}) {
 function EnvironmentBody({inputs}: {inputs: SessionRailInputs}) {
 	const toast = useToast();
 	const {cwd, gitBranch, model, herdrPane} = inputs;
-	const bridgeSessionId = useQuery(sessionOpenInQueryOptions(inputs.sessionId)).data?.bridgeSessionId ?? null;
+	const openIn = useQuery(sessionOpenInQueryOptions(inputs.sessionId)).data;
+	const bridgeSessionId = openIn?.bridgeSessionId ?? null;
+	const githubUrl = openIn?.githubUrl ?? null;
 	const environment = sessionEnvironment({
 		terminalHost: herdrPane === null ? null : terminalHostLabel(herdrPane),
 		bridged: bridgeSessionId !== null,
@@ -100,23 +146,35 @@ function EnvironmentBody({inputs}: {inputs: SessionRailInputs}) {
 	return (
 		<Rows>
 			{cwd !== null && (
-				<button
-					type="button"
+				<EnvironmentMenuRow
+					icon={Laptop}
+					label={homeRelative(cwd, inputs.homeRoot)}
+					hint={environment.label}
 					title={cwd}
-					aria-label={`Open ${homeRelative(cwd, inputs.homeRoot)} in Finder`}
-					className={RAIL_ROW_ACTION_CLASS}
-					onClick={() => {
-						openSessionInFinder(inputs.sessionId).catch(() => {
-							toast({kind: "error", message: "Couldn’t open the folder in Finder."});
-						});
-					}}
 				>
-					<RailRowContent
-						icon={<Icon icon={Laptop} />}
-						label={homeRelative(cwd, inputs.homeRoot)}
-						hint={environment.label}
-					/>
-				</button>
+					<MenuItem
+						onSelect={() => {
+							openSessionInFinder(inputs.sessionId).catch(() => {
+								toast({kind: "error", message: "Couldn’t open the folder in Finder."});
+							});
+						}}
+					>
+						Open in Finder
+					</MenuItem>
+					<MenuItem
+						onSelect={() => {
+							void writeClipboardText(cwd).then((copied) => {
+								toast(
+									copied
+										? {kind: "success", message: "Path copied to clipboard."}
+										: {kind: "error", message: "Couldn’t copy the path."},
+								);
+							});
+						}}
+					>
+						Copy path
+					</MenuItem>
+				</EnvironmentMenuRow>
 			)}
 			{cwd !== null && bridgeSessionId !== null && environment.remoteControl !== null && (
 				<a
@@ -133,22 +191,30 @@ function EnvironmentBody({inputs}: {inputs: SessionRailInputs}) {
 				</a>
 			)}
 			{gitBranch !== null && (
-				<button
-					type="button"
-					title={`Copy ${gitBranch}`}
-					className={RAIL_ROW_ACTION_CLASS}
-					onClick={() => {
-						void writeClipboardText(gitBranch).then((copied) => {
-							toast(
-								copied
-									? {kind: "success", message: "Branch name copied to clipboard."}
-									: {kind: "error", message: "Couldn’t copy the branch name. Try again."},
-							);
-						});
-					}}
-				>
-					<RailRowContent icon={<Icon icon={GitBranch} />} label={gitBranch} />
-				</button>
+				<EnvironmentMenuRow icon={GitBranch} label={gitBranch} title={gitBranch}>
+					<MenuItem
+						onSelect={() => {
+							void writeClipboardText(gitBranch).then((copied) => {
+								toast(
+									copied
+										? {kind: "success", message: "Branch name copied to clipboard."}
+										: {kind: "error", message: "Couldn’t copy the branch name. Try again."},
+								);
+							});
+						}}
+					>
+						Copy branch name
+					</MenuItem>
+					{githubUrl !== null && (
+						<MenuItem
+							onSelect={() => {
+								window.open(gitHubBranchUrl(githubUrl, gitBranch), "_blank", "noopener,noreferrer");
+							}}
+						>
+							Open branch on GitHub
+						</MenuItem>
+					)}
+				</EnvironmentMenuRow>
 			)}
 			{model !== null && <RailRow icon={<Icon icon={Cpu} />} label={model} />}
 			{herdrPane === null ? (

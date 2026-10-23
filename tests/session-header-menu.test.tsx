@@ -145,6 +145,7 @@ async function renderTitlebar(
 	queryClient.setQueryData(sessionOpenInQueryOptions(SESSION_ID).queryKey, {
 		cwd: PROJECT_PATH,
 		bridgeSessionId,
+		githubUrl: null,
 	});
 	const rootRoute = createRootRoute({
 		component: () => (
@@ -549,6 +550,7 @@ async function renderSessionPage() {
 	queryClient.setQueryData(sessionOpenInQueryOptions(SESSION_ID).queryKey, {
 		cwd: PROJECT_PATH,
 		bridgeSessionId: null,
+		githubUrl: null,
 	});
 	const rootRoute = createRootRoute({
 		component: () => (

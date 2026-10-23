@@ -7,6 +7,10 @@ const ROW_CLASS = "flex min-h-6.5 w-full min-w-0 items-center gap-2 rounded px-1
 /** Rows that act get upstream's ghost hover, alpha press and focus ring. */
 export const RAIL_ROW_ACTION_CLASS = `${ROW_CLASS} cursor-pointer hover:bg-fill-ghost-hover active:bg-alpha-2 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus`;
 
+/** Upstream's Environment folder and branch menu buttons: 26px tall, padded `ps-8` past the overlaid icon. */
+export const ENVIRONMENT_MENU_BUTTON_CLASS =
+	"flex h-6.5 w-full min-w-0 items-center justify-start gap-2 rounded ps-8 pe-1 text-left text-[13px]/[19px] cursor-pointer hover:bg-fill-ghost-hover active:bg-alpha-2 data-popup-open:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
+
 /** A row's slots: a 20px icon in text-secondary, the label, and a muted 12px trailing hint. */
 export function RailRowContent({icon, label, hint}: {icon: ReactNode; label: ReactNode; hint?: ReactNode}) {
 	return (

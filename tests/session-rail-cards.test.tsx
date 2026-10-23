@@ -242,6 +242,7 @@ describe("Environment card", () => {
 		client.setQueryData(sessionOpenInQueryOptions(SESSION_ID).queryKey, {
 			cwd: BASE.cwd,
 			bridgeSessionId: "cse_bridge",
+			githubUrl: null,
 		});
 	}
 
@@ -372,6 +373,69 @@ describe("Environment card", () => {
 				["Remote Control · Connected", null],
 				["tmux", "%7"],
 			],
+		});
+	});
+
+	function withGitHub(client: QueryClient) {
+		client.setQueryData(sessionOpenInQueryOptions(SESSION_ID).queryKey, {
+			cwd: BASE.cwd,
+			bridgeSessionId: null,
+			githubUrl: "https://github.com/alice/avalonlogs",
+		});
+	}
+
+	async function openRowMenu(name: RegExp): Promise<string[]> {
+		const card = screen.getByRole("region", {name: /^Environment/});
+		const trigger = within(card).getByRole("button", {name});
+		fireEvent.click(trigger);
+		const menu = await screen.findByRole("menu");
+		return [
+			trigger.getAttribute("aria-haspopup") ?? "",
+			...within(menu)
+				.getAllByRole("menuitem")
+				.map((item) => item.textContent),
+		];
+	}
+
+	it("opens a folder menu to open the folder in Finder or copy its path", async () => {
+		const writeText = vi.fn<(text: string) => Promise<void>>(async () => Promise.resolve());
+		Object.defineProperty(navigator, "clipboard", {value: {writeText}, configurable: true});
+		await renderCards(BASE);
+
+		const items = await openRowMenu(/avalonlogs/);
+		fireEvent.click(screen.getByRole("menuitem", {name: "Copy path"}));
+		await act(async () => {
+			await Promise.resolve();
+		});
+
+		expect({
+			items,
+			copied: writeText.mock.calls,
+			toast: document.querySelector("[data-toast-message]")?.textContent,
+		}).toStrictEqual({
+			items: ["menu", "Open in Finder", "Copy path"],
+			copied: [["/Users/alice/projects/avalonlogs"]],
+			toast: "Path copied to clipboard.",
+		});
+	});
+
+	it("opens a branch menu to copy the branch name, without GitHub for a repo with no GitHub remote", async () => {
+		await renderCards(BASE);
+
+		expect(await openRowMenu(/alice\/sync-upstream/)).toStrictEqual(["menu", "Copy branch name"]);
+	});
+
+	it("adds Open branch on GitHub to the branch menu when the repo has a GitHub remote", async () => {
+		const open = vi.fn<typeof window.open>(() => null);
+		vi.stubGlobal("open", open);
+		await renderCards(BASE, withGitHub);
+
+		const items = await openRowMenu(/alice\/sync-upstream/);
+		fireEvent.click(screen.getByRole("menuitem", {name: "Open branch on GitHub"}));
+
+		expect({items, opened: open.mock.calls}).toStrictEqual({
+			items: ["menu", "Copy branch name", "Open branch on GitHub"],
+			opened: [["https://github.com/alice/avalonlogs/tree/alice/sync-upstream", "_blank", "noopener,noreferrer"]],
 		});
 	});
 });

@@ -13,6 +13,21 @@ export function gitRemoteRepoName(remoteUrl: string): string | null {
 }
 
 /**
+ * The web URL of the GitHub repository a git remote URL points at, or null when it isn't GitHub. An ssh alias host
+ * counts when its name mentions GitHub (e.g. `MotlinGitHub:owner/repo.git`), as the alias's real host is in ssh config.
+ */
+export function gitHubRepoUrl(remoteUrl: string): string | null {
+	const trimmed = remoteUrl
+		.trim()
+		.replace(/\/+$/, "")
+		.replace(/\.git$/, "");
+	const match = /^(?:[a-z+]+:\/\/)?(?:[^@/]+@)?([^/:]+)[/:]([^/]+)\/([^/]+)$/i.exec(trimmed);
+	if (match === null) return null;
+	const [, host = "", owner = "", repo = ""] = match;
+	return /github/i.test(host) ? `https://github.com/${owner}/${repo}` : null;
+}
+
+/**
  * The session's PR link when it belongs to the session's own repository (or a
  * fork of it, which shares the name). A session that only opened or touched a
  * PR in another repository keeps no PR, as upstream shows no badge or strip for
@@ -46,7 +61,7 @@ function gitDirOf(path: string): string | null {
 	}
 }
 
-function originFromConfig(gitDir: string): string | null {
+function originUrlFromConfig(gitDir: string): string | null {
 	let config: string;
 	try {
 		config = readFileSync(join(gitDir, "config"), "utf8");
@@ -55,28 +70,36 @@ function originFromConfig(gitDir: string): string | null {
 	}
 	const section = /^\[remote "origin"\]\s*$([\s\S]*?)(?=^\[|(?![\s\S]))/m.exec(config)?.[1];
 	const url = section === undefined ? undefined : /^\s*url\s*=\s*(.+)$/m.exec(section)?.[1];
-	return url === undefined ? null : gitRemoteRepoName(url);
+	return url === undefined ? null : url.trim();
 }
 
-/** How long a checkout's origin name is reused before its git config is read again. */
+/** How long a checkout's origin URL is reused before its git config is read again. */
 const ORIGIN_CACHE_MS = 60_000;
-const originCache = new Map<string, {name: string | null; readAt: number}>();
+const originCache = new Map<string, {url: string | null; readAt: number}>();
 
-/**
- * The repo name of the `origin` remote of the checkout holding `path`, read from
- * its git config rather than by spawning git and cached per path for a minute,
- * or null when it has none.
- */
-export function readOriginRepoName(path: string, now = Date.now()): string | null {
+/** The `origin` remote URL of the checkout holding `path`, read from its git config rather than by spawning git and cached per path for a minute. */
+function readOriginUrl(path: string, now: number): string | null {
 	const cached = originCache.get(path);
-	if (cached !== undefined && now - cached.readAt < ORIGIN_CACHE_MS) return cached.name;
-	let name: string | null = null;
+	if (cached !== undefined && now - cached.readAt < ORIGIN_CACHE_MS) return cached.url;
+	let url: string | null = null;
 	try {
 		const gitDir = gitDirOf(path);
-		name = gitDir === null ? null : originFromConfig(gitDir);
+		url = gitDir === null ? null : originUrlFromConfig(gitDir);
 	} catch {
-		name = null;
+		url = null;
 	}
-	originCache.set(path, {name, readAt: now});
-	return name;
+	originCache.set(path, {url, readAt: now});
+	return url;
+}
+
+/** The repo name of the `origin` remote of the checkout holding `path`, or null when it has none. */
+export function readOriginRepoName(path: string, now = Date.now()): string | null {
+	const url = readOriginUrl(path, now);
+	return url === null ? null : gitRemoteRepoName(url);
+}
+
+/** The GitHub web URL of the `origin` remote of the checkout holding `path`, or null when it has none or isn't GitHub. */
+export function readOriginGitHubUrl(path: string, now = Date.now()): string | null {
+	const url = readOriginUrl(path, now);
+	return url === null ? null : gitHubRepoUrl(url);
 }

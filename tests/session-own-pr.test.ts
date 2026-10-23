@@ -2,7 +2,13 @@ import {mkdirSync, mkdtempSync, rmSync, writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {describe, expect, it} from "vite-plus/test";
-import {gitRemoteRepoName, ownRepositoryPr, readOriginRepoName} from "../src/lib/session-own-pr";
+import {
+	gitHubRepoUrl,
+	gitRemoteRepoName,
+	ownRepositoryPr,
+	readOriginGitHubUrl,
+	readOriginRepoName,
+} from "../src/lib/session-own-pr";
 import {toSessionSummaryPayload} from "../src/lib/session-summary";
 
 const FOREIGN = {
@@ -21,6 +27,28 @@ describe("gitRemoteRepoName", () => {
 			gitRemoteRepoName("https://github.com/liftwizard/klass"),
 			gitRemoteRepoName("  \n"),
 		]).toStrictEqual(["klass", "klass", "klass", null]);
+	});
+});
+
+describe("gitHubRepoUrl", () => {
+	it("maps GitHub ssh, ssh-alias and https remotes to the repo's web URL, and others to null", () => {
+		expect([
+			gitHubRepoUrl("git@github.com:liftwizard/klass.git"),
+			gitHubRepoUrl("MotlinGitHub:liftwizard/klass.git"),
+			gitHubRepoUrl("https://github.com/liftwizard/klass/"),
+			gitHubRepoUrl("ssh://git@github.com/liftwizard/klass.git"),
+			gitHubRepoUrl("git@gitlab.com:liftwizard/klass.git"),
+			gitHubRepoUrl("/srv/git/klass.git"),
+			gitHubRepoUrl("  \n"),
+		]).toStrictEqual([
+			"https://github.com/liftwizard/klass",
+			"https://github.com/liftwizard/klass",
+			"https://github.com/liftwizard/klass",
+			"https://github.com/liftwizard/klass",
+			null,
+			null,
+			null,
+		]);
 	});
 });
 
@@ -53,12 +81,18 @@ describe("readOriginRepoName", () => {
 
 			mkdirSync(join(main, "src", "deep"), {recursive: true});
 
-			expect([
-				readOriginRepoName(main),
-				readOriginRepoName(worktree),
-				readOriginRepoName(join(main, "src", "deep")),
-				readOriginRepoName(plain),
-			]).toStrictEqual(["klass", "klass", "klass", null]);
+			expect({
+				names: [
+					readOriginRepoName(main),
+					readOriginRepoName(worktree),
+					readOriginRepoName(join(main, "src", "deep")),
+					readOriginRepoName(plain),
+				],
+				gitHub: [readOriginGitHubUrl(worktree), readOriginGitHubUrl(plain)],
+			}).toStrictEqual({
+				names: ["klass", "klass", "klass", null],
+				gitHub: ["https://github.com/liftwizard/klass", null],
+			});
 		} finally {
 			rmSync(root, {recursive: true, force: true});
 		}

@@ -104,6 +104,7 @@ async function renderTitlebar(data: SessionDetailData, slots: {withSlots?: boole
 	queryClient.setQueryData(sessionOpenInQueryOptions(SESSION_ID).queryKey, {
 		cwd: data.cwd,
 		bridgeSessionId: null,
+		githubUrl: null,
 	});
 	const content: ReactNode = (
 		<SessionTitlebar

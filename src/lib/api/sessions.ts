@@ -129,7 +129,12 @@ export const SessionDetailResponse = z
 	.nullable();
 
 export const SessionOpenInResponse = z
-	.object({cwd: z.string().nullable(), bridgeSessionId: z.string().nullable()})
+	.object({
+		cwd: z.string().nullable(),
+		bridgeSessionId: z.string().nullable(),
+		/** The web URL of the session checkout's GitHub `origin`, or null when it has none. */
+		githubUrl: z.string().nullable(),
+	})
 	.strict();
 
 export const SessionIdentityResponse = z.object({sessionId: z.string()}).strict();

@@ -212,6 +212,7 @@ async function renderHarness(sessionId: string) {
 	queryClient.setQueryData(sessionOpenInQueryOptions(sessionId).queryKey, {
 		cwd: null,
 		bridgeSessionId: null,
+		githubUrl: null,
 	});
 	const rootRoute = createRootRoute({
 		component: () => (

@@ -65,6 +65,7 @@ async function renderWithRouter(content: ReactNode, cwd: string | null = null) {
 	queryClient.setQueryData(sessionOpenInQueryOptions(SESSION_ID).queryKey, {
 		cwd,
 		bridgeSessionId: null,
+		githubUrl: null,
 	});
 	const rootRoute = createRootRoute({
 		component: () => (
