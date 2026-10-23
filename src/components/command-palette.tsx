@@ -392,6 +392,8 @@ function hintsFor(query: string): PaletteFilter[] | null {
 	return hints === null || hints.length === 0 ? null : hints;
 }
 
+const NEW_SESSION_VALUE = "start:new-session";
+
 function rowKey(row: Pick<SearchRow, "kind" | "id">): string {
 	return `${row.kind}:${row.id}`;
 }
@@ -1021,8 +1023,34 @@ function PalettePopup({
 		void navigate({to: "/search", search: {q: tokens.text, type: apiType}});
 	}
 
+	// Upstream resets the highlight to row 0 on every tab change (`pg={index:0}`); the stale cmdk value
+	// from the previous tab would otherwise leave no row selected. Quick actions still win when shown.
+	const pendingFirstRowRef = useRef(false);
+	useEffect(() => {
+		if (!pendingFirstRowRef.current) return;
+		const first = canStart ? NEW_SESSION_VALUE : listing?.[0] === undefined ? undefined : rowKey(listing[0]);
+		if (first === undefined) return;
+		pendingFirstRowRef.current = false;
+		setSelectedValue(first);
+	}, [tab, listing, canStart]);
+
+	// cmdk only refreshes `aria-activedescendant` when its own keys move the selection, never for a
+	// controlled value, so every commit points the textarea at the selected row itself. It writes the
+	// attribute directly (a state round trip would cost the palette a second commit), and the textarea
+	// overrides cmdk's own prop with undefined so React never writes cmdk's stale id over it.
+	useLayoutEffect(() => {
+		const input = inputRef.current;
+		if (input === null) return;
+		const items = cardRef.current?.querySelectorAll<HTMLElement>("[cmdk-item]") ?? [];
+		const id = [...items].find((item) => item.dataset["value"] === selectedValue)?.id;
+		if (id === undefined) input.removeAttribute("aria-activedescendant");
+		else if (input.getAttribute("aria-activedescendant") !== id) input.setAttribute("aria-activedescendant", id);
+	});
+
 	function chooseTab(next: PaletteType) {
 		setTab(next);
+		setSelectedValue("");
+		pendingFirstRowRef.current = true;
 		inputRef.current?.focus();
 	}
 
@@ -1267,6 +1295,7 @@ function PalettePopup({
 						<Command.Input asChild value={query} onValueChange={setQuery}>
 							<textarea
 								ref={inputRef}
+								aria-activedescendant={undefined}
 								placeholder={label}
 								disabled={startStep === "launching"}
 								rows={compose ? 2 : 1}
@@ -1363,7 +1392,7 @@ function PalettePopup({
 						{startStep === "launching" && (
 							<Command.Group heading="Quick actions" className={GROUP_CLASS}>
 								<CommandItem
-									value="start:new-session"
+									value={NEW_SESSION_VALUE}
 									icon={<LoaderCircle className="animate-spin" />}
 									onSelect={() => {}}
 								>
@@ -2015,7 +2044,7 @@ function NewSessionItem({
 	onSelect: () => void;
 }) {
 	return (
-		<Command.Item value="start:new-session" onSelect={onSelect} className={ROW_CLASS}>
+		<Command.Item value={NEW_SESSION_VALUE} onSelect={onSelect} className={ROW_CLASS}>
 			<span className="flex min-w-0 flex-1 items-center gap-2">
 				<span className="flex size-5 shrink-0 items-center justify-center [&_svg]:size-[18px]">
 					<Code />

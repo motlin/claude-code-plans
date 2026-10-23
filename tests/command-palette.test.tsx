@@ -1401,6 +1401,56 @@ describe("CommandPalette Plans, Memories and Files tabs with an empty query", ()
 		]);
 	});
 
+	function selection(dialog: HTMLElement) {
+		const first = within(dialog).getByRole("group", {name: "Search results"}).querySelector("[cmdk-item]");
+		return {
+			label: first?.querySelector("[data-palette-label]")?.textContent,
+			dataSelected: first?.getAttribute("data-selected"),
+			ariaSelected: first?.getAttribute("aria-selected"),
+			activedescendant: within(dialog).getByRole("combobox").getAttribute("aria-activedescendant") === first?.id,
+		};
+	}
+
+	it("selects row 0 on every tab change, as upstream's pg={index:0}", async () => {
+		const dialog = await openPalette([recentSession("sess-1", "Refactor auth module")], "/", (queryClient) => {
+			seedDocs(queryClient);
+			queryClient.setQueryData(artifactsQueryOptions.queryKey, [
+				artifact("art-new", "New report", 0),
+				artifact("art-old", "Old dashboard", HOUR_MS),
+			]);
+		});
+		const input = within(dialog).getByRole("combobox");
+
+		fireEvent.keyDown(input, {key: "ArrowRight", code: "ArrowRight"});
+		const artifacts = selection(dialog);
+		fireEvent.click(within(dialog).getByRole("tab", {name: "Projects"}));
+		const projectsTab = selection(dialog);
+		fireEvent.click(within(dialog).getByRole("tab", {name: "Plans"}));
+		const plansTab = selection(dialog);
+
+		expect({artifacts, projectsTab, plansTab}).toStrictEqual({
+			artifacts: {label: "New report", dataSelected: "true", ariaSelected: "true", activedescendant: true},
+			projectsTab: {label: "proj-a", dataSelected: "true", ariaSelected: "true", activedescendant: true},
+			plansTab: {label: "New plan", dataSelected: "true", ariaSelected: "true", activedescendant: true},
+		});
+	});
+
+	it("keeps New session selected over row 0 when a tab change keeps Quick actions on top", async () => {
+		const dialog = await openPalette([recentSession("sess-1", "Refactor auth module")], "/", (queryClient) => {
+			queryClient.setQueryData(artifactsQueryOptions.queryKey, [artifact("art-new", "New report", 0)]);
+		});
+		const input = within(dialog).getByRole("combobox");
+		fireEvent.change(input, {target: {value: "re"}});
+
+		fireEvent.click(within(dialog).getByRole("tab", {name: "Artifacts"}));
+		const selected = dialog.querySelector('[cmdk-item][data-selected="true"]');
+
+		expect({
+			value: selected?.getAttribute("data-value"),
+			activedescendant: input.getAttribute("aria-activedescendant") === selected?.id,
+		}).toStrictEqual({value: "start:new-session", activedescendant: true});
+	});
+
 	it("shows upstream's empty state with Search all on the Files tab", async () => {
 		const dialog = await openPalette(undefined, "/", seedDocs);
 
