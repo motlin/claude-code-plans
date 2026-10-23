@@ -1,6 +1,15 @@
-import type {ReactNode} from "react";
+import type {MouseEvent, ReactNode, RefObject} from "react";
 
 import type {AcceptedMention} from "../lib/composer-mentions";
+import {ContextMenu, ContextMenuTrigger, MenuContent, MenuItem} from "./ui/menu";
+
+/** What a chip does with the pointer: a left press selects it, its menu's Delete removes it. */
+export interface MentionChipActions {
+	onPress: (mention: AcceptedMention) => void;
+	onDelete: (mention: AcceptedMention) => void;
+	/** Where focus returns when the chip's menu closes. */
+	editorRef: RefObject<HTMLTextAreaElement | null>;
+}
 
 /**
  * Upstream's mention node-view wrapper (`Um`), minus `inline-flex` and `mx-0.5`: the chip stays
@@ -23,27 +32,55 @@ function ComposerMentionChip({
 	relPath,
 	isDirectory,
 	selected,
+	onPress,
+	onDelete,
+	editorRef,
 	children,
 }: {
 	relPath: string;
 	isDirectory: boolean;
 	selected: boolean;
+	onPress: () => void;
+	onDelete: () => void;
+	editorRef: RefObject<HTMLTextAreaElement | null>;
 	children: ReactNode;
 }) {
 	return (
-		<span
-			data-testid="composer-mention-chip"
-			data-path={relPath}
-			data-directory={isDirectory ? "" : undefined}
-			dir="auto"
-			className={CHIP_CLASS}
-		>
-			<span aria-hidden="true" className={selected ? HIGHLIGHT_SELECTED_CLASS : HIGHLIGHT_CLASS} />
-			{/* Upstream's renderedText keeps a directory's trailing slash. */}
-			<span title={isDirectory ? `${relPath}/` : relPath} className="relative">
-				{children}
-			</span>
-		</span>
+		// Upstream `GZ`: a ContextMenu whose only item (in a session without a path context) is Delete.
+		<ContextMenu>
+			<ContextMenuTrigger
+				render={<span />}
+				data-testid="composer-mention-chip"
+				data-path={relPath}
+				data-directory={isDirectory ? "" : undefined}
+				dir="auto"
+				className={CHIP_CLASS}
+				// Upstream `lI`: the editor's and transcript's own menus don't also open.
+				onContextMenu={(e: MouseEvent) => {
+					e.stopPropagation();
+				}}
+				onMouseDown={(e: MouseEvent) => {
+					// Upstream `yl`: only non-left presses stop here; a left press selects the atom.
+					if (e.button !== 0) {
+						e.stopPropagation();
+						return;
+					}
+					e.preventDefault();
+					onPress();
+				}}
+			>
+				<span aria-hidden="true" className={selected ? HIGHLIGHT_SELECTED_CLASS : HIGHLIGHT_CLASS} />
+				{/* Upstream's renderedText keeps a directory's trailing slash. */}
+				<span title={isDirectory ? `${relPath}/` : relPath} className="relative">
+					{children}
+				</span>
+			</ContextMenuTrigger>
+			<MenuContent density="compact" finalFocus={editorRef}>
+				<MenuItem variant="danger" onSelect={onDelete}>
+					Delete
+				</MenuItem>
+			</MenuContent>
+		</ContextMenu>
 	);
 }
 
@@ -56,6 +93,7 @@ export function paintMentions(
 	offset: number,
 	mentions: readonly AcceptedMention[],
 	selected: AcceptedMention | undefined,
+	actions: MentionChipActions,
 ): ReactNode[] {
 	const end = offset + text.length;
 	const inside = mentions
@@ -71,6 +109,13 @@ export function paintMentions(
 				relPath={mention.relPath}
 				isDirectory={mention.isDirectory}
 				selected={mention === selected}
+				onPress={() => {
+					actions.onPress(mention);
+				}}
+				onDelete={() => {
+					actions.onDelete(mention);
+				}}
+				editorRef={actions.editorRef}
 			>
 				{text.slice(mention.start - offset, mention.end - offset)}
 			</ComposerMentionChip>,

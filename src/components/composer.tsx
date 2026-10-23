@@ -67,7 +67,7 @@ import {useCoarsePointer} from "../lib/use-phone-sheet";
 import {type SplitItem, SplitDropdownButton} from "./ui/split-dropdown-button";
 import {ComposerDropScrim, useFileDropTarget} from "./composer-drop-scrim";
 import {ComposerSkillChip} from "./composer-skill-chip";
-import {paintMentions} from "./composer-mention-chip";
+import {type MentionChipActions, paintMentions} from "./composer-mention-chip";
 
 type ComposerVariant = "session" | "home";
 
@@ -938,13 +938,7 @@ export function Composer({
 		if (e.key === "Backspace" || e.key === "Delete") {
 			const target = selected ?? besideCaret(e.key === "Backspace");
 			if (target === undefined) return false;
-			const next = prompt.slice(0, target.start) + prompt.slice(target.end);
-			setHistoryWalk(null);
-			setMentionState({draftKey, text: next, mentions: remapMentions(prompt, next, mentions)});
-			pendingCaretRef.current = target.start;
-			setCaret(target.start);
-			setSelectionEnd(target.start);
-			setPrompt(next);
+			deleteMention(target);
 		} else if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
 			const left = e.key === "ArrowLeft";
 			if (selected === undefined) {
@@ -961,6 +955,33 @@ export function Composer({
 		e.preventDefault();
 		return true;
 	}
+
+	/** Removes a chip's token (its trailing space stays, as upstream's `deleteNode`) and leaves the caret there. */
+	function deleteMention(target: AcceptedMention) {
+		const next = prompt.slice(0, target.start) + prompt.slice(target.end);
+		setHistoryWalk(null);
+		setMentionState({draftKey, text: next, mentions: remapMentions(prompt, next, mentions)});
+		pendingCaretRef.current = target.start;
+		setCaret(target.start);
+		setSelectionEnd(target.start);
+		setPrompt(next);
+	}
+
+	const mentionChipActions: MentionChipActions = {
+		editorRef: textareaRef,
+		onPress: (target) => {
+			const textarea = textareaRef.current;
+			if (textarea === null) return;
+			textarea.focus();
+			textarea.setSelectionRange(target.start, target.end);
+			setCaret(target.start);
+			setSelectionEnd(target.end);
+		},
+		onDelete: (target) => {
+			deleteMention(target);
+			textareaRef.current?.focus();
+		},
+	};
 
 	function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
 		startComposerKeystrokeJourney(e.nativeEvent);
@@ -1092,12 +1113,18 @@ export function Composer({
 							)}
 							{argumentHint === null ? (
 								<span data-skill-chip-rest="" className="text-primary">
-									{paintMentions(rest, chipLength, mentions, selectedMention)}
+									{paintMentions(rest, chipLength, mentions, selectedMention, mentionChipActions)}
 								</span>
 							) : (
 								<>
 									<span data-skill-chip-rest="" className="text-primary">
-										{paintMentions(restLine, chipLength, mentions, selectedMention)}
+										{paintMentions(
+											restLine,
+											chipLength,
+											mentions,
+											selectedMention,
+											mentionChipActions,
+										)}
 									</span>
 									<span
 										data-testid="slash-argument-hint"
@@ -1112,6 +1139,7 @@ export function Composer({
 										chipLength + restLine.length,
 										mentions,
 										selectedMention,
+										mentionChipActions,
 									)}
 								</>
 							)}

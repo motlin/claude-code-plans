@@ -489,3 +489,116 @@ describe("Composer accepted @ mention chips edit atomically", () => {
 		});
 	});
 });
+
+describe("Composer accepted @ mention chip context menu", () => {
+	/** Accepts `src/lib/index.ts` after `see `, then types ` x` after the chip's trailing space. */
+	async function chipMidText(textarea: HTMLTextAreaElement) {
+		responses.set(searchUrl("ind"), search("ind", ["src/lib/index.ts"]));
+		await type(textarea, "see @ind");
+		fireEvent.keyDown(textarea, {key: "Enter"});
+		await type(textarea, "see @src/lib/index.ts x");
+		return screen.getByTestId("composer-mention-chip");
+	}
+
+	function openChipMenu(chip: HTMLElement): HTMLElement {
+		fireEvent.contextMenu(chip, {clientX: 10, clientY: 10});
+		return screen.getByRole("menu");
+	}
+
+	it("opens a menu holding only a danger Delete item at the compact metrics", async () => {
+		const {textarea} = setup();
+		const chip = await chipMidText(textarea);
+
+		const menu = openChipMenu(chip);
+		const items = [...menu.querySelectorAll<HTMLElement>('[role="menuitem"]')];
+
+		expect({
+			popupOpen: chip.hasAttribute("data-popup-open"),
+			items: items.map((item) => ({text: item.textContent, variant: item.dataset["variant"]})),
+			density: menu.parentElement?.dataset["density"],
+			popupMinWidth: menu.classList.contains("min-w-[128px]"),
+			itemMetrics: ["h-6", "px-2", "py-[2.5px]", "rounded-r5"].map((token) =>
+				items[0]?.classList.contains(token),
+			),
+		}).toStrictEqual({
+			popupOpen: true,
+			items: [{text: "Delete", variant: "danger"}],
+			density: "compact",
+			popupMinWidth: true,
+			itemMetrics: [true, true, true, true],
+		});
+	});
+
+	it("Delete removes only the token, keeps the trailing space, refocuses the textarea and closes the menu", async () => {
+		const {textarea} = setup();
+		const chip = await chipMidText(textarea);
+
+		const menu = openChipMenu(chip);
+		const deleteItem = menu.querySelector<HTMLElement>('[role="menuitem"]');
+		if (deleteItem === null) throw new Error("no Delete item");
+		fireEvent.click(deleteItem);
+		await act(async () => {
+			await vi.runAllTimersAsync();
+		});
+
+		expect({
+			value: textarea.value,
+			chips: chips(),
+			focused: document.activeElement === textarea,
+			selection: [textarea.selectionStart, textarea.selectionEnd],
+			menus: screen.queryAllByRole("menu").length,
+		}).toStrictEqual({
+			value: "see  x",
+			chips: [],
+			focused: true,
+			selection: [4, 4],
+			menus: 0,
+		});
+	});
+
+	it("keeps the right-click and its mousedown from reaching ancestors", async () => {
+		const onContextMenu = vi.fn<() => void>();
+		const onMouseDown = vi.fn<() => void>();
+		render(
+			<div role="presentation" onContextMenu={onContextMenu} onMouseDown={onMouseDown}>
+				<Composer
+					variant="session"
+					draftKey="session-alice"
+					onSend={vi.fn<(prompt: string) => void>()}
+					mentionSessionId="session-alice"
+				/>
+			</div>,
+		);
+		const textarea = screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
+		const chip = await chipMidText(textarea);
+
+		fireEvent.mouseDown(chip, {button: 2});
+		fireEvent.contextMenu(chip, {clientX: 10, clientY: 10});
+
+		expect({
+			contextMenus: onContextMenu.mock.calls.length,
+			mouseDowns: onMouseDown.mock.calls.length,
+			menus: screen.queryAllByRole("menu").length,
+		}).toStrictEqual({contextMenus: 0, mouseDowns: 0, menus: 1});
+	});
+
+	it("selects the whole chip on a left press, as upstream's click selects the atom", async () => {
+		const {textarea} = setup();
+		const chip = await chipMidText(textarea);
+
+		const notPrevented = fireEvent.mouseDown(chip, {button: 0});
+
+		expect({
+			notPrevented,
+			focused: document.activeElement === textarea,
+			selection: [textarea.selectionStart, textarea.selectionEnd],
+			highlight: chip.firstElementChild?.className,
+		}).toStrictEqual({
+			notPrevented: false,
+			focused: true,
+			selection: [4, 21],
+			highlight:
+				"pointer-events-none absolute -inset-y-0.5 -left-0.5 -right-1 rounded-r5 bg-upstream-accent-pressed",
+		});
+	});
+});
