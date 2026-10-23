@@ -603,3 +603,88 @@ describe("Composer accepted @ mention chip context menu", () => {
 		});
 	});
 });
+
+describe("Composer accepted @ mention chips: keyboard-only and touch parity", () => {
+	const SELECTED_HIGHLIGHT =
+		"pointer-events-none absolute -inset-y-0.5 -left-0.5 -right-1 rounded-r5 bg-upstream-accent-pressed";
+	const HOVER_HIGHLIGHT =
+		"pointer-events-none absolute -inset-y-0.5 -left-0.5 -right-1 rounded-r5 [@media(hover:hover)]:group-hover/mention:bg-fill-ghost-hover";
+
+	async function acceptIndex(textarea: HTMLTextAreaElement, value: string) {
+		responses.set(searchUrl("ind"), search("ind", ["src/lib/index.ts"]));
+		await type(textarea, value);
+		fireEvent.keyDown(textarea, {key: "Enter"});
+	}
+
+	function state(textarea: HTMLTextAreaElement) {
+		return {
+			selection: [textarea.selectionStart, textarea.selectionEnd],
+			highlights: screen
+				.queryAllByTestId("composer-mention-chip")
+				.map((chip) => chip.firstElementChild?.className),
+		};
+	}
+
+	it("gates the hover fill behind (hover: hover), so a touch-only pointer never shows it", async () => {
+		const {textarea} = setup();
+		await acceptIndex(textarea, "@ind");
+
+		const chip = screen.getByTestId("composer-mention-chip");
+		const hoverTokens = [chip, ...chip.querySelectorAll("*")]
+			.flatMap((el) => [...el.classList])
+			.filter((token) => token.includes("hover"));
+
+		expect(hoverTokens).toStrictEqual(["[@media(hover:hover)]:group-hover/mention:bg-fill-ghost-hover"]);
+	});
+
+	it("is not a tab stop, and Tab from the textarea is left to the browser", async () => {
+		const {textarea} = setup();
+		await acceptIndex(textarea, "@ind");
+
+		const chip = screen.getByTestId("composer-mention-chip");
+		const tabStops = [chip, ...chip.querySelectorAll("*")].filter((el) => el.hasAttribute("tabindex"));
+		const tabNotPrevented = fireEvent.keyDown(textarea, {key: "Tab"});
+
+		expect({
+			tabStops: tabStops.length,
+			tabNotPrevented,
+			value: textarea.value,
+			menus: screen.queryAllByRole("menu").length,
+		}).toStrictEqual({
+			tabStops: 0,
+			tabNotPrevented: true,
+			value: "@src/lib/index.ts ",
+			menus: 0,
+		});
+	});
+
+	it("selects two adjacent chips one at a time with ArrowLeft and ArrowRight", async () => {
+		const {textarea} = setup();
+		await acceptIndex(textarea, "@ind");
+		await acceptIndex(textarea, "@src/lib/index.ts @ind");
+		// "@src/lib/index.ts @src/lib/index.ts ": chips at [0,17) and [18,35).
+		textarea.setSelectionRange(35, 35);
+		fireEvent.select(textarea);
+
+		fireEvent.keyDown(textarea, {key: "ArrowLeft"});
+		const secondSelected = state(textarea);
+		fireEvent.keyDown(textarea, {key: "ArrowLeft"});
+		const beforeSecond = state(textarea);
+		// The textarea's own ArrowLeft steps over the separating space.
+		const spaceNotPrevented = fireEvent.keyDown(textarea, {key: "ArrowLeft"});
+		textarea.setSelectionRange(17, 17);
+		fireEvent.select(textarea);
+		fireEvent.keyDown(textarea, {key: "ArrowLeft"});
+		const firstSelected = state(textarea);
+		fireEvent.keyDown(textarea, {key: "ArrowRight"});
+		const afterFirst = state(textarea);
+
+		expect({secondSelected, beforeSecond, spaceNotPrevented, firstSelected, afterFirst}).toStrictEqual({
+			secondSelected: {selection: [18, 35], highlights: [HOVER_HIGHLIGHT, SELECTED_HIGHLIGHT]},
+			beforeSecond: {selection: [18, 18], highlights: [HOVER_HIGHLIGHT, HOVER_HIGHLIGHT]},
+			spaceNotPrevented: true,
+			firstSelected: {selection: [0, 17], highlights: [SELECTED_HIGHLIGHT, HOVER_HIGHLIGHT]},
+			afterFirst: {selection: [17, 17], highlights: [HOVER_HIGHLIGHT, HOVER_HIGHLIGHT]},
+		});
+	});
+});
