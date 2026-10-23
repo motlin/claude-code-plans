@@ -206,4 +206,40 @@ describe("sidebar search field", () => {
 			stored: localStorage.getItem("cmdk-mode"),
 		}).toStrictEqual({placeholder: "Search", modeSwitch: true, stored: "compose"});
 	});
+	it("returns focus to the previously focused element after a mouse open and close", async () => {
+		await renderSidebar({palette: true});
+
+		const field = searchField();
+		if (field === null) throw new Error("No search field");
+		// jsdom skips the browser's focus-on-mousedown default, so apply it unless the field prevented it.
+		if (fireEvent.mouseDown(field)) field.focus();
+		fireEvent.click(field);
+		const dialog = await screen.findByRole("dialog", {name: "Search"});
+		fireEvent.keyDown(within(dialog).getByRole("combobox", {name: "Search"}), {key: "Escape"});
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog", {name: "Search"})).toBeNull();
+		});
+
+		await waitFor(() => {
+			expect(document.activeElement === field ? "field" : document.activeElement?.tagName).toBe("BODY");
+		});
+	});
+
+	it("returns focus to the field after a keyboard open and close", async () => {
+		await renderSidebar({palette: true});
+
+		const field = searchField();
+		if (field === null) throw new Error("No search field");
+		field.focus();
+		fireEvent.click(field);
+		const dialog = await screen.findByRole("dialog", {name: "Search"});
+		fireEvent.keyDown(within(dialog).getByRole("combobox", {name: "Search"}), {key: "Escape"});
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog", {name: "Search"})).toBeNull();
+		});
+
+		await waitFor(() => {
+			expect(document.activeElement === field ? "field" : document.activeElement?.tagName).toBe("field");
+		});
+	});
 });
