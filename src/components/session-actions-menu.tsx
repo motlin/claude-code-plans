@@ -366,7 +366,7 @@ function RowMenuBody({
 }
 
 const KEBAB_CLASS =
-	"df-touch-reveal absolute top-1/2 right-[var(--sb-row-ctl-inset)] flex size-[var(--sb-row-ctl,24px)] -translate-y-1/2 items-center justify-center rounded-r5 text-primary opacity-0 transition-opacity focus-visible:opacity-100 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus group-hover/session-row:opacity-100 group-has-[:focus-visible]/session-row:opacity-100 data-[popup-open]:opacity-100 data-[popup-open]:bg-fill-ghost-hover";
+	"df-touch-reveal absolute top-1/2 right-[var(--sb-row-ctl-inset)] flex size-[var(--sb-row-ctl,24px)] -translate-y-1/2 items-center justify-center rounded-r5 text-secondary hover:text-primary aria-expanded:text-primary opacity-0 focus-visible:opacity-100 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus group-hover/session-row:opacity-100 group-has-[:focus-visible]/session-row:opacity-100 data-[popup-open]:opacity-100 data-[popup-open]:bg-fill-ghost-hover";
 
 /**
  * claude.ai/code's session row actions: a 24px hover kebab ("More options for
