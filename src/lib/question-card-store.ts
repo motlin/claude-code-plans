@@ -88,6 +88,24 @@ export function readSentQuestionCard(key: string, questionCount: number): Questi
 	return state;
 }
 
-export function clearSentQuestionCard(key: string): void {
-	sent.delete(key);
+/** Called with the failure message when the send failed, or null when its result landed. */
+type SentListener = (error: string | null) => void;
+
+const sentListeners = new Map<string, Set<SentListener>>();
+
+/** Upstream's sent-store subscription: hear when the card's sending entry is dropped. */
+export function subscribeSentQuestionCard(key: string, listener: SentListener): () => void {
+	const listeners = sentListeners.get(key) ?? new Set<SentListener>();
+	sentListeners.set(key, listeners);
+	listeners.add(listener);
+	return () => {
+		listeners.delete(listener);
+		if (listeners.size === 0) sentListeners.delete(key);
+	};
+}
+
+/** Drops the sending entry and notifies subscribers, with `error` when the send failed. */
+export function clearSentQuestionCard(key: string, error: string | null = null): void {
+	if (!sent.delete(key)) return;
+	for (const listener of [...(sentListeners.get(key) ?? [])]) listener(error);
 }

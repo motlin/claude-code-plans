@@ -825,6 +825,36 @@ describe("QuestionCard", () => {
 			}).toStrictEqual({sent: null, busy: null, other: "Mutation"});
 		});
 
+		it("leaves the busy state with the restored draft and error when a send fails after the card remounted", async () => {
+			let rejectSend: (error: Error) => void = () => {};
+			const first = render(
+				<QuestionCard
+					draftKey="sending-3"
+					questions={QUESTIONS}
+					onSubmit={async () =>
+						new Promise((_, reject) => {
+							rejectSend = reject;
+						})
+					}
+				/>,
+			);
+			pickAndType();
+			fireEvent.click(screen.getByRole("button", {name: /^Submit/}));
+			first.unmount();
+			render(<QuestionCard draftKey="sending-3" questions={QUESTIONS} onSubmit={async () => {}} />);
+			rejectSend(new Error("pane gone"));
+			await screen.findByText("pane gone");
+			const submit = screen.getByRole("button", {name: /^Submit/});
+
+			expect({
+				sent: readSentQuestionCard("sending-3", QUESTIONS.length),
+				busy: submit.getAttribute("aria-busy"),
+				ariaDisabled: submit.getAttribute("aria-disabled"),
+				other: screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Other option"}).value,
+				otherDisabled: screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Other option"}).disabled,
+			}).toStrictEqual({sent: null, busy: null, ariaDisabled: null, other: "Mutation", otherDisabled: false});
+		});
+
 		it("ignores a stored draft whose question count no longer matches", () => {
 			window.sessionStorage.setItem(
 				"question-card-draft:stale-1",

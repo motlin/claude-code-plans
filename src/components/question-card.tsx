@@ -11,6 +11,7 @@ import {
 	markQuestionCardSent,
 	readQuestionCardState,
 	readSentQuestionCard,
+	subscribeSentQuestionCard,
 	writeQuestionCardState,
 } from "../lib/question-card-store";
 import {chooseOther, pickOption, type QuestionCardDraft, typeOther} from "../lib/question-card-draft";
@@ -159,6 +160,17 @@ export function QuestionCard({
 		if (draftKey === undefined || savedRef.current.submitted) return;
 		writeQuestionCardState(draftKey, {page, drafts, skipped});
 	}, [draftKey, page, drafts, skipped]);
+	// A card remounted mid-send hears when the sending instance's send fails,
+	// and turns back into the restored, editable draft with the error.
+	useEffect(() => {
+		if (draftKey === undefined || wasSent === null) return undefined;
+		return subscribeSentQuestionCard(draftKey, (failure) => {
+			if (failure === null) return;
+			savedRef.current.submitted = false;
+			setError(failure);
+			setSending(false);
+		});
+	}, [draftKey, wasSent]);
 	const index = Math.min(page, questions.length - 1);
 	// Upstream refocuses the card root after a page change that started with focus inside it.
 	useEffect(() => {
@@ -207,12 +219,13 @@ export function QuestionCard({
 		try {
 			await onSubmit(finalDrafts.map((entry, at) => (finalSkipped[at] === true ? null : answerOf(entry))));
 		} catch (err) {
+			const message = err instanceof Error ? err.message : "Failed to send the answer";
 			savedRef.current.submitted = false;
 			if (draftKey !== undefined) {
-				clearSentQuestionCard(draftKey);
 				writeQuestionCardState(draftKey, {page, drafts: finalDrafts, skipped: finalSkipped});
+				clearSentQuestionCard(draftKey, message);
 			}
-			setError(err instanceof Error ? err.message : "Failed to send the answer");
+			setError(message);
 			setSending(false);
 		}
 	};
