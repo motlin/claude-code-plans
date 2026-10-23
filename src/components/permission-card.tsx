@@ -5,17 +5,22 @@ import {useIsMac} from "../hooks/use-is-mac";
 import {dockKeyAllowed} from "../lib/dock-keys";
 import {permissionDecisionForKey, type PermissionDecision, type PermissionTitle} from "../lib/permission-card";
 import {toAriaKeyShortcuts} from "../lib/shortcuts/format";
-import {PERSISTENT_ALLOW_LABELS, type PersistentAllowKind} from "../lib/permission-suggestions";
+import {
+	PERSISTENT_ALLOW_LABELS,
+	PERSISTENT_ALLOW_SCOPES,
+	type PersistentAllowKind,
+} from "../lib/permission-suggestions";
 import {useBackgroundTasksOpener} from "./background-tasks-opener-context";
 import {APPROVAL_CARD_TITLE, ApprovalActionButton, ApprovalCardShell} from "./approval-card";
 import {ReadOnlyAnswerHint} from "./terminal-writes-tip";
 import {Shortcut} from "./ui/shortcut";
+import {SplitDropdownButton} from "./ui/split-dropdown-button";
 
 /**
  * The tool-permission card, drawn inline as claude.ai/code's approvals:
  * "Allow Claude to <action> <meta>?", the detail block, and [Deny] then the allow
- * group [Allow once ⌘⏎], then the persistent option ("Always allow" / "Allow for this session") when
- * the CLI's dialog offers one.
+ * group [Allow once ⌘⏎]. When the CLI's dialog offers a persistent option, it leads instead as a
+ * primary split button ("Always allow" / "Allow for this session") whose menu holds Allow once.
  * Keys act while the card is focused, nothing is focused, or the composer is empty.
  */
 export function PermissionCard({
@@ -117,25 +122,37 @@ export function PermissionCard({
 						</ApprovalActionButton>
 					</span>
 					<div data-approval-allow className="flex min-w-0 flex-wrap items-start gap-2">
-						<ApprovalActionButton
-							variant="primary"
-							data-approval-primary=""
-							aria-keyshortcuts={toAriaKeyShortcuts("cmd+enter", isMac)}
-							disabled={!enabled}
-							onClick={() => void decide("allow")}
-						>
-							{submitting && <Loader2 aria-hidden="true" className="size-3 animate-spin" />}
-							<span data-approval-digit="2">Allow once</span>
-							<Shortcut keys="cmd+enter" className="pointer-coarse:hidden" />
-						</ApprovalActionButton>
-						{persistentAllow !== null && (
+						{persistentAllow === null ? (
 							<ApprovalActionButton
-								variant="secondary"
+								variant="primary"
+								data-approval-primary=""
+								aria-keyshortcuts={toAriaKeyShortcuts("cmd+enter", isMac)}
 								disabled={!enabled}
-								onClick={() => void decide("always")}
+								onClick={() => void decide("allow")}
 							>
-								{PERSISTENT_ALLOW_LABELS[persistentAllow]}
+								{submitting && <Loader2 aria-hidden="true" className="size-3 animate-spin" />}
+								<span data-approval-digit="2">Allow once</span>
+								<Shortcut keys="cmd+enter" className="pointer-coarse:hidden" />
 							</ApprovalActionButton>
+						) : (
+							<SplitDropdownButton
+								variant="primary"
+								className="max-w-full min-w-0"
+								groupLabel={PERSISTENT_ALLOW_LABELS[persistentAllow]}
+								label={
+									<span data-approval-digit="2" data-approval-primary="">
+										{PERSISTENT_ALLOW_LABELS[persistentAllow]}
+										<span className="sr-only select-none">{`, ${PERSISTENT_ALLOW_SCOPES[persistentAllow]}`}</span>
+									</span>
+								}
+								menuLabel="More allow options"
+								items={[
+									{label: "Allow once", shortcut: "cmd+enter", onSelect: () => void decide("allow")},
+								]}
+								busy={submitting}
+								disabled={!enabled}
+								onPrimaryClick={() => void decide("always")}
+							/>
 						)}
 					</div>
 				</>

@@ -516,9 +516,9 @@ describe("PermissionCard", () => {
 			grouped: [...(group?.querySelectorAll("button") ?? [])].map((button) => button.textContent),
 		}).toStrictEqual({
 			row: ["flex", "flex-wrap", "items-start", "justify-end", "gap-x-3", "gap-y-2"],
-			children: ["Deny", "Allow onceCtrl⏎EnterAlways allow"],
+			children: ["Deny", "Always allow, Don’t ask again for this tool"],
 			group: ["flex", "min-w-0", "flex-wrap", "items-start", "gap-2"],
-			grouped: ["Allow onceCtrl⏎Enter", "Always allow"],
+			grouped: ["Always allow, Don’t ask again for this tool", ""],
 		});
 	});
 
@@ -647,15 +647,51 @@ describe("PermissionCard", () => {
 	});
 
 	it.each([
-		{persistentAllow: "always", label: "Always allow"},
-		{persistentAllow: "perChat", label: "Allow for this session"},
-	] as const)("shows upstream's $label last and sends the persistent decision", ({persistentAllow, label}) => {
-		const {onDecision} = renderCard({persistentAllow});
-		const labels = screen.getAllByRole("button").map((button) => button.textContent);
-		fireEvent.click(screen.getByRole("button", {name: label}));
-		expect({labels, calls: onDecision.mock.calls}).toStrictEqual({
-			labels: ["Deny", "Allow onceCtrl⏎Enter", label],
-			calls: [["always"]],
+		{persistentAllow: "always", label: "Always allow", scope: "Don’t ask again for this tool"},
+		{persistentAllow: "perChat", label: "Allow for this session", scope: "Applies to this session only"},
+	] as const)(
+		"leads with upstream's primary $label split button and sends the persistent decision",
+		({persistentAllow, label, scope}) => {
+			const {onDecision} = renderCard({persistentAllow});
+			const persistent = screen.getByRole("button", {name: `${label}, ${scope}`});
+			const split = persistent.closest<HTMLElement>("[data-cds=SplitDropdownButton]");
+			const labelSpan = persistent.querySelector<HTMLElement>("[data-approval-digit]");
+			const facts = {
+				buttons: screen
+					.getAllByRole("button")
+					.map((button) => button.getAttribute("aria-label") ?? button.textContent),
+				group: split?.getAttribute("aria-label"),
+				primaryFill: persistent.className.split(/\s+/).includes("bg-fill-primary"),
+				labelData: labelSpan === null ? null : Object.fromEntries(Object.entries(labelSpan.dataset)),
+				scope: [...persistent.querySelectorAll(".sr-only")].map((span) => [span.className, span.textContent]),
+			};
+			fireEvent.click(persistent);
+			expect({...facts, calls: onDecision.mock.calls}).toStrictEqual({
+				buttons: ["Deny", `${label}, ${scope}`, "More allow options"],
+				group: label,
+				primaryFill: true,
+				labelData: {approvalDigit: "2", approvalPrimary: ""},
+				scope: [["sr-only select-none", `, ${scope}`]],
+				calls: [["always"]],
+			});
+		},
+	);
+
+	it("keeps Allow once in the split button's More allow options menu", async () => {
+		const {onDecision} = renderCard({persistentAllow: "always"});
+		await actAndSettle(() => {
+			fireEvent.click(screen.getByRole("button", {name: "More allow options"}));
+		});
+		const items = screen.getAllByRole("menuitem");
+		const facts = {
+			items: items.map((item) => item.textContent),
+			shortcut: items[0]?.getAttribute("aria-keyshortcuts"),
+		};
+		fireEvent.click(screen.getByRole("menuitem", {name: /^Allow once/}));
+		expect({...facts, calls: onDecision.mock.calls}).toStrictEqual({
+			items: ["Allow onceCtrl+⏎"],
+			shortcut: "Control+Enter",
+			calls: [["allow"]],
 		});
 	});
 

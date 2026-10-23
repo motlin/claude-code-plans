@@ -11,7 +11,15 @@ import {Shortcut} from "./shortcut";
  */
 
 export type SplitItem =
-	| {label: ReactNode; icon?: ReactNode; onSelect: () => void; disabled?: boolean; separatorBefore?: boolean}
+	| {
+			label: ReactNode;
+			icon?: ReactNode;
+			/** A global shortcut hint drawn as keycaps, e.g. "cmd+enter". */
+			shortcut?: string;
+			onSelect: () => void;
+			disabled?: boolean;
+			separatorBefore?: boolean;
+	  }
 	| "separator";
 
 export interface SplitDropdownButtonProps {
@@ -154,6 +162,7 @@ function MenuItems({items}: {items: SplitItem[]}) {
 				<MenuItem
 					onSelect={item.onSelect}
 					{...(item.icon === undefined ? {} : {icon: item.icon})}
+					{...(item.shortcut === undefined ? {} : {shortcut: item.shortcut})}
 					{...(item.disabled === undefined ? {} : {disabled: item.disabled})}
 				>
 					{item.label}

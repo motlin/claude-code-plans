@@ -15,6 +15,12 @@ export const PERSISTENT_ALLOW_LABELS = {
 	perChat: "Allow for this session",
 } as const satisfies Record<PersistentAllowKind, string>;
 
+/** Upstream's sr-only scope after the persistent label, saying how long the grant lasts. */
+export const PERSISTENT_ALLOW_SCOPES = {
+	always: "Don\u2019t ask again for this tool",
+	perChat: "Applies to this session only",
+} as const satisfies Record<PersistentAllowKind, string>;
+
 export type PermissionDialogDecision = "allow" | "deny" | "always";
 
 /** Which kind of persistent option an update saved to each destination is: settings files persist, the rest end with the session. */
