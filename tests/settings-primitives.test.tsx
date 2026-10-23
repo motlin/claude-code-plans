@@ -354,7 +354,7 @@ describe("ThemedCombobox", () => {
 				}));
 		const initial = options();
 
-		fireEvent.change(screen.getByRole("searchbox", {name: "Search Light code theme"}), {
+		fireEvent.change(screen.getByRole("searchbox", {name: "Light code theme"}), {
 			target: {value: "e li"},
 		});
 		const filtered = options();
@@ -384,7 +384,7 @@ describe("ThemedCombobox", () => {
 		render(<ControlledCombobox />);
 		fireEvent.click(screen.getByRole("combobox", {name: "Light code theme"}));
 		const search = screen.getByRole("searchbox", {
-			name: "Search Light code theme",
+			name: "Light code theme",
 		});
 
 		fireEvent.change(search, {target: {value: "sol"}});
@@ -394,14 +394,26 @@ describe("ThemedCombobox", () => {
 				name: option.textContent,
 				selected: option.getAttribute("aria-selected"),
 			}));
+		const highlightedAfterTyping = screen
+			.queryAllByRole("option")
+			.filter((option) => option.hasAttribute("data-highlighted"));
+		fireEvent.keyDown(search, {key: "ArrowDown"});
+		const highlightedAfterArrow = screen
+			.getAllByRole("option")
+			.filter((option) => option.hasAttribute("data-highlighted"))
+			.map((option) => option.textContent);
 		fireEvent.keyDown(search, {key: "Enter"});
 
 		expect({
+			highlightedAfterTyping,
+			highlightedAfterArrow,
 			filtered,
 			chosen: screen.getByRole("status", {name: "Chosen theme"}).textContent,
 			listbox: screen.queryByRole("listbox"),
 			trigger: screen.getByRole("combobox", {name: "Light code theme"}).textContent,
 		}).toStrictEqual({
+			highlightedAfterTyping: [],
+			highlightedAfterArrow: ["Solarized Light"],
 			filtered: [{name: "Solarized Light", selected: "false"}],
 			chosen: "solarized-light",
 			listbox: null,
@@ -409,11 +421,42 @@ describe("ThemedCombobox", () => {
 		});
 	});
 
+	it("labels the filter input like the combobox, with no placeholder", () => {
+		render(<ControlledCombobox />);
+		fireEvent.click(screen.getByRole("combobox", {name: "Light code theme"}));
+		const search = screen.getByRole("searchbox");
+
+		expect({
+			label: search.getAttribute("aria-label"),
+			placeholder: search.getAttribute("placeholder"),
+		}).toStrictEqual({label: "Light code theme", placeholder: null});
+	});
+
+	it("shows No results when the filter matches nothing, and Enter picks nothing", () => {
+		render(<ControlledCombobox />);
+		fireEvent.click(screen.getByRole("combobox", {name: "Light code theme"}));
+		const search = screen.getByRole("searchbox", {name: "Light code theme"});
+
+		fireEvent.change(search, {target: {value: "zzz"}});
+		const listbox = screen.getByRole("listbox", {name: "Light code theme"});
+		const empty = {text: listbox.textContent, options: within(listbox).queryAllByRole("option")};
+		fireEvent.change(search, {target: {value: "light"}});
+		fireEvent.keyDown(search, {key: "Enter"});
+
+		expect({
+			empty,
+			chosen: screen.getByRole("status", {name: "Chosen theme"}).textContent,
+		}).toStrictEqual({
+			empty: {text: "No results", options: []},
+			chosen: "claude-light",
+		});
+	});
+
 	it("moves the active option with arrow keys before Enter", () => {
 		render(<ControlledCombobox />);
 		fireEvent.click(screen.getByRole("combobox", {name: "Light code theme"}));
 		const search = screen.getByRole("searchbox", {
-			name: "Search Light code theme",
+			name: "Light code theme",
 		});
 
 		fireEvent.keyDown(search, {key: "ArrowDown"});

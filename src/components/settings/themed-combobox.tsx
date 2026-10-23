@@ -6,8 +6,8 @@ import {useSettingsRowIds} from "./settings-row-context";
 /*
  * The claude.ai/code settings Combobox: a full-width 32px trigger whose popup
  * holds a filter input over a listbox with a check on the current option.
- * Typing narrows the options, arrows move the active option, Enter selects
- * it and closes. Selection applies immediately (no Save). Escape is left to
+ * Typing narrows the options and clears the active option until an arrow
+ * key moves onto a match; Enter selects the active option and closes. Selection applies immediately (no Save). Escape is left to
  * bubble so, as upstream, it also closes the surrounding Settings dialog.
  */
 
@@ -130,24 +130,23 @@ export function ThemedCombobox<T extends string>({
 						<input
 							type="search"
 							autoFocus
-							aria-label={`Search ${ariaLabel}`}
+							aria-label={ariaLabel}
 							aria-controls={listboxId}
 							aria-activedescendant={
 								activeOption === undefined ? undefined : `${baseId}-${activeOption.value}`
 							}
-							placeholder="Search…"
 							value={query}
 							onChange={(event) => {
 								setQuery(event.target.value);
-								setActiveIndex(0);
+								setActiveIndex(-1);
 							}}
 							onKeyDown={handleSearchKeyDown}
-							className="h-8 w-full rounded-r6 bg-transparent px-2.5 text-body text-primary outline-none placeholder:text-[var(--settings-muted)]"
+							className="h-8 w-full rounded-r6 bg-transparent px-2.5 text-body text-primary outline-none"
 						/>
 					</div>
 					<div id={listboxId} role="listbox" aria-label={ariaLabel} className="min-h-0 overflow-y-auto p-1">
 						{filtered.length === 0 ? (
-							<div className="px-2.5 py-1.5 text-body text-[var(--settings-muted)]">No matches</div>
+							<div className="px-2.5 py-1.5 text-body text-[var(--settings-muted)]">No results</div>
 						) : (
 							filtered.map((option, index) => {
 								const selected = option.value === value;
