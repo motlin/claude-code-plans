@@ -266,6 +266,8 @@ export interface MenuContentProps {
 	/** Where focus goes when the menu closes; `false` leaves it where an action put it. */
 	finalFocus?: ComponentProps<typeof BaseMenu.Popup>["finalFocus"];
 	anchor?: ComponentProps<typeof BaseMenu.Positioner>["anchor"];
+	/** Upstream's pinned header: it sits above the scroller in the gutter, so it never scrolls away. */
+	header?: ReactNode;
 	/**
 	 * Upstream's `structurallyAnchored`: the trigger keeps focus in an editor or input, so the popup stays
 	 * anchored even where the root would otherwise present a bottom sheet.
@@ -295,6 +297,7 @@ export function MenuContent({
 	className,
 	finalFocus,
 	anchor,
+	header,
 	structurallyAnchored = false,
 	sheetSize = "lg",
 	nested = false,
@@ -310,14 +313,24 @@ export function MenuContent({
 	const parentLevel = useContext(SheetLevelContext);
 	/* Upstream's si order: an override, then comfortable on (pointer: coarse), then the prop or opener's density. */
 	const scopeDensity = useScopeDensity(density);
-	const sheetProps = {children, className, finalFocus};
+	const sheetProps = {
+		children: (
+			<>
+				{header}
+				{children}
+			</>
+		),
+		className,
+		finalFocus,
+	};
 	if (sheet && !nested) return <RootSheet {...sheetProps} size={sheetSize} />;
 	/* A submenu drills in only inside a sheet tree; an anchored parent keeps its fly-out. */
 	if (sheet && parentLevel !== null) return <NestedSheet {...sheetProps} treeId={parentLevel.treeId} />;
 	/* A sheet's portal forces comfortable (`density: MG`) at every account density. */
 	const resolvedDensity = sheet ? "comfortable" : scopeDensity;
 	const sizing = sheet ? SHEET_SIZING : DENSITY_CLASSES[resolvedDensity];
-	const popupClass = `${POPUP_CLASS} ${sizing.popup} p-1 ${sizing.text}`;
+	/* With a header the gutter moves onto the header and the scroller, as upstream's `p-gutter pt-0`. */
+	const popupClass = `${POPUP_CLASS} ${sizing.popup}${header === undefined ? " p-1" : ""} ${sizing.text}`;
 	return (
 		<DensityProvider density={resolvedDensity}>
 			<MenuLgContext.Provider value={sheet}>
@@ -344,7 +357,13 @@ export function MenuContent({
 							onKeyDown={handleAcceleratorKey}
 							{...(finalFocus === undefined ? {} : {finalFocus})}
 						>
-							<div className={SCROLLER_CLASS}>{children}</div>
+							{header !== undefined && <div className="shrink-0 px-1 pt-1">{header}</div>}
+							<div
+								data-menu-scroller=""
+								className={header === undefined ? SCROLLER_CLASS : `${SCROLLER_CLASS} p-1 pt-0`}
+							>
+								{children}
+							</div>
 						</BaseMenu.Popup>
 					</BaseMenu.Positioner>
 				</BaseMenu.Portal>

@@ -169,7 +169,8 @@ function EffortRowLabel({effort}: {effort: EffortLevel}) {
 /**
  * claude.ai/code's single model + effort picker: the trigger reads "Opus 5.5 High", and its menu lists
  * the primary models with digit keys, an Effort submenu (upstream's hint, then Low … Max and Ultracode with the
- * Recommended badge and Max's usage warning) and More models. ⇧⌘E opens it with Effort open.
+ * Recommended badge and Max's usage warning) and More models. ⇧⌘E opens it with Effort open in a session
+ * chin, and plain on the home bar (upstream maps the bar's effort field to the model menu).
  */
 export function ModelMenu({
 	open,
@@ -180,7 +181,10 @@ export function ModelMenu({
 	currentEffort,
 	onSelect,
 	onSelectEffort,
+	surface,
 }: ControlledMenuProps & {
+	/** Upstream's new-session bar pins a "Model · this session" header; session chins have none. */
+	surface: ChinSurface;
 	/** Opened from ⇧⌘E: show the Effort submenu straight away. */
 	effortOpen: boolean;
 	current: string | undefined;
@@ -203,7 +207,23 @@ export function ModelMenu({
 				<span className="truncate">{currentLabel}</span>
 				<span className={EFFORT_LABEL_CLASS}> {effortLabel}</span>
 			</MenuTrigger>
-			<MenuContent side="top" align="end" sheetSize="base">
+			<MenuContent
+				side="top"
+				align="end"
+				sheetSize="base"
+				{...(surface === "bar"
+					? {
+							header: (
+								<div
+									role="presentation"
+									className="px-2 py-1 text-[12px]/[15px] font-medium text-[var(--menu-muted)]"
+								>
+									Model · this session
+								</div>
+							),
+						}
+					: {})}
+			>
 				<MenuRadioGroup
 					value={primary}
 					onValueChange={(value: string) => {

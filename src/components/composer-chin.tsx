@@ -238,13 +238,14 @@ export const ComposerChin = memo(function ComposerChin({
 				/>
 			</div>
 			<div className="ms-auto flex min-w-0 items-center gap-1 ps-2">
-				{/* Upstream's one model + effort picker; ⇧⌘E opens it on its Effort submenu */}
+				{/* Upstream's one model + effort picker; ⇧⌘E opens it on its Effort submenu in a chin, plain on the bar */}
 				<ModelMenu
 					open={openMenu === "model" || openMenu === "effort"}
 					onOpenChange={(open) => {
 						onOpenMenuChange(open ? "model" : null);
 					}}
-					effortOpen={openMenu === "effort"}
+					surface={surface}
+					effortOpen={openMenu === "effort" && surface === "chin"}
 					current={launchOptions.model ?? modelMenuValue(state.modelId) ?? undefined}
 					currentLabel={modelText}
 					currentEffort={currentEffort}

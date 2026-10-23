@@ -218,21 +218,21 @@ describe("Composer mode menu", () => {
 	});
 });
 
-describe("Composer home bar permissions menu", () => {
-	function renderHomeComposer() {
-		render(
-			<DensityScope density="compact">
-				<Composer
-					variant="home"
-					draftKey="home-dana"
-					onSend={vi.fn<OnSend>()}
-					chin={CHIN}
-					environment={<span>Dana's project</span>}
-				/>
-			</DensityScope>,
-		);
-	}
+function renderHomeComposer() {
+	render(
+		<DensityScope density="compact">
+			<Composer
+				variant="home"
+				draftKey="home-dana"
+				onSend={vi.fn<OnSend>()}
+				chin={CHIN}
+				environment={<span>Dana's project</span>}
+			/>
+		</DensityScope>,
+	);
+}
 
+describe("Composer home bar permissions menu", () => {
 	function hoverTooltip(trigger: Element): string | null {
 		const anchor = trigger.parentElement;
 		if (anchor === null) throw new Error("trigger has no parent");
@@ -299,6 +299,60 @@ describe("Composer home bar permissions menu", () => {
 			accelerators: menu.querySelectorAll("[data-accelerator]").length,
 			ariaLabel: document.querySelector("[data-chin-mode]")?.getAttribute("aria-label") ?? null,
 		}).toStrictEqual({mode: "Mode", permissions: null, accelerators: 4, ariaLabel: null});
+	});
+});
+
+describe("Composer home bar model menu", () => {
+	function modelHeader(menu: HTMLElement) {
+		const label = within(menu).queryByText("Model · this session");
+		const wrapper = label?.parentElement;
+		return label === null || wrapper === null || wrapper === undefined
+			? null
+			: {
+					role: label.getAttribute("role"),
+					labelClass: label.className,
+					wrapperClass: wrapper.className,
+					insideScroller: wrapper.closest("[data-menu-scroller]") !== null,
+				};
+	}
+
+	it("pins upstream's Model · this session header above the scroller", async () => {
+		renderHomeComposer();
+
+		openModelMenu();
+		const menu = await screen.findByRole("menu");
+
+		expect(modelHeader(menu)).toStrictEqual({
+			role: "presentation",
+			labelClass: "px-2 py-1 text-[12px]/[15px] font-medium text-[var(--menu-muted)]",
+			wrapperClass: "shrink-0 px-1 pt-1",
+			insideScroller: false,
+		});
+	});
+
+	it("has no header in a session chin", async () => {
+		renderComposer();
+
+		openModelMenu();
+		const menu = await screen.findByRole("menu");
+
+		expect(modelHeader(menu)).toBeNull();
+	});
+
+	it("opens the model menu on ⇧⌘E with the Effort submenu closed", async () => {
+		renderHomeComposer();
+
+		openEffort();
+		const menu = await screen.findByRole("menu");
+
+		expect({
+			menus: screen.getAllByRole("menu").length,
+			firstRow: radioRows(menu)[0]?.label,
+			effortExpanded:
+				within(menu)
+					.getByRole("menuitem", {name: /Effort/})
+					.getAttribute("aria-expanded") ?? "false",
+		}).toStrictEqual({menus: 1, firstRow: "Opus 5.5", effortExpanded: "false"});
 	});
 });
 
