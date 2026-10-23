@@ -425,6 +425,11 @@
 	/* Session rows: upstream selects them lighter than nav rows in dark. */
 	--sb-session-selected: var(--sb-selected);
 	--sb-bg: color-mix(in srgb, var(--upstream-surface-0) 50%, var(--upstream-surface-1));
+	/* Sidebar Search field: upstream --cds-fill-field, --cds-ring-color, --cds-fill-secondary-hover/-ring (light) */
+	--sb-field-bg: #ffffff80;
+	--sb-field-ring: rgb(11 11 11 / 0.1);
+	--sb-field-hover: rgb(11 11 11 / 0.05);
+	--sb-field-hover-ring: rgb(11 11 11 / 0.1);
 	/* Upstream --cds-chart-* (light: reference gray-400, muted gray-200; categorical blue-450/orange-350/aqua-350/yellow-250) */
 	--chart-reference: #898781;
 	--chart-muted: #c3c2b7;
@@ -443,6 +448,11 @@
 	--sb-new-circle: #2c2c2a;
 	--sb-session-selected: hsl(0 0% 100% / 0.075);
 	--sb-bg: #111;
+	/* Sidebar Search field: upstream dark --cds-fill-field, --cds-ring-color, --cds-fill-secondary-hover/-ring */
+	--sb-field-bg: hsl(0 0% 100% / 0.05);
+	--sb-field-ring: hsl(0 0% 100% / 0.1);
+	--sb-field-hover: hsl(0 0% 100% / 0.14);
+	--sb-field-hover-ring: transparent;
 
 	/* Upstream semantic palette */
 	--upstream-page: #151515;
@@ -1487,6 +1497,61 @@ html[data-motion="reduced"] [data-cds-shimmer-clone] {
 
 	.df-nav-row[data-selected="focused"] .df-new-icon-circle {
 		background-color: transparent;
+	}
+}
+
+/* Upstream .df-search-field: the sidebar Search row above New, and its hover/focus-visible keys hint.
+   Unlayered, as upstream's, so the hover background beats the row's bg utility. */
+.df-search-field {
+	transition: background-color 60ms cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+.df-search-field:not(:focus-visible) {
+	box-shadow:
+		inset 0 0 0 0.5px var(--sb-field-ring),
+		0 1px 2px 0 #0000000d;
+}
+
+.df-search-field:focus-visible {
+	box-shadow:
+		inset 0 0 0 1px var(--color-accent-100, #2a78d6),
+		0 0 6px 0 color-mix(in srgb, #2a78d6 20%, transparent);
+}
+
+.df-search-field-keys {
+	opacity: 0;
+}
+
+.df-search-field:focus-visible .df-search-field-keys {
+	opacity: 1;
+}
+
+@media (hover: hover) {
+	.df-search-field:hover {
+		background-color: var(--sb-field-hover);
+	}
+	.df-search-field:hover:not(:focus-visible) {
+		box-shadow:
+			inset 0 0 0 1px var(--sb-field-hover-ring),
+			0 1px 2px 0 #0000000d;
+	}
+	.df-search-field:hover .df-search-field-keys {
+		opacity: 1;
+	}
+}
+
+/* Upstream hit-row-main: a ::before that extends the click target --cds-hit-gap-y below the row. */
+@layer components {
+	.hit-row {
+		position: relative;
+		isolation: isolate;
+	}
+
+	.hit-row-main::before {
+		content: "";
+		position: absolute;
+		z-index: -1;
+		inset: 0 0 calc(var(--cds-hit-gap-y, 0px) * -1);
 	}
 }
 
