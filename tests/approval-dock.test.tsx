@@ -186,7 +186,7 @@ describe("QuestionCard", () => {
 			overlay: overlay?.className,
 			overlayHidden: overlay?.getAttribute("aria-hidden"),
 			calls: onSubmit.mock.calls.length,
-			tooltipWrapper: submit.parentElement?.tagName === "SPAN",
+			disabledReason: submit.parentElement?.hasAttribute("aria-describedby"),
 		}).toStrictEqual({
 			before: {busy: null, spinner: false},
 			same: true,
@@ -199,7 +199,7 @@ describe("QuestionCard", () => {
 			overlay: "absolute inset-0 grid place-items-center leading-[0]",
 			overlayHidden: "true",
 			calls: 1,
-			tooltipWrapper: false,
+			disabledReason: false,
 		});
 	});
 
@@ -596,6 +596,55 @@ describe("QuestionCard", () => {
 		expect({unanswered, answered}).toStrictEqual({
 			unanswered: "Choose an option or skip this question",
 			answered: null,
+		});
+	});
+
+	it("wraps the primary in a disabled-reason tab stop that stays mounted across enable, as upstream's DisabledReason", () => {
+		render(<QuestionCard questions={QUESTIONS} onSubmit={async () => {}} />);
+		fireEvent.click(screen.getByRole("button", {name: /^Next/}));
+		const state = () => {
+			const button = screen.getByRole("button", {name: /^Submit/});
+			const wrapper = button.closest("[data-cds-disabled-reason-wrapper]");
+			const skip = screen.getByRole("button", {name: "Skip"});
+			const tabbable = [...screen.getByRole("group").querySelectorAll<HTMLElement>("button, [tabindex]")].filter(
+				(element) => element.tabIndex >= 0 && !(element instanceof HTMLButtonElement && element.disabled),
+			);
+			const describedBy = wrapper?.getAttribute("aria-describedby") ?? null;
+			return {
+				elements: [button, wrapper],
+				hasWrapper: wrapper !== null,
+				afterSkip: tabbable[tabbable.indexOf(skip) + 1] === wrapper,
+				tabIndex: wrapper instanceof HTMLElement ? wrapper.tabIndex : null,
+				description: describedBy === null ? null : (document.getElementById(describedBy)?.textContent ?? null),
+				buttonDescribedBy: button.getAttribute("aria-describedby"),
+			};
+		};
+		const unanswered = state();
+		fireEvent.click(screen.getByRole("button", {name: /^Coverage/}));
+		const answered = state();
+
+		expect({
+			unanswered: {...unanswered, elements: undefined},
+			answered: {...answered, elements: undefined},
+			sameElements: answered.elements.every((element, at) => element === unanswered.elements[at]),
+		}).toStrictEqual({
+			unanswered: {
+				elements: undefined,
+				hasWrapper: true,
+				afterSkip: true,
+				tabIndex: 0,
+				description: "Choose an option or skip this question",
+				buttonDescribedBy: null,
+			},
+			answered: {
+				elements: undefined,
+				hasWrapper: true,
+				afterSkip: false,
+				tabIndex: -1,
+				description: null,
+				buttonDescribedBy: null,
+			},
+			sameElements: true,
 		});
 	});
 

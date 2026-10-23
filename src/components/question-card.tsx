@@ -10,7 +10,7 @@ import {chooseOther, pickOption, type QuestionCardDraft, typeOther} from "../lib
 import {ApprovalActionButton} from "./approval-card";
 import {ReadOnlyAnswerHint} from "./terminal-writes-tip";
 import {Shortcut} from "./ui/shortcut";
-import {Tooltip} from "./ui/tooltip";
+import {DisabledReason} from "./ui/disabled-reason";
 import {UserInlineText} from "./user-plain-text";
 
 /** Upstream sends an Other picked with nothing typed as this. */
@@ -368,13 +368,7 @@ export function QuestionCard({
 				<ApprovalActionButton variant="secondary" disabled={!editable} onMouseDown={keepFocus} onClick={skip}>
 					Skip
 				</ApprovalActionButton>
-				{disabledReason === null ? (
-					primary
-				) : (
-					<Tooltip content={disabledReason}>
-						<span className="flex">{primary}</span>
-					</Tooltip>
-				)}
+				<DisabledReason reason={disabledReason}>{primary}</DisabledReason>
 			</div>
 		</div>
 	);
