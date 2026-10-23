@@ -143,11 +143,11 @@ function rows() {
 }
 
 describe("Composer @ file mentions", () => {
-	it("lists top-level entries for a bare @, muting gitignored and dot entries", async () => {
+	it("lists top-level entries for a bare @ without muting gitignored or dot entries", async () => {
 		responses.set(
 			TOP_URL,
 			listing([
-				{relPath: ".git", isDirectory: true},
+				{relPath: ".llm", isDirectory: true, ignored: true},
 				{relPath: "node_modules", isDirectory: true, ignored: true},
 				{relPath: "src", isDirectory: true},
 				{relPath: "README.md", isDirectory: false},
@@ -163,15 +163,43 @@ describe("Composer @ file mentions", () => {
 		}).toStrictEqual({
 			listbox: expect.stringContaining("w-[560px]"),
 			rows: [
-				{text: ".git", selected: true, muted: true},
-				{text: "node_modules", selected: false, muted: true},
+				{text: ".llm", selected: true, muted: false},
+				{text: "node_modules", selected: false, muted: false},
 				{text: "src", selected: false, muted: false},
 				{text: "README.md", selected: false, muted: false},
 			],
 		});
 	});
 
-	it("shows the basename with the muted dirname and caps the list at 15", async () => {
+	it("renders the label and dirname caption in bdi-wrapped spans like upstream", async () => {
+		responses.set(searchUrl("a"), search("a", ["src/lib/a.ts", "a.md"]));
+		const {textarea} = setup();
+
+		await type(textarea, "@a");
+
+		const spans = (row: HTMLElement) =>
+			[...row.querySelectorAll(":scope > span > span")].map((span) => ({
+				className: span.className,
+				html: span.innerHTML,
+			}));
+		const [nested, top] = screen.getAllByRole("option");
+		expect({
+			nestedWrapper: nested?.querySelector(":scope > span:last-child")?.className,
+			nested: nested ? spans(nested) : [],
+			topWrapper: top?.querySelector(":scope > span:last-child")?.className,
+			top: top ? spans(top) : [],
+		}).toStrictEqual({
+			nestedWrapper: "flex min-w-0 flex-1 items-baseline gap-1.5 text-start",
+			nested: [
+				{className: "truncate text-primary max-w-full shrink-0", html: "<bdi>a.ts</bdi>"},
+				{className: "truncate text-[11px]/[17px] text-ink-muted", html: "<bdi>src/lib</bdi>"},
+			],
+			topWrapper: "flex min-w-0 flex-1 items-baseline gap-1.5 text-start",
+			top: [{className: "truncate text-primary", html: "<bdi>a.md</bdi>"}],
+		});
+	});
+
+	it("shows the basename with the dirname caption and caps the list at 15", async () => {
 		const paths = Array.from({length: 20}, (_, i) => `src/lib/file-${i}.ts`);
 		responses.set(searchUrl("file"), search("file", paths));
 		const {textarea} = setup();
@@ -181,7 +209,7 @@ describe("Composer @ file mentions", () => {
 		const options = screen.getAllByRole("option");
 		expect({
 			count: options.length,
-			first: [...(options[0]?.querySelectorAll("span") ?? [])].map((span) => span.textContent),
+			first: [...(options[0]?.querySelectorAll(":scope > span > span") ?? [])].map((span) => span.textContent),
 		}).toStrictEqual({count: 15, first: ["file-0.ts", "src/lib"]});
 	});
 

@@ -2,7 +2,6 @@ import {useLayoutEffect, useRef} from "react";
 import {File, FileCode, Folder} from "lucide-react";
 
 import type {SessionFilesEntry} from "../lib/api/session-files";
-import {isMutedMention} from "../lib/file-mentions";
 import {fileMentionOptionId} from "./file-mention-option-id";
 
 const POPUP_CLASS =
@@ -21,7 +20,7 @@ function EntryIcon({entry}: {entry: SessionFilesEntry}) {
 
 /**
  * The claude.ai/code "@" popup: a 560px "Mention suggestions" listbox above the
- * composer, one row per path (icon, basename, muted dirname). Keyboard focus
+ * composer, one row per path (icon, basename, dirname caption). Keyboard focus
  * stays in the editor, which drives `highlighted` and `onAccept`.
  */
 export function FileMentionMenu({
@@ -68,7 +67,6 @@ export function FileMentionMenu({
 						data-option-index={index}
 						aria-selected={index === highlighted}
 						data-highlighted={index === highlighted ? "" : undefined}
-						data-muted={isMutedMention(entry.relPath, entry.ignored) ? "" : undefined}
 						className={ROW_CLASS}
 						onMouseMove={() => {
 							if (index !== highlighted) onHighlight(index);
@@ -79,8 +77,22 @@ export function FileMentionMenu({
 						}}
 					>
 						<EntryIcon entry={entry} />
-						<span className="shrink-0 truncate">{entry.name}</span>
-						{dirname !== "" && <span className="min-w-0 truncate text-footnote text-muted">{dirname}</span>}
+						<span className="flex min-w-0 flex-1 items-baseline gap-1.5 text-start">
+							<span
+								className={
+									dirname === ""
+										? "truncate text-primary"
+										: "truncate text-primary max-w-full shrink-0"
+								}
+							>
+								<bdi>{entry.name}</bdi>
+							</span>
+							{dirname !== "" && (
+								<span className="truncate text-[11px]/[17px] text-ink-muted">
+									<bdi>{dirname}</bdi>
+								</span>
+							)}
+						</span>
 					</button>
 				);
 			})}

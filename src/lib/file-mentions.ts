@@ -39,8 +39,3 @@ export function insertFileMention(
 		caret: trigger.start + inserted.length,
 	};
 }
-
-/** Gitignored entries and anything under a dot directory render muted. */
-export function isMutedMention(relPath: string, ignored: boolean | undefined): boolean {
-	return ignored === true || relPath.split("/").some((segment) => segment.startsWith("."));
-}
