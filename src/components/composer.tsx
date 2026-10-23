@@ -864,12 +864,10 @@ export function Composer({
 				{(contextChips.length > 0 || queuedComments.length > 0) && (
 					<AttachedContextChips sessionId={draftKey} context={contextChips} comments={queuedComments} />
 				)}
-				<div className={`relative pr-[30px] pointer-coarse:pr-[51px] ${chin ? "pl-[30px]" : ""}`}>
-					{chin && (
-						<div data-composer-add="" className="absolute left-0 bottom-0 flex min-h-7 items-center">
-							<ComposerAddMenu onInsertSlash={insertSlash} onAddFiles={openFilePicker} />
-						</div>
-					)}
+				<div className="relative pr-[30px] pl-[30px] pointer-coarse:pr-[51px]">
+					<div data-composer-add="" className="absolute left-0 bottom-0 flex min-h-7 items-center">
+						<ComposerAddMenu onInsertSlash={insertSlash} onAddFiles={openFilePicker} active={active} />
+					</div>
 					{slashOpen && (
 						<SlashCommandMenu
 							id={slashMenuId}
@@ -894,7 +892,7 @@ export function Composer({
 						/>
 					)}
 					{argumentHint !== null && (
-						<div aria-hidden="true" className={`${GHOST_OVERLAY_CLASS} ${chin ? "left-[30px]" : "left-0"}`}>
+						<div aria-hidden="true" className={`${GHOST_OVERLAY_CLASS} left-[30px]`}>
 							<span className="invisible">{prompt}</span>
 							<span data-testid="slash-argument-hint" className="text-[rgb(137,135,129)]">
 								{argumentHint}
@@ -902,7 +900,7 @@ export function Composer({
 						</div>
 					)}
 					{slashOpen && query === "" && (
-						<div aria-hidden="true" className={`${GHOST_OVERLAY_CLASS} ${chin ? "left-[30px]" : "left-0"}`}>
+						<div aria-hidden="true" className={`${GHOST_OVERLAY_CLASS} left-[30px]`}>
 							<span className="invisible">{prompt}</span>
 							<span
 								data-testid="slash-filter-placeholder"

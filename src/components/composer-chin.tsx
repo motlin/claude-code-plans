@@ -139,8 +139,11 @@ export function UsageRing({usage}: {usage: ComposerUsage | null}) {
 export const ComposerAddMenu = memo(function ComposerAddMenu({
 	onInsertSlash,
 	onAddFiles,
+	active,
 }: {
 	onInsertSlash: () => void;
+	/** Upstream's `isPanelActive`: only the active pane's row shows the ⌘U keycap. */
+	active: boolean;
 	/** ⌘U "Add files or photos": opens the composer's file picker. */
 	onAddFiles: () => void;
 }) {
@@ -155,7 +158,7 @@ export const ComposerAddMenu = memo(function ComposerAddMenu({
 				</MenuTrigger>
 			</Tooltip>
 			<MenuContent side="top" sideOffset={6} finalFocus={slashAfterClose.finalFocus}>
-				<MenuItem icon={<Paperclip />} onSelect={onAddFiles} shortcut={addFilesKeys}>
+				<MenuItem icon={<Paperclip />} onSelect={onAddFiles} {...(active ? {shortcut: addFilesKeys} : {})}>
 					Add files or photos
 				</MenuItem>
 				<MenuItem icon={<SquareSlash />} onSelect={slashAfterClose.requestRename}>

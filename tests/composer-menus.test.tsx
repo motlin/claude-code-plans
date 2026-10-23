@@ -910,6 +910,50 @@ describe("Composer chin tooltips and contrast", () => {
 	});
 });
 
+describe("Composer + menu Add files keycap", () => {
+	async function addFilesRow(addButton: HTMLElement) {
+		fireEvent.click(addButton);
+		const row = await screen.findByRole("menuitem", {name: /Add files or photos/});
+		const result = {text: row.textContent, keys: row.getAttribute("aria-keyshortcuts")};
+		fireEvent.keyDown(row, {key: "Escape"});
+		await waitFor(() => {
+			expect(screen.queryAllByRole("menu")).toHaveLength(0);
+		});
+		return result;
+	}
+
+	it("shows the ⌘U keycap only in the active pane's composer", async () => {
+		const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
+		queryClient.setQueryData(customizeMcpServersQueryOptions.queryKey, []);
+		render(
+			<QueryClientProvider client={queryClient}>
+				<Composer variant="session" draftKey="session-alice" onSend={vi.fn<OnSend>()} chin={CHIN} />
+				<Composer
+					variant="session"
+					draftKey="session-bob"
+					onSend={vi.fn<OnSend>()}
+					chin={CHIN}
+					active={false}
+				/>
+			</QueryClientProvider>,
+		);
+		const [mainAdd, paneAdd] = screen.getAllByRole("button", {name: "Add"});
+		if (mainAdd === undefined || paneAdd === undefined) throw new Error("expected two Add buttons");
+
+		expect({main: await addFilesRow(mainAdd), pane: await addFilesRow(paneAdd)}).toStrictEqual({
+			main: {text: "Add files or photos⌘CommandU", keys: "Meta+u"},
+			pane: {text: "Add files or photos", keys: null},
+		});
+	});
+
+	it("keeps Add mounted and the editor row inset without a chin", () => {
+		render(<Composer variant="session" draftKey="session-alice" onSend={vi.fn<OnSend>()} />);
+		const add = screen.getByRole("button", {name: "Add"});
+
+		expect(add.closest("[data-composer-add]")?.parentElement?.classList.contains("pl-[30px]")).toBe(true);
+	});
+});
+
 describe("Composer + menu Connectors submenu", () => {
 	const server = (id: string, name: string, enabled: boolean, needsAuth: boolean): McpServerSummary => ({
 		id,
