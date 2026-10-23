@@ -78,6 +78,28 @@ describe("PlanApprovalCard", () => {
 		expect(buttonNames()).toStrictEqual(["Reject", "Revise…Esc", "AcceptCtrl⏎Enter"]);
 	});
 
+	it("styles the feedback box as upstream's field: 6px radius, 5% fill, field ring, accent focus shadow", async () => {
+		const {value} = context();
+		await renderCard(value);
+		fireEvent.click(button("Revise…Esc"));
+		const box = screen.getByRole("textbox", {name: "Plan feedback"});
+		expect(box.className.split(" ")).toStrictEqual([
+			"w-full",
+			"resize-none",
+			"rounded-r6",
+			"bg-alpha-1",
+			"px-2",
+			"py-1.5",
+			"text-body",
+			"text-primary",
+			"placeholder:text-tertiary",
+			"shadow-[inset_0_0_0_1px_var(--color-border)]",
+			"outline-none",
+			"focus-visible:shadow-[var(--focus-shadow)]",
+			"hover:not-focus:shadow-[inset_0_0_0_1px_var(--color-strong)]",
+		]);
+	});
+
 	it("opens upstream's feedback box on Revise…, and Enter sends its text as a revision", async () => {
 		const {value, decide} = context();
 		await renderCard(value);

@@ -28,8 +28,9 @@ const HINT_CLASS = "text-footnote text-secondary";
  */
 const PLAN_ACTIONS_CLASS = `flex flex-wrap justify-between gap-x-1 gap-y-2 [&>span]:grow ${STACK_ACTIONS} @max-[420px]:[&>span]:flex-col @max-[420px]:[&>span]:items-stretch @max-[420px]:[&_button]:w-full`;
 
+/** Upstream's cds TextArea (`bg-fill-field shadow-field-ring px-md py-sm rounded`): 6px radius, 5% fill, field ring, accent focus shadow. */
 const FEEDBACK_CLASS =
-	"w-full resize-none rounded-r4 border border-strong bg-transparent px-2 py-1.5 text-body text-primary placeholder:text-tertiary focus:outline-none";
+	"w-full resize-none rounded-r6 bg-alpha-1 px-2 py-1.5 text-body text-primary placeholder:text-tertiary shadow-[inset_0_0_0_1px_var(--color-border)] outline-none focus-visible:shadow-[var(--focus-shadow)] hover:not-focus:shadow-[inset_0_0_0_1px_var(--color-strong)]";
 
 type DialogState = {kind: "loading"} | {kind: "ready"; dialog: PlanDialog} | {kind: "unavailable"};
 
