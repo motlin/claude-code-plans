@@ -5,6 +5,7 @@ import {actAndSettle} from "./act-and-settle";
 import type {ComponentProps} from "react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
+import {BackgroundTasksOpenerProvider} from "../src/components/background-tasks-opener-context";
 import {PermissionCard} from "../src/components/permission-card";
 import {findPendingPermission, permissionDecisionForKey, type PermissionNotification} from "../src/lib/permission-card";
 import type {PersistentAllowKind} from "../src/lib/permission-suggestions";
@@ -58,6 +59,64 @@ describe("findPendingPermission", () => {
 			notificationId: "notification-test-100",
 			title: {action: "run", meta: "Remove the build output"},
 			detail: "rm -rf dist",
+		});
+	});
+
+	it.each([
+		{
+			input: {command: "npm run dev", description: "Start the dev server", run_in_background: true},
+			expected: {
+				title: {action: "run", meta: "Start the dev server"},
+				detail: "npm run dev",
+				detailNote: "Keeps running in the background.",
+			},
+		},
+		{
+			input: {
+				command: "curl x",
+				description: "Fetch x",
+				dangerouslyDisableSandbox: true,
+				run_in_background: true,
+			},
+			expected: {
+				title: {action: "run", meta: "Fetch x"},
+				detail: "curl x",
+				detailNote: "Runs outside Claude's sandbox. Keeps running in the background.",
+			},
+		},
+		{
+			input: {command: "curl x", description: "curl x", dangerouslyDisableSandbox: true},
+			expected: {
+				title: {action: "run", meta: null},
+				detail: "curl x",
+				detailNote: "Runs outside Claude's sandbox.",
+			},
+		},
+	])("notes a Bash command's sandbox and background flags as upstream does ($input.command)", ({input, expected}) => {
+		expect(
+			findPendingPermission({
+				sessionId: "session-test-100",
+				isActive: true,
+				notifications: [permissionNotification()],
+				records: [assistantToolUse("t2", "Bash", input)],
+			}),
+		).toStrictEqual({notificationId: "notification-test-100", ...expected});
+	});
+
+	it("carries a Workflow's description and upstream's token warning", () => {
+		expect(
+			findPendingPermission({
+				sessionId: "session-test-100",
+				isActive: true,
+				notifications: [permissionNotification()],
+				records: [assistantToolUse("t2", "Workflow", {name: "noop-a", description: "Replies ok"})],
+			}),
+		).toStrictEqual({
+			notificationId: "notification-test-100",
+			title: {action: "run a workflow", meta: "noop-a"},
+			detail: null,
+			description: "Replies ok",
+			tokenWarning: true,
 		});
 	});
 
@@ -442,15 +501,7 @@ describe("PermissionCard", () => {
 				card.classList.contains(name),
 			),
 			title: missing(card.querySelector("[data-permission-title]"), ["text-[13px]/[19px]", "font-[580]"]),
-			value: missing(card.querySelector("[data-permission-detail]"), [
-				"font-mono",
-				"text-[12px]/[17px]",
-				"text-secondary",
-				"bg-alpha-1",
-				"rounded-r4",
-				"px-3",
-				"py-2",
-			]),
+			value: card.querySelector("[data-permission-detail]")?.getAttribute("class"),
 			deny: missing(screen.getByRole("button", {name: /^Deny/}), [
 				"h-6",
 				"rounded-r5",
@@ -467,7 +518,15 @@ describe("PermissionCard", () => {
 				"bg-primary",
 				"text-surface-1",
 			]),
-		}).toStrictEqual({presentation: "card", card: [], dockLook: [], title: [], value: [], deny: [], allow: []});
+		}).toStrictEqual({
+			presentation: "card",
+			card: [],
+			dockLook: [],
+			title: [],
+			value: "bg-alpha-1 rounded-r4 py-2 px-3 text-code text-secondary whitespace-pre-wrap break-words select-text [unicode-bidi:plaintext]",
+			deny: [],
+			allow: [],
+		});
 	});
 
 	it("spaces the card as upstream's inline permission card: 480px wide, 24px gaps, a 10px title block and 12px details", () => {
@@ -493,6 +552,55 @@ describe("PermissionCard", () => {
 			details: ["flex", "flex-col", "gap-[12px]"],
 			detailsFollowTitle: true,
 		});
+	});
+
+	it("draws upstream's detail note under a background Bash command", () => {
+		const {container} = render(
+			<PermissionCard
+				title={{action: "run", meta: "Start the dev server"}}
+				detail="npm run dev"
+				detailNote="Keeps running in the background."
+				canAnswer
+				onDecision={async () => {}}
+			/>,
+		);
+		const value = container.querySelector("[data-permission-detail]")!;
+		const note = value.nextElementSibling;
+		expect({tag: note?.tagName, className: note?.getAttribute("class"), text: note?.textContent}).toStrictEqual({
+			tag: "P",
+			className: "text-footnote text-ink-muted select-text break-words [unicode-bidi:plaintext]",
+			text: "Keeps running in the background.",
+		});
+	});
+
+	it("draws a Workflow's description and upstream's token warning, whose tasks pane link opens Background tasks", () => {
+		const open = vi.fn<() => void>();
+		const {container} = render(
+			<BackgroundTasksOpenerProvider value={{open, running: new Set()}}>
+				<PermissionCard
+					title={{action: "run a workflow", meta: "noop-a"}}
+					detail={null}
+					description="Replies ok"
+					tokenWarning
+					canAnswer
+					onDecision={async () => {}}
+				/>
+			</BackgroundTasksOpenerProvider>,
+		);
+		const title = container.querySelector("[data-permission-title]")!;
+		const details = [...(title.nextElementSibling?.children ?? [])];
+		expect(details.map((element) => [element.getAttribute("class"), element.textContent])).toStrictEqual([
+			[
+				"text-body text-secondary select-text break-words max-h-[calc(3*var(--text-body--line-height))] overflow-y-auto [unicode-bidi:plaintext]",
+				"Replies ok",
+			],
+			[
+				"rounded-lg bg-alpha-1 px-3 py-2.5 text-body text-secondary select-text break-words",
+				"Dynamic workflows run many subagents in parallel and can use a lot of your usage limit. Stop them any time from the tasks pane.",
+			],
+		]);
+		fireEvent.click(screen.getByRole("button", {name: "tasks pane"}));
+		expect(open).toHaveBeenCalledTimes(1);
 	});
 
 	it("hides the persistent option when the dialog has none", () => {

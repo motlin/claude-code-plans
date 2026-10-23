@@ -1051,19 +1051,24 @@ function SessionView({
 							{/* Upstream draws every pending approval inline; a permission prompt is not on disk, so it follows the transcript */}
 							{pendingPermission && (
 								<div data-inline-permission="" className={`${CHAT_COLUMN_CLASS} pb-4`}>
-									<PermissionCard
-										key={pendingPermission.notificationId}
-										title={pendingPermission.title}
-										detail={pendingPermission.detail}
-										canAnswer={promptBehavior.hasLivePane && herdr.writesEnabled}
-										persistentAllow={pendingPermission.persistentAllow ?? null}
-										onDecision={answerPermission}
-										footer={
-											<Suspense fallback={null}>
-												<ToolApprovalNotifyTip sessionId={sessionId} />
-											</Suspense>
-										}
-									/>
+									<SessionBackgroundTasksOpener running={runningBackgroundLaunches}>
+										<PermissionCard
+											key={pendingPermission.notificationId}
+											title={pendingPermission.title}
+											detail={pendingPermission.detail}
+											detailNote={pendingPermission.detailNote ?? null}
+											description={pendingPermission.description ?? null}
+											tokenWarning={pendingPermission.tokenWarning === true}
+											canAnswer={promptBehavior.hasLivePane && herdr.writesEnabled}
+											persistentAllow={pendingPermission.persistentAllow ?? null}
+											onDecision={answerPermission}
+											footer={
+												<Suspense fallback={null}>
+													<ToolApprovalNotifyTip sessionId={sessionId} />
+												</Suspense>
+											}
+										/>
+									</SessionBackgroundTasksOpener>
 								</div>
 							)}
 							{/* The CLI writes a question to the JSONL only once answered, so its hook copy is drawn inline at the transcript's end */}

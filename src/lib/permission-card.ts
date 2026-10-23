@@ -25,6 +25,12 @@ export interface PendingPermission {
 	title: PermissionTitle;
 	/** The block under the title: the command, the full path, the skill args, or the input as JSON. */
 	detail: string | null;
+	/** Upstream's footnote under the detail: a Bash command run outside the sandbox or in the background. */
+	detailNote?: string;
+	/** A Workflow's description line. */
+	description?: string;
+	/** Upstream's "Dynamic workflows … tasks pane." callout. */
+	tokenWarning?: true;
 	persistentAllow?: PersistentAllowKind;
 }
 
@@ -124,14 +130,41 @@ function withPersistentAllow(permission: PendingPermission, notification: Permis
 }
 
 function permissionFor(notificationId: string, toolUse: PendingToolUse): PendingPermission {
-	const {action, meta = null, detail = null} = permissionCopy(toolUse);
-	return {notificationId, title: {action, meta}, detail};
+	const {action, meta = null, detail = null, ...extras} = permissionCopy(toolUse);
+	return {notificationId, title: {action, meta}, detail, ...extras};
 }
 
 interface PermissionCopy {
 	action: string;
 	meta?: string | null;
 	detail?: string | null;
+	detailNote?: string;
+	description?: string;
+	tokenWarning?: true;
+}
+
+/** Upstream's Bash copy: the sandbox and background notes, and no meta when a noted command's description repeats it. */
+function commandCopy(input: Record<string, unknown>): PermissionCopy {
+	const command = stringInput(input, "command");
+	const description = stringInput(input, "description");
+	const detailNote = [
+		input["dangerouslyDisableSandbox"] === true ? "Runs outside Claude's sandbox." : null,
+		input["run_in_background"] === true ? "Keeps running in the background." : null,
+	]
+		.filter((note) => note !== null)
+		.join(" ");
+	if (detailNote === "") return {action: "run", meta: description, detail: command};
+	return {action: "run", meta: description === command ? null : description, detail: command, detailNote};
+}
+
+function workflowCopy(input: Record<string, unknown>): PermissionCopy {
+	const description = stringInput(input, "description");
+	return {
+		action: "run a workflow",
+		meta: stringInput(input, "name"),
+		...(description === null ? {} : {description}),
+		tokenWarning: true,
+	};
 }
 
 /** A file tool names the file in the title and shows its full path below. */
@@ -145,7 +178,7 @@ function permissionCopy({name, input}: PendingToolUse): PermissionCopy {
 	switch (name) {
 		case "Bash":
 		case "PowerShell":
-			return {action: "run", meta: text("description"), detail: text("command")};
+			return commandCopy(input);
 		case "Read":
 			return fileCopy("read", text("file_path"));
 		case "Write":
@@ -168,7 +201,7 @@ function permissionCopy({name, input}: PendingToolUse): PermissionCopy {
 		case "Agent":
 			return {action: "run an agent", meta: text("description")};
 		case "Workflow":
-			return {action: "run a workflow", meta: text("name")};
+			return workflowCopy(input);
 		default:
 			return {action: `use ${name}`, detail: JSON.stringify(input, null, 2)};
 	}
