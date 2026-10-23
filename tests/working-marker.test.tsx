@@ -153,16 +153,19 @@ describe("tailMarkerQuiet", () => {
 });
 
 describe("formatElapsed", () => {
-	it("formats seconds, minutes, and hours", () => {
-		expect([0, 9, 59, 60, 65, 3599, 3600, 3725].map(formatElapsed)).toStrictEqual([
+	it("formats up to three units from the largest non-zero one, unpadded, as upstream's nW does", () => {
+		expect([0, 1, 2, 9, 59, 60, 65, 3599, 3600, 3725, 90061].map(formatElapsed)).toStrictEqual([
 			"0s",
+			"1s",
+			"2s",
 			"9s",
 			"59s",
-			"1m 00s",
-			"1m 05s",
+			"1m",
+			"1m 5s",
 			"59m 59s",
-			"1h 00m",
-			"1h 02m",
+			"1h",
+			"1h 2m 5s",
+			"1d 1h 1m",
 		]);
 	});
 });
@@ -186,7 +189,25 @@ describe("workingMarkerText", () => {
 				turnStartedAt: at(0),
 				elapsedSeconds: 12,
 			}),
-		]).toStrictEqual(["", "1m 05s", "Stopping…", "Overloaded · Retrying (2/10) · 12s"]);
+		]).toStrictEqual(["", "1m 5s", "Stopping…", "Overloaded · Retrying (2/10) · 12s"]);
+	});
+
+	it("hides the elapsed clock below 2s, as upstream shows it only from 2s", () => {
+		const working = (elapsedSeconds: number) =>
+			workingMarkerText({status: "working", label: "Working…", turnStartedAt: at(0), elapsedSeconds});
+		expect([
+			working(0),
+			working(1),
+			working(2),
+			workingMarkerText({
+				status: "retrying",
+				error: "Overloaded",
+				attempt: 1,
+				maxRetries: 10,
+				turnStartedAt: at(0),
+				elapsedSeconds: 1,
+			}),
+		]).toStrictEqual(["", "", "2s", "Overloaded · Retrying (1/10)"]);
 	});
 });
 

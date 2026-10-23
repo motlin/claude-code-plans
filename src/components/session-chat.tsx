@@ -77,7 +77,7 @@ import {
 import type {BackgroundCompletionLike, SummarySegment} from "../lib/session-utils";
 import {pastTense} from "../lib/past-tense";
 import {runningToolLabel, runningToolLabelText, toolLabel} from "../lib/tool-labels";
-import {formatElapsed} from "../lib/working-marker";
+import {ELAPSED_MIN_SECONDS, formatElapsed} from "../lib/working-marker";
 import {usageLimitCard, type UsageLimitCard} from "../lib/usage-limit-notice";
 import {useElapsedSeconds} from "../hooks/use-elapsed-seconds";
 import {inlinePathImages} from "./inline-path-images";
@@ -4658,7 +4658,7 @@ function isPendingToolCall(call: ClientToolCall): boolean {
 /** An in-flight row's live elapsed time, in muted ink after its label. */
 function RunningElapsed({startedAt}: {startedAt: string | undefined}) {
 	const seconds = useElapsedSeconds(startedAt);
-	if (seconds === null) return null;
+	if (seconds === null || seconds < ELAPSED_MIN_SECONDS) return null;
 	return (
 		<span data-running-elapsed="" className="shrink-0 text-body text-ink-muted tabular-nums">
 			{formatElapsed(seconds)}

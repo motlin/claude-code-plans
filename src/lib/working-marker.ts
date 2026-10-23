@@ -84,15 +84,45 @@ export function workingMarkerState(events: readonly WorkingMarkerEvent[], now: n
 	return {status: "working", label: turn.label, turnStartedAt: turn.startedAt, elapsedSeconds};
 }
 
-function pad2(value: number): string {
-	return String(value).padStart(2, "0");
+const ELAPSED_UNITS = [
+	{unit: "day", seconds: 86_400},
+	{unit: "hour", seconds: 3600},
+	{unit: "minute", seconds: 60},
+	{unit: "second", seconds: 1},
+] as const;
+
+type ElapsedUnit = (typeof ELAPSED_UNITS)[number]["unit"];
+
+function formatUnit(value: number, unit: ElapsedUnit): string {
+	try {
+		return new Intl.NumberFormat("en", {style: "unit", unit, unitDisplay: "narrow"}).format(value);
+	} catch {
+		return `${value}${unit[0]}`;
+	}
 }
 
+/**
+ * Upstream's elapsed format (`nW`): up to three consecutive units starting at
+ * the largest non-zero one, zero units dropped, no padding ("1m 5s", "1h 2m 5s").
+ */
 export function formatElapsed(totalSeconds: number): string {
-	if (totalSeconds < 60) return `${totalSeconds}s`;
-	const minutes = Math.floor(totalSeconds / 60);
-	if (minutes < 60) return `${minutes}m ${pad2(totalSeconds % 60)}s`;
-	return `${Math.floor(minutes / 60)}h ${pad2(minutes % 60)}m`;
+	const start = ELAPSED_UNITS.findIndex(({seconds}) => totalSeconds >= seconds);
+	if (start === -1) return formatUnit(0, "second");
+	let remaining = totalSeconds;
+	const parts: string[] = [];
+	for (const {unit, seconds} of ELAPSED_UNITS.slice(start, start + 3)) {
+		const value = Math.floor(remaining / seconds);
+		remaining -= value * seconds;
+		if (value > 0) parts.push(formatUnit(value, unit));
+	}
+	return parts.join(" ");
+}
+
+/** Upstream shows a live elapsed clock only from 2s (`R=u>=2?u:void 0`). */
+export const ELAPSED_MIN_SECONDS = 2;
+
+function liveElapsedStats(elapsedSeconds: number): string[] {
+	return elapsedSeconds < ELAPSED_MIN_SECONDS ? [] : [formatElapsed(elapsedSeconds)];
 }
 
 /**
@@ -118,11 +148,11 @@ export function workingLineParts(state: WorkingMarkerState): WorkingLineParts {
 		case "stopping":
 			return {label: "Stopping…", stats: []};
 		case "working":
-			return {label: "", stats: [formatElapsed(state.elapsedSeconds)]};
+			return {label: "", stats: liveElapsedStats(state.elapsedSeconds)};
 		case "retrying":
 			return {
 				label: `${state.error} · Retrying (${state.attempt}/${state.maxRetries})`,
-				stats: [formatElapsed(state.elapsedSeconds)],
+				stats: liveElapsedStats(state.elapsedSeconds),
 			};
 		default:
 			return assertNever(state);

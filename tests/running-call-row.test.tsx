@@ -100,6 +100,44 @@ describe("an in-flight call's row", () => {
 		});
 	});
 
+	it("shows the row's elapsed time only from 2s, as upstream does", () => {
+		const runningRecords = (startedMsAgo: number) => [
+			{type: "user", uuid: "user-1", message: {role: "user", content: "Check the login"}},
+			{
+				type: "assistant",
+				uuid: "assistant-1",
+				timestamp: new Date(Date.now() - startedMsAgo).toISOString(),
+				message: {
+					role: "assistant",
+					content: [
+						{
+							type: "tool_use",
+							id: "toolu_running",
+							name: "Bash",
+							input: {command: "ssh -T git@github.com", description: "Recheck SSH auth"},
+						},
+					],
+				},
+			},
+		];
+		const elapsedTexts = (startedMsAgo: number) => {
+			const container = renderRecords(runningRecords(startedMsAgo));
+			const texts = [...container.querySelectorAll("[data-running-elapsed]")].map((el) => el.textContent);
+			cleanup();
+			return texts;
+		};
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date("2026-10-23T12:00:00Z"));
+		try {
+			expect({early: elapsedTexts(1_000), atTwo: elapsedTexts(2_000)}).toStrictEqual({
+				early: [],
+				atTwo: ["2s"],
+			});
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it("offers 'View live output' on a background command whose task still runs, opening the Background tasks pane", () => {
 		const opened = vi.fn<() => void>();
 		const {lines, toolResultMap} = processTranscript([
