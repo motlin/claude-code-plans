@@ -5,12 +5,14 @@ import {assertNever} from "./assert-never";
 /**
  * One signal in a session's current turn, normalized from transcript records
  * and live hook state. `progress` is any response that is not a tool call:
- * it ends a tool's activity label and any pending API retry.
+ * it ends a tool's activity label, any pending API retry and any thinking.
+ * `thinking` is an assistant record whose last block is a thinking block.
  */
 export type WorkingMarkerEvent =
 	| {kind: "prompt"; at: number}
 	| {kind: "tool"; at: number; label: string}
 	| {kind: "progress"; at: number}
+	| {kind: "thinking"; at: number}
 	| {kind: "retry"; at: number; attempt: number; maxRetries: number; error: string}
 	| {kind: "interrupt"; at: number}
 	| {kind: "stop"; at: number};
@@ -21,7 +23,7 @@ export type WorkingMarkerState =
 	| {status: "stopping"}
 	/** Blocked on a tool permission prompt: a still spark with no status text. */
 	| {status: "waiting"}
-	| {status: "working"; label: string; turnStartedAt: number; elapsedSeconds: number}
+	| {status: "working"; label: string; thinking: boolean; turnStartedAt: number; elapsedSeconds: number}
 	| {
 			status: "retrying";
 			error: string;
@@ -38,22 +40,26 @@ interface Turn {
 	label: string;
 	retry: {attempt: number; maxRetries: number; error: string} | null;
 	stopping: boolean;
+	thinking: boolean;
 }
 
 export function workingMarkerState(events: readonly WorkingMarkerEvent[], now: number): WorkingMarkerState {
 	let turn: Turn | null = null;
 	for (const event of events) {
 		if (event.kind === "prompt") {
-			turn = {startedAt: event.at, label: WORKING_LABEL, retry: null, stopping: false};
+			turn = {startedAt: event.at, label: WORKING_LABEL, retry: null, stopping: false, thinking: false};
 			continue;
 		}
 		if (turn === null) continue;
 		switch (event.kind) {
 			case "tool":
-				turn = {...turn, label: event.label, retry: null};
+				turn = {...turn, label: event.label, retry: null, thinking: false};
 				break;
 			case "progress":
-				turn = {...turn, label: WORKING_LABEL, retry: null};
+				turn = {...turn, label: WORKING_LABEL, retry: null, thinking: false};
+				break;
+			case "thinking":
+				turn = {...turn, label: WORKING_LABEL, retry: null, thinking: true};
 				break;
 			case "retry":
 				turn = {
@@ -81,7 +87,13 @@ export function workingMarkerState(events: readonly WorkingMarkerEvent[], now: n
 			elapsedSeconds,
 		};
 	}
-	return {status: "working", label: turn.label, turnStartedAt: turn.startedAt, elapsedSeconds};
+	return {
+		status: "working",
+		label: turn.label,
+		thinking: turn.thinking,
+		turnStartedAt: turn.startedAt,
+		elapsedSeconds,
+	};
 }
 
 const ELAPSED_UNITS = [
@@ -118,6 +130,8 @@ export function formatElapsed(totalSeconds: number): string {
 	return parts.join(" ");
 }
 
+const THINKING_STAT = "Thinking";
+
 /** Upstream shows a live elapsed clock only from 2s (`R=u>=2?u:void 0`). */
 export const ELAPSED_MIN_SECONDS = 2;
 
@@ -149,7 +163,11 @@ export function workingLineParts(state: WorkingMarkerState): WorkingLineParts {
 			// Upstream's e2() strips the trailing ellipsis: "Stopping", with no clock.
 			return {label: "Stopping", stats: []};
 		case "working":
-			return {label: "", stats: liveElapsedStats(state.elapsedSeconds)};
+			// Upstream appends a plain "Thinking" stat while a thinking block streams.
+			return {
+				label: "",
+				stats: [...liveElapsedStats(state.elapsedSeconds), ...(state.thinking ? [THINKING_STAT] : [])],
+			};
 		case "retrying":
 			return {
 				label: `${state.error} · Retrying (${state.attempt}/${state.maxRetries})`,
@@ -285,7 +303,10 @@ function assistantEvent(record: MarkerRecord, at: number): WorkingMarkerEvent {
 	const content = record.message?.content;
 	const tools = Array.isArray(content) ? content.filter((block) => block.type === "tool_use") : [];
 	const last = tools.at(-1);
-	if (last === undefined) return {kind: "progress", at};
+	if (last === undefined) {
+		const final = Array.isArray(content) ? content.at(-1) : undefined;
+		return {kind: final?.type === "thinking" ? "thinking" : "progress", at};
+	}
 	return {kind: "tool", at, label: toolActivityLabel(last.name ?? "", last.input)};
 }
 

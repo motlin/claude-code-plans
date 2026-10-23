@@ -50,6 +50,7 @@ describe("workingMarkerState", () => {
 		expect(workingMarkerState(events, at(65))).toStrictEqual({
 			status: "working",
 			label: "Working…",
+			thinking: false,
 			turnStartedAt: at(0),
 			elapsedSeconds: 65,
 		});
@@ -63,12 +64,14 @@ describe("workingMarkerState", () => {
 		expect(workingMarkerState(running, at(3))).toStrictEqual({
 			status: "working",
 			label: "Reading app.ts",
+			thinking: false,
 			turnStartedAt: at(0),
 			elapsedSeconds: 3,
 		});
 		expect(workingMarkerState([...running, {kind: "progress", at: at(4)}], at(5))).toStrictEqual({
 			status: "working",
 			label: "Working…",
+			thinking: false,
 			turnStartedAt: at(0),
 			elapsedSeconds: 5,
 		});
@@ -90,6 +93,7 @@ describe("workingMarkerState", () => {
 		expect(workingMarkerState([...retrying, {kind: "progress", at: at(20)}], at(21))).toStrictEqual({
 			status: "working",
 			label: "Working…",
+			thinking: false,
 			turnStartedAt: at(0),
 			elapsedSeconds: 21,
 		});
@@ -116,6 +120,7 @@ describe("workingMarkerState", () => {
 		expect(workingMarkerState(events, at(45))).toStrictEqual({
 			status: "working",
 			label: "Working…",
+			thinking: false,
 			turnStartedAt: at(40),
 			elapsedSeconds: 5,
 		});
@@ -130,10 +135,27 @@ describe("workingMarkerState", () => {
 		expect(workingMarkerState(events, at(3))).toStrictEqual({status: "idle"});
 	});
 
+	it("reports Thinking while a thinking block streams, until the next response arrives", () => {
+		const thinking: WorkingMarkerEvent[] = [
+			{kind: "prompt", at: at(0)},
+			{kind: "thinking", at: at(1)},
+		];
+		expect({
+			thinking: workingMarkerState(thinking, at(9)),
+			after: workingMarkerState([...thinking, {kind: "progress", at: at(10)}], at(11)),
+			tool: workingMarkerState([...thinking, {kind: "tool", at: at(10), label: "Reading a.ts"}], at(11)),
+		}).toStrictEqual({
+			thinking: {status: "working", label: "Working…", thinking: true, turnStartedAt: at(0), elapsedSeconds: 9},
+			after: {status: "working", label: "Working…", thinking: false, turnStartedAt: at(0), elapsedSeconds: 11},
+			tool: {status: "working", label: "Reading a.ts", thinking: false, turnStartedAt: at(0), elapsedSeconds: 11},
+		});
+	});
+
 	it("never reports a negative elapsed clock", () => {
 		expect(workingMarkerState([{kind: "prompt", at: at(10)}], at(5))).toStrictEqual({
 			status: "working",
 			label: "Working…",
+			thinking: false,
 			turnStartedAt: at(10),
 			elapsedSeconds: 0,
 		});
@@ -141,7 +163,13 @@ describe("workingMarkerState", () => {
 });
 
 describe("tailMarkerQuiet", () => {
-	const working = {status: "working", label: "Recheck SSH auth", turnStartedAt: 0, elapsedSeconds: 24} as const;
+	const working = {
+		status: "working",
+		label: "Recheck SSH auth",
+		thinking: false,
+		turnStartedAt: 0,
+		elapsedSeconds: 24,
+	} as const;
 
 	it("quiets the line while the in-flight call's own row is busy, as upstream draws no second status line", () => {
 		expect({
@@ -177,6 +205,7 @@ describe("workingMarkerText", () => {
 			workingMarkerText({
 				status: "working",
 				label: "Working…",
+				thinking: false,
 				turnStartedAt: at(0),
 				elapsedSeconds: 65,
 			}),
@@ -194,7 +223,13 @@ describe("workingMarkerText", () => {
 
 	it("hides the elapsed clock below 2s, as upstream shows it only from 2s", () => {
 		const working = (elapsedSeconds: number) =>
-			workingMarkerText({status: "working", label: "Working…", turnStartedAt: at(0), elapsedSeconds});
+			workingMarkerText({
+				status: "working",
+				label: "Working…",
+				thinking: false,
+				turnStartedAt: at(0),
+				elapsedSeconds,
+			});
 		expect([
 			working(0),
 			working(1),
@@ -211,6 +246,20 @@ describe("workingMarkerText", () => {
 	});
 });
 
+describe("workingMarkerText thinking", () => {
+	it('appends Thinking after the stats while thinking, as upstream\'s "9s · Thinking"', () => {
+		const thinking = (elapsedSeconds: number) =>
+			workingMarkerText({
+				status: "working",
+				label: "Working…",
+				thinking: true,
+				turnStartedAt: at(0),
+				elapsedSeconds,
+			});
+		expect([thinking(1), thinking(9)]).toStrictEqual(["Thinking", "9s · Thinking"]);
+	});
+});
+
 describe("workingLineAnnouncement", () => {
 	it("announces Working… rather than the ticking clock", () => {
 		expect([
@@ -219,6 +268,7 @@ describe("workingLineAnnouncement", () => {
 			workingLineAnnouncement({
 				status: "working",
 				label: "Reading a.ts",
+				thinking: false,
 				turnStartedAt: at(0),
 				elapsedSeconds: 9,
 			}),
@@ -361,6 +411,35 @@ describe("markerEventsFromRecords", () => {
 	});
 });
 
+describe("markerEventsFromRecords thinking", () => {
+	it("maps an assistant record ending in a thinking block to a thinking event, and later text to progress", () => {
+		const records = [
+			{type: "user", timestamp: "2026-09-29T12:00:00.000Z", message: {role: "user", content: "think"}},
+			{
+				type: "assistant",
+				timestamp: "2026-09-29T12:00:01.000Z",
+				message: {role: "assistant", content: [{type: "thinking", thinking: "Hmm.", signature: "s"}]},
+			},
+			{
+				type: "assistant",
+				timestamp: "2026-09-29T12:00:02.000Z",
+				message: {
+					role: "assistant",
+					content: [
+						{type: "thinking", thinking: "Hmm.", signature: "s"},
+						{type: "text", text: "Done."},
+					],
+				},
+			},
+		];
+		expect(markerEventsFromRecords(records)).toStrictEqual([
+			{kind: "prompt", at: at(0)},
+			{kind: "thinking", at: at(1)},
+			{kind: "progress", at: at(2)},
+		]);
+	});
+});
+
 /** The working line's visible text: upstream's TurnStatus row without its sr-only spans. */
 function visibleLineText(root: ParentNode): string | null {
 	const row = root.querySelector('[data-cds="TurnStatus"]');
@@ -401,6 +480,7 @@ describe("WorkingMarker", () => {
 				state={{
 					status: "working",
 					label: "Reading app.ts",
+					thinking: false,
 					turnStartedAt: at(0),
 					elapsedSeconds: 7,
 				}}
@@ -444,7 +524,7 @@ describe("WorkingMarker", () => {
 		stubReducedMotion(false);
 		const {container} = render(
 			<WorkingMarker
-				state={{status: "working", label: "Working…", turnStartedAt: at(0), elapsedSeconds: 3}}
+				state={{status: "working", label: "Working…", thinking: false, turnStartedAt: at(0), elapsedSeconds: 3}}
 				quiet
 			/>,
 		);
@@ -468,7 +548,7 @@ describe("WorkingMarker", () => {
 		stubReducedMotion(false);
 		const {container} = render(
 			<WorkingMarker
-				state={{status: "working", label: "Working…", turnStartedAt: at(0), elapsedSeconds: 3}}
+				state={{status: "working", label: "Working…", thinking: false, turnStartedAt: at(0), elapsedSeconds: 3}}
 				runningTasks={4}
 			/>,
 		);
@@ -506,10 +586,26 @@ describe("WorkingMarker", () => {
 		});
 	});
 
+	it("shows a plain Thinking stat after the clock while thinking", () => {
+		stubReducedMotion(false);
+		const {container} = render(
+			<WorkingMarker
+				state={{status: "working", label: "Working…", thinking: true, turnStartedAt: at(0), elapsedSeconds: 9}}
+			/>,
+		);
+		const status = container.querySelector('[data-cds="TurnStatus"]');
+		expect({
+			text: visibleLineText(container),
+			stats: [...(status?.querySelectorAll(".tabular-nums") ?? [])].map((el) => el.textContent),
+		}).toStrictEqual({text: "9s·Thinking", stats: ["9s", "·", "Thinking"]});
+	});
+
 	it("disables the spark animation under reduced motion", () => {
 		stubReducedMotion(true);
 		const {container} = render(
-			<WorkingMarker state={{status: "working", label: "Working…", turnStartedAt: at(0), elapsedSeconds: 1}} />,
+			<WorkingMarker
+				state={{status: "working", label: "Working…", thinking: false, turnStartedAt: at(0), elapsedSeconds: 1}}
+			/>,
 		);
 		expect(container.querySelector('[data-cds="Spark"]')?.getAttribute("data-animated")).toStrictEqual("false");
 	});
