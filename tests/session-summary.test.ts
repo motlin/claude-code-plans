@@ -11,6 +11,7 @@ import {
 	type ActiveSessionEntry,
 } from "../src/lib/active-session-store";
 import {buildSessionSummaryPayloadFromDb, toActiveSessionPayload} from "../src/lib/session-summary";
+import {markSessionReviewed, markSessionUnreviewed} from "../src/lib/db/viewed-state";
 import {initPendingApprovalsCache} from "../src/lib/db/pending-approvals-cache";
 import {addLiveSubagent, clearLiveSubagents} from "../src/lib/live-subagent-store";
 import {addNotification, clearAllNotifications} from "../src/lib/notifications-store";
@@ -415,6 +416,51 @@ describe("buildSessionSummaryPayloadFromDb with the CLI session registry", () =>
 		await indexJsonlFile(db.index, join(testDir, PROJECT_ID, "session-test-100.jsonl"), PROJECT_ID);
 
 		expect([ended, stateOf().state]).toStrictEqual(["idle", "working"]);
+	});
+
+	it("flags an unseen error when the last turn ended in an API error, and clears it once the session is seen", async () => {
+		const record = (fields: Record<string, unknown>) =>
+			`${JSON.stringify({sessionId: "session-test-100", uuid: `u-${String(fields["timestamp"])}`, ...fields})}\n`;
+		const prompt = record({
+			type: "user",
+			timestamp: "1999-12-31T00:00:01.000Z",
+			message: {role: "user", content: "Write the story"},
+		});
+		const apiError = record({
+			type: "assistant",
+			timestamp: "1999-12-31T00:00:02.000Z",
+			isApiErrorMessage: true,
+			error: "rate_limit",
+			message: {role: "assistant", content: [{type: "text", text: "You've hit your weekly limit"}]},
+		});
+		const reply = record({
+			type: "assistant",
+			timestamp: "1999-12-31T00:00:03.000Z",
+			message: {role: "assistant", content: [{type: "text", text: "Here is the story"}]},
+		});
+		const errorOf = () => {
+			const payload = buildSessionSummaryPayloadFromDb(db.index, "session-test-100");
+			return {bucket: payload?.bucket, unseenError: payload?.unseenError};
+		};
+		const index = async (transcript: string) => {
+			await indexSession(transcript);
+			await indexJsonlFile(db.index, join(testDir, PROJECT_ID, "session-test-100.jsonl"), PROJECT_ID);
+		};
+		await registerProcess("idle", 946_598_404_000);
+		await index(prompt + apiError);
+		markSessionUnreviewed(db.index, "session-test-100", 1);
+		const unseen = errorOf();
+		markSessionReviewed(db.index, "session-test-100", 1);
+		const seen = errorOf();
+		await index(prompt + apiError + reply);
+		markSessionUnreviewed(db.index, "session-test-100", 2);
+		const recovered = errorOf();
+
+		expect({unseen, seen, recovered}).toStrictEqual({
+			unseen: {bucket: "blocked", unseenError: true},
+			seen: {bucket: "done", unseenError: undefined},
+			recovered: {bucket: "done", unseenError: undefined},
+		});
 	});
 
 	it("lets a hook state written after the registry status win", async () => {

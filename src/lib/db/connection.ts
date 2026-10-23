@@ -57,6 +57,7 @@ CREATE TABLE IF NOT EXISTS sessions (
   mtime_ms INTEGER NOT NULL,
   file_path TEXT NOT NULL,
   turn_ended_at INTEGER,
+  last_turn_errored INTEGER NOT NULL DEFAULT 0,
   stopped_task_ids TEXT NOT NULL DEFAULT '[]'
 );
 CREATE INDEX IF NOT EXISTS sessions_project_id_idx ON sessions(project_id);

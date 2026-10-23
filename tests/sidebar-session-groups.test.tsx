@@ -421,13 +421,14 @@ describe("sidebar SessionGroups", () => {
 						label: mark?.getAttribute("aria-label") ?? null,
 						triangle: decoration?.querySelector("svg.lucide-triangle-alert") !== null,
 						dot: decoration?.querySelector(".status-dot")?.getAttribute("data-kind") ?? null,
+						srStatus: link.querySelector("[role=status]")?.textContent ?? null,
 					},
 				];
 			}),
 		);
 		expect(marks).toStrictEqual({
-			"Errored one": {label: "Error", triangle: true, dot: null},
-			"Blocked one": {label: "Awaiting input", triangle: false, dot: "awaiting"},
+			"Errored one": {label: "Error", triangle: true, dot: null, srStatus: " Error"},
+			"Blocked one": {label: "Awaiting input", triangle: false, dot: "awaiting", srStatus: " Awaiting input"},
 		});
 	});
 

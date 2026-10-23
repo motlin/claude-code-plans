@@ -600,6 +600,8 @@ class SessionIndexState {
 	lastRecordAt: number | null = null;
 	/** The newest record that ends a turn: turn_duration, a stop-hook summary or an away summary. */
 	lastTurnEndAt: number | null = null;
+	/** The main thread's newest assistant record is an API error message, which upstream marks as a row error. */
+	lastTurnErrored = false;
 	/** Task ids (or teammate names) each pending TaskStop or KillShell call targets, by tool_use id. */
 	readonly pendingStops = new Map<string, string>();
 	/** Task ids and teammate names a successful TaskStop or KillShell stopped. */
@@ -745,6 +747,8 @@ class SessionIndexState {
 		if (!isRecord(obj)) return;
 		const type = obj["type"];
 		if (type === "bridge-session") this.bridgeSessions.add(obj, this.sessionId);
+		if (type === "assistant" && obj["isSidechain"] !== true)
+			this.lastTurnErrored = obj["isApiErrorMessage"] === true;
 		const timestamp = obj["timestamp"];
 		if (typeof timestamp === "string") {
 			const recordAt = Date.parse(timestamp);
@@ -925,6 +929,7 @@ async function persistSessionIndexState(
 			mtimeMs: activityAt,
 			messageCount,
 			turnEndedAt: state.lastTurnEndAt,
+			lastTurnErrored: state.lastTurnErrored ? 1 : 0,
 			stoppedTaskIdsJson: JSON.stringify([...state.stoppedTaskIds]),
 		};
 		updates["filePath"] = filePath;
@@ -981,6 +986,7 @@ async function persistSessionIndexState(
 				mtimeMs: activityAt,
 				filePath,
 				turnEndedAt: state.lastTurnEndAt,
+				lastTurnErrored: state.lastTurnErrored ? 1 : 0,
 				stoppedTaskIdsJson: JSON.stringify([...state.stoppedTaskIds]),
 			})
 			.run();

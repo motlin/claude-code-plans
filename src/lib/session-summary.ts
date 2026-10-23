@@ -96,7 +96,7 @@ export function toSessionSummaryPayload(
 		mainState: main.state,
 		pendingInput,
 		awaitingPermission,
-		unseenError: false,
+		unseenError: unseen && entry.lastTurnErrored === true,
 		liveAgentCount,
 		backgroundTasks: activeSession?.backgroundTasks ?? [],
 		lastSubagentActivityAt: activeSession?.lastSubagentActivityAt ?? null,
@@ -196,6 +196,7 @@ export function buildSessionSummaryPayloadFromDb(
 			forkedFromSessionId: row.forkedFromSessionId ?? undefined,
 			pr: getSessionPrLink(db, sessionId) ?? undefined,
 			turnEndedAt: row.turnEndedAt ?? undefined,
+			...(row.lastTurnErrored === 1 ? {lastTurnErrored: true} : {}),
 			...(row.remoteControl === 1 ? {remoteControl: true} : {}),
 		},
 		{

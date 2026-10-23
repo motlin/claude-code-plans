@@ -3,6 +3,7 @@ import type {SessionListItem} from "../lib/api/sessions";
 import {prGlyph} from "../lib/pr-status";
 import {sessionEnvironment, sessionEnvironmentText} from "../lib/session-environment";
 import {sessionMenuReadState, type SessionMenuReadState} from "../lib/session-menu-items";
+import {sessionStateKindLabels} from "../lib/schema-choices";
 import {isLiveSessionState, sessionRowIconKind} from "../lib/session-state";
 import {TOUCH_HIT} from "../lib/touch-reveal";
 import {toggleUnseen} from "../lib/unread-store";
@@ -62,6 +63,9 @@ const SR_ROW_STATUS_LABELS = {
 	unread: " Unread response",
 	read: "",
 } satisfies Record<SessionMenuReadState, string>;
+
+/** Upstream `L_` announces an errored row with its error text in place of the live status. */
+const SR_ROW_ERROR_LABEL = ` ${sessionStateKindLabels.error}`;
 
 /**
  * Upstream's sr-only environment text: where the session runs (its terminal
@@ -147,16 +151,18 @@ export function SidebarRowDecoration({session, envGlyph}: {session: SessionListI
 
 /**
  * Upstream's `L_` screen-reader text, rendered inside the row title so it joins the link's
- * accessible name: a status region (" Awaiting input", " Running", " Unread response") and the
+ * accessible name: a status region (" Awaiting input", " Error", " Running", " Unread response") and the
  * environment (" herdr · Remote Control · Connected").
  */
 export function SidebarRowSrText({session}: {session: SessionListItem}) {
-	const unseen = useHasUnseenWork(session.id);
+	const {unseen, kind} = useRowIconKind(session);
 	const srClass = "sr-only [[role=tooltip]_&]:hidden";
 	return (
 		<>
 			<span role="status" className={srClass} data-find-omitted="">
-				{SR_ROW_STATUS_LABELS[sessionMenuReadState(session.bucket, unseen)]}
+				{kind === "error"
+					? SR_ROW_ERROR_LABEL
+					: SR_ROW_STATUS_LABELS[sessionMenuReadState(session.bucket, unseen)]}
 			</span>
 			<span className={srClass} data-find-omitted="">
 				{rowEnvironmentText(session)}
