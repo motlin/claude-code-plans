@@ -7,6 +7,7 @@ import {
 	type WorkingMarkerState,
 } from "../lib/working-marker";
 import {RunningTasksControl} from "./running-tasks-control";
+import {ShimmerText} from "./shimmer-text";
 import {Spark} from "./spark";
 
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
@@ -27,6 +28,9 @@ function prefersReducedMotion(): boolean {
 function usePrefersReducedMotion(): boolean {
 	return useSyncExternalStore(subscribeReducedMotion, prefersReducedMotion, () => false);
 }
+
+/** Upstream swaps the Stopping label in with a short rise-and-fade. */
+const STOPPING_MORPH_CLASS = "motion-safe:animate-[cds-morph-in_0.18s_cubic-bezier(.2,0,0,1)]";
 
 const STAT_CLASS = "inline-flex h-[1lh] shrink-0 items-center text-ink-muted tabular-nums";
 
@@ -72,17 +76,17 @@ export function WorkingMarker({
 								aria-hidden
 								className="relative me-[6px] flex h-[1lh] w-[20px] shrink-0 items-center justify-center"
 							>
-								<Spark size={20} animated={state.status !== "stopping" && !reduceMotion} />
+								<Spark size={20} animated={!reduceMotion} />
 							</span>
 							<span className="inline-flex min-w-0 items-center text-secondary">
 								{label !== "" && (
 									<span
 										title={workingMarkerText(state)}
 										className={`truncate whitespace-nowrap${
-											state.status === "stopping" ? " working-marker-shimmer" : ""
+											state.status === "stopping" ? ` ${STOPPING_MORPH_CLASS}` : ""
 										}`}
 									>
-										{label}
+										{state.status === "stopping" ? <ShimmerText>{label}</ShimmerText> : label}
 									</span>
 								)}
 							</span>

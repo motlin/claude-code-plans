@@ -289,7 +289,7 @@ describe("sendHerdrInterrupt", () => {
 	});
 });
 
-describe("working marker Stopping…", () => {
+describe("working marker Stopping", () => {
 	const PROMPT_AT = Date.parse("2026-09-29T12:00:00.000Z");
 
 	function MarkerHarness({interruptedAt}: {interruptedAt: number | null}) {
@@ -309,7 +309,7 @@ describe("working marker Stopping…", () => {
 		return <WorkingMarker state={state} />;
 	}
 
-	it("shows Stopping… once an interrupt was sent during the current turn", () => {
+	it("shows Stopping once an interrupt was sent during the current turn", () => {
 		vi.useFakeTimers({toFake: ["Date"]});
 		vi.setSystemTime(PROMPT_AT + 3000);
 		vi.stubGlobal("matchMedia", undefined);
@@ -327,7 +327,7 @@ describe("working marker Stopping…", () => {
 
 		expect({before, after, stale}).toStrictEqual({
 			before: "Working…",
-			after: "Stopping…",
+			after: "Stopping",
 			stale: "Working…",
 		});
 	});

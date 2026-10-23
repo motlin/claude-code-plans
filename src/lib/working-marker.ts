@@ -146,7 +146,8 @@ export function workingLineParts(state: WorkingMarkerState): WorkingLineParts {
 		case "waiting":
 			return {label: "", stats: []};
 		case "stopping":
-			return {label: "Stopping…", stats: []};
+			// Upstream's e2() strips the trailing ellipsis: "Stopping", with no clock.
+			return {label: "Stopping", stats: []};
 		case "working":
 			return {label: "", stats: liveElapsedStats(state.elapsedSeconds)};
 		case "retrying":

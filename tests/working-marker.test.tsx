@@ -189,7 +189,7 @@ describe("workingMarkerText", () => {
 				turnStartedAt: at(0),
 				elapsedSeconds: 12,
 			}),
-		]).toStrictEqual(["", "1m 5s", "Stopping…", "Overloaded · Retrying (2/10) · 12s"]);
+		]).toStrictEqual(["", "1m 5s", "Stopping", "Overloaded · Retrying (2/10) · 12s"]);
 	});
 
 	it("hides the elapsed clock below 2s, as upstream shows it only from 2s", () => {
@@ -231,7 +231,7 @@ describe("workingLineAnnouncement", () => {
 				turnStartedAt: at(0),
 				elapsedSeconds: 12,
 			}),
-		]).toStrictEqual(["", "", "Working…", "Stopping…", "Overloaded · Retrying (2/10)"]);
+		]).toStrictEqual(["", "", "Working…", "Stopping", "Overloaded · Retrying (2/10)"]);
 	});
 });
 
@@ -366,7 +366,7 @@ function visibleLineText(root: ParentNode): string | null {
 	const row = root.querySelector('[data-cds="TurnStatus"]');
 	if (row === null) return null;
 	const copy = row.cloneNode(true) as Element;
-	for (const hidden of copy.querySelectorAll(".sr-only")) hidden.remove();
+	for (const hidden of copy.querySelectorAll(".sr-only, [inert]")) hidden.remove();
 	return copy.textContent;
 }
 
@@ -487,14 +487,23 @@ describe("WorkingMarker", () => {
 		}).toStrictEqual({text: "", button: null});
 	});
 
-	it("does not animate the spark once the turn is stopping", () => {
+	it("keeps the mark playing and morphs in a shimmering Stopping with no clock, as upstream does", () => {
 		stubReducedMotion(false);
 		const {getByRole, container} = render(<WorkingMarker state={{status: "stopping"}} />);
+		const shimmer = container.querySelector('[data-cds="TurnStatus"] [data-cds="ShimmerText"]');
 		expect({
 			text: visibleLineText(container),
 			announcer: getByRole("status").textContent,
 			animated: container.querySelector('[data-cds="Spark"]')?.getAttribute("data-animated"),
-		}).toStrictEqual({text: "Stopping…", announcer: "Stopping…", animated: "false"});
+			shimmer: shimmer?.firstChild?.textContent,
+			morph: shimmer?.parentElement?.className,
+		}).toStrictEqual({
+			text: "Stopping",
+			announcer: "Stopping",
+			animated: "true",
+			shimmer: "Stopping",
+			morph: "truncate whitespace-nowrap motion-safe:animate-[cds-morph-in_0.18s_cubic-bezier(.2,0,0,1)]",
+		});
 	});
 
 	it("disables the spark animation under reduced motion", () => {
