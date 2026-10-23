@@ -19,6 +19,7 @@ import {RecentSessionsResponse, recentSessionsInfiniteQueryOptions} from "../src
 import {DEFAULT_SESSION_LIST_PREFS, type SessionListPrefs} from "../src/lib/session-groups";
 import type {SessionBucket} from "../src/lib/session-state";
 import {installLocalStorage} from "./fake-storage";
+import {readFileSync} from "node:fs";
 
 const MINUTE = 60 * 1000;
 const routerRef: {current: {state: {location: {pathname: string}}} | null} = {current: null};
@@ -420,6 +421,35 @@ describe("sidebar Group and sort menu", () => {
 				{className: "sr-only [[role=tooltip]_&]:hidden", text: ""},
 				{className: "sr-only [[role=tooltip]_&]:hidden", text: " Local"},
 			],
+		});
+	});
+
+	it("lets the fade label pick its direction from the title, so a Hebrew title fades at its start like upstream", async () => {
+		const hebrew = session("h1", "שלום עולם", "done", "alpha");
+		const {container} = await renderSidebarGroups([hebrew]);
+
+		const label = container.querySelector<HTMLElement>('a[href="/session/h1"] .dframe-fade-label');
+		expect({dir: label?.getAttribute("dir"), text: label?.textContent}).toStrictEqual({
+			dir: "auto",
+			text: "שלום עולם Local",
+		});
+	});
+
+	it("angles the overflow fade by direction with upstream's --df-label-fade-angle", () => {
+		const css = readFileSync("src/styles/globals.css", "utf8");
+		const rule = (selector: string) =>
+			css
+				.match(new RegExp(`\\n${selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*\\{([^}]*)\\}`))?.[1]
+				?.trim();
+		expect({
+			textAlign: rule(".dframe-fade-label")?.match(/text-align:[^;]+;/g),
+			overflowing: rule(".dframe-fade-label[data-overflowing]"),
+			rtl: rule(".dframe-fade-label:dir(rtl)"),
+		}).toStrictEqual({
+			textAlign: ["text-align: -webkit-match-parent;", "text-align: match-parent;"],
+			overflowing:
+				"mask-image: linear-gradient(var(--df-label-fade-angle, 90deg), black calc(100% - 24px), transparent 100%);",
+			rtl: "--df-label-fade-angle: 270deg;",
 		});
 	});
 

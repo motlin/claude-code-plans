@@ -1579,10 +1579,17 @@ html[data-motion="reduced"] [data-cds-shimmer-clone] {
 	min-width: 0;
 	overflow: hidden;
 	white-space: nowrap;
+	text-align: -webkit-match-parent;
+	text-align: match-parent;
 }
 
 .dframe-fade-label[data-overflowing] {
-	mask-image: linear-gradient(to right, black calc(100% - 24px), transparent 100%);
+	mask-image: linear-gradient(var(--df-label-fade-angle, 90deg), black calc(100% - 24px), transparent 100%);
+}
+
+/* An RTL title (dir=auto) fades at its start, which is the left edge. */
+.dframe-fade-label:dir(rtl) {
+	--df-label-fade-angle: 270deg;
 }
 
 /* Upstream .df-tail-mark: a row-ctl box at the row's end for trailing marks. */

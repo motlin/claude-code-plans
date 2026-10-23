@@ -581,7 +581,7 @@ function FadeLabel({text, children}: {text: string; children?: ReactNode}) {
 	}, [text]);
 
 	return (
-		<span ref={ref} className="dframe-fade-label" data-overflowing={overflowing ? "" : undefined}>
+		<span ref={ref} dir="auto" className="dframe-fade-label" data-overflowing={overflowing ? "" : undefined}>
 			<span className="relative inline-block align-top whitespace-nowrap">
 				{text}
 				{children}
