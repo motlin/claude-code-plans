@@ -199,4 +199,39 @@ describe("Composer skill chip", () => {
 			newline: {before: "/model ", after: "\n"},
 		});
 	});
+	it("announces the hint through an always-mounted live twin linked only while the hint shows", () => {
+		const textarea = setup();
+		const twin = (): unknown => {
+			const describedBy = textarea.getAttribute("aria-describedby");
+			const span = document.querySelector('[data-skill-arg-hint-sr="skill-arg-hint"]');
+			return {
+				describedBy: describedBy === null ? null : describedBy === span?.id ? "twin" : describedBy,
+				idPrefix: span?.id.startsWith("skill-arg-hint-sr-"),
+				role: span?.getAttribute("role"),
+				live: span?.getAttribute("aria-live"),
+				style: span?.getAttribute("style"),
+				text: span?.textContent,
+			};
+		};
+		// Upstream's `clip:rect(0 0 0 0)`, as jsdom serializes it.
+		const style =
+			"position: absolute; top: 0px; left: 0px; width: 1px; height: 1px; overflow: hidden; clip: rect(0px); clip-path: inset(50%); white-space: nowrap;";
+
+		const before = twin();
+		accept(textarea, "/mo");
+		const accepted = twin();
+		fireEvent.change(textarea, {target: {value: "/model opus"}});
+		const typed = twin();
+		fireEvent.change(textarea, {target: {value: "/model "}});
+		const restored = twin();
+
+		const shown = {describedBy: "twin", idPrefix: true, role: "status", live: "polite", style, text: "[model]"};
+		const hidden = {...shown, describedBy: null, text: ""};
+		expect({before, accepted, typed, restored}).toStrictEqual({
+			before: hidden,
+			accepted: shown,
+			typed: hidden,
+			restored: shown,
+		});
+	});
 });

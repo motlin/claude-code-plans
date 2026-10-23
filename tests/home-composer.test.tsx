@@ -167,6 +167,14 @@ async function typePrompt(text: string) {
 	return textarea;
 }
 
+/** The toast's status region, not the composer's always-mounted skill-chip hint twin. */
+async function findToast(): Promise<HTMLElement> {
+	const statuses = await screen.findAllByRole("status");
+	const toast = statuses.find((element) => !element.hasAttribute("data-skill-arg-hint-sr"));
+	if (toast === undefined) throw new Error("no toast status region");
+	return toast;
+}
+
 describe("HomeComposer", () => {
 	const writeText = vi.fn<Clipboard["writeText"]>(async (_text: string) => Promise.resolve());
 
@@ -222,7 +230,7 @@ describe("HomeComposer", () => {
 		const home = document.querySelector("[data-home-composer]");
 		const order = [
 			...(home?.querySelectorAll(
-				"[role=combobox][aria-label^='Folder: '], [role=status], [data-composer-card]",
+				"[role=combobox][aria-label^='Folder: '], [role=status]:not([data-skill-arg-hint-sr]), [data-composer-card]",
 			) ?? []),
 		].map((element) =>
 			element.getAttribute("role") === "combobox"
@@ -493,7 +501,7 @@ describe("HomeComposer", () => {
 			expect(launchCalls.length).toBe(1);
 		});
 		expect(launchBody(launchCalls[0])).toStrictEqual({cwd: "/users/dev/it's", prompt: "fix the flaky test"});
-		expect((await screen.findByRole("status")).textContent).toContain("Started a session in it's");
+		expect((await findToast()).textContent).toContain("Started a session in it's");
 		act(() => {
 			eventSource.emit(SSE_EVENTS.SESSION_START, {sessionId: "stay-session", cwd: "/users/dev/it's", model: ""});
 		});
@@ -534,7 +542,7 @@ describe("HomeComposer", () => {
 				[`cd '/users/dev/it'\\''s' && claude 'don'\\''t break $HOME'`],
 			]);
 		});
-		expect((await screen.findByRole("status")).textContent).toContain("Copied command — no terminal to launch in");
+		expect((await findToast()).textContent).toContain("Copied command — no terminal to launch in");
 	});
 
 	it("focuses the composer on ⇧⌘O while already home", async () => {

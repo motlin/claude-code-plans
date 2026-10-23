@@ -1,4 +1,5 @@
 import {
+	type CSSProperties,
 	memo,
 	type ReactNode,
 	useCallback,
@@ -81,6 +82,20 @@ const GHOST_OVERLAY_CLASS =
 
 /** Paints the whole prompt over a transparent textarea, so it also follows the coarse-pointer send gutter. */
 const PAINTED_OVERLAY_CLASS = `${GHOST_OVERLAY_CLASS} left-[30px] pointer-coarse:right-[51px]`;
+
+/** Upstream's inline visually-hidden style for the argument hint's live twin. */
+const SR_ONLY_STYLE: CSSProperties = {
+	position: "absolute",
+	top: 0,
+	left: 0,
+	width: "1px",
+	height: "1px",
+	overflow: "hidden",
+	// oxlint-disable-next-line typescript/no-deprecated -- upstream's exact style keeps `clip` beside `clip-path` for older engines
+	clip: "rect(0 0 0 0)",
+	clipPath: "inset(50%)",
+	whiteSpace: "nowrap",
+};
 
 /** An accepted slash command, drawn as upstream's chip until the prompt stops starting with it. */
 interface AcceptedSkillChip {
@@ -559,6 +574,7 @@ export function Composer({
 	// The hint sits after the chip line's trailing whitespace, before any blank line below it.
 	const restLine = rest.split("\n", 1)[0] ?? "";
 	const paintedOverlayRef = useRef<HTMLDivElement>(null);
+	const argumentHintSrId = `skill-arg-hint-sr-${useId()}`;
 
 	const trigger = mentionSessionId === undefined || slashOpen ? null : fileMentionTrigger(prompt, caret);
 	const mentionKey = trigger === null ? null : `${trigger.start}\0${prompt}`;
@@ -968,6 +984,7 @@ export function Composer({
 							}
 						}}
 						data-chip-length={chip === null ? undefined : chip.name.length + 1}
+						aria-describedby={argumentHint === null ? undefined : argumentHintSrId}
 						onKeyDown={handleKeyDown}
 						onPaste={handlePaste}
 						aria-controls={slashOpen ? slashMenuId : mentionOpen ? mentionMenuId : undefined}
@@ -991,6 +1008,16 @@ export function Composer({
 						className={`${EDITOR_CLASS} ${chip === null ? "text-primary" : "text-transparent caret-primary"}`}
 						style={{minHeight: "28px", maxHeight: "min(24rem, 40svh)"}}
 					/>
+					{/* Upstream `Wn`: always mounted so the live region exists before the hint fills it. */}
+					<span
+						id={argumentHintSrId}
+						data-skill-arg-hint-sr="skill-arg-hint"
+						role="status"
+						aria-live="polite"
+						style={SR_ONLY_STYLE}
+					>
+						{argumentHint ?? ""}
+					</span>
 					<SendSlot
 						isStreaming={isStreaming}
 						onStop={onStop}
