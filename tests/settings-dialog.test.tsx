@@ -189,6 +189,45 @@ describe("SettingsDialog", () => {
 		});
 	});
 
+	// Upstream's panel header has an empty left title slot before Close, and the scroll container
+	// starts with a sticky fade in the popup's surface colour so rows don't cut hard under the header.
+	// Spacing stays comfortable (density-default-tokens): px-xl / gap-md resolve to 24 / 12px.
+	it("renders the panel header title slot and the scroll top fade", async () => {
+		await renderAt("/#settings/general");
+
+		const dialog = await screen.findByRole("dialog", {name: "Settings"});
+		const close = within(dialog).getByRole("button", {name: "Close"});
+		const header = close.parentElement;
+		const scroll = header?.nextElementSibling ?? null;
+		const fade = scroll?.firstElementChild ?? null;
+
+		expect({
+			header: header?.className,
+			headerChildren: [...(header?.children ?? [])].map((child) => ({
+				className: child.className,
+				childCount: child.childElementCount,
+				text: child.textContent,
+			})),
+			fade: {
+				ariaHidden: fade?.getAttribute("aria-hidden"),
+				className: fade?.className,
+				childCount: fade?.childElementCount,
+			},
+		}).toStrictEqual({
+			header: "flex shrink-0 items-center justify-between gap-3 px-3 pt-3 pb-2",
+			headerChildren: [
+				{className: "flex min-w-0 flex-1 items-center", childCount: 0, text: ""},
+				{className: close.className, childCount: 1, text: ""},
+			],
+			fade: {
+				ariaHidden: "true",
+				className:
+					"pointer-events-none sticky -top-2 z-[1] -mx-6 -mt-2 mb-0! h-2 bg-gradient-to-b from-[var(--menu-bg)] to-transparent dark:from-surface-2",
+				childCount: 0,
+			},
+		});
+	});
+
 	it("opens on the hash's tab with that tab marked current", async () => {
 		await renderAt("/#settings/sessions");
 

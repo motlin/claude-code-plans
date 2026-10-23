@@ -391,8 +391,16 @@ export function SettingsDialog() {
 									</div>
 								</nav>
 								<div className="flex min-w-0 flex-1 flex-col">
-									<div className="flex shrink-0 justify-end px-3 pt-3 pb-2">{closeButton}</div>
+									<div className="flex shrink-0 items-center justify-between gap-3 px-3 pt-3 pb-2">
+										<div className="flex min-w-0 flex-1 items-center" />
+										{closeButton}
+									</div>
 									<div className="flex-1 space-y-6 overflow-y-auto px-6 pt-2 pb-4 [scrollbar-gutter:stable]">
+										{/* Upstream's scroll-top fade; mb-0! cancels space-y so it adds no height. */}
+										<div
+											aria-hidden="true"
+											className="pointer-events-none sticky -top-2 z-[1] -mx-6 -mt-2 mb-0! h-2 bg-gradient-to-b from-[var(--menu-bg)] to-transparent dark:from-surface-2"
+										/>
 										{content}
 									</div>
 								</div>
