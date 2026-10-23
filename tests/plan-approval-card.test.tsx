@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
-import {afterEach, describe, expect, it, vi} from "vite-plus/test";
+import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {STACK_ACTIONS} from "../src/components/approval-card";
 import {PaneHostContext, type PaneHostApi} from "../src/components/panes/pane-host-context";
 import {PlanApprovalCard} from "../src/components/plan-approval-card";
@@ -175,6 +175,72 @@ describe("PlanApprovalCard", () => {
 	});
 });
 
+describe("PlanApprovalCard keys", () => {
+	beforeEach(() => {
+		vi.useFakeTimers({toFake: ["performance"]});
+	});
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it("withholds ⌘⏎ within upstream's 400ms of the card arriving, then accepts", async () => {
+		const {value, decide} = context();
+		await renderCard(value);
+		vi.advanceTimersByTime(100);
+		fireEvent.keyDown(document.body, {key: "Enter", metaKey: true});
+		const callsInGrace = [...decide.mock.calls];
+		vi.advanceTimersByTime(400);
+		await act(async () => {
+			fireEvent.keyDown(document.body, {key: "Enter", metaKey: true});
+			return Promise.resolve();
+		});
+		expect({callsInGrace, calls: decide.mock.calls}).toStrictEqual({
+			callsInGrace: [],
+			calls: [[{kind: "accept", mode: "auto"}]],
+		});
+	});
+
+	it("listens on window in the capture phase and stops the chord there", async () => {
+		const {value, decide} = context();
+		await renderCard(value);
+		vi.advanceTimersByTime(500);
+		const bubbled = vi.fn<(event: Event) => void>();
+		document.addEventListener("keydown", bubbled);
+		await act(async () => {
+			fireEvent.keyDown(document.body, {key: "Enter", metaKey: true});
+			return Promise.resolve();
+		});
+		document.removeEventListener("keydown", bubbled);
+		expect({calls: decide.mock.calls, bubbled: bubbled.mock.calls.length}).toStrictEqual({
+			calls: [[{kind: "accept", mode: "auto"}]],
+			bubbled: 0,
+		});
+	});
+
+	it("accepts manually with ⇧⌘⏎ from a composer holding a draft, while ⌘⏎ stays the composer's", async () => {
+		const {value, decide} = context();
+		await renderCard(value);
+		const composer = document.createElement("div");
+		composer.dataset["focusRegion"] = "composer";
+		const draft = document.createElement("textarea");
+		draft.value = "a draft";
+		composer.append(draft);
+		document.body.append(composer);
+		vi.advanceTimersByTime(500);
+		fireEvent.keyDown(draft, {key: "Enter", metaKey: true});
+		const afterPlain = [...decide.mock.calls];
+		await act(async () => {
+			fireEvent.keyDown(draft, {key: "Enter", metaKey: true, shiftKey: true});
+			return Promise.resolve();
+		});
+		composer.remove();
+		expect({afterPlain, calls: decide.mock.calls}).toStrictEqual({
+			afterPlain: [],
+			calls: [[{kind: "accept", mode: "default"}]],
+		});
+	});
+});
+
 describe("PlanApprovalCard auto-opens the Plan pane", () => {
 	function paneHost(openPane: PaneHostApi["openPane"]): PaneHostApi {
 		return {
@@ -268,6 +334,13 @@ describe("planKeyAction", () => {
 		{name: "Esc", event: {...keys, key: "Escape"}, action: {kind: "revise"}},
 		{name: "plain Enter", event: {...keys, key: "Enter"}, action: null},
 		{name: "a digit", event: {...keys, key: "1"}, action: null},
+		{name: "a held ⌘⏎ repeat", event: {...keys, key: "Enter", metaKey: true, repeat: true}, action: null},
+		{name: "a held Esc repeat", event: {...keys, key: "Escape", repeat: true}, action: null},
+		{
+			name: "⌘⏎ while an IME composes",
+			event: {...keys, key: "Enter", metaKey: true, isComposing: true},
+			action: null,
+		},
 	])("maps $name", ({event, action}) => {
 		expect(planKeyAction(event, AUTO_DIALOG)).toStrictEqual(action);
 	});

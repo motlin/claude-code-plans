@@ -1,6 +1,6 @@
 import {useCallback, useEffect, useRef, useState} from "react";
 
-import {dockKeyAllowed} from "../lib/dock-keys";
+import {APPROVAL_ARM_GRACE_MS, dockKeyAllowed} from "../lib/dock-keys";
 import {
 	PLAN_ACCEPT_LABEL,
 	PLAN_BACK_LABEL,
@@ -12,6 +12,7 @@ import {
 	planKeyAction,
 	planPrimaryAccept,
 	type PlanDecision,
+	type PlanKeyAction,
 	type PlanDialog,
 } from "../lib/plan-approval";
 import {usePhoneSheet} from "../lib/use-phone-sheet";
@@ -32,6 +33,17 @@ const PLAN_ACTIONS_CLASS = `flex flex-wrap justify-between gap-x-1 gap-y-2 [&>sp
 const FEEDBACK_CLASS =
 	"w-full resize-none rounded-r6 bg-alpha-1 px-2 py-1.5 text-body text-primary placeholder:text-tertiary shadow-[inset_0_0_0_1px_var(--color-border)] outline-none focus-visible:shadow-[var(--focus-shadow)] hover:not-focus:shadow-[inset_0_0_0_1px_var(--color-strong)]";
 
+/** Where a plan key may act: anywhere a docked card key may, plus ⇧⌘⏎ from a composer holding a draft (upstream lets it through). */
+function planKeyAllowed(target: EventTarget | null, action: PlanKeyAction): boolean {
+	if (dockKeyAllowed(target)) return true;
+	return (
+		action.kind === "accept" &&
+		action.mode === "default" &&
+		target instanceof HTMLTextAreaElement &&
+		target.closest('[data-focus-region="composer"]') !== null
+	);
+}
+
 type DialogState = {kind: "loading"} | {kind: "ready"; dialog: PlanDialog} | {kind: "unavailable"};
 
 function PlanApprovalActions({
@@ -45,6 +57,7 @@ function PlanApprovalActions({
 	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const feedback = useRef("");
+	const mountedAt = useRef<number | null>(null);
 	const primary = planPrimaryAccept(dialog);
 
 	const send = useCallback(
@@ -68,18 +81,26 @@ function PlanApprovalActions({
 	}, []);
 
 	useEffect(() => {
+		mountedAt.current = performance.now();
+	}, []);
+
+	useEffect(() => {
 		if (revising || submitting) return undefined;
 		function onKeyDown(event: KeyboardEvent) {
-			if (event.defaultPrevented || !dockKeyAllowed(event.target)) return;
+			if (event.defaultPrevented) return;
 			const action = planKeyAction(event, dialog);
-			if (action === null) return;
+			if (action === null || !planKeyAllowed(event.target, action)) return;
+			// Upstream withholds an accept chord that lands within 400ms of the card arriving.
+			const armedAt = mountedAt.current ?? performance.now();
+			if (action.kind === "accept" && performance.now() - armedAt < APPROVAL_ARM_GRACE_MS) return;
 			event.preventDefault();
+			event.stopPropagation();
 			if (action.kind === "revise") setRevising(true);
 			else void send(action);
 		}
-		document.addEventListener("keydown", onKeyDown);
+		window.addEventListener("keydown", onKeyDown, true);
 		return () => {
-			document.removeEventListener("keydown", onKeyDown);
+			window.removeEventListener("keydown", onKeyDown, true);
 		};
 	}, [revising, submitting, dialog, send]);
 

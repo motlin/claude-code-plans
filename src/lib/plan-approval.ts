@@ -48,12 +48,14 @@ export type PlanKeyAction = {kind: "accept"; mode: PlanAcceptMode} | {kind: "rev
 /**
  * Upstream's plan card keys while its feedback box is closed: ⌘⏎ accepts into
  * the primary mode, ⇧⌘⏎ accepts with manual approval, and Esc opens Revise.
+ * A held key's repeats and keys an IME is composing do nothing.
  */
 export function planKeyAction(
-	event: Pick<KeyboardEvent, "key" | "metaKey" | "ctrlKey" | "shiftKey" | "altKey">,
+	event: Pick<KeyboardEvent, "key" | "metaKey" | "ctrlKey" | "shiftKey" | "altKey"> &
+		Partial<Pick<KeyboardEvent, "repeat" | "isComposing">>,
 	dialog: PlanDialog,
 ): PlanKeyAction | null {
-	if (event.altKey) return null;
+	if (event.altKey || event.repeat === true || event.isComposing === true) return null;
 	if (event.key === "Escape") return event.metaKey || event.ctrlKey || event.shiftKey ? null : {kind: "revise"};
 	if (event.key !== "Enter" || !(event.metaKey || event.ctrlKey)) return null;
 	if (event.shiftKey) return dialog.manual ? {kind: "accept", mode: "default"} : null;
