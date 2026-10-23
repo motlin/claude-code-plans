@@ -11,9 +11,10 @@ import {runGit} from "../git-fixture";
 
 // A git checkout or rebase rewrites hundreds of tracked files at once, and the watcher fires one change event per
 // file. Indexing that burst must hand the event loop back to requests and SSE streams between files, so no loop turn
-// may run more than one file's FTS write. Wall-clock stall lengths swing with machine load, so they are only a loose
-// backstop here; the per-turn write count is the load-independent assertion.
-const STALL_BACKSTOP_MS = 1000;
+// may run more than one file's FTS write. The per-turn write count is the main assertion. The backstop on how long a
+// single loop turn ran is measured in this thread's CPU time, not wall time: on a loaded machine the thread is
+// descheduled mid-turn for seconds, which stretches wall-clock stalls without the indexer doing any more work.
+const STALL_CPU_BACKSTOP_MS = 1000;
 const FILE_COUNT = 400;
 const WORDS_PER_FILE = 4000;
 
@@ -77,12 +78,12 @@ describe("file content indexing and the event loop", () => {
 		};
 		setImmediate(countTurn);
 
-		let longestStallMs = 0;
+		let longestStallCpuMs = 0;
 		const stopMonitor = startStallMonitor({
 			thresholdMs: 0,
 			intervalMs: 5,
 			onStall: (stall) => {
-				longestStallMs = Math.max(longestStallMs, stall.durationMs);
+				longestStallCpuMs = Math.max(longestStallCpuMs, stall.cpuMs);
 			},
 		});
 		try {
@@ -101,7 +102,7 @@ describe("file content indexing and the event loop", () => {
 		);
 		expect({
 			maxWritesPerLoopTurn,
-			withinBackstop: longestStallMs <= STALL_BACKSTOP_MS || Math.round(longestStallMs),
+			withinBackstop: longestStallCpuMs <= STALL_CPU_BACKSTOP_MS || Math.round(longestStallCpuMs),
 			rows,
 			matches,
 		}).toStrictEqual({

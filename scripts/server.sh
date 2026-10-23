@@ -14,6 +14,7 @@
 #   SERVER_MATCH  pgrep -f pattern identifying server processes
 #   PROJECT_DIR   only matched processes with this cwd are managed
 #   LOG_FILE      server stdout/stderr log
+#   STOP_GRACE_SECONDS  how long stop waits after SIGTERM before force killing (default 10)
 set -euo pipefail
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -26,6 +27,7 @@ SERVER_TITLE=${SERVER_TITLE:-claude-code-browser-server}
 # environment data after a rewritten title, hence ( |$) instead of $.
 SERVER_MATCH=${SERVER_MATCH:-"^${SERVER_TITLE}( |\$)|\\.output/server/index\\.mjs"}
 LOG_FILE=${LOG_FILE:-"${XDG_CACHE_HOME:-$HOME/.cache}/claude-code-plans/server.log"}
+STOP_GRACE_SECONDS=${STOP_GRACE_SECONDS:-10}
 
 # PIDs listening on the port, including wildcard and IPv6 bindings.
 port_pids() {
@@ -76,14 +78,18 @@ stop_server() {
     echo "Stopping server pid(s): $pids"
     # shellcheck disable=SC2086
     kill $pids 2>/dev/null || true
-    local i
-    for i in $(seq 1 50); do
+    local deadline=$((SECONDS + STOP_GRACE_SECONDS))
+    while [ "$SECONDS" -lt "$deadline" ]; do
         pids=$(server_pids | sort -u)
         if [ -z "$pids" ]; then
             return 0
         fi
         sleep 0.2
     done
+    pids=$(server_pids | sort -u)
+    if [ -z "$pids" ]; then
+        return 0
+    fi
     echo "Force killing pid(s): $pids"
     # shellcheck disable=SC2086
     kill -9 $pids 2>/dev/null || true

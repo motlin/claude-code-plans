@@ -108,6 +108,11 @@ beforeAll(async () => {
 		HERDR_SOCKET_PATH: join(runDir, "herdr.sock"),
 		PROJECT_DIR: appDir,
 		LOG_FILE: join(runDir, "server.log"),
+		// The assertion is that the server exits on its own after SIGTERM, not how fast: on a loaded machine its
+		// shutdown (closing the watcher, waiting out the scan, closing SQLite) can outrun the default 10s grace period
+		// that the script then ends with "Force killing". A server held open by a leaked handle never exits, so a
+		// long grace period still fails it, just later.
+		STOP_GRACE_SECONDS: "45",
 	};
 });
 
@@ -147,5 +152,5 @@ describe.skipIf(!existsSync(builtServer))("scripts/server.sh with the built serv
 		} finally {
 			stream.destroy();
 		}
-	}, 60_000);
+	}, 90_000);
 });
