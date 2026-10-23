@@ -189,6 +189,28 @@ describe("SessionPaneControls", () => {
 		}).toStrictEqual({pane: "P", checked: "true"});
 	});
 
+	it("keeps a checked Plan item while the Plan pane is open without a plan, as upstream does", async () => {
+		registerKinds("plan");
+		const {rerender} = renderControls({hasPlan: true});
+		await openViewOptions();
+		fireEvent.click(screen.getByRole("menuitemcheckbox", {name: /^Plan/}));
+		await act(async () => {
+			await new Promise((resolve) => {
+				setTimeout(resolve, 0);
+			});
+		});
+
+		rerender(
+			<SettingsProvider>
+				<TileHost sessionId="view-options">
+					<SessionPaneControls facts={{hasPlan: false}} />
+				</TileHost>
+			</SettingsProvider>,
+		);
+
+		expect(menuRows()).toStrictEqual([["menuitemcheckbox", "Plan", "true"]]);
+	});
+
 	it("draws item icons in full ink, as upstream does", async () => {
 		registerKinds("links");
 		renderControls();
