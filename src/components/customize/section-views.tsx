@@ -14,6 +14,7 @@ import {ConnectorsTable, ScopeBadge} from "./connectors-table";
 import {CustomizeDiscover} from "./customize-discover";
 import {CustomizeNotice, NoSearchMatches} from "./customize-empty";
 import {CustomizeList, ShortDate} from "./customize-list";
+import {CustomizeSectionSkeleton} from "./customize-panel-skeleton";
 import {useCustomizeGo} from "./customize-navigation";
 import {useSectionSort} from "./persisted-sort";
 import {PluginRowActions} from "./plugin-row-actions";
@@ -53,7 +54,7 @@ export function SkillsSection({search}: SectionProps) {
 			/>
 		);
 	}
-	if (isPending || skills === undefined) return <p className="text-body text-t6">Loading skills…</p>;
+	if (isPending || skills === undefined) return <CustomizeSectionSkeleton />;
 
 	const searching = (search.q ?? "") !== "";
 	const source = searching ? "all" : resolveOption(SKILLS_SECTION.filter.options, search.filter).value;
@@ -126,7 +127,7 @@ export function ConnectorsSection({search}: SectionProps) {
 	const {data: claudeAi = []} = useQuery(customizeClaudeAiConnectorsQueryOptions);
 
 	if (isPending || servers === undefined) {
-		return <p className="text-body text-t6">Loading connectors…</p>;
+		return <CustomizeSectionSkeleton />;
 	}
 
 	const searching = (search.q ?? "") !== "";
@@ -188,7 +189,7 @@ export function PluginsSection({search}: SectionProps) {
 		);
 	}
 	if (isPending || plugins === undefined) {
-		return <p className="text-body text-t6">Loading plugins…</p>;
+		return <CustomizeSectionSkeleton />;
 	}
 
 	const searching = (search.q ?? "") !== "";

@@ -32,4 +32,10 @@ describe("Settings ▸ Motion ▸ Reduced", () => {
 			'html[data-motion="reduced"] [data-cds-shimmer-clone] {\n\tdisplay: none;\n}',
 		]);
 	});
+
+	it("hides the Skeleton sheen, as motion-reduce:after:hidden does", () => {
+		expect(rulesFor('[data-cds="Skeleton"]')).toStrictEqual([
+			'html[data-motion="reduced"] [data-cds="Skeleton"]::after {\n\tdisplay: none;\n}',
+		]);
+	});
 });

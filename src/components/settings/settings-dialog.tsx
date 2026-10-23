@@ -33,6 +33,7 @@ import {
 	SetupSettings,
 	TranscriptSettings,
 } from "./settings-sections";
+import {CustomizePanelSkeleton} from "../customize/customize-panel-skeleton";
 import {loadedCustomizeDialogPanel, preloadCustomizeDialogPanel} from "./customize-dialog-panel-loader";
 import {SettingsFlashContext, type SettingsFlash, SettingsTabContext} from "./settings-row-context";
 import {SettingsSearch} from "./settings-search";
@@ -290,7 +291,7 @@ export function SettingsDialog() {
 				</SettingsFlashContext.Provider>
 			</SettingsTabContext.Provider>
 		) : (
-			<Suspense fallback={null}>
+			<Suspense fallback={<CustomizePanelSkeleton title={customizeSectionLabels[customize.section]} />}>
 				<CustomizeDialogPanel location={customize} onNavigate={navigateHash} />
 			</Suspense>
 		);
