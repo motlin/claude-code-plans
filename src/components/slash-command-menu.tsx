@@ -1,6 +1,12 @@
 import {useLayoutEffect, useRef} from "react";
 
-import {highlightMatches, isCustomCommand, matchingAlias, type SlashCommand} from "../lib/slash-commands";
+import {
+	highlightMatches,
+	isCustomCommand,
+	matchingAlias,
+	slashCommandLabel,
+	type SlashCommand,
+} from "../lib/slash-commands";
 import {slashCommandOptionId} from "./slash-command-option-id";
 import {DENSITY_CLASSES} from "./ui/menu-internals";
 import {TOOLTIP_CLASS} from "./ui/tooltip";
@@ -15,6 +21,9 @@ const ROW_CLASS = `flex w-full cursor-pointer ${COMPACT.singleLine} gap-1.5 ${CO
 
 /* Upstream's shared tooltip box in the slash popup's z-130 positioner, fading and scaling over `duration-snap`. */
 const ROW_TOOLTIP_CLASS = `${TOOLTIP_CLASS.replace("z-50", "z-[130]")} text-balance transition-[opacity,scale] duration-150 motion-reduce:transition-none`;
+
+/* Upstream's tooltip detail line under a plugin skill's description, in the dark tooltip's secondary ink. */
+const TOOLTIP_DETAIL_CLASS = "block break-words text-[11px]/[14px] text-[var(--tooltip-description-ink)]";
 
 /* Labels bold in the row's ink; upstream's default highlight (the alias suffix) also lifts the match to primary. */
 function Highlighted({
@@ -61,7 +70,9 @@ export function SlashCommandMenu({
 	const scrollerRef = useRef<HTMLDivElement>(null);
 	const tooltipRef = useRef<HTMLDivElement>(null);
 	const clampRef = useRef<HTMLSpanElement>(null);
+	const detailRef = useRef<HTMLSpanElement>(null);
 	const active = commands[highlighted];
+	const activeDetail = active?.pluginName === undefined ? undefined : `${active.pluginName} plugin`;
 
 	/* Writes the tip's position straight to the DOM, like upstream's floating positioner, so following the row adds no React commit. */
 	const placeTooltip = () => {
@@ -74,6 +85,7 @@ export function SlashCommandMenu({
 		tooltip.style.left = `${placement.left}px`;
 		tooltip.style.top = `${placement.top}px`;
 		clamp.style.maxWidth = placement.maxWidth;
+		if (detailRef.current) detailRef.current.style.maxWidth = placement.maxWidth;
 	};
 
 	useLayoutEffect(() => {
@@ -117,7 +129,7 @@ export function SlashCommandMenu({
 							}}
 						>
 							<span className="min-w-0 truncate">
-								<Highlighted text={command.name} query={query} />
+								<Highlighted text={slashCommandLabel(command)} query={query} />
 							</span>
 							{alias !== undefined && (
 								<span className="min-w-0 truncate text-ink-muted">
@@ -131,16 +143,31 @@ export function SlashCommandMenu({
 							{isCustomCommand(command.source) && (
 								<span className="ml-auto shrink-0 pl-2 text-caption text-muted">Custom command</span>
 							)}
+							{query !== "" && command.pluginName !== undefined && (
+								<span className="ms-auto shrink-0 ps-2 text-caption text-ink-muted">
+									{command.pluginName}
+								</span>
+							)}
 						</div>
 					);
 				})}
 			</div>
-			{active !== undefined && active.description !== "" && (
+			{active !== undefined && (active.description !== "" || activeDetail !== undefined) && (
 				<div ref={tooltipRef} role="tooltip" className={ROW_TOOLTIP_CLASS}>
 					<span className="min-w-0 break-words">
+						{/* With no description, upstream shows the plugin line as the tooltip's content. */}
 						<span ref={clampRef} className="line-clamp-[10]">
-							<Highlighted text={active.description} query={query} />
+							{active.description === "" ? (
+								activeDetail
+							) : (
+								<Highlighted text={active.description} query={query} />
+							)}
 						</span>
+						{active.description !== "" && activeDetail !== undefined && (
+							<span ref={detailRef} data-slash-tooltip-detail="" className={TOOLTIP_DETAIL_CLASS}>
+								{activeDetail}
+							</span>
+						)}
 					</span>
 				</div>
 			)}

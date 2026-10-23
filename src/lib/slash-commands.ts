@@ -22,6 +22,14 @@ export interface SlashCommand {
 	argumentHint?: string | undefined;
 	/** Other names the command answers to, ranked and shown as a muted `(alias)` suffix as upstream does. */
 	aliases?: readonly string[] | undefined;
+	/** The plugin a plugin skill or command comes from; upstream labels the row by the bare name and names the plugin beside it. */
+	pluginName?: string | undefined;
+}
+
+/** The row label: a plugin entry's name without its `plugin:` namespace, as upstream shows plugin skills. */
+export function slashCommandLabel(command: SlashCommand): string {
+	const prefix = command.pluginName === undefined ? undefined : `${command.pluginName}:`;
+	return prefix !== undefined && command.name.startsWith(prefix) ? command.name.slice(prefix.length) : command.name;
 }
 
 /**
@@ -109,13 +117,14 @@ const MAX_SLASH_QUERY_LENGTH = 50;
 
 /* Upstream's synchronous fallback tiers (`W$`), plus a description tier the local menu matches synchronously. */
 function slashRank(command: SlashCommand, needle: string): number | null {
-	const name = command.name.toLowerCase();
+	/* A plugin entry ranks by its bare label, and its `plugin:name` still matches. */
+	const names = [...new Set([slashCommandLabel(command), command.name])].map((name) => name.toLowerCase());
 	const aliases = (command.aliases ?? []).map((alias) => alias.toLowerCase());
-	if (name === needle) return 0;
+	if (names.includes(needle)) return 0;
 	if (aliases.includes(needle)) return 1;
-	if (name.startsWith(needle)) return 2;
+	if (names.some((name) => name.startsWith(needle))) return 2;
 	if (aliases.some((alias) => alias.startsWith(needle))) return 3;
-	if ([name, ...aliases].some((label) => label.includes(needle))) return 4;
+	if ([...names, ...aliases].some((label) => label.includes(needle))) return 4;
 	if (command.description.toLowerCase().includes(needle)) return 5;
 	return null;
 }

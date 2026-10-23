@@ -176,6 +176,53 @@ describe("Composer slash commands", () => {
 		});
 	});
 
+	it("shows a plugin skill as its bare label, a plugin subtitle while querying, and a plugin detail line", () => {
+		const commands: SlashCommand[] = [
+			{name: "model", description: "Set the model for this session", source: "builtin"},
+			{
+				name: "build:dev-server",
+				description: "Start a dev server",
+				source: "plugin-skill",
+				pluginName: "build",
+			},
+			{name: "build:bare", description: "", source: "plugin-skill", pluginName: "build"},
+		];
+		const {textarea} = setup(undefined, commands);
+
+		fireEvent.change(textarea, {target: {value: "/build:dev"}});
+		const row = screen.getByRole("menuitem");
+		const subtitle = row.querySelector(".text-caption");
+		const tooltip = screen.getByRole("tooltip").textContent;
+		const detailElement = screen.getByRole("tooltip").querySelector("[data-slash-tooltip-detail]");
+		const detail = {text: detailElement?.textContent, className: detailElement?.className};
+		fireEvent.change(textarea, {target: {value: "/bare"}});
+		const bareTooltip = screen.getByRole("tooltip");
+		const bare = {
+			tooltip: bareTooltip.textContent,
+			detail: bareTooltip.querySelector("[data-slash-tooltip-detail]"),
+		};
+		fireEvent.change(textarea, {target: {value: "/"}});
+
+		expect({
+			label: row.firstElementChild?.textContent,
+			subtitle: {text: subtitle?.textContent, className: subtitle?.className},
+			tooltip,
+			detail,
+			bare,
+			emptyQueryRows: rows(),
+		}).toStrictEqual({
+			label: "dev-server",
+			subtitle: {text: "build", className: "ms-auto shrink-0 ps-2 text-caption text-ink-muted"},
+			tooltip: "Start a dev serverbuild plugin",
+			detail: {
+				text: "build plugin",
+				className: "block break-words text-[11px]/[14px] text-[var(--tooltip-description-ink)]",
+			},
+			bare: {tooltip: "build plugin", detail: null},
+			emptyQueryRows: [{name: "model", highlighted: true}],
+		});
+	});
+
 	it("moves the highlight with arrow keys, clamping at both ends", () => {
 		const {textarea} = setup();
 		fireEvent.change(textarea, {target: {value: "/"}});

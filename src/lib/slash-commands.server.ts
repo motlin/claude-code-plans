@@ -17,8 +17,9 @@ function firstBodyLine(content: string): string {
 	return line.replace(/^#+\s*/, "").trim();
 }
 
-/** `<dir>/*.md` command files, invoked as `/<prefix><basename>`. */
-async function readCommandsDir(dir: string, source: SlashCommandSource, prefix = ""): Promise<SlashCommand[]> {
+/** `<dir>/*.md` command files, invoked as `/<basename>`, or `/<pluginName>:<basename>` for a plugin. */
+async function readCommandsDir(dir: string, source: SlashCommandSource, pluginName?: string): Promise<SlashCommand[]> {
+	const prefix = pluginName === undefined ? "" : `${pluginName}:`;
 	let entries: string[];
 	try {
 		entries = await readdir(dir);
@@ -40,6 +41,7 @@ async function readCommandsDir(dir: string, source: SlashCommandSource, prefix =
 			description: frontmatterString(frontmatter, "description") ?? firstBodyLine(content),
 			source,
 			...(argumentHint === undefined ? {} : {argumentHint}),
+			...(pluginName === undefined ? {} : {pluginName}),
 		});
 	}
 	return commands;
@@ -80,13 +82,14 @@ export async function listSlashCommands({
 			description: skill.description,
 			source: `${skill.source}-skill`,
 			...(argumentHint === undefined ? {} : {argumentHint}),
+			...(skill.source === "plugin" ? {pluginName: skill.sourceLabel} : {}),
 		});
 	}
 
 	const pluginCommands: SlashCommand[] = [];
 	for (const plugin of await readInstalledPlugins(claudeDir)) {
 		pluginCommands.push(
-			...(await readCommandsDir(join(plugin.installPath, "commands"), "plugin-command", `${plugin.name}:`)),
+			...(await readCommandsDir(join(plugin.installPath, "commands"), "plugin-command", plugin.name)),
 		);
 	}
 

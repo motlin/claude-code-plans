@@ -9,6 +9,7 @@ import {
 	highlightMatches,
 	mergeSlashCommands,
 	slashArgumentHint,
+	slashCommandLabel,
 	slashTrigger,
 	splitLeadingSlashCommand,
 	type SlashCommand,
@@ -127,12 +128,13 @@ describe("listSlashCommands", () => {
 				argumentHint: "[date]",
 			},
 			{name: "triage", description: "Triage the open issues", source: "project-command"},
-			{name: "tools:lint", description: "Lint code", source: "plugin-skill"},
+			{name: "tools:lint", description: "Lint code", source: "plugin-skill", pluginName: "tools"},
 			{
 				name: "tools:fix",
 				description: "Fix lint errors",
 				source: "plugin-command",
 				argumentHint: "<path>",
+				pluginName: "tools",
 			},
 		]);
 	});
@@ -219,6 +221,40 @@ describe("filterSlashCommands", () => {
 			fifty: filterSlashCommands(commands, "a".repeat(50)).length,
 			fiftyOne: filterSlashCommands(commands, "a".repeat(51)),
 		}).toStrictEqual({fifty: 1, fiftyOne: []});
+	});
+});
+
+describe("plugin skills", () => {
+	const devServer: SlashCommand = {
+		name: "build:dev-server",
+		description: "Start a dev server",
+		source: "plugin-skill",
+		pluginName: "build",
+	};
+	const commands: SlashCommand[] = [
+		{name: "redevelop", description: "", source: "builtin"},
+		devServer,
+		{name: "build", description: "", source: "builtin"},
+	];
+
+	it("labels a plugin skill by its bare name and leaves other commands unchanged", () => {
+		expect({
+			plugin: slashCommandLabel(devServer),
+			builtin: slashCommandLabel({name: "model", description: "", source: "builtin"}),
+			unprefixed: slashCommandLabel({...devServer, name: "dev-server"}),
+		}).toStrictEqual({plugin: "dev-server", builtin: "model", unprefixed: "dev-server"});
+	});
+
+	it("ranks the bare label as the name and still matches plugin:name queries", () => {
+		expect({
+			dev: filterSlashCommands(commands, "dev").map((c) => c.name),
+			exact: filterSlashCommands(commands, "dev-server").map((c) => c.name),
+			namespaced: filterSlashCommands(commands, "build:dev").map((c) => c.name),
+		}).toStrictEqual({
+			dev: ["build:dev-server", "redevelop"],
+			exact: ["build:dev-server"],
+			namespaced: ["build:dev-server"],
+		});
 	});
 });
 
