@@ -215,7 +215,7 @@ describe("QuestionCard", () => {
 		expect({single, multi}).toStrictEqual({single: true, multi: true});
 	});
 
-	it("styles the Other box as upstream's cds TextArea field: field fill and ring, 6/8 padding, hover ring, focus-visible ring", () => {
+	it("styles the Other box as upstream's cds TextArea field: 13/19 type, one-line minimum, field fill and ring, 6/8 padding, hover ring, focus-visible ring, disabled opacity", () => {
 		render(<QuestionCard questions={[QUESTIONS[0]!]} onSubmit={async () => {}} />);
 		fireEvent.click(screen.getByRole("button", {name: "Other"}));
 		const box = screen.getByRole("textbox", {name: "Other option"});
@@ -225,22 +225,28 @@ describe("QuestionCard", () => {
 			classes: box.className
 				.split(" ")
 				.filter((name) =>
-					/^(rounded-|bg-|px-|py-|shadow-|hover:shadow-|focus-visible:shadow-|max-h-|font-|text-)/.test(name),
+					/^(rounded-|bg-|px-|py-|shadow-|hover:shadow-|focus-visible:shadow-|max-h-|min-h-|font-|text-|disabled:|transition|duration-)/.test(
+						name,
+					),
 				),
 		}).toStrictEqual({
 			dir: "auto",
 			classes: [
+				"min-h-[calc(1lh+0.75rem)]",
 				"max-h-[calc(4lh+0.75rem)]",
 				"rounded-r5",
 				"bg-fill-field",
 				"px-2",
 				"py-1.5",
 				"font-sans",
-				"text-body",
+				"text-[13px]/[19px]",
 				"text-primary",
 				"shadow-field-ring",
+				"transition",
+				"duration-150",
 				"hover:shadow-field-hover",
 				"focus-visible:shadow-focus",
+				"disabled:opacity-50",
 			],
 		});
 	});

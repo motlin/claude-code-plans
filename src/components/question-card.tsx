@@ -413,7 +413,7 @@ export function QuestionCard({
 							onChange={(event) => {
 								update(typeOther(question, draft, event.target.value));
 							}}
-							className="relative z-[1] col-start-2 row-start-2 max-h-[calc(4lh+0.75rem)] w-full resize-none rounded-r5 bg-fill-field px-2 py-1.5 font-sans text-body text-primary outline-none [field-sizing:content] placeholder:text-ink-muted shadow-field-ring transition-shadow hover:shadow-field-hover focus-visible:shadow-focus"
+							className="relative z-[1] col-start-2 row-start-2 min-h-[calc(1lh+0.75rem)] max-h-[calc(4lh+0.75rem)] w-full resize-none rounded-r5 bg-fill-field px-2 py-1.5 font-sans text-[13px]/[19px] text-primary outline-none [field-sizing:content] placeholder:text-ink-muted shadow-field-ring transition duration-150 hover:shadow-field-hover focus-visible:shadow-focus disabled:opacity-50"
 						/>
 					)}
 				</div>
