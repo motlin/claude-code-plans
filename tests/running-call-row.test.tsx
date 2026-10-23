@@ -164,6 +164,59 @@ describe("an in-flight call's row", () => {
 		}
 	});
 
+	it("leads an in-flight group header with the call's mark, then the shimmer label, elapsed time and an sr 'running'", () => {
+		const container = renderRecords([
+			{type: "user", uuid: "user-1", message: {role: "user", content: "Check the login"}},
+			{
+				type: "assistant",
+				uuid: "assistant-1",
+				timestamp: new Date(Date.now() - 30_000).toISOString(),
+				message: {
+					role: "assistant",
+					content: [{type: "tool_use", id: "toolu_read", name: "Read", input: {file_path: "/repo/a.ts"}}],
+				},
+			},
+			{
+				type: "user",
+				uuid: "result-1",
+				parentUuid: "assistant-1",
+				message: {role: "user", content: [{type: "tool_result", tool_use_id: "toolu_read", content: "ok"}]},
+			},
+			{
+				type: "assistant",
+				uuid: "assistant-2",
+				timestamp: new Date(Date.now() - 22_000).toISOString(),
+				message: {
+					role: "assistant",
+					content: [
+						{
+							type: "tool_use",
+							id: "toolu_running",
+							name: "Bash",
+							input: {command: "ssh -T git@github.com", description: "Recheck SSH auth"},
+						},
+					],
+				},
+			},
+		]);
+		const header = container.querySelector("button[aria-controls].group\\/tool");
+		expect({
+			children: [...(header?.firstElementChild?.children ?? [])].map(
+				(child) => child.getAttribute("data-cds") ?? child.getAttribute("class"),
+			),
+			mark: header?.querySelector('[data-cds="WorkingMark"]')?.getAttribute("data-activity"),
+			label: header?.querySelector('[data-cds="ShimmerText"]')?.firstChild?.textContent,
+			elapsed: /^2\ds$/.test(header?.querySelector("[data-running-elapsed]")?.textContent ?? ""),
+			srOnly: header?.querySelector(".sr-only")?.textContent,
+		}).toStrictEqual({
+			children: ["WorkingMark", "ShimmerText", "shrink-0 text-body text-ink-muted tabular-nums", "sr-only"],
+			mark: "code",
+			label: "Rechecking SSH auth",
+			elapsed: true,
+			srOnly: "running",
+		});
+	});
+
 	it("offers 'View live output' on a background command whose task still runs, opening the Background tasks pane", () => {
 		const opened = vi.fn<() => void>();
 		const {lines, toolResultMap} = processTranscript([

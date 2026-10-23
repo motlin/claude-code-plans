@@ -5092,12 +5092,21 @@ function ToolCallSummary({
 						className={`relative group/tool flex max-w-full items-center ${summaryLayout} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3`}
 					>
 						<span className={`inline-flex items-center gap-g3 min-w-0 ${ink}`}>
-							{runningText === null ? (
+							{pendingCall === undefined || runningText === null ? (
 								<span className="text-body truncate min-w-0">
 									<SummarySpans segments={summary.segments} />
 								</span>
 							) : (
-								<ShimmerText className="text-body truncate min-w-0">{runningText}</ShimmerText>
+								// Upstream leads a busy group header like a busy row: the call's mark, its label, elapsed, sr "running".
+								<>
+									<WorkingMark
+										activity={toolMarkActivity(pendingCall.name, pendingCall.input)}
+										className="me-1.5"
+									/>
+									<ShimmerText className="text-body truncate min-w-0">{runningText}</ShimmerText>
+									<RunningElapsed startedAt={pendingCall.startedAt} />
+									<span className="sr-only">running</span>
+								</>
 							)}
 						</span>
 						{hasDiffStats(summary) && <DiffStatPill added={summary.added} removed={summary.removed} />}
