@@ -776,7 +776,7 @@ function CodeAppearanceSection() {
 
 	return (
 		<SettingsSection title="Code appearance">
-			<div data-settings-row="code-theme" className="grid grid-cols-1 gap-4 py-3 sm:grid-cols-2">
+			<div data-settings-row="code-theme" className="grid grid-cols-2 gap-4 py-3">
 				<div className="flex min-w-0 flex-col gap-2">
 					<ThemedCombobox
 						aria-label="Light code theme"

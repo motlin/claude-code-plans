@@ -96,6 +96,48 @@ describe("Claude Code settings ▸ Code appearance", () => {
 		});
 	});
 
+	it("lays out the theme grid and diff preview with upstream's comfortable classes", async () => {
+		await Promise.all([
+			import("../src/components/settings/code-theme-preview"),
+			requestLanguage("typescript"),
+			requestTheme("claude-light"),
+			requestTheme("github-dark"),
+		]);
+		await renderClaudeCode();
+		await waitFor(() => {
+			expect(screen.getByRole("figure", {name: "Light code theme preview"}).style.backgroundColor).not.toBe("");
+		});
+
+		const grid = document.querySelector('[data-settings-row="code-theme"]');
+		const figure = screen.getByRole("figure", {name: "Light code theme preview"});
+		const rows = [...figure.children];
+
+		expect({
+			grid: grid?.className,
+			columns: [...(grid?.children ?? [])].map((column) => column.className),
+			wrapper: figure.parentElement?.className,
+			numbers: rows.map((row) => row.firstElementChild?.className),
+			words: [...figure.querySelectorAll("[data-diff-word]")].map((word) => ({
+				text: word.textContent,
+				className: word.className,
+			})),
+		}).toStrictEqual({
+			grid: "grid grid-cols-2 gap-4 py-3",
+			columns: ["flex min-w-0 flex-col gap-2", "flex min-w-0 flex-col gap-2"],
+			wrapper: "min-h-[94px] overflow-clip rounded-lg border",
+			numbers: [
+				"w-8 shrink-0 pr-2 text-right opacity-50 select-none",
+				"w-8 shrink-0 pr-2 text-right text-[var(--upstream-git-removed)] select-none",
+				"w-8 shrink-0 pr-2 text-right text-[var(--upstream-git-added)] select-none",
+				"w-8 shrink-0 pr-2 text-right opacity-50 select-none",
+			],
+			words: [
+				{text: '" +', className: "bg-[color-mix(in_srgb,var(--upstream-git-removed)_30%,transparent)]"},
+				{text: "${name}!", className: "bg-[color-mix(in_srgb,var(--upstream-git-added)_30%,transparent)]"},
+			],
+		});
+	});
+
 	it("applies a custom code font to --font-mono and clears it when emptied", async () => {
 		await renderClaudeCode();
 		const input = screen.getByRole("textbox", {name: "Code font"});
