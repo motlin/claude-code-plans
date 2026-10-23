@@ -35,7 +35,7 @@ import {takeQueuedDiffComments, useDiffComments} from "../lib/diff-comments";
 import type {SessionFilesEntry} from "../lib/api/session-files";
 import {fileMentionTrigger, insertFileMention} from "../lib/file-mentions";
 import type {LaunchOptions} from "../lib/launch-options";
-import {filterSlashCommands, type SlashCommand, slashArgumentHint, slashTrigger} from "../lib/slash-commands";
+import {filterSlashCommands, type SlashCommand, skillChipArgumentHint, slashTrigger} from "../lib/slash-commands";
 import {type ChinLaunchControls, ComposerAddMenu, ComposerChin} from "./composer-chin";
 import {AttachedContextChips} from "./attached-context-chips";
 import type {ChinMenu} from "./composer-launch-menus";
@@ -86,6 +86,7 @@ const PAINTED_OVERLAY_CLASS = `${GHOST_OVERLAY_CLASS} left-[30px] pointer-coarse
 interface AcceptedSkillChip {
 	draftKey: string;
 	name: string;
+	argumentHint: string | undefined;
 }
 
 const ICON_BUTTON_CLASS =
@@ -548,12 +549,15 @@ export function Composer({
 	// A mid-line slash opens with nothing highlighted (-1), as upstream's `startsUnselected` does.
 	const highlighted =
 		highlight.key === slashKey ? Math.min(highlight.index, matches.length - 1) : slash?.atStart === true ? 0 : -1;
-	const argumentHint = slashArgumentHint(slashCommands, prompt);
 	// In memory only: upstream doesn't restore the chip from a saved draft either.
 	const [acceptedChip, setAcceptedChip] = useState<AcceptedSkillChip | null>(null);
 	const chip =
 		acceptedChip?.draftKey === draftKey && prompt.startsWith(`/${acceptedChip.name}`) ? acceptedChip : null;
 	if (acceptedChip !== null && chip === null) setAcceptedChip(null);
+	const argumentHint = chip === null ? null : skillChipArgumentHint(chip, prompt);
+	const rest = chip === null ? "" : prompt.slice(chip.name.length + 1);
+	// The hint sits after the chip line's trailing whitespace, before any blank line below it.
+	const restLine = rest.split("\n", 1)[0] ?? "";
 	const paintedOverlayRef = useRef<HTMLDivElement>(null);
 
 	const trigger = mentionSessionId === undefined || slashOpen ? null : fileMentionTrigger(prompt, caret);
@@ -615,7 +619,7 @@ export function Composer({
 		setCaret(next);
 		setPrompt(prompt.slice(0, slash.start) + inserted + prompt.slice(caret));
 		// The local menu can open mid-line, but only a leading command becomes a chip.
-		setAcceptedChip(slash.start === 0 ? {draftKey, name: command.name} : null);
+		setAcceptedChip(slash.start === 0 ? {draftKey, name: command.name, argumentHint: command.argumentHint} : null);
 		textareaRef.current?.focus();
 	}
 
@@ -909,25 +913,28 @@ export function Composer({
 							onAccept={acceptFileMention}
 						/>
 					)}
-					{chip === null ? (
-						argumentHint !== null && (
-							<div aria-hidden="true" className={`${GHOST_OVERLAY_CLASS} left-[30px]`}>
-								<span className="invisible">{prompt}</span>
-								<span data-testid="slash-argument-hint" className="text-[rgb(137,135,129)]">
-									{argumentHint}
-								</span>
-							</div>
-						)
-					) : (
+					{chip !== null && (
 						<div ref={paintedOverlayRef} aria-hidden="true" className={PAINTED_OVERLAY_CLASS}>
 							<ComposerSkillChip name={chip.name} />
-							<span data-skill-chip-rest="" className="text-primary">
-								{prompt.slice(chip.name.length + 1)}
-							</span>
-							{argumentHint !== null && (
-								<span data-testid="slash-argument-hint" className="text-[rgb(137,135,129)]">
-									{argumentHint}
+							{argumentHint === null ? (
+								<span data-skill-chip-rest="" className="text-primary">
+									{rest}
 								</span>
+							) : (
+								<>
+									<span data-skill-chip-rest="" className="text-primary">
+										{restLine}
+									</span>
+									<span
+										data-testid="slash-argument-hint"
+										data-skill-arg-hint="true"
+										aria-hidden="true"
+										style={{opacity: 0.5}}
+									>
+										{argumentHint}
+									</span>
+									{rest.slice(restLine.length)}
+								</>
 							)}
 						</div>
 					)}

@@ -152,4 +152,51 @@ describe("Composer skill chip", () => {
 			chip: null,
 		});
 	});
+
+	it("shows no argument hint for a command typed by hand", () => {
+		const textarea = setup();
+
+		fireEvent.change(textarea, {target: {value: "/model "}});
+
+		expect(screen.queryByTestId("slash-argument-hint")).toBeNull();
+	});
+
+	it("paints the hint at 50% of the inherited ink, hidden from assistive tech", () => {
+		const textarea = setup();
+		accept(textarea, "/mo");
+
+		expect(screen.getByTestId("slash-argument-hint").outerHTML).toBe(
+			'<span data-testid="slash-argument-hint" data-skill-arg-hint="true" aria-hidden="true" style="opacity: 0.5;">[model]</span>',
+		);
+	});
+
+	it("places the hint after all trailing whitespace on the chip's line", () => {
+		const textarea = setup();
+		accept(textarea, "/mo");
+		const before = (): string => {
+			const overlay = screen.getByTestId("composer-skill-chip").parentElement;
+			const hint = screen.getByTestId("slash-argument-hint");
+			// The chip's invisible width probe isn't painted text.
+			const children = [...(overlay?.childNodes ?? [])].filter(
+				(node) => !(node instanceof HTMLElement && node.hasAttribute("data-skill-chip-measure")),
+			);
+			return children
+				.slice(0, children.indexOf(hint))
+				.map((node) => node.textContent)
+				.join("");
+		};
+
+		fireEvent.change(textarea, {target: {value: "/model   "}});
+		const spaces = before();
+		fireEvent.change(textarea, {target: {value: "/model \n"}});
+		const newline = {
+			before: before(),
+			after: screen.getByTestId("slash-argument-hint").nextSibling?.textContent,
+		};
+
+		expect({spaces, newline}).toStrictEqual({
+			spaces: "/model   ",
+			newline: {before: "/model ", after: "\n"},
+		});
+	});
 });

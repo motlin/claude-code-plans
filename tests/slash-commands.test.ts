@@ -8,7 +8,7 @@ import {
 	filterSlashCommands,
 	highlightMatches,
 	mergeSlashCommands,
-	slashArgumentHint,
+	skillChipArgumentHint,
 	slashCommandLabel,
 	slashTrigger,
 	splitLeadingSlashCommand,
@@ -402,18 +402,29 @@ describe("slashTrigger", () => {
 	});
 });
 
-describe("slashArgumentHint", () => {
-	it("shows the accepted command's argument hint until arguments are typed", () => {
-		const commands: SlashCommand[] = [
-			{name: "model", description: "", source: "builtin", argumentHint: "[model]"},
-			{name: "plan", description: "", source: "builtin"},
-		];
+describe("skillChipArgumentHint", () => {
+	it("shows an accepted chip's argument hint while only whitespace follows it", () => {
+		const chip = {name: "model", argumentHint: "[model]"};
 		expect([
-			slashArgumentHint(commands, "/model "),
-			slashArgumentHint(commands, "/model opus"),
-			slashArgumentHint(commands, "/plan "),
-			slashArgumentHint(commands, "/model"),
-		]).toStrictEqual(["[model]", null, null, null]);
+			skillChipArgumentHint(chip, "/model "),
+			skillChipArgumentHint(chip, "/model   "),
+			skillChipArgumentHint(chip, "/model \n"),
+			skillChipArgumentHint(chip, "/model\t"),
+		]).toStrictEqual(["[model]", "[model]", "[model]", "[model]"]);
+	});
+
+	it("hides the hint with no separator, typed arguments, a long prompt or no hint", () => {
+		const chip = {name: "model", argumentHint: "[model]"};
+		expect([
+			skillChipArgumentHint(chip, "/model"),
+			skillChipArgumentHint(chip, "/model x"),
+			skillChipArgumentHint(chip, "/modelx "),
+			skillChipArgumentHint(chip, "/model\n"),
+			skillChipArgumentHint(chip, `/model ${" ".repeat(122)}`),
+			skillChipArgumentHint(chip, `/model ${" ".repeat(121)}`),
+			skillChipArgumentHint({name: "model", argumentHint: undefined}, "/model "),
+			skillChipArgumentHint({name: "model", argumentHint: ""}, "/model "),
+		]).toStrictEqual([null, null, null, null, null, "[model]", null, null]);
 	});
 });
 

@@ -201,11 +201,23 @@ export function slashTrigger(prompt: string, caret: number): SlashTrigger | null
 	return {start, query, atStart};
 }
 
-/** The argument-hint ghost text for a just-accepted `/name ` with no arguments yet. */
-export function slashArgumentHint(commands: readonly SlashCommand[], prompt: string): string | null {
-	const match = /^\/(\S+) $/.exec(prompt);
-	if (match === null) return null;
-	return commands.find((command) => command.name === match[1])?.argumentHint ?? null;
+/** Upstream `skillChipArgumentHint` gives up past this doc size. */
+const SKILL_CHIP_HINT_MAX_LENGTH = 128;
+
+/**
+ * An accepted chip's argument hint, shown as upstream's `skillChipArgumentHint` does: only whitespace
+ * after the chip, and at least one space or tab right after it on the chip's own line.
+ */
+export function skillChipArgumentHint(
+	chip: {name: string; argumentHint: string | undefined},
+	prompt: string,
+): string | null {
+	if (chip.argumentHint === undefined || chip.argumentHint === "") return null;
+	const token = `/${chip.name}`;
+	if (!prompt.startsWith(token) || prompt.length > SKILL_CHIP_HINT_MAX_LENGTH) return null;
+	const rest = prompt.slice(token.length);
+	if (rest.trim() !== "" || !/^[ \t]/.test(rest)) return null;
+	return chip.argumentHint;
 }
 
 const LEADING_SLASH_COMMAND_RE = /^\/([A-Za-z0-9][\w:.-]*)(?:[ \t]+|\n|$)/;
