@@ -1,4 +1,4 @@
-import {type MouseEvent, type ReactNode, useState} from "react";
+import {lazy, type MouseEvent, type ReactNode, Suspense, useRef, useState} from "react";
 import {
 	FileText,
 	Image as ImageIcon,
@@ -12,6 +12,11 @@ import {
 import {type ContextChip, contextChipLabel, formatContextAttachment, removeContextChip} from "../lib/context-attach";
 import {type QueuedDiffComment, removeQueuedDiffComment} from "../lib/diff-comments";
 import {Skeleton} from "./ui/skeleton";
+
+// The preview loads only when a tile opens, keeping its dialog out of the composer chunk.
+const ImagePreviewModal = lazy(async () =>
+	import("./image-preview-modal").then((module) => ({default: module.ImagePreviewModal})),
+);
 
 function chipLabel({path, line, endLine}: QueuedDiffComment): string {
 	const name = path.slice(path.lastIndexOf("/") + 1) || path;
@@ -178,14 +183,25 @@ function Tile({
  * 120px card, a zoom CardLink once it's ready, and an Image glyph when the
  * bytes don't decode.
  */
-function ImageChip({sessionId, chip}: {sessionId: string; chip: ContextChip}) {
+function ImageChip({
+	sessionId,
+	chip,
+	onOpen,
+}: {
+	sessionId: string;
+	chip: ContextChip;
+	/** Opens the preview, morphing out of the tile's image. */
+	onOpen: (chip: ContextChip, origin: HTMLImageElement | null) => void;
+}) {
 	const label = contextChipLabel(chip);
 	const pending = chip.status === "pending";
+	const imgRef = useRef<HTMLImageElement>(null);
 	const [loaded, setLoaded] = useState(false);
 	const [broken, setBroken] = useState(false);
 	const opacity = broken ? "opacity-0" : pending ? (loaded ? "opacity-50" : "opacity-0") : "opacity-100";
 	const img = (
 		<img
+			ref={imgRef}
 			src={chip.previewUrl}
 			alt=""
 			onLoad={() => {
@@ -206,6 +222,16 @@ function ImageChip({sessionId, chip}: {sessionId: string; chip: ContextChip}) {
 					data-cds="CardLink"
 					role="button"
 					tabIndex={0}
+					onClick={(event) => {
+						event.preventDefault();
+						onOpen(chip, imgRef.current);
+					}}
+					onKeyDown={(event) => {
+						if (event.key === "Enter" || event.key === " ") {
+							event.preventDefault();
+							onOpen(chip, imgRef.current);
+						}
+					}}
 					className="outline-none after:pointer-events-none after:absolute after:inset-0 after:rounded-card-xs after:content-[''] cursor-zoom-in"
 				>
 					{img}
@@ -271,6 +297,13 @@ export function AttachedContextChips({
 	context: readonly ContextChip[];
 	comments: readonly QueuedDiffComment[];
 }) {
+	const [preview, setPreview] = useState<{chipId: string; origin: HTMLImageElement | null} | null>(null);
+	const [previewOpen, setPreviewOpen] = useState(false);
+	const previewChip = preview === null ? undefined : context.find((chip) => chip.id === preview.chipId);
+	const openPreview = (chip: ContextChip, origin: HTMLImageElement | null) => {
+		setPreview({chipId: chip.id, origin});
+		setPreviewOpen(true);
+	};
 	return (
 		<div
 			data-cds-composer-attachments-clip=""
@@ -280,7 +313,7 @@ export function AttachedContextChips({
 				<ul aria-label="Attached context" className="flex w-full flex-wrap gap-[6px] justify-start">
 					{context.map((chip) => {
 						if (chip.kind === "image" && chip.previewUrl !== undefined) {
-							return <ImageChip key={chip.id} sessionId={sessionId} chip={chip} />;
+							return <ImageChip key={chip.id} sessionId={sessionId} chip={chip} onOpen={openPreview} />;
 						}
 						if (chip.kind === "file" && chip.name !== undefined) {
 							return <FileChip key={chip.id} sessionId={sessionId} chip={chip} />;
@@ -338,6 +371,20 @@ export function AttachedContextChips({
 					})}
 				</ul>
 			</div>
+			{preview !== null && previewChip?.previewUrl !== undefined ? (
+				<Suspense fallback={null}>
+					<ImagePreviewModal
+						key={preview.chipId}
+						src={previewChip.previewUrl}
+						alt={contextChipLabel(previewChip)}
+						open={previewOpen}
+						origin={preview.origin}
+						onClose={() => {
+							setPreviewOpen(false);
+						}}
+					/>
+				</Suspense>
+			) : null}
 		</div>
 	);
 }

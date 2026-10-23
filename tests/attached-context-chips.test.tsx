@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
-import {cleanup, fireEvent, render} from "@testing-library/react";
-import {afterEach, describe, expect, it} from "vite-plus/test";
+import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
+import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {AttachedContextChips} from "../src/components/attached-context-chips";
 import type {ContextChip} from "../src/lib/context-attach";
 
@@ -290,6 +290,92 @@ describe("AttachedContextChips cds tiles", () => {
 				active: true,
 			});
 			editor.remove();
+		});
+	});
+
+	describe("image preview", () => {
+		beforeEach(() => {
+			vi.stubGlobal("matchMedia", (query: string) => ({
+				matches: false,
+				media: query,
+				addEventListener: () => undefined,
+				removeEventListener: () => undefined,
+			}));
+		});
+
+		afterEach(() => {
+			vi.unstubAllGlobals();
+		});
+
+		function imageLink(container: HTMLElement): HTMLElement {
+			const link = container.querySelector<HTMLElement>(
+				"li[data-cds=MessageAttachmentsImage] [data-cds=CardLink]",
+			);
+			if (link === null) throw new Error("no image CardLink");
+			return link;
+		}
+
+		async function previewOf(): Promise<{src: string | null; alt: string | null}> {
+			const dialog = await screen.findByRole("dialog");
+			const img = dialog.querySelector("img");
+			return {src: img?.getAttribute("src") ?? null, alt: img?.getAttribute("alt") ?? null};
+		}
+
+		it("opens the preview of a ready image on click, hiding the tile's image", async () => {
+			const {container} = renderChips([IMAGE]);
+			const link = imageLink(container);
+			link.focus();
+			fireEvent.click(link);
+			expect({
+				preview: await previewOf(),
+				tileVisibility: link.querySelector("img")?.style.visibility,
+			}).toStrictEqual({preview: {src: "blob:shot", alt: "shot.png"}, tileVisibility: "hidden"});
+		});
+
+		it.each(["Enter", " "])("opens the preview on %j", async (key) => {
+			const {container} = renderChips([IMAGE]);
+			const link = imageLink(container);
+			link.focus();
+			const defaultAllowed = fireEvent.keyDown(link, {key});
+			expect({defaultAllowed, preview: await previewOf()}).toStrictEqual({
+				defaultAllowed: false,
+				preview: {src: "blob:shot", alt: "shot.png"},
+			});
+		});
+
+		it("closes on Escape, refocusing the tile's CardLink and showing its image again", async () => {
+			const {container} = renderChips([IMAGE]);
+			const link = imageLink(container);
+			link.focus();
+			fireEvent.click(link);
+			const dialog = await screen.findByRole("dialog");
+			act(() => {
+				fireEvent.keyDown(dialog, {key: "Escape"});
+			});
+			expect({
+				dialog: screen.queryByRole("dialog"),
+				focused: document.activeElement === link,
+				tileVisibility: link.querySelector("img")?.style.visibility,
+			}).toStrictEqual({dialog: null, focused: true, tileVisibility: ""});
+		});
+
+		it("gives a pending image no CardLink to open", () => {
+			const {container} = renderChips([{...IMAGE, status: "pending"}]);
+			const tile = container.querySelector<HTMLElement>("li[data-cds=MessageAttachmentsImage]");
+			if (tile === null) throw new Error("no tile");
+			fireEvent.click(tile.querySelector("img") ?? tile);
+			expect({
+				link: tile.querySelector("[data-cds=CardLink]"),
+				dialog: screen.queryByRole("dialog"),
+			}).toStrictEqual({link: null, dialog: null});
+		});
+
+		it("removes the open preview when the strip unmounts", async () => {
+			const {container, unmount} = renderChips([IMAGE]);
+			fireEvent.click(imageLink(container));
+			await screen.findByRole("dialog");
+			unmount();
+			expect(screen.queryByRole("dialog")).toBeNull();
 		});
 	});
 });
