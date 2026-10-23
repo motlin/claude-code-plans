@@ -8,6 +8,7 @@ const SlashCommandSchema: z.ZodType<SlashCommand> = z.strictObject({
 	description: z.string(),
 	source: z.enum(SLASH_COMMAND_SOURCES),
 	argumentHint: z.string().optional(),
+	aliases: z.array(z.string().min(1)).optional(),
 	pluginName: z.string().min(1).optional(),
 });
 

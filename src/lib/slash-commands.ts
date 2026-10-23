@@ -33,57 +33,65 @@ export function slashCommandLabel(command: SlashCommand): string {
 }
 
 /**
- * CLI built-ins that make sense against a local session, with claude.ai/code
- * tooltip wording where upstream has one.
+ * claude.ai/code's locally meaningful built-ins with its exact strings, hints and
+ * aliases, followed by the local-only CLI built-ins.
  */
 export const BUILTIN_SLASH_COMMANDS: readonly SlashCommand[] = [
+	{name: "model", description: "Set the model for this session", source: "builtin", argumentHint: "[model-id]"},
+	{
+		name: "effort",
+		description: "Set the effort level for this session",
+		source: "builtin",
+		argumentHint: "[level]",
+	},
+	{name: "fast", description: "Turn fast mode on or off", source: "builtin", argumentHint: "[on|off]"},
+	{
+		name: "plan",
+		description: "Switch to plan mode or view this session’s plan",
+		source: "builtin",
+		argumentHint: "[open|<description>]",
+	},
+	{
+		name: "permissions",
+		description: "Change the permission mode",
+		source: "builtin",
+		aliases: ["allowed-tools"],
+	},
+	{name: "skills", description: "Browse and manage your skills", source: "builtin"},
+	{
+		name: "usage",
+		description: "Show plan usage and rate limits",
+		source: "builtin",
+		aliases: ["stats", "cost"],
+	},
+	{name: "config", description: "Open Claude Code settings", source: "builtin", aliases: ["settings"]},
+	{
+		name: "theme",
+		description: "Set the appearance (system, light, or dark)",
+		source: "builtin",
+		argumentHint: "[system|light|dark]",
+	},
+	{name: "help", description: "Get help and support", source: "builtin"},
+	/* Local-only built-ins with no claude.ai/code row. */
 	{
 		name: "btw",
 		description: "Ask a quick side question without adding to the session",
 		source: "builtin",
 		argumentHint: "<question>",
 	},
-	{
-		name: "model",
-		description: "Set the model for this session",
-		source: "builtin",
-		argumentHint: "[model]",
-	},
-	{
-		name: "effort",
-		description: "Set the effort level for this session",
-		source: "builtin",
-		argumentHint: "[low|medium|high|xhigh|max]",
-	},
-	{
-		name: "plan",
-		description: "Switch to plan mode or view this session’s plan",
-		source: "builtin",
-	},
-	{name: "permissions", description: "Change the permission mode", source: "builtin"},
-	{
-		name: "rename",
-		description: "Rename this session",
-		source: "builtin",
-		argumentHint: "[name]",
-	},
+	{name: "rename", description: "Rename this session", source: "builtin", argumentHint: "[name]"},
 	{
 		name: "status",
 		description: "Show this session’s version, model, environment, and account",
 		source: "builtin",
 	},
-	{name: "usage", description: "Show plan usage and rate limits", source: "builtin"},
 	{
 		name: "compact",
 		description: "Clear conversation history but keep a summary in context",
 		source: "builtin",
 		argumentHint: "[instructions]",
 	},
-	{
-		name: "clear",
-		description: "Clear conversation history and free up context",
-		source: "builtin",
-	},
+	{name: "clear", description: "Clear conversation history and free up context", source: "builtin"},
 	{name: "context", description: "Show current context usage", source: "builtin"},
 	{name: "review", description: "Review a pull request", source: "builtin", argumentHint: "[pr]"},
 	{
