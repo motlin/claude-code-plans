@@ -1,8 +1,10 @@
 import {Loader2} from "lucide-react";
 import {useCallback, useEffect, useState, type ReactNode} from "react";
 
+import {useIsMac} from "../hooks/use-is-mac";
 import {dockKeyAllowed} from "../lib/dock-keys";
 import {permissionDecisionForKey, type PermissionDecision, type PermissionTitle} from "../lib/permission-card";
+import {toAriaKeyShortcuts} from "../lib/shortcuts/format";
 import {PERSISTENT_ALLOW_LABELS, type PersistentAllowKind} from "../lib/permission-suggestions";
 import {useBackgroundTasksOpener} from "./background-tasks-opener-context";
 import {APPROVAL_CARD_TITLE, ApprovalActionButton, ApprovalCardShell} from "./approval-card";
@@ -11,8 +13,8 @@ import {Shortcut} from "./ui/shortcut";
 
 /**
  * The tool-permission card, drawn inline as claude.ai/code's approvals:
- * "Allow Claude to <action> <meta>?", the detail block, and [Deny Esc] … [Allow once ⌘⏎],
- * then the persistent option ("Always allow" / "Allow for this session") when
+ * "Allow Claude to <action> <meta>?", the detail block, and [Deny] then the allow
+ * group [Allow once ⌘⏎], then the persistent option ("Always allow" / "Allow for this session") when
  * the CLI's dialog offers one.
  * Keys act while the card is focused, nothing is focused, or the composer is empty.
  */
@@ -43,6 +45,7 @@ export function PermissionCard({
 	/** Rendered under the actions; the session page passes the notify tip. */
 	footer?: ReactNode;
 }) {
+	const isMac = useIsMac();
 	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const enabled = canAnswer && !submitting;
@@ -103,24 +106,38 @@ export function PermissionCard({
 			}
 			actions={
 				<>
-					<ApprovalActionButton variant="secondary" disabled={!enabled} onClick={() => void decide("deny")}>
-						Deny
-						<Shortcut keys="esc" className="pointer-coarse:hidden" />
-					</ApprovalActionButton>
-					<ApprovalActionButton variant="primary" disabled={!enabled} onClick={() => void decide("allow")}>
-						{submitting && <Loader2 aria-hidden="true" className="size-3 animate-spin" />}
-						Allow once
-						<Shortcut keys="cmd+enter" className="pointer-coarse:hidden" />
-					</ApprovalActionButton>
-					{persistentAllow !== null && (
+					<span className="contents">
 						<ApprovalActionButton
 							variant="secondary"
+							aria-keyshortcuts="Escape"
 							disabled={!enabled}
-							onClick={() => void decide("always")}
+							onClick={() => void decide("deny")}
 						>
-							{PERSISTENT_ALLOW_LABELS[persistentAllow]}
+							<span data-approval-digit="1">Deny</span>
 						</ApprovalActionButton>
-					)}
+					</span>
+					<div data-approval-allow className="flex min-w-0 flex-wrap items-start gap-2">
+						<ApprovalActionButton
+							variant="primary"
+							data-approval-primary=""
+							aria-keyshortcuts={toAriaKeyShortcuts("cmd+enter", isMac)}
+							disabled={!enabled}
+							onClick={() => void decide("allow")}
+						>
+							{submitting && <Loader2 aria-hidden="true" className="size-3 animate-spin" />}
+							<span data-approval-digit="2">Allow once</span>
+							<Shortcut keys="cmd+enter" className="pointer-coarse:hidden" />
+						</ApprovalActionButton>
+						{persistentAllow !== null && (
+							<ApprovalActionButton
+								variant="secondary"
+								disabled={!enabled}
+								onClick={() => void decide("always")}
+							>
+								{PERSISTENT_ALLOW_LABELS[persistentAllow]}
+							</ApprovalActionButton>
+						)}
+					</div>
 				</>
 			}
 		/>

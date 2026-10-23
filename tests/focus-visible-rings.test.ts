@@ -35,7 +35,12 @@ describe("hand-rolled focus rings", () => {
 	it("draws every keyboard ring with upstream's shadow-focus instead of hand-rolled outlines and rings", () => {
 		const banned =
 			/focus-visible:(?:shadow-\[0_0_0_2px_var\(--(?:color-)?accent-100\)\]|ring-[12](?![\w/[-])|ring-accent-100|ring-\[var\(--accent-100\)\]|outline-2|outline-offset-2|outline-accent-100|ring-inset)/;
-		const offenders = sources("src").filter((path) => banned.test(readFileSync(path, "utf8")));
+		// Upstream's approval card root draws its own 1px fill-accent outline, offset 2px.
+		const approvalCardRoot =
+			"focus-visible:outline-1 focus-visible:outline-fill-accent focus-visible:outline-offset-2";
+		const offenders = sources("src").filter((path) =>
+			banned.test(readFileSync(path, "utf8").replaceAll(approvalCardRoot, "")),
+		);
 		expect(offenders).toStrictEqual([]);
 	});
 

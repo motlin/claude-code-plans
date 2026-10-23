@@ -2,16 +2,16 @@ import {Loader2} from "lucide-react";
 import type {ButtonHTMLAttributes, ReactNode} from "react";
 
 const ACTION_BUTTON =
-	"inline-flex h-6 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-r5 px-2 text-[13px]/[19px] whitespace-nowrap select-none disabled:cursor-not-allowed disabled:opacity-50 [&_kbd]:text-[11px]";
+	"inline-flex h-6 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-r5 px-2 text-[13px]/[19px] whitespace-nowrap select-none hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus disabled:cursor-not-allowed disabled:opacity-50 [&_kbd]:text-[11px]";
 
 const ACTION_VARIANTS = {
-	secondary: "border border-strong text-primary hover:bg-alpha-2",
+	secondary: "bg-fill-secondary shadow-field-drop text-primary hover:bg-fill-secondary-hover",
 	primary: "bg-primary font-medium text-surface-1 [--shortcut-cap-ink:currentColor] hover:bg-primary/80",
 } as const;
 
 export type ApprovalActionVariant = keyof typeof ACTION_VARIANTS;
 
-/** Classes for an approval card action: an outline secondary or a black primary, 24px tall with 11px keycaps. */
+/** Classes for an approval card action: upstream's filled secondary or a black primary, 24px tall with 11px keycaps. */
 function approvalActionClass(variant: ApprovalActionVariant): string {
 	return `${ACTION_BUTTON} ${ACTION_VARIANTS[variant]}`;
 }
@@ -27,7 +27,13 @@ export function ApprovalActionButton({
 	"className" | "type" | "aria-busy"
 >) {
 	return (
-		<button type="button" {...props} aria-busy={busy || undefined} className={approvalActionClass(variant)}>
+		<button
+			type="button"
+			{...props}
+			data-approval-variant={variant}
+			aria-busy={busy || undefined}
+			className={approvalActionClass(variant)}
+		>
 			{busy && <Loader2 aria-hidden="true" className="size-3 animate-spin" />}
 			{children}
 		</button>
@@ -37,12 +43,12 @@ export function ApprovalActionButton({
 export const APPROVAL_CARD_TITLE = "flex min-h-6 items-center text-[13px]/[19px] font-[580]";
 
 /**
- * Upstream's `@container (width <= 420px)` stack: the action row and its button
- * group, full width. A split button stretches too, its primary segment taking
+ * Upstream's `@container (width <= 420px)` stack: the action row and its allow
+ * group (`[data-approval-allow]`), full width. A split button stretches too, its primary segment taking
  * the spare width (`width:100%` and `flex:auto`).
  */
 const STACK_ACTIONS =
-	"@max-[420px]:flex-col @max-[420px]:items-stretch @max-[420px]:[&>span]:ms-0 @max-[420px]:[&>span]:flex-col @max-[420px]:[&>span]:items-stretch @max-[420px]:[&_[data-cds=SplitDropdownButton]]:w-full @max-[420px]:[&_[data-cds=SplitDropdownButton]>[data-cds-segment]:first-child_button]:flex-auto";
+	"@max-[420px]:flex-col @max-[420px]:items-stretch @max-[420px]:[&>div]:flex-col @max-[420px]:[&>div]:items-stretch @max-[420px]:[&_[data-cds=SplitDropdownButton]]:w-full @max-[420px]:[&_[data-cds=SplitDropdownButton]>[data-cds-segment]:first-child_button]:flex-auto";
 
 /**
  * Upstream's approval card shell for a pending permission: a scrolling body
@@ -85,7 +91,7 @@ export function ApprovalCardShell({
 				role={label === undefined ? undefined : "group"}
 				aria-label={label}
 				tabIndex={0}
-				className={`@container relative isolate flex max-h-[60vh] flex-col rounded-r7 p-3 text-[13px]/[19px] text-primary ${look}`}
+				className={`@container relative isolate flex max-h-[60vh] flex-col rounded-r7 p-3 text-[13px]/[19px] text-primary focus-visible:outline-1 focus-visible:outline-fill-accent focus-visible:outline-offset-2 ${look}`}
 			>
 				<div
 					data-approval-card-body
@@ -95,7 +101,7 @@ export function ApprovalCardShell({
 				</div>
 				<div
 					data-approval-card-actions
-					className={`flex flex-wrap items-start justify-between gap-x-3 gap-y-2 ${STACK_ACTIONS}`}
+					className={`flex flex-wrap items-start justify-end gap-x-3 gap-y-2 ${STACK_ACTIONS}`}
 				>
 					{actions}
 				</div>

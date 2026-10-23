@@ -467,7 +467,7 @@ function renderCard({
 }
 
 describe("PermissionCard", () => {
-	it("renders the title, command block, and upstream's Deny (Esc) / Allow once (⌘⏎)", () => {
+	it("renders the title, command block, and upstream's Deny (Esc, no keycap) / Allow once (⌘⏎)", () => {
 		const {container} = renderCard();
 		const card = container.querySelector("[data-approval-card-root]")!;
 		const deny = screen.getByRole("button", {name: /^Deny/});
@@ -478,12 +478,47 @@ describe("PermissionCard", () => {
 			command: card.querySelector("[data-permission-detail]")?.textContent,
 			denyKeys: [...deny.querySelectorAll("kbd")].map((kbd) => kbd.textContent),
 			allowKeys: [...allow.querySelectorAll("kbd")].map((kbd) => kbd.textContent),
+			denyShortcut: deny.getAttribute("aria-keyshortcuts"),
+			allowShortcut: allow.getAttribute("aria-keyshortcuts"),
+			denyData: Object.fromEntries(Object.entries(deny.dataset)),
+			allowData: Object.fromEntries(Object.entries(allow.dataset)),
+			digits: [deny, allow].map((button) => {
+				const label = button.querySelector<HTMLElement>("[data-approval-digit]");
+				return [label?.dataset["approvalDigit"], label?.textContent];
+			}),
 		}).toStrictEqual({
 			label: "Permission request: run",
 			title: "Allow Claude to run Remove the build output?",
 			command: "rm -rf dist",
-			denyKeys: ["Esc"],
+			denyKeys: [],
 			allowKeys: ["Ctrl", "⏎Enter"],
+			denyShortcut: "Escape",
+			allowShortcut: "Control+Enter",
+			denyData: {approvalVariant: "secondary"},
+			allowData: {approvalVariant: "primary", approvalPrimary: ""},
+			digits: [
+				["1", "Deny"],
+				["2", "Allow once"],
+			],
+		});
+	});
+
+	it("lays out upstream's actions row: justified to the end, Deny first, then the allow group", () => {
+		const {container} = renderCard({persistentAllow: "always"});
+		const row = container.querySelector<HTMLElement>("[data-approval-card-actions]")!;
+		const group = row.querySelector<HTMLElement>("[data-approval-allow]");
+		const classes = (element: Element | null) => new Set(element?.getAttribute("class")?.split(/\s+/));
+		const has = (element: Element | null, names: string[]) => names.filter((name) => classes(element).has(name));
+		expect({
+			row: has(row, ["flex", "flex-wrap", "items-start", "justify-end", "justify-between", "gap-x-3", "gap-y-2"]),
+			children: [...row.children].map((child) => child.textContent),
+			group: has(group, ["flex", "min-w-0", "flex-wrap", "items-start", "gap-2"]),
+			grouped: [...(group?.querySelectorAll("button") ?? [])].map((button) => button.textContent),
+		}).toStrictEqual({
+			row: ["flex", "flex-wrap", "items-start", "justify-end", "gap-x-3", "gap-y-2"],
+			children: ["Deny", "Allow onceCtrl⏎EnterAlways allow"],
+			group: ["flex", "min-w-0", "flex-wrap", "items-start", "gap-2"],
+			grouped: ["Allow onceCtrl⏎Enter", "Always allow"],
 		});
 	});
 
@@ -507,8 +542,8 @@ describe("PermissionCard", () => {
 				"rounded-r5",
 				"px-2",
 				"text-[13px]/[19px]",
-				"border",
-				"border-strong",
+				"bg-fill-secondary",
+				"shadow-field-drop",
 			]),
 			allow: missing(screen.getByRole("button", {name: /^Allow once/}), [
 				"h-6",
@@ -606,7 +641,7 @@ describe("PermissionCard", () => {
 	it("hides the persistent option when the dialog has none", () => {
 		renderCard();
 		expect(screen.getAllByRole("button").map((button) => button.textContent)).toStrictEqual([
-			"DenyEsc",
+			"Deny",
 			"Allow onceCtrl⏎Enter",
 		]);
 	});
@@ -619,7 +654,7 @@ describe("PermissionCard", () => {
 		const labels = screen.getAllByRole("button").map((button) => button.textContent);
 		fireEvent.click(screen.getByRole("button", {name: label}));
 		expect({labels, calls: onDecision.mock.calls}).toStrictEqual({
-			labels: ["DenyEsc", "Allow onceCtrl⏎Enter", label],
+			labels: ["Deny", "Allow onceCtrl⏎Enter", label],
 			calls: [["always"]],
 		});
 	});
