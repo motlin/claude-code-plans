@@ -75,22 +75,25 @@ function selectionInside(event: MouseEvent<HTMLElement>): boolean {
 /**
  * Upstream's shared approval hotkey: a window capture-phase ⌘⏎ / Ctrl+⏎ that
  * runs `hotkeyRef.current` with focus in the card, on the body, or in the
- * session composer, and yields while the card is off-screen, during the arm
- * grace, on key repeat, during IME composition, or with a composer popup open.
+ * session composer. It yields (the key passes on) while the card can't advance
+ * (`hotkeyRef.current` is null), with ⌥ held, during IME composition, while the
+ * card is off-screen, or with focus elsewhere or a composer popup open. It
+ * swallows the key without acting on repeat, within the arm grace, and with ⇧
+ * (upstream's persistent allow, which questions don't have).
  */
 function useApprovalHotkey(cardRootRef: RefObject<HTMLDivElement | null>, hotkeyRef: RefObject<(() => void) | null>) {
 	useEffect(() => {
 		const armedAt = performance.now();
 		const onKeyDown = (event: KeyboardEvent) => {
 			if (event.key !== "Enter" || !(event.metaKey || event.ctrlKey)) return;
-			if (event.repeat || event.isComposing) return;
 			const card = cardRootRef.current;
 			const run = hotkeyRef.current;
 			if (card === null || run === null) return;
-			if (performance.now() - armedAt < APPROVAL_ARM_GRACE_MS) return;
+			if (event.altKey || event.isComposing) return;
 			if (!approvalHotkeyFocusAllowed(card) || !onScreen(card)) return;
 			event.preventDefault();
 			event.stopPropagation();
+			if (event.repeat || event.shiftKey || performance.now() - armedAt < APPROVAL_ARM_GRACE_MS) return;
 			run();
 		};
 		window.addEventListener("keydown", onKeyDown, true);
@@ -228,7 +231,7 @@ export function QuestionCard({
 		} else goTo(remaining);
 	};
 
-	hotkeyRef.current = editable ? advance : null;
+	hotkeyRef.current = editable && canAdvance ? advance : null;
 	const primary = (
 		<ApprovalActionButton
 			variant="primary"

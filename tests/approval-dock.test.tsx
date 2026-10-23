@@ -337,6 +337,71 @@ describe("QuestionCard", () => {
 
 			expect(onSubmit.mock.calls.length).toBe(0);
 		});
+
+		/** Sends ⌘⏎ from the session composer and reports whether the card swallowed it. */
+		function pressFromComposer(init: KeyboardEventInit = {}) {
+			const composer = screen.getByRole("textbox", {name: "Prompt"});
+			composer.focus();
+			const event = new KeyboardEvent("keydown", {
+				key: "Enter",
+				metaKey: true,
+				bubbles: true,
+				cancelable: true,
+				...init,
+			});
+			composer.dispatchEvent(event);
+			return event.defaultPrevented;
+		}
+
+		const COMPOSER = (
+			<div data-composer-card="">
+				<textarea aria-label="Prompt" />
+			</div>
+		);
+
+		it("lets ⌘⏎ reach the composer while the card can't advance, and always lets ⌥⌘⏎ through", () => {
+			const now = vi.spyOn(performance, "now").mockReturnValue(1000);
+			const onSubmit = vi.fn<(answers: unknown[]) => Promise<void>>(async () => {});
+			render(
+				<>
+					<QuestionCard questions={[QUESTIONS[1]!]} onSubmit={onSubmit} />
+					{COMPOSER}
+				</>,
+			);
+			now.mockReturnValue(1400);
+			const unanswered = pressFromComposer();
+			fireEvent.click(screen.getByRole("button", {name: /^Watch/}));
+			const withAlt = pressFromComposer({altKey: true});
+
+			expect({unanswered, withAlt, calls: onSubmit.mock.calls}).toStrictEqual({
+				unanswered: false,
+				withAlt: false,
+				calls: [],
+			});
+		});
+
+		it("swallows ⌘⏎ without acting on key repeat, within the 400ms arm grace, and with ⇧", () => {
+			const now = vi.spyOn(performance, "now").mockReturnValue(1000);
+			const onSubmit = vi.fn<(answers: unknown[]) => Promise<void>>(async () => {});
+			render(
+				<>
+					<QuestionCard questions={[QUESTIONS[0]!]} onSubmit={onSubmit} />
+					{COMPOSER}
+				</>,
+			);
+			now.mockReturnValue(1100);
+			const inGrace = pressFromComposer();
+			now.mockReturnValue(1400);
+			const repeat = pressFromComposer({repeat: true});
+			const shift = pressFromComposer({shiftKey: true});
+
+			expect({inGrace, repeat, shift, calls: onSubmit.mock.calls}).toStrictEqual({
+				inGrace: true,
+				repeat: true,
+				shift: true,
+				calls: [],
+			});
+		});
 	});
 
 	describe("keeping focus inside the card, as upstream's tabIndex -1 root", () => {
