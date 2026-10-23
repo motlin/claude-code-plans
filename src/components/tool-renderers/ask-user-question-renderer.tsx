@@ -1,5 +1,5 @@
 import {inputString} from "../../lib/tool-utils";
-import {type ReactNode, useEffect} from "react";
+import {type ReactNode, useEffect, useState} from "react";
 import type {ToolRendererProps} from "./types";
 import {useAskUserQuestionContext} from "../ask-user-question-context";
 import {MarkdownArticle} from "../markdown-article";
@@ -7,7 +7,7 @@ import {QuestionCard} from "../question-card";
 import {FORK_ANSWER_LABEL} from "../../lib/question-answer-route";
 import type {QuestionAnswer} from "../../lib/hook-events";
 import {labelledAnswers} from "../../lib/question-card-draft";
-import {clearSentQuestionCard} from "../../lib/question-card-store";
+import {clearSentQuestionCard, wasQuestionCardSeen} from "../../lib/question-card-store";
 import {
 	answersFromResultMeta,
 	describeAskUserQuestionResult,
@@ -126,6 +126,8 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps) {
 	useEffect(() => {
 		if (!isPending) clearSentQuestionCard(toolCall.id);
 	}, [isPending, toolCall.id]);
+	// Upstream fades the receipt in only when it replaces a live card seen in this page.
+	const [receiptEnters] = useState(() => wasQuestionCardSeen(toolCall.id));
 
 	// Upstream draws a pending question as its card, inline where the call is; it answers along the session's route.
 	if (isPending && questions !== null) {
@@ -174,7 +176,11 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps) {
 		// Upstream's `epitaxy-question-receipt`: every answered pair of one call in a 480px card,
 		// divided by its ring's hairline, 3px nearer the row above and 7px further from the next.
 		return (
-			<div className="card-ring -mt-[3px] mb-[7px] flex w-full max-w-[480px] flex-col divide-y divide-[var(--card-outline)] overflow-clip rounded-r6 select-text">
+			<div
+				className={`card-ring -mt-[3px] mb-[7px] flex w-full max-w-[480px] flex-col divide-y divide-[var(--card-outline)] overflow-clip rounded-r6 select-text${
+					receiptEnters ? " animate-question-receipt-enter motion-reduce:animate-none" : ""
+				}`}
+			>
 				{parsed.map((entry, i) => (
 					<AnsweredQuestion key={i} question={entry.question} parsed={entry} />
 				))}

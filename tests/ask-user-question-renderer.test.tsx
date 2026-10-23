@@ -4,6 +4,7 @@ import {cleanup, render} from "@testing-library/react";
 import {afterEach, describe, expect, it} from "vite-plus/test";
 import {AskUserQuestionRenderer} from "../src/components/tool-renderers/ask-user-question-renderer";
 import type {ClientToolCall} from "../src/components/tool-renderers/types";
+import {markQuestionCardSeen} from "../src/lib/question-card-store";
 
 afterEach(cleanup);
 
@@ -98,6 +99,26 @@ describe("AskUserQuestionRenderer", () => {
 			],
 			mentionsUnchosen: false,
 			buttons: 0,
+		});
+	});
+
+	it("fades the receipt in (upstream's epitaxy-question-receipt-enter) only when it replaces a card seen in this page", () => {
+		const unseen = render(
+			<AskUserQuestionRenderer toolCall={makeCall({id: "tool-auq-unseen", result: ANSWERED_RESULT})} />,
+		);
+		const unseenClassName = unseen.container.querySelector(".card-ring")!.className;
+		cleanup();
+		markQuestionCardSeen("tool-auq-seen");
+		const seen = render(
+			<AskUserQuestionRenderer toolCall={makeCall({id: "tool-auq-seen", result: ANSWERED_RESULT})} />,
+		);
+
+		expect({
+			unseen: unseenClassName,
+			seen: seen.container.querySelector(".card-ring")!.className,
+		}).toStrictEqual({
+			unseen: "card-ring -mt-[3px] mb-[7px] flex w-full max-w-[480px] flex-col divide-y divide-[var(--card-outline)] overflow-clip rounded-r6 select-text",
+			seen: "card-ring -mt-[3px] mb-[7px] flex w-full max-w-[480px] flex-col divide-y divide-[var(--card-outline)] overflow-clip rounded-r6 select-text animate-question-receipt-enter motion-reduce:animate-none",
 		});
 	});
 

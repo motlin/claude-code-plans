@@ -26,6 +26,7 @@
 @theme {
 	--animate-notify-tip-in: notify-tip-in 150ms ease-out;
 	--animate-approval-inline-enter: approval-inline-enter 160ms ease-out;
+	--animate-question-receipt-enter: approval-inline-enter 200ms ease-out;
 	/* System monospace fallback stack. The features below keep a custom
 	   Settings ▸ Code font from merging "==" or "->" into ligatures. */
 	--font-mono: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
@@ -1307,6 +1308,7 @@ html[data-motion="reduced"] *::after {
 html[data-motion="reduced"] .animate-pulse,
 html[data-motion="reduced"] .animate-ping,
 html[data-motion="reduced"] .animate-approval-inline-enter,
+html[data-motion="reduced"] .animate-question-receipt-enter,
 html[data-motion="reduced"] .status-dot[data-kind="running"],
 html[data-motion="reduced"] .terminal-caret,
 html[data-motion="reduced"] [data-spinner] * {

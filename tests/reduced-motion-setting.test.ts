@@ -19,6 +19,7 @@ describe("Settings ▸ Motion ▸ Reduced", () => {
 			'html[data-motion="reduced"] .animate-pulse,\n' +
 				'html[data-motion="reduced"] .animate-ping,\n' +
 				'html[data-motion="reduced"] .animate-approval-inline-enter,\n' +
+				'html[data-motion="reduced"] .animate-question-receipt-enter,\n' +
 				'html[data-motion="reduced"] .status-dot[data-kind="running"],\n' +
 				'html[data-motion="reduced"] .terminal-caret,\n' +
 				'html[data-motion="reduced"] [data-spinner] * {\n' +
