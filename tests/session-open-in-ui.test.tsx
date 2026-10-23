@@ -135,15 +135,15 @@ afterEach(() => {
 describe("Open in ▸ in the row menu", () => {
 	it("lists claude.ai only when the transcript has a bridge session", async () => {
 		expect(await openSubmenu("cse_alice_100")).toEqual([
-			"Terminal1 [1]",
-			"VS Code2 [2]",
-			"Finder3 [3]",
-			"claude.ai4 [4]",
+			"VS Code1 [1]",
+			"Terminal2 [2]",
+			"claude.ai3 [3]",
+			"Finder4 [4]",
 		]);
 	});
 
 	it("omits claude.ai without a bridge session", async () => {
-		expect(await openSubmenu(null)).toEqual(["Terminal1 [1]", "VS Code2 [2]", "Finder3 [3]"]);
+		expect(await openSubmenu(null)).toEqual(["VS Code1 [1]", "Terminal2 [2]", "Finder3 [3]"]);
 	});
 
 	it("copies the shell-escaped resume command and toasts", async () => {

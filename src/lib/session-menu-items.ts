@@ -293,12 +293,13 @@ export function getSessionMenuItems(
 		accelerator: ACCELERATORS[id],
 	});
 
+	// Upstream's order: editors, Terminal, (local live terminal), Desktop app, then the file manager.
 	const openInTargets: Array<[SessionMenuItemId, boolean]> = [
+		["open-vscode", session.cwd !== null && has("openVsCode")],
 		["open-terminal", session.cwd !== null && has("openTerminal")],
 		["open-live-terminal", session.hasLiveTerminal && has("openLiveTerminal")],
-		["open-vscode", session.cwd !== null && has("openVsCode")],
-		["open-finder", session.cwd !== null && has("openFinder")],
 		["open-claude-ai", session.bridgeSessionId !== null && has("openClaudeAi")],
+		["open-finder", session.cwd !== null && has("openFinder")],
 	];
 	const openIn = openInTargets.flatMap(([id, offered]): SessionMenuItem[] =>
 		offered ? [{kind: "item", id, label: sessionMenuItemLabels[id]}] : [],

@@ -132,25 +132,28 @@ describe("getSessionMenuItems", () => {
 		]);
 	});
 
-	it("numbers Open in from Terminal 1, as upstream does", () => {
-		const [openIn] = getSessionMenuItems(
-			session({hasLiveTerminal: true, cwd: "/Users/alice/projects/alpha", bridgeSessionId: "cse_alice_100"}),
-			ALL,
-			{surface: "header"},
-		);
-		expect(openIn).toEqual({
-			kind: "item",
-			id: "open-in",
-			label: "Open in",
-			submenu: [
-				{kind: "item", id: "open-terminal", label: "Terminal", accelerator: "1"},
-				{kind: "item", id: "open-live-terminal", label: "Live terminal", accelerator: "2"},
-				{kind: "item", id: "open-vscode", label: "VS Code", accelerator: "3"},
-				{kind: "item", id: "open-finder", label: "Finder", accelerator: "4"},
-				{kind: "item", id: "open-claude-ai", label: "claude.ai", accelerator: "5"},
-			],
-		});
-	});
+	it.each(["header", "row"] as const)(
+		"orders the %s Open in submenu editors first and the file manager last, as upstream does",
+		(surface) => {
+			const [openIn] = getSessionMenuItems(
+				session({hasLiveTerminal: true, cwd: "/Users/alice/projects/alpha", bridgeSessionId: "cse_alice_100"}),
+				ALL,
+				{surface},
+			);
+			expect(openIn).toEqual({
+				kind: "item",
+				id: "open-in",
+				label: "Open in",
+				submenu: [
+					{kind: "item", id: "open-vscode", label: "VS Code", accelerator: "1"},
+					{kind: "item", id: "open-terminal", label: "Terminal", accelerator: "2"},
+					{kind: "item", id: "open-live-terminal", label: "Live terminal", accelerator: "3"},
+					{kind: "item", id: "open-claude-ai", label: "claude.ai", accelerator: "4"},
+					{kind: "item", id: "open-finder", label: "Finder", accelerator: "5"},
+				],
+			});
+		},
+	);
 
 	it("offers Unarchive for an archived session", () => {
 		expect(getSessionMenuItems(session({archived: true}), ALL, {surface: "row"}).at(-1)).toEqual({
