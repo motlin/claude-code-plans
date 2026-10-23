@@ -16,11 +16,12 @@ import type {ReactNode} from "react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionGroups} from "../src/components/sidebar/session-groups";
 import {RecentSessionsResponse, recentSessionsInfiniteQueryOptions} from "../src/lib/api/sessions";
-import {DEFAULT_SESSION_LIST_PREFS} from "../src/lib/session-groups";
+import {DEFAULT_SESSION_LIST_PREFS, type SessionListPrefs} from "../src/lib/session-groups";
 import type {SessionBucket} from "../src/lib/session-state";
 import {readSidebarState} from "../src/lib/sidebar-store";
 import {__unreadStoreTesting, syncUnseenFromSummaries} from "../src/lib/unread-store";
 import {installLocalStorage} from "./fake-storage";
+import {PIN_STORAGE_KEY} from "../src/lib/pin-store";
 import {readFileSync} from "node:fs";
 
 const MINUTE = 60 * 1000;
@@ -67,7 +68,13 @@ function seedQueryClient(sessions: unknown[], nextCursor: string | null = null):
 
 async function renderGroups(
 	sessions: unknown[],
-	options: {nextCursor?: string | null; filterSlot?: ReactNode; unseeded?: boolean; activeItemId?: string} = {},
+	options: {
+		nextCursor?: string | null;
+		filterSlot?: ReactNode;
+		unseeded?: boolean;
+		activeItemId?: string;
+		prefs?: SessionListPrefs;
+	} = {},
 ) {
 	const queryClient =
 		options.unseeded === true
@@ -78,7 +85,11 @@ async function renderGroups(
 			<SettingsProvider>
 				<QueryClientProvider client={queryClient}>
 					<ToastProvider>
-						<SessionGroups activeItemId={options.activeItemId ?? null} filterSlot={options.filterSlot} />
+						<SessionGroups
+							activeItemId={options.activeItemId ?? null}
+							filterSlot={options.filterSlot}
+							{...(options.prefs === undefined ? {} : {prefs: options.prefs})}
+						/>
 						<Outlet />
 					</ToastProvider>
 				</QueryClientProvider>
@@ -321,7 +332,62 @@ describe("sidebar SessionGroups", () => {
 				hidesOnHover: true,
 				flushRight: true,
 			},
-			done: {leading: false, mark: null, env: "local", hidesOnHover: true, flushRight: true},
+			done: {leading: false, mark: null, env: "bridge", hidesOnHover: true, flushRight: true},
+		});
+	});
+
+	it("draws upstream's bridge env glyph on the icon, LaptopSlash when offline, and none on pinned rows or under project grouping", async () => {
+		const rows = [
+			session("d1", "Live bridged", "done", 5),
+			{...session("d2", "Offline bridged", "done", 6), remoteControl: true, state: "ended"},
+			{...session("d3", "Live remote", "done", 7), remoteControl: true},
+			session("p1", "Pinned one", "done", 8),
+		];
+		const describeEnv = (container: HTMLElement) =>
+			Object.fromEntries(
+				[...container.querySelectorAll<HTMLElement>("a[data-row-main-button]")].map((link) => {
+					const glyph = link
+						.closest("[data-session-actions]")
+						?.querySelector("[data-row-decoration] [data-env-glyph]");
+					return [
+						link.textContent,
+						glyph === null || glyph === undefined
+							? null
+							: {
+									tag: glyph.tagName.toLowerCase(),
+									kind: glyph.getAttribute("data-env-glyph"),
+									offline: glyph.hasAttribute("data-env-offline"),
+									wrapper: glyph.parentElement?.getAttribute("class") ?? null,
+									wrapperHidden: glyph.parentElement?.getAttribute("aria-hidden") ?? null,
+									slash: glyph.querySelector('path[d="m2 2 20 20"]') !== null,
+								},
+					];
+				}),
+			);
+		const wrapper = "flex size-[var(--sb-row-ctl)] shrink-0 items-center justify-center";
+		const live = {tag: "svg", kind: "bridge", offline: false, wrapper, wrapperHidden: "true", slash: false};
+
+		localStorage.setItem(PIN_STORAGE_KEY, JSON.stringify({pinnedIds: ["p1"], pinnedOrder: ["p1"]}));
+		const byProject = describeEnv(
+			(await renderGroups(rows, {prefs: {...DEFAULT_SESSION_LIST_PREFS, groupBy: "project"}})).container,
+		);
+		cleanup();
+		const byState = describeEnv((await renderGroups(rows)).container);
+		localStorage.removeItem(PIN_STORAGE_KEY);
+
+		expect({byState, byProject}).toStrictEqual({
+			byState: {
+				"Pinned one": null,
+				"Live bridged": live,
+				"Offline bridged": {...live, offline: true, slash: true},
+				"Live remote": live,
+			},
+			byProject: {
+				"Pinned one": null,
+				"Live bridged": null,
+				"Offline bridged": null,
+				"Live remote": null,
+			},
 		});
 	});
 

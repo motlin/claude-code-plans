@@ -115,6 +115,8 @@ export function GroupSection({
 	const customGroupId = customGroupIdOfKey(group.key);
 	const isProject = isProjectGroupKey(group.key);
 	const appearance = useSectionAppearance(group.key, customGroupId, isProject);
+	// Upstream omits the env glyph on pinned rows and when the section is itself a place.
+	const envGlyph = pinnedIds === undefined && !isProject;
 	const toggle = (
 		<button
 			type="button"
@@ -185,6 +187,7 @@ export function GroupSection({
 										row={row}
 										selected={row.sessionId === activeItemId}
 										pinnedIds={pinnedIds}
+										envGlyph={envGlyph}
 									/>
 								</div>
 								{nested !== undefined && (
@@ -194,6 +197,7 @@ export function GroupSection({
 										activeItemId={activeItemId}
 										familyHeadIds={familyHeadIds}
 										dragRowProps={dragRowProps}
+										envGlyph={envGlyph}
 									/>
 								)}
 							</Fragment>
@@ -337,12 +341,14 @@ function SessionFamily({
 	activeItemId,
 	familyHeadIds,
 	dragRowProps,
+	envGlyph,
 }: {
 	head: SidebarSessionRow;
 	nested: readonly SidebarSessionRow[];
 	activeItemId: string | null;
 	familyHeadIds: readonly string[];
 	dragRowProps: ((id: string) => SidebarDragRowProps) | undefined;
+	envGlyph: boolean;
 }) {
 	const {collapsedFamilies} = useSidebarState();
 	const collapsed = collapsedFamilies.includes(familyKey(head.sessionId));
@@ -410,6 +416,7 @@ function SessionFamily({
 								row={child}
 								selected={child.sessionId === activeItemId}
 								pinnedIds={undefined}
+								envGlyph={envGlyph}
 								lineage={parentTitle === undefined ? "Nested session" : `Forked from ${parentTitle}`}
 							/>
 						</div>
@@ -470,11 +477,14 @@ function SessionRowLink({
 	row,
 	selected,
 	pinnedIds,
+	envGlyph,
 	lineage,
 }: {
 	row: SidebarSessionRow;
 	selected: boolean;
 	pinnedIds: readonly string[] | undefined;
+	/** Draw the settled row's environment glyph in the trailing slot. */
+	envGlyph: boolean;
 	/** Screen-reader note on a nested row, e.g. "Forked from {title}". */
 	lineage?: string;
 }) {
@@ -535,7 +545,7 @@ function SessionRowLink({
 					</span>
 				</Link>
 				{/* Upstream's status sits beside the link, outside its accessible name */}
-				<SidebarRowDecoration session={row.session} />
+				<SidebarRowDecoration session={row.session} envGlyph={envGlyph} />
 			</SessionActionsMenu>
 		</SessionHoverCard>
 	);
