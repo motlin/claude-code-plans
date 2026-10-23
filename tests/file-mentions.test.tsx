@@ -301,7 +301,8 @@ describe("Composer accepted @ mention chips", () => {
 			transparent: true,
 			path: "src/lib/index.ts",
 			directory: undefined,
-			chipClass: "group/mention relative cursor-interactive pointer-events-auto text-upstream-accent",
+			chipClass:
+				"group/mention relative cursor-interactive pointer-events-auto text-upstream-accent [overflow-wrap:anywhere]",
 			text: "@src/lib/index.ts",
 			childCount: 2,
 			highlight: {
@@ -310,7 +311,7 @@ describe("Composer accepted @ mention chips", () => {
 				className:
 					"pointer-events-none absolute -inset-y-0.5 -left-0.5 -right-1 rounded-r5 [@media(hover:hover)]:group-hover/mention:bg-fill-ghost-hover",
 			},
-			label: {title: "src/lib/index.ts", className: "relative"},
+			label: {title: "src/lib/index.ts", className: "relative [&::selection]:bg-transparent"},
 		});
 	});
 

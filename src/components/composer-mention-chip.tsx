@@ -16,7 +16,8 @@ export interface MentionChipActions {
  * inline so its glyphs line up with the transparent textarea text under it (documented deviation).
  * It's the only part of the pointer-transparent overlay that takes the mouse, so hover works.
  */
-const CHIP_CLASS = "group/mention relative cursor-interactive pointer-events-auto text-upstream-accent";
+const CHIP_CLASS =
+	"group/mention relative cursor-interactive pointer-events-auto text-upstream-accent [overflow-wrap:anywhere]";
 
 const HIGHLIGHT_BASE_CLASS = "pointer-events-none absolute -inset-y-0.5 -left-0.5 -right-1 rounded-r5";
 const HIGHLIGHT_CLASS = `${HIGHLIGHT_BASE_CLASS} [@media(hover:hover)]:group-hover/mention:bg-fill-ghost-hover`;
@@ -71,7 +72,7 @@ function ComposerMentionChip({
 			>
 				<span aria-hidden="true" className={selected ? HIGHLIGHT_SELECTED_CLASS : HIGHLIGHT_CLASS} />
 				{/* Upstream's renderedText keeps a directory's trailing slash. */}
-				<span title={isDirectory ? `${relPath}/` : relPath} className="relative">
+				<span title={isDirectory ? `${relPath}/` : relPath} className="relative [&::selection]:bg-transparent">
 					{children}
 				</span>
 			</ContextMenuTrigger>
