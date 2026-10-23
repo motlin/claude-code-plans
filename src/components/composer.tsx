@@ -725,6 +725,14 @@ export function Composer({
 	}
 
 	function attachFiles(files: readonly File[]) {
+		// Upstream refuses attachments until the session's meta has loaded; locally that's the launch window.
+		if (disabled) {
+			toast?.({
+				kind: "error",
+				message: "Files can’t be attached until the session finishes loading. Try again in a moment.",
+			});
+			return;
+		}
 		attachUploadedFiles(draftKey, files, (options) => toast?.(options));
 	}
 
@@ -839,16 +847,17 @@ export function Composer({
 				className={COMPOSER_CARD_CLASS}
 				onClick={() => textareaRef.current?.focus()}
 				onDragOver={(e) => {
-					if (disabled || !hasFiles(e)) return;
+					if (!hasFiles(e)) return;
+					// Accept the drag even while launching so the drop lands here and toasts instead of opening the file.
 					e.preventDefault();
-					setDragging(true);
+					if (!disabled) setDragging(true);
 				}}
 				onDragLeave={(e) => {
 					if (!(e.relatedTarget instanceof Node && e.currentTarget.contains(e.relatedTarget)))
 						setDragging(false);
 				}}
 				onDrop={(e) => {
-					if (disabled || !hasFiles(e)) return;
+					if (!hasFiles(e)) return;
 					e.preventDefault();
 					setDragging(false);
 					attachFiles(Array.from(e.dataTransfer.files));

@@ -60,7 +60,7 @@ function savedAs(path: string) {
 	return (file: File) => Response.json({path, name: file.name, mediaType: file.type, size: file.size}, {status: 201});
 }
 
-function renderComposer(chin?: ComposerState) {
+function renderComposer(chin?: ComposerState, disabled = false) {
 	const onSend = vi.fn<OnSend>();
 	// The + menu's Connectors submenu reads the MCP server list.
 	const queryClient = new QueryClient();
@@ -72,6 +72,7 @@ function renderComposer(chin?: ComposerState) {
 					variant="session"
 					draftKey={SESSION}
 					onSend={onSend}
+					disabled={disabled}
 					{...(chin === undefined ? {} : {chin})}
 				/>
 			</ToastContext.Provider>
@@ -480,6 +481,41 @@ describe("Composer attachments", () => {
 			uploads: ["small.png"],
 			toasts: [[{kind: "warning", message: "Some images were too large to attach. Maximum size is 5 MB."}]],
 			chips: ["small.png"],
+		});
+	});
+	it("refuses a file drop and a file paste while the session is launching, with upstream's finishes-loading toast", () => {
+		deferUploads();
+		renderComposer(undefined, true);
+		const card = prompt().closest("[data-composer-card]")!;
+		const loading = {
+			kind: "error",
+			message: "Files can’t be attached until the session finishes loading. Try again in a moment.",
+		};
+
+		const dragOverNotPrevented = fireEvent.dragOver(card, {dataTransfer: {types: ["Files"], files: []}});
+		const overlay = screen.queryByText("Drop files here") !== null;
+		const dropNotPrevented = fireEvent.drop(card, {dataTransfer: {types: ["Files"], files: [png("dropped.png")]}});
+		const pasteNotPrevented = paste({files: [png("pasted.png")]});
+		const textPasteNotPrevented = paste({text: "hello"});
+
+		expect({
+			dragOverNotPrevented,
+			overlay,
+			dropNotPrevented,
+			pasteNotPrevented,
+			textPasteNotPrevented,
+			uploads,
+			toasts: toasts.mock.calls,
+			chips: chipNames(),
+		}).toStrictEqual({
+			dragOverNotPrevented: false,
+			overlay: false,
+			dropNotPrevented: false,
+			pasteNotPrevented: false,
+			textPasteNotPrevented: true,
+			uploads: [],
+			toasts: [[loading], [loading]],
+			chips: [],
 		});
 	});
 });
