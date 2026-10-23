@@ -173,8 +173,10 @@ function PhoneTabStrip({
 	);
 }
 
-/** How long a deep-linked row stays flashed, as on claude.ai/code. */
-const FLASH_MS = 1500;
+/** claude.ai/code lights a deep-linked row this long after opening, once the scroll has landed. */
+const FLASH_DELAY_MS = 300;
+/** How long a deep-linked row stays lit, matching upstream's 1.95s highlight animations. */
+const FLASH_MS = 1950;
 
 /**
  * The upstream-shaped Settings modal. It is open exactly while the location hash
@@ -264,16 +266,20 @@ export function SettingsDialog() {
 	const [seenDeepLinkRow, setSeenDeepLinkRow] = useState<string | null>(null);
 	if (deepLinkRow !== seenDeepLinkRow) {
 		setSeenDeepLinkRow(deepLinkRow);
-		if (deepLinkRow !== null) setFlash({row: deepLinkRow});
+		if (deepLinkRow !== null) setFlash({row: deepLinkRow, lit: false});
 	}
 	useEffect(() => {
 		if (deepLinkRow !== null) selectTab(tab);
 	}, [selectTab, tab, deepLinkRow]);
 	useEffect(() => {
 		if (flash === null) return undefined;
-		const timer = setTimeout(() => {
-			setFlash(null);
-		}, FLASH_MS);
+		const timer = flash.lit
+			? setTimeout(() => {
+					setFlash(null);
+				}, FLASH_MS)
+			: setTimeout(() => {
+					setFlash({row: flash.row, lit: true});
+				}, FLASH_DELAY_MS);
 		return () => {
 			clearTimeout(timer);
 		};

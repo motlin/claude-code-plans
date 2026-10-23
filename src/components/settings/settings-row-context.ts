@@ -14,9 +14,13 @@ export function useSettingsRowIds(): SettingsRowIds | null {
 	return useContext(SettingsRowContext);
 }
 
-/** A deep-linked row to scroll to and flash; a new object re-flashes the same row. */
+/**
+ * A deep-linked row to scroll to and flash; a new object re-flashes the same row.
+ * The row scrolls into view at once and is `lit` (upstream's highlight classes) a beat later.
+ */
 export interface SettingsFlash {
 	row: string;
+	lit: boolean;
 }
 
 export const SettingsFlashContext = createContext<SettingsFlash | null>(null);

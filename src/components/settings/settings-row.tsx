@@ -66,11 +66,12 @@ export function SettingsRow({slug, title, description, children, footnote, class
 	const tab = useContext(SettingsTabContext);
 	const flash = useContext(SettingsFlashContext);
 	const flashing = flash?.row === slug;
+	const lit = flashing && flash.lit;
 	const rowRef = useRef<HTMLDivElement>(null);
 	const rowIds = useMemo(() => ({titleId, descriptionId}), [titleId, descriptionId]);
 
 	useEffect(() => {
-		if (flashing) rowRef.current?.scrollIntoView({block: "center", behavior: "smooth"});
+		if (flashing && !flash.lit) rowRef.current?.scrollIntoView({block: "center", behavior: "smooth"});
 	}, [flash, flashing]);
 
 	return (
@@ -84,12 +85,15 @@ export function SettingsRow({slug, title, description, children, footnote, class
 				// Upstream's data-settings-row is empty; here it holds the slug, which search and the deep-link flash key off.
 				data-settings-row={slug}
 				data-settings-item=""
-				data-settings-flash={flashing ? "" : undefined}
-				className={`group/setting flex items-center justify-between gap-7 py-3 ${className ?? ""}`}
+				className={`group/setting flex items-center justify-between gap-7 py-3 ${lit ? "feature-anchor-row-fill" : ""} ${className ?? ""}`}
 			>
 				<div className="flex min-w-0 flex-1 flex-col justify-center gap-1">
 					<div id={titleId} className="text-body text-primary">
-						<span className="settings-row-title inline-block align-top">{title}</span>
+						<span
+							className={`settings-row-title inline-block align-top ${lit ? "feature-anchor-highlight" : ""}`}
+						>
+							{title}
+						</span>
 					</div>
 					{description === undefined ? null : (
 						<div

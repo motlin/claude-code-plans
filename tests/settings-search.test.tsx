@@ -87,10 +87,12 @@ function renderedRows(dialog: HTMLElement): Array<[string, string]> {
 	});
 }
 
-function flashingRows(): string[] {
-	return [...document.querySelectorAll<HTMLElement>("[data-settings-flash]")].map(
-		(row) => row.dataset["settingsRow"] ?? "",
-	);
+/** Each upstream-flashed row's slug and whether its title carries the wavy underline. */
+function flashingRows(): {row: string; title: boolean}[] {
+	return [...document.querySelectorAll<HTMLElement>(".feature-anchor-row-fill")].map((row) => ({
+		row: row.dataset["settingsRow"] ?? "",
+		title: row.querySelector(".settings-row-title")?.classList.contains("feature-anchor-highlight") ?? false,
+	}));
 }
 
 describe("settings search", () => {
@@ -142,7 +144,7 @@ describe("settings search", () => {
 		});
 	});
 
-	it("deep links scroll to and flash the row for 1.5s, then collapse the hash", async () => {
+	it("deep links scroll at once, flash the row from 300ms for 1.95s, and collapse the hash", async () => {
 		const router = buildRouter("/#settings/claude-code/code-font");
 		await router.load();
 		vi.useFakeTimers({toFake: ["setTimeout", "clearTimeout"]});
@@ -152,18 +154,26 @@ describe("settings search", () => {
 
 		expect({hash: router.state.location.hash, flashing: flashingRows(), scrolled}).toStrictEqual({
 			hash: "settings/claude-code",
-			flashing: ["code-font"],
+			flashing: [],
 			scrolled: ["code-font"],
 		});
 
 		await act(async () => {
-			await vi.advanceTimersByTimeAsync(1499);
+			await vi.advanceTimersByTimeAsync(299);
 		});
-		expect(flashingRows()).toStrictEqual(["code-font"]);
+		expect(flashingRows()).toStrictEqual([]);
 		await act(async () => {
 			await vi.advanceTimersByTimeAsync(1);
 		});
-		expect(flashingRows()).toStrictEqual([]);
+		expect(flashingRows()).toStrictEqual([{row: "code-font", title: true}]);
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(1949);
+		});
+		expect(flashingRows()).toStrictEqual([{row: "code-font", title: true}]);
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(1);
+		});
+		expect({flashing: flashingRows(), scrolled}).toStrictEqual({flashing: [], scrolled: ["code-font"]});
 	});
 
 	it("shows grouped results and deep links to the selected row", async () => {
@@ -204,8 +214,10 @@ describe("settings search", () => {
 		await waitFor(() => {
 			expect(router.state.location.hash).toBe("settings/sessions");
 		});
-		expect(flashingRows()).toStrictEqual(["default-view"]);
 		expect(scrolled).toStrictEqual(["default-view"]);
+		await waitFor(() => {
+			expect(flashingRows()).toStrictEqual([{row: "default-view", title: true}]);
+		});
 		expect(screen.queryByRole("dialog", {name: "Search results"})).toBeNull();
 	});
 
