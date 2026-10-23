@@ -160,7 +160,7 @@ export const SHORTCUTS = {
 		group: "general",
 		bindings: DIGITS.flatMap(environmentPresetBindings),
 		ownerSlug: "home-start-card-states",
-		enabled: false,
+		enabled: true,
 		displayKeys: {mac: "cmd+alt+1…9", nonMac: "alt+1…9"},
 	},
 	new_environment: {
@@ -168,7 +168,7 @@ export const SHORTCUTS = {
 		group: "general",
 		bindings: environmentPresetBindings("0"),
 		ownerSlug: "home-start-card-states",
-		enabled: false,
+		enabled: true,
 	},
 	rename_session: {
 		description: "Rename session",

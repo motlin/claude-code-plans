@@ -1,6 +1,13 @@
 import {useEffect, useRef} from "react";
 
-import {bindingsFor, isEditableTarget, isInModalLayer, isMacPlatform, matchBinding} from "../lib/shortcuts/match";
+import {
+	bindingsFor,
+	isEditableTarget,
+	isInModalLayer,
+	isMacPlatform,
+	isWindowsPlatform,
+	matchBinding,
+} from "../lib/shortcuts/match";
 import {toAriaKeyShortcuts} from "../lib/shortcuts/format";
 import {type Binding, bindingToKeys, type ShortcutId} from "../lib/shortcuts/registry";
 import {useIsMac} from "./use-is-mac";
@@ -47,12 +54,13 @@ export function dispatchShortcutEvent(event: KeyboardEvent): void {
 function dispatch(event: KeyboardEvent): void {
 	if (event.defaultPrevented) return;
 	const isMac = isMacPlatform();
+	const isWindows = isWindowsPlatform();
 	const inModal = isInModalLayer(document.activeElement);
 	const inEditable = isEditableTarget(event.target);
 	for (const registration of registrations.toSorted(byPriority)) {
 		const {disabled = false, allowInEditable = true, allowInModal = false} = registration.options.current;
 		if (disabled) continue;
-		const binding = bindingsFor(registration.id, isMac).find((b) => matchBinding(event, b));
+		const binding = bindingsFor(registration.id, isMac, isWindows).find((b) => matchBinding(event, b));
 		if (binding === undefined) continue;
 		if (inModal && !allowInModal) continue;
 		if (inEditable && !allowInEditable) continue;

@@ -1,6 +1,7 @@
 import {Check, Folder, X} from "lucide-react";
 import {useRef} from "react";
 
+import {useShortcut} from "../../hooks/use-shortcut";
 import {requestHomeComposerFocus} from "../../lib/home-composer-focus";
 import type {NextStepCandidate, NextStepId, NextStepRow} from "../../lib/home-next-steps";
 import {TOUCH_REVEAL} from "../../lib/touch-reveal";
@@ -69,9 +70,16 @@ function RecentEnvironments({
 	selected: StartProject | undefined;
 	choose: (projectId: string) => void;
 }) {
+	const rows = visibleRows(projects, selected);
+	// Upstream's ⌥⌘1…9 picks the Nth environment preset; locally the Nth row. Digits past the
+	// list are still claimed (preventDefault), like upstream.
+	useShortcut("select_environment", (event) => {
+		const project = rows[Number(event.code.slice("Digit".length)) - 1];
+		if (project !== undefined) choose(project.id);
+	});
 	return (
 		<ul role="list" aria-label="Recent environments" className={CARD_CLASS}>
-			{visibleRows(projects, selected).map((project) => {
+			{rows.map((project) => {
 				const current = project.id === selected?.id;
 				const content = (
 					<>

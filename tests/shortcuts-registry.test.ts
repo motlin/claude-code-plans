@@ -163,6 +163,8 @@ describe("shortcut registry", () => {
 			"shortcuts_modal",
 			"settings",
 			"new_session",
+			"select_environment",
+			"new_environment",
 			"rename_session",
 			"archive_session",
 			"toggle_read_session",

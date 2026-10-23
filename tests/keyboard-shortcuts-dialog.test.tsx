@@ -128,6 +128,8 @@ describe("KeyboardShortcutsDialog", () => {
 				"Keyboard shortcuts",
 				"Settings",
 				"New session",
+				"Select environment",
+				"New environment",
 				"Rename session",
 				"Archive session",
 				"Mark session as read/unread",
@@ -182,6 +184,21 @@ describe("KeyboardShortcutsDialog", () => {
 			"⌘Command",
 			",",
 		]);
+	});
+
+	it("lists Select environment as ⌥⌘1…9 and New environment as ⌥⌘0", async () => {
+		const composer = renderWithComposer();
+		pressShortcutsKey(composer);
+
+		const dialog = await screen.findByRole("dialog", {name: "Keyboard shortcuts"});
+		const keycaps = (label: string) =>
+			[...(within(dialog).getByText(label).parentElement?.querySelectorAll("kbd") ?? [])].map(
+				(kbd) => kbd.textContent,
+			);
+		expect({select: keycaps("Select environment"), create: keycaps("New environment")}).toStrictEqual({
+			select: ["⌥Option", "⌘Command", "1…9"],
+			create: ["⌥Option", "⌘Command", "0"],
+		});
 	});
 
 	it("lists Send and stay on the new session page with ⌘⏎ keycaps", async () => {

@@ -3,6 +3,7 @@ import {Popover} from "@base-ui/react/popover";
 import {Check, ChevronDown, Folder} from "lucide-react";
 import {type KeyboardEvent, useId, useRef, useState} from "react";
 
+import {useShortcut} from "../../hooks/use-shortcut";
 import type {StartProject} from "../../lib/palette-start-session";
 import {PLACE_CHIP_CLASS} from "../composer-tokens";
 
@@ -72,6 +73,15 @@ export function ProjectPicker({projects, selected, onSelect, variant = "chip"}: 
 		}
 		setOpen(next);
 	};
+
+	// Upstream's ⌥⌘0 "New environment"; locally it opens the start card's Choose environment picker.
+	useShortcut(
+		"new_environment",
+		() => {
+			handleOpenChange(true);
+		},
+		{disabled: variant !== "choose"},
+	);
 
 	const choose = (project: StartProject | undefined) => {
 		if (project === undefined) return;
