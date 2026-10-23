@@ -161,12 +161,14 @@ export function QuestionCard({
 	const settled = (at: number) => skipped[at] === true || isAnswered(drafts[at] ?? initialDraft(question));
 	const unanswered = questions.findIndex((_, at) => !settled(at));
 	const canAdvance = isLast ? unanswered === -1 : isAnswered(draft);
-	// Upstream's disabledReason for the primary button.
+	// Upstream's disabledReason for the primary button: the current page first,
+	// then the first other page still waiting.
+	const otherUnanswered = questions.findIndex((_, at) => at !== index && !settled(at));
 	const disabledReason =
 		!editable || canAdvance
 			? null
-			: isLast
-				? `Question ${unanswered + 1} is unanswered`
+			: isAnswered(draft)
+				? `Question ${otherUnanswered + 1} is unanswered`
 				: "Choose an option or skip this question";
 
 	const goTo = (next: number) => {

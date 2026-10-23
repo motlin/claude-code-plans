@@ -511,7 +511,41 @@ describe("QuestionCard", () => {
 		const answered = reason();
 		vi.useRealTimers();
 
-		expect({unanswered, answered}).toStrictEqual({unanswered: "Question 2 is unanswered", answered: null});
+		expect({unanswered, answered}).toStrictEqual({
+			unanswered: "Choose an option or skip this question",
+			answered: null,
+		});
+	});
+
+	it("names the first other unanswered page on the last page only once the current page is answered, as upstream", () => {
+		vi.useFakeTimers();
+		const multi = (header: string): QuestionLike => ({
+			question: `Which ${header}?`,
+			header,
+			multiSelect: true,
+			options: [{label: `${header} A`}, {label: `${header} B`}],
+		});
+		render(<QuestionCard questions={[multi("First"), multi("Second")]} onSubmit={async () => {}} />);
+		fireEvent.click(screen.getByRole("button", {name: "Show next question"}));
+		const reason = () => {
+			const anchor = screen.getByRole("button", {name: /^Submit/}).parentElement!;
+			fireEvent.pointerEnter(anchor);
+			act(() => {
+				vi.advanceTimersByTime(1000);
+			});
+			const tip = screen.queryByRole("tooltip")?.textContent ?? null;
+			fireEvent.pointerLeave(anchor);
+			return tip;
+		};
+		const bothEmpty = reason();
+		fireEvent.click(screen.getByRole("button", {name: /^Second A/}));
+		const currentAnswered = reason();
+		vi.useRealTimers();
+
+		expect({bothEmpty, currentAnswered}).toStrictEqual({
+			bothEmpty: "Choose an option or skip this question",
+			currentAnswered: "Question 1 is unanswered",
+		});
 	});
 
 	describe("keeping drafts and page across remounts, as upstream's per-tool draft store", () => {
