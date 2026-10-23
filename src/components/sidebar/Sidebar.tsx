@@ -152,12 +152,12 @@ export function Sidebar({
 						</button>
 						<SidebarWordmark className="ml-2" />
 					</div>
-					{/* Upstream's CDS lg button: the ⌘K palette opens in search mode over the open sheet. */}
+					{/* Upstream's CDS lg button: the ⌘K default entry opens forced to Search over the open sheet. */}
 					<button
 						type="button"
 						data-prefetch="palette"
 						onClick={() => {
-							openCommandPalette("search");
+							openCommandPalette("default", {source: "mobile"});
 						}}
 						className="flex h-10 w-full items-center gap-1 rounded-r7 bg-fill-control px-4 text-[15px]/[22px] text-primary transition-colors"
 					>

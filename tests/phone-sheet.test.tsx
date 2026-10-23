@@ -71,7 +71,7 @@ function PaletteProbe() {
 	const palette = useCommandPalette();
 	return (
 		<div data-testid="palette-probe">
-			{palette.open ? "open" : "closed"}:{palette.entrypoint}
+			{palette.open ? "open" : "closed"}:{palette.entrypoint}:{palette.mode}
 		</div>
 	);
 }
@@ -328,7 +328,7 @@ describe("phone sheet sidebar", () => {
 		expect(sheet().querySelector("[data-nav-groups-gap]")?.className).toBe("h-[11px] shrink-0");
 	});
 
-	it("puts upstream's full-width Search button under Close and opens the palette in search mode", async () => {
+	it("puts upstream's full-width Search button under Close and opens the ⌘K default entry forced to Search", async () => {
 		mockViewport(390);
 		await renderFrame();
 		await openSheet();
@@ -366,7 +366,7 @@ describe("phone sheet sidebar", () => {
 		fireEvent.click(search);
 
 		await waitFor(() => {
-			expect(screen.getByTestId("palette-probe").textContent).toBe("open:search");
+			expect(screen.getByTestId("palette-probe").textContent).toBe("open:default:search");
 		});
 	});
 

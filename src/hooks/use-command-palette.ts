@@ -25,11 +25,21 @@ function writeStoredMode(mode: PaletteMode): void {
 	}
 }
 
-let activeOpener: ((entrypoint: PaletteEntrypoint) => void) | null = null;
+/**
+ * Upstream's `opensSearching` sources (`Kw()`): the sidebar field and the phone-sheet button open the
+ * ⌘K default entry (Compose switch and all) but force the Search view for that open.
+ */
+export type PaletteSource = "sidebar_field" | "mobile";
 
-/** Opens the mounted palette from outside the hook, like the sidebar footer Search button. */
-export function openCommandPalette(entrypoint: PaletteEntrypoint): void {
-	activeOpener?.(entrypoint);
+export interface PaletteOpenOptions {
+	source?: PaletteSource;
+}
+
+let activeOpener: ((entrypoint: PaletteEntrypoint, options?: PaletteOpenOptions) => void) | null = null;
+
+/** Opens the mounted palette from outside the hook, like the sidebar Search field. */
+export function openCommandPalette(entrypoint: PaletteEntrypoint, options?: PaletteOpenOptions): void {
+	activeOpener?.(entrypoint, options);
 }
 
 export function useCommandPalette() {
@@ -37,14 +47,18 @@ export function useCommandPalette() {
 	const [entrypoint, setEntrypoint] = useState<PaletteEntrypoint>("default");
 	// The remembered tab; the "search" entrypoint forces Search without overwriting it.
 	const [rememberedMode, setRememberedMode] = useState<PaletteMode>(readStoredMode);
+	// A searching source forces Search for this open only, without touching the remembered tab.
+	const [forcedSearch, setForcedSearch] = useState(false);
 
-	const openPalette = useCallback((next: PaletteEntrypoint) => {
+	const openPalette = useCallback((next: PaletteEntrypoint, options?: PaletteOpenOptions) => {
 		setEntrypoint(next);
+		setForcedSearch(options?.source !== undefined);
 		setOpen(true);
 	}, []);
 
 	const toggle = useCallback(() => {
 		setEntrypoint("default");
+		setForcedSearch(false);
 		setOpen((prev) => !prev);
 	}, []);
 
@@ -78,11 +92,12 @@ export function useCommandPalette() {
 
 	const onModeChange = useCallback((mode: PaletteMode) => {
 		setEntrypoint("default");
+		setForcedSearch(false);
 		setRememberedMode(mode);
 		writeStoredMode(mode);
 	}, []);
 
-	const mode: PaletteMode = entrypoint === "search" ? "search" : rememberedMode;
+	const mode: PaletteMode = entrypoint === "search" || forcedSearch ? "search" : rememberedMode;
 
 	return {
 		open,

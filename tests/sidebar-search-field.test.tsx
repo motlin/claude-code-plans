@@ -2,15 +2,17 @@
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {createMemoryHistory, createRootRoute, createRouter, RouterProvider} from "@tanstack/react-router";
-import {cleanup, render, screen, waitFor, within} from "@testing-library/react";
-import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
+import {cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
+import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SettingsProvider} from "../src/components/settings-provider";
 import {DEFAULTS} from "../src/components/settings-context";
 import {Sidebar} from "../src/components/sidebar/Sidebar";
+import {CommandPalette, PALETTE_RECENT_LIMIT} from "../src/components/command-palette";
+import {useCommandPalette} from "../src/hooks/use-command-palette";
 import {applicationSettingsQueryOptions} from "../src/lib/api/application-settings";
 import {approvalsQueryOptions} from "../src/lib/api/approvals";
 import {notificationsQueryOptions} from "../src/lib/api/notifications";
-import {activeSessionsQueryOptions} from "../src/lib/api/sessions";
+import {activeSessionsQueryOptions, recentSessionsQueryOptions} from "../src/lib/api/sessions";
 import {installLocalStorage} from "./fake-storage";
 import {NAV_SECTIONS} from "../src/lib/nav-sections";
 import {ToastProvider} from "../src/components/toast";
@@ -31,10 +33,18 @@ function seedQueryClient(): QueryClient {
 		visibleNavSections: NAV_SECTIONS.filter((section) => section !== "herdr"),
 		ignoredDirs: ["node_modules"],
 	});
+	queryClient.setQueryData(recentSessionsQueryOptions(PALETTE_RECENT_LIMIT).queryKey, {
+		sessions: [],
+		nextCursor: null,
+	});
 	return queryClient;
 }
 
-async function renderSidebar(props: {collapsed?: boolean; phoneSheet?: boolean} = {}) {
+function Palette() {
+	return <CommandPalette {...useCommandPalette()} />;
+}
+
+async function renderSidebar(props: {collapsed?: boolean; phoneSheet?: boolean; palette?: boolean} = {}) {
 	const queryClient = seedQueryClient();
 	const rootRoute = createRootRoute({
 		component: () => (
@@ -45,6 +55,7 @@ async function renderSidebar(props: {collapsed?: boolean; phoneSheet?: boolean} 
 							collapsed={props.collapsed ?? false}
 							{...(props.phoneSheet ? {onPhoneSheetClose: () => {}} : {})}
 						/>
+						{props.palette === true && <Palette />}
 					</SettingsProvider>
 				</ToastProvider>
 			</QueryClientProvider>
@@ -69,10 +80,23 @@ function searchField(): HTMLElement | null {
 	return sidebarNav().querySelector<HTMLElement>("button.df-search-field");
 }
 
-afterEach(cleanup);
+afterEach(() => {
+	cleanup();
+	vi.unstubAllGlobals();
+});
 
 beforeEach(() => {
 	installLocalStorage();
+	vi.stubGlobal("fetch", async () => new Promise(() => {}));
+	vi.stubGlobal(
+		"ResizeObserver",
+		class {
+			observe() {}
+			unobserve() {}
+			disconnect() {}
+		},
+	);
+	Element.prototype.scrollIntoView = () => {};
 });
 
 describe("sidebar search field", () => {
@@ -156,5 +180,30 @@ describe("sidebar search field", () => {
 		await renderSidebar({phoneSheet: true});
 
 		expect(searchField()).toBeNull();
+	});
+
+	it("never takes focus on mouse down", async () => {
+		await renderSidebar();
+
+		const field = searchField();
+
+		expect(field !== null && fireEvent.mouseDown(field)).toBe(false);
+	});
+
+	it("opens the ⌘K default entry in Search without overwriting a remembered Compose tab", async () => {
+		localStorage.setItem("cmdk-mode", "compose");
+		await renderSidebar({palette: true});
+
+		const field = searchField();
+		if (field === null) throw new Error("No search field");
+		fireEvent.click(field);
+		const dialog = await screen.findByRole("dialog", {name: "Search"});
+		const input = await within(dialog).findByRole("combobox", {name: "Search"});
+
+		expect({
+			placeholder: input.getAttribute("placeholder"),
+			modeSwitch: within(dialog).queryByRole("radiogroup", {name: "Search or compose"}) !== null,
+			stored: localStorage.getItem("cmdk-mode"),
+		}).toStrictEqual({placeholder: "Search", modeSwitch: true, stored: "compose"});
 	});
 });

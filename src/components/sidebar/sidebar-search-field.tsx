@@ -18,8 +18,12 @@ export function SidebarSearchField() {
 				data-roving-item=""
 				data-prefetch="palette"
 				aria-keyshortcuts={ariaKeyShortcuts}
+				// Upstream prevents mousedown so a click never focuses the field; focus returns to whatever held it.
+				onMouseDown={(event) => {
+					event.preventDefault();
+				}}
 				onClick={() => {
-					openCommandPalette("default");
+					openCommandPalette("default", {source: "sidebar_field"});
 				}}
 				className="df-search-field hit-row hit-row-main [--cds-hit-gap-y:10px] flex h-[var(--sb-row-h)] w-full shrink-0 items-center gap-[var(--sb-row-gap)] rounded-[var(--sb-radius)] border-none bg-[var(--sb-field-bg)] px-[var(--sb-row-px)] text-start text-[length:var(--sb-row-font)] text-muted forced-colors:border forced-colors:border-solid focus-visible:outline-hidden"
 			>
