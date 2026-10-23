@@ -36,6 +36,7 @@ import {
 } from "../src/lib/tool-input-schemas";
 import {baseFields} from "./fixtures/base-fields";
 import {jsonlRecordFixtures} from "./fixtures/jsonl-records";
+import {diskRegistryIo, scanRegistryDir} from "./registry-disk-scan";
 
 describe("SessionIndexEntrySchema", () => {
 	it("parses a minimal entry", () => {
@@ -2933,32 +2934,15 @@ describe("SessionRegistryFileSchema", () => {
 describe("SessionRegistryFileSchema against disk", () => {
 	const sessionsDir = join(homedir(), ".claude", "sessions");
 
-	it("validates every <pid>.json registry file on disk", () => {
-		let names: string[];
+	it("validates every <pid>.json registry file on disk", async () => {
+		const io = diskRegistryIo(sessionsDir);
 		try {
-			names = readdirSync(sessionsDir);
+			io.readdir();
 		} catch {
 			return;
 		}
 
-		const failures: string[] = [];
-		// Only <pid>.json: the directory also holds <pid>.<hash>.key secrets that must never be read.
-		for (const name of names.filter((file) => /^\d+\.json$/.test(file))) {
-			let parsed: unknown;
-			try {
-				parsed = JSON.parse(readFileSync(join(sessionsDir, name), "utf-8"));
-			} catch {
-				// The CLI rewrites these files in place; a torn read is not drift.
-				continue;
-			}
-			const result = SessionRegistryFileSchema.safeParse(parsed);
-			if (!result.success) {
-				failures.push(
-					`${name}: ${result.error.issues.map((issue) => `${issue.path.join(".")} ${issue.message}`).join(", ")}`,
-				);
-			}
-		}
-
+		const failures = await scanRegistryDir(io, SessionRegistryFileSchema);
 		expect(failures).toStrictEqual([]);
 	});
 });
