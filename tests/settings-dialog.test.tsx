@@ -130,6 +130,41 @@ describe("SettingsDialog", () => {
 		expect(dialog.parentElement?.closest("[data-density]")?.getAttribute("data-density")).toBe("comfortable");
 	});
 
+	it("fades and scales the popup and fades the backdrop on open and close, as upstream's 0.2s ease-out", async () => {
+		await renderAt("/#settings/general");
+
+		const dialog = await screen.findByRole("dialog", {name: "Settings"});
+		const backdrop = dialog.parentElement?.querySelector(":scope > [role='presentation']");
+		const popupClasses = dialog.className.split(" ");
+		const backdropClasses = backdrop?.className.split(" ") ?? [];
+		const popupExpected = [
+			"transition-[opacity,scale]",
+			"duration-200",
+			"ease-[cubic-bezier(0.165,0.84,0.44,1)]",
+			"data-[starting-style]:opacity-0",
+			"data-[starting-style]:scale-[0.98]",
+			"data-[ending-style]:opacity-0",
+			"data-[ending-style]:scale-[0.98]",
+			"motion-reduce:transition-none",
+			"motion-reduce:data-[starting-style]:scale-100",
+			"dark:border",
+			"dark:border-white/5",
+		];
+		const backdropExpected = [
+			"bg-black/40",
+			"dark:bg-black/50",
+			"transition-opacity",
+			"duration-200",
+			"data-[starting-style]:opacity-0",
+			"data-[ending-style]:opacity-0",
+			"motion-reduce:transition-none",
+		];
+		expect({
+			popup: popupExpected.filter((name) => popupClasses.includes(name)),
+			backdrop: backdropExpected.filter((name) => backdropClasses.includes(name)),
+		}).toStrictEqual({popup: popupExpected, backdrop: backdropExpected});
+	});
+
 	it("opens on the hash's tab with that tab marked current", async () => {
 		await renderAt("/#settings/sessions");
 

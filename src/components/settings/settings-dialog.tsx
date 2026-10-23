@@ -291,13 +291,13 @@ export function SettingsDialog() {
 		>
 			<Dialog.Portal>
 				<DensityScope density="comfortable">
-					<Dialog.Backdrop className="fixed inset-0 z-50 bg-black/40" />
+					<Dialog.Backdrop className="fixed inset-0 z-50 bg-black/40 dark:bg-black/50 transition-opacity duration-200 data-[starting-style]:opacity-0 data-[ending-style]:opacity-0 motion-reduce:transition-none" />
 					<Dialog.Popup
 						aria-label="Settings"
 						finalFocus={finalFocus}
 						data-perf-overlay="settings_modal"
 						data-perf-screen={customize === null ? tab : `customize-${customize.section}`}
-						className={`fixed inset-4 z-50 m-auto flex max-h-[50rem] max-w-[1024px] overflow-hidden rounded-card bg-[var(--menu-bg)] dark:bg-surface-2 text-body text-primary dark:shadow-[inset_0_0_0_1px_rgb(255_255_255/0.1),0_1px_2px_rgb(11_11_11/0.06),0_2px_8px_rgba(0,0,0,0.24)] not-dark:shadow-[0_0_0_1px_rgb(11_11_11/0.1),0_1px_2px_rgb(11_11_11/0.06),0_2px_8px_rgb(11_11_11/0.08)] outline-none ${phone ? "flex-col" : ""}`}
+						className={`fixed inset-4 z-50 m-auto flex max-h-[50rem] max-w-[1024px] overflow-hidden dark:border dark:border-white/5 rounded-card bg-[var(--menu-bg)] dark:bg-surface-2 text-body text-primary dark:shadow-[inset_0_0_0_1px_rgb(255_255_255/0.1),0_1px_2px_rgb(11_11_11/0.06),0_2px_8px_rgba(0,0,0,0.24)] not-dark:shadow-[0_0_0_1px_rgb(11_11_11/0.1),0_1px_2px_rgb(11_11_11/0.06),0_2px_8px_rgb(11_11_11/0.08)] outline-none transition-[opacity,scale] duration-200 ease-[cubic-bezier(0.165,0.84,0.44,1)] motion-reduce:transition-none data-[starting-style]:opacity-0 data-[starting-style]:scale-[0.98] motion-reduce:data-[starting-style]:scale-100 data-[ending-style]:opacity-0 data-[ending-style]:scale-[0.98] ${phone ? "flex-col" : ""}`}
 					>
 						{phone ? (
 							// Upstream at phone width: one scroll container (p-24) holding the header, the tab strip and a single column.
