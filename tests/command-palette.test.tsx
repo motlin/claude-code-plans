@@ -223,7 +223,71 @@ describe("CommandPalette shell", () => {
 		fireEvent.change(within(dialog).getByRole("combobox"), {target: {value: "auth"}});
 
 		await waitFor(() => {
-			expect(footer(dialog)).toBeNull();
+			expect(footer(dialog)?.parentElement?.parentElement?.getAttribute("aria-hidden")).toBe("true");
+		});
+	});
+
+	it("collapses the footer with upstream's grid-rows transition instead of unmounting it", async () => {
+		const dialog = await openPalette();
+		const input = within(dialog).getByRole("combobox");
+		const state = () => {
+			const wrapper = footer(dialog)?.parentElement?.parentElement;
+			const card = dialog.querySelector("[cmdk-root]")?.parentElement;
+			return {
+				wrapperClass: wrapper?.className,
+				innerClass: footer(dialog)?.parentElement?.className,
+				ariaHidden: wrapper?.getAttribute("aria-hidden"),
+				inert: wrapper?.hasAttribute("inert"),
+				cardCollapsed: card?.className.includes(
+					"[--cp-footer-collapsed:1] pointer-coarse:[--cp-footer-collapsed:0]",
+				),
+				listMaxHeight: dialog.querySelector<HTMLElement>("[cmdk-list]")?.style.maxHeight,
+			};
+		};
+		const base =
+			"flex-shrink-0 grid transition-[grid-template-rows,opacity] duration-150 ease-out motion-reduce:transition-none mt-auto";
+		const listMaxHeight = "calc(440px + var(--cp-footer-collapsed, 0) * 41px)";
+		const open = {
+			wrapperClass: `${base} grid-rows-[1fr] opacity-100`,
+			innerClass: "min-h-0 overflow-hidden",
+			ariaHidden: "false",
+			inert: false,
+			cardCollapsed: false,
+			listMaxHeight,
+		};
+
+		expect(state()).toStrictEqual(open);
+
+		fireEvent.change(input, {target: {value: "do"}});
+		await waitFor(() => {
+			expect(state()).toStrictEqual({
+				wrapperClass: `${base} grid-rows-[0fr] opacity-0`,
+				innerClass: "min-h-0 overflow-hidden",
+				ariaHidden: "true",
+				inert: true,
+				cardCollapsed: true,
+				listMaxHeight,
+			});
+		});
+
+		fireEvent.change(input, {target: {value: ""}});
+		await waitFor(() => {
+			expect(state()).toStrictEqual(open);
+		});
+	});
+
+	it("keeps the footer open for a whitespace query but drops Change type, like upstream's trimmed check", async () => {
+		const dialog = await openPalette();
+
+		fireEvent.change(within(dialog).getByRole("combobox"), {target: {value: "  "}});
+
+		await waitFor(() => {
+			expect({
+				ariaHidden: footer(dialog)?.parentElement?.parentElement?.getAttribute("aria-hidden"),
+				hints: [...(footer(dialog)?.children[0]?.children[0]?.children ?? [])].map(
+					(hint) => hint.firstElementChild?.textContent,
+				),
+			}).toStrictEqual({ariaHidden: "false", hints: ["Close", "Filters", "Actions"]});
 		});
 	});
 

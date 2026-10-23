@@ -1212,6 +1212,7 @@ function PalettePopup({
 	}
 
 	const compose = mode === "compose";
+	const footerCollapsed = !compose && query.trim() !== "";
 	const now = Date.now();
 	const canSend = canStart && startStep === "idle";
 
@@ -1264,7 +1265,7 @@ function PalettePopup({
 				ref={cardRef}
 				className={`relative overflow-hidden border-[0.5px] border-strong bg-surface-3 shadow-2xl transition-transform duration-150 ease-out motion-reduce:transition-none ${
 					rowActions === null ? "" : "scale-[.97]"
-				} ${PALETTE_RADIUS}`}
+				} ${footerCollapsed ? FOOTER_COLLAPSED_CARD_CLASS : ""} ${PALETTE_RADIUS}`}
 			>
 				<div
 					aria-hidden="true"
@@ -1389,6 +1390,7 @@ function PalettePopup({
 					{/* Upstream holds the list at its 440px cap outside compose, leaving unused space at the bottom. */}
 					<Command.List
 						className={`${compose ? "max-h-[440px]" : "h-[440px]"} overflow-y-auto p-2.5 [&_[cmdk-group]+[cmdk-group]]:mt-1`}
+						{...(compose ? {} : {style: LIST_MAX_HEIGHT_STYLE})}
 					>
 						{startStep === "launching" && (
 							<Command.Group heading="Quick actions" className={GROUP_CLASS}>
@@ -1721,29 +1723,41 @@ function PalettePopup({
 						</div>
 					)}
 
-					{compose && <PaletteFooter hints={[["Send", ["enter"]]]} />}
-					{!compose && query === "" && (
-						<PaletteFooter
-							hints={[
-								["Close", ["esc"]],
-								["Change type", ["left", "right"], "hidden sm:flex items-center gap-2"],
-								["Filters", ["/"], "hidden md:flex items-center gap-2"],
-								["Actions", ["alt+enter"]],
-							]}
-							{...(entrypoint === "search"
-								? {
-										trailing: (
-											<ViewHint
-												label="Compose"
-												onSwitch={() => {
-													onModeChange("compose");
-												}}
-											/>
-										),
-									}
-								: {})}
-						/>
-					)}
+					<FooterCollapse open={!footerCollapsed}>
+						{compose ? (
+							<PaletteFooter hints={[["Send", ["enter"]]]} />
+						) : (
+							<PaletteFooter
+								hints={[
+									["Close", ["esc"]],
+									// Upstream shows Change type only for an exactly-empty query, not a whitespace one.
+									...(query === ""
+										? [
+												[
+													"Change type",
+													["left", "right"],
+													"hidden sm:flex items-center gap-2",
+												] as const,
+											]
+										: []),
+									["Filters", ["/"], "hidden md:flex items-center gap-2"],
+									["Actions", ["alt+enter"]],
+								]}
+								{...(entrypoint === "search"
+									? {
+											trailing: (
+												<ViewHint
+													label="Compose"
+													onSwitch={() => {
+														onModeChange("compose");
+													}}
+												/>
+											),
+										}
+									: {})}
+							/>
+						)}
+					</FooterCollapse>
 				</Command>
 			</div>
 			{rowActions !== null && (
@@ -1792,6 +1806,25 @@ function ViewHint({label, onSwitch}: {label: string; onSwitch: () => void}) {
 				⇥
 			</kbd>
 		</button>
+	);
+}
+
+/** Upstream sets this on the card while the footer is collapsed, so the list cap grows by the footer's 41px. */
+const FOOTER_COLLAPSED_CARD_CLASS = "[--cp-footer-collapsed:1] pointer-coarse:[--cp-footer-collapsed:0]";
+const LIST_MAX_HEIGHT_STYLE = {maxHeight: "calc(440px + var(--cp-footer-collapsed, 0) * 41px)"} as const;
+
+/** Upstream collapses the footer with a grid-rows transition rather than unmounting it. */
+function FooterCollapse({open, children}: {open: boolean; children: ReactNode}) {
+	return (
+		<div
+			aria-hidden={!open}
+			inert={!open}
+			className={`flex-shrink-0 grid transition-[grid-template-rows,opacity] duration-150 ease-out motion-reduce:transition-none mt-auto ${
+				open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+			}`}
+		>
+			<div className="min-h-0 overflow-hidden">{children}</div>
+		</div>
 	);
 }
 
