@@ -88,6 +88,20 @@ describe("runtime vs strict JSONL schema", () => {
 		expect(result.data).toEqual(record);
 	});
 
+	it("runtime form keeps structured_output attachment data verbatim, including caller-defined keys", () => {
+		const record = {
+			...jsonlRecordFixtures.attachment,
+			attachment: {
+				type: "structured_output",
+				toolUseID: "toolu_1",
+				data: {summary: "done", nested: {futureKey: [1, "two", null]}},
+			},
+		};
+		const result = RuntimeJsonlRecordSchema.safeParse(record);
+		expect(result.error).toBeUndefined();
+		expect(result.data).toEqual(record);
+	});
+
 	it("runtime form still rejects an unknown record type", () => {
 		const result = RuntimeJsonlRecordSchema.safeParse({...driftedUserRecord, type: "brand-new-record"});
 		expect(result.success).toBe(false);

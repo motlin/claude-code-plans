@@ -817,6 +817,7 @@ const attachmentVariants = {
 	silent_turn_reminder: true,
 	thinking_drop: true,
 	thinking_stripped: true,
+	structured_output: true,
 	skill_mention: true,
 	inlined_image_paths: true,
 	session_cron_carry: true,

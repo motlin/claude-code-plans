@@ -123,6 +123,7 @@ const MINIMAL_BY_TYPE: Record<string, AttachmentPayload> = {
 	silent_turn_reminder: {type: "silent_turn_reminder"},
 	thinking_drop: {type: "thinking_drop"},
 	thinking_stripped: {type: "thinking_stripped"},
+	structured_output: {type: "structured_output", toolUseID: "toolu_100", data: {}},
 	skill_mention: {type: "skill_mention"},
 	inlined_image_paths: {type: "inlined_image_paths", paths: ["/tmp/uploads/a-image.png"]},
 	session_cron_carry: {type: "session_cron_carry", tasks: []},
@@ -482,6 +483,18 @@ describe("AttachmentBanner", () => {
 			).toStrictEqual([
 				["Model identity", "Model ID: claude-nonexistent-model-9"],
 				["Model text", "You are powered by the model claude-nonexistent-model-9."],
+			]);
+		});
+
+		it("labels structured output and shows its data as formatted JSON", () => {
+			const payload: AttachmentPayload = {
+				type: "structured_output",
+				toolUseID: "toolu_100",
+				data: {investigated: true, taskCount: 5},
+			};
+			expect(renderBanner(payload)).toContain("Structured output");
+			expect(detailSections(payload)).toStrictEqual([
+				["Structured output", '{\n  "investigated": true,\n  "taskCount": 5\n}'],
 			]);
 		});
 

@@ -1678,6 +1678,11 @@ describe("JsonlRecordSchema observed 2026-09 transcript fields", () => {
 			}),
 			attachmentRecord({type: "thinking_stripped", scope: "all"}),
 			attachmentRecord({
+				type: "structured_output",
+				toolUseID: "toolu_1",
+				data: {investigated: true, taskCount: 5, discovered: [{slug: "top-bar", priority: "P3"}], note: null},
+			}),
+			attachmentRecord({
 				type: "thinking_drop",
 				requestId: "req_1",
 				model: "claude-opus-5-5",

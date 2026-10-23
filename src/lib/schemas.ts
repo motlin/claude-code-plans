@@ -1473,6 +1473,15 @@ const ThinkingStrippedAttachmentPayload = z
 	})
 	.strict();
 
+// The StructuredOutput tool's result; `data` follows the output schema the caller supplied.
+const StructuredOutputAttachmentPayload = z
+	.object({
+		type: z.literal("structured_output"),
+		toolUseID: z.string(),
+		data: z.record(z.string(), JsonValueSchema),
+	})
+	.strict();
+
 export const AttachmentPayloadSchema = z.discriminatedUnion("type", [
 	PlanModeAttachmentPayload,
 	AutoModeAttachmentPayload,
@@ -1537,6 +1546,7 @@ export const AttachmentPayloadSchema = z.discriminatedUnion("type", [
 	SkillMentionAttachmentPayload,
 	ThinkingDropAttachmentPayload,
 	ThinkingStrippedAttachmentPayload,
+	StructuredOutputAttachmentPayload,
 ]);
 
 const RenderedAttachmentContentSchema = z.object({content: z.string()}).strict();

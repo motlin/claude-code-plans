@@ -4,6 +4,7 @@ import {
 	AlertTriangle,
 	Ban,
 	Bot,
+	Braces,
 	Brain,
 	Calendar,
 	ChevronRight,
@@ -276,6 +277,9 @@ function attachmentDetailSections(
 	}
 	if (attachment.type === "output_style_instructions") {
 		return textSection("Style prompt", attachment.style?.prompt);
+	}
+	if (attachment.type === "structured_output") {
+		return textSection("Structured output", JSON.stringify(attachment.data, null, 2));
 	}
 	return [];
 }
@@ -839,6 +843,8 @@ function AttachmentContent({
 					{...shared}
 				/>
 			);
+		case "structured_output":
+			return <Banner icon={<Braces className="h-3.5 w-3.5" />} label="Structured output" {...shared} />;
 		default:
 			return assertNever(attachment);
 	}
