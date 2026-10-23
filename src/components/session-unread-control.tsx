@@ -120,8 +120,8 @@ function useRowIconKind(session: SessionListItem) {
  * claude.ai/code's trailing sidebar-row decoration: the status mark (amber Awaiting input, blinking
  * muted Running, accent Unread response) or, on a settled row, the muted environment glyph, here
  * upstream's bridge laptop (omitted on pinned rows and under project grouping). It fades out while
- * the row is hovered, keyboard-focused or has its menu open, when the row's More options button
- * takes the same 24px slot. The mark is an aria-hidden `role=img`; screen readers get
+ * the row is hovered, keyboard-focused or has its kebab menu open, when the row's More options button
+ * takes the same 24px slot; an open context menu leaves it visible, as upstream. The mark is an aria-hidden `role=img`; screen readers get
  * `SidebarRowSrText` inside the title instead.
  */
 export function SidebarRowDecoration({session, envGlyph}: {session: SessionListItem; envGlyph: boolean}) {
@@ -130,7 +130,7 @@ export function SidebarRowDecoration({session, envGlyph}: {session: SessionListI
 		<span
 			data-row-decoration=""
 			aria-hidden="true"
-			className="pointer-events-none absolute top-1/2 right-[var(--sb-row-ctl-inset)] flex size-[var(--sb-row-ctl,24px)] -translate-y-1/2 items-center justify-center group-hover/session-row:opacity-0 group-has-[:focus-visible]/session-row:opacity-0 group-has-[[data-popup-open]]/session-row:opacity-0"
+			className="pointer-events-none absolute top-1/2 right-[var(--sb-row-ctl-inset)] flex size-[var(--sb-row-ctl,24px)] -translate-y-1/2 items-center justify-center group-hover/session-row:opacity-0 group-has-[:focus-visible]/session-row:opacity-0 group-data-[menu-open=true]/session-row:opacity-0"
 		>
 			{kind === "idle" ? (
 				envGlyph && (

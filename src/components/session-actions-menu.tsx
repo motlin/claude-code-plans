@@ -416,6 +416,9 @@ export function SessionActionsMenu({
 		}
 	};
 	const rowRef = useRef<HTMLDivElement>(null);
+	// Upstream's `data-menu-open` / `data-context-menu-open` keep the row's hover background while a menu is open.
+	const [menuOpen, setMenuOpen] = useState(false);
+	const [contextMenuOpen, setContextMenuOpen] = useState(false);
 	// After Move up / Move down the row itself takes focus, like upstream's movePinned.
 	const focusRowAfterClose = useRef(false);
 	const onOpenChangeComplete = (open: boolean) => {
@@ -456,15 +459,17 @@ export function SessionActionsMenu({
 				ref={rowRef}
 				data-session-actions=""
 				data-touch-menu={touchMenu ? "" : undefined}
+				data-menu-open={menuOpen ? "true" : undefined}
+				data-context-menu-open={contextMenuOpen ? "true" : undefined}
 				className={`group/session-row relative ${className ?? ""}`}
 			>
-				<ContextMenu onOpenChangeComplete={onOpenChangeComplete}>
+				<ContextMenu onOpenChange={setContextMenuOpen} onOpenChangeComplete={onOpenChangeComplete}>
 					<ContextMenuTrigger>{children}</ContextMenuTrigger>
 					<MenuContent density="comfortable" finalFocus={finalFocus}>
 						{menuBody}
 					</MenuContent>
 				</ContextMenu>
-				<Menu onOpenChangeComplete={onOpenChangeComplete}>
+				<Menu onOpenChange={setMenuOpen} onOpenChangeComplete={onOpenChangeComplete}>
 					<MenuTrigger
 						aria-label={`More options for ${rename.title}`}
 						data-row-action=""

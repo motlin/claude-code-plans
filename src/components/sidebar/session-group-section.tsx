@@ -512,6 +512,9 @@ function SessionRowLink({
 				session={row.session}
 				kebabTabIndex={-1}
 				touchMenu={selected}
+				// Upstream's row shell owns the background. The selected tint keys off the link's data-selected
+				// (which nav-scroll and roving focus watch), so switching rows mutates no extra attribute.
+				className="rounded-[var(--sb-radius)] hover:bg-[var(--sb-hover)] has-[:focus-visible]:bg-[var(--sb-hover)] data-[menu-open=true]:bg-[var(--sb-hover)] data-[context-menu-open=true]:bg-[var(--sb-hover)] has-[[data-row-main-button][data-selected=focused]]:bg-[var(--sb-session-selected)]"
 				{...(pinnedIds === undefined ? {} : {pinnedIds})}
 			>
 				<Link
@@ -527,7 +530,7 @@ function SessionRowLink({
 					onClick={(event) => {
 						if (selection?.onRowClick(row.sessionId, event) === true) event.preventDefault();
 					}}
-					className={`${ROW_CLASS} text-secondary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)] hover:bg-[var(--sb-hover)] focus-visible:bg-[var(--sb-hover)] data-[selected=focused]:bg-[var(--sb-session-selected)] data-[selected=focused]:text-primary data-[multi-selected]:bg-[var(--sb-session-selected)] data-[multi-selected]:text-primary`}
+					className={`${ROW_CLASS} text-secondary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)] data-[selected=focused]:text-primary data-[multi-selected]:bg-[var(--sb-session-selected)] data-[multi-selected]:text-primary`}
 				>
 					{/* Upstream starts the title 10px into the row; the trailing span below keeps it clear of the 24px slot */}
 					<span data-row-label className="min-w-0 flex-1 ps-2">

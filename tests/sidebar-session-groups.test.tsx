@@ -667,6 +667,70 @@ describe("sidebar SessionGroups", () => {
 		expect(requests).toStrictEqual(["/api/sessions/recent?limit=50&cursor=cursor-2&live=1"]);
 		expect(screen.getByRole("button", {name: "Show less in Completed"})).toBeTruthy();
 	});
+	it("keeps the row background on upstream's wrapper while the kebab or context menu is open, hiding the mark only for the kebab", async () => {
+		const {container} = await renderGroups(FIXTURE, {activeItemId: "w1"});
+		const wrapperOf = (title: string) => {
+			const link = [...container.querySelectorAll<HTMLElement>("a[data-row-main-button]")].find(
+				(node) => rowTitle(node) === title,
+			);
+			const wrapper = link?.closest<HTMLElement>("[data-session-actions]");
+			if (link === undefined || wrapper === null || wrapper === undefined) throw new Error(`no row ${title}`);
+			return {link, wrapper};
+		};
+		const describeRow = (title: string) => {
+			const {link, wrapper} = wrapperOf(title);
+			const decoration = wrapper.querySelector("[data-row-decoration]");
+			return {
+				menuOpen: wrapper.getAttribute("data-menu-open"),
+				contextMenuOpen: wrapper.getAttribute("data-context-menu-open"),
+				decorationHidden: decoration?.className
+					.split(" ")
+					.includes("group-data-[menu-open=true]/session-row:opacity-0"),
+				decorationHiddenByAnyPopup: decoration?.className.includes("data-popup-open") ?? false,
+				linkHasBackground: link.className.split(" ").some((name) => name.includes("bg-[var(--sb-hover)]")),
+			};
+		};
+		const {wrapper} = wrapperOf("Completed newest");
+		const wrapperClasses = wrapper.className.split(" ");
+		const backgrounds = [
+			"rounded-[var(--sb-radius)]",
+			"hover:bg-[var(--sb-hover)]",
+			"has-[:focus-visible]:bg-[var(--sb-hover)]",
+			"data-[menu-open=true]:bg-[var(--sb-hover)]",
+			"data-[context-menu-open=true]:bg-[var(--sb-hover)]",
+			"has-[[data-row-main-button][data-selected=focused]]:bg-[var(--sb-session-selected)]",
+		];
+		const rest = {
+			wrapperBackgrounds: backgrounds.filter((name) => wrapperClasses.includes(name)),
+			selected: wrapperOf("Working one").link.getAttribute("data-selected"),
+			row: describeRow("Completed newest"),
+		};
+
+		fireEvent.contextMenu(screen.getByText("Completed newest"), {clientX: 40, clientY: 50});
+		await waitFor(() => screen.getByRole("menu"));
+		const contextOpen = describeRow("Completed newest");
+		fireEvent.keyDown(screen.getByRole("menu"), {key: "Escape"});
+		await waitFor(() => {
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
+
+		fireEvent.click(screen.getByRole("button", {name: "More options for Completed newest"}));
+		await waitFor(() => screen.getByRole("menu"));
+		const kebabOpen = describeRow("Completed newest");
+
+		const closed = {
+			menuOpen: null,
+			contextMenuOpen: null,
+			decorationHidden: true,
+			decorationHiddenByAnyPopup: false,
+			linkHasBackground: false,
+		};
+		expect({rest, contextOpen, kebabOpen}).toStrictEqual({
+			rest: {wrapperBackgrounds: backgrounds, selected: "focused", row: closed},
+			contextOpen: {...closed, contextMenuOpen: "true"},
+			kebabOpen: {...closed, menuOpen: "true"},
+		});
+	});
 });
 
 describe("SessionGroups hover cards", () => {
