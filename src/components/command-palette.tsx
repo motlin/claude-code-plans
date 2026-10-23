@@ -1151,10 +1151,13 @@ function PalettePopup({
 			popTypeFilter(event);
 			return;
 		}
-		if (event.key !== "Tab" || event.shiftKey || event.metaKey || event.ctrlKey || event.altKey) {
+		// Upstream excludes Alt/Meta/Ctrl but not Shift, so Shift+Tab toggles too; a held Tab is
+		// swallowed without toggling.
+		if (event.key !== "Tab" || event.metaKey || event.ctrlKey || event.altKey) {
 			return;
 		}
 		event.preventDefault();
+		if (event.repeat) return;
 		onModeChange(mode === "search" ? "compose" : "search");
 	}
 

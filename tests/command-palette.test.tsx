@@ -684,6 +684,51 @@ describe("CommandPalette shell", () => {
 		await within(dialog).findByRole("combobox", {name: "Search"});
 	});
 
+	it("toggles Compose on Shift+Tab like Tab, keeping the type and focus in the field", async () => {
+		const dialog = await openPalette();
+		const input = within(dialog).getByRole("combobox");
+
+		const notCancelled = fireEvent.keyDown(input, {key: "Tab", code: "Tab", shiftKey: true});
+		const composer = await within(dialog).findByRole("combobox", {name: "Write a message…"});
+
+		expect({notCancelled, focused: document.activeElement === composer}).toStrictEqual({
+			notCancelled: false,
+			focused: true,
+		});
+
+		fireEvent.keyDown(composer, {key: "Tab", code: "Tab", shiftKey: true});
+
+		await within(dialog).findByRole("combobox", {name: "Search"});
+	});
+
+	it("ignores a repeated Tab but still cancels it", async () => {
+		const dialog = await openPalette();
+		const input = within(dialog).getByRole("combobox");
+
+		const tab = fireEvent.keyDown(input, {key: "Tab", code: "Tab", repeat: true});
+		const shiftTab = fireEvent.keyDown(input, {key: "Tab", code: "Tab", shiftKey: true, repeat: true});
+
+		expect({
+			tab,
+			shiftTab,
+			search: within(dialog).queryByRole("combobox", {name: "Search"}) !== null,
+		}).toStrictEqual({tab: false, shiftTab: false, search: true});
+	});
+
+	it("leaves Alt+Tab and Alt+Shift+Tab alone", async () => {
+		const dialog = await openPalette();
+		const input = within(dialog).getByRole("combobox");
+
+		const altTab = fireEvent.keyDown(input, {key: "Tab", code: "Tab", altKey: true});
+		const altShiftTab = fireEvent.keyDown(input, {key: "Tab", code: "Tab", altKey: true, shiftKey: true});
+
+		expect({
+			altTab,
+			altShiftTab,
+			search: within(dialog).queryByRole("combobox", {name: "Search"}) !== null,
+		}).toStrictEqual({altTab: true, altShiftTab: true, search: true});
+	});
+
 	it("paints the Compose field with the upstream fill-field and cds shadow-panel-sm", async () => {
 		const dialog = await openPalette();
 		fireEvent.keyDown(within(dialog).getByRole("combobox"), {key: "Tab", code: "Tab"});
