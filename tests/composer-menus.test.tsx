@@ -1116,6 +1116,70 @@ describe("Composer + menu Connectors submenu", () => {
 		}).toStrictEqual({sideOffset: "6", radius: ["rounded-r5"], size: ["size-7"]});
 	});
 
+	it("shows a disabled Connectors row with a 16px spinner while the MCP config loads", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async () => new Promise<Response>(() => {})),
+		);
+		const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
+		render(
+			<QueryClientProvider client={queryClient}>
+				<Composer variant="session" draftKey="session-alice" onSend={() => {}} chin={CHIN} />
+			</QueryClientProvider>,
+		);
+		fireEvent.click(screen.getByRole("button", {name: "Add"}));
+		const menu = await screen.findByRole("menu");
+		const row = await within(menu).findByRole("menuitem", {name: /^Connectors/});
+		const spinner = row.querySelector("[data-spinner]");
+
+		expect({
+			rows: within(menu)
+				.getAllByRole("menuitem")
+				.map((item) => item.querySelector("[data-menu-item-title]")?.textContent),
+			disabled: row.hasAttribute("data-disabled"),
+			popup: row.getAttribute("aria-haspopup"),
+			icon: row.querySelector("svg")?.classList[1],
+			status: row.querySelector('[role="status"]') !== null,
+			spinnerSize: [spinner?.getAttribute("style")],
+		}).toStrictEqual({
+			rows: ["Add files or photos", "Slash commands", "Connectors"],
+			disabled: true,
+			popup: null,
+			icon: "lucide-blocks",
+			status: true,
+			spinnerSize: ["width: 1rem; height: 1rem;"],
+		});
+		vi.unstubAllGlobals();
+	});
+
+	it("shows a plain Add connectors item that opens Customize > Connectors when no servers are configured", async () => {
+		renderWithServers([]);
+		fireEvent.click(screen.getByRole("button", {name: "Add"}));
+		const menu = await screen.findByRole("menu");
+		const row = await within(menu).findByRole("menuitem", {name: "Add connectors"});
+
+		expect({
+			rows: within(menu)
+				.getAllByRole("menuitem")
+				.map((item) => item.querySelector("[data-menu-item-title]")?.textContent),
+			popup: row.getAttribute("aria-haspopup"),
+			disabled: row.hasAttribute("data-disabled"),
+			icon: row.querySelector("svg")?.classList[1],
+		}).toStrictEqual({
+			rows: ["Add files or photos", "Slash commands", "Add connectors"],
+			popup: null,
+			disabled: false,
+			icon: "lucide-blocks",
+		});
+
+		navigate.mockClear();
+		fireEvent.click(row);
+		await waitFor(() => {
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
+		expect(navigate.mock.calls.map(([options]) => options)).toStrictEqual([{to: "/customize/connectors"}]);
+	});
+
 	it("shows no reconnection note while every server is healthy", async () => {
 		const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
 		queryClient.setQueryData(customizeMcpServersQueryOptions.queryKey, SERVERS.slice(0, 2));

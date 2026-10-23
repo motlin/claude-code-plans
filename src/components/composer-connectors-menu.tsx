@@ -4,6 +4,7 @@ import {Blocks, CloudOff, LibraryBig, Wrench} from "lucide-react";
 
 import {customizeMcpServersQueryOptions, type McpServerSummary} from "../lib/api/customize";
 import {toConnectorSlug} from "../lib/customize/mcp-tool-permissions";
+import {ConnectorsLoadingItem} from "./composer-connectors-loading";
 import {MenuCheckboxSwitchItem, MenuItem, MenuSeparator, MenuSub, MenuSubContent, MenuSubTrigger} from "./ui/menu";
 
 /*
@@ -11,7 +12,8 @@ import {MenuCheckboxSwitchItem, MenuItem, MenuSeparator, MenuSub, MenuSubContent
  * MCP config: Browse / Manage open Customize > Connectors, and each server row
  * opens its detail page. Connected servers come first, then the ones that need
  * reconnection, as upstream orders them. A running CLI cannot toggle servers
- * live, so the switches only show whether each server is enabled.
+ * live, so the switches only show whether each server is enabled. While the config loads the row is a
+ * disabled spinner, and with no servers it is a plain "Add connectors" item.
  */
 
 function reconnectionNote(servers: readonly McpServerSummary[]): string | undefined {
@@ -21,7 +23,7 @@ function reconnectionNote(servers: readonly McpServerSummary[]): string | undefi
 
 export function ComposerConnectorsMenu() {
 	const navigate = useNavigate();
-	const {data: servers = []} = useQuery(customizeMcpServersQueryOptions);
+	const {data: servers = [], isPending} = useQuery(customizeMcpServersQueryOptions);
 	const note = reconnectionNote(servers);
 	const connected = servers.filter((server) => !server.needsAuth);
 	const reconnect = servers.filter((server) => server.needsAuth);
@@ -29,6 +31,14 @@ export function ComposerConnectorsMenu() {
 	const openServer = (server: McpServerSummary) =>
 		void navigate({to: "/customize/connectors/id/$serverId", params: {serverId: toConnectorSlug(server.id)}});
 
+	if (isPending) return <ConnectorsLoadingItem />;
+	if (servers.length === 0) {
+		return (
+			<MenuItem icon={<Blocks />} onSelect={openConnectors}>
+				Add connectors
+			</MenuItem>
+		);
+	}
 	return (
 		<MenuSub>
 			<MenuSubTrigger icon={<Blocks />} {...(note === undefined ? {} : {value: note})}>
@@ -41,7 +51,7 @@ export function ComposerConnectorsMenu() {
 				<MenuItem icon={<Wrench />} onSelect={openConnectors}>
 					Manage connectors
 				</MenuItem>
-				{servers.length > 0 && <MenuSeparator />}
+				<MenuSeparator />
 				{connected.map((server) => (
 					<MenuCheckboxSwitchItem
 						key={server.id}

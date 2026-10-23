@@ -25,6 +25,7 @@ import {
 } from "../lib/launch-options";
 import {useShortcutKeys} from "../hooks/use-shortcut";
 import {effortLevelLabels} from "../lib/schema-choices";
+import {ConnectorsLoadingItem} from "./composer-connectors-loading";
 import {type ChinMenu, type ChinSurface, ModeMenu, ModelMenu} from "./composer-launch-menus";
 import {ADD_BUTTON_CLASS, USAGE_RING_CLASS} from "./composer-tokens";
 import {localAccountQueryOptions} from "../lib/api/local-account";
@@ -160,7 +161,7 @@ export const ComposerAddMenu = memo(function ComposerAddMenu({
 				<MenuItem icon={<SquareSlash />} onSelect={slashAfterClose.requestRename}>
 					Slash commands
 				</MenuItem>
-				<Suspense fallback={null}>
+				<Suspense fallback={<ConnectorsLoadingItem />}>
 					<ComposerConnectorsMenu />
 				</Suspense>
 			</MenuContent>

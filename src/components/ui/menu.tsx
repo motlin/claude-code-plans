@@ -404,6 +404,8 @@ export interface MenuItemProps extends Omit<
 	accelerator?: string;
 	/** Global shortcut hint shown instead of the accelerator, e.g. "alt+cmd+r". */
 	shortcut?: string;
+	/** Right-aligned trailing content after the label, such as upstream's loading spinner. */
+	trailing?: ReactNode;
 	variant?: MenuItemVariant;
 	/**
 	 * Why a disabled item is unavailable: it describes the item and shows in a reason tooltip on side right when
@@ -419,6 +421,7 @@ export function MenuItem({
 	description,
 	accelerator,
 	shortcut,
+	trailing,
 	variant = "default",
 	disabledReason,
 	onSelect,
@@ -458,6 +461,7 @@ export function MenuItem({
 				{...(accelerator === undefined ? {} : {accelerator})}
 				{...(shortcut === undefined ? {} : {shortcut})}
 			/>
+			{trailing !== undefined && <span className={TRAILING_CLASS}>{trailing}</span>}
 		</BaseMenu.Item>
 	);
 	if (reason === undefined) return item;
