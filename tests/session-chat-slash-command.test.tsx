@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {cleanup, fireEvent, render, waitFor} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, waitFor} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat} from "../src/components/session-chat";
 import type {SlashCommand} from "../src/lib/slash-commands";
@@ -40,6 +40,7 @@ beforeEach(() => {
 
 afterEach(() => {
 	cleanup();
+	vi.useRealTimers();
 	vi.unstubAllGlobals();
 	vi.restoreAllMocks();
 	Reflect.deleteProperty(HTMLElement.prototype, "scrollIntoView");
@@ -229,7 +230,30 @@ describe("SessionChat slash-command chip", () => {
 		}).toStrictEqual({hasPopup: null, expanded: null, card: null});
 	});
 
-	it("draws the hover highlight as an absolute accent-muted span behind a 13px/500 half-opacity slash", () => {
+	it("opens the hover card after upstream's 400ms delay, not before", async () => {
+		vi.useFakeTimers();
+		const container = renderRecords([LOOP_PROMPT], {slashCommands: [LOOP_COMMAND]});
+		const chip = container.querySelector("[data-slash-command-chip]")!;
+		act(() => {
+			fireEvent.pointerEnter(chip, {pointerType: "mouse"});
+			fireEvent.mouseEnter(chip);
+			fireEvent.mouseMove(chip);
+		});
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(399);
+		});
+		const before = document.querySelector("[data-slash-command-card]");
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(1);
+		});
+
+		expect({
+			before,
+			after: document.querySelector("[data-slash-command-card]")?.getAttribute("data-slash-command-card") ?? null,
+		}).toStrictEqual({before: null, after: ""});
+	});
+
+	it("draws the hover highlight as an absolute bg-accent span behind a 13px/500 half-opacity slash", () => {
 		const container = renderRecords([LOOP_PROMPT]);
 		const chip = container.querySelector("[data-slash-command-chip]")!;
 
@@ -238,7 +262,7 @@ describe("SessionChat slash-command chip", () => {
 			slash: chip.querySelector("[data-slash-command-slash]")?.className ?? null,
 		}).toStrictEqual({
 			highlight:
-				"pointer-events-none absolute -inset-y-0.5 -left-0.5 -right-1 rounded-r5 bg-upstream-accent-muted opacity-0 group-hover:opacity-100",
+				"pointer-events-none absolute -inset-y-0.5 -start-0.5 -end-1 rounded-r5 opacity-0 [@media(hover:hover)]:group-hover:opacity-100 group-data-[popup-open]:opacity-100 bg-upstream-accent-pressed",
 			slash: "relative inline-block w-2 text-[13px] font-medium opacity-50",
 		});
 	});

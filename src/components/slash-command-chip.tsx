@@ -8,7 +8,7 @@ const CHIP_CLASS =
 	"group relative inline-flex items-baseline rounded-r5 text-upstream-accent cursor-pointer align-baseline";
 
 const HIGHLIGHT_CLASS =
-	"pointer-events-none absolute -inset-y-0.5 -left-0.5 -right-1 rounded-r5 bg-upstream-accent-muted opacity-0 group-hover:opacity-100";
+	"pointer-events-none absolute -inset-y-0.5 -start-0.5 -end-1 rounded-r5 opacity-0 [@media(hover:hover)]:group-hover:opacity-100 group-data-[popup-open]:opacity-100 bg-upstream-accent-pressed";
 
 export const SLASH_COMMAND_CARD_CLASS =
 	"flex w-[280px] max-w-[calc(100vw-16px)] flex-col gap-1 rounded-r7 bg-[var(--menu-bg)] p-3 text-[13px]/[19px] text-primary shadow-[var(--menu-shadow)] outline-none";
@@ -46,7 +46,12 @@ function SlashCommandChip({name}: {name: string}) {
 
 	return (
 		<PreviewCard.Root>
-			<PreviewCard.Trigger render={<button type="button" />} data-slash-command-chip="" className={CHIP_CLASS}>
+			<PreviewCard.Trigger
+				render={<button type="button" />}
+				delay={400}
+				data-slash-command-chip=""
+				className={CHIP_CLASS}
+			>
 				<span aria-hidden="true" data-slash-command-highlight="" className={HIGHLIGHT_CLASS} />
 				<span
 					aria-hidden="true"
