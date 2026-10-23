@@ -1,4 +1,4 @@
-import {findLastPendingToolUse} from "./approval-dock";
+import {findLastPendingToolUse, type PendingToolUse} from "./approval-dock";
 import type {PendingPlan} from "./hook-events";
 import type {SessionSummaryState} from "./session-state";
 
@@ -18,4 +18,15 @@ export function dockedHookPlan({
 }): PendingPlan | null {
 	if (hookPlan === null || hookPlan === undefined || state !== "waiting") return null;
 	return findLastPendingToolUse(records)?.name === "ExitPlanMode" ? null : hookPlan;
+}
+
+/**
+ * The on-disk ExitPlanMode the session waits on, which upstream answers in its
+ * own inline approval card after the transcript, or null.
+ */
+export function inlinePlanToolUseId(
+	state: SessionSummaryState | null,
+	pendingCall: PendingToolUse | null,
+): string | null {
+	return state === "waiting" && pendingCall?.name === "ExitPlanMode" ? pendingCall.id : null;
 }

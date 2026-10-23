@@ -31,7 +31,8 @@ import {
 	type AnswerSubmission,
 	type AskUserQuestionContextValue,
 } from "./ask-user-question-context";
-import {PlanApprovalProvider, type PlanApprovalContextValue} from "./plan-approval-context";
+import type {PlanApprovalContextValue} from "./plan-approval-context";
+import {InlinePlanApproval} from "./inline-plan-approval";
 import {SessionFileRefs} from "./file-refs";
 import type {JumpTargetWindow} from "./jump-target-context";
 import {LegacyMessageLinkNotice} from "./legacy-message-link-notice";
@@ -123,7 +124,7 @@ import {notificationsQueryOptions} from "../lib/api/notifications";
 import {pendingQuestionQueryOptions} from "../lib/api/pending-question";
 import {pendingPlanQueryOptions} from "../lib/api/pending-plan";
 import {DockedPlanApproval} from "./docked-plan-approval";
-import {dockedHookPlan} from "../lib/docked-plan";
+import {dockedHookPlan, inlinePlanToolUseId} from "../lib/docked-plan";
 import {findPendingPermission, permissionWaitToolUseId, type PermissionDecision} from "../lib/permission-card";
 import type {HerdrPaneIndexData} from "../lib/api/herdr";
 import type {PaneKind} from "../lib/pane-layout";
@@ -425,6 +426,7 @@ function SessionView({
 	});
 	// The turn's in-flight call has its own running row in the transcript (a subagent's row stays a plain link).
 	const pendingCall = useMemo(() => findLastPendingToolUse(transcript.records), [transcript.records]);
+	const inlinePlanId = inlinePlanToolUseId(sessionSummaryState, pendingCall);
 	const inFlightRow =
 		workingMarkerState.status === "working" &&
 		pendingCall !== null &&
@@ -988,64 +990,62 @@ function SessionView({
 							<TranscriptTopFade />
 							{/* Chat messages */}
 							<AskUserQuestionProvider value={askUserQuestionCtx}>
-								<PlanApprovalProvider value={planApprovalCtx}>
-									<TranscriptHistoryLoader sessionId={sessionId} startIndex={transcript.startIndex} />
-									<SessionFileRefs
-										sessionId={sessionId}
-										cwd={sessionDirectory ?? undefined}
-										sessionFiles={resources?.files ?? windowFiles}
-									>
-										<SessionSubagentOpener sessionId={sessionId}>
-											<SessionBackgroundTasksOpener running={runningBackgroundLaunches}>
-												<TranscriptActionsProvider
+								<TranscriptHistoryLoader sessionId={sessionId} startIndex={transcript.startIndex} />
+								<SessionFileRefs
+									sessionId={sessionId}
+									cwd={sessionDirectory ?? undefined}
+									sessionFiles={resources?.files ?? windowFiles}
+								>
+									<SessionSubagentOpener sessionId={sessionId}>
+										<SessionBackgroundTasksOpener running={runningBackgroundLaunches}>
+											<TranscriptActionsProvider
+												sessionId={sessionId}
+												lines={processed.lines}
+												fork={forkFromMessage}
+												working={paneBusy}
+											>
+												<SessionChat
 													sessionId={sessionId}
 													lines={processed.lines}
-													fork={forkFromMessage}
-													working={paneBusy}
-												>
-													<SessionChat
-														sessionId={sessionId}
-														lines={processed.lines}
-														measurementSource={transcript.records}
-														measurementLayout={JSON.stringify([
-															settings.showDebug,
-															settings.interfaceFont,
-															settings.transcriptTextSize,
-															settings.codeFont,
-															settings.transcriptWidth,
-														])}
-														toolResultMap={processed.toolResultMap}
-														allowedImageRoots={data.imageRoots}
-														subagents={subagents}
-														showThinking={transcriptFlags.showThinking}
-														showTools={transcriptFlags.showTools}
-														showPassedHooks={transcriptFlags.showPassedHooks}
-														showHookWarnings={transcriptFlags.showHookWarnings}
-														showHookErrors={transcriptFlags.showHookErrors}
-														showSystemBanners={transcriptFlags.showSystemBanners}
-														showCompactSummaries={transcriptFlags.showCompactSummaries}
-														showTranscriptOnly={transcriptFlags.showTranscriptOnly}
-														transcriptMode={transcriptMode}
-														sessionLive={sessionProcessLive({
-															hookActive: isActive,
-															summaryState: sessionSummaryState,
-														})}
-														permissionWaitToolUseId={permissionWaitId}
-														onSendNow={requestSendNowInterrupt}
-														onFocusComposer={focusSessionComposer}
-														initialScrollKey={initialScrollKey}
-														scrollContentRef={scrollAnchorRef}
-														shouldScrollToEnd={
-															restoredScrollPosition === undefined && locationHash === ""
-														}
-														summary={aiSummary}
-														{...(slashCommands === undefined ? {} : {slashCommands})}
-													/>
-												</TranscriptActionsProvider>
-											</SessionBackgroundTasksOpener>
-										</SessionSubagentOpener>
-									</SessionFileRefs>
-								</PlanApprovalProvider>
+													measurementSource={transcript.records}
+													measurementLayout={JSON.stringify([
+														settings.showDebug,
+														settings.interfaceFont,
+														settings.transcriptTextSize,
+														settings.codeFont,
+														settings.transcriptWidth,
+													])}
+													toolResultMap={processed.toolResultMap}
+													allowedImageRoots={data.imageRoots}
+													subagents={subagents}
+													showThinking={transcriptFlags.showThinking}
+													showTools={transcriptFlags.showTools}
+													showPassedHooks={transcriptFlags.showPassedHooks}
+													showHookWarnings={transcriptFlags.showHookWarnings}
+													showHookErrors={transcriptFlags.showHookErrors}
+													showSystemBanners={transcriptFlags.showSystemBanners}
+													showCompactSummaries={transcriptFlags.showCompactSummaries}
+													showTranscriptOnly={transcriptFlags.showTranscriptOnly}
+													transcriptMode={transcriptMode}
+													sessionLive={sessionProcessLive({
+														hookActive: isActive,
+														summaryState: sessionSummaryState,
+													})}
+													permissionWaitToolUseId={permissionWaitId}
+													onSendNow={requestSendNowInterrupt}
+													onFocusComposer={focusSessionComposer}
+													initialScrollKey={initialScrollKey}
+													scrollContentRef={scrollAnchorRef}
+													shouldScrollToEnd={
+														restoredScrollPosition === undefined && locationHash === ""
+													}
+													summary={aiSummary}
+													{...(slashCommands === undefined ? {} : {slashCommands})}
+												/>
+											</TranscriptActionsProvider>
+										</SessionBackgroundTasksOpener>
+									</SessionSubagentOpener>
+								</SessionFileRefs>
 							</AskUserQuestionProvider>
 
 							{/* Upstream draws every pending approval inline; a permission prompt is not on disk, so it follows the transcript */}
@@ -1071,6 +1071,14 @@ function SessionView({
 										/>
 									</SessionBackgroundTasksOpener>
 								</div>
+							)}
+							{/* Upstream draws a pending plan's approval as its own sticky card after the transcript */}
+							{inlinePlanId !== null && (
+								<InlinePlanApproval
+									key={inlinePlanId}
+									toolUseId={inlinePlanId}
+									plan={planApprovalCtx}
+								/>
 							)}
 							{/* The CLI writes a question to the JSONL only once answered, so its hook copy is drawn inline at the transcript's end */}
 							{sessionSummaryState === "waiting" &&

@@ -1,11 +1,9 @@
 // @vitest-environment jsdom
 
 import {createMemoryHistory, createRootRoute, createRouter, RouterProvider} from "@tanstack/react-router";
-import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
-import {afterEach, describe, expect, it, vi} from "vite-plus/test";
-import {APPROVAL_CARD_TITLE} from "../src/components/approval-card";
+import {cleanup, render, screen} from "@testing-library/react";
+import {afterEach, describe, expect, it} from "vite-plus/test";
 import {PaneHostContext, type PaneHostApi} from "../src/components/panes/pane-host-context";
-import {PlanApprovalProvider, type PlanApprovalContextValue} from "../src/components/plan-approval-context";
 import {defaultPaneLayout} from "../src/lib/pane-layout";
 import {ExitPlanModeRenderer} from "../src/components/tool-renderers/exit-plan-mode-renderer";
 import type {ClientToolCall} from "../src/components/tool-renderers/types";
@@ -162,44 +160,24 @@ describe("ExitPlanModeRenderer", () => {
 		});
 	});
 
-	it("titles a pending plan 'Claude proposed a plan', upstream's approval card title, above the block", async () => {
+	it("keeps only the plan block and the plan-file link in a pending tool row; the inline card titles it", async () => {
 		const view = await renderRenderer(
 			makeToolCall({input: {plan: "Do it.", planFilePath: "/Users/craig/.claude/plans/switch-git-pager.md"}}),
+			false,
+			paneHost(() => {}),
 		);
 		const root = view.container.firstElementChild;
-		const titleRow = root?.firstElementChild;
 
 		expect({
 			children: [...(root?.children ?? [])].map((child) => child.textContent),
-			titleRow: titleRow?.className,
-			title: titleRow?.querySelector("[data-plan-ready-title]")?.className,
 			href: screen.getByRole("link").getAttribute("href"),
 			openPlan: screen.queryByRole("button", {name: "Open plan"}),
+			approval: view.container.querySelector("[data-plan-approval]"),
 		}).toStrictEqual({
-			children: ["Claude proposed a planOpen plan file", "Do it."],
-			titleRow: "flex items-center justify-between gap-2",
-			title: APPROVAL_CARD_TITLE,
+			children: ["Open plan file", "Do it."],
 			href: "/plan/switch-git-pager",
 			openPlan: null,
-		});
-	});
-
-	it("trails the pending plan's title with upstream's footnote 'Open plan', which opens the Plan pane", async () => {
-		const openPane = vi.fn<PaneHostApi["openPane"]>();
-		const view = await renderRenderer(makeToolCall({input: {plan: "Do it."}}), false, paneHost(openPane));
-		const button = screen.getByRole("button", {name: "Open plan"});
-		fireEvent.click(button);
-
-		expect({
-			row: [...(view.container.firstElementChild?.firstElementChild?.children ?? [])].map(
-				(child) => child.textContent,
-			),
-			className: button.className,
-			calls: openPane.mock.calls,
-		}).toStrictEqual({
-			row: ["Claude proposed a plan", "Open plan"],
-			className: PLAN_FILE_ACTION,
-			calls: [["plan"]],
+			approval: null,
 		});
 	});
 
@@ -228,41 +206,5 @@ describe("ExitPlanModeRenderer", () => {
 		const verbose = (await renderRenderer(call, true)).container.textContent.includes(error);
 
 		expect({normal, verbose}).toStrictEqual({normal: false, verbose: true});
-	});
-});
-
-describe("ExitPlanModeRenderer plan approval", () => {
-	async function renderWithApproval(toolCall: ClientToolCall) {
-		const value: PlanApprovalContextValue = {
-			answerRoute: "live-pane",
-			loadDialog: async () => Promise.resolve({forwardMode: "auto", manual: true}),
-			decide: async () => Promise.resolve(),
-		};
-		const rootRoute = createRootRoute({
-			component: () => (
-				<PlanApprovalProvider value={value}>
-					<ExitPlanModeRenderer toolCall={toolCall} />
-				</PlanApprovalProvider>
-			),
-		});
-		const router = createRouter({routeTree: rootRoute, history: createMemoryHistory({initialEntries: ["/"]})});
-		await router.load();
-		const view = render(<RouterProvider router={router} />);
-		await act(async () => Promise.resolve());
-		return view;
-	}
-
-	it("ends a pending plan on upstream's approval actions inside a session view", async () => {
-		const view = await renderWithApproval(makeToolCall({input: {plan: "Do it."}}));
-		expect(
-			[...(view.container.querySelector("[data-plan-approval]")?.querySelectorAll("button") ?? [])].map(
-				(button) => button.textContent,
-			),
-		).toStrictEqual(["Reject", "Revise…Esc", "AcceptCtrlShift⏎Enter", "Accept and auto modeCtrl⏎Enter"]);
-	});
-
-	it("offers no approval actions once the plan is answered", async () => {
-		const view = await renderWithApproval(makeToolCall({input: {plan: "Do it."}, result: APPROVED_RESULT}));
-		expect(view.container.querySelector("[data-plan-approval]")).toStrictEqual(null);
 	});
 });
