@@ -633,6 +633,30 @@ describe("CommandPalette shell", () => {
 		expect(screen.queryByRole("dialog")).toBeNull();
 	});
 
+	it("describes the Search combobox with upstream's hidden keys hint, dropped in Compose", async () => {
+		const dialog = await openPalette();
+		const input = within(dialog).getByRole("combobox", {name: "Search"});
+		const hint = document.getElementById("command-palette-keys-hint");
+
+		expect({
+			describedBy: input.getAttribute("aria-describedby"),
+			hidden: hint?.hidden,
+			text: hint?.textContent,
+		}).toStrictEqual({
+			describedBy: "command-palette-keys-hint",
+			hidden: true,
+			text: "Left and Right arrows change the type of result. Option+Enter opens actions for the highlighted result.",
+		});
+
+		fireEvent.keyDown(input, {key: "Tab", code: "Tab"});
+		const composer = await within(dialog).findByRole("combobox", {name: "Write a message…"});
+
+		expect({
+			describedBy: composer.getAttribute("aria-describedby"),
+			hint: document.getElementById("command-palette-keys-hint"),
+		}).toStrictEqual({describedBy: null, hint: null});
+	});
+
 	it("switches to Compose on Tab and keeps the text", async () => {
 		const dialog = await openPalette();
 		const input = within(dialog).getByRole("combobox");

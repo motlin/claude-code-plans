@@ -142,6 +142,8 @@ const MODE_LABELS = {
 
 /** Draft key for Compose-mode attachment chips, which ride along with the launch prompt. */
 const COMPOSE_DRAFT_KEY = "command-palette-compose";
+/** Upstream's hidden screen-reader hint, referenced by the Search textarea's aria-describedby. */
+const PALETTE_KEYS_HINT_ID = "command-palette-keys-hint";
 
 const PALETTE_RADIUS = "rounded-[calc(var(--radius-composer)+0.375rem)]";
 
@@ -1298,6 +1300,7 @@ function PalettePopup({
 							<textarea
 								ref={inputRef}
 								aria-activedescendant={undefined}
+								aria-describedby={compose ? undefined : PALETTE_KEYS_HINT_ID}
 								placeholder={label}
 								disabled={startStep === "launching"}
 								rows={compose ? 2 : 1}
@@ -1307,6 +1310,12 @@ function PalettePopup({
 								}`}
 							/>
 						</Command.Input>
+						{!compose && (
+							<span id={PALETTE_KEYS_HINT_ID} hidden>
+								Left and Right arrows change the type of result. Option+Enter opens actions for the
+								highlighted result.
+							</span>
+						)}
 						{!compose && (
 							<span
 								data-palette-spinner-slot=""
