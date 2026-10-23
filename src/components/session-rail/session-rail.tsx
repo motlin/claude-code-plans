@@ -18,6 +18,7 @@ import {ChevronRight} from "lucide-react";
 import {useId, type MouseEvent, type ReactNode} from "react";
 
 import {RAIL_CARD_CLASS} from "./rail-row";
+import {railSectionAccessibility} from "./rail-section-accessibility";
 
 import {
 	HIDEABLE_RAIL_SECTIONS,
@@ -111,13 +112,21 @@ function RollupSummary({pct}: {pct: number}) {
 	);
 }
 
-/** Upstream's grip: a 2x3 dot grid at 75%, shown while the header is hovered or the grip has focus. */
+/**
+ * Upstream's grip: a 2x3 dot grid at 75% inside a 20px frame that takes the
+ * focus ring, shown while the header is hovered or the grip has focus.
+ */
 function GripDots() {
 	return (
-		<span aria-hidden className="grid size-5 scale-75 grid-cols-2 content-center justify-center gap-[3px]">
-			{Array.from({length: 6}, (_, index) => (
-				<span key={index} className="size-[3px] rounded-full bg-current" />
-			))}
+		<span
+			aria-hidden
+			className="flex size-5 items-center justify-center rounded group-focus-visible/railgrip:shadow-focus"
+		>
+			<span className="grid grid-cols-2 gap-[3px] scale-75">
+				{Array.from({length: 6}, (_, index) => (
+					<i key={index} className="size-0.5 rounded-full bg-current" />
+				))}
+			</span>
 		</span>
 	);
 }
@@ -138,6 +147,7 @@ function RailSection({
 	const headingId = useId();
 	const {attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging} = useSortable({
 		id: card.id,
+		attributes: {roleDescription: "Draggable section"},
 	});
 	const title = RAIL_SECTION_TITLES[card.id];
 	return (
@@ -183,7 +193,7 @@ function RailSection({
 						{...attributes}
 						{...listeners}
 						aria-label={`Reorder ${title}`}
-						className="group/railgrip absolute inset-y-0 end-0 flex w-20 cursor-grab touch-none items-center justify-end pe-2.5 text-ink-muted opacity-0 group-hover/railtop:opacity-100 focus-visible:opacity-100 focus-visible:outline-hidden active:cursor-grabbing"
+						className="group/railgrip absolute inset-y-0 end-0 flex w-20 cursor-grab touch-none items-center justify-end pe-2.5 text-ink-muted opacity-0 group-hover/railtop:opacity-100 focus-visible:opacity-100 outline-hidden active:cursor-grabbing"
 					>
 						<GripDots />
 					</div>
@@ -229,7 +239,12 @@ export function SessionRail({sessionId, cards}: {sessionId: string; cards: reado
 			className="flex h-full min-h-0 w-[var(--session-rail-w,17.5rem)] flex-col font-sans outline-none"
 		>
 			<div className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto overscroll-contain p-px [scrollbar-width:none]">
-				<DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+				<DndContext
+					sensors={sensors}
+					collisionDetection={closestCenter}
+					onDragEnd={onDragEnd}
+					accessibility={railSectionAccessibility(shownIds)}
+				>
 					<SortableContext items={shownIds} strategy={verticalListSortingStrategy}>
 						{shown.map((card) => {
 							const open = isRailSectionOpen(sections, sessionId, card.id);

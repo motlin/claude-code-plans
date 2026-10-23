@@ -6,6 +6,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {registerPane} from "../src/components/panes/pane-registry";
 import {TileHost} from "../src/components/panes/tile-host";
 import {RAIL_ROW_ACTION_CLASS} from "../src/components/session-rail/rail-row";
+import {railSectionAccessibility} from "../src/components/session-rail/rail-section-accessibility";
 import {SessionRail, type RailCard} from "../src/components/session-rail/session-rail";
 import {SessionRailSlot} from "../src/components/session-rail/session-rail-slot";
 import {useSessionRailDocked} from "../src/components/session-rail/use-session-rail-docked";
@@ -517,10 +518,90 @@ describe("session rail reorder", () => {
 			grips: screen.getAllByRole("button", {name: /^Reorder /}).map((each) => each.getAttribute("aria-label")),
 		}).toStrictEqual({
 			grip: true,
-			roledescription: "sortable",
+			roledescription: "Draggable section",
 			tabIndex: 0,
 			hoverOnly: ["opacity-0", "group-hover/railtop:opacity-100", "focus-visible:opacity-100"],
 			grips: ["Reorder Environment", "Reorder Context", "Reorder Progress"],
+		});
+	});
+
+	it("describes each grip with upstream's section pick-up instructions", () => {
+		render(<SessionRail sessionId="s1" cards={CARDS} />);
+		const grip = screen.getByRole("button", {name: "Reorder Context"});
+		const describedBy = grip.getAttribute("aria-describedby") ?? "";
+
+		expect(document.getElementById(describedBy)?.textContent).toBe(
+			"To pick up a section, press Space or Enter. While it is picked up, press the up or down arrow key to move it, Space or Enter to drop it, or Escape to cancel.",
+		);
+	});
+
+	it("announces a keyboard pick-up, move-over and cancel with upstream's section strings", async () => {
+		vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+			const section = this.closest("[data-rail-section]");
+			const index = section ? [...document.querySelectorAll("[data-rail-section]")].indexOf(section) : 0;
+			return DOMRect.fromRect({x: 0, y: index * 100, width: 280, height: 80});
+		});
+		render(<SessionRail sessionId="s1" cards={CARDS} />);
+		const grip = screen.getByRole("button", {name: "Reorder Context"});
+		const announced: string[] = [];
+		const observer = new MutationObserver(() => {
+			const text = document.querySelector("[aria-live]")?.textContent ?? "";
+			if (text !== "" && announced.at(-1) !== text) announced.push(text);
+		});
+		observer.observe(document.body, {subtree: true, childList: true, characterData: true});
+
+		for (const key of [" ", "Escape"]) {
+			await act(async () => {
+				fireEvent.keyDown(grip, {code: key === " " ? "Space" : key, key});
+				await new Promise((resolve) => {
+					setTimeout(resolve, 0);
+				});
+			});
+		}
+		observer.disconnect();
+
+		// dnd-kit's move-over on pick-up replaces the pick-up line in the same commit.
+		expect(announced).toStrictEqual(["Context is now section 2 of 3.", "Moving Context was cancelled."]);
+	});
+
+	it("words every pick-up, move, drop and cancel announcement with the section's position", () => {
+		const {announcements} = railSectionAccessibility(["environment", "context", "progress"]);
+		const context = {id: "context"};
+		const progress = {id: "progress"};
+		const event = {active: context, over: progress} as unknown as Parameters<typeof announcements.onDragOver>[0];
+
+		expect([
+			announcements.onDragStart(event),
+			announcements.onDragOver(event),
+			announcements.onDragOver({...event, over: null}),
+			announcements.onDragEnd(event),
+			announcements.onDragEnd({...event, over: null}),
+			announcements.onDragCancel(event),
+		]).toStrictEqual([
+			"Picked up Context. It is section 2 of 3.",
+			"Context is now section 3 of 3.",
+			undefined,
+			"Context dropped at section 3 of 3.",
+			"Context dropped at section 2 of 3.",
+			"Moving Context was cancelled.",
+		]);
+	});
+
+	it("rings the grip's 20px dot frame on keyboard focus like upstream", () => {
+		render(<SessionRail sessionId="s1" cards={CARDS} />);
+		const grip = screen.getByRole("button", {name: "Reorder Context"});
+		const frame = grip.firstElementChild;
+
+		expect({
+			gripOutline: grip.className.split(" ").filter((c) => c.includes("outline")),
+			frame: frame?.className,
+			dots: frame?.firstElementChild?.className,
+			dotClasses: [...(frame?.firstElementChild?.children ?? [])].map((dot) => `${dot.tagName}.${dot.className}`),
+		}).toStrictEqual({
+			gripOutline: ["outline-hidden"],
+			frame: "flex size-5 items-center justify-center rounded group-focus-visible/railgrip:shadow-focus",
+			dots: "grid grid-cols-2 gap-[3px] scale-75",
+			dotClasses: Array.from({length: 6}, () => "I.size-0.5 rounded-full bg-current"),
 		});
 	});
 
