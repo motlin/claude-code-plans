@@ -13,6 +13,7 @@ import {
 	resolvePendingUpload,
 	dropPendingUpload,
 	takeContextChips,
+	waitForPendingUploads,
 	formatReviewComment,
 	formatReviewComments,
 } from "../src/lib/context-attach";
@@ -243,6 +244,25 @@ describe("attachContext", () => {
 		stop();
 
 		expect({resolved, chips: getContextChips(SESSION)}).toStrictEqual({resolved: [false, false], chips: []});
+	});
+
+	it("waits until every pending upload in the session has settled", async () => {
+		const stop = registerComposer(SESSION, {insertText: () => {}, focus: () => {}});
+		const first = attachPendingUpload(SESSION, {kind: "image", name: "a.png"});
+		const second = attachPendingUpload(SESSION, {kind: "file", name: "b.md"});
+		if (first === undefined || second === undefined) throw new Error("no pending chip");
+		const events: string[] = [];
+		const waited = waitForPendingUploads(SESSION).then(() => events.push("settled"));
+		resolvePendingUpload(SESSION, first, {kind: "image", path: "/cache/a.png", name: "a.png"});
+		await Promise.resolve();
+		events.push("one left");
+		dropPendingUpload(SESSION, second);
+		await waited;
+		await waitForPendingUploads(SESSION);
+		events.push("none pending resolves at once");
+		stop();
+
+		expect(events).toStrictEqual(["one left", "settled", "none pending resolves at once"]);
 	});
 
 	it("registers every kind in the schema choice registry", () => {

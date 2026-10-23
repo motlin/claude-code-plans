@@ -690,6 +690,10 @@ describe("CommandPalette shell", () => {
 
 		const notCancelled = fireEvent.keyDown(input, {key: "Tab", code: "Tab", shiftKey: true});
 		const composer = await within(dialog).findByRole("combobox", {name: "Write a message…"});
+		// The field takes focus in an effect after it mounts.
+		await waitFor(() => {
+			expect(document.activeElement).toBe(composer);
+		});
 
 		expect({notCancelled, focused: document.activeElement === composer}).toStrictEqual({
 			notCancelled: false,

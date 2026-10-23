@@ -310,6 +310,98 @@ describe("Composer attachments", () => {
 		expect(chipNames()).toStrictEqual([]);
 	});
 
+	it("waits for a pending upload before sending, then sends its saved path with the prompt", async () => {
+		const pending = deferUploads();
+		const onSend = renderComposer();
+
+		paste({files: [png("shot.png")]});
+		fireEvent.change(prompt(), {target: {value: "Why?"}});
+		fireEvent.keyDown(prompt(), {key: "Enter"});
+		const whileWaiting = {sent: [...onSend.mock.calls], prompt: prompt().value};
+		pending[0]!(savedAs(`${ATTACHMENTS}/0007.png`)(png("shot.png")));
+		await waitFor(() => {
+			expect(onSend).toHaveBeenCalled();
+		});
+
+		expect({whileWaiting, sent: onSend.mock.calls, prompt: prompt().value, chips: chipNames()}).toStrictEqual({
+			whileWaiting: {sent: [], prompt: "Why?"},
+			sent: [[`${ATTACHMENTS}/0007.png\n\nWhy?`, {}]],
+			prompt: "",
+			chips: [],
+		});
+	});
+
+	it("abandons a waiting send when the prompt changes, keeping the chip", async () => {
+		const pending = deferUploads();
+		const onSend = renderComposer();
+
+		paste({files: [png("shot.png")]});
+		fireEvent.change(prompt(), {target: {value: "Why?"}});
+		fireEvent.keyDown(prompt(), {key: "Enter"});
+		fireEvent.change(prompt(), {target: {value: "Why not?"}});
+		pending[0]!(savedAs(`${ATTACHMENTS}/0008.png`)(png("shot.png")));
+		await screen.findByRole("img", {name: "shot.png"});
+		await new Promise((resolve) => {
+			setTimeout(resolve, 0);
+		});
+
+		expect({sent: onSend.mock.calls, prompt: prompt().value, chips: chipNames()}).toStrictEqual({
+			sent: [],
+			prompt: "Why not?",
+			chips: ["shot.png"],
+		});
+	});
+
+	it("sends the prompt alone when the upload it waited for fails", async () => {
+		const pending = deferUploads();
+		const onSend = renderComposer();
+
+		paste({files: [png("huge.png")]});
+		fireEvent.change(prompt(), {target: {value: "Why?"}});
+		fireEvent.keyDown(prompt(), {key: "Enter"});
+		pending[0]!(Response.json({error: "File is larger than 5 MB"}, {status: 413}));
+		const alert = await screen.findByRole("alert");
+		await waitFor(() => {
+			expect(onSend).toHaveBeenCalled();
+		});
+
+		expect({sent: onSend.mock.calls, alert: alert.textContent, chips: chipNames()}).toStrictEqual({
+			sent: [["Why?", {}]],
+			alert: "Couldn’t attach huge.png: File is larger than 5 MB",
+			chips: [],
+		});
+	});
+
+	it("abandons a waiting send when the composer switches to another session", async () => {
+		const pending = deferUploads();
+		const onSend = vi.fn<OnSend>();
+		const queryClient = new QueryClient();
+		queryClient.setQueryData(customizeMcpServersQueryOptions.queryKey, []);
+		const view = (draftKey: string) => (
+			<QueryClientProvider client={queryClient}>
+				<Composer variant="session" draftKey={draftKey} onSend={onSend} />
+			</QueryClientProvider>
+		);
+		const {rerender} = render(view(SESSION));
+
+		paste({files: [png("shot.png")]});
+		fireEvent.change(prompt(), {target: {value: "Why?"}});
+		fireEvent.keyDown(prompt(), {key: "Enter"});
+		rerender(view("session-bob"));
+		pending[0]!(savedAs(`${ATTACHMENTS}/0009.png`)(png("shot.png")));
+		await waitFor(() => {
+			expect(getContextChips(SESSION).map((chip) => chip.status)).toStrictEqual([undefined]);
+		});
+		await new Promise((resolve) => {
+			setTimeout(resolve, 0);
+		});
+
+		expect({sent: onSend.mock.calls, chips: getContextChips(SESSION).map((chip) => chip.name)}).toStrictEqual({
+			sent: [],
+			chips: ["shot.png"],
+		});
+	});
+
 	it("reports a rejected upload without adding a chip", async () => {
 		mockUploads(() => Response.json({error: "File is larger than 5 MB"}, {status: 413}));
 		renderComposer();

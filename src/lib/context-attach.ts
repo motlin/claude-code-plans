@@ -233,6 +233,20 @@ export function takeContextChips(sessionId: string): readonly ContextChip[] {
 	return taken;
 }
 
+/** Resolves once none of the session's chips is still uploading, as upstream's `waitForImagesReady`. */
+export async function waitForPendingUploads(sessionId: string): Promise<void> {
+	const settled = () => !getContextChips(sessionId).some((chip) => chip.status === "pending");
+	if (settled()) return;
+	await new Promise<void>((resolve) => {
+		const listener = () => {
+			if (!settled()) return;
+			chipListeners.delete(listener);
+			resolve();
+		};
+		chipListeners.add(listener);
+	});
+}
+
 export function useContextChips(sessionId: string): readonly ContextChip[] {
 	return useSyncExternalStore(
 		(listener) => {

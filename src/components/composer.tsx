@@ -28,6 +28,7 @@ import {
 	mergeTakeBack,
 	registerComposer,
 	takeContextChips,
+	waitForPendingUploads,
 	useContextChips,
 } from "../lib/context-attach";
 import {takeQueuedDiffComments, useDiffComments} from "../lib/diff-comments";
@@ -478,6 +479,9 @@ export function Composer({
 
 	const promptRef = useRef(prompt);
 	promptRef.current = prompt;
+	const draftKeyRef = useRef(draftKey);
+	draftKeyRef.current = draftKey;
+	const waitingSendRef = useRef(false);
 	useEffect(
 		() =>
 			registerComposer(draftKey, {
@@ -630,11 +634,28 @@ export function Composer({
 		if (trigger !== undefined && variant === "session") startComposerSubmitJourneys(trigger, draftKey);
 		const trimmed = prompt.trim();
 		// Slash commands run as typed; attached context and comments wait for the next real prompt.
-		const text = trimmed.startsWith("/")
-			? trimmed
-			: composePrompt(trimmed, takeContextChips(draftKey), takeQueuedDiffComments(draftKey));
-		send(text);
-		clearDraft();
+		if (trimmed.startsWith("/")) {
+			send(trimmed);
+			clearDraft();
+			return;
+		}
+		const finish = () => {
+			send(composePrompt(trimmed, takeContextChips(draftKey), takeQueuedDiffComments(draftKey)));
+			clearDraft();
+		};
+		if (!contextChips.some((chip) => chip.status === "pending")) {
+			finish();
+			return;
+		}
+		// Upstream's waitForImagesReady: hold the send until uploads settle, and drop it
+		// if the prompt or session changed meanwhile. A failed upload's chip is gone by then.
+		if (waitingSendRef.current) return;
+		waitingSendRef.current = true;
+		void waitForPendingUploads(draftKey).then(() => {
+			waitingSendRef.current = false;
+			if (draftKeyRef.current !== draftKey || promptRef.current !== prompt) return;
+			finish();
+		});
 	}
 	// The send slot and chin are memoized, so they read the latest render's handlers through refs.
 	const handleSubmitRef = useRef(handleSubmit);
