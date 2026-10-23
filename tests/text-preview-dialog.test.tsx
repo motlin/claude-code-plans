@@ -106,10 +106,17 @@ describe("TextPreviewDialog", () => {
 		expect(dialog.querySelector("div[dir=auto]")?.textContent.length).toBe(102400);
 	});
 
-	it("measures size in UTF-8 KB to two places and counts lines", () => {
-		expect([textPreviewStats("é\n"), textPreviewStats("a".repeat(4000) + "\n")]).toStrictEqual([
-			{kb: "0.00", lines: 2},
-			{kb: "3.91", lines: 2},
+	it("measures size in UTF-8 KB, or MB from a megabyte, to two places and counts lines", () => {
+		expect([
+			textPreviewStats("é\n"),
+			textPreviewStats("a".repeat(4000) + "\n"),
+			textPreviewStats("x", 1_000_000),
+			textPreviewStats("x", 1_572_864),
+		]).toStrictEqual([
+			{size: "0.00 KB", lines: 2},
+			{size: "3.91 KB", lines: 2},
+			{size: "976.56 KB", lines: 1},
+			{size: "1.50 MB", lines: 1},
 		]);
 	});
 });

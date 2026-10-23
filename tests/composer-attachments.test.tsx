@@ -569,4 +569,116 @@ describe("Composer attachments", () => {
 			chips: [],
 		});
 	});
+
+	describe("text file preview", () => {
+		const NOTES = "# Notes\n\n- one\n- two\n- three\n\nSee the plan now";
+
+		async function uploaded(...files: File[]) {
+			mockUploads((file) => savedAs(`${ATTACHMENTS}/${file.name}`)(file));
+			renderComposer();
+			paste({files});
+			await waitFor(() => {
+				expect(document.querySelector("[data-state=pending]")).toBeNull();
+			});
+		}
+
+		function tile(name: string): HTMLElement {
+			return document.querySelector<HTMLElement>(`li[data-chip-label="${name}"]`)!;
+		}
+
+		function preview(dialog: HTMLElement) {
+			return {
+				title: dialog.querySelector("h2")?.textContent,
+				description: dialog.querySelector("p")?.textContent,
+				body: dialog.querySelector("div[dir=auto]")?.textContent,
+			};
+		}
+
+		it("opens an uploaded markdown file as upstream's file preview, sized from its bytes", async () => {
+			await uploaded(new File([NOTES], "notes.md", {type: "text/markdown"}));
+			const link = within(tile("notes.md")).getByRole("button", {name: "notes.md"});
+
+			fireEvent.click(link);
+
+			expect({
+				tabIndex: link.tabIndex,
+				cardLink: link.getAttribute("data-cds"),
+				cursor: link.classList.contains("cursor-pointer"),
+				preview: preview(await screen.findByRole("dialog")),
+			}).toStrictEqual({
+				tabIndex: 0,
+				cardLink: "CardLink",
+				cursor: true,
+				preview: {
+					title: "notes.md",
+					description: "0.04 KB\u00A0•7 lines•Formatting may be inconsistent from source",
+					body: NOTES,
+				},
+			});
+		});
+
+		it("gives an upload outside upstream's text extensions no opener", async () => {
+			await uploaded(new File([new Uint8Array([80, 75, 3, 4])], "bundle.zip", {type: "application/zip"}));
+
+			expect(within(tile("bundle.zip")).queryByRole("button", {name: "bundle.zip"})).toBeNull();
+		});
+
+		it("matches the extension case-insensitively", async () => {
+			await uploaded(new File(["x"], "README.MD", {type: "text/markdown"}));
+
+			fireEvent.click(within(tile("README.MD")).getByRole("button", {name: "README.MD"}));
+
+			expect(preview(await screen.findByRole("dialog")).title).toBe("README.MD");
+		});
+
+		it("shows only the first 102400 characters of a large log, sized by the whole file", async () => {
+			await uploaded(new File(["x".repeat(150 * 1024)], "server.log", {type: "text/plain"}));
+
+			fireEvent.click(within(tile("server.log")).getByRole("button", {name: "server.log"}));
+			const dialog = await screen.findByRole("dialog");
+
+			expect({
+				description: preview(dialog).description,
+				length: preview(dialog).body?.length,
+			}).toStrictEqual({
+				description: "150.00 KB\u00A0•1 lines•Formatting may be inconsistent from source",
+				length: 102400,
+			});
+		});
+
+		it("drops a file read that resolves after a later preview opened", async () => {
+			await uploaded(
+				new File(["first"], "a.md", {type: "text/markdown"}),
+				new File(["second"], "b.md", {type: "text/markdown"}),
+			);
+			const reads: ((text: string) => void)[] = [];
+			vi.spyOn(Blob.prototype, "text").mockImplementation(
+				async () =>
+					new Promise<string>((resolve) => {
+						reads.push(resolve);
+					}),
+			);
+
+			fireEvent.click(within(tile("a.md")).getByRole("button", {name: "a.md"}));
+			fireEvent.click(within(tile("b.md")).getByRole("button", {name: "b.md"}));
+			reads[1]!("second");
+			const dialog = await screen.findByRole("dialog");
+			reads[0]!("first");
+			await Promise.resolve();
+
+			expect({
+				reads: reads.length,
+				dialogs: screen.getAllByRole("dialog").length,
+				preview: preview(dialog),
+			}).toStrictEqual({
+				reads: 2,
+				dialogs: 1,
+				preview: {
+					title: "b.md",
+					description: "0.01 KB\u00A0•1 lines•Formatting may be inconsistent from source",
+					body: "second",
+				},
+			});
+		});
+	});
 });

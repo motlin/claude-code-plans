@@ -47,17 +47,17 @@
 		"tolerance": 0
 	},
 	"bundle.home.gzip": {
-		"ceiling": 400369,
+		"ceiling": 404827,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Cold JS drifted to the 1% band (home 399525 gzip / 1222483 raw, session 587918 / 1779273 at 89f2e8d1); the composer's pending upload tile (Skeleton overlay, aria-busy state, in-place swap of the saved attachment) tipped home to 400369 / 1224574 and session to 588786 / 1781410. Ceilings set to the measurement; the 1% tolerance is unchanged.",
+		"reason": "Cold JS sat at 404051 gzip / 1236174 raw at a11aa3e0, inside the 1% band; previewing uploaded text files from their composer tiles (upstream's ~170-entry VK extension list, the file tile CardLink and the guarded File read) tipped home to 404827 / 1238013. Ceilings set to the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-10-23"
 	},
 	"bundle.home.raw": {
-		"ceiling": 1224574,
+		"ceiling": 1238013,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Cold JS drifted to the 1% band (home 399525 gzip / 1222483 raw, session 587918 / 1779273 at 89f2e8d1); the composer's pending upload tile (Skeleton overlay, aria-busy state, in-place swap of the saved attachment) tipped home to 400369 / 1224574 and session to 588786 / 1781410. Ceilings set to the measurement; the 1% tolerance is unchanged.",
+		"reason": "Cold JS sat at 404051 gzip / 1236174 raw at a11aa3e0, inside the 1% band; previewing uploaded text files from their composer tiles (upstream's ~170-entry VK extension list, the file tile CardLink and the guarded File read) tipped home to 404827 / 1238013. Ceilings set to the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-10-23"
 	},
 	"bundle.session.gzip": {

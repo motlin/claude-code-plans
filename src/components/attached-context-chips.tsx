@@ -11,6 +11,8 @@ import {
 
 import {type ContextChip, contextChipLabel, formatContextAttachment, removeContextChip} from "../lib/context-attach";
 import {type QueuedDiffComment, removeQueuedDiffComment} from "../lib/diff-comments";
+import {TEXT_PREVIEW_LIMIT} from "../lib/text-preview";
+import {isTextPreviewable} from "../lib/text-preview-extensions";
 import {Skeleton} from "./ui/skeleton";
 
 // The preview loads only when a tile opens, keeping its dialog out of the composer chunk.
@@ -259,13 +261,50 @@ function extensionBadge(name: string): string | undefined {
 	return dot > 0 && dot < name.length - 1 ? name.slice(dot + 1).toUpperCase() : undefined;
 }
 
-/** An uploaded file as upstream's cds file tile: its name clamped to four lines over an extension badge. */
-function FileChip({sessionId, chip}: {sessionId: string; chip: ContextChip}) {
+/** Whether a file tile opens upstream's text preview: a settled upload with bytes and a text extension. */
+function opensTextPreview(chip: ContextChip): boolean {
+	return chip.file !== undefined && chip.status !== "pending" && isTextPreviewable(contextChipLabel(chip));
+}
+
+/**
+ * An uploaded file as upstream's cds file tile: its name clamped to four
+ * lines over an extension badge, with a CardLink when its text can preview.
+ */
+function FileChip({
+	sessionId,
+	chip,
+	onOpen,
+}: {
+	sessionId: string;
+	chip: ContextChip;
+	onOpen: (chip: ContextChip, link: HTMLElement) => void;
+}) {
 	const label = contextChipLabel(chip);
 	const badge = extensionBadge(label);
 	return (
 		<Tile sessionId={sessionId} chip={chip} kind="MessageAttachmentsFile" status="Uploading file">
-			<span className="sr-only">{label}</span>
+			{opensTextPreview(chip) ? (
+				<span
+					data-cds="CardLink"
+					role="button"
+					tabIndex={0}
+					onClick={(event) => {
+						event.preventDefault();
+						onOpen(chip, event.currentTarget);
+					}}
+					onKeyDown={(event) => {
+						if (event.key === "Enter" || event.key === " ") {
+							event.preventDefault();
+							onOpen(chip, event.currentTarget);
+						}
+					}}
+					className="outline-none after:absolute after:inset-0 after:rounded-card-xs after:content-[''] cursor-pointer"
+				>
+					<span className="sr-only">{label}</span>
+				</span>
+			) : (
+				<span className="sr-only">{label}</span>
+			)}
 			<div className="flex min-h-0 min-w-0 flex-1 flex-col justify-between gap-g5">
 				<div className="flex min-w-0 flex-col">
 					<span
@@ -348,12 +387,45 @@ export function AttachedContextChips({
 	const [previewOpen, setPreviewOpen] = useState(false);
 	const previewChip = preview === null ? undefined : context.find((chip) => chip.id === preview.chipId);
 	const openPreview = (chip: ContextChip, origin: HTMLImageElement | null) => {
+		opens.current += 1;
 		setPreview({chipId: chip.id, origin});
 		setPreviewOpen(true);
 	};
-	const [textPreview, setTextPreview] = useState<{chipId: string; opener: HTMLElement} | null>(null);
+	const [textPreview, setTextPreview] = useState<{
+		chipId: string;
+		opener: HTMLElement;
+		/** An uploaded file's read text, titled by its name and sized by the whole file. */
+		read?: TextPreview & {size: number};
+	} | null>(null);
 	const textPreviewChip = textPreview === null ? undefined : context.find((chip) => chip.id === textPreview.chipId);
-	const textPreviewContent = textPreviewChip === undefined ? null : textPreviewOf(textPreviewChip);
+	const textPreviewContent =
+		textPreviewChip === undefined ? null : (textPreview?.read ?? textPreviewOf(textPreviewChip));
+	// Upstream's `dt`: each open bumps it, so a file read that resolves after a later open is dropped.
+	const opens = useRef(0);
+	const openTextPreview = (chip: ContextChip, opener: HTMLElement) => {
+		opens.current += 1;
+		setTextPreview({chipId: chip.id, opener});
+	};
+	const openFilePreview = (chip: ContextChip, opener: HTMLElement) => {
+		const {file} = chip;
+		if (file === undefined) return;
+		const open = (opens.current += 1);
+		file.slice(0, TEXT_PREVIEW_LIMIT)
+			.text()
+			.then(
+				(text) => {
+					if (open !== opens.current) return;
+					setTextPreview({
+						chipId: chip.id,
+						opener,
+						read: {title: contextChipLabel(chip), text, variant: "file", size: file.size},
+					});
+				},
+				() => {
+					// An unreadable file opens nothing, as upstream's `Yi` swallows the error.
+				},
+			);
+	};
 	return (
 		<div
 			data-cds-composer-attachments-clip=""
@@ -366,7 +438,9 @@ export function AttachedContextChips({
 							return <ImageChip key={chip.id} sessionId={sessionId} chip={chip} onOpen={openPreview} />;
 						}
 						if (chip.kind === "file" && chip.name !== undefined) {
-							return <FileChip key={chip.id} sessionId={sessionId} chip={chip} />;
+							return (
+								<FileChip key={chip.id} sessionId={sessionId} chip={chip} onOpen={openFilePreview} />
+							);
 						}
 						const label = contextChipLabel(chip);
 						const Icon = CONTEXT_CHIP_ICON[chip.kind];
@@ -388,7 +462,7 @@ export function AttachedContextChips({
 								) : (
 									<PillLink
 										onOpen={(opener) => {
-											setTextPreview({chipId: chip.id, opener});
+											openTextPreview(chip, opener);
 										}}
 									>
 										{content}

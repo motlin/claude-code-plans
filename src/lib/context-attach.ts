@@ -104,6 +104,8 @@ export interface ContextAttachment {
 	name?: string | undefined;
 	/** Thumbnail source for an image chip. */
 	previewUrl?: string | undefined;
+	/** An uploaded file's bytes, kept in memory so its tile can preview text. */
+	file?: File | undefined;
 	/** Still uploading: shown as a pending tile and left out of a send. */
 	status?: "pending" | undefined;
 }
@@ -376,7 +378,10 @@ export function attachUploadedFiles(
 						(typeof URL.createObjectURL === "function" ? URL.createObjectURL(file) : undefined);
 					if (url !== undefined) attachment.previewUrl = url;
 				}
-				if (!savedImage) revokePreview();
+				if (!savedImage) {
+					revokePreview();
+					attachment.file = file;
+				}
 				if (id === undefined) attachContext(sessionId, attachment);
 				else if (!resolvePendingUpload(sessionId, id, attachment)) revokePreview();
 			},

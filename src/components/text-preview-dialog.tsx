@@ -14,6 +14,7 @@ export function TextPreviewDialog({
 	title,
 	text,
 	variant,
+	size,
 	onClose,
 	finalFocus,
 }: {
@@ -21,13 +22,15 @@ export function TextPreviewDialog({
 	title: string;
 	text: string;
 	variant: "excerpt" | "file";
+	/** The whole file's byte size when `text` is a read of it; defaults to the text's own. */
+	size?: number | undefined;
 	onClose: () => void;
 	/** Where focus returns on close; defaults to Base UI's previously focused element. */
 	finalFocus?: () => HTMLElement | boolean;
 }) {
 	const closeRef = useRef<HTMLButtonElement>(null);
 	const shown = text.slice(0, TEXT_PREVIEW_LIMIT);
-	const {kb, lines} = textPreviewStats(text);
+	const {size: sizeLabel, lines} = textPreviewStats(shown, size);
 	return (
 		<Dialog.Root
 			open={open}
@@ -55,7 +58,7 @@ export function TextPreviewDialog({
 											<Dialog.Description className="text-body font-normal text-secondary break-words">
 												<span className="mb-3 mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-2 text-xs">
 													<span>
-														<span>{kb} KB&nbsp;</span>
+														<span>{sizeLabel}&nbsp;</span>
 														<span className="mx-1 opacity-50">•</span>
 														{lines} lines
 													</span>
