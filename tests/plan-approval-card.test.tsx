@@ -2,12 +2,18 @@
 
 import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
+import {PaneHostContext, type PaneHostApi} from "../src/components/panes/pane-host-context";
 import {PlanApprovalCard} from "../src/components/plan-approval-card";
 import type {PlanApprovalContextValue} from "../src/components/plan-approval-context";
 import type {PlanDecision, PlanDialog} from "../src/lib/plan-approval";
 import {planKeyAction} from "../src/lib/plan-approval";
+import {defaultPaneLayout} from "../src/lib/pane-layout";
+import {PHONE_SHEET_QUERY} from "../src/lib/use-phone-sheet";
 
-afterEach(cleanup);
+afterEach(() => {
+	cleanup();
+	vi.unstubAllGlobals();
+});
 
 const AUTO_DIALOG: PlanDialog = {forwardMode: "auto", manual: true};
 
@@ -135,6 +141,86 @@ describe("PlanApprovalCard", () => {
 		expect(view.container.querySelector("[data-plan-error]")?.textContent).toStrictEqual(
 			"No plan approval is pending",
 		);
+	});
+});
+
+describe("PlanApprovalCard auto-opens the Plan pane", () => {
+	function paneHost(openPane: PaneHostApi["openPane"]): PaneHostApi {
+		return {
+			layout: defaultPaneLayout(),
+			openKinds: [],
+			isOpen: () => false,
+			openPane,
+			closePane: () => {},
+			togglePane: () => {},
+		};
+	}
+
+	function card(host: PaneHostApi | null, key: string) {
+		const {value} = context();
+		const node = <PlanApprovalCard key={key} toolUseId="toolu_plan_1" plan={value} />;
+		return host === null ? node : <PaneHostContext.Provider value={host}>{node}</PaneHostContext.Provider>;
+	}
+
+	function mockPhone(phone: boolean) {
+		vi.stubGlobal(
+			"matchMedia",
+			vi.fn((query: string) => ({
+				matches: query === PHONE_SHEET_QUERY ? phone : false,
+				media: query,
+				onchange: null,
+				addEventListener: () => undefined,
+				removeEventListener: () => undefined,
+				addListener: () => undefined,
+				removeListener: () => undefined,
+				dispatchEvent: () => false,
+			})),
+		);
+	}
+
+	it("opens it once per mount, and again on a remount, as upstream's card effect does", async () => {
+		const openPane = vi.fn<PaneHostApi["openPane"]>();
+		const view = render(card(paneHost(openPane), "a"));
+		await act(async () => Promise.resolve());
+		const afterMount = [...openPane.mock.calls];
+		view.rerender(card(paneHost(openPane), "a"));
+		await act(async () => Promise.resolve());
+		const afterRerender = [...openPane.mock.calls];
+		view.rerender(card(paneHost(openPane), "b"));
+		await act(async () => Promise.resolve());
+		expect({afterMount, afterRerender, afterRemount: openPane.mock.calls}).toStrictEqual({
+			afterMount: [["plan"]],
+			afterRerender: [["plan"]],
+			afterRemount: [["plan"], ["plan"]],
+		});
+	});
+
+	it("does nothing without a pane host", async () => {
+		render(card(null, "a"));
+		await act(async () => Promise.resolve());
+		expect(buttonNames()).toStrictEqual([
+			"Reject",
+			"Revise…Esc",
+			"AcceptCtrlShift⏎Enter",
+			"Accept and auto modeCtrl⏎Enter",
+		]);
+	});
+
+	it("skips it on a phone, where upstream has no side panes", async () => {
+		mockPhone(true);
+		const openPane = vi.fn<PaneHostApi["openPane"]>();
+		render(card(paneHost(openPane), "a"));
+		await act(async () => Promise.resolve());
+		expect(openPane.mock.calls).toStrictEqual([]);
+	});
+
+	it("skips it while the tab is hidden", async () => {
+		vi.spyOn(document, "visibilityState", "get").mockReturnValue("hidden");
+		const openPane = vi.fn<PaneHostApi["openPane"]>();
+		render(card(paneHost(openPane), "a"));
+		await act(async () => Promise.resolve());
+		vi.restoreAllMocks();
+		expect(openPane.mock.calls).toStrictEqual([]);
 	});
 });
 

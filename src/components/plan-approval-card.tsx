@@ -14,7 +14,9 @@ import {
 	type PlanDecision,
 	type PlanDialog,
 } from "../lib/plan-approval";
+import {usePhoneSheet} from "../lib/use-phone-sheet";
 import {ApprovalActionButton} from "./approval-card";
+import {useOptionalPaneHost} from "./panes/pane-host-context";
 import type {PlanApprovalContextValue} from "./plan-approval-context";
 import {ReadOnlyAnswerHint} from "./terminal-writes-tip";
 import {Shortcut} from "./ui/shortcut";
@@ -175,6 +177,22 @@ function PlanApprovalActions({
 }
 
 /**
+ * Upstream's plan card effect: open the Plan pane once per mount (so a remount
+ * reopens it), only where side panes exist (never on a phone, where upstream
+ * passes no `onOpenPlan`) and only while the tab is visible.
+ */
+function useAutoOpenPlanPane(): void {
+	const host = useOptionalPaneHost();
+	const phone = usePhoneSheet();
+	const opened = useRef(false);
+	useEffect(() => {
+		if (opened.current || host === null || phone || document.visibilityState !== "visible") return;
+		opened.current = true;
+		host.openPane("plan");
+	}, [host, phone]);
+}
+
+/**
  * Upstream's plan approval actions under a pending ExitPlanMode: [Reject]
  * [Revise… esc] … [Accept ⇧⌘⏎] [Accept and <mode> ⌘⏎], and Revise's "What
  * should change?" box with [Back] [Revise]. Choices type into the CLI's own
@@ -183,6 +201,7 @@ function PlanApprovalActions({
  */
 export function PlanApprovalCard({toolUseId, plan}: {toolUseId: string; plan: PlanApprovalContextValue}) {
 	const {answerRoute, loadDialog, decide} = plan;
+	useAutoOpenPlanPane();
 	const live = answerRoute === "live-pane";
 	const [state, setState] = useState<DialogState>({kind: "loading"});
 

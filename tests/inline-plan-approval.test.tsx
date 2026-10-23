@@ -42,7 +42,7 @@ describe("inlinePlanToolUseId", () => {
 });
 
 describe("InlinePlanApproval", () => {
-	it("draws upstream's own sticky approval card after the transcript: title, Open plan, then the actions", async () => {
+	it("draws upstream's own sticky approval card after the transcript: title, Open plan, then the actions; mounting auto-opens the Plan pane before the click", async () => {
 		const openPane = vi.fn<PaneHostApi["openPane"]>();
 		const host = paneHost(openPane);
 		const view = render(
@@ -72,7 +72,7 @@ describe("InlinePlanApproval", () => {
 				["shrink-0 self-center", "Open plan"],
 			],
 			actions: ["Reject", "Revise…Esc", "AcceptCtrlShift⏎Enter", "Accept and auto modeCtrl⏎Enter"],
-			opened: [["plan"]],
+			opened: [["plan"], ["plan"]],
 		});
 	});
 
