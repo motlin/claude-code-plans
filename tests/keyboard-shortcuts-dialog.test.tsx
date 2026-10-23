@@ -6,7 +6,7 @@ import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {CommandPalette} from "../src/components/command-palette";
 import {ToastProvider} from "../src/components/toast";
-import {KeyboardShortcutsDialog} from "../src/components/keyboard-shortcuts-dialog";
+import {KeyboardShortcutsDialog, ShortcutRow} from "../src/components/keyboard-shortcuts-dialog";
 import {setKeyboardShortcutsOpen} from "../src/components/keyboard-shortcuts-open";
 import {shortcutSections} from "../src/components/keyboard-shortcut-sections";
 import {SHORTCUT_IDS, SHORTCUTS} from "../src/lib/shortcuts/registry";
@@ -337,5 +337,76 @@ describe("Command palette Keyboard shortcuts item", () => {
 		fireEvent.click(await screen.findByRole("option", {name: /^Keyboard shortcuts/}));
 
 		await screen.findByRole("dialog", {name: "Keyboard shortcuts"});
+	});
+});
+
+describe("ShortcutRow", () => {
+	const twoBindings = [
+		{key: "f5", modifiers: ["alt"], platform: "mac"},
+		{key: "f7", modifiers: [], platform: "mac"},
+	] as const;
+
+	beforeEach(() => {
+		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(MAC_UA);
+	});
+
+	afterEach(() => {
+		cleanup();
+		vi.restoreAllMocks();
+	});
+
+	function keysCell(container: HTMLElement): Element | null {
+		return container.querySelector(":scope > div > span:last-child");
+	}
+
+	it('joins every binding with an upstream "or" separator when dialogShowsAllBindings is set', () => {
+		const {container} = render(
+			<ShortcutRow
+				definition={{
+					description: "Next change in changes",
+					group: "panes",
+					bindings: twoBindings,
+					ownerSlug: "test",
+					enabled: true,
+					dialogShowsAllBindings: true,
+				}}
+				isMac
+				isWindows={false}
+			/>,
+		);
+
+		const cell = keysCell(container);
+		expect(
+			[...(cell?.children ?? [])].map((child) => ({
+				tag: child.tagName,
+				cds: child.getAttribute("data-cds"),
+				ariaHidden: child.getAttribute("aria-hidden"),
+				className: child.getAttribute("data-cds") === null ? child.className : null,
+				text: child.textContent,
+			})),
+		).toStrictEqual([
+			{tag: "SPAN", cds: "Shortcut", ariaHidden: null, className: null, text: "⌥OptionF5"},
+			{tag: "SPAN", cds: null, ariaHidden: "true", className: "text-xs text-muted-as-secondary", text: "or"},
+			{tag: "SPAN", cds: "Shortcut", ariaHidden: null, className: null, text: "F7"},
+		]);
+	});
+
+	it("renders only the first binding without the flag, like upstream shortcutId rows", () => {
+		const {container} = render(
+			<ShortcutRow
+				definition={{
+					description: "Next change in changes",
+					group: "panes",
+					bindings: twoBindings,
+					ownerSlug: "test",
+					enabled: true,
+				}}
+				isMac
+				isWindows={false}
+			/>,
+		);
+
+		const cell = keysCell(container);
+		expect([...(cell?.children ?? [])].map((child) => child.textContent)).toStrictEqual(["⌥OptionF5"]);
 	});
 });

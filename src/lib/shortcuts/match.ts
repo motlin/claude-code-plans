@@ -1,5 +1,5 @@
 import {objectKeys} from "../narrow";
-import {type Binding, getShortcut, type ShortcutId, type ShortcutModifier} from "./registry";
+import {type Binding, getShortcut, type ShortcutDefinition, type ShortcutId, type ShortcutModifier} from "./registry";
 
 type ShortcutKeyEvent = Pick<
 	KeyboardEvent,
@@ -73,6 +73,11 @@ export function isInModalLayer(element: Element | null): boolean {
 }
 
 export function bindingsFor(id: ShortcutId, isMac: boolean, isWindows = false): Binding[] {
+	return platformBindings(getShortcut(id), isMac, isWindows);
+}
+
+/** The definition's bindings that apply on the current platform, in registry order. */
+export function platformBindings(definition: ShortcutDefinition, isMac: boolean, isWindows = false): Binding[] {
 	const platforms = isMac ? ["mac"] : ["non-mac", isWindows ? "windows" : "linux"];
-	return getShortcut(id).bindings.filter((b) => b.platform === undefined || platforms.includes(b.platform));
+	return definition.bindings.filter((b) => b.platform === undefined || platforms.includes(b.platform));
 }

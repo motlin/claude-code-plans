@@ -1,11 +1,11 @@
 import {Dialog} from "@base-ui/react/dialog";
 import {X} from "lucide-react";
-import {useCallback, useRef, useSyncExternalStore} from "react";
+import {Fragment, useCallback, useRef, useSyncExternalStore} from "react";
 
 import {useIsMac, useIsWindows} from "../hooks/use-is-mac";
 import {useShortcut} from "../hooks/use-shortcut";
-import {bindingsFor} from "../lib/shortcuts/match";
-import {bindingToKeys, SHORTCUT_IDS, SHORTCUTS, type ShortcutId} from "../lib/shortcuts/registry";
+import {platformBindings} from "../lib/shortcuts/match";
+import {bindingToKeys, SHORTCUT_IDS, SHORTCUTS, type ShortcutDefinition} from "../lib/shortcuts/registry";
 import {Shortcut} from "./ui/shortcut";
 import {shortcutSections} from "./keyboard-shortcut-sections";
 import {
@@ -16,19 +16,37 @@ import {
 } from "./keyboard-shortcuts-open";
 import {DensityScope} from "./ui/density";
 
-function ShortcutRow({id, isMac, isWindows}: {id: ShortcutId; isMac: boolean; isWindows: boolean}) {
-	const definition = SHORTCUTS[id];
-	const binding = bindingsFor(id, isMac, isWindows)[0];
-	const keys =
-		"displayKeys" in definition
-			? definition.displayKeys
-			: binding === undefined
-				? undefined
-				: bindingToKeys(binding);
+function rowKeys(definition: ShortcutDefinition, isMac: boolean, isWindows: boolean): string[] {
+	if (definition.displayKeys !== undefined) return [definition.displayKeys];
+	const keys = platformBindings(definition, isMac, isWindows).map(bindingToKeys);
+	return definition.dialogShowsAllBindings === true ? keys : keys.slice(0, 1);
+}
+
+/** One dialog row; several bindings render as separate Shortcuts joined by upstream's "or". */
+export function ShortcutRow({
+	definition,
+	isMac,
+	isWindows,
+}: {
+	definition: ShortcutDefinition;
+	isMac: boolean;
+	isWindows: boolean;
+}) {
 	return (
 		<div className="flex items-center justify-between border-b-[0.5px] border-border py-2 last:border-0">
 			<span className="flex items-center gap-2 text-sm text-secondary">{definition.description}</span>
-			<span className="flex items-center gap-2">{keys === undefined ? null : <Shortcut keys={keys} />}</span>
+			<span className="flex items-center gap-2">
+				{rowKeys(definition, isMac, isWindows).map((keys, index) => (
+					<Fragment key={keys}>
+						{index > 0 && (
+							<span aria-hidden="true" className="text-xs text-muted-as-secondary">
+								or
+							</span>
+						)}
+						<Shortcut keys={keys} />
+					</Fragment>
+				))}
+			</span>
 		</div>
 	);
 }
@@ -112,7 +130,12 @@ export function KeyboardShortcutsDialog() {
 									<div key={section.title}>
 										<div className="mt-5 py-2 text-body">{section.title}</div>
 										{section.ids.map((id) => (
-											<ShortcutRow key={id} id={id} isMac={isMac} isWindows={isWindows} />
+											<ShortcutRow
+												key={id}
+												definition={SHORTCUTS[id]}
+												isMac={isMac}
+												isWindows={isWindows}
+											/>
 										))}
 									</div>
 								))}

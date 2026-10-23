@@ -112,6 +112,8 @@
 
 	/* Upstream claude.ai/code — session row icons (src/components/status-dot.tsx) */
 	--color-ink-muted: var(--upstream-text-muted);
+	/* Upstream text-muted-as-secondary: the ⌘/ dialog's "or" between bindings. */
+	--color-muted-as-secondary: var(--muted-as-secondary, var(--upstream-text-muted));
 	/* Upstream cds-era inline code chip ink (prose `code`). */
 	--color-code-ink: var(--upstream-code-ink);
 	/* Upstream danger text (failed tool rows and their output) shares the chip ink. */

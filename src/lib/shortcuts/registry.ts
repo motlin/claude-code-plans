@@ -32,6 +32,8 @@ export interface ShortcutDefinition {
 	enabled: boolean;
 	/** Keys string for display when the bindings are a range, e.g. "1…9". */
 	displayKeys?: string;
+	/** The ⌘/ dialog lists every platform binding joined by "or" (upstream `shortcut` array rows). */
+	dialogShowsAllBindings?: true;
 	/** Registered and bound, but upstream's ⌘/ dialog has no row for it. */
 	hiddenFromDialog?: true;
 }
