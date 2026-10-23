@@ -9,7 +9,7 @@ import {
 	highlightMatches,
 	mergeSlashCommands,
 	slashArgumentHint,
-	slashQuery,
+	slashTrigger,
 	splitLeadingSlashCommand,
 	type SlashCommand,
 } from "../src/lib/slash-commands";
@@ -255,15 +255,35 @@ describe("highlightMatches", () => {
 	});
 });
 
-describe("slashQuery", () => {
-	it("returns the typed command name only while the first token is being typed", () => {
+describe("slashTrigger", () => {
+	const at = (prompt: string) => slashTrigger(prompt, prompt.length);
+
+	it("opens selected at the start of the prompt while the first token is being typed", () => {
+		expect([at("/"), at("/mo"), at("/model "), at("/mo/"), slashTrigger("/mo\nnext", 3)]).toStrictEqual([
+			{start: 0, query: "", atStart: true},
+			{start: 0, query: "mo", atStart: true},
+			null,
+			null,
+			{start: 0, query: "mo", atStart: true},
+		]);
+	});
+
+	it("opens unselected after text or at the start of a later line, but not for an empty mid-line query", () => {
 		expect([
-			slashQuery("/"),
-			slashQuery("/mo"),
-			slashQuery("/model "),
-			slashQuery("hello /mo"),
-			slashQuery("/mo\nnext"),
-		]).toStrictEqual(["", "mo", null, null, null]);
+			at("hello /mo"),
+			at("line one\n/ef"),
+			at("hello /"),
+			at("x/"),
+			slashTrigger("hello /mo there", 9),
+			slashTrigger("hello /model", 9),
+		]).toStrictEqual([
+			{start: 6, query: "mo", atStart: false},
+			{start: 9, query: "ef", atStart: false},
+			null,
+			null,
+			{start: 6, query: "mo", atStart: false},
+			null,
+		]);
 	});
 });
 

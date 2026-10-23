@@ -344,6 +344,79 @@ describe("Composer slash commands", () => {
 		});
 	});
 
+	it("opens a mid-line slash unselected, with no tooltip or active descendant, until ↓ highlights row 0", () => {
+		const {textarea} = setup();
+		fireEvent.change(textarea, {target: {value: "hello /mo"}});
+		const unselected = {
+			rows: rows(),
+			tooltip: screen.queryByRole("tooltip"),
+			activeDescendant: textarea.getAttribute("aria-activedescendant"),
+		};
+
+		fireEvent.keyDown(textarea, {key: "ArrowDown"});
+
+		expect({unselected, down: rows(), tooltip: screen.getByRole("tooltip").textContent}).toStrictEqual({
+			unselected: {
+				rows: [
+					{name: "model", highlighted: false},
+					{name: "plan", highlighted: false},
+				],
+				tooltip: null,
+				activeDescendant: null,
+			},
+			down: [
+				{name: "model", highlighted: true},
+				{name: "plan", highlighted: false},
+			],
+			tooltip: "Set the model for this session",
+		});
+	});
+
+	it("moves ↑ from an unselected mid-line menu to the last row", () => {
+		const {textarea} = setup();
+		fireEvent.change(textarea, {target: {value: "hello /mo"}});
+
+		fireEvent.keyDown(textarea, {key: "ArrowUp"});
+
+		expect(rows()).toStrictEqual([
+			{name: "model", highlighted: false},
+			{name: "plan", highlighted: true},
+		]);
+	});
+
+	it("closes an unselected mid-line menu on Enter and sends the prompt", () => {
+		const {textarea, onSend} = setup();
+		fireEvent.change(textarea, {target: {value: "hello /mo"}});
+
+		fireEvent.keyDown(textarea, {key: "Enter"});
+
+		expect({
+			sent: onSend.mock.calls,
+			menu: screen.queryByRole("menu", {name: "Slash commands"}),
+		}).toStrictEqual({sent: [["hello /mo", {}]], menu: null});
+	});
+
+	it("accepting a mid-line row replaces only the /query token", () => {
+		const {textarea} = setup();
+		fireEvent.change(textarea, {target: {value: "hello /mo"}});
+
+		fireEvent.keyDown(textarea, {key: "ArrowDown"});
+		fireEvent.keyDown(textarea, {key: "Enter"});
+
+		expect({
+			value: textarea.value,
+			caret: textarea.selectionStart,
+			menu: screen.queryByRole("menu", {name: "Slash commands"}),
+		}).toStrictEqual({value: "hello /model ", caret: 13, menu: null});
+	});
+
+	it("shows no menu for an empty mid-line query", () => {
+		const {textarea} = setup();
+		fireEvent.change(textarea, {target: {value: "hello /"}});
+
+		expect(screen.queryByRole("menu", {name: "Slash commands"})).toBeNull();
+	});
+
 	it("uses upstream's compact popup, scroller and row metrics", () => {
 		const {textarea} = setup();
 		fireEvent.change(textarea, {target: {value: "/"}});

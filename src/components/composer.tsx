@@ -34,7 +34,7 @@ import {takeQueuedDiffComments, useDiffComments} from "../lib/diff-comments";
 import type {SessionFilesEntry} from "../lib/api/session-files";
 import {fileMentionTrigger, insertFileMention} from "../lib/file-mentions";
 import type {LaunchOptions} from "../lib/launch-options";
-import {filterSlashCommands, type SlashCommand, slashArgumentHint, slashQuery} from "../lib/slash-commands";
+import {filterSlashCommands, type SlashCommand, slashArgumentHint, slashTrigger} from "../lib/slash-commands";
 import {type ChinLaunchControls, ComposerAddMenu, ComposerChin} from "./composer-chin";
 import {AttachedContextChips} from "./attached-context-chips";
 import type {ChinMenu} from "./composer-launch-menus";
@@ -515,14 +515,18 @@ export function Composer({
 		[subscribePrefill, setPrompt],
 	);
 
-	const query = slashQuery(prompt);
-	// Esc dismisses the whole `/` trigger, as upstream does: typing more keeps it closed until the prompt stops starting with `/`.
+	const slash = slashTrigger(prompt, caret);
+	const query = slash?.query ?? null;
+	// Esc dismisses the whole `/` trigger, as upstream does: typing more keeps it closed until the token is gone.
 	const [slashDismissed, setSlashDismissed] = useState(false);
-	if (slashDismissed && !prompt.startsWith("/")) setSlashDismissed(false);
-	const [highlight, setHighlight] = useState({query: "", index: 0});
-	const matches = query === null || slashDismissed ? [] : filterSlashCommands(slashCommands, query);
-	const slashOpen = query !== null && matches.length > 0;
-	const highlighted = highlight.query === query ? Math.min(highlight.index, matches.length - 1) : 0;
+	if (slashDismissed && slash === null) setSlashDismissed(false);
+	const slashKey = slash === null ? null : `${slash.start}\0${slash.query}`;
+	const [highlight, setHighlight] = useState<{key: string | null; index: number}>({key: null, index: 0});
+	const matches = slash === null || slashDismissed ? [] : filterSlashCommands(slashCommands, slash.query);
+	const slashOpen = matches.length > 0;
+	// A mid-line slash opens with nothing highlighted (-1), as upstream's `startsUnselected` does.
+	const highlighted =
+		highlight.key === slashKey ? Math.min(highlight.index, matches.length - 1) : slash?.atStart === true ? 0 : -1;
 	const argumentHint = slashArgumentHint(slashCommands, prompt);
 
 	const trigger = mentionSessionId === undefined || slashOpen ? null : fileMentionTrigger(prompt, caret);
@@ -577,7 +581,12 @@ export function Composer({
 	}
 
 	function acceptSlashCommand(command: SlashCommand) {
-		setPrompt(`/${command.name} `);
+		if (slash === null) return;
+		const inserted = `/${command.name} `;
+		const next = slash.start + inserted.length;
+		pendingCaretRef.current = next;
+		setCaret(next);
+		setPrompt(prompt.slice(0, slash.start) + inserted + prompt.slice(caret));
 		textareaRef.current?.focus();
 	}
 
@@ -585,10 +594,21 @@ export function Composer({
 		if (!slashOpen) return false;
 		const move = e.key === "ArrowDown" ? 1 : e.key === "ArrowUp" ? -1 : 0;
 		if (move !== 0) {
-			setHighlight({query, index: Math.max(0, Math.min(matches.length - 1, highlighted + move))});
+			const index =
+				highlighted === -1
+					? move === 1
+						? 0
+						: matches.length - 1
+					: Math.max(0, Math.min(matches.length - 1, highlighted + move));
+			setHighlight({key: slashKey, index});
 		} else if ((e.key === "Enter" || e.key === "Tab") && !e.shiftKey) {
 			const command = matches[highlighted];
-			if (command !== undefined) acceptSlashCommand(command);
+			// Nothing highlighted: upstream closes the menu and lets the key through (Enter sends).
+			if (command === undefined) {
+				setSlashDismissed(true);
+				return false;
+			}
+			acceptSlashCommand(command);
 		} else if (e.key === "Escape") {
 			setSlashDismissed(true);
 			e.stopPropagation();
@@ -838,10 +858,10 @@ export function Composer({
 						<SlashCommandMenu
 							id={slashMenuId}
 							commands={matches}
-							query={query}
+							query={query ?? ""}
 							highlighted={highlighted}
 							onHighlight={(index) => {
-								setHighlight({query, index});
+								setHighlight({key: slashKey, index});
 							}}
 							onAccept={acceptSlashCommand}
 						/>
@@ -894,7 +914,9 @@ export function Composer({
 						aria-controls={slashOpen ? slashMenuId : mentionOpen ? mentionMenuId : undefined}
 						aria-activedescendant={
 							slashOpen
-								? slashCommandOptionId(slashMenuId, highlighted)
+								? highlighted === -1
+									? undefined
+									: slashCommandOptionId(slashMenuId, highlighted)
 								: mentionOpen
 									? fileMentionOptionId(mentionMenuId, mentionHighlighted)
 									: undefined

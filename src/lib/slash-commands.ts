@@ -161,10 +161,27 @@ export function highlightMatches(text: string, query: string): HighlightSegment[
 	return segments;
 }
 
-/** The partial command name while the prompt is just `/` plus one token, else null. */
-export function slashQuery(prompt: string): string | null {
-	const match = /^\/(\S*)$/.exec(prompt);
-	return match === null ? null : (match[1] ?? "");
+export interface SlashTrigger {
+	/** Index of the `/` in the prompt. */
+	start: number;
+	query: string;
+	/** True only at the very start of the prompt, where upstream opens with row 0 highlighted. */
+	atStart: boolean;
+}
+
+/**
+ * The `/query` token ending at the caret, or null. Upstream opens on a `/` at the start of the
+ * prompt (selected) or after whitespace (unselected, and only once the query is non-empty).
+ */
+export function slashTrigger(prompt: string, caret: number): SlashTrigger | null {
+	if (/^\S/.test(prompt.slice(caret))) return null;
+	const match = /(?:^|\s)\/([^\s/]*)$/.exec(prompt.slice(0, caret));
+	if (match === null) return null;
+	const query = match[1] ?? "";
+	const start = caret - query.length - 1;
+	const atStart = start === 0;
+	if (!atStart && query === "") return null;
+	return {start, query, atStart};
 }
 
 /** The argument-hint ghost text for a just-accepted `/name ` with no arguments yet. */
