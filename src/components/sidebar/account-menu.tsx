@@ -62,7 +62,7 @@ const CLAUDE_CODE_LINKS = [
  * above itself. Cloud-only items (Language, View all plans, Get apps, Log out, Your privacy choices) are
  * omitted; Claude Config and Setup are local additions.
  */
-export function AccountMenu({fullWidth = false}: {fullWidth?: boolean}) {
+export function AccountMenu() {
 	const {data} = useQuery(localAccountQueryOptions);
 	const navigate = useNavigate();
 	const openSettings = useOpenSettings();
@@ -78,7 +78,7 @@ export function AccountMenu({fullWidth = false}: {fullWidth?: boolean}) {
 			<MenuTrigger
 				data-testid="user-menu-button"
 				data-prefetch="settings"
-				className={`${fullWidth ? "w-full " : ""}flex h-8 max-w-full min-w-0 items-center gap-2 rounded-r6 pr-2 pl-0.5 text-left hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)] hover:bg-[var(--sb-hover)] data-[popup-open]:bg-[var(--sb-hover)]`}
+				className="flex h-8 w-full max-w-full min-w-0 items-center gap-2 rounded-r6 pr-2 pl-0.5 text-left hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)] hover:bg-[var(--sb-hover)] data-[popup-open]:bg-[var(--sb-hover)]"
 			>
 				<span className="flex h-7 w-7 shrink-0 items-center justify-center">
 					<span
@@ -101,10 +101,7 @@ export function AccountMenu({fullWidth = false}: {fullWidth?: boolean}) {
 						</>
 					)}
 				</span>
-				<ChevronDown
-					aria-hidden="true"
-					className={`${fullWidth ? "ms-auto " : ""}size-3 shrink-0 text-ink-muted`}
-				/>
+				<ChevronDown aria-hidden="true" className="ms-auto size-3 shrink-0 text-ink-muted" />
 			</MenuTrigger>
 			<MenuContent density="comfortable" side="top" align="start" className="w-[17rem]">
 				{data?.email !== undefined && (

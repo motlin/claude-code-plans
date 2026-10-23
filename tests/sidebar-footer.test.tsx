@@ -9,7 +9,7 @@ import {
 	Outlet,
 	RouterProvider,
 } from "@tanstack/react-router";
-import {cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
+import {cleanup, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
 import {SettingsProvider} from "../src/components/settings-provider";
 import {DEFAULTS} from "../src/components/settings-context";
@@ -97,38 +97,28 @@ beforeEach(() => {
 });
 
 describe("sidebar footer", () => {
-	it("renders the account menu button and the Search icon button", async () => {
+	it("renders only the full-width account menu button, with no Search icon", async () => {
 		await renderSidebar();
 
 		const footer = await waitFor(() => screen.getByTestId("sidebar-footer"));
 		const account = within(footer).getByTestId("user-menu-button");
-		const search = within(footer).getByRole("button", {name: "Search"});
+		const label = within(footer).getByText("craig").parentElement?.className.split(" ") ?? [];
 
 		expect({
 			accountText: account.textContent,
 			accountPopup: account.getAttribute("aria-haspopup"),
-			buttonNames: within(footer)
-				.getAllByRole("button")
-				.map((button) => button.getAttribute("aria-label")),
-			searchKeys: search.getAttribute("aria-keyshortcuts"),
+			accountFullWidth: account.classList.contains("w-full"),
+			buttonCount: within(footer).getAllByRole("button").length,
+			search: within(footer).queryByRole("button", {name: "Search"}),
+			labelType: label.filter((token) => token.startsWith("text-[") || token.startsWith("leading-")),
 		}).toStrictEqual({
 			accountText: "Ccraig·Max",
 			accountPopup: "menu",
-			buttonNames: [null, "Search"],
-			searchKeys: "Control+Shift+k",
+			accountFullWidth: true,
+			buttonCount: 1,
+			search: null,
+			labelType: ["text-[14px]", "leading-[21px]"],
 		});
-	});
-
-	it("sizes the Search radius and account label like upstream", async () => {
-		await renderSidebar();
-
-		const footer = await waitFor(() => screen.getByTestId("sidebar-footer"));
-		const search = within(footer).getByRole("button", {name: "Search"}).className.split(" ");
-		const label = within(footer).getByText("craig").parentElement?.className.split(" ") ?? [];
-		expect({
-			searchRadius: search.filter((token) => token.startsWith("rounded")),
-			labelType: label.filter((token) => token.startsWith("text-[") || token.startsWith("leading-")),
-		}).toStrictEqual({searchRadius: ["rounded-r6"], labelType: ["text-[14px]", "leading-[21px]"]});
 	});
 
 	it("labels the account button Local until the account loads", async () => {
@@ -137,18 +127,6 @@ describe("sidebar footer", () => {
 		const account = await waitFor(() => screen.getByTestId("user-menu-button"));
 
 		expect(account.textContent).toBe("LLocal");
-	});
-
-	it("opens the palette in Search mode from the footer Search button", async () => {
-		const router = await renderSidebar();
-
-		const footer = await waitFor(() => screen.getByTestId("sidebar-footer"));
-		fireEvent.click(within(footer).getByRole("button", {name: "Search"}));
-
-		await waitFor(() => {
-			expect(screen.getByTestId("palette-probe").textContent).toBe("open:search");
-		});
-		expect(router.state.location.pathname).toBe("/");
 	});
 
 	it("has no inline search input and no feedback button", async () => {

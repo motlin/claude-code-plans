@@ -128,7 +128,7 @@ export function Sidebar({
 				</NavScroll>
 			</div>
 			{/* Upstream's peek footer has no Search icon, and the phone sheet moves it to the header. */}
-			<SidebarFooter search={!collapsed && onPhoneSheetClose === undefined} />
+			<SidebarFooter />
 		</>
 	);
 

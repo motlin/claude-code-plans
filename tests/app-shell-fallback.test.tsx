@@ -155,6 +155,7 @@ describe("AppShellFallback", () => {
 			rows,
 			sessionRows: sidebar.querySelectorAll("[data-fallback-session-row]").length,
 			footer: sidebar.querySelector('[data-testid="sidebar-footer"]') !== null,
+			footerIcons: sidebar.querySelectorAll('[data-testid="sidebar-footer"] svg').length,
 			composer: host.querySelector('[data-cds="ChatComposer"]') !== null,
 			column: host.querySelector(".chat-column") !== null,
 		}).toStrictEqual({
@@ -164,6 +165,7 @@ describe("AppShellFallback", () => {
 			rows: ["New", ...pinned, "More"],
 			sessionRows: 8,
 			footer: true,
+			footerIcons: 0,
 			composer: true,
 			column: true,
 		});

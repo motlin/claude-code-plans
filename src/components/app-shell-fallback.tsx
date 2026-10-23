@@ -1,4 +1,4 @@
-import {Ellipsis, Folder, Plus, Search} from "lucide-react";
+import {Ellipsis, Folder, Plus} from "lucide-react";
 import {useEffect, useState} from "react";
 import {DEFAULT_VISIBLE_NAV_SECTIONS} from "../lib/nav-sections";
 import {DEFAULT_SIDEBAR_STATE} from "../lib/sidebar-store";
@@ -309,14 +309,11 @@ export function AppShellFallback({
 
 				<div
 					data-testid="sidebar-footer"
-					className="flex h-12 shrink-0 items-center justify-between gap-2 border-t-[0.5px] border-border p-2"
+					className="flex h-12 shrink-0 items-center gap-2 border-t-[0.5px] border-border p-2"
 				>
 					<span className="flex h-8 min-w-0 items-center gap-2 px-1">
 						<span className={`size-6 rounded-full ${BAR_CLASS}`} />
 						<span className={`h-3 w-24 ${BAR_CLASS}`} />
-					</span>
-					<span className="flex h-8 w-8 items-center justify-center text-secondary">
-						<Search className="h-4 w-4" aria-hidden="true" />
 					</span>
 				</div>
 			</div>
