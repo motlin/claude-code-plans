@@ -1,9 +1,8 @@
 // @vitest-environment jsdom
 
-import {cleanup, render} from "@testing-library/react";
-import {afterEach, describe, expect, it} from "vite-plus/test";
-import {SessionStateIcon} from "../src/components/status-dot";
-import {prGlyph} from "../src/lib/pr-status";
+import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
+import {afterEach, describe, expect, it, vi} from "vite-plus/test";
+import {PrTailGlyph, SessionStateIcon} from "../src/components/status-dot";
 import {sessionStateKind} from "../src/lib/session-state";
 
 afterEach(cleanup);
@@ -45,68 +44,6 @@ describe("SessionStateIcon", () => {
 		);
 	});
 
-	it("renders pr as a git-state coloured pull-request glyph labelled with number and state", () => {
-		const {container} = render(<SessionStateIcon kind="pr" pr={{number: 6, state: "draft"}} />);
-		const wrapper = container.firstElementChild;
-		const glyph = wrapper?.firstElementChild;
-		expect({
-			children: container.children.length,
-			tag: wrapper?.tagName,
-			role: wrapper?.getAttribute("role"),
-			label: wrapper?.getAttribute("aria-label"),
-			className: wrapper?.getAttribute("class"),
-			glyphTag: glyph?.tagName,
-			glyphHidden: glyph?.getAttribute("aria-hidden"),
-			glyphCds: glyph?.getAttribute("data-cds"),
-			glyphStyle: glyph?.getAttribute("style"),
-			glyphSize: [glyph?.getAttribute("width"), glyph?.getAttribute("height")],
-		}).toStrictEqual({
-			children: 1,
-			tag: "SPAN",
-			role: "img",
-			label: "#6 · Draft",
-			className: "flex size-5 shrink-0 items-center justify-center",
-			glyphTag: "svg",
-			glyphHidden: "true",
-			glyphCds: "Icon",
-			glyphStyle: "color: var(--color-git-draft);",
-			glyphSize: ["14", "14"],
-		});
-	});
-
-	it("maps a PR status to the git-coloured glyph with a `#N · State` label", () => {
-		const labels = (
-			[
-				{number: 6, state: "draft"},
-				{number: 7, state: "open"},
-				{number: 8, state: "merged"},
-				{number: 9, state: "closed"},
-			] as const
-		).map((pr) => {
-			const {container} = render(<SessionStateIcon kind="pr" pr={prGlyph(pr)} />);
-			const wrapper = container.firstElementChild;
-			const result = [wrapper?.getAttribute("aria-label"), wrapper?.firstElementChild?.getAttribute("style")];
-			cleanup();
-			return result;
-		});
-		expect(labels).toStrictEqual([
-			["#6 · Draft", "color: var(--color-git-draft);"],
-			["#7 · Open", "color: var(--color-git-opened);"],
-			["#8 · Merged", "color: var(--color-git-merged);"],
-			["#9 · Closed", "color: var(--color-git-closed);"],
-		]);
-	});
-
-	it("names the conflicting and queued glyphs with upstream's hj words", () => {
-		const labels = (["conflicting", "queued"] as const).map((state) => {
-			const {container} = render(<SessionStateIcon kind="pr" pr={{number: 3, state}} />);
-			const label = container.firstElementChild?.getAttribute("aria-label");
-			cleanup();
-			return label;
-		});
-		expect(labels).toStrictEqual(["#3 · Merge conflicts", "#3 · Queued"]);
-	});
-
 	it("lets the caller override the accessible label", () => {
 		expect(markup(<SessionStateIcon kind="running" label="Working" />)).toBe(
 			`<span role="status" aria-label="Working" class="${DOT_WRAPPER}"><span class="status-dot" data-kind="running"></span></span>`,
@@ -128,5 +65,65 @@ describe("sessionStateKind", () => {
 			["idle", "idle"],
 			["unknown", "idle"],
 		]);
+	});
+});
+
+const PR_TAIL_CLASS =
+	"flex h-[var(--sb-row-ctl)] min-w-[var(--sb-row-ctl)] shrink-0 items-center justify-end gap-0.5 ps-[calc((var(--sb-row-ctl)-12px)/2)] pe-[calc((var(--sb-row-ctl)-12px)/2)] text-footnote text-ink-muted";
+
+describe("PrTailGlyph", () => {
+	it("renders upstream's aria-hidden title tail: a 12px git-coloured glyph per PR state", () => {
+		const glyphs = (["opened", "draft", "merged", "closed", "conflicting", "queued"] as const).map((state) => {
+			const {container} = render(<PrTailGlyph state={state} />);
+			const tail = container.querySelector("[data-pr-glyph]");
+			const icon = tail?.firstElementChild;
+			const result = {
+				children: container.children.length,
+				hidden: tail?.getAttribute("aria-hidden"),
+				state: tail?.getAttribute("data-pr-glyph"),
+				className: tail?.getAttribute("class"),
+				icon: icon
+					?.getAttribute("class")
+					?.split(" ")
+					.find((name) => name.startsWith("lucide-") && name !== "lucide-icon"),
+				size: [icon?.getAttribute("width"), icon?.getAttribute("height")],
+				style: icon?.getAttribute("style"),
+			};
+			cleanup();
+			return result;
+		});
+		const expected = (state: string, icon: string) => ({
+			children: 1,
+			hidden: "true",
+			state,
+			className: PR_TAIL_CLASS,
+			icon,
+			size: ["12", "12"],
+			style: `color: var(--color-git-${state});`,
+		});
+		expect(glyphs).toStrictEqual([
+			expected("opened", "lucide-git-pull-request"),
+			expected("draft", "lucide-git-pull-request-draft"),
+			expected("merged", "lucide-git-merge"),
+			expected("closed", "lucide-git-pull-request-closed"),
+			expected("conflicting", "lucide-git-merge-conflict"),
+			expected("queued", "lucide-git-pull-request-arrow"),
+		]);
+	});
+
+	it("shows upstream's Pull request · {state} tooltip on hover", () => {
+		vi.useFakeTimers();
+		try {
+			const {container} = render(<PrTailGlyph state="draft" />);
+			const tail = container.querySelector("[data-pr-glyph]");
+			if (tail === null) throw new Error("no tail");
+			fireEvent.pointerEnter(tail);
+			act(() => {
+				vi.advanceTimersByTime(300);
+			});
+			expect(screen.getByRole("tooltip").textContent).toBe("Pull request · Draft");
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 });

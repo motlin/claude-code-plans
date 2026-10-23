@@ -570,7 +570,7 @@ describe("PR row glyph", () => {
 		]);
 	});
 
-	it("shows the PR glyph on finished rows only while Show PR status is on", () => {
+	it("never puts a PR in the status slot: live states, then the unread dot, else the env glyph (upstream jX)", () => {
 		const draft = {number: 6, state: "draft"} as const;
 		const merged = {number: 8, state: "merged"} as const;
 		const kind = (
@@ -588,6 +588,6 @@ describe("PR row glyph", () => {
 			kind("done", false, undefined),
 			kind("review", false, draft, false),
 			kind("done", true, undefined),
-		]).toStrictEqual(["awaiting", "running", "pr", "ready", "pr", "idle", "ready", "ready"]);
+		]).toStrictEqual(["awaiting", "running", "idle", "ready", "ready", "idle", "ready", "ready"]);
 	});
 });

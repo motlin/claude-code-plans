@@ -455,7 +455,6 @@ export const sessionStateKindLabels = {
 	running: "Running",
 	ready: "Ready",
 	error: "Error",
-	pr: "Pull request",
 	idle: "Idle",
 } satisfies Record<z.infer<typeof SessionStateKindSchema>, string>;
 

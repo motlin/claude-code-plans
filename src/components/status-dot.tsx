@@ -1,7 +1,16 @@
-import {GitPullRequest} from "lucide-react";
+import {
+	GitMerge,
+	GitMergeConflict,
+	GitPullRequest,
+	GitPullRequestArrow,
+	GitPullRequestClosed,
+	GitPullRequestDraft,
+	type LucideIcon,
+} from "lucide-react";
 import {sessionStateKindLabels} from "../lib/schema-choices";
 import type {GitPrState} from "../lib/pr-status";
 import type {SessionStateKind} from "../lib/session-state";
+import {Tooltip} from "./ui/tooltip";
 
 export const GIT_PR_STATE_LABELS = {
 	opened: "Open",
@@ -14,44 +23,50 @@ export const GIT_PR_STATE_LABELS = {
 
 const DOT_WRAPPER = "flex min-h-3.5 min-w-3.5 shrink-0 items-center justify-center";
 
+/** Upstream `Xs` PR glyphs, with the nearest lucide icon where upstream's has none (queued). */
+const PR_GLYPH_ICONS = {
+	opened: GitPullRequest,
+	draft: GitPullRequestDraft,
+	merged: GitMerge,
+	closed: GitPullRequestClosed,
+	conflicting: GitMergeConflict,
+	queued: GitPullRequestArrow,
+} satisfies Record<GitPrState, LucideIcon>;
+
 /**
- * Upstream claude.ai/code session row icon: a 6px `.status-dot` for live states, a hollow ring
- * for idle, and a git-state coloured pull-request glyph when the session has a PR.
+ * Upstream's PR title tail (`tT place:"title"`): a 12px git-coloured glyph inside the row link, just
+ * left of the trailing status slot, with a "Pull request · {state}" tooltip.
+ */
+export function PrTailGlyph({state}: {state: GitPrState}) {
+	const Icon = PR_GLYPH_ICONS[state];
+	return (
+		<Tooltip content={`Pull request · ${GIT_PR_STATE_LABELS[state]}`}>
+			<span
+				aria-hidden="true"
+				data-pr-glyph={state}
+				className="flex h-[var(--sb-row-ctl)] min-w-[var(--sb-row-ctl)] shrink-0 items-center justify-end gap-0.5 ps-[calc((var(--sb-row-ctl)-12px)/2)] pe-[calc((var(--sb-row-ctl)-12px)/2)] text-footnote text-ink-muted"
+			>
+				<Icon size={12} style={{color: `var(--color-git-${state})`}} />
+			</span>
+		</Tooltip>
+	);
+}
+
+/**
+ * Upstream claude.ai/code session row icon: a 6px `.status-dot` for live states and a hollow ring
+ * for idle. A PR never takes this slot; it draws as a `PrTailGlyph`.
  */
 export function SessionStateIcon({
 	kind,
 	label,
-	pr,
 	"aria-describedby": describedBy,
 }: {
 	kind: SessionStateKind;
 	label?: string;
-	pr?: {number: number; state: GitPrState};
 	/** Set by a wrapping Tooltip so the glyph is described by its tooltip. */
 	"aria-describedby"?: string;
 }) {
 	const describedByProps = describedBy === undefined ? {} : {"aria-describedby": describedBy};
-	if (kind === "pr") {
-		const state = pr?.state ?? "opened";
-		const prLabel = pr ? `#${pr.number} · ${GIT_PR_STATE_LABELS[state]}` : undefined;
-		return (
-			<span
-				role="img"
-				aria-label={label ?? prLabel ?? sessionStateKindLabels.pr}
-				{...describedByProps}
-				className="flex size-5 shrink-0 items-center justify-center"
-			>
-				<GitPullRequest
-					aria-hidden="true"
-					data-cds="Icon"
-					size={14}
-					strokeWidth={2.75}
-					style={{color: `var(--color-git-${state})`}}
-				/>
-			</span>
-		);
-	}
-
 	const ariaLabel = label ?? sessionStateKindLabels[kind];
 	if (kind === "idle") {
 		return (

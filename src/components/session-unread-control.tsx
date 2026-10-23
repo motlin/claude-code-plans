@@ -29,12 +29,7 @@ export function SessionRowStatusDot({session, tabIndex}: {session: SessionListIt
 		showPrStatus: settings.sessionListPrefs.showPrStatus,
 	});
 	const readState = sessionMenuReadState(session.bucket, unseen);
-	const icon = (
-		<SessionStateIcon
-			kind={kind}
-			{...(kind === "pr" && session.prStatus !== undefined ? {pr: prGlyph(session.prStatus)} : {})}
-		/>
-	);
+	const icon = <SessionStateIcon kind={kind} />;
 	if (readState === "working" || readState === "awaiting") {
 		return <Tooltip content={readState === "awaiting" ? "Awaiting input" : "Running"}>{icon}</Tooltip>;
 	}
@@ -116,11 +111,7 @@ export function SidebarRowDecoration({session}: {session: SessionListItem}) {
 						<Laptop className="size-4 shrink-0 text-ink-muted" />
 					</span>
 				) : (
-					<SessionStateIcon
-						kind={kind}
-						{...(kind === "ready" ? {label: "Unread response"} : {})}
-						{...(kind === "pr" && session.prStatus !== undefined ? {pr: prGlyph(session.prStatus)} : {})}
-					/>
+					<SessionStateIcon kind={kind} {...(kind === "ready" ? {label: "Unread response"} : {})} />
 				)}
 			</span>
 			<span role="status" className={srClass}>

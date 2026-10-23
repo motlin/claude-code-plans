@@ -194,7 +194,7 @@ const GIT_PR_STATES = {
 	closed: "closed",
 } as const satisfies Record<PullRequestState, GitPrState>;
 
-/** The `SessionStateIcon` `pr` prop for a PR status. */
+/** A PR status's number and upstream git colour state, for `PrTailGlyph`. */
 export function prGlyph(pr: PrStatus): {number: number; state: GitPrState} {
 	return {number: pr.number, state: GIT_PR_STATES[pr.state]};
 }

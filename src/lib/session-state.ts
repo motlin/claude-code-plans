@@ -150,7 +150,7 @@ export const SessionBucketSchema = z.enum(["blocked", "review", "working", "done
 export type SessionBucket = z.infer<typeof SessionBucketSchema>;
 
 /** Upstream claude.ai/code row icon kinds (`.status-dot[data-kind]` plus the PR glyph and idle ring). */
-export const SessionStateKindSchema = z.enum(["awaiting", "running", "ready", "error", "pr", "idle"]);
+export const SessionStateKindSchema = z.enum(["awaiting", "running", "ready", "error", "idle"]);
 export type SessionStateKind = z.infer<typeof SessionStateKindSchema>;
 
 const DISPLAY_STATE_KINDS = {
@@ -266,9 +266,9 @@ export interface SessionRowIconInput {
 }
 
 /**
- * Upstream claude.ai/code `rowStatus`: live states win, then a merged/closed PR, then the
- * unread ready dot, then any PR glyph, else the idle ring. A review row (an open PR) the server
- * did not flag unseen stays ready when the PR glyph is hidden.
+ * Upstream claude.ai/code `jX` row status: live states win, then the unread ready dot, else the
+ * idle env glyph. A PR never takes the slot (it draws as a title tail). A review row (an open PR)
+ * the server did not flag unseen stays ready when the PR tail is hidden.
  */
 export function sessionRowIconKind({
 	bucket,
@@ -279,9 +279,7 @@ export function sessionRowIconKind({
 }: SessionRowIconInput): SessionStateKind {
 	if (bucket === "blocked") return "awaiting";
 	if (bucket === "working") return "running";
-	const pr = showPrStatus ? prStatus : undefined;
-	if (pr !== undefined && (pr.state === "merged" || pr.state === "closed")) return "pr";
 	if (unseen) return "ready";
-	if (pr !== undefined) return "pr";
+	if (showPrStatus && prStatus !== undefined) return "idle";
 	return bucket === "review" && !serverUnseen ? "ready" : "idle";
 }

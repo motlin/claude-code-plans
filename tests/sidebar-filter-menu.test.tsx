@@ -324,7 +324,7 @@ describe("sidebar Group and sort menu", () => {
 			{...session("p1", "PR one", "review", "alpha"), prStatus: {number: 6, state: "draft"}},
 		];
 		const {container} = await renderSidebarGroups(withPr);
-		const glyph = () => container.querySelector('[role="img"][aria-label="#6 · Draft"]') !== null;
+		const glyph = () => container.querySelector('a[data-row-main-button] [data-pr-glyph="draft"]') !== null;
 		expect(glyph()).toBe(false);
 		await openFilterMenu();
 		await openSubmenu(/^Show/);

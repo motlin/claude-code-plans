@@ -6,6 +6,7 @@ import {Fragment, useEffect, useLayoutEffect, useRef, useState, type ReactNode} 
 import {useSecondaryAiTitle} from "../../hooks/use-secondary-ai-title";
 import type {SidebarDragRowProps} from "../../hooks/use-sidebar-drag";
 import {startSessionSwitchJourney} from "../../lib/perf/field-journeys";
+import {prGlyph} from "../../lib/pr-status";
 import type {GroupAppearance} from "../../lib/group-appearance";
 import {useProjectAppearance} from "../../lib/project-appearance-store";
 import {useSessionGroups} from "../../lib/session-group-store";
@@ -22,6 +23,8 @@ import {ArchivedBadge} from "../archived-badge";
 import {SessionActionsMenu, SessionRowTitle} from "../session-actions-menu";
 import {SessionHoverCard} from "../session-hover-card";
 import {SidebarRowDecoration} from "../session-unread-control";
+import {useSettings} from "../settings-context";
+import {PrTailGlyph} from "../status-dot";
 import {Tooltip} from "../ui/tooltip";
 import {CustomGroupHeader} from "./custom-group-header";
 import {GroupAppearanceMark} from "./group-appearance";
@@ -480,6 +483,12 @@ function SessionRowLink({
 	const multiSelected = selection?.selectedIds.includes(row.sessionId) === true;
 	const title = row.title.trim() || "Untitled session";
 	const aiTitle = useSecondaryAiTitle(title, row.session.aiTitle);
+	const {settings} = useSettings();
+	// Upstream draws no PR tail on pinned rows.
+	const prTail =
+		pinnedIds === undefined && settings.sessionListPrefs.showPrStatus && row.session.prStatus !== undefined
+			? prGlyph(row.session.prStatus).state
+			: undefined;
 	return (
 		<SessionHoverCard
 			sessionId={row.sessionId}
@@ -510,8 +519,8 @@ function SessionRowLink({
 					}}
 					className={`${ROW_CLASS} text-secondary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)] hover:bg-[var(--sb-hover)] focus-visible:bg-[var(--sb-hover)] data-[selected=focused]:bg-[var(--sb-session-selected)] data-[selected=focused]:text-primary data-[multi-selected]:bg-[var(--sb-session-selected)] data-[multi-selected]:text-primary`}
 				>
-					{/* Upstream starts the title 10px into the row and keeps it clear of the trailing 24px slot */}
-					<span data-row-label className="min-w-0 flex-1 ps-2 pe-7">
+					{/* Upstream starts the title 10px into the row; the trailing span below keeps it clear of the 24px slot */}
+					<span data-row-label className="min-w-0 flex-1 ps-2">
 						<SessionRowTitle render={(title) => <FadeLabel text={title} />} />
 					</span>
 					{lineage !== undefined && (
@@ -520,6 +529,10 @@ function SessionRowLink({
 						</span>
 					)}
 					{row.archived && <ArchivedBadge />}
+					{/* Upstream's title tail: reserves the trailing slot and holds the PR glyph left of it */}
+					<span className="shrink-0 flex items-center gap-1.5 text-xs text-ink-muted me-[calc(var(--sb-row-ctl-inset)+var(--sb-row-ctl)-var(--sb-row-px))]">
+						{prTail !== undefined && <PrTailGlyph state={prTail} />}
+					</span>
 				</Link>
 				{/* Upstream's status sits beside the link, outside its accessible name */}
 				<SidebarRowDecoration session={row.session} />

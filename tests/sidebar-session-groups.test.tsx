@@ -10,11 +10,13 @@ import {
 	RouterProvider,
 } from "@tanstack/react-router";
 import {cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
+import {SettingsProvider} from "../src/components/settings-provider";
 import {ToastProvider} from "../src/components/toast";
 import type {ReactNode} from "react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionGroups} from "../src/components/sidebar/session-groups";
 import {RecentSessionsResponse, recentSessionsInfiniteQueryOptions} from "../src/lib/api/sessions";
+import {DEFAULT_SESSION_LIST_PREFS} from "../src/lib/session-groups";
 import type {SessionBucket} from "../src/lib/session-state";
 import {readSidebarState} from "../src/lib/sidebar-store";
 import {__unreadStoreTesting, syncUnseenFromSummaries} from "../src/lib/unread-store";
@@ -73,12 +75,14 @@ async function renderGroups(
 			: seedQueryClient(sessions, options.nextCursor ?? null);
 	const rootRoute = createRootRoute({
 		component: () => (
-			<QueryClientProvider client={queryClient}>
-				<ToastProvider>
-					<SessionGroups activeItemId={options.activeItemId ?? null} filterSlot={options.filterSlot} />
-					<Outlet />
-				</ToastProvider>
-			</QueryClientProvider>
+			<SettingsProvider>
+				<QueryClientProvider client={queryClient}>
+					<ToastProvider>
+						<SessionGroups activeItemId={options.activeItemId ?? null} filterSlot={options.filterSlot} />
+						<Outlet />
+					</ToastProvider>
+				</QueryClientProvider>
+			</SettingsProvider>
 		),
 	});
 	const homeRoute = createRoute({
@@ -318,6 +322,67 @@ describe("sidebar SessionGroups", () => {
 				flushRight: true,
 			},
 			done: {leading: false, mark: null, env: "local", hidesOnHover: true, flushRight: true},
+		});
+	});
+
+	it("draws a PR as upstream's title tail inside the link, beside the env glyph or status mark, only while Show PR status is on", async () => {
+		const withPr = [
+			{...session("d1", "Completed newest", "done", 5), prStatus: {number: 8, state: "open"}},
+			{...session("u1", "Unread with PR", "done", 6), unseen: true, prStatus: {number: 9, state: "merged"}},
+			session("d2", "Completed older", "done", 30),
+		];
+		const describeRows = (container: HTMLElement) =>
+			[...container.querySelectorAll<HTMLElement>("a[data-row-main-button]")].map((link) => {
+				const decoration = link.closest("[data-session-actions]")?.querySelector("[data-row-decoration]");
+				const tail = link.lastElementChild;
+				return {
+					title: link.textContent,
+					tail: link.querySelector("[data-pr-glyph]")?.getAttribute("data-pr-glyph") ?? null,
+					tailSlot: tail?.getAttribute("class") ?? null,
+					tailInSlot: tail?.querySelector("[data-pr-glyph]") !== null,
+					label: link.querySelector("[data-row-label]")?.getAttribute("class") ?? null,
+					mark: decoration?.querySelector("[role=status]")?.getAttribute("aria-label") ?? null,
+					env: decoration?.querySelector("[data-env-glyph]") !== null,
+				};
+			});
+		const slot =
+			"shrink-0 flex items-center gap-1.5 text-xs text-ink-muted me-[calc(var(--sb-row-ctl-inset)+var(--sb-row-ctl)-var(--sb-row-px))]";
+		const label = "min-w-0 flex-1 ps-2";
+
+		__unreadStoreTesting.reset();
+		syncUnseenFromSummaries(withPr.map(({id, unseen}) => ({id, unseen})));
+		localStorage.setItem(
+			"ccp-session-list-prefs",
+			JSON.stringify({...DEFAULT_SESSION_LIST_PREFS, showPrStatus: true}),
+		);
+		const shown = describeRows((await renderGroups(withPr)).container);
+		cleanup();
+		localStorage.removeItem("ccp-session-list-prefs");
+		const hidden = describeRows((await renderGroups(withPr)).container).map(({tail}) => tail);
+
+		expect({shown, hidden}).toStrictEqual({
+			shown: [
+				{
+					title: "Completed newest",
+					tail: "opened",
+					tailSlot: slot,
+					tailInSlot: true,
+					label,
+					mark: null,
+					env: true,
+				},
+				{
+					title: "Unread with PR",
+					tail: "merged",
+					tailSlot: slot,
+					tailInSlot: true,
+					label,
+					mark: "Unread response",
+					env: false,
+				},
+				{title: "Completed older", tail: null, tailSlot: slot, tailInSlot: false, label, mark: null, env: true},
+			],
+			hidden: [null, null, null],
 		});
 	});
 

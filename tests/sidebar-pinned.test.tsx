@@ -13,9 +13,11 @@ import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
 
 import {SessionGroups} from "../src/components/sidebar/session-groups";
+import {SettingsProvider} from "../src/components/settings-provider";
 import {ToastProvider} from "../src/components/toast";
 import {RecentSessionsResponse, recentSessionsInfiniteQueryOptions} from "../src/lib/api/sessions";
 import {PIN_STORAGE_KEY, readPinState} from "../src/lib/pin-store";
+import {DEFAULT_SESSION_LIST_PREFS} from "../src/lib/session-groups";
 import type {SessionBucket} from "../src/lib/session-state";
 import {readSidebarState} from "../src/lib/sidebar-store";
 import {installLocalStorage} from "./fake-storage";
@@ -65,12 +67,14 @@ async function renderGroups(sessions: unknown[]) {
 	});
 	const rootRoute = createRootRoute({
 		component: () => (
-			<QueryClientProvider client={queryClient}>
-				<ToastProvider>
-					<SessionGroups activeItemId={null} />
-					<Outlet />
-				</ToastProvider>
-			</QueryClientProvider>
+			<SettingsProvider>
+				<QueryClientProvider client={queryClient}>
+					<ToastProvider>
+						<SessionGroups activeItemId={null} />
+						<Outlet />
+					</ToastProvider>
+				</QueryClientProvider>
+			</SettingsProvider>
 		),
 	});
 	const homeRoute = createRoute({
@@ -188,6 +192,28 @@ describe("sidebar Pinned section", () => {
 			groups: ["Needs input", "Working", "Completed"],
 			recents: ["Blocked one", "Working one", "Completed newest"],
 		});
+	});
+
+	it("draws no PR tail on a pinned row, as upstream, while its unpinned twin keeps one", async () => {
+		seedPins(["r1"]);
+		localStorage.setItem(
+			"ccp-session-list-prefs",
+			JSON.stringify({...DEFAULT_SESSION_LIST_PREFS, showPrStatus: true}),
+		);
+		const pr = {prStatus: {number: 6, state: "open"}};
+		const {container} = await renderGroups([
+			{...session("r1", "Review one", "review", 2), ...pr},
+			{...session("d1", "Completed newest", "done", 5), ...pr},
+		]);
+		const tails = (element: Element | null) =>
+			[...(element?.querySelectorAll("a[data-row-main-button] [data-pr-glyph]") ?? [])].map((node) =>
+				node.getAttribute("data-pr-glyph"),
+			);
+
+		expect({
+			pinned: tails(pinnedSection(container)),
+			recents: tails(container.querySelector('[data-testid="sidebar-recents"]')),
+		}).toStrictEqual({pinned: [], recents: ["opened"]});
 	});
 
 	it("persists collapsing the Pinned header in collapsedGroups", async () => {
