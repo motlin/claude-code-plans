@@ -1726,8 +1726,8 @@ function PalettePopup({
 						<PaletteFooter
 							hints={[
 								["Close", ["esc"]],
-								["Change type", ["left", "right"]],
-								["Filters", ["/"]],
+								["Change type", ["left", "right"], "hidden sm:flex items-center gap-2"],
+								["Filters", ["/"], "hidden md:flex items-center gap-2"],
 								["Actions", ["alt+enter"]],
 							]}
 							{...(entrypoint === "search"
@@ -1799,7 +1799,8 @@ function PaletteFooter({
 	hints,
 	trailing,
 }: {
-	hints: ReadonlyArray<readonly [label: string, keys: readonly string[]]>;
+	/** Each hint's optional className replaces the default wrapper class, e.g. upstream's breakpoint hiding. */
+	hints: ReadonlyArray<readonly [label: string, keys: readonly string[], className?: string]>;
 	/** Right-aligned extra, like the Search entry's view hint. */
 	trailing?: ReactNode;
 }) {
@@ -1808,17 +1809,17 @@ function PaletteFooter({
 			data-palette-footer=""
 			className="border-t-[0.5px] border-border bg-surface-3 py-2.5 pr-4 pl-5 pointer-coarse:hidden"
 		>
-			<div className="flex min-h-5 items-center justify-between text-xs text-ink-muted">
+			<div className="flex min-h-5 items-center justify-between text-caption text-ink-muted">
 				<div className="flex items-center gap-5">
-					{hints.map(([label, keys]) => (
-						<span key={label} className="flex items-center gap-2">
+					{hints.map(([label, keys, className]) => (
+						<div key={label} className={className ?? "flex items-center gap-2"}>
 							<span>{label}</span>
 							<span className="flex items-center gap-[2px]">
 								{keys.map((key) => (
 									<Shortcut key={key} keys={key} />
 								))}
 							</span>
-						</span>
+						</div>
 					))}
 				</div>
 				{trailing}

@@ -227,6 +227,28 @@ describe("CommandPalette shell", () => {
 		});
 	});
 
+	it("hides Change type below sm and Filters below md, like upstream's phone footer", async () => {
+		const dialog = await openPalette();
+		const row = footer(dialog)?.children[0];
+
+		expect({
+			rowClass: row?.className,
+			hints: [...(row?.children[0]?.children ?? [])].map((hint) => [
+				hint.tagName,
+				hint.className,
+				hint.firstElementChild?.textContent,
+			]),
+		}).toStrictEqual({
+			rowClass: "flex min-h-5 items-center justify-between text-caption text-ink-muted",
+			hints: [
+				["DIV", "flex items-center gap-2", "Close"],
+				["DIV", "hidden sm:flex items-center gap-2", "Change type"],
+				["DIV", "hidden md:flex items-center gap-2", "Filters"],
+				["DIV", "flex items-center gap-2", "Actions"],
+			],
+		});
+	});
+
 	it("← and → step through the type tabs and wrap when the query is empty", async () => {
 		const dialog = await openPalette();
 		await within(dialog).findByRole("option", {name: /Refactor auth module/});
