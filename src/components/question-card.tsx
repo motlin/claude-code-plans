@@ -210,6 +210,11 @@ export function QuestionCard({
 		);
 		setSkipped(nextSkipped);
 		setDrafts(nextDrafts);
+		// Upstream's Skip always moves to the next page; only the last page looks back or submits.
+		if (!isLast) {
+			goTo(index + 1);
+			return;
+		}
 		const remaining = questions.findIndex(
 			(_, at) => nextSkipped[at] !== true && !isAnswered(nextDrafts[at] ?? initialDraft(question)),
 		);

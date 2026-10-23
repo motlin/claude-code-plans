@@ -443,6 +443,26 @@ describe("QuestionCard", () => {
 		expect(onSubmit.mock.calls[0]?.[0]).toStrictEqual([{selected: [0]}, null]);
 	});
 
+	it("Skip on a page that isn't last advances to the next page instead of submitting", async () => {
+		const onSubmit = vi.fn<(answers: unknown[]) => Promise<void>>(async () => {});
+		const single: QuestionLike[] = [QUESTIONS[0]!, {...QUESTIONS[0]!, question: "Which linter?", header: "Linter"}];
+		render(<QuestionCard questions={single} onSubmit={onSubmit} />);
+		fireEvent.click(screen.getByRole("button", {name: "Skip"}));
+
+		expect({
+			page: screen.getByRole("group").getAttribute("aria-label"),
+			pager: screen.getByText(/of 2/).textContent,
+			calls: onSubmit.mock.calls.length,
+		}).toStrictEqual({page: "Which linter?", pager: "2 of 2", calls: 0});
+
+		fireEvent.click(screen.getByRole("button", {name: /^Submit/}));
+		await vi.waitFor(() => {
+			expect(onSubmit).toHaveBeenCalledTimes(1);
+		});
+
+		expect(onSubmit.mock.calls[0]?.[0]).toStrictEqual([null, {selected: [0]}]);
+	});
+
 	it("paints the header question like user message text, but keeps option labels plain", () => {
 		render(
 			<QuestionCard
