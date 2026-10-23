@@ -583,7 +583,7 @@ export function Composer({
 		if (!slashOpen) return false;
 		const move = e.key === "ArrowDown" ? 1 : e.key === "ArrowUp" ? -1 : 0;
 		if (move !== 0) {
-			setHighlight({query, index: (highlighted + move + matches.length) % matches.length});
+			setHighlight({query, index: Math.max(0, Math.min(matches.length - 1, highlighted + move))});
 		} else if ((e.key === "Enter" || e.key === "Tab") && !e.shiftKey) {
 			const command = matches[highlighted];
 			if (command !== undefined) acceptSlashCommand(command);

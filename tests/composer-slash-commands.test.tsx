@@ -176,28 +176,34 @@ describe("Composer slash commands", () => {
 		});
 	});
 
-	it("moves the highlight with arrow keys, wrapping at the ends", () => {
+	it("moves the highlight with arrow keys, clamping at both ends", () => {
 		const {textarea} = setup();
 		fireEvent.change(textarea, {target: {value: "/"}});
 
+		fireEvent.keyDown(textarea, {key: "ArrowUp"});
+		const top = rows();
 		fireEvent.keyDown(textarea, {key: "ArrowDown"});
 		const down = rows();
 		fireEvent.keyDown(textarea, {key: "ArrowDown"});
-		const wrapped = rows();
+		const bottom = rows();
 		fireEvent.keyDown(textarea, {key: "ArrowUp"});
 
-		expect({down, wrapped, up: rows()}).toStrictEqual({
+		expect({top, down, bottom, up: rows()}).toStrictEqual({
+			top: [
+				{name: "model", highlighted: true},
+				{name: "plan", highlighted: false},
+			],
 			down: [
 				{name: "model", highlighted: false},
 				{name: "plan", highlighted: true},
 			],
-			wrapped: [
-				{name: "model", highlighted: true},
-				{name: "plan", highlighted: false},
-			],
-			up: [
+			bottom: [
 				{name: "model", highlighted: false},
 				{name: "plan", highlighted: true},
+			],
+			up: [
+				{name: "model", highlighted: true},
+				{name: "plan", highlighted: false},
 			],
 		});
 	});
