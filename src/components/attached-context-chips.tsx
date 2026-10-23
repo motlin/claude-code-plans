@@ -1,4 +1,4 @@
-import {type ReactNode, useState} from "react";
+import {type MouseEvent, type ReactNode, useState} from "react";
 import {
 	FileText,
 	Image as ImageIcon,
@@ -31,6 +31,52 @@ const CONTEXT_CHIP_ICON = {
 	image: ImageIcon,
 	message: MessageSquareText,
 } satisfies Record<ContextChip["kind"], unknown>;
+
+/**
+ * Upstream's `Rn`: the element that takes focus in a tile or pill, its
+ * CardLink, else the pill's remove button, else the tile root itself.
+ */
+function focusTarget(item: Element): HTMLElement | null {
+	const target = item.querySelector<HTMLElement>('[data-cds="CardLink"], button[aria-label^="Remove "]');
+	if (target !== null) return target;
+	return item instanceof HTMLElement && item.hasAttribute("tabindex") ? item : null;
+}
+
+/**
+ * Upstream's `zn`: when the item being removed holds focus, hand it to the
+ * next item, else the previous one, so it isn't lost to the body.
+ */
+function handOffFocus(item: Element | null): void {
+	const active = item?.ownerDocument.activeElement;
+	if (item === null || !(active instanceof HTMLElement) || !item.contains(active)) return;
+	for (let next = item.nextElementSibling; next !== null; next = next.nextElementSibling) {
+		const target = focusTarget(next);
+		if (target !== null) {
+			target.focus();
+			return;
+		}
+	}
+	for (let previous = item.previousElementSibling; previous !== null; previous = previous.previousElementSibling) {
+		const target = focusTarget(previous);
+		if (target !== null) {
+			target.focus();
+			return;
+		}
+	}
+}
+
+/** Upstream's `Vn`: a pointer press on a remove button doesn't take focus, so the editor keeps it. */
+function keepFocusOnPointerRemove(event: MouseEvent<HTMLButtonElement>): void {
+	event.preventDefault();
+}
+
+/** Runs a remove click after handing focus off from the item it removes. */
+function removeHandler(remove: () => void) {
+	return (event: MouseEvent<HTMLButtonElement>) => {
+		handOffFocus(event.currentTarget.closest("li"));
+		remove();
+	};
+}
 
 function removeChip(sessionId: string, chip: ContextChip): void {
 	if (chip.previewUrl !== undefined && typeof URL.revokeObjectURL === "function") {
@@ -110,9 +156,10 @@ function Tile({
 				type="button"
 				data-cds-attachment-remove=""
 				aria-label={`Remove ${label}`}
-				onClick={() => {
+				onMouseDown={keepFocusOnPointerRemove}
+				onClick={removeHandler(() => {
 					removeChip(sessionId, chip);
-				}}
+				})}
 				className={TILE_REMOVE_CLASS}
 			>
 				<X aria-hidden="true" className="size-3" />
@@ -252,9 +299,10 @@ export function AttachedContextChips({
 								<button
 									type="button"
 									aria-label={`Remove ${label}`}
-									onClick={() => {
+									onMouseDown={keepFocusOnPointerRemove}
+									onClick={removeHandler(() => {
 										removeChip(sessionId, chip);
-									}}
+									})}
 									className={CHIP_REMOVE_CLASS}
 								>
 									<X aria-hidden="true" className="size-3" />
@@ -277,9 +325,10 @@ export function AttachedContextChips({
 								<button
 									type="button"
 									aria-label={`Remove comment on ${label}`}
-									onClick={() => {
+									onMouseDown={keepFocusOnPointerRemove}
+									onClick={removeHandler(() => {
 										removeQueuedDiffComment(sessionId, comment.id);
-									}}
+									})}
 									className={CHIP_REMOVE_CLASS}
 								>
 									<X aria-hidden="true" className="size-3" />

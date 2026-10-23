@@ -241,4 +241,55 @@ describe("AttachedContextChips cds tiles", () => {
 			remove: "Remove notes.md",
 		});
 	});
+
+	describe("removal focus hand-off", () => {
+		const tiles: readonly ContextChip[] = [1, 2, 3].map((n) => ({
+			id: `chip-${n}`,
+			kind: "image",
+			path: `/cache/attachments/${n}.png`,
+			name: `shot-${n}.png`,
+			previewUrl: `blob:shot-${n}`,
+		}));
+
+		function cardLink(container: HTMLElement, name: string): Element | null {
+			return container.querySelector(`li[data-chip-label="${name}"] [data-cds=CardLink]`);
+		}
+
+		function removeWithKeyboard(container: HTMLElement, name: string): void {
+			const remove = container.querySelector<HTMLButtonElement>(`button[aria-label="Remove ${name}"]`);
+			if (remove === null) throw new Error(`no remove button for ${name}`);
+			remove.focus();
+			fireEvent.click(remove);
+		}
+
+		it("focuses the next tile's CardLink when a focused tile is removed", () => {
+			const {container, rerender} = renderChips(tiles);
+			removeWithKeyboard(container, "shot-2.png");
+			rerender(<AttachedContextChips sessionId={SESSION} context={[tiles[0]!, tiles[2]!]} comments={[]} />);
+			expect(document.activeElement).toBe(cardLink(container, "shot-3.png"));
+		});
+
+		it("focuses the previous tile's CardLink when the focused last tile is removed", () => {
+			const {container, rerender} = renderChips(tiles);
+			removeWithKeyboard(container, "shot-3.png");
+			rerender(<AttachedContextChips sessionId={SESSION} context={[tiles[0]!, tiles[1]!]} comments={[]} />);
+			expect(document.activeElement).toBe(cardLink(container, "shot-2.png"));
+		});
+
+		it("keeps focus where it was on a pointer removal", () => {
+			const editor = document.createElement("textarea");
+			document.body.append(editor);
+			editor.focus();
+			const {container} = renderChips(tiles);
+			const remove = container.querySelector('button[aria-label="Remove shot-2.png"]');
+			if (remove === null) throw new Error("no remove button");
+			const defaultAllowed = fireEvent.mouseDown(remove);
+			fireEvent.click(remove);
+			expect({defaultAllowed, active: document.activeElement === editor}).toStrictEqual({
+				defaultAllowed: false,
+				active: true,
+			});
+			editor.remove();
+		});
+	});
 });
