@@ -80,7 +80,7 @@ describe("DockedPlanApproval", () => {
 		expect(screen.queryAllByRole("button").map((button) => button.textContent)).toStrictEqual([]);
 	});
 
-	it("shows the proposed plan text above the actions, as upstream's awaiting card", () => {
+	it("leaves the plan text to the Plan pane, as upstream's card shows only the title and Open plan", () => {
 		const plan: PlanApprovalContextValue = {
 			answerRoute: "read-only",
 			loadDialog: async () => Promise.reject(new Error("no pane")),
@@ -88,8 +88,9 @@ describe("DockedPlanApproval", () => {
 		};
 		render(<DockedPlanApproval pendingPlan={HOOK_PLAN} plan={plan} />);
 
-		expect(
-			[...document.querySelectorAll("[data-docked-plan] [data-plan-block]")].map((block) => block.textContent),
-		).toStrictEqual(["# Say hello\n\n1. Print hello"]);
+		expect({
+			blocks: document.querySelectorAll("[data-docked-plan] [data-plan-block]").length,
+			text: document.querySelector("[data-docked-plan]")?.textContent.includes("Print hello"),
+		}).toStrictEqual({blocks: 0, text: false});
 	});
 });

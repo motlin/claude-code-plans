@@ -6,7 +6,7 @@ import type {ReactNode} from "react";
 import {afterEach, describe, expect, it} from "vite-plus/test";
 
 import {SessionPlanPane} from "../src/components/panes/plan-pane";
-import type {SessionPlanModel} from "../src/lib/session-plan-model";
+import {withPendingPlan, type SessionPlanModel} from "../src/lib/session-plan-model";
 
 afterEach(() => {
 	cleanup();
@@ -20,6 +20,18 @@ function withQueryClient(node: ReactNode) {
 const EMPTY: SessionPlanModel = {content: null, todos: [], editsPlanFile: false};
 
 describe("SessionPlanPane", () => {
+	it("shows a hook-only pending plan, which the docked approval card no longer repeats", () => {
+		const model = withPendingPlan(EMPTY, {toolUseId: "", plan: "# P\n\nDo it.", planFilePath: "/tmp/plans/p.md"});
+		render(withQueryClient(<SessionPlanPane planFilename={undefined} model={model} />));
+		const pane = screen.getByTestId("session-plan-pane");
+
+		expect(
+			within(pane)
+				.getAllByRole("heading")
+				.map((heading) => heading.textContent),
+		).toStrictEqual(["P"]);
+	});
+
 	it("shows upstream's empty state when the session has no plan and no todos", () => {
 		render(withQueryClient(<SessionPlanPane planFilename={undefined} model={EMPTY} />));
 		const pane = screen.getByTestId("session-plan-pane");
