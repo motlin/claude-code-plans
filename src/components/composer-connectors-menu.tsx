@@ -1,17 +1,17 @@
 import {useQuery} from "@tanstack/react-query";
 import {useNavigate} from "@tanstack/react-router";
-import {Blocks, BriefcaseBusiness, CloudOff, LibraryBig} from "lucide-react";
+import {Blocks, CloudOff, LibraryBig, Wrench} from "lucide-react";
 
 import {customizeMcpServersQueryOptions, type McpServerSummary} from "../lib/api/customize";
 import {toConnectorSlug} from "../lib/customize/mcp-tool-permissions";
-import {MenuSwitch} from "./ui/menu-switch";
-import {MenuItem, MenuSeparator, MenuSub, MenuSubContent, MenuSubTrigger} from "./ui/menu";
+import {MenuCheckboxSwitchItem, MenuItem, MenuSeparator, MenuSub, MenuSubContent, MenuSubTrigger} from "./ui/menu";
 
 /*
  * The claude.ai/code composer + menu's Connectors submenu, backed by the local
  * MCP config: Browse / Manage open Customize > Connectors, and each server row
- * opens its detail page. A running CLI cannot toggle servers live, so the
- * switches only show whether each server is enabled.
+ * opens its detail page. Connected servers come first, then the ones that need
+ * reconnection, as upstream orders them. A running CLI cannot toggle servers
+ * live, so the switches only show whether each server is enabled.
  */
 
 function reconnectionNote(servers: readonly McpServerSummary[]): string | undefined {
@@ -23,6 +23,8 @@ export function ComposerConnectorsMenu() {
 	const navigate = useNavigate();
 	const {data: servers = []} = useQuery(customizeMcpServersQueryOptions);
 	const note = reconnectionNote(servers);
+	const connected = servers.filter((server) => !server.needsAuth);
+	const reconnect = servers.filter((server) => server.needsAuth);
 	const openConnectors = () => void navigate({to: "/customize/connectors"});
 	const openServer = (server: McpServerSummary) =>
 		void navigate({to: "/customize/connectors/id/$serverId", params: {serverId: toConnectorSlug(server.id)}});
@@ -36,38 +38,36 @@ export function ComposerConnectorsMenu() {
 				<MenuItem icon={<LibraryBig />} onSelect={openConnectors}>
 					Browse connectors
 				</MenuItem>
-				<MenuItem icon={<BriefcaseBusiness />} onSelect={openConnectors}>
+				<MenuItem icon={<Wrench />} onSelect={openConnectors}>
 					Manage connectors
 				</MenuItem>
 				{servers.length > 0 && <MenuSeparator />}
-				{servers.map((server) =>
-					server.needsAuth ? (
-						<MenuItem
-							key={server.id}
-							icon={<CloudOff />}
-							description="Reconnect"
-							onSelect={() => {
-								openServer(server);
-							}}
-						>
-							{server.name}
-						</MenuItem>
-					) : (
-						<MenuItem
-							key={server.id}
-							aria-label={server.name}
-							icon={<Blocks />}
-							onSelect={() => {
-								openServer(server);
-							}}
-						>
-							<span className="flex items-center gap-3">
-								<span className="min-w-0 flex-1 truncate">{server.name}</span>
-								<MenuSwitch checked={server.enabled} readOnly aria-label={`${server.name} enabled`} />
-							</span>
-						</MenuItem>
-					),
-				)}
+				{connected.map((server) => (
+					<MenuCheckboxSwitchItem
+						key={server.id}
+						aria-label={server.name}
+						icon={<Blocks />}
+						checked={server.enabled}
+						closeOnClick
+						onCheckedChange={() => {
+							openServer(server);
+						}}
+					>
+						{server.name}
+					</MenuCheckboxSwitchItem>
+				))}
+				{reconnect.map((server) => (
+					<MenuItem
+						key={server.id}
+						icon={<CloudOff />}
+						description="Reconnect"
+						onSelect={() => {
+							openServer(server);
+						}}
+					>
+						{server.name}
+					</MenuItem>
+				))}
 			</MenuSubContent>
 		</MenuSub>
 	);

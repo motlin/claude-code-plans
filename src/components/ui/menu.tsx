@@ -546,6 +546,49 @@ export function MenuSwitchItem({children, checked, onCheckedChange, ...props}: M
 	);
 }
 
+export interface MenuCheckboxSwitchItemProps extends Omit<
+	ComponentProps<typeof BaseMenu.CheckboxItem>,
+	"className" | "children" | "checked"
+> {
+	/** The row label, which also names the switch. */
+	children: string;
+	icon?: ReactNode;
+	checked: boolean;
+	/** Close the menu on pick. Defaults to upstream's keepOpen. */
+	closeOnClick?: boolean;
+}
+
+/**
+ * Upstream's connector row: a `menuitemcheckbox` whose `aria-checked` carries the state, with a trailing xs
+ * switch wrapped in `inert` so it is display-only and the row stays the single focus and click target.
+ */
+export function MenuCheckboxSwitchItem({
+	children,
+	icon,
+	checked,
+	closeOnClick = false,
+	...props
+}: MenuCheckboxSwitchItemProps) {
+	const sizing = useMenuSizing();
+	const itemClass = useItemClass(false, sizing.switchGap);
+	return (
+		<BaseMenu.CheckboxItem
+			{...props}
+			checked={checked}
+			closeOnClick={closeOnClick}
+			className={`${itemClass} ${ITEM_VARIANT_CLASS.default}`}
+		>
+			<ItemIcon icon={icon} />
+			<span data-menu-item-title="" className={LABEL_CLASS}>
+				{children}
+			</span>
+			<span inert className={sizing.switchTrailing}>
+				<MenuSwitch checked={checked} disabled={props.disabled} readOnly aria-label={`${children} enabled`} />
+			</span>
+		</BaseMenu.CheckboxItem>
+	);
+}
+
 export const MenuRadioGroup = BaseMenu.RadioGroup;
 
 /** One menu section, `role="group"`, as upstream wraps each run between separators. */

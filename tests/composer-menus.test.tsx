@@ -929,9 +929,9 @@ describe("Composer + menu Connectors submenu", () => {
 		server("user:Sentry", "Sentry", true, true),
 	];
 
-	function renderWithServers() {
+	function renderWithServers(servers: McpServerSummary[] = SERVERS) {
 		const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
-		queryClient.setQueryData(customizeMcpServersQueryOptions.queryKey, SERVERS);
+		queryClient.setQueryData(customizeMcpServersQueryOptions.queryKey, servers);
 		render(
 			<QueryClientProvider client={queryClient}>
 				<Composer variant="session" draftKey="session-alice" onSend={() => {}} chin={CHIN} />
@@ -956,13 +956,20 @@ describe("Composer + menu Connectors submenu", () => {
 	}
 
 	function entries(menu: HTMLElement) {
-		return Array.from(menu.querySelectorAll('[role="menuitem"], [role="separator"]')).map((element) =>
+		return Array.from(
+			menu.querySelectorAll('[role="menuitem"], [role="menuitemcheckbox"], [role="separator"]'),
+		).map((element) =>
 			element.getAttribute("role") === "separator"
 				? "---"
 				: {
+						role: element.getAttribute("role"),
+						checked: element.getAttribute("aria-checked"),
 						title: element.querySelector("[data-menu-item-title]")?.textContent,
+						icon: element.querySelector("svg")?.classList[1] ?? null,
 						description: element.querySelector("[data-menu-item-description]")?.textContent ?? null,
-						switch: element.querySelector('[role="switch"]')?.getAttribute("aria-checked") ?? null,
+						switch:
+							element.querySelector('span[inert] > [role="switch"]')?.getAttribute("aria-checked") ??
+							null,
 					},
 		);
 	}
@@ -986,13 +993,55 @@ describe("Composer + menu Connectors submenu", () => {
 			addMenu: ["Add files or photos", "Slash commands", "Connectors1 needs reconnection"],
 			note: "1 needs reconnection",
 			submenu: [
-				{title: "Browse connectors", description: null, switch: null},
-				{title: "Manage connectors", description: null, switch: null},
+				{
+					role: "menuitem",
+					checked: null,
+					title: "Browse connectors",
+					icon: "lucide-library-big",
+					description: null,
+					switch: null,
+				},
+				{
+					role: "menuitem",
+					checked: null,
+					title: "Manage connectors",
+					icon: "lucide-wrench",
+					description: null,
+					switch: null,
+				},
 				"---",
-				{title: "Gmail", description: null, switch: "true"},
-				{title: "Calendar", description: null, switch: "true"},
-				{title: "Docs", description: null, switch: "false"},
-				{title: "Sentry", description: "Reconnect", switch: null},
+				{
+					role: "menuitemcheckbox",
+					checked: "true",
+					title: "Gmail",
+					icon: "lucide-blocks",
+					description: null,
+					switch: "true",
+				},
+				{
+					role: "menuitemcheckbox",
+					checked: "true",
+					title: "Calendar",
+					icon: "lucide-blocks",
+					description: null,
+					switch: "true",
+				},
+				{
+					role: "menuitemcheckbox",
+					checked: "false",
+					title: "Docs",
+					icon: "lucide-blocks",
+					description: null,
+					switch: "false",
+				},
+				{
+					role: "menuitem",
+					checked: null,
+					title: "Sentry",
+					icon: "lucide-cloud-off",
+					description: "Reconnect",
+					switch: null,
+				},
 			],
 			switches: [
 				["Gmail enabled", "true", "xs"],
@@ -1002,13 +1051,34 @@ describe("Composer + menu Connectors submenu", () => {
 		});
 	});
 
+	it("lists connected servers first, then every server that needs reconnection, each in API order", async () => {
+		renderWithServers([
+			server("user:A", "A", true, true),
+			server("user:B", "B", true, false),
+			server("user:C", "C", false, true),
+			server("user:D", "D", false, false),
+		]);
+		const {submenu} = await openConnectors();
+
+		expect(
+			entries(submenu)
+				.slice(3)
+				.map((entry) => (typeof entry === "string" ? entry : [entry.title, entry.role, entry.description])),
+		).toStrictEqual([
+			["B", "menuitemcheckbox", null],
+			["D", "menuitemcheckbox", null],
+			["A", "menuitem", "Reconnect"],
+			["C", "menuitem", "Reconnect"],
+		]);
+	});
+
 	it("navigates to Customize > Connectors and to each server's page", async () => {
 		renderWithServers();
 		const targets: unknown[] = [];
 		for (const name of ["Browse connectors", "Manage connectors", "Docs", /^Sentry/]) {
 			navigate.mockClear();
 			const {submenu} = await openConnectors();
-			fireEvent.click(within(submenu).getByRole("menuitem", {name}));
+			fireEvent.click(within(submenu).getByRole(name === "Docs" ? "menuitemcheckbox" : "menuitem", {name}));
 			await waitFor(() => {
 				expect(screen.queryByRole("menu")).toBeNull();
 			});
