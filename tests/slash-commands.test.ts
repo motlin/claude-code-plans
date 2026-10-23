@@ -175,14 +175,31 @@ describe("filterSlashCommands", () => {
 });
 
 describe("highlightMatches", () => {
-	it("splits text into bold match spans, case-insensitively", () => {
-		expect(highlightMatches("Autocompact compaction", "comp")).toStrictEqual([
-			{text: "Auto", match: false},
-			{text: "comp", match: true},
-			{text: "act ", match: false},
-			{text: "comp", match: true},
-			{text: "action", match: false},
+	it("bolds only the first case-insensitive match", () => {
+		expect([
+			highlightMatches("status", "s"),
+			highlightMatches("Browse and manage your skills", "s"),
+			highlightMatches("Autocompact compaction", "COMP"),
+		]).toStrictEqual([
+			[
+				{text: "s", match: true},
+				{text: "tatus", match: false},
+			],
+			[
+				{text: "Brow", match: false},
+				{text: "s", match: true},
+				{text: "e and manage your skills", match: false},
+			],
+			[
+				{text: "Auto", match: false},
+				{text: "comp", match: true},
+				{text: "act compaction", match: false},
+			],
 		]);
+	});
+
+	it("returns the whole text unmatched when the query does not occur", () => {
+		expect(highlightMatches("model", "zz")).toStrictEqual([{text: "model", match: false}]);
 	});
 
 	it("returns the whole text unmatched for an empty query", () => {

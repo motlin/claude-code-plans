@@ -125,21 +125,15 @@ export interface HighlightSegment {
 	match: boolean;
 }
 
-/** Splits `text` around every case-insensitive occurrence of `query`. */
+/** Splits `text` around the first case-insensitive occurrence of `query`, as upstream bolds only the first match. */
 export function highlightMatches(text: string, query: string): HighlightSegment[] {
-	if (query === "") return [{text, match: false}];
-	const haystack = text.toLowerCase();
-	const needle = query.toLowerCase();
+	const index = query === "" ? -1 : text.toLowerCase().indexOf(query.toLowerCase());
+	if (index === -1) return [{text, match: false}];
+	const end = index + query.length;
 	const segments: HighlightSegment[] = [];
-	let start = 0;
-	let index = haystack.indexOf(needle);
-	while (index !== -1) {
-		if (index > start) segments.push({text: text.slice(start, index), match: false});
-		segments.push({text: text.slice(index, index + needle.length), match: true});
-		start = index + needle.length;
-		index = haystack.indexOf(needle, start);
-	}
-	if (start < text.length) segments.push({text: text.slice(start), match: false});
+	if (index > 0) segments.push({text: text.slice(0, index), match: false});
+	segments.push({text: text.slice(index, end), match: true});
+	if (end < text.length) segments.push({text: text.slice(end), match: false});
 	return segments;
 }
 
