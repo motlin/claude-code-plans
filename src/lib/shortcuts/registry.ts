@@ -30,8 +30,16 @@ export interface ShortcutDefinition {
 	/** Feature slug in .llm/upstream-sync/features.md that owns the wiring. */
 	ownerSlug: string;
 	enabled: boolean;
-	/** Keys string for display when the bindings are a range, e.g. "1…9". */
-	displayKeys?: string;
+	/**
+	 * Keys string for display when the bindings are a range ("1…9") or a sequence ("esc esc"),
+	 * optionally split by platform when the modifiers differ.
+	 */
+	displayKeys?: string | {mac: string; nonMac: string};
+	/**
+	 * Another entry that deliberately uses the same chord on a different surface, e.g. ⌘⏎ queues
+	 * on a working session and sends-and-stays on the home composer.
+	 */
+	sharesBindingWith?: string;
 	/** The ⌘/ dialog lists every platform binding joined by "or" (upstream `shortcut` array rows). */
 	dialogShowsAllBindings?: true;
 	/** Registered and bound, but upstream's ⌘/ dialog has no row for it. */
@@ -72,6 +80,25 @@ function letterCode(letter: string): string {
 }
 
 const DIGITS = ["1", "2", "3", "4", "5", "6", "7", "8", "9"] as const;
+
+/** Upstream's preset keys: ⌥⌘digit on mac, Alt+digit on Windows, none on Linux web. */
+function environmentPresetBindings(digit: string): Binding[] {
+	const code = `Digit${digit}`;
+	return [
+		{key: digit, code, modifiers: ["cmd", "alt"], platform: "mac"},
+		{key: digit, code, modifiers: ["alt"], platform: "windows"},
+	];
+}
+
+/** Upstream's diff-change keys: an Alt+F5 chord (not on Linux) or the bare F7 key. */
+function diffChangeBindings(extra: readonly ShortcutModifier[]): Binding[] {
+	const f5: Binding = {key: "f5", code: "F5", modifiers: [...extra, "alt"]};
+	return [
+		{...f5, platform: "mac"},
+		{...f5, platform: "windows"},
+		{key: "f7", code: "F7", modifiers: [...extra]},
+	];
+}
 
 export const SHORTCUTS = {
 	// General
@@ -127,6 +154,21 @@ export const SHORTCUTS = {
 		bindings: cmdOrCtrl("o", ["shift"]),
 		ownerSlug: "home-page",
 		enabled: true,
+	},
+	select_environment: {
+		description: "Select environment",
+		group: "general",
+		bindings: DIGITS.flatMap(environmentPresetBindings),
+		ownerSlug: "home-start-card-states",
+		enabled: false,
+		displayKeys: {mac: "cmd+alt+1…9", nonMac: "alt+1…9"},
+	},
+	new_environment: {
+		description: "New environment",
+		group: "general",
+		bindings: environmentPresetBindings("0"),
+		ownerSlug: "home-start-card-states",
+		enabled: false,
 	},
 	rename_session: {
 		description: "Rename session",
@@ -222,6 +264,15 @@ export const SHORTCUTS = {
 		ownerSlug: "stop-response",
 		enabled: true,
 	},
+	rewind_session: {
+		description: "Rewind the session to an earlier message",
+		group: "general",
+		// Each step of upstream's "esc esc" sequence; the owner adds the double-press timing.
+		bindings: [everywhere("escape", [])],
+		ownerSlug: "rewind-undo-redo",
+		enabled: false,
+		displayKeys: "esc esc",
+	},
 	// Panes
 	toggle_changes: {
 		description: "Toggle changes",
@@ -236,6 +287,22 @@ export const SHORTCUTS = {
 		bindings: ctrlEverywhere("y", ["shift"]),
 		ownerSlug: "panes-changes",
 		enabled: true,
+	},
+	next_change: {
+		description: "Next change in changes",
+		group: "panes",
+		bindings: diffChangeBindings([]),
+		ownerSlug: "changes-next-prev-change",
+		enabled: false,
+		dialogShowsAllBindings: true,
+	},
+	prev_change: {
+		description: "Previous change in changes",
+		group: "panes",
+		bindings: diffChangeBindings(["shift"]),
+		ownerSlug: "changes-next-prev-change",
+		enabled: false,
+		dialogShowsAllBindings: true,
 	},
 	go_to_file_in_changes: {
 		description: "Go to file in changes or files",
@@ -340,6 +407,21 @@ export const SHORTCUTS = {
 		bindings: cmdOrCtrl("u"),
 		ownerSlug: "composer",
 		enabled: true,
+	},
+	queue_for_later: {
+		description: "Queue for later (while Claude is working)",
+		group: "composer",
+		bindings: cmdOrCtrl("enter", [], "Enter"),
+		ownerSlug: "composer-queue-steer",
+		enabled: true,
+	},
+	send_and_stay: {
+		description: "Send and stay on the new session page",
+		group: "composer",
+		bindings: cmdOrCtrl("enter", [], "Enter"),
+		ownerSlug: "home-page",
+		enabled: true,
+		sharesBindingWith: "queue_for_later",
 	},
 	fork_with_prompt: {
 		description: "Fork with this prompt",

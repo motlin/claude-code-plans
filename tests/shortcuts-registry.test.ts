@@ -1,22 +1,37 @@
 import {describe, expect, it} from "vite-plus/test";
 
 import {bindingsFor} from "../src/lib/shortcuts/match";
-import {SHORTCUT_IDS, SHORTCUTS, type Binding, bindingToKeys} from "../src/lib/shortcuts/registry";
+import {
+	SHORTCUT_IDS,
+	SHORTCUTS,
+	type Binding,
+	bindingToKeys,
+	getShortcut,
+	type ShortcutId,
+} from "../src/lib/shortcuts/registry";
 
 const BROWSER_RESERVED = new Set(["l", "t", "w", "n"]);
+const DIGIT_KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
 
 function chord(binding: Binding): string {
 	return bindingToKeys(binding);
 }
 
 describe("shortcut registry", () => {
-	it("lists the 36 upstream web entries plus the page-scoped ⌘F search", () => {
-		expect(SHORTCUT_IDS).toHaveLength(37);
+	it("lists the 43 upstream web entries plus the page-scoped ⌘F search", () => {
+		expect(SHORTCUT_IDS).toHaveLength(44);
 	});
 
-	it.each(SHORTCUT_IDS)("%s has mac and non-mac bindings", (id) => {
+	it.each(SHORTCUT_IDS)("%s has mac and Windows bindings", (id) => {
 		expect(bindingsFor(id, true).length).toBeGreaterThan(0);
-		expect(bindingsFor(id, false).length).toBeGreaterThan(0);
+		expect(bindingsFor(id, false, true).length).toBeGreaterThan(0);
+	});
+
+	it("binds every entry on Linux except the environment pickers, which upstream skips on Linux web", () => {
+		expect(SHORTCUT_IDS.filter((id) => bindingsFor(id, false, false).length === 0)).toStrictEqual([
+			"select_environment",
+			"new_environment",
+		]);
 	});
 
 	it("never binds browser-reserved ⌘L / ⌘T / ⌘W / ⌘N", () => {
@@ -33,20 +48,110 @@ describe("shortcut registry", () => {
 		expect(offenders).toEqual([]);
 	});
 
-	it("never gives two enabled entries the same binding on a platform", () => {
+	it("never gives two enabled entries the same binding on a platform, unless they declare sharesBindingWith", () => {
+		const sharesWith = (a: ShortcutId, b: ShortcutId) =>
+			getShortcut(a).sharesBindingWith === b || getShortcut(b).sharesBindingWith === a;
 		for (const isMac of [true, false]) {
-			const seen = new Map<string, string>();
+			const seen = new Map<string, ShortcutId>();
 			const duplicates: string[] = [];
 			for (const id of SHORTCUT_IDS.filter((i) => SHORTCUTS[i].enabled)) {
 				for (const b of bindingsFor(id, isMac)) {
 					const key = chord(b);
 					const prior = seen.get(key);
-					if (prior !== undefined) duplicates.push(`${prior} and ${id}: ${key}`);
+					if (prior !== undefined && !sharesWith(prior, id)) duplicates.push(`${prior} and ${id}: ${key}`);
 					seen.set(key, id);
 				}
 			}
 			expect(duplicates).toEqual([]);
 		}
+	});
+
+	it("lets only Queue for later and Send and stay share ⌘⏎ (working session vs home composer)", () => {
+		expect(
+			SHORTCUT_IDS.flatMap((id) => {
+				const other = getShortcut(id).sharesBindingWith;
+				return other === undefined ? [] : [[id, other]];
+			}),
+		).toStrictEqual([["send_and_stay", "queue_for_later"]]);
+	});
+
+	it("registers the 2026-10 upstream entries with upstream's bindings", () => {
+		const mac = (id: ShortcutId) => bindingsFor(id, true).map(bindingToKeys);
+		const windows = (id: ShortcutId) => bindingsFor(id, false, true).map(bindingToKeys);
+		const linux = (id: ShortcutId) => bindingsFor(id, false, false).map(bindingToKeys);
+		const ids = [
+			"select_environment",
+			"new_environment",
+			"rewind_session",
+			"next_change",
+			"prev_change",
+			"queue_for_later",
+			"send_and_stay",
+		] as const;
+		expect(
+			Object.fromEntries(
+				ids.map((id) => [
+					id,
+					{
+						description: SHORTCUTS[id].description,
+						mac: mac(id),
+						windows: windows(id),
+						linux: linux(id),
+						displayKeys: getShortcut(id).displayKeys,
+					},
+				]),
+			),
+		).toStrictEqual({
+			select_environment: {
+				description: "Select environment",
+				mac: DIGIT_KEYS.map((d) => `cmd+alt+${d}`),
+				windows: DIGIT_KEYS.map((d) => `alt+${d}`),
+				linux: [],
+				displayKeys: {mac: "cmd+alt+1…9", nonMac: "alt+1…9"},
+			},
+			new_environment: {
+				description: "New environment",
+				mac: ["cmd+alt+0"],
+				windows: ["alt+0"],
+				linux: [],
+				displayKeys: undefined,
+			},
+			rewind_session: {
+				description: "Rewind the session to an earlier message",
+				mac: ["escape"],
+				windows: ["escape"],
+				linux: ["escape"],
+				displayKeys: "esc esc",
+			},
+			next_change: {
+				description: "Next change in changes",
+				mac: ["alt+f5", "f7"],
+				windows: ["alt+f5", "f7"],
+				linux: ["f7"],
+				displayKeys: undefined,
+			},
+			prev_change: {
+				description: "Previous change in changes",
+				mac: ["shift+alt+f5", "shift+f7"],
+				windows: ["shift+alt+f5", "shift+f7"],
+				linux: ["shift+f7"],
+				displayKeys: undefined,
+			},
+			queue_for_later: {
+				description: "Queue for later (while Claude is working)",
+				mac: ["cmd+enter"],
+				windows: ["ctrl+enter"],
+				linux: ["ctrl+enter"],
+				displayKeys: undefined,
+			},
+			send_and_stay: {
+				description: "Send and stay on the new session page",
+				mac: ["cmd+enter"],
+				windows: ["ctrl+enter"],
+				linux: ["ctrl+enter"],
+				displayKeys: undefined,
+			},
+		});
 	});
 
 	it("only enables the shortcuts wired today", () => {
@@ -85,6 +190,8 @@ describe("shortcut registry", () => {
 			"open_effort_selector",
 			"select_menu_item",
 			"add_files",
+			"queue_for_later",
+			"send_and_stay",
 			"fork_with_prompt",
 		]);
 	});

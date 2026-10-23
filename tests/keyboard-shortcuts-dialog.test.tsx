@@ -152,6 +152,8 @@ describe("KeyboardShortcutsDialog", () => {
 				"Open effort selector",
 				"Select menu item",
 				"Add files or photos",
+				"Queue for later (while Claude is working)",
+				"Send and stay on the new session page",
 				"Fork with this prompt",
 			],
 		});
@@ -179,6 +181,18 @@ describe("KeyboardShortcutsDialog", () => {
 			"⇧Shift",
 			"⌘Command",
 			",",
+		]);
+	});
+
+	it("lists Send and stay on the new session page with ⌘⏎ keycaps", async () => {
+		const composer = renderWithComposer();
+		pressShortcutsKey(composer);
+
+		const dialog = await screen.findByRole("dialog", {name: "Keyboard shortcuts"});
+		const row = within(dialog).getByText("Send and stay on the new session page").parentElement;
+		expect([...(row?.querySelectorAll("kbd") ?? [])].map((kbd) => kbd.textContent)).toStrictEqual([
+			"⌘Command",
+			"⏎Enter",
 		]);
 	});
 

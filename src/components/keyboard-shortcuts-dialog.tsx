@@ -17,8 +17,12 @@ import {
 import {DensityScope} from "./ui/density";
 
 function rowKeys(definition: ShortcutDefinition, isMac: boolean, isWindows: boolean): string[] {
-	if (definition.displayKeys !== undefined) return [definition.displayKeys];
 	const keys = platformBindings(definition, isMac, isWindows).map(bindingToKeys);
+	// Upstream hides a row whose keys resolve empty on this platform.
+	if (keys.length === 0) return [];
+	const {displayKeys} = definition;
+	if (typeof displayKeys === "string") return [displayKeys];
+	if (displayKeys !== undefined) return [isMac ? displayKeys.mac : displayKeys.nonMac];
 	return definition.dialogShowsAllBindings === true ? keys : keys.slice(0, 1);
 }
 
@@ -32,18 +36,20 @@ export function ShortcutRow({
 	isMac: boolean;
 	isWindows: boolean;
 }) {
+	const keys = rowKeys(definition, isMac, isWindows);
+	if (keys.length === 0) return null;
 	return (
 		<div className="flex items-center justify-between border-b-[0.5px] border-border py-2 last:border-0">
 			<span className="flex items-center gap-2 text-sm text-secondary">{definition.description}</span>
 			<span className="flex items-center gap-2">
-				{rowKeys(definition, isMac, isWindows).map((keys, index) => (
-					<Fragment key={keys}>
+				{keys.map((rowKey, index) => (
+					<Fragment key={rowKey}>
 						{index > 0 && (
 							<span aria-hidden="true" className="text-xs text-muted-as-secondary">
 								or
 							</span>
 						)}
-						<Shortcut keys={keys} />
+						<Shortcut keys={rowKey} />
 					</Fragment>
 				))}
 			</span>
