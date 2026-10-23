@@ -23,7 +23,10 @@ function trimUrl(url: string): string {
 	}
 }
 
-function linkify(text: string, keyPrefix: number): ReactNode[] {
+/** How a linked URL is drawn: a user message's accent link, or upstream's TextLink (`dir="ltr"`, `rel="noreferrer"`). */
+type LinkStyle = "user" | "textLink";
+
+function linkify(text: string, keyPrefix: number, style: LinkStyle = "user"): ReactNode[] {
 	const nodes: ReactNode[] = [];
 	let cursor = 0;
 	for (const match of text.matchAll(URL_PATTERN)) {
@@ -34,8 +37,9 @@ function linkify(text: string, keyPrefix: number): ReactNode[] {
 				key={`${keyPrefix}-${match.index}`}
 				href={url}
 				target="_blank"
-				rel="noopener noreferrer"
-				className="text-link"
+				{...(style === "textLink"
+					? {rel: "noreferrer", dir: "ltr", className: "text-link inline cursor-pointer"}
+					: {rel: "noopener noreferrer", className: "text-link"})}
 			>
 				{url}
 			</a>,
@@ -46,16 +50,20 @@ function linkify(text: string, keyPrefix: number): ReactNode[] {
 	return nodes;
 }
 
-/** A user message's inline paint (code spans and linked URLs) without its block layout, as upstream's question card header. */
-export function UserInlineText({text}: {text: string}) {
-	return <>{renderInline(text)}</>;
+/**
+ * A user message's inline paint without its block layout, its URLs as upstream's
+ * TextLink. Upstream's question card header passes `codeSpans={false}` to keep
+ * backticks literal.
+ */
+export function UserInlineText({text, codeSpans = true}: {text: string; codeSpans?: boolean}) {
+	return <>{codeSpans ? renderInline(text, "textLink") : linkify(text, 0, "textLink")}</>;
 }
 
-function renderInline(text: string): ReactNode[] {
+function renderInline(text: string, style: LinkStyle = "user"): ReactNode[] {
 	const nodes: ReactNode[] = [];
 	let cursor = 0;
 	for (const match of text.matchAll(CODE_SPAN)) {
-		if (match.index > cursor) nodes.push(...linkify(text.slice(cursor, match.index), cursor));
+		if (match.index > cursor) nodes.push(...linkify(text.slice(cursor, match.index), cursor, style));
 		nodes.push(
 			<code key={match.index} className={CODE_CLASS}>
 				{match[2]}
@@ -63,7 +71,7 @@ function renderInline(text: string): ReactNode[] {
 		);
 		cursor = match.index + match[0].length;
 	}
-	if (cursor < text.length) nodes.push(...linkify(text.slice(cursor), cursor));
+	if (cursor < text.length) nodes.push(...linkify(text.slice(cursor), cursor, style));
 	return nodes;
 }
 

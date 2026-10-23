@@ -318,7 +318,7 @@ export function QuestionCard({
 		>
 			<div className="flex items-center gap-3 bg-alpha-1 px-3 py-2">
 				<div className="min-w-0 flex-1 text-body text-primary select-text break-words [unicode-bidi:plaintext]">
-					<UserInlineText text={question.question} />
+					<UserInlineText text={question.question} codeSpans={false} />
 				</div>
 				{questions.length > 1 && (
 					<span className="-my-1.5 -me-2 flex shrink-0 items-center gap-1.5 text-caption text-ink-muted">

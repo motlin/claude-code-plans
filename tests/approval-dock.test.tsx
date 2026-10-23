@@ -546,12 +546,12 @@ describe("QuestionCard", () => {
 		expect(onSubmit.mock.calls[0]?.[0]).toStrictEqual([null, {selected: [0]}]);
 	});
 
-	it("paints the header question like user message text, but keeps option labels plain", () => {
+	it("keeps backticks literal in the header question and links its URLs as upstream's TextLink, but keeps option labels plain", () => {
 		render(
 			<QuestionCard
 				questions={[
 					{
-						question: "Use the docs at https://example.com/guide? See `vitest.config.ts`.",
+						question: "Use the docs at https://example.com/guide? Run `npm test`.",
 						header: "Docs",
 						options: [{label: "Yes, https://example.com/yes", description: "Read https://example.com/d"}],
 					},
@@ -563,14 +563,32 @@ describe("QuestionCard", () => {
 		const header = card.firstElementChild!.firstElementChild!;
 
 		expect({
-			headerLinks: [...header.querySelectorAll("a")].map((a) => [a.getAttribute("href"), a.textContent]),
-			headerCode: [...header.querySelectorAll("code")].map((code) => code.textContent),
+			headerText: header.textContent,
+			headerLinks: [...header.querySelectorAll("a")].map((a) => ({
+				href: a.getAttribute("href"),
+				text: a.textContent,
+				target: a.getAttribute("target"),
+				rel: a.getAttribute("rel"),
+				dir: a.getAttribute("dir"),
+				className: a.className,
+			})),
+			headerCode: header.querySelectorAll("code").length,
 			links: within(card)
 				.getAllByRole("link")
 				.map((a) => a.getAttribute("href")),
 		}).toStrictEqual({
-			headerLinks: [["https://example.com/guide", "https://example.com/guide"]],
-			headerCode: ["vitest.config.ts"],
+			headerText: "Use the docs at https://example.com/guide? Run `npm test`.",
+			headerLinks: [
+				{
+					href: "https://example.com/guide",
+					text: "https://example.com/guide",
+					target: "_blank",
+					rel: "noreferrer",
+					dir: "ltr",
+					className: "text-link inline cursor-pointer",
+				},
+			],
+			headerCode: 0,
 			links: ["https://example.com/guide"],
 		});
 	});
