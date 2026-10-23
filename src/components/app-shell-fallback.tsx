@@ -4,6 +4,8 @@ import {DEFAULT_VISIBLE_NAV_SECTIONS} from "../lib/nav-sections";
 import {DEFAULT_SIDEBAR_STATE} from "../lib/sidebar-store";
 import {getVisibleNavItems, navItems} from "./sidebar/navigation";
 import {SidebarToggleIcon} from "./sidebar/primitives";
+import {SEARCH_FIELD_CLASS, SEARCH_FIELD_WRAPPER_CLASS, SearchFieldContents} from "./sidebar/sidebar-search-field";
+import {useShortcutKeys} from "../hooks/use-shortcut";
 import {ROW_CLASS as SESSION_ROW_CLASS} from "./sidebar/session-group-section";
 import {SessionSkeleton} from "./session-skeleton";
 import {HOME_COLUMN} from "./home/home-column";
@@ -232,6 +234,7 @@ export function AppShellFallback({
 }) {
 	const [hydrated, setHydrated] = useState(false);
 	const [labels] = useState(() => chin ?? readPaintedChin());
+	const {keys: searchKeys} = useShortcutKeys("search_or_start");
 
 	useEffect(() => {
 		setHydrated(true);
@@ -265,6 +268,11 @@ export function AppShellFallback({
 
 				<div className="flex min-h-0 flex-1 flex-col overflow-hidden px-2">
 					<div className="shrink-0">
+						<div className={SEARCH_FIELD_WRAPPER_CLASS}>
+							<span className={SEARCH_FIELD_CLASS}>
+								<SearchFieldContents keys={searchKeys} />
+							</span>
+						</div>
 						<div className="flex items-center">
 							<span className={NAV_ROW_CLASS}>
 								<span className="df-leading-slot [--sb-icon:16px]">

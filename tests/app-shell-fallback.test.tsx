@@ -7,6 +7,7 @@ import {render} from "@testing-library/react";
 import {describe, expect, it, vi} from "vite-plus/test";
 import {AppShellFallback} from "../src/components/app-shell-fallback";
 import {getVisibleNavItems, navItems} from "../src/components/sidebar/navigation";
+import {SidebarSearchField} from "../src/components/sidebar/sidebar-search-field";
 import {DEFAULT_VISIBLE_NAV_SECTIONS} from "../src/lib/nav-sections";
 import {Route} from "../src/routes/__root";
 import {resolveShellChinLabels} from "../src/lib/shell-chin-labels";
@@ -168,6 +169,35 @@ describe("AppShellFallback", () => {
 			footerIcons: 0,
 			composer: true,
 			column: true,
+		});
+	});
+
+	it("paints the sidebar Search field above New with the live field's wrapper, row classes, label and keycaps, so New does not shift on hydration", () => {
+		const host = document.createElement("div");
+		host.innerHTML = renderToStaticMarkup(<AppShellFallback />);
+		const live = document.createElement("div");
+		live.innerHTML = renderToStaticMarkup(<SidebarSearchField />);
+		const field = host.querySelector('[aria-label="Sidebar"] .df-search-field')!;
+		const liveField = live.querySelector(".df-search-field")!;
+		const firstRow = field.parentElement!.parentElement!.firstElementChild;
+		const newRow = field.parentElement!.nextElementSibling;
+
+		expect({
+			tag: field.tagName.toLowerCase(),
+			wrapper: field.parentElement!.className,
+			className: field.className,
+			label: field.querySelector("[data-row-label]")?.textContent,
+			keycaps: Array.from(field.querySelectorAll("kbd"), (key) => key.textContent),
+			first: firstRow === field.parentElement,
+			next: newRow?.textContent,
+		}).toStrictEqual({
+			tag: "span",
+			wrapper: liveField.parentElement!.className,
+			className: liveField.className,
+			label: "Search",
+			keycaps: Array.from(liveField.querySelectorAll("kbd"), (key) => key.textContent),
+			first: true,
+			next: "New",
 		});
 	});
 
