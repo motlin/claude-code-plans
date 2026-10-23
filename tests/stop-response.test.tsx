@@ -326,9 +326,9 @@ describe("working marker Stopping…", () => {
 		vi.unstubAllGlobals();
 
 		expect({before, after, stale}).toStrictEqual({
-			before: "Running command · 3s",
+			before: "Working…",
 			after: "Stopping…",
-			stale: "Running command · 3s",
+			stale: "Working…",
 		});
 	});
 });

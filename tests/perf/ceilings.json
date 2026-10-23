@@ -68,11 +68,11 @@
 		"raisedAt": "2026-10-22"
 	},
 	"bundle.session.raw": {
-		"ceiling": 1745664,
+		"ceiling": 1763660,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Steer/rewind/touch-send parity since the waiting-row ceiling (browser-held steer rows with Cancel and edit, Rewind to here disabled while working, and the coarse-pointer split Send with its More send options menu via src/components/ui/split-dropdown-button.tsx in the composer) took session cold JS from 571208 gzip / 1726510 raw to 576797 gzip / 1745664 raw at the touch split Send commit. Ceilings set to the measurement; the 1% tolerance is unchanged.",
-		"raisedAt": "2026-10-22"
+		"reason": "Session parity commits since the touch split Send ceiling (1745664 raw) drifted session cold JS to the 1% tolerance; the upstream TurnStatus working line (code-working-line row with mark slot, muted dot-joined stats, sr-only running and polite Working… status) took it over, to 582352 gzip / 1763660 raw. Ceiling set to the measurement; the 1% tolerance is unchanged.",
+		"raisedAt": "2026-10-23"
 	},
 	"client.coldHome.default.commitsToRows": {
 		"ceiling": 9,

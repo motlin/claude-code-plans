@@ -96,25 +96,55 @@ export function formatElapsed(totalSeconds: number): string {
 }
 
 /**
- * The tail marker's state once the transcript draws the in-flight call as its
- * own running row: upstream shows that row alone, with no second "working"
- * line under it. Stopping and retrying still say so.
+ * Whether the working line goes quiet because the transcript draws the
+ * in-flight call as its own busy row: upstream keeps the line mounted but
+ * invisible, so there is no second status line. Stopping and retrying still show.
  */
-export function tailMarkerState(state: WorkingMarkerState, inFlightRow: boolean): WorkingMarkerState {
-	return inFlightRow && state.status === "working" ? {status: "idle"} : state;
+export function tailMarkerQuiet(state: WorkingMarkerState, inFlightRow: boolean): boolean {
+	return inFlightRow && state.status === "working";
+}
+
+/** The working line's visible pieces: an optional label, then "·"-joined stats. */
+export interface WorkingLineParts {
+	label: string;
+	stats: string[];
+}
+
+export function workingLineParts(state: WorkingMarkerState): WorkingLineParts {
+	switch (state.status) {
+		case "idle":
+		case "waiting":
+			return {label: "", stats: []};
+		case "stopping":
+			return {label: "Stopping…", stats: []};
+		case "working":
+			return {label: "", stats: [formatElapsed(state.elapsedSeconds)]};
+		case "retrying":
+			return {
+				label: `${state.error} · Retrying (${state.attempt}/${state.maxRetries})`,
+				stats: [formatElapsed(state.elapsedSeconds)],
+			};
+		default:
+			return assertNever(state);
+	}
 }
 
 export function workingMarkerText(state: WorkingMarkerState): string {
+	const {label, stats} = workingLineParts(state);
+	return [label, ...stats].filter((part) => part !== "").join(" · ");
+}
+
+/** The polite sr-only status: upstream announces "Working…", never the ticking clock. */
+export function workingLineAnnouncement(state: WorkingMarkerState): string {
 	switch (state.status) {
 		case "idle":
 		case "waiting":
 			return "";
-		case "stopping":
-			return "Stopping…";
 		case "working":
-			return `${state.label} · ${formatElapsed(state.elapsedSeconds)}`;
+			return WORKING_LABEL;
+		case "stopping":
 		case "retrying":
-			return `${state.error} · Retrying (${state.attempt}/${state.maxRetries}) · ${formatElapsed(state.elapsedSeconds)}`;
+			return workingLineParts(state).label;
 		default:
 			return assertNever(state);
 	}

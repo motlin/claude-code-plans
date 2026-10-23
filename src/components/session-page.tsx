@@ -61,7 +61,7 @@ import {SessionPaneControls} from "./view-options-menu";
 import {SessionDock} from "./session-dock";
 import {sessionProcessLive} from "../lib/session-state";
 import {type QueuedPrompt, steeredPrompts} from "../lib/composer-queue";
-import {tailMarkerState} from "../lib/working-marker";
+import {tailMarkerQuiet} from "../lib/working-marker";
 import {WaitingForInputNotice} from "./approval-card";
 import {QuestionCard} from "./question-card";
 import {showsWaitingForInputNotice} from "./waiting-for-input-notice";
@@ -1149,7 +1149,8 @@ function SessionView({
 							)}
 
 							<WorkingMarker
-								state={tailMarkerState(workingMarkerState, inFlightRow)}
+								state={workingMarkerState}
+								quiet={tailMarkerQuiet(workingMarkerState, inFlightRow)}
 								runningTasks={backgroundTasks.running.length}
 							/>
 

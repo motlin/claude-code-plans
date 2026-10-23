@@ -9,8 +9,9 @@ import {useWorkingMarkerState} from "../src/components/use-working-marker-state"
 import {
 	formatElapsed,
 	markerEventsFromRecords,
-	tailMarkerState,
+	tailMarkerQuiet,
 	toolActivityLabel,
+	workingLineAnnouncement,
 	workingMarkerState,
 	workingMarkerText,
 	type WorkingMarkerEvent,
@@ -139,15 +140,15 @@ describe("workingMarkerState", () => {
 	});
 });
 
-describe("tailMarkerState", () => {
+describe("tailMarkerQuiet", () => {
 	const working = {status: "working", label: "Recheck SSH auth", turnStartedAt: 0, elapsedSeconds: 24} as const;
 
-	it("leaves the turn to the in-flight call's own row, as upstream draws no second status line", () => {
+	it("quiets the line while the in-flight call's own row is busy, as upstream draws no second status line", () => {
 		expect({
-			inFlight: tailMarkerState(working, true),
-			noRow: tailMarkerState(working, false),
-			stopping: tailMarkerState({status: "stopping"}, true),
-		}).toStrictEqual({inFlight: {status: "idle"}, noRow: working, stopping: {status: "stopping"}});
+			inFlight: tailMarkerQuiet(working, true),
+			noRow: tailMarkerQuiet(working, false),
+			stopping: tailMarkerQuiet({status: "stopping"}, true),
+		}).toStrictEqual({inFlight: true, noRow: false, stopping: false});
 	});
 });
 
@@ -167,7 +168,7 @@ describe("formatElapsed", () => {
 });
 
 describe("workingMarkerText", () => {
-	it("renders each visible state's status line", () => {
+	it("renders each visible state's status line, with no Working… label as upstream's live line has none", () => {
 		expect([
 			workingMarkerText({status: "idle"}),
 			workingMarkerText({
@@ -185,7 +186,31 @@ describe("workingMarkerText", () => {
 				turnStartedAt: at(0),
 				elapsedSeconds: 12,
 			}),
-		]).toStrictEqual(["", "Working… · 1m 05s", "Stopping…", "Overloaded · Retrying (2/10) · 12s"]);
+		]).toStrictEqual(["", "1m 05s", "Stopping…", "Overloaded · Retrying (2/10) · 12s"]);
+	});
+});
+
+describe("workingLineAnnouncement", () => {
+	it("announces Working… rather than the ticking clock", () => {
+		expect([
+			workingLineAnnouncement({status: "idle"}),
+			workingLineAnnouncement({status: "waiting"}),
+			workingLineAnnouncement({
+				status: "working",
+				label: "Reading a.ts",
+				turnStartedAt: at(0),
+				elapsedSeconds: 9,
+			}),
+			workingLineAnnouncement({status: "stopping"}),
+			workingLineAnnouncement({
+				status: "retrying",
+				error: "Overloaded",
+				attempt: 2,
+				maxRetries: 10,
+				turnStartedAt: at(0),
+				elapsedSeconds: 12,
+			}),
+		]).toStrictEqual(["", "", "Working…", "Stopping…", "Overloaded · Retrying (2/10)"]);
 	});
 });
 
@@ -315,18 +340,40 @@ describe("markerEventsFromRecords", () => {
 	});
 });
 
+/** The working line's visible text: upstream's TurnStatus row without its sr-only spans. */
+function visibleLineText(root: ParentNode): string | null {
+	const row = root.querySelector('[data-cds="TurnStatus"]');
+	if (row === null) return null;
+	const copy = row.cloneNode(true) as Element;
+	for (const hidden of copy.querySelectorAll(".sr-only")) hidden.remove();
+	return copy.textContent;
+}
+
 describe("WorkingMarker", () => {
-	it("is an empty status region when idle", () => {
+	it("keeps an empty 24px code-working-line mounted when idle, so the transcript bottom never jumps", () => {
 		stubReducedMotion(false);
 		const {getByRole, container} = render(<WorkingMarker state={{status: "idle"}} />);
+		const line = container.querySelector('[data-testid="code-working-line"]');
 		expect({
-			text: getByRole("status").textContent,
+			status: getByRole("status").textContent,
 			row: container.querySelector('[data-perf-row="marker"]') !== null,
-			spark: container.querySelector('[data-cds="Spark"]') !== null,
-		}).toStrictEqual({text: "", row: true, spark: false});
+			turnWorking: line?.getAttribute("data-turn-working"),
+			className: line?.className,
+			turnStatus: container.querySelector('[data-cds="TurnStatus"]'),
+			spark: container.querySelector('[data-cds="Spark"]'),
+			oldAnnouncer: container.querySelector('[data-testid="response-status-announcer"]'),
+		}).toStrictEqual({
+			status: "",
+			row: true,
+			turnWorking: "false",
+			className: "flex min-h-6 flex-col",
+			turnStatus: null,
+			spark: null,
+			oldAnnouncer: null,
+		});
 	});
 
-	it("shows an animated spark and the status line while working", () => {
+	it("renders a busy TurnStatus row of mark and muted elapsed, announcing Working… only to assistive tech", () => {
 		stubReducedMotion(false);
 		const {getByRole, container} = render(
 			<WorkingMarker
@@ -338,33 +385,84 @@ describe("WorkingMarker", () => {
 				}}
 			/>,
 		);
+		const line = container.querySelector('[data-testid="code-working-line"]');
+		const status = container.querySelector('[data-cds="TurnStatus"]');
+		const mark = container.querySelector("[data-cds-row-mark]");
 		expect({
-			text: getByRole("status").textContent,
-			animated: container.querySelector('[data-cds="Spark"]')?.getAttribute("data-animated"),
-		}).toStrictEqual({text: "Reading app.ts · 7s", animated: "true"});
+			turnWorking: line?.getAttribute("data-turn-working"),
+			hidden: line?.getAttribute("aria-hidden"),
+			state: status?.getAttribute("data-state"),
+			statusClass: status?.className,
+			rowClass: status?.firstElementChild?.className,
+			markClass: mark?.className,
+			markHidden: mark?.getAttribute("aria-hidden"),
+			animated: mark?.querySelector('[data-cds="Spark"]')?.getAttribute("data-animated"),
+			visible: visibleLineText(container),
+			stat: [...(status?.querySelectorAll(".tabular-nums") ?? [])].map((el) => [el.className, el.textContent]),
+			busy: status?.querySelector(".sr-only")?.textContent,
+			announcer: getByRole("status").textContent,
+			announcerLive: getByRole("status").getAttribute("aria-live"),
+		}).toStrictEqual({
+			turnWorking: "true",
+			hidden: null,
+			state: "busy",
+			statusClass: "group/status flex w-full min-w-0 flex-col",
+			rowClass: "flex min-w-0 items-center gap-1.5 px-1 py-0.5 text-body",
+			markClass: "relative me-[6px] flex h-[1lh] w-[20px] shrink-0 items-center justify-center",
+			markHidden: "true",
+			animated: "true",
+			visible: "7s",
+			stat: [["inline-flex h-[1lh] shrink-0 items-center text-ink-muted tabular-nums", "7s"]],
+			busy: "running",
+			announcer: "Working…",
+			announcerLive: "polite",
+		});
 	});
 
-	it("shows the running background task count inside the working line", () => {
+	it("quiets the line while a tool row is in flight: invisible and aria-hidden but still 24px tall", () => {
 		stubReducedMotion(false);
-		const {getByRole} = render(
+		const {container} = render(
+			<WorkingMarker
+				state={{status: "working", label: "Working…", turnStartedAt: at(0), elapsedSeconds: 3}}
+				quiet
+			/>,
+		);
+		const line = container.querySelector('[data-testid="code-working-line"]');
+		expect({
+			className: line?.className,
+			hidden: line?.getAttribute("aria-hidden"),
+			quiet: line?.getAttribute("data-quiet"),
+			turnWorking: line?.getAttribute("data-turn-working"),
+			mark: container.querySelector("[data-cds-row-mark]"),
+		}).toStrictEqual({
+			className: "invisible flex min-h-6 flex-col",
+			hidden: "true",
+			quiet: "true",
+			turnWorking: "true",
+			mark: null,
+		});
+	});
+
+	it("shows the running background task count after a dot inside the working line", () => {
+		stubReducedMotion(false);
+		const {container} = render(
 			<WorkingMarker
 				state={{status: "working", label: "Working…", turnStartedAt: at(0), elapsedSeconds: 3}}
 				runningTasks={4}
 			/>,
 		);
-		const status = getByRole("status");
 		expect({
-			text: status.textContent,
-			button: status.querySelector("button")?.textContent,
-		}).toStrictEqual({text: "Working… · 3s4 running tasks", button: "4 running tasks"});
+			text: visibleLineText(container),
+			button: container.querySelector('[data-cds="TurnStatus"] button')?.textContent,
+		}).toStrictEqual({text: "3s·4 running tasks", button: "4 running tasks"});
 	});
 
 	it("draws no running task count while the turn is idle, as upstream's idle tail is empty", () => {
 		stubReducedMotion(false);
-		const {getByRole} = render(<WorkingMarker state={{status: "idle"}} runningTasks={16} />);
+		const {container} = render(<WorkingMarker state={{status: "idle"}} runningTasks={16} />);
 		expect({
-			text: getByRole("status").textContent,
-			button: getByRole("status").querySelector("button"),
+			text: container.querySelector('[data-testid="code-working-line"]')?.textContent,
+			button: container.querySelector("button"),
 		}).toStrictEqual({text: "", button: null});
 	});
 
@@ -372,9 +470,10 @@ describe("WorkingMarker", () => {
 		stubReducedMotion(false);
 		const {getByRole, container} = render(<WorkingMarker state={{status: "stopping"}} />);
 		expect({
-			text: getByRole("status").textContent,
+			text: visibleLineText(container),
+			announcer: getByRole("status").textContent,
 			animated: container.querySelector('[data-cds="Spark"]')?.getAttribute("data-animated"),
-		}).toStrictEqual({text: "Stopping…", animated: "false"});
+		}).toStrictEqual({text: "Stopping…", announcer: "Stopping…", animated: "false"});
 	});
 
 	it("disables the spark animation under reduced motion", () => {
@@ -406,7 +505,7 @@ describe("useWorkingMarkerState", () => {
 
 	function statusText(props: WorkingMarkerSignals): string | null {
 		const view = render(<Harness {...props} />);
-		const text = view.getByRole("status").textContent;
+		const text = visibleLineText(view.container) ?? "";
 		view.unmount();
 		return text;
 	}
@@ -456,7 +555,7 @@ describe("useWorkingMarkerState", () => {
 				isActive: false,
 				pendingToolName: undefined,
 			}),
-		]).toStrictEqual(["Working… · 3s", "Running command · 3s", "", "", "", "Working… · 3s", ""]);
+		]).toStrictEqual(["3s", "3s", "", "", "", "3s", ""]);
 	});
 
 	it("shows no spark for a session waiting on a permission prompt, as upstream does", () => {
@@ -472,7 +571,8 @@ describe("useWorkingMarkerState", () => {
 		);
 		expect({
 			text: getByRole("status").textContent,
+			turnStatus: container.querySelector('[data-cds="TurnStatus"]'),
 			spark: container.querySelector('[data-cds="Spark"]'),
-		}).toStrictEqual({text: "", spark: null});
+		}).toStrictEqual({text: "", turnStatus: null, spark: null});
 	});
 });
