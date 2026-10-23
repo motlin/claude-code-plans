@@ -184,6 +184,53 @@ describe("Composer slash commands", () => {
 		});
 	});
 
+	it("uses upstream's compact popup, scroller and row metrics", () => {
+		const {textarea} = setup();
+		fireEvent.change(textarea, {target: {value: "/"}});
+		const scroller = screen.getByRole("menu", {name: "Slash commands"});
+		const tokens = (element: Element | null | undefined) => element?.className.split(" ").toSorted() ?? [];
+
+		expect({
+			popup: tokens(scroller.parentElement),
+			scroller: tokens(scroller),
+			rows: screen.getAllByRole("menuitem").map((row) => tokens(row)),
+		}).toStrictEqual({
+			popup: [
+				"absolute",
+				"bg-[var(--menu-bg)]",
+				"bottom-full",
+				"flex",
+				"flex-col",
+				"left-0",
+				"max-h-96",
+				"max-w-[min(32rem,calc(100vw-16px))]",
+				"mb-2",
+				"min-w-60",
+				"rounded-r7",
+				"select-none",
+				"shadow-[var(--menu-shadow)]",
+				"text-primary",
+				"w-max",
+				"z-[130]",
+			],
+			scroller: ["min-h-0", "overflow-x-hidden", "overflow-y-auto", "p-1", "rounded-[inherit]"],
+			rows: Array.from({length: 2}, () => [
+				"cursor-pointer",
+				"data-[highlighted]:bg-fill-ghost-hover",
+				"flex",
+				"gap-1.5",
+				"h-6",
+				"items-center",
+				"outline-none",
+				"px-2",
+				"py-[2.5px]",
+				"rounded-r5",
+				"text-[13px]/[19px]",
+				"w-full",
+			]),
+		});
+	});
+
 	describe("Add > Slash commands", () => {
 		const CHIN: ComposerState = {
 			mode: {id: "default", label: "Manual"},

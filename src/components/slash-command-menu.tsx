@@ -2,12 +2,14 @@ import {useLayoutEffect, useRef, useState} from "react";
 
 import {highlightMatches, isCustomCommand, type SlashCommand} from "../lib/slash-commands";
 import {slashCommandOptionId} from "./slash-command-option-id";
+import {DENSITY_CLASSES} from "./ui/menu-internals";
 
-const POPUP_CLASS =
-	"absolute bottom-full left-0 z-[130] mb-2 flex max-h-96 w-60 max-w-lg flex-col rounded-card bg-[var(--menu-bg)] text-body text-primary shadow-[var(--menu-shadow)] select-none";
+/* Upstream renders the slash popup in a compact-density portal whatever the account's density. */
+const COMPACT = DENSITY_CLASSES.compact;
 
-const ROW_CLASS =
-	"flex w-full cursor-default items-center rounded-r6 px-2.5 py-1.5 text-body outline-none data-[highlighted]:bg-fill-ghost-hover";
+const POPUP_CLASS = `absolute bottom-full left-0 z-[130] mb-2 flex max-h-96 min-w-60 w-max max-w-[min(32rem,calc(100vw-16px))] flex-col ${COMPACT.popup} bg-[var(--menu-bg)] text-primary shadow-[var(--menu-shadow)] select-none`;
+
+const ROW_CLASS = `flex w-full cursor-pointer ${COMPACT.singleLine} gap-1.5 ${COMPACT.item} ${COMPACT.text} outline-none data-[highlighted]:bg-fill-ghost-hover`;
 
 const TOOLTIP_CLASS =
 	"pointer-events-none absolute left-full z-[130] ml-2 w-max max-w-[240px] rounded-md bg-[var(--tooltip-bg)] px-2 py-1 text-xs text-[var(--tooltip-fg)] line-clamp-10";
@@ -25,7 +27,7 @@ function Highlighted({text, query}: {text: string; query: string}) {
 }
 
 /**
- * The claude.ai/code "/" popup: a 240px menu above the composer with the
+ * The claude.ai/code "/" popup: a compact menu (240px to 32rem wide) above the composer with the
  * highlighted row's description as a dark tooltip beside it. Keyboard focus
  * stays in the editor, which drives `highlighted` and `onAccept`.
  */
@@ -69,7 +71,7 @@ export function SlashCommandMenu({
 				id={id}
 				role="menu"
 				aria-label="Slash commands"
-				className="min-h-0 overflow-y-auto rounded-[inherit] p-1"
+				className="min-h-0 overflow-y-auto overflow-x-hidden rounded-[inherit] p-1"
 				onScroll={(e) => {
 					const row = e.currentTarget.querySelector<HTMLElement>("[data-highlighted]");
 					if (row) setTooltipTop(row.offsetTop - e.currentTarget.scrollTop);
