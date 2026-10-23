@@ -379,7 +379,7 @@ describe("Composer model menu", () => {
 				{label: "Haiku 5.5", key: "4", checked: "false"},
 			],
 			more: "More models",
-			trigger: "Model: Fable 5.1, Effort: High",
+			trigger: "Model: Fable 5.1 High",
 			calls: [["Continue Carol's test", {model: "fable"}]],
 		});
 	});
@@ -609,7 +609,7 @@ describe("Composer effort submenu", () => {
 			name: screen.getByRole("button", {name: /^Model:/}).getAttribute("aria-label"),
 			calls: onSend.mock.calls,
 		}).toStrictEqual({
-			name: "Model: Opus 5.5, Effort: Ultracode",
+			name: "Model: Opus 5.5 Ultracode",
 			calls: [["Continue Erin's test", {effort: "ultracode"}]],
 		});
 	});
@@ -629,7 +629,7 @@ describe("Composer effort submenu", () => {
 			text: trigger.textContent,
 			calls: onSend.mock.calls,
 		}).toStrictEqual({
-			name: "Model: Opus 5.5, Effort: Extra",
+			name: "Model: Opus 5.5 Extra",
 			text: "Opus 5.5 Extra",
 			calls: [["Continue Erin's test", {effort: "xhigh"}]],
 		});
@@ -694,7 +694,7 @@ describe("Composer on a live pane", () => {
 			trigger: screen.getByRole("button", {name: /^Model:/}).getAttribute("aria-label"),
 			rows: radioRows(menu).map(({label, checked}) => ({label, checked})),
 		}).toStrictEqual({
-			trigger: "Model: Fable 5.1, Effort: High",
+			trigger: "Model: Fable 5.1 High",
 			rows: [
 				{label: "Opus 5.5", checked: "false"},
 				{label: "Fable 5.1", checked: "true"},
@@ -711,7 +711,7 @@ describe("Composer on a live pane", () => {
 		expect({
 			mode: document.querySelector("[data-chin-mode]")?.textContent,
 			model: screen.getByRole("button", {name: /^Model:/}).getAttribute("aria-label"),
-		}).toStrictEqual({mode: "Plan", model: "Model: Fable 5.1, Effort: Max"});
+		}).toStrictEqual({mode: "Plan", model: "Model: Fable 5.1 Max"});
 	});
 
 	it("asks Change effort? before sending an effort change", async () => {
@@ -749,7 +749,7 @@ describe("Composer on a live pane", () => {
 		expect({
 			applied: apply.mock.calls,
 			trigger: screen.getByRole("button", {name: /^Model:/}).getAttribute("aria-label"),
-		}).toStrictEqual({applied: [], trigger: "Model: Opus 5.5, Effort: High"});
+		}).toStrictEqual({applied: [], trigger: "Model: Opus 5.5 High"});
 	});
 });
 
@@ -773,7 +773,7 @@ describe("Composer chin tooltips and contrast", () => {
 			const tooltips = {
 				add: hoverTooltip(screen.getByRole("button", {name: "Add"})),
 				mode: hoverTooltip(document.querySelector("[data-chin-mode]") ?? document.body),
-				model: hoverTooltip(screen.getByRole("button", {name: "Model: Opus 5.5, Effort: High"})),
+				model: hoverTooltip(screen.getByRole("button", {name: "Model: Opus 5.5 High"})),
 			};
 
 			expect(tooltips).toStrictEqual({add: "Add", mode: "Mode⌥Option⌘CommandM", model: null});
@@ -823,7 +823,7 @@ describe("Composer chin tooltips and contrast", () => {
 		}
 	});
 
-	it("reads the model in primary ink, the rest in secondary, with r4 corners and an 18px +", () => {
+	it("reads every chin control in secondary ink, with r4 corners and an 18px +", () => {
 		renderComposer();
 		const classes = (element: Element | null) => element?.getAttribute("class")?.split(" ") ?? [];
 		const add = screen.getByRole("button", {name: "Add"});
@@ -840,13 +840,64 @@ describe("Composer chin tooltips and contrast", () => {
 			add: pick(add),
 			plusIcon: classes(add.querySelector("svg")).filter((name) => name.startsWith("size-")),
 			mode: pick(document.querySelector("[data-chin-mode]")),
-			model: pick(screen.getByRole("button", {name: "Model: Opus 5.5, Effort: High"})),
+			model: pick(screen.getByRole("button", {name: "Model: Opus 5.5 High"})),
 		}).toStrictEqual({
 			add: {ink: ["text-secondary"], radius: ["rounded-r4"], lineHeight: ["leading-[20px]"]},
 			plusIcon: ["size-[18px]"],
 			mode: {ink: ["text-secondary"], radius: ["rounded-r4"], lineHeight: ["leading-[20px]"]},
-			model: {ink: ["text-primary"], radius: ["rounded-r4"], lineHeight: ["leading-[20px]"]},
+			model: {ink: ["text-secondary"], radius: ["rounded-r4"], lineHeight: ["leading-[20px]"]},
 		});
+	});
+
+	it("paints upstream's focus ring and keeps the open trigger's ghost fill", () => {
+		renderComposer();
+		const classes =
+			screen.getByRole("button", {name: "Model: Opus 5.5 High"}).getAttribute("class")?.split(" ") ?? [];
+
+		expect({
+			focus: classes.filter((name) => name.includes("shadow")),
+			expanded: classes.filter((name) => name.startsWith("aria-expanded:")),
+			effort: screen.getByText("High").getAttribute("class"),
+		}).toStrictEqual({
+			focus: ["focus-visible:shadow-focus"],
+			expanded: ["aria-expanded:bg-fill-ghost-hover"],
+			effort: "shrink-0 whitespace-pre text-ink-muted @max-[280px]:hidden",
+		});
+	});
+
+	it("ends the model trigger in a 12px warning icon at Max effort", () => {
+		renderComposer({chin: {...CHIN, effort: {id: "max", label: "Max"}}});
+		const trigger = screen.getByRole("button", {name: "Model: Opus 5.5 Max"});
+		const last = trigger.lastElementChild;
+
+		expect({
+			tag: last?.tagName.toLowerCase(),
+			hidden: last?.getAttribute("aria-hidden"),
+			warning: last?.hasAttribute("data-effort-warning-icon"),
+			sized: last
+				?.getAttribute("class")
+				?.split(" ")
+				.filter((name) => name.startsWith("size-") || name.startsWith("text-")),
+		}).toStrictEqual({tag: "svg", hidden: "true", warning: true, sized: ["size-3", "text-warning-100"]});
+	});
+
+	it("has no warning icon below Max", () => {
+		renderComposer();
+
+		expect(document.querySelector("[data-effort-warning-icon]")).toBeNull();
+	});
+
+	it("shows the Model ⇧⌘I tooltip on the home bar's model trigger", () => {
+		vi.useFakeTimers();
+		try {
+			renderHomeComposer();
+
+			expect(hoverTooltip(screen.getByRole("button", {name: "Model: Opus 5.5 High"}))).toBe(
+				"Model⇧Shift⌘CommandI",
+			);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it("heads the Mode menu with a 500-weight label padded 4px 8px", async () => {

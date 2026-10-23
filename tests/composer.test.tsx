@@ -226,7 +226,7 @@ describe("Composer", () => {
 
 			expect(labels).toStrictEqual([
 				"Accept edits",
-				"Model: Opus 5.5, Effort: Extra",
+				"Model: Opus 5.5 Extra",
 				"Usage: Weekly · all models: 65%, Resets in 14 hr 31 min",
 			]);
 		});

@@ -13,7 +13,6 @@ import {resolveShellChinLabels} from "../src/lib/shell-chin-labels";
 import {getShellChinLabels, setShellChinLabels} from "../src/lib/shell-chin-store";
 import {
 	ADD_BUTTON_CLASS,
-	CHIN_PRIMARY_TRIGGER_CLASS,
 	CHIN_TRIGGER_CLASS,
 	COMPOSER_CARD_CLASS,
 	COMPOSER_CHIN_CLASS,
@@ -381,7 +380,7 @@ describe("AppShellFallback", () => {
 			addIcon: "lucide lucide-plus size-[18px]",
 			chin: COMPOSER_CHIN_CLASS,
 			mode: CHIN_TRIGGER_CLASS,
-			model: CHIN_PRIMARY_TRIGGER_CLASS,
+			model: CHIN_TRIGGER_CLASS,
 			modelSpans: [
 				["truncate", "Opus 5.5"],
 				[EFFORT_LABEL_CLASS, " High"],

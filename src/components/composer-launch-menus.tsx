@@ -17,7 +17,7 @@ import {
 } from "../lib/launch-options";
 import {effortLevelShortLabels} from "../lib/schema-choices";
 import {ConfirmDialog} from "./confirm-dialog";
-import {CHIN_PRIMARY_TRIGGER_CLASS, CHIN_TRIGGER_CLASS, EFFORT_LABEL_CLASS} from "./composer-tokens";
+import {CHIN_TRIGGER_CLASS, EFFORT_LABEL_CLASS} from "./composer-tokens";
 import {
 	Menu,
 	MenuContent,
@@ -197,16 +197,34 @@ export function ModelMenu({
 	const primary = primaryModelMenuValue(current);
 	const level = EffortLevelSchema.safeParse(currentEffort);
 	const effortLabel = level.success ? effortLevelShortLabels[level.data] : currentEffort;
+	const modelKeys = useShortcutKeys("open_model_menu").keys;
+	const trigger = (
+		<MenuTrigger
+			data-cds="ModelSelector"
+			aria-label={`Model: ${currentLabel} ${effortLabel}`}
+			className={CHIN_TRIGGER_CLASS}
+		>
+			<span className="truncate">{currentLabel}</span>
+			<span className={EFFORT_LABEL_CLASS}> {effortLabel}</span>
+			{level.success && level.data === "max" && (
+				<TriangleAlert
+					data-effort-warning-icon=""
+					aria-hidden="true"
+					className="ms-1 size-3 shrink-0 text-warning-100"
+				/>
+			)}
+		</MenuTrigger>
+	);
 	return (
 		<Menu open={open} onOpenChange={onOpenChange}>
-			<MenuTrigger
-				data-cds="ModelSelector"
-				aria-label={`Model: ${currentLabel}, Effort: ${effortLabel}`}
-				className={CHIN_PRIMARY_TRIGGER_CLASS}
-			>
-				<span className="truncate">{currentLabel}</span>
-				<span className={EFFORT_LABEL_CLASS}> {effortLabel}</span>
-			</MenuTrigger>
+			{/* Upstream's new-session bar tooltips the model "Model ⇧⌘I"; session chins have no tooltip. */}
+			{surface === "bar" ? (
+				<Tooltip content="Model" shortcut={modelKeys} side="top" suppressAfterPopup>
+					{trigger}
+				</Tooltip>
+			) : (
+				trigger
+			)}
 			<MenuContent
 				side="top"
 				align="end"

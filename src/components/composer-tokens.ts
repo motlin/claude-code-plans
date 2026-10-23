@@ -12,14 +12,14 @@ export const COMPOSER_CHIN_CLASS =
 	"@container mt-1.5 flex min-h-6 items-center justify-between ps-[7px] pe-2.5 text-[13px]/[20px] text-secondary";
 
 const CHIN_BUTTON_CLASS =
-	"flex h-6 min-w-0 items-center justify-center rounded-r4 leading-[20px] text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
+	"flex h-6 min-w-0 items-center justify-center rounded-r4 leading-[20px] text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary aria-expanded:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 
 export const CHIN_TRIGGER_CLASS = `${CHIN_BUTTON_CLASS} truncate px-1.5`;
 
-/** Upstream reads the model and effort in primary ink; +, mode and usage stay secondary. */
-export const CHIN_PRIMARY_TRIGGER_CLASS = CHIN_TRIGGER_CLASS.replace("text-secondary", "text-primary");
-
-/** Upstream mutes the effort and drops it when the chin is under 280px. */
+/**
+ * Upstream mutes the effort (`text-muted-as-secondary`, which falls back to the muted ink) and drops it when the
+ * chin is under 280px.
+ */
 export const EFFORT_LABEL_CLASS = "shrink-0 whitespace-pre text-ink-muted @max-[280px]:hidden";
 
 /** The usage ring's 24px square button. */

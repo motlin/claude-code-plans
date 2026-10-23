@@ -11,7 +11,6 @@ import {HomeTitlebar} from "./home/home-page";
 import type {ShellChinLabels} from "../lib/shell-chin-store";
 import {
 	ADD_BUTTON_CLASS,
-	CHIN_PRIMARY_TRIGGER_CLASS,
 	CHIN_TRIGGER_CLASS,
 	COMPOSER_CARD_CLASS,
 	COMPOSER_CHIN_CLASS,
@@ -107,7 +106,7 @@ function FallbackChinControls({chin}: {chin: ShellChinLabels | null}) {
 				</span>
 			</span>
 			<span data-fallback-chin-end="" className="ms-auto flex min-w-0 items-center gap-1 ps-2">
-				<span data-fallback-chin-readout="" className={CHIN_PRIMARY_TRIGGER_CLASS}>
+				<span data-fallback-chin-readout="" className={CHIN_TRIGGER_CLASS}>
 					{chin && (
 						<>
 							<span className="truncate">{chin.model}</span>
