@@ -6,6 +6,7 @@ import {
 	GitPullRequestClosed,
 	GitPullRequestDraft,
 	type LucideIcon,
+	TriangleAlert,
 } from "lucide-react";
 import {sessionStateKindLabels} from "../lib/schema-choices";
 import type {GitPrState} from "../lib/pr-status";
@@ -53,8 +54,9 @@ export function PrTailGlyph({state}: {state: GitPrState}) {
 }
 
 /**
- * Upstream claude.ai/code session row icon: a 6px `.status-dot` for live states and a hollow ring
- * for idle. A PR never takes this slot; it draws as a `PrTailGlyph`.
+ * Upstream claude.ai/code session row icon: a 6px `.status-dot` for live states, upstream's `U7`
+ * 16px warning-coloured triangle for an error, and a hollow ring for idle. A PR never takes this
+ * slot; it draws as a `PrTailGlyph`.
  */
 export function SessionStateIcon({
 	kind,
@@ -84,7 +86,11 @@ export function SessionStateIcon({
 
 	return (
 		<span role={live ? "status" : "img"} aria-label={ariaLabel} className={DOT_WRAPPER} {...describedByProps}>
-			<span className="status-dot" data-kind={kind} />
+			{kind === "error" ? (
+				<TriangleAlert aria-hidden="true" size={16} className="shrink-0 text-upstream-warning" />
+			) : (
+				<span className="status-dot" data-kind={kind} />
+			)}
 		</span>
 	);
 }

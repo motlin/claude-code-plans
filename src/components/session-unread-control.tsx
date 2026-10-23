@@ -25,6 +25,7 @@ export function SessionRowStatusDot({session, tabIndex}: {session: SessionListIt
 		bucket: session.bucket,
 		unseen,
 		serverUnseen: session.unseen,
+		unseenError: session.unseenError === true,
 		prStatus: session.prStatus,
 		showPrStatus: settings.sessionListPrefs.showPrStatus,
 	});
@@ -104,6 +105,7 @@ function useRowIconKind(session: SessionListItem) {
 			bucket: session.bucket,
 			unseen,
 			serverUnseen: session.unseen,
+			unseenError: session.unseenError === true,
 			prStatus: session.prStatus,
 			showPrStatus: settings.sessionListPrefs.showPrStatus,
 		}),

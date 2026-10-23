@@ -92,7 +92,7 @@ export function toSessionSummaryPayload(
 	// writes nothing while it waits, so the session goes quiet but is not done.
 	const awaitingPermission =
 		hasPermissionPromptForSession(entry.id) || registrySession?.waitingFor === REGISTRY_PERMISSION_WAIT;
-	const {bucket} = resolveSessionBucket({
+	const {bucket, reason} = resolveSessionBucket({
 		mainState: main.state,
 		pendingInput,
 		awaitingPermission,
@@ -128,6 +128,7 @@ export function toSessionSummaryPayload(
 		...(awaitingPermission ? {awaitingPermission: true} : {}),
 		...(registrySession === null ? {} : {processStartedAt: registrySession.startedAt}),
 		bucket,
+		...(reason === "error" ? {unseenError: true} : {}),
 		liveAgentCount,
 		unseen,
 		blockedSince: blockedSince(main, registrySession, pendingInput ? pendingApproval : undefined),

@@ -578,7 +578,8 @@ describe("PR row glyph", () => {
 			unseen: boolean,
 			prStatus: PrStatus | undefined,
 			showPrStatus = true,
-		) => sessionRowIconKind({bucket, unseen, serverUnseen: false, prStatus, showPrStatus});
+			unseenError = false,
+		) => sessionRowIconKind({bucket, unseen, serverUnseen: false, unseenError, prStatus, showPrStatus});
 		expect([
 			kind("blocked", false, draft),
 			kind("working", false, draft),
@@ -588,6 +589,7 @@ describe("PR row glyph", () => {
 			kind("done", false, undefined),
 			kind("review", false, draft, false),
 			kind("done", true, undefined),
-		]).toStrictEqual(["awaiting", "running", "idle", "ready", "ready", "idle", "ready", "ready"]);
+			kind("blocked", true, undefined, true, true),
+		]).toStrictEqual(["awaiting", "running", "idle", "ready", "ready", "idle", "ready", "ready", "error"]);
 	});
 });

@@ -261,12 +261,14 @@ export interface SessionRowIconInput {
 	unseen: boolean;
 	/** The server's durable unseen flag behind `bucket`. */
 	serverUnseen: boolean;
+	/** The bucket is blocked on an unseen errored turn (`reason: "error"`). */
+	unseenError: boolean;
 	prStatus: {state: PullRequestState} | undefined;
 	showPrStatus: boolean;
 }
 
 /**
- * Upstream claude.ai/code `jX` row status: live states win, then the unread ready dot, else the
+ * Upstream claude.ai/code `jX` row status: an unseen error, then live states, then the unread ready dot, else the
  * idle env glyph. A PR never takes the slot (it draws as a title tail). A review row (an open PR)
  * the server did not flag unseen stays ready when the PR tail is hidden.
  */
@@ -274,10 +276,11 @@ export function sessionRowIconKind({
 	bucket,
 	unseen,
 	serverUnseen,
+	unseenError,
 	prStatus,
 	showPrStatus,
 }: SessionRowIconInput): SessionStateKind {
-	if (bucket === "blocked") return "awaiting";
+	if (bucket === "blocked") return unseenError ? "error" : "awaiting";
 	if (bucket === "working") return "running";
 	if (unseen) return "ready";
 	if (showPrStatus && prStatus !== undefined) return "idle";

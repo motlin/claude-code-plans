@@ -145,6 +145,8 @@ export interface SessionSummaryPayload {
 	processStartedAt?: number;
 	/** Display bucket from `resolveSessionBucket`. */
 	bucket: SessionBucket;
+	/** The bucket's reason is `error` (an unseen errored turn); absent otherwise. */
+	unseenError?: true;
 	/** Running subagent nodes (`endedAt === null`) rooted at this session. */
 	liveAgentCount: number;
 	/** Durable viewed state: finished work nobody has looked at yet. */

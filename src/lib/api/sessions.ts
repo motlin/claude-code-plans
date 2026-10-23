@@ -44,6 +44,8 @@ const SessionListItemSchema = z.object({
 	/** When the session's live CLI process started; in-process teammates from before it are gone. */
 	processStartedAt: z.number().optional(),
 	bucket: SessionBucketSchema,
+	/** Blocked on an unseen errored turn (bucket reason `error`); the row draws a warning triangle. */
+	unseenError: z.literal(true).optional(),
 	liveAgentCount: z.number(),
 	unseen: z.boolean(),
 	blockedSince: z.string().nullable(),

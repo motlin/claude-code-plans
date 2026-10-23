@@ -32,10 +32,27 @@ describe("SessionStateIcon", () => {
 		);
 	});
 
-	it("renders error as a danger status dot", () => {
-		expect(markup(<SessionStateIcon kind="error" />)).toBe(
-			`<span role="status" aria-label="Error" class="${DOT_WRAPPER}"><span class="status-dot" data-kind="error"></span></span>`,
-		);
+	it("renders error as upstream's 16px warning-coloured TriangleAlert, not a dot", () => {
+		const {container} = render(<SessionStateIcon kind="error" live={false} />);
+		const wrapper = container.firstElementChild;
+		const icon = wrapper?.querySelector("svg");
+		expect({
+			role: wrapper?.getAttribute("role"),
+			label: wrapper?.getAttribute("aria-label"),
+			wrapperClass: wrapper?.getAttribute("class"),
+			iconClass: icon?.getAttribute("class"),
+			iconHidden: icon?.getAttribute("aria-hidden"),
+			size: [icon?.getAttribute("width"), icon?.getAttribute("height")],
+			dot: container.querySelector(".status-dot") !== null,
+		}).toStrictEqual({
+			role: "img",
+			label: "Error",
+			wrapperClass: DOT_WRAPPER,
+			iconClass: "lucide lucide-triangle-alert shrink-0 text-upstream-warning",
+			iconHidden: "true",
+			size: ["16", "16"],
+			dot: false,
+		});
 	});
 
 	it("renders idle as a hollow muted ring", () => {

@@ -374,7 +374,6 @@
 	--git-queued: #98801f;
 	--status-dot-awaiting: #fab219;
 	--status-dot-ready: #2a78d6;
-	--status-dot-error: #d03b3b;
 
 	/* Upstream claude.ai/code — Settings controls (Switch, SegmentedControl, text field) */
 	--settings-muted: #898781;
@@ -1030,10 +1029,6 @@
 
 .status-dot[data-kind="ready"] {
 	background: var(--status-dot-ready);
-}
-
-.status-dot[data-kind="error"] {
-	background: var(--status-dot-error);
 }
 
 @keyframes dot-blink {

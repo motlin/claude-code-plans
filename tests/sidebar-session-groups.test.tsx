@@ -403,6 +403,34 @@ describe("sidebar SessionGroups", () => {
 		});
 	});
 
+	it("draws an unseen error as upstream's warning TriangleAlert in the trailing slot instead of the awaiting dot", async () => {
+		const rows = [
+			{...session("e1", "Errored one", "blocked", 1), state: "idle", unseen: true, unseenError: true},
+			session("b1", "Blocked one", "blocked", 3),
+		];
+		__unreadStoreTesting.reset();
+		syncUnseenFromSummaries(rows.map(({id, unseen}) => ({id, unseen})));
+		const {container} = await renderGroups(rows);
+		const marks = Object.fromEntries(
+			[...container.querySelectorAll<HTMLElement>("a[data-row-main-button]")].map((link) => {
+				const decoration = link.closest("[data-session-actions]")?.querySelector("[data-row-decoration]");
+				const mark = decoration?.querySelector("[role=img]");
+				return [
+					rowTitle(link),
+					{
+						label: mark?.getAttribute("aria-label") ?? null,
+						triangle: decoration?.querySelector("svg.lucide-triangle-alert") !== null,
+						dot: decoration?.querySelector(".status-dot")?.getAttribute("data-kind") ?? null,
+					},
+				];
+			}),
+		);
+		expect(marks).toStrictEqual({
+			"Errored one": {label: "Error", triangle: true, dot: null},
+			"Blocked one": {label: "Awaiting input", triangle: false, dot: "awaiting"},
+		});
+	});
+
 	it("draws a PR as upstream's title tail inside the link, beside the env glyph or status mark, only while Show PR status is on", async () => {
 		const withPr = [
 			{...session("d1", "Completed newest", "done", 5), prStatus: {number: 8, state: "open"}},
