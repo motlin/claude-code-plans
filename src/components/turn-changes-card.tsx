@@ -3,6 +3,7 @@ import {type ReactNode, useContext, useState} from "react";
 
 import {fileViewerPath} from "../lib/api/file";
 import {requestChangesScope} from "../lib/changes-scope-request";
+import {formatCount} from "../lib/pluralize";
 import type {TurnChanges} from "../lib/turn-changes";
 import {turnUndoPrompt} from "../lib/turn-undo-prompt";
 import {useOptionalPaneHost} from "./panes/pane-host-context";
@@ -36,11 +37,44 @@ function basename(path: string): string {
 	return path.slice(path.lastIndexOf("/") + 1) || path;
 }
 
+/**
+ * Upstream's row folder hints: for files sharing a basename, the fewest trailing parent folders that tell them
+ * apart ("a" for src/a/index.ts vs src/b/index.ts, "x/lib" for x/lib/util.ts vs y/lib/util.ts).
+ */
+function folderHints(paths: readonly string[]): Map<string, string> {
+	const groups = new Map<string, {path: string; dirs: string[]}[]>();
+	for (const path of paths) {
+		const dirs = path.split("/").filter((segment) => segment !== "");
+		const name = dirs.pop() ?? path;
+		groups.set(name, [...(groups.get(name) ?? []), {path, dirs}]);
+	}
+	const hints = new Map<string, string>();
+	for (const group of groups.values()) {
+		if (group.length < 2) continue;
+		const depth = Math.max(...group.map(({dirs}) => dirs.length));
+		for (let take = 1; take <= depth; take += 1) {
+			const suffixes = group.map(({dirs}) => dirs.slice(-take).join("/"));
+			if (new Set(suffixes).size === group.length || take === depth) {
+				group.forEach(({path}, index) => {
+					const hint = suffixes[index] ?? "";
+					hints.set(path, hint === "" ? "/" : hint);
+				});
+				break;
+			}
+		}
+	}
+	return hints;
+}
+
+/** Upstream's DiffStat: sr-only "{n} additions, {n} deletions", the visible "+n −n" hidden from the a11y tree. */
 function Stats({added, removed, className = ""}: {added: number; removed: number; className?: string}) {
 	return (
 		<span className={`flex shrink-0 items-center gap-0.5 tabular-nums ${className}`}>
-			<span className="text-diff-added">+{added}</span>
-			<span className="text-diff-removed">−{removed}</span>
+			<span className="sr-only">{`${formatCount(added, "addition")}, ${formatCount(removed, "deletion")}`}</span>
+			<span aria-hidden="true" className="contents">
+				<span className="text-diff-added">+{added}</span>
+				<span className="text-diff-removed">−{removed}</span>
+			</span>
 		</span>
 	);
 }
@@ -97,13 +131,29 @@ function UndoButton({
 	);
 }
 
-function RowLabel({icon: Icon, path}: {icon: typeof FileText; path: string}) {
+function RowLabel({
+	icon: Icon,
+	path,
+	folderHint,
+}: {
+	icon: typeof FileText;
+	path: string;
+	folderHint: string | undefined;
+}) {
 	return (
 		<span className="relative flex min-w-0 items-center gap-1">
 			<span className="flex shrink-0 text-ink-muted">
 				<Icon aria-hidden="true" className="size-4" />
 			</span>
-			<span className="min-w-0 truncate text-primary">{basename(path)}</span>
+			<span className="min-w-0 truncate text-primary">
+				{basename(path)}
+				{folderHint !== undefined && (
+					<span className="ms-1 text-[12px]/[15px] text-muted-as-secondary">
+						<span className="sr-only">, </span>
+						{folderHint}
+					</span>
+				)}
+			</span>
 		</span>
 	);
 }
@@ -187,7 +237,7 @@ export function TurnChangesCard({
 
 	const [soleFile] = changes.files;
 	if (count === 1 && soleFile !== undefined) {
-		const label = <RowLabel icon={Code} path={soleFile.path} />;
+		const label = <RowLabel icon={Code} path={soleFile.path} folderHint={undefined} />;
 		return (
 			<div data-turn-changes-card className={CARD_CLASS}>
 				<ul aria-label={title} className="flex w-full min-w-0 flex-col">
@@ -228,6 +278,7 @@ export function TurnChangesCard({
 		);
 	}
 
+	const hints = folderHints(changes.files.map((file) => file.path));
 	const seeAllContent = (
 		<>
 			<span className="relative flex min-w-0 items-center">
@@ -259,7 +310,7 @@ export function TurnChangesCard({
 				{visible.map((file) => (
 					<li key={file.path} className={ITEM_CLASS}>
 						<a href={fileViewerPath(file.path)} title={file.path} className={ROW_CONTROL_CLASS}>
-							<RowLabel icon={FileText} path={file.path} />
+							<RowLabel icon={FileText} path={file.path} folderHint={hints.get(file.path)} />
 						</a>
 						<RowTrailing added={file.added} removed={file.removed} />
 					</li>

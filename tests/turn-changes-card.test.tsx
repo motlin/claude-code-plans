@@ -56,17 +56,32 @@ describe("aggregateTurnEdits", () => {
 		const summary = aggregateTurnEdits([
 			{
 				name: "Edit",
-				input: {file_path: "/repo/src/b.ts", old_string: "one\ntwo", new_string: "one\n2"},
+				input: {
+					file_path: "/repo/src/b.ts",
+					old_string: "one\ntwo",
+					new_string: "one\n2",
+				},
 			},
-			{name: "Write", input: {file_path: "/repo/src/a.ts", content: "x\ny\nz"}},
+			{
+				name: "Write",
+				input: {file_path: "/repo/src/a.ts", content: "x\ny\nz"},
+			},
 			{name: "Read", input: {file_path: "/repo/src/c.ts"}},
 			{
 				name: "Edit",
-				input: {file_path: "/repo/src/b.ts", old_string: "three", new_string: "3\n4"},
+				input: {
+					file_path: "/repo/src/b.ts",
+					old_string: "three",
+					new_string: "3\n4",
+				},
 			},
 			{
 				name: "Edit",
-				input: {file_path: "/repo/src/d.ts", old_string: "a", new_string: "b"},
+				input: {
+					file_path: "/repo/src/d.ts",
+					old_string: "a",
+					new_string: "b",
+				},
 				isError: true,
 			},
 			{
@@ -81,7 +96,10 @@ describe("aggregateTurnEdits", () => {
 			},
 			{
 				name: "NotebookEdit",
-				input: {notebook_path: "/repo/nb.ipynb", new_source: "print(1)\nprint(2)"},
+				input: {
+					notebook_path: "/repo/nb.ipynb",
+					new_source: "print(1)\nprint(2)",
+				},
 			},
 		]);
 
@@ -102,33 +120,59 @@ describe("aggregateTurnEdits", () => {
 				name: "Write",
 				input: {file_path: "/repo/plan.md", content: "x"},
 				hasResult: true,
-				resultMeta: {writeType: "create", patchStats: {added: 10, removed: 0}},
+				resultMeta: {
+					writeType: "create",
+					patchStats: {added: 10, removed: 0},
+				},
 			},
 			{
 				name: "Write",
 				input: {file_path: "/repo/plan.md", content: "y"},
 				hasResult: true,
-				resultMeta: {writeType: "update", patchStats: {added: 3, removed: 3}},
+				resultMeta: {
+					writeType: "update",
+					patchStats: {added: 3, removed: 3},
+				},
 			},
 		]);
-		expect(summary).toStrictEqual({files: [{path: "/repo/plan.md", added: 13, removed: 3}], added: 13, removed: 3});
+		expect(summary).toStrictEqual({
+			files: [{path: "/repo/plan.md", added: 13, removed: 3}],
+			added: 13,
+			removed: 3,
+		});
 	});
 
 	it("adds an Edit's stats after a Write of the same file", () => {
 		const summary = aggregateTurnEdits([
-			{name: "Write", input: {file_path: "/repo/x.md", content: "1\n2\n3\n4\n5"}, hasResult: true},
+			{
+				name: "Write",
+				input: {file_path: "/repo/x.md", content: "1\n2\n3\n4\n5"},
+				hasResult: true,
+			},
 			{
 				name: "Edit",
-				input: {file_path: "/repo/x.md", old_string: "1\n2", new_string: "one"},
+				input: {
+					file_path: "/repo/x.md",
+					old_string: "1\n2",
+					new_string: "one",
+				},
 				hasResult: true,
 			},
 		]);
-		expect(summary).toStrictEqual({files: [{path: "/repo/x.md", added: 6, removed: 2}], added: 6, removed: 2});
+		expect(summary).toStrictEqual({
+			files: [{path: "/repo/x.md", added: 6, removed: 2}],
+			added: 6,
+			removed: 2,
+		});
 	});
 
 	it("skips a pending call that has no result yet", () => {
 		const summary = aggregateTurnEdits([
-			{name: "Edit", input: {file_path: "/repo/x.md", old_string: "a", new_string: "b"}, hasResult: false},
+			{
+				name: "Edit",
+				input: {file_path: "/repo/x.md", old_string: "a", new_string: "b"},
+				hasResult: false,
+			},
 		]);
 		expect(summary).toStrictEqual({files: [], added: 0, removed: 0});
 	});
@@ -159,7 +203,10 @@ describe("aggregateTurnEdits", () => {
 		const summary = aggregateTurnEdits([
 			{
 				name: "Write",
-				input: {file_path: "/Users/x/.claude/projects/p/memory/m.md", content: "hi"},
+				input: {
+					file_path: "/Users/x/.claude/projects/p/memory/m.md",
+					content: "hi",
+				},
 				hasResult: true,
 			},
 		]);
@@ -168,8 +215,18 @@ describe("aggregateTurnEdits", () => {
 
 	it("counts a scratchpad-looking path with dot segments", () => {
 		const path = "/private/tmp/claude-501/x/../scratchpad/a";
-		const summary = aggregateTurnEdits([{name: "Write", input: {file_path: path, content: "hi"}, hasResult: true}]);
-		expect(summary).toStrictEqual({files: [{path, added: 1, removed: 0}], added: 1, removed: 0});
+		const summary = aggregateTurnEdits([
+			{
+				name: "Write",
+				input: {file_path: path, content: "hi"},
+				hasResult: true,
+			},
+		]);
+		expect(summary).toStrictEqual({
+			files: [{path, added: 1, removed: 0}],
+			added: 1,
+			removed: 0,
+		});
 	});
 });
 
@@ -190,7 +247,11 @@ describe("isScratchpadPath", () => {
 });
 
 const EDIT_RECORDS = [
-	{type: "user", uuid: "u-1", message: {role: "user", content: "Fabricated request"}},
+	{
+		type: "user",
+		uuid: "u-1",
+		message: {role: "user", content: "Fabricated request"},
+	},
 	{
 		type: "assistant",
 		uuid: "a-1",
@@ -201,7 +262,11 @@ const EDIT_RECORDS = [
 					type: "tool_use",
 					id: "tool-1",
 					name: "Edit",
-					input: {file_path: "/repo/src/cache.ts", old_string: "old", new_string: "new\nline"},
+					input: {
+						file_path: "/repo/src/cache.ts",
+						old_string: "old",
+						new_string: "new\nline",
+					},
 				},
 			],
 		},
@@ -242,24 +307,44 @@ const EDIT_RECORDS = [
 	{
 		type: "assistant",
 		uuid: "a-3",
-		message: {role: "assistant", content: [{type: "text", text: "Fabricated final answer"}]},
+		message: {
+			role: "assistant",
+			content: [{type: "text", text: "Fabricated final answer"}],
+		},
 	},
-	{type: "user", uuid: "u-2", message: {role: "user", content: "Fabricated follow-up"}},
+	{
+		type: "user",
+		uuid: "u-2",
+		message: {role: "user", content: "Fabricated follow-up"},
+	},
 	{
 		type: "assistant",
 		uuid: "a-4",
-		message: {role: "assistant", content: [{type: "text", text: "Fabricated reply"}]},
+		message: {
+			role: "assistant",
+			content: [{type: "text", text: "Fabricated reply"}],
+		},
 	},
 ];
 
 type TurnStep =
 	| {text: string}
-	| {tool: string; id: string; input: Record<string, unknown>; result?: string; toolUseResult?: unknown};
+	| {
+			tool: string;
+			id: string;
+			input: Record<string, unknown>;
+			result?: string;
+			toolUseResult?: unknown;
+	  };
 
 /** One prompt-to-prompt turn: each step is its own assistant line, each tool answered with its result. */
 function turnRecords(steps: TurnStep[], prefix = "t"): unknown[] {
 	const records: unknown[] = [
-		{type: "user", uuid: `${prefix}-u`, message: {role: "user", content: "Fabricated request"}},
+		{
+			type: "user",
+			uuid: `${prefix}-u`,
+			message: {role: "user", content: "Fabricated request"},
+		},
 	];
 	for (const [index, step] of steps.entries()) {
 		const uuid = `${prefix}-a${index}`;
@@ -267,7 +352,10 @@ function turnRecords(steps: TurnStep[], prefix = "t"): unknown[] {
 			records.push({
 				type: "assistant",
 				uuid,
-				message: {role: "assistant", content: [{type: "text", text: step.text}]},
+				message: {
+					role: "assistant",
+					content: [{type: "text", text: step.text}],
+				},
 			});
 			continue;
 		}
@@ -277,7 +365,14 @@ function turnRecords(steps: TurnStep[], prefix = "t"): unknown[] {
 				uuid,
 				message: {
 					role: "assistant",
-					content: [{type: "tool_use", id: step.id, name: step.tool, input: step.input}],
+					content: [
+						{
+							type: "tool_use",
+							id: step.id,
+							name: step.tool,
+							input: step.input,
+						},
+					],
 				},
 			},
 			{
@@ -286,7 +381,13 @@ function turnRecords(steps: TurnStep[], prefix = "t"): unknown[] {
 				sourceToolAssistantUUID: uuid,
 				message: {
 					role: "user",
-					content: [{type: "tool_result", tool_use_id: step.id, content: step.result ?? "ok"}],
+					content: [
+						{
+							type: "tool_result",
+							tool_use_id: step.id,
+							content: step.result ?? "ok",
+						},
+					],
 				},
 				...(step.toolUseResult === undefined ? {} : {toolUseResult: step.toolUseResult}),
 			},
@@ -320,7 +421,12 @@ const HELLO2_LAST_TURN: TurnStep[] = [
 			],
 		},
 	},
-	{tool: "ExitPlanMode", id: "plan-exit", input: {plan: "# Plan"}, result: "Fabricated plan stopped"},
+	{
+		tool: "ExitPlanMode",
+		id: "plan-exit",
+		input: {plan: "# Plan"},
+		result: "Fabricated plan stopped",
+	},
 ];
 
 describe("collectTurnChanges", () => {
@@ -360,7 +466,15 @@ describe("collectTurnChanges", () => {
 	};
 
 	it("leaves out a turn whose only edit is one completed Write", () => {
-		expect(anchors([{tool: "Write", id: "w", input: {file_path: "/repo/a.ts", content: "x"}}])).toStrictEqual([]);
+		expect(
+			anchors([
+				{
+					tool: "Write",
+					id: "w",
+					input: {file_path: "/repo/a.ts", content: "x"},
+				},
+			]),
+		).toStrictEqual([]);
 	});
 
 	it("leaves out Hello2's last turn: a plan Write and a standalone ExitPlanMode", () => {
@@ -386,13 +500,29 @@ describe("collectTurnChanges", () => {
 
 	it("keeps the card for two files", () => {
 		expect(
-			anchors([editA("e1"), {tool: "Write", id: "w", input: {file_path: "/repo/b.ts", content: "x"}}]),
+			anchors([
+				editA("e1"),
+				{
+					tool: "Write",
+					id: "w",
+					input: {file_path: "/repo/b.ts", content: "x"},
+				},
+			]),
 		).toStrictEqual([{files: ["/repo/a.ts", "/repo/b.ts"], sole: false}]);
 	});
 
 	it("keeps a sole bare edit's card with tools hidden, where no row carries the edit", () => {
 		expect(
-			anchors([{tool: "Write", id: "w", input: {file_path: "/repo/a.ts", content: "x"}}], {showTools: false}),
+			anchors(
+				[
+					{
+						tool: "Write",
+						id: "w",
+						input: {file_path: "/repo/a.ts", content: "x"},
+					},
+				],
+				{showTools: false},
+			),
 		).toStrictEqual([{files: ["/repo/a.ts"], sole: true}]);
 	});
 
@@ -400,7 +530,11 @@ describe("collectTurnChanges", () => {
 		const steps: TurnStep[] = [editA("e1"), {tool: "Bash", id: "b", input: {command: "ls"}}];
 		const {lines, toolResultMap} = processTranscript([...turnRecords(steps, "t1"), ...turnRecords(steps, "t2")], 0);
 		const turns = (turnInProgress: boolean) =>
-			[...collectTurnChanges(lines, toolResultMap, {turnInProgress}).values()].map((change) => change.turnUuid);
+			[
+				...collectTurnChanges(lines, toolResultMap, {
+					turnInProgress,
+				}).values(),
+			].map((change) => change.turnUuid);
 		expect({finished: turns(false), inProgress: turns(true)}).toStrictEqual({
 			finished: ["t1-u", "t2-u"],
 			inProgress: ["t1-u"],
@@ -448,12 +582,20 @@ describe("SessionChat end-of-turn card", () => {
 					{
 						tool: "Edit",
 						id: `${prefix}-e1`,
-						input: {file_path: "/repo/a.ts", old_string: "a", new_string: "b"},
+						input: {
+							file_path: "/repo/a.ts",
+							old_string: "a",
+							new_string: "b",
+						},
 					},
 					{
 						tool: "Edit",
 						id: `${prefix}-e2`,
-						input: {file_path: "/repo/b.ts", old_string: "a", new_string: "b"},
+						input: {
+							file_path: "/repo/b.ts",
+							old_string: "a",
+							new_string: "b",
+						},
 					},
 				],
 				prefix,
@@ -477,7 +619,10 @@ describe("SessionChat end-of-turn card", () => {
 			unmount();
 			return result;
 		};
-		expect({live: undoByCard(false), archived: undoByCard(true)}).toStrictEqual({
+		expect({
+			live: undoByCard(false),
+			archived: undoByCard(true),
+		}).toStrictEqual({
 			live: [false, true],
 			archived: [false, false],
 		});
@@ -500,7 +645,12 @@ describe("SessionChat end-of-turn card", () => {
 			entry: card.closest("[data-record-index]")?.getAttribute("data-record-index"),
 			text: card.textContent,
 		}));
-		expect(cards).toStrictEqual([{entry: "5", text: "Edited 2 filescache.ts+2−1index.ts+1−0See all+3−1"}]);
+		expect(cards).toStrictEqual([
+			{
+				entry: "5",
+				text: "Edited 2 filescache.ts2 additions, 1 deletion+2−1index.ts1 addition, 0 deletions+1−0See all3 additions, 1 deletion+3−1",
+			},
+		]);
 	});
 });
 
@@ -555,7 +705,10 @@ describe("TurnChangesCard", () => {
 					.getAllByRole("listitem")
 					.map((item) => item.textContent);
 			const toggle = () => screen.getByRole("button", {name: /^(See all|Show less)/});
-			const before = {items: items(), expanded: toggle().getAttribute("aria-expanded")};
+			const before = {
+				items: items(),
+				expanded: toggle().getAttribute("aria-expanded"),
+			};
 			act(() => {
 				fireEvent.click(toggle());
 			});
@@ -576,35 +729,49 @@ describe("TurnChangesCard", () => {
 				before,
 				afterOpen,
 				remounted,
-				afterCollapse: {items: items(), expanded: toggle().getAttribute("aria-expanded"), requests},
+				afterCollapse: {
+					items: items(),
+					expanded: toggle().getAttribute("aria-expanded"),
+					requests,
+				},
 			}).toStrictEqual({
 				before: {
-					items: ["file-1.ts+1\u22121", "file-2.ts+2\u22121", "file-3.ts+3\u22121", "See all+15\u22125"],
+					items: [
+						"file-1.ts1 addition, 1 deletion+1\u22121",
+						"file-2.ts2 additions, 1 deletion+2\u22121",
+						"file-3.ts3 additions, 1 deletion+3\u22121",
+						"See all15 additions, 5 deletions+15\u22125",
+					],
 					expanded: "false",
 				},
 				afterOpen: {
 					items: [
-						"file-1.ts+1\u22121",
-						"file-2.ts+2\u22121",
-						"file-3.ts+3\u22121",
-						"file-4.ts+4\u22121",
-						"file-5.ts+5\u22121",
-						"Show less+15\u22125",
+						"file-1.ts1 addition, 1 deletion+1\u22121",
+						"file-2.ts2 additions, 1 deletion+2\u22121",
+						"file-3.ts3 additions, 1 deletion+3\u22121",
+						"file-4.ts4 additions, 1 deletion+4\u22121",
+						"file-5.ts5 additions, 1 deletion+5\u22121",
+						"Show less15 additions, 5 deletions+15\u22125",
 					],
 					expanded: "true",
 					opened: "Changes pane",
 					requests: [{sessionId: "toggle-session", scope: "turn:u-toggle"}],
 				},
 				remounted: [
-					"file-1.ts+1\u22121",
-					"file-2.ts+2\u22121",
-					"file-3.ts+3\u22121",
-					"file-4.ts+4\u22121",
-					"file-5.ts+5\u22121",
-					"Show less+15\u22125",
+					"file-1.ts1 addition, 1 deletion+1\u22121",
+					"file-2.ts2 additions, 1 deletion+2\u22121",
+					"file-3.ts3 additions, 1 deletion+3\u22121",
+					"file-4.ts4 additions, 1 deletion+4\u22121",
+					"file-5.ts5 additions, 1 deletion+5\u22121",
+					"Show less15 additions, 5 deletions+15\u22125",
 				],
 				afterCollapse: {
-					items: ["file-1.ts+1\u22121", "file-2.ts+2\u22121", "file-3.ts+3\u22121", "See all+15\u22125"],
+					items: [
+						"file-1.ts1 addition, 1 deletion+1\u22121",
+						"file-2.ts2 additions, 1 deletion+2\u22121",
+						"file-3.ts3 additions, 1 deletion+3\u22121",
+						"See all15 additions, 5 deletions+15\u22125",
+					],
 					expanded: "false",
 					requests: [{sessionId: "toggle-session", scope: "turn:u-toggle"}],
 				},
@@ -621,7 +788,14 @@ describe("TurnChangesCard", () => {
 		expect({
 			rows: fileRowTexts(),
 			toggles: screen.queryAllByRole("button", {expanded: false}).length,
-		}).toStrictEqual({rows: ["file-1.ts+1\u22121", "file-2.ts+2\u22121", "file-3.ts+3\u22121"], toggles: 0});
+		}).toStrictEqual({
+			rows: [
+				"file-1.ts1 addition, 1 deletion+1\u22121",
+				"file-2.ts2 additions, 1 deletion+2\u22121",
+				"file-3.ts3 additions, 1 deletion+3\u22121",
+			],
+			toggles: 0,
+		});
 	});
 
 	it("draws a single file as upstream's outlined card with no header: the row, then Undo and the stats", () => {
@@ -638,7 +812,7 @@ describe("TurnChangesCard", () => {
 		}).toStrictEqual({
 			header: null,
 			list: "Edited 1 file",
-			rows: ["file-1.tsUndo+1\u22121"],
+			rows: ["file-1.tsUndo1 addition, 1 deletion+1\u22121"],
 			links: ["file-1.ts"],
 			more: null,
 			icons: ["lucide lucide-code size-4"],
@@ -704,7 +878,7 @@ describe("TurnChangesCard", () => {
 				trailing: TRAILING,
 				trailingParts: [
 					["pointer-events-auto flex items-center gap-1", "Undo"],
-					["flex items-center gap-2.5", "+1\u22121"],
+					["flex items-center gap-2.5", "1 addition, 1 deletion+1\u22121"],
 				],
 				chevrons: 0,
 			},
@@ -713,7 +887,7 @@ describe("TurnChangesCard", () => {
 				item: ITEM,
 				control: CONTROL,
 				trailing: TRAILING,
-				trailingParts: [["flex items-center gap-2.5", "+1\u22121"]],
+				trailingParts: [["flex items-center gap-2.5", "1 addition, 1 deletion+1\u22121"]],
 				chevrons: 0,
 			},
 		});
@@ -749,7 +923,7 @@ describe("TurnChangesCard", () => {
 	it("uses upstream's U+2212 minus in the row stats and the closing See all totals", () => {
 		const {container} = render(<TurnChangesCard sessionId="test-session" changes={changesWith(2)} undoable />);
 		expect(container.querySelector("[data-turn-changes-card]")?.textContent).toBe(
-			"Edited 2 filesUndofile-1.ts+1\u22121file-2.ts+2\u22121See all+3\u22122",
+			"Edited 2 filesUndofile-1.ts1 addition, 1 deletion+1\u22121file-2.ts2 additions, 1 deletion+2\u22121See all3 additions, 2 deletions+3\u22122",
 		);
 	});
 
@@ -763,7 +937,7 @@ describe("TurnChangesCard", () => {
 			title: screen.getByText("Edited 2 files").className,
 			icon: item?.querySelector("svg")?.getAttribute("class"),
 			name: within(item!).getByText("file-1.ts").className,
-			stats: within(item!).getByText("+1").parentElement?.className,
+			stats: within(item!).getByText("+1").parentElement?.parentElement?.className,
 			seeAll: within(card).getByText("See all").className,
 		}).toStrictEqual({
 			card: true,
@@ -783,8 +957,14 @@ describe("TurnChangesCard", () => {
 				title: link.getAttribute("title"),
 			})),
 		).toStrictEqual([
-			{href: fileViewerPath("/repo/src/file-1.ts"), title: "/repo/src/file-1.ts"},
-			{href: fileViewerPath("/repo/src/file-2.ts"), title: "/repo/src/file-2.ts"},
+			{
+				href: fileViewerPath("/repo/src/file-1.ts"),
+				title: "/repo/src/file-1.ts",
+			},
+			{
+				href: fileViewerPath("/repo/src/file-2.ts"),
+				title: "/repo/src/file-2.ts",
+			},
 		]);
 	});
 
@@ -808,7 +988,9 @@ describe("TurnChangesCard", () => {
 				</SettingsProvider>,
 			);
 			const before = screen.queryByTestId("changes-pane");
-			const card = screen.getByRole("list", {name: "Edited 2 files"}).parentElement!;
+			const card = screen.getByRole("list", {
+				name: "Edited 2 files",
+			}).parentElement!;
 			act(() => {
 				fireEvent.click(within(card).getByRole("button", {name: /^See all/}));
 			});
@@ -893,9 +1075,13 @@ describe("TurnChangesCard", () => {
 			headerButtons: ["Undo"],
 			title: "min-w-0 truncate text-primary",
 			divider: ["-mx-[7px] h-px shrink-0 bg-alpha-2", "true", 0],
-			items: ["file-1.ts+1\u22121", "file-2.ts+2\u22121", "See all+3\u22122"],
+			items: [
+				"file-1.ts1 addition, 1 deletion+1\u22121",
+				"file-2.ts2 additions, 1 deletion+2\u22121",
+				"See all3 additions, 2 deletions+3\u22122",
+			],
 			seeAllLabel: "min-w-0 truncate text-primary",
-			seeAllButton: "See all+3\u22122",
+			seeAllButton: "See all3 additions, 2 deletions+3\u22122",
 			buttonsOutsideList: ["Undo"],
 		});
 	});
@@ -1075,7 +1261,9 @@ describe("TurnChangesCard Undo", () => {
 	it("lists the files in a confirm dialog and reverts them on confirm", async () => {
 		const calls = stubFetch([
 			jsonResponse(READY_PREVIEW),
-			jsonResponse({reverted: ["/repo/src/file-1.ts", "/repo/src/file-2.ts"]}),
+			jsonResponse({
+				reverted: ["/repo/src/file-1.ts", "/repo/src/file-2.ts"],
+			}),
 		]);
 		render(<TurnChangesCard sessionId="s-1" changes={changesWith(2)} undoable />);
 
@@ -1087,11 +1275,19 @@ describe("TurnChangesCard Undo", () => {
 		fireEvent.click(within(dialog).getByRole("button", {name: "Undo changes"}));
 		const status = await screen.findByText("Reverted 2 files");
 
-		expect({title: within(dialog).getByRole("heading").textContent, listed, calls}).toStrictEqual({
+		expect({
+			title: within(dialog).getByRole("heading").textContent,
+			listed,
+			calls,
+		}).toStrictEqual({
 			title: "Undo changes from this turn?",
 			listed: ["file-1.ts", "file-2.ts"],
 			calls: [
-				{url: "/api/sessions/s-1/turn-undo?turn=u-1", method: "GET", body: null},
+				{
+					url: "/api/sessions/s-1/turn-undo?turn=u-1",
+					method: "GET",
+					body: null,
+				},
 				{
 					url: "/api/sessions/s-1/turn-undo",
 					method: "POST",
@@ -1117,7 +1313,11 @@ describe("TurnChangesCard Undo", () => {
 		const calls = stubFetch([
 			jsonResponse({
 				files: [
-					{path: "/repo/src/file-1.ts", status: "modified", state: "conflict"},
+					{
+						path: "/repo/src/file-1.ts",
+						status: "modified",
+						state: "conflict",
+					},
 					{path: "/repo/src/file-2.ts", status: "added", state: "ready"},
 				],
 			}),
@@ -1136,5 +1336,125 @@ describe("TurnChangesCard Undo", () => {
 			dialog: null,
 			methods: ["GET"],
 		});
+	});
+});
+
+function changesOf(files: {path: string; added: number; removed: number}[]): TurnChanges {
+	return {
+		turnUuid: "u-hints",
+		anchorLineIndex: 5,
+		files,
+		added: files.reduce((sum, file) => sum + file.added, 0),
+		removed: files.reduce((sum, file) => sum + file.removed, 0),
+		soleVisibleEditToolRow: false,
+	};
+}
+
+describe("TurnChangesCard stats a11y and folder hints", () => {
+	it("reads each stat as upstream's sr-only words and hides the +n −n glyphs", () => {
+		render(
+			<TurnChangesCard
+				sessionId="test-session"
+				changes={changesOf([
+					{path: "/repo/a.ts", added: 1, removed: 0},
+					{path: "/repo/b.ts", added: 2, removed: 1},
+				])}
+				undoable={false}
+			/>,
+		);
+		const stats = (item: HTMLElement) => {
+			const stat = item.querySelector(".tabular-nums")!;
+			return Array.from(stat.children, (child) => [
+				child.className,
+				child.getAttribute("aria-hidden"),
+				child.textContent,
+			]);
+		};
+		expect(screen.getAllByRole("listitem").map(stats)).toStrictEqual([
+			[
+				["sr-only", null, "1 addition, 0 deletions"],
+				["contents", "true", "+1−0"],
+			],
+			[
+				["sr-only", null, "2 additions, 1 deletion"],
+				["contents", "true", "+2−1"],
+			],
+			[
+				["sr-only", null, "3 additions, 1 deletion"],
+				["contents", "true", "+3−1"],
+			],
+		]);
+	});
+
+	it("appends the shortest distinguishing folder to rows whose basenames collide", () => {
+		render(
+			<TurnChangesCard
+				sessionId="test-session"
+				changes={changesOf([
+					{path: "/repo/src/a/index.ts", added: 1, removed: 0},
+					{path: "/repo/src/b/index.ts", added: 1, removed: 0},
+					{path: "/repo/x/lib/util.ts", added: 1, removed: 0},
+					{path: "/repo/y/lib/util.ts", added: 1, removed: 0},
+					{path: "/repo/src/other.ts", added: 1, removed: 0},
+				])}
+				undoable={false}
+			/>,
+		);
+		fireEvent.click(screen.getByRole("button", {name: /^See all/}));
+		const hints = screen.getAllByRole("link").map((link) => {
+			const name = link.querySelector(".truncate")!;
+			const hint = name.querySelector("span");
+			return {
+				name: name.textContent,
+				hint:
+					hint === null
+						? null
+						: [hint.className, Array.from(hint.childNodes, (node) => [node.nodeName, node.textContent])],
+			};
+		});
+		const HINT = "ms-1 text-[12px]/[15px] text-muted-as-secondary";
+		expect(hints).toStrictEqual([
+			{
+				name: "index.ts, a",
+				hint: [
+					HINT,
+					[
+						["SPAN", ", "],
+						["#text", "a"],
+					],
+				],
+			},
+			{
+				name: "index.ts, b",
+				hint: [
+					HINT,
+					[
+						["SPAN", ", "],
+						["#text", "b"],
+					],
+				],
+			},
+			{
+				name: "util.ts, x/lib",
+				hint: [
+					HINT,
+					[
+						["SPAN", ", "],
+						["#text", "x/lib"],
+					],
+				],
+			},
+			{
+				name: "util.ts, y/lib",
+				hint: [
+					HINT,
+					[
+						["SPAN", ", "],
+						["#text", "y/lib"],
+					],
+				],
+			},
+			{name: "other.ts", hint: null},
+		]);
 	});
 });
