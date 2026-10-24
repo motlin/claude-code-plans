@@ -103,6 +103,7 @@ import {RenderedLineSchema} from "../src/lib/transcript";
 import {TerminalAppearanceSchema} from "../src/lib/terminal-theme";
 import {TerminalHostSettingSchema} from "../src/lib/terminal-host-setting";
 import {TranscriptModeSchema} from "../src/lib/transcript-mode";
+import {WorkflowProgressEntrySchema} from "../src/lib/workflow-progress";
 
 /**
  * Walks the Zod schema trees rooted below and records every "choice" node —
@@ -118,6 +119,7 @@ import {TranscriptModeSchema} from "../src/lib/transcript-mode";
 // claimed under their own exported names (the walker visits each node once).
 const ROOTS: ReadonlyArray<readonly [string, unknown]> = [
 	["TaskStatusSchema", TaskStatusSchema],
+	["WorkflowProgressEntrySchema", WorkflowProgressEntrySchema],
 	["UnifiedSearchTypeSchema", UnifiedSearchTypeSchema],
 	["UnifiedSearchDateSchema", UnifiedSearchDateSchema],
 	["UnifiedSearchKindSchema", UnifiedSearchKindSchema],

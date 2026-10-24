@@ -16,6 +16,7 @@ import type {PendingApprovalToolNameSchema} from "./domain-event-payload-schemas
 import type {TerminalAppearance} from "./terminal-theme";
 import type {InterfaceFont} from "./appearance";
 import type {TerminalHostSetting} from "./terminal-host-setting";
+import type {WorkflowAgentEntryStateSchema, WorkflowProgressEntrySchema} from "./workflow-progress";
 import type {McpScopeSchema, PermissionBehaviorSchema, SkillSourceSchema} from "./api/customize";
 import type {FileRefStatusSchema} from "./api/file-refs";
 import type {PluginFileSchema, PluginListResponse} from "./api/plugins";
@@ -315,6 +316,20 @@ const permissionDecisionClassifierCategories = {
 	cowork_scheduled_task_write: true,
 	cowork_skill_persistence: true,
 } satisfies Record<z.infer<typeof PermissionDecisionClassifierCategorySchema>, true>;
+
+/** `workflowProgress` entry kinds in `workflows/<runId>.json` (src/lib/workflow-progress.ts). */
+const workflowProgressEntryTypes = {
+	workflow_phase: "Phase header",
+	workflow_agent: "Agent",
+} satisfies Record<z.infer<typeof WorkflowProgressEntrySchema>["type"], string>;
+
+/** How src/lib/workflow-progress.ts `agentState` reads each workflow agent `state`. */
+const workflowAgentEntryStates = {
+	start: "Pending, or running once startedAt is set",
+	progress: "Running, or stalled after 90s without progress",
+	done: "Done",
+	error: "Failed",
+} satisfies Record<z.infer<typeof WorkflowAgentEntryStateSchema>, string>;
 
 const taskStatusLabels = {
 	pending: "Pending",
@@ -1467,6 +1482,8 @@ const toolNamesWithMcp = {...toolNames, "mcp__*": true} as const;
 /** Maps walker path keys (see tests/schema-choices.test.ts) to choice maps. */
 export const schemaChoiceRegistry: Record<string, Record<string, string | true>> = {
 	TaskStatusSchema: taskStatusLabels,
+	WorkflowProgressEntrySchema: workflowProgressEntryTypes,
+	"WorkflowProgressEntrySchema.<workflow_agent>.state": workflowAgentEntryStates,
 	"SessionRegistryFileSchema.status": sessionRegistryStatusLabels,
 	UnifiedSearchTypeSchema: unifiedSearchTypeLabels,
 	UnifiedSearchDateSchema: unifiedSearchDateLabels,
