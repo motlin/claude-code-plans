@@ -252,7 +252,9 @@ const EDIT_RECORDS = [
 	},
 ];
 
-type TurnStep = {text: string} | {tool: string; id: string; input: Record<string, unknown>; result?: string};
+type TurnStep =
+	| {text: string}
+	| {tool: string; id: string; input: Record<string, unknown>; result?: string; toolUseResult?: unknown};
 
 /** One prompt-to-prompt turn: each step is its own assistant line, each tool answered with its result. */
 function turnRecords(steps: TurnStep[], prefix = "t"): unknown[] {
@@ -286,6 +288,7 @@ function turnRecords(steps: TurnStep[], prefix = "t"): unknown[] {
 					role: "user",
 					content: [{type: "tool_result", tool_use_id: step.id, content: step.result ?? "ok"}],
 				},
+				...(step.toolUseResult === undefined ? {} : {toolUseResult: step.toolUseResult}),
 			},
 		);
 	}
@@ -300,6 +303,21 @@ const HELLO2_LAST_TURN: TurnStep[] = [
 		input: {
 			file_path: "/Users/x/.claude/plans/this-is-a-test-glistening-pike.md",
 			content: "# Plan\n\nOne\nTwo\nThree\nFour",
+		},
+		toolUseResult: {
+			type: "update",
+			filePath: "/Users/x/.claude/plans/this-is-a-test-glistening-pike.md",
+			content: "# Plan\n\nOne\nTwo\nThree\nFour",
+			originalFile: "# Plan\n\nA\nB\nC\nD",
+			structuredPatch: [
+				{
+					oldStart: 3,
+					oldLines: 4,
+					newStart: 3,
+					newLines: 4,
+					lines: ["-A", "-B", "-C", "-D", "+One", "+Two", "+Three", "+Four"],
+				},
+			],
 		},
 	},
 	{tool: "ExitPlanMode", id: "plan-exit", input: {plan: "# Plan"}, result: "Fabricated plan stopped"},
@@ -404,6 +422,23 @@ describe("SessionChat end-of-turn card", () => {
 			</SettingsProvider>,
 		);
 		expect(container.querySelectorAll("[data-turn-changes-card]").length).toBe(0);
+	});
+
+	it("still shows Hello2's +4 −4 on the turn's row after the card is dropped", () => {
+		const {lines, toolResultMap} = processTranscript(turnRecords(HELLO2_LAST_TURN), 0);
+		const {container} = render(
+			<SettingsProvider>
+				<SessionChat
+					sessionId="test-session"
+					lines={lines}
+					toolResultMap={toolResultMap}
+					shouldScrollToEnd={false}
+				/>
+			</SettingsProvider>,
+		);
+		expect([...container.querySelectorAll("[data-diff-stat-pill]")].map((pill) => pill.textContent)).toStrictEqual([
+			"+4−44 added, 4 removed",
+		]);
 	});
 
 	it("renders the card inside the turn's final text entry", () => {
