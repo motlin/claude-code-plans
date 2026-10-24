@@ -148,7 +148,7 @@ export function SessionDetails({data, messageCount}: SessionDetailsProps) {
 	return (
 		<div className="flex flex-col gap-3 px-4 py-3">
 			{segments.length === 0 ? (
-				<p className="py-6 text-center text-body text-muted">No session details yet.</p>
+				<p className="py-6 text-center text-body text-ink-muted">No session details yet.</p>
 			) : (
 				<div data-status-segments="" className="flex flex-wrap items-center gap-1.5">
 					{segments.map((seg) => (

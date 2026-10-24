@@ -202,7 +202,18 @@ describe("breadcrumb", () => {
 				segment.getAttribute("title"),
 			),
 			buttonTitle: button.getAttribute("title"),
-		}).toStrictEqual({titles: [".llm", ".llm/plan.md"], buttonTitle: null});
+			mutedSegments: [...button.querySelectorAll("[data-breadcrumb-segment]")].map((segment) =>
+				segment.classList.contains("text-ink-muted"),
+			),
+			mutedSlashes: [...button.querySelectorAll("span")]
+				.filter((span) => span.textContent === "/")
+				.map((span) => span.classList.contains("text-ink-muted")),
+		}).toStrictEqual({
+			titles: [".llm", ".llm/plan.md"],
+			buttonTitle: null,
+			mutedSegments: [true, false],
+			mutedSlashes: [true],
+		});
 	});
 });
 

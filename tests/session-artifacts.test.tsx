@@ -209,7 +209,11 @@ describe("SessionArtifactsList", () => {
 	it("shows upstream's empty copy when the session has no artifacts", () => {
 		const {container} = render(<SessionArtifactsList artifacts={[]} />);
 
-		expect(container.textContent).toBe("Artifacts published in this session appear here.");
+		const empty = container.querySelector("p");
+		expect({text: container.textContent, muted: empty?.classList.contains("text-ink-muted")}).toStrictEqual({
+			text: "Artifacts published in this session appear here.",
+			muted: true,
+		});
 	});
 
 	it("renders one upstream card per artifact, in order, linking out to claude.ai", () => {

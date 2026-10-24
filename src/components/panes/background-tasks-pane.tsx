@@ -166,7 +166,7 @@ export function BackgroundTasksList({
 	const subagentCount = subagents?.count ?? 0;
 
 	if (groups.running.length === 0 && finished.length === 0 && subagentCount === 0) {
-		return <p className="px-3 py-6 text-center text-body text-muted">{EMPTY_COPY}</p>;
+		return <p className="px-3 py-6 text-center text-body text-ink-muted">{EMPTY_COPY}</p>;
 	}
 	return (
 		<div className="flex flex-col gap-4 px-3 py-2">

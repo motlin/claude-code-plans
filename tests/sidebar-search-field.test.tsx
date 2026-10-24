@@ -165,7 +165,7 @@ describe("sidebar search field", () => {
 				"bg-[var(--sb-field-bg)]",
 				"px-[var(--sb-row-px)]",
 				"text-[length:var(--sb-row-font)]",
-				"text-muted",
+				"text-ink-muted",
 			].filter((token) => !classes.includes(token)),
 		).toStrictEqual([]);
 	});

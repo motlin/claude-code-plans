@@ -11,7 +11,7 @@ const EMPTY_COPY = "Artifacts published in this session appear here.";
  */
 export function SessionArtifactsList({artifacts}: {artifacts: readonly SessionArtifact[]}) {
 	if (artifacts.length === 0) {
-		return <p className="px-3 py-6 text-center text-body text-muted">{EMPTY_COPY}</p>;
+		return <p className="px-3 py-6 text-center text-body text-ink-muted">{EMPTY_COPY}</p>;
 	}
 	return (
 		<ul className="flex flex-col px-3 py-1">

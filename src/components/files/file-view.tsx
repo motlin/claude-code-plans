@@ -105,12 +105,12 @@ function Breadcrumb({path}: {path: string}) {
 									<span
 										data-breadcrumb-segment=""
 										title={segments.slice(0, index + 1).join("/")}
-										className={`shrink-0 px-0.75 ${isName ? "" : "text-muted"}`}
+										className={`shrink-0 px-0.75 ${isName ? "" : "text-ink-muted"}`}
 									>
 										{segment}
 									</span>
 								)}
-								{!isName && <span className="shrink-0 text-muted">/</span>}
+								{!isName && <span className="shrink-0 text-ink-muted">/</span>}
 							</span>
 						);
 					})}

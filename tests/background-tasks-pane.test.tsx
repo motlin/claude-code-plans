@@ -154,7 +154,11 @@ describe("BackgroundTasksList", () => {
 	it("shows empty copy when there is no background work", () => {
 		render(<BackgroundTasksList groups={{running: [], finished: []}} />);
 
-		expect(screen.getByText("No background tasks in this session.").tagName).toBe("P");
+		const empty = screen.getByText("No background tasks in this session.");
+		expect({tag: empty.tagName, muted: empty.classList.contains("text-ink-muted")}).toStrictEqual({
+			tag: "P",
+			muted: true,
+		});
 	});
 });
 

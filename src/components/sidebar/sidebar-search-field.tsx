@@ -6,7 +6,7 @@ import {Shortcut} from "../ui/shortcut";
 /** The field's row wrapper and row classes, shared with the pre-hydration fallback so New does not shift on load. */
 export const SEARCH_FIELD_WRAPPER_CLASS = "mb-2";
 export const SEARCH_FIELD_CLASS =
-	"df-search-field hit-row hit-row-main [--cds-hit-gap-y:10px] flex h-[var(--sb-row-h)] w-full shrink-0 items-center gap-[var(--sb-row-gap)] rounded-[var(--sb-radius)] border-none bg-[var(--sb-field-bg)] px-[var(--sb-row-px)] text-start text-[length:var(--sb-row-font)] text-muted forced-colors:border forced-colors:border-solid focus-visible:outline-hidden";
+	"df-search-field hit-row hit-row-main [--cds-hit-gap-y:10px] flex h-[var(--sb-row-h)] w-full shrink-0 items-center gap-[var(--sb-row-gap)] rounded-[var(--sb-radius)] border-none bg-[var(--sb-field-bg)] px-[var(--sb-row-px)] text-start text-[length:var(--sb-row-font)] text-ink-muted forced-colors:border forced-colors:border-solid focus-visible:outline-hidden";
 
 /** The field's icon, label and keycap hint. */
 export function SearchFieldContents({keys}: {keys: string}) {

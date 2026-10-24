@@ -63,7 +63,8 @@ describe("SessionDetails", () => {
 		expect({
 			segments: segmentTexts(view),
 			empty: view.getByText("No session details yet.").tagName,
-		}).toStrictEqual({segments: [], empty: "P"});
+			muted: view.getByText("No session details yet.").classList.contains("text-ink-muted"),
+		}).toStrictEqual({segments: [], empty: "P", muted: true});
 	});
 
 	it("reveals the raw statusline JSON on demand", () => {
