@@ -106,6 +106,8 @@ interface FakeCli {
 	selected: number;
 	lastEscAt: number | null;
 	keys: string[];
+	/** Whether Ctrl+U leaves the input as it is. */
+	unclearable?: boolean;
 	/** Rows the fake renders with a different text, to model a stale browser view. */
 	rowText?: (prompt: string) => string;
 }
@@ -156,6 +158,13 @@ function restore(cli: FakeCli): void {
 	cli.mode = "idle";
 }
 
+/** Ctrl+U as CLI 2.1.310 does it: clears the last line's text, or joins an emptied last line onto the one above. */
+function clearLine(cli: FakeCli): void {
+	if (cli.unclearable === true) return;
+	const lineStart = cli.input.lastIndexOf("\n");
+	cli.input = cli.input.endsWith("\n") ? cli.input.slice(0, -1) : cli.input.slice(0, lineStart + 1);
+}
+
 function press(cli: FakeCli, key: string, now: number): void {
 	cli.keys.push(key);
 	if (key === "esc") {
@@ -169,7 +178,8 @@ function press(cli: FakeCli, key: string, now: number): void {
 		return;
 	}
 	cli.lastEscAt = null;
-	if (cli.mode === "selector" && key === "up") cli.selected = Math.max(0, cli.selected - 1);
+	if (cli.mode === "idle" && key === "ctrl+u") clearLine(cli);
+	else if (cli.mode === "selector" && key === "up") cli.selected = Math.max(0, cli.selected - 1);
 	else if (cli.mode === "selector" && key === "enter" && cli.selected < cli.prompts.length) {
 		if (cli.checkpointing) cli.mode = "confirm";
 		else restore(cli);
@@ -225,8 +235,8 @@ describe("herdr rewind handler", () => {
 		);
 		expect({response: await describeResponse(response), keys: cli.keys, input: cli.input}).toStrictEqual({
 			response: {body: {ok: true}, status: 200},
-			keys: ["esc", "esc", "up", "up", "enter"],
-			input: "Reply beta",
+			keys: ["esc", "esc", "up", "up", "enter", "ctrl+u"],
+			input: "",
 		});
 	});
 
@@ -238,7 +248,7 @@ describe("herdr rewind handler", () => {
 		);
 		expect({response: await describeResponse(response), keys: cli.keys, prompts: cli.prompts}).toStrictEqual({
 			response: {body: {ok: true}, status: 200},
-			keys: ["esc", "esc", "up", "up", "up", "enter", "2"],
+			keys: ["esc", "esc", "up", "up", "up", "enter", "2", "ctrl+u"],
 			prompts: [],
 		});
 	});
@@ -251,7 +261,36 @@ describe("herdr rewind handler", () => {
 		);
 		expect({response: await describeResponse(response), keys: cli.keys}).toStrictEqual({
 			response: {body: {ok: true}, status: 200},
-			keys: ["esc", "esc", "up", "enter", "1"],
+			keys: ["esc", "esc", "up", "enter", "1", "ctrl+u"],
+		});
+	});
+
+	it("clears a multi-line rewound prompt from the CLI input line by line", async () => {
+		const cli = fakeCli(["Reply alpha", "Reply\nbeta\ngamma"], {rowText: (prompt) => prompt.replaceAll("\n", " ")});
+		const response = await handleHerdrRewind(
+			postRequest({sessionId: "session-1", stepsBack: 1, text: "Reply\nbeta\ngamma"}),
+			dependencies(cli),
+		);
+		expect({response: await describeResponse(response), keys: cli.keys, input: cli.input}).toStrictEqual({
+			response: {body: {ok: true}, status: 200},
+			keys: ["esc", "esc", "up", "enter", "ctrl+u", "ctrl+u", "ctrl+u", "ctrl+u", "ctrl+u"],
+			input: "",
+		});
+	});
+
+	it("reports a rewind whose prompt stays in the CLI input, so the browser does not prefill it too", async () => {
+		const cli = fakeCli(PROMPTS, {unclearable: true});
+		const response = await handleHerdrRewind(
+			postRequest({sessionId: "session-1", stepsBack: 1, text: "Reply gamma"}),
+			dependencies(cli),
+		);
+		expect({response: await describeResponse(response), prompts: cli.prompts, input: cli.input}).toStrictEqual({
+			response: {
+				body: {error: "Rewound, but the prompt is still in the terminal’s input; send it from there"},
+				status: 409,
+			},
+			prompts: ["Reply alpha", "Reply beta"],
+			input: "Reply gamma",
 		});
 	});
 
@@ -283,7 +322,7 @@ describe("herdr rewind handler", () => {
 		);
 		expect({response: await describeResponse(response), keys: cli.keys}).toStrictEqual({
 			response: {body: {ok: true}, status: 200},
-			keys: ["esc", "esc", "up", "enter"],
+			keys: ["esc", "esc", "up", "enter", "ctrl+u"],
 		});
 	});
 

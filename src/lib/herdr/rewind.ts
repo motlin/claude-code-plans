@@ -275,11 +275,45 @@ export async function handleHerdrRewind(
 		await waitFor(({text: screen, input}) =>
 			input !== null && parseMessageSelector(screen) === null && showsPrompt(input, text) ? true : null,
 		);
-		return Response.json({ok: true});
 	} catch (error) {
 		if (!(error instanceof RewindAborted)) throw error;
 		await backOut(read, press, dependencies.pause);
 		return errorResponse(CANT_REWIND, 409);
+	}
+	// The browser composer gets the prompt instead: agent.prompt appends to a non-empty CLI input.
+	if (!(await clearInput(read, press, dependencies.pause))) return errorResponse(STILL_IN_INPUT, 409);
+	return Response.json({ok: true});
+}
+
+const STILL_IN_INPUT = "Rewound, but the prompt is still in the terminal’s input; send it from there";
+/** Ctrl+U presses that may leave the input as it was (an emptied line joining the one above) before giving up. */
+const STALE_CLEARS = 3;
+const MAX_CLEARS = 200;
+
+/**
+ * Empty the CLI input with Ctrl+U, which clears one drawn line (or joins an
+ * emptied line onto the one above) per press, until it reads empty.
+ */
+async function clearInput(
+	read: () => Promise<{input: string | null}>,
+	press: (key: string) => Promise<void>,
+	pause: () => Promise<void>,
+): Promise<boolean> {
+	try {
+		let last = (await read()).input;
+		let stale = 0;
+		for (let attempt = 0; attempt < MAX_CLEARS && stale < STALE_CLEARS; attempt++) {
+			await press("ctrl+u");
+			await pause();
+			const {input} = await read();
+			if (input === "") return true;
+			stale = input === last ? stale + 1 : 0;
+			last = input;
+		}
+		return false;
+	} catch (error) {
+		if (!(error instanceof RewindAborted)) throw error;
+		return false;
 	}
 }
 
