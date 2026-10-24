@@ -38,33 +38,136 @@ function makeCall(overrides: Partial<ClientToolCall> = {}): ClientToolCall {
 }
 
 describe("AskUserQuestionRenderer", () => {
-	it("draws a settled-but-unanswered question in exactly one card shell, using upstream's list-in-card idiom", () => {
-		const {container} = render(<AskUserQuestionRenderer toolCall={makeCall({result: REJECTION_RESULT})} />);
+	describe("step body for a withdrawn question (upstream's _d)", () => {
+		const ANIMAL = {
+			questions: [
+				{
+					question: "Which animal do you prefer?",
+					header: "Animal",
+					options: [{label: "Cat"}, {label: "Dog"}],
+					multiSelect: false,
+				},
+			],
+		};
+		const FRUIT_AND_SIZE = {
+			questions: [
+				{
+					question: "Which fruit?",
+					header: "Fruit",
+					options: [{label: "Apple"}, {label: "Pear"}],
+					multiSelect: false,
+				},
+				{
+					question: "Which size?",
+					header: "Size",
+					options: [{label: "Small"}, {label: "Large"}],
+					multiSelect: false,
+				},
+			],
+		};
 
-		const shells = container.querySelectorAll(".card-outline");
-		const shell = shells[0]!;
+		function outcomeList(call: ClientToolCall) {
+			const {container} = render(<AskUserQuestionRenderer toolCall={call} />);
+			const list = container.firstElementChild;
+			return {
+				listClass: list?.className,
+				items: [...(list?.children ?? [])].map((item) => ({
+					className: item.className,
+					lines: [...item.children].map((line) => ({className: line.className, text: line.textContent})),
+				})),
+				badges: container.querySelectorAll(".size-\\[30px\\]").length,
+				cards: container.querySelectorAll(".card-outline").length,
+			};
+		}
 
-		expect({
-			shellCount: shells.length,
-			isRoot: shell === container.firstElementChild,
-			radius: shell.classList.contains("rounded-r6"),
-			clips: shell.classList.contains("overflow-clip"),
-			divided: shell.classList.contains("divide-y") && shell.classList.contains("divide-t3"),
-			rowPadding: shell.classList.contains("[&>*]:px-p7") && shell.classList.contains("[&>*]:py-p6"),
-		}).toStrictEqual({
-			shellCount: 1,
-			isRoot: true,
-			radius: true,
-			clips: true,
-			divided: true,
-			rowPadding: true,
+		it("lists a stopped question with Not answered under it, and no options card", () => {
+			expect(
+				outcomeList(
+					makeCall({
+						input: ANIMAL,
+						result: REJECTION_RESULT,
+						isError: true,
+						stopped: true,
+					}),
+				),
+			).toStrictEqual({
+				listClass: "flex flex-col gap-3 pt-1",
+				items: [
+					{
+						className: "flex flex-col text-body [overflow-wrap:anywhere]",
+						lines: [
+							{className: "text-secondary", text: "Which animal do you prefer?"},
+							{className: "text-ink-muted", text: "Not answered"},
+						],
+					},
+				],
+				badges: 0,
+				cards: 0,
+			});
 		});
-	});
 
-	it("gives the option rows content height instead of a fixed 3.5rem", () => {
-		const {container} = render(<AskUserQuestionRenderer toolCall={makeCall({result: REJECTION_RESULT})} />);
+		it("prints Skipped under each question of an all-[No preference] call", () => {
+			expect(
+				outcomeList(
+					makeCall({
+						input: FRUIT_AND_SIZE,
+						result: 'The user answered: "Which fruit?"="[No preference]", "Which size?"="[No preference]". Read the answers carefully — they may request clarification, changes, or that you not proceed — and follow what they actually say.',
+						resultMeta: {
+							answers: {
+								"Which fruit?": {answer: "[No preference]", notes: null},
+								"Which size?": {answer: "[No preference]", notes: null},
+							},
+						},
+					}),
+				),
+			).toStrictEqual({
+				listClass: "flex flex-col gap-3 pt-1",
+				items: [
+					{
+						className: "flex flex-col text-body [overflow-wrap:anywhere]",
+						lines: [
+							{className: "text-secondary", text: "Which fruit?"},
+							{className: "text-ink-muted", text: "Skipped"},
+						],
+					},
+					{
+						className: "flex flex-col text-body [overflow-wrap:anywhere]",
+						lines: [
+							{className: "text-secondary", text: "Which size?"},
+							{className: "text-ink-muted", text: "Skipped"},
+						],
+					},
+				],
+				badges: 0,
+				cards: 0,
+			});
+		});
 
-		expect(container.querySelectorAll(".h-\\[3\\.5rem\\]").length).toStrictEqual(0);
+		it("lists only the questions for the CLI's terminal skip (answers: {})", () => {
+			expect(
+				outcomeList(
+					makeCall({
+						input: FRUIT_AND_SIZE,
+						result: "The user did not answer the questions.",
+						resultMeta: {answers: {}},
+					}),
+				),
+			).toStrictEqual({
+				listClass: "flex flex-col gap-3 pt-1",
+				items: [
+					{
+						className: "flex flex-col text-body [overflow-wrap:anywhere]",
+						lines: [{className: "text-secondary", text: "Which fruit?"}],
+					},
+					{
+						className: "flex flex-col text-body [overflow-wrap:anywhere]",
+						lines: [{className: "text-secondary", text: "Which size?"}],
+					},
+				],
+				badges: 0,
+				cards: 0,
+			});
+		});
 	});
 
 	it("renders an answered question as upstream's 480px question receipt: question primary w500, answer secondary", () => {

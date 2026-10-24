@@ -10,6 +10,7 @@ import {labelledAnswers} from "../../lib/question-card-draft";
 import {clearSentQuestionCard, wasQuestionCardSeen} from "../../lib/question-card-store";
 import {
 	describeAskUserQuestionResult,
+	isWithdrawnQuestion,
 	normalizeQuestions,
 	OUTCOME_LABEL,
 	parseAnswerResult,
@@ -109,6 +110,33 @@ function UnansweredQuestion({question, header, options}: QuestionLike) {
 	);
 }
 
+/**
+ * Upstream's step body for a question nobody answered: each question in plain
+ * secondary text over its answer, its outcome's word, or "Not answered" when the
+ * call was stopped. A question with no recorded outcome shows only itself.
+ */
+function QuestionOutcomeList({toolCall}: {toolCall: ClientToolCall}) {
+	return (
+		<div className="flex flex-col gap-3 pt-1">
+			{questionOutcomes(toolCall).map((entry, i) => {
+				const line =
+					entry.answer ??
+					(entry.unanswered === undefined
+						? toolCall.stopped === true
+							? OUTCOME_LABEL.dismissed
+							: undefined
+						: OUTCOME_LABEL[entry.unanswered]);
+				return (
+					<div key={i} className="flex flex-col text-body [overflow-wrap:anywhere]">
+						<div className="text-secondary">{entry.question}</div>
+						{line !== undefined && <div className="text-ink-muted">{line}</div>}
+					</div>
+				);
+			})}
+		</div>
+	);
+}
+
 function StatusLine({status}: {status: AskUserQuestionStatus}) {
 	return (
 		<div className="text-body text-extended-pink">
@@ -184,6 +212,25 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps) {
 		);
 	}
 
+	// Parsing can fail when the result text predates the canonical envelope
+	// or has an unexpected shape. Fall back to displaying the raw text so we
+	// don't silently lose information.
+	const showRawFallback =
+		result !== undefined &&
+		status === null &&
+		toolCall.resultMeta?.answers === undefined &&
+		parseAnswerResult(result, questions) === null;
+
+	if (isWithdrawnQuestion(toolCall)) {
+		return (
+			<>
+				<QuestionOutcomeList toolCall={toolCall} />
+				{status && toolCall.stopped !== true && <StatusLine status={status} />}
+				{showRawFallback && <p className="text-body text-secondary whitespace-pre-wrap">{result}</p>}
+			</>
+		);
+	}
+
 	// Upstream's receipt keeps every question with an answer or an outcome, and drops the rest.
 	const receipt = questionOutcomes(toolCall).filter(
 		(entry) => entry.answer !== undefined || entry.unanswered !== undefined,
@@ -209,11 +256,6 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps) {
 			</div>
 		);
 	}
-
-	// Parsing can fail when the result text predates the canonical envelope
-	// or has an unexpected shape. Fall back to displaying the raw text so we
-	// don't silently lose information.
-	const showRawFallback = result !== undefined && status === null;
 
 	return (
 		<div className={CARD_SHELL}>
