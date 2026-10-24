@@ -186,7 +186,7 @@ describe("undelivered background-task notifications", () => {
 		});
 	});
 
-	it("draws no status row for a notification the queue delivered", () => {
+	it("draws a notification the queue delivered once, as its delivered row", () => {
 		const content = notification(
 			"toolu_elsewhere1",
 			"completed",
@@ -199,7 +199,12 @@ describe("undelivered background-task notifications", () => {
 			{type: "user", uuid: "user-2", message: {role: "user", content}},
 		]);
 
-		expect(taskEventRows(container)).toStrictEqual([]);
+		expect(
+			Array.from(
+				container.querySelectorAll("[data-task-event-row] [data-turn-status]"),
+				(status) => status.textContent,
+			),
+		).toStrictEqual(["Background command completed·Wait for test-branch runs to finish"]);
 	});
 
 	it("draws no status row for a notification the queue removed, or one whose launch is in this transcript", () => {

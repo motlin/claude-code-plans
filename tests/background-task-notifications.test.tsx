@@ -950,3 +950,52 @@ describe("subagent slow commands while the parent waits for an answer", () => {
 		expect(container.querySelectorAll("[data-task-event-row]").length).toBe(0);
 	});
 });
+
+describe("delivered notifications with no tool group after them", () => {
+	function trailingNotifications(descriptions: string[]): unknown[] {
+		return [
+			{type: "user", uuid: "u-1", message: {role: "user", content: "kick off the jobs"}},
+			{
+				type: "assistant",
+				uuid: "a-1",
+				parentUuid: "u-1",
+				message: {role: "assistant", content: [{type: "text", text: "They are running."}]},
+			},
+			...descriptions.map((description, index) => ({
+				type: "user",
+				uuid: `n-${index}`,
+				parentUuid: index === 0 ? "a-1" : `n-${index - 1}`,
+				promptSource: "system",
+				turnOrigin: "task_notification",
+				message: {
+					role: "user",
+					content: [
+						"<task-notification>",
+						`<task-id>b${index}</task-id>`,
+						`<tool-use-id>toolu_elsewhere_${index}</tool-use-id>`,
+						"<status>completed</status>",
+						`<summary>Background command "${description}" completed (exit code 0)</summary>`,
+						"</task-notification>",
+					].join("\n"),
+				},
+			})),
+		];
+	}
+
+	const rows = (container: HTMLElement) => ({
+		rows: [...container.querySelectorAll("[data-task-event-row]")].map(
+			(row) => row.querySelector("[data-turn-status]")?.textContent,
+		),
+		notices: container.querySelectorAll("[data-background-notice]").length,
+	});
+
+	it('draws three as one "3 background commands completed" row', () => {
+		const container = renderLines(trailingNotifications(["Build", "Lint", "Test"]));
+		expect(rows(container)).toStrictEqual({rows: ["3 background commands completed"], notices: 0});
+	});
+
+	it('draws one as "Background command completed·<description>"', () => {
+		const container = renderLines(trailingNotifications(["Build"]));
+		expect(rows(container)).toStrictEqual({rows: ["Background command completed·Build"], notices: 0});
+	});
+});

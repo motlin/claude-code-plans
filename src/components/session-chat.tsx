@@ -1395,19 +1395,35 @@ function FoldedNoticeRow({notice}: {notice: FoldedNotice}) {
  * no disclosure, "Background task stopped · <description>", an agent's
  * "<done description> · took 27s", or one "N background commands completed" summary.
  */
-function TaskEventRunRow({events, footer}: {events: readonly TaskEvent[]; footer: React.ReactNode}) {
+function TaskEventRunRow({
+	events,
+	footer,
+	recordIndex,
+}: {
+	events: readonly TaskEvent[];
+	footer: React.ReactNode;
+	/** The transcript line the row draws, when it draws delivered notifications. */
+	recordIndex?: number;
+}) {
 	return (
 		<div
 			data-task-event-row=""
+			data-record-index={recordIndex}
 			className="group/msg flex flex-col w-full pb-4 has-[>[data-assistant-span-footer]]:pb-[var(--chat-turn-gap)] [&>[data-assistant-span-footer]]:mt-[5px]"
 		>
-			<TurnStatusFrame leading={false}>
-				<div data-turn-status="" className={TURN_STATUS_CLASS}>
-					<TaskEventRun events={events} />
-				</div>
-			</TurnStatusFrame>
+			<TaskEventRunStatus events={events} />
 			{footer}
 		</div>
+	);
+}
+
+function TaskEventRunStatus({events}: {events: readonly TaskEvent[]}) {
+	return (
+		<TurnStatusFrame leading={false}>
+			<div data-turn-status="" className={TURN_STATUS_CLASS}>
+				<TaskEventRun events={events} />
+			</div>
+		</TurnStatusFrame>
 	);
 }
 
@@ -1476,13 +1492,42 @@ function AgentCompletionRow({completion, footer}: {completion: TaskNotification;
 	);
 }
 
-/** Notifications with no tool group to join, drawn as the same static rows. */
+type NoticeSegment =
+	| {kind: "run"; lineIndex: number; events: TaskEvent[]}
+	| {kind: "notice"; lineIndex: number; notice: PeerNotice | HookNotice};
+
+/** Each maximal run of consecutive task notices becomes one segment; peer and hook notices keep their own. */
+function noticeSegments(notices: readonly FoldedNotice[]): NoticeSegment[] {
+	const segments: NoticeSegment[] = [];
+	for (const notice of notices) {
+		const last = segments.at(-1);
+		if (notice.kind !== "task") segments.push({kind: "notice", lineIndex: notice.lineIndex, notice});
+		else if (last?.kind === "run") last.events.push(taskEvent(notice.notification));
+		else segments.push({kind: "run", lineIndex: notice.lineIndex, events: [taskEvent(notice.notification)]});
+	}
+	return segments;
+}
+
+/**
+ * Notifications with no tool group to join. As upstream draws a top-level run of task events,
+ * each run of task notices is one task-event row: a single row, or one summary row.
+ */
 function BackgroundNoticeRows({notices, footer}: {notices: readonly FoldedNotice[]; footer?: React.ReactNode}) {
+	const segments = noticeSegments(notices);
+	const [only] = segments;
+	if (segments.length === 1 && only?.kind === "run")
+		return <TaskEventRunRow events={only.events} footer={footer} recordIndex={only.lineIndex} />;
 	return (
 		<div className={`flex flex-col w-full gap-[var(--chat-item-gap)] ${TURN_GAP_CLASS}`}>
-			{notices.map((notice) => (
-				<FoldedNoticeRow key={notice.lineIndex} notice={notice} />
-			))}
+			{segments.map((segment) =>
+				segment.kind === "run" ? (
+					<div key={segment.lineIndex} data-task-event-row="" data-record-index={segment.lineIndex}>
+						<TaskEventRunStatus events={segment.events} />
+					</div>
+				) : (
+					<FoldedNoticeRow key={segment.lineIndex} notice={segment.notice} />
+				),
+			)}
 			{footer}
 		</div>
 	);
