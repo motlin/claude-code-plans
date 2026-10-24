@@ -75,11 +75,18 @@ export function slashCommandLabel(command: SlashCommand): string {
 }
 
 /**
+ * Built-ins upstream offers only in a session's composer (there's nothing to rewind on the home
+ * page). `GET /api/commands` leaves them out; `useSlashCommands` adds them for sessions.
+ */
+export const SESSION_SLASH_COMMANDS: readonly SlashCommand[] = [
+	{name: "rewind", description: "Rewind the session to an earlier message", source: "builtin"},
+];
+
+/**
  * claude.ai/code's locally meaningful built-ins with its exact strings, hints and
  * aliases, followed by the local-only CLI built-ins.
  */
 export const BUILTIN_SLASH_COMMANDS: readonly SlashCommand[] = [
-	{name: "rewind", description: "Rewind the session to an earlier message", source: "builtin"},
 	{name: "model", description: "Set the model for this session", source: "builtin", argumentHint: "[model-id]"},
 	{
 		name: "effort",

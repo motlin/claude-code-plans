@@ -5,7 +5,7 @@ import {cleanup, fireEvent, render, screen, waitFor} from "@testing-library/reac
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {Composer} from "../src/components/composer";
 import {useSlashCommands} from "../src/hooks/use-slash-commands";
-import {BUILTIN_SLASH_COMMANDS, type SlashCommand} from "../src/lib/slash-commands";
+import {BUILTIN_SLASH_COMMANDS, SESSION_SLASH_COMMANDS, type SlashCommand} from "../src/lib/slash-commands";
 
 afterEach(() => {
 	cleanup();
@@ -163,5 +163,61 @@ describe("useSlashCommands", () => {
 		});
 
 		expect(menuState()).toStrictEqual({header: null, labels: ["standup"]});
+	});
+
+	it("adds the session-only built-ins (/rewind) to a session's list but not the home composer's", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn<typeof fetch>(async () => Promise.resolve(Response.json(LOADED))),
+		);
+		function SessionHarness({session}: {session: boolean}) {
+			const slash = useSlashCommands(undefined, true, session);
+			return <Composer variant="session" draftKey="k" onSend={() => {}} {...slash} />;
+		}
+		const queryClient = new QueryClient();
+		const view = render(
+			<QueryClientProvider client={queryClient}>
+				<SessionHarness session={false} />
+			</QueryClientProvider>,
+		);
+		await waitFor(() => {
+			expect(queryClient.getQueryState(["slash-commands", null])?.status).toBe("success");
+		});
+		const textarea = () => screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
+		fireEvent.change(textarea(), {target: {value: "/"}});
+		const home = menuState();
+		view.rerender(
+			<QueryClientProvider client={queryClient}>
+				<SessionHarness session />
+			</QueryClientProvider>,
+		);
+		fireEvent.change(textarea(), {target: {value: ""}});
+		fireEvent.change(textarea(), {target: {value: "/"}});
+		const session = menuState();
+
+		expect({home, session}).toStrictEqual({
+			home: {header: null, labels: ["standup"]},
+			session: {header: null, labels: ["rewind", "standup"]},
+		});
+	});
+
+	it("lists the session-only built-ins ahead of the built-ins when the session directory is unknown", () => {
+		function DisabledHarness() {
+			const slash = useSlashCommands(undefined, false, true);
+			return <Composer variant="session" draftKey="session-alice" onSend={() => {}} {...slash} />;
+		}
+		render(
+			<QueryClientProvider client={new QueryClient()}>
+				<DisabledHarness />
+			</QueryClientProvider>,
+		);
+
+		fireEvent.change(screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"}), {
+			target: {value: "/"},
+		});
+
+		expect(menuState()?.labels).toStrictEqual(
+			[...SESSION_SLASH_COMMANDS, ...BUILTIN_SLASH_COMMANDS].map((command) => command.name),
+		);
 	});
 });

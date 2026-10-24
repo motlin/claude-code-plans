@@ -6,6 +6,7 @@ import {SlashCommandListResponse} from "../src/lib/api/commands";
 import {
 	BUILTIN_SLASH_COMMANDS,
 	CLI_COMMAND_NAMES,
+	SESSION_SLASH_COMMANDS,
 	filterSlashCommands,
 	highlightMatches,
 	isKnownSlashCommand,
@@ -23,10 +24,21 @@ function write(file: string, content: string): void {
 	writeFileSync(file, content);
 }
 
+describe("SESSION_SLASH_COMMANDS", () => {
+	it("holds the built-ins upstream offers only inside a session, which /api/commands leaves out", () => {
+		expect({
+			session: SESSION_SLASH_COMMANDS,
+			inBuiltins: BUILTIN_SLASH_COMMANDS.some((c) => c.name === "rewind"),
+		}).toStrictEqual({
+			session: [{name: "rewind", description: "Rewind the session to an earlier message", source: "builtin"}],
+			inBuiltins: false,
+		});
+	});
+});
+
 describe("BUILTIN_SLASH_COMMANDS", () => {
 	it("uses upstream's strings, hints and aliases, then the local-only built-ins", () => {
 		expect(BUILTIN_SLASH_COMMANDS).toStrictEqual([
-			{name: "rewind", description: "Rewind the session to an earlier message", source: "builtin"},
 			{
 				name: "model",
 				description: "Set the model for this session",

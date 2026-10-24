@@ -1,6 +1,12 @@
 import {useQuery} from "@tanstack/react-query";
+import {useMemo} from "react";
 import {slashCommandsQueryOptions} from "../lib/api/commands";
-import {BUILTIN_SLASH_COMMANDS, type SlashCommand} from "../lib/slash-commands";
+import {
+	BUILTIN_SLASH_COMMANDS,
+	mergeSlashCommands,
+	SESSION_SLASH_COMMANDS,
+	type SlashCommand,
+} from "../lib/slash-commands";
 
 /** Upstream's `y6s5jEXe/X` header for a command list that failed to load. */
 const SLASH_COMMANDS_FAILED_HEADER = "Some commands didn’t load. Type / again to retry.";
@@ -21,12 +27,14 @@ export interface ComposerSlashCommands {
  * built-ins under upstream's error header (`pt`) and refetches when the next "/" opens
  * the menu, as upstream's `retry:false` query does when the menu remounts. A disabled
  * query (no session directory) shows the built-ins under upstream's not-running header.
+ * A `session` composer also lists the session-only built-ins (`/rewind`) first.
  */
-export function useSlashCommands(cwd: string | undefined, enabled = true): ComposerSlashCommands {
+export function useSlashCommands(cwd: string | undefined, enabled = true, session = false): ComposerSlashCommands {
 	const query = useQuery({...slashCommandsQueryOptions(cwd), enabled, retry: false});
+	const withSession = useSessionCommands(session);
 	if (!enabled) {
 		return {
-			slashCommands: BUILTIN_SLASH_COMMANDS,
+			slashCommands: withSession(BUILTIN_SLASH_COMMANDS),
 			slashMenuHeader: SLASH_COMMANDS_NOT_RUNNING_HEADER,
 			slashCommandsLoading: false,
 			onSlashMenuOpen: undefined,
@@ -34,7 +42,7 @@ export function useSlashCommands(cwd: string | undefined, enabled = true): Compo
 	}
 	if (!query.isError) {
 		return {
-			slashCommands: query.data,
+			slashCommands: query.data === undefined ? undefined : withSession(query.data),
 			slashMenuHeader: undefined,
 			slashCommandsLoading: query.isLoading,
 			onSlashMenuOpen: undefined,
@@ -42,10 +50,25 @@ export function useSlashCommands(cwd: string | undefined, enabled = true): Compo
 	}
 	const {refetch} = query;
 	return {
-		slashCommands: query.data ?? BUILTIN_SLASH_COMMANDS,
+		slashCommands: withSession(query.data ?? BUILTIN_SLASH_COMMANDS),
 		// Upstream drops the header while the retry is in flight.
 		slashMenuHeader: query.isFetching ? undefined : SLASH_COMMANDS_FAILED_HEADER,
 		slashCommandsLoading: false,
 		onSlashMenuOpen: () => void refetch(),
 	};
+}
+
+/** Prepends {@link SESSION_SLASH_COMMANDS} for a session, memoized per list so the menu sees a stable array. */
+function useSessionCommands(session: boolean): (list: readonly SlashCommand[]) => readonly SlashCommand[] {
+	return useMemo(() => {
+		if (!session) return (list) => list;
+		const cache = new WeakMap<readonly SlashCommand[], readonly SlashCommand[]>();
+		return (list) => {
+			const cached = cache.get(list);
+			if (cached !== undefined) return cached;
+			const merged = mergeSlashCommands([SESSION_SLASH_COMMANDS, list]);
+			cache.set(list, merged);
+			return merged;
+		};
+	}, [session]);
 }

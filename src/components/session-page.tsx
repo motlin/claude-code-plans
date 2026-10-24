@@ -571,7 +571,7 @@ function SessionView({
 			}),
 		[hookContext?.permissionMode, transcript.records, composerServerState],
 	);
-	const slashMenu = useSlashCommands(sessionDirectory ?? undefined, Boolean(sessionDirectory));
+	const slashMenu = useSlashCommands(sessionDirectory ?? undefined, Boolean(sessionDirectory), true);
 	const {slashCommands} = slashMenu;
 	const {data: promptHistory} = useQuery({
 		...promptHistoryQueryOptions(sessionId),

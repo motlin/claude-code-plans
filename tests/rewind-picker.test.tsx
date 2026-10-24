@@ -8,7 +8,7 @@ import {sendHerdrRewind} from "../src/lib/api/herdr";
 import {useRewindPicker} from "../src/hooks/use-rewind-shortcut";
 import {registerComposer} from "../src/lib/context-attach";
 import {canOpenRewindPicker, rewindLabel, rewindStepsBack, rewindTurns} from "../src/lib/rewind-picker";
-import {BUILTIN_SLASH_COMMANDS} from "../src/lib/slash-commands";
+import {SESSION_SLASH_COMMANDS} from "../src/lib/slash-commands";
 
 const TURNS = [
 	{uuid: "u1", text: "Rename the button"},
@@ -360,8 +360,8 @@ describe("RewindPicker", () => {
 });
 
 describe("/rewind", () => {
-	it("is a built-in slash command with upstream's description", () => {
-		expect(BUILTIN_SLASH_COMMANDS.find((command) => command.name === "rewind")).toStrictEqual({
+	it("is a session-only built-in slash command with upstream's description", () => {
+		expect(SESSION_SLASH_COMMANDS.find((command) => command.name === "rewind")).toStrictEqual({
 			name: "rewind",
 			description: "Rewind the session to an earlier message",
 			source: "builtin",
