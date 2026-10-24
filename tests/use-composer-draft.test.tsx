@@ -3,7 +3,13 @@
 import {act, cleanup, fireEvent, render, renderHook, screen} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {Composer} from "../src/components/composer";
-import {COMPOSER_DRAFT_DEBOUNCE_MS, composerDraftStorageKey, useComposerDraft} from "../src/hooks/use-composer-draft";
+import {
+	COMPOSER_DRAFT_DEBOUNCE_MS,
+	composerDraftStorageKey,
+	markFailedSend,
+	readFailedSend,
+	useComposerDraft,
+} from "../src/hooks/use-composer-draft";
 import {installLocalStorage} from "./fake-storage";
 
 let storage: ReturnType<typeof installLocalStorage>;
@@ -131,6 +137,61 @@ describe("useComposerDraft", () => {
 		expect({typed, cleared: result.current.text}).toStrictEqual({
 			typed: "Continue Alice's test",
 			cleared: "",
+		});
+	});
+});
+
+describe("failedSend draft marker", () => {
+	it("restores the text of a draft that carries a failedSend marker", () => {
+		storage.setItem("ccp-composer-draft:session-alice", JSON.stringify({text: "hi", failedSend: "hi"}));
+
+		const {result} = renderHook(() => useComposerDraft("session-alice"));
+
+		expect({text: result.current.text, failedSend: readFailedSend("session-alice")}).toStrictEqual({
+			text: "hi",
+			failedSend: "hi",
+		});
+	});
+
+	it("reports a failed send only while the draft text still equals it", () => {
+		storage.setItem("ccp-composer-draft:session-alice", JSON.stringify({text: "hi edited", failedSend: "hi"}));
+		storage.setItem("ccp-composer-draft:session-bob", JSON.stringify({text: "hi"}));
+
+		expect({
+			edited: readFailedSend("session-alice"),
+			unmarked: readFailedSend("session-bob"),
+			missing: readFailedSend("session-carol"),
+		}).toStrictEqual({edited: null, unmarked: null, missing: null});
+	});
+
+	it("writes the marker, keeps it through an equal write and drops it once the text changes", () => {
+		vi.useFakeTimers();
+		const {result} = renderHook(() => useComposerDraft("session-bob"));
+
+		act(() => {
+			markFailedSend("session-bob", "hi");
+		});
+		const marked = storedDrafts();
+		act(() => {
+			result.current.setText("hi");
+			vi.advanceTimersByTime(COMPOSER_DRAFT_DEBOUNCE_MS);
+		});
+		const unchanged = storedDrafts();
+		act(() => {
+			result.current.setText("hi edited");
+			vi.advanceTimersByTime(COMPOSER_DRAFT_DEBOUNCE_MS);
+		});
+		const edited = storedDrafts();
+		act(() => {
+			result.current.setText("hi");
+			vi.advanceTimersByTime(COMPOSER_DRAFT_DEBOUNCE_MS);
+		});
+
+		expect({marked, unchanged, edited, editedBack: storedDrafts()}).toStrictEqual({
+			marked: {"ccp-composer-draft:session-bob": JSON.stringify({text: "hi", failedSend: "hi"})},
+			unchanged: {"ccp-composer-draft:session-bob": JSON.stringify({text: "hi", failedSend: "hi"})},
+			edited: {"ccp-composer-draft:session-bob": JSON.stringify({text: "hi edited"})},
+			editedBack: {"ccp-composer-draft:session-bob": JSON.stringify({text: "hi"})},
 		});
 	});
 });

@@ -149,4 +149,39 @@ describe("send-rejected Try again / Dismiss", () => {
 			value: "Alice's queued prompt",
 		});
 	});
+
+	it("records the rejected prompt as the draft's failedSend", async () => {
+		await sendAndReject(vi.fn<PostPrompt>().mockRejectedValueOnce(boom()));
+
+		await waitFor(() => {
+			expect(localStorage.getItem("ccp-composer-draft:s1")).toBe(JSON.stringify({text: "hi", failedSend: "hi"}));
+		});
+	});
+});
+
+describe("send-rejected card after a reload", () => {
+	it("comes back with the fallback message while the draft still equals failedSend", async () => {
+		localStorage.setItem("ccp-composer-draft:s1", JSON.stringify({text: "hi", failedSend: "hi"}));
+
+		render(<Harness postPrompt={vi.fn<PostPrompt>()} />);
+
+		await waitFor(() => {
+			expect(card()).not.toBeNull();
+		});
+		expect({value: textarea().value, message: screen.getByText("Send failed").tagName}).toStrictEqual({
+			value: "hi",
+			message: "SPAN",
+		});
+	});
+
+	it("stays away once the draft was edited after the failure", async () => {
+		localStorage.setItem("ccp-composer-draft:s1", JSON.stringify({text: "hi edited", failedSend: "hi"}));
+
+		render(<Harness postPrompt={vi.fn<PostPrompt>()} />);
+
+		await waitFor(() => {
+			expect(textarea().value).toBe("hi edited");
+		});
+		expect(card()).toBeNull();
+	});
 });

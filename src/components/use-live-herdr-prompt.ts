@@ -1,4 +1,5 @@
 import {useCallback, useEffect, useRef, useState} from "react";
+import {markFailedSend, readFailedSend} from "../hooks/use-composer-draft";
 import {type DeliveryResult} from "../hooks/use-composer-queue";
 import {isAgentNotReady, sendHerdrPrompt} from "../lib/api/herdr";
 import {type SessionLine} from "../lib/transcript";
@@ -23,7 +24,17 @@ export function useLiveHerdrPrompt(
 
 	useEffect(() => {
 		pendingRecordCountRef.current = null;
-		setState(EMPTY_LIVE_HERDR_PROMPT_STATE);
+		// Upstream's local draft seed: a draft still equal to its failedSend re-records the rejection with the fallback copy.
+		const failedSend = readFailedSend(sessionId);
+		setState(
+			failedSend === null
+				? EMPTY_LIVE_HERDR_PROMPT_STATE
+				: {
+						isPending: false,
+						prompt: "",
+						rejection: {prompt: failedSend, message: SEND_FAILED_MESSAGE, nonResendable: false},
+					},
+		);
 	}, [sessionId]);
 
 	useEffect(() => {
@@ -58,10 +69,11 @@ export function useLiveHerdrPrompt(
 					prompt: "",
 					rejection: {
 						prompt,
-						message: error instanceof Error && error.message !== "" ? error.message : "Send failed",
+						message: error instanceof Error && error.message !== "" ? error.message : SEND_FAILED_MESSAGE,
 						nonResendable: false,
 					},
 				});
+				markFailedSend(sessionId, prompt);
 				onRejectedRef.current?.(prompt);
 				return "failed";
 			}
@@ -96,6 +108,9 @@ function promptText(content: string | readonly {type: string; text?: unknown}[])
 		.flatMap((block) => (block.type === "text" && typeof block.text === "string" ? [block.text] : []))
 		.join("\n");
 }
+
+/** Upstream `MjKIej4fmp`, for a rejection with no error text. */
+const SEND_FAILED_MESSAGE = "Send failed";
 
 /** A send the pane refused: the prompt to put back, herdr's message, and whether Try again can resend it. */
 export interface SendRejection {

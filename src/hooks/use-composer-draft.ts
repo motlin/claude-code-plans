@@ -6,7 +6,10 @@ export const COMPOSER_DRAFT_DEBOUNCE_MS = 150;
 
 const COMPOSER_DRAFT_PREFIX = "ccp-composer-draft:";
 
-const ComposerDraftSchema = z.strictObject({text: z.string()});
+/** `failedSend` is upstream's local-session marker: the prompt herdr rejected, so a reload can show its card again. */
+const ComposerDraftSchema = z.strictObject({text: z.string(), failedSend: z.string().optional()});
+
+type StoredDraft = z.infer<typeof ComposerDraftSchema>;
 
 /** `draftKey` is a session id, or `"home"` for the new-session composer. */
 export function composerDraftStorageKey(draftKey: string): string {
@@ -22,28 +25,49 @@ function browserLocalStorage(): Storage | null {
 	}
 }
 
-function readDraft(draftKey: string): string {
+function readStoredDraft(draftKey: string): StoredDraft | null {
 	try {
 		const raw = browserLocalStorage()?.getItem(composerDraftStorageKey(draftKey));
-		if (raw === null || raw === undefined) return "";
+		if (raw === null || raw === undefined) return null;
 		const parsed = ComposerDraftSchema.safeParse(JSON.parse(raw));
-		return parsed.success ? parsed.data.text : "";
+		return parsed.success ? parsed.data : null;
 	} catch {
 		// Drafts are best-effort: storage can be denied or hold corrupt JSON.
-		return "";
+		return null;
 	}
 }
 
-function writeDraft(draftKey: string, text: string): void {
+function readDraft(draftKey: string): string {
+	return readStoredDraft(draftKey)?.text ?? "";
+}
+
+function storeDraft(draftKey: string, draft: StoredDraft): void {
 	try {
 		const storage = browserLocalStorage();
 		if (!storage) return;
 		const key = composerDraftStorageKey(draftKey);
-		if (text.trim() === "") storage.removeItem(key);
-		else storage.setItem(key, JSON.stringify({text}));
+		if (draft.text.trim() === "") storage.removeItem(key);
+		else storage.setItem(key, JSON.stringify(draft));
 	} catch {
 		// Drafts are best-effort: storage can be denied or full.
 	}
+}
+
+/** Keeps the stored `failedSend` only while the text still equals it (upstream `T7` writes `failedSend:false` on an edit). */
+function writeDraft(draftKey: string, text: string): void {
+	const failedSend = readStoredDraft(draftKey)?.failedSend;
+	storeDraft(draftKey, failedSend === text ? {text, failedSend} : {text});
+}
+
+/** Records a rejected prompt in the draft, so the send-rejected card comes back after a reload. */
+export function markFailedSend(draftKey: string, prompt: string): void {
+	storeDraft(draftKey, {text: prompt, failedSend: prompt});
+}
+
+/** The rejected prompt to show again, only while the stored draft text still equals it. */
+export function readFailedSend(draftKey: string): string | null {
+	const draft = readStoredDraft(draftKey);
+	return draft?.failedSend !== undefined && draft.failedSend === draft.text ? draft.failedSend : null;
 }
 
 export interface ComposerDraft {
