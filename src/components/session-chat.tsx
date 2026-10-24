@@ -16,7 +16,7 @@ import React, {
 import {flushSync} from "react-dom";
 import {Bot, FileWarning, GitBranch, Lock, Palette, Plug, Zap} from "lucide-react";
 import {assertNever} from "../lib/assert-never";
-import {isWithdrawnQuestion, type AskedCall} from "../lib/ask-user-question";
+import {isWithdrawnQuestion, questionOutcomeNote, type AskedCall} from "../lib/ask-user-question";
 import {parseAttachSnippets, type AttachSnippet} from "../lib/attach-markers";
 import {ApiErrorCard, ApiErrorMarker, type ApiErrorRecovery} from "./api-error-card";
 import {ErrorCardShell} from "./error-card-shell";
@@ -5057,11 +5057,14 @@ function ToolCallRow({
 				: call.denied === true
 					? "Denied"
 					: "Failed"
-			: backgroundOutcome === "stopped"
-				? "Stopped"
-				: backgroundOutcome === "failed"
-					? "Failed"
-					: null;
+			: call.name === "AskUserQuestion"
+				? // A completed question nobody answered notes why, as upstream does.
+					(questionOutcomeNote(call) ?? null)
+				: backgroundOutcome === "stopped"
+					? "Stopped"
+					: backgroundOutcome === "failed"
+						? "Failed"
+						: null;
 	// A null ink marks an in-flight label, which upstream draws as ShimmerText.
 	const labelClass = call.isError ? ink : busy ? null : isSkill ? "text-secondary" : ink;
 	const isCompletedPaneAgent = paneAgentId !== undefined && !call.isError && !busy;

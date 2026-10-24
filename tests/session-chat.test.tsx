@@ -1129,6 +1129,94 @@ describe("SessionChat failed tool row label", () => {
 		});
 	});
 
+	describe("an AskUserQuestion call nobody answered", () => {
+		const question = (header: string, text: string) => ({
+			header,
+			question: text,
+			options: [{label: "A"}, {label: "B"}],
+		});
+		const unanswered = (
+			questions: {header: string; question: string}[],
+			answers: Record<string, string>,
+			content = "User has answered your questions.",
+		) =>
+			toolResultRecords({name: "AskUserQuestion", input: {questions}}, content, false, {
+				toolUseResult: {questions, answers},
+			});
+		const row = (records: unknown[]) => {
+			const container = renderTranscriptElement(records);
+			const header = container.querySelector(".group\\/tool");
+			return {
+				children:
+					header === null
+						? null
+						: Array.from(header.children, (child) => ({
+								text: child.textContent,
+								className: child.className,
+							})),
+				receipt: container.querySelector("[data-answered-question]") !== null,
+				legacyCard: container.querySelector(".card-outline") !== null,
+			};
+		};
+		const noted = (label: string, note: string) => ({
+			children: [
+				{text: label, className: `truncate min-w-0 ${MUTED_LABEL}`},
+				{text: note, className: "shrink-0 text-body text-secondary"},
+				ROW_CHEVRON,
+			],
+			receipt: false,
+			legacyCard: false,
+		});
+		const dismissedAnswer = "[User dismissed — do not proceed, wait for next instruction]";
+
+		it('draws a single "[No preference]" answer as the row "Asked Color" noted "Skipped", not a receipt', () => {
+			const color = question("Color", "Which color?");
+			expect(row(unanswered([color], {"Which color?": "[No preference]"}))).toStrictEqual(
+				noted("Asked Color", "Skipped"),
+			);
+		});
+
+		it('notes a call replied to in chat "Replied in chat" under its first header', () => {
+			const replied =
+				"[User did not answer this question — they sent a message instead. Treat that message as their response; do not re-ask.]";
+			expect(
+				row(
+					unanswered([question("Fruit", "Which fruit?"), question("Size", "How big?")], {
+						"Which fruit?": replied,
+						"How big?": replied,
+					}),
+				),
+			).toStrictEqual(noted("Asked Fruit", "Replied in chat"));
+		});
+
+		it('notes a dismissed question "Not answered"', () => {
+			expect(row(unanswered([question("Pet", "Which pet?")], {"Which pet?": dismissedAnswer}))).toStrictEqual(
+				noted("Asked Pet", "Not answered"),
+			);
+		});
+
+		it('notes a call whose questions have mixed outcomes "Not answered"', () => {
+			expect(
+				row(
+					unanswered([question("Fruit", "Which fruit?"), question("Size", "How big?")], {
+						"Which fruit?": "[No preference]",
+						"How big?": dismissedAnswer,
+					}),
+				),
+			).toStrictEqual(noted("Asked Fruit", "Not answered"));
+		});
+
+		it('draws the CLI terminal skip (answers: {}) as a plain "Asked G" row with no note and no legacy card', () => {
+			expect(
+				row(unanswered([question("G", "Which game?")], {}, "The user did not answer the questions.")),
+			).toStrictEqual({
+				children: [{text: "Asked G", className: `truncate min-w-0 ${MUTED_LABEL}`}, ROW_CHEVRON],
+				receipt: false,
+				legacyCard: false,
+			});
+		});
+	});
+
 	it('labels a rejection the user explained "Denied" and a bare rejection "Stopped", both in secondary ink', () => {
 		const rejection =
 			"The user doesn't want to proceed with this tool use. The tool use was rejected (eg. if it was a file edit, the new_string was NOT written to the file). To tell you how to proceed, the user said:\nNot now";

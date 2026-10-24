@@ -959,7 +959,12 @@ function doAllAnsweredQuestionRecords(): unknown[] {
 				],
 			},
 		},
-		result("u-answer", "2026-10-18T14:24:54.989Z", "toolu_ask", 'The user answered: "Push them?"="Not yet".'),
+		result(
+			"u-answer",
+			"2026-10-18T14:24:54.989Z",
+			"toolu_ask",
+			'The user answered: "Push them?"="Not yet". Read the answers carefully — they may request clarification, changes, or that you not proceed — and follow what they actually say.',
+		),
 		bash("a-3", "2026-10-18T14:25:02.000Z", "toolu_b1", "Verify the flake fix"),
 		result("u-3", "2026-10-18T14:26:47.000Z", "toolu_b1", "ok"),
 		bash("a-4", "2026-10-18T14:26:51.000Z", "toolu_b2", "Inspect the login item"),

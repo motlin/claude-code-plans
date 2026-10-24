@@ -194,6 +194,7 @@ const DISMISSED_ANSWER_PREFIX = "[User dismissed";
 export interface AskedCall {
 	input: Record<string, unknown>;
 	result?: string | undefined;
+	isError?: boolean | undefined;
 	stopped?: boolean | undefined;
 	denied?: boolean | undefined;
 	resultMeta?: ToolResultMeta | undefined;
@@ -201,9 +202,10 @@ export interface AskedCall {
 
 /**
  * Whether the user turned the question away rather than answering it: they
- * rejected or interrupted the call, or dismissed the prompt, which newer
- * Claude Code records as a "[User dismissed — ...]" answer to every question.
- * Upstream draws such a question as a compact "Asked <header>" step, not a card.
+ * rejected or interrupted the call, dismissed the prompt (newer Claude Code
+ * records a "[User dismissed — ...]" answer to every question), or the call
+ * completed without a single real answer. Upstream draws such a question as a
+ * compact "Asked <header>" step, not a receipt.
  */
 export function isWithdrawnQuestion(call: AskedCall): boolean {
 	if (call.stopped === true || call.denied === true) return true;
@@ -213,7 +215,25 @@ export function isWithdrawnQuestion(call: AskedCall): boolean {
 	const questions = normalizeQuestions(call.input);
 	if (questions === null) return false;
 	const answers = answersFromResultMeta(call.resultMeta, questions) ?? parseAnswerResult(result, questions);
-	return answers?.every((entry) => entry.answer.startsWith(DISMISSED_ANSWER_PREFIX)) === true;
+	if (answers?.every((entry) => entry.answer.startsWith(DISMISSED_ANSWER_PREFIX)) === true) return true;
+	return call.isError !== true && questionOutcomes(call).every((entry) => entry.answer === undefined);
+}
+
+/**
+ * The note upstream appends to a completed call nobody answered: the shared
+ * outcome's word, "Not answered" when the outcomes differ, or none when any
+ * question has no recorded entry at all (the CLI's terminal skip).
+ */
+export function questionOutcomeNote(call: AskedCall): string | undefined {
+	const outcomes = questionOutcomes(call);
+	const kinds = new Set<QuestionOutcome>();
+	for (const entry of outcomes) {
+		if (entry.unanswered === undefined) return undefined;
+		kinds.add(entry.unanswered);
+	}
+	const [kind] = kinds;
+	if (kind === undefined) return undefined;
+	return kinds.size === 1 ? OUTCOME_LABEL[kind] : OUTCOME_LABEL.dismissed;
 }
 
 /** Why a question has no real answer, as upstream classifies its recorded answer text. */
