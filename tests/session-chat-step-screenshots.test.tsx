@@ -392,3 +392,118 @@ describe("tool-row screenshot viewer", () => {
 		});
 	});
 });
+
+/**
+ * Browser-MCP screenshot specimens, shaped like real `~/.claude/projects` records (ids
+ * and tab details anonymised, the jpeg cut to a stub). Upstream draws every tool's
+ * `outputImages` the same way, so these must strip exactly like a Read of a PNG.
+ */
+describe("browser MCP screenshot specimens", () => {
+	/** A navigate call then a screenshot call in one turn, the screenshot returning `screenshotContent`. */
+	function screenshotGroup(
+		navigate: {name: string; input: Record<string, unknown>},
+		screenshot: {name: string; input: Record<string, unknown>},
+		screenshotContent: unknown[],
+	): unknown[] {
+		return [
+			{
+				type: "assistant",
+				uuid: "a1",
+				message: {
+					role: "assistant",
+					content: [
+						{type: "tool_use", id: "t1", ...navigate},
+						{type: "tool_use", id: "t2", ...screenshot},
+					],
+				},
+			},
+			{
+				type: "user",
+				uuid: "r1",
+				parentUuid: "a1",
+				message: {role: "user", content: [{type: "tool_result", tool_use_id: "t1", content: "Navigated."}]},
+			},
+			{
+				type: "user",
+				uuid: "r2",
+				parentUuid: "r1",
+				message: {
+					role: "user",
+					content: [{type: "tool_result", tool_use_id: "t2", content: screenshotContent}],
+				},
+			},
+		];
+	}
+
+	const JPEG = {type: "image", source: {type: "base64", media_type: "image/jpeg", data: "/9j/4AAQ"}};
+
+	/** The text of the expanded group's step row holding the thumbnail: the step label the caption must equal. */
+	function stepLabelOfStrip(container: HTMLElement): string {
+		fireEvent.click(groupToggle(container));
+		const row = container.querySelector("[data-cds-row-media]")?.closest<HTMLElement>('[role="button"]');
+		if (row === null || row === undefined) throw new Error("no step row with a strip");
+		const media = row.querySelector("[data-cds-row-media]");
+		return row.textContent.replace(media?.textContent ?? "", "").trim();
+	}
+
+	it("strips a Claude in Chrome computer screenshot", () => {
+		const records = screenshotGroup(
+			{name: "mcp__claude-in-chrome__navigate", input: {url: "https://example.com", tabId: 1}},
+			{name: "mcp__claude-in-chrome__computer", input: {action: "screenshot", tabId: 1, scale: 0.5}},
+			[
+				{
+					type: "text",
+					text: "Successfully captured screenshot (636x403, jpeg) - ID: ss_test — 0.5-scale view; coordinate frame: 1272x805.",
+				},
+				{
+					type: "text",
+					text: '\n\nTab Context:\n- Executed on tabId: 1\n- Available tabs:\n  • tabId 1: "Example" ("https://example.com")',
+				},
+				JPEG,
+			],
+		);
+		const {toolResultMap} = processTranscript(records);
+		expect(toolResultMap.get("t2")?.images).toStrictEqual([{mimeType: "image/jpeg", data: "/9j/4AAQ"}]);
+
+		const container = renderTranscript(records);
+		expect(mediaSlots(container)).toStrictEqual([
+			{
+				className: MEDIA_SLOT_CLASS,
+				title: "",
+				labels: ["Screenshot"],
+				captions: ["Used claude-in-chrome: computer"],
+				srcs: ["data:image/jpeg;base64,/9j/4AAQ"],
+				loading: [null],
+				inStepRow: false,
+			},
+		]);
+		expect(stepLabelOfStrip(container)).toBe("Used claude-in-chrome: computer");
+	});
+
+	it("strips a Chrome DevTools take_screenshot", () => {
+		const records = screenshotGroup(
+			{
+				name: "mcp__plugin_chrome-devtools-mcp_chrome-devtools__navigate_page",
+				input: {url: "https://example.com"},
+			},
+			{name: "mcp__plugin_chrome-devtools-mcp_chrome-devtools__take_screenshot", input: {pageId: 2}},
+			[{type: "text", text: "Took a screenshot of the current page's viewport."}, JPEG],
+		);
+		const {toolResultMap} = processTranscript(records);
+		expect(toolResultMap.get("t2")?.images).toStrictEqual([{mimeType: "image/jpeg", data: "/9j/4AAQ"}]);
+
+		const container = renderTranscript(records);
+		expect(mediaSlots(container)).toStrictEqual([
+			{
+				className: MEDIA_SLOT_CLASS,
+				title: "",
+				labels: ["Screenshot"],
+				captions: ["Used chrome-devtools: take screenshot"],
+				srcs: ["data:image/jpeg;base64,/9j/4AAQ"],
+				loading: [null],
+				inStepRow: false,
+			},
+		]);
+		expect(stepLabelOfStrip(container)).toBe("Used chrome-devtools: take screenshot");
+	});
+});
