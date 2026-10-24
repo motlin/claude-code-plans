@@ -38,11 +38,15 @@ const ITEM_HEIGHT: Record<SlashMenuItem["type"], number> = {
 	command: ROW_HEIGHT,
 	"section-header": 23,
 	separator: 9,
+	loading: ROW_HEIGHT,
 };
 
 /* Upstream's `section-header` and `separator` rows at compact density. */
 const SECTION_HEADER_CLASS = "px-2 py-1 text-[12px]/[15px] font-medium text-ink-muted";
 const SEPARATOR_CLASS = "mx-2 my-1 h-px bg-border";
+/* Upstream's iconless `loading` row: one 128×16 skeleton bar (`eO` rows:1 icon:false). */
+const LOADING_ROW_CLASS = "flex h-6 items-center gap-1.5 px-2";
+const LOADING_BAR_CLASS = "h-4 w-32 rounded bg-fill-ghost-hover animate-pulse motion-reduce:animate-none";
 /* The popup's `max-h-96`, used until the scroller has a measured height. */
 const FALLBACK_VIEWPORT_HEIGHT = 384;
 
@@ -203,6 +207,13 @@ export function SlashCommandMenu({
 					}
 					if (item.type === "separator")
 						return <div key={`separator:${index}`} className={SEPARATOR_CLASS} />;
+					if (item.type === "loading") {
+						return (
+							<div key={`loading:${index}`} data-testid="slash-loading-row" className={LOADING_ROW_CLASS}>
+								<div className={LOADING_BAR_CLASS} />
+							</div>
+						);
+					}
 					const {command} = item;
 					const alias = matchingAlias(command, query);
 					return (

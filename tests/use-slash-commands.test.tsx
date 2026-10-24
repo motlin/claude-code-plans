@@ -78,6 +78,45 @@ describe("useSlashCommands", () => {
 		});
 	});
 
+	it("replaces the list with upstream's single skeleton row while /api/commands is pending", async () => {
+		let resolve: (response: Response) => void = () => {};
+		vi.stubGlobal(
+			"fetch",
+			vi.fn<typeof fetch>(
+				async () =>
+					new Promise<Response>((r) => {
+						resolve = r;
+					}),
+			),
+		);
+		const queryClient = new QueryClient();
+		render(
+			<QueryClientProvider client={queryClient}>
+				<Harness />
+			</QueryClientProvider>,
+		);
+		const textarea = screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
+
+		fireEvent.change(textarea, {target: {value: "/"}});
+		const menu = screen.getByRole("menu", {name: "Slash commands"});
+		const loading = {
+			children: [...menu.children].map((child) => child.outerHTML),
+			menuitems: menu.querySelectorAll('[role="menuitem"]').length,
+		};
+
+		resolve(Response.json(LOADED));
+		await waitFor(() => {
+			expect(menuState()?.labels).toStrictEqual(["standup"]);
+		});
+
+		expect(loading).toStrictEqual({
+			children: [
+				'<div data-testid="slash-loading-row" class="flex h-6 items-center gap-1.5 px-2"><div class="h-4 w-32 rounded bg-fill-ghost-hover animate-pulse motion-reduce:animate-none"></div></div>',
+			],
+			menuitems: 0,
+		});
+	});
+
 	it("passes the loaded list through without a header", async () => {
 		vi.stubGlobal(
 			"fetch",

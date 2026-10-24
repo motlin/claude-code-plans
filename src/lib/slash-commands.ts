@@ -30,9 +30,10 @@ export interface SlashCommand {
 export type SlashMenuItem =
 	| {type: "command"; command: SlashCommand}
 	| {type: "section-header"; label: string}
-	| {type: "separator"};
+	| {type: "separator"}
+	| {type: "loading"};
 
-/** Upstream's `bB`: ↑/↓ skip headers and separators. */
+/** Upstream's `bB`: ↑/↓ skip headers, separators and the loading row. */
 function isSelectableSlashItem(item: SlashMenuItem): item is {type: "command"; command: SlashCommand} {
 	return item.type === "command";
 }

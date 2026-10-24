@@ -173,6 +173,8 @@ interface ComposerProps {
 	slashCommands?: readonly SlashCommand[] | undefined;
 	/** Upstream's explanatory section header drawn above the "/" rows, e.g. when the command list didn't load. */
 	slashMenuHeader?: string | undefined;
+	/** The "/" list is still loading: the menu shows upstream's single skeleton row instead of commands. */
+	slashCommandsLoading?: boolean | undefined;
 	/** Called each time a "/" trigger opens the menu, so a failed command list can retry. */
 	onSlashMenuOpen?: (() => void) | undefined;
 	/** Settings allow launching in Bypass permissions mode. */
@@ -487,6 +489,7 @@ export function Composer({
 	environment,
 	slashCommands = NO_COMMANDS,
 	slashMenuHeader,
+	slashCommandsLoading = false,
 	onSlashMenuOpen,
 	bypassPermissionsAllowed = false,
 	live,
@@ -626,12 +629,16 @@ export function Composer({
 	useEffect(() => {
 		if (slashTyped) onSlashMenuOpenRef.current?.();
 	}, [slashTyped]);
-	const matches = slash === null || slashDismissed ? [] : filterSlashCommands(slashCommands, slash.query);
-	const slashOpen = matches.length > 0;
-	const slashItems: SlashMenuItem[] = [
-		...(slashMenuHeader === undefined ? [] : [{type: "section-header" as const, label: slashMenuHeader}]),
-		...matches.map((command) => ({type: "command" as const, command})),
-	];
+	const slashActive = slash !== null && !slashDismissed;
+	const matches = slashActive ? filterSlashCommands(slashCommands, slash.query) : [];
+	const slashLoading = slashActive && slashCommandsLoading;
+	const slashOpen = slashLoading || matches.length > 0;
+	const slashItems: SlashMenuItem[] = slashLoading
+		? [{type: "loading"}]
+		: [
+				...(slashMenuHeader === undefined ? [] : [{type: "section-header" as const, label: slashMenuHeader}]),
+				...matches.map((command) => ({type: "command" as const, command})),
+			];
 	// A mid-line slash opens with nothing highlighted (-1), as upstream's `startsUnselected` does.
 	const highlighted =
 		highlight.key === slashKey

@@ -8,6 +8,8 @@ const SLASH_COMMANDS_FAILED_HEADER = "Some commands didn’t load. Type / again 
 export interface ComposerSlashCommands {
 	slashCommands: readonly SlashCommand[] | undefined;
 	slashMenuHeader: string | undefined;
+	/** The list is still being fetched: upstream's `ft` replaces the whole menu with one skeleton row. */
+	slashCommandsLoading: boolean;
 	onSlashMenuOpen: (() => void) | undefined;
 }
 
@@ -18,12 +20,20 @@ export interface ComposerSlashCommands {
  */
 export function useSlashCommands(cwd: string | undefined, enabled = true): ComposerSlashCommands {
 	const query = useQuery({...slashCommandsQueryOptions(cwd), enabled, retry: false});
-	if (!query.isError) return {slashCommands: query.data, slashMenuHeader: undefined, onSlashMenuOpen: undefined};
+	if (!query.isError) {
+		return {
+			slashCommands: query.data,
+			slashMenuHeader: undefined,
+			slashCommandsLoading: query.isLoading,
+			onSlashMenuOpen: undefined,
+		};
+	}
 	const {refetch} = query;
 	return {
 		slashCommands: query.data ?? BUILTIN_SLASH_COMMANDS,
 		// Upstream drops the header while the retry is in flight.
 		slashMenuHeader: query.isFetching ? undefined : SLASH_COMMANDS_FAILED_HEADER,
+		slashCommandsLoading: false,
 		onSlashMenuOpen: () => void refetch(),
 	};
 }
