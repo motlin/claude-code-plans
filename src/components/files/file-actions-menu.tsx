@@ -32,7 +32,7 @@ export function isEditableText(path: string): boolean {
 }
 
 /** `vscode://file/<abs>`, plus `:<line>` to open the file at that line. */
-export function vscodeFileUrl(path: string, line?: number): string {
+function vscodeFileUrl(path: string, line?: number): string {
 	const url = vscodeFolderUrl(path);
 	return line === undefined ? url : `${url}:${line}`;
 }
@@ -125,6 +125,61 @@ interface FileActionsMenuItemsProps {
 	onOpenInDefaultApp?: (() => void) | undefined;
 }
 
+/** Upstream `hn`'s `revealItem`: a sibling row after Open in ▸, never an Open in ▸ target. */
+export function ShowInFinderItem({path}: {path: string}) {
+	const toast = useToast();
+	return (
+		<MenuItem
+			onSelect={() => {
+				revealFileInFinder(path).catch(() => {
+					toast({
+						kind: "error",
+						message: "Couldn’t show this in Finder. It may have been deleted or moved.",
+					});
+				});
+			}}
+		>
+			Show in Finder
+		</MenuItem>
+	);
+}
+
+interface OpenInSubmenuProps {
+	path: string;
+	line?: number | undefined;
+	isDirectory?: boolean;
+	/** Open in ▸ Files pane, or undefined to omit it. */
+	onOpenInFilesPane?: (() => void) | undefined;
+	/** Open in ▸ Default app, or undefined to omit it. */
+	onOpenInDefaultApp?: (() => void) | undefined;
+}
+
+/** Upstream `hn`'s `editorItems`: editors, then ─ and the extra targets; omitted when empty. */
+export function OpenInSubmenu({
+	path,
+	line,
+	isDirectory = false,
+	onOpenInFilesPane,
+	onOpenInDefaultApp,
+}: OpenInSubmenuProps) {
+	const showEditor = isDirectory || isEditableText(path);
+	const showExtra = onOpenInFilesPane !== undefined || onOpenInDefaultApp !== undefined;
+	if (!showEditor && !showExtra) return null;
+	return (
+		<MenuSub>
+			<MenuSubTrigger>Open in</MenuSubTrigger>
+			<MenuSubContent>
+				{showEditor && (
+					<MenuItem onSelect={() => window.open(vscodeFileUrl(path, line), "_self")}>VS Code</MenuItem>
+				)}
+				{showEditor && showExtra && <MenuSeparator />}
+				{onOpenInFilesPane !== undefined && <MenuItem onSelect={onOpenInFilesPane}>Files pane</MenuItem>}
+				{onOpenInDefaultApp !== undefined && <MenuItem onSelect={onOpenInDefaultApp}>Default app</MenuItem>}
+			</MenuSubContent>
+		</MenuSub>
+	);
+}
+
 export function FileActionsMenuItems({
 	path,
 	cwd,
@@ -138,14 +193,11 @@ export function FileActionsMenuItems({
 	onOpenInFilesPane,
 	onOpenInDefaultApp,
 }: FileActionsMenuItemsProps) {
-	const toast = useToast();
 	const relPath = relativeToCwd(path, cwd);
-	const showEditor = isDirectory || isEditableText(path);
 	const showFilesPane =
 		onOpenInFilesPane !== undefined && surface === "transcript" && FILES_PANE_EXTENSION.test(path);
 	const showDefaultApp =
 		onOpenInDefaultApp !== undefined && surface === "transcript" && !isDirectory && relPath !== null;
-	const showOpenIn = showEditor || showFilesPane || showDefaultApp;
 	return (
 		<>
 			{separatorBefore && <MenuSeparator />}
@@ -162,33 +214,14 @@ export function FileActionsMenuItems({
 			{!gone && (
 				<>
 					<MenuSeparator />
-					{showOpenIn && (
-						<MenuSub>
-							<MenuSubTrigger>Open in</MenuSubTrigger>
-							<MenuSubContent>
-								{showEditor && (
-									<MenuItem onSelect={() => window.open(vscodeFileUrl(path, line), "_self")}>
-										VS Code
-									</MenuItem>
-								)}
-								{showEditor && (showFilesPane || showDefaultApp) && <MenuSeparator />}
-								{showFilesPane && <MenuItem onSelect={onOpenInFilesPane}>Files pane</MenuItem>}
-								{showDefaultApp && <MenuItem onSelect={onOpenInDefaultApp}>Default app</MenuItem>}
-							</MenuSubContent>
-						</MenuSub>
-					)}
-					<MenuItem
-						onSelect={() => {
-							revealFileInFinder(path).catch(() => {
-								toast({
-									kind: "error",
-									message: "Couldn’t show this in Finder. It may have been deleted or moved.",
-								});
-							});
-						}}
-					>
-						Show in Finder
-					</MenuItem>
+					<OpenInSubmenu
+						path={path}
+						line={line}
+						isDirectory={isDirectory}
+						onOpenInFilesPane={showFilesPane ? onOpenInFilesPane : undefined}
+						onOpenInDefaultApp={showDefaultApp ? onOpenInDefaultApp : undefined}
+					/>
+					<ShowInFinderItem path={path} />
 				</>
 			)}
 		</>

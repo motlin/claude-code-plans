@@ -270,7 +270,7 @@ describe("tree row context menu", () => {
 			toast,
 			attached: onAttachContext.mock.calls,
 		}).toStrictEqual({
-			rows: ["Attach as context", "Copy"],
+			rows: ["Attach as context", "Copy", "─", "Open in", "Show in Finder"],
 			copyRows: ["Absolute path", "Relative path", "Filename"],
 			copied: [[`${CWD}/README.md`]],
 			toast: "Copied to clipboard.",
@@ -419,7 +419,7 @@ describe("tab context menu", () => {
 });
 
 describe("viewer context menu", () => {
-	it("adds Copy file contents, Download file and Open in ▸ {VS Code, Finder}", async () => {
+	it("adds Copy file contents, Download file, Open in ▸ {VS Code} and a sibling Show in Finder", async () => {
 		const open = vi.spyOn(window, "open").mockReturnValue(null);
 		render(wrap(<FileView path={AGENT} cwd={CWD} onAttachContext={() => {}} />));
 		const viewer = await waitFor(() => {
@@ -435,8 +435,7 @@ describe("viewer context menu", () => {
 
 		fireEvent.contextMenu(viewer, {clientX: 10, clientY: 10});
 		await waitFor(() => menuRows());
-		openSubmenu("Open in");
-		clickItem("Finder");
+		clickItem("Show in Finder");
 		await waitFor(() => {
 			expect(fetchCalls.some((call) => call.url === "/api/reveal-in-finder")).toBe(true);
 		});
@@ -456,12 +455,48 @@ describe("viewer context menu", () => {
 			revealBody: reveal?.init?.body,
 			copied: vi.mocked(writeClipboardText).mock.calls,
 		}).toStrictEqual({
-			rows: ["Attach as context", "Copy", "Copy file contents", "Download file", "─", "Open in"],
-			openInRows: ["VS Code", "Finder"],
+			rows: [
+				"Attach as context",
+				"Copy",
+				"Copy file contents",
+				"Download file",
+				"─",
+				"Open in",
+				"Show in Finder",
+			],
+			openInRows: ["VS Code"],
 			opened: [["vscode://file/home/alice/project/src/agent.ts:1", "_self"]],
 			revealBody: JSON.stringify({path: AGENT}),
 			copied: [[AGENT_SOURCE]],
 		});
+	});
+
+	it("toasts upstream's reveal error when Show in Finder fails", async () => {
+		const stubbed = vi.mocked(fetch);
+		const respond = stubbed.getMockImplementation();
+		stubbed.mockImplementation(async (input, init) => {
+			if (input === "/api/reveal-in-finder") {
+				return Promise.resolve(Response.json({error: "File not found"}, {status: 404}));
+			}
+			return respond === undefined ? Promise.reject(new Error("no stub")) : respond(input, init);
+		});
+		render(wrap(<FileView path={AGENT} cwd={CWD} onAttachContext={() => {}} />));
+		const viewer = await waitFor(() => {
+			const element = document.querySelector<HTMLElement>("[data-file-viewer]");
+			if (!element?.querySelector("#L1")) throw new Error("not loaded");
+			return element;
+		});
+
+		fireEvent.contextMenu(viewer, {clientX: 10, clientY: 10});
+		await waitFor(() => menuRows());
+		clickItem("Show in Finder");
+		const toast = await waitFor(() => {
+			const message = document.querySelector("[data-toast-message]");
+			if (message === null) throw new Error("no toast");
+			return message.textContent;
+		});
+
+		expect(toast).toBe("Couldn’t show this in Finder. It may have been deleted or moved.");
 	});
 
 	it("hides Copy ▸ Relative path for a file outside the cwd, as upstream's Xu does", async () => {
@@ -679,6 +714,22 @@ describe("handleRevealInFinder", () => {
 		}).toStrictEqual({
 			statuses: [200, 403, 400],
 			revealed: [[join(root, "allowed", "alice.ts")]],
+		});
+	});
+
+	it("reveals an allowed directory, and 404s a missing path", async () => {
+		const revealPath = vi.fn<(path: string) => Promise<void>>(async () => {});
+		const directory = await reveal({path: join(root, "allowed")}, revealPath);
+		const missing = await reveal({path: join(root, "allowed", "gone.ts")}, revealPath);
+
+		expect({
+			statuses: [directory.status, missing.status],
+			bodies: [await directory.json(), await missing.json()],
+			revealed: revealPath.mock.calls,
+		}).toStrictEqual({
+			statuses: [200, 404],
+			bodies: [{ok: true}, {error: "File not found"}],
+			revealed: [[join(root, "allowed")]],
 		});
 	});
 });

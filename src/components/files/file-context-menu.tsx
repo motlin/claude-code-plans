@@ -1,12 +1,17 @@
 import {useQuery, useQueryClient} from "@tanstack/react-query";
 
-import {fileContentUrl, fileViewQueryOptions, revealFileInFinder} from "../../lib/api/file";
+import {fileContentUrl, fileViewQueryOptions} from "../../lib/api/file";
 import type {AttachContextHandler, ContextAttachment} from "../../lib/context-attach";
 import type {FileTabsAction} from "../../lib/file-tabs";
 import {requestFindInFile} from "../../lib/find-in-file-request";
-import {useToast} from "../toast-context";
-import {CopySubmenu, useCopyToClipboard, vscodeFileUrl} from "./file-actions-menu";
-import {MenuItem, MenuSeparator, MenuSub, MenuSubContent, MenuSubTrigger} from "../ui/menu";
+import {
+	CopySubmenu,
+	FileActionsMenuItems,
+	OpenInSubmenu,
+	ShowInFinderItem,
+	useCopyToClipboard,
+} from "./file-actions-menu";
+import {MenuItem, MenuSeparator} from "../ui/menu";
 import {mentionPath, relativeToCwd} from "./mention-path";
 
 /*
@@ -54,13 +59,14 @@ interface TreeRowMenuItemsProps {
 	onAttachContext: AttachContextHandler | undefined;
 }
 
+/** Upstream `En`'s desktop rows: Attach as context · Copy ▸ · ─ · Open in ▸ · Show in Finder. */
 export function TreeRowMenuItems({path, cwd, isDirectory, onAttachContext}: TreeRowMenuItemsProps) {
-	const mention = mentionPath(path, cwd);
 	return (
-		<SharedItems
+		<FileActionsMenuItems
 			path={path}
 			cwd={cwd}
-			attachment={() => ({kind: "file", path: `${mention}${isDirectory ? "/" : ""}`})}
+			isDirectory={isDirectory}
+			surface="file_browser"
 			onAttachContext={onAttachContext}
 		/>
 	);
@@ -178,12 +184,6 @@ export function ViewerMenuItems({
 	onAttachContext,
 	attachShortcut,
 }: ViewerMenuItemsProps) {
-	const toast = useToast();
-	const revealInFinder = () => {
-		revealFileInFinder(path).catch(() => {
-			toast({kind: "error", message: "Couldn’t reveal the file in Finder."});
-		});
-	};
 	return (
 		<>
 			<SharedItems
@@ -196,13 +196,8 @@ export function ViewerMenuItems({
 			<CopyContentsItem content={content} />
 			<DownloadItem path={path} />
 			<MenuSeparator />
-			<MenuSub>
-				<MenuSubTrigger>Open in</MenuSubTrigger>
-				<MenuSubContent>
-					<MenuItem onSelect={() => window.open(vscodeFileUrl(path, line), "_self")}>VS Code</MenuItem>
-					<MenuItem onSelect={revealInFinder}>Finder</MenuItem>
-				</MenuSubContent>
-			</MenuSub>
+			<OpenInSubmenu path={path} line={line} />
+			<ShowInFinderItem path={path} />
 		</>
 	);
 }

@@ -85,8 +85,8 @@ const defaultRevealDependencies: RevealInFinderDependencies = {
 };
 
 /**
- * Reveal one file in Finder (`open -R`) for the Files viewer's Open in ▸.
- * The path must resolve, symlinks included, to a regular file under the same
+ * Reveal one file or folder in Finder (`open -R`) for Show in Finder. The
+ * path must resolve, symlinks included, to an existing entry under the same
  * roots the file viewer is allowed to read.
  */
 export async function handleRevealInFinder(
@@ -101,11 +101,11 @@ export async function handleRevealInFinder(
 		return Response.json({error: z.prettifyError(parsed.error)}, {status: 400});
 	}
 
-	const {FileServingError, statAllowedFile} = await import("./file-serving");
+	const {FileServingError, resolveAllowedEntry} = await import("./file-serving");
 	let resolvedPath: string;
 	try {
 		const roots = await dependencies.resolveRoots();
-		resolvedPath = (await statAllowedFile(parsed.data.path, dependencies.configPath, roots)).path;
+		resolvedPath = await resolveAllowedEntry(parsed.data.path, dependencies.configPath, roots);
 	} catch (error) {
 		if (error instanceof FileServingError) {
 			return Response.json({error: error.message}, {status: error.status});

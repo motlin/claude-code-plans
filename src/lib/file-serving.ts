@@ -77,6 +77,18 @@ export async function statAllowedFile(
 	};
 }
 
+/**
+ * Resolve one existing allow-listed path, file or directory, symlinks
+ * included, for Show in Finder, which upstream allows on folders too.
+ */
+export async function resolveAllowedEntry(
+	requestedPath: string,
+	configPath?: string,
+	defaultRoots: readonly string[] = [],
+): Promise<string> {
+	return resolveAllowedPath(requestedPath, configPath, defaultRoots);
+}
+
 /** Resolve every symlink in the longest existing prefix of `path`, keeping the missing rest as written. */
 async function realpathOfExistingPrefix(path: string): Promise<string> {
 	try {
