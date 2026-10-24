@@ -621,7 +621,7 @@ describe("summarizeToolCallsStructured", () => {
 		expect(summarizeToolCallsStructured(calls)).toEqual([{verb: "Used", rest: "2 tools"}]);
 	});
 
-	it("gives TodoWrite and ExitPlanMode their own segments and counts the rest as tools", () => {
+	it("gives TodoWrite its own segment and counts the rest, ExitPlanMode included, as tools", () => {
 		expect({
 			todoWrite: summarizeToolCallsStructured([
 				{name: "TodoWrite", input: {todos: []}},
@@ -636,7 +636,7 @@ describe("summarizeToolCallsStructured", () => {
 		}).toEqual({
 			todoWrite: [{verb: "Updated", rest: "todos"}],
 			enterPlanMode: [{verb: "Used", rest: "a tool"}],
-			exitPlanMode: [{verb: "Proposed", rest: "a plan"}],
+			exitPlanMode: [{verb: "Used", rest: "2 tools"}],
 			cronCreate: [{verb: "Used", rest: "a tool"}],
 		});
 	});

@@ -55,7 +55,7 @@ describe("group label: tool categories", () => {
 		{calls: [tool("WebSearch"), tool("WebSearch"), tool("WebFetch")], expected: "Browsed the web, fetched a page"},
 		{calls: [tool("TodoWrite"), tool("TodoWrite"), bash()], expected: "Updated todos, ran a command"},
 		{calls: [tool("Grep"), tool("Grep"), tool("Glob")], expected: "Searched code, found files"},
-		{calls: [tool("ExitPlanMode"), tool("Agent"), tool("Task")], expected: "Proposed a plan, ran 2 agents"},
+		{calls: [tool("ExitPlanMode"), tool("Agent"), tool("Task")], expected: "Ran 2 agents, used a tool"},
 		{calls: [tool("PowerShell"), bash()], expected: "Ran 2 commands"},
 		{
 			calls: [

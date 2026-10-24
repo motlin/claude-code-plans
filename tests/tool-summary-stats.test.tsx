@@ -113,6 +113,12 @@ function statSpans(html: string): {segments: string[]; srOnly: string | null} {
 	};
 }
 
+describe("ExitPlanMode in a summary", () => {
+	it("folds into the generic tool segment, since upstream never groups ExitPlanMode", () => {
+		expect(summarizeToolCalls([{name: "ExitPlanMode", input: {plan: "# Plan"}}])).toBe("used a tool");
+	});
+});
+
 describe("summarizeToolCallStats", () => {
 	it("counts failed calls and suffixes the bash segment", () => {
 		expect(

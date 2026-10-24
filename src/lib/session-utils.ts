@@ -302,7 +302,6 @@ const CATEGORY_BY_TOOL = {
 	Agent: "agent",
 	Task: "agent",
 	TodoWrite: "todo",
-	ExitPlanMode: "planexit",
 } as const;
 
 type ToolCategory = (typeof CATEGORY_BY_TOOL)[keyof typeof CATEGORY_BY_TOOL];
@@ -329,7 +328,6 @@ const CATEGORY_LABELS: Record<ToolCategory, SegmentLabel> = {
 	webfetch: {verb: "Fetched", one: "a page", many: "{n} pages"},
 	agent: {verb: "Ran", one: "an agent", many: "{n} agents"},
 	todo: {verb: "Updated", one: "todos", many: "todos"},
-	planexit: {verb: "Proposed", one: "a plan", many: "a plan"},
 };
 
 const OTHER_TOOLS_LABEL: SegmentLabel = {verb: "Used", one: "a tool", many: "{n} tools"};
