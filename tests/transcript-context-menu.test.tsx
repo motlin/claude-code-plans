@@ -1,13 +1,17 @@
 // @vitest-environment jsdom
 
+import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {cleanup, fireEvent, render, screen} from "@testing-library/react";
 import type {ReactNode} from "react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
+import {FileRefsProvider} from "../src/components/file-refs";
 import {SessionChat} from "../src/components/session-chat";
+import {ToastProvider} from "../src/components/toast";
 import {DensityScope} from "../src/components/ui/density";
 import {type TranscriptActions, TranscriptActionsContext} from "../src/components/transcript-actions-context";
 import {writeClipboardText} from "../src/lib/clipboard";
+import type {FileRef} from "../src/lib/file-refs";
 import {type ComposerHandle, getContextChips, registerComposer, takeContextChips} from "../src/lib/context-attach";
 import {processTranscript} from "../src/lib/transcript";
 
@@ -79,8 +83,8 @@ const RECORDS: unknown[] = [
 	},
 ];
 
-function renderChat(wrapper?: (children: ReactNode) => ReactNode): HTMLElement {
-	const {lines, toolResultMap} = processTranscript(RECORDS);
+function renderChat(wrapper?: (children: ReactNode) => ReactNode, records: unknown[] = RECORDS): HTMLElement {
+	const {lines, toolResultMap} = processTranscript(records);
 	const chat = (
 		<SessionChat
 			sessionId="test-session"
@@ -107,7 +111,8 @@ function openMenuOn(element: Element): HTMLElement {
 function menuRows(menu: HTMLElement): string[] {
 	return [...menu.querySelectorAll('[role="menuitem"], [role="separator"]')].map((row) => {
 		if (row.getAttribute("role") === "separator") return "---";
-		const title = row.querySelector("[data-menu-item-title]")?.textContent ?? "";
+		// Submenu triggers carry their label as plain text.
+		const title = row.querySelector("[data-menu-item-title]")?.textContent ?? row.textContent;
 		const description = row.querySelector("[data-menu-item-description]")?.textContent;
 		return description === undefined ? title : `${title} / ${description}`;
 	});
@@ -350,6 +355,143 @@ describe("transcript context menu on a coarse pointer under 640px", () => {
 			lastRow: "Close",
 			scrim: true,
 			positioner: {position: "fixed", inset: "auto 0 0"},
+		});
+	});
+});
+
+describe("transcript file ref menus", () => {
+	const FILE_RECORDS: unknown[] = [
+		{type: "user", uuid: "user-1", message: {role: "user", content: "Where is the app?"}},
+		{
+			type: "assistant",
+			uuid: "assistant-1",
+			message: {role: "assistant", content: [{type: "text", text: "See `src/app.ts:12`, then run `npm test`."}]},
+		},
+		{
+			type: "assistant",
+			uuid: "assistant-2",
+			message: {
+				role: "assistant",
+				content: [{type: "tool_use", id: "toolu_1", name: "Read", input: {file_path: "/repo/src/app.ts"}}],
+			},
+		},
+		{
+			type: "user",
+			uuid: "user-2",
+			message: {role: "user", content: [{type: "tool_result", tool_use_id: "toolu_1", content: "export {};"}]},
+		},
+	];
+
+	const FILE_ROWS = ["Attach as context", "Copy", "---", "Open in", "Show in Finder"];
+
+	beforeEach(() => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+				if (String(input) !== "/api/file-refs")
+					return Promise.resolve(Response.json({error: "not found"}, {status: 404}));
+				const {paths} = JSON.parse(String(init?.body)) as {paths: string[]};
+				return Promise.resolve(
+					Response.json({
+						statuses: Object.fromEntries(
+							paths.map((path) => [path, path === "/repo/src/app.ts" ? "exists" : "missing"]),
+						),
+					}),
+				);
+			}),
+		);
+	});
+
+	function withFileRefs(cwd: string | undefined) {
+		const client = new QueryClient({defaultOptions: {queries: {retry: false}}});
+		return (children: ReactNode) => (
+			<QueryClientProvider client={client}>
+				<ToastProvider>
+					<FileRefsProvider
+						value={{
+							sessionId: "test-session",
+							cwd,
+							sessionPaths: [],
+							open: vi.fn<(ref: FileRef) => void>(),
+						}}
+					>
+						{children}
+					</FileRefsProvider>
+				</ToastProvider>
+			</QueryClientProvider>
+		);
+	}
+
+	async function findFileRef(container: HTMLElement, selector: string): Promise<Element> {
+		return vi.waitFor(() => find(container, selector));
+	}
+
+	it("opens only the file actions menu on a prose file ref, at the default menu width", async () => {
+		const container = renderChat(withFileRefs("/repo"), FILE_RECORDS);
+		const ref = await findFileRef(container, ".prose-link[data-file-ref]");
+		const menu = openMenuOn(ref);
+
+		expect({
+			rows: menuRows(menu),
+			path: ref.getAttribute("data-file-path"),
+			line: ref.getAttribute("data-file-line"),
+			wide: menu.classList.contains("w-[225px]"),
+		}).toStrictEqual({rows: FILE_ROWS, path: "/repo/src/app.ts", line: "12", wide: false});
+	});
+
+	it("attaches the prose file ref to the composer by its cwd-relative path", async () => {
+		const unregister = registerComposer("test-session", {
+			insertText: vi.fn<ComposerHandle["insertText"]>(),
+			focus: vi.fn<ComposerHandle["focus"]>(),
+		});
+		const container = renderChat(withFileRefs("/repo"), FILE_RECORDS);
+		const menu = openMenuOn(await findFileRef(container, ".prose-link[data-file-ref]"));
+		clickItem(menu, "Attach as context");
+		const chips = getContextChips("test-session").map(({id: _id, ...chip}) => chip);
+		unregister();
+
+		expect(chips).toStrictEqual([{kind: "file", path: "src/app.ts"}]);
+	});
+
+	it("opens the file actions menu, not the tool menu, on a tool row's file path", async () => {
+		const container = renderChat(withFileRefs("/repo"), FILE_RECORDS);
+		fireEvent.click(find(container, "[data-tool-row] [aria-expanded]"));
+		const ref = await findFileRef(container, "[data-tool-row] [data-file-ref]");
+		const menu = openMenuOn(ref);
+
+		expect({rows: menuRows(menu), path: ref.getAttribute("data-file-path")}).toStrictEqual({
+			rows: FILE_ROWS,
+			path: "/repo/src/app.ts",
+		});
+	});
+
+	it("keeps Copy code on plain inline code beside a file ref", async () => {
+		const container = renderChat(withFileRefs("/repo"), FILE_RECORDS);
+		await findFileRef(container, ".prose-link[data-file-ref]");
+		const menu = openMenuOn(find(container, "code", "npm test"));
+
+		expect(menuRows(menu)).toStrictEqual(["Copy code", "---", ...ASSISTANT_ROWS]);
+	});
+
+	it("falls back to the prose menu led by Copy path for a file ref without an absolute path", async () => {
+		const container = renderChat(withFileRefs("/repo"), FILE_RECORDS);
+		const ref = await findFileRef(container, ".prose-link[data-file-ref]");
+		ref.removeAttribute("data-file-path");
+		const menu = openMenuOn(ref);
+		const rows = menuRows(menu);
+		clickItem(menu, "Copy path");
+		await vi.waitFor(() => {
+			expect(writeClipboardText).toHaveBeenCalled();
+		});
+
+		expect({
+			rows,
+			clipboard: vi.mocked(writeClipboardText).mock.calls,
+			toasts: [...document.querySelectorAll("[data-toast-message]")].map((toast) => toast.textContent),
+		}).toStrictEqual({
+			rows: ["Copy path", "---", ...ASSISTANT_ROWS],
+			clipboard: [["src/app.ts:12"]],
+			toasts: [],
 		});
 	});
 });

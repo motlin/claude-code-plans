@@ -137,6 +137,11 @@ function useCheckedOpen(
 	);
 }
 
+/** The surrounding {@link FileRefsProvider}'s working directory, if any. */
+export function useFileRefsCwd(): string | undefined {
+	return useContext(FileRefsContext)?.cwd;
+}
+
 /** The open handler of the surrounding {@link FileRefsProvider}, if any. */
 function useOpenFileRef(): ((ref: FileRef) => void) | null {
 	return useContext(FileRefsContext)?.open ?? null;
@@ -146,6 +151,8 @@ interface FileRefButtonProps {
 	role: "button";
 	tabIndex: 0;
 	"data-file-ref": "";
+	"data-file-path": string;
+	"data-file-line"?: number;
 	onClick: (event: MouseEvent) => void;
 	onKeyDown: (event: KeyboardEvent) => void;
 }
@@ -155,6 +162,8 @@ function fileRefButtonProps(ref: FileRef, open: (ref: FileRef) => void): FileRef
 		role: "button",
 		tabIndex: 0,
 		"data-file-ref": "",
+		"data-file-path": ref.path,
+		...(ref.line === undefined ? {} : {"data-file-line": ref.line}),
 		onClick: (event) => {
 			event.stopPropagation();
 			open(ref);

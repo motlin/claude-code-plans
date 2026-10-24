@@ -4,6 +4,8 @@ import {type ReadAloudStatus, useReadAloud} from "../hooks/use-read-aloud";
 import {writeClipboardText} from "../lib/clipboard";
 import {attachContext} from "../lib/context-attach";
 import {markdownToPlainText} from "../lib/markdown-plain-text";
+import {useFileRefsCwd} from "./file-refs";
+import {FileActionsMenuItems} from "./files/file-actions-menu";
 import {ContextMenu, ContextMenuTrigger, MenuContent, MenuItem, MenuSeparator} from "./ui/menu";
 import {TranscriptActionsContext, type TranscriptMessageRef} from "./transcript-actions-context";
 
@@ -17,11 +19,15 @@ const READ_ALOUD_MENU_LABELS: Record<ReadAloudStatus, string> = {
 /*
  * claude.ai/code's right-click menus on transcript turns: assistant prose,
  * inline code (adds Copy code), links (adds Open in default browser and Copy
- * link), tool rows (Pin and Fork only) and user bubbles (adds Rewind).
+ * link), tool rows (Pin and Fork only) and user bubbles (adds Rewind). A file
+ * ref opens only the shared file actions menu, as on desktop, or, without an
+ * absolute path, the prose menu led by Copy path (upstream's browser `jb`).
  */
 
 type TranscriptMenuTarget =
 	| {kind: "prose"}
+	| {kind: "file"; path: string; line: number | undefined}
+	| {kind: "filePath"; text: string}
 	| {kind: "tool"}
 	| {kind: "code"; text: string}
 	| {kind: "link"; href: string};
@@ -29,6 +35,13 @@ type TranscriptMenuTarget =
 /** What was right-clicked: a tool row, a link, inline code (not a fenced block), or else `fallback`. */
 function resolveMenuTarget(element: Element | null, fallback: "prose" | "tool"): TranscriptMenuTarget {
 	if (element === null) return {kind: fallback};
+	const fileRef = element.closest("[data-file-ref]");
+	if (fileRef !== null) {
+		const path = fileRef.getAttribute("data-file-path");
+		if (path?.startsWith("/") !== true) return {kind: "filePath", text: fileRef.textContent};
+		const line = fileRef.getAttribute("data-file-line");
+		return {kind: "file", path, line: line === null ? undefined : Number(line)};
+	}
 	if (element.closest("[data-tool-row]") !== null) return {kind: "tool"};
 	const link = element.closest<HTMLAnchorElement>("a[href]");
 	if (link !== null) return {kind: "link", href: link.href};
@@ -97,7 +110,8 @@ export function TranscriptMessageMenu({
 				{children}
 			</ContextMenuTrigger>
 			<MenuContent
-				className={MENU_WIDTH[speaker]}
+				// A file menu keeps the default 128px minimum width, as upstream's `Un`.
+				{...(target.kind === "file" ? {} : {className: MENU_WIDTH[speaker]})}
 				finalFocus={
 					keyboardArticle === null
 						? undefined
@@ -161,6 +175,18 @@ function TranscriptMenuItems({
 	readAloud: ReturnType<typeof useReadAloud>;
 }) {
 	const actions = useContext(TranscriptActionsContext);
+	const cwd = useFileRefsCwd();
+	if (target.kind === "file") {
+		return (
+			<FileActionsMenuItems
+				path={target.path}
+				cwd={cwd}
+				{...(target.line === undefined ? {} : {line: target.line})}
+				surface="transcript"
+				onAttachContext={(attachment) => attachContext(sessionId, attachment)}
+			/>
+		);
+	}
 	const pin = (
 		<MenuItem key="pin" {...actionProps(actions.pinChapter, message)}>
 			Pin as chapter
@@ -184,6 +210,18 @@ function TranscriptMenuItems({
 
 	return (
 		<>
+			{target.kind === "filePath" && (
+				<>
+					<MenuItem
+						onSelect={() => {
+							copy(target.text);
+						}}
+					>
+						Copy path
+					</MenuItem>
+					<MenuSeparator />
+				</>
+			)}
 			{target.kind === "code" && (
 				<>
 					<MenuItem
