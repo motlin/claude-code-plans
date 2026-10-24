@@ -13,6 +13,7 @@ import {claudeEventsReducer, emptyClaudeEventsState, type ClaudeEventsAction} fr
 import {titleMatches} from "../../src/lib/search-text";
 import {readStructuredTranscript} from "../../src/lib/structured-transcript";
 import {processTranscript} from "../../src/lib/transcript";
+import {clearTranscriptFileIndexCache} from "../../src/lib/transcript-file-index";
 import {generateTranscript, PERF_SHAPES, type PerfShapeName} from "./fixtures/generate-transcript";
 import {HOT_PATH_FIXED_SHAPES, type HotPathFixedFn, type HotPathFn, type HotPathShapedFn} from "./perf-ids";
 import {assertNever} from "../../src/lib/assert-never";
@@ -42,7 +43,11 @@ async function prepareShaped(fn: HotPathShapedFn, shape: string): Promise<() => 
 
 	switch (fn) {
 		case "readStructuredTranscript":
-			return () => readStructuredTranscript(db.index, sessionId);
+			// Measure the cold read that builds the file index, not the cached window read that follows it.
+			return () => {
+				clearTranscriptFileIndexCache();
+				return readStructuredTranscript(db.index, sessionId);
+			};
 		case "processTranscript": {
 			const {records} = readStructuredTranscript(db.index, sessionId);
 			return () => processTranscript(records);

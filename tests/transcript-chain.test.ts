@@ -1,5 +1,5 @@
 import {describe, expect, it} from "vite-plus/test";
-import {computeAbandoned} from "../src/lib/transcript-chain";
+import {chainSkeleton, computeAbandoned} from "../src/lib/transcript-chain";
 
 /**
  * Tests for `computeAbandoned` in `src/lib/transcript-chain.ts`.
@@ -291,5 +291,55 @@ describe("computeAbandoned", () => {
 				},
 			],
 		});
+	});
+});
+
+describe("chainSkeleton", () => {
+	it("keeps a prompt's chain fields and text and drops every other message body", () => {
+		const promptRecord = {
+			...prompt("p", "s3", "do it", "2026-09-30T13:52:07.635Z"),
+			message: {
+				role: "user",
+				content: [
+					{type: "text", text: "do"},
+					{type: "text", text: "it"},
+				],
+			},
+		};
+
+		expect(chainSkeleton(promptRecord)).toStrictEqual({
+			type: "user",
+			uuid: "p",
+			parentUuid: "s3",
+			isSidechain: false,
+			timestamp: "2026-09-30T13:52:07.635Z",
+			message: {content: "do it"},
+		});
+		expect(chainSkeleton(toolResult("t", "a", "tool-1", "2026-09-30T13:00:00.000Z"))).toStrictEqual({
+			type: "user",
+			uuid: "t",
+			parentUuid: "a",
+			isSidechain: false,
+			timestamp: "2026-09-30T13:00:00.000Z",
+		});
+		expect(chainSkeleton({type: "last-prompt", leafUuid: "a2", sessionId: SESSION})).toStrictEqual({
+			type: "last-prompt",
+			leafUuid: "a2",
+		});
+	});
+
+	it("gives computeAbandoned the same answer as the full records", () => {
+		const records = [
+			...chapterOneHead(),
+			{...prompt("meta", "s3", "Caveat: local command output", "2026-09-30T13:50:00.000Z"), isMeta: true},
+			prompt("ch2", "s3", "do chapter 2", "2026-09-30T13:52:07.635Z"),
+			assistantToolUse("a2", "ch2", "tool-1", "2026-09-30T13:52:08.000Z", "msg_a2"),
+			toolResult("t2", "a2", "tool-1", "2026-09-30T13:52:09.000Z"),
+			prompt("ch3", "s3", "do chapter 3", "2026-09-30T13:52:15.980Z"),
+			assistantText("a3", "ch3", "Chapter 3 is ready.", "2026-09-30T14:00:00.000Z"),
+		];
+
+		expect(computeAbandoned(records.map(chainSkeleton))).toStrictEqual(computeAbandoned(records));
+		expect(computeAbandoned(records).hidden).toStrictEqual(new Set(["ch2", "a2", "t2"]));
 	});
 });

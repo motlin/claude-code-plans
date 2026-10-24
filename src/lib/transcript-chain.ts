@@ -79,6 +79,23 @@ function isPrompt(record: TranscriptRecord): boolean {
 	return text !== undefined && text.trim() !== "" && !text.startsWith("<task-notification");
 }
 
+const SKELETON_FIELDS = ["type", "uuid", "parentUuid", "isSidechain", "isMeta", "timestamp", "leafUuid"] as const;
+
+/**
+ * The part of a record `computeAbandoned` reads, so a cache can keep a whole
+ * file's chain inputs without holding every message body. A prompt keeps only
+ * its text; every other record drops `message`, which `computeAbandoned` reads
+ * for nothing but prompt detection.
+ */
+export function chainSkeleton(record: TranscriptRecord): TranscriptRecord {
+	const skeleton: TranscriptRecord = {};
+	for (const field of SKELETON_FIELDS) {
+		if (Object.hasOwn(record, field)) skeleton[field] = record[field];
+	}
+	if (isPrompt(record)) skeleton["message"] = {content: promptText(record)};
+	return skeleton;
+}
+
 function findLeaf(byUuid: Map<string, TranscriptRecord>, records: TranscriptRecord[]): string | undefined {
 	for (const record of records.toReversed()) {
 		if (record["type"] !== "last-prompt") {

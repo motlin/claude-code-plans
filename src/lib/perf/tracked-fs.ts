@@ -1,4 +1,4 @@
-import {createReadStream, readFileSync, type ReadStream} from "node:fs";
+import {createReadStream, readFileSync, readSync, type ReadStream} from "node:fs";
 import {currentPerfCounters} from "./server-scope";
 
 /**
@@ -39,4 +39,24 @@ export function trackedReadFileSync(path: string): string {
 		counters.jsonl.fullScans += 1;
 	}
 	return buffer.toString("utf-8");
+}
+
+/**
+ * Bytes `[start, end)` of an open file, reported as bytes read; it counts one full scan when the range covers the
+ * whole file (`start` 0 and `end` at `fileSize`).
+ */
+export function trackedReadRange(fd: number, start: number, end: number, fileSize: number): Buffer {
+	const buffer = Buffer.alloc(Math.max(0, end - start));
+	let filled = 0;
+	while (filled < buffer.length) {
+		const read = readSync(fd, buffer, filled, buffer.length - filled, start + filled);
+		if (read === 0) break;
+		filled += read;
+	}
+	const counters = currentPerfCounters();
+	if (counters !== undefined) {
+		counters.jsonl.bytesRead += filled;
+		if (start === 0 && end === fileSize) counters.jsonl.fullScans += 1;
+	}
+	return filled === buffer.length ? buffer : buffer.subarray(0, filled);
 }

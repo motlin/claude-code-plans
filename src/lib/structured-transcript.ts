@@ -1,14 +1,21 @@
 import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
 import {eq} from "drizzle-orm";
 import {createHash} from "node:crypto";
-import {statSync} from "node:fs";
-import {trackedReadFileSync} from "./perf/tracked-fs";
+import {closeSync} from "node:fs";
 import * as schema from "./db/schema";
 import {getSubagentById} from "./db/queries";
-import {isCountableMessageRecord, mightBeCountableMessageLine} from "./message-count";
-import {asRecord} from "./narrow";
-import {computeAbandoned, type AbandonedCut} from "./transcript-chain";
+import type {AbandonedCut} from "./transcript-chain";
+import {
+	lineEnd,
+	lineStart,
+	openTranscriptFile,
+	readTranscriptLines,
+	type OpenTranscriptFile,
+	type TranscriptFileIndex,
+} from "./transcript-file-index";
 import type {TranscriptCut} from "./api/sessions";
+
+export {parseTranscriptLine} from "./transcript-file-index";
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
 
@@ -74,15 +81,6 @@ const EMPTY_TRANSCRIPT: StructuredTranscript = {
 	chainVersion: transcriptChainVersion([]),
 };
 
-/** One JSONL line as a record, or undefined when the line is not a valid JSON object. */
-export function parseTranscriptLine(line: string): Record<string, unknown> | undefined {
-	try {
-		return asRecord(JSON.parse(line));
-	} catch {
-		return undefined;
-	}
-}
-
 /**
  * Walk backwards from `end` while the window still fits both budgets. Always
  * yields at least one record: a single record over the byte budget is still
@@ -91,19 +89,13 @@ export function parseTranscriptLine(line: string): Record<string, unknown> | und
  * and a page made mostly of an abandoned branch would otherwise paint nearly
  * empty.
  */
-function findWindowStart(
-	lines: string[],
-	hidden: readonly boolean[],
-	end: number,
-	maxBytes: number,
-	maxRecords: number,
-) {
+function findWindowStart(index: TranscriptFileIndex, end: number, maxBytes: number, maxRecords: number) {
 	let start = end;
 	let bytes = 0;
 	let visible = 0;
-	for (let line = lines[start - 1]; line !== undefined; line = lines[start - 1]) {
-		const size = Buffer.byteLength(line, "utf8") + 1;
-		const isHidden = hidden[start - 1] === true;
+	while (start > 0) {
+		const size = lineEnd(index, start - 1) - lineStart(index, start - 1) + 1;
+		const isHidden = index.hidden[start - 1] === true;
 		if (start < end && (bytes + size > maxBytes || visible >= maxRecords)) break;
 		bytes += size;
 		if (!isHidden) visible += 1;
@@ -142,55 +134,44 @@ export function readStructuredTranscript(
 	const maxBytes = options.maxBytes ?? TRANSCRIPT_WINDOW_MAX_BYTES;
 	const maxRecords = options.maxRecords ?? TRANSCRIPT_WINDOW_MAX_RECORDS;
 
+	let file: OpenTranscriptFile | undefined;
 	try {
-		const byteOffset = statSync(filePath).size;
-		const lines = trackedReadFileSync(filePath)
-			.split("\n")
-			.filter((line) => line.trim());
-		const end = Math.max(0, Math.min(options.before ?? lines.length, lines.length));
-
 		// The chain is computed over the whole file, so a branch whose fork point
-		// or replacement lies outside this window is still known.
-		const parsed = lines.map(parseTranscriptLine);
-		const abandoned = computeAbandoned(parsed.filter((record) => record !== undefined));
-		const hiddenLines = parsed.map((record) => {
-			const uuid = uuidOf(record);
-			return uuid !== undefined && abandoned.hidden.has(uuid);
-		});
-		const startIndex = findWindowStart(lines, hiddenLines, end, maxBytes, maxRecords);
+		// or replacement lies outside this window is still known. The file index
+		// caches it, so only the window's lines are parsed here.
+		file = openTranscriptFile(filePath);
+		const {index} = file;
+		const lineCount = index.starts.length;
+		const end = Math.max(0, Math.min(options.before ?? lineCount, lineCount));
+		const startIndex = findWindowStart(index, end, maxBytes, maxRecords);
 
 		const records: Record<string, unknown>[] = [];
 		const hiddenUuids: string[] = [];
 		const windowUuids = new Set<string>();
-		for (const [offset, record] of parsed.slice(startIndex, end).entries()) {
+		for (const [offset, record] of readTranscriptLines(file, startIndex, end).entries()) {
 			if (!record) continue;
 			records.push(record);
 			const uuid = uuidOf(record);
 			if (uuid === undefined) continue;
 			windowUuids.add(uuid);
-			if (hiddenLines[startIndex + offset] === true) hiddenUuids.push(uuid);
+			if (index.hidden[startIndex + offset] === true) hiddenUuids.push(uuid);
 		}
-		const cuts: TranscriptCut[] = abandoned.cuts
+		const cuts: TranscriptCut[] = index.abandoned.cuts
 			.filter((cut) => windowUuids.has(cut.replacementUuid))
 			.map(({parentUuid, replacementUuid, at, count}) => ({parentUuid, replacementUuid, at, count}));
 
-		let precedingMessageCount = 0;
-		for (const [i, line] of lines.entries()) {
-			if (i >= startIndex) break;
-			if (!mightBeCountableMessageLine(line)) continue;
-			if (isCountableMessageRecord(parsed[i])) precedingMessageCount += 1;
-		}
-
 		return {
 			records,
-			byteOffset,
+			byteOffset: index.size,
 			startIndex,
-			precedingMessageCount,
+			precedingMessageCount: index.countableBefore[startIndex] ?? 0,
 			hiddenUuids,
 			cuts,
-			chainVersion: transcriptChainVersion(abandoned.cuts),
+			chainVersion: transcriptChainVersion(index.abandoned.cuts),
 		};
 	} catch {
 		return EMPTY_TRANSCRIPT;
+	} finally {
+		if (file !== undefined) closeSync(file.fd);
 	}
 }
