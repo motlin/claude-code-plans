@@ -2,6 +2,10 @@
 
 import {cleanup, render} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
+import {
+	type BackgroundTasksOpener,
+	BackgroundTasksOpenerProvider,
+} from "../src/components/background-tasks-opener-context";
 import {SessionChat} from "../src/components/session-chat";
 import {processTranscript} from "../src/lib/transcript";
 
@@ -44,9 +48,9 @@ afterEach(() => {
 	Reflect.deleteProperty(HTMLElement.prototype, "scrollIntoView");
 });
 
-function renderRecords(records: unknown[]): HTMLElement {
+function renderRecords(records: unknown[], opener: BackgroundTasksOpener | null = null): HTMLElement {
 	const {lines, toolResultMap} = processTranscript(records);
-	return render(
+	const chat = (
 		<SessionChat
 			sessionId="test-session"
 			lines={lines}
@@ -55,7 +59,10 @@ function renderRecords(records: unknown[]): HTMLElement {
 			showTranscriptOnly={true}
 			shouldScrollToEnd={false}
 			transcriptMode="normal"
-		/>,
+		/>
+	);
+	return render(
+		opener === null ? chat : <BackgroundTasksOpenerProvider value={opener}>{chat}</BackgroundTasksOpenerProvider>,
 	).container;
 }
 
@@ -239,7 +246,7 @@ describe("undelivered background-task notifications", () => {
 		]);
 
 		const row = container.querySelector("[data-task-event-row]")!;
-		const label = row.querySelector("[data-turn-status-marker] > span > span")!;
+		const label = row.querySelector("[data-turn-status-marker] > * > span > span")!;
 		expect({
 			rows: taskEventRows(container),
 			label: label.className,
@@ -261,7 +268,7 @@ describe("undelivered background-task notifications", () => {
 			enqueue(notification("toolu_elsewhere1", "failed", 'Background command "Fetch" failed with exit code 1')),
 		]);
 
-		const spans = container.querySelectorAll("[data-turn-status-marker] > span > span");
+		const spans = container.querySelectorAll("[data-turn-status-marker] > * > span > span");
 		expect({
 			rows: taskEventRows(container),
 			spans: Array.from(spans, (span) => ({text: span.textContent, className: span.className})),
@@ -290,7 +297,7 @@ describe("undelivered background-task notifications", () => {
 			),
 		]);
 
-		const took = container.querySelector("[data-turn-status-marker] > span > span:last-child")!;
+		const took = container.querySelector("[data-turn-status-marker] > * > span > span:last-child")!;
 		expect({rows: taskEventRows(container), took: took.className}).toStrictEqual({
 			rows: ["Background command completed·Build· took 12s"],
 			took: "text-body text-secondary group-hover/tool:text-primary shrink-0 whitespace-nowrap tabular-nums",
@@ -304,5 +311,57 @@ describe("undelivered background-task notifications", () => {
 		]);
 
 		expect(taskEventRows(container)).toStrictEqual(["Background agent completed·Review the diff"]);
+	});
+
+	it("draws the row as upstream's keeps-pin button that opens Background tasks on its first task's Finished entry", () => {
+		const open = vi.fn<BackgroundTasksOpener["open"]>();
+		const container = renderRecords(
+			[
+				reply,
+				enqueue(
+					notification(
+						"toolu_elsewhere1",
+						"completed",
+						'Background command "Run tests" completed (exit code 0)',
+					),
+				),
+				enqueue(notification("toolu_elsewhere2", "killed", 'Background command "Watch logs" was stopped')),
+			],
+			{open, running: new Map()},
+		);
+
+		const buttons = Array.from(container.querySelectorAll("[data-task-event-row] button"), (button) => ({
+			type: button.getAttribute("type"),
+			keepsPin: button.getAttribute("data-transcript-keeps-pin"),
+			className: button.className,
+			text: button.textContent,
+		}));
+		expect(buttons).toStrictEqual([
+			{
+				type: "button",
+				keepsPin: "",
+				className:
+					"group/tool flex flex-col gap-1 py-0 max-w-full items-start text-start focus-visible:outline-hidden hide-focus-ring focus-visible:shadow-focus rounded-sm",
+				text: "1 background command completed, 1 stopped",
+			},
+		]);
+
+		container.querySelector<HTMLButtonElement>("[data-task-event-row] button")?.click();
+		expect(open.mock.calls).toStrictEqual([[{taskId: "b5auh1l9v", finished: true}]]);
+	});
+
+	it("draws the row as upstream's plain div with no button where no pane can host Background tasks", () => {
+		const container = renderRecords([
+			reply,
+			enqueue(
+				notification("toolu_elsewhere1", "completed", 'Background command "Run tests" completed (exit code 0)'),
+			),
+		]);
+
+		const row = container.querySelector("[data-task-event-row]");
+		expect({
+			buttons: row?.querySelectorAll("button").length,
+			plain: row?.querySelector("[data-turn-status-marker] > div")?.className,
+		}).toStrictEqual({buttons: 0, plain: "flex flex-col gap-1 py-0 max-w-full items-start"});
 	});
 });

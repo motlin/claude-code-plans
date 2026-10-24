@@ -2,6 +2,7 @@ import React from "react";
 import {backgroundNoticeSummary, NOTICE_NOUNS, type NoticeKind} from "../lib/background-notice-summary";
 import type {BackgroundTaskStatus} from "../lib/background-tasks";
 import {formatElapsed} from "../lib/working-marker";
+import {useBackgroundTasksOpener} from "./background-tasks-opener-context";
 
 /** One background task event a task-event row draws. */
 export interface TaskEvent {
@@ -69,13 +70,32 @@ function RunSummary({events}: {events: readonly TaskEvent[]}) {
  * 1 failed" summary that wraps at narrow widths.
  */
 export function TaskEventRun({events}: {events: readonly TaskEvent[]}) {
+	const opener = useBackgroundTasksOpener();
 	const [first] = events;
 	if (first === undefined) return null;
+	const content = (
+		<span className="flex min-w-0 items-center gap-1 max-w-full">
+			{events.length === 1 ? <SingleEvent event={first} /> : <RunSummary events={events} />}
+		</span>
+	);
+	// Upstream's `JX`: a button opening Background tasks on the run's first task, with Finished
+	// expanded since every local task event is settled; a plain div where no pane can host it.
 	return (
 		<div data-turn-status-marker="" className="ps-1 flex min-w-0 flex-col empty:hidden">
-			<span className="flex min-w-0 items-center gap-1 max-w-full">
-				{events.length === 1 ? <SingleEvent event={first} /> : <RunSummary events={events} />}
-			</span>
+			{opener === null ? (
+				<div className="flex flex-col gap-1 py-0 max-w-full items-start">{content}</div>
+			) : (
+				<button
+					type="button"
+					data-transcript-keeps-pin=""
+					className="group/tool flex flex-col gap-1 py-0 max-w-full items-start text-start focus-visible:outline-hidden hide-focus-ring focus-visible:shadow-focus rounded-sm"
+					onClick={() => {
+						opener.open(first.taskId === null ? {finished: true} : {taskId: first.taskId, finished: true});
+					}}
+				>
+					{content}
+				</button>
+			)}
 		</div>
 	);
 }

@@ -486,7 +486,7 @@ describe("background task stopped row", () => {
 			rows.map((row) => ({
 				status: row.querySelector("[data-turn-status]")?.textContent ?? null,
 				secondary: Array.from(
-					row.querySelectorAll("[data-turn-status-marker] > span > span"),
+					row.querySelectorAll("[data-turn-status-marker] > * > span > span"),
 					(span) => span.classList.contains("text-secondary") && span.classList.contains("text-body"),
 				),
 				precedesStatus: row.querySelector(":scope > [data-precedes-turn-status]") !== null,
@@ -519,7 +519,7 @@ describe("agent completion row", () => {
 		expect(
 			rows.map((row) => ({
 				status: row.querySelector("[data-turn-status]")?.textContent ?? null,
-				secondary: Array.from(row.querySelectorAll("[data-turn-status-marker] > span > span"), (span) =>
+				secondary: Array.from(row.querySelectorAll("[data-turn-status-marker] > * > span > span"), (span) =>
 					span.classList.contains("text-secondary"),
 				),
 				precedesStatus: row.querySelector(":scope > [data-precedes-turn-status]") !== null,
