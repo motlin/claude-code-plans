@@ -164,6 +164,7 @@ describe("quiet output", () => {
 			silent: "passed-only",
 			projects: [
 				["shared", false],
+				["shared-dom", false],
 				["isolated", true],
 			],
 			reportCompressedSize: false,

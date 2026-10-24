@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+// @vitest-isolate: asserts the zoned-time module is not loaded yet, which a module graph shared with another file can break.
 
 import {describe, expect, it} from "vite-plus/test";
 import {findZonedTimes, localTimeLabel} from "../src/lib/time-with-zone";

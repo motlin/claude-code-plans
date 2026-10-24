@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+// @vitest-isolate: React keeps whether a mouse button is down at module level, and onSelect stays off after a file that ends mid-press.
 
 import {cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
 import {afterEach, beforeAll, describe, expect, it, vi} from "vite-plus/test";

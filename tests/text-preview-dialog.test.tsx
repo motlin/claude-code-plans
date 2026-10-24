@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {cleanup, render, screen} from "@testing-library/react";
+import {cleanup, render, screen, waitFor} from "@testing-library/react";
 import {afterEach, describe, expect, it} from "vite-plus/test";
 import {TextPreviewDialog} from "../src/components/text-preview-dialog";
 import {TEXT_PREVIEW_LIMIT, textPreviewStats} from "../src/lib/text-preview";
@@ -23,6 +23,10 @@ describe("TextPreviewDialog", () => {
 		const header = scroll?.firstElementChild ?? null;
 		const heading = header?.querySelector("h2") ?? null;
 		const close = screen.getByRole("button", {name: "Close"});
+		// Base UI moves the initial focus on the next animation frame, which can land after findByRole resolves.
+		await waitFor(() => {
+			expect(document.activeElement).toBe(close);
+		});
 		const body = scroll?.children[1] ?? null;
 		const quote = body?.querySelector("blockquote") ?? null;
 		expect({

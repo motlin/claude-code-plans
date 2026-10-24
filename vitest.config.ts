@@ -24,6 +24,11 @@ export default defineConfig({
 				extends: true,
 				test: {name: "shared", include: [...testFiles.shared, "scripts/*.test.mjs"], isolate: false},
 			},
+			// jsdom files that mock nothing share a worker's DOM and module graph too: jsdom and React load once per worker, not once per file.
+			{
+				extends: true,
+				test: {name: "shared-dom", include: testFiles.sharedDom, environment: "jsdom", isolate: false},
+			},
 			{extends: true, test: {name: "isolated", include: testFiles.isolated, isolate: true}},
 		],
 	},
