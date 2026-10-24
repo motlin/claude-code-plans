@@ -97,4 +97,20 @@ describe("SendRejectedCard", () => {
 			row: true,
 		});
 	});
+
+	it("right-aligns a wrapping actions group so Try again drops under View details on a phone", () => {
+		renderCard();
+		const actions = screen.getByRole("button", {name: "Try again"}).parentElement;
+
+		expect(actions?.className).toEqual("ms-auto flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2");
+	});
+
+	it("drops every transition under reduced motion", () => {
+		const {container} = renderCard();
+		const animated = [...container.querySelectorAll("[class*=transition]")].map((element) => ({
+			reduced: element.getAttribute("class")?.split(/\s+/).includes("motion-reduce:transition-none"),
+		}));
+
+		expect(animated).toEqual([{reduced: true}]);
+	});
 });
