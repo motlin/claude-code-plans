@@ -25,6 +25,7 @@ import {inlineCodeTexts} from "../../lib/client-markdown";
 import {fromMdSlug} from "../../lib/md-slug";
 import {isMacPlatform} from "../../lib/shortcuts/match";
 import {useResolvedFileRefs} from "../use-resolved-file-refs";
+import {FileTypeIcon} from "../file-type-icon";
 import {FileViewer} from "../file-viewer";
 import {fileViewerLanguage} from "../file-viewer-utils";
 import {MarkdownArticle} from "../markdown-article";
@@ -151,10 +152,29 @@ function LinkedMarkdown({
 	);
 }
 
-function ViewerMessage({title, detail, children}: {title: string; detail?: string; children?: ReactNode}) {
+function ViewerMessage({
+	title,
+	detail,
+	fileName,
+	children,
+}: {
+	title: string;
+	detail?: string;
+	fileName?: string;
+	children?: ReactNode;
+}) {
 	return (
 		<div className="flex h-full flex-col items-center justify-center gap-3 px-4 py-4 text-center">
-			<FileX aria-hidden="true" className="size-7 text-t6" />
+			{fileName === undefined ? (
+				<FileX aria-hidden="true" className="size-7 text-t6" />
+			) : (
+				<FileTypeIcon
+					fileName={fileName}
+					size="xl"
+					className="text-ink-muted"
+					fallback={<FileX aria-hidden="true" className="size-7 text-ink-muted" />}
+				/>
+			)}
 			<div className="flex flex-col items-center gap-1">
 				<p className="max-w-[36ch] text-pretty break-words text-body text-primary">{title}</p>
 				{detail !== undefined && (
@@ -175,7 +195,10 @@ function ImageView({path}: {path: string}) {
 	const [failed, setFailed] = useState(false);
 	if (failed) {
 		return (
-			<ViewerMessage title="This image couldn’t be loaded. It may be too large, or it may have been deleted or moved." />
+			<ViewerMessage
+				title="This image couldn’t be loaded. It may be too large, or it may have been deleted or moved."
+				fileName={path}
+			/>
 		);
 	}
 	return (
@@ -466,11 +489,11 @@ export function FileView({
 		if (edit.editor !== null) return edit.editor;
 		if (isImage) return <ImageView path={path} />;
 		if (file.isPending) return <ViewerMessage title="Loading file" />;
-		if (file.isError) return <ViewerMessage title={errorTitle(file.error)} detail={path} />;
+		if (file.isError) return <ViewerMessage title={errorTitle(file.error)} detail={path} fileName={path} />;
 		const data = file.data;
 		if (data.kind === "binary") {
 			return (
-				<ViewerMessage title="This file looks like binary data and can’t be previewed as text.">
+				<ViewerMessage title="This file looks like binary data and can’t be previewed as text." fileName={path}>
 					<button
 						type="button"
 						className={MESSAGE_BUTTON}
@@ -488,6 +511,7 @@ export function FileView({
 				<ViewerMessage
 					title={`${data.type} · ${formatFileSize(data.size)}`}
 					detail="It’s too large to preview here."
+					fileName={path}
 				>
 					<a href={fileContentUrl(path, {download: true})} download className={MESSAGE_BUTTON}>
 						Download

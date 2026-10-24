@@ -282,6 +282,63 @@ describe("non-previewable files", () => {
 		});
 	});
 
+	it("draws the file's own 28px file-type icon instead of FileX on the binary placeholder", async () => {
+		const path = "/home/alice/data/alice.zip";
+		responses.set(path, {
+			status: 415,
+			body: {error: "Binary files are not supported", kind: "binary", size: 3, type: "ZIP file"},
+		});
+		renderView({path});
+
+		await screen.findByText("This file looks like binary data and can’t be previewed as text.");
+		const icon = document.querySelector<SVGElement>("svg[data-file-type-icon]");
+		expect({
+			width: icon?.style.width,
+			height: icon?.style.height,
+			className: icon?.getAttribute("class"),
+			fills: [...(icon?.querySelectorAll("path") ?? [])].map((node) => node.getAttribute("fill")),
+			fileX: document.querySelector(".lucide-file-x"),
+		}).toStrictEqual({
+			width: "28px",
+			height: "28px",
+			className: "shrink-0 text-ink-muted",
+			fills: ["var(--fti-zip)", "var(--fti-zip)"],
+			fileX: null,
+		});
+	});
+
+	it("draws the file-type icon on the too-large placeholder", async () => {
+		const path = "/home/alice/logs/huge.ts";
+		responses.set(path, {
+			status: 413,
+			body: {
+				error: "File exceeds the 5 MiB size limit",
+				kind: "too-large",
+				size: 6 * 1024 * 1024,
+				type: "TS file",
+			},
+		});
+		renderView({path});
+
+		await screen.findByText("TS file · 6.0 MB");
+		const icon = document.querySelector<SVGElement>("svg[data-file-type-icon]");
+		expect({width: icon?.style.width, fileX: document.querySelector(".lucide-file-x")}).toStrictEqual({
+			width: "28px",
+			fileX: null,
+		});
+	});
+
+	it("keeps FileX on placeholders that name no file", async () => {
+		textFile("/home/alice/empty.ts", "");
+		renderView({path: "/home/alice/empty.ts"});
+
+		await screen.findByText("This file is empty.");
+		expect({
+			typeIcon: document.querySelector("[data-file-type-icon]"),
+			fileX: document.querySelector(".lucide-file-x")?.getAttribute("class"),
+		}).toStrictEqual({typeIcon: null, fileX: "lucide lucide-file-x size-7 text-t6"});
+	});
+
 	it("formats sizes like the upstream summary line", () => {
 		expect([0, 512, 1536, 6 * 1024 * 1024, 3 * 1024 ** 3].map(formatFileSize)).toStrictEqual([
 			"0 B",
@@ -343,6 +400,7 @@ describe("source view", () => {
 		renderView({path: "/home/alice/missing.ts"});
 
 		expect((await screen.findByText("Couldn’t find this file")).textContent).toBe("Couldn’t find this file");
+		expect(document.querySelector<SVGElement>("svg[data-file-type-icon]")?.style.width).toBe("28px");
 	});
 });
 
