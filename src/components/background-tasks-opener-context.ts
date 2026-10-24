@@ -14,8 +14,8 @@ export interface BackgroundTasksFocus {
 export interface BackgroundTasksOpener {
 	/** Opens the Background tasks pane, which shows each task's output, optionally focused on a task. */
 	open: (focus?: BackgroundTasksFocus) => void;
-	/** The launching tool_use ids of background tasks still running. */
-	running: ReadonlySet<string>;
+	/** Each running background task's launching tool_use id, mapped to its task id. */
+	running: ReadonlyMap<string, string>;
 }
 
 const BackgroundTasksOpenerContext = createContext<BackgroundTasksOpener | null>(null);

@@ -4966,9 +4966,12 @@ function ToolCallRow({
 
 	// Upstream leads a standalone in-flight row with its activity WorkingMark and follows the label with the elapsed time.
 	const runningRow = pending && isTurnStatus;
+	const liveTaskId = call.name === "Bash" ? backgroundTasks?.running.get(call.id) : undefined;
 	const liveOutput =
-		backgroundTasks !== null && call.name === "Bash" && backgroundTasks.running.has(call.id)
-			? backgroundTasks.open
+		backgroundTasks !== null && liveTaskId !== undefined
+			? () => {
+					backgroundTasks.open({taskId: liveTaskId});
+				}
 			: null;
 	const paramInk = isFileParam ? "text-primary" : paramHref ? "text-secondary" : paramClass;
 	const paramContent = (

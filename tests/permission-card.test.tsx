@@ -626,7 +626,7 @@ describe("PermissionCard", () => {
 	it("draws a Workflow's description and upstream's token warning, whose tasks pane link opens Background tasks", () => {
 		const open = vi.fn<() => void>();
 		const {container} = render(
-			<BackgroundTasksOpenerProvider value={{open, running: new Set()}}>
+			<BackgroundTasksOpenerProvider value={{open, running: new Map()}}>
 				<PermissionCard
 					title={{action: "run a workflow", meta: "noop-a"}}
 					detail={null}

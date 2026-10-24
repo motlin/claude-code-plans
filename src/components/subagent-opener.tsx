@@ -30,7 +30,7 @@ export function SessionBackgroundTasksOpener({
 	children,
 }: {
 	sessionId: string;
-	running: ReadonlySet<string>;
+	running: ReadonlyMap<string, string>;
 	children: ReactNode;
 }) {
 	const {openPane} = usePaneHost();

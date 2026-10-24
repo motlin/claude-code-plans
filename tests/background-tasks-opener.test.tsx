@@ -37,7 +37,7 @@ function renderOpener(sessionId: string): {opener: BackgroundTasksOpener; openPa
 	render(
 		hosted(
 			host,
-			<SessionBackgroundTasksOpener sessionId={sessionId} running={new Set()}>
+			<SessionBackgroundTasksOpener sessionId={sessionId} running={new Map()}>
 				<Capture />
 			</SessionBackgroundTasksOpener>,
 		),

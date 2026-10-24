@@ -5,6 +5,10 @@ import {createMemoryHistory, createRootRoute, createRouter, RouterProvider} from
 import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
+import {
+	type BackgroundTasksOpener,
+	BackgroundTasksOpenerProvider,
+} from "../src/components/background-tasks-opener-context";
 import {registerPane} from "../src/components/panes/pane-registry";
 import {TileHost} from "../src/components/panes/tile-host";
 import {SessionRailCards, type SessionRailInputs} from "../src/components/session-rail/session-rail-cards";
@@ -192,13 +196,19 @@ afterEach(() => {
 	vi.unstubAllGlobals();
 });
 
-async function renderCards(inputs: SessionRailInputs, prepare: (client: QueryClient) => void = () => {}) {
+async function renderCards(
+	inputs: SessionRailInputs,
+	prepare: (client: QueryClient) => void = () => {},
+	opener: BackgroundTasksOpener | null = null,
+) {
 	const client = new QueryClient({defaultOptions: {queries: {retry: false}}});
 	prepare(client);
 	const rootRoute = createRootRoute({
 		component: () => (
 			<TileHost sessionId={SESSION_ID}>
-				<SessionRailCards inputs={inputs} />
+				<BackgroundTasksOpenerProvider value={opener}>
+					<SessionRailCards inputs={inputs} />
+				</BackgroundTasksOpenerProvider>
 			</TileHost>
 		),
 	});
@@ -627,6 +637,20 @@ describe("Background tasks card", () => {
 		const finished = screen.getByRole("button", {name: "1 finished"});
 
 		expect(finished.querySelector("svg")?.getAttribute("class")).toContain("lucide-bot");
+	});
+
+	it("opens Background tasks focused on the clicked row, the agent's transcript, or the Finished section", async () => {
+		const open = vi.fn<BackgroundTasksOpener["open"]>();
+		const agent: BackgroundTask = {...runningTask(2), id: "a2", kind: "agent", description: "Review the diff"};
+		await renderCards(withTasks([runningTask(1), agent], [finishedTask(), finishedTask()]), undefined, {
+			open,
+			running: new Map(),
+		});
+		fireEvent.click(screen.getByRole("button", {name: "Open Task 1 in Background tasks"}));
+		fireEvent.click(screen.getByRole("button", {name: "Open Review the diff in Background tasks"}));
+		fireEvent.click(screen.getByRole("button", {name: "2 finished"}));
+
+		expect(open.mock.calls).toStrictEqual([[{taskId: "b1"}], [{agentId: "a2"}], [{finished: true}]]);
 	});
 
 	it("leaves the rail when only finished tasks remain", async () => {

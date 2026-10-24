@@ -187,14 +187,29 @@ const SessionRailCards = lazy(async () =>
 /** The chat tile with the session rail docked at its end while shown and no side pane is open. */
 function RailTileFrame({
 	railInputs,
+	runningBackgroundLaunches,
 	...props
-}: Omit<ComponentProps<typeof SessionTileFrame>, "rail" | "railDocked"> & {railInputs: SessionRailInputs}) {
+}: Omit<ComponentProps<typeof SessionTileFrame>, "rail" | "railDocked"> & {
+	railInputs: SessionRailInputs;
+	runningBackgroundLaunches: ReadonlyMap<string, string>;
+}) {
 	const railDocked = useSessionRailDocked();
 	return (
 		<SessionTileFrame
 			{...props}
 			railDocked={railDocked}
-			rail={<SessionRailSlot render={() => <SessionRailCards inputs={railInputs} />} />}
+			rail={
+				<SessionRailSlot
+					render={() => (
+						<SessionBackgroundTasksOpener
+							sessionId={railInputs.sessionId}
+							running={runningBackgroundLaunches}
+						>
+							<SessionRailCards inputs={railInputs} />
+						</SessionBackgroundTasksOpener>
+					)}
+				/>
+			}
 		/>
 	);
 }
@@ -489,7 +504,12 @@ function SessionView({
 	);
 	useRegisterBackgroundTasksPane(sessionId, backgroundTasks, subagents.length);
 	const runningBackgroundLaunches = useMemo(
-		() => new Set(backgroundTasks.running.flatMap((task) => (task.toolUseId === null ? [] : [task.toolUseId]))),
+		() =>
+			new Map(
+				backgroundTasks.running.flatMap((task) =>
+					task.toolUseId === null ? [] : [[task.toolUseId, task.id] as const],
+				),
+			),
 		[backgroundTasks],
 	);
 	useRegisterSubagentPane({sessionId, subagents, records: transcript.records});
@@ -884,6 +904,7 @@ function SessionView({
 							pr: data.pr ?? null,
 							prStatus: data.prStatus ?? null,
 						}}
+						runningBackgroundLaunches={runningBackgroundLaunches}
 						sessionId={sessionId}
 						anchorRef={sessionViewRef}
 						visitKey={initialScrollKey}

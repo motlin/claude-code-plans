@@ -220,7 +220,7 @@ describe("an in-flight call's row", () => {
 		});
 	});
 
-	it("offers 'View live output' on a background command whose task still runs, opening the Background tasks pane", () => {
+	it("offers 'View live output' on a background command whose task still runs, opening the Background tasks pane at its task", () => {
 		const opened = vi.fn<BackgroundTasksOpener["open"]>();
 		const {lines, toolResultMap} = processTranscript([
 			{type: "user", uuid: "user-1", message: {role: "user", content: "Benchmark it"}},
@@ -260,7 +260,7 @@ describe("an in-flight call's row", () => {
 			},
 		]);
 		const {getByRole} = render(
-			<BackgroundTasksOpenerProvider value={{open: opened, running: new Set(["toolu_background"])}}>
+			<BackgroundTasksOpenerProvider value={{open: opened, running: new Map([["toolu_background", "bjmh100"]])}}>
 				<SessionChat
 					sessionId="test-session"
 					lines={lines}
@@ -275,14 +275,14 @@ describe("an in-flight call's row", () => {
 		const button = getByRole("button", {name: "View live output"});
 		fireEvent.click(button);
 
-		expect({className: button.className, opened: opened.mock.calls.length}).toStrictEqual({
+		expect({className: button.className, opened: opened.mock.calls}).toStrictEqual({
 			className:
 				"shrink-0 cursor-pointer rounded-r3 text-[13px]/[19px] text-primary underline-offset-[3px] hover:underline",
-			opened: 1,
+			opened: [[{taskId: "bjmh100"}]],
 		});
 	});
 
-	function renderBackgroundAgent(description: string, running: ReadonlySet<string>): Element | undefined {
+	function renderBackgroundAgent(description: string, running: ReadonlyMap<string, string>): Element | undefined {
 		const {lines, toolResultMap} = processTranscript([
 			{type: "user", uuid: "user-1", message: {role: "user", content: "Do the tasks"}},
 			{
@@ -343,8 +343,10 @@ describe("an in-flight call's row", () => {
 
 	it("labels a still-running background Agent in the present tense with shimmer, as upstream does", () => {
 		expect({
-			inflected: agentRowFacts(renderBackgroundAgent("Do task M1-42", new Set(["toolu_agent"]))),
-			bare: agentRowFacts(renderBackgroundAgent("Mobile audit: session page", new Set(["toolu_agent"]))),
+			inflected: agentRowFacts(renderBackgroundAgent("Do task M1-42", new Map([["toolu_agent", "a1b2c3"]]))),
+			bare: agentRowFacts(
+				renderBackgroundAgent("Mobile audit: session page", new Map([["toolu_agent", "a1b2c3"]])),
+			),
 		}).toStrictEqual({
 			inflected: {
 				text: "Doing task M1-42Doing task M1-42running",
@@ -364,7 +366,7 @@ describe("an in-flight call's row", () => {
 	});
 
 	it("settles a background Agent whose task has finished on its 'Ran agent' row", () => {
-		expect(agentRowFacts(renderBackgroundAgent("Do task M1-42", new Set()))).toStrictEqual({
+		expect(agentRowFacts(renderBackgroundAgent("Do task M1-42", new Map()))).toStrictEqual({
 			text: "Ran agentDo task M1-42",
 			state: null,
 			shimmer: null,

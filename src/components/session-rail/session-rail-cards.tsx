@@ -38,6 +38,7 @@ import {formatCount} from "../../lib/pluralize";
 import type {OutputFile} from "../../lib/session-outputs";
 import {sessionEnvironment, terminalHostLabel} from "../../lib/session-environment";
 import {claudeAiSessionUrl} from "../../lib/session-open-in";
+import {type BackgroundTasksFocus, useBackgroundTasksOpener} from "../background-tasks-opener-context";
 import {FileTypeIcon} from "../file-type-icon";
 import {usePaneHost} from "../panes/pane-host-context";
 import {ContextBreakdownBody} from "./context-breakdown";
@@ -622,10 +623,13 @@ function useMinuteClock(ticking: boolean): number {
  */
 function BackgroundTasksBody({tasks}: {tasks: BackgroundTaskGroups}) {
 	const host = usePaneHost();
+	const opener = useBackgroundTasksOpener();
 	const showMore = useShowMore();
 	const now = useMinuteClock(tasks.running.some((task) => task.startedAt !== null));
-	const open = () => {
-		host.openPane("background-tasks");
+	// Upstream's rail rows call openTask: an agent opens its transcript, a task is focused, "N finished" expands Finished.
+	const open = (focus: BackgroundTasksFocus) => {
+		if (opener === null) host.openPane("background-tasks");
+		else opener.open(focus);
 	};
 	const shown = showMore.expanded ? tasks.running : tasks.running.slice(0, BACKGROUND_TASKS_SHOWN);
 	return (
@@ -638,7 +642,9 @@ function BackgroundTasksBody({tasks}: {tasks: BackgroundTaskGroups}) {
 					title={task.command ?? task.description}
 					aria-label={`Open ${task.description} in Background tasks`}
 					className={RAIL_ROW_ACTION_CLASS}
-					onClick={open}
+					onClick={() => {
+						open(task.kind === "agent" ? {agentId: task.id} : {taskId: task.id});
+					}}
 				>
 					<RailRowContent
 						icon={<Icon icon={TASK_ICONS[task.kind]} />}
@@ -651,7 +657,13 @@ function BackgroundTasksBody({tasks}: {tasks: BackgroundTaskGroups}) {
 			))}
 			{tasks.running.length > BACKGROUND_TASKS_SHOWN && <ShowMoreButton state={showMore} />}
 			{tasks.finished.length > 0 && (
-				<button type="button" className={RAIL_ROW_ACTION_CLASS} onClick={open}>
+				<button
+					type="button"
+					className={RAIL_ROW_ACTION_CLASS}
+					onClick={() => {
+						open({finished: true});
+					}}
+				>
 					<RailRowContent icon={<Icon icon={Bot} />} label={`${tasks.finished.length} finished`} />
 				</button>
 			)}
