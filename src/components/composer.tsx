@@ -609,6 +609,9 @@ export function Composer({
 					textareaRef.current?.focus();
 				},
 				getText: () => promptRef.current,
+				submit: () => {
+					handleSubmitRef.current();
+				},
 				takeBack: (text) => {
 					const next = mergeTakeBack(text, promptRef.current);
 					promptRef.current = next;

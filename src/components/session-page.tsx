@@ -127,6 +127,7 @@ import {pendingQuestionQueryOptions} from "../lib/api/pending-question";
 import {pendingPlanQueryOptions} from "../lib/api/pending-plan";
 import {DockedPlanApproval} from "./docked-plan-approval";
 import {SendRejectedCard} from "./send-rejected-card";
+import {useSendRejectionActions} from "./use-send-rejection-actions";
 import {dockedHookPlan, inlinePlanToolUseId} from "../lib/docked-plan";
 import {findPendingPermission, permissionWaitToolUseId, type PermissionDecision} from "../lib/permission-card";
 import type {HerdrPaneIndexData} from "../lib/api/herdr";
@@ -545,12 +546,11 @@ function SessionView({
 				};
 	const refillRejectedPrompt = useCallback((prompt: string) => refillComposer(sessionId, prompt), [sessionId]);
 	const liveHerdrPrompt = useLiveHerdrPrompt(sessionId, endIndex, processed.lines, undefined, refillRejectedPrompt);
-	const {clearRejection} = liveHerdrPrompt;
-	// Try again's resend-if-unchanged rule lands with send-rejected-error-card-refill task 4; until then both buttons clear and focus.
-	const dismissRejection = useCallback(() => {
-		clearRejection();
-		focusComposer(sessionId);
-	}, [clearRejection, sessionId]);
+	const {retryRejection, dismissRejection} = useSendRejectionActions(
+		sessionId,
+		liveHerdrPrompt.state.rejection,
+		liveHerdrPrompt.clearRejection,
+	);
 	const promptBehavior = getSessionPromptBehavior(sessionId, isActive, herdr);
 	const stopAvailable = canStopResponse({
 		hasLivePane: promptBehavior.hasLivePane,
@@ -977,7 +977,7 @@ function SessionView({
 											{liveHerdrPrompt.state.rejection !== null && (
 												<SendRejectedCard
 													rejection={liveHerdrPrompt.state.rejection}
-													onRetry={dismissRejection}
+													onRetry={retryRejection}
 													onDismiss={dismissRejection}
 												/>
 											)}

@@ -157,6 +157,8 @@ export interface ComposerHandle {
 	/** Replaces the prompt text and focuses; absent, with getText, where no send can be rejected. */
 	setText?: (text: string) => void;
 	getText?: () => string;
+	/** Runs the composer's Enter path on its current text; absent where no send can be rejected. */
+	submit?: () => void;
 	/** Puts a cancelled steer back, ahead of any draft, and focuses; absent where steers can't be sent. */
 	takeBack?: (text: string) => void;
 }
@@ -290,6 +292,22 @@ export function refillComposer(sessionId: string, text: string): boolean {
 	if (handle?.setText === undefined || handle.getText === undefined) return false;
 	handle.setText(mergeRefill(text, handle.getText()));
 	return true;
+}
+
+/** The session's first composer's prompt text, or null when none can report it. */
+export function getComposerText(sessionId: string): string | null {
+	return (
+		mounted(sessionId)
+			.find((each) => each.getText !== undefined)
+			?.getText?.() ?? null
+	);
+}
+
+/** Submits the session's first composer as Enter would; false when none can submit. */
+export function submitComposer(sessionId: string): boolean {
+	const handle = mounted(sessionId).find((each) => each.submit !== undefined);
+	handle?.submit?.();
+	return handle !== undefined;
 }
 
 /** Focuses the session's composer; false when no composer is mounted. */
