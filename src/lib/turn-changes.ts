@@ -24,6 +24,34 @@ export interface TurnChanges extends TurnChangesSummary {
 	anchorLineIndex: number;
 }
 
+/** A turn call, which counts only once its result is in (`hasResult` false skips it). */
+export interface TurnEditCall extends ToolCallLike {
+	hasResult?: boolean | undefined;
+}
+
+const SCRATCHPAD_TAIL = String.raw`[A-Za-z0-9-]+/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/scratchpad(?:/|$)`;
+const POSIX_SCRATCHPAD = new RegExp(String.raw`^(?:/private)?/tmp/claude-\d+/` + SCRATCHPAD_TAIL);
+const WINDOWS_SCRATCHPAD = new RegExp(
+	String.raw`^[A-Z]:/Users/[^/]+/AppData/Local/Temp/claude/` + SCRATCHPAD_TAIL,
+	"i",
+);
+const MEMORY_PATH = /\/\.claude\/projects\/[^/]+\/memory\//;
+
+function hasDotSegment(path: string): boolean {
+	return path.split("/").some((segment) => segment === "." || segment === "..");
+}
+
+/** Upstream `$M`: a path inside a Claude Code session scratchpad. Paths with `.`/`..` segments never match. */
+export function isScratchpadPath(path: string): boolean {
+	const normalized = path.replaceAll("\\", "/");
+	if (hasDotSegment(normalized)) return false;
+	return POSIX_SCRATCHPAD.test(normalized) || WINDOWS_SCRATCHPAD.test(normalized);
+}
+
+function isMemoryPath(path: string): boolean {
+	return MEMORY_PATH.test(path.replaceAll("\\", "/"));
+}
+
 function lineCount(text: string): number {
 	return text === "" ? 0 : text.split("\n").length;
 }
@@ -48,15 +76,16 @@ function callStats(call: ToolCallLike): {added: number; removed: number} {
 }
 
 /**
- * Sum Edit/Write/MultiEdit/NotebookEdit diff stats per file. Failed calls
- * changed nothing and are skipped; every other tool is ignored.
+ * Sum Edit/Write/MultiEdit/NotebookEdit diff stats per file, counting what
+ * upstream `tye` counts: failed and still-pending calls are skipped, as are
+ * scratchpad and memory-dir paths; every other tool is ignored.
  */
-export function aggregateTurnEdits(calls: readonly ToolCallLike[]): TurnChangesSummary {
+export function aggregateTurnEdits(calls: readonly TurnEditCall[]): TurnChangesSummary {
 	const files = new Map<string, TurnFileChange>();
 	for (const call of calls) {
-		if (call.isError === true) continue;
+		if (call.isError === true || call.hasResult === false) continue;
 		const path = editedFile(call);
-		if (path === null) continue;
+		if (path === null || isScratchpadPath(path) || isMemoryPath(path)) continue;
 		const stats = callStats(call);
 		const file = files.get(path) ?? {path, added: 0, removed: 0};
 		file.added += stats.added;
@@ -91,7 +120,7 @@ function drawsRow(line: SessionLine, showTools: boolean): boolean {
 
 interface TurnAccumulator {
 	uuid: string | undefined;
-	calls: ToolCallLike[];
+	calls: TurnEditCall[];
 	lastAssistant: number | undefined;
 	lastRow: number | undefined;
 }
@@ -143,6 +172,7 @@ export function collectTurnChanges(
 				input: block.input,
 				isError: result?.isError,
 				resultMeta: result?.resultMeta,
+				hasResult: result !== undefined,
 			});
 		}
 	}

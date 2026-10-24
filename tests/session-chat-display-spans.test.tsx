@@ -885,7 +885,7 @@ describe("assistant display-span actions", () => {
 			recordOrder: ["0", "2", "3"],
 		});
 	});
-	it("keeps focused group actions mounted when an appended failed edit removes the changes card", () => {
+	it("keeps focused group actions mounted when an appended edit result adds the changes card", () => {
 		const edit = {
 			type: "assistant",
 			uuid: "example-edit",
@@ -905,14 +905,12 @@ describe("assistant display-span actions", () => {
 				],
 			},
 		};
-		const failure = {
+		const success = {
 			type: "user",
-			uuid: "example-error-result",
+			uuid: "example-edit-result",
 			message: {
 				role: "user",
-				content: [
-					{type: "tool_result", tool_use_id: "example-edit-tool", content: "example failure", is_error: true},
-				],
+				content: [{type: "tool_result", tool_use_id: "example-edit-tool", content: "example success"}],
 			},
 		};
 		const records = [...command("example-command"), edit];
@@ -921,7 +919,7 @@ describe("assistant display-span actions", () => {
 		const fork = button(original, "Fork from here");
 		focus(fork);
 		const cardBefore = view.container.querySelectorAll("[data-turn-changes-card]").length;
-		view.rerender(chat([...records, failure]));
+		view.rerender(chat([...records, success]));
 		fireEvent.click(fork);
 		expect({
 			cardBefore,
@@ -934,8 +932,8 @@ describe("assistant display-span actions", () => {
 			focused: document.activeElement === fork,
 			fork: forkFrom.mock.calls,
 		}).toStrictEqual({
-			cardBefore: 1,
-			cardAfter: 0,
+			cardBefore: 0,
+			cardAfter: 1,
 			articles: ["0"],
 			sameFooter: true,
 			focused: true,

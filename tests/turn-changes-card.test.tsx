@@ -13,7 +13,7 @@ import {CHANGES_SCOPE_REQUEST_EVENT} from "../src/lib/changes-scope-request";
 import {loadChangesScope} from "../src/lib/pane-layout";
 import {processTranscript} from "../src/lib/transcript";
 import {TOUCH_REVEAL} from "../src/lib/touch-reveal";
-import {aggregateTurnEdits, collectTurnChanges, type TurnChanges} from "../src/lib/turn-changes";
+import {aggregateTurnEdits, collectTurnChanges, isScratchpadPath, type TurnChanges} from "../src/lib/turn-changes";
 import {installLocalStorage} from "./fake-storage";
 
 vi.mock("../src/lib/hmr-persist", () => ({
@@ -94,6 +94,98 @@ describe("aggregateTurnEdits", () => {
 			added: 9,
 			removed: 5,
 		});
+	});
+
+	it("sums a Write and a Write update that both carry result patches (Hello2 shape)", () => {
+		const summary = aggregateTurnEdits([
+			{
+				name: "Write",
+				input: {file_path: "/repo/plan.md", content: "x"},
+				hasResult: true,
+				resultMeta: {writeType: "create", patchStats: {added: 10, removed: 0}},
+			},
+			{
+				name: "Write",
+				input: {file_path: "/repo/plan.md", content: "y"},
+				hasResult: true,
+				resultMeta: {writeType: "update", patchStats: {added: 3, removed: 3}},
+			},
+		]);
+		expect(summary).toStrictEqual({files: [{path: "/repo/plan.md", added: 13, removed: 3}], added: 13, removed: 3});
+	});
+
+	it("adds an Edit's stats after a Write of the same file", () => {
+		const summary = aggregateTurnEdits([
+			{name: "Write", input: {file_path: "/repo/x.md", content: "1\n2\n3\n4\n5"}, hasResult: true},
+			{
+				name: "Edit",
+				input: {file_path: "/repo/x.md", old_string: "1\n2", new_string: "one"},
+				hasResult: true,
+			},
+		]);
+		expect(summary).toStrictEqual({files: [{path: "/repo/x.md", added: 6, removed: 2}], added: 6, removed: 2});
+	});
+
+	it("skips a pending call that has no result yet", () => {
+		const summary = aggregateTurnEdits([
+			{name: "Edit", input: {file_path: "/repo/x.md", old_string: "a", new_string: "b"}, hasResult: false},
+		]);
+		expect(summary).toStrictEqual({files: [], added: 0, removed: 0});
+	});
+
+	it("skips edits in the Claude Code scratchpad", () => {
+		const summary = aggregateTurnEdits([
+			{
+				name: "Write",
+				input: {
+					file_path: "/private/tmp/claude-501/-Users-x/0d1e2f3a-4b5c-6d7e-8f90-a1b2c3d4e5f6/scratchpad/a.txt",
+					content: "hi",
+				},
+				hasResult: true,
+			},
+			{
+				name: "Write",
+				input: {
+					file_path: "/tmp/claude-501/-Users-x/0d1e2f3a-4b5c-6d7e-8f90-a1b2c3d4e5f6/scratchpad",
+					content: "hi",
+				},
+				hasResult: true,
+			},
+		]);
+		expect(summary).toStrictEqual({files: [], added: 0, removed: 0});
+	});
+
+	it("skips edits in a project memory dir", () => {
+		const summary = aggregateTurnEdits([
+			{
+				name: "Write",
+				input: {file_path: "/Users/x/.claude/projects/p/memory/m.md", content: "hi"},
+				hasResult: true,
+			},
+		]);
+		expect(summary).toStrictEqual({files: [], added: 0, removed: 0});
+	});
+
+	it("counts a scratchpad-looking path with dot segments", () => {
+		const path = "/private/tmp/claude-501/x/../scratchpad/a";
+		const summary = aggregateTurnEdits([{name: "Write", input: {file_path: path, content: "hi"}, hasResult: true}]);
+		expect(summary).toStrictEqual({files: [{path, added: 1, removed: 0}], added: 1, removed: 0});
+	});
+});
+
+describe("isScratchpadPath", () => {
+	it("matches upstream $M on POSIX and Windows scratchpads and rejects dot segments", () => {
+		const uuid = "0d1e2f3a-4b5c-6d7e-8f90-a1b2c3d4e5f6";
+		expect(
+			[
+				`/private/tmp/claude-501/-Users-x/${uuid}/scratchpad/a.txt`,
+				`/tmp/claude-501/-Users-x/${uuid}/scratchpad`,
+				`/tmp/claude-501/-Users-x/${uuid}/scratchpadx`,
+				`/tmp/claude-501/-Users-x/not-a-uuid/scratchpad/a`,
+				`/tmp/claude-501/-Users-x/${uuid}/scratchpad/../a`,
+				`C:\\Users\\me\\AppData\\Local\\Temp\\claude\\C--repo\\${uuid}\\scratchpad\\a.txt`,
+			].map(isScratchpadPath),
+		).toStrictEqual([true, true, false, false, false, true]);
 	});
 });
 
