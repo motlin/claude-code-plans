@@ -1638,15 +1638,32 @@ function isGroupableToolOnlyAssistantLine(
 	line: SessionLine,
 	toolResultMap: ReadonlyMap<string, ToolResultInfo>,
 ): boolean {
-	if (line.type !== "assistant") return false;
+	const buckets = toolOnlyBuckets(line, toolResultMap);
+	return buckets?.every((bucket) => bucket === "default") === true;
+}
+
+/** A tool-only line holding a standalone call, which draws as its own row and never joins a run. */
+function isStandaloneToolOnlyAssistantLine(
+	line: SessionLine,
+	toolResultMap: ReadonlyMap<string, ToolResultInfo>,
+): boolean {
+	return toolOnlyBuckets(line, toolResultMap)?.includes("standalone") === true;
+}
+
+/** The bucket of each call on a line of only tool calls and hidden blocks, else null. */
+function toolOnlyBuckets(line: SessionLine, toolResultMap: ReadonlyMap<string, ToolResultInfo>): ToolBucket[] | null {
+	if (line.type !== "assistant") return null;
 	const content = line.message?.content;
-	if (!Array.isArray(content) || content.length === 0) return false;
-	return content.every(
-		(b) =>
-			(b.type === "tool_use" && toolBucketOf(b, toolResultMap) === "default") ||
-			(b.type === "text" && !isAssistantProseBlock(b)) ||
-			(b.type === "thinking" && b.thinking.trim() === ""),
-	);
+	if (!Array.isArray(content) || content.length === 0) return null;
+	const buckets: ToolBucket[] = [];
+	for (const b of content) {
+		if (b.type === "tool_use") buckets.push(toolBucketOf(b, toolResultMap));
+		else if (
+			!((b.type === "text" && !isAssistantProseBlock(b)) || (b.type === "thinking" && b.thinking.trim() === ""))
+		)
+			return null;
+	}
+	return buckets;
 }
 
 /** An assistant line drawn as prose alone: visible text and no tool calls. */
@@ -2219,6 +2236,47 @@ function buildSessionListEntries(
 	let leadingNotices: FoldedNotice[] = [];
 	/** The index of the first of `leadingNotices`. */
 	let leadingNoticesIndex = 0;
+	/** Whether `leadingNotices` sit before a standalone row, so the run they join starts after it. */
+	let leadingNoticesDeferred = false;
+	/**
+	 * The latest tool run drawn and how many standalone rows followed it. Upstream moves a notice
+	 * beside a standalone call into the latest default run at or before it, else the next one.
+	 */
+	let lastDefaultRun: {
+		entryIndex: number;
+		rebuild: (notices: readonly FoldedNotice[]) => PendingSessionListEntry;
+		line: SessionLine;
+		notices: readonly FoldedNotice[];
+		standalonesAfter: number;
+	} | null = null;
+	/** The latest default run still reachable from a notice at `line`, past only standalone rows. */
+	const reachableDefaultRun = (line: SessionLine) =>
+		lastDefaultRun !== null &&
+		entries.length === lastDefaultRun.entryIndex + 1 + lastDefaultRun.standalonesAfter &&
+		sameSpan(lastDefaultRun.line, line) &&
+		!crossesHeldEntry(lastDefaultRun.line.lineIndex, line.lineIndex)
+			? lastDefaultRun
+			: null;
+	/** Whether the shown line after `index` past standalone rows opens a tool run in `line`'s span. */
+	const nextDefaultRunAfterStandalone = (index: number, line: SessionLine): boolean => {
+		let passedStandalone = false;
+		for (let next = index; next < lines.length; next++) {
+			const nextLine = lineAt(next);
+			if (
+				skipSet.has(next) ||
+				!isLineVisible(nextLine, renderProps, verbose) ||
+				isToolResultOnlyUserLine(nextLine)
+			)
+				continue;
+			if (!sameSpan(line, nextLine) || crossesHeldEntry(line.lineIndex, nextLine.lineIndex)) return false;
+			if (isStandaloneToolOnlyAssistantLine(nextLine, renderProps.toolResultMap)) {
+				passedStandalone = true;
+				continue;
+			}
+			return passedStandalone && isGroupableToolOnlyAssistantLine(nextLine, renderProps.toolResultMap);
+		}
+		return false;
+	};
 	const slowCommands = new SlowCommandAbsorber(renderProps.subagentLookup);
 	const pushIdleRow = (commands: readonly SlowCommand[], startRecordIndex: number) => {
 		if (commands.length === 0) return;
@@ -2292,11 +2350,22 @@ function buildSessionListEntries(
 				// Stop-hook feedback belongs to no assistant span; it leads whichever run it re-prompted.
 				(notice.kind === "hook" || sameSpan(line, following)) &&
 				!crossesHeldEntry(line.lineIndex, following.lineIndex);
+			const besideStandalone =
+				!leadsRun &&
+				following !== undefined &&
+				renderProps.showTools &&
+				isStandaloneToolOnlyAssistantLine(following, renderProps.toolResultMap);
+			const previousRun = besideStandalone ? reachableDefaultRun(line) : null;
+			const deferred = besideStandalone && previousRun === null && nextDefaultRunAfterStandalone(j, line);
 			// A task notification opening a run gathers the idle slow commands into it instead.
 			if (!(leadsRun && notice.kind === "task")) pushIdleCommands(i);
-			if (leadsRun) {
+			if (previousRun !== null) {
+				previousRun.notices = [...previousRun.notices, ...notices];
+				entries[previousRun.entryIndex] = previousRun.rebuild(previousRun.notices);
+			} else if (leadsRun || deferred) {
 				leadingNotices = notices;
 				leadingNoticesIndex = i;
+				leadingNoticesDeferred = deferred;
 			} else {
 				prevVisibleType = "assistant";
 				entries.push({
@@ -2320,7 +2389,10 @@ function buildSessionListEntries(
 			const groupIndices: number[] = [i];
 			const notices = leadingNotices;
 			leadingNotices = [];
-			const startRecordIndex = notices[0]?.lineIndex ?? line.lineIndex;
+			const startRecordIndex = leadingNoticesDeferred
+				? line.lineIndex
+				: (notices[0]?.lineIndex ?? line.lineIndex);
+			leadingNoticesDeferred = false;
 			let j = i + 1;
 			while (j < lines.length) {
 				const nextLine = lineAt(j);
@@ -2375,65 +2447,69 @@ function buildSessionListEntries(
 
 			prevVisibleType = "assistant";
 
-			if (groupIndices.length === 1 && notices.length === 0) {
-				entries.push({
-					key: `line-${line.lineIndex}`,
-					startRecordIndex: line.lineIndex,
-					isPrompt: false,
-					kind: "assistant_tool",
-					assistantSpan: displaySpans?.get(line.lineIndex),
-					replyHead: line,
-					...(line.type === "assistant" &&
-					!hasAttribution(line, verbose) &&
-					toolSectionOpensWithStatus(backgroundToolNames([line], renderProps.toolResultMap), 0)
-						? {opensWithStatus: "status"}
-						: {}),
-					element: (
-						<LineEntry
-							line={line}
-							nextLine={lines[groupStart + 1]}
-							turnChanges={turnChangesByLine.get(line.lineIndex)}
-							footer={footerFor(line)}
-							{...renderProps}
-						/>
-					),
-				});
-			} else {
-				const groupLines = groupIndices.map((index) => lineAt(index));
-				const groupChanges = groupLines
-					.map((groupLine) => turnChangesByLine.get(groupLine.lineIndex))
-					.find((changes) => changes !== undefined);
-				// GroupedToolCallEntry draws the lines sharing the first one's source session as its first batch.
-				const firstBatchEnd = groupLines.findIndex(
-					(groupLine) =>
-						getSourceSessionId(groupLine, renderProps.sessionId) !==
-						getSourceSessionId(line, renderProps.sessionId),
-				);
-				const firstBatch = firstBatchEnd === -1 ? groupLines : groupLines.slice(0, firstBatchEnd);
-				entries.push({
-					key: `group-${line.lineIndex}`,
-					startRecordIndex,
-					isPrompt: false,
-					kind: "assistant_tool",
-					assistantSpan: displaySpans?.get(line.lineIndex),
-					replyHead: line,
-					...(toolSectionOpensWithStatus(
-						backgroundToolNames(firstBatch, renderProps.toolResultMap),
-						firstBatchEnd === -1 ? notices.length : 0,
-					)
-						? {opensWithStatus: "status"}
-						: {}),
-					element: (
-						<GroupedToolCallEntry
-							entries={groupLines}
-							notices={notices}
-							turnChanges={groupChanges}
-							footer={footerFor(line)}
-							{...renderProps}
-						/>
-					),
-				});
-			}
+			const buildRun = (runNotices: readonly FoldedNotice[]): PendingSessionListEntry => {
+				if (groupIndices.length === 1 && runNotices.length === 0) {
+					return {
+						key: `line-${line.lineIndex}`,
+						startRecordIndex: line.lineIndex,
+						isPrompt: false,
+						kind: "assistant_tool",
+						assistantSpan: displaySpans?.get(line.lineIndex),
+						replyHead: line,
+						...(line.type === "assistant" &&
+						!hasAttribution(line, verbose) &&
+						toolSectionOpensWithStatus(backgroundToolNames([line], renderProps.toolResultMap), 0)
+							? {opensWithStatus: "status"}
+							: {}),
+						element: (
+							<LineEntry
+								line={line}
+								nextLine={lines[groupStart + 1]}
+								turnChanges={turnChangesByLine.get(line.lineIndex)}
+								footer={footerFor(line)}
+								{...renderProps}
+							/>
+						),
+					};
+				} else {
+					const groupLines = groupIndices.map((index) => lineAt(index));
+					const groupChanges = groupLines
+						.map((groupLine) => turnChangesByLine.get(groupLine.lineIndex))
+						.find((changes) => changes !== undefined);
+					// GroupedToolCallEntry draws the lines sharing the first one's source session as its first batch.
+					const firstBatchEnd = groupLines.findIndex(
+						(groupLine) =>
+							getSourceSessionId(groupLine, renderProps.sessionId) !==
+							getSourceSessionId(line, renderProps.sessionId),
+					);
+					const firstBatch = firstBatchEnd === -1 ? groupLines : groupLines.slice(0, firstBatchEnd);
+					return {
+						key: `group-${line.lineIndex}`,
+						startRecordIndex,
+						isPrompt: false,
+						kind: "assistant_tool",
+						assistantSpan: displaySpans?.get(line.lineIndex),
+						replyHead: line,
+						...(toolSectionOpensWithStatus(
+							backgroundToolNames(firstBatch, renderProps.toolResultMap),
+							firstBatchEnd === -1 ? runNotices.length : 0,
+						)
+							? {opensWithStatus: "status"}
+							: {}),
+						element: (
+							<GroupedToolCallEntry
+								entries={groupLines}
+								notices={runNotices}
+								turnChanges={groupChanges}
+								footer={footerFor(line)}
+								{...renderProps}
+							/>
+						),
+					};
+				}
+			};
+			lastDefaultRun = {entryIndex: entries.length, rebuild: buildRun, line, notices, standalonesAfter: 0};
+			entries.push(buildRun(notices));
 			i = j;
 			continue;
 		}
@@ -2534,6 +2610,8 @@ function buildSessionListEntries(
 				: {}),
 			element: renderLine(false),
 		});
+		if (lastDefaultRun !== null && isStandaloneToolOnlyAssistantLine(line, renderProps.toolResultMap))
+			lastDefaultRun.standalonesAfter++;
 		i++;
 	}
 

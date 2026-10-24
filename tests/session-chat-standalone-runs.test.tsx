@@ -232,3 +232,69 @@ describe("standalone calls end a tool run", () => {
 		expect(bothModes(records)).toStrictEqual({normal: expected, verbose: expected});
 	});
 });
+
+describe("notices next to a standalone", () => {
+	const taskNotice = {
+		type: "user",
+		uuid: "n-task",
+		promptSource: "system",
+		turnOrigin: "task_notification",
+		message: {
+			role: "user",
+			content: [
+				"<task-notification>",
+				"<task-id>fab123</task-id>",
+				"<tool-use-id>one</tool-use-id>",
+				"<output-file>/fabricated/tasks/fab123.output</output-file>",
+				"<status>completed</status>",
+				'<summary>Background command "Fabricated one" completed (exit code 0)</summary>',
+				"</task-notification>",
+			].join("\n"),
+		},
+	};
+
+	it("attaches a task notification before a standalone to the default run before it", () => {
+		const records = [prompt, ...call(bash("one")), taskNotice, ...call(exitPlan("plan", REJECTED))];
+		expect(rows(records)).toStrictEqual([
+			human,
+			tool(["Ran a command, finished a background command"]),
+			tool(["Proposed planStopped"]),
+		]);
+	});
+
+	it("attaches a task notification before a standalone to the next default run when none precedes it", () => {
+		const records = [
+			prompt,
+			...call(exitPlan("first", REJECTED)),
+			taskNotice,
+			...call(exitPlan("second", REJECTED)),
+			...call(bash("two")),
+		];
+		expect(rows(records)).toStrictEqual([
+			human,
+			tool(["Proposed planStopped"]),
+			tool(["Proposed planStopped"]),
+			tool(["Ran a command, finished a background command"]),
+		]);
+	});
+	it("reaches past a standalone to the latest default run before the notification", () => {
+		const records = [
+			prompt,
+			...call(bash("one")),
+			...call(exitPlan("first", REJECTED)),
+			taskNotice,
+			...call(exitPlan("second", REJECTED)),
+		];
+		expect(rows(records)).toStrictEqual([
+			human,
+			tool(["Ran a command, finished a background command"]),
+			tool(["Proposed planStopped"]),
+			tool(["Proposed planStopped"]),
+		]);
+	});
+
+	it("keeps a task notification as its own row when the span has no default run", () => {
+		const records = [prompt, taskNotice, ...call(exitPlan("plan", REJECTED))];
+		expect(rows(records)).toStrictEqual([human, tool([]), tool(["Proposed planStopped"])]);
+	});
+});
