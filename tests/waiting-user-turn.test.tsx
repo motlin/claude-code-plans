@@ -145,7 +145,7 @@ describe("WaitingUserTurn", () => {
 describe("OptimisticWaitingTurn", () => {
 	it("draws the in-flight herdr prompt as a head waiting row instead of a waiting-for-transcript placeholder", () => {
 		const onSendNow = vi.fn<() => void>();
-		const {container} = render(<OptimisticWaitingTurn prompt="ship it" error="" onSendNow={onSendNow} />);
+		const {container} = render(<OptimisticWaitingTurn prompt="ship it" onSendNow={onSendNow} />);
 		const row = container.querySelector("[data-take-back-entry]");
 		expect({
 			entry: row?.getAttribute("data-take-back-entry"),
@@ -165,14 +165,6 @@ describe("OptimisticWaitingTurn", () => {
 		const sendNow = container.querySelector("[data-testid=awaiting-turn-send-now]");
 		if (sendNow !== null) fireEvent.click(sendNow);
 		expect(onSendNow.mock.calls).toStrictEqual([[]]);
-	});
-
-	it("shows a failed send's error under the row and drops Send now", () => {
-		const {container} = render(<OptimisticWaitingTurn prompt="ship it" error="pane gone" onSendNow={() => {}} />);
-		expect({
-			sendNow: container.querySelectorAll("[data-testid=awaiting-turn-send-now]").length,
-			alert: container.querySelector("[role=alert]")?.textContent,
-		}).toStrictEqual({sendNow: 0, alert: "pane gone"});
 	});
 });
 

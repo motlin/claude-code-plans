@@ -3,6 +3,7 @@ import {z} from "zod";
 
 import type {ToastOptions} from "../components/toast-context";
 import {MAX_ATTACHMENT_BYTES, uploadAttachment} from "./api/attachments";
+import {mergeRefill} from "./send-rejection";
 
 /**
  * "Attach as context" (⇧⌘L) as on claude.ai/code: a file, line range or
@@ -153,6 +154,9 @@ export function composePrompt(
 export interface ComposerHandle {
 	insertText: (text: string) => void;
 	focus: () => void;
+	/** Replaces the prompt text and focuses; absent, with getText, where no send can be rejected. */
+	setText?: (text: string) => void;
+	getText?: () => string;
 	/** Puts a cancelled steer back, ahead of any draft, and focuses; absent where steers can't be sent. */
 	takeBack?: (text: string) => void;
 }
@@ -278,6 +282,14 @@ export function requestComposerTakeBack(sessionId: string, text: string): boolea
 	const handles = mounted(sessionId).filter((handle) => handle.takeBack !== undefined);
 	for (const handle of handles) handle.takeBack?.(text);
 	return handles.length > 0;
+}
+
+/** Puts a rejected prompt back into the session's first composer, above anything typed meanwhile; false when none is mounted. */
+export function refillComposer(sessionId: string, text: string): boolean {
+	const handle = mounted(sessionId).find((each) => each.setText !== undefined && each.getText !== undefined);
+	if (handle?.setText === undefined || handle.getText === undefined) return false;
+	handle.setText(mergeRefill(text, handle.getText()));
+	return true;
 }
 
 /** Focuses the session's composer; false when no composer is mounted. */

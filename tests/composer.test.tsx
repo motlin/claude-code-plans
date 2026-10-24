@@ -8,7 +8,7 @@ import {Composer} from "../src/components/composer";
 import {customizeMcpServersQueryOptions} from "../src/lib/api/customize";
 import {localAccountQueryOptions} from "../src/lib/api/local-account";
 import type {ComposerState} from "../src/lib/composer-state";
-import {requestComposerTakeBack} from "../src/lib/context-attach";
+import {refillComposer, requestComposerTakeBack} from "../src/lib/context-attach";
 
 afterEach(() => {
 	cleanup();
@@ -541,6 +541,33 @@ describe("Composer", () => {
 				requestComposerTakeBack("session-alice", "Alice's steer");
 			});
 			expect(textarea.value).toBe("Alice's steer\n\nCarol's draft");
+		});
+	});
+
+	describe("refilling a rejected send", () => {
+		it("puts the rejected prompt in an empty composer and focuses it", () => {
+			render(<Composer variant="session" draftKey="s1" onSend={() => {}} />);
+			const textarea = screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
+			let refilled = false;
+			act(() => {
+				refilled = refillComposer("s1", "hi");
+			});
+			expect({
+				refilled,
+				other: refillComposer("session-bob", "Bob's prompt"),
+				value: textarea.value,
+				focused: document.activeElement === textarea,
+			}).toStrictEqual({refilled: true, other: false, value: "hi", focused: true});
+		});
+
+		it("keeps text typed while the send was in flight below the rejected prompt", () => {
+			render(<Composer variant="session" draftKey="s1" onSend={() => {}} />);
+			const textarea = screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
+			fireEvent.change(textarea, {target: {value: "new"}});
+			act(() => {
+				refillComposer("s1", "hi");
+			});
+			expect(textarea.value).toBe("hi\n\nnew");
 		});
 	});
 });

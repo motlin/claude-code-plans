@@ -169,9 +169,9 @@ describe("session live input", () => {
 			void result.current.send("Continue Alice's test");
 		});
 		expect(result.current.state).toStrictEqual({
-			error: "",
 			isPending: true,
 			prompt: "Continue Alice's test",
+			rejection: null,
 		});
 
 		act(() => {
@@ -179,9 +179,9 @@ describe("session live input", () => {
 			finishPost();
 		});
 		expect(result.current.state).toStrictEqual({
-			error: "",
 			isPending: true,
 			prompt: "Continue Alice's test",
+			rejection: null,
 		});
 
 		rerender({
@@ -199,7 +199,7 @@ describe("session live input", () => {
 			).lines,
 		});
 		await waitFor(() => {
-			expect(result.current.state).toStrictEqual({error: "", isPending: false, prompt: ""});
+			expect(result.current.state).toStrictEqual({isPending: false, prompt: "", rejection: null});
 		});
 	});
 
@@ -214,9 +214,13 @@ describe("session live input", () => {
 		});
 
 		expect(result.current.state).toStrictEqual({
-			error: "Fabricated live prompt failure",
 			isPending: false,
-			prompt: "Continue Alice's test",
+			prompt: "",
+			rejection: {
+				prompt: "Continue Alice's test",
+				message: "Fabricated live prompt failure",
+				nonResendable: false,
+			},
 		});
 	});
 });

@@ -3,10 +3,11 @@
 import {act, renderHook} from "@testing-library/react";
 import {describe, expect, it, vi} from "vite-plus/test";
 import {useLiveHerdrPrompt} from "../src/components/use-live-herdr-prompt";
+import {HerdrRequestError} from "../src/lib/api/herdr";
 import {type SessionLine, processTranscript} from "../src/lib/transcript";
 
-const PENDING = {error: "", isPending: true, prompt: "Fix Alice's test"};
-const CLEARED = {error: "", isPending: false, prompt: ""};
+const PENDING = {isPending: true, prompt: "Fix Alice's test", rejection: null};
+const CLEARED = {isPending: false, prompt: "", rejection: null};
 
 const assistantRecord = (text: string) => ({
 	type: "assistant",
@@ -124,5 +125,54 @@ describe("useLiveHerdrPrompt clears only on its own echo", () => {
 		rerender({count: 101, current: linesOf([userRecord("Fix Bob's test")], 100)});
 
 		expect(result.current.state).toStrictEqual(PENDING);
+	});
+});
+
+describe("useLiveHerdrPrompt records a rejected send", () => {
+	const rejectingHook = (error: Error) => {
+		const postPrompt = vi.fn<(sessionId: string, prompt: string) => Promise<void>>().mockRejectedValue(error);
+		const onRejected = vi.fn<(prompt: string) => void>();
+		const hook = renderHook(() => useLiveHerdrPrompt("s1", 100, [], postPrompt, onRejected));
+		return {hook, onRejected};
+	};
+
+	it("records the rejection, drops the bubble and hands the prompt back for a refill", async () => {
+		const {hook, onRejected} = rejectingHook(new HerdrRequestError("boom", 502, "x"));
+		let result: string | undefined;
+		await act(async () => {
+			result = await hook.result.current.send("hi");
+		});
+
+		expect({result, state: hook.result.current.state, refills: onRejected.mock.calls}).toStrictEqual({
+			result: "failed",
+			state: {isPending: false, prompt: "", rejection: {prompt: "hi", message: "boom", nonResendable: false}},
+			refills: [["hi"]],
+		});
+	});
+
+	it("clears the rejection on request", async () => {
+		const {hook} = rejectingHook(new HerdrRequestError("boom", 502, "x"));
+		await act(async () => {
+			await hook.result.current.send("hi");
+		});
+		act(() => {
+			hook.result.current.clearRejection();
+		});
+
+		expect(hook.result.current.state).toStrictEqual(CLEARED);
+	});
+
+	it("leaves a not-ready agent to the queue without a rejection", async () => {
+		const {hook, onRejected} = rejectingHook(new HerdrRequestError("busy", 409, "agent_not_ready"));
+		let result: string | undefined;
+		await act(async () => {
+			result = await hook.result.current.send("hi");
+		});
+
+		expect({result, state: hook.result.current.state, refills: onRejected.mock.calls}).toStrictEqual({
+			result: "not-ready",
+			state: CLEARED,
+			refills: [],
+		});
 	});
 });

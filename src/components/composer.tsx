@@ -603,6 +603,12 @@ export function Composer({
 					textareaRef.current?.focus();
 				},
 				focus: () => textareaRef.current?.focus(),
+				setText: (text) => {
+					promptRef.current = text;
+					setPrompt(text);
+					textareaRef.current?.focus();
+				},
+				getText: () => promptRef.current,
 				takeBack: (text) => {
 					const next = mergeTakeBack(text, promptRef.current);
 					promptRef.current = next;

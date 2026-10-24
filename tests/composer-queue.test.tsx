@@ -159,7 +159,7 @@ describe("409 agent_not_ready → queued", () => {
 
 		expect({delivery, state: result.current.state}).toStrictEqual({
 			delivery: "not-ready",
-			state: {error: "", isPending: false, prompt: ""},
+			state: {isPending: false, prompt: "", rejection: null},
 		});
 	});
 

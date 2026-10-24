@@ -190,16 +190,14 @@ export function WaitingPickupStatus({waitingIds}: {waitingIds: readonly string[]
 
 /**
  * The prompt just typed into the live pane, bridging the moment before the CLI writes it to the
- * JSONL. It waits like any steer, so it is the head waiting row; a failed send loses Send now.
+ * JSONL. It waits like any steer, so it is the head waiting row.
  */
 export function OptimisticWaitingTurn({
 	prompt,
-	error,
 	onSendNow,
 	onFocusComposer,
 }: {
 	prompt: string;
-	error: string;
 	onSendNow: (() => Promise<void> | void) | undefined;
 	onFocusComposer?: (() => void) | undefined;
 }) {
@@ -208,19 +206,11 @@ export function OptimisticWaitingTurn({
 			<WaitingUserTurn
 				entryId="optimistic"
 				text={prompt}
-				head={error === ""}
+				head
 				onSendNow={onSendNow}
 				onFocusComposer={onFocusComposer}
 				data-perf-pending-prompt=""
 			/>
-			{error !== "" && (
-				<div
-					role="alert"
-					className="rounded-lg border border-danger-000/20 bg-danger-900 px-4 py-3 text-sm text-danger-000"
-				>
-					{error}
-				</div>
-			)}
 		</div>
 	);
 }

@@ -7,7 +7,7 @@ import {lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type 
 import {Minimize2} from "lucide-react";
 import {SessionTileFrame, type SessionTileScrollPosition} from "./session-tile-frame";
 import {latestBreakdown} from "../lib/context-breakdown";
-import {focusComposer, requestComposerTakeBack} from "../lib/context-attach";
+import {focusComposer, refillComposer, requestComposerTakeBack} from "../lib/context-attach";
 import {SessionRailSlot} from "./session-rail/session-rail-slot";
 import {useSessionRailDocked} from "./session-rail/use-session-rail-docked";
 import type {SessionRailInputs} from "./session-rail/session-rail-cards";
@@ -542,7 +542,8 @@ function SessionView({
 			: (target: {sessionId: string; atMessage: string}) => {
 					forkSession({...target, cwd: forkCwd});
 				};
-	const liveHerdrPrompt = useLiveHerdrPrompt(sessionId, endIndex, processed.lines);
+	const refillRejectedPrompt = useCallback((prompt: string) => refillComposer(sessionId, prompt), [sessionId]);
+	const liveHerdrPrompt = useLiveHerdrPrompt(sessionId, endIndex, processed.lines, undefined, refillRejectedPrompt);
 	const promptBehavior = getSessionPromptBehavior(sessionId, isActive, herdr);
 	const stopAvailable = canStopResponse({
 		hasLivePane: promptBehavior.hasLivePane,
@@ -1145,7 +1146,6 @@ function SessionView({
 							{liveHerdrPrompt.state.prompt !== "" && (
 								<OptimisticWaitingTurn
 									prompt={liveHerdrPrompt.state.prompt}
-									error={liveHerdrPrompt.state.error}
 									onSendNow={
 										workingMarkerState.status === "idle" ? undefined : requestSendNowInterrupt
 									}
@@ -1157,7 +1157,7 @@ function SessionView({
 								<HeldSteerTurns
 									items={steeredPrompts(queuedPrompts)}
 									head={
-										!(liveHerdrPrompt.state.prompt !== "" && liveHerdrPrompt.state.error === "") &&
+										liveHerdrPrompt.state.prompt === "" &&
 										!(
 											sessionProcessLive({
 												hookActive: isActive,

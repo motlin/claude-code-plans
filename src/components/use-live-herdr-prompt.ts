@@ -13,9 +13,13 @@ export function useLiveHerdrPrompt(
 	transcriptRecordCount: number,
 	lines: readonly SessionLine[],
 	postPrompt: (sessionId: string, prompt: string, options: {midTurn?: true}) => Promise<void> = sendHerdrPrompt,
+	/** Hands a rejected prompt back, as upstream's composer catch refills the composer. */
+	onRejected?: (prompt: string) => void,
 ) {
 	const [state, setState] = useState<LiveHerdrPromptState>(EMPTY_LIVE_HERDR_PROMPT_STATE);
 	const pendingRecordCountRef = useRef<number | null>(null);
+	const onRejectedRef = useRef(onRejected);
+	onRejectedRef.current = onRejected;
 
 	useEffect(() => {
 		pendingRecordCountRef.current = null;
@@ -37,7 +41,7 @@ export function useLiveHerdrPrompt(
 	const send = useCallback(
 		async (prompt: string, options: {midTurn?: true} = {}): Promise<DeliveryResult> => {
 			pendingRecordCountRef.current = transcriptRecordCount;
-			setState({error: "", isPending: true, prompt});
+			setState({isPending: true, prompt, rejection: null});
 			try {
 				await postPrompt(sessionId, prompt, options);
 				return "sent";
@@ -47,18 +51,29 @@ export function useLiveHerdrPrompt(
 					setState(EMPTY_LIVE_HERDR_PROMPT_STATE);
 					return "not-ready";
 				}
+				// Upstream `local_send_rejected`: the bubble goes, the card and the refilled composer take over.
+				// Attachments are composed into the text locally, so every rejected prompt can be resent.
 				setState({
-					error: error instanceof Error ? error.message : "Failed to send prompt",
 					isPending: false,
-					prompt,
+					prompt: "",
+					rejection: {
+						prompt,
+						message: error instanceof Error && error.message !== "" ? error.message : "Send failed",
+						nonResendable: false,
+					},
 				});
+				onRejectedRef.current?.(prompt);
 				return "failed";
 			}
 		},
 		[postPrompt, sessionId, transcriptRecordCount],
 	);
 
-	return {send, state};
+	const clearRejection = useCallback(() => {
+		setState((current) => (current.rejection === null ? current : {...current, rejection: null}));
+	}, []);
+
+	return {send, clearRejection, state};
 }
 
 /** The prompt text a line hands back to the person, or null for a line that echoes no prompt. */
@@ -82,14 +97,21 @@ function promptText(content: string | readonly {type: string; text?: unknown}[])
 		.join("\n");
 }
 
+/** A send the pane refused: the prompt to put back, herdr's message, and whether Try again can resend it. */
+interface SendRejection {
+	prompt: string;
+	message: string;
+	nonResendable: boolean;
+}
+
 interface LiveHerdrPromptState {
-	error: string;
 	isPending: boolean;
 	prompt: string;
+	rejection: SendRejection | null;
 }
 
 const EMPTY_LIVE_HERDR_PROMPT_STATE: LiveHerdrPromptState = {
-	error: "",
 	isPending: false,
 	prompt: "",
+	rejection: null,
 };
