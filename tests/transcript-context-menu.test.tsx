@@ -426,10 +426,20 @@ describe("transcript file ref menus", () => {
 		return vi.waitFor(() => find(container, selector));
 	}
 
+	/** Right-click a file ref and wait for its menu, which opens once the existence check answers. */
+	async function openFileMenuOn(element: Element): Promise<HTMLElement> {
+		fireEvent.contextMenu(element, {clientX: 10, clientY: 10});
+		return vi.waitFor(() => {
+			const menu = screen.getAllByRole("menu").at(-1);
+			if (menu === undefined) throw new Error("no menu open");
+			return menu;
+		});
+	}
+
 	it("opens only the file actions menu on a prose file ref, at the default menu width", async () => {
 		const container = renderChat(withFileRefs("/repo"), FILE_RECORDS);
 		const ref = await findFileRef(container, ".prose-link[data-file-ref]");
-		const menu = openMenuOn(ref);
+		const menu = await openFileMenuOn(ref);
 
 		expect({
 			rows: menuRows(menu),
@@ -445,7 +455,7 @@ describe("transcript file ref menus", () => {
 			focus: vi.fn<ComposerHandle["focus"]>(),
 		});
 		const container = renderChat(withFileRefs("/repo"), FILE_RECORDS);
-		const menu = openMenuOn(await findFileRef(container, ".prose-link[data-file-ref]"));
+		const menu = await openFileMenuOn(await findFileRef(container, ".prose-link[data-file-ref]"));
 		clickItem(menu, "Attach as context");
 		const chips = getContextChips("test-session").map(({id: _id, ...chip}) => chip);
 		unregister();
@@ -457,7 +467,7 @@ describe("transcript file ref menus", () => {
 		const container = renderChat(withFileRefs("/repo"), FILE_RECORDS);
 		fireEvent.click(find(container, "[data-tool-row] [aria-expanded]"));
 		const ref = await findFileRef(container, "[data-tool-row] [data-file-ref]");
-		const menu = openMenuOn(ref);
+		const menu = await openFileMenuOn(ref);
 
 		expect({rows: menuRows(menu), path: ref.getAttribute("data-file-path")}).toStrictEqual({
 			rows: FILE_ROWS,
@@ -477,7 +487,7 @@ describe("transcript file ref menus", () => {
 			);
 		});
 		const container = renderChat(withFileRefs("/repo"), FILE_RECORDS);
-		const menu = openMenuOn(await findFileRef(container, ".prose-link[data-file-ref]"));
+		const menu = await openFileMenuOn(await findFileRef(container, ".prose-link[data-file-ref]"));
 		fireEvent.click(find(menu, '[role="menuitem"]', "Open in"));
 		const submenu = await vi.waitFor(() => {
 			const open = screen.getAllByRole("menu").at(-1);
@@ -524,6 +534,56 @@ describe("transcript file ref menus", () => {
 			failedToasts: ["Couldn’t open this file with the default app."],
 			blockedToasts: [],
 		});
+	});
+
+	/** Answer `/api/file-refs` for `/repo/src/app.ts` with `status`, after `delayMs` when given. */
+	function answerAppStatus(status: "exists" | "missing", delayMs?: number): void {
+		vi.mocked(fetch).mockImplementation(async (input, init) => {
+			if (String(input) !== "/api/file-refs")
+				return Promise.resolve(Response.json({error: "not found"}, {status: 404}));
+			const {paths} = JSON.parse(String(init?.body)) as {paths: string[]};
+			if (delayMs !== undefined) {
+				await new Promise((resolve) => {
+					setTimeout(resolve, delayMs);
+				});
+			}
+			return Response.json({
+				statuses: Object.fromEntries(
+					paths.map((path) => [path, path === "/repo/src/app.ts" ? status : "missing"]),
+				),
+			});
+		});
+	}
+
+	it("hides Open in ▸ and Show in Finder for a file ref deleted since it rendered", async () => {
+		const container = renderChat(withFileRefs("/repo"), FILE_RECORDS);
+		const ref = await findFileRef(container, ".prose-link[data-file-ref]");
+		answerAppStatus("missing");
+		const menu = await openFileMenuOn(ref);
+
+		expect(menuRows(menu)).toStrictEqual(["Attach as context", "Copy"]);
+	});
+
+	it("opens after upstream's 150ms on a slow existence check, then hides the rows once the file proves gone", async () => {
+		const container = renderChat(withFileRefs("/repo"), FILE_RECORDS);
+		const ref = await findFileRef(container, ".prose-link[data-file-ref]");
+		answerAppStatus("missing", 400);
+		fireEvent.contextMenu(ref, {clientX: 10, clientY: 10});
+		const closedAt100 = await new Promise<boolean>((resolve) => {
+			setTimeout(() => {
+				resolve(screen.queryAllByRole("menu").length === 0);
+			}, 100);
+		});
+		const menu = await vi.waitFor(() => screen.getByRole("menu"), {timeout: 300});
+		const before = menuRows(menu);
+		await vi.waitFor(
+			() => {
+				expect(menuRows(screen.getByRole("menu"))).toStrictEqual(["Attach as context", "Copy"]);
+			},
+			{timeout: 1000},
+		);
+
+		expect({closedAt100, before}).toStrictEqual({closedAt100: true, before: FILE_ROWS});
 	});
 
 	it("keeps Copy code on plain inline code beside a file ref", async () => {

@@ -1,6 +1,8 @@
+import {type QueryClient, QueryClientContext} from "@tanstack/react-query";
 import {type ComponentProps, type ReactNode, useContext, useRef, useState} from "react";
 
 import {type ReadAloudStatus, useReadAloud} from "../hooks/use-read-aloud";
+import {fileRefStatusQueryOptions} from "../lib/api/file-refs";
 import {writeClipboardText} from "../lib/clipboard";
 import {attachContext} from "../lib/context-attach";
 import {markdownToPlainText} from "../lib/markdown-plain-text";
@@ -51,6 +53,18 @@ function resolveMenuTarget(element: Element | null, fallback: "prose" | "tool"):
 	return {kind: fallback};
 }
 
+/** Upstream `Kn`'s `beforeOpen`: the longest a file menu waits on its "is this path gone?" check. */
+const GONE_CHECK_WAIT_MS = 150;
+
+/** Whether `path` no longer exists, rechecked now; a failed check counts as present. */
+async function checkGone(queryClient: QueryClient, path: string): Promise<boolean> {
+	try {
+		return (await queryClient.query({...fileRefStatusQueryOptions(path), staleTime: 0})) === "missing";
+	} catch {
+		return false;
+	}
+}
+
 const MENU_WIDTH = {assistant: "w-[225px]", user: "w-[249px]"} as const;
 
 const FORK_DESCRIPTION = "Starts a new session, keeps this one";
@@ -81,23 +95,56 @@ export function TranscriptMessageMenu({
 	const [target, setTarget] = useState<TranscriptMenuTarget>({kind: "prose"});
 	const [keyboardArticle, setKeyboardArticle] = useState<HTMLElement | null>(null);
 	const closingMenu = useRef<Element | null>(null);
+	const queryClient = useContext(QueryClientContext);
+	const [open, setOpen] = useState(false);
+	const [gone, setGone] = useState(false);
+	const goneCheck = useRef<Promise<boolean> | null>(null);
 	const fallback = markdown === "" ? "tool" : "prose";
 	return (
 		<ContextMenu
-			onOpenChange={(open, details) => {
+			open={open}
+			onOpenChange={(nextOpen, details) => {
+				const check = goneCheck.current;
+				if (nextOpen && check !== null) {
+					// Upstream waits up to 150ms for the check, then opens and updates when it answers.
+					void Promise.race([
+						check,
+						new Promise((resolve) => {
+							setTimeout(resolve, GONE_CHECK_WAIT_MS);
+						}),
+					]).then(() => {
+						if (goneCheck.current === check) setOpen(true);
+					});
+				} else {
+					setOpen(nextOpen);
+				}
 				closingMenu.current =
-					!open &&
+					!nextOpen &&
 					(details.reason === "escape-key" || details.reason === "item-press") &&
 					details.event.target instanceof Element
 						? details.event.target.closest('[role="menu"]')
 						: null;
+				if (!nextOpen) goneCheck.current = null;
 			}}
 		>
 			<ContextMenuTrigger
 				data-transcript-message-menu
 				render={render}
 				onContextMenu={(event) => {
-					setTarget(resolveMenuTarget(event.target instanceof Element ? event.target : null, fallback));
+					const nextTarget = resolveMenuTarget(
+						event.target instanceof Element ? event.target : null,
+						fallback,
+					);
+					setTarget(nextTarget);
+					setGone(false);
+					goneCheck.current = null;
+					if (nextTarget.kind === "file" && queryClient !== undefined) {
+						const check = checkGone(queryClient, nextTarget.path);
+						goneCheck.current = check;
+						void check.then((isGone) => {
+							if (goneCheck.current === check) setGone(isGone);
+						});
+					}
 					const article = event.currentTarget.closest<HTMLElement>("[data-transcript-entry-index]");
 					setKeyboardArticle(
 						event.button === 0 &&
@@ -138,6 +185,7 @@ export function TranscriptMessageMenu({
 					message={uuid === undefined ? undefined : {sessionId, uuid}}
 					sessionId={sessionId}
 					readAloud={readAloud}
+					gone={gone}
 				/>
 			</MenuContent>
 		</ContextMenu>
@@ -167,6 +215,7 @@ function TranscriptMenuItems({
 	message,
 	sessionId,
 	readAloud,
+	gone,
 }: {
 	speaker: Speaker;
 	target: TranscriptMenuTarget;
@@ -174,6 +223,8 @@ function TranscriptMenuItems({
 	message: TranscriptMessageRef | undefined;
 	sessionId: string;
 	readAloud: ReturnType<typeof useReadAloud>;
+	/** The right-clicked file ref no longer exists. */
+	gone: boolean;
 }) {
 	const actions = useContext(TranscriptActionsContext);
 	const cwd = useFileRefsCwd();
@@ -185,6 +236,7 @@ function TranscriptMenuItems({
 				cwd={cwd}
 				{...(target.line === undefined ? {} : {line: target.line})}
 				surface="transcript"
+				gone={gone}
 				onAttachContext={(attachment) => attachContext(sessionId, attachment)}
 				onOpenInDefaultApp={() => {
 					openInDefaultApp(target.path);
