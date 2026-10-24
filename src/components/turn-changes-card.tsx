@@ -1,13 +1,15 @@
 import {ChevronRight, Code, FileText} from "lucide-react";
-import {useState} from "react";
+import {useContext, useState} from "react";
 
 import {fileViewerPath} from "../lib/api/file";
 import {requestChangesScope} from "../lib/changes-scope-request";
 import {TOUCH_REVEAL} from "../lib/touch-reveal";
 import type {TurnChanges} from "../lib/turn-changes";
+import {turnUndoPrompt} from "../lib/turn-undo-prompt";
 import {useOptionalPaneHost} from "./panes/pane-host-context";
 import {ChevronIcon} from "./tool-renderers/shared";
 import {TurnUndoConfirm} from "./turn-undo";
+import {TurnUndoSendContext} from "./turn-undo-send-context";
 import {useTurnUndo} from "./use-turn-undo";
 import {Tooltip} from "./ui/tooltip";
 
@@ -82,11 +84,22 @@ function UndoFeedback({undo}: {undo: ReturnType<typeof useTurnUndo>}) {
  * the name open the Changes pane ("View this turn's changes"), the stats and a
  * chevron sit right-aligned, and Undo, which upstream does not draw on an
  * archived session, stays hidden until hover or focus.
+ *
+ * Undo, as upstream, sends a message asking Claude to undo the turn's files when the
+ * session has a live pane. Without one it falls back to the local direct revert behind
+ * a confirm, which upstream has no counterpart for.
  */
 export function TurnChangesCard({sessionId, changes}: {sessionId: string; changes: TurnChanges}) {
 	const host = useOptionalPaneHost();
 	const [showAll, setShowAll] = useState(false);
 	const undo = useTurnUndo();
+	const send = useContext(TurnUndoSendContext);
+	const startUndo =
+		send === null
+			? () => void undo.start(sessionId, changes.turnUuid)
+			: () => {
+					send(turnUndoPrompt(changes.files.map((file) => file.path)));
+				};
 	const count = changes.files.length;
 	const title = `Edited ${count} ${count === 1 ? "file" : "files"}`;
 	const visible = showAll ? changes.files : changes.files.slice(0, VISIBLE_FILE_LIMIT);
@@ -138,7 +151,7 @@ export function TurnChangesCard({sessionId, changes}: {sessionId: string; change
 						<button
 							type="button"
 							disabled={undo.state.kind === "busy"}
-							onClick={() => void undo.start(sessionId, changes.turnUuid)}
+							onClick={startUndo}
 							className={`${UNDO_CLASS} sr-only group-hover/card:not-sr-only focus-visible:not-sr-only`}
 						>
 							Undo
@@ -174,12 +187,7 @@ export function TurnChangesCard({sessionId, changes}: {sessionId: string; change
 						<ChevronRight aria-hidden="true" className="ml-auto size-3.5 shrink-0 text-ink-muted" />
 					</button>
 				)}
-				<button
-					type="button"
-					disabled={undo.state.kind === "busy"}
-					onClick={() => void undo.start(sessionId, changes.turnUuid)}
-					className={UNDO_CLASS}
-				>
+				<button type="button" disabled={undo.state.kind === "busy"} onClick={startUndo} className={UNDO_CLASS}>
 					Undo
 				</button>
 			</div>

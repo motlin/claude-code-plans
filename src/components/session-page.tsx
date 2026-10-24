@@ -14,6 +14,7 @@ import type {SessionRailInputs} from "./session-rail/session-rail-cards";
 import {SessionChat} from "./session-chat";
 import {ChapterChips} from "./chapter-chips";
 import {TranscriptActionsProvider} from "./transcript-actions-provider";
+import {TurnUndoSendContext} from "./turn-undo-send-context";
 import {useSessionFork} from "../hooks/use-session-fork";
 import {ArchivedComposerNote} from "./archived-composer-note";
 import {Composer} from "./composer";
@@ -766,6 +767,21 @@ function SessionView({
 					}),
 			},
 		);
+	// Upstream's turn Undo sends its prompt like the composer does; read through a ref so the
+	// context value stays put across renders.
+	const submitComposerRef = useRef(submitComposer);
+	useEffect(() => {
+		submitComposerRef.current = submitComposer;
+	});
+	const turnUndoSend = useMemo(
+		() =>
+			promptBehavior.usesHerdr
+				? (text: string) => {
+						submitComposerRef.current("send", text, {});
+					}
+				: null,
+		[promptBehavior.usesHerdr],
+	);
 	const applicationSettings = useQuery(applicationSettingsQueryOptions).data;
 	const shellsEnabled = applicationSettings?.shellPaneEnabled ?? false;
 	const {mutateAsync: saveApplicationSettings} = useSaveApplicationSettings();
@@ -1099,45 +1115,47 @@ function SessionView({
 												fork={forkFromMessage}
 												working={paneBusy}
 											>
-												<SessionChat
-													sessionId={sessionId}
-													lines={processed.lines}
-													measurementSource={transcript.records}
-													measurementLayout={JSON.stringify([
-														settings.showDebug,
-														settings.interfaceFont,
-														settings.transcriptTextSize,
-														settings.codeFont,
-														settings.transcriptWidth,
-													])}
-													toolResultMap={processed.toolResultMap}
-													allowedImageRoots={data.imageRoots}
-													subagents={subagents}
-													showThinking={transcriptFlags.showThinking}
-													showTools={transcriptFlags.showTools}
-													showPassedHooks={transcriptFlags.showPassedHooks}
-													showHookWarnings={transcriptFlags.showHookWarnings}
-													showHookErrors={transcriptFlags.showHookErrors}
-													showSystemBanners={transcriptFlags.showSystemBanners}
-													showCompactSummaries={transcriptFlags.showCompactSummaries}
-													showTranscriptOnly={transcriptFlags.showTranscriptOnly}
-													transcriptMode={transcriptMode}
-													sessionLive={sessionProcessLive({
-														hookActive: isActive,
-														summaryState: sessionSummaryState,
-													})}
-													turnInProgress={workingMarkerState.status !== "idle"}
-													permissionWaitToolUseId={permissionWaitId}
-													onSendNow={requestSendNowInterrupt}
-													onFocusComposer={focusSessionComposer}
-													initialScrollKey={initialScrollKey}
-													scrollContentRef={scrollAnchorRef}
-													shouldScrollToEnd={
-														restoredScrollPosition === undefined && locationHash === ""
-													}
-													summary={aiSummary}
-													{...(slashCommands === undefined ? {} : {slashCommands})}
-												/>
+												<TurnUndoSendContext.Provider value={turnUndoSend}>
+													<SessionChat
+														sessionId={sessionId}
+														lines={processed.lines}
+														measurementSource={transcript.records}
+														measurementLayout={JSON.stringify([
+															settings.showDebug,
+															settings.interfaceFont,
+															settings.transcriptTextSize,
+															settings.codeFont,
+															settings.transcriptWidth,
+														])}
+														toolResultMap={processed.toolResultMap}
+														allowedImageRoots={data.imageRoots}
+														subagents={subagents}
+														showThinking={transcriptFlags.showThinking}
+														showTools={transcriptFlags.showTools}
+														showPassedHooks={transcriptFlags.showPassedHooks}
+														showHookWarnings={transcriptFlags.showHookWarnings}
+														showHookErrors={transcriptFlags.showHookErrors}
+														showSystemBanners={transcriptFlags.showSystemBanners}
+														showCompactSummaries={transcriptFlags.showCompactSummaries}
+														showTranscriptOnly={transcriptFlags.showTranscriptOnly}
+														transcriptMode={transcriptMode}
+														sessionLive={sessionProcessLive({
+															hookActive: isActive,
+															summaryState: sessionSummaryState,
+														})}
+														turnInProgress={workingMarkerState.status !== "idle"}
+														permissionWaitToolUseId={permissionWaitId}
+														onSendNow={requestSendNowInterrupt}
+														onFocusComposer={focusSessionComposer}
+														initialScrollKey={initialScrollKey}
+														scrollContentRef={scrollAnchorRef}
+														shouldScrollToEnd={
+															restoredScrollPosition === undefined && locationHash === ""
+														}
+														summary={aiSummary}
+														{...(slashCommands === undefined ? {} : {slashCommands})}
+													/>
+												</TurnUndoSendContext.Provider>
 											</TranscriptActionsProvider>
 										</SessionBackgroundTasksOpener>
 									</SessionSubagentOpener>

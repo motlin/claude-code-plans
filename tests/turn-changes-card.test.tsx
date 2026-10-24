@@ -8,6 +8,7 @@ import {TileHost} from "../src/components/panes/tile-host";
 import {SessionChat} from "../src/components/session-chat";
 import {SettingsProvider} from "../src/components/settings-provider";
 import {TurnChangesCard} from "../src/components/turn-changes-card";
+import {TurnUndoSendContext} from "../src/components/turn-undo-send-context";
 import {fileViewerPath} from "../src/lib/api/file";
 import {CHANGES_SCOPE_REQUEST_EVENT} from "../src/lib/changes-scope-request";
 import {loadChangesScope} from "../src/lib/pane-layout";
@@ -779,6 +780,55 @@ const READY_PREVIEW = {
 };
 
 describe("TurnChangesCard Undo", () => {
+	it("Undo sends the undo prompt when the session has a live pane", () => {
+		const calls = stubFetch([]);
+		const send = vi.fn<(text: string) => void>();
+		render(
+			<TurnUndoSendContext.Provider value={send}>
+				<TurnChangesCard sessionId="s-1" changes={changesWith(2)} />
+			</TurnUndoSendContext.Provider>,
+		);
+
+		fireEvent.click(screen.getByRole("button", {name: "Undo"}));
+
+		expect({
+			sent: send.mock.calls,
+			calls,
+			dialog: screen.queryByRole("alertdialog"),
+			undoDisabled: screen.getByRole("button", {name: "Undo"}).hasAttribute("disabled"),
+		}).toStrictEqual({
+			sent: [
+				[
+					[
+						"Undo the changes you made to these 2 files in your last turn and restore them to their previous state:",
+						"- `/repo/src/file-1.ts`",
+						"- `/repo/src/file-2.ts`",
+					].join("\n"),
+				],
+			],
+			calls: [],
+			dialog: null,
+			undoDisabled: false,
+		});
+	});
+
+	it("Undo on a one-file card sends the one-file prompt", () => {
+		const send = vi.fn<(text: string) => void>();
+		render(
+			<TurnUndoSendContext.Provider value={send}>
+				<TurnChangesCard sessionId="s-1" changes={changesWith(1)} />
+			</TurnUndoSendContext.Provider>,
+		);
+
+		fireEvent.click(screen.getByRole("button", {name: "Undo"}));
+
+		expect(send.mock.calls).toStrictEqual([
+			[
+				"Undo the changes you made to `/repo/src/file-1.ts` in your last turn and restore it to its previous state.",
+			],
+		]);
+	});
+
 	it("lists the files in a confirm dialog and reverts them on confirm", async () => {
 		const calls = stubFetch([
 			jsonResponse(READY_PREVIEW),
