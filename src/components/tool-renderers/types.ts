@@ -4,6 +4,7 @@ import type {ToolResultMeta} from "../../lib/tool-labels";
 import {isArtifactCardCall, type ParsedArtifact} from "../../lib/artifact-output";
 import type {ArtifactListEntry} from "../../lib/artifact-schemas";
 import type {PermissionDecision} from "../../lib/permission-decision";
+import type {ToolResultImage} from "../../lib/session-utils";
 import type {Subagent} from "../../lib/subagents";
 import type {SlowCommand} from "../../lib/slow-commands";
 import {getAgentTypeOrNull, getTaskCreateDisplaySubject, inputString} from "../../lib/tool-utils";
@@ -58,6 +59,8 @@ export interface ClientToolCall {
 	artifactList?: ArtifactListEntry[] | undefined;
 	/** How the call was permitted or denied; see `ToolResultInfo.permission`. */
 	permission?: PermissionDecision | undefined;
+	/** The images the result returned; see `ToolResultInfo.images`. */
+	outputImages?: readonly ToolResultImage[] | undefined;
 	/** The input failed the tool's schema, so the call renders raw under a generic label. */
 	invalidInput?: true | undefined;
 	/** When the assistant record that made the call was written, for an in-flight row's elapsed time. */
@@ -250,6 +253,7 @@ export function buildClientToolCall(
 		if (resultInfo.artifact !== undefined) call.artifact = resultInfo.artifact;
 		if (resultInfo.artifactList !== undefined) call.artifactList = resultInfo.artifactList;
 		if (resultInfo.permission !== undefined) call.permission = resultInfo.permission;
+		if (resultInfo.images !== undefined) call.outputImages = resultInfo.images;
 	}
 
 	// Live failure override: if SSE told us this tool_use_id failed but the

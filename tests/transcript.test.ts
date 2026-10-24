@@ -1,7 +1,9 @@
 import {describe, it, expect} from "vite-plus/test";
 import {processTranscript, processNewRecords} from "../src/lib/transcript";
+import {buildClientToolCall} from "../src/components/tool-renderers/types";
 import {
 	extractToolResultContent,
+	extractToolResultImages,
 	stripResultTags,
 	truncateResult,
 	stripCommandTags,
@@ -1042,6 +1044,96 @@ describe("extractToolResultContent", () => {
 
 	it("returns undefined for undefined", () => {
 		expect(extractToolResultContent(undefined)).toBeUndefined();
+	});
+});
+
+describe("extractToolResultImages", () => {
+	const image = (mediaType: string, data: string, sourceType = "base64") => ({
+		type: "image",
+		source: {type: sourceType, media_type: mediaType, data},
+	});
+
+	it("keeps a Read result's base64 image", () => {
+		expect(extractToolResultImages([image("image/png", "AAA")])).toStrictEqual([
+			{mimeType: "image/png", data: "AAA"},
+		]);
+	});
+
+	it("keeps images in order alongside text", () => {
+		const content = [
+			{type: "text", text: "Successfully captured screenshot"},
+			image("image/jpeg", "J1"),
+			{type: "text", text: "between"},
+			image("image/webp", "W2"),
+		];
+		expect(extractToolResultImages(content)).toStrictEqual([
+			{mimeType: "image/jpeg", data: "J1"},
+			{mimeType: "image/webp", data: "W2"},
+		]);
+	});
+
+	it("keeps gif and drops svg and non-base64 sources", () => {
+		const content = [
+			image("image/svg+xml", "SVG"),
+			image("image/png", "https://example.com/a.png", "url"),
+			image("image/gif", "G"),
+			{type: "image"},
+		];
+		expect(extractToolResultImages(content)).toStrictEqual([{mimeType: "image/gif", data: "G"}]);
+	});
+
+	it("returns no images for string or missing content", () => {
+		expect(extractToolResultImages("hello")).toStrictEqual([]);
+		expect(extractToolResultImages(undefined)).toStrictEqual([]);
+	});
+});
+
+describe("tool-result images", () => {
+	const records = [
+		assistantRecord([{type: "tool_use", id: "tool-1", name: "Read", input: {file_path: "/tmp/input-debug.png"}}], {
+			uuid: "a-1",
+		}),
+		userRecord(
+			[
+				{
+					type: "tool_result",
+					tool_use_id: "tool-1",
+					content: [{type: "image", source: {type: "base64", media_type: "image/png", data: "AAA"}}],
+				},
+			],
+			{uuid: "u-1"},
+		),
+	];
+
+	it("pairs a Read image result's images onto the tool result", () => {
+		expect(processTranscript(records).toolResultMap.get("tool-1")).toStrictEqual({
+			result: "",
+			isError: false,
+			resultUuid: "u-1",
+			images: [{mimeType: "image/png", data: "AAA"}],
+		});
+	});
+
+	it("copies the images onto the client tool call as outputImages", () => {
+		const {toolResultMap} = processTranscript(records);
+		const call = buildClientToolCall(
+			{type: "tool_use", id: "tool-1", name: "Read", input: {file_path: "/tmp/input-debug.png"}},
+			"a-1",
+			toolResultMap,
+		);
+		expect(call.outputImages).toStrictEqual([{mimeType: "image/png", data: "AAA"}]);
+	});
+
+	it("leaves text-only results without images", () => {
+		const textRecords = [
+			assistantRecord([{type: "tool_use", id: "tool-1", name: "Bash", input: {command: "ls"}}], {uuid: "a-1"}),
+			userRecord([{type: "tool_result", tool_use_id: "tool-1", content: "ok"}], {uuid: "u-1"}),
+		];
+		expect(processTranscript(textRecords).toolResultMap.get("tool-1")).toStrictEqual({
+			result: "ok",
+			isError: false,
+			resultUuid: "u-1",
+		});
 	});
 });
 

@@ -470,6 +470,35 @@ export function extractToolResultContent(content: unknown): string | undefined {
 	return undefined;
 }
 
+/** An image a tool result returned, as base64 data. */
+export interface ToolResultImage {
+	mimeType: string;
+	data: string;
+}
+
+/** The image types upstream shows as step screenshots (its `Kk` set). */
+const TOOL_RESULT_IMAGE_TYPES: ReadonlySet<string> = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
+
+/**
+ * Extract the base64 images from a tool_result content field, in order: a Read
+ * of an image file, a browser screenshot, or any MCP tool returning `image` blocks.
+ */
+export function extractToolResultImages(content: unknown): ToolResultImage[] {
+	if (!Array.isArray(content)) return [];
+	const images: ToolResultImage[] = [];
+	for (const item of content) {
+		if (!isRecord(item) || item["type"] !== "image") continue;
+		const source = item["source"];
+		if (!isRecord(source) || source["type"] !== "base64") continue;
+		const mimeType = source["media_type"];
+		const data = source["data"];
+		if (typeof mimeType !== "string" || typeof data !== "string") continue;
+		if (!TOOL_RESULT_IMAGE_TYPES.has(mimeType)) continue;
+		images.push({mimeType, data});
+	}
+	return images;
+}
+
 /**
  * Strip non-rendering wrapper tags from tool result text.
  */

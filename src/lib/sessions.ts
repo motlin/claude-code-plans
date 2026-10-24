@@ -150,8 +150,11 @@ export interface ToolResultInfo {
 	artifactList?: ArtifactListEntry[] | undefined;
 	/** How the call was permitted or denied, from the result record's `permissionDecision`. */
 	permission?: PermissionDecision | undefined;
+	/** The images the result returned, such as a Read of a .png or a browser screenshot. */
+	images?: readonly ToolResultImage[] | undefined;
 }
 
+import type {ToolResultImage} from "./session-utils";
 import type {ToolResultMeta} from "./tool-labels";
 import type {ParsedArtifact} from "./artifact-output";
 import type {ArtifactListEntry} from "./artifact-schemas";

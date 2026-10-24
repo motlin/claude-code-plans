@@ -30,6 +30,7 @@ import {JsonlRecordSchema} from "./runtime-schemas";
 import {
 	extractSessionTitle,
 	extractToolResultContent,
+	extractToolResultImages,
 	stripCommandTags,
 	stripResultTags,
 	truncateResult,
@@ -861,6 +862,12 @@ function processRecordBatch(
 						);
 						if (resultMeta !== undefined) info.resultMeta = resultMeta;
 						if (record.permissionDecision !== undefined) info.permission = record.permissionDecision;
+						// Only an array result can hold image blocks; skipping the call keeps string
+						// results off the hot path.
+						if (Array.isArray(block.content)) {
+							const images = extractToolResultImages(block.content);
+							if (images.length > 0) info.images = images;
+						}
 						if (!info.isError) {
 							addArtifactDecoration(
 								info,
