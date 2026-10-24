@@ -25,8 +25,9 @@ import {Tooltip} from "./ui/tooltip";
  * The bar fades in on hover or focus-within. It is upstream's roving toolbar: one
  * tab stop (Copy, then the last focused item) that stays in the tab order while
  * the bar is hidden, as upstream's opacity-only hiding does. A per-turn sr-only
- * "Show message actions" button reveals the bar and focuses its first button,
- * and the bar hides again once focus leaves.
+ * "Show message actions" button (empty, labelled by aria-label) reveals the bar
+ * as soon as it gets focus, as upstream's does, and moves focus to the bar's tab
+ * stop; the bar hides again once focus leaves.
  */
 
 export interface MessageActionsProps {
@@ -302,13 +303,22 @@ function ActionBar({
 	const [revealed, setRevealed] = useState(false);
 	const {ref: barRef, onFocus, onKeyDown} = useRovingToolbar();
 	const barElement = useRef<HTMLDivElement | null>(null);
-	const focusPending = useRef(false);
+	const [revealRequest, setRevealRequest] = useState(0);
 
+	// Upstream focuses the roving tab stop, else the first enabled button.
 	useEffect(() => {
-		if (!revealed || !focusPending.current) return;
-		focusPending.current = false;
-		barElement.current?.querySelector<HTMLElement>("button:not(:disabled)")?.focus();
-	}, [revealed]);
+		if (revealRequest === 0) return;
+		const element = barElement.current;
+		const target =
+			element?.querySelector<HTMLElement>('[tabindex="0"]:not([data-base-ui-focus-guard])') ??
+			element?.querySelector<HTMLElement>("button:not(:disabled)");
+		target?.focus();
+	}, [revealRequest]);
+
+	function reveal() {
+		setRevealed(true);
+		setRevealRequest((count) => count + 1);
+	}
 
 	function hideWhenFocusLeaves(event: FocusEvent<HTMLDivElement>) {
 		const next = event.relatedTarget;
@@ -318,17 +328,7 @@ function ActionBar({
 
 	return (
 		<>
-			<button
-				type="button"
-				className="sr-only"
-				aria-label={label}
-				onClick={() => {
-					focusPending.current = true;
-					setRevealed(true);
-				}}
-			>
-				Show message actions
-			</button>
+			<button type="button" className="sr-only" aria-label={label} onFocus={reveal} onClick={reveal} />
 			<div
 				ref={(element) => {
 					barElement.current = element;

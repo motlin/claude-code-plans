@@ -50,9 +50,7 @@ function button(container: HTMLElement, label: string): HTMLButtonElement {
 }
 
 function showActions(container: HTMLElement): HTMLButtonElement {
-	return Array.from(container.querySelectorAll("button")).find(
-		(element) => element.textContent === "Show message actions",
-	)!;
+	return container.querySelector<HTMLButtonElement>('button[aria-label^="Show message actions for "]')!;
 }
 
 function tooltipText(container: HTMLElement): string | null {
@@ -795,6 +793,40 @@ describe("message action toolbar sizing and reveal", () => {
 			barRevealed: bar(container).hasAttribute("data-revealed"),
 			focused: document.activeElement?.getAttribute("aria-label") ?? null,
 		}).toStrictEqual({showIsSrOnly: true, barRevealed: true, focused: "Copy"});
+	});
+
+	it("reveals the bar as soon as Tab lands on the empty sr-only button, focusing Copy", () => {
+		const {container, getByRole} = render(
+			<AssistantMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} />,
+		);
+		const show = showActions(container);
+		fireEvent.focus(show);
+
+		expect({
+			text: show.textContent,
+			byRole: getByRole("button", {name: /^Show message actions for /}) === show,
+			barRevealed: bar(container).hasAttribute("data-revealed"),
+			focused: document.activeElement?.getAttribute("aria-label") ?? null,
+		}).toStrictEqual({text: "", byRole: true, barRevealed: true, focused: "Copy"});
+	});
+
+	it("reveals onto the last focused item, the toolbar's single tab stop", () => {
+		const {container} = render(
+			withActions(
+				{pinChapter: vi.fn<NonNullable<TranscriptActions["pinChapter"]>>()},
+				<AssistantMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} />,
+			),
+		);
+		fireEvent.focus(showActions(container));
+		act(() => {
+			button(container, "Pin as chapter").focus();
+		});
+		fireEvent.blur(button(container, "Pin as chapter"), {relatedTarget: document.body});
+		act(() => {
+			showActions(container).focus();
+		});
+
+		expect(document.activeElement?.getAttribute("aria-label") ?? null).toBe("Pin as chapter");
 	});
 
 	it("always shows the toolbar on coarse-pointer or hover-less devices, without the fade transition", () => {
