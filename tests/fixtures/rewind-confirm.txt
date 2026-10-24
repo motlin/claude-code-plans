@@ -1,0 +1,14 @@
+⏺ recap+cc-plugin-agents-md: 📌 You asked: Reply with just the word gamma.�🔗 None
+▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔
+   Rewind
+   Confirm you want to restore to the point before you sent this message:
+   │ Use the Write tool to create c.txt containing just: delta
+   │ (43s ago)
+   The conversation will be forked.
+   The code will be restored -1 in c.txt.
+   ❯ 1. Restore code and conversation
+     2. Restore conversation
+     3. Restore code
+     4. Summarize from here
+   ↓ 5. Summarize up to here
+   ⚠ Rewinding does not affect files edited manually or via bash.

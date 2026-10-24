@@ -26,6 +26,7 @@ import {defaultHerdrLiveOptionDependencies, handleHerdrLiveOption} from "../herd
 import {createHerdrPlacementProvider, getHerdrPanes, type HerdrPaneLink} from "../herdr/panes";
 import {defaultHerdrPermissionDependencies, handleHerdrPermission} from "../herdr/permission";
 import {defaultHerdrPlanDependencies, handleHerdrPlan, handleHerdrPlanDialog} from "../herdr/plan";
+import {defaultHerdrRewindDependencies, handleHerdrRewind} from "../herdr/rewind";
 import {defaultHerdrPromptDependencies, handleHerdrPrompt, midTurnPromptReady} from "../herdr/prompt";
 import {getPendingQuestion} from "../pending-question-store";
 import {defaultHerdrQuestionDependencies, handleHerdrQuestion} from "../herdr/question";
@@ -82,6 +83,8 @@ export interface TerminalHost {
 	readPlanDialog: (request: Request) => Promise<Response>;
 	/** Send the keys and feedback text that answer a plan approval dialog. */
 	answerPlan: (request: Request) => Promise<Response>;
+	/** Rewind the conversation to a prompt through the CLI's own message selector. */
+	rewind: (request: Request) => Promise<Response>;
 	/** Send the keys that change model, effort or mode in the live session. */
 	applyLiveOption: (request: Request) => Promise<Response>;
 	/** Launch: open a new pane running `claude`. */
@@ -120,6 +123,7 @@ const herdrTerminalHost: TerminalHost = {
 	answerPermission: async (request) => handleHerdrPermission(request),
 	readPlanDialog: async (request) => handleHerdrPlanDialog(request),
 	answerPlan: async (request) => handleHerdrPlan(request),
+	rewind: async (request) => handleHerdrRewind(request),
 	applyLiveOption: async (request) => handleHerdrLiveOption(request),
 	launch: async (request) => handleHerdrLaunch(request),
 	reportHookState: (event, entry) => {
@@ -155,6 +159,7 @@ const noTerminalHost: TerminalHost = {
 	answerPermission: noHostWrite,
 	readPlanDialog: noHostWrite,
 	answerPlan: noHostWrite,
+	rewind: noHostWrite,
 	applyLiveOption: noHostWrite,
 	launch: noHostWrite,
 	reportHookState: () => undefined,
@@ -245,6 +250,23 @@ export function createTmuxTerminalHost(
 			}),
 		readPlanDialog: async (request) => handleHerdrPlanDialog(request, planDependencies()),
 		answerPlan: async (request) => handleHerdrPlan(request, planDependencies()),
+		rewind: async (request) =>
+			handleHerdrRewind(request, {
+				...defaultHerdrRewindDependencies,
+				...writes,
+				pause: io.pause,
+				ready: (sessionId: string) => {
+					const entry = sources.entries().find((candidate) => candidate.sessionId === sessionId);
+					return (
+						entry?.state === "idle" &&
+						entry.pendingPermissionRequest === undefined &&
+						getPendingQuestion(sessionId) === null
+					);
+				},
+				readScreen: async (sessionId: string, paneId: string) =>
+					readTmuxScreen(sessionId, paneId, sources, undefined, {ansi: true}),
+				...tmuxWriteDependencies("rewind", sources, io),
+			}),
 		applyLiveOption: async (request) =>
 			handleHerdrLiveOption(request, {
 				...defaultHerdrLiveOptionDependencies,

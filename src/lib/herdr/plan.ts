@@ -106,12 +106,19 @@ export interface HerdrPlanDependencies {
 
 const STEP_PAUSE_MS = 80;
 
-/** herdr's `pane.read` of the visible screen. */
-async function readHerdrScreen(paneId: string, request: HerdrRequester = herdrRequest): Promise<HerdrResult<string>> {
+/** herdr's `pane.read` of the visible screen, as plain text or with its colour escapes (`ansi`). */
+export async function readHerdrScreen(
+	paneId: string,
+	request: HerdrRequester = herdrRequest,
+	format: "text" | "ansi" = "text",
+): Promise<HerdrResult<string>> {
 	const response = await request({
 		id: `ccp:plan-read:${crypto.randomUUID()}`,
 		method: "pane.read",
-		params: {pane_id: paneId, source: "visible"},
+		params:
+			format === "ansi"
+				? {pane_id: paneId, source: "visible", format: "ansi", strip_ansi: false}
+				: {pane_id: paneId, source: "visible"},
 	});
 	if (!response.ok) return response;
 	const text = asRecord(asRecord(response.value)?.["read"])?.["text"];

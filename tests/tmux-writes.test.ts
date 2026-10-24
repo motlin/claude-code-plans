@@ -548,11 +548,16 @@ describe("tmux plan approval", () => {
 		expect({
 			current: await readTmuxScreen(SESSION_ID, "%7", sources, capture),
 			moved: await readTmuxScreen(SESSION_ID, "%8", sources, capture),
+			ansi: await readTmuxScreen(SESSION_ID, "%7", sources, capture, {ansi: true}),
 			captures,
 		}).toStrictEqual({
 			current: {ok: true, value: "screen text"},
 			moved: {ok: false, code: "pane-moved", message: "The session's tmux pane moved on from %8"},
-			captures: [["-S", SOCKET, "capture-pane", "-p", "-t", "%7"]],
+			ansi: {ok: true, value: "screen text"},
+			captures: [
+				["-S", SOCKET, "capture-pane", "-p", "-t", "%7"],
+				["-S", SOCKET, "capture-pane", "-p", "-e", "-t", "%7"],
+			],
 		});
 	});
 
@@ -566,6 +571,20 @@ describe("tmux plan approval", () => {
 		);
 		expect({response: await describeResponse(response), calls}).toStrictEqual({
 			response: {status: 409, body: {error: "No plan approval is pending"}},
+			calls: [],
+		});
+	});
+});
+
+describe("tmux rewind", () => {
+	it("refuses without a key while the session's hook state says working", async () => {
+		const {sources} = liveSources(entry({state: "working"}));
+		const {io, calls} = recordingIo();
+		const response = await createTmuxTerminalHost(sources, io).rewind(
+			post("/api/herdr/rewind", {sessionId: SESSION_ID, stepsBack: 1, text: "hello"}),
+		);
+		expect({response: await describeResponse(response), calls}).toStrictEqual({
+			response: {status: 409, body: {error: "Rewind is unavailable while Claude is working"}},
 			calls: [],
 		});
 	});

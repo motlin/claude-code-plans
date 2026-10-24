@@ -38,14 +38,16 @@ export type TmuxWriteKind =
 	| "question"
 	| "permission"
 	| "plan"
-	| "live-option";
+	| "live-option"
+	| "rewind";
 
 /**
  * Prompts and live option changes go into an idle composer; a mid-turn prompt
  * (sent right after a skipped question) goes into a working one with no
  * permission dialog open; an interrupt needs a turn to stop; a question dialog
  * shows while waiting. A permission dialog opens after PreToolUse already said
- * working, so it takes either, as does the plan approval dialog.
+ * working, so it takes either, as does the plan approval dialog. A rewind
+ * opens the CLI's message selector, which only an idle session shows.
  */
 const READY_STATES = {
 	prompt: ["idle"],
@@ -55,6 +57,7 @@ const READY_STATES = {
 	permission: ["working", "waiting"],
 	plan: ["working", "waiting"],
 	"live-option": ["idle"],
+	rewind: ["idle"],
 } as const satisfies Record<TmuxWriteKind, readonly ActivityState[]>;
 
 const NAMED_KEYS: Readonly<Record<string, string>> = {
@@ -261,13 +264,15 @@ export async function readTmuxScreen(
 	paneId: string,
 	sources: TmuxSessionPaneSources,
 	capture: TmuxCapture = defaultTmuxCapture,
+	{ansi = false}: {ansi?: boolean} = {},
 ): Promise<HerdrResult<string>> {
 	const now = await currentPane(sessionId, sources);
 	if (!now.ok) return now;
 	if (now.value.paneId !== paneId) return failure("pane-moved", `The session's tmux pane moved on from ${paneId}`);
 	const socket = now.value.socketPath === "" ? [] : ["-S", now.value.socketPath];
 	try {
-		return {ok: true, value: await capture([...socket, "capture-pane", "-p", "-t", paneId])};
+		const escapes = ansi ? ["-e"] : [];
+		return {ok: true, value: await capture([...socket, "capture-pane", "-p", ...escapes, "-t", paneId])};
 	} catch (error) {
 		return failure("tmux-failed", errorMessage(error));
 	}

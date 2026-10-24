@@ -1,0 +1,14 @@
+⏺ Created c.txt containing delta, in the working directory: /private/tmp/claude-501/-Users-craig-projects-claude-code-plans/10
+  e1d0ca-19a8-4418-990a-f66008edde61/scratchpad/rewind-spike/c.txt.
+✻ Brewed for 6s · done 2:58 PM
+⏺ recap+cc-plugin-agents-md: 📌 You asked: Create a file c.txt containing the text "delta".�🔗 None
+❯ Reply with just the word gamma
+⏺ gamma
+✻ Baked for 1s · done 2:58 PM
+⏺ recap+cc-plugin-agents-md: 📌 You asked: Reply with just the word gamma.�🔗 None
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+❯
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  rewind-spike ⎇ No commits yet on main (?3) ● ✱ Haiku 5.5 ◈ v2.1.310
+  ⧗ 39s ◆ 3 ◔ 5% ◑ 65% (1h 1m)
+  ⏵⏵ auto mode on (shift+tab to cycle) · ← 6 agents
