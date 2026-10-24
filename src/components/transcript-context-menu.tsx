@@ -2,6 +2,7 @@ import {type QueryClient, QueryClientContext} from "@tanstack/react-query";
 import {type ComponentProps, type ReactNode, useContext, useRef, useState} from "react";
 
 import {type ReadAloudStatus, useReadAloud} from "../hooks/use-read-aloud";
+import {MIN_EXCERPT_LENGTH} from "../hooks/use-transcript-selection-attach";
 import {fileRefStatusQueryOptions} from "../lib/api/file-refs";
 import {writeClipboardText} from "../lib/clipboard";
 import {attachContext} from "../lib/context-attach";
@@ -53,9 +54,6 @@ function resolveMenuTarget(element: Element | null, fallback: "prose" | "tool"):
 	if (code !== null) return {kind: "code", text: code.textContent};
 	return {kind: fallback};
 }
-
-/** Upstream's `a7`: the shortest trimmed selection that attaches as an Excerpt. */
-const MIN_EXCERPT_LENGTH = 2;
 
 /**
  * Upstream `ux`'s `selectionText`: the document selection when it reaches into

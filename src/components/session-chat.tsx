@@ -95,6 +95,7 @@ import {type AttachedImage, UserAttachments} from "./user-attachments";
 import {isEditableTarget} from "../lib/shortcuts/match";
 import {findScrollContainer} from "./scroll-container";
 import {usePromptJump} from "../hooks/use-prompt-jump";
+import {useTranscriptSelectionAttach} from "../hooks/use-transcript-selection-attach";
 import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
 import {
 	readTranscriptMeasurements,
@@ -522,6 +523,7 @@ export const SessionChat = React.memo(function SessionChat({
 	const lastError = useMemo(() => ({line: fullErrorLine, recovery: errorRecovery}), [fullErrorLine, errorRecovery]);
 	const listedLines = useMemo(() => withQueuedPromptsAtTail(lines, sessionLive), [lines, sessionLive]);
 	const waitingIds = useMemo(() => queuedEntryIds(listedLines), [listedLines]);
+	useTranscriptSelectionAttach(sessionId, containerRef);
 
 	useEffect(() => {
 		const container = containerRef.current;
