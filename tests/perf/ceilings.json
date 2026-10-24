@@ -551,12 +551,12 @@
 		"tolerance": 0
 	},
 	"hot.processTranscript.large-long.calls": {
-		"ceiling": 2514,
+		"ceiling": 2274,
 		"unit": "calls",
 		"tolerance": 0
 	},
 	"hot.processTranscript.large-wide.calls": {
-		"ceiling": 958,
+		"ceiling": 864,
 		"unit": "calls",
 		"tolerance": 0
 	},
