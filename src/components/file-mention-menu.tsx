@@ -2,6 +2,7 @@ import {useLayoutEffect, useRef, useState, useSyncExternalStore} from "react";
 import {Folder} from "lucide-react";
 
 import type {SessionFilesEntry} from "../lib/api/session-files";
+import {fileMentionMenuWidth} from "../lib/file-mentions";
 import {fileMentionOptionId} from "./file-mention-option-id";
 import {Tooltip} from "./ui/tooltip";
 
@@ -34,7 +35,7 @@ function subscribeFileTypeIcons(listener: () => void): () => void {
 const loadedFileTypeIcons = () => fileTypeIconModule;
 
 const POPUP_CLASS =
-	"absolute bottom-full left-0 z-[130] mb-2 flex max-h-[min(24rem,calc(100svh-2rem))] max-w-[calc(100vw-2rem)] flex-col overflow-y-auto rounded-r7 bg-[var(--menu-bg)] p-1 text-body text-primary shadow-[var(--menu-shadow)] select-none";
+	"absolute z-[130] flex max-h-[min(24rem,calc(100svh-2rem))] max-w-[calc(100vw-2rem)] flex-col overflow-y-auto rounded-r7 bg-[var(--menu-bg)] p-1 text-body text-primary shadow-[var(--menu-shadow)] select-none";
 
 const ROW_CLASS =
 	"flex h-6 w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-r5 px-2 py-[2.5px] text-left text-[13px]/[19px] text-primary outline-none data-[highlighted]:bg-fill-ghost-hover";
@@ -51,8 +52,8 @@ function EntryIcon({entry, icons}: {entry: SessionFilesEntry; icons: FileTypeIco
 }
 
 /**
- * The claude.ai/code "@" popup: a "Mention suggestions" listbox above the
- * composer, 560px wide when any row has a dirname caption and 420px otherwise, one row per path (icon, basename, dirname caption). Keyboard focus
+ * The claude.ai/code "@" popup: a "Mention suggestions" listbox over the line,
+ * left-aligned to the `@` glyph, 560px wide when any row has a dirname caption and 420px otherwise, one row per path (icon, basename, dirname caption). Keyboard focus
  * stays in the editor, which drives `highlighted` (the keyboard index) and `onAccept`. Like upstream, the pointer keeps
  * its own hover index that wins while it is over a row and falls back to the keyboard index when it leaves the list.
  */
@@ -70,7 +71,10 @@ export function FileMentionMenu({
 	const listRef = useRef<HTMLDivElement>(null);
 	const icons = useSyncExternalStore(subscribeFileTypeIcons, loadedFileTypeIcons, loadedFileTypeIcons);
 	// Tied to the entries it was set against, so a new result list drops a stale hover.
-	const [hover, setHover] = useState<{entries: readonly SessionFilesEntry[]; index: number} | null>(null);
+	const [hover, setHover] = useState<{
+		entries: readonly SessionFilesEntry[];
+		index: number;
+	} | null>(null);
 	const shown = hover?.entries === entries ? hover.index : highlighted;
 
 	useLayoutEffect(() => {
@@ -85,7 +89,7 @@ export function FileMentionMenu({
 			role="listbox"
 			aria-label="Mention suggestions"
 			className={POPUP_CLASS}
-			style={{width: entries.some((entry) => entry.relPath.includes("/")) ? 560 : 420}}
+			style={{width: fileMentionMenuWidth(entries)}}
 			onMouseDown={(e) => {
 				e.preventDefault();
 			}}

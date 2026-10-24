@@ -1,6 +1,6 @@
 // Mirror-div caret coordinates for a <textarea>: copy the textarea's
 // text-layout styles onto a hidden div, fill it with the text before `index`,
-// and measure a marker span holding the rest. Coordinates are relative to the
+// and measure a marker span holding the glyph at `index`. Coordinates are relative to the
 // textarea's border box, after its own scroll.
 
 const MIRRORED_PROPERTIES = [
@@ -61,9 +61,10 @@ export function textareaCaretRect(textarea: HTMLTextAreaElement, index: number):
 	mirror.append(document.createTextNode(value.slice(0, index)));
 	const marker = document.createElement("span");
 	marker.dataset["textareaCaretMarker"] = "";
-	// An empty span has no line box; a placeholder keeps the caret's line.
-	marker.textContent = value.slice(index) || ".";
-	mirror.append(marker);
+	// Only the glyph at `index` goes in the marker, so a wrapped remainder can't widen its rect; the rest follows as
+	// plain text to keep word wrapping. An empty span has no line box; a placeholder keeps the caret's line.
+	marker.textContent = value.charAt(index) || ".";
+	mirror.append(marker, document.createTextNode(value.slice(index + 1)));
 
 	document.body.append(mirror);
 	try {

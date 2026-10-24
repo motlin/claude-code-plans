@@ -8,6 +8,7 @@ import {ToastProvider} from "../src/components/toast";
 import type {SessionFilesResponse} from "../src/lib/api/session-files";
 import {
 	FILE_MENTION_DEBOUNCE_MS,
+	fileMentionMenuPosition,
 	fileMentionTrigger,
 	insertFileMention,
 	isMentionSuppressed,
@@ -66,6 +67,48 @@ describe("isMentionSuppressed", () => {
 			bareExtended: false,
 			none: false,
 		});
+	});
+});
+
+describe("fileMentionMenuPosition", () => {
+	// Upstream: a zero-size anchor at {@.left, @.bottom + 4}, side top, sideOffset 24, collisionPadding 16.
+	it("puts the popup's bottom 20px above the @ glyph's bottom, left-aligned to the @", () => {
+		expect(
+			fileMentionMenuPosition({
+				at: {left: 397.5, bottom: 695.5},
+				container: {left: 300, bottom: 720},
+				width: 560,
+				viewportWidth: 1400,
+			}),
+		).toStrictEqual({left: 97.5, bottom: 44.5});
+	});
+
+	it("clamps the popup inside the viewport's 16px collision padding", () => {
+		expect([
+			fileMentionMenuPosition({
+				at: {left: 1000, bottom: 500},
+				container: {left: 200, bottom: 520},
+				width: 560,
+				viewportWidth: 1400,
+			}),
+			fileMentionMenuPosition({
+				at: {left: 4, bottom: 500},
+				container: {left: 0, bottom: 520},
+				width: 420,
+				viewportWidth: 1400,
+			}),
+			// A popup wider than the viewport shrinks to it (max-w-[calc(100vw-2rem)]) and sits at the padding.
+			fileMentionMenuPosition({
+				at: {left: 200, bottom: 500},
+				container: {left: 10, bottom: 520},
+				width: 420,
+				viewportWidth: 390,
+			}),
+		]).toStrictEqual([
+			{left: 624, bottom: 40},
+			{left: 16, bottom: 40},
+			{left: 6, bottom: 40},
+		]);
 	});
 });
 
@@ -312,6 +355,45 @@ describe("Composer @ file mentions", () => {
 		}).toStrictEqual({count: 15, first: ["file-0.ts", "src/lib"]});
 	});
 
+	it("anchors the popup over the line, left-aligned to the @ glyph mid-text", async () => {
+		responses.set(searchUrl("sk"), search("sk", ["skills/a.md"]));
+		const {textarea} = setup();
+		const box = (left: number, top: number, width: number, height: number) =>
+			({
+				left,
+				top,
+				width,
+				height,
+				x: left,
+				y: top,
+				right: left + width,
+				bottom: top + height,
+				toJSON: () => ({}),
+			}) as DOMRect;
+		const measured: string[] = [];
+		vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+			if (this.dataset["textareaCaretMarker"] !== undefined) {
+				measured.push(this.textContent);
+				return box(157, 10, 9, 18);
+			}
+			if (this.dataset["textareaCaretMirror"] !== undefined) return box(100, 4, 600, 24);
+			if (this === textarea) return box(130, 400, 600, 24);
+			if (this === textarea.parentElement) return box(100, 400, 660, 28);
+			return box(0, 0, 0, 0);
+		});
+
+		await type(textarea, "hello @sk");
+
+		const popup = screen.getByRole("listbox", {name: "Mention suggestions"});
+		// @ at viewport left 130 + 57 = 187, bottom 400 + 6 + 18 = 424; popup bottom = 424 + 4 - 24 = 404.
+		expect({
+			measured,
+			left: popup.style.left,
+			bottom: popup.style.bottom,
+			composerAnchored: ["bottom-full", "left-0", "mb-2"].filter((c) => popup.className.split(" ").includes(c)),
+		}).toStrictEqual({measured: ["@"], left: "87px", bottom: "24px", composerAnchored: []});
+	});
+
 	it("sizes the popup 420px without dirnames and 560px when any row has one", async () => {
 		responses.set(
 			TOP_URL,
@@ -325,13 +407,19 @@ describe("Composer @ file mentions", () => {
 
 		await type(textarea, "@");
 		const top = screen.getByRole("listbox", {name: "Mention suggestions"});
-		const narrow = {width: top.style.width, clamped: top.className.split(" ").includes("max-w-[calc(100vw-2rem)]")};
+		const narrow = {
+			width: top.style.width,
+			clamped: top.className.split(" ").includes("max-w-[calc(100vw-2rem)]"),
+		};
 
 		await type(textarea, "@a");
 		const wide = screen.getByRole("listbox", {name: "Mention suggestions"});
 		expect({
 			narrow,
-			wide: {width: wide.style.width, clamped: wide.className.split(" ").includes("max-w-[calc(100vw-2rem)]")},
+			wide: {
+				width: wide.style.width,
+				clamped: wide.className.split(" ").includes("max-w-[calc(100vw-2rem)]"),
+			},
 			fixedWidth: wide.className.split(" ").includes("w-[560px]"),
 		}).toStrictEqual({
 			narrow: {width: "420px", clamped: true},
@@ -418,7 +506,10 @@ describe("Composer @ file mentions", () => {
 		const afterUp = activeOption();
 		for (let i = 0; i < 5; i++) fireEvent.keyDown(textarea, {key: "ArrowDown"});
 
-		expect({afterUp, afterDowns: activeOption()}).toStrictEqual({afterUp: "option-0", afterDowns: "option-2"});
+		expect({afterUp, afterDowns: activeOption()}).toStrictEqual({
+			afterUp: "option-0",
+			afterDowns: "option-2",
+		});
 	});
 
 	it("keeps the hover index separate from the keyboard index, restoring the keyboard row when the pointer leaves", async () => {
@@ -798,9 +889,19 @@ describe("Composer accepted @ mention chips edit atomically", () => {
 		fireEvent.keyDown(textarea, {key: "ArrowLeft"});
 		fireEvent.keyDown(textarea, {key: "Backspace"});
 
-		expect({leftNotPrevented, selected, rightNotPrevented, collapsed, deleted: state(textarea)}).toStrictEqual({
+		expect({
+			leftNotPrevented,
+			selected,
+			rightNotPrevented,
+			collapsed,
+			deleted: state(textarea),
+		}).toStrictEqual({
 			leftNotPrevented: false,
-			selected: {value: "@src/lib/index.ts", selection: [0, 17], highlights: [SELECTED_HIGHLIGHT]},
+			selected: {
+				value: "@src/lib/index.ts",
+				selection: [0, 17],
+				highlights: [SELECTED_HIGHLIGHT],
+			},
 			rightNotPrevented: false,
 			collapsed: {value: "@src/lib/index.ts", selection: [17, 17], highlights: [HOVER_HIGHLIGHT]},
 			deleted: {value: "", selection: [0, 0], highlights: []},
@@ -977,7 +1078,10 @@ describe("Composer accepted @ mention chip file actions", () => {
 		responses.set(searchUrl("ind"), search("ind", ["src/lib/index.ts"]));
 		await type(textarea, "see @ind");
 		fireEvent.keyDown(textarea, {key: "Enter"});
-		fireEvent.contextMenu(screen.getByTestId("composer-mention-chip"), {clientX: 10, clientY: 10});
+		fireEvent.contextMenu(screen.getByTestId("composer-mention-chip"), {
+			clientX: 10,
+			clientY: 10,
+		});
 		const rows = menuRows();
 		const copyRows = await openSubmenu("Copy");
 
@@ -992,7 +1096,10 @@ describe("Composer accepted @ mention chip file actions", () => {
 		const textarea = setupWithCwd();
 		await type(textarea, "@");
 		fireEvent.keyDown(textarea, {key: "Enter"});
-		fireEvent.contextMenu(screen.getByTestId("composer-mention-chip"), {clientX: 10, clientY: 10});
+		fireEvent.contextMenu(screen.getByTestId("composer-mention-chip"), {
+			clientX: 10,
+			clientY: 10,
+		});
 
 		expect(await openSubmenu("Open in")).toStrictEqual(["VS Code"]);
 	});
@@ -1073,7 +1180,13 @@ describe("Composer accepted @ mention chips: keyboard-only and touch parity", ()
 		fireEvent.keyDown(textarea, {key: "ArrowRight"});
 		const afterFirst = state(textarea);
 
-		expect({secondSelected, beforeSecond, spaceNotPrevented, firstSelected, afterFirst}).toStrictEqual({
+		expect({
+			secondSelected,
+			beforeSecond,
+			spaceNotPrevented,
+			firstSelected,
+			afterFirst,
+		}).toStrictEqual({
 			secondSelected: {selection: [18, 35], highlights: [HOVER_HIGHLIGHT, SELECTED_HIGHLIGHT]},
 			beforeSecond: {selection: [18, 18], highlights: [HOVER_HIGHLIGHT, HOVER_HIGHLIGHT]},
 			spaceNotPrevented: true,

@@ -43,6 +43,40 @@ export function isMentionSuppressed(suppressed: string | null, token: string): b
 	return suppressed === "@" ? token === "@" : token.startsWith(suppressed);
 }
 
+/** Upstream's popup width: 560px when any row has a dirname caption, else 420px. */
+export function fileMentionMenuWidth(entries: readonly {relPath: string}[]): number {
+	return entries.some((entry) => entry.relPath.includes("/")) ? 560 : 420;
+}
+
+const MENTION_COLLISION_PADDING = 16;
+const MENTION_ANCHOR_GAP = 4;
+const MENTION_SIDE_OFFSET = 24;
+
+/**
+ * Where the "@" popup goes, as CSS `left`/`bottom` within its container. Upstream anchors a zero-size rect at
+ * `{@.left, @.bottom + 4}` and opens on top with `sideOffset 24` and `collisionPadding 16`, so the popup's bottom sits
+ * 20px above the glyph's bottom, left-aligned to the `@` and kept inside the viewport. All inputs are viewport pixels.
+ */
+export function fileMentionMenuPosition({
+	at,
+	container,
+	width,
+	viewportWidth,
+}: {
+	at: {left: number; bottom: number};
+	container: {left: number; bottom: number};
+	width: number;
+	viewportWidth: number;
+}): {left: number; bottom: number} {
+	const shown = Math.min(width, viewportWidth - 2 * MENTION_COLLISION_PADDING);
+	const left = Math.max(
+		MENTION_COLLISION_PADDING,
+		Math.min(at.left, viewportWidth - MENTION_COLLISION_PADDING - shown),
+	);
+	const popupBottom = at.bottom + MENTION_ANCHOR_GAP - MENTION_SIDE_OFFSET;
+	return {left: left - container.left, bottom: container.bottom - popupBottom};
+}
+
 /** `@path`, quoted when the path holds whitespace (the CLI reads `@"a b.ts"`). */
 function mentionToken(relPath: string): string {
 	return /\s/.test(relPath) ? `@"${relPath}"` : `@${relPath}`;

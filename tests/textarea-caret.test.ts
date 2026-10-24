@@ -49,6 +49,7 @@ describe("textareaCaretRect", () => {
 		const seen: {
 			mirrorText: string;
 			markerText: string;
+			afterText: string;
 			fontSize: string;
 			lineHeight: string;
 			paddingLeft: string;
@@ -64,6 +65,7 @@ describe("textareaCaretRect", () => {
 				seen.push({
 					mirrorText: mirror.firstChild?.textContent ?? "",
 					markerText: this.textContent,
+					afterText: this.nextSibling?.textContent ?? "",
 					fontSize: mirror.style.fontSize,
 					lineHeight: mirror.style.lineHeight,
 					paddingLeft: mirror.style.paddingLeft,
@@ -84,7 +86,8 @@ describe("textareaCaretRect", () => {
 		expect(seen).toStrictEqual([
 			{
 				mirrorText: "hello ",
-				markerText: "@sk",
+				markerText: "@",
+				afterText: "sk",
 				fontSize: "15px",
 				lineHeight: "24px",
 				paddingLeft: "12px",

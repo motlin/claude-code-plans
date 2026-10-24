@@ -34,7 +34,14 @@ import {
 } from "../lib/context-attach";
 import {takeQueuedDiffComments, useDiffComments} from "../lib/diff-comments";
 import type {SessionFilesEntry} from "../lib/api/session-files";
-import {fileMentionTrigger, insertFileMention, isMentionSuppressed} from "../lib/file-mentions";
+import {
+	fileMentionMenuPosition,
+	fileMentionMenuWidth,
+	fileMentionTrigger,
+	insertFileMention,
+	isMentionSuppressed,
+} from "../lib/file-mentions";
+import {textareaCaretRect} from "../lib/textarea-caret";
 import {
 	type AcceptedMention,
 	mentionAt,
@@ -570,7 +577,10 @@ export function Composer({
 	const [slashDismissed, setSlashDismissed] = useState(false);
 	if (slashDismissed && slash === null) setSlashDismissed(false);
 	const slashKey = slash === null ? null : `${slash.start}\0${slash.query}`;
-	const [highlight, setHighlight] = useState<{key: string | null; index: number}>({key: null, index: 0});
+	const [highlight, setHighlight] = useState<{key: string | null; index: number}>({
+		key: null,
+		index: 0,
+	});
 	const matches = slash === null || slashDismissed ? [] : filterSlashCommands(slashCommands, slash.query);
 	const slashOpen = matches.length > 0;
 	// A mid-line slash opens with nothing highlighted (-1), as upstream's `startsUnselected` does.
@@ -630,6 +640,35 @@ export function Composer({
 	}>({entries: [], index: 0});
 	const mentionHighlighted =
 		mentionHighlight.entries === mentionEntries ? Math.min(mentionHighlight.index, mentionEntries.length - 1) : 0;
+	// Upstream anchors the popup to the `@` glyph: measured once per trigger start (and width), again on resize.
+	// The position goes straight onto the popup's DOM node (`left`/`bottom` stay out of its React style), so measuring costs no extra render per keystroke.
+	const mentionInputRef = useRef<HTMLDivElement>(null);
+	const mentionStart = mentionOpen ? mention.start : null;
+	const mentionWidth = fileMentionMenuWidth(mentionEntries);
+	useLayoutEffect(() => {
+		if (mentionStart === null) return undefined;
+		const place = () => {
+			const textarea = textareaRef.current;
+			const container = mentionInputRef.current;
+			const menu = document.getElementById(mentionMenuId);
+			if (textarea === null || container === null || menu === null) return;
+			const caretRect = textareaCaretRect(textarea, mentionStart);
+			const box = textarea.getBoundingClientRect();
+			const {left, bottom} = fileMentionMenuPosition({
+				at: {left: box.left + caretRect.left, bottom: box.top + caretRect.top + caretRect.height},
+				container: container.getBoundingClientRect(),
+				width: mentionWidth,
+				viewportWidth: window.innerWidth,
+			});
+			menu.style.left = `${left}px`;
+			menu.style.bottom = `${bottom}px`;
+		};
+		place();
+		window.addEventListener("resize", place);
+		return () => {
+			window.removeEventListener("resize", place);
+		};
+	}, [mentionStart, mentionWidth, mentionMenuId]);
 
 	useLayoutEffect(() => {
 		const next = pendingCaretRef.current;
@@ -1082,7 +1121,7 @@ export function Composer({
 						cwd={mentionCwd}
 					/>
 				)}
-				<div className="relative pr-[30px] pl-[30px] pointer-coarse:pr-[51px]">
+				<div ref={mentionInputRef} className="relative pr-[30px] pl-[30px] pointer-coarse:pr-[51px]">
 					<div data-composer-add="" className="absolute left-0 bottom-0 flex min-h-7 items-center">
 						<ComposerAddMenu onInsertSlash={insertSlash} onAddFiles={openFilePicker} active={active} />
 					</div>
