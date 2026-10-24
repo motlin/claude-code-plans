@@ -7,6 +7,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {AssistantMessageActions, UserMessageActions} from "../src/components/message-actions";
 import {type TranscriptActions, TranscriptActionsContext} from "../src/components/transcript-actions-context";
+import {removeChapter, toggleChapter} from "../src/lib/chapter-store";
 import {writeClipboardText} from "../src/lib/clipboard";
 
 vi.mock("../src/lib/clipboard", () => ({
@@ -89,8 +90,28 @@ describe("AssistantMessageActions", () => {
 			bar: ["opacity-0", "group-hover/msg:opacity-100", "focus-within:opacity-100"].every((c) =>
 				classes.includes(c),
 			),
-			button: ["text-ink-muted", "hover:text-primary"].every((c) => copyClasses.includes(c)),
-		}).toStrictEqual({bar: true, button: true});
+			button: ["text-ink-muted", "hover:text-primary"].map((c) => copyClasses.includes(c)),
+			barHover: classes.includes("[&_button:hover:not([aria-pressed=true]):not(:disabled)]:text-primary"),
+		}).toStrictEqual({bar: true, button: [true, false], barHover: true});
+	});
+
+	it("paints a pinned Pin as chapter with upstream's pressed accent ink and fill", () => {
+		toggleChapter(MESSAGE.sessionId, {uuid: MESSAGE.uuid, label: "Hello", recordIndex: 0});
+		const {container} = render(
+			<AssistantMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} />,
+		);
+		const pin = button(container, "Pin as chapter");
+		const classes = pin.className.split(" ");
+		removeChapter(MESSAGE.sessionId, MESSAGE.uuid);
+
+		expect({
+			pressed: pin.getAttribute("aria-pressed"),
+			ink: classes.includes("aria-pressed:text-upstream-accent"),
+			fill: classes.includes("aria-pressed:bg-upstream-accent-pressed"),
+			focusRing: ["focus-visible:shadow-focus", "focus-visible:bg-fill-ghost-hover"].map((c) =>
+				classes.includes(c),
+			),
+		}).toStrictEqual({pressed: "true", ink: true, fill: true, focusRing: [true, false]});
 	});
 
 	it("keeps token, model and effort stats out of the visible text and in the time tooltip", () => {

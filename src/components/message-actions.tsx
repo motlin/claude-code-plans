@@ -48,6 +48,8 @@ export interface MessageActionsProps {
 
 const BAR_CLASS = [
 	"flex items-center gap-g1 select-none",
+	// Upstream's toolbar turns a hovered button's icon primary, except a pressed one, which keeps its accent ink.
+	"[&_button:hover:not([aria-pressed=true]):not(:disabled)]:text-primary",
 	"opacity-0 pointer-events-none",
 	"group-hover/msg:opacity-100 group-hover/msg:pointer-events-auto",
 	"focus-within:opacity-100 focus-within:pointer-events-auto",
@@ -69,7 +71,7 @@ const BAR_CLASS = [
 ].join(" ");
 
 const BUTTON_CLASS =
-	"flex size-6 cursor-pointer items-center justify-center rounded-r5 text-ink-muted outline-none hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus transition-colors hover:bg-fill-ghost-hover hover:text-primary disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-ink-muted";
+	"flex size-6 cursor-pointer items-center justify-center rounded-r5 text-ink-muted outline-none hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus transition-colors hover:bg-fill-ghost-hover aria-pressed:bg-upstream-accent-pressed aria-pressed:text-upstream-accent disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-ink-muted";
 
 const ICON_CLASS = "size-4";
 
@@ -429,7 +431,7 @@ function CancelEditAction({onCancel}: {onCancel: () => Promise<void> | void}) {
 					aria-label="Cancel and edit message"
 					aria-busy={removing ? true : undefined}
 					aria-disabled={removing ? true : undefined}
-					className={`relative ${BUTTON_CLASS}`}
+					className={`relative ${BUTTON_CLASS} hover:text-primary`}
 					onMouseDown={(event) => {
 						event.preventDefault();
 					}}
