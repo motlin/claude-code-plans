@@ -2,7 +2,7 @@
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {createMemoryHistory, createRootRoute, createRouter, RouterProvider} from "@tanstack/react-router";
-import {cleanup, render, screen} from "@testing-library/react";
+import {act, cleanup, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {ClaudeEventsProvider} from "../src/components/claude-events-provider";
 import {herdrPanesQueryOptions} from "../src/lib/api/herdr";
@@ -91,11 +91,11 @@ const detail: SessionDetailData = {
 	},
 };
 
-function seededQueryClient() {
+function seededQueryClient(detailOverrides: Partial<SessionDetailData>) {
 	const queryClient = new QueryClient({
 		defaultOptions: {queries: {retry: false}},
 	});
-	queryClient.setQueryData(sessionDetailQueryOptions(SESSION_ID).queryKey, detail);
+	queryClient.setQueryData(sessionDetailQueryOptions(SESSION_ID).queryKey, {...detail, ...detailOverrides});
 	queryClient.setQueryData(transcriptQueryOptions(SESSION_ID).queryKey, {
 		records: [
 			{
@@ -126,8 +126,8 @@ function seededQueryClient() {
 	return queryClient;
 }
 
-async function renderSession() {
-	const queryClient = seededQueryClient();
+async function renderSession(detailOverrides: Partial<SessionDetailData> = {}): Promise<QueryClient> {
+	const queryClient = seededQueryClient(detailOverrides);
 	const rootRoute = createRootRoute({
 		component: () => (
 			<QueryClientProvider client={queryClient}>
@@ -150,6 +150,17 @@ async function renderSession() {
 	await router.load();
 	render(<RouterProvider router={router} />);
 	await screen.findByTestId("session-titlebar");
+	return queryClient;
+}
+
+function stubBrowserGlobals(): void {
+	vi.stubGlobal("EventSource", TestEventSource);
+	vi.stubGlobal("localStorage", new FakeStorage());
+	vi.stubGlobal("IntersectionObserver", TestIntersectionObserver);
+	vi.stubGlobal(
+		"fetch",
+		vi.fn(async () => new Promise<Response>(() => {})),
+	);
 }
 
 afterEach(() => {
@@ -160,16 +171,39 @@ afterEach(() => {
 
 describe("session page composer directory", () => {
 	it("shows the composer from the recorded cwd when the project path did not resolve", async () => {
-		vi.stubGlobal("EventSource", TestEventSource);
-		vi.stubGlobal("localStorage", new FakeStorage());
-		vi.stubGlobal("IntersectionObserver", TestIntersectionObserver);
-		vi.stubGlobal(
-			"fetch",
-			vi.fn(async () => new Promise<Response>(() => {})),
-		);
+		stubBrowserGlobals();
 
 		await renderSession();
 
 		expect(screen.queryByRole("textbox", {name: "Prompt"}) !== null).toBe(true);
+	});
+});
+
+describe("archived session composer note", () => {
+	it("replaces the composer with the archived note, and brings the composer back once unarchived", async () => {
+		stubBrowserGlobals();
+
+		const queryClient = await renderSession({archived: true});
+
+		expect({
+			composer: screen.queryByRole("textbox", {name: "Prompt"}),
+			standIns: document.querySelectorAll("[data-composer-stand-in]").length,
+			note: screen.getByRole("note").textContent,
+		}).toStrictEqual({
+			composer: null,
+			standIns: 1,
+			note: "This session is archived. Unarchive it to keep working in this session.Unarchive",
+		});
+
+		const unarchived: SessionDetailData = {...detail, archived: false};
+		act(() => {
+			queryClient.setQueryData(sessionDetailQueryOptions(SESSION_ID).queryKey, unarchived);
+		});
+
+		await screen.findByRole("textbox", {name: "Prompt"});
+		expect({
+			composer: screen.queryByRole("textbox", {name: "Prompt"}) !== null,
+			standIns: document.querySelectorAll("[data-composer-stand-in]").length,
+		}).toStrictEqual({composer: true, standIns: 0});
 	});
 });

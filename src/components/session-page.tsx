@@ -15,6 +15,7 @@ import {SessionChat} from "./session-chat";
 import {ChapterChips} from "./chapter-chips";
 import {TranscriptActionsProvider} from "./transcript-actions-provider";
 import {useSessionFork} from "../hooks/use-session-fork";
+import {ArchivedComposerNote} from "./archived-composer-note";
 import {Composer} from "./composer";
 import {HeldUserRow, SendingUserRow} from "./pending-user-row";
 import {StreamingMessage} from "./streaming-message";
@@ -998,7 +999,11 @@ function SessionView({
 											{!chromeHidden && sessionDirectory && (
 												<NotifyMePrompt sessionId={sessionId} />
 											)}
-											{!chromeHidden && sessionDirectory && (
+											{/* Upstream's composer stand-in: an archived session shows the Unarchive note in place of the editor */}
+											{!chromeHidden && sessionDirectory && data.archived && (
+												<ArchivedComposerNote sessionId={sessionId} />
+											)}
+											{!chromeHidden && sessionDirectory && !data.archived && (
 												<Composer
 													variant="session"
 													draftKey={sessionId}
