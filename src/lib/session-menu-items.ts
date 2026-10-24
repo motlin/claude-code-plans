@@ -363,8 +363,11 @@ export function getSessionMenuItems(
 		settingsBlock.push(transcriptViewMenuItem(session.transcriptView));
 	}
 
+	// An archived session's header leaves Unarchive to the composer note, as upstream passes the header no onUnarchive.
 	const lifecycle: SessionMenuItem[] = [];
-	if (has("archive")) lifecycle.push(item(session.archived ? "unarchive" : "archive"));
+	if (has("archive") && !(surface === "header" && session.archived)) {
+		lifecycle.push(item(session.archived ? "unarchive" : "archive"));
+	}
 
 	if (surface === "palette-card") {
 		const pick = (...ids: SessionMenuItemId[]) =>

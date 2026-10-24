@@ -164,6 +164,17 @@ describe("getSessionMenuItems", () => {
 		});
 	});
 
+	it("leaves Unarchive to the composer note in the header of an archived session, as upstream", () => {
+		const ids = (surface: "header" | "row") =>
+			getSessionMenuItems(session({archived: true, hasLiveTerminal: true}), ALL, {surface}).flatMap((entry) =>
+				entry.kind === "item" ? [entry.id] : ["|"],
+			);
+		expect({header: ids("header"), row: ids("row")}).toEqual({
+			header: ["open-in", "|", "rename", "fork", "|", "copy-link"],
+			row: ["open-in", "|", "pin", "mark-unread", "rename", "copy-link", "fork", "|", "unarchive"],
+		});
+	});
+
 	it("disables Fork with its reason", () => {
 		expect(
 			getSessionMenuItems(session({forkDisabledReason: "Session file is still being written"}), ALL, {
