@@ -580,8 +580,8 @@ describe("TurnChangesCard", () => {
 			icon: Array.from(item.querySelectorAll("svg.lucide"), (icon) => classes(icon, ["lucide-code", "size-4"])),
 			trailing: Array.from(item.children, (child) => child.tagName === "SPAN" && child.textContent),
 			chevron: item.querySelector(":scope > span > span.text-secondary > svg") !== null,
-			undoRevealedOnHover: ["sr-only", "group-hover/card:not-sr-only", "focus-visible:not-sr-only"].every(
-				(name) => undo.classList.contains(name),
+			undoHidden: ["sr-only", "group-hover/card:not-sr-only", "focus-visible:not-sr-only"].some((name) =>
+				undo.classList.contains(name),
 			),
 		}).toStrictEqual({
 			header: null,
@@ -592,9 +592,9 @@ describe("TurnChangesCard", () => {
 			card: ["mt-4", "mb-[7px]", "px-2", "py-1", "rounded-r6", "shadow-[inset_0_0_0_1px_var(--color-border)]"],
 			item: ["-mx-1", "px-1", "gap-1"],
 			icon: [["lucide-code", "size-4"]],
-			trailing: [false, "+1\u22121", false],
+			trailing: [false, "+1\u22121", "Undo"],
 			chevron: true,
-			undoRevealedOnHover: true,
+			undoHidden: false,
 		});
 	});
 
@@ -822,6 +822,84 @@ const READY_PREVIEW = {
 };
 
 describe("TurnChangesCard Undo", () => {
+	const UNDO_LOOK = [
+		"h-6",
+		"px-2",
+		"text-[12px]/[15px]",
+		"text-muted-as-secondary",
+		"hover:text-secondary",
+		"hover:bg-fill-ghost-hover",
+		"rounded-r5",
+		"focus-visible:shadow-focus",
+		"sr-only",
+		"group-hover/card:not-sr-only",
+		"-me-2",
+	];
+	const undoLook = (undo: HTMLElement) => UNDO_LOOK.filter((name) => undo.classList.contains(name));
+
+	function undoTooltipOnFocus(files: number, send: ((text: string) => void) | null) {
+		vi.useFakeTimers();
+		try {
+			render(
+				<TurnUndoSendContext.Provider value={send}>
+					<TurnChangesCard sessionId="s-look" changes={changesWith(files)} undoable />
+				</TurnUndoSendContext.Provider>,
+			);
+			const undo = screen.getByRole("button", {name: "Undo"});
+			const mouseDown = fireEvent.mouseDown(undo);
+			fireEvent.focus(undo);
+			act(() => {
+				vi.advanceTimersByTime(400);
+			});
+			return {
+				look: undoLook(undo),
+				mouseDownPrevented: !mouseDown,
+				tooltip: screen.queryByRole("tooltip")?.textContent,
+			};
+		} finally {
+			vi.useRealTimers();
+		}
+	}
+
+	it("draws a one-file card's Undo always visible in upstream's ghost look, tooltipped and not taking focus", () => {
+		expect(undoTooltipOnFocus(1, () => {})).toStrictEqual({
+			look: [
+				"h-6",
+				"px-2",
+				"text-[12px]/[15px]",
+				"text-muted-as-secondary",
+				"hover:text-secondary",
+				"hover:bg-fill-ghost-hover",
+				"rounded-r5",
+				"focus-visible:shadow-focus",
+			],
+			mouseDownPrevented: true,
+			tooltip: "Ask Claude to undo this turn\u2019s file changes",
+		});
+	});
+
+	it("pushes a multi-file card's Undo flush to the card edge", () => {
+		expect(undoTooltipOnFocus(2, () => {})).toStrictEqual({
+			look: [
+				"h-6",
+				"px-2",
+				"text-[12px]/[15px]",
+				"text-muted-as-secondary",
+				"hover:text-secondary",
+				"hover:bg-fill-ghost-hover",
+				"rounded-r5",
+				"focus-visible:shadow-focus",
+				"-me-2",
+			],
+			mouseDownPrevented: true,
+			tooltip: "Ask Claude to undo this turn\u2019s file changes",
+		});
+	});
+
+	it("tooltips the no-live-pane fallback Undo with its own text", () => {
+		expect(undoTooltipOnFocus(2, null).tooltip).toStrictEqual("Undo this turn's file changes");
+	});
+
 	it("Undo sends the undo prompt when the session has a live pane", () => {
 		const calls = stubFetch([]);
 		const send = vi.fn<(text: string) => void>();

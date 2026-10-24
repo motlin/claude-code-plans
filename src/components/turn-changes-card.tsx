@@ -36,8 +36,44 @@ const ROW_CLASS =
 const CONTROL_TEXT = "text-[13px]/[19px]";
 const STAT_TEXT = "text-[12px]/[15px]";
 
+/** Upstream's cds ghost Button (size base) with `text-muted-as-secondary hover:text-secondary text-footnote`. */
 const UNDO_CLASS =
-	"h-7 shrink-0 cursor-pointer rounded-r5 px-2 text-body text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary disabled:cursor-default disabled:opacity-50";
+	"h-6 shrink-0 cursor-pointer rounded-r5 px-2 text-[12px]/[15px] text-muted-as-secondary transition-shadow hover:bg-fill-ghost-hover hover:text-secondary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus disabled:cursor-default disabled:opacity-50";
+
+/**
+ * Upstream's Undo: tooltipped "Ask Claude to undo this turn’s file changes", and pressing it keeps focus in the
+ * composer (`onMouseDown: preventDefault`). The no-live-pane fallback reverts directly, so it says so instead.
+ */
+function UndoButton({
+	sendsPrompt,
+	busy,
+	onUndo,
+	flushEnd = false,
+}: {
+	sendsPrompt: boolean;
+	busy: boolean;
+	onUndo: () => void;
+	flushEnd?: boolean;
+}) {
+	return (
+		<Tooltip
+			content={sendsPrompt ? "Ask Claude to undo this turn\u2019s file changes" : "Undo this turn's file changes"}
+			className="shrink-0"
+		>
+			<button
+				type="button"
+				disabled={busy}
+				onMouseDown={(event) => {
+					event.preventDefault();
+				}}
+				onClick={onUndo}
+				className={flushEnd ? `${UNDO_CLASS} -me-2` : UNDO_CLASS}
+			>
+				Undo
+			</button>
+		</Tooltip>
+	);
+}
 
 /** Upstream's lone changes row: a 16px code glyph and the name, its stats and chevron outside the button. */
 const LONE_ROW_CLASS =
@@ -82,8 +118,7 @@ function UndoFeedback({undo}: {undo: ReturnType<typeof useTurnUndo>}) {
  * A one-file turn is a lone row in an outlined card with no header (79a0ad58
  * "settings.json +1 −1", its row 44px below the Denied row): a code glyph and
  * the name open the Changes pane ("View this turn's changes"), the stats and a
- * chevron sit right-aligned, and Undo, which upstream does not draw on an
- * archived session, stays hidden until hover or focus.
+ * chevron sit right-aligned, and Undo is always visible.
  *
  * Undo shows only when `undoable`: upstream offers it on the session's last turn alone,
  * never on an archived session. As upstream, it sends a message asking Claude to undo
@@ -158,14 +193,11 @@ export function TurnChangesCard({
 							</span>
 						</span>
 						{undoable && (
-							<button
-								type="button"
-								disabled={undo.state.kind === "busy"}
-								onClick={startUndo}
-								className={`${UNDO_CLASS} sr-only group-hover/card:not-sr-only focus-visible:not-sr-only`}
-							>
-								Undo
-							</button>
+							<UndoButton
+								sendsPrompt={send !== null}
+								busy={undo.state.kind === "busy"}
+								onUndo={startUndo}
+							/>
 						)}
 					</li>
 				</ul>
@@ -199,14 +231,12 @@ export function TurnChangesCard({
 					</button>
 				)}
 				{undoable && (
-					<button
-						type="button"
-						disabled={undo.state.kind === "busy"}
-						onClick={startUndo}
-						className={UNDO_CLASS}
-					>
-						Undo
-					</button>
+					<UndoButton
+						sendsPrompt={send !== null}
+						busy={undo.state.kind === "busy"}
+						onUndo={startUndo}
+						flushEnd
+					/>
 				)}
 			</div>
 			<UndoFeedback undo={undo} />
