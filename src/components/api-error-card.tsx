@@ -1,7 +1,7 @@
 import {Check, Copy} from "lucide-react";
 import {useEffect, useId, useRef, useState} from "react";
 
-import {classifyApiError, errorCopy} from "../lib/api-error-category";
+import {classifyApiError, errorCopy, refusalPassthrough} from "../lib/api-error-category";
 import {writeClipboardText} from "../lib/clipboard";
 import {ErrorCardShell} from "./error-card-shell";
 import {ChevronIcon} from "./tool-renderers/shared";
@@ -154,16 +154,19 @@ export function ApiErrorCard({text, details, status, requestId, messageId, code,
 		...(numeric !== undefined && {status: numeric}),
 	});
 	const copy = errorCopy(category, {canRewind: false, canRetry: false, hasComposer: false});
+	// Upstream's passthrough: a refusal's own text replaces the hint, drops Learn more, and leaves View details.
+	const passthrough = category === "usage_policy" && stopReason === "refusal" ? refusalPassthrough(text) : undefined;
 	const raw = details ?? (text === "" ? undefined : text);
-	const body = copy.detailsVerdict === "drop" ? undefined : raw;
+	const body = copy.detailsVerdict === "drop" || passthrough !== undefined ? undefined : raw;
 	const showDetails = body !== undefined || status !== undefined || requestId !== undefined;
+	const learnMoreUrl = passthrough === undefined ? copy.learnMoreUrl : undefined;
 	return (
 		<ErrorCardShell
 			data={{"data-api-error-card": ""}}
 			headline={copy.headline}
-			hint={copy.hint}
+			hint={passthrough?.body ?? copy.hint}
 			icon={category === "rate_limit" ? "gauge" : "warning"}
-			{...(copy.learnMoreUrl !== undefined && {learnMoreUrl: copy.learnMoreUrl})}
+			{...(learnMoreUrl !== undefined && {learnMoreUrl})}
 		>
 			{showDetails && (
 				<ErrorDetails

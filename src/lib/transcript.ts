@@ -92,9 +92,9 @@ const MessageLineSchema = z.object({
 	/** The `api-request` this line's run of records came from; only the run's first line carries it. */
 	requestRef: z.string().optional(),
 	apiErrorStatus: z.union([z.number(), z.string()]).optional(),
-	/** An API error line's `requestId`, for the error card's details. */
+	/** An API error or refusal line's `requestId`, for the error card's details. */
 	requestId: z.string().optional(),
-	/** An API error line's `message.id`, for the error card's Message ID line. */
+	/** An API error line's `message.id` (a refusal's withheld message id), for the error card's Message ID line. */
 	messageId: z.string().optional(),
 	/** An API error line's string `error` code, e.g. `server_error`, for classifying it. */
 	apiErrorCode: z.string().optional(),
@@ -1109,10 +1109,15 @@ function processRecordBatch(
 			}
 		}
 		if (record.type === "assistant") {
+			const refused = record.message.stop_reason === "refusal";
+			if (record.isApiErrorMessage === true || refused) {
+				if (record.requestId !== undefined) processedLine.requestId = record.requestId;
+				// A synthetic refusal's own id is a uuid; the withheld message's id is the one upstream names.
+				const messageId = refused ? (record.refusedMessageId ?? record.message.id) : record.message.id;
+				if (messageId !== undefined) processedLine.messageId = messageId;
+			}
 			if (record.isApiErrorMessage === true) {
 				processedLine.isApiErrorMessage = true;
-				if (record.requestId !== undefined) processedLine.requestId = record.requestId;
-				if (record.message.id !== undefined) processedLine.messageId = record.message.id;
 				if (typeof record.error === "string") processedLine.apiErrorCode = record.error;
 			}
 			if (record.requestRef !== undefined && record.requestRef !== lastRequestRef) {

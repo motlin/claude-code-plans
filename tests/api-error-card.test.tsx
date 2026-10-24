@@ -289,4 +289,77 @@ describe("ApiErrorCard", () => {
 			companion: false,
 		});
 	});
+
+	it("opens View details on a model refusal's request id and message id", () => {
+		const container = renderRecords([
+			{
+				type: "assistant",
+				uuid: "c0d7a3f1-2b6e-4c55-9a1d-7e4f8b2c6d10",
+				timestamp: "2026-10-22T00:41:12.000Z",
+				message: {
+					id: "msg_011CgGLjiNS6ERJgzVqTdSfj",
+					role: "assistant",
+					model: "claude-opus-5-5",
+					stop_reason: "refusal",
+					content: [{type: "thinking", thinking: "", signature: "CAQS2wUKEAgTGAI4AUIIdGhpbmtpbmc"}],
+				},
+				requestId: "req_011CgGLji7Z5kBsT1veSwPzU",
+			},
+		]);
+		const card = container.querySelector("[data-api-error-card]");
+		const trigger = card?.querySelector("button");
+		fireEvent.click(trigger!);
+		const facts = card?.querySelector("[data-api-error-details] .break-all");
+
+		expect({
+			trigger: trigger?.textContent,
+			lines: [...(facts?.children ?? [])].map((line) => line.textContent),
+		}).toStrictEqual({
+			trigger: "View details",
+			lines: ["Request ID: req_011CgGLji7Z5kBsT1veSwPzU", "Message ID: msg_011CgGLjiNS6ERJgzVqTdSfj"],
+		});
+	});
+
+	it("replaces the hint with a synthetic refusal's own text, like upstream's passthrough body, and drops it from View details", () => {
+		const text =
+			"API Error: Sonnet 5.5's safeguards flagged this session (https://www.anthropic.com/legal/aup). You may be seeing this for the first time on a Sonnet model: Sonnet 5.5 is more capable and has stronger safeguards as a result, which can sometimes flag non-cybersecurity work. We're improving these safeguards to reduce the amount of incorrectly flagged messages. Claude Code can't respond to your last message with Sonnet 5.5.\n\nDouble press esc to edit your last message, or try a different model with /model.\n\nYou can learn more: https://support.claude.com/en/articles/8106465\n\nDetails: `[cyber]`\n\nRequest ID: req_011CgFaXu4vBJjAD4zM5mZ3W\n\nMessage ID: msg_011CgFaXuKJXxjEoQpSSFwXn";
+		const container = renderRecords([
+			{
+				type: "assistant",
+				uuid: "4a6366a5-adea-4fcc-9e2d-b73ef9fdc323",
+				timestamp: "2026-10-23T14:02:31.000Z",
+				message: {
+					id: "4a6366a5-adea-4fcc-9e2d-b73ef9fdc323",
+					model: "<synthetic>",
+					role: "assistant",
+					stop_reason: "refusal",
+					stop_sequence: "",
+					type: "message",
+					content: [{type: "text", text}],
+				},
+				requestId: "req_011CgFaXu4vBJjAD4zM5mZ3W",
+				error: "invalid_request",
+				isApiErrorMessage: true,
+				refusedMessageId: "msg_011CgFaXuKJXxjEoQpSSFwXn",
+			},
+		]);
+		const cards = [...container.querySelectorAll("[data-api-error-card]")];
+		const [header, hintRow, detailsRow] = [...(cards[0]?.children ?? [])];
+		fireEvent.click(detailsRow!.querySelector("button")!);
+		const box = cards[0]?.querySelector("[data-api-error-details]")?.firstElementChild;
+
+		expect({
+			cards: cards.length,
+			headline: header?.textContent,
+			hint: hintRow?.textContent,
+			learnMore: hintRow?.querySelector("a") === null,
+			details: box?.textContent,
+		}).toStrictEqual({
+			cards: 1,
+			headline: "Message flagged",
+			hint: "Sonnet 5.5's safeguards flagged this session (https://www.anthropic.com/legal/aup). You may be seeing this for the first time on a Sonnet model: Sonnet 5.5 is more capable and has stronger safeguards as a result, which can sometimes flag non-cybersecurity work. We're improving these safeguards to reduce the amount of incorrectly flagged messages. Claude Code can't respond to your last message with Sonnet 5.5.\n\nDouble press esc to edit your last message, or try a different model with /model.\n\nYou can learn more: https://support.claude.com/en/articles/8106465",
+			learnMore: true,
+			details: "Request ID: req_011CgFaXu4vBJjAD4zM5mZ3WMessage ID: msg_011CgFaXuKJXxjEoQpSSFwXn",
+		});
+	});
 });

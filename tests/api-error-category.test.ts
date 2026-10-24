@@ -1,5 +1,5 @@
 import {describe, expect, it} from "vite-plus/test";
-import {classifyApiError, errorCopy, type ApiErrorInput} from "../src/lib/api-error-category";
+import {classifyApiError, errorCopy, refusalPassthrough, type ApiErrorInput} from "../src/lib/api-error-category";
 
 const VIEWER = {canRewind: false, canRetry: false, hasComposer: false} as const;
 
@@ -181,5 +181,28 @@ describe("errorCopy", () => {
 			"This chat is too long to continue. Compact it to summarize earlier messages and keep going, rewind to an earlier point, or start a new chat.",
 			"Sign in again to continue.",
 		]);
+	});
+});
+
+describe("refusalPassthrough", () => {
+	it("strips upstream's API Error prefix, the Request and Message ID trailer, and the Details category", () => {
+		expect(
+			refusalPassthrough(
+				"API Error: Opus 5.5's safeguards flagged this message.\n\nDouble press esc to edit your last message.\n\nDetails: `[reasoning_extraction]`\n\nRequest ID: req_011Cg3aaz5pqLrbAkP1N2VfL\n\nMessage ID: msg_011Cg3aazSfAjcBCjdnsHbjz",
+			),
+		).toStrictEqual({
+			body: "Opus 5.5's safeguards flagged this message.\n\nDouble press esc to edit your last message.",
+			category: "reasoning_extraction",
+		});
+	});
+
+	it("keeps the whole body when there is no Details line", () => {
+		expect(refusalPassthrough("API Error Claude's safeguards flagged this message.")).toStrictEqual({
+			body: "Claude's safeguards flagged this message.",
+		});
+	});
+
+	it("is undefined for a blank text", () => {
+		expect(refusalPassthrough("API Error:  ")).toBeUndefined();
 	});
 });

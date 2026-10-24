@@ -146,6 +146,34 @@ function numberOrUndefined(value: string | undefined): number | undefined {
 	return value === undefined ? undefined : Number(value);
 }
 
+/** The trailing "Request ID:" / "Message ID:" paragraphs the CLI appends to an error's text. */
+const ID_TRAILER = /(?:\n\n(?:Request|Message) ID: [^\n]*)+$/;
+
+/** Upstream's `Mr` suffix: the "Details: `[category]`" paragraph ending a refusal's text. */
+const DETAILS_SUFFIX = /\n\nDetails: `\[([^`[\]\n]+)\]`$/;
+
+export interface RefusalPassthrough {
+	body: string;
+	category?: string;
+}
+
+/**
+ * Upstream's `Mr`: a refusal's own explanation, which replaces the usage-policy
+ * hint. It drops the "API Error:" prefix and splits off the Details category.
+ * Upstream first strips the error text in a chunk the dumps leave out; this
+ * strips the Request ID and Message ID trailer, which the details lines show.
+ */
+export function refusalPassthrough(text: string): RefusalPassthrough | undefined {
+	const trimmed = text
+		.replace(ID_TRAILER, "")
+		.replace(/^API Error:?\s*/i, "")
+		.trim();
+	const details = DETAILS_SUFFIX.exec(trimmed);
+	const body = details ? trimmed.slice(0, details.index).trim() : trimmed;
+	if (body === "") return undefined;
+	return {body, ...(details?.[1] !== undefined && {category: details[1]})};
+}
+
 /** Upstream's `er`: whether View details keeps, drops, or describes the raw body. */
 export type DetailsVerdict = "keep" | "drop" | "describe";
 
