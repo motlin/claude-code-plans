@@ -36,6 +36,8 @@ interface FileRefProps {
 	 * blocked; focus then moves to its wrapper if it would fall to the body.
 	 */
 	onFileRef?: ((ref: FileRef, element: HTMLElement) => unknown) | undefined;
+	/** Handles a ⌘/Ctrl-click on a ref instead of `onFileRef`; true when it opened the ref. */
+	onFileRefDefaultApp?: ((ref: FileRef) => boolean) | undefined;
 	/** Artifacts-index titles keyed by artifact id, for claude.ai artifact link chips. */
 	artifactTitles?: ReadonlyMap<string, string> | undefined;
 	/** Curl prose quotes, as upstream does for assistant text. */
@@ -214,14 +216,14 @@ export function MarkdownArticle(props: MarkdownArticleProps) {
 
 	const reasonTooltip = useReasonTooltip();
 	const missingFocus = useMissingRefFocus(rendered);
-	const {onFileRef} = props;
+	const {onFileRef, onFileRefDefaultApp} = props;
 	const openRef = ({ref, element}: {ref: FileRef; element: HTMLElement}) => {
 		missingFocus.opening(ref, element, onFileRef?.(ref, element));
 	};
 	const handleClick = (event: MouseEvent<HTMLElement>) => {
 		const target = onFileRef === undefined ? null : targetFileRef(event);
 		if (target === null) handleCodeCopyClick(event);
-		else openRef(target);
+		else if (!((event.metaKey || event.ctrlKey) && onFileRefDefaultApp?.(target.ref) === true)) openRef(target);
 	};
 	const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
 		if (onFileRef === undefined || (event.key !== "Enter" && event.key !== " ")) return;

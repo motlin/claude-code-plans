@@ -69,6 +69,18 @@ export async function revealFileInFinder(path: string): Promise<unknown> {
 	});
 }
 
+/**
+ * Open one file with its default app; the server refuses paths outside the
+ * viewer's allowed roots, folders and executables (403).
+ */
+export async function openFileInDefaultApp(path: string): Promise<unknown> {
+	return apiFetch("/api/open-file", z.strictObject({ok: z.literal(true)}), {
+		method: "POST",
+		headers: {"Content-Type": "application/json"},
+		body: JSON.stringify({path}),
+	});
+}
+
 /** A file the viewer can show as text, or why it can't. */
 type FileViewContent =
 	| {kind: "text"; content: string; path: string}

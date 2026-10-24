@@ -17,8 +17,10 @@ import {requestFileOpen} from "../lib/file-open-requests";
 import {type FileRef} from "../lib/file-refs";
 import {markFileRefMissing, missingFileRefs, subscribeMissingFileRefs} from "../lib/missing-file-refs";
 import type {SessionFiles} from "../lib/session-files";
+import {relativeToCwd} from "./files/mention-path";
 import {MarkdownArticle} from "./markdown-article";
 import {usePaneHost} from "./panes/pane-host-context";
+import {useOpenInDefaultApp} from "./use-open-in-default-app";
 import {useResolvedFileRefs, EMPTY_REFS} from "./use-resolved-file-refs";
 
 interface FileRefsContextValue {
@@ -142,6 +144,23 @@ export function useFileRefsCwd(): string | undefined {
 	return useContext(FileRefsContext)?.cwd;
 }
 
+/**
+ * Upstream `Yn`'s ⌘/Ctrl-click: a ref inside the cwd opens with its default
+ * app instead of the Files pane. Returns whether it took the click.
+ */
+function useDefaultAppOpen(): (ref: FileRef) => boolean {
+	const cwd = useFileRefsCwd();
+	const openInDefaultApp = useOpenInDefaultApp();
+	return useCallback(
+		(ref) => {
+			if (relativeToCwd(ref.path, cwd) === null) return false;
+			openInDefaultApp(ref.path);
+			return true;
+		},
+		[cwd, openInDefaultApp],
+	);
+}
+
 /** The open handler of the surrounding {@link FileRefsProvider}, if any. */
 function useOpenFileRef(): ((ref: FileRef) => void) | null {
 	return useContext(FileRefsContext)?.open ?? null;
@@ -157,7 +176,11 @@ interface FileRefButtonProps {
 	onKeyDown: (event: KeyboardEvent) => void;
 }
 
-function fileRefButtonProps(ref: FileRef, open: (ref: FileRef) => void): FileRefButtonProps {
+function fileRefButtonProps(
+	ref: FileRef,
+	open: (ref: FileRef) => void,
+	openDefaultApp: (ref: FileRef) => boolean,
+): FileRefButtonProps {
 	return {
 		role: "button",
 		tabIndex: 0,
@@ -166,6 +189,7 @@ function fileRefButtonProps(ref: FileRef, open: (ref: FileRef) => void): FileRef
 		...(ref.line === undefined ? {} : {"data-file-line": ref.line}),
 		onClick: (event) => {
 			event.stopPropagation();
+			if ((event.metaKey || event.ctrlKey) && openDefaultApp(ref)) return;
 			open(ref);
 		},
 		onKeyDown: (event) => {
@@ -190,7 +214,8 @@ function ResolvedFileRefTarget({
 }): ReactNode {
 	const texts = useMemo(() => [path], [path]);
 	const ref = useFileRefs(texts).get(path);
-	return render(ref === undefined || ref.block !== undefined ? null : fileRefButtonProps(ref, open));
+	const openDefaultApp = useDefaultAppOpen();
+	return render(ref === undefined || ref.block !== undefined ? null : fileRefButtonProps(ref, open, openDefaultApp));
 }
 
 /**
@@ -231,12 +256,14 @@ function LinkedProseMarkdown({
 	const texts = useMemo(() => fileRefTexts(markdown), [markdown]);
 	const refs = useFileRefs(texts, true);
 	const checkedOpen = useCheckedOpen(sessionId, open);
+	const openDefaultApp = useDefaultAppOpen();
 	const artifactTitles = useArtifactTitles(markdown);
 	return (
 		<MarkdownArticle
 			markdown={markdown}
 			fileRefs={refs}
 			onFileRef={checkedOpen}
+			onFileRefDefaultApp={openDefaultApp}
 			artifactTitles={artifactTitles}
 			smartQuotes={smartQuotes}
 			zonedTimes={smartQuotes}

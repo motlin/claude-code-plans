@@ -316,6 +316,55 @@ describe("ProseMarkdown file refs", () => {
 		}).toStrictEqual({opened: [[{path: "/repo/src/app.ts"}]], busy: null, rechecks: 0});
 	});
 
+	it("⌘- or Ctrl-click opens a ref inside the cwd with its default app, not the Files pane", async () => {
+		const open = vi.fn<(ref: FileRef) => void>();
+		const {container} = render(
+			withQueryClient(
+				<FileRefsProvider value={{sessionId: "exists-now", cwd: "/repo", sessionPaths: [], open}}>
+					<ProseMarkdown markdown="See `src/app.ts`." />
+					<TruncatedFilePathHeader filePath="/repo/.mise/config.toml" />
+				</FileRefsProvider>,
+			),
+		);
+		const prose = await waitFor(() => {
+			const found = container.querySelector<HTMLElement>(".prose-link[data-file-ref]");
+			expect(found).not.toBeNull();
+			return found!;
+		});
+		fireEvent.click(prose, {metaKey: true});
+		fireEvent.click(await screen.findByRole("button", {name: "/repo/.mise/config.toml"}), {ctrlKey: true});
+		const openFileBodies = () =>
+			vi
+				.mocked(fetch)
+				.mock.calls.filter(([url]) => String(url) === "/api/open-file")
+				.map(([, init]) => JSON.parse(String(init?.body)) as unknown);
+		await waitFor(() => {
+			expect(openFileBodies()).toHaveLength(2);
+		});
+
+		expect({opened: openFileBodies(), paneOpens: open.mock.calls}).toStrictEqual({
+			opened: [{path: "/repo/src/app.ts"}, {path: "/repo/.mise/config.toml"}],
+			paneOpens: [],
+		});
+	});
+
+	it("⌘-click on a ref outside the cwd opens it in the Files pane as a plain click does", async () => {
+		const open = vi.fn<(ref: FileRef) => void>();
+		render(
+			withQueryClient(
+				<FileRefsProvider value={{sessionId: "refs-test", cwd: "/repo/src", sessionPaths: [], open}}>
+					<TruncatedFilePathHeader filePath="/repo/.mise/config.toml" />
+				</FileRefsProvider>,
+			),
+		);
+		fireEvent.click(await screen.findByRole("button", {name: "/repo/.mise/config.toml"}), {metaKey: true});
+
+		expect({
+			paneOpens: open.mock.calls,
+			openFileCalls: vi.mocked(fetch).mock.calls.filter(([url]) => String(url) === "/api/open-file").length,
+		}).toStrictEqual({paneOpens: [[{path: "/repo/.mise/config.toml"}]], openFileCalls: 0});
+	});
+
 	it("renders plain markdown outside a file-refs provider", () => {
 		const {container} = render(withQueryClient(<ProseMarkdown markdown={MESSAGE} />));
 		expect({

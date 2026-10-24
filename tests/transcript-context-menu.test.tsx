@@ -465,6 +465,67 @@ describe("transcript file ref menus", () => {
 		});
 	});
 
+	/** Open a prose ref's Open in ▸, answering `/api/open-file` with `openStatus`, and pick Default app. */
+	async function openInDefaultApp(openStatus: number): Promise<{openInRows: string[]; opened: unknown[]}> {
+		const fileRefsFetch = vi.mocked(fetch).getMockImplementation();
+		const opened: unknown[] = [];
+		vi.mocked(fetch).mockImplementation(async (input, init) => {
+			if (String(input) !== "/api/open-file") return fileRefsFetch!(input, init);
+			opened.push(JSON.parse(String(init?.body)));
+			return Promise.resolve(
+				Response.json(openStatus === 200 ? {ok: true} : {error: "no"}, {status: openStatus}),
+			);
+		});
+		const container = renderChat(withFileRefs("/repo"), FILE_RECORDS);
+		const menu = openMenuOn(await findFileRef(container, ".prose-link[data-file-ref]"));
+		fireEvent.click(find(menu, '[role="menuitem"]', "Open in"));
+		const submenu = await vi.waitFor(() => {
+			const open = screen.getAllByRole("menu").at(-1);
+			if (open === undefined || open === menu) throw new Error("Open in ▸ not open");
+			return open;
+		});
+		const openInRows = menuRows(submenu);
+		fireEvent.click(find(submenu, '[role="menuitem"]', "Default app"));
+		await vi.waitFor(() => {
+			expect(opened).toHaveLength(1);
+		});
+		return {openInRows, opened};
+	}
+
+	it("opens a prose file ref with its default app from Open in ▸ Default app", async () => {
+		const result = await openInDefaultApp(200);
+
+		expect({
+			...result,
+			toasts: [...document.querySelectorAll("[data-toast-message]")].map((toast) => toast.textContent),
+		}).toStrictEqual({
+			openInRows: ["VS Code", "---", "Default app"],
+			opened: [{path: "/repo/src/app.ts"}],
+			toasts: [],
+		});
+	});
+
+	it("toasts upstream's error when the default app fails, and stays silent when the server blocks it", async () => {
+		await openInDefaultApp(500);
+		const failed = await screen.findByText("Couldn’t open this file with the default app.");
+		const failedToasts = [...document.querySelectorAll("[data-toast-message]")].map((toast) => toast.textContent);
+		cleanup();
+		await openInDefaultApp(403);
+		await new Promise((resolve) => {
+			setTimeout(resolve, 0);
+		});
+
+		expect({
+			failed: failed.textContent,
+			failedToasts,
+			blockedToasts: [...document.querySelectorAll("[data-toast-message]")].map((toast) => toast.textContent),
+		}).toStrictEqual({
+			failed: "Couldn’t open this file with the default app.",
+			failedToasts: ["Couldn’t open this file with the default app."],
+			blockedToasts: [],
+		});
+	});
+
 	it("keeps Copy code on plain inline code beside a file ref", async () => {
 		const container = renderChat(withFileRefs("/repo"), FILE_RECORDS);
 		await findFileRef(container, ".prose-link[data-file-ref]");

@@ -8,6 +8,7 @@ import {useFileRefsCwd} from "./file-refs";
 import {FileActionsMenuItems} from "./files/file-actions-menu";
 import {ContextMenu, ContextMenuTrigger, MenuContent, MenuItem, MenuSeparator} from "./ui/menu";
 import {TranscriptActionsContext, type TranscriptMessageRef} from "./transcript-actions-context";
+import {useOpenInDefaultApp} from "./use-open-in-default-app";
 
 const READ_ALOUD_MENU_LABELS: Record<ReadAloudStatus, string> = {
 	idle: "Read aloud",
@@ -176,6 +177,7 @@ function TranscriptMenuItems({
 }) {
 	const actions = useContext(TranscriptActionsContext);
 	const cwd = useFileRefsCwd();
+	const openInDefaultApp = useOpenInDefaultApp();
 	if (target.kind === "file") {
 		return (
 			<FileActionsMenuItems
@@ -184,6 +186,9 @@ function TranscriptMenuItems({
 				{...(target.line === undefined ? {} : {line: target.line})}
 				surface="transcript"
 				onAttachContext={(attachment) => attachContext(sessionId, attachment)}
+				onOpenInDefaultApp={() => {
+					openInDefaultApp(target.path);
+				}}
 			/>
 		);
 	}

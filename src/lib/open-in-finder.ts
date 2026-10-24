@@ -116,3 +116,63 @@ export async function handleRevealInFinder(
 	await dependencies.revealPath(resolvedPath);
 	return Response.json({ok: true});
 }
+
+const OpenFileRequestSchema = z.object({path: z.string().min(1)}).strict();
+
+export interface OpenFileDependencies {
+	rejectRequest: (request: Request) => Response | null;
+	/** The roots the file viewer may read; nothing outside them is opened. */
+	resolveRoots: () => Promise<readonly string[]>;
+	/** The app config, whose `file_roots` override `resolveRoots`; defaults to the real one. */
+	configPath?: string;
+	openPath: (path: string) => Promise<void>;
+}
+
+const defaultOpenFileDependencies: OpenFileDependencies = {
+	rejectRequest: rejectCrossSite,
+	resolveRoots: defaultRevealDependencies.resolveRoots,
+	openPath: defaultDependencies.openPath,
+};
+
+/** Files macOS `open` would run rather than show: scripts, apps, installers, Automator and AppleScript. */
+const EXECUTABLE_EXTENSION =
+	/\.(app|command|tool|terminal|sh|bash|zsh|csh|ksh|fish|py|rb|pl|scpt|scptd|applescript|workflow|action|pkg|mpkg|dmg|jar|exe|bat|cmd|com|ps1|vbs|msi|bin|run|out|webloc|inetloc|fileloc|prefpane|kext|plugin|bundle|dylib|so)$/i;
+
+/**
+ * Open one file with its default app (`open <path>`) for Open in ▸ Default
+ * app and ⌘-click. Like upstream's "Blocked: executable config", anything
+ * that would run instead of open is refused: executable extensions and
+ * files with an execute bit.
+ */
+export async function handleOpenFile(
+	request: Request,
+	dependencies: OpenFileDependencies = defaultOpenFileDependencies,
+): Promise<Response> {
+	const rejection = dependencies.rejectRequest(request);
+	if (rejection) return rejection;
+
+	const parsed = OpenFileRequestSchema.safeParse(await request.json().catch(() => null));
+	if (!parsed.success) {
+		return Response.json({error: z.prettifyError(parsed.error)}, {status: 400});
+	}
+
+	const {FileServingError, statAllowedFile} = await import("./file-serving");
+	let resolvedPath: string;
+	try {
+		const roots = await dependencies.resolveRoots();
+		resolvedPath = (await statAllowedFile(parsed.data.path, dependencies.configPath, roots)).path;
+	} catch (error) {
+		if (error instanceof FileServingError) {
+			return Response.json({error: error.message}, {status: error.status});
+		}
+		throw error;
+	}
+
+	const {stat} = await import("node:fs/promises");
+	if (EXECUTABLE_EXTENSION.test(resolvedPath) || ((await stat(resolvedPath)).mode & 0o111) !== 0) {
+		return Response.json({error: "Blocked: executable"}, {status: 403});
+	}
+
+	await dependencies.openPath(resolvedPath);
+	return Response.json({ok: true});
+}
