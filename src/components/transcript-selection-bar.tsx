@@ -2,7 +2,7 @@ import {Fragment, type RefObject, useEffect, useLayoutEffect, useRef, useState} 
 
 import {type TranscriptSelection, useTranscriptSelection} from "../hooks/use-transcript-selection";
 import {attachContext, hasComposer} from "../lib/context-attach";
-import {openSideChat, useSideChat} from "../lib/side-chat-store";
+import {openSideChatWithContext, useSideChat} from "../lib/side-chat-store";
 import {findScrollContainer} from "./scroll-container";
 import {ViewportPortal} from "./viewport-portal";
 
@@ -106,8 +106,8 @@ export function TranscriptSelectionBar({
 	if (sideChatAvailable && !sideChatBusy)
 		actions.push({
 			label: sideChat.open ? "Send to side chat" : "Start a side chat",
-			run: () => {
-				openSideChat(sessionId);
+			run: (text) => {
+				openSideChatWithContext(sessionId, truncateExcerpt(text));
 			},
 		});
 	if (hasComposer(sessionId))

@@ -20,12 +20,16 @@ import {
 	branchSideChatEntry,
 	clearSideChat,
 	closeSideChat,
+	removeSideChatExcerpt,
 	type SideChatEntry,
+	type SideChatExcerpt,
 	setSideChatMode,
 	stopEntry,
 	useSideChat,
 } from "../lib/side-chat-store";
+import {CARD_BODY_CLASS, CARD_CLASS, CARD_FILL_CLASS, TILE_CLASS, TILE_REMOVE_CLASS} from "./attachment-tile-classes";
 import {MarkdownArticle} from "./markdown-article";
+import {ExcerptQuote, MessageExcerptTiles} from "./message-excerpt-tiles";
 import type {PaneChrome} from "./panes/pane-registry";
 import {useToast} from "./toast-context";
 import {Shortcut} from "./ui/shortcut";
@@ -56,7 +60,7 @@ export function SideChatPanel({
 	canDock: boolean;
 	chrome?: PaneChrome;
 }) {
-	const {entries} = useSideChat(sessionId);
+	const {entries, excerpts} = useSideChat(sessionId);
 	const shortcut = useShortcutKeys("toggle_side_chat");
 	const inputRef = useRef<HTMLTextAreaElement>(null);
 	const listRef = useRef<HTMLOListElement>(null);
@@ -64,9 +68,10 @@ export function SideChatPanel({
 	const pending = entries.some((entry) => entry.status === "pending");
 	const lastEntry = entries.at(-1);
 
+	// Opening, and each excerpt the transcript selection bar sends, lands focus in the input.
 	useEffect(() => {
 		if (active) inputRef.current?.focus();
-	}, [active]);
+	}, [active, excerpts.length]);
 
 	useEffect(() => {
 		const list = listRef.current;
@@ -156,52 +161,88 @@ export function SideChatPanel({
 			) : (
 				variant !== "floating" && <div className="flex-1" />
 			)}
-			<div className="flex items-end gap-1 border-t-[0.5px] border-strong p-2">
-				<textarea
-					ref={inputRef}
-					aria-label="Side chat question"
-					value={draft}
-					rows={1}
-					placeholder={entries.length > 0 ? "Follow up…" : "Ask a quick question…"}
-					onChange={(event) => {
-						setDraft(event.target.value);
-					}}
-					onKeyDown={(event) => {
-						if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
-							event.preventDefault();
-							send();
-						}
-					}}
-					className="block max-h-40 min-h-6 w-full resize-none bg-transparent px-1 py-0.5 text-body text-primary [field-sizing:content] placeholder:text-t6 focus:outline-none"
-				/>
-				{pending ? (
-					<Tooltip content="Stop">
-						<button
-							type="button"
-							aria-label="Stop"
-							className={ICON_BUTTON_CLASS}
-							onClick={() => {
-								if (lastEntry !== undefined) void stopEntry(sessionId, lastEntry.id);
-							}}
-						>
-							<Square className="size-3" fill="currentColor" aria-hidden="true" />
-						</button>
-					</Tooltip>
-				) : (
-					<Tooltip content="Send" shortcut="enter">
-						<button
-							type="button"
-							aria-label="Send"
-							className={ICON_BUTTON_CLASS}
-							disabled={draft.trim() === ""}
-							onClick={send}
-						>
-							<ArrowUp className="size-4" aria-hidden="true" />
-						</button>
-					</Tooltip>
+			<div className="flex flex-col gap-2 border-t-[0.5px] border-strong p-2">
+				{excerpts.length > 0 && (
+					<ul aria-label="Attached excerpts" className="flex flex-wrap gap-1.5 pt-2 pe-2">
+						{excerpts.map((excerpt) => (
+							<ExcerptTile key={excerpt.id} sessionId={sessionId} excerpt={excerpt} />
+						))}
+					</ul>
 				)}
+				<div className="flex items-end gap-1">
+					<textarea
+						ref={inputRef}
+						aria-label="Side chat question"
+						value={draft}
+						rows={1}
+						placeholder={entries.length > 0 ? "Follow up…" : "Ask a quick question…"}
+						onChange={(event) => {
+							setDraft(event.target.value);
+						}}
+						onKeyDown={(event) => {
+							if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+								event.preventDefault();
+								send();
+							}
+						}}
+						className="block max-h-40 min-h-6 w-full resize-none bg-transparent px-1 py-0.5 text-body text-primary [field-sizing:content] placeholder:text-t6 focus:outline-none"
+					/>
+					{pending ? (
+						<Tooltip content="Stop">
+							<button
+								type="button"
+								aria-label="Stop"
+								className={ICON_BUTTON_CLASS}
+								onClick={() => {
+									if (lastEntry !== undefined) void stopEntry(sessionId, lastEntry.id);
+								}}
+							>
+								<Square className="size-3" fill="currentColor" aria-hidden="true" />
+							</button>
+						</Tooltip>
+					) : (
+						<Tooltip content="Send" shortcut="enter">
+							<button
+								type="button"
+								aria-label="Send"
+								className={ICON_BUTTON_CLASS}
+								disabled={draft.trim() === ""}
+								onClick={send}
+							>
+								<ArrowUp className="size-4" aria-hidden="true" />
+							</button>
+						</Tooltip>
+					)}
+				</div>
 			</div>
 		</div>
+	);
+}
+
+/** A pending excerpt as upstream's 120px Excerpt quote tile, with its hover remove button. */
+function ExcerptTile({sessionId, excerpt}: {sessionId: string; excerpt: SideChatExcerpt}) {
+	return (
+		<li data-cds="MessageAttachmentsQuote" data-cds-attachment="" className={TILE_CLASS}>
+			<div data-cds="Card" data-size="xs" className={CARD_CLASS}>
+				<span aria-hidden="true" className={CARD_FILL_CLASS} />
+				<div data-cds-card-body="" className={CARD_BODY_CLASS}>
+					<ExcerptQuote text={excerpt.text} label="Excerpt" />
+				</div>
+			</div>
+			<button
+				type="button"
+				aria-label={`Remove ${excerpt.text}`}
+				onMouseDown={(event) => {
+					event.preventDefault();
+				}}
+				onClick={() => {
+					removeSideChatExcerpt(sessionId, excerpt.id);
+				}}
+				className={TILE_REMOVE_CLASS}
+			>
+				<X aria-hidden="true" className="size-3" />
+			</button>
+		</li>
 	);
 }
 
@@ -269,6 +310,7 @@ function SideChatItem({sessionId, entry}: {sessionId: string; entry: SideChatEnt
 
 	return (
 		<li className="flex flex-col gap-1.5">
+			<MessageExcerptTiles snippets={(entry.excerpts ?? []).map((text) => ({text}))} />
 			<div className="self-end max-w-[85%] rounded-r7 bg-user-msg-bg px-3 py-1.5 text-body whitespace-pre-wrap break-words text-user-msg-text">
 				{entry.question}
 			</div>

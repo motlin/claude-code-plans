@@ -61,17 +61,17 @@
 		"raisedAt": "2026-10-24"
 	},
 	"bundle.session.gzip": {
-		"ceiling": 601727,
+		"ceiling": 607851,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "The API error card series (classifier, ApiErrorCard, refusal and marker forms, recovery decision and the herdr Try again / Compact session wiring, a11965a3..this) drew upstream's error card in the transcript, which the session route renders statically, taking session cold JS from 595580 gzip / 1792670 raw at 85c9e2c1 to 601727 gzip / 1811166 raw; the recovery buttons and menus themselves stay deferred. Ceilings raised to the measurement; the 1% tolerance is unchanged.",
+		"reason": "The transcript selection series (Excerpt kind and <!-- attach --> codec, sent Excerpt tiles, the selection bar, ⇧⌘L and the side chat excerpt queue, 2026-10-24) renders statically on the session route, taking session cold JS from 601727 gzip / 1811166 raw to 607851 gzip / 1829053 raw at the side chat excerpt commit; the side chat panel itself stays deferred. Ceilings raised to the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-10-24"
 	},
 	"bundle.session.raw": {
-		"ceiling": 1811166,
+		"ceiling": 1829053,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "The API error card series (classifier, ApiErrorCard, refusal and marker forms, recovery decision and the herdr Try again / Compact session wiring, a11965a3..this) drew upstream's error card in the transcript, which the session route renders statically, taking session cold JS from 595580 gzip / 1792670 raw at 85c9e2c1 to 601727 gzip / 1811166 raw; the recovery buttons and menus themselves stay deferred. Ceilings raised to the measurement; the 1% tolerance is unchanged.",
+		"reason": "The transcript selection series (Excerpt kind and <!-- attach --> codec, sent Excerpt tiles, the selection bar, ⇧⌘L and the side chat excerpt queue, 2026-10-24) renders statically on the session route, taking session cold JS from 601727 gzip / 1811166 raw to 607851 gzip / 1829053 raw at the side chat excerpt commit; the side chat panel itself stays deferred. Ceilings raised to the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-10-24"
 	},
 	"client.coldHome.default.commitsToRows": {

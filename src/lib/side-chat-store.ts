@@ -1,6 +1,7 @@
 import {useSyncExternalStore} from "react";
 import {z} from "zod";
 
+import {composePrompt} from "./context-attach";
 import {buildSideChatPrompt, sideChatBranchTitle, type SideChatMessage} from "./side-chat";
 
 export type SideChatEntryStatus = "pending" | "done" | "error";
@@ -16,6 +17,14 @@ export interface SideChatEntry {
 	stopping?: boolean;
 	/** Set while "Branch to new chat" forks the session. */
 	branching?: boolean;
+	/** Transcript excerpts sent ahead of the question as `<!-- attach -->` blocks. */
+	excerpts?: readonly string[];
+}
+
+/** A transcript excerpt waiting above the side chat input for the next question. */
+export interface SideChatExcerpt {
+	id: number;
+	text: string;
 }
 
 /**
@@ -28,11 +37,12 @@ export interface SideChatSession {
 	open: boolean;
 	mode: SideChatMode;
 	entries: readonly SideChatEntry[];
+	excerpts: readonly SideChatExcerpt[];
 }
 
 const NO_ANSWER_MESSAGE = "No answer yet. Send a message in the main chat first, then ask again.";
 
-const EMPTY_SESSION: SideChatSession = {open: false, mode: "floating", entries: []};
+const EMPTY_SESSION: SideChatSession = {open: false, mode: "floating", entries: [], excerpts: []};
 
 /**
  * Per-session side chat threads, in memory only like upstream's
@@ -42,6 +52,7 @@ let sessions = new Map<string, SideChatSession>();
 const listeners = new Set<() => void>();
 const inFlight = new Map<number, {abort: AbortController; processId: string | null}>();
 let nextEntryId = 1;
+let nextExcerptId = 1;
 
 function emit(): void {
 	for (const listener of listeners) listener();
@@ -80,6 +91,31 @@ export function openSideChat(sessionId: string): void {
 	update(sessionId, (session) => ({...session, open: true}));
 }
 
+/**
+ * Upstream's `openWithContext`: opens the side chat with a transcript excerpt
+ * waiting above its input. Nothing is sent until the next question.
+ */
+export function openSideChatWithContext(sessionId: string, text: string): void {
+	const excerpt = {id: nextExcerptId++, text};
+	update(sessionId, (session) => ({...session, open: true, excerpts: [...session.excerpts, excerpt]}));
+}
+
+export function removeSideChatExcerpt(sessionId: string, excerptId: number): void {
+	update(sessionId, (session) => ({
+		...session,
+		excerpts: session.excerpts.filter((excerpt) => excerpt.id !== excerptId),
+	}));
+}
+
+/** The question as the fork sees it: its excerpts as `<!-- attach -->` blocks, then the question. */
+function entryPrompt({question, excerpts = []}: SideChatEntry): string {
+	return composePrompt(
+		question,
+		excerpts.map((text) => ({kind: "excerpt", text})),
+		[],
+	);
+}
+
 export function closeSideChat(sessionId: string): void {
 	update(sessionId, (session) => ({...session, open: false}));
 }
@@ -103,7 +139,7 @@ function priorSideChatMessages(sessionId: string, entryId?: number): SideChatMes
 	const messages: SideChatMessage[] = [];
 	for (const entry of getSideChat(sessionId).entries) {
 		if (entry.id === entryId) break;
-		if (entry.status === "done") messages.push({q: entry.question, a: entry.answer});
+		if (entry.status === "done") messages.push({q: entryPrompt(entry), a: entry.answer});
 	}
 	return messages;
 }
@@ -121,10 +157,10 @@ export async function askSideChat(sessionId: string, question: string): Promise<
 	if (trimmed === "") return;
 	const messages = priorSideChatMessages(sessionId);
 	const entryId = nextEntryId++;
-	update(sessionId, (session) => ({
-		...session,
-		entries: [...session.entries, {id: entryId, question: trimmed, answer: "", status: "pending"}],
-	}));
+	const excerpts = getSideChat(sessionId).excerpts.map(({text}) => text);
+	const entry: SideChatEntry = {id: entryId, question: trimmed, answer: "", status: "pending"};
+	if (excerpts.length > 0) entry.excerpts = excerpts;
+	update(sessionId, (session) => ({...session, entries: [...session.entries, entry], excerpts: []}));
 
 	const abort = new AbortController();
 	const flight = {abort, processId: null as string | null};
@@ -133,7 +169,7 @@ export async function askSideChat(sessionId: string, question: string): Promise<
 		const response = await fetch("/api/side-chat", {
 			method: "POST",
 			headers: {"Content-Type": "application/json"},
-			body: JSON.stringify({sessionId, messages, question: trimmed}),
+			body: JSON.stringify({sessionId, messages, question: entryPrompt(entry)}),
 			signal: abort.signal,
 		});
 		if (!response.ok) {
@@ -206,7 +242,7 @@ export async function branchSideChatEntry(sessionId: string, entryId: number): P
 	if (entry === undefined) return null;
 	updateEntry(sessionId, entryId, (e) => ({...e, branching: true}));
 	try {
-		const prompt = buildSideChatPrompt(priorSideChatMessages(sessionId, entryId), entry.question);
+		const prompt = buildSideChatPrompt(priorSideChatMessages(sessionId, entryId), entryPrompt(entry));
 		const response = await fetch("/api/chat", {
 			method: "POST",
 			headers: {"Content-Type": "application/json"},

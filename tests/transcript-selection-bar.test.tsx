@@ -346,8 +346,13 @@ describe("transcript selection bar", () => {
 
 		fireEvent.click(button("Start a side chat"));
 
-		expect({open: getSideChat(SESSION).open, ranges: window.getSelection()?.rangeCount}).toStrictEqual({
+		expect({
+			open: getSideChat(SESSION).open,
+			excerpts: getSideChat(SESSION).excerpts.map(({text}) => text),
+			ranges: window.getSelection()?.rangeCount,
+		}).toStrictEqual({
 			open: true,
+			excerpts: ["Hermit crabs"],
 			ranges: 0,
 		});
 	});

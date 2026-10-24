@@ -15,7 +15,13 @@ import {useSideChatShortcut} from "../src/components/use-side-chat-shortcut";
 import {ToastProvider} from "../src/components/toast";
 import type {ToastOptions} from "../src/components/toast-context";
 import {parseBtwCommand, sideChatBranchTitle} from "../src/lib/side-chat";
-import {askSideChat, getSideChat, openSideChat, resetSideChatStore} from "../src/lib/side-chat-store";
+import {
+	askSideChat,
+	getSideChat,
+	openSideChat,
+	openSideChatWithContext,
+	resetSideChatStore,
+} from "../src/lib/side-chat-store";
 
 // The deferred chunks these tests render, loaded up front as the page warms them before first use.
 beforeAll(async () => {
@@ -381,6 +387,65 @@ describe("SideChat", () => {
 	});
 });
 
+describe("openSideChatWithContext", () => {
+	it("opens the side chat with an Excerpt tile, focuses the input, and quotes the excerpt ahead of the next question", async () => {
+		const fetchMock = vi.fn<typeof fetch>(async () => Promise.resolve(ndjsonResponse([textDelta("Crabs.")])));
+		vi.stubGlobal("fetch", fetchMock);
+		renderSideChat();
+
+		act(() => {
+			openSideChatWithContext(SESSION_ID, "Hermit crabs\nlive in shells");
+		});
+
+		const input = screen.getByRole("textbox", {name: "Side chat question"});
+		const tiles = within(aside()).getAllByRole("blockquote", {hidden: true});
+		expect({
+			open: aside().hasAttribute("data-open"),
+			tiles: tiles.map((tile) => tile.textContent),
+			badges: [...aside().querySelectorAll('[data-cds="Badge"]')].map((badge) => badge.textContent),
+			focused: document.activeElement === input,
+			placeholder: input.getAttribute("placeholder"),
+		}).toStrictEqual({
+			open: true,
+			tiles: ["Hermit crabs\nlive in shells"],
+			badges: ["Excerpt"],
+			focused: true,
+			placeholder: "Ask a quick question…",
+		});
+
+		fireEvent.change(input, {target: {value: "What are these?"}});
+		fireEvent.keyDown(input, {key: "Enter"});
+		await screen.findByText("Crabs.");
+
+		expect({
+			body: JSON.parse(fetchMock.mock.calls[0]![1]!.body as string) as unknown,
+			pendingExcerpts: getSideChat(SESSION_ID).excerpts,
+			sentTiles: [...aside().querySelectorAll('[data-cds="MessageAttachmentsQuote"] blockquote')].map(
+				(tile) => tile.textContent,
+			),
+		}).toStrictEqual({
+			body: {
+				sessionId: SESSION_ID,
+				messages: [],
+				question: "<!-- attach -->\n> Hermit crabs\n> live in shells\n\nWhat are these?",
+			},
+			pendingExcerpts: [],
+			sentTiles: ["Hermit crabs\nlive in shells"],
+		});
+	});
+
+	it("removes a pending excerpt with its remove button", () => {
+		renderSideChat();
+		act(() => {
+			openSideChatWithContext(SESSION_ID, "Hermit crabs");
+		});
+
+		fireEvent.click(within(aside()).getByRole("button", {name: "Remove Hermit crabs"}));
+
+		expect(getSideChat(SESSION_ID).excerpts).toStrictEqual([]);
+	});
+});
+
 describe("useSideChatShortcut", () => {
 	it("toggles the side chat on the session page", () => {
 		renderShortcutProbe(true);
@@ -423,7 +488,10 @@ describe("handleBtwPrompt", () => {
 	it("opens the side chat for a bare /btw", () => {
 		const toast = vi.fn<(options: ToastOptions) => void>();
 		expect(handleBtwPrompt("/btw", {sessionId: SESSION_ID, messageCount: 3, toast})).toBe(true);
-		expect([getSideChat(SESSION_ID), toast.mock.calls]).toEqual([{open: true, mode: "floating", entries: []}, []]);
+		expect([getSideChat(SESSION_ID), toast.mock.calls]).toEqual([
+			{open: true, mode: "floating", entries: [], excerpts: []},
+			[],
+		]);
 	});
 
 	it("opens the side chat and asks the question", async () => {
