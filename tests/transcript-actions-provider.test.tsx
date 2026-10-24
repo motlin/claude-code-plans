@@ -65,10 +65,17 @@ afterEach(() => {
 function renderTranscript(
 	fork: ((target: {sessionId: string; atMessage: string}) => void) | undefined,
 	working = false,
+	archived = false,
 ) {
 	return render(
 		<ToastProvider>
-			<TranscriptActionsProvider sessionId={SESSION_ID} lines={lines} fork={fork} working={working}>
+			<TranscriptActionsProvider
+				sessionId={SESSION_ID}
+				lines={lines}
+				fork={fork}
+				working={working}
+				archived={archived}
+			>
 				<ChapterChips sessionId={SESSION_ID} onJump={() => {}} />
 				<div data-turn="reply-1">
 					<AssistantMessageActions
@@ -133,6 +140,15 @@ describe("TranscriptActionsProvider", () => {
 					? null
 					: document.getElementById(describedBy)?.textContent,
 		}).toStrictEqual({disabled: true, reason: "Rewind is unavailable while Claude is working"});
+	});
+
+	it("drops Rewind from an archived session's user toolbar, like upstream's showRewind false", () => {
+		const container = renderTranscript(vi.fn(), false, true);
+		const labels = [...container.querySelectorAll('[data-turn="prompt-2"] button[aria-label]')].map((button) =>
+			button.getAttribute("aria-label"),
+		);
+
+		expect(labels).toStrictEqual(["Show message actions for You said: Now add tests", "Copy", "Fork from here"]);
 	});
 
 	it("pins a turn as a chapter that the chapter chips list, and unpins it on a second press", () => {

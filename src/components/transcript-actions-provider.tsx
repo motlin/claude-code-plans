@@ -21,6 +21,8 @@ export interface TranscriptActionsProviderProps {
 	fork: ((target: {sessionId: string; atMessage: string}) => void) | undefined;
 	/** Claude is working in the pane, so Rewind is disabled with upstream's reason. */
 	working?: boolean;
+	/** The session is archived, so Rewind is left out entirely, as upstream does. */
+	archived?: boolean;
 	children: ReactNode;
 }
 
@@ -38,6 +40,7 @@ export function TranscriptActionsProvider({
 	lines,
 	fork,
 	working = false,
+	archived = false,
 	children,
 }: TranscriptActionsProviderProps) {
 	const toast = useToast();
@@ -61,7 +64,11 @@ export function TranscriptActionsProvider({
 			if (chapter !== null) toggleChapter(message.sessionId, chapter);
 		};
 		const rewindTo = (message: TranscriptMessageRef) => void latest.current.start(message.sessionId, message.uuid);
-		const rewind = working ? {rewindTo, rewindDisabledReason: REWIND_WORKING_REASON} : {rewindTo};
+		const rewind = archived
+			? {rewindHidden: true}
+			: working
+				? {rewindTo, rewindDisabledReason: REWIND_WORKING_REASON}
+				: {rewindTo};
 		if (!canFork) return {pinChapter, ...rewind, forkDisabledReason: FORK_NO_DIRECTORY_REASON};
 		const forkFrom = (message: TranscriptMessageRef) => {
 			if (message.sessionId !== sessionId) {
@@ -71,7 +78,7 @@ export function TranscriptActionsProvider({
 			latest.current.fork?.({sessionId, atMessage: forkPointFor(latest.current.lines, message.uuid)});
 		};
 		return {pinChapter, ...rewind, forkFrom};
-	}, [canFork, sessionId, toast, working]);
+	}, [archived, canFork, sessionId, toast, working]);
 
 	return (
 		<TranscriptActionsContext.Provider value={actions}>

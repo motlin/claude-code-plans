@@ -257,7 +257,8 @@ function PinAction({message}: {message: TranscriptMessageRef | undefined}) {
 }
 
 function RewindAction({message}: {message: TranscriptMessageRef | undefined}) {
-	const {rewindTo, rewindDisabledReason} = useContext(TranscriptActionsContext);
+	const {rewindTo, rewindDisabledReason, rewindHidden = false} = useContext(TranscriptActionsContext);
+	if (rewindHidden) return null;
 	return (
 		<ActionButton
 			label="Rewind to here"

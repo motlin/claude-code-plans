@@ -1197,6 +1197,7 @@ function SessionView({
 												lines={processed.lines}
 												fork={forkFromMessage}
 												working={paneBusy}
+												archived={data.archived}
 											>
 												<TurnUndoSendContext.Provider value={turnUndoSend}>
 													<SessionChat

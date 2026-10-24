@@ -408,14 +408,16 @@ function TranscriptMenuItems({
 			) : (
 				<>
 					<MenuSeparator />
-					<MenuItem
-						description={REWIND_DESCRIPTION}
-						{...(actions.rewindDisabledReason === undefined
-							? actionProps(actions.rewindTo, message)
-							: {disabled: true, disabledReason: actions.rewindDisabledReason})}
-					>
-						Rewind to here
-					</MenuItem>
+					{actions.rewindHidden !== true && (
+						<MenuItem
+							description={REWIND_DESCRIPTION}
+							{...(actions.rewindDisabledReason === undefined
+								? actionProps(actions.rewindTo, message)
+								: {disabled: true, disabledReason: actions.rewindDisabledReason})}
+						>
+							Rewind to here
+						</MenuItem>
+					)}
 					{fork}
 				</>
 			)}

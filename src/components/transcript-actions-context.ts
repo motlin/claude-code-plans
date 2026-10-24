@@ -12,6 +12,8 @@ export interface TranscriptActions {
 	rewindTo?: (message: TranscriptMessageRef) => void;
 	/** Why Rewind is unavailable right now (upstream: "Rewind is unavailable while Claude is working"). */
 	rewindDisabledReason?: string;
+	/** Rewind is not offered at all (upstream's `showRewind` false for an archived session). */
+	rewindHidden?: boolean;
 	/** Why Fork from here is unavailable right now, shown by its disabled-reason wrapper. */
 	forkDisabledReason?: string;
 }

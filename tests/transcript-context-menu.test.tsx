@@ -158,6 +158,7 @@ function workingPaneActions(calls: string[]): TranscriptActions {
 }
 
 const UNFORKABLE_ACTIONS: TranscriptActions = {forkDisabledReason: "Session directory is unknown"};
+const ARCHIVED_ACTIONS: TranscriptActions = {rewindHidden: true};
 
 describe("transcript context menus", () => {
 	it("opens the assistant prose menu at upstream's width", () => {
@@ -312,6 +313,18 @@ describe("transcript context menus", () => {
 			],
 			calls: [],
 		});
+	});
+
+	it("leaves Rewind out of an archived session's user menu", () => {
+		const container = renderChat((chat) => (
+			<TranscriptActionsContext.Provider value={ARCHIVED_ACTIONS}>{chat}</TranscriptActionsContext.Provider>
+		));
+		const menu = openMenuOn(find(container, ".user-message-bubble p"));
+		const titles = [...menu.querySelectorAll('[role="menuitem"]')].map(
+			(row) => row.querySelector("[data-menu-item-title]")?.textContent,
+		);
+
+		expect(titles.slice(-2)).toStrictEqual(["Attach message as context", "Fork from here"]);
 	});
 
 	it("disables Fork from here with its reason when the session cannot fork", () => {
