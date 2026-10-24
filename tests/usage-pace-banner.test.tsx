@@ -233,15 +233,35 @@ describe("UsagePaceBand", () => {
 
 		const band = screen.getByRole("status");
 		expect(band.textContent).toBe("On pace to hit your weekly limit early29% used · Resets Tue, Oct 6, 4:00 AM");
-		expect(band.className).toBe(
-			"flex min-h-[40px] items-center gap-[5px] rounded-r7 bg-alpha-1 p-[8px] text-[13px] leading-[19px]",
-		);
-		// Upstream wraps the detail under the title on a narrow dock instead of truncating it.
+		const headline = screen.getByText("On pace to hit your weekly limit early");
 		const detail = screen.getByText("29% used · Resets Tue, Oct 6, 4:00 AM");
+		const words = detail.parentElement;
+		const dismiss = screen.getByRole("button", {name: "Dismiss"});
+		// Upstream's band shell `uc`: icon slot, wrapping body > words (10px gap), Dismiss slot.
 		expect({
-			truncates: detail.className.split(" ").includes("truncate"),
-			wraps: detail.parentElement?.className.split(" ").includes("flex-wrap"),
-		}).toStrictEqual({truncates: false, wraps: true});
+			ariaLive: band.getAttribute("aria-live"),
+			band: band.className,
+			icon: band.firstElementChild?.className,
+			body: words?.parentElement?.parentElement?.className,
+			wordsWrapper: words?.parentElement?.className,
+			words: words?.className,
+			headline: headline.className,
+			detail: detail.className,
+			dismissWrapper: dismiss.parentElement?.className,
+			dismiss: dismiss.className,
+		}).toStrictEqual({
+			ariaLive: "polite",
+			band: "flex gap-[5px] w-full min-h-[40px] p-[8px] rounded-r7 bg-alpha-1 items-start py-[calc((40px-1lh)/2)] text-body usage-band-enter",
+			icon: "flex h-[1lh] shrink-0 items-center",
+			body: "flex min-w-0 flex-1 flex-wrap gap-x-[8px] gap-y-[8px] items-start",
+			wordsWrapper: "min-w-0 max-w-full flex-auto",
+			words: "flex flex-wrap items-baseline gap-x-2.5 gap-y-0.75",
+			headline: "min-w-0 text-primary",
+			detail: "min-w-0 text-ink-muted",
+			dismissWrapper: "ms-1.25 flex h-[1lh] shrink-0 items-center",
+			dismiss:
+				"inline-flex size-6 shrink-0 items-center justify-center rounded-md text-ink-muted hover:bg-alpha-1 hover:text-primary cursor-pointer",
+		});
 
 		fireEvent.click(screen.getByRole("button", {name: "Dismiss"}));
 		expect(onDismiss).toHaveBeenCalledTimes(1);
@@ -286,7 +306,7 @@ describe("usage limit reached", () => {
 			text: band.textContent,
 			dismiss: screen.queryByRole("button", {name: "Dismiss"}),
 		}).toStrictEqual({
-			text: "Weekly limit reached · Get more usage to keep working · Resets Tue, Oct 20, 4:00 AM",
+			text: "Weekly limit reached· Get more usage to keep working · Resets Tue, Oct 20, 4:00 AM",
 			dismiss: null,
 		});
 	});

@@ -49,7 +49,7 @@ describe("upstream's measured dark surfaces and inks (wave 90)", () => {
 	it("draws the pace band's used and reset detail in muted ink in dark", () => {
 		render(<UsagePaceBand usedPct={59} resetText="Resets Fri" onDismiss={() => {}} />);
 
-		expect(screen.getByText(/59% used/).className).toBe("text-secondary dark:text-ink-muted");
+		expect(screen.getByText(/59% used/).className).toBe("min-w-0 text-ink-muted");
 	});
 
 	it("draws unselected Customize tabs in muted ink and ordered-list markers in secondary ink in dark", () => {
