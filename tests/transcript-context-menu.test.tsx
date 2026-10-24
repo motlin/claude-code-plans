@@ -383,6 +383,32 @@ describe("transcript context menu with a text selection", () => {
 		});
 	});
 
+	it("widens the assistant menu to upstream's 242.4px for the Attach selection row only", () => {
+		const widthOf = (menu: HTMLElement) => [...menu.classList].filter((name) => name.startsWith("w-["));
+		const container = renderChat();
+		const paragraph = find(container, "strong", "details").parentElement;
+		if (paragraph === null) throw new Error("no paragraph");
+		selectText(paragraph, 0, 3);
+		const assistant = widthOf(openMenuOn(find(container, "strong", "details")));
+		cleanup();
+		const again = renderChat();
+		const bubbleText = find(again, ".user-message-bubble p");
+		selectText(bubbleText, 6, 15);
+		const user = widthOf(openMenuOn(bubbleText));
+		cleanup();
+		const third = renderChat();
+		const short = find(third, "strong", "details").parentElement;
+		if (short === null) throw new Error("no paragraph");
+		selectText(short, 0, 1);
+		const oneCharacter = widthOf(openMenuOn(find(third, "strong", "details")));
+
+		expect({assistant, user, oneCharacter}).toStrictEqual({
+			assistant: ["w-[242.4px]"],
+			user: ["w-[249px]"],
+			oneCharacter: ["w-[225px]"],
+		});
+	});
+
 	it("copies the raw selection text", async () => {
 		const container = renderChat();
 		const paragraph = find(container, "strong", "details").parentElement;

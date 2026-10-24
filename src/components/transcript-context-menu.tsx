@@ -86,6 +86,19 @@ async function checkGone(queryClient: QueryClient, path: string): Promise<boolea
 
 const MENU_WIDTH = {assistant: "w-[225px]", user: "w-[249px]"} as const;
 
+/**
+ * Upstream's menu sizes to its rows; with "Attach selection as context ⇧⌘L"
+ * the assistant menu measured 242.4px, while the user menu's Rewind row
+ * already holds it wider.
+ */
+const SELECTION_MENU_WIDTH = {assistant: "w-[242.4px]", user: MENU_WIDTH.user} as const;
+
+/** The trimmed selection to attach as an Excerpt, or "" when it is too short. */
+function excerptOf(selectionText: string | null): string {
+	const excerpt = selectionText?.trim() ?? "";
+	return excerpt.length >= MIN_EXCERPT_LENGTH ? excerpt : "";
+}
+
 const FORK_DESCRIPTION = "Starts a new session, keeps this one";
 const REWIND_DESCRIPTION = "Removes this message and what follows";
 
@@ -180,7 +193,9 @@ export function TranscriptMessageMenu({
 			</ContextMenuTrigger>
 			<MenuContent
 				// A file menu keeps the default 128px minimum width, as upstream's `Un`.
-				{...(target.kind === "file" ? {} : {className: MENU_WIDTH[speaker]})}
+				{...(target.kind === "file"
+					? {}
+					: {className: (excerptOf(selectionText) === "" ? MENU_WIDTH : SELECTION_MENU_WIDTH)[speaker]})}
 				finalFocus={
 					keyboardArticle === null
 						? undefined
@@ -290,7 +305,7 @@ function TranscriptMenuItems({
 		);
 	}
 
-	const excerpt = selectionText?.trim() ?? "";
+	const excerpt = excerptOf(selectionText);
 	return (
 		<>
 			{selectionText !== null && (
@@ -365,7 +380,11 @@ function TranscriptMenuItems({
 				</MenuItem>
 			)}
 			<MenuSeparator />
-			{excerpt.length >= MIN_EXCERPT_LENGTH ? (
+			{excerpt === "" ? (
+				<MenuItem onSelect={() => attachContext(sessionId, {kind: "message", text: markdown})}>
+					Attach message as context
+				</MenuItem>
+			) : (
 				<MenuItem
 					shortcut="shift+cmd+l"
 					onSelect={() => {
@@ -374,10 +393,6 @@ function TranscriptMenuItems({
 					}}
 				>
 					Attach selection as context
-				</MenuItem>
-			) : (
-				<MenuItem onSelect={() => attachContext(sessionId, {kind: "message", text: markdown})}>
-					Attach message as context
 				</MenuItem>
 			)}
 			{speaker === "assistant" ? (
