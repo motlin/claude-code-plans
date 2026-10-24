@@ -1,4 +1,5 @@
-import {type MouseEvent, useId} from "react";
+import {PreviewCard} from "@base-ui/react/preview-card";
+import {type MouseEvent, useId, useState} from "react";
 
 import type {ToolResultImage} from "../lib/session-utils";
 
@@ -19,6 +20,8 @@ export interface StepScreenshotStripProps {
 	total?: number;
 	/** Lazy-load the images (step rows inside an expanded group). */
 	lazy?: boolean;
+	/** The viewer is showing; thumbnails then open no preview card. */
+	viewerOpen?: boolean;
 	/** Open the viewer at the clicked shot's group-wide index. */
 	onOpen?: (index: number) => void;
 }
@@ -34,6 +37,7 @@ export function StepScreenshotStrip({
 	from = 0,
 	total = from + shots.length,
 	lazy = false,
+	viewerOpen = false,
 	onOpen,
 }: StepScreenshotStripProps) {
 	const id = useId();
@@ -59,27 +63,18 @@ export function StepScreenshotStrip({
 					const groupIndex = from + index;
 					const caption = captions[index];
 					const descriptionId = `${id}-${index}`;
-					const label = total === 1 ? "Screenshot" : `Screenshot ${groupIndex + 1} of ${total}`;
-					const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
-						event.stopPropagation();
-						onOpen?.(groupIndex);
-					};
 					return (
 						<div key={index} className={index === lastIndex ? "contents" : "contents max-sm:hidden"}>
-							<button
-								type="button"
-								aria-label={label}
-								aria-describedby={caption === undefined ? undefined : descriptionId}
-								className={THUMB_CLASS}
-								onClick={handleClick}
-							>
-								<img
-									alt=""
-									className="h-full w-auto max-w-full object-cover object-left-top"
-									src={`data:${shot.mimeType};base64,${shot.data}`}
-									{...(lazy ? {loading: "lazy", decoding: "async"} : {})}
-								/>
-							</button>
+							<Thumbnail
+								shot={shot}
+								caption={caption}
+								descriptionId={descriptionId}
+								groupIndex={groupIndex}
+								total={total}
+								lazy={lazy}
+								viewerOpen={viewerOpen}
+								onOpen={onOpen}
+							/>
 							{caption !== undefined && (
 								<span id={descriptionId} className="sr-only select-none" data-find-omitted="">
 									{caption}
@@ -90,6 +85,85 @@ export function StepScreenshotStrip({
 				})}
 			</div>
 		</div>
+	);
+}
+
+/** Upstream's PreviewCard `delay: 150`. */
+const PREVIEW_DELAY_MS = 150;
+
+const PREVIEW_POPUP_CLASS =
+	"flex flex-col gap-1 overflow-hidden rounded-r7 bg-surface-3 p-0 shadow-[var(--menu-shadow)] outline-none w-[min(20rem,100vw-2rem)]";
+
+interface ThumbnailProps {
+	shot: ToolResultImage;
+	caption: string | undefined;
+	descriptionId: string;
+	groupIndex: number;
+	total: number;
+	lazy: boolean;
+	viewerOpen: boolean;
+	onOpen: ((index: number) => void) | undefined;
+}
+
+/**
+ * One strip thumbnail. Hover or keyboard focus opens upstream's preview card
+ * above it (side top, align end): the image over a caption and "N of M"
+ * footer. The card ignores the pointer (upstream `hoverable: false`), so it
+ * closes as the pointer leaves the thumbnail, and stays shut while the viewer
+ * is open.
+ */
+function Thumbnail({shot, caption, descriptionId, groupIndex, total, lazy, viewerOpen, onOpen}: ThumbnailProps) {
+	const [previewOpen, setPreviewOpen] = useState(false);
+	const src = `data:${shot.mimeType};base64,${shot.data}`;
+	const label = total === 1 ? "Screenshot" : `Screenshot ${groupIndex + 1} of ${total}`;
+	const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
+		event.stopPropagation();
+		onOpen?.(groupIndex);
+	};
+	return (
+		<PreviewCard.Root open={previewOpen && !viewerOpen} onOpenChange={setPreviewOpen}>
+			<PreviewCard.Trigger
+				delay={PREVIEW_DELAY_MS}
+				closeDelay={0}
+				render={
+					<button
+						type="button"
+						aria-label={label}
+						aria-describedby={caption === undefined ? undefined : descriptionId}
+						className={THUMB_CLASS}
+						onClick={handleClick}
+					/>
+				}
+			>
+				<img
+					alt=""
+					className="h-full w-auto max-w-full object-cover object-left-top"
+					src={src}
+					{...(lazy ? {loading: "lazy", decoding: "async"} : {})}
+				/>
+			</PreviewCard.Trigger>
+			<PreviewCard.Portal>
+				<PreviewCard.Positioner side="top" align="end" className="pointer-events-none z-[100]">
+					<PreviewCard.Popup data-screenshot-preview="" className={PREVIEW_POPUP_CLASS}>
+						<div className="overflow-hidden rounded-[inherit]">
+							<img
+								alt=""
+								className="max-h-60 w-full bg-[color-mix(in_srgb,var(--color-ink)_5%,transparent)] object-contain"
+								src={src}
+							/>
+						</div>
+						<div className="flex items-baseline gap-2 px-3 py-2 text-footnote">
+							<bdi className="min-w-0 flex-1 truncate text-primary">{caption ?? "Screenshot"}</bdi>
+							{total > 1 && (
+								<span className="shrink-0 tabular-nums text-ink-muted">
+									{groupIndex + 1} of {total}
+								</span>
+							)}
+						</div>
+					</PreviewCard.Popup>
+				</PreviewCard.Positioner>
+			</PreviewCard.Portal>
+		</PreviewCard.Root>
 	);
 }
 

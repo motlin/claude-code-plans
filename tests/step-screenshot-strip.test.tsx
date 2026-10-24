@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
-import {cleanup, fireEvent, render, screen} from "@testing-library/react";
-import {afterEach, describe, expect, it, vi} from "vite-plus/test";
+import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
+import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {StepScreenshotStrip} from "../src/components/step-screenshot-strip";
 import type {ToolResultImage} from "../src/lib/session-utils";
@@ -109,5 +109,81 @@ describe("StepScreenshotStrip", () => {
 
 		expect(onParentClick).not.toHaveBeenCalled();
 		expect(onOpen.mock.calls).toStrictEqual([[2]]);
+	});
+});
+
+describe("StepScreenshotStrip preview card", () => {
+	beforeEach(() => {
+		vi.useFakeTimers();
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	async function advance(ms: number) {
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(ms);
+		});
+	}
+
+	function hover(element: HTMLElement) {
+		act(() => {
+			fireEvent.pointerEnter(element, {pointerType: "mouse"});
+			fireEvent.mouseEnter(element);
+			fireEvent.mouseMove(element);
+		});
+	}
+
+	function popup(): HTMLElement | null {
+		return document.querySelector("[data-screenshot-preview]");
+	}
+
+	it("opens upstream's preview card with the image and caption when a thumbnail takes focus", async () => {
+		render(<StepScreenshotStrip shots={shots(1)} captions={["Read input-debug.png"]} />);
+
+		act(() => {
+			screen.getByRole("button", {name: "Screenshot"}).focus();
+		});
+		await advance(150);
+
+		const card = popup();
+		expect(card?.className).toBe(
+			"flex flex-col gap-1 overflow-hidden rounded-r7 bg-surface-3 p-0 shadow-[var(--menu-shadow)] outline-none w-[min(20rem,100vw-2rem)]",
+		);
+		expect(card?.parentElement?.className).toBe("pointer-events-none z-[100]");
+		expect(card?.parentElement?.getAttribute("data-side")).toBe("top");
+		expect(card?.parentElement?.getAttribute("data-align")).toBe("end");
+		expect(card?.innerHTML).toBe(
+			'<div class="overflow-hidden rounded-[inherit]"><img alt="" class="max-h-60 w-full bg-[color-mix(in_srgb,var(--color-ink)_5%,transparent)] object-contain" src="data:image/png;base64,IMG1"></div>' +
+				'<div class="flex items-baseline gap-2 px-3 py-2 text-footnote"><bdi class="min-w-0 flex-1 truncate text-primary">Read input-debug.png</bdi></div>',
+		);
+	});
+
+	it("opens on hover after 150ms and shows 'N of M' when the strip holds several shots", async () => {
+		render(<StepScreenshotStrip shots={shots(2)} captions={["Read a.png", undefined]} />);
+
+		hover(screen.getByRole("button", {name: "Screenshot 2 of 2"}));
+		await advance(100);
+		expect(popup()).toBeNull();
+		await advance(50);
+
+		const footer = popup()?.lastElementChild;
+		expect(footer?.innerHTML).toBe(
+			'<bdi class="min-w-0 flex-1 truncate text-primary">Screenshot</bdi><span class="shrink-0 tabular-nums text-ink-muted">2 of 2</span>',
+		);
+	});
+
+	it("shows no preview card while the viewer is open", async () => {
+		render(<StepScreenshotStrip shots={shots(1)} captions={["Read"]} viewerOpen />);
+
+		const thumb = screen.getByRole("button", {name: "Screenshot"});
+		hover(thumb);
+		act(() => {
+			thumb.focus();
+		});
+		await advance(500);
+
+		expect(popup()).toBeNull();
 	});
 });
