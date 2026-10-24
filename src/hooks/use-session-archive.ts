@@ -1,5 +1,5 @@
 import {useQueryClient} from "@tanstack/react-query";
-import {useCallback} from "react";
+import {useCallback, useState} from "react";
 
 import {useToast} from "../components/toast-context";
 import {requestSessionArchived} from "../lib/api/sessions";
@@ -42,6 +42,34 @@ export function useSessionArchive(sessionId: string): (archived: boolean) => voi
 		},
 		[qc, sessionId, toast],
 	);
+}
+
+/**
+ * Upstream's archived-note Unarchive: `pending` stays true while the request runs, success
+ * toasts "Session unarchived." for 3s, and failure toasts the unarchive error.
+ */
+export function useUnarchiveSession(sessionId: string): {unarchive: () => void; pending: boolean} {
+	const qc = useQueryClient();
+	const toast = useToast();
+	const [pending, setPending] = useState(false);
+
+	const unarchive = useCallback(() => {
+		setPending(true);
+		requestSessionArchived(qc, sessionId, false)
+			.then(
+				() => {
+					toast({kind: "success", message: "Session unarchived.", durationMs: 3000});
+				},
+				() => {
+					toast({kind: "error", message: UNARCHIVE_FAILED_MESSAGE});
+				},
+			)
+			.finally(() => {
+				setPending(false);
+			});
+	}, [qc, sessionId, toast]);
+
+	return {unarchive, pending};
 }
 
 function archivedSessionsMessage(count: number): string {
