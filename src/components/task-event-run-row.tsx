@@ -1,5 +1,10 @@
 import React from "react";
-import {backgroundNoticeSummary, NOTICE_NOUNS, type NoticeKind} from "../lib/background-notice-summary";
+import {
+	backgroundNoticeSummary,
+	NOTICE_NOUNS,
+	type NoticeKind,
+	type NoticePart,
+} from "../lib/background-notice-summary";
 import type {BackgroundTaskStatus} from "../lib/background-tasks";
 import {formatElapsed} from "../lib/working-marker";
 import {useBackgroundTasksOpener} from "./background-tasks-opener-context";
@@ -46,11 +51,11 @@ function SingleEvent({event}: {event: TaskEvent}) {
 	);
 }
 
-/** Upstream's `qX` run text: the lead part, then ", " and each later part, failed parts in danger ink. */
-function RunSummary({events}: {events: readonly TaskEvent[]}) {
-	const [lead, ...rest] = backgroundNoticeSummary(events);
+/** Upstream's `qX` parts: the lead part, then ", " and each later part, failed parts in danger ink. */
+export function NoticeParts({parts}: {parts: readonly NoticePart[]}) {
+	const [lead, ...rest] = parts;
 	return (
-		<span className={`text-body ${INK} min-w-0 break-words`}>
+		<>
 			<span className={lead?.danger === true ? "text-danger-ink" : undefined}>{lead?.text}</span>
 			{rest.map((part) => (
 				<React.Fragment key={part.key}>
@@ -60,6 +65,15 @@ function RunSummary({events}: {events: readonly TaskEvent[]}) {
 					</span>
 				</React.Fragment>
 			))}
+		</>
+	);
+}
+
+/** Upstream's run text, wrapping inside the row at narrow widths. */
+function RunSummary({events}: {events: readonly TaskEvent[]}) {
+	return (
+		<span className={`text-body ${INK} min-w-0 break-words`}>
+			<NoticeParts parts={backgroundNoticeSummary(events)} />
 		</span>
 	);
 }

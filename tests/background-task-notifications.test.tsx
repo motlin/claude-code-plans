@@ -638,14 +638,13 @@ describe("subagent-owned slow commands in the transcript", () => {
 		});
 	});
 
-	it("lists each absorbed command as a background-command sub-row after the calls", () => {
+	it("combines the absorbed commands into one background-commands step after the calls", () => {
 		const container = renderLines(idleThenNotifiedRecords(), "normal", [teammate([at(30)])]);
 		fireEvent.click(summaryButton(container, "Ran 2 commands, finished 2 background commands"));
 		expect(groupRowTexts(container)).toStrictEqual([
 			"Checked one",
 			"Checked two",
-			"Background commandRun the test suite",
-			"Background commandRun tests 1",
+			"2 background commands completed",
 		]);
 	});
 
@@ -997,5 +996,110 @@ describe("delivered notifications with no tool group after them", () => {
 	it('draws one as "Background command completed·<description>"', () => {
 		const container = renderLines(trailingNotifications(["Build"]));
 		expect(rows(container)).toStrictEqual({rows: ["Background command completed·Build"], notices: 0});
+	});
+});
+
+describe("a run of notices inside an expanded group", () => {
+	function launch(id: string, uuid: string, parentUuid: string, description: string): unknown[] {
+		return [
+			{
+				type: "assistant",
+				uuid,
+				parentUuid,
+				message: {
+					role: "assistant",
+					content: [
+						{
+							type: "tool_use",
+							id,
+							name: "Bash",
+							input: {command: "pnpm test", description, run_in_background: true},
+						},
+					],
+				},
+			},
+			{
+				type: "user",
+				uuid: `r-${uuid}`,
+				parentUuid: uuid,
+				message: {
+					role: "user",
+					content: [{type: "tool_result", tool_use_id: id, content: "Command running in background"}],
+				},
+			},
+		];
+	}
+
+	function delivered(
+		uuid: string,
+		parentUuid: string,
+		taskId: string,
+		toolUseId: string,
+		status: string,
+		summary: string,
+	) {
+		return {
+			type: "user",
+			uuid,
+			parentUuid,
+			promptSource: "system",
+			turnOrigin: "task_notification",
+			message: {
+				role: "user",
+				content: [
+					"<task-notification>",
+					`<task-id>${taskId}</task-id>`,
+					`<tool-use-id>${toolUseId}</tool-use-id>`,
+					`<status>${status}</status>`,
+					`<summary>${summary}</summary>`,
+					"</task-notification>",
+				].join("\n"),
+			},
+		};
+	}
+
+	it('combines two folded completions into one "1 background command completed, 1 failed" step', () => {
+		const container = renderLines([
+			{type: "user", uuid: "u-1", message: {role: "user", content: "run both in the background"}},
+			...launch("toolu_build", "a-1", "u-1", "Build"),
+			...launch("toolu_lint", "a-2", "r-a-1", "Lint"),
+			delivered(
+				"n-1",
+				"r-a-2",
+				"b1",
+				"toolu_build",
+				"completed",
+				'Background command "Build" completed (exit code 0)',
+			),
+			delivered("n-2", "n-1", "b2", "toolu_lint", "failed", 'Background command "Lint" failed with exit code 1'),
+			{
+				type: "assistant",
+				uuid: "a-3",
+				parentUuid: "n-2",
+				message: {role: "assistant", content: [{type: "text", text: "Lint failed."}]},
+			},
+		]);
+		fireEvent.click(summaryButton(container, "Ran 2 commands (1 failed), finished 2 background commands"));
+		const notices = [...container.querySelectorAll("[data-background-notice]")];
+		expect(
+			notices.map((notice) => ({
+				text: notice.textContent,
+				title: notice.querySelector("bdi")?.getAttribute("title"),
+				spans: [...(notice.querySelector("bdi")?.children ?? [])].map((span) => ({
+					text: span.textContent,
+					className: span.className,
+				})),
+			})),
+		).toStrictEqual([
+			{
+				text: "1 background command completed, 1 failed",
+				title: "1 background command completed, 1 failed",
+				spans: [
+					{text: "1 background command completed", className: ""},
+					{text: ", ", className: ""},
+					{text: "1 failed", className: "whitespace-nowrap text-danger-ink"},
+				],
+			},
+		]);
 	});
 });

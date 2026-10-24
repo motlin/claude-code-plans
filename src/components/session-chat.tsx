@@ -25,7 +25,7 @@ import {TruncatedContent} from "./truncated-content";
 import {AgentMessageRow} from "./agent-message-row";
 import {AgentNameContext, type AgentNameResolver} from "./agent-name-context";
 import {parseAgentMessage, type AgentMessage} from "../lib/agent-message";
-import type {NoticeKind} from "../lib/background-notice-summary";
+import {backgroundNoticeSummary, type NoticeKind} from "../lib/background-notice-summary";
 import {parseTaskNotification, stoppedAgentDescription, type TaskNotification} from "../lib/background-tasks";
 import {SlashCommandText} from "./slash-command-chip";
 import {SlashCommandsContext} from "./slash-commands-context";
@@ -79,7 +79,7 @@ import type {BackgroundCompletionLike, SummarySegment} from "../lib/session-util
 import {pastTense} from "../lib/past-tense";
 import {runningToolLabel, runningToolLabelText, toolLabel} from "../lib/tool-labels";
 import {ELAPSED_MIN_SECONDS, formatElapsed} from "../lib/working-marker";
-import {type TaskEvent, TaskEventRun} from "./task-event-run-row";
+import {NoticeParts, type TaskEvent, TaskEventRun} from "./task-event-run-row";
 import {usageLimitCard, type UsageLimitCard} from "../lib/usage-limit-notice";
 import {useElapsedSeconds} from "../hooks/use-elapsed-seconds";
 import {inlinePathImages} from "./inline-path-images";
@@ -1357,6 +1357,32 @@ function BackgroundNoticeRow({notice}: {notice: BackgroundNotice}) {
 			{status === "stopped" && <span className="shrink-0 text-secondary">Stopped</span>}
 		</div>
 	);
+}
+
+/**
+ * Upstream's `nz` group step for two or more task notices at one position: one sub-row whose
+ * `bdi` label reads "1 background command completed, 1 failed", failed parts in danger ink.
+ */
+function BackgroundNoticeStep({notices}: {notices: readonly BackgroundNotice[]}) {
+	const parts = backgroundNoticeSummary(notices.map((notice) => taskEvent(notice.notification)));
+	return (
+		<div
+			data-record-index={notices[0]?.lineIndex}
+			data-background-notice=""
+			className="flex min-w-0 items-center gap-1.5 text-body"
+		>
+			<bdi title={parts.map((part) => part.text).join(", ")} className="min-w-0 truncate text-ink-muted">
+				<NoticeParts parts={parts} />
+			</bdi>
+		</div>
+	);
+}
+
+/** A lone notice keeps its own sub-row; a run of them draws one combined step. */
+function BackgroundNoticeRun({notices}: {notices: readonly BackgroundNotice[]}) {
+	const [first] = notices;
+	if (first === undefined) return null;
+	return notices.length === 1 ? <BackgroundNoticeRow notice={first} /> : <BackgroundNoticeStep notices={notices} />;
 }
 
 function splitNotices(notices: readonly FoldedNotice[]): {
@@ -5333,9 +5359,7 @@ function ToolCallSummary({
                   between rows floating on a tinted panel. */}
 							<div className="flex flex-col card-outline rounded-r7 overflow-clip mt-p6 divide-y [&>*]:px-2 [&>*]:py-1.5">
 								{/* Upstream lists failed completions first, as the group label leads with them. */}
-								{failedNotices.map((notice, index) => (
-									<BackgroundNoticeRow key={`notice-${notice.lineIndex}-${index}`} notice={notice} />
-								))}
+								<BackgroundNoticeRun notices={failedNotices} />
 								{hooks.map((notice) => (
 									<StopHookMarker key={`notice-${notice.lineIndex}`} line={notice.line} />
 								))}
@@ -5348,9 +5372,7 @@ function ToolCallSummary({
 								{trailingPeers.map((notice) => (
 									<AgentMessageRow key={`notice-${notice.lineIndex}`} message={notice.message} />
 								))}
-								{settledNotices.map((notice, index) => (
-									<BackgroundNoticeRow key={`notice-${notice.lineIndex}-${index}`} notice={notice} />
-								))}
+								<BackgroundNoticeRun notices={settledNotices} />
 							</div>
 						</div>
 					)}
