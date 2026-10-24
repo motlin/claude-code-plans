@@ -17,6 +17,7 @@ import {flushSync} from "react-dom";
 import {Bot, FileWarning, GitBranch, Lock, Palette, Plug, Zap} from "lucide-react";
 import {assertNever} from "../lib/assert-never";
 import {isWithdrawnQuestion, type AskedCall} from "../lib/ask-user-question";
+import {parseAttachSnippets, type AttachSnippet} from "../lib/attach-markers";
 import {ApiErrorCard, ApiErrorMarker, type ApiErrorRecovery} from "./api-error-card";
 import {ErrorCardShell} from "./error-card-shell";
 import {ShimmerText} from "./shimmer-text";
@@ -56,6 +57,7 @@ import {DebugLink} from "./debug-link";
 import {TranscriptMessageMenu} from "./transcript-context-menu";
 import type {TranscriptMessageRef} from "./transcript-actions-context";
 import {AssistantMessageActions, UserMessageActions} from "./message-actions";
+import {MessageExcerptTiles} from "./message-excerpt-tiles";
 import {defined} from "../lib/defined";
 import {narrationProse} from "../lib/thinking-narration";
 import {messageHeading, messageText} from "../lib/transcript-action-targets";
@@ -3805,7 +3807,7 @@ function UserEntry({
 		);
 	}
 
-	const {textNodes, mediaNodes, images} = renderUserContentBlocks(line, sessionId, allowedImageRoots);
+	const {textNodes, mediaNodes, images, excerpts} = renderUserContentBlocks(line, sessionId, allowedImageRoots);
 
 	return (
 		<UserTurn text={messageText(line)}>
@@ -3817,6 +3819,7 @@ function UserEntry({
 				render={<div className="flex flex-col items-end gap-g5 max-w-[85%] min-w-0" />}
 			>
 				<UserAttachments images={images} />
+				<MessageExcerptTiles snippets={excerpts} />
 				{textNodes.length > 0 && (
 					<div className="user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body leading-[1.2857] select-text">
 						{textNodes}
@@ -4166,6 +4169,13 @@ interface UserContentBlocks {
 	mediaNodes: React.ReactNode[];
 	/** Pasted and path-referenced images, for the attachments strip above the bubble. */
 	images: AttachedImage[];
+	/** Upstream's `<!-- attach -->` snippets, shown as Excerpt tiles above the bubble. */
+	excerpts: AttachSnippet[];
+}
+
+/** The prompt text minus harness tags, with its `<!-- attach -->` blocks split out as snippets. */
+function cleanPromptParts(text: string): {snippets: AttachSnippet[]; rest: string} {
+	return parseAttachSnippets(cleanPromptText(text));
 }
 
 /** A prompt's text; the first block of a prompt opens with a slash-command chip when it starts with `/name`. */
@@ -4186,12 +4196,13 @@ function renderUserContentBlocks(
 	allowedImageRoots: readonly string[],
 ): UserContentBlocks {
 	const content = line.message?.content;
-	if (!content) return {textNodes: [], mediaNodes: [], images: []};
+	if (!content) return {textNodes: [], mediaNodes: [], images: [], excerpts: []};
 
 	if (typeof content === "string") {
-		const cleaned = cleanPromptText(content);
-		if (!cleaned) return {textNodes: [], mediaNodes: [], images: []};
+		const {snippets: excerpts, rest: cleaned} = cleanPromptParts(content);
+		if (!cleaned) return {textNodes: [], mediaNodes: [], images: [], excerpts};
 		return {
+			excerpts,
 			textNodes: [
 				<React.Fragment key={0}>
 					<TruncatedContent>
@@ -4208,11 +4219,13 @@ function renderUserContentBlocks(
 	const textNodes: React.ReactNode[] = [];
 	const mediaNodes: React.ReactNode[] = [];
 	const images: AttachedImage[] = [];
+	const excerpts: AttachSnippet[] = [];
 	const inlineImageText: string[] = [];
 	for (const [i, block] of content.entries()) {
 		if (block.type === "text" && typeof block.text === "string") {
 			if (block.text.includes("<local-command-caveat>")) continue;
-			const cleaned = cleanPromptText(block.text);
+			const {snippets, rest: cleaned} = cleanPromptParts(block.text);
+			excerpts.push(...snippets);
 			if (!cleaned) continue;
 			inlineImageText.push(cleaned);
 			textNodes.push(
@@ -4255,7 +4268,7 @@ function renderUserContentBlocks(
 		// tool_result blocks are intentionally skipped in user rendering
 	}
 	if (inlineImageText.length > 0) images.push(...inlinePathImages(inlineImageText.join("\n"), allowedImageRoots));
-	return {textNodes, mediaNodes, images};
+	return {textNodes, mediaNodes, images, excerpts};
 }
 
 function CommandEntry({line, sessionId}: {line: MessageSessionLine; sessionId: string}) {
