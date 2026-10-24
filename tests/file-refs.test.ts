@@ -24,7 +24,12 @@ describe("parseFileRefText", () => {
 		["src/app.ts:12-20", {target: "src/app.ts", line: 12, endLine: 20}],
 		["/abs/path/file.md:3", {target: "/abs/path/file.md", line: 3}],
 		["./src/app.ts", {target: "src/app.ts"}],
-		[".gitignore", {target: ".gitignore"}],
+		["lib/a(b)/c-d.test.tsx:3-9", {target: "lib/a(b)/c-d.test.tsx", line: 3, endLine: 9}],
+		["src/a.ts:12:5", {target: "src/a.ts", line: 12}],
+		["a/b.ts:9-3", {target: "a/b.ts", line: 3, endLine: 9}],
+		["src/app.ts:20-12", {target: "src/app.ts", line: 12, endLine: 20}],
+		["src/app.ts:7-7", {target: "src/app.ts", line: 7}],
+		["src/é/ü.ts", {target: "src/é/ü.ts"}],
 	])("%s", (text, expected) => {
 		expect(parseFileRefText(text)).toStrictEqual(expected);
 	});
@@ -36,8 +41,13 @@ describe("parseFileRefText", () => {
 		"https://example.com/a.json",
 		"foo(bar)",
 		"*.ts",
-		"src/app.ts:20-12",
 		"~/notes.md",
+		"README.md",
+		"package.json",
+		".gitignore",
+		"docs/guide.md#install",
+		"/etc/hostname",
+		"C:\\x\\y.ts",
 		"",
 	])("%s is not a file ref", (text) => {
 		expect(parseFileRefText(text)).toBeNull();
@@ -48,15 +58,13 @@ describe("fileRefStatCandidates", () => {
 	it("asks the server about each path-like token, joined to cwd, plus matching session paths", () => {
 		expect(
 			fileRefStatCandidates(
-				[...UPSTREAM_INLINE_CODES, "shared.tsx", "/elsewhere/abs.ts:4"],
+				[...UPSTREAM_INLINE_CODES, "components/shared.tsx", "/elsewhere/abs.ts:4"],
 				["/repo/src/components/shared.tsx", "/repo/src/other.ts"],
 				"/repo",
 			),
 		).toStrictEqual([
 			"/repo/.mise/config.toml",
-			"/repo/mise.toml",
-			"/repo/package.json",
-			"/repo/shared.tsx",
+			"/repo/components/shared.tsx",
 			"/repo/src/components/shared.tsx",
 			"/elsewhere/abs.ts",
 		]);
@@ -64,7 +72,7 @@ describe("fileRefStatCandidates", () => {
 
 	it("without a cwd only absolute tokens and session-path suffix matches are candidates", () => {
 		expect(
-			fileRefStatCandidates(["src/other.ts", "mise.toml", "/abs/x.md"], ["/repo/src/other.ts"], undefined),
+			fileRefStatCandidates(["src/other.ts", "a/mise.toml", "/abs/x.md"], ["/repo/src/other.ts"], undefined),
 		).toStrictEqual(["/repo/src/other.ts", "/abs/x.md"]);
 	});
 });
@@ -85,13 +93,13 @@ describe("resolveFileRefs", () => {
 
 	it("resolves absolute paths and unique session-path suffixes, but not ambiguous ones", () => {
 		const refs = resolveFileRefs(
-			["/abs/x.md", "shared.tsx", "index.ts"],
-			["/abs/x.md", "/repo/src/components/shared.tsx", "/repo/a/index.ts", "/repo/b/index.ts"],
+			["/abs/x.md", "components/shared.tsx", "src/index.ts"],
+			["/abs/x.md", "/repo/src/components/shared.tsx", "/repo/a/src/index.ts", "/repo/b/src/index.ts"],
 			"/repo",
 		);
 		expect([...refs]).toStrictEqual([
 			["/abs/x.md", {path: "/abs/x.md"}],
-			["shared.tsx", {path: "/repo/src/components/shared.tsx"}],
+			["components/shared.tsx", {path: "/repo/src/components/shared.tsx"}],
 		]);
 	});
 });

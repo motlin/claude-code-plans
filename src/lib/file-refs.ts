@@ -19,113 +19,40 @@ export interface ParsedFileRefText {
 	endLine?: number;
 }
 
-const KNOWN_EXTENSIONS = new Set([
-	"astro",
-	"bash",
-	"c",
-	"cfg",
-	"cjs",
-	"conf",
-	"cpp",
-	"cs",
-	"css",
-	"csv",
-	"env",
-	"fish",
-	"gif",
-	"go",
-	"gradle",
-	"h",
-	"hpp",
-	"html",
-	"ini",
-	"java",
-	"jpeg",
-	"jpg",
-	"js",
-	"json",
-	"jsonc",
-	"jsonl",
-	"jsx",
-	"kt",
-	"lock",
-	"log",
-	"md",
-	"mdx",
-	"mjs",
-	"mts",
-	"cts",
-	"pdf",
-	"php",
-	"png",
-	"properties",
-	"py",
-	"rb",
-	"rs",
-	"scss",
-	"sh",
-	"sql",
-	"svelte",
-	"svg",
-	"swift",
-	"toml",
-	"ts",
-	"tsx",
-	"txt",
-	"vue",
-	"webp",
-	"xml",
-	"yaml",
-	"yml",
-	"zsh",
-]);
-
-/** Characters that never appear in a path worth linking (shell, globs, code). */
-const NON_PATH_CHARACTERS = /[\s()[\]{}<>*?$|;'"`=,!&\\]/;
-const LINE_SUFFIX = /:(\d+)(?:-(\d+))?$/;
+/**
+ * Upstream's file-ref grammar (claude.ai/code `B` in c4aef5f87): at least one
+ * `/`, a last segment with an extension, and an optional `:line`, `:line-end`
+ * or `:line:col` suffix (the column is dropped).
+ */
+const NAME_CHARACTERS = String.raw`\p{L}\p{N}\p{M}_`;
+const FILE_REF_PATTERN = new RegExp(
+	String.raw`^([${NAME_CHARACTERS}.()[\]-]*(?:/[${NAME_CHARACTERS}.()[\]-]+)*/[${NAME_CHARACTERS}()[\]-]*\.\w[\w.-]*)(?::(\d+)(?:-(\d+)|:\d+)?)?$`,
+	"u",
+);
 const MAX_PATH_LENGTH = 1024;
 
-function hasKnownExtension(name: string): boolean {
-	const dot = name.lastIndexOf(".");
-	if (dot < 0) return false;
-	if (dot === 0) return name.length > 1; // a dotfile such as `.gitignore`
-	return KNOWN_EXTENSIONS.has(name.slice(dot + 1).toLowerCase());
+/** Upstream's line-range rule `H`: equal ends collapse, reversed ranges swap. */
+function lineRange(start: string | undefined, end: string | undefined): {line?: number; endLine?: number} {
+	if (start === undefined) return {};
+	const line = Number(start);
+	if (end === undefined) return {line};
+	const endLine = Number(end);
+	if (endLine === line) return {line};
+	return endLine < line ? {line: endLine, endLine: line} : {line, endLine};
 }
 
 /**
  * Split inline-code text into a path and an optional line range, or null when
- * the text is not path-like: it needs a `/` or a known extension, and no
- * whitespace, URL scheme, trailing slash (a directory) or code punctuation.
+ * the text doesn't match upstream's file-ref grammar. Upstream also skips
+ * paths its secret scanner flags; this repo has no such scanner.
  */
 export function parseFileRefText(text: string): ParsedFileRefText | null {
-	if (text.length === 0 || text.length > MAX_PATH_LENGTH) return null;
-	let target = text;
-	let line: number | undefined;
-	let endLine: number | undefined;
-	const suffix = LINE_SUFFIX.exec(target);
-	if (suffix !== null) {
-		line = Number(suffix[1]);
-		endLine = suffix[2] === undefined ? undefined : Number(suffix[2]);
-		if (line < 1 || (endLine !== undefined && endLine < line)) return null;
-		target = target.slice(0, suffix.index);
-	}
+	if (text.length > MAX_PATH_LENGTH) return null;
+	const match = FILE_REF_PATTERN.exec(text);
+	if (match === null) return null;
+	let target = match[1] ?? "";
 	while (target.startsWith("./")) target = target.slice(2);
-	if (
-		target === "" ||
-		target.endsWith("/") ||
-		target.startsWith("~") ||
-		target.includes("://") ||
-		target.includes(":") ||
-		NON_PATH_CHARACTERS.test(target)
-	) {
-		return null;
-	}
-	const name = target.slice(target.lastIndexOf("/") + 1);
-	if (!target.includes("/") && !hasKnownExtension(name)) return null;
-	const parsed: ParsedFileRefText = {target};
-	if (line !== undefined) parsed.line = line;
-	if (endLine !== undefined) parsed.endLine = endLine;
-	return parsed;
+	return {target, ...lineRange(match[2], match[3])};
 }
 
 /** Join and normalize `.`/`..` segments; null if `..` climbs above the root. */

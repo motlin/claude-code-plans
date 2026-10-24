@@ -140,7 +140,7 @@ describe("markdown files", () => {
 	});
 
 	it("turns inline-code file paths into buttons that open the file, resolved against the file's directory, then the cwd", async () => {
-		textFile(README, "See `src/lib/foo.ts`, `bob.md:3` and `missing.ts`.");
+		textFile(README, "See `src/lib/foo.ts`, `./bob.md:3` and `src/missing.ts`.");
 		existingPaths = new Set(["/home/alice/src/lib/foo.ts", "/home/alice/notes/bob.md", "/home/alice/bob.md"]);
 		const onOpenFile = vi.fn<(path: string) => void>();
 		renderView({path: README, cwd: "/home/alice", onOpenFile});
@@ -149,13 +149,13 @@ describe("markdown files", () => {
 		await waitFor(() => {
 			onOpenFile.mockClear();
 			fireEvent.click(screen.getByRole("button", {name: "src/lib/foo.ts"}));
-			fireEvent.keyDown(screen.getByRole("button", {name: "bob.md:3"}), {key: "Enter"});
+			fireEvent.keyDown(screen.getByRole("button", {name: "./bob.md:3"}), {key: "Enter"});
 			expect(onOpenFile.mock.calls).toHaveLength(2);
 		});
 
 		expect({
 			opened: onOpenFile.mock.calls,
-			missing: screen.queryByRole("button", {name: "missing.ts"}),
+			missing: screen.queryByRole("button", {name: "src/missing.ts"}),
 		}).toStrictEqual({
 			opened: [["/home/alice/src/lib/foo.ts"], ["/home/alice/notes/bob.md"]],
 			missing: null,
