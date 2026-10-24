@@ -77,6 +77,9 @@ function mockPagedHistory() {
 			byteOffset: 900,
 			startIndex,
 			precedingMessageCount: startIndex,
+			hiddenUuids: [],
+			cuts: [],
+			chainVersion: "v1",
 		};
 		return Promise.resolve(
 			new Response(JSON.stringify(page), {
@@ -92,12 +95,18 @@ const TAIL: TranscriptData = {
 	byteOffset: 900,
 	startIndex: 2,
 	precedingMessageCount: 2,
+	hiddenUuids: [],
+	cuts: [],
+	chainVersion: "v1",
 };
 const EARLIER_PAGE: TranscriptData = {
 	records: [record(0), record(1)],
 	byteOffset: 900,
 	startIndex: 0,
 	precedingMessageCount: 0,
+	hiddenUuids: [],
+	cuts: [],
+	chainVersion: "v1",
 };
 
 describe("TranscriptHistoryLoader", () => {
@@ -120,6 +129,9 @@ describe("TranscriptHistoryLoader", () => {
 				byteOffset: 900,
 				startIndex: 0,
 				precedingMessageCount: 0,
+				hiddenUuids: [],
+				cuts: [],
+				chainVersion: "v1",
 			});
 		});
 	});

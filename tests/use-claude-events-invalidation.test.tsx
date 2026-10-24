@@ -296,12 +296,18 @@ describe("ClaudeEventsProvider SSE reconnect", () => {
 			byteOffset: 0,
 			startIndex: 0,
 			precedingMessageCount: 0,
+			hiddenUuids: [],
+			cuts: [],
+			chainVersion: "v1",
 		};
 		const tail: TranscriptData = {
 			records: [record("uuid-1"), record("uuid-2")],
 			byteOffset: 0,
 			startIndex: 1,
 			precedingMessageCount: 1,
+			hiddenUuids: [],
+			cuts: [],
+			chainVersion: "v1",
 		};
 		const fetchMock = vi.fn<typeof fetch>(async () => Promise.resolve(Response.json(tail)));
 		vi.stubGlobal("fetch", fetchMock);
@@ -332,6 +338,9 @@ describe("ClaudeEventsProvider SSE reconnect", () => {
 				byteOffset: 0,
 				startIndex: 0,
 				precedingMessageCount: 0,
+				hiddenUuids: [],
+				cuts: [],
+				chainVersion: "v1",
 			});
 		});
 		expect(fetchMock.mock.calls.map(([url]) => String(url))).toStrictEqual([

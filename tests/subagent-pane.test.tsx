@@ -86,7 +86,15 @@ const PARENT_RECORDS = [
 	},
 ];
 
-const EMPTY_TRANSCRIPT: TranscriptData = {records: [], byteOffset: 0, startIndex: 0, precedingMessageCount: 0};
+const EMPTY_TRANSCRIPT: TranscriptData = {
+	records: [],
+	byteOffset: 0,
+	startIndex: 0,
+	precedingMessageCount: 0,
+	hiddenUuids: [],
+	cuts: [],
+	chainVersion: "v1",
+};
 
 class FakeObserver {
 	observe() {}

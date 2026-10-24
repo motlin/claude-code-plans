@@ -117,6 +117,9 @@ function seededQueryClient(detailOverrides: Partial<SessionDetailData>) {
 		byteOffset: 0,
 		startIndex: 0,
 		precedingMessageCount: 0,
+		hiddenUuids: [],
+		cuts: [],
+		chainVersion: "v1",
 	});
 	queryClient.setQueryData(sessionSubagentsQueryOptions(SESSION_ID).queryKey, []);
 	queryClient.setQueryData(herdrPanesQueryOptions.queryKey, {

@@ -104,6 +104,29 @@ describe("GET /api/sessions/$id/transcript", () => {
 		expect(earlier.precedingMessageCount).toBe(0);
 	});
 
+	it("serves the hidden uuids, cuts and chain version of the window", async () => {
+		const records = [
+			{type: "user", uuid: "p", parentUuid: null, message: {role: "user", content: "start"}},
+			{
+				type: "user",
+				uuid: "a",
+				parentUuid: "p",
+				timestamp: "2026-10-20T10:05:00.000Z",
+				message: {role: "user", content: "do chapter 2"},
+			},
+			{type: "user", uuid: "r", parentUuid: "p", message: {role: "user", content: "do chapter 3"}},
+		];
+		seedSession("forked", records);
+
+		const body = (await (await getTranscript("forked")).json()) as Record<string, unknown>;
+
+		expect(body["hiddenUuids"]).toStrictEqual(["a"]);
+		expect(body["cuts"]).toStrictEqual([
+			{parentUuid: "p", replacementUuid: "r", at: "2026-10-20T10:05:00.000Z", count: 1},
+		]);
+		expect(typeof body["chainVersion"]).toBe("string");
+	});
+
 	it("ignores a malformed before parameter and serves the tail", async () => {
 		const records = Array.from({length: 3}, (_, i) => ({
 			type: "user",

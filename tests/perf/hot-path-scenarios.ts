@@ -58,6 +58,9 @@ async function prepareShaped(fn: HotPathShapedFn, shape: string): Promise<() => 
 				byteOffset: old.byteOffset,
 				startIndex: transcriptEndIndex(old),
 				precedingMessageCount: old.precedingMessageCount,
+				hiddenUuids: [],
+				cuts: [],
+				chainVersion: old.chainVersion,
 			};
 			return () => mergeTranscriptData(old, appended);
 		}

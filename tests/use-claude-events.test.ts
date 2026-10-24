@@ -853,6 +853,9 @@ function makeTranscriptCache(overrides?: Partial<TranscriptData>): TranscriptDat
 		byteOffset: 0,
 		startIndex: 0,
 		precedingMessageCount: 0,
+		hiddenUuids: [],
+		cuts: [],
+		chainVersion: "v1",
 		...overrides,
 	};
 }
@@ -908,6 +911,9 @@ describe("applySessionLinesAppended", () => {
 			byteOffset: 100,
 			startIndex: 0,
 			precedingMessageCount: 0,
+			hiddenUuids: [],
+			cuts: [],
+			chainVersion: "v1",
 		});
 	});
 
@@ -967,6 +973,9 @@ describe("applySessionLinesAppended", () => {
 			byteOffset: 50,
 			startIndex: 0,
 			precedingMessageCount: 0,
+			hiddenUuids: [],
+			cuts: [],
+			chainVersion: "v1",
 		});
 	});
 
@@ -1009,6 +1018,9 @@ describe("applySessionLinesAppended", () => {
 			byteOffset: 100,
 			startIndex: 0,
 			precedingMessageCount: 0,
+			hiddenUuids: [],
+			cuts: [],
+			chainVersion: "v1",
 		});
 	});
 
@@ -1043,6 +1055,9 @@ describe("applySessionLinesAppended", () => {
 			byteOffset: 200,
 			startIndex: 0,
 			precedingMessageCount: 0,
+			hiddenUuids: [],
+			cuts: [],
+			chainVersion: "v1",
 		});
 	});
 });

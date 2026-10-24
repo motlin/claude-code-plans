@@ -29,11 +29,30 @@ function window_(startIndex: number, count: number, overrides?: Partial<Transcri
 		byteOffset: 0,
 		startIndex,
 		precedingMessageCount: startIndex,
+		hiddenUuids: [],
+		cuts: [],
+		chainVersion: "v1",
 		...overrides,
 	};
 }
 
 describe("mergeTranscriptData", () => {
+	it("unions both pages' hidden uuids and cuts and keeps the primary's chain version", () => {
+		const cut = {parentUuid: "u-0", replacementUuid: "u-4", at: "2026-10-20T10:05:00.000Z", count: 2};
+		const tail = window_(3, 2, {hiddenUuids: ["u-3"], cuts: [cut], chainVersion: "v2"});
+		const earlier = window_(0, 3, {hiddenUuids: ["u-2", "u-3"], cuts: [cut]});
+
+		expect(mergeTranscriptData(tail, earlier)).toStrictEqual({
+			records: [record(0), record(1), record(2), record(3), record(4)],
+			byteOffset: 0,
+			startIndex: 0,
+			precedingMessageCount: 0,
+			hiddenUuids: ["u-3", "u-2"],
+			cuts: [cut],
+			chainVersion: "v2",
+		});
+	});
+
 	it("keeps an earlier page ahead of the tail it was paged back from", () => {
 		const tail = window_(3, 2, {byteOffset: 900});
 		const earlier = window_(0, 3);
@@ -43,6 +62,9 @@ describe("mergeTranscriptData", () => {
 			byteOffset: 900,
 			startIndex: 0,
 			precedingMessageCount: 0,
+			hiddenUuids: [],
+			cuts: [],
+			chainVersion: "v1",
 		});
 	});
 
@@ -64,6 +86,9 @@ describe("mergeTranscriptData", () => {
 			byteOffset: 0,
 			startIndex: 50,
 			precedingMessageCount: 50,
+			hiddenUuids: [],
+			cuts: [],
+			chainVersion: "v1",
 		});
 	});
 
@@ -83,12 +108,18 @@ describe("mergeTranscriptData", () => {
 			byteOffset: cached.byteOffset,
 			startIndex: transcriptEndIndex(cached),
 			precedingMessageCount: cached.precedingMessageCount,
+			hiddenUuids: [],
+			cuts: [],
+			chainVersion: cached.chainVersion,
 		});
 		const appended = mergeTranscriptData(rebroadcast, {
 			records: [record(5), record(6)],
 			byteOffset: rebroadcast.byteOffset,
 			startIndex: transcriptEndIndex(rebroadcast),
 			precedingMessageCount: rebroadcast.precedingMessageCount,
+			hiddenUuids: [],
+			cuts: [],
+			chainVersion: rebroadcast.chainVersion,
 		});
 
 		expect(appended).toStrictEqual({
@@ -96,6 +127,9 @@ describe("mergeTranscriptData", () => {
 			byteOffset: 0,
 			startIndex: 0,
 			precedingMessageCount: 0,
+			hiddenUuids: [],
+			cuts: [],
+			chainVersion: "v1",
 		});
 	});
 });
@@ -125,6 +159,9 @@ describe("fetchEarlierTranscript", () => {
 			byteOffset: 900,
 			startIndex: 0,
 			precedingMessageCount: 0,
+			hiddenUuids: [],
+			cuts: [],
+			chainVersion: "v1",
 		});
 	});
 
@@ -155,6 +192,9 @@ describe("fetchEarlierTranscript", () => {
 			byteOffset: 900,
 			startIndex: 0,
 			precedingMessageCount: 0,
+			hiddenUuids: [],
+			cuts: [],
+			chainVersion: "v1",
 		});
 	});
 

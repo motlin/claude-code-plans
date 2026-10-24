@@ -903,9 +903,11 @@
 		"tolerance": 0
 	},
 	"server.sessionOpen.large-long.transcript.resp.bytes": {
-		"ceiling": 523332,
+		"ceiling": 523393,
 		"unit": "bytes",
-		"tolerance": 0
+		"tolerance": 0,
+		"reason": "Transcript responses now carry hiddenUuids, cuts and chainVersion (active-chain paging task 2): +61 bytes of empty arrays and a 16-hex version",
+		"raisedAt": "2026-10-24"
 	},
 	"server.sessionOpen.large-long.transcript.sql.count": {
 		"ceiling": 1,
@@ -973,9 +975,11 @@
 		"tolerance": 0
 	},
 	"server.sessionOpen.large-wide.transcript.resp.bytes": {
-		"ceiling": 485043,
+		"ceiling": 485104,
 		"unit": "bytes",
-		"tolerance": 0
+		"tolerance": 0,
+		"reason": "Transcript responses now carry hiddenUuids, cuts and chainVersion (active-chain paging task 2): +61 bytes of empty arrays and a 16-hex version",
+		"raisedAt": "2026-10-24"
 	},
 	"server.sessionOpen.large-wide.transcript.sql.count": {
 		"ceiling": 1,
@@ -1043,9 +1047,11 @@
 		"tolerance": 0
 	},
 	"server.sessionOpen.small.transcript.resp.bytes": {
-		"ceiling": 500074,
+		"ceiling": 500135,
 		"unit": "bytes",
-		"tolerance": 0
+		"tolerance": 0,
+		"reason": "Transcript responses now carry hiddenUuids, cuts and chainVersion (active-chain paging task 2): +61 bytes of empty arrays and a 16-hex version",
+		"raisedAt": "2026-10-24"
 	},
 	"server.sessionOpen.small.transcript.sql.count": {
 		"ceiling": 1,
@@ -1113,9 +1119,11 @@
 		"tolerance": 0
 	},
 	"server.sessionOpen.typical.transcript.resp.bytes": {
-		"ceiling": 495796,
+		"ceiling": 495857,
 		"unit": "bytes",
-		"tolerance": 0
+		"tolerance": 0,
+		"reason": "Transcript responses now carry hiddenUuids, cuts and chainVersion (active-chain paging task 2): +61 bytes of empty arrays and a 16-hex version",
+		"raisedAt": "2026-10-24"
 	},
 	"server.sessionOpen.typical.transcript.sql.count": {
 		"ceiling": 1,

@@ -813,6 +813,11 @@ export function applySessionLinesAppended(
 			// lines start exactly where it stops.
 			startIndex: transcriptEndIndex(old),
 			precedingMessageCount: old.precedingMessageCount,
+			// Only the server knows the whole file's chain, so an append hides
+			// nothing new until the next fetch recomputes it.
+			hiddenUuids: [],
+			cuts: [],
+			chainVersion: old.chainVersion,
 		});
 	});
 

@@ -6,6 +6,7 @@ import {openTestDb, type AppDb} from "../src/lib/db/connection";
 import * as schema from "../src/lib/db/schema";
 import {
 	readStructuredTranscript,
+	transcriptChainVersion,
 	TRANSCRIPT_WINDOW_MAX_BYTES,
 	TRANSCRIPT_WINDOW_MAX_RECORDS,
 } from "../src/lib/structured-transcript";
@@ -206,6 +207,105 @@ describe("readStructuredTranscript", () => {
 			byteOffset: 0,
 			startIndex: 0,
 			precedingMessageCount: 0,
+			hiddenUuids: [],
+			cuts: [],
+			chainVersion: transcriptChainVersion([]),
 		});
+	});
+});
+
+/** A prompt chained onto `parentUuid`. */
+function prompt(
+	uuid: string,
+	parentUuid: string | null,
+	timestamp = "2026-10-20T10:00:00.000Z",
+): Record<string, unknown> {
+	return {type: "user", uuid, parentUuid, timestamp, message: {role: "user", content: `prompt ${uuid}`}};
+}
+
+/** An assistant reply chained onto `parentUuid`. */
+function reply(uuid: string, parentUuid: string): Record<string, unknown> {
+	return {
+		type: "assistant",
+		uuid,
+		parentUuid,
+		message: {role: "assistant", content: [{type: "text", text: `reply ${uuid}`}]},
+	};
+}
+
+/**
+ * A linear chain `u-0 … u-{before-1}`, then a prompt `a-0` on `u-{before-1}`
+ * with `abandoned - 1` replies under it, then the replacement prompt `r` on the
+ * same parent followed by `after` more chained replies.
+ */
+function forkedSession(before: number, abandoned: number, after: number): Record<string, unknown>[] {
+	const records: Record<string, unknown>[] = [prompt("u-0", null)];
+	for (let i = 1; i < before; i++) records.push(reply(`u-${i}`, `u-${i - 1}`));
+	const parentUuid = `u-${before - 1}`;
+	records.push(prompt("a-0", parentUuid, "2026-10-20T10:05:00.000Z"));
+	for (let i = 1; i < abandoned; i++) records.push(reply(`a-${i}`, `a-${i - 1}`));
+	records.push(prompt("r", parentUuid, "2026-10-20T10:06:00.000Z"));
+	let previous = "r";
+	for (let i = 0; i < after; i++) {
+		records.push(reply(`t-${i}`, previous));
+		previous = `t-${i}`;
+	}
+	return records;
+}
+
+const ABANDONED_40 = Array.from({length: 40}, (_, i) => `a-${i}`);
+
+describe("readStructuredTranscript active chain", () => {
+	it("budgets only visible records, so an abandoned branch in the tail does not shrink the page", () => {
+		// 60 + 40 abandoned + 1 replacement + 349 = 450 records; the tail's 400
+		// visible records reach back past the 40 hidden ones to index 10.
+		const records = forkedSession(60, 40, 349);
+		seedSession("forked-tail", records);
+
+		const transcript = readStructuredTranscript(db.index, "forked-tail");
+
+		expect(transcript.startIndex).toBe(10);
+		expect(transcript.records).toStrictEqual(records.slice(10));
+		expect(transcript.hiddenUuids).toStrictEqual(ABANDONED_40);
+		const cuts = [{parentUuid: "u-59", replacementUuid: "r", at: "2026-10-20T10:05:00.000Z", count: 40}];
+		expect(transcript.cuts).toStrictEqual(cuts);
+		expect(transcript.chainVersion).toBe(transcriptChainVersion([{...cuts[0]!, abandonedUuid: "a-0"}]));
+	});
+
+	it("reports a cut whose shared parent sits on an earlier page", () => {
+		const records = forkedSession(11, 2, 2);
+		seedSession("forked-early", records);
+
+		const transcript = readStructuredTranscript(db.index, "forked-early", {maxRecords: 3});
+
+		expect(transcript.records).toStrictEqual(records.slice(-3));
+		expect(transcript.hiddenUuids).toStrictEqual([]);
+		expect(transcript.cuts).toStrictEqual([
+			{parentUuid: "u-10", replacementUuid: "r", at: "2026-10-20T10:05:00.000Z", count: 2},
+		]);
+	});
+
+	it("gives an earlier page only its own hidden uuids and no cut whose replacement it lacks", () => {
+		const records = forkedSession(11, 2, 2);
+		seedSession("forked-paged", records);
+
+		const tail = readStructuredTranscript(db.index, "forked-paged", {maxRecords: 3});
+		const page = readStructuredTranscript(db.index, "forked-paged", {before: tail.startIndex, maxRecords: 3});
+
+		expect(page.records).toStrictEqual(records.slice(8, 13));
+		expect(page.startIndex).toBe(8);
+		expect(page.hiddenUuids).toStrictEqual(["a-0", "a-1"]);
+		expect(page.cuts).toStrictEqual([]);
+		expect(page.chainVersion).toBe(tail.chainVersion);
+	});
+
+	it("serves a linear session with nothing hidden", () => {
+		seedSession("linear", [userMessage(0), userMessage(1)]);
+
+		const transcript = readStructuredTranscript(db.index, "linear");
+
+		expect(transcript.hiddenUuids).toStrictEqual([]);
+		expect(transcript.cuts).toStrictEqual([]);
+		expect(transcript.chainVersion).toBe(transcriptChainVersion([]));
 	});
 });

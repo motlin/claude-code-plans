@@ -149,6 +149,24 @@ export type SessionDetailData = NonNullable<z.infer<typeof SessionDetailResponse
 /** One raw JSONL record as the transcript endpoint serves it. */
 export const TranscriptRecordSchema = z.record(z.string(), JsonValueSchema);
 
+/**
+ * One abandoned branch off the active chain (transcript-chain.ts): a prompt
+ * pulled back or re-sent, whose subtree the reader no longer sees.
+ */
+const TranscriptCutSchema = z
+	.object({
+		/** The parent the abandoned prompt and its replacement both hang off. */
+		parentUuid: z.string(),
+		/** The on-chain prompt that replaced the abandoned one. */
+		replacementUuid: z.string(),
+		/** The abandoned prompt's timestamp. */
+		at: z.string(),
+		/** Records in the hidden subtree, its root included. */
+		count: z.number(),
+	})
+	.strict();
+export type TranscriptCut = z.infer<typeof TranscriptCutSchema>;
+
 export const TranscriptResponse = z.object({
 	records: z.array(TranscriptRecordSchema),
 	byteOffset: z.number(),
@@ -156,6 +174,16 @@ export const TranscriptResponse = z.object({
 	startIndex: z.number(),
 	/** Countable messages (message-count.ts) in the records before `startIndex`. */
 	precedingMessageCount: z.number(),
+	/**
+	 * Uuids of this window's records that sit on an abandoned branch. The
+	 * server computes the chain over the whole file, so a branch whose fork
+	 * point is on an unloaded page is still known.
+	 */
+	hiddenUuids: z.array(z.string()),
+	/** The cuts whose replacement prompt is inside this window. */
+	cuts: z.array(TranscriptCutSchema),
+	/** Identifies the set of cuts over the whole file; it changes only when the chain forks or switches branch. */
+	chainVersion: z.string(),
 });
 export type TranscriptData = z.infer<typeof TranscriptResponse>;
 
@@ -214,11 +242,19 @@ export function mergeTranscriptData(primary: TranscriptData, secondary: Transcri
 	// The surviving run always begins at one of the two windows' first records,
 	// and that window is the one that knows how many messages precede it.
 	const origin = primary.startIndex === startIndex ? primary : secondary;
+	const cuts = new Map<string, TranscriptCut>();
+	for (const cut of [...primary.cuts, ...secondary.cuts]) {
+		const key = `${cut.replacementUuid}\u0000${cut.parentUuid}\u0000${cut.at}`;
+		if (!cuts.has(key)) cuts.set(key, cut);
+	}
 	return {
 		records,
 		byteOffset: primary.byteOffset,
 		startIndex,
 		precedingMessageCount: origin.precedingMessageCount,
+		hiddenUuids: [...new Set([...primary.hiddenUuids, ...secondary.hiddenUuids])],
+		cuts: [...cuts.values()],
+		chainVersion: primary.chainVersion,
 	};
 }
 
