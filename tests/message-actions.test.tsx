@@ -471,11 +471,9 @@ describe("UserMessageActions", () => {
 		);
 		const classes = bar(container).className.split(" ");
 		expect(
-			[
-				"has-[[data-popup-open]]:opacity-100",
-				"has-[[data-popup-open]]:scale-100",
-				"has-[[data-popup-open]]:pointer-events-auto",
-			].filter((c) => !classes.includes(c)),
+			["has-[[data-popup-open]]:opacity-100", "has-[[data-popup-open]]:pointer-events-auto"].filter(
+				(c) => !classes.includes(c),
+			),
 		).toStrictEqual([]);
 	});
 
@@ -648,22 +646,29 @@ describe("message action toolbar sizing and reveal", () => {
 		}).toStrictEqual({button: true, icon: true, assistantTime: true, userTime: true});
 	});
 
-	it("fades and scales the bar in after a short delay, only when motion is allowed", () => {
+	it("fades the bar in after 100ms on hover, at once on focus, and out in 60ms, with no scale", () => {
 		const {container} = render(
 			<AssistantMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} />,
 		);
 		const classes = bar(container).className.split(" ");
 
-		expect(
-			[
-				"scale-[.98]",
-				"group-hover/msg:scale-100",
-				"motion-safe:transition-[opacity,scale]",
-				"motion-safe:duration-[120ms]",
-				"motion-safe:delay-100",
+		expect({
+			scales: classes.filter((c) => c.includes("scale")),
+			restDelay: classes.includes("motion-safe:delay-100"),
+			missing: [
+				"motion-safe:transition-opacity",
+				"motion-safe:duration-[60ms]",
 				"motion-safe:ease-[cubic-bezier(.32,.72,0,1)]",
+				"motion-safe:group-hover/msg:duration-[120ms]",
+				"motion-safe:group-hover/msg:delay-100",
+				"motion-safe:[@media(hover:hover)]:data-hovered:duration-[120ms]",
+				"motion-safe:[@media(hover:hover)]:data-hovered:delay-100",
+				"motion-safe:focus-within:duration-[120ms]",
+				"motion-safe:focus-within:delay-0",
+				"motion-safe:data-revealed:duration-[120ms]",
+				"motion-safe:data-revealed:delay-0",
 			].filter((c) => !classes.includes(c)),
-		).toStrictEqual([]);
+		}).toStrictEqual({scales: [], restDelay: false, missing: []});
 	});
 
 	it("keeps hidden toolbar controls out of the tab order until Show message actions reveals them", () => {
@@ -701,10 +706,8 @@ describe("message action toolbar sizing and reveal", () => {
 		expect(
 			[
 				"pointer-coarse:opacity-100",
-				"pointer-coarse:scale-100",
 				"pointer-coarse:pointer-events-auto",
 				"[@media(hover:none)]:opacity-100",
-				"[@media(hover:none)]:scale-100",
 				"[@media(hover:none)]:pointer-events-auto",
 				"motion-safe:pointer-coarse:transition-none",
 			].filter((c) => !classes.includes(c)),

@@ -44,17 +44,24 @@ export interface MessageActionsProps {
 
 const BAR_CLASS = [
 	"flex items-center gap-g1 select-none",
-	"opacity-0 scale-[.98] pointer-events-none",
-	"group-hover/msg:opacity-100 group-hover/msg:scale-100 group-hover/msg:pointer-events-auto",
-	"focus-within:opacity-100 focus-within:scale-100 focus-within:pointer-events-auto",
-	"data-revealed:opacity-100 data-revealed:scale-100 data-revealed:pointer-events-auto",
-	"data-hovered:opacity-100 data-hovered:scale-100 data-hovered:pointer-events-auto",
+	"opacity-0 pointer-events-none",
+	"group-hover/msg:opacity-100 group-hover/msg:pointer-events-auto",
+	"focus-within:opacity-100 focus-within:pointer-events-auto",
+	"data-revealed:opacity-100 data-revealed:pointer-events-auto",
+	"data-hovered:opacity-100 data-hovered:pointer-events-auto",
 	// An open popover inside the bar (the read receipt's) keeps it shown, as upstream's :has([data-popup-open]) rule does.
-	"has-[[data-popup-open]]:opacity-100 has-[[data-popup-open]]:scale-100 has-[[data-popup-open]]:pointer-events-auto",
-	"motion-safe:transition-[opacity,scale] motion-safe:duration-[120ms] motion-safe:delay-100 motion-safe:ease-[cubic-bezier(.32,.72,0,1)]",
+	"has-[[data-popup-open]]:opacity-100 has-[[data-popup-open]]:pointer-events-auto",
+	// Upstream reveals by opacity only (no scale): out in 60ms with no delay, hover in over 120ms after
+	// 100ms (hover-capable devices only; Tailwind's group-hover is already hover:hover-gated), focus in at once.
+	"motion-safe:transition-opacity motion-safe:duration-[60ms] motion-safe:ease-[cubic-bezier(.32,.72,0,1)]",
+	"motion-safe:group-hover/msg:duration-[120ms] motion-safe:group-hover/msg:delay-100",
+	"motion-safe:[@media(hover:hover)]:data-hovered:duration-[120ms] motion-safe:[@media(hover:hover)]:data-hovered:delay-100",
+	"motion-safe:focus-within:duration-[120ms] motion-safe:focus-within:delay-0",
+	"motion-safe:data-revealed:duration-[120ms] motion-safe:data-revealed:delay-0",
+	"motion-safe:has-[[data-popup-open]]:duration-[120ms] motion-safe:has-[[data-popup-open]]:delay-0",
 	// Touch devices never hover, so the bar is always shown there, as upstream's data-reveal rule does.
 	TOUCH_REVEAL,
-	"pointer-coarse:scale-100 [@media(hover:none)]:scale-100 motion-safe:pointer-coarse:transition-none",
+	"motion-safe:pointer-coarse:transition-none",
 ].join(" ");
 
 const BUTTON_CLASS =
