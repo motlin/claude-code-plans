@@ -291,6 +291,21 @@ function firstRecordKey(transcript: TranscriptData): string | undefined {
 	return typeof uuid === "string" ? uuid : `#${transcript.startIndex}`;
 }
 
+/**
+ * Whether this session was archived after the page saw it unarchived. Upstream's band slot only
+ * animates bands that mount after first paint, so the archived note band-enters when the session is
+ * archived while open, and stays put when the session was already archived on open.
+ */
+function useArchivedSinceOpen(sessionId: string, archived: boolean): boolean {
+	const [seen, setSeen] = useState({sessionId, unarchived: !archived});
+	if (seen.sessionId !== sessionId) {
+		setSeen({sessionId, unarchived: !archived});
+		return false;
+	}
+	if (!archived && !seen.unarchived) setSeen({sessionId, unarchived: true});
+	return archived && seen.unarchived;
+}
+
 function SessionView({
 	sessionId,
 	routeId,
@@ -306,6 +321,7 @@ function SessionView({
 	// The project path can fail to resolve from its lossy directory name (e.g. a
 	// dotted folder), so the session's recorded cwd stands in for it.
 	const sessionDirectory = data.projectPath ?? data.cwd;
+	const archivedNoteEnters = useArchivedSinceOpen(sessionId, data.archived);
 	const scrollAnchorRef = useRef<HTMLDivElement>(null);
 	const tileScrollPosition = useRef<SessionTileScrollPosition | null>(null);
 	const locationHash = useLocation({select: (location) => location.hash});
@@ -1001,7 +1017,12 @@ function SessionView({
 											)}
 											{/* Upstream's composer stand-in: an archived session shows the Unarchive note in place of the editor */}
 											{!chromeHidden && sessionDirectory && data.archived && (
-												<ArchivedComposerNote sessionId={sessionId} />
+												<div
+													className="contents"
+													data-band-enter={archivedNoteEnters ? "" : undefined}
+												>
+													<ArchivedComposerNote sessionId={sessionId} />
+												</div>
 											)}
 											{!chromeHidden && sessionDirectory && !data.archived && (
 												<Composer

@@ -195,6 +195,9 @@ describe("archived session composer note", () => {
 			note: "This session is archived. Unarchive it to keep working in this session.Unarchive",
 		});
 
+		// Already archived at first paint: the note stays put, as upstream's band slot only animates later bands.
+		expect(document.querySelectorAll("[data-band-enter]").length).toBe(0);
+
 		const unarchived: SessionDetailData = {...detail, archived: false};
 		act(() => {
 			queryClient.setQueryData(sessionDetailQueryOptions(SESSION_ID).queryKey, unarchived);
@@ -205,5 +208,22 @@ describe("archived session composer note", () => {
 			composer: screen.queryByRole("textbox", {name: "Prompt"}) !== null,
 			standIns: document.querySelectorAll("[data-composer-stand-in]").length,
 		}).toStrictEqual({composer: true, standIns: 0});
+	});
+
+	it("band-enters the archived note when the session is archived while open", async () => {
+		stubBrowserGlobals();
+
+		const queryClient = await renderSession();
+		const archived: SessionDetailData = {...detail, archived: true};
+		act(() => {
+			queryClient.setQueryData(sessionDetailQueryOptions(SESSION_ID).queryKey, archived);
+		});
+
+		const note = await screen.findByRole("note");
+		expect({
+			slot: note.parentElement?.hasAttribute("data-band-enter"),
+			slotClass: note.parentElement?.className,
+			noteClassHasBandEnter: note.classList.contains("band-enter"),
+		}).toStrictEqual({slot: true, slotClass: "contents", noteClassHasBandEnter: true});
 	});
 });

@@ -4,12 +4,14 @@ import {useCallback, useState} from "react";
 import {useToast} from "../components/toast-context";
 import {requestSessionArchived} from "../lib/api/sessions";
 
-const ARCHIVE_FAILED_MESSAGE = "Couldn’t archive the session. Try again.";
-const UNARCHIVE_FAILED_MESSAGE = "Couldn’t unarchive the session. Try again.";
+const ARCHIVE_FAILED_MESSAGE = "Couldn’t archive this session. Try again.";
+const UNARCHIVE_FAILED_MESSAGE = "Couldn’t unarchive this session. Try again.";
+/** Upstream's `Qi.onSuccess` toast for every explicit (non-Undo) unarchive. */
+const UNARCHIVED_TOAST = {kind: "success", message: "Session unarchived.", durationMs: 3000} as const;
 
 /**
  * Archive or unarchive one session. Archiving toasts "Archived 1 session" with
- * [Undo]; neither the request nor the Undo depends on the caller staying
+ * [Undo]; unarchiving toasts "Session unarchived." (the Undo itself stays quiet); neither the request nor the Undo depends on the caller staying
  * mounted, so a row menu that closes on select can still finish the job.
  */
 export function useSessionArchive(sessionId: string): (archived: boolean) => void {
@@ -24,7 +26,14 @@ export function useSessionArchive(sessionId: string): (archived: boolean) => voi
 				});
 			};
 			if (!archived) {
-				unarchive();
+				requestSessionArchived(qc, sessionId, false).then(
+					() => {
+						toast(UNARCHIVED_TOAST);
+					},
+					() => {
+						toast({kind: "error", message: UNARCHIVE_FAILED_MESSAGE});
+					},
+				);
 				return;
 			}
 			requestSessionArchived(qc, sessionId, true).then(
@@ -58,7 +67,7 @@ export function useUnarchiveSession(sessionId: string): {unarchive: () => void; 
 		requestSessionArchived(qc, sessionId, false)
 			.then(
 				() => {
-					toast({kind: "success", message: "Session unarchived.", durationMs: 3000});
+					toast(UNARCHIVED_TOAST);
 				},
 				() => {
 					toast({kind: "error", message: UNARCHIVE_FAILED_MESSAGE});

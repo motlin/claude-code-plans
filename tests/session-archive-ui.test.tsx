@@ -183,15 +183,25 @@ describe("archive in the session row menu", () => {
 		});
 	});
 
-	it("unarchives on a without an Undo toast", async () => {
+	it("unarchives on a and toasts Session unarchived. without an Undo", async () => {
 		const menu = await openRowMenu(listItem({archived: true}));
 
 		fireEvent.keyDown(menu, {key: "a"});
 		await waitFor(() => {
-			expect(archiveCalls()).toEqual([{url: ARCHIVED_URL, method: "DELETE"}]);
+			expect(toastTexts()).toEqual(["Session unarchived."]);
 		});
-		await flush();
-		expect(toastTexts()).toEqual([]);
+		expect(archiveCalls()).toEqual([{url: ARCHIVED_URL, method: "DELETE"}]);
+	});
+
+	it("toasts upstream's error when the unarchive request fails", async () => {
+		fetchMock.mockResolvedValue(Response.json({error: "boom"}, {status: 500}));
+		const menu = await openRowMenu(listItem({archived: true}));
+
+		fireEvent.keyDown(menu, {key: "a"});
+
+		await waitFor(() => {
+			expect(toastTexts()).toEqual(["Couldn’t unarchive this session. Try again."]);
+		});
 	});
 
 	it("toasts an error when the archive request fails", async () => {
@@ -201,7 +211,7 @@ describe("archive in the session row menu", () => {
 		fireEvent.keyDown(menu, {key: "a"});
 
 		await waitFor(() => {
-			expect(toastTexts()).toEqual(["Couldn’t archive the session. Try again."]);
+			expect(toastTexts()).toEqual(["Couldn’t archive this session. Try again."]);
 		});
 	});
 });
