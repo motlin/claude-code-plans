@@ -47,17 +47,17 @@
 		"tolerance": 0
 	},
 	"bundle.home.gzip": {
-		"ceiling": 408972,
+		"ceiling": 414105,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Cold JS drifted through the 1% band from 404827 / 1238013 as the composer skill chip's hover card and the accepted-mention range model landed; painting accepted @ file mentions as chips in the composer overlay tipped home to 408972 / 1251066. Ceilings set to the measurement; the 1% tolerance is unchanged.",
+		"reason": "Cold JS drifted through the 1% band from 408972 / 1251066 as the composer's did-you-mean matcher landed; the complete CLI command-name set (about 160 built-in names, aliases and bundled skills the composer needs to tell a typo from a real command) tipped home to 414105 / 1265272. Ceilings set to the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-10-23"
 	},
 	"bundle.home.raw": {
-		"ceiling": 1251066,
+		"ceiling": 1265272,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Cold JS drifted through the 1% band from 404827 / 1238013 as the composer skill chip's hover card and the accepted-mention range model landed; painting accepted @ file mentions as chips in the composer overlay tipped home to 408972 / 1251066. Ceilings set to the measurement; the 1% tolerance is unchanged.",
+		"reason": "Cold JS drifted through the 1% band from 408972 / 1251066 as the composer's did-you-mean matcher landed; the complete CLI command-name set (about 160 built-in names, aliases and bundled skills the composer needs to tell a typo from a real command) tipped home to 414105 / 1265272. Ceilings set to the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-10-23"
 	},
 	"bundle.session.gzip": {

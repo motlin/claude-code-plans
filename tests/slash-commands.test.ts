@@ -5,8 +5,10 @@ import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
 import {SlashCommandListResponse} from "../src/lib/api/commands";
 import {
 	BUILTIN_SLASH_COMMANDS,
+	CLI_COMMAND_NAMES,
 	filterSlashCommands,
 	highlightMatches,
+	isKnownSlashCommand,
 	mergeSlashCommands,
 	skillChipArgumentHint,
 	slashCommandLabel,
@@ -451,5 +453,79 @@ describe("splitLeadingSlashCommand", () => {
 			midText: null,
 			bareSlash: null,
 		});
+	});
+});
+
+describe("CLI_COMMAND_NAMES", () => {
+	it("contains every curated built-in and the CLI's other built-ins and aliases", () => {
+		const expected = [
+			...BUILTIN_SLASH_COMMANDS.flatMap((command) => [command.name, ...(command.aliases ?? [])]),
+			"doctor",
+			"hooks",
+			"mcp",
+			"agents",
+			"memory",
+			"resume",
+			"security-review",
+			"todos",
+			"add-dir",
+			"output-style",
+			"cost",
+			"stats",
+			"bashes",
+			"allowed-tools",
+			"exit",
+			"quit",
+		];
+		expect(expected.filter((name) => !CLI_COMMAND_NAMES.has(name))).toStrictEqual([]);
+	});
+
+	it("holds only lowercase command names", () => {
+		expect([...CLI_COMMAND_NAMES].filter((name) => !/^[a-z][a-z0-9-]*$/.test(name))).toStrictEqual([]);
+	});
+});
+
+describe("isKnownSlashCommand", () => {
+	const pluginSkill: SlashCommand = {
+		name: "plugin:skill",
+		description: "A plugin skill",
+		source: "plugin-skill",
+		pluginName: "plugin",
+	};
+	const aliased: SlashCommand = {
+		name: "deploy",
+		description: "Deploy",
+		source: "project-command",
+		aliases: ["ship"],
+	};
+
+	it("knows a CLI built-in without any listed commands", () => {
+		expect(isKnownSlashCommand("doctor", [])).toBe(true);
+	});
+
+	it("rejects a typo", () => {
+		expect(isKnownSlashCommand("statuss", [])).toBe(false);
+	});
+
+	it("matches case-insensitively", () => {
+		expect([isKnownSlashCommand("STATUS", []), isKnownSlashCommand("Plugin:Skill", [pluginSkill])]).toStrictEqual([
+			true,
+			true,
+		]);
+	});
+
+	it("knows a listed plugin skill by its full name and by the part after the last colon", () => {
+		expect([
+			isKnownSlashCommand("plugin:skill", [pluginSkill]),
+			isKnownSlashCommand("skill", [pluginSkill]),
+			isKnownSlashCommand("plugin:skill", []),
+		]).toStrictEqual([true, true, false]);
+	});
+
+	it("knows a listed command's aliases", () => {
+		expect([isKnownSlashCommand("deploy", [aliased]), isKnownSlashCommand("ship", [aliased])]).toStrictEqual([
+			true,
+			true,
+		]);
 	});
 });
