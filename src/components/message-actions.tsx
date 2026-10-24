@@ -49,7 +49,7 @@ export interface MessageActionsProps {
 }
 
 const BAR_CLASS = [
-	"flex items-center gap-g1 select-none",
+	"flex h-6 items-center gap-0 select-none",
 	// Upstream's toolbar turns a hovered button's icon primary, except a pressed one, which keeps its accent ink.
 	"[&_button:hover:not([aria-pressed=true]):not(:disabled)]:text-primary",
 	"opacity-0 pointer-events-none",
@@ -300,8 +300,8 @@ function MessageTime({
 				dateTime={timestamp}
 				className={
 					inner === "left"
-						? "pl-2 text-[13px]/[19px] text-ink-muted tabular-nums outline-none"
-						: "flex h-6 items-center pe-1 text-[11px] text-ink-muted tabular-nums outline-none"
+						? "flex h-6 items-center ps-2 text-[13px]/[19px] text-ink-muted tabular-nums outline-none"
+						: "flex h-6 items-center pe-[6px] text-[11px]/[17px] text-ink-muted tabular-nums outline-none"
 				}
 			>
 				{relative}
@@ -382,7 +382,8 @@ function ActionBar({
 export function AssistantMessageActions({message, text, timestamp, details, hovered, getHtml}: MessageActionsProps) {
 	return (
 		<ActionBar
-			className={`${BAR_CLASS} pt-[4px]`}
+			// Upstream sets the toolbar 6px (its column's gap-xs) under the last prose block, its left edge 2px left of the text.
+			className={`${BAR_CLASS} mt-[6px] -ms-[2px]`}
 			label={`Show message actions for ${messageHeading("assistant", text)}`}
 			hovered={hovered}
 			testId="message-actions"

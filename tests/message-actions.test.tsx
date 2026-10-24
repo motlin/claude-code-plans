@@ -470,7 +470,7 @@ describe("UserMessageActions", () => {
 			unmount();
 			return result;
 		};
-		const slot = "flex h-6 items-center pe-1 text-[11px] text-ink-muted tabular-nums outline-none";
+		const slot = "flex h-6 items-center pe-[6px] text-[11px]/[17px] text-ink-muted tabular-nums outline-none";
 
 		expect([
 			time("2026-09-26T10:00:00.000Z"),
@@ -723,7 +723,7 @@ describe("message action toolbar sizing and reveal", () => {
 		}).toStrictEqual({title: null, tooltip: "Copy"});
 	});
 
-	it("sizes buttons 24px with radius 6 and 16px icons, the assistant time 13px/19px and the user time 11px, each padded on its inner side", () => {
+	it("sizes buttons 24px with radius 6 and 16px icons, the assistant time a 24px 13px/19px flex box and the user time 11px/17px, each padded on its inner side", () => {
 		const assistant = render(
 			<AssistantMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} />,
 		).container;
@@ -738,9 +738,29 @@ describe("message action toolbar sizing and reveal", () => {
 		expect({
 			button: ["size-6", "rounded-r5"].every((c) => copy.className.split(" ").includes(c)),
 			icon: copy.querySelector("svg")!.getAttribute("class")!.split(" ").includes("size-4"),
-			assistantTime: ["text-[13px]/[19px]", "text-ink-muted", "pl-2"].every((c) => assistantTime.includes(c)),
-			userTime: ["text-[11px]", "h-6", "text-ink-muted", "pe-1"].every((c) => userTime.includes(c)),
+			assistantTime: ["flex", "h-6", "items-center", "text-[13px]/[19px]", "text-ink-muted", "ps-2"].every((c) =>
+				assistantTime.includes(c),
+			),
+			userTime: ["text-[11px]/[17px]", "h-6", "text-ink-muted", "pe-[6px]"].every((c) => userTime.includes(c)),
 		}).toStrictEqual({button: true, icon: true, assistantTime: true, userTime: true});
+	});
+
+	it("lays the bar out as upstream's 24px toolbar: no inter-button gap, 6px under the prose and 2px left of it on assistant turns", () => {
+		const has = (classes: string[], wanted: readonly string[]) => wanted.filter((c) => classes.includes(c));
+		const assistant = bar(
+			render(<AssistantMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} />)
+				.container,
+		).className.split(" ");
+		cleanup();
+		const user = bar(
+			render(<UserMessageActions message={MESSAGE} text="Hi" timestamp={TIMESTAMP} details={[]} />).container,
+		).className.split(" ");
+		const wanted = ["gap-0", "h-6", "mt-[6px]", "-ms-[2px]", "gap-g1", "pt-[4px]"] as const;
+
+		expect({assistant: has(assistant, wanted), user: has(user, wanted)}).toStrictEqual({
+			assistant: ["gap-0", "h-6", "mt-[6px]", "-ms-[2px]"],
+			user: ["gap-0", "h-6"],
+		});
 	});
 
 	it("fades the bar in after 100ms on hover, at once on focus, and out in 60ms, with no scale", () => {
