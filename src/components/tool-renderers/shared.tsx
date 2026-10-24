@@ -294,16 +294,27 @@ function CheckIcon({size}: {size: number}) {
  * Requires a `group/body` ancestor for the hover reveal.
  * Copies the provided `text` to the clipboard on click.
  */
-export function CopyButton({text, label = "Copy", size}: {text: string; label?: string; size?: "xs"}) {
+export function CopyButton({
+	text,
+	label = "Copy",
+	size,
+	onCopied,
+}: {
+	text: string;
+	label?: string;
+	size?: "xs";
+	onCopied?: () => void;
+}) {
 	const [copied, setCopied] = useState(false);
 
 	const handleClick = useCallback(() => {
 		void navigator.clipboard.writeText(text);
+		onCopied?.();
 		setCopied(true);
 		setTimeout(() => {
 			setCopied(false);
 		}, 1500);
-	}, [text]);
+	}, [text, onCopied]);
 	const iconSize = size === "xs" ? 12 : 16;
 
 	return (

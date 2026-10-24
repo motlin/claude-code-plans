@@ -3,6 +3,7 @@
 import {cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat} from "../src/components/session-chat";
+import {ToastContext, type ToastOptions} from "../src/components/toast-context";
 import {processTranscript} from "../src/lib/transcript";
 
 let showDebug = false;
@@ -32,7 +33,14 @@ afterEach(cleanup);
 
 const THINKING = "Fabricated reasoning about the next step\nSecond line of reasoning";
 
-function renderThinking(options: {showDebug?: boolean; thinkingDurationMs?: number} = {}): HTMLElement {
+function renderThinking(
+	options: {
+		showDebug?: boolean;
+		thinkingDurationMs?: number;
+		thinking?: string;
+		toast?: (options: ToastOptions) => void;
+	} = {},
+): HTMLElement {
 	showDebug = options.showDebug ?? false;
 	const {lines, toolResultMap} = processTranscript([
 		{
@@ -41,11 +49,11 @@ function renderThinking(options: {showDebug?: boolean; thinkingDurationMs?: numb
 			...(options.thinkingDurationMs === undefined ? {} : {thinkingDurationMs: options.thinkingDurationMs}),
 			message: {
 				role: "assistant",
-				content: [{type: "thinking", thinking: THINKING}],
+				content: [{type: "thinking", thinking: options.thinking ?? THINKING}],
 			},
 		},
 	]);
-	return render(
+	const chat = (
 		<SessionChat
 			sessionId="test-session"
 			lines={lines}
@@ -53,7 +61,14 @@ function renderThinking(options: {showDebug?: boolean; thinkingDurationMs?: numb
 			showCompactSummaries
 			showTranscriptOnly
 			showThinking
-		/>,
+		/>
+	);
+	return render(
+		options.toast === undefined ? (
+			chat
+		) : (
+			<ToastContext.Provider value={options.toast}>{chat}</ToastContext.Provider>
+		),
 	).container;
 }
 
@@ -124,8 +139,29 @@ describe("thinking block", () => {
 		fireEvent.click(screen.getByLabelText("Copy as quote"));
 
 		expect(writeText.mock.calls).toStrictEqual([
-			["> Fabricated reasoning about the next step\n> Second line of reasoning"],
+			["> **Thinking** (~16 tok)\n>\n> Fabricated reasoning about the next step\n> Second line of reasoning"],
 		]);
+	});
+
+	it("quotes empty thinking lines as a bare > under the token-estimate header", () => {
+		const writeText = vi.fn<Clipboard["writeText"]>(async (_text: string) => {});
+		Object.defineProperty(navigator, "clipboard", {value: {writeText}, configurable: true});
+		renderThinking({thinking: "a\n\nb"});
+
+		fireEvent.click(screen.getByLabelText("Copy as quote"));
+
+		expect(writeText.mock.calls).toStrictEqual([["> **Thinking** (~1 tok)\n>\n> a\n>\n> b"]]);
+	});
+
+	it("shows a Copied success toast after copying the thinking quote", () => {
+		const writeText = vi.fn<Clipboard["writeText"]>(async (_text: string) => {});
+		Object.defineProperty(navigator, "clipboard", {value: {writeText}, configurable: true});
+		const toast = vi.fn<(options: ToastOptions) => void>();
+		renderThinking({toast});
+
+		fireEvent.click(screen.getByLabelText("Copy as quote"));
+
+		expect(toast.mock.calls).toStrictEqual([[{message: "Copied", kind: "success"}]]);
 	});
 
 	it("labels how long the model thought above the thinking text", () => {

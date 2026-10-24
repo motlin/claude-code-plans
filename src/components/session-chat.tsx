@@ -67,6 +67,7 @@ import {assistantTurnDetails, userTurnDetails} from "../lib/turn-metadata";
 import {TurnChangesCard} from "./turn-changes-card";
 import {collectTurnChanges, lastTurnChangesAnchor, type TurnChanges} from "../lib/turn-changes";
 import {useSettings} from "./settings-context";
+import {ToastContext} from "./toast-context";
 import type {TranscriptMode} from "../lib/transcript-mode";
 import {hmrPersist} from "../lib/hmr-persist";
 import type {MessageSessionLine, SessionLine, SessionContentBlock, ToolResultInfo} from "../lib/sessions";
@@ -4431,6 +4432,12 @@ function ThinkingBlock({
 	// Upstream's pr-6 fits the copy button alone. When DebugLink renders it
 	// shares the overlay, so the gutter has to grow or long lines run under it.
 	const gutterClass = settings.showDebug && sourceUuid ? "pr-10" : "pr-6";
+	// Upstream's $X confirms the copy with a "Copied" toast. Read the context
+	// directly so a SessionChat rendered without a ToastProvider still copies.
+	const toast = useContext(ToastContext);
+	const handleCopied = useCallback(() => {
+		toast?.({message: "Copied", kind: "success"});
+	}, [toast]);
 	return (
 		<div className="border-l-2 border-t2 pl-3">
 			{durationMs !== undefined && (
@@ -4442,7 +4449,7 @@ function ThinkingBlock({
 				</div>
 				<div className="absolute right-0 top-0 flex items-center gap-g3">
 					<DebugLink sessionId={sessionId} uuid={sourceUuid} />
-					<CopyButton text={toMarkdownQuote(thinking)} label="Copy as quote" />
+					<CopyButton text={toMarkdownQuote(thinking)} label="Copy as quote" onCopied={handleCopied} />
 				</div>
 			</div>
 		</div>
@@ -4456,11 +4463,13 @@ function formatThinkingDuration(ms: number): string {
 	return `${mins}m ${secs}s`;
 }
 
+/** Upstream's QX: a token-estimate header, then each line quoted, empty lines as a bare `>`. */
 function toMarkdownQuote(text: string): string {
-	return text
+	const quoted = text
 		.split("\n")
-		.map((line) => `> ${line}`)
+		.map((line) => (line === "" ? ">" : `> ${line}`))
 		.join("\n");
+	return `> **Thinking** (~${Math.round(text.length / 4)} tok)\n>\n${quoted}`;
 }
 
 /**
