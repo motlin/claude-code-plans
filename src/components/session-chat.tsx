@@ -112,7 +112,7 @@ import {jumpToMessage, TRANSCRIPT_JUMP_REQUEST_EVENT} from "../lib/jump-to-messa
 import {asRecord, isKeyOf} from "../lib/narrow";
 import {toolMarkActivity} from "../lib/working-mark-activity";
 import {WorkingMark} from "./working-mark";
-import {StepScreenshotStrip} from "./step-screenshot-strip";
+import {StepScreenshotStrip, StepScreenshots} from "./step-screenshot-strip";
 
 function getSourceSessionId(line: SessionLine, fallbackSessionId: string): string {
 	return "sessionId" in line && line.sessionId !== undefined ? line.sessionId : fallbackSessionId;
@@ -5354,9 +5354,23 @@ function ToolCallRow({
 	// A grouped step shows its own screenshots, numbered group-wide, until it expands to its body.
 	const media =
 		shots === undefined || expanded ? null : <RowMedia calls={[call]} from={shots.from} total={shots.total} step />;
+	// An expanded grouped step ends its body with the full screenshots; a lone row hoists them
+	// into a card after the row, as upstream's `code.tool_images` does.
+	const images = call.outputImages !== undefined && call.outputImages.length > 0 ? call.outputImages : null;
+	const bodyImages = images !== null && nested ? <StepScreenshots images={images} /> : null;
+	const hoistedImages = images !== null && !nested ? <StepScreenshots images={images} padTop={false} /> : null;
+	const withHoistedImages = (row: React.ReactElement) =>
+		hoistedImages === null ? (
+			row
+		) : (
+			<>
+				{row}
+				{hoistedImages}
+			</>
+		);
 
 	if (!expandable) {
-		return (
+		return withHoistedImages(
 			<div data-tool-row="" className="flex flex-col w-full">
 				<div
 					data-state={busyAgent ? "busy" : undefined}
@@ -5367,7 +5381,7 @@ function ToolCallRow({
 				</div>
 				{body}
 				{announcer}
-			</div>
+			</div>,
 		);
 	}
 
@@ -5404,12 +5418,15 @@ function ToolCallRow({
 			{expanded && (
 				<div id={bodyId} className="flow-root">
 					{body}
+					{bodyImages}
 				</div>
 			)}
 			{announcer}
 		</div>
 	);
-	return isTurnStatus ? <TurnStatusFrame leading={leading}>{disclosure}</TurnStatusFrame> : disclosure;
+	return withHoistedImages(
+		isTurnStatus ? <TurnStatusFrame leading={leading}>{disclosure}</TurnStatusFrame> : disclosure,
+	);
 }
 
 /**

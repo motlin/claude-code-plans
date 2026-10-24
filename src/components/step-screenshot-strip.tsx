@@ -92,3 +92,38 @@ export function StepScreenshotStrip({
 		</div>
 	);
 }
+
+export interface StepScreenshotsProps {
+	images: readonly ToolResultImage[];
+	/** Open 8px above the images, as an expanded step's body does; a lone row's card sits flush. */
+	padTop?: boolean;
+	/** Open the viewer at the clicked image's index. */
+	onOpen?: (index: number) => void;
+}
+
+/**
+ * A step's full-size screenshots (upstream cb6930dae `md`/`Vw`): one "View
+ * screenshot" button per image, drawn at the end of an expanded step's body
+ * and, for a lone tool row, as a card after the row.
+ */
+export function StepScreenshots({images, padTop = true, onOpen}: StepScreenshotsProps) {
+	return (
+		<div data-step-screenshots="" className={`flex flex-col items-start gap-1${padTop ? " pt-p8" : ""}`}>
+			{images.map((image, index) => (
+				<button
+					key={index}
+					type="button"
+					aria-label="View screenshot"
+					className="max-w-full cursor-zoom-in focus-visible:outline-hidden hide-focus-ring focus-visible:ring-focus rounded-sm"
+					onClick={() => onOpen?.(index)}
+				>
+					<img
+						alt=""
+						className="max-w-full max-h-[360px] w-auto rounded-r4 border"
+						src={`data:${image.mimeType};base64,${image.data}`}
+					/>
+				</button>
+			))}
+		</div>
+	);
+}

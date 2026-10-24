@@ -181,17 +181,6 @@ function ScreenshotRenderer({resultText}: {resultText: string}) {
 				<span className="text-body text-primary">Screenshot captured</span>
 				{path && <span className="text-secondary text-code font-mono truncate">{path}</span>}
 			</div>
-			{path && (
-				<img
-					src={`file://${path}`}
-					alt="Screenshot"
-					className="max-w-full rounded-r6 border border-border"
-					style={{maxHeight: 300}}
-					onError={(e) => {
-						e.currentTarget.style.display = "none";
-					}}
-				/>
-			)}
 			{!path && <ResultSummary resultText={resultText} />}
 		</div>
 	);

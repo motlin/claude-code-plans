@@ -190,4 +190,107 @@ describe("tool-row screenshot media slots", () => {
 
 		expect(readStepToggle(container).getAttribute("aria-expanded")).toBe("false");
 	});
+
+	it("shows an expanded step's screenshots in its body as 'View screenshot' buttons", () => {
+		const container = renderTranscript(groupRecords());
+		fireEvent.click(groupToggle(container));
+		fireEvent.click(readStepToggle(container));
+
+		expect(stepScreenshots(container)).toStrictEqual([
+			{
+				className: SCREENSHOTS_CLASS,
+				inBody: true,
+				buttons: [
+					{
+						label: "View screenshot",
+						className: VIEW_BUTTON_CLASS,
+						imgClass: VIEW_IMG_CLASS,
+						alt: "",
+						src: "data:image/png;base64,AAA",
+					},
+				],
+			},
+		]);
+	});
+
+	it("draws a lone row's screenshots in a card after the row, without top padding", () => {
+		const container = renderTranscript(loneRecords());
+
+		expect(mediaSlots(container)).toStrictEqual([]);
+		expect(stepScreenshots(container)).toStrictEqual([
+			{
+				className: "flex flex-col items-start gap-1",
+				inBody: false,
+				buttons: [
+					{
+						label: "View screenshot",
+						className: VIEW_BUTTON_CLASS,
+						imgClass: VIEW_IMG_CLASS,
+						alt: "",
+						src: "data:image/png;base64,AAA",
+					},
+				],
+			},
+		]);
+	});
+
+	it("keeps a lone row's card out of its expanded body", () => {
+		const container = renderTranscript(loneRecords());
+		fireEvent.click(readStepToggle(container));
+
+		expect(readStepToggle(container).getAttribute("aria-expanded")).toBe("true");
+		expect(stepScreenshots(container).map((card) => card.inBody)).toStrictEqual([false]);
+	});
 });
+
+const SCREENSHOTS_CLASS = "flex flex-col items-start gap-1 pt-p8";
+const VIEW_BUTTON_CLASS =
+	"max-w-full cursor-zoom-in focus-visible:outline-hidden hide-focus-ring focus-visible:ring-focus rounded-sm";
+const VIEW_IMG_CLASS = "max-w-full max-h-[360px] w-auto rounded-r4 border";
+
+/** One Read of a PNG alone in its turn, which draws as a lone row. */
+function loneRecords(): unknown[] {
+	const [assistant, , imageResult] = groupRecords() as [Record<string, unknown>, unknown, Record<string, unknown>];
+	return [
+		{
+			...assistant,
+			message: {
+				role: "assistant",
+				content: [
+					{type: "tool_use", id: "t2", name: "Read", input: {file_path: "/repo/shots/input-debug.png"}},
+				],
+			},
+		},
+		{...imageResult, parentUuid: "a1"},
+	];
+}
+
+interface StepScreenshotsCard {
+	className: string;
+	inBody: boolean;
+	buttons: {
+		label: string | null;
+		className: string;
+		imgClass: string | undefined;
+		alt: string | null | undefined;
+		src: string | null | undefined;
+	}[];
+}
+
+function stepScreenshots(container: HTMLElement): StepScreenshotsCard[] {
+	return [...container.querySelectorAll<HTMLElement>("[data-step-screenshots]")].map((card) => ({
+		className: card.className,
+		// A lone row's card follows the row; a step's sits inside its row's body.
+		inBody: card.closest("[data-tool-row]") !== null,
+		buttons: [...card.querySelectorAll("button")].map((button) => {
+			const img = button.querySelector("img");
+			return {
+				label: button.getAttribute("aria-label"),
+				className: button.className,
+				imgClass: img?.className,
+				alt: img?.getAttribute("alt"),
+				src: img?.getAttribute("src"),
+			};
+		}),
+	}));
+}
