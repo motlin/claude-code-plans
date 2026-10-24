@@ -38,8 +38,10 @@ describe("hand-rolled focus rings", () => {
 		// Upstream's approval card root draws its own 1px fill-accent outline, offset 2px.
 		const approvalCardRoot =
 			"focus-visible:outline-1 focus-visible:outline-fill-accent focus-visible:outline-offset-2";
+		// Upstream's screenshot thumbnails (shared-13 `Q8`) draw a 2px fill-accent ring, measured rgb(42,120,214).
+		const screenshotThumb = "focus-visible:ring-2 focus-visible:ring-fill-accent";
 		const offenders = sources("src").filter((path) =>
-			banned.test(readFileSync(path, "utf8").replaceAll(approvalCardRoot, "")),
+			banned.test(readFileSync(path, "utf8").replaceAll(approvalCardRoot, "").replaceAll(screenshotThumb, "")),
 		);
 		expect(offenders).toStrictEqual([]);
 	});
