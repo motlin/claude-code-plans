@@ -6,7 +6,7 @@
  */
 
 /** Why a ref renders as blocked code instead of a link, as upstream's `ir()` reasons. */
-export type FileRefBlock = "outside_roots";
+export type FileRefBlock = "outside_roots" | "missing";
 
 export interface FileRef {
 	/** Absolute path of the confirmed file, or of the blocked path. */
@@ -142,18 +142,23 @@ function refFor(parsed: ParsedFileRefText, path: string): FileRef {
  * resolves against `cwd` first, then against a unique known path ending in it.
  * A text that names no existing file but resolves the same way among
  * `outsidePaths` (paths confirmed outside the allowed roots) gets a ref
- * blocked as `outside_roots`.
+ * blocked as `outside_roots`. A text that resolves to neither but does among
+ * `missingPaths` (inside the roots, not found) links optimistically, as
+ * upstream does; the click rechecks it.
  */
 export function resolveFileRefs(
 	inlineCodes: Iterable<string>,
 	knownPaths: Iterable<string>,
 	cwd: string | undefined,
 	outsidePaths: Iterable<string> = [],
+	missingPaths: Iterable<string> = [],
 ): Map<string, FileRef> {
 	const known = [...knownPaths];
 	const knownSet = new Set(known);
 	const outside = [...outsidePaths];
 	const outsideSet = new Set(outside);
+	const missing = [...missingPaths];
+	const missingSet = new Set(missing);
 	const refs = new Map<string, FileRef>();
 	for (const text of inlineCodes) {
 		if (refs.has(text)) continue;
@@ -165,7 +170,12 @@ export function resolveFileRefs(
 			continue;
 		}
 		const blocked = outside.length === 0 ? null : resolveTarget(parsed.target, outside, outsideSet, cwd);
-		if (blocked !== null) refs.set(text, {...refFor(parsed, blocked), block: "outside_roots"});
+		if (blocked !== null) {
+			refs.set(text, {...refFor(parsed, blocked), block: "outside_roots"});
+			continue;
+		}
+		const optimistic = missing.length === 0 ? null : resolveTarget(parsed.target, missing, missingSet, cwd);
+		if (optimistic !== null) refs.set(text, refFor(parsed, optimistic));
 	}
 	return refs;
 }

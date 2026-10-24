@@ -1,4 +1,4 @@
-import {useQuery} from "@tanstack/react-query";
+import {useQuery, useQueryClient} from "@tanstack/react-query";
 import {
 	createContext,
 	type KeyboardEvent,
@@ -7,18 +7,23 @@ import {
 	useCallback,
 	useContext,
 	useMemo,
+	useSyncExternalStore,
 } from "react";
 
 import {type ArtifactSummary, artifactsQueryOptions} from "../lib/api/artifacts";
+import {type FileRefStatus, fileRefStatusQueryOptions} from "../lib/api/file-refs";
 import {inlineCodeTexts, mentionsArtifactUrl} from "../lib/client-markdown";
 import {requestFileOpen} from "../lib/file-open-requests";
 import {type FileRef} from "../lib/file-refs";
+import {markFileRefMissing, missingFileRefs, subscribeMissingFileRefs} from "../lib/missing-file-refs";
 import type {SessionFiles} from "../lib/session-files";
 import {MarkdownArticle} from "./markdown-article";
 import {usePaneHost} from "./panes/pane-host-context";
 import {useResolvedFileRefs, EMPTY_REFS} from "./use-resolved-file-refs";
 
 interface FileRefsContextValue {
+	/** Keys the session's missing-file set. */
+	sessionId: string;
 	/** The session's working directory; relative refs resolve against it first. */
 	cwd: string | undefined;
 	/** Absolute paths the session touched; a bare name can resolve to a unique one. */
@@ -55,19 +60,81 @@ export function SessionFileRefs({
 		},
 		[sessionId, openPane],
 	);
-	const value = useMemo(() => ({cwd, sessionPaths, open}), [cwd, sessionPaths, open]);
+	const value = useMemo(() => ({sessionId, cwd, sessionPaths, open}), [sessionId, cwd, sessionPaths, open]);
 	return <FileRefsProvider value={value}>{children}</FileRefsProvider>;
 }
 
 const NO_PATHS: readonly string[] = [];
 
-/** {@link useResolvedFileRefs} against the surrounding {@link FileRefsProvider}; empty outside one. */
-function useFileRefs(texts: readonly string[]): ReadonlyMap<string, FileRef> {
+const NO_SESSION = "";
+
+/**
+ * {@link useResolvedFileRefs} against the surrounding {@link FileRefsProvider};
+ * empty outside one. With `linkMissing`, paths not found inside the roots link
+ * too, until a click finds them missing.
+ */
+function useFileRefs(texts: readonly string[], linkMissing = false): ReadonlyMap<string, FileRef> {
 	const context = useContext(FileRefsContext);
-	const refs = useResolvedFileRefs(context === null ? NO_PATHS : texts, context?.sessionPaths ?? NO_PATHS, [
-		context?.cwd,
-	]);
+	const sessionId = context?.sessionId ?? NO_SESSION;
+	const missingFiles = useSyncExternalStore(
+		subscribeMissingFileRefs,
+		() => missingFileRefs(sessionId),
+		() => missingFileRefs(sessionId),
+	);
+	const refs = useResolvedFileRefs(
+		context === null ? NO_PATHS : texts,
+		context?.sessionPaths ?? NO_PATHS,
+		[context?.cwd],
+		{linkMissing, missingFiles},
+	);
 	return context === null ? EMPTY_REFS : refs;
+}
+
+/** Upstream's 150ms before a slow existence check marks the clicked ref busy. */
+const BUSY_DELAY_MS = 150;
+
+type CheckedOpenResult = "opened" | "missing" | "outside";
+
+/**
+ * Upstream's `rr` click for an optimistically linked ref: a file already known
+ * to exist opens at once; otherwise its existence is rechecked (the ref turns
+ * `aria-busy` if that takes over 150ms), then it opens or joins the session's
+ * missing files, which re-renders it blocked.
+ */
+function useCheckedOpen(
+	sessionId: string,
+	open: (ref: FileRef) => void,
+): (ref: FileRef, element: HTMLElement) => Promise<CheckedOpenResult> {
+	const queryClient = useQueryClient();
+	return useCallback(
+		async (ref, element) => {
+			const options = fileRefStatusQueryOptions(ref.path);
+			if (queryClient.getQueryData(options.queryKey) === "exists") {
+				open(ref);
+				return "opened";
+			}
+			const busy = setTimeout(() => {
+				element.setAttribute("aria-busy", "true");
+			}, BUSY_DELAY_MS);
+			let status: FileRefStatus;
+			try {
+				status = await queryClient.query({...options, staleTime: 0});
+			} catch {
+				// A failed check opens anyway; the Files pane reports what went wrong.
+				status = "exists";
+			} finally {
+				clearTimeout(busy);
+				element.removeAttribute("aria-busy");
+			}
+			if (status === "exists") {
+				open(ref);
+				return "opened";
+			}
+			if (status === "missing") markFileRefMissing(sessionId, ref.path);
+			return status;
+		},
+		[queryClient, sessionId, open],
+	);
 }
 
 /** The open handler of the surrounding {@link FileRefsProvider}, if any. */
@@ -143,21 +210,24 @@ function useArtifactTitles(markdown: string): ReadonlyMap<string, string> | unde
 
 function LinkedProseMarkdown({
 	markdown,
+	sessionId,
 	open,
 	smartQuotes,
 }: {
 	markdown: string;
+	sessionId: string;
 	open: (ref: FileRef) => void;
 	smartQuotes: boolean;
 }) {
 	const texts = useMemo(() => inlineCodeTexts(markdown), [markdown]);
-	const refs = useFileRefs(texts);
+	const refs = useFileRefs(texts, true);
+	const checkedOpen = useCheckedOpen(sessionId, open);
 	const artifactTitles = useArtifactTitles(markdown);
 	return (
 		<MarkdownArticle
 			markdown={markdown}
 			fileRefs={refs.size === 0 ? undefined : refs}
-			onFileRef={open}
+			onFileRef={checkedOpen}
 			artifactTitles={artifactTitles}
 			smartQuotes={smartQuotes}
 			zonedTimes={smartQuotes}
@@ -171,10 +241,15 @@ function LinkedProseMarkdown({
  * upstream's assistant text does.
  */
 export function ProseMarkdown({markdown, smartQuotes = false}: {markdown: string; smartQuotes?: boolean}) {
-	const open = useOpenFileRef();
-	return open === null ? (
+	const context = useContext(FileRefsContext);
+	return context === null ? (
 		<MarkdownArticle markdown={markdown} smartQuotes={smartQuotes} zonedTimes={smartQuotes} />
 	) : (
-		<LinkedProseMarkdown markdown={markdown} open={open} smartQuotes={smartQuotes} />
+		<LinkedProseMarkdown
+			markdown={markdown}
+			sessionId={context.sessionId}
+			open={context.open}
+			smartQuotes={smartQuotes}
+		/>
 	);
 }

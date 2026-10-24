@@ -115,6 +115,20 @@ describe("resolveFileRefs", () => {
 			["src/app.ts", {path: "/repo/src/app.ts"}],
 		]);
 	});
+	it("links a missing path inside the roots optimistically, after existing and outside matches", () => {
+		const refs = resolveFileRefs(
+			["src/new.ts:3", "src/app.ts", "/tmp/outside/notes.txt", "/elsewhere/x.ts"],
+			["/repo/src/app.ts"],
+			"/repo",
+			["/tmp/outside/notes.txt"],
+			["/repo/src/new.ts", "/repo/src/app.ts", "/tmp/outside/notes.txt"],
+		);
+		expect([...refs]).toStrictEqual([
+			["src/new.ts:3", {path: "/repo/src/new.ts", line: 3}],
+			["src/app.ts", {path: "/repo/src/app.ts"}],
+			["/tmp/outside/notes.txt", {path: "/tmp/outside/notes.txt", block: "outside_roots"}],
+		]);
+	});
 });
 
 describe("handleFileRefsRequest", () => {

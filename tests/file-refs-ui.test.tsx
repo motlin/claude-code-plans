@@ -19,6 +19,8 @@ import {installLocalStorage} from "./fake-storage";
 const EXISTING = ["/repo/.mise/config.toml", "/repo/src/app.ts"];
 const OUTSIDE = new Set(["/tmp/outside/notes.txt"]);
 
+const MISSING_REASON =
+	"Couldn’t find this file, so it can’t be opened. You can ask Claude to create it or check the path.";
 const OUTSIDE_REASON = "This file is outside this session’s folders, so it can’t be opened here.";
 
 function fileRefStatus(path: string): "exists" | "missing" | "outside" {
@@ -51,12 +53,19 @@ class FakeObserver {
 }
 
 const statRequests: string[][] = [];
+/** How long `/api/file-refs` takes to answer, for the busy-state tests. */
+let statDelayMs = 0;
 
 async function fakeFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
 	const url = String(input);
 	if (url === "/api/file-refs") {
 		const {paths} = JSON.parse(String(init?.body)) as {paths: string[]};
 		statRequests.push(paths);
+		if (statDelayMs > 0) {
+			await new Promise((resolve) => {
+				setTimeout(resolve, statDelayMs);
+			});
+		}
 		return Promise.resolve(
 			Response.json({statuses: Object.fromEntries(paths.map((path) => [path, fileRefStatus(path)]))}),
 		);
@@ -75,6 +84,7 @@ function withQueryClient(children: ReactNode) {
 beforeEach(() => {
 	installLocalStorage();
 	statRequests.length = 0;
+	statDelayMs = 0;
 	vi.stubGlobal("fetch", vi.fn(fakeFetch));
 	vi.stubGlobal("ResizeObserver", FakeObserver);
 	vi.stubGlobal("IntersectionObserver", FakeObserver);
@@ -84,6 +94,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+	vi.useRealTimers();
 	cleanup();
 	vi.unstubAllGlobals();
 	vi.restoreAllMocks();
@@ -96,7 +107,7 @@ describe("ProseMarkdown file refs", () => {
 		const open = vi.fn<(ref: FileRef) => void>();
 		const {container} = render(
 			withQueryClient(
-				<FileRefsProvider value={{cwd: "/repo", sessionPaths: [], open}}>
+				<FileRefsProvider value={{sessionId: "refs-test", cwd: "/repo", sessionPaths: [], open}}>
 					<ProseMarkdown markdown={MESSAGE} />
 				</FileRefsProvider>,
 			),
@@ -150,7 +161,7 @@ describe("ProseMarkdown file refs", () => {
 		const open = vi.fn<(ref: FileRef) => void>();
 		const {container} = render(
 			withQueryClient(
-				<FileRefsProvider value={{cwd: "/repo", sessionPaths: [], open}}>
+				<FileRefsProvider value={{sessionId: "refs-test", cwd: "/repo", sessionPaths: [], open}}>
 					<ProseMarkdown markdown="Notes are in `/tmp/outside/notes.txt`." />
 				</FileRefsProvider>,
 			),
@@ -191,6 +202,96 @@ describe("ProseMarkdown file refs", () => {
 		expect(screen.queryByRole("tooltip")).toBeNull();
 	});
 
+	it("links a missing path optimistically, and on click shows busy past 150ms, then the blocked missing state with focus kept", async () => {
+		const open = vi.fn<(ref: FileRef) => void>();
+		const {container} = render(
+			withQueryClient(
+				<FileRefsProvider value={{sessionId: "missing-slow", cwd: "/repo", sessionPaths: [], open}}>
+					<ProseMarkdown markdown="Create `src/new.ts:3` next." />
+				</FileRefsProvider>,
+			),
+		);
+		const link = await waitFor(() => {
+			const found = container.querySelector<HTMLElement>("[data-file-ref]");
+			expect(found).not.toBeNull();
+			return found!;
+		});
+		expect(link.outerHTML).toBe(
+			`<span role="button" tabindex="0" class="prose-link" data-file-ref="" data-file-path="/repo/src/new.ts" data-file-line="3"><span data-inline-code="">src/new.ts:3</span></span>`,
+		);
+
+		vi.useFakeTimers();
+		statDelayMs = 200;
+		link.focus();
+		fireEvent.click(link);
+		await act(async () => vi.advanceTimersByTimeAsync(160));
+		expect(link.getAttribute("aria-busy")).toBe("true");
+		await act(async () => vi.advanceTimersByTimeAsync(100));
+
+		const wrapper = container.querySelector<HTMLElement>("[data-disabled-reason-wrapper]");
+		expect({
+			refs: container.querySelectorAll("[data-file-ref]").length,
+			code: wrapper?.querySelector("code")?.textContent,
+			reason: wrapper?.querySelector("[data-disabled-reason]")?.textContent,
+			focused: document.activeElement === wrapper,
+			opened: open.mock.calls,
+		}).toStrictEqual({refs: 0, code: "src/new.ts:3", reason: MISSING_REASON, focused: true, opened: []});
+	});
+
+	it("never shows busy when the missing check settles within 150ms", async () => {
+		const open = vi.fn<(ref: FileRef) => void>();
+		const {container} = render(
+			withQueryClient(
+				<FileRefsProvider value={{sessionId: "missing-fast", cwd: "/repo", sessionPaths: [], open}}>
+					<ProseMarkdown markdown="Create `src/new.ts` next." />
+				</FileRefsProvider>,
+			),
+		);
+		const link = await waitFor(() => {
+			const found = container.querySelector<HTMLElement>("[data-file-ref]");
+			expect(found).not.toBeNull();
+			return found!;
+		});
+
+		vi.useFakeTimers();
+		statDelayMs = 50;
+		const busy: (string | null)[] = [];
+		const observer = new MutationObserver(() => busy.push(link.getAttribute("aria-busy")));
+		observer.observe(link, {attributes: true, attributeFilter: ["aria-busy"]});
+		fireEvent.click(link);
+		await act(async () => vi.advanceTimersByTimeAsync(300));
+		observer.disconnect();
+
+		expect({
+			busy,
+			blocked: container.querySelector("[data-disabled-reason-wrapper] [data-disabled-reason]")?.textContent,
+			opened: open.mock.calls,
+		}).toStrictEqual({busy: [], blocked: MISSING_REASON, opened: []});
+	});
+
+	it("opens an existing file at once, with no busy state or recheck", async () => {
+		const open = vi.fn<(ref: FileRef) => void>();
+		const {container} = render(
+			withQueryClient(
+				<FileRefsProvider value={{sessionId: "exists-now", cwd: "/repo", sessionPaths: [], open}}>
+					<ProseMarkdown markdown="See `src/app.ts`." />
+				</FileRefsProvider>,
+			),
+		);
+		const link = await waitFor(() => {
+			const found = container.querySelector<HTMLElement>("[data-file-ref]");
+			expect(found).not.toBeNull();
+			return found!;
+		});
+		const requestsBefore = statRequests.length;
+		fireEvent.click(link);
+		expect({
+			opened: open.mock.calls,
+			busy: link.getAttribute("aria-busy"),
+			rechecks: statRequests.length - requestsBefore,
+		}).toStrictEqual({opened: [[{path: "/repo/src/app.ts"}]], busy: null, rechecks: 0});
+	});
+
 	it("renders plain markdown outside a file-refs provider", () => {
 		const {container} = render(withQueryClient(<ProseMarkdown markdown={MESSAGE} />));
 		expect({
@@ -205,7 +306,7 @@ describe("TruncatedFilePathHeader file refs", () => {
 		const open = vi.fn<(ref: FileRef) => void>();
 		render(
 			withQueryClient(
-				<FileRefsProvider value={{cwd: "/repo", sessionPaths: [], open}}>
+				<FileRefsProvider value={{sessionId: "refs-test", cwd: "/repo", sessionPaths: [], open}}>
 					<TruncatedFilePathHeader filePath="/repo/src/app.ts" />
 					<TruncatedFilePathHeader filePath="/repo/deleted.ts" />
 					<TruncatedFilePathHeader filePath="/tmp/outside/notes.txt" />

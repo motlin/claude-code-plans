@@ -5,6 +5,7 @@ import {
 	type MouseEvent,
 	type PointerEvent,
 	useEffect,
+	useLayoutEffect,
 	useMemo,
 	useRef,
 	useState,
@@ -14,6 +15,7 @@ import {
 	DISABLED_REASON_WRAPPER_ATTR,
 	FILE_REF_ATTR,
 	fileRefFromElement,
+	fileRefReasonId,
 	renderMarkdownWithHighlighting,
 	subscribeZonedTimes,
 	zonedTimesVersion,
@@ -29,7 +31,11 @@ import {ViewportPortal} from "./viewport-portal";
 interface FileRefProps {
 	/** Inline code rendered as clickable file refs, keyed by the code's text. */
 	fileRefs?: ReadonlyMap<string, FileRef> | undefined;
-	onFileRef?: ((ref: FileRef) => void) | undefined;
+	/**
+	 * Opens a clicked ref. A `"missing"` result means the ref re-renders as
+	 * blocked; focus then moves to its wrapper if it would fall to the body.
+	 */
+	onFileRef?: ((ref: FileRef, element: HTMLElement) => unknown) | undefined;
 	/** Artifacts-index titles keyed by artifact id, for claude.ai artifact link chips. */
 	artifactTitles?: ReadonlyMap<string, string> | undefined;
 	/** Curl prose quotes, as upstream does for assistant text. */
@@ -44,9 +50,52 @@ type MarkdownArticleProps = FileRefProps &
 		| {html?: never; markdown: string; typographer?: boolean; mdLinkBase?: string | undefined}
 	);
 
-function targetFileRef(event: MouseEvent | KeyboardEvent): FileRef | null {
-	const element = event.target instanceof Element ? event.target.closest(`[${FILE_REF_ATTR}]`) : null;
-	return element === null ? null : fileRefFromElement(element);
+function targetFileRef(event: MouseEvent | KeyboardEvent): {ref: FileRef; element: HTMLElement} | null {
+	const element = event.target instanceof Element ? event.target.closest<HTMLElement>(`[${FILE_REF_ATTR}]`) : null;
+	const ref = element === null ? null : fileRefFromElement(element);
+	return element === null || ref === null ? null : {ref, element};
+}
+
+interface PendingFocus {
+	path: string;
+	/** Which of the article's refs to this path was clicked; its blocked wrapper takes focus. */
+	index: number;
+}
+
+/**
+ * Upstream's `or()` focus slot: a clicked ref that turns out missing is
+ * replaced by its blocked wrapper, so focus moves there (without scrolling)
+ * instead of falling to the body.
+ */
+function useMissingRefFocus(rendered: string) {
+	const article = useRef<HTMLElement>(null);
+	const pending = useRef<PendingFocus | null>(null);
+	useLayoutEffect(() => {
+		const target = pending.current;
+		if (target === null || article.current === null) return;
+		const id = fileRefReasonId(target.path, "missing");
+		const wrappers = [...article.current.querySelectorAll<HTMLElement>(`[${DISABLED_REASON_WRAPPER_ATTR}]`)].filter(
+			(wrapper) => wrapper.getAttribute("aria-describedby") === id,
+		);
+		const wrapper = wrappers[target.index] ?? wrappers[0];
+		if (wrapper === undefined) return;
+		pending.current = null;
+		const active = document.activeElement;
+		if (active === null || active === document.body) wrapper.focus({preventScroll: true});
+	}, [rendered]);
+
+	function opening(ref: FileRef, element: HTMLElement, result: unknown) {
+		const siblings = [...(article.current?.querySelectorAll(`[${FILE_REF_ATTR}]`) ?? [])].filter(
+			(other) => other.getAttribute("data-file-path") === ref.path,
+		);
+		const target = {path: ref.path, index: Math.max(0, siblings.indexOf(element))};
+		pending.current = target;
+		void Promise.resolve(result).then((outcome) => {
+			if (outcome !== "missing" && pending.current === target) pending.current = null;
+		});
+	}
+
+	return {article, opening};
 }
 
 /** Whether a pointer event's other end (`relatedTarget`) lies outside `wrapper`, so the pointer crossed its edge. */
@@ -164,24 +213,29 @@ export function MarkdownArticle(props: MarkdownArticleProps) {
 	]);
 
 	const reasonTooltip = useReasonTooltip();
+	const missingFocus = useMissingRefFocus(rendered);
 	const {onFileRef} = props;
+	const openRef = ({ref, element}: {ref: FileRef; element: HTMLElement}) => {
+		missingFocus.opening(ref, element, onFileRef?.(ref, element));
+	};
 	const handleClick = (event: MouseEvent<HTMLElement>) => {
-		const ref = onFileRef === undefined ? null : targetFileRef(event);
-		if (ref === null) handleCodeCopyClick(event);
-		else onFileRef?.(ref);
+		const target = onFileRef === undefined ? null : targetFileRef(event);
+		if (target === null) handleCodeCopyClick(event);
+		else openRef(target);
 	};
 	const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
 		if (onFileRef === undefined || (event.key !== "Enter" && event.key !== " ")) return;
-		const ref = targetFileRef(event);
-		if (ref === null) return;
+		const target = targetFileRef(event);
+		if (target === null) return;
 		event.preventDefault();
-		onFileRef(ref);
+		openRef(target);
 	};
 
 	return (
 		<>
 			{/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- delegates clicks from the rendered links and copy buttons inside it, which are keyboard-reachable themselves */}
 			<article
+				ref={missingFocus.article}
 				className={styles["markdown"]}
 				onClick={handleClick}
 				{...(onFileRef === undefined ? {} : {onKeyDown: handleKeyDown, ...reasonTooltip.handlers})}

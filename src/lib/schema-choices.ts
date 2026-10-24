@@ -1447,7 +1447,7 @@ const pendingApprovalToolNameLabels = {
 /** How a transcript file ref renders for each `/api/file-refs` status (src/components/use-resolved-file-refs.ts). */
 const fileRefStatusRenders = {
 	exists: "File link",
-	missing: "Plain code",
+	missing: "File link, blocked as missing once a click finds no file",
 	outside: "Blocked: outside the session's folders",
 } satisfies Record<z.infer<typeof FileRefStatusSchema>, string>;
 

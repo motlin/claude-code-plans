@@ -93,10 +93,11 @@ export const DISABLED_REASON_WRAPPER_ATTR = "data-disabled-reason-wrapper";
 /** Upstream's `ir()` reason copy for each block. */
 const FILE_REF_BLOCK_REASONS = {
 	outside_roots: "This file is outside this session’s folders, so it can’t be opened here.",
+	missing: "Couldn’t find this file, so it can’t be opened. You can ask Claude to create it or check the path.",
 } as const satisfies Record<FileRefBlock, string>;
 
 /** A stable id for a reason element: the same path and block always share one, and they say the same thing. */
-function reasonId(path: string, block: FileRefBlock): string {
+export function fileRefReasonId(path: string, block: FileRefBlock): string {
 	let hash = 5381;
 	for (const char of `${block}\0${path}`) hash = (Math.imul(hash, 33) ^ (char.codePointAt(0) ?? 0)) >>> 0;
 	return `file-ref-reason-${hash.toString(36)}`;
@@ -109,7 +110,7 @@ function blockedFileRefHtml(
 	block: FileRefBlock,
 	escape: (value: string) => string,
 ): string {
-	const id = reasonId(path, block);
+	const id = fileRefReasonId(path, block);
 	return (
 		`<span tabindex="0" ${DISABLED_REASON_WRAPPER_ATTR}="" aria-describedby="${id}" class="inline rounded-sm focus-visible:outline-hidden focus-visible:shadow-focus">` +
 		`<code data-inline-code="" data-file-ref-blocked="">${escape(text)}</code>` +
