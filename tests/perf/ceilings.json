@@ -61,17 +61,17 @@
 		"raisedAt": "2026-10-23"
 	},
 	"bundle.session.gzip": {
-		"ceiling": 594973,
+		"ceiling": 601238,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Cold JS drifted through the 1% band (session 588786 / 1781410 at dcfd5774) as the composer skill chip landed; its hover card (Base UI PreviewCard in the composer plus the shared /name and description body) tipped session to 594973 / 1800265. Ceilings set to the measurement; the 1% tolerance is unchanged.",
+		"reason": "Cold JS drifted through the 1% band from 594973 / 1800265 as the composer started checking sent slash commands; the unknown-command notice (the complete CLI command-name set, the did-you-mean matcher and the Use button) tipped session to 601238 / 1817919. Ceilings set to the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-10-23"
 	},
 	"bundle.session.raw": {
-		"ceiling": 1800265,
+		"ceiling": 1817919,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Cold JS drifted through the 1% band (session 588786 / 1781410 at dcfd5774) as the composer skill chip landed; its hover card (Base UI PreviewCard in the composer plus the shared /name and description body) tipped session to 594973 / 1800265. Ceilings set to the measurement; the 1% tolerance is unchanged.",
+		"reason": "Cold JS drifted through the 1% band from 594973 / 1800265 as the composer started checking sent slash commands; the unknown-command notice (the complete CLI command-name set, the did-you-mean matcher and the Use button) tipped session to 601238 / 1817919. Ceilings set to the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-10-23"
 	},
 	"client.coldHome.default.commitsToRows": {

@@ -57,7 +57,15 @@ import {
 	MORE_MODELS,
 	PRIMARY_MODELS,
 } from "../lib/launch-options";
-import {filterSlashCommands, type SlashCommand, skillChipArgumentHint, slashTrigger} from "../lib/slash-commands";
+import {
+	filterSlashCommands,
+	isKnownSlashCommand,
+	type SlashCommand,
+	skillChipArgumentHint,
+	slashTrigger,
+} from "../lib/slash-commands";
+import {nearestCommand} from "../lib/command-suggest";
+import {ComposerCommandNotice} from "./composer-command-notice";
 import {type ChinLaunchControls, type ChinPickHandle, ComposerAddMenu, ComposerChin} from "./composer-chin";
 import {AttachedContextChips} from "./attached-context-chips";
 import type {ChinMenu} from "./composer-launch-menus";
@@ -507,6 +515,13 @@ export function Composer({
 	const [commandNotice, setCommandNotice] = useState<{draftKey: string; text: string; message: string} | null>(null);
 	const commandNoticeText =
 		commandNotice?.draftKey === draftKey && commandNotice.text === prompt ? commandNotice.message : null;
+	// Upstream's "isn’t a command here" footnote: set by the send of an unknown command, cleared by the next submit.
+	const [unknownCommand, setUnknownCommand] = useState<{
+		draftKey: string;
+		name: string;
+		suggestion: string | null;
+	} | null>(null);
+	const shownUnknownCommand = unknownCommand?.draftKey === draftKey ? unknownCommand : null;
 	const menuShortcutOptions = {disabled: chin === undefined};
 	useShortcut(
 		"open_mode_menu",
@@ -787,9 +802,11 @@ export function Composer({
 		// The session composer's draft is keyed by its session id.
 		if (trigger !== undefined && variant === "session") startComposerSubmitJourneys(trigger, draftKey);
 		const trimmed = prompt.trim();
+		setUnknownCommand(null);
 		if (trimmed.startsWith("/") && runHostCommand(trimmed)) return;
 		// Other slash commands run as typed; attached context and comments wait for the next real prompt.
 		if (trimmed.startsWith("/")) {
+			noteUnknownCommand(trimmed);
 			send(trimmed);
 			clearDraft();
 			return;
@@ -811,6 +828,23 @@ export function Composer({
 			if (draftKeyRef.current !== draftKey || promptRef.current !== prompt) return;
 			finish();
 		});
+	}
+	/** Upstream still sends an unknown command, but explains the CLI's coming "Unknown command" reply. */
+	function noteUnknownCommand(text: string): void {
+		const name = /^\/(\w[\w:-]*)(?=\s|$)/.exec(text)?.[1];
+		if (name === undefined || slashCommands.length === 0 || isKnownSlashCommand(name, slashCommands)) return;
+		// Locally every command is a CLI command, so the loaded list is the candidate set.
+		const candidates = slashCommands.flatMap((command) => [command.name, ...(command.aliases ?? [])]);
+		setUnknownCommand({draftKey, name, suggestion: nearestCommand(name, candidates)});
+	}
+	function applySuggestedCommand(command: string): void {
+		setUnknownCommand(null);
+		const rest = prompt.trim();
+		const next = rest === "" ? `/${command} ` : `/${command} ${rest}`;
+		pendingCaretRef.current = next.length;
+		setCaret(next.length);
+		setPrompt(next);
+		textareaRef.current?.focus();
 	}
 	/** Upstream's host interception of `/model`, `/effort` and `/permissions`: true when the composer handled it. */
 	function runHostCommand(text: string): boolean {
@@ -1159,6 +1193,13 @@ export function Composer({
 				<p role="alert" className="mb-1.5 ps-1 text-footnote text-danger-000">
 					{commandNoticeText}
 				</p>
+			)}
+			{commandNoticeText === null && shownUnknownCommand !== null && (
+				<ComposerCommandNotice
+					name={shownUnknownCommand.name}
+					suggestion={shownUnknownCommand.suggestion}
+					onUse={applySuggestedCommand}
+				/>
 			)}
 			{/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- a pointer shortcut that focuses the textarea, which is keyboard-reachable itself */}
 			<div
