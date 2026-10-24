@@ -1,4 +1,4 @@
-import {Check, Copy} from "lucide-react";
+import {Check, Copy, Gauge, TriangleAlert} from "lucide-react";
 import {useEffect, useId, useRef, useState} from "react";
 
 import {classifyApiError, errorCopy, refusalPassthrough} from "../lib/api-error-category";
@@ -84,11 +84,14 @@ function ErrorDetails({
 	status,
 	requestId,
 	messageId,
+	inCard,
 }: {
 	body?: string;
 	status?: number | string;
 	requestId?: string;
 	messageId?: string;
+	/** In the card the row and panel carry the card's padding; the marker's sit flush with `pt-2`. */
+	inCard: boolean;
 }) {
 	const [open, setOpen] = useState(false);
 	const panelId = useId();
@@ -103,7 +106,9 @@ function ErrorDetails({
 	const copyText = [...(body === undefined ? [] : [body]), ...facts].join("\n");
 	return (
 		<>
-			<div className="flex min-w-0 max-w-full flex-wrap items-center gap-x-3 gap-y-2 px-3 pb-3 pt-2">
+			<div
+				className={`flex min-w-0 max-w-full flex-wrap items-center gap-x-3 gap-y-2${inCard ? " px-3 pb-3 pt-2" : ""}`}
+			>
 				<button
 					type="button"
 					aria-expanded={open}
@@ -118,7 +123,7 @@ function ErrorDetails({
 				</button>
 			</div>
 			{open && (
-				<div id={panelId} data-api-error-details="" className="border-t px-3 py-3">
+				<div id={panelId} data-api-error-details="" className={inCard ? "border-t px-3 py-3" : "pt-2"}>
 					<div className="relative flex min-h-[32px] flex-col gap-1.5 rounded-card bg-alpha-1 py-1.5 ps-2 pe-[34px] text-footnote text-secondary">
 						{body !== undefined && (
 							<span className="whitespace-pre-wrap break-words select-text">{body}</span>
@@ -138,14 +143,31 @@ function ErrorDetails({
 	);
 }
 
+interface ResolvedApiError {
+	headline: string;
+	markerLabel: string;
+	hint: string;
+	icon: "warning" | "gauge";
+	learnMoreUrl?: string;
+	/** The View details props, or undefined when upstream shows no View details. */
+	details?: {body?: string; status?: number | string; requestId?: string; messageId?: string};
+}
+
 /**
- * Upstream's transcript API-error card (c44e562e8 `DW` over the shared card):
- * the category's headline and hint, then View details. The viewer can't
+ * Classifies the error and picks what upstream shows for it. The viewer can't
  * rewind, retry or send, so the hint is the no-composer variant. A `drop`
  * verdict hides the raw body and keeps View details only for a status or
  * request id.
  */
-export function ApiErrorCard({text, details, status, requestId, messageId, code, stopReason}: ApiErrorCardProps) {
+function resolveApiError({
+	text,
+	details,
+	status,
+	requestId,
+	messageId,
+	code,
+	stopReason,
+}: ApiErrorCardProps): ResolvedApiError {
 	const numeric = numericStatus(status);
 	const category = classifyApiError({
 		text,
@@ -160,22 +182,56 @@ export function ApiErrorCard({text, details, status, requestId, messageId, code,
 	const body = copy.detailsVerdict === "drop" || passthrough !== undefined ? undefined : raw;
 	const showDetails = body !== undefined || status !== undefined || requestId !== undefined;
 	const learnMoreUrl = passthrough === undefined ? copy.learnMoreUrl : undefined;
+	return {
+		headline: copy.headline,
+		markerLabel: copy.markerLabel,
+		hint: passthrough?.body ?? copy.hint,
+		icon: category === "rate_limit" ? "gauge" : "warning",
+		...(learnMoreUrl !== undefined && {learnMoreUrl}),
+		...(showDetails && {
+			details: {
+				...(body !== undefined && {body}),
+				...(status !== undefined && {status}),
+				...(requestId !== undefined && {requestId}),
+				...(messageId !== undefined && {messageId}),
+			},
+		}),
+	};
+}
+
+/** Upstream's transcript API-error card (c44e562e8 `DW` over the shared card): the headline, hint and View details. */
+export function ApiErrorCard(props: ApiErrorCardProps) {
+	const error = resolveApiError(props);
 	return (
 		<ErrorCardShell
 			data={{"data-api-error-card": ""}}
-			headline={copy.headline}
-			hint={passthrough?.body ?? copy.hint}
-			icon={category === "rate_limit" ? "gauge" : "warning"}
-			{...(learnMoreUrl !== undefined && {learnMoreUrl})}
+			headline={error.headline}
+			hint={error.hint}
+			icon={error.icon}
+			{...(error.learnMoreUrl !== undefined && {learnMoreUrl: error.learnMoreUrl})}
 		>
-			{showDetails && (
-				<ErrorDetails
-					{...(body !== undefined && {body})}
-					{...(status !== undefined && {status})}
-					{...(requestId !== undefined && {requestId})}
-					{...(messageId !== undefined && {messageId})}
-				/>
-			)}
+			{error.details !== undefined && <ErrorDetails {...error.details} inCard={true} />}
 		</ErrorCardShell>
+	);
+}
+
+const MARKER_ICON_CLASS = "size-4 shrink-0 text-danger-000";
+
+/**
+ * Upstream's collapsed form for an error that is not the last error of the
+ * last entry (c44e562e8 `$U`, gated by `G_e`): the danger icon, the past-tense
+ * marker label (else the headline), and View details without the card chrome.
+ */
+export function ApiErrorMarker(props: ApiErrorCardProps) {
+	const error = resolveApiError(props);
+	const Icon = error.icon === "gauge" ? Gauge : TriangleAlert;
+	return (
+		<div data-api-error-marker="" className="flex w-full max-w-[480px] flex-col items-start gap-1 self-start">
+			<div className="flex max-w-full min-w-0 items-center gap-1.25 select-text">
+				<Icon aria-hidden="true" className={MARKER_ICON_CLASS} />
+				<span className="min-w-0 text-body text-secondary break-words">{error.markerLabel}</span>
+			</div>
+			{error.details !== undefined && <ErrorDetails {...error.details} inCard={false} />}
+		</div>
 	);
 }

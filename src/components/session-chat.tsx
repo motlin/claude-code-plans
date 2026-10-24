@@ -17,7 +17,7 @@ import {flushSync} from "react-dom";
 import {Bot, FileWarning, GitBranch, Lock, Palette, Plug, Zap} from "lucide-react";
 import {assertNever} from "../lib/assert-never";
 import {isWithdrawnQuestion, type AskedCall} from "../lib/ask-user-question";
-import {ApiErrorCard} from "./api-error-card";
+import {ApiErrorCard, ApiErrorMarker} from "./api-error-card";
 import {ErrorCardShell} from "./error-card-shell";
 import {ShimmerText} from "./shimmer-text";
 import {ProseMarkdown} from "./file-refs";
@@ -513,6 +513,7 @@ export const SessionChat = React.memo(function SessionChat({
 	);
 	const backgroundOutcomes = useMemo(() => backgroundLaunchOutcomes(lines, toolResultMap), [lines, toolResultMap]);
 	const compactBoundaries = useMemo(() => compactBoundariesBySummary(lines), [lines]);
+	const fullErrorLine = useMemo(() => lastErrorLine(lines), [lines]);
 	const listedLines = useMemo(() => withQueuedPromptsAtTail(lines, sessionLive), [lines, sessionLive]);
 	const waitingIds = useMemo(() => queuedEntryIds(listedLines), [listedLines]);
 
@@ -658,45 +659,50 @@ export const SessionChat = React.memo(function SessionChat({
 						<AgentNameContext.Provider value={resolveAgentName}>
 							<BackgroundOutcomeContext.Provider value={backgroundOutcomes}>
 								<CompactBoundaryContext.Provider value={compactBoundaries}>
-									<div
-										ref={containerRef}
-										className={`${CHAT_COLUMN_CLASS} pt-4 pb-4 text-body transcript-text`}
-									>
-										{summary !== null && summary !== "" && (
-											<p
-												data-testid="session-summary-row"
-												title={summary}
-												className="mb-4 truncate text-sm text-t6"
-											>
-												{summary}
-											</p>
-										)}
-										<SessionLineList
-											key={sessionId}
-											lines={listedLines}
-											sessionId={sessionId}
-											toolResultMap={toolResultMap}
-											allowedImageRoots={allowedImageRoots}
-											subagentLookup={subagentLookup}
-											isSubagentSession={isSubagentSession}
-											showThinking={showThinking}
-											showTools={showTools}
-											showPassedHooks={showPassedHooks}
-											showHookWarnings={showHookWarnings}
-											showHookErrors={showHookErrors}
-											showSystemBanners={showSystemBanners}
-											showCompactSummaries={showCompactSummaries}
-											showTranscriptOnly={showTranscriptOnly}
-											shouldScrollToEnd={shouldScrollToEnd}
-											measurementKey={measurementKey}
-											measurementSource={measurementSource}
-											turnInProgress={turnInProgress}
-											archived={archived}
-										/>
-										{sessionLive && (
-											<WaitingPickupStatus key={`pickup-${sessionId}`} waitingIds={waitingIds} />
-										)}
-									</div>
+									<LastErrorLineContext.Provider value={fullErrorLine}>
+										<div
+											ref={containerRef}
+											className={`${CHAT_COLUMN_CLASS} pt-4 pb-4 text-body transcript-text`}
+										>
+											{summary !== null && summary !== "" && (
+												<p
+													data-testid="session-summary-row"
+													title={summary}
+													className="mb-4 truncate text-sm text-t6"
+												>
+													{summary}
+												</p>
+											)}
+											<SessionLineList
+												key={sessionId}
+												lines={listedLines}
+												sessionId={sessionId}
+												toolResultMap={toolResultMap}
+												allowedImageRoots={allowedImageRoots}
+												subagentLookup={subagentLookup}
+												isSubagentSession={isSubagentSession}
+												showThinking={showThinking}
+												showTools={showTools}
+												showPassedHooks={showPassedHooks}
+												showHookWarnings={showHookWarnings}
+												showHookErrors={showHookErrors}
+												showSystemBanners={showSystemBanners}
+												showCompactSummaries={showCompactSummaries}
+												showTranscriptOnly={showTranscriptOnly}
+												shouldScrollToEnd={shouldScrollToEnd}
+												measurementKey={measurementKey}
+												measurementSource={measurementSource}
+												turnInProgress={turnInProgress}
+												archived={archived}
+											/>
+											{sessionLive && (
+												<WaitingPickupStatus
+													key={`pickup-${sessionId}`}
+													waitingIds={waitingIds}
+												/>
+											)}
+										</div>
+									</LastErrorLineContext.Provider>
 								</CompactBoundaryContext.Provider>
 							</BackgroundOutcomeContext.Provider>
 						</AgentNameContext.Provider>
@@ -3869,6 +3875,26 @@ function StopHookMarker({line}: {line: MessageSessionLine}) {
 }
 
 /** The compaction a compact summary continues from: its boundary's metadata, keyed by the summary's line. */
+/**
+ * The one error line drawn as the full card: upstream's `G_e` keeps the card
+ * for the last error item of the last entry and collapses every other error
+ * to its marker. The last entry ends at the latest prompt, so an error before
+ * that prompt has no full card.
+ */
+const LastErrorLineContext = createContext<SessionLine | null>(null);
+
+function isErrorLine(line: SessionLine): boolean {
+	return line.type === "assistant" && (line.isApiErrorMessage === true || line.stopReason === "refusal");
+}
+
+function lastErrorLine(lines: readonly SessionLine[]): SessionLine | null {
+	for (const line of lines.toReversed()) {
+		if (isErrorLine(line)) return line;
+		if (isPromptLine(line)) return null;
+	}
+	return null;
+}
+
 const CompactBoundaryContext = createContext<ReadonlyMap<number, {meta: CompactMetadata}>>(new Map());
 
 /**
@@ -4555,13 +4581,14 @@ function UsageLimitCardView({card}: {card: UsageLimitCard}) {
 	);
 }
 
-/** The API error card for an assistant turn flagged as an API error message. */
+/** The API error card for an assistant turn flagged as an API error message, or its marker when a later error or prompt supersedes it. */
 function ApiErrorCardForLine({line, text}: {line: MessageSessionLine; text: string}) {
+	const Form = useContext(LastErrorLineContext) === line ? ApiErrorCard : ApiErrorMarker;
 	const details = line.errorDetails;
 	const detailsText =
 		details === undefined ? undefined : typeof details === "string" ? details : JSON.stringify(details, null, 2);
 	return (
-		<ApiErrorCard
+		<Form
 			text={text}
 			{...(detailsText !== undefined && {details: detailsText})}
 			{...(line.apiErrorStatus !== undefined && {status: line.apiErrorStatus})}

@@ -362,4 +362,63 @@ describe("ApiErrorCard", () => {
 			details: "Request ID: req_011CgFaXu4vBJjAD4zM5mZ3WMessage ID: msg_011CgFaXuKJXxjEoQpSSFwXn",
 		});
 	});
+
+	it("collapses an earlier error to upstream's marker form and keeps the full card for the last error", () => {
+		const container = renderRecords([
+			{...OVERLOADED_RECORD, uuid: "a1", requestId: "req_first"},
+			{...OVERLOADED_RECORD, uuid: "a2", parentUuid: "a1"},
+		]);
+		const markers = [...container.querySelectorAll("[data-api-error-marker]")];
+		const cards = [...container.querySelectorAll("[data-api-error-card]")];
+		const [row, detailsRow] = [...(markers[0]?.children ?? [])];
+		const trigger = detailsRow?.querySelector("button");
+		fireEvent.click(trigger!);
+		const panel = markers[0]?.querySelector("[data-api-error-details]");
+
+		expect({
+			markers: markers.length,
+			cards: cards.length,
+			order: markers[0]!.compareDocumentPosition(cards[0]!) & Node.DOCUMENT_POSITION_FOLLOWING,
+			root: markers[0]?.className,
+			row: row?.className,
+			icon: row?.querySelector("svg")?.getAttribute("class"),
+			label: {text: row?.querySelector("span")?.textContent, className: row?.querySelector("span")?.className},
+			detailsRow: detailsRow?.className,
+			trigger: trigger?.textContent,
+			panel: panel?.className,
+			facts: panel?.querySelector(".break-all")?.textContent,
+			cardHeadline: cards[0]?.firstElementChild?.textContent,
+		}).toStrictEqual({
+			markers: 1,
+			cards: 1,
+			order: Node.DOCUMENT_POSITION_FOLLOWING,
+			root: "flex w-full max-w-[480px] flex-col items-start gap-1 self-start",
+			row: "flex max-w-full min-w-0 items-center gap-1.25 select-text",
+			icon: "lucide lucide-triangle-alert size-4 shrink-0 text-danger-000",
+			label: {text: "Service was busy", className: "min-w-0 text-body text-secondary break-words"},
+			detailsRow: "flex min-w-0 max-w-full flex-wrap items-center gap-x-3 gap-y-2",
+			trigger: "View details",
+			panel: "pt-2",
+			facts: "Status: 529Request ID: req_firstMessage ID: 69f6c760-e79e-4483-bdfe-5fb492ef4838",
+			cardHeadline: "Service is busy",
+		});
+	});
+
+	it("draws an error followed by a new prompt as the marker, since it is no longer in the last entry", () => {
+		const container = renderRecords([
+			{...OVERLOADED_RECORD, uuid: "a1"},
+			{
+				type: "user",
+				uuid: "u1",
+				parentUuid: "a1",
+				timestamp: "2026-09-22T01:09:50.253Z",
+				message: {role: "user", content: "try again"},
+			},
+		]);
+
+		expect({
+			markers: [...container.querySelectorAll("[data-api-error-marker]")].map((marker) => marker.textContent),
+			cards: container.querySelectorAll("[data-api-error-card]").length,
+		}).toStrictEqual({markers: ["Service was busyView details"], cards: 0});
+	});
 });
