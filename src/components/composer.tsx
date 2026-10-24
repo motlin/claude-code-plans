@@ -1098,9 +1098,6 @@ export function Composer({
 							id={mentionMenuId}
 							entries={mentionEntries}
 							highlighted={mentionHighlighted}
-							onHighlight={(index) => {
-								setMentionHighlight({entries: mentionEntries, index});
-							}}
 							onAccept={acceptFileMention}
 						/>
 					)}

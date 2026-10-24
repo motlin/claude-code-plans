@@ -396,6 +396,52 @@ describe("Composer @ file mentions", () => {
 		expect({afterUp, afterDowns: activeOption()}).toStrictEqual({afterUp: "option-0", afterDowns: "option-2"});
 	});
 
+	it("keeps the hover index separate from the keyboard index, restoring the keyboard row when the pointer leaves", async () => {
+		responses.set(
+			searchUrl("ind"),
+			search("ind", ["src/a/index.ts", "src/b/index.ts", "src/c/index.ts", "src/d/index.ts"]),
+		);
+		const {textarea} = setup();
+
+		await type(textarea, "@ind");
+		fireEvent.keyDown(textarea, {key: "ArrowDown"});
+		const highlightedRows = () =>
+			screen.getAllByRole("option").map((row) => ({
+				highlighted: row.hasAttribute("data-highlighted"),
+				selected: row.getAttribute("aria-selected"),
+			}));
+		const only = (index: number) =>
+			[0, 1, 2, 3].map((i) => ({highlighted: i === index, selected: String(i === index)}));
+		const hovered = screen.getAllByRole("option")[3];
+		if (hovered === undefined) throw new Error("missing row 3");
+		fireEvent.mouseEnter(hovered);
+		const whileHovering = highlightedRows();
+		fireEvent.mouseLeave(screen.getByRole("listbox"));
+		const afterLeave = highlightedRows();
+		fireEvent.keyDown(textarea, {key: "Enter"});
+
+		expect({whileHovering, afterLeave, value: textarea.value}).toStrictEqual({
+			whileHovering: only(3),
+			afterLeave: only(1),
+			value: "@src/b/index.ts ",
+		});
+	});
+
+	it("accepts the clicked row", async () => {
+		responses.set(searchUrl("ind"), search("ind", ["src/a/index.ts", "src/b/index.ts", "src/c/index.ts"]));
+		const {textarea} = setup();
+
+		await type(textarea, "@ind");
+		const row = screen.getAllByRole("option")[2];
+		if (row === undefined) throw new Error("missing row 2");
+		fireEvent.mouseEnter(row);
+		fireEvent.mouseDown(row);
+		// Finish the click inside the React root (the accepted row is gone): React suppresses onSelect until the mouseup.
+		fireEvent.mouseUp(textarea);
+
+		expect(textarea.value).toBe("@src/c/index.ts ");
+	});
+
 	it("closes on Escape until the token changes", async () => {
 		responses.set(searchUrl("ind"), search("ind", ["src/index.ts"]));
 		const {textarea} = setup();

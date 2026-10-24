@@ -1,4 +1,4 @@
-import {useLayoutEffect, useRef, useSyncExternalStore} from "react";
+import {useLayoutEffect, useRef, useState, useSyncExternalStore} from "react";
 import {Folder} from "lucide-react";
 
 import type {SessionFilesEntry} from "../lib/api/session-files";
@@ -47,27 +47,29 @@ function EntryIcon({entry, icons}: {entry: SessionFilesEntry; icons: FileTypeIco
 /**
  * The claude.ai/code "@" popup: a "Mention suggestions" listbox above the
  * composer, 560px wide when any row has a dirname caption and 420px otherwise, one row per path (icon, basename, dirname caption). Keyboard focus
- * stays in the editor, which drives `highlighted` and `onAccept`.
+ * stays in the editor, which drives `highlighted` (the keyboard index) and `onAccept`. Like upstream, the pointer keeps
+ * its own hover index that wins while it is over a row and falls back to the keyboard index when it leaves the list.
  */
 export function FileMentionMenu({
 	id,
 	entries,
 	highlighted,
-	onHighlight,
 	onAccept,
 }: {
 	id: string;
 	entries: readonly SessionFilesEntry[];
 	highlighted: number;
-	onHighlight: (index: number) => void;
 	onAccept: (entry: SessionFilesEntry) => void;
 }) {
 	const listRef = useRef<HTMLDivElement>(null);
 	const icons = useSyncExternalStore(subscribeFileTypeIcons, loadedFileTypeIcons, loadedFileTypeIcons);
+	// Tied to the entries it was set against, so a new result list drops a stale hover.
+	const [hover, setHover] = useState<{entries: readonly SessionFilesEntry[]; index: number} | null>(null);
+	const shown = hover?.entries === entries ? hover.index : highlighted;
 
 	useLayoutEffect(() => {
 		listRef.current?.querySelector<HTMLElement>("[data-highlighted]")?.scrollIntoView({block: "nearest"});
-	}, [highlighted, entries]);
+	}, [shown, entries]);
 
 	return (
 		// oxlint-disable-next-line jsx-a11y/interactive-supports-focus -- the composer textarea keeps focus and drives the list through aria-activedescendant
@@ -81,6 +83,9 @@ export function FileMentionMenu({
 			onMouseDown={(e) => {
 				e.preventDefault();
 			}}
+			onMouseLeave={() => {
+				setHover(null);
+			}}
 		>
 			{entries.map((entry, index) => {
 				const slash = entry.relPath.lastIndexOf("/");
@@ -93,11 +98,11 @@ export function FileMentionMenu({
 						id={fileMentionOptionId(id, index)}
 						role="option"
 						data-option-index={index}
-						aria-selected={index === highlighted}
-						data-highlighted={index === highlighted ? "" : undefined}
+						aria-selected={index === shown}
+						data-highlighted={index === shown ? "" : undefined}
 						className={ROW_CLASS}
-						onMouseMove={() => {
-							if (index !== highlighted) onHighlight(index);
+						onMouseEnter={() => {
+							setHover({entries, index});
 						}}
 						onMouseDown={(e) => {
 							e.preventDefault();

@@ -1290,7 +1290,6 @@ describe("Composer text-entry menus at a coarse pointer below 640px", () => {
 				id="mentions"
 				entries={[{name: "src", relPath: "src", isDirectory: true}]}
 				highlighted={0}
-				onHighlight={() => undefined}
 				onAccept={() => undefined}
 			/>,
 		);
