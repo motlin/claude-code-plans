@@ -1221,6 +1221,7 @@ function SessionView({
 														permissionWaitToolUseId={permissionWaitId}
 														onSendNow={requestSendNowInterrupt}
 														onFocusComposer={focusSessionComposer}
+														sideChatAvailable={true}
 														initialScrollKey={initialScrollKey}
 														scrollContentRef={scrollAnchorRef}
 														shouldScrollToEnd={

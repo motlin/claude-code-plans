@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {cleanup, fireEvent, render} from "@testing-library/react";
+import {act, cleanup, fireEvent, render} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {SessionChat} from "../src/components/session-chat";
@@ -211,5 +211,39 @@ describe("⇧⌘L with a transcript selection", () => {
 		pressAttach(document.body, {repeat: true});
 
 		expect(chips()).toStrictEqual([]);
+	});
+});
+
+describe("selection bar in the transcript", () => {
+	it("shows Reply over a transcript selection", () => {
+		vi.useFakeTimers();
+		const rect = {
+			left: 0,
+			top: 200,
+			width: 50,
+			height: 19,
+			x: 0,
+			y: 200,
+			right: 50,
+			bottom: 219,
+			toJSON: () => ({}),
+		};
+		Object.defineProperty(Range.prototype, "getClientRects", {configurable: true, value: () => [rect]});
+		Object.defineProperty(Range.prototype, "getBoundingClientRect", {configurable: true, value: () => rect});
+		const container = renderChat();
+		selectText(container, "Hermit crabs");
+
+		act(() => {
+			document.dispatchEvent(new Event("selectionchange"));
+			vi.advanceTimersByTime(250);
+		});
+		const labels = [...document.querySelectorAll("[data-transcript-selection-bar] button")].map(
+			(button) => button.textContent,
+		);
+		vi.useRealTimers();
+		Reflect.deleteProperty(Range.prototype, "getClientRects");
+		Reflect.deleteProperty(Range.prototype, "getBoundingClientRect");
+
+		expect(labels).toStrictEqual(["Reply"]);
 	});
 });

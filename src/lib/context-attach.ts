@@ -194,6 +194,11 @@ function mounted(sessionId: string): readonly ComposerHandle[] {
 	return [...(composers.get(sessionId) ?? [])];
 }
 
+/** Whether a composer is mounted for the session, so attachments have somewhere to land. */
+export function hasComposer(sessionId: string): boolean {
+	return (composers.get(sessionId)?.size ?? 0) > 0;
+}
+
 export function getContextChips(sessionId: string): readonly ContextChip[] {
 	return chips.get(sessionId) ?? NO_CHIPS;
 }

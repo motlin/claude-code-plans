@@ -55,6 +55,7 @@ import {ArtifactLinkBanner, ArtifactWatchBanner} from "./artifact-banner";
 import {permissionDecisionLabel, permissionDecisionTitle} from "../lib/permission-decision";
 import {DebugLink} from "./debug-link";
 import {TranscriptMessageMenu} from "./transcript-context-menu";
+import {TranscriptSelectionBar} from "./transcript-selection-bar";
 import type {TranscriptMessageRef} from "./transcript-actions-context";
 import {AssistantMessageActions, UserMessageActions} from "./message-actions";
 import {MessageExcerptTiles} from "./message-excerpt-tiles";
@@ -157,6 +158,8 @@ export interface SessionChatProps {
 	onSendNow?: (() => Promise<void> | void) | undefined;
 	/** Focuses the session composer, where a mouse click on Send now leaves focus. */
 	onFocusComposer?: (() => void) | undefined;
+	/** The session page hosts a side chat, so the selection bar offers "Start a side chat". */
+	sideChatAvailable?: boolean;
 }
 
 const TranscriptModeContext = createContext<TranscriptMode>("normal");
@@ -490,6 +493,7 @@ export const SessionChat = React.memo(function SessionChat({
 	onSendNow,
 	onFocusComposer,
 	errorRecovery,
+	sideChatAvailable = false,
 }: SessionChatProps) {
 	const sendNowHandlers = useMemo(
 		() => ({sendNow: onSendNow, focusComposer: onFocusComposer}),
@@ -709,6 +713,11 @@ export const SessionChat = React.memo(function SessionChat({
 													waitingIds={waitingIds}
 												/>
 											)}
+											<TranscriptSelectionBar
+												sessionId={sessionId}
+												containerRef={containerRef}
+												sideChatAvailable={sideChatAvailable}
+											/>
 										</div>
 									</LastErrorLineContext.Provider>
 								</CompactBoundaryContext.Provider>
