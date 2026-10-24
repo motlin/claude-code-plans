@@ -1,5 +1,8 @@
 import type {ApiErrorRecovery} from "../components/api-error-card";
+import type {ToastOptions} from "../components/toast-context";
 import type {DeliveryResult} from "../hooks/use-composer-queue";
+import {FAILURE_MESSAGE} from "../hooks/use-live-launch-options";
+import type {LiveOptionChange} from "./launch-options";
 import type {SessionLine} from "./transcript";
 import type {WorkingMarkerState} from "./working-marker";
 
@@ -38,27 +41,75 @@ export function errorRecoveryAvailability(gate: ErrorRecoveryGate): ErrorRecover
 	return {retryable: open, idle: open};
 }
 
+/** The session's running model and how to switch it, for Switch model and retry. */
+export interface ModelRetry {
+	/** The running model's id, which the menu checks. */
+	current: string | undefined;
+	/** Applies the model to the pane; false when it couldn't. */
+	switchTo: (model: string) => Promise<boolean>;
+}
+
 /**
  * The card's handlers through herdr: Try again types upstream's `retryNudge`
  * prompt "Try again" (any composer draft stays put, upstream `nudgeBesideDraft`),
  * Compact session types `/compact`. A not-ready agent queues the prompt like the
- * composer's send.
+ * composer's send. Switch model and retry applies `/model` first and types
+ * Try again only once the switch went through.
  */
 export function errorRecoveryHandlers(
 	availability: ErrorRecoveryAvailability,
 	send: (prompt: string) => Promise<DeliveryResult>,
 	enqueue: (prompt: string) => void,
+	model?: ModelRetry,
 ): ApiErrorRecovery | undefined {
 	if (!availability.retryable && !availability.idle) return undefined;
-	const type = (prompt: string) => () => {
-		void send(prompt).then((result) => {
-			if (result === "not-ready") enqueue(prompt);
-		});
+	const type = async (prompt: string) => {
+		const result = await send(prompt);
+		if (result === "not-ready") enqueue(prompt);
 	};
 	return {
-		...(availability.retryable && {onRetry: type("Try again")}),
-		...(availability.idle && {onCompact: type("/compact")}),
+		...(availability.retryable && {
+			onRetry: () => {
+				void type("Try again");
+			},
+		}),
+		...(availability.idle && {
+			onCompact: () => {
+				void type("/compact");
+			},
+		}),
+		...(availability.retryable &&
+			model !== undefined && {
+				onRetryWithModel: async (next: string) => {
+					if (!(await model.switchTo(next))) return false;
+					await type("Try again");
+					return true;
+				},
+			}),
+		...(model?.current !== undefined && {currentModel: model.current}),
 	};
+}
+
+/** Applies a model to the live pane like the chin's pick, with the chin's failure toast. */
+export async function switchModelForRetry(
+	sessionId: string,
+	model: string,
+	deps: {
+		send: (sessionId: string, change: LiveOptionChange) => Promise<void>;
+		toast: (options: ToastOptions) => void;
+	},
+): Promise<boolean> {
+	try {
+		await deps.send(sessionId, {kind: "model", model});
+		return true;
+	} catch (error) {
+		deps.toast({
+			kind: "error",
+			message: FAILURE_MESSAGE.model,
+			description: error instanceof Error ? error.message : String(error),
+		});
+		return false;
+	}
 }
 
 function isTranscriptEntry(line: SessionLine): boolean {

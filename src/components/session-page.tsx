@@ -119,6 +119,7 @@ import {
 	herdrPanesQueryOptions,
 	launchHerdrSession,
 	sendHerdrInterrupt,
+	sendHerdrLiveOption,
 	sendHerdrPermissionDecision,
 	sendHerdrPlanDecision,
 	fetchHerdrPlanDialog,
@@ -159,7 +160,12 @@ import {useIdlePrefetch} from "../hooks/use-idle-prefetch";
 import {getSessionPromptBehavior} from "./session-prompt-behavior";
 import {sessionAnswerRoute} from "../hooks/use-question-answer-route";
 import {useLiveHerdrPrompt} from "./use-live-herdr-prompt";
-import {errorRecoveryAvailability, errorRecoveryHandlers, lastEntryIsError} from "../lib/session-error-recovery";
+import {
+	errorRecoveryAvailability,
+	errorRecoveryHandlers,
+	lastEntryIsError,
+	switchModelForRetry,
+} from "../lib/session-error-recovery";
 import {TerminalWritesTipProvider} from "./terminal-writes-tip";
 
 /** The deferred pane renderers, prompt cards and side chat panel, warmed once the session page goes idle so their first show is instant. */
@@ -753,10 +759,20 @@ function SessionView({
 	});
 	const {retryable: errorRetryable, idle: errorIdle} = errorRecoveryAvailable;
 	const sendErrorRecoveryPrompt = liveHerdrPrompt.send;
+	const currentModelId = composerChin.modelId;
 	const errorRecovery = useMemo(
 		() =>
-			errorRecoveryHandlers({retryable: errorRetryable, idle: errorIdle}, sendErrorRecoveryPrompt, enqueuePrompt),
-		[errorRetryable, errorIdle, sendErrorRecoveryPrompt, enqueuePrompt],
+			errorRecoveryHandlers(
+				{retryable: errorRetryable, idle: errorIdle},
+				sendErrorRecoveryPrompt,
+				enqueuePrompt,
+				{
+					current: currentModelId,
+					switchTo: async (model) =>
+						switchModelForRetry(sessionId, model, {send: sendHerdrLiveOption, toast}),
+				},
+			),
+		[errorRetryable, errorIdle, sendErrorRecoveryPrompt, enqueuePrompt, currentModelId, sessionId, toast],
 	);
 	const sendLivePrompt = useCallback(
 		async (prompt: string) => {

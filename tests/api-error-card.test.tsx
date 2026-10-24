@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
 
-import {act, cleanup, fireEvent, render} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {ApiErrorCard, type ApiErrorRecovery} from "../src/components/api-error-card";
 import {preloadErrorRecoveryActions} from "../src/components/error-recovery-actions-entry";
 import {SessionChat} from "../src/components/session-chat";
-import {errorRecoveryHandlers} from "../src/lib/session-error-recovery";
+import {errorRecoveryHandlers, type ModelRetry} from "../src/lib/session-error-recovery";
 import {processTranscript} from "../src/lib/transcript";
 
 vi.mock("../src/components/settings-context", () => ({
@@ -458,7 +458,7 @@ describe("ApiErrorCard recovery actions", () => {
 				{...OVERLOADED_PROPS}
 				recovery={{
 					onRetry,
-					onRetryWithModel: vi.fn<(model: string) => void>(),
+					onRetryWithModel: vi.fn<(model: string) => Promise<boolean>>(),
 					currentModel: "claude-opus-5-5",
 				}}
 			/>,
@@ -496,7 +496,7 @@ describe("ApiErrorCard recovery actions", () => {
 				{...OVERLOADED_PROPS}
 				recovery={{
 					onRetry,
-					onRetryWithModel: vi.fn<(model: string) => void>(),
+					onRetryWithModel: vi.fn<(model: string) => Promise<boolean>>(),
 					currentModel: "claude-opus-5-5",
 				}}
 			/>,
@@ -634,6 +634,80 @@ describe("SessionChat error recovery", () => {
 		await Promise.resolve();
 
 		expect(send.mock.calls).toStrictEqual([["/compact"]]);
+	});
+
+	function recordingRecovery(switchOk: boolean): {
+		events: unknown[];
+		model: ModelRetry;
+		send: (text: string) => Promise<"sent">;
+	} {
+		const events: unknown[] = [];
+		return {
+			events,
+			model: {
+				current: "claude-opus-5-5",
+				switchTo: async (model: string) => {
+					events.push({liveOption: {kind: "model", model}});
+					return Promise.resolve(switchOk);
+				},
+			},
+			send: async (text: string) => {
+				events.push({prompt: text});
+				return Promise.resolve("sent");
+			},
+		};
+	}
+
+	async function pickModel(container: HTMLElement, name: string) {
+		const trigger = [...container.querySelectorAll("[data-api-error-actions] button")].find(
+			(button) => button.textContent === "Opus 5.5",
+		);
+		fireEvent.click(trigger!);
+		await waitFor(() => {
+			expect(screen.getAllByRole("menu")).toHaveLength(1);
+		});
+		fireEvent.click(within(screen.getByRole("menu")).getByRole("menuitemradio", {name}));
+	}
+
+	it("switches the model through the live option, then types Try again, from Switch model and retry", async () => {
+		const {events, model, send} = recordingRecovery(true);
+		const recovery = errorRecoveryHandlers(
+			{retryable: true, idle: true},
+			send,
+			vi.fn<(text: string) => void>(),
+			model,
+		);
+		const container = renderWithRecovery([PROMPT_RECORD, OVERLOADED_RECORD], recovery!);
+		await pickModel(container, "Sonnet 5.5");
+		await waitFor(() => {
+			expect(container.querySelectorAll("[data-api-error-actions]").length).toBe(0);
+		});
+
+		expect(events).toStrictEqual([{liveOption: {kind: "model", model: "sonnet"}}, {prompt: "Try again"}]);
+	});
+
+	it("sends no Try again and keeps the actions when the model switch is rejected", async () => {
+		const {events, model, send} = recordingRecovery(false);
+		const recovery = errorRecoveryHandlers(
+			{retryable: true, idle: true},
+			send,
+			vi.fn<(text: string) => void>(),
+			model,
+		);
+		const container = renderWithRecovery([PROMPT_RECORD, OVERLOADED_RECORD], recovery!);
+		await pickModel(container, "Sonnet 5.5");
+		await waitFor(() => {
+			expect(events).toStrictEqual([{liveOption: {kind: "model", model: "sonnet"}}]);
+		});
+		await Promise.resolve();
+
+		expect({
+			events,
+			buttons: [...container.querySelectorAll("[data-api-error-actions] button")].map((b) => b.textContent),
+		}).toStrictEqual({
+			events: [{liveOption: {kind: "model", model: "sonnet"}}],
+			buttons: ["Opus 5.5", "Try again"],
+		});
 	});
 
 	it("draws no actions on an error a later prompt superseded", () => {

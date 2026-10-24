@@ -2,6 +2,7 @@ import {describe, expect, it, vi} from "vite-plus/test";
 import {
 	errorRecoveryAvailability,
 	errorRecoveryHandlers,
+	switchModelForRetry,
 	lastEntryIsError,
 	type ErrorRecoveryGate,
 } from "../src/lib/session-error-recovery";
@@ -129,5 +130,44 @@ describe("lastEntryIsError", () => {
 	it("is false without an error", () => {
 		const {lines} = processTranscript([prompt("u1", "hello")]);
 		expect(lastEntryIsError(lines)).toBe(false);
+	});
+});
+
+describe("switchModelForRetry", () => {
+	it("applies the model as a live option and reports success", async () => {
+		const sent: unknown[] = [];
+		const toast = vi.fn<(options: unknown) => void>();
+		const ok = await switchModelForRetry("s1", "sonnet", {
+			send: async (sessionId, change) => {
+				sent.push([sessionId, change]);
+				return Promise.resolve();
+			},
+			toast,
+		});
+		expect({ok, sent, toasts: toast.mock.calls}).toStrictEqual({
+			ok: true,
+			sent: [["s1", {kind: "model", model: "sonnet"}]],
+			toasts: [],
+		});
+	});
+
+	it("toasts the chin's model failure copy and reports failure when the live option is rejected", async () => {
+		const toast = vi.fn<(options: unknown) => void>();
+		const ok = await switchModelForRetry("s1", "sonnet", {
+			send: async () => Promise.reject(new Error("pane gone")),
+			toast,
+		});
+		expect({ok, toasts: toast.mock.calls}).toStrictEqual({
+			ok: false,
+			toasts: [
+				[
+					{
+						kind: "error",
+						message: "Model change couldn’t be applied. You can try again.",
+						description: "pane gone",
+					},
+				],
+			],
+		});
 	});
 });

@@ -18,8 +18,8 @@ export interface RecoveryHandlers {
 	onRetry?: () => void;
 	onCompact?: () => void;
 	onRewind?: () => void;
-	/** Switches the session to a model (a primary alias) and retries. */
-	onRetryWithModel?: (model: string) => void;
+	/** Switches the session to a model (a primary alias) and retries; false when the switch failed. */
+	onRetryWithModel?: (model: string) => Promise<boolean>;
 	/** The fallback model's alias, for "Try again with {label}". */
 	fallbackAlias?: string;
 	/** The primary alias the running model checks in the model menu. */
@@ -84,6 +84,12 @@ export function ErrorRecoveryActions({
 		handler?.();
 		onActed();
 	};
+	// Upstream latches only when the model switch went through (`onSelect()!==false`).
+	const retryWithModel = (model: string) => {
+		void handlers.onRetryWithModel?.(model).then((switched) => {
+			if (switched) onActed();
+		});
+	};
 	return actions.map((action) => {
 		const variant = action.primary ? "primary" : "secondary";
 		switch (action.key) {
@@ -117,18 +123,14 @@ export function ErrorRecoveryActions({
 					</ApprovalActionButton>
 				);
 			case "fallback": {
-				const {fallbackAlias, onRetryWithModel} = handlers;
+				const {fallbackAlias} = handlers;
 				return (
 					<ApprovalActionButton
 						key={action.key}
 						variant={variant}
-						onClick={act(
-							fallbackAlias === undefined || onRetryWithModel === undefined
-								? undefined
-								: () => {
-										onRetryWithModel(fallbackAlias);
-									},
-						)}
+						onClick={() => {
+							if (fallbackAlias !== undefined) retryWithModel(fallbackAlias);
+						}}
 					>
 						{action.label}
 					</ApprovalActionButton>
@@ -140,10 +142,7 @@ export function ErrorRecoveryActions({
 						key={action.key}
 						label={action.label}
 						current={handlers.currentModelValue}
-						onSelect={(model) => {
-							handlers.onRetryWithModel?.(model);
-							onActed();
-						}}
+						onSelect={retryWithModel}
 					/>
 				);
 			default:

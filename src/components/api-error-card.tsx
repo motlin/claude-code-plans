@@ -35,8 +35,8 @@ export interface ApiErrorRecovery {
 	onRetry?: () => void;
 	onCompact?: () => void;
 	onRewind?: () => void;
-	/** Switches the session to a model (a primary alias) and retries. */
-	onRetryWithModel?: (model: string) => void;
+	/** Switches the session to a model (a primary alias) and retries; false when the switch failed. */
+	onRetryWithModel?: (model: string) => Promise<boolean>;
 	/** The running model's id, e.g. `claude-opus-5-5`. */
 	currentModel?: string;
 }

@@ -35,7 +35,8 @@ export interface LiveLaunchControls {
 	apply: (next: LaunchOptions) => Promise<void>;
 }
 
-const FAILURE_MESSAGE: Record<LiveOptionChange["kind"], string> = {
+/** The chin's failure toast copy per live option kind. */
+export const FAILURE_MESSAGE: Record<LiveOptionChange["kind"], string> = {
 	model: "Model change couldn’t be applied. You can try again.",
 	effort: "Effort change couldn’t be applied. You can try again.",
 	mode: "Mode change couldn’t be applied. You can try again.",
