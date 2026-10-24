@@ -178,6 +178,75 @@ describe("AskUserQuestionRenderer", () => {
 		]);
 	});
 
+	describe("receipt rows for unanswered questions (upstream's Wi + BT)", () => {
+		const TWO_QUESTIONS = {
+			questions: [
+				{
+					question: "Which color?",
+					header: "Color",
+					options: [{label: "Red"}, {label: "Blue"}],
+					multiSelect: false,
+				},
+				{
+					question: "Which size?",
+					header: "Size",
+					options: [{label: "Small"}, {label: "Large"}],
+					multiSelect: false,
+				},
+			],
+		};
+
+		function receiptRows(answers: Record<string, string>, result: string): string[][] {
+			const resultMeta = {
+				answers: Object.fromEntries(
+					Object.entries(answers).map(([question, answer]) => [question, {answer, notes: null}]),
+				),
+			};
+			const {container} = render(
+				<AskUserQuestionRenderer toolCall={makeCall({input: TWO_QUESTIONS, result, resultMeta})} />,
+			);
+			return [...container.querySelectorAll("[data-answered-question]")].map((row) =>
+				[...row.querySelectorAll("p")].map((p) => p.textContent),
+			);
+		}
+
+		it("prints Skipped as the answer line of a question answered [No preference]", () => {
+			expect(
+				receiptRows(
+					{"Which color?": "Red", "Which size?": "[No preference]"},
+					'The user answered: "Which color?"="Red", "Which size?"="[No preference]". Read the answers carefully — they may request clarification, changes, or that you not proceed — and follow what they actually say.',
+				),
+			).toStrictEqual([
+				["Which color?", "Red"],
+				["Which size?", "Skipped"],
+			]);
+		});
+
+		it("prints Not answered as the answer line of a dismissed question", () => {
+			expect(
+				receiptRows(
+					{
+						"Which color?": "Red",
+						"Which size?": "[User dismissed — do not proceed, wait for next instruction]",
+					},
+					'The user answered: "Which color?"="Red", "Which size?"="[User dismissed — do not proceed, wait for next instruction]". Read the answers carefully — they may request clarification, changes, or that you not proceed — and follow what they actually say.',
+				),
+			).toStrictEqual([
+				["Which color?", "Red"],
+				["Which size?", "Not answered"],
+			]);
+		});
+
+		it("drops a question with no entry in the recorded answers", () => {
+			expect(
+				receiptRows(
+					{"Which color?": "Red"},
+					'The user answered: "Which color?"="Red". Read the answers carefully — they may request clarification, changes, or that you not proceed — and follow what they actually say.',
+				),
+			).toStrictEqual([["Which color?", "Red"]]);
+		});
+	});
+
 	it("shows a pink status line when the user dismissed the question", () => {
 		const {container} = render(
 			<AskUserQuestionRenderer toolCall={makeCall({result: REJECTION_RESULT, isError: true})} />,

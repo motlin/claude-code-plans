@@ -1,6 +1,6 @@
 import {inputString} from "../../lib/tool-utils";
 import {type ReactNode, useEffect, useState} from "react";
-import type {ToolRendererProps} from "./types";
+import type {ClientToolCall, ToolRendererProps} from "./types";
 import {useAskUserQuestionContext} from "../ask-user-question-context";
 import {MarkdownArticle} from "../markdown-article";
 import {QuestionCard} from "../question-card";
@@ -9,12 +9,12 @@ import type {QuestionAnswer} from "../../lib/hook-events";
 import {labelledAnswers} from "../../lib/question-card-draft";
 import {clearSentQuestionCard, wasQuestionCardSeen} from "../../lib/question-card-store";
 import {
-	answersFromResultMeta,
 	describeAskUserQuestionResult,
 	normalizeQuestions,
+	OUTCOME_LABEL,
 	parseAnswerResult,
+	questionOutcomes,
 	type AskUserQuestionStatus,
-	type ParsedAnswer,
 	type QuestionLike,
 } from "../../lib/ask-user-question";
 
@@ -62,20 +62,21 @@ function notesAddInformation(notes: string | null, answerValue: string): notes i
 
 /**
  * One row of upstream's question receipt: the question in primary w500 over the
- * chosen answer (or the Other text) in secondary. Unchosen options are omitted.
+ * chosen answer (or the Other text, or the unanswered outcome's word) in secondary.
+ * Unchosen options are omitted.
  */
-function AnsweredQuestion({question, parsed}: {question: string; parsed: ParsedAnswer}) {
-	const answer = parsed.answer.trim();
+function AnsweredQuestion({question, answer, notes}: {question: string; answer: string; notes: string | null}) {
+	const trimmed = answer.trim();
 	return (
 		<div data-answered-question className="flex flex-col gap-0.5 px-3 py-2">
 			<p className="text-body font-medium text-primary break-words [unicode-bidi:plaintext]">{question}</p>
-			{answer !== "" && (
-				<p className="text-body text-secondary [overflow-wrap:anywhere] [unicode-bidi:plaintext]">{answer}</p>
+			{trimmed !== "" && (
+				<p className="text-body text-secondary [overflow-wrap:anywhere] [unicode-bidi:plaintext]">{trimmed}</p>
 			)}
-			{notesAddInformation(parsed.notes, answer) && (
+			{notesAddInformation(notes, trimmed) && (
 				<p className="text-footnote text-secondary italic whitespace-pre-wrap">
 					<span className="text-primary">Notes: </span>
-					{parsed.notes}
+					{notes}
 				</p>
 			)}
 		</div>
@@ -115,6 +116,21 @@ function StatusLine({status}: {status: AskUserQuestionStatus}) {
 			{status.detail && <div className="text-secondary whitespace-pre-wrap">{status.detail}</div>}
 		</div>
 	);
+}
+
+/** The notes the user typed per question, from the structured result or else the result text. */
+function recordedNotes(
+	meta: ClientToolCall["resultMeta"],
+	result: string | undefined,
+	questions: QuestionLike[],
+): Map<string, string | null> {
+	const notes = new Map<string, string | null>();
+	if (meta?.answers !== undefined) {
+		for (const [question, entry] of Object.entries(meta.answers)) notes.set(question, entry.notes);
+	} else if (result !== undefined) {
+		for (const entry of parseAnswerResult(result, questions) ?? []) notes.set(entry.question, entry.notes);
+	}
+	return notes;
 }
 
 export function AskUserQuestionRenderer({toolCall}: ToolRendererProps) {
@@ -168,11 +184,12 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps) {
 		);
 	}
 
-	const parsed =
-		result === undefined
-			? null
-			: (answersFromResultMeta(toolCall.resultMeta, questions) ?? parseAnswerResult(result, questions));
-	if (parsed !== null) {
+	// Upstream's receipt keeps every question with an answer or an outcome, and drops the rest.
+	const receipt = questionOutcomes(toolCall).filter(
+		(entry) => entry.answer !== undefined || entry.unanswered !== undefined,
+	);
+	if (receipt.length > 0) {
+		const notes = recordedNotes(toolCall.resultMeta, result, questions);
 		// Upstream's `epitaxy-question-receipt`: every answered pair of one call in a 480px card,
 		// divided by its ring's hairline, 3px nearer the row above and 7px further from the next.
 		return (
@@ -181,8 +198,13 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps) {
 					receiptEnters ? " animate-question-receipt-enter motion-reduce:animate-none" : ""
 				}`}
 			>
-				{parsed.map((entry, i) => (
-					<AnsweredQuestion key={i} question={entry.question} parsed={entry} />
+				{receipt.map((entry, i) => (
+					<AnsweredQuestion
+						key={i}
+						question={entry.question}
+						answer={entry.answer ?? (entry.unanswered === undefined ? "" : OUTCOME_LABEL[entry.unanswered])}
+						notes={notes.get(entry.question) ?? null}
+					/>
 				))}
 			</div>
 		);

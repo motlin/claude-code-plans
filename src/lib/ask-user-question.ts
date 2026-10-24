@@ -173,10 +173,7 @@ export function describeAskUserQuestionResult(result: string | undefined): AskUs
  * order. Newer results write question and answer text unescaped, so this is
  * the reliable source whenever every question has a recorded answer.
  */
-export function answersFromResultMeta(
-	meta: ToolResultMeta | undefined,
-	questions: QuestionLike[],
-): ParsedAnswer[] | null {
+function answersFromResultMeta(meta: ToolResultMeta | undefined, questions: QuestionLike[]): ParsedAnswer[] | null {
 	const answers = meta?.answers;
 	if (answers === undefined || questions.length === 0) return null;
 	const result: ParsedAnswer[] = [];
