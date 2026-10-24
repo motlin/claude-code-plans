@@ -54,7 +54,7 @@ import {
 	ENVIRONMENT_BAR_ROW_CLASS,
 	ENVIRONMENT_PLACE_CLASS,
 } from "./composer-tokens";
-import {FileMentionMenu} from "./file-mention-menu";
+import {FileMentionMenu, preloadFileTypeIcons} from "./file-mention-menu";
 import {QueuedMessageBar} from "./queued-message-bar";
 import {ToastContext} from "./toast-context";
 import {fileMentionOptionId} from "./file-mention-option-id";
@@ -614,6 +614,9 @@ export function Composer({
 	const [dismissedMention, setDismissedMention] = useState<string | null>(null);
 	const mention = mentionKey === dismissedMention ? null : trigger;
 	const suggestions = useFileMentionSuggestions(mentionSessionId, mention?.query ?? null);
+	useEffect(() => {
+		if (mentionSessionId !== undefined) void preloadFileTypeIcons();
+	}, [mentionSessionId]);
 	const mentionEntries = suggestions?.entries ?? [];
 	const mentionOpen = mention !== null && mentionEntries.length > 0;
 	const [mentionHighlight, setMentionHighlight] = useState<{

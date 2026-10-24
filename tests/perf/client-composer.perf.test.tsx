@@ -16,6 +16,7 @@ import {basename, join} from "node:path";
 import {afterAll, afterEach, beforeAll, describe, expect, it, vi} from "vite-plus/test";
 import {AppFrame} from "../../src/components/app-frame";
 import {ESTIMATED_TURN_HEIGHT_PIXELS} from "../../src/components/session-chat";
+import {preloadFileTypeIcons} from "../../src/components/file-mention-menu";
 import {SettingsProvider} from "../../src/components/settings-provider";
 import {ThemeProvider} from "../../src/components/theme-provider";
 import {ToastProvider} from "../../src/components/toast";
@@ -146,6 +147,8 @@ async function serveFromHandlers(
 }
 
 beforeAll(async () => {
+	// Census the steady state: the session composer preloads the lazy mention icons on mount, long before a real `@`.
+	await preloadFileTypeIcons();
 	vi.setSystemTime(FIXED_NOW);
 	root = mkdtempSync(join(tmpdir(), "perf-client-composer-"));
 	const home = join(root, "home");

@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 
 import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
-import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
+import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {Composer} from "../src/components/composer";
+import {preloadFileTypeIcons} from "../src/components/file-mention-menu";
 import {ToastProvider} from "../src/components/toast";
 import type {SessionFilesResponse} from "../src/lib/api/session-files";
 import {FILE_MENTION_DEBOUNCE_MS, fileMentionTrigger, insertFileMention} from "../src/lib/file-mentions";
@@ -94,6 +95,11 @@ function search(query: string, relPaths: string[]) {
 		capped: false,
 	} satisfies SessionFilesResponse;
 }
+
+// The menu draws a placeholder until the lazily loaded icon set arrives; load it up front so rows render their icons.
+beforeAll(async () => {
+	await preloadFileTypeIcons();
+});
 
 let responses: Map<string, unknown>;
 let fetchMock: ReturnType<typeof vi.fn<(url: string) => Promise<Response>>>;
@@ -224,6 +230,47 @@ describe("Composer @ file mentions", () => {
 			topWrapper: "flex min-w-0 flex-1 items-baseline gap-1.5 text-start",
 			top: [{className: "truncate text-primary", html: "<bdi>a.md</bdi>"}],
 		});
+	});
+
+	it("draws file rows with upstream's file-type icons and directory rows with the Folder glyph", async () => {
+		responses.set(
+			TOP_URL,
+			listing([
+				{relPath: "SKILL.md", isDirectory: false},
+				{relPath: "x.java", isDirectory: false},
+				{relPath: "src", isDirectory: true},
+			]),
+		);
+		const {textarea} = setup();
+
+		await type(textarea, "@");
+
+		expect(
+			screen.getAllByRole("option").map((row) => {
+				const typed = row.querySelector("svg[data-file-type-icon]");
+				const lucide = row.querySelector("svg.lucide");
+				return {
+					typed:
+						typed === null
+							? null
+							: {
+									width: typed.getAttribute("style"),
+									fills: [...typed.querySelectorAll("path")].map((path) => path.getAttribute("fill")),
+								},
+					lucide: lucide?.getAttribute("class") ?? null,
+				};
+			}),
+		).toStrictEqual([
+			{
+				typed: {
+					width: "width: 16px; height: 16px;",
+					fills: ["var(--fti-markdown)", "var(--fti-markdown)"],
+				},
+				lucide: null,
+			},
+			{typed: null, lucide: "lucide lucide-file-code shrink-0"},
+			{typed: null, lucide: "lucide lucide-folder size-4 shrink-0 text-ink-muted"},
+		]);
 	});
 
 	it("shows the basename with the dirname caption and caps the list at 15", async () => {

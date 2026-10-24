@@ -1,8 +1,36 @@
-import {useLayoutEffect, useRef} from "react";
-import {File, FileCode, Folder} from "lucide-react";
+import {useLayoutEffect, useRef, useSyncExternalStore} from "react";
+import {Folder} from "lucide-react";
 
 import type {SessionFilesEntry} from "../lib/api/session-files";
 import {fileMentionOptionId} from "./file-mention-option-id";
+
+type FileTypeIconModule = typeof import("./file-type-icon");
+
+// Keeps the file-type icon set out of the composer's cold load; upstream also draws a placeholder while its icon JSON
+// loads. Rows read the loaded module synchronously instead of suspending, so a late load never hides the open menu.
+let fileTypeIconModule: FileTypeIconModule | undefined;
+let fileTypeIconLoad: Promise<FileTypeIconModule> | undefined;
+const fileTypeIconListeners = new Set<() => void>();
+
+/** Starts loading the mention rows' file-type icons; the composer calls it on mount so the first `@` already has them. */
+export async function preloadFileTypeIcons(): Promise<FileTypeIconModule> {
+	fileTypeIconLoad ??= import("./file-type-icon").then((module) => {
+		fileTypeIconModule = module;
+		for (const listener of fileTypeIconListeners) listener();
+		return module;
+	});
+	return fileTypeIconLoad;
+}
+
+function subscribeFileTypeIcons(listener: () => void): () => void {
+	fileTypeIconListeners.add(listener);
+	void preloadFileTypeIcons();
+	return () => {
+		fileTypeIconListeners.delete(listener);
+	};
+}
+
+const loadedFileTypeIcons = () => fileTypeIconModule;
 
 const POPUP_CLASS =
 	"absolute bottom-full left-0 z-[130] mb-2 flex max-h-[min(24rem,calc(100svh-2rem))] max-w-[calc(100vw-2rem)] flex-col overflow-y-auto rounded-r7 bg-[var(--menu-bg)] p-1 text-body text-primary shadow-[var(--menu-shadow)] select-none";
@@ -10,12 +38,10 @@ const POPUP_CLASS =
 const ROW_CLASS =
 	"flex h-6 w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-r5 px-2 py-[2.5px] text-left text-[13px]/[19px] text-primary outline-none data-[highlighted]:bg-fill-ghost-hover";
 
-const SOURCE_EXTENSION =
-	/\.(?:[cm]?[jt]sx?|py|rb|go|rs|java|kt|swift|c|cc|cpp|h|hpp|cs|php|scala|sh|zsh|bash|lua|sql|vue|svelte|css|scss|html)$/i;
-
-function EntryIcon({entry}: {entry: SessionFilesEntry}) {
-	const Icon = entry.isDirectory ? Folder : SOURCE_EXTENSION.test(entry.name) ? FileCode : File;
-	return <Icon aria-hidden="true" className="size-4 shrink-0 text-secondary" />;
+function EntryIcon({entry, icons}: {entry: SessionFilesEntry; icons: FileTypeIconModule | undefined}) {
+	if (entry.isDirectory) return <Folder aria-hidden="true" className="size-4 shrink-0 text-ink-muted" />;
+	if (icons === undefined) return <span aria-hidden="true" className="size-4 shrink-0" />;
+	return <icons.FileTypeIcon fileName={entry.name} size="sm" />;
 }
 
 /**
@@ -37,6 +63,7 @@ export function FileMentionMenu({
 	onAccept: (entry: SessionFilesEntry) => void;
 }) {
 	const listRef = useRef<HTMLDivElement>(null);
+	const icons = useSyncExternalStore(subscribeFileTypeIcons, loadedFileTypeIcons, loadedFileTypeIcons);
 
 	useLayoutEffect(() => {
 		listRef.current?.querySelector<HTMLElement>("[data-highlighted]")?.scrollIntoView({block: "nearest"});
@@ -77,7 +104,7 @@ export function FileMentionMenu({
 							onAccept(entry);
 						}}
 					>
-						<EntryIcon entry={entry} />
+						<EntryIcon entry={entry} icons={icons} />
 						<span className="flex min-w-0 flex-1 items-baseline gap-1.5 text-start">
 							<span
 								className={
