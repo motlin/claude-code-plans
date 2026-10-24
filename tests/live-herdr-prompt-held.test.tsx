@@ -113,3 +113,92 @@ describe("useLiveHerdrPrompt held for the terminal", () => {
 		});
 	});
 });
+
+describe("useLiveHerdrPrompt held while the pane table already says live", () => {
+	function renderLiveHeld(postPrompt: PostPrompt) {
+		return renderHook(
+			({livePaneKey}: {livePaneKey: string}) =>
+				useLiveHerdrPrompt("session-alice", 100, [], postPrompt, undefined, true, livePaneKey),
+			{initialProps: {livePaneKey: "pane-1@3"}},
+		);
+	}
+
+	it("re-sends the held prompt once when the session's herdr pane updates", async () => {
+		const postPrompt = vi
+			.fn<PostPrompt>()
+			.mockRejectedValueOnce(new HerdrRequestError("no live pane", 502, "pane-not-found"))
+			.mockResolvedValue(undefined);
+		const {result, rerender} = renderLiveHeld(postPrompt);
+
+		await act(async () => {
+			await result.current.send("Alice's prompt");
+		});
+		const held = result.current.state;
+		await act(async () => {
+			rerender({livePaneKey: "pane-1@4"});
+			await Promise.resolve();
+		});
+		act(() => {
+			rerender({livePaneKey: "pane-1@4"});
+		});
+
+		expect({held, calls: postPrompt.mock.calls, state: result.current.state}).toStrictEqual({
+			held: {phase: "held", isPending: true, prompt: "Alice's prompt", rejection: null},
+			calls: [
+				["session-alice", "Alice's prompt", {}],
+				["session-alice", "Alice's prompt", {}],
+			],
+			state: {phase: "sent", isPending: true, prompt: "Alice's prompt", rejection: null},
+		});
+	});
+
+	it("retries on a doubling backoff while held, re-holding on the same 502 codes", async () => {
+		vi.useFakeTimers();
+		try {
+			const postPrompt = vi
+				.fn<PostPrompt>()
+				.mockRejectedValueOnce(new HerdrRequestError("no live pane", 502, "pane-not-found"))
+				.mockRejectedValueOnce(new HerdrRequestError("no live pane", 502, "session-not-found"))
+				.mockResolvedValue(undefined);
+			const {result} = renderLiveHeld(postPrompt);
+
+			await act(async () => {
+				await result.current.send("Alice's prompt");
+			});
+			await act(async () => {
+				await vi.advanceTimersByTimeAsync(1999);
+			});
+			const beforeFirstRetry = postPrompt.mock.calls.length;
+			await act(async () => {
+				await vi.advanceTimersByTimeAsync(1);
+			});
+			const reheld = result.current.state;
+			await act(async () => {
+				await vi.advanceTimersByTimeAsync(3999);
+			});
+			const beforeSecondRetry = postPrompt.mock.calls.length;
+			await act(async () => {
+				await vi.advanceTimersByTimeAsync(1);
+			});
+			await act(async () => {
+				await vi.advanceTimersByTimeAsync(60_000);
+			});
+
+			expect({
+				beforeFirstRetry,
+				reheld,
+				beforeSecondRetry,
+				calls: postPrompt.mock.calls.length,
+				state: result.current.state,
+			}).toStrictEqual({
+				beforeFirstRetry: 1,
+				reheld: {phase: "held", isPending: true, prompt: "Alice's prompt", rejection: null},
+				beforeSecondRetry: 2,
+				calls: 3,
+				state: {phase: "sent", isPending: true, prompt: "Alice's prompt", rejection: null},
+			});
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+});

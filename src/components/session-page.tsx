@@ -554,6 +554,10 @@ function SessionView({
 		undefined,
 		refillRejectedPrompt,
 		promptBehavior.hasLivePane,
+		herdr.panes
+			.filter((pane) => pane.sessionId === sessionId)
+			.map((pane) => `${pane.paneId}@${pane.revision}`)
+			.join(","),
 	);
 	const {retryRejection, dismissRejection} = useSendRejectionActions(
 		sessionId,
