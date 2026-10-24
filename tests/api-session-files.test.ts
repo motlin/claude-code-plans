@@ -364,6 +364,32 @@ describe("GET /api/sessions/$id/files", () => {
 		});
 	});
 
+	it("ranks tracked search results above gitignored ones when marking", async () => {
+		runGit(root, ["init", "--quiet"]);
+		runGit(root, ["config", "core.excludesFile", "/dev/null"]);
+		write(".gitignore", "node_modules/\n");
+		mkdirSync(join(root, "node_modules/x"), {recursive: true});
+		write("node_modules/x/kill.js");
+		mkdirSync(join(root, "skills"));
+		write("skills/a.md");
+		insertSession(root);
+
+		const search = await request({q: "skill", markIgnored: "1"});
+
+		expect(search.body).toStrictEqual({
+			kind: "search",
+			dir: "",
+			query: "skill",
+			results: [
+				{name: "skills", relPath: "skills", isDirectory: true},
+				{name: "a.md", relPath: "skills/a.md", isDirectory: false},
+				{name: "kill.js", relPath: "node_modules/x/kill.js", isDirectory: false, ignored: true},
+			],
+			partial: false,
+			capped: false,
+		});
+	});
+
 	it("rejects an invalid markIgnored flag", async () => {
 		insertSession(root);
 		expect(await request({markIgnored: "yes"})).toStrictEqual({

@@ -61,17 +61,20 @@ async function resolveDirectory(cwd: string): Promise<string | null> {
 	}
 }
 
-async function markIgnored(
-	root: string,
-	entries: WorkspaceEntry[],
-	checkIgnored: IgnoreCheck,
-): Promise<(WorkspaceEntry & {ignored?: true})[]> {
+type MarkedEntry = WorkspaceEntry & {ignored?: true};
+
+async function markIgnored(root: string, entries: WorkspaceEntry[], checkIgnored: IgnoreCheck): Promise<MarkedEntry[]> {
 	if (entries.length === 0) return entries;
 	const ignoredPaths = await checkIgnored(
 		root,
 		entries.map((entry) => entry.relPath),
 	);
 	return entries.map((entry) => (ignoredPaths.has(entry.relPath) ? {...entry, ignored: true} : entry));
+}
+
+/** Stable partition: tracked matches keep their fuzzy order ahead of gitignored ones. */
+function rankTrackedFirst(entries: MarkedEntry[]): MarkedEntry[] {
+	return [...entries.filter((entry) => entry.ignored !== true), ...entries.filter((entry) => entry.ignored === true)];
 }
 
 /**
@@ -114,7 +117,7 @@ export async function handleSessionFilesRequest(
 	}
 
 	const options = hideIgnoredFlag === "1" ? {ignored: resolvedDependencies.checkIgnored} : {};
-	const mark =
+	const mark: (entries: WorkspaceEntry[]) => Promise<MarkedEntry[]> =
 		markIgnoredFlag === "1" && hideIgnoredFlag === "0"
 			? async (entries: WorkspaceEntry[]) => markIgnored(root, entries, resolvedDependencies.checkIgnored)
 			: async (entries: WorkspaceEntry[]) => Promise.resolve(entries);
@@ -137,7 +140,7 @@ export async function handleSessionFilesRequest(
 			kind: "search",
 			dir,
 			query,
-			results: await mark(matches.paths.flatMap((path) => byPath.get(path) ?? [])),
+			results: rankTrackedFirst(await mark(matches.paths.flatMap((path) => byPath.get(path) ?? []))),
 			partial: walk.partial,
 			capped: matches.partial,
 		});
