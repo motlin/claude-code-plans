@@ -293,6 +293,12 @@ describe("filterSlashCommands", () => {
 		]);
 	});
 
+	it("finds permissions among the built-ins by its allowed-tools alias prefix", () => {
+		expect(filterSlashCommands(BUILTIN_SLASH_COMMANDS, "allowed").map((c) => c.name)).toStrictEqual([
+			"permissions",
+		]);
+	});
+
 	it("returns nothing for a query over 50 characters", () => {
 		const commands: SlashCommand[] = [{name: "a".repeat(51), description: "", source: "builtin"}];
 
