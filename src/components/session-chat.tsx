@@ -1305,6 +1305,11 @@ const BackgroundOutcomeContext = createContext<BackgroundOutcomes>({byLaunch: ne
 
 /** The tool_use id the session's permission prompt waits on, if any. */
 const PermissionWaitContext = createContext<string | null>(null);
+/**
+ * The live turn's trailing tool call, which may still join a group, so a lone row keeps its
+ * screenshots in the row rather than hoisting them into a card that would move (upstream `holdImages`).
+ */
+const HeldImagesCallContext = createContext<string | null>(null);
 
 /** The call as its running label reads it: flagged when the permission prompt holds it. */
 function withPermissionWait<Call extends {id: string}>(
@@ -3365,6 +3370,27 @@ function VirtualizedSessionEntries({
 	);
 }
 
+/**
+ * The id of the call that ends a still-running turn: the last visible line's last block, past
+ * thinking and blank text, is that call's tool_use. Null once the turn settles or moves on.
+ */
+function heldImagesCallId(
+	lines: readonly SessionLine[],
+	renderProps: LineRenderProps,
+	verbose: boolean,
+	turnInProgress: boolean,
+): string | null {
+	if (!turnInProgress) return null;
+	const last = lines.findLast((line) => isLineVisible(line, renderProps, verbose));
+	if (last?.type !== "assistant") return null;
+	const content = last.message?.content;
+	if (!Array.isArray(content)) return null;
+	const tail = content.findLast(
+		(block) => block.type !== "thinking" && !(block.type === "text" && block.text.trim() === ""),
+	);
+	return tail?.type === "tool_use" ? tail.id : null;
+}
+
 function SessionLineList({
 	lines,
 	shouldScrollToEnd,
@@ -3391,18 +3417,21 @@ function SessionLineList({
 		turnInProgress,
 		archived,
 	);
+	const heldImagesCall = heldImagesCallId(lines, renderProps, verbose, turnInProgress);
 	const [expansionStore] = useState(() => new Map<string, ExpansionToggle>());
 	return (
 		<ExpansionStoreContext.Provider value={expansionStore}>
-			<AssistantSpanInteractions held={held} setHeld={setHeld}>
-				<VirtualizedSessionEntries
-					key={measurementSource === undefined ? undefined : measurementKey}
-					entries={entries}
-					shouldScrollToEnd={shouldScrollToEnd}
-					measurementKey={measurementKey}
-					measurementSource={measurementSource}
-				/>
-			</AssistantSpanInteractions>
+			<HeldImagesCallContext.Provider value={heldImagesCall}>
+				<AssistantSpanInteractions held={held} setHeld={setHeld}>
+					<VirtualizedSessionEntries
+						key={measurementSource === undefined ? undefined : measurementKey}
+						entries={entries}
+						shouldScrollToEnd={shouldScrollToEnd}
+						measurementKey={measurementKey}
+						measurementSource={measurementSource}
+					/>
+				</AssistantSpanInteractions>
+			</HeldImagesCallContext.Provider>
 		</ExpansionStoreContext.Provider>
 	);
 }
@@ -5015,12 +5044,15 @@ function RowMedia({
 	from = 0,
 	total,
 	step = false,
+	lazy = step,
 }: {
 	calls: readonly ClientToolCall[];
 	from?: number;
 	total?: number;
-	/** A step row inside an expanded group: hides when empty and lazy-loads its images. */
+	/** A row's own slot, not a group's: hides when empty. */
 	step?: boolean;
+	/** Lazy-loads the images, as a step inside an expanded group does. */
+	lazy?: boolean;
 }) {
 	const shots = calls.flatMap((call) => call.outputImages ?? []);
 	if (shots.length === 0) return null;
@@ -5032,7 +5064,7 @@ function RowMedia({
 				captions={captions}
 				from={from}
 				total={total ?? from + shots.length}
-				lazy={step}
+				lazy={lazy}
 			/>
 		</span>
 	);
@@ -5080,6 +5112,7 @@ function ToolCallRow({
 			: call;
 	const toolRowLabel = toolLabel(labelCall);
 	const permissionWaitId = useContext(PermissionWaitContext);
+	const heldImagesCall = useContext(HeldImagesCallContext);
 	// Upstream offers a running background command's live output; locally that is the Background tasks pane.
 	const backgroundTasks = useBackgroundTasksOpener();
 	// A background Agent's launch result arrives at once, but upstream keeps its row
@@ -5351,14 +5384,22 @@ function ToolCallRow({
 		);
 	}
 
+	// A lone row ending a live turn may still join a group, so it keeps its screenshots like a step.
+	const holdsImages = !nested && heldImagesCall === call.id;
 	// A grouped step shows its own screenshots, numbered group-wide, until it expands to its body.
-	const media =
-		shots === undefined || expanded ? null : <RowMedia calls={[call]} from={shots.from} total={shots.total} step />;
+	const media = expanded ? null : shots === undefined ? (
+		holdsImages ? (
+			<RowMedia calls={[call]} step lazy={false} />
+		) : null
+	) : (
+		<RowMedia calls={[call]} from={shots.from} total={shots.total} step />
+	);
 	// An expanded grouped step ends its body with the full screenshots; a lone row hoists them
 	// into a card after the row, as upstream's `code.tool_images` does.
 	const images = call.outputImages !== undefined && call.outputImages.length > 0 ? call.outputImages : null;
-	const bodyImages = images !== null && nested ? <StepScreenshots images={images} /> : null;
-	const hoistedImages = images !== null && !nested ? <StepScreenshots images={images} padTop={false} /> : null;
+	const bodyImages = images !== null && (nested || holdsImages) ? <StepScreenshots images={images} /> : null;
+	const hoistedImages =
+		images !== null && !nested && !holdsImages ? <StepScreenshots images={images} padTop={false} /> : null;
 	const withHoistedImages = (row: React.ReactElement) =>
 		hoistedImages === null ? (
 			row

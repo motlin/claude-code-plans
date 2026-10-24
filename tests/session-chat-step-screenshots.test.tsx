@@ -6,7 +6,7 @@ import {SessionChat} from "../src/components/session-chat";
 import {processTranscript} from "../src/lib/transcript";
 
 vi.mock("../src/components/settings-context", () => ({
-	useSettings: () => ({settings: {showDebug: false}}),
+	useSettings: () => ({settings: {showDebug: false, codeThemeLight: "claude-light", codeThemeDark: "github-dark"}}),
 }));
 vi.mock("../src/lib/hmr-persist", () => ({
 	hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize(),
@@ -68,7 +68,7 @@ function groupRecords(): unknown[] {
 	];
 }
 
-function renderTranscript(records: unknown[]): HTMLElement {
+function renderTranscript(records: unknown[], {turnInProgress = false} = {}): HTMLElement {
 	const {lines, toolResultMap} = processTranscript(records);
 	return render(
 		<SessionChat
@@ -79,6 +79,7 @@ function renderTranscript(records: unknown[]): HTMLElement {
 			showTranscriptOnly
 			showThinking
 			shouldScrollToEnd={false}
+			turnInProgress={turnInProgress}
 		/>,
 	).container;
 }
@@ -231,6 +232,51 @@ describe("tool-row screenshot media slots", () => {
 					},
 				],
 			},
+		]);
+	});
+
+	it("keeps a live turn's last lone row's screenshots in the row instead of a card", () => {
+		const container = renderTranscript(loneRecords(), {turnInProgress: true});
+
+		expect(mediaSlots(container)).toStrictEqual([
+			{
+				className: `${MEDIA_SLOT_CLASS} empty:hidden`,
+				title: "",
+				labels: ["Screenshot"],
+				captions: ["Read input-debug.png"],
+				srcs: ["data:image/png;base64,AAA"],
+				loading: [null],
+				inStepRow: false,
+			},
+		]);
+		expect(stepScreenshots(container)).toStrictEqual([]);
+	});
+
+	it("shows a held lone row's screenshots in its expanded body", () => {
+		const container = renderTranscript(loneRecords(), {turnInProgress: true});
+		fireEvent.click(readStepToggle(container));
+
+		expect(mediaSlots(container)).toStrictEqual([]);
+		expect(stepScreenshots(container).map(({className, inBody}) => ({className, inBody}))).toStrictEqual([
+			{className: SCREENSHOTS_CLASS, inBody: true},
+		]);
+	});
+
+	it("hoists a live turn's lone row's screenshots once the turn moves on to prose", () => {
+		const records = [
+			...loneRecords(),
+			{
+				type: "assistant",
+				uuid: "a2",
+				parentUuid: "r2",
+				message: {role: "assistant", content: [{type: "text", text: "Here is the screenshot."}]},
+			},
+		];
+		const container = renderTranscript(records, {turnInProgress: true});
+
+		expect(mediaSlots(container)).toStrictEqual([]);
+		expect(stepScreenshots(container).map(({className, inBody}) => ({className, inBody}))).toStrictEqual([
+			{className: "flex flex-col items-start gap-1", inBody: false},
 		]);
 	});
 
