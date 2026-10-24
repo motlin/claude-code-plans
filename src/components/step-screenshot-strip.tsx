@@ -1,7 +1,63 @@
 import {PreviewCard} from "@base-ui/react/preview-card";
-import {type MouseEvent, useId, useState} from "react";
+import {lazy, type MouseEvent, type ReactNode, Suspense, useId, useState} from "react";
 
 import type {ToolResultImage} from "../lib/session-utils";
+
+const ImageViewer = lazy(async () => import("./image-viewer").then((module) => ({default: module.ImageViewer})));
+
+function imageSrc(image: ToolResultImage): string {
+	return `data:${image.mimeType};base64,${image.data}`;
+}
+
+interface Viewing {
+	index: number;
+	origin: HTMLElement;
+	/** The row holding the opener, whose toggle takes focus if the opener is gone on close. */
+	row: Element | null;
+}
+
+/**
+ * The lightbox over a set of screenshots (upstream `cu`): every image, opened
+ * at the clicked one with the clicked button as the morph origin, each slide
+ * captioned with its step label ("Screenshot" when it has none). If focus fell
+ * to the body by the time it closes, the nearest row toggle takes it (`a8`).
+ */
+function useScreenshotViewer(
+	images: readonly ToolResultImage[],
+	captions: readonly (string | undefined)[],
+): {viewerOpen: boolean; open: (index: number, origin: HTMLElement) => void; viewer: ReactNode} {
+	const [viewing, setViewing] = useState<Viewing | null>(null);
+	const open = (index: number, origin: HTMLElement) => {
+		setViewing({index, origin, row: origin.closest("[data-turn-status]")});
+	};
+	const viewer =
+		viewing === null ? null : (
+			<Suspense fallback={null}>
+				<ImageViewer
+					images={images.map((image, index) => ({
+						key: String(index),
+						src: imageSrc(image),
+						label: captions[index] ?? "Screenshot",
+					}))}
+					captions={captions}
+					index={viewing.index}
+					origin={viewing.origin}
+					fallbackFocus={() =>
+						viewing.row?.isConnected === true
+							? viewing.row.querySelector<HTMLElement>("button[aria-expanded]")
+							: null
+					}
+					onIndexChange={(index) => {
+						setViewing({...viewing, index});
+					}}
+					onClose={() => {
+						setViewing(null);
+					}}
+				/>
+			</Suspense>
+		);
+	return {viewerOpen: viewing !== null, open, viewer};
+}
 
 /** Upstream shows at most this many thumbnails on desktop (shared-13 `dN`). */
 const VISIBLE_SHOTS = 3;
@@ -20,9 +76,9 @@ export interface StepScreenshotStripProps {
 	total?: number;
 	/** Lazy-load the images (step rows inside an expanded group). */
 	lazy?: boolean;
-	/** The viewer is showing; thumbnails then open no preview card. */
+	/** A viewer is showing; thumbnails then open no preview card. */
 	viewerOpen?: boolean;
-	/** Open the viewer at the clicked shot's group-wide index. */
+	/** Told the clicked shot's group-wide index as the strip opens its viewer there. */
 	onOpen?: (index: number) => void;
 }
 
@@ -41,6 +97,7 @@ export function StepScreenshotStrip({
 	onOpen,
 }: StepScreenshotStripProps) {
 	const id = useId();
+	const viewer = useScreenshotViewer(shots, captions);
 	const count = shots.length;
 	const firstVisible = Math.max(0, count - VISIBLE_SHOTS);
 	const lastIndex = count - 1;
@@ -72,8 +129,11 @@ export function StepScreenshotStrip({
 								groupIndex={groupIndex}
 								total={total}
 								lazy={lazy}
-								viewerOpen={viewerOpen}
-								onOpen={onOpen}
+								viewerOpen={viewerOpen || viewer.viewerOpen}
+								onOpen={(index, origin) => {
+									viewer.open(index - from, origin);
+									onOpen?.(index);
+								}}
 							/>
 							{caption !== undefined && (
 								<span id={descriptionId} className="sr-only select-none" data-find-omitted="">
@@ -84,6 +144,7 @@ export function StepScreenshotStrip({
 					);
 				})}
 			</div>
+			{viewer.viewer}
 		</div>
 	);
 }
@@ -102,7 +163,7 @@ interface ThumbnailProps {
 	total: number;
 	lazy: boolean;
 	viewerOpen: boolean;
-	onOpen: ((index: number) => void) | undefined;
+	onOpen: (index: number, origin: HTMLElement) => void;
 }
 
 /**
@@ -114,11 +175,11 @@ interface ThumbnailProps {
  */
 function Thumbnail({shot, caption, descriptionId, groupIndex, total, lazy, viewerOpen, onOpen}: ThumbnailProps) {
 	const [previewOpen, setPreviewOpen] = useState(false);
-	const src = `data:${shot.mimeType};base64,${shot.data}`;
+	const src = imageSrc(shot);
 	const label = total === 1 ? "Screenshot" : `Screenshot ${groupIndex + 1} of ${total}`;
 	const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
 		event.stopPropagation();
-		onOpen?.(groupIndex);
+		onOpen(groupIndex, event.currentTarget);
 	};
 	return (
 		<PreviewCard.Root open={previewOpen && !viewerOpen} onOpenChange={setPreviewOpen}>
@@ -171,8 +232,8 @@ export interface StepScreenshotsProps {
 	images: readonly ToolResultImage[];
 	/** Open 8px above the images, as an expanded step's body does; a lone row's card sits flush. */
 	padTop?: boolean;
-	/** Open the viewer at the clicked image's index. */
-	onOpen?: (index: number) => void;
+	/** Each image's step label, captioning it in the viewer. */
+	captions: readonly (string | undefined)[];
 }
 
 /**
@@ -180,7 +241,8 @@ export interface StepScreenshotsProps {
  * screenshot" button per image, drawn at the end of an expanded step's body
  * and, for a lone tool row, as a card after the row.
  */
-export function StepScreenshots({images, padTop = true, onOpen}: StepScreenshotsProps) {
+export function StepScreenshots({images, padTop = true, captions}: StepScreenshotsProps) {
+	const viewer = useScreenshotViewer(images, captions);
 	return (
 		<div data-step-screenshots="" className={`flex flex-col items-start gap-1${padTop ? " pt-p8" : ""}`}>
 			{images.map((image, index) => (
@@ -189,15 +251,14 @@ export function StepScreenshots({images, padTop = true, onOpen}: StepScreenshots
 					type="button"
 					aria-label="View screenshot"
 					className="max-w-full cursor-zoom-in focus-visible:outline-hidden hide-focus-ring focus-visible:ring-focus rounded-sm"
-					onClick={() => onOpen?.(index)}
+					onClick={(event) => {
+						viewer.open(index, event.currentTarget);
+					}}
 				>
-					<img
-						alt=""
-						className="max-w-full max-h-[360px] w-auto rounded-r4 border"
-						src={`data:${image.mimeType};base64,${image.data}`}
-					/>
+					<img alt="" className="max-w-full max-h-[360px] w-auto rounded-r4 border" src={imageSrc(image)} />
 				</button>
 			))}
+			{viewer.viewer}
 		</div>
 	);
 }

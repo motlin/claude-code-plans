@@ -5397,9 +5397,15 @@ function ToolCallRow({
 	// An expanded grouped step ends its body with the full screenshots; a lone row hoists them
 	// into a card after the row, as upstream's `code.tool_images` does.
 	const images = call.outputImages !== undefined && call.outputImages.length > 0 ? call.outputImages : null;
-	const bodyImages = images !== null && (nested || holdsImages) ? <StepScreenshots images={images} /> : null;
+	const imageCaptions = images?.map(() => screenshotCaption(call)) ?? [];
+	const bodyImages =
+		images !== null && (nested || holdsImages) ? (
+			<StepScreenshots images={images} captions={imageCaptions} />
+		) : null;
 	const hoistedImages =
-		images !== null && !nested && !holdsImages ? <StepScreenshots images={images} padTop={false} /> : null;
+		images !== null && !nested && !holdsImages ? (
+			<StepScreenshots images={images} padTop={false} captions={imageCaptions} />
+		) : null;
 	const withHoistedImages = (row: React.ReactElement) =>
 		hoistedImages === null ? (
 			row

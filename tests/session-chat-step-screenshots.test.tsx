@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {cleanup, fireEvent, render} from "@testing-library/react";
+import {cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat} from "../src/components/session-chat";
 import {processTranscript} from "../src/lib/transcript";
@@ -340,3 +340,55 @@ function stepScreenshots(container: HTMLElement): StepScreenshotsCard[] {
 		}),
 	}));
 }
+
+describe("tool-row screenshot viewer", () => {
+	async function viewerCaption(): Promise<{caption: string | undefined; zoom: string | null | undefined}> {
+		const dialog = await screen.findByRole("dialog", {name: "Image preview"});
+		return {
+			caption: dialog.querySelector("bdi")?.textContent,
+			zoom: dialog.querySelector('[data-viewer-slide][role="button"]')?.getAttribute("aria-label"),
+		};
+	}
+
+	function closeByBackdrop() {
+		fireEvent.click(screen.getByRole("dialog", {name: "Image preview"}));
+	}
+
+	it("opens a collapsed group's thumbnail in the viewer, captioned with the step label", async () => {
+		const container = renderTranscript(groupRecords());
+		fireEvent.click(container.querySelector<HTMLElement>('[data-cds-row-media] button[aria-label="Screenshot"]')!);
+
+		expect(await viewerCaption()).toStrictEqual({
+			caption: "Read input-debug.png",
+			zoom: "Zoom image: Read input-debug.png",
+		});
+		closeByBackdrop();
+		expect({
+			dialog: screen.queryByRole("dialog"),
+			expanded: groupToggle(container).getAttribute("aria-expanded"),
+		}).toStrictEqual({dialog: null, expanded: "false"});
+	});
+
+	it("keeps a step collapsed when its thumbnail's viewer is closed from the backdrop", async () => {
+		const container = renderTranscript(groupRecords());
+		fireEvent.click(groupToggle(container));
+		fireEvent.click(readStepToggle(container).querySelector<HTMLElement>('button[aria-label="Screenshot"]')!);
+		await viewerCaption();
+
+		closeByBackdrop();
+
+		expect(readStepToggle(container).getAttribute("aria-expanded")).toBe("false");
+	});
+
+	it("opens an expanded step's 'View screenshot' image in the viewer with its caption", async () => {
+		const container = renderTranscript(groupRecords());
+		fireEvent.click(groupToggle(container));
+		fireEvent.click(readStepToggle(container));
+		fireEvent.click(screen.getByRole("button", {name: "View screenshot"}));
+
+		expect(await viewerCaption()).toStrictEqual({
+			caption: "Read input-debug.png",
+			zoom: "Zoom image: Read input-debug.png",
+		});
+	});
+});

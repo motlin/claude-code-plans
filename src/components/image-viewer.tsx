@@ -84,6 +84,10 @@ function focusedElement(): HTMLElement | null {
 		: null;
 }
 
+function focusLost(): boolean {
+	return document.activeElement === null || document.activeElement === document.body;
+}
+
 function pagerButtonClass(disabled: boolean): string {
 	return `p-2 rounded-lg ${disabled ? "text-white/30 cursor-default" : "text-white hover:bg-white/10"}`;
 }
@@ -102,6 +106,8 @@ export function ImageViewer({
 	images,
 	index,
 	origin = null,
+	captions,
+	fallbackFocus,
 	onIndexChange,
 	onClose,
 }: {
@@ -109,6 +115,13 @@ export function ImageViewer({
 	index: number;
 	/** The thumbnail that opened the viewer: the open/close morph's other end. */
 	origin?: HTMLElement | null;
+	/**
+	 * Per-slide captions (upstream's `renderAttribution`): the bottom row then
+	 * always renders, the active slide's caption at its start, even for one image.
+	 */
+	captions?: readonly (string | undefined)[];
+	/** Where focus goes on close when what had focus is gone and it fell to the body. */
+	fallbackFocus?: () => HTMLElement | null;
 	onIndexChange: (index: number) => void;
 	onClose: () => void;
 }) {
@@ -179,6 +192,7 @@ export function ImageViewer({
 					setMorphName(origin, morphBack);
 				}
 				returnFocus?.focus({preventScroll: true});
+				if (fallbackFocus !== undefined && focusLost()) fallbackFocus()?.focus({preventScroll: true});
 			},
 			() => {
 				setMorphName(origin, false);
@@ -283,6 +297,7 @@ export function ImageViewer({
 			draggedRef.current = false;
 		}, 0);
 	};
+	const caption = captions?.[index];
 	const isFirst = index === 0;
 	const isLast = index === images.length - 1;
 	const onKeyDown = (event: KeyboardEvent) => {
@@ -323,7 +338,9 @@ export function ImageViewer({
 					onClickCapture={(event) => {
 						if (draggedRef.current) event.stopPropagation();
 					}}
-					onClick={() => {
+					onClick={(event) => {
+						// The portal still bubbles through React: a viewer opened from inside a row never toggles it.
+						event.stopPropagation();
 						if (zoomed) setZoom(null);
 						else requestClose();
 					}}
@@ -413,43 +430,58 @@ export function ImageViewer({
 							className="pointer-events-none absolute inset-x-0 bottom-0"
 							style={{height: "max(128px, 10vh)", background: BOTTOM_GRADIENT}}
 						/>
-						{images.length > 1 && (
+						{(captions !== undefined || images.length > 1) && (
 							// oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- only keeps pager clicks from reaching the backdrop's close
 							<div
 								onClick={stopPropagation}
 								className="absolute inset-x-0 bottom-6 z-10 flex h-14 items-center justify-center px-6"
 							>
-								<div className="absolute top-1/2 left-1/2 inline-flex -translate-x-1/2 -translate-y-1/2 items-center gap-1">
-									<button
-										type="button"
-										aria-label="Previous image"
-										aria-disabled={isFirst}
-										onClick={() => {
-											if (!isFirst) onIndexChange(index - 1);
-										}}
-										className={pagerButtonClass(isFirst)}
-									>
-										<ChevronLeft aria-hidden="true" className="size-5" />
-									</button>
-									<span
-										aria-live="polite"
-										aria-atomic="true"
-										className="pointer-events-none px-2 text-sm text-white/80 tabular-nums select-none"
-									>
-										{index + 1} of {images.length}
-									</span>
-									<button
-										type="button"
-										aria-label="Next image"
-										aria-disabled={isLast}
-										onClick={() => {
-											if (!isLast) onIndexChange(index + 1);
-										}}
-										className={pagerButtonClass(isLast)}
-									>
-										<ChevronRight aria-hidden="true" className="size-5" />
-									</button>
-								</div>
+								{captions !== undefined && (
+									<div className="flex-1 flex justify-start items-center">
+										{caption !== undefined && (
+											<bdi
+												title={caption}
+												className="block truncate text-body text-white/80 max-sm:absolute max-sm:inset-x-6 max-sm:bottom-full max-sm:text-center sm:max-w-[calc(50vw-7rem)]"
+											>
+												{caption}
+											</bdi>
+										)}
+									</div>
+								)}
+								{images.length > 1 && (
+									<div className="absolute top-1/2 left-1/2 inline-flex -translate-x-1/2 -translate-y-1/2 items-center gap-1">
+										<button
+											type="button"
+											aria-label="Previous image"
+											aria-disabled={isFirst}
+											onClick={() => {
+												if (!isFirst) onIndexChange(index - 1);
+											}}
+											className={pagerButtonClass(isFirst)}
+										>
+											<ChevronLeft aria-hidden="true" className="size-5" />
+										</button>
+										<span
+											aria-live="polite"
+											aria-atomic="true"
+											className="pointer-events-none px-2 text-sm text-white/80 tabular-nums select-none"
+										>
+											{index + 1} of {images.length}
+										</span>
+										<button
+											type="button"
+											aria-label="Next image"
+											aria-disabled={isLast}
+											onClick={() => {
+												if (!isLast) onIndexChange(index + 1);
+											}}
+											className={pagerButtonClass(isLast)}
+										>
+											<ChevronRight aria-hidden="true" className="size-5" />
+										</button>
+									</div>
+								)}
+								{captions !== undefined && <div className="flex-1" />}
 							</div>
 						)}
 					</div>

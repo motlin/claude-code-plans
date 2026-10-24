@@ -3,7 +3,7 @@
 import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
-import {StepScreenshotStrip} from "../src/components/step-screenshot-strip";
+import {StepScreenshotStrip, StepScreenshots} from "../src/components/step-screenshot-strip";
 import type {ToolResultImage} from "../src/lib/session-utils";
 
 afterEach(cleanup);
@@ -185,5 +185,117 @@ describe("StepScreenshotStrip preview card", () => {
 		await advance(500);
 
 		expect(popup()).toBeNull();
+	});
+});
+
+describe("screenshot viewer", () => {
+	async function viewer(): Promise<HTMLElement> {
+		return screen.findByRole("dialog", {name: "Image preview"});
+	}
+
+	function slideLabels(dialog: HTMLElement): (string | null)[] {
+		return [...dialog.querySelectorAll("[data-viewer-slide] img")].map((img) => img.getAttribute("alt"));
+	}
+
+	function viewerState(dialog: HTMLElement) {
+		return {
+			slides: slideLabels(dialog),
+			active: dialog.querySelector('[data-viewer-slide][role="button"]')?.getAttribute("aria-label"),
+			caption: dialog.querySelector("bdi")?.textContent,
+			count: dialog.querySelector("[aria-live]")?.textContent,
+		};
+	}
+
+	it("opens every shot in the strip at the clicked one, captioned with its step label", async () => {
+		render(<StepScreenshotStrip shots={shots(2)} captions={["Read a.png", undefined]} />);
+
+		fireEvent.click(screen.getByRole("button", {name: "Screenshot 1 of 2"}));
+
+		expect(viewerState(await viewer())).toStrictEqual({
+			slides: ["Read a.png", "Screenshot"],
+			active: "Zoom image: Read a.png",
+			caption: "Read a.png",
+			count: "1 of 2",
+		});
+	});
+
+	it("opens a step strip's own shots at the clicked one despite group-wide numbering", async () => {
+		render(<StepScreenshotStrip shots={shots(2)} captions={["Read b.png", "Read c.png"]} from={1} total={3} />);
+
+		fireEvent.click(screen.getByRole("button", {name: "Screenshot 3 of 3"}));
+
+		expect(viewerState(await viewer())).toStrictEqual({
+			slides: ["Read b.png", "Read c.png"],
+			active: "Zoom image: Read c.png",
+			caption: "Read c.png",
+			count: "2 of 2",
+		});
+	});
+
+	it("returns focus to the opening thumbnail when the viewer closes", async () => {
+		render(<StepScreenshotStrip shots={shots(1)} captions={["Read"]} />);
+		const thumb = screen.getByRole("button", {name: "Screenshot"});
+		act(() => {
+			thumb.focus();
+		});
+		fireEvent.click(thumb);
+		await viewer();
+
+		fireEvent.click(screen.getByRole("button", {name: "Close"}));
+
+		expect({dialog: screen.queryByRole("dialog"), focused: document.activeElement}).toStrictEqual({
+			dialog: null,
+			focused: thumb,
+		});
+	});
+
+	it("focuses the row toggle on close when focus had fallen to the body", async () => {
+		render(
+			<div data-turn-status="">
+				<button type="button" aria-expanded={false}>
+					Ran a command
+				</button>
+				<StepScreenshotStrip shots={shots(1)} captions={["Read"]} />
+			</div>,
+		);
+		fireEvent.click(screen.getByRole("button", {name: "Screenshot"}));
+		await viewer();
+
+		fireEvent.click(screen.getByRole("button", {name: "Close"}));
+
+		expect(document.activeElement).toBe(screen.getByRole("button", {name: "Ran a command"}));
+	});
+
+	it("keeps viewer clicks from reaching the row the strip sits in", async () => {
+		const onRowClick = vi.fn<() => void>();
+		render(
+			// oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- stands in for the step row's toggle
+			<div onClick={onRowClick}>
+				<StepScreenshotStrip shots={shots(1)} captions={["Read"]} />
+			</div>,
+		);
+		fireEvent.click(screen.getByRole("button", {name: "Screenshot"}));
+		const dialog = await viewer();
+
+		fireEvent.click(dialog.querySelector("[data-viewer-slide] img")!);
+		fireEvent.click(dialog);
+
+		expect({rowClicks: onRowClick.mock.calls.length, dialog: screen.queryByRole("dialog")}).toStrictEqual({
+			rowClicks: 0,
+			dialog: null,
+		});
+	});
+
+	it("opens a step's full-size screenshots from 'View screenshot' with their captions", async () => {
+		render(<StepScreenshots images={shots(2)} captions={["Read a.png", "Read b.png"]} />);
+
+		fireEvent.click(screen.getAllByRole("button", {name: "View screenshot"})[1]!);
+
+		expect(viewerState(await viewer())).toStrictEqual({
+			slides: ["Read a.png", "Read b.png"],
+			active: "Zoom image: Read b.png",
+			caption: "Read b.png",
+			count: "2 of 2",
+		});
 	});
 });

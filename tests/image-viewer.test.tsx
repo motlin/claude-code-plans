@@ -20,14 +20,34 @@ const ZOOMED_IMG = `${SLIDE_IMG} opacity-100 ${FOCUS_RING} cursor-zoom-out touch
 const NEIGHBOUR_IMG = `${SLIDE_IMG} opacity-40 hover:opacity-70 cursor-pointer ${FOCUS_RING}`;
 const SLIDE = "h-full flex-shrink-0 flex items-center justify-center outline-none";
 
-function Harness({images, initial, onClose}: {images: readonly AttachedImage[]; initial: number; onClose: () => void}) {
+function Harness({
+	images,
+	initial,
+	captions,
+	onClose,
+}: {
+	images: readonly AttachedImage[];
+	initial: number;
+	captions?: readonly (string | undefined)[];
+	onClose: () => void;
+}) {
 	const [index, setIndex] = useState(initial);
-	return <ImageViewer images={images} index={index} onIndexChange={setIndex} onClose={onClose} />;
+	return (
+		<ImageViewer
+			images={images}
+			index={index}
+			onIndexChange={setIndex}
+			onClose={onClose}
+			{...(captions === undefined ? {} : {captions})}
+		/>
+	);
 }
 
-function open(initial = 0, images: readonly AttachedImage[] = IMAGES) {
+function open(initial = 0, images: readonly AttachedImage[] = IMAGES, captions?: readonly (string | undefined)[]) {
 	const onClose = vi.fn<() => void>();
-	render(<Harness images={images} initial={initial} onClose={onClose} />);
+	render(
+		<Harness images={images} initial={initial} onClose={onClose} {...(captions === undefined ? {} : {captions})} />,
+	);
 	const viewer = screen.getByRole("dialog", {name: "Image preview"});
 	return {viewer, onClose};
 }
@@ -418,6 +438,50 @@ describe("ImageViewer", () => {
 			next: screen.queryByRole("button", {name: "Next image"}),
 			count: viewer.querySelector("[aria-live]"),
 		}).toStrictEqual({previous: null, next: null, count: null});
+	});
+});
+
+const CAPTION_ROW = "absolute inset-x-0 bottom-6 z-10 flex h-14 items-center justify-center px-6";
+const CAPTION_BDI =
+	"block truncate text-body text-white/80 max-sm:absolute max-sm:inset-x-6 max-sm:bottom-full max-sm:text-center sm:max-w-[calc(50vw-7rem)]";
+
+describe("ImageViewer captions", () => {
+	it("renders the caption row for a single captioned image, with no pager", () => {
+		const {viewer} = open(0, IMAGES.slice(0, 1), ["Read"]);
+		const bdi = viewer.querySelector("bdi");
+		const row = bdi?.parentElement?.parentElement;
+		expect({
+			row: row?.className,
+			children: [...(row?.children ?? [])].map((child) => child.outerHTML),
+			pager: viewer.querySelector("[aria-live]"),
+		}).toStrictEqual({
+			row: CAPTION_ROW,
+			children: [
+				`<div class="flex-1 flex justify-start items-center"><bdi title="Read" class="${CAPTION_BDI}">Read</bdi></div>`,
+				'<div class="flex-1"></div>',
+			],
+			pager: null,
+		});
+	});
+
+	it("captions the active slide and keeps the pager for several images", () => {
+		const {viewer} = open(0, IMAGES, ["Read a.png", "Read b.png", undefined]);
+		fireEvent.click(screen.getByRole("button", {name: "Next image"}));
+		expect({caption: viewer.querySelector("bdi")?.textContent, count: count(viewer)}).toStrictEqual({
+			caption: "Read b.png",
+			count: "2 of 3",
+		});
+		fireEvent.click(screen.getByRole("button", {name: "Next image"}));
+		expect({caption: viewer.querySelector("bdi"), count: count(viewer)}).toStrictEqual({
+			caption: null,
+			count: "3 of 3",
+		});
+	});
+
+	it("keeps pager clicks inside the caption row from closing the viewer", () => {
+		const {viewer, onClose} = open(0, IMAGES.slice(0, 1), ["Read"]);
+		fireEvent.click(viewer.querySelector("bdi")!);
+		expect(onClose).not.toHaveBeenCalled();
 	});
 });
 
