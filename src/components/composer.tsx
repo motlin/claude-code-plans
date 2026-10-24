@@ -49,9 +49,16 @@ import {
 	mentionStartingAt,
 	remapMentions,
 } from "../lib/composer-mentions";
-import type {LaunchOptions} from "../lib/launch-options";
+import {parseHostCommand} from "../lib/composer-host-commands";
+import {
+	EFFORT_LEVELS,
+	type LaunchOptions,
+	LaunchOptionsSchema,
+	MORE_MODELS,
+	PRIMARY_MODELS,
+} from "../lib/launch-options";
 import {filterSlashCommands, type SlashCommand, skillChipArgumentHint, slashTrigger} from "../lib/slash-commands";
-import {type ChinLaunchControls, ComposerAddMenu, ComposerChin} from "./composer-chin";
+import {type ChinLaunchControls, type ChinPickHandle, ComposerAddMenu, ComposerChin} from "./composer-chin";
 import {AttachedContextChips} from "./attached-context-chips";
 import type {ChinMenu} from "./composer-launch-menus";
 import {
@@ -443,6 +450,8 @@ const NO_COMMANDS: readonly SlashCommand[] = [];
 const NO_HISTORY: readonly string[] = [];
 const NO_MENTIONS: readonly AcceptedMention[] = [];
 const NO_LAUNCH_OPTIONS: LaunchOptions = {};
+/** The model ids and aliases `/model <arg>` accepts: the chin's Model menu rows. */
+const HOST_COMMAND_MODELS = [...PRIMARY_MODELS, ...MORE_MODELS].map((model) => model.id);
 
 /**
  * The claude.ai/code ChatComposer card: an auto-growing prompt editor with a
@@ -493,6 +502,11 @@ export function Composer({
 	});
 	const launchOptions = launch.draftKey === draftKey ? launch.options : NO_LAUNCH_OPTIONS;
 	const [openMenu, setOpenMenu] = useState<ChinMenu | null>(null);
+	const chinPickRef = useRef<ChinPickHandle>(null);
+	// Upstream's literal error band: shown until the text it refused changes.
+	const [commandNotice, setCommandNotice] = useState<{draftKey: string; text: string; message: string} | null>(null);
+	const commandNoticeText =
+		commandNotice?.draftKey === draftKey && commandNotice.text === prompt ? commandNotice.message : null;
 	const menuShortcutOptions = {disabled: chin === undefined};
 	useShortcut(
 		"open_mode_menu",
@@ -773,7 +787,8 @@ export function Composer({
 		// The session composer's draft is keyed by its session id.
 		if (trigger !== undefined && variant === "session") startComposerSubmitJourneys(trigger, draftKey);
 		const trimmed = prompt.trim();
-		// Slash commands run as typed; attached context and comments wait for the next real prompt.
+		if (trimmed.startsWith("/") && runHostCommand(trimmed)) return;
+		// Other slash commands run as typed; attached context and comments wait for the next real prompt.
 		if (trimmed.startsWith("/")) {
 			send(trimmed);
 			clearDraft();
@@ -796,6 +811,41 @@ export function Composer({
 			if (draftKeyRef.current !== draftKey || promptRef.current !== prompt) return;
 			finish();
 		});
+	}
+	/** Upstream's host interception of `/model`, `/effort` and `/permissions`: true when the composer handled it. */
+	function runHostCommand(text: string): boolean {
+		const command = parseHostCommand(text, {
+			effortLevels: EFFORT_LEVELS,
+			models: HOST_COMMAND_MODELS,
+			menusAvailable: chin !== undefined,
+		});
+		if (command === null) return false;
+		switch (command.kind) {
+			case "open":
+				setOpenMenu(command.menu);
+				clearDraft();
+				break;
+			case "effort":
+				chinPickRef.current?.pick({effort: command.level});
+				clearDraft();
+				break;
+			case "model":
+				// Upstream accepts any multi-word id; locally the pick must also be a valid `--model` value.
+				if (LaunchOptionsSchema.shape.model.safeParse(command.model).success) {
+					chinPickRef.current?.pick({model: command.model});
+					clearDraft();
+				} else {
+					toast?.({kind: "error", message: `“${command.model}” isn’t an available model.`});
+				}
+				break;
+			case "refuse":
+				toast?.({kind: "error", message: command.toast});
+				break;
+			case "band":
+				setCommandNotice({draftKey, text: prompt, message: command.text});
+				break;
+		}
+		return true;
 	}
 	// The send slot and chin are memoized, so they read the latest render's handlers through refs.
 	const handleSubmitRef = useRef(handleSubmit);
@@ -1105,6 +1155,11 @@ export function Composer({
 					e.target.value = "";
 				}}
 			/>
+			{commandNoticeText !== null && (
+				<p role="alert" className="mb-1.5 ps-1 text-footnote text-danger-000">
+					{commandNoticeText}
+				</p>
+			)}
 			{/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- a pointer shortcut that focuses the textarea, which is keyboard-reachable itself */}
 			<div
 				ref={cardRef}
@@ -1304,13 +1359,15 @@ export function Composer({
 			</div>
 			{environment === undefined ? (
 				<div data-cds="ChatComposerChin" className={COMPOSER_CHIN_CLASS}>
-					{chin && <ComposerChin state={chin} launch={launchControls} surface="chin" />}
+					{chin && <ComposerChin state={chin} launch={launchControls} surface="chin" pickRef={chinPickRef} />}
 				</div>
 			) : (
 				<div data-testid="epitaxy-environment-bar" className={ENVIRONMENT_BAR_CLASS}>
 					<div data-testid="environment-bar-row" className={ENVIRONMENT_BAR_ROW_CLASS}>
 						<div className={ENVIRONMENT_PLACE_CLASS}>{environment}</div>
-						{chin && <ComposerChin state={chin} launch={launchControls} surface="bar" />}
+						{chin && (
+							<ComposerChin state={chin} launch={launchControls} surface="bar" pickRef={chinPickRef} />
+						)}
 					</div>
 				</div>
 			)}

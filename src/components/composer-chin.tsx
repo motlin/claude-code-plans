@@ -1,6 +1,6 @@
 import {useQuery} from "@tanstack/react-query";
 import {Gauge, Paperclip, Plus, SquareSlash} from "lucide-react";
-import {lazy, memo, Suspense, useState} from "react";
+import {lazy, memo, type Ref, Suspense, useImperativeHandle, useState} from "react";
 
 import {
 	type ComposerState,
@@ -182,6 +182,13 @@ export interface ChinLaunchControls {
 	confirmEffortChange?: boolean;
 }
 
+/** A `/effort <level>` or `/model <id>` sent from the composer, applied the way a menu pick is. */
+export type ChinPick = {effort: EffortLevel} | {model: string};
+
+export interface ChinPickHandle {
+	pick: (pick: ChinPick) => void;
+}
+
 function effortText(effort: string): string {
 	const level = EffortLevelSchema.safeParse(effort);
 	return level.success ? effortLevelLabels[level.data] : effort;
@@ -196,10 +203,12 @@ export const ComposerChin = memo(function ComposerChin({
 	state,
 	launch,
 	surface,
+	pickRef,
 }: {
 	state: ComposerState;
 	launch: ChinLaunchControls;
 	surface: ChinSurface;
+	pickRef?: Ref<ChinPickHandle> | undefined;
 }) {
 	const {launchOptions, onLaunchOptionsChange, openMenu, onOpenMenuChange} = launch;
 	// Keeps the picked level while the confirm fades out, so its copy doesn't flicker.
@@ -216,6 +225,15 @@ export const ComposerChin = memo(function ComposerChin({
 			setEffortConfirm({effort, open: true});
 		}
 	};
+	const selectModel = (model: string) => {
+		onLaunchOptionsChange({...launchOptions, model});
+	};
+	useImperativeHandle(pickRef, () => ({
+		pick: (pick) => {
+			if ("effort" in pick) selectEffort(pick.effort);
+			else selectModel(pick.model);
+		},
+	}));
 	const menuProps = (menu: ChinMenu) => ({
 		open: openMenu === menu,
 		onOpenChange: (open: boolean) => {
@@ -253,9 +271,7 @@ export const ComposerChin = memo(function ComposerChin({
 					current={launchOptions.model ?? modelMenuValue(state.modelId) ?? undefined}
 					currentLabel={modelText}
 					currentEffort={currentEffort}
-					onSelect={(model) => {
-						onLaunchOptionsChange({...launchOptions, model});
-					}}
+					onSelect={selectModel}
 					onSelectEffort={selectEffort}
 				/>
 				<UsageRing usage={state.usage} />

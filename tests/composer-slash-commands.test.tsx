@@ -4,6 +4,8 @@ import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {Composer} from "../src/components/composer";
+import {ToastProvider} from "../src/components/toast";
+import type {LiveLaunchControls} from "../src/hooks/use-live-launch-options";
 import {customizeMcpServersQueryOptions} from "../src/lib/api/customize";
 import type {ComposerState} from "../src/lib/composer-state";
 import type {SlashCommand} from "../src/lib/slash-commands";
@@ -623,6 +625,173 @@ describe("Composer slash commands", () => {
 					{name: "standupCustom command", highlighted: false},
 				],
 			});
+		});
+	});
+});
+
+describe("Composer host commands", () => {
+	const CHIN: ComposerState = {
+		mode: {id: "default", label: "Manual"},
+		model: "Opus 5.5",
+		modelId: "claude-opus-5-5",
+		effort: {id: "high", label: "High"},
+		usage: null,
+	};
+
+	function hostSetup(extra: {chin?: ComposerState | undefined; live?: LiveLaunchControls} = {chin: CHIN}) {
+		const onSend = vi.fn<(prompt: string) => void>();
+		render(
+			<ToastProvider>
+				<Composer variant="session" draftKey="session-alice" onSend={onSend} {...extra} />
+			</ToastProvider>,
+		);
+		const textarea = screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
+		return {textarea, onSend};
+	}
+
+	function send(textarea: HTMLTextAreaElement, text: string) {
+		fireEvent.change(textarea, {target: {value: text}});
+		fireEvent.keyDown(textarea, {key: "Enter"});
+	}
+
+	const toastText = () => document.querySelector("[data-toast-message]")?.textContent;
+	const band = () => document.querySelector("p[role=alert]")?.textContent;
+	const modelTrigger = () => document.querySelector("[data-cds=ModelSelector]");
+
+	it("opens the Model menu for a bare /model and empties the composer", async () => {
+		const {textarea, onSend} = hostSetup();
+
+		send(textarea, "/model");
+		await screen.findByRole("menu");
+
+		expect({
+			sends: onSend.mock.calls,
+			text: textarea.value,
+			expanded: modelTrigger()?.getAttribute("aria-expanded"),
+			menus: screen.getAllByRole("menu").length,
+		}).toStrictEqual({sends: [], text: "", expanded: "true", menus: 1});
+	});
+
+	it("opens the Model menu on its Effort submenu for a bare /effort", async () => {
+		const {textarea, onSend} = hostSetup();
+
+		send(textarea, "/effort");
+		await waitFor(() => {
+			expect(screen.getAllByRole("menu")).toHaveLength(2);
+		});
+
+		expect({
+			sends: onSend.mock.calls,
+			text: textarea.value,
+			expanded: modelTrigger()?.getAttribute("aria-expanded"),
+		}).toStrictEqual({sends: [], text: "", expanded: "true"});
+	});
+
+	it("opens the Mode menu for /permissions and /allowed-tools", async () => {
+		const {textarea, onSend} = hostSetup();
+
+		send(textarea, "/allowed-tools");
+		await screen.findByRole("menu");
+
+		expect({
+			sends: onSend.mock.calls,
+			text: textarea.value,
+			expanded: document.querySelector("[data-chin-mode]")?.getAttribute("aria-expanded"),
+		}).toStrictEqual({sends: [], text: "", expanded: "true"});
+	});
+
+	it("applies /effort low to the chin without sending", () => {
+		const {textarea, onSend} = hostSetup();
+
+		send(textarea, "/effort low");
+
+		expect({
+			sends: onSend.mock.calls,
+			text: textarea.value,
+			label: modelTrigger()?.getAttribute("aria-label"),
+		}).toStrictEqual({sends: [], text: "", label: "Model: Opus 5.5 Low"});
+	});
+
+	it("applies /model fable to the chin without sending", () => {
+		const {textarea, onSend} = hostSetup();
+
+		send(textarea, "/model fable");
+
+		expect({
+			sends: onSend.mock.calls,
+			text: textarea.value,
+			label: modelTrigger()?.getAttribute("aria-label"),
+		}).toStrictEqual({sends: [], text: "", label: "Model: Fable 5.1 High"});
+	});
+
+	it("asks Change effort? for /effort low on a live pane, like a menu pick", async () => {
+		const apply = vi.fn<LiveLaunchControls["apply"]>(async () => {});
+		const {textarea, onSend} = hostSetup({chin: CHIN, live: {options: {}, apply}});
+
+		send(textarea, "/effort low");
+		const confirm = await screen.findByRole("alertdialog");
+
+		expect({
+			sends: onSend.mock.calls,
+			applied: apply.mock.calls,
+			text: textarea.value,
+			title: within(confirm).getByRole("heading").textContent,
+		}).toStrictEqual({sends: [], applied: [], text: "", title: "Change effort?"});
+	});
+
+	it("toasts an unknown /model word and keeps the text", async () => {
+		const {textarea, onSend} = hostSetup();
+
+		send(textarea, "/model gpt5");
+
+		await waitFor(() => {
+			expect(toastText()).toBe("“gpt5” isn’t an available model.");
+		});
+		expect({sends: onSend.mock.calls, text: textarea.value}).toStrictEqual({sends: [], text: "/model gpt5"});
+	});
+
+	it("shows the argument band for /permissions plan, keeps the text, and clears it on typing", () => {
+		const {textarea, onSend} = hostSetup();
+
+		send(textarea, "/permissions plan");
+		const shown = {
+			sends: onSend.mock.calls,
+			text: textarea.value,
+			band: band(),
+			className: document.querySelector("p[role=alert]")?.className,
+		};
+		fireEvent.change(textarea, {target: {value: "/permissions"}});
+
+		expect({shown, afterTyping: band()}).toStrictEqual({
+			shown: {
+				sends: [],
+				text: "/permissions plan",
+				band: "/permissions doesn’t take arguments here. Remove the text after the command, then send it again.",
+				className: "mb-1.5 ps-1 text-footnote text-danger-000",
+			},
+			afterTyping: undefined,
+		});
+	});
+
+	it("toasts /model when the composer has no chin and keeps the text", async () => {
+		const {textarea, onSend} = hostSetup({chin: undefined});
+
+		send(textarea, "/model");
+
+		await waitFor(() => {
+			expect(toastText()).toBe("Model can’t be changed for this session right now.");
+		});
+		expect({sends: onSend.mock.calls, text: textarea.value}).toStrictEqual({sends: [], text: "/model"});
+	});
+
+	it("still sends other slash commands as typed", () => {
+		const {textarea, onSend} = hostSetup();
+
+		send(textarea, "/effort foo");
+
+		expect({sends: onSend.mock.calls, text: textarea.value}).toStrictEqual({
+			sends: [["/effort foo", {}]],
+			text: "",
 		});
 	});
 });
