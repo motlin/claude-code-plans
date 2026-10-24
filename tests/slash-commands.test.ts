@@ -26,6 +26,7 @@ function write(file: string, content: string): void {
 describe("BUILTIN_SLASH_COMMANDS", () => {
 	it("uses upstream's strings, hints and aliases, then the local-only built-ins", () => {
 		expect(BUILTIN_SLASH_COMMANDS).toStrictEqual([
+			{name: "rewind", description: "Rewind the session to an earlier message", source: "builtin"},
 			{
 				name: "model",
 				description: "Set the model for this session",

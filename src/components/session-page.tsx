@@ -8,6 +8,7 @@ import {Minimize2} from "lucide-react";
 import {SessionTileFrame, type SessionTileScrollPosition} from "./session-tile-frame";
 import {latestBreakdown} from "../lib/context-breakdown";
 import {focusComposer, refillComposer, requestComposerTakeBack} from "../lib/context-attach";
+import {rewindStepsBack, rewindTurns} from "../lib/rewind-picker";
 import {SessionRailSlot} from "./session-rail/session-rail-slot";
 import {useSessionRailDocked} from "./session-rail/use-session-rail-docked";
 import type {SessionRailInputs} from "./session-rail/session-rail-cards";
@@ -82,6 +83,7 @@ import {promptHistoryQueryOptions} from "../lib/api/prompt-history";
 import {useShortcutKeys} from "../hooks/use-shortcut";
 import {useSlashCommands} from "../hooks/use-slash-commands";
 import {useLiveLaunchOptions} from "../hooks/use-live-launch-options";
+import {useRewindPicker} from "../hooks/use-rewind-shortcut";
 import {canStopResponse, useStopResponse} from "../hooks/use-stop-response";
 import {useComposerQueue} from "../hooks/use-composer-queue";
 import {
@@ -119,6 +121,7 @@ import {
 	herdrPanesQueryOptions,
 	launchHerdrSession,
 	sendHerdrInterrupt,
+	sendHerdrRewind,
 	sendHerdrLiveOption,
 	sendHerdrPermissionDecision,
 	sendHerdrPlanDecision,
@@ -237,6 +240,9 @@ function RailTileFrame({
 const ToolApprovalNotifyTip = lazy(async () =>
 	import("./tool-approval-notify-tip").then((module) => ({default: module.ToolApprovalNotifyTip})),
 );
+
+// The Rewind picker loads on its first open (Esc Esc or /rewind) and stays mounted for its close animation.
+const RewindPicker = lazy(async () => import("./rewind-picker").then((module) => ({default: module.RewindPicker})));
 
 export function SessionPage({
 	sessionId,
@@ -768,6 +774,49 @@ function SessionView({
 		isLastEntry: lastEntryIsError(processed.lines),
 	});
 	const {retryable: errorRetryable, idle: errorIdle} = errorRecoveryAvailable;
+	// Rewinding drives the live CLI's selector, so it needs a writable pane on a session that isn't archived.
+	const rewindAvailable = promptBehavior.hasLivePane && herdr.writesEnabled && !data.archived;
+	const rewindPicker = useRewindPicker({
+		sessionId,
+		available: rewindAvailable,
+		busy:
+			paneBusy ||
+			pendingPermission !== null ||
+			inlineQuestion !== null ||
+			hookQuestionCardShown ||
+			inlinePlanId !== null ||
+			dockedPlan !== null,
+	});
+	const rewindTurnList = useMemo(
+		() => rewindTurns(transcript.records, hiddenUuids),
+		[transcript.records, hiddenUuids],
+	);
+	// Upstream's conversation rewind (`kb`): on success the composer holds the rewound prompt, focused.
+	const rewindToTurn = useCallback(
+		(uuid: string, text: string) => {
+			const stepsBack = rewindStepsBack(rewindTurnList, uuid);
+			if (stepsBack === null) return;
+			sendHerdrRewind(sessionId, {stepsBack, text}).then(
+				() => {
+					refillComposer(sessionId, text);
+				},
+				(error: unknown) => {
+					toast({kind: "error", message: error instanceof Error ? error.message : String(error)});
+				},
+			);
+		},
+		[rewindTurnList, sessionId, toast],
+	);
+	const {requestOpen: requestRewindPicker} = rewindPicker;
+	const rewindAvailableFromComposer = useMemo(
+		() =>
+			rewindAvailable
+				? () => {
+						requestRewindPicker({fromComposer: true});
+					}
+				: undefined,
+		[rewindAvailable, requestRewindPicker],
+	);
 	const sendErrorRecoveryPrompt = liveHerdrPrompt.send;
 	const currentModelId = composerChin.modelId;
 	const errorRecovery = useMemo(
@@ -945,6 +994,16 @@ function SessionView({
 					<TerminalPaneShortcut available={promptBehavior.hasLivePane || shellsEnabled} />
 					<FilesPaneShortcut />
 					<ChangesPaneShortcut />
+					{rewindPicker.used && (
+						<Suspense fallback={null}>
+							<RewindPicker
+								open={rewindPicker.open}
+								turns={rewindTurnList}
+								onClose={rewindPicker.close}
+								onSelect={rewindToTurn}
+							/>
+						</Suspense>
+					)}
 					<RailTileFrame
 						railInputs={{
 							sessionId,
@@ -1166,6 +1225,7 @@ function SessionView({
 													mentionSessionId={sessionId}
 													mentionCwd={sessionDirectory}
 													promptHistory={promptHistory}
+													onRewind={rewindAvailableFromComposer}
 												/>
 											)}
 										</SessionDock>

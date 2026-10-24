@@ -79,6 +79,7 @@ export function slashCommandLabel(command: SlashCommand): string {
  * aliases, followed by the local-only CLI built-ins.
  */
 export const BUILTIN_SLASH_COMMANDS: readonly SlashCommand[] = [
+	{name: "rewind", description: "Rewind the session to an earlier message", source: "builtin"},
 	{name: "model", description: "Set the model for this session", source: "builtin", argumentHint: "[model-id]"},
 	{
 		name: "effort",

@@ -140,6 +140,7 @@ describe("KeyboardShortcutsDialog", () => {
 				"Jump to next prompt",
 				"Transcript view",
 				"Stop Claude’s response",
+				"Rewind the session to an earlier message",
 				"Toggle changes",
 				"Toggle file list in changes or files",
 				"Go to file in changes or files",

@@ -1094,4 +1094,54 @@ describe("Composer host commands", () => {
 			text: "",
 		});
 	});
+
+	function rewindSetup() {
+		const onSend = vi.fn<(prompt: string) => void>();
+		const onRewind = vi.fn<() => void>();
+		render(
+			<ToastProvider>
+				<Composer variant="session" draftKey="session-alice" onSend={onSend} onRewind={onRewind} />
+			</ToastProvider>,
+		);
+		const textarea = screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
+		return {textarea, onSend, onRewind};
+	}
+
+	it("opens the Rewind picker for /rewind and clears the composer instead of sending", () => {
+		const {textarea, onSend, onRewind} = rewindSetup();
+
+		send(textarea, "/rewind");
+
+		expect({sends: onSend.mock.calls, rewinds: onRewind.mock.calls.length, text: textarea.value}).toStrictEqual({
+			sends: [],
+			rewinds: 1,
+			text: "",
+		});
+	});
+
+	it("refuses /rewind with arguments with upstream's noArgs band", () => {
+		const {textarea, onSend, onRewind} = rewindSetup();
+
+		send(textarea, "/rewind 3");
+
+		expect({
+			sends: onSend.mock.calls,
+			rewinds: onRewind.mock.calls.length,
+			text: textarea.value,
+			hint: bandCard()?.firstElementChild?.children[2]?.textContent,
+		}).toStrictEqual({
+			sends: [],
+			rewinds: 0,
+			text: "/rewind 3",
+			hint: "/rewind doesn’t take arguments here. Remove the text after the command, then send it again.",
+		});
+	});
+
+	it("sends /rewind to the CLI as typed when the session can't rewind from the browser", () => {
+		const {textarea, onSend} = hostSetup();
+
+		send(textarea, "/rewind");
+
+		expect(onSend.mock.calls).toStrictEqual([["/rewind", {}]]);
+	});
 });

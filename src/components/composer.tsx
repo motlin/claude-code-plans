@@ -49,7 +49,14 @@ import {
 	mentionStartingAt,
 	remapMentions,
 } from "../lib/composer-mentions";
-import {fastCommandArg, parseHostCommand, routeFastCommand} from "../lib/composer-host-commands";
+import {
+	extraLinesBody,
+	fastCommandArg,
+	parseCommandShape,
+	parseHostCommand,
+	routeFastCommand,
+	trailingArgsBody,
+} from "../lib/composer-host-commands";
 import {
 	EFFORT_LEVELS,
 	type LaunchOptions,
@@ -199,6 +206,8 @@ interface ComposerProps {
 	subscribePrefill?: ((listener: (text: string) => void) => () => void) | undefined;
 	/** Upstream's `isPanelActive`: only the active pane's composer gives its file input the upload id. */
 	active?: boolean | undefined;
+	/** Opens the Rewind picker for a sent `/rewind`; absent, `/rewind` reaches the CLI as typed. */
+	onRewind?: (() => void) | undefined;
 }
 
 /**
@@ -501,6 +510,7 @@ export function Composer({
 	promptHistory = NO_HISTORY,
 	subscribePrefill,
 	active = true,
+	onRewind,
 }: ComposerProps) {
 	const {text: prompt, setText: setPrompt, clear: clearDraft} = useComposerDraft(draftKey);
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -905,7 +915,7 @@ export function Composer({
 	}
 	/** Upstream's host interception of `/model`, `/effort` and `/permissions`: true when the composer handled it. */
 	function runHostCommand(text: string): boolean {
-		if (runFastCommand(text)) return true;
+		if (runFastCommand(text) || runRewindCommand(text)) return true;
 		const command = parseHostCommand(text, {
 			effortLevels: EFFORT_LEVELS,
 			models: HOST_COMMAND_MODELS,
@@ -936,6 +946,22 @@ export function Composer({
 			case "band":
 				setCommandError({draftKey, body: command.text});
 				break;
+		}
+		return true;
+	}
+	/** Upstream's `/rewind` (`noArgs`): clears the composer, then opens the Rewind picker. */
+	function runRewindCommand(text: string): boolean {
+		if (onRewind === undefined) return false;
+		const shape = parseCommandShape(["rewind"], text);
+		if (shape === null) return false;
+		if (shape.kind === "run") {
+			clearDraft();
+			onRewind();
+		} else {
+			setCommandError({
+				draftKey,
+				body: shape.kind === "extra_lines" ? extraLinesBody(shape.name) : trailingArgsBody(shape.name),
+			});
 		}
 		return true;
 	}

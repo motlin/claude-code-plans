@@ -88,13 +88,16 @@ describe("shortcut registry", () => {
 		}
 	});
 
-	it("lets only Queue for later and Send and stay share ⌘⏎ (working session vs home composer)", () => {
+	it("lets only Rewind share Esc with Stop, and Queue for later share ⌘⏎ with Send and stay", () => {
 		expect(
 			SHORTCUT_IDS.flatMap((id) => {
 				const other = getShortcut(id).sharesBindingWith;
 				return other === undefined ? [] : [[id, other]];
 			}),
-		).toStrictEqual([["send_and_stay", "queue_for_later"]]);
+		).toStrictEqual([
+			["rewind_session", "stop_response"],
+			["send_and_stay", "queue_for_later"],
+		]);
 	});
 
 	it("registers the 2026-10 upstream entries with upstream's bindings", () => {
@@ -200,6 +203,7 @@ describe("shortcut registry", () => {
 			"focus_previous_region",
 			"page_search",
 			"stop_response",
+			"rewind_session",
 			"toggle_changes",
 			"toggle_changes_file_list",
 			"go_to_file_in_changes",

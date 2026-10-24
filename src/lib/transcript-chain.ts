@@ -43,7 +43,8 @@ function isMessage(record: TranscriptRecord): boolean {
 	return record["type"] === "user" || record["type"] === "assistant";
 }
 
-function promptText(record: TranscriptRecord): string | undefined {
+/** A user record's prompt text (its text blocks joined by spaces), or undefined for tool results and non-text content. */
+export function promptText(record: TranscriptRecord): string | undefined {
 	const message = record["message"];
 	if (!isRecord(message)) {
 		return undefined;

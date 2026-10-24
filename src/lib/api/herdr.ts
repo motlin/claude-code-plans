@@ -240,3 +240,24 @@ export async function sendHerdrLiveOption(
 
 	HerdrPromptSuccessResponse.parse(json);
 }
+
+/** Rewind the conversation to a prompt through the live CLI's own selector; throws with the server's reason. */
+export async function sendHerdrRewind(
+	sessionId: string,
+	target: {stepsBack: number; text: string},
+	fetcher: typeof fetch = fetch,
+): Promise<void> {
+	const response = await fetcher("/api/herdr/rewind", {
+		method: "POST",
+		credentials: "same-origin",
+		headers: {"Content-Type": "application/json"},
+		body: JSON.stringify({sessionId, ...target}),
+	});
+	const json: unknown = await response.json();
+
+	if (!response.ok) {
+		throw new Error(HerdrPromptErrorResponse.parse(json).error);
+	}
+
+	HerdrPromptSuccessResponse.parse(json);
+}

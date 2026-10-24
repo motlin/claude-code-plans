@@ -270,8 +270,10 @@ export const SHORTCUTS = {
 		// Each step of upstream's "esc esc" sequence; the owner adds the double-press timing.
 		bindings: [everywhere("escape", [])],
 		ownerSlug: "rewind-undo-redo",
-		enabled: false,
+		enabled: true,
 		displayKeys: "esc esc",
+		// Upstream's `Tp` counts each Escape on its own window listener, so stop_response still sees the first.
+		sharesBindingWith: "stop_response",
 	},
 	// Panes
 	toggle_changes: {
