@@ -43,7 +43,7 @@ export interface TurnUndo {
 }
 
 /**
- * Upstream's turn "Undo", shared by the changes card and "Rewind to here":
+ * Upstream's turn "Undo" on the changes card:
  * preview the turn's files, refuse when any changed since the turn, otherwise
  * confirm with the file list and write the originals back.
  */

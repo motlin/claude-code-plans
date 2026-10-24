@@ -49,7 +49,13 @@ export function ToastProvider({children}: Readonly<{children: ReactNode}>) {
 	const [toasts, setToasts] = useState<ToastEntry[]>([]);
 	const nextId = useRef(0);
 
+	const dismiss = useCallback((id: number) => {
+		setToasts((current) => current.filter((t) => t.id !== id));
+	}, []);
+
 	const toast = useCallback((options: ToastOptions) => {
+		const {signal} = options;
+		if (signal?.aborted === true) return;
 		setToasts((current) => {
 			const open = current.find((entry) => sameToast(entry, options));
 			if (open !== undefined) {
@@ -60,10 +66,13 @@ export function ToastProvider({children}: Readonly<{children: ReactNode}>) {
 			nextId.current += 1;
 			return [...current, {...options, id: nextId.current, count: 1, repeat: 0}];
 		});
-	}, []);
-
-	const dismiss = useCallback((id: number) => {
-		setToasts((current) => current.filter((t) => t.id !== id));
+		signal?.addEventListener(
+			"abort",
+			() => {
+				setToasts((current) => current.filter((t) => t.signal !== signal));
+			},
+			{once: true},
+		);
 	}, []);
 
 	const depthOf = (entry: ToastEntry) => toasts.length - 1 - toasts.indexOf(entry);

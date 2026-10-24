@@ -10,8 +10,6 @@ import {
 	type TranscriptMessageRef,
 } from "./transcript-actions-context";
 import {useToast} from "./toast-context";
-import {TurnUndoConfirm} from "./turn-undo";
-import {useTurnUndo} from "./use-turn-undo";
 
 export interface TranscriptActionsProviderProps {
 	sessionId: string;
@@ -19,6 +17,8 @@ export interface TranscriptActionsProviderProps {
 	lines: readonly SessionLine[];
 	/** Launch a fork resumed at a message; absent when the session has no directory to fork in. */
 	fork: ((target: {sessionId: string; atMessage: string}) => void) | undefined;
+	/** Upstream's `requestRewind` for one of this session's prompts: dry-run, confirm when needed, then rewind. */
+	rewind: (uuid: string) => void;
 	/** Claude is working in the pane, so Rewind is disabled with upstream's reason. */
 	working?: boolean;
 	/** The session is archived, so Rewind is left out entirely, as upstream does. */
@@ -32,29 +32,23 @@ const REWIND_WORKING_REASON = "Rewind is unavailable while Claude is working";
 /**
  * The one implementation behind a turn's Fork from here, Pin as chapter and
  * Rewind to here, whether pressed on the hover toolbar or picked from the
- * right-click menu. Rewind is the turn Undo: it reverts the file edits of the
- * turn the prompt started, behind the same confirm and refusals.
+ * right-click menu. Rewind hands the prompt to the session's rewind request
+ * (the "Rewind to this message?" confirm and the live CLI's rewind).
  */
 export function TranscriptActionsProvider({
 	sessionId,
 	lines,
 	fork,
+	rewind,
 	working = false,
 	archived = false,
 	children,
 }: TranscriptActionsProviderProps) {
 	const toast = useToast();
-	const undo = useTurnUndo((outcome) => {
-		toast(
-			outcome.kind === "done"
-				? {kind: "success", message: outcome.message}
-				: {kind: "error", message: outcome.message},
-		);
-	});
 	// Read through a ref so the context value, and every toolbar under it, stays put as lines grow.
-	const latest = useRef({lines, start: undo.start, fork});
+	const latest = useRef({lines, rewind, fork});
 	useEffect(() => {
-		latest.current = {lines, start: undo.start, fork};
+		latest.current = {lines, rewind, fork};
 	});
 	const canFork = fork !== undefined;
 
@@ -63,13 +57,19 @@ export function TranscriptActionsProvider({
 			const chapter = chapterFor(latest.current.lines, message.uuid);
 			if (chapter !== null) toggleChapter(message.sessionId, chapter);
 		};
-		const rewindTo = (message: TranscriptMessageRef) => void latest.current.start(message.sessionId, message.uuid);
-		const rewind = archived
+		const rewindTo = (message: TranscriptMessageRef) => {
+			if (message.sessionId !== sessionId) {
+				toast({kind: "error", message: "Can’t rewind to this message."});
+				return;
+			}
+			latest.current.rewind(message.uuid);
+		};
+		const rewindActions = archived
 			? {rewindHidden: true}
 			: working
 				? {rewindTo, rewindDisabledReason: REWIND_WORKING_REASON}
 				: {rewindTo};
-		if (!canFork) return {pinChapter, ...rewind, forkDisabledReason: FORK_NO_DIRECTORY_REASON};
+		if (!canFork) return {pinChapter, ...rewindActions, forkDisabledReason: FORK_NO_DIRECTORY_REASON};
 		const forkFrom = (message: TranscriptMessageRef) => {
 			if (message.sessionId !== sessionId) {
 				toast({kind: "error", message: "Only this session's own messages can be forked."});
@@ -77,13 +77,8 @@ export function TranscriptActionsProvider({
 			}
 			latest.current.fork?.({sessionId, atMessage: forkPointFor(latest.current.lines, message.uuid)});
 		};
-		return {pinChapter, ...rewind, forkFrom};
+		return {pinChapter, ...rewindActions, forkFrom};
 	}, [archived, canFork, sessionId, toast, working]);
 
-	return (
-		<TranscriptActionsContext.Provider value={actions}>
-			{children}
-			<TurnUndoConfirm undo={undo} />
-		</TranscriptActionsContext.Provider>
-	);
+	return <TranscriptActionsContext.Provider value={actions}>{children}</TranscriptActionsContext.Provider>;
 }

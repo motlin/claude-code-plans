@@ -77,6 +77,27 @@ describe("ToastProvider", () => {
 		expect(toastTexts("status")).toEqual([]);
 	});
 
+	it("keeps a toast with no duration up until its signal aborts, like upstream's timeout Infinity", () => {
+		const controller = new AbortController();
+		renderWithToast({message: "Rewinding…", kind: "success", durationMs: null, signal: controller.signal});
+
+		act(() => {
+			vi.advanceTimersByTime(60_000);
+		});
+		const held = toastTexts("status");
+		act(() => {
+			controller.abort();
+		});
+
+		expect({held, after: toastTexts("status")}).toStrictEqual({held: ["Rewinding…"], after: []});
+	});
+
+	it("drops a toast whose signal already aborted", () => {
+		renderWithToast({message: "Rewinding…", kind: "success", signal: AbortSignal.abort()});
+
+		expect(toastTexts("status")).toStrictEqual([]);
+	});
+
 	it("honors a custom duration", () => {
 		renderWithToast({message: "Archived 3 sessions", kind: "success", durationMs: 3000});
 

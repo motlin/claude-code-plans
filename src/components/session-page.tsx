@@ -84,6 +84,7 @@ import {useShortcutKeys} from "../hooks/use-shortcut";
 import {useSlashCommands} from "../hooks/use-slash-commands";
 import {useLiveLaunchOptions} from "../hooks/use-live-launch-options";
 import {useRewindPicker} from "../hooks/use-rewind-shortcut";
+import {useRewindRequest} from "../hooks/use-rewind-request";
 import {canStopResponse, useStopResponse} from "../hooks/use-stop-response";
 import {useComposerQueue} from "../hooks/use-composer-queue";
 import {
@@ -243,6 +244,13 @@ const ToolApprovalNotifyTip = lazy(async () =>
 
 // The Rewind picker loads on its first open (Esc Esc or /rewind) and stays mounted for its close animation.
 const RewindPicker = lazy(async () => import("./rewind-picker").then((module) => ({default: module.RewindPicker})));
+// The "Rewind to this message?" confirm loads when a rewind first needs it.
+const RewindConfirm = lazy(async () => import("./rewind-confirm").then((module) => ({default: module.RewindConfirm})));
+
+/** Upstream's conversation-rewind failures (`kb`). */
+const REWIND_NOT_POSSIBLE = "Can’t rewind to this message.";
+const REWIND_CONVERSATION_AFTER_CODE_FAILED =
+	"Restored the code, but couldn’t rewind the conversation. Try rewinding again.";
 
 export function SessionPage({
 	sessionId,
@@ -792,20 +800,37 @@ function SessionView({
 		[transcript.records, hiddenUuids],
 	);
 	// Upstream's conversation rewind (`kb`): on success the composer holds the rewound prompt, focused.
-	const rewindToTurn = useCallback(
-		(uuid: string, text: string) => {
+	const runConversationRewind = useCallback(
+		async (uuid: string, text: string, afterCode: boolean) => {
+			const failed = afterCode ? REWIND_CONVERSATION_AFTER_CODE_FAILED : REWIND_NOT_POSSIBLE;
 			const stepsBack = rewindStepsBack(rewindTurnList, uuid);
-			if (stepsBack === null) return;
-			sendHerdrRewind(sessionId, {stepsBack, text}).then(
-				() => {
-					refillComposer(sessionId, text);
-				},
-				(error: unknown) => {
-					toast({kind: "error", message: error instanceof Error ? error.message : String(error)});
-				},
-			);
+			if (stepsBack === null) {
+				toast({kind: "error", message: failed});
+				return;
+			}
+			try {
+				await sendHerdrRewind(sessionId, {stepsBack, text});
+				refillComposer(sessionId, text);
+			} catch (error) {
+				toast({kind: "error", message: afterCode || !(error instanceof Error) ? failed : error.message});
+			}
 		},
 		[rewindTurnList, sessionId, toast],
+	);
+	const rewindRequest = useRewindRequest({
+		sessionId,
+		conversationAvailable: rewindAvailable,
+		runConversationRewind,
+	});
+	const {requestRewind} = rewindRequest;
+	// A transcript row's Rewind to here: the prompt's text as the CLI's selector draws it.
+	const rewindToMessage = useCallback(
+		(uuid: string) => {
+			const turn = rewindTurnList.find((candidate) => candidate.uuid === uuid);
+			if (turn === undefined) toast({kind: "error", message: REWIND_NOT_POSSIBLE});
+			else requestRewind(uuid, turn.text);
+		},
+		[requestRewind, rewindTurnList, toast],
 	);
 	const {requestOpen: requestRewindPicker} = rewindPicker;
 	const rewindAvailableFromComposer = useMemo(
@@ -1000,7 +1025,19 @@ function SessionView({
 								open={rewindPicker.open}
 								turns={rewindTurnList}
 								onClose={rewindPicker.close}
-								onSelect={rewindToTurn}
+								onSelect={requestRewind}
+							/>
+						</Suspense>
+					)}
+					{rewindRequest.rewindConfirm !== null && (
+						<Suspense fallback={null}>
+							<RewindConfirm
+								key={rewindRequest.rewindConfirm.token}
+								text={rewindRequest.rewindConfirm.text}
+								preview={rewindRequest.rewindConfirm.preview}
+								conversation={rewindAvailable}
+								onClose={rewindRequest.closeRewindConfirm}
+								onConfirm={rewindRequest.confirmRewind}
 							/>
 						</Suspense>
 					)}
@@ -1256,6 +1293,7 @@ function SessionView({
 												sessionId={sessionId}
 												lines={processed.lines}
 												fork={forkFromMessage}
+												rewind={rewindToMessage}
 												working={paneBusy}
 												archived={data.archived}
 											>

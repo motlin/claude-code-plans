@@ -116,6 +116,11 @@ const IN_FLIGHT = "Restoring the code is taking longer than expected. Your files
 
 const restoring = new Set<string>();
 
+/** A `--rewind-files` run for the session hasn't finished yet. */
+export function isRestoringFiles(sessionId: string): boolean {
+	return restoring.has(sessionId);
+}
+
 /**
  * POST `{message}`: restore the session's files to how they were when that
  * user message was sent. 409 while the pane is working or a restore for the

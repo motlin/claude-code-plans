@@ -12,7 +12,10 @@ export interface ToastOptions {
 	kind: ToastKind;
 	description?: string;
 	action?: ToastAction;
-	durationMs?: number;
+	/** How long the toast stays up; null keeps it up until dismissed or `signal` aborts. */
+	durationMs?: number | null;
+	/** Dismisses the toast when aborted, as upstream's `clearToast` does. */
+	signal?: AbortSignal;
 }
 
 export const ToastContext = createContext<((options: ToastOptions) => void) | null>(null);
