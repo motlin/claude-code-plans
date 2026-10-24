@@ -1023,6 +1023,61 @@ describe("Composer host commands", () => {
 		expect({sends: onSend.mock.calls, text: textarea.value}).toStrictEqual({sends: [], text: "/model"});
 	});
 
+	it("toggles fast mode for a bare /fast without sending", () => {
+		const {textarea, onSend} = hostSetup();
+
+		send(textarea, "/fast");
+
+		expect({
+			sends: onSend.mock.calls,
+			text: textarea.value,
+			label: modelTrigger()?.getAttribute("aria-label"),
+		}).toStrictEqual({sends: [], text: "", label: "Model: Opus 5.5 Fast High"});
+	});
+
+	it("applies /fast on to a live pane", () => {
+		const apply = vi.fn<LiveLaunchControls["apply"]>(async () => {});
+		const {textarea, onSend} = hostSetup({chin: CHIN, live: {options: {}, apply}});
+
+		send(textarea, "/fast on");
+
+		expect({sends: onSend.mock.calls, applied: apply.mock.calls, text: textarea.value}).toStrictEqual({
+			sends: [],
+			applied: [[{fastMode: true}]],
+			text: "",
+		});
+	});
+
+	it.each([
+		[false, "/fast off", "Fast mode is already off."],
+		[true, "/fast on", "Fast mode is already on."],
+	])("with fast %s, %j toasts %j without sending", async (fastMode, text, message) => {
+		const {textarea, onSend} = hostSetup({chin: {...CHIN, fastMode}});
+
+		send(textarea, text);
+
+		await waitFor(() => {
+			expect(toastText()).toBe(message);
+		});
+		expect({
+			sends: onSend.mock.calls,
+			text: textarea.value,
+			label: modelTrigger()?.getAttribute("aria-label"),
+		}).toStrictEqual({sends: [], text: "", label: fastMode ? "Model: Opus 5.5 Fast High" : "Model: Opus 5.5 High"});
+	});
+
+	it.each([
+		["an unknown argument", CHIN, "/fast turbo"],
+		["a model without fast mode", {...CHIN, model: "Sonnet 5", modelId: "claude-sonnet-5"}, "/fast"],
+		["no chin", undefined, "/fast on"],
+	])("sends /fast as typed with %s", (_, chin, text) => {
+		const {textarea, onSend} = hostSetup({chin});
+
+		send(textarea, text);
+
+		expect({sends: onSend.mock.calls, text: textarea.value}).toStrictEqual({sends: [[text, {}]], text: ""});
+	});
+
 	it("still sends other slash commands as typed", () => {
 		const {textarea, onSend} = hostSetup();
 

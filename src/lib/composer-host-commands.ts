@@ -97,3 +97,31 @@ function parseEffort(arg: string, name: string, ctx: HostCommandContext): HostCo
 	}
 	return level ? {kind: "effort", level, name} : {kind: "open", menu: "effort", name};
 }
+
+/** What a sent `/fast [on|off]` does: nothing new, flip fast mode, or reach the CLI as typed. */
+export type FastCommandRoute = "noop" | "toggle" | "unhandled";
+
+/**
+ * Upstream's `UQ`: an argument other than on/off, or no fast toggle on this model,
+ * goes to the CLI; asking for the current state is a no-op; anything else toggles.
+ */
+export function routeFastCommand({
+	arg,
+	on,
+	canToggle,
+}: {
+	arg: string;
+	on: boolean;
+	canToggle: boolean;
+}): FastCommandRoute {
+	const word = arg.toLowerCase();
+	if (!canToggle || (word !== "" && word !== "on" && word !== "off")) return "unhandled";
+	return word !== "" && (word === "on") === on ? "noop" : "toggle";
+}
+
+/** The trimmed argument after `/fast` (case-insensitive), or null when `text` isn't a `/fast` command. */
+export function fastCommandArg(text: string): string | null {
+	const match = COMMAND_NAME.exec(text.trim());
+	if (match?.[1]?.toLowerCase() !== "fast") return null;
+	return match[2]?.trim() ?? "";
+}

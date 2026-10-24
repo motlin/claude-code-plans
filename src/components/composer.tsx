@@ -49,7 +49,7 @@ import {
 	mentionStartingAt,
 	remapMentions,
 } from "../lib/composer-mentions";
-import {parseHostCommand} from "../lib/composer-host-commands";
+import {fastCommandArg, parseHostCommand, routeFastCommand} from "../lib/composer-host-commands";
 import {
 	EFFORT_LEVELS,
 	type LaunchOptions,
@@ -876,6 +876,7 @@ export function Composer({
 	}
 	/** Upstream's host interception of `/model`, `/effort` and `/permissions`: true when the composer handled it. */
 	function runHostCommand(text: string): boolean {
+		if (runFastCommand(text)) return true;
 		const command = parseHostCommand(text, {
 			effortLevels: EFFORT_LEVELS,
 			models: HOST_COMMAND_MODELS,
@@ -907,6 +908,19 @@ export function Composer({
 				setCommandError({draftKey, body: command.text});
 				break;
 		}
+		return true;
+	}
+	/** Upstream's `/fast [on|off]` routing; anything it leaves unhandled reaches the CLI as typed. */
+	function runFastCommand(text: string): boolean {
+		const arg = fastCommandArg(text);
+		const chinPick = chinPickRef.current;
+		if (arg === null || chinPick === null) return false;
+		const {on, canToggle} = chinPick.fastState();
+		const route = routeFastCommand({arg, on, canToggle});
+		if (route === "unhandled") return false;
+		if (route === "toggle") chinPick.pick({fastMode: !on});
+		else toast?.({kind: "success", message: on ? "Fast mode is already on." : "Fast mode is already off."});
+		clearDraft();
 		return true;
 	}
 	// The send slot and chin are memoized, so they read the latest render's handlers through refs.

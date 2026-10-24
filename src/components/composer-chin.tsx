@@ -184,11 +184,13 @@ export interface ChinLaunchControls {
 	confirmEffortChange?: boolean;
 }
 
-/** A `/effort <level>` or `/model <id>` sent from the composer, applied the way a menu pick is. */
-export type ChinPick = {effort: EffortLevel} | {model: string};
+/** A `/effort <level>`, `/model <id>` or `/fast` sent from the composer, applied the way a menu pick is. */
+export type ChinPick = {effort: EffortLevel} | {model: string} | {fastMode: boolean};
 
 export interface ChinPickHandle {
 	pick: (pick: ChinPick) => void;
+	/** The chin's fast state; `canToggle` is false when the current model has no Fast mode section. */
+	fastState: () => {on: boolean; canToggle: boolean};
 }
 
 function effortText(effort: string): string {
@@ -230,11 +232,18 @@ export const ComposerChin = memo(function ComposerChin({
 	const selectModel = (model: string) => {
 		onLaunchOptionsChange(withModel(launchOptions, model));
 	};
+	const currentModel = launchOptions.model ?? modelMenuValue(state.modelId) ?? undefined;
+	const fastMode = launchOptions.fastMode ?? state.fastMode;
+	const selectFastMode = (on: boolean) => {
+		onLaunchOptionsChange({...launchOptions, fastMode: on});
+	};
 	useImperativeHandle(pickRef, () => ({
 		pick: (pick) => {
 			if ("effort" in pick) selectEffort(pick.effort);
-			else selectModel(pick.model);
+			else if ("model" in pick) selectModel(pick.model);
+			else selectFastMode(pick.fastMode);
 		},
+		fastState: () => ({on: fastMode, canToggle: currentModel !== undefined && fastModeSupported(currentModel)}),
 	}));
 	const menuProps = (menu: ChinMenu) => ({
 		open: openMenu === menu,
@@ -247,8 +256,6 @@ export const ComposerChin = memo(function ComposerChin({
 			? (state.mode?.label ?? "Manual")
 			: modeTriggerLabel(launchOptions.permissionMode);
 	const modelText = launchOptions.model === undefined ? state.model : modelLabel(launchOptions.model);
-	const currentModel = launchOptions.model ?? modelMenuValue(state.modelId) ?? undefined;
-	const fastMode = launchOptions.fastMode ?? state.fastMode;
 	return (
 		<>
 			<div className="flex min-w-0 items-center self-start">
@@ -278,9 +285,7 @@ export const ComposerChin = memo(function ComposerChin({
 					onSelect={selectModel}
 					onSelectEffort={selectEffort}
 					fastMode={fastMode}
-					onFastModeChange={(on) => {
-						onLaunchOptionsChange({...launchOptions, fastMode: on});
-					}}
+					onFastModeChange={selectFastMode}
 				/>
 				{/* Upstream's session chin announces the fast state at rest; the new-session bar has no live region. */}
 				{surface === "chin" && currentModel !== undefined && fastModeSupported(currentModel) && (

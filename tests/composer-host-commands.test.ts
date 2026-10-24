@@ -1,9 +1,11 @@
 import {describe, expect, it} from "vite-plus/test";
 import {
 	extraLinesBody,
+	fastCommandArg,
 	type HostCommandContext,
 	parseCommandShape,
 	parseHostCommand,
+	routeFastCommand,
 	trailingArgsBody,
 } from "../src/lib/composer-host-commands";
 import {EFFORT_LEVELS, MORE_MODELS, PRIMARY_MODELS} from "../src/lib/launch-options";
@@ -74,6 +76,38 @@ describe("parseHostCommand", () => {
 
 	it("leaves /effort to the CLI when the model has no effort levels", () => {
 		expect(parseHostCommand("/effort", {...ctx, effortLevels: []})).toBeNull();
+	});
+});
+
+describe("routeFastCommand", () => {
+	it.each([
+		[{arg: "on", on: true, canToggle: true}, "noop"],
+		[{arg: "off", on: false, canToggle: true}, "noop"],
+		[{arg: "OFF", on: false, canToggle: true}, "noop"],
+		[{arg: "", on: false, canToggle: true}, "toggle"],
+		[{arg: "", on: true, canToggle: true}, "toggle"],
+		[{arg: "on", on: false, canToggle: true}, "toggle"],
+		[{arg: "off", on: true, canToggle: true}, "toggle"],
+		[{arg: "turbo", on: false, canToggle: true}, "unhandled"],
+		[{arg: "", on: false, canToggle: false}, "unhandled"],
+		[{arg: "on", on: false, canToggle: false}, "unhandled"],
+	] as const)("%j routes to %s", (input, expected) => {
+		expect(routeFastCommand(input)).toBe(expected);
+	});
+});
+
+describe("fastCommandArg", () => {
+	it.each([
+		["/fast", ""],
+		["  /fast  ", ""],
+		["/fast on", "on"],
+		["/FAST  Off ", "Off"],
+		["/fast turbo mode", "turbo mode"],
+		["/faster", null],
+		["/model", null],
+		["hello /fast", null],
+	])("%j has arg %j", (text, expected) => {
+		expect(fastCommandArg(text)).toBe(expected);
 	});
 });
 
