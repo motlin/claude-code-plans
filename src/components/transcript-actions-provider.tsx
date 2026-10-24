@@ -1,6 +1,7 @@
 import {type ReactNode, useEffect, useMemo, useRef} from "react";
 
 import {toggleChapter} from "../lib/chapter-store";
+import {FORK_NO_DIRECTORY_REASON} from "../lib/session-fork";
 import type {SessionLine} from "../lib/transcript";
 import {chapterFor, forkPointFor} from "../lib/transcript-action-targets";
 import {
@@ -61,7 +62,7 @@ export function TranscriptActionsProvider({
 		};
 		const rewindTo = (message: TranscriptMessageRef) => void latest.current.start(message.sessionId, message.uuid);
 		const rewind = working ? {rewindTo, rewindDisabledReason: REWIND_WORKING_REASON} : {rewindTo};
-		if (!canFork) return {pinChapter, ...rewind};
+		if (!canFork) return {pinChapter, ...rewind, forkDisabledReason: FORK_NO_DIRECTORY_REASON};
 		const forkFrom = (message: TranscriptMessageRef) => {
 			if (message.sessionId !== sessionId) {
 				toast({kind: "error", message: "Only this session's own messages can be forked."});

@@ -107,10 +107,18 @@ describe("TranscriptActionsProvider", () => {
 		]);
 	});
 
-	it("leaves Fork disabled when the session has no directory to fork in", () => {
+	it("disables Fork with a reason when the session has no directory to fork in", () => {
 		const container = renderTranscript(undefined);
+		const fork = turnButton(container, "reply-1", "Fork from here");
+		const describedBy = fork.closest("[data-cds-disabled-reason-wrapper]")?.getAttribute("aria-describedby");
 
-		expect(turnButton(container, "reply-1", "Fork from here").disabled).toBe(true);
+		expect({
+			disabled: fork.disabled,
+			reason:
+				describedBy === undefined || describedBy === null
+					? null
+					: document.getElementById(describedBy)?.textContent,
+		}).toStrictEqual({disabled: true, reason: "Session directory is unknown"});
 	});
 
 	it("disables Rewind with upstream's reason while Claude is working", () => {

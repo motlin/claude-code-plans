@@ -663,6 +663,25 @@ describe("Rewind while Claude is working", () => {
 		});
 	});
 
+	it("shows only the working reason on hover, not the Rewind to here label", () => {
+		const {container} = render(
+			withActions(
+				{rewindTo: vi.fn<NonNullable<TranscriptActions["rewindTo"]>>(), rewindDisabledReason: REASON},
+				<UserMessageActions message={MESSAGE} text="Hi" timestamp={TIMESTAMP} details={[]} />,
+			),
+		);
+		const wrapper = button(container, "Rewind to here").closest<HTMLElement>("[data-cds-disabled-reason-wrapper]")!;
+		fireEvent.pointerEnter(wrapper.parentElement!);
+		fireEvent.pointerEnter(button(container, "Rewind to here").parentElement!);
+		act(() => {
+			vi.advanceTimersByTime(300);
+		});
+
+		expect(Array.from(container.querySelectorAll('[role="tooltip"]')).map((tip) => tip.textContent)).toStrictEqual([
+			REASON,
+		]);
+	});
+
 	it("reaches the reason wrapper with ArrowRight from Copy, as a roving toolbar item", () => {
 		const {container} = render(
 			withActions(
@@ -703,6 +722,61 @@ describe("Rewind while Claude is working", () => {
 		);
 
 		expect(rewindState(container)).toStrictEqual({disabled: false, wrapperTabIndex: -1, description: null});
+	});
+});
+
+describe("Fork from here's disabled reason", () => {
+	const REASON = "Session directory is unknown";
+
+	function forkState(container: HTMLElement) {
+		const fork = button(container, "Fork from here");
+		const wrapper = fork.closest<HTMLElement>("[data-cds-disabled-reason-wrapper]");
+		const describedBy = wrapper?.getAttribute("aria-describedby") ?? null;
+		return {
+			disabled: fork.disabled,
+			wrapped: wrapper !== null,
+			wrapperTabIndex: wrapper?.tabIndex ?? null,
+			description: describedBy === null ? null : (document.getElementById(describedBy)?.textContent ?? null),
+		};
+	}
+
+	it("keeps an enabled Fork inside an undescribed reason wrapper, as upstream's stable DOM", () => {
+		const {container} = render(
+			withActions(
+				{forkFrom: vi.fn<NonNullable<TranscriptActions["forkFrom"]>>()},
+				<AssistantMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} />,
+			),
+		);
+
+		expect(forkState(container)).toStrictEqual({
+			disabled: false,
+			wrapped: true,
+			wrapperTabIndex: -1,
+			description: null,
+		});
+	});
+
+	it("disables Fork described by the reason, and hovering shows only the reason, not the label", () => {
+		const {container} = render(
+			withActions(
+				{forkDisabledReason: REASON},
+				<UserMessageActions message={MESSAGE} text="Hi" timestamp={TIMESTAMP} details={[]} />,
+			),
+		);
+		const wrapper = button(container, "Fork from here").closest<HTMLElement>("[data-cds-disabled-reason-wrapper]")!;
+		fireEvent.pointerEnter(wrapper.parentElement!);
+		act(() => {
+			vi.advanceTimersByTime(300);
+		});
+		const tooltips = Array.from(container.querySelectorAll('[role="tooltip"]')).map((tip) => tip.textContent);
+
+		expect({...forkState(container), tooltips}).toStrictEqual({
+			disabled: true,
+			wrapped: true,
+			wrapperTabIndex: -1,
+			description: REASON,
+			tooltips: [REASON],
+		});
 	});
 });
 

@@ -288,7 +288,13 @@ function TranscriptMenuItems({
 		</MenuItem>
 	);
 	const fork = (
-		<MenuItem key="fork" description={FORK_DESCRIPTION} {...actionProps(actions.forkFrom, message)}>
+		<MenuItem
+			key="fork"
+			description={FORK_DESCRIPTION}
+			{...(actions.forkDisabledReason === undefined
+				? actionProps(actions.forkFrom, message)
+				: {disabled: true, disabledReason: actions.forkDisabledReason})}
+		>
 			Fork from here
 		</MenuItem>
 	);

@@ -16,10 +16,13 @@ export function sessionForkCommand(sessionId: string, cwd: string, atMessage?: s
 	return buildClaudeCopyCommand({cwd, args: sessionForkArgs(sessionId, atMessage)});
 }
 
+/** Fork's reason when the session has no directory to resume a fork in. */
+export const FORK_NO_DIRECTORY_REASON = "Session directory is unknown";
+
 /** Why Fork is unavailable, shown as the disabled item's tooltip; null when it can run. */
 export function forkDisabledReason({working, cwd}: {working: boolean; cwd: string | null}): string | null {
 	if (working) return "Session file is still being written";
-	if (cwd === null) return "Session directory is unknown";
+	if (cwd === null) return FORK_NO_DIRECTORY_REASON;
 	return null;
 }
 

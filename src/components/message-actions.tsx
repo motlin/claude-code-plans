@@ -214,11 +214,12 @@ function bound(
 }
 
 function ForkAction({message}: {message: TranscriptMessageRef | undefined}) {
-	const {forkFrom} = useContext(TranscriptActionsContext);
+	const {forkFrom, forkDisabledReason} = useContext(TranscriptActionsContext);
 	return (
 		<ActionButton
 			label="Fork from here"
 			description="Starts a new session, keeps this one"
+			disabledReason={forkDisabledReason ?? null}
 			onClick={bound(forkFrom, message)}
 		>
 			{/* Upstream's ArrowSplitRight: lucide's upward split, turned to point right. */}

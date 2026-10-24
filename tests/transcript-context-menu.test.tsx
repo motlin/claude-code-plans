@@ -157,6 +157,8 @@ function workingPaneActions(calls: string[]): TranscriptActions {
 	return {...recordingActions(calls), rewindDisabledReason: "Rewind is unavailable while Claude is working"};
 }
 
+const UNFORKABLE_ACTIONS: TranscriptActions = {forkDisabledReason: "Session directory is unknown"};
+
 describe("transcript context menus", () => {
 	it("opens the assistant prose menu at upstream's width", () => {
 		const container = renderChat();
@@ -310,6 +312,22 @@ describe("transcript context menus", () => {
 			],
 			calls: [],
 		});
+	});
+
+	it("disables Fork from here with its reason when the session cannot fork", () => {
+		const container = renderChat((chat) => (
+			<TranscriptActionsContext.Provider value={UNFORKABLE_ACTIONS}>{chat}</TranscriptActionsContext.Provider>
+		));
+		const menu = openMenuOn(find(container, ".user-message-bubble p"));
+		const fork = [...menu.querySelectorAll('[role="menuitem"]')].find(
+			(row) => row.querySelector("[data-menu-item-title]")?.textContent === "Fork from here",
+		)!;
+		const describedBy = fork.getAttribute("aria-describedby");
+
+		expect({
+			disabled: fork.hasAttribute("data-disabled"),
+			reason: describedBy === null ? null : menu.ownerDocument.getElementById(describedBy)?.textContent,
+		}).toStrictEqual({disabled: true, reason: "Session directory is unknown"});
 	});
 });
 
