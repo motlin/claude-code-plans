@@ -1,5 +1,3 @@
-import {useMediaQuery} from "./use-phone-sheet";
-
 /**
  * Reveals a hover-only control on touch: coarse pointers and devices without hover never fire the
  * `group-hover` that shows it. Append to any control hidden behind `opacity-0` until hover, as
@@ -14,11 +12,3 @@ export const TOUCH_REVEAL =
  */
 export const TOUCH_HIT =
 	"relative pointer-coarse:after:absolute pointer-coarse:after:-inset-[max(0px,calc((2.75rem-100%)/2))] [@media(hover:none)]:after:absolute [@media(hover:none)]:after:-inset-[max(0px,calc((2.75rem-100%)/2))]";
-
-/** The devices `TOUCH_REVEAL` targets: coarse pointers or no hover at all. */
-const TOUCH_QUERY = "(pointer: coarse), (hover: none)";
-
-/** True on the devices where `TOUCH_REVEAL` shows hover-only controls, so they can join the tab order. */
-export function useTouchDevice(): boolean {
-	return useMediaQuery(TOUCH_QUERY);
-}

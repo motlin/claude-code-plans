@@ -56,7 +56,7 @@ function showActions(container: HTMLElement): HTMLButtonElement {
 }
 
 function tooltipText(container: HTMLElement): string | null {
-	fireEvent.focus(container.querySelector("time")!);
+	fireEvent.pointerEnter(container.querySelector("time")!.parentElement!);
 	act(() => {
 		vi.advanceTimersByTime(300);
 	});
@@ -487,7 +487,7 @@ describe("UserMessageActions", () => {
 			hidden,
 			revealed: button(container, "Read by Claude").tabIndex,
 			focused: document.activeElement?.getAttribute("aria-label") ?? null,
-		}).toStrictEqual({hidden: -1, revealed: 0, focused: "Read by Claude"});
+		}).toStrictEqual({hidden: 0, revealed: 0, focused: "Read by Claude"});
 	});
 
 	it("moves the origin caption into the time tooltip", () => {
@@ -585,16 +585,35 @@ describe("Rewind while Claude is working", () => {
 		});
 	});
 
-	it("puts the reason wrapper in the tab order once Show message actions reveals the bar", () => {
+	it("reaches the reason wrapper with ArrowRight from Copy, as a roving toolbar item", () => {
 		const {container} = render(
 			withActions(
 				{rewindTo: vi.fn<NonNullable<TranscriptActions["rewindTo"]>>(), rewindDisabledReason: REASON},
 				<UserMessageActions message={MESSAGE} text="Hi" timestamp={TIMESTAMP} details={[]} />,
 			),
 		);
-		fireEvent.click(showActions(container));
+		const copy = button(container, "Copy");
+		copy.focus();
+		fireEvent.keyDown(copy, {key: "ArrowRight"});
 
-		expect(rewindState(container).wrapperTabIndex).toBe(0);
+		expect({
+			focusedWrapper: document.activeElement?.hasAttribute("data-cds-disabled-reason-wrapper") ?? false,
+			wrapperTabIndex: rewindState(container).wrapperTabIndex,
+		}).toStrictEqual({focusedWrapper: true, wrapperTabIndex: 0});
+	});
+
+	it("skips an undescribed reason wrapper, moving from Copy straight to the enabled Rewind", () => {
+		const {container} = render(
+			withActions(
+				{rewindTo: vi.fn<NonNullable<TranscriptActions["rewindTo"]>>()},
+				<UserMessageActions message={MESSAGE} text="Hi" timestamp={TIMESTAMP} details={[]} />,
+			),
+		);
+		const copy = button(container, "Copy");
+		copy.focus();
+		fireEvent.keyDown(copy, {key: "ArrowRight"});
+
+		expect(document.activeElement?.getAttribute("aria-label") ?? null).toBe("Rewind to here");
 	});
 
 	it("leaves Rewind enabled and undescribed while the pane is idle", () => {
@@ -671,30 +690,111 @@ describe("message action toolbar sizing and reveal", () => {
 		}).toStrictEqual({scales: [], restDelay: false, missing: []});
 	});
 
-	it("keeps hidden toolbar controls out of the tab order until Show message actions reveals them", () => {
+	it("gives the assistant bar upstream's toolbar semantics with Copy as its single tab stop", () => {
 		const {container} = render(
 			<AssistantMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} />,
 		);
-		const tabIndexes = () =>
-			Array.from(bar(container).querySelectorAll<HTMLElement>("button, time")).map((element) => element.tabIndex);
-		const hidden = tabIndexes();
+		const toolbar = bar(container);
+
+		expect({
+			role: toolbar.getAttribute("role"),
+			label: toolbar.getAttribute("aria-label"),
+			tabIndex: toolbar.getAttribute("tabindex"),
+			cds: toolbar.getAttribute("data-cds"),
+			reveal: toolbar.getAttribute("data-reveal"),
+			testId: toolbar.getAttribute("data-testid"),
+			stops: Array.from(toolbar.querySelectorAll('[tabindex="0"]')).map((element) =>
+				element.getAttribute("aria-label"),
+			),
+			timeTabIndex: toolbar.querySelector("time")!.getAttribute("tabindex"),
+		}).toStrictEqual({
+			role: "toolbar",
+			label: "Message actions",
+			tabIndex: "-1",
+			cds: "MessageActions",
+			reveal: "fade",
+			testId: "message-actions",
+			stops: ["Copy"],
+			timeTabIndex: null,
+		});
+	});
+
+	it("gives the user bar toolbar semantics without the assistant's test id", () => {
+		const {container} = render(
+			<UserMessageActions message={MESSAGE} text="Hi" timestamp={TIMESTAMP} details={[]} />,
+		);
+		const toolbar = bar(container);
+
+		expect({
+			role: toolbar.getAttribute("role"),
+			label: toolbar.getAttribute("aria-label"),
+			cds: toolbar.getAttribute("data-cds"),
+			testId: toolbar.getAttribute("data-testid"),
+			timeTabIndex: toolbar.querySelector("time")!.getAttribute("tabindex"),
+		}).toStrictEqual({
+			role: "toolbar",
+			label: "Message actions",
+			cds: "MessageActions",
+			testId: null,
+			timeTabIndex: null,
+		});
+	});
+
+	it("roves the assistant bar with the arrows (wrapping), Home and End, and remembers the last focused item", () => {
+		stubSpeech();
+		const {container} = render(
+			withActions(
+				{
+					forkFrom: vi.fn<NonNullable<TranscriptActions["forkFrom"]>>(),
+					pinChapter: vi.fn<NonNullable<TranscriptActions["pinChapter"]>>(),
+				},
+				<AssistantMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} />,
+			),
+		);
+		const focused = () => document.activeElement?.getAttribute("aria-label") ?? null;
+		const press = (key: string) => {
+			fireEvent.keyDown(document.activeElement!, {key});
+			return focused();
+		};
+		button(container, "Copy").focus();
+		const right = press("ArrowRight");
+		button(container, "Copy").focus();
+		const left = press("ArrowLeft");
+		const home = press("Home");
+		const end = press("End");
+		button(container, "Pin as chapter").focus();
+		fireEvent.blur(button(container, "Pin as chapter"), {relatedTarget: document.body});
+
+		expect({
+			right,
+			left,
+			home,
+			end,
+			stops: Array.from(bar(container).querySelectorAll('[tabindex="0"]')).map((element) =>
+				element.getAttribute("aria-label"),
+			),
+		}).toStrictEqual({
+			right: "Fork from here",
+			left: "Read aloud",
+			home: "Copy",
+			end: "Read aloud",
+			stops: ["Pin as chapter"],
+		});
+	});
+
+	it("reveals the bar from Show message actions and focuses Copy", () => {
+		const {container} = render(
+			<AssistantMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} />,
+		);
 		const show = showActions(container);
 		const showIsSrOnly = show.className.split(" ").includes("sr-only");
 		fireEvent.click(show);
 
 		expect({
-			hidden,
 			showIsSrOnly,
-			revealed: tabIndexes(),
 			barRevealed: bar(container).hasAttribute("data-revealed"),
 			focused: document.activeElement?.getAttribute("aria-label") ?? null,
-		}).toStrictEqual({
-			hidden: [-1, -1, -1, -1, -1],
-			showIsSrOnly: true,
-			revealed: [0, 0, 0, 0, 0],
-			barRevealed: true,
-			focused: "Copy",
-		});
+		}).toStrictEqual({showIsSrOnly: true, barRevealed: true, focused: "Copy"});
 	});
 
 	it("always shows the toolbar on coarse-pointer or hover-less devices, without the fade transition", () => {
@@ -714,26 +814,6 @@ describe("message action toolbar sizing and reveal", () => {
 		).toStrictEqual([]);
 	});
 
-	it("keeps toolbar controls in the tab order on touch devices", () => {
-		vi.stubGlobal("matchMedia", (query: string) => ({
-			matches: query === "(pointer: coarse), (hover: none)",
-			media: query,
-			onchange: null,
-			addEventListener: () => undefined,
-			removeEventListener: () => undefined,
-			addListener: () => undefined,
-			removeListener: () => undefined,
-			dispatchEvent: () => false,
-		}));
-		const {container} = render(
-			<AssistantMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} />,
-		);
-
-		expect(
-			Array.from(bar(container).querySelectorAll<HTMLElement>("button, time")).map((element) => element.tabIndex),
-		).toStrictEqual([0, 0, 0, 0, 0]);
-	});
-
 	it("hides the toolbar again once focus leaves it", () => {
 		const {container} = render(
 			<AssistantMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} />,
@@ -744,7 +824,7 @@ describe("message action toolbar sizing and reveal", () => {
 		expect({
 			revealed: bar(container).hasAttribute("data-revealed"),
 			copyTabIndex: button(container, "Copy").tabIndex,
-		}).toStrictEqual({revealed: false, copyTabIndex: -1});
+		}).toStrictEqual({revealed: false, copyTabIndex: 0});
 	});
 
 	it("announces a copy in an sr-only status region instead of a visible bubble", async () => {

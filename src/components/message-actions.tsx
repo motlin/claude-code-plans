@@ -5,7 +5,8 @@ import {useChapters} from "../lib/chapter-store";
 import {writeClipboardText} from "../lib/clipboard";
 import {messageHeading} from "../lib/transcript-action-targets";
 import {type ReadAloudStatus, useReadAloud} from "../hooks/use-read-aloud";
-import {TOUCH_REVEAL, useTouchDevice} from "../lib/touch-reveal";
+import {TOUCH_REVEAL} from "../lib/touch-reveal";
+import {useRovingToolbar} from "../lib/use-roving-toolbar";
 import {formatMessageTime, formatRelativeTimestamp, formatTimestamp} from "../lib/timestamp-format";
 import {type TranscriptMessageRef, TranscriptActionsContext} from "./transcript-actions-context";
 import {DisabledReason} from "./ui/disabled-reason";
@@ -21,9 +22,11 @@ import {Tooltip} from "./ui/tooltip";
  * menu through TranscriptActionsContext, and stay disabled without one. Per-turn
  * stats and origin captions live in the time's tooltip, never inline.
  *
- * The bar fades and scales in on hover or focus-within. While hidden its controls
- * leave the tab order; a per-turn sr-only "Show message actions" button reveals
- * the bar and focuses its first button, and the bar hides again once focus leaves.
+ * The bar fades in on hover or focus-within. It is upstream's roving toolbar: one
+ * tab stop (Copy, then the last focused item) that stays in the tab order while
+ * the bar is hidden, as upstream's opacity-only hiding does. A per-turn sr-only
+ * "Show message actions" button reveals the bar and focuses its first button,
+ * and the bar hides again once focus leaves.
  */
 
 export interface MessageActionsProps {
@@ -71,11 +74,15 @@ const ICON_CLASS = "size-4";
 
 const COPIED_MS = 1500;
 
-/** Whether the bar's controls are in the tab order: once "Show message actions" revealed it, or always on touch devices. */
-const RevealedContext = createContext(false);
+/**
+ * Inside a roving bar: items render the tab index the roving hook would elect at rest (the first item 0, the rest
+ * -1), so the hook has nothing to rewrite after mount. Outside one (the waiting row) they keep the native tab order.
+ */
+const RovingBarContext = createContext(false);
 
-function useTabIndex(): number {
-	return useContext(RevealedContext) ? 0 : -1;
+function useRovingTabIndex(first: boolean): number | undefined {
+	if (!useContext(RovingBarContext)) return undefined;
+	return first ? 0 : -1;
 }
 
 function ActionButton({
@@ -85,9 +92,12 @@ function ActionButton({
 	pressed,
 	readAloud,
 	disabledReason,
+	first = false,
 	children,
 }: {
 	label: string;
+	/** The bar's first item, its tab stop at rest. */
+	first?: boolean;
 	/**
 	 * Mounts upstream's disabled-reason span around the control; while it holds a reason the control is disabled
 	 * and the span, focusable and described by the reason, shows it in place of the label's tooltip.
@@ -101,7 +111,7 @@ function ActionButton({
 	readAloud?: boolean;
 	children: ReactNode;
 }) {
-	const tabIndex = useTabIndex();
+	const tabIndex = useRovingTabIndex(first);
 	const blocked = disabledReason !== undefined && disabledReason !== null;
 	const control = (
 		<Tooltip content={label} description={description} openWhen={() => !blocked}>
@@ -110,7 +120,7 @@ function ActionButton({
 				aria-label={label}
 				{...(pressed === undefined ? {} : {"aria-pressed": pressed})}
 				{...(readAloud ? {"data-read-aloud": ""} : {})}
-				tabIndex={tabIndex}
+				{...(tabIndex === undefined ? {} : {tabIndex})}
 				disabled={onClick === undefined || blocked}
 				onClick={blocked ? undefined : onClick}
 				className={BUTTON_CLASS}
@@ -121,13 +131,13 @@ function ActionButton({
 	);
 	if (disabledReason === undefined) return control;
 	return (
-		<DisabledReason reason={disabledReason} tabIndex={tabIndex}>
+		<DisabledReason reason={disabledReason} tabIndex={-1}>
 			{control}
 		</DisabledReason>
 	);
 }
 
-function CopyAction({text}: {text: string}) {
+function CopyAction({text, first = false}: {text: string; first?: boolean}) {
 	const [copied, setCopied] = useState(false);
 	const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 	useEffect(
@@ -141,6 +151,7 @@ function CopyAction({text}: {text: string}) {
 		<>
 			<ActionButton
 				label="Copy"
+				first={first}
 				onClick={() => {
 					void writeClipboardText(text).then((ok) => {
 						if (!ok) return;
@@ -252,7 +263,6 @@ function MessageTime({
 	/** The side facing the buttons, which gets 8px of padding. */
 	inner: "left" | "right";
 }) {
-	const tabIndex = useTabIndex();
 	// Upstream's user <time> turns absolute after a week; the assistant's stays relative.
 	const relative = inner === "right" ? formatMessageTime(timestamp) : formatRelativeTimestamp(timestamp);
 	if (timestamp === undefined || relative === null) return null;
@@ -262,7 +272,6 @@ function MessageTime({
 		<Tooltip content={tooltip} multiline>
 			<time
 				dateTime={timestamp}
-				tabIndex={tabIndex}
 				className={
 					inner === "left"
 						? "pl-2 text-[13px]/[19px] text-ink-muted tabular-nums outline-none"
@@ -281,21 +290,24 @@ function ActionBar({
 	children,
 	label,
 	hovered,
+	testId,
 }: {
 	className: string;
 	children: ReactNode;
 	label: string;
 	hovered?: boolean | undefined;
+	/** Upstream tags only the assistant bar `data-testid="message-actions"`. */
+	testId?: string;
 }) {
 	const [revealed, setRevealed] = useState(false);
-	const touch = useTouchDevice();
-	const barRef = useRef<HTMLDivElement>(null);
+	const {ref: barRef, onFocus, onKeyDown} = useRovingToolbar();
+	const barElement = useRef<HTMLDivElement | null>(null);
 	const focusPending = useRef(false);
 
 	useEffect(() => {
 		if (!revealed || !focusPending.current) return;
 		focusPending.current = false;
-		barRef.current?.querySelector<HTMLElement>("button:not(:disabled)")?.focus();
+		barElement.current?.querySelector<HTMLElement>("button:not(:disabled)")?.focus();
 	}, [revealed]);
 
 	function hideWhenFocusLeaves(event: FocusEvent<HTMLDivElement>) {
@@ -318,14 +330,25 @@ function ActionBar({
 				Show message actions
 			</button>
 			<div
-				ref={barRef}
+				ref={(element) => {
+					barElement.current = element;
+					barRef(element);
+				}}
 				data-message-actions
+				data-cds="MessageActions"
+				data-reveal="fade"
+				role="toolbar"
+				aria-label="Message actions"
+				tabIndex={-1}
+				{...(testId === undefined ? {} : {"data-testid": testId})}
 				data-hovered={hovered ? "" : undefined}
 				{...(revealed ? {"data-revealed": ""} : {})}
 				className={className}
 				onBlur={hideWhenFocusLeaves}
+				onFocus={onFocus}
+				onKeyDown={onKeyDown}
 			>
-				<RevealedContext.Provider value={revealed || touch}>{children}</RevealedContext.Provider>
+				<RovingBarContext.Provider value>{children}</RovingBarContext.Provider>
 			</div>
 		</>
 	);
@@ -337,8 +360,9 @@ export function AssistantMessageActions({message, text, timestamp, details, hove
 			className={`${BAR_CLASS} pt-[4px]`}
 			label={`Show message actions for ${messageHeading("assistant", text)}`}
 			hovered={hovered}
+			testId="message-actions"
 		>
-			<CopyAction text={text} />
+			<CopyAction text={text} first />
 			<ForkAction message={message} />
 			<PinAction message={message} />
 			<ReadAloudAction text={text} />
@@ -349,6 +373,7 @@ export function AssistantMessageActions({message, text, timestamp, details, hove
 
 /** Upstream's "Read by Claude" CheckDouble InfoTip; the toolbar's hover rule turns it primary. */
 function ReadByClaudeReceipt() {
+	const tabIndex = useRovingTabIndex(true);
 	return (
 		<InfoTip
 			aria-label="Read by Claude"
@@ -356,7 +381,7 @@ function ReadByClaudeReceipt() {
 			delay={0}
 			icon={<CheckCheck aria-hidden className={ICON_CLASS} />}
 			className="hover:text-primary"
-			tabIndex={useTabIndex()}
+			{...(tabIndex === undefined ? {} : {tabIndex})}
 		/>
 	);
 }
@@ -376,7 +401,7 @@ export function UserMessageActions({
 		>
 			<MessageTime timestamp={timestamp} details={details} inner="right" />
 			{readByClaude && <ReadByClaudeReceipt />}
-			<CopyAction text={text} />
+			<CopyAction text={text} first={!readByClaude} />
 			<RewindAction message={message} />
 			<ForkAction message={message} />
 		</ActionBar>
@@ -404,7 +429,6 @@ function CancelEditAction({onCancel}: {onCancel: () => Promise<void> | void}) {
 					aria-label="Cancel and edit message"
 					aria-busy={removing ? true : undefined}
 					aria-disabled={removing ? true : undefined}
-					tabIndex={useTabIndex()}
 					className={`relative ${BUTTON_CLASS}`}
 					onMouseDown={(event) => {
 						event.preventDefault();
@@ -456,29 +480,27 @@ export function WaitingMessageActions({
 			aria-label="Message actions"
 			className="flex items-center select-none"
 		>
-			<RevealedContext.Provider value>
-				{unread && (
-					<span
-						data-testid="epitaxy-receipt-at-rest"
-						className="text-body text-ink-muted tabular-nums flex min-h-6 items-center self-center ps-[5px] epitaxy-hint-fade-in"
-					>
-						<InfoTip
-							aria-label="Unread"
-							content="Unread"
-							delay={0}
-							icon={<Check aria-hidden className={ICON_CLASS} />}
-							className="opacity-50 hover:opacity-100 focus-visible:opacity-100 data-[popup-open]:opacity-100"
-							tabIndex={0}
-						/>
-					</span>
-				)}
-				<div data-reveal-on-hover className={REVEAL_ON_HOVER_CLASS}>
-					<CopyAction text={text} />
-					<RewindAction message={undefined} />
-					{onCancel !== undefined && <CancelEditAction onCancel={onCancel} />}
-				</div>
-				{children}
-			</RevealedContext.Provider>
+			{unread && (
+				<span
+					data-testid="epitaxy-receipt-at-rest"
+					className="text-body text-ink-muted tabular-nums flex min-h-6 items-center self-center ps-[5px] epitaxy-hint-fade-in"
+				>
+					<InfoTip
+						aria-label="Unread"
+						content="Unread"
+						delay={0}
+						icon={<Check aria-hidden className={ICON_CLASS} />}
+						className="opacity-50 hover:opacity-100 focus-visible:opacity-100 data-[popup-open]:opacity-100"
+						tabIndex={0}
+					/>
+				</span>
+			)}
+			<div data-reveal-on-hover className={REVEAL_ON_HOVER_CLASS}>
+				<CopyAction text={text} />
+				<RewindAction message={undefined} />
+				{onCancel !== undefined && <CancelEditAction onCancel={onCancel} />}
+			</div>
+			{children}
 		</div>
 	);
 }

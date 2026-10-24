@@ -1,7 +1,10 @@
 import {type FocusEvent, type KeyboardEvent, useCallback, useLayoutEffect, useRef} from "react";
 
-/** A toolbar's focusable items: enabled buttons, plus the cds disabled-reason wrapper standing in for a disabled one. */
-const ITEM_SELECTOR = "button:not(:disabled), [data-cds-disabled-reason-wrapper]";
+/**
+ * A toolbar's focusable items: enabled buttons, plus a cds disabled-reason wrapper while it holds a reason (it is
+ * described by it then) and so stands in for its disabled control.
+ */
+const ITEM_SELECTOR = "button:not(:disabled), [data-cds-disabled-reason-wrapper][aria-describedby]";
 
 function toolbarItems(toolbar: HTMLElement): HTMLElement[] {
 	return [...toolbar.querySelectorAll<HTMLElement>(ITEM_SELECTOR)];
@@ -31,6 +34,23 @@ export function useRovingToolbar<T extends HTMLElement = HTMLDivElement>() {
 	}, []);
 
 	useLayoutEffect(sync);
+
+	// Items can mount, enable or gain a reason without the toolbar itself re-rendering (a context change in one
+	// child), so re-elect the tab stop on those mutations too. sync only writes a changed tabindex, so it settles.
+	useLayoutEffect(() => {
+		const toolbar = toolbarRef.current;
+		if (toolbar === null || typeof MutationObserver === "undefined") return undefined;
+		const observer = new MutationObserver(sync);
+		observer.observe(toolbar, {
+			subtree: true,
+			childList: true,
+			attributes: true,
+			attributeFilter: ["disabled", "aria-describedby", "tabindex"],
+		});
+		return () => {
+			observer.disconnect();
+		};
+	}, [sync]);
 
 	const ref = useCallback(
 		(element: T | null) => {
