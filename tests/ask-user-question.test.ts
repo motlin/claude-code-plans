@@ -2,14 +2,18 @@ import {describe, expect, it} from "vite-plus/test";
 import {
 	answerForQuestion,
 	formatAnswerPrompt,
+	isWithdrawnQuestion,
 	makeInitialDraft,
 	normalizeQuestions,
 	OUTCOME_LABEL,
 	parseAnswerResult,
 	questionOutcome,
+	questionOutcomeNote,
 	questionOutcomes,
 	type QuestionLike,
 } from "../src/lib/ask-user-question";
+import {processTranscript} from "../src/lib/transcript";
+import shapes from "./fixtures/question-outcome-shapes.json";
 
 describe("formatAnswerPrompt", () => {
 	it("formats a single answer as the canonical Claude Code reply text", () => {
@@ -409,6 +413,90 @@ describe("questionOutcomes", () => {
 		expect(questionOutcomes(call)).toStrictEqual([
 			{question: "Q1", answer: "Blue"},
 			{question: "Q2", unanswered: "dismissed"},
+		]);
+	});
+});
+
+describe("question outcomes of real JSONL shapes", () => {
+	/** The fixture's AskUserQuestion call as processTranscript pairs it with its result. */
+	function classify(name: string) {
+		const shape = shapes.find((candidate) => candidate.name === name);
+		if (shape === undefined) throw new Error(`No question outcome shape named ${name}`);
+		const [use] = shape.records as {message: {content: {id: string; input: Record<string, unknown>}[]}}[];
+		const toolUse = use?.message.content[0];
+		if (toolUse === undefined) throw new Error("Expected the shape to open with its tool_use.");
+		const result = processTranscript(shape.records).toolResultMap.get(toolUse.id);
+		const call = {input: toolUse.input, ...result};
+		return {
+			stopped: result?.stopped === true,
+			withdrawn: isWithdrawnQuestion(call),
+			note: questionOutcomeNote(call),
+			outcomes: questionOutcomes(call),
+		};
+	}
+
+	it("classifies a two-question reply in chat as replied", () => {
+		expect(classify("replied in chat, two questions")).toStrictEqual({
+			stopped: false,
+			withdrawn: true,
+			note: "Replied in chat",
+			outcomes: [
+				{question: "Approve the two parser fixes?", unanswered: "replied"},
+				{question: "How to resolve the lint disagreements?", unanswered: "replied"},
+			],
+		});
+	});
+
+	it("classifies a dismissed question as dismissed", () => {
+		expect(classify("dismissed, one question")).toStrictEqual({
+			stopped: false,
+			withdrawn: true,
+			note: "Not answered",
+			outcomes: [
+				{
+					question:
+						"The fixes are done. What's left: (1) remove the stale worktrees; (2) resolve the conflicted rebase. Which next?",
+					unanswered: "dismissed",
+				},
+			],
+		});
+	});
+
+	it("gives the CLI terminal skip (answers: {}) no outcome and no note", () => {
+		expect(classify("CLI terminal skip, answers {}")).toStrictEqual({
+			stopped: false,
+			withdrawn: true,
+			note: undefined,
+			outcomes: [{question: "Gee?"}, {question: "Aitch?"}],
+		});
+	});
+
+	it("marks the Stop / Esc rejection stopped", () => {
+		expect(classify("stopped by Stop / Esc")).toStrictEqual({
+			stopped: true,
+			withdrawn: true,
+			note: undefined,
+			outcomes: [{question: 'Game "Raw" resource-panel screenshot — where does it belong?'}],
+		});
+	});
+
+	it('classifies upstream\'s "[No preference]" skips as skipped', () => {
+		expect([classify("[No preference], one question"), classify("[No preference], two questions")]).toStrictEqual([
+			{
+				stopped: false,
+				withdrawn: true,
+				note: "Skipped",
+				outcomes: [{question: "Which color do you prefer?", unanswered: "skipped"}],
+			},
+			{
+				stopped: false,
+				withdrawn: true,
+				note: "Skipped",
+				outcomes: [
+					{question: "Which fruit do you prefer?", unanswered: "skipped"},
+					{question: "Which sizes do you want?", unanswered: "skipped"},
+				],
+			},
 		]);
 	});
 });

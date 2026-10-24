@@ -1,0 +1,461 @@
+[
+	{
+		"name": "replied in chat, two questions",
+		"source": "eclipse-collections f5df06e6 line 3623",
+		"records": [
+			{
+				"type": "assistant",
+				"uuid": "a-replied",
+				"message": {
+					"role": "assistant",
+					"content": [
+						{
+							"type": "tool_use",
+							"id": "toolu_replied",
+							"name": "AskUserQuestion",
+							"input": {
+								"questions": [
+									{
+										"question": "Approve the two parser fixes?",
+										"header": "Parser fixes",
+										"multiSelect": true,
+										"options": [
+											{"label": "First fix", "description": "Indent the first construct."},
+											{"label": "Second fix", "description": "Indent the second construct."}
+										]
+									},
+									{
+										"question": "How to resolve the lint disagreements?",
+										"header": "Lint",
+										"multiSelect": false,
+										"options": [
+											{
+												"label": "Disable the check (Recommended)",
+												"description": "The formatter owns it."
+											},
+											{
+												"label": "Suppress per file",
+												"description": "Suppress the affected files only."
+											}
+										]
+									}
+								]
+							}
+						}
+					]
+				}
+			},
+			{
+				"type": "user",
+				"uuid": "r-replied",
+				"parentUuid": "a-replied",
+				"sourceToolAssistantUUID": "a-replied",
+				"message": {
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_replied",
+							"content": "The user answered: \"Approve the two parser fixes?\"=\"[User did not answer this question — they sent a message instead. Treat that message as their response; do not re-ask.]\", \"How to resolve the lint disagreements?\"=\"[User did not answer this question — they sent a message instead. Treat that message as their response; do not re-ask.]\". Read the answers carefully — they may request clarification, changes, or that you not proceed — and follow what they actually say."
+						}
+					]
+				},
+				"toolUseResult": {
+					"questions": [
+						{
+							"header": "Parser fixes",
+							"multiSelect": true,
+							"options": [
+								{"description": "Indent the first construct.", "label": "First fix"},
+								{"description": "Indent the second construct.", "label": "Second fix"}
+							],
+							"question": "Approve the two parser fixes?"
+						},
+						{
+							"header": "Lint",
+							"multiSelect": false,
+							"options": [
+								{"description": "The formatter owns it.", "label": "Disable the check (Recommended)"},
+								{"description": "Suppress the affected files only.", "label": "Suppress per file"}
+							],
+							"question": "How to resolve the lint disagreements?"
+						}
+					],
+					"answers": {
+						"Approve the two parser fixes?": "[User did not answer this question — they sent a message instead. Treat that message as their response; do not re-ask.]",
+						"How to resolve the lint disagreements?": "[User did not answer this question — they sent a message instead. Treat that message as their response; do not re-ask.]"
+					}
+				}
+			}
+		]
+	},
+	{
+		"name": "dismissed, one question",
+		"source": "workflowy 2290f26a line 3591",
+		"records": [
+			{
+				"type": "assistant",
+				"uuid": "a-dismissed",
+				"message": {
+					"role": "assistant",
+					"content": [
+						{
+							"type": "tool_use",
+							"id": "toolu_dismissed",
+							"name": "AskUserQuestion",
+							"input": {
+								"questions": [
+									{
+										"question": "The fixes are done. What's left: (1) remove the stale worktrees; (2) resolve the conflicted rebase. Which next?",
+										"header": "Next",
+										"multiSelect": false,
+										"options": [
+											{
+												"label": "Worktrees, then conflicts",
+												"description": "Remove the worktrees, then resolve the rebase"
+											},
+											{"label": "Just the conflicts", "description": "Leave the worktrees"},
+											{"label": "Stop here", "description": "Wrap up; the rest stays as-is"}
+										]
+									}
+								]
+							}
+						}
+					]
+				}
+			},
+			{
+				"type": "user",
+				"uuid": "r-dismissed",
+				"parentUuid": "a-dismissed",
+				"sourceToolAssistantUUID": "a-dismissed",
+				"message": {
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_dismissed",
+							"content": "The user answered: \"The fixes are done. What's left: (1) remove the stale worktrees; (2) resolve the conflicted rebase. Which next?\"=\"[User dismissed — do not proceed, wait for next instruction]\". Read the answers carefully — they may request clarification, changes, or that you not proceed — and follow what they actually say."
+						}
+					]
+				},
+				"toolUseResult": {
+					"questions": [
+						{
+							"header": "Next",
+							"multiSelect": false,
+							"options": [
+								{
+									"description": "Remove the worktrees, then resolve the rebase",
+									"label": "Worktrees, then conflicts"
+								},
+								{"description": "Leave the worktrees", "label": "Just the conflicts"},
+								{"description": "Wrap up; the rest stays as-is", "label": "Stop here"}
+							],
+							"question": "The fixes are done. What's left: (1) remove the stale worktrees; (2) resolve the conflicted rebase. Which next?"
+						}
+					],
+					"answers": {
+						"The fixes are done. What's left: (1) remove the stale worktrees; (2) resolve the conflicted rebase. Which next?": "[User dismissed — do not proceed, wait for next instruction]"
+					}
+				}
+			}
+		]
+	},
+	{
+		"name": "CLI terminal skip, answers {}",
+		"source": "auqtest daf9d844 line 68",
+		"records": [
+			{
+				"type": "assistant",
+				"uuid": "a-terminal-skip",
+				"message": {
+					"role": "assistant",
+					"content": [
+						{
+							"type": "tool_use",
+							"id": "toolu_terminal_skip",
+							"name": "AskUserQuestion",
+							"input": {
+								"questions": [
+									{
+										"question": "Gee?",
+										"header": "G",
+										"options": [
+											{"label": "U", "description": "Choose U"},
+											{"label": "V", "description": "Choose V"}
+										],
+										"multiSelect": true
+									},
+									{
+										"question": "Aitch?",
+										"header": "H",
+										"options": [
+											{"label": "W", "description": "Choose W"},
+											{"label": "Z", "description": "Choose Z"}
+										],
+										"multiSelect": false
+									}
+								]
+							}
+						}
+					]
+				}
+			},
+			{
+				"type": "user",
+				"uuid": "r-terminal-skip",
+				"parentUuid": "a-terminal-skip",
+				"sourceToolAssistantUUID": "a-terminal-skip",
+				"message": {
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_terminal_skip",
+							"content": "The user did not answer the questions."
+						}
+					]
+				},
+				"toolUseResult": {
+					"questions": [
+						{
+							"question": "Gee?",
+							"header": "G",
+							"options": [
+								{"label": "U", "description": "Choose U"},
+								{"label": "V", "description": "Choose V"}
+							],
+							"multiSelect": true
+						},
+						{
+							"question": "Aitch?",
+							"header": "H",
+							"options": [
+								{"label": "W", "description": "Choose W"},
+								{"label": "Z", "description": "Choose Z"}
+							],
+							"multiSelect": false
+						}
+					],
+					"answers": {},
+					"annotations": {}
+				}
+			}
+		]
+	},
+	{
+		"name": "stopped by Stop / Esc",
+		"source": "Desktop bd921c40 lines 54-56",
+		"records": [
+			{
+				"type": "assistant",
+				"uuid": "a-stopped",
+				"message": {
+					"role": "assistant",
+					"content": [
+						{
+							"type": "tool_use",
+							"id": "toolu_stopped",
+							"name": "AskUserQuestion",
+							"input": {
+								"questions": [
+									{
+										"question": "Game \"Raw\" resource-panel screenshot — where does it belong?",
+										"header": "Game pic",
+										"multiSelect": false,
+										"options": [
+											{
+												"label": "pictures/Blueprints/",
+												"description": "Keep all the game's images together."
+											},
+											{
+												"label": "pictures/screenshots/",
+												"description": "File as a general screenshot."
+											}
+										]
+									}
+								]
+							}
+						}
+					]
+				}
+			},
+			{
+				"type": "user",
+				"uuid": "r-stopped",
+				"parentUuid": "a-stopped",
+				"sourceToolAssistantUUID": "a-stopped",
+				"message": {
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"content": "The user doesn't want to proceed with this tool use. The tool use was rejected (eg. if it was a file edit, the new_string was NOT written to the file). STOP what you are doing and wait for the user to tell you how to proceed.",
+							"is_error": true,
+							"tool_use_id": "toolu_stopped"
+						}
+					]
+				},
+				"toolUseResult": "User rejected tool use",
+				"toolDenialKind": "user-rejected"
+			},
+			{
+				"type": "user",
+				"uuid": "u-stopped-interrupt",
+				"parentUuid": "r-stopped",
+				"message": {
+					"role": "user",
+					"content": [{"type": "text", "text": "[Request interrupted by user for tool use]"}]
+				}
+			}
+		]
+	},
+	{
+		"name": "[No preference], one question",
+		"source": "upstream session_01WvPscZB9phoMMMJ2P7hHZY turn 1 payload, in the CLI's answer envelope",
+		"records": [
+			{
+				"type": "assistant",
+				"uuid": "a-no-preference-1",
+				"message": {
+					"role": "assistant",
+					"content": [
+						{
+							"type": "tool_use",
+							"id": "toolu_no_preference_1",
+							"name": "AskUserQuestion",
+							"input": {
+								"questions": [
+									{
+										"question": "Which color do you prefer?",
+										"header": "Color",
+										"multiSelect": false,
+										"options": [
+											{"label": "Red", "description": "Warm"},
+											{"label": "Blue", "description": "Cool"}
+										]
+									}
+								]
+							}
+						}
+					]
+				}
+			},
+			{
+				"type": "user",
+				"uuid": "r-no-preference-1",
+				"parentUuid": "a-no-preference-1",
+				"sourceToolAssistantUUID": "a-no-preference-1",
+				"message": {
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_no_preference_1",
+							"content": "The user answered: \"Which color do you prefer?\"=\"[No preference]\". Read the answers carefully — they may request clarification, changes, or that you not proceed — and follow what they actually say."
+						}
+					]
+				},
+				"toolUseResult": {
+					"questions": [
+						{
+							"question": "Which color do you prefer?",
+							"header": "Color",
+							"multiSelect": false,
+							"options": [
+								{"label": "Red", "description": "Warm"},
+								{"label": "Blue", "description": "Cool"}
+							]
+						}
+					],
+					"answers": {"Which color do you prefer?": "[No preference]"}
+				}
+			}
+		]
+	},
+	{
+		"name": "[No preference], two questions",
+		"source": "upstream session_01WvPscZB9phoMMMJ2P7hHZY turn 2 payload, in the CLI's answer envelope",
+		"records": [
+			{
+				"type": "assistant",
+				"uuid": "a-no-preference-2",
+				"message": {
+					"role": "assistant",
+					"content": [
+						{
+							"type": "tool_use",
+							"id": "toolu_no_preference_2",
+							"name": "AskUserQuestion",
+							"input": {
+								"questions": [
+									{
+										"question": "Which fruit do you prefer?",
+										"header": "Fruit",
+										"multiSelect": false,
+										"options": [
+											{"label": "Apple", "description": "Crisp"},
+											{"label": "Pear", "description": "Soft"}
+										]
+									},
+									{
+										"question": "Which sizes do you want?",
+										"header": "Size",
+										"multiSelect": true,
+										"options": [
+											{"label": "Small", "description": "Snack"},
+											{"label": "Large", "description": "Meal"}
+										]
+									}
+								]
+							}
+						}
+					]
+				}
+			},
+			{
+				"type": "user",
+				"uuid": "r-no-preference-2",
+				"parentUuid": "a-no-preference-2",
+				"sourceToolAssistantUUID": "a-no-preference-2",
+				"message": {
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_no_preference_2",
+							"content": "The user answered: \"Which fruit do you prefer?\"=\"[No preference]\", \"Which sizes do you want?\"=\"[No preference]\". Read the answers carefully — they may request clarification, changes, or that you not proceed — and follow what they actually say."
+						}
+					]
+				},
+				"toolUseResult": {
+					"questions": [
+						{
+							"question": "Which fruit do you prefer?",
+							"header": "Fruit",
+							"multiSelect": false,
+							"options": [
+								{"label": "Apple", "description": "Crisp"},
+								{"label": "Pear", "description": "Soft"}
+							]
+						},
+						{
+							"question": "Which sizes do you want?",
+							"header": "Size",
+							"multiSelect": true,
+							"options": [
+								{"label": "Small", "description": "Snack"},
+								{"label": "Large", "description": "Meal"}
+							]
+						}
+					],
+					"answers": {
+						"Which fruit do you prefer?": "[No preference]",
+						"Which sizes do you want?": "[No preference]"
+					}
+				}
+			}
+		]
+	}
+]
