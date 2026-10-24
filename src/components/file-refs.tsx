@@ -12,7 +12,7 @@ import {
 
 import {type ArtifactSummary, artifactsQueryOptions} from "../lib/api/artifacts";
 import {type FileRefStatus, fileRefStatusQueryOptions} from "../lib/api/file-refs";
-import {inlineCodeTexts, mentionsArtifactUrl} from "../lib/client-markdown";
+import {fileRefTexts, mentionsArtifactUrl} from "../lib/client-markdown";
 import {requestFileOpen} from "../lib/file-open-requests";
 import {type FileRef} from "../lib/file-refs";
 import {markFileRefMissing, missingFileRefs, subscribeMissingFileRefs} from "../lib/missing-file-refs";
@@ -219,14 +219,14 @@ function LinkedProseMarkdown({
 	open: (ref: FileRef) => void;
 	smartQuotes: boolean;
 }) {
-	const texts = useMemo(() => inlineCodeTexts(markdown), [markdown]);
+	const texts = useMemo(() => fileRefTexts(markdown), [markdown]);
 	const refs = useFileRefs(texts, true);
 	const checkedOpen = useCheckedOpen(sessionId, open);
 	const artifactTitles = useArtifactTitles(markdown);
 	return (
 		<MarkdownArticle
 			markdown={markdown}
-			fileRefs={refs.size === 0 ? undefined : refs}
+			fileRefs={refs}
 			onFileRef={checkedOpen}
 			artifactTitles={artifactTitles}
 			smartQuotes={smartQuotes}

@@ -8,7 +8,9 @@ import {
 	renderMarkdownWithHighlighting,
 	looksLikeMarkdown,
 	renderArtifactLinkCard,
+	fileRefTexts,
 } from "../src/lib/client-markdown";
+import type {FileRef} from "../src/lib/file-refs";
 import {ARTIFACT_ICON_SVG} from "../src/lib/icon-paths";
 
 const {requestLanguageMock, requestThemeMock} = vi.hoisted(() => ({
@@ -552,6 +554,59 @@ describe("GitHub PR chips", () => {
 	it("leave other GitHub links as plain links", () => {
 		expect(renderMarkdownToHtml("[repo](https://github.com/motlin/claude-code-plans)")).toBe(
 			'<p><a href="https://github.com/motlin/claude-code-plans" target="_blank" rel="noreferrer">repo</a></p>\n',
+		);
+	});
+});
+
+describe("markdown links to files", () => {
+	const refs: ReadonlyMap<string, FileRef> = new Map([
+		["docs/guide.md", {path: "/repo/docs/guide.md"}],
+		["src/a.ts:12", {path: "/repo/src/a.ts", line: 12}],
+		["/tmp/outside/notes.txt", {path: "/tmp/outside/notes.txt", block: "outside_roots"}],
+	]);
+
+	it("collect a link's file path, decoded and without its fragment, beside inline code", () => {
+		expect(
+			fileRefTexts(
+				"See `src/b.ts` and [the guide](docs/guide.md#install), [x](src/%C3%A9.ts), [w](https://a.b/c.ts), [t](#top), [m](mailto:a@b.c).",
+			),
+		).toStrictEqual(["src/b.ts", "docs/guide.md", "src/é.ts"]);
+	});
+
+	it("render a link to a resolved file as the file-ref button around the link text", () => {
+		expect(renderMarkdownToHtml("[the guide](docs/guide.md#install)", {fileRefs: refs})).toBe(
+			'<p><span role="button" tabindex="0" class="prose-link" data-file-ref="" data-file-path="/repo/docs/guide.md">the guide</span></p>\n',
+		);
+	});
+
+	it("carry the line of a resolved file link", () => {
+		expect(renderMarkdownToHtml("[a](src/a.ts:12)", {fileRefs: refs})).toBe(
+			'<p><span role="button" tabindex="0" class="prose-link" data-file-ref="" data-file-path="/repo/src/a.ts" data-file-line="12">a</span></p>\n',
+		);
+	});
+
+	it("render a link to a blocked file as the disabled-reason wrapper around the link text", () => {
+		const html = renderMarkdownToHtml("[notes](/tmp/outside/notes.txt)", {fileRefs: refs});
+		expect(html).toMatch(
+			/^<p><span tabindex="0" data-disabled-reason-wrapper="" aria-describedby="(file-ref-reason-\w+)" class="inline rounded-sm focus-visible:outline-hidden focus-visible:shadow-focus">notes<span id="\1" hidden data-disabled-reason="">This file is outside this session’s folders, so it can’t be opened here.<\/span><\/span><\/p>\n$/,
+		);
+	});
+
+	it("render an unresolved relative file link as its text, not a dead link", () => {
+		expect(renderMarkdownToHtml("[other](lib/other.ts) **[b](lib/b.ts)**", {fileRefs: refs})).toBe(
+			"<p>other <strong>b</strong></p>\n",
+		);
+	});
+
+	it("keep external, in-app and fragment links as links", () => {
+		expect(renderMarkdownToHtml("[x](https://a.b/c.ts) [home](/sessions) [top](#top)", {fileRefs: refs})).toBe(
+			'<p><a href="https://a.b/c.ts" target="_blank" rel="noreferrer">x</a> <a href="/sessions">home</a> <a href="#top">top</a></p>\n',
+		);
+	});
+
+	it("keep a relative file link as a link when the render resolves no file refs", () => {
+		expect(renderMarkdownToHtml("[the guide](docs/guide.md#install)")).toBe(
+			'<p><a href="docs/guide.md#install">the guide</a></p>\n',
 		);
 	});
 });

@@ -21,7 +21,7 @@ import {formatFileSize, imageContentType, isMarkdownPath, normalizeFileTabSize} 
 import {firstMatchFromLine, lineMatchOffsets, lineOfMatch, stepMatch} from "../../lib/find-in-file";
 import {editableMarkdownTarget} from "../../lib/file-edit";
 import {registerFindInFile} from "../../lib/find-in-file-request";
-import {inlineCodeTexts} from "../../lib/client-markdown";
+import {fileRefTexts} from "../../lib/client-markdown";
 import {fromMdSlug} from "../../lib/md-slug";
 import {isMacPlatform} from "../../lib/shortcuts/match";
 import {useResolvedFileRefs} from "../use-resolved-file-refs";
@@ -138,7 +138,7 @@ function LinkedMarkdown({
 	cwd: string | undefined;
 	onOpenFile: (path: string) => void;
 }) {
-	const texts = useMemo(() => inlineCodeTexts(markdown), [markdown]);
+	const texts = useMemo(() => fileRefTexts(markdown), [markdown]);
 	const refs = useResolvedFileRefs(texts, NO_SESSION_PATHS, [directoryOf(path), cwd]);
 	return (
 		<MarkdownArticle

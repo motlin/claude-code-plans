@@ -157,6 +157,30 @@ describe("ProseMarkdown file refs", () => {
 		]);
 	});
 
+	it("links a markdown link to an existing file as a file-ref button and drops a dead link to an unknown one", async () => {
+		const open = vi.fn<(ref: FileRef) => void>();
+		const {container} = render(
+			withQueryClient(
+				<FileRefsProvider value={{sessionId: "link-refs", cwd: "/repo", sessionPaths: [], open}}>
+					<ProseMarkdown markdown="See [the app](src/app.ts#top) and [web](https://example.com/x.ts)." />
+				</FileRefsProvider>,
+			),
+		);
+
+		await waitFor(() => {
+			expect(container.querySelectorAll("[data-file-ref]")).toHaveLength(1);
+		});
+		const ref = container.querySelector<HTMLElement>("[data-file-ref]")!;
+		expect({
+			text: ref.textContent,
+			role: ref.getAttribute("role"),
+			links: [...container.querySelectorAll("a")].map((link) => link.getAttribute("href")),
+		}).toStrictEqual({text: "the app", role: "button", links: ["https://example.com/x.ts"]});
+
+		fireEvent.click(ref);
+		expect(open.mock.calls).toStrictEqual([[{path: "/repo/src/app.ts"}]]);
+	});
+
 	it("renders an outside-roots path as blocked code with its reason, shown in a tooltip on hover", async () => {
 		const open = vi.fn<(ref: FileRef) => void>();
 		const {container} = render(

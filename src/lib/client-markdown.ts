@@ -7,7 +7,7 @@ import taskLists from "markdown-it-task-lists";
 import footnote from "markdown-it-footnote";
 import {requestLanguage, themeOrRequest} from "../hooks/use-shiki";
 import {type CodeThemePair, DEFAULT_CODE_THEMES} from "./code-themes";
-import type {FileRef, FileRefBlock} from "./file-refs";
+import {type FileRef, type FileRefBlock, parseFileRefText} from "./file-refs";
 import {normalizeArtifactUrl} from "./artifact-output";
 import {ARTIFACT_ICON_SVG, COPY_ICON_SVG, PR_ICON_SVG} from "./icon-paths";
 import {mdFileHref, resolveRelativeMdHref} from "./md-links";
@@ -74,7 +74,14 @@ function envOf(env: unknown): MarkdownEnv | undefined {
 export const FILE_REF_ATTR = "data-file-ref";
 
 function fileRefHtml(text: string, ref: FileRef, escape: (value: string) => string): string {
-	if (ref.block !== undefined) return blockedFileRefHtml(text, ref.path, ref.block, escape);
+	if (ref.block !== undefined) {
+		const [open, close] = blockedFileRefWrapper(ref.path, ref.block, escape);
+		return `${open}<code data-inline-code="" data-file-ref-blocked="">${escape(text)}</code>${close}`;
+	}
+	return `${fileRefButtonOpen(ref, escape)}<span data-inline-code="">${escape(text)}</span></span>`;
+}
+
+function fileRefButtonOpen(ref: FileRef, escape: (value: string) => string): string {
 	const attrs = [
 		`role="button"`,
 		`tabindex="0"`,
@@ -84,7 +91,7 @@ function fileRefHtml(text: string, ref: FileRef, escape: (value: string) => stri
 		...(ref.line === undefined ? [] : [`data-file-line="${ref.line}"`]),
 		...(ref.endLine === undefined ? [] : [`data-file-end-line="${ref.endLine}"`]),
 	];
-	return `<span ${attrs.join(" ")}><span data-inline-code="">${escape(text)}</span></span>`;
+	return `<span ${attrs.join(" ")}>`;
 }
 
 /** Marks the cds disabled-reason wrapper around a blocked file ref; its `[data-disabled-reason]` child holds the reason. */
@@ -103,19 +110,36 @@ export function fileRefReasonId(path: string, block: FileRefBlock): string {
 	return `file-ref-reason-${hash.toString(36)}`;
 }
 
-/** Upstream's `sr`: the plain code chip in a focusable disabled-reason wrapper, with the reason hidden for `aria-describedby`. */
-function blockedFileRefHtml(
-	text: string,
+/**
+ * Upstream's `sr`: the opening and closing HTML of the focusable disabled-reason
+ * wrapper around a blocked ref's content, with the reason hidden for `aria-describedby`.
+ */
+function blockedFileRefWrapper(
 	path: string,
 	block: FileRefBlock,
 	escape: (value: string) => string,
-): string {
+): [open: string, close: string] {
 	const id = fileRefReasonId(path, block);
-	return (
-		`<span tabindex="0" ${DISABLED_REASON_WRAPPER_ATTR}="" aria-describedby="${id}" class="inline rounded-sm focus-visible:outline-hidden focus-visible:shadow-focus">` +
-		`<code data-inline-code="" data-file-ref-blocked="">${escape(text)}</code>` +
-		`<span id="${id}" hidden data-disabled-reason="">${escape(FILE_REF_BLOCK_REASONS[block])}</span></span>`
-	);
+	return [
+		`<span tabindex="0" ${DISABLED_REASON_WRAPPER_ATTR}="" aria-describedby="${id}" class="inline rounded-sm focus-visible:outline-hidden focus-visible:shadow-focus">`,
+		`<span id="${id}" hidden data-disabled-reason="">${escape(FILE_REF_BLOCK_REASONS[block])}</span></span>`,
+	];
+}
+
+/**
+ * The file-ref key a markdown link's href names: the decoded path without its
+ * `#fragment`, or null for a link that leaves the app (any URL scheme) or
+ * targets a fragment of this page.
+ */
+function fileRefLinkKey(href: string): string | null {
+	if (href === "" || href.startsWith("#") || /^[a-z][a-z\d+.-]*:/i.test(href)) return null;
+	const hash = href.indexOf("#");
+	const path = hash === -1 ? href : href.slice(0, hash);
+	try {
+		return decodeURIComponent(path);
+	} catch {
+		return path;
+	}
 }
 
 /** Read the ref a {@link FILE_REF_ATTR} element carries. */
@@ -457,6 +481,11 @@ function zonedTimes(state: StateCore): void {
 	timeWithZone.splitZonedTimes(state, ZONED_TIME_TOKEN);
 }
 
+/** What a file-ref link's `link_open` left on its `link_close` to render instead of `</a>`. */
+function isFileRefClose(meta: unknown): meta is {fileRefClose: string} {
+	return typeof meta === "object" && meta !== null && "fileRefClose" in meta && typeof meta.fileRefClose === "string";
+}
+
 /** The plugins and renderer overrides every cached instance shares. */
 function applyPlugins(instance: MarkdownIt): void {
 	instance.use(taskLists);
@@ -489,19 +518,46 @@ function applyPlugins(instance: MarkdownIt): void {
 			: fileRefHtml(text, ref, instance.utils.escapeHtml);
 	};
 
+	// Upstream routes a link whose href is a file path through the same file-ref
+	// renderer as inline code, with the link text as its content; a file path
+	// that doesn't resolve keeps only its text rather than a dead relative link.
 	instance.renderer.rules["link_open"] = (tokens, idx, options, env, self) => {
 		const token = defined(tokens[idx], "link_open token");
 		const href = token.attrGet("href");
-		const base = envOf(env)?.mdLinkBase;
-		if (base !== undefined) {
-			const resolved = href === null ? null : resolveRelativeMdHref(href, base);
-			if (resolved !== null) token.attrSet("href", resolved);
+		const markdownEnv = envOf(env);
+		const fileRefs = markdownEnv?.fileRefs;
+		const key = fileRefs === undefined || href === null ? null : fileRefLinkKey(href);
+		const close = key === null ? undefined : tokens.slice(idx + 1).find((other) => other.type === "link_close");
+		if (key !== null && close !== undefined) {
+			const ref = fileRefs?.get(key);
+			if (ref !== undefined) {
+				const escape = instance.utils.escapeHtml;
+				if (ref.block === undefined) {
+					close.meta = {fileRefClose: "</span>"};
+					return fileRefButtonOpen(ref, escape);
+				}
+				const [open, closeHtml] = blockedFileRefWrapper(ref.path, ref.block, escape);
+				close.meta = {fileRefClose: closeHtml};
+				return open;
+			}
+		}
+		const base = markdownEnv?.mdLinkBase;
+		const resolved = base === undefined || href === null ? null : resolveRelativeMdHref(href, base);
+		if (resolved !== null) token.attrSet("href", resolved);
+		else if (key !== null && close !== undefined && parseFileRefText(key) !== null) {
+			close.meta = {fileRefClose: ""};
+			return "";
 		}
 		if (href !== null && isExternalHref(href)) {
 			token.attrSet("target", "_blank");
 			token.attrSet("rel", "noreferrer");
 		}
 		return self.renderToken(tokens, idx, options);
+	};
+
+	instance.renderer.rules["link_close"] = (tokens, idx, options, _env, self) => {
+		const meta: unknown = defined(tokens[idx], "link_close token").meta;
+		return isFileRefClose(meta) ? meta.fileRefClose : self.renderToken(tokens, idx, options);
 	};
 
 	// Upstream wraps every fence in a relative box carrying an absolutely
@@ -604,12 +660,19 @@ export function mentionsArtifactUrl(markdown: string): boolean {
 	return ARTIFACT_URL_HINT.test(markdown);
 }
 
-/** The text of every inline code span in `markdown`, in document order. */
-export function inlineCodeTexts(markdown: string): string[] {
+/**
+ * The texts in `markdown` that may name files, in document order: every inline
+ * code span, and the path every in-app markdown link points at (see
+ * {@link fileRefLinkKey}). These are the keys a render's `fileRefs` map uses.
+ */
+export function fileRefTexts(markdown: string): string[] {
 	const texts: string[] = [];
 	for (const token of getPlainMarkdownIt().parse(markdown, {})) {
 		for (const child of token.children ?? []) {
 			if (child.type === "code_inline") texts.push(child.content);
+			const href = child.type === "link_open" ? child.attrGet("href") : null;
+			const key = href === null ? null : fileRefLinkKey(href);
+			if (key !== null) texts.push(key);
 		}
 	}
 	return texts;
