@@ -41,6 +41,7 @@ import {
 	LiveSubagentNodeSchema,
 } from "../lib/domain-event-payload-schemas";
 import {toMdSlug} from "../lib/md-slug";
+import {isPrompt} from "../lib/transcript-chain";
 import {getSubagentLifecycleKey, toSubagentSessionId} from "../lib/subagents";
 import {isLiveSessionState, type ActivityState} from "../lib/session-state";
 import type {Statusline} from "../lib/api/statusline";
@@ -786,10 +787,63 @@ export function applyNotificationCleared(queryClient: QueryClient, payload: Noti
 }
 
 /**
+ * Whether appending `lines` after `cached` forks the chain: some prompt among
+ * them (transcript-chain.ts rule) is not parented on the newest non-sidechain
+ * record before it. Tool results and attachments never count, so parallel
+ * tool results hanging off an earlier assistant split merge as usual. The test
+ * is deliberately loose (the CLI sometimes writes a prompt's parent a line or
+ * two after it): a false positive costs one tail refetch, and the server's
+ * `chainVersion` decides whether the cached pages are actually stale.
+ */
+function appendForksChain(cached: TranscriptData, lines: readonly Record<string, unknown>[]): boolean {
+	const mainUuid = (record: Record<string, unknown>) =>
+		record["isSidechain"] === true || typeof record["uuid"] !== "string" ? undefined : record["uuid"];
+	let newest = cached.records.findLast((record) => mainUuid(record) !== undefined)?.["uuid"];
+	for (const record of lines) {
+		const uuid = mainUuid(record);
+		if (uuid === undefined) continue;
+		const parentUuid = record["parentUuid"];
+		if (newest !== undefined && typeof parentUuid === "string" && parentUuid !== newest && isPrompt(record)) {
+			return true;
+		}
+		newest = uuid;
+	}
+	return false;
+}
+
+function mergeAppendedLines(
+	queryClient: QueryClient,
+	queryKey: ReturnType<typeof sessionQueryKeys.transcript>,
+	lines: Record<string, unknown>[],
+): void {
+	queryClient.setQueryData<TranscriptData>(queryKey, (old) => {
+		if (!old) return old;
+		return mergeTranscriptData(old, {
+			records: lines,
+			byteOffset: old.byteOffset,
+			// The cached window always runs to the end of the JSONL, so appended
+			// lines start exactly where it stops.
+			startIndex: transcriptEndIndex(old),
+			precedingMessageCount: old.precedingMessageCount,
+			// Only the server knows the whole file's chain, so an append hides
+			// nothing new until the next fetch recomputes it.
+			hiddenUuids: [],
+			cuts: [],
+			chainVersion: old.chainVersion,
+		});
+	});
+}
+
+/**
  * Apply SESSION_LINES_APPENDED: append raw JSONL records to the transcript
  * cache. The component's useMemo on processTranscript() recomputes
  * automatically when the cache updates. Returns the JSONL index of the first
  * appended record, or null when no transcript is cached to append to.
+ *
+ * A forking prompt is not merged: only the server knows which rows the new
+ * chain hides, including rows on pages the cache never loaded. The tail is
+ * refetched instead, and `transcriptQueryOptions` replaces the cached pages
+ * when its `chainVersion` changed.
  */
 export function applySessionLinesAppended(
 	queryClient: QueryClient,
@@ -804,22 +858,11 @@ export function applySessionLinesAppended(
 	if (payload.lines.length === 0) return null;
 	const firstLine = transcriptEndIndex(cached);
 
-	queryClient.setQueryData<TranscriptData>(queryKey, (old) => {
-		if (!old) return old;
-		return mergeTranscriptData(old, {
-			records: payload.lines,
-			byteOffset: old.byteOffset,
-			// The cached window always runs to the end of the JSONL, so appended
-			// lines start exactly where it stops.
-			startIndex: transcriptEndIndex(old),
-			precedingMessageCount: old.precedingMessageCount,
-			// Only the server knows the whole file's chain, so an append hides
-			// nothing new until the next fetch recomputes it.
-			hiddenUuids: [],
-			cuts: [],
-			chainVersion: old.chainVersion,
-		});
-	});
+	if (appendForksChain(cached, payload.lines)) {
+		void queryClient.invalidateQueries({queryKey});
+	} else {
+		mergeAppendedLines(queryClient, queryKey, payload.lines);
+	}
 
 	// The whole-session file and link inventory was scanned from the JSONL as it
 	// stood, so appended lines make it stale. An open drawer refetches; a closed

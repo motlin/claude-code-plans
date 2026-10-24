@@ -71,7 +71,7 @@ function promptText(record: TranscriptRecord): string | undefined {
 }
 
 /** A user prompt: string content or a text block, not meta, not a tool result, not a task notification. */
-function isPrompt(record: TranscriptRecord): boolean {
+export function isPrompt(record: TranscriptRecord): boolean {
 	if (record["type"] !== "user" || record["isMeta"] === true) {
 		return false;
 	}

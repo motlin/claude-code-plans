@@ -486,7 +486,13 @@ export const transcriptQueryOptions = (id: string) =>
 		structuralSharing: (oldData, newData) => {
 			const refreshed = TranscriptResponse.parse(newData);
 			if (oldData === undefined) return refreshed;
-			return mergeTranscriptData(refreshed, TranscriptResponse.parse(oldData));
+			const cached = TranscriptResponse.parse(oldData);
+			// The chain forked or switched branch since the cached pages were
+			// served, so their hidden rows are stale: start again from the tail
+			// and let scrolling back fetch earlier pages anew (upstream
+			// `verify_rewind` → `fetchFullTranscript` + `retireEarlierTranscript`).
+			if (refreshed.chainVersion !== cached.chainVersion) return refreshed;
+			return mergeTranscriptData(refreshed, cached);
 		},
 		staleTime: Infinity,
 		gcTime: Infinity,
