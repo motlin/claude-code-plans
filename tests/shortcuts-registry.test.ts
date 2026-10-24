@@ -18,8 +18,30 @@ function chord(binding: Binding): string {
 }
 
 describe("shortcut registry", () => {
-	it("lists the 43 upstream web entries plus the page-scoped ⌘F search", () => {
-		expect(SHORTCUT_IDS).toHaveLength(44);
+	it("lists the 43 upstream web entries plus the page-scoped ⌘F search and the desktop-only ⌥⌘F", () => {
+		expect(SHORTCUT_IDS).toHaveLength(45);
+	});
+
+	it("binds upstream's desktop-only ⌥⌘F Toggle fast mode, kept out of the web ⌘/ dialog", () => {
+		expect({
+			definition: getShortcut("toggle_fast_mode"),
+			mac: bindingsFor("toggle_fast_mode", true).map(bindingToKeys),
+			windows: bindingsFor("toggle_fast_mode", false, true).map(bindingToKeys),
+		}).toStrictEqual({
+			definition: {
+				description: "Toggle fast mode",
+				group: "composer",
+				bindings: [
+					{key: "f", code: "KeyF", modifiers: ["cmd", "alt"], platform: "mac"},
+					{key: "f", code: "KeyF", modifiers: ["ctrl", "alt"], platform: "non-mac"},
+				],
+				ownerSlug: "fast-mode-toggle",
+				enabled: true,
+				hiddenFromDialog: true,
+			},
+			mac: ["cmd+alt+f"],
+			windows: ["ctrl+alt+f"],
+		});
 	});
 
 	it.each(SHORTCUT_IDS)("%s has mac and Windows bindings", (id) => {
@@ -191,6 +213,7 @@ describe("shortcut registry", () => {
 			"open_model_menu",
 			"open_effort_selector",
 			"select_menu_item",
+			"toggle_fast_mode",
 			"add_files",
 			"queue_for_later",
 			"send_and_stay",

@@ -401,6 +401,15 @@ export const SHORTCUTS = {
 		enabled: true,
 		displayKeys: "1…9",
 	},
+	toggle_fast_mode: {
+		description: "Toggle fast mode",
+		group: "composer",
+		bindings: cmdOrCtrl("f", ["alt"], letterCode("f")),
+		ownerSlug: "fast-mode-toggle",
+		enabled: true,
+		// Upstream lists the row only in the desktop app (`setFastMode !== undefined`), never on web.
+		hiddenFromDialog: true,
+	},
 	add_files: {
 		description: "Add files or photos",
 		group: "composer",

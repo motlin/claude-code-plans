@@ -34,7 +34,11 @@ const CHIN: ComposerState = {
 type OnSend = (prompt: string, launchOptions: LaunchOptions) => void;
 
 function renderComposer(
-	extra: {bypassPermissionsAllowed?: boolean; live?: LiveLaunchControls; chin?: ComposerState} = {},
+	extra: {
+		bypassPermissionsAllowed?: boolean;
+		live?: LiveLaunchControls;
+		chin?: ComposerState;
+	} = {},
 ) {
 	const onSend = vi.fn<OnSend>();
 	// The composer sits in the compact main column.
@@ -260,15 +264,30 @@ describe("Composer home bar permissions menu", () => {
 			labelText: "Permissions · this session",
 			accelerators: 0,
 			rows: [
-				{label: "Auto", description: "Claude handles permission decisions", key: null, checked: "false"},
-				{label: "Manual", description: "Always ask before making changes", key: null, checked: "true"},
+				{
+					label: "Auto",
+					description: "Claude handles permission decisions",
+					key: null,
+					checked: "false",
+				},
+				{
+					label: "Manual",
+					description: "Always ask before making changes",
+					key: null,
+					checked: "true",
+				},
 				{
 					label: "Accept edits",
 					description: "Automatically accept all file edits",
 					key: null,
 					checked: "false",
 				},
-				{label: "Plan", description: "Create a plan before making changes", key: null, checked: "false"},
+				{
+					label: "Plan",
+					description: "Create a plan before making changes",
+					key: null,
+					checked: "false",
+				},
 			],
 		});
 	});
@@ -386,7 +405,9 @@ describe("Composer model menu", () => {
 	});
 
 	it("numbers the rows around a checked middle row and picks the row a digit names", async () => {
-		const onSend = renderComposer({chin: {...CHIN, model: "Fable 5.1", modelId: "claude-fable-5-1"}});
+		const onSend = renderComposer({
+			chin: {...CHIN, model: "Fable 5.1", modelId: "claude-fable-5-1"},
+		});
 
 		openModelMenu();
 		const menu = await screen.findByRole("menu");
@@ -418,7 +439,10 @@ describe("Composer model menu", () => {
 		openModelMenu();
 		const menu = await screen.findByRole("menu");
 		const opus = within(menu).getByRole("menuitemradio", {name: /^Opus/});
-		const attrs = {key: opus.getAttribute("aria-keyshortcuts"), number: opus.getAttribute("data-accelerator")};
+		const attrs = {
+			key: opus.getAttribute("aria-keyshortcuts"),
+			number: opus.getAttribute("data-accelerator"),
+		};
 		fireEvent.keyDown(menu, {key: "1", code: "Digit1"});
 		await waitFor(() => {
 			expect(screen.queryByRole("menu")).toBeNull();
@@ -660,7 +684,14 @@ describe("Composer model menu Fast mode section", () => {
 		});
 		sendPrompt("Continue Judy's test");
 
-		expect({first, highlighted, afterEnter, afterSpace, open, calls: onSend.mock.calls}).toStrictEqual({
+		expect({
+			first,
+			highlighted,
+			afterEnter,
+			afterSpace,
+			open,
+			calls: onSend.mock.calls,
+		}).toStrictEqual({
 			first: "Opus 5.5",
 			highlighted: "Enable fast mode",
 			afterEnter: "true",
@@ -794,7 +825,9 @@ describe("Composer model trigger Fast word and live status", () => {
 	});
 
 	it("has neither the word nor the live status on a model without fast mode", () => {
-		renderComposer({chin: {...CHIN, model: "Sonnet 5.5", modelId: "claude-sonnet-5-5", fastMode: true}});
+		renderComposer({
+			chin: {...CHIN, model: "Sonnet 5.5", modelId: "claude-sonnet-5-5", fastMode: true},
+		});
 
 		expect({label: triggerParts().label, status: liveStatus()}).toStrictEqual({
 			label: "Model: Sonnet 5.5 High",
@@ -932,6 +965,66 @@ describe("Composer effort submenu", () => {
 			text: "Opus 5.5 Extra",
 			calls: [["Continue Erin's test", {effort: "xhigh"}]],
 		});
+	});
+});
+
+describe("Composer ⌥⌘F fast mode shortcut", () => {
+	const toggleFast = (init: KeyboardEventInit = {}) => {
+		press({key: "ƒ", code: "KeyF", metaKey: true, altKey: true, ...init});
+	};
+	const modelLabel = () => screen.getByRole("button", {name: /^Model:/}).getAttribute("aria-label");
+
+	it("toggles fast mode in a session composer and ignores a held key's repeats", () => {
+		const onSend = renderComposer();
+
+		toggleFast();
+		const on = modelLabel();
+		toggleFast({repeat: true});
+		toggleFast({repeat: true});
+		sendPrompt("Continue Frank's test");
+
+		expect({
+			on,
+			after: modelLabel(),
+			menus: screen.queryAllByRole("menu").length,
+			calls: onSend.mock.calls,
+		}).toStrictEqual({
+			on: "Model: Opus 5.5 Fast High",
+			after: "Model: Opus 5.5 Fast High",
+			menus: 0,
+			calls: [["Continue Frank's test", {fastMode: true}]],
+		});
+	});
+
+	it("turns a fast session off", () => {
+		renderComposer({chin: {...CHIN, fastMode: true}});
+
+		toggleFast();
+
+		expect(modelLabel()).toBe("Model: Opus 5.5 High");
+	});
+
+	it("does nothing on a model without fast mode", () => {
+		renderComposer({chin: {...CHIN, model: "Sonnet 5.5", modelId: "claude-sonnet-5-5"}});
+
+		toggleFast();
+
+		expect({label: modelLabel(), menus: screen.queryAllByRole("menu").length}).toStrictEqual({
+			label: "Model: Sonnet 5.5 High",
+			menus: 0,
+		});
+	});
+
+	it("opens the Model menu on the home composer instead of toggling", async () => {
+		renderHomeComposer();
+
+		toggleFast();
+		await screen.findByRole("menu");
+
+		expect({
+			label: modelLabel(),
+			expanded: screen.getByRole("button", {name: /^Model:/}).getAttribute("aria-expanded"),
+		}).toStrictEqual({label: "Model: Opus 5.5 High", expanded: "true"});
 	});
 });
 
@@ -1116,7 +1209,10 @@ describe("Composer chin tooltips and contrast", () => {
 			});
 			const afterReentry = screen.queryByRole("tooltip")?.textContent ?? null;
 
-			expect({afterClose, afterReentry}).toStrictEqual({afterClose: null, afterReentry: tooltip});
+			expect({afterClose, afterReentry}).toStrictEqual({
+				afterClose: null,
+				afterReentry: tooltip,
+			});
 		} finally {
 			vi.useRealTimers();
 		}
@@ -1177,7 +1273,12 @@ describe("Composer chin tooltips and contrast", () => {
 				?.getAttribute("class")
 				?.split(" ")
 				.filter((name) => name.startsWith("size-") || name.startsWith("text-")),
-		}).toStrictEqual({tag: "svg", hidden: "true", warning: true, sized: ["size-3", "text-warning-100"]});
+		}).toStrictEqual({
+			tag: "svg",
+			hidden: "true",
+			warning: true,
+			sized: ["size-3", "text-warning-100"],
+		});
 	});
 
 	it("has no warning icon below Max", () => {
@@ -1435,7 +1536,10 @@ describe("Composer + menu Connectors submenu", () => {
 				to: "/customize/connectors/id/$serverId",
 				params: {serverId: toConnectorSlug("plugin:docs@market:Docs")},
 			},
-			{to: "/customize/connectors/id/$serverId", params: {serverId: toConnectorSlug("user:Sentry")}},
+			{
+				to: "/customize/connectors/id/$serverId",
+				params: {serverId: toConnectorSlug("user:Sentry")},
+			},
 		]);
 	});
 
@@ -1532,7 +1636,9 @@ describe("Composer + menu Connectors submenu", () => {
 			</QueryClientProvider>,
 		);
 		fireEvent.click(screen.getByRole("button", {name: "Add"}));
-		const trigger = await within(await screen.findByRole("menu")).findByRole("menuitem", {name: /^Connectors/});
+		const trigger = await within(await screen.findByRole("menu")).findByRole("menuitem", {
+			name: /^Connectors/,
+		});
 
 		expect(trigger.querySelector("[data-menu-value]")).toBeNull();
 	});
@@ -1644,7 +1750,10 @@ describe("Composer model menu on a coarse pointer under 640px", () => {
 			handle: true,
 			radius: ["rounded-t-card"],
 			popupText: ["text-[14px]/[20px]"],
-			rows: Array.from({length: radioClasses.length}, () => ({text: ["text-[14px]/[20px]"], height: true})),
+			rows: Array.from({length: radioClasses.length}, () => ({
+				text: ["text-[14px]/[20px]"],
+				height: true,
+			})),
 		});
 	});
 });

@@ -557,6 +557,23 @@ export function Composer({
 		},
 		menuShortcutOptions,
 	);
+	// Upstream's `toggleFastMode`: toggles in a session; the home composer opens the Model menu instead.
+	useShortcut(
+		"toggle_fast_mode",
+		() => {
+			if (variant === "home") {
+				setOpenMenu("model");
+				return true;
+			}
+			const chinPick = chinPickRef.current;
+			if (chinPick === null) return false;
+			const {on, canToggle} = chinPick.fastState();
+			if (!canToggle) return false;
+			chinPick.pick({fastMode: !on});
+			return true;
+		},
+		menuShortcutOptions,
+	);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	// The draft the open picker belongs to; upstream (`Ld`) drops a pick when the scope changed while it was open.
 	const pickerDraftKeyRef = useRef<string | null>(null);
@@ -919,7 +936,11 @@ export function Composer({
 		const route = routeFastCommand({arg, on, canToggle});
 		if (route === "unhandled") return false;
 		if (route === "toggle") chinPick.pick({fastMode: !on});
-		else toast?.({kind: "success", message: on ? "Fast mode is already on." : "Fast mode is already off."});
+		else
+			toast?.({
+				kind: "success",
+				message: on ? "Fast mode is already on." : "Fast mode is already off.",
+			});
 		clearDraft();
 		return true;
 	}
